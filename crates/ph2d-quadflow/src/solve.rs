@@ -25,22 +25,31 @@ use crate::scale::ScaleField;
 
 /// Quantas varreduras por nível — **MEDIDO, não escolhido** (`CLAUDE.md` §0.0).
 ///
-/// Sobre a malha que o módulo abre (`sculpt_sphere`, **98 306 vértices**), com
-/// `edge = 0,05`, pelo gate `measure_the_kill_criterion`:
+/// Sobre a malha que o módulo abre (`sculpt_sphere`, **98 306 vértices**), no
+/// piso do slider (`3,0×` a aresta de entrada = quad de `0,0344`), pela sonda
+/// `measure_the_sweeps_per_level`:
 ///
-/// | varreduras | 1 | **2** | 4 | 8 |
-/// |---|---|---|---|---|
-/// | tempo | 1,10 s | **2,04 s** | 3,87 s | 7,52 s |
-/// | quads | 95,9 % | **96,4 %** | 96,7 % | 96,5 % |
+/// | varreduras | 1 | **2** | 4 | 8 | 16 |
+/// |---|---|---|---|---|---|
+/// | quads | 97,1 % | **97,6 %** | 97,5 % | 97,4 % | 97,5 % |
+/// | maior ciclo | 7 | **5** | 5 | 5 | 6 |
+/// | desvio de aresta | 0,073 | **0,067** | 0,065 | 0,064 | 0,065 |
+/// | forma (Hausdorff em quads) | 0,030 | **0,020** | 0,019 | 0,021 | 0,018 |
+/// | total (campos+extração+relax) | 0,50 s | **0,86 s** | 1,27 s | 2,54 s | 4,45 s |
 ///
-/// ⚠️ **A qualidade SATURA na primeira varredura**, e a hierarquia é a razão:
-/// cada nível herda do pai um campo já quase certo, e só precisa de se acomodar.
-/// Oito varreduras custam **7×** o tempo por **+0,6 pp** — e a 8 o número é
-/// *pior* que a 4, que é ruído a dizer que ali não há sinal.
+/// ⚠️ **A qualidade SATURA na segunda varredura**, e a hierarquia é a razão: cada
+/// nível herda do pai um campo já quase certo, e só precisa de se acomodar. A 2 a
+/// fração de quads é o **máximo das cinco colunas**, e dezesseis varreduras
+/// custam **5×** o relógio para não a melhorar.
 ///
-/// ⚠️ **E o 2 é o último degrau que cabe no KILL-CRITERION do ADR-0160 §4**
-/// (3 s): a 4 o passe custa 3,87 s. O limite é de RELÓGIO e o ADR o congelou
-/// **antes** do build — não é conforto.
+/// ⚠️ **E a JUSTIFICATIVA ANTERIOR DESTE NÚMERO DISSOLVEU-SE, o que este doc
+/// registra de propósito.** Ela dizia *"2 é o último degrau que cabe no
+/// kill-criterion de 3 s"* — e era verdade enquanto a extração custava ~1,4 s
+/// pela lei do cone. Com o grafo por passo de retícula ela passou a custar
+/// **0,02 s**, o teto de relógio afastou-se, e o número ficou de pé por um motivo
+/// que já não existia. *Quem move o número que tornava algo inalcançável tem de
+/// reconferir a nota* (`CLAUDE.md` §0.0) — a re-medição manteve o 2, agora por
+/// **qualidade** e não por relógio.
 pub const SWEEPS_PER_LEVEL: usize = 2;
 
 /// **RESOLVE os dois campos pela hierarquia.**

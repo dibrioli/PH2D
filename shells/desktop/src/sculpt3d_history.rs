@@ -69,6 +69,16 @@ pub(super) enum RemeshRefusal {
     /// chamador eleger UMA mensagem para as duas. É a mesma lição que partiu o
     /// `Option` original em três casos.
     Quad(ph2d_mesh::MeshError),
+    /// **A GRADE NÃO TEM ONDE POUSAR** — a extração devolveu zero faces.
+    ///
+    /// ⚠️ **Caso próprio porque a peça ficaria INVISÍVEL, e sem uma palavra.**
+    /// Uma retopologia não pode resolver uma grade mais fina que a malha que ela
+    /// lê; abaixo desse piso a extração não devolve erro nenhum — ela devolve uma
+    /// malha **vazia**, e o artista vê o objeto sumir. Foi o que o painel oferecia
+    /// no extremo esquerdo do slider até 2026-08-19, e o que o Enio fotografou.
+    /// Com o knob de `detail` isto passou a ser inalcançável; a variante fica
+    /// porque *o próximo chamador pode não passar pelo knob*.
+    TooCoarseToResolve,
 }
 
 pub(super) enum StrokeUndo {

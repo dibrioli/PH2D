@@ -218,8 +218,10 @@ pub struct Sculpt3dUi {
     /// SculptGL — e agora é um ponto de partida, não um teto: até esta wave ele
     /// era o único valor alcançável, cravado nos dois chamadores.
     pub remesh_res: f32,
-    /// O lado do quad que a retopologia persegue, em unidades de objeto.
-    pub quad_edge: f32,
+    /// **Quão FINA a retopologia persegue a grade** — fração do curso (`0` grossa,
+    /// `1` o mais fino que a entrada resolve). ⚠️ **Não é um tamanho**; o porquê
+    /// está na row (`rows_topology::TOPOLOGY`).
+    pub quad_detail: f32,
     /// Quanto a densidade segue a curvatura — `0` uniforme, `1` a faixa inteira.
     pub quad_adapt: f32,
     /// **O que o botão de extract vai fazer** — a espessura da casca e quantas
@@ -303,11 +305,10 @@ impl Default for Sculpt3dUi {
             detail: 1,
             // A fonte é a const do motor, não uma cópia dela.
             remesh_res: 150.0, // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
-            // LITERAL-PX-OK: lado de quad em unidades de OBJETO, nao metrica de
-            // layout. O default e' o da fixture dos gates da `ph2d-quadflow`,
-            // onde 0,18 sobre um raio 1 da' ~430 celulas.
-            quad_edge: 0.18, // LITERAL-PX-OK: lado de quad em unidades de OBJETO
-            quad_adapt: 0.0, // LITERAL-PX-OK: fracao, nao metrica de layout
+            // O MEIO do curso. Medido na malha da cena `=35`: 384 vertices e
+            // 88,2% de quads -- nem a blocagem nem o teto da entrada.
+            quad_detail: 0.5, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
+            quad_adapt: 0.0,  // LITERAL-PX-OK: fracao, nao metrica de layout
 
             extract: Extract::default(),
         }

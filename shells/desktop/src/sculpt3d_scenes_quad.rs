@@ -31,8 +31,13 @@ pub(crate) fn announce() {
          [sculpt3d]        eixos do mundo. Compare com o `Remesh` (desfaca antes): la' as linhas\n\
          [sculpt3d]        sobem e descem em ESCADA sobre uma feicao diagonal.\n\
          [sculpt3d]    (4) O Ctrl+Z DESFAZ, e devolve a malha inteira de antes.\n\
-         [sculpt3d]    (5) O `Quad Size` muda o lado do quadrado. O `Follow Curvature` em 1,0 poe\n\
-         [sculpt3d]        quadrados MENORES onde a forma aperta -- compare com ele em 0,0.\n\
-         [sculpt3d]    (6) ⚠️ Com a pilha de multires montada ela RECUSA e diz para achatar antes."
+         [sculpt3d]    (5) O `Detail` vai de 0 (a grade mais GROSSA que ainda descreve a peca) a\n\
+         [sculpt3d]        1 (a mais FINA que esta malha consegue resolver). ⚠️ ARRASTE-O DE UMA\n\
+         [sculpt3d]        PONTA A OUTRA e clique em cada ponta: a peca tem de continuar fechada\n\
+         [sculpt3d]        e inteira nas DUAS. Se em alguma ponta ela sumir, esburacar ou ficar\n\
+         [sculpt3d]        espetada, PARE -- e' o defeito de 19/08 a voltar.\n\
+         [sculpt3d]    (6) O `Follow Curvature` em 1,0 poe quadrados MENORES onde a forma aperta\n\
+         [sculpt3d]        -- compare com ele em 0,0.\n\
+         [sculpt3d]    (7) ⚠️ Com a pilha de multires montada ela RECUSA e diz para achatar antes."
     );
 }

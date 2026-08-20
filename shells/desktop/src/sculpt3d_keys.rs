@@ -409,6 +409,9 @@ impl App {
                         "o voxel remesh devolveu a recusa da retopologia: {e}"
                     );
                 }
+                Err(RemeshRefusal::TooCoarseToResolve) => {
+                    debug_assert!(false, "o voxel remesh devolveu a recusa da retopologia");
+                }
             }
             return true;
         }

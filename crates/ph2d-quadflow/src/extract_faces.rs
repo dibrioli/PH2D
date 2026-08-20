@@ -149,6 +149,61 @@ pub(super) fn tangent_of(n: [f32; 3]) -> [f32; 3] {
     )
 }
 
+/// **FECHA UM N-GON SEM LEQUE** — um nó no centro, e quads em torno dele.
+///
+/// ⚠️ **O LEQUE É O ARTEFATO DA FOTO.** A versão anterior triangulava um ciclo de
+/// `n` lados a partir do vértice `0`: `n − 2` triângulos, todos ancorados no mesmo
+/// ponto. Num ciclo de 44 lados (medido) isso são 42 triângulos longos e finos a
+/// irradiar de um vértice — a peça **espetada** que o smoke do Enio devolveu
+/// (2026-08-19, foto). E as normais deles variam de face para face porque os
+/// triângulos são quase degenerados: o sombreamento vira um leque de raios
+/// claros e escuros, que é exatamente o que se vê.
+///
+/// A lei aqui é a padrão da indústria para fechar um n-gon **em quads**: um nó no
+/// centroide, e uma face por par de arestas consecutivas —
+/// `(v[i], v[i+1], v[i+2], centro)`, `i` de dois em dois. Ela dá:
+///
+/// - `n/2` **quads** quando `n` é par (e nenhum triângulo);
+/// - `(n−1)/2` quads mais **um** triângulo quando `n` é ímpar;
+/// - faces com a mesma extensão do ciclo, e não fatias degeneradas;
+/// - um vértice novo de valência `n/2` — que é uma singularidade **normal** de
+///   grade, e não um pico.
+///
+/// ⚠️ **Ela preserva χ por construção**, e a conta importa porque a A3 mede
+/// exatamente isso: `ΔV = +1`, `ΔE = +⌈n/2⌉`, `ΔF = ⌈n/2⌉ − 1` ⇒ `Δχ = 0`.
+///
+/// ⚠️ **Não é a cura do n-gon, é a cura do LEQUE.** Um ciclo de 44 lados continua
+/// a ser um buraco no campo, e quem o fecha de verdade é o piso do
+/// [`crate::resolvable_edge`] (que impede o buraco de existir) e o fluxo de custo
+/// mínimo da Q4. O que muda aqui é que o resíduo deixa de ser uma **agulha**.
+pub(super) fn fan_free_closure(cycle: &[u32], verts: &mut Vec<[f32; 3]>, faces: &mut Vec<Face>) {
+    let n = cycle.len();
+    debug_assert!(n > 4, "o fecho sem leque so' fala de ciclos de 5 ou mais");
+    let mut c = [0.0f32; 3];
+    for &v in cycle {
+        let p = verts[v as usize];
+        for i in 0..3 {
+            c[i] += p[i];
+        }
+    }
+    let inv = 1.0 / n as f32;
+    let centre = [c[0] * inv, c[1] * inv, c[2] * inv];
+    let hub = verts.len() as u32;
+    verts.push(centre);
+
+    let mut i = 0;
+    while i + 2 < n {
+        faces.push(Face::quad(cycle[i], cycle[i + 1], cycle[i + 2], hub));
+        i += 2;
+    }
+    // O resto do ciclo: um quad que fecha (par) ou um triângulo (ímpar).
+    if i + 2 == n {
+        faces.push(Face::quad(cycle[i], cycle[i + 1], cycle[0], hub));
+    } else {
+        faces.push(Face::tri(cycle[i], cycle[0], hub));
+    }
+}
+
 /// **PARTE UM CICLO QUE SE PINÇA** — um passeio que volta ao mesmo vértice.
 ///
 /// ⚠️ **Um ciclo que visita `X` duas vezes NÃO é um polígono**, e leque-triangulá-lo
@@ -282,3 +337,7 @@ fn tri_normal(a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> [f32; 3] {
     let ac = sub(c, a);
     normalize_or(cross(ab, ac), [0.0, 0.0, 1.0])
 }
+
+#[cfg(test)]
+#[path = "extract_faces_tests.rs"]
+mod tests;

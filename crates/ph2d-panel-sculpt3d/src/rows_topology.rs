@@ -48,23 +48,33 @@ pub static TOPOLOGY: &[Row] = &[
     },
     // ⚠️ **A RETOPOLOGIA tem duas pistas, e elas são de espécie diferente da de
     // cima:** aquela é a resolução de um VOXEL (quantas células o campo tem),
-    // estas são o tamanho de um QUAD na malha de saída. Partilhar um slider
-    // seria a mesma pergunta a responder duas coisas.
+    // estas dizem quão fina é a GRADE de saída. Partilhar um slider seria a
+    // mesma pergunta a responder duas coisas.
+    //
+    // ⚠️ **ESTE KNOB DEIXOU DE SER UM TAMANHO ABSOLUTO, e a troca é a cura de um
+    // defeito que o Enio fotografou** (2026-08-19): ele era `Quad Size`, em
+    // unidades de objeto, de `0,02` a `1,00` — e **as duas pontas destruíam a
+    // peça**. Abaixo do que a malha de entrada resolve a extração devolve malha
+    // **vazia**; a `1,5×` a aresta de entrada ela devolve um ciclo de 352 lados
+    // com **58 % do volume perdido**. Um mesmo `0,02` é destrutivo numa malha
+    // grossa e conservador numa fina: *o número não era da malha*.
+    //
+    // Agora é uma **fração do curso** (`0` = a grade mais grossa que ainda
+    // descreve a forma, `1` = a mais fina que a entrada consegue resolver), e a
+    // `ph2d_quadflow::edge_for_detail` converte para o lado do quad **a partir da
+    // malha**. Todo ponto do curso é legal por construção, em qualquer modelo —
+    // que é a propriedade que o gate `every_point_of_the_detail_slider_is_legal`
+    // afirma.
     Row {
-        label: "panel.sculpt3d.quad_edge",
-        slider: ids::SCULPT3D_QUAD_EDGE,
-        chip: ids::SCULPT3D_QUAD_EDGE_NUM,
-        // LITERAL-PX-OK (as quatro): unidades de OBJETO e fração, não métrica de
-        // layout. ⚠️ **A faixa é do RECURSO, não de gosto:** abaixo de 0,02 sobre
-        // um modelo de raio 1 a saída passa de 100 k células e o passe deixa de
-        // ser *sob comando*; acima de 1,0 o quad é do tamanho do modelo e a grade
-        // deixa de descrever a forma.
-        min: 0.02, // LITERAL-PX-OK: lado de quad em unidades de OBJETO
-        max: 1.0,  // LITERAL-PX-OK: idem
-        step: 0.01, // LITERAL-PX-OK: idem
+        label: "panel.sculpt3d.quad_detail",
+        slider: ids::SCULPT3D_QUAD_DETAIL,
+        chip: ids::SCULPT3D_QUAD_DETAIL_NUM,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
         decimals: 2,
-        get: |u| u.quad_edge,
-        set: |u, v| u.quad_edge = v,
+        get: |u| u.quad_detail,
+        set: |u, v| u.quad_detail = v,
         show: |_| true,
         level: UiLevel::Basic,
         place: Place::Knobs,

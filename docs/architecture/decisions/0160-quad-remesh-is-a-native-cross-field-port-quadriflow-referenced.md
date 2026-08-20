@@ -143,7 +143,7 @@ números:
 | A1 | a saída é **all-quad** | contagem de lados por face |
 | A2 | a saída é **manifold** e orientável | toda aresta tem 1 ou 2 faces; vizinhança de vértice é um disco/leque |
 | A3 | o **gênero** da saída é o da entrada | característica de Euler `V − E + F` |
-| A4 | a **forma** sobrevive | distância de Hausdorff bilateral ≤ **1 %** da diagonal da bbox |
+| A4 | a **forma** sobrevive | distância de Hausdorff bilateral ≤ **um lado de quad** (⚠️ **emendada em 2026-08-19** — ver §5-septies) |
 | A5 | as singularidades são **isoladas e de valência 3 ou 5** | histograma de valência |
 | A6 | a densidade **responde à curvatura** | razão entre a aresta média na região de maior e de menor curvatura ≥ 2× no modo adaptativo, e **1,0×** no modo uniforme |
 | A7 | é **determinístico** | duas corridas ⇒ malha byte-idêntica (HR-5) |
@@ -187,6 +187,106 @@ repo quase declarou sucesso sobre uma casca murcha.
 | **Q3** | a **EXTRAÇÃO** ingênua (Instant Meshes) | A1..A4, com os não-quads CONTADOS e nomeados |
 | **Q4** | o **fluxo de custo mínimo** (QuadriFlow) | A1 vira exato, A5 |
 | **Q5** | a costura no shell: verbo, painel, undo, smoke | o smoke do Enio |
+
+---
+
+## §5-septies — ⚠️ O SLIDER OFERECIA O IMPOSSÍVEL, e a foto do smoke cobrou
+
+> *"valores baixos de resolution destroem o objeto. a qualidade é em geral muito
+> baixa"* — Enio, 2026-08-19, com foto: uma peça esfarrapada em cima e uma casca
+> **espetada de raios** em baixo.
+
+### O que a medição achou
+
+Uma sonda que percorre o slider inteiro (`measure_where_quality_collapses`), com
+o lado do quad em múltiplos da **aresta média da entrada**:
+
+| razão | esfera 48×64 | uv 96×144 | uv 96×144 **amassada** (a cena `=35`) |
+|---|---|---|---|
+| 1,00× | **malha vazia** | **malha vazia** | **malha vazia** |
+| 1,25× | **malha vazia** | **malha vazia** | **malha vazia** |
+| 1,50× | ciclo de **62** | ciclo de **147** | ciclo de **352**, volume **1,59** de 3,78 |
+| 1,75× | ciclo de 10 | ciclo de 20 | ciclo de **50** |
+| 2,00× | ciclo de 7 | ciclo de 9 | ciclo de **39** |
+| **3,00×** | ciclo de 6 | ciclo de 7 | **ciclo de 8** |
+| 4,00× | 5 | 5 | 6 |
+
+⭐ **A lei é de RECURSO e não de gosto: uma retopologia não pode resolver uma
+grade mais fina que a malha que ela lê.** Cada vértice da saída é a média de um
+punhado de vértices da entrada; peça um quad menor que isso e a célula fica com
+um vértice, o campo não tem o que quantizar, o grafo sai com buracos, e o passeio
+de faces os contorna em ciclos gigantes.
+
+⚠️ **O painel oferecia `0,02` como mínimo, em unidades de OBJETO.** Sobre a malha
+daquela cena isso é **0,66×** — fundo do poço. E o mesmo `0,02` seria conservador
+numa malha fina: *o número não era da malha, e por isso queria dizer coisas
+opostas em dois modelos.*
+
+### As quatro correções
+
+1. **O knob deixou de ser um tamanho.** `Quad Size` (`0,02 … 1,00`, unidades de
+   objeto) virou **`Detail`** (`0 … 1`, fração do curso), e a
+   `scale::edge_for_detail` converte **a partir da malha**, entre o piso
+   (`FLOOR_IN_INPUT_EDGES = 3,0` arestas de entrada) e o teto
+   (`MIN_QUADS = 100` faces, medido: 96 faces guardam 91 % do volume, 40 guardam
+   68 %, 23 guardam 50 %). Interpolação **geométrica** — um knob de tamanho anda
+   em razão constante. **Todo ponto do curso é legal por construção**, e há gate
+   (`every_point_of_the_detail_slider_is_legal`, que já achou um `NaN` a escapar
+   do `clamp`).
+2. **O LEQUE morreu.** Um ciclo de `n` lados virava `n − 2` triângulos ancorados
+   no vértice `0` — 42 agulhas a irradiar de um ponto, que é a casca espetada da
+   foto. Agora o fecho é o padrão da indústria: um nó no centroide e
+   `(v[i], v[i+1], v[i+2], centro)` de dois em dois ⇒ `n/2` **quads** (par) ou
+   `(n−1)/2` quads + 1 triângulo (ímpar), com `Δχ = 0` por construção.
+3. **O grafo passou a ser o da REFERÊNCIA.** `Linking::LatticeStep`: duas células
+   são vizinhas quando alguma aresta da entrada as separa por **um** passo da
+   retícula — o mesmo arredondamento que já decide o agrupamento (passo `(0,0)`),
+   lido um degrau adiante. Fora o cone de 45° e a janela `[0,5 s, 1,7 s]`, que
+   eram **os dois limiares onde a adivinha errava**. Medido dentro da faixa legal:
+   fração de quads empatada (±1 pp) e **maior ciclo pela metade** (13→6, 12→5,
+   10→5). E de brinde a extração passou de **~1,4 s para 0,02 s** na malha de
+   98 306 vértices.
+4. **A relaxação (Q3.6).** Laplaciano **tangente** + projeção de volta à
+   superfície de entrada, 2 passadas (medido — ver `RELAX_PASSES`). Ganho
+   **modesto e declarado**: −6 a −10 % de irregularidade, −8 % de Hausdorff.
+
+### O estado depois, na malha que o módulo abre (98 306 vértices, no piso)
+
+| | |
+|---|---|
+| quads | **97,6 %** |
+| maior ciclo | **5** |
+| `χ` | **2** · arestas não-manifold **0** · dirigidas repetidas **0** |
+| volume com sinal | **+4,42** (para fora) |
+| desvio de aresta | **0,067** |
+| forma (Hausdorff) | **0,020** de um quad |
+| relógio | **0,86 s** (kill-criterion: 3 s) |
+
+### ⚠️ A A4 foi EMENDADA, e a emenda é a lição
+
+A barra era **1 % da diagonal da bbox**. Ela media o **slider**, não o algoritmo:
+a distância de Hausdorff de uma grade de lado `s` sobre uma superfície de raio `R`
+não pode ser menor que a flecha `s²/8R` — ela **cresce com o quad pedido**, por
+geometria. O mesmo código passava a `0,18` e reprovava a `0,25` no toro (`0,0131`
+contra `0,01`). A barra passa a ser **um lado de quad**, que vale em todo ponto do
+curso; medido, o pior caso usa **52 %** dela.
+
+### ⛔ Recusas MEDIDAS desta wave
+
+| # | o que foi tentado | o que a medição disse |
+|---|---|---|
+| 9 | ligar as células só pelo **passo da retícula**, também abaixo do piso | pior que o cone lá (ciclos de 77 e 109 a 1,5×) — a lei só vale onde a entrada resolve |
+| 10 | subir `SWEEPS_PER_LEVEL` agora que o relógio sobrou | **satura em 2** (97,6 % · 97,5 % · 97,4 % · 97,5 % para 2/4/8/16), e 16 custa 5× |
+| 11 | curar os triângulos que sobram com mais emparelhamento | **todos são isolados** — o guloso está esgotado, o resto é a Q4 |
+| 12 | 4+ passadas de relaxação | esfera e toro **pioram** o desvio depois de 2 (0,160→0,166 · 0,163→0,179) |
+
+### ⚠️ E uma nota que envelheceu, encontrada ao mexer aqui
+
+O `SWEEPS_PER_LEVEL = 2` estava justificado por *"o último degrau que cabe no
+kill-criterion de 3 s"*. A correção (3) cortou a extração 70×, o teto afastou-se,
+e **o número ficou de pé por um motivo que já não existia**. A re-medição manteve
+o 2 — agora por **qualidade**. *Quem move o número que tornava algo inalcançável
+tem de reconferir a nota* (`CLAUDE.md` §0.0).
 
 ---
 

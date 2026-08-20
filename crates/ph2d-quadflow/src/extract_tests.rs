@@ -12,8 +12,17 @@ use ph2d_mesh::{Mesh, shapes};
 use super::{Quadrangulation, extract};
 use crate::scale::ScaleField;
 
-/// A corrida inteira, num sítio só.
-fn run(mesh: &Mesh, edge: f32) -> Quadrangulation {
+/// A corrida inteira, num sítio só — e o parâmetro é a **RAZÃO** para a aresta
+/// média da entrada, nunca um tamanho absoluto.
+///
+/// ⚠️ **Um `edge` absoluto quer dizer coisas OPOSTAS em duas fixturas**, e os
+/// gates desta crate corriam assim: `0,18` é **2,8×** a aresta da esfera 48×64 e
+/// **2,2×** a do toro — os dois **abaixo** do piso de `3,0×` que a sonda
+/// `measure_where_quality_collapses` mediu. Os gates estavam a julgar o pipeline
+/// na zona em que ele não tem entrada suficiente para responder. Em unidades da
+/// aresta de entrada, `3,0` é o mesmo pedido físico em qualquer malha.
+fn run(mesh: &Mesh, ratio: f32) -> Quadrangulation {
+    let edge = ratio * crate::scale::mean_edge(mesh);
     // ⚠️ **A porta do produto é a HIERÁRQUICA.** O quociente pela retícula só
     // funciona sobre campos com platôs, e os platôs vêm de resolver os campos de
     // cima para baixo.
@@ -53,7 +62,7 @@ fn edge_use(mesh: &Mesh) -> BTreeMap<(u32, u32), usize> {
 #[test]
 fn the_extracted_mesh_is_manifold() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
-        let q = run(&mesh, 0.18);
+        let q = run(&mesh, 3.0);
         let use_count = edge_use(&q.mesh);
         let bad = use_count.values().filter(|c| **c > 2).count();
         assert_eq!(
@@ -76,7 +85,7 @@ fn the_extracted_mesh_is_manifold() {
 #[test]
 fn the_genus_of_the_input_survives() {
     for (name, mesh, want) in [("esfera", sphere(), 2i64), ("toro", torus(), 0)] {
-        let q = run(&mesh, 0.18);
+        let q = run(&mesh, 3.0);
         let v = q.mesh.vert_count() as i64;
         let e = edge_use(&q.mesh).len() as i64;
         let f = q.mesh.faces().len() as i64;
@@ -90,25 +99,51 @@ fn the_genus_of_the_input_survives() {
     }
 }
 
-/// ⭐ **A4 — A FORMA SOBREVIVE:** todo vértice da saída está sobre a entrada.
+/// ⭐ **A4 — A FORMA SOBREVIVE: ela nunca anda mais que UM QUAD.**
 ///
 /// ⚠️ **A distância é BILATERAL de propósito** (ADR-0160 §4): uma medida só de
 /// ida premia uma malha que encolhe para dentro da original — ela ficaria toda
-/// "sobre" a entrada e teria perdido a forma. Aqui as duas direções são medidas
-/// contra a diagonal da caixa, e a barra é a do ADR: **1 %**.
+/// "sobre" a entrada e teria perdido a forma.
+///
+/// ⚠️ **A barra é o LADO DO QUAD, e não `1 %` da diagonal da caixa — e a troca
+/// é a correção de um gate que media o SLIDER.** A distância de Hausdorff de uma
+/// grade de lado `s` sobre uma superfície de raio `R` não pode ser menor que a
+/// flecha `s²/8R`: ela **cresce com o quad pedido**, por geometria e não por
+/// qualidade de implementação. Uma barra absoluta passa no fino e reprova no
+/// grosso sobre o mesmo código — foi o que aconteceu ao mudar as fixturas para
+/// unidades da aresta de entrada (o toro passava a `0,18` e reprovava a `0,25`,
+/// com `0,0131` contra a barra de `0,01`).
+///
+/// Em unidades do quad, MEDIDO (sonda `measure_the_shape_drift_against_quad_size`):
+///
+/// | | 3,0× (o piso) | 8,0× (bem grosso) |
+/// |---|---|---|
+/// | esfera 48×64 | 9,1 % de um quad | 46 % |
+/// | toro 64×32 | 20,4 % | 34 % |
+/// | uv 96×144 amassada | 51,7 % | 45 % |
+///
+/// A barra de **um quad inteiro** tem folga de 2× sobre a pior leitura e
+/// **discrimina**: a `1,5×` (a foto do Enio) a peça perde 58 % do volume, e o
+/// desvio passa a ser múltiplos do quad.
 #[test]
-fn the_shape_survives_within_one_percent() {
+fn the_shape_never_moves_more_than_one_quad() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
-        let q = run(&mesh, 0.18);
-        let diag = bbox_diagonal(&mesh);
-        let a = one_sided(&q.mesh, &mesh) / diag;
-        let b = one_sided(&mesh, &q.mesh) / diag;
-        eprintln!("[quadflow] {name}: hausdorff saida->entrada {a:.4}, entrada->saida {b:.4}");
-        assert!(
-            a.max(b) < 0.01,
-            "{name}: a forma andou {:.4} da diagonal da caixa (barra 0,01)",
-            a.max(b)
-        );
+        for ratio in [3.0f32, 8.0] {
+            let q = run(&mesh, ratio);
+            let edge = ratio * crate::scale::mean_edge(&mesh);
+            let a = one_sided(&q.mesh, &mesh) / edge;
+            let b = one_sided(&mesh, &q.mesh) / edge;
+            eprintln!(
+                "[quadflow] {name} a {ratio:.1}x: hausdorff saida->entrada {a:.3} quad, \
+                 entrada->saida {b:.3} quad"
+            );
+            assert!(
+                a.max(b) < 1.0,
+                "{name} a {ratio:.1}x: a forma andou {:.3} vezes o lado do quad -- a grade \
+                 deixou de seguir a superficie (barra: um quad)",
+                a.max(b)
+            );
+        }
     }
 }
 
@@ -129,17 +164,25 @@ fn the_shape_survives_within_one_percent() {
 /// EMITIDAS) ela era **53,3 %**.
 ///
 /// ⭐ **Com o pipeline completo — porte fiel do operador + hierarquia + quociente
-/// da retícula + poda dos pendentes + partição dos pinçamentos + emparelhamento
-/// de triângulos — o número MEDIDO é `85,3 %` (esfera 24×36), `92,4 %` (toro) e
-/// **`96,4 %` na malha que o módulo de facto abre** (98 306 vértices, pelo
-/// `measure_the_kill_criterion`).** O piso abaixo sai da pior fixture.
+/// da retícula + grafo por passo de retícula + poda dos pendentes + partição dos
+/// pinçamentos + fecho sem leque + emparelhamento de triângulos + relaxação — o
+/// número MEDIDO em 2026-08-19 é `87,4 %` (esfera 48×64), `92,0 %` (toro) e
+/// **`97,6 %` na malha que o módulo de facto abre** (98 306 vértices, no piso do
+/// slider, pelo `measure_the_sweeps_per_level`).** O piso abaixo sai da pior
+/// fixture, com folga de ~5 pp.
 ///
 /// ⚠️ **A1 é a ÚNICA asserção do ADR-0160 §4 que continua aberta**, e ela é o
 /// alvo do fluxo de custo mínimo (Q4). A2, A3, A4, A6, A7 e A8 estão verdes.
+///
+/// ⚠️ **E o que sobra é MEDIDO como sendo mesmo da Q4**, não resíduo barato: pela
+/// sonda `measure_where_the_leftover_triangles_come_from`, **todos** os triângulos
+/// que restam são **isolados** — nenhum tem um triângulo vizinho com quem formar
+/// par. O emparelhamento guloso já esgotou o que havia; o resto são singularidades
+/// do campo, e quem as fecha é o passo global.
 #[test]
 fn the_quad_fraction_is_measured_and_pinned() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
-        let q = run(&mesh, 0.18);
+        let q = run(&mesh, 3.0);
         eprintln!(
             "[quadflow] {name}: {} quads, {} nao-quads ({:.1}%), maior ciclo {}",
             q.quads,
@@ -151,15 +194,15 @@ fn the_quad_fraction_is_measured_and_pinned() {
             q.quads > 0,
             "{name}: a extracao nao produziu um unico quad -- o passeio de faces nao esta' a fechar"
         );
-        // Piso MEDIDO (2026-08-19, `SWEEPS_PER_LEVEL = 2`): esfera **85,3 %**,
-        // toro **92,4 %**, e **96,4 %** na malha que o módulo abre
-        // (`measure_the_kill_criterion`). ⚠️ As fixtures pequenas medem PIOR que
-        // o produto: 24×36 e 64×32 vértices dão poucas células por feição, e o
-        // resíduo de borda pesa mais. O piso sai da pior delas.
+        // Piso MEDIDO (2026-08-19, `SWEEPS_PER_LEVEL = 2`): esfera **87,4 %**,
+        // toro **92,0 %**, e **97,6 %** na malha que o módulo abre
+        // (`measure_the_sweeps_per_level`). ⚠️ As fixtures pequenas medem PIOR
+        // que o produto: 48×64 e 64×32 vértices dão poucas células por feição, e
+        // o resíduo de borda pesa mais. O piso sai da pior delas.
         assert!(
             q.quad_fraction() > 0.82,
             "{name}: so' {:.1}% das faces sairam quad -- abaixo do piso MEDIDO desta onda \
-             (esfera 85,3 / toro 92,4 / a malha do modulo 96,4)",
+             (esfera 87,4 / toro 92,0 / a malha do modulo 97,6)",
             q.quad_fraction() * 100.0
         );
     }
@@ -173,8 +216,8 @@ fn the_quad_fraction_is_measured_and_pinned() {
 #[test]
 fn the_extraction_is_bit_reproducible() {
     let mesh = torus();
-    let a = run(&mesh, 0.18);
-    let b = run(&mesh, 0.18);
+    let a = run(&mesh, 3.0);
+    let b = run(&mesh, 3.0);
     assert_eq!(
         a.mesh.positions(),
         b.mesh.positions(),
@@ -301,7 +344,7 @@ fn point_triangle_sq(p: [f32; 3], a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> f32 
 #[ignore = "sonda -- o histograma que diz onde a extracao perde"]
 fn measure_where_the_quads_are_lost() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
-        let q = run(&mesh, 0.18);
+        let q = run(&mesh, 3.0);
         // Valência de cada vértice de saída, pelas ARESTAS das faces.
         let mut deg: BTreeMap<u32, usize> = BTreeMap::new();
         for (a, b) in edge_use(&q.mesh).keys() {
@@ -330,7 +373,7 @@ fn measure_where_the_quads_are_lost() {
 #[ignore = "sonda -- quantas componentes a extracao produz, e de que tamanho"]
 fn measure_the_components() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
-        let q = run(&mesh, 0.18);
+        let q = run(&mesh, 3.0);
         let n = q.mesh.vert_count();
         let mut adj: Vec<Vec<u32>> = vec![Vec::new(); n];
         for (a, b) in edge_use(&q.mesh).keys() {
@@ -376,7 +419,7 @@ fn measure_the_components() {
 #[ignore = "sonda -- as arestas dirigidas que somem do passeio de faces"]
 fn measure_directed_edge_conservation() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
-        let q = run(&mesh, 0.18);
+        let q = run(&mesh, 3.0);
         let e = edge_use(&q.mesh).len();
         let sum: usize = q.mesh.faces().iter().map(|f| f.verts().len()).sum();
         let once = edge_use(&q.mesh).values().filter(|c| **c == 1).count();
@@ -412,8 +455,15 @@ fn measure_the_kill_criterion() {
     let (o, p) = crate::solve::solve_fields(&mesh, &scale);
     let campos = t.elapsed().as_secs_f64();
     let t2 = Instant::now();
-    let q = extract(&mesh, &o, &p, &scale).expect("extraiu");
+    let mut q = extract(&mesh, &o, &p, &scale).expect("extraiu");
     let extracao = t2.elapsed().as_secs_f64();
+    let t3 = Instant::now();
+    crate::relax::relax(&mut q.mesh, &mesh, crate::relax::RELAX_PASSES);
+    let relaxacao = t3.elapsed().as_secs_f64();
+    eprintln!(
+        "[quadflow] relaxacao {relaxacao:.2} s | desvio de aresta {:.3}",
+        crate::relax::edge_length_spread(&q.mesh)
+    );
     eprintln!(
         "[quadflow] campos {campos:.2} s + extracao {extracao:.2} s = {:.2} s | {} celulas, {:.1}% quads",
         campos + extracao,
@@ -460,10 +510,10 @@ fn measure_the_kill_criterion() {
     }
     eprintln!("[quadflow] volume com sinal {vol:.4} (a esfera unitaria vale 4,189)");
     assert!(
-        campos + extracao < 3.0,
+        campos + extracao + relaxacao < 3.0,
         "o passe custou {:.2} s, e o kill-criterion do ADR-0160 §4 e' 3 s -- a feature nao existe \\
          nesta forma: ela vira offline (fora do laco interativo, com barra) ou nao entra",
-        campos + extracao
+        campos + extracao + relaxacao
     );
 }
 
@@ -486,7 +536,7 @@ fn measure_the_kill_criterion() {
 #[test]
 fn the_extracted_mesh_is_consistently_oriented_and_faces_outward() {
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
-        let q = run(&mesh, 0.18);
+        let q = run(&mesh, 3.0);
 
         // (1) cada aresta DIRIGIDA aparece no máximo uma vez.
         let mut dir: BTreeMap<(u32, u32), usize> = BTreeMap::new();
@@ -532,3 +582,7 @@ fn the_extracted_mesh_is_consistently_oriented_and_faces_outward() {
         );
     }
 }
+
+/// **A SONDA DA FAIXA do slider** — ver [`sweep`].
+#[path = "extract_sweep_tests.rs"]
+mod sweep;

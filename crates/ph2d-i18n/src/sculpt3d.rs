@@ -87,7 +87,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.sculpt3d.remesh" => "Remesh",
         "panel.sculpt3d.remesh_res" => "Remesh Resolution",
         "panel.sculpt3d.quad_remesh" => "Quad Retopology",
-        "panel.sculpt3d.quad_edge" => "Quad Size",
+        "panel.sculpt3d.quad_detail" => "Detail",
         "panel.sculpt3d.quad_adapt" => "Follow Curvature",
         "panel.sculpt3d.close_holes" => "Close Holes",
         // "Cavity" e não "Curvature": é o nome que Blender, ZBrush e Substance

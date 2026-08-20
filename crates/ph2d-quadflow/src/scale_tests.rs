@@ -140,3 +140,64 @@ fn a_single_spike_does_not_flatten_the_whole_field() {
          a seguir o MAXIMO em vez da mediana"
     );
 }
+
+/// ⭐ **TODO PONTO DO CURSO É LEGAL** — o gate que a foto do Enio pediu.
+///
+/// ⚠️ **O painel oferecia `0,02 … 1,00` em unidades de OBJETO, e as duas pontas
+/// destruíam a peça** (2026-08-19): abaixo do que a entrada resolve a extração
+/// devolve **malha vazia**, e a `1,5×` a aresta de entrada ela devolve um ciclo de
+/// 352 lados com **58 % do volume perdido**. A faixa não estava errada por pouco
+/// — ela não era **da malha**.
+///
+/// Este gate afirma a propriedade que substitui aquela faixa: para qualquer
+/// `detail` em `0..1`, o lado do quad que sai **nunca** cai abaixo do piso
+/// medido, e a ordem do curso é monótona.
+#[test]
+fn every_point_of_the_detail_slider_is_legal() {
+    for (name, mesh) in [
+        ("esfera 48x64", shapes::uv_sphere(48, 64, 1.0)),
+        ("toro", shapes::torus(64, 32, 1.0, 0.35)),
+        ("uv 96x144", shapes::uv_sphere(96, 144, 1.0)),
+    ] {
+        let (floor, ceiling) = super::resolvable_edge_range(&mesh);
+        let e = super::mean_edge(&mesh);
+        assert!(
+            floor >= super::FLOOR_IN_INPUT_EDGES * e * 0.999,
+            "{name}: o piso saiu {floor:.4}, abaixo das {} arestas de entrada que a medicao pede",
+            super::FLOOR_IN_INPUT_EDGES
+        );
+        assert!(
+            ceiling >= floor,
+            "{name}: a faixa saiu INVERTIDA ([{floor:.4}, {ceiling:.4}]) -- numa malha grossa os \
+             dois extremos cruzam-se, e uma faixa invertida devolve um quad abaixo do piso por \
+             aritmetica"
+        );
+
+        let mut last = f32::MAX;
+        for step in 0..=20 {
+            let d = step as f32 / 20.0;
+            let s = super::edge_for_detail(&mesh, d);
+            assert!(
+                s >= floor * 0.999 && s <= ceiling * 1.001,
+                "{name}: detail={d:.2} pediu um quad de {s:.4}, fora da faixa legal \
+                 [{floor:.4}, {ceiling:.4}] -- e' exatamente o ponto do slider que destroi a peca"
+            );
+            assert!(
+                s <= last,
+                "{name}: detail={d:.2} devolveu {s:.4} DEPOIS de {last:.4} -- o curso tem de ir do \
+                 grosso ao fino sem voltar"
+            );
+            last = s;
+        }
+        // ⚠️ **E fora do curso também**: um `detail` que escape do `0..1` (um
+        // arredondamento de slider, um projeto de outra versão) tem de saturar,
+        // nunca extrapolar para fora da faixa.
+        for d in [-1.0f32, -0.001, 1.001, 7.0, f32::NAN] {
+            let s = super::edge_for_detail(&mesh, d);
+            assert!(
+                s >= floor * 0.999 && s <= ceiling * 1.001,
+                "{name}: detail={d} escapou da faixa e devolveu {s:.4}"
+            );
+        }
+    }
+}

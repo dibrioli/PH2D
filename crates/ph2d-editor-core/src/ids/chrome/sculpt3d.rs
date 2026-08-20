@@ -544,9 +544,9 @@ pub const SCULPT3D_REMESH_RES: NodeId = hash_node_id("sculpt3d.remesh_res");
 /// O chip numérico da resolução do remesh.
 pub const SCULPT3D_REMESH_RES_NUM: NodeId = hash_node_id("sculpt3d.remesh_res_num");
 /// O lado do quad que a retopologia persegue, em unidades de objeto.
-pub const SCULPT3D_QUAD_EDGE: NodeId = hash_node_id("sculpt3d.quad_edge");
+pub const SCULPT3D_QUAD_DETAIL: NodeId = hash_node_id("sculpt3d.quad_detail");
 /// A pista do lado do quad.
-pub const SCULPT3D_QUAD_EDGE_NUM: NodeId = hash_node_id("sculpt3d.quad_edge_num");
+pub const SCULPT3D_QUAD_DETAIL_NUM: NodeId = hash_node_id("sculpt3d.quad_detail_num");
 /// Quanto a densidade segue a curvatura — `0` uniforme, `1` a faixa inteira.
 pub const SCULPT3D_QUAD_ADAPT: NodeId = hash_node_id("sculpt3d.quad_adapt");
 /// A pista da adaptação.

@@ -6,8 +6,9 @@
 //!
 //! 1. **as CÉLULAS** — que vértices da entrada descrevem o mesmo nó da grade?
 //!    (união sobre as arestas; um `union-find`);
-//! 2. **as ARESTAS** — que células são vizinhas? (as arestas da entrada que
-//!    atravessam células);
+//! 2. **as ARESTAS** — que células são vizinhas? (as arestas da entrada cujo
+//!    passo de retícula tem norma **1** — a mesma conta do passo 1, lida um
+//!    degrau adiante; ver `Linking`);
 //! 3. **as FACES** — que ciclos o grafo fecha? (o *sistema de rotação*: em cada
 //!    célula os vizinhos são ordenados por ângulo no plano tangente, e a face é
 //!    o passeio que sempre vira para o mesmo lado).
@@ -28,8 +29,18 @@
 //! base não tem o defeito que a literatura inteira nomeia.
 //!
 //! A [`Quadrangulation`] carrega a contagem, e é ela que a Q4 tem de baixar.
+//! Medido em 2026-08-19: **97,6 %** na malha que o módulo abre, e **todos** os
+//! triângulos que sobram são **isolados** (sonda
+//! `measure_where_the_leftover_triangles_come_from`) — o emparelhamento guloso
+//! está esgotado, e o que falta é mesmo o passo global.
+//!
+//! ⚠️ **Mas o resíduo deixou de ser uma AGULHA.** Um ciclo de `n > 4` não é mais
+//! triangulado em leque a partir do vértice `0` (`n − 2` fatias degeneradas a
+//! irradiar de um ponto — a peça espetada da foto do Enio, 2026-08-19): ele é
+//! fechado por um nó no centroide, em `⌈n/2⌉` faces quase todas quads. Ver
+//! `faces::fan_free_closure`.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use ph2d_mesh::{Face, Mesh, MeshError};
 
@@ -139,12 +150,52 @@ pub fn extract_with(
     scale: &ScaleField,
     how: Clustering,
 ) -> Result<Quadrangulation, MeshError> {
+    extract_tuned(mesh, orient, pos, scale, how, Linking::default())
+}
+
+/// **COMO AS CÉLULAS SE LIGAM** — as duas leis, medidas uma contra a outra.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Linking {
+    /// **O PASSO INTEIRO DA RETÍCULA** — a lei da referência, e o default.
+    ///
+    /// Duas células são vizinhas quando alguma aresta da entrada as separa por
+    /// **um** passo da retícula (`|a| + |b| = 1`). É o mesmo arredondamento que
+    /// já decide o agrupamento (passo `(0,0)`), lido um degrau adiante — então a
+    /// vizinhança e a fusão passam a ser **a mesma pergunta**, e não duas que
+    /// podem discordar.
+    #[default]
+    LatticeStep,
+    /// **O CONE GEOMÉTRICO** — a primeira lei desta crate, mantida como controle.
+    ///
+    /// Cada célula escolhe a candidata mais alinhada em cada uma das quatro
+    /// direções da cruz, dentro de uma janela de distância. Ela **adivinha** a
+    /// grade a partir da geometria em vez de a ler do campo, e os dois limiares
+    /// (o cone de 45°, a janela `[0,5 s, 1,7 s]`) são a superfície onde a adivinha
+    /// erra.
+    Cone,
+}
+
+/// A extração com as DUAS leis abertas — a porta da sonda que as mediu.
+///
+/// # Erros
+/// Ver [`extract`].
+pub fn extract_tuned(
+    mesh: &Mesh,
+    orient: &OrientationField,
+    pos: &PositionField,
+    scale: &ScaleField,
+    how: Clustering,
+    link: Linking,
+) -> Result<Quadrangulation, MeshError> {
     let cells = match how {
         Clustering::Seed => cluster(mesh, pos, scale),
         Clustering::Lattice => cluster_lattice(mesh, orient, pos, scale),
     };
     let c = collapse(mesh, pos, orient, &cells);
-    let mut graph = neighbour_graph(mesh, &c, scale);
+    let mut graph = match link {
+        Linking::LatticeStep => lattice_graph(mesh, orient, pos, scale, &c),
+        Linking::Cone => neighbour_graph(mesh, &c, scale),
+    };
     prune_dangling(&mut graph);
     let cycles: Vec<Vec<u32>> = trace_faces(&graph, &c.verts, &c.normals, orient)
         .into_iter()
@@ -182,15 +233,7 @@ pub fn extract_with(
         match c.len() {
             4 => faces.push(Face::quad(c[0], c[1], c[2], c[3])),
             3 => faces.push(Face::tri(c[0], c[1], c[2])),
-            n if n > 4 => {
-                // ⚠️ **O leque é HONESTO e não uma cura:** um n-gon vira `n−2`
-                // triângulos porque a [`Face`] só carrega tri e quad, e cada um
-                // deles CONTA como não-quad. Escondê-lo (descartar o ciclo)
-                // deixaria um buraco na malha e um número bonito ao lado.
-                for k in 1..c.len() - 1 {
-                    faces.push(Face::tri(c[0], c[k], c[k + 1]));
-                }
-            }
+            n if n > 4 => fan_free_closure(c, &mut verts, &mut faces),
             // Um ciclo de 2 ou menos não delimita área: ele é um artefato da
             // fusão, e entrar na malha seria uma face degenerada.
             _ => {}
@@ -456,117 +499,6 @@ fn collapse(mesh: &Mesh, pos: &PositionField, orient: &OrientationField, cells: 
     }
 }
 
-/// **AS ARESTAS — as da RETÍCULA, não as da entrada.**
-///
-/// Cada célula liga-se à melhor candidata em **cada uma das quatro direções** da
-/// cruz local (`±q`, `±(n×q)`), entre as células que a malha de entrada torna
-/// vizinhas.
-///
-/// ⚠️ **A primeira versão ligava toda aresta da entrada que atravessasse
-/// células, e o resultado foi medido: 7,2 % de quads.** É aritmética, não azar —
-/// a entrada é uma triangulação, cada célula herdava ~6 vizinhas, e o passeio de
-/// faces devolvia **triângulos**. Uma grade de quads tem quatro vizinhas por nó,
-/// e quem as escolhe é a **cruz**: é essa a única coisa nesta crate que sabe o
-/// que "as duas famílias perpendiculares" quer dizer.
-///
-/// ⚠️ **Os dois limiares são derivados, não escolhidos:**
-/// - o **ângulo** (`cos 45°`) é o que reparte o plano em quatro quadrantes sem
-///   sobreposição nem buraco: com mais, duas direções disputariam a mesma
-///   candidata; com menos, sobraria plano sem dono.
-/// - a **distância** (`[0,5 s, 1,7 s]`) é uma célula, com folga para os dois
-///   lados: abaixo do piso a candidata é a própria célula mal separada, acima do
-///   teto ela é a **segunda** célula na mesma direção — e ligar a segunda salta
-///   uma linha da grade.
-///
-/// ⚠️ **O grafo sai SIMÉTRICO** (as duas pontas inserem), porque uma aresta que
-/// só um lado reivindica quebra o sistema de rotação: o passeio de faces chega
-/// por ela e não a encontra na ordem angular do destino.
-fn neighbour_graph(mesh: &Mesh, c: &Cells, scale: &ScaleField) -> Vec<BTreeSet<u32>> {
-    let (verts, normals, dirs, of) = (&c.verts, &c.normals, &c.dirs, &c.of);
-    let k = verts.len();
-
-    // As candidatas: as células que a entrada torna vizinhas.
-    let mut near = vec![BTreeSet::new(); k];
-    let adj = mesh.adjacency();
-    for v in 0..mesh.vert_count() {
-        for &w in adj.vert_verts.neighbours(v) {
-            let (a, b) = (of[v], of[w as usize]);
-            if a != b {
-                near[a as usize].insert(b);
-                near[b as usize].insert(a);
-            }
-        }
-    }
-
-    // A escala de cada célula — a do primeiro vértice que caiu nela.
-    let mut cell_scale = vec![0.0f32; k];
-    let mut seen = vec![false; k];
-    for (v, &c) in of.iter().enumerate() {
-        if !seen[c as usize] {
-            cell_scale[c as usize] = scale.at(v);
-            seen[c as usize] = true;
-        }
-    }
-
-    // ⚠️ **Primeiro cada célula ESCOLHE, e só depois as escolhas se confrontam.**
-    // A versão anterior inseria a aresta nos dois lados assim que UM deles a
-    // queria — e a valência estourava: medido na esfera, **390 células com 5 ou
-    // mais vizinhas** (até 11), sobre uma grade cujo nó tem quatro. Uma célula
-    // com 8 vizinhas não delimita quads: o passeio de faces sai em triângulos, e
-    // era daí que vinham os **582** deles.
-    let mut choice: Vec<Vec<u32>> = vec![Vec::new(); k];
-    for c in 0..k {
-        let (o, n, q) = (verts[c], normals[c], dirs[c]);
-        let t = cross(n, q);
-        let s = cell_scale[c].max(crate::scale::MIN_EDGE);
-        let axes = [q, t, [-q[0], -q[1], -q[2]], [-t[0], -t[1], -t[2]]];
-        for axis in axes {
-            let mut best: Option<(f32, u32)> = None;
-            for &cand in &near[c] {
-                let d = sub(verts[cand as usize], o);
-                let len = dot(d, d).sqrt();
-                if len < 0.5 * s || len > 1.7 * s {
-                    continue;
-                }
-                let cosang = dot(d, axis) / len;
-                if cosang < core::f32::consts::FRAC_1_SQRT_2 {
-                    continue;
-                }
-                // A melhor é a mais ALINHADA, e o desempate é o índice — nunca a
-                // ordem de visita.
-                let score = cosang;
-                if best.is_none_or(|(b, bi)| score > b || (score == b && cand < bi)) {
-                    best = Some((score, cand));
-                }
-            }
-            if let Some((_, w)) = best {
-                choice[c].push(w);
-            }
-        }
-    }
-
-    // ⚠️ **A aresta vale se UM dos lados a escolheu — a MUTUALIDADE foi MEDIDA e
-    // REJEITADA.** Exigir que as duas pontas se escolhessem limita a valência a
-    // quatro por construção, o que parecia a cura do histograma (390 células com
-    // 5+ vizinhas). Medido: ela **remove** arestas de mais, o passeio de faces
-    // passa a atravessar os buracos, e os ciclos chegam a **31 lados** — a malha
-    // sai com **918** triângulos contra 582, e a fração honesta de quads cai de
-    // **53,3 % para 35,0 %**.
-    //
-    // ⚠️ E ela quase passou por melhoria: a régua de então contava CICLOS, e um
-    // ciclo de 31 lados contava como **um** não-quad enquanto virava 29
-    // triângulos — a métrica subia de 60,9 % para 71,9 % enquanto a malha
-    // piorava. *Foi a régua que se corrigiu primeiro, não o algoritmo.*
-    let mut g = vec![BTreeSet::new(); k];
-    for c in 0..k {
-        for &w in &choice[c] {
-            g[c].insert(w);
-            g[w as usize].insert(c as u32);
-        }
-    }
-    g
-}
-
 pub(super) fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
 }
@@ -600,7 +532,14 @@ fn normalize_or(a: [f32; 3], fallback: [f32; 3]) -> [f32; 3] {
 /// **DOS CICLOS ÀS FACES** — ver [`faces`].
 #[path = "extract_faces.rs"]
 mod faces;
-use faces::{pair_triangles, prune_dangling, split_pinches, tangent_of, trace_faces};
+use faces::{
+    fan_free_closure, pair_triangles, prune_dangling, split_pinches, tangent_of, trace_faces,
+};
+
+/// **QUE CÉLULAS SÃO VIZINHAS** — ver [`graph`].
+#[path = "extract_graph.rs"]
+mod graph;
+use graph::{lattice_graph, neighbour_graph};
 
 #[cfg(test)]
 #[path = "extract_tests.rs"]

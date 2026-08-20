@@ -29,16 +29,28 @@
 //! |---|---|---|
 //! | **1. orientação** | um campo 4-RoSy por vértice, suavizado | ✅ [`orientation`] |
 //! | **2. posição** | a retícula local + a escala adaptativa | ✅ [`position`] + [`scale`] |
-//! | **3. extração** | a malha a partir dos dois campos | ✅ [`extract`] |
+//! | **3. extração** | a malha a partir dos dois campos | ✅ [`mod@extract`] |
+//! | **3.5 relaxação** | a grade fica regular sem sair da forma | ✅ [`mod@relax`] |
 //! | 4. consistência | o fluxo de custo mínimo (o passo do QuadriFlow) | ⏳ Q4 |
+//! | **5. costura** | o botão `Quad Retopology` e o knob `Detail` | ✅ (shell) |
 //!
-//! ⚠️ **Nada aqui é alcançável pelo produto ainda** — a costura no shell é a Q5.
-//! Uma crate que o app não chama é uma feature morta, e o ADR-0160 §5 nomeia a
-//! onda que a acorda. Isto é uma dívida DECLARADA, não um esquecimento.
+//! # ⚠️ A faixa é da MALHA, não do slider
+//!
+//! O que o painel oferece é um `detail` em `0..1`, e quem o converte no lado do
+//! quad é a [`scale::edge_for_detail`], **a partir da malha de entrada**. Isto não
+//! é conforto de UI: uma retopologia **não pode resolver uma grade mais fina que a
+//! malha que ela lê**, e um tamanho absoluto vindo do painel pede exatamente isso
+//! metade do tempo. Medido em 2026-08-19 (foto do smoke): abaixo do piso a
+//! extração devolve **malha vazia**, e a `1,5×` a aresta de entrada ela devolve um
+//! ciclo de **352 lados** com **58 % do volume perdido**.
+//!
+//! ⚠️ **A1 (`all-quad`) continua a ser a única asserção aberta.** Medido: **97,6 %**
+//! na malha que o módulo abre, e **todos** os não-quads que sobram são triângulos
+//! **isolados** — o resto é o passo global da Q4, não resíduo barato.
 
 #![forbid(unsafe_code)]
 
-/// **A EXTRAÇÃO — os dois campos viram malha** — ver [`extract`].
+/// **A EXTRAÇÃO — os dois campos viram malha** — ver [`mod@extract`].
 pub mod extract;
 /// **A HIERARQUIA multirresolução** — ver [`hierarchy`].
 pub mod hierarchy;
@@ -46,6 +58,8 @@ pub mod hierarchy;
 pub mod orientation;
 /// **O CAMPO DE POSIÇÃO** — ver [`position`].
 pub mod position;
+/// **A RELAXAÇÃO da grade sobre a superfície** — ver [`mod@relax`].
+pub mod relax;
 /// **A ESCALA, uniforme ou adaptativa** — ver [`scale`].
 pub mod scale;
 /// **OS CAMPOS resolvidos de cima para baixo** — ver [`solve`].
@@ -55,5 +69,9 @@ pub use extract::{Clustering, Quadrangulation, extract, extract_with};
 pub use hierarchy::Hierarchy;
 pub use orientation::{OrientationField, compat_orientation_extrinsic_4, solve_orientation};
 pub use position::{PositionField, compat_position_extrinsic_4, position_round_4, solve_position};
-pub use scale::{MAX_ADAPTIVE_RATIO, ScaleField};
+pub use relax::{RELAX_PASSES, edge_length_spread, relax};
+pub use scale::{
+    FLOOR_IN_INPUT_EDGES, MAX_ADAPTIVE_RATIO, MIN_QUADS, ScaleField, edge_for_detail, mean_edge,
+    resolvable_edge_range, surface_area,
+};
 pub use solve::solve_fields;

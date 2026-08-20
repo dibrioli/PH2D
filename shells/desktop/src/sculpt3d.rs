@@ -515,7 +515,7 @@ pub(crate) struct Sculpt3dScene {
     remesh_res: u32,
     /// O lado do quad que a retopologia persegue, em unidades de objeto — ver
     /// [`Sculpt3dScene::quad_remesh`].
-    quad_edge: f32,
+    quad_detail: f32,
     /// Quanto a densidade da retopologia segue a curvatura.
     quad_adapt: f32,
     stroke: SculptStroke,

@@ -183,11 +183,14 @@ fn the_quad_retopology_changes_the_mesh_and_undoes_whole() {
     let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
     let before_faces = s.mesh().faces().len();
 
-    let (verts, quads, non_quads, ms) = s
-        .quad_remesh(0.18, 0.0)
+    let r = s
+        .quad_remesh(0.5, 0.0)
         .expect("a retopologia correu sobre uma peca de um nivel");
+    let (verts, quads, non_quads) = (r.verts, r.quads, r.non_quads);
     eprintln!(
-        "[sculpt3d] retopologia: {verts} vertices, {quads} quads, {non_quads} nao-quads, {ms:.0} ms"
+        "[sculpt3d] retopologia: {verts} vertices, {quads} quads, {non_quads} nao-quads, quad de \
+         {:.4}, {:.0} ms",
+        r.edge, r.ms
     );
 
     assert!(verts > 0, "a retopologia devolveu uma malha vazia");
@@ -231,7 +234,98 @@ fn the_quad_retopology_refuses_a_multires_stack() {
     let mut s = scene(&gpu.device, Verb::Draw);
     assert!(s.subdivide(), "premissa: a peca subdividiu");
     assert!(
-        s.quad_remesh(0.18, 0.0).is_err(),
+        s.quad_remesh(0.5, 0.0).is_err(),
         "a retopologia correu com a pilha montada: os indices da saida nao nomeiam o nivel de baixo"
+    );
+}
+
+/// ⭐ **O CURSO INTEIRO DO `Detail` DEVOLVE UMA PEÇA** — o gate que a foto pediu.
+///
+/// ⚠️ **É a versão executável do passo (5) do smoke.** O defeito de 2026-08-19
+/// não morava numa posição do slider: morava em o slider oferecer posições que a
+/// malha não tem como responder. Um gate que testasse um valor só continuaria
+/// verde sobre exatamente o mesmo defeito — foi o que aconteceu, com `0,18`.
+///
+/// Cinco pontos do curso, e em cada um as três propriedades que o artista de
+/// facto vê: a peça **existe**, ela é **fechada** (nenhuma aresta com uma face
+/// só), e ela aponta **para fora** (volume com sinal positivo).
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn every_point_of_the_detail_slider_returns_a_piece() {
+    use std::collections::BTreeMap;
+    let gpu = gpu_or_skip!();
+    let mut counts: Vec<usize> = Vec::new();
+    for step in 0..=4u32 {
+        let detail = step as f32 / 4.0;
+        // ⚠️ **A malha da cena `=35` e nao a `uv_sphere(24,36)` das irmas.** Numa
+        // malha de 830 vertices o piso (3 arestas de entrada) ja' passa o teto
+        // (100 quads), a faixa legal colapsa num ponto, e o slider inteiro
+        // devolve **a mesma malha** — medido: `0,3701` nos cinco pontos. Um gate
+        // sobre aquela fixtura ficaria verde sem tocar no knob que ele nomeia.
+        let mut s = Sculpt3dScene::new(&gpu.device, uv_sphere(96, 144, 1.0), 1.0);
+        s.viewport = (900, 700);
+        let r = s
+            .quad_remesh(detail, 0.0)
+            .unwrap_or_else(|e| panic!("detail={detail:.2}: a retopologia recusou ({e:?})"));
+
+        let mesh = s.mesh();
+        assert!(
+            r.verts > 0 && !mesh.faces().is_empty(),
+            "detail={detail:.2}: a peca sumiu -- a extracao devolveu malha vazia"
+        );
+
+        let mut undirected: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+        let mut volume = 0.0f64;
+        let pos = mesh.positions();
+        for f in mesh.faces() {
+            let v = f.verts();
+            for i in 0..v.len() {
+                let (a, b) = (v[i], v[(i + 1) % v.len()]);
+                *undirected
+                    .entry(if a < b { (a, b) } else { (b, a) })
+                    .or_insert(0) += 1;
+            }
+            for k in 1..v.len() - 1 {
+                let (a, b, c) = (
+                    pos[v[0] as usize],
+                    pos[v[k] as usize],
+                    pos[v[k + 1] as usize],
+                );
+                volume += f64::from(a[0].mul_add(
+                    b[1].mul_add(c[2], -(b[2] * c[1])),
+                    a[1].mul_add(
+                        b[2].mul_add(c[0], -(b[0] * c[2])),
+                        a[2] * b[0].mul_add(c[1], -(b[1] * c[0])),
+                    ),
+                )) / 6.0;
+            }
+        }
+        let open = undirected.values().filter(|c| **c == 1).count();
+        eprintln!(
+            "[sculpt3d] detail={detail:.2}: quad {:.4}, {} vertices, {:.1}% quads, volume {volume:+.3}",
+            r.edge,
+            r.verts,
+            100.0 * r.quads as f64 / (r.quads + r.non_quads).max(1) as f64
+        );
+        assert_eq!(
+            open, 0,
+            "detail={detail:.2}: {open} arestas com UMA face -- a peca saiu esburacada"
+        );
+        assert!(
+            volume > 0.0,
+            "detail={detail:.2}: volume com sinal {volume:+.3} -- a peca esta' do avesso"
+        );
+        counts.push(r.verts);
+    }
+    // ⚠️ **E O KNOB TEM DE FAZER ALGUMA COISA.** Um slider que devolve a mesma
+    // malha nos cinco pontos passa em todas as asserções acima — a peça existe,
+    // é fechada e aponta para fora — e ainda assim é um controle morto. Foi
+    // exatamente o que a primeira corrida deste gate mostrou.
+    assert!(
+        counts[4] > counts[0] * 2,
+        "o curso do Detail nao muda a densidade: {} vertices no grosso contra {} no fino -- o \
+         knob esta' MORTO (faixa legal colapsada?)",
+        counts[0],
+        counts[4]
     );
 }

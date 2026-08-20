@@ -23,6 +23,27 @@
 
 use super::{RemeshRefusal, Sculpt3dScene, SculptStroke, StrokeUndo};
 
+/// **O QUE A RETOPOLOGIA FEZ** — o relatório que o log e o smoke lêem.
+///
+/// ⚠️ **O `edge` viaja no relatório, e não só o `detail` que o artista pediu.**
+/// O knob é uma fração do curso, e o lado do quad sai da MALHA — então sem este
+/// campo ninguém consegue relacionar o que se pediu com o que saiu, nem numa
+/// sessão de smoke nem num bug daqui a um mês. *Um número que só existe dentro
+/// da função não é comparável entre duas corridas.*
+#[derive(Clone, Copy, Debug)]
+pub(in crate::sculpt3d) struct QuadRemeshReport {
+    /// Quantos vértices a malha nova tem.
+    pub verts: usize,
+    /// Quantas faces saíram com quatro lados.
+    pub quads: usize,
+    /// Quantas não saíram.
+    pub non_quads: usize,
+    /// O lado do quad que o `detail` pedido virou nesta malha.
+    pub edge: f32,
+    /// O relógio do passe.
+    pub ms: f64,
+}
+
 impl Sculpt3dScene {
     /// lugar errado.
     /// **RECONSTRÓI a malha por voxelização** — o botão do W7.
@@ -58,7 +79,7 @@ impl Sculpt3dScene {
     }
 
     /// **A RETOPOLOGIA por campo cruzado** (ADR-0160) — a grade corre AO LONGO
-    /// da forma. Devolve `(vértices, quads, não-quads, ms)`.
+    /// da forma. Devolve o [`QuadRemeshReport`].
     ///
     /// ⚠️ **Irmã do [`Self::remesh`] e NÃO substituta**, e as duas ficam porque
     /// respondem a perguntas diferentes: o voxel remesh re-amostra um campo (a
@@ -76,23 +97,43 @@ impl Sculpt3dScene {
     /// de vértices nem a correspondência entre eles.
     pub(in crate::sculpt3d) fn quad_remesh(
         &mut self,
-        edge: f32,
+        detail: f32,
         adaptive: f32,
-    ) -> Result<(usize, usize, usize, f64), RemeshRefusal> {
+    ) -> Result<QuadRemeshReport, RemeshRefusal> {
         if self.level_count() != 1 {
             return Err(RemeshRefusal::MultiresStack);
         }
         let t = std::time::Instant::now();
         let mesh = self.mesh();
+        // ⚠️ **O LADO DO QUAD SAI DA MALHA, e não do slider** — ver
+        // `ph2d_quadflow::edge_for_detail`. Um tamanho absoluto vindo do painel é
+        // destrutivo numa malha grossa e conservador numa fina, e foi o defeito
+        // que o smoke do Enio fotografou (2026-08-19).
+        let edge = ph2d_quadflow::edge_for_detail(mesh, detail);
         let scale = ph2d_quadflow::ScaleField::adaptive(mesh, edge, adaptive);
         let (orient, pos) = ph2d_quadflow::solve_fields(mesh, &scale);
-        let q = ph2d_quadflow::extract(mesh, &orient, &pos, &scale).map_err(RemeshRefusal::Quad)?;
-        let out = (
-            q.mesh.vert_count(),
-            q.quads,
-            q.non_quads,
-            t.elapsed().as_secs_f64() * 1000.0,
-        );
+        let mut q =
+            ph2d_quadflow::extract(mesh, &orient, &pos, &scale).map_err(RemeshRefusal::Quad)?;
+        // ⚠️ **A relaxação corre AQUI e não dentro da extração**, e a razão é que
+        // ela precisa da malha de ENTRADA para projetar de volta — a extração
+        // devolve uma malha que já não sabe de onde veio. O ganho é modesto e
+        // está medido ao lado da `RELAX_PASSES`; o que ele **não** é, é a cura da
+        // grade feia (essa é o piso do `edge_for_detail` e o fecho sem leque).
+        ph2d_quadflow::relax(&mut q.mesh, mesh, ph2d_quadflow::RELAX_PASSES);
+        // ⚠️ **A recusa é NOMEADA, e não uma malha vazia.** Com o `detail` toda
+        // corrida cai dentro da faixa legal, então este braço é uma rede — mas a
+        // diferença entre *"a peça sumiu"* e *"ele disse por quê"* é a razão de
+        // ele existir, e o custo é uma comparação.
+        if q.mesh.faces().is_empty() {
+            return Err(RemeshRefusal::TooCoarseToResolve);
+        }
+        let out = QuadRemeshReport {
+            verts: q.mesh.vert_count(),
+            quads: q.quads,
+            non_quads: q.non_quads,
+            edge,
+            ms: t.elapsed().as_secs_f64() * 1000.0,
+        };
         let previous =
             core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);
         self.record(StrokeUndo::Remeshed(Box::new(previous)));

@@ -73,7 +73,7 @@ impl Sculpt3dScene {
                 // Contagem de células vira `f32` só para a pista; a fronteira de
                 // volta (`apply_ui`) arredonda e clampa.
                 remesh_res: self.remesh_res as f32,
-                quad_edge: self.quad_edge,
+                quad_detail: self.quad_detail,
                 quad_adapt: self.quad_adapt,
             },
             dyntopo: self.dyntopo.armed,
@@ -226,7 +226,7 @@ impl Sculpt3dScene {
         // ⚠️ **Os mesmos limites da row**, e não porque a row já os aplique: o
         // painel é UMA porta para estes campos, e um `ProjectFile` antigo ou um
         // smoke que escreva direto entram por outra.
-        self.quad_edge = ui.quad_edge.clamp(0.02, 1.0);
+        self.quad_detail = ui.quad_detail.clamp(0.0, 1.0);
         self.quad_adapt = ui.quad_adapt.clamp(0.0, 1.0);
     }
 
@@ -371,11 +371,21 @@ impl Sculpt3dScene {
                         "o voxel remesh devolveu a recusa da retopologia: {e}"
                     );
                 }
+                Err(RemeshRefusal::TooCoarseToResolve) => {
+                    debug_assert!(false, "o voxel remesh devolveu a recusa da retopologia");
+                }
             },
             Sculpt3dIntent::QuadRemesh => {
-                match self.quad_remesh(self.quad_edge, self.quad_adapt) {
-                    Ok((v, q, nq, ms)) => eprintln!(
-                        "[sculpt3d] retopologia: {v} vertices, {q} quads e {nq} nao-quads em {ms:.0} ms"
+                match self.quad_remesh(self.quad_detail, self.quad_adapt) {
+                    Ok(r) => eprintln!(
+                        "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads) \
+                         com quad de {:.4} em {:.0} ms",
+                        r.verts,
+                        r.quads,
+                        r.non_quads,
+                        100.0 * r.quads as f64 / (r.quads + r.non_quads).max(1) as f64,
+                        r.edge,
+                        r.ms
                     ),
                     Err(RemeshRefusal::MultiresStack) => {
                         eprintln!("[sculpt3d] nao' retopologiza com a pilha montada: ACHATE antes")
@@ -388,6 +398,14 @@ impl Sculpt3dScene {
                         "[sculpt3d] a retopologia nao fechou uma malha, e a escultura fica como esta': {e}"
                     ),
                     Err(RemeshRefusal::Engine(e)) => eprintln!("[sculpt3d] retopologia: {e}"),
+                    // ⚠️ **A mensagem nomeia o CONSERTO**, que e' a diferenca
+                    // entre uma recusa util e uma muda: o `Detail` nao alcanca
+                    // este estado, entao quem chega aqui tem uma malha grossa
+                    // demais para ser retopologizada de todo.
+                    Err(RemeshRefusal::TooCoarseToResolve) => eprintln!(
+                        "[sculpt3d] a malha e' grossa demais para uma grade de quads, e a \
+                         escultura fica como esta': subdivida (ou use o Remesh) antes"
+                    ),
                 }
             }
             Sculpt3dIntent::BakeAo => {

@@ -127,6 +127,136 @@ impl ScaleField {
     }
 }
 
+/// **QUANTAS ARESTAS DA ENTRADA UM QUAD PRECISA DE MEDIR** — o piso, MEDIDO.
+///
+/// ⚠️ **Uma retopologia não pode resolver uma grade mais fina que a malha que ela
+/// lê**, e não é uma opinião: cada vértice da saída é a média de um punhado de
+/// vértices da entrada. Peça um quad menor que isso e a célula fica com um
+/// vértice — o campo não tem o que quantizar, o grafo sai com buracos, e o passeio
+/// de faces os contorna em ciclos gigantes.
+///
+/// **Medido** (sonda `measure_where_quality_collapses`), com o lado do quad em
+/// múltiplos da aresta média da entrada:
+///
+/// | razão | esfera 48×64 | uv 96×144 | uv 96×144 **amassada** |
+/// |---|---|---|---|
+/// | 1,00× | **malha vazia** | **malha vazia** | **malha vazia** |
+/// | 1,25× | **malha vazia** | **malha vazia** | **malha vazia** |
+/// | 1,50× | ciclo de **62** | ciclo de **147** | ciclo de **352**, volume 1,59 de 3,78 |
+/// | 1,75× | ciclo de 10 | ciclo de 20 | ciclo de **50** |
+/// | 2,00× | ciclo de 7 | ciclo de 9 | ciclo de **39** |
+/// | 2,50× | ciclo de 6 | ciclo de 6 | ciclo de 20 |
+/// | **3,00×** | **ciclo de 6** | **ciclo de 7** | **ciclo de 8** |
+/// | 4,00× | ciclo de 5 | ciclo de 5 | ciclo de 6 |
+///
+/// ⚠️ **A linha de 1,50× na amassada é a foto do Enio** (2026-08-19): um ciclo de
+/// 352 lados vira 350 triângulos em leque, e a peça perde **58 % do volume**. O
+/// painel oferecia `0,02` como mínimo, que naquela malha é **0,66×** — fundo do
+/// poço. *O piso não estava errado por pouco: ele não era do recurso.*
+///
+/// **3,00×** é o primeiro degrau em que as três fixturas concordam.
+pub const FLOOR_IN_INPUT_EDGES: f32 = 3.0;
+
+/// **O MENOR NÚMERO DE QUADS que ainda descreve uma forma** — o teto, MEDIDO.
+///
+/// Do outro lado da faixa a malha deixa de ter faces suficientes para a forma
+/// sobreviver. Medido na esfera amassada (volume da entrada **3,78**): 96 faces
+/// guardam **3,45** (91 %) · 40 faces guardam 2,57 (68 %) · 23 faces guardam
+/// **1,90** (50 %). O joelho está em ~**100** faces, e é daí que sai o teto
+/// `s = √(área / 100)`.
+pub const MIN_QUADS: f32 = 100.0;
+
+/// **A ARESTA MÉDIA da malha** — o que ela é capaz de resolver.
+#[must_use]
+pub fn mean_edge(mesh: &Mesh) -> f32 {
+    let p = mesh.positions();
+    let (mut sum, mut count) = (0.0f64, 0usize);
+    for f in mesh.faces() {
+        let v = f.verts();
+        for i in 0..v.len() {
+            let (a, b) = (p[v[i] as usize], p[v[(i + 1) % v.len()] as usize]);
+            let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+            sum += f64::from(d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt());
+            count += 1;
+        }
+    }
+    if count == 0 {
+        MIN_EDGE
+    } else {
+        (sum / count as f64) as f32
+    }
+}
+
+/// **A ÁREA da superfície** — a régua do teto.
+#[must_use]
+pub fn surface_area(mesh: &Mesh) -> f32 {
+    let p = mesh.positions();
+    let mut sum = 0.0f64;
+    for f in mesh.faces() {
+        let v = f.verts();
+        for k in 1..v.len() - 1 {
+            let (a, b, c) = (p[v[0] as usize], p[v[k] as usize], p[v[k + 1] as usize]);
+            let (u, w) = (
+                [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
+                [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
+            );
+            let n = [
+                u[1].mul_add(w[2], -(u[2] * w[1])),
+                u[2].mul_add(w[0], -(u[0] * w[2])),
+                u[0].mul_add(w[1], -(u[1] * w[0])),
+            ];
+            sum += f64::from(n[0].mul_add(n[0], n[1].mul_add(n[1], n[2] * n[2])).sqrt()) * 0.5;
+        }
+    }
+    sum as f32
+}
+
+/// **A FAIXA LEGAL do lado do quad para ESTA malha** — `(mais fino, mais grosso)`.
+///
+/// ⚠️ **É a faixa que o produto oferece, e ela é da MALHA e não do slider.** Um
+/// mínimo fixo em unidades de objeto (`0,02`, que é o que o painel tinha) é
+/// destrutivo numa malha grossa e conservador numa fina — o mesmo número quer
+/// dizer coisas opostas em dois modelos. Aqui os dois extremos saem da medição:
+/// o piso do [`FLOOR_IN_INPUT_EDGES`], o teto do [`MIN_QUADS`].
+///
+/// ⚠️ **O teto é forçado a não descer abaixo do piso**: numa malha já grossa os
+/// dois se cruzam, e uma faixa invertida devolveria um `edge` menor que o piso
+/// por aritmética — que é o defeito que esta função existe para impedir.
+#[must_use]
+pub fn resolvable_edge_range(mesh: &Mesh) -> (f32, f32) {
+    let floor = (FLOOR_IN_INPUT_EDGES * mean_edge(mesh)).max(MIN_EDGE);
+    let ceiling = (surface_area(mesh) / MIN_QUADS).sqrt().max(floor);
+    (floor, ceiling)
+}
+
+/// **O LADO DO QUAD que um `detail` de `0..1` pede a ESTA malha.**
+///
+/// `0` é o mais grosso que ainda descreve a forma, `1` o mais fino que a entrada
+/// consegue resolver — e a interpolação é **geométrica**, não linear: um knob de
+/// TAMANHO tem de andar em razão constante, senão metade do curso mora numa
+/// oitava só (a lição já registrada em
+/// `feedback_a_knob_consumed_as_a_per_step_rate_is_a_target_not_a_rate`).
+///
+/// ⚠️ **Todo valor do curso é legal, por construção** — que é a diferença entre
+/// este knob e o que o painel tinha. Um slider cujo terço esquerdo destrói o
+/// objeto não é um slider com um limite errado: é um slider que responde a uma
+/// pergunta que a malha não tem como responder.
+#[must_use]
+pub fn edge_for_detail(mesh: &Mesh, detail: f32) -> f32 {
+    let (floor, ceiling) = resolvable_edge_range(mesh);
+    // ⚠️ **`clamp` NÃO fecha o `NaN`** — ele o propaga, e um `NaN` aqui vira um
+    // `scale` `NaN` que envenena o campo inteiro sem erro nenhum. O gate
+    // `every_point_of_the_detail_slider_is_legal` o pegou. O `NaN` cai no
+    // extremo GROSSO de propósito: é o único lado do curso que não tem como
+    // destruir a peça.
+    let d = if detail.is_nan() {
+        0.0
+    } else {
+        detail.clamp(0.0, 1.0)
+    };
+    ceiling * (floor / ceiling).powf(d)
+}
+
 /// O piso do lado de um quad, em unidades de objeto.
 ///
 /// ⚠️ **Guarda de RECURSO e não de gosto:** o inverso da escala multiplica cada

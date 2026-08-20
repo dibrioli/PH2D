@@ -5332,6 +5332,29 @@ impl App {
                         // (group translate via the clicked sprite as
                         // pivot, Onda 1).
                         let is_modifier_click = picked.is_some() && (shift_held || cmd_held);
+                        // **A TRAVA DO PAINTER, na porta do CANVAS** (Enio, 2026-08-19). Enquanto
+                        // ele tem um documento aberto, um clique noutra sprite não a troca debaixo
+                        // do pincel — e um clique com modificador não abre uma segunda seleção.
+                        //
+                        // ⚠️ Sai por `picked = None` em vez de por um `return`: o resto deste ramo
+                        // é o caminho do **clique vazio**, que limpa e não seleciona outra — a lei
+                        // permite-o de propósito (recusar faria o `Esc` e o canvas parecerem
+                        // partidos). *Recusar a troca não é recusar o clique.*
+                        let painter_locked = crate::painter_lock::locked_entity(&gfx.tools, hero);
+                        let picked = match picked {
+                            Some(bits)
+                                if crate::painter_lock::decide(
+                                    painter_locked,
+                                    Some(bits),
+                                    cmd_held || shift_held,
+                                ) == crate::painter_lock::Decision::Refuse =>
+                            {
+                                gfx.toasts
+                                    .push(Toast::warning(crate::painter_lock::REFUSAL));
+                                None
+                            }
+                            other => other,
+                        };
                         if let Some(bits) = picked {
                             if cmd_held || shift_held {
                                 // Onda 1: unify Shift + Cmd as toggle on
@@ -5562,11 +5585,21 @@ impl App {
                                 rmin,
                                 rmax,
                             ));
-                            if !rb.add_mode {
-                                hero.gizmo.clear_all_selection();
-                            }
-                            for b in bits {
-                                hero.gizmo.add_to_selection(b);
+                            // ⚠️ **A TRAVA DO PAINTER também fecha o LAÇO.** O guarda do pick
+                            // trata do clique; a borracha é a outra porta por onde a multi-seleção
+                            // entra, e o Enio nomeou-a: *"não permita a seleção de múltiplas
+                            // imagens se o painter está ativo"*. Uma trava que só cobre o gesto
+                            // óbvio ensina o artista a usar o outro.
+                            if crate::painter_lock::locked_entity(&gfx.tools, hero).is_some() {
+                                gfx.toasts
+                                    .push(Toast::warning(crate::painter_lock::REFUSAL));
+                            } else {
+                                if !rb.add_mode {
+                                    hero.gizmo.clear_all_selection();
+                                }
+                                for b in bits {
+                                    hero.gizmo.add_to_selection(b);
+                                }
                             }
                             // Sync the panel header label to the new
                             // primary (Fase 0e parity).

@@ -4083,6 +4083,22 @@ impl crate::App {
                         toasts.push(Toast::info(format!("Tool · {}", active.label())));
                     }
                 } else if gate_on && tools.set_active(&ph2d_editor::ToolId::new(tool_id)) {
+                    // **ENTRAR NO PAINTER COLAPSA A SELEÇÃO À ÚLTIMA** (Enio, 2026-08-19: *"se o
+                    // usuário estiver com múltiplas imagens selecionadas e entrar no painter,
+                    // selecione a última selecionada e desselecione as outras antes de entrar"*).
+                    //
+                    // ⚠️ **Antes de entrar, e não depois:** o Painter lê a seleção ao ativar-se
+                    // para saber que documento abrir. Colapsar depois deixá-lo-ia um quadro com o
+                    // estado que a trava existe para impedir — e um quadro chega para ele ligar a
+                    // prévia à sprite errada.
+                    if tool_id == "painter" {
+                        let dropped = crate::painter_lock::collapse_to_last(hero);
+                        if dropped > 0 {
+                            toasts.push(Toast::info(format!(
+                                "Painter: kept the last selected sprite ({dropped} deselected)"
+                            )));
+                        }
+                    }
                     self.title_dirty = true;
                     if tool_id == "bgremoval" {
                         self.last_bgremoval_pushed_entity = None;
@@ -8596,6 +8612,30 @@ impl crate::App {
             // delete / row_click / rename_seed / rename_commit).
             // Extracted to sibling `hierarchy.rs` as a free fn (Wave
             // 3.2 stage A).
+            // **A TRAVA DO PAINTER, na porta da HIERARQUIA** (Enio, 2026-08-19). Enquanto o
+            // Painter tem um documento aberto, clicar noutra linha não troca a sprite debaixo do
+            // pincel: recusa, e o aviso diz por onde sair.
+            //
+            // ⚠️ A intenção é **consumida** (posta a `None`), não saltada: deixá-la viva faria a
+            // mesma recusa repetir-se no quadro seguinte, e o artista veria o aviso a piscar.
+            if let Some(intent) = hierarchy_select_intent {
+                let locked = crate::painter_lock::locked_entity(tools, hero);
+                let (target, additive) = match intent {
+                    hierarchy::HierarchySelectIntent::Row { row, modifier } => (
+                        hero_live.as_ref().and_then(|l| l.bridge.entity_for(row)),
+                        !matches!(modifier, ph2d_editor::action_bus::SelectModifier::Replace),
+                    ),
+                    // Um intervalo é aditivo por definição.
+                    hierarchy::HierarchySelectIntent::Range { .. } => (None, true),
+                };
+                if crate::painter_lock::decide(locked, target, additive)
+                    == crate::painter_lock::Decision::Refuse
+                {
+                    toasts.push(Toast::warning(crate::painter_lock::REFUSAL));
+                    hierarchy_select_intent = None;
+                    self.title_dirty = true;
+                }
+            }
             if hierarchy::dispatch(
                 view_focus_kind,
                 visibility_toggle_row,

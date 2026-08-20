@@ -250,6 +250,7 @@ mod offset_live;
 /// Onion settings modal — the shell half (ADR-0142 W3b): store→onion read-back + the title-band drag.
 mod onion_modal;
 mod osc_ruler_smoke;
+mod painter_lock;
 mod palette_persist;
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
 mod pattern_live;

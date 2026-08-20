@@ -39,7 +39,7 @@ pub use populate::{MAX_MODES, MAX_ROWS};
 /// do shell já regista como pago.
 pub const PANEL_ID: &str = "model3d";
 pub use state::{
-    ModeChip, ModelIntent, ModelSnapshot, RadiusRow, drain_intents, last_content_h, publish,
+    ModeChip, ModelIntent, ModelSnapshot, ParamRow, drain_intents, last_content_h, publish,
 };
 
 use ph2d_a11y::NodeId;

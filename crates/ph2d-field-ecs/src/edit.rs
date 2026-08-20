@@ -10,7 +10,7 @@ use bevy_ecs::hierarchy::Children;
 use bevy_ecs::world::World;
 use ph2d_field::xform::{quat_axis_angle, quat_conj, quat_mul, quat_normalize, quat_rotate};
 use ph2d_field::{
-    FieldError, NodeShape, Op, Primitive, RadiusBound, Xform, characteristic_size, round_limit,
+    Bound, FieldError, NodeShape, Op, Primitive, Xform, characteristic_size, round_limit,
     set_shape_radius,
 };
 
@@ -54,16 +54,16 @@ pub fn radius_of(world: &World, entity: Entity) -> Option<f32> {
 
 /// Até onde esse raio pode ir, e **de que natureza é o limite**.
 ///
-/// - Numa **primitiva** é uma parede ([`RadiusBound::Hard`]): acima dela a forma deixa de existir e
+/// - Numa **primitiva** é uma parede ([`Bound::Hard`]): acima dela a forma deixa de existir e
 ///   o campo deixa de ser uma distância.
-/// - Numa **operação** não há limite de validade nenhum ([`RadiusBound::Soft`]) — o campo continua
+/// - Numa **operação** não há limite de validade nenhum ([`Bound::Soft`]) — o campo continua
 ///   correto com qualquer raio. O que existe é *escala*: um filete maior do que a menor peça que ele
 ///   junta engole-a. O número vem daí.
 #[must_use]
-pub fn radius_bound(world: &World, entity: Entity) -> Option<RadiusBound> {
+pub fn radius_bound(world: &World, entity: Entity) -> Option<Bound> {
     match &world.get::<FieldNode>(entity)?.shape {
-        NodeShape::Leaf(p) => round_limit(p).map(RadiusBound::Hard),
-        NodeShape::Combine(_) => Some(RadiusBound::Soft(subtree_scale(world, entity))),
+        NodeShape::Leaf(p) => round_limit(p).map(Bound::Hard),
+        NodeShape::Combine(_) => Some(Bound::Soft(subtree_scale(world, entity))),
     }
 }
 
@@ -96,6 +96,62 @@ fn subtree_scale(world: &World, root: Entity) -> f32 {
         best
     } else {
         1.0
+    }
+}
+
+/// ⭐ **O que este nó mede** — vazio para uma operação, que não tem forma própria.
+#[must_use]
+pub fn dims_of(world: &World, entity: Entity) -> Vec<ph2d_field::Dim> {
+    match &world.get::<FieldNode>(entity).map(|n| &n.shape) {
+        Some(NodeShape::Leaf(p)) => ph2d_field::dims(p),
+        _ => Vec::new(),
+    }
+}
+
+/// ⭐ **Escreve uma dimensão de um nó**, ou recusa — e uma recusa deixa-o **como estava**.
+///
+/// ⚠️ **Encolher uma forma encolhe o filete dela**, em silêncio mas à vista (ver
+/// [`ph2d_field::set_dim`]). Aqui isso é feito **depois** da escrita e **antes** de devolver: um
+/// filete que ficasse por limitar deixaria o nó inválido, e a invariante do módulo é *um nó que
+/// existe está válido*.
+///
+/// ⚠️ Numa **operação** o índice 0 é o raio da mistura — é a única dimensão que ela tem, e é por
+/// aqui que o painel a edita, com a mesma porta das outras.
+///
+/// # Errors
+/// Ver [`ph2d_field::set_dim`]. [`FieldError::BadRoot`] se a entidade não é um nó.
+pub fn set_dim(
+    world: &mut World,
+    entity: Entity,
+    index: usize,
+    value: f32,
+) -> Result<(), FieldError> {
+    let Some(mut node) = world.get_mut::<FieldNode>(entity) else {
+        return Err(FieldError::BadRoot);
+    };
+    let id = entity.to_bits() as u32;
+    match &mut node.shape {
+        // Uma operação tem uma dimensão só: o raio da mistura.
+        NodeShape::Combine(_) if index == 0 => {
+            let mut shape = node.shape.clone();
+            set_shape_radius(&mut shape, id, value)?;
+            node.shape = shape;
+            Ok(())
+        }
+        NodeShape::Combine(_) => Err(FieldError::BadRoot),
+        NodeShape::Leaf(p) => {
+            let previous = p.clone();
+            match ph2d_field::set_dim(p, id, index, value) {
+                Ok(()) => {
+                    ph2d_field::clamp_round(p);
+                    Ok(())
+                }
+                Err(e) => {
+                    *p = previous;
+                    Err(e)
+                }
+            }
+        }
     }
 }
 

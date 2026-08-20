@@ -138,11 +138,12 @@ fn a_panel_edit_reaches_the_node_and_the_snapshot_in_the_same_frame() {
     sync_scene(&mut sim, Some(&scene(1)), 0.0);
     let root = the_root(&mut sim);
 
-    ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetRadius {
+    ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetParam {
         entity: root.to_bits(),
-        radius: 0.2,
+        index: 0,
+        value: 0.2,
     });
-    sync_scene(&mut sim, None, 7.5);
+    super::sync_scene_and_birth(&mut sim, None, &[root], 7.5);
 
     let world = sim.world_mut();
     assert!(
@@ -155,7 +156,7 @@ fn a_panel_edit_reaches_the_node_and_the_snapshot_in_the_same_frame() {
         .iter()
         .find(|r| r.entity == root.to_bits())
         .expect("a linha da raiz");
-    assert!((row.radius - 0.2).abs() < 1e-6, "o retrato do MESMO quadro");
+    assert!((row.value - 0.2).abs() < 1e-6, "o retrato do MESMO quadro");
     assert!((snap.last_trace_ms - 7.5).abs() < 1e-6);
 }
 
@@ -173,53 +174,88 @@ fn a_refused_edit_publishes_the_value_the_document_actually_kept() {
         ph2d_field_ecs::radius_of(world, root).expect("o cubo tem round")
     };
 
-    ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetRadius {
+    ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetParam {
         entity: root.to_bits(),
-        radius: 5.0,
+        // A caixa da cena 2 é uma FOLHA: o filete é a última dimensão dela.
+        index: 3,
+        value: 5.0,
     });
-    sync_scene(&mut sim, None, 0.0);
+    super::sync_scene_and_birth(&mut sim, None, &[root], 0.0);
 
     let snap = ph2d_panel_model3d::state::current();
+    let row = snap.rows.iter().find(|r| r.index == 3).expect("o filete");
     assert!(
-        (snap.rows[0].radius - before).abs() < 1e-6,
+        (row.value - before).abs() < 1e-6,
         "o retrato tem de publicar o valor REAL ({before}), e publicou {}",
-        snap.rows[0].radius
+        row.value
     );
 }
 
-/// **As linhas do painel são a árvore**, na ordem e com a profundidade da Hierarquia.
+/// ⭐ **O painel é o INSPETOR da seleção** — as linhas são as dimensões do que está escolhido.
+///
+/// ⚠️ Até a W10 elas eram uma linha por nó com o raio dele: uma segunda vista da estrutura, a
+/// competir com a Hierarquia e sem onde pôr largura, altura e profundidade. A divisão passou a ser
+/// a da casa — a Hierarquia mostra **o que existe**, o painel mostra **os números do escolhido**.
 #[test]
-fn the_rows_are_the_hierarchy_tree_not_a_flat_list() {
+fn the_panel_shows_the_dimensions_of_what_is_selected() {
     let _ = ph2d_panel_model3d::drain_intents();
     let mut sim = a_world();
-    sync_scene(&mut sim, Some(&scene(1)), 0.0);
-    let rows = ph2d_panel_model3d::state::current().rows;
+    // A cena 2 é UMA caixa: largura, altura, profundidade e filete.
+    sync_scene(&mut sim, Some(&scene(2)), 0.0);
+    let root = the_root(&mut sim);
+    super::sync_scene_and_birth(&mut sim, None, &[root], 0.0);
 
-    assert_eq!(rows.first().map(|r| r.depth), Some(0), "a raiz é o nível 0");
-    assert!(
-        rows.iter().skip(1).all(|r| r.depth == 1),
-        "os filhos da união estão um nível abaixo — uma lista plana esconderia a árvore"
+    let keys: Vec<&str> = ph2d_panel_model3d::state::current()
+        .rows
+        .iter()
+        .map(|r| r.key)
+        .collect();
+    assert_eq!(
+        keys,
+        vec![
+            "field.dim.width",
+            "field.dim.height",
+            "field.dim.depth",
+            "field.dim.round",
+        ],
+        "uma caixa tem quatro números, e são estes"
     );
+
+    // ⚠️ **Sem seleção, o painel diz-lo** — em vez de mostrar uma lista de tudo que ninguém pediu.
+    super::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+    assert!(ph2d_panel_model3d::state::current().rows.is_empty());
 }
 
-/// **Toda linha do painel tem uma chave de i18n que traduz** — nenhuma vaza o identificador cru.
+/// **Todo nome de dimensão tem uma tradução** — nenhuma vaza a chave crua na tela.
 ///
 /// ⚠️ O `tr` da casa devolve a **própria chave** quando não conhece uma (de propósito: o
 /// identificador feio na tela é o alarme). Então "traduziu" mede-se por *"o que voltou é diferente
 /// da chave"*.
 #[test]
-fn every_row_kind_has_a_translation() {
+fn every_dimension_name_has_a_translation() {
+    let _ = ph2d_panel_model3d::drain_intents();
     for n in 1..=5 {
-        let _ = ph2d_panel_model3d::drain_intents();
         let mut sim = a_world();
         sync_scene(&mut sim, Some(&scene(n)), 0.0);
-        for row in ph2d_panel_model3d::state::current().rows {
-            assert_ne!(
-                ph2d_i18n::tr(row.kind_key),
-                row.kind_key,
-                "a cena {n} tem um nó cuja chave `{}` não está na tabela",
-                row.kind_key
-            );
+        let root = the_root(&mut sim);
+        // Cada nó da peça, um a um: é o que o artista alcança clicando.
+        let all: Vec<bevy_ecs::entity::Entity> = {
+            let world = sim.world_mut();
+            ph2d_field_ecs::walk(world, root)
+                .into_iter()
+                .map(|(e, _)| e)
+                .collect()
+        };
+        for e in all {
+            super::sync_scene_and_birth(&mut sim, None, &[e], 0.0);
+            for row in ph2d_panel_model3d::state::current().rows {
+                assert_ne!(
+                    ph2d_i18n::tr(row.key),
+                    row.key,
+                    "a cena {n} tem uma dimensão cuja chave `{}` não está na tabela",
+                    row.key
+                );
+            }
         }
     }
 }

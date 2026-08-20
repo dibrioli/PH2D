@@ -1,0 +1,219 @@
+//! ⭐ **As dimensões de uma forma** — o que ela mede, e o que se pode escrever nela.
+//!
+//! # Por que isto existe
+//!
+//! Até aqui a única coisa editável de uma primitiva era o **raio do filete**. Um modelador em que
+//! não se consegue dizer *"este cilindro tem 20 de raio e 50 de altura"* não é um modelador de
+//! precisão — é um de escala uniforme, que é o gesto que sobra quando não há números.
+//!
+//! # A divisão: o documento dá a PAREDE, a vista dá o CONFORTO
+//!
+//! Cada dimensão diz se tem um **limite de validade** ([`Dim::limit`]) — o `round` de uma caixa não
+//! pode chegar à meia-extensão dela, porque a fonte encolhida deixaria de existir. Isso é do
+//! documento e não se negoceia.
+//!
+//! ⛔ **O teto de um slider NÃO é isso.** A largura de uma caixa não tem limite nenhum: escrever um
+//! aqui seria inventar um número que a física não pede — o que o [`CLAUDE.md §0`] proíbe. Quem
+//! escolhe até onde o **gesto** vai é a vista, e a resposta natural é *o que cabe no enquadramento*
+//! — uma dimensão maior do que o quadro é uma cujo efeito não se vê. O campo numérico continua sem
+//! teto, porque digitar 1000 é uma afirmação sobre a peça e não sobre a janela.
+//!
+//! # Meias-extensões não aparecem
+//!
+//! O documento guarda **meias**-extensões (é a forma que a distância assinada quer). Ninguém diz que
+//! uma caixa tem «meia-largura 5»: [`dims`] devolve a largura **inteira** e [`set_dim`] volta a
+//! dividir. A conversão mora aqui, num sítio, e não em cada painel que a mostre.
+//!
+//! [`CLAUDE.md §0`]: ../../../CLAUDE.md
+
+use crate::{FieldError, Primitive, round_limit};
+
+/// Uma dimensão editável de uma forma.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Dim {
+    /// A chave i18n do nome. ⚠️ Uma **chave**, nunca um rótulo pronto (HR-15).
+    pub key: &'static str,
+    /// O valor que o artista vê — já em unidades inteiras (ver o doc do módulo).
+    pub value: f32,
+    /// **A parede de validade**, se houver uma. `None` ⇒ a dimensão não tem limite superior, e quem
+    /// escolhe o alcance do gesto é a vista.
+    pub limit: Option<f32>,
+}
+
+/// **O que esta forma mede.** Vazio quando ela não tem número nenhum a mexer.
+///
+/// ⚠️ A ordem é a que o painel mostra, e ela é parte da identidade: [`set_dim`] recebe o **índice**,
+/// porque é o que um controle cunhado às cegas consegue guardar. Reordenar aqui reordena os
+/// controles — e um arrasto a meio passaria a escrever noutro número.
+#[must_use]
+pub fn dims(p: &Primitive) -> Vec<Dim> {
+    let round_dim = |value: f32| Dim {
+        key: "field.dim.round",
+        value,
+        limit: round_limit(p),
+    };
+    match p {
+        Primitive::Box { half, round } => vec![
+            Dim {
+                key: "field.dim.width",
+                value: half[0] * 2.0,
+                limit: None,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half[1] * 2.0,
+                limit: None,
+            },
+            Dim {
+                key: "field.dim.depth",
+                value: half[2] * 2.0,
+                limit: None,
+            },
+            round_dim(*round),
+        ],
+        Primitive::Sphere { radius } => vec![Dim {
+            key: "field.dim.radius",
+            value: *radius,
+            limit: None,
+        }],
+        Primitive::Cylinder {
+            radius,
+            half_height,
+            round,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                limit: None,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                limit: None,
+            },
+            round_dim(*round),
+        ],
+        Primitive::Torus { major, minor } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *major,
+                limit: None,
+            },
+            Dim {
+                key: "field.dim.thickness",
+                value: *minor,
+                limit: None,
+            },
+        ],
+        Primitive::Extrude {
+            half_height, round, ..
+        } => vec![
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                limit: None,
+            },
+            round_dim(*round),
+        ],
+        // ⚠️ Um torno **não tem dimensões próprias**: a forma dele é o contorno desenhado, e um
+        // número aqui prometeria mexer numa coisa que só o editor vetorial autora. Ver
+        // [`Primitive::Revolve`].
+        Primitive::Revolve { .. } => Vec::new(),
+    }
+}
+
+/// ⭐ **Escreve uma dimensão**, ou recusa.
+///
+/// # ⚠️ Encolher uma forma ENCOLHE o filete dela, e não é recusado
+///
+/// Um `round` que deixa de caber quando a caixa encolhe é a situação normal, não um erro: o artista
+/// pediu o tamanho, e o filete é o que **decorre** dele. Recusar obrigaria a desfazer o filete
+/// primeiro — dois gestos onde há um — e é o que todo CAD resolve limitando o filete em silêncio.
+///
+/// ⚠️ **Em silêncio, mas não invisível**: o número do filete é uma linha do mesmo painel, e ela
+/// muda à vista. Um valor que muda sozinho **sem aparecer** seria outra coisa.
+///
+/// # Errors
+/// [`FieldError::NonPositive`] para um valor não-finito ou ≤ 0, e para um índice que não é desta
+/// forma. [`FieldError::RoundTooLarge`] quando é o próprio filete que não cabe.
+pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result<(), FieldError> {
+    let bad = |what: &'static str| FieldError::NonPositive { node, what };
+    if !value.is_finite() || value <= 0.0 {
+        return Err(bad("dim"));
+    }
+    let half = value * 0.5;
+    match (p, index) {
+        (Primitive::Box { half: h, .. }, i @ 0..=2) => h[i] = half,
+        (Primitive::Sphere { radius }, 0) | (Primitive::Cylinder { radius, .. }, 0) => {
+            *radius = value;
+        }
+        (Primitive::Cylinder { half_height, .. }, 1)
+        | (Primitive::Extrude { half_height, .. }, 0) => *half_height = half,
+        (Primitive::Torus { major, .. }, 0) => *major = value,
+        (Primitive::Torus { minor, .. }, 1) => *minor = value,
+        // O filete é o último de cada forma que o tem — e ele passa pela lei do filete, que já
+        // sabe recusar o que não cabe.
+        (
+            p @ (Primitive::Box { .. } | Primitive::Cylinder { .. } | Primitive::Extrude { .. }),
+            i,
+        ) if Some(i) == round_index(p) => {
+            return set_round(p, node, value);
+        }
+        _ => return Err(bad("dim")),
+    }
+    Ok(())
+}
+
+/// Onde fica o filete na lista desta forma, se ela tiver um.
+fn round_index(p: &Primitive) -> Option<usize> {
+    dims(p).iter().position(|d| d.key == "field.dim.round")
+}
+
+fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError> {
+    let limit = round_limit(p).ok_or(FieldError::NonPositive {
+        node,
+        what: "round",
+    })?;
+    if value >= limit {
+        return Err(FieldError::RoundTooLarge {
+            node,
+            round: value,
+            limit,
+        });
+    }
+    match p {
+        Primitive::Box { round, .. }
+        | Primitive::Cylinder { round, .. }
+        | Primitive::Extrude { round, .. } => *round = value,
+        _ => {}
+    }
+    Ok(())
+}
+
+/// ⭐ **Limita o filete ao que a forma agora comporta** — ver a nota de [`set_dim`].
+///
+/// Devolve `true` se teve de o mexer, para quem chamar poder dizê-lo.
+pub fn clamp_round(p: &mut Primitive) -> bool {
+    let Some(limit) = round_limit(p) else {
+        return false;
+    };
+    // ⚠️ **Estritamente abaixo**, e não «até»: a validação recusa `round >= limit`, e um filete
+    // exatamente no limite encolheria a fonte a zero. A margem é uma fração do próprio limite, e
+    // não um épsilon absoluto — numa peça de 0,01 um épsilon fixo seria o limite inteiro.
+    let ceiling = limit * (1.0 - ROUND_MARGIN);
+    match p {
+        Primitive::Box { round, .. }
+        | Primitive::Cylinder { round, .. }
+        | Primitive::Extrude { round, .. } => {
+            if *round > ceiling {
+                *round = ceiling.max(0.0);
+                return true;
+            }
+            false
+        }
+        _ => false,
+    }
+}
+
+/// A folga entre o filete máximo e a parede, em fração da parede. Ver [`clamp_round`].
+const ROUND_MARGIN: f32 = 1.0e-3;

@@ -10,7 +10,7 @@
 //! Segue-se então o painel que já resolveu isto: o de **física** (ADR-0131 D8) empurra intents numa
 //! fila e o shell drena-as. *O shell continua a ser a única coisa que toca no documento.*
 
-use ph2d_field::RadiusBound;
+use ph2d_field::Bound;
 use std::cell::{Cell, RefCell};
 
 thread_local! {
@@ -19,9 +19,9 @@ thread_local! {
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
 }
 
-/// Uma linha do painel: **um nó da PEÇA com raio editável**.
+/// Uma linha do painel: **uma dimensão do objeto selecionado**.
 #[derive(Clone, Debug, PartialEq)]
-pub struct RadiusRow {
+pub struct ParamRow {
     /// **A entidade** — a identidade da linha, e o que o intent devolve ao shell.
     ///
     /// ⚠️ Bits de entidade, e não o índice do nó na arena cozida. O índice muda quando a árvore
@@ -32,15 +32,22 @@ pub struct RadiusRow {
     /// o `populate` consegue cunhar às cegas (ver `MAX_ROWS`). A posição escolhe o controle; a
     /// entidade escolhe o nó. São duas perguntas e têm duas respostas.
     pub entity: u64,
-    /// Quão fundo o nó está na árvore — o mesmo aninhamento que a Hierarquia mostra.
-    pub depth: u8,
-    /// A chave i18n do que este nó é (`panel.model3d.kind.*`).
+    /// **Qual dimensão daquele nó** — a posição na lista que o documento devolve.
+    ///
+    /// ⚠️ A posição, e não o nome: é o que um controle cunhado às cegas consegue guardar, e é o que
+    /// a porta de escrita recebe. Reordenar a lista do documento reordena os controles.
+    pub index: usize,
+    /// A chave i18n do NOME desta dimensão (`field.dim.*`).
     ///
     /// ⚠️ Uma **chave**, nunca um rótulo pronto: HR-15. Quem traduz é o painel.
-    pub kind_key: &'static str,
-    pub radius: f32,
-    /// Até onde este raio vai, e **de que natureza é o limite** — parede ou sugestão.
-    pub bound: RadiusBound,
+    pub key: &'static str,
+    pub value: f32,
+    /// Até onde ele vai, e **de que natureza é o limite**.
+    ///
+    /// ⚠️ [`Bound::Hard`] é a **parede do documento** (um filete que não cabe); [`Bound::Soft`] é o
+    /// alcance do **gesto**, que a vista escolhe — uma largura de caixa não tem teto físico, e
+    /// inventar um seria escrever um limite que a física não pede.
+    pub bound: Bound,
 }
 
 /// Um verbo que o gizmo oferece: a chave i18n do rótulo, e se ele é o ativo.
@@ -70,8 +77,14 @@ pub struct ModelSnapshot {
     /// nada é pior do que um que não aparece. Ele mostra-se quando uma operação está selecionada
     /// (e aí o ativo diz qual ela é) ou quando há dois nós irmãos escolhidos.
     pub ops: Vec<ModeChip>,
-    /// Uma linha por nó com raio editável, em **pré-ordem** — a ordem da Hierarquia.
-    pub rows: Vec<RadiusRow>,
+    /// ⭐ **As dimensões do objeto selecionado.** Vazio quando não há nada selecionado — e aí o
+    /// painel diz-lo, em vez de mostrar uma lista de tudo que ninguém pediu.
+    ///
+    /// ⚠️ **Mudou de significado na W10** (antes era *uma linha por nó, com o raio dele*). A divisão
+    /// passou a ser a da casa: a **Hierarquia** mostra a estrutura, o **painel** mostra os números
+    /// do que está escolhido. Uma lista de todos os nós competia com a Hierarquia e não tinha onde
+    /// pôr as outras dimensões.
+    pub rows: Vec<ParamRow>,
     /// Quantos nós o documento tem **ao todo** — inclusive os sem raio.
     ///
     /// ⚠️ Ele existe para o rodapé poder dizer *"8 nós, 3 com raio"* em vez de deixar o artista
@@ -87,26 +100,20 @@ pub struct ModelSnapshot {
 /// Uma edição que o painel pede e o shell executa.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ModelIntent {
-    SetRadius {
+    /// Escrever uma dimensão do nó — a **posição** dela na lista do documento, e o valor.
+    SetParam {
         entity: u64,
-        radius: f32,
+        index: usize,
+        value: f32,
     },
     /// Trocar o verbo do gizmo, pela **posição** no seletor.
-    SetGizmoMode {
-        slot: usize,
-    },
+    SetGizmoMode { slot: usize },
     /// Trocar o referencial dos eixos, pela **posição** no seletor.
-    SetGizmoFrame {
-        slot: usize,
-    },
+    SetGizmoFrame { slot: usize },
     /// Acrescentar uma forma à peça, pela **posição** no seletor.
-    AddShape {
-        slot: usize,
-    },
+    AddShape { slot: usize },
     /// Aplicar uma operação booleana ao que está selecionado, pela **posição** no seletor.
-    ApplyOp {
-        slot: usize,
-    },
+    ApplyOp { slot: usize },
 }
 
 /// O shell publica o retrato antes de pintar.

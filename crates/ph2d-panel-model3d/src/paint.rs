@@ -12,26 +12,19 @@ use ph2d_editor_core::widget::panel_chrome::{
 };
 use ph2d_editor_core::widget::{NUMBER_INPUT_MIN_W_PX, paint_slider_with_chip_layout_adaptive};
 use ph2d_editor_core::zones::Rect;
-use ph2d_field::RadiusBound;
+use ph2d_field::Bound;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
-use crate::state::{self, Model3dPanelState, RadiusRow};
+use crate::state::{self, Model3dPanelState, ParamRow};
 use crate::{Model3dPanel, populate::MAX_MODES, populate::MAX_ROWS};
 
 /// A goteira do rótulo. Os rótulos aqui são o **tipo do nó** ("Union", "Cylinder"), não uma frase.
 const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
 
-/// Quanto um nível de profundidade recua a linha — o mesmo gesto que a Hierarquia faz.
-const ROW_INDENT_PX: f32 = 10.0; // LITERAL-PX-OK: panel grid metric (tree indent per level)
-
-/// O piso da largura de uma linha recuada: abaixo disto o slider deixa de ser arrastável e o
-/// controle passa a existir sem ser usável, que é pior do que não recuar.
-const MIN_ROW_W_PX: f32 = 120.0; // LITERAL-PX-OK: panel grid metric (minimum usable row width)
-
-/// Casas decimais do raio.
+/// Casas decimais de uma dimensão.
 ///
-/// ⚠️ **Três, e não duas.** Um raio de CAD é pequeno em relação à peça — os das cenas de smoke vão
+/// ⚠️ **Três, e não duas.** Um filete de CAD é pequeno em relação à peça — os das cenas de smoke vão
 /// de 0,02 a 0,12 — e duas casas transformariam metade da faixa útil no mesmo número na tela.
 const RADIUS_DECIMALS: usize = 3;
 
@@ -154,7 +147,7 @@ fn paint_chips(
 ///
 /// ⭐ Neste arquivo **toda** função de pintura devolve o y seguinte. Uma convenção por arquivo, dita
 /// aqui: misturar as duas é como o erro entrou.
-fn paint_row(ctx: &mut PaintCtx, row: &RadiusRow, slot: u32, x: f32, w: f32, y: f32) -> f32 {
+fn paint_row(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y: f32) -> f32 {
     let theme = ctx.host.theme();
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
@@ -164,11 +157,6 @@ fn paint_row(ctx: &mut PaintCtx, row: &RadiusRow, slot: u32, x: f32, w: f32, y: 
     let slider = ids::model3d_radius_slider(slot);
     let chip = ids::model3d_radius_chip(slot);
     let top = row.bound.value().max(f32::MIN_POSITIVE);
-    // O aninhamento da árvore, visível: um filho recua. Sem isto o painel lista quatro linhas
-    // planas de uma peça que a Hierarquia mostra em dois níveis, e as duas vistas da mesma coisa
-    // discordam à vista.
-    let indent = f32::from(row.depth) * ROW_INDENT_PX;
-    let (x, w) = (x + indent, (w - indent).max(MIN_ROW_W_PX));
 
     // ⚠️ **A faixa real é escrita por LINHA, todo quadro.** O teto de um raio é do nó — a caixa
     // aceita menos do que o cilindro —, e o par slider↔campo foi ligado em 0..1 no `populate`
@@ -196,13 +184,13 @@ fn paint_row(ctx: &mut PaintCtx, row: &RadiusRow, slot: u32, x: f32, w: f32, y: 
     // A verdade é o documento; a posição guardada é só o que o arrasto deixou para trás. Semear a
     // trilha a partir do valor todo quadro é o que mantém o controle honesto quando o raio muda de
     // outro lado — um desfazer, um arquivo aberto, uma segunda linha.
-    let track = (row.radius / top).clamp(0.0, 1.0);
-    let display = f64::from(row.radius);
+    let track = (row.value / top).clamp(0.0, 1.0);
+    let display = f64::from(row.value);
     let text = format!("{display:.RADIUS_DECIMALS$}");
 
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, w, ROW_H_PX),
-        tr(row.kind_key),
+        tr(row.key),
         track,
         display,
         Some(&text),
@@ -266,6 +254,6 @@ fn paint_footer(ctx: &mut PaintCtx, snap: &state::ModelSnapshot, x: f32, w: f32,
 /// pintam igual). Hoje as duas viram a mesma faixa, e isto é o registo de que a distinção existe no
 /// documento e ainda não chegou ao pixel.
 #[allow(dead_code)]
-fn bound_is_wall(b: RadiusBound) -> bool {
-    matches!(b, RadiusBound::Hard(_))
+fn bound_is_wall(b: Bound) -> bool {
+    matches!(b, Bound::Hard(_))
 }

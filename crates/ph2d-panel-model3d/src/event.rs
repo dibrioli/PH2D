@@ -48,14 +48,15 @@ pub(crate) fn apply_event(
                 let snap = state::current();
                 match snap.rows.get(slot) {
                     Some(row) => {
-                        state::push_intent(ModelIntent::SetRadius {
-                            // ⭐ **A ENTIDADE, e não a posição.** A posição escolheu o controle; o
-                            // que ela não pode escolher é o nó — a lista muda de tamanho quando a
-                            // peça muda, e um intent guardado por posição escreveria no vizinho.
+                        state::push_intent(ModelIntent::SetParam {
+                            // ⭐ **A ENTIDADE e o ÍNDICE, nunca a posição do controle.** A posição
+                            // escolheu o widget; o que ela não pode escolher é o nó nem a dimensão
+                            // — a lista muda quando a seleção muda, e um intent guardado por
+                            // posição escreveria noutro número.
                             entity: row.entity,
-                            // A trilha é 0..1; o valor é ela vezes o teto **daquela linha**, que é
-                            // o mesmo teto que a peça aplica.
-                            radius: track * row.bound.value(),
+                            index: row.index,
+                            // A trilha é 0..1; o valor é ela vezes o teto **daquela linha**.
+                            value: track * row.bound.value(),
                         });
                         true
                     }

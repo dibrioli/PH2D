@@ -214,19 +214,27 @@ pub(crate) fn sync_scene_and_birth(
                     with_smoke(|s| s.gizmo_frame = frame);
                 }
             }
-            ph2d_panel_model3d::ModelIntent::SetRadius { entity, radius } => {
-                // Uma recusa é informação, não erro: o nó diz que aquele raio não cabe, e o retrato
-                // publicado logo abaixo devolve o controle ao valor que ficou.
-                let _ = ph2d_field_ecs::set_radius(
+            ph2d_panel_model3d::ModelIntent::SetParam {
+                entity,
+                index,
+                value,
+            } => {
+                // Uma recusa é informação, não erro: o nó diz que aquele número não cabe, e o
+                // retrato publicado logo abaixo devolve o controle ao valor que ficou.
+                let _ = ph2d_field_ecs::set_dim(
                     world,
                     bevy_ecs::entity::Entity::from_bits(entity),
-                    radius,
+                    index,
+                    value,
                 );
             }
         }
     }
 
-    publish_snapshot(world, root, selection, last_trace_ms);
+    // ⭐ O alcance do gesto é **o que cabe no quadro**: uma dimensão maior do que ele é uma cujo
+    // efeito não se vê. O campo numérico continua sem teto, porque digitar 1000 é uma afirmação
+    // sobre a peça e não sobre a janela.
+    publish_snapshot(world, root, selection, cam.half_extent * 2.0, last_trace_ms);
     // ⚠️ Uma peça inválida (um raio que deixou de caber porque a escala do pai mudou) devolve
     // `None` aqui, e a tela mostra o que o cozimento **de facto** produziu. Guardar o último
     // documento válido faria a tela mentir sobre a cena — que é exatamente o defeito que este
@@ -249,24 +257,11 @@ fn publish_snapshot(
     world: &bevy_ecs::world::World,
     root: bevy_ecs::entity::Entity,
     selection: &[bevy_ecs::entity::Entity],
+    view_span: f32,
     ms: f32,
 ) {
     let all = ph2d_field_ecs::walk(world, root);
-    let rows: Vec<ph2d_panel_model3d::RadiusRow> = all
-        .iter()
-        .filter_map(|&(e, depth)| {
-            Some(ph2d_panel_model3d::RadiusRow {
-                entity: e.to_bits(),
-                depth,
-                kind_key: kind_key(&world.get::<FieldNode>(e)?.shape),
-                // ⚠️ O raio E o teto vêm os DOIS do nó. Um painel que guardasse o seu próprio valor
-                // teria duas verdades sobre o mesmo número, e a que aparece na tela seria a errada
-                // sempre que algo o mudasse de outro lado — um desfazer, um arquivo aberto.
-                radius: ph2d_field_ecs::radius_of(world, e)?,
-                bound: ph2d_field_ecs::radius_bound(world, e)?,
-            })
-        })
-        .collect();
+    let rows = param_rows(world, selection.first().copied(), view_span);
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não
     // conhece o enum — acrescentar um verbo lá faz o seletor seguir sem uma linha de mudança.
     let (active, frame) = with_smoke(|s| (s.gizmo_mode, s.gizmo_frame)).unwrap_or_default();
@@ -325,19 +320,59 @@ fn anchor_for(sim: &mut SimWorld, selected: Option<u64>) -> Option<crate::field3
     })
 }
 
-/// A chave i18n do que um nó é. ⚠️ Uma **chave**, nunca um rótulo pronto (HR-15).
-pub(crate) fn kind_key(shape: &NodeShape) -> &'static str {
-    match shape {
-        NodeShape::Combine(op) => match op {
-            Op::Union(_) => "panel.model3d.kind.union",
-            Op::Intersection(_) => "panel.model3d.kind.intersection",
-            Op::Difference(_) => "panel.model3d.kind.difference",
-        },
-        NodeShape::Leaf(p) => match p {
-            Primitive::Cylinder { .. } => "panel.model3d.kind.cylinder",
-            Primitive::Extrude { .. } => "panel.model3d.kind.extrude",
-            _ => "panel.model3d.kind.box",
-        },
+/// ⭐ **As dimensões do objeto selecionado** — o painel é o inspetor da seleção.
+///
+/// ⚠️ **Mudou de forma na W10.** Antes era uma linha por nó com o raio dele — uma segunda vista da
+/// estrutura, a competir com a Hierarquia e sem onde pôr as outras dimensões. A divisão passou a
+/// ser a da casa: a Hierarquia mostra **o que existe**, o painel mostra **os números do escolhido**.
+///
+/// `view_span` é o alcance do **gesto** (ver [`Bound`]): uma largura de caixa não tem teto físico, e
+/// quem escolhe até onde o slider vai é a vista — o que cabe no enquadramento. O documento só
+/// contribui as **paredes** (um filete que não cabe).
+fn param_rows(
+    world: &bevy_ecs::world::World,
+    selected: Option<bevy_ecs::entity::Entity>,
+    view_span: f32,
+) -> Vec<ph2d_panel_model3d::ParamRow> {
+    let Some(e) = selected else {
+        return Vec::new();
+    };
+    let Some(node) = world.get::<FieldNode>(e) else {
+        return Vec::new();
+    };
+    // ⚠️ O valor E o teto vêm os DOIS do nó. Um painel que guardasse o seu próprio valor teria duas
+    // verdades sobre o mesmo número, e a que aparece na tela seria a errada sempre que algo o
+    // mudasse de outro lado — um desfazer, um arquivo aberto, o gizmo.
+    let row = |index: usize, key: &'static str, value: f32, limit: Option<f32>| {
+        ph2d_panel_model3d::ParamRow {
+            entity: e.to_bits(),
+            index,
+            key,
+            value,
+            bound: limit.map_or(ph2d_field::Bound::Soft(view_span), ph2d_field::Bound::Hard),
+        }
+    };
+    match &node.shape {
+        // ⚠️ Uma operação tem **uma** dimensão: o raio da mistura. Ela entra pela mesma porta das
+        // outras (`set_dim`, índice 0), senão haveria dois caminhos de escrita a divergir.
+        NodeShape::Combine(_) => ph2d_field_ecs::radius_of(world, e)
+            .map(|v| {
+                vec![row(
+                    0,
+                    "field.dim.round",
+                    v,
+                    match ph2d_field_ecs::radius_bound(world, e) {
+                        Some(ph2d_field::Bound::Hard(h)) => Some(h),
+                        _ => None,
+                    },
+                )]
+            })
+            .unwrap_or_default(),
+        NodeShape::Leaf(_) => ph2d_field_ecs::dims_of(world, e)
+            .into_iter()
+            .enumerate()
+            .map(|(i, d)| row(i, d.key, d.value, d.limit))
+            .collect(),
     }
 }
 

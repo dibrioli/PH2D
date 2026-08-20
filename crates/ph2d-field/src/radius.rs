@@ -26,15 +26,15 @@ impl FieldDoc {
         }
     }
 
-    /// Até onde esse raio pode ir, e de que natureza é o limite. Ver [`RadiusBound`].
+    /// Até onde esse raio pode ir, e de que natureza é o limite. Ver [`Bound`].
     #[must_use]
-    pub fn radius_bound(&self, node: NodeId) -> Option<RadiusBound> {
+    pub fn radius_bound(&self, node: NodeId) -> Option<Bound> {
         match &self.node(node)?.kind {
             // Um raio de mistura não tem limite de VALIDADE: o campo continua a ser uma distância
             // com qualquer raio. O que existe é escala — e ela vem da menor peça sob este nó,
             // porque um filete maior do que ela engole-a.
-            NodeKind::Combine { .. } => Some(RadiusBound::Soft(self.subtree_scale(node))),
-            NodeKind::Leaf(p) => round_limit(p).map(RadiusBound::Hard),
+            NodeKind::Combine { .. } => Some(Bound::Soft(self.subtree_scale(node))),
+            NodeKind::Leaf(p) => round_limit(p).map(Bound::Hard),
         }
     }
 
@@ -236,25 +236,29 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
     }
 }
 
-/// Até onde um raio pode ir, e **de que natureza é esse limite**.
+/// Até onde uma dimensão pode ir, e **de que natureza é esse limite**.
+///
+/// ⚠️ **Chamou-se `RadiusBound` até 20/08**, e o nome deixou de dizer a verdade no dia em que as
+/// outras dimensões ficaram editáveis (a largura de uma caixa tem um alcance de gesto tanto quanto
+/// um filete tem uma parede). *Um nome que descreve o primeiro uso passa a mentir no segundo.*
 ///
 /// ⚠️ A distinção não é decorativa e por isso está no tipo, em vez de num comentário: um limite de
 /// **validade** é uma parede (o documento recusa), e um de **escala** é uma sugestão (a forma
 /// continua correta, só deixa de ser útil). Um controle que os pintasse igual mentiria numa das
 /// duas direções — ou proibiria o que é legítimo, ou ofereceria o que vai ser recusado.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum RadiusBound {
+pub enum Bound {
     /// O documento **recusa** acima disto.
     Hard(f32),
     /// Não há limite de validade. Este é o alcance **útil**, derivado do tamanho da peça.
     Soft(f32),
 }
 
-impl RadiusBound {
+impl Bound {
     #[must_use]
     pub fn value(self) -> f32 {
         match self {
-            RadiusBound::Hard(v) | RadiusBound::Soft(v) => v,
+            Bound::Hard(v) | Bound::Soft(v) => v,
         }
     }
 }

@@ -12,7 +12,7 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "panel.model3d.title" => "3D Model",
-        "panel.model3d.empty" => "No model in the scene yet.",
+        "panel.model3d.empty" => "Select an object to edit its dimensions.",
         // ⚠️ O rótulo diz **Radius**, e é um compromisso que o documento honra: quem escolher a
         // mistura orgânica vê um número que entrega 3/4 do que promete (ver `Blend::Organic`), e
         // isso é uma decisão de produto por tomar — não uma etiqueta a corrigir aqui.
@@ -39,6 +39,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.op.union" => "Union",
         "panel.model3d.op.subtract" => "Subtract",
         "panel.model3d.op.intersect" => "Intersect",
+        // ⭐ Os NOMES das dimensões. ⚠️ Eles vivem aqui e não numa tabela do documento: a
+        // `ph2d-field` devolve **chaves**, e quem traduz é a UI (HR-15).
+        "field.dim.width" => "Width",
+        "field.dim.height" => "Height",
+        "field.dim.depth" => "Depth",
+        "field.dim.radius" => "Radius",
+        "field.dim.thickness" => "Thickness",
+        // ⚠️ "Fillet" e não "Round": é a palavra que um modelador usa, e é a promessa do módulo
+        // dita pelo nome dela.
+        "field.dim.round" => "Fillet",
         "panel.model3d.kind.union" => "Union",
         "panel.model3d.kind.intersection" => "Intersect",
         "panel.model3d.kind.difference" => "Subtract",

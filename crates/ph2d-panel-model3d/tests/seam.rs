@@ -11,8 +11,8 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
-use ph2d_field::RadiusBound;
-use ph2d_panel_model3d::state::{Model3dPanelState, ModelSnapshot, RadiusRow};
+use ph2d_field::Bound;
+use ph2d_panel_model3d::state::{Model3dPanelState, ModelSnapshot, ParamRow};
 use ph2d_panel_model3d::{Model3dPanel, ModelIntent, drain_intents, publish, state};
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -27,14 +27,14 @@ fn scene_with_one_union() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
-        rows: vec![RadiusRow {
+        rows: vec![ParamRow {
             entity: THE_UNION,
-            depth: 0,
-            kind_key: "panel.model3d.kind.union",
-            radius: 0.05,
+            index: 0,
+            key: "field.dim.round",
+            value: 0.05,
             // Faixa de 0,4 — o número que o gate abaixo usa para distinguir a escala da linha de
             // uma escala fixa.
-            bound: RadiusBound::Soft(0.4),
+            bound: Bound::Soft(0.4),
         }],
         node_count: 4,
         last_trace_ms: 9.0,
@@ -69,9 +69,10 @@ fn dragging_a_radius_slider_reaches_the_document_intent() {
     let intents = drain_intents();
     assert_eq!(
         intents,
-        vec![ModelIntent::SetRadius {
+        vec![ModelIntent::SetParam {
             entity: THE_UNION,
-            radius: 0.2
+            index: 0,
+            value: 0.2
         }],
         "meio curso de uma faixa de 0,4 é 0,2 (0,5 = a escala da LINHA não foi aplicada), e a \
          entidade tem de ser a 77 e não a posição 0"
@@ -187,13 +188,13 @@ fn a_family_id_without_a_row_does_not_invent_a_node() {
 /// entre "pintado" e "alcançável pelo rato" aparece, e as duas quebraram juntas.
 #[test]
 fn every_row_gets_its_own_band_none_stacked_on_another() {
-    let nodes: Vec<RadiusRow> = (0..4)
-        .map(|n| RadiusRow {
-            entity: u64::from(n as u32) + 100,
-            depth: 0,
-            kind_key: "panel.model3d.kind.cylinder",
-            radius: 0.05,
-            bound: RadiusBound::Hard(0.22),
+    let nodes: Vec<ParamRow> = (0..4)
+        .map(|n| ParamRow {
+            entity: 100,
+            index: n as usize,
+            key: "field.dim.round",
+            value: 0.05,
+            bound: Bound::Hard(0.22),
         })
         .collect();
     publish(ModelSnapshot {

@@ -27,12 +27,14 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+pub mod dims;
 pub mod profile;
 pub mod radius;
 pub mod xform;
 
+pub use dims::{Dim, clamp_round, dims, set_dim};
 pub use profile::{FillRule, Profile, ProfileError};
-pub use radius::{RadiusBound, characteristic_size, round_limit, set_shape_radius};
+pub use radius::{Bound, characteristic_size, round_limit, set_shape_radius};
 pub use xform::Xform;
 
 use serde::{Deserialize, Serialize};

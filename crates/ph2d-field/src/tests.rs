@@ -542,7 +542,7 @@ fn the_bound_the_panel_shows_is_the_bound_the_document_enforces() {
     ] {
         let limit = round_limit(&p).expect("estas primitivas têm round");
         let mut doc = FieldDoc::new(vec![leaf(p)], NodeId(0)).expect("documento");
-        assert_eq!(doc.radius_bound(NodeId(0)), Some(RadiusBound::Hard(limit)));
+        assert_eq!(doc.radius_bound(NodeId(0)), Some(Bound::Hard(limit)));
         for i in 1u16..40 {
             let r = limit * f32::from(i) / 20.0;
             let accepted = doc.set_radius(NodeId(0), r).is_ok();
@@ -565,7 +565,7 @@ fn a_blend_bound_is_scale_not_validity() {
     let mut doc = two_boxes();
     let bound = doc.radius_bound(NodeId(2)).expect("a combinação tem raio");
     assert!(
-        matches!(bound, RadiusBound::Soft(_)),
+        matches!(bound, Bound::Soft(_)),
         "o raio de mistura não tem parede: {bound:?}"
     );
     // A escala vem da menor peça sob o nó: duas caixas de meia-extensão 0,4.
@@ -587,4 +587,144 @@ fn a_shape_without_an_edge_has_no_radius_to_edit() {
     assert_eq!(doc.radius_of(NodeId(0)), None);
     assert_eq!(doc.radius_bound(NodeId(0)), None);
     assert!(doc.set_radius(NodeId(0), 0.1).is_err());
+}
+
+/// ⭐ **As dimensões que uma forma mostra são as que ela tem** — e as meias-extensões não aparecem.
+///
+/// ⚠️ O documento guarda **meias**-extensões (é a forma que a distância assinada quer). Ninguém diz
+/// que uma caixa tem «meia-largura 5»: a lista devolve a largura inteira e a escrita volta a
+/// dividir. Sem a conversão num sítio, cada painel que a mostrasse teria a sua — e uma delas ficaria
+/// para trás.
+#[test]
+fn a_box_reports_full_extents_not_half_ones() {
+    let mut b = Primitive::Box {
+        half: [0.5, 0.25, 0.1],
+        round: 0.05,
+    };
+    let d = crate::dims(&b);
+    assert_eq!(d.len(), 4);
+    assert!((d[0].value - 1.0).abs() < 1e-6, "largura inteira");
+    assert!((d[1].value - 0.5).abs() < 1e-6);
+    assert!((d[2].value - 0.2).abs() < 1e-6);
+    assert!((d[3].value - 0.05).abs() < 1e-6, "o filete é ele próprio");
+
+    crate::set_dim(&mut b, 0, 0, 3.0).expect("largura válida");
+    let Primitive::Box { half, .. } = b else {
+        panic!("continua caixa")
+    };
+    assert!((half[0] - 1.5).abs() < 1e-6, "3 de largura é 1,5 de meia");
+}
+
+/// ⭐ **Encolher uma forma ENCOLHE o filete dela, e não é recusado.**
+///
+/// ⚠️ Um filete que deixa de caber é a situação normal, não um erro: o artista pediu o tamanho, e o
+/// filete é o que **decorre** dele. Recusar obrigaria a desfazer o filete primeiro — dois gestos
+/// onde há um. E o nó tem de ficar **válido**: a invariante do módulo é *um nó que existe está
+/// válido*.
+#[test]
+fn shrinking_a_shape_shrinks_its_fillet_instead_of_refusing() {
+    let mut b = Primitive::Box {
+        half: [0.5; 3],
+        round: 0.4,
+    };
+    // Encolhe a caixa muito abaixo do filete de 0,4.
+    crate::set_dim(&mut b, 0, 0, 0.2).expect("encolher é legítimo");
+    assert!(crate::clamp_round(&mut b), "o filete tinha de ser limitado");
+
+    let Primitive::Box { half, round } = b else {
+        panic!("continua caixa")
+    };
+    assert!((half[0] - 0.1).abs() < 1e-6);
+    assert!(
+        round < crate::round_limit(&b).expect("a caixa tem parede"),
+        "o filete {round} tem de ficar ABAIXO da parede — «igual» já é inválido"
+    );
+    // E o documento aceita-a: é essa a prova de que o limite foi ao sítio certo.
+    FieldDoc::new(
+        vec![Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Leaf(b),
+        }],
+        NodeId(0),
+    )
+    .expect("a caixa limitada é válida");
+}
+
+/// ⚠️ **Um valor não-positivo é recusado, e o nó fica como estava.** Uma caixa de largura zero não é
+/// uma caixa fina — é uma forma que deixou de existir num eixo, e o campo que sai dela não é uma
+/// distância.
+#[test]
+fn writing_a_non_positive_dimension_is_refused_and_leaves_the_shape_alone() {
+    let mut c = Primitive::Cylinder {
+        radius: 0.3,
+        half_height: 0.5,
+        round: 0.05,
+    };
+    for bad in [0.0f32, -1.0, f32::NAN] {
+        assert!(crate::set_dim(&mut c, 0, 0, bad).is_err(), "{bad} passou");
+    }
+    let Primitive::Cylinder { radius, .. } = c else {
+        panic!("continua cilindro")
+    };
+    assert!((radius - 0.3).abs() < 1e-6, "o valor antigo tinha de ficar");
+    // E um índice que não é desta forma também.
+    assert!(crate::set_dim(&mut c, 0, 9, 1.0).is_err());
+}
+
+/// **Um torno não tem dimensões próprias** — a forma dele é o contorno desenhado.
+///
+/// ⚠️ Um número aqui prometeria mexer numa coisa que só o editor vetorial autora. E o gate mede as
+/// duas metades: a lista é vazia, **e** uma escrita nela é recusada.
+#[test]
+fn a_revolve_has_no_dimensions_of_its_own() {
+    let mut r = Primitive::Revolve {
+        profile: a_profile(),
+    };
+    assert!(crate::dims(&r).is_empty());
+    assert!(crate::set_dim(&mut r, 0, 0, 1.0).is_err());
+}
+
+/// ⭐ **Toda forma que tem filete diz onde ele está e qual é a parede dele.**
+///
+/// ⚠️ O gate percorre as primitivas todas: uma nova que ganhe `round` e se esqueça da entrada na
+/// lista ficaria com um filete invisível ao painel — presente no documento, inalcançável pelo
+/// artista.
+#[test]
+fn every_shape_with_a_fillet_exposes_it_with_its_wall() {
+    let shapes = [
+        Primitive::Box {
+            half: [0.4; 3],
+            round: 0.05,
+        },
+        Primitive::Sphere { radius: 0.3 },
+        Primitive::Cylinder {
+            radius: 0.3,
+            half_height: 0.5,
+            round: 0.05,
+        },
+        Primitive::Torus {
+            major: 0.4,
+            minor: 0.1,
+        },
+    ];
+    for p in shapes {
+        let has_wall = crate::round_limit(&p).is_some();
+        let exposed = crate::dims(&p).iter().any(|d| d.key == "field.dim.round");
+        assert_eq!(
+            has_wall, exposed,
+            "{p:?}: o documento diz que tem filete = {has_wall}, e a lista diz {exposed}"
+        );
+        // E a parede que a lista mostra é a MESMA que a validação aplica.
+        if let Some(d) = crate::dims(&p).iter().find(|d| d.key == "field.dim.round") {
+            assert_eq!(d.limit, crate::round_limit(&p));
+        }
+        // ⚠️ Nenhuma dimensão que NÃO é o filete tem parede: inventar um teto para a largura de uma
+        // caixa seria escrever um limite que a física não pede.
+        for d in crate::dims(&p)
+            .iter()
+            .filter(|d| d.key != "field.dim.round")
+        {
+            assert_eq!(d.limit, None, "{p:?}: `{}` ganhou um teto inventado", d.key);
+        }
+    }
 }

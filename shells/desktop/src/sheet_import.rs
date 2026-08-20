@@ -205,6 +205,9 @@ pub(crate) fn import_sheet(
             texture_id,
             region.rect,
             needs_clip,
+            // Um `.png` é alfa RETO — aqui a suposição é a verdade, e o `AuthoredSheet::new` (que
+            // este caminho usa) já a assume.
+            sheet.premultiplied,
         );
         let entity = sim
             .world_mut()

@@ -33,12 +33,14 @@ use crate::pack::{PackError, PackInput, blit};
 /// que a região declarada no `.json` **não contém** o que o `.png` mostra, e esse é o defeito que
 /// só aparece no consumidor, meses depois. O [`AuthoredSheet::validate`] recusaria na mesma no
 /// save; recusar aqui nomeia a peça.
+#[allow(clippy::too_many_arguments)]
 pub fn compose(
     id: u32,
     sheet_name: String,
     size: u32,
     inputs: Vec<PackInput>,
     at: &[[u32; 2]],
+    premultiplied: bool,
 ) -> Result<AuthoredSheet, PackError> {
     if inputs.is_empty() {
         return Err(PackError::Empty);
@@ -94,7 +96,15 @@ pub fn compose(
         let [x, y] = at.get(i).copied().unwrap_or([0, 0]);
         blit(&mut rgba, size, input, x, y);
     }
-    Ok(AuthoredSheet::new(id, sheet_name, size, size, rgba, places))
+    Ok(AuthoredSheet::new_with_alpha(
+        id,
+        sheet_name,
+        size,
+        size,
+        rgba,
+        places,
+        premultiplied,
+    ))
 }
 
 #[cfg(test)]
@@ -132,6 +142,7 @@ mod tests {
             16,
             vec![solid("a", 4, 4, 0x11), solid("b", 2, 2, 0x22)],
             &[[0, 0], [10, 12]],
+            false,
         )
         .expect("cabe");
         assert_eq!(sheet.width, 16);
@@ -144,7 +155,15 @@ mod tests {
     /// O vão nasce **transparente**, e é isso que faz o padding ser padding em vez de lixo.
     #[test]
     fn the_gap_is_transparent() {
-        let sheet = compose(7, "s".into(), 8, vec![solid("a", 2, 2, 0xFF)], &[[0, 0]]).unwrap();
+        let sheet = compose(
+            7,
+            "s".into(),
+            8,
+            vec![solid("a", 2, 2, 0xFF)],
+            &[[0, 0]],
+            false,
+        )
+        .unwrap();
         assert_eq!(px(&sheet, 5, 5), [0, 0, 0, 0]);
     }
 
@@ -158,6 +177,7 @@ mod tests {
             16,
             vec![solid("zebra", 2, 2, 1), solid("alpha", 2, 2, 2)],
             &[[0, 0], [8, 8]],
+            false,
         )
         .unwrap();
         let names: Vec<&str> = sheet.regions.iter().map(|r| r.name.as_str()).collect();
@@ -171,7 +191,15 @@ mod tests {
     /// não contém o que o `.png` mostra, e esse defeito só aparece no consumidor.
     #[test]
     fn a_piece_outside_the_sheet_is_refused_by_name() {
-        let err = compose(7, "s".into(), 8, vec![solid("late", 4, 4, 1)], &[[6, 0]]).unwrap_err();
+        let err = compose(
+            7,
+            "s".into(),
+            8,
+            vec![solid("late", 4, 4, 1)],
+            &[[6, 0]],
+            false,
+        )
+        .unwrap_err();
         assert_eq!(
             err,
             PackError::OutsideSheet {
@@ -191,6 +219,7 @@ mod tests {
             8,
             vec![solid("wrap", 4, 4, 1)],
             &[[u32::MAX - 1, 0]],
+            false,
         )
         .unwrap_err();
         assert!(matches!(err, PackError::OutsideSheet { .. }));
@@ -208,6 +237,7 @@ mod tests {
             16,
             vec![solid("a", 4, 4, 0xAA), solid("b", 4, 4, 0x00)],
             &[[0, 0], [3, 0]],
+            false,
         )
         .unwrap_err();
         assert_eq!(
@@ -230,6 +260,7 @@ mod tests {
             16,
             vec![solid("a", 4, 4, 0xAA), solid("b", 4, 4, 0xBB)],
             &[[0, 0], [4, 0]],
+            false,
         )
         .expect("encostadas cabem");
         assert_eq!(sheet.rgba[3 * 4], 0xAA, "a ultima coluna de `a` sobreviveu");
@@ -258,8 +289,76 @@ mod tests {
             .collect();
         // As regiões do `pack` já vêm ordenadas por nome, e `inputs` também está — a
         // correspondência é posicional de propósito.
-        let composed = compose(1, "s".into(), packed.width, inputs, &at).expect("compõe");
+        let composed = compose(1, "s".into(), packed.width, inputs, &at, false).expect("compõe");
         assert_eq!(composed.rgba, packed.rgba);
         assert_eq!(composed.regions, packed.regions);
+    }
+}
+
+#[cfg(test)]
+mod alpha_mode_tests {
+    use super::*;
+    use crate::pack::{PackOptions, pack};
+
+    /// ⚠️ **A bandeira viaja com os bytes, e é o que impede a próxima suposição.**
+    ///
+    /// Ela existe porque uma suposição — *"uma folha é um PNG, logo é alfa reto"* — custou ao
+    /// artista a borda de cada peça: a amostragem bilinear interpola os bytes ARMAZENADOS antes de
+    /// o shader lhes tocar, e em alfa reto a cor dos texeis transparentes entra na média do
+    /// vizinho opaco (**50 de 255** no meio do gradiente de uma borda, medido).
+    ///
+    /// *Quem liga a folha a um sprite não pode ter de adivinhar em que espaço os bytes estão.*
+    #[test]
+    fn the_alpha_mode_travels_with_the_bytes() {
+        let pre = compose(
+            1,
+            "s".into(),
+            8,
+            vec![PackInput {
+                name: "a".into(),
+                width: 2,
+                height: 2,
+                rgba: vec![0; 16],
+            }],
+            &[[0, 0]],
+            true,
+        )
+        .unwrap();
+        assert!(pre.premultiplied);
+
+        let straight = compose(
+            1,
+            "s".into(),
+            8,
+            vec![PackInput {
+                name: "a".into(),
+                width: 2,
+                height: 2,
+                rgba: vec![0; 16],
+            }],
+            &[[0, 0]],
+            false,
+        )
+        .unwrap();
+        assert!(!straight.premultiplied);
+    }
+
+    /// O `pack` recebe entradas de alfa RETO por contrato (é o que um `.png` traz) — e a folha que
+    /// ele devolve diz isso de si própria.
+    #[test]
+    fn pack_declares_straight() {
+        let sheet = pack(
+            1,
+            "s".into(),
+            vec![PackInput {
+                name: "a".into(),
+                width: 2,
+                height: 2,
+                rgba: vec![0; 16],
+            }],
+            PackOptions::default(),
+        )
+        .unwrap();
+        assert!(!sheet.premultiplied);
     }
 }

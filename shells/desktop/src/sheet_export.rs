@@ -122,9 +122,22 @@ pub(crate) fn write_pair(
     toasts: &mut ToastQueue,
 ) -> Option<PathBuf> {
     let (png, json, image_filename) = paths_for(picked);
+    // ⚠️ **UM PNG É ALFA RETO — sempre.** A folha assada guarda os bytes PRÉ-multiplicados, porque
+    // é isso que faz a amostragem da borda ficar certa no ecrã (vide `sheet_bake`); um ficheiro
+    // não amostra nada, e todo programa que o abrir vai assumir reto. Gravar pré-multiplicado com
+    // extensão `.png` daria uma folha escura no Aseprite e ninguém saberia porquê.
+    //
+    // A conversão é feita numa CÓPIA: a folha em memória continua a ser a que a GPU desenha.
+    let straight = if sheet.premultiplied {
+        let mut px = sheet.rgba.clone();
+        ph2d_render::unpremultiply_rgba8(&mut px);
+        std::borrow::Cow::Owned(px)
+    } else {
+        std::borrow::Cow::Borrowed(&sheet.rgba)
+    };
     if let Err(e) = image::save_buffer(
         &png,
-        &sheet.rgba,
+        &straight,
         sheet.width,
         sheet.height,
         image::ColorType::Rgba8,

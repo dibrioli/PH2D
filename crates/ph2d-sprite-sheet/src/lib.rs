@@ -65,7 +65,7 @@ use serde::{Deserialize, Serialize};
 /// ⚠️ **E este bump é a prova do desenho, não uma nota:** ele acrescentou uma capacidade inteira
 /// ao formato de arquivo e o `PROJECT_SCHEMA` **não se moveu** — logo nenhum projeto já salvo foi
 /// recusado. Era exatamente para isto que o campo nasceu como blob auto-versionado.
-pub const SHEET_DOC_VERSION: u32 = 2;
+pub const SHEET_DOC_VERSION: u32 = 3;
 
 /// Os pixels próprios de um sprite, como o arquivo os guarda.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -144,6 +144,19 @@ pub struct AuthoredSheet {
     /// As regiões, **ordenadas por nome** — vide [`AuthoredSheet::new`]. O índice nesta lista é a
     /// referência durável que o `Sprite` guarda.
     pub regions: Vec<SheetRegion>,
+    /// **Os bytes estão pré-multiplicados?** (v3, 2026-08-19.)
+    ///
+    /// ⚠️ **Não é um detalhe de formato — é o que decide a BORDA.** A amostragem bilinear
+    /// interpola os texeis *antes* de o shader tocar neles, e interpolar alfa reto mistura a cor
+    /// dos texeis transparentes na do vizinho opaco: medido, **50 de 255** de diferença no meio do
+    /// gradiente de uma borda. Interpolar pré-multiplicado dá a resposta certa — e é também o que
+    /// o gerador de mipmaps assume, pelo próprio cabeçalho dele.
+    ///
+    /// Uma folha **assada aqui** nasce pré-multiplicada, como as texturas do app já são; uma folha
+    /// **importada** de um `.png` é reta, porque é isso que um PNG é. A bandeira viaja com os
+    /// bytes para que quem os liga a um sprite não tenha de adivinhar.
+    #[serde(default)]
+    pub premultiplied: bool,
 }
 
 impl AuthoredSheet {
@@ -161,6 +174,23 @@ impl AuthoredSheet {
         rgba: Vec<u8>,
         regions: impl IntoIterator<Item = (String, [u32; 4])>,
     ) -> Self {
+        Self::new_with_alpha(id, name, width, height, rgba, regions, false)
+    }
+
+    /// Como [`Self::new`], dizendo explicitamente se os bytes estão pré-multiplicados.
+    ///
+    /// ⚠️ O `new` continua a assumir **reto** de propósito: é o que um `.png` é, e o import — o
+    /// consumidor mais antigo — não devia mudar de significado por causa desta wave.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_alpha(
+        id: u32,
+        name: String,
+        width: u32,
+        height: u32,
+        rgba: Vec<u8>,
+        regions: impl IntoIterator<Item = (String, [u32; 4])>,
+        premultiplied: bool,
+    ) -> Self {
         let mut regions: Vec<SheetRegion> = regions
             .into_iter()
             .map(|(name, rect)| SheetRegion { name, rect })
@@ -173,6 +203,7 @@ impl AuthoredSheet {
             height,
             rgba,
             regions,
+            premultiplied,
         }
     }
 

@@ -261,7 +261,9 @@ pub fn pack(
         .collect();
     let plan = layout(&items, opts)?;
     let at: Vec<[u32; 2]> = plan.places.iter().map(|(_, r)| [r[0], r[1]]).collect();
-    crate::compose::compose(id, sheet_name, plan.size, inputs, &at)
+    // O `pack` recebe `PackInput` de alfa RETO por contrato (é o que um `.png` traz), então a
+    // folha que ele devolve é reta. Quem tem bytes pré-multiplicados chama o `compose` direto.
+    crate::compose::compose(id, sheet_name, plan.size, inputs, &at, false)
 }
 
 /// Tenta arrumar tudo numa folha `size × size`. `None` = não coube.

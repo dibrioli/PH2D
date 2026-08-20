@@ -231,9 +231,17 @@ impl crate::App {
             let Some(&texture_id) = gfx.sheet_textures.get(&r.sheet) else {
                 continue; // referência a uma folha que o arquivo não trouxe
             };
-            let Some((rect, needs_clip)) = gfx.sheets.get(&r.sheet).and_then(|s| {
-                s.region(r.region)
-                    .map(|reg| (reg.rect, s.regions_need_filter_clip()))
+            let Some((rect, needs_clip, premultiplied)) = gfx.sheets.get(&r.sheet).and_then(|s| {
+                s.region(r.region).map(|reg| {
+                    (
+                        reg.rect,
+                        s.regions_need_filter_clip(),
+                        // ⚠️ A folha CARREGA o modo (v3): reata-se como ela foi gravada, não como
+                        // se supõe. Uma folha antiga (v2) desserializa com `false`, que é o que
+                        // ela de facto era.
+                        s.premultiplied,
+                    )
+                })
             }) else {
                 eprintln!(
                     "[proj] sprite aponta para a regiao {} da folha {}, que nao existe",
@@ -249,7 +257,7 @@ impl crate::App {
                 // ⚠️ A folha carregada pode ter vindo de qualquer lado, então a decisão sai da
                 // GEOMETRIA dela, não da proveniência: se as regiões têm folga, o recuo de meio
                 // texel não defende de nada e só corta borda.
-                bind_sheet_region(&mut sprite, texture_id, rect, needs_clip);
+                bind_sheet_region(&mut sprite, texture_id, rect, needs_clip, premultiplied);
             }
         }
     }
@@ -317,10 +325,16 @@ pub(crate) fn bind_sheet_region(
     texture_id: u32,
     rect: [u32; 4],
     filter_clip: bool,
+    premultiplied: bool,
 ) {
     sprite.source = SpriteSource::Individual { texture_id };
-    // Uma folha do artista é alfa reto (é um PNG); a nossa ferramenta de empacotar grava igual.
-    sprite.premultiplied = false;
+    // ⚠️ **O MODO DE ALFA VEM DA FOLHA, e era um `false` fixo** — a causa da borda que o Enio
+    // fotografou (2026-08-19). A amostragem bilinear interpola os bytes ARMAZENADOS antes de o
+    // shader lhes tocar: interpolar alfa reto mistura a cor dos texeis transparentes na do vizinho
+    // opaco (**50 de 255** no meio do gradiente de uma borda, medido). Uma folha importada de um
+    // `.png` é mesmo reta; uma folha assada aqui é pré-multiplicada, como as texturas do app.
+    // *Dizer «é sempre PNG» sobre uma folha que o próprio app acabou de produzir era a suposição.*
+    sprite.premultiplied = premultiplied;
     sprite.region_enabled = true;
     sprite.region_rect = [
         rect[0] as f32,

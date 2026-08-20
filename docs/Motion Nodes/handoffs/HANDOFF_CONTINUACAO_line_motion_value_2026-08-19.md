@@ -46,10 +46,10 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 38**)
+### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 33**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: a janela fechou
-**vinte e três** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
+**vinte e oito** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
 descesse seria uma que parou de olhar para os lados.
 
 | grupo | entrega | smoke |
@@ -68,6 +68,7 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | 🔬 **UM INSTRUMENTO NOVO, e é o achado do dia:** `conferencia_vs_manifesto.py` cruza a coluna «params hoje» de cada célula com o MANIFESTO do nó (sonda `measure_node_params`, derivada do registry) e sai vermelho quando discordam. Ele acusou **31 células ABERTAS em 16 nós** a descrever um nó que já mudou | — |
 | **V** | folha 01: **cinco células fecharam e QUATRO não custaram código** — `mode`/`spacing` do `distribute_curve`, `align` do `distribute_radial`, `size_random` e `dir_mode` do emitter já tinham shipado. A quinta é o **`probability`** do emitter, construído hoje. A folha desce de **6 para 1 P1** | `=67` |
 | **V** | 🔬 **e a SEGUNDA passagem do instrumento**, com o sinal FORTE (o param que a coluna «default que reduz» nomeia já está no manifesto): 7 acusadas, **2 verdadeiras** (`probability` do emitter — uma SEGUNDA célula pedia o mesmo — e `lacunarity` do `motion.noise`), 5 falsos positivos **todos da mesma forma**, agora tabelados no próprio instrumento | — |
+| **V** | **folha 04 (deformers): CINCO células numa wave** — a `direction` do `bend`, o `radius` e o `profile` do `twist`, o `radius_y` do `spherize` e o `mode` (Fit/Keep Length) do `spline_wrap`. As cinco são adição de param com default literal. A folha desce de **6 para 1 P1**, e o que sobra é de outro tamanho (as arestas de Bézier + patch de Coons do `four_point_warp`) | `=68` |
 
 ⚠️ **E uma correção de GEOMETRIA em `ph2d-vec-scene`, que o smoke do Enio devolveu:** a
 borda que fecha uma fatia **abaulava** 19–25% do raio, porque o handle do arco sobrava na
@@ -176,7 +177,7 @@ ausente.
 
 ---
 
-## §4 — As DEZANOVE LEIS que esta linha pagou para aprender
+## §4 — As VINTE E TRÊS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -301,7 +302,31 @@ são estilo.
     valores** (um `emit_mode` a que falta um terceiro valor; um `start` que é o do *sweep* e
     não o do *trim*). A tabela está no doc-comment do instrumento. *Um homónimo e um enum com
     um valor a menos leem igual num nome — o que decide é ler a célula.*
-19. ⚠️ **Ao consertar um nó de ESTRUTURA, MEÇA os irmãos que mexem na mesma lista** — a sonda
+20. ⚠️ **O `applicable` virou a saída padrão para o device, e a lista já tem TRÊS** — cada uma
+    por um motivo estrutural diferente, e vale atacá-las juntas um dia: o `reindex` do
+    `motion.combine` (a concatenação no device é um `copy_buffer_to_buffer` sem shader), o
+    `probability` do `motion.emitter` (a `count_law` é aritmética e um portão por hash torna a
+    contagem dependente de DADOS — pede o prefix-sum que o `motion.cull` já tem) e a
+    `direction` do `motion.bend` (a expressão de um `ReduceSpec` só alcança `params`, então um
+    extent rodado exigiria o polinómio do `trig.rs` escrito uma segunda vez dentro da string).
+    ⚠️ **O contra-exemplo importa tanto quanto a lista:** o `radius` do `motion.twist` mexe no
+    MESMO tipo de redução e **não** recua — porque a redução não muda de expressão, só o
+    consumidor dela escolhe entre o valor medido e um param. *O que força a recusa é a redução
+    (ou a contagem) mudar de FORMA, nunca o param existir.*
+21. ⚠️ **Um gate que empurra params por uma FRAÇÃO do curso acusa todo enum de estar morto.**
+    O `every_control_the_write_on_scene_offers_does_something_in_it` cutucava cada param por
+    37% do curso; o `mode` do `spline_wrap` é lido com `.round()`, então `0,37` voltava a `0` e
+    o gate reprovou um controle vivo. A cura é do gate e não do param: ele arredonda o empurrão
+    ao `step` do hint quando o passo é inteiro, o que vale para **todo** param discreto.
+22. ⚠️ **Ao escolher a amostra de um gate, evite os pontos FIXOS da lei que mede.** Dois gates
+    do `twist` nasceram vermelhos sobre produto correcto porque eu amostrei em `t = 0,5`: o
+    smoothstep e o smootherstep **fixam o meio** (`0,5 → 0,5`), então três dos quatro perfis
+    dão ali o mesmo número e o gate acusa de decorativo um enum que funciona. A amostra tem de
+    ser onde as leis DISCORDAM. ⚠️ E irmã disto: **a senoide parabólica do HR-5 não é
+    norma-preservante** (`c² + s² ≠ 1` ao bit) — uma rotação por ângulos diferentes perturba o
+    raio em ~0,1%, então um gate de *"a rotação não muda o raio"* precisa de uma barra relativa
+    e não de um épsilon de `f32`.
+23. ⚠️ **Ao consertar um nó de ESTRUTURA, MEÇA os irmãos que mexem na mesma lista** — a sonda
     `measure_identity_after_structure` foi escrita depois do conserto do `sort` e achou o mesmo
     defeito em três vizinhos (`cull` encolhe e deixa `Count` velho; `mirror` e `kaleidoscope`
     crescem e deixam `Index` **e** `Count` velhos; `clone` faz o certo). ⛔ **E não corrija

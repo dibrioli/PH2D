@@ -89,6 +89,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // Where the lens sits, as a displacement from the layout's centroid.
         // `0` is the centroid itself — the literal reduction to the pre-offset
         // behaviour (see the module header).
+        // **A LENTE ELÍPTICA** — ver [`RADIUS_Y`]. Apendado; `0` = «siga o `radius`».
+        ParamSpec {
+            name: "radius_y",
+            default: 0.0,
+        },
         ParamSpec {
             name: "offset_x",
             default: 0.0,
@@ -159,9 +164,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let sp_d = sp_p - sp_c;\n\
         let sp_r = sqrt(sp_d.x * sp_d.x + sp_d.y * sp_d.y);\n\
         let sp_rmax = max(params.radius, 1e-6);\n\
+        // O raio na metrica da lente; circulo => o caminho literal da CPU.\n\
+        var sp_t = sp_r / sp_rmax;\n\
+        if (params.radius_y > 0.0) {\n\
+        \x20   let sp_q = vec2<f32>(sp_d.x / sp_rmax, sp_d.y / params.radius_y);\n\
+        \x20   sp_t = sqrt(sp_q.x * sp_q.x + sp_q.y * sp_q.y);\n\
+        }\n\
         var sp_warped = sp_p;\n\
-        if (sp_r >= 1e-6 && sp_r < sp_rmax) {\n\
-        \x20   let sp_t = sp_r / sp_rmax;\n\
+        if (sp_r >= 1e-6 && sp_t < 1.0) {\n\
         \x20   let sp_scale = 1.0 + read_amount_v(0u) * (1.0 - sp_t * sp_t);\n\
         \x20   sp_warped = vec2<f32>(sp_c.x + sp_d.x * sp_scale, sp_c.y + sp_d.y * sp_scale);\n\
         }\n\
@@ -194,7 +204,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 1,
         },
     ],
-    params: &["radius", "offset_x", "offset_y"],
+    params: &["radius", "radius_y", "offset_x", "offset_y"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -223,6 +233,24 @@ fn falloff_at(vals: &[f32], i: usize) -> f32 {
 /// Bulge/pinch every element around the lens centre within `radius`, blended per
 /// element by `falloff`. A pure function — the whole node.
 ///
+/// **A LENTE ELÍPTICA** (doc 89 folha 04 — AE *Bulge*: **Horizontal Radius** *e* **Vertical
+/// Radius**; Photoshop *Spherize*: **Mode Normal / Horizontal only / Vertical only**).
+///
+/// Tínhamos **um** `radius`, então a lente era **sempre um círculo**. A célula media a saída
+/// que restava e recusava-a: o `field.box` tem largura, altura e rotação, mas ele mascara a
+/// **MISTURA** — o deslocamento continua radial em torno do centro, e nenhuma máscara produz
+/// um deslocamento **anisotrópico**.
+///
+/// ⚠️ **A lei é normalizar ANTES de medir:** o raio deixa de ser `|d|` e passa a ser `|d|` no
+/// espaço em que a elipse é um círculo (`d.x/rx`, `d.y/ry`). O «dentro da lente» e a rampa
+/// `1 − t²` seguem a mesma expressão de sempre — o que muda é a MÉTRICA, não o modelo.
+///
+/// ⚠️ **`0` é o sentinela de «siga o `radius`», e o círculo continua a correr pelo caminho
+/// LITERAL.** Não é conforto: com `rx = ry = R`, `sqrt((dx/R)² + (dy/R)²)` e `sqrt(dx²+dy²)/R`
+/// são a mesma álgebra e **não** o mesmo `f32` — a ordem das divisões muda o arredondamento.
+/// Um default que fosse «quase» o de ontem seria um default que mexeu em toda arte já feita.
+const RADIUS_Y: &str = "radius_y";
+
 /// The centre is the layout's centroid displaced by `offset`; `offset = [0, 0]` is
 /// the centroid itself, and `x + 0.0` is `x` in IEEE-754, so a graph that never
 /// touched the offset gets bit-for-bit the positions it always got.
@@ -230,6 +258,7 @@ fn spherize(
     p: &[[f32; 2]],
     amount: f32,
     radius: f32,
+    radius_y: f32,
     offset: [f32; 2],
     falloff: &[f32],
 ) -> Vec<[f32; 2]> {
@@ -246,10 +275,19 @@ fn spherize(
         .map(|i| {
             let d = [p[i][0] - c[0], p[i][1] - c[1]];
             let r = (d[0] * d[0] + d[1] * d[1]).sqrt();
-            if r < EPS || r >= r_max {
-                return p[i]; // the centre (no direction) or outside the lens
+            if r < EPS {
+                return p[i]; // the centre — no direction to push along
             }
-            let t = r / r_max;
+            // O raio na métrica da lente. Círculo ⇒ o caminho LITERAL ([`RADIUS_Y`]).
+            let t = if radius_y > 0.0 {
+                let (qx, qy) = (d[0] / r_max, d[1] / radius_y);
+                (qx * qx + qy * qy).sqrt()
+            } else {
+                r / r_max
+            };
+            if t >= 1.0 {
+                return p[i]; // outside the lens
+            }
             let scale = 1.0 + amount * (1.0 - t * t);
             let warped = [c[0] + d[0] * scale, c[1] + d[1] * scale];
             let f = falloff_at(falloff, i).clamp(0.0, 1.0);
@@ -270,6 +308,7 @@ impl NodeOp for MotionSpherize {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let radius = ctx.param("radius").max(EPS);
+        let radius_y = ctx.param(RADIUS_Y);
         let offset = [ctx.param("offset_x"), ctx.param("offset_y")];
         let amount = amount_of(&scalar_col(ctx.input(1), VALUE_COL));
         let input = ctx.input(0);
@@ -279,7 +318,7 @@ impl NodeOp for MotionSpherize {
             _ => vec![[0.0, 0.0]; n],
         };
         let falloff = scalar_col(input, "falloff");
-        let out_p = spherize(&p, amount, radius, offset, &falloff);
+        let out_p = spherize(&p, amount, radius, radius_y, offset, &falloff);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "P" {
@@ -328,6 +367,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.1,
         max: 20.0,
         step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ `0` é «siga o `radius`» e o rótulo di-lo — um `min` acima de zero tornaria o círculo
+    // inalcançável pelo painel, e o círculo é o default.
+    ParamUiHint {
+        param: RADIUS_Y,
+        label: "Radius Y (0 = round)",
+        min: 0.0,
+        max: 40.0,
+        step: 0.1,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
@@ -398,7 +447,7 @@ mod tests {
     #[test]
     fn zero_amount_is_the_identity() {
         let p = ring();
-        let out = spherize(&p, 0.0, 3.0, [0.0, 0.0], &[]);
+        let out = spherize(&p, 0.0, 3.0, 0.0, [0.0, 0.0], &[]);
         for (o, q) in out.iter().zip(&p) {
             assert!((o[0] - q[0]).abs() < 1e-5 && (o[1] - q[1]).abs() < 1e-5);
         }
@@ -410,8 +459,8 @@ mod tests {
     fn bulge_pushes_out_and_pinch_pulls_in() {
         let p = ring();
         let base = radius_of(&p, 1); // 1.0
-        let bulged = spherize(&p, 0.6, 3.0, [0.0, 0.0], &[]);
-        let pinched = spherize(&p, -0.6, 3.0, [0.0, 0.0], &[]);
+        let bulged = spherize(&p, 0.6, 3.0, 0.0, [0.0, 0.0], &[]);
+        let pinched = spherize(&p, -0.6, 3.0, 0.0, [0.0, 0.0], &[]);
         assert!(radius_of(&bulged, 1) > base + 0.05, "bulge pushes out");
         assert!(radius_of(&pinched, 1) < base - 0.05, "pinch pulls in");
     }
@@ -424,7 +473,7 @@ mod tests {
         // Symmetric far points keep the centroid at the origin (radius 5 > lens 3).
         p.push([5.0, 0.0]);
         p.push([-5.0, 0.0]);
-        let out = spherize(&p, 0.9, 3.0, [0.0, 0.0], &[]);
+        let out = spherize(&p, 0.9, 3.0, 0.0, [0.0, 0.0], &[]);
         assert_eq!(out[0], [0.0, 0.0], "the centre holds (centroid ~origin)");
         assert!(out.iter().all(|q| q[0].is_finite() && q[1].is_finite()));
         // The far points (distance from the centroid > radius) are unchanged.
@@ -439,7 +488,7 @@ mod tests {
     fn falloff_masks_the_bulge() {
         let p = ring();
         let falloff = vec![1.0, 0.0, 1.0, 1.0, 1.0]; // element 1 masked
-        let out = spherize(&p, 0.8, 3.0, [0.0, 0.0], &falloff);
+        let out = spherize(&p, 0.8, 3.0, 0.0, [0.0, 0.0], &falloff);
         assert!(
             (out[1][0] - 1.0).abs() < 1e-5 && (out[1][1]).abs() < 1e-5,
             "falloff 0 → unchanged: {:?}",
@@ -466,8 +515,8 @@ mod tests {
     #[test]
     fn the_lens_can_be_placed_off_the_centroid() {
         let p = row();
-        let on = spherize(&p, 0.6, 3.0, [0.0, 0.0], &[]);
-        let off = spherize(&p, 0.6, 3.0, [1.0, 0.0], &[]);
+        let on = spherize(&p, 0.6, 3.0, 0.0, [0.0, 0.0], &[]);
+        let off = spherize(&p, 0.6, 3.0, 0.0, [1.0, 0.0], &[]);
 
         assert_eq!(on[2], [0.0, 0.0], "on the centroid: x=0 is the fixed point");
         assert!(on[3][0] > 1.0, "…and x=1 is pushed outward: {:?}", on[3]);
@@ -491,7 +540,7 @@ mod tests {
     #[test]
     fn a_zero_offset_leaves_the_lens_on_the_centroid() {
         let p: Vec<[f32; 2]> = (3..=7).map(|x| [x as f32, 0.0]).collect();
-        let out = spherize(&p, 0.7, 10.0, [0.0, 0.0], &[]);
+        let out = spherize(&p, 0.7, 10.0, 0.0, [0.0, 0.0], &[]);
         assert_eq!(
             out[2],
             [5.0, 0.0],
@@ -506,13 +555,13 @@ mod tests {
     #[test]
     fn the_lens_travels_with_its_subject() {
         let lens = [1.0, 0.0];
-        let here = spherize(&row(), 0.6, 3.0, lens, &[]);
+        let here = spherize(&row(), 0.6, 3.0, 0.0, lens, &[]);
         let shift = [4.0f32, -3.0];
         let moved: Vec<[f32; 2]> = row()
             .iter()
             .map(|q| [q[0] + shift[0], q[1] + shift[1]])
             .collect();
-        let there = spherize(&moved, 0.6, 3.0, lens, &[]);
+        let there = spherize(&moved, 0.6, 3.0, 0.0, lens, &[]);
         for (a, b) in here.iter().zip(&there) {
             assert!(
                 (a[0] + shift[0] - b[0]).abs() < 1e-4 && (a[1] + shift[1] - b[1]).abs() < 1e-4,
@@ -587,3 +636,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "ellipse_tests.rs"]
+mod ellipse_tests;

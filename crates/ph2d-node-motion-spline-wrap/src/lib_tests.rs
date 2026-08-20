@@ -21,7 +21,7 @@ const ARCH: [P2; 4] = [[-3.0, 0.0], [-1.0, 3.0], [1.0, 3.0], [3.0, 0.0]];
 #[test]
 fn amount_zero_is_the_identity() {
     let p = vec![[-2.0, 0.5], [0.0, -0.3], [2.0, 0.1]];
-    let out = wrap(&p, &Curve::cubic(&S_CURVE), 1.0, WHOLE, 0.0, &[]);
+    let out = wrap(&p, &Curve::cubic(&S_CURVE), 1.0, WHOLE, false, 0.0, &[]);
     for (o, q) in out.iter().zip(&p) {
         assert!(
             (o[0] - q[0]).abs() < 1e-5 && (o[1] - q[1]).abs() < 1e-5,
@@ -35,7 +35,7 @@ fn amount_zero_is_the_identity() {
 #[test]
 fn a_row_on_a_straight_curve_stays_straight() {
     let p = vec![[-2.0, 0.4], [0.0, 0.4], [2.0, 0.4]];
-    let out = wrap(&p, &Curve::cubic(&LINE), 1.0, WHOLE, 1.0, &[]);
+    let out = wrap(&p, &Curve::cubic(&LINE), 1.0, WHOLE, false, 1.0, &[]);
     // Constant normal (+y) ⇒ all share the same y; collinear.
     assert!((out[0][1] - out[1][1]).abs() < 1e-3 && (out[1][1] - out[2][1]).abs() < 1e-3);
 }
@@ -45,7 +45,7 @@ fn a_row_on_a_straight_curve_stays_straight() {
 #[test]
 fn a_row_on_a_curved_spline_bends() {
     let p = vec![[-3.0, 0.0], [0.0, 0.0], [3.0, 0.0]]; // a straight row along x
-    let out = wrap(&p, &Curve::cubic(&ARCH), 1.0, WHOLE, 1.0, &[]);
+    let out = wrap(&p, &Curve::cubic(&ARCH), 1.0, WHOLE, false, 1.0, &[]);
     // Cross product of (mid−a) and (b−a): non-zero ⇒ the midpoint bent off the line.
     let (a, mid, b) = (out[0], out[1], out[2]);
     let cross = (mid[0] - a[0]) * (b[1] - a[1]) - (mid[1] - a[1]) * (b[0] - a[0]);
@@ -57,7 +57,15 @@ fn a_row_on_a_curved_spline_bends() {
 fn falloff_masks_the_wrap() {
     let p = vec![[-3.0, 0.0], [0.0, 0.0], [3.0, 0.0]];
     let falloff = vec![1.0, 0.0, 1.0]; // middle element pinned
-    let out = wrap(&p, &Curve::cubic(&S_CURVE), 1.0, WHOLE, 1.0, &falloff);
+    let out = wrap(
+        &p,
+        &Curve::cubic(&S_CURVE),
+        1.0,
+        WHOLE,
+        false,
+        1.0,
+        &falloff,
+    );
     assert_eq!(out[1], p[1], "falloff 0 -> unchanged");
 }
 

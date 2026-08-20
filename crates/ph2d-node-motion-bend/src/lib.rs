@@ -69,6 +69,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "angle",
             default: 90.0,
         },
+        // **A DIREÇÃO da dobra** — ver [`DIRECTION`]. Apendado; `0` ⇒ o eixo X de sempre.
+        ParamSpec {
+            name: "direction",
+            default: 0.0,
+        },
         ParamSpec {
             name: "pivot_x",
             default: 0.0,
@@ -103,6 +108,34 @@ static REDUCES: &[ReduceSpec] = &[ReduceSpec {
     // origins (which is `|pivot_x|`, not "no extent").
     identity: [0.0; 4],
 }];
+
+/// **A DIREÇÃO DA DOBRA** (doc 89 folha 04 — C4D Bend: *"**Angle** defines the direction of
+/// deformation. **0° is the deformer's local X axis**"*; Blender *Simple Deform ▸ Bend* tem
+/// **Axis**). Nós dobrávamos **só no X**, e o header dizia-o como FACTO.
+///
+/// A célula media a composição: `motion.orbit(pivot, +θ) → bend → motion.orbit(pivot, −θ)` —
+/// **três nós para um knob**, e com uma armadilha nomeada (o `motion.rotate` NÃO serve, porque
+/// soma no atributo `rot` e não move `P`).
+///
+/// ⚠️ **A rotação entra e sai no MESMO ponto**: o deslocamento do pivô é levado ao quadro local
+/// da dobra, dobrado ali, e trazido de volta. É a mesma costura que o `field.box` usa para a
+/// sua caixa inclinada — e é o que mantém `pivot`, `angle` e `amount` a significarem uma coisa
+/// só nas duas.
+///
+/// ⚠️ **`0` é literal, e a aritmética foi conferida e não assumida:** `cos_sin_cycles(0)` dá
+/// `(1, 0)` ao bit, e `dx·1 + dy·0 = dx` em IEEE-754 para todo `dx`/`dy` **finito** — o caminho
+/// literal fica escrito na mesma, pelo caso degenerado do `±inf` (onde `0 · inf` é NaN), o
+/// mesmo precedente do `axis_angle` do `motion.sort`.
+///
+/// ⚠️ **O device é RECUSADO quando a direção morde, e a razão é a REDUÇÃO.** O `x_extent` é um
+/// `Max` sobre `abs(v.x − pivot_x)` que o sequenciador corre antes do passe por elemento; num
+/// quadro rodado ele teria de dobrar sobre `abs(dx·cos + dy·sin)`, e a expressão de um
+/// `ReduceSpec` só alcança `params` — o `cos`/`sin` teriam de ser o polinómio do `trig.rs`
+/// **inline dentro da string da redução**, escrito uma segunda vez. ⛔ Duas cópias de uma lei
+/// de HR-5 é exactamente como as duas metades divergem, e usar o `cos` do WGSL ali seria pior.
+/// Manter o extent NÃO-rodado não é opção: ele escala a curvatura, e a dobra sairia com a
+/// força errada **em silêncio**.
+const DIRECTION: &str = "direction";
 
 /// The device form of [`bend`] (GPU/M5). One invocation per element, reading the
 /// layout's X extent from the reduction above.
@@ -176,7 +209,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     params: &["angle", "pivot_x", "pivot_y"],
     count_law: None,
     variant_by_param: None,
-    applicable: None,
+    // ⚠️ Ver [`DIRECTION`]: a redução `x_extent` não roda com o quadro.
+    applicable: Some(|p| p("direction") == 0.0),
 };
 
 fn falloff_at(stream: &Stream, i: usize) -> f32 {
@@ -204,21 +238,33 @@ fn bend(
     base: &[[f32; 2]],
     pivot: [f32; 2],
     angle_deg: f32,
+    direction_deg: f32,
     amount: &[f32],
     falloff: &[f32],
 ) -> Vec<[f32; 2]> {
-    // The layout's half-extent along X (the rim distance) — the arc is scaled to it.
+    // O quadro LOCAL da dobra — ver [`DIRECTION`]. Em `0` a base é `(1, 0)` ao bit e as duas
+    // projecções abaixo devolvem `dx`/`dy` inalterados.
+    let (dc, ds) = cos_sin_cycles(direction_deg / 360.0);
+    let local = |p: [f32; 2]| {
+        let (dx, dy) = (p[0] - pivot[0], p[1] - pivot[1]);
+        if direction_deg == 0.0 {
+            (dx, dy)
+        } else {
+            (dx * dc + dy * ds, -dx * ds + dy * dc)
+        }
+    };
+    // The layout's half-extent along the bend's axis (the rim distance) — the arc is
+    // scaled to it. ⚠️ Medido no quadro LOCAL: é o eixo em que a dobra corre.
     let x_extent = base
         .iter()
-        .map(|p| (p[0] - pivot[0]).abs())
+        .map(|p| local(*p).0.abs())
         .fold(0.0_f32, f32::max);
     // `x_extent` is a max-reduction across all instances (kept serial above);
     // given it, output element `i` is a pure per-instance map → parallel above
     // the threshold (bit-identical, no reduction). GPU/M5 Fase 0.
     par_build(base.len(), |i| {
         let p = base[i];
-        let dx = p[0] - pivot[0];
-        let dy = p[1] - pivot[1];
+        let (dx, dy) = local(p);
         let theta_max = angle_deg * amount_at(amount, i) * PI / 180.0;
         let bent = if x_extent < MIN_ANGLE_RAD || theta_max.abs() < MIN_ANGLE_RAD {
             [dx, dy] // no extent / no angle → identity
@@ -228,11 +274,17 @@ fn bend(
             let (c, s) = cos_sin_cycles((k * dx) / TAU); // cos/sin of the arc angle
             [(r - dy) * s, r * (1.0 - c) + dy * c]
         };
+        // De volta ao mundo — a mesma base, no sentido contrário.
+        let world = if direction_deg == 0.0 {
+            bent
+        } else {
+            [bent[0] * dc - bent[1] * ds, bent[0] * ds + bent[1] * dc]
+        };
         let f = falloff.get(i).copied().unwrap_or(1.0).clamp(0.0, 1.0);
         // Blend from the original toward the bent position by the falloff.
         [
-            p[0] + (pivot[0] + bent[0] - p[0]) * f,
-            p[1] + (pivot[1] + bent[1] - p[1]) * f,
+            p[0] + (pivot[0] + world[0] - p[0]) * f,
+            p[1] + (pivot[1] + world[1] - p[1]) * f,
         ]
     })
 }
@@ -246,6 +298,7 @@ impl NodeOp for MotionBend {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let angle = ctx.param("angle");
+        let direction = ctx.param(DIRECTION);
         let pivot = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         let amount: Vec<f32> = match ctx.input(1).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
@@ -260,7 +313,7 @@ impl NodeOp for MotionBend {
         // Pure per-instance map → parallel above the threshold
         // (bit-identical, no reduction). GPU/M5 Fase 0.
         let falloff: Vec<f32> = par_build(n, |i| falloff_at(input, i));
-        let moved = bend(&base, pivot, angle, &amount, &falloff);
+        let moved = bend(&base, pivot, angle, direction, &amount, &falloff);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "P" {
@@ -304,6 +357,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 270.0,
         step: 1.0,
         widget: ParamWidget::Slider,
+    },
+    // ⚠️ Um `Angle`, e a volta INTEIRA: a direção da dobra é um eixo, e um eixo tem 360° de
+    // resposta distinta (a `−90` a dobra corre para baixo, e isso não é o mesmo que `+90`).
+    ParamUiHint {
+        param: DIRECTION,
+        label: "Direction",
+        min: -180.0,
+        max: 180.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
     },
     ParamUiHint {
         param: "pivot_x",
@@ -357,7 +420,7 @@ mod tests {
     #[test]
     fn a_straight_row_bends_into_an_arc() {
         let row = [[-2.0, 0.0], [-1.0, 0.0], [0.0, 0.0], [1.0, 0.0], [2.0, 0.0]];
-        let out = bend(&row, [0.0, 0.0], 90.0, &[], &[1.0; 5]); // amount empty → 1
+        let out = bend(&row, [0.0, 0.0], 90.0, 0.0, &[], &[1.0; 5]); // amount empty → 1
         // Centre (dx=0) is unmoved.
         assert!(
             out[2][0].abs() < 1e-4 && out[2][1].abs() < 1e-4,
@@ -383,7 +446,7 @@ mod tests {
     fn the_bend_preserves_arc_length() {
         // A 180° bend wraps the row into a half-circle; the two ±rims meet at the top.
         let row = [[-1.0, 0.0], [1.0, 0.0]];
-        let out = bend(&row, [0.0, 0.0], 180.0, &[], &[1.0; 2]);
+        let out = bend(&row, [0.0, 0.0], 180.0, 0.0, &[], &[1.0; 2]);
         // Both rims land at the same x (0) and the same height (the arc diameter).
         assert!(
             (out[0][0] - out[1][0]).abs() < 1e-3,
@@ -404,13 +467,13 @@ mod tests {
     #[test]
     fn amount_scales_and_signs_the_bend() {
         let row = [[2.0, 0.0]];
-        let flat = bend(&row, [0.0, 0.0], 90.0, &[0.0], &[1.0]);
+        let flat = bend(&row, [0.0, 0.0], 90.0, 0.0, &[0.0], &[1.0]);
         assert!(
             (flat[0][0] - 2.0).abs() < 1e-4 && flat[0][1].abs() < 1e-4,
             "amount 0 = identity"
         );
-        let up = bend(&row, [0.0, 0.0], 90.0, &[1.0], &[1.0]);
-        let down = bend(&row, [0.0, 0.0], 90.0, &[-1.0], &[1.0]);
+        let up = bend(&row, [0.0, 0.0], 90.0, 0.0, &[1.0], &[1.0]);
+        let down = bend(&row, [0.0, 0.0], 90.0, 0.0, &[-1.0], &[1.0]);
         assert!(up[0][1] > 0.3, "positive curls up: {:?}", up[0]);
         assert!(down[0][1] < -0.3, "negative curls down: {:?}", down[0]);
     }
@@ -420,7 +483,7 @@ mod tests {
     #[test]
     fn falloff_zero_leaves_an_element_flat() {
         let row = [[2.0, 0.0], [2.0, 0.0]];
-        let out = bend(&row, [0.0, 0.0], 90.0, &[], &[1.0, 0.0]);
+        let out = bend(&row, [0.0, 0.0], 90.0, 0.0, &[], &[1.0, 0.0]);
         assert!(out[1][1].abs() < 1e-4, "masked stays flat: {:?}", out[1]);
         assert!(out[0][1] > 0.3, "focused bends: {:?}", out[0]);
     }
@@ -440,3 +503,7 @@ mod tests {
         assert!(Ops.resolve(MANIFEST.id).is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "direction_tests.rs"]
+mod direction_tests;

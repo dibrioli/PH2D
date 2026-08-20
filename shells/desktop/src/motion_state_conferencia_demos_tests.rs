@@ -485,11 +485,27 @@ fn every_control_the_write_on_scene_offers_does_something_in_it() {
             .filter(|h| h.max > h.min)
             .map_or((spec.default - 1.0, spec.default + 1.0), |h| (h.min, h.max));
         let a = lo + (hi - lo) * 0.37;
-        let nudged = if (a - spec.default).abs() > 1e-4 {
+        let mut nudged = if (a - spec.default).abs() > 1e-4 {
             a
         } else {
             lo + (hi - lo) * 0.71
         };
+        // ⚠️ **Um param DISCRETO tem de ser cutucado por um PASSO INTEIRO.** O `mode` do
+        // `motion.spline_wrap` (`0` Fit · `1` Keep Length) é lido com `.round()`: uma fração
+        // de `0,37` volta a `0` e o gate acusaria de morto um controle vivo. Medido em
+        // 2026-08-19, quando aquele modo entrou. A régua é o `step` do próprio hint — quem
+        // declara um passo inteiro declara que os valores do meio não existem.
+        let step = hints
+            .into_iter()
+            .flatten()
+            .find(|h| h.param == spec.name)
+            .map_or(0.0, |h| h.step);
+        if step >= 1.0 {
+            nudged = (nudged / step).round() * step;
+            if (nudged - spec.default).abs() < 1e-4 {
+                nudged = (spec.default + step).min(hi);
+            }
+        }
 
         for n in doc
             .graph

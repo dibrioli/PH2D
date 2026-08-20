@@ -75,6 +75,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "angle",
             default: 90.0,
         },
+        // **A EXTENSÃO** e o **PERFIL** do twist — ver [`RADIUS`] e [`PROFILE`]. Apendados;
+        // `0`/`Linear` ⇒ o aro medido e a rampa recta de sempre.
+        ParamSpec {
+            name: "radius",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "profile",
+            default: 0.0,
+        },
         ParamSpec {
             name: "pivot_x",
             default: 0.0,
@@ -128,8 +138,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let tw_dy = tw_p.y - params.pivot_y;\n\
         let tw_r = sqrt(tw_dx * tw_dx + tw_dy * tw_dy);\n\
         // The MIN_RADIUS floor belongs to the CONSUMER, not the reduction.\n\
-        let tw_rmax = max(reduce_r_max(), 1e-6);\n\
-        let tw_deg = params.angle * read_amount_v(i) * (tw_r / tw_rmax);\n\
+        var tw_rmax = max(reduce_r_max(), 1e-6);\n\
+        // O aro autorado vence o medido (`0` = auto) — a mesma escolha da CPU.\n\
+        if (params.radius > 0.0) { tw_rmax = params.radius; }\n\
+        let tw_t = clamp(tw_r / tw_rmax, 0.0, 1.0);\n\
+        let tw_deg = params.angle * read_amount_v(i) * tw_curve(i32(tw_round(params.profile)), tw_t);\n\
         let tw_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
         let tw_ph = tw_deg / 360.0;\n\
         let tw_c = twist_sin_cycles(tw_ph + 0.25);\n\
@@ -140,6 +153,17 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   tw_p.x + (tw_rx - tw_p.x) * tw_f,\n\
         \x20   tw_p.y + (tw_ry - tw_p.y) * tw_f));\n",
     wgsl_lib: "\
+        fn tw_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        // A MESMA quatro dos `field.*`, operação por operação (HR-5).\n\
+        fn tw_curve(kind: i32, s: f32) -> f32 {\n\
+            if (kind == 1) { return s * s; }\n\
+            if (kind == 2) { return s * s * (3.0 - 2.0 * s); }\n\
+            if (kind == 3) { return s * s * s * (s * (s * 6.0 - 15.0) + 10.0); }\n\
+            return s;\n\
+        }\n\
         // The corrected parabolic sine at `phase` CYCLES — the port of `trig.rs`.\n\
         fn twist_sin_cycles(phase: f32) -> f32 {\n\
             let f = phase - floor(phase);\n\
@@ -176,7 +200,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 1,
         },
     ],
-    params: &["angle", "pivot_x", "pivot_y"],
+    params: &["angle", "radius", "profile", "pivot_x", "pivot_y"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -212,12 +236,59 @@ fn twist_point(p: [f32; 2], pivot: [f32; 2], deg: f32, f: f32) -> [f32; 2] {
     [p[0] + (rx - p[0]) * f, p[1] + (ry - p[1]) * f]
 }
 
+/// **A EXTENSÃO DO TWIST** (doc 89 folha 04 — C4D Twist: **Size [XYZ]** + Mode + *Fit to
+/// Parent*; Blender *Simple Deform ▸ Twist*: **Limits lower/upper**).
+///
+/// Nós derivávamos o aro por **REDUÇÃO** (`r_max`, todo quadro) e não havia knob. A célula
+/// media a saída que sobrava — uma **isca** no raio desejado — e recusava-a: ela **muda a
+/// CONTAGEM e a arte**, o mesmo argumento que matou a saída análoga do `spherize`.
+///
+/// ⚠️ **`0` é um SENTINELA que quer dizer «auto», não um raio de zero** — o idioma que o
+/// `radius_y` do `spherize` e o `mode` do `motion.cull` já usam nesta casa. Com ele o ramo é o
+/// `r_max` medido, byte-idêntico; acima dele o aro é o número autorado, e um layout que passe
+/// desse aro simplesmente satura no twist inteiro (ver [`PROFILE`], que é onde o clamp mora).
+///
+/// ⚠️ **E ao contrário da direção do `motion.bend`, isto NÃO recua do device:** a redução
+/// continua a correr como sempre e o kernel escolhe entre ela e o param com aritmética pura.
+/// O que fez o `bend` recuar foi a redução ter de mudar de EXPRESSÃO; aqui ela não muda.
+const RADIUS: &str = "radius";
+
+/// **O PERFIL RADIAL DO ÂNGULO** (doc 89 folha 04 — a *Falloff tab* do C4D Twist).
+///
+/// ⚠️ **A célula explicou porque um `falloff` não serve, e ela tem razão:** mascarar uma
+/// rotação por `f` é um lerp POSICIONAL — põe o ponto na **corda**, com raio `r·cos(θ/2)`, e o
+/// layout **encolhe** em vez de destorcer. A referência pede um perfil sobre o `deg`, e nenhuma
+/// porta o alcança. Este param é essa porta: ele molda `t = r/aro` **antes** de o ângulo o
+/// multiplicar, então o que muda é quanto cada anel GIRA, nunca onde ele fica.
+///
+/// A família é a mesma quatro que todo `field.*` desta casa oferece (Linear · Quad · Smooth ·
+/// Smoother), pela razão de sempre: um artista que aprendeu a curva de uma delas leu todas.
+///
+/// ⚠️ **`Linear` é `t` e nada mais** — a identidade da família, e é isso que faz o default ser
+/// byte-idêntico. O `clamp` que entra com ele é invisível no default (com `radius = 0` o `t` é
+/// `r/r_max ≤ 1` por construção) e só morde quando o aro autorado é menor que o layout, que é
+/// exactamente o caso em que saturar é a resposta certa.
+const PROFILE: &str = "profile";
+
+/// A curva de aresta sobre um `s ∈ [0,1]` já clampado — **a MESMA família dos `field.*`**
+/// (HR-5). `0` Linear · `1` Quad · `2` Smooth · `3` Smoother. Monótona, exacta nos extremos.
+fn curve(kind: i32, s: f32) -> f32 {
+    match kind {
+        1 => s * s,
+        2 => s * s * (3.0 - 2.0 * s),
+        3 => s * s * s * (s * (s * 6.0 - 15.0) + 10.0),
+        _ => s,
+    }
+}
+
 /// Twist `base` about `pivot`: element `i` rotates by `angle · amount_i · (r_i /
 /// r_max)`, so the rim turns the full `angle` and the centre not at all.
 fn twist(
     base: &[[f32; 2]],
     pivot: [f32; 2],
     angle: f32,
+    radius: f32,
+    profile: i32,
     amount: &[f32],
     falloff: &[f32],
 ) -> Vec<[f32; 2]> {
@@ -231,6 +302,8 @@ fn twist(
         })
         .fold(0.0_f32, f32::max)
         .max(MIN_RADIUS);
+    // O aro AUTORADO vence o medido — ver [`RADIUS`]. `0` é o sentinela de «auto».
+    let r_max = if radius > 0.0 { radius } else { r_max };
     // `r_max` is a max-reduction across all instances (kept serial above); given
     // it, output element `i` is a pure per-instance map → parallel above the
     // threshold (bit-identical, no reduction). GPU/M5 Fase 0.
@@ -238,7 +311,7 @@ fn twist(
         let p = base[i];
         let (dx, dy) = (p[0] - pivot[0], p[1] - pivot[1]);
         let r = (dx * dx + dy * dy).sqrt();
-        let deg = angle * amount_at(amount, i) * (r / r_max);
+        let deg = angle * amount_at(amount, i) * curve(profile, (r / r_max).clamp(0.0, 1.0));
         let f = falloff.get(i).copied().unwrap_or(1.0).clamp(0.0, 1.0);
         twist_point(p, pivot, deg, f)
     })
@@ -253,6 +326,8 @@ impl NodeOp for MotionTwist {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let angle = ctx.param("angle");
+        let radius = ctx.param(RADIUS);
+        let profile = ctx.param(PROFILE).round() as i32;
         let pivot = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         let amount: Vec<f32> = match ctx.input(1).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
@@ -267,7 +342,7 @@ impl NodeOp for MotionTwist {
         // Pure per-instance map → parallel above the threshold
         // (bit-identical, no reduction). GPU/M5 Fase 0.
         let falloff: Vec<f32> = par_build(n, |i| falloff_at(input, i));
-        let moved = twist(&base, pivot, angle, &amount, &falloff);
+        let moved = twist(&base, pivot, angle, radius, profile, &amount, &falloff);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "P" {
@@ -311,6 +386,26 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 720.0,
         step: 1.0,
         widget: ParamWidget::Slider,
+    },
+    // ⚠️ **`0` é «auto», e o slider di-lo:** o curso começa no sentinela, e o rótulo é o que o
+    // artista lê. Um `min` acima de zero tornaria o modo automático inalcançável pelo painel.
+    ParamUiHint {
+        param: RADIUS,
+        label: "Radius (0 = auto)",
+        min: 0.0,
+        max: 40.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: PROFILE,
+        label: "Profile",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+        },
     },
     ParamUiHint {
         param: "pivot_x",
@@ -369,7 +464,7 @@ mod tests {
         // A row of points at increasing radius on the +x axis.
         let base = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]];
         let f = [1.0; 4];
-        let out = twist(&base, [0.0, 0.0], 180.0, &[], &f); // amount empty → 1.0
+        let out = twist(&base, [0.0, 0.0], 180.0, 0.0, 0, &[], &f); // amount empty → 1.0
         for (b, o) in base.iter().zip(out.iter()) {
             // Tolerance covers the ~0.09% parabolic-trig wobble (never accumulates —
             // each frame rotates the pristine P by an absolute angle).
@@ -388,7 +483,7 @@ mod tests {
     fn the_rim_turns_more_than_the_interior() {
         // Points at r = 1 and r = 4 on +x. angle 90°, amount 1.
         let base = [[1.0, 0.0], [4.0, 0.0]];
-        let out = twist(&base, [0.0, 0.0], 90.0, &[], &[1.0; 2]);
+        let out = twist(&base, [0.0, 0.0], 90.0, 0.0, 0, &[], &[1.0; 2]);
         // Outer (r=4=r_max) rotates the full 90° → lands on +y: (0, 4).
         assert!(
             out[1][0].abs() < 0.05 && (out[1][1] - 4.0).abs() < 0.05,
@@ -405,12 +500,12 @@ mod tests {
     #[test]
     fn amount_scales_the_twist_and_zero_is_identity() {
         let base = [[2.0, 0.0]];
-        let none = twist(&base, [0.0, 0.0], 90.0, &[0.0], &[1.0]);
+        let none = twist(&base, [0.0, 0.0], 90.0, 0.0, 0, &[0.0], &[1.0]);
         assert!(
             (none[0][0] - 2.0).abs() < 1e-4 && none[0][1].abs() < 1e-4,
             "amount 0 = identity"
         );
-        let half = twist(&base, [0.0, 0.0], 90.0, &[0.5], &[1.0]);
+        let half = twist(&base, [0.0, 0.0], 90.0, 0.0, 0, &[0.5], &[1.0]);
         // 90°·0.5 = 45° → (2·cos45, 2·sin45) ≈ (1.414, 1.414).
         assert!(
             (half[0][0] - 1.414).abs() < 0.03 && (half[0][1] - 1.414).abs() < 0.03,
@@ -424,7 +519,7 @@ mod tests {
     #[test]
     fn falloff_zero_leaves_an_element_untouched() {
         let base = [[2.0, 0.0], [2.0, 0.0]];
-        let out = twist(&base, [0.0, 0.0], 90.0, &[], &[1.0, 0.0]);
+        let out = twist(&base, [0.0, 0.0], 90.0, 0.0, 0, &[], &[1.0, 0.0]);
         assert!(
             (out[1][0] - 2.0).abs() < 1e-4 && out[1][1].abs() < 1e-4,
             "masked stays put"
@@ -447,3 +542,7 @@ mod tests {
         assert!(Ops.resolve(MANIFEST.id).is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "extent_tests.rs"]
+mod extent_tests;

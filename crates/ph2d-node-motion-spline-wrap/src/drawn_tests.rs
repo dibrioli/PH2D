@@ -131,6 +131,7 @@ fn with_no_shape_named_the_node_is_the_cubic_it_always_was() {
             to: 1.0,
             offset: 0.0,
         },
+        false,
         1.0,
         &[],
     );
@@ -227,10 +228,11 @@ fn the_left_normal_convention_is_the_same_on_both_arms() {
         &Curve::drawn(&line).expect("ha arco"),
         1.0,
         map,
+        false,
         1.0,
         &[],
     );
-    let c = wrap(&p, &Curve::cubic(&cubic), 1.0, map, 1.0, &[]);
+    let c = wrap(&p, &Curve::cubic(&cubic), 1.0, map, false, 1.0, &[]);
     for (a, b) in d.iter().zip(&c) {
         assert!(
             (a[1] - b[1]).abs() < 1e-3 && a[1] > 0.9,

@@ -179,3 +179,34 @@ pub(crate) fn drizzle(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeI
     );
     sinks
 }
+
+/// **A CENA `=68` — OS DEFORMADORES** (doc 89, folha 04: cinco células, quatro nós).
+///
+/// Cinco pares; o mesmo grafo dos dois lados de cada um.
+pub(crate) fn deform(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_deform::build_deform_demo_document(doc, registry).unwrap_or_default();
+    let (dir, rim) = conferencia_demos_deform::authored();
+    eprintln!(
+        "[deform-demo] CINCO pares, {} bandas. Esquerda = como era; direita = o numero novo.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_deform::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Par 1 (azul): `Direction {dir:.0}` roda o EIXO da dobra, nao o layout. Clique no
+  no' Bend da direita e arraste-o: a grelha roda o lado por onde ela curva, ao vivo.
+  (!) Par 2 (laranja): `Radius {rim}` diz ate' ONDE a torcao vai. Fora desse aro tudo leva a
+  volta inteira -- o miolo torce e a borda fica rigida.
+  (!) Par 3 (verde): o `Profile` muda o CAMINHO ate' a volta, nao a volta. A peca mais
+  externa fica exactamente no mesmo sitio nos dois lados; e' o miolo que se reparte diferente.
+  (!) Par 4 (rosa): `Radius Y` achata a lente. Ela incha na largura e nao na altura -- e o
+  contorno dela deixa de ser um circulo, entao pontos que estavam dentro passam a estar fora.
+  (!) Par 5 (lilas): `Keep Length` poe a fileira na curva SEM a esticar. O `Fit` leva-a sempre
+  ate' as duas pontas do S, seja qual for o tamanho dela.
+  (!) DEU ERRADO se as duas bandas de um par sairem iguais, ou se no par 3 a peca do aro
+  mudar de lugar."
+    );
+    sinks
+}

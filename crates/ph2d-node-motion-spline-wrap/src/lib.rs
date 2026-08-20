@@ -78,6 +78,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 1.0,
         },
         // Slides the whole layout along the arc (wraps 0..1).
+        // **A PARAMETRIZAÇÃO** — ver [`MODE_KEEP_LENGTH`]. Apendado; `0` (Fit) ⇒ o de sempre.
+        ParamSpec {
+            name: "mode",
+            default: 0.0,
+        },
         ParamSpec {
             name: "offset",
             default: 0.0,
@@ -230,6 +235,15 @@ impl<'a> Curve<'a> {
         (!lut.is_empty()).then_some(Self::Drawn { pts, lut })
     }
 
+    /// O COMPRIMENTO total do arco, em unidades de mundo — a última entrada da LUT
+    /// cumulativa, nos dois braços. É o divisor do modo [`MODE_KEEP_LENGTH`].
+    fn length(&self) -> f32 {
+        match self {
+            Self::Cubic { lut, .. } => lut.last().copied().unwrap_or(0.0),
+            Self::Drawn { lut, .. } => lut.last().copied().unwrap_or(0.0),
+        }
+    }
+
     /// O ponto, a tangente unitária e a **normal esquerda** unitária em `s`.
     /// A convenção da normal (`⟂` à esquerda) é a MESMA nos dois braços — trocá-la
     /// num deles espelharia o `height_scale` só na curva desenhada.
@@ -243,6 +257,29 @@ impl<'a> Curve<'a> {
         }
     }
 }
+
+/// **`Keep Length` — a parametrização que NÃO estica o layout** (doc 89 folha 04 — C4D Spline
+/// Wrap: **Mode: Fit Spline / Keep Length**).
+///
+/// O nó **sempre** normalizou o `x` sobre a bounding box do layout (`u = (x − xmin)/w`), o que
+/// é o *Fit*: seja qual for o tamanho do layout, ele ocupa a curva INTEIRA. A célula media o
+/// que faltava e não achava saída — *"a parametrização não é alcançável de fora"*, e é
+/// verdade: nenhum nó a jusante desfaz uma normalização que já aconteceu.
+///
+/// ⚠️ **A cura é trocar o DIVISOR, e é só isso.** Em `Keep Length` o divisor deixa de ser a
+/// largura do layout e passa a ser o **comprimento de arco da curva**: um layout de 3 unidades
+/// numa curva de 12 ocupa um quarto dela e mantém a sua escala; dobrar o layout faz metade
+/// dele. É o que separa *"embrulhe isto na curva"* de *"ponha isto na curva sem o deformar"*.
+///
+/// ⚠️ **Um layout mais LONGO que a curva satura na ponta**, e isso não é um erro nem precisa de
+/// guarda nova: o `ArcMap::s_at` já clampa em `[0, 1]` (o mesmo clamp que o `offset` usa para
+/// não dar a volta). O excesso empilha-se no fim da curva, que é o que *keep length* quer dizer
+/// quando não há curva que chegue.
+///
+/// ⚠️ **`Fit` é o default e corre pelo divisor de sempre**, então todo grafo autorado é
+/// byte-idêntico — não por um `if` que devolve o mesmo número por outro caminho, mas porque é
+/// literalmente a mesma expressão.
+const MODE_KEEP_LENGTH: i32 = 1;
 
 /// The multiplicative falloff for element `i` (empty → 1.0).
 fn falloff_at(vals: &[f32], i: usize) -> f32 {
@@ -267,10 +304,11 @@ fn wrap(
     curve: &Curve<'_>,
     height_scale: f32,
     map: ArcMap,
+    keep_length: bool,
     amount: f32,
     falloff: &[f32],
 ) -> Vec<P2> {
-    wrap_with_frame(p, curve, height_scale, map, amount, falloff).0
+    wrap_with_frame(p, curve, height_scale, map, keep_length, amount, falloff).0
 }
 
 /// The same wrap, also returning **how much each element turned** — the angle of
@@ -289,6 +327,7 @@ fn wrap_with_frame(
     curve: &Curve<'_>,
     height_scale: f32,
     map: ArcMap,
+    keep_length: bool,
     amount: f32,
     falloff: &[f32],
 ) -> (Vec<P2>, Vec<f32>) {
@@ -302,9 +341,16 @@ fn wrap_with_frame(
         xmax = xmax.max(q[0]);
     }
     let w = xmax - xmin;
+    // O DIVISOR é a parametrização — ver [`MODE_KEEP_LENGTH`]. Em `Fit` é a largura do
+    // layout (a expressão de sempre); em `Keep Length`, o comprimento da curva.
+    let denom = if keep_length { curve.length() } else { w };
     (0..n)
         .map(|i| {
-            let u = if w < EPS { 0.5 } else { (p[i][0] - xmin) / w };
+            let u = if denom < EPS {
+                0.5
+            } else {
+                (p[i][0] - xmin) / denom
+            };
             // Clamp (not wrap): the layout spans the curve [0,1]; `offset` slides it and
             // clamps at the ends, so the endpoint (u=1) stays on the curve end.
             let s = map.s_at(u);
@@ -335,6 +381,7 @@ impl NodeOp for MotionSplineWrap {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let follow = ctx.param("follow_rotation") >= 0.5;
         let height_scale = ctx.param("height_scale");
+        let keep_length = ctx.param("mode").round() as i32 == MODE_KEEP_LENGTH;
         let map = ArcMap {
             from: ctx.param("from"),
             to: ctx.param("to"),
@@ -373,7 +420,8 @@ impl NodeOp for MotionSplineWrap {
         };
         let falloff = scalar_col(input, "falloff");
         let curve = Curve::drawn(&drawn).unwrap_or_else(|| Curve::cubic(&cp));
-        let (out_p, turn) = wrap_with_frame(&p, &curve, height_scale, map, amount, &falloff);
+        let (out_p, turn) =
+            wrap_with_frame(&p, &curve, height_scale, map, keep_length, amount, &falloff);
         // The element's OWN rotation composes with the curve's frame — this is a
         // modifier on a layout that may already be oriented, not a source that
         // mints one (its sibling `motion.distribute_curve` SETS `rot` because
@@ -528,6 +576,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ Um `Enum` e não um Toggle: os dois nomes são o vocabulário da referência (C4D), e
+    // *"Keep Length"* diz o que faz enquanto *"não esticar"* pedia para se adivinhar o resto.
+    ParamUiHint {
+        param: "mode",
+        label: "Mode",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Fit Spline", "Keep Length"],
+        },
+    },
     ParamUiHint {
         param: "offset",
         label: "Offset",
@@ -636,3 +696,7 @@ mod drawn_tests;
 #[cfg(test)]
 #[path = "range_tests.rs"]
 mod range_tests;
+
+#[cfg(test)]
+#[path = "keep_length_tests.rs"]
+mod keep_length_tests;

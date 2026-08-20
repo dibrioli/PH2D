@@ -56,6 +56,7 @@ mod exporter;
 mod importer;
 mod limits;
 mod opts;
+mod precision;
 mod registry;
 
 pub use buffer::ImageBuffer;
@@ -76,4 +77,5 @@ pub use opts::{
     ColorProfileStrictness, ExportFormat, ExportOpts, ImportOpts, MagicHint, MagicMatch,
     MetadataPolicy, ToneMap,
 };
+pub use precision::{Precision, f32_to_half, half_to_f32, rgba8_to_rgba16, rgba16_to_rgba8};
 pub use registry::{ExporterRegistry, ImporterRegistry};

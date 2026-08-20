@@ -368,3 +368,97 @@ fn a_node_is_named_after_what_it_is() {
         "Difference"
     );
 }
+
+/// ⭐ **Um deslocamento de MUNDO escrito num nó com pai rodado aterra onde o gizmo pediu.**
+///
+/// ⚠️ É a conversão que se esquece. Somar o deslocamento de mundo direto na translação **local**
+/// funciona exatamente enquanto nenhum pai tiver rotação ou escala — o que é verdade na primeira
+/// cena de smoke e em nenhuma peça real. O sintoma é a seta X mover a peça na diagonal, e ele só
+/// aparece depois de alguém rodar um grupo.
+#[test]
+fn a_world_delta_lands_where_the_gizmo_asked_even_under_a_rotated_parent() {
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let doc = FieldDoc::new(
+        vec![
+            ph2d_field::Node {
+                xform: Xform::at(0.1, 0.0, 0.0),
+                kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+            },
+            ph2d_field::Node {
+                xform: Xform::at(0.2, 0.0, 0.0),
+                kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+            },
+            ph2d_field::Node {
+                // Um quarto de volta em Z, e escala 2: as duas metades da inversa que faltavam.
+                xform: Xform {
+                    translation: [0.5, -0.3, 0.2],
+                    rotation: [0.0, 0.0, s, s],
+                    scale: 2.0,
+                },
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+                    children: vec![ph2d_field::NodeId(0), ph2d_field::NodeId(1)],
+                },
+            },
+        ],
+        ph2d_field::NodeId(2),
+    )
+    .expect("documento válido");
+    let root = ph2d_field_ecs::spawn_doc(world, &doc, "Model");
+    let child = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .next()
+        .expect("o primeiro");
+
+    let before = ph2d_field_ecs::world_xform(world, child).translation;
+    let asked = [0.37f32, -0.11, 0.05];
+    ph2d_field_ecs::translate_world(world, child, asked);
+    let after = ph2d_field_ecs::world_xform(world, child).translation;
+
+    for k in 0..3 {
+        assert!(
+            (after[k] - before[k] - asked[k]).abs() < 1e-5,
+            "no eixo {k} o gizmo pediu {} e a peça andou {}",
+            asked[k],
+            after[k] - before[k]
+        );
+    }
+}
+
+/// ⭐ **A peça nasce com um objeto selecionado** — as setas aparecem sem ninguém adivinhar o gesto.
+///
+/// ⚠️ E o selecionado é um **filho**, não a raiz: a raiz é o grupo inteiro, e um gizmo em cima dela
+/// move a peça toda. Quem abre o módulo pela primeira vez quer ver o que uma seta faz a **uma**
+/// forma.
+///
+/// ⚠️ **Uma vez, e só nessa.** Re-selecionar todo quadro tiraria da mão do artista o direito de
+/// escolher outro objeto — o mesmo defeito que o painel de modelagem já pagou ao reabrir sozinho.
+#[test]
+fn the_part_is_born_with_an_object_selected_once_and_only_once() {
+    let _ = ph2d_panel_model3d::drain_intents();
+    let mut sim = a_world();
+    let (_, born) = super::sync_scene_and_birth(&mut sim, Some(&scene(1)), 0.0);
+    let bits = born.expect("nascer tem de pedir uma seleção");
+
+    let root = the_root(&mut sim);
+    let world = sim.world_mut();
+    let e = bevy_ecs::entity::Entity::from_bits(bits);
+    assert!(world.get::<FieldNode>(e).is_some(), "o selecionado é um nó");
+    assert_ne!(e, root, "e não é a raiz — a raiz é o grupo inteiro");
+    assert_eq!(
+        world.get::<ChildOf>(e).map(|c| c.0),
+        Some(root),
+        "é um filho direto da peça"
+    );
+
+    let (_, again) = super::sync_scene_and_birth(&mut sim, None, 0.0);
+    assert_eq!(
+        again, None,
+        "o quadro seguinte não volta a mandar selecionar"
+    );
+}

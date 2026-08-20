@@ -26,18 +26,30 @@ use crate::field3d_smoke::with_smoke;
 const PART_NAME: &str = "Model";
 
 /// Corre uma vez por quadro, antes do traçado. No-op silencioso quando o módulo não está armado.
-pub(crate) fn ecs_bridge(sim: &mut SimWorld) {
-    let Some((initial, ms)) = with_smoke(|s| (s.doc.clone(), s.last_trace_ms)) else {
-        return;
-    };
-    let cooked = sync_scene(sim, initial.as_ref(), ms);
+/// Devolve **um pedido de seleção** quando a peça acabou de nascer — ver [`sync_scene`].
+pub(crate) fn ecs_bridge(sim: &mut SimWorld, selected: Option<u64>) -> Option<u64> {
+    let (initial, ms, pending) =
+        with_smoke(|s| (s.doc.clone(), s.last_trace_ms, s.pending_move.take()))?;
+    // ⭐ **O arrasto do gizmo entra AQUI**, antes do retrato e do cozimento, pela mesma razão que os
+    // intents do painel: o mundo é a verdade e este é o único sítio que a escreve.
+    if let Some((entity, delta)) = pending {
+        ph2d_field_ecs::translate_world(
+            sim.world_mut(),
+            bevy_ecs::entity::Entity::from_bits(entity),
+            delta,
+        );
+    }
+    let (cooked, born) = sync_scene_and_birth(sim, initial.as_ref(), ms);
+    let anchor = anchor_for(sim, selected);
     with_smoke(|s| {
+        s.gizmo = anchor;
         // ⚠️ Só se escreve quando MUDOU: atribuir todo quadro faria o documento parecer novo e
         // re-traçar para sempre, matando o "só se traça o que mudou".
         if s.doc != cooked {
             s.doc = cooked;
         }
     });
+    born
 }
 
 /// O que a ponte **faz**, separado de **se** ela corre.
@@ -48,18 +60,48 @@ pub(crate) fn ecs_bridge(sim: &mut SimWorld) {
 ///
 /// Devolve `None` quando não há geometria nenhuma: apagar o último filho de uma peça na Hierarquia
 /// é um gesto normal, e o resultado normal dele é a tela ficar vazia.
+#[cfg(test)]
 pub(crate) fn sync_scene(
     sim: &mut SimWorld,
     initial: Option<&FieldDoc>,
     last_trace_ms: f32,
 ) -> Option<FieldDoc> {
+    sync_scene_and_birth(sim, initial, last_trace_ms).0
+}
+
+/// A mesma coisa, mais **quem selecionar quando a peça acaba de nascer**.
+///
+/// ⭐ *Feature nova = auto-play*: um gizmo que só aparece depois de o artista adivinhar que tem de
+/// clicar numa linha da Hierarquia é um gizmo que a maioria nunca vê. Ao nascer, a peça seleciona o
+/// **primeiro filho** — um objeto de verdade, com setas em cima dele —, e não a raiz, que é o grupo
+/// inteiro. Uma vez, e só nessa: re-selecionar todo quadro tiraria da mão do artista o direito de
+/// escolher outro.
+pub(crate) fn sync_scene_and_birth(
+    sim: &mut SimWorld,
+    initial: Option<&FieldDoc>,
+    last_trace_ms: f32,
+) -> (Option<FieldDoc>, Option<u64>) {
+    let mut born = None;
     let world = sim.world_mut();
     let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
     let root = match q.iter(world).next().map(|(e, _)| e) {
         Some(e) => e,
         // A primeira vez: a peça inicial explode em objetos. Depois disto a **cena** é a fonte e
         // ninguém volta a chamar isto — inclusive porque `initial` deixa de existir.
-        None => ph2d_field_ecs::spawn_doc(world, initial?, PART_NAME),
+        None => {
+            let Some(doc) = initial else {
+                return (None, None);
+            };
+            let root = ph2d_field_ecs::spawn_doc(world, doc, PART_NAME);
+            born = Some(
+                world
+                    .get::<bevy_ecs::hierarchy::Children>(root)
+                    .and_then(|c| c.iter().copied().next())
+                    .unwrap_or(root)
+                    .to_bits(),
+            );
+            root
+        }
     };
 
     // As edições do painel escrevem no COMPONENTE do nó, que é a peça de verdade.
@@ -82,7 +124,7 @@ pub(crate) fn sync_scene(
     // `None` aqui, e a tela mostra o que o cozimento **de facto** produziu. Guardar o último
     // documento válido faria a tela mentir sobre a cena — que é exatamente o defeito que este
     // módulo acabou de pagar no cache do traçado.
-    ph2d_field_ecs::cook(world, root)?.ok()
+    (ph2d_field_ecs::cook(world, root).and_then(Result::ok), born)
 }
 
 /// **A ponte com o painel**: publica o retrato da peça.
@@ -113,6 +155,26 @@ fn publish_snapshot(world: &bevy_ecs::world::World, root: bevy_ecs::entity::Enti
         node_count: all.len(),
         last_trace_ms: ms,
     });
+}
+
+/// ⭐ **Onde o gizmo tem de aparecer** — a pose de MUNDO do nó selecionado.
+///
+/// ⚠️ A seleção é a do **app** (`hero.gizmo.selection`), e não uma deste módulo: clicar numa linha
+/// da Hierarquia é o gesto que faz as setas aparecerem. Uma seleção própria seria uma segunda ideia
+/// de *"o que está selecionado"* dentro do mesmo aplicativo, e as duas divergiriam no primeiro
+/// clique.
+///
+/// Devolve `None` quando o selecionado não é um nó de modelagem — um sprite selecionado não pode
+/// fazer aparecer um gizmo 3D em cima dele.
+fn anchor_for(sim: &mut SimWorld, selected: Option<u64>) -> Option<crate::field3d_gizmo::Anchor> {
+    let bits = selected?;
+    let entity = bevy_ecs::entity::Entity::from_bits(bits);
+    let world = sim.world_mut();
+    world.get::<FieldNode>(entity)?;
+    Some(crate::field3d_gizmo::Anchor {
+        entity: bits,
+        origin: ph2d_field_ecs::world_xform(world, entity).translation,
+    })
 }
 
 /// A chave i18n do que um nó é. ⚠️ Uma **chave**, nunca um rótulo pronto (HR-15).

@@ -52,7 +52,7 @@ mod edit;
 mod spawn;
 
 pub use cook::{cook, world_xform};
-pub use edit::{radius_bound, radius_of, set_radius, walk};
+pub use edit::{radius_bound, radius_of, set_radius, translate_world, walk};
 pub use spawn::{shape_name, spawn_doc};
 
 use ph2d_ecs::scene::ComponentRegistry;

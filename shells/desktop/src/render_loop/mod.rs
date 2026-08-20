@@ -6677,7 +6677,14 @@ impl crate::App {
             crate::field3d_smoke::set_armed_by_panel(
                 hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID),
             );
-            crate::field3d_scene::ecs_bridge(sim);
+            // ⭐ A seleção do app é a do gizmo 3D: clicar numa linha da Hierarquia é o que faz as
+            // setas aparecerem no objeto. Uma seleção própria deste módulo seria uma segunda ideia
+            // de "o que está selecionado" no mesmo app.
+            if let Some(born) = crate::field3d_scene::ecs_bridge(sim, hero.gizmo.selection) {
+                // ⭐ A peça acabou de nascer: selecioná-la é o que faz as setas aparecerem sem
+                // ninguém ter de adivinhar o gesto. Uma vez, ao nascer (ver `sync_scene_and_birth`).
+                hero.gizmo.replace_selection(Some(born));
+            }
             // O painel de TOKENS (plano UI/UX W6), na MESMA fase e pela mesma razão: um painel de
             // MUNDO, cuja visibilidade é do artista. ⚠️ Ele tem de correr DEPOIS do dispatch de
             // eventos (o intent de Reset é enfileirado ali) e ANTES do paint (senão o frame
@@ -8882,6 +8889,7 @@ impl crate::App {
             // (`field3d_smoke`, §"Estado contido").
             crate::field3d_smoke::draw(
                 ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
+                hero.theme,
                 vector_scene,
             );
             // ADR-0161 W4: o painel de modelagem abre sozinho na primeira vez que o

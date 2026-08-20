@@ -98,6 +98,20 @@ pub(crate) struct Smoke {
     /// continuar a girar **depois** de alguém a ter posto num ângulo é desfazer o gesto dele a cada
     /// quadro — a auto-demonstração deixa de ser um convite e passa a ser uma disputa.
     pub(crate) manual: bool,
+    /// ⭐ **Onde o gizmo está**, publicado pela ponte com a cena — que é quem tem o mundo. `None`
+    /// quando nada de modelagem está selecionado.
+    ///
+    /// ⚠️ A âncora atravessa o quadro em vez de ser recalculada aqui de propósito: o `draw` não tem
+    /// mundo nenhum, e dar-lhe um significaria o traçado passar a depender do ECS.
+    pub(crate) gizmo: Option<crate::field3d_gizmo::Anchor>,
+    /// A alça sob o cursor. Só realce — quem manda no arrasto é o `drag`.
+    pub(crate) gizmo_hot: Option<crate::field3d_gizmo::Handle>,
+    /// O que o arrasto pediu e a ponte ainda não aplicou: `(entidade, deslocamento de MUNDO)`.
+    ///
+    /// ⚠️ **Acumula**, e não substitui: entre dois quadros chegam vários eventos de ponteiro, e
+    /// guardar só o último faria a peça andar menos do que a mão — devagar, e só quando o rato vai
+    /// depressa, que é o defeito mais difícil de acreditar.
+    pub(crate) pending_move: Option<(u64, [f32; 3])>,
 }
 
 /// O gesto de navegação em curso.
@@ -109,6 +123,10 @@ pub(crate) struct Smoke {
 pub(crate) enum Drag {
     Orbit,
     Pan,
+    /// ⭐ Uma alça do gizmo 3D está agarrada. ⚠️ **Ela ganha do botão esquerdo**, e é o único sítio
+    /// onde a navegação cede: uma seta que orbitasse a câmera em vez de mover a peça seria uma alça
+    /// pintada e morta.
+    Gizmo(crate::field3d_gizmo::Handle),
 }
 
 /// O que uma requisição de traçado devolve.
@@ -371,6 +389,9 @@ fn boot() -> Option<Smoke> {
         drag: None,
         last_pointer: (0.0, 0.0),
         manual: false,
+        gizmo: None,
+        gizmo_hot: None,
+        pending_move: None,
     })
 }
 
@@ -472,7 +493,7 @@ pub(crate) fn with_smoke<R>(f: impl FnOnce(&mut Smoke) -> R) -> Option<R> {
 }
 
 /// Desenha o smoke sobre a área dada. No-op silencioso quando a variável não está posta.
-pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
+pub(crate) fn draw(area: EditorRect, theme: ph2d_tokens::Theme, scene_out: &mut VectorScene) {
     STATE.with(|cell| {
         let mut slot = cell.borrow_mut();
         let smoke = slot.get_or_insert_with(boot);
@@ -599,6 +620,25 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
                 // seria o próprio artefato que se acabou de remover.
                 ImageQuality::Medium,
             );
+        }
+
+        // ⭐ **O gizmo por cima da peça**, e no referencial da área.
+        //
+        // ⚠️ Ele é desenhado **depois** do quadro traçado e **sem teste de profundidade**: uma alça
+        // escondida por trás da superfície que ela move seria inalcançável exatamente quando o
+        // artista precisa dela. É o que todo modelador faz, e a razão é essa.
+        if let Some(anchor) = smoke.gizmo {
+            let screen = ph2d_field_render::Screen::new(tw, th, smoke.cam.half_extent);
+            let handles = crate::field3d_gizmo::project(anchor, &smoke.cam, screen);
+            let hot = crate::field3d_input::hot_handle(smoke);
+            scene_out.push_clip(&ph2d_vector::Rect::new(
+                f64::from(area.x),
+                f64::from(area.y),
+                f64::from(area.x + area.w),
+                f64::from(area.y + area.h),
+            ));
+            crate::field3d_gizmo_paint::paint(scene_out, &handles, hot, theme, [area.x, area.y]);
+            scene_out.pop_layer();
         }
     });
 }

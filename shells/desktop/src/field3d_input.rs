@@ -27,7 +27,35 @@
 //! [`project-memory`]: ../../../project-memory/feedback_inherited_affordance_must_be_rederived.md
 
 use crate::app_state::App;
-use crate::field3d_smoke::{Drag, with_smoke};
+use crate::field3d_gizmo::{self, Handle};
+use crate::field3d_smoke::{Drag, Smoke, with_smoke};
+use ph2d_field_render::Screen;
+
+/// **As alças do gizmo, projetadas para o enquadramento deste quadro** — ou vazio quando não há
+/// nada selecionado.
+///
+/// ⚠️ Recalculadas a cada pergunta, e não guardadas: a câmera muda a cada quadro do prato giratório,
+/// e uma lista de alças em cache seria a resposta de um enquadramento anterior — o mesmo congelador
+/// que o traçado já pagou, só que a apontar em vez de a desenhar.
+fn handles(s: &Smoke) -> Vec<field3d_gizmo::Projected> {
+    let (Some(anchor), Some(area)) = (s.gizmo, s.area) else {
+        return Vec::new();
+    };
+    let screen = Screen::new(
+        area.w.round().max(1.0) as u32,
+        area.h.round().max(1.0) as u32,
+        s.cam.half_extent,
+    );
+    field3d_gizmo::project(anchor, &s.cam, screen)
+}
+
+/// O ponto do cursor no referencial da **área desenhada** — que é o referencial em que o gizmo foi
+/// projetado. ⚠️ Esquecer esta subtração faz as alças agarrarem deslocadas do tamanho da moldura do
+/// app, e o defeito só aparece quando a janela 3D não começa em (0, 0).
+fn local(s: &Smoke, p: (f32, f32)) -> Option<[f32; 2]> {
+    let area = s.area?;
+    Some([p.0 - area.x, p.1 - area.y])
+}
 
 /// Radianos de órbita por pixel de arrasto — **o mesmo número do módulo de escultura**
 /// (`sculpt3d_rulers::ORBIT_RAD_PER_PX`).
@@ -131,64 +159,18 @@ impl App {
         if crate::forwarding::cursor_over_hero_chrome(self.gfx.as_ref(), pos.0, pos.1) {
             return false;
         }
-        let drag = match button {
+        let fallback = match button {
             winit::event::MouseButton::Left | winit::event::MouseButton::Right => Drag::Orbit,
             winit::event::MouseButton::Middle => Drag::Pan,
             _ => return false,
         };
-        with_smoke(|s| {
-            // ⚠️ **Fora da área desenhada, o gesto não é meu.** O `Move` e o `Up` NÃO fazem esta
-            // pergunta, de propósito: um arrasto em curso continua a ser do gesto que o abriu mesmo
-            // que o cursor passeie por fora — a regra de captura que todo gizmo deste shell segue.
-            let Some(area) = s.area else {
-                return false;
-            };
-            if pos.0 < area.x
-                || pos.1 < area.y
-                || pos.0 >= area.x + area.w
-                || pos.1 >= area.y + area.h
-            {
-                return false;
-            }
-            s.drag = Some(drag);
-            s.last_pointer = pos;
-            s.manual = true;
-            true
-        })
-        .unwrap_or(false)
+        with_smoke(|s| begin(s, button, fallback, pos)).unwrap_or(false)
     }
 
     /// O ponteiro moveu. **Só consome com um arrasto em curso** — senão a janela 3D engoliria todo
     /// hover do app 2D.
     pub(crate) fn field3d_pointer_move(&mut self, x: f32, y: f32) -> bool {
-        with_smoke(|s| {
-            let Some(drag) = s.drag else {
-                return false;
-            };
-            let (dx, dy) = (x - s.last_pointer.0, y - s.last_pointer.1);
-            s.last_pointer = (x, y);
-            match drag {
-                // ⚠️ **Manipulação direta: o modelo segue a mão.** Os sinais são os que a
-                // `line/sculpt3d` já pagou para descobrir, e o gate que os prende aqui mede **o
-                // modelo na tela**, nunca o sinal: foi argumentando sobre sinais que o erro entrou
-                // lá.
-                Drag::Orbit => law::orbit(&mut s.cam, dx, dy),
-                // O alvo anda ao CONTRÁRIO da mão: mover o ponto olhado para a esquerda é o que faz
-                // o modelo aparecer mais à direita.
-                //
-                // ⚠️ O passo é em **fração do lado menor do quadro**, vezes `half_extent` — é isso
-                // que faz arrastar o mesmo tanto de tela mover o mesmo tanto de modelo em qualquer
-                // zoom. Um passo em unidades de mundo fixas ficaria absurdo assim que se aproxima.
-                Drag::Pan => {
-                    let Some(area) = s.area else {
-                        return true;
-                    };
-                    law::pan(&mut s.cam, dx, dy, area.w.min(area.h) * 0.5);
-                }
-            }
-            true
-        })
-        .unwrap_or(false)
+        with_smoke(|s| advance(s, x, y)).unwrap_or(false)
     }
 
     /// O ponteiro subiu. Fecha o arrasto, se havia um.
@@ -254,6 +236,112 @@ impl App {
             true
         })
         .unwrap_or(false)
+    }
+}
+
+/// ⭐ **O que o ponteiro FAZ**, sobre o estado do smoke e nada mais.
+///
+/// ⚠️ Separado dos métodos de `App` de propósito, e não por arrumação: era a costura ponteiro↔gizmo
+/// que ficava sem gate. A `DIRETIVA_IMPLEMENTACAO` §1 chama-lhe a causa nº 1 da semana perdida no
+/// Painter — *"a alça está pintada, o arrasto está correto, e ninguém liga os dois"* passa em todo
+/// teste de unidade dos dois lados.
+pub(crate) fn begin(
+    s: &mut Smoke,
+    button: winit::event::MouseButton,
+    fallback: Drag,
+    pos: (f32, f32),
+) -> bool {
+    // ⚠️ **Fora da área desenhada, o gesto não é meu.** O `Move` e o `Up` NÃO fazem esta pergunta,
+    // de propósito: um arrasto em curso continua a ser do gesto que o abriu mesmo que o cursor
+    // passeie por fora — a regra de captura que todo gizmo deste shell segue.
+    let Some(area) = s.area else {
+        return false;
+    };
+    if pos.0 < area.x || pos.1 < area.y || pos.0 >= area.x + area.w || pos.1 >= area.y + area.h {
+        return false;
+    }
+    // ⭐ **A alça ganha do gesto de câmera**, e só com o botão ESQUERDO: o direito continua a
+    // orbitar mesmo por cima do gizmo, que é a saída para quem quer girar a vista sem primeiro
+    // tirar o rato de cima da peça.
+    let grabbed = (button == winit::event::MouseButton::Left)
+        .then(|| local(s, pos).and_then(|p| field3d_gizmo::pick(&handles(s), p)))
+        .flatten();
+    s.drag = Some(grabbed.map_or(fallback, Drag::Gizmo));
+    s.gizmo_hot = grabbed;
+    s.last_pointer = pos;
+    s.manual = true;
+    true
+}
+
+/// O ponteiro moveu. Devolve `true` só quando o gesto é desta janela.
+pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
+    let Some(drag) = s.drag else {
+        // ⚠️ **Sem arrasto, o hover ainda é atualizado — e o evento NÃO é consumido.** As
+        // duas metades importam: sem a primeira a alça nunca acende e o artista não sabe o
+        // que vai agarrar; com a segunda invertida, a janela 3D engoliria todo movimento de
+        // rato do app 2D.
+        s.gizmo_hot = local(s, (x, y)).and_then(|p| field3d_gizmo::pick(&handles(s), p));
+        return false;
+    };
+    let (dx, dy) = (x - s.last_pointer.0, y - s.last_pointer.1);
+    s.last_pointer = (x, y);
+    match drag {
+        // ⚠️ **Manipulação direta: o modelo segue a mão.** Os sinais são os que a
+        // `line/sculpt3d` já pagou para descobrir, e o gate que os prende aqui mede **o
+        // modelo na tela**, nunca o sinal: foi argumentando sobre sinais que o erro entrou
+        // lá.
+        Drag::Orbit => law::orbit(&mut s.cam, dx, dy),
+        // O alvo anda ao CONTRÁRIO da mão: mover o ponto olhado para a esquerda é o que faz
+        // o modelo aparecer mais à direita.
+        //
+        // ⚠️ O passo é em **fração do lado menor do quadro**, vezes `half_extent` — é isso
+        // que faz arrastar o mesmo tanto de tela mover o mesmo tanto de modelo em qualquer
+        // zoom. Um passo em unidades de mundo fixas ficaria absurdo assim que se aproxima.
+        Drag::Pan => {
+            let Some(area) = s.area else {
+                return true;
+            };
+            law::pan(&mut s.cam, dx, dy, area.w.min(area.h) * 0.5);
+        }
+        // ⭐ O arrasto do gizmo **não escreve na peça aqui**: ele acumula um deslocamento
+        // de mundo que a ponte com a cena aplica no início do quadro seguinte. É o mesmo
+        // caminho dos intents do painel, e pela mesma razão — o mundo tem um só escritor.
+        Drag::Gizmo(handle) => {
+            let (Some(anchor), Some(area)) = (s.gizmo, s.area) else {
+                return true;
+            };
+            let screen = Screen::new(
+                area.w.round().max(1.0) as u32,
+                area.h.round().max(1.0) as u32,
+                s.cam.half_extent,
+            );
+            let d = field3d_gizmo::drag(
+                handle,
+                anchor,
+                &s.cam,
+                screen,
+                [x - dx - area.x, y - dy - area.y],
+                [x - area.x, y - area.y],
+            );
+            let acc = s.pending_move.filter(|(e, _)| *e == anchor.entity);
+            let base = acc.map_or([0.0; 3], |(_, v)| v);
+            s.pending_move = Some((
+                anchor.entity,
+                [base[0] + d[0], base[1] + d[1], base[2] + d[2]],
+            ));
+        }
+    }
+    true
+}
+
+/// A alça que o gizmo tem de pintar realçada: a **agarrada** ganha da que está sob o cursor.
+///
+/// ⚠️ Não é detalhe: durante um arrasto o cursor sai de cima da alça — é isso que arrastar É —, e
+/// sem esta precedência o realce apagava-se no instante exato em que o gesto começa a valer.
+pub(crate) fn hot_handle(s: &Smoke) -> Option<Handle> {
+    match s.drag {
+        Some(Drag::Gizmo(h)) => Some(h),
+        _ => s.gizmo_hot,
     }
 }
 

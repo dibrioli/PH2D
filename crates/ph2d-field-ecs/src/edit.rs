@@ -8,11 +8,12 @@
 use bevy_ecs::entity::Entity;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::world::World;
+use ph2d_field::xform::quat_rotate;
 use ph2d_field::{
-    FieldError, NodeShape, RadiusBound, characteristic_size, round_limit, set_shape_radius,
+    FieldError, NodeShape, RadiusBound, Xform, characteristic_size, round_limit, set_shape_radius,
 };
 
-use crate::FieldNode;
+use crate::{FieldNode, FieldPose};
 
 /// **A árvore em pré-ordem**, com a profundidade de cada nó — a mesma ordem e o mesmo aninhamento
 /// que a Hierarquia mostra.
@@ -78,10 +79,7 @@ fn subtree_scale(world: &World, root: Entity) -> f32 {
         let Some(node) = world.get::<FieldNode>(e) else {
             continue;
         };
-        let acc = acc
-            * world
-                .get::<crate::FieldPose>(e)
-                .map_or(1.0, |p| p.xform.scale);
+        let acc = acc * world.get::<FieldPose>(e).map_or(1.0, |p| p.xform.scale);
         match &node.shape {
             NodeShape::Leaf(p) => best = best.min(characteristic_size(p) * acc),
             NodeShape::Combine(_) => {
@@ -97,6 +95,46 @@ fn subtree_scale(world: &World, root: Entity) -> f32 {
         best
     } else {
         1.0
+    }
+}
+
+/// ⭐ **Move um nó por um deslocamento de MUNDO**, escrevendo na pose **local** dele.
+///
+/// ⚠️ A conversão é a razão de esta função existir. O gizmo desenha e agarra em mundo — é a
+/// regra-mãe do vetorial (*o que se vê e se aponta é MUNDO; o que o documento guarda é LOCAL*) — e
+/// o que o nó guarda é a pose relativa ao pai. Somar o deslocamento de mundo direto na translação
+/// local funcionaria **exatamente** enquanto nenhum pai tivesse rotação ou escala, que é o caso da
+/// primeira cena de smoke e de nenhuma peça real.
+///
+/// A inversa de uma pose com rotação e escala uniforme é fechada: desfaz-se a rotação com o
+/// conjugado e divide-se pela escala.
+///
+/// No-op silencioso se a entidade não tem pose — mover o que não tem onde guardar a posição não é
+/// um erro a reportar, é um gesto sem alvo.
+pub fn translate_world(world: &mut World, entity: Entity, delta: [f32; 3]) {
+    if !delta.iter().all(|v| v.is_finite()) {
+        return;
+    }
+    let parent = world
+        .get::<bevy_ecs::hierarchy::ChildOf>(entity)
+        .map(|c| c.0);
+    let outer = parent.map_or(Xform::IDENTITY, |p| crate::world_xform(world, p));
+    let inv_rot = [
+        -outer.rotation[0],
+        -outer.rotation[1],
+        -outer.rotation[2],
+        outer.rotation[3],
+    ];
+    let s = if outer.scale.abs() > f32::MIN_POSITIVE {
+        outer.scale
+    } else {
+        1.0
+    };
+    let local = quat_rotate(inv_rot, [delta[0] / s, delta[1] / s, delta[2] / s]);
+    if let Some(mut pose) = world.get_mut::<FieldPose>(entity) {
+        for (t, d) in pose.xform.translation.iter_mut().zip(local) {
+            *t += d;
+        }
     }
 }
 

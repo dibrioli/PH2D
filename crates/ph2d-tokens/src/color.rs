@@ -378,6 +378,17 @@ color_tokens! {
     CurveG => "curve-g",
     /// `curve-b` — blue channel tint for the Curves editor.
     CurveB => "curve-b",
+    /// `axis-x` — a **identidade do eixo X** num gizmo 3D (vermelho).
+    ///
+    /// ⚠️ **Não é o `curve-r`, e a diferença não é de tom — é de significado.** O `curve-*` é o
+    /// tinto de um canal de cor; um eixo é uma **direção do espaço**, e a convenção
+    /// X=vermelho / Y=verde / Z=azul é a que todo modelador 3D usa (Blender, Maya, Unity). Um dia
+    /// alguém vai re-vestir o editor de Curvas e não pode mover os eixos junto.
+    AxisX => "axis-x",
+    /// `axis-y` — a identidade do eixo Y num gizmo 3D (verde). Ver [`ColorToken::AxisX`].
+    AxisY => "axis-y",
+    /// `axis-z` — a identidade do eixo Z num gizmo 3D (azul). Ver [`ColorToken::AxisX`].
+    AxisZ => "axis-z",
     /// `canvas` — viewport background (scene render target backdrop).
     Canvas => "canvas",
 

@@ -220,3 +220,159 @@ fn home_restores_the_opening_view() {
         "repor tem de devolver exatamente o enquadramento de abertura"
     );
 }
+
+/// ⭐ **A costura ponteiro → gizmo → peça**, no caminho de produção inteiro.
+///
+/// ⚠️ **É este o gate que a `DIRETIVA_IMPLEMENTACAO` §1 exige**, e não os dois de cima. Ele pergunta
+/// *"clicar numa seta faz a peça andar?"* — a pergunta que a lei pura e a pintura, cada uma verde no
+/// seu canto, **não** respondem. A causa nº 1 da semana perdida no Painter foi exatamente esta:
+/// costura não-testada, com os dois lados dela corretos.
+mod seam {
+    use crate::field3d_gizmo::{self, Handle};
+    use crate::field3d_input::{advance, begin, hot_handle};
+    use crate::field3d_smoke::{Drag, set_armed_by_panel, with_smoke};
+    use ph2d_field_render::Screen;
+
+    const AREA: ph2d_editor::zones::Rect = ph2d_editor::zones::Rect {
+        x: 40.0,
+        y: 24.0,
+        w: 800.0,
+        h: 600.0,
+    };
+
+    /// Arma o módulo e põe o smoke num estado de quadro: com área desenhada e com o gizmo ancorado
+    /// na origem. É o que a ponte com a cena publica.
+    fn armed<R>(f: impl FnOnce(&mut crate::field3d_smoke::Smoke) -> R) -> R {
+        set_armed_by_panel(true);
+        with_smoke(|s| {
+            s.area = Some(AREA);
+            s.gizmo = Some(field3d_gizmo::Anchor {
+                entity: 7,
+                origin: [0.0, 0.0, 0.0],
+            });
+            s.pending_move = None;
+            s.drag = None;
+            s.gizmo_hot = None;
+            f(s)
+        })
+        .expect("o módulo está armado")
+    }
+
+    fn screen_of(s: &crate::field3d_smoke::Smoke) -> Screen {
+        Screen::new(AREA.w as u32, AREA.h as u32, s.cam.half_extent)
+    }
+
+    /// O ponto de janela, em pixels, do meio da haste do eixo `n`.
+    fn mid_of_axis(s: &crate::field3d_smoke::Smoke, n: usize) -> (f32, f32) {
+        let anchor = s.gizmo.expect("ancorado");
+        let handles = field3d_gizmo::project(anchor, &s.cam, screen_of(s));
+        let h = handles
+            .iter()
+            .find(|h| h.handle == Handle::Axis(n))
+            .expect("o eixo existe");
+        let field3d_gizmo::Shape::Arrow { from, to } = h.shape else {
+            panic!("um eixo é uma seta");
+        };
+        (
+            AREA.x + (from[0] + to[0]) * 0.5,
+            AREA.y + (from[1] + to[1]) * 0.5,
+        )
+    }
+
+    /// ⭐ **Carregar numa seta agarra a seta — e não orbita a câmera.**
+    #[test]
+    fn pressing_on_an_arrow_grabs_it_instead_of_orbiting() {
+        armed(|s| {
+            let p = mid_of_axis(s, 0);
+            let before = s.cam;
+            assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, p));
+            assert_eq!(
+                s.drag,
+                Some(Drag::Gizmo(Handle::Axis(0))),
+                "o clique sobre a seta virou gesto de câmera — a alça está pintada e morta"
+            );
+            assert_eq!(hot_handle(s), Some(Handle::Axis(0)), "e ela acende");
+
+            // E arrastar move a PEÇA, não a vista.
+            assert!(advance(s, p.0 + 60.0, p.1));
+            assert_eq!(s.cam, before, "a câmera não pode ter-se mexido");
+            let (entity, delta) = s.pending_move.expect("o arrasto tem de pedir um movimento");
+            assert_eq!(entity, 7, "e tem de pedi-lo para a entidade da âncora");
+            assert!(
+                delta[0].abs() > 1e-4,
+                "o pedido saiu vazio: {delta:?} — o ponteiro não chegou à lei do arrasto"
+            );
+        });
+    }
+
+    /// **Longe do gizmo, o botão esquerdo continua a orbitar.** Sem isto o gizmo sequestraria a
+    /// navegação da janela inteira.
+    #[test]
+    fn pressing_away_from_the_gizmo_still_orbits() {
+        armed(|s| {
+            let far = (AREA.x + AREA.w - 5.0, AREA.y + 5.0);
+            assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, far));
+            assert_eq!(s.drag, Some(Drag::Orbit));
+            assert!(s.pending_move.is_none());
+        });
+    }
+
+    /// ⚠️ **O botão DIREITO orbita mesmo por cima da alça** — é a saída de quem quer girar a vista
+    /// sem primeiro tirar o rato de cima da peça.
+    #[test]
+    fn the_right_button_orbits_even_over_a_handle() {
+        armed(|s| {
+            let p = mid_of_axis(s, 0);
+            assert!(begin(s, winit::event::MouseButton::Right, Drag::Orbit, p));
+            assert_eq!(s.drag, Some(Drag::Orbit));
+        });
+    }
+
+    /// ⭐ **Os pedidos ACUMULAM entre quadros.**
+    ///
+    /// ⚠️ Entre dois quadros chegam vários eventos de ponteiro. Guardar só o último faria a peça
+    /// andar menos do que a mão — devagar, e **só quando o rato vai depressa**, que é o defeito mais
+    /// difícil de acreditar quando alguém o reporta.
+    #[test]
+    fn pointer_events_between_two_frames_add_up() {
+        armed(|s| {
+            let p = mid_of_axis(s, 0);
+            begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
+            advance(s, p.0 + 30.0, p.1);
+            let one = s.pending_move.expect("primeiro evento").1;
+            advance(s, p.0 + 60.0, p.1);
+            let two = s.pending_move.expect("segundo evento").1;
+            assert!(
+                (two[0] - one[0] * 2.0).abs() < one[0].abs() * 1e-3,
+                "dois passos iguais têm de somar: {one:?} depois {two:?}"
+            );
+        });
+    }
+
+    /// **Sem arrasto, mover o rato acende a alça e NÃO consome o evento.**
+    ///
+    /// ⚠️ As duas metades importam: sem a primeira o artista não sabe o que vai agarrar; com a
+    /// segunda invertida, a janela 3D engoliria todo movimento de rato do app 2D.
+    #[test]
+    fn hover_lights_the_handle_without_swallowing_the_event() {
+        armed(|s| {
+            let p = mid_of_axis(s, 1);
+            assert!(!advance(s, p.0, p.1), "hover não é um gesto desta janela");
+            assert_eq!(hot_handle(s), Some(Handle::Axis(1)));
+            assert!(!advance(s, AREA.x + 2.0, AREA.y + 2.0));
+            assert_eq!(hot_handle(s), None, "e apaga-se ao sair");
+        });
+    }
+
+    /// ⚠️ **Durante o arrasto o realce fica na alça AGARRADA**, mesmo com o cursor longe dela — que
+    /// é onde o cursor está, porque arrastar é isso.
+    #[test]
+    fn the_grabbed_handle_stays_lit_while_the_cursor_walks_away() {
+        armed(|s| {
+            let p = mid_of_axis(s, 2);
+            begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
+            advance(s, AREA.x + AREA.w - 3.0, AREA.y + AREA.h - 3.0);
+            assert_eq!(hot_handle(s), Some(Handle::Axis(2)));
+        });
+    }
+}

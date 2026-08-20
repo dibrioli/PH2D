@@ -225,6 +225,17 @@ pub const CTX_MENU_HIER_REMOVE_FROM_SHEET: NodeId = hash_node_id("ctx_menu_hier_
 /// Agora cada item faz UMA coisa e diz porquê quando não pode: o Pack recusa uma folha e aponta
 /// para aqui; este recusa o que não for folha e aponta para lá.
 pub const CTX_MENU_HIER_ARRANGE_SHEET: NodeId = hash_node_id("ctx_menu_hier_arrange_sheet");
+/// "Bake Sheet" — as peças deixam de ser N imagens e passam a ser N janelas para UMA textura
+/// (plano `docs/Sprite_projeto/17` §7.3, W5.2).
+///
+/// ⚠️ Muda o DOCUMENTO (é um passo de undo) e não escreve ficheiro nenhum. O irmão
+/// [`CTX_MENU_HIER_EXPORT_SHEET`] faz o contrário: escreve os ficheiros e não toca na cena.
+pub const CTX_MENU_HIER_BAKE_SHEET: NodeId = hash_node_id("ctx_menu_hier_bake_sheet");
+/// "Export Sheet" — grava `<nome>.png` + `<nome>.json` (formato Aseprite) ao lado do projeto.
+///
+/// ⚠️ **Compõe, mas NÃO reata.** Uma exportação que mudasse a cena faria um pedido de ficheiro
+/// virar uma edição, e o artista descobriria pelo undo — o pior sítio para descobrir.
+pub const CTX_MENU_HIER_EXPORT_SHEET: NodeId = hash_node_id("ctx_menu_hier_export_sheet");
 
 // **O modal de resolução da folha** (Enio 2026-08-19: *"Ao criar uma sheet um modal com a
 // resolução deve aparecer antes da criação"*). Abre-se ao escolher "Pack into Sheet" e a criação

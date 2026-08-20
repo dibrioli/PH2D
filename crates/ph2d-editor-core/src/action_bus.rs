@@ -241,6 +241,14 @@ pub enum EditorAction {
     /// gesto é *arrume*, não *redimensione*. O que não couber acende a moldura.
     HierArrangeSheet { row: ph2d_a11y::NodeId },
 
+    /// "Bake Sheet" — compõe os filhos numa imagem e reata cada um a uma região dela: N sprites,
+    /// uma textura, um draw call (plano §7.3, W5.2). Muda o documento.
+    HierBakeSheet { row: ph2d_a11y::NodeId },
+
+    /// "Export Sheet" — grava `<nome>.png` + `<nome>.json` ao lado do projeto. ⚠️ **Compõe sem
+    /// reatar**: exportar não é editar.
+    HierExportSheet { row: ph2d_a11y::NodeId },
+
     /// "Remove from Sheet" — a peça deixa a folha e volta a ser objeto de raiz, **onde está**
     /// (Enio 2026-08-19). Payload: a `NodeId` da linha clicada.
     ///

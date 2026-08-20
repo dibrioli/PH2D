@@ -250,16 +250,18 @@ fn hier_menu_arrange_sheet_raises_arrange_with_the_clicked_row() {
     assert_eq!(drained, vec![EditorAction::HierArrangeSheet { row }]);
 }
 
-/// ⚠️ **Os três verbos da folha são três AÇÕES distintas.** Enquanto "arrumar" vivia dentro de
+/// ⚠️ **Os verbos da folha são AÇÕES distintas, um por item.** Enquanto "arrumar" vivia dentro de
 /// "criar", o menu tinha dois itens para três coisas — e era o alvo, não o rótulo, que decidia o
 /// que acontecia. Este teste é o que impede a fusão de voltar por conveniência: se dois destes
 /// items passarem a levantar a mesma ação, ele reprova.
 #[test]
-fn the_three_sheet_verbs_raise_three_different_actions() {
+fn every_sheet_verb_raises_its_own_action() {
     let rows = [
         ids::CTX_MENU_HIER_PACK_SHEET,
         ids::CTX_MENU_HIER_ARRANGE_SHEET,
         ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
+        ids::CTX_MENU_HIER_BAKE_SHEET,
+        ids::CTX_MENU_HIER_EXPORT_SHEET,
     ];
     let mut seen: Vec<EditorAction> = Vec::new();
     for (i, id) in rows.iter().enumerate() {

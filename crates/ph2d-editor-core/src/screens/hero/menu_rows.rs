@@ -194,6 +194,10 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
                 "Auto-Arrange Pieces",
                 None,
             ),
+            // As duas SAÍDAS do bake, lado a lado e nesta ordem: assar muda a cena, exportar
+            // escreve ficheiros. Ler uma a seguir à outra é o que torna a diferença óbvia.
+            (ids::CTX_MENU_HIER_BAKE_SHEET, "Bake Sheet", None),
+            (ids::CTX_MENU_HIER_EXPORT_SHEET, "Export Sheet", None),
             (
                 ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
                 "Remove from Sheet",

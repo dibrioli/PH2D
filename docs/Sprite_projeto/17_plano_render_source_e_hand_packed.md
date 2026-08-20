@@ -260,8 +260,34 @@ retângulos — round-trip contra **o leitor que o import de facto usa**.
 
 ### §7.5 — Ordem de construção
 
-- **W5.1** — o componente + criar a folha a partir da seleção + a seção do Inspector + Auto-arranjar.
-- **W5.2** — o bake (reatar) + a exportação para disco.
+- **W5.1** ✅ **FEITO** — o componente + criar a folha a partir da seleção + o auto-arranjo.
+- **W5.2** ✅ **FEITO** — o bake (reatar) + a exportação para disco.
+
+### §7.6 — O que a construção mudou no desenho (2026-08-19, medido no uso)
+
+Cinco decisões do Enio durante o smoke, e cada uma corrigiu uma premissa deste plano:
+
+1. **O pill `[SHEET]` da fila de Image Tools SAIU inteiro** (crate `ph2d-tool-sheet-packer`
+   apagada). A razão é de desenho: aquela fila é **por-sprite** — a chrome difunde um
+   `OneShotImageOp` por entidade selecionada — e empacotar é um verbo da **seleção**. ⛔ Não o
+   reconstrua; o menu da hierarquia entrega a linha clicada E a seleção de uma vez.
+2. **O tamanho da folha é AUTORADO, não derivado.** Um modal pergunta a resolução antes da criação
+   (§7.1 dizia que o tamanho saía do arranjo). Consequência em cascata: o auto-arranjo **deixou de
+   redimensionar** a folha — fazê-lo apagaria a escolha do artista num gesto que ele pediu para
+   *arrumar*. A `resize_frame` ficou órfã e saiu.
+3. **A folha tem FRONTEIRAS.** Uma peça não sai por arrasto; largar um sprite dentro dela na
+   hierarquia move-o para dentro; sair é `Remove from Sheet` (ou o arrasto para a raiz, que é o
+   mesmo caminho). O módulo é `shells/desktop/src/sheet_bounds.rs`.
+4. **A moldura ACUSA** — vermelha + `OVERLAP` / `DOESN'T FIT` ao lado da resolução, contados por
+   quadro (`sheet_bounds::health`), nunca guardados.
+5. **Os verbos são UM POR ITEM de menu.** O "Pack into Sheet" fazia duas coisas conforme o alvo, e
+   o Enio teve de pedir a segunda **pelo nome** — a prova de que ela estava escondida, não
+   presente. Hoje: `Pack into Sheet` · `Auto-Arrange Pieces` · `Bake Sheet` · `Export Sheet` ·
+   `Remove from Sheet`, e cada recusa **nomeia o irmão certo**.
+
+⚠️ **O bake compõe em rects DADOS** (`ph2d_sprite_sheet::compose`), nunca re-arranja: as peças
+estão onde o artista as pôs. E **recusa** uma folha doente — um `.png` e um `.json` que discordam
+são um defeito que só aparece no consumidor, meses depois, noutro programa.
 
 [ADR-0153]: ../architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md
 

@@ -41,6 +41,8 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_MERGE_SPRITES
         || id == ids::CTX_MENU_HIER_PACK_SHEET
         || id == ids::CTX_MENU_HIER_ARRANGE_SHEET
+        || id == ids::CTX_MENU_HIER_BAKE_SHEET
+        || id == ids::CTX_MENU_HIER_EXPORT_SHEET
         || id == ids::CTX_MENU_HIER_REMOVE_FROM_SHEET
         || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE
         || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE
@@ -78,6 +80,10 @@ fn try_context_menu_row(
             host.bus_mut().push(EditorAction::HierPackSheet { row });
         } else if id == ids::CTX_MENU_HIER_ARRANGE_SHEET {
             host.bus_mut().push(EditorAction::HierArrangeSheet { row });
+        } else if id == ids::CTX_MENU_HIER_BAKE_SHEET {
+            host.bus_mut().push(EditorAction::HierBakeSheet { row });
+        } else if id == ids::CTX_MENU_HIER_EXPORT_SHEET {
+            host.bus_mut().push(EditorAction::HierExportSheet { row });
         } else if id == ids::CTX_MENU_HIER_REMOVE_FROM_SHEET {
             host.bus_mut()
                 .push(EditorAction::HierRemoveFromSheet { row });

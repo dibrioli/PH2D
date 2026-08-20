@@ -573,6 +573,8 @@ fn simple_row_context_menu_items_are_populate_registered() {
         ids::CTX_MENU_HIER_MERGE_SPRITES,
         ids::CTX_MENU_HIER_PACK_SHEET,
         ids::CTX_MENU_HIER_ARRANGE_SHEET,
+        ids::CTX_MENU_HIER_BAKE_SHEET,
+        ids::CTX_MENU_HIER_EXPORT_SHEET,
         ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,

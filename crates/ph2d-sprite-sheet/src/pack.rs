@@ -90,6 +90,13 @@ pub enum PackError {
         expected: usize,
         found: usize,
     },
+    /// Uma peça, na posição em que o chamador a pôs, cai fora da folha. Só o [`compose`] a
+    /// levanta — o [`pack`] escolhe as posições e por construção nunca sai.
+    OutsideSheet {
+        name: String,
+        rect: [u32; 4],
+        size: u32,
+    },
 }
 
 impl std::fmt::Display for PackError {
@@ -117,6 +124,11 @@ impl std::fmt::Display for PackError {
             } => write!(
                 f,
                 "'{name}' declares {expected} pixel bytes but carries {found}"
+            ),
+            Self::OutsideSheet { name, rect, size } => write!(
+                f,
+                "'{name}' sits at {},{} {}x{}, outside the {size}x{size} sheet",
+                rect[0], rect[1], rect[2], rect[3]
             ),
         }
     }
@@ -243,21 +255,8 @@ pub fn pack(
         })
         .collect();
     let plan = layout(&items, opts)?;
-    // Compõe os pixels. A folha nasce **transparente**, e é isso que faz o padding ser padding em
-    // vez de lixo: o que houver entre as regiões é alfa zero.
-    let size = plan.size;
-    let mut rgba = vec![0u8; (size as usize) * (size as usize) * 4];
-    for (idx, (_, rect)) in plan.places.iter().enumerate() {
-        blit(&mut rgba, size, &inputs[idx], rect[0], rect[1]);
-    }
-    Ok(AuthoredSheet::new(
-        id,
-        sheet_name,
-        size,
-        size,
-        rgba,
-        plan.places,
-    ))
+    let at: Vec<[u32; 2]> = plan.places.iter().map(|(_, r)| [r[0], r[1]]).collect();
+    crate::compose::compose(id, sheet_name, plan.size, inputs, &at)
 }
 
 /// Tenta arrumar tudo numa folha `size × size`. `None` = não coube.
@@ -285,7 +284,7 @@ fn try_pack(
 }
 
 /// Copia uma imagem para dentro da folha, linha a linha.
-fn blit(sheet: &mut [u8], sheet_w: u32, src: &PackInput, x: u32, y: u32) {
+pub(crate) fn blit(sheet: &mut [u8], sheet_w: u32, src: &PackInput, x: u32, y: u32) {
     let row = (src.width as usize) * 4;
     for r in 0..src.height as usize {
         let from = r * row;

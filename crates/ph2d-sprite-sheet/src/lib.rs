@@ -43,8 +43,11 @@
 //! não custa nada ao documento aberto.
 
 pub mod aseprite;
+/// Compor a folha em retângulos DADOS — a metade que o bake precisa. Irmão do [`pack`].
+pub mod compose;
 pub mod pack;
 pub use aseprite::to_aseprite_json;
+pub use compose::compose;
 pub use pack::{Layout, LayoutItem, PackError, PackInput, PackOptions, layout, pack};
 
 use ph2d_asset::AssetId;

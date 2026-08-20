@@ -379,8 +379,12 @@ mod scroll_smoke;
 mod sculpt3d;
 mod shape_build;
 mod shape_build_gesture;
+/// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).
+mod sheet_bake;
 /// As fronteiras da folha — confinar uma peça, e contar o que está mal.
 mod sheet_bounds;
+/// A EXPORTAÇÃO da folha — `.png` + `.json`, o formato do Aseprite (plano §7.3, W5.2).
+mod sheet_export;
 mod sheet_frame;
 mod sheet_import;
 /// `PH2D_SHEET_SMOKE` — a cena que exerce a folha como OBJETO (plano `docs/Sprite_projeto/17` §7).

@@ -1032,8 +1032,11 @@ impl crate::App {
             // (`Sprite.source` + `region_rect`), que o import e o load já escreveram — é
             // exatamente essa separação fonte-≠-cozido que faz o extract não mudar uma linha.
             sheets,
-            sheet_textures: _,
-            next_sheet_id: _,
+            // ⚠️ Eram `_` até o BAKE existir: assar cria uma folha e a textura dela, então os dois
+            // mapas e o contador passam a ser ESCRITOS aqui. O comentário acima continua verdade
+            // para o desenho — o extract lê o cozido —, e é a autoria que precisa deles.
+            sheet_textures,
+            next_sheet_id,
             atlas_asset_map,
             logical_texture_map,
             component_registry,
@@ -2602,6 +2605,10 @@ impl crate::App {
             let mut arrange_sheet_row: Option<NodeId> = None;
             // "Remove from Sheet" — a saída da folha, pela linha clicada.
             let mut remove_from_sheet_row: Option<NodeId> = None;
+            // As duas saídas do BAKE (plano §7.3, W5.2): assar muda a cena, exportar escreve
+            // ficheiros. Linhas separadas porque são dois pedidos diferentes.
+            let mut bake_sheet_row: Option<NodeId> = None;
+            let mut export_sheet_row: Option<NodeId> = None;
             let mut use_as_brush_texture_row: Option<NodeId> = None;
             let mut use_as_brush_shape_row: Option<NodeId> = None;
             let mut use_as_paper_row: Option<NodeId> = None;
@@ -3615,6 +3622,12 @@ impl crate::App {
                     }
                     EditorAction::HierArrangeSheet { row } => {
                         arrange_sheet_row.get_or_insert(row);
+                    }
+                    EditorAction::HierBakeSheet { row } => {
+                        bake_sheet_row.get_or_insert(row);
+                    }
+                    EditorAction::HierExportSheet { row } => {
+                        export_sheet_row.get_or_insert(row);
                     }
                     EditorAction::HierRemoveFromSheet { row } => {
                         remove_from_sheet_row.get_or_insert(row);
@@ -8856,6 +8869,45 @@ impl crate::App {
                     crate::sheet_frame::repack_all(sim, vec_scene, &sheets, toasts);
                 }
                 self.title_dirty = true;
+            }
+            // **ASSAR** — a folha vira UMA textura, e cada peça uma janela nela (plano §7.3).
+            //
+            // ⚠️ Age sobre a linha clicada e só sobre ela, ao contrário dos irmãos: assar é caro
+            // (lê N texturas da GPU) e produz um ficheiro por folha, então difundi-lo pela seleção
+            // faria um clique distraído reamostrar meia cena. *O custo do gesto decide o alcance
+            // dele.*
+            if let Some(row) = bake_sheet_row
+                && let Some(live) = hero_live.as_ref()
+                && let Some(bits) = live.bridge.entity_for(row)
+            {
+                crate::sheet_bake::bake(
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                    sheets,
+                    sheet_textures,
+                    next_sheet_id,
+                    bits,
+                    toasts,
+                );
+                self.title_dirty = true;
+            }
+            // **EXPORTAR** — os mesmos pixels, mas para disco, e **sem tocar na cena**.
+            if let Some(row) = export_sheet_row
+                && let Some(live) = hero_live.as_ref()
+                && let Some(bits) = live.bridge.entity_for(row)
+                && let Some((authored, _)) = crate::sheet_bake::compose_sheet(
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                    next_sheet_id,
+                    bits,
+                    toasts,
+                )
+            {
+                crate::sheet_export::export(&authored, toasts);
             }
             // O Create do modal — a criação de facto, com os alvos que ficaram reservados.
             if let Some(size_px) = hero.store.take_sheet_size_request() {

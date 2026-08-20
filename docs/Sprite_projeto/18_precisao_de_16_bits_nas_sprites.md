@@ -190,13 +190,46 @@ dependência de compilação, é onde o dado morre em silêncio.*
   ([`imageio-png/src/lib.rs:16`](../../crates/ph2d-imageio-png/src/lib.rs) documenta a perda hoje, e
   há teste a fixá-la: `import_quantizes_16bit_to_8bit_with_documented_loss` — **esse teste inverte-se**).
 
-### W3 — Persistência · **a próxima, e ela desbloqueia a importação**
-- `SpritePixelDoc` e `SavedAsset` ganham ramo de 16 bits — os dois `PRECISION-BYPASS:` da W2.3.
-- `PROJECT_SCHEMA` +1 (⚠️ número que **soma entre linhas**: conta-se lendo o código, `CLAUDE.md`
-  §5.0 — e o `project_schema.rs` tem **três** sítios, com a escada e a tripla ao lado).
-- Carregar um projeto antigo dá 8 bits, que é o que ele era.
-- **Por fim** (W2.4, movida para cá pela W2-ter): virar a importação — `loader.rs` deixa de recusar
-  `FlatHdr` e os importadores de PNG/TIFF param de esmagar 16 bits → 8.
+### W3 — Persistência · **feita, e ela custou MENOS do que o plano previa**
+
+- ✅ `SpritePixelDoc.rgba: Vec<u8>` → `pixels: PixelPayload` (`Rgba8` | `Rgba16`), `SHEET_DOC_VERSION`
+  3 → 4. **A variante É a precisão**: um campo `precision` ao lado do payload permitiria um
+  documento que diz 16 e carrega 8, e alguém teria de o validar em toda leitura. *A representação
+  apaga o caso especial.*
+- ✅ **Migração de v3**, com `postcard::take_from_bytes` a ler só o cabeçalho e uma cópia congelada
+  da forma antiga. ⚠️ **Os bumps v1→v2→v3 recusavam, e podiam** — aconteceram na jornada em que o
+  formato nasceu. *Um formato só precisa de migração a partir do dia em que alguém guardou alguma
+  coisa nele*, e a v4 é o primeiro depois disso. O gate constrói bytes com a forma v3 **verdadeira**,
+  não serializando o tipo de hoje — senão provaria apenas que hoje concorda consigo próprio.
+- ✅ `AssetDb::insert_image_rgba16` + o restore a honrar a precisão do documento nos **dois** passos
+  (asset e textura).
+
+**Duas correcções ao plano, ambas descobertas a construir:**
+
+1. ⛔ **O `PROJECT_SCHEMA` NÃO se move.** O `sprite_pixels` é um blob auto-versionado dentro do
+   `ProjectFile` — o mesmo desenho que fez o hand-packed custar zero recusa. Era isso que o campo
+   sempre prometeu; a linha do plano que mandava bumpar não tinha lido a promessa.
+2. ⛔ **O `SavedAsset` NÃO ganha ramo de 16 bits**, e a nota da W2.3 que dizia que ganharia estava
+   errada. Ele percorre o `atlas_asset_map`, e **o atlas é de 8 bits por construção**; uma sprite de
+   16 bits é `Individual`, e os pixels dela gravam-se pelo `SpritePixelDoc`, que já sabe.
+   ⚠️ A regra *16 bits ⇒ `Individual`* é o que torna aquela linha verdadeira, e impõe-se **onde a
+   precisão nasce** (a conversão da W5 e a importação da W2.4) — nunca acrescentando um ramo ao
+   caminho de gravação do atlas, que só gravaria o rebaixamento com mais passos.
+
+**Uma prova de mutação que corrigiu a MINHA justificação:** eu escrevi que o discriminante no hash
+do `insert_image_rgba16` era o que separava as duas precisões. Removê-lo deixou o gate **verde** — o
+payload de 16 bits tem o dobro dos elementos, logo os `hash_input` nunca têm o mesmo comprimento.
+*Uma justificação que uma mutação não confirma é uma hipótese com cara de facto.* O gate foi
+reapontado para a falha **realista** (implementar o de 16 derivando o id do caminho de 8), e essa
+reprova.
+
+### W2.4 — virar a importação · **agora desbloqueada**
+- `loader.rs` deixa de recusar `FlatHdr` e passa a produzir `Asset::ImageRgba16`.
+- Os importadores de PNG/TIFF param de esmagar 16 bits → 8
+  ([`imageio-png/src/lib.rs:16`](../../crates/ph2d-imageio-png/src/lib.rs) documenta a perda hoje, e
+  há teste a fixá-la: `import_quantizes_16bit_to_8bit_with_documented_loss` — **esse teste inverte-se**).
+- ⚠️ **Uma imagem importada em 16 bits nasce `Individual`, nunca no atlas** — §3.3, e é aqui que a
+  regra se impõe.
 
 ### W4 — As ferramentas
 - A regra do §3.4, num ponto de entrega só, com o aviso.

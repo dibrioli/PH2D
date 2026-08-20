@@ -7514,6 +7514,7 @@ name = "ph2d-sprite-sheet"
 version = "0.0.0"
 dependencies = [
  "ph2d-asset",
+ "ph2d-imageio",
  "postcard",
  "rect_packer",
  "serde",

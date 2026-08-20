@@ -84,35 +84,35 @@ impl crate::App {
                 );
                 continue;
             };
-            // PRECISION-BYPASS: caminho de ESCRITA — converter para 8 bits aqui apagaria a
-            // precisão no ficheiro gravado. Ganha ramo de 16 bits na W3.
+            // PRECISION-BYPASS: caminho de ESCRITA — este sítio NÃO passa pela porta
+            // `Asset::image_rgba8`, e a excepção é deliberada (plano `docs/Sprite_projeto/18`).
             //
-            // ⛔ **Este sítio NÃO passa pela porta `Asset::image_rgba8`, e é a excepção que a
-            // auditoria da W2 encontrou** (plano `docs/Sprite_projeto/18`).
-            //
-            // Os irmãos dela — atlas, regrow, Image Tools — convertem para 8 bits porque o
+            // Os irmãos dele — atlas, regrow, Image Tools — convertem para 8 bits porque o
             // consumidor **é** de 8 bits. Aqui o consumidor é o **FICHEIRO GRAVADO**: converter
             // seria perder a precisão de uma sprite de 16 bits de forma permanente, na gravação,
             // sem uma palavra. *Uma conversão de conveniência num caminho de leitura é um atalho;
             // no caminho de escrita é destruição de dados.*
             //
-            // ⚠️ Enquanto nada produz `ImageRgba16` (a importação só vira no fim da W2) este
-            // `continue` é inalcançável e correcto. **Ele tem de ganhar um ramo de 16 bits na W3,
-            // com o `SpritePixelDoc` versionado, ANTES de a importação virar** — senão uma sprite
-            // de 16 bits desaparece do save em silêncio, que é o pior modo de falha desta wave.
-            let ph2d_asset::Asset::ImageRgba8 {
-                width,
-                height,
-                pixels: rgba,
-            } = &*asset
-            else {
+            // ✅ **W3: o ramo de 16 bits existe**, e é por isso que a viragem da importação pode
+            // agora acontecer sem uma sprite desaparecer do save.
+            let payload = match &*asset {
+                ph2d_asset::Asset::ImageRgba8 { pixels, .. } => {
+                    ph2d_sprite_sheet::PixelPayload::Rgba8(pixels.to_vec())
+                }
+                ph2d_asset::Asset::ImageRgba16 { pixels, .. } => {
+                    ph2d_sprite_sheet::PixelPayload::Rgba16(pixels.to_vec())
+                }
+                // Prefab, cena ou textura cozida: não são pixels de sprite, e nunca foram.
+                _ => continue,
+            };
+            let Some((width, height)) = asset.image_dimensions() else {
                 continue;
             };
             docs.push(SpritePixelDoc {
                 id,
-                width: *width,
-                height: *height,
-                rgba: rgba.to_vec(),
+                width,
+                height,
+                pixels: payload,
                 premultiplied,
             });
         }
@@ -163,9 +163,23 @@ impl crate::App {
         //    morreu com o processo que o criou; o que sobrevive é o `AssetId`.
         let mut by_id: BTreeMap<ph2d_asset::AssetId, (u32, bool)> = BTreeMap::new();
         for d in docs {
-            gfx.asset_db
-                .insert_image_rgba8(d.width, d.height, d.rgba.clone());
-            match gfx.renderer.acquire_individual(d.width, d.height, &d.rgba) {
+            // ⚠️ A precisão do DOCUMENTO manda nos dois passos — o asset e a textura. Reinserir de
+            // 8 bits uma sprite gravada em 16 abriria o projeto com ela silenciosamente rebaixada,
+            // e o próximo `Ctrl+S` gravaria a perda por cima do ficheiro do artista.
+            let uploaded = match &d.pixels {
+                ph2d_sprite_sheet::PixelPayload::Rgba8(rgba) => {
+                    gfx.asset_db
+                        .insert_image_rgba8(d.width, d.height, rgba.clone());
+                    gfx.renderer.acquire_individual(d.width, d.height, rgba)
+                }
+                ph2d_sprite_sheet::PixelPayload::Rgba16(halves) => {
+                    gfx.asset_db
+                        .insert_image_rgba16(d.width, d.height, halves.clone());
+                    gfx.renderer
+                        .acquire_individual_16(d.width, d.height, halves)
+                }
+            };
+            match uploaded {
                 Ok(texture_id) => {
                     by_id.insert(d.id, (texture_id, d.premultiplied));
                 }

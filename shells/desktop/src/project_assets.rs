@@ -22,20 +22,23 @@ impl crate::App {
         };
         let mut out = Vec::new();
         for (&key, asset_id) in &gfx.atlas_asset_map {
-            // PRECISION-BYPASS: caminho de ESCRITA — converter para 8 bits aqui apagaria a
-            // precisão no ficheiro gravado. Ganha ramo de 16 bits na W3.
+            // PRECISION-BYPASS: caminho de ESCRITA — não passa pela porta `Asset::image_rgba8`, e
+            // é deliberado (plano `docs/Sprite_projeto/18`, auditoria da W2).
             //
-            // ⛔ **Não passa pela porta `Asset::image_rgba8`, e é deliberado** — o irmão do
-            // `project_sprite_pixels.rs` (plano `docs/Sprite_projeto/18`, auditoria da W2).
+            // ⚠️ **CORRIGIDO na W3:** a nota anterior dizia que este sítio *"tem de ganhar um
+            // irmão de 16 bits"*. **Não tem, e a razão é estrutural:** este laço percorre o
+            // `atlas_asset_map`, e o atlas é de 8 bits por construção — uma textura, um formato.
+            // Uma sprite de 16 bits é obrigatoriamente `Individual` (§3.3), e os pixels dela
+            // gravam-se pelo `project_sprite_pixels.rs`, que **já** tem o ramo.
             //
-            // O consumidor aqui é o **FICHEIRO GRAVADO**. Converter para 8 bits seria perder a
-            // precisão de forma permanente, na gravação, sem uma palavra — e uma conversão de
-            // conveniência que num caminho de leitura é atalho, no de escrita é destruição de
-            // dados.
+            // ⛔ **A regra de que 16 bits ⇒ `Individual` é o que torna esta linha verdadeira**, e
+            // ela é imposta onde a precisão nasce: na conversão (W5) e na importação (W2.4). Se
+            // alguém alguma vez deixar um asset de 16 bits entrar no `atlas_asset_map`, é ali que
+            // se corrige — **não** acrescentando um ramo aqui, que só gravaria o rebaixamento com
+            // mais passos.
             //
-            // ⚠️ Enquanto nada produz `ImageRgba16` este ramo é inalcançável. **Ele tem de ganhar
-            // um irmão de 16 bits na W3, com o `SavedAsset` versionado, ANTES de a importação
-            // virar.**
+            // O `_ => ()` implícito continua a existir para prefabs e texturas cozidas, que nunca
+            // foram pixels de atlas.
             if let Some(asset) = gfx.asset_db.get(asset_id)
                 && let ph2d_asset::Asset::ImageRgba8 {
                     width,

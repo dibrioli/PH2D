@@ -121,6 +121,51 @@ impl AssetDb {
         id
     }
 
+    /// **Irmã de [`Self::insert_image_rgba8`] para a precisão alta** (plano
+    /// `docs/Sprite_projeto/18`, W3). `pixels` são meio-float **linear**.
+    ///
+    /// # O discriminante no hash, e o que ele de facto faz
+    ///
+    /// ⚠️ **Ele NÃO é o que separa hoje as duas precisões, e a primeira redação desta nota dizia
+    /// que era.** Uma prova de mutação (2026-08-20) removeu-o e o gate ficou **verde** — porque o
+    /// payload de 16 bits tem o dobro dos elementos, logo o `hash_input` das duas nunca tem o
+    /// mesmo comprimento para as mesmas dimensões. *Uma justificação que uma mutação não confirma
+    /// é uma hipótese com cara de facto.*
+    ///
+    /// O que ele é: seguro barato contra uma mudança futura no que entra no hash (se as dimensões
+    /// saíssem dali, por exemplo). A invariante que **importa** — que uma imagem e a sua conversão
+    /// sejam assets distintos — está guardada pelo gate
+    /// `an_image_and_its_sixteen_bit_conversion_are_different_assets`, e essa apanha a falha
+    /// realista: implementar isto derivando o id do caminho de 8 bits.
+    ///
+    /// Porque é que a invariante importa: a inserção é `or_insert_with` (HR-6, content-addressed),
+    /// logo um id repetido é **descartado em silêncio**. O sintoma seria *"converti para 16 bits e
+    /// não aconteceu nada"*, sem erro nenhum a que agarrar.
+    pub fn insert_image_rgba16(&self, width: u32, height: u32, pixels: Vec<u16>) -> AssetId {
+        debug_assert_eq!(
+            pixels.len(),
+            (width as usize) * (height as usize) * 4,
+            "insert_image_rgba16: pixels must be tight-packed RGBA16 (4 elements per pixel)"
+        );
+        let mut hash_input = Vec::with_capacity(9 + pixels.len() * 2);
+        // O discriminante da precisão vai à frente das dimensões — ver o ⚠️ acima.
+        hash_input.push(16u8);
+        hash_input.extend_from_slice(&width.to_le_bytes());
+        hash_input.extend_from_slice(&height.to_le_bytes());
+        for h in &pixels {
+            hash_input.extend_from_slice(&h.to_le_bytes());
+        }
+        let id = AssetId::from_bytes(&hash_input);
+        let asset = Asset::ImageRgba16 {
+            width,
+            height,
+            pixels: pixels.into(),
+        };
+        let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
+        g.by_id.entry(id).or_insert_with(|| Arc::new(asset));
+        id
+    }
+
     /// Decode `bytes` as a postcard-encoded [`PrefabDoc`], hash the
     /// raw bytes, and store under the resulting [`AssetId`].
     /// Idempotent (HR-6 content-addressed).
@@ -292,6 +337,52 @@ mod tests {
         let id1 = db.insert_png_bytes(&bytes).unwrap();
         let id2 = db.insert_png_bytes(&bytes).unwrap();
         assert_eq!(id1, id2);
+        assert_eq!(db.len_assets(), 1);
+    }
+
+    /// **Uma imagem e a sua conversão para 16 bits são assets DIFERENTES.**
+    ///
+    /// ⚠️ O `AssetDb` é content-addressed e idempotente (HR-6): a inserção é `or_insert_with`, e
+    /// **o segundo com o mesmo id é descartado em silêncio**. Um id repetido aqui faria converter
+    /// uma sprite não fazer nada — sem erro, sem toast, sem log. O artista carregava no botão e via
+    /// a mesma imagem.
+    ///
+    /// ⚠️ **A falha que este gate apanha é a realista**, e foi escolhida por mutação: implementar
+    /// `insert_image_rgba16` derivando o id do caminho de 8 bits (converter para baixo e chamar o
+    /// irmão) reprova-o. Remover o discriminante do hash **não** o reprova — a nota em
+    /// `insert_image_rgba16` explica porquê, e essa nota nasceu errada até a mutação a corrigir.
+    #[test]
+    fn an_image_and_its_sixteen_bit_conversion_are_different_assets() {
+        let db = AssetDb::new();
+        let rgba = vec![10u8, 20, 30, 255];
+        let eight = db.insert_image_rgba8(1, 1, rgba.clone());
+        let halves = ph2d_imageio::rgba8_to_rgba16(&rgba);
+        let sixteen = db.insert_image_rgba16(1, 1, halves);
+        assert_ne!(
+            eight, sixteen,
+            "a conversao colidiu com o original — o `or_insert_with` teria DESCARTADO a de 16 \
+             bits em silencio, e o botao de converter nao faria nada"
+        );
+        assert_eq!(db.len_assets(), 2, "as duas tem de estar la'");
+        assert_eq!(
+            db.get(&sixteen).and_then(|a| a.precision()),
+            Some(ph2d_imageio::Precision::Rgba16)
+        );
+        assert_eq!(
+            db.get(&eight).and_then(|a| a.precision()),
+            Some(ph2d_imageio::Precision::Rgba8)
+        );
+    }
+
+    /// Controle positivo: a de 16 bits continua idempotente consigo própria — o discriminante não
+    /// pode ter transformado o content-addressing em "cada inserção é um asset novo".
+    #[test]
+    fn inserting_the_same_sixteen_bit_image_twice_is_one_asset() {
+        let db = AssetDb::new();
+        let halves = ph2d_imageio::rgba8_to_rgba16(&[1u8, 2, 3, 4]);
+        let a = db.insert_image_rgba16(1, 1, halves.clone());
+        let b = db.insert_image_rgba16(1, 1, halves);
+        assert_eq!(a, b);
         assert_eq!(db.len_assets(), 1);
     }
 

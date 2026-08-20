@@ -61,11 +61,65 @@ use serde::{Deserialize, Serialize};
 ///
 /// - **v1** — só [`SpritePixelDoc`] (os pixels próprios de um sprite `Individual`).
 /// - **v2** — junta [`AuthoredSheet`]: as FOLHAS hand-packed, com as regiões nomeadas.
+/// - **v3** — a folha declara o seu `premultiplied`.
+/// - **v4** — o payload de [`SpritePixelDoc`] vira [`PixelPayload`], que sabe ser de 16 bits
+///   (plano [`docs/Sprite_projeto/18`](../../../docs/Sprite_projeto/18_precisao_de_16_bits_nas_sprites.md)).
+///   ⚠️ **Este bump traz MIGRAÇÃO**, ao contrário dos anteriores: ver [`decode`].
 ///
-/// ⚠️ **E este bump é a prova do desenho, não uma nota:** ele acrescentou uma capacidade inteira
+/// ⚠️ **O bump da v2 é a prova do desenho, não uma nota:** ele acrescentou uma capacidade inteira
 /// ao formato de arquivo e o `PROJECT_SCHEMA` **não se moveu** — logo nenhum projeto já salvo foi
-/// recusado. Era exatamente para isto que o campo nasceu como blob auto-versionado.
-pub const SHEET_DOC_VERSION: u32 = 3;
+/// recusado. Era exatamente para isto que o campo nasceu como blob auto-versionado. A v4 gasta a
+/// mesma moeda: 16 bits nos pixels **não** move o `PROJECT_SCHEMA`.
+pub const SHEET_DOC_VERSION: u32 = 4;
+
+/// **Os pixels de um sprite, e a variante É a precisão.**
+///
+/// ⚠️ **Por que um enum e não um campo `precision` ao lado de `rgba`:** um campo separado pode
+/// discordar do payload — um documento com `precision = Rgba16` e `4·w·h` bytes é representável, e
+/// alguém teria de o validar em toda a leitura. Aqui esse estado **não existe**. É a mesma lei que
+/// o projeto já paga noutros sítios: *a representação apaga o caso especial*.
+///
+/// ⚠️ **`Rgba16` são bits de MEIO-FLOAT em espaço LINEAR**, não inteiros de 16 bits e não sRGB —
+/// vide [`ph2d_imageio::precision`]. Guardar aqui os bytes sRGB promovidos a `u16` seria um
+/// documento que abre e renderiza mais claro.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PixelPayload {
+    /// RGBA8 sRGB justo: `width · height · 4` elementos.
+    Rgba8(Vec<u8>),
+    /// Meio-float linear justo: `width · height · 4` elementos (⇒ o dobro dos bytes).
+    Rgba16(Vec<u16>),
+}
+
+impl PixelPayload {
+    /// Elementos por pixel — quatro, em qualquer das duas. ⚠️ O que muda entre elas é o tamanho de
+    /// **cada** elemento, e por isso a validação conta ELEMENTOS e não bytes: contar bytes daria a
+    /// resposta certa para 8 bits e o dobro do esperado para 16.
+    const CHANNELS: usize = 4;
+
+    /// Quantos elementos o payload tem.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Rgba8(v) => v.len(),
+            Self::Rgba16(v) => v.len(),
+        }
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// A precisão que esta variante É — o mesmo tipo que o `Asset` e a conversão usam, para não
+    /// haver dois nomes para a mesma coisa.
+    #[must_use]
+    pub fn precision(&self) -> ph2d_imageio::Precision {
+        match self {
+            Self::Rgba8(_) => ph2d_imageio::Precision::Rgba8,
+            Self::Rgba16(_) => ph2d_imageio::Precision::Rgba16,
+        }
+    }
+}
 
 /// Os pixels próprios de um sprite, como o arquivo os guarda.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -75,9 +129,9 @@ pub struct SpritePixelDoc {
     pub id: AssetId,
     pub width: u32,
     pub height: u32,
-    /// RGBA8 justo: exatamente `width * height * 4` bytes
-    /// ([`SheetDocError::PixelCountMismatch`]).
-    pub rgba: Vec<u8>,
+    /// Os pixels, justos: exatamente `width · height · 4` **elementos**
+    /// ([`SheetDocError::PixelCountMismatch`]). A variante diz a precisão.
+    pub pixels: PixelPayload,
     /// `true` ⇒ estes bytes estão PREMULTIPLICADOS (o resultado de um Apply do BG-Removal).
     ///
     /// ⚠️ **Ele TEM de viajar aqui, e a razão é que ele não viaja em mais lado nenhum:**
@@ -96,17 +150,25 @@ impl SpritePixelDoc {
     /// Valida contra as próprias declarações. Chamada no encode **e** no decode: um documento
     /// inválido nunca chega ao disco, e um que lá esteja nunca chega à sessão.
     fn validate(&self) -> Result<(), SheetDocError> {
+        // ⚠️ Conta ELEMENTOS, não bytes: um payload de 16 bits tem os mesmos `w·h·4` elementos e o
+        // DOBRO dos bytes. Contar bytes reprovaria toda imagem de 16 bits válida.
         let expected = (self.width as usize)
             .saturating_mul(self.height as usize)
-            .saturating_mul(4);
-        if self.rgba.len() != expected {
+            .saturating_mul(PixelPayload::CHANNELS);
+        if self.pixels.len() != expected {
             return Err(SheetDocError::PixelCountMismatch {
                 id: self.id,
                 expected,
-                found: self.rgba.len(),
+                found: self.pixels.len(),
             });
         }
         Ok(())
+    }
+
+    /// A precisão destes pixels — atalho para [`PixelPayload::precision`].
+    #[must_use]
+    pub fn precision(&self) -> ph2d_imageio::Precision {
+        self.pixels.precision()
     }
 }
 
@@ -390,14 +452,86 @@ pub fn encode(
     postcard::to_allocvec(&doc).map_err(|_| SheetDocError::Postcard)
 }
 
+/// **A v3 tal como o arquivo a gravou** — o payload era `Vec<u8>` cru, sem variante.
+///
+/// ⚠️ Esta cópia existe para **não se mexer nela nunca mais**. O tipo vivo evolui; este é a forma
+/// que já está gravada no disco de alguém, e um `postcard` não é auto-descritivo: mudar um campo
+/// aqui não dá erro de leitura, dá **pixels embaralhados**.
+#[derive(Deserialize)]
+struct SpritePixelDocV3 {
+    id: AssetId,
+    width: u32,
+    height: u32,
+    rgba: Vec<u8>,
+    premultiplied: bool,
+}
+
+/// O `SheetDoc` da v3. As folhas não mudaram, por isso reusa [`AuthoredSheet`].
+#[derive(Deserialize)]
+struct SheetDocV3 {
+    /// ⚠️ **Nunca lido, e tem de estar aqui na mesma.** O `postcard` não é auto-descritivo: os
+    /// campos consomem-se por posição, e retirar este faria o `pixels` ler os bytes da versão.
+    /// O valor já veio do [`VersionProbe`] — quem o lê é o `decode`, antes de escolher a forma.
+    #[allow(
+        dead_code,
+        reason = "consumido posicionalmente pelo postcard; lido via VersionProbe"
+    )]
+    version: u32,
+    pixels: Vec<SpritePixelDocV3>,
+    sheets: Vec<AuthoredSheet>,
+}
+
+/// Só o cabeçalho, para saber que forma esperar antes de a decodificar.
+///
+/// ⚠️ `postcard::take_from_bytes` é o que torna isto possível: ele lê os campos que este tipo pede
+/// e **devolve o resto** em vez de reprovar por bytes a mais, que é o que `from_bytes` faria.
+#[derive(Deserialize)]
+struct VersionProbe {
+    version: u32,
+}
+
 /// Lê do campo do arquivo de projeto.
 ///
 /// ⚠️ **Todo erro daqui tem de RECUSAR o load inteiro** (vide o módulo): devolver uma lista vazia
 /// abriria uma cena que parece certa com os sprites em branco, e o próximo `Ctrl+S` gravaria esse
 /// vazio por cima do arquivo do artista.
+///
+/// # A migração, e por que ela existe aqui e não existia antes
+///
+/// Os bumps v1→v2→v3 **recusavam** o que não fosse a versão corrente, e podiam: eles aconteceram
+/// dentro da mesma jornada em que o formato nasceu. A v4 é a primeira a chegar depois de haver
+/// projetos gravados — e recusar aqui não devolve um erro simpático ao artista, **recusa o load
+/// inteiro** (é o que o parágrafo acima manda). *Um formato só precisa de migração a partir do dia
+/// em que alguém guardou alguma coisa nele.*
+///
+/// Um documento v3 sobe para v4 embrulhando o `rgba` em [`PixelPayload::Rgba8`] — que é exatamente
+/// o que ele sempre foi, dito com o tipo novo. Sem perda, e com gate de ida-e-volta.
 pub fn decode(bytes: &[u8]) -> Result<(Vec<SpritePixelDoc>, Vec<AuthoredSheet>), SheetDocError> {
     if bytes.is_empty() {
         return Ok((Vec::new(), Vec::new()));
+    }
+    let (probe, _) =
+        postcard::take_from_bytes::<VersionProbe>(bytes).map_err(|_| SheetDocError::Postcard)?;
+    if probe.version == 3 {
+        let old: SheetDocV3 = postcard::from_bytes(bytes).map_err(|_| SheetDocError::Postcard)?;
+        let pixels: Vec<SpritePixelDoc> = old
+            .pixels
+            .into_iter()
+            .map(|p| SpritePixelDoc {
+                id: p.id,
+                width: p.width,
+                height: p.height,
+                pixels: PixelPayload::Rgba8(p.rgba),
+                premultiplied: p.premultiplied,
+            })
+            .collect();
+        for p in &pixels {
+            p.validate()?;
+        }
+        for s in &old.sheets {
+            s.validate()?;
+        }
+        return Ok((pixels, old.sheets));
     }
     let doc: SheetDoc = postcard::from_bytes(bytes).map_err(|_| SheetDocError::Postcard)?;
     if doc.version != SHEET_DOC_VERSION {
@@ -497,7 +631,20 @@ mod tests {
             id: AssetId::from_bytes(&rgba),
             width: w,
             height: h,
-            rgba,
+            pixels: PixelPayload::Rgba8(rgba),
+            premultiplied: false,
+        }
+    }
+
+    /// O irmão de 16 bits do [`doc`], para os gates da v4.
+    fn doc16(w: u32, h: u32, seed: u8) -> SpritePixelDoc {
+        let rgba = rgba(w, h, seed);
+        let halves = ph2d_imageio::rgba8_to_rgba16(&rgba);
+        SpritePixelDoc {
+            id: AssetId::from_bytes(&rgba),
+            width: w,
+            height: h,
+            pixels: PixelPayload::Rgba16(halves),
             premultiplied: false,
         }
     }
@@ -507,6 +654,94 @@ mod tests {
         let d = doc(4, 3, 0);
         let bytes = encode(std::slice::from_ref(&d), &[]).expect("encode");
         assert_eq!(decode(&bytes).expect("decode").0, vec![d]);
+    }
+
+    /// A ida-e-volta de 16 bits, e que ela **não** se confunde com a de 8.
+    #[test]
+    fn sixteen_bit_pixels_round_trip_and_keep_their_variant() {
+        let d = doc16(4, 3, 0);
+        let bytes = encode(std::slice::from_ref(&d), &[]).expect("encode");
+        let back = decode(&bytes).expect("decode").0;
+        assert_eq!(back, vec![d.clone()]);
+        assert_eq!(back[0].precision(), ph2d_imageio::Precision::Rgba16);
+        // ⚠️ Controle: o payload de 16 bits ocupa o DOBRO dos bytes com o mesmo número de
+        // elementos. Sem isto, uma implementação que gravasse 8 bits com uma etiqueta de 16
+        // passaria a ida-e-volta e mentiria sobre a precisão.
+        let eight = encode(&[doc(4, 3, 0)], &[]).expect("encode");
+        assert!(
+            bytes.len() > eight.len() + 40,
+            "o documento de 16 bits ({} B) devia pesar ~o dobro do de 8 ({} B)",
+            bytes.len(),
+            eight.len()
+        );
+    }
+
+    /// **Um documento v3 real continua a abrir** — o gate da migração.
+    ///
+    /// ⚠️ Os bytes são construídos com a forma v3 **verdadeira** (`rgba: Vec<u8>` cru, versão 3),
+    /// não com o tipo vivo: um teste que serializasse o tipo de hoje e o lesse de volta provaria
+    /// apenas que hoje concorda consigo próprio, que é a forma clássica de um gate de migração
+    /// passar sem migrar nada.
+    #[test]
+    fn a_v3_document_still_opens_and_becomes_eight_bit() {
+        #[derive(Serialize)]
+        struct V3Pixels {
+            id: AssetId,
+            width: u32,
+            height: u32,
+            rgba: Vec<u8>,
+            premultiplied: bool,
+        }
+        #[derive(Serialize)]
+        struct V3Doc {
+            version: u32,
+            pixels: Vec<V3Pixels>,
+            sheets: Vec<AuthoredSheet>,
+        }
+        let rgba = rgba(4, 3, 5);
+        let id = AssetId::from_bytes(&rgba);
+        let old = V3Doc {
+            version: 3,
+            pixels: vec![V3Pixels {
+                id,
+                width: 4,
+                height: 3,
+                rgba: rgba.clone(),
+                premultiplied: true,
+            }],
+            sheets: Vec::new(),
+        };
+        let bytes = postcard::to_allocvec(&old).expect("encode v3");
+        let (pixels, sheets) = decode(&bytes).expect("um projeto v3 tem de continuar a abrir");
+        assert!(sheets.is_empty());
+        assert_eq!(pixels.len(), 1);
+        assert_eq!(pixels[0].id, id);
+        assert_eq!(pixels[0].pixels, PixelPayload::Rgba8(rgba));
+        assert_eq!(pixels[0].precision(), ph2d_imageio::Precision::Rgba8);
+        assert!(
+            pixels[0].premultiplied,
+            "o `premultiplied` da v3 nao sobreviveu a' migracao — a franja escura do BG-Removal \
+             voltaria em todo projeto ja' gravado"
+        );
+    }
+
+    /// ⚠️ **Controle positivo da migração:** uma versão que não é nem a corrente nem a v3 continua
+    /// a ser recusada. Sem isto, um `decode` que aceitasse tudo passaria o teste acima.
+    #[test]
+    fn an_unknown_version_is_still_refused() {
+        let doc = SheetDoc {
+            version: SHEET_DOC_VERSION + 1,
+            pixels: Vec::new(),
+            sheets: Vec::new(),
+        };
+        let bytes = postcard::to_allocvec(&doc).expect("encode");
+        assert_eq!(
+            decode(&bytes),
+            Err(SheetDocError::UnsupportedVersion {
+                found: SHEET_DOC_VERSION + 1,
+                expected: SHEET_DOC_VERSION,
+            })
+        );
     }
 
     #[test]
@@ -538,7 +773,10 @@ mod tests {
     #[test]
     fn pixels_that_do_not_match_the_declared_size_are_refused() {
         let mut bad = doc(4, 4, 0);
-        bad.rgba.truncate(8);
+        let PixelPayload::Rgba8(ref mut v) = bad.pixels else {
+            unreachable!("o `doc` de teste constroi 8 bits")
+        };
+        v.truncate(8);
         assert_eq!(
             encode(std::slice::from_ref(&bad), &[]),
             Err(SheetDocError::PixelCountMismatch {

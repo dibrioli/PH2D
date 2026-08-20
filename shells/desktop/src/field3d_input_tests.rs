@@ -435,3 +435,53 @@ mod undo_seam {
         );
     }
 }
+
+/// Os gates das **teclas de verbo** — `G` / `R` / `S`.
+mod mode_keys {
+    use crate::field3d_gizmo::Mode;
+    use crate::field3d_input::mode_for_key;
+    use winit::keyboard::{KeyCode, ModifiersState};
+
+    /// As três letras do Blender, sem modificador, nomeiam os três verbos.
+    #[test]
+    fn the_three_blender_letters_name_the_three_verbs() {
+        let none = ModifiersState::empty();
+        assert_eq!(mode_for_key(KeyCode::KeyG, none), Some(Mode::Move));
+        assert_eq!(mode_for_key(KeyCode::KeyR, none), Some(Mode::Rotate));
+        assert_eq!(mode_for_key(KeyCode::KeyS, none), Some(Mode::Scale));
+        assert_eq!(mode_for_key(KeyCode::KeyX, none), None);
+    }
+
+    /// ⭐ **`Ctrl+S` não é um atalho de gizmo — é o SALVAR do app.**
+    ///
+    /// ⚠️ A guarda de *"ponteiro sobre a janela 3D"* protege os campos de texto; ela **não** protege
+    /// os atalhos GLOBAIS, que valem em qualquer sítio da janela. Sem esta segunda guarda, guardar o
+    /// projeto com o rato em cima da peça trocava o gizmo para *Size* e **não salvava nada**, em
+    /// silêncio — e o artista descobriria ao fechar o app.
+    #[test]
+    fn a_modifier_makes_it_someone_elses_shortcut() {
+        for m in [
+            ModifiersState::CONTROL,
+            ModifiersState::ALT,
+            ModifiersState::SUPER,
+        ] {
+            for code in [KeyCode::KeyG, KeyCode::KeyR, KeyCode::KeyS] {
+                assert_eq!(
+                    mode_for_key(code, m),
+                    None,
+                    "{code:?} com {m:?} tem de passar adiante — é atalho de outra pessoa"
+                );
+            }
+        }
+    }
+
+    /// ⚠️ **O `Shift` fica de fora da proibição, de propósito:** `Shift+S` continua a ser um `S`, e
+    /// nenhum atalho global da casa o usa. Proibi-lo custaria o atalho a quem escreve com Caps.
+    #[test]
+    fn shift_alone_is_still_the_letter() {
+        assert_eq!(
+            mode_for_key(KeyCode::KeyR, ModifiersState::SHIFT),
+            Some(Mode::Rotate)
+        );
+    }
+}

@@ -243,12 +243,8 @@ impl App {
     ///
     /// O seletor do PAINEL é a outra porta, e é a que se encontra sem saber que existe.
     pub(crate) fn field3d_mode_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
-        use winit::keyboard::KeyCode;
-        let mode = match code {
-            KeyCode::KeyG => field3d_gizmo::Mode::Move,
-            KeyCode::KeyR => field3d_gizmo::Mode::Rotate,
-            KeyCode::KeyS => field3d_gizmo::Mode::Scale,
-            _ => return false,
+        let Some(mode) = mode_for_key(code, self.modifiers) else {
+            return false;
         };
         let pos = self.last_pointer;
         with_smoke(|s| {
@@ -392,6 +388,32 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         }
     }
     true
+}
+
+/// **Que verbo esta tecla nomeia** — `None` quando ela não é deste módulo.
+///
+/// ⚠️ **Com MODIFICADOR não é atalho de gizmo, e esta linha é a diferença entre um atalho e um
+/// sequestro do `Ctrl+S`.** A guarda de *"ponteiro sobre a janela 3D"* protege os campos de texto;
+/// ela não protege os atalhos GLOBAIS, que valem em qualquer sítio da janela — e `Ctrl+S` é o
+/// salvar do app. Sem isto, guardar o projeto com o rato em cima da peça trocava o gizmo para
+/// *Size* e **não salvava nada**, em silêncio.
+///
+/// ⚠️ O `Shift` fica de fora da proibição de propósito: `Shift+S` continua a ser um `S`, e nenhum
+/// atalho global da casa o usa.
+fn mode_for_key(
+    code: winit::keyboard::KeyCode,
+    modifiers: winit::keyboard::ModifiersState,
+) -> Option<field3d_gizmo::Mode> {
+    use winit::keyboard::KeyCode;
+    if modifiers.control_key() || modifiers.alt_key() || modifiers.super_key() {
+        return None;
+    }
+    match code {
+        KeyCode::KeyG => Some(field3d_gizmo::Mode::Move),
+        KeyCode::KeyR => Some(field3d_gizmo::Mode::Rotate),
+        KeyCode::KeyS => Some(field3d_gizmo::Mode::Scale),
+        _ => None,
+    }
 }
 
 /// A alça que o gizmo tem de pintar realçada: a **agarrada** ganha da que está sob o cursor.

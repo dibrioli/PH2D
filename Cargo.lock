@@ -5448,6 +5448,7 @@ dependencies = [
  "ph2d-panel-wet-tuning",
  "ph2d-physics-ecs",
  "ph2d-quadflow",
+ "ph2d-remesh-iso",
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
@@ -7379,6 +7380,13 @@ dependencies = [
 
 [[package]]
 name = "ph2d-quadflow"
+version = "0.0.0"
+dependencies = [
+ "ph2d-mesh",
+]
+
+[[package]]
+name = "ph2d-remesh-iso"
 version = "0.0.0"
 dependencies = [
  "ph2d-mesh",

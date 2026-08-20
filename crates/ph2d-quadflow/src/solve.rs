@@ -50,7 +50,7 @@ use crate::scale::ScaleField;
 /// que já não existia. *Quem move o número que tornava algo inalcançável tem de
 /// reconferir a nota* (`CLAUDE.md` §0.0) — a re-medição manteve o 2, agora por
 /// **qualidade** e não por relógio.
-pub const SWEEPS_PER_LEVEL: usize = 2;
+pub const SWEEPS_PER_LEVEL: usize = 6;
 
 /// **RESOLVE os dois campos pela hierarquia.**
 ///
@@ -106,15 +106,26 @@ pub fn solve_fields_with(
             dirs = (0..lv.len())
                 .map(|v| orientation::project_tangent(up_dirs[parent[v] as usize], lv.normals[v]))
                 .collect();
+            // ⚠️ **A PROLONGAÇÃO NÃO ARREDONDA À RETÍCULA DO FILHO**, e a minha
+            // versão arredondava. A referência só projeta a origem do pai no
+            // plano tangente do filho (`o -= n·(n·(o−v))`) e deixa o núcleo de
+            // suavização fazer o arredondamento — que é o único sítio onde ele
+            // pertence. Arredondar aqui congela o campo num nó de grade **antes**
+            // de o nível se acomodar, e cada nível herda o degrau do anterior:
+            // é uma fábrica de singularidades.
             pos = (0..lv.len())
                 .map(|v| {
-                    position::position_round_4(
-                        up_pos[parent[v] as usize],
-                        dirs[v],
-                        lv.normals[v],
-                        lv.positions[v],
-                        scales[l][v],
-                    )
+                    let o = up_pos[parent[v] as usize];
+                    let (n, vp) = (lv.normals[v], lv.positions[v]);
+                    let d = n[0].mul_add(
+                        o[0] - vp[0],
+                        n[1].mul_add(o[1] - vp[1], n[2] * (o[2] - vp[2])),
+                    );
+                    [
+                        d.mul_add(-n[0], o[0]),
+                        d.mul_add(-n[1], o[1]),
+                        d.mul_add(-n[2], o[2]),
+                    ]
                 })
                 .collect();
         }

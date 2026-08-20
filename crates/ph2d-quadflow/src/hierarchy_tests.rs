@@ -79,14 +79,26 @@ fn the_induced_adjacency_is_symmetric() {
     for l in 0..h.depth() {
         let lv = h.level(l);
         for v in 0..lv.len() {
-            for &w in &lv.adjacency[v] {
-                assert_ne!(
-                    w as usize, v,
-                    "o nivel {l} tem um laco proprio no vertice {v}"
-                );
+            for link in &lv.adjacency[v] {
+                let w = link.id as usize;
+                assert_ne!(w, v, "o nivel {l} tem um laco proprio no vertice {v}");
                 assert!(
-                    lv.adjacency[w as usize].contains(&(v as u32)),
+                    lv.adjacency[w].iter().any(|l| l.id == v as u32),
                     "o nivel {l}: {v} conhece {w}, e {w} nao conhece {v}"
+                );
+                // ⚠️ **E o PESO tem de ser o mesmo dos dois lados** — o
+                // Laplaciano cotangente é simétrico por construção, e uma
+                // agregação que somasse só de um lado partiria a simetria sem
+                // que a contagem de vizinhos visse nada.
+                let back = lv.adjacency[w]
+                    .iter()
+                    .find(|l| l.id == v as u32)
+                    .expect("acabou de se verificar que existe");
+                assert!(
+                    (back.weight - link.weight).abs() <= 1.0e-4 * link.weight.abs().max(1.0),
+                    "o nivel {l}: o peso de {v}->{w} e' {} e o de volta e' {}",
+                    link.weight,
+                    back.weight
                 );
             }
         }

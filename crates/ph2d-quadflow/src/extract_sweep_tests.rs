@@ -219,91 +219,6 @@ fn measure_the_quality_on_the_wrinkled_mesh() {
     }
 }
 
-/// **ONDE O GRAFO PERDE ARESTA** — a valência das células antes e depois da poda.
-///
-/// ⚠️ **Um nó de grade tem QUATRO vizinhas.** Toda célula com menos que isso é um
-/// buraco no grafo, e o passeio de faces contorna o buraco — é dali que saem os
-/// ciclos de 44 lados, e um ciclo de 44 lados vira **42 triângulos em leque**,
-/// que é exatamente o objeto espetado da foto do Enio (2026-08-19).
-#[test]
-#[ignore = "sonda -- a valencia do grafo de celulas (CLAUDE.md §0.0)"]
-fn measure_the_cell_valence() {
-    let mesh = wrinkled();
-    eprintln!("\n[quadflow] === valencia das celulas (esfera amassada) ===");
-    eprintln!(
-        "[quadflow]  edge | celulas |  grau0 |  grau1 |  grau2 |  grau3 |  grau4 |  grau5+ | podadas"
-    );
-    for edge in [0.05f32, 0.08, 0.12, 0.18, 0.25] {
-        let scale = ScaleField::uniform(&mesh, edge);
-        let (orient, pos) = crate::solve::solve_fields(&mesh, &scale);
-        let cells = crate::extract::cluster_lattice(&mesh, &orient, &pos, &scale);
-        let c = crate::extract::collapse(&mesh, &pos, &orient, &cells);
-        let mut graph = crate::extract::graph::neighbour_graph(&mesh, &c, &scale);
-        let mut hist = [0usize; 6];
-        for g in &graph {
-            hist[g.len().min(5)] += 1;
-        }
-        let before = graph.iter().filter(|g| !g.is_empty()).count();
-        crate::extract::faces::prune_dangling(&mut graph);
-        let after = graph.iter().filter(|g| !g.is_empty()).count();
-        eprintln!(
-            "[quadflow]  {edge:.2} | {:7} | {:6} | {:6} | {:6} | {:6} | {:6} | {:7} | {:7}",
-            c.verts.len(),
-            hist[0],
-            hist[1],
-            hist[2],
-            hist[3],
-            hist[4],
-            hist[5],
-            before - after
-        );
-    }
-}
-
-/// **AS DUAS LEIS DE LIGAÇÃO, LADO A LADO** — o cone geométrico contra o passo
-/// da retícula.
-///
-/// ⚠️ **É a medição que escolhe o default do [`crate::extract::Linking`]**, e
-/// ela roda sobre as três fixturas porque uma lei que ganha numa esfera lisa e
-/// perde numa amassada não é uma lei.
-#[test]
-#[ignore = "sonda -- cone contra passo de reticula (CLAUDE.md §0.0)"]
-fn measure_the_two_linking_laws() {
-    use crate::extract::{Clustering, Linking, extract_tuned};
-    for (name, mesh) in [
-        ("esfera 48x64", sphere()),
-        ("uv 96x144", ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)),
-        ("uv 96x144 amassada", wrinkled()),
-    ] {
-        eprintln!("\n[quadflow] === {name} ===");
-        eprintln!(
-            "[quadflow]  edge |     lei |  saida |  faces | quads% |  chi | borda | n-manif | invert | comp | maior | volume"
-        );
-        for edge in [0.05f32, 0.08, 0.12, 0.18, 0.25, 0.35] {
-            let scale = ScaleField::uniform(&mesh, edge);
-            let (o, p) = crate::solve::solve_fields(&mesh, &scale);
-            for (tag, link) in [("cone", Linking::Cone), ("passo", Linking::LatticeStep)] {
-                let q = extract_tuned(&mesh, &o, &p, &scale, Clustering::Lattice, link)
-                    .expect("extraiu");
-                let m = measure(&q);
-                eprintln!(
-                    "[quadflow]  {edge:.2} | {tag:>7} | {:6} | {:6} | {:5.1}% | {:4} | {:5} | {:7} | {:6} | {:4} | {:5} | {:+.4}",
-                    m.verts,
-                    m.faces,
-                    m.quads_pct,
-                    m.chi,
-                    m.boundary,
-                    m.non_manifold,
-                    m.flipped,
-                    m.components,
-                    m.max_sides,
-                    m.volume
-                );
-            }
-        }
-    }
-}
-
 /// A aresta MÉDIA da entrada — a régua que diz o que a malha é capaz de resolver.
 fn mean_edge(mesh: &Mesh) -> f32 {
     let mut sum = 0.0f64;
@@ -487,59 +402,6 @@ fn measure_where_the_leftover_triangles_come_from() {
     }
 }
 
-/// **O QUE A RELAXAÇÃO COMPRA, e por quantas passadas** — a sonda que escolhe o
-/// [`crate::relax::RELAX_PASSES`].
-#[test]
-#[ignore = "sonda -- a relaxacao paga? (CLAUDE.md §0.0)"]
-fn measure_the_relaxation() {
-    use std::time::Instant;
-    for (name, mesh) in [
-        ("esfera 48x64", sphere()),
-        ("toro 64x32", ph2d_mesh::shapes::torus(64, 32, 1.0, 0.35)),
-        ("uv 96x144 amassada", wrinkled()),
-    ] {
-        let e = mean_edge(&mesh);
-        let edge = 3.0 * e;
-        let scale = ScaleField::uniform(&mesh, edge);
-        let (o, p) = crate::solve::solve_fields(&mesh, &scale);
-        let base = extract(&mesh, &o, &p, &scale).expect("extraiu").mesh;
-        eprintln!("\n[quadflow] === {name} (quad {edge:.4}) ===");
-        eprintln!(
-            "[quadflow]  passadas | desvio de aresta | hausdorff (em quads) |  volume |     ms"
-        );
-        for passes in [0usize, 1, 2, 4, 8, 16] {
-            let mut m = base.clone();
-            let t = Instant::now();
-            crate::relax::relax(&mut m, &mesh, passes);
-            let ms = t.elapsed().as_secs_f64() * 1000.0;
-            let h = super::one_sided(&m, &mesh).max(super::one_sided(&mesh, &m)) / edge;
-            let mut vol = 0.0f64;
-            let pos = m.positions();
-            for f in m.faces() {
-                let v = f.verts();
-                for k in 1..v.len() - 1 {
-                    let (a, b, c) = (
-                        pos[v[0] as usize],
-                        pos[v[k] as usize],
-                        pos[v[k + 1] as usize],
-                    );
-                    vol += f64::from(a[0].mul_add(
-                        b[1].mul_add(c[2], -(b[2] * c[1])),
-                        a[1].mul_add(
-                            b[2].mul_add(c[0], -(b[0] * c[2])),
-                            a[2] * b[0].mul_add(c[1], -(b[1] * c[0])),
-                        ),
-                    )) / 6.0;
-                }
-            }
-            eprintln!(
-                "[quadflow]  {passes:8} |            {:.3} |                {h:.3} | {vol:7.4} | {ms:6.1}",
-                crate::relax::edge_length_spread(&m)
-            );
-        }
-    }
-}
-
 /// **QUANTAS VARREDURAS POR NÍVEL** — a sonda que escolhe o
 /// [`crate::solve::SWEEPS_PER_LEVEL`], sobre a malha do PRODUTO.
 ///
@@ -560,15 +422,107 @@ fn measure_the_sweeps_per_level() {
         let t = Instant::now();
         let (o, p) =
             crate::solve::solve_fields_with(&mesh, &scale, sweeps, crate::hierarchy::COARSEST);
-        let mut q = extract(&mesh, &o, &p, &scale).expect("extraiu");
-        crate::relax::relax(&mut q.mesh, &mesh, crate::relax::RELAX_PASSES);
+        let q = extract(&mesh, &o, &p, &scale).expect("extraiu");
         let total = t.elapsed().as_secs_f64();
         let h = super::one_sided(&q.mesh, &mesh).max(super::one_sided(&mesh, &q.mesh)) / edge;
         eprintln!(
             "[quadflow]  {sweeps:10} | {:5.1}% | {:5} | {:6.3} | {h:13.3} | {total:7.2}",
             q.quad_fraction() * 100.0,
             q.max_sides,
-            crate::relax::edge_length_spread(&q.mesh)
+            0.0
         );
+    }
+}
+
+/// **A VALÊNCIA DO GRAFO PORTADO** — num quad grid quase todo nó tem QUATRO.
+#[test]
+#[ignore = "sonda -- a valencia do grafo do porte fiel (CLAUDE.md §0.0)"]
+fn measure_the_ported_graph_valence() {
+    for (name, mesh) in [
+        ("esfera 48x64", sphere()),
+        ("uv 96x144 amassada", wrinkled()),
+    ] {
+        let e = mean_edge(&mesh);
+        eprintln!("\n[quadflow] === {name} ===");
+        eprintln!("[quadflow]  razao |  nos |  v0 |  v1 |  v2 |  v3 |   v4 |  v5 |  v6+ | %v4");
+        for ratio in [2.0f32, 3.0, 4.0, 6.0] {
+            let scale = ScaleField::uniform(&mesh, e * ratio);
+            let (o, p) = crate::solve::solve_fields(&mesh, &scale);
+            let g = crate::im_graph::extract_graph(&mesh, &o, &p, &scale);
+            let mut hist = [0usize; 7];
+            let mut live = 0usize;
+            for a in &g.adj {
+                if a.is_empty() {
+                    continue;
+                }
+                live += 1;
+                hist[a.len().min(6)] += 1;
+            }
+            eprintln!(
+                "[quadflow]  {ratio:5.2}x | {live:4} | {:3} | {:3} | {:3} | {:3} | {:4} | {:3} | {:4} | {:.1}% | limpeza: {} encolhidos, {} diagonais, {} rodadas",
+                hist[0],
+                hist[1],
+                hist[2],
+                hist[3],
+                hist[4],
+                hist[5],
+                hist[6],
+                100.0 * hist[4] as f64 / live.max(1) as f64,
+                g.cleanup.0,
+                g.cleanup.1,
+                g.cleanup.2
+            );
+            let f = crate::im_faces::extract_faces(&g.adj, &g.o, &g.n, true);
+            eprintln!(
+                "[quadflow]         faces por lados: {:?} (3..8) | {} faces | bordas por fechar: {} (maior {})",
+                &f.stats[3..=8],
+                f.faces.len(),
+                f.stats[0],
+                f.stats[1]
+            );
+        }
+    }
+}
+
+/// **QUANTAS SINGULARIDADES O CAMPO PRODUZ, em função das varreduras.**
+///
+/// ⚠️ **Numa esfera, uma grade de quads tem `Σ(4−v) = 8`** — oito nós de valência
+/// 3, e mais nada. Tudo acima disso é o campo a não ter convergido, e cada par
+/// (3,5) a mais é um triângulo ou um pentágono na saída.
+#[test]
+#[ignore = "sonda -- singularidades contra varreduras (CLAUDE.md §0.0)"]
+fn measure_singularities_against_sweeps() {
+    use std::time::Instant;
+    for (name, mesh) in [
+        ("esfera 48x64", sphere()),
+        ("uv 96x144 amassada", wrinkled()),
+    ] {
+        let e = mean_edge(&mesh);
+        let scale = ScaleField::uniform(&mesh, 3.0 * e);
+        eprintln!("\n[quadflow] === {name} (quad 3,0x) ===");
+        eprintln!(
+            "[quadflow]  varreduras |  nos | irregulares | quads% |  tris | pentagonos |     ms"
+        );
+        for sweeps in [2usize, 4, 8, 16, 32, 64] {
+            let t = Instant::now();
+            let (o, p) =
+                crate::solve::solve_fields_with(&mesh, &scale, sweeps, crate::hierarchy::COARSEST);
+            let g = crate::im_graph::extract_graph(&mesh, &o, &p, &scale);
+            let ms = t.elapsed().as_secs_f64() * 1000.0;
+            let live = g.adj.iter().filter(|a| !a.is_empty()).count();
+            let irregular = g
+                .adj
+                .iter()
+                .filter(|a| !a.is_empty() && a.len() != 4)
+                .count();
+            let f = crate::im_faces::extract_faces(&g.adj, &g.o, &g.n, true);
+            let quads = f.faces.iter().filter(|x| x.verts().len() == 4).count();
+            eprintln!(
+                "[quadflow]  {sweeps:10} | {live:4} | {irregular:11} | {:5.1}% | {:5} | {:10} | {ms:6.0}",
+                100.0 * quads as f64 / f.faces.len().max(1) as f64,
+                f.stats[3],
+                f.stats[5]
+            );
+        }
     }
 }

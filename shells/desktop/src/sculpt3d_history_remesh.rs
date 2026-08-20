@@ -112,14 +112,14 @@ impl Sculpt3dScene {
         let edge = ph2d_quadflow::edge_for_detail(mesh, detail);
         let scale = ph2d_quadflow::ScaleField::adaptive(mesh, edge, adaptive);
         let (orient, pos) = ph2d_quadflow::solve_fields(mesh, &scale);
-        let mut q =
-            ph2d_quadflow::extract(mesh, &orient, &pos, &scale).map_err(RemeshRefusal::Quad)?;
-        // ⚠️ **A relaxação corre AQUI e não dentro da extração**, e a razão é que
-        // ela precisa da malha de ENTRADA para projetar de volta — a extração
-        // devolve uma malha que já não sabe de onde veio. O ganho é modesto e
-        // está medido ao lado da `RELAX_PASSES`; o que ele **não** é, é a cura da
-        // grade feia (essa é o piso do `edge_for_detail` e o fecho sem leque).
-        ph2d_quadflow::relax(&mut q.mesh, mesh, ph2d_quadflow::RELAX_PASSES);
+        // ⚠️ **NÃO HÁ passe de relaxação aqui, e a ausência é MEDIDA.** Eu
+        // construí um (Laplaciano tangente + reprojeção) enquanto a extração
+        // ainda era invenção minha, e ele comprava pouco. Com a extração PORTADA
+        // da referência ele passou a **piorar as três fixturas em todas as
+        // grandezas** — o Hausdorff da malha da cena vai de 0,60 para 1,49 quad
+        // com 16 passadas. A grade que sai do campo cruzado já está alinhada; um
+        // Laplaciano por cima briga com ela. Ver ADR-0160 §5-octies.
+        let q = ph2d_quadflow::extract(mesh, &orient, &pos, &scale).map_err(RemeshRefusal::Quad)?;
         // ⚠️ **A recusa é NOMEADA, e não uma malha vazia.** Com o `detail` toda
         // corrida cai dentro da faixa legal, então este braço é uma rede — mas a
         // diferença entre *"a peça sumiu"* e *"ele disse por quê"* é a razão de

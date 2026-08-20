@@ -98,9 +98,7 @@ pub fn solve_position(
     iterations: usize,
 ) -> PositionField {
     let (p, n) = (mesh.positions(), mesh.normals());
-    let adj: Vec<Vec<u32>> = (0..mesh.vert_count())
-        .map(|v| mesh.adjacency().vert_verts.neighbours(v).to_vec())
-        .collect();
+    let adj = crate::im_weights::cotangent_adjacency(mesh);
     let dirs: Vec<[f32; 3]> = (0..mesh.vert_count()).map(|v| orient.dir(v)).collect();
     let scales: Vec<f32> = (0..mesh.vert_count()).map(|v| scale.at(v)).collect();
     let mut pos: Vec<[f32; 3]> = p.to_vec();
@@ -125,33 +123,37 @@ pub fn smooth_on(
     n: &[[f32; 3]],
     dirs: &[[f32; 3]],
     scales: &[f32],
-    adjacency: &[Vec<u32>],
+    adjacency: &[Vec<crate::im_weights::Link>],
     iterations: usize,
 ) {
     let count = pos.len();
     for _ in 0..iterations {
         for v in 0..count {
             let (pv, nv, qv, sv) = (p[v], n[v], dirs[v], scales[v]);
+            // ⚠️ **`weight_sum` começa em ZERO** — a mesma correção da
+            // orientação, e pela mesma razão.
             let mut sum = pos[v];
-            let mut weight = 1.0f32;
-            for &w in &adjacency[v] {
-                let w = w as usize;
+            let mut weight_sum = 0.0f32;
+            for link in &adjacency[v] {
+                let w = link.weight;
+                if w == 0.0 {
+                    continue;
+                }
+                let j = link.id as usize;
                 let (a, b) = compat_position_extrinsic_4(
-                    pv, nv, qv, sum, sv, p[w], n[w], dirs[w], pos[w], scales[w],
+                    pv, nv, qv, sum, sv, p[j], n[j], dirs[j], pos[j], scales[j],
                 );
                 sum = [
-                    a[0].mul_add(weight, b[0]),
-                    a[1].mul_add(weight, b[1]),
-                    a[2].mul_add(weight, b[2]),
+                    a[0].mul_add(weight_sum, b[0] * w),
+                    a[1].mul_add(weight_sum, b[1] * w),
+                    a[2].mul_add(weight_sum, b[2] * w),
                 ];
-                weight += 1.0;
-                let inv = 1.0 / weight;
-                sum = [sum[0] * inv, sum[1] * inv, sum[2] * inv];
+                weight_sum += w;
+                if weight_sum.abs() > 1.0e-20 {
+                    let inv = 1.0 / weight_sum;
+                    sum = [sum[0] * inv, sum[1] * inv, sum[2] * inv];
+                }
                 // ⚠️ **De volta ao plano tangente DO VÉRTICE, a cada vizinho.**
-                // A média de pontos que vivem em planos diferentes não vive em
-                // nenhum deles, e uma retícula que sai da superfície produz um
-                // vértice novo a flutuar — visível só na extração, três ondas
-                // depois da causa.
                 let d = dot([sum[0] - pv[0], sum[1] - pv[1], sum[2] - pv[2]], nv);
                 sum = [
                     d.mul_add(-nv[0], sum[0]),
@@ -161,9 +163,10 @@ pub fn smooth_on(
             }
             // ⚠️ **E o resultado volta À RETÍCULA.** Sem este arredondamento o
             // campo derivaria continuamente e a extração não teria células a que
-            // agarrar-se: o que faz a malha nova ser uma GRADE é os `o` pousarem
-            // em pontos de retícula, não perto deles.
-            pos[v] = position_round_4(sum, qv, nv, pv, sv);
+            // agarrar-se.
+            if weight_sum > 0.0 {
+                pos[v] = position_round_4(sum, qv, nv, pv, sv);
+            }
         }
     }
 }

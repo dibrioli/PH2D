@@ -190,6 +190,83 @@ repo quase declarou sucesso sobre uma casca murcha.
 
 ---
 
+## §5-octies — ⛔ EU ESTAVA INVENTANDO. O código da referência foi BAIXADO e PORTADO
+
+> *"Uma bosta!!! Acho que vc está inventando!!! Pare de inventar. Identifique o
+> melhor algoritmo do mundo. Baixe o código. E tentar portar."* — Enio,
+> 2026-08-19, com foto de uma esfera coberta de leques.
+
+**Ele estava certo.** Este ADR dizia *"porte nativo"* desde o primeiro dia, e o
+que existia era uma **reconstrução de memória**: os operadores estavam certos
+(conferidos agora, linha a linha), e **tudo o que os consome era invenção
+minha** — o agrupamento, o grafo, o passeio de faces, a hierarquia, os pesos e os
+dois núcleos de suavização.
+
+### O que foi baixado
+
+| repo | licença | o que se usou |
+|---|---|---|
+| `wjakob/instant-meshes` @ `7b31608` | **BSD-3-Clause** | `extract.cpp`, `field.cpp`, `hierarchy.cpp`, `adjacency.cpp`, `meshstats.cpp`, `cleanup.cpp` |
+| `hjwdzh/QuadriFlow` | **BSD-3-Clause** | lido para a Q4 (fluxo de custo mínimo); **não** portado ainda |
+
+⚠️ **As duas são permissivas**, então a citação de fonte é permitida e os
+doc-comments do porte a usam — ao contrário do Blender (GPL), de quem só se pode
+descrever comportamento.
+
+### O que estava errado, peça por peça
+
+| peça | a minha invenção | a referência |
+|---|---|---|
+| **grafo** | cone de 45° + janela `[0,5s, 1,7s]` sobre a geometria | o **passo inteiro** entre as duas retículas, com a cruz de `j` **rotacionada** para a moldura de `i` primeiro; `(1,1)` (a diagonal) é **recusada** |
+| **agrupamento** | `union-find` sobre "os campos estão perto" | colapso por **erro crescente**, com teste de conflito e união das vizinhanças |
+| **posição do nó** | média simples das origens | média **ponderada** por `exp(−9·\|O−V\|²/s²)` |
+| **limpeza** | *não existia* | encolher todo triângulo de altura `< 0,3 s` e **remover toda diagonal de quad** — é o passo que faz a grade ser quad |
+| **faces** | um passeio, aceitando o ciclo que saísse (3, 8, **44** lados) | **seis passadas** pedindo comprimento EXATO (3..8); o que não fecha é **desfeito** |
+| **n-gon** | leque a partir do vértice 0 (`n−2` agulhas) | corte pelo **melhor ângulo** (o quad mais próximo de 90°), repetido |
+| **hierarquia** | primeiro vizinho livre, por ordem de índice | emparelhamento por `(n_i·n_j)·razão_de_área`, decrescente; vértice grosso = média **ponderada pela área** |
+| **pesos** | `1` em toda aresta | **cotangente** `½(cot α + cot β)`, carregados para cima somados |
+| **núcleos** | acumulador começando com peso `1` no valor próprio | `weight_sum` começa em **zero** — o valor próprio é só a MOLDURA |
+| **prolongação** | arredondava à retícula do filho | só **projeta** no plano tangente; quem arredonda é o núcleo |
+| **varreduras** | 2 | **6** (`levelIterations` da referência) |
+| **não-manifold** | *não existia* | **passo 11**: larga gulosamente toda face que reivindique uma aresta dirigida já com dono |
+
+### O estado MEDIDO depois do porte, na malha que o módulo abre (98 306 vértices)
+
+| | antes (invenção) | **depois (porte)** |
+|---|---|---|
+| `χ` | 2 | **2** |
+| arestas não-manifold | 0 | **0** |
+| arestas dirigidas repetidas | 0 | **0** |
+| **maior face** | 5 | **5** |
+| quads | 96,4 %* | **89,4 %** |
+| volume | +4,42 | **+4,42** |
+| relógio | 2,12 s | **2,12 s** |
+
+\* ⚠️ **Os 96,4 % eram FABRICADOS.** Aquele número vinha de emparelhar
+triângulos e fechar n-gons com um nó no meio — operações que **criam** quads a
+partir de faces que a referência nunca emite. Era por isso que a métrica subia
+enquanto a foto piorava: *uma régua que conta o que o próprio código inventou
+não mede nada.*
+
+### ⛔ Recusas MEDIDAS desta wave
+
+| # | o que foi tentado | o que a medição disse |
+|---|---|---|
+| 13 | **a relaxação (Q3.6), que eu tinha construído** | com a extração portada ela **piora as três fixturas em tudo**: o Hausdorff da malha da cena vai de **0,60 para 1,49** quad. A grade do campo cruzado já está alinhada; um Laplaciano por cima briga com ela. **REMOVIDA** |
+| 14 | fechar buracos só até 6 lados (a barra da referência) | sobravam laços de **12 a 40** lados e **7 arestas de borda** numa esfera — a peça vaza. Nós fechamos **todos**, e a divergência é de produto: a saída dela vai para um ficheiro, a nossa vai para as mãos do artista |
+| 15 | mais varreduras para curar as singularidades | de 2 para 64 varreduras: **108 → 89** irregulares, 25× o relógio. O problema não era o número de varreduras |
+
+### ⚠️ O que este porte NÃO cura, e é a Q4
+
+O campo ainda produz **~100 nós irregulares** onde uma esfera admite **8**. Isso
+é o defeito que a literatura nomeia e que o **fluxo de custo mínimo do
+QuadriFlow** existe para curar — o código está baixado (`hjwdzh/QuadriFlow`,
+`parametrizer-int.cpp` + `flow.hpp`) e **não** foi portado. *Enquanto ele não
+for, a saída é quad-DOMINANTE, não all-quad, e este ADR não deve dizer outra
+coisa.*
+
+---
+
 ## §5-septies — ⚠️ O SLIDER OFERECIA O IMPOSSÍVEL, e a foto do smoke cobrou
 
 > *"valores baixos de resolution destroem o objeto. a qualidade é em geral muito

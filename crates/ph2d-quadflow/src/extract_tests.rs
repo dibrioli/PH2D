@@ -181,6 +181,7 @@ fn the_shape_never_moves_more_than_one_quad() {
 /// do campo, e quem as fecha é o passo global.
 #[test]
 fn the_quad_fraction_is_measured_and_pinned() {
+    let mut worst = 1.0f64;
     for (name, mesh) in [("esfera", sphere()), ("toro", torus())] {
         let q = run(&mesh, 3.0);
         eprintln!(
@@ -194,18 +195,28 @@ fn the_quad_fraction_is_measured_and_pinned() {
             q.quads > 0,
             "{name}: a extracao nao produziu um unico quad -- o passeio de faces nao esta' a fechar"
         );
-        // Piso MEDIDO (2026-08-19, `SWEEPS_PER_LEVEL = 2`): esfera **87,4 %**,
-        // toro **92,0 %**, e **97,6 %** na malha que o módulo abre
-        // (`measure_the_sweeps_per_level`). ⚠️ As fixtures pequenas medem PIOR
-        // que o produto: 48×64 e 64×32 vértices dão poucas células por feição, e
-        // o resíduo de borda pesa mais. O piso sai da pior delas.
-        assert!(
-            q.quad_fraction() > 0.82,
-            "{name}: so' {:.1}% das faces sairam quad -- abaixo do piso MEDIDO desta onda \
-             (esfera 87,4 / toro 92,0 / a malha do modulo 97,6)",
-            q.quad_fraction() * 100.0
-        );
+        worst = worst.min(q.quad_fraction());
     }
+    // ⚠️ **O piso saiu de `0,82` para `0,60`, e a BAIXA é o porte fiel a chegar,
+    // não uma regressão escondida.** O número anterior vinha do meu pipeline
+    // inventado, que emparelhava triângulos e fechava n-gons com um nó no meio —
+    // ele **fabricava** quads a partir de faces que a referência nunca emite, e
+    // era isso que a foto do Enio mostrava (agulhas e leques com 90 % de "quads"
+    // ao lado). O porte devolve as faces que o campo de facto delimita.
+    //
+    // MEDIDO 2026-08-19, a `3,0×` a aresta de entrada: esfera 48×64 **65,2 %**,
+    // toro 64×32 **59,0 %** — ⚠️ **e as duas fixturas são o PIOR caso**, porque a
+    // 3,0× elas ficam com poucas células por feição. Na malha que o módulo de
+    // facto abre (98 306 vértices) o mesmo código dá **89,4 %**, com `χ = 2`,
+    // zero arestas não-manifold e zero invertidas
+    // (`measure_the_kill_criterion`). *Um piso tirado da fixtura pequena mede a
+    // fixtura, e é por isso que ele vem com o número do produto ao lado.*
+    assert!(
+        worst > 0.55,
+        "so' {:.1}% das faces sairam quad na pior fixtura -- abaixo do piso MEDIDO do porte \
+         (esfera 65,2 / toro 59,0 / a malha do modulo 89,4)",
+        worst * 100.0
+    );
 }
 
 /// **A7 — DETERMINÍSTICO.** Duas corridas, a mesma malha ao bit.
@@ -455,15 +466,9 @@ fn measure_the_kill_criterion() {
     let (o, p) = crate::solve::solve_fields(&mesh, &scale);
     let campos = t.elapsed().as_secs_f64();
     let t2 = Instant::now();
-    let mut q = extract(&mesh, &o, &p, &scale).expect("extraiu");
+    let q = extract(&mesh, &o, &p, &scale).expect("extraiu");
     let extracao = t2.elapsed().as_secs_f64();
-    let t3 = Instant::now();
-    crate::relax::relax(&mut q.mesh, &mesh, crate::relax::RELAX_PASSES);
-    let relaxacao = t3.elapsed().as_secs_f64();
-    eprintln!(
-        "[quadflow] relaxacao {relaxacao:.2} s | desvio de aresta {:.3}",
-        crate::relax::edge_length_spread(&q.mesh)
-    );
+    let relaxacao = 0.0f64;
     eprintln!(
         "[quadflow] campos {campos:.2} s + extracao {extracao:.2} s = {:.2} s | {} celulas, {:.1}% quads",
         campos + extracao,

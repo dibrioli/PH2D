@@ -30,7 +30,6 @@
 //! | **1. orientação** | um campo 4-RoSy por vértice, suavizado | ✅ [`orientation`] |
 //! | **2. posição** | a retícula local + a escala adaptativa | ✅ [`position`] + [`scale`] |
 //! | **3. extração** | a malha a partir dos dois campos | ✅ [`mod@extract`] |
-//! | **3.5 relaxação** | a grade fica regular sem sair da forma | ✅ [`mod@relax`] |
 //! | 4. consistência | o fluxo de custo mínimo (o passo do QuadriFlow) | ⏳ Q4 |
 //! | **5. costura** | o botão `Quad Retopology` e o knob `Detail` | ✅ (shell) |
 //!
@@ -54,12 +53,16 @@
 pub mod extract;
 /// **A HIERARQUIA multirresolução** — ver [`hierarchy`].
 pub mod hierarchy;
+/// **AS FACES, porte fiel do Instant Meshes** — ver [`im_faces`].
+mod im_faces;
+/// **O GRAFO, porte fiel do Instant Meshes** — ver [`im_graph`].
+mod im_graph;
+/// **PESOS COTANGENTE e ÁREAS DUAIS** — ver [`im_weights`].
+pub mod im_weights;
 /// **O CAMPO DE ORIENTAÇÃO** — ver [`orientation`].
 pub mod orientation;
 /// **O CAMPO DE POSIÇÃO** — ver [`position`].
 pub mod position;
-/// **A RELAXAÇÃO da grade sobre a superfície** — ver [`mod@relax`].
-pub mod relax;
 /// **A ESCALA, uniforme ou adaptativa** — ver [`scale`].
 pub mod scale;
 /// **OS CAMPOS resolvidos de cima para baixo** — ver [`solve`].
@@ -69,7 +72,6 @@ pub use extract::{Clustering, Quadrangulation, extract, extract_with};
 pub use hierarchy::Hierarchy;
 pub use orientation::{OrientationField, compat_orientation_extrinsic_4, solve_orientation};
 pub use position::{PositionField, compat_position_extrinsic_4, position_round_4, solve_position};
-pub use relax::{RELAX_PASSES, edge_length_spread, relax};
 pub use scale::{
     FLOOR_IN_INPUT_EDGES, MAX_ADAPTIVE_RATIO, MIN_QUADS, ScaleField, edge_for_detail, mean_edge,
     resolvable_edge_range, surface_area,

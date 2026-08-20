@@ -30,6 +30,8 @@
 
 use ph2d_mesh::Mesh;
 
+use crate::im_weights::{Link, cotangent_adjacency, dual_vertex_areas};
+
 /// Abaixo disto não vale a pena outro nível: o grafo já cabe todo numa
 /// vizinhança, e a suavização alcança tudo em poucas varreduras.
 pub const COARSEST: usize = 24;
@@ -38,14 +40,22 @@ pub const COARSEST: usize = 24;
 /// reduzir (uma malha com componentes de um vértice só).
 const MAX_LEVELS: usize = 24;
 
-/// Um nível: os vértices, a vizinhança, e para onde cada um sobe.
+/// Um nível: os vértices, a vizinhança PONDERADA, a área dual, e para onde cada
+/// um sobe.
 pub struct Level {
     /// Posição de cada vértice deste nível.
     pub positions: Vec<[f32; 3]>,
     /// Normal de cada vértice deste nível.
     pub normals: Vec<[f32; 3]>,
-    /// Vizinhos de cada vértice, ordenados (determinismo).
-    pub adjacency: Vec<Vec<u32>>,
+    /// **A ÁREA DUAL** de cada vértice — a massa que ele representa.
+    ///
+    /// ⚠️ **É ela que torna o emparelhamento e as médias corretos.** Sem área,
+    /// um vértice de um polo (que representa uma fatia minúscula) puxa a média
+    /// tanto quanto um vértice de uma barriga lisa, e o nível grosso deixa de
+    /// ser uma amostra da superfície.
+    pub areas: Vec<f32>,
+    /// Vizinhos de cada vértice **com o peso do Laplaciano**, ordenados.
+    pub adjacency: Vec<Vec<Link>>,
     /// Vértice deste nível → vértice do nível ACIMA (mais grosso). Vazio no topo.
     pub parent: Vec<u32>,
 }
@@ -79,13 +89,11 @@ impl Hierarchy {
     /// Constrói parando em `coarsest` vértices — a porta que a sonda varre.
     #[must_use]
     pub fn build_to(mesh: &Mesh, coarsest: usize) -> Self {
-        let adj: Vec<Vec<u32>> = (0..mesh.vert_count())
-            .map(|v| mesh.adjacency().vert_verts.neighbours(v).to_vec())
-            .collect();
         let mut levels = vec![Level {
             positions: mesh.positions().to_vec(),
             normals: mesh.normals().to_vec(),
-            adjacency: adj,
+            areas: dual_vertex_areas(mesh),
+            adjacency: cotangent_adjacency(mesh),
             parent: Vec::new(),
         }];
 
@@ -126,7 +134,27 @@ impl Hierarchy {
     }
 }
 
-/// **UM PASSO DE COARSENING** — emparelha vizinhos e induz o grafo de cima.
+/// **UM PASSO DE COARSENING** — porte **FIEL** de `downsample_graph`
+/// (`instant-meshes`, `src/hierarchy.cpp`), BSD-3-Clause.
+///
+/// ⚠️ **A minha versão emparelhava pelo PRIMEIRO vizinho livre, por ordem de
+/// índice.** Isso constrói uma hierarquia, mas não *a* hierarquia: os pares
+/// saem arbitrários, o nível grosso deixa de descrever a forma, e o campo
+/// resolvido lá em cima chega ao nível fino com singularidades a mais. Medido
+/// (2026-08-19, com a extração já fiel): **228 nós irregulares** numa esfera que
+/// admite **8**.
+///
+/// A referência ordena TODAS as ligações por `(n_i · n_j) · razão_de_área` e
+/// emparelha gulosamente por essa ordem, do maior para o menor:
+///
+/// - **`n_i · n_j`** — junta primeiro o que é plano. Dobrar uma quina para
+///   dentro de um vértice grosso é destruir a informação que o campo mais
+///   precisa;
+/// - **a razão de área** (sempre ≥ 1) — junta primeiro o desigual, o que
+///   **equaliza** as áreas do nível de cima em vez de as espalhar.
+///
+/// E o vértice grosso é a média **ponderada pela área** dos dois, não o
+/// representante de um deles.
 ///
 /// Devolve `(nível grosso, fino → grosso)`, ou `None` se não houver o que
 /// reduzir.
@@ -135,78 +163,134 @@ fn coarsen(fine: &Level) -> Option<(Level, Vec<u32>)> {
     if n == 0 {
         return None;
     }
-    let mut parent = vec![u32::MAX; n];
-    let mut groups: Vec<Vec<u32>> = Vec::new();
 
-    for v in 0..n {
-        if parent[v] != u32::MAX {
+    // Todas as ligações, com a ordem da referência.
+    let mut entries: Vec<(f32, u32, u32)> = Vec::new();
+    for i in 0..n {
+        for link in &fine.adjacency[i] {
+            let k = link.id as usize;
+            let dp = dot(fine.normals[i], fine.normals[k]);
+            let (ai, ak) = (fine.areas[i], fine.areas[k]);
+            let ratio = if ai > ak {
+                ai / ak.max(1.0e-20)
+            } else {
+                ak / ai.max(1.0e-20)
+            };
+            entries.push((dp * ratio, i as u32, link.id));
+        }
+    }
+    // ⚠️ **DECRESCENTE** (a referência inverte o `operator<`), e o desempate é
+    // pelos índices — sem ele a rotulagem deixaria de ser byte-reprodutível.
+    entries.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)).then(a.2.cmp(&b.2)));
+
+    let mut merged = vec![false; n];
+    let mut pairs: Vec<(u32, u32)> = Vec::new();
+    for &(_, i, j) in &entries {
+        if merged[i as usize] || merged[j as usize] {
             continue;
         }
-        let g = groups.len() as u32;
-        parent[v] = g;
-        let mut members = vec![v as u32];
-        // ⚠️ **O PRIMEIRO vizinho livre, e é a ordem do índice que decide.** Um
-        // casamento por peso (a aresta mais curta, o vizinho de menor valência)
-        // daria uma hierarquia mais bonita e uma heurística a mais para medir; o
-        // que este andaime precisa é de metade dos vértices, sem preferências e
-        // com a mesma resposta em toda corrida.
-        for &w in &fine.adjacency[v] {
-            if parent[w as usize] == u32::MAX {
-                parent[w as usize] = g;
-                members.push(w);
-                break;
-            }
-        }
-        groups.push(members);
+        merged[i as usize] = true;
+        merged[j as usize] = true;
+        pairs.push((i, j));
     }
 
-    let k = groups.len();
+    let k = n - pairs.len();
     let mut positions = Vec::with_capacity(k);
     let mut normals = Vec::with_capacity(k);
-    for m in &groups {
-        // ⚠️ **O REPRESENTANTE, e nunca a média.** A primeira versão mediava a
-        // posição e a normal do par — e cada nível encolhia o modelo para dentro
-        // um pouco. Sobre oito níveis o topo deixa de ser uma amostra da
-        // superfície e passa a ser um caroço perto do centroide, com normais que
-        // já não descrevem forma nenhuma; os campos resolvidos ali são ruído, e
-        // prolongar ruído é PIOR que partir da semente. Medido: a hierarquia
-        // mediada perdia do caminho plano em **todas** as 24 combinações de
-        // (topo × varreduras) — 42..55 % contra 60,9 %.
-        //
-        // Com o representante, **todo nível é uma SUBAMOSTRA da superfície
-        // original**: os pontos nunca saem dela, e as normais são as de verdade.
-        let v = m[0] as usize;
+    let mut areas = Vec::with_capacity(k);
+    let mut to_upper: Vec<(u32, u32)> = Vec::with_capacity(k);
+    let mut parent = vec![u32::MAX; n];
+
+    for &(a, b) in &pairs {
+        let (ia, ib) = (a as usize, b as usize);
+        let (area1, area2) = (fine.areas[ia], fine.areas[ib]);
+        let total = area1 + area2;
+        let pos = if total > 1.0e-20 {
+            [
+                (fine.positions[ia][0] * area1 + fine.positions[ib][0] * area2) / total,
+                (fine.positions[ia][1] * area1 + fine.positions[ib][1] * area2) / total,
+                (fine.positions[ia][2] * area1 + fine.positions[ib][2] * area2) / total,
+            ]
+        } else {
+            [
+                (fine.positions[ia][0] + fine.positions[ib][0]) * 0.5,
+                (fine.positions[ia][1] + fine.positions[ib][1]) * 0.5,
+                (fine.positions[ia][2] + fine.positions[ib][2]) * 0.5,
+            ]
+        };
+        let nrm = [
+            fine.normals[ia][0] * area1 + fine.normals[ib][0] * area2,
+            fine.normals[ia][1] * area1 + fine.normals[ib][1] * area2,
+            fine.normals[ia][2] * area1 + fine.normals[ib][2] * area2,
+        ];
+        let idx = positions.len() as u32;
+        parent[ia] = idx;
+        parent[ib] = idx;
+        positions.push(pos);
+        normals.push(normalize_or(nrm, fine.normals[ia]));
+        areas.push(total);
+        to_upper.push((a, b));
+    }
+    for v in 0..n {
+        if merged[v] {
+            continue;
+        }
+        let idx = positions.len() as u32;
+        parent[v] = idx;
         positions.push(fine.positions[v]);
         normals.push(fine.normals[v]);
+        areas.push(fine.areas[v]);
+        to_upper.push((v as u32, u32::MAX));
     }
 
-    // A vizinhança induzida: dois grupos são vizinhos se algum par de membros o
-    // era. ⚠️ `Vec` ordenado e deduplicado, nunca um `HashSet` — a ordem dos
-    // vizinhos entra na suavização, e ela tem de ser a mesma em toda corrida.
-    let mut adjacency: Vec<Vec<u32>> = vec![Vec::new(); k];
-    for v in 0..n {
-        let a = parent[v];
-        for &w in &fine.adjacency[v] {
-            let b = parent[w as usize];
-            if a != b {
-                adjacency[a as usize].push(b);
+    // A vizinhança induzida: as ligações dos um ou dois pais, mapeadas para
+    // baixo. ⚠️ **Os pesos SOMAM** quando duas ligações caem no mesmo par —
+    // é o que mantém o Laplaciano do nível grosso a ser o do fino, agregado.
+    let mut adjacency: Vec<Vec<Link>> = Vec::with_capacity(positions.len());
+    for (i, &(u0, u1)) in to_upper.iter().enumerate() {
+        let mut acc: std::collections::BTreeMap<u32, f32> = std::collections::BTreeMap::new();
+        for upper in [u0, u1] {
+            if upper == u32::MAX {
+                continue;
+            }
+            for link in &fine.adjacency[upper as usize] {
+                let target = parent[link.id as usize];
+                if target == i as u32 {
+                    continue;
+                }
+                *acc.entry(target).or_insert(0.0) += link.weight;
             }
         }
-    }
-    for list in &mut adjacency {
-        list.sort_unstable();
-        list.dedup();
+        adjacency.push(
+            acc.into_iter()
+                .map(|(id, weight)| Link { id, weight })
+                .collect(),
+        );
     }
 
     Some((
         Level {
             positions,
             normals,
+            areas,
             adjacency,
             parent: Vec::new(),
         },
         parent,
     ))
+}
+
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
+}
+
+fn normalize_or(a: [f32; 3], fallback: [f32; 3]) -> [f32; 3] {
+    let len = dot(a, a).sqrt();
+    if len > 1.0e-20 {
+        [a[0] / len, a[1] / len, a[2] / len]
+    } else {
+        fallback
+    }
 }
 
 #[cfg(test)]

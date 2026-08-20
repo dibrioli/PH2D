@@ -40,8 +40,6 @@
 //! fechado por um nó no centroide, em `⌈n/2⌉` faces quase todas quads. Ver
 //! `faces::fan_free_closure`.
 
-use std::collections::BTreeMap;
-
 use ph2d_mesh::{Face, Mesh, MeshError};
 
 use crate::orientation::OrientationField;
@@ -184,82 +182,48 @@ pub fn extract_tuned(
     orient: &OrientationField,
     pos: &PositionField,
     scale: &ScaleField,
-    how: Clustering,
-    link: Linking,
+    _how: Clustering,
+    _link: Linking,
 ) -> Result<Quadrangulation, MeshError> {
-    let cells = match how {
-        Clustering::Seed => cluster(mesh, pos, scale),
-        Clustering::Lattice => cluster_lattice(mesh, orient, pos, scale),
-    };
-    let c = collapse(mesh, pos, orient, &cells);
-    let mut graph = match link {
-        Linking::LatticeStep => lattice_graph(mesh, orient, pos, scale, &c),
-        Linking::Cone => neighbour_graph(mesh, &c, scale),
-    };
-    prune_dangling(&mut graph);
-    let cycles: Vec<Vec<u32>> = trace_faces(&graph, &c.verts, &c.normals, orient)
-        .into_iter()
-        .flat_map(|cy| split_pinches(&cy))
-        .collect();
+    // ⭐ **O PORTE FIEL** — `extract_graph` + `extract_faces` da referência.
+    let g = crate::im_graph::extract_graph(mesh, orient, pos, scale);
+    let f = crate::im_faces::extract_faces(&g.adj, &g.o, &g.n, true);
 
-    // ⚠️ **COMPACTAR ANTES de construir as faces: só as células que aparecem num
-    // ciclo entram na malha.** Um vértice órfão conta em `V` e não em `E` nem em
-    // `F` — ele empurra a característica de Euler para cima sem descrever nada, e
-    // faria a A3 medir a PODA em vez da topologia.
-    let mut remap = vec![u32::MAX; c.verts.len()];
+    // ⚠️ **COMPACTAR: só os vértices que aparecem numa face entram na malha.** Um
+    // vértice órfão conta em `V` e não em `E` nem em `F` — ele empurra a
+    // característica de Euler para cima sem descrever nada, e faria a A3 medir a
+    // poda em vez da topologia.
+    let mut remap = vec![u32::MAX; f.verts.len()];
     let mut verts: Vec<[f32; 3]> = Vec::new();
-    let cycles: Vec<Vec<u32>> = cycles
-        .into_iter()
-        .map(|cy| {
-            cy.into_iter()
-                .map(|v| {
-                    let old = v as usize;
-                    if remap[old] == u32::MAX {
-                        remap[old] = verts.len() as u32;
-                        verts.push(c.verts[old]);
-                    }
-                    remap[old]
-                })
-                .collect()
-        })
-        .collect();
-
-    // ⚠️ **A contagem NÃO é acumulada aqui**, e o clippy o disse: ela sai da
-    // lista FINAL, depois do emparelhamento (ver abaixo). Duas contagens da mesma
-    // coisa divergem; uma derivada da fonte, não.
-    let (mut faces, mut max_sides) = (Vec::<Face>::new(), 0usize);
-    for c in &cycles {
-        max_sides = max_sides.max(c.len());
-        match c.len() {
-            4 => faces.push(Face::quad(c[0], c[1], c[2], c[3])),
-            3 => faces.push(Face::tri(c[0], c[1], c[2])),
-            n if n > 4 => fan_free_closure(c, &mut verts, &mut faces),
-            // Um ciclo de 2 ou menos não delimita área: ele é um artefato da
-            // fusão, e entrar na malha seria uma face degenerada.
-            _ => {}
+    let mut faces: Vec<Face> = Vec::with_capacity(f.faces.len());
+    for face in &f.faces {
+        let v = face.verts();
+        let mut out = [0u32; 4];
+        for (k, &old) in v.iter().enumerate() {
+            let old = old as usize;
+            if remap[old] == u32::MAX {
+                remap[old] = verts.len() as u32;
+                verts.push(f.verts[old]);
+            }
+            out[k] = remap[old];
         }
+        faces.push(if v.len() == 4 {
+            Face::quad(out[0], out[1], out[2], out[3])
+        } else {
+            Face::tri(out[0], out[1], out[2])
+        });
     }
 
-    // ⚠️ **O EMPARELHAMENTO: dois triângulos vizinhos SÃO um quad com uma
-    // diagonal a mais.** Os não-quads que sobram não são singularidades do campo
-    // — as singularidades de uma grade vivem na VALÊNCIA dos vértices (3 ou 5),
-    // nunca no número de lados de uma face. Eles são resíduo da extração, e um
-    // par que partilha aresta reconstitui o quad que a diagonal partiu.
-    //
-    // ⚠️ **A operação preserva χ por construção**: some uma aresta e some uma
-    // face, e `V − (E−1) + (F−1)` é `V − E + F`.
-    let (paired, _merged) = pair_triangles(&faces, &verts);
-    faces = paired;
-
-    // ⚠️ **A CONTAGEM SAI DA LISTA FINAL, e não de aritmética sobre os ciclos.**
-    // A primeira versão fazia `quads += pares; non_quads -= pares * 2` — e
-    // `non_quads` contava CICLOS enquanto os pares consomem TRIÂNGULOS. Um ciclo
-    // de `n` lados vira `n − 2` triângulos, então as duas grandezas nunca foram
-    // a mesma, e o `usize` deu a volta: **18 446 744 073 709 551 613**
-    // não-quads num gate. *Duas contagens da mesma coisa divergem no dia em que
-    // uma delas ganha um consumidor novo; uma contagem derivada da fonte, não.*
     let quads = faces.iter().filter(|f| f.verts().len() == 4).count();
     let non_quads = faces.len() - quads;
+    let max_sides = f
+        .stats
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| **c > 0)
+        .map(|(k, _)| k)
+        .max()
+        .unwrap_or(0);
 
     Ok(Quadrangulation {
         mesh: Mesh::from_parts(verts, faces)?,
@@ -267,236 +231,6 @@ pub fn extract_tuned(
         non_quads,
         max_sides,
     })
-}
-
-/// **AS CÉLULAS** — crescimento por SEMENTE, com diâmetro limitado.
-///
-/// Cada célula nasce num vértice ainda livre e cresce pela malha enquanto o campo
-/// dos candidatos ficar a **menos de meia célula da SEMENTE** — nunca do vizinho.
-///
-/// ⚠️ **A distinção é a wave inteira, e a primeira versão morreu nela.** Ela
-/// unia `i` e `j` quando os campos DELES estavam perto, num `union-find` — e
-/// união é **transitiva**: uma corrente de arestas curtas funde tudo o que ela
-/// tocar. Medido: a esfera de 3 072 vértices saiu com **4 células** (`χ = 4`
-/// sobre uma entrada que vale 2). E a corrente **sempre existe** quando o quad
-/// pedido é maior que a aresta da malha — que é o caso normal de um remesh.
-///
-/// Comparar contra a SEMENTE limita o diâmetro a uma célula por construção: o
-/// que cresce é uma bola no campo, não uma componente conexa de uma relação.
-///
-/// ⚠️ **Ordem de sementes = ordem de índice**, e é o que torna a rotulagem
-/// determinística (A7). Uma escolha "melhor" de semente (a de maior valência, a
-/// mais central) seria uma heurística a mais para justificar e medir; a Q4 é que
-/// tem o instrumento para dizer se ela paga.
-///
-/// ⚠️ **Isto NÃO é o que a referência faz.** O Instant Meshes quocienta pela
-/// retícula porque o campo de posição dele forma PLATÔS — e os platôs vêm da
-/// hierarquia multirresolução, que a Q2 não construiu (o gate
-/// `the_field_never_leaves_its_own_cell` mede o campo a variar continuamente).
-/// Sem platôs não há retícula partilhada a que agarrar, e o crescimento por
-/// semente é a resposta honesta a *"que células existem"* com o campo que se
-/// tem. **A hierarquia é pré-requisito da Q4**, e este doc é o registro de por
-/// quê.
-fn cluster(mesh: &Mesh, pos: &PositionField, scale: &ScaleField) -> Vec<u32> {
-    let n = mesh.vert_count();
-    let adj = mesh.adjacency();
-    let mut cell = vec![u32::MAX; n];
-    let mut next = 0u32;
-    let mut queue: Vec<usize> = Vec::new();
-
-    // ⚠️ **Ordem de índice — e a amostragem de POISSON foi MEDIDA e REJEITADA.**
-    // Semear pelo ponto mais DISTANTE das sementes já postas espalha-as por
-    // construção e dá células de tamanhos parecidos; parecia a cura da valência
-    // irregular. Medido: **48,9 %** de quads na esfera contra 53,3 %, e 38,5 %
-    // contra 39,7 % no toro. Células mais regulares não são grades melhores —
-    // o que a grade quer é que as vizinhas caiam nas QUATRO direções da cruz, e a
-    // regularidade métrica não fala sobre isso.
-    for seed in 0..n {
-        if cell[seed] != u32::MAX {
-            continue;
-        }
-        let c = next;
-        next += 1;
-        cell[seed] = c;
-        let o0 = pos.at(seed);
-        let radius = 0.5 * scale.at(seed);
-
-        queue.clear();
-        queue.push(seed);
-        let mut head = 0;
-        while head < queue.len() {
-            let v = queue[head];
-            head += 1;
-            for &w in adj.vert_verts.neighbours(v) {
-                let w = w as usize;
-                if cell[w] != u32::MAX {
-                    continue;
-                }
-                // ⚠️ Contra a SEMENTE (`o0`), nunca contra `v`.
-                if dist(pos.at(w), o0) < radius {
-                    cell[w] = c;
-                    queue.push(w);
-                }
-            }
-        }
-    }
-    cell
-}
-
-/// **As células, colapsadas** — o que o [`collapse`] devolve.
-///
-/// ⚠️ Um struct e não uma tupla de quatro `Vec`: os quatro campos são indexados
-/// pela MESMA coisa (a célula), menos o último, e uma tupla deixa isso por
-/// descobrir em cada sítio de uso.
-struct Cells {
-    /// A posição do nó de cada célula.
-    verts: Vec<[f32; 3]>,
-    /// A normal média de cada célula.
-    normals: Vec<[f32; 3]>,
-    /// A direção da cruz de cada célula — a da semente, re-projetada.
-    dirs: Vec<[f32; 3]>,
-    /// Vértice da ENTRADA → célula de saída.
-    of: Vec<u32>,
-}
-
-/// **AS CÉLULAS pelo QUOCIENTE DA RETÍCULA** — a lei da referência.
-///
-/// Dois vértices vizinhos são a **mesma** célula quando o passo inteiro entre as
-/// retículas deles é `(0,0)` — ou seja, quando `position_round_4` do campo de um,
-/// ancorado no campo do outro, **não anda**. É uma relação de equivalência, e o
-/// `union-find` a fecha.
-///
-/// ⚠️ **Ela SÓ funciona sobre um campo com PLATÔS**, e é essa dependência que
-/// liga esta função à hierarquia: sem platôs a relação é *"os campos estão
-/// perto"*, que é transitiva e funde o modelo inteiro (medido: 4 células numa
-/// esfera de 3 072 vértices). Com platôs, as células são limitadas pelos degraus
-/// do próprio campo.
-fn cluster_lattice(
-    mesh: &Mesh,
-    orient: &OrientationField,
-    pos: &PositionField,
-    scale: &ScaleField,
-) -> Vec<u32> {
-    let n = mesh.vert_count();
-    let normals = mesh.normals();
-    let adj = mesh.adjacency();
-    let mut uf: Vec<u32> = (0..n as u32).collect();
-    for (v, nv) in normals.iter().enumerate().take(n) {
-        for &w in adj.vert_verts.neighbours(v) {
-            let w = w as usize;
-            if w <= v {
-                continue;
-            }
-            // **O campo de `w`, trazido à retícula de `v`, ANDA?** Se o passo
-            // inteiro é `(0,0)`, os dois descrevem o mesmo nó da grade.
-            //
-            // ⚠️ **É o critério da referência expresso num referencial só.** O
-            // `extract_graph` compara os dois índices inteiros
-            // (`shift.first − shift.second == 0`), e o porte literal disso vive
-            // aqui ao lado (`compat_position_extrinsic_index_4`) — MEDIDO, ele dá
-            // **19,3 %** de quads contra os **76,9 %** desta forma, com χ = 280 e
-            // ciclos de 63 lados. Os índices de cada lado vivem na retícula do
-            // SEU vértice, e igualá-los exige que os dois campos já partilhem o
-            // referencial — o que a nossa otimização, sem o limiar de `error` e
-            // sem os passes de limpeza do `extract_graph`, ainda não garante.
-            // *A função fica portada e gateada; ligá-la é trabalho da Q4.*
-            //
-            // ⚠️ E o teste **não** pode ser a distância entre as quinas que o
-            // `compat_position_extrinsic_4` devolve: ele escolhe o par mais
-            // PRÓXIMO por construção, então aquela distância é sempre minúscula e
-            // o `union-find` funde o modelo inteiro (medido: **1 célula**).
-            let snapped = crate::position::position_round_4(
-                pos.at(v),
-                orient.dir(v),
-                *nv,
-                pos.at(w),
-                scale.at(v),
-            );
-            if dist(snapped, pos.at(v)) < 1.0e-4 * scale.at(v).max(1.0) {
-                let (a, b) = (uf_find(&mut uf, v as u32), uf_find(&mut uf, w as u32));
-                if a != b {
-                    let (lo, hi) = if a < b { (a, b) } else { (b, a) };
-                    uf[hi as usize] = lo;
-                }
-            }
-        }
-    }
-    (0..n as u32).map(|v| uf_find(&mut uf, v)).collect()
-}
-
-fn uf_find(uf: &mut [u32], mut x: u32) -> u32 {
-    while uf[x as usize] != x {
-        uf[x as usize] = uf[uf[x as usize] as usize];
-        x = uf[x as usize];
-    }
-    x
-}
-
-/// **O NÓ DE CADA CÉLULA** — a média das origens que caíram nela, e a normal
-/// média.
-///
-/// Devolve as [`Cells`].
-///
-/// ⚠️ **A média das ORIGENS e não a dos vértices.** As origens já são a resposta
-/// do campo sobre onde o nó da grade está; mediar os vértices devolveria o
-/// centroide do retalho, que é outro ponto — e a grade encolheria para dentro da
-/// forma em toda quina convexa.
-fn collapse(mesh: &Mesh, pos: &PositionField, orient: &OrientationField, cells: &[u32]) -> Cells {
-    let mut order: BTreeMap<u32, u32> = BTreeMap::new();
-    let mut of = vec![0u32; cells.len()];
-    for (v, &c) in cells.iter().enumerate() {
-        let next = order.len() as u32;
-        of[v] = *order.entry(c).or_insert(next);
-    }
-
-    let k = order.len();
-    let (mut p, mut nrm, mut count) = (vec![[0.0f32; 3]; k], vec![[0.0f32; 3]; k], vec![0.0f32; k]);
-    // ⚠️ **A orientação da célula é a da SEMENTE, não uma média.** Médias de
-    // campos 4-RoSy exigem reduzir cada termo ao representante mais próximo do
-    // acumulador — trabalho que o `solve_orientation` já fez sobre a malha
-    // inteira. Reduzi-lo outra vez aqui seria a segunda resposta a *"que direção
-    // tem esta região?"*, e as duas divergiriam nas singularidades, que é
-    // exatamente onde a grade decide.
-    let mut dir = vec![[0.0f32; 3]; k];
-    let mut seeded = vec![false; k];
-    let mesh_n = mesh.normals();
-    for (v, &c) in of.iter().enumerate() {
-        let c = c as usize;
-        if !seeded[c] {
-            dir[c] = orient.dir(v);
-            seeded[c] = true;
-        }
-        for i in 0..3 {
-            p[c][i] += pos.at(v)[i];
-            nrm[c][i] += mesh_n[v][i];
-        }
-        count[c] += 1.0;
-    }
-    for c in 0..k {
-        let inv = 1.0 / count[c];
-        for i in 0..3 {
-            p[c][i] *= inv;
-            nrm[c][i] *= inv;
-        }
-        nrm[c] = normalize_or(nrm[c], [0.0, 0.0, 1.0]);
-        // A direção da semente, re-projetada na normal MÉDIA da célula: ela foi
-        // tangente ao vértice-semente, e a célula tem plano próprio.
-        let d = dot(dir[c], nrm[c]);
-        dir[c] = normalize_or(
-            [
-                d.mul_add(-nrm[c][0], dir[c][0]),
-                d.mul_add(-nrm[c][1], dir[c][1]),
-                d.mul_add(-nrm[c][2], dir[c][2]),
-            ],
-            tangent_of(nrm[c]),
-        );
-    }
-    Cells {
-        verts: p,
-        normals: nrm,
-        dirs: dir,
-        of,
-    }
 }
 
 pub(super) fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
@@ -514,32 +248,6 @@ pub(super) fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
 pub(super) fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
-
-fn dist(a: [f32; 3], b: [f32; 3]) -> f32 {
-    let d = sub(a, b);
-    dot(d, d).sqrt()
-}
-
-fn normalize_or(a: [f32; 3], fallback: [f32; 3]) -> [f32; 3] {
-    let len = dot(a, a).sqrt();
-    if len > 1.0e-6 {
-        [a[0] / len, a[1] / len, a[2] / len]
-    } else {
-        fallback
-    }
-}
-
-/// **DOS CICLOS ÀS FACES** — ver [`faces`].
-#[path = "extract_faces.rs"]
-mod faces;
-use faces::{
-    fan_free_closure, pair_triangles, prune_dangling, split_pinches, tangent_of, trace_faces,
-};
-
-/// **QUE CÉLULAS SÃO VIZINHAS** — ver [`graph`].
-#[path = "extract_graph.rs"]
-mod graph;
-use graph::{lattice_graph, neighbour_graph};
 
 #[cfg(test)]
 #[path = "extract_tests.rs"]

@@ -189,9 +189,7 @@ pub fn compat_orientation_extrinsic_4(
 #[must_use]
 pub fn solve_orientation(mesh: &Mesh, iterations: usize) -> OrientationField {
     let normals = mesh.normals();
-    let adj: Vec<Vec<u32>> = (0..mesh.vert_count())
-        .map(|v| mesh.adjacency().vert_verts.neighbours(v).to_vec())
-        .collect();
+    let adj = crate::im_weights::cotangent_adjacency(mesh);
     let mut dirs = seed_dirs(normals);
     smooth_on(&mut dirs, normals, &adj, iterations);
     OrientationField { dirs }
@@ -227,32 +225,36 @@ pub fn project_tangent(d: [f32; 3], n: [f32; 3]) -> [f32; 3] {
 pub fn smooth_on(
     dirs: &mut [[f32; 3]],
     normals: &[[f32; 3]],
-    adjacency: &[Vec<u32>],
+    adjacency: &[Vec<crate::im_weights::Link>],
     iterations: usize,
 ) {
     let count = dirs.len();
     for _ in 0..iterations {
         for v in 0..count {
             let nv = normals[v];
+            // ⚠️ **`weight_sum` começa em ZERO, e o próprio valor entra só como
+            // MOLDURA.** A primeira parcela é `a·0 + b·w`, ou seja o vizinho
+            // rotacionado — o valor antigo serve para escolher o representante
+            // 4-RoSy e depois sai. A minha versão começava em 1 e mantinha o
+            // valor antigo com peso próprio, o que trava o campo: cada vértice
+            // resistia à vizinhança com um voto que não é de ninguém.
             let mut sum = dirs[v];
-            let mut weight = 1.0f32;
-            for &w in &adjacency[v] {
-                let (a, b) =
-                    compat_orientation_extrinsic_4(sum, nv, dirs[w as usize], normals[w as usize]);
-                // O acumulador cresce com o peso já absorvido: é uma média
-                // corrente, e é ela que faz a ordem dos vizinhos não decidir o
-                // resultado mais do que o Gauss-Seidel já decide.
-                sum = add(scale(a, weight), b);
-                weight += 1.0;
-                // ⚠️ **Projetar de volta ao plano tangente a CADA vizinho.** A
-                // soma de dois vetores tangentes a planos diferentes não é
-                // tangente a nenhum dos dois, e deixar a deriva acumular até ao
-                // fim do laço faz o campo sair do plano num vértice de muita
-                // valência — que é justamente o polo de uma esfera UV.
+            let mut weight_sum = 0.0f32;
+            for link in &adjacency[v] {
+                let w = link.weight;
+                if w == 0.0 {
+                    continue;
+                }
+                let j = link.id as usize;
+                let (a, b) = compat_orientation_extrinsic_4(sum, nv, dirs[j], normals[j]);
+                sum = add(scale(a, weight_sum), scale(b, w));
                 sum = reject(sum, nv);
+                weight_sum += w;
                 sum = normalize_or(sum, dirs[v]);
             }
-            dirs[v] = sum;
+            if weight_sum > 0.0 {
+                dirs[v] = sum;
+            }
         }
     }
 }

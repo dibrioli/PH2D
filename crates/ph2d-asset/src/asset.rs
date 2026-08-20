@@ -108,6 +108,23 @@ impl Asset {
         }
     }
 
+    /// **As dimensões desta imagem**, seja qual for a precisão.
+    ///
+    /// ⚠️ Existe porque a auditoria da W2 (plano `docs/Sprite_projeto/18`) encontrou dois sítios que
+    /// só queriam `width`/`height` e mesmo assim casavam `Asset::ImageRgba8 { .. }` — o tamanho real
+    /// da sprite no Inspector e o «Real size». Com uma variante nova eles caíam no `_ => None` e
+    /// **desapareciam em silêncio**, que é o modo de falha que o `#[non_exhaustive]` compra.
+    /// *Perguntar o tamanho não devia exigir saber a precisão.*
+    #[must_use]
+    pub fn image_dimensions(&self) -> Option<(u32, u32)> {
+        match self {
+            Self::ImageRgba8 { width, height, .. } | Self::ImageRgba16 { width, height, .. } => {
+                Some((*width, *height))
+            }
+            _ => None,
+        }
+    }
+
     /// A precisão desta imagem, ou `None` se o asset não for imagem descomprimida.
     ///
     /// ⚠️ `TextureKtx2` devolve `None` de propósito: uma textura cozida é BC/ASTC/ETC2 e a sua

@@ -642,14 +642,12 @@ pub(super) fn publish(
             .unwrap_or_else(|| format!("Entity_{bits:x}"));
         let (source_kind, source_pixels, can_reimport) = match sprite.source {
             ph2d_render::SpriteSource::Atlas { key } => {
-                let dims = atlas_asset_map.get(&key).and_then(|aid| {
-                    asset_db.get(aid).and_then(|asset| match &*asset {
-                        ph2d_asset::Asset::ImageRgba8 { width, height, .. } => {
-                            Some((*width, *height))
-                        }
-                        _ => None,
-                    })
-                });
+                // ⚠️ `image_dimensions` e não um `match` na variante — ver o irmão em
+                // `inspector_commits.rs`. Aqui a falha silenciosa era o tamanho da sprite sumir do
+                // Inspector (plano `docs/Sprite_projeto/18`, auditoria da W2).
+                let dims = atlas_asset_map
+                    .get(&key)
+                    .and_then(|aid| asset_db.get(aid).and_then(|a| a.image_dimensions()));
                 (
                     ph2d_editor::InspectorSpriteSource::Atlas { key },
                     dims,

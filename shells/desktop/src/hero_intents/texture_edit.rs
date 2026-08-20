@@ -66,14 +66,12 @@ pub(crate) fn read_sprite_source(
         SpriteSource::Atlas { key } => {
             let aid = atlas_asset_map.get(&key)?;
             let asset = asset_db.get(aid)?;
-            match &*asset {
-                ph2d_asset::Asset::ImageRgba8 {
-                    width,
-                    height,
-                    pixels,
-                } => SpriteImage::from_bytes(*width, *height, pixels.to_vec(), AlphaMode::Straight),
-                _ => return None,
-            }
+            // ⚠️ `image_rgba8` e não um `match` na variante: uma sprite de Atlas é de 8 bits por
+            // construção, e as Image Tools que consomem isto entregam 8 bits de volta. Casar a
+            // variante fazia um asset de 16 bits abrir a ferramenta com a imagem VAZIA
+            // (plano `docs/Sprite_projeto/18`, auditoria da W2).
+            let (width, height, px) = asset.image_rgba8()?;
+            SpriteImage::from_bytes(width, height, px.into_owned(), AlphaMode::Straight)
         }
         SpriteSource::Individual { texture_id } => {
             let (w, h, pixels) = renderer.readback_individual(texture_id).ok()?;

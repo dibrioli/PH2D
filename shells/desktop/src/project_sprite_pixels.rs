@@ -84,6 +84,22 @@ impl crate::App {
                 );
                 continue;
             };
+            // PRECISION-BYPASS: caminho de ESCRITA — converter para 8 bits aqui apagaria a
+            // precisão no ficheiro gravado. Ganha ramo de 16 bits na W3.
+            //
+            // ⛔ **Este sítio NÃO passa pela porta `Asset::image_rgba8`, e é a excepção que a
+            // auditoria da W2 encontrou** (plano `docs/Sprite_projeto/18`).
+            //
+            // Os irmãos dela — atlas, regrow, Image Tools — convertem para 8 bits porque o
+            // consumidor **é** de 8 bits. Aqui o consumidor é o **FICHEIRO GRAVADO**: converter
+            // seria perder a precisão de uma sprite de 16 bits de forma permanente, na gravação,
+            // sem uma palavra. *Uma conversão de conveniência num caminho de leitura é um atalho;
+            // no caminho de escrita é destruição de dados.*
+            //
+            // ⚠️ Enquanto nada produz `ImageRgba16` (a importação só vira no fim da W2) este
+            // `continue` é inalcançável e correcto. **Ele tem de ganhar um ramo de 16 bits na W3,
+            // com o `SpritePixelDoc` versionado, ANTES de a importação virar** — senão uma sprite
+            // de 16 bits desaparece do save em silêncio, que é o pior modo de falha desta wave.
             let ph2d_asset::Asset::ImageRgba8 {
                 width,
                 height,

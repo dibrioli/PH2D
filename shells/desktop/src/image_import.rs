@@ -66,27 +66,26 @@ fn pack_image(
     let decoded = asset_db
         .get(&asset_id)
         .ok_or_else(|| format!("asset {asset_id} missing after insert"))?;
-    let (width, height, pixels) = match &*decoded {
-        ph2d_asset::Asset::ImageRgba8 {
-            width,
-            height,
-            pixels,
-        } => (*width, *height, pixels.clone()),
-        _ => return Err(format!("{asset_id} is not ImageRgba8 after decode")),
-    };
+    // ⚠️ `image_rgba8` e não um `match` na variante: este é o caminho de import PARA O ATLAS, que é
+    // de 8 bits por construção (plano `docs/Sprite_projeto/18`, auditoria da W2). O `Cow` não copia
+    // no caso de 8 bits, que é o de sempre.
+    let (width, height, pixels) = decoded
+        .image_rgba8()
+        .ok_or_else(|| format!("{asset_id} is not an uncompressed image after decode"))?;
     // Track this import's mapping BEFORE the insert so a regrow
     // triggered by it sees the new key.
     atlas_asset_map.insert(cell_idx, asset_id);
     let fetch_pixels = |key: u32| -> Option<Vec<u8>> {
         let aid = atlas_asset_map.get(&key)?;
         let asset = asset_db.get(aid)?;
-        match &*asset {
-            // `pixels` is `Arc<[u8]>`; the regrow callback wants an
-            // owned `Vec<u8>` because the underlying packer may outlive
-            // the asset borrow.
-            ph2d_asset::Asset::ImageRgba8 { pixels, .. } => Some(pixels.to_vec()),
-            _ => None,
-        }
+        // `pixels` is `Arc<[u8]>`; the regrow callback wants an owned `Vec<u8>` because the
+        // underlying packer may outlive the asset borrow.
+        //
+        // ⚠️ `image_rgba8` e não um `match` na variante: o ATLAS é de 8 bits por construção (uma
+        // textura, um formato), por isso converter para baixo aqui é a resposta certa e não uma
+        // perda escondida. Casar `ImageRgba8` fazia um asset de 16 bits devolver `None` e o
+        // regrow reconstruir a célula VAZIA (plano `docs/Sprite_projeto/18`, auditoria da W2).
+        asset.image_rgba8().map(|(_, _, px)| px.into_owned())
     };
     if let Err(e) =
         renderer.insert_atlas_sprite_with_regrow(cell_idx, width, height, &pixels, fetch_pixels)
@@ -183,10 +182,10 @@ pub fn spawn_blank_canvas(
     atlas_asset_map.insert(cell_idx, asset_id);
     let fetch_pixels = |key: u32| -> Option<Vec<u8>> {
         let aid = atlas_asset_map.get(&key)?;
-        match &*asset_db.get(aid)? {
-            ph2d_asset::Asset::ImageRgba8 { pixels, .. } => Some(pixels.to_vec()),
-            _ => None,
-        }
+        // ⚠️ Ver o irmão acima: o atlas é de 8 bits, converter para baixo é correcto, e o `match`
+        // na variante devolvia `None` (célula vazia) para 16 bits.
+        let asset = asset_db.get(aid)?;
+        asset.image_rgba8().map(|(_, _, px)| px.into_owned())
     };
     if let Err(e) =
         renderer.insert_atlas_sprite_with_regrow(cell_idx, size_px, size_px, &pixels, fetch_pixels)

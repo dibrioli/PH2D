@@ -154,14 +154,17 @@ fn promote_to_individual(
     component_registry: &ComponentRegistry,
     sprite_type_id: u64,
 ) -> bool {
+    // ⚠️ `image_rgba8` e não um `match` na variante. Esta é a promoção Atlas → Individual, e a
+    // fonte é uma célula de atlas, logo de 8 bits. Casar a variante fazia a promoção falhar com
+    // "source asset missing" sobre um asset que existe (plano `docs/Sprite_projeto/18`, W2).
+    //
+    // ⚠️ **A promoção a 16 bits é a outra direcção e vive na W5** — ela lê os pixels, converte com
+    // `rgba8_to_rgba16` e sobe por `acquire_individual_16`. Não é este caminho.
     let decoded = atlas_asset_map.get(&key).and_then(|aid| {
-        asset_db.get(aid).and_then(|asset| match &*asset {
-            ph2d_asset::Asset::ImageRgba8 {
-                width,
-                height,
-                pixels,
-            } => Some((*width, *height, pixels.to_vec())),
-            _ => None,
+        asset_db.get(aid).and_then(|asset| {
+            asset
+                .image_rgba8()
+                .map(|(w, h, px)| (w, h, px.into_owned()))
         })
     });
     let Some((w, h, pixels)) = decoded else {
@@ -258,10 +261,10 @@ fn demote_to_atlas(
         let map = &*atlas_asset_map;
         let fetch = |k: u32| -> Option<Vec<u8>> {
             let aid = map.get(&k)?;
-            match &*asset_db.get(aid)? {
-                ph2d_asset::Asset::ImageRgba8 { pixels, .. } => Some(pixels.to_vec()),
-                _ => None,
-            }
+            // ⚠️ `image_rgba8`: o atlas é de 8 bits por construção, e o `match` na variante
+            // devolvia `None` para 16 bits — regrow com célula vazia (plano 18, auditoria W2).
+            let asset = asset_db.get(aid)?;
+            asset.image_rgba8().map(|(_, _, px)| px.into_owned())
         };
         renderer.insert_atlas_sprite_with_regrow(key, w, h, &straight.pixels, fetch)
     };

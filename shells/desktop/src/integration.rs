@@ -95,15 +95,13 @@ pub fn compose_atlas_rgba(asset_db: &AssetDb, ids: &[AssetId]) -> Result<Vec<u8>
         let asset = asset_db
             .get(id)
             .ok_or_else(|| format!("asset id missing: {id}"))?;
-        let ph2d_asset::Asset::ImageRgba8 {
-            width,
-            height,
-            pixels,
-        } = &*asset
-        else {
-            return Err("only ImageRgba8 supported in atlas compose".into());
+        // ⚠️ `image_rgba8` e não um `match` na variante: o atlas é de 8 bits por construção, por
+        // isso converter para baixo aqui é a resposta certa (plano `docs/Sprite_projeto/18`,
+        // auditoria da W2). O erro fica para o que NÃO é imagem — um prefab ou uma textura cozida.
+        let Some((width, height, pixels)) = asset.image_rgba8() else {
+            return Err("only uncompressed images are supported in atlas compose".into());
         };
-        if *width != ATLAS_SPRITE_PX || *height != ATLAS_SPRITE_PX {
+        if width != ATLAS_SPRITE_PX || height != ATLAS_SPRITE_PX {
             return Err(format!(
                 "sprite {i}: expected {ATLAS_SPRITE_PX}×{ATLAS_SPRITE_PX}, got {width}×{height}"
             ));

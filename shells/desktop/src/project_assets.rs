@@ -22,6 +22,20 @@ impl crate::App {
         };
         let mut out = Vec::new();
         for (&key, asset_id) in &gfx.atlas_asset_map {
+            // PRECISION-BYPASS: caminho de ESCRITA — converter para 8 bits aqui apagaria a
+            // precisão no ficheiro gravado. Ganha ramo de 16 bits na W3.
+            //
+            // ⛔ **Não passa pela porta `Asset::image_rgba8`, e é deliberado** — o irmão do
+            // `project_sprite_pixels.rs` (plano `docs/Sprite_projeto/18`, auditoria da W2).
+            //
+            // O consumidor aqui é o **FICHEIRO GRAVADO**. Converter para 8 bits seria perder a
+            // precisão de forma permanente, na gravação, sem uma palavra — e uma conversão de
+            // conveniência que num caminho de leitura é atalho, no de escrita é destruição de
+            // dados.
+            //
+            // ⚠️ Enquanto nada produz `ImageRgba16` este ramo é inalcançável. **Ele tem de ganhar
+            // um irmão de 16 bits na W3, com o `SavedAsset` versionado, ANTES de a importação
+            // virar.**
             if let Some(asset) = gfx.asset_db.get(asset_id)
                 && let ph2d_asset::Asset::ImageRgba8 {
                     width,
@@ -64,10 +78,10 @@ impl crate::App {
         for a in assets {
             let fetch = |key: u32| -> Option<Vec<u8>> {
                 let aid = atlas_asset_map.get(&key)?;
-                match &*asset_db.get(aid)? {
-                    ph2d_asset::Asset::ImageRgba8 { pixels, .. } => Some(pixels.to_vec()),
-                    _ => None,
-                }
+                // ⚠️ `image_rgba8`: o atlas é de 8 bits por construção, e o `match` na variante
+                // devolvia `None` para 16 bits — regrow com célula vazia (plano 18, auditoria W2).
+                let asset = asset_db.get(aid)?;
+                asset.image_rgba8().map(|(_, _, px)| px.into_owned())
             };
             if let Err(e) =
                 renderer.insert_atlas_sprite_with_regrow(a.key, a.width, a.height, &a.rgba, fetch)

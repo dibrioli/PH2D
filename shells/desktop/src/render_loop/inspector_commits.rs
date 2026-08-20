@@ -139,12 +139,11 @@ pub(super) fn dispatch(
             };
             let aid = atlas_asset_map.get(&key)?;
             let asset = asset_db.get(aid)?;
-            match &*asset {
-                ph2d_asset::Asset::ImageRgba8 { width, height, .. } => {
-                    Some([*width as f32 / px_per_m, *height as f32 / px_per_m])
-                }
-                _ => None,
-            }
+            // ⚠️ `image_dimensions` e não um `match` na variante: perguntar o TAMANHO não deve
+            // exigir saber a precisão. Casar `ImageRgba8` aqui fazia o «Real size» desaparecer em
+            // silêncio numa imagem de 16 bits (plano `docs/Sprite_projeto/18`, auditoria da W2).
+            let (width, height) = asset.image_dimensions()?;
+            Some([width as f32 / px_per_m, height as f32 / px_per_m])
         });
         if let Some(size) = new_size {
             let sim_w = sim.world_mut();

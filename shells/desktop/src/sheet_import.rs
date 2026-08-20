@@ -129,15 +129,13 @@ pub(crate) fn import_sheet(
     let Some(asset) = asset_db.get(&asset_id) else {
         return fail(format!("{} vanished after decode", meta.image_filename));
     };
-    let ph2d_asset::Asset::ImageRgba8 {
-        width,
-        height,
-        pixels,
-    } = &*asset
-    else {
+    // ⚠️ `image_rgba8` e não um `match` na variante: uma folha de sprites é de 8 bits (plano
+    // `docs/Sprite_projeto/18` §3.3 — 16 bits obriga a `Individual`), por isso converter para baixo
+    // é correcto. Casar a variante fazia um `.png` de 16 bits ser recusado com "is not an image".
+    let Some((width, height, pixels)) = asset.image_rgba8() else {
         return fail(format!("{} is not an image", meta.image_filename));
     };
-    let (width, height, pixels) = (*width, *height, pixels.to_vec());
+    let pixels = pixels.into_owned();
     // O `.json` declara o tamanho da folha; se o `.png` discorda, os dois divergiram e cada
     // retângulo passa a apontar para o sítio errado. Recusar aqui é a leitura honesta — deixar
     // passar daria N sprites com o desenho trocado, e ninguém saberia porquê.

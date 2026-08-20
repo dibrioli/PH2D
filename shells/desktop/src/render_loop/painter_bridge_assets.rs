@@ -24,13 +24,13 @@ fn pick_brush_rgba(asset_db: &ph2d_asset::AssetDb) -> Result<Option<(Vec<u8>, u3
     let asset = asset_db
         .get(&id)
         .ok_or_else(|| "asset missing".to_string())?;
-    match &*asset {
-        ph2d_asset::Asset::ImageRgba8 {
-            width,
-            height,
-            pixels,
-        } => Ok(Some((pixels.to_vec(), *width, *height))),
-        _ => Err("not an RGBA image".to_string()),
+    // ⚠️ `image_rgba8` e não um `match` na variante: o documento do Painter é de 8 bits, por isso
+    // converter para baixo é a resposta certa (plano `docs/Sprite_projeto/18`, auditoria da W2).
+    // Casar a variante fazia uma sprite de 16 bits recusar-se a abrir no Painter com "not an RGBA
+    // image", que é uma mensagem falsa sobre uma imagem que É RGBA.
+    match asset.image_rgba8() {
+        Some((width, height, px)) => Ok(Some((px.into_owned(), width, height))),
+        None => Err("not an RGBA image".to_string()),
     }
 }
 

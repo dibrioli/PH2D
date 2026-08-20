@@ -30,7 +30,6 @@ use ph2d_editor::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
 use ph2d_tool_painter::PainterTool;
 
 use crate::App;
-use crate::Transform;
 
 /// Shape-editor (Curve/Circle) control-handle grab radius in SCREEN px — scaled to image px by the
 /// sprite footprint before it's forwarded to the tool, so the hit target stays a constant on-screen
@@ -127,8 +126,9 @@ impl App {
             return false;
         };
         let entity = ph2d_ecs::Entity::from_bits(bits);
+        // ⚠️ Pose de MUNDO — vide o doc do `sprite_image_to_screen_affine`.
         let (Some(tr), Some(sprite)) = (
-            gfx.sim.world().get::<Transform>(entity),
+            ph2d_ecs::world_transform(gfx.sim.world(), entity),
             gfx.sim.world().get::<ph2d_render::Sprite>(entity),
         ) else {
             return false;
@@ -276,8 +276,9 @@ impl App {
             return;
         };
         let entity = ph2d_ecs::Entity::from_bits(bits);
+        // ⚠️ Pose de MUNDO — vide o doc do `sprite_image_to_screen_affine`.
         let (Some(tr), Some(sprite)) = (
-            gfx.sim.world().get::<Transform>(entity),
+            ph2d_ecs::world_transform(gfx.sim.world(), entity),
             gfx.sim.world().get::<ph2d_render::Sprite>(entity),
         ) else {
             return;
@@ -377,9 +378,11 @@ impl App {
             return false;
         };
         // Sprite on-screen footprint (mirrors bgremoval_preview.rs / protect_brush).
+        // ⚠️ **Pose de MUNDO, e é ESTE o sítio do bug:** aqui decide-se se o ponteiro caiu sobre
+        // o sprite, e com a pose local uma sprite FILHA recusa toda pincelada.
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let (Some(tr), Some(sprite)) = (
-            gfx.sim.world().get::<Transform>(entity),
+            ph2d_ecs::world_transform(gfx.sim.world(), entity),
             gfx.sim.world().get::<ph2d_render::Sprite>(entity),
         ) else {
             return false;

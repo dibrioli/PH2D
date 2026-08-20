@@ -170,7 +170,7 @@ pub(super) fn refresh_shape_grab_tol(
     }
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let (Some(tr), Some(sprite)) = (
-        sim.world().get::<crate::Transform>(entity),
+        ph2d_ecs::world_transform(sim.world(), entity),
         sim.world().get::<ph2d_render::Sprite>(entity),
     ) else {
         return;
@@ -214,7 +214,7 @@ fn draw_symmetry_overlay(
     }
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let (Some(tr), Some(sprite)) = (
-        sim.world().get::<crate::Transform>(entity),
+        ph2d_ecs::world_transform(sim.world(), entity),
         sim.world().get::<ph2d_render::Sprite>(entity),
     ) else {
         return;
@@ -289,7 +289,7 @@ pub(super) fn draw_repeat_image(
     };
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let (Some(tr), Some(sprite)) = (
-        sim.world().get::<crate::Transform>(entity),
+        ph2d_ecs::world_transform(sim.world(), entity),
         sim.world().get::<ph2d_render::Sprite>(entity),
     ) else {
         return;
@@ -354,7 +354,7 @@ fn draw_ellipse_overlay(
         if iw > 0
             && ih > 0
             && let (Some(tr), Some(sprite)) = (
-                sim.world().get::<crate::Transform>(entity),
+                ph2d_ecs::world_transform(sim.world(), entity),
                 sim.world().get::<ph2d_render::Sprite>(entity),
             )
         {
@@ -431,7 +431,7 @@ fn draw_polygon_overlay(
         if iw > 0
             && ih > 0
             && let (Some(tr), Some(sprite)) = (
-                sim.world().get::<crate::Transform>(entity),
+                ph2d_ecs::world_transform(sim.world(), entity),
                 sim.world().get::<ph2d_render::Sprite>(entity),
             )
         {
@@ -511,7 +511,7 @@ fn draw_stencil_overlay(
         if iw > 0
             && ih > 0
             && let (Some(tr), Some(sprite)) = (
-                sim.world().get::<crate::Transform>(entity),
+                ph2d_ecs::world_transform(sim.world(), entity),
                 sim.world().get::<ph2d_render::Sprite>(entity),
             )
         {

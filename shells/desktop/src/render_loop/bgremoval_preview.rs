@@ -338,8 +338,9 @@ pub(super) fn dispatch(
     // disappear in sync with the sprite-pipeline live preview.
     if let Some(preview) = &*bgremoval_preview {
         let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
+        // ⚠️ Pose de MUNDO — vide o doc do `sprite_image_to_screen_affine`.
         if let (Some(tr), Some(sprite)) = (
-            sim.world().get::<ph2d_ecs::Transform>(entity),
+            ph2d_ecs::world_transform(sim.world(), entity),
             sim.world().get::<Sprite>(entity),
         ) {
             let quality = match hero.project.image_filter {
@@ -414,14 +415,27 @@ fn release_preview_texture(
 ///
 /// Reused by every overlay layer (preview RGBA, protect tint) so they
 /// share the EXACT same destination geometry — no per-layer drift.
+/// ⚠️ **O `world_tr` é a pose de MUNDO, e o tipo diz isso de propósito.**
+///
+/// Ele era `&ph2d_ecs::Transform` e recebia a pose **LOCAL** — enquanto o comentário abaixo (que
+/// já lá estava) prometia *"sprite-local meters → world"*. Numa sprite de RAIZ as duas coincidem,
+/// e por isso a mentira sobreviveu 21 chamadores; numa sprite **filha** falta a cadeia do pai, o
+/// afim mapeia o ponteiro para o sítio errado, e a guarda de pegada do Painter recusa cada
+/// pincelada — *"se a sprite é filha de outra, não consigo pintá-la"* (Enio, 2026-08-19).
+///
+/// ⚠️ **Passa por VALOR e não por referência, e essa é a metade que impede a recaída:** todo
+/// chamador antigo passava um `&Transform` emprestado do mundo, e trocar o tipo faz cada um deles
+/// **deixar de compilar** até resolver a pose com [`ph2d_ecs::world_transform`]. *Uma convenção
+/// nova sobre a mesma assinatura teria sido esquecida no 22º sítio; um tipo diferente não pode.*
 pub(crate) fn sprite_image_to_screen_affine(
     image_w: u32,
     image_h: u32,
-    tr: &ph2d_ecs::Transform,
+    world_tr: ph2d_ecs::Transform,
     sprite: &Sprite,
     camera: &Camera2d,
     window_size: WindowSize,
 ) -> Affine {
+    let tr = &world_tr;
     let image_w = image_w as f64;
     let image_h = image_h as f64;
     let size_w = sprite.size[0] as f64;

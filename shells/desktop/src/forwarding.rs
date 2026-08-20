@@ -221,7 +221,9 @@ fn painter_eyedropper_sample(
         return None;
     }
     let entity = ph2d_ecs::Entity::from_bits(selection?);
-    let tr = sim.world().get::<crate::Transform>(entity)?;
+    // ⚠️ Pose de MUNDO: um sprite filho tem a cadeia do pai por cima, e sem ela o afim mapeia o
+    // ponteiro para fora da pegada dele.
+    let tr = ph2d_ecs::world_transform(sim.world(), entity)?;
     let sprite = sim.world().get::<ph2d_render::Sprite>(entity)?;
     let painter = tools
         .active_mut()?

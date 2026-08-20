@@ -30,7 +30,7 @@ pub(super) fn draw_line_overlay(
         if iw > 0
             && ih > 0
             && let (Some(tr), Some(sprite)) = (
-                sim.world().get::<crate::Transform>(entity),
+                ph2d_ecs::world_transform(sim.world(), entity),
                 sim.world().get::<ph2d_render::Sprite>(entity),
             )
         {

@@ -38,7 +38,7 @@ pub(super) fn draw_op_badges(
     }
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let (Some(tr), Some(sprite)) = (
-        sim.world().get::<crate::Transform>(entity),
+        ph2d_ecs::world_transform(sim.world(), entity),
         sim.world().get::<ph2d_render::Sprite>(entity),
     ) else {
         return;

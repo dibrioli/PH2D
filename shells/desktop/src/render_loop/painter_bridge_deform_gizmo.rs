@@ -11,8 +11,6 @@ use ph2d_render::{Camera2d, Sprite};
 use ph2d_tool_painter::PainterTool;
 use ph2d_vector::{Point, VectorScene};
 
-use crate::Transform;
-
 pub(super) fn draw_deform_gizmo(
     painter: &PainterTool,
     hero: &HeroScreen,
@@ -34,7 +32,7 @@ pub(super) fn draw_deform_gizmo(
     }
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let (Some(tr), Some(sprite)) = (
-        sim.world().get::<Transform>(entity),
+        ph2d_ecs::world_transform(sim.world(), entity),
         sim.world().get::<Sprite>(entity),
     ) else {
         return;

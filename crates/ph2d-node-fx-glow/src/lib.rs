@@ -32,8 +32,8 @@
 //! input and carries four numbers the render pass reads.
 
 use ph2d_node_registry::{
-    NodeRegistry, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamUiHint, ParamWidget,
-    RegistryError,
+    NodeRegistry, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamHardMax, ParamUiHint,
+    ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
 };
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -103,6 +103,19 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "tint_a",
             default: 1.0,
         },
+        // Apendados (doc 89 folha 11). Os três em neutro = o halo de sempre.
+        ParamSpec {
+            name: "stretch",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "angle",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "clamp",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -120,6 +133,14 @@ pub struct Glow {
     pub saturation: f32,
     /// Multiplies the (desaturated) glow — default white is a no-op.
     pub tint: [f32; 4],
+    /// **A ANAMORFOSE** — a razão entre o alcance ao longo de [`Self::angle`] e o
+    /// perpendicular. `1` é o halo redondo de sempre; `>1` é o *streak* de cinema.
+    pub stretch: f32,
+    /// A direção do *streak*, em graus. Inerte em `stretch = 1` — e o `ParamGate`
+    /// esconde-a ali, porque *um controle que não faz nada não é pintado*.
+    pub angle: f32,
+    /// **O TETO do bright-pass** — `0` desliga. O antídoto dos *fireflies*.
+    pub clamp: f32,
 }
 
 /// The manifest default for a param name (the single source of a knob's neutral
@@ -160,6 +181,9 @@ pub fn from_graph(graph: &Graph) -> Option<Glow> {
             read(ov, "tint_b"),
             read(ov, "tint_a"),
         ],
+        stretch: read(ov, "stretch"),
+        angle: read(ov, "angle"),
+        clamp: read(ov, "clamp"),
     })
 }
 
@@ -192,6 +216,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
@@ -247,6 +274,83 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Color {
             channels: ["tint_r", "tint_g", "tint_b", "tint_a"],
         },
+    },
+    ParamUiHint {
+        param: "stretch",
+        label: "Anamorphic",
+        min: 0.2,
+        max: 6.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "angle",
+        label: "Streak Angle",
+        min: 0.0,
+        max: 360.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
+    },
+    ParamUiHint {
+        param: "clamp",
+        label: "Clamp",
+        min: 0.0,
+        max: 16.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// **A direção do *streak* não existe num halo redondo** — um círculo rodado é o
+/// mesmo círculo, e um controle que não faz nada não é pintado. O `1` é o único
+/// valor de `stretch` que esconde o ângulo, e é o default.
+///
+/// ⚠️ **Um `ParamGate` compara INTEIROS** (`values: &[i32]`), então ele esconde o
+/// ângulo exactamente em `stretch = 1` — que é onde a anamorfose é a identidade.
+/// Entre `1` e `2` o gate deixa o ângulo visível, e tem de deixar: ali ele morde.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
+    param: "angle",
+    when: "stretch",
+    values: &[1],
+}];
+
+/// **O que cada número É** (doc 88, Wave A · doc 89 folha 11) — o terceiro membro da
+/// família a declarar a unidade, e o que fecha a lacuna que a folha mediu.
+///
+/// ⚠️ **O `radius` do glow NÃO é `Length`, e é a distinção que a lei do doc 88 pede.**
+/// Ele multiplica um raio de tenda em **UV** (`BASE_FILTER_RADIUS = 0,006` da
+/// `ph2d-render`), não uma distância de mundo — mostrá-lo em pixels ou metros seria
+/// ensinar ao artista uma coisa falsa. É um `Ratio`, e é isso que ele é.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "angle",
+        unit: ParamUnit::Angle,
+    },
+    ParamUnitDecl {
+        param: "radius",
+        unit: ParamUnit::Ratio,
+    },
+    ParamUnitDecl {
+        param: "stretch",
+        unit: ParamUnit::Ratio,
+    },
+];
+
+/// O curso da MÃO fica no slider; o da MÁQUINA alcança-se por digitação (doc 88 §11).
+///
+/// ⚠️ **O teto do `clamp` é o do FORMATO e está MEDIDO**: o RT do glow é
+/// `Rgba16Float`, cujo maior finito é `65 504` — acima disso o valor vira `inf` e
+/// envenena a soma de toda a cadeia de mips. Um clamp maior que esse número não
+/// pode morder nada, então ele é o teto honesto. A `intensity` parava em `4`, que é
+/// pouco para um flare autoral.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "clamp",
+        max: 65_504.0,
+    },
+    ParamHardMax {
+        param: "intensity",
+        max: 64.0,
     },
 ];
 
@@ -354,6 +458,10 @@ mod tests {
                 radius: 1.0,
                 saturation: 1.0,
                 tint: [1.0, 1.0, 1.0, 1.0],
+                // Os três da folha 11, todos no neutro: halo redondo, sem teto.
+                stretch: 1.0,
+                angle: 0.0,
+                clamp: 0.0,
             })
         );
         // A dragged slider overrides just that knob; the rest stay at default.
@@ -373,11 +481,35 @@ mod tests {
         assert_eq!(glow.radius, 1.0, "untouched knob keeps its default");
     }
 
+    /// **TODO PARAM DO MANIFESTO CHEGA AO `Glow`** — e o oráculo é DERIVADO.
+    ///
+    /// ⚠️ Este gate dizia `params.len() == 9`, e a folha 11 partiu-o ao apendar três
+    /// knobs sobre código correcto. Uma CONTAGEM escrita à mão não afirma nada sobre
+    /// o nó: ela não sabe se o param novo é lido, e envelhece na primeira adição. O
+    /// que a célula queria dizer é *"nenhum knob nasce mudo"*, e isso mede-se
+    /// mexendo em cada um e exigindo que a struct MUDE.
+    ///
+    /// ⚠️ **Sem controle positivo isto passaria por vácuo** se `MANIFEST.params`
+    /// ficasse vazio, então o gate também exige que a varredura tenha achado gente.
     #[test]
-    fn manifest_exposes_every_authored_knob() {
-        // threshold, knee, intensity, radius, saturation, tint_{r,g,b,a}.
-        assert_eq!(MANIFEST.params.len(), 9);
+    fn every_manifest_param_reaches_the_glow_struct() {
+        let mut checked = 0usize;
+        for spec in MANIFEST.params {
+            let mut g = Graph::new();
+            let n = g.add_node(TYPE_NAME);
+            let before = from_graph(&g).expect("o nó existe");
+            // Um valor que difere do default seja ele qual for.
+            g.set_param(n, spec.name, spec.default + 1.25);
+            let after = from_graph(&g).expect("o nó existe");
+            assert_ne!(
+                before, after,
+                "`{}` está no manifesto e o leitor não o vê — um knob mudo",
+                spec.name
+            );
+            checked += 1;
+        }
+        assert!(checked >= 9, "controle: a varredura achou {checked} params");
         assert_eq!(default_of("knee"), 0.6);
-        assert_eq!(default_of("tint_g"), 1.0);
+        assert_eq!(default_of("stretch"), 1.0, "o halo redondo é o neutro");
     }
 }

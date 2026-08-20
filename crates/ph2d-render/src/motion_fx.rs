@@ -44,6 +44,9 @@
 
 use ph2d_gpu::GpuContext;
 
+#[path = "motion_fx_trig.rs"]
+mod trig;
+
 /// The three glow knobs the document carries (doc 67). Plain data — the `fx.glow`
 /// node authors it, the shell hands it to [`bloom_over`](MotionFx::bloom_over).
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -62,6 +65,34 @@ pub struct BloomParams {
     pub saturation: f32,
     /// Multiplies the (desaturated) glow — default white `[1,1,1,1]` is a no-op.
     pub tint: [f32; 4],
+    /// **A ANAMORFOSE** — a razão entre o alcance do halo ao longo de
+    /// [`Self::angle`] e o alcance perpendicular a ele (doc 89 folha 11). `1` é o
+    /// halo redondo que sempre shipou; `>1` estica na direção do ângulo e aperta na
+    /// outra, que é o *streak* anamórfico do cinema (o `Glow Dimensions H/V` do AE,
+    /// o *Anamorphic Ratio* do Unity, a *Bloom Convolution* do Unreal).
+    ///
+    /// ⚠️ **Ela mora na TENDA do upsample, não na cadeia de mips.** Os mips são a
+    /// máquina que arredonda as quinas da fonte (é literalmente o que os torna
+    /// melhores que um box blur largo); torcê-los tornaria a queda direcional em
+    /// TODAS as escalas e o halo perderia o miolo. A tenda de 9 taps é onde a
+    /// referência põe a razão, e é o passe que corre uma vez por nível.
+    pub stretch: f32,
+    /// A direção do *streak*, em GRAUS — a unidade autorada única do app. Sem
+    /// efeito em [`Self::stretch`] `= 1` (um círculo rodado é o mesmo círculo), e o
+    /// `ParamGate` do nó esconde-a ali.
+    pub angle: f32,
+    /// **O TETO do bright-pass** — o antídoto dos *fireflies* (o `Clamp` do Bloom do
+    /// Unity URP). `0` = **desligado**, o caminho literal que sempre shipou.
+    ///
+    /// ⚠️ **O recurso é a REPRESENTAÇÃO, e o número está medido.** O `tint` de uma
+    /// instância é `[f32; 4]` **sem clamp** (doc 67 §4), e o bright-pass não limita
+    /// nada: para `brightness → ∞` a contribuição tende a `1` e a saída tende ao
+    /// próprio `c`. Então um único elemento com `tint = 5000` entra inteiro na
+    /// cadeia, espalha-se por seis níveis de mip e lava a tela. O único teto que
+    /// existe hoje é o do FORMATO — `Rgba16Float` guarda até **65 504** e depois é
+    /// `inf`, que envenena a soma de toda a cadeia. Este param é o teto AUTORADO,
+    /// que é o que a referência expõe.
+    pub clamp: f32,
 }
 
 impl Default for BloomParams {
@@ -73,6 +104,9 @@ impl Default for BloomParams {
             radius: 1.0,
             saturation: 1.0,
             tint: [1.0, 1.0, 1.0, 1.0],
+            stretch: 1.0,
+            angle: 0.0,
+            clamp: 0.0,
         }
     }
 }
@@ -91,9 +125,54 @@ impl BloomParams {
     }
 }
 
+impl BloomParams {
+    /// **A BASE 2×2 da tenda do upsample**, em UV: `[du.x, du.y, dv.x, dv.y]`.
+    ///
+    /// Os 9 taps deixam de ser `(±x, ±y)` e passam a ser `(±du ±dv)`. No neutro
+    /// (`stretch = 1`) o caminho é **LITERAL** e devolve `[fr, 0, 0, fr·aspect]`,
+    /// que reconstrói tap a tap os offsets de sempre — `uv + (−du + dv)` é
+    /// `uv + (−fr, fr·aspect)`, a mesma soma, ao bit.
+    ///
+    /// ⚠️ **A anisotropia é calculada em PIXELS e convertida no fim.** O `aspect`
+    /// existe para o halo sair redondo na tela; aplicá-lo antes da rotação faria o
+    /// ângulo significar coisas diferentes em janelas diferentes — o mesmo `45°`
+    /// apontaria para outro sítio ao redimensionar.
+    fn upsample_basis(&self, aspect: f32) -> [f32; 4] {
+        let fr = BASE_FILTER_RADIUS * self.radius.max(0.0);
+        let s = self.stretch.max(MIN_STRETCH);
+        if s == 1.0 {
+            return [fr, 0.0, 0.0, fr * aspect];
+        }
+        let (c, sn) = trig::cos_sin_cycles(self.angle / 360.0);
+        // Ao longo do ângulo alarga por `s`; perpendicular aperta por `1/s`, para o
+        // «raio» continuar a ser a média geométrica dos dois e o knob não mudar a
+        // ENERGIA do halo, só a forma dele.
+        let (ax, ay) = (c * fr * s, sn * fr * s);
+        let (bx, by) = (-sn * fr / s, c * fr / s);
+        [ax, ay * aspect, bx, by * aspect]
+    }
+
+    /// O teto do bright-pass, como o shader o quer: `0` (desligado) vira o maior
+    /// finito do `Rgba16Float`, que é o teto que a REPRESENTAÇÃO já impunha — então
+    /// o `min` do shader é um no-op sobre qualquer valor que o RT consiga guardar.
+    fn clamp_limit(&self) -> f32 {
+        if self.clamp > 0.0 {
+            self.clamp
+        } else {
+            F16_MAX
+        }
+    }
+}
+
 /// Upsample tent radius in UV at `radius = 1` (the mip chain does the heavy
 /// spreading; this is the per-level tent overlap). Scaled by `BloomParams::radius`.
 const BASE_FILTER_RADIUS: f32 = 0.006;
+/// Piso da anamorfose: abaixo disto o eixo estreito colapsa e a tenda deixa de
+/// cobrir o próprio texel (o `1/s` explodiria o outro eixo).
+const MIN_STRETCH: f32 = 0.05;
+/// O maior finito representável em `Rgba16Float` — o teto que o formato do RT já
+/// impõe, e o valor com que o clamp desligado passa pelo `min` sem morder.
+const F16_MAX: f32 = 65_504.0;
 /// Cap on mip-chain depth (6 halvings reach a wide soft glow at any editor size).
 const MAX_MIPS: usize = 6;
 
@@ -373,21 +452,30 @@ impl MotionFx {
     pub fn bloom_over(&self, gpu: &GpuContext, target: &wgpu::TextureView, params: &BloomParams) {
         // Per-pass uniforms (distinct buffers → all queue writes land before the
         // single submit; no pass mutates another's value mid-encoder).
-        gpu.queue.write_buffer(
-            &self.u_prefilter,
-            0,
-            bytemuck::cast_slice(&params.prefilter_curve()),
-        );
+        // v = a curva do joelho; v2.x = o teto do bright-pass (ver `clamp_limit`).
+        let curve = params.prefilter_curve();
+        let pre: [f32; 8] = [
+            curve[0],
+            curve[1],
+            curve[2],
+            curve[3],
+            params.clamp_limit(),
+            0.0,
+            0.0,
+            0.0,
+        ];
+        gpu.queue
+            .write_buffer(&self.u_prefilter, 0, bytemuck::cast_slice(&pre));
         for (i, buf) in self.u_down.iter().enumerate() {
             // Downsample pass i reads mips[i]; its taps step by that mip's texel.
             let s = self.mips[i].size;
             let v: [f32; 4] = [1.0 / s.0 as f32, 1.0 / s.1 as f32, 0.0, 0.0];
             gpu.queue.write_buffer(buf, 0, bytemuck::cast_slice(&v));
         }
-        // Tent radius in UV; y scaled by aspect so the spread is round in pixels.
+        // A BASE da tenda em UV; o y leva o aspecto para o alcance ser redondo em
+        // pixels. Ver `upsample_basis` — no neutro é `[fr, 0, 0, fr·aspect]`.
         let aspect = self.size.0.max(1) as f32 / self.size.1.max(1) as f32;
-        let fr = BASE_FILTER_RADIUS * params.radius.max(0.0);
-        let up: [f32; 4] = [fr, fr * aspect, 0.0, 0.0];
+        let up = params.upsample_basis(aspect);
         gpu.queue
             .write_buffer(&self.u_up, 0, bytemuck::cast_slice(&up));
         // Composite reads both vec4s: v = (intensity, saturation, _, _),
@@ -572,6 +660,118 @@ mod tests {
         // The neutral authored bloom only lights genuinely-HDR (emissive) pixels:
         // threshold 1.0 leaves an LDR scene untouched.
         assert_eq!(BloomParams::default().threshold, 1.0);
+    }
+
+    #[test]
+    /// **O NEUTRO DA TENDA RECONSTRÓI OS OFFSETS DE SEMPRE** — a base 2×2 em
+    /// `stretch = 1` é `[fr, 0, 0, fr·aspect]`, e os nove taps `(±du ±dv)` são,
+    /// termo a termo, os `(±x, ±y)` de antes.
+    ///
+    /// ⚠️ A igualdade tem de ser EXACTA: este é o gate que autoriza a troca do
+    /// shader sem um passe de paridade na GPU.
+    fn the_neutral_basis_is_the_two_radii_that_shipped() {
+        let p = BloomParams::default();
+        let fr = BASE_FILTER_RADIUS * p.radius;
+        for aspect in [1.0f32, 16.0 / 9.0, 0.5] {
+            assert_eq!(p.upsample_basis(aspect), [fr, 0.0, 0.0, fr * aspect]);
+        }
+    }
+
+    #[test]
+    /// **A ANAMORFOSE ESTICA AO LONGO DO ÂNGULO E APERTA NA PERPENDICULAR.**
+    ///
+    /// ⚠️ O oráculo é a RAZÃO dos dois eixos e não o comprimento de um deles: um
+    /// `stretch` que só alargasse `du` mudaria a energia do halo em vez da forma.
+    /// A `0°` a base fica alinhada aos eixos, então os comprimentos são lidos
+    /// directamente (com o `aspect` desfeito no eixo y).
+    fn the_anamorphic_basis_trades_one_axis_for_the_other() {
+        let p = BloomParams {
+            stretch: 4.0,
+            angle: 0.0,
+            ..BloomParams::default()
+        };
+        let b = p.upsample_basis(1.0);
+        let (du, dv) = (b[0].hypot(b[1]), b[2].hypot(b[3]));
+        let fr = BASE_FILTER_RADIUS * p.radius;
+        assert!((du - fr * 4.0).abs() < 1e-7, "du = {du}");
+        assert!((dv - fr / 4.0).abs() < 1e-7, "dv = {dv}");
+        // A média geométrica é o raio: a forma muda, a energia não.
+        assert!(((du * dv).sqrt() - fr).abs() < 1e-7);
+    }
+
+    #[test]
+    /// **A `stretch = 1` O ÂNGULO NÃO PODE RODAR NADA** — um círculo rodado é o
+    /// mesmo círculo, e é essa a lei que o `ParamGate` do nó espelha ao esconder o
+    /// controle ali.
+    ///
+    /// ⚠️ **Este gate nasceu de uma MUTAÇÃO SOBREVIVENTE.** Apagar o braço literal
+    /// do neutro passava pelo gate do neutro, porque com `angle = 0` a senoide
+    /// parabólica devolve `(1, 0)` EXACTO e o `-0.0` que sobra compara igual a
+    /// `0.0`. A propriedade que se perdia só aparece com um ângulo **não-nulo**:
+    /// sem o braço literal a base roda e o halo redondo passa a depender de um
+    /// controle que não devia mordê-lo.
+    fn at_stretch_one_the_angle_cannot_turn_the_round_halo() {
+        let round = BloomParams::default();
+        for angle in [0.0f32, 37.0, 90.0, 213.5] {
+            let p = BloomParams { angle, ..round };
+            assert_eq!(
+                p.upsample_basis(1.6),
+                round.upsample_basis(1.6),
+                "a {angle}° o halo redondo tem de ficar exactamente onde estava"
+            );
+        }
+    }
+
+    #[test]
+    /// **O ÂNGULO RODA A BASE, e a 90° os dois eixos trocam de papel.**
+    fn the_streak_angle_turns_the_basis() {
+        let p = BloomParams {
+            stretch: 3.0,
+            angle: 90.0,
+            ..BloomParams::default()
+        };
+        let b = p.upsample_basis(1.0);
+        let fr = BASE_FILTER_RADIUS * p.radius;
+        // A 90° o eixo LARGO aponta para +y.
+        assert!(b[0].abs() < 1e-5, "du.x = {}", b[0]);
+        assert!((b[1] - fr * 3.0).abs() < 1e-5, "du.y = {}", b[1]);
+    }
+
+    #[test]
+    /// **O CLAMP NASCE DESLIGADO, e desligado ele é o teto do FORMATO.**
+    ///
+    /// ⚠️ É isso que faz o `min` do shader não precisar de um ramo: `65 504` é o
+    /// maior finito que o `Rgba16Float` guarda, então o limite não pode morder
+    /// nada que o RT consiga representar. Um `0` a chegar cru ao shader apagaria
+    /// o glow inteiro — é a inversão que este gate impede.
+    fn the_clamp_is_off_by_default_and_off_means_the_formats_own_ceiling() {
+        assert_eq!(BloomParams::default().clamp, 0.0);
+        assert_eq!(BloomParams::default().clamp_limit(), F16_MAX);
+        let p = BloomParams {
+            clamp: 2.5,
+            ..BloomParams::default()
+        };
+        assert_eq!(p.clamp_limit(), 2.5);
+        // Um valor absurdo continua a ser o do artista — quem decide o teto do
+        // teto é a `ParamHardMax` do nó, não este conversor.
+        let big = BloomParams {
+            clamp: 1e9,
+            ..BloomParams::default()
+        };
+        assert_eq!(big.clamp_limit(), 1e9);
+    }
+
+    #[test]
+    /// **UM `stretch` DEGENERADO NÃO EXPLODE O EIXO ESTREITO.**
+    fn a_degenerate_stretch_is_floored() {
+        for s in [0.0f32, -3.0, 1e-9] {
+            let p = BloomParams {
+                stretch: s,
+                ..BloomParams::default()
+            };
+            let b = p.upsample_basis(1.0);
+            assert!(b.iter().all(|v| v.is_finite()), "stretch {s}: {b:?}");
+        }
     }
 
     #[test]

@@ -242,3 +242,35 @@ pub(crate) fn transform_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> 
     );
     sinks
 }
+
+/// **A CENA `=70` — A FAMÍLIA `fx.*`** (doc 89, folha 11: cinco células, três nós).
+///
+/// ⚠️ Não é uma cena de pares — ver o cabeçalho de
+/// [`conferencia_demos_fx`](super::super::conferencia_demos_fx): o glow é um passe
+/// da imagem inteira, e um segundo nó dele seria inerte.
+pub(crate) fn fx_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_fx::build_fx_demo_document(doc, registry).unwrap_or_default();
+    let (softness, stretch, firefly) = conferencia_demos_fx::authored();
+    eprintln!(
+        "[fx-demo] {} bandas. As sombras vem em PAR; o glow vem em UM estado (ver abaixo).",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_fx::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Em cima (par): a MESMA sombra, so' que a da direita tem `Softness {softness}`.
+  A borda ganha penumbra e o miolo continua com a MESMA densidade -- ligar a maciez nao
+  pode clarear a sombra.
+  (!) No meio (roxo): o halo esta' com `Anamorphic {stretch}`. Clique no no' Glow e
+  arraste esse controle ate' 1: o halo volta a ser redondo. O `Streak Angle` gira o
+  risco -- e ele so' aparece quando o Anamorphic sai de 1, porque num circulo ele
+  nao faria nada.
+  (!) Embaixo a` direita: UMA peca {firefly}x mais brilhante que o branco. Ela lava a
+  tela de proposito. Arraste o `Clamp` do no' Glow para cima de 1 e o estouro cede,
+  sem a cena inteira apagar.
+  (!) DEU ERRADO se as duas sombras de cima sairem iguais, se a de baixo ficar mais
+  CLARA que a de cima, ou se mexer o Clamp apagar tambem o halo roxo do meio."
+    );
+    sinks
+}

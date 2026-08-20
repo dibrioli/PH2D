@@ -500,5 +500,5 @@ const SUB_ONE: f32 = 12.86;
 #[path = "motion_state_demo_conferencia_utilidade.rs"]
 mod utilidade;
 pub(super) use utilidade::{
-    cursor, deform, drizzle, field_family, join, sortkey, taper, transform_family,
+    cursor, deform, drizzle, field_family, fx_family, join, sortkey, taper, transform_family,
 };

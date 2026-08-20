@@ -30,12 +30,28 @@
 //! decides *which* elements cast at all. (A `tint`-darkened copy would carry the
 //! element's hue and give a red ball a red shadow.)
 //!
-//! **What is deliberately NOT here: blur.** Photoshop's `Size` (and the `Spread` that
-//! chokes the blurred matte) are *raster* operations — they belong to the HDR
-//! compositor pass FX (`fx.blur`/`fx.glow`), which is a cross-module decision, not a
-//! stream node. This node is therefore a **hard-edged** shadow: the flat-design /
-//! long-shadow look, honestly what it is, rather than a fake softness built from a
-//! stack of ghosts. Scale the shadow with a `motion.scale` upstream if you want one.
+//! ## A MACIEZ, e o que a cerca contra ela dizia (doc 89, folha 11)
+//!
+//! Este cabeçalho dizia, palavra por palavra: *"What is deliberately NOT here:
+//! blur … rather than a fake softness built from a stack of ghosts."* A cerca
+//! tinha DUAS razões, e só uma delas continua de pé:
+//!
+//! - **O BORRÃO RASTER continua fora, e agora com o mecanismo escrito.** O passe do
+//!   Motion compõe **aditivamente** (`One`/`One`, `motion_fx.rs`), e **um halo
+//!   escuro não pode ser somado** — um borrão de verdade exigiria um passe ANTES do
+//!   de sprites, que é decisão de renderer e não um param deste nó.
+//! - **A «pilha de fantasmas» era sobre ENCADEAR o nó**, e a própria conferência
+//!   mediu porque aquilo é ruim: um *smear* ao longo de UMA direção, sem alargamento
+//!   perpendicular, com o alfa a compor multiplicativamente (`0,35² = 0,1225` na 2ª
+//!   ordem). **Um disco de UM passe não tem nenhum dos três defeitos**, e é o que o
+//!   `softness` faz — ver [`soft`], que traz os números e o que a aproximação custa.
+//!
+//! ⚠️ **A primeira-parte também discordava da cerca:** o nosso próprio
+//! `ph2d-ecs::vec_filter_kinds` "Drop Shadow" tem `Radius` — o módulo Vector shipou
+//! a sombra MACIA enquanto este nó a recusava.
+//!
+//! Em `softness = 0` o nó é a sombra **hard-edged** de sempre, ao bit: um tap, um
+//! alfa, o caminho literal — o flat-design / long-shadow, honestamente o que é.
 //!
 //! Transcendental-free (HR-5): the direction goes through the parabolic `cos/sin`
 //! leaf. `Effect::Pure`. Like every ghost FX it duplicates `id`s, so place it
@@ -49,12 +65,19 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod copies;
+mod soft;
 mod trig;
 use copies::{falloff_at, positions, tile, tints};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
-/// How many rows one element becomes: its shadow + itself.
+/// How many rows one element becomes com a sombra DURA: o fantasma + ele próprio.
+///
+/// ⚠️ **Já não é a contagem do nó** — com `softness > 0` são `soft::TAPS + 1`, e é
+/// `cast` quem a calcula a partir dos taps que vai de facto emitir. Esta const fica
+/// por ser o caso neutro que os gates do teto usam como referência — e por isso é
+/// `cfg(test)`: um número que só o teste lê não pertence ao binário.
+#[cfg(test)]
 const COPIES: usize = 2;
 
 /// A full turn, in the degrees the param stores — the `trig` leaf speaks **cycles**.
@@ -115,6 +138,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "b",
             default: 0.0,
         },
+        // Apendado (doc 89 folha 11). `0` = a sombra hard-edged de sempre, ao bit.
+        ParamSpec {
+            name: "softness",
+            default: 0.0,
+        },
         ParamSpec {
             name: "a",
             default: 0.35,
@@ -129,28 +157,62 @@ fn offset(direction_deg: f32, distance: f32) -> [f32; 2] {
     [cos * distance, sin * distance]
 }
 
+/// Onde cada elemento projecta os seus fantasmas.
+///
+/// Sem maciez é **UM** ponto, o offset — o caminho LITERAL, o nó que sempre shipou,
+/// e um `softness` não-finito (documento carregado, edição por MCP) conta como
+/// desligado em vez de envenenar as posições. Com maciez são [`soft::TAPS`] pontos
+/// num disco em torno desse mesmo offset.
+fn taps(off: [f32; 2], softness: f32) -> Vec<[f32; 2]> {
+    if !(softness.is_finite() && softness > 0.0) {
+        return vec![off];
+    }
+    soft::disc(softness)
+        .iter()
+        .map(|o| [off[0] + o[0], off[1] + o[1]])
+        .collect()
+}
+
 /// One evaluation: the shadows (behind, in a block), then the elements verbatim.
-fn cast(input: &Stream, direction_deg: f32, distance: f32, color: [f32; 4]) -> Stream {
+fn cast(
+    input: &Stream,
+    direction_deg: f32,
+    distance: f32,
+    color: [f32; 4],
+    softness: f32,
+) -> Stream {
     let n = input.count();
+    let off = offset(direction_deg, distance);
+    let pts = taps(off, softness);
+    // ⚠️ **O teto conta as linhas que este cook vai de facto emitir**, e é por isso
+    // que a maciez o move: `TAPS + 1` por elemento em vez de `2`. O portão é o mesmo
+    // que já existia; o que mudou foi ele passar a saber o número certo.
+    let copies = pts.len() + 1;
     // Nothing to shadow, no budget, or a fully transparent shadow colour: forward the
     // input verbatim rather than paying for invisible quads. A junk alpha (NaN / ∞ — a
     // loaded document, an MCP edit) counts as "off": it would otherwise poison every
     // shadow's alpha.
     let dead = !color[3].is_finite() || color[3] <= 0.0;
-    if n == 0 || n.saturating_mul(COPIES) > MAX_INSTANCES || dead {
+    if n == 0 || n.saturating_mul(copies) > MAX_INSTANCES || dead {
         return input.clone();
     }
     let p = positions(input);
     let base = tints(input);
-    let off = offset(direction_deg, distance);
+    let split = pts.len() > 1;
 
-    let mut pos = Vec::with_capacity(n * COPIES);
-    let mut tint = Vec::with_capacity(n * COPIES);
+    let mut pos = Vec::with_capacity(n * copies);
+    let mut tint = Vec::with_capacity(n * copies);
     // The shadows: the swatch's colour, carrying the element's own transparency.
-    for i in 0..n {
-        pos.push([p[i][0] + off[0], p[i][1] + off[1]]);
-        let a = color[3] * base[i][3] * falloff_at(input, i);
-        tint.push([color[0], color[1], color[2], a]);
+    // ⚠️ Em BLOCOS por tap (todo o tap 0, depois todo o tap 1, …), a mesma razão
+    // de `tile`: a ordem do stream é a ordem de desenho, e blocos mantêm cada
+    // fantasma atrás de cada elemento.
+    for q in &pts {
+        for i in 0..n {
+            pos.push([p[i][0] + q[0], p[i][1] + q[1]]);
+            let a = color[3] * base[i][3] * falloff_at(input, i);
+            let a = if split { soft::per_tap_alpha(a) } else { a };
+            tint.push([color[0], color[1], color[2], a]);
+        }
     }
     // The elements themselves, verbatim and LAST, so they paint over their shadows.
     for i in 0..n {
@@ -158,10 +220,10 @@ fn cast(input: &Stream, direction_deg: f32, distance: f32, color: [f32; 4]) -> S
         tint.push(base[i]);
     }
 
-    let mut out = Stream::new(n * COPIES);
+    let mut out = Stream::new(n * copies);
     for (name, col) in input.columns() {
         if name != "P" && name != "tint" {
-            out.set(name.clone(), tile(col, COPIES));
+            out.set(name.clone(), tile(col, copies));
         }
     }
     out.set("P", Column::Vec2(pos));
@@ -184,7 +246,13 @@ impl NodeOp for FxDropShadow {
             ctx.param("b"),
             ctx.param("a"),
         ];
-        let out = cast(ctx.input(0), direction, distance, color);
+        let out = cast(
+            ctx.input(0),
+            direction,
+            distance,
+            color,
+            ctx.param("softness"),
+        );
         ctx.emit(out);
     }
 }
@@ -202,6 +270,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
     // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
     reg.register_couplings(
@@ -211,7 +281,57 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+
+/// **O que cada número É** (doc 88, Wave A · doc 89 folha 11) — nunca como ele é mostrado.
+///
+/// ⚠️ **A família `fx.*` tinha ZERO dos quatro canais de side-metadata** (`param_units` ·
+/// `hard_max` · `hard_min` · `sections`), medido por grep nas três crates. Não era gap de
+/// capacidade: era o número a viajar sem dizer o que é, e a fronteira de display já existia.
+///
+/// A `distance` é um comprimento de MUNDO — o painel resolve a face (`px` ou `m`) do
+/// `ProjectSettings::display_unit`, e o store fica em metros. A `direction` é o `Angle` que o
+/// widget já desenhava e que a UNIDADE não dizia: *o widget é como se mostra, a unidade é o
+/// que o número É*, e um `Angle` que só existe no widget some assim que alguém ler o param
+/// por outra porta.
+///
+/// ⚠️ **As quatro do swatch ficam de fora de propósito** — `r`/`g`/`b`/`a` são frações de cor,
+/// e `Ratio` ali seria um rótulo que não ajuda ninguém a ler o número.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "distance",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "direction",
+        unit: ParamUnit::Angle,
+    },
+    ParamUnitDecl {
+        param: "softness",
+        unit: ParamUnit::Length,
+    },
+];
+
+/// O teto que a MÃO percorre fica no slider; o que a MÁQUINA aceita alcança-se por DIGITAÇÃO
+/// (o soft/hard do Blender, doc 88 §11). ⚠️ O curso de antes é este número — nada ficou
+/// inalcançável, só deixou de ser o que o dedo varre.
+///
+/// A `distance` parava em `2,0` mundo, que é uma sombra curta; o *long shadow* do design plano
+/// — o look que este nó de propósito entrega hard-edged — pede uma dezena de unidades.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "distance",
+        max: 40.0,
+    },
+    // ⚠️ **O recurso da maciez é a CONTAGEM DE TAPS, não o raio** — 16 taps num disco
+    // grande deixam de se sobrepor e a penumbra vira bandas. O slider para onde a
+    // aproximação ainda lê como penumbra; acima disso o artista está a pedir um
+    // borrão, que é a rota de renderer que a cerca nomeia (ver o cabeçalho).
+    ParamHardMax {
+        param: "softness",
+        max: 4.0,
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -227,6 +347,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         label: "Distance",
         min: 0.0,
         max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "softness",
+        label: "Softness",
+        min: 0.0,
+        max: 1.0,
         step: 0.01,
         widget: ParamWidget::Slider,
     },
@@ -273,7 +401,7 @@ mod tests {
     /// puts the shadows on top, and by any implementation that moves the element.
     #[test]
     fn the_shadows_are_one_block_behind_the_untouched_elements() {
-        let out = cast(&pair([1.0, 1.0, 1.0, 1.0]), 0.0, 0.5, BLACK_35);
+        let out = cast(&pair([1.0, 1.0, 1.0, 1.0]), 0.0, 0.5, BLACK_35, 0.0);
         assert_eq!(out.count(), 4, "a shadow + an element, per element");
 
         let p = ps(&out);
@@ -298,7 +426,7 @@ mod tests {
     /// element would cast a solid shadow).
     #[test]
     fn the_shadow_is_a_colour_and_inherits_only_the_transparency() {
-        let out = cast(&pair([1.0, 0.0, 0.0, 0.5]), 0.0, 0.5, BLACK_35);
+        let out = cast(&pair([1.0, 0.0, 0.0, 0.5]), 0.0, 0.5, BLACK_35, 0.0);
         let t = ts(&out);
         assert_eq!(
             t[0][0..3],
@@ -333,7 +461,7 @@ mod tests {
     #[test]
     fn falloff_picks_the_casters() {
         let src = pair([1.0, 1.0, 1.0, 1.0]).with("falloff", Column::Scalar(vec![0.0, 1.0]));
-        let t = ts(&cast(&src, 0.0, 0.5, BLACK_35));
+        let t = ts(&cast(&src, 0.0, 0.5, BLACK_35, 0.0));
         assert_eq!(t[0][3], 0.0, "element 0 casts nothing");
         assert_eq!(t[1][3], 0.35, "element 1 casts at full opacity");
         assert_eq!(t[2], [1.0; 4], "the non-caster is itself untouched");
@@ -344,12 +472,16 @@ mod tests {
     #[test]
     fn a_transparent_swatch_or_an_over_budget_stream_forwards_the_input() {
         let src = pair([1.0, 1.0, 1.0, 1.0]);
-        let off = cast(&src, 0.0, 0.5, [0.0, 0.0, 0.0, 0.0]);
+        let off = cast(&src, 0.0, 0.5, [0.0, 0.0, 0.0, 0.0], 0.0);
         assert_eq!(off.count(), 2);
         assert_eq!(ps(&off), ps(&src), "verbatim");
 
         let huge = Stream::new(MAX_INSTANCES); // 2 × over the ceiling
-        assert_eq!(cast(&huge, 0.0, 0.5, BLACK_35).count(), MAX_INSTANCES);
-        assert_eq!(cast(&Stream::new(0), 0.0, 0.5, BLACK_35).count(), 0);
+        assert_eq!(cast(&huge, 0.0, 0.5, BLACK_35, 0.0).count(), MAX_INSTANCES);
+        assert_eq!(cast(&Stream::new(0), 0.0, 0.5, BLACK_35, 0.0).count(), 0);
     }
 }
+
+#[cfg(test)]
+#[path = "softness_tests.rs"]
+mod softness_tests;

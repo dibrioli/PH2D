@@ -40,13 +40,13 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 | base | `main` `ee1432203` — a linha foi **reaberta por fast-forward** depois de a integração ter entrado |
 | commits desta janela | `git log --oneline main..HEAD` (⚠️ não se pina aqui — o commit que escreve o número muda o número) |
 | estado | **verde** — `fmt` 0, `clippy` 0, LOC 0, suítes das crates tocadas 0 falhas |
-| smoke pendente | **`=69`** (a família transform) — os anteriores foram aprovados pelo Enio |
+| smoke pendente | **`=70`** (a família `fx.*`) — a `=69` foi aprovada depois de o par 3 ser refeito |
 
 ⚠️ **Dois smokes de ontem nunca foram vistos pelo Enio** e já estão no `main`:
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que as JANELAS de 2026-08-19/20 fecharam (a conferência foi de **P1 59 → 28**)
+### §1.1 — O que as JANELAS de 2026-08-19/20 fecharam (a conferência foi de **P1 59 → 23**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: a janela fechou
 **vinte e oito** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
@@ -69,6 +69,7 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | folha 01: **cinco células fecharam e QUATRO não custaram código** — `mode`/`spacing` do `distribute_curve`, `align` do `distribute_radial`, `size_random` e `dir_mode` do emitter já tinham shipado. A quinta é o **`probability`** do emitter, construído hoje. A folha desce de **6 para 1 P1** | `=67` |
 | **V** | 🔬 **e a SEGUNDA passagem do instrumento**, com o sinal FORTE (o param que a coluna «default que reduz» nomeia já está no manifesto): 7 acusadas, **2 verdadeiras** (`probability` do emitter — uma SEGUNDA célula pedia o mesmo — e `lacunarity` do `motion.noise`), 5 falsos positivos **todos da mesma forma**, agora tabelados no próprio instrumento | — |
 | **V** | **folha 04 (deformers): CINCO células numa wave** — a `direction` do `bend`, o `radius` e o `profile` do `twist`, o `radius_y` do `spherize` e o `mode` (Fit/Keep Length) do `spline_wrap`. As cinco são adição de param com default literal. A folha desce de **6 para 1 P1**, e o que sobra é de outro tamanho (as arestas de Bézier + patch de Coons do `four_point_warp`) | `=68` ✔ |
+| **V** | ✅ **folha 11 (`fx.*`) FECHOU: cinco células, três nós, DUAS arquiteturas** — `softness` do `drop_shadow` (disco de Vogel, 16 taps, densidade preservada por raízes) · `stretch`+`angle`+`clamp` do `glow` (uniformes de PASSE: base 2×2 na tenda + teto do bright-pass) · `ParamUnit`/`ParamHardMax` nos três (a família tinha **ZERO** dos quatro canais). ⚠️ **A cerca C1 foi REESCRITA e não removida**: o borrão raster continua fora (o passe é aditivo, *um halo escuro não pode ser somado*); o que caiu foi a frase sobre a *pilha de fantasmas*, que era sobre ENCADEAR. ⚠️ **Uma objecção da célula estava 4× desatualizada** (`MAX_INSTANCES` é `262_144`, não `65_536`) | `=70` |
 | **V** | ✅ **folha 05 (transform) FECHOU: cinco células, cinco nós** — `space` (World/Local) do `move` · `use_falloff_y` do `scale` **+** `mask_channel` do `falloff` (uma célula, dois nós) · `flip_rot` do `mirror` · `reindex` do `mirror` **e** do `kaleidoscope` · `carry_rotation` do `orbit`. ⚠️ **As cinco eram a MESMA pergunta em cinco lugares**: o nó sabe o que cada ELEMENTO é (orientação, posição na lista, máscara) e respondia como se a lista fosse um bloco. Os 3 P2 que sobram não são dessa família | `=69` |
 
 ⚠️ **E uma correção de GEOMETRIA em `ph2d-vec-scene`, que o smoke do Enio devolveu:** a
@@ -165,7 +166,7 @@ reportar.
 ### Grupo V — as folhas grandes, por ORDEM DE DEFEITO
 
 `08_stream_utilidade` (8) · `01_distribuicao` (6) · `04_deformers` (6) · `10_field` (6) ·
-`02_force` (5) · `11_fx_raster` (5) · ~~`05_transform`~~ ✅ · `03_simulacao` (3) ·
+`02_force` (5) · ~~`11_fx_raster`~~ ✅ · ~~`05_transform`~~ ✅ · `03_simulacao` (3) ·
 `07_tempo` (3) · `09_cor` (3) · `14_source` (3, na tabela acima).
 
 ⚠️ **A contagem por folha se DERIVA** (`python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"`),
@@ -178,7 +179,7 @@ ausente.
 
 ---
 
-## §4 — As VINTE E OITO LEIS que esta linha pagou para aprender
+## §4 — As TRINTA E UMA LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -372,6 +373,25 @@ são estilo.
     angular que **não seja múltipla de 180°** (aqui `180 − 2·35 = 110°`, o `\` contra o `/`),
     e prefira um layout cujo centroide o olho já conhece. *Um leque é um layout em que
     «para fora» deixa de ter um sítio.*
+29. ⚠️ **Uma CERCA pode ter duas razões, e elas envelhecem em ritmos diferentes.** A C1 da
+    folha 11 recusava a maciez da sombra por (a) *"o borrão é raster"* e (b) *"maciez falsa
+    a partir de uma pilha de fantasmas"*. A (a) continua **verdadeira e com mecanismo** — o
+    passe do Motion compõe aditivamente e um halo escuro não pode ser somado. A (b) era
+    sobre **ENCADEAR** o nó, e a própria célula tinha medido os três defeitos do
+    encadeamento — nenhum dos quais um disco de UM passe tem. ⛔ *Ler uma cerca não é
+    obedecer-lhe nem ignorá-la: é separar as razões dela e medir cada uma.* E o que se
+    escreve depois é a cerca **reescrita**, com a metade que sobrevive em destaque.
+30. ⚠️ **Ao pôr um param novo num nó, procure a CONTAGEM escrita à mão que o conta.** O
+    `fx.glow` tinha um gate `assert_eq!(MANIFEST.params.len(), 9)` — ele ficou vermelho
+    sobre código correcto, e a cura não é subir o número: é trocá-lo por uma DERIVADA. O que
+    a célula queria dizer era *"nenhum knob nasce mudo"*, e isso mede-se mexendo em cada
+    param e exigindo que o leitor devolva outra coisa (com controle positivo, senão passa
+    por vácuo quando a lista esvazia).
+31. ⚠️ **Uma raiz `N`-ésima é `sqrt` encadeado se, e só se, `N` for potência de dois** — e
+    é isso que torna o número exacto em toda plataforma (o `sqrt` do IEEE-754 é
+    correctamente arredondado; um `powf` é libm). Foi essa a razão de o disco da maciez ter
+    **16** taps e não 12: a densidade do miolo pede `a = 1 − (1−A)^(1/N)`, e a alternativa
+    ingénua `A/N` clareia a sombra em 15% ao ligar o knob.
 
 ---
 

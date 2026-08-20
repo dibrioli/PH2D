@@ -281,6 +281,9 @@ impl crate::App {
                             radius: glow.radius,
                             saturation: glow.saturation,
                             tint: glow.tint,
+                            stretch: glow.stretch,
+                            angle: glow.angle,
+                            clamp: glow.clamp,
                         },
                     );
                 }

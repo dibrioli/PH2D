@@ -218,6 +218,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
     // diagnoser cannot derive the role from a `ColumnBinding` — declare it (ADR-0155).
     reg.register_couplings(
@@ -227,7 +229,48 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+
+/// **O que cada número É** (doc 88, Wave A · doc 89 folha 11) — o irmão exacto da declaração
+/// do `fx.drop_shadow`, e pela mesma medição: a família `fx.*` não declarava nenhum dos quatro
+/// canais de side-metadata.
+///
+/// `x`/`y` são o deslocamento das cópias em MUNDO. A `strength` é a fração que o modo
+/// *Aberration* escala com a distância ao centro — um `Ratio`, que é o que impede alguém de a
+/// ler como pixels.
+///
+/// ⚠️ **A `opacity` fica de fora**, e não por esquecimento: ela multiplica o alfa das cópias,
+/// e o vocabulário do `ParamUnit` já tem `Ratio` a significar *fração de uma grandeza*.
+/// Rotular um alfa assim não diz nada que o rótulo «Opacity» já não diga — e *uma unidade
+/// errada é pior que uma ausente*.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "x",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "y",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "strength",
+        unit: ParamUnit::Ratio,
+    },
+];
+
+/// O curso da MÃO fica onde estava; o da MÁQUINA alcança-se por digitação (doc 88 §11).
+/// Uma aberração de `±1` mundo é um efeito discreto — o *datamosh* pede uma ordem de
+/// grandeza a mais, e o custo é o mesmo (três cópias, contagem fixa).
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "x",
+        max: 20.0,
+    },
+    ParamHardMax {
+        param: "y",
+        max: 20.0,
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

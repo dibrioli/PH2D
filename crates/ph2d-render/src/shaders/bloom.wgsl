@@ -31,9 +31,9 @@ fn vs_main(@builtin(vertex_index) vid: u32) -> VsOut {
 
 struct Params {
     // Meaning is per-pass; see each fragment:
-    //  prefilter  → v = (threshold, threshold-knee, 2·knee, 0.25/knee)
+    //  prefilter  → v = (threshold, threshold-knee, 2·knee, 0.25/knee), v2.x = teto
     //  downsample → v = (srcTexel.x, srcTexel.y, _, _)
-    //  upsample   → v = (filterRadius.x, filterRadius.y, _, _)  (UV; y aspect-scaled)
+    //  upsample   → v = (du.x, du.y, dv.x, dv.y)  (a base 2x2 da tenda, em UV)
     //  composite  → v = (intensity, saturation, _, _), v2 = tint rgba
     v: vec4<f32>,
     v2: vec4<f32>,
@@ -44,9 +44,15 @@ struct Params {
 // contributes, above `threshold` full, quadratic ramp between — no hard edge.
 // Premultiplied HDR in (Motion is over transparent black), so max(r,g,b) is a
 // premult-safe brightness. Also downsamples (mip0 is half-res, bilinear).
+// `P.v2.x` e' o TETO do bright-pass (doc 89 folha 11). O lado Rust manda o maior
+// finito do Rgba16Float quando o knob esta' desligado, entao o `min` nao pode
+// morder nada que o RT consiga guardar -- o caminho neutro fica intacto sem um
+// ramo. O clamp e' POR CANAL de proposito: limitar a luminancia e reescalar
+// mudaria o MATIZ do pixel que estourou, e o antidoto do firefly nao pode
+// recolorir a cena.
 @fragment
 fn fs_prefilter(in: VsOut) -> @location(0) vec4<f32> {
-    let c = textureSample(src, samp, in.uv).rgb;
+    let c = min(textureSample(src, samp, in.uv).rgb, vec3<f32>(P.v2.x));
     let brightness = max(c.r, max(c.g, c.b));
     var soft = brightness - P.v.y;
     soft = clamp(soft, 0.0, P.v.z);
@@ -83,25 +89,29 @@ fn fs_downsample(in: VsOut) -> @location(0) vec4<f32> {
     return vec4<f32>(o, 1.0);
 }
 
-// 9-tap tent upsample (COD): a 3×3 [1 2 1; 2 4 2; 1 2 1]/16 kernel at
-// `filterRadius`. Blended ADDITIVELY onto the finer mip (which already holds its
-// own downsample), so the accumulation across the chain is what builds the round
-// multi-scale glow. `filterRadius` (P.v.xy) is UV, y aspect-scaled for a round
-// spread in pixels.
+// 9-tap tent upsample (COD): a 3×3 [1 2 1; 2 4 2; 1 2 1]/16 kernel. Blended
+// ADDITIVELY onto the finer mip (which already holds its own downsample), so the
+// accumulation across the chain is what builds the round multi-scale glow.
+//
+// A tenda le' uma BASE 2x2 e nao dois raios (doc 89 folha 11): `du = P.v.xy` e
+// `dv = P.v.zw`. Com `stretch = 1` o lado Rust manda `du = (fr, 0)` e
+// `dv = (0, fr*aspect)`, e os nove offsets reconstroem tap a tap os de sempre --
+// a mesma soma, ao bit. Com anamorfose a base roda e estica, e o halo vira o
+// streak anamorfico.
 @fragment
 fn fs_upsample(in: VsOut) -> @location(0) vec4<f32> {
-    let x = P.v.x;
-    let y = P.v.y;
+    let du = P.v.xy;
+    let dv = P.v.zw;
     let uv = in.uv;
-    let a = textureSample(src, samp, uv + vec2<f32>(-x, y)).rgb;
-    let b = textureSample(src, samp, uv + vec2<f32>(0.0, y)).rgb;
-    let c = textureSample(src, samp, uv + vec2<f32>(x, y)).rgb;
-    let d = textureSample(src, samp, uv + vec2<f32>(-x, 0.0)).rgb;
+    let a = textureSample(src, samp, uv - du + dv).rgb;
+    let b = textureSample(src, samp, uv + dv).rgb;
+    let c = textureSample(src, samp, uv + du + dv).rgb;
+    let d = textureSample(src, samp, uv - du).rgb;
     let e = textureSample(src, samp, uv).rgb;
-    let f = textureSample(src, samp, uv + vec2<f32>(x, 0.0)).rgb;
-    let g = textureSample(src, samp, uv + vec2<f32>(-x, -y)).rgb;
-    let h = textureSample(src, samp, uv + vec2<f32>(0.0, -y)).rgb;
-    let i = textureSample(src, samp, uv + vec2<f32>(x, -y)).rgb;
+    let f = textureSample(src, samp, uv + du).rgb;
+    let g = textureSample(src, samp, uv - du - dv).rgb;
+    let h = textureSample(src, samp, uv - dv).rgb;
+    let i = textureSample(src, samp, uv + du - dv).rgb;
     var o = e * 4.0;
     o += (b + d + f + h) * 2.0;
     o += (a + c + g + i);

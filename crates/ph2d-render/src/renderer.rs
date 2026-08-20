@@ -299,6 +299,38 @@ impl SpriteRenderer {
             .acquire(&self.gpu, &self.pipeline.material_bgl, width, height, rgba)
     }
 
+    /// **Irmã de [`Self::acquire_individual`] para a precisão alta** (plano
+    /// `docs/Sprite_projeto/18`). `halves` são meio-float **linear**, tal como
+    /// [`ph2d_imageio::rgba8_to_rgba16`] os produz.
+    ///
+    /// ⚠️ **Uma sprite de 16 bits NÃO pode viver no atlas** — ele é uma textura só, com um formato
+    /// só. Quem promove uma sprite a 16 bits promove-a também a `Individual`, e é a UI que tem de
+    /// o dizer **antes** da conversão, não depois (plano 18 §3.3).
+    pub fn acquire_individual_16(
+        &mut self,
+        width: u32,
+        height: u32,
+        halves: &[u16],
+    ) -> Result<u32, IndividualTextureError> {
+        self.individual.acquire_16(
+            &self.gpu,
+            &self.pipeline.material_bgl,
+            width,
+            height,
+            halves,
+        )
+    }
+
+    /// O formato GPU de uma textura individual, ou `None` se o id não existir.
+    ///
+    /// A porta pela qual a chrome descobre a precisão **real** de uma sprite — a linha `Format` do
+    /// Inspector tem de dizer o que a textura É, e não o que alguém pediu que fosse. Foi
+    /// exactamente essa diferença que o plano 17 §5 removeu de lá.
+    #[must_use]
+    pub fn individual_format(&self, texture_id: u32) -> Option<wgpu::TextureFormat> {
+        self.individual.format(texture_id)
+    }
+
     /// Borrow the renderer's [`GpuContext`] (cheap `Arc`-backed handles).
     /// Tool preview bridges that own a GPU compute pass (the Painter live
     /// preview's `LayerCompositor` + `PreviewPremul`) need it to build and

@@ -110,12 +110,20 @@ pub(super) fn dispatch(
             reject_visual_reset(hero, requested);
             true
         }
-        // Hand-packed ainda não tem representação (plano `docs/Sprite_projeto/17` §6-§7).
-        // ⚠️ O toast nomeia o que FALTA, não um número de marco: *"M14.C+"* não diz a ninguém o
-        // que fazer a seguir, e foi o que manteve este botão morto por três meses.
+        // **Hand-packed é um ESTADO a que se CHEGA, não um botão que se aperta** (plano
+        // `docs/Sprite_projeto/17` §6-§8). Um sprite torna-se hand-packed por entrar numa folha e
+        // ela ser assada — não há aqui a pergunta *"para qual folha, e para qual região?"*, e
+        // inventar um seletor neste radio seria uma segunda porta para o que o menu da hierarquia
+        // já faz melhor (ele tem a seleção e a linha clicada).
+        //
+        // ⚠️ O toast nomeia o que FALTA e **por que nome procurá-lo na tela**. A 1ª versão dizia
+        // *"M14.C+"*, que não diz a ninguém o que fazer a seguir e manteve este botão morto três
+        // meses; a 2ª dizia *"pack one from the selection"* — verdade quando existia um pill
+        // `[SHEET]`, e **envelhecida no dia em que ele saiu**. *Uma recusa que nomeia um gesto
+        // inexistente é pior que uma recusa muda: ela manda o artista procurar o que não há.*
         (_, RequestedSpriteStrategy::HandPacked) => {
             toasts.push(Toast::info(
-                "Hand-packed needs a sheet — import a PNG with its JSON, or pack one from the selection",
+                "Hand-packed comes from a sheet: right-click in the Hierarchy \u{00b7} Pack into Sheet, then Bake Sheet",
             ));
             reject_visual_reset(hero, requested);
             true

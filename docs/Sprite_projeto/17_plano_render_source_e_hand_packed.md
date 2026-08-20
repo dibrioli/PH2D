@@ -291,15 +291,30 @@ são um defeito que só aparece no consumidor, meses depois, noutro programa.
 
 [ADR-0153]: ../architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md
 
-## §8 — W6 · O painel honesto (e os testes que não existem)
+## §8 — W6 · O painel honesto (e os testes que não existem) ✅ FEITO
 
-- `Storage` diz **`Hand-packed · folha "hero" · região "idle_0"`**, não um id cru.
-- O botão Hand-packed só acende quando há folha; sem folha, ele **desabilita e diz porquê** —
-  ⛔ nunca um corpo vazio que "passa" (DIRETIVA §2).
-- Os campos de Região continuam ocultos para Hand-packed (**já está codificado e correto**).
-- **Testes de costura de comportamento** (`ph2d-ui-testkit`) para os três botões de Strategy e para
-  a linha de formato — o evento real, o efeito observável. Hoje há **zero**, e o gate
-  `architecture_panel_wiring_parity` fica verde porque ele prova **registo**, não **dispatch**.
+- ✅ `Storage` diz **`Hand-packed · hero · idle_0`**, não um id cru (`InspectorSpriteInfo::sheet_label`,
+  pronto do host — o painel não conhece o documento de folhas, e não pode conhecer sem inverter a seta).
+- ✅ **O botão Hand-packed recusa NOMEANDO o gesto que existe.** ⚠️ E aqui o plano estava errado: ele
+  pedia *"desabilita e diz porquê"*, mas **um controle desabilitado não pode dizer nada** — ele não
+  despacha, logo não toasta. Pior: *hand-packed é um estado a que se CHEGA*, não um botão que se
+  aperta (um sprite torna-se hand-packed por entrar numa folha e ela ser assada), então não há aqui
+  a pergunta *"qual folha, qual região?"* que um seletor teria de fazer. Ele fica **vivo e
+  explicativo**, e a mensagem nomeia as duas portas reais: *Pack into Sheet* → *Bake Sheet*.
+  ⚠️ Essa mensagem já envelheceu **duas vezes** (`"M14.C+"`, depois `"pack one from the selection"`
+  quando o pill `[SHEET]` saiu) — *uma recusa que nomeia um gesto inexistente manda o artista
+  procurar o que não há*.
+- ✅ Os campos de Região continuam ocultos para Hand-packed.
+- ✅ **Testes de costura** — ⚠️ e a nota *"hoje há zero"* estava **meia certa, com a metade errada a
+  importar**: o DESPACHO já tinha teste (`screens::hero::tests`, que chama `apply_event`
+  diretamente). O que não existia era o que vem ANTES: que a seção **pinte** os botões e os
+  **registe no índice de acerto**. `ph2d-panel-inspector/tests/seam_render_source.rs` corre o
+  caminho inteiro (popular → publicar → **pintar** → despachar) e prova quatro coisas: os três
+  botões são alcançáveis · cada um levanta a SUA ação · clicar no já-ativo não é edição · o
+  `Reimport` desabilitado **não age** (com controle positivo).
+  ⚠️ *Um teste que chama `apply_event` prova o handler e não prova a porta* — foi por ignorar essa
+  distinção que quatro testes desta mesma linha ficaram verdes sobre uma função **desligada** do
+  chamador.
 
 ## §9 — O que NÃO entra (e porquê)
 

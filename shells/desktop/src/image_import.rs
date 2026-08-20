@@ -58,7 +58,7 @@ fn pack_image(
     path: &Path,
     pixels_per_meter: f32,
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
-) -> Result<[f32; 2], String> {
+) -> Result<([f32; 2], PackedSource), String> {
     let bytes = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
     let asset_id = asset_db
         .insert_image_bytes(&bytes)
@@ -66,9 +66,30 @@ fn pack_image(
     let decoded = asset_db
         .get(&asset_id)
         .ok_or_else(|| format!("asset {asset_id} missing after insert"))?;
-    // ⚠️ `image_rgba8` e não um `match` na variante: este é o caminho de import PARA O ATLAS, que é
-    // de 8 bits por construção (plano `docs/Sprite_projeto/18`, auditoria da W2). O `Cow` não copia
-    // no caso de 8 bits, que é o de sempre.
+    // **A bifurcação da W2.4**: uma imagem de 16 bits não entra no atlas, nasce `Individual`
+    // (plano `docs/Sprite_projeto/18` §3.3 — o atlas é uma textura com um formato).
+    //
+    // ⚠️ Ela também **não entra no `atlas_asset_map`**, e isso é o que mantém verdadeira a linha do
+    // `project_assets.rs` que grava as células do atlas em 8 bits sem perder nada.
+    if let ph2d_asset::Asset::ImageRgba16 {
+        width,
+        height,
+        pixels,
+    } = &*decoded
+    {
+        let texture_id = renderer
+            .acquire_individual_16(*width, *height, pixels)
+            .map_err(|e| format!("individual 16-bit {}: {e}", path.display()))?;
+        return Ok((
+            world_size(*width, *height, pixels_per_meter),
+            PackedSource::Individual {
+                texture_id,
+                pixels_id: asset_id,
+            },
+        ));
+    }
+    // ⚠️ `image_rgba8` e não um `match` na variante: daqui para baixo é o caminho PARA O ATLAS, que
+    // é de 8 bits por construção. O `Cow` não copia no caso de 8 bits, que é o de sempre.
     let (width, height, pixels) = decoded
         .image_rgba8()
         .ok_or_else(|| format!("{asset_id} is not an uncompressed image after decode"))?;
@@ -99,10 +120,22 @@ fn pack_image(
     // Skyline atlas the source bytes are stored at full resolution, so
     // the world quad's aspect ratio matches the file exactly (a 256×128
     // PNG renders as a 2:1 rect in world space).
+    Ok((
+        world_size(width, height, pixels_per_meter),
+        PackedSource::Atlas { cell_idx },
+    ))
+}
+
+/// O tamanho em metros de uma imagem de `width × height` px.
+///
+/// Extraído para os **dois** ramos do [`pack_image`] responderem o mesmo: uma sprite de 16 bits e a
+/// sua gémea de 8 têm de nascer do mesmo tamanho, senão a precisão passaria a mudar a geometria.
+fn world_size(width: u32, height: u32, pixels_per_meter: f32) -> [f32; 2] {
     let safe_px_per_m = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
-    let world_w = (width as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
-    let world_h = (height as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
-    Ok([world_w, world_h])
+    [
+        (width as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE),
+        (height as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE),
+    ]
 }
 
 /// Human-readable base name for an imported file, falling back to a
@@ -121,20 +154,40 @@ fn base_label(path: &Path, cell_idx: u32) -> String {
 /// rename (mirrors the duplicate-`Name` bug fixed 2026-05-27).
 fn spawn_sprite(
     sim: &mut SimWorld,
-    cell_idx: u32,
+    source: PackedSource,
     world_center: Vec2,
     world_size: [f32; 2],
     base: &str,
 ) -> (String, u64) {
     let label = crate::name_unique::unique_name(sim, base);
+    // ⚠️ A estratégia vem do PACK, não de um default: uma imagem de 16 bits foi para uma textura
+    // própria e tem de nascer a apontar para ela (plano `docs/Sprite_projeto/18` W2.4). Construir
+    // `Sprite::atlas` aqui faria a sprite mostrar a célula de outra pessoa.
+    let sprite = match source {
+        PackedSource::Atlas { cell_idx } => {
+            Sprite::atlas(cell_idx, world_size, [1.0, 1.0, 1.0, 1.0])
+        }
+        PackedSource::Individual { texture_id, .. } => {
+            Sprite::individual(texture_id, world_size, [1.0, 1.0, 1.0, 1.0])
+        }
+    };
     let entity = sim
         .world_mut()
         .spawn((
             Transform::from_translation(world_center),
-            Sprite::atlas(cell_idx, world_size, [1.0, 1.0, 1.0, 1.0]),
+            sprite,
             Name::new(label.clone()),
         ))
         .id();
+    // ⚠️ **O carimbo durável dos pixels, e ele é o que separa "importou" de "importou e sobrevive
+    // ao save".** Uma sprite de atlas grava-se pelo `atlas_asset_map`; uma `Individual` só se grava
+    // se nomear os seus bytes por `AssetId` — o `texture_id` é uma alocação de GPU e morre com o
+    // processo. Mesmo raciocínio (e mesmo remédio) do `inspector_strategy::promote_to_individual`.
+    if let PackedSource::Individual { pixels_id, .. } = source {
+        sim.world_mut()
+            .entity_mut(entity)
+            .insert(ph2d_ecs::SpritePixels(pixels_id));
+    }
     (label, entity.to_bits())
 }
 
@@ -195,9 +248,11 @@ pub fn spawn_blank_canvas(
     }
     let safe_px_per_m = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
     let world = (size_px as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
+    // Uma tela em branco nasce sempre no atlas, e de 8 bits: ela é opaca e chapada, e não há nada
+    // de alta precisão a preservar num branco.
     Ok(spawn_sprite(
         sim,
-        cell_idx,
+        PackedSource::Atlas { cell_idx },
         world_center,
         [world, world],
         "Canvas",
@@ -210,9 +265,33 @@ struct Packed {
     /// Index into the caller's `paths` slice — used to restore input
     /// order in the returned results (errors are interleaved).
     input_index: usize,
-    cell_idx: u32,
+    source: PackedSource,
     world_size: [f32; 2],
     base_label: String,
+}
+
+/// **De onde os pixels de uma imagem importada passam a vir.**
+///
+/// ⚠️ Existe porque *nem toda imagem cabe no atlas*: uma de **16 bits** não cabe, e a razão é
+/// estrutural — o atlas é **uma** textura com **um** formato (plano
+/// [`docs/Sprite_projeto/18`](../../../docs/Sprite_projeto/18_precisao_de_16_bits_nas_sprites.md)
+/// §3.3). Esta é uma das duas portas onde a regra *16 bits ⇒ `Individual`* se impõe; a outra é a
+/// conversão pela UI.
+///
+/// ⛔ **A alternativa recusada** era converter a imagem de 16 bits para 8 e metê-la no atlas na
+/// mesma. Isso importaria um ficheiro de alta precisão **rebaixando-o em silêncio**, que é
+/// exatamente o que esta wave existe para deixar de fazer.
+#[derive(Clone, Copy, Debug)]
+enum PackedSource {
+    /// Uma célula do atlas partilhado (o caminho de sempre, e o de toda imagem de 8 bits).
+    Atlas { cell_idx: u32 },
+    /// Uma textura própria — o único sítio onde 16 bits pode viver.
+    ///
+    /// ⚠️ **O `pixels_id` viaja junto, e não é opcional.** Um `texture_id` é um id de alocação da
+    /// GPU: ele morre com o processo. O que faz a sprite sobreviver a um save/load é o carimbo
+    /// `SpritePixels(AssetId)`, e sem ele esta importação gravaria a sprite **sem imagem** — o
+    /// mesmo buraco que o `inspector_strategy` já tapa quando promove a `Individual`.
+    Individual { texture_id: u32, pixels_id: AssetId },
 }
 
 /// Imports a batch of image files, laying them out in a tidy near-square
@@ -263,11 +342,16 @@ pub fn import_images_grid(
             pixels_per_meter,
             atlas_asset_map,
         ) {
-            Ok(world_size) => {
-                *next_cell = next_cell.saturating_add(1);
+            Ok((world_size, source)) => {
+                // ⚠️ O contador de células só avança quando uma célula foi MESMO consumida. Uma
+                // imagem de 16 bits foi para textura própria e não gastou nenhuma — incrementar
+                // aqui na mesma abriria buracos no atlas a cada import de alta precisão.
+                if matches!(source, PackedSource::Atlas { .. }) {
+                    *next_cell = next_cell.saturating_add(1);
+                }
                 packed.push(Packed {
                     input_index: i,
-                    cell_idx,
+                    source,
                     world_size,
                     base_label: base_label(path, cell_idx),
                 });
@@ -306,7 +390,7 @@ pub fn import_images_grid(
                 anchor_world[0] + col * pitch_x,
                 anchor_world[1] - row * pitch_y,
             );
-            let (label, bits) = spawn_sprite(sim, p.cell_idx, center, p.world_size, &p.base_label);
+            let (label, bits) = spawn_sprite(sim, p.source, center, p.world_size, &p.base_label);
             results[p.input_index] = Some(ImportItemResult::Ok { label, bits });
         }
     }
@@ -314,4 +398,75 @@ pub fn import_images_grid(
     // Every index was filled (Err in pass 1 or Ok in pass 2); `flatten`
     // drops the structurally-impossible `None` and preserves order.
     results.into_iter().flatten().collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_render::SpriteSource;
+
+    /// **Uma importação de 16 bits nasce `Individual` E CARIMBADA** — plano
+    /// [`docs/Sprite_projeto/18`](../../../docs/Sprite_projeto/18_precisao_de_16_bits_nas_sprites.md),
+    /// W2.4.
+    ///
+    /// ⚠️ O carimbo é a metade que se esquece. A estratégia errada dá uma sprite **visivelmente**
+    /// partida (mostra a célula de outra pessoa); o carimbo em falta dá uma sprite **perfeita até
+    /// ao save**, e depois vazia — e nada no ecrã avisa entre as duas coisas.
+    #[test]
+    fn a_sixteen_bit_import_is_individual_and_stamped_with_its_pixel_id() {
+        let mut sim = SimWorld::default();
+        let pixels_id = ph2d_asset::AssetId::from_bytes(b"pixels de 16 bits");
+        let (_, bits) = spawn_sprite(
+            &mut sim,
+            PackedSource::Individual {
+                texture_id: 7,
+                pixels_id,
+            },
+            Vec2::new(0.0, 0.0),
+            [1.0, 1.0],
+            "alta_precisao",
+        );
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        let sprite = sim.world().get::<Sprite>(entity).copied().expect("sprite");
+        assert!(
+            matches!(sprite.source, SpriteSource::Individual { texture_id: 7 }),
+            "uma imagem de 16 bits nao pode nascer no atlas — ele e' uma textura com UM formato"
+        );
+        assert_eq!(
+            sim.world()
+                .get::<ph2d_ecs::SpritePixels>(entity)
+                .map(|p| p.0),
+            Some(pixels_id),
+            "sem o carimbo `SpritePixels` esta sprite abre perfeita e grava VAZIA: o `texture_id` \
+             e' uma alocacao de GPU e morre com o processo"
+        );
+    }
+
+    /// **Controle positivo:** o caminho do atlas continua a nascer no atlas e **sem** carimbo — ele
+    /// grava-se pelo `atlas_asset_map`, e um `SpritePixels` a mais fá-lo-ia ser gravado duas vezes.
+    #[test]
+    fn an_atlas_import_stays_on_the_atlas_and_is_not_stamped() {
+        let mut sim = SimWorld::default();
+        let (_, bits) = spawn_sprite(
+            &mut sim,
+            PackedSource::Atlas { cell_idx: 3 },
+            Vec2::new(0.0, 0.0),
+            [1.0, 1.0],
+            "normal",
+        );
+        let entity = ph2d_ecs::Entity::from_bits(bits);
+        let sprite = sim.world().get::<Sprite>(entity).copied().expect("sprite");
+        assert!(matches!(sprite.source, SpriteSource::Atlas { key: 3 }));
+        assert!(
+            sim.world().get::<ph2d_ecs::SpritePixels>(entity).is_none(),
+            "uma sprite de atlas carimbada seria gravada DUAS vezes — pelo mapa e pelos pixels"
+        );
+    }
+
+    /// As duas precisões nascem do MESMO tamanho: a precisão não pode mudar a geometria.
+    #[test]
+    fn precision_does_not_change_the_world_size() {
+        assert_eq!(world_size(256, 128, 100.0), world_size(256, 128, 100.0));
+        assert_eq!(world_size(200, 100, 100.0), [2.0, 1.0]);
+    }
 }

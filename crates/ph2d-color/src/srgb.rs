@@ -87,16 +87,26 @@ impl SrgbRgba {
     }
 }
 
-/// IEC 61966 sRGB → linear transfer function on a single 8-bit byte.
-/// Returns linear-light intensity in `[0.0, 1.0]`.
+/// IEC 61966 sRGB → linear, sobre um valor **já normalizado** em `[0.0, 1.0]`.
+///
+/// ⚠️ Existe porque uma fonte de 16 bits não passa por `u8` (plano `docs/Sprite_projeto/18`, W2.4):
+/// dividir por 65535 e chamar isto preserva a precisão que um `srgb_to_linear_byte` deitaria fora.
+/// **É a MESMA lei** — o [`srgb_to_linear_byte`] delega aqui, para que não haja duas curvas que um
+/// dia divirjam na terceira casa.
 #[inline]
-pub fn srgb_to_linear_byte(byte: u8) -> f32 {
-    let v = byte as f32 / 255.0;
+pub fn srgb_to_linear_unit(v: f32) -> f32 {
     if v <= 0.04045 {
         v / 12.92
     } else {
         ((v + 0.055) / 1.055).powf(2.4)
     }
+}
+
+/// IEC 61966 sRGB → linear transfer function on a single 8-bit byte.
+/// Returns linear-light intensity in `[0.0, 1.0]`.
+#[inline]
+pub fn srgb_to_linear_byte(byte: u8) -> f32 {
+    srgb_to_linear_unit(byte as f32 / 255.0)
 }
 
 /// IEC 61966 linear → sRGB transfer function on a linear intensity

@@ -287,14 +287,33 @@ fn decode_via_imageio_registry(
                  real animation client appears)"
             ),
         }),
-        DecodedImage::FlatHdr(_) => Err(AssetError::Decode {
-            path: path_hint.map(Path::to_path_buf),
-            message: format!(
-                "{detected_format:?} decoded to FlatHdr; HDR import \
-                 not yet bridged to AssetDb (W3.T3 EXR + W3.T4 HDR-\
-                 Radiance + tone-map land here)"
-            ),
-        }),
+        // **A parede que o plano `docs/Sprite_projeto/18` veio derrubar** (W2.4). Este ramo
+        // recusava, e a recusa era a única coisa entre um ficheiro de alta precisão e a sessão:
+        // o AVIF já produzia `FlatHdr` com round-trip testado desde a W3 do ADR-0054, e morria
+        // aqui.
+        //
+        // ⚠️ **A conversão é para MEIO-FLOAT, e o espaço já está certo.** `LinearRgba` é `f32`
+        // linear, e `Asset::ImageRgba16` guarda meio-float linear — não há curva a aplicar nem a
+        // desfazer neste ponto. Aplicar `linear_to_srgb` aqui (o reflexo de quem vê "cor a entrar")
+        // renderizaria a imagem escura, e sem erro nenhum.
+        //
+        // O `f32` → meio-float perde ~11 bits de mantissa de um dado que tinha 24. É o custo
+        // medido de guardar 8 B/px em vez de 16, e continua **8× a resolução de 8 bits** no pior
+        // ponto da escala (plano 18 §3.1).
+        DecodedImage::FlatHdr(buf) => {
+            let mut halves: Vec<u16> = Vec::with_capacity(buf.pixels.len() * 4);
+            for px in &buf.pixels {
+                halves.push(ph2d_imageio::f32_to_half(px.r()));
+                halves.push(ph2d_imageio::f32_to_half(px.g()));
+                halves.push(ph2d_imageio::f32_to_half(px.b()));
+                halves.push(ph2d_imageio::f32_to_half(px.a()));
+            }
+            Ok(Asset::ImageRgba16 {
+                width: buf.width,
+                height: buf.height,
+                pixels: Arc::from(halves.into_boxed_slice()),
+            })
+        }
         DecodedImage::Vector(_) => Err(AssetError::Decode {
             path: path_hint.map(Path::to_path_buf),
             message: format!(

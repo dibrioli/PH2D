@@ -223,13 +223,28 @@ payload de 16 bits tem o dobro dos elementos, logo os `hash_input` nunca têm o 
 reapontado para a falha **realista** (implementar o de 16 derivando o id do caminho de 8), e essa
 reprova.
 
-### W2.4 — virar a importação · **agora desbloqueada**
-- `loader.rs` deixa de recusar `FlatHdr` e passa a produzir `Asset::ImageRgba16`.
-- Os importadores de PNG/TIFF param de esmagar 16 bits → 8
-  ([`imageio-png/src/lib.rs:16`](../../crates/ph2d-imageio-png/src/lib.rs) documenta a perda hoje, e
-  há teste a fixá-la: `import_quantizes_16bit_to_8bit_with_documented_loss` — **esse teste inverte-se**).
-- ⚠️ **Uma imagem importada em 16 bits nasce `Individual`, nunca no atlas** — §3.3, e é aqui que a
-  regra se impõe.
+### W2.4 — virar a importação · ✅ **FEITA**
+- ✅ `loader.rs` deixa de recusar `FlatHdr` e produz `Asset::ImageRgba16` (`f32` linear →
+  meio-float; ⚠️ **sem curva** — o `FlatHdr` já é linear, e aplicar `linear_to_srgb` ali, que é o
+  reflexo de quem vê *"cor a entrar"*, escureceria a imagem sem erro nenhum).
+- ✅ O importador de PNG preserva 16 bits. O teste
+  `import_quantizes_16bit_to_8bit_with_documented_loss` **inverteu-se**: ⚠️ *quando a premissa de um
+  teste morre, ele não se silencia — inverte-se, e o commit diz porquê.* A fixture nova usa `0x8080`
+  e `0x8081`, que quantizam para o **mesmo** byte de 8 bits: se a importação ainda esmagasse, eles
+  sairiam idênticos.
+- ✅ `srgb_to_linear_unit` em `ph2d-color`, e o `srgb_to_linear_byte` passa a delegar nela — **uma
+  curva, não duas** que um dia divirjam na terceira casa. Uma fonte de 16 bits não passa por `u8`.
+- ✅ **A regra *16 bits ⇒ `Individual`* impõe-se aqui**, com `PackedSource` a substituir o
+  `cell_idx` cru: uma imagem de alta precisão não entra no atlas **nem no `atlas_asset_map`** — e é
+  isso que mantém verdadeira a linha do `project_assets.rs` que grava as células em 8 bits.
+  ⛔ **A alternativa recusada** era converter para 8 e meter no atlas na mesma: importaria um
+  ficheiro de alta precisão **rebaixando-o em silêncio**, que é o que esta wave existe para acabar.
+- ✅ ⚠️ **O carimbo `SpritePixels`, que é a metade que se esquece.** Uma `Individual` sem ele abre
+  perfeita e grava **vazia** — o `texture_id` é uma alocação de GPU e morre com o processo. A
+  estratégia errada dá uma sprite visivelmente partida; o carimbo em falta dá uma que só falha no
+  save, e **nada no ecrã distingue as duas**. Gate + mutação.
+- ✅ O contador de células do atlas só avança quando uma célula foi mesmo consumida — senão cada
+  import de 16 bits abriria um buraco no atlas.
 
 ### W4 — As ferramentas
 - A regra do §3.4, num ponto de entrega só, com o aviso.

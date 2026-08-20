@@ -13,10 +13,13 @@
 //! - Magic-byte (Strong) + extension (Weak) `supports()` recognition.
 //! - All PNG color types decoded to 8-bit RGBA (grayscale → R=G=B,
 //!   palette → expanded, alpha preserved or 255 when absent).
-//! - 16-bit channel PNGs **quantized down to 8-bit** at import.
-//!   Documented loss; clients needing 16-bit precision wait for the
-//!   W2 amendment that adds `DecodedImage::Flat16` (no client today;
-//!   not worth a cap bump in W1).
+//! - ⚠️ **16-bit channel PNGs KEEP their precision** (plano
+//!   [`docs/Sprite_projeto/18`](../../../docs/Sprite_projeto/18_precisao_de_16_bits_nas_sprites.md),
+//!   W2.4, 2026-08-20). Até essa data eles eram **esmagados para 8 bits** aqui, com a perda
+//!   documentada nesta lista e um teste a fixá-la. Não foi preciso alargar o `DecodedImage`: o
+//!   `FlatHdr` (`ImageBuffer<LinearRgba>`) sempre foi o lugar certo, já estava congelado no
+//!   ADR-0054 e o AVIF já o produzia — *o que faltava era este importador parar de deitar fora o
+//!   que tinha*. Um PNG de 8 bits continua a sair `Flat`, e há gate.
 //! - Decompression-bomb defence via hard dimension cap (32768×32768).
 //! - HR-5 byte-exact determinism on the encoder.
 //! - HR-6: round-trip lossless bit-exact.
@@ -27,8 +30,8 @@
 //! - sBIT chunk preservation (W2 — when ICC pipeline lands and `image`
 //!   crate exposes the chunk via its `png` backend).
 //! - ICC profile chunk parsing (W2.0.1 ICC pipeline activation).
-//! - 16-bit RGBA round-trip (would require a `DecodedImage` variant
-//!   widening — amendment ADR-0054 if a real client appears).
+//! - 16-bit RGBA **export**: o `PngExporter` continua a emitir 8 bits e a recusar `FlatHdr`
+//!   (`Error::HdrUnsupported`). A importação já preserva (acima); a escrita espera um pedido real.
 //! - Quality-vs-speed encoder tuning options via `ExportOpts`.
 //! - **APNG (animated PNG)**: audit A-Crit1 (2026-05-26). PNG files
 //!   carrying an `acTL` animation chunk decode to **the first frame
@@ -38,7 +41,8 @@
 //!   then delegate to it on `acTL` detection. Until W2.T3, users who
 //!   open an APNG see the first frame and save loses animation.
 
-use ph2d_color::SrgbRgba;
+use ph2d_color::srgb::srgb_to_linear_unit;
+use ph2d_color::{LinearRgba, SrgbRgba};
 use ph2d_imageio::{
     ColorProfile, DecodedImage, Error, ExportFormat, ExportOpts, ExporterRegistry, ImageBuffer,
     ImageExporter, ImageImporter, ImportOpts, ImporterRegistry, MAX_RASTER_DIMENSION, MagicHint,
@@ -105,11 +109,46 @@ impl ImageImporter for PngImporter {
         if width > MAX_RASTER_DIMENSION || height > MAX_RASTER_DIMENSION {
             return Err(Error::DimensionExceedsLimit);
         }
+        // **Um PNG de 16 bits deixa de ser esmagado na porta** — plano
+        // `docs/Sprite_projeto/18`, W2.4. Até 2026-08-20 este importador chamava `to_rgba8()` para
+        // TUDO, e a perda estava documentada no cabeçalho da crate com um teste a fixá-la.
+        //
+        // ⚠️ **A precisão do FICHEIRO é que decide, não uma opção.** O `DecodedImage` já tinha o
+        // lugar certo (`FlatHdr`, `ImageBuffer<LinearRgba>`, congelado no ADR-0054) e o AVIF já o
+        // produzia; era só o PNG que continuava a deitar fora o que tinha.
+        //
+        // ⚠️ **`FlatHdr` é LINEAR, e um PNG é sRGB-encoded** — por isso a curva aplica-se aqui, e
+        // **só aos canais de cor**. O alfa já é linear por definição; passá-lo pela curva é o erro
+        // clássico, e escurece toda borda macia da imagem.
+        if matches!(
+            img.color(),
+            image::ColorType::L16
+                | image::ColorType::La16
+                | image::ColorType::Rgb16
+                | image::ColorType::Rgba16
+        ) {
+            let rgba = img.to_rgba16();
+            let pixels: Vec<LinearRgba> = rgba
+                .chunks_exact(4)
+                .map(|c| {
+                    LinearRgba::new(
+                        srgb_to_linear_unit(f32::from(c[0]) / 65535.0),
+                        srgb_to_linear_unit(f32::from(c[1]) / 65535.0),
+                        srgb_to_linear_unit(f32::from(c[2]) / 65535.0),
+                        f32::from(c[3]) / 65535.0,
+                    )
+                })
+                .collect();
+            return Ok(DecodedImage::FlatHdr(ImageBuffer {
+                width,
+                height,
+                pixels,
+                color_profile: ColorProfile::Srgb,
+            }));
+        }
         // `to_rgba8` is the canonical widening — handles Grayscale,
         // GrayscaleAlpha, RGB, RGBA, and Indexed/Palette PNGs all into
-        // the same 8-bit RGBA wire shape. 16-bit channel sources are
-        // bit-shifted down to 8-bit by `image` (documented loss; see
-        // crate doc above).
+        // the same 8-bit RGBA wire shape.
         let rgba = img.to_rgba8();
         let pixels: Vec<SrgbRgba> = rgba
             .chunks_exact(4)
@@ -342,50 +381,112 @@ mod tests {
         assert_eq!(out.pixels[0].0, [255, 0, 0, 255]);
     }
 
-    #[test]
-    fn import_quantizes_16bit_to_8bit_with_documented_loss() {
-        // 3×1 16-bit RGBA: black / mid-grey / white. The `image` crate
-        // quantizes 16-bit channels by linear scaling
-        // `(v * 255 + 32767) / 65535` (proper rounding, NOT high-byte
-        // truncation), so we test the endpoints (0 → 0, 65535 → 255)
-        // and a known middle value rather than expecting a top-byte
-        // drop. The W2 amendment that adds `Flat16` will preserve
-        // precision losslessly; W1 documents the quantisation loss.
-        let rgba16 = image::ImageBuffer::<image::Rgba<u16>, _>::from_raw(
-            3,
-            1,
-            vec![
-                0x0000, 0x0000, 0x0000, 0xFFFF, // opaque black
-                0x8080, 0x8080, 0x8080, 0xFFFF, // mid-grey
-                0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // opaque white
-            ],
-        )
-        .expect("rgba16");
+    fn sixteen_bit_png(values: &[u16]) -> Vec<u8> {
+        let width = (values.len() / 4) as u32;
+        let img = image::ImageBuffer::<image::Rgba<u16>, _>::from_raw(width, 1, values.to_vec())
+            .expect("rgba16");
         let mut bytes: Vec<u8> = Vec::new();
-        let mut cursor = std::io::Cursor::new(&mut bytes);
-        image::DynamicImage::ImageRgba16(rgba16)
-            .write_to(&mut cursor, image::ImageFormat::Png)
+        image::DynamicImage::ImageRgba16(img)
+            .write_to(
+                &mut std::io::Cursor::new(&mut bytes),
+                image::ImageFormat::Png,
+            )
             .expect("encode 16-bit");
-        let DecodedImage::Flat(out) = PngImporter
+        bytes
+    }
+
+    /// **Um PNG de 16 bits PRESERVA a sua precisão** — plano `docs/Sprite_projeto/18`, W2.4.
+    ///
+    /// ⚠️ Este teste era o inverso: chamava-se `import_quantizes_16bit_to_8bit_with_documented_loss`
+    /// e **fixava a perda**. Ele estava certo enquanto o `DecodedImage` não tinha onde pôr a
+    /// precisão; a partir do momento em que tem, um gate que exige a perda é um gate a defender um
+    /// bug. *Quando a premissa de um teste morre, ele não se silencia — inverte-se, e o commit
+    /// diz porquê.*
+    #[test]
+    fn a_sixteen_bit_png_keeps_its_precision_instead_of_being_crushed() {
+        // Dois valores de 16 bits que caem no MESMO byte de 8 bits: 0x8080 e 0x8081 quantizam
+        // ambos para 128. Se a importação ainda esmagasse, eles sairiam idênticos.
+        let bytes = sixteen_bit_png(&[
+            0x8080, 0x8080, 0x8080, 0xFFFF, 0x8081, 0x8081, 0x8081, 0xFFFF,
+        ]);
+        let DecodedImage::FlatHdr(out) = PngImporter
             .import(&bytes, &ImportOpts::default())
             .expect("import 16-bit")
         else {
-            panic!("expected Flat");
+            panic!("um PNG de 16 bits tem de decodificar para FlatHdr, nao para Flat");
         };
-        // Endpoints map exactly.
-        assert_eq!(out.pixels[0].0, [0, 0, 0, 255], "0x0000 → 0; 0xFFFF → 255");
-        assert_eq!(out.pixels[2].0, [255, 255, 255, 255]);
-        // Mid value 0x8080 ≈ 0.5 in 16-bit → quantises to ~128 in 8-bit
-        // (within ±1 for rounding flavour).
-        let mid = out.pixels[1].0;
-        for (i, &v) in mid.iter().take(3).enumerate() {
-            assert!(
-                (127..=129).contains(&v),
-                "mid-grey channel {i} = {v}; expected ~128 (±1)"
-            );
-        }
-        // Alpha stays opaque.
-        assert_eq!(mid[3], 255);
+        assert_eq!(out.pixels.len(), 2);
+        assert_ne!(
+            out.pixels[0].r(),
+            out.pixels[1].r(),
+            "0x8080 e 0x8081 sairam iguais — a importacao ainda esta' a esmagar para 8 bits, e a \
+             prova e' que dois valores distintos de 16 bits colapsaram no mesmo"
+        );
+    }
+
+    /// **A curva sRGB aplica-se à COR e não ao alfa**, e os extremos continuam exactos.
+    ///
+    /// ⚠️ Sem isto, o gate acima passaria numa implementação que guardasse os valores sRGB crus
+    /// como se fossem lineares — dois valores continuariam distintos, e a imagem inteira
+    /// renderizaria mais clara.
+    #[test]
+    fn the_sixteen_bit_path_linearises_colour_and_leaves_alpha_alone() {
+        let bytes = sixteen_bit_png(&[
+            0x0000, 0x0000, 0x0000, 0xFFFF, // preto opaco
+            0x8080, 0x8080, 0x8080, 0x8080, // meio-tom, meio-alfa
+            0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, // branco opaco
+        ]);
+        let DecodedImage::FlatHdr(out) = PngImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect("import 16-bit")
+        else {
+            panic!("esperava FlatHdr");
+        };
+        // Os extremos da curva sRGB são pontos fixos.
+        assert!(
+            out.pixels[0].r().abs() < 1e-6,
+            "0x0000 devia dar 0.0 linear"
+        );
+        assert!(
+            (out.pixels[2].r() - 1.0).abs() < 1e-6,
+            "0xFFFF devia dar 1.0 linear"
+        );
+        // sRGB 0x8080 (≈0.5029) linearizado é ≈0.2158 — e NÃO 0.5029.
+        let mid = out.pixels[1].r();
+        assert!(
+            (mid - 0.2158).abs() < 1e-3,
+            "o meio-tom saiu {mid:.4}; o linear de sRGB ~0,503 e' ~0,2158. Se deu ~0,503, os \
+             valores sRGB foram guardados como se ja' fossem lineares."
+        );
+        // ⚠️ O alfa NÃO atravessa a curva.
+        let alpha = out.pixels[1].a();
+        assert!(
+            (alpha - 0.5029).abs() < 1e-3,
+            "o alfa saiu {alpha:.4} e devia ser ~0,503 — alguem aplicou-lhe a curva sRGB"
+        );
+    }
+
+    /// **Controle: um PNG de 8 bits continua a decodificar para `Flat`.** Sem isto, uma
+    /// implementação que mandasse TUDO para `FlatHdr` passaria os dois gates acima e faria toda
+    /// imagem do app pagar 8 B/px.
+    #[test]
+    fn an_eight_bit_png_still_decodes_to_flat() {
+        let mut img = image::RgbaImage::new(1, 1);
+        img.put_pixel(0, 0, image::Rgba([10, 20, 30, 255]));
+        let mut bytes = Vec::new();
+        image::DynamicImage::ImageRgba8(img)
+            .write_to(
+                &mut std::io::Cursor::new(&mut bytes),
+                image::ImageFormat::Png,
+            )
+            .expect("encode 8-bit");
+        let decoded = PngImporter
+            .import(&bytes, &ImportOpts::default())
+            .expect("import 8-bit");
+        assert!(
+            matches!(decoded, DecodedImage::Flat(_)),
+            "um PNG de 8 bits nao pode virar FlatHdr — seria dobrar a memoria de toda imagem do app"
+        );
     }
 
     #[test]

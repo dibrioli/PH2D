@@ -170,7 +170,7 @@ ausente.
 
 ---
 
-## §4 — As QUINZE LEIS que esta linha pagou para aprender
+## §4 — As DEZASSEIS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -258,7 +258,20 @@ são estilo.
     o gate mede o pixel — ou pelo menos a última coluna antes dele.* O sintoma tem forma
     reconhecível: **a cena mostra a ordem de nascimento** (aqui, a grelha por linhas de baixo
     para cima), porque é isso que sobra quando a operação não alcança o consumidor.
-15. ⚠️ **Ao consertar um nó de ESTRUTURA, MEÇA os irmãos que mexem na mesma lista** — a sonda
+15. ⚠️ **A PEÇA TEM DE CABER NO PASSO, e o passo é o `gap_*` do `motion.grid`.** Uma instância
+    sem coluna `size` é desenhada com `SIZE_IDENTITY` = **1,0 unidade de mundo**, e as cenas
+    desta conferência autoram passos de **0,12 a 0,6** — ou seja, quase todas desenham peças
+    sobrepostas, e a cena `=63` tinha **5,7 peças empilhadas em cada ponto**. ⛔ **Isso não é
+    um defeito universal e não se varre:** numa cena de campo denso a sobreposição é o look, e
+    o Enio já aprovou vários. Ela é fatal **quando o assunto da cena é a ORDEM DE SAÍDA** —
+    porque aí a ordem de desenho é a mesma variável, e a metade desenhada por último **tapa**
+    a primeira. Sintoma: as bandas de ordem espacial (X, diagonal) leem-se bem, e a de ordem
+    embaralhada sai *quase toda da cor final, com manchas*. Cura: um `motion.scale` com
+    `amount < gap` antes da ordenação. Gate `no_piece_is_wide_enough_to_hide_its_neighbour` —
+    ⚠️ ele mede o **cozido** (lado da peça contra a menor distância entre vizinhos), não os
+    dois literais lado a lado, e **exige** a coluna `size` em vez de a tolerar: a ausência
+    dela é exactamente o estado que reprovou.
+16. ⚠️ **Ao consertar um nó de ESTRUTURA, MEÇA os irmãos que mexem na mesma lista** — a sonda
     `measure_identity_after_structure` foi escrita depois do conserto do `sort` e achou o mesmo
     defeito em três vizinhos (`cull` encolhe e deixa `Count` velho; `mirror` e `kaleidoscope`
     crescem e deixam `Index` **e** `Count` velhos; `clone` faz o certo). ⛔ **E não corrija

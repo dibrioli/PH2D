@@ -28,6 +28,20 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 const BAND_DY: f32 = 3.4;
 /// O lado da grelha de cada banda.
 const SIDE: f32 = 7.0;
+/// O PASSO da grelha — centro a centro, que é o que o `gap_*` do `motion.grid` significa.
+const PITCH: f32 = 0.42;
+/// **O LADO DE CADA PEÇA, e ele TEM de caber no passo.**
+///
+/// ⚠️ **Sem isto a cena mostra OCLUSÃO em vez de ordem, e foi o segundo smoke que o Enio
+/// reprovou (2026-08-19).** Uma instância sem coluna `size` é desenhada com
+/// [`SIZE_IDENTITY`](ph2d_nodegraph::attr::SIZE_IDENTITY) = **1,0 unidade de mundo** — 2,4×
+/// o passo desta grelha, ou seja **5,7 peças empilhadas em cada ponto**. Nas bandas 1 e 2
+/// isso não aparece porque quem tapa é o vizinho ESPACIAL, que tem quase a mesma cor; na
+/// banda 3 a ordem é embaralhada, a metade amarela (desenhada por último) cobre a azul, e o
+/// resultado é um campo quase todo amarelo com manchas — a oclusão a ler-se como se a
+/// ordenação estivesse errada. *Numa cena cujo assunto é a ORDEM DE SAÍDA, a ordem de
+/// desenho é a mesma coisa: ela não pode ter permissão de esconder nada.*
+const PIECE: f32 = 0.34;
 /// O ângulo da banda diagonal, em graus.
 const DIAGONAL: f32 = 35.0;
 /// Os índices do enum `key` do `motion.sort` (ver `ph2d_node_motion_sort`).
@@ -49,14 +63,28 @@ fn band(g: &mut Graph, key: f32, axis: f32, weighted: bool, y: f32) -> Option<No
     g.set_pos(grid, Pos { x: 0.0, y });
     g.set_param(grid, "rows", SIDE);
     g.set_param(grid, "cols", SIDE);
-    g.set_param(grid, "gap_x", 0.42);
-    g.set_param(grid, "gap_y", 0.42);
+    g.set_param(grid, "gap_x", PITCH);
+    g.set_param(grid, "gap_y", PITCH);
+
+    // A peça encolhida para caber no passo — ver [`PIECE`]. Fica ANTES da ordenação de
+    // propósito: é uma propriedade da fonte, e assim a coluna `size` também é permutada,
+    // que é o que uma peça que viaja inteira tem de fazer.
+    let fit = g.add_node("motion.scale");
+    g.set_pos(
+        fit,
+        Pos {
+            x: 220.0,
+            y: y - 90.0,
+        },
+    );
+    g.set_param(fit, "amount", PIECE);
+    wire(g, grid, 0, fit, 0)?;
 
     let sort = g.add_node("motion.sort");
     g.set_pos(sort, Pos { x: 440.0, y });
     g.set_param(sort, "key", key);
     g.set_param(sort, "axis_angle", axis);
-    wire(g, grid, 0, sort, 0)?;
+    wire(g, fit, 0, sort, 0)?;
 
     if weighted {
         // ⚠️ **A chave é um CAMPO agora** — um ruído espacial, que nenhum dos cinco modos

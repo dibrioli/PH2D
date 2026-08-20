@@ -112,6 +112,54 @@ fn the_first_band_paints_left_to_right_and_not_bottom_up() {
     );
 }
 
+/// **NENHUMA PEÇA PODE ESCONDER OUTRA** — o segundo defeito que esta cena teve, e o gate que
+/// o mede é sobre o COZIDO, nunca sobre os dois literais lado a lado.
+///
+/// ⚠️ A régua é física: o lado desenhado de cada peça contra a menor distância entre dois
+/// pontos vizinhos. Uma peça maior que o passo tapa o vizinho, e numa cena cujo assunto é a
+/// ordem de saída quem tapa é escolhido pela própria ordem — o ecrã passa a mostrar oclusão e
+/// lê-se como uma ordenação errada. ⚠️ **A ausência da coluna `size` NÃO é seguro:** ela é
+/// desenhada com `SIZE_IDENTITY` = 1,0, que aqui seria 2,4× o passo, e é exactamente o estado
+/// em que esta cena reprovou. Por isso o gate exige a coluna, em vez de a tolerar.
+#[test]
+fn no_piece_is_wide_enough_to_hide_its_neighbour() {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    let sinks = build_sortkey_demo_document(&mut doc, &reg).expect("a cena monta");
+    let mut cook = Cook::new();
+    for (b, s) in sinks.iter().enumerate() {
+        let v = cook.cook(&doc.graph, &reg, *s, 0.0).expect("a banda coze");
+        let st = v[0].as_stream();
+        let Some(Column::Vec2(size)) = st.get("size") else {
+            panic!(
+                "a banda {b} não traz coluna `size` — sem ela a peça é desenhada com \
+                 SIZE_IDENTITY (1,0), que é 2,4x o passo desta grelha"
+            );
+        };
+        let Some(Column::Vec2(p)) = st.get("P") else {
+            panic!("a banda {b} não traz posições")
+        };
+        // O passo: a menor distância não-nula entre duas peças, em cada eixo.
+        let step = |axis: usize| {
+            let mut vals: Vec<f32> = p.iter().map(|q| q[axis]).collect();
+            vals.sort_by(f32::total_cmp);
+            vals.windows(2)
+                .map(|w| w[1] - w[0])
+                .filter(|d| *d > 1e-4)
+                .fold(f32::INFINITY, f32::min)
+        };
+        let (sx, sy) = (step(0), step(1));
+        let widest = size
+            .iter()
+            .fold([0.0f32, 0.0], |a, s| [a[0].max(s[0]), a[1].max(s[1])]);
+        assert!(
+            widest[0] <= sx && widest[1] <= sy,
+            "banda {b}: peça {widest:?} contra passo [{sx:.3}, {sy:.3}] — ela cobre o vizinho, \
+             e nesta cena quem cobre quem é decidido pela ordem que a cena existe para mostrar"
+        );
+    }
+}
+
 /// **AS TRÊS ORDENS SÃO TRÊS**, e o CONJUNTO de posições é o mesmo nas três.
 ///
 /// ⚠️ As duas metades: se as ordens coincidissem a cena não mostraria nada; se o conjunto

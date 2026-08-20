@@ -72,6 +72,13 @@ rect_packer = "0.2"
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }
 # …and the `CanvasPaintTool` / `RasterEditTool` traits the gate paints its fixture through.
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# O gate de paridade das precisões (`precision_parity_gpu.rs`, plano `docs/Sprite_projeto/18` W2)
+# reconcilia as duas texturas contra a conversão CANÓNICA (`ph2d_imageio::rgba8_to_rgba16`), em vez
+# de a re-implementar no teste — mesma forma dos dois dev-deps acima. ⚠️ Só dev: a produção do
+# `IndividualTextureStore::acquire_16` recebe `&[u16]` já convertidos e não conhece imageio, que é
+# o que mantém esta aresta fora do grafo de release. Sem ciclo: ph2d-imageio não depende de
+# ph2d-render (só de ph2d-color).
+ph2d-imageio = { path = "../ph2d-imageio" }
 # Frame-budget bench for the v4 RenderInstance ABI (Sprite Inspector v2
 # W1.T1.7b). Same pin as the ph2d-input bench. `default-features = false`
 # drops criterion's optional gnuplot/rayon pulls — the bench runs in the

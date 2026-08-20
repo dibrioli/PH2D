@@ -7436,6 +7436,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-gpu",
  "ph2d-host",
+ "ph2d-imageio",
  "ph2d-light",
  "ph2d-painter-effects",
  "ph2d-tool-painter",

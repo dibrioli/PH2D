@@ -49,6 +49,14 @@ pub struct IndividualTextureEntry {
     /// Mip levels in `texture` (`mipgen::mip_levels(width, height)`). The
     /// generator fills `1..mip_count` after each content write.
     pub mip_count: u32,
+    /// O formato desta textura — `Rgba8UnormSrgb` (default) ou `Rgba16Float`
+    /// (precisão alta, plano `docs/Sprite_projeto/18`).
+    ///
+    /// ⚠️ **É a chave que escolhe o gerador de mips.** Um `MipGenerator` é construído contra UM
+    /// formato; correr o de 8 bits sobre uma textura de 16 é erro de validação do wgpu, não um
+    /// resultado errado — mas o modo de falha silencioso está mesmo ao lado, e é por isso que o
+    /// formato viaja no entry em vez de ser adivinhado.
+    pub format: wgpu::TextureFormat,
     /// Sprites currently referencing this texture. Drops to 0 →
     /// [`IndividualTextureStore::release`] removes the entry and the
     /// `wgpu::Texture` handle drops.
@@ -68,9 +76,17 @@ pub struct IndividualTextureStore {
     sampler: wgpu::Sampler,
     /// Regenerates each entry's mip chain after a content write so a minified
     /// (zoomed-out) sprite samples trilinearly instead of undersampling its
-    /// antialiased edges into jaggies (2026-06-17 fix). All individual textures
-    /// are `Rgba8UnormSrgb`, so one generator serves the whole store.
+    /// antialiased edges into jaggies (2026-06-17 fix).
+    ///
+    /// ⚠️ **Um gerador por FORMATO, e não um para o store.** Esta nota dizia *"all individual
+    /// textures are `Rgba8UnormSrgb`, so one generator serves the whole store"* e deixou de ser
+    /// verdade com o plano `docs/Sprite_projeto/18`. Um `MipGenerator` é construído contra um
+    /// formato concreto (é ele que define o pipeline do blit), por isso são dois.
     mip_gen: crate::mipgen::MipGenerator,
+    /// O irmão de 16 bits do [`Self::mip_gen`]. Construído por omissão junto com o outro: um
+    /// pipeline de blit é barato, e construí-lo preguiçosamente exigiria `&mut self` em
+    /// [`Self::regen_mips`], que hoje é `&self` e é chamado de sítios que só têm leitura.
+    mip_gen_16: crate::mipgen::MipGenerator,
 }
 
 /// Errors returned by [`IndividualTextureStore::acquire`] and
@@ -170,14 +186,31 @@ impl IndividualTextureStore {
             next_id: 1,
             sampler,
             mip_gen: crate::mipgen::MipGenerator::new(gpu, wgpu::TextureFormat::Rgba8UnormSrgb),
+            mip_gen_16: crate::mipgen::MipGenerator::new(gpu, Self::FORMAT_16),
         }
     }
+
+    /// **O formato das texturas de precisão alta.**
+    ///
+    /// ⚠️ **`Rgba16Float` e não `Rgba16Unorm`, e é medição:** o unorm exige
+    /// `Features::TEXTURE_FORMAT_16BIT_NORM`, que o [`ph2d_gpu`] pede **mascarada pelo adapter** —
+    /// pode não existir na máquina. O float é baseline do WebGPU, filtrável (logo serve o MESMO
+    /// `material_bgl`, que declara `Float { filterable: true }`), e já é a moeda do `GameRt` e do
+    /// `fx_stack`.
+    pub const FORMAT_16: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
     /// Regenerate mip levels `1..` of an entry from its freshly-written level 0.
     /// No-op for an unknown id or a single-level (tiny) texture.
     fn regen_mips(&self, gpu: &GpuContext, id: u32) {
         if let Some(entry) = self.entries.get(&id) {
-            self.mip_gen.run(gpu, &entry.texture, entry.mip_count);
+            // ⚠️ O gerador escolhe-se pelo formato DO ENTRY, nunca por um default. Um `MipGenerator`
+            // traz o seu pipeline de blit amarrado a um formato; o errado é erro de validação.
+            let generator = if entry.format == Self::FORMAT_16 {
+                &self.mip_gen_16
+            } else {
+                &self.mip_gen
+            };
+            generator.run(gpu, &entry.texture, entry.mip_count);
         }
     }
 
@@ -260,6 +293,53 @@ impl IndividualTextureStore {
         Ok(id)
     }
 
+    /// **Irmã de [`Self::acquire`] para a precisão alta** (plano `docs/Sprite_projeto/18`, W2).
+    ///
+    /// `halves` são `width × height × 4` bits de meio-float em espaço **linear** — o que
+    /// [`ph2d_imageio::rgba8_to_rgba16`] produz, e o que a textura [`Self::FORMAT_16`] consome sem
+    /// conversão nenhuma.
+    ///
+    /// ⚠️ **O id sai do MESMO contador do caminho de 8 bits**, de propósito: um `texture_id` é uma
+    /// referência do `SpriteSource::Individual`, e dois espaços de id separados fariam duas sprites
+    /// de precisões diferentes colidirem no mesmo número. *Números que somam entre caminhos
+    /// contam-se uma vez só.*
+    ///
+    /// ⚠️ O bind group sai do MESMO `material_bgl` — ele declara
+    /// `TextureSampleType::Float { filterable: true }`, que `Rgba16Float` satisfaz. É por isso que
+    /// esta wave não precisa de um segundo pipeline nem de um ramo no shader.
+    pub fn acquire_16(
+        &mut self,
+        gpu: &GpuContext,
+        material_bgl: &wgpu::BindGroupLayout,
+        width: u32,
+        height: u32,
+        halves: &[u16],
+    ) -> Result<u32, IndividualTextureError> {
+        let expected = (width as usize) * (height as usize) * 4;
+        if halves.len() != expected {
+            return Err(IndividualTextureError::PixelLengthMismatch {
+                got: halves.len(),
+                expected,
+            });
+        }
+        let id = self.next_id;
+        self.next_id = self
+            .next_id
+            .checked_add(1)
+            .expect("IndividualTextureStore: u32 id space exhausted");
+        let entry = create_entry_16(gpu, material_bgl, &self.sampler, width, height, halves);
+        self.entries.insert(id, entry);
+        self.regen_mips(gpu, id);
+        Ok(id)
+    }
+
+    /// O formato de uma entrada, ou `None` se o id não existir. A porta pela qual um chamador
+    /// descobre a precisão sem alcançar o `wgpu::Texture`.
+    #[must_use]
+    pub fn format(&self, id: u32) -> Option<wgpu::TextureFormat> {
+        self.entries.get(&id).map(|e| e.format)
+    }
+
     /// Allocate an EMPTY individually-owned texture (`width × height`,
     /// `Rgba8UnormSrgb`, `COPY_DST`) and return its `texture_id`. Refcount
     /// starts at 1. Unlike [`Self::acquire`], no pixels are uploaded — the
@@ -279,7 +359,14 @@ impl IndividualTextureStore {
             .next_id
             .checked_add(1)
             .expect("IndividualTextureStore: u32 id space exhausted");
-        let entry = create_entry_empty(gpu, material_bgl, &self.sampler, width, height);
+        let entry = create_entry_empty(
+            gpu,
+            material_bgl,
+            &self.sampler,
+            width,
+            height,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+        );
         self.entries.insert(id, entry);
         id
     }
@@ -753,8 +840,62 @@ fn create_entry(
     height: u32,
     rgba: &[u8],
 ) -> IndividualTextureEntry {
-    let entry = create_entry_empty(gpu, material_bgl, sampler, width, height);
+    let entry = create_entry_empty(
+        gpu,
+        material_bgl,
+        sampler,
+        width,
+        height,
+        wgpu::TextureFormat::Rgba8UnormSrgb,
+    );
     write_pixels(gpu, &entry.texture, width, height, rgba);
+    entry
+}
+
+/// Irmã de [`create_entry`] para a precisão alta — plano `docs/Sprite_projeto/18`.
+///
+/// ⚠️ **`halves` são bits de meio-float em espaço LINEAR.** Escrever aqui os bytes sRGB
+/// convertidos a `u16` compilaria, subiria para a GPU sem uma queixa, e renderizaria a sprite
+/// visivelmente mais clara — porque o `Rgba8UnormSrgb` do caminho normal é decodificado pelo
+/// **hardware** na amostragem e o `Rgba16Float` **não é**. É esse o defeito que o gate
+/// `the_two_precisions_deliver_the_same_colour` mede.
+fn create_entry_16(
+    gpu: &GpuContext,
+    material_bgl: &wgpu::BindGroupLayout,
+    sampler: &wgpu::Sampler,
+    width: u32,
+    height: u32,
+    halves: &[u16],
+) -> IndividualTextureEntry {
+    let entry = create_entry_empty(
+        gpu,
+        material_bgl,
+        sampler,
+        width,
+        height,
+        IndividualTextureStore::FORMAT_16,
+    );
+    gpu.queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: &entry.texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        bytemuck::cast_slice(halves),
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            // 4 canais × 2 bytes. ⚠️ O `× 4` do caminho de 8 bits aqui daria metade da linha, e o
+            // resultado seria a imagem cortada ao meio na horizontal — não um erro.
+            bytes_per_row: Some(width * 8),
+            rows_per_image: Some(height),
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
     entry
 }
 
@@ -770,6 +911,7 @@ fn create_entry_empty(
     sampler: &wgpu::Sampler,
     width: u32,
     height: u32,
+    format: wgpu::TextureFormat,
 ) -> IndividualTextureEntry {
     let mip_count = crate::mipgen::mip_levels(width, height);
     let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
@@ -782,7 +924,7 @@ fn create_entry_empty(
         mip_level_count: mip_count,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        format,
         // COPY_SRC: `readback()` staging copy (Image Tools edit on Individual sprites). COPY_DST: feeds
         // `copy_from_texture` (Painter GPU preview blit). RENDER_ATTACHMENT: `MipGenerator` mip blits.
         usage: wgpu::TextureUsages::TEXTURE_BINDING
@@ -817,6 +959,7 @@ fn create_entry_empty(
         width,
         height,
         mip_count,
+        format,
         refcount: 1,
     }
 }

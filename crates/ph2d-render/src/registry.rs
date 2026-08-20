@@ -26,12 +26,22 @@ mod tests {
         register_ecs_components(&mut reg);
         register_render_components(&mut reg);
         // O numero se CONTA, nao se escolhe: e o contador de `ph2d-ecs`
-        // (`register_ecs_components_populates_registry`, hoje 41 — inclui
-        // VecShape/VecConnector/VecBlend/VecLabel/VecEnvelope/VecOffset/VecTextPath/VecPatternPath/VecFilter)
-        // + 1 render component (Sprite). SAO DOIS contadores: quem registra
-        // um componente novo no ECS tem de somar aqui tambem, e este gate so
-        // roda na suite da ph2d-render.
-        assert_eq!(reg.len(), 58);
+        // (`register_ecs_components_populates_registry`, **hoje 60** — nao repita a lista dele
+        // aqui, ela ja' envelheceu duas vezes neste comentario) + 1 render component (Sprite).
+        //
+        // SAO DOIS contadores, e este e' o que se esquece: quem regista um componente novo no ECS
+        // tem de somar aqui tambem, e **este gate so roda na suite da ph2d-render**.
+        //
+        // ⚠️ Precedente de 2026-08-20, e vale mais que a regra: a linha `Sprite` acrescentou
+        // `SpritePixels` + `SpriteSheetRef` + `SpriteSheetFrame`, somou os tres no contador do ECS
+        // (57 -> 60), viu-o verde, e deixou ESTE em 58 durante toda a jornada. O laco de trabalho
+        // corria `cargo check -p` e a suite das crates tocadas; a `ph2d-render` nao era uma delas,
+        // entao o gate nunca abriu a boca. *Um contador que so' fala na suite de outra crate e' um
+        // contador que so' fala no fecho.*
+        //
+        // Na integracao ele SOMA entre linhas — recontar e' obrigatorio, escolher um dos lados e' o
+        // erro que deixa o workspace vermelho com dois merges verdes.
+        assert_eq!(reg.len(), 61);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
     }
 }

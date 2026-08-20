@@ -19,8 +19,8 @@
 use crate::state::{self, EqualizeSizesPanelState, set_last_content_h, set_last_visible_h};
 use crate::{EqualizeSizesPanel, ids};
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::{paint_text_centered, rect_to_vello, resolve};
+use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
+use ph2d_editor_core::paint::{paint_text, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -28,9 +28,9 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, EQUALIZE_SIZES_SCROLLBAR_ID, paint_button, paint_scrollbar,
-    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
-    scrollbar_track_rect,
+    Button, ButtonKind, ButtonState, EQUALIZE_SIZES_SCROLLBAR_ID, TextInputState, paint_button,
+    paint_number_chip, paint_scrollbar, paint_slider_with_chip_layout_adaptive,
+    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -183,7 +183,7 @@ fn paint_body_sections(
             // Manually paint a simple labeled chip pair (W=…, H=…). The
             // editor's shared `paint_slider_with_chip_layout` expects a
             // slider, so we inline a small chip row painter here.
-            paint_labeled_chip(
+            let used_w = paint_labeled_chip(
                 Rect::new(inner_x, y, half, row_h),
                 "W",
                 ids::EQS_FIXED_W,
@@ -194,7 +194,7 @@ fn paint_body_sections(
                 text_system,
                 theme,
             );
-            paint_labeled_chip(
+            let used_h = paint_labeled_chip(
                 Rect::new(inner_x + half + chip_gap, y, half, row_h),
                 "H",
                 ids::EQS_FIXED_H,
@@ -205,7 +205,11 @@ fn paint_body_sections(
                 text_system,
                 theme,
             );
-            y += row_h + row_gap;
+            // ⚠️ **Avança pelo que foi USADO, e pelo MAIOR dos dois.** A versão anterior somava um
+            // `row_h` fixo e ignorava o retorno do painter — e foi por aí que a linha seguinte
+            // caiu por cima destes campos. *Uma altura devolvida e deitada fora é um layout que
+            // acerta por coincidência.*
+            y += used_w.max(used_h) + row_gap;
         }
         TargetMode::GridUnit => {
             // Cell size is owned by the Grid Snap tool. The shell
@@ -492,7 +496,25 @@ fn paint_toggle_button(
 
 /// Paint a label + NumberInput chip pair on one row (no slider). The
 /// chip uses the stored number_value (already mirrored by the host on
-/// snapshot push). Layout: `[ label : chip ]`.
+/// **Um rótulo por cima do seu campo numérico**, e a altura que ele de facto usou.
+///
+/// ⚠️ **Isto reusava o painter de SLIDER com um track de largura zero**, e o comentário de então
+/// admitia o truque: *"o slider colapsa atrás da coluna do rótulo"*. Ele colapsava **enquanto a
+/// row coubesse numa linha**. Num painel estreito — que é o caso destas duas metades — o painter
+/// adaptativo EMPILHA, e aí o truque desmonta-se de duas maneiras ao mesmo tempo (Enio,
+/// 2026-08-19: *"o painel de equalize sizes: fixed está todo embolado"*):
+///
+/// 1. o track deixa de estar escondido atrás do rótulo e desenha-se **à largura toda** — o
+///    retângulo preto à esquerda do `256`;
+/// 2. a row passa a ocupar **duas** linhas, e quem a chamava avançava `y` por **uma** — a linha
+///    seguinte (`Upscale if smaller`) caía por cima dos campos.
+///
+/// A cura não é medir melhor a altura: é **não pedir um slider quando não há slider**. O
+/// `paint_number_chip` existe exatamente para isto — o doc dele diz *"callable directly when a
+/// chip needs to live somewhere a slider row layout doesn't fit"*.
+///
+/// *Um componente reusado com um dos seus eixos posto a zero não é reuso; é um caso especial à
+/// espera do primeiro layout que não o respeite.*
 #[allow(clippy::too_many_arguments)]
 fn paint_labeled_chip(
     rect: Rect,
@@ -504,33 +526,45 @@ fn paint_labeled_chip(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
-) {
-    // Reuse `paint_slider_with_chip_layout` with a degenerate
-    // (zero-width) slider track — keeps a single source of truth for
-    // chip paint and label baseline; the slider region collapses behind
-    // the label column.
-    let chip_w = (rect.w * 0.55).max(Spacing::Xl.px() * 2.0); // LITERAL-PX-OK: chip-vs-label split ratio (visual proportion)
-    let label_col = (rect.w - chip_w - Spacing::Sm.px()).max(Spacing::Md.px());
-    let display = value.round().to_string();
-    let _ = paint_slider_with_chip_layout_adaptive(
-        rect,
+) -> f32 {
+    let font = TypeToken::Xs.px();
+    let label_h = font + Spacing::Xs.px();
+    paint_text(
+        text_system,
+        scene,
         label,
-        0.0, // slider track value (hidden by zero-width)
+        rect.x,
+        rect.y,
+        font,
+        rect.w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let chip_rect = Rect::new(rect.x, rect.y + label_h, rect.w, rect.h);
+    // O estado vem do store para que a escrita, o cursor e a seleção sejam vivos — a mesma
+    // leitura que o `paint_slider_with_chip_layout` faz do seu chip.
+    let (state, buffer, caret, anchor) = match store.get(chip_id) {
+        Some(InteractiveState::NumberInput {
+            state,
+            buffer,
+            caret,
+            selection_anchor,
+            ..
+        }) => (*state, Some(buffer.as_str()), *caret, *selection_anchor),
+        _ => (TextInputState::Normal, None, 0, None),
+    };
+    let display = value.round().to_string();
+    paint_number_chip(
+        chip_rect,
+        state,
         value,
         Some(&display),
-        // Re-use the chip_id as the "slider" id; the dispatcher will see
-        // it as a number-only input because `register_only_chip` below
-        // doesn't put a slider InteractiveState behind it. We don't
-        // emit ValueChanged on the slider id (chip events are how the
-        // tool gets updates).
-        NodeId(0),
-        chip_id,
-        label_col,
-        chip_w,
-        store,
-        hit_index,
+        buffer,
+        caret,
+        anchor,
         scene,
         text_system,
         theme,
     );
+    hit_index.register(chip_id, chip_rect);
+    label_h + rect.h
 }

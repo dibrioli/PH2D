@@ -113,6 +113,11 @@ pub(crate) use announce_mod::announce;
 #[path = "sculpt3d_fixtures.rs"]
 mod fixtures;
 
+/// **O CORPUS DE BENCHMARK do remesher** — ver [`corpus`]. `#[cfg(test)]`.
+#[cfg(test)]
+#[path = "sculpt3d_corpus.rs"]
+mod corpus;
+
 pub(crate) use scenes::shading::env_scene;
 pub(crate) use scenes::{
     alpha_image_scene, alpha_scene, bake_scene, cavity_scene, directional_alpha_scene,

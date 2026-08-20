@@ -170,10 +170,11 @@
 | [0158](0158-solid-fill-running-sum-is-row-disjoint-rayon-exception.md) | **ACEITO** pelo Enio em 2026-08-15 (*"siga e corrija os abertos"*), sobre o item 1 da | A soma corrida do preenchimento é POR LINHA, e por isso o `rayon` entra na `ph2d-painter-brush` |
 | [0159](0159-sculpt3d-the-dab-vertex-loop-is-a-row-disjoint-map-rayon-exception.md) | aceito (ordem do Enio, 2026-08-13: *"ambos"*, sobre a avaliação que | O laço de vértices de um dab é um MAP disjunto: exceção `rayon` na `ph2d-sculpt3d` |
 | [0160](0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md) | aceito (ordem do Enio, 2026-08-19: *"investigue o melhor algoritmo | O quad remesh é um porte NATIVO de campo cruzado, QuadriFlow referenciado |
+| [0161](0161-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md) | — | O quad remesh PIVOTA para a família GLOBAL: clean-room a partir dos papers, oráculo GPL fora da árvore |
 
 ---
 
-**161 ADRs** · **59** marcados ⛔ · **3** sem linha `Status:` no próprio texto.
+**162 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

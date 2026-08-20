@@ -97,6 +97,8 @@ pub enum PackError {
         rect: [u32; 4],
         size: u32,
     },
+    /// Duas peças ocupam o mesmo pixel. Só o [`compose`] a levanta, pela mesma razão.
+    Overlap { a: String, b: String },
 }
 
 impl std::fmt::Display for PackError {
@@ -130,6 +132,9 @@ impl std::fmt::Display for PackError {
                 "'{name}' sits at {},{} {}x{}, outside the {size}x{size} sheet",
                 rect[0], rect[1], rect[2], rect[3]
             ),
+            Self::Overlap { a, b } => {
+                write!(f, "'{a}' and '{b}' overlap - one would erase the other")
+            }
         }
     }
 }

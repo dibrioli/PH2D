@@ -336,6 +336,45 @@ fn rebind(
 mod tests {
     use super::*;
 
+    /// **Uma peça que já tem o tamanho certo NÃO é reamostrada.**
+    ///
+    /// ⚠️ Nasceu como sonda, a perseguir o relato *"o bake às vezes piora a borda transparente e
+    /// às vezes não afeta"*: a hipótese era que o arredondamento de `pixels_for` deslocasse o alvo
+    /// em um pixel e disparasse um passe de Mitchell — que tem lobos negativos e deixa halo numa
+    /// borda de alfa — por nada. **A medição REFUTOU a hipótese** (8 densidades × 22 tamanhos, zero
+    /// casos), e a causa verdadeira estava noutro sítio: o recorte de região que faltava no
+    /// `texture_edit`.
+    ///
+    /// O gate fica. Refutada ou não, a invariante é a que se quer — reamostrar de graça custa
+    /// nitidez —, e no dia em que o `pixels_for` mudar de arredondamento ele di-lo antes de o
+    /// artista o ver na borda. *Uma sonda que confirma uma invariante vale mais viva do que
+    /// apagada.*
+    #[test]
+    fn a_piece_that_already_fits_is_not_resampled() {
+        let mut bad = Vec::new();
+        for ppm in [16.0f32, 32.0, 50.0, 100.0, 96.0, 256.0, 1024.0, 37.5] {
+            let cfg = ph2d_ecs::SpriteSheetFrame::at_density(ppm);
+            for src in [
+                7u32, 15, 16, 17, 31, 32, 33, 48, 64, 96, 100, 127, 128, 129, 160, 200, 255, 256,
+                333, 512, 1000, 1024,
+            ] {
+                // O que o import escreve: `sprite.size = src / ppm` em f32. Se o `pixels_for` o
+                // devolver ao inteiro original, `sx == 1.0` exatamente e o resampler sai cedo.
+                let size_m = src as f32 / ppm;
+                let want = cfg.pixels_for(size_m);
+                if want != src {
+                    bad.push(format!("ppm={ppm} src={src} -> want={want}"));
+                }
+            }
+        }
+        assert!(
+            bad.is_empty(),
+            "{} casos em que o bake reamostraria sem precisar:\n{}",
+            bad.len(),
+            bad.join("\n")
+        );
+    }
+
     /// ⚠️ **A inversa exata do `place`.** Uma peça que o auto-arranjo pôs no canto `(0,0)` da folha
     /// tem o centro em `(-half_folha + half_peça, +half_folha - half_peça)`; assá-la tem de
     /// devolver `(0,0)` — não `(0,1)`.

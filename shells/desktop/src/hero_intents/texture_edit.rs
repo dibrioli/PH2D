@@ -77,12 +77,25 @@ pub(crate) fn read_sprite_source(
         }
         SpriteSource::Individual { texture_id } => {
             let (w, h, pixels) = renderer.readback_individual(texture_id).ok()?;
-            SpriteImage::from_bytes(
+            let full = SpriteImage::from_bytes(
                 w,
                 h,
                 pixels,
                 AlphaMode::from_premultiplied_flag(old_premultiplied),
-            )
+            );
+            // ⚠️ **UM SPRITE DE REGIÃO NÃO É A TEXTURA INTEIRA** (Enio, 2026-08-19: a folha
+            // exportada saiu *"com múltiplas repetições"*). Uma peça ligada a uma folha partilha a
+            // textura com as vizinhas e usa só uma janela dela — ler a textura toda devolve a
+            // folha INTEIRA como se fossem os pixels daquele sprite. No bake isso carimbava a
+            // folha completa no lugar de cada peça, uma vez por peça; num Trim daria a folha
+            // inteira recortada e re-atribuída a um sprite só.
+            //
+            // ⚠️ **O defeito é ANTIGO e estava latente:** esta função nasceu quando `Individual`
+            // significava sempre "uma textura, um sprite", e o `region_enabled` chegou com o
+            // import de folhas sem que ninguém revisitasse o leitor. Ele só ficou ALCANÇÁVEL
+            // quando a folha passou a ser produzida aqui dentro. *Curar no ponto de
+            // estrangulamento cobre as oito ferramentas de uma vez* — que é a razão de ele existir.
+            crop_region(full, sprite)
         }
         // W2.T2: a tier-cooked KTX2 texture is GPU-compressed (BC/ASTC/
         // ETC2) with no CPU-side RGBA — the raster image tools (Trim,
@@ -97,6 +110,39 @@ pub(crate) fn read_sprite_source(
         old_premultiplied,
         old_anchor,
     })
+}
+
+/// Recorta a imagem à janela que o sprite de facto usa (`region_rect`), ou devolve-a inteira.
+///
+/// ⚠️ **Recusa silenciosamente um retângulo impossível** devolvendo a imagem inteira: um rect que
+/// sai da textura significa que alguém a re-uploadou mais pequena por baixo do sprite, e cortar
+/// com aritmética que dá a volta produziria lixo. Devolver o todo é errado de forma VISÍVEL —
+/// devolver lixo é errado de forma silenciosa.
+fn crop_region(img: SpriteImage, sprite: &Sprite) -> SpriteImage {
+    if !sprite.region_enabled {
+        return img;
+    }
+    let [rx, ry, rw, rh] = sprite.region_rect;
+    // Os quatro vêm de um `[f32; 4]` que carrega pixels inteiros; qualquer coisa que não seja um
+    // pixel inteiro positivo não é uma janela.
+    let (x, y, w, h) = (
+        rx.round().max(0.0) as u64,
+        ry.round().max(0.0) as u64,
+        rw.round().max(0.0) as u64,
+        rh.round().max(0.0) as u64,
+    );
+    if w == 0 || h == 0 || x + w > u64::from(img.width) || y + h > u64::from(img.height) {
+        return img;
+    }
+    let (x, y, w, h) = (x as usize, y as usize, w as usize, h as usize);
+    let src_row = img.width as usize * 4;
+    let mut out = vec![0u8; w * h * 4];
+    for r in 0..h {
+        let from = (y + r) * src_row + x * 4;
+        let to = r * w * 4;
+        out[to..to + w * 4].copy_from_slice(&img.pixels[from..from + w * 4]);
+    }
+    SpriteImage::from_bytes(w as u32, h as u32, out, img.alpha)
 }
 
 /// Upload `img` as a fresh Individual texture and repoint `entity`'s
@@ -136,6 +182,12 @@ pub(crate) fn commit_edited_texture(
         sprite.source = SpriteSource::Individual { texture_id };
         sprite.size = new_size_world;
         sprite.premultiplied = img.alpha.is_premultiplied();
+        // ⚠️ **A JANELA MORRE COM A EDIÇÃO, e é a outra metade do bug das repetições.** Se o
+        // sprite era uma região de uma folha, a textura que acabou de subir é a imagem INTEIRA
+        // dele — amostrá-la pela janela antiga mostraria um recorte arbitrário dessa imagem nova.
+        // O `region_rect` fica como está de propósito (é ignorado enquanto `region_enabled` é
+        // falso, e zerá-lo só acrescentaria uma escrita que ninguém lê).
+        sprite.region_enabled = false;
     }
     // Stamped AFTER the sprite write and unconditionally: an entity whose `Sprite` vanished
     // mid-frame gets no stamp because `insert` on a dead entity is the caller's bug, so guard on
@@ -144,6 +196,125 @@ pub(crate) fn commit_edited_texture(
         sim.world_mut()
             .entity_mut(entity)
             .insert(ph2d_ecs::SpritePixels(pixels_id));
+        // ⚠️ **E a AUTORIA morre com ela.** `SpriteSheetRef` diz *"os meus pixels são a região R da
+        // folha F"*, e isso deixou de ser verdade: os pixels agora são próprios, com nome durável
+        // (o `SpritePixels` acima). Deixá-lo faria o `restore_sprite_sheets` re-ligar o sprite à
+        // folha no load seguinte e **apagar a edição** — o defeito só apareceria depois de fechar
+        // e reabrir o projeto, que é o pior sítio para o descobrir.
+        sim.world_mut()
+            .entity_mut(entity)
+            .remove::<ph2d_ecs::SpriteSheetRef>();
     }
     Ok(texture_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Uma imagem `w × h` em que cada pixel carrega o próprio `(x, y)` nos dois primeiros canais —
+    /// assim um recorte errado é legível: o pixel diz de onde veio.
+    fn tagged(w: u32, h: u32) -> SpriteImage {
+        let mut px = Vec::with_capacity((w * h * 4) as usize);
+        for y in 0..h {
+            for x in 0..w {
+                px.extend_from_slice(&[x as u8, y as u8, 0, 255]);
+            }
+        }
+        SpriteImage::from_bytes(w, h, px, AlphaMode::Straight)
+    }
+
+    fn region_sprite(rect: [f32; 4]) -> Sprite {
+        let mut s = Sprite::individual(1, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]);
+        s.region_enabled = true;
+        s.region_rect = rect;
+        s
+    }
+
+    /// ⚠️ **O bug que o Enio viu na folha exportada** (*"com múltiplas repetições"*): sem o
+    /// recorte, um sprite de região devolvia a TEXTURA INTEIRA — a folha toda —, e o bake
+    /// carimbava-a no lugar de cada peça, uma vez por peça.
+    #[test]
+    fn a_region_sprite_reads_only_its_window() {
+        let img = crop_region(tagged(16, 16), &region_sprite([4.0, 8.0, 3.0, 2.0]));
+        assert_eq!((img.width, img.height), (3, 2));
+        // O primeiro pixel do recorte tem de ser o `(4, 8)` da origem.
+        assert_eq!(&img.pixels[0..2], &[4, 8]);
+        // E o último, o `(6, 9)`.
+        let last = img.pixels.len() - 4;
+        assert_eq!(&img.pixels[last..last + 2], &[6, 9]);
+    }
+
+    /// Controle positivo: sem janela, a imagem passa inteira. Sem isto o teste acima passaria com
+    /// um `crop_region` que devolvesse sempre um recorte fixo.
+    #[test]
+    fn a_plain_sprite_reads_whole() {
+        let mut s = Sprite::individual(1, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]);
+        s.region_enabled = false;
+        s.region_rect = [4.0, 8.0, 3.0, 2.0];
+        let img = crop_region(tagged(16, 16), &s);
+        assert_eq!((img.width, img.height), (16, 16));
+    }
+
+    /// ⚠️ Um retângulo que sai da textura devolve o TODO, não lixo: significa que alguém
+    /// re-uploadou a textura mais pequena por baixo do sprite, e é um erro que tem de ser visível.
+    #[test]
+    fn an_impossible_window_falls_back_to_the_whole_image() {
+        for rect in [
+            [14.0, 0.0, 4.0, 4.0], // sai pela direita
+            [0.0, 14.0, 4.0, 4.0], // sai por baixo
+            [0.0, 0.0, 0.0, 4.0],  // largura zero
+            [-1.0, 0.0, 4.0, 4.0], // canto negativo (o `max(0)` traz para 0, mas fica dentro)
+        ] {
+            let img = crop_region(tagged(16, 16), &region_sprite(rect));
+            let cropped = (img.width, img.height) != (16, 16);
+            // O canto negativo é o único que PODE recortar (vira 0,0 4x4) — os outros três não.
+            if rect[0] >= 0.0 {
+                assert!(
+                    !cropped,
+                    "rect {rect:?} devia ter devolvido a imagem inteira"
+                );
+            }
+        }
+    }
+
+    /// ⚠️ **O RECORTE ESTÁ LIGADO** — e este gate existe porque os quatro testes acima **não o
+    /// provam**: eles chamam `crop_region` diretamente, e uma prova de mutação mostrou-os todos
+    /// verdes com a chamada removida do `read_sprite_source`. Unidade verde, costura morta — a
+    /// forma canónica do apodrecimento neste repositório.
+    ///
+    /// `read_sprite_source` precisa de uma GPU (faz `readback_individual`), então a costura não
+    /// tem teste de comportamento possível aqui; o que se pode afirmar é que o braço `Individual`
+    /// **passa pelo recorte**. É o mesmo instrumento que o gate do pivô de joint usa, e pela mesma
+    /// razão: quando o comportamento é inalcançável, a estrutura é a afirmação que resta.
+    #[test]
+    fn the_individual_branch_goes_through_the_crop() {
+        let src = include_str!("texture_edit.rs");
+        let arm = src
+            .find("SpriteSource::Individual { texture_id } =>")
+            .expect("o braco `Individual` do `read_sprite_source` mudou de forma");
+        // ⚠️ A fronteira e' o braco SEGUINTE, nao uma janela de N bytes. A 1a versao deste gate
+        // usava `arm + 1200` e reprovou sobre codigo correto assim que o comentario do braco
+        // cresceu (a distancia real era 1362). *Um numero magico num gate apodrece na primeira
+        // edicao do que ele mede.*
+        let end = src[arm..]
+            .find("SpriteSource::CookedTexture")
+            .map_or(src.len(), |o| arm + o);
+        let body = &src[arm..end];
+        assert!(
+            body.contains("crop_region("),
+            "o braco `Individual` deixou de recortar a regiao: um sprite ligado a uma folha volta \n\
+             a devolver a TEXTURA INTEIRA, e o bake carimba a folha toda no lugar de cada peca \n\
+             (Enio, 2026-08-19: a folha exportada saiu «com multiplas repeticoes»)"
+        );
+    }
+
+    /// A janela preserva o MODO de alfa — recortar não é converter.
+    #[test]
+    fn the_crop_keeps_the_alpha_mode() {
+        let mut img = tagged(8, 8);
+        img.alpha = AlphaMode::Premultiplied;
+        let out = crop_region(img, &region_sprite([1.0, 1.0, 2.0, 2.0]));
+        assert_eq!(out.alpha, AlphaMode::Premultiplied);
+    }
 }

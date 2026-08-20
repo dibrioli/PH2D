@@ -69,6 +69,24 @@ pub fn compose(
                 size,
             });
         }
+        // ⚠️ **DUAS PEÇAS NO MESMO PIXEL RECUSAM, e é uma recusa que se paga a si própria.** O
+        // `blit` copia — não mistura —, então a segunda apagaria a borda da primeira em silêncio,
+        // e o `.json` continuaria a declarar as duas regiões inteiras. O artista veria uma peça
+        // com um lado comido e nada a explicá-lo.
+        //
+        // ⚠️ **E o caso REAL não é o arrasto grosseiro, é o ARREDONDAMENTO:** o chamador mede as
+        // caixas em unidades contínuas e converte para pixels aqui; duas peças que apenas se
+        // tocam podem, depois de arredondadas, partilhar uma coluna. Por isso a verificação vive
+        // em PIXELS — que é a unidade em que a folha existe — e não em quem lhe passou os rects.
+        for (name, other) in &places {
+            let [ox, oy, ow, oh] = *other;
+            if x < ox + ow && ox < x + input.width && y < oy + oh && oy < y + input.height {
+                return Err(PackError::Overlap {
+                    a: name.clone(),
+                    b: input.name.clone(),
+                });
+            }
+        }
         places.push((input.name.clone(), rect));
     }
     let mut rgba = vec![0u8; (size as usize) * (size as usize) * 4];
@@ -176,6 +194,46 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(err, PackError::OutsideSheet { .. }));
+    }
+
+    /// ⚠️ **Duas peças no mesmo pixel RECUSAM.** Medido em 2026-08-19: antes desta guarda, o
+    /// segundo `blit` apagava a última coluna do primeiro (`0xAA` → `0x00`) **em silêncio**, e o
+    /// `.json` continuava a declarar as duas regiões inteiras — uma peça com um lado comido e nada
+    /// a explicá-lo.
+    #[test]
+    fn two_pieces_on_the_same_pixel_are_refused_by_name() {
+        let err = compose(
+            7,
+            "s".into(),
+            16,
+            vec![solid("a", 4, 4, 0xAA), solid("b", 4, 4, 0x00)],
+            &[[0, 0], [3, 0]],
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            PackError::Overlap {
+                a: "a".into(),
+                b: "b".into()
+            }
+        );
+    }
+
+    /// **Encostar NÃO é sobrepor** — e sem este controle o teste acima passaria com uma guarda que
+    /// recusasse qualquer vizinhança. O empacotador põe peças a um `padding` de distância, e com
+    /// `padding: 0` elas encostam-se de propósito.
+    #[test]
+    fn pieces_that_merely_touch_are_fine() {
+        let sheet = compose(
+            7,
+            "s".into(),
+            16,
+            vec![solid("a", 4, 4, 0xAA), solid("b", 4, 4, 0xBB)],
+            &[[0, 0], [4, 0]],
+        )
+        .expect("encostadas cabem");
+        assert_eq!(sheet.rgba[3 * 4], 0xAA, "a ultima coluna de `a` sobreviveu");
+        assert_eq!(sheet.rgba[4 * 4], 0xBB, "a primeira de `b` esta' la'");
     }
 
     /// **O `pack` passou a compor por esta porta** — o mesmo laço de blit. Se algum dia divergirem,

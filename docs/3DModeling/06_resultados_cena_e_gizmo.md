@@ -1,10 +1,10 @@
-# W5 + W6 — a peça vira uma CENA de objetos, e ganha o gizmo (2026-08-20)
+# W5 · W6 · W7 — a peça vira uma CENA de objetos, e ganha o gizmo (2026-08-20)
 
 > **O que este doc é:** o mecanismo das duas waves e os números que decidiram o desenho.
 > O estado do módulo vive no [README](README.md); a história, no handoff.
 >
 > **§1–§4 são a W5** (a cena de objetos + o gizmo de MOVER) · **§5 é a W6** (rodar, escalar, e o
-> undo que estava partido).
+> undo que estava partido) · **§6 é a W7** (o clique que escolhe o objeto, e os eixos Global/Local).
 
 Enio, no smoke de 19/08:
 
@@ -245,11 +245,77 @@ e o intent devolve a **posição**. Acrescentar um quarto verbo é uma linha no 
 
 ---
 
-## §6 — Aberto
+## §6 — W7: o clique escolhe o objeto, e os eixos podem ser dele (20/08)
 
-- ⏸️ orientação **local** dos eixos (produto — o Blender expõe um seletor)
+### ⭐ Como se pergunta a um CAMPO quem ele é
+
+Uma malha traz consigo a resposta — cada triângulo sabe de que objeto é. Um campo implícito **não**:
+o que se avalia é um número, e o número da peça já é a união de todos os nós.
+
+A pergunta é feita em dois passos, e **nenhum é estrutura nova**:
+
+1. **Onde** a superfície está sob o cursor — uma marcha de **um** raio, pela mesma função que
+   desenha o quadro. A marcha passou a devolver também o ponto de mundo (ela já sabia o `t`), o que
+   impede uma segunda marcha de existir só para isto.
+2. **De quem** é aquele ponto — pergunta-se a cada folha o valor do campo **dela** ali, e ganha a de
+   menor módulo. Numa superfície de união o vencedor vale ~0 e os outros valem a distância a que
+   estão: a resposta não é apertada, é a diferença entre tocar e não tocar.
+
+### ⛔ A alternativa recusada, com o número
+
+| Rota | O que custa | Onde |
+|---|---|---|
+| **Escolhida:** uma árvore por folha, avaliada num ponto | **0,10 ms** por clique (3 folhas, quadro 1600×1000) | `measure_pick_cost` |
+| **Recusada:** *id-buffer* (a marcha devolve o id do nó) | um segundo canal por **todo** operador da árvore — `min` de dois números passaria a `min` de dois pares | cada pixel de **cada quadro** |
+
+⭐ O *id-buffer* é o que um renderizador de malha faz, e aqui ele espalharia o custo por toda a
+imagem para responder a uma pergunta que só se faz **num clique**. 0,10 ms fecha a discussão.
+
+### As regras do gesto
+
+- **Clique no fundo limpa a seleção**, como em todo modelador. Manter deixaria o gizmo aceso em cima
+  de nada.
+- ⚠️ **Soltar uma ALÇA nunca é seleção.** Sem isto, mover um objeto trocaria a seleção para o que
+  estivesse por baixo dele no fim do gesto — e o artista perderia o que acabou de posicionar.
+- O limiar clique-vs-arrasto é o número da **casa** (`NUMBER_INPUT_DRAG_THRESHOLD_PX`). Ele tem o
+  nome do campo numérico porque foi lá que a casa o mediu primeiro, mas a grandeza é a mesma
+  pergunta física — *quanto a mão treme entre carregar e soltar* — e já havia três respostas no
+  shell. Uma quarta seria a quarta a envelhecer.
+
+### Eixos Global / Local
+
+⭐ **A `Anchor` passou a carregar os três eixos já resolvidos.** Assim a lei do gizmo deixa de saber
+que existe uma escolha de referencial, e quem a faz é a ponte, que é quem tem a pose do nó.
+
+⚠️ Sem isso, cada função da lei teria de perguntar *"global ou local?"* — o mesmo `if` repetido em
+cinco sítios, que é exatamente como um deles fica para trás. O gate
+`the_law_moves_along_the_anchors_axes_not_the_worlds` impede o seletor de ser decorativo.
+
+O segundo seletor tem **família de ids própria**: partilhá-la com o dos verbos faria um clique em
+«Local» disparar o verbo da mesma posição, e o sintoma seria *"trocar de eixos troca a ferramenta"*.
+
+### ⚠️ Um comentário velho que mentia
+
+O doc do `ph2d-field-render` dizia que o G-buffer devolve *"máscara, normal e **profundidade**"*.
+Ele **nunca a teve**. A seleção por clique foi a primeira coisa a precisar dela e a descobrir que
+não estava lá. *Comentário velho e código morto mentem* — corrigido no mesmo commit.
+
+### Provas de mutação (as quatro restauradas)
+
+| Mutação | Reprovou |
+|---|---|
+| o pick avalia a folha na pose **local** | `the_answer_uses_the_world_pose_not_the_local_one` |
+| `Frame::Local` devolve os eixos do mundo | `local_axes_follow_the_node_and_global_ones_do_not` |
+| a lei lê `WORLD_AXES` em vez da âncora | `the_law_moves_along_the_anchors_axes_not_the_worlds` |
+| o limiar de clique deixa de morder | `dragging_the_camera_is_not_a_click` |
+
+---
+
+## §7 — Aberto
+
+- ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)
-- ⏸️ clicar na peça em 3D para selecionar (§4)
+- ✅ **clicar na peça para selecionar FECHOU** na W7 (§6) — e o custo está medido: **0,10 ms**
 - ⏸️ **snap** e leitura numérica do deslocamento durante o arrasto
 - ✅ **o undo de um arrasto FECHOU** na W6 (§5) — e a nota que estava aqui estava **errada**: a lei
   do shell já existia e o que faltava era o módulo dizer-se. *Meça o mecanismo antes de construir o

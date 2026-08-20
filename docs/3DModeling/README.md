@@ -19,7 +19,7 @@ são `min` e um operador sobre dois números, e o **raio do fillet fica editáve
 | [`02_o_que_torna_boolean_e_fillet_extraordinarios.md`](02_o_que_torna_boolean_e_fillet_extraordinarios.md) | **Por que esta rota.** Mede que o Blender 4.5 já resolveu a booleana e que o buraco é o arredondamento. As 3 famílias candidatas |
 | [`00_plano_port.md`](00_plano_port.md) | ⛔ **Rota substituída** — não execute as waves. Continuam fonte: o **§1** (estudo do original: 9 leis, 19 operações) e o **§2** (inventário da PH2D). O **§7** segue válido: por que **não** se escreve um kernel do zero |
 
-**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3, W5 e W6
+**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3, W5, W6 e W7
 fechadas** · a W2 tem o traçado no shell e a perspectiva **aberta**; o canvas 3D de primeira classe
 segue **aberto**.
 
@@ -31,6 +31,7 @@ segue **aberto**.
 | **W4** — a ferramenta | 🔶 | Navegação por mouse ([`field3d_input.rs`](../../shells/desktop/src/field3d_input.rs)): **rotação LIVRE** sem polos ([doc 05](05_resultados_imagem.md) §7), pan, zoom sem teto herdado, `Home`. E o **painel** ([`ph2d-panel-model3d`](../../crates/ph2d-panel-model3d/), 6 gates): ⭐ **o raio de cada operação, editável ao vivo** — a promessa do módulo virada em controle. **Falta:** o canvas de primeira classe |
 | **W5** — a cena e o gizmo | ✅ | ⭐ **Cada primitiva é um OBJETO da cena** (`ph2d-field-ecs`: `cook`/`spawn_doc`, ida e volta gateada) e o documento é **cozido** do mundo a cada quadro · ⭐ o **gizmo 3D de mover** (3 setas + 3 planos + disco de vista, [`field3d_gizmo.rs`](../../shells/desktop/src/field3d_gizmo.rs)), com 9 gates de lei e **6 de costura**. Tokens `axis-x/y/z` no design system. [doc 06](06_resultados_cena_e_gizmo.md) |
 | **W6** — os três verbos | ✅ | ⭐ **Rodar** (3 argolas + a de vista; o ângulo é medido no PLANO, não em pixels — uma volta fecha) e **escalar** (⛔ UMA alça: a escala é uniforme por [ADR-0161 §6](../architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md), e três caixas por eixo prometeriam o que o modelo não dá). Seletor no painel + teclas `G`/`R`/`S`. E **um arrasto voltou a ser UM passo de undo**. [doc 06 §5](06_resultados_cena_e_gizmo.md) |
+| **W7** — o clique e os eixos | ✅ | ⭐ **Clicar na peça seleciona o objeto** (marcha de um raio + a folha de menor módulo naquele ponto — **0,10 ms**, contra um *id-buffer* que custaria em cada pixel de cada quadro) · **eixos Global/Local** num segundo seletor. [doc 06 §6](06_resultados_cena_e_gizmo.md) |
 | **W3** — os perfis | ✅ | [`ph2d-field-profile`](../../crates/ph2d-field-profile/) (a costura com o editor vetorial, 8 gates) + `Extrude`/`Revolve`. **O desenho da caneta vira sólido**, e o raio de quina do editor arredonda as arestas verticais. `FIELD_DOC_VERSION` → **2** |
 
 **Como entrar — DUAS portas:**
@@ -59,7 +60,9 @@ na diagonal. O preço é o horizonte poder ficar inclinado — daí a tecla de r
 
 ⭐ **A peça é uma CENA DE OBJETOS.** A Hierarquia mostra `Model` com um filho por primitiva
 (`Cylinder`, `Cylinder 2`, …) — cada um com nome, pose própria, salvo e desfeito. Clique numa linha
-e **o gizmo aparece no objeto**. No topo do painel há três botões — **Move · Rotate · Size** — e as
+e **o gizmo aparece no objeto**. ⭐ **Clique direto na peça** para escolher outro objeto; clique no fundo para deixar de escolher.
+
+No topo do painel há três botões — **Move · Rotate · Size** — e as
 teclas `G`, `R` e `S` fazem o mesmo (com o rato sobre a janela 3D):
 
 - **Move**: arraste uma seta para andar num eixo, um quadrado para andar num plano, o anel do meio
@@ -68,6 +71,10 @@ teclas `G`, `R` e `S` fazem o mesmo (com o rato sobre a janela 3D):
   direção da tela.
 - **Size**: arraste o punho do canto para aumentar ou diminuir. ⚠️ **Uniforme** — é o que a peça
   entrega, e é por isso que o botão diz *Size* e não *Scale*.
+
+Por baixo há um segundo par — **Global · Local** —: com *Global* as setas apontam para os eixos da
+cena, com *Local* para os do próprio objeto (num cilindro deitado, é a diferença entre andar «para o
+lado» e andar «ao longo dele»).
 
 O botão **direito continua a girar a vista** mesmo por cima do gizmo, e **um arrasto inteiro é um só
 Ctrl+Z**.

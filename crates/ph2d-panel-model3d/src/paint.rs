@@ -90,7 +90,16 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     ctx.scene.pop_layer();
 }
 
-/// Uma linha: rótulo do tipo do nó + slider + campo numérico.
+/// Uma linha: rótulo do tipo do nó + slider + campo numérico. Devolve o **y seguinte**.
+///
+/// ⚠️ **DEVOLVE O Y SEGUINTE, e o helper que ela chama devolve a ALTURA USADA.** As duas convenções
+/// existem no mesmo repo e a confusão entre elas foi um smoke reprovado (Enio, 2026-08-19: *"o
+/// painel apresenta apenas um slider"*): com `y = paint_row(...)`, a segunda linha ia parar em
+/// `y = 28` **absoluto** — dentro do título, fora do recorte — e as três seguintes com ela. O painel
+/// mostrava uma linha e o modelo parecia ter encolhido.
+///
+/// ⭐ Neste arquivo **toda** função de pintura devolve o y seguinte. Uma convenção por arquivo, dita
+/// aqui: misturar as duas é como o erro entrou.
 fn paint_row(ctx: &mut PaintCtx, row: &RadiusRow, x: f32, w: f32, y: f32) -> f32 {
     let theme = ctx.host.theme();
     let scene = &mut *ctx.scene;
@@ -129,7 +138,7 @@ fn paint_row(ctx: &mut PaintCtx, row: &RadiusRow, x: f32, w: f32, y: f32) -> f32
     let display = f64::from(row.radius);
     let text = format!("{display:.RADIUS_DECIMALS$}");
 
-    paint_slider_with_chip_layout_adaptive(
+    let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, w, ROW_H_PX),
         tr(row.kind_key),
         track,
@@ -144,7 +153,8 @@ fn paint_row(ctx: &mut PaintCtx, row: &RadiusRow, x: f32, w: f32, y: f32) -> f32
         scene,
         text_system,
         theme,
-    )
+    );
+    y + used + Spacing::Xs.px()
 }
 
 /// Texto puro — um fato, não um controle. Sem hit-index: uma affordance que ele não pode honrar

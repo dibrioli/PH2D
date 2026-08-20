@@ -68,8 +68,16 @@ pub(crate) struct Smoke {
     inflight: Option<Receiver<Ready>>,
     /// Quando o pedido em voo saiu — é o relógio que faz a rotação ser por SEGUNDO.
     since: std::time::Instant,
-    /// A câmera e o tamanho do último pedido — a memória que impede re-traçar o que não mudou.
-    requested: Option<(Orbit, u32, u32)>,
+    /// **O que já foi pedido**: a câmera, o tamanho **e o DOCUMENTO**.
+    ///
+    /// ⚠️ **O documento faz parte da chave, e não fazia** — foi um smoke reprovado (Enio,
+    /// 2026-08-19: *"slider disfuncional"*). O controle mudava o raio, o documento mudava, o painel
+    /// mostrava o número novo... e a peça na tela **não se mexia**, porque a pergunta *"mudou
+    /// alguma coisa?"* olhava só a câmera e o tamanho.
+    ///
+    /// *Um cache que não conhece uma das entradas não é um cache — é um congelador.* E o sintoma
+    /// culpava o controle, que estava certo.
+    requested: Option<(Orbit, u32, u32, FieldDoc)>,
     /// Quanto custou o último traçado — o número que o painel mostra, porque quem mexe num raio
     /// é quem paga o traçado seguinte.
     last_trace_ms: f32,
@@ -364,6 +372,29 @@ fn boot() -> Option<Smoke> {
     })
 }
 
+/// **Vale a pena traçar de novo?** — a pergunta inteira, num só sítio e pura.
+///
+/// ⚠️ **As TRÊS entradas contam, e a terceira foi esquecida.** A primeira versão comparava só a
+/// câmera e o tamanho; mexer num raio mudava o documento, o painel mostrava o número novo, e a peça
+/// na tela **não se mexia** (Enio, 2026-08-19: *"slider disfuncional"*). *Um cache que não conhece
+/// uma das entradas não é um cache — é um congelador*, e o sintoma culpa o controle, que está certo.
+///
+/// Pura e separada de propósito: é o que a torna gateável sem janela nem GPU.
+fn needs_trace(
+    requested: Option<&(Orbit, u32, u32, FieldDoc)>,
+    cam: &Orbit,
+    w: u32,
+    h: u32,
+    doc: &FieldDoc,
+    has_frame: bool,
+) -> bool {
+    // Sem quadro nenhum ainda: traçar, mesmo que nada tenha "mudado".
+    if !has_frame {
+        return true;
+    }
+    requested.is_none_or(|(c, rw, rh, rdoc)| c != cam || *rw != w || *rh != h || rdoc != doc)
+}
+
 /// **O painel abre sozinho na primeira vez** que o smoke desenha, e só nessa.
 ///
 /// ⭐ *Feature nova = auto-play* é a lei da casa, e um painel que exigisse aprender uma tecla para
@@ -632,9 +663,16 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
         // tamanho já não são os do último pedido — senão uma cena parada re-traçaria o mesmo quadro
         // para sempre, queimando um núcleo por nada. Com o prato a girar a câmera muda todo quadro,
         // então isto é invisível ali; com a mão no controlo, uma peça parada custa **zero**.
-        let want = (smoke.cam, tw, th);
-        if smoke.inflight.is_none() && (smoke.requested != Some(want) || smoke.frame.is_none()) {
-            smoke.requested = Some(want);
+        let stale = needs_trace(
+            smoke.requested.as_ref(),
+            &smoke.cam,
+            tw,
+            th,
+            &smoke.doc,
+            smoke.frame.is_some(),
+        );
+        if smoke.inflight.is_none() && stale {
+            smoke.requested = Some((smoke.cam, tw, th, smoke.doc.clone()));
             let (tx, rx) = channel::<Ready>();
             let doc = smoke.doc.clone();
             let cam = smoke.cam;
@@ -698,6 +736,38 @@ mod scene_tests {
 
     fn a_world() -> ph2d_ecs::SimWorld {
         ph2d_ecs::SimWorld::new()
+    }
+
+    /// ⭐ **Mudar o DOCUMENTO pede um traçado novo** — o gate do *"slider disfuncional"*.
+    ///
+    /// A primeira versão da pergunta *"mudou alguma coisa?"* olhava a câmera e o tamanho. Um raio
+    /// editado mudava o documento, o painel mostrava o número novo, e a peça na tela ficava
+    /// **congelada** — com o controle a levar a culpa.
+    #[test]
+    fn changing_the_document_asks_for_a_new_trace() {
+        let cam = Orbit::default();
+        let doc = scene(1);
+        let asked = (cam, 640, 480, doc.clone());
+
+        assert!(
+            !needs_trace(Some(&asked), &cam, 640, 480, &doc, true),
+            "nada mudou: traçar de novo seria queimar um núcleo por nada"
+        );
+
+        let mut edited = doc.clone();
+        edited.set_radius(edited.root(), 0.2).expect("raio válido");
+        assert!(
+            needs_trace(Some(&asked), &cam, 640, 480, &edited, true),
+            "o DOCUMENTO mudou e o traçado tem de correr — foi esta a linha que faltava"
+        );
+
+        // E as outras duas entradas continuam a contar.
+        let mut moved = cam;
+        crate::field3d_input::law::orbit(&mut moved, 10.0, 0.0);
+        assert!(needs_trace(Some(&asked), &moved, 640, 480, &doc, true));
+        assert!(needs_trace(Some(&asked), &cam, 800, 480, &doc, true));
+        // Sem quadro nenhum, traça — mesmo com tudo igual.
+        assert!(needs_trace(Some(&asked), &cam, 640, 480, &doc, false));
     }
 
     /// ⭐ **A peça é uma ENTIDADE do mundo, e é isso que a põe na Hierarquia.**

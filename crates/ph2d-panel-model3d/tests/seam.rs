@@ -159,3 +159,77 @@ fn a_family_id_without_a_row_does_not_invent_a_node() {
         "um nó que não está no retrato não pode receber edição"
     );
 }
+
+/// ⭐ **N linhas ocupam N faixas distintas** — o gate do smoke *"o painel apresenta apenas um
+/// slider"* (Enio, 2026-08-19).
+///
+/// # O mecanismo, para não voltar
+///
+/// `paint_slider_with_chip_layout_adaptive` devolve a **altura usada**; este arquivo devolve o **y
+/// seguinte**. As duas convenções coexistem no repo, e `y = paint_row(...)` misturava-as: a segunda
+/// linha ia parar em `y = 28` **absoluto** — dentro do título e fora do recorte — e as três
+/// seguintes com ela. O painel mostrava UMA linha, e o artista concluía que o modelo tinha
+/// encolhido para um cilindro.
+///
+/// ⚠️ O gate mede os **retângulos de hit** que a pintura regista, e não a imagem: é onde a diferença
+/// entre "pintado" e "alcançável pelo rato" aparece, e as duas quebraram juntas.
+#[test]
+fn every_row_gets_its_own_band_none_stacked_on_another() {
+    let nodes: Vec<RadiusRow> = (0..4)
+        .map(|n| RadiusRow {
+            node: n,
+            kind_key: "panel.model3d.kind.cylinder",
+            radius: 0.05,
+            bound: RadiusBound::Hard(0.22),
+        })
+        .collect();
+    publish(ModelSnapshot {
+        rows: nodes,
+        node_count: 4,
+        last_trace_ms: 0.0,
+    });
+
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let rects = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+
+    let mut tops: Vec<f32> = Vec::new();
+    for n in 0..4u32 {
+        let id = ids::model3d_radius_slider(n);
+        let r = rects
+            .iter()
+            .find(|(rid, _)| *rid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("a linha {n} não registou o slider dela — ela foi pintada?"));
+        tops.push(r.y);
+    }
+    for (i, pair) in tops.windows(2).enumerate() {
+        assert!(
+            pair[1] > pair[0] + 1.0,
+            "as linhas {i} e {} estão na mesma faixa ({} e {}) — o avanço do y está a usar a ALTURA \
+             como se fosse a posição",
+            i + 1,
+            pair[0],
+            pair[1]
+        );
+    }
+
+    // E todas caem DENTRO do painel, abaixo do título — uma linha em `y ≈ 28` absoluto é o sintoma
+    // exato do bug, e ficaria recortada em vez de visível.
+    let panel = rects
+        .iter()
+        .find(|(id, _)| *id == ids::MODEL3D_PANEL)
+        .map(|(_, r)| *r);
+    if let Some(panel) = panel {
+        for (n, top) in tops.iter().enumerate() {
+            assert!(
+                *top > panel.y && *top < panel.y + panel.h,
+                "a linha {n} caiu em y={top}, fora do corpo do painel ({}..{})",
+                panel.y,
+                panel.y + panel.h
+            );
+        }
+    }
+}

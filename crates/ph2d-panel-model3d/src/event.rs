@@ -98,6 +98,13 @@ pub(crate) fn apply_event(
                 true
             }
         }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_act_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_act_button).unwrap_or(0);
+            slot < state::current().acts.len() && {
+                state::push_intent(ModelIntent::Act { slot });
+                true
+            }
+        }
         WidgetEvent::Click(id) if id == ids::MODEL3D_CLOSE => {
             host.set_panel_visible(Model3dPanel::ID, false);
             true

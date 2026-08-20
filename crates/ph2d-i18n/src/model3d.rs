@@ -39,6 +39,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.op.union" => "Union",
         "panel.model3d.op.subtract" => "Subtract",
         "panel.model3d.op.intersect" => "Intersect",
+        // Ações sobre o objeto escolhido.
+        "panel.model3d.act.duplicate" => "Duplicate",
+        "panel.model3d.act.delete" => "Delete",
         // ⭐ Os NOMES das dimensões. ⚠️ Eles vivem aqui e não numa tabela do documento: a
         // `ph2d-field` devolve **chaves**, e quem traduz é a UI (HR-15).
         "field.dim.width" => "Width",

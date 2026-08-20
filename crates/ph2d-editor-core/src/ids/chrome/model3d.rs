@@ -57,6 +57,12 @@ pub fn model3d_op_button(slot: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.op.{slot}"))
 }
 
+/// ⭐ **O botão de uma AÇÃO sobre o objeto escolhido** (duplicar, apagar), pela posição.
+#[must_use]
+pub fn model3d_act_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.act.{slot}"))
+}
+
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]
 pub fn model3d_radius_slider(node: u32) -> NodeId {

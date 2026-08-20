@@ -58,6 +58,12 @@ pub fn populate(store: &mut WidgetStore) {
                 state: ButtonState::Normal,
             },
         );
+        store.register(
+            ids::model3d_act_button(slot),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
     }
     for node in 0..MAX_ROWS as u32 {
         let slider = ids::model3d_radius_slider(node);

@@ -88,7 +88,7 @@ pub(crate) fn ecs_bridge(
             s.doc = cooked;
         }
     });
-    picked.or(born.map(SelectRequest::Entity))
+    picked.or(born)
 }
 
 /// Resolve um clique guardado: `Some(Entity)` no que estiver sob ele, `Some(Clear)` no fundo.
@@ -139,7 +139,7 @@ pub(crate) fn sync_scene_and_birth(
     initial: Option<&FieldDoc>,
     selection: &[bevy_ecs::entity::Entity],
     last_trace_ms: f32,
-) -> (Option<FieldDoc>, Option<u64>) {
+) -> (Option<FieldDoc>, Option<SelectRequest>) {
     let mut born = None;
     let world = sim.world_mut();
     let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
@@ -165,8 +165,22 @@ pub(crate) fn sync_scene_and_birth(
 
     // ⭐ O que um gesto de criar/combinar acabou de fazer nascer — e que passa a estar selecionado.
     let mut created: Option<u64> = None;
+    // Uma seleção que tem de ser LIMPA — o que ela apontava deixou de existir.
+    let mut cleared = false;
     // A câmera é o «onde estou a olhar»: uma forma nova nasce no centro do quadro e no tamanho dele.
     let cam = with_smoke(|s| s.cam).unwrap_or_default();
+    // O enquadramento, para o degrau da grelha (ver a ação de duplicar).
+    let view_screen = with_smoke(|s| {
+        let a = s
+            .area
+            .unwrap_or(ph2d_editor::zones::Rect::new(0.0, 0.0, 1.0, 1.0));
+        ph2d_field_render::Screen::new(
+            a.w.round().max(1.0) as u32,
+            a.h.round().max(1.0) as u32,
+            s.cam.half_extent,
+        )
+    })
+    .unwrap_or_else(|| ph2d_field_render::Screen::new(1, 1, 1.0));
 
     // As edições do painel escrevem no COMPONENTE do nó, que é a peça de verdade.
     for intent in ph2d_panel_model3d::drain_intents() {
@@ -190,6 +204,36 @@ pub(crate) fn sync_scene_and_birth(
                         // ⭐ A forma nova fica SELECIONADA: é o que põe o gizmo em cima dela sem
                         // ninguém ter de a procurar na Hierarquia.
                         created = Some(e.to_bits());
+                    }
+                }
+            }
+            // ⭐ **Duplicar e apagar** — as duas ações sobre o objeto escolhido.
+            ph2d_panel_model3d::ModelIntent::Act { slot } => {
+                if let Some(&one) = selection.first() {
+                    match slot {
+                        0 => {
+                            // ⭐ **A cópia sai UM DEGRAU da grelha para a direita da TELA.**
+                            //
+                            // ⚠️ Não é decoração. Duplicar em cima do original é o que o Blender faz
+                            // — e ele resolve o resto entrando logo em modo de mover. Aqui não há
+                            // esse modo, então uma cópia exatamente por baixo seria um botão que
+                            // **parece não fazer nada**: a única prova seria uma linha nova na
+                            // Hierarquia.
+                            //
+                            // O degrau é o da grelha (derivado do enquadramento: o menor número
+                            // redondo que ainda se consegue mirar), e a direção é a **direita da
+                            // câmera**, que é para onde «o próximo» vai em qualquer arrumação.
+                            let (right, _, _) = cam.basis();
+                            let step = crate::field3d_gizmo::snap_step(view_screen);
+                            let off = [right[0] * step, right[1] * step, right[2] * step];
+                            if let Some(copy) = ph2d_field_ecs::duplicate(world, one, off) {
+                                created = Some(copy.to_bits());
+                            }
+                        }
+                        // ⚠️ O que foi apagado não pode continuar selecionado: o gizmo ficaria
+                        // aceso sobre uma entidade que já não existe.
+                        1 if ph2d_field_ecs::remove(world, one) => cleared = true,
+                        _ => {}
                     }
                 }
             }
@@ -241,9 +285,14 @@ pub(crate) fn sync_scene_and_birth(
     // módulo acabou de pagar no cache do traçado.
     (
         ph2d_field_ecs::cook(world, root).and_then(Result::ok),
-        // ⚠️ O que ACABOU de nascer ganha do nascimento da peça: os dois só coincidem no primeiro
-        // quadro, e ali a ordem errada faria a primeira forma criada não ficar selecionada.
-        created.or(born),
+        // ⚠️ **A ordem é a das intenções mais recentes.** O que acabou de nascer ganha do
+        // nascimento da peça (os dois só coincidem no primeiro quadro, e ali a ordem errada faria a
+        // primeira forma criada não ficar selecionada); e um apagar sem nada novo pede a limpeza,
+        // senão o gizmo ficaria aceso sobre uma entidade que já não existe.
+        created
+            .map(SelectRequest::Entity)
+            .or_else(|| cleared.then_some(SelectRequest::Clear))
+            .or_else(|| born.map(SelectRequest::Entity)),
     )
 }
 
@@ -284,11 +333,21 @@ fn publish_snapshot(
         .map(|key| ph2d_panel_model3d::ModeChip { key, active: false })
         .collect();
     let ops = ops_for(world, selection);
+    // ⚠️ Vazio sem seleção, pela mesma razão da fileira de operações: um controle que aparece e não
+    // faz nada é pior do que um que não aparece.
+    let acts = if selection.is_empty() {
+        Vec::new()
+    } else {
+        ACTS.iter()
+            .map(|key| ph2d_panel_model3d::ModeChip { key, active: false })
+            .collect()
+    };
     ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
         modes,
         frames,
         adds,
         ops,
+        acts,
         rows,
         node_count: all.len(),
         last_trace_ms: ms,
@@ -390,6 +449,9 @@ const SHAPES: [&str; 4] = [
     "panel.model3d.add.cylinder",
     "panel.model3d.add.torus",
 ];
+
+/// As ações sobre o objeto escolhido, na ordem do seletor.
+const ACTS: [&str; 2] = ["panel.model3d.act.duplicate", "panel.model3d.act.delete"];
 
 /// As três booleanas, na ordem do seletor.
 const OPS: [&str; 3] = [

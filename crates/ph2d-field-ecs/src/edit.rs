@@ -404,3 +404,65 @@ fn unique_sibling_name(world: &World, parent: Entity, base: &str) -> String {
         .find(|c| !taken.iter().any(|n| n == c))
         .unwrap_or_else(|| base.to_string())
 }
+
+/// ⭐ **Duplica um nó e tudo o que está debaixo dele**, como irmão.
+///
+/// Devolve a cópia. `offset` é o deslocamento de **mundo** que a separa do original.
+///
+/// ⚠️ **A subárvore inteira**, e não só o nó: o caso útil é copiar um *furo* que já é ele próprio
+/// uma subtração de três formas. Copiar só o topo daria um grupo vazio, que não é nada.
+///
+/// ⚠️ **A ordem dos filhos é preservada**, e isso é o significado numa subtração (`children[0]`
+/// menos os seguintes). Uma cópia que baralhasse a ordem seria a mesma forma só às vezes.
+///
+/// Devolve `None` para um nó sem pai — a raiz **é** a peça, e uma segunda peça é um gesto da cena,
+/// não uma edição desta.
+pub fn duplicate(world: &mut World, entity: Entity, offset: [f32; 3]) -> Option<Entity> {
+    let parent = world.get::<bevy_ecs::hierarchy::ChildOf>(entity)?.0;
+    let copy = copy_subtree(world, entity, parent)?;
+    translate_world(world, copy, offset);
+    Some(copy)
+}
+
+/// A cópia recursiva, **sem recursão da linguagem**: uma pilha de `(origem, pai-do-destino)`.
+fn copy_subtree(world: &mut World, from: Entity, into: Entity) -> Option<Entity> {
+    let mut stack = vec![(from, into)];
+    let mut first = None;
+    while let Some((src, dst_parent)) = stack.pop() {
+        let Some(node) = world.get::<FieldNode>(src).cloned() else {
+            continue;
+        };
+        let pose = world.get::<FieldPose>(src).copied().unwrap_or_default();
+        let name = unique_sibling_name(world, dst_parent, crate::shape_name(&node.shape));
+        let copy = world.spawn((ph2d_ecs::Name::new(name), node, pose)).id();
+        world.entity_mut(dst_parent).add_child(copy);
+        first.get_or_insert(copy);
+        // ⚠️ Em ordem INVERSA, porque a fila é uma pilha: assim os filhos nascem na ordem de
+        // `Children`, que é a que a subtração lê.
+        let kids: Vec<Entity> = world
+            .get::<Children>(src)
+            .map(|c| c.iter().copied().collect())
+            .unwrap_or_default();
+        for k in kids.into_iter().rev() {
+            stack.push((k, copy));
+        }
+    }
+    first
+}
+
+/// ⭐ **Apaga um nó e o que está debaixo dele.**
+///
+/// ⚠️ **A raiz é recusada**: ela *é* a peça, e apagá-la deixaria o módulo sem nada para onde voltar
+/// (a cena inicial só existe no primeiro quadro). Remover a peça é um gesto da **Hierarquia**, que é
+/// onde os objetos do projeto se apagam — e de onde o desfazer a traz de volta.
+///
+/// Devolve `false` quando não apagou nada.
+pub fn remove(world: &mut World, entity: Entity) -> bool {
+    if world.get::<FieldNode>(entity).is_none()
+        || world.get::<bevy_ecs::hierarchy::ChildOf>(entity).is_none()
+    {
+        return false;
+    }
+    world.entity_mut(entity).despawn();
+    true
+}

@@ -53,8 +53,8 @@ mod spawn;
 
 pub use cook::{cook, world_xform};
 pub use edit::{
-    add_leaf, dims_of, radius_bound, radius_of, rotate_world, scale_by, set_dim, set_op,
-    set_radius, translate_world, walk, wrap_in_op,
+    add_leaf, dims_of, duplicate, radius_bound, radius_of, remove, rotate_world, scale_by, set_dim,
+    set_op, set_radius, translate_world, walk, wrap_in_op,
 };
 pub use spawn::{shape_name, spawn_doc};
 

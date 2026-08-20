@@ -27,6 +27,7 @@ fn scene_with_one_union() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        acts: Vec::new(),
         rows: vec![ParamRow {
             entity: THE_UNION,
             index: 0,
@@ -202,6 +203,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        acts: Vec::new(),
         rows: nodes,
         node_count: 4,
         last_trace_ms: 0.0,
@@ -278,6 +280,7 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        acts: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
         last_trace_ms: 0.0,
@@ -313,6 +316,7 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        acts: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
         last_trace_ms: 0.0,
@@ -359,6 +363,7 @@ fn the_axis_selector_is_its_own_family() {
         ],
         adds: Vec::new(),
         ops: Vec::new(),
+        acts: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
         last_trace_ms: 0.0,
@@ -378,13 +383,13 @@ fn the_axis_selector_is_its_own_family() {
     );
 }
 
-/// ⭐ **Os quatro seletores são quatro famílias**, e um clique em cada chega ao intent certo.
+/// ⭐ **Os cinco seletores são cinco famílias**, e um clique em cada chega ao intent certo.
 ///
-/// ⚠️ São verbo · eixos · criar · combinar, todos no mesmo painel. Uma família partilhada faria um
-/// clique em «+ Sphere» pedir a segunda operação booleana — o tipo de defeito que se lê como *"o
-/// botão faz outra coisa"* e ninguém liga a ids.
+/// ⚠️ São verbo · eixos · criar · combinar · agir, todos no mesmo painel. Uma família partilhada
+/// faria um clique em «+ Sphere» pedir a segunda operação booleana — o tipo de defeito que se lê
+/// como *"o botão faz outra coisa"* e ninguém liga a ids.
 #[test]
-fn the_four_selectors_never_answer_for_each_other() {
+fn the_selectors_never_answer_for_each_other() {
     let chip = |key: &'static str| state::ModeChip { key, active: false };
     let _ = drain_intents();
     publish(ModelSnapshot {
@@ -404,6 +409,10 @@ fn the_four_selectors_never_answer_for_each_other() {
             chip("panel.model3d.op.union"),
             chip("panel.model3d.op.subtract"),
         ],
+        acts: vec![
+            chip("panel.model3d.act.duplicate"),
+            chip("panel.model3d.act.delete"),
+        ],
         rows: Vec::new(),
         node_count: 0,
         last_trace_ms: 0.0,
@@ -417,6 +426,7 @@ fn the_four_selectors_never_answer_for_each_other() {
     assert_eq!(click(ids::model3d_frame_button(1)), EventOutcome::Consumed);
     assert_eq!(click(ids::model3d_add_button(1)), EventOutcome::Consumed);
     assert_eq!(click(ids::model3d_op_button(1)), EventOutcome::Consumed);
+    assert_eq!(click(ids::model3d_act_button(1)), EventOutcome::Consumed);
 
     assert_eq!(
         drain_intents(),
@@ -425,6 +435,7 @@ fn the_four_selectors_never_answer_for_each_other() {
             ModelIntent::SetGizmoFrame { slot: 1 },
             ModelIntent::AddShape { slot: 1 },
             ModelIntent::ApplyOp { slot: 1 },
+            ModelIntent::Act { slot: 1 },
         ],
         "cada família tem de responder por si — se dois intents forem iguais, os ids colidiram"
     );

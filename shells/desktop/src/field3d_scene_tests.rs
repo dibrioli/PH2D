@@ -479,7 +479,10 @@ fn the_part_is_born_with_an_object_selected_once_and_only_once() {
     let _ = ph2d_panel_model3d::drain_intents();
     let mut sim = a_world();
     let (_, born) = super::sync_scene_and_birth(&mut sim, Some(&scene(1)), &[], 0.0);
-    let bits = born.expect("nascer tem de pedir uma seleção");
+    let super::SelectRequest::Entity(bits) = born.expect("nascer tem de pedir uma seleção")
+    else {
+        panic!("nascer pede uma ENTIDADE, não uma limpeza");
+    };
 
     let root = the_root(&mut sim);
     let world = sim.world_mut();
@@ -897,4 +900,127 @@ fn siblings_of_the_same_kind_get_distinct_names() {
         .collect();
     let unique: std::collections::BTreeSet<&String> = names.iter().collect();
     assert_eq!(unique.len(), names.len(), "nomes repetidos: {names:?}");
+}
+
+/// ⭐ **Duplicar copia a SUBÁRVORE inteira**, como irmã, e com nomes próprios.
+///
+/// ⚠️ A subárvore, e não só o nó: o caso útil é copiar um *furo* que já é ele próprio uma subtração
+/// de várias formas. Copiar só o topo daria um grupo vazio — que não é nada, e o artista veria o
+/// botão «funcionar» sem nada aparecer.
+#[test]
+fn duplicating_copies_the_whole_subtree_as_a_sibling() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let kids: Vec<bevy_ecs::entity::Entity> = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .collect();
+    // Um grupo com dois dentro: é o que torna a cópia recursiva observável.
+    let group = ph2d_field_ecs::wrap_in_op(
+        world,
+        &kids[..2],
+        ph2d_field::Op::Difference(ph2d_field::Blend::Sharp),
+    )
+    .expect("embrulha");
+    let before = ph2d_field_ecs::walk(world, root).len();
+
+    let copy = ph2d_field_ecs::duplicate(world, group, [0.3, 0.0, 0.0]).expect("duplica");
+
+    assert_eq!(
+        world.get::<ChildOf>(copy).map(|c| c.0),
+        Some(root),
+        "é IRMÃ"
+    );
+    assert_eq!(
+        ph2d_field_ecs::walk(world, root).len(),
+        before + 3,
+        "o grupo e os dois filhos dele — três nós novos"
+    );
+    assert_eq!(
+        world.get::<Children>(copy).map(|c| c.len()),
+        Some(2),
+        "a cópia tem os filhos dela"
+    );
+    // ⚠️ E a ORDEM dos filhos sobrevive: é ela que diz o que é subtraído de quê.
+    let kind_of = |e: bevy_ecs::entity::Entity, w: &bevy_ecs::world::World| {
+        w.get::<FieldNode>(e)
+            .map(|n| ph2d_field_ecs::shape_name(&n.shape))
+    };
+    let orig: Vec<_> = world
+        .get::<Children>(group)
+        .expect("original")
+        .iter()
+        .copied()
+        .map(|e| kind_of(e, world))
+        .collect();
+    let made: Vec<_> = world
+        .get::<Children>(copy)
+        .expect("cópia")
+        .iter()
+        .copied()
+        .map(|e| kind_of(e, world))
+        .collect();
+    assert_eq!(orig, made, "a ordem dos filhos baralhou-se na cópia");
+
+    // A cópia saiu do sítio do original.
+    let a = ph2d_field_ecs::world_xform(world, group).translation;
+    let b = ph2d_field_ecs::world_xform(world, copy).translation;
+    assert!((b[0] - a[0] - 0.3).abs() < 1e-5, "{a:?} -> {b:?}");
+    // E a peça continua válida.
+    assert!(
+        ph2d_field_ecs::cook(world, root)
+            .expect("não vazia")
+            .is_ok()
+    );
+}
+
+/// ⛔ **A RAIZ não se duplica nem se apaga pelo painel.**
+///
+/// Ela *é* a peça. Apagá-la deixaria o módulo sem nada para onde voltar (a cena inicial só existe no
+/// primeiro quadro), e duplicá-la seria criar uma segunda peça — um gesto da **cena**, não uma
+/// edição desta.
+#[test]
+fn the_root_is_neither_duplicated_nor_deleted_from_the_panel() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    assert!(ph2d_field_ecs::duplicate(world, root, [0.1, 0.0, 0.0]).is_none());
+    assert!(!ph2d_field_ecs::remove(world, root));
+    assert!(world.get::<FieldNode>(root).is_some(), "a peça continua lá");
+}
+
+/// ⭐ **Apagar leva o que está debaixo junto**, e a peça continua válida.
+#[test]
+fn deleting_a_group_takes_its_children_with_it() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let kids: Vec<bevy_ecs::entity::Entity> = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .collect();
+    let group = ph2d_field_ecs::wrap_in_op(
+        world,
+        &kids[..2],
+        ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+    )
+    .expect("embrulha");
+
+    assert!(ph2d_field_ecs::remove(world, group));
+    assert!(world.get_entity(group).is_err(), "o grupo saiu");
+    for k in &kids[..2] {
+        assert!(world.get_entity(*k).is_err(), "os filhos foram com ele");
+    }
+    // Sobra o terceiro cilindro, e a peça é válida.
+    assert_eq!(ph2d_field_ecs::walk(world, root).len(), 2);
+    assert!(
+        ph2d_field_ecs::cook(world, root)
+            .expect("não vazia")
+            .is_ok()
+    );
 }

@@ -77,6 +77,9 @@ pub struct ModelSnapshot {
     /// nada é pior do que um que não aparece. Ele mostra-se quando uma operação está selecionada
     /// (e aí o ativo diz qual ela é) ou quando há dois nós irmãos escolhidos.
     pub ops: Vec<ModeChip>,
+    /// ⭐ As ações sobre o objeto escolhido (duplicar, apagar). Vazio quando não há nenhum — e aí a
+    /// fileira não é pintada, pela mesma razão da de operações.
+    pub acts: Vec<ModeChip>,
     /// ⭐ **As dimensões do objeto selecionado.** Vazio quando não há nada selecionado — e aí o
     /// painel diz-lo, em vez de mostrar uma lista de tudo que ninguém pediu.
     ///
@@ -114,6 +117,8 @@ pub enum ModelIntent {
     AddShape { slot: usize },
     /// Aplicar uma operação booleana ao que está selecionado, pela **posição** no seletor.
     ApplyOp { slot: usize },
+    /// Uma ação sobre o objeto escolhido, pela **posição** no seletor.
+    Act { slot: usize },
 }
 
 /// O shell publica o retrato antes de pintar.

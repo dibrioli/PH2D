@@ -1,10 +1,11 @@
-# W5 · W6 · W7 — a peça vira uma CENA de objetos, e ganha o gizmo (2026-08-20)
+# W5 · W6 · W7 · W8 — a peça vira uma CENA de objetos, e ganha o gizmo (2026-08-20)
 
 > **O que este doc é:** o mecanismo das duas waves e os números que decidiram o desenho.
 > O estado do módulo vive no [README](README.md); a história, no handoff.
 >
 > **§1–§4 são a W5** (a cena de objetos + o gizmo de MOVER) · **§5 é a W6** (rodar, escalar, e o
-> undo que estava partido) · **§6 é a W7** (o clique que escolhe o objeto, e os eixos Global/Local).
+> undo que estava partido) · **§6 é a W7** (o clique que escolhe o objeto, e os eixos Global/Local) ·
+> **§7 é a W8** (o gesto preso à grelha, e o número dele).
 
 Enio, no smoke de 19/08:
 
@@ -311,16 +312,69 @@ não estava lá. *Comentário velho e código morto mentem* — corrigido no mes
 
 ---
 
-## §7 — Aberto
+## §7 — W8: o gesto preso à grelha, e o número dele (20/08)
+
+### ⭐ O arrasto passou a medir o TOTAL desde a pegada
+
+Era incremental. **Prender incrementos a uma grelha e somá-los acumula o erro de cada
+arredondamento**: o gesto sai da grelha depois de uns segundos, com a ficha a mostrar um número
+redondo que a peça não tem.
+
+Agora a pegada **congela** a âncora e o pixel, e cada movimento mede o total contra eles.
+
+⚠️ **A âncora TEM de ser congelada.** Ela é republicada a cada quadro a partir da pose do objeto —
+que o próprio arrasto está a mudar. Medir contra uma âncora que se move seria medir contra o
+resultado, e o gesto perseguiria a própria cauda.
+
+⭐ `Motion::since` é a **inversa exacta** de `merge` — `total.since(a).merge(a) == total`, com gate.
+Se as duas não forem inversas, cada evento de ponteiro deixa um resíduo, e o resíduo cresce com a
+duração do gesto.
+
+### Três passos, três razões — e nenhuma é «pareceu bem»
+
+| Verbo | Passo | Por quê |
+|---|---|---|
+| **Translação** | **derivado do enquadramento** (escada 1-2-5) | Dois degraus vizinhos têm de estar mais afastados do que a tolerância do próprio ponteiro (`GRAB_PX`) — abaixo disso escolher entre eles é sorteio. Sobe-se a escada até o primeiro degrau que passa. ⚠️ Um passo fixo em unidades de mundo é inútil nos dois extremos: aproximado, dois pontos da grelha ficam a meia tela; afastado, ficam dentro do mesmo pixel. A grelha do Blender subdivide com o zoom pela mesma razão |
+| **Ângulo** | **15°** | É o **maior** passo que ainda contém 30, 45, 60 e 90 — os ângulos que um artista diz em voz alta. Mais fino não os perde, mas obriga a mira; mais grosso perde o 45 |
+| **Tamanho** | **0,1** | É o que a **leitura** consegue exprimir. A ficha mostra duas casas; um passo mais fino mostraria «x1,50» para dois tamanhos diferentes |
+
+O `Ctrl` é lido **a cada movimento**, e não congelado na pegada: mira-se à mão até perto e
+prende-se no fim, como no Blender. Congelá-lo obrigaria a soltar e repetir o gesto.
+
+### ⚠️ A ficha, e a lei que eu ia violar
+
+O `gizmo/readout.rs` da casa já tinha escrito a lei:
+
+> *O readout é DERIVADO do resultado APLICADO, nunca re-calculado do cursor.* Uma segunda derivação
+> a partir do cursor discordaria do encaixe e mostraria `12,03` enquanto a forma pousou em `12,00`.
+
+Aqui a ficha sai do `Grip::applied` — o que é honesto **porque** o mundo recebe exatamente esse
+valor. ⭐ Mas *"exatamente"* é o tipo de afirmação que apodrece num comentário, então ela é um
+**gate**: `the_readout_is_the_pose_the_world_took` aplica os três verbos com totais **presos** e
+compara a pose resultante com o que a ficha afirma. Se um dia a escrita recusar, limitar ou
+arredondar um pedido, ele cai antes de alguém ver.
+
+⛔ Sem `Δ` nem setas no texto: o repositório já pagou tofu por um caractere que a fonte não tinha.
+
+### Provas de mutação (as três restauradas)
+
+| Mutação | Reprovou |
+|---|---|
+| passo de grelha fixo em vez de derivado | `the_grid_step_is_derived_from_the_framing` |
+| `since` como identidade | `since_is_the_exact_inverse_of_merge` **e** `pointer_events_between_two_frames_add_up` |
+
+---
+
+## §8 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)
 - ✅ **clicar na peça para selecionar FECHOU** na W7 (§6) — e o custo está medido: **0,10 ms**
-- ⏸️ **snap** e leitura numérica do deslocamento durante o arrasto
+- ✅ **snap e leitura numérica FECHARAM** na W8 (§7)
 - ✅ **o undo de um arrasto FECHOU** na W6 (§5) — e a nota que estava aqui estava **errada**: a lei
   do shell já existia e o que faltava era o módulo dizer-se. *Meça o mecanismo antes de construir o
   que a nota prescreve.*
-- ⏸️ **rotação e tamanho não têm leitura numérica nem snap** durante o arrasto (o mover também não)
+- ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe
 - ⏸️ perspectiva (herdado da W2) — quando entrar, entra **num sítio**: `Orbit::project`

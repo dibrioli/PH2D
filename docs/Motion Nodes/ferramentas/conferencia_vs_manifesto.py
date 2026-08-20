@@ -8,10 +8,32 @@ como ABERTO o que já shipou. Medido em 2026-08-19 na folha 01: a célula dizia
 *"`motion.emitter`, 10 params"*, o manifesto tinha **20**, e **cinco das seis** linhas P1
 daquela folha pediam coisas que já lá estavam.
 
-⚠️ **Ele NÃO decide nada.** Uma contagem diferente é um sinal de *"vá reler esta célula"*, não
-uma prova de que o item fechou: um param novo pode ser de outra célula. O que ele faz é impedir
-que a diferença passe despercebida — o placar conta o que está escrito, e este conta se o
-escrito ainda descreve o produto.
+⚠️ **Ele NÃO decide nada.** Um aviso é um sinal de *"vá reler esta célula"*, não uma prova de
+que o item fechou. O que ele faz é impedir que a diferença passe despercebida — o placar conta
+o que está escrito, e este conta se o escrito ainda descreve o produto.
+
+**Ele imprime DOIS sinais, e são de forças diferentes:**
+
+1. **O sinal FORTE** — o param que a coluna «default que reduz» nomeia **já está no
+   manifesto**. Ele aponta o item, não a vizinhança dele.
+2. **O sinal fraco** — a contagem da coluna «params hoje» discorda da real. Diz só que o nó
+   mudou desde que a célula foi escrita; o que mudou pode ser de outra célula.
+
+⚠️ **A calibração do sinal FORTE, medida em 2026-08-19 sobre as 7 células que ele acusou:
+DUAS eram verdadeiras** (o `probability` do `motion.emitter` e o `lacunarity` do
+`motion.noise`, as duas já shipadas) **e cinco eram falsos positivos, todos da mesma forma:
+o nome existe, com outro significado ou com menos valores.**
+
+| falso positivo | o param existe… | …e a célula pede |
+|---|---|---|
+| `motion.emitter` `emit_mode` | `Time` / `Burst` | um **terceiro** valor, `Distance` |
+| `motion.stagger` `ease_curve` | oito curvas enumeradas | uma **nona**, `Custom`, com curva livre |
+| `motion.path` `align` | `Tangent` | um modo **`Normal`** ao lado dele |
+| `motion.mixer` `mode` | Avg / Add / Blend | o **vocabulário** de oito do `field.combine` |
+| `source.shape` `start` | o início do **SWEEP** (graus) | o `start` do **TRIM** (fracção do contorno) |
+
+*Um homónimo e um enum com um valor a menos leem igual num nome.* É por isso que a saída
+imprime também o início da coluna «falta» de cada linha: o que decide é ler.
 
 Correr (a fonte é o registry, não um doc):
 
@@ -36,8 +58,22 @@ SPLIT = re.compile(r'\s*\|\s*')
 SEP = re.compile(r'\|[\s:\-|]+\|')
 # `motion.emitter` · **`field.box`** · `motion.mirror` · `motion.kaleidoscope`
 NODE = re.compile(r'`([a-z_]+\.[a-z_0-9]+)`')
-# "10 (`rate·life·…`)" · "**1** (`mode`)" · "5 (`key`…)"
-COUNT = re.compile(r'\*{0,2}(\d+)\*{0,2}\s*\(')
+# "10 (`rate·life·…`)" · "**1** (`mode`)" · "3 — `rise` 0.5 …"
+#
+# ⚠️ **ANCORADA no início da célula, e isso é uma correção de 2026-08-19.** Sem a âncora ela
+# casava o `5` de `` `rise` 0.5 (−10‥5) `` no MEIO de uma célula e acusava o `pulse.compare`
+# de declarar 5 params quando ele declara 3 — um instrumento que grita sobre nada é um
+# instrumento que se aprende a ignorar.
+COUNT = re.compile(r'^\*{0,2}(\d+)\*{0,2}\s*[(\u2014-]')
+
+# **O SINAL FORTE.** A coluna «default que reduz» nomeia o param que a CURA acrescentaria
+# (`align=0`, `size_random = 0`, `dir_mode = Angle`, `probability = 1`). Se esse nome já está
+# no manifesto, a célula quase de certeza já shipou — e ao contrário da contagem, isto aponta
+# o item, não a vizinhança dele.
+#
+# ⚠️ Medido na folha 01 (a única cujo estado eu conhecia ao escrever isto): ele acerta nas
+# CINCO que tinham shipado e **não** acusa a sexta (`inherit = 0`, que de facto não existe).
+DEFAULT_PARAM = re.compile(r'`?\b([a-z][a-z_0-9]{2,})`?\s*=')
 
 
 def dump_from_cargo():
@@ -75,10 +111,10 @@ def classify_open(v):
 
 
 def sweep(path, real):
-    """Devolve as linhas suspeitas: (folha, nó, declarado, real, params)."""
+    """Devolve `(ja_existe, contagem_discorda, sem_contagem)` desta folha."""
     base = os.path.basename(path)
     lines = open(path, encoding='utf-8').read().split('\n')
-    out, last = [], {}
+    shipped, out, last, unread = [], [], {}, 0
     for i, ln in enumerate(lines):
         if not ln.lstrip().startswith('|'):
             continue
@@ -94,12 +130,22 @@ def sweep(path, real):
         if m:
             last[node] = int(m.group(1))
         declared = last.get(node)
-        if declared is None or not classify_open(c[5]):
+        if not classify_open(c[5]):
+            continue
+        # O SINAL FORTE, e ele não precisa da coluna «params hoje» nenhuma.
+        named = {m for m in DEFAULT_PARAM.findall(c[6]) if m in real[node][1]}
+        if named:
+            shipped.append((base, i + 1, node, sorted(named), c[2][:70]))
+        if declared is None:
+            # ⚠️ Uma célula cuja coluna «params hoje» não começa por um número não é
+            # comparável — e o silêncio sobre ela tem de ser DITO, senão um `✓` limpo pode
+            # querer dizer *"nada discorda"* ou *"não consegui ler nada"*.
+            unread += 1
             continue
         n, params = real[node]
         if declared != n:
             out.append((base, i + 1, node, declared, n, params))
-    return out
+    return shipped, out, unread
 
 
 def main():
@@ -108,14 +154,28 @@ def main():
         dump = open(sys.argv[sys.argv.index('--dump') + 1], encoding='utf-8').read()
     real = parse_dump(dump if dump is not None else dump_from_cargo())
 
-    suspects = []
+    shipped, suspects, unread = [], [], 0
     for f in sorted(os.listdir(FOLHAS)):
         if f.endswith('.md') and f != 'README.md':
-            suspects += sweep(os.path.join(FOLHAS, f), real)
+            sh, s, u = sweep(os.path.join(FOLHAS, f), real)
+            shipped += sh
+            suspects += s
+            unread += u
+
+    if shipped:
+        print('=== JA EXISTE NO MANIFESTO o param que a cura desta celula acrescentaria ===')
+        print(f'{"folha":<30} {"linha":>5}  {"no":<24} param(s)')
+        print('-' * 92)
+        for base, ln, node, names, falta in shipped:
+            print(f'{base:<30} {ln:>5}  {node:<24} {", ".join(names)}')
+            print(f'{"":<38}   … {falta}')
+        print()
 
     if not suspects:
-        print(f'✓ nenhuma celula aberta discorda do manifesto ({len(real)} nos lidos)')
-        return 0
+        print(f'✓ nenhuma contagem de «params hoje» discorda do manifesto ({len(real)} nos lidos)')
+        print(f'  ({unread} celula(s) aberta(s) sem contagem legivel na coluna «params hoje» — '
+              'nao comparadas)')
+        return 1 if shipped else 0
 
     print(f'{"folha":<30} {"linha":>5}  {"no":<26} {"diz":>4} {"tem":>4}')
     print('-' * 78)
@@ -127,9 +187,10 @@ def main():
             print(f'{"":<30} {"":>5}  → {" ".join(params)}')
     print()
     print(f'⚠️  {len(suspects)} celula(s) ABERTA(s) em {len(seen)} no(s) descrevem um nó que mudou.')
+    print(f'    (+ {unread} sem contagem legivel na coluna «params hoje» — nao comparadas)')
     print('    Releia cada uma: o que ela pede pode já estar no manifesto acima.')
     print('    (Uma contagem diferente NAO prova que a celula fechou — prova que ela envelheceu.)')
-    return 1
+    return 1 if (suspects or shipped) else 0
 
 
 if __name__ == '__main__':

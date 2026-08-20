@@ -67,6 +67,7 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | **folha 10 (`field.*`): QUATRO células**, e vieram juntas porque duas partilhavam uma causa — o `clamp` inline do `Add` era o defeito, e era ele que tornava o `Average` inexprimível. Mais o **anel** (`inner_radius`) e a **força com sinal** (`strength`). A folha desce de **6 para 2 P1** | `=66` |
 | **V** | 🔬 **UM INSTRUMENTO NOVO, e é o achado do dia:** `conferencia_vs_manifesto.py` cruza a coluna «params hoje» de cada célula com o MANIFESTO do nó (sonda `measure_node_params`, derivada do registry) e sai vermelho quando discordam. Ele acusou **31 células ABERTAS em 16 nós** a descrever um nó que já mudou | — |
 | **V** | folha 01: **cinco células fecharam e QUATRO não custaram código** — `mode`/`spacing` do `distribute_curve`, `align` do `distribute_radial`, `size_random` e `dir_mode` do emitter já tinham shipado. A quinta é o **`probability`** do emitter, construído hoje. A folha desce de **6 para 1 P1** | `=67` |
+| **V** | 🔬 **e a SEGUNDA passagem do instrumento**, com o sinal FORTE (o param que a coluna «default que reduz» nomeia já está no manifesto): 7 acusadas, **2 verdadeiras** (`probability` do emitter — uma SEGUNDA célula pedia o mesmo — e `lacunarity` do `motion.noise`), 5 falsos positivos **todos da mesma forma**, agora tabelados no próprio instrumento | — |
 
 ⚠️ **E uma correção de GEOMETRIA em `ph2d-vec-scene`, que o smoke do Enio devolveu:** a
 borda que fecha uma fatia **abaulava** 19–25% do raio, porque o handle do arco sobrava na
@@ -291,9 +292,15 @@ são estilo.
     **10** params, o manifesto tinha **20**, e **cinco das seis** linhas P1 daquela folha já
     estavam feitas. ⛔ **Isto não se resolve com disciplina, resolve-se com instrumento:**
     `python3 "docs/Motion Nodes/ferramentas/conferencia_vs_manifesto.py"` cruza as duas
-    contagens e sai vermelho. Ele acusou **31 células abertas em 16 nós** — *releia cada uma
-    antes de construir seja o que for*, e note que uma contagem diferente **não prova** que a
-    célula fechou: prova que ela envelheceu.
+    contagens e sai vermelho. ⚠️ **Ele imprime DOIS sinais e eles têm forças diferentes.** O
+    **forte** é o param que a coluna «default que reduz» nomeia já estar no manifesto — ele
+    aponta o ITEM. O **fraco** é a contagem de «params hoje» discordar — diz só que o nó mudou,
+    e o que mudou pode ser de outra célula (31 linhas em 16 nós, quase todas benignas).
+    ⚠️ **Calibração medida sobre as 7 que o sinal forte acusou: 2 verdadeiras, 5 falsos
+    positivos, e os cinco da MESMA forma — o nome existe com outro significado ou com menos
+    valores** (um `emit_mode` a que falta um terceiro valor; um `start` que é o do *sweep* e
+    não o do *trim*). A tabela está no doc-comment do instrumento. *Um homónimo e um enum com
+    um valor a menos leem igual num nome — o que decide é ler a célula.*
 19. ⚠️ **Ao consertar um nó de ESTRUTURA, MEÇA os irmãos que mexem na mesma lista** — a sonda
     `measure_identity_after_structure` foi escrita depois do conserto do `sort` e achou o mesmo
     defeito em três vizinhos (`cull` encolhe e deixa `Count` velho; `mirror` e `kaleidoscope`

@@ -103,26 +103,8 @@ fn the_march_never_steps_through_the_surface() {
 #[test]
 fn orbiting_does_not_change_the_shape() {
     let doc = sphere(0.5);
-    let a = trace(
-        &doc,
-        &Orbit {
-            yaw: 0.0,
-            pitch: 0.0,
-            ..Orbit::default()
-        },
-        160,
-        160,
-    );
-    let b = trace(
-        &doc,
-        &Orbit {
-            yaw: 1.1,
-            pitch: -0.7,
-            ..Orbit::default()
-        },
-        160,
-        160,
-    );
+    let a = trace(&doc, &Orbit::from_yaw_pitch(0.0, 0.0), 160, 160);
+    let b = trace(&doc, &Orbit::from_yaw_pitch(1.1, -0.7), 160, 160);
     let (ha, hb) = (a.hits() as f64, b.hits() as f64);
     assert!(
         (ha - hb).abs() / ha < 0.01,
@@ -553,5 +535,88 @@ fn zooming_in_does_not_inflate_the_part() {
         (got - expected).abs() < 0.01,
         "de muito perto a esfera devia cobrir {expected:.4} do quadro e cobriu {got:.4} — com \
          tolerância FIXA isto dá 0,283 contra 0,196"
+    );
+}
+
+/// ⚠️ **A câmera nova reproduz a antiga, exatamente** — `from_yaw_pitch` é a mesma base que os dois
+/// ângulos davam.
+///
+/// A troca para quaternion foi feita para **remover os polos**, não para mudar o enquadramento. Sem
+/// este gate, um erro de sinal na conversão mudaria toda cena de smoke e toda imagem de referência
+/// de uma vez, e o sintoma seria "as imagens da W0 já não batem" — longe da causa.
+#[test]
+fn the_quaternion_camera_reproduces_the_two_angle_basis() {
+    for (yaw, pitch) in [
+        (0.0_f32, 0.0_f32),
+        (0.72, 0.52),
+        (-1.3, 0.9),
+        (2.5, -1.1),
+        (0.4, 1.5),
+    ] {
+        let (sy, cy) = yaw.sin_cos();
+        let (sp, cp) = pitch.sin_cos();
+        // A fórmula ANTIGA, escrita à mão aqui: um gate que pedisse a base ao código sob teste
+        // estaria a compará-lo consigo próprio.
+        let want_fwd = [cp * sy, sp, cp * cy];
+        let want_right = [cy, 0.0, -sy];
+        let want_up = [-sp * sy, cp, -sp * cy];
+
+        let (right, up, fwd) = Orbit::from_yaw_pitch(yaw, pitch).basis();
+        for k in 0..3 {
+            assert!(
+                (right[k] - want_right[k]).abs() < 1e-5
+                    && (up[k] - want_up[k]).abs() < 1e-5
+                    && (fwd[k] - want_fwd[k]).abs() < 1e-5,
+                "yaw={yaw} pitch={pitch}: base divergiu no eixo {k}\n  right {right:?} != {want_right:?}\
+                 \n  up    {up:?} != {want_up:?}\n  fwd   {fwd:?} != {want_fwd:?}"
+            );
+        }
+    }
+}
+
+/// ⭐ **A rotação livre NÃO TEM POLO** — e este é o gate que existe por causa do relato
+/// *"só rotaciona em uma direção"* (Enio, 2026-08-19).
+///
+/// Numa câmera de dois ângulos, girar na vertical satura em ±90°: a peça para de se mexer e o gesto
+/// morre contra uma parede. Aqui a afirmação é **exata**, não estatística: cada passo é uma rotação
+/// de `STEP` em torno de um eixo local fixo, logo a direção da vista tem de virar **exatamente**
+/// `STEP` — a cada um dos mil passos, que são quase três voltas completas.
+#[test]
+fn free_rotation_never_hits_a_pole() {
+    const STEP: f32 = 0.02;
+    let mut cam = Orbit::default();
+    let (_, _, mut prev) = cam.basis();
+    let mut worst = f32::INFINITY;
+    for _ in 0..1000 {
+        // Um arrasto puramente VERTICAL — é onde a câmera de dois ângulos morre.
+        cam.turn_local([-1.0, 0.0, 0.0], STEP);
+        let (_, _, fwd) = cam.basis();
+        let dot = (0..3)
+            .map(|k| prev[k] * fwd[k])
+            .sum::<f32>()
+            .clamp(-1.0, 1.0);
+        worst = worst.min(dot.acos());
+        prev = fwd;
+    }
+    assert!(
+        worst > STEP * 0.99,
+        "algum passo virou só {worst} rad em vez de {STEP} — isso é um POLO, e é exatamente o que \
+         a câmera de dois ângulos fazia"
+    );
+
+    // E a orientação continua a ser uma ROTAÇÃO: um quaternion que perdesse a norma passaria a
+    // escalar a peça, e o sintoma seria a forma a encolher devagar enquanto se gira.
+    let q = cam.rotation;
+    let n = (q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]).sqrt();
+    assert!(
+        (n - 1.0).abs() < 1e-4,
+        "depois de mil giros a norma do quaternion é {n}: a peça está a ser escalada, não girada"
+    );
+    let doc = sphere(0.55);
+    let before = trace(&doc, &Orbit::default(), 120, 120).hits() as f64;
+    let after = trace(&doc, &cam, 120, 120).hits() as f64;
+    assert!(
+        (before - after).abs() / before < 0.02,
+        "girar não pode mudar o TAMANHO da peça: {before} -> {after} pixels"
     );
 }

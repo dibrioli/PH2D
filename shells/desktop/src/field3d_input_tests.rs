@@ -29,12 +29,7 @@ fn nose() -> FieldDoc {
 }
 
 fn front() -> Orbit {
-    Orbit {
-        yaw: 0.0,
-        pitch: 0.0,
-        half_extent: 0.8,
-        target: [0.0; 3],
-    }
+    Orbit::from_yaw_pitch(0.0, 0.0)
 }
 
 /// O centro de massa da peça na tela, em pixels — `None` se ela não aparece.
@@ -165,21 +160,63 @@ fn the_zoom_saturates_instead_of_running_away() {
     );
 }
 
-/// **A elevação para nos polos** — passar deles inverteria o mundo debaixo da mão a meio do arrasto.
+/// ⭐ **A rotação é LIVRE: não há polo onde o gesto morra.**
+///
+/// Este gate substitui o que prendia a elevação em ±90°, e a troca é o registo de um veredito de
+/// produto: *"só rotaciona em uma direção. não tem rot livre"* (Enio, 2026-08-19). A câmera de dois
+/// ângulos batia na parede ao fim de ~105 px de arrasto para baixo — e a cura não foi um limite
+/// maior, foi trocar a representação (`ph2d_field_render::Orbit`).
+///
+/// # ⚠️ A primeira versão deste gate mediu a coisa errada, e vale registar
+///
+/// Ela seguia o **centro de massa da peça na tela** e chamava "polo" a qualquer passo em que ele
+/// não se mexia. Reprovou com **1 parada em 200** — e a parada era real e não era um polo: o
+/// centroide de um ponto que gira num plano descreve uma senóide, e uma senóide tem **pontos de
+/// retorno**, onde a velocidade é zero por geometria. *O sintoma que se procura e o sintoma que se
+/// mede podem ter a mesma forma por motivos diferentes.*
+///
+/// O que se afirma agora é **exato**: cada chamada é uma rotação de `|dy|·k` em torno de um eixo
+/// local fixo, logo a direção da vista tem de virar **exatamente** isso — nos 400 passos, que são
+/// mais de uma volta inteira.
 #[test]
-fn the_pitch_stops_at_the_poles() {
+fn vertical_dragging_never_hits_a_wall() {
+    const DY: f32 = 2.0;
+    // A lei da casa: 0,01 rad por pixel (ver `ORBIT_RAD_PER_PX`).
+    const EXPECTED: f32 = DY * 0.01;
     let mut cam = front();
-    for _ in 0..200 {
-        law::orbit(&mut cam, 0.0, 100.0);
+    let (_, _, mut prev) = cam.basis();
+    let mut worst = f32::INFINITY;
+    for _ in 0..400 {
+        law::orbit(&mut cam, 0.0, DY);
+        let (_, _, fwd) = cam.basis();
+        let dot = (0..3)
+            .map(|k| prev[k] * fwd[k])
+            .sum::<f32>()
+            .clamp(-1.0, 1.0);
+        worst = worst.min(dot.acos());
+        prev = fwd;
     }
     assert!(
-        cam.pitch <= std::f32::consts::FRAC_PI_2 + 1e-6,
-        "a elevação passou do polo: {}",
-        cam.pitch
+        worst > EXPECTED * 0.99,
+        "algum passo vertical virou só {worst} rad em vez de {EXPECTED} — isso é o polo da câmera \
+         de dois ângulos, e é exatamente o que se removeu"
     );
-    // E a peça continua a aparecer no polo — a base da câmera não degenera lá.
-    assert!(
-        centroid(&nose(), &cam).is_some(),
-        "no polo a peça tem de continuar visível: a base é ortonormal lá também"
+}
+
+/// **A tecla de repor devolve o enquadramento inicial** — a volta que a rotação livre torna
+/// necessária, porque ela inclina o horizonte de propósito.
+#[test]
+fn home_restores_the_opening_view() {
+    let home = Orbit::default();
+    let mut cam = home;
+    law::orbit(&mut cam, 137.0, -89.0);
+    law::zoom(&mut cam, 6.0);
+    law::pan(&mut cam, 50.0, -30.0, 60.0);
+    assert!(cam != home, "o teste tem de partir de uma vista MEXIDA");
+
+    law::home(&mut cam);
+    assert_eq!(
+        cam, home,
+        "repor tem de devolver exatamente o enquadramento de abertura"
     );
 }

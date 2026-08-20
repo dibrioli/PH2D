@@ -424,7 +424,12 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
             smoke.since = std::time::Instant::now();
             // Trava o passo: se a janela ficou minimizada meia hora, a peça não dá vinte voltas
             // de uma vez.
-            smoke.cam.yaw += SPIN_RATE * dt.min(0.25);
+            // ⚠️ Em torno do Y do **MUNDO**, e não de um eixo da câmera: um prato giratório é
+            // exatamente isso — a peça a girar sobre a mesa, com o horizonte parado. É o único
+            // sítio deste módulo onde um eixo do mundo entra na conta, e é de propósito.
+            smoke
+                .cam
+                .turn_world([0.0, 1.0, 0.0], -SPIN_RATE * dt.min(0.25));
         }
 
         // ⭐ **Só se traça o que MUDOU.** Uma requisição em voo por vez, e só quando a câmera ou o

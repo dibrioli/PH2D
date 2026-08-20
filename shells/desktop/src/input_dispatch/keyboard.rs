@@ -83,6 +83,16 @@ impl App {
         {
             return;
         }
+        // ADR-0161 W4: `Home` repõe a vista da janela 3D de modelagem — a volta que a
+        // rotação LIVRE torna necessária (ela inclina o horizonte, de propósito).
+        // Inerte sem o smoke armado; ver a nota de `field3d_home_key` sobre o dia em
+        // que isso deixar de ser a única porta.
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+            && self.field3d_home_key(code)
+        {
+            return;
+        }
 
         self.handler.on_key(KeyEvent {
             keycode,

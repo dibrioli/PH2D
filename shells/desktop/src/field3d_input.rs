@@ -55,10 +55,13 @@ const MIN_HALF_EXTENT: f32 = 1.0e-4;
 /// plano do alvo. Enquadrar mais largo do que isso mostraria uma cena que os raios não alcançam.
 const MAX_HALF_EXTENT: f32 = 4.0;
 
-/// A elevação máxima. Nos polos a base da câmera continua ortonormal (o `right` só depende do
-/// `yaw`), então o limite não é numérico — é de gesto: passar do polo inverte o mundo debaixo da
-/// mão, e ninguém quer isso a meio de um arrasto.
-const MAX_PITCH: f32 = std::f32::consts::FRAC_PI_2;
+/// O enquadramento a que a tecla de repor volta — o mesmo com que o módulo abre.
+///
+/// ⚠️ **Existe por causa da rotação livre.** Uma câmera de dois ângulos nunca inclina o horizonte;
+/// esta inclina, porque é isso que *livre* significa. Sem uma volta a um enquadramento nomeado, o
+/// preço da liberdade seria ficar perdido — e é o tipo de armadilha que só se nota depois de
+/// entregue.
+const HOME_YAW_PITCH: (f32, f32) = (0.72, 0.52);
 
 /// **As três leis da câmera, puras** — sem `App`, sem ponteiro, sem estado do smoke.
 ///
@@ -69,12 +72,36 @@ const MAX_PITCH: f32 = std::f32::consts::FRAC_PI_2;
 pub(crate) mod law {
     use ph2d_field_render::Orbit;
 
-    use super::{MAX_HALF_EXTENT, MAX_PITCH, MIN_HALF_EXTENT, ORBIT_RAD_PER_PX, ZOOM_PER_STEP};
+    use super::{
+        HOME_YAW_PITCH, MAX_HALF_EXTENT, MIN_HALF_EXTENT, ORBIT_RAD_PER_PX, ZOOM_PER_STEP,
+    };
 
-    /// Órbita por um arrasto de `(dx, dy)` pixels.
+    /// ⭐ **Rotação LIVRE** por um arrasto de `(dx, dy)` pixels.
+    ///
+    /// O arrasto nomeia um eixo **na tela**, e a peça gira em torno dele: o eixo é perpendicular ao
+    /// movimento, no plano da imagem. Um arrasto horizontal cai no eixo vertical da câmera, um
+    /// vertical cai no horizontal — e qualquer diagonal cai onde tem de cair, que é a metade que
+    /// uma câmera de dois ângulos não consegue exprimir.
+    ///
+    /// ⚠️ **Nenhum eixo do MUNDO entra nesta conta**, e é daí que vem a ausência de polo. A câmera
+    /// antiga girava `yaw` em torno do Y do mundo, e era esse Y que criava a parede a ±90°.
+    ///
+    /// O sinal é o da manipulação direta — *o modelo segue a mão* — e quem o prende é um gate que
+    /// mede a peça **na tela**.
     pub(crate) fn orbit(cam: &mut Orbit, dx: f32, dy: f32) {
-        cam.yaw -= dx * ORBIT_RAD_PER_PX;
-        cam.pitch = (cam.pitch + dy * ORBIT_RAD_PER_PX).clamp(-MAX_PITCH, MAX_PITCH);
+        let angle = dx.hypot(dy) * ORBIT_RAD_PER_PX;
+        if angle <= 0.0 {
+            return;
+        }
+        cam.turn_local([-dy, -dx, 0.0], angle);
+    }
+
+    /// Repõe a orientação e o enquadramento, mantendo o alvo onde está.
+    pub(crate) fn home(cam: &mut Orbit) {
+        let fresh = Orbit::from_yaw_pitch(HOME_YAW_PITCH.0, HOME_YAW_PITCH.1);
+        cam.rotation = fresh.rotation;
+        cam.half_extent = fresh.half_extent;
+        cam.target = [0.0; 3];
     }
 
     /// Pan por um arrasto de `(dx, dy)` pixels, num quadro cujo lado menor mede `half_px` de meia
@@ -141,13 +168,10 @@ impl App {
             let (dx, dy) = (x - s.last_pointer.0, y - s.last_pointer.1);
             s.last_pointer = (x, y);
             match drag {
-                // ⚠️ **Manipulação direta: o modelo segue a mão.** `yaw` positivo leva o OLHO para
-                // `+X`, e a câmera indo para a direita faz o modelo *parecer* ir para a esquerda —
-                // então arrastar para a direita pede `yaw -= dx`. Arrastar para BAIXO mostra o topo.
-                //
-                // Os dois sinais são os que a `line/sculpt3d` já pagou para descobrir, e o gate que
-                // os prende aqui mede **o modelo na tela**, nunca o sinal: foi argumentando sobre
-                // sinais que o erro entrou lá.
+                // ⚠️ **Manipulação direta: o modelo segue a mão.** Os sinais são os que a
+                // `line/sculpt3d` já pagou para descobrir, e o gate que os prende aqui mede **o
+                // modelo na tela**, nunca o sinal: foi argumentando sobre sinais que o erro entrou
+                // lá.
                 Drag::Orbit => law::orbit(&mut s.cam, dx, dy),
                 // O alvo anda ao CONTRÁRIO da mão: mover o ponto olhado para a esquerda é o que faz
                 // o modelo aparecer mais à direita.
@@ -170,6 +194,28 @@ impl App {
     /// O ponteiro subiu. Fecha o arrasto, se havia um.
     pub(crate) fn field3d_pointer_up(&mut self) -> bool {
         with_smoke(|s| s.drag.take().is_some()).unwrap_or(false)
+    }
+
+    /// **Repõe a vista.** Devolve `true` se a tecla era desta janela.
+    ///
+    /// ⚠️ **A porta pergunta se o smoke está ARMADO, e a nota tem de ser reconferida no dia em que
+    /// isso mudar.** Hoje o módulo só existe com `PH2D_FIELD_SMOKE` posta, então num run normal
+    /// `with_smoke` devolve `None` e esta tecla nem chega a ser considerada. A `line/sculpt3d`
+    /// pagou exatamente esta nota a envelhecer: a cena dela passou a nascer ao primeiro clique, a
+    /// porta continuou a perguntar *"a cena existe?"*, e a partir daí ela **comia as teclas de todo
+    /// painel do app, para sempre**. Quem der a este módulo uma entrada que não seja a variável de
+    /// ambiente tem de trocar esta pergunta por *"a janela 3D está NA TELA?"*.
+    pub(crate) fn field3d_home_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        if code != winit::keyboard::KeyCode::Home {
+            return false;
+        }
+        with_smoke(|s| {
+            law::home(&mut s.cam);
+            // Repor não é "voltar ao prato giratório": a mão continua no comando.
+            s.manual = true;
+            true
+        })
+        .unwrap_or(false)
     }
 
     /// A roda aproxima. `steps` em linhas de roda.

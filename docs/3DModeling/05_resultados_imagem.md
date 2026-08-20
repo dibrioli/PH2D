@@ -150,9 +150,10 @@ que é o que mantém o `Tool=12` congelado fora do caminho.
 
 | Gesto | O que faz |
 |---|---|
-| Arrastar **esquerdo** ou **direito** | Orbita |
+| Arrastar **esquerdo** ou **direito** | Roda — **livre**, em torno do eixo que o arrasto nomeia na tela |
 | Arrastar **do meio** | Pan |
 | **Roda** | Zoom |
+| **Home** | Repõe a vista |
 
 ⚠️ **Os botões e as constantes são os MESMOS do módulo de escultura** (`ORBIT_RAD_PER_PX = 0,01`,
 `1,1` por passo de roda). Não é herança por analogia — são duas janelas 3D no mesmo aplicativo, e
@@ -202,3 +203,66 @@ errou os dois sinais de uma vez argumentando sobre `yaw += dx`, e o que os pegou
 A peça em `+Z` (e não em `+X`) também não é decorativa: de frente ela cai **no centro** do quadro,
 então qualquer giro a tira de lá e o lado para onde ela sai responde à pergunta sem ambiguidade.
 Uma peça em `+X` começaria deslocada e giraria *para dentro* — a armadilha desta medição.
+
+---
+
+## §7 — ⭐ A rotação LIVRE: um `clamp` é o remédio do sintoma; a causa era a representação
+
+> *"smoke ok, mas só rotaciona em uma direção. não tem rot livre"* — Enio, 2026-08-19.
+
+A primeira versão da navegação usava a câmera de dois ângulos que a casa já tinha
+(`ph2d_mesh_render::camera`): `yaw` em torno do Y do **mundo**, `pitch` preso por um `clamp` a ±90°.
+
+Isso tem **polos por construção**. Com o enquadramento inicial já a 30° de cima, arrastar para baixo
+bate na parede ao fim de ~105 px — meio centímetro de rato. A partir dali o gesto vertical não faz
+nada, e o que se vê é literalmente *"só roda para um lado"*.
+
+⚠️ **Nenhum número melhor resolve isto.** Dois ângulos não conseguem exprimir uma orientação livre;
+o `clamp` não é a doença, é o curativo obrigatório de uma representação que degenera no polo. A cura
+foi guardar a **orientação inteira** (um quaternion) e compor a rotação **pela direita** — no
+referencial da própria câmera:
+
+```text
+eixo (local) = normalizar(−dy, −dx, 0)     ⟵ perpendicular ao arrasto, no plano da imagem
+ângulo       = |(dx, dy)| · 0,01 rad/px
+q ← q ⊗ quat(eixo, ângulo)
+```
+
+⭐ **Nenhum eixo do mundo entra na conta** — e é exatamente daí que vem a ausência de polo. Some o
+`clamp`, some a constante `MAX_PITCH`, some o caso especial. *A representação apaga o caso especial.*
+
+| O que se perdeu | O que se ganhou |
+|---|---|
+| O horizonte deixa de ser fixo (uma câmera de dois ângulos nunca inclina) | Rotação sem parede, em qualquer direção, incluindo diagonais |
+
+O preço está **aceite e resolvido**: a tecla **Home** repõe o enquadramento de abertura
+(`Orbit::from_yaw_pitch`, que continua a existir para escrever vistas nomeadas). Rotação livre sem
+uma volta seria uma armadilha, e é do tipo que só se nota depois de entregue.
+
+⚠️ **Uma decisão de produto fica ABERTA:** a maioria dos CAD oferece as duas — livre e prato
+giratório com o horizonte travado. Hoje só há a livre, porque foi ela que o Enio pediu; o interruptor
+pertence ao painel (W4.2), e não a uma tecla escondida.
+
+### §7.1 — O gate reprovou por medir a coisa errada, e isso vale mais do que o gate
+
+A primeira tentativa de provar *"não há polo"* seguia o **centro de massa da peça na tela** e
+chamava polo a qualquer passo em que ele não se mexia. Reprovou com **1 parada em 200** — e a parada
+era real e não era um polo: o centroide de um ponto que gira num plano descreve uma **senóide**, e
+uma senóide tem pontos de retorno onde a velocidade é zero **por geometria**.
+
+*O sintoma que se procura e o sintoma que se mede podem ter a mesma forma por motivos diferentes.*
+
+A versão que ficou afirma algo **exato** em vez de estatístico: cada passo é uma rotação de `|dy|·k`
+em torno de um eixo local fixo, logo a **direção da vista** tem de virar exatamente isso — nos 400
+passos, que são mais de uma volta inteira. Um polo torna algum passo menor; nada mais o faz.
+
+### §7.2 — Duas coisas que a troca de representação obrigou a escrever
+
+- **Re-normalizar a cada giro.** Uma rotação livre é uma composição *acumulada* — um arrasto longo
+  são centenas de multiplicações, e o erro de `f32` faz a norma derivar. Um quaternion não-unitário
+  deixa de ser uma rotação: ele passa a **escalar** a peça, e o sintoma é a forma a encolher devagar
+  enquanto se gira. Há gate (a área da peça depois de mil giros).
+- **Um gate de equivalência com a câmera antiga.** `from_yaw_pitch` tem de reproduzir a base
+  exatamente — a troca foi feita para remover os polos, **não** para mudar o enquadramento. Sem ele,
+  um sinal trocado na conversão mudaria toda cena de smoke e toda imagem de referência de uma vez, e
+  o sintoma seria *"as imagens da W0 já não batem"*, longe da causa.

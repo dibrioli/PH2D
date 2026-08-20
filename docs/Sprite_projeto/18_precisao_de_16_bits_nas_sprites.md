@@ -61,8 +61,14 @@ de paridade que mede exatamente isto** (§4).
 
 ```
 Rgba8   (default)  — sRGB-encoded, 4 B/px, textura `Rgba8UnormSrgb`, conversão em hardware
-Rgba16  (alta)     — LINEAR premultiplicado, 8 B/px, textura `Rgba16Float`, sem conversão
+Rgba16  (alta)     — LINEAR, meio-float, 8 B/px, textura `Rgba16Float`, sem conversão
 ```
+
+⛔ **A conversão de precisão NÃO mexe em premultiplicação** (decidido ao construir a W1.1, contra a
+primeira redação deste parágrafo). A associação de alfa continua a ser dita pelo
+`Sprite::premultiplied`, como sempre foi — juntar as duas leis faria uma troca de precisão mudar
+**silenciosamente** a composição, que é o género de acoplamento que este projeto já pagou. Precisão e
+espaço de cor entram; alfa sai como entrou, e há gate.
 
 **Por que meio-float e não inteiro de 16 bits**, já que um PNG de 16 bits é unorm: M5. E o custo de
 precisão é aceitável e mensurável — perto de 1.0 o meio-float dá passo `2⁻¹¹` (≈2048 níveis, 8× o de

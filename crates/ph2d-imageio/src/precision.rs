@@ -245,18 +245,25 @@ mod tests {
     /// empates — o que desce por o vizinho de baixo ser par, e o que sobe por ele ser ímpar.
     #[test]
     fn the_rounding_is_nearest_even_and_not_truncation() {
+        // ⚠️ **Os empates DERIVAM-SE dos próprios vizinhos**, em vez de serem soletrados em
+        // decimal. Um literal como `1.000_488_281_25` é o mesmo `f32` que `1.000_488_3` (o
+        // `excessive_precision` do clippy diz isso, e tem razão) — mas nenhum dos dois DIZ que é o
+        // ponto médio exato entre dois meios-floats vizinhos, que é a única propriedade que este
+        // teste mede. Derivar torna a intenção verificável em vez de acreditada.
+        let midpoint = |a: u16, b: u16| (half_to_f32(a) + half_to_f32(b)) * 0.5;
         // Perto de 1.0 o passo do meio-float é 2⁻¹⁰: 0x3c00 = 1.0 · 0x3c01 · 0x3c02.
+        let (even_lo, odd_lo, odd_hi) = (0x3c00_u16, 0x3c01_u16, 0x3c02_u16);
         for (value, expected, why) in [
-            (1.0006_f32, 0x3c01_u16, "acima do meio arredonda para cima"),
-            (1.0004, 0x3c00, "abaixo do meio arredonda para baixo"),
+            (1.0006_f32, odd_lo, "acima do meio arredonda para cima"),
+            (1.0004, even_lo, "abaixo do meio arredonda para baixo"),
             (
-                1.000_488_281_25,
-                0x3c00,
+                midpoint(even_lo, odd_lo),
+                even_lo,
                 "empate com vizinho de baixo PAR desce (nearest-EVEN)",
             ),
             (
-                1.001_464_843_75,
-                0x3c02,
+                midpoint(odd_lo, odd_hi),
+                odd_hi,
                 "empate com vizinho de baixo IMPAR sobe (nearest-EVEN)",
             ),
         ] {

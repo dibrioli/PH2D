@@ -124,3 +124,30 @@ pub(crate) fn cursor(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId
     );
     sinks
 }
+
+/// **A CENA `=66` — A FAMÍLIA DOS CAMPOS** (doc 89, folha 10: o anel, a força com sinal e o
+/// truncamento). Três pares; só um número muda em cada.
+pub(crate) fn field_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_field::build_field_demo_document(doc, registry).unwrap_or_default();
+    let (inner, growth) = conferencia_demos_field::authored();
+    eprintln!(
+        "[field-demo] TRES pares, {} bandas. Esquerda = como era; direita = o numero novo.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_field::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) O campo e' invisivel -- o que se ve e' o TAMANHO das pecas, que ele comanda.
+  (!) Par 1 (azul): `Inner Radius {inner}` abre um buraco no meio do disco. Clique no no'
+  `Radial Sweep` da direita e arraste-o: o anel engorda e emagrece ao vivo.
+  (!) Par 2 (laranja): `Strength -1` nao e' o `Invert`. A caixa para de crescer e o resto
+  do quadro sobe ACIMA do que a caixa media -- o campo passa a empurrar em vez de mascarar.
+  (!) Par 3 (verde): duas caixas somadas. Com `Clamp` o cruzamento delas nao passa de 1 e
+  fica igual a cada metade; sem `Clamp` ele passa de 1 e o cruzamento cresce o dobro
+  (a escala le' a mascara como `1 + ({growth} - 1) x mascara`).
+  (!) DEU ERRADO se as duas bandas de um par sairem iguais, ou se as pecas se taparem."
+    );
+    sinks
+}

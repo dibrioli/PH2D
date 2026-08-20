@@ -339,6 +339,7 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
         Ok("63") => conferencia::sortkey(doc, registry),
         Ok("64") => conferencia::taper(doc, registry),
         Ok("65") => conferencia::cursor(doc, registry),
+        Ok("66") => conferencia::field_family(doc, registry),
         _ => Vec::new(),
     }
 }

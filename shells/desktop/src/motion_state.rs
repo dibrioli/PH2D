@@ -136,6 +136,9 @@ pub(crate) mod conferencia_demos_taper;
 
 #[path = "motion_state_conferencia_demos_cursor.rs"]
 pub(crate) mod conferencia_demos_cursor;
+
+#[path = "motion_state_conferencia_demos_field.rs"]
+pub(crate) mod conferencia_demos_field;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

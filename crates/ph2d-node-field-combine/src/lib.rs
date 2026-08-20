@@ -4,8 +4,8 @@
 //! (the C4D Fields layer-blend / MOPs Combine). Fields already compose by
 //! *implicit multiply* (each writes `falloff` in sequence), but that is one mode
 //! of many; this node makes composition a first-class op with the eight standard
-//! modes — **Normal · Add · Subtract · Multiply · Screen · Min · Max · Overlay** —
-//! plus a `strength` mix.
+//! modes — **Normal · Add · Subtract · Multiply · Screen · Min · Max · Overlay ·
+//! Average** — plus a `strength` mix and a [`CLAMP`] toggle.
 //!
 //! Two inputs, `a` (port 0, the **base** — the output rides it, carrying its `P`,
 //! `size`, colour, …) and `b` (port 1, the **overlay**). Both are branches off the
@@ -16,9 +16,11 @@
 //! `Screen`/`Overlay` the soft composites. Pure. **Transcendental-free** (HR-5):
 //! only `min`/`max`, `+`, `−`, `*`, so the mask is bit-identical for the replay hash.
 //!
-//! Params: `mode` (3 Multiply), `strength` (1). `strength = 0` is a true no-op
-//! (the base passes through unchanged); `Multiply` with `b`-branch absent (all-1
-//! identity) is also the base unchanged — a fresh node does something predictable.
+//! Params: `mode` (3 Multiply), `strength` (1), `clamp` (1). `strength = 0` is a
+//! true no-op (the base passes through unchanged); `Multiply` with `b`-branch
+//! absent (all-1 identity) is also the base unchanged — a fresh node does
+//! something predictable. ⚠️ **`clamp = 0` lets a composed mask leave `[0,1]`**,
+//! which is the reference's *linear-space until the consumer* — see [`CLAMP`].
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
@@ -60,19 +62,70 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "strength",
             default: 1.0,
         },
+        // **O TRUNCAMENTO** — ver [`CLAMP`]. Apendado, nasce `1` ⇒ byte-idêntico.
+        ParamSpec {
+            name: "clamp",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// Blend two masks `a`, `b ∈ [0,1]` by `mode`. The eight standard modes, all
-/// transcendental-free (HR-5). Endpoints stay in `[0,1]` for inputs in `[0,1]`
-/// (Add/Subtract clamp; the products of two `[0,1]` values stay in range).
+/// **O TRUNCAMENTO, e é a CAUSA-RAIZ de duas células da folha 10** (doc 89).
+///
+/// A referência é literal (C4D §C3): *"**Min/Max SEM clamp por default** em vários pontos —
+/// valores <0 e >100% fluem de propósito (um Add de dois campos passa de 1; **o consumidor
+/// decide truncar**). O sistema é linear-space até o consumidor"*. Os nossos `Add`/`Subtract`
+/// truncavam **inline**, e o clamp é a última operação: nada a jusante recupera o número.
+///
+/// ⚠️ **A segunda célula caía por causa desta.** *"`Average` não é exprimível"* era verdade
+/// **porque** o `Add` saturava: sobre `0,8` e `0,9`, `Add → field.remap(multiplier = 0,5)` dá
+/// `min(1,7 · 1) · 0,5 = 0,5` em vez de `0,85` — a informação morria antes da divisão. Com
+/// `clamp = 0` a mesma cadeia dá `0,85`, e a média passa a ser exprimível a **dois nós**. O
+/// modo [`MODE_AVERAGE`] entra na mesma; ver o doc-comment dele para porquê mesmo assim.
+///
+/// ⚠️ **Só governa onde o código TRUNCA de facto** — os modos 1 e 2. `Multiply`, `Screen`,
+/// `Min`, `Max` e `Overlay` não têm clamp nenhum para desligar: com entradas em `[0,1]` eles
+/// já ficam lá, e com uma entrada fora da faixa (que é justamente o que este toggle deixa
+/// existir) eles propagam, que é o que o *linear-space até o consumidor* quer dizer.
+///
+/// ⚠️ **O consumidor de facto decide, e nesta casa ele já sabia:** `motion.scale` lê a máscara
+/// como `1 + (amount − 1)·falloff` e `motion.tint` como `lerp(existing, target, falloff)` —
+/// os dois **extrapolam** para além de `1` em vez de partir, e um overshoot de máscara é a
+/// mesma figura que o `motion.mixer` já documenta como *"um overshoot que tem figura"*.
+const CLAMP: &str = "clamp";
+
+/// **A MÉDIA** (doc 89 folha 10 — MOPs Combine Falloffs: *"blend modes de compositor
+/// (add/sub/mult/screen/max/min/**average**) + Blend Strength"*).
+///
+/// ⚠️ **Ela ficou exprimível a dois nós no instante em que o [`CLAMP`] entrou**
+/// (`Add(clamp off) → field.remap(multiplier = 0,5)`), o que a põe **abaixo** do critério de
+/// `P1` da §7 do plano 89 (*"três nós para um knob"*). Entra na mesma, e por duas razões
+/// escritas: a referência lista-a como **modo**, ao lado dos outros oito que já temos — tê-la
+/// só por composição faria deste nó o único sítio do repo onde um item de uma lista de nove é
+/// uma cadeia —, e o custo é **um braço de `match`** dos dois lados, que é menos código do que
+/// esta nota.
+///
+/// ⚠️ **Não trunca**, de propósito: `(a+b)/2` de dois valores em `[0,1]` já está em `[0,1]`, e
+/// com uma entrada fora da faixa a média de facto está fora — truncar aqui seria reintroduzir,
+/// num modo novo, exactamente o que o toggle acima acabou de curar.
+const MODE_AVERAGE: i32 = 8;
+
+/// Blend two masks `a`, `b` by `mode`, transcendental-free (HR-5).
 /// `0` Normal (replace by `b`) · `1` Add · `2` Subtract · `3` Multiply · `4`
-/// Screen · `5` Min · `6` Max · `7` Overlay.
-fn blend(a: f32, b: f32, mode: i32) -> f32 {
+/// Screen · `5` Min · `6` Max · `7` Overlay · `8` [Average](MODE_AVERAGE).
+///
+/// ⚠️ **`clamp` só toca os modos 1 e 2**, que são os únicos que truncavam — ver
+/// [`CLAMP`]. Ligado (o default), o resultado de entradas em `[0,1]` fica em
+/// `[0,1]` como sempre ficou; desligado, um `Add` de dois campos passa de `1` e o
+/// consumidor decide.
+fn blend(a: f32, b: f32, mode: i32, clamp: bool) -> f32 {
     match mode {
-        1 => (a + b).min(1.0),
-        2 => (a - b).max(0.0),
+        1 if clamp => (a + b).min(1.0),
+        1 => a + b,
+        2 if clamp => (a - b).max(0.0),
+        2 => a - b,
+        MODE_AVERAGE => (a + b) * 0.5,
         3 => a * b,
         4 => 1.0 - (1.0 - a) * (1.0 - b),
         5 => a.min(b),
@@ -98,16 +151,17 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let fc_a = read_a_falloff(i);\n\
         let fc_b = read_b_falloff(i);\n\
-        let fc_blended = fc_blend(fc_a, fc_b, i32(fc_round(params.mode)));\n\
+        let fc_blended = fc_blend(fc_a, fc_b, i32(fc_round(params.mode)), params.clamp >= 0.5);\n\
         write_falloff(i, fc_a + (fc_blended - fc_a) * params.strength);\n",
     wgsl_lib: "\
         fn fc_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
         }\n\
-        fn fc_blend(a: f32, b: f32, mode: i32) -> f32 {\n\
-            if (mode == 1) { return min(a + b, 1.0); }\n\
-            if (mode == 2) { return max(a - b, 0.0); }\n\
+        fn fc_blend(a: f32, b: f32, mode: i32, clamp: bool) -> f32 {\n\
+            if (mode == 1) { if (clamp) { return min(a + b, 1.0); } return a + b; }\n\
+            if (mode == 2) { if (clamp) { return max(a - b, 0.0); } return a - b; }\n\
+            if (mode == 8) { return (a + b) * 0.5; }\n\
             if (mode == 3) { return a * b; }\n\
             if (mode == 4) { return 1.0 - (1.0 - a) * (1.0 - b); }\n\
             if (mode == 5) { return min(a, b); }\n\
@@ -134,7 +188,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 1,
         },
     ],
-    params: &["mode", "strength"],
+    params: &["mode", "strength", "clamp"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -150,6 +204,7 @@ impl NodeOp for FieldCombine {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let mode = ctx.param("mode").round() as i32;
         let strength = ctx.param("strength");
+        let clamp = ctx.param(CLAMP) >= 0.5;
         // Read port `b`'s falloff into an owned Vec BEFORE borrowing port `a`
         // (the same order bend uses to avoid aliasing the two input borrows).
         let b_fall: Vec<f32> = match ctx.input(1).get("falloff") {
@@ -166,7 +221,7 @@ impl NodeOp for FieldCombine {
             let fall = par_build(n, |i| {
                 let av = a_fall.and_then(|v| v.get(i).copied()).unwrap_or(1.0);
                 let bv = b_fall.get(i).copied().unwrap_or(1.0);
-                let blended = blend(av, bv, mode);
+                let blended = blend(av, bv, mode, clamp);
                 av + (blended - av) * strength
             });
             // The output rides port `a` (the base): carry its columns, replace falloff.
@@ -209,11 +264,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "mode",
         label: "Mode",
         min: 0.0,
-        max: 7.0,
+        max: 8.0,
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &[
                 "Normal", "Add", "Subtract", "Multiply", "Screen", "Min", "Max", "Overlay",
+                "Average",
             ],
         },
     },
@@ -224,6 +280,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 0.01,
         widget: ParamWidget::Slider,
+    },
+    // ⚠️ **Não é gateado aos dois modos que o leem.** Um `ParamGate` escondê-lo-ia em
+    // `Multiply`/`Min`/`Max`, e ali ele de facto não muda um número — mas a pergunta que ele
+    // responde é sobre a CADEIA (*"esta composição pode passar de 1?"*), e um controle que
+    // desaparece ao trocar de modo ensina que a resposta mudou com ele.
+    ParamUiHint {
+        param: CLAMP,
+        label: "Clamp",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
     },
 ];
 
@@ -399,3 +467,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "clamp_tests.rs"]
+mod clamp_tests;

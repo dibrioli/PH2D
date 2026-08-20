@@ -1,4 +1,10 @@
 #![forbid(unsafe_code)]
+//! ⚠️ **ESTE ARQUIVO VIVE COLADO AO TETO DE 700 DO HR-18.** Em 2026-08-19, ao ganhar o
+//! `strength`, ele chegou a **694** — e passou dos 700 ao ganhar *este próprio aviso*, o que
+//! forçou o split na hora: a lei da máscara (`edge_ramp` · `curve` · `box_mask`) saiu para o
+//! irmão [`mask`]. ⚠️ **Os testes novos vão para um `#[path]` irmão** (`strength_tests.rs` é
+//! o precedente): o `mod tests` daqui de dentro conta para o mesmo número.
+//!
 //! `field.box` — a Motion **focus field: a rectangle** keyed by POSITION, and it
 //! **ROTATES** (`rotation`, in degrees: the offset is turned into the box's local
 //! frame, where the test is axis-aligned again). A box at 45° is a **diamond** — a
@@ -39,7 +45,9 @@ use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod mask;
 mod trig;
+use mask::box_mask;
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -88,6 +96,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "curve",
             default: 2.0,
         },
+        // **A FORÇA DO CAMPO, COM SINAL** — ver [`STRENGTH`]. Apendado; `1` ⇒ literal.
+        ParamSpec {
+            name: "strength",
+            default: 1.0,
+        },
         ParamSpec {
             name: "invert",
             default: 0.0,
@@ -96,43 +109,32 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// An edge curve on a pre-clamped `s ∈ [0,1]` — the SAME set as the other fields
-/// (HR-5). `0` Linear · `1` Quad · `2` Smooth · `3` Smoother. Monotone, endpoint-exact.
-fn curve(kind: i32, s: f32) -> f32 {
-    match kind {
-        1 => s * s,                                     // Quad
-        2 => s * s * (3.0 - 2.0 * s),                   // Smooth (smoothstep)
-        3 => s * s * s * (s * (s * 6.0 - 15.0) + 10.0), // Smoother (smootherstep)
-        _ => s,                                         // Linear
-    }
-}
-
-/// The plateau-and-ramp on ONE axis: `half` is the half-extent (edge at `|d| =
-/// half`), `soft` the ramp width clamped so it cannot exceed the half-extent (a
-/// wider `soft` just meets in the middle, never overshoots the centre). `1`
-/// inside `|d| ≤ half − soft`, ramping to `0` at `|d| = half`; `soft = 0` is a
-/// hard edge. `half ≤ 0` degenerates to empty.
-fn edge_ramp(d: f32, half: f32, soft: f32) -> f32 {
-    let a = d.abs();
-    let s = soft.max(0.0).min(half);
-    if s > 0.0 {
-        ((half - a) / s).clamp(0.0, 1.0)
-    } else if a <= half {
-        1.0
-    } else {
-        0.0
-    }
-}
-
-/// The box mask at offset `(dx, dy)` from the centre, for FULL extents
-/// `width`/`height`. The box is the INTERSECTION of the two axis bands (`min`),
-/// then the curve shapes the combined ramp. Because every `curve` is monotone,
-/// `curve(min(rx, ry))` equals `min(curve(rx), curve(ry))` — one eval, both edges.
-fn box_mask(dx: f32, dy: f32, width: f32, height: f32, soft: f32, curve_kind: i32) -> f32 {
-    let rx = edge_ramp(dx, width * 0.5, soft);
-    let ry = edge_ramp(dy, height * 0.5, soft);
-    curve(curve_kind, rx.min(ry))
-}
+/// **A FORÇA DESTE CAMPO, e ela tem SINAL** (doc 89 folha 10 — C4D Remapping §B6 tem
+/// `Strength [-∞..+∞%]` **e** `Multiplier` em TODO field object; Cavalry: *"Strength ·
+/// multiplicador do resultado do Graph"*; MOPs Combine: *"Blend Strength"*).
+///
+/// A célula media a rota que já existia e mostrou onde ela quebra: `field.box →
+/// field.remap(min = 1−s, max = 1)` dá `1−s + prev·m·s`, que é `lerp(1, prev·m, s)` —
+/// **exacto só se este for o PRIMEIRO campo da cadeia**. Com um campo a montante ele levanta
+/// o piso do COMPOSTO em vez da contribuição DESTE, e um `s < 0` era inexprimível de todo (o
+/// `min` do remap tem hint `[0,1]`).
+///
+/// ⚠️ **A forma é a de DOIS TERMOS, `f·s + (1 − s)`, e não `1 + (f − 1)·s`** — as duas são a
+/// mesma álgebra e **não** o mesmo número em IEEE-754. Em `s = 1` esta dá `f·1 + 0`, que é `f`
+/// **ao bit**; a outra passa por `f − 1`, que para `f < 0,5` já perde bits (o expoente do
+/// resultado é maior que o de `f`), e o literal deixaria de ser literal. É a mesma razão que o
+/// `motion.mixer::lerp_col` documenta para o `blend = 1`.
+///
+/// ⚠️ **Negativo NÃO é o `invert`.** Em `s = −1` a máscara vira `2 − f`: onde o campo estava
+/// cheio ela vale `1` (nada muda) e onde ele estava vazio vale `2` — o campo passa a
+/// **empurrar para fora** em vez de mascarar. O `invert` troca dentro por fora **dentro** de
+/// `[0,1]`; o sinal sai da faixa, e é isso que o *linear-space até o consumidor* do
+/// `field.combine` deixa acontecer.
+///
+/// ⚠️ **A faixa do slider (`−1..2`) é o CURSO ÚTIL, não um teto**: `0` desliga, `1` é hoje, o
+/// negativo é o empurrão e acima de `1` amplifica. O param em si não é limitado — um param
+/// dirigido (doc 58) passa dela, e é suposto passar.
+const STRENGTH: &str = "strength";
 
 /// GPU compute kernel (ADR-0126): a straight WGSL port of [`box_mask`] × [`curve`]
 /// multiplied into the existing `falloff` — same `min`/`max`/`clamp` + polynomials
@@ -158,7 +160,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             i32(fb_round(params.curve)));\n\
         var fb_f = fb_m;\n\
         if (params.invert >= 0.5) { fb_f = 1.0 - fb_m; }\n\
-        write_falloff(i, read_falloff(i) * fb_f);\n",
+        // A força com sinal, na forma de dois termos (exacta em s = 1 e s = 0).\n\
+        let fb_s = fb_f * params.strength + (1.0 - params.strength);\n\
+        write_falloff(i, read_falloff(i) * fb_s);\n",
     wgsl_lib: "\
         fn fb_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
@@ -211,6 +215,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     params: &[
         "width", "height", "soft", "center_x", "center_y", "rotation", "curve", "invert",
+        "strength",
     ],
     count_law: None,
     variant_by_param: None,
@@ -235,6 +240,7 @@ impl NodeOp for FieldBox {
         let (rc, rs) = cos_sin_cycles(ctx.param("rotation") / 360.0);
         let curve_kind = ctx.param("curve").round() as i32;
         let invert = ctx.param("invert") >= 0.5;
+        let strength = ctx.param(STRENGTH);
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -253,6 +259,8 @@ impl NodeOp for FieldBox {
                 let (lx, ly) = (dx * rc + dy * rs, -dx * rs + dy * rc);
                 let m = box_mask(lx, ly, width, height, soft, curve_kind);
                 let f = if invert { 1.0 - m } else { m };
+                // A força com sinal: dois termos, exacta nos dois extremos ([`STRENGTH`]).
+                let f = f * strength + (1.0 - strength);
                 let base = prev.and_then(|v| v.get(i).copied()).unwrap_or(1.0);
                 base * f
             });
@@ -366,6 +374,15 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Toggle,
+    },
+    // ⚠️ A faixa é o CURSO ÚTIL e não um teto — ver [`STRENGTH`].
+    ParamUiHint {
+        param: STRENGTH,
+        label: "Strength",
+        min: -1.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
     },
 ];
 
@@ -615,23 +632,23 @@ mod tests {
     #[test]
     fn edge_ramp_plateaus_then_falls() {
         // half 4, soft 1: flat 1 until |d| = 3, linear ramp to 0 at |d| = 4.
-        assert_eq!(edge_ramp(0.0, 4.0, 1.0), 1.0);
-        assert_eq!(edge_ramp(3.0, 4.0, 1.0), 1.0);
-        assert_eq!(edge_ramp(3.5, 4.0, 1.0), 0.5);
-        assert_eq!(edge_ramp(4.0, 4.0, 1.0), 0.0);
-        assert_eq!(edge_ramp(9.0, 4.0, 1.0), 0.0);
+        assert_eq!(mask::edge_ramp(0.0, 4.0, 1.0), 1.0);
+        assert_eq!(mask::edge_ramp(3.0, 4.0, 1.0), 1.0);
+        assert_eq!(mask::edge_ramp(3.5, 4.0, 1.0), 0.5);
+        assert_eq!(mask::edge_ramp(4.0, 4.0, 1.0), 0.0);
+        assert_eq!(mask::edge_ramp(9.0, 4.0, 1.0), 0.0);
         // soft wider than the half-extent is clamped to it (never overshoots).
-        assert_eq!(edge_ramp(0.0, 2.0, 10.0), 1.0);
+        assert_eq!(mask::edge_ramp(0.0, 2.0, 10.0), 1.0);
     }
 
     #[test]
     fn curves_are_monotone_and_endpoint_exact() {
         for k in 0..=3 {
-            assert_eq!(curve(k, 0.0), 0.0, "curve {k} at 0");
-            assert_eq!(curve(k, 1.0), 1.0, "curve {k} at 1");
+            assert_eq!(mask::curve(k, 0.0), 0.0, "curve {k} at 0");
+            assert_eq!(mask::curve(k, 1.0), 1.0, "curve {k} at 1");
         }
-        assert_eq!(curve(1, 0.5), 0.25);
-        assert_eq!(curve(2, 0.5), 0.5);
+        assert_eq!(mask::curve(1, 0.5), 0.25);
+        assert_eq!(mask::curve(2, 0.5), 0.5);
     }
 
     #[test]
@@ -641,3 +658,7 @@ mod tests {
         assert_eq!(box_mask(0.0, 1.0, 8.0, 0.0, 1.0, 0), 0.0);
     }
 }
+
+#[cfg(test)]
+#[path = "strength_tests.rs"]
+mod strength_tests;

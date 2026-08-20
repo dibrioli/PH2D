@@ -46,10 +46,10 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 47**)
+### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 43**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: a janela fechou
-**catorze** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
+**dezoito** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
 descesse seria uma que parou de olhar para os lados.
 
 | grupo | entrega | smoke |
@@ -64,6 +64,7 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | 🆕 **duas células ABERTAS por medição** (folha 08 `motion.cull` · folha 05 `motion.mirror`/`kaleidoscope`): a mesma lei da identidade nos vizinhos que encolhem e que crescem | — |
 | **V** | folha 08: o **taper por cópia** do `motion.clone` e o **peso por entrada** do `motion.mixer` — a folha desce a **3 P1**, e os três que sobram têm espécie declarada | `=64` |
 | **V** | folha 08: o **`followMouse`** — fechado por um nó novo (`value.cursor`, o **primeiro do repo com duas saídas**) mais a rota do param dirigido, e **não** pelo toggle que a célula pedia. A folha desce a **2 P1** | `=65` |
+| **V** | **folha 10 (`field.*`): QUATRO células**, e vieram juntas porque duas partilhavam uma causa — o `clamp` inline do `Add` era o defeito, e era ele que tornava o `Average` inexprimível. Mais o **anel** (`inner_radius`) e a **força com sinal** (`strength`). A folha desce de **6 para 2 P1** | `=66` |
 
 ⚠️ **E uma correção de GEOMETRIA em `ph2d-vec-scene`, que o smoke do Enio devolveu:** a
 borda que fecha uma fatia **abaulava** 19–25% do raio, porque o handle do arco sobrava na
@@ -172,7 +173,7 @@ ausente.
 
 ---
 
-## §4 — As DEZASSEIS LEIS que esta linha pagou para aprender
+## §4 — As DEZASSETE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -273,7 +274,15 @@ são estilo.
     ⚠️ ele mede o **cozido** (lado da peça contra a menor distância entre vizinhos), não os
     dois literais lado a lado, e **exige** a coluna `size` em vez de a tolerar: a ausência
     dela é exactamente o estado que reprovou.
-16. ⚠️ **Ao consertar um nó de ESTRUTURA, MEÇA os irmãos que mexem na mesma lista** — a sonda
+16. ⚠️ **TODO modificador honra o `falloff`, e um `motion.move` de LAYOUT posto depois de um
+    campo é mascarado por ele.** A cena `=66` punha as seis bandas nos seus quadrantes com um
+    `move` no fim da cadeia; as peças no cheio do campo andaram o vão inteiro e as de fora
+    ficaram onde estavam, então a banda **espalhou-se** em vez de se mudar (medido: um vão de
+    `5,6` deu um deslocamento efectivo de `4,6`). Os quatro gates da cena reprovaram e o
+    diagnóstico veio de uma SONDA que imprimiu o alcance de `x`/`y` por banda — a asserção
+    sozinha só dizia *"os dois lados são iguais"*. *Layout antes do campo; e aí o centro do
+    campo tem de seguir a banda.* Irmã da 14 e da lei do quadro da cena `=65`.
+17. ⚠️ **Ao consertar um nó de ESTRUTURA, MEÇA os irmãos que mexem na mesma lista** — a sonda
     `measure_identity_after_structure` foi escrita depois do conserto do `sort` e achou o mesmo
     defeito em três vizinhos (`cull` encolhe e deixa `Count` velho; `mirror` e `kaleidoscope`
     crescem e deixam `Index` **e** `Count` velhos; `clone` faz o certo). ⛔ **E não corrija

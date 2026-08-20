@@ -74,6 +74,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "repetitions",
             default: 1.0,
         },
+        // **O RAIO INTERNO** — ver [`INNER_RADIUS`]. Apendado; `0` ⇒ o disco de sempre.
+        ParamSpec {
+            name: "inner_radius",
+            default: 0.0,
+        },
         ParamSpec {
             name: "soft",
             default: 0.15,
@@ -197,13 +202,49 @@ fn sector(start_angle: f32, end_angle: f32, repetitions: f32) -> Sector {
     }
 }
 
+/// **O RAIO INTERNO — o ANEL** (doc 89 folha 10 — C4D §B4 field **Torus**; MOPs Shape
+/// Falloff: *"**inner/outer** (zona cheia→zero)"*).
+///
+/// A célula mediu a composição que já existia: `sweep(r = 10) → field.combine(Subtract,
+/// b = sweep(r = 6))` — **três nós para um knob**, que é o critério de `P1` verbatim da §7 do
+/// plano 89.
+///
+/// ⚠️ **`0` é o disco de hoje AO BIT, e não «quase»**: [`inner_rise`] devolve `1.0` exacto
+/// para todo `r ≥ 0` quando `inner = 0`, e `min(rad, 1.0)` é `rad` para qualquer `rad ≤ 1`,
+/// que é toda a imagem da rampa. Nenhum caminho novo é tomado no default.
+///
+/// ⚠️ **A banda macia do anel come para DENTRO nos dois lados**, como a de fora já fazia: a
+/// externa consome `[radius − soft·radius, radius]` e a interna `[inner, inner + soft·inner]`.
+/// Um `soft` medido em fracção da **própria** extensão é o que mantém as duas bordas com o
+/// mesmo carácter quando o anel é fino — um `soft` absoluto engoliria o anel inteiro.
+const INNER_RADIUS: &str = "inner_radius";
+
+/// A rampa que SOBE de `0` em `inner` até `1` em `inner + soft` — o buraco do anel.
+///
+/// ⚠️ **Não é `1 − edge_ramp(r, inner, soft)`.** Aquela põe a banda macia em
+/// `[inner − soft, inner]`, isto é, **fora** do anel; esta põe-na dentro, que é onde a borda
+/// externa também vive. As duas dão o mesmo valor nos extremos e desenham anéis diferentes.
+fn inner_rise(r: f32, inner: f32, soft: f32) -> f32 {
+    if inner <= 0.0 {
+        return 1.0;
+    }
+    let s = soft.max(0.0);
+    if s > 0.0 {
+        ((r - inner) / s).clamp(0.0, 1.0)
+    } else if r >= inner {
+        1.0
+    } else {
+        0.0
+    }
+}
+
 /// The raw sweep mask (before the `curve` and `invert`) at LOCAL offset `(lx, ly)` from
 /// the centre — i.e. the offset already un-rotated into the field's frame. It is the
 /// `min` of the radial ramp (inside the disk of `radius`) and the angular ramp (inside the
 /// nearest repetition of the sector), each softened by `soft` (a fraction of its extent).
-fn sweep_mask(lx: f32, ly: f32, radius: f32, soft: f32, sec: &Sector) -> f32 {
+fn sweep_mask(lx: f32, ly: f32, radius: f32, inner: f32, soft: f32, sec: &Sector) -> f32 {
     let r = (lx * lx + ly * ly).sqrt();
-    let rad = edge_ramp(r, radius, soft * radius);
+    let rad = edge_ramp(r, radius, soft * radius).min(inner_rise(r, inner, soft * inner));
     let ang = if sec.full {
         1.0
     } else {
@@ -233,7 +274,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let rs_soft = clamp(params.soft, 0.0, 1.0);\n\
         // Radial ramp: inside the disk of `radius`.\n\
         let rs_r = sqrt(rs_lx * rs_lx + rs_ly * rs_ly);\n\
-        let rs_rad = rs_edge_ramp(rs_r, params.radius, rs_soft * params.radius);\n\
+        var rs_rad = rs_edge_ramp(rs_r, params.radius, rs_soft * params.radius);\n\
+        rs_rad = min(rs_rad, rs_inner_rise(rs_r, params.inner_radius, rs_soft * params.inner_radius));\n\
         // Angular ramp: inside the nearest repetition of the sector.\n\
         let rs_pa_start = rs_pseudo_of_deg(params.start_angle);\n\
         let rs_pa_end = rs_pseudo_of_deg(params.end_angle);\n\
@@ -253,6 +295,13 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         if (params.invert >= 0.5) { rs_f = 1.0 - rs_m; }\n\
         write_falloff(i, read_falloff(i) * rs_f);\n",
     wgsl_lib: "\
+        fn rs_inner_rise(r: f32, inner: f32, soft: f32) -> f32 {\n\
+            if (inner <= 0.0) { return 1.0; }\n\
+            let s = max(soft, 0.0);\n\
+            if (s > 0.0) { return clamp((r - inner) / s, 0.0, 1.0); }\n\
+            if (r >= inner) { return 1.0; }\n\
+            return 0.0;\n\
+        }\n\
         fn rs_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
@@ -315,6 +364,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     params: &[
         "radius",
+        "inner_radius",
         "start_angle",
         "end_angle",
         "repetitions",
@@ -339,6 +389,7 @@ impl NodeOp for FieldRadialSweep {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let radius = ctx.param("radius");
+        let inner = ctx.param(INNER_RADIUS);
         let soft = ctx.param("soft").clamp(0.0, 1.0);
         let (cx, cy) = (ctx.param("center_x"), ctx.param("center_y"));
         // The rotation basis and the sector's pseudo-bounds, computed ONCE per cook (a
@@ -368,7 +419,7 @@ impl NodeOp for FieldRadialSweep {
                 let (dx, dy) = (p[0] - cx, p[1] - cy);
                 // Rotate the offset by −rotation into the field's local frame.
                 let (lx, ly) = (dx * rc + dy * rs, -dx * rs + dy * rc);
-                let m = curve(curve_kind, sweep_mask(lx, ly, radius, soft, &sec));
+                let m = curve(curve_kind, sweep_mask(lx, ly, radius, inner, soft, &sec));
                 let f = if invert { 1.0 - m } else { m };
                 let base = prev.and_then(|v| v.get(i).copied()).unwrap_or(1.0);
                 base * f
@@ -419,6 +470,7 @@ static PARAM_GROUPS: &[ParamGroup] = &[
     // Onde o radar está plantado, e para onde ele aponta.
     ParamGroup::new("center_x", "Placement"),
     ParamGroup::new("center_y", "Placement"),
+    ParamGroup::new("inner_radius", "Placement"),
     ParamGroup::new("rotation", "Placement"),
     // Como a borda do feixe desvanece.
     ParamGroup::new("soft", "Falloff"),
@@ -434,6 +486,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "radius",
         label: "Radius",
+        min: 0.0,
+        max: 40.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ **A mesma faixa do `radius`, de propósito**: o anel só existe enquanto
+    // `inner < radius`, e um teto menor esconderia metade dos anéis que o raio externo
+    // alcança. Acima do externo o campo fica vazio — que é uma resposta, não um erro.
+    ParamUiHint {
+        param: INNER_RADIUS,
+        label: "Inner Radius",
         min: 0.0,
         max: 40.0,
         step: 0.1,
@@ -542,3 +605,7 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "ring_tests.rs"]
+mod ring_tests;

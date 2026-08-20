@@ -19,7 +19,7 @@ são `min` e um operador sobre dois números, e o **raio do fillet fica editáve
 | [`02_o_que_torna_boolean_e_fillet_extraordinarios.md`](02_o_que_torna_boolean_e_fillet_extraordinarios.md) | **Por que esta rota.** Mede que o Blender 4.5 já resolveu a booleana e que o buraco é o arredondamento. As 3 famílias candidatas |
 | [`00_plano_port.md`](00_plano_port.md) | ⛔ **Rota substituída** — não execute as waves. Continuam fonte: o **§1** (estudo do original: 9 leis, 19 operações) e o **§2** (inventário da PH2D). O **§7** segue válido: por que **não** se escreve um kernel do zero |
 
-**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3, W5, W6, W7, W8 e W9
+**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3 e W5→W10
 fechadas** · a W2 tem o traçado no shell e a perspectiva **aberta**; o canvas 3D de primeira classe
 segue **aberto**.
 
@@ -34,6 +34,7 @@ segue **aberto**.
 | **W7** — o clique e os eixos | ✅ | ⭐ **Clicar na peça seleciona o objeto** (marcha de um raio + a folha de menor módulo naquele ponto — **0,10 ms**, contra um *id-buffer* que custaria em cada pixel de cada quadro) · **eixos Global/Local** num segundo seletor. [doc 06 §6](06_resultados_cena_e_gizmo.md) |
 | **W8** — a grelha e a ficha | ✅ | ⭐ **`Ctrl` prende o gesto** — o passo da translação é **derivado do enquadramento** (dois degraus vizinhos têm de passar da tolerância do ponteiro), o ângulo é 15° e o tamanho 0,1 · e o **número do gesto aparece ao lado do gizmo**, saído do que o mundo aplicou. [doc 06 §7](06_resultados_cena_e_gizmo.md) |
 | **W9** — criar e combinar | ✅ | ⭐ **O módulo deixa de ser um visualizador**: quatro botões criam formas (onde a câmera olha, no tamanho do enquadramento — a mesma condição: *ela tem de ser vista*) e três autoram a **booleana** (trocar a operação de uma, ou embrulhar irmãos numa nova). [doc 06 §8](06_resultados_cena_e_gizmo.md) |
+| **W10** — as dimensões | ✅ | ⭐ **Cada forma tem os números dela** (largura · altura · raio · espessura · filete), e o painel passa a ser o **inspetor da seleção** — a Hierarquia mostra o que existe, ele mostra os números do escolhido. A parede é do documento, o alcance do slider é da vista. [doc 06 §9](06_resultados_cena_e_gizmo.md) |
 | **W3** — os perfis | ✅ | [`ph2d-field-profile`](../../crates/ph2d-field-profile/) (a costura com o editor vetorial, 8 gates) + `Extrude`/`Revolve`. **O desenho da caneta vira sólido**, e o raio de quina do editor arredonda as arestas verticais. `FIELD_DOC_VERSION` → **2** |
 
 **Como entrar — DUAS portas:**
@@ -77,6 +78,10 @@ teclas `G`, `R` e `S` fazem o mesmo (com o rato sobre a janela 3D):
 Por baixo há um segundo par — **Global · Local** —: com *Global* as setas apontam para os eixos da
 cena, com *Local* para os do próprio objeto (num cilindro deitado, é a diferença entre andar «para o
 lado» e andar «ao longo dele»).
+
+⭐ **O painel é o inspetor do que está selecionado**: clique num objeto e ele mostra **as dimensões
+dele** — largura, altura, raio, espessura e o **filete**, cada um com slider e campo para digitar.
+Encolher uma forma encolhe o filete dela sozinho (e a linha do filete muda à vista).
 
 ⭐ **Criar e combinar** (as duas fileiras seguintes do painel): `+ Box` · `+ Sphere` · `+ Cylinder` ·
 `+ Torus` acrescentam uma forma **onde a câmera está a olhar** e já selecionada. Com uma operação

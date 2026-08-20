@@ -1,12 +1,16 @@
-# W5 · W6 · W7 · W8 · W9 — a peça vira uma CENA de objetos, e ganha o gizmo (2026-08-20)
+# W5 → W10 — a peça vira uma CENA de objetos, e o módulo vira um modelador (2026-08-20)
 
-> **O que este doc é:** o mecanismo das duas waves e os números que decidiram o desenho.
+> **O que este doc é:** o mecanismo destas seis waves e os números que decidiram cada desenho.
 > O estado do módulo vive no [README](README.md); a história, no handoff.
 >
-> **§1–§4 são a W5** (a cena de objetos + o gizmo de MOVER) · **§5 é a W6** (rodar, escalar, e o
-> undo que estava partido) · **§6 é a W7** (o clique que escolhe o objeto, e os eixos Global/Local) ·
-> **§7 é a W8** (o gesto preso à grelha, e o número dele) · **§8 é a W9** (criar formas e
-> combiná-las).
+> | § | Wave | O quê |
+> |---|---|---|
+> | 1–4 | **W5** | a cena de objetos, e o gizmo de **mover** |
+> | 5 | **W6** | **rodar** e **escalar** — e o undo que estava partido |
+> | 6 | **W7** | o **clique** que escolhe o objeto, e os eixos Global/Local |
+> | 7 | **W8** | o gesto **preso à grelha**, e o número dele |
+> | 8 | **W9** | **criar** formas e **combiná-las** |
+> | 9 | **W10** | as **dimensões** de cada forma |
 
 Enio, no smoke de 19/08:
 

@@ -2598,6 +2598,8 @@ impl crate::App {
             // "Pack into Sheet" do menu de contexto da hierarquia — a 2ª porta do verbo do pill
             // `[SHEET]`. Guarda a LINHA (não a entidade): quem a resolve é o `bridge`, no dreno.
             let mut pack_sheet_row: Option<NodeId> = None;
+            // "Remove from Sheet" — a saída da folha, pela linha clicada.
+            let mut remove_from_sheet_row: Option<NodeId> = None;
             let mut use_as_brush_texture_row: Option<NodeId> = None;
             let mut use_as_brush_shape_row: Option<NodeId> = None;
             let mut use_as_paper_row: Option<NodeId> = None;
@@ -3608,6 +3610,9 @@ impl crate::App {
                     }
                     EditorAction::HierPackSheet { row } => {
                         pack_sheet_row.get_or_insert(row);
+                    }
+                    EditorAction::HierRemoveFromSheet { row } => {
+                        remove_from_sheet_row.get_or_insert(row);
                     }
                     EditorAction::HierUseAsBrushTexture { row } => {
                         use_as_brush_texture_row.get_or_insert(row);
@@ -8739,6 +8744,42 @@ impl crate::App {
             // de as voltar a juntar. O menu resolve a linha clicada e aplica a lei do "Merge
             // Sprites" vizinho: a seleção inteira quando a linha faz parte dela, só ela quando
             // não faz. *Não reconstrua o pill sem ler isto.*
+            // **RETIRAR DA FOLHA** (Enio 2026-08-19) — pelo MESMO caminho do arrasto-para-a-raiz
+            // da hierarquia, e é isso que o torna barato: o `drain_reparent` já preserva a pose de
+            // MUNDO (a peça fica onde está, não salta) e já reatribui o `RootOrder` de todas as
+            // raízes. Uma segunda saída escrita à mão seria a que se esquecia do `RootOrder` —
+            // e o sintoma disso é a hierarquia a reordenar-se sozinha no save seguinte.
+            //
+            // ⚠️ O toast de recusa não é decoração: sem ele, clicar "Remove from Sheet" numa
+            // sprite que não está em folha nenhuma não faria **nada**, e é assim que um item de
+            // menu se lê como partido.
+            if let Some(row) = remove_from_sheet_row
+                && let Some(live) = hero_live.as_ref()
+            {
+                let in_sheet = live
+                    .bridge
+                    .entity_for(row)
+                    .map(ph2d_ecs::Entity::from_bits)
+                    .and_then(|e| crate::sheet_bounds::sheet_parent(sim, e));
+                if in_sheet.is_some() {
+                    hero_intents::drain_reparent(
+                        ph2d_editor::screens::hero::HierReparentIntent {
+                            dragged: row,
+                            new_parent: None,
+                            before: None,
+                            after: None,
+                        },
+                        live,
+                        sim,
+                    );
+                    toasts.push(Toast::success("Removed from sheet"));
+                } else {
+                    toasts.push(Toast::warning(
+                        "Remove from Sheet: this object is not in a sheet",
+                    ));
+                }
+                self.title_dirty = true;
+            }
             let mut sheet_targets: Vec<u64> = Vec::new();
             if let Some(row) = pack_sheet_row
                 && let Some(live) = hero_live.as_ref()
@@ -8752,12 +8793,42 @@ impl crate::App {
             }
             if !sheet_targets.is_empty() {
                 let ppm = hero.project.pixels_per_meter;
-                if let Some(sheet) = crate::sheet_frame::pack_or_repack(
+                let sheets = crate::sheet_frame::sheets_among(sim, &sheet_targets);
+                if sheets.is_empty() {
+                    // **CRIAR pergunta primeiro** (Enio 2026-08-19: *"Ao criar uma sheet um modal
+                    // com a resolução deve aparecer antes da criação"*). Os alvos ficam
+                    // RESERVADOS até o Create — o modal é modal, mas o mundo continua a andar, e
+                    // recalcular a seleção no Create leria o que ela for ENTÃO, não o que era
+                    // quando ele pediu. *A pergunta e a resposta têm de falar do mesmo conjunto.*
+                    match crate::sheet_frame::suggested_size(sim, &sheet_targets, ppm) {
+                        Some(px) => {
+                            self.pending_sheet_targets = sheet_targets.clone();
+                            hero.store.open_sheet_size_dialog(px);
+                        }
+                        // Sem peça nenhuma não há o que perguntar: um modal a pedir a resolução de
+                        // uma folha vazia é a caixa de diálogo que não devia ter aberto.
+                        None => {
+                            toasts.push(Toast::warning("Sheet: select at least one sprite first"));
+                        }
+                    }
+                } else {
+                    // **RE-ARRANJAR não pergunta**: a resolução já foi escolhida quando a folha
+                    // nasceu, e o gesto aqui é *arrume*, não *redimensione*.
+                    crate::sheet_frame::repack_all(sim, vec_scene, &sheets, toasts);
+                }
+                self.title_dirty = true;
+            }
+            // O Create do modal — a criação de facto, com os alvos que ficaram reservados.
+            if let Some(size_px) = hero.store.take_sheet_size_request() {
+                let targets = std::mem::take(&mut self.pending_sheet_targets);
+                let ppm = hero.project.pixels_per_meter;
+                if let Some(sheet) = crate::sheet_frame::create_at(
                     sim,
                     vec_scene,
                     &mut self.vec_entities,
-                    &sheet_targets,
+                    &targets,
                     ppm,
+                    size_px,
                     toasts,
                 ) {
                     // A folha fica selecionada: é ela que o artista vai querer mover,

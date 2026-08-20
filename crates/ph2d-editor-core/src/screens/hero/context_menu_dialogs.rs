@@ -318,3 +318,97 @@ pub(super) fn paint_new_image_dialog(
         .visual(store.button_visual(ids::CTX_MENU_NEW_IMAGE_CREATE));
     paint_button(&btn, create_rect, scene, text_system, theme);
 }
+
+/// **O modal de resolução da folha** (Enio 2026-08-19: *"Ao criar uma sheet um modal com a
+/// resolução deve aparecer antes da criação"*).
+///
+/// Irmão do [`paint_new_image_dialog`] e deliberadamente igual a ele na forma: mesma caixa
+/// centrada, mesma fila de escolhas, mesmo CTA acentuado. *Duas perguntas parecidas devem
+/// PARECER-SE* — inventar um segundo desenho para a segunda caixa de diálogo é como um app começa
+/// a parecer dois apps.
+///
+/// ⚠️ **A resolução é a pergunta INTEIRA.** Não há linha de "Padding" nem de densidade aqui, e a
+/// ausência é uma decisão: o padding tem um valor que serve (o do `SpriteSheetFrame`) e a
+/// densidade vem do projeto — pô-los no modal seria cobrar três respostas para obter uma folha,
+/// quando duas delas já têm resposta certa. Eles pertencem à seção da folha no Inspector, onde se
+/// ajusta o que já existe.
+pub(super) fn paint_sheet_size_dialog(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    viewport: Rect,
+) {
+    let row_h = ROW_H;
+    let gap = Spacing::Xs.px();
+    // ⚠️ A largura é DERIVADA da contagem, como no irmão: acrescentar uma resolução à tabela
+    // `ids::CTX_MENU_SHEET_SIZES` não pode espremer os botões existentes sem nada acender.
+    const SIZE_BTN_W: f32 = 52.0; // LITERAL-PX-OK: cabe "8192" no `TypeToken::Sm` com folga
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de botoes, < 16")]
+    let n_sizes = ids::CTX_MENU_SHEET_SIZES.len() as f32;
+    let menu_w = Spacing::Md.px() * 2.0 + n_sizes * SIZE_BTN_W + (n_sizes - 1.0) * gap;
+    // Quatro linhas: título · rótulo Resolution · botões · Create.
+    let total_h = pad_y() * 2.0 + row_h * 4.0 + gap * 3.0; // LITERAL-PX-OK: 3 vãos entre linhas
+    let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
+    let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
+    let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
+    let radius = Radius::Md.px();
+    fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
+    stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+
+    let inner_x = rect.x + Spacing::Md.px();
+    let inner_w = rect.w - Spacing::Md.px() * 2.0;
+    let font = TypeToken::Sm.px();
+    let mut y = rect.y + pad_y();
+
+    paint_text(
+        text_system,
+        scene,
+        "New Sprite Sheet",
+        inner_x,
+        y + (row_h - font) * 0.5,
+        font,
+        inner_w,
+        resolve(ColorToken::Text1, theme),
+    );
+    y += row_h + gap;
+
+    paint_text(
+        text_system,
+        scene,
+        "Resolution",
+        inner_x,
+        y + (row_h - font) * 0.5,
+        font,
+        inner_w,
+        resolve(ColorToken::Text3, theme),
+    );
+    y += row_h + gap;
+    let sel = store.sheet_size();
+    // A MESMA regra que dimensionou o modal, do outro lado — medir por uma e preencher por outra é
+    // como a próxima linha pinta por cima dos botões.
+    let bw = ((inner_w - gap * (n_sizes - 1.0)) / n_sizes).max(1.0);
+    for (i, (px, id)) in ids::CTX_MENU_SHEET_SIZES.iter().enumerate() {
+        let r = Rect::new(inner_x + i as f32 * (bw + gap), y, bw, row_h);
+        paint_choice_button(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            *id,
+            &px.to_string(),
+            r,
+            *px == sel,
+        );
+    }
+    y += row_h + gap;
+
+    let create_rect = Rect::new(inner_x, y, inner_w, row_h);
+    hit_index.register(ids::CTX_MENU_SHEET_SIZE_CREATE, create_rect);
+    let btn = Button::new(ids::CTX_MENU_SHEET_SIZE_CREATE, "Create Sheet")
+        .accent()
+        .visual(store.button_visual(ids::CTX_MENU_SHEET_SIZE_CREATE));
+    paint_button(&btn, create_rect, scene, text_system, theme);
+}

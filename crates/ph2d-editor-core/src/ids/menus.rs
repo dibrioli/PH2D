@@ -205,6 +205,50 @@ pub const CTX_MENU_HIER_MERGE_SPRITES: NodeId = hash_node_id("ctx_menu_hier_merg
 /// cópia. Semântica de seleção idêntica à do "Merge Sprites" vizinho: a folha leva a seleção
 /// inteira quando a linha clicada faz parte dela, e só essa linha quando não faz.
 pub const CTX_MENU_HIER_PACK_SHEET: NodeId = hash_node_id("ctx_menu_hier_pack_sheet");
+/// Enio 2026-08-19: "Remove from Sheet" — a saída. A peça deixa de ser filha da folha e volta a
+/// ser um objeto de raiz, **onde está** (a preservação de mundo do reparent trata disso).
+///
+/// ⚠️ **É a segunda porta de um gesto que já existia**, não um mecanismo novo: arrastar a linha
+/// para fora da folha na hierarquia sempre fez isto. O Enio nomeou as duas — *"o usuário deve
+/// acabar com seu parentesco na hierarchy ou com o menu do botão direito usar a opção de retirar
+/// da sheet"* — e a razão de a segunda existir é a descoberta: um menu diz o que se pode fazer;
+/// um arrasto só responde a quem já sabe. O trabalho é o MESMO caminho
+/// (`HierReparentIntent { new_parent: None }`), de propósito.
+pub const CTX_MENU_HIER_REMOVE_FROM_SHEET: NodeId = hash_node_id("ctx_menu_hier_remove_from_sheet");
+
+// **O modal de resolução da folha** (Enio 2026-08-19: *"Ao criar uma sheet um modal com a
+// resolução deve aparecer antes da criação"*). Abre-se ao escolher "Pack into Sheet" e a criação
+// só acontece no Create.
+//
+// ⚠️ **Ids PRÓPRIOS, e não os do modal de imagem nova.** Partilhá-los pouparia sete linhas e
+// custaria a independência: escolher 2048 para uma folha passaria a mudar o tamanho que o Cmd+N
+// oferece na vez seguinte, porque o estado seguido é um só. São duas perguntas diferentes ao mesmo
+// utilizador, e cada uma lembra a SUA resposta.
+//
+// ⚠️ A faixa também é outra: começa em 128 (uma folha de 32 px não cabe uma peça) e vai a 8192,
+// que é o `SHEET_MAX_SIDE` — o mínimo que a especificação do WebGPU garante em qualquer
+// adaptador. *O teto do menu é o teto do dispositivo, não um número escolhido.*
+pub const CTX_MENU_SHEET_SIZE_CREATE: NodeId = hash_node_id("ctx_menu_sheet_size_create");
+pub const CTX_MENU_SHEET_SIZE_128: NodeId = hash_node_id("ctx_menu_sheet_size_128");
+pub const CTX_MENU_SHEET_SIZE_256: NodeId = hash_node_id("ctx_menu_sheet_size_256");
+pub const CTX_MENU_SHEET_SIZE_512: NodeId = hash_node_id("ctx_menu_sheet_size_512");
+pub const CTX_MENU_SHEET_SIZE_1024: NodeId = hash_node_id("ctx_menu_sheet_size_1024");
+pub const CTX_MENU_SHEET_SIZE_2048: NodeId = hash_node_id("ctx_menu_sheet_size_2048");
+pub const CTX_MENU_SHEET_SIZE_4096: NodeId = hash_node_id("ctx_menu_sheet_size_4096");
+pub const CTX_MENU_SHEET_SIZE_8192: NodeId = hash_node_id("ctx_menu_sheet_size_8192");
+
+/// A tabela `(pixels, id)` do modal de resolução — **a fonte única**: o pintor dimensiona-se por
+/// ela, o despacho procura nela, e o `pointer_down` decide por ela o que não fecha o modal.
+/// Acrescentar uma resolução é editar aqui e mais nada.
+pub const CTX_MENU_SHEET_SIZES: [(u32, NodeId); 7] = [
+    (128, CTX_MENU_SHEET_SIZE_128),
+    (256, CTX_MENU_SHEET_SIZE_256),
+    (512, CTX_MENU_SHEET_SIZE_512),
+    (1024, CTX_MENU_SHEET_SIZE_1024),
+    (2048, CTX_MENU_SHEET_SIZE_2048),
+    (4096, CTX_MENU_SHEET_SIZE_4096),
+    (8192, CTX_MENU_SHEET_SIZE_8192),
+];
 // Painter brush Falloff curve point handle menu (secondary-click on a control
 // point). Two HandleType options (Vector / Auto); the chrome handler maps a
 // click to the HandleType wire u8 in `HeroScreen.pending_falloff_point_handle`.

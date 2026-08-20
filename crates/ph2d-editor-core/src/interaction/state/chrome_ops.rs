@@ -243,6 +243,48 @@ impl WidgetStore {
         self.new_image_request.take()
     }
 
+    /// Abre o modal de **resolução da folha**, semeado com o tamanho que o empacotador sugere para
+    /// aquelas peças (Enio 2026-08-19).
+    ///
+    /// ⚠️ **A semente é a SUGESTÃO, não a última escolha.** Um modal que reabre com "2048" porque
+    /// foi isso que o artista escolheu para outras peças, quando estas cabem em 256, faz o
+    /// caminho certo (aceitar o que o app propõe) ser o errado. `suggested` já vem arredondado
+    /// para a resolução oferecida imediatamente acima do que o encaixe pede — cabe sempre.
+    pub fn open_sheet_size_dialog(&mut self, suggested: u32) {
+        self.sheet_size = suggested;
+        self.context_menu = Some(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::SheetSizeDialog,
+        });
+    }
+
+    /// A resolução escolhida no modal da folha, em pixels de lado.
+    pub fn sheet_size(&self) -> u32 {
+        self.sheet_size
+    }
+
+    /// Escolhe a resolução do modal da folha.
+    pub fn set_sheet_size(&mut self, px: u32) {
+        self.sheet_size = px;
+    }
+
+    /// Confirma o modal: arma o pedido que a shell drena e fecha o modal.
+    pub fn request_sheet(&mut self) {
+        self.sheet_size_request = Some(self.sheet_size);
+        self.close_context_menu();
+    }
+
+    /// Toma (e limpa) o pedido pendente de folha. A shell sonda-o a cada quadro.
+    ///
+    /// ⚠️ **Fechar o modal por fora NÃO arma pedido nenhum**, e é isso que faz o clique-fora
+    /// cancelar de verdade: sem `request_sheet`, este devolve `None` para sempre e as peças que a
+    /// shell tinha reservado são largadas. *Cancelar tem de ser a ausência de um pedido, não um
+    /// pedido com um sinalizador de cancelamento.*
+    pub fn take_sheet_size_request(&mut self) -> Option<u32> {
+        self.sheet_size_request.take()
+    }
+
     /// Open the Fill (Bucket) "Fill adjust" floating modal with its top-left at `(x, y)` (screen px),
     /// seeding the threshold slider to `threshold` (`0..1`). Registers the slider + Done/Cancel/handle
     /// widgets so the generic pointer dispatch can drive them (idempotent — the slider VALUE is refreshed

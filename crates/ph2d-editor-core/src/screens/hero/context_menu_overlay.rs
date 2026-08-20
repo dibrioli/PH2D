@@ -195,6 +195,9 @@ pub fn paint_context_menu_overlay(
         ContextMenuKind::NewImageDialog => {
             Some(super::context_menu_dialogs::paint_new_image_dialog)
         }
+        ContextMenuKind::SheetSizeDialog => {
+            Some(super::context_menu_dialogs::paint_sheet_size_dialog)
+        }
         _ => None,
     };
     if let Some(paint_dialog) = dialog {

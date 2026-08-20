@@ -295,3 +295,58 @@ pub(super) fn handle_down_menus(
     }
     false
 }
+
+/// **Este clique ainda pertence ao menu que está aberto?**
+///
+/// Um clique primário fora de um menu fecha-o, antes do caminho normal de foco/clique. Mas quatro
+/// superfícies são *dentro*: a lista de cenas (o seu campo de busca e as suas linhas), o modal de
+/// renomear paleta, o modal de imagem nova e o modal de resolução da folha — em todos, escolher e
+/// depois confirmar são **dois cliques dentro de uma pergunta só**, e fechar no primeiro faria o
+/// controlo do meio parecer partido.
+///
+/// ⚠️ **Saiu do [`super::pointer_down`] por medição:** acrescentar aqui o modal da folha levou
+/// aquele ficheiro de 698 para 708 linhas, contra um teto de 700 — a cura registada é o corte para
+/// o IRMÃO (`feedback_a_fn_cap_and_a_file_cap_measure_different_things`), e este ficheiro já é o
+/// dono dos menus no caminho do Down. *Extrair para o mesmo ficheiro curaria a função e estouraria
+/// o ficheiro; este corte cura os dois.*
+///
+/// ⚠️ **Cada braço lê a TABELA do seu modal**, nunca uma lista de ids repetida aqui: uma resolução
+/// nova entra sozinha, que é o que impede o próximo botão de fechar o modal ao ser clicado.
+pub(super) fn click_belongs_to_the_open_menu(
+    store: &WidgetStore,
+    hit_id: Option<ph2d_a11y::NodeId>,
+) -> bool {
+    let Some(kind) = store.context_menu().map(|r| r.kind) else {
+        return false;
+    };
+    let Some(id) = hit_id else {
+        return false;
+    };
+    match kind {
+        // A lista de cenas hospeda um TextInput (a busca): clicar nele não pode fechar o menu, ou
+        // o utilizador não consegue escrever. As linhas fecham-no elas próprias, depois de agir.
+        ContextMenuKind::SceneList => {
+            id == crate::ids::CTX_SCENE_SEARCH || crate::ids::CTX_SCENE_ROWS.contains(&id)
+        }
+        // O modal de renomear paleta: o campo partilhado + o botão Rename.
+        ContextMenuKind::RenamePaletteDialog => {
+            id == crate::ids::BLENDER_PALETTE_NAME || id == crate::ids::CTX_MENU_PALETTE_RENAME
+        }
+        ContextMenuKind::NewImageDialog => {
+            id == crate::ids::CTX_MENU_NEW_IMAGE_CREATE
+                || crate::ids::CTX_MENU_NEW_IMAGE_SIZES
+                    .iter()
+                    .any(|(_, b)| *b == id)
+                || crate::ids::CTX_MENU_NEW_IMAGE_BGS
+                    .iter()
+                    .any(|(_, b)| *b == id)
+        }
+        ContextMenuKind::SheetSizeDialog => {
+            id == crate::ids::CTX_MENU_SHEET_SIZE_CREATE
+                || crate::ids::CTX_MENU_SHEET_SIZES
+                    .iter()
+                    .any(|(_, b)| *b == id)
+        }
+        _ => false,
+    }
+}

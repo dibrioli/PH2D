@@ -104,7 +104,29 @@ pub(crate) fn draw(
         // agarra.
         let outer = rect_path(-hw - band_x, -hh - band_y, hw + band_x, hh + band_y);
         let inner = rect_path(-hw, -hh, hw, hh);
-        let edge = resolve(ColorToken::BorderStrong, theme);
+        // **A MOLDURA ACUSA** (Enio 2026-08-19: *"Se houver sobreposição ou se as sprites não
+        // couberem na sheet, sua moldura deve ficar vermelha e um aviso deve aparecer ao lado da
+        // resolução"*).
+        //
+        // ⚠️ **A cor E o texto, nunca só a cor.** Vermelho sozinho diz *"algo está mal"* e deixa o
+        // artista a procurar o quê — e para quem não distingue vermelho de cinzento não diz nada
+        // (a lei de a cor nunca ser o único canal). O rótulo nomeia QUAL das duas condições é, e
+        // as duas podem ocorrer juntas.
+        //
+        // ⚠️ A saúde é CONTADA aqui, a cada quadro, e não guardada em lado nenhum — vide
+        // `sheet_bounds::health`. Um sinalizador guardado ficaria vermelho sobre uma folha já
+        // arrumada no dia em que alguém movesse uma peça sem o atualizar.
+        let health = crate::sheet_bounds::health(sim, entity);
+        let edge = if health.is_ok() {
+            resolve(ColorToken::BorderStrong, theme)
+        } else {
+            resolve(ColorToken::Danger, theme)
+        };
+        let hatch_color = if health.is_ok() {
+            resolve(ColorToken::Text2, theme)
+        } else {
+            resolve(ColorToken::Danger, theme)
+        };
         // A faixa = externo ⊖ interno, pela regra even-odd. É este caminho que recorta as
         // hachuras — elas são traçadas de lado a lado e o clip fica com o que interessa.
         //
@@ -139,7 +161,7 @@ pub(crate) fn draw(
             px_per_world,
             sx,
             sy,
-            resolve(ColorToken::Text2, theme),
+            hatch_color,
         );
         scene.pop_layer();
         stroke(scene, &outer, xf, edge, EDGE_PX / px_per_world);
@@ -156,13 +178,14 @@ pub(crate) fn draw(
         // mesmo que a linha `Source` do Inspector já usa — duas grafias para a mesma ideia é
         // como uma delas passa a parecer outra coisa.
         let label = format!(
-            "{}  {} \u{00d7} {}",
+            "{}  {} \u{00d7} {}{}",
             sim.world()
                 .get::<Name>(entity)
                 .map(|n| n.0.clone())
                 .unwrap_or_else(|| "Sprite Sheet".to_string()),
             cfg.pixels_for(w as f32),
             cfg.pixels_for(h as f32),
+            warning_suffix(health),
         );
         // A quina superior-esquerda da FAIXA em LOCAL (`+y` é para cima, então o topo é `+hh`).
         // ⚠️ Da faixa, e não do conteúdo: com a decoração agora por fora, ancorar no conteúdo
@@ -173,7 +196,11 @@ pub(crate) fn draw(
             &label,
             xf,
             (-hw - band_x, hh + band_y),
-            theme,
+            if health.is_ok() {
+                resolve(ColorToken::Text2, theme)
+            } else {
+                resolve(ColorToken::Danger, theme)
+            },
         );
     }
 }
@@ -275,7 +302,7 @@ fn draw_label(
     label: &str,
     xf: Affine,
     corner_local: (f64, f64),
-    theme: Theme,
+    color: Color,
 ) {
     let p = xf * Point::new(corner_local.0, corner_local.1);
     let size_px = TypeToken::Sm.px();
@@ -287,8 +314,23 @@ fn draw_label(
         p.y as f32 - size_px - LABEL_GAP_PX as f32,
         size_px,
         LABEL_MAX_W_PX,
-        resolve(ColorToken::Text2, theme),
+        color,
     );
+}
+
+/// O que se acrescenta ao rótulo quando a folha não está bem — vazio quando está.
+///
+/// ⚠️ **Palavras, não um glifo de aviso.** O `⚠` (U+26A0) não vem na Inter que o editor embute, e
+/// sairia como um quadradinho — o defeito que o gate `no_tofu_glyphs` existe para apanhar (ele
+/// varre os blocos das setas e dos símbolos técnicos; este viveria fora do alcance dele e chegaria
+/// ao ecrã). O separador é o `\u{00b7}`, o único não-ASCII que aquele gate nomeia como seguro.
+fn warning_suffix(health: crate::sheet_bounds::SheetHealth) -> &'static str {
+    match (health.overlap, health.overflow) {
+        (true, true) => "  \u{00b7} OVERLAP \u{00b7} DOESN'T FIT",
+        (true, false) => "  \u{00b7} OVERLAP",
+        (false, true) => "  \u{00b7} DOESN'T FIT",
+        (false, false) => "",
+    }
 }
 
 fn resolve(token: ColorToken, theme: Theme) -> Color {

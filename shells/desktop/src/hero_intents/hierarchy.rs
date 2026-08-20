@@ -209,5 +209,18 @@ pub(crate) fn drain_reparent(
             t.skew_y = old_world.skew_y - new_parent.skew_y;
         }
     }
+    // **LARGAR UM SPRITE DENTRO DE UMA FOLHA PÕE-NO DENTRO DELA** (Enio 2026-08-19: *"Para
+    // acrescentar um sprite numa sheet o usuário deve colocá-la como filha da sheet na hierarquia.
+    // Se assim fizer automaticamente a sprite deve se deslocar para dentro das fronteiras"*).
+    //
+    // ⚠️ **Isto ANULA de propósito a preservação de mundo** que as linhas acima acabam de fazer, e
+    // só para este pai. A preservação existe porque um sprite não deve saltar ao ganhar um pai —
+    // mas a folha é o caso em que ele DEVE: ficar onde estava significaria ficar fora da folha de
+    // que acabou de ser feito filho, e o artista veria a hierarquia dizer uma coisa e o canvas
+    // outra. *A regra geral está certa; a folha é a excepção que se nomeia, não que se esconde.*
+    //
+    // A ordem também é de propósito: confinar DEPOIS de a pose local estar re-resolvida, senão
+    // confinaríamos a pose antiga, do pai anterior.
+    crate::sheet_bounds::confine(sim, dragged);
     false
 }

@@ -234,6 +234,15 @@ pub enum EditorAction {
     /// RE-ARRANJA os filhos dela.
     HierPackSheet { row: ph2d_a11y::NodeId },
 
+    /// "Remove from Sheet" — a peça deixa a folha e volta a ser objeto de raiz, **onde está**
+    /// (Enio 2026-08-19). Payload: a `NodeId` da linha clicada.
+    ///
+    /// ⚠️ A shell serve-a pelo MESMO caminho do arrasto-para-a-raiz da hierarquia
+    /// (`HierReparentIntent { new_parent: None }`), que já preserva a pose de mundo e reatribui o
+    /// `RootOrder`. Uma segunda implementação da mesma saída seria a que se esqueceria do
+    /// `RootOrder`.
+    HierRemoveFromSheet { row: ph2d_a11y::NodeId },
+
     /// "Use as Brush Grain" — shell resolves row → pixels → `set_brush_texture_image` (Enio 2026-06-24).
     HierUseAsBrushTexture { row: ph2d_a11y::NodeId },
     /// "Use as Brush Shape" — shell resolves row → pixels → `set_brush_shape_image` (Enio 2026-06-25).

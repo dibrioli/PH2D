@@ -35,30 +35,9 @@ use ph2d_vec_scene::{ShapeKind, VecScene};
 
 use crate::vec_entities::VecEntityMap;
 
-/// **O verbo inteiro, num sítio só** — os dois modos, a escolha entre eles, e os toasts.
-///
-/// Devolve os bits da folha quando uma nasceu (para o chamador a selecionar), `None` quando
-/// re-arranjou uma existente ou falhou. Falhar já toastou.
-///
-/// ⚠️ **Existe porque o verbo tem DUAS portas** — o pill `[SHEET]` da fila de Image Tools e o
-/// "Pack into Sheet" do menu de contexto da hierarquia (Enio, 2026-08-19). Duas portas para o
-/// mesmo verbo é ergonomia; **duas cópias do verbo** seria a próxima divergência silenciosa, do
-/// tipo em que uma porta ganha uma correção e a outra não. As portas escolhem só o *alvo*.
-///
-/// ## O alvo decide qual dos dois verbos corre
-///
-/// Com uma folha entre os alvos, **re-arranja** (o encaixe é refeito depois de acrescentar, tirar
-/// ou redimensionar uma peça); sem nenhuma, **cria** uma folha com tudo o que for sprite. É um
-/// controle só de propósito: a pergunta é sempre *«arrume isto»*, e o que muda é o *isto*.
-pub(crate) fn pack_or_repack(
-    sim: &mut SimWorld,
-    scene: &mut VecScene,
-    map: &mut VecEntityMap,
-    targets: &[u64],
-    pixels_per_meter: f32,
-    toasts: &mut ToastQueue,
-) -> Option<u64> {
-    let sheets: Vec<u64> = targets
+/// **As folhas que estão entre estes alvos.** Vazio ⇒ o gesto é de CRIAR.
+pub(crate) fn sheets_among(sim: &SimWorld, targets: &[u64]) -> Vec<u64> {
+    targets
         .iter()
         .copied()
         .filter(|&b| {
@@ -66,44 +45,96 @@ pub(crate) fn pack_or_repack(
                 .get::<SpriteSheetFrame>(Entity::from_bits(b))
                 .is_some()
         })
-        .collect();
-    if !sheets.is_empty() {
-        // ⚠️ Não sai no primeiro erro: com duas folhas alvo, a segunda tem de ser arranjada na
-        // mesma. Reporta-se a PRIMEIRA razão — ela nomeia a peça grande demais, e é isso que diz
-        // ao artista o que fazer a seguir.
-        let mut moved = 0usize;
-        let mut failure: Option<String> = None;
-        for bits in &sheets {
-            match arrange_children(sim, scene, *bits) {
-                Ok(n) => moved += n,
-                Err(e) => {
-                    failure.get_or_insert_with(|| e.to_string());
-                }
+        .collect()
+}
+
+/// **RE-ARRANJAR** as folhas dadas, com os toasts. Devolve se houve o que reportar.
+///
+/// ⚠️ Não sai no primeiro erro: com duas folhas alvo, a segunda tem de ser arranjada na mesma.
+/// Reporta-se a PRIMEIRA razão — ela nomeia a peça grande demais, e é isso que diz ao artista o
+/// que fazer a seguir.
+pub(crate) fn repack_all(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    sheets: &[u64],
+    toasts: &mut ToastQueue,
+) {
+    let mut moved = 0usize;
+    let mut failure: Option<String> = None;
+    for bits in sheets {
+        match arrange_children(sim, scene, *bits) {
+            Ok(n) => moved += n,
+            Err(e) => {
+                failure.get_or_insert_with(|| e.to_string());
             }
         }
-        match failure {
-            Some(e) => {
-                toasts.push(Toast::error(format!("Sheet: {e}")));
-            }
-            None => {
-                toasts.push(Toast::success(format!("Sheet re-packed: {moved} pieces")));
-            }
+    }
+    match failure {
+        Some(e) => {
+            toasts.push(Toast::error(format!("Sheet: {e}")));
         }
+        None => {
+            toasts.push(Toast::success(format!("Sheet re-packed: {moved} pieces")));
+        }
+    }
+}
+
+/// **A resolução que o encaixe PEDE**, arredondada para cima até uma das oferecidas no modal.
+///
+/// ⚠️ **Arredondada para CIMA, e é isso que a torna uma sugestão honesta:** o valor cru do
+/// empacotador é o mínimo em que aquelas peças cabem, e oferecer o degrau imediatamente abaixo
+/// dele seria propor uma folha que já nasce vermelha. Se o encaixe pedir mais do que a maior
+/// resolução oferecida, devolve-se a maior — a folha nasce com transbordo e a moldura di-lo, que é
+/// melhor do que recusar-se a abrir o modal e não explicar nada.
+///
+/// `None` quando não há peça nenhuma entre os alvos (o chamador toasta a razão).
+pub(crate) fn suggested_size(
+    sim: &SimWorld,
+    targets: &[u64],
+    pixels_per_meter: f32,
+) -> Option<u32> {
+    let pieces = collect_pieces(sim, targets);
+    if pieces.is_empty() {
         return None;
     }
-    match create_from_selection(sim, scene, map, targets, pixels_per_meter) {
+    let cfg = SpriteSheetFrame::at_density(pixels_per_meter);
+    // O encaixe natural, sem teto autorado: é ele que sabe de quanto se precisa.
+    let needed = plan_for(&pieces, &cfg, SHEET_MAX_SIDE)
+        .map(|p| p.size)
+        .unwrap_or(SHEET_MAX_SIDE);
+    let offered = ph2d_editor::ids::CTX_MENU_SHEET_SIZES;
+    Some(
+        offered
+            .iter()
+            .map(|(px, _)| *px)
+            .find(|&px| px >= needed)
+            .unwrap_or_else(|| offered.iter().map(|(px, _)| *px).max().unwrap_or(needed)),
+    )
+}
+
+/// **CRIAR** a folha na resolução escolhida, com os toasts. Devolve os bits dela.
+pub(crate) fn create_at(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &mut VecEntityMap,
+    targets: &[u64],
+    pixels_per_meter: f32,
+    size_px: u32,
+    toasts: &mut ToastQueue,
+) -> Option<u64> {
+    match create_from_selection(sim, scene, map, targets, pixels_per_meter, size_px) {
         Ok(sheet) => {
             // ⚠️ A contagem é a das peças que de facto entraram, lida da árvore — não
             // `targets.len()`. Selecionar três sprites e uma forma vetorial anunciava "4 pieces
             // packed" e mostrava três: *o número tem de vir de onde a coisa aconteceu.*
             let pieces = child_bits(sim, Entity::from_bits(sheet)).len();
             toasts.push(Toast::success(format!(
-                "Sheet: {pieces} pieces packed into one object"
+                "Sheet: {pieces} pieces packed into {size_px} \u{00d7} {size_px}"
             )));
             Some(sheet)
         }
-        // ⚠️ A razão sobe VERBATIM do empacotador — ela nomeia a peça grande demais ou o conjunto
-        // que não cabe. Um "não foi possível" mandaria o artista adivinhar entre cem sprites.
+        // ⚠️ A razão sobe VERBATIM do empacotador. Um "não foi possível" mandaria o artista
+        // adivinhar entre cem sprites.
         Err(e) => {
             toasts.push(Toast::error(format!("Sheet: {e}")));
             None
@@ -118,27 +149,34 @@ pub(crate) fn pack_or_repack(
 /// subir na máquina de outra pessoa, e o modo de falha seria no projeto dela.
 const SHEET_MAX_SIDE: u32 = 8192;
 
-/// Cria uma folha a partir dos sprites selecionados: o retângulo nasce, eles viram filhos dele, e
-/// o arranjo automático já os coloca. Devolve os bits da folha.
+/// Cria uma folha a partir dos sprites selecionados, **na resolução que o artista escolheu**: o
+/// retângulo nasce com `size_px` de lado, eles viram filhos dele, e o arranjo coloca-os.
 ///
-/// `None` quando a seleção não tem sprite nenhum, ou quando o arranjo não é possível (a razão
-/// sobe pelo `Err` de [`arrange_children`], que o chamador toasta).
+/// ⚠️ **O tamanho passa a ser AUTORADO** (Enio 2026-08-19: *"Ao criar uma sheet um modal com a
+/// resolução deve aparecer antes da criação"*). Ele saía do arranjo — o empacotador media e o
+/// retângulo nascia com essa medida —, e isso era certo enquanto ninguém tinha opinião. Agora tem:
+/// uma folha é um alvo de exportação, e 512×512 é um requisito do projeto, não um resultado.
+///
+/// ⚠️ **E por isso a folha pode nascer APERTADA.** Se as peças não couberem em `size_px`, o
+/// encaixe é refeito sem teto e as peças assentam a partir do canto superior-esquerdo — as que
+/// sobram ficam **visivelmente fora** e a moldura acusa (`sheet_bounds::health`). É melhor do que
+/// as duas alternativas: recusar a criação deixaria o artista sem nada e sem saber quanto falta;
+/// crescer a folha em silêncio apagaria a escolha que ele acabou de fazer.
 pub(crate) fn create_from_selection(
     sim: &mut SimWorld,
     scene: &mut VecScene,
     map: &mut VecEntityMap,
     selection: &[u64],
     pixels_per_meter: f32,
+    size_px: u32,
 ) -> Result<u64, SheetFrameError> {
     let pieces = collect_pieces(sim, selection);
     if pieces.is_empty() {
         return Err(SheetFrameError::NoSprites);
     }
-    // O tamanho da folha sai do ARRANJO, não de um palpite: empacota-se primeiro para saber de
-    // quanto espaço se precisa, e o retângulo nasce já com essa medida.
     let frame = SpriteSheetFrame::at_density(pixels_per_meter);
-    let plan = plan_for(&pieces, &frame)?;
-    let side_m = plan.size as f32 / density(&frame);
+    let plan = plan_within(&pieces, &frame, size_px)?;
+    let side_m = size_px as f32 / density(&frame);
 
     // O centro da seleção — a folha nasce onde o artista estava a olhar.
     let center = selection_center(&pieces);
@@ -167,13 +205,16 @@ pub(crate) fn create_from_selection(
 /// tocar poses — senão cada quadro de um resize vira um passo de undo. Aqui é **um clique**: uma
 /// edição autorada, um passo de undo. A distinção é *por-quadro vs. por-gesto*.
 ///
-/// A folha é redimensionada para caber o arranjo, porque é isso que um empacotador faz; o artista
-/// pode alargá-la depois sem que as peças se mexam.
+/// ⚠️ **Ele NÃO redimensiona a folha, e isto mudou em 2026-08-19.** Redimensionar era o certo
+/// enquanto o tamanho era derivado do arranjo; deixou de ser quando o artista passou a escolhê-lo
+/// no modal — re-arranjar apagaria a escolha dele, em silêncio, num gesto que ele pediu para
+/// *arrumar*, não para *redimensionar*. Encaixa-se DENTRO da resolução que lá está, e o que não
+/// couber acende a moldura.
 ///
 /// [ADR-0153]: ../../../docs/architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md
 pub(crate) fn arrange_children(
     sim: &mut SimWorld,
-    scene: &mut VecScene,
+    _scene: &mut VecScene,
     frame_bits: u64,
 ) -> Result<usize, SheetFrameError> {
     let entity = Entity::from_bits(frame_bits);
@@ -185,11 +226,22 @@ pub(crate) fn arrange_children(
     if pieces.is_empty() {
         return Err(SheetFrameError::NoSprites);
     }
-    let plan = plan_for(&pieces, &cfg)?;
-    let side_m = plan.size as f32 / density(&cfg);
-    resize_frame(sim, scene, entity, side_m);
+    // O lado ATUAL da folha, em pixels à densidade dela — é este o teto do encaixe.
+    let Some(side_m) = current_side_m(sim, entity) else {
+        return Err(SheetFrameError::NotASheet);
+    };
+    let size_px = cfg.pixels_for(side_m).max(1);
+    let plan = plan_within(&pieces, &cfg, size_px)?;
     place(sim, &pieces, &plan, &cfg, side_m);
     Ok(pieces.len())
+}
+
+/// O lado atual da folha em metros — do `VecShape`, que **é** o tamanho.
+fn current_side_m(sim: &SimWorld, entity: Entity) -> Option<f32> {
+    match sim.world().get::<VecShape>(entity)? {
+        VecShape::Param { w, .. } => Some((*w as f32).abs()),
+        VecShape::Text(_) => None,
+    }
 }
 
 /// Os filhos diretos de uma entidade, em bits.
@@ -202,20 +254,14 @@ fn child_bits(sim: &mut SimWorld, parent: Entity) -> Vec<u64> {
         .collect()
 }
 
-/// Redimensiona a folha para caber o arranjo — a receita **e** a geometria, pela porta que as
-/// mantém em passo. Sem ela, a primeira edição de parâmetro re-cozinha da caixa ANTIGA e o
-/// redimensionamento evapora em silêncio (o defeito que o `resize_recipe` documenta).
-fn resize_frame(sim: &mut SimWorld, scene: &mut VecScene, entity: Entity, side_m: f32) {
-    if !crate::vec_shape_live::resize_recipe(sim, entity, side_m as f64, side_m as f64) {
-        return;
-    }
-    let Some(shape) = sim.world().get::<VecShape>(entity).cloned() else {
-        return;
-    };
-    if let Some(id) = sim.world().get::<ph2d_ecs::VecPathRef>(entity).map(|r| r.0) {
-        crate::vec_shape_live::recook_into(scene, id, &shape);
-    }
-}
+// ⚠️ **`resize_frame` VIVEU AQUI e foi removida em 2026-08-19**, quando o tamanho da folha passou
+// a ser autorado no modal: ela redimensionava a folha para caber o arranjo, e isso agora apagaria
+// a escolha do artista. Ficou órfã no mesmo commit em que perdeu o chamador, e sair é a regra
+// desta linha — *uma função sem chamador não é trabalho adiantado; é código morto com data de
+// validade*. Se um dia houver um "Fit sheet to contents" explícito, ela volta com o botão, e a
+// receita que ela cuidava (o `vec_shape_live::resize_recipe`, que mantém geometria e receita em
+// passo) é o que essa segunda tentativa tem de reler: escrever só a geometria faz o
+// redimensionamento evaporar na primeira edição de parâmetro.
 
 /// Por que uma folha não pôde nascer ou ser arranjada.
 #[derive(Debug, PartialEq, Eq)]
@@ -292,8 +338,29 @@ fn density(cfg: &SpriteSheetFrame) -> f32 {
     }
 }
 
-/// Arranja as peças em pixels, à densidade da folha.
-fn plan_for(pieces: &[Piece], cfg: &SpriteSheetFrame) -> Result<Layout, SheetFrameError> {
+/// **Encaixa dentro de `size_px`; se não couber, encaixa sem teto.**
+///
+/// ⚠️ O segundo encaixe não é um remendo: as poses saem do MESMO empacotador e são portanto
+/// determinísticas e sem sobreposição — só que a caixa que as contém é maior do que a folha, e é
+/// isso que o artista vê e que a moldura nomeia. *Degradar com a mesma lei é diferente de inventar
+/// um arranjo de emergência.*
+fn plan_within(
+    pieces: &[Piece],
+    cfg: &SpriteSheetFrame,
+    size_px: u32,
+) -> Result<Layout, SheetFrameError> {
+    match plan_for(pieces, cfg, size_px) {
+        Ok(p) => Ok(p),
+        Err(_) => plan_for(pieces, cfg, SHEET_MAX_SIDE),
+    }
+}
+
+/// Arranja as peças em pixels, à densidade da folha, dentro de `max_size`.
+fn plan_for(
+    pieces: &[Piece],
+    cfg: &SpriteSheetFrame,
+    max_size: u32,
+) -> Result<Layout, SheetFrameError> {
     let items: Vec<LayoutItem> = pieces
         .iter()
         .map(|p| LayoutItem {
@@ -306,7 +373,7 @@ fn plan_for(pieces: &[Piece], cfg: &SpriteSheetFrame) -> Result<Layout, SheetFra
         &items,
         PackOptions {
             padding: cfg.padding,
-            max_size: SHEET_MAX_SIDE,
+            max_size,
         },
     )?)
 }

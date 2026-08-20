@@ -395,6 +395,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_HIER_ADD_CHILD,
         ids::CTX_MENU_HIER_MERGE_SPRITES,
         ids::CTX_MENU_HIER_PACK_SHEET,
+        ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
         ids::CTX_MENU_HIER_RESET_TRANSFORM,
         ids::CTX_MENU_HIER_DELETE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
@@ -404,6 +405,10 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         // New-image modal: só o Create, que não tem tabela. Os radios de Size/Background vêm das
         // TABELAS, logo abaixo — ver o porquê lá.
         ids::CTX_MENU_NEW_IMAGE_CREATE,
+        // O CTA do modal de resolução da folha — mesma exigência: sem `InteractiveState` ele é
+        // pintado e não focável, e o Up nunca emite `Click`. (As resoluções vêm das TABELAS,
+        // logo abaixo, como as do modal de imagem nova.)
+        ids::CTX_MENU_SHEET_SIZE_CREATE,
         ids::CTX_MENU_FALLOFF_HANDLE_VECTOR,
         ids::CTX_MENU_FALLOFF_HANDLE_AUTO,
         ids::CTX_MENU_CURVE_HANDLE_FREE,
@@ -433,10 +438,14 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
     // 2026-07-26: *"não aceita ser selecionado"*). Um id precisa de estado no store para ser
     // `is_focusable` → virar `active` no Down → emitir `Click`; a tabela sozinha não faz isso. Iterando,
     // o tamanho seguinte nasce vivo.
+    //
+    // ⚠️ As resoluções do modal da FOLHA entram no mesmo laço, e pela mesma razão — herdar a lição
+    // é de graça, redescobri-la custou um relato do Enio.
     for id in ids::CTX_MENU_NEW_IMAGE_SIZES
         .iter()
         .map(|(_, id)| *id)
         .chain(ids::CTX_MENU_NEW_IMAGE_BGS.iter().map(|(_, id)| *id))
+        .chain(ids::CTX_MENU_SHEET_SIZES.iter().map(|(_, id)| *id))
     {
         store.register(id, InteractiveState::Plain);
     }

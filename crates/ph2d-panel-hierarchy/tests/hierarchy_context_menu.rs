@@ -209,3 +209,24 @@ fn every_hierarchy_row_menu_entry_dispatches_something() {
          ids::CTX_MENU_HIER_*` e o braço que empurra a ação) e drene a ação na shell."
     );
 }
+
+/// "Remove from Sheet" — a saída, pela linha clicada (Enio, 2026-08-19).
+///
+/// ⚠️ O payload é a LINHA, como no irmão "Pack into Sheet": quem resolve em entidade, quem
+/// verifica se ela está mesmo numa folha, e quem a devolve à raiz preservando a pose de mundo é a
+/// shell. Um painel que soubesse disso deixaria de ser drop-in.
+#[test]
+fn hier_menu_remove_from_sheet_raises_remove_with_the_clicked_row() {
+    let mut hero = setup_hero();
+    let mut state = HierarchyState::default();
+    let row = NodeId(100_506);
+    stage_hierarchy_row_snapshot(&mut hero, row);
+    let consumed = dispatch(
+        &mut hero,
+        &mut state,
+        WidgetEvent::Click(ids::CTX_MENU_HIER_REMOVE_FROM_SHEET),
+    );
+    assert!(consumed);
+    let drained: Vec<_> = hero.bus.drain().collect();
+    assert_eq!(drained, vec![EditorAction::HierRemoveFromSheet { row }]);
+}

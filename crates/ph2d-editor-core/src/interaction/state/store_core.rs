@@ -59,6 +59,10 @@ impl WidgetStore {
             new_image_size: 512, // default square size highlighted when the modal opens
             new_image_bg: 0,     // default background = transparent
             new_image_request: None,
+            // ⚠️ Semeado no `open_sheet_size_dialog` com o que o empacotador SUGERE para aquelas
+            // peças; este valor é só o que aparece antes de haver sugestão nenhuma.
+            sheet_size: 1024,
+            sheet_size_request: None,
             fill_modal: None,
             onion_modal: None,
             command_palette: None,

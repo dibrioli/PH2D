@@ -669,6 +669,18 @@ impl App {
                         t.rotation = new_t.rotation;
                         t.scale = ph2d_core::Vec2::new(new_t.scale[0], new_t.scale[1]);
                     }
+                    // **UMA PEÇA NÃO SAI DA FOLHA PELO ARRASTO** (Enio 2026-08-19).
+                    //
+                    // ⚠️ Confina-se DEPOIS de escrever, e não antes: o que o gizmo calcula é para
+                    // onde o dedo aponta, e essa é a resposta certa à pergunta dele. Torcer a
+                    // entrada faria a peça arrastar-se com um desvio — o dedo num sítio e a peça
+                    // noutro — enquanto corrigir a saída faz o que o artista lê: ela acompanha o
+                    // dedo e **encosta** na borda.
+                    //
+                    // ⚠️ E vale para rotação e escala também, não só para Translate: crescer uma
+                    // peça encostada à borda empurra-a para fora tanto quanto arrastá-la. A porta
+                    // é a mesma; ela não faz nada quando a entidade não é filha de uma folha.
+                    crate::sheet_bounds::confine(&mut gfx.sim, entity);
                     // Multi-selection TRANSLATE: rigid-body shift — add the
                     // dragged primary's world delta to every extra's start
                     // translation, converted into each extra's LOCAL frame via
@@ -697,6 +709,12 @@ impl App {
                                 t.rotation = st.rotation;
                                 t.scale = ph2d_core::Vec2::new(st.scale[0], st.scale[1]);
                             }
+                            // ⚠️ **Cada extra confina-se sozinho.** Uma seleção múltipla pode ter
+                            // peças de folhas DIFERENTES (ou nenhuma): a fronteira é do pai de
+                            // cada uma, não do arrasto. Confinar o grupo como bloco rígido pararia
+                            // as cinco porque uma chegou à borda — e as outras quatro não têm nada
+                            // a ver com essa borda.
+                            crate::sheet_bounds::confine(&mut gfx.sim, extra_entity);
                         }
                     }
                 }

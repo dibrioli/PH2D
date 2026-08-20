@@ -136,6 +136,15 @@ pub enum ContextMenuKind {
     /// (`CTX_MENU_NEW_IMAGE_CREATE`). Create raises a `(size, bg)` request the shell services via
     /// `spawn_blank_canvas`; outside-click cancels. The selected size/bg live on the `WidgetStore`.
     NewImageDialog,
+    /// **O modal de resolução da folha** (Enio 2026-08-19): abre ao escolher "Pack into Sheet" na
+    /// hierarquia, e a folha só nasce no Create. Uma fila de resoluções quadradas
+    /// (`CTX_MENU_SHEET_SIZES`) + o botão `CTX_MENU_SHEET_SIZE_CREATE`; clicar fora cancela.
+    ///
+    /// ⚠️ **O tamanho da folha passa a ser AUTORADO, e isso muda o re-arranjo:** antes ele
+    /// redimensionava a folha para caber o encaixe, o que agora apagaria a escolha do artista. Ele
+    /// encaixa DENTRO da resolução escolhida, e o que não couber acende a moldura — vide
+    /// `sheet_bounds::health`.
+    SheetSizeDialog,
     /// Right-clicked on a Painter brush Falloff curve control point. Menu offers
     /// the two handle types — Vector (sharp corner) / Auto (smooth). No payload:
     /// the secondary-click already selected the point; the chrome handler routes

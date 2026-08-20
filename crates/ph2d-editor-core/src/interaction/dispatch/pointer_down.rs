@@ -176,42 +176,10 @@ pub(super) fn dispatch_down<'frame>(
     // type into it. Same for any scene row (the click is
     // routed via apply_event which closes the menu after
     // updating the chip).
-    if store.context_menu().is_some() {
-        let hit_id = hit.map(|(id, _)| id);
-        let inside_scene_list = matches!(
-            store.context_menu().map(|r| r.kind),
-            Some(ContextMenuKind::SceneList)
-        ) && matches!(
-            hit_id,
-            Some(id) if id == crate::ids::CTX_SCENE_SEARCH
-                || crate::ids::CTX_SCENE_ROWS.contains(&id)
-        );
-        // And the palette-rename modal: its shared name field + Rename button.
-        let inside_palette_rename = matches!(
-            store.context_menu().map(|r| r.kind),
-            Some(ContextMenuKind::RenamePaletteDialog)
-        ) && matches!(
-            hit_id,
-            Some(id) if id == crate::ids::BLENDER_PALETTE_NAME
-                || id == crate::ids::CTX_MENU_PALETTE_RENAME
-        );
-        // And the New-image modal: clicking a Size / Background radio or Create must NOT dismiss it
-        // (the user picks size, then background, then Create — all in one open).
-        let inside_new_image = matches!(
-            store.context_menu().map(|r| r.kind),
-            Some(ContextMenuKind::NewImageDialog)
-        ) && hit_id.is_some_and(|id| {
-            id == crate::ids::CTX_MENU_NEW_IMAGE_CREATE
-                || crate::ids::CTX_MENU_NEW_IMAGE_SIZES
-                    .iter()
-                    .any(|(_, b)| *b == id)
-                || crate::ids::CTX_MENU_NEW_IMAGE_BGS
-                    .iter()
-                    .any(|(_, b)| *b == id)
-        });
-        if !inside_scene_list && !inside_palette_rename && !inside_new_image {
-            store.close_context_menu();
-        }
+    if store.context_menu().is_some()
+        && !super::pointer_down_menus::click_belongs_to_the_open_menu(store, hit.map(|(id, _)| id))
+    {
+        store.close_context_menu();
     }
 
     // Close the global color picker when the click lands

@@ -312,6 +312,10 @@ pub struct WidgetStore {
     /// Set by the modal's Create button — `Some((size_px, bg))` the shell polls + clears to spawn a
     /// blank canvas. Decouples the editor-core modal from the shell's `spawn_blank_canvas` (no I/O here).
     pub(super) new_image_request: Option<(u32, u8)>,
+    /// Resolução escolhida no modal da folha, em pixels de lado.
+    pub(super) sheet_size: u32,
+    /// Pedido pendente de criação de folha, em pixels de lado — a shell drena-o.
+    pub(super) sheet_size_request: Option<u32>,
     /// Fill (Bucket) "Fill adjust" floating modal: `Some((x, y))` = the card's top-left in screen px
     /// (open); `None` = closed. Opened at the ColorDrop release point by the shell; dragging the title
     /// band offsets it. Its threshold slider's value lives in the `PAINTER_FILL_MODAL_SLIDER` widget.

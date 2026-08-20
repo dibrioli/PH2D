@@ -79,7 +79,12 @@ pub(crate) fn spawn_if_enabled(
     if bits.is_empty() {
         return None;
     }
-    match crate::sheet_frame::create_from_selection(sim, scene, map, &bits, ppm) {
+    // ⚠️ A resolução do smoke é FIXA de propósito: a porta de produção pergunta-a num modal (Enio
+    // 2026-08-19), e um smoke que abrisse o modal deixaria de montar a cena em UM passo — que é a
+    // única coisa que ele existe para fazer. 512 cabe as cinco peças (a maior é 160 px) com folga
+    // para o artista as arrastar sem esbarrar na borda logo.
+    let size_px = 512;
+    match crate::sheet_frame::create_from_selection(sim, scene, map, &bits, ppm, size_px) {
         Ok(sheet) => Some((sheet, bits.len())),
         Err(e) => {
             eprintln!("[sheet-smoke] a folha nao nasceu: {e}");

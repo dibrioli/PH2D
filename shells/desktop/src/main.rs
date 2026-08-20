@@ -379,6 +379,8 @@ mod scroll_smoke;
 mod sculpt3d;
 mod shape_build;
 mod shape_build_gesture;
+/// As fronteiras da folha — confinar uma peça, e contar o que está mal.
+mod sheet_bounds;
 mod sheet_frame;
 mod sheet_import;
 /// `PH2D_SHEET_SMOKE` — a cena que exerce a folha como OBJETO (plano `docs/Sprite_projeto/17` §7).
@@ -830,6 +832,7 @@ impl App {
             vec_conn_handle: None,
             vec_blend: None,
             vec_restack: Vec::new(),
+            pending_sheet_targets: Vec::new(),
             vec_connect_pending: None,
             vec_cut_pending: None,
             vec_connect_sides: crate::connector_live::SideCache::new(),

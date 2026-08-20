@@ -80,6 +80,7 @@ mod settings_ppm;
 mod settings_present;
 mod settings_text;
 mod settings_unit;
+mod sheet_size;
 mod theme;
 mod timeline_segment;
 mod tokens_toggle;
@@ -142,6 +143,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || settings_text::apply(hero, event)
         || palette_rename::apply(hero, event)
         || new_image::apply(hero, event)
+        || sheet_size::apply(hero, event)
         || fill_modal::apply(hero, event)
         || onion_modal::apply(hero, event)
         || command_palette::apply(hero, event)

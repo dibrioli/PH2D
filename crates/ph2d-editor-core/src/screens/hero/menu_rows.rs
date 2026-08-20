@@ -170,6 +170,8 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         ContextMenuKind::RenamePaletteDialog => &[],
         // The New-image modal paints its size/bg radios + Create in its own branch below.
         ContextMenuKind::NewImageDialog => &[],
+        // O modal de resolução da folha desenha o próprio corpo, como os irmãos acima.
+        ContextMenuKind::SheetSizeDialog => &[],
         // M14.6 F + M14.7: per-row Hierarchy actions. Order follows
         // the Unity / Godot / Blender convention: Rename first (the
         // most common edit), then additive ops (Duplicate, Add
@@ -184,6 +186,11 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // os pixels e destrói os originais; este ARRANJA-os e mantém cada peça viva e
             // editável dentro da folha. A ordem lê-se como "junte-os" → "quão junto?".
             (ids::CTX_MENU_HIER_PACK_SHEET, "Pack into Sheet", None),
+            (
+                ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
+                "Remove from Sheet",
+                None,
+            ),
             (
                 ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
                 "Use as Brush Shape",

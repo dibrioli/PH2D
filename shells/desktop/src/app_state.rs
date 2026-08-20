@@ -436,6 +436,15 @@ pub(crate) struct App {
     /// blends que a seleção toca, e cada um pede a sua própria fatia contígua de z. Guardar só uma
     /// seria um corte silencioso — o 2º blend sairia com a pilha errada e ninguém saberia.
     pub(crate) vec_restack: Vec<Vec<ph2d_vec_scene::VecPathId>>,
+    /// As peças RESERVADAS enquanto o modal de resolução da folha está aberto (Enio 2026-08-19).
+    ///
+    /// ⚠️ **Reservadas, não recalculadas.** O modal é modal para o rato, mas o mundo continua a
+    /// andar — e ler a seleção outra vez no Create leria o que ela for ENTÃO. O artista pediu para
+    /// empacotar *aquele* conjunto; a pergunta e a resposta têm de falar do mesmo.
+    ///
+    /// Esvazia-se no Create (`std::mem::take`). Cancelar o modal deixa-as aqui, e é inofensivo: o
+    /// pedido nunca é armado, então nada as lê — e a abertura seguinte sobrescreve-as.
+    pub(crate) pending_sheet_targets: Vec<u64>,
     pub(crate) window: Option<Arc<Window>>,
     pub(crate) host: Option<WinitHost>,
     pub(crate) gfx: Option<AppGfx>,

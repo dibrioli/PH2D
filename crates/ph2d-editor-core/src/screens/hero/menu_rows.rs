@@ -186,6 +186,14 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // os pixels e destrói os originais; este ARRANJA-os e mantém cada peça viva e
             // editável dentro da folha. A ordem lê-se como "junte-os" → "quão junto?".
             (ids::CTX_MENU_HIER_PACK_SHEET, "Pack into Sheet", None),
+            // Os três verbos da folha ficam juntos e nesta ordem — entrar, arrumar, sair —, que é
+            // a ordem em que o artista os encontra. O do meio ESTEVE dentro do primeiro, e foi
+            // por isso que ninguém o achou.
+            (
+                ids::CTX_MENU_HIER_ARRANGE_SHEET,
+                "Auto-Arrange Pieces",
+                None,
+            ),
             (
                 ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
                 "Remove from Sheet",

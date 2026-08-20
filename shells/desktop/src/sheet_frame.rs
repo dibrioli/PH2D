@@ -18,14 +18,16 @@
 //! undo que o app já tem. *A representação apaga o caso especial.* O auto-arranjo apenas
 //! **propõe** poses; quem decide é o artista, com o mouse.
 //!
-//! ## O RE-arranjo voltou COM o botão, como prometido
+//! ## Os três verbos, e por que são três itens de menu
 //!
-//! ⚠️ O verbo *"arranjar outra vez"* foi escrito, ficou **órfão** (o `dead_code` apanhou-o) e foi
-//! **removido** — porque escrever a função e ligá-la depois é o *"armar e fiar depois"* que a
-//! DIRETIVA proíbe, e é a doença que esta linha inteira existe para curar (a seção Render Source
-//! tinha três controles mortos por esse mecanismo). Ele volta agora, no MESMO commit em que
-//! nasce o pill que o chama: clicar `[SHEET]` com uma folha selecionada re-arranja os filhos
-//! dela. *Uma função sem chamador não é trabalho adiantado; é código morto com data de validade.*
+//! Entrar (**Pack into Sheet**), arrumar (**Auto-Arrange Pieces**) e sair (**Remove from Sheet**),
+//! cada um com o seu item no menu de contexto da hierarquia.
+//!
+//! ⚠️ O do meio esteve **dentro** do primeiro — um item que fazia duas coisas conforme o alvo — e
+//! a economia era falsa: *um verbo que só se descobre por ter selecionado a coisa certa não está
+//! no menu, está escondido nele.* O Enio pediu-o pelo nome em 2026-08-19, que é a prova de que não
+//! o encontrava. Cada item faz uma coisa e, quando não pode, **aponta para o irmão** em vez de
+//! fazer calado algo diferente do que o rótulo promete.
 
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, SpriteSheetFrame, Transform, VecShape};
 use ph2d_editor::{Toast, ToastQueue};
@@ -48,7 +50,7 @@ pub(crate) fn sheets_among(sim: &SimWorld, targets: &[u64]) -> Vec<u64> {
         .collect()
 }
 
-/// **RE-ARRANJAR** as folhas dadas, com os toasts. Devolve se houve o que reportar.
+/// **RE-ARRANJAR** as folhas dadas, com os toasts.
 ///
 /// ⚠️ Não sai no primeiro erro: com duas folhas alvo, a segunda tem de ser arranjada na mesma.
 /// Reporta-se a PRIMEIRA razão — ela nomeia a peça grande demais, e é isso que diz ao artista o
@@ -198,7 +200,7 @@ pub(crate) fn create_from_selection(
     Ok(entity.to_bits())
 }
 
-/// Re-arranja os filhos de uma folha que já existe — o `[SHEET]` clicado sobre a própria folha.
+/// Re-arranja os filhos de uma folha que já existe — o **"Auto-Arrange Pieces"** do menu.
 ///
 /// ⚠️ **Isto escreve `Transform`, e não viola a lei do [ADR-0153]** (*"o passe publica onde as
 /// coisas ficam; ele não escreve onde elas estão"*). Aquela proíbe um passe **por-quadro** de

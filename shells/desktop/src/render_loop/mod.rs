@@ -2598,6 +2598,8 @@ impl crate::App {
             // "Pack into Sheet" do menu de contexto da hierarquia — a 2ª porta do verbo do pill
             // `[SHEET]`. Guarda a LINHA (não a entidade): quem a resolve é o `bridge`, no dreno.
             let mut pack_sheet_row: Option<NodeId> = None;
+            // "Auto-Arrange Pieces" — re-encaixar os filhos de uma folha que já existe.
+            let mut arrange_sheet_row: Option<NodeId> = None;
             // "Remove from Sheet" — a saída da folha, pela linha clicada.
             let mut remove_from_sheet_row: Option<NodeId> = None;
             let mut use_as_brush_texture_row: Option<NodeId> = None;
@@ -3610,6 +3612,9 @@ impl crate::App {
                     }
                     EditorAction::HierPackSheet { row } => {
                         pack_sheet_row.get_or_insert(row);
+                    }
+                    EditorAction::HierArrangeSheet { row } => {
+                        arrange_sheet_row.get_or_insert(row);
                     }
                     EditorAction::HierRemoveFromSheet { row } => {
                         remove_from_sheet_row.get_or_insert(row);
@@ -8793,8 +8798,16 @@ impl crate::App {
             }
             if !sheet_targets.is_empty() {
                 let ppm = hero.project.pixels_per_meter;
-                let sheets = crate::sheet_frame::sheets_among(sim, &sheet_targets);
-                if sheets.is_empty() {
+                // ⚠️ **Um item, um verbo — e este item CRIA.** Ele fazia as duas coisas conforme o
+                // alvo (com sprites criava, com uma folha re-arranjava), e a economia era falsa:
+                // um verbo que só se descobre por ter selecionado a coisa certa não está no menu,
+                // está escondido nele. O Enio pediu o segundo **pelo nome** (2026-08-19), que é a
+                // prova de que ele não o encontrava. Agora recusar aponta para onde ele mora.
+                if !crate::sheet_frame::sheets_among(sim, &sheet_targets).is_empty() {
+                    toasts.push(Toast::warning(
+                        "Pack into Sheet: that is already a sheet - use Auto-Arrange Pieces",
+                    ));
+                } else {
                     // **CRIAR pergunta primeiro** (Enio 2026-08-19: *"Ao criar uma sheet um modal
                     // com a resolução deve aparecer antes da criação"*). Os alvos ficam
                     // RESERVADOS até o Create — o modal é modal, mas o mundo continua a andar, e
@@ -8811,9 +8824,35 @@ impl crate::App {
                             toasts.push(Toast::warning("Sheet: select at least one sprite first"));
                         }
                     }
+                }
+                self.title_dirty = true;
+            }
+            // **ARRUMAR AS PEÇAS AUTOMATICAMENTE** — o item próprio (Enio 2026-08-19: *"uma opção
+            // no menu do botão direito da sheet: arrumar as sprites filhas automaticamente"*).
+            //
+            // ⚠️ Ele não pergunta resolução nenhuma: ela foi escolhida quando a folha nasceu, e o
+            // gesto aqui é *arrume*, não *redimensione*. O que não couber acende a moldura.
+            //
+            // ⚠️ E aceita a SELEÇÃO inteira, como os irmãos: com três folhas selecionadas, arruma
+            // as três. A lei de alvo é a mesma do "Merge Sprites" — a seleção quando a linha
+            // clicada faz parte dela, só ela quando não faz — porque duas leis de alvo no mesmo
+            // menu seriam adivinhação.
+            if let Some(row) = arrange_sheet_row
+                && let Some(live) = hero_live.as_ref()
+                && let Some(anchor) = live.bridge.entity_for(row)
+            {
+                let mut targets: Vec<u64> = Vec::new();
+                if hero.gizmo.is_selected(anchor) {
+                    targets.extend(hero.gizmo.iter_selected());
                 } else {
-                    // **RE-ARRANJAR não pergunta**: a resolução já foi escolhida quando a folha
-                    // nasceu, e o gesto aqui é *arrume*, não *redimensione*.
+                    targets.push(anchor);
+                }
+                let sheets = crate::sheet_frame::sheets_among(sim, &targets);
+                if sheets.is_empty() {
+                    toasts.push(Toast::warning(
+                        "Auto-Arrange: select a sheet - to make one, use Pack into Sheet",
+                    ));
+                } else {
                     crate::sheet_frame::repack_all(sim, vec_scene, &sheets, toasts);
                 }
                 self.title_dirty = true;

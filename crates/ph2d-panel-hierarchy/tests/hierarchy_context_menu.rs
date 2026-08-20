@@ -230,3 +230,54 @@ fn hier_menu_remove_from_sheet_raises_remove_with_the_clicked_row() {
     let drained: Vec<_> = hero.bus.drain().collect();
     assert_eq!(drained, vec![EditorAction::HierRemoveFromSheet { row }]);
 }
+
+/// "Auto-Arrange Pieces" — o verbo que ESTAVA escondido dentro do "Pack into Sheet", agora com
+/// item próprio (Enio, 2026-08-19: *"uma opção no menu do botão direito da sheet: arrumar as
+/// sprites filhas automaticamente"*).
+#[test]
+fn hier_menu_arrange_sheet_raises_arrange_with_the_clicked_row() {
+    let mut hero = setup_hero();
+    let mut state = HierarchyState::default();
+    let row = NodeId(100_507);
+    stage_hierarchy_row_snapshot(&mut hero, row);
+    let consumed = dispatch(
+        &mut hero,
+        &mut state,
+        WidgetEvent::Click(ids::CTX_MENU_HIER_ARRANGE_SHEET),
+    );
+    assert!(consumed);
+    let drained: Vec<_> = hero.bus.drain().collect();
+    assert_eq!(drained, vec![EditorAction::HierArrangeSheet { row }]);
+}
+
+/// ⚠️ **Os três verbos da folha são três AÇÕES distintas.** Enquanto "arrumar" vivia dentro de
+/// "criar", o menu tinha dois itens para três coisas — e era o alvo, não o rótulo, que decidia o
+/// que acontecia. Este teste é o que impede a fusão de voltar por conveniência: se dois destes
+/// items passarem a levantar a mesma ação, ele reprova.
+#[test]
+fn the_three_sheet_verbs_raise_three_different_actions() {
+    let rows = [
+        ids::CTX_MENU_HIER_PACK_SHEET,
+        ids::CTX_MENU_HIER_ARRANGE_SHEET,
+        ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
+    ];
+    let mut seen: Vec<EditorAction> = Vec::new();
+    for (i, id) in rows.iter().enumerate() {
+        let mut hero = setup_hero();
+        let mut state = HierarchyState::default();
+        let row = NodeId(100_600 + i as u64);
+        stage_hierarchy_row_snapshot(&mut hero, row);
+        assert!(dispatch(&mut hero, &mut state, WidgetEvent::Click(*id)));
+        let mut drained: Vec<_> = hero.bus.drain().collect();
+        assert_eq!(drained.len(), 1, "cada item levanta UMA acao");
+        let action = drained.remove(0);
+        assert!(
+            !seen
+                .iter()
+                .any(|a| std::mem::discriminant(a) == std::mem::discriminant(&action)),
+            "dois items da folha levantam a MESMA acao ({action:?}) — o rotulo deixaria de \
+             prometer o que o item faz, e qual dos dois corre passaria a depender do alvo"
+        );
+        seen.push(action);
+    }
+}

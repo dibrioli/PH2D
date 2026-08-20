@@ -193,17 +193,16 @@ pub const CTX_MENU_HIER_RENAME: NodeId = hash_node_id("ctx_menu_hier_rename");
 /// toast when fewer than 2 sprites are selected (silent no-op
 /// otherwise feels broken).
 pub const CTX_MENU_HIER_MERGE_SPRITES: NodeId = hash_node_id("ctx_menu_hier_merge_sprites");
-/// Enio 2026-08-19: "Pack into Sheet" — o MESMO verbo do pill `[SHEET]` da fila de Image Tools,
-/// alcançável de onde o artista já está a escolher os objetos.
+/// Enio 2026-08-19: "Pack into Sheet" — **cria** a folha com os sprites da seleção dentro.
 ///
-/// Dois verbos numa linha só, escolhidos pelo que está selecionado, tal como no pill: com sprites
-/// ⇒ nasce a folha com elas arranjadas dentro; com uma folha ⇒ o encaixe é REFEITO (depois de
-/// acrescentar, tirar ou redimensionar uma peça).
+/// ⚠️ **Ele CRIA, e só isso.** Já fez duas coisas conforme o alvo (com uma folha selecionada,
+/// re-arranjava) — vide [`CTX_MENU_HIER_ARRANGE_SHEET`], que é esse verbo posto ao nome. Clicá-lo
+/// sobre uma folha agora recusa e aponta para lá, em vez de fazer calado uma coisa diferente da
+/// que o rótulo promete.
 ///
-/// ⚠️ **Ele não duplica o pill, alcança-o.** O trabalho vive num sítio só — `sheet_frame` —, e a
-/// hierarquia levanta a mesma ação; se um dia divergirem, é porque alguém escreveu a segunda
-/// cópia. Semântica de seleção idêntica à do "Merge Sprites" vizinho: a folha leva a seleção
-/// inteira quando a linha clicada faz parte dela, e só essa linha quando não faz.
+/// A criação abre primeiro o modal de resolução ([`CTX_MENU_SHEET_SIZES`]); a folha só nasce no
+/// Create. Semântica de seleção idêntica à do "Merge Sprites" vizinho: leva a seleção inteira
+/// quando a linha clicada faz parte dela, e só essa linha quando não faz.
 pub const CTX_MENU_HIER_PACK_SHEET: NodeId = hash_node_id("ctx_menu_hier_pack_sheet");
 /// Enio 2026-08-19: "Remove from Sheet" — a saída. A peça deixa de ser filha da folha e volta a
 /// ser um objeto de raiz, **onde está** (a preservação de mundo do reparent trata disso).
@@ -215,6 +214,17 @@ pub const CTX_MENU_HIER_PACK_SHEET: NodeId = hash_node_id("ctx_menu_hier_pack_sh
 /// um arrasto só responde a quem já sabe. O trabalho é o MESMO caminho
 /// (`HierReparentIntent { new_parent: None }`), de propósito.
 pub const CTX_MENU_HIER_REMOVE_FROM_SHEET: NodeId = hash_node_id("ctx_menu_hier_remove_from_sheet");
+/// Enio 2026-08-19: "Auto-Arrange Pieces" — re-encaixa os filhos DENTRO da resolução da folha.
+///
+/// ⚠️ **Este verbo já existia, escondido dentro do [`CTX_MENU_HIER_PACK_SHEET`]:** aquele item
+/// fazia duas coisas conforme o alvo — criava com sprites, re-arranjava com uma folha. Parecia
+/// economia («a pergunta é sempre *arrume isto*») e não era: um verbo que só se descobre por ter
+/// selecionado a coisa certa **não está no menu**, está escondido nele. O Enio pediu-o pelo nome,
+/// e esse pedido é a prova.
+///
+/// Agora cada item faz UMA coisa e diz porquê quando não pode: o Pack recusa uma folha e aponta
+/// para aqui; este recusa o que não for folha e aponta para lá.
+pub const CTX_MENU_HIER_ARRANGE_SHEET: NodeId = hash_node_id("ctx_menu_hier_arrange_sheet");
 
 // **O modal de resolução da folha** (Enio 2026-08-19: *"Ao criar uma sheet um modal com a
 // resolução deve aparecer antes da criação"*). Abre-se ao escolher "Pack into Sheet" e a criação

@@ -234,6 +234,13 @@ pub enum EditorAction {
     /// RE-ARRANJA os filhos dela.
     HierPackSheet { row: ph2d_a11y::NodeId },
 
+    /// "Auto-Arrange Pieces" — re-encaixa os filhos da folha DENTRO da resolução dela
+    /// (Enio 2026-08-19). Payload: a `NodeId` da linha clicada, que tem de ser uma folha.
+    ///
+    /// ⚠️ **Não redimensiona.** A resolução foi escolhida no modal quando a folha nasceu; este
+    /// gesto é *arrume*, não *redimensione*. O que não couber acende a moldura.
+    HierArrangeSheet { row: ph2d_a11y::NodeId },
+
     /// "Remove from Sheet" — a peça deixa a folha e volta a ser objeto de raiz, **onde está**
     /// (Enio 2026-08-19). Payload: a `NodeId` da linha clicada.
     ///

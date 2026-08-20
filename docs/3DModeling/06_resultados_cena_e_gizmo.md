@@ -1,7 +1,10 @@
-# W5 — a peça vira uma CENA de objetos, e ganha o gizmo (2026-08-20)
+# W5 + W6 — a peça vira uma CENA de objetos, e ganha o gizmo (2026-08-20)
 
-> **O que este doc é:** o mecanismo das duas metades da W5 e os números que decidiram o desenho.
-> O estado do módulo vive no [README](README.md); a história, no handoff da wave.
+> **O que este doc é:** o mecanismo das duas waves e os números que decidiram o desenho.
+> O estado do módulo vive no [README](README.md); a história, no handoff.
+>
+> **§1–§4 são a W5** (a cena de objetos + o gizmo de MOVER) · **§5 é a W6** (rodar, escalar, e o
+> undo que estava partido).
 
 Enio, no smoke de 19/08:
 
@@ -155,15 +158,103 @@ medição antes de código.
 
 ---
 
-## §5 — Aberto
+## §5 — W6: os outros dois verbos, e um undo que estava partido (20/08)
+
+### ⚠️ O undo de um arrasto estava partido, e a nota da W5 estava ERRADA
+
+A §5 anterior dizia que *"um arrasto longo vira N passos de undo"* e mandava agrupar por gesto.
+**Medir primeiro mostrou as duas metades da verdade**, e nenhuma era a da nota:
+
+| Facto | Onde |
+|---|---|
+| O `post_frame_undo` **já** tem a lei: *"um gesto em andamento espera o fim"* | [`undo.rs`](../../shells/desktop/src/undo.rs) |
+| Ela lê o `held_button`, que este módulo **nunca chega a pôr** | o gancho consome o `Down` e volta na linha 3183; o `held_button` é escrito na 3202 |
+| Logo, nem a supressão nem a **marca de entrada** alcançavam o gesto | o passo só se registava colado à próxima ação do artista, seja ela qual for |
+
+⭐ *A lei estava certa e não alcançava este gesto.* A cura não foi um sistema de agrupamento — foi
+`gesture_in_progress()` (só o arrasto do **gizmo** conta: orbitar não autora nada) consultada pelo
+`post_frame_undo`, mais `any_input_this_frame` marcado no *move* **e** no *up*. O segundo é
+load-bearing: um arrasto cujo último movimento caiu num quadro anterior ficaria sem quadro nenhum a
+marcar entrada.
+
+⚠️ Um dos dois gates **lê a fonte** do `undo.rs` e diz por extenso o que prova: que o cano está
+ligado. Ele não prova que a supressão funciona (isso é a lei do shell, que já tem os gates dela) —
+impede a **fiação órfã**, que foi o modo de falha exato.
+
+### Rodar
+
+3 argolas de eixo + a **argola de vista**. ⭐ **O ângulo é medido no PLANO DE ROTAÇÃO**, levando o
+cursor lá pelo raio — e não em pixels em torno do centro projetado.
+
+⚠️ O atalho comum (ângulo na tela) **mente fora do eixo da vista**: a projeção de um círculo é uma
+elipse, e o ângulo na elipse não é o ângulo no círculo. O gesto ficaria rápido de um lado e lento do
+outro, e uma volta inteira **não fecharia**. O gate soma 36 passos **em torno da elipse projetada** e
+exige 2π a 10⁻³.
+
+`rotate_world` faz a conjugação `inv(R_pai) ⊗ Q ⊗ R_pai`. ⚠️ Sem o sanduíche, um giro em torno do X
+do **mundo** aplicado a um filho de pai rodado giraria em torno do X **do pai** — o eixo errado, e
+ninguém diria que o culpado é o gizmo.
+
+### Escalar — ⛔ UMA alça, e é uma decisão medida
+
+[ADR-0161 §6]: escala não-uniforme **destrói a propriedade de distância**. Três caixas por eixo
+(as do Blender) seriam três controles a **prometer o que o modelo não entrega** — arrastar a de X
+escalaria os três, e o artista concluiria que o app tem um bug que ele não tem.
+
+A alça é **um punho de tamanho**, não um eixo: por isso não leva cor de eixo, e por isso o rótulo diz
+**"Size"** e não "Scale". A direção do punho (canto superior direito) é **cosmética** — a lei do
+arrasto depende só do raio ao centro.
+
+Lei: **razão de raios**. ⭐ Duas metades de um arrasto **multiplicam** — somar diferenças daria ×2,2
+onde tem de dar ×1,21, e o defeito só apareceria com o rato depressa.
+
+`Motion` substituiu o `[f32; 3]` do pedido: os três verbos compõem de formas diferentes (somar ·
+compor · multiplicar), e um vetor para os três obrigaria quem recebe a adivinhar qual é qual pelo
+modo em que o gizmo estava.
+
+### ⭐ Um defeito que o gate apanhou antes do smoke
+
+A argola de **vista** fica, por construção, exatamente no plano da câmera: a profundidade de todo
+ponto dela é zero — e em `f32` esse zero sai como ±10⁻⁷ aleatório. Com o teste `>= 0` ela saía com
+**3 pontos de 48**: uma fieira de pedaços soltos onde devia estar um anel.
+
+Duas curas na mesma linha, e as duas nomeiam o que curam:
+
+1. a profundidade passa a sair do **deslocamento**, nunca de `ponto − origem` — a subtração cancela
+   dois números grandes e o erro que sobra escala com a distância da peça ao zero;
+2. `RING_FRONT_EPS = 10⁻⁵` nomeia o recurso (**precisão da representação**), duas ordens acima do
+   ruído e cinco abaixo de qualquer fronteira real de meia-argola. É o irmão do `PRECISION_FLOOR`.
+
+### As duas portas do verbo
+
+O **seletor no painel** (grupo segmentado adaptativo — num painel estreito ele reflui em vez de
+quebrar o texto dentro do botão) e as teclas **`G` / `R` / `S`**, as do Blender. ⚠️ As teclas são
+guardadas por *"ponteiro sobre a janela 3D"*, que é a diferença entre um atalho e três letras comuns
+sequestradas de todo campo de texto do app — a mesma nota que o `Home` já tinha, e que este módulo
+já viu envelhecer uma vez.
+
+⚠️ A lista de verbos que o painel mostra é **derivada de `Mode::ALL`**: o painel não conhece o enum,
+e o intent devolve a **posição**. Acrescentar um quarto verbo é uma linha no shell.
+
+### Provas de mutação (as duas restauradas)
+
+| Mutação | Reprovou |
+|---|---|
+| ângulo de rotação pela metade | `a_full_turn_of_the_cursor_is_a_full_turn_of_the_part` |
+| conjugação do pai removida | `a_world_axis_spin_stays_on_the_world_axis_under_a_rotated_parent` |
+
+---
+
+## §6 — Aberto
 
 - ⏸️ orientação **local** dos eixos (produto — o Blender expõe um seletor)
-- ⏸️ **rotacionar** e **escalar**: o gizmo entrega mover. As outras duas são a mesma máquina com
-  outra lei de arrasto, e cada uma tem a sua pergunta de produto (a escala é **uniforme** neste
-  módulo, por [ADR-0161 §6](../architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md))
+- ✅ **rotacionar e escalar FECHARAM** na W6 (§5)
 - ⏸️ clicar na peça em 3D para selecionar (§4)
 - ⏸️ **snap** e leitura numérica do deslocamento durante o arrasto
-- ⏸️ o `undo` de um arrasto é o da casa (snapshot por diff), e **um arrasto longo vira N passos** —
-  a mesma cerca que os knobs de painel já têm registada, e a cura é a mesma família (agrupar por
-  gesto), não um sistema novo
+- ✅ **o undo de um arrasto FECHOU** na W6 (§5) — e a nota que estava aqui estava **errada**: a lei
+  do shell já existia e o que faltava era o módulo dizer-se. *Meça o mecanismo antes de construir o
+  que a nota prescreve.*
+- ⏸️ **rotação e tamanho não têm leitura numérica nem snap** durante o arrasto (o mover também não)
+- ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
+  e entra com a UI que o escolhe
 - ⏸️ perspectiva (herdado da W2) — quando entrar, entra **num sítio**: `Orbit::project`

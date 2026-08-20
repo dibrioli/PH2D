@@ -13,13 +13,13 @@ são `min` e um operador sobre dois números, e o **raio do fillet fica editáve
 |---|---|
 | [`01_resultados_spike.md`](01_resultados_spike.md) | ⭐ **O QUE FOI MEDIDO (W0, 19/08).** As imagens, os números e as 6 decisões que eles forçaram. Nenhum kill-criterion disparou; a **quina viva** reprovou e tem mecanismo nomeado |
 | [`04_resultados_perfis.md`](04_resultados_perfis.md) | ⭐ **O QUE FOI MEDIDO (W3, 19/08).** O desenho da caneta virando sólido: o sinal sem `if`, as duas tabelas de custo que escolhem a tolerância, os dois oráculos independentes, e o **gatilho medido que NÃO foi construído** |
-| [`06_resultados_cena_e_gizmo.md`](06_resultados_cena_e_gizmo.md) | ⭐ **O QUE FOI MEDIDO (W5, 20/08).** A peça deixa de ser um objeto e vira uma **cena de objetos**; o **gizmo 3D de mover**. As três medições que decidiram onde a pose 3D mora, os três números derivados das alças, e os 6 gates da costura ponteiro↔gizmo |
+| [`06_resultados_cena_e_gizmo.md`](06_resultados_cena_e_gizmo.md) | ⭐ **O QUE FOI MEDIDO (W5+W6, 20/08).** A peça deixa de ser um objeto e vira uma **cena de objetos**; o **gizmo 3D** com os três verbos. As três medições que decidiram onde a pose 3D mora, os números derivados das alças, os 6 gates da costura ponteiro↔gizmo — e o **undo de um arrasto, que estava partido por um motivo que a nota anterior errava** |
 | [`05_resultados_imagem.md`](05_resultados_imagem.md) | ⭐ **A IMAGEM (19/08).** Anti-serrilhado adaptativo (borda = 0,5–1,2 % dos pixels), traçado no tamanho real, composição pré-multiplicada — e **o 73× que não era o preço do raio, era o lote grande demais para haver threads que chegassem** |
 | [`03_plano_implicito.md`](03_plano_implicito.md) | **O PLANO VIVO.** A rota escolhida: a tese, o motor (`fidget`, medido), o arredondamento e sua armadilha, a quina viva, arquitetura, waves e kill-criteria |
 | [`02_o_que_torna_boolean_e_fillet_extraordinarios.md`](02_o_que_torna_boolean_e_fillet_extraordinarios.md) | **Por que esta rota.** Mede que o Blender 4.5 já resolveu a booleana e que o buraco é o arredondamento. As 3 famílias candidatas |
 | [`00_plano_port.md`](00_plano_port.md) | ⛔ **Rota substituída** — não execute as waves. Continuam fonte: o **§1** (estudo do original: 9 leis, 19 operações) e o **§2** (inventário da PH2D). O **§7** segue válido: por que **não** se escreve um kernel do zero |
 
-**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3 e W5
+**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3, W5 e W6
 fechadas** · a W2 tem o traçado no shell e a perspectiva **aberta**; o canvas 3D de primeira classe
 segue **aberto**.
 
@@ -30,6 +30,7 @@ segue **aberto**.
 | **W2** — ver a coisa | 🔶 | [`ph2d-field-render`](../../crates/ph2d-field-render/) (o traçado, 11 gates) + o smoke no shell. Traçado **no tamanho real da área**, com **anti-serrilhado adaptativo por +3 % a +24 %** ([doc 05](05_resultados_imagem.md)). **Falta:** perspectiva |
 | **W4** — a ferramenta | 🔶 | Navegação por mouse ([`field3d_input.rs`](../../shells/desktop/src/field3d_input.rs)): **rotação LIVRE** sem polos ([doc 05](05_resultados_imagem.md) §7), pan, zoom sem teto herdado, `Home`. E o **painel** ([`ph2d-panel-model3d`](../../crates/ph2d-panel-model3d/), 6 gates): ⭐ **o raio de cada operação, editável ao vivo** — a promessa do módulo virada em controle. **Falta:** o canvas de primeira classe |
 | **W5** — a cena e o gizmo | ✅ | ⭐ **Cada primitiva é um OBJETO da cena** (`ph2d-field-ecs`: `cook`/`spawn_doc`, ida e volta gateada) e o documento é **cozido** do mundo a cada quadro · ⭐ o **gizmo 3D de mover** (3 setas + 3 planos + disco de vista, [`field3d_gizmo.rs`](../../shells/desktop/src/field3d_gizmo.rs)), com 9 gates de lei e **6 de costura**. Tokens `axis-x/y/z` no design system. [doc 06](06_resultados_cena_e_gizmo.md) |
+| **W6** — os três verbos | ✅ | ⭐ **Rodar** (3 argolas + a de vista; o ângulo é medido no PLANO, não em pixels — uma volta fecha) e **escalar** (⛔ UMA alça: a escala é uniforme por [ADR-0161 §6](../architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md), e três caixas por eixo prometeriam o que o modelo não dá). Seletor no painel + teclas `G`/`R`/`S`. E **um arrasto voltou a ser UM passo de undo**. [doc 06 §5](06_resultados_cena_e_gizmo.md) |
 | **W3** — os perfis | ✅ | [`ph2d-field-profile`](../../crates/ph2d-field-profile/) (a costura com o editor vetorial, 8 gates) + `Extrude`/`Revolve`. **O desenho da caneta vira sólido**, e o raio de quina do editor arredonda as arestas verticais. `FIELD_DOC_VERSION` → **2** |
 
 **Como entrar — DUAS portas:**
@@ -58,9 +59,18 @@ na diagonal. O preço é o horizonte poder ficar inclinado — daí a tecla de r
 
 ⭐ **A peça é uma CENA DE OBJETOS.** A Hierarquia mostra `Model` com um filho por primitiva
 (`Cylinder`, `Cylinder 2`, …) — cada um com nome, pose própria, salvo e desfeito. Clique numa linha
-e **as setas do gizmo aparecem no objeto**: arraste uma para o mover no eixo, um quadrado para o
-mover no plano, o anel do meio para o mover no plano da tela. O botão **direito continua a girar a
-vista** mesmo por cima do gizmo.
+e **o gizmo aparece no objeto**. No topo do painel há três botões — **Move · Rotate · Size** — e as
+teclas `G`, `R` e `S` fazem o mesmo (com o rato sobre a janela 3D):
+
+- **Move**: arraste uma seta para andar num eixo, um quadrado para andar num plano, o anel do meio
+  para andar na direção da tela.
+- **Rotate**: arraste uma argola colorida para girar naquele eixo, ou a argola de fora para girar na
+  direção da tela.
+- **Size**: arraste o punho do canto para aumentar ou diminuir. ⚠️ **Uniforme** — é o que a peça
+  entrega, e é por isso que o botão diz *Size* e não *Scale*.
+
+O botão **direito continua a girar a vista** mesmo por cima do gizmo, e **um arrasto inteiro é um só
+Ctrl+Z**.
 ⚠️ Até 19/08 a peça era **um** objeto com a árvore escondida dentro dele, e até essa manhã não era
 objeto nenhum: o `FieldObject` da W1 estava registado e **sem produtor**, e o gate daquela wave
 media a metade errada — que o componente *sobrevive* ao snapshot, nunca que alguma coisa o *põe* no

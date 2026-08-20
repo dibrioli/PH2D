@@ -13,6 +13,7 @@ são `min` e um operador sobre dois números, e o **raio do fillet fica editáve
 |---|---|
 | [`01_resultados_spike.md`](01_resultados_spike.md) | ⭐ **O QUE FOI MEDIDO (W0, 19/08).** As imagens, os números e as 6 decisões que eles forçaram. Nenhum kill-criterion disparou; a **quina viva** reprovou e tem mecanismo nomeado |
 | [`04_resultados_perfis.md`](04_resultados_perfis.md) | ⭐ **O QUE FOI MEDIDO (W3, 19/08).** O desenho da caneta virando sólido: o sinal sem `if`, as duas tabelas de custo que escolhem a tolerância, os dois oráculos independentes, e o **gatilho medido que NÃO foi construído** |
+| [`05_resultados_imagem.md`](05_resultados_imagem.md) | ⭐ **A IMAGEM (19/08).** Anti-serrilhado adaptativo (borda = 0,5–1,2 % dos pixels), traçado no tamanho real, composição pré-multiplicada — e **o 73× que não era o preço do raio, era o lote grande demais para haver threads que chegassem** |
 | [`03_plano_implicito.md`](03_plano_implicito.md) | **O PLANO VIVO.** A rota escolhida: a tese, o motor (`fidget`, medido), o arredondamento e sua armadilha, a quina viva, arquitetura, waves e kill-criteria |
 | [`02_o_que_torna_boolean_e_fillet_extraordinarios.md`](02_o_que_torna_boolean_e_fillet_extraordinarios.md) | **Por que esta rota.** Mede que o Blender 4.5 já resolveu a booleana e que o buraco é o arredondamento. As 3 famílias candidatas |
 | [`00_plano_port.md`](00_plano_port.md) | ⛔ **Rota substituída** — não execute as waves. Continuam fonte: o **§1** (estudo do original: 9 leis, 19 operações) e o **§2** (inventário da PH2D). O **§7** segue válido: por que **não** se escreve um kernel do zero |
@@ -25,7 +26,7 @@ com o painel, na W4).
 |---|---|---|
 | **W0** — spike + imagem | ✅ | Os dois arredondamentos exatos a **0,00 %**; vértice triplo fecha; JIT **5,3×**; a aresta viva da **malha** serrilha (item aberto, mecanismo nomeado) |
 | **W1** — documento + ADR | ✅ | [ADR-0161](../architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) · [`ph2d-field`](../../crates/ph2d-field/) (o documento, 12 gates) · [`ph2d-field-eval`](../../crates/ph2d-field-eval/) (a avaliação, 9 gates) · [`ph2d-field-ecs`](../../crates/ph2d-field-ecs/) (a ponte, 4 gates + 2 no shell). **Um objeto de campo é salvo e desfeito** |
-| **W2** — ver a coisa | 🔶 | [`ph2d-field-render`](../../crates/ph2d-field-render/) (o traçado, 6 gates) + o smoke no shell. **Medido: 25 ms a 640×480**, 14× o serial. **Falta:** órbita por mouse e perspectiva |
+| **W2** — ver a coisa | 🔶 | [`ph2d-field-render`](../../crates/ph2d-field-render/) (o traçado, 8 gates) + o smoke no shell. Traçado **no tamanho real da área**, com **anti-serrilhado adaptativo por +3 % a +24 %** ([doc 05](05_resultados_imagem.md)). **Falta:** órbita por mouse e perspectiva |
 | **W3** — os perfis | ✅ | [`ph2d-field-profile`](../../crates/ph2d-field-profile/) (a costura com o editor vetorial, 8 gates) + `Extrude`/`Revolve`. **O desenho da caneta vira sólido**, e o raio de quina do editor arredonda as arestas verticais. `FIELD_DOC_VERSION` → **2** |
 
 **Smoke (roda agora):**

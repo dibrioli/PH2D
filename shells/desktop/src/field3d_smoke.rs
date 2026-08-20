@@ -33,16 +33,18 @@ use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Profile, Xform};
 use ph2d_field_render::{Matcap, Orbit, shade, trace};
 use ph2d_vec_scene::{VecPath, VecVertex};
-use ph2d_vector::{ImageQuality, VectorScene};
+use ph2d_vector::{Affine, ImageQuality, VectorScene};
 
-/// Lado do traçado. ⚠️ Fixo e modesto de propósito: a pergunta deste smoke é *"a forma está
-/// certa?"*, e 640×480 responde a ela em 25 ms. Subir a resolução aqui é subir o custo do prato
-/// giratório, não a qualidade da resposta.
-const TRACE_W: u32 = 640;
-const TRACE_H: u32 = 480;
+/// O menor traçado que ainda é uma imagem — só para não pedir zero pixels a uma área degenerada.
+const MIN_TRACE: u32 = 16;
 
-/// Quanto a peça gira por traçado, em radianos.
-const SPIN: f32 = 0.035;
+/// Quanto a peça gira **por segundo**, em radianos.
+///
+/// ⚠️ **Por segundo, e não por quadro** (correção do smoke de 19/08). Com um passo por quadro, a
+/// velocidade da peça era função do custo do traçado: baixar a resolução acelerava a rotação e
+/// subi-la travava-a. Isso confunde as duas perguntas que um prato giratório responde — *"a forma
+/// está certa?"* e *"isto corre depressa?"* — e faz a segunda mentir sobre a primeira.
+const SPIN_RATE: f32 = 0.5;
 
 /// O fundo do quadro: **transparente**.
 ///
@@ -56,11 +58,24 @@ struct Smoke {
     doc: FieldDoc,
     matcap: Arc<MatcapTexels>,
     cam: Orbit,
-    /// O último quadro pronto, guardado para desenhar enquanto o próximo não chega.
-    frame: Option<Arc<Vec<u8>>>,
-    inflight: Option<Receiver<(usize, Vec<u8>)>>,
+    /// O último quadro pronto — com o tamanho a que foi traçado, para o desenhar sem esticar
+    /// enquanto o próximo (já do tamanho novo) não chega.
+    frame: Option<(Arc<Vec<u8>>, u32, u32)>,
+    inflight: Option<Receiver<Ready>>,
+    /// Quando o pedido em voo saiu — é o relógio que faz a rotação ser por SEGUNDO.
+    since: std::time::Instant,
     /// Já anunciou o primeiro quadro? Ver a nota do `boot`.
     announced: bool,
+}
+
+/// O que uma requisição de traçado devolve.
+struct Ready {
+    rgba: Vec<u8>,
+    width: u32,
+    height: u32,
+    hits: usize,
+    edges: usize,
+    millis: f64,
 }
 
 struct MatcapTexels {
@@ -296,7 +311,8 @@ fn boot() -> Option<Smoke> {
     let n: u32 = std::env::var("PH2D_FIELD_SMOKE").ok()?.parse().unwrap_or(1);
     let doc = scene(n);
     println!(
-        "[field-smoke] traçado {TRACE_W}x{TRACE_H}, prato giratório — feche a janela para sair"
+        "[field-smoke] traçado no tamanho REAL da área, com anti-serrilhado — prato giratório, \
+         feche a janela para sair"
     );
     Some(Smoke {
         doc,
@@ -304,6 +320,7 @@ fn boot() -> Option<Smoke> {
         cam: Orbit::default(),
         frame: None,
         inflight: None,
+        since: std::time::Instant::now(),
         announced: false,
     })
 }
@@ -320,16 +337,20 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
         // Colhe o traçado que ficou pronto, se ficou.
         if let Some(rx) = &smoke.inflight {
             match rx.try_recv() {
-                Ok((hits, rgba)) => {
+                Ok(r) => {
                     if !smoke.announced {
                         smoke.announced = true;
                         // ⚠️ Uma linha, uma vez. É ela que separa "o smoke subiu" de "o smoke
                         // DESENHOU": o boot já imprime acima, e um boot sem quadro é exatamente o
                         // modo de falha em que a janela fica vazia e ninguém sabe de quem é a culpa.
                         // Zero pixels aqui = a peça está fora do quadro ou o campo saiu vazio.
-                        println!("[field-smoke] primeiro quadro desenhado — {hits} pixels de peça");
+                        println!(
+                            "[field-smoke] primeiro quadro desenhado — {}x{}, {} pixels de peça, \
+                             {} de borda re-amostrada, {:.1} ms",
+                            r.width, r.height, r.hits, r.edges, r.millis
+                        );
                     }
-                    smoke.frame = Some(Arc::new(rgba));
+                    smoke.frame = Some((Arc::new(r.rgba), r.width, r.height));
                     smoke.inflight = None;
                 }
                 Err(TryRecvError::Empty) => {}
@@ -337,16 +358,31 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
             }
         }
 
+        // ⚠️ **O traçado sai no tamanho REAL da área** (correção do smoke de 19/08: *"render
+        // pixelado"*). Antes ele era fixo em 640×480 e o desenho reamostrava para a área — e uma
+        // imagem reamostrada é uma imagem com metade da informação, num módulo cuja razão de
+        // existir é a nitidez da aresta. *A resolução do traçado é a da tela, não a de um número
+        // que alguém escolheu.*
+        let (tw, th) = (
+            (area.w.round().max(1.0) as u32).max(MIN_TRACE),
+            (area.h.round().max(1.0) as u32).max(MIN_TRACE),
+        );
+
         // Uma requisição em voo por vez: só pede a próxima quando a anterior chegou.
         if smoke.inflight.is_none() {
-            smoke.cam.yaw += SPIN;
-            let (tx, rx) = channel::<(usize, Vec<u8>)>();
+            let dt = smoke.since.elapsed().as_secs_f32();
+            smoke.since = std::time::Instant::now();
+            // Trava o passo: se a janela ficou minimizada meia hora, a peça não dá vinte voltas de
+            // uma vez.
+            smoke.cam.yaw += SPIN_RATE * dt.min(0.25);
+            let (tx, rx) = channel::<Ready>();
             let doc = smoke.doc.clone();
             let cam = smoke.cam;
             let matcap = Arc::clone(&smoke.matcap);
             std::thread::spawn(move || {
-                let g = trace(&doc, &cam, TRACE_W, TRACE_H);
-                let px = shade(
+                let t0 = std::time::Instant::now();
+                let g = trace(&doc, &cam, tw, th);
+                let rgba = shade(
                     &g,
                     &Matcap {
                         side: matcap.side,
@@ -355,31 +391,36 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
                     BACKGROUND,
                 );
                 // O receptor pode ter sumido (janela fechada): descartar é a resposta certa.
-                let _ = tx.send((g.hits(), px));
+                let _ = tx.send(Ready {
+                    rgba,
+                    width: tw,
+                    height: th,
+                    hits: g.hits(),
+                    edges: g.edges.len(),
+                    millis: t0.elapsed().as_secs_f64() * 1000.0,
+                });
             });
             smoke.inflight = Some(rx);
         }
 
-        if let Some(frame) = &smoke.frame {
-            // Encaixa o quadro na área mantendo a proporção do traçado — esticar deformaria a peça,
-            // que é exatamente o que este smoke existe para deixar ver.
-            let scale = (area.w / TRACE_W as f32).min(area.h / TRACE_H as f32);
-            let (dw, dh) = (TRACE_W as f32 * scale, TRACE_H as f32 * scale);
-            let x0 = area.x + (area.w - dw) * 0.5;
-            let y0 = area.y + (area.h - dh) * 0.5;
-            scene_out.draw_image_rgba(
+        if let Some((frame, fw, fh)) = &smoke.frame {
+            // O quadro cobre a área toda — ele foi traçado com a proporção dela. Enquanto o
+            // primeiro traçado do tamanho novo não chega, o anterior estica; é um quadro só, e
+            // esticar é melhor do que piscar.
+            scene_out.draw_image_rgba_premultiplied_transformed(
                 frame,
-                TRACE_W,
-                TRACE_H,
-                (
-                    f64::from(x0),
-                    f64::from(y0),
-                    f64::from(x0 + dw),
-                    f64::from(y0 + dh),
-                ),
-                // Bicúbico: a imagem é reamostrada para a tela, e o que este smoke mostra é
-                // justamente a suavidade de uma superfície curva e a retidão de uma aresta.
-                ImageQuality::High,
+                *fw,
+                *fh,
+                Affine::translate((f64::from(area.x), f64::from(area.y)))
+                    * Affine::scale_non_uniform(
+                        f64::from(area.w) / f64::from(*fw),
+                        f64::from(area.h) / f64::from(*fh),
+                    ),
+                // ⚠️ **Bilinear, não bicúbico.** No caso normal o mapeamento é 1:1 e os dois são a
+                // identidade — mas o bicúbico **toca** (*ringing*) numa aresta de alto contraste, e
+                // agora que a aresta sai anti-serrilhada do traçador, um halo posto pelo filtro
+                // seria o próprio artefato que se acabou de remover.
+                ImageQuality::Medium,
             );
         }
     });

@@ -19,6 +19,10 @@ fn sphere(radius: f32) -> FieldDoc {
 /// Cada pixel é um gather puro contra uma árvore imutável e escreve só o próprio slot — então a
 /// saída paralela tem de ser **byte-idêntica** à serial. Se algum dia alguém somar entre pixels, ou
 /// partilhar um avaliador, este gate cai antes de o artefato aparecer numa imagem.
+///
+/// ⚠️ **E compara as BORDAS também.** A segunda passagem é a que divide o trabalho por lotes, e é
+/// nela que uma reordenação passaria despercebida — a máscara sairia igual e só as bordas mudariam
+/// de sítio, que é o tipo de diferença que não se vê num quadro parado e cintila num que gira.
 #[test]
 fn the_threaded_trace_is_byte_identical_to_the_serial_one() {
     let doc = sphere(0.6);
@@ -32,6 +36,15 @@ fn the_threaded_trace_is_byte_identical_to_the_serial_one() {
     assert_eq!(
         par.normal, ser.normal,
         "as normais divergiram entre paralelo e serial"
+    );
+    assert!(!par.edges.is_empty(), "a esfera tem borda — senão não mede");
+    let key = |g: &Gbuffer| -> Vec<(u32, [bool; 4], [[f32; 3]; 4])> {
+        g.edges.iter().map(|e| (e.pixel, e.hit, e.normal)).collect()
+    };
+    assert_eq!(
+        key(&par),
+        key(&ser),
+        "as bordas divergiram entre paralelo e serial — a segunda passagem perdeu a ordem"
     );
 }
 
@@ -138,21 +151,27 @@ fn the_view_space_normal_faces_the_camera_and_is_unit_length() {
     }
 }
 
-/// O sombreamento respeita a máscara: fundo onde não há peça, e cor onde há.
+/// Um matcap sintético 2×2: o suficiente para provar a costura, sem carregar asset.
+const TOY_MATCAP: [f32; 12] = [0.1, 0.1, 0.1, 0.9, 0.2, 0.2, 0.2, 0.9, 0.9, 0.5, 0.5, 0.5];
+
+fn toy(side: u32, texels: &[f32]) -> Matcap<'_> {
+    Matcap {
+        side,
+        rgb_linear: texels,
+    }
+}
+
+/// **Sem anti-serrilhado, a máscara é a lei**: fundo onde não há peça, cor onde há, e nada no meio.
+///
+/// ⚠️ Este gate ficou explicitamente **sem AA** quando o AA entrou, e não foi afrouxado por isso: o
+/// que ele mede é a costura entre a máscara e o pintor, e essa relação continua a ser exata. Quem
+/// mede o AA é o gate irmão.
 #[test]
-fn shading_paints_the_background_only_where_there_is_no_surface() {
-    let g = trace(&sphere(0.5), &Orbit::default(), 64, 64);
-    // Um matcap sintético 2×2: o suficiente para provar a costura, sem carregar asset.
-    let texels = [0.1, 0.1, 0.1, 0.9, 0.2, 0.2, 0.2, 0.9, 0.9, 0.5, 0.5, 0.5];
+fn without_antialiasing_shading_is_exactly_the_mask() {
+    let g = trace_with(&sphere(0.5), &Orbit::default(), 64, 64, true, false);
     let bg = [7u8, 8, 9, 255];
-    let rgba = shade(
-        &g,
-        &Matcap {
-            side: 2,
-            rgb_linear: &texels,
-        },
-        bg,
-    );
+    let rgba = shade(&g, &toy(2, &TOY_MATCAP), bg);
+    assert!(g.edges.is_empty(), "com `antialias = false` não há bordas");
     assert_eq!(rgba.len(), 64 * 64 * 4);
     let painted = rgba
         .chunks_exact(4)
@@ -173,6 +192,97 @@ fn shading_paints_the_background_only_where_there_is_no_surface() {
         background,
         64 * 64 - g.hits(),
         "todo pixel sem superfície tem de ficar com o fundo"
+    );
+}
+
+/// ⭐ **O AA existe, e produz cobertura PARCIAL de verdade.**
+///
+/// Um gate que só verificasse "a imagem mudou" passaria com o AA a escrever qualquer coisa. O que
+/// se afirma é o que define anti-serrilhado: existem pixels cuja cobertura **não é 0 nem 1**, eles
+/// vivem na silhueta, e o alfa que sai deles é intermédio.
+#[test]
+fn antialiasing_produces_real_partial_coverage_on_the_silhouette() {
+    let cam = Orbit::default();
+    let g = trace(&sphere(0.5), &cam, 64, 64);
+    assert!(
+        !g.edges.is_empty(),
+        "uma esfera contra o fundo TEM silhueta — sem bordas o detector não está a olhar"
+    );
+
+    let partial = g
+        .edges
+        .iter()
+        .filter(|e| {
+            let n = e.hit.iter().filter(|h| **h).count();
+            n > 0 && n < 4
+        })
+        .count();
+    assert!(
+        partial > 20,
+        "só {partial} pixels de cobertura parcial numa esfera de 64² — o padrão de amostragem não \
+         está a cair dentro do pixel"
+    );
+
+    // E a cobertura vira ALFA intermédio na imagem.
+    let rgba = shade(&g, &toy(2, &TOY_MATCAP), [0, 0, 0, 0]);
+    let soft = rgba
+        .chunks_exact(4)
+        .filter(|px| px[3] > 0 && px[3] < 255)
+        .count();
+    assert!(
+        soft > 20,
+        "a cobertura parcial tem de chegar ao alfa: só {soft} pixels com alfa intermédio"
+    );
+
+    // ⚠️ E o interior continua OPACO — um AA que amolecesse o miolo estaria a medir ruído da
+    // marcha, não geometria.
+    let centre = (32 * 64 + 32) * 4;
+    assert_eq!(
+        rgba[centre + 3],
+        255,
+        "o centro da esfera é interior, e interior é opaco"
+    );
+}
+
+/// ⭐ **O detector de borda olha a NORMAL, e não só a máscara.**
+///
+/// Uma aresta viva no meio da peça não muda a máscara: os dois lados acertam. Se o detector só
+/// olhasse `hit`, a quina do cubo — a coisa que este módulo existe para entregar afiada — ficaria
+/// serrilhada, e nenhum gate de silhueta acusaria.
+#[test]
+fn the_edge_detector_sees_a_sharp_crease_inside_the_mask() {
+    let cube = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Box {
+                half: [0.45; 3],
+                round: 0.0,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("cubo");
+    let g = trace(&cube, &Orbit::default(), 96, 96);
+
+    // As bordas que estão INTEIRAMENTE dentro da máscara: as quatro amostras acertam, e os quatro
+    // vizinhos do pixel também. Só uma quina produz isso.
+    let (w, h) = (96usize, 96usize);
+    let interior = g
+        .edges
+        .iter()
+        .filter(|e| {
+            let i = e.pixel as usize;
+            let (x, y) = (i % w, i / w);
+            if x == 0 || y == 0 || x + 1 == w || y + 1 == h {
+                return false;
+            }
+            e.hit.iter().all(|h| *h) && [i - 1, i + 1, i - w, i + w].iter().all(|&j| g.hit[j])
+        })
+        .count();
+    assert!(
+        interior > 30,
+        "só {interior} pixels de borda no MIOLO do cubo — o detector está a olhar apenas a \
+         máscara, e a quina viva fica serrilhada"
     );
 }
 
@@ -241,7 +351,7 @@ fn measure_trace_cost() {
 #[test]
 #[ignore]
 fn measure_profile_trace_cost() {
-    println!("arestas |   serial | paralelo | pixels");
+    println!("arestas | serial s/AA | paralelo s/AA | paralelo c/AA | bordas");
     for n in [8_usize, 16, 32, 64, 128, 256, 512] {
         let contour: Vec<[f32; 2]> = (0..n)
             .map(|i| {
@@ -265,16 +375,155 @@ fn measure_profile_trace_cost() {
         .expect("extrusão");
 
         let mut row = format!("{n:7} |");
-        let mut hits = 0;
-        for parallel in [false, true] {
+        for (parallel, aa) in [(false, false), (true, false), (true, true)] {
             let t0 = std::time::Instant::now();
-            let g = trace_with_threads(&doc, &Orbit::default(), 640, 480, parallel);
-            hits = g.hits();
+            let g = trace_with(&doc, &Orbit::default(), 640, 480, parallel, aa);
             row.push_str(&format!(
-                " {:6.1} ms |",
+                " {:9.1} ms |",
                 t0.elapsed().as_secs_f64() * 1000.0
             ));
+            if aa {
+                row.push_str(&format!(" {}", g.edges.len()));
+            }
         }
-        println!("{row} {hits}");
+        println!("{row}");
+    }
+}
+
+/// **Quanto custa o anti-serrilhado adaptativo, e sobre que fração de pixels ele corre.**
+///
+/// ⚠️ É este número que justifica a escolha de re-amostrar só as bordas em vez de supersamplear a
+/// imagem inteira. Se a fração de borda se aproximasse de 1, a adaptação deixaria de valer a pena e
+/// o certo passaria a ser 4× uniforme — e este é o instrumento que diria isso.
+///
+/// `#[ignore]`: medição.
+#[test]
+#[ignore]
+fn measure_antialias_cost() {
+    let r = 0.12_f32;
+    let cyl = |axis: [f32; 4]| {
+        ph2d_field_eval::leaf(
+            Primitive::Cylinder {
+                radius: 0.22,
+                half_height: 0.78,
+                round: 0.05,
+            },
+            Xform {
+                rotation: axis,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let doc = FieldDoc::new(
+        vec![
+            cyl([0.0, 0.0, 0.0, 1.0]),
+            cyl([s, 0.0, 0.0, s]),
+            cyl([0.0, s, 0.0, s]),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Exact { radius: r }),
+                    children: vec![NodeId(0), NodeId(1), NodeId(2)],
+                },
+            },
+        ],
+        NodeId(3),
+    )
+    .expect("junção");
+
+    println!("     quadro |  sem AA |  com AA |  bordas | % da imagem");
+    for (w, h) in [(640u32, 480u32), (1024, 1024), (1600, 1200)] {
+        let t0 = std::time::Instant::now();
+        let plain = trace_with(&doc, &Orbit::default(), w, h, true, false);
+        let raw = t0.elapsed().as_secs_f64() * 1000.0;
+        let t1 = std::time::Instant::now();
+        let aa = trace(&doc, &Orbit::default(), w, h);
+        let full = t1.elapsed().as_secs_f64() * 1000.0;
+        let px = (w as usize) * (h as usize);
+        println!(
+            "{w:5}x{h:<5} | {raw:6.1} ms | {full:6.1} ms | {:7} | {:5.2} %",
+            aa.edges.len(),
+            100.0 * aa.edges.len() as f64 / px as f64
+        );
+        assert_eq!(plain.hits(), aa.hits(), "o AA não muda a máscara base");
+    }
+}
+
+/// **Despeja um quadro para OLHAR** — o diagnóstico deste módulo, porque aqui a imagem *é* o
+/// produto e nenhum número substitui um par de olhos.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --ignored --nocapture dump_frame
+/// ```
+///
+/// Escreve um PPM (P6) por cena em `PH2D_FIELD_DUMP` (por omissão, o diretório atual), composto
+/// sobre cinza médio — é preciso um fundo para se ver o que a cobertura parcial faz na borda.
+#[test]
+#[ignore]
+fn dump_frame() {
+    let dir = std::env::var("PH2D_FIELD_DUMP").unwrap_or_else(|_| ".".into());
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let cyl = |axis: [f32; 4]| {
+        ph2d_field_eval::leaf(
+            Primitive::Cylinder {
+                radius: 0.22,
+                half_height: 0.78,
+                round: 0.05,
+            },
+            Xform {
+                rotation: axis,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let doc = FieldDoc::new(
+        vec![
+            cyl([0.0, 0.0, 0.0, 1.0]),
+            cyl([s, 0.0, 0.0, s]),
+            cyl([0.0, s, 0.0, s]),
+            ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Exact { radius: 0.12 }),
+                    children: vec![NodeId(0), NodeId(1), NodeId(2)],
+                },
+            },
+        ],
+        NodeId(3),
+    )
+    .expect("junção");
+
+    // Um matcap sintético contínuo: um degradê suave, que é onde a banda do vizinho-mais-próximo
+    // aparece. Um asset da casa não pode ser dependência desta crate (ver o `Cargo.toml`).
+    const SIDE: usize = 64;
+    let mut texels = vec![0.0f32; SIDE * SIDE * 3];
+    for y in 0..SIDE {
+        for x in 0..SIDE {
+            let (u, v) = (x as f32 / SIDE as f32, y as f32 / SIDE as f32);
+            let t = (1.0 - (u - 0.35).hypot(v - 0.3) * 1.4).clamp(0.05, 1.0);
+            let i = (y * SIDE + x) * 3;
+            texels[i] = t * 0.95;
+            texels[i + 1] = t * 0.72;
+            texels[i + 2] = t * 0.62;
+        }
+    }
+
+    for (name, aa) in [("sem-aa", false), ("com-aa", true)] {
+        let (w, h) = (400u32, 400u32);
+        let g = trace_with(&doc, &Orbit::default(), w, h, true, aa);
+        let rgba = shade(&g, &toy(SIDE as u32, &texels), [0, 0, 0, 0]);
+        // Composição sobre cinza médio: `dst = src + (1-a)*bg`, com `src` já pré-multiplicado.
+        let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
+        for px in rgba.chunks_exact(4) {
+            let a = f32::from(px[3]) / 255.0;
+            for c in &px[..3] {
+                let v = f32::from(*c) + (1.0 - a) * 90.0;
+                ppm.push(v.clamp(0.0, 255.0) as u8);
+            }
+        }
+        let path = format!("{dir}/field-{name}.ppm");
+        std::fs::write(&path, ppm).expect("escreve o despejo");
+        println!("[dump] {path} — {} pixels de borda", g.edges.len());
     }
 }

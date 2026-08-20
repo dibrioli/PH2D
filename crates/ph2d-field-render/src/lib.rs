@@ -93,6 +93,38 @@ impl Orbit {
     }
 }
 
+/// O padrão de re-amostragem de um pixel de borda: **4-rook (RGSS)**.
+///
+/// ⚠️ Quatro posições numa grelha ROTACIONADA, e não os quatro cantos de uma grelha 2×2. A razão é
+/// a que a indústria mediu há trinta anos: uma grelha alinhada dá **duas** posições distintas a uma
+/// aresta quase horizontal (as duas amostras de cima caem do mesmo lado), enquanto a rotacionada dá
+/// **quatro** — o dobro dos níveis de cobertura exatamente nas arestas que mais aparecem.
+const ROOK: [(f32, f32); 4] = [
+    (0.125, 0.625),
+    (0.375, 0.125),
+    (0.625, 0.875),
+    (0.875, 0.375),
+];
+
+/// O cosseno abaixo do qual duas normais vizinhas são **aresta**, e não curvatura.
+///
+/// ⚠️ Errar para o lado do EXCESSO é barato e errar para o lado da falta não é: um pixel de borda
+/// marcado a mais custa quatro raios; um pixel de borda **não** marcado é um degrau visível que
+/// nenhum passo posterior recupera. 0,9 ≈ 25°.
+const EDGE_COS: f32 = 0.9;
+
+/// Um pixel de borda, re-amostrado no padrão [`ROOK`].
+///
+/// ⚠️ A amostra do centro do pixel é **descartada** nestes: as quatro do padrão a substituem. Somar
+/// as cinco daria peso duplo ao centro e enviesaria a cobertura para o lado que ele calhou de
+/// apanhar.
+#[derive(Clone, Copy, Debug)]
+pub struct EdgePixel {
+    pub pixel: u32,
+    pub hit: [bool; 4],
+    pub normal: [[f32; 3]; 4],
+}
+
 /// O que o traçado sabe da superfície, por pixel. **Sem cor.**
 pub struct Gbuffer {
     pub width: u32,
@@ -101,6 +133,11 @@ pub struct Gbuffer {
     pub hit: Vec<bool>,
     /// Normal em **espaço de vista** (`z` para o observador), unitária. Lixo onde `!hit`.
     pub normal: Vec<[f32; 3]>,
+    /// Os pixels onde a imagem tem **aresta** — de silhueta ou de quina —, com quatro amostras cada.
+    ///
+    /// Vazio quando o traçado corre sem anti-serrilhado. Ordenado por `pixel`, sempre: é o que faz
+    /// a saída não depender de como as threads se dividiram.
+    pub edges: Vec<EdgePixel>,
 }
 
 impl Gbuffer {
@@ -108,12 +145,22 @@ impl Gbuffer {
     pub fn hits(&self) -> usize {
         self.hit.iter().filter(|h| **h).count()
     }
+
+    /// A **cobertura** do pixel `i` — 1,0 cheio, 0,0 vazio, e a fração exata numa borda.
+    #[must_use]
+    pub fn coverage(&self, i: usize) -> f32 {
+        if let Ok(k) = self.edges.binary_search_by_key(&(i as u32), |e| e.pixel) {
+            let n = self.edges[k].hit.iter().filter(|h| **h).count();
+            return n as f32 / 4.0;
+        }
+        if self.hit[i] { 1.0 } else { 0.0 }
+    }
 }
 
-/// Marcha o campo do documento e devolve o G-buffer.
+/// Marcha o campo do documento e devolve o G-buffer, **com anti-serrilhado adaptativo**.
 #[must_use]
 pub fn trace(doc: &FieldDoc, cam: &Orbit, width: u32, height: u32) -> Gbuffer {
-    trace_with_threads(doc, cam, width, height, true)
+    trace_with(doc, cam, width, height, true, true)
 }
 
 /// Igual a [`trace`], com o paralelismo sob controle — é o que o gate de byte-identidade dirige.
@@ -125,141 +172,308 @@ pub fn trace_with_threads(
     height: u32,
     parallel: bool,
 ) -> Gbuffer {
+    trace_with(doc, cam, width, height, parallel, true)
+}
+
+/// A porta completa.
+///
+/// # ⭐ O anti-serrilhado é ADAPTATIVO, e a razão é aritmética
+///
+/// Supersamplear a imagem inteira a 4× custa **4×**. Mas a serrilha só existe onde há **aresta**, e
+/// aresta é uma pequena fração dos pixels (medido: ver `docs/3DModeling/05_resultados_imagem.md`).
+/// Então: um raio por pixel, deteta-se onde a imagem tem descontinuidade, e **só esses** pixels
+/// levam as quatro amostras do padrão [`ROOK`].
+///
+/// ⚠️ **O detector olha DUAS coisas, e a segunda é a que quase se esquece:** a máscara (silhueta
+/// contra o fundo) *e* a **normal** (uma quina viva, ou uma superfície que passa à frente de
+/// outra). Um detector só de máscara deixa serrilhada exatamente a aresta que este módulo existe
+/// para entregar afiada.
+#[must_use]
+pub fn trace_with(
+    doc: &FieldDoc,
+    cam: &Orbit,
+    width: u32,
+    height: u32,
+    parallel: bool,
+    antialias: bool,
+) -> Gbuffer {
     let tree = ph2d_field_eval::compile(doc);
     let shape = Engine::from(tree);
-    let (right, up, fwd) = cam.basis();
+    let basis = cam.basis();
     let (w, h) = (width as usize, height as usize);
-    let half = (w.min(h) as f32) * 0.5;
+    let plane = Plane::new(w, h, cam.half_extent);
 
+    // Passo 1: um raio por pixel, uma fatia por linha.
     let row = |y: usize| -> (Vec<bool>, Vec<[f32; 3]>) {
-        // Um avaliador POR FATIA: a `fidget` precisa de estado mutável para avaliar, e partilhá-lo
-        // entre threads exigiria trava. Criar o próprio é barato e mantém a escrita disjunta, que é
-        // a condição do ADR-0109.
-        let tape = shape.float_slice_tape(Default::default());
-        let mut eval = Engine::new_float_slice_eval();
-        let mut hit = vec![false; w];
-        let mut normal = vec![[0.0f32; 3]; w];
-
-        // Origem de cada raio da fatia, e a marcha em lockstep.
-        let mut ox = vec![0.0f32; w];
-        let mut oy = vec![0.0f32; w];
-        let mut oz = vec![0.0f32; w];
-        for (x, ((px, py), pz)) in ox
-            .iter_mut()
-            .zip(oy.iter_mut())
-            .zip(oz.iter_mut())
-            .enumerate()
-        {
-            let sx = (x as f32 + 0.5 - w as f32 * 0.5) / half * cam.half_extent;
-            let sy = -(y as f32 + 0.5 - h as f32 * 0.5) / half * cam.half_extent;
-            const START: f32 = 4.0;
-            *px = cam.target[0] + right[0] * sx + up[0] * sy + fwd[0] * START;
-            *py = cam.target[1] + right[1] * sx + up[1] * sy + fwd[1] * START;
-            *pz = cam.target[2] + right[2] * sx + up[2] * sy + fwd[2] * START;
-        }
-        let dir = [-fwd[0], -fwd[1], -fwd[2]];
-
-        let mut t = vec![0.0f32; w];
-        let mut alive: Vec<u32> = (0..w as u32).collect();
-        let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
-        for _ in 0..MAX_STEPS {
-            if alive.is_empty() {
-                break;
-            }
-            xs.clear();
-            ys.clear();
-            zs.clear();
-            for &i in &alive {
-                let i = i as usize;
-                xs.push(ox[i] + dir[0] * t[i]);
-                ys.push(oy[i] + dir[1] * t[i]);
-                zs.push(oz[i] + dir[2] * t[i]);
-            }
-            let Ok(out) = eval.eval(&tape, &xs, &ys, &zs) else {
-                break;
-            };
-            let mut next = Vec::with_capacity(alive.len());
-            for (k, &i) in alive.iter().enumerate() {
-                let iu = i as usize;
-                let d = out[k];
-                if d < HIT_EPS {
-                    hit[iu] = true;
-                    continue;
-                }
-                t[iu] += d * SAFE_STEP;
-                if t[iu] < T_MAX {
-                    next.push(i);
-                }
-            }
-            alive = next;
-        }
-
-        // Normais por diferença central, em lote, só nos pixels que acertaram.
-        let idx: Vec<usize> = (0..w).filter(|i| hit[*i]).collect();
-        if !idx.is_empty() {
-            let mut gx = Vec::with_capacity(idx.len() * 6);
-            let mut gy = Vec::with_capacity(idx.len() * 6);
-            let mut gz = Vec::with_capacity(idx.len() * 6);
-            for &i in &idx {
-                let (px, py, pz) = (
-                    ox[i] + dir[0] * t[i],
-                    oy[i] + dir[1] * t[i],
-                    oz[i] + dir[2] * t[i],
-                );
-                for (dx, dy, dz) in [
-                    (NORMAL_EPS, 0.0, 0.0),
-                    (-NORMAL_EPS, 0.0, 0.0),
-                    (0.0, NORMAL_EPS, 0.0),
-                    (0.0, -NORMAL_EPS, 0.0),
-                    (0.0, 0.0, NORMAL_EPS),
-                    (0.0, 0.0, -NORMAL_EPS),
-                ] {
-                    gx.push(px + dx);
-                    gy.push(py + dy);
-                    gz.push(pz + dz);
-                }
-            }
-            if let Ok(g) = eval.eval(&tape, &gx, &gy, &gz) {
-                for (k, &i) in idx.iter().enumerate() {
-                    let b = k * 6;
-                    let world = [g[b] - g[b + 1], g[b + 2] - g[b + 3], g[b + 4] - g[b + 5]];
-                    let len =
-                        (world[0] * world[0] + world[1] * world[1] + world[2] * world[2]).sqrt();
-                    if len <= 0.0 {
-                        hit[i] = false;
-                        continue;
-                    }
-                    let n = [world[0] / len, world[1] / len, world[2] / len];
-                    // Para o espaço de VISTA — é nele que o matcap vive.
-                    normal[i] = [
-                        n[0] * right[0] + n[1] * right[1] + n[2] * right[2],
-                        n[0] * up[0] + n[1] * up[1] + n[2] * up[2],
-                        n[0] * fwd[0] + n[1] * fwd[1] + n[2] * fwd[2],
-                    ];
-                }
-            }
-        }
-        (hit, normal)
+        let pts: Vec<(f32, f32)> = (0..w)
+            .map(|x| plane.at(x as f32 + 0.5, y as f32 + 0.5))
+            .collect();
+        march(&shape, cam, basis, &pts)
     };
-
     let rows: Vec<(Vec<bool>, Vec<[f32; 3]>)> = if parallel {
         (0..h).into_par_iter().map(row).collect()
     } else {
         (0..h).map(row).collect()
     };
-
     let mut hit = Vec::with_capacity(w * h);
     let mut normal = Vec::with_capacity(w * h);
     for (rh, rn) in rows {
         hit.extend(rh);
         normal.extend(rn);
     }
+
+    // Passo 2: re-amostrar as bordas.
+    let edges = if antialias {
+        resample_edges(&shape, cam, basis, plane, &hit, &normal, parallel)
+    } else {
+        Vec::new()
+    };
+
     Gbuffer {
         width,
         height,
         hit,
         normal,
+        edges,
     }
+}
+
+/// **O núcleo**: marcha um lote arbitrário de raios e devolve `(acertou, normal de vista)`.
+///
+/// Recebe posições no **plano da câmera** (unidades de mundo), e não índices de pixel, e é isso que
+/// o deixa servir às duas passagens — a linha inteira e as quatro amostras espalhadas de um pixel
+/// de borda. *Uma marcha, um lugar.*
+fn march(
+    shape: &Engine,
+    cam: &Orbit,
+    basis: ([f32; 3], [f32; 3], [f32; 3]),
+    screen: &[(f32, f32)],
+) -> (Vec<bool>, Vec<[f32; 3]>) {
+    let (right, up, fwd) = basis;
+    let n = screen.len();
+    // Um avaliador POR LOTE: a `fidget` precisa de estado mutável para avaliar, e partilhá-lo entre
+    // threads exigiria trava. Criar o próprio é barato e mantém a escrita disjunta, que é a
+    // condição do ADR-0109.
+    let tape = shape.float_slice_tape(Default::default());
+    let mut eval = Engine::new_float_slice_eval();
+    let mut hit = vec![false; n];
+    let mut normal = vec![[0.0f32; 3]; n];
+    if n == 0 {
+        return (hit, normal);
+    }
+
+    let (mut ox, mut oy, mut oz) = (vec![0.0f32; n], vec![0.0f32; n], vec![0.0f32; n]);
+    for (i, &(sx, sy)) in screen.iter().enumerate() {
+        const START: f32 = 4.0;
+        ox[i] = cam.target[0] + right[0] * sx + up[0] * sy + fwd[0] * START;
+        oy[i] = cam.target[1] + right[1] * sx + up[1] * sy + fwd[1] * START;
+        oz[i] = cam.target[2] + right[2] * sx + up[2] * sy + fwd[2] * START;
+    }
+    let dir = [-fwd[0], -fwd[1], -fwd[2]];
+
+    let mut t = vec![0.0f32; n];
+    let mut alive: Vec<u32> = (0..n as u32).collect();
+    let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
+    for _ in 0..MAX_STEPS {
+        if alive.is_empty() {
+            break;
+        }
+        xs.clear();
+        ys.clear();
+        zs.clear();
+        for &i in &alive {
+            let i = i as usize;
+            xs.push(ox[i] + dir[0] * t[i]);
+            ys.push(oy[i] + dir[1] * t[i]);
+            zs.push(oz[i] + dir[2] * t[i]);
+        }
+        let Ok(out) = eval.eval(&tape, &xs, &ys, &zs) else {
+            break;
+        };
+        let mut next = Vec::with_capacity(alive.len());
+        for (k, &i) in alive.iter().enumerate() {
+            let iu = i as usize;
+            let d = out[k];
+            if d < HIT_EPS {
+                hit[iu] = true;
+                continue;
+            }
+            t[iu] += d * SAFE_STEP;
+            if t[iu] < T_MAX {
+                next.push(i);
+            }
+        }
+        alive = next;
+    }
+
+    // Normais por diferença central, em lote, só onde acertou.
+    let idx: Vec<usize> = (0..n).filter(|i| hit[*i]).collect();
+    if idx.is_empty() {
+        return (hit, normal);
+    }
+    let mut gx = Vec::with_capacity(idx.len() * 6);
+    let mut gy = Vec::with_capacity(idx.len() * 6);
+    let mut gz = Vec::with_capacity(idx.len() * 6);
+    for &i in &idx {
+        let (px, py, pz) = (
+            ox[i] + dir[0] * t[i],
+            oy[i] + dir[1] * t[i],
+            oz[i] + dir[2] * t[i],
+        );
+        for (dx, dy, dz) in [
+            (NORMAL_EPS, 0.0, 0.0),
+            (-NORMAL_EPS, 0.0, 0.0),
+            (0.0, NORMAL_EPS, 0.0),
+            (0.0, -NORMAL_EPS, 0.0),
+            (0.0, 0.0, NORMAL_EPS),
+            (0.0, 0.0, -NORMAL_EPS),
+        ] {
+            gx.push(px + dx);
+            gy.push(py + dy);
+            gz.push(pz + dz);
+        }
+    }
+    if let Ok(g) = eval.eval(&tape, &gx, &gy, &gz) {
+        for (k, &i) in idx.iter().enumerate() {
+            let b = k * 6;
+            let world = [g[b] - g[b + 1], g[b + 2] - g[b + 3], g[b + 4] - g[b + 5]];
+            let len = (world[0] * world[0] + world[1] * world[1] + world[2] * world[2]).sqrt();
+            if len <= 0.0 {
+                hit[i] = false;
+                continue;
+            }
+            let nrm = [world[0] / len, world[1] / len, world[2] / len];
+            // Para o espaço de VISTA — é nele que o matcap vive.
+            normal[i] = [
+                nrm[0] * right[0] + nrm[1] * right[1] + nrm[2] * right[2],
+                nrm[0] * up[0] + nrm[1] * up[1] + nrm[2] * up[2],
+                nrm[0] * fwd[0] + nrm[1] * fwd[1] + nrm[2] * fwd[2],
+            ];
+        }
+    }
+    (hit, normal)
+}
+
+/// Quantos **pixels** de borda cada lote da segunda passagem leva (× 4 amostras cada).
+///
+/// ⚠️ **Pequeno de propósito, e o número saiu de um erro medido.** A primeira versão usava 4096, com
+/// o raciocínio de "grande o bastante para o custo de montar um `tape` desaparecer" — e a medição
+/// disse que um raio de borda custava **73×** um raio comum, o que é absurdo: os dois marcham o
+/// mesmo campo. O 73 não era o preço do raio, era o preço de **três lotes numa máquina de 32
+/// núcleos**: a segunda passagem corria com 3 threads enquanto a primeira usava todas.
+///
+/// *Um número de paralelismo dimensionado por uma intuição sobre overhead, e não pela contagem de
+/// lotes que ele produz, é um `for` sequencial com um `par_` na frente.*
+const EDGE_CHUNK: usize = 64;
+
+/// A conversão pixel → plano da câmera, num tipo `Copy` em vez de num fecho.
+///
+/// ⚠️ Não é arrumação: um `dyn Fn` não é `Sync`, e a segunda passagem é paralela. Um fecho aqui
+/// **não compila** — e a alternativa (repetir a conta nos dois sítios) seria a segunda resposta à
+/// mesma pergunta, na função cujo trabalho inteiro é saber onde cai uma amostra.
+#[derive(Clone, Copy)]
+struct Plane {
+    w: f32,
+    h: f32,
+    /// Metade do lado menor, em pixels — é ele que fixa a escala, para o quadro não deformar.
+    half: f32,
+    half_extent: f32,
+}
+
+impl Plane {
+    fn new(w: usize, h: usize, half_extent: f32) -> Self {
+        Self {
+            w: w as f32,
+            h: h as f32,
+            half: (w.min(h) as f32) * 0.5,
+            half_extent,
+        }
+    }
+
+    fn at(self, x: f32, y: f32) -> (f32, f32) {
+        (
+            (x - self.w * 0.5) / self.half * self.half_extent,
+            -(y - self.h * 0.5) / self.half * self.half_extent,
+        )
+    }
+}
+
+fn resample_edges(
+    shape: &Engine,
+    cam: &Orbit,
+    basis: ([f32; 3], [f32; 3], [f32; 3]),
+    plane: Plane,
+    hit: &[bool],
+    normal: &[[f32; 3]],
+    parallel: bool,
+) -> Vec<EdgePixel> {
+    let (w, h) = (plane.w as usize, plane.h as usize);
+    let differs = |a: usize, b: usize| -> bool {
+        if hit[a] != hit[b] {
+            return true;
+        }
+        if !hit[a] {
+            return false;
+        }
+        let (p, q) = (normal[a], normal[b]);
+        p[0] * q[0] + p[1] * q[1] + p[2] * q[2] < EDGE_COS
+    };
+
+    let mut is_edge = vec![false; w * h];
+    for y in 0..h {
+        for x in 0..w {
+            let i = y * w + x;
+            // Só direita e baixo: a aresta é uma relação entre DOIS pixels, e marcar os dois quando
+            // ela aparece cobre os quatro vizinhos sem os visitar duas vezes.
+            if x + 1 < w && differs(i, i + 1) {
+                is_edge[i] = true;
+                is_edge[i + 1] = true;
+            }
+            if y + 1 < h && differs(i, i + w) {
+                is_edge[i] = true;
+                is_edge[i + w] = true;
+            }
+        }
+    }
+
+    let pixels: Vec<u32> = (0..w * h)
+        .filter(|i| is_edge[*i])
+        .map(|i| i as u32)
+        .collect();
+    if pixels.is_empty() {
+        return Vec::new();
+    }
+
+    let chunk = |c: &[u32]| -> Vec<EdgePixel> {
+        let mut pts = Vec::with_capacity(c.len() * 4);
+        for &p in c {
+            let (x, y) = ((p as usize % w) as f32, (p as usize / w) as f32);
+            for (dx, dy) in ROOK {
+                pts.push(plane.at(x + dx, y + dy));
+            }
+        }
+        let (hits, normals) = march(shape, cam, basis, &pts);
+        c.iter()
+            .enumerate()
+            .map(|(k, &p)| {
+                let b = k * 4;
+                EdgePixel {
+                    pixel: p,
+                    hit: [hits[b], hits[b + 1], hits[b + 2], hits[b + 3]],
+                    normal: [normals[b], normals[b + 1], normals[b + 2], normals[b + 3]],
+                }
+            })
+            .collect()
+    };
+
+    // ⚠️ `chunks` preserva a ordem em `collect()` mesmo em paralelo — é isso que mantém `edges`
+    // ordenado por `pixel` e a saída independente de como as threads se dividiram (ADR-0109).
+    let out: Vec<Vec<EdgePixel>> = if parallel {
+        pixels.par_chunks(EDGE_CHUNK).map(chunk).collect()
+    } else {
+        pixels.chunks(EDGE_CHUNK).map(chunk).collect()
+    };
+    out.concat()
 }
 
 /// Os texels de um matcap, **em linear**, lado × lado, RGB.
@@ -272,30 +486,129 @@ pub struct Matcap<'a> {
     pub rgb_linear: &'a [f32],
 }
 
-/// Colore o G-buffer com um matcap e devolve RGBA8.
+impl Matcap<'_> {
+    /// Amostra **bilinear**, em linear.
+    ///
+    /// ⚠️ Bilinear e não vizinho-mais-próximo: a normal varia **continuamente** sobre uma superfície
+    /// curva, e o vizinho-mais-próximo transforma essa rampa contínua nos degraus da grelha do
+    /// matcap. O sintoma é **banda** numa barriga lisa.
+    ///
+    /// ⚠️ **Quanto isto morde depende do matcap, e não foi medido no asset da casa** (749², onde a
+    /// grelha é fina o bastante para o efeito ser pequeno). Está aqui por ser o certo em qualquer
+    /// tamanho — não por ter sido a causa de um sintoma relatado. *Uma correção certa não precisa
+    /// de reivindicar um bug que ninguém provou que ela cura.*
+    #[must_use]
+    fn sample(&self, u: f32, v: f32) -> [f32; 3] {
+        let side = self.side as usize;
+        // −0,5 porque o texel é uma ÁREA e a coordenada dele é o CENTRO dela: sem isso a imagem
+        // desloca-se meio texel e as bordas do matcap espelham-se erradas.
+        let fx = (u * side as f32 - 0.5).clamp(0.0, side as f32 - 1.0);
+        let fy = (v * side as f32 - 0.5).clamp(0.0, side as f32 - 1.0);
+        let (x0, y0) = (fx.floor() as usize, fy.floor() as usize);
+        let (x1, y1) = ((x0 + 1).min(side - 1), (y0 + 1).min(side - 1));
+        let (tx, ty) = (fx - x0 as f32, fy - y0 as f32);
+        let texel = |x: usize, y: usize| -> [f32; 3] {
+            let t = (y * side + x) * 3;
+            [
+                self.rgb_linear[t],
+                self.rgb_linear[t + 1],
+                self.rgb_linear[t + 2],
+            ]
+        };
+        let (a, b, c, d) = (texel(x0, y0), texel(x1, y0), texel(x0, y1), texel(x1, y1));
+        let mut out = [0.0f32; 3];
+        for k in 0..3 {
+            let top = a[k] + (b[k] - a[k]) * tx;
+            let bot = c[k] + (d[k] - c[k]) * tx;
+            out[k] = top + (bot - top) * ty;
+        }
+        out
+    }
+
+    /// A cor de uma normal de vista. A lei de amostragem é a do matcap: `uv = n.xy * 0.5 + 0.5`.
+    #[must_use]
+    fn colour(&self, n: [f32; 3]) -> [f32; 3] {
+        let u = (n[0] * 0.5 + 0.5).clamp(0.0, 1.0);
+        let v = (1.0 - (n[1] * 0.5 + 0.5)).clamp(0.0, 1.0);
+        self.sample(u, v)
+    }
+}
+
+/// Colore o G-buffer com um matcap e devolve RGBA8 **pré-multiplicado**.
 ///
 /// A lei de amostragem é a do matcap: `uv = n.xy * 0.5 + 0.5`, com `n` em espaço de vista. É por
 /// isso que ela mora aqui, ao lado de quem produz essa normal — e não do outro lado do repositório,
 /// onde a convenção teria de ser re-afirmada num comentário.
+///
+/// # ⚠️ Pré-multiplicado, e a resolução é em LINEAR
+///
+/// Duas escolhas que não são gosto:
+///
+/// - **Pré-multiplicado** porque a imagem vai ser **filtrada** ao ser desenhada, e num alfa direto o
+///   filtro mistura a cor de pixels transparentes — cuja cor não significa nada. O sintoma é a
+///   auréola escura à volta da peça, e é *o* bug clássico de compor imagem com borda macia.
+/// - **Média em linear**, nunca em bytes sRGB. Metade de branco com metade de preto não é cinza-127
+///   — é cinza-188. Fazer a média em sRGB escurece toda borda, que é o outro bug clássico e o mais
+///   difícil de ver porque parece só "um contorno".
 #[must_use]
 pub fn shade(g: &Gbuffer, m: &Matcap<'_>, background: [u8; 4]) -> Vec<u8> {
-    let side = m.side as usize;
+    let bg_a = f32::from(background[3]) / 255.0;
+    // O fundo, já pré-multiplicado e em linear — é ele que entra na média de um pixel de borda.
+    let bg = [
+        ph2d_color::srgb::srgb_to_linear_byte(background[0]) * bg_a,
+        ph2d_color::srgb::srgb_to_linear_byte(background[1]) * bg_a,
+        ph2d_color::srgb::srgb_to_linear_byte(background[2]) * bg_a,
+        bg_a,
+    ];
+    let write = |px: &mut [u8], c: [f32; 4]| {
+        px[0] = ph2d_color::srgb::linear_to_srgb_byte(c[0]);
+        px[1] = ph2d_color::srgb::linear_to_srgb_byte(c[1]);
+        px[2] = ph2d_color::srgb::linear_to_srgb_byte(c[2]);
+        px[3] = (c[3].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+    };
+
     let mut out = vec![0u8; (g.width as usize) * (g.height as usize) * 4];
-    for (i, px) in out.chunks_exact_mut(4).enumerate() {
-        if !g.hit[i] || side == 0 {
+    if m.side == 0 {
+        for px in out.chunks_exact_mut(4) {
             px.copy_from_slice(&background);
-            continue;
         }
-        let n = g.normal[i];
-        let u = (n[0] * 0.5 + 0.5).clamp(0.0, 1.0);
-        let v = (1.0 - (n[1] * 0.5 + 0.5)).clamp(0.0, 1.0);
-        let tx = ((u * side as f32) as usize).min(side - 1);
-        let ty = ((v * side as f32) as usize).min(side - 1);
-        let t = (ty * side + tx) * 3;
-        px[0] = ph2d_color::srgb::linear_to_srgb_byte(m.rgb_linear[t]);
-        px[1] = ph2d_color::srgb::linear_to_srgb_byte(m.rgb_linear[t + 1]);
-        px[2] = ph2d_color::srgb::linear_to_srgb_byte(m.rgb_linear[t + 2]);
-        px[3] = 255;
+        return out;
+    }
+
+    for (i, px) in out.chunks_exact_mut(4).enumerate() {
+        if g.hit[i] {
+            let rgb = m.colour(g.normal[i]);
+            write(px, [rgb[0], rgb[1], rgb[2], 1.0]);
+        } else {
+            // ⚠️ Copiado, e não passado pela conversão: um pixel de fundo puro tem de sair
+            // **exatamente** com os bytes que o chamador pediu. Levá-lo pela ida-e-volta sRGB faria
+            // a cor do fundo depender da precisão de uma tabela — e um fundo que quase bate é a
+            // costura mais difícil de ver que existe.
+            px.copy_from_slice(&background);
+        }
+    }
+
+    // As bordas, resolvidas em COR — e não pela média das normais.
+    //
+    // ⚠️ A diferença aparece exatamente onde uma superfície passa à frente de outra: ali as duas
+    // normais podem ser quase opostas, e a média delas aponta para um sítio do matcap que não é
+    // nenhuma das duas cores. Média de normais é interpolar a GEOMETRIA; o que se quer é interpolar
+    // o que se vê.
+    for e in &g.edges {
+        let i = e.pixel as usize;
+        let mut acc = [0.0f32; 4];
+        for k in 0..4 {
+            let c = if e.hit[k] {
+                let rgb = m.colour(e.normal[k]);
+                [rgb[0], rgb[1], rgb[2], 1.0]
+            } else {
+                bg
+            };
+            for j in 0..4 {
+                acc[j] += c[j] * 0.25;
+            }
+        }
+        write(&mut out[i * 4..i * 4 + 4], acc);
     }
     out
 }

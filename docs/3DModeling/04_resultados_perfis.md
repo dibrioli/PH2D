@@ -62,20 +62,23 @@ que acontece.
 
 ### §3.2 — Custo de traçado (`ph2d-field-render::measure_profile_trace_cost`, 640×480)
 
-| arestas | serial | paralelo (32 threads) |
-|---:|---:|---:|
-| 8 | 65,5 ms | 10,8 ms |
-| 16 | 99,9 ms | 11,5 ms |
-| 32 | 174,7 ms | 16,0 ms |
-| **64** | 426,1 ms | **24,1 ms** |
-| 128 | 787,7 ms | 43,6 ms |
-| 256 | 1 552,2 ms | 80,6 ms |
-| 512 | 3 050,2 ms | 161,5 ms |
+⚠️ **Re-medido depois do anti-serrilhado** ([doc 05](05_resultados_imagem.md)) — a coluna que manda
+hoje é a última, porque é a que o app usa.
 
-**Baseline da W0** (a junção de três cilindros, a mesma janela): **25 ms**.
+| arestas | serial s/ AA | paralelo s/ AA | paralelo **c/ AA** |
+|---:|---:|---:|---:|
+| 8 | 126,7 ms | 9,6 ms | 10,7 ms |
+| 16 | 100,8 ms | 11,4 ms | 12,6 ms |
+| 32 | 175,2 ms | 16,3 ms | 19,4 ms |
+| **64** | 384,7 ms | 26,0 ms | **29,9 ms** |
+| 128 | 784,9 ms | 47,3 ms | 55,4 ms |
+| 256 | 1 579,6 ms | 86,8 ms | 100,1 ms |
+| 512 | 3 055,8 ms | 168,7 ms | 195,5 ms |
 
-⭐ **Logo o orçamento de um perfil é ~64 arestas** — é o ponto em que uma peça desenhada custa o
-mesmo que uma peça de primitivas.
+**Baseline** (a junção de três cilindros, a mesma janela, com AA): **7,3 ms**.
+
+⭐ **Logo o orçamento de um perfil é ~64 arestas** — 30 ms num quadro de 640×480, que é a ordem de
+grandeza de uma peça de primitivas ao mesmo tamanho.
 
 ### §3.3 — E é daí que sai o `TOLERANCE_RATIO = 1e-3`
 

@@ -499,4 +499,4 @@ const SUB_ONE: f32 = 12.86;
 
 #[path = "motion_state_demo_conferencia_utilidade.rs"]
 mod utilidade;
-pub(super) use utilidade::{cursor, field_family, join, sortkey, taper};
+pub(super) use utilidade::{cursor, drizzle, field_family, join, sortkey, taper};

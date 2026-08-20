@@ -131,6 +131,29 @@ const LANE_SHAPE_V: u32 = 3;
 /// exactly the fast ones reads as a rule rather than as variety.
 const LANE_SIZE: u32 = 4;
 
+/// **A PROBABILIDADE DE NASCER** (doc 89 folha 01 — Niagara *Spawn Probability*; Cavalry
+/// `Duration · Interval · Probability`; VFXG Single/Periodic Burst).
+///
+/// A célula listava `probability` ao lado de `count`/`time`/`period`, e os outros três
+/// shiparam na wave do burst. Este é o que sobrou, e é o que o `rate` **não** sabe fazer: o
+/// `rate` é regular, e uma chuva rala tem de ser IRREGULAR — as falhas caem onde calham.
+///
+/// ⚠️ **A composição que existia NÃO serve aqui, e o mecanismo é o §0.2 deste nó.** A rota
+/// óbvia é `field.remap(probability, seed) → motion.cull(Falloff)` — dois nós, e ela funciona
+/// numa lista parada. Verificado no código: aquele hash é `rm_hash01(i, seed)`, sobre o
+/// **ÍNDICE da instância**. Num emitter a janela viva **desliza**: quando a partícula mais
+/// velha morre, todas as outras andam um índice para trás, e a máscara **muda debaixo delas**
+/// — a chuva cintila em vez de ralear. É exactamente o motivo pelo qual `speed_random` e
+/// `size_random` também são params e não `value.instance_field(Random)`.
+///
+/// ⚠️ **Aqui o sorteio é pela IDENTIDADE (`id`), na sua própria pista** — uma partícula ou
+/// nasce ou não nasce, e a resposta é a mesma em qualquer quadro e em qualquer scrub. É a
+/// mesma lei stateless que faz o replay deste nó ser bit-exacto.
+///
+/// ⚠️ **`1` mantém TODA a gente sem caso especial**, porque a comparação é `hash < p` e
+/// `rand01` devolve `[0, 1)` — o mesmo truque que o `field.remap` documenta.
+const LANE_PROB: u32 = 5;
+
 /// Where a particle is born, relative to the emitter's origin.
 ///
 /// The **integer** the `shape_mode` param carries; anything else reads as [`Self::Point`], which
@@ -353,6 +376,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // How much each particle's size varies, as a fraction of `size` — the twin of
         // `speed_random`, one law for both. APPENDED, and `0` is the single size that always
         // shipped, byte for byte.
+        // **A PROBABILIDADE DE NASCER** — ver [`LANE_PROB`]. Apendado; `1` ⇒ literal.
+        ParamSpec {
+            name: "probability",
+            default: 1.0,
+        },
         ParamSpec {
             name: "size_random",
             default: 0.0,
@@ -390,6 +418,7 @@ impl NodeOp for MotionEmitter {
             max: (ctx.param("max").max(0.0) as usize).min(MAX_ALIVE),
             size: ctx.param("size").max(0.0),
             size_random: ctx.param("size_random"),
+            probability: ctx.param("probability"),
         };
         ctx.emit(emit(&spec, ctx.playhead() as f32));
     }
@@ -421,6 +450,8 @@ struct Spec {
     size: f32,
     /// Per-particle spread of `size`, as a fraction of it.
     size_random: f32,
+    /// A fracção das candidatas que de facto nasce — ver [`LANE_PROB`].
+    probability: f32,
 }
 
 /// **WHEN particles are born** — a steady stream, or all at once.
@@ -579,12 +610,18 @@ fn emit(spec: &Spec, t: f32) -> Stream {
 
     let (mut p, mut vel) = (Vec::with_capacity(n), Vec::with_capacity(n));
     let (mut ids, mut ages) = (Vec::with_capacity(n), Vec::with_capacity(n));
-    let (mut index, mut count) = (Vec::with_capacity(n), Vec::with_capacity(n));
     let mut sizes = Vec::with_capacity(n);
     for k in 0..n {
         let id = (w.first + k as u32) % ID_WRAP;
         // Where it is born — read BEFORE the direction now, because `Outwards`/`Inwards` are a
         // question about the offset. Pure, so hoisting it moves no value.
+        // ⚠️ **Ligar a probabilidade não remexe as que ficam, e a razão é a FORMA do hash e
+        // não a ordem deste `if`:** `rand01(seed, id, lane)` é uma função, não uma sequência —
+        // não há estado a consumir, então uma recusa não "gasta" a extracção de ninguém. É a
+        // mesma propriedade que faz o scrub deste nó ser grátis, aplicada a mais uma pista.
+        if spec.probability < 1.0 && rand01(spec.seed, id, LANE_PROB) >= spec.probability {
+            continue;
+        }
         let off = birth_offset(
             spec.shape,
             spec.shape_wh[0],
@@ -619,8 +656,6 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         // kernel has to mirror this arithmetic exactly, and the one-step form is the one that
         // cancels.
         ages.push(w.age_first - spec.spawn.age_step(w.first, k));
-        index.push(k as f32);
-        count.push(n as f32);
         // Same law as `speed_random`, same term order as the kernel — with `size_random = 0` the
         // factor is `1.0` exactly and `size × 1.0` is exact in IEEE-754, so the column is the
         // uniform one that always shipped, byte for byte.
@@ -634,6 +669,21 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         let sz = (spec.size * (1.0 + jz * spec.size_random * 2.0)).max(0.0);
         sizes.push([sz, sz]);
     }
+    // ⚠️ **`Index`/`Count` contam os SOBREVIVENTES, não as candidatas.** Eles são um facto
+    // sobre a lista que sai daqui (o `motion.tint` em gradiente divide por `Count − 1`), e uma
+    // contagem que incluísse as recusadas faria o degradê parar antes do fim.
+    let m = p.len();
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "uma contagem de partículas vivas"
+    )]
+    let index: Vec<f32> = (0..m).map(|i| i as f32).collect();
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "uma contagem de partículas vivas"
+    )]
+    let count = vec![m as f32; m];
+    let n = m;
     Stream::new(n)
         .with("P", Column::Vec2(p))
         .with("vel", Column::Vec2(vel))
@@ -672,3 +722,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "lib_tests_probability.rs"]
+mod lib_tests_probability;

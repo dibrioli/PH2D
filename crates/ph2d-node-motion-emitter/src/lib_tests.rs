@@ -5,7 +5,7 @@
 
 use super::*;
 
-fn spec() -> Spec {
+pub(super) fn spec() -> Spec {
     Spec {
         // The steady stream the node had before `emit_mode` existed — declared, never
         // inherited, the same reason the four below are.
@@ -27,6 +27,10 @@ fn spec() -> Spec {
         // reason `speed_random` and `shape` are.
         dir: DirMode::Angle,
         seed: 0,
+        // O emitter que existia antes do `probability` — DECLARADO, nunca herdado, pela mesma
+        // razão que os quatro acima: uma fixture que chega ao seu estado por um default troca
+        // de significado no dia em que o default se mexe.
+        probability: 1.0,
         max: 1024,
         size: 0.2,
         // The one size every particle had before `size_random` existed — declared, never

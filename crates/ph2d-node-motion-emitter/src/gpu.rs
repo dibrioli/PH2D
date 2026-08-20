@@ -213,5 +213,12 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
         )
     }),
     variant_by_param: None,
-    applicable: None,
+    // ⚠️ **O device é RECUSADO quando a probabilidade morde**, e a razão é a `count_law`
+    // logo acima: ela dá o tamanho do buffer a partir de aritmética (janela × cap), e um
+    // portão por hash torna a contagem dependente de DADOS. Mapear a invocação `i` para o
+    // i-ésimo sobrevivente exigiria um prefix-sum — o `motion.cull` tem a máquina para isso
+    // (`KEEP_FLAG_COL` + `StreamOp` de compactação), e ligá-la a um GERADOR com
+    // `count_law` é uma wave própria, não uma linha. Desligado (o default) nada recua, e é a
+    // mesma porta que o `reindex` do `motion.combine` usa.
+    applicable: Some(|p| p("probability") >= 1.0),
 };

@@ -151,3 +151,31 @@ pub(crate) fn field_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<
     );
     sinks
 }
+
+/// **A CENA `=67` — A CHUVA RALA** (doc 89, folha 01: a `probability` do `motion.emitter`).
+///
+/// Dois jactos com o MESMO `rate` e o MESMO `seed`; só a fracção que nasce muda.
+pub(crate) fn drizzle(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_drizzle::build_drizzle_demo_document(doc, registry).unwrap_or_default();
+    let (rate, thin) = conferencia_demos_drizzle::authored();
+    eprintln!(
+        "[drizzle-demo] DOIS jactos ({}). O mesmo rate ({rate:.0}/s) nos dois.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_drizzle::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Isto NAO e' o rate mais baixo. Baixar o rate afasta as particulas
+  REGULARMENTE -- o jacto fica ralo e certinho. A probabilidade deixa o ritmo intacto e tira
+  particulas ONDE CALHA: os buracos sao de tamanhos diferentes. E' a diferenca entre um
+  chuveiro e uma chuva.
+  (!) Clique no no' Emitter da direita e arraste o `Probability` de {thin} ate' 1: o jacto
+  ralo enche ate' ficar igual ao da esquerda, e nenhuma gota SALTA de sitio no caminho -- as
+  que ja' estavam continuam onde estavam, e as outras aparecem entre elas.
+  (!) DEU ERRADO se as gotas piscarem (aparecer/desaparecer sozinhas), se os dois jactos
+  sairem iguais, ou se mexer o Probability fizer o jacto inteiro mudar de forma."
+    );
+    sinks
+}

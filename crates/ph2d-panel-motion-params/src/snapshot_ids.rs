@@ -33,7 +33,17 @@ use ph2d_a11y::NodeId;
 ///
 /// O número é o pior caso medido mais folga de uma família; o gate é quem o mantém honesto —
 /// o nó que passar deste teto deixa a suíte VERMELHA em vez de esconder um botão.
-pub const MAX_PARAM_ROWS: usize = 16;
+///
+/// ⚠️ **`16 → 20` em 2026-08-19**, e a segunda vez que este teto é movido por medição e não
+/// por gosto. O `motion.emitter` ganhou o `probability` (doc 89 folha 01) e passou a **17**
+/// linhas — o gate reprovou com o nome do nó e a contagem, antes de o defeito chegar ao ecrã.
+/// O censo do dia, do próprio gate: `motion.emitter` **17** · `motion.spline_wrap` 14 ·
+/// `field.remap` / `value.noise` / `motion.boids` 13 · `motion.noise` 12. Os `20` são o pior
+/// caso mais três de folga, e a metade oposta do gate (`teto ≤ 2 × pior`) mantém a folga
+/// honesta: `20 ≤ 34`. **O preço são 4 slots × 21 registros = 84 registros a mais por
+/// `populate`** — e ⚠️ ele MULTIPLICA com o [`MAX_ENUM_OPTIONS`] (48) nos slots que pintam um
+/// selector, que é o que impede este número de ser «só mais um pouco».
+pub const MAX_PARAM_ROWS: usize = 20;
 
 /// Max named options a single segmented selector paints — an `Enum` row's `labels`, a
 /// `Channels` row's channels **plus its trailing "Custom…"**, and the live-column chips.

@@ -324,6 +324,17 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ **Uma FRACÇÃO, e o curso é `[0, 1]` inteiro** — o `0` (nenhuma nasce) é uma resposta
+    // legítima e visível, não um estado inválido a esconder: é como se desliga o emitter sem
+    // lhe mexer no `rate`, e é o que um `pulse.*` dirigido liga e desliga.
+    ParamUiHint {
+        param: "probability",
+        label: "Probability",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// As SEÇÕES deste nó (doc 88 B3). Dez controles numa lista plana são uma parede; a pergunta
@@ -365,6 +376,9 @@ pub static PARAM_GROUPS: &[ParamGroup] = &[
     // Quando e quantas. O `emit_mode` fica SOLTO, ao lado do `rate`: ele e o `rate` respondem a
     // mesma pergunta (*como as particulas chegam?*), e os tres abaixo sao o detalhe de UMA das
     // duas respostas.
+    // ⚠️ **O `probability` fica SOLTO, com o `rate` e o `emit_mode`, e NÃO na secção Burst** —
+    // ele vale nos dois modos, e os três da secção estão `ParamGate`-ados ao modo Burst. Um
+    // controle vivo dentro de uma secção que desaparece leria como se ele desaparecesse também.
     ParamGroup::new("burst_count", "Burst"),
     ParamGroup::new("burst_time", "Burst"),
     ParamGroup::new("burst_period", "Burst"),

@@ -528,3 +528,34 @@ pub(super) fn join(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> 
     );
     sinks
 }
+
+/// **A CENA `=63` — A ORDEM** (doc 89, folha 08: a direção arbitrária e a chave como campo).
+///
+/// Ordenar não muda ONDE as peças estão; muda QUEM é a primeira. As três bandas passam o
+/// mesmo grid pelo mesmo gradiente, que lê as colunas de identidade — a COR é a ordem.
+pub(super) fn sortkey(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_sortkey::build_sortkey_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[sort-demo] TRES bandas ({}). O MESMO grid nas tres; so' a CHAVE de ordenacao muda.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_sortkey::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) A cor E' a ordem: um gradiente le' as colunas de identidade, entao a peca mais
+  escura e' a primeira e a mais clara e' a ultima. As pecas NAO se movem entre as bandas --
+  se elas mudarem de lugar, algo alem da ordem mexeu, e ai' PARE.
+  (!) Banda 2: `Axis Angle {:.0}` -- a mesma chave `X`, girada. Antes isto custava TRES nos
+  (`rotate -> sort -> rotate` de volta). Clique no no' Sort e arraste o `Axis Angle`: a
+  diagonal da cor gira ao vivo, e em 90 ela vira o `Y`.
+  (!) Banda 3: a chave e' um CAMPO -- um `value.noise` ligado na porta `Weight`, que e' a
+  entrada nova. A cor serpenteia, porque a ordem segue o ruido e nao a geometria. Nenhum dos
+  cinco modos do dropdown sabe fazer isto.
+  (!) DEU ERRADO se as tres bandas tiverem o mesmo padrao de cor, ou se a 3 ficar igual a 1
+  (a porta `Weight` nao chegou).",
+        conferencia_demos_sortkey::diagonal(),
+    );
+    sinks
+}

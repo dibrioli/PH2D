@@ -28,6 +28,12 @@ mod hash;
 use hash::rand01;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+/// O tipo do domínio de VALOR — o campo escalar por-instância na coluna `v` (o espelho
+/// local que toda folha desta casa escreve; o vocabulário partilhado é a PORTA, não um
+/// símbolo comum).
+const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
+/// A coluna do domínio de valor.
+const VALUE_COL: &str = "v";
 
 /// Sort keys (the `key` param).
 const KEY_RADIAL: i64 = 0;
@@ -35,15 +41,53 @@ const KEY_X: i64 = 1;
 const KEY_Y: i64 = 2;
 const KEY_RANDOM: i64 = 3;
 // KEY_INDEX (4) = identity — any other value falls through to it.
+/// **A CHAVE ARBITRÁRIA** (doc 89 folha 08 — *"a chave é um ENUM de 5 respostas onde toda
+/// referência a faz um FIELD"*: Blender *Sort Elements* tem `Sort Weight` como socket,
+/// Houdini o *Sort SOP* aceita expressão).
+///
+/// ⚠️ **Um MODO do enum, e não uma porta que vence em silêncio.** A alternativa —
+/// *"weight ligado sobrepõe o enum"* — deixaria o dropdown a mostrar `Radial` enquanto a
+/// ordenação é outra coisa, que é o botão morto desta casa visto do avesso. Aqui o enum
+/// continua a ser a resposta única a *"o que é a chave?"*, e a porta só é lida quando ele
+/// aponta para ela.
+///
+/// ⚠️ Desligada no modo `Weight`, a coluna lê **zeros** ⇒ a ordenação é estável ⇒ a
+/// identidade. Nada explode, e a lista sai como entrou.
+mod trig;
+
+const KEY_WEIGHT: i64 = 5;
+
+/// **A DIREÇÃO ARBITRÁRIA** (doc 89 folha 08 — o *Sort SOP* do Houdini ordena ao longo de um
+/// VETOR).
+///
+/// A célula media a composição que já existia: `motion.rotate(θ) → motion.sort(X) →
+/// motion.rotate(−θ)` — **três nós para um knob**, que é o critério de `P1` da §7 daquele
+/// plano.
+///
+/// ⚠️ **O ângulo ROTACIONA o eixo escolhido, em vez de substituí-lo**, e é isso que o torna
+/// literal nos dois modos: em `0` o `X` continua a ser `p.x` e o `Y` continua a ser `p.y`
+/// (o `Y` é o `X` mais um quarto de volta, que é o que o enum já significava). Um ângulo que
+/// definisse a direção **absoluta** faria `Y` e `axis_angle = 0` discordarem, e um dos dois
+/// teria de ganhar em silêncio.
+const AXIS_ANGLE: &str = "axis_angle";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.sort"),
     name: "motion.sort",
-    inputs: &[PortSpec {
-        name: "in",
-        ty: INST_VEC2,
-    }],
+    inputs: &[
+        PortSpec {
+            name: "in",
+            ty: INST_VEC2,
+        },
+        // **A CHAVE COMO CAMPO** (doc 89 folha 08). Lida só no modo `Weight`; ver
+        // [`KEY_WEIGHT`]. Apendada, então todo grafo salvo continua a resolver as
+        // portas pelos mesmos índices.
+        PortSpec {
+            name: "weight",
+            ty: VALUE,
+        },
+    ],
     outputs: &[PortSpec {
         name: "out",
         ty: INST_VEC2,
@@ -75,21 +119,56 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 0.0,
         },
+        // **A DIREÇÃO do eixo**, em graus. Ver [`AXIS_ANGLE`].
+        ParamSpec {
+            name: "axis_angle",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
 
 /// The sort key for each element, given the positions and params.
-fn keys(p: &[[f32; 2]], key: i64, center: [f32; 2], seed: u32) -> Vec<f32> {
+fn keys(
+    p: &[[f32; 2]],
+    key: i64,
+    center: [f32; 2],
+    seed: u32,
+    axis_deg: f32,
+    weight: &[f32],
+) -> Vec<f32> {
+    // A direção do eixo: `X` corre em `axis_deg`, `Y` um quarto de volta depois. Em
+    // `axis_deg = 0` os dois colapsam em `p.x` e `p.y`, ao bit.
+    //
+    // ⚠️ **Ciclos e a senoide local, nunca o `f32::sin_cos` da `std`** (HR-5): aquele é a
+    // libm da PLATAFORMA, e uma ordenação é justamente onde um ulp de diferença vira uma
+    // PERMUTAÇÃO diferente — o replay cross-OS deixaria de bater. Ver o `trig.rs` ao lado.
+    let (cos, sin) = crate::trig::cos_sin_cycles(axis_deg / 360.0);
     (0..p.len())
         .map(|i| match key {
             KEY_RADIAL => {
                 let (dx, dy) = (p[i][0] - center[0], p[i][1] - center[1]);
                 dx * dx + dy * dy
             }
-            KEY_X => p[i][0],
-            KEY_Y => p[i][1],
+            // ⚠️ **O caminho de `0°` é LITERAL, e a mutação que o apaga SOBREVIVE — ele
+            // fica documentado em vez de escondido** (o precedente do `substeps = 1` da
+            // `motion.verlet_rope`). A aritmética já é exacta ali: `cos_sin_cycles(0)` dá
+            // `(1, 0)` ao bit, e `x·1 + y·0 = x` em IEEE-754 para todo `x`/`y` FINITO. O
+            // ramo existe pelo caso degenerado: com uma posição `±inf` — o que uma sim
+            // divergida produz — `0 · inf` é **NaN**, e a chave de ordenação de uma peça
+            // viraria NaN enquanto o caminho literal devolve o `inf` que ela de facto tem.
+            KEY_X if axis_deg == 0.0 => p[i][0],
+            KEY_Y if axis_deg == 0.0 => p[i][1],
+            KEY_X => p[i][0] * cos + p[i][1] * sin,
+            KEY_Y => -p[i][0] * sin + p[i][1] * cos,
             KEY_RANDOM => rand01(seed, i as u32, 0),
+            // A chave como CAMPO: a coluna do domínio de valor, com a regra 1→N desta casa
+            // (um valor só vale para todos; ausente é zero ⇒ a ordem estável, a identidade).
+            KEY_WEIGHT => match weight.len() {
+                0 => 0.0,
+                1 => weight[0],
+                _ => weight.get(i).copied().unwrap_or(0.0),
+            },
             _ => i as f32, // Index (identity)
         })
         .collect()
@@ -130,13 +209,24 @@ impl NodeOp for MotionSort {
         let descending = ctx.param("descending").round() as i64 != 0;
         let center = [ctx.param("center_x"), ctx.param("center_y")];
         let seed = ctx.param("seed").round().max(0.0) as u32;
+        let axis = ctx.param(AXIS_ANGLE);
+        // ⚠️ O peso é lido ANTES do input 0 e clonado: os dois `ctx.input` não podem
+        // coexistir emprestados, e a coluna é `Vec<f32>` (barata, e só no modo que a lê).
+        let weight: Vec<f32> = if key == KEY_WEIGHT {
+            match ctx.input(1).get(VALUE_COL) {
+                Some(Column::Scalar(v)) => v.clone(),
+                _ => Vec::new(),
+            }
+        } else {
+            Vec::new()
+        };
         let input = ctx.input(0);
         let n = input.count();
         let p: Vec<[f32; 2]> = match input.get("P") {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
-        let perm = permutation(&keys(&p, key, center, seed), descending);
+        let perm = permutation(&keys(&p, key, center, seed, axis, &weight), descending);
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             out.set(name.clone(), permute(col, &perm));
@@ -159,10 +249,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
@@ -172,7 +263,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Radial", "X", "Y", "Random", "Index"],
+            labels: &["Radial", "X", "Y", "Random", "Index", "Weight"],
         },
     },
     ParamUiHint {
@@ -199,6 +290,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: -20.0,
         max: 20.0,
         step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ **Gateado ao eixo**: num `Radial`/`Random`/`Index` o ângulo não muda um número, e
+    // pintá-lo ali seria o botão morto que esta casa recusa.
+    ParamUiHint {
+        param: AXIS_ANGLE,
+        label: "Axis Angle",
+        min: 0.0,
+        max: 360.0,
+        step: 1.0,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {
@@ -247,7 +348,7 @@ mod tests {
     #[test]
     fn radial_sort_orders_by_distance() {
         let p = vec![[3.0, 0.0], [0.0, 1.0], [-2.0, 0.0], [0.5, 0.5]];
-        let perm = permutation(&keys(&p, KEY_RADIAL, O, 0), false);
+        let perm = permutation(&keys(&p, KEY_RADIAL, O, 0, 0.0, &[]), false);
         let sorted: Vec<[f32; 2]> = perm.iter().map(|&i| p[i]).collect();
         for w in sorted.windows(2) {
             assert!(r2(w[0]) <= r2(w[1]), "radii non-decreasing: {sorted:?}");
@@ -261,9 +362,9 @@ mod tests {
     #[test]
     fn x_sort_and_descending() {
         let p = vec![[2.0, 0.0], [-1.0, 0.0], [0.5, 0.0]];
-        let asc = permutation(&keys(&p, KEY_X, O, 0), false);
+        let asc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), false);
         assert_eq!(asc, vec![1, 2, 0], "ascending by x");
-        let desc = permutation(&keys(&p, KEY_X, O, 0), true);
+        let desc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), true);
         assert_eq!(desc, vec![0, 2, 1], "descending reverses");
     }
 
@@ -272,8 +373,8 @@ mod tests {
     #[test]
     fn random_is_a_deterministic_shuffle() {
         let p: Vec<[f32; 2]> = (0..20).map(|i| [i as f32, 0.0]).collect();
-        let a = permutation(&keys(&p, KEY_RANDOM, O, 42), false);
-        let b = permutation(&keys(&p, KEY_RANDOM, O, 42), false);
+        let a = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), false);
+        let b = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), false);
         assert_eq!(a, b, "deterministic");
         assert_ne!(a, (0..20).collect::<Vec<_>>(), "actually shuffled");
         let mut sorted = a.clone();
@@ -352,3 +453,38 @@ mod tests {
         }
     }
 }
+
+/// **Que knob aparece em que chave.** Os que já existiam nunca foram gateados — o `center_*`
+/// só vale no `Radial` e o `seed` só no `Random`, e os dois eram pintados em todas —, e a
+/// wave do eixo é a ocasião de os pôr no sítio: um painel que mostra cinco números dos quais
+/// dois não fazem nada ensina que os knobs deste nó são decorativos.
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: AXIS_ANGLE,
+        when: "key",
+        #[expect(clippy::cast_possible_truncation, reason = "índices de enum, 0..5")]
+        values: &[KEY_X as i32, KEY_Y as i32],
+    },
+    ParamGate {
+        param: "center_x",
+        when: "key",
+        #[expect(clippy::cast_possible_truncation, reason = "índices de enum, 0..5")]
+        values: &[KEY_RADIAL as i32],
+    },
+    ParamGate {
+        param: "center_y",
+        when: "key",
+        #[expect(clippy::cast_possible_truncation, reason = "índices de enum, 0..5")]
+        values: &[KEY_RADIAL as i32],
+    },
+    ParamGate {
+        param: "seed",
+        when: "key",
+        #[expect(clippy::cast_possible_truncation, reason = "índices de enum, 0..5")]
+        values: &[KEY_RANDOM as i32],
+    },
+];
+
+#[cfg(test)]
+#[path = "axis_weight_tests.rs"]
+mod axis_weight_tests;

@@ -1,6 +1,6 @@
-# W5 → W10 — a peça vira uma CENA de objetos, e o módulo vira um modelador (2026-08-20)
+# W5 → W11 — a peça vira uma CENA de objetos, e o módulo vira um modelador (2026-08-20)
 
-> **O que este doc é:** o mecanismo destas seis waves e os números que decidiram cada desenho.
+> **O que este doc é:** o mecanismo destas sete waves e os números que decidiram cada desenho.
 > O estado do módulo vive no [README](README.md); a história, no handoff.
 >
 > | § | Wave | O quê |
@@ -11,6 +11,7 @@
 > | 7 | **W8** | o gesto **preso à grelha**, e o número dele |
 > | 8 | **W9** | **criar** formas e **combiná-las** |
 > | 9 | **W10** | as **dimensões** de cada forma |
+> | 10 | **W11** | **duplicar** e **apagar** |
 
 Enio, no smoke de 19/08:
 
@@ -430,7 +431,113 @@ precedente já estava registado — *um `✗` pode ser o ambiente*.
 
 ---
 
-## §9 — Aberto
+## §9 — W10: as dimensões de cada forma (20/08)
+
+### ⚠️ Só o filete era editável
+
+A única coisa que se podia escrever numa primitiva era o **raio do filete**. Não havia como dizer
+*"este cilindro tem 20 de raio e 50 de altura"* — só escalar uniformemente com o gizmo. **Um
+modelador de precisão em que não se escreve um número é um modelador de escala.**
+
+### O painel deixa de listar a árvore
+
+| Antes | Agora |
+|---|---|
+| uma linha por nó, com o raio dele | as **dimensões do que está selecionado** |
+
+⚠️ A lista antiga era uma segunda vista da **estrutura**, a competir com a Hierarquia — e sem onde
+pôr largura, altura e profundidade. A divisão passou a ser a da casa: a **Hierarquia** mostra *o que
+existe*, o **painel** mostra *os números do escolhido*. Sem seleção, ele di-lo.
+
+### ⭐ A divisão dos limites: o documento dá a PAREDE, a vista dá o CONFORTO
+
+Cada dimensão diz se tem limite de **validade** (`Dim::limit`): o filete de uma caixa não pode chegar
+à meia-extensão dela, porque a fonte encolhida deixaria de existir. Isso é do documento e não se
+negoceia.
+
+⛔ **O teto de um slider não é isso.** A largura de uma caixa não tem limite nenhum — escrever um
+seria inventar um número que a física não pede (`CLAUDE.md §0`). Quem escolhe até onde o **gesto**
+vai é a vista, e a resposta é *o que cabe no enquadramento*: uma dimensão maior do que o quadro é uma
+cujo efeito não se vê.
+
+O **campo numérico continua sem teto**: digitar 1000 é uma afirmação sobre a peça, não sobre a
+janela.
+
+### Meias-extensões não aparecem
+
+O documento guarda **meias**-extensões (é a forma que a distância assinada quer). Ninguém diz que uma
+caixa tem «meia-largura 5»: a lista devolve a largura **inteira** e a escrita volta a dividir. ⚠️ A
+conversão mora **num sítio** — sem isso, cada painel que a mostrasse teria a sua, e uma ficaria para
+trás.
+
+### ⭐ Encolher uma forma ENCOLHE o filete, e não é recusado
+
+Um filete que deixa de caber é a situação **normal**, não um erro: o artista pediu o tamanho, e o
+filete é o que **decorre** dele. Recusar obrigaria a desfazer o filete primeiro — dois gestos onde há
+um, e é o que todo CAD resolve limitando em silêncio.
+
+⚠️ **Em silêncio, mas não invisível**: o número do filete é uma linha do mesmo painel, e ela muda à
+vista. Um valor que muda sozinho **sem aparecer** seria outra coisa.
+
+### Um nome que passou a mentir
+
+`RadiusBound` → **`Bound`**. O nome descrevia o primeiro uso e deixou de dizer a verdade no dia em
+que as outras dimensões ficaram editáveis: a largura de uma caixa tem um alcance de gesto tanto
+quanto um filete tem uma parede. *Um nome que descreve o primeiro uso passa a mentir no segundo.*
+
+### Provas de mutação (as duas restauradas)
+
+| Mutação | Reprovou |
+|---|---|
+| a caixa reporta meias-extensões | `a_box_reports_full_extents_not_half_ones` |
+| o filete não é limitado ao encolher | `shrinking_a_shape_shrinks_its_fillet_instead_of_refusing` |
+
+---
+
+## §10 — W11: duplicar e apagar (20/08)
+
+Fazer quatro furos iguais era: criar um cilindro, posicionar, criar outro, **re-digitar as
+dimensões**, posicionar. **Duplicar é a alavanca que falta em qualquer modelador**, e ela não
+existia.
+
+### Duplicar copia a SUBÁRVORE
+
+Não só o nó: o caso útil é copiar um **furo** que já é ele próprio uma subtração de várias formas.
+Copiar só o topo daria um grupo vazio — e o artista veria o botão «funcionar» sem nada aparecer.
+
+⚠️ **A ordem dos filhos é preservada**, e ela é o significado numa subtração (`children[0]` menos os
+seguintes). Uma cópia que a baralhasse seria a mesma forma **só às vezes**.
+
+### ⭐ A cópia sai UM DEGRAU da grelha, para a direita da TELA
+
+Não é decoração, e a alternativa foi considerada: **duplicar em cima do original** é o que o Blender
+faz — e ele resolve o resto entrando logo em modo de mover. Aqui não há esse modo, então uma cópia
+exatamente por baixo seria **um botão que parece não fazer nada**: a única prova seria uma linha nova
+na Hierarquia.
+
+| Metade | De onde vem |
+|---|---|
+| **quanto** | o degrau da grelha — derivado do enquadramento (o menor número redondo que ainda se consegue mirar, §7) |
+| **para onde** | a **direita da câmera** — é para onde «o próximo» vai em qualquer arrumação |
+
+### ⛔ A raiz não se duplica nem se apaga pelo painel
+
+Ela **é** a peça. Apagá-la deixaria o módulo sem nada para onde voltar (a cena inicial só existe no
+primeiro quadro), e duplicá-la seria criar uma **segunda peça** — um gesto da *cena*, não uma edição
+desta. Remover a peça continua a ser da **Hierarquia**, que é de onde o desfazer a traz de volta.
+
+Apagar **limpa a seleção**: o gizmo ficaria aceso sobre uma entidade que já não existe.
+
+### Provas de mutação (as duas restauradas)
+
+| Mutação | Reprovou |
+|---|---|
+| duplicar copia só o topo | `duplicating_copies_the_whole_subtree_as_a_sibling` |
+| a raiz passa a ser apagável | `the_root_is_neither_duplicated_nor_deleted_from_the_panel` |
+
+---
+
+## §11 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)
@@ -439,6 +546,7 @@ precedente já estava registado — *um `✗` pode ser o ambiente*.
 - ✅ **o undo de um arrasto FECHOU** na W6 (§5) — e a nota que estava aqui estava **errada**: a lei
   do shell já existia e o que faltava era o módulo dizer-se. *Meça o mecanismo antes de construir o
   que a nota prescreve.*
+- ✅ **duplicar e apagar FECHARAM** na W11 (§10)
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

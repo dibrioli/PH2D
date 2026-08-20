@@ -1,6 +1,6 @@
-# W5 → W11 — a peça vira uma CENA de objetos, e o módulo vira um modelador (2026-08-20)
+# W5 → W12 — a peça vira uma CENA de objetos, e o módulo vira um modelador (2026-08-20)
 
-> **O que este doc é:** o mecanismo destas sete waves e os números que decidiram cada desenho.
+> **O que este doc é:** o mecanismo destas oito waves e os números que decidiram cada desenho.
 > O estado do módulo vive no [README](README.md); a história, no handoff.
 >
 > | § | Wave | O quê |
@@ -12,6 +12,7 @@
 > | 8 | **W9** | **criar** formas e **combiná-las** |
 > | 9 | **W10** | as **dimensões** de cada forma |
 > | 10 | **W11** | **duplicar** e **apagar** |
+> | 11 | **W12** | as mesmas duas ações, pela **Hierarquia** |
 
 Enio, no smoke de 19/08:
 
@@ -537,7 +538,59 @@ Apagar **limpa a seleção**: o gizmo ficaria aceso sobre uma entidade que já n
 
 ---
 
-## §11 — Aberto
+## §11 — W12: as mesmas duas ações, pela Hierarquia (20/08)
+
+Pedido do Enio: *"faça duplicate e delete funcionar tb na hierarchy"*.
+
+### ⚠️ Duplicar dava um SÓSIA que não desenha nada
+
+O braço genérico da Hierarquia copia `Transform` + `Sprite` + `Name`. Um nó de campo **não tem
+nenhum dos dois** (só a raiz leva `Transform`): saía uma linha na Hierarchy sobre geometria nenhuma,
+invisível para o traçado.
+
+⭐ **É o MESMO defeito que a nota vetorial daquele bloco já descreve**, um módulo adiante:
+
+| Entidade | O que o braço genérico produzia | Quem duplica de verdade |
+|---|---|---|
+| um **path vetorial** | um sósia sem geometria — ou, pior, dois donos do mesmo path | o documento vetorial, pela porta do painel |
+| um **nó de modelagem 3D** | uma linha sem `FieldNode` nem `FieldPose` | `field3d_scene::duplicate_node`, a porta do painel |
+
+*Uma entidade cuja geometria não está nela não se duplica clonando-a.* A decisão passou a ter nome
+(`duplicate_kind`) e a tabela dos dois precedentes vive no doc dela — o terceiro módulo que caia
+nisto encontra-a antes de a pagar.
+
+E a cópia sai pela **mesma porta** do botão do painel: uma lei, dois chamadores. Duas contas para
+*"onde vai a cópia?"* divergiriam no primeiro ajuste, com o artista a ver o mesmo gesto fazer duas
+coisas conforme por onde o pediu.
+
+### ⚠️ Apagar a peça fazia-a VOLTAR no quadro seguinte
+
+*Delete* já funcionava para um nó. Para a **peça**, não: a ponte oferecia o documento **cozido** como
+semente, e o comentário ao lado afirmava que ele *"deixa de existir"* — o que **nunca foi verdade**,
+ele é reescrito a cada quadro. Sem raiz, a ponte replantava o que tinha acabado de cozer.
+
+`Smoke::seed` separou-se do `Smoke::doc`, e a ponte **tira** a semente em vez de a copiar. *Uma
+semente usa-se uma vez.*
+
+### ⭐ Dois gates que estavam VERDES POR ACIDENTE
+
+A prova de mutação apanhou os dois — e **nenhum provava o que dizia**:
+
+| Gate | Por que passava com o bug reposto | A cura |
+|---|---|---|
+| o da semente | chamava `sync_scene_and_birth` com `None` **à mão** — nunca chegava à decisão de *o que a ponte oferece* | passa agora pelo `ecs_bridge` |
+| o de duplicar | os gates chamavam a porta diretamente, então apagar o braço da Hierarquia **não reprovava nada** | a decisão saiu para `duplicate_kind`, com gate próprio |
+
+⚠️ O segundo é a **costura não-testada** da `DIRETIVA_IMPLEMENTACAO` §1 — a causa nº 1 que este doc
+cita desde a §3 — e ela estava neste arquivo, escrita por mim, no mesmo dia. *A prova de mutação é a
+única coisa que distingue um gate que prova de um que acompanha.*
+
+O gate novo afirma também o caso **negativo** (uma entidade comum continua a ir para o braço
+genérico), senão ficaria verde por reclamar de mais.
+
+---
+
+## §12 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)

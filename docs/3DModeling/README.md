@@ -19,7 +19,7 @@ são `min` e um operador sobre dois números, e o **raio do fillet fica editáve
 | [`02_o_que_torna_boolean_e_fillet_extraordinarios.md`](02_o_que_torna_boolean_e_fillet_extraordinarios.md) | **Por que esta rota.** Mede que o Blender 4.5 já resolveu a booleana e que o buraco é o arredondamento. As 3 famílias candidatas |
 | [`00_plano_port.md`](00_plano_port.md) | ⛔ **Rota substituída** — não execute as waves. Continuam fonte: o **§1** (estudo do original: 9 leis, 19 operações) e o **§2** (inventário da PH2D). O **§7** segue válido: por que **não** se escreve um kernel do zero |
 
-**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3 e W5→W11
+**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3 e W5→W12
 fechadas** · a W2 tem o traçado no shell e a perspectiva **aberta**; o canvas 3D de primeira classe
 segue **aberto**.
 
@@ -36,6 +36,7 @@ segue **aberto**.
 | **W9** — criar e combinar | ✅ | ⭐ **O módulo deixa de ser um visualizador**: quatro botões criam formas (onde a câmera olha, no tamanho do enquadramento — a mesma condição: *ela tem de ser vista*) e três autoram a **booleana** (trocar a operação de uma, ou embrulhar irmãos numa nova). [doc 06 §8](06_resultados_cena_e_gizmo.md) |
 | **W10** — as dimensões | ✅ | ⭐ **Cada forma tem os números dela** (largura · altura · raio · espessura · filete), e o painel passa a ser o **inspetor da seleção** — a Hierarquia mostra o que existe, ele mostra os números do escolhido. A parede é do documento, o alcance do slider é da vista. [doc 06 §9](06_resultados_cena_e_gizmo.md) |
 | **W11** — duplicar | ✅ | ⭐ **Duplicar copia a subárvore inteira** (um furo que é uma subtração de três formas continua a sê-lo), um degrau da grelha para a direita da tela — porque uma cópia por baixo do original é um botão que parece não fazer nada. ⛔ A raiz não se duplica nem se apaga aqui: ela **é** a peça. [doc 06 §10](06_resultados_cena_e_gizmo.md) |
+| **W12** — pela Hierarquia | ✅ | ⭐ *Duplicate* e *Delete* da **Hierarquia** passam pela mesma porta do painel. Duplicar dava um **sósia que não desenha nada** (o braço genérico copia `Transform`+`Sprite`, que um nó de campo não tem) e apagar a peça **fazia-a voltar** no quadro seguinte. [doc 06 §11](06_resultados_cena_e_gizmo.md) |
 | **W3** — os perfis | ✅ | [`ph2d-field-profile`](../../crates/ph2d-field-profile/) (a costura com o editor vetorial, 8 gates) + `Extrude`/`Revolve`. **O desenho da caneta vira sólido**, e o raio de quina do editor arredonda as arestas verticais. `FIELD_DOC_VERSION` → **2** |
 
 **Como entrar — DUAS portas:**
@@ -81,7 +82,9 @@ cena, com *Local* para os do próprio objeto (num cilindro deitado, é a diferen
 lado» e andar «ao longo dele»).
 
 ⭐ **Duplicate · Delete** (a última fileira, com um objeto escolhido): a cópia sai um degrau para a
-direita e já vem selecionada, pronta a arrastar.
+direita e já vem selecionada, pronta a arrastar. ⭐ **O botão direito na Hierarquia faz o mesmo** —
+é a mesma porta, então a cópia vai para o mesmo sítio. Apagar o `Model` ali remove a peça (e o
+Ctrl+Z traz-a de volta).
 
 ⭐ **O painel é o inspetor do que está selecionado**: clique num objeto e ele mostra **as dimensões
 dele** — largura, altura, raio, espessura e o **filete**, cada um com slider e campo para digitar.

@@ -46,10 +46,10 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 48**)
+### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 47**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: a janela fechou
-**treze** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
+**catorze** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
 descesse seria uma que parou de olhar para os lados.
 
 | grupo | entrega | smoke |
@@ -63,6 +63,7 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | folha 08: ✅ **o `reindex` do `motion.sort`** — a ordenação não chegava ao efector indexado. **Aberta por um smoke do Enio**, não por uma tabela | `=63` ✔ |
 | **V** | 🆕 **duas células ABERTAS por medição** (folha 08 `motion.cull` · folha 05 `motion.mirror`/`kaleidoscope`): a mesma lei da identidade nos vizinhos que encolhem e que crescem | — |
 | **V** | folha 08: o **taper por cópia** do `motion.clone` e o **peso por entrada** do `motion.mixer` — a folha desce a **3 P1**, e os três que sobram têm espécie declarada | `=64` |
+| **V** | folha 08: o **`followMouse`** — fechado por um nó novo (`value.cursor`, o **primeiro do repo com duas saídas**) mais a rota do param dirigido, e **não** pelo toggle que a célula pedia. A folha desce a **2 P1** | `=65` |
 
 ⚠️ **E uma correção de GEOMETRIA em `ph2d-vec-scene`, que o smoke do Enio devolveu:** a
 borda que fecha uma fatia **abaulava** 19–25% do raio, porque o handle do arco sobrava na

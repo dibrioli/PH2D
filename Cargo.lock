@@ -6594,6 +6594,7 @@ dependencies = [
  "ph2d-node-sync",
  "ph2d-node-util-reroute",
  "ph2d-node-value-attribute",
+ "ph2d-node-value-cursor",
  "ph2d-node-value-curve",
  "ph2d-node-value-gain",
  "ph2d-node-value-instance-field",
@@ -6748,6 +6749,14 @@ dependencies = [
  "libm",
  "ph2d-node-registry",
  "ph2d-node-registry-init",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-cursor"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
 

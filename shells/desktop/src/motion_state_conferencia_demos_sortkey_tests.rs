@@ -1,7 +1,12 @@
 //! Os gates da cena `=63` — a ordem.
 //!
-//! ⚠️ **O oráculo é a PERMUTAÇÃO, não a cor**: a cena pinta para o olho, mas o que ela afirma
-//! é que as três chaves produzem três ordens DIFERENTES sobre o MESMO conjunto de posições.
+//! ⚠️ **A PERMUTAÇÃO não basta como oráculo, e esta cena pagou por isso.** A primeira versão
+//! media só a ordem das POSIÇÕES à saída — e passou verde sobre uma cena em que as três
+//! bandas saíam com a MESMA pintura, porque o `motion.tint` em gradiente lê a coluna de
+//! identidade `Index`, que o `motion.sort` levava consigo. O Enio viu no smoke o que o gate
+//! não via: *"a cor não corre da esquerda para a direita, mas de baixo para cima"* — de baixo
+//! para cima é a ordem em que a GRELHA nasce, isto é, a ordenação não chegava ao pixel.
+//! O que se afirma agora é o que o olho lê: **a COR é a ordem**.
 
 use super::*;
 use ph2d_nodegraph::attr::Column;
@@ -33,6 +38,78 @@ fn bands() -> Vec<Vec<[f32; 2]>> {
             }
         })
         .collect()
+}
+
+/// Uma banda pelas duas colunas que o olho junta: a posição e a cor.
+type Painted = Vec<(Vec<[f32; 2]>, Vec<[f32; 4]>)>;
+
+/// As posições **e a tinta** de cada banda, na ordem em que elas saem.
+fn painted() -> Painted {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    let sinks = build_sortkey_demo_document(&mut doc, &reg).expect("a cena monta");
+    doc.graph.validate(&reg).expect("bem-tipado");
+    let mut cook = Cook::new();
+    sinks
+        .iter()
+        .map(|s| {
+            let v = cook.cook(&doc.graph, &reg, *s, 0.0).expect("a banda coze");
+            let st = v[0].as_stream();
+            let p = match st.get("P") {
+                Some(Column::Vec2(v)) => v.clone(),
+                _ => Vec::new(),
+            };
+            let t = match st.get("tint") {
+                Some(Column::Vec4(v)) => v.clone(),
+                _ => Vec::new(),
+            };
+            (p, t)
+        })
+        .collect()
+}
+
+/// **A COR É A ORDEM** — em cada banda o degradê corre ao longo da ordem de saída, sem voltar
+/// atrás.
+///
+/// ⚠️ Este é o gate que faltava. Uma banda cuja cor não é monótona na ordem de saída está a
+/// pintar por OUTRA coisa (a identidade que veio de montante), e a cena mente sobre o nó
+/// inteiro. O canal medido é o vermelho, que a cena manda de `0.1` a `1.0`.
+#[test]
+fn the_colour_runs_along_the_sorted_order_in_every_band() {
+    for (i, (_, tint)) in painted().iter().enumerate() {
+        assert_eq!(tint.len(), (SIDE * SIDE) as usize, "a banda {i} pinta tudo");
+        let back = tint.windows(2).filter(|w| w[1][0] < w[0][0] - 1e-4).count();
+        assert_eq!(
+            back, 0,
+            "a banda {i} tem {back} saltos de cor PARA TRÁS ao longo da ordem de saída — \
+             o degradê está a seguir a identidade de montante, não a ordenação"
+        );
+    }
+}
+
+/// **A BANDA 1 CORRE DA ESQUERDA PARA A DIREITA** — a frase que o smoke diz, medida.
+///
+/// ⚠️ E o CONTROLE é a observação do Enio: a mesma banda **não pode** correr de baixo para
+/// cima. Sem esta metade, uma cor que segue a ordem de nascimento da grelha (que é
+/// exactamente por linhas, de baixo para cima) passaria pela primeira metade sem tremer.
+#[test]
+fn the_first_band_paints_left_to_right_and_not_bottom_up() {
+    let b = painted();
+    let (p, t) = &b[0];
+    let monotone_by = |axis: usize| {
+        let mut order: Vec<usize> = (0..p.len()).collect();
+        order.sort_by(|&a, &c| p[a][axis].total_cmp(&p[c][axis]));
+        order.windows(2).all(|w| t[w[1]][0] >= t[w[0]][0] - 1e-4)
+    };
+    assert!(
+        monotone_by(0),
+        "ordenando as peças por X a cor tem de crescer — é a definição de 'corre para a direita'"
+    );
+    assert!(
+        !monotone_by(1),
+        "…e NÃO pode crescer também com Y: uma cor que sobe nos dois eixos é a ordem de \
+         nascimento da grelha, que é o defeito que o Enio viu"
+    );
 }
 
 /// **AS TRÊS ORDENS SÃO TRÊS**, e o CONJUNTO de posições é o mesmo nas três.

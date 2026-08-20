@@ -13,7 +13,10 @@
 //! splitmix hash of the index → a deterministic shuffle), or **Index** (identity) — and
 //! the permutation is stably sorted ascending (`descending` reverses it). Every column
 //! (`P`, `size`, `tint`, `id`, …) is reordered by that permutation, so the whole
-//! instance travels together. The count is unchanged. Transcendental-free (HR-5):
+//! instance travels together. The count is unchanged. **`Index` is the one column that
+//! is a fact about the LIST and not about the element, so `reindex` (on by default)
+//! republishes it as the new rank** — without that the ramp downstream keeps painting the
+//! order the stream had before ([`REINDEX`]). Transcendental-free (HR-5):
 //! comparison keys are arithmetic (Radial uses squared distance) + the integer hash.
 //! `Effect::Pure`.
 
@@ -25,6 +28,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod hash;
+mod trig;
 use hash::rand01;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -53,9 +57,45 @@ const KEY_RANDOM: i64 = 3;
 ///
 /// ⚠️ Desligada no modo `Weight`, a coluna lê **zeros** ⇒ a ordenação é estável ⇒ a
 /// identidade. Nada explode, e a lista sai como entrou.
-mod trig;
-
 const KEY_WEIGHT: i64 = 5;
+
+/// A coluna de IDENTIDADE — *quem é este elemento na lista* (o irmão `motion.combine` usa o
+/// mesmo nome pela mesma razão).
+const INDEX: &str = "Index";
+
+/// **A RENUMERAÇÃO** — e o defeito que ela cura foi visto num smoke, não por um gate.
+///
+/// A `eval` permuta TODAS as colunas, e é isso que mantém a instância inteira junta. Mas o
+/// `Index` não é um atributo da peça: é **a posição dela na lista**, e uma lista reordenada
+/// cujo `Index` viajou com as peças descreve a lista de ANTES. O sintoma medido (cena `=63`,
+/// 2026-08-19): um `motion.grid(7×7) → motion.sort(X) → motion.tint(Gradient)` pintava a
+/// grelha **por linhas, de baixo para cima** — a ordem de nascimento — com **6 reinícios** do
+/// degradê, um por coluna. A ordenação não chegava ao pixel.
+///
+/// ⚠️ **O censo é de UM** (medido, `crates/`): o único consumidor da COLUNA `Index` é o
+/// `motion.tint` em gradiente. Todos os outros efectores indexados — `motion.oscillator`
+/// (`i · phase_stagger`), `value.instance_field` (`KeyBy::Index => i`), `motion.cull`
+/// (Fraction guarda os primeiros `amount·n`) — chaveiam pela POSIÇÃO no vector, e por isso
+/// sempre seguiram a ordenação. Era um nó a discordar de cinco, e o que ele lê é a coluna que
+/// este nó estragava.
+///
+/// ⚠️ **O default é `1`, ao contrário do `reindex` do `motion.combine`, e a diferença é
+/// MEDIDA e não de gosto.** Naquele o estado desligado é o que sempre shipou e há arte
+/// autorada por trás; aqui o estado desligado torna o nó **invisível ao seu único
+/// consumidor**, e a promessa do doc-comment lá em cima (*"its purpose is to set the order a
+/// downstream index-based effector reveals in"*) é falsa. Medido nesta árvore: os únicos dois
+/// grafos autorados com um `motion.sort` são esta cena e o `motion_state_gpu_demos`, cuja
+/// jusante (`oscillator` + `scale`) é **posicional** — nenhuma arte muda. E a referência
+/// concorda: no Houdini o *Sort SOP* renumera os pontos, e o que sobrevive a uma ordenação é
+/// o `@id`, que aqui é a coluna `id` e continua a viajar com a peça.
+///
+/// ⚠️ **Ligado, ele REESCREVE o `Index` que existe; não INVENTA um que não existia** — e a
+/// assimetria com o irmão é a mesma medição. O `combine` MUDA a contagem, então tem de
+/// escrever `Index` **e** `Count` mesmo em branco (senão o `Count` mente). Este preserva a
+/// contagem: `Count` já está honesto, e uma lista sem `Index` faz o `motion.tint` cair no seu
+/// próprio atalho posicional `i/(n−1)` — que **já é** a ordem ordenada. Cunhar a coluna ali
+/// daria exactamente o mesmo número, e uma coluna que não muda resposta nenhuma é peso.
+const REINDEX: &str = "reindex";
 
 /// **A DIREÇÃO ARBITRÁRIA** (doc 89 folha 08 — o *Sort SOP* do Houdini ordena ao longo de um
 /// VETOR).
@@ -124,6 +164,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "axis_angle",
             default: 0.0,
         },
+        // **A RENUMERAÇÃO** — `1` (o default) reescreve `Index` para o posto na lista
+        // ordenada; `0` deixa a identidade viajar com a peça, que é o que sempre
+        // aconteceu. Ver [`REINDEX`] para o censo e o porquê do default.
+        ParamSpec {
+            name: "reindex",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -184,6 +231,18 @@ fn permutation(k: &[f32], descending: bool) -> Vec<usize> {
     perm
 }
 
+/// **Reescreve o `Index` da lista ordenada para o posto de cada peça** (`0..n−1`), *se* a
+/// lista trouxer um. Ver [`REINDEX`] — a coluna ausente não é cunhada, de propósito.
+fn renumber(out: &mut Stream) {
+    if !matches!(out.get(INDEX), Some(Column::Scalar(_))) {
+        return;
+    }
+    let n = out.count();
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de elementos")]
+    let idx: Vec<f32> = (0..n).map(|i| i as f32).collect();
+    out.set(INDEX, Column::Scalar(idx));
+}
+
 /// Reorder a column by the permutation (`out[i] = col[perm[i]]`).
 fn permute(col: &Column, perm: &[usize]) -> Column {
     fn gather<T: Clone>(v: &[T], perm: &[usize]) -> Vec<T> {
@@ -230,6 +289,9 @@ impl NodeOp for MotionSort {
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             out.set(name.clone(), permute(col, &perm));
+        }
+        if ctx.param(REINDEX) >= 0.5 {
+            renumber(&mut out);
         }
         ctx.emit(out);
     }
@@ -309,6 +371,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 9999.0,
         step: 1.0,
         widget: ParamWidget::Seed,
+    },
+    // ⚠️ **Um `Toggle`, como no irmão `motion.combine`**: renumerar acontece ou não
+    // acontece, e meia renumeração não quer dizer nada. Não é gateado a chave nenhuma —
+    // no modo `Index` a permutação é a identidade e o knob é um no-op, que é diferente de
+    // um botão morto: ele continua a dizer a verdade sobre o que faria.
+    ParamUiHint {
+        param: REINDEX,
+        label: "Reindex",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
     },
 ];
 
@@ -488,3 +562,7 @@ static PARAM_GATES: &[ParamGate] = &[
 #[cfg(test)]
 #[path = "axis_weight_tests.rs"]
 mod axis_weight_tests;
+
+#[cfg(test)]
+#[path = "reindex_tests.rs"]
+mod reindex_tests;

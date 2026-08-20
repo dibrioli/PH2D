@@ -46,7 +46,11 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 52**)
+### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 50**)
+
+⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: a janela fechou
+**onze** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
+descesse seria uma que parou de olhar para os lados.
 
 | grupo | entrega | smoke |
 |---|---|---|
@@ -55,6 +59,9 @@ Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 | **T** | ✅ **folha 15 fechou** — o `value.switch` de N entradas é **exprimível** (`2·⌈(N−4)/3⌉+1` nós, per-elemento preservado); e a ramificação MORTA de um switch ganhou badge | `AUTOFIX=8` ✔ |
 | **U** | `source.shape`: **sweep/start/inner** + **raio por canto/smoothing**; e o `corner` deixou de ser da caixa para ser do **catálogo** (4 → **38** espécies) | `SHAPE_SMOKE=3` ✔ |
 | **U** | ⛔ **três refutações medidas**: o *trim/dash* (a cura, não o item — 42 de 47 formas são fechadas), o *`fill_rule`* (a estrela citada **nunca** auto-intersecta) e o *Pick Instances* (já existe: `combine` + `duplicator(pick)`) | — |
+| **V** | folha 08: `motion.sort` ganha **direção arbitrária** (`axis_angle`) e a **chave como CAMPO** (porta `weight`, modo 5) | `=63` ✔ |
+| **V** | folha 08: ✅ **o `reindex` do `motion.sort`** — a ordenação não chegava ao efector indexado. **Aberta por um smoke do Enio**, não por uma tabela | `=63` ✔ |
+| **V** | 🆕 **duas células ABERTAS por medição** (folha 08 `motion.cull` · folha 05 `motion.mirror`/`kaleidoscope`): a mesma lei da identidade nos vizinhos que encolhem e que crescem | — |
 
 ⚠️ **E uma correção de GEOMETRIA em `ph2d-vec-scene`, que o smoke do Enio devolveu:** a
 borda que fecha uma fatia **abaulava** 19–25% do raio, porque o handle do arco sobrava na
@@ -163,7 +170,7 @@ ausente.
 
 ---
 
-## §4 — As TREZE LEIS que esta linha pagou para aprender
+## §4 — As QUINZE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -242,6 +249,21 @@ são estilo.
 13. **A porta de tempo é uma COLUNA, não um escopo** — ela não herda a recusa
     `CookError::SequentialInTimeScope`. Se acrescentar uma porta a outro nó, o gate
     `the_time_port_is_a_column_not_a_cook_scope` é o molde.
+14. ⚠️ **O oráculo da cena é o que o OLHO lê, nunca o que o nó emite** — e esta é irmã da 10,
+    apanhada pelo mesmo Enio no mesmo dia. A cena `=63` tinha quatro gates verdes que mediam a
+    **permutação das posições** à saída do `motion.sort`; o que o smoke mostra é a **cor**, e
+    a cor vinha do `motion.tint`, que lê a coluna `Index` — que o `sort` levava consigo. As
+    três bandas saíam com **a mesma pintura** e a suíte estava verde, porque cada gate media o
+    lado certo da costura **do lado errado da fronteira**. *Se a cena existe para ser olhada,
+    o gate mede o pixel — ou pelo menos a última coluna antes dele.* O sintoma tem forma
+    reconhecível: **a cena mostra a ordem de nascimento** (aqui, a grelha por linhas de baixo
+    para cima), porque é isso que sobra quando a operação não alcança o consumidor.
+15. ⚠️ **Ao consertar um nó de ESTRUTURA, MEÇA os irmãos que mexem na mesma lista** — a sonda
+    `measure_identity_after_structure` foi escrita depois do conserto do `sort` e achou o mesmo
+    defeito em três vizinhos (`cull` encolhe e deixa `Count` velho; `mirror` e `kaleidoscope`
+    crescem e deixam `Index` **e** `Count` velhos; `clone` faz o certo). ⛔ **E não corrija
+    meio:** no `mirror`, arrumar só o `Count` faz a rampa alcançar **metade, duas vezes** — as
+    duas colunas são uma pergunta só, e a resposta é de família.
 
 ---
 

@@ -12,6 +12,13 @@
 //!
 //! ⚠️ **A banda 2 custava TRÊS nós antes** (`rotate(θ) → sort(X) → rotate(−θ)`), e a 3 não
 //! era exprimível: não havia porta por onde uma chave arbitrária entrasse.
+//!
+//! ⚠️ **A cena depende do `reindex` do `motion.sort`, e não o autora** — de propósito. Ela
+//! larga o nó como o artista o larga, então o que ela pinta é o DEFAULT. Na primeira versão
+//! (2026-08-19) as três bandas saíam com a MESMA pintura, e o Enio viu-o antes de qualquer
+//! gate: o `motion.tint` em gradiente lê a coluna `Index`, o `sort` levava-a consigo, e a
+//! ordenação nunca chegava ao pixel. Se um dia o default mudar, esta cena volta a ser o
+//! sintoma — que é a única razão para não o fixar aqui.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;

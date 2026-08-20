@@ -436,3 +436,155 @@ fn the_shape_of_a_saved_profile_is_pinned() {
     let back: FieldDoc = postcard::from_bytes(&bytes).expect("desserializa");
     assert_eq!(back, doc);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// W4 — o raio EDITÁVEL: a promessa central do módulo, virada em API
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// ⭐ **O raio de uma união muda depois de a peça existir** — e é isto que nem o Blender nem o MoI
+/// dão: lá o filete é geometria assada, e mudá-lo é refazer a operação.
+#[test]
+fn the_blend_radius_is_editable_after_the_fact() {
+    let mut doc = two_boxes();
+    assert_eq!(doc.radius_of(NodeId(2)), Some(0.05));
+    doc.set_radius(NodeId(2), 0.11).expect("raio válido");
+    assert_eq!(doc.radius_of(NodeId(2)), Some(0.11));
+    // E o caráter continua a ser o da operação — mexer no número não troca união por subtração.
+    match &doc.nodes()[2].kind {
+        NodeKind::Combine { op, .. } => assert!(matches!(op, Op::Union(Blend::Exact { .. }))),
+        other => panic!("o nó 2 é a combinação: {other:?}"),
+    }
+}
+
+/// **Raio zero é a aresta VIVA**, e não um modo à parte — ida e volta pela mesma porta.
+#[test]
+fn zero_radius_is_the_sharp_edge_and_it_comes_back() {
+    let mut doc = two_boxes();
+    doc.set_radius(NodeId(2), 0.0).expect("zero é válido");
+    assert!(matches!(
+        &doc.nodes()[2].kind,
+        NodeKind::Combine {
+            op: Op::Union(Blend::Sharp),
+            ..
+        }
+    ));
+    doc.set_radius(NodeId(2), 0.07).expect("acorda");
+    assert_eq!(doc.radius_of(NodeId(2)), Some(0.07));
+}
+
+/// ⚠️ **O caráter ORGÂNICO sobrevive a mexer no número.**
+///
+/// Ele é uma escolha de produto (uma transição derretida, que entrega 3/4 do número — ver
+/// [`Blend::Organic`]). Trocá-lo por `Exact` porque alguém arrastou um controle seria decidir pelo
+/// utilizador, e o sintoma seria a forma mudar de caráter sem ninguém ter pedido.
+#[test]
+fn editing_the_number_does_not_change_an_organic_blend_into_an_exact_one() {
+    let mut doc = FieldDoc::new(
+        vec![
+            cube(0.4, 0.0),
+            cube(0.4, 0.0),
+            Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Combine {
+                    op: Op::Union(Blend::Organic { k: 0.05 }),
+                    children: vec![NodeId(0), NodeId(1)],
+                },
+            },
+        ],
+        NodeId(2),
+    )
+    .expect("orgânico");
+    doc.set_radius(NodeId(2), 0.09).expect("raio válido");
+    assert!(matches!(
+        &doc.nodes()[2].kind,
+        NodeKind::Combine {
+            op: Op::Union(Blend::Organic { k: 0.09 }),
+            ..
+        }
+    ));
+}
+
+/// ⭐ **Uma edição recusada deixa o documento COMO ESTAVA.**
+///
+/// Um `set` que validasse depois de escrever, e devolvesse o erro sem desfazer, deixaria um
+/// documento meio-mudado — que é pior do que a recusa, porque a invariante da crate (*um documento
+/// que existe está válido*) passaria a ser falsa em silêncio.
+#[test]
+fn a_refused_edit_leaves_the_document_untouched() {
+    let mut doc = FieldDoc::new(vec![cube(0.4, 0.05)], NodeId(0)).expect("cubo");
+    let before = doc.clone();
+    // O teto de uma caixa de meia-extensão 0,4 é 0,4 — 0,9 não cabe.
+    let err = doc.set_radius(NodeId(0), 0.9).unwrap_err();
+    assert!(matches!(err, FieldError::RoundTooLarge { .. }), "{err:?}");
+    assert_eq!(
+        doc, before,
+        "o documento tem de ficar exatamente como estava"
+    );
+}
+
+/// ⭐ **O teto que o controle mostra é o MESMO que a validação aplica.**
+///
+/// Se fossem duas contas, o controle ofereceria valores que o documento recusa — e o utilizador
+/// veria o número parar sem explicação. Este gate varre a faixa e exige que os dois lados
+/// concordem em **todo** valor.
+#[test]
+fn the_bound_the_panel_shows_is_the_bound_the_document_enforces() {
+    for p in [
+        Primitive::Box {
+            half: [0.4, 0.3, 0.5],
+            round: 0.0,
+        },
+        Primitive::Cylinder {
+            radius: 0.25,
+            half_height: 0.7,
+            round: 0.0,
+        },
+    ] {
+        let limit = round_limit(&p).expect("estas primitivas têm round");
+        let mut doc = FieldDoc::new(vec![leaf(p)], NodeId(0)).expect("documento");
+        assert_eq!(doc.radius_bound(NodeId(0)), Some(RadiusBound::Hard(limit)));
+        for i in 1u16..40 {
+            let r = limit * f32::from(i) / 20.0;
+            let accepted = doc.set_radius(NodeId(0), r).is_ok();
+            assert_eq!(
+                accepted,
+                r < limit,
+                "raio {r} contra teto {limit}: o documento diz {accepted} e a fronteira diz {}",
+                r < limit
+            );
+        }
+    }
+}
+
+/// O limite de uma MISTURA é de escala, não de validade — e o tipo diz isso.
+///
+/// ⚠️ Um raio enorme numa união continua a ser um documento **válido**: o campo não deixa de ser uma
+/// distância, a forma é que vira uma bolha. Tratá-lo como parede proibiria o que é legítimo.
+#[test]
+fn a_blend_bound_is_scale_not_validity() {
+    let mut doc = two_boxes();
+    let bound = doc.radius_bound(NodeId(2)).expect("a combinação tem raio");
+    assert!(
+        matches!(bound, RadiusBound::Soft(_)),
+        "o raio de mistura não tem parede: {bound:?}"
+    );
+    // A escala vem da menor peça sob o nó: duas caixas de meia-extensão 0,4.
+    assert!(
+        (bound.value() - 0.4).abs() < 1e-6,
+        "escala: {}",
+        bound.value()
+    );
+    // E exceder a sugestão é ACEITE — é uma sugestão.
+    doc.set_radius(NodeId(2), bound.value() * 3.0)
+        .expect("um raio grande é feio, não é inválido");
+}
+
+/// Uma esfera não tem aresta, logo não tem raio para editar — e a porta diz isso em vez de fingir.
+#[test]
+fn a_shape_without_an_edge_has_no_radius_to_edit() {
+    let mut doc =
+        FieldDoc::new(vec![leaf(Primitive::Sphere { radius: 0.5 })], NodeId(0)).expect("esfera");
+    assert_eq!(doc.radius_of(NodeId(0)), None);
+    assert_eq!(doc.radius_bound(NodeId(0)), None);
+    assert!(doc.set_radius(NodeId(0), 0.1).is_err());
+}

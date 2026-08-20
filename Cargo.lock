@@ -5762,6 +5762,7 @@ dependencies = [
  "ph2d-panel-flip-frames",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
+ "ph2d-panel-model3d",
  "ph2d-panel-motion-graph",
  "ph2d-panel-motion-params",
  "ph2d-panel-padding",
@@ -7468,6 +7469,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-model3d"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-field",
+ "ph2d-i18n",
+ "ph2d-tokens",
+ "ph2d-ui-testkit",
+]
+
+[[package]]
 name = "ph2d-panel-motion-graph"
 version = "0.0.0"
 dependencies = [
@@ -7552,6 +7565,7 @@ dependencies = [
  "ph2d-panel-grid-snap",
  "ph2d-panel-hierarchy",
  "ph2d-panel-inspector",
+ "ph2d-panel-model3d",
  "ph2d-panel-motion-graph",
  "ph2d-panel-motion-params",
  "ph2d-panel-padding",

@@ -8874,6 +8874,15 @@ impl crate::App {
                 ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                 vector_scene,
             );
+            // ADR-0161 W4: o painel de modelagem abre sozinho na primeira vez que o
+            // smoke desenha (auto-play), e só nessa — reabri-lo todo quadro faria o
+            // botao de fechar dele nao funcionar.
+            if crate::field3d_smoke::take_open_panel_request() {
+                // O ID vem do PAINEL, nunca de um literal: uma segunda cópia da chave de
+                // visibilidade é como se abre um painel que ninguém pinta.
+                hero.panel_visibility
+                    .insert(ph2d_panel_model3d::PANEL_ID, true);
+            }
             // Frame profiler: panel/chrome Vello encode (includes the painter panel's Paper preview).
             let hero_t0 = frame_prof_on().then(Instant::now);
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);

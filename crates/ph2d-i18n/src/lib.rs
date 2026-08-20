@@ -36,6 +36,7 @@ mod vector;
 /// Returns `&'static str` — current implementation is a compile-time
 /// table. The Fluent migration will widen this to `String` (formatted
 /// with arguments) at that point.
+mod model3d;
 mod sculpt3d;
 
 pub fn tr(key: &str) -> &'static str {
@@ -413,6 +414,7 @@ pub fn tr(key: &str) -> &'static str {
         // (o identificador cru é feio de propósito).
         k => vector::tr(k)
             .or_else(|| sculpt3d::tr(k))
+            .or_else(|| model3d::tr(k))
             .unwrap_or_else(|| leak_key(k)),
     }
 }

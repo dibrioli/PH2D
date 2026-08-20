@@ -1,0 +1,31 @@
+//! **AS STRINGS DO PAINEL DE MODELAGEM 3D** (ADR-0161) — o irmão de tabela do [`super`].
+//!
+//! ⚠️ **Um arquivo por painel compra ISOLAMENTO**, que é o que o Modo L pede de um toque
+//! foundational (`CLAUDE.md` §0.2): com todas as chaves num `match` só, duas linhas paralelas que
+//! acrescentassem uma chave cada colidiriam nas mesmas linhas. É o mesmo corte que o `sculpt3d.rs`
+//! já fez, pela mesma razão.
+//!
+//! ⚠️ **`Option` e não `&str`:** devolver a chave crua aqui seria uma segunda resposta a *"o que
+//! fazer com uma chave desconhecida?"* — o `leak_key` do pai responde isso, uma vez.
+
+/// A tradução de uma chave `panel.model3d.*`, ou `None` se ela não é daqui.
+pub(crate) fn tr(key: &str) -> Option<&'static str> {
+    Some(match key {
+        "panel.model3d.title" => "3D Model",
+        "panel.model3d.empty" => "No model in the scene yet.",
+        // ⚠️ O rótulo diz **Radius**, e é um compromisso que o documento honra: quem escolher a
+        // mistura orgânica vê um número que entrega 3/4 do que promete (ver `Blend::Organic`), e
+        // isso é uma decisão de produto por tomar — não uma etiqueta a corrigir aqui.
+        "panel.model3d.radius" => "Radius",
+        "panel.model3d.kind.union" => "Union",
+        "panel.model3d.kind.intersection" => "Intersect",
+        "panel.model3d.kind.difference" => "Subtract",
+        "panel.model3d.kind.box" => "Box",
+        "panel.model3d.kind.cylinder" => "Cylinder",
+        "panel.model3d.kind.extrude" => "Extrude",
+        // O rodapé: o custo do último quadro, que é o que diz se a peça ainda é interativa.
+        "panel.model3d.trace_cost" => "Trace",
+        "panel.model3d.nodes" => "Nodes",
+        _ => return None,
+    })
+}

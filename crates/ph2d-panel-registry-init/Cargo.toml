@@ -23,6 +23,7 @@ ph2d-panel-flip-frames = { path = "../ph2d-panel-flip-frames", optional = true }
 ph2d-panel-grid-snap = { path = "../ph2d-panel-grid-snap", optional = true }
 ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy", optional = true }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector", optional = true }
+ph2d-panel-model3d = { path = "../ph2d-panel-model3d", optional = true }
 ph2d-panel-motion-graph = { path = "../ph2d-panel-motion-graph", optional = true }
 ph2d-panel-motion-params = { path = "../ph2d-panel-motion-params", optional = true }
 ph2d-panel-padding = { path = "../ph2d-panel-padding", optional = true }
@@ -47,6 +48,7 @@ default = [
     "panel-timeline",
     # Physics world settings (ADR-0131 D8 / W2b). DEFAULT_VISIBLE=false —
     # registered always, painted only when asked for.
+    "panel-model3d",
     "panel-physics",
     # A tabela de COR do design system, autoravel (plano UI/UX W6). Mesma
     # categoria do de fisica: mundo, nao tool-gated, DEFAULT_VISIBLE=false.
@@ -74,6 +76,7 @@ panel-flip-frames = ["dep:ph2d-panel-flip-frames"]
 panel-grid-snap = ["dep:ph2d-panel-grid-snap"]
 panel-hierarchy = ["dep:ph2d-panel-hierarchy"]
 panel-inspector = ["dep:ph2d-panel-inspector"]
+panel-model3d = ["dep:ph2d-panel-model3d"]
 panel-motion-graph = ["dep:ph2d-panel-motion-graph"]
 panel-motion-params = ["dep:ph2d-panel-motion-params"]
 panel-padding = ["dep:ph2d-panel-padding"]

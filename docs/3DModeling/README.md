@@ -27,7 +27,7 @@ com o painel, na W4).
 | **W0** — spike + imagem | ✅ | Os dois arredondamentos exatos a **0,00 %**; vértice triplo fecha; JIT **5,3×**; a aresta viva da **malha** serrilha (item aberto, mecanismo nomeado) |
 | **W1** — documento + ADR | ✅ | [ADR-0161](../architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) · [`ph2d-field`](../../crates/ph2d-field/) (o documento, 12 gates) · [`ph2d-field-eval`](../../crates/ph2d-field-eval/) (a avaliação, 9 gates) · [`ph2d-field-ecs`](../../crates/ph2d-field-ecs/) (a ponte, 4 gates + 2 no shell). **Um objeto de campo é salvo e desfeito** |
 | **W2** — ver a coisa | 🔶 | [`ph2d-field-render`](../../crates/ph2d-field-render/) (o traçado, 11 gates) + o smoke no shell. Traçado **no tamanho real da área**, com **anti-serrilhado adaptativo por +3 % a +24 %** ([doc 05](05_resultados_imagem.md)). **Falta:** perspectiva |
-| **W4** — a ferramenta | 🔶 | Navegação por mouse ([`field3d_input.rs`](../../shells/desktop/src/field3d_input.rs), 6 gates no shell): **rotação LIVRE** sem polos ([doc 05](05_resultados_imagem.md) §7), pan, zoom sem teto herdado, e `Home`. **Falta:** o painel e o canvas de primeira classe |
+| **W4** — a ferramenta | 🔶 | Navegação por mouse ([`field3d_input.rs`](../../shells/desktop/src/field3d_input.rs)): **rotação LIVRE** sem polos ([doc 05](05_resultados_imagem.md) §7), pan, zoom sem teto herdado, `Home`. E o **painel** ([`ph2d-panel-model3d`](../../crates/ph2d-panel-model3d/), 6 gates): ⭐ **o raio de cada operação, editável ao vivo** — a promessa do módulo virada em controle. **Falta:** o canvas de primeira classe |
 | **W3** — os perfis | ✅ | [`ph2d-field-profile`](../../crates/ph2d-field-profile/) (a costura com o editor vetorial, 8 gates) + `Extrude`/`Revolve`. **O desenho da caneta vira sólido**, e o raio de quina do editor arredonda as arestas verticais. `FIELD_DOC_VERSION` → **2** |
 
 **Smoke (roda agora):**
@@ -44,7 +44,12 @@ de escultura**: arrastar com o **esquerdo ou o direito** gira · com o **do meio
 aproxima · **Home** repõe a vista.
 
 ⭐ **A rotação é LIVRE** (não é prato giratório): não há polo onde o gesto morra, e uma diagonal roda
-na diagonal. O preço é o horizonte poder ficar inclinado — daí a tecla de repor ([doc 05](05_resultados_imagem.md) §7). ⭐ Aproximar mostra **mais forma**, não uma forma inchada: as tolerâncias da marcha descem
+na diagonal. O preço é o horizonte poder ficar inclinado — daí a tecla de repor ([doc 05](05_resultados_imagem.md) §7).
+
+⭐ **O painel abre sozinho, à direita**, com uma linha por operação da peça. Arraste o controle de
+**Radius** e o arredondamento muda **na peça, ao vivo** — é isto que o módulo promete e que nem o
+Blender nem o MoI dão, porque lá o filete é geometria assada. O rodapé mostra quanto custou o último
+quadro. ⭐ Aproximar mostra **mais forma**, não uma forma inchada: as tolerâncias da marcha descem
 com o pixel ([doc 05](05_resultados_imagem.md) e o gate `zooming_in_does_not_inflate_the_part`).
 ⚠️ **O terminal imprime três linhas** — a cena montada, o traçado, e *"primeiro quadro desenhado —
 N pixels de peça"*. **Se a terceira não aparecer, PARE**: a janela vazia é falha de caminho, não de

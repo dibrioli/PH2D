@@ -69,6 +69,9 @@ pub(crate) struct Smoke {
     since: std::time::Instant,
     /// A câmera e o tamanho do último pedido — a memória que impede re-traçar o que não mudou.
     requested: Option<(Orbit, u32, u32)>,
+    /// Quanto custou o último traçado — o número que o painel mostra, porque quem mexe num raio
+    /// é quem paga o traçado seguinte.
+    last_trace_ms: f32,
     /// Já anunciou o primeiro quadro? Ver a nota do `boot`.
     announced: bool,
     /// **A área onde o quadro foi desenhado da última vez** — é ela que responde *"este clique é
@@ -351,12 +354,88 @@ fn boot() -> Option<Smoke> {
         inflight: None,
         since: std::time::Instant::now(),
         requested: None,
+        last_trace_ms: 0.0,
         announced: false,
         area: None,
         drag: None,
         last_pointer: (0.0, 0.0),
         manual: false,
     })
+}
+
+/// **O painel abre sozinho na primeira vez** que o smoke desenha, e só nessa.
+///
+/// ⭐ *Feature nova = auto-play* é a lei da casa, e um painel que exigisse aprender uma tecla para
+/// aparecer é uma feature que ninguém alcança. Abrir **uma vez** é o que reconcilia isso com o botão
+/// de fechar: reabri-lo todo quadro faria o X não funcionar, que é a forma mais irritante de duas
+/// portas discordarem.
+pub(crate) fn take_open_panel_request() -> bool {
+    thread_local! {
+        static PENDING: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+    }
+    // Só pede se o smoke está de facto armado — senão o painel de modelagem abriria em toda sessão
+    // do app, ocupando o encaixe da direita para não mostrar nada.
+    if with_smoke(|_| ()).is_none() {
+        return false;
+    }
+    PENDING.with(|p| p.replace(false))
+}
+
+/// **A ponte com o painel**: drena o que ele pediu, aplica ao documento, e publica o retrato novo.
+///
+/// ⭐ **A ordem é load-bearing.** Drenar ANTES de publicar é o que faz a edição aparecer no mesmo
+/// quadro: se o retrato saísse primeiro, o painel pintaria o valor antigo por um quadro e o
+/// controle daria um salto para trás debaixo do dedo — o sintoma clássico de um espelho publicado
+/// cedo demais.
+///
+/// ⚠️ **O shell é a única coisa que toca no documento**, e por isso a aplicação é aqui e não no
+/// painel: o `set_radius` **revalida**, e uma recusa tem de deixar o documento como estava.
+fn panel_bridge(doc: &mut FieldDoc, last_trace_ms: f32) {
+    for intent in ph2d_panel_model3d::drain_intents() {
+        match intent {
+            ph2d_panel_model3d::ModelIntent::SetRadius { node, radius } => {
+                // Uma recusa é informação, não erro: o documento diz que aquele raio não cabe, e o
+                // retrato publicado logo abaixo devolve o controle ao valor que de facto ficou.
+                let _ = doc.set_radius(NodeId(node), radius);
+            }
+        }
+    }
+
+    let rows: Vec<ph2d_panel_model3d::RadiusRow> = (0..doc.nodes().len() as u32)
+        .filter_map(|i| {
+            let id = NodeId(i);
+            Some(ph2d_panel_model3d::RadiusRow {
+                node: i,
+                kind_key: kind_key(doc.node(id)?),
+                // ⚠️ O raio E o teto vêm os DOIS do documento. Um painel que guardasse o seu
+                // próprio valor teria duas verdades sobre o mesmo número, e a que aparece na tela
+                // seria a errada sempre que algo o mudasse de outro lado.
+                radius: doc.radius_of(id)?,
+                bound: doc.radius_bound(id)?,
+            })
+        })
+        .collect();
+    ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
+        rows,
+        node_count: doc.nodes().len(),
+        last_trace_ms,
+    });
+}
+
+/// A chave i18n do que um nó é. ⚠️ Uma **chave**, nunca um rótulo pronto (HR-15).
+fn kind_key(node: &Node) -> &'static str {
+    match &node.kind {
+        NodeKind::Combine { op, .. } => match op {
+            Op::Union(_) => "panel.model3d.kind.union",
+            Op::Intersection(_) => "panel.model3d.kind.intersection",
+            Op::Difference(_) => "panel.model3d.kind.difference",
+        },
+        NodeKind::Leaf(p) => match p {
+            Primitive::Cylinder { .. } => "panel.model3d.kind.cylinder",
+            Primitive::Extrude { .. } => "panel.model3d.kind.extrude",
+            _ => "panel.model3d.kind.box",
+        },
+    }
 }
 
 /// **A porta única para o estado do smoke**, e é por ela que a metade de entrada chega.
@@ -399,6 +478,7 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
                             r.width, r.height, r.hits, r.edges, r.millis
                         );
                     }
+                    smoke.last_trace_ms = r.millis as f32;
                     smoke.frame = Some((Arc::new(r.rgba), r.width, r.height));
                     smoke.inflight = None;
                 }
@@ -418,6 +498,7 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
         );
 
         smoke.area = Some(area);
+        panel_bridge(&mut smoke.doc, smoke.last_trace_ms);
 
         if !smoke.manual && smoke.inflight.is_none() {
             let dt = smoke.since.elapsed().as_secs_f32();
@@ -499,6 +580,96 @@ mod snapshot_tests;
 #[cfg(test)]
 mod scene_tests {
     use super::*;
+
+    /// ⭐ **A edição do painel chega ao documento NO MESMO QUADRO.**
+    ///
+    /// Esta é a costura da W4, e ela é do tipo que falha em silêncio: um retrato publicado antes
+    /// de a edição ser aplicada pinta o valor antigo por um quadro, e o controle dá um salto para
+    /// trás debaixo do dedo. O gate prende a ORDEM — drenar, aplicar, publicar — medindo o que o
+    /// painel vai ler.
+    #[test]
+    fn a_panel_edit_reaches_the_document_and_the_snapshot_in_the_same_frame() {
+        let _ = ph2d_panel_model3d::drain_intents();
+        let mut doc = scene(1);
+        let root = doc.root();
+        let before = doc.radius_of(root).expect("a raiz da cena 1 é uma união");
+
+        ph2d_panel_model3d::state::push_intent_for_test(
+            ph2d_panel_model3d::ModelIntent::SetRadius {
+                node: root.0,
+                radius: 0.2,
+            },
+        );
+        panel_bridge(&mut doc, 7.5);
+
+        assert!(
+            (doc.radius_of(root).expect("continua a ter raio") - 0.2).abs() < 1e-6,
+            "o documento tem de ter o raio novo: {before} -> {:?}",
+            doc.radius_of(root)
+        );
+        let snap = ph2d_panel_model3d::state::current();
+        let row = snap
+            .rows
+            .iter()
+            .find(|r| r.node == root.0)
+            .expect("a raiz tem linha");
+        assert!(
+            (row.radius - 0.2).abs() < 1e-6,
+            "o retrato do MESMO quadro tem de mostrar 0,2 e mostra {}",
+            row.radius
+        );
+        assert!((snap.last_trace_ms - 7.5).abs() < 1e-6);
+    }
+
+    /// ⚠️ **Uma edição RECUSADA devolve o controle ao valor real**, em vez de deixar o painel a
+    /// mostrar um número que o documento não tem.
+    #[test]
+    fn a_refused_edit_publishes_the_value_the_document_actually_kept() {
+        let _ = ph2d_panel_model3d::drain_intents();
+        // A cena 2 é um cubo de meia-extensão 0,45: o `round` não pode chegar a 0,45.
+        let mut doc = scene(2);
+        let before = doc.radius_of(NodeId(0)).expect("o cubo tem round");
+
+        ph2d_panel_model3d::state::push_intent_for_test(
+            ph2d_panel_model3d::ModelIntent::SetRadius {
+                node: 0,
+                radius: 5.0,
+            },
+        );
+        panel_bridge(&mut doc, 0.0);
+
+        assert!(
+            (doc.radius_of(NodeId(0)).expect("continua") - before).abs() < 1e-6,
+            "o documento tem de recusar e ficar como estava"
+        );
+        let snap = ph2d_panel_model3d::state::current();
+        assert!(
+            (snap.rows[0].radius - before).abs() < 1e-6,
+            "o retrato tem de publicar o valor REAL ({before}), e publicou {}",
+            snap.rows[0].radius
+        );
+    }
+
+    /// **Toda linha do painel tem uma chave de i18n que traduz** — nenhuma vaza o identificador cru.
+    ///
+    /// ⚠️ O `tr` da casa devolve a **própria chave** quando não conhece uma (de propósito: o
+    /// identificador feio na tela é o alarme). Então "traduziu" mede-se por *"o que voltou é
+    /// diferente da chave"*, e não por "voltou alguma coisa".
+    #[test]
+    fn every_row_kind_has_a_translation() {
+        for n in 1..=5 {
+            let mut doc = scene(n);
+            panel_bridge(&mut doc, 0.0);
+            for row in ph2d_panel_model3d::state::current().rows {
+                assert_ne!(
+                    ph2d_i18n::tr(row.kind_key),
+                    row.kind_key,
+                    "a cena {n} tem um nó cuja chave `{}` não está na tabela",
+                    row.kind_key
+                );
+            }
+        }
+    }
 
     /// ⭐ **Toda cena do smoke constrói E DESENHA.**
     ///

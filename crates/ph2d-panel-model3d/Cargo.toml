@@ -1,0 +1,36 @@
+[package]
+name = "ph2d-panel-model3d"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O PAINEL do módulo de modelagem 3D (ADR-0161, W4): a lista de nós do
+# documento, com o raio de cada um editável AO VIVO.
+#
+# ⚠️ **Não confundir com `ph2d-panel-sculpt3d`**, que é o painel do módulo de
+# escultura. São dois módulos 3D e duas linhas paralelas.
+#
+# ⚠️ Ele NÃO fala com uma `Tool`. Como o painel de física (ADR-0131 D8), este
+# edita um DOCUMENTO e não uma ferramenta: as edições saem por uma fila de
+# intents que o shell drena. Inventar uma tool para o pipe existente encaixar
+# seria uma tool que não é uma tool — e o `Tool=12` está congelado (CLAUDE.md §6).
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+# HR-15: toda string do painel passa por `tr()`.
+ph2d-i18n = { path = "../ph2d-i18n" }
+# O DOCUMENTO — de onde vem `RadiusBound`, e quem decide até onde um raio vai.
+# O painel não recalcula nenhum limite: ele mostra o que o documento aplica.
+ph2d-field = { path = "../ph2d-field" }
+
+[dev-dependencies]
+# `architecture_interactive_crate_has_behavioral_test`: um painel com `event.rs`
+# tem de dirigir um `WidgetEvent` REAL e afirmar o efeito observável. Os testes
+# dentro da crate mediam a FILA; este mede a costura.
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }

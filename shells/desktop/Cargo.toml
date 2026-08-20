@@ -32,6 +32,10 @@ ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 # no doc do produtor da fisica (`bridge/signals.rs`), nao e' escolha desta linha.
 ph2d-runtime = { path = "../../crates/ph2d-runtime" }
 ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
+# ADR-0161 W4 — o painel de MODELAGEM 3D (nao confundir com `panel-sculpt3d`,
+# que e o da escultura). Dep direta nao-opcional: o `field3d_smoke` publica o
+# retrato e drena os intents dele.
+ph2d-panel-model3d = { path = "../../crates/ph2d-panel-model3d" }
 # The world-settings panel (ADR-0131 D8 / W2b). The shell drains its intents
 # in `render_loop::physics_panel_bridge`.
 ph2d-panel-physics = { path = "../../crates/ph2d-panel-physics" }
@@ -486,6 +490,7 @@ default = [
     "panel-motion-params",
     "panel-timeline",
     "panel-physics",
+    "panel-model3d",
     "panel-wet-tuning",
     "panel-tokens",
     "panel-authored",
@@ -546,6 +551,11 @@ panel-timeline       = ["ph2d-panel-registry-init/panel-timeline"]
 # made the panel unreachable in the first smoke — every unit gate green, and
 # `W` toggling the visibility of a panel that was not in the registry.
 panel-physics        = ["ph2d-panel-registry-init/panel-physics"]
+# ADR-0161 W4 — o painel de modelagem 3D. ⚠️ Vale o mesmo aviso do physics
+# acima, e ele foi pago la: sem esta linha o painel existe, compila, passa os
+# gates da propria crate, e NAO ESTA NO REGISTRO — a visibilidade alterna um
+# painel que ninguem pinta.
+panel-model3d        = ["ph2d-panel-registry-init/panel-model3d"]
 # Painel de TOKENS (plano UI/UX W6). `ph2d-panel-tokens` e' dep direta nao-opcional
 # (`render_loop::tokens_bridge` drena os intents e faz o read-back do picker); esta
 # linha liga a feature do registry-init que compila o painel PARA DENTRO do

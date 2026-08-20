@@ -6683,7 +6683,11 @@ impl crate::App {
             // ⭐ Um clique na peça (ou a peça a nascer) pede uma seleção. É a MESMA porta que a
             // Hierarquia usa — uma seleção própria deste módulo seria uma segunda ideia de "o que
             // está selecionado" dentro do mesmo app.
-            match crate::field3d_scene::ecs_bridge(sim, hero.gizmo.selection) {
+            match crate::field3d_scene::ecs_bridge(
+                sim,
+                hero.gizmo.selection,
+                &hero.gizmo.extra_selection,
+            ) {
                 Some(crate::field3d_scene::SelectRequest::Entity(bits)) => {
                     hero.gizmo.replace_selection(Some(bits));
                 }

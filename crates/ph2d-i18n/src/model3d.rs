@@ -28,6 +28,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // escolha — quem já modela sabe o que elas querem dizer sem experimentar.
         "panel.model3d.frame.global" => "Global",
         "panel.model3d.frame.local" => "Local",
+        // As formas que se acrescentam. ⚠️ São AÇÕES, não modos: o rótulo diz a forma, e o gesto
+        // cria uma. Um "Add Box" seria a palavra "Add" repetida quatro vezes num painel estreito.
+        "panel.model3d.add.box" => "+ Box",
+        "panel.model3d.add.sphere" => "+ Sphere",
+        "panel.model3d.add.cylinder" => "+ Cylinder",
+        "panel.model3d.add.torus" => "+ Torus",
+        // As booleanas. ⚠️ "Subtract" e não "Difference": a palavra do documento descreve a
+        // operação, e a do botão descreve o que o artista quer FAZER.
+        "panel.model3d.op.union" => "Union",
+        "panel.model3d.op.subtract" => "Subtract",
+        "panel.model3d.op.intersect" => "Intersect",
         "panel.model3d.kind.union" => "Union",
         "panel.model3d.kind.intersection" => "Intersect",
         "panel.model3d.kind.difference" => "Subtract",

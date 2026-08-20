@@ -16,7 +16,7 @@
 //! precisa de uma cópia própria de qualquer forma.
 
 use ph2d_ecs::SimWorld;
-use ph2d_field::{FieldDoc, NodeShape, Op, Primitive};
+use ph2d_field::{Blend, FieldDoc, NodeShape, Op, Primitive};
 use ph2d_field_ecs::{FieldNode, FieldObject};
 
 use crate::field3d_smoke::with_smoke;
@@ -36,7 +36,11 @@ pub(crate) enum SelectRequest {
 }
 
 /// Devolve **um pedido de seleção** quando há um: um clique na peça, ou a peça a nascer.
-pub(crate) fn ecs_bridge(sim: &mut SimWorld, selected: Option<u64>) -> Option<SelectRequest> {
+pub(crate) fn ecs_bridge(
+    sim: &mut SimWorld,
+    selected: Option<u64>,
+    extras: &[u64],
+) -> Option<SelectRequest> {
     let (initial, ms, pending, pick) = with_smoke(|s| {
         (
             s.doc.clone(),
@@ -62,7 +66,12 @@ pub(crate) fn ecs_bridge(sim: &mut SimWorld, selected: Option<u64>) -> Option<Se
             }
         }
     }
-    let (cooked, born) = sync_scene_and_birth(sim, initial.as_ref(), ms);
+    let chosen: Vec<bevy_ecs::entity::Entity> = selected
+        .iter()
+        .chain(extras.iter())
+        .map(|b| bevy_ecs::entity::Entity::from_bits(*b))
+        .collect();
+    let (cooked, born) = sync_scene_and_birth(sim, initial.as_ref(), &chosen, ms);
     // ⭐ **O clique é resolvido AQUI**, e não no ponteiro: a pergunta *"de quem é este ponto?"*
     // precisa do mundo, e o ponteiro corre fora do quadro.
     //
@@ -115,7 +124,7 @@ pub(crate) fn sync_scene(
     initial: Option<&FieldDoc>,
     last_trace_ms: f32,
 ) -> Option<FieldDoc> {
-    sync_scene_and_birth(sim, initial, last_trace_ms).0
+    sync_scene_and_birth(sim, initial, &[], last_trace_ms).0
 }
 
 /// A mesma coisa, mais **quem selecionar quando a peça acaba de nascer**.
@@ -128,6 +137,7 @@ pub(crate) fn sync_scene(
 pub(crate) fn sync_scene_and_birth(
     sim: &mut SimWorld,
     initial: Option<&FieldDoc>,
+    selection: &[bevy_ecs::entity::Entity],
     last_trace_ms: f32,
 ) -> (Option<FieldDoc>, Option<u64>) {
     let mut born = None;
@@ -153,6 +163,11 @@ pub(crate) fn sync_scene_and_birth(
         }
     };
 
+    // ⭐ O que um gesto de criar/combinar acabou de fazer nascer — e que passa a estar selecionado.
+    let mut created: Option<u64> = None;
+    // A câmera é o «onde estou a olhar»: uma forma nova nasce no centro do quadro e no tamanho dele.
+    let cam = with_smoke(|s| s.cam).unwrap_or_default();
+
     // As edições do painel escrevem no COMPONENTE do nó, que é a peça de verdade.
     for intent in ph2d_panel_model3d::drain_intents() {
         match intent {
@@ -165,6 +180,32 @@ pub(crate) fn sync_scene_and_birth(
                         s.drag = None;
                         s.gizmo_hot = None;
                     });
+                }
+            }
+            // ⭐ **Criar** — perto do que está selecionado, no tamanho do enquadramento.
+            ph2d_panel_model3d::ModelIntent::AddShape { slot } => {
+                if let Some(prim) = shape_at(slot, new_shape_size(cam.half_extent)) {
+                    let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
+                    if let Ok(e) = ph2d_field_ecs::add_leaf(world, parent, prim, cam.target) {
+                        // ⭐ A forma nova fica SELECIONADA: é o que põe o gizmo em cima dela sem
+                        // ninguém ter de a procurar na Hierarquia.
+                        created = Some(e.to_bits());
+                    }
+                }
+            }
+            // ⭐ **Combinar** — trocar a operação de uma, ou embrulhar as escolhidas numa nova.
+            ph2d_panel_model3d::ModelIntent::ApplyOp { slot } => {
+                if let Some(op) = op_at(slot) {
+                    match selection {
+                        [one] => {
+                            let _ = ph2d_field_ecs::set_op(world, *one, op);
+                        }
+                        many => {
+                            if let Some(group) = ph2d_field_ecs::wrap_in_op(world, many, op) {
+                                created = Some(group.to_bits());
+                            }
+                        }
+                    }
                 }
             }
             // O referencial dos eixos é estado de VISTA, como o verbo.
@@ -185,12 +226,17 @@ pub(crate) fn sync_scene_and_birth(
         }
     }
 
-    publish_snapshot(world, root, last_trace_ms);
+    publish_snapshot(world, root, selection, last_trace_ms);
     // ⚠️ Uma peça inválida (um raio que deixou de caber porque a escala do pai mudou) devolve
     // `None` aqui, e a tela mostra o que o cozimento **de facto** produziu. Guardar o último
     // documento válido faria a tela mentir sobre a cena — que é exatamente o defeito que este
     // módulo acabou de pagar no cache do traçado.
-    (ph2d_field_ecs::cook(world, root).and_then(Result::ok), born)
+    (
+        ph2d_field_ecs::cook(world, root).and_then(Result::ok),
+        // ⚠️ O que ACABOU de nascer ganha do nascimento da peça: os dois só coincidem no primeiro
+        // quadro, e ali a ordem errada faria a primeira forma criada não ficar selecionada.
+        created.or(born),
+    )
 }
 
 /// **A ponte com o painel**: publica o retrato da peça.
@@ -199,7 +245,12 @@ pub(crate) fn sync_scene_and_birth(
 /// quadro: se o retrato saísse primeiro, o painel pintaria o valor antigo por um quadro e o
 /// controle daria um salto para trás debaixo do dedo — o sintoma clássico de um espelho publicado
 /// cedo demais.
-fn publish_snapshot(world: &bevy_ecs::world::World, root: bevy_ecs::entity::Entity, ms: f32) {
+fn publish_snapshot(
+    world: &bevy_ecs::world::World,
+    root: bevy_ecs::entity::Entity,
+    selection: &[bevy_ecs::entity::Entity],
+    ms: f32,
+) {
     let all = ph2d_field_ecs::walk(world, root);
     let rows: Vec<ph2d_panel_model3d::RadiusRow> = all
         .iter()
@@ -233,9 +284,16 @@ fn publish_snapshot(world: &bevy_ecs::world::World, root: bevy_ecs::entity::Enti
             active: *f == frame,
         })
         .collect();
+    let adds = SHAPES
+        .iter()
+        .map(|key| ph2d_panel_model3d::ModeChip { key, active: false })
+        .collect();
+    let ops = ops_for(world, selection);
     ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
         modes,
         frames,
+        adds,
+        ops,
         rows,
         node_count: all.len(),
         last_trace_ms: ms,
@@ -286,3 +344,134 @@ pub(crate) fn kind_key(shape: &NodeShape) -> &'static str {
 #[cfg(test)]
 #[path = "field3d_scene_tests.rs"]
 mod tests;
+
+/// ⭐ **As formas que se podem acrescentar**, na ordem do seletor.
+///
+/// ⚠️ **É a fonte da contagem**, como o `Mode::ALL`: acrescentar uma primitiva aqui faz o painel
+/// seguir sem uma linha de mudança.
+const SHAPES: [&str; 4] = [
+    "panel.model3d.add.box",
+    "panel.model3d.add.sphere",
+    "panel.model3d.add.cylinder",
+    "panel.model3d.add.torus",
+];
+
+/// As três booleanas, na ordem do seletor.
+const OPS: [&str; 3] = [
+    "panel.model3d.op.union",
+    "panel.model3d.op.subtract",
+    "panel.model3d.op.intersect",
+];
+
+/// ⭐ **O tamanho de uma forma nova, DERIVADO do enquadramento.**
+///
+/// ⚠️ A condição que o fixa é a única que importa: uma forma nova tem de ser **vista**. Um tamanho
+/// fixo em unidades de mundo nasce invisível numa peça grande e tapa a janela numa pequena — e nos
+/// dois casos o artista conclui que o botão não funcionou. Um quarto da meia-altura do quadro põe-na
+/// a metade da altura da tela, que é onde se vê o que ela é.
+fn new_shape_size(half_extent: f32) -> f32 {
+    (half_extent * 0.25).max(f32::MIN_POSITIVE)
+}
+
+/// A primitiva que cada posição do seletor cria, no tamanho do enquadramento.
+///
+/// ⚠️ **Todas nascem com o `round` que têm direito**, e não a zero: este é o módulo cujo argumento é
+/// o arredondamento, e uma caixa de aresta viva ao nascer esconderia exatamente aquilo que ele faz
+/// melhor do que o Blender. O valor é uma fração do tamanho, então ele cabe sempre.
+fn shape_at(slot: usize, r: f32) -> Option<Primitive> {
+    let round = r * 0.1;
+    Some(match slot {
+        0 => Primitive::Box {
+            half: [r; 3],
+            round,
+        },
+        1 => Primitive::Sphere { radius: r },
+        2 => Primitive::Cylinder {
+            radius: r,
+            half_height: r * 1.2,
+            round,
+        },
+        3 => Primitive::Torus {
+            major: r,
+            minor: r * 0.35,
+        },
+        _ => return None,
+    })
+}
+
+fn op_at(slot: usize) -> Option<Op> {
+    Some(match slot {
+        0 => Op::Union(Blend::Sharp),
+        1 => Op::Difference(Blend::Sharp),
+        2 => Op::Intersection(Blend::Sharp),
+        _ => return None,
+    })
+}
+
+/// **Onde uma forma nova entra** — perto do que está selecionado.
+///
+/// ⚠️ Uma operação selecionada adota-a; uma folha selecionada ganha-a como **irmã**, e não como
+/// filha (uma folha não tem filhos, e pendurar uma forma numa esfera não quer dizer nada). Sem
+/// seleção, ela vai para a raiz.
+fn where_to_add(
+    world: &bevy_ecs::world::World,
+    root: bevy_ecs::entity::Entity,
+    selected: Option<u64>,
+) -> bevy_ecs::entity::Entity {
+    let Some(e) = selected.map(bevy_ecs::entity::Entity::from_bits) else {
+        return root;
+    };
+    match world.get::<FieldNode>(e).map(|n| &n.shape) {
+        Some(NodeShape::Combine(_)) => e,
+        Some(NodeShape::Leaf(_)) => world
+            .get::<bevy_ecs::hierarchy::ChildOf>(e)
+            .map_or(root, |c| c.0),
+        None => root,
+    }
+}
+
+/// ⭐ **Quais operações fazem sentido AGORA** — e vazio quando nenhuma faz.
+///
+/// ⚠️ Publicar a fileira sempre daria três botões que às vezes não fazem nada, que é a affordance
+/// que mente. Ela aparece em dois casos, e em cada um quer dizer uma coisa precisa:
+///
+/// | Selecionado | O que os botões fazem | O «ativo» |
+/// |---|---|---|
+/// | uma **operação** | trocam-na (união vira subtração) | a operação que ela é |
+/// | **dois ou mais irmãos** | embrulham-nos numa operação nova | nenhum |
+fn ops_for(
+    world: &bevy_ecs::world::World,
+    selected: &[bevy_ecs::entity::Entity],
+) -> Vec<ph2d_panel_model3d::ModeChip> {
+    let chips = |active: Option<usize>| -> Vec<ph2d_panel_model3d::ModeChip> {
+        OPS.iter()
+            .enumerate()
+            .map(|(i, key)| ph2d_panel_model3d::ModeChip {
+                key,
+                active: active == Some(i),
+            })
+            .collect()
+    };
+    if let [one] = selected
+        && let Some(FieldNode {
+            shape: NodeShape::Combine(op),
+        }) = world.get::<FieldNode>(*one)
+    {
+        return chips(Some(match op {
+            Op::Union(_) => 0,
+            Op::Difference(_) => 1,
+            Op::Intersection(_) => 2,
+        }));
+    }
+    let siblings = selected.len() >= 2
+        && selected
+            .iter()
+            .all(|e| world.get::<FieldNode>(*e).is_some())
+        && selected
+            .iter()
+            .map(|e| world.get::<bevy_ecs::hierarchy::ChildOf>(*e).map(|c| c.0))
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            == 1;
+    if siblings { chips(None) } else { Vec::new() }
+}

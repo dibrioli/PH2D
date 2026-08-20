@@ -45,6 +45,18 @@ pub fn model3d_frame_button(slot: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.frame.{slot}"))
 }
 
+/// ⭐ **O botão de ACRESCENTAR uma forma** (caixa, esfera, cilindro, toro), pela posição.
+#[must_use]
+pub fn model3d_add_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.add.{slot}"))
+}
+
+/// ⭐ **O botão de uma OPERAÇÃO booleana** (unir, subtrair, intersectar), pela posição.
+#[must_use]
+pub fn model3d_op_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.op.{slot}"))
+}
+
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]
 pub fn model3d_radius_slider(node: u32) -> NodeId {

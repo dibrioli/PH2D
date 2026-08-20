@@ -442,7 +442,7 @@ fn a_world_delta_lands_where_the_gizmo_asked_even_under_a_rotated_parent() {
 fn the_part_is_born_with_an_object_selected_once_and_only_once() {
     let _ = ph2d_panel_model3d::drain_intents();
     let mut sim = a_world();
-    let (_, born) = super::sync_scene_and_birth(&mut sim, Some(&scene(1)), 0.0);
+    let (_, born) = super::sync_scene_and_birth(&mut sim, Some(&scene(1)), &[], 0.0);
     let bits = born.expect("nascer tem de pedir uma seleção");
 
     let root = the_root(&mut sim);
@@ -456,7 +456,7 @@ fn the_part_is_born_with_an_object_selected_once_and_only_once() {
         "é um filho direto da peça"
     );
 
-    let (_, again) = super::sync_scene_and_birth(&mut sim, None, 0.0);
+    let (_, again) = super::sync_scene_and_birth(&mut sim, None, &[], 0.0);
     assert_eq!(
         again, None,
         "o quadro seguinte não volta a mandar selecionar"
@@ -656,4 +656,209 @@ fn the_readout_is_the_pose_the_world_took() {
         angle.to_degrees(),
         swept.to_degrees()
     );
+}
+
+/// ⭐ **Acrescentar uma forma** — o gesto que faltava para o módulo ser um modelador e não um
+/// visualizador.
+///
+/// ⚠️ Ela nasce **onde a câmera olha** e **no tamanho do enquadramento**, e as duas metades são a
+/// mesma condição: uma forma nova tem de ser **vista**. Um tamanho fixo em unidades de mundo nasce
+/// invisível numa peça grande e tapa a janela numa pequena, e nos dois casos o artista conclui que o
+/// botão não funcionou.
+#[test]
+fn a_new_shape_is_born_where_the_camera_looks_and_big_enough_to_see() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let before = ph2d_field_ecs::walk(world, root).len();
+
+    let at = [0.4f32, -0.2, 0.1];
+    let e = ph2d_field_ecs::add_leaf(world, root, Primitive::Sphere { radius: 0.2 }, at)
+        .expect("a raiz aceita filhos");
+
+    assert_eq!(ph2d_field_ecs::walk(world, root).len(), before + 1);
+    let pose = ph2d_field_ecs::world_xform(world, e).translation;
+    for k in 0..3 {
+        assert!(
+            (pose[k] - at[k]).abs() < 1e-5,
+            "a forma nasceu em {pose:?} e devia nascer em {at:?}"
+        );
+    }
+    // E ela ENTRA na peça: o cozimento tem de a conter.
+    let cooked = ph2d_field_ecs::cook(world, root)
+        .expect("não vazia")
+        .expect("válida");
+    assert!(
+        cooked
+            .nodes()
+            .iter()
+            .any(|n| matches!(n.kind, ph2d_field::NodeKind::Leaf(Primitive::Sphere { .. }))),
+        "a forma nova não chegou ao documento — o botão criou um objeto invisível"
+    );
+}
+
+/// ⚠️ **Uma forma pendurada FORA da peça é recusada.** Ela apareceria na Hierarquia e o traçado
+/// ignorá-la-ia — um objeto que existe e não existe.
+#[test]
+fn a_shape_cannot_be_hung_outside_the_part() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let alien = world.spawn(ph2d_ecs::Name::new("nota")).id();
+    assert!(
+        ph2d_field_ecs::add_leaf(world, alien, Primitive::Sphere { radius: 0.1 }, [0.0; 3])
+            .is_err()
+    );
+}
+
+/// ⭐ **Trocar a operação de um nó**, e o RAIO da mistura sobrevive.
+///
+/// ⚠️ O raio é do nó, não da operação. Perdê-lo ao trocar de união para subtração obrigaria a
+/// re-encontrá-lo, e o gesto passaria a custar dois.
+#[test]
+fn changing_the_operation_keeps_the_blend_radius() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let before = ph2d_field_ecs::radius_of(world, root).expect("a união tem raio");
+    assert!(before > 0.0, "a cena 1 tem filete");
+
+    ph2d_field_ecs::set_op(
+        world,
+        root,
+        ph2d_field::Op::Difference(ph2d_field::Blend::Sharp),
+    )
+    .expect("a raiz é uma combinação");
+
+    assert!(
+        matches!(
+            world.get::<FieldNode>(root).map(|n| &n.shape),
+            Some(NodeShape::Combine(ph2d_field::Op::Difference(_)))
+        ),
+        "a operação não mudou"
+    );
+    assert!(
+        (ph2d_field_ecs::radius_of(world, root).expect("continua a ter raio") - before).abs()
+            < 1e-6,
+        "o raio da mistura evaporou na troca"
+    );
+}
+
+/// ⭐ **Embrulhar duas formas numa operação** — a autoria da booleana.
+///
+/// ⚠️ **A ORDEM que entra é o significado** numa subtração: `children[0]` menos os seguintes.
+#[test]
+fn wrapping_two_siblings_makes_a_new_operation_in_their_place() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let kids: Vec<bevy_ecs::entity::Entity> = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .collect();
+    assert_eq!(kids.len(), 3);
+
+    let group = ph2d_field_ecs::wrap_in_op(
+        world,
+        &kids[..2],
+        ph2d_field::Op::Difference(ph2d_field::Blend::Sharp),
+    )
+    .expect("dois irmãos embrulham");
+
+    // O grupo é filho da raiz, e os dois passaram a ser filhos DELE.
+    assert_eq!(world.get::<ChildOf>(group).map(|c| c.0), Some(root));
+    for k in &kids[..2] {
+        assert_eq!(world.get::<ChildOf>(*k).map(|c| c.0), Some(group));
+    }
+    // E a ordem que entrou é a que ficou — é ela que diz o que é subtraído de quê.
+    assert_eq!(
+        world
+            .get::<Children>(group)
+            .expect("o grupo tem filhos")
+            .iter()
+            .copied()
+            .collect::<Vec<_>>(),
+        kids[..2].to_vec()
+    );
+    assert!(
+        ph2d_field_ecs::cook(world, root)
+            .expect("não vazia")
+            .is_ok()
+    );
+}
+
+/// ⚠️ **Embrulhar exige PAI COMUM**, e não é conveniência: mover um nó para debaixo de outra
+/// operação muda o que ele é subtraído de — um segundo gesto, com o seu próprio desfazer. Um
+/// «embrulhar» que o fizesse em silêncio seria dois gestos com um nome só.
+#[test]
+fn wrapping_refuses_nodes_that_do_not_share_a_parent() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let first = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .next()
+        .expect("o primeiro");
+    let op = ph2d_field::Op::Union(ph2d_field::Blend::Sharp);
+    let others: Vec<bevy_ecs::entity::Entity> = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .filter(|e| *e != first)
+        .collect();
+
+    // ⚠️ **O caso que de facto exercita a regra:** dois nós que TÊM pai, e pais DIFERENTES.
+    //
+    // A primeira versão deste gate usava a raiz e um filho dela — e passava **por acidente**, porque
+    // a raiz não tem pai nenhum e a função sai mais cedo. Uma prova de mutação apanhou-o: retirar a
+    // exigência de pai comum deixava-o verde. *Um gate que passa pelo motivo errado não prova nada.*
+    let group = ph2d_field_ecs::wrap_in_op(world, &others, op).expect("dois irmãos embrulham");
+    let inside = world
+        .get::<Children>(group)
+        .expect("o grupo tem filhos")
+        .iter()
+        .copied()
+        .next()
+        .expect("o primeiro de dentro");
+    assert_eq!(world.get::<ChildOf>(first).map(|c| c.0), Some(root));
+    assert_eq!(world.get::<ChildOf>(inside).map(|c| c.0), Some(group));
+    assert!(
+        ph2d_field_ecs::wrap_in_op(world, &[first, inside], op).is_none(),
+        "dois nós de pais diferentes não se embrulham — mover um deles é outro gesto"
+    );
+
+    // A raiz não tem pai, então também não se embrulha.
+    assert!(ph2d_field_ecs::wrap_in_op(world, &[root, first], op).is_none());
+    // E um só nunca é «dois».
+    assert!(ph2d_field_ecs::wrap_in_op(world, &[first], op).is_none());
+}
+
+/// **Dois irmãos com o mesmo tipo não ficam com o mesmo nome.**
+///
+/// ⚠️ A Hierarquia é a única superfície em que estes objetos têm identidade legível, e três linhas
+/// «Sphere» tornam-na inútil exatamente quando a peça começa a ficar interessante.
+#[test]
+fn siblings_of_the_same_kind_get_distinct_names() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    for _ in 0..3 {
+        ph2d_field_ecs::add_leaf(world, root, Primitive::Sphere { radius: 0.1 }, [0.0; 3])
+            .expect("nasce");
+    }
+    let names: Vec<String> = ph2d_field_ecs::walk(world, root)
+        .into_iter()
+        .filter_map(|(e, _)| {
+            world
+                .get::<ph2d_ecs::Name>(e)
+                .map(|n| n.as_str().to_string())
+        })
+        .collect();
+    let unique: std::collections::BTreeSet<&String> = names.iter().collect();
+    assert_eq!(unique.len(), names.len(), "nomes repetidos: {names:?}");
 }

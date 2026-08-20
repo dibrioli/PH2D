@@ -83,6 +83,20 @@ pub(crate) fn apply_event(
                 true
             }
         }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_add_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_add_button).unwrap_or(0);
+            slot < state::current().adds.len() && {
+                state::push_intent(ModelIntent::AddShape { slot });
+                true
+            }
+        }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_op_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_op_button).unwrap_or(0);
+            slot < state::current().ops.len() && {
+                state::push_intent(ModelIntent::ApplyOp { slot });
+                true
+            }
+        }
         WidgetEvent::Click(id) if id == ids::MODEL3D_CLOSE => {
             host.set_panel_visible(Model3dPanel::ID, false);
             true

@@ -61,6 +61,15 @@ pub struct ModelSnapshot {
     pub modes: Vec<ModeChip>,
     /// ⭐ Os referenciais de eixo (global / local), na mesma forma e pela mesma razão.
     pub frames: Vec<ModeChip>,
+    /// ⭐ As formas que se podem **acrescentar**. ⚠️ Nenhuma fica «ativa»: são ações, não um modo —
+    /// clicar numa cria uma forma e o seletor volta ao mesmo sítio.
+    pub adds: Vec<ModeChip>,
+    /// ⭐ As operações booleanas.
+    ///
+    /// ⚠️ **Vazio quando não há o que combinar**, e é de propósito: um controle que aparece e não faz
+    /// nada é pior do que um que não aparece. Ele mostra-se quando uma operação está selecionada
+    /// (e aí o ativo diz qual ela é) ou quando há dois nós irmãos escolhidos.
+    pub ops: Vec<ModeChip>,
     /// Uma linha por nó com raio editável, em **pré-ordem** — a ordem da Hierarquia.
     pub rows: Vec<RadiusRow>,
     /// Quantos nós o documento tem **ao todo** — inclusive os sem raio.
@@ -88,6 +97,14 @@ pub enum ModelIntent {
     },
     /// Trocar o referencial dos eixos, pela **posição** no seletor.
     SetGizmoFrame {
+        slot: usize,
+    },
+    /// Acrescentar uma forma à peça, pela **posição** no seletor.
+    AddShape {
+        slot: usize,
+    },
+    /// Aplicar uma operação booleana ao que está selecionado, pela **posição** no seletor.
+    ApplyOp {
         slot: usize,
     },
 }

@@ -10,7 +10,8 @@ use bevy_ecs::hierarchy::Children;
 use bevy_ecs::world::World;
 use ph2d_field::xform::{quat_axis_angle, quat_conj, quat_mul, quat_normalize, quat_rotate};
 use ph2d_field::{
-    FieldError, NodeShape, RadiusBound, Xform, characteristic_size, round_limit, set_shape_radius,
+    FieldError, NodeShape, Op, Primitive, RadiusBound, Xform, characteristic_size, round_limit,
+    set_shape_radius,
 };
 
 use crate::{FieldNode, FieldPose};
@@ -206,4 +207,144 @@ pub fn set_radius(world: &mut World, entity: Entity, radius: f32) -> Result<(), 
     set_shape_radius(&mut shape, entity.to_bits() as u32, radius)?;
     node.shape = shape;
     Ok(())
+}
+
+/// ⭐ **Acrescenta uma forma à peça** e devolve a entidade dela.
+///
+/// `parent` é onde ela entra — uma operação, ou a raiz. `world_pos` é onde ela nasce, no **mundo**;
+/// a pose guardada é a **local**, convertida pela cadeia do pai (a mesma conversão do
+/// [`translate_world`], e pelo mesmo motivo).
+///
+/// ⚠️ **O nome é único entre irmãos**, e isso não é cosmética: a Hierarquia é a única superfície em
+/// que estes objetos têm identidade legível, e três linhas «Cylinder» tornam-na inútil exatamente
+/// quando a peça começa a ficar interessante.
+///
+/// # Errors
+/// [`FieldError::BadRoot`] se `parent` não é um nó de modelagem — uma forma pendurada fora da peça
+/// seria um objeto que a Hierarquia mostra e o traçado ignora.
+pub fn add_leaf(
+    world: &mut World,
+    parent: Entity,
+    primitive: Primitive,
+    world_pos: [f32; 3],
+) -> Result<Entity, FieldError> {
+    if world.get::<FieldNode>(parent).is_none() {
+        return Err(FieldError::BadRoot);
+    }
+    let shape = NodeShape::Leaf(primitive);
+    let name = unique_sibling_name(world, parent, crate::shape_name(&shape));
+    let child = world
+        .spawn((
+            ph2d_ecs::Name::new(name),
+            FieldNode { shape },
+            FieldPose::default(),
+        ))
+        .id();
+    world.entity_mut(parent).add_child(child);
+    // ⚠️ A pose depois de ter pai: a conversão mundo→local precisa da cadeia, e antes do
+    // `add_child` a cadeia é outra (a identidade).
+    let here = crate::world_xform(world, child).translation;
+    translate_world(
+        world,
+        child,
+        [
+            world_pos[0] - here[0],
+            world_pos[1] - here[1],
+            world_pos[2] - here[2],
+        ],
+    );
+    Ok(child)
+}
+
+/// ⭐ **Troca a operação de um nó de combinação** — união vira subtração, e a peça muda de forma sem
+/// se desmontar.
+///
+/// ⚠️ **O raio da mistura sobrevive à troca.** Ele é do nó, não da operação: um filete de 0,12 que
+/// se perdesse ao trocar de união para subtração obrigaria a re-encontrá-lo, e o gesto passaria a
+/// custar dois.
+///
+/// # Errors
+/// [`FieldError::BadRoot`] quando o nó não é uma combinação — uma folha não tem operação, e
+/// inventar uma seria mudar o que a forma é.
+pub fn set_op(world: &mut World, entity: Entity, op: Op) -> Result<(), FieldError> {
+    let Some(mut node) = world.get_mut::<FieldNode>(entity) else {
+        return Err(FieldError::BadRoot);
+    };
+    let NodeShape::Combine(current) = node.shape else {
+        return Err(FieldError::BadRoot);
+    };
+    // Reconstrói a operação nova **com a mistura da antiga**.
+    let blend = current.blend();
+    node.shape = NodeShape::Combine(match op {
+        Op::Union(_) => Op::Union(blend),
+        Op::Intersection(_) => Op::Intersection(blend),
+        Op::Difference(_) => Op::Difference(blend),
+    });
+    Ok(())
+}
+
+/// ⭐ **Embrulha os nós dados numa operação nova**, que fica no lugar deles.
+///
+/// É a autoria da booleana: escolhem-se duas formas e diz-se *"tira esta daquela"*.
+///
+/// ⚠️ **A ORDEM é a que entra, e ela é o significado** na subtração: `children[0]` menos todos os
+/// seguintes. Ordenar por qualquer outra coisa — pelos bits da entidade, pela ordem da consulta —
+/// faria o gesto tirar a peça errada, de forma que parece aleatória entre sessões.
+///
+/// Devolve `None` quando não há o que embrulhar (menos de dois nós, ou eles não partilham pai).
+///
+/// ⚠️ **Pai comum é EXIGIDO**, e não uma conveniência: mover um nó para debaixo de outra operação
+/// muda o que ele é subtraído de — um segundo gesto, com o seu próprio desfazer. Um «embrulhar» que
+/// o fizesse em silêncio seria dois gestos com um nome só.
+pub fn wrap_in_op(world: &mut World, nodes: &[Entity], op: Op) -> Option<Entity> {
+    if nodes.len() < 2 {
+        return None;
+    }
+    let parent = world.get::<bevy_ecs::hierarchy::ChildOf>(nodes[0])?.0;
+    for n in nodes {
+        if world.get::<FieldNode>(*n).is_none()
+            || world.get::<bevy_ecs::hierarchy::ChildOf>(*n).map(|c| c.0) != Some(parent)
+        {
+            return None;
+        }
+    }
+    let shape = NodeShape::Combine(op);
+    let name = unique_sibling_name(world, parent, crate::shape_name(&shape));
+    let group = world
+        .spawn((
+            ph2d_ecs::Name::new(name),
+            FieldNode { shape },
+            FieldPose::default(),
+        ))
+        .id();
+    world.entity_mut(parent).add_child(group);
+    for n in nodes {
+        world.entity_mut(group).add_child(*n);
+    }
+    Some(group)
+}
+
+/// Um nome que nenhum irmão já tem: `Cylinder`, `Cylinder 2`, `Cylinder 3`…
+fn unique_sibling_name(world: &World, parent: Entity, base: &str) -> String {
+    let taken: Vec<String> = world
+        .get::<Children>(parent)
+        .map(|c| {
+            c.iter()
+                .filter_map(|e| {
+                    world
+                        .get::<ph2d_ecs::Name>(*e)
+                        .map(|n| n.as_str().to_string())
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    if !taken.iter().any(|n| n == base) {
+        return base.to_string();
+    }
+    // ⚠️ Sem teto: a busca acaba porque cada volta consome um nome que já existe, e a lista é
+    // finita. Um `MAX` aqui seria um limite sem recurso por trás.
+    (2..)
+        .map(|k| format!("{base} {k}"))
+        .find(|c| !taken.iter().any(|n| n == c))
+        .unwrap_or_else(|| base.to_string())
 }

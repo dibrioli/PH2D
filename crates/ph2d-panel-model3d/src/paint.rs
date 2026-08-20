@@ -90,6 +90,9 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // ⭐ **Em que eixos** — do mundo, ou do próprio objeto. Fica por baixo do verbo porque ele
     // qualifica o verbo: um referencial sem verbo não quer dizer nada.
     y = paint_chips(ctx, &snapshot.frames, ids::model3d_frame_button, x, w, y);
+    // ⭐ **Criar e combinar** — sem estes dois, o módulo edita a cena que veio pronta e mais nada.
+    y = paint_chips(ctx, &snapshot.adds, ids::model3d_add_button, x, w, y);
+    y = paint_chips(ctx, &snapshot.ops, ids::model3d_op_button, x, w, y);
     if snapshot.rows.is_empty() {
         y = paint_note(ctx, tr("panel.model3d.empty"), x, w, y);
     }

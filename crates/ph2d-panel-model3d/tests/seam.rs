@@ -25,6 +25,8 @@ fn scene_with_one_union() {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
+        adds: Vec::new(),
+        ops: Vec::new(),
         rows: vec![RadiusRow {
             entity: THE_UNION,
             depth: 0,
@@ -197,6 +199,8 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
     publish(ModelSnapshot {
         modes: Vec::new(),
         frames: Vec::new(),
+        adds: Vec::new(),
+        ops: Vec::new(),
         rows: nodes,
         node_count: 4,
         last_trace_ms: 0.0,
@@ -271,6 +275,8 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
             },
         ],
         frames: Vec::new(),
+        adds: Vec::new(),
+        ops: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
         last_trace_ms: 0.0,
@@ -304,6 +310,8 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
             active: true,
         }],
         frames: Vec::new(),
+        adds: Vec::new(),
+        ops: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
         last_trace_ms: 0.0,
@@ -348,6 +356,8 @@ fn the_axis_selector_is_its_own_family() {
                 active: false,
             },
         ],
+        adds: Vec::new(),
+        ops: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
         last_trace_ms: 0.0,
@@ -365,4 +375,73 @@ fn the_axis_selector_is_its_own_family() {
         vec![ModelIntent::SetGizmoFrame { slot: 1 }],
         "o clique no eixo tem de pedir o EIXO — se vier `SetGizmoMode`, as famílias colidiram"
     );
+}
+
+/// ⭐ **Os quatro seletores são quatro famílias**, e um clique em cada chega ao intent certo.
+///
+/// ⚠️ São verbo · eixos · criar · combinar, todos no mesmo painel. Uma família partilhada faria um
+/// clique em «+ Sphere» pedir a segunda operação booleana — o tipo de defeito que se lê como *"o
+/// botão faz outra coisa"* e ninguém liga a ids.
+#[test]
+fn the_four_selectors_never_answer_for_each_other() {
+    let chip = |key: &'static str| state::ModeChip { key, active: false };
+    let _ = drain_intents();
+    publish(ModelSnapshot {
+        modes: vec![
+            chip("panel.model3d.mode.move"),
+            chip("panel.model3d.mode.rotate"),
+        ],
+        frames: vec![
+            chip("panel.model3d.frame.global"),
+            chip("panel.model3d.frame.local"),
+        ],
+        adds: vec![
+            chip("panel.model3d.add.box"),
+            chip("panel.model3d.add.sphere"),
+        ],
+        ops: vec![
+            chip("panel.model3d.op.union"),
+            chip("panel.model3d.op.subtract"),
+        ],
+        rows: Vec::new(),
+        node_count: 0,
+        last_trace_ms: 0.0,
+    });
+
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+    let mut click =
+        |id| host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(id));
+    assert_eq!(click(ids::model3d_mode_button(1)), EventOutcome::Consumed);
+    assert_eq!(click(ids::model3d_frame_button(1)), EventOutcome::Consumed);
+    assert_eq!(click(ids::model3d_add_button(1)), EventOutcome::Consumed);
+    assert_eq!(click(ids::model3d_op_button(1)), EventOutcome::Consumed);
+
+    assert_eq!(
+        drain_intents(),
+        vec![
+            ModelIntent::SetGizmoMode { slot: 1 },
+            ModelIntent::SetGizmoFrame { slot: 1 },
+            ModelIntent::AddShape { slot: 1 },
+            ModelIntent::ApplyOp { slot: 1 },
+        ],
+        "cada família tem de responder por si — se dois intents forem iguais, os ids colidiram"
+    );
+}
+
+/// ⚠️ **A fileira de operações só é pintada quando pode agir.** Quando o retrato a publica vazia,
+/// um clique num id dela não pede nada — um controle que aparece e não faz nada é pior do que um
+/// que não aparece.
+#[test]
+fn an_empty_operation_row_dispatches_nothing() {
+    let _ = drain_intents();
+    scene_with_one_union();
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+    let outcome = host.apply_panel_event::<Model3dPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::model3d_op_button(0)),
+    );
+    assert_eq!(outcome, EventOutcome::Ignored);
+    assert!(drain_intents().is_empty());
 }

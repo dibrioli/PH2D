@@ -30,7 +30,15 @@ com o painel, na W4).
 | **W4** — a ferramenta | 🔶 | Navegação por mouse ([`field3d_input.rs`](../../shells/desktop/src/field3d_input.rs)): **rotação LIVRE** sem polos ([doc 05](05_resultados_imagem.md) §7), pan, zoom sem teto herdado, `Home`. E o **painel** ([`ph2d-panel-model3d`](../../crates/ph2d-panel-model3d/), 6 gates): ⭐ **o raio de cada operação, editável ao vivo** — a promessa do módulo virada em controle. **Falta:** o canvas de primeira classe |
 | **W3** — os perfis | ✅ | [`ph2d-field-profile`](../../crates/ph2d-field-profile/) (a costura com o editor vetorial, 8 gates) + `Extrude`/`Revolve`. **O desenho da caneta vira sólido**, e o raio de quina do editor arredonda as arestas verticais. `FIELD_DOC_VERSION` → **2** |
 
-**Smoke (roda agora):**
+**Como entrar — DUAS portas:**
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && cargo run -p ph2d-host-desktop --release
+```
+⭐ **A pill `MODEL` no topo**, ao lado da `SCULPT`: ela cria a peça, abre o painel e desenha. É a
+porta que um artista encontra — até 19/08 a única era a variável de ambiente, e *uma feature que só
+existe para quem já sabe que ela existe não existe*.
+
+A outra porta dirige uma cena específica:
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && env PH2D_FIELD_SMOKE=1 cargo run -p ph2d-host-desktop --release
 ```
@@ -46,7 +54,12 @@ aproxima · **Home** repõe a vista.
 ⭐ **A rotação é LIVRE** (não é prato giratório): não há polo onde o gesto morra, e uma diagonal roda
 na diagonal. O preço é o horizonte poder ficar inclinado — daí a tecla de repor ([doc 05](05_resultados_imagem.md) §7).
 
-⭐ **O painel abre sozinho, à direita**, com uma linha por operação da peça. Arraste o controle de
+⭐ **A peça é uma ENTIDADE da cena** — aparece na Hierarquia como `Model`, é salva e é desfeita.
+⚠️ Até 19/08 ela **não era**: o `FieldObject` da W1 estava registado e **sem produtor**, e o gate
+daquela wave media a metade errada — que o componente *sobrevive* ao snapshot, nunca que alguma
+coisa o *põe* no mundo.
+
+⭐ **O painel abre à direita**, com uma linha por operação da peça. Arraste o controle de
 **Radius** e o arredondamento muda **na peça, ao vivo** — é isto que o módulo promete e que nem o
 Blender nem o MoI dão, porque lá o filete é geometria assada. O rodapé mostra quanto custou o último
 quadro. ⭐ Aproximar mostra **mais forma**, não uma forma inchada: as tolerâncias da marcha descem

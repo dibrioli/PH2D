@@ -6677,7 +6677,7 @@ impl crate::App {
             crate::field3d_smoke::set_armed_by_panel(
                 hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID),
             );
-            crate::field3d_smoke::ecs_bridge(sim);
+            crate::field3d_scene::ecs_bridge(sim);
             // O painel de TOKENS (plano UI/UX W6), na MESMA fase e pela mesma razão: um painel de
             // MUNDO, cuja visibilidade é do artista. ⚠️ Ele tem de correr DEPOIS do dispatch de
             // eventos (o intent de Reset é enfileirado ali) e ANTES do paint (senão o frame

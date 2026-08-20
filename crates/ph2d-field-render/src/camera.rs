@@ -4,6 +4,13 @@
 //! ⚠️ O corte é de **arquivo**, nunca de superfície: `Orbit` continua a ser
 //! `ph2d_field_render::Orbit` para todo o mundo (o `pub use` no pai), como o `sculpt3d_rulers` fez
 //! com as réguas dele. Um corte que mudasse caminhos seria uma migração disfarçada de arrumação.
+//!
+//! ⚠️ **A aritmética de quaternion NÃO mora aqui** — ela vive em [`ph2d_field::xform`], junto do
+//! tipo cuja rotação ela compõe. Havia uma cópia local dela neste arquivo até 20/08, e uma segunda
+//! resposta para *"qual é a rotação resultante?"* é a forma normal de duas metades do mesmo módulo
+//! divergirem sem que nada fique vermelho.
+
+use ph2d_field::xform::{dot, quat_axis_angle, quat_mul, quat_normalize, quat_rotate};
 
 /// A câmera. **Ortográfica**, e a orientação é um **quaternion**.
 ///
@@ -99,53 +106,102 @@ impl Orbit {
     }
 }
 
-/// `a ⊗ b` — aplicar `b` **depois** de `a` no referencial de `a`.
-fn quat_mul(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
-    let ([ax, ay, az, aw], [bx, by, bz, bw]) = (a, b);
-    [
-        aw * bx + ax * bw + ay * bz - az * by,
-        aw * by - ax * bz + ay * bw + az * bx,
-        aw * bz + ax * by - ay * bx + az * bw,
-        aw * bw - ax * bx - ay * by - az * bz,
-    ]
+/// **O mapeamento pixel ↔ plano da câmera**, e ele é o **único** neste módulo.
+///
+/// ⭐ A marcha de raios constrói os raios a partir desta conta, e o gizmo projeta as alças com ela.
+/// Duas cópias seriam duas respostas para *"onde este ponto cai na tela?"* — e a divergência não
+/// apareceria como erro, apareceria como uma alça que se agarra meio pixel ao lado da superfície
+/// que ela diz mover. É a mesma razão pela qual o shell guarda o `last_canvas` em vez de repetir a
+/// aritmética do layout.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Screen {
+    w: f32,
+    h: f32,
+    /// Metade do lado **menor**, em pixels — é ele que fixa a escala, para o quadro não deformar.
+    half: f32,
+    half_extent: f32,
 }
 
-fn quat_axis_angle(axis: [f32; 3], angle: f32) -> [f32; 4] {
-    let len = (axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]).sqrt();
-    if len <= 0.0 || !len.is_finite() {
-        return [0.0, 0.0, 0.0, 1.0];
+impl Screen {
+    #[must_use]
+    pub fn new(w: u32, h: u32, half_extent: f32) -> Self {
+        Self {
+            w: w as f32,
+            h: h as f32,
+            half: (w.min(h) as f32) * 0.5,
+            half_extent,
+        }
     }
-    let (s, c) = (angle * 0.5).sin_cos();
-    [axis[0] / len * s, axis[1] / len * s, axis[2] / len * s, c]
-}
 
-/// ⚠️ **Re-normalizar a cada giro não é zelo.** Uma rotação livre é uma composição *acumulada*: um
-/// arrasto longo são centenas de multiplicações, e o erro de `f32` faz a norma derivar. Um
-/// quaternion que deixa de ser unitário deixa de ser uma rotação — ele passa a **escalar** a peça,
-/// e o sintoma é a forma a encolher devagar enquanto se gira.
-fn quat_normalize(q: [f32; 4]) -> [f32; 4] {
-    let n = (q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]).sqrt();
-    if n <= 0.0 || !n.is_finite() {
-        return [0.0, 0.0, 0.0, 1.0];
+    #[must_use]
+    pub fn width(self) -> f32 {
+        self.w
     }
-    [q[0] / n, q[1] / n, q[2] / n, q[3] / n]
+
+    #[must_use]
+    pub fn height(self) -> f32 {
+        self.h
+    }
+
+    /// Pixel → plano da câmera, em unidades de **mundo**.
+    #[must_use]
+    pub fn plane_at(self, x: f32, y: f32) -> (f32, f32) {
+        (
+            (x - self.w * 0.5) / self.half * self.half_extent,
+            -(y - self.h * 0.5) / self.half * self.half_extent,
+        )
+    }
+
+    /// A inversa exacta de [`Screen::plane_at`]. O gate `a_pixel_survives_the_round_trip` prende as
+    /// duas — uma inversa escrita à mão é onde um sinal trocado sobrevive anos.
+    #[must_use]
+    pub fn pixel_of(self, u: f32, v: f32) -> (f32, f32) {
+        (
+            u / self.half_extent * self.half + self.w * 0.5,
+            -v / self.half_extent * self.half + self.h * 0.5,
+        )
+    }
+
+    /// Quantos **pixels** mede uma unidade de mundo neste enquadramento. É o número que converte um
+    /// tamanho de alça (que é de tela) num tamanho de gizmo (que é de mundo).
+    #[must_use]
+    pub fn px_per_world(self) -> f32 {
+        self.half / self.half_extent
+    }
 }
 
-fn quat_rotate(q: [f32; 4], v: [f32; 3]) -> [f32; 3] {
-    // `v + 2·w·(u×v) + 2·u×(u×v)`, com `u` a parte vetorial — a forma sem construir a matriz.
-    let u = [q[0], q[1], q[2]];
-    let cross = |a: [f32; 3], b: [f32; 3]| {
-        [
-            a[1] * b[2] - a[2] * b[1],
-            a[2] * b[0] - a[0] * b[2],
-            a[0] * b[1] - a[1] * b[0],
-        ]
-    };
-    let t = cross(u, v);
-    let tt = cross(u, t);
-    [
-        v[0] + 2.0 * (q[3] * t[0] + tt[0]),
-        v[1] + 2.0 * (q[3] * t[1] + tt[1]),
-        v[2] + 2.0 * (q[3] * t[2] + tt[2]),
-    ]
+impl Orbit {
+    /// **Onde um ponto do mundo cai na tela**, e a que profundidade.
+    ///
+    /// Devolve `(pixel, profundidade)`, com a profundidade a crescer **na direção do observador** —
+    /// é ela que resolve qual de duas alças sobrepostas está à frente.
+    ///
+    /// ⚠️ Ortográfica: não há divisão por `w`, e por isso não há ponto que a projeção não saiba
+    /// responder. Quando a perspectiva entrar (item aberto), é **aqui** que ela entra — num sítio.
+    #[must_use]
+    pub fn project(&self, p: [f32; 3], screen: Screen) -> ([f32; 2], f32) {
+        let (right, up, fwd) = self.basis();
+        let v = [
+            p[0] - self.target[0],
+            p[1] - self.target[1],
+            p[2] - self.target[2],
+        ];
+        let (x, y) = screen.pixel_of(dot(v, right), dot(v, up));
+        ([x, y], dot(v, fwd))
+    }
+
+    /// O raio que sai de um pixel: `(origem, direção)`. A origem fica no plano da câmera que passa
+    /// pelo alvo, o que a torna útil para intersectar com um plano de arrasto sem inventar um
+    /// afastamento.
+    #[must_use]
+    pub fn ray(&self, x: f32, y: f32, screen: Screen) -> ([f32; 3], [f32; 3]) {
+        let (right, up, fwd) = self.basis();
+        let (u, v) = screen.plane_at(x, y);
+        let o = [
+            self.target[0] + right[0] * u + up[0] * v,
+            self.target[1] + right[1] * u + up[1] * v,
+            self.target[2] + right[2] * u + up[2] * v,
+        ];
+        (o, [-fwd[0], -fwd[1], -fwd[2]])
+    }
 }

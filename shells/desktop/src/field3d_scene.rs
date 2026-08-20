@@ -1,0 +1,136 @@
+//! ⭐ **A ponte com a CENA**: cada cilindro, cada caixa e cada operação é uma **entidade**.
+//!
+//! # A história curta deste arquivo
+//!
+//! - **W1** criou o componente e provou por gate que ele atravessa o snapshot — e **ninguém o
+//!   produzia**. O gate media a metade errada: que o componente *sobrevive*, nunca que alguma coisa
+//!   o *põe* no mundo. Enio, 2026-08-19: *"os objetos não aparecem na hierarchy"*.
+//! - **W4** pôs a peça no mundo — como **um** objeto, com a árvore inteira escondida dentro dele.
+//!   Enio, no mesmo dia: *"na hierarchy apenas um objeto e não 3 cilindro. Não há gizmo 3d para
+//!   mover os objetos."* As duas frases são **um** defeito: um objeto que a cena não enumera não
+//!   tem pose que um gizmo agarre.
+//! - **W5** (aqui) faz a **hierarquia da cena ser a árvore de modelagem**, e o documento que o
+//!   traçador avalia passa a ser **cozido** dela a cada quadro (`ph2d_field_ecs::cook`).
+//!
+//! ⚠️ **O MUNDO é a verdade.** O `Smoke::doc` é um cache do quadro para a thread do traçado, que
+//! precisa de uma cópia própria de qualquer forma.
+
+use ph2d_ecs::SimWorld;
+use ph2d_field::{FieldDoc, NodeShape, Op, Primitive};
+use ph2d_field_ecs::{FieldNode, FieldObject};
+
+use crate::field3d_smoke::with_smoke;
+
+/// O nome da peça na Hierarquia. É **conteúdo** (um `Name` que o artista renomeia), não chrome —
+/// por isso não passa pelo i18n. Ver `ph2d_field_ecs::shape_name`.
+const PART_NAME: &str = "Model";
+
+/// Corre uma vez por quadro, antes do traçado. No-op silencioso quando o módulo não está armado.
+pub(crate) fn ecs_bridge(sim: &mut SimWorld) {
+    let Some((initial, ms)) = with_smoke(|s| (s.doc.clone(), s.last_trace_ms)) else {
+        return;
+    };
+    let cooked = sync_scene(sim, initial.as_ref(), ms);
+    with_smoke(|s| {
+        // ⚠️ Só se escreve quando MUDOU: atribuir todo quadro faria o documento parecer novo e
+        // re-traçar para sempre, matando o "só se traça o que mudou".
+        if s.doc != cooked {
+            s.doc = cooked;
+        }
+    });
+}
+
+/// O que a ponte **faz**, separado de **se** ela corre.
+///
+/// ⚠️ A separação existe para o gate: `ecs_bridge` pergunta pelo estado do smoke, e um teste não
+/// consegue (nem deve) encená-lo. Aqui a peça inicial entra por parâmetro, e o resto é o caminho de
+/// produção inteiro — mundo, entidades, intents, retrato, cozimento.
+///
+/// Devolve `None` quando não há geometria nenhuma: apagar o último filho de uma peça na Hierarquia
+/// é um gesto normal, e o resultado normal dele é a tela ficar vazia.
+pub(crate) fn sync_scene(
+    sim: &mut SimWorld,
+    initial: Option<&FieldDoc>,
+    last_trace_ms: f32,
+) -> Option<FieldDoc> {
+    let world = sim.world_mut();
+    let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
+    let root = match q.iter(world).next().map(|(e, _)| e) {
+        Some(e) => e,
+        // A primeira vez: a peça inicial explode em objetos. Depois disto a **cena** é a fonte e
+        // ninguém volta a chamar isto — inclusive porque `initial` deixa de existir.
+        None => ph2d_field_ecs::spawn_doc(world, initial?, PART_NAME),
+    };
+
+    // As edições do painel escrevem no COMPONENTE do nó, que é a peça de verdade.
+    for intent in ph2d_panel_model3d::drain_intents() {
+        match intent {
+            ph2d_panel_model3d::ModelIntent::SetRadius { entity, radius } => {
+                // Uma recusa é informação, não erro: o nó diz que aquele raio não cabe, e o retrato
+                // publicado logo abaixo devolve o controle ao valor que ficou.
+                let _ = ph2d_field_ecs::set_radius(
+                    world,
+                    bevy_ecs::entity::Entity::from_bits(entity),
+                    radius,
+                );
+            }
+        }
+    }
+
+    publish_snapshot(world, root, last_trace_ms);
+    // ⚠️ Uma peça inválida (um raio que deixou de caber porque a escala do pai mudou) devolve
+    // `None` aqui, e a tela mostra o que o cozimento **de facto** produziu. Guardar o último
+    // documento válido faria a tela mentir sobre a cena — que é exatamente o defeito que este
+    // módulo acabou de pagar no cache do traçado.
+    ph2d_field_ecs::cook(world, root)?.ok()
+}
+
+/// **A ponte com o painel**: publica o retrato da peça.
+///
+/// ⭐ **A ordem é load-bearing.** Drenar ANTES de publicar é o que faz a edição aparecer no mesmo
+/// quadro: se o retrato saísse primeiro, o painel pintaria o valor antigo por um quadro e o
+/// controle daria um salto para trás debaixo do dedo — o sintoma clássico de um espelho publicado
+/// cedo demais.
+fn publish_snapshot(world: &bevy_ecs::world::World, root: bevy_ecs::entity::Entity, ms: f32) {
+    let all = ph2d_field_ecs::walk(world, root);
+    let rows: Vec<ph2d_panel_model3d::RadiusRow> = all
+        .iter()
+        .filter_map(|&(e, depth)| {
+            Some(ph2d_panel_model3d::RadiusRow {
+                entity: e.to_bits(),
+                depth,
+                kind_key: kind_key(&world.get::<FieldNode>(e)?.shape),
+                // ⚠️ O raio E o teto vêm os DOIS do nó. Um painel que guardasse o seu próprio valor
+                // teria duas verdades sobre o mesmo número, e a que aparece na tela seria a errada
+                // sempre que algo o mudasse de outro lado — um desfazer, um arquivo aberto.
+                radius: ph2d_field_ecs::radius_of(world, e)?,
+                bound: ph2d_field_ecs::radius_bound(world, e)?,
+            })
+        })
+        .collect();
+    ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
+        rows,
+        node_count: all.len(),
+        last_trace_ms: ms,
+    });
+}
+
+/// A chave i18n do que um nó é. ⚠️ Uma **chave**, nunca um rótulo pronto (HR-15).
+pub(crate) fn kind_key(shape: &NodeShape) -> &'static str {
+    match shape {
+        NodeShape::Combine(op) => match op {
+            Op::Union(_) => "panel.model3d.kind.union",
+            Op::Intersection(_) => "panel.model3d.kind.intersection",
+            Op::Difference(_) => "panel.model3d.kind.difference",
+        },
+        NodeShape::Leaf(p) => match p {
+            Primitive::Cylinder { .. } => "panel.model3d.kind.cylinder",
+            Primitive::Extrude { .. } => "panel.model3d.kind.extrude",
+            _ => "panel.model3d.kind.box",
+        },
+    }
+}
+
+#[cfg(test)]
+#[path = "field3d_scene_tests.rs"]
+mod tests;

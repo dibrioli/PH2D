@@ -12,10 +12,11 @@
 // ⚠️ Imports EXPLÍCITOS, e não `use super::*`. O módulo irmão a que este arquivo está pendurado é
 // o smoke do traçado, cujo escopo não tem nada de ECS — herdá-lo daria uma pilha de falhas que
 // parece do teste e é de onde ele foi pendurado.
+use bevy_ecs::entity::Entity;
 use ph2d_ecs::scene::{
     ComponentRegistry, WorldSnapshot, register_ecs_components, snapshot_to_world, world_to_snapshot,
 };
-use ph2d_ecs::{Name, SimWorld, Transform, TransformPropagationState, WorklistBuf};
+use ph2d_ecs::{SimWorld, TransformPropagationState, WorklistBuf};
 use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
 use ph2d_field_ecs::{FieldObject, register_field_components};
 
@@ -42,21 +43,26 @@ fn a_doc() -> FieldDoc {
     .expect("documento válido")
 }
 
-/// ⭐ O objeto de modelagem 3D atravessa o snapshot — que é dizer: **sobrevive ao desfazer e ao
-/// salvar**, sem uma linha de código do lado do snapshot.
+/// ⭐ **A PEÇA INTEIRA atravessa o snapshot** — que é dizer: sobrevive ao desfazer e ao salvar,
+/// sem uma linha de código do lado do snapshot.
+///
+/// ⚠️ **A afirmação mudou de tamanho na W5, e é de propósito.** Antes a peça era um componente numa
+/// entidade, e o gate media a viagem de um blob. Agora ela é uma **árvore de entidades** — e o que
+/// pode partir-se no caminho é a hierarquia: um filho que volta sem pai, uma ordem de irmãos
+/// trocada (a subtração é `children[0]` menos os seguintes), uma pose perdida. Por isso o que se
+/// compara não é o componente: é a **peça cozida** dos dois lados.
 #[test]
-fn a_field_object_survives_the_world_snapshot_round_trip() {
+fn the_whole_part_survives_the_world_snapshot_round_trip() {
     let reg = registry();
     let mut sim = SimWorld::new();
     // ⚠️ `TransformPropagationState::new` TOMA o mundo — é o mesmo caminho do `init.rs`. Não há
     // `::default()` de propósito: o estado é indexado pelo mundo que ele vai propagar.
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut worklist = WorklistBuf::default();
-    sim.world_mut().spawn((
-        Name::new("peça"),
-        Transform::default(),
-        FieldObject { doc: a_doc() },
-    ));
+    let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &a_doc(), "peça");
+    let before = ph2d_field_ecs::cook(sim.world(), root)
+        .expect("não vazia")
+        .expect("válida");
 
     let mut snap = WorldSnapshot::new();
     world_to_snapshot(sim.world(), &mut prop, &mut worklist, &reg, &mut snap)
@@ -66,22 +72,21 @@ fn a_field_object_survives_the_world_snapshot_round_trip() {
     let mut restored = SimWorld::new();
     snapshot_to_world(restored.world_mut(), &snap, &reg).expect("restaura");
 
-    let mut q = restored.world_mut().query::<&FieldObject>();
-    let found: Vec<&FieldObject> = q.iter(restored.world()).collect();
+    let mut q = restored.world_mut().query::<(Entity, &FieldObject)>();
+    let roots: Vec<Entity> = q.iter(restored.world()).map(|(e, _)| e).collect();
     assert_eq!(
-        found.len(),
+        roots.len(),
         1,
-        "o objeto de campo não sobreviveu ao snapshot — falta o registro em `init.rs`?"
+        "a peça não sobreviveu ao snapshot — falta o registro em `init.rs`?"
     );
-    assert_eq!(
-        found[0].doc,
-        a_doc(),
-        "o documento voltou diferente do que entrou"
-    );
+    let after = ph2d_field_ecs::cook(restored.world(), roots[0])
+        .expect("não vazia")
+        .expect("válida");
+    assert_eq!(after, before, "a peça voltou diferente do que entrou");
 }
 
 /// ⚠️ **O controle NEGATIVO, e ele é o que dá valor ao gate acima.** Sem o registro, o mesmo
-/// caminho perde o componente **sem erro nenhum** — é essa a forma exata da falha que se está a
+/// caminho perde os componentes **sem erro nenhum** — é essa a forma exata da falha que se está a
 /// prevenir. Um gate que só mostra o caso feliz não distingue *"funciona"* de *"o teste não
 /// consegue falhar"*.
 #[test]
@@ -93,11 +98,7 @@ fn without_the_registration_the_snapshot_drops_it_silently() {
     let mut sim = SimWorld::new();
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut worklist = WorklistBuf::default();
-    sim.world_mut().spawn((
-        Name::new("peça"),
-        Transform::default(),
-        FieldObject { doc: a_doc() },
-    ));
+    ph2d_field_ecs::spawn_doc(sim.world_mut(), &a_doc(), "peça");
 
     let mut snap = WorldSnapshot::new();
     world_to_snapshot(sim.world(), &mut prop, &mut worklist, &reg, &mut snap)
@@ -110,7 +111,7 @@ fn without_the_registration_the_snapshot_drops_it_silently() {
     assert_eq!(
         q.iter(restored.world()).count(),
         0,
-        "sem registro o componente TEM de se perder — se ele sobreviveu, o gate irmão \
+        "sem registro os componentes TÊM de se perder — se sobreviveram, o gate irmão \
          está a passar por outro motivo e não prova nada"
     );
 }

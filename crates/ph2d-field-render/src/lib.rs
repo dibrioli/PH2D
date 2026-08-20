@@ -85,7 +85,7 @@ impl Sharpness {
 mod camera;
 mod shade;
 
-pub use camera::Orbit;
+pub use camera::{Orbit, Screen};
 pub use shade::Matcap;
 pub use shade::shade;
 
@@ -197,7 +197,10 @@ pub fn trace_with(
     let shape = Engine::from(tree);
     let basis = cam.basis();
     let (w, h) = (width as usize, height as usize);
-    let plane = Plane::new(w, h, cam.half_extent);
+    // ⚠️ **A MESMA conta que o gizmo projeta** ([`Screen`]): a marcha constrói os raios a partir
+    // dela e a alça pousa por ela. Duas cópias divergiriam meio pixel e o sintoma seria uma seta
+    // que agarra ao lado da superfície que ela move.
+    let plane = Screen::new(width, height, cam.half_extent);
     let sharp = Sharpness::for_frame(cam.half_extent, w.min(h));
     let scene = Scene {
         shape: &shape,
@@ -209,7 +212,7 @@ pub fn trace_with(
     // Passo 1: um raio por pixel, uma fatia por linha.
     let row = |y: usize| -> (Vec<bool>, Vec<[f32; 3]>) {
         let pts: Vec<(f32, f32)> = (0..w)
-            .map(|x| plane.at(x as f32 + 0.5, y as f32 + 0.5))
+            .map(|x| plane.plane_at(x as f32 + 0.5, y as f32 + 0.5))
             .collect();
         march(&scene, &pts)
     };
@@ -378,46 +381,14 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>)
 /// lotes que ele produz, é um `for` sequencial com um `par_` na frente.*
 const EDGE_CHUNK: usize = 64;
 
-/// A conversão pixel → plano da câmera, num tipo `Copy` em vez de num fecho.
-///
-/// ⚠️ Não é arrumação: um `dyn Fn` não é `Sync`, e a segunda passagem é paralela. Um fecho aqui
-/// **não compila** — e a alternativa (repetir a conta nos dois sítios) seria a segunda resposta à
-/// mesma pergunta, na função cujo trabalho inteiro é saber onde cai uma amostra.
-#[derive(Clone, Copy)]
-struct Plane {
-    w: f32,
-    h: f32,
-    /// Metade do lado menor, em pixels — é ele que fixa a escala, para o quadro não deformar.
-    half: f32,
-    half_extent: f32,
-}
-
-impl Plane {
-    fn new(w: usize, h: usize, half_extent: f32) -> Self {
-        Self {
-            w: w as f32,
-            h: h as f32,
-            half: (w.min(h) as f32) * 0.5,
-            half_extent,
-        }
-    }
-
-    fn at(self, x: f32, y: f32) -> (f32, f32) {
-        (
-            (x - self.w * 0.5) / self.half * self.half_extent,
-            -(y - self.h * 0.5) / self.half * self.half_extent,
-        )
-    }
-}
-
 fn resample_edges(
     scene: &Scene<'_>,
-    plane: Plane,
+    plane: Screen,
     hit: &[bool],
     normal: &[[f32; 3]],
     parallel: bool,
 ) -> Vec<EdgePixel> {
-    let (w, h) = (plane.w as usize, plane.h as usize);
+    let (w, h) = (plane.width() as usize, plane.height() as usize);
     let differs = |a: usize, b: usize| -> bool {
         if hit[a] != hit[b] {
             return true;
@@ -459,7 +430,7 @@ fn resample_edges(
         for &p in c {
             let (x, y) = ((p as usize % w) as f32, (p as usize / w) as f32);
             for (dx, dy) in ROOK {
-                pts.push(plane.at(x + dx, y + dy));
+                pts.push(plane.plane_at(x + dx, y + dy));
             }
         }
         let (hits, normals) = march(scene, &pts);

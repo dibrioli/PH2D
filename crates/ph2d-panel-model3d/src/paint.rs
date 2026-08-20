@@ -21,6 +21,13 @@ use crate::{Model3dPanel, populate::MAX_ROWS};
 /// A goteira do rótulo. Os rótulos aqui são o **tipo do nó** ("Union", "Cylinder"), não uma frase.
 const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
 
+/// Quanto um nível de profundidade recua a linha — o mesmo gesto que a Hierarquia faz.
+const ROW_INDENT_PX: f32 = 10.0; // LITERAL-PX-OK: panel grid metric (tree indent per level)
+
+/// O piso da largura de uma linha recuada: abaixo disto o slider deixa de ser arrastável e o
+/// controle passa a existir sem ser usável, que é pior do que não recuar.
+const MIN_ROW_W_PX: f32 = 120.0; // LITERAL-PX-OK: panel grid metric (minimum usable row width)
+
 /// Casas decimais do raio.
 ///
 /// ⚠️ **Três, e não duas.** Um raio de CAD é pequeno em relação à peça — os das cenas de smoke vão
@@ -82,8 +89,8 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // ⚠️ **Corta na família, e o rodapé DIZ que cortou** — ver `MAX_ROWS`. Uma linha além dela
     // ficaria sem controle registado: pintada e morta sob o rato, que é a falha de paridade de
     // fiação na sua forma mais cara.
-    for row in snapshot.rows.iter().take(MAX_ROWS) {
-        y = paint_row(ctx, row, x, w, y);
+    for (slot, row) in snapshot.rows.iter().enumerate().take(MAX_ROWS) {
+        y = paint_row(ctx, row, slot as u32, x, w, y);
     }
     y = paint_footer(ctx, &snapshot, x, w, y);
     state::set_last_content_h(y - body_top + PANEL_HEAD_PAD);
@@ -100,13 +107,21 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
 ///
 /// ⭐ Neste arquivo **toda** função de pintura devolve o y seguinte. Uma convenção por arquivo, dita
 /// aqui: misturar as duas é como o erro entrou.
-fn paint_row(ctx: &mut PaintCtx, row: &RadiusRow, x: f32, w: f32, y: f32) -> f32 {
+fn paint_row(ctx: &mut PaintCtx, row: &RadiusRow, slot: u32, x: f32, w: f32, y: f32) -> f32 {
     let theme = ctx.host.theme();
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
-    let slider = ids::model3d_radius_slider(row.node);
-    let chip = ids::model3d_radius_chip(row.node);
+    // ⚠️ **O id vem da POSIÇÃO da linha, nunca da entidade.** O `populate` corre antes de a peça
+    // existir e cunha a família às cegas (ver `MAX_ROWS`); os bits de uma entidade não cabem numa
+    // família de 64. A entidade viaja no intent, que é onde ela importa.
+    let slider = ids::model3d_radius_slider(slot);
+    let chip = ids::model3d_radius_chip(slot);
     let top = row.bound.value().max(f32::MIN_POSITIVE);
+    // O aninhamento da árvore, visível: um filho recua. Sem isto o painel lista quatro linhas
+    // planas de uma peça que a Hierarquia mostra em dois níveis, e as duas vistas da mesma coisa
+    // discordam à vista.
+    let indent = f32::from(row.depth) * ROW_INDENT_PX;
+    let (x, w) = (x + indent, (w - indent).max(MIN_ROW_W_PX));
 
     // ⚠️ **A faixa real é escrita por LINHA, todo quadro.** O teto de um raio é do nó — a caixa
     // aceita menos do que o cilindro —, e o par slider↔campo foi ligado em 0..1 no `populate`

@@ -28,8 +28,12 @@
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
 pub mod profile;
+pub mod radius;
+pub mod xform;
 
 pub use profile::{FillRule, Profile, ProfileError};
+pub use radius::{RadiusBound, characteristic_size, round_limit, set_shape_radius};
+pub use xform::Xform;
 
 use serde::{Deserialize, Serialize};
 
@@ -153,45 +157,42 @@ impl Op {
     }
 }
 
-/// Pose de um nó: translação, rotação e escala **uniforme**.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Xform {
-    pub translation: [f32; 3],
-    /// Quaternion `(x, y, z, w)`.
-    pub rotation: [f32; 4],
-    /// ⛔ **UNIFORME de propósito.** Escala não-uniforme **destrói a propriedade de distância**
-    /// (‖∇f‖ = 1), que é a fundação de tudo neste módulo: sem ela o raio deixa de ser o raio, a
-    /// casca perde a espessura e a marcha de raios atravessa a superfície. Quem quer um elipsoide
-    /// usa uma primitiva de elipsoide — não uma esfera esticada (ADR-0161 §6).
-    pub scale: f32,
-}
-
-impl Default for Xform {
-    fn default() -> Self {
-        Self::IDENTITY
-    }
-}
-
-impl Xform {
-    pub const IDENTITY: Self = Self {
-        translation: [0.0; 3],
-        rotation: [0.0, 0.0, 0.0, 1.0],
-        scale: 1.0,
-    };
-
-    #[must_use]
-    pub fn at(x: f32, y: f32, z: f32) -> Self {
-        Self {
-            translation: [x, y, z],
-            ..Self::IDENTITY
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum NodeKind {
     Leaf(Primitive),
     Combine { op: Op, children: Vec<NodeId> },
+}
+
+impl NodeKind {
+    /// O que este nó **é**, sem os filhos. Ver [`NodeShape`].
+    #[must_use]
+    pub fn shape(&self) -> NodeShape {
+        match self {
+            NodeKind::Leaf(p) => NodeShape::Leaf(p.clone()),
+            NodeKind::Combine { op, .. } => NodeShape::Combine(*op),
+        }
+    }
+}
+
+/// **O que um nó é, SEM a lista de filhos.**
+///
+/// ⭐ Existe porque a mesma árvore vive em dois sítios, e só um deles pode ser dono dos filhos:
+///
+/// | Onde | Quem são os filhos |
+/// |---|---|
+/// | [`FieldDoc`] (o **cozido**, o que se avalia) | índices da arena, em `NodeKind::Combine` |
+/// | a **cena** (a fonte, o que o artista vê e move) | a hierarquia ECS (`Children`) |
+///
+/// Guardar a lista nos dois seria a segunda verdade clássica, e o sintoma seria específico e feio:
+/// uma peça cuja **forma discorda da Hierarquia** — arrastar um objeto para dentro de outro no
+/// painel mudaria a árvore que o artista vê e não a que o traçador avalia.
+///
+/// *Uma árvore, um dono dos filhos.* É a mesma lei que o vetorial paga como **fonte ≠ cozido**
+/// (ADR-0121/0132).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum NodeShape {
+    Leaf(Primitive),
+    Combine(Op),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -310,113 +311,6 @@ impl FieldDoc {
         Some(Self::new(nodes, root))
     }
 
-    /// **O raio EDITÁVEL de um nó** — `None` quando não há nenhum.
-    ///
-    /// ⭐ É a promessa central do módulo virada em função: *o raio fica editável para sempre*,
-    /// porque é parâmetro da operação e não geometria assada. Para uma combinação é o raio da
-    /// mistura; para uma primitiva, o `round` da aresta convexa dela.
-    #[must_use]
-    pub fn radius_of(&self, node: NodeId) -> Option<f32> {
-        match &self.node(node)?.kind {
-            NodeKind::Combine { op, .. } => Some(op.blend().amount()),
-            NodeKind::Leaf(p) => match p {
-                Primitive::Box { round, .. }
-                | Primitive::Cylinder { round, .. }
-                | Primitive::Extrude { round, .. } => Some(*round),
-                _ => None,
-            },
-        }
-    }
-
-    /// Até onde esse raio pode ir, e de que natureza é o limite. Ver [`RadiusBound`].
-    #[must_use]
-    pub fn radius_bound(&self, node: NodeId) -> Option<RadiusBound> {
-        match &self.node(node)?.kind {
-            // Um raio de mistura não tem limite de VALIDADE: o campo continua a ser uma distância
-            // com qualquer raio. O que existe é escala — e ela vem da menor peça sob este nó,
-            // porque um filete maior do que ela engole-a.
-            NodeKind::Combine { .. } => Some(RadiusBound::Soft(self.subtree_scale(node))),
-            NodeKind::Leaf(p) => round_limit(p).map(RadiusBound::Hard),
-        }
-    }
-
-    /// A menor peça sob um nó — a escala que dá sentido a um raio de mistura.
-    ///
-    /// ⚠️ Uma passagem **de baixo para cima**, sem recursão: a invariante da arena (todo filho antes
-    /// do pai) já garante que os filhos foram vistos quando se chega ao pai.
-    fn subtree_scale(&self, node: NodeId) -> f32 {
-        let mut scale = vec![f32::INFINITY; self.nodes.len()];
-        for (i, n) in self.nodes.iter().enumerate() {
-            scale[i] = match &n.kind {
-                NodeKind::Leaf(p) => characteristic_size(p) * n.xform.scale,
-                NodeKind::Combine { children, .. } => children
-                    .iter()
-                    .map(|c| scale[c.0 as usize])
-                    .fold(f32::INFINITY, f32::min),
-            };
-        }
-        let s = scale[node.0 as usize];
-        if s.is_finite() && s > 0.0 { s } else { 1.0 }
-    }
-
-    /// **Muda o raio de um nó**, e **revalida**.
-    ///
-    /// ⚠️ A revalidação é a razão de esta ser a única porta: a invariante da crate é *um documento
-    /// que existe está válido*, e um `set` que a quebrasse produziria a forma errada em silêncio, e
-    /// não um erro. Quando ela recusa, o documento fica **como estava** — um documento meio-mudado
-    /// seria pior do que a recusa.
-    ///
-    /// Numa mistura viva (`Blend::Sharp`), um raio positivo acorda-a como [`Blend::Exact`]: a aresta
-    /// viva é o raio zero, e não um modo à parte.
-    ///
-    /// # Errors
-    /// Ver [`FieldError`]. `BadRoot` se o nó não existe; `NonPositive` para um raio não-finito.
-    pub fn set_radius(&mut self, node: NodeId, radius: f32) -> Result<(), FieldError> {
-        let idx = node.0 as usize;
-        if idx >= self.nodes.len() {
-            return Err(FieldError::BadRoot);
-        }
-        if !radius.is_finite() || radius < 0.0 {
-            return Err(FieldError::NonPositive {
-                node: node.0,
-                what: "radius",
-            });
-        }
-        let previous = self.nodes[idx].clone();
-        match &mut self.nodes[idx].kind {
-            NodeKind::Combine { op, .. } => {
-                let blend = match (*op).blend() {
-                    // O caráter ORGÂNICO é uma escolha de produto e sobrevive a mudar o número;
-                    // trocá-lo aqui seria decidir por quem só mexeu num slider.
-                    Blend::Organic { .. } => Blend::Organic { k: radius },
-                    _ if radius <= 0.0 => Blend::Sharp,
-                    _ => Blend::Exact { radius },
-                };
-                *op = match *op {
-                    Op::Union(_) => Op::Union(blend),
-                    Op::Intersection(_) => Op::Intersection(blend),
-                    Op::Difference(_) => Op::Difference(blend),
-                };
-            }
-            NodeKind::Leaf(p) => match p {
-                Primitive::Box { round, .. }
-                | Primitive::Cylinder { round, .. }
-                | Primitive::Extrude { round, .. } => *round = radius,
-                _ => {
-                    return Err(FieldError::NonPositive {
-                        node: node.0,
-                        what: "radius",
-                    });
-                }
-            },
-        }
-        if let Err(e) = self.validate() {
-            self.nodes[idx] = previous;
-            return Err(e);
-        }
-        Ok(())
-    }
-
     fn validate(&self) -> Result<(), FieldError> {
         if self.nodes.is_empty() || self.root.0 as usize >= self.nodes.len() {
             return Err(FieldError::BadRoot);
@@ -445,82 +339,6 @@ impl FieldDoc {
             }
         }
         Ok(())
-    }
-}
-
-/// **Até onde o `round` desta primitiva pode ir** — `None` se ela não tem `round`.
-///
-/// ⭐ **É a MESMA função que a validação usa.** Um painel que calculasse o próprio teto ofereceria
-/// valores que o documento recusa, e o utilizador veria o controle parar sem explicação — a forma
-/// clássica de dois lados divergirem sobre a mesma regra.
-#[must_use]
-pub fn round_limit(p: &Primitive) -> Option<f32> {
-    match p {
-        // A MENOR meia-extensão: a receita encolhe a caixa em `round` nos três eixos, e uma delas
-        // ficando ≤ 0 não é "quase" — é uma caixa que deixou de existir naquele eixo.
-        Primitive::Box { half, .. } => Some(half[0].min(half[1]).min(half[2])),
-        Primitive::Cylinder {
-            radius,
-            half_height,
-            ..
-        } => Some(radius.min(*half_height)),
-        // Só a meia-altura: um `round` maior que a meia-largura do perfil é uma ABERTURA, não um
-        // erro (ver a nota de [`Primitive::Extrude`]).
-        Primitive::Extrude { half_height, .. } => Some(*half_height),
-        Primitive::Sphere { .. } | Primitive::Torus { .. } | Primitive::Revolve { .. } => None,
-    }
-}
-
-/// **O tamanho característico de uma primitiva** — a menor dimensão que a define.
-///
-/// É o que dá escala a um raio de mistura: um filete maior do que a peça menor que ele junta
-/// engole-a. Não é uma regra de validade (não existe nenhuma), é a escala do documento.
-#[must_use]
-fn characteristic_size(p: &Primitive) -> f32 {
-    match p {
-        Primitive::Box { half, .. } => half[0].min(half[1]).min(half[2]),
-        Primitive::Sphere { radius } => *radius,
-        Primitive::Cylinder {
-            radius,
-            half_height,
-            ..
-        } => radius.min(*half_height),
-        Primitive::Torus { minor, .. } => *minor,
-        Primitive::Extrude {
-            profile,
-            half_height,
-            ..
-        } => {
-            let (min, max) = profile.bounds();
-            half_height.min((max[0] - min[0]).min(max[1] - min[1]) * 0.5)
-        }
-        Primitive::Revolve { profile } => {
-            let (min, max) = profile.bounds();
-            (max[0] - min[0]).min(max[1] - min[1]) * 0.5
-        }
-    }
-}
-
-/// Até onde um raio pode ir, e **de que natureza é esse limite**.
-///
-/// ⚠️ A distinção não é decorativa e por isso está no tipo, em vez de num comentário: um limite de
-/// **validade** é uma parede (o documento recusa), e um de **escala** é uma sugestão (a forma
-/// continua correta, só deixa de ser útil). Um controle que os pintasse igual mentiria numa das
-/// duas direções — ou proibiria o que é legítimo, ou ofereceria o que vai ser recusado.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum RadiusBound {
-    /// O documento **recusa** acima disto.
-    Hard(f32),
-    /// Não há limite de validade. Este é o alcance **útil**, derivado do tamanho da peça.
-    Soft(f32),
-}
-
-impl RadiusBound {
-    #[must_use]
-    pub fn value(self) -> f32 {
-        match self {
-            RadiusBound::Hard(v) | RadiusBound::Soft(v) => v,
-        }
     }
 }
 

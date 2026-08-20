@@ -16,10 +16,16 @@ use ph2d_panel_model3d::state::{Model3dPanelState, ModelSnapshot, RadiusRow};
 use ph2d_panel_model3d::{Model3dPanel, ModelIntent, drain_intents, publish, state};
 use ph2d_ui_testkit::MockPanelHost;
 
+/// ⚠️ **A entidade NÃO é o número da linha, de propósito.** A união é a entidade `77` e está na
+/// **posição 0** da lista — é a separação que os gates abaixo medem: o id do controle vem da
+/// posição (o `populate` cunha a família às cegas), e o intent tem de sair com a *entidade*.
+const THE_UNION: u64 = 77;
+
 fn scene_with_one_union() {
     publish(ModelSnapshot {
         rows: vec![RadiusRow {
-            node: 3,
+            entity: THE_UNION,
+            depth: 0,
             kind_key: "panel.model3d.kind.union",
             radius: 0.05,
             // Faixa de 0,4 — o número que o gate abaixo usa para distinguir a escala da linha de
@@ -43,7 +49,8 @@ fn dragging_a_radius_slider_reaches_the_document_intent() {
 
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
     let mut panel_state = Model3dPanelState;
-    let slider = ids::model3d_radius_slider(3);
+    // O id vem da POSIÇÃO da linha (0), não da entidade (77).
+    let slider = ids::model3d_radius_slider(0);
 
     host.set_slider_value(slider, 0.5);
     let outcome =
@@ -59,10 +66,11 @@ fn dragging_a_radius_slider_reaches_the_document_intent() {
     assert_eq!(
         intents,
         vec![ModelIntent::SetRadius {
-            node: 3,
+            entity: THE_UNION,
             radius: 0.2
         }],
-        "meio curso de uma faixa de 0,4 é 0,2; 0,5 significa que a escala da LINHA não foi aplicada"
+        "meio curso de uma faixa de 0,4 é 0,2 (0,5 = a escala da LINHA não foi aplicada), e a \
+         entidade tem de ser a 77 e não a posição 0"
     );
 }
 
@@ -177,7 +185,8 @@ fn a_family_id_without_a_row_does_not_invent_a_node() {
 fn every_row_gets_its_own_band_none_stacked_on_another() {
     let nodes: Vec<RadiusRow> = (0..4)
         .map(|n| RadiusRow {
-            node: n,
+            entity: u64::from(n as u32) + 100,
+            depth: 0,
             kind_key: "panel.model3d.kind.cylinder",
             radius: 0.05,
             bound: RadiusBound::Hard(0.22),

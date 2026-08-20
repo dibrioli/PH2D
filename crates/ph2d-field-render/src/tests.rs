@@ -620,3 +620,76 @@ fn free_rotation_never_hits_a_pole() {
         "girar não pode mudar o TAMANHO da peça: {before} -> {after} pixels"
     );
 }
+
+/// ⚠️ **A inversa do mapeamento pixel↔plano é escrita à mão, e é onde um sinal trocado sobrevive
+/// anos** — ela só é exercida pelo gizmo, cujo sintoma (a alça meio pixel ao lado) ninguém chama de
+/// bug de projeção.
+#[test]
+fn a_pixel_survives_the_round_trip() {
+    let screen = Screen::new(800, 480, 0.8);
+    for (x, y) in [(0.0, 0.0), (400.0, 240.0), (799.0, 479.0), (123.0, 45.0)] {
+        let (u, v) = screen.plane_at(x, y);
+        let (bx, by) = screen.pixel_of(u, v);
+        assert!(
+            (bx - x).abs() < 1e-3 && (by - y).abs() < 1e-3,
+            "({x}, {y}) voltou como ({bx}, {by})"
+        );
+    }
+}
+
+/// ⭐ **O gizmo e o traçador concordam sobre onde um ponto do mundo cai.**
+///
+/// ⚠️ É o gate que junta as duas metades que **têm** de ser a mesma conta. O gizmo projeta as alças
+/// com [`Orbit::project`]; a marcha constrói os raios com [`Screen::plane_at`]. Duas cópias
+/// divergiriam sem nada ficar vermelho, e o sintoma seria uma seta que agarra ao lado da superfície
+/// que ela diz mover.
+///
+/// A afirmação é forte de propósito: **traça de verdade** e mede o centroide dos pixels de peça.
+/// Sob projeção ortográfica o centroide da silhueta de uma esfera é a projeção exacta do centro
+/// dela, então o alvo não é uma aproximação — é o número.
+#[test]
+fn a_point_projects_where_the_march_actually_hits_it() {
+    let center = [0.3f32, -0.2, 0.15];
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Sphere { radius: 0.12 },
+            Xform::at(center[0], center[1], center[2]),
+        )],
+        NodeId(0),
+    )
+    .expect("esfera deslocada");
+
+    let (w, h) = (256u32, 200u32);
+    let cam = Orbit::default();
+    let g = trace(&doc, &cam, w, h);
+    assert!(g.hits() > 100, "a esfera não apareceu no quadro");
+
+    let (mut sx, mut sy, mut n) = (0.0f64, 0.0f64, 0.0f64);
+    for i in 0..(w as usize * h as usize) {
+        if g.hit[i] {
+            sx += (i % w as usize) as f64 + 0.5;
+            sy += (i / w as usize) as f64 + 0.5;
+            n += 1.0;
+        }
+    }
+    let (cx, cy) = (sx / n, sy / n);
+    let ([px, py], depth) = cam.project(center, Screen::new(w, h, cam.half_extent));
+
+    assert!(
+        (f64::from(px) - cx).abs() < 1.0 && (f64::from(py) - cy).abs() < 1.0,
+        "a projeção diz ({px}, {py}) e a marcha pôs a peça em ({cx}, {cy})"
+    );
+    // E a profundidade cresce na direção do observador: o mesmo ponto empurrado para trás fica
+    // com profundidade menor.
+    let (_, back) = cam.project(
+        {
+            let (_, _, fwd) = cam.basis();
+            [center[0] - fwd[0], center[1] - fwd[1], center[2] - fwd[2]]
+        },
+        Screen::new(w, h, cam.half_extent),
+    );
+    assert!(
+        back < depth,
+        "a profundidade tem de crescer para o observador"
+    );
+}

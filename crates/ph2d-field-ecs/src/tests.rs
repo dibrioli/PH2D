@@ -2,7 +2,7 @@
 
 use super::*;
 use ph2d_ecs::scene::ComponentRegistry;
-use ph2d_field::{Node, NodeId, NodeKind, Primitive, Xform};
+use ph2d_field::{Node, NodeId, NodeKind, NodeShape, Primitive, Xform};
 
 fn doc(radius: f32) -> FieldDoc {
     FieldDoc::new(
@@ -44,14 +44,33 @@ fn an_empty_scene_has_no_field() {
     assert!(scene_field(empty, Blend::Sharp).is_none());
 }
 
-/// O componente sobrevive à ida e volta que o `WorldSnapshot` faz — se ele não serializar, o objeto
-/// some ao desfazer, e o sintoma não é um erro: é o desaparecimento.
+/// Os componentes sobrevivem à ida e volta que o `WorldSnapshot` faz — se um deles não serializar,
+/// o objeto some ao desfazer, e o sintoma não é um erro: é o desaparecimento.
 #[test]
-fn the_component_round_trips_through_serde() {
-    let obj = FieldObject { doc: doc(0.42) };
-    let bytes = postcard::to_allocvec(&obj).expect("serializa");
-    let back: FieldObject = postcard::from_bytes(&bytes).expect("desserializa");
-    assert_eq!(back, obj);
+fn the_components_round_trip_through_serde() {
+    let node = FieldNode {
+        shape: NodeShape::Leaf(Primitive::Sphere { radius: 0.42 }),
+    };
+    let bytes = postcard::to_allocvec(&node).expect("serializa");
+    assert_eq!(
+        postcard::from_bytes::<FieldNode>(&bytes).expect("desserializa"),
+        node
+    );
+
+    let pose = FieldPose {
+        xform: Xform::at(0.1, -0.2, 0.3),
+    };
+    let bytes = postcard::to_allocvec(&pose).expect("serializa");
+    assert_eq!(
+        postcard::from_bytes::<FieldPose>(&bytes).expect("desserializa"),
+        pose
+    );
+
+    let bytes = postcard::to_allocvec(&FieldObject).expect("serializa");
+    assert_eq!(
+        postcard::from_bytes::<FieldObject>(&bytes).expect("desserializa"),
+        FieldObject
+    );
 }
 
 /// ⚠️ **O nome canônico é PARTE DO FORMATO SALVO**, não um rótulo: o id do componente é derivado
@@ -61,8 +80,14 @@ fn the_component_round_trips_through_serde() {
 fn the_canonical_name_is_pinned_because_the_saved_id_derives_from_it() {
     let mut reg = ComponentRegistry::new();
     register_field_components(&mut reg);
-    assert!(
-        reg.get_by_name("ph2d::field::FieldObject").is_some(),
-        "o nome canônico mudou — todo projeto salvo perde o objeto ao abrir"
-    );
+    for name in [
+        "ph2d::field::FieldObject",
+        "ph2d::field::FieldNode",
+        "ph2d::field::FieldPose",
+    ] {
+        assert!(
+            reg.get_by_name(name).is_some(),
+            "o nome canônico `{name}` mudou — todo projeto salvo perde o objeto ao abrir"
+        );
+    }
 }

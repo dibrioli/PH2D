@@ -19,11 +19,21 @@ thread_local! {
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
 }
 
-/// Uma linha do painel: **um nó do documento com raio editável**.
+/// Uma linha do painel: **um nó da PEÇA com raio editável**.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RadiusRow {
-    /// O índice do nó na arena — a identidade da linha, e de onde saem os ids dos widgets.
-    pub node: u32,
+    /// **A entidade** — a identidade da linha, e o que o intent devolve ao shell.
+    ///
+    /// ⚠️ Bits de entidade, e não o índice do nó na arena cozida. O índice muda quando a árvore
+    /// muda (apagar um filho renumera tudo acima dele), e um controle a meio de um arrasto passaria
+    /// a escrever noutro nó — em silêncio, porque um índice válido nunca parece errado.
+    ///
+    /// ⚠️ **Os ids dos widgets NÃO saem daqui**: eles vêm da POSIÇÃO da linha na lista, que é o que
+    /// o `populate` consegue cunhar às cegas (ver `MAX_ROWS`). A posição escolhe o controle; a
+    /// entidade escolhe o nó. São duas perguntas e têm duas respostas.
+    pub entity: u64,
+    /// Quão fundo o nó está na árvore — o mesmo aninhamento que a Hierarquia mostra.
+    pub depth: u8,
     /// A chave i18n do que este nó é (`panel.model3d.kind.*`).
     ///
     /// ⚠️ Uma **chave**, nunca um rótulo pronto: HR-15. Quem traduz é o painel.
@@ -36,7 +46,7 @@ pub struct RadiusRow {
 /// O que o painel precisa de saber sobre o modelo neste quadro.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct ModelSnapshot {
-    /// Uma linha por nó com raio editável, na ordem da arena.
+    /// Uma linha por nó com raio editável, em **pré-ordem** — a ordem da Hierarquia.
     pub rows: Vec<RadiusRow>,
     /// Quantos nós o documento tem **ao todo** — inclusive os sem raio.
     ///
@@ -53,7 +63,7 @@ pub struct ModelSnapshot {
 /// Uma edição que o painel pede e o shell executa.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ModelIntent {
-    SetRadius { node: u32, radius: f32 },
+    SetRadius { entity: u64, radius: f32 },
 }
 
 /// O shell publica o retrato antes de pintar.

@@ -8,16 +8,16 @@ use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use crate::state::{self, Model3dPanelState, ModelIntent};
 use crate::{Model3dPanel, populate::MAX_ROWS};
 
-/// De que **nó** é este id, se for de algum.
+/// De que **linha** é este id, se for de alguma. `(posição, é o campo numérico?)`.
 ///
 /// ⚠️ Uma varredura sobre a família, e não uma inversão do hash — um `NodeId` é um hash de nome e
 /// hash não se inverte. O laço é sobre [`MAX_ROWS`] e corre uma vez por evento, não por quadro.
-fn node_of(id: ph2d_a11y::NodeId) -> Option<(u32, bool)> {
+fn slot_of(id: ph2d_a11y::NodeId) -> Option<(usize, bool)> {
     (0..MAX_ROWS as u32).find_map(|n| {
         if id == ids::model3d_radius_slider(n) {
-            Some((n, false))
+            Some((n as usize, false))
         } else if id == ids::model3d_radius_chip(n) {
-            Some((n, true))
+            Some((n as usize, true))
         } else {
             None
         }
@@ -30,25 +30,28 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     let consumed = match ev {
-        WidgetEvent::ValueChanged(id) => match node_of(id) {
+        WidgetEvent::ValueChanged(id) => match slot_of(id) {
             // ⚠️ O campo numérico já foi espelhado no slider ligado a ele, que disparou o seu
             // próprio `ValueChanged` e foi tratado no braço de baixo. Engolir aqui, ou uma edição
             // notifica duas vezes — e a segunda chega com o valor da primeira.
             Some((_, true)) => true,
-            Some((node, false)) => {
+            Some((slot, false)) => {
                 let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
                 let snap = state::current();
-                match snap.rows.iter().find(|r| r.node == node) {
+                match snap.rows.get(slot) {
                     Some(row) => {
                         state::push_intent(ModelIntent::SetRadius {
-                            node,
+                            // ⭐ **A ENTIDADE, e não a posição.** A posição escolheu o controle; o
+                            // que ela não pode escolher é o nó — a lista muda de tamanho quando a
+                            // peça muda, e um intent guardado por posição escreveria no vizinho.
+                            entity: row.entity,
                             // A trilha é 0..1; o valor é ela vezes o teto **daquela linha**, que é
-                            // o mesmo teto que o documento aplica.
+                            // o mesmo teto que a peça aplica.
                             radius: track * row.bound.value(),
                         });
                         true
                     }
-                    // Um id da família sem linha no retrato: o documento encolheu entre o quadro
+                    // Um id da família sem linha no retrato: a peça encolheu entre o quadro
                     // pintado e o evento. Ignorar é a resposta certa — inventar um nó não é.
                     None => false,
                 }

@@ -1,31 +1,99 @@
-//! `ph2d-field-ecs` — a ponte que faz um documento de campo ser um **objeto do projeto**
+//! `ph2d-field-ecs` — **a peça é uma CENA de objetos**, não um documento escondido num componente
 //! ([ADR-0161]).
 //!
-//! Com o componente registrado, um objeto de modelagem 3D é salvo, desfeito e restaurado **sem uma
-//! linha de código do lado do snapshot** — é a mesma porta que a física atravessa
-//! ([ADR-0131](../../../docs/architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md)).
+//! # ⭐ A árvore de modelagem **é** a hierarquia da cena
+//!
+//! Cada nó — cada cilindro, cada caixa, cada união — é uma **entidade**. Ela aparece na Hierarquia
+//! com nome, é selecionável, tem pose própria, é salva e é desfeita. O documento que o traçador
+//! avalia ([`ph2d_field::FieldDoc`]) é **cozido** a partir do mundo, uma vez por quadro ([`cook`]).
+//!
+//! Isto é a lei da casa dita duas vezes:
+//!
+//! - **ADR-0110** — *"todo path é entidade ECS com pose no `Transform`; uma hierarquia"*. Um módulo
+//!   3D que guardasse a árvore inteira num só componente teria uma segunda forma de organizar
+//!   objetos, e o artista teria de aprender as duas.
+//! - **ADR-0121/0132** — *fonte ≠ cozido*. A fonte é editável e é o que se vê na Hierarquia; o
+//!   cozido é derivado e ninguém o autora.
+//!
+//! ⚠️ **Até 2026-08-19 não era assim**, e o smoke do Enio encontrou-o em uma frase: *"na hierarchy
+//! apenas um objeto e não 3 cilindro"*. O documento inteiro vivia num único `FieldObject { doc }`,
+//! e a consequência não era estética — era que **não havia o que um gizmo agarrasse**. Um objeto
+//! que a cena não enumera não tem pose que se mova.
+//!
+//! # ⚠️ Por que a pose NÃO é o `ph2d_ecs::Transform`
+//!
+//! Medido: o `Transform` da casa é uma afim **2D** — `translation: Vec2`, `rotation: f32` (um
+//! ângulo escalar), `scale: Vec2`. Não há onde pôr uma rotação 3D. Escrever meia pose lá e a outra
+//! metade aqui seria a segunda verdade na sua forma mais cara: o Inspector mostraria uma posição
+//! que a peça não tem.
+//!
+//! Então a pose 3D é [`FieldPose`], e os nós **não** carregam `Transform`. Isso é seguro, e é
+//! medido, não suposto:
+//!
+//! | Pergunta | Onde está a resposta | Medido |
+//! |---|---|---|
+//! | A Hierarquia enumera um filho sem `Transform`? | `build_hierarchy_snapshot` | **Sim** — só a RAIZ é filtrada por `With<Transform>`; o DFS desce por `Children` |
+//! | O snapshot (save + undo) captura esse filho? | `world_to_snapshot` | **Sim** — a fase 1 desce `Children` sem filtro nenhum |
+//!
+//! A **raiz** de cada peça leva `Transform` + `RootOrder`, porque é ela que a Hierarquia enumera
+//! como objeto de topo.
 //!
 //! # O que entra num componente, e o que **nunca** entra
 //!
-//! Entra o **documento** — dado autorado, pequeno, que só muda quando o artista mexe.
-//! ⛔ Não entra nada **derivado**: a árvore compilada, a malha, o quadro traçado. A lei é da casa e
-//! está paga: o `canonicalize` do undo ordena as linhas pelos **bytes** do componente, então algo
-//! que mude a cada quadro faz **todo quadro virar um passo espúrio de undo**.
+//! Entra o que é **autorado** — a forma do nó e a pose dele. ⛔ Não entra nada **derivado**: o
+//! documento cozido, a árvore compilada, a malha, o quadro traçado. A lei é da casa e está paga: o
+//! `canonicalize` do undo ordena as linhas pelos **bytes** do componente, então algo que mude a
+//! cada quadro faz **todo quadro virar um passo espúrio de undo**.
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+mod cook;
+mod edit;
+mod spawn;
+
+pub use cook::{cook, world_xform};
+pub use edit::{radius_bound, radius_of, set_radius, walk};
+pub use spawn::{shape_name, spawn_doc};
+
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{Component, SimComponent};
-use ph2d_field::{Blend, FieldDoc, FieldError};
+use ph2d_field::{Blend, FieldDoc, FieldError, NodeShape, Xform};
 use serde::{Deserialize, Serialize};
 
-/// Um objeto de modelagem 3D: a entidade carrega o **documento** que a define.
-#[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct FieldObject {
-    pub doc: FieldDoc,
-}
+/// **A raiz de uma peça de modelagem.** Marca a entidade que a Hierarquia mostra como objeto.
+///
+/// ⚠️ Marcador de tamanho zero **de propósito**: ele não guarda o documento. Guardá-lo aqui foi a
+/// forma da W1, e era ela que impedia os nós de existirem como objetos (ver o doc do módulo).
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FieldObject;
 
 impl SimComponent for FieldObject {}
+
+/// **O que este nó é** — uma primitiva, ou uma operação. Sem os filhos.
+///
+/// ⚠️ Os filhos são a hierarquia ECS (`Children`) e **só** ela. Ver [`NodeShape`]: é a distinção
+/// que impede a forma traçada de discordar da árvore que o artista vê.
+#[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FieldNode {
+    pub shape: NodeShape,
+}
+
+/// **A pose 3D do nó**, local ao pai. Ver a nota do módulo sobre não ser o `Transform` da casa.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FieldPose {
+    pub xform: Xform,
+}
+
+impl SimComponent for FieldNode {}
+impl SimComponent for FieldPose {}
+
+impl Default for FieldPose {
+    fn default() -> Self {
+        Self {
+            xform: Xform::IDENTITY,
+        }
+    }
+}
 
 /// Registra os componentes do módulo no registro compartilhado.
 ///
@@ -37,6 +105,8 @@ impl SimComponent for FieldObject {}
 /// **mesma string**, e o registro entra em pânico ao vê-lo — em vez de trocar de id em silêncio.
 pub fn register_field_components(reg: &mut ComponentRegistry) {
     reg.register::<FieldObject>("ph2d::field::FieldObject");
+    reg.register::<FieldNode>("ph2d::field::FieldNode");
+    reg.register::<FieldPose>("ph2d::field::FieldPose");
 }
 
 /// O campo de uma **cena**: a união de todos os objetos, na ordem da chave.

@@ -16,7 +16,7 @@ use super::*;
 fn draining_the_queue_empties_it() {
     let _ = state::drain_intents();
     state::push_intent(ModelIntent::SetRadius {
-        node: 0,
+        entity: 0,
         radius: 0.1,
     });
     assert_eq!(state::drain_intents().len(), 1);

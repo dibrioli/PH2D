@@ -675,3 +675,47 @@ fn measure_profile_tree_size() {
         println!("{n:7} | {len:13} | {:.1}", len as f64 / n as f64);
     }
 }
+
+/// ⭐ **O campo e a pose concordam sobre onde um nó ESTÁ.**
+///
+/// ⚠️ São duas contas inversas uma da outra e escritas em sítios diferentes: o avaliador leva o
+/// ponto para o espaço local (`p' = R⁻¹(p − t)/s`) e o [`Xform::apply`] leva um ponto local para o
+/// mundo (`t + R·(s·p)`). Se elas discordarem, a alça do gizmo pousa num sítio e a superfície
+/// aparece noutro — e nada fica vermelho, porque cada metade está certa sozinha.
+///
+/// A pose usada tem **rotação e escala**, não só translação: uma translação sozinha passaria mesmo
+/// com a rotação transposta ao contrário.
+#[test]
+fn the_gizmo_and_the_field_agree_on_where_a_node_is() {
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let xform = Xform {
+        translation: [0.4, -0.25, 0.1],
+        rotation: [s, 0.0, 0.0, s],
+        scale: 1.5,
+    };
+    let doc = FieldDoc::new(
+        vec![leaf(Primitive::Sphere { radius: 0.2 }, xform)],
+        NodeId(0),
+    )
+    .expect("esfera posada");
+    let f = Field::new(&doc);
+    let f = |x: f32, y: f32, z: f32| f.at(f64::from(x), f64::from(y), f64::from(z));
+
+    // O centro local da esfera é a origem: o campo ali tem de valer −raio·escala.
+    let c = xform.apply([0.0, 0.0, 0.0]);
+    assert!(
+        (f(c[0], c[1], c[2]) + 0.3).abs() < 1e-5,
+        "no centro o campo tem de valer −0,3 (raio 0,2 × escala 1,5) e vale {}",
+        f(c[0], c[1], c[2])
+    );
+
+    // E um ponto NA superfície local vale zero em mundo — é aqui que a rotação entra.
+    for local in [[0.2f32, 0.0, 0.0], [0.0, 0.2, 0.0], [0.0, 0.0, 0.2]] {
+        let p = xform.apply(local);
+        assert!(
+            f(p[0], p[1], p[2]).abs() < 1e-5,
+            "o ponto local {local:?} devia estar NA superfície e o campo dá {}",
+            f(p[0], p[1], p[2])
+        );
+    }
+}

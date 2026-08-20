@@ -18,6 +18,71 @@ use ph2d_editor_core::interaction::{ContextMenuKind, InteractiveState, WidgetEve
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::screens::hero::{HeroSelection, HierReparentIntent, ViewFocusKind};
 
+/// As ações do menu de contexto de uma linha (M14.6 F). Devolve `true` quando `id` é uma delas —
+/// o clique é consumido, tenha ou não havido snapshot para lhe atar uma linha.
+///
+/// ⚠️ **Saiu do [`apply_event`] por medição, não por gosto:** acrescentar aqui o "Pack into Sheet"
+/// levaria a função-mãe de 216 para 219 linhas, contra um teto de 200 — e a tolerância dela dizia,
+/// pela mão do vizinho, *«as tolerâncias encolhem, nunca crescem»*. Extrair o bloco baixa a mãe
+/// para bem dentro do teto e **apaga a tolerância**, em vez de a subir três pontos. *Um teto que
+/// se afrouxa uma vez por linha nova não é um teto.*
+///
+/// A cadeia é `first-match-wins` sobre ids: a ordem dos braços não é semântica, só a do guarda.
+fn try_context_menu_row(
+    state: &mut state::HierarchyState,
+    host: &mut dyn PanelHostInternal,
+    id: ph2d_editor_core::NodeId,
+) -> bool {
+    if !(id == ids::CTX_MENU_HIER_DUPLICATE
+        || id == ids::CTX_MENU_HIER_ADD_CHILD
+        || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
+        || id == ids::CTX_MENU_HIER_DELETE
+        || id == ids::CTX_MENU_HIER_RENAME
+        || id == ids::CTX_MENU_HIER_MERGE_SPRITES
+        || id == ids::CTX_MENU_HIER_PACK_SHEET
+        || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE
+        || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE
+        || id == ids::CTX_MENU_HIER_USE_AS_PAPER
+        || id == ids::CTX_MENU_HIER_USE_AS_GRANULATION)
+    {
+        return false;
+    }
+    if let Some(req) = host.store_mut().consume_last_context_menu()
+        && let ContextMenuKind::HierarchyRow { row } = req.kind
+    {
+        if id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE {
+            host.bus_mut()
+                .push(EditorAction::HierUseAsBrushTexture { row });
+        } else if id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE {
+            host.bus_mut()
+                .push(EditorAction::HierUseAsBrushShape { row });
+        } else if id == ids::CTX_MENU_HIER_USE_AS_PAPER {
+            host.bus_mut().push(EditorAction::HierUseAsPaper { row });
+        } else if id == ids::CTX_MENU_HIER_USE_AS_GRANULATION {
+            host.bus_mut()
+                .push(EditorAction::HierUseAsGranulation { row });
+        } else if id == ids::CTX_MENU_HIER_DUPLICATE {
+            host.bus_mut().push(EditorAction::HierDuplicate { row });
+        } else if id == ids::CTX_MENU_HIER_ADD_CHILD {
+            host.bus_mut().push(EditorAction::HierAddChild { row });
+        } else if id == ids::CTX_MENU_HIER_RESET_TRANSFORM {
+            host.bus_mut()
+                .push(EditorAction::HierResetTransform { row });
+        } else if id == ids::CTX_MENU_HIER_DELETE {
+            host.bus_mut().push(EditorAction::HierDelete { row });
+        } else if id == ids::CTX_MENU_HIER_MERGE_SPRITES {
+            host.bus_mut().push(EditorAction::HierMergeSprites { row });
+        } else if id == ids::CTX_MENU_HIER_PACK_SHEET {
+            host.bus_mut().push(EditorAction::HierPackSheet { row });
+        } else if id == ids::CTX_MENU_HIER_RENAME {
+            ph2d_editor_core::screens::hero::open_rename_public(host.store_mut());
+            state.rename_target_row = Some(row);
+            host.bus_mut().push(EditorAction::HierRenameSeed { row });
+        }
+    }
+    true
+}
+
 pub(crate) fn apply_event(
     state: &mut state::HierarchyState,
     host: &mut dyn PanelHostInternal,
@@ -67,48 +132,7 @@ pub(crate) fn apply_event(
             return EventOutcome::Consumed;
         }
         // M14.6 F — per-row right-click context menu actions.
-        if id == ids::CTX_MENU_HIER_DUPLICATE
-            || id == ids::CTX_MENU_HIER_ADD_CHILD
-            || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
-            || id == ids::CTX_MENU_HIER_DELETE
-            || id == ids::CTX_MENU_HIER_RENAME
-            || id == ids::CTX_MENU_HIER_MERGE_SPRITES
-            || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE
-            || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE
-            || id == ids::CTX_MENU_HIER_USE_AS_PAPER
-            || id == ids::CTX_MENU_HIER_USE_AS_GRANULATION
-        {
-            if let Some(req) = host.store_mut().consume_last_context_menu()
-                && let ContextMenuKind::HierarchyRow { row } = req.kind
-            {
-                if id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE {
-                    host.bus_mut()
-                        .push(EditorAction::HierUseAsBrushTexture { row });
-                } else if id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE {
-                    host.bus_mut()
-                        .push(EditorAction::HierUseAsBrushShape { row });
-                } else if id == ids::CTX_MENU_HIER_USE_AS_PAPER {
-                    host.bus_mut().push(EditorAction::HierUseAsPaper { row });
-                } else if id == ids::CTX_MENU_HIER_USE_AS_GRANULATION {
-                    host.bus_mut()
-                        .push(EditorAction::HierUseAsGranulation { row });
-                } else if id == ids::CTX_MENU_HIER_DUPLICATE {
-                    host.bus_mut().push(EditorAction::HierDuplicate { row });
-                } else if id == ids::CTX_MENU_HIER_ADD_CHILD {
-                    host.bus_mut().push(EditorAction::HierAddChild { row });
-                } else if id == ids::CTX_MENU_HIER_RESET_TRANSFORM {
-                    host.bus_mut()
-                        .push(EditorAction::HierResetTransform { row });
-                } else if id == ids::CTX_MENU_HIER_DELETE {
-                    host.bus_mut().push(EditorAction::HierDelete { row });
-                } else if id == ids::CTX_MENU_HIER_MERGE_SPRITES {
-                    host.bus_mut().push(EditorAction::HierMergeSprites { row });
-                } else if id == ids::CTX_MENU_HIER_RENAME {
-                    ph2d_editor_core::screens::hero::open_rename_public(host.store_mut());
-                    state.rename_target_row = Some(row);
-                    host.bus_mut().push(EditorAction::HierRenameSeed { row });
-                }
-            }
+        if try_context_menu_row(state, host, id) {
             return EventOutcome::Consumed;
         }
         // Fase 0c — click on a live hierarchy row → raise the

@@ -427,7 +427,10 @@ pub enum InspectorSpriteSource {
     /// uma pergunta de AUTORIA, e é o componente que a responde. Foi essa composição que
     /// permitiu ao hand-packed não custar um variante de `SpriteSource` (25 sítios em 16
     /// arquivos) nem um store novo no renderer — plano `docs/Sprite_projeto/17` §2.1.
-    HandPacked { sheet: u32, region: u32 },
+    HandPacked {
+        sheet: u32,
+        region: u32,
+    },
     /// A tier-cooked KTX2 texture (KTX2 Fase 2, W2.T2). A read-only
     /// display marker — the inspector shows "Cooked texture" but offers
     /// no authoring radio (cooked sources come from the asset pipeline,
@@ -590,7 +593,11 @@ mod pixel_format_tests {
             "RGBA8"
         );
         assert_eq!(
-            InspectorSpriteSource::HandPacked { sheet: 0, region: 0 }.pixel_format(),
+            InspectorSpriteSource::HandPacked {
+                sheet: 0,
+                region: 0
+            }
+            .pixel_format(),
             "RGBA8"
         );
     }

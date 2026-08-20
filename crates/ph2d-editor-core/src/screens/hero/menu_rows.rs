@@ -180,6 +180,10 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::CTX_MENU_HIER_DUPLICATE, "Duplicate", None),
             (ids::CTX_MENU_HIER_ADD_CHILD, "Add Child", None),
             (ids::CTX_MENU_HIER_MERGE_SPRITES, "Merge Sprites", None),
+            // Vizinho do Merge de propósito: os dois juntam a seleção num objeto. O Merge FUNDE
+            // os pixels e destrói os originais; este ARRANJA-os e mantém cada peça viva e
+            // editável dentro da folha. A ordem lê-se como "junte-os" → "quão junto?".
+            (ids::CTX_MENU_HIER_PACK_SHEET, "Pack into Sheet", None),
             (
                 ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
                 "Use as Brush Shape",

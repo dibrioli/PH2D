@@ -224,6 +224,16 @@ pub enum EditorAction {
     /// anchor — the merge inherits its parent / z). Drain toasts when < 2 sprites are selected (no-op).
     HierMergeSprites { row: ph2d_a11y::NodeId },
 
+    /// "Pack into Sheet" — o mesmo verbo do pill `[SHEET]`, levantado do menu de contexto de uma
+    /// linha da hierarquia (Enio 2026-08-19). Payload: a `NodeId` da linha clicada, que a shell
+    /// resolve em entidade e usa como **âncora**: se ela pertence à seleção, a folha leva a
+    /// seleção inteira; se não, leva só ela — a mesma lei do [`Self::HierMergeSprites`] vizinho,
+    /// de propósito (duas semânticas de seleção no mesmo menu seriam adivinhação).
+    ///
+    /// ⚠️ Dois verbos, escolhidos pelo alvo: sobre sprites CRIA a folha, sobre uma folha
+    /// RE-ARRANJA os filhos dela.
+    HierPackSheet { row: ph2d_a11y::NodeId },
+
     /// "Use as Brush Grain" — shell resolves row → pixels → `set_brush_texture_image` (Enio 2026-06-24).
     HierUseAsBrushTexture { row: ph2d_a11y::NodeId },
     /// "Use as Brush Shape" — shell resolves row → pixels → `set_brush_shape_image` (Enio 2026-06-25).

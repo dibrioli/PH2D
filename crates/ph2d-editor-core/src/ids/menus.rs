@@ -193,6 +193,18 @@ pub const CTX_MENU_HIER_RENAME: NodeId = hash_node_id("ctx_menu_hier_rename");
 /// toast when fewer than 2 sprites are selected (silent no-op
 /// otherwise feels broken).
 pub const CTX_MENU_HIER_MERGE_SPRITES: NodeId = hash_node_id("ctx_menu_hier_merge_sprites");
+/// Enio 2026-08-19: "Pack into Sheet" — o MESMO verbo do pill `[SHEET]` da fila de Image Tools,
+/// alcançável de onde o artista já está a escolher os objetos.
+///
+/// Dois verbos numa linha só, escolhidos pelo que está selecionado, tal como no pill: com sprites
+/// ⇒ nasce a folha com elas arranjadas dentro; com uma folha ⇒ o encaixe é REFEITO (depois de
+/// acrescentar, tirar ou redimensionar uma peça).
+///
+/// ⚠️ **Ele não duplica o pill, alcança-o.** O trabalho vive num sítio só — `sheet_frame` —, e a
+/// hierarquia levanta a mesma ação; se um dia divergirem, é porque alguém escreveu a segunda
+/// cópia. Semântica de seleção idêntica à do "Merge Sprites" vizinho: a folha leva a seleção
+/// inteira quando a linha clicada faz parte dela, e só essa linha quando não faz.
+pub const CTX_MENU_HIER_PACK_SHEET: NodeId = hash_node_id("ctx_menu_hier_pack_sheet");
 // Painter brush Falloff curve point handle menu (secondary-click on a control
 // point). Two HandleType options (Vector / Auto); the chrome handler maps a
 // click to the HandleType wire u8 in `HeroScreen.pending_falloff_point_handle`.

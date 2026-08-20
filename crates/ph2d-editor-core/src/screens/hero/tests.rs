@@ -571,6 +571,7 @@ fn simple_row_context_menu_items_are_populate_registered() {
         ids::CTX_MENU_HIER_DUPLICATE,
         ids::CTX_MENU_HIER_ADD_CHILD,
         ids::CTX_MENU_HIER_MERGE_SPRITES,
+        ids::CTX_MENU_HIER_PACK_SHEET,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
         ids::CTX_MENU_HIER_RESET_TRANSFORM,

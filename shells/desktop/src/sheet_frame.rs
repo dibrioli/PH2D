@@ -28,11 +28,88 @@
 //! dela. *Uma função sem chamador não é trabalho adiantado; é código morto com data de validade.*
 
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, SpriteSheetFrame, Transform, VecShape};
+use ph2d_editor::{Toast, ToastQueue};
 use ph2d_render::Sprite;
 use ph2d_sprite_sheet::{Layout, LayoutItem, PackError, PackOptions};
 use ph2d_vec_scene::{ShapeKind, VecScene};
 
 use crate::vec_entities::VecEntityMap;
+
+/// **O verbo inteiro, num sítio só** — os dois modos, a escolha entre eles, e os toasts.
+///
+/// Devolve os bits da folha quando uma nasceu (para o chamador a selecionar), `None` quando
+/// re-arranjou uma existente ou falhou. Falhar já toastou.
+///
+/// ⚠️ **Existe porque o verbo tem DUAS portas** — o pill `[SHEET]` da fila de Image Tools e o
+/// "Pack into Sheet" do menu de contexto da hierarquia (Enio, 2026-08-19). Duas portas para o
+/// mesmo verbo é ergonomia; **duas cópias do verbo** seria a próxima divergência silenciosa, do
+/// tipo em que uma porta ganha uma correção e a outra não. As portas escolhem só o *alvo*.
+///
+/// ## O alvo decide qual dos dois verbos corre
+///
+/// Com uma folha entre os alvos, **re-arranja** (o encaixe é refeito depois de acrescentar, tirar
+/// ou redimensionar uma peça); sem nenhuma, **cria** uma folha com tudo o que for sprite. É um
+/// controle só de propósito: a pergunta é sempre *«arrume isto»*, e o que muda é o *isto*.
+pub(crate) fn pack_or_repack(
+    sim: &mut SimWorld,
+    scene: &mut VecScene,
+    map: &mut VecEntityMap,
+    targets: &[u64],
+    pixels_per_meter: f32,
+    toasts: &mut ToastQueue,
+) -> Option<u64> {
+    let sheets: Vec<u64> = targets
+        .iter()
+        .copied()
+        .filter(|&b| {
+            sim.world()
+                .get::<SpriteSheetFrame>(Entity::from_bits(b))
+                .is_some()
+        })
+        .collect();
+    if !sheets.is_empty() {
+        // ⚠️ Não sai no primeiro erro: com duas folhas alvo, a segunda tem de ser arranjada na
+        // mesma. Reporta-se a PRIMEIRA razão — ela nomeia a peça grande demais, e é isso que diz
+        // ao artista o que fazer a seguir.
+        let mut moved = 0usize;
+        let mut failure: Option<String> = None;
+        for bits in &sheets {
+            match arrange_children(sim, scene, *bits) {
+                Ok(n) => moved += n,
+                Err(e) => {
+                    failure.get_or_insert_with(|| e.to_string());
+                }
+            }
+        }
+        match failure {
+            Some(e) => {
+                toasts.push(Toast::error(format!("Sheet: {e}")));
+            }
+            None => {
+                toasts.push(Toast::success(format!("Sheet re-packed: {moved} pieces")));
+            }
+        }
+        return None;
+    }
+    match create_from_selection(sim, scene, map, targets, pixels_per_meter) {
+        Ok(sheet) => {
+            // ⚠️ A contagem é a das peças que de facto entraram, lida da árvore — não
+            // `targets.len()`. Selecionar três sprites e uma forma vetorial anunciava "4 pieces
+            // packed" e mostrava três: *o número tem de vir de onde a coisa aconteceu.*
+            let pieces = child_bits(sim, Entity::from_bits(sheet)).len();
+            toasts.push(Toast::success(format!(
+                "Sheet: {pieces} pieces packed into one object"
+            )));
+            Some(sheet)
+        }
+        // ⚠️ A razão sobe VERBATIM do empacotador — ela nomeia a peça grande demais ou o conjunto
+        // que não cabe. Um "não foi possível" mandaria o artista adivinhar entre cem sprites.
+        Err(e) => {
+            toasts.push(Toast::error(format!("Sheet: {e}")));
+            None
+        }
+    }
+}
 
 /// O teto de folha que este módulo assume até alguém passar o do dispositivo.
 ///

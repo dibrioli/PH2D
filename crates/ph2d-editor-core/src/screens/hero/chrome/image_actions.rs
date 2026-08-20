@@ -59,18 +59,54 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
 /// Map an `IMAGE_ACTION_*` pill id to the canonical tool id for the
 /// one-shot image ops (those whose chrome is a single click → bake,
 /// no modal panel). Returns `None` for non-one-shot ids.
+///
+/// ⚠️ **Era um `if`/`else` escrito à mão, e foi assim que o pill `[SHEET]` nasceu morto**
+/// (Enio, 2026-08-19: *«botão sheet não funciona»*). A fila É pintada a partir do registry —
+/// `topbar::image_action_pills()` deriva-a do cluster — mas o DESPACHO comparava contra quatro
+/// consts. Um tool novo, entrado pela porta do drop-crate (ADR-0075), caía no `else` final: o
+/// clique não levantava ação nenhuma, e nada no ecrã o dizia. *Um botão pintado que não despacha
+/// é indistinguível de um botão quebrado, e é assim que ele é lido* — a mesma frase que o
+/// Undo/Redo desta função já tinha pago, dez linhas abaixo.
+///
+/// Agora é o espelho exato de [`stateful_tool_for`]: o registry é a fonte, filtrando o cluster
+/// `image_tools` por [`ToolHandler::OneShot`]. Um one-shot novo despacha no dia 1 sem tocar nesta
+/// crate, que é o que a arquitetura de drop-crate promete.
+///
+/// **Test/pre-registry-boot fallback:** quando `installed_registry()` devolve `None` (testes
+/// isolados antes de `install_registry`), o lookup usa a tabela `ONESHOT_TOOL_IDS` — o gémeo da
+/// `STATEFUL_TOOL_IDS` do irmão, e mantida pela mesma convenção.
 fn oneshot_tool_for(id: ph2d_a11y::NodeId) -> Option<&'static str> {
-    if id == ids::IMAGE_ACTION_TRIM {
-        Some("trim_transparency")
-    } else if id == ids::IMAGE_ACTION_MAKE_SQUARE {
-        Some("make_square")
-    } else if id == ids::IMAGE_ACTION_REAL_SIZE {
-        Some("real_size")
-    } else if id == ids::IMAGE_ACTION_RASTERIZE {
-        Some("rasterize")
-    } else {
-        None
+    use ph2d_tool_registry::{ToolHandler, hash_node_id};
+
+    // Production path — data-driven via registry.
+    if let Some(reg) = crate::installed_registry() {
+        let found = reg.cluster("image_tools").iter().find_map(|m| {
+            if !matches!(m.handler, ToolHandler::OneShot { .. }) {
+                return None;
+            }
+            if hash_node_id(m.id) == id {
+                Some(m.id)
+            } else {
+                None
+            }
+        });
+        if found.is_some() {
+            return found;
+        }
     }
+
+    // Test/pre-boot fallback — table-driven (não if-else hardcoded).
+    const ONESHOT_TOOL_IDS: &[&str] = &[
+        "make_square",
+        "rasterize",
+        "real_size",
+        "sheet_packer",
+        "trim_transparency",
+    ];
+    ONESHOT_TOOL_IDS
+        .iter()
+        .find(|slug| hash_node_id(slug) == id)
+        .copied()
 }
 
 /// Map an `IMAGE_ACTION_*` pill id to the canonical tool id for the

@@ -148,3 +148,64 @@ fn hier_menu_one_action_per_drain() {
     // snapshot to attach a row to, so no Delete variant pushed.
     assert_eq!(drained, vec![EditorAction::HierDuplicate { row }]);
 }
+
+/// "Pack into Sheet" — a 2ª porta do verbo do pill `[SHEET]` (Enio, 2026-08-19: *«coloque a mesma
+/// função do botão no menu do botão direito do mouse na hierarchy»*).
+///
+/// ⚠️ O que o teste fixa é o **payload**: a `NodeId` da LINHA, não uma entidade. Quem a resolve em
+/// entidade — e quem decide entre "a seleção inteira" e "só esta linha" — é a shell, com a mesma
+/// lei do "Merge Sprites" vizinho. Empurrar aqui uma entidade já resolvida obrigaria o painel a
+/// conhecer o `bridge`, e é assim que um painel deixa de ser drop-in.
+#[test]
+fn hier_menu_pack_sheet_raises_pack_with_the_clicked_row() {
+    let mut hero = setup_hero();
+    let mut state = HierarchyState::default();
+    let row = NodeId(100_505);
+    stage_hierarchy_row_snapshot(&mut hero, row);
+    let consumed = dispatch(
+        &mut hero,
+        &mut state,
+        WidgetEvent::Click(ids::CTX_MENU_HIER_PACK_SHEET),
+    );
+    assert!(consumed);
+    let drained: Vec<_> = hero.bus.drain().collect();
+    assert_eq!(drained, vec![EditorAction::HierPackSheet { row }]);
+    assert!(hero.store.last_context_menu().is_none());
+}
+
+/// **Toda linha do menu de uma row da hierarquia despacha alguma coisa.**
+///
+/// ⚠️ Este gate existe porque a doença já shipou aqui: o *"Use as Brush Shape"* nasceu pintado e
+/// morto, e ninguém deu por isso durante semanas (Enio, 2026-06-25). Uma linha de menu que não
+/// despacha é indistinguível de uma linha quebrada — e o custo de descobrir é o artista clicar,
+/// não acontecer nada, e concluir que o app está partido.
+///
+/// ⚠️ **A fonte é a TABELA, nunca uma lista aqui dentro** (`menu_rows(HierarchyRow)` — a mesma que
+/// o overlay pinta). Uma linha nova entra neste gate no dia em que é pintada, sem ninguém se
+/// lembrar; um gate que precisasse de ser atualizado para cobrir o caso novo não apanharia
+/// nenhum caso novo.
+#[test]
+fn every_hierarchy_row_menu_entry_dispatches_something() {
+    use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
+
+    let mut dead: Vec<&str> = Vec::new();
+    for (id, label, _) in menu_rows(ContextMenuKind::HierarchyRow { row: NodeId(1) }) {
+        let mut hero = setup_hero();
+        let mut state = HierarchyState::default();
+        stage_hierarchy_row_snapshot(&mut hero, NodeId(100_600));
+        let consumed = dispatch(&mut hero, &mut state, WidgetEvent::Click(*id));
+        // O Rename é o único que age no store ANTES de empurrar (abre o modo inline) — mas
+        // empurra na mesma o `HierRenameSeed`, então a barra de "empurrou algo" serve para as
+        // dez linhas sem exceção. *Uma exceção aqui seria o buraco por onde a próxima passa.*
+        if !consumed || hero.bus.drain().count() == 0 {
+            dead.push(label);
+        }
+    }
+    assert!(
+        dead.is_empty(),
+        "linhas do menu de contexto da hierarquia que são PINTADAS e não despacham nada — \
+         clicar nelas não faz coisa nenhuma: {dead:?}.\n\
+         Ligue cada uma em `crates/ph2d-panel-hierarchy/src/event.rs` (a cadeia de `id == \
+         ids::CTX_MENU_HIER_*` e o braço que empurra a ação) e drene a ação na shell."
+    );
+}

@@ -94,12 +94,12 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
         291,
         "row painter (icons + twirl + rename + companions); re-baselined 300→291 by the comment-aware parser",
     ),
-    (
-        "ph2d-panel-hierarchy/src/event.rs",
-        "apply_event",
-        216,
-        "unmasked by the 2026-07-10 parser fix; first-match-wins click dispatch, per-cluster try_* split deferred",
-    ),
+    // ⚠️ `ph2d-panel-hierarchy/src/event.rs::apply_event` ESTEVE aqui, tolerado a 216 — e a
+    // entrada foi REMOVIDA em 2026-08-19, não subida para 219. O "Pack into Sheet" ia
+    // acrescentar-lhe quatro linhas, e a tolerância do vizinho de cima diz, pela mão de quem a
+    // pagou, *«as tolerâncias encolhem, nunca crescem»*. O bloco do menu de contexto saiu para
+    // `try_context_menu_row`, a mãe caiu para dentro do teto, e a tolerância deixou de ter
+    // objeto. *A cura de um teto estourado é o corte; subir o número é adiar com juros.*
     // The inspector is the worst offender and the reason the split was blocked:
     // the parser under-counted its dispatcher by 124 LOC.
     (

@@ -24,6 +24,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.mode.move" => "Move",
         "panel.model3d.mode.rotate" => "Rotate",
         "panel.model3d.mode.scale" => "Size",
+        // Em que eixos o gizmo aponta. ⚠️ "Global"/"Local" são as palavras do Blender para a mesma
+        // escolha — quem já modela sabe o que elas querem dizer sem experimentar.
+        "panel.model3d.frame.global" => "Global",
+        "panel.model3d.frame.local" => "Local",
         "panel.model3d.kind.union" => "Union",
         "panel.model3d.kind.intersection" => "Intersect",
         "panel.model3d.kind.difference" => "Subtract",

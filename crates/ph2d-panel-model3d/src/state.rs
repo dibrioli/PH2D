@@ -59,6 +59,8 @@ pub struct ModeChip {
 pub struct ModelSnapshot {
     /// ⭐ Os verbos do gizmo, na ordem do seletor. Vazio ⇒ o seletor não é pintado.
     pub modes: Vec<ModeChip>,
+    /// ⭐ Os referenciais de eixo (global / local), na mesma forma e pela mesma razão.
+    pub frames: Vec<ModeChip>,
     /// Uma linha por nó com raio editável, em **pré-ordem** — a ordem da Hierarquia.
     pub rows: Vec<RadiusRow>,
     /// Quantos nós o documento tem **ao todo** — inclusive os sem raio.
@@ -82,6 +84,10 @@ pub enum ModelIntent {
     },
     /// Trocar o verbo do gizmo, pela **posição** no seletor.
     SetGizmoMode {
+        slot: usize,
+    },
+    /// Trocar o referencial dos eixos, pela **posição** no seletor.
+    SetGizmoFrame {
         slot: usize,
     },
 }

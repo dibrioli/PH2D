@@ -19,10 +19,7 @@ fn screen(c: &Orbit) -> Screen {
 }
 
 fn anchor() -> Anchor {
-    Anchor {
-        entity: 1,
-        origin: [0.0, 0.0, 0.0],
-    }
+    Anchor::global(1, [0.0, 0.0, 0.0])
 }
 
 fn handles(c: &Orbit, mode: Mode) -> Vec<Projected> {
@@ -556,4 +553,74 @@ fn merging_two_different_verbs_keeps_the_second() {
     };
     assert_eq!(t.merge(r), r);
     assert_eq!(r.merge(t), t);
+}
+
+// ─────────────────────────────── OS EIXOS ───────────────────────────────
+
+/// ⭐ **`Local` roda com o objeto; `Global` não.**
+#[test]
+fn local_axes_follow_the_node_and_global_ones_do_not() {
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    // Um quarto de volta em torno de Z: o X do objeto passa a apontar para o +Y do mundo.
+    let quarter = [0.0, 0.0, s, s];
+
+    let g = Frame::Global.axes(quarter);
+    assert_eq!(g[0], [1.0, 0.0, 0.0], "o global não conhece o objeto");
+
+    let l = Frame::Local.axes(quarter);
+    assert!(
+        (l[0][0]).abs() < 1e-6 && (l[0][1] - 1.0).abs() < 1e-6,
+        "o X local devia apontar para o +Y do mundo e aponta para {:?}",
+        l[0]
+    );
+    // E continuam ortonormais — senão o arrasto num eixo escorregaria para outro.
+    for a in l {
+        assert!((ph2d_field::xform::dot(a, a) - 1.0).abs() < 1e-5);
+    }
+    for (i, j) in [(0, 1), (1, 2), (0, 2)] {
+        assert!(ph2d_field::xform::dot(l[i], l[j]).abs() < 1e-5);
+    }
+}
+
+/// ⭐ **A lei do gizmo lê os eixos da ÂNCORA, e nunca os do mundo por baixo do pano.**
+///
+/// ⚠️ É o gate que impede a escolha de referencial de existir só no painel. Com uma âncora de eixos
+/// rodados, arrastar a seta 0 tem de mover **naquela direção** — se sair no `+X` do mundo, algum
+/// sítio da lei ficou a ler `WORLD_AXES` e o seletor é decorativo.
+#[test]
+fn the_law_moves_along_the_anchors_axes_not_the_worlds() {
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let rotated = Anchor {
+        entity: 1,
+        origin: [0.0; 3],
+        axes: Frame::Local.axes([0.0, 0.0, s, s]),
+    };
+    let c = cam();
+    let sc = screen(&c);
+    let hs = project(rotated, &c, sc, Mode::Move);
+    let Shape::Arrow { from, to } = of(&hs, Handle::Axis(0)).shape else {
+        panic!("um eixo é uma seta");
+    };
+    let d = [to[0] - from[0], to[1] - from[1]];
+    let len = d[0].hypot(d[1]);
+    let delta = translation(drag(
+        Handle::Axis(0),
+        rotated,
+        &c,
+        sc,
+        [0.0, 0.0],
+        [d[0] / len * 40.0, d[1] / len * 40.0],
+    ));
+    assert!(
+        delta[1] > 0.0 && delta[0].abs() < 1e-5 && delta[2].abs() < 1e-5,
+        "a seta 0 de um objeto rodado tem de andar no +Y do mundo, e andou {delta:?}"
+    );
+}
+
+/// **Todo referencial tem um rótulo que traduz.**
+#[test]
+fn every_axis_frame_has_a_translation() {
+    for f in Frame::ALL {
+        assert_ne!(ph2d_i18n::tr(f.key()), f.key(), "o eixo {f:?} não traduz");
+    }
 }

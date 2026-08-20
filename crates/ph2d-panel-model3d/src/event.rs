@@ -24,10 +24,12 @@ fn slot_of(id: ph2d_a11y::NodeId) -> Option<(usize, bool)> {
     })
 }
 
-/// De que **posição do seletor** é este id, se for de alguma.
-fn mode_slot_of(id: ph2d_a11y::NodeId) -> Option<usize> {
-    (0..crate::populate::MAX_MODES)
-        .find_map(|n| (id == ids::model3d_mode_button(n)).then_some(n as usize))
+/// De que **posição** de um seletor é este id, se for de algum.
+///
+/// ⚠️ O seletor viaja como parâmetro: os dois (verbo e referencial) têm famílias de id próprias, e
+/// partilhá-las faria um clique em «Local» disparar o verbo da mesma posição.
+fn slot_in(id: ph2d_a11y::NodeId, of: fn(u32) -> ph2d_a11y::NodeId) -> Option<usize> {
+    (0..crate::populate::MAX_MODES).find_map(|n| (id == of(n)).then_some(n as usize))
 }
 
 pub(crate) fn apply_event(
@@ -64,16 +66,21 @@ pub(crate) fn apply_event(
             }
             None => false,
         },
-        // ⭐ O seletor de verbo. ⚠️ A POSIÇÃO é o que viaja: o painel não conhece o enum dos
-        // modos, e uma cópia dele aqui seria uma segunda contagem a envelhecer.
-        WidgetEvent::Click(id) if mode_slot_of(id).is_some() => {
-            let slot = mode_slot_of(id).unwrap_or(0);
-            if slot < state::current().modes.len() {
+        // ⭐ Os dois seletores. ⚠️ A POSIÇÃO é o que viaja: o painel não conhece os enums do
+        // gizmo, e uma cópia deles aqui seria uma segunda contagem a envelhecer.
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_mode_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_mode_button).unwrap_or(0);
+            // Um slot da família sem verbo no retrato: ignorar é a resposta certa.
+            slot < state::current().modes.len() && {
                 state::push_intent(ModelIntent::SetGizmoMode { slot });
                 true
-            } else {
-                // Um slot da família sem verbo no retrato: ignorar é a resposta certa.
-                false
+            }
+        }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_frame_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_frame_button).unwrap_or(0);
+            slot < state::current().frames.len() && {
+                state::push_intent(ModelIntent::SetGizmoFrame { slot });
+                true
             }
         }
         WidgetEvent::Click(id) if id == ids::MODEL3D_CLOSE => {

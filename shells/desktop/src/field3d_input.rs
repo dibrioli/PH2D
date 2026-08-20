@@ -185,11 +185,7 @@ impl App {
 
     /// O ponteiro subiu. Fecha o arrasto, se havia um.
     pub(crate) fn field3d_pointer_up(&mut self) -> bool {
-        let (took, authored) = with_smoke(|s| {
-            let was = s.drag.take();
-            (was.is_some(), matches!(was, Some(Drag::Gizmo(_))))
-        })
-        .unwrap_or((false, false));
+        let (took, authored) = with_smoke(finish).unwrap_or((false, false));
         // ⚠️ **E no SOLTAR também**, senão um arrasto cujo último movimento caiu num quadro
         // anterior fica sem quadro nenhum a marcar entrada — e o passo só se registaria colado à
         // próxima ação do artista, seja ela qual for.
@@ -319,9 +315,20 @@ pub(crate) fn begin(
     s.drag = Some(grabbed.map_or(fallback, Drag::Gizmo));
     s.gizmo_hot = grabbed;
     s.last_pointer = pos;
+    // ⚠️ Guardado **antes** de qualquer movimento: é a origem contra a qual o `Up` decide se aquilo
+    // foi um clique ou um arrasto.
+    s.press_at = Some(pos);
     s.manual = true;
     true
 }
+
+/// ⚠️ **A que distância um clique deixa de ser um clique** — e o número é o da CASA
+/// ([`ph2d_editor::interaction::NUMBER_INPUT_DRAG_THRESHOLD_PX`]).
+///
+/// Ele tem o nome do campo numérico porque foi lá que a casa o mediu primeiro, mas a grandeza é a
+/// mesma pergunta física: *quanto a mão treme entre carregar e soltar*. Um quarto número para a
+/// mesma pergunta seria a quarta resposta a envelhecer — já há três no shell.
+const CLICK_SLOP_PX: f32 = ph2d_editor::interaction::NUMBER_INPUT_DRAG_THRESHOLD_PX;
 
 /// O ponteiro moveu. Devolve `true` só quando o gesto é desta janela.
 pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
@@ -414,6 +421,34 @@ fn mode_for_key(
         KeyCode::KeyS => Some(field3d_gizmo::Mode::Scale),
         _ => None,
     }
+}
+
+/// O ponteiro subiu: fecha o gesto e decide se ele foi um **clique**.
+///
+/// Devolve `(o gesto era meu?, ele AUTOROU a cena?)`.
+///
+/// ⭐ **Soltar sem ter arrastado é um clique**, e um clique na janela 3D seleciona o objeto sob o
+/// cursor — como em todo modelador. ⚠️ Só o gesto de **câmera** vira clique: soltar uma alça do
+/// gizmo nunca é uma seleção, senão mover um objeto trocaria a seleção para o que estivesse por
+/// baixo dele no fim do gesto, e o artista perderia o que acabou de posicionar.
+pub(crate) fn finish(s: &mut Smoke) -> (bool, bool) {
+    let was = s.drag.take();
+    if was == Some(Drag::Orbit)
+        && let (Some(from), Some(area)) = (s.press_at, s.area)
+        && (s.last_pointer.0 - from.0).abs() <= CLICK_SLOP_PX
+        && (s.last_pointer.1 - from.1).abs() <= CLICK_SLOP_PX
+    {
+        s.pending_pick = Some([from.0 - area.x, from.1 - area.y]);
+    }
+    s.press_at = None;
+    (was.is_some(), matches!(was, Some(Drag::Gizmo(_))))
+}
+
+/// A mesma porta, aberta para o gate da costura — o caminho real (`App::field3d_pointer_up`) exige
+/// um `App`, que um teste não constrói.
+#[cfg(test)]
+pub(crate) fn finish_for_test(s: &mut Smoke) -> (bool, bool) {
+    finish(s)
 }
 
 /// A alça que o gizmo tem de pintar realçada: a **agarrada** ganha da que está sob o cursor.

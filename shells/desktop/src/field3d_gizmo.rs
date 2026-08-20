@@ -172,13 +172,65 @@ pub(crate) enum Handle {
     Grip,
 }
 
-/// **Onde o gizmo está**, no mundo. Publicado pela ponte com a cena, que é quem tem o mundo.
+/// **Onde o gizmo está e para onde ele aponta**, no mundo. Publicado pela ponte com a cena, que é
+/// quem tem o mundo.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Anchor {
     /// A entidade que ele move — a identidade viaja com a âncora, senão o arrasto teria de a
     /// procurar outra vez e podia achar outra.
     pub(crate) entity: u64,
     pub(crate) origin: [f32; 3],
+    /// ⭐ **Os três eixos, JÁ NO MUNDO** — a orientação escolhida ([`Frame`]).
+    ///
+    /// ⚠️ Eles viajam prontos de propósito: assim a lei do gizmo deixa de saber que existe uma
+    /// escolha de orientação, e quem a faz é a ponte, que é quem tem a pose do nó. Sem isto, cada
+    /// função daqui teria de perguntar «global ou local?» — o mesmo `if` repetido em cinco sítios,
+    /// que é como um deles fica para trás.
+    pub(crate) axes: [[f32; 3]; 3],
+}
+
+impl Anchor {
+    /// Uma âncora nos eixos do mundo — o que a maioria dos gates quer.
+    #[cfg(test)]
+    pub(crate) fn global(entity: u64, origin: [f32; 3]) -> Self {
+        Self {
+            entity,
+            origin,
+            axes: WORLD_AXES,
+        }
+    }
+}
+
+/// **Em que referencial os eixos do gizmo apontam.**
+///
+/// ⚠️ A distinção não é cosmética: num nó rodado, `Global` move ao longo dos eixos da cena e `Local`
+/// ao longo dos do próprio objeto — e os dois são o gesto certo, em momentos diferentes. O Blender
+/// expõe exatamente esta escolha num seletor, e entregar só uma seria escolher por quem não pediu.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub(crate) enum Frame {
+    #[default]
+    Global,
+    Local,
+}
+
+impl Frame {
+    pub(crate) const ALL: [Frame; 2] = [Frame::Global, Frame::Local];
+
+    /// ⚠️ Uma **chave** de i18n, nunca um rótulo pronto (HR-15).
+    pub(crate) fn key(self) -> &'static str {
+        match self {
+            Frame::Global => "panel.model3d.frame.global",
+            Frame::Local => "panel.model3d.frame.local",
+        }
+    }
+
+    /// Os três eixos deste referencial, no mundo, dada a rotação do nó.
+    pub(crate) fn axes(self, rotation: [f32; 4]) -> [[f32; 3]; 3] {
+        match self {
+            Frame::Global => WORLD_AXES,
+            Frame::Local => WORLD_AXES.map(|a| ph2d_field::xform::quat_rotate(rotation, a)),
+        }
+    }
 }
 
 /// A forma de uma alça já projetada — em **pixels**, pronta a pintar e a apontar.
@@ -306,8 +358,8 @@ fn move_handles(
         let (u, v) = ((n + 1) % 3, (n + 2) % 3);
         let corner = |a: f32, b: f32| -> [f32; 2] {
             let mut p = anchor.origin;
-            for k in 0..3 {
-                p[k] += WORLD_AXES[u][k] * a * arm + WORLD_AXES[v][k] * b * arm;
+            for (k, c) in p.iter_mut().enumerate() {
+                *c += anchor.axes[u][k] * a * arm + anchor.axes[v][k] * b * arm;
             }
             cam.project(p, screen).0
         };
@@ -330,7 +382,7 @@ fn move_handles(
         });
     }
 
-    for (n, axis) in WORLD_AXES.iter().enumerate() {
+    for (n, axis) in anchor.axes.iter().enumerate() {
         let tip = cam.project(offset(anchor.origin, *axis, arm), screen).0;
         let len = dist(o2, tip);
         out.push(Projected {
@@ -345,7 +397,7 @@ fn move_handles(
 fn rotate_handles(anchor: Anchor, cam: &Orbit, screen: Screen, arm: f32) -> Vec<Projected> {
     let (_, _, fwd) = cam.basis();
     let mut out = Vec::with_capacity(4);
-    for (n, axis) in WORLD_AXES.iter().enumerate() {
+    for (n, axis) in anchor.axes.iter().enumerate() {
         out.push(Projected {
             handle: Handle::Ring(n),
             shape: Shape::Arc(front_arc(anchor.origin, *axis, arm, cam, screen)),
@@ -501,7 +553,7 @@ pub(crate) fn drag(
         Handle::Axis(n) => {
             let (o2, _) = cam.project(anchor.origin, screen);
             let tip = cam
-                .project(offset(anchor.origin, WORLD_AXES[n], arm), screen)
+                .project(offset(anchor.origin, anchor.axes[n], arm), screen)
                 .0;
             let d = [tip[0] - o2[0], tip[1] - o2[1]];
             let dd = d[0].mul_add(d[0], d[1] * d[1]);
@@ -511,15 +563,15 @@ pub(crate) fn drag(
             let m = [to_px[0] - from_px[0], to_px[1] - from_px[1]];
             let t = m[0].mul_add(d[0], m[1] * d[1]) / dd * arm;
             Motion::Translate([
-                WORLD_AXES[n][0] * t,
-                WORLD_AXES[n][1] * t,
-                WORLD_AXES[n][2] * t,
+                anchor.axes[n][0] * t,
+                anchor.axes[n][1] * t,
+                anchor.axes[n][2] * t,
             ])
         }
         // Num plano, o deslocamento é a diferença entre dois pontos do plano — cada um o encontro do
         // raio do cursor com ele. É a mesma conta do gizmo 2D, com o plano a vir do mundo.
         Handle::Plane(n) => Motion::Translate(plane_delta(
-            WORLD_AXES[n],
+            anchor.axes[n],
             anchor.origin,
             cam,
             screen,
@@ -531,7 +583,7 @@ pub(crate) fn drag(
             let (_, _, fwd) = cam.basis();
             Motion::Translate(plane_delta(fwd, anchor.origin, cam, screen, from_px, to_px))
         }
-        Handle::Ring(n) => spin(WORLD_AXES[n], anchor.origin, cam, screen, from_px, to_px),
+        Handle::Ring(n) => spin(anchor.axes[n], anchor.origin, cam, screen, from_px, to_px),
         Handle::ViewRing => {
             let (_, _, fwd) = cam.basis();
             spin(fwd, anchor.origin, cam, screen, from_px, to_px)

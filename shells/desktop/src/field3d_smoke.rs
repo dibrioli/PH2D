@@ -113,11 +113,23 @@ pub(crate) struct Smoke {
     /// depressa, que é o defeito mais difícil de acreditar. Cada verbo acumula à maneira dele
     /// (`Motion::merge`).
     pub(crate) pending_move: Option<(u64, crate::field3d_gizmo::Motion)>,
+    /// Onde o botão desceu — é o que distingue um **clique** (selecionar) de um **arrasto**
+    /// (orbitar). ⚠️ Sem ele, todo clique na peça seria também um giro de zero graus, e a única
+    /// forma de selecionar seria a Hierarquia.
+    pub(crate) press_at: Option<(f32, f32)>,
+    /// Um clique que ainda não foi resolvido: o pixel, no referencial da área desenhada.
+    ///
+    /// ⚠️ Resolver aqui é impossível — a pergunta *"de quem é este ponto?"* precisa do MUNDO, e o
+    /// ponteiro corre fora do quadro. Ele viaja para a ponte pelo mesmo cano dos intents do painel.
+    pub(crate) pending_pick: Option<[f32; 2]>,
     /// ⭐ **Que verbo o gizmo está a oferecer** — mover, rodar ou escalar.
     ///
     /// ⚠️ É estado de **vista**, e não do documento: por isso vive aqui e não num componente. O
     /// painel mostra-o e as teclas `G`/`R`/`S` trocam-no.
     pub(crate) gizmo_mode: crate::field3d_gizmo::Mode,
+    /// ⭐ **Em que referencial os eixos do gizmo apontam** — do mundo, ou do próprio objeto.
+    /// Estado de **vista**, como o verbo.
+    pub(crate) gizmo_frame: crate::field3d_gizmo::Frame,
 }
 
 /// O gesto de navegação em curso.
@@ -398,7 +410,10 @@ fn boot() -> Option<Smoke> {
         gizmo: None,
         gizmo_hot: None,
         pending_move: None,
+        press_at: None,
+        pending_pick: None,
         gizmo_mode: crate::field3d_gizmo::Mode::default(),
+        gizmo_frame: crate::field3d_gizmo::Frame::default(),
     })
 }
 

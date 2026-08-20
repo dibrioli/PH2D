@@ -6680,10 +6680,17 @@ impl crate::App {
             // ⭐ A seleção do app é a do gizmo 3D: clicar numa linha da Hierarquia é o que faz as
             // setas aparecerem no objeto. Uma seleção própria deste módulo seria uma segunda ideia
             // de "o que está selecionado" no mesmo app.
-            if let Some(born) = crate::field3d_scene::ecs_bridge(sim, hero.gizmo.selection) {
-                // ⭐ A peça acabou de nascer: selecioná-la é o que faz as setas aparecerem sem
-                // ninguém ter de adivinhar o gesto. Uma vez, ao nascer (ver `sync_scene_and_birth`).
-                hero.gizmo.replace_selection(Some(born));
+            // ⭐ Um clique na peça (ou a peça a nascer) pede uma seleção. É a MESMA porta que a
+            // Hierarquia usa — uma seleção própria deste módulo seria uma segunda ideia de "o que
+            // está selecionado" dentro do mesmo app.
+            match crate::field3d_scene::ecs_bridge(sim, hero.gizmo.selection) {
+                Some(crate::field3d_scene::SelectRequest::Entity(bits)) => {
+                    hero.gizmo.replace_selection(Some(bits));
+                }
+                Some(crate::field3d_scene::SelectRequest::Clear) => {
+                    hero.gizmo.clear_all_selection();
+                }
+                None => {}
             }
             // O painel de TOKENS (plano UI/UX W6), na MESMA fase e pela mesma razão: um painel de
             // MUNDO, cuja visibilidade é do artista. ⚠️ Ele tem de correr DEPOIS do dispatch de

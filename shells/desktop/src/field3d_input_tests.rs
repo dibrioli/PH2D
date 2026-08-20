@@ -246,10 +246,7 @@ mod seam {
         set_armed_by_panel(true);
         with_smoke(|s| {
             s.area = Some(AREA);
-            s.gizmo = Some(field3d_gizmo::Anchor {
-                entity: 7,
-                origin: [0.0, 0.0, 0.0],
-            });
+            s.gizmo = Some(field3d_gizmo::Anchor::global(7, [0.0, 0.0, 0.0]));
             s.pending_move = None;
             s.drag = None;
             s.gizmo_hot = None;
@@ -368,6 +365,56 @@ mod seam {
             assert_eq!(hot_handle(s), Some(Handle::Axis(1)));
             assert!(!advance(s, AREA.x + 2.0, AREA.y + 2.0));
             assert_eq!(hot_handle(s), None, "e apaga-se ao sair");
+        });
+    }
+
+    /// ⭐ **Soltar sem ter arrastado é um CLIQUE**, e um clique pede uma seleção.
+    ///
+    /// ⚠️ É a metade de entrada da seleção por clique. A outra (de quem é o ponto) precisa do MUNDO
+    /// e vive na ponte; sem esta, ela nunca é chamada — e o gizmo continuaria a só chegar pela
+    /// Hierarquia.
+    #[test]
+    fn a_press_and_release_without_dragging_asks_for_a_pick() {
+        armed(|s| {
+            let far = (AREA.x + AREA.w - 60.0, AREA.y + 40.0);
+            begin(s, winit::event::MouseButton::Left, Drag::Orbit, far);
+            s.last_pointer = far;
+            crate::field3d_input::finish_for_test(s);
+            let px = s.pending_pick.expect("um clique tem de pedir uma seleção");
+            assert!(
+                (px[0] - (far.0 - AREA.x)).abs() < 0.01 && (px[1] - (far.1 - AREA.y)).abs() < 0.01,
+                "o pixel pedido tem de ser o do CLIQUE, no referencial da área: {px:?}"
+            );
+        });
+    }
+
+    /// ⚠️ **Um arrasto NÃO é um clique** — girar a vista não pode trocar a seleção.
+    #[test]
+    fn dragging_the_camera_is_not_a_click() {
+        armed(|s| {
+            let far = (AREA.x + AREA.w - 60.0, AREA.y + 40.0);
+            begin(s, winit::event::MouseButton::Left, Drag::Orbit, far);
+            advance(s, far.0 + 40.0, far.1 + 30.0);
+            crate::field3d_input::finish_for_test(s);
+            assert!(
+                s.pending_pick.is_none(),
+                "orbitar a vista pediu uma seleção — o limiar de clique não está a morder"
+            );
+        });
+    }
+
+    /// ⚠️ **Soltar uma ALÇA do gizmo nunca é uma seleção.**
+    ///
+    /// Sem isto, mover um objeto trocaria a seleção para o que estivesse por baixo dele no fim do
+    /// gesto — e o artista perderia o objeto que acabou de posicionar.
+    #[test]
+    fn releasing_a_gizmo_handle_is_never_a_selection() {
+        armed(|s| {
+            let p = mid_of_axis(s, 0);
+            begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
+            assert!(matches!(s.drag, Some(Drag::Gizmo(_))));
+            crate::field3d_input::finish_for_test(s);
+            assert!(s.pending_pick.is_none());
         });
     }
 

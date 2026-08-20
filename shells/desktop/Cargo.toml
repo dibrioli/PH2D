@@ -322,6 +322,12 @@ ph2d-field-render = { path = "../../crates/ph2d-field-render" }
 ph2d-field = { path = "../../crates/ph2d-field" }
 # ADR-0161 — a ponte ECS: e ela que faz um objeto de campo ser salvo e desfeito.
 ph2d-field-ecs = { path = "../../crates/ph2d-field-ecs" }
+# ADR-0161 W7 — o avaliador, para a SELECAO POR CLIQUE: depois de a marcha dizer ONDE a
+# superficie esta, pergunta-se a cada folha o valor do campo DELA naquele ponto, e ganha a
+# de menor modulo. A pergunta e do shell porque so ele tem as duas metades (a cena e o
+# tracador) na mao; a alternativa (um id-buffer na arvore de avaliacao) espalharia o custo
+# por cada pixel de cada quadro para responder a uma pergunta que so se faz num clique.
+ph2d-field-eval = { path = "../../crates/ph2d-field-eval" }
 # ADR-0161 W3 — a costura com o editor vetorial: um `VecPath` desenhado com a
 # caneta da casa vira o perfil de onde saem `Extrude` e `Revolve`.
 ph2d-field-profile = { path = "../../crates/ph2d-field-profile" }

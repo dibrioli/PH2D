@@ -10,8 +10,13 @@
 //!
 //! # O que sai daqui é GEOMETRIA, não cor
 //!
-//! [`trace`] devolve um G-buffer: máscara, **normal em espaço de vista** e profundidade. Nenhuma
-//! decisão de cor mora nele. Quem quiser pixels passa um [`Matcap`] a [`shade`].
+//! [`trace`] devolve um G-buffer: máscara e **normal em espaço de vista**. Nenhuma decisão de cor
+//! mora nele. Quem quiser pixels passa um [`Matcap`] a [`shade`]; quem quiser saber **onde** a
+//! superfície está sob um pixel usa [`surface_under`].
+//!
+//! ⚠️ Este parágrafo dizia *"e profundidade"* até 20/08, e o `Gbuffer` **nunca a teve** — um
+//! comentário velho a descrever uma API que não existe. Corrigido ao escrever a seleção por clique,
+//! que foi a primeira coisa a precisar dela e a descobrir que ela não estava lá.
 //!
 //! ⚠️ **Matcap, e não o rig de lâmpadas** — e a distinção é da casa, não minha:
 //! *"o rig é do DOCUMENTO (a mesma lâmpada acende a tinta ao lado), o matcap é do OLHO"*
@@ -214,7 +219,10 @@ pub fn trace_with(
         let pts: Vec<(f32, f32)> = (0..w)
             .map(|x| plane.plane_at(x as f32 + 0.5, y as f32 + 0.5))
             .collect();
-        march(&scene, &pts)
+        // O ponto de mundo não interessa a um quadro inteiro — quem o quer é a seleção por
+        // clique (`surface_under`), um raio de cada vez.
+        let (h, n, _) = march(&scene, &pts);
+        (h, n)
     };
     let rows: Vec<(Vec<bool>, Vec<[f32; 3]>)> = if parallel {
         (0..h).into_par_iter().map(row).collect()
@@ -261,7 +269,7 @@ struct Scene<'a> {
 /// Recebe posições no **plano da câmera** (unidades de mundo), e não índices de pixel, e é isso que
 /// o deixa servir às duas passagens — a linha inteira e as quatro amostras espalhadas de um pixel
 /// de borda. *Uma marcha, um lugar.*
-fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>) {
+fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>, Vec<[f32; 3]>) {
     let (right, up, fwd) = scene.basis;
     let (shape, cam, sharp) = (scene.shape, scene.cam, scene.sharp);
     let n = screen.len();
@@ -272,8 +280,12 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>)
     let mut eval = Engine::new_float_slice_eval();
     let mut hit = vec![false; n];
     let mut normal = vec![[0.0f32; 3]; n];
+    // ⭐ **Onde o raio parou, no MUNDO.** Ele sai de graça (a marcha já sabe o `t`), e é o que uma
+    // seleção por clique precisa de saber. Devolvê-lo aqui é o que impede uma segunda marcha de
+    // existir só para responder à mesma pergunta.
+    let mut point = vec![[0.0f32; 3]; n];
     if n == 0 {
-        return (hit, normal);
+        return (hit, normal, point);
     }
 
     let (mut ox, mut oy, mut oz) = (vec![0.0f32; n], vec![0.0f32; n], vec![0.0f32; n]);
@@ -322,18 +334,21 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>)
 
     // Normais por diferença central, em lote, só onde acertou.
     let idx: Vec<usize> = (0..n).filter(|i| hit[*i]).collect();
+    for &i in &idx {
+        point[i] = [
+            ox[i] + dir[0] * t[i],
+            oy[i] + dir[1] * t[i],
+            oz[i] + dir[2] * t[i],
+        ];
+    }
     if idx.is_empty() {
-        return (hit, normal);
+        return (hit, normal, point);
     }
     let mut gx = Vec::with_capacity(idx.len() * 6);
     let mut gy = Vec::with_capacity(idx.len() * 6);
     let mut gz = Vec::with_capacity(idx.len() * 6);
     for &i in &idx {
-        let (px, py, pz) = (
-            ox[i] + dir[0] * t[i],
-            oy[i] + dir[1] * t[i],
-            oz[i] + dir[2] * t[i],
-        );
+        let [px, py, pz] = point[i];
         let e = sharp.normal;
         for (dx, dy, dz) in [
             (e, 0.0, 0.0),
@@ -366,7 +381,34 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>)
             ];
         }
     }
-    (hit, normal)
+    (hit, normal, point)
+}
+
+/// ⭐ **Onde a superfície está sob um pixel** — a pergunta que uma seleção por clique faz.
+///
+/// ⚠️ **Um raio, pela MESMA marcha.** Uma função própria que repetisse o laço seria a segunda
+/// resposta a *"onde está a superfície?"*, e as duas divergiriam no dia em que uma tolerância
+/// mudasse — com o sintoma a aparecer como *"clicar na peça seleciona o objeto errado"*, que
+/// ninguém liga a uma tolerância de marcha.
+///
+/// `None` quando o raio não encontrou nada: o clique caiu no fundo.
+#[must_use]
+pub fn surface_under(
+    doc: &FieldDoc,
+    cam: &Orbit,
+    screen: Screen,
+    px: [f32; 2],
+) -> Option<[f32; 3]> {
+    let shape = Engine::from(ph2d_field_eval::compile(doc));
+    let side = screen.width().min(screen.height()) as usize;
+    let scene = Scene {
+        shape: &shape,
+        cam,
+        basis: cam.basis(),
+        sharp: Sharpness::for_frame(cam.half_extent, side),
+    };
+    let (hit, _, point) = march(&scene, &[screen.plane_at(px[0], px[1])]);
+    hit[0].then(|| point[0])
 }
 
 /// Quantos **pixels** de borda cada lote da segunda passagem leva (× 4 amostras cada).
@@ -433,7 +475,7 @@ fn resample_edges(
                 pts.push(plane.plane_at(x + dx, y + dy));
             }
         }
-        let (hits, normals) = march(scene, &pts);
+        let (hits, normals, _) = march(scene, &pts);
         c.iter()
             .enumerate()
             .map(|(k, &p)| {

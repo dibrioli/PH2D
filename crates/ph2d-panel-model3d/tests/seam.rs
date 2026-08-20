@@ -24,6 +24,7 @@ const THE_UNION: u64 = 77;
 fn scene_with_one_union() {
     publish(ModelSnapshot {
         modes: Vec::new(),
+        frames: Vec::new(),
         rows: vec![RadiusRow {
             entity: THE_UNION,
             depth: 0,
@@ -195,6 +196,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
         .collect();
     publish(ModelSnapshot {
         modes: Vec::new(),
+        frames: Vec::new(),
         rows: nodes,
         node_count: 4,
         last_trace_ms: 0.0,
@@ -268,6 +270,7 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
                 active: false,
             },
         ],
+        frames: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
         last_trace_ms: 0.0,
@@ -300,6 +303,7 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
             key: "panel.model3d.mode.move",
             active: true,
         }],
+        frames: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
         last_trace_ms: 0.0,
@@ -313,4 +317,52 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
     );
     assert_eq!(outcome, EventOutcome::Ignored);
     assert!(drain_intents().is_empty());
+}
+
+/// ⭐ **O seletor de EIXOS é uma família de ids própria**, e o clique nele não dispara o verbo.
+///
+/// ⚠️ Os dois seletores coexistem no painel. Partilhar a família faria um clique em «Local»
+/// disparar o verbo da mesma posição — e o sintoma seria *"trocar de eixos troca a ferramenta"*,
+/// que ninguém liga a ids partilhados.
+#[test]
+fn the_axis_selector_is_its_own_family() {
+    let _ = drain_intents();
+    publish(ModelSnapshot {
+        modes: vec![
+            state::ModeChip {
+                key: "panel.model3d.mode.move",
+                active: true,
+            },
+            state::ModeChip {
+                key: "panel.model3d.mode.rotate",
+                active: false,
+            },
+        ],
+        frames: vec![
+            state::ModeChip {
+                key: "panel.model3d.frame.global",
+                active: true,
+            },
+            state::ModeChip {
+                key: "panel.model3d.frame.local",
+                active: false,
+            },
+        ],
+        rows: Vec::new(),
+        node_count: 0,
+        last_trace_ms: 0.0,
+    });
+
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+    let outcome = host.apply_panel_event::<Model3dPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::model3d_frame_button(1)),
+    );
+    assert_eq!(outcome, EventOutcome::Consumed);
+    assert_eq!(
+        drain_intents(),
+        vec![ModelIntent::SetGizmoFrame { slot: 1 }],
+        "o clique no eixo tem de pedir o EIXO — se vier `SetGizmoMode`, as famílias colidiram"
+    );
 }

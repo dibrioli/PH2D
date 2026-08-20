@@ -25,7 +25,7 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// passar disto, o rodapé diz — e aí o número muda com uma medição atrás.*
 pub const MAX_ROWS: usize = 64;
 
-/// Quantos verbos o seletor consegue mostrar.
+/// Quantos verbos (e quantos referenciais) um seletor consegue mostrar.
 ///
 /// ⚠️ Mesma natureza do [`MAX_ROWS`]: é um limite de **registro**, porque o `populate` corre antes
 /// de o gizmo existir. Hoje `Mode::ALL` tem três; oito é folga sem custo (cada slot é um `NodeId`
@@ -36,6 +36,12 @@ pub fn populate(store: &mut WidgetStore) {
     for slot in 0..MAX_MODES {
         store.register(
             ids::model3d_mode_button(slot),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+        store.register(
+            ids::model3d_frame_button(slot),
             InteractiveState::Button {
                 state: ButtonState::Normal,
             },

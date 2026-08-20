@@ -36,6 +36,15 @@ pub fn model3d_mode_button(slot: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.mode.{slot}"))
 }
 
+/// ⭐ **O botão de um REFERENCIAL de eixos** (global / local), pela posição no seletor.
+///
+/// ⚠️ Família própria, e não a dos verbos: os dois seletores coexistem no painel, e partilhar a
+/// família faria um clique em «Local» disparar o verbo da mesma posição.
+#[must_use]
+pub fn model3d_frame_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.frame.{slot}"))
+}
+
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]
 pub fn model3d_radius_slider(node: u32) -> NodeId {

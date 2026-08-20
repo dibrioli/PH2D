@@ -86,7 +86,10 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     let mut y = body_top;
     // ⭐ **O seletor do verbo, no topo** — é a porta que se encontra sem saber que existe. As
     // teclas `G`/`R`/`S` são a outra, e são para quem já sabe.
-    y = paint_modes(ctx, &snapshot, x, w, y);
+    y = paint_chips(ctx, &snapshot.modes, ids::model3d_mode_button, x, w, y);
+    // ⭐ **Em que eixos** — do mundo, ou do próprio objeto. Fica por baixo do verbo porque ele
+    // qualifica o verbo: um referencial sem verbo não quer dizer nada.
+    y = paint_chips(ctx, &snapshot.frames, ids::model3d_frame_button, x, w, y);
     if snapshot.rows.is_empty() {
         y = paint_note(ctx, tr("panel.model3d.empty"), x, w, y);
     }
@@ -101,22 +104,29 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     ctx.scene.pop_layer();
 }
 
-/// ⭐ **O seletor de verbo do gizmo**: mover · rodar · escalar. Devolve o **y seguinte**.
+/// ⭐ **Um seletor segmentado** — os verbos do gizmo, ou o referencial dos eixos. Devolve o **y
+/// seguinte**.
 ///
 /// ⚠️ **Grupo ADAPTATIVO**, e não três botões de largura fixa: num painel estreito ou num idioma
 /// mais comprido, três rótulos lado a lado deixam de caber, e a versão fixa quebraria o texto
 /// DENTRO do botão — o artefato que a casa já registou e curou com este widget.
-fn paint_modes(ctx: &mut PaintCtx, snap: &state::ModelSnapshot, x: f32, w: f32, y: f32) -> f32 {
-    if snap.modes.is_empty() {
+fn paint_chips(
+    ctx: &mut PaintCtx,
+    chips: &[state::ModeChip],
+    id_of: fn(u32) -> ph2d_a11y::NodeId,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    if chips.is_empty() {
         return y;
     }
     let theme = ctx.host.theme();
-    let labels: Vec<(&str, bool, ph2d_a11y::NodeId)> = snap
-        .modes
+    let labels: Vec<(&str, bool, ph2d_a11y::NodeId)> = chips
         .iter()
         .take(MAX_MODES as usize)
         .enumerate()
-        .map(|(i, m)| (tr(m.key), m.active, ids::model3d_mode_button(i as u32)))
+        .map(|(i, m)| (tr(m.key), m.active, id_of(i as u32)))
         .collect();
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     let used = paint_segmented_group_adaptive(

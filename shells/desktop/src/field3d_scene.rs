@@ -26,10 +26,25 @@ use crate::field3d_smoke::with_smoke;
 const PART_NAME: &str = "Model";
 
 /// Corre uma vez por quadro, antes do traçado. No-op silencioso quando o módulo não está armado.
-/// Devolve **um pedido de seleção** quando a peça acabou de nascer — ver [`sync_scene`].
-pub(crate) fn ecs_bridge(sim: &mut SimWorld, selected: Option<u64>) -> Option<u64> {
-    let (initial, ms, pending) =
-        with_smoke(|s| (s.doc.clone(), s.last_trace_ms, s.pending_move.take()))?;
+/// **O que o shell tem de fazer à seleção** depois de a ponte correr.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum SelectRequest {
+    Entity(u64),
+    /// O clique caiu no fundo. ⚠️ Limpar é a resposta certa e é o que todo modelador faz — a
+    /// alternativa (manter a seleção) deixaria o gizmo aceso em cima de nada.
+    Clear,
+}
+
+/// Devolve **um pedido de seleção** quando há um: um clique na peça, ou a peça a nascer.
+pub(crate) fn ecs_bridge(sim: &mut SimWorld, selected: Option<u64>) -> Option<SelectRequest> {
+    let (initial, ms, pending, pick) = with_smoke(|s| {
+        (
+            s.doc.clone(),
+            s.last_trace_ms,
+            s.pending_move.take(),
+            s.pending_pick.take(),
+        )
+    })?;
     // ⭐ **O arrasto do gizmo entra AQUI**, antes do retrato e do cozimento, pela mesma razão que os
     // intents do painel: o mundo é a verdade e este é o único sítio que a escreve.
     if let Some((bits, motion)) = pending {
@@ -48,6 +63,13 @@ pub(crate) fn ecs_bridge(sim: &mut SimWorld, selected: Option<u64>) -> Option<u6
         }
     }
     let (cooked, born) = sync_scene_and_birth(sim, initial.as_ref(), ms);
+    // ⭐ **O clique é resolvido AQUI**, e não no ponteiro: a pergunta *"de quem é este ponto?"*
+    // precisa do mundo, e o ponteiro corre fora do quadro.
+    //
+    // ⚠️ Ele ganha do pedido de nascimento: uma escolha do artista sobrepõe-se sempre a um default,
+    // e os dois só coincidem no primeiro quadro de uma peça — onde a ordem errada faria o primeiro
+    // clique não pegar.
+    let picked = pick.and_then(|px| resolve_pick(sim, cooked.as_ref(), px));
     let anchor = anchor_for(sim, selected);
     with_smoke(|s| {
         s.gizmo = anchor;
@@ -57,7 +79,26 @@ pub(crate) fn ecs_bridge(sim: &mut SimWorld, selected: Option<u64>) -> Option<u6
             s.doc = cooked;
         }
     });
-    born
+    picked.or(born.map(SelectRequest::Entity))
+}
+
+/// Resolve um clique guardado: `Some(Entity)` no que estiver sob ele, `Some(Clear)` no fundo.
+fn resolve_pick(sim: &mut SimWorld, doc: Option<&FieldDoc>, px: [f32; 2]) -> Option<SelectRequest> {
+    let (cam, area) = with_smoke(|s| (s.cam, s.area))?;
+    let area = area?;
+    let doc = doc?;
+    let screen = ph2d_field_render::Screen::new(
+        area.w.round().max(1.0) as u32,
+        area.h.round().max(1.0) as u32,
+        cam.half_extent,
+    );
+    let world = sim.world_mut();
+    let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
+    let root = q.iter(world).next().map(|(e, _)| e)?;
+    Some(
+        crate::field3d_pick::node_under(world, root, doc, &cam, screen, px)
+            .map_or(SelectRequest::Clear, |e| SelectRequest::Entity(e.to_bits())),
+    )
 }
 
 /// O que a ponte **faz**, separado de **se** ela corre.
@@ -126,6 +167,12 @@ pub(crate) fn sync_scene_and_birth(
                     });
                 }
             }
+            // O referencial dos eixos é estado de VISTA, como o verbo.
+            ph2d_panel_model3d::ModelIntent::SetGizmoFrame { slot } => {
+                if let Some(frame) = crate::field3d_gizmo::Frame::ALL.get(slot).copied() {
+                    with_smoke(|s| s.gizmo_frame = frame);
+                }
+            }
             ph2d_panel_model3d::ModelIntent::SetRadius { entity, radius } => {
                 // Uma recusa é informação, não erro: o nó diz que aquele raio não cabe, e o retrato
                 // publicado logo abaixo devolve o controle ao valor que ficou.
@@ -171,7 +218,7 @@ fn publish_snapshot(world: &bevy_ecs::world::World, root: bevy_ecs::entity::Enti
         .collect();
     // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não
     // conhece o enum — acrescentar um verbo lá faz o seletor seguir sem uma linha de mudança.
-    let active = with_smoke(|s| s.gizmo_mode).unwrap_or_default();
+    let (active, frame) = with_smoke(|s| (s.gizmo_mode, s.gizmo_frame)).unwrap_or_default();
     let modes = crate::field3d_gizmo::Mode::ALL
         .iter()
         .map(|m| ph2d_panel_model3d::ModeChip {
@@ -179,8 +226,16 @@ fn publish_snapshot(world: &bevy_ecs::world::World, root: bevy_ecs::entity::Enti
             active: *m == active,
         })
         .collect();
+    let frames = crate::field3d_gizmo::Frame::ALL
+        .iter()
+        .map(|f| ph2d_panel_model3d::ModeChip {
+            key: f.key(),
+            active: *f == frame,
+        })
+        .collect();
     ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
         modes,
+        frames,
         rows,
         node_count: all.len(),
         last_trace_ms: ms,
@@ -198,12 +253,17 @@ fn publish_snapshot(world: &bevy_ecs::world::World, root: bevy_ecs::entity::Enti
 /// fazer aparecer um gizmo 3D em cima dele.
 fn anchor_for(sim: &mut SimWorld, selected: Option<u64>) -> Option<crate::field3d_gizmo::Anchor> {
     let bits = selected?;
+    let frame = with_smoke(|s| s.gizmo_frame).unwrap_or_default();
     let entity = bevy_ecs::entity::Entity::from_bits(bits);
     let world = sim.world_mut();
     world.get::<FieldNode>(entity)?;
+    let pose = ph2d_field_ecs::world_xform(world, entity);
     Some(crate::field3d_gizmo::Anchor {
         entity: bits,
-        origin: ph2d_field_ecs::world_xform(world, entity).translation,
+        origin: pose.translation,
+        // ⚠️ Os eixos viajam **já resolvidos**: a lei do gizmo não sabe que existe uma escolha de
+        // referencial, e quem a faz é quem tem a pose. Ver `Anchor::axes`.
+        axes: frame.axes(pose.rotation),
     })
 }
 

@@ -1,11 +1,12 @@
-# W5 · W6 · W7 · W8 — a peça vira uma CENA de objetos, e ganha o gizmo (2026-08-20)
+# W5 · W6 · W7 · W8 · W9 — a peça vira uma CENA de objetos, e ganha o gizmo (2026-08-20)
 
 > **O que este doc é:** o mecanismo das duas waves e os números que decidiram o desenho.
 > O estado do módulo vive no [README](README.md); a história, no handoff.
 >
 > **§1–§4 são a W5** (a cena de objetos + o gizmo de MOVER) · **§5 é a W6** (rodar, escalar, e o
 > undo que estava partido) · **§6 é a W7** (o clique que escolhe o objeto, e os eixos Global/Local) ·
-> **§7 é a W8** (o gesto preso à grelha, e o número dele).
+> **§7 é a W8** (o gesto preso à grelha, e o número dele) · **§8 é a W9** (criar formas e
+> combiná-las).
 
 Enio, no smoke de 19/08:
 
@@ -365,7 +366,67 @@ arredondar um pedido, ele cai antes de alguém ver.
 
 ---
 
-## §8 — Aberto
+## §8 — W9: criar formas e combiná-las (20/08)
+
+### ⚠️ O buraco maior não era nenhum dos que eu tinha listado
+
+A lista de abertos dizia *snap · pivô · perspectiva*. Nenhum era o maior: **o módulo não sabia CRIAR
+uma forma.** Ele só editava a cena de demonstração — e um modelador a que não se pode juntar uma
+caixa é um visualizador.
+
+*Uma lista de abertos é escrita por quem já sabe usar a coisa.* O que falta ao **primeiro** gesto de
+alguém não aparece nela.
+
+### Criar
+
+Quatro botões — Box · Sphere · Cylinder · Torus. A forma nasce:
+
+| O quê | Como | Por quê |
+|---|---|---|
+| **onde** | `cam.target` — o centro do quadro | é o «onde estou a olhar», e o artista controla-o com o pan |
+| **do tamanho** | `half_extent / 4` | ⭐ As duas metades são a **mesma condição: ela tem de ser VISTA.** Um tamanho fixo em unidades de mundo nasce invisível numa peça grande e tapa a janela numa pequena — e nos dois casos o artista conclui que o botão não funcionou |
+| **onde na árvore** | operação selecionada → adota · folha selecionada → **irmã** · nada → raiz | pendurar uma forma numa esfera não quer dizer nada |
+| **selecionada** | sim | o gizmo já fica em cima dela |
+| **com `round`** | uma fração do tamanho | este é o módulo cujo argumento **é** o arredondamento; uma caixa de aresta viva ao nascer esconderia o que ele faz melhor do que o Blender |
+
+⛔ Uma forma pendurada **fora** da peça é recusada: ela apareceria na Hierarquia e o traçado
+ignorá-la-ia — um objeto que existe e não existe.
+
+### Combinar — a autoria da booleana
+
+⭐ A fileira **só é pintada quando pode agir**: um controle que aparece e não faz nada é pior do que
+um que não aparece.
+
+| Selecionado | O que os botões fazem |
+|---|---|
+| uma **operação** | trocam-na — e ⭐ **o raio da mistura sobrevive**. Ele é do nó, não da operação: perdê-lo obrigaria a re-encontrá-lo, e o gesto passaria a custar dois |
+| **dois ou mais irmãos** | embrulham-nos numa operação nova, no lugar deles. ⚠️ **A ORDEM que entra é o significado**: `children[0]` menos os seguintes |
+
+⛔ **Pai comum é exigido**, e não é conveniência: mover um nó para debaixo de outra operação muda o
+que ele é subtraído de — um segundo gesto, com o seu próprio desfazer. Um «embrulhar» que o fizesse
+em silêncio seria dois gestos com um nome só.
+
+### ⭐ Um gate que estava VERDE POR ACIDENTE
+
+A primeira versão de `wrapping_refuses_nodes_that_do_not_share_a_parent` usava **a raiz e um filho
+dela**. Ele passava — mas porque a raiz não tem pai nenhum e a função sai mais cedo, **não** porque
+os pais fossem diferentes.
+
+A prova de mutação apanhou-o: retirar a exigência de pai comum deixava-o **verde**. Reescrito com
+dois nós que *têm* pai, e pais diferentes; a mesma mutação agora reprova.
+
+*Um gate que passa pelo motivo errado não prova nada* — e a única coisa que o distingue de um que
+prova é a prova de mutação.
+
+### ⚠️ Nota de ambiente
+
+`check --workspace --all-targets` deu um **ICE do rustc** num alvo de teste que esta linha não toca.
+`rm -rf target/debug/incremental` e ele passa: era o **cache incremental**, não o código. O
+precedente já estava registado — *um `✗` pode ser o ambiente*.
+
+---
+
+## §9 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)

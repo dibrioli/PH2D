@@ -22,7 +22,8 @@ use ph2d_vector::{
 };
 
 use crate::field3d_gizmo::{
-    GRIP_HALF_PX, HEAD_HALF_W_PX, HEAD_PX, Handle, INNER_PX, Projected, SHAFT_HALF_W_PX, Shape,
+    GRIP_HALF_PX, HEAD_HALF_W_PX, HEAD_PX, Handle, INNER_PX, Motion, Projected, SHAFT_HALF_W_PX,
+    Shape,
 };
 
 /// Quanto o realce levanta a luminosidade do token, em OKLCH.
@@ -209,3 +210,79 @@ fn grip(scene: &mut VectorScene, from: [f32; 2], to: [f32; 2], c: Color, at: Aff
         at,
     );
 }
+
+/// ⭐ **O número do gesto**, ao lado do gizmo.
+///
+/// ⚠️ `motion` é o que o mundo **aplicou**, e não uma segunda conta a partir do cursor — ver a nota
+/// no chamador e a lei do `gizmo/readout.rs` da casa. Com o gesto preso à grelha, as duas
+/// discordariam e a ficha diria `0,503` enquanto a peça pousou em `0,500`.
+pub(crate) fn paint_readout(
+    scene: &mut VectorScene,
+    text: &mut ph2d_text::TextSystem,
+    motion: Motion,
+    at: [f32; 2],
+    theme: Theme,
+) {
+    let line = readout(motion);
+    if line.is_empty() {
+        return;
+    }
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    // Acima e à direita do centro, fora da folga onde as alças vivem: por cima delas a ficha taparia
+    // o que ela descreve.
+    let (x, y) = (at[0] + READOUT_OFFSET_PX, at[1] - READOUT_OFFSET_PX);
+    ph2d_editor::paint::paint_text_block(
+        text,
+        scene,
+        &line,
+        x,
+        y,
+        font,
+        READOUT_MAX_W_PX,
+        // A mesma porta que todo widget usa para levar um token à cor do vello.
+        ph2d_editor::paint::resolve(ColorToken::Text1, theme),
+    );
+}
+
+/// Quanto a ficha se afasta do centro do gizmo, e a largura máxima dela.
+const READOUT_OFFSET_PX: f32 = 26.0; // LITERAL-PX-OK: overlay metric (readout offset from gizmo centre)
+const READOUT_MAX_W_PX: f32 = 220.0; // LITERAL-PX-OK: overlay metric (readout wrap width)
+
+/// O texto de um gesto.
+///
+/// ⚠️ **Só os eixos que se mexeram**, com a letra à frente. Mostrar sempre os três encheria a ficha
+/// de zeros num arrasto de eixo, que é o caso comum; mostrar só o comprimento perderia a direção,
+/// que é o que se está a controlar.
+///
+/// ⛔ Nada de `Δ` nem de setas: o repositório já pagou tofu por um caractere que a fonte não tinha.
+fn readout(motion: Motion) -> String {
+    match motion {
+        Motion::Translate(d) => {
+            let mut parts: Vec<String> = Vec::new();
+            for (k, name) in ["X", "Y", "Z"].into_iter().enumerate() {
+                if d[k].abs() >= READOUT_EPS {
+                    parts.push(format!("{name} {:+.3}", d[k]));
+                }
+            }
+            parts.join("   ")
+        }
+        Motion::Rotate { angle, .. } => {
+            let deg = angle.to_degrees();
+            if deg.abs() >= READOUT_EPS {
+                format!("{deg:+.1}°")
+            } else {
+                String::new()
+            }
+        }
+        Motion::Scale(f) => {
+            if (f - 1.0).abs() >= READOUT_EPS {
+                format!("x {f:.2}")
+            } else {
+                String::new()
+            }
+        }
+    }
+}
+
+/// Abaixo disto o gesto ainda não disse nada, e uma ficha de `+0,000` é ruído.
+const READOUT_EPS: f32 = 1e-4;

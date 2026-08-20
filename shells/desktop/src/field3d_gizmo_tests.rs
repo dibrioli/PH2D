@@ -624,3 +624,116 @@ fn every_axis_frame_has_a_translation() {
         assert_ne!(ph2d_i18n::tr(f.key()), f.key(), "o eixo {f:?} não traduz");
     }
 }
+
+// ─────────────────────────── PRESO À GRELHA ───────────────────────────
+
+/// ⭐ **`since` é a inversa exacta de `merge`** — a identidade que faz o total-desde-a-pegada
+/// funcionar.
+///
+/// ⚠️ Sem ela o arrasto aplicaria a mais ou a menos: o que se manda ao mundo é
+/// `total.since(applied)`, e o que o mundo passa a ter é `applied.merge(isso)`. Se as duas não
+/// forem inversas, cada evento de ponteiro deixa um resíduo — e o resíduo acumula, então o defeito
+/// cresce com a duração do gesto.
+#[test]
+fn since_is_the_exact_inverse_of_merge() {
+    let cases = [
+        (
+            Motion::Translate([0.7, -0.2, 0.35]),
+            Motion::Translate([0.3, 0.1, -0.05]),
+        ),
+        (
+            Motion::Rotate {
+                axis: [0.0, 1.0, 0.0],
+                angle: 1.1,
+            },
+            Motion::Rotate {
+                axis: [0.0, 1.0, 0.0],
+                angle: 0.4,
+            },
+        ),
+        (Motion::Scale(2.5), Motion::Scale(1.25)),
+    ];
+    for (total, applied) in cases {
+        let back = applied.merge(total.since(applied));
+        match (total, back) {
+            (Motion::Translate(a), Motion::Translate(b)) => {
+                for k in 0..3 {
+                    assert!((a[k] - b[k]).abs() < 1e-5, "{a:?} != {b:?}");
+                }
+            }
+            (Motion::Rotate { angle: a, .. }, Motion::Rotate { angle: b, .. }) => {
+                assert!((a - b).abs() < 1e-5, "{a} != {b}");
+            }
+            (Motion::Scale(a), Motion::Scale(b)) => assert!((a - b).abs() < 1e-5, "{a} != {b}"),
+            other => panic!("as variantes trocaram: {other:?}"),
+        }
+    }
+}
+
+/// ⭐ **Preso à grelha, o total pousa EXATAMENTE num degrau.**
+///
+/// ⚠️ E é o TOTAL que se prende, não cada incremento: prender incrementos e somá-los acumula o erro
+/// de cada arredondamento, e o gesto acaba fora da grelha depois de uns segundos — com a ficha a
+/// mostrar um número redondo que a peça não tem.
+#[test]
+fn a_snapped_total_lands_exactly_on_a_step() {
+    let step = 0.05f32;
+    let Motion::Translate(d) = Motion::Translate([0.237, -0.081, 0.0]).snapped(step) else {
+        panic!("continua translação");
+    };
+    for v in d {
+        let k = (v / step).round();
+        assert!((v - k * step).abs() < 1e-6, "{v} não é múltiplo de {step}");
+    }
+    assert!(
+        (d[0] - 0.25).abs() < 1e-6,
+        "0,237 arredonda a 0,25 e deu {}",
+        d[0]
+    );
+
+    // O ângulo prende a 15°, que é o maior passo que ainda contém 30, 45, 60 e 90.
+    let a = angle_of(
+        Motion::Rotate {
+            axis: [0.0, 0.0, 1.0],
+            angle: 0.80,
+        }
+        .snapped(step),
+    );
+    assert!(
+        (a.to_degrees() - 45.0).abs() < 1e-3,
+        "0,80 rad (45,8°) devia prender a 45° e deu {}°",
+        a.to_degrees()
+    );
+
+    // O fator prende ao que a ficha consegue exprimir.
+    assert!((factor_of(Motion::Scale(1.47).snapped(step)) - 1.5).abs() < 1e-6);
+    // ⛔ E nunca a zero ou a negativo: uma escala nula faria o campo deixar de ser uma distância.
+    assert!(factor_of(Motion::Scale(0.01).snapped(step)) > 0.0);
+}
+
+/// ⭐ **O passo da grelha é DERIVADO do enquadramento**, e a condição que o fixa é concreta: dois
+/// degraus vizinhos têm de estar mais afastados do que a tolerância do ponteiro.
+///
+/// ⚠️ Um passo fixo em unidades de mundo é inútil nos dois extremos — aproximado, dois pontos da
+/// grelha ficam a meia tela; afastado, ficam dentro do mesmo pixel.
+#[test]
+fn the_grid_step_is_derived_from_the_framing() {
+    let mut last = 0.0f32;
+    for zoom in [0.02f32, 0.1, 0.8, 3.5] {
+        let s = Screen::new(W, H, zoom);
+        let step = snap_step(s);
+        assert!(
+            step * s.px_per_world() >= GRAB_PX,
+            "com half_extent {zoom} o passo {step} mede {} px — abaixo da tolerância do ponteiro",
+            step * s.px_per_world()
+        );
+        // E é um degrau REDONDO da escada 1-2-5.
+        let m = step / 10f32.powf(step.log10().floor());
+        assert!(
+            [1.0f32, 2.0, 5.0].iter().any(|k| (m - k).abs() < 1e-3),
+            "com half_extent {zoom} o passo {step} não é 1, 2 nem 5 vezes uma potência de dez"
+        );
+        assert!(step >= last, "aproximar não pode ENGROSSAR a grelha");
+        last = step;
+    }
+}

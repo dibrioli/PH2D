@@ -8897,6 +8897,7 @@ impl crate::App {
             crate::field3d_smoke::draw(
                 ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                 hero.theme,
+                paint_ctx.text,
                 vector_scene,
             );
             // ADR-0161 W4: o painel de modelagem abre sozinho na primeira vez que o

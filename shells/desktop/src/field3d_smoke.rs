@@ -113,6 +113,21 @@ pub(crate) struct Smoke {
     /// depressa, que é o defeito mais difícil de acreditar. Cada verbo acumula à maneira dele
     /// (`Motion::merge`).
     pub(crate) pending_move: Option<(u64, crate::field3d_gizmo::Motion)>,
+    /// ⭐ **O arrasto do gizmo em curso**, congelado no instante da pegada.
+    ///
+    /// ⚠️ **A âncora é congelada de propósito.** Ela é republicada a cada quadro a partir da pose do
+    /// objeto — que o próprio arrasto está a mudar. Medir o total contra uma âncora que se move
+    /// seria medir contra o resultado, e o gesto perseguiria a própria cauda.
+    ///
+    /// ⭐ E é por medir o **total desde a pegada**, e não incrementos, que prender à grelha funciona:
+    /// um total preso é exato, enquanto uma soma de incrementos presos acumula o erro de cada um.
+    pub(crate) drag_grip: Option<Grip>,
+    /// ⭐ **O gesto está preso à grelha?** — o `Ctrl`, lido no início de cada movimento.
+    ///
+    /// ⚠️ Lido a cada movimento, e não guardado na pegada: o Blender deixa entrar e sair da grelha a
+    /// meio do arrasto, e é o que se quer — mira-se à mão até perto e prende-se no fim. Congelar o
+    /// modificador na pegada obrigaria a soltar e repetir o gesto.
+    pub(crate) snapping: bool,
     /// Onde o botão desceu — é o que distingue um **clique** (selecionar) de um **arrasto**
     /// (orbitar). ⚠️ Sem ele, todo clique na peça seria também um giro de zero graus, e a única
     /// forma de selecionar seria a Hierarquia.
@@ -130,6 +145,17 @@ pub(crate) struct Smoke {
     /// ⭐ **Em que referencial os eixos do gizmo apontam** — do mundo, ou do próprio objeto.
     /// Estado de **vista**, como o verbo.
     pub(crate) gizmo_frame: crate::field3d_gizmo::Frame,
+}
+
+/// **O que um arrasto de gizmo guarda** desde a pegada até soltar.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Grip {
+    /// A âncora **no instante da pegada** — ver a nota de [`Smoke::drag_grip`].
+    pub(crate) anchor: crate::field3d_gizmo::Anchor,
+    /// O pixel da pegada, no referencial da área desenhada.
+    pub(crate) from: [f32; 2],
+    /// O que o mundo **já recebeu** deste gesto. O que falta aplicar é `total.since(applied)`.
+    pub(crate) applied: crate::field3d_gizmo::Motion,
 }
 
 /// O gesto de navegação em curso.
@@ -410,6 +436,8 @@ fn boot() -> Option<Smoke> {
         gizmo: None,
         gizmo_hot: None,
         pending_move: None,
+        drag_grip: None,
+        snapping: false,
         press_at: None,
         pending_pick: None,
         gizmo_mode: crate::field3d_gizmo::Mode::default(),
@@ -528,7 +556,12 @@ pub(crate) fn gesture_in_progress() -> bool {
 }
 
 /// Desenha o smoke sobre a área dada. No-op silencioso quando a variável não está posta.
-pub(crate) fn draw(area: EditorRect, theme: ph2d_tokens::Theme, scene_out: &mut VectorScene) {
+pub(crate) fn draw(
+    area: EditorRect,
+    theme: ph2d_tokens::Theme,
+    text: &mut ph2d_text::TextSystem,
+    scene_out: &mut VectorScene,
+) {
     STATE.with(|cell| {
         let mut slot = cell.borrow_mut();
         let smoke = slot.get_or_insert_with(boot);
@@ -674,6 +707,22 @@ pub(crate) fn draw(area: EditorRect, theme: ph2d_tokens::Theme, scene_out: &mut 
                 f64::from(area.y + area.h),
             ));
             crate::field3d_gizmo_paint::paint(scene_out, &handles, hot, theme, [area.x, area.y]);
+            // ⭐ **O NÚMERO do gesto**, ao lado do gizmo — só durante o arrasto.
+            //
+            // ⚠️ Ele sai do que o mundo **aplicou** (`Grip::applied`), nunca de uma segunda conta a
+            // partir do cursor: com o gesto preso à grelha, as duas discordariam e a ficha diria
+            // `0,503` enquanto a peça pousou em `0,500`. É a lei que o `gizmo/readout.rs` da casa já
+            // escreveu, e o gate `the_readout_is_the_pose_the_world_took` prende-a aqui.
+            if let Some(grip) = smoke.drag_grip {
+                let (o2, _) = smoke.cam.project(anchor.origin, screen);
+                crate::field3d_gizmo_paint::paint_readout(
+                    scene_out,
+                    text,
+                    grip.applied,
+                    [area.x + o2[0], area.y + o2[1]],
+                    theme,
+                );
+            }
             scene_out.pop_layer();
         }
     });

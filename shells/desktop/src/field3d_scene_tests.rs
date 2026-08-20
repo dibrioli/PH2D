@@ -578,3 +578,82 @@ fn scaling_multiplies_and_a_non_positive_factor_is_refused() {
             .is_ok()
     );
 }
+
+/// ⭐ **A ficha diz o que o MUNDO levou** — a lei que o `gizmo/readout.rs` da casa já escreveu, aqui
+/// virada em assertiva.
+///
+/// ⚠️ O número que aparece durante um arrasto sai do `Grip::applied`. Isso só é honesto porque o que
+/// o mundo recebe é exatamente esse valor — e "exatamente" é o tipo de afirmação que apodrece num
+/// comentário. Se um dia a escrita recusar, limitar ou arredondar um pedido, a ficha passa a dizer
+/// `0,503` enquanto a peça pousou em `0,500` — e este gate cai antes de alguém ver.
+#[test]
+fn the_readout_is_the_pose_the_world_took() {
+    use crate::field3d_gizmo::Motion;
+
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let child = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .next()
+        .expect("o primeiro");
+
+    let before = ph2d_field_ecs::world_xform(world, child);
+
+    // Os três verbos, cada um com um total PRESO — que é o caso em que a ficha e o mundo mais
+    // facilmente divergiriam.
+    let moved = Motion::Translate([0.25, -0.1, 0.05]).snapped(0.05);
+    let Motion::Translate(d) = moved else {
+        panic!("translação")
+    };
+    ph2d_field_ecs::translate_world(world, child, d);
+    let after = ph2d_field_ecs::world_xform(world, child);
+    for k in 0..3 {
+        assert!(
+            (after.translation[k] - before.translation[k] - d[k]).abs() < 1e-5,
+            "a ficha diz {d:?} e o mundo levou {:?}",
+            [
+                after.translation[0] - before.translation[0],
+                after.translation[1] - before.translation[1],
+                after.translation[2] - before.translation[2],
+            ]
+        );
+    }
+
+    let sized = Motion::Scale(1.47).snapped(0.05);
+    let Motion::Scale(f) = sized else {
+        panic!("escala")
+    };
+    let s0 = world.get::<FieldPose>(child).expect("pose").xform.scale;
+    ph2d_field_ecs::scale_by(world, child, f);
+    let s1 = world.get::<FieldPose>(child).expect("pose").xform.scale;
+    assert!(
+        (s1 / s0 - f).abs() < 1e-5,
+        "a ficha diz x{f} e o mundo levou x{}",
+        s1 / s0
+    );
+
+    let turned = Motion::Rotate {
+        axis: [0.0, 0.0, 1.0],
+        angle: 0.80,
+    }
+    .snapped(0.05);
+    let Motion::Rotate { axis, angle } = turned else {
+        panic!("rotação")
+    };
+    let r0 = ph2d_field_ecs::world_xform(world, child).rotation;
+    ph2d_field_ecs::rotate_world(world, child, axis, angle);
+    let r1 = ph2d_field_ecs::world_xform(world, child).rotation;
+    // O ângulo entre duas orientações: `2·acos(|<q0, q1>|)`.
+    let dot: f32 = (0..4).map(|k| r0[k] * r1[k]).sum();
+    let swept = 2.0 * dot.abs().clamp(0.0, 1.0).acos();
+    assert!(
+        (swept - angle.abs()).abs() < 1e-4,
+        "a ficha diz {}° e o mundo girou {}°",
+        angle.to_degrees(),
+        swept.to_degrees()
+    );
+}

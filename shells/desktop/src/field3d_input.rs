@@ -28,7 +28,7 @@
 
 use crate::app_state::App;
 use crate::field3d_gizmo::{self, Handle};
-use crate::field3d_smoke::{Drag, Smoke, with_smoke};
+use crate::field3d_smoke::{Drag, Grip, Smoke, with_smoke};
 use ph2d_field_render::Screen;
 
 /// **As alças do gizmo, projetadas para o enquadramento deste quadro** — ou vazio quando não há
@@ -170,7 +170,12 @@ impl App {
     /// O ponteiro moveu. **Só consome com um arrasto em curso** — senão a janela 3D engoliria todo
     /// hover do app 2D.
     pub(crate) fn field3d_pointer_move(&mut self, x: f32, y: f32) -> bool {
+        // ⚠️ **O `Ctrl` é lido AQUI, todo movimento** — o `winit` não o manda no evento de
+        // movimento, e o shell já o guarda. Ver `Smoke::snapping` sobre por que ele não é congelado
+        // na pegada.
+        let snapping = self.modifiers.control_key();
         let (took, authored) = with_smoke(|s| {
+            s.snapping = snapping;
             let took = advance(s, x, y);
             (took, took && matches!(s.drag, Some(Drag::Gizmo(_))))
         })
@@ -313,6 +318,21 @@ pub(crate) fn begin(
         .then(|| local(s, pos).and_then(|p| field3d_gizmo::pick(&handles(s), p)))
         .flatten();
     s.drag = Some(grabbed.map_or(fallback, Drag::Gizmo));
+    // ⭐ A pegada congela a âncora e o pixel: é contra eles que o total se mede até soltar.
+    s.drag_grip = grabbed.and_then(|h| {
+        let anchor = s.gizmo?;
+        let from = local(s, pos)?;
+        let screen = Screen::new(
+            area.w.round().max(1.0) as u32,
+            area.h.round().max(1.0) as u32,
+            s.cam.half_extent,
+        );
+        Some(Grip {
+            anchor,
+            from,
+            applied: field3d_gizmo::drag(h, anchor, &s.cam, screen, from, from).neutral(),
+        })
+    });
     s.gizmo_hot = grabbed;
     s.last_pointer = pos;
     // ⚠️ Guardado **antes** de qualquer movimento: é a origem contra a qual o `Up` decide se aquilo
@@ -364,7 +384,7 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         // com a cena aplica no início do quadro seguinte. É o mesmo caminho dos intents do
         // painel, e pela mesma razão — o mundo tem um só escritor.
         Drag::Gizmo(handle) => {
-            let (Some(anchor), Some(area)) = (s.gizmo, s.area) else {
+            let (Some(grip), Some(area)) = (s.drag_grip, s.area) else {
                 return true;
             };
             let screen = Screen::new(
@@ -372,25 +392,34 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
                 area.h.round().max(1.0) as u32,
                 s.cam.half_extent,
             );
-            let d = field3d_gizmo::drag(
+            // ⭐ **O TOTAL desde a pegada**, contra a âncora congelada — nunca um incremento contra
+            // a pose de agora, que é o que este gesto está a mudar.
+            let total = field3d_gizmo::drag(
                 handle,
-                anchor,
+                grip.anchor,
                 &s.cam,
                 screen,
-                [x - dx - area.x, y - dy - area.y],
+                grip.from,
                 [x - area.x, y - area.y],
             );
-            // ⚠️ Um pedido inerte **não é guardado**: uma alça degenerada devolve zero, e escrever
-            // esse zero acordaria o traçado para redesenhar exatamente o mesmo quadro.
-            if !d.is_idle() {
-                // ⚠️ **Acumula com o que já estava**, e por verbo: somar translações, somar
-                // ângulos, MULTIPLICAR fatores de escala. Ver `Motion::merge`.
+            let total = if s.snapping {
+                total.snapped(field3d_gizmo::snap_step(screen))
+            } else {
+                total
+            };
+            // O que falta aplicar. ⚠️ Um pedido inerte **não é guardado**: uma alça degenerada
+            // devolve zero, e escrever esse zero acordaria o traçado para redesenhar o mesmo quadro.
+            let delta = total.since(grip.applied);
+            if !delta.is_idle() {
                 s.pending_move = Some((
-                    anchor.entity,
+                    grip.anchor.entity,
                     s.pending_move
-                        .filter(|(e, _)| *e == anchor.entity)
-                        .map_or(d, |(_, acc)| acc.merge(d)),
+                        .filter(|(e, _)| *e == grip.anchor.entity)
+                        .map_or(delta, |(_, acc)| acc.merge(delta)),
                 ));
+                if let Some(g) = s.drag_grip.as_mut() {
+                    g.applied = total;
+                }
             }
         }
     }
@@ -433,6 +462,7 @@ fn mode_for_key(
 /// baixo dele no fim do gesto, e o artista perderia o que acabou de posicionar.
 pub(crate) fn finish(s: &mut Smoke) -> (bool, bool) {
     let was = s.drag.take();
+    s.drag_grip = None;
     if was == Some(Drag::Orbit)
         && let (Some(from), Some(area)) = (s.press_at, s.area)
         && (s.last_pointer.0 - from.0).abs() <= CLICK_SLOP_PX

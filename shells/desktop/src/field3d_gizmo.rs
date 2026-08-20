@@ -299,6 +299,61 @@ impl Motion {
         }
     }
 
+    /// ⭐ **O que falta aplicar**, dado o que já foi: `self` é o TOTAL desde a pegada e `applied` o
+    /// que o mundo já recebeu.
+    ///
+    /// ⚠️ É a inversa exacta de [`Motion::merge`], e existe pelo mesmo motivo que ela: cada verbo
+    /// compõe à maneira dele. `total.since(applied).merge(applied) == total` — que é o gate.
+    pub(crate) fn since(self, applied: Motion) -> Motion {
+        match (self, applied) {
+            (Motion::Translate(t), Motion::Translate(a)) => {
+                Motion::Translate([t[0] - a[0], t[1] - a[1], t[2] - a[2]])
+            }
+            (Motion::Rotate { axis, angle: t }, Motion::Rotate { angle: a, .. }) => {
+                Motion::Rotate { axis, angle: t - a }
+            }
+            (Motion::Scale(t), Motion::Scale(a)) if a.abs() > f32::MIN_POSITIVE => {
+                Motion::Scale(t / a)
+            }
+            (total, _) => total,
+        }
+    }
+
+    /// O pedido **neutro** deste verbo — o ponto de partida de um arrasto.
+    pub(crate) fn neutral(self) -> Motion {
+        match self {
+            Motion::Translate(_) => Motion::Translate([0.0; 3]),
+            Motion::Rotate { axis, .. } => Motion::Rotate { axis, angle: 0.0 },
+            Motion::Scale(_) => Motion::Scale(1.0),
+        }
+    }
+
+    /// ⭐ **O mesmo pedido, preso à grelha** — o gesto de precisão (`Ctrl`).
+    ///
+    /// `step` é o passo da translação, em unidades de mundo, e vem **derivado do enquadramento**
+    /// ([`snap_step`]). O ângulo e o fator têm passos próprios, e cada um diz por que é aquele.
+    pub(crate) fn snapped(self, step: f32) -> Motion {
+        let round_to = |v: f32, q: f32| -> f32 { if q > 0.0 { (v / q).round() * q } else { v } };
+        match self {
+            Motion::Translate(d) => Motion::Translate([
+                round_to(d[0], step),
+                round_to(d[1], step),
+                round_to(d[2], step),
+            ]),
+            // ⚠️ **15°, e a razão é o que se pede pelo NOME**: é o maior passo que ainda contém 30,
+            // 45, 60 e 90 — os ângulos que um artista diz em voz alta. Um passo mais fino não os
+            // perde, mas obriga a mira; um mais grosso perde o 45.
+            Motion::Rotate { axis, angle } => Motion::Rotate {
+                axis,
+                angle: round_to(angle, SNAP_ANGLE),
+            },
+            // ⚠️ **O passo do fator é o que a LEITURA consegue exprimir.** O número aparece com uma
+            // casa decimal, então prender a 0,1 faz um valor preso ser exatamente o que se lê. Um
+            // passo mais fino mostraria "×1,5" para dois tamanhos diferentes.
+            Motion::Scale(f) => Motion::Scale(round_to(f, SNAP_FACTOR).max(SNAP_FACTOR)),
+        }
+    }
+
     /// Um pedido que não pede nada — o que uma alça degenerada devolve.
     pub(crate) fn is_idle(self) -> bool {
         match self {
@@ -311,6 +366,39 @@ impl Motion {
 
 /// Os três eixos do mundo.
 const WORLD_AXES: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
+
+/// O passo de ângulo do gesto preso. Ver [`Motion::snapped`].
+pub(crate) const SNAP_ANGLE: f32 = std::f32::consts::PI / 12.0;
+
+/// O passo do fator de tamanho. Ver [`Motion::snapped`].
+pub(crate) const SNAP_FACTOR: f32 = 0.1;
+
+/// ⭐ **O passo da translação presa, DERIVADO do enquadramento** — o menor número redondo (1-2-5)
+/// cujo comprimento na tela ainda se consegue mirar.
+///
+/// ⚠️ Um passo fixo em unidades de mundo é inútil nos dois extremos: aproximado, dois pontos da
+/// grelha ficam a meia tela um do outro; afastado, ficam dentro do mesmo pixel. A grelha do Blender
+/// subdivide com o zoom pela mesma razão.
+///
+/// **A condição que fixa o número:** dois pontos vizinhos da grelha têm de estar mais afastados do
+/// que a tolerância do próprio ponteiro ([`GRAB_PX`]) — abaixo disso o gesto deixa de conseguir
+/// escolher entre eles, e prender à grelha passa a ser sorteio. Sobe-se então a escada 1-2-5 até o
+/// primeiro degrau que passa.
+#[must_use]
+pub(crate) fn snap_step(screen: Screen) -> f32 {
+    let min_world = GRAB_PX / screen.px_per_world().max(f32::MIN_POSITIVE);
+    if !min_world.is_finite() || min_world <= 0.0 {
+        return SNAP_FACTOR;
+    }
+    let decade = 10f32.powf(min_world.log10().floor());
+    for m in [1.0, 2.0, 5.0] {
+        let step = m * decade;
+        if step >= min_world {
+            return step;
+        }
+    }
+    decade * 10.0
+}
 
 /// **Projeta o gizmo inteiro**, no modo dado. A ordem é a de apontar: do centro para fora.
 ///

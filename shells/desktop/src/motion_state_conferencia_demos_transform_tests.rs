@@ -174,10 +174,16 @@ fn the_second_mask_turns_one_end_tall_and_the_other_wide() {
     );
 }
 
-/// **O GÊMEO REFLECTIDO APONTA PARA FORA; O COPIADO APONTA PARA DENTRO.**
+/// **AS DUAS FILEIRAS FECHAM COMO UM V, OU INCLINAM PARA O MESMO LADO.**
 ///
 /// ⚠️ O oráculo é a coluna `rot`, não a figura: as POSIÇÕES dos dois lados deste par são
 /// idênticas (o espelho é o mesmo), então um gate que medisse `P` estaria a medir zero.
+///
+/// ⚠️ **E é por isto que a cena deixou de ser um leque de raios**: um gate sobre `rot` fica
+/// verde sobre uma figura que o olho não consegue ler. Uma barra é simétrica a **180°**, e no
+/// leque quatro das catorze peças saíam a `0` ou `180` graus do radial — a orientação errada
+/// desenhava-se igual à certa. Aqui as duas metades diferem por `180 − 2·35 = 110°`.
+/// *O gate media a coluna certa; a CENA é que não a mostrava.*
 #[test]
 fn the_mirror_pair_separates_on_the_heading_of_the_twin() {
     let b = bands();

@@ -230,8 +230,9 @@ pub(crate) fn transform_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> 
   orientacao de cada peca, entao o anel abre em vez de deslizar.
   (!) Par 2 (laranja): `Separate Y Mask` faz a altura seguir um SEGUNDO campo. Sem ele os
   nove crescem por igual; com ele a fileira vai de alto-e-magro a baixo-e-largo.
-  (!) Par 3 (verde): `Flip Orientation` espelha a ORIENTACAO do gemeo, nao so' a posicao.
-  Sem ele metade do leque aponta para dentro -- olhe as pontas das barras.
+  (!) Par 3 (verde): DUAS fileiras de barras inclinadas. `Flip Orientation` espelha a
+  ORIENTACAO da copia: sem ele as duas inclinam para o MESMO lado (/// ///), com ele a
+  segunda inclina ao contrario (/// \\\\\\) e as duas fecham como um V deitado.
   (!) Par 4 (rosa): `Reindex` diz que as seis fatias sao UMA lista. Sem ele o degrade
   recomeca em cada fatia e as seis saem iguais.
   (!) Par 5 (lilas): a mesma volta de {turn} graus nos dois. `Carry Rotation` faz o sprite

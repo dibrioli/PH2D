@@ -34,6 +34,13 @@ const STEP: f32 = 0.9;
 /// A volta que o par 5 autora. ⚠️ **NÃO é múltiplo de `360/10`**: num anel de dez, uma
 /// volta de 36° levaria cada peça ao lugar da vizinha e as duas bandas sairiam iguais.
 const TURN: f32 = 60.0;
+/// A inclinação das barras do par 3. ⚠️ **Escolhida para `180 − 2·LEAN` NÃO ser 0 nem 180**:
+/// é essa a diferença entre o gêmeo copiado e o refletido, e uma barra é simétrica a 180°.
+/// A `35°` a diferença é **110°** — o `\` contra o `/` que o olho lê de longe.
+const LEAN: f32 = 35.0;
+/// O deslocamento da linha de espelho do par 3, a partir do centroide da fileira (que tem
+/// meia-largura `2,5·0,62 = 1,55`). Põe as duas fileiras lado a lado com uma folga de 0,8.
+const MIRROR_OFF: f32 = 1.95;
 
 fn wire(g: &mut Graph, from: NodeId, fp: u16, to: NodeId, tp: u16) -> Option<()> {
     g.connect(Edge {
@@ -68,14 +75,12 @@ fn bar(g: &mut Graph, head: NodeId, ey: f32, x: f32) -> NodeId {
 }
 
 /// Um ANEL de `n` peças voltadas para fora (`align`), já em barras e já no quadrante.
-fn ring(
-    g: &mut Graph,
-    n: f32,
-    radius: f32,
-    wedge: Option<(f32, f32)>,
-    at: [f32; 2],
-    ey: f32,
-) -> NodeId {
+/// ⚠️ **É sempre a coroa FECHADA, e o leque saiu de propósito.** Num anel completo o
+/// centroide coincide com o centro, então «radial» é uma leitura que o olho faz sem
+/// referência nenhuma. Num LEQUE não: medido no par 3 da 1ª tentativa, depois do espelho o
+/// centroide da figura fica a `1,03` do centro do anel, e nem as peças com a orientação
+/// CERTA saíam radiais. *Um leque é um layout em que «para fora» deixa de ter um sítio.*
+fn ring(g: &mut Graph, n: f32, radius: f32, at: [f32; 2], ey: f32) -> NodeId {
     let r = g.add_node("motion.distribute_radial");
     g.set_pos(r, Pos { x: 0.0, y: ey });
     g.set_param(r, "count", n);
@@ -85,10 +90,6 @@ fn ring(
     g.set_param(r, "rings", 1.0);
     g.set_param(r, "radius", radius);
     g.set_param(r, "align", 1.0);
-    if let Some((a, b)) = wedge {
-        g.set_param(r, "start_angle", a);
-        g.set_param(r, "end_angle", b);
-    }
     let b = bar(g, r, ey, 140.0);
     push(
         g,
@@ -127,7 +128,7 @@ fn band(g: &mut Graph, row: usize, right: bool, ey: f32) -> Option<NodeId> {
         // **PAR 1** — o espaço do passo. Um anel voltado para fora: em World as doze
         // peças deslizam juntas; em Local cada uma anda para a frente e o anel ABRE.
         0 => {
-            let head = ring(g, 12.0, 1.5, None, at, ey);
+            let head = ring(g, 12.0, 1.5, at, ey);
             let mv = push(
                 g,
                 head,
@@ -201,17 +202,45 @@ fn band(g: &mut Graph, row: usize, right: bool, ey: f32) -> Option<NodeId> {
             );
             close(g, sc, [1.0, 0.74, 0.3], ey)
         }
-        // **PAR 3** — o gêmeo do espelho. Um leque de sete raios para a direita; o espelho
-        // faz a asa esquerda, e sem o knob ela aponta para DENTRO.
+        // **PAR 3** — o gêmeo do espelho: DUAS fileiras de barras inclinadas, lado a lado.
+        //
+        // ⚠️ **A 1ª tentativa foi um leque de raios, e o Enio não conseguiu lê-la.** A causa
+        // está MEDIDA e é da FIGURA, não do nó: uma barra tem simetria de **180°**, então
+        // «apontar para fora» e «apontar para dentro» desenham-se IGUAIS. No leque de ±65°,
+        // quatro das catorze peças saíam com desvio `0` ou `180` graus do radial — invisíveis
+        // — e as outras num meio-termo de ~135°. Pior: depois do espelho o «radial» passa a
+        // ser medido a partir do CENTROIDE da figura, que não é o centro do anel, então nem
+        // a metade CERTA era radial. *O gate media a coluna certa e a cena não a mostrava.*
+        //
+        // Aqui as duas metades diferem por `180 − 2·LEAN` = **110°**, que não é múltiplo de
+        // 180 e por isso é visível numa barra: `\\\ ///` contra `/// ///`.
+        //
+        // ⚠️ O `Axis Offset` é obrigatório: o espelho reflete no CENTROIDE, e uma fileira
+        // centrada nele mapeia sobre si mesma — os gêmeos nasceriam por cima dos originais.
+        // O pré-deslocamento de `−MIRROR_OFF` devolve a união ao centro da banda.
         2 => {
-            let head = ring(g, 7.0, 1.4, Some((-65.0, 65.0)), at, ey);
+            let grid = g.add_node("motion.grid");
+            g.set_pos(grid, Pos { x: 0.0, y: ey });
+            g.set_param(grid, "rows", 1.0);
+            g.set_param(grid, "cols", 6.0);
+            g.set_param(grid, "gap_x", 0.62);
+            let b = bar(g, grid, ey, 140.0);
+            let lean = push(g, b, "motion.rotate", &[("angle", LEAN)], ey, 280.0);
+            let mv = push(
+                g,
+                lean,
+                "motion.move",
+                &[("dx", at[0] - MIRROR_OFF), ("dy", at[1])],
+                ey,
+                400.0,
+            );
             let m = push(
                 g,
-                head,
+                mv,
                 "motion.mirror",
-                &[("axis", 0.0), ("flip_rot", on)],
+                &[("axis", 0.0), ("offset", MIRROR_OFF), ("flip_rot", on)],
                 ey,
-                420.0,
+                520.0,
             );
             close(g, m, [0.62, 1.0, 0.66], ey)
         }
@@ -273,7 +302,7 @@ fn band(g: &mut Graph, row: usize, right: bool, ey: f32) -> Option<NodeId> {
         // **PAR 5** — a órbita que leva a orientação. Sem o knob os raios deixam de ser
         // raios (todos tortos pelo mesmo ângulo); com ele a estrela roda inteira.
         _ => {
-            let head = ring(g, 10.0, 1.5, None, at, ey);
+            let head = ring(g, 10.0, 1.5, at, ey);
             let o = push(
                 g,
                 head,
@@ -316,8 +345,8 @@ pub(crate) fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
         "PASSO em Local -- cada peca anda para a frente do proprio nariz, e o anel ABRE",
         "ESCALA com uma mascara -- os nove crescem por igual da esquerda para a direita",
         "ESCALA com mascara separada em Y -- um fica ALTO e magro, o vizinho BAIXO e largo",
-        "ESPELHO -- a asa esquerda copia a orientacao, e por isso aponta para DENTRO",
-        "ESPELHO com Flip Orientation -- a asa esquerda e' o reflexo, e a figura fecha",
+        "ESPELHO -- as DUAS fileiras inclinam para o mesmo lado: /// ///",
+        "ESPELHO com Flip Orientation -- a copia e' o reflexo, e as duas fecham: \\\\\\ ///",
         "MANDALA -- as seis fatias saem IDENTICAS: o degrade recomeca em cada uma",
         "MANDALA com Reindex -- uma lista so', e o degrade da a volta inteira uma vez",
         "ORBITA -- a estrela roda e os raios NAO viram: ficam todos tortos pelo mesmo angulo",

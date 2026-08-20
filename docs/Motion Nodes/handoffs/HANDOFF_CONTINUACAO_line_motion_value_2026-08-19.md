@@ -178,7 +178,7 @@ ausente.
 
 ---
 
-## §4 — As VINTE E SETE LEIS que esta linha pagou para aprender
+## §4 — As VINTE E OITO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -361,6 +361,17 @@ são estilo.
     `x = ±5,6` — estavam a medir o layout, não o nó. E depois de subtrair o centroide, a
     igualdade tem de ser APROXIMADA: `q − centroide` cancela ~5,6 de ~5,9 em `f32`, e os dois
     lados perdem bits diferentes (medido: `0,3000002` contra `0,2999997`).
+28. ⚠️ **Um gate VERDE sobre `rot` não prova que a cena MOSTRA a orientação — a peça é
+    simétrica.** O par 3 da `=69` nasceu como um leque de raios; o Enio reprovou-o com
+    *"sem flip não pude entender"*, e a medição deu-lhe razão de duas maneiras: (a) uma
+    barra tem simetria de **180°**, então quatro das catorze peças saíam a `0` ou `180`
+    graus do radial e a orientação errada desenhava-se **igual** à certa; (b) depois de um
+    espelho o «radial» passa a ser medido do CENTROIDE DA FIGURA, que num LEQUE não é o
+    centro do anel (medido: `1,03` de distância) — nem a metade correcta era radial.
+    ⛔ **Não conserte isto afrouxando o gate nem trocando a cor:** escolha uma diferença
+    angular que **não seja múltipla de 180°** (aqui `180 − 2·35 = 110°`, o `\` contra o `/`),
+    e prefira um layout cujo centroide o olho já conhece. *Um leque é um layout em que
+    «para fora» deixa de ter um sítio.*
 
 ---
 

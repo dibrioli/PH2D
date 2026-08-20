@@ -145,12 +145,12 @@ pub(crate) mod conferencia_demos_drizzle;
 
 #[path = "motion_state_conferencia_demos_deform.rs"]
 pub(crate) mod conferencia_demos_deform;
-#[path = "motion_state_conferencia_demos_transform.rs"]
-pub(crate) mod conferencia_demos_transform;
 #[path = "motion_state_conferencia_demos_text.rs"]
 mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]
 mod conferencia_demos_time;
+#[path = "motion_state_conferencia_demos_transform.rs"]
+pub(crate) mod conferencia_demos_transform;
 #[path = "motion_state_conferencia_demos_wave.rs"]
 pub(crate) mod conferencia_demos_wave;
 #[path = "motion_state_conferencia_demos_weight.rs"]

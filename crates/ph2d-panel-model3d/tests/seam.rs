@@ -23,6 +23,7 @@ const THE_UNION: u64 = 77;
 
 fn scene_with_one_union() {
     publish(ModelSnapshot {
+        modes: Vec::new(),
         rows: vec![RadiusRow {
             entity: THE_UNION,
             depth: 0,
@@ -193,6 +194,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
         })
         .collect();
     publish(ModelSnapshot {
+        modes: Vec::new(),
         rows: nodes,
         node_count: 4,
         last_trace_ms: 0.0,
@@ -241,4 +243,74 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
             );
         }
     }
+}
+
+/// ⭐ **Clicar num verbo do seletor chega ao intent, com a POSIÇÃO dele.**
+///
+/// ⚠️ A posição, e não o nome: o painel não conhece o enum dos modos — ele vive no shell, com o
+/// gizmo. Uma cópia dele aqui seria uma segunda contagem de verbos a envelhecer, e o dia em que o
+/// shell ganhasse o quarto, o painel mostraria três.
+#[test]
+fn clicking_a_verb_reaches_the_gizmo_intent() {
+    let _ = drain_intents();
+    publish(ModelSnapshot {
+        modes: vec![
+            state::ModeChip {
+                key: "panel.model3d.mode.move",
+                active: true,
+            },
+            state::ModeChip {
+                key: "panel.model3d.mode.rotate",
+                active: false,
+            },
+            state::ModeChip {
+                key: "panel.model3d.mode.scale",
+                active: false,
+            },
+        ],
+        rows: Vec::new(),
+        node_count: 0,
+        last_trace_ms: 0.0,
+    });
+
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+    let outcome = host.apply_panel_event::<Model3dPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::model3d_mode_button(1)),
+    );
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o painel ignorou um clique REAL num verbo — falta o braço em `event.rs` ou o id saiu da \
+         família"
+    );
+    assert_eq!(drain_intents(), vec![ModelIntent::SetGizmoMode { slot: 1 }]);
+}
+
+/// ⚠️ **Um slot da família SEM verbo no retrato não despacha nada.**
+///
+/// A família tem `MAX_MODES` ids e o shell publica três. Sem esta guarda, um clique num slot vazio
+/// (que nada pintou) mandaria o shell trocar para um modo que não existe.
+#[test]
+fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
+    let _ = drain_intents();
+    publish(ModelSnapshot {
+        modes: vec![state::ModeChip {
+            key: "panel.model3d.mode.move",
+            active: true,
+        }],
+        rows: Vec::new(),
+        node_count: 0,
+        last_trace_ms: 0.0,
+    });
+
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+    let outcome = host.apply_panel_event::<Model3dPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::model3d_mode_button(5)),
+    );
+    assert_eq!(outcome, EventOutcome::Ignored);
+    assert!(drain_intents().is_empty());
 }

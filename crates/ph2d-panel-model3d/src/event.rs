@@ -24,6 +24,12 @@ fn slot_of(id: ph2d_a11y::NodeId) -> Option<(usize, bool)> {
     })
 }
 
+/// De que **posição do seletor** é este id, se for de alguma.
+fn mode_slot_of(id: ph2d_a11y::NodeId) -> Option<usize> {
+    (0..crate::populate::MAX_MODES)
+        .find_map(|n| (id == ids::model3d_mode_button(n)).then_some(n as usize))
+}
+
 pub(crate) fn apply_event(
     _state: &mut Model3dPanelState,
     host: &mut dyn PanelHostInternal,
@@ -58,6 +64,18 @@ pub(crate) fn apply_event(
             }
             None => false,
         },
+        // ⭐ O seletor de verbo. ⚠️ A POSIÇÃO é o que viaja: o painel não conhece o enum dos
+        // modos, e uma cópia dele aqui seria uma segunda contagem a envelhecer.
+        WidgetEvent::Click(id) if mode_slot_of(id).is_some() => {
+            let slot = mode_slot_of(id).unwrap_or(0);
+            if slot < state::current().modes.len() {
+                state::push_intent(ModelIntent::SetGizmoMode { slot });
+                true
+            } else {
+                // Um slot da família sem verbo no retrato: ignorar é a resposta certa.
+                false
+            }
+        }
         WidgetEvent::Click(id) if id == ids::MODEL3D_CLOSE => {
             host.set_panel_visible(Model3dPanel::ID, false);
             true

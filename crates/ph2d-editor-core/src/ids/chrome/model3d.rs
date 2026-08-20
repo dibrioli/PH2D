@@ -1,5 +1,5 @@
-//! **Os ids do painel de MODELAGEM 3D** (ADR-0161, W4) — o painel onde o raio de cada operação
-//! fica editável.
+//! **Os ids do painel de MODELAGEM 3D** (ADR-0161) — o seletor do verbo do gizmo (W6) e o raio de
+//! cada operação, editável ao vivo (W4).
 //!
 //! ⚠️ **Não confundir com `sculpt3d`**, que é o painel do módulo de **escultura**. São dois módulos
 //! 3D, duas linhas, e dois prefixos de id que nunca se cruzam.
@@ -25,6 +25,16 @@ use crate::ids::hash_node_id;
 pub const MODEL3D_PANEL: NodeId = hash_node_id("model3d.panel");
 /// O botão de fechar (X).
 pub const MODEL3D_CLOSE: NodeId = hash_node_id("model3d.close");
+
+/// ⭐ **O botão de um VERBO do gizmo** (mover / rodar / escalar), pela posição no seletor.
+///
+/// ⚠️ Pela POSIÇÃO, e não pelo nome do verbo: o `populate` corre antes de o gizmo existir e cunha a
+/// família às cegas, exatamente como faz com as linhas de raio. Quem escolhe o verbo é o retrato
+/// publicado, que diz o que cada posição significa naquele quadro.
+#[must_use]
+pub fn model3d_mode_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.mode.{slot}"))
+}
 
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]

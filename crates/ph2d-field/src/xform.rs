@@ -92,6 +92,12 @@ impl Xform {
     }
 }
 
+/// O **inverso** de uma rotação: o conjugado, que num quaternion unitário é a inversa exata.
+#[must_use]
+pub fn quat_conj(q: [f32; 4]) -> [f32; 4] {
+    [-q[0], -q[1], -q[2], q[3]]
+}
+
 /// `a ⊗ b` — aplicar `b` **depois** de `a`, no referencial de `a`.
 #[must_use]
 pub fn quat_mul(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {

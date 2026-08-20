@@ -29,7 +29,7 @@ mod event;
 mod paint;
 mod populate;
 
-pub use populate::MAX_ROWS;
+pub use populate::{MAX_MODES, MAX_ROWS};
 
 /// O identificador do painel — a **chave de visibilidade** que o shell usa para o abrir.
 ///
@@ -38,7 +38,9 @@ pub use populate::MAX_ROWS;
 /// que ninguém pinta — o modo de falha que o comentário do `panel-physics` no `Cargo.toml`
 /// do shell já regista como pago.
 pub const PANEL_ID: &str = "model3d";
-pub use state::{ModelIntent, ModelSnapshot, RadiusRow, drain_intents, last_content_h, publish};
+pub use state::{
+    ModeChip, ModelIntent, ModelSnapshot, RadiusRow, drain_intents, last_content_h, publish,
+};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

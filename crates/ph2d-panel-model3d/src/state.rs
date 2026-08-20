@@ -43,9 +43,22 @@ pub struct RadiusRow {
     pub bound: RadiusBound,
 }
 
+/// Um verbo que o gizmo oferece: a chave i18n do rótulo, e se ele é o ativo.
+///
+/// ⚠️ O painel **não conhece o enum dos modos** — ele vive no shell, com o gizmo. Aqui chega uma
+/// lista, e o intent devolve a POSIÇÃO. É o que mantém a contagem de verbos numa fonte só
+/// (`Mode::ALL`): acrescentar um lá faz o painel seguir sem uma linha de mudança.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ModeChip {
+    pub key: &'static str,
+    pub active: bool,
+}
+
 /// O que o painel precisa de saber sobre o modelo neste quadro.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct ModelSnapshot {
+    /// ⭐ Os verbos do gizmo, na ordem do seletor. Vazio ⇒ o seletor não é pintado.
+    pub modes: Vec<ModeChip>,
     /// Uma linha por nó com raio editável, em **pré-ordem** — a ordem da Hierarquia.
     pub rows: Vec<RadiusRow>,
     /// Quantos nós o documento tem **ao todo** — inclusive os sem raio.
@@ -63,7 +76,14 @@ pub struct ModelSnapshot {
 /// Uma edição que o painel pede e o shell executa.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ModelIntent {
-    SetRadius { entity: u64, radius: f32 },
+    SetRadius {
+        entity: u64,
+        radius: f32,
+    },
+    /// Trocar o verbo do gizmo, pela **posição** no seletor.
+    SetGizmoMode {
+        slot: usize,
+    },
 }
 
 /// O shell publica o retrato antes de pintar.

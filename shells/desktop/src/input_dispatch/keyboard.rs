@@ -93,6 +93,15 @@ impl App {
         {
             return;
         }
+        // ADR-0161 W6: `G`/`R`/`S` trocam o verbo do gizmo 3D (mover/rodar/escalar), as letras
+        // do Blender. ⚠️ Só com o ponteiro SOBRE a janela 3D — ver a nota de `field3d_mode_key`:
+        // sem essa guarda, três letras comuns deixariam de chegar a qualquer campo de texto.
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+            && self.field3d_mode_key(code)
+        {
+            return;
+        }
 
         self.handler.on_key(KeyEvent {
             keycode,

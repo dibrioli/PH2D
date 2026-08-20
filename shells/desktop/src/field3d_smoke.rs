@@ -106,12 +106,18 @@ pub(crate) struct Smoke {
     pub(crate) gizmo: Option<crate::field3d_gizmo::Anchor>,
     /// A alça sob o cursor. Só realce — quem manda no arrasto é o `drag`.
     pub(crate) gizmo_hot: Option<crate::field3d_gizmo::Handle>,
-    /// O que o arrasto pediu e a ponte ainda não aplicou: `(entidade, deslocamento de MUNDO)`.
+    /// O que o arrasto pediu e a ponte ainda não aplicou: `(entidade, pedido)`.
     ///
     /// ⚠️ **Acumula**, e não substitui: entre dois quadros chegam vários eventos de ponteiro, e
     /// guardar só o último faria a peça andar menos do que a mão — devagar, e só quando o rato vai
-    /// depressa, que é o defeito mais difícil de acreditar.
-    pub(crate) pending_move: Option<(u64, [f32; 3])>,
+    /// depressa, que é o defeito mais difícil de acreditar. Cada verbo acumula à maneira dele
+    /// (`Motion::merge`).
+    pub(crate) pending_move: Option<(u64, crate::field3d_gizmo::Motion)>,
+    /// ⭐ **Que verbo o gizmo está a oferecer** — mover, rodar ou escalar.
+    ///
+    /// ⚠️ É estado de **vista**, e não do documento: por isso vive aqui e não num componente. O
+    /// painel mostra-o e as teclas `G`/`R`/`S` trocam-no.
+    pub(crate) gizmo_mode: crate::field3d_gizmo::Mode,
 }
 
 /// O gesto de navegação em curso.
@@ -392,6 +398,7 @@ fn boot() -> Option<Smoke> {
         gizmo: None,
         gizmo_hot: None,
         pending_move: None,
+        gizmo_mode: crate::field3d_gizmo::Mode::default(),
     })
 }
 
@@ -490,6 +497,19 @@ pub(crate) fn with_smoke<R>(f: impl FnOnce(&mut Smoke) -> R) -> Option<R> {
         }
         slot.as_mut().and_then(Option::as_mut).map(f)
     })
+}
+
+/// ⭐ **Há um gesto de AUTORIA em curso?** — a pergunta que o undo faz.
+///
+/// ⚠️ Só o arrasto do **gizmo** conta. Orbitar e deslocar a vista não tocam no documento: suprimir
+/// o undo neles não estragaria nada, mas afirmaria uma coisa falsa sobre o que eles fazem.
+///
+/// ⚠️ **Sem isto, um arrasto vira N passos de undo — um por quadro.** O `post_frame_undo` já tem a
+/// lei («um gesto em andamento espera o fim»), e ela lê o `held_button` do shell — que **este
+/// módulo nunca chega a pôr**, porque o gancho do ponteiro consome o `Down` e volta antes da linha
+/// que o escreve. A lei estava certa e não alcançava este gesto.
+pub(crate) fn gesture_in_progress() -> bool {
+    with_smoke(|s| matches!(s.drag, Some(Drag::Gizmo(_)))).unwrap_or(false)
 }
 
 /// Desenha o smoke sobre a área dada. No-op silencioso quando a variável não está posta.
@@ -629,7 +649,8 @@ pub(crate) fn draw(area: EditorRect, theme: ph2d_tokens::Theme, scene_out: &mut 
         // artista precisa dela. É o que todo modelador faz, e a razão é essa.
         if let Some(anchor) = smoke.gizmo {
             let screen = ph2d_field_render::Screen::new(tw, th, smoke.cam.half_extent);
-            let handles = crate::field3d_gizmo::project(anchor, &smoke.cam, screen);
+            let handles =
+                crate::field3d_gizmo::project(anchor, &smoke.cam, screen, smoke.gizmo_mode);
             let hot = crate::field3d_input::hot_handle(smoke);
             scene_out.push_clip(&ph2d_vector::Rect::new(
                 f64::from(area.x),

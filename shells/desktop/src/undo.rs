@@ -391,8 +391,13 @@ impl crate::App {
         // a cena numa pose DIFERENTE a cada quadro, então sem a supressão um Show de 150 ms
         // viraria nove passos de undo. Quando ela chega, a cena está numa pose AUTORADA e o diff
         // registra um — o preço certo de *"eu mostrei o hover"*.
+        // ⚠️ **O gizmo 3D de modelagem tem de dizer-se por conta própria** (ADR-0161 W6): o gancho
+        // de ponteiro dele consome o `Down` e volta ANTES da linha que escreve o `held_button`, então
+        // a condição acima — que está certa — não alcançava aquele gesto. Sem esta, arrastar uma
+        // seta registava um passo de undo POR QUADRO.
         if !had_input
             || self.held_button.is_some()
+            || crate::field3d_smoke::gesture_in_progress()
             || self.flip_colorize.live_busy(self.flip_style.as_ref())
             || self.ui_state_live
         {

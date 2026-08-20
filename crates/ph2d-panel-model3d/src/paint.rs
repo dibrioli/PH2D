@@ -4,6 +4,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{paint_text_block, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
     paint_panel_close_button, paint_panel_corner_dot, paint_panel_surface, paint_panel_title,
@@ -16,7 +17,7 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
 use crate::state::{self, Model3dPanelState, RadiusRow};
-use crate::{Model3dPanel, populate::MAX_ROWS};
+use crate::{Model3dPanel, populate::MAX_MODES, populate::MAX_ROWS};
 
 /// A goteira do rótulo. Os rótulos aqui são o **tipo do nó** ("Union", "Cylinder"), não uma frase.
 const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
@@ -83,6 +84,9 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     ctx.scene
         .push_clip(&rect_to_vello(Rect::new(rect.x, body_top, rect.w, body_h)));
     let mut y = body_top;
+    // ⭐ **O seletor do verbo, no topo** — é a porta que se encontra sem saber que existe. As
+    // teclas `G`/`R`/`S` são a outra, e são para quem já sabe.
+    y = paint_modes(ctx, &snapshot, x, w, y);
     if snapshot.rows.is_empty() {
         y = paint_note(ctx, tr("panel.model3d.empty"), x, w, y);
     }
@@ -95,6 +99,36 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     y = paint_footer(ctx, &snapshot, x, w, y);
     state::set_last_content_h(y - body_top + PANEL_HEAD_PAD);
     ctx.scene.pop_layer();
+}
+
+/// ⭐ **O seletor de verbo do gizmo**: mover · rodar · escalar. Devolve o **y seguinte**.
+///
+/// ⚠️ **Grupo ADAPTATIVO**, e não três botões de largura fixa: num painel estreito ou num idioma
+/// mais comprido, três rótulos lado a lado deixam de caber, e a versão fixa quebraria o texto
+/// DENTRO do botão — o artefato que a casa já registou e curou com este widget.
+fn paint_modes(ctx: &mut PaintCtx, snap: &state::ModelSnapshot, x: f32, w: f32, y: f32) -> f32 {
+    if snap.modes.is_empty() {
+        return y;
+    }
+    let theme = ctx.host.theme();
+    let labels: Vec<(&str, bool, ph2d_a11y::NodeId)> = snap
+        .modes
+        .iter()
+        .take(MAX_MODES as usize)
+        .enumerate()
+        .map(|(i, m)| (tr(m.key), m.active, ids::model3d_mode_button(i as u32)))
+        .collect();
+    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+    let used = paint_segmented_group_adaptive(
+        Rect::new(x, y, w, ROW_H_PX),
+        &labels,
+        ctx.scene,
+        ctx.text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    y + used + Spacing::Sm.px()
 }
 
 /// Uma linha: rótulo do tipo do nó + slider + campo numérico. Devolve o **y seguinte**.

@@ -462,3 +462,119 @@ fn the_part_is_born_with_an_object_selected_once_and_only_once() {
         "o quadro seguinte não volta a mandar selecionar"
     );
 }
+
+/// ⭐ **Um giro em torno de um eixo do MUNDO é em torno do eixo do mundo** — mesmo num filho cujo
+/// pai está rodado.
+///
+/// ⚠️ A conta é a conjugação (`inv(R_pai) ⊗ Q ⊗ R_pai`), e sem o sanduíche um giro em torno do X do
+/// mundo aplicado a um filho de pai rodado giraria em torno do X **do pai**. O eixo errado, e
+/// ninguém diria que o culpado é o gizmo — diria que "a rotação está estranha".
+#[test]
+fn a_world_axis_spin_stays_on_the_world_axis_under_a_rotated_parent() {
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let doc = FieldDoc::new(
+        vec![
+            ph2d_field::Node {
+                xform: Xform::at(0.3, 0.0, 0.0),
+                kind: ph2d_field::NodeKind::Leaf(Primitive::Box {
+                    half: [0.3, 0.1, 0.1],
+                    round: 0.02,
+                }),
+            },
+            ph2d_field::Node {
+                xform: Xform::at(-0.3, 0.0, 0.0),
+                kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.1 }),
+            },
+            ph2d_field::Node {
+                // O pai roda um quarto de volta em torno de Z.
+                xform: Xform {
+                    translation: [0.0; 3],
+                    rotation: [0.0, 0.0, s, s],
+                    scale: 1.0,
+                },
+                kind: ph2d_field::NodeKind::Combine {
+                    op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+                    children: vec![ph2d_field::NodeId(0), ph2d_field::NodeId(1)],
+                },
+            },
+        ],
+        ph2d_field::NodeId(2),
+    )
+    .expect("documento válido");
+    let root = ph2d_field_ecs::spawn_doc(world, &doc, "Model");
+    let child = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .next()
+        .expect("o primeiro");
+
+    // Um ponto do nó, longe do centro dele, e o que ele faz sob um quarto de volta em torno do X
+    // do MUNDO: `(0,1,0) → (0,0,1)`.
+    let probe = [0.0f32, 0.5, 0.0];
+    let before = ph2d_field_ecs::world_xform(world, child);
+    ph2d_field_ecs::rotate_world(world, child, [1.0, 0.0, 0.0], std::f32::consts::FRAC_PI_2);
+    let after = ph2d_field_ecs::world_xform(world, child);
+
+    // A direção local `probe`, vista no mundo, tem de ter rodado em torno do X do mundo.
+    let d0 = before.apply_dir(probe);
+    let d1 = after.apply_dir(probe);
+    let want = [d0[0], -d0[2], d0[1]];
+    for k in 0..3 {
+        assert!(
+            (d1[k] - want[k]).abs() < 1e-5,
+            "o giro saiu no eixo errado: {d0:?} -> {d1:?}, esperava {want:?}"
+        );
+    }
+    // E o nó não SAIU do lugar: o pivô é o centro dele.
+    for k in 0..3 {
+        assert!(
+            (after.translation[k] - before.translation[k]).abs() < 1e-6,
+            "rodar não pode transladar: {:?} -> {:?}",
+            before.translation,
+            after.translation
+        );
+    }
+}
+
+/// ⭐ **Escalar multiplica**, e a peça cozida sente.
+///
+/// ⛔ E o fator não-positivo é **recusado**: uma escala nula faria o campo deixar de ser uma
+/// distância, e a invariante do módulo é *um nó que existe está válido*.
+#[test]
+fn scaling_multiplies_and_a_non_positive_factor_is_refused() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let child = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .next()
+        .expect("o primeiro");
+
+    ph2d_field_ecs::scale_by(world, child, 1.5);
+    ph2d_field_ecs::scale_by(world, child, 2.0);
+    let s = world.get::<FieldPose>(child).expect("tem pose").xform.scale;
+    assert!((s - 3.0).abs() < 1e-6, "1,5 × 2 = 3, e deu {s}");
+
+    for bad in [0.0f32, -1.0, f32::NAN, f32::INFINITY] {
+        ph2d_field_ecs::scale_by(world, child, bad);
+        let now = world.get::<FieldPose>(child).expect("tem pose").xform.scale;
+        assert!(
+            (now - 3.0).abs() < 1e-6,
+            "o fator {bad} passou e deixou {now}"
+        );
+    }
+
+    // E o cozimento continua a produzir uma peça válida.
+    assert!(
+        ph2d_field_ecs::cook(world, root)
+            .expect("não vazia")
+            .is_ok()
+    );
+}

@@ -22,7 +22,7 @@ use ph2d_vector::{
 };
 
 use crate::field3d_gizmo::{
-    HEAD_HALF_W_PX, HEAD_PX, Handle, INNER_PX, Projected, SHAFT_HALF_W_PX, Shape,
+    GRIP_HALF_PX, HEAD_HALF_W_PX, HEAD_PX, Handle, INNER_PX, Projected, SHAFT_HALF_W_PX, Shape,
 };
 
 /// Quanto o realce levanta a luminosidade do token, em OKLCH.
@@ -61,24 +61,28 @@ pub(crate) fn paint(
         } else {
             base
         };
-        match h.shape {
-            Shape::Arrow { from, to } => arrow(scene, from, to, c, at),
-            Shape::Quad(q) => quad(scene, q, with_alpha(c, PLANE_ALPHA), at),
+        match &h.shape {
+            Shape::Arrow { from, to } => arrow(scene, *from, *to, c, at),
+            Shape::Quad(q) => quad(scene, *q, with_alpha(c, PLANE_ALPHA), at),
             Shape::Disc { center, radius } => {
                 // Um anel, não um disco: cheio ele tapava o ponto da peça que o gizmo marca.
-                ring(scene, center, radius, c, at);
+                ring(scene, *center, *radius, c, at);
             }
+            Shape::Arc(pts) => ribbon(scene, pts, c, at),
+            Shape::Grip { from, to } => grip(scene, *from, *to, c, at),
         }
     }
 }
 
 fn colour_of(handle: Handle, theme: Theme) -> Color {
     let token = match handle {
-        Handle::Axis(0) | Handle::Plane(0) => ColorToken::AxisX,
-        Handle::Axis(1) | Handle::Plane(1) => ColorToken::AxisY,
-        Handle::Axis(2) | Handle::Plane(2) => ColorToken::AxisZ,
-        // ⚠️ O disco de vista não é um eixo — ele move no plano da tela, que não tem direção no
-        // mundo. Pintá-lo com uma das três cores diria uma coisa falsa sobre o que ele faz.
+        Handle::Axis(0) | Handle::Plane(0) | Handle::Ring(0) => ColorToken::AxisX,
+        Handle::Axis(1) | Handle::Plane(1) | Handle::Ring(1) => ColorToken::AxisY,
+        Handle::Axis(2) | Handle::Plane(2) | Handle::Ring(2) => ColorToken::AxisZ,
+        // ⚠️ **Nem o disco/argola de vista nem o punho de tamanho são eixos.** Os dois primeiros
+        // agem no plano da TELA, que não tem direção no mundo; o terceiro muda o tamanho, que não
+        // tem direção nenhuma. Pintá-los com uma das três cores diria uma coisa falsa sobre o que
+        // eles fazem — e a cor é a única legenda que um gizmo tem.
         _ => ColorToken::Text1,
     };
     token.resolve(theme)
@@ -159,4 +163,49 @@ fn ring(scene: &mut VectorScene, center: [f32; 2], radius: f32, c: Color, at: Af
     // pintado por cima.
     p.extend(inner.to_path(0.1).reverse_subpaths());
     scene.fill_path(&p, &brush(c), at);
+}
+
+/// Uma poligonal com espessura, um quadrilátero por segmento.
+///
+/// ⚠️ **Sem junta nas dobras, de propósito.** Uma argola amostrada em 48 pedaços dobra ~7,5° por
+/// vértice; a fenda que isso deixa mede menos de um décimo de pixel na espessura que se usa aqui, e
+/// pagar juntas por ela seria construir o que a medição não pediu.
+fn ribbon(scene: &mut VectorScene, pts: &[[f32; 2]], c: Color, at: Affine) {
+    for w in pts.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let d = [b[0] - a[0], b[1] - a[1]];
+        let len = d[0].hypot(d[1]);
+        if len <= f32::EPSILON {
+            continue;
+        }
+        let n = [-d[1] / len * SHAFT_HALF_W_PX, d[0] / len * SHAFT_HALF_W_PX];
+        quad(
+            scene,
+            [
+                [a[0] + n[0], a[1] + n[1]],
+                [b[0] + n[0], b[1] + n[1]],
+                [b[0] - n[0], b[1] - n[1]],
+                [a[0] - n[0], a[1] - n[1]],
+            ],
+            c,
+            at,
+        );
+    }
+}
+
+/// O punho de tamanho: um traço fino até um quadrado. ⚠️ O traço é **decoração** — quem se agarra é
+/// o quadrado (ver `hits`), e desenhá-lo mais grosso prometeria uma alça que não existe.
+fn grip(scene: &mut VectorScene, from: [f32; 2], to: [f32; 2], c: Color, at: Affine) {
+    ribbon(scene, &[from, to], with_alpha(c, PLANE_ALPHA), at);
+    quad(
+        scene,
+        [
+            [to[0] - GRIP_HALF_PX, to[1] - GRIP_HALF_PX],
+            [to[0] + GRIP_HALF_PX, to[1] - GRIP_HALF_PX],
+            [to[0] + GRIP_HALF_PX, to[1] + GRIP_HALF_PX],
+            [to[0] - GRIP_HALF_PX, to[1] + GRIP_HALF_PX],
+        ],
+        c,
+        at,
+    );
 }

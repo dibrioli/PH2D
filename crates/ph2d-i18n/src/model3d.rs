@@ -17,6 +17,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // mistura orgânica vê um número que entrega 3/4 do que promete (ver `Blend::Organic`), e
         // isso é uma decisão de produto por tomar — não uma etiqueta a corrigir aqui.
         "panel.model3d.radius" => "Radius",
+        // ⭐ Os três verbos do gizmo. ⚠️ **"Size", e não "Scale"** — a escala deste módulo é
+        // UNIFORME por decisão medida (ADR-0161 §6: a não-uniforme destrói a propriedade de
+        // distância), e "Scale" num app 3D promete três eixos. Um rótulo tem de prometer o que o
+        // modelo entrega.
+        "panel.model3d.mode.move" => "Move",
+        "panel.model3d.mode.rotate" => "Rotate",
+        "panel.model3d.mode.scale" => "Size",
         "panel.model3d.kind.union" => "Union",
         "panel.model3d.kind.intersection" => "Intersect",
         "panel.model3d.kind.difference" => "Subtract",

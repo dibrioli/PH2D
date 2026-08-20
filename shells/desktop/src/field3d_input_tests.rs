@@ -258,6 +258,13 @@ mod seam {
         .expect("o módulo está armado")
     }
 
+    fn translation_of(m: field3d_gizmo::Motion) -> [f32; 3] {
+        match m {
+            field3d_gizmo::Motion::Translate(d) => d,
+            other => panic!("o modo de mover pede translação, e veio {other:?}"),
+        }
+    }
+
     fn screen_of(s: &crate::field3d_smoke::Smoke) -> Screen {
         Screen::new(AREA.w as u32, AREA.h as u32, s.cam.half_extent)
     }
@@ -265,7 +272,7 @@ mod seam {
     /// O ponto de janela, em pixels, do meio da haste do eixo `n`.
     fn mid_of_axis(s: &crate::field3d_smoke::Smoke, n: usize) -> (f32, f32) {
         let anchor = s.gizmo.expect("ancorado");
-        let handles = field3d_gizmo::project(anchor, &s.cam, screen_of(s));
+        let handles = field3d_gizmo::project(anchor, &s.cam, screen_of(s), s.gizmo_mode);
         let h = handles
             .iter()
             .find(|h| h.handle == Handle::Axis(n))
@@ -296,11 +303,11 @@ mod seam {
             // E arrastar move a PEÇA, não a vista.
             assert!(advance(s, p.0 + 60.0, p.1));
             assert_eq!(s.cam, before, "a câmera não pode ter-se mexido");
-            let (entity, delta) = s.pending_move.expect("o arrasto tem de pedir um movimento");
+            let (entity, motion) = s.pending_move.expect("o arrasto tem de pedir um movimento");
             assert_eq!(entity, 7, "e tem de pedi-lo para a entidade da âncora");
             assert!(
-                delta[0].abs() > 1e-4,
-                "o pedido saiu vazio: {delta:?} — o ponteiro não chegou à lei do arrasto"
+                !motion.is_idle(),
+                "o pedido saiu vazio: {motion:?} — o ponteiro não chegou à lei do arrasto"
             );
         });
     }
@@ -339,9 +346,9 @@ mod seam {
             let p = mid_of_axis(s, 0);
             begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
             advance(s, p.0 + 30.0, p.1);
-            let one = s.pending_move.expect("primeiro evento").1;
+            let one = translation_of(s.pending_move.expect("primeiro evento").1);
             advance(s, p.0 + 60.0, p.1);
-            let two = s.pending_move.expect("segundo evento").1;
+            let two = translation_of(s.pending_move.expect("segundo evento").1);
             assert!(
                 (two[0] - one[0] * 2.0).abs() < one[0].abs() * 1e-3,
                 "dois passos iguais têm de somar: {one:?} depois {two:?}"
@@ -374,5 +381,57 @@ mod seam {
             advance(s, AREA.x + AREA.w - 3.0, AREA.y + AREA.h - 3.0);
             assert_eq!(hot_handle(s), Some(Handle::Axis(2)));
         });
+    }
+}
+
+/// Os gates do **undo de um arrasto**.
+///
+/// ⚠️ A lei do shell («um gesto em andamento espera o fim») lê o `held_button`, e o gancho deste
+/// módulo consome o `Down` e volta **antes** da linha que o escreve. A lei estava certa e **não
+/// alcançava este gesto** — arrastar uma seta registava um passo de undo por quadro.
+mod undo_seam {
+    use crate::field3d_gizmo::Handle;
+    use crate::field3d_smoke::{Drag, gesture_in_progress, set_armed_by_panel, with_smoke};
+
+    fn armed<R>(f: impl FnOnce(&mut crate::field3d_smoke::Smoke) -> R) -> R {
+        set_armed_by_panel(true);
+        with_smoke(f).expect("o módulo está armado")
+    }
+
+    /// ⭐ **Só o arrasto do gizmo é um gesto de AUTORIA.**
+    ///
+    /// Orbitar e deslocar a vista não tocam no documento; suprimir o undo neles não estragaria
+    /// nada, mas afirmaria uma coisa falsa sobre o que eles fazem — e um dia alguém acreditaria.
+    #[test]
+    fn only_a_gizmo_drag_counts_as_a_gesture_in_progress() {
+        armed(|s| s.drag = None);
+        assert!(!gesture_in_progress(), "parado não é gesto");
+
+        armed(|s| s.drag = Some(Drag::Orbit));
+        assert!(!gesture_in_progress(), "girar a vista não autora nada");
+
+        armed(|s| s.drag = Some(Drag::Pan));
+        assert!(!gesture_in_progress(), "deslocar a vista também não");
+
+        armed(|s| s.drag = Some(Drag::Gizmo(Handle::Axis(1))));
+        assert!(gesture_in_progress(), "mover a peça É autoria");
+
+        armed(|s| s.drag = None);
+        assert!(!gesture_in_progress(), "e soltar fecha o gesto");
+    }
+
+    /// ⚠️ **O `post_frame_undo` tem de PERGUNTAR.**
+    ///
+    /// Este gate lê a fonte, e diz exatamente o que prova: que **o cano está ligado**. Ele não
+    /// prova que a supressão funciona — isso é a lei do shell, que já tem os gates dela. O que ele
+    /// impede é o modo de falha que este módulo acabou de pagar: as duas metades corretas, e
+    /// ninguém a ligá-las. É a fiação órfã da `DIRETIVA_IMPLEMENTACAO` §1.
+    #[test]
+    fn the_undo_pass_asks_whether_this_module_is_mid_gesture() {
+        let src = include_str!("undo.rs");
+        assert!(
+            src.contains("field3d_smoke::gesture_in_progress()"),
+            "o `post_frame_undo` deixou de perguntar — um arrasto volta a ser N passos de undo"
+        );
     }
 }

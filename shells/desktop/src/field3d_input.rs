@@ -46,7 +46,7 @@ fn handles(s: &Smoke) -> Vec<field3d_gizmo::Projected> {
         area.h.round().max(1.0) as u32,
         s.cam.half_extent,
     );
-    field3d_gizmo::project(anchor, &s.cam, screen)
+    field3d_gizmo::project(anchor, &s.cam, screen, s.gizmo_mode)
 }
 
 /// O ponto do cursor no referencial da **área desenhada** — que é o referencial em que o gizmo foi
@@ -170,12 +170,31 @@ impl App {
     /// O ponteiro moveu. **Só consome com um arrasto em curso** — senão a janela 3D engoliria todo
     /// hover do app 2D.
     pub(crate) fn field3d_pointer_move(&mut self, x: f32, y: f32) -> bool {
-        with_smoke(|s| advance(s, x, y)).unwrap_or(false)
+        let (took, authored) = with_smoke(|s| {
+            let took = advance(s, x, y);
+            (took, took && matches!(s.drag, Some(Drag::Gizmo(_))))
+        })
+        .unwrap_or((false, false));
+        // ⚠️ **O gesto AUTORA a cena, então o diff de undo tem de ver o quadro em que a pose
+        // mudou** — a mesma razão do `advance_body_fk`, e a mesma frase. Este gancho consome o
+        // `Down` e volta **antes** da linha que escreve o `held_button` do shell, então nem a
+        // marca de entrada nem a de gesto-em-curso chegam aqui sozinhas.
+        self.any_input_this_frame |= authored;
+        took
     }
 
     /// O ponteiro subiu. Fecha o arrasto, se havia um.
     pub(crate) fn field3d_pointer_up(&mut self) -> bool {
-        with_smoke(|s| s.drag.take().is_some()).unwrap_or(false)
+        let (took, authored) = with_smoke(|s| {
+            let was = s.drag.take();
+            (was.is_some(), matches!(was, Some(Drag::Gizmo(_))))
+        })
+        .unwrap_or((false, false));
+        // ⚠️ **E no SOLTAR também**, senão um arrasto cujo último movimento caiu num quadro
+        // anterior fica sem quadro nenhum a marcar entrada — e o passo só se registaria colado à
+        // próxima ação do artista, seja ela qual for.
+        self.any_input_this_frame |= authored;
+        took
     }
 
     /// **Repõe a vista.** Devolve `true` se a tecla era desta janela.
@@ -207,6 +226,41 @@ impl App {
             law::home(&mut s.cam);
             // Repor não é "voltar ao prato giratório": a mão continua no comando.
             s.manual = true;
+            true
+        })
+        .unwrap_or(false)
+    }
+
+    /// ⭐ **`G` / `R` / `S` trocam o verbo do gizmo** — mover, rodar, escalar.
+    ///
+    /// ⚠️ **Só com o ponteiro SOBRE a janela 3D**, pela mesma razão do `Home` ao lado: uma tecla
+    /// engolida é uma tecla que não chega ao campo de texto onde o artista está a escrever. `G`,
+    /// `R` e `S` são letras comuns, e esta guarda é o que separa um atalho de um sequestro.
+    ///
+    /// As letras são as do Blender — G de *grab*, R de *rotate*, S de *scale*. ⚠️ Lá elas **começam** um gesto
+    /// modal; aqui trocam o gizmo. É a mesma memória de dedo para o mesmo verbo, e a diferença de
+    /// mecânica é a que o Blender também tem entre a tecla e a barra de ferramentas dele.
+    ///
+    /// O seletor do PAINEL é a outra porta, e é a que se encontra sem saber que existe.
+    pub(crate) fn field3d_mode_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        use winit::keyboard::KeyCode;
+        let mode = match code {
+            KeyCode::KeyG => field3d_gizmo::Mode::Move,
+            KeyCode::KeyR => field3d_gizmo::Mode::Rotate,
+            KeyCode::KeyS => field3d_gizmo::Mode::Scale,
+            _ => return false,
+        };
+        let pos = self.last_pointer;
+        with_smoke(|s| {
+            if !s.area.is_some_and(|a| {
+                pos.0 >= a.x && pos.1 >= a.y && pos.0 < a.x + a.w && pos.1 < a.y + a.h
+            }) {
+                return false;
+            }
+            s.gizmo_mode = mode;
+            // Trocar de verbo no meio de um arrasto deixaria uma alça agarrada que já não existe.
+            s.drag = None;
+            s.gizmo_hot = None;
             true
         })
         .unwrap_or(false)
@@ -303,9 +357,9 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
             };
             law::pan(&mut s.cam, dx, dy, area.w.min(area.h) * 0.5);
         }
-        // ⭐ O arrasto do gizmo **não escreve na peça aqui**: ele acumula um deslocamento
-        // de mundo que a ponte com a cena aplica no início do quadro seguinte. É o mesmo
-        // caminho dos intents do painel, e pela mesma razão — o mundo tem um só escritor.
+        // ⭐ O arrasto do gizmo **não escreve na peça aqui**: ele acumula um PEDIDO que a ponte
+        // com a cena aplica no início do quadro seguinte. É o mesmo caminho dos intents do
+        // painel, e pela mesma razão — o mundo tem um só escritor.
         Drag::Gizmo(handle) => {
             let (Some(anchor), Some(area)) = (s.gizmo, s.area) else {
                 return true;
@@ -323,12 +377,18 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
                 [x - dx - area.x, y - dy - area.y],
                 [x - area.x, y - area.y],
             );
-            let acc = s.pending_move.filter(|(e, _)| *e == anchor.entity);
-            let base = acc.map_or([0.0; 3], |(_, v)| v);
-            s.pending_move = Some((
-                anchor.entity,
-                [base[0] + d[0], base[1] + d[1], base[2] + d[2]],
-            ));
+            // ⚠️ Um pedido inerte **não é guardado**: uma alça degenerada devolve zero, e escrever
+            // esse zero acordaria o traçado para redesenhar exatamente o mesmo quadro.
+            if !d.is_idle() {
+                // ⚠️ **Acumula com o que já estava**, e por verbo: somar translações, somar
+                // ângulos, MULTIPLICAR fatores de escala. Ver `Motion::merge`.
+                s.pending_move = Some((
+                    anchor.entity,
+                    s.pending_move
+                        .filter(|(e, _)| *e == anchor.entity)
+                        .map_or(d, |(_, acc)| acc.merge(d)),
+                ));
+            }
         }
     }
     true

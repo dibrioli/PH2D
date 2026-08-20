@@ -32,12 +32,20 @@ pub(crate) fn ecs_bridge(sim: &mut SimWorld, selected: Option<u64>) -> Option<u6
         with_smoke(|s| (s.doc.clone(), s.last_trace_ms, s.pending_move.take()))?;
     // ⭐ **O arrasto do gizmo entra AQUI**, antes do retrato e do cozimento, pela mesma razão que os
     // intents do painel: o mundo é a verdade e este é o único sítio que a escreve.
-    if let Some((entity, delta)) = pending {
-        ph2d_field_ecs::translate_world(
-            sim.world_mut(),
-            bevy_ecs::entity::Entity::from_bits(entity),
-            delta,
-        );
+    if let Some((bits, motion)) = pending {
+        let entity = bevy_ecs::entity::Entity::from_bits(bits);
+        let world = sim.world_mut();
+        match motion {
+            crate::field3d_gizmo::Motion::Translate(d) => {
+                ph2d_field_ecs::translate_world(world, entity, d);
+            }
+            crate::field3d_gizmo::Motion::Rotate { axis, angle } => {
+                ph2d_field_ecs::rotate_world(world, entity, axis, angle);
+            }
+            crate::field3d_gizmo::Motion::Scale(f) => {
+                ph2d_field_ecs::scale_by(world, entity, f);
+            }
+        }
     }
     let (cooked, born) = sync_scene_and_birth(sim, initial.as_ref(), ms);
     let anchor = anchor_for(sim, selected);
@@ -107,6 +115,17 @@ pub(crate) fn sync_scene_and_birth(
     // As edições do painel escrevem no COMPONENTE do nó, que é a peça de verdade.
     for intent in ph2d_panel_model3d::drain_intents() {
         match intent {
+            // ⭐ O verbo do gizmo é estado de VISTA: ele não entra no mundo, entra no smoke.
+            ph2d_panel_model3d::ModelIntent::SetGizmoMode { slot } => {
+                if let Some(mode) = crate::field3d_gizmo::Mode::ALL.get(slot).copied() {
+                    with_smoke(|s| {
+                        s.gizmo_mode = mode;
+                        // Trocar de verbo com uma alça agarrada deixaria um arrasto órfão.
+                        s.drag = None;
+                        s.gizmo_hot = None;
+                    });
+                }
+            }
             ph2d_panel_model3d::ModelIntent::SetRadius { entity, radius } => {
                 // Uma recusa é informação, não erro: o nó diz que aquele raio não cabe, e o retrato
                 // publicado logo abaixo devolve o controle ao valor que ficou.
@@ -150,7 +169,18 @@ fn publish_snapshot(world: &bevy_ecs::world::World, root: bevy_ecs::entity::Enti
             })
         })
         .collect();
+    // ⚠️ A lista de verbos é **derivada de `Mode::ALL`**, que é a fonte da contagem. O painel não
+    // conhece o enum — acrescentar um verbo lá faz o seletor seguir sem uma linha de mudança.
+    let active = with_smoke(|s| s.gizmo_mode).unwrap_or_default();
+    let modes = crate::field3d_gizmo::Mode::ALL
+        .iter()
+        .map(|m| ph2d_panel_model3d::ModeChip {
+            key: m.key(),
+            active: *m == active,
+        })
+        .collect();
     ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
+        modes,
         rows,
         node_count: all.len(),
         last_trace_ms: ms,

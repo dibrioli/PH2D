@@ -8,7 +8,7 @@
 use bevy_ecs::entity::Entity;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::world::World;
-use ph2d_field::xform::quat_rotate;
+use ph2d_field::xform::{quat_axis_angle, quat_conj, quat_mul, quat_normalize, quat_rotate};
 use ph2d_field::{
     FieldError, NodeShape, RadiusBound, Xform, characteristic_size, round_limit, set_shape_radius,
 };
@@ -134,6 +134,57 @@ pub fn translate_world(world: &mut World, entity: Entity, delta: [f32; 3]) {
     if let Some(mut pose) = world.get_mut::<FieldPose>(entity) {
         for (t, d) in pose.xform.translation.iter_mut().zip(local) {
             *t += d;
+        }
+    }
+}
+
+/// ⭐ **Roda um nó em torno de um eixo do MUNDO**, pelo **próprio centro dele**.
+///
+/// ⚠️ O pivô é a origem do nó de propósito: é onde o gizmo desenha as argolas, e é a única escolha
+/// que faz a peça girar debaixo do cursor em vez de descrever um arco à volta de outra coisa. Um
+/// pivô diferente (o centro da seleção, o cursor 3D do Blender) é **produto**, e entra com a UI que
+/// o escolhe — não por omissão.
+///
+/// A conta é a conjugação: `R_mundo = R_pai ⊗ R_local`, e querendo `R_mundo' = Q ⊗ R_mundo` sai
+/// `R_local' = inv(R_pai) ⊗ Q ⊗ R_pai ⊗ R_local`. Sem o sanduíche, um giro em torno do X do mundo
+/// aplicado a um filho de pai rodado giraria em torno do X **do pai** — o eixo errado, e ninguém
+/// diria que o culpado é o gizmo.
+///
+/// No-op silencioso sem pose ou com ângulo não-finito.
+pub fn rotate_world(world: &mut World, entity: Entity, axis: [f32; 3], angle: f32) {
+    if !angle.is_finite() || angle == 0.0 {
+        return;
+    }
+    let parent = world
+        .get::<bevy_ecs::hierarchy::ChildOf>(entity)
+        .map(|c| c.0);
+    let outer = parent.map_or(Xform::IDENTITY, |p| crate::world_xform(world, p));
+    let q = quat_axis_angle(axis, angle);
+    let sandwich = quat_mul(quat_mul(quat_conj(outer.rotation), q), outer.rotation);
+    if let Some(mut pose) = world.get_mut::<FieldPose>(entity) {
+        pose.xform.rotation = quat_normalize(quat_mul(sandwich, pose.xform.rotation));
+    }
+}
+
+/// ⭐ **Escala um nó por um fator UNIFORME.**
+///
+/// ⛔ Uniforme porque o documento é uniforme ([ADR-0161 §6]): escala não-uniforme destrói a
+/// propriedade de distância de que o módulo inteiro depende. Não há aqui uma função por eixo à
+/// espera de ser escrita — há uma decisão medida.
+///
+/// ⚠️ Um fator não-positivo ou não-finito é **recusado em silêncio** e não aplicado pela metade: a
+/// invariante é *um nó que existe está válido*, e uma escala nula faria o campo deixar de ser uma
+/// distância.
+///
+/// [ADR-0161 §6]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
+pub fn scale_by(world: &mut World, entity: Entity, factor: f32) {
+    if !factor.is_finite() || factor <= 0.0 {
+        return;
+    }
+    if let Some(mut pose) = world.get_mut::<FieldPose>(entity) {
+        let next = pose.xform.scale * factor;
+        if next.is_finite() && next > 0.0 {
+            pose.xform.scale = next;
         }
     }
 }

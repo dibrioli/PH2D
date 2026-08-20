@@ -23,7 +23,7 @@
 //! copy (a cloner is at least a passthrough).
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{
@@ -73,12 +73,63 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "center",
             default: 0.0,
         },
+        // **O TAPER** — ver [`SCALE_TAPER`]. Apendados, e literais no default.
+        ParamSpec {
+            name: "scale_taper",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "rot_taper",
+            default: 0.0,
+        },
     ],
     // CPU-only by design (see handoff §9): a cloner *changes the element count*
     // (1 → N×in), which is structural, not a per-element `ph2d-expr` map an
     // `eval_column` could lower; and no Instances-domain WGSL runtime exists.
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **O TAPER da fila** (doc 89 folha 08 — *"taper CUMULATIVO por cópia, escala/rotação
+/// incrementais"*): MiniCavalry `cloneLinear` `scaleTaper 1` / `rotTaperDeg 0`; C4D Cloner,
+/// aba Transform, *"P/S/R aplicados a TODO clone"*.
+///
+/// ⚠️ **A lei é LERP DA 1ª À ÚLTIMA CÓPIA, e é a da referência citada, não uma potência.** O
+/// dump do `cloneLinear` diz `scaleTaper 1 (lerp final)` e, nos gotchas, *"Taper é lerp do 1º
+/// ao último"* — o número que o artista digita é **o que a ÚLTIMA cópia vale**, não o fator
+/// que compõe a cada passo. A diferença não é cosmética: com `scaleTaper = 0,5` e 5 cópias, a
+/// lei composta (`0,5^c`) dá `1 · 0,5 · 0,25 · 0,125 · 0,0625` — a fila desaparece a meio e o
+/// knob deixa de ter curso útil —, enquanto o lerp dá `1 · 0,875 · 0,75 · 0,625 · 0,5`, e
+/// *metade* quer dizer metade. ⚠️ E ela é **HR-5 de graça**: um lerp é aritmética, uma
+/// potência real seria `powf`.
+///
+/// ⚠️ **O `t` corre pela ORDINAL da cópia, nunca pelo posto assinado do `center`** — *"do 1º
+/// ao último"* é literal. Com `center` ligado a fila passa a montar-se em torno do original e
+/// o taper continua a correr da ponta de trás para a da frente; se ele seguisse o posto
+/// assinado, ligar o `center` **inverteria o sentido do afunilamento no meio da fila**, e os
+/// dois controles deixariam de ser ortogonais.
+///
+/// ⚠️ **O que ele NÃO faz: o layout.** As cópias continuam numa RETA — o taper descreve como
+/// cada cópia difere da anterior, não por onde a fila anda. Uma fila que se ENROLA (o *step
+/// cumulativo* que o doc 63 §3 chama de espiral) é outra coisa: pede que o próprio passo seja
+/// girado e escalado a cada cópia, o que colide com o `center` (um somatório não tem posto
+/// assinado) e não é o que a referência desta célula define.
+const SCALE_TAPER: &str = "scale_taper";
+/// O taper de rotação, em **graus** — a unidade autorada da casa, a mesma da coluna `rot` e
+/// do `angle` deste nó. Ver [`SCALE_TAPER`] para a lei.
+const ROT_TAPER: &str = "rot_taper";
+
+/// A fração do taper na cópia `copy` de `k`: `0` na primeira, `1` na última.
+///
+/// ⚠️ **`k = 1` dá `0`, e não uma divisão por zero** — uma fila de uma cópia é a própria
+/// entrada, e o taper de uma lista de um elemento é o começo dela.
+fn taper_t(copy: usize, k: usize) -> f32 {
+    if k <= 1 {
+        return 0.0;
+    }
+    #[expect(clippy::cast_precision_loss, reason = "contagem de cópias, ≤ 2^24")]
+    let t = copy as f32 / (k - 1) as f32;
+    t
+}
 
 /// Replicate a column `k` times (copy 0, copy 1, ... — element order within a
 /// copy preserved), matching the `P` offset loop in [`clone_stream`].
@@ -133,7 +184,23 @@ fn copy_rank(copy: usize, k: usize, center: bool) -> f32 {
 /// the allocation. Pure and isolated so the per-copy offset, the global
 /// renumbering, *and* the column-replication alignment are unit-tested directly,
 /// alongside the end-to-end cook test that drives the params via overrides.
-fn clone_stream(input: &Stream, k: usize, sx: f32, sy: f32, center: bool) -> Stream {
+fn clone_stream(
+    input: &Stream,
+    k: usize,
+    sx: f32,
+    sy: f32,
+    center: bool,
+    scale_taper: f32,
+    rot_taper: f32,
+) -> Stream {
+    // ⚠️ **Os dois knobs são LITERAIS no default, e o teste é sobre o VALOR e não sobre um
+    // caminho**: `1 + (1 − 1)·t` é `1` e `0·t` é `0` para todo `t` finito, em IEEE-754. O que
+    // as bandeiras decidem não é a aritmética — é se a coluna chega a ser TOCADA, porque
+    // `size` e `rot` podem não existir e cunhá-las é que mudaria o que sai daqui.
+    let scaling = scale_taper != 1.0;
+    let turning = rot_taper != 0.0;
+    let factor = |copy: usize| 1.0 + (scale_taper - 1.0) * taper_t(copy, k);
+    let turn = |copy: usize| rot_taper * taper_t(copy, k);
     // The port type guarantees `P` is `Vec2`; any other dim is an upstream
     // node-author bug — assert loudly rather than replicate `P` without the
     // per-copy offset (which would stack every copy on top of the original).
@@ -170,8 +237,48 @@ fn clone_stream(input: &Stream, k: usize, sx: f32, sy: f32, center: bool) -> Str
             ("Count", Column::Scalar(_)) => {
                 out.set("Count", Column::Scalar(vec![total as f32; total]));
             }
+            // O taper multiplica o tamanho que a peça JÁ TEM — ele modula a fonte, nunca a
+            // substitui (a mesma lei do `point_scale` do `motion.duplicator`).
+            ("size", Column::Vec2(v)) if scaling => {
+                let mut nv = Vec::with_capacity(total);
+                for copy in 0..k {
+                    let f = factor(copy);
+                    nv.extend(v.iter().map(|s| [s[0] * f, s[1] * f]));
+                }
+                out.set("size", Column::Vec2(nv));
+            }
+            // …e a rotação SOMA à que a peça já tem, em graus.
+            ("rot", Column::Scalar(v)) if turning => {
+                let mut nv = Vec::with_capacity(total);
+                for copy in 0..k {
+                    let a = turn(copy);
+                    nv.extend(v.iter().map(|r| r + a));
+                }
+                out.set("rot", Column::Scalar(nv));
+            }
             _ => out.set(name.clone(), replicate(col, k)),
         }
+    }
+    // ⚠️ **A coluna AUSENTE é cunhada — mas só quando o knob está ligado.** Sem isto o taper
+    // seria um botão morto no caso mais comum de todos: uma grelha não traz `size` nem `rot`,
+    // e a peça é desenhada com `SIZE_IDENTITY`/`0°`. Cunhar sempre seria o oposto — uma
+    // coluna a mais viaja, é serializada e muda o que um nó a jusante vê ([`clone_stream`]
+    // é a mesma escolha que o `point_scale` do `motion.duplicator` documenta).
+    if scaling && input.get("size").is_none() {
+        let mut nv = Vec::with_capacity(total);
+        for copy in 0..k {
+            let f = factor(copy);
+            nv.extend((0..in_count).map(|_| [SIZE_IDENTITY[0] * f, SIZE_IDENTITY[1] * f]));
+        }
+        out.set("size", Column::Vec2(nv));
+    }
+    if turning && input.get("rot").is_none() {
+        let mut nv = Vec::with_capacity(total);
+        for copy in 0..k {
+            let a = turn(copy);
+            nv.extend((0..in_count).map(|_| a));
+        }
+        out.set("rot", Column::Scalar(nv));
     }
     out
 }
@@ -191,13 +298,14 @@ impl NodeOp for MotionClone {
         let (c, s) = cos_sin_cycles(ctx.param("angle") / DEG_PER_TURN);
         let (sx, sy) = (distance * c, distance * s);
         let center = ctx.param("center") >= 0.5; // Toggle: ≥0.5 → centred queue
+        let (scale_taper, rot_taper) = (ctx.param(SCALE_TAPER), ctx.param(ROT_TAPER));
         // `count` from an `f32` param: total conversion (non-finite/negative →
         // 0) then clamped so `in_count * k` cannot overflow the allocation; at
         // least one copy (passthrough).
         let requested = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
         let input = ctx.input(0);
         let k = copies_within_budget(requested, input.count(), RECOMMENDED_MAX_ELEMENTS);
-        let out = clone_stream(input, k, sx, sy, center);
+        let out = clone_stream(input, k, sx, sy, center, scale_taper, rot_taper);
         ctx.emit(out);
     }
 }
@@ -281,6 +389,28 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Toggle,
+    },
+    // ⚠️ **A faixa é `0..2`, e o `1` fica no MEIO do curso** — o número é *quanto a última
+    // cópia mede*, então metade do curso encolhe e a outra metade cresce, simétricas em torno
+    // do literal. Um teto de `1` faria do knob um afunilador só, e a fila que ABRE (o cone, o
+    // megafone) é metade do que a referência lista como caso de uso.
+    ParamUiHint {
+        param: SCALE_TAPER,
+        label: "Scale Taper",
+        min: 0.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // A volta ACUMULADA até a última cópia, em graus. `±360` é o mesmo curso do `angle` deste
+    // nó — uma volta inteira para cada lado.
+    ParamUiHint {
+        param: ROT_TAPER,
+        label: "Rot Taper",
+        min: -360.0,
+        max: 360.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
     },
 ];
 
@@ -435,7 +565,7 @@ mod tests {
             .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]))
             .with("Index", Column::Scalar(vec![0.0, 1.0]))
             .with("Count", Column::Scalar(vec![2.0, 2.0]));
-        let out = clone_stream(&input, 3, 5.0, 0.0, false);
+        let out = clone_stream(&input, 3, 5.0, 0.0, false, 1.0, 0.0);
         match out.get("Index").unwrap() {
             Column::Scalar(v) => assert_eq!(v, &vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0]),
             _ => panic!("Index"),
@@ -457,7 +587,7 @@ mod tests {
                 "tint",
                 Column::Vec4(vec![[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]]),
             );
-        let out = clone_stream(&input, 2, 10.0, 0.0, false);
+        let out = clone_stream(&input, 2, 10.0, 0.0, false, 1.0, 0.0);
         assert_eq!(out.count(), 4);
         // copy 0: elements at x=0,1 ; copy 1: same elements + (10,0).
         match out.get("P").unwrap() {
@@ -499,3 +629,7 @@ mod tests {
         assert_eq!(copies_within_budget(5, 1001, 1000), 1);
     }
 }
+
+#[cfg(test)]
+#[path = "taper_tests.rs"]
+mod taper_tests;

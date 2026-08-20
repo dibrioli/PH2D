@@ -559,3 +559,31 @@ pub(super) fn sortkey(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeI
     );
     sinks
 }
+
+/// **A CENA `=64` — A FILA E A MISTURA** (doc 89, folha 08: o taper por cópia do
+/// `motion.clone` e o peso por entrada do `motion.mixer`).
+///
+/// Dois pares, o mesmo grafo dos dois lados de cada par, um número diferente.
+pub(super) fn taper(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_taper::build_taper_demo_document(doc, registry).unwrap_or_default();
+    let (ts, tr, hv) = conferencia_demos_taper::authored();
+    eprintln!(
+        "[taper-demo] DOIS pares, {} bandas. Esquerda: a fila clonada. Direita: a mistura.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_taper::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Banda 2: `Scale Taper {ts}` diz QUANTO A ULTIMA COPIA MEDE -- e o caminho ate' la'
+  e' uma rampa, entao a copia do meio fica a meio (nao a um quarto). `Rot Taper {tr:.0}` e' a
+  volta que a ultima leva. Clique no no' Clone e arraste os dois: a fila afunila e gira ao vivo.
+  (!) Bandas 3 e 4: as MESMAS duas fontes (uma fileira deitada e uma coluna em pe'), fundidas
+  ponto a ponto. Com pesos iguais o resultado e' a diagonal exacta; com `Weight 1 = {hv:.0}` a
+  coluna puxa, e a linha fica mais em pe'.
+  (!) DEU ERRADO se as duas bandas de um par sairem iguais, se a fila 2 nao afunilar, ou se as
+  pecas se taparem umas as outras."
+    );
+    sinks
+}

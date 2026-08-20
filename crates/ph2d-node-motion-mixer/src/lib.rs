@@ -33,8 +33,8 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 const VALUE_COL: &str = "v";
 
-/// Mix modes (the `mode` param). Avg is `0` — the default arm of the reduce match, so it
-/// needs no named constant in production (the test module names it for readability).
+/// Mix modes (the `mode` param). Avg is [`MODE_AVG`] — o braço default da redução, e
+/// nomeado desde a wave dos pesos porque o `ParamGate` deles precisa do número.
 const MODE_ADD: i64 = 1;
 /// Blend mode: `lerp(in0, in1, blend)`.
 const MODE_BLEND: i64 = 2;
@@ -81,9 +81,56 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "mode",
             default: 0.0,
         },
+        // **O PESO DE CADA ENTRADA** — ver [`WEIGHTS`]. Apendados, todos `1` ⇒ literal.
+        ParamSpec {
+            name: "weight_0",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "weight_1",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "weight_2",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "weight_3",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **O PESO POR ENTRADA** (doc 89 folha 08 — MiniCavalry `mixer`: `wa/wb/wc/wd`; C4D dá a
+/// cada camada de field a sua Strength).
+///
+/// A célula media o custo do que já existia: encadear `Blend` aos pares reproduz qualquer
+/// combinação convexa, mas **os pesos COMPÕEM** — o peso de `c` é `w2` e o de `a` é
+/// `(1−w1)(1−w2)`, então o artista que quer 0,2 / 0,3 / 0,5 tem de resolver um sistema, e
+/// paga um nó por entrada.
+///
+/// ⚠️ **Um por PORTA, não um por contribuinte.** Este nó descarta as entradas vazias antes de
+/// reduzir, então a 3ª entrada LIGADA pode ser a porta `in3`; se o peso seguisse a posição na
+/// lista de contribuintes, desligar um fio **remexeria os pesos dos outros três**. O peso
+/// viaja com a porta desde o `snapshot`.
+///
+/// ⚠️ **`Avg` normaliza, `Add` não** — e é isso que mantém os dois modos a serem o que já
+/// eram: a média ponderada é `Σ wᵢ·cᵢ / Σ wᵢ` (com todos a `1`, `Σ w` é a contagem, ao bit) e
+/// a soma ponderada é `Σ wᵢ·cᵢ`. Normalizar a soma seria transformá-la numa média.
+///
+/// ⚠️ **`Σ w = 0` não é uma divisão por zero: é a resposta ZERO.** Com todo peso a zero a
+/// média ponderada é indefinida em matemática, e um `0/0` daria `NaN` — uma cena que
+/// desaparece sem explicação. O que se emite é o numerador (que é zero), que se lê como
+/// *"você desligou todas as entradas"* — visível e explicável.
+///
+/// ⚠️ **Gateados fora do `Blend`**, onde o peso já tem dono: ali a resposta a *"quanto de cada
+/// um?"* é o campo `blend`, por elemento. Pintar quatro sliders ao lado dele seriam duas
+/// portas para a mesma pergunta, e a segunda ganharia em silêncio.
+const WEIGHTS: [&str; 4] = ["weight_0", "weight_1", "weight_2", "weight_3"];
+
+/// Avg is mode `0` — nomeado porque o [`ParamGate`] dos pesos precisa do número.
+const MODE_AVG: i64 = 0;
 
 /// A cloned snapshot of one input.
 struct Snap {
@@ -244,8 +291,10 @@ fn common_columns(snaps: &[&Snap]) -> Vec<String> {
         .collect()
 }
 
-/// Reduce the contributing inputs into one stream. `blend` is only used in Blend mode.
-fn mix(mode: i64, contributing: &[&Snap], blend: &[f32]) -> Stream {
+/// Reduce the contributing inputs into one stream. `blend` is only used in Blend mode;
+/// `weights` is aligned to `contributing` and carries **each snapshot's own port weight**
+/// ([`WEIGHTS`]).
+fn mix(mode: i64, contributing: &[&Snap], blend: &[f32], weights: &[f32]) -> Stream {
     if contributing.is_empty() {
         return Stream::new(0);
     }
@@ -254,24 +303,36 @@ fn mix(mode: i64, contributing: &[&Snap], blend: &[f32]) -> Stream {
     if count == 0 {
         return out;
     }
+    let total_w: f32 = weights.iter().sum();
     for name in common_columns(contributing) {
         let cols: Vec<Column> = contributing
             .iter()
             .map(|s| trunc(s.column(&name).unwrap(), count))
             .collect();
+        // A soma PONDERADA, que os dois modos de redução partilham. ⚠️ Com todos os pesos a
+        // `1` ela é a soma de antes **ao bit**: `x·1.0` é `x` em IEEE-754 para todo `x`
+        // finito, e o primeiro termo passa pelo mesmo `scale` que os outros.
+        let weighted_sum = || {
+            cols.iter()
+                .zip(weights)
+                .skip(1)
+                .fold(scale(&cols[0], weights[0]), |acc, (c, w)| {
+                    add_scaled(&acc, c, *w)
+                })
+        };
         let mixed = match mode {
             MODE_BLEND if cols.len() >= 2 => lerp_col(&cols[0], &cols[1], blend, count),
-            MODE_ADD => cols
-                .iter()
-                .skip(1)
-                .fold(cols[0].clone(), |acc, c| add_scaled(&acc, c, 1.0)),
+            MODE_ADD => weighted_sum(),
             _ => {
-                // Avg (and Blend with a single input): mean over the inputs.
-                let sum = cols
-                    .iter()
-                    .skip(1)
-                    .fold(cols[0].clone(), |acc, c| add_scaled(&acc, c, 1.0));
-                scale(&sum, 1.0 / cols.len() as f32)
+                // Avg (and Blend with a single input): the WEIGHTED mean over the inputs.
+                // ⚠️ `Σ w = 0` emite o numerador (zero) em vez de `0/0 = NaN` — ver
+                // [`WEIGHTS`].
+                let sum = weighted_sum();
+                if total_w == 0.0 {
+                    sum
+                } else {
+                    scale(&sum, 1.0 / total_w)
+                }
             }
         };
         out.set(name, mixed);
@@ -294,18 +355,20 @@ impl NodeOp for MotionMixer {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         };
+        // ⚠️ O peso é lido junto com a porta e viaja com ela pelo filtro — ver [`WEIGHTS`]:
+        // uma entrada vazia sai da lista, e um peso indexado pela POSIÇÃO na lista passaria
+        // a valer para outra porta.
+        let ws: Vec<f32> = WEIGHTS.iter().map(|w| ctx.param(w)).collect();
         // Snapshot the four stream inputs, one at a time.
-        let snaps: Vec<Snap> = (0..4u16)
-            .map(|k| snapshot(ctx.input(k as usize)))
-            .filter(|s| s.count > 0)
+        let snaps: Vec<(Snap, f32)> = (0..4u16)
+            .map(|k| (snapshot(ctx.input(k as usize)), ws[k as usize]))
+            .filter(|(s, _)| s.count > 0)
             .collect();
         // Blend uses only the first two inputs; Avg/Add use all non-empty.
-        let contributing: Vec<&Snap> = if mode == MODE_BLEND {
-            snaps.iter().take(2).collect()
-        } else {
-            snaps.iter().collect()
-        };
-        ctx.emit(mix(mode, &contributing, &blend));
+        let taken = if mode == MODE_BLEND { 2 } else { snaps.len() };
+        let contributing: Vec<&Snap> = snaps.iter().take(taken).map(|(s, _)| s).collect();
+        let weights: Vec<f32> = snaps.iter().take(taken).map(|(_, w)| *w).collect();
+        ctx.emit(mix(mode, &contributing, &blend, &weights));
     }
 }
 
@@ -322,21 +385,70 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "mode",
-    label: "Mode",
-    min: 0.0,
-    max: 2.0,
-    step: 1.0,
-    widget: ParamWidget::Enum {
-        labels: &["Avg", "Add", "Blend"],
+/// ⚠️ **A faixa é `0..2` e o `1` fica no MEIO** — o literal é o centro do curso, e a metade de
+/// cima é o que separa uma média ponderada de uma média: dar peso `2` a uma entrada é dizer
+/// *"esta conta o dobro"*, e sem isso o knob só saberia apagar.
+macro_rules! weight_hint {
+    ($p:expr, $l:expr) => {
+        ParamUiHint {
+            param: $p,
+            label: $l,
+            min: 0.0,
+            max: 2.0,
+            step: 0.01,
+            widget: ParamWidget::Slider,
+        }
+    };
+}
+
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "mode",
+        label: "Mode",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Avg", "Add", "Blend"],
+        },
     },
-}];
+    weight_hint!(WEIGHTS[0], "Weight 0"),
+    weight_hint!(WEIGHTS[1], "Weight 1"),
+    weight_hint!(WEIGHTS[2], "Weight 2"),
+    weight_hint!(WEIGHTS[3], "Weight 3"),
+];
+
+/// Os pesos só aparecem onde são lidos — ver [`WEIGHTS`]: no `Blend` quem responde
+/// *"quanto de cada um?"* é o campo `blend`, e um segundo controle para a mesma pergunta
+/// ganharia em silêncio.
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: WEIGHTS[0],
+        when: "mode",
+        values: &[MODE_AVG as i32, MODE_ADD as i32],
+    },
+    ParamGate {
+        param: WEIGHTS[1],
+        when: "mode",
+        values: &[MODE_AVG as i32, MODE_ADD as i32],
+    },
+    ParamGate {
+        param: WEIGHTS[2],
+        when: "mode",
+        values: &[MODE_AVG as i32, MODE_ADD as i32],
+    },
+    ParamGate {
+        param: WEIGHTS[3],
+        when: "mode",
+        values: &[MODE_AVG as i32, MODE_ADD as i32],
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -364,7 +476,7 @@ mod tests {
     fn avg_is_the_midpoint() {
         let a = snap_p(vec![[0.0, 0.0], [2.0, 0.0]]);
         let b = snap_p(vec![[4.0, 0.0], [2.0, 4.0]]);
-        let out = mix(MODE_AVG, &[&a, &b], &[0.5]);
+        let out = mix(MODE_AVG, &[&a, &b], &[0.5], &[1.0, 1.0]);
         assert_eq!(p_of(&out), vec![[2.0, 0.0], [2.0, 2.0]]);
     }
 
@@ -373,7 +485,7 @@ mod tests {
     fn add_sums_the_inputs() {
         let a = snap_p(vec![[1.0, 1.0]]);
         let b = snap_p(vec![[2.0, 3.0]]);
-        let out = mix(MODE_ADD, &[&a, &b], &[0.5]);
+        let out = mix(MODE_ADD, &[&a, &b], &[0.5], &[1.0, 1.0]);
         assert_eq!(p_of(&out), vec![[3.0, 4.0]]);
     }
 
@@ -383,9 +495,18 @@ mod tests {
     fn blend_lerps_in0_to_in1() {
         let a = snap_p(vec![[0.0, 0.0]]);
         let b = snap_p(vec![[4.0, 8.0]]);
-        assert_eq!(p_of(&mix(MODE_BLEND, &[&a, &b], &[0.0])), vec![[0.0, 0.0]]);
-        assert_eq!(p_of(&mix(MODE_BLEND, &[&a, &b], &[1.0])), vec![[4.0, 8.0]]);
-        assert_eq!(p_of(&mix(MODE_BLEND, &[&a, &b], &[0.25])), vec![[1.0, 2.0]]);
+        assert_eq!(
+            p_of(&mix(MODE_BLEND, &[&a, &b], &[0.0], &[1.0, 1.0])),
+            vec![[0.0, 0.0]]
+        );
+        assert_eq!(
+            p_of(&mix(MODE_BLEND, &[&a, &b], &[1.0], &[1.0, 1.0])),
+            vec![[4.0, 8.0]]
+        );
+        assert_eq!(
+            p_of(&mix(MODE_BLEND, &[&a, &b], &[0.25], &[1.0, 1.0])),
+            vec![[1.0, 2.0]]
+        );
     }
 
     /// Mismatched counts blend the common prefix (the minimum count).
@@ -393,7 +514,7 @@ mod tests {
     fn count_is_the_minimum() {
         let a = snap_p(vec![[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]);
         let b = snap_p(vec![[2.0, 2.0]]);
-        let out = mix(MODE_AVG, &[&a, &b], &[0.5]);
+        let out = mix(MODE_AVG, &[&a, &b], &[0.5], &[1.0, 1.0]);
         assert_eq!(out.count(), 1, "truncated to the shorter input");
     }
 
@@ -482,3 +603,7 @@ mod tests {
 #[cfg(test)]
 #[path = "blend_field_tests.rs"]
 mod blend_field_tests;
+
+#[cfg(test)]
+#[path = "weights_tests.rs"]
+mod weights_tests;

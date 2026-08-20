@@ -210,3 +210,34 @@ pub(crate) fn deform(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId
     );
     sinks
 }
+
+/// **A CENA `=69` — A FAMÍLIA TRANSFORM** (doc 89, folha 05: cinco células, cinco nós).
+///
+/// Cinco pares; o mesmo grafo dos dois lados de cada um.
+pub(crate) fn transform_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_transform::build_transform_demo_document(doc, registry)
+        .unwrap_or_default();
+    let (step, turn) = conferencia_demos_transform::authored();
+    eprintln!(
+        "[transform-demo] CINCO pares, {} bandas. Esquerda = como era; direita = o controle novo.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_transform::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Par 1 (azul): o MESMO passo de {step} nos dois lados. `Space = Local` le' a
+  orientacao de cada peca, entao o anel abre em vez de deslizar.
+  (!) Par 2 (laranja): `Separate Y Mask` faz a altura seguir um SEGUNDO campo. Sem ele os
+  nove crescem por igual; com ele a fileira vai de alto-e-magro a baixo-e-largo.
+  (!) Par 3 (verde): `Flip Orientation` espelha a ORIENTACAO do gemeo, nao so' a posicao.
+  Sem ele metade do leque aponta para dentro -- olhe as pontas das barras.
+  (!) Par 4 (rosa): `Reindex` diz que as seis fatias sao UMA lista. Sem ele o degrade
+  recomeca em cada fatia e as seis saem iguais.
+  (!) Par 5 (lilas): a mesma volta de {turn} graus nos dois. `Carry Rotation` faz o sprite
+  virar com a orbita, entao os raios continuam a apontar para fora.
+  (!) DEU ERRADO se as duas bandas de um par sairem iguais, ou se no par 1 o anel da
+  esquerda mudar de tamanho -- ele so' pode deslizar."
+    );
+    sinks
+}

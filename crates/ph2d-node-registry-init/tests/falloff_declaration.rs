@@ -38,6 +38,29 @@ fn declares(reg: &NodeRegistry, ty: NodeTypeId) -> bool {
     })
 }
 
+/// O nó **PRODUZ** a coluna, e a pergunta é respondida pelo REGISTRY.
+///
+/// ⚠️ **Esta metade existe porque a regra de fonte do irmão
+/// [`consumes_falloff_in_source`] procura o literal `set("falloff"`, e um nó que
+/// escreva a coluna por um alvo RESOLVIDO (`out.set(target, …)`) some dela.**
+/// Aconteceu ao `motion.falloff` no dia em que ele ganhou o param `channel` (doc
+/// 89 folha 05): o produtor canónico da máscara passou a contar como um leitor
+/// CPU-only sem declaração, e o gate ficou vermelho sobre código correto.
+///
+/// ⚠️ **É uma regra DERIVADA e por isso mais forte que o grep**, não mais fraca:
+/// uma binding `Write`/`ReadWrite` em `falloff` é a definição de produzir a
+/// coluna, escrita na estrutura que o sequenciador de facto lê. Ela alcança
+/// exactamente a família que o doc do irmão já nomeia como a exclusão correta (as
+/// `field.*` e este nó), e nada mais — um leitor puro tem `Read`.
+fn produces_via_binding(reg: &NodeRegistry, ty: NodeTypeId) -> bool {
+    use ph2d_nodegraph::gpu::KernelResolver;
+    reg.gpu_kernel(ty).is_some_and(|k| {
+        k.bindings.iter().any(|b| {
+            b.column == FALLOFF && matches!(b.access, ColumnAccess::ReadWrite | ColumnAccess::Write)
+        })
+    })
+}
+
 /// O diagnoser DERIVA que ele consome — uma binding de GPU que LÊ e não re-produz?
 ///
 /// Espelha o `consumes` do `ph2d-motion-diagnose` (que é privado): binding que
@@ -69,7 +92,8 @@ fn every_cpu_only_falloff_reader_declares_it() {
     let mut missing = Vec::new();
 
     for m in reg.manifests() {
-        if !consumes_falloff_in_source(m.name) {
+        // Um PRODUTOR não é consumidor — as duas grafias da mesma exclusão.
+        if produces_via_binding(&reg, m.id) || !consumes_falloff_in_source(m.name) {
             continue;
         }
         if derivable(&reg, m.id) {

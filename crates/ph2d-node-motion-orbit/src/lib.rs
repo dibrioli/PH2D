@@ -95,9 +95,36 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "speed",
             default: 72.0,
         },
+        // Apendado (doc 89 folha 05). `0` = o nó que sempre shipou (só `P`).
+        ParamSpec {
+            name: "carry_rotation",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **LEVAR A ORIENTAÇÃO NA ÓRBITA** — `0` (default) não toca em `rot`, que é o nó
+/// que sempre shipou.
+///
+/// ⚠️ **É o mesmo `θ` que move a posição**, e é isso que faz a coisa parecer certa:
+/// um sprite que percorre um círculo e VIRA com ele é uma rotação rígida do layout,
+/// não duas animações a concordar. Hoje isso custava `motion.orbit + motion.rotate`
+/// com **um `value.time` a dirigir os dois `angle`** por param dirigido — três nós e
+/// uma fiação não-óbvia para o que a referência resolve num bool (Blender *Rotate
+/// Instances* com `Pivot Point`), e ⚠️ o `motion.rotate` **não tem `speed`**, então
+/// sem o `value.time` a órbita animava e o sprite ficava parado.
+///
+/// ⚠️ **O `falloff` pesa os dois** — o mesmo `f` que mistura a posição mistura o
+/// ângulo. Um campo que faz só metade da nuvem orbitar tem de fazer só metade dela
+/// virar, senão a máscara passa a significar duas coisas diferentes no mesmo nó.
+///
+/// ⚠️ **A coluna é CUNHADA quando o knob está ligado** (base ausente → `0`), e não
+/// quando ele está desligado — é o precedente do `motion.rotate`, que escreve `rot`
+/// incondicionalmente porque é o que ele faz. Aqui escrever sempre poria uma coluna
+/// nova na saída de todo `motion.orbit` do grafo, e a forma do stream é contrato
+/// com quem está a jusante.
+const CARRY_ROTATION: &str = "carry_rotation";
 
 /// Degrees per full turn — the exact divisor that takes an authored angle into
 /// the cycle-based trig's unit. IEEE division is correctly rounded, so this is
@@ -178,7 +205,73 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["pivot_x", "pivot_y", "angle", "speed"],
+    params: OB_PARAMS,
+    count_law: None,
+    variant_by_param: Some(|param| {
+        if param(CARRY_ROTATION) >= 0.5 {
+            &ORBIT_CARRY
+        } else {
+            &GPU_KERNEL
+        }
+    }),
+    applicable: None,
+};
+
+/// Os params que sobem ao device — nomeados para as duas variantes não divergirem.
+/// ⚠️ O `carry_rotation` **não** está aqui: ele escolhe a variante no plano, e o
+/// corpo de cada uma já sabe o que faz.
+const OB_PARAMS: &[&str] = &["pivot_x", "pivot_y", "angle", "speed"];
+
+/// **A variante que LEVA A ORIENTAÇÃO** (ver [`CARRY_ROTATION`]) — o mesmo corpo,
+/// mais uma linha, mais a binding de `rot`.
+///
+/// ⚠️ **Uma VARIANTE e não um `select` no corpo**, porque a forma do STREAM difere:
+/// com `ReadWrite` a coluna é sempre materializada, e o modo desligado não emite
+/// `rot` nenhum. Ligar/desligar um `select` deixaria o device a cunhar uma coluna
+/// que a CPU não cunha — divergência de SHAPE, não um ε (a lei que a
+/// `variant_by_param` foi escrita para servir).
+/// ⚠️ E o `identity: 0` da binding é a MESMA base que a CPU usa quando a lista
+/// chega sem `rot`.
+const ORBIT_CARRY: GpuKernel = GpuKernel {
+    wgsl: "\
+        let ob_pivot = vec2<f32>(params.pivot_x, params.pivot_y);\n\
+        let ob_deg = params.angle + params.playhead * params.speed;\n\
+        let ob_theta = ob_deg / 360.0;\n\
+        let ob_c = ob_sin_cycles(ob_theta + 0.25);\n\
+        let ob_s = ob_sin_cycles(ob_theta);\n\
+        let ob_p = read_P(i);\n\
+        let ob_f = read_falloff(i);\n\
+        let ob_d = ob_p - ob_pivot;\n\
+        let ob_r = ob_pivot + vec2<f32>(\n\
+        \x20   ob_c * ob_d.x - ob_s * ob_d.y,\n\
+        \x20   ob_s * ob_d.x + ob_c * ob_d.y);\n\
+        write_P(i, ob_p + (ob_r - ob_p) * ob_f);\n\
+        write_rot(i, read_rot(i) + ob_deg * ob_f);\n",
+    wgsl_lib: GPU_KERNEL.wgsl_lib,
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "falloff",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: "rot",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+    ],
+    params: OB_PARAMS,
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -196,6 +289,7 @@ impl NodeOp for MotionOrbit {
         let angle = ctx.param("angle");
         let speed = ctx.param("speed");
         let theta_deg = angle + ctx.playhead() as f32 * speed;
+        let carry = ctx.param(CARRY_ROTATION) >= 0.5;
         let (c, s) = cos_sin_cycles(theta_deg / DEG_PER_TURN);
         let out = {
             let input = ctx.input(0);
@@ -210,13 +304,28 @@ impl NodeOp for MotionOrbit {
                     orbit_point(p, pivot, c, s, falloff_at(input, i))
                 })
                 .collect();
+            // A orientação levada — o MESMO `θ` e o MESMO `falloff` da posição.
+            // Ver [`CARRY_ROTATION`]: a coluna só é cunhada no modo que a escreve.
+            let turned: Option<Vec<f32>> = carry.then(|| {
+                let prev: &[f32] = match input.get("rot") {
+                    Some(Column::Scalar(v)) => v.as_slice(),
+                    _ => &[],
+                };
+                (0..n)
+                    .map(|i| prev.get(i).copied().unwrap_or(0.0) + theta_deg * falloff_at(input, i))
+                    .collect()
+            });
             let mut out = Stream::new(n);
             for (name, col) in input.columns() {
-                if name != "P" {
+                let replaced = name == "P" || (carry && name == "rot");
+                if !replaced {
                     out.set(name.clone(), col.clone());
                 }
             }
             out.set("P", Column::Vec2(moved));
+            if let Some(rot) = turned {
+                out.set("rot", Column::Scalar(rot));
+            }
             out
         };
         ctx.emit(out);
@@ -278,6 +387,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 720.0,
         step: 1.0,
         widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: CARRY_ROTATION,
+        label: "Carry Rotation",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
     },
 ];
 
@@ -434,3 +551,7 @@ mod tests {
         assert!(reg.resolve(MANIFEST.id).is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "carry_tests.rs"]
+mod carry_tests;

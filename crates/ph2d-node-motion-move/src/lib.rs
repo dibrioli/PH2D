@@ -4,8 +4,25 @@
 //! multiplicative `falloff` column (§1.2; absent → `1.0`, full effect). Every
 //! other column passes through unchanged (count preserved). Pure.
 //!
-//! Params (read via `ctx.param`): `dx` (0), `dy` (0).
+//! Params (read via `ctx.param`): `dx` (0), `dy` (0), [`SPACE`] (0 World).
 //! `P'_i = P_i + (dx, dy) * falloff_i`.
+//!
+//! ## O ESPAÇO do deslocamento (doc 89 folha 05 — a varredura PRO da família TRANSFORM)
+//!
+//! `(dx, dy)` era sempre um vetor de MUNDO: mandar cada elemento *"um passo para
+//! a frente do seu próprio nariz"* — o que uma sim orientada pede o tempo todo —
+//! não era difícil, era **duas caixas de texto**. A cadeia medida na célula:
+//! `motion.expression("a*cos(rot*0.0174533) − b*sin(rot*0.0174533)") →
+//! motion.drive(X, Add)` **mais o gêmeo** para Y, ou seja o mesmo `(dx, dy)` vivo
+//! em duas fórmulas de texto que têm de concordar — a falha de duas-portas, e
+//! quatro nós.
+//!
+//! ⚠️ **`Local` roda o OFFSET, nunca o elemento.** O `rot` continua a ser lido e
+//! nunca escrito: este nó move, quem gira é o `motion.rotate`. É o que separa
+//! *"andar para a frente"* de *"virar-se"*, e é o que mantém os dois compostáveis
+//! na ordem que o artista quiser.
+
+mod trig;
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
@@ -14,8 +31,27 @@ use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+/// **O ESPAÇO em que `(dx, dy)` é lido** — `0` Mundo (o que sempre shipou), `1`
+/// Local (o offset roda pelo `rot` de cada elemento).
+///
+/// ⚠️ **O `0` é LITERAL e não aritmético**, e a distinção é o que faz o default
+/// não mover um bit: o caminho de Mundo não passa por rotação nenhuma. Rodar por
+/// `0°` daria o mesmo número aqui (os quatro quartos de volta da senoide
+/// parabólica são exatos, ver [`trig`]) — mas a igualdade seria uma propriedade
+/// da aproximação, e uma propriedade pode mudar. A estrutura não.
+///
+/// ⚠️ **Uma lista SEM coluna `rot` em modo Local devolve `(dx, dy)`** — o mesmo
+/// que Mundo. Não é um caso especial: é a identidade `rot = 0` a valer, na CPU
+/// pelo braço literal e no device pelo `identity: 0.0` da binding de leitura. As
+/// duas portas dão o mesmo número porque respondem a mesma pergunta.
+const SPACE: &str = "space";
+
+/// O modo Local do [`SPACE`] — o valor que o enum do painel autora.
+const SPACE_LOCAL: f32 = 1.0;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -40,6 +76,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "dy",
             default: 0.0,
         },
+        // Apendado (doc 89 folha 05). `0` = World, o nó que sempre shipou.
+        ParamSpec {
+            name: "space",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -53,18 +94,96 @@ fn falloff_at(stream: &Stream, i: usize) -> f32 {
     }
 }
 
+/// **O offset que este elemento leva**, antes do falloff. `rot = None` é o modo
+/// Mundo **e também** o modo Local sobre uma lista sem orientação — o mesmo
+/// braço literal para os dois, porque é a mesma resposta (ver [`SPACE`]).
+///
+/// A porta é ÚNICA de propósito: a `eval` e o gate de paridade perguntam a ela, e
+/// não a duas expressões que teriam de concordar sobre o sinal do seno.
+fn offset_for(dx: f32, dy: f32, rot: Option<f32>) -> (f32, f32) {
+    match rot {
+        Some(deg) => {
+            let (c, s) = cos_sin_cycles(deg / 360.0);
+            (dx * c - dy * s, dx * s + dy * c)
+        }
+        None => (dx, dy),
+    }
+}
+
 /// GPU compute kernel (GPU/M5 Fase 1, ADR-0126): `P' = P + (dx, dy) · falloff`,
 /// the exact per-element map of the CPU `eval` (same multiply/add order → same
 /// float result up to GPU FMA contraction, covered by the ε parity gate).
 /// `ReadWriteExisting` mirrors the CPU's pattern-match: a stream WITHOUT a `P`
 /// column passes through untouched (the CPU only rewrites `P` when it exists),
 /// so absence means the same thing on both paths.
-const GPU_KERNEL: GpuKernel = GpuKernel {
+const MOVE_WORLD: GpuKernel = GpuKernel {
     wgsl: "\
         let mv_f = read_falloff(i);\n\
         let mv_p = read_P(i);\n\
         write_P(i, vec2<f32>(mv_p.x + params.dx * mv_f, mv_p.y + params.dy * mv_f));\n",
     wgsl_lib: "",
+    bindings: MOVE_WORLD_BINDINGS,
+    params: &["dx", "dy"],
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// As bindings do modo Mundo — nomeadas para o dispatcher as reusar sem uma
+/// segunda cópia que pudesse divergir.
+const MOVE_WORLD_BINDINGS: &[ColumnBinding] = &[
+    ColumnBinding {
+        column: "P",
+        dim: Dim::Vec2,
+        access: ColumnAccess::ReadWriteExisting,
+        identity: [0.0; 4],
+        port: 0,
+    },
+    ColumnBinding {
+        column: "falloff",
+        dim: Dim::Scalar,
+        access: ColumnAccess::Read,
+        identity: [1.0; 4],
+        port: 0,
+    },
+];
+
+/// **O modo LOCAL** (doc 89 folha 05): o offset roda pelo `rot` do elemento antes
+/// de ser pesado pelo falloff — a transcrição exacta de [`offset_for`].
+///
+/// ⚠️ **Uma VARIANTE e não um `select` no corpo**, porque as bindings diferem: o
+/// modo Mundo não lê `rot`, e declará-la sempre poria uma coluna a mais no
+/// bind group de todo `motion.move` do grafo — o custo é do plano, não do laço.
+/// ⚠️ E o `rot` é `Read` com `identity: 0`, que é a MESMA resposta que a CPU dá
+/// quando a coluna falta (ver [`SPACE`]): as duas portas concordam por
+/// construção, não por sorte.
+const MOVE_LOCAL: GpuKernel = GpuKernel {
+    wgsl: "\
+        let mv_f = read_falloff(i);\n\
+        let mv_b = mv_cos_sin(read_rot(i) / 360.0);\n\
+        let mv_ox = params.dx * mv_b.x - params.dy * mv_b.y;\n\
+        let mv_oy = params.dx * mv_b.y + params.dy * mv_b.x;\n\
+        let mv_p = read_P(i);\n\
+        write_P(i, vec2<f32>(mv_p.x + mv_ox * mv_f, mv_p.y + mv_oy * mv_f));\n",
+    // A MESMA senoide parabólica corrigida do `trig.rs` da CPU, verbatim — o
+    // `sin` do WGSL não tem garantia entre fabricantes e poria o device noutro
+    // círculo (HR-5, o precedente do `motion.orbit`).
+    wgsl_lib: "\
+        fn mv_sin_cycles(phase: f32) -> f32 {\n\
+            let f = phase - floor(phase);\n\
+            var p: f32;\n\
+            if (f < 0.5) {\n\
+                let u = f * 2.0;\n\
+                p = 4.0 * u * (1.0 - u);\n\
+            } else {\n\
+                let u = (f - 0.5) * 2.0;\n\
+                p = -4.0 * u * (1.0 - u);\n\
+            }\n\
+            return 0.225 * (p * abs(p) - p) + p;\n\
+        }\n\
+        fn mv_cos_sin(phase: f32) -> vec2<f32> {\n\
+            return vec2<f32>(mv_sin_cycles(phase + 0.25), mv_sin_cycles(phase));\n\
+        }\n",
     bindings: &[
         ColumnBinding {
             column: "P",
@@ -80,10 +199,35 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [1.0; 4],
             port: 0,
         },
+        ColumnBinding {
+            column: "rot",
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
     ],
     params: &["dx", "dy"],
     count_law: None,
     variant_by_param: None,
+    applicable: None,
+};
+
+/// O kernel registado: o dispatcher. A forma de topo **é** a de Mundo, para quem
+/// nunca resolver ver um kernel real (o molde do `motion.drive`).
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    wgsl: MOVE_WORLD.wgsl,
+    wgsl_lib: MOVE_WORLD.wgsl_lib,
+    bindings: MOVE_WORLD_BINDINGS,
+    params: MOVE_WORLD.params,
+    count_law: None,
+    variant_by_param: Some(|param| {
+        if param(SPACE) >= 0.5 {
+            &MOVE_LOCAL
+        } else {
+            &MOVE_WORLD
+        }
+    }),
     applicable: None,
 };
 
@@ -96,9 +240,16 @@ impl NodeOp for MotionMove {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let (dx, dy) = (ctx.param("dx"), ctx.param("dy"));
+        let local = ctx.param(SPACE) >= 0.5;
         let out = {
             let input = ctx.input(0);
             let n = input.count();
+            // ⚠️ A coluna só é procurada no modo que a lê: em Mundo o `rot` de um
+            // stream orientado não pode nem chegar ao caminho quente.
+            let rot: Option<&Vec<f32>> = match (local, input.get("rot")) {
+                (true, Some(Column::Scalar(r))) => Some(r),
+                _ => None,
+            };
             let mut out = Stream::new(n);
             for (name, col) in input.columns() {
                 match (name.as_str(), col) {
@@ -108,7 +259,8 @@ impl NodeOp for MotionMove {
                         let moved: Vec<[f32; 2]> = par_build(v.len(), |i| {
                             let p = v[i];
                             let f = falloff_at(input, i);
-                            [p[0] + dx * f, p[1] + dy * f]
+                            let (ox, oy) = offset_for(dx, dy, rot.and_then(|r| r.get(i).copied()));
+                            [p[0] + ox * f, p[1] + oy * f]
                         });
                         out.set("P", Column::Vec2(moved));
                     }
@@ -160,6 +312,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 10.0,
         step: 0.1,
         widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: SPACE,
+        label: "Space",
+        min: 0.0,
+        max: SPACE_LOCAL,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["World", "Local"],
+        },
     },
 ];
 
@@ -256,3 +418,7 @@ mod tests {
         assert_eq!(falloff_at(&s, 0), 1.0);
     }
 }
+
+#[cfg(test)]
+#[path = "space_tests.rs"]
+mod space_tests;

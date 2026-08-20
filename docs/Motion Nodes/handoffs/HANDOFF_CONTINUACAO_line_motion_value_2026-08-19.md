@@ -40,13 +40,13 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 | base | `main` `ee1432203` — a linha foi **reaberta por fast-forward** depois de a integração ter entrado |
 | commits desta janela | `git log --oneline main..HEAD` (⚠️ não se pina aqui — o commit que escreve o número muda o número) |
 | estado | **verde** — `fmt` 0, `clippy` 0, LOC 0, suítes das crates tocadas 0 falhas |
-| smoke pendente | **nenhum** — os quatro desta janela foram aprovados pelo Enio |
+| smoke pendente | **`=69`** (a família transform) — os anteriores foram aprovados pelo Enio |
 
 ⚠️ **Dois smokes de ontem nunca foram vistos pelo Enio** e já estão no `main`:
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 33**)
+### §1.1 — O que as JANELAS de 2026-08-19/20 fecharam (a conferência foi de **P1 59 → 28**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: a janela fechou
 **vinte e oito** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
@@ -68,7 +68,8 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | 🔬 **UM INSTRUMENTO NOVO, e é o achado do dia:** `conferencia_vs_manifesto.py` cruza a coluna «params hoje» de cada célula com o MANIFESTO do nó (sonda `measure_node_params`, derivada do registry) e sai vermelho quando discordam. Ele acusou **31 células ABERTAS em 16 nós** a descrever um nó que já mudou | — |
 | **V** | folha 01: **cinco células fecharam e QUATRO não custaram código** — `mode`/`spacing` do `distribute_curve`, `align` do `distribute_radial`, `size_random` e `dir_mode` do emitter já tinham shipado. A quinta é o **`probability`** do emitter, construído hoje. A folha desce de **6 para 1 P1** | `=67` |
 | **V** | 🔬 **e a SEGUNDA passagem do instrumento**, com o sinal FORTE (o param que a coluna «default que reduz» nomeia já está no manifesto): 7 acusadas, **2 verdadeiras** (`probability` do emitter — uma SEGUNDA célula pedia o mesmo — e `lacunarity` do `motion.noise`), 5 falsos positivos **todos da mesma forma**, agora tabelados no próprio instrumento | — |
-| **V** | **folha 04 (deformers): CINCO células numa wave** — a `direction` do `bend`, o `radius` e o `profile` do `twist`, o `radius_y` do `spherize` e o `mode` (Fit/Keep Length) do `spline_wrap`. As cinco são adição de param com default literal. A folha desce de **6 para 1 P1**, e o que sobra é de outro tamanho (as arestas de Bézier + patch de Coons do `four_point_warp`) | `=68` |
+| **V** | **folha 04 (deformers): CINCO células numa wave** — a `direction` do `bend`, o `radius` e o `profile` do `twist`, o `radius_y` do `spherize` e o `mode` (Fit/Keep Length) do `spline_wrap`. As cinco são adição de param com default literal. A folha desce de **6 para 1 P1**, e o que sobra é de outro tamanho (as arestas de Bézier + patch de Coons do `four_point_warp`) | `=68` ✔ |
+| **V** | ✅ **folha 05 (transform) FECHOU: cinco células, cinco nós** — `space` (World/Local) do `move` · `use_falloff_y` do `scale` **+** `mask_channel` do `falloff` (uma célula, dois nós) · `flip_rot` do `mirror` · `reindex` do `mirror` **e** do `kaleidoscope` · `carry_rotation` do `orbit`. ⚠️ **As cinco eram a MESMA pergunta em cinco lugares**: o nó sabe o que cada ELEMENTO é (orientação, posição na lista, máscara) e respondia como se a lista fosse um bloco. Os 3 P2 que sobram não são dessa família | `=69` |
 
 ⚠️ **E uma correção de GEOMETRIA em `ph2d-vec-scene`, que o smoke do Enio devolveu:** a
 borda que fecha uma fatia **abaulava** 19–25% do raio, porque o handle do arco sobrava na
@@ -164,7 +165,7 @@ reportar.
 ### Grupo V — as folhas grandes, por ORDEM DE DEFEITO
 
 `08_stream_utilidade` (8) · `01_distribuicao` (6) · `04_deformers` (6) · `10_field` (6) ·
-`02_force` (5) · `11_fx_raster` (5) · `05_transform` (4) · `03_simulacao` (3) ·
+`02_force` (5) · `11_fx_raster` (5) · ~~`05_transform`~~ ✅ · `03_simulacao` (3) ·
 `07_tempo` (3) · `09_cor` (3) · `14_source` (3, na tabela acima).
 
 ⚠️ **A contagem por folha se DERIVA** (`python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"`),
@@ -177,7 +178,7 @@ ausente.
 
 ---
 
-## §4 — As VINTE E TRÊS LEIS que esta linha pagou para aprender
+## §4 — As VINTE E SETE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -332,6 +333,34 @@ são estilo.
     crescem e deixam `Index` **e** `Count` velhos; `clone` faz o certo). ⛔ **E não corrija
     meio:** no `mirror`, arrumar só o `Count` faz a rampa alcançar **metade, duas vezes** — as
     duas colunas são uma pergunta só, e a resposta é de família.
+24. ⚠️ **Uma FIXTURE sobre um eixo não distingue uma rotação da sua TRANSPOSTA.** A mutação que
+    troca `dx·c − dy·s` por `dx·c + dy·s` **sobreviveu** a cinco gates do `space` do
+    `motion.move`, porque todos usavam `dy = 0` — e com `dy = 0` as duas expressões são a mesma
+    linha. O comprimento também não separa (as duas são isometrias). *Um oráculo de rotação
+    precisa de um vetor OBLÍQUO e de um ângulo OBLÍQUO*, e o gate que nasceu disso fixa o
+    SENTIDO (`(0,1)` a 90° tem de ir para `(−1,0)`).
+25. ⚠️ **Um canal que ninguém consegue ESCREVER não existe** — e a célula que pede o leitor
+    paga o escritor. O `use_falloff_y` do `motion.scale` sem o `mask_channel` do `motion.falloff`
+    seria um toggle que o smoke não distingue de um bug: nada no catálogo escrevia `falloff_y`.
+    As duas metades são **uma** célula da conferência, e é assim que ela foi fechada.
+    ⚠️ E a metade irmã: **ligue por PARAM, nunca pela presença de uma coluna.** Presença faz um
+    nó a montante mudar o resultado de um nó que ninguém tocou (invisível no painel), e dá ao
+    device uma pergunta que ele não pode ver — o kernel não sabe se a coluna existia. Com o
+    toggle, a ausência tem um significado previsível (`1.0`, a identidade da binding) e as duas
+    portas resolvem a MESMA expressão.
+26. ⚠️ **Uma PALAVRA que já tem dono não se reusa, mesmo com sentido diferente — há gate.** Pus
+    um param `channel` no `motion.falloff` (que máscara escrever) e o
+    `no_param_of_a_channel_driven_node_is_declared_a_fixed_length` reprovou: neste app `channel`
+    significa *a GRANDEZA dirigida* (`drive`/`oscillator`/`noise`/`wiggle`), onde um comprimento
+    vale metros em Position e **graus** em Rotation. O gate varre a palavra, e estava certo sobre
+    a palavra. ⛔ **A cura é RENOMEAR (`mask_channel`), não abrir excepção no gate**: uma palavra
+    com dois sentidos é a falha de duas-portas no vocabulário, e cada excepção num censo é um
+    buraco que o próximo nó atravessa.
+27. ⚠️ **Ao comparar duas bandas de uma cena, compare a forma RELATIVA ao centro de cada uma.**
+    Três gates da `=69` nasceram vermelhos porque eu comparei `P` absoluto de bandas que vivem em
+    `x = ±5,6` — estavam a medir o layout, não o nó. E depois de subtrair o centroide, a
+    igualdade tem de ser APROXIMADA: `q − centroide` cancela ~5,6 de ~5,9 em `f32`, e os dois
+    lados perdem bits diferentes (medido: `0,3000002` contra `0,2999997`).
 
 ---
 

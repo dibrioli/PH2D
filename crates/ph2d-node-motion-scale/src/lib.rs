@@ -25,7 +25,28 @@
 //! `amount_y` enquanto ele estiver travado — *um controle que não faz nada não é
 //! pintado*.
 //!
-//! Params (read via `ctx.param`): `amount` (1.0) · `uniform` (1.0) · `amount_y` (1.0).
+//! ## A MÁSCARA do segundo eixo (doc 89 folha 05 — a mesma varredura, um ano depois)
+//!
+//! O `uniform` destravou dois FATORES, mas os dois eixos continuavam a partilhar
+//! **um** peso: `sx = 1 + (ax−1)·w` e `sy = 1 + (ay−1)·w` com o mesmo `w`, então
+//! todo elemento interpolava da identidade para o MESMO par `(ax, ay)`. *Squash de
+//! um, stretch do vizinho* — a leitura literal do primeiro princípio da animação —
+//! seguia inexprimível num nó só: pedia dois `motion.scale` (um só-X, um só-Y) com
+//! dois campos diferentes entre eles, cada um a carregar meia identidade.
+//!
+//! O [`USE_FALLOFF_Y`] faz o eixo Y ler a coluna **[`FALLOFF_Y`]**, que o
+//! `motion.falloff(Channel = Falloff Y)` escreve. A cadeia passa a ser linear —
+//! `campo A → campo B (canal Y) → scale` — e o par `(ax, ay)` volta a viver numa
+//! porta só.
+//!
+//! ⚠️ **Um TOGGLE e não a mera presença da coluna.** Ligar por presença faria um
+//! `field.*` a montante mudar o resultado de um nó que ninguém tocou, e um efeito
+//! invisível no painel é o que a lei de costura de UI proíbe. Com o toggle, o
+//! estado que o artista vê **é** o estado que corre — e o device pode ramificar
+//! num param em vez de adivinhar uma coluna.
+//!
+//! Params (read via `ctx.param`): `amount` (1.0) · `uniform` (1.0) · `amount_y` (1.0)
+//! · [`USE_FALLOFF_Y`] (0.0).
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY, Stream, par_build};
@@ -36,6 +57,21 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+/// **A SEGUNDA máscara** — a coluna que o eixo Y lê quando [`USE_FALLOFF_Y`] está
+/// ligado. Escrita pelo `motion.falloff` no canal `Falloff Y`.
+///
+/// ⚠️ **Ausente vale `1.0` (efeito cheio), não `falloff`.** A alternativa —
+/// *"cai no `falloff` quando a coluna falta"* — parece mais gentil e é
+/// indefensável no device: a presença de uma coluna não é um param, então o
+/// kernel teria de decidir o que a CPU decidiu, sem poder ver. Com a identidade
+/// `1.0` as duas portas resolvem a mesma expressão, e o estado *"liguei o toggle
+/// e não escrevi a coluna"* tem um significado que o artista pode prever.
+const FALLOFF_Y: &str = "falloff_y";
+
+/// **O toggle que destrava a máscara do eixo Y** — `0` (default) = os dois eixos
+/// partilham o `falloff`, que é o nó que sempre shipou, ao bit.
+const USE_FALLOFF_Y: &str = "use_falloff_y";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -66,6 +102,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "amount_y",
             default: 1.0,
         },
+        // Apendado (doc 89 folha 05). `0` = um peso para os dois eixos.
+        ParamSpec {
+            name: "use_falloff_y",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -85,7 +126,13 @@ fn authored_factors(amount: f32, uniform: f32, amount_y: f32) -> (f32, f32) {
 
 /// The multiplicative `falloff` weight for instance `i` (absent → `1.0`).
 fn falloff_at(stream: &Stream, i: usize) -> f32 {
-    match stream.get("falloff") {
+    column_at(stream, "falloff", i)
+}
+
+/// O peso escalar de uma coluna nomeada em `i` (ausente ou curta → `1.0`) — a
+/// mesma forma para as duas máscaras, para elas não poderem divergir na borda.
+fn column_at(stream: &Stream, name: &str, i: usize) -> f32 {
+    match stream.get(name) {
         Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
         _ => 1.0,
     }
@@ -108,8 +155,10 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let sc_ay = select(params.amount_y, params.amount, params.uniform >= 0.5);\n\
         let sc_f = read_falloff(i);\n\
+        let sc_split = params.uniform < 0.5 && params.use_falloff_y >= 0.5;\n\
+        let sc_wy = select(sc_f, read_falloff_y(i), sc_split);\n\
         let sc_fx = 1.0 + (params.amount - 1.0) * sc_f;\n\
-        let sc_fy = 1.0 + (sc_ay - 1.0) * sc_f;\n\
+        let sc_fy = 1.0 + (sc_ay - 1.0) * sc_wy;\n\
         let sc_s = read_size(i);\n\
         write_size(i, vec2<f32>(sc_s.x * sc_fx, sc_s.y * sc_fy));\n",
     wgsl_lib: "",
@@ -129,8 +178,20 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [1.0; 4],
             port: 0,
         },
+        // ⚠️ **Uma binding ESTÁTICA e não uma variante**, ao contrário do
+        // `motion.move`: `Read` de uma coluna ausente vira uma constante no módulo
+        // gerado, então o custo de a declarar sempre é zero buffers, e a identidade
+        // `1.0` é exactamente a resposta que [`FALLOFF_Y`] promete quando o toggle
+        // está ligado e ninguém escreveu o canal.
+        ColumnBinding {
+            column: FALLOFF_Y,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
     ],
-    params: &["amount", "uniform", "amount_y"],
+    params: &["amount", "uniform", "amount_y", "use_falloff_y"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -144,11 +205,14 @@ impl NodeOp for MotionScale {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let (ax, ay) = authored_factors(
-            ctx.param("amount"),
-            ctx.param("uniform"),
-            ctx.param("amount_y"),
-        );
+        let uniform = ctx.param("uniform");
+        let (ax, ay) = authored_factors(ctx.param("amount"), uniform, ctx.param("amount_y"));
+        // ⚠️ **O link VENCE**: com `uniform` ligado os dois eixos são o mesmo eixo,
+        // e uma máscara só para Y significaria escalar não-uniformemente sob um
+        // controle que promete o contrário. O `ParamGate` esconde o toggle ali, e
+        // esta linha garante que esconder e não-fazer são a mesma coisa (um param
+        // escondido que ainda mordesse seria a falha de duas-portas ao contrário).
+        let split_mask = uniform < 0.5 && ctx.param(USE_FALLOFF_Y) >= 0.5;
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -163,8 +227,15 @@ impl NodeOp for MotionScale {
             // (bit-identical, no reduction). GPU/M5 Fase 0.
             let scaled: Vec<[f32; 2]> = par_build(n, |i| {
                 let w = falloff_at(input, i);
+                // ⚠️ A segunda coluna só é procurada no modo que a lê — desligado,
+                // o caminho quente é literalmente o de sempre.
+                let wy = if split_mask {
+                    column_at(input, FALLOFF_Y, i)
+                } else {
+                    w
+                };
                 let s = base.get(i).copied().unwrap_or(SIZE_IDENTITY);
-                [s[0] * eff_factor(ax, w), s[1] * eff_factor(ay, w)]
+                [s[0] * eff_factor(ax, w), s[1] * eff_factor(ay, wy)]
             });
             let mut out = Stream::new(n);
             for (name, col) in input.columns() {
@@ -227,16 +298,32 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
+    ParamUiHint {
+        param: USE_FALLOFF_Y,
+        label: "Separate Y Mask",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
 ];
 
 /// Com o link LIGADO o `amount_y` não é lido, então ele não é pintado — a mesma lei
 /// que o `motion.look_at` e o `motion.oscillator` já aplicam aos params de um modo
 /// que não está escolhido.
-static PARAM_GATES: &[ParamGate] = &[ParamGate {
-    param: "amount_y",
-    when: "uniform",
-    values: &[0],
-}];
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "amount_y",
+        when: "uniform",
+        values: &[0],
+    },
+    // A máscara do eixo Y só existe quando há um eixo Y — a mesma condição.
+    ParamGate {
+        param: USE_FALLOFF_Y,
+        when: "uniform",
+        values: &[0],
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -396,3 +483,7 @@ mod tests {
         assert_eq!(authored_factors(2.0, 0.5, 0.5), (2.0, 2.0));
     }
 }
+
+#[cfg(test)]
+#[path = "mask_y_tests.rs"]
+mod mask_y_tests;

@@ -81,6 +81,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "pivot_y",
             default: 0.0,
         },
+        // Apendado (doc 89 folha 05). `0` = o nó que sempre shipou.
+        ParamSpec {
+            name: "reindex",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -179,7 +184,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         SourceWindow::of_count(n * segments)
     }),
     variant_by_param: None,
-    applicable: None,
+    // ⚠️ **O device RECUA quando a renumeração está ligada** — o mesmo `applicable`
+    // que o `motion.combine` já declara, pelo mesmo motivo estrutural: este é um
+    // kernel `SourceRows`, e as colunas que não são `P` chegam à saída por um
+    // GATHER de `cp_rows` (uma cópia do template), não por uma escrita do corpo.
+    // Renumerar é escrever `Index`/`Count` **novos**, que é outra operação — e uma
+    // renumeração em `segments · n` elementos é um passe de escrita linear, não o
+    // caminho quente que este nó existe para acelerar.
+    applicable: Some(|p| p(REINDEX) < 0.5),
 };
 
 /// Replicate `p` into `segments` slices about `pivot`, rotated by `spin_cycles`, with
@@ -209,6 +221,34 @@ fn kaleidoscope(
         }
     }
     out
+}
+
+/// **A RENUMERAÇÃO** (doc 89 folha 05) — `0` (default) mantém as colunas de
+/// identidade que sempre saíram daqui.
+///
+/// ⚠️ **MEDIDO**: uma grelha 3×3 (`Index = 0..8`, `Count = 9`) sai deste nó com
+/// **n = 54** e o mesmo `Index` repetido **seis** vezes, `Count = 9` — as duas
+/// colunas descrevem a lista de ANTES. É a irmã exacta da linha do `motion.mirror`,
+/// e o default é `0` pela mesma razão de produto: o `Index` repetido é o que faz
+/// cada FATIA ler a rampa inteira, que é plausivelmente o que se quer de um
+/// caleidoscópio. Ligar é pedir *"uma lista só"*.
+const REINDEX: &str = "reindex";
+
+/// As duas colunas de identidade — os mesmos nomes do `motion.sort`/`combine`.
+const INDEX: &str = "Index";
+const COUNT: &str = "Count";
+
+/// Reescreve as duas colunas para a lista replicada (`Index = 0..segments·n−1`,
+/// `Count = segments·n`), mesmo que nenhuma entrada as trouxesse — a contagem
+/// MUDOU, então um `Count` herdado mente. Ver [`REINDEX`].
+fn reindex(out: &mut Stream) {
+    let n = out.count();
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de elementos")]
+    let idx: Vec<f32> = (0..n).map(|i| i as f32).collect();
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de elementos")]
+    let total = n as f32;
+    out.set(INDEX, Column::Scalar(idx));
+    out.set(COUNT, Column::Scalar(vec![total; n]));
 }
 
 /// Duplicate a column into `segments` copies (`[a, b] → [a, b, a, b, …]`).
@@ -259,6 +299,9 @@ impl NodeOp for MotionKaleidoscope {
             out.set(name.clone(), dup_n(col, segments));
         }
         out.set("P", Column::Vec2(positions));
+        if ctx.param(REINDEX) >= 0.5 {
+            reindex(&mut out);
+        }
         ctx.emit(out);
     }
 }
@@ -333,6 +376,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 20.0,
         step: 0.05,
         widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: REINDEX,
+        label: "Reindex",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
     },
 ];
 
@@ -541,3 +592,7 @@ mod hard_max_gates {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "reindex_tests.rs"]
+mod reindex_tests;

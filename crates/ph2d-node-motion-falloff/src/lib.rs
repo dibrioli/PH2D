@@ -72,6 +72,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "invert",
             default: 0.0,
         },
+        // Apendado (doc 89 folha 05). `0` = `falloff`, o canal que sempre shipou.
+        ParamSpec {
+            name: "mask_channel",
+            default: 0.0,
+        },
     ],
     // `lowerings` stays `Cpu`: `LoweringKind::Wgsl` is the scalar `eval_column`
     // route (`ph2d-expr`), which this Vec2-derived write does not fit. The GPU
@@ -80,6 +85,39 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     // `NodeManifest`.
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **O CANAL em que a máscara é escrita** (doc 89 folha 05) — `0` a coluna
+/// `falloff` de sempre, `1` a coluna `falloff_y`, que hoje só o
+/// `motion.scale(Separate Y Mask)` lê.
+///
+/// ⚠️ **Um canal que ninguém consegue escrever não existe, e um que ninguém lê
+/// também não.** Este param e o `use_falloff_y` do `motion.scale` são UMA célula
+/// da conferência, não duas: a folha pedia *"eixos independentes por elemento"*, e
+/// só o par entrega isso. Construir o leitor sem o escritor teria dado um toggle
+/// que o smoke não consegue distinguir de um bug.
+///
+/// ⚠️ **Os canais NÃO se misturam.** No canal Y o nó deixa a coluna `falloff`
+/// intacta, então todo modificador a jusante (que lê `falloff`) continua a ver
+/// exactamente o que via — é isso que faz um segundo campo ser um segundo campo, e
+/// não uma reescrita do primeiro.
+///
+/// ⚠️ **A chave é `mask_channel` e NÃO `channel`, e a diferença foi cobrada por um
+/// gate.** Neste app `channel` já é uma palavra com dono: nas famílias
+/// `motion.drive`/`oscillator`/`noise`/`wiggle` ela escolhe a GRANDEZA dirigida, e
+/// por isso um comprimento ali significa metros em Position, GRAUS em Rotation e
+/// um fator puro em Size — o `no_param_of_a_channel_driven_node_is_declared_a_fixed_length`
+/// varre a palavra e proíbe `ParamUnit::Length` fixo em quem a tem. Aqui o canal
+/// escolhe a COLUNA DE SAÍDA, e o `radius`/`center_*` são metros nos dois; o gate
+/// reprovou (correctamente) sobre a palavra, não sobre a semântica. Renomear é a
+/// cura certa: uma palavra que significa duas coisas é a falha de duas-portas no
+/// vocabulário, e o gate deixou de precisar de uma excepção.
+const MASK_CHANNEL: &str = "mask_channel";
+
+/// O valor do enum que autora o canal Y.
+const MASK_CHANNEL_Y: i32 = 1;
+
+/// A coluna que o canal Y escreve — a mesma constante que o `motion.scale` lê.
+const MASK_CHANNEL_Y_COLUMN: &str = "falloff_y";
 
 /// An edge curve on a pre-clamped `s ∈ [0,1]` — transcendental-free (HR-5), so the
 /// mask is bit-identical across platforms for the replay hash. `0` Linear · `1`
@@ -124,6 +162,37 @@ fn field(shape: i32, dx: f32, dy: f32, radius: f32, curve_kind: i32, invert: boo
     if invert { 1.0 - f } else { f }
 }
 
+/// O CORPO do kernel, parametrizado pelo canal que ele multiplica — o mesmo
+/// campo, escrito noutra coluna (ver [`MASK_CHANNEL`]).
+///
+/// ⚠️ **Um `concat!` e não duas cópias**: o campo é a lei deste nó, e duas
+/// transcrições dela poderiam divergir num sinal sem que gate nenhum notasse (as
+/// duas passariam a própria paridade). O que difere entre os canais é a última
+/// linha, e é só ela que o macro varia.
+macro_rules! fl_body {
+    ($read:literal, $write:literal) => {
+        concat!(
+            "        let fl_p = read_P(i);\n",
+            "        // Para o FRAME do campo — a MESMA transcricao que o `field.box` faz.\n",
+            "        let fl_ox = fl_p.x - params.center_x;\n",
+            "        let fl_oy = fl_p.y - params.center_y;\n",
+            "        let fl_b = fl_cos_sin(params.rotation / 360.0);\n",
+            "        let fl_v = fl_field(\n",
+            "            i32(fl_round(params.shape)),\n",
+            "            fl_ox * fl_b.x + fl_oy * fl_b.y,\n",
+            "            -fl_ox * fl_b.y + fl_oy * fl_b.x,\n",
+            "            params.radius,\n",
+            "            i32(fl_round(params.curve)),\n",
+            "            params.invert >= 0.5);\n",
+            "        ",
+            $write,
+            "(i, ",
+            $read,
+            "(i) * fl_v);\n"
+        )
+    };
+}
+
 /// GPU compute kernel (GPU/M5 Fase 2, ADR-0126): a straight WGSL port of
 /// [`field`] × [`curve`] multiplied into the existing `falloff` — same
 /// polynomials, same IEEE `sqrt`/`floor` (HR-5), so parity holds within float
@@ -135,21 +204,11 @@ fn field(shape: i32, dx: f32, dy: f32, radius: f32, curve_kind: i32, invert: boo
 /// mirrors the CPU: a stream without a `falloff` column starts from the `1.0`
 /// identity (fields multiply) and the column is always written; `P` reads its
 /// `0` identity when absent (the CPU's `positions.get(i).unwrap_or([0,0])`).
+///
+/// ⚠️ **É o DISPATCHER** desde a folha 05: a forma de topo é a do canal `falloff`,
+/// e o canal Y resolve para [`FALLOFF_Y_KERNEL`].
 const GPU_KERNEL: GpuKernel = GpuKernel {
-    wgsl: "\
-        let fl_p = read_P(i);\n\
-        // Para o FRAME do campo — a MESMA transcricao que o `field.box` faz.\n\
-        let fl_ox = fl_p.x - params.center_x;\n\
-        let fl_oy = fl_p.y - params.center_y;\n\
-        let fl_b = fl_cos_sin(params.rotation / 360.0);\n\
-        let fl_v = fl_field(\n\
-            i32(fl_round(params.shape)),\n\
-            fl_ox * fl_b.x + fl_oy * fl_b.y,\n\
-            -fl_ox * fl_b.y + fl_oy * fl_b.x,\n\
-            params.radius,\n\
-            i32(fl_round(params.curve)),\n\
-            params.invert >= 0.5);\n\
-        write_falloff(i, read_falloff(i) * fl_v);\n",
+    wgsl: fl_body!("read_falloff", "write_falloff"),
     wgsl_lib: "\
         fn fl_sin_cycles(phase: f32) -> f32 {\n\
             // A senoide parabolica corrigida (ver trig.rs) — o MESMO polinomio\n\
@@ -209,9 +268,54 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &[
-        "shape", "curve", "center_x", "center_y", "radius", "rotation", "invert",
+    params: FL_PARAMS,
+    count_law: None,
+    variant_by_param: Some(|param| {
+        if param(MASK_CHANNEL).round() as i32 == MASK_CHANNEL_Y {
+            &FALLOFF_Y_KERNEL
+        } else {
+            &GPU_KERNEL
+        }
+    }),
+    applicable: None,
+};
+
+/// Os params que o kernel sobe ao device — nomeados para as duas variantes não
+/// poderem divergir na lista.
+///
+/// ⚠️ **O `channel` NÃO está aqui**, e é de propósito: ele escolhe a variante no
+/// PLANO, e um uniform que o corpo nunca lê seria um byte por dispatch a dizer
+/// uma coisa que o WGSL já sabe.
+const FL_PARAMS: &[&str] = &[
+    "shape", "curve", "center_x", "center_y", "radius", "rotation", "invert",
+];
+
+/// **A variante do canal Y** — o mesmo campo, multiplicado em `falloff_y`.
+///
+/// ⚠️ **Uma VARIANTE e não um `applicable` que recusa o device.** O canal Y é uma
+/// feature nova e recuar para a CPU nela seria deixar o caminho lento definir o
+/// produto (§0.0). As bindings diferem porque a coluna de destino difere, que é
+/// literalmente o caso que a `variant_by_param` foi escrita para servir.
+const FALLOFF_Y_KERNEL: GpuKernel = GpuKernel {
+    wgsl: fl_body!("read_falloff_y", "write_falloff_y"),
+    wgsl_lib: GPU_KERNEL.wgsl_lib,
+    bindings: &[
+        ColumnBinding {
+            column: "P",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        ColumnBinding {
+            column: MASK_CHANNEL_Y_COLUMN,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [1.0; 4],
+            port: 0,
+        },
     ],
+    params: FL_PARAMS,
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -236,11 +340,18 @@ impl NodeOp for MotionFalloff {
         // que significasse ângulos diferentes em dois nós seria a falha de duas
         // portas na sua forma mais quieta — nada na tela diria qual está certo.
         let (rc, rs) = trig::cos_sin_cycles(ctx.param("rotation") / 360.0);
+        // O canal de destino — ver [`MASK_CHANNEL`]. A MESMA string é lida como base e
+        // escrita como saída, então os campos compõem dentro do canal escolhido.
+        let target = if ctx.param(MASK_CHANNEL).round() as i32 == MASK_CHANNEL_Y {
+            MASK_CHANNEL_Y_COLUMN
+        } else {
+            "falloff"
+        };
         let out = {
             let input = ctx.input(0);
             let n = input.count();
             // Existing per-instance falloff (fields multiply); absent → 1.
-            let prev = match input.get("falloff") {
+            let prev = match input.get(target) {
                 Some(Column::Scalar(v)) => Some(v.as_slice()),
                 _ => None,
             };
@@ -262,11 +373,11 @@ impl NodeOp for MotionFalloff {
             }
             let mut out = Stream::new(n);
             for (name, col) in input.columns() {
-                if name != "falloff" {
+                if name != target {
                     out.set(name.clone(), col.clone());
                 }
             }
-            out.set("falloff", Column::Scalar(fall));
+            out.set(target, Column::Scalar(fall));
             out
         };
         ctx.emit(out);
@@ -365,6 +476,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Toggle,
     },
+    ParamUiHint {
+        param: MASK_CHANNEL,
+        label: "Mask Channel",
+        min: 0.0,
+        max: MASK_CHANNEL_Y as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Falloff", "Falloff Y"],
+        },
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -403,195 +524,9 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 mod rotation_tests;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::cook::{Cook, EvalCtx, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+#[path = "field_tests.rs"]
+mod field_tests;
 
-    // Source: 3 instances on a line at x = 0, 5, 10 (y = 0).
-    static SRC_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("motion.falloff.test.src"),
-        name: "motion.falloff.test.src",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Src;
-    impl NodeOp for Src {
-        fn manifest(&self) -> &'static NodeManifest {
-            &SRC_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            ctx.emit(
-                Stream::new(3).with("P", Column::Vec2(vec![[0.0, 0.0], [5.0, 0.0], [10.0, 0.0]])),
-            );
-        }
-    }
-    struct Ops;
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == SRC_MAN.id => Some(&Src),
-                t if t == MANIFEST.id => Some(&MotionFalloff),
-                _ => None,
-            }
-        }
-    }
-
-    fn falloff_of(g: &Graph, ops: &Ops, target: NodeId) -> Vec<f32> {
-        let mut cook = Cook::new();
-        let out = cook.cook(g, ops, target, 0.0).unwrap();
-        match out[0].as_stream().get("falloff").unwrap() {
-            Column::Scalar(v) => v.clone(),
-            _ => panic!("falloff must be a Scalar column"),
-        }
-    }
-
-    #[test]
-    fn default_circle_is_one_at_center_zero_at_edge() {
-        let mut g = Graph::new();
-        let src = g.add_node("motion.falloff.test.src");
-        let foc = g.add_node("motion.falloff");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (foc, 0),
-            delayed: false,
-        })
-        .unwrap();
-        // Defaults: Circle + Smooth, radius 5, centre (0,0): x=0 → 1, x=5 → 0, x=10 → 0.
-        assert_eq!(falloff_of(&g, &Ops, foc), vec![1.0, 0.0, 0.0]);
-    }
-
-    /// Fields COMPOSE multiplicatively (audit 2026-07-10: the promise at the
-    /// `base * field` site was untested): an upstream `falloff` column is
-    /// multiplied by this field, never overwritten — two stacked focus nodes
-    /// intersect their regions.
-    #[test]
-    fn a_prior_falloff_column_is_multiplied_not_overwritten() {
-        static FSRC_MAN: NodeManifest = NodeManifest {
-            id: NodeTypeId::of("motion.falloff.test.fsrc"),
-            name: "motion.falloff.test.fsrc",
-            inputs: &[],
-            outputs: &[PortSpec {
-                name: "out",
-                ty: INST_VEC2,
-            }],
-            effect: Effect::Pure,
-            clock: Clock::Frame,
-            params: &[],
-            lowerings: &[LoweringKind::Cpu],
-        };
-        struct FSrc;
-        impl NodeOp for FSrc {
-            fn manifest(&self) -> &'static NodeManifest {
-                &FSRC_MAN
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                ctx.emit(
-                    Stream::new(2)
-                        .with("P", Column::Vec2(vec![[0.0, 0.0], [10.0, 0.0]]))
-                        .with("falloff", Column::Scalar(vec![0.5, 0.8])),
-                );
-            }
-        }
-        struct FOps;
-        impl OpResolver for FOps {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == FSRC_MAN.id => Some(&FSrc),
-                    t if t == MANIFEST.id => Some(&MotionFalloff),
-                    _ => None,
-                }
-            }
-        }
-        let mut g = Graph::new();
-        let src = g.add_node("motion.falloff.test.fsrc");
-        let foc = g.add_node("motion.falloff");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (foc, 0),
-            delayed: false,
-        })
-        .unwrap();
-        // Defaults (Circle, radius 5, centre origin): field = 1 at x=0, 0 at
-        // x=10. Composed with the carried [0.5, 0.8]: 0.5·1 and 0.8·0.
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &FOps, foc, 0.0).unwrap();
-        match out[0].as_stream().get("falloff").unwrap() {
-            Column::Scalar(v) => assert_eq!(v, &vec![0.5, 0.0]),
-            _ => panic!("falloff"),
-        }
-    }
-
-    #[test]
-    fn invert_flips_the_mask() {
-        let mut g = Graph::new();
-        let src = g.add_node("motion.falloff.test.src");
-        let foc = g.add_node("motion.falloff");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (foc, 0),
-            delayed: false,
-        })
-        .unwrap();
-        g.set_param(foc, "invert", 1.0);
-        // 1 - mask: x=0 → 0, x=5 → 1, x=10 → 1.
-        assert_eq!(falloff_of(&g, &Ops, foc), vec![0.0, 1.0, 1.0]);
-    }
-
-    #[test]
-    fn linear_shape_ramps_across_x() {
-        let mut g = Graph::new();
-        let src = g.add_node("motion.falloff.test.src");
-        let foc = g.add_node("motion.falloff");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (foc, 0),
-            delayed: false,
-        })
-        .unwrap();
-        g.set_param(foc, "shape", 2.0); // Linear
-        g.set_param(foc, "curve", 0.0); // Linear curve → a pure ramp
-        g.set_param(foc, "radius", 10.0);
-        // s = x/10·0.5+0.5: x=0 → 0.5, x=5 → 0.75, x=10 → 1.0 (a left→right wipe).
-        assert_eq!(falloff_of(&g, &Ops, foc), vec![0.5, 0.75, 1.0]);
-    }
-
-    #[test]
-    fn curves_are_smooth_and_endpoint_exact() {
-        // Linear / Quad / Smooth / Smoother all map 0→0 and 1→1; the midpoint
-        // differs (Linear .5, Quad .25, Smooth/Smoother symmetric .5).
-        for k in 0..=3 {
-            assert_eq!(curve(k, 0.0), 0.0, "curve {k} at 0");
-            assert_eq!(curve(k, 1.0), 1.0, "curve {k} at 1");
-        }
-        assert_eq!(curve(0, 0.5), 0.5); // Linear
-        assert_eq!(curve(1, 0.5), 0.25); // Quad
-        assert_eq!(curve(2, 0.5), 0.5); // Smoothstep symmetric
-        assert!((curve(3, 0.5) - 0.5).abs() < 1e-6); // Smootherstep symmetric
-    }
-
-    #[test]
-    fn rect_reaches_the_diagonal_corner_further_than_the_circle() {
-        // At (3,3) with radius 5, curve Linear: Rect uses Chebyshev (max axis) →
-        // s = 3/5 = .6 → 1−.6 = .4; Circle uses Euclidean → s = √18/5 ≈ .8485 →
-        // 1−.8485 ≈ .1515. The box keeps more field into the corner.
-        let rect = field(1, 3.0, 3.0, 5.0, 0, false);
-        let circle = field(0, 3.0, 3.0, 5.0, 0, false);
-        assert!((rect - 0.4).abs() < 1e-6);
-        assert!((circle - 0.151_471_86).abs() < 1e-4);
-        assert!(rect > circle);
-    }
-
-    #[test]
-    fn degenerate_radius_is_empty() {
-        assert_eq!(field(0, 0.0, 0.0, 0.0, 2, false), 0.0);
-        assert_eq!(field(2, 0.0, 0.0, 0.0, 2, false), 0.0);
-    }
-}
+#[cfg(test)]
+#[path = "mask_channel_tests.rs"]
+mod mask_channel_tests;

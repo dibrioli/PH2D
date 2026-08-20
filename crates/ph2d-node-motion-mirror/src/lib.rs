@@ -29,9 +29,22 @@
 //! um **ângulo** livre de eixo. O `axis` já responde *qual eixo*, e um ângulo por cima
 //! dele seriam duas portas para a mesma pergunta (`Vertical + 90°` é `Horizontal`); a
 //! simetria de ângulo arbitrário já tem dono — o `motion.kaleidoscope`, que é N-fold
-//! por construção. E **refletir `rot`/`vel` no gêmeo** (hoje eles são copiados, não
-//! espelhados — o parágrafo acima) é mudança de COMPORTAMENTO de uma sim espelhada, não
-//! um param: ela merece o seu próprio smoke.
+//! por construção.
+//!
+//! ## O GÊMEO passa a espelhar-se por inteiro (doc 89 folha 05)
+//!
+//! O parágrafo acima dizia que refletir `rot`/`vel` no gêmeo *"é mudança de
+//! COMPORTAMENTO de uma sim espelhada, não um param: ela merece o seu próprio
+//! smoke"*. A cerca **precificava**, não recusava — e o preço foi pago: o
+//! [`FLIP_ROT`] é o param, com `0` no comportamento antigo, e a cena `=69` é o
+//! smoke que ela pedia. Sem ele um espelho de peixes a nadar produzia metade do
+//! cardume a nadar de costas, e não havia composição que o corrigisse (nada a
+//! jusante sabe QUAIS elementos são gêmeos).
+//!
+//! ⚠️ **E as colunas de IDENTIDADE descreviam a lista de ANTES** — a mesma lei que
+//! o `reindex` do `motion.sort` fixou nos nós que PERMUTAM, aqui num que CRESCE.
+//! Medido: uma grelha 3×3 (`Index = 0..8`, `Count = 9`) saía deste nó com **n = 18**
+//! e `Index = [0..8, 0..8]`, `Count = 9`. Ver [`REINDEX`].
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -41,6 +54,45 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+/// **ESPELHAR A ORIENTAÇÃO E A VELOCIDADE do gêmeo** — `0` (default) copia as duas,
+/// que é o nó que sempre shipou.
+///
+/// ⚠️ **É uma reflexão e não uma negação**, e os dois eixos não usam a mesma
+/// fórmula: refletir numa reta VERTICAL leva a direção `θ` a `180° − θ`; numa
+/// HORIZONTAL, a `−θ`. Escrever `−θ` para os dois (o erro fácil) daria um espelho
+/// certo só metade das vezes, e a metade errada **parece** plausível na tela.
+///
+/// ⚠️ **`rot` e `vel` viajam juntos porque são a mesma pergunta.** Espelhar só a
+/// orientação poria o peixe virado para a esquerda a nadar para a direita — pior
+/// que não espelhar nada, porque o defeito passa a estar DENTRO do elemento.
+///
+/// ⚠️ **Transcendental-free (HR-5) na mesma:** `180 − θ` e `−(vx)` são aritmética.
+/// Este nó nunca fez trig e continua a não fazer.
+const FLIP_ROT: &str = "flip_rot";
+
+/// **A RENUMERAÇÃO** — `0` (default) mantém as colunas de identidade que sempre
+/// saíram daqui.
+///
+/// ⚠️ **Escreve `Index` E `Count`, e mesmo que nenhuma entrada as trouxesse** — a
+/// assimetria com o `motion.sort` (que só REESCREVE o `Index` existente) é medida,
+/// não de gosto: aquele preserva a contagem, então o `Count` já está honesto e uma
+/// lista sem `Index` cai no atalho posicional do `motion.tint`, que **já é** a
+/// resposta certa. Este DOBRA a contagem: um `Count` que continue a dizer `n` mente
+/// a quem o ler, e meia cura faria a rampa alcançar metade duas vezes. É a mesma
+/// escolha que o `motion.combine` faz, pelo mesmo motivo.
+///
+/// ⚠️ **O default é `0`, ao contrário do `motion.sort`, e também isso é medido.**
+/// Lá, desligado, o nó ficava *invisível ao seu único consumidor* e a promessa do
+/// próprio doc-comment era falsa. Aqui o estado de hoje tem **leitura de produto**:
+/// o `Index` repetido faz cada metade espelhada ler a rampa INTEIRA, que é
+/// plausivelmente o que se quer de um espelho. Ligar é pedir *"uma lista só"*.
+const REINDEX: &str = "reindex";
+
+/// As duas colunas de identidade — *quem é este elemento na lista*. Os mesmos
+/// nomes que o `motion.sort` e o `motion.combine` usam.
+const INDEX: &str = "Index";
+const COUNT: &str = "Count";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -66,6 +118,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // do eixo escolhido. `0` = a linha do centroide, o que sempre shipou.
         ParamSpec {
             name: "offset",
+            default: 0.0,
+        },
+        // Apendados (doc 89 folha 05). Os dois em `0` = o nó que sempre shipou.
+        ParamSpec {
+            name: "flip_rot",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "reindex",
             default: 0.0,
         },
     ],
@@ -112,6 +173,8 @@ impl NodeOp for MotionMirror {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let vertical = ctx.param("axis").round() as i64 == 0;
         let offset = ctx.param("offset");
+        let flip = ctx.param(FLIP_ROT) >= 0.5;
+        let renumber = ctx.param(REINDEX) >= 0.5;
         let input = ctx.input(0);
         let n = input.count();
         let p: Vec<[f32; 2]> = match input.get("P") {
@@ -119,17 +182,75 @@ impl NodeOp for MotionMirror {
             _ => vec![[0.0, 0.0]; n],
         };
         let mirrored = mirror_positions(&p, vertical, offset);
-        // Every column is duplicated onto the twin; only `P` is reflected.
+        // Every column is duplicated onto the twin; `P` is reflected, and with
+        // [`FLIP_ROT`] the two ORIENTED channels are reflected too.
         let mut out = Stream::new(mirrored.len());
         for (name, col) in input.columns() {
             if name == "P" {
                 continue;
             }
-            out.set(name.clone(), dup(col));
+            out.set(name.clone(), twin(name.as_str(), col, vertical, flip));
         }
         out.set("P", Column::Vec2(mirrored));
+        if renumber {
+            reindex(&mut out);
+        }
         ctx.emit(out);
     }
+}
+
+/// A coluna do par `[original…, gêmeo…]`. Sem [`FLIP_ROT`] o gêmeo é uma cópia;
+/// com ele, os dois canais ORIENTADOS são refletidos no mesmo eixo que `P`.
+///
+/// ⚠️ **A lista é fechada de propósito** (`rot` e `vel`, e nada mais): uma regra
+/// por-tipo — *"todo `Vec2` é refletido"* — apanharia `size` e faria metade do
+/// cardume nascer com largura negativa.
+fn twin(name: &str, col: &Column, vertical: bool, flip: bool) -> Column {
+    match (flip, name, col) {
+        (true, "rot", Column::Scalar(v)) => Column::Scalar(
+            [
+                v.clone(),
+                v.iter().map(|d| mirror_angle(*d, vertical)).collect(),
+            ]
+            .concat(),
+        ),
+        (true, "vel", Column::Vec2(v)) => Column::Vec2(
+            [
+                v.clone(),
+                v.iter().map(|q| mirror_vec(*q, vertical)).collect(),
+            ]
+            .concat(),
+        ),
+        _ => dup(col),
+    }
+}
+
+/// A direção `deg` refletida na reta do espelho. ⚠️ As duas fórmulas diferem —
+/// ver [`FLIP_ROT`].
+fn mirror_angle(deg: f32, vertical: bool) -> f32 {
+    if vertical { 180.0 - deg } else { -deg }
+}
+
+/// O vetor refletido: o componente NORMAL à reta troca de sinal, o tangencial fica.
+fn mirror_vec(q: [f32; 2], vertical: bool) -> [f32; 2] {
+    if vertical {
+        [-q[0], q[1]]
+    } else {
+        [q[0], -q[1]]
+    }
+}
+
+/// **Reescreve as duas colunas de identidade** para a lista dobrada: `Index = 0..2n−1`
+/// e `Count = 2n` em todas as linhas. Ver [`REINDEX`] — escreve as duas mesmo em
+/// branco, porque a contagem MUDOU.
+fn reindex(out: &mut Stream) {
+    let n = out.count();
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de elementos")]
+    let idx: Vec<f32> = (0..n).map(|i| i as f32).collect();
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de elementos")]
+    let total = n as f32;
+    out.set(INDEX, Column::Scalar(idx));
+    out.set(COUNT, Column::Scalar(vec![total; n]));
 }
 
 /// Duplicate a column onto its mirror twin (`[a, b] → [a, b, a, b]`).
@@ -181,6 +302,24 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 400.0,
         step: 1.0,
         widget: ParamWidget::Slider,
+    },
+    // ⚠️ Toggles, não sliders: espelhar meia orientação e renumerar meia lista não
+    // querem dizer nada, e um slider convidaria a procurar o meio.
+    ParamUiHint {
+        param: FLIP_ROT,
+        label: "Flip Orientation",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
+    ParamUiHint {
+        param: REINDEX,
+        label: "Reindex",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
     },
 ];
 
@@ -364,3 +503,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "twin_tests.rs"]
+mod twin_tests;

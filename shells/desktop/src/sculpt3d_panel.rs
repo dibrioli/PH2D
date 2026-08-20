@@ -377,15 +377,24 @@ impl Sculpt3dScene {
             },
             Sculpt3dIntent::QuadRemesh => {
                 match self.quad_remesh(self.quad_detail, self.quad_adapt) {
+                    // ⚠️ **O log NOMEIA os buracos.** Enquanto ele não o fazia, a
+                    // única forma de detectar uma casca furada era o artista
+                    // fotografar a tela — e foi o que aconteceu três vezes em
+                    // 2026-08-19. Um `0` aqui é a afirmação de que a peça fechou.
                     Ok(r) => eprintln!(
                         "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads) \
-                         com quad de {:.4} em {:.0} ms",
+                         com quad de {:.4} em {:.0} ms{}",
                         r.verts,
                         r.quads,
                         r.non_quads,
                         100.0 * r.quads as f64 / (r.quads + r.non_quads).max(1) as f64,
                         r.edge,
-                        r.ms
+                        r.ms,
+                        if r.holes == 0 {
+                            String::from(" -- casca FECHADA")
+                        } else {
+                            format!(" -- ⚠️ {} BURACO(S) na casca", r.holes)
+                        }
                     ),
                     Err(RemeshRefusal::MultiresStack) => {
                         eprintln!("[sculpt3d] nao' retopologiza com a pilha montada: ACHATE antes")

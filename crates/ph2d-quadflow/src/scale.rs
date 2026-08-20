@@ -105,8 +105,38 @@ impl ScaleField {
         mags.sort_by(f32::total_cmp);
         let median = mags.get(mags.len() / 2).copied().unwrap_or(0.0);
 
-        let lo = edge / MAX_ADAPTIVE_RATIO.sqrt();
-        let hi = edge * MAX_ADAPTIVE_RATIO.sqrt();
+        // ⚠️ **O PISO DO RECURSO VALE AQUI TAMBÉM, e esta linha é a foto do
+        // Enio de 2026-08-19 a repetir-se.** A `edge_for_detail` foi corrigida
+        // para nunca pedir menos que `FLOOR_IN_INPUT_EDGES` arestas de entrada, e
+        // o doc dela diz *"todo valor do curso é legal, por construção"* — o que
+        // era verdade **só do caminho uniforme**. Esta função construía o seu
+        // limite inferior a partir do `edge` e mais nada:
+        //
+        // ```text
+        // lo = edge / √4 = edge / 2
+        // ```
+        //
+        // Com `detail = 1,00` o `edge` **é** o piso (3,00× a aresta de entrada),
+        // então `lo` aterrava em **1,50×** — que é, textualmente, a linha da
+        // tabela do [`FLOOR_IN_INPUT_EDGES`] anotada como *"a foto do Enio"*
+        // (ciclo de 352 lados, 58 % do volume perdido). *A cura e a reincidência
+        // moravam no mesmo arquivo, a 130 linhas uma da outra.*
+        //
+        // ⚠️ **E nenhum gate percorria este eixo:** os três testes de produto
+        // que chamam `quad_remesh` pinam `adaptive = 0.0`, que é o único valor em
+        // que esta função sai antecipadamente.
+        //
+        // Medido depois desta linha (grelha `detail` × `adapt`, malha da cena
+        // `=35`): as arestas de borda vão de **203** (`1,00`/`0,95`) e **191**
+        // com 15 componentes (`1,00`/`1,00`) para **zero** em toda a grelha.
+        //
+        // ⚠️ **A consequência honesta:** em `detail = 1,00` a adaptação para
+        // BAIXO fica sem curso — não há folga sob o piso. Isso é o recurso a
+        // dizer o que é, não uma perda: a adaptação para CIMA (quads maiores onde
+        // a forma é chapada) continua inteira, e é ela que o `hi` carrega.
+        let floor = resolvable_edge_range(mesh).0;
+        let lo = (edge / MAX_ADAPTIVE_RATIO.sqrt()).max(floor);
+        let hi = (edge * MAX_ADAPTIVE_RATIO.sqrt()).max(lo);
         let per_vertex = curv
             .iter()
             .map(|k| {

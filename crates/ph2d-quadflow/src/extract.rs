@@ -61,6 +61,15 @@ pub struct Quadrangulation {
     pub non_quads: usize,
     /// O maior número de lados que um ciclo teve.
     pub max_sides: usize,
+    /// **Quantos laços de borda ficaram por fechar** — `0` quer dizer que a saída
+    /// é uma **casca**, que é o que o artista precisa.
+    ///
+    /// ⚠️ **É o número que faltava chegar ao produto.** Sem ele a única forma de
+    /// detectar uma saída esburacada era o artista fotografar a tela — foi o que
+    /// aconteceu três vezes em 2026-08-19.
+    pub holes: usize,
+    /// O maior laço de borda visto, fechado ou não.
+    pub largest_hole: usize,
 }
 
 impl Quadrangulation {
@@ -230,6 +239,8 @@ pub fn extract_tuned(
         quads,
         non_quads,
         max_sides,
+        holes: f.unfilled,
+        largest_hole: f.largest_hole,
     })
 }
 

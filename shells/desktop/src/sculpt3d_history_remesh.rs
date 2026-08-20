@@ -42,6 +42,8 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     pub edge: f32,
     /// O relógio do passe.
     pub ms: f64,
+    /// **Quantos buracos ficaram na casca** — `0` é o que se espera.
+    pub holes: usize,
 }
 
 impl Sculpt3dScene {
@@ -133,6 +135,7 @@ impl Sculpt3dScene {
             non_quads: q.non_quads,
             edge,
             ms: t.elapsed().as_secs_f64() * 1000.0,
+            holes: q.holes,
         };
         let previous =
             core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);

@@ -39,10 +39,21 @@ fn the_uniform_scale_does_not_vary_at_all() {
 /// curvatura tem de receber um lado ESTRITAMENTE menor que o de menor curvatura,
 /// e a razão entre os extremos tem de passar de **2×** — que é o número que o
 /// ADR-0160 §4 congelou.
+/// ⚠️ **O `edge` sai da PORTA DO PRODUTO, e não de um `0.1` escrito à mão.**
+/// Aquele literal era **menor que o piso desta fixtura**, então depois de o piso
+/// passar a valer no campo adaptativo (2026-08-19) o campo inteiro clampava
+/// contra ele e a lei ficava inerte — o gate reprovava sobre código correto. Um
+/// `edge` que a malha não consegue resolver não é um caso que o produto tenha:
+/// o botão só chega aqui pela [`super::edge_for_detail`]. *A fixtura tem de
+/// conter o fenômeno, e pedir o impossível não é o fenômeno.*
 #[test]
 fn the_adaptive_scale_shrinks_where_the_curvature_bites() {
     let mesh = fixture();
-    let f = ScaleField::adaptive(&mesh, 0.1, 1.0);
+    // ⚠️ **`detail = 0,25` (grosso) e não o meio do curso**, porque a faixa que a
+    // A6 exige precisa de FOLGA sob o piso: a `0,50` a folga desta fixtura dá
+    // **1,938×** e a asserção é `2×`. Não é a lei que encolheu — é o piso a
+    // dizer que abaixo dele não há adaptação nenhuma a fazer.
+    let f = ScaleField::adaptive(&mesh, super::edge_for_detail(&mesh, 0.25), 1.0);
 
     let curv = mesh.curvatures();
     let (mut lo_i, mut hi_i) = (0usize, 0usize);
@@ -200,4 +211,74 @@ fn every_point_of_the_detail_slider_is_legal() {
             );
         }
     }
+}
+
+/// ⭐ **O CAMPO ADAPTATIVO NUNCA PEDE ABAIXO DO PISO** — o invariante que mora
+/// na COMPOSIÇÃO, e que nenhum gate desta folha via.
+///
+/// ⚠️ **Os cinco gates acima que chamam `adaptive` passam `edge = 0.1` escrito à
+/// mão**, e afirmam razão e faixa. Nenhum compõe `edge_for_detail → adaptive` —
+/// e o defeito não morava em nenhuma das duas: morava em a segunda construir o
+/// seu limite inferior sem consultar o piso que a primeira acabara de respeitar.
+/// Medido antes do conserto: `lo` saía em **metade** do piso.
+///
+/// ⚠️ **E o `the_adaptive_range_is_bounded` não o via por construção:** ele afere
+/// a RAZÃO entre os dois extremos, que continua `4,0` mesmo com os dois extremos
+/// no fundo do poço. *Uma razão sobrevive a uma translação; um piso não.*
+#[test]
+fn the_adaptive_field_never_asks_below_the_resolvable_floor() {
+    for (name, mesh) in [
+        ("esfera 48x64", shapes::uv_sphere(48, 64, 1.0)),
+        ("uv 96x144", shapes::uv_sphere(96, 144, 1.0)),
+        ("toro", shapes::torus(64, 32, 1.0, 0.35)),
+    ] {
+        let floor = super::resolvable_edge_range(&mesh).0;
+        for d in 0..=8u32 {
+            let detail = f32::from(d as u16) / 8.0;
+            let edge = super::edge_for_detail(&mesh, detail);
+            for a in 0..=8u32 {
+                let adapt = f32::from(a as u16) / 8.0;
+                let field = super::ScaleField::adaptive(&mesh, edge, adapt);
+                let (lo, hi) = field.range();
+                assert!(
+                    lo >= floor * 0.999,
+                    "{name}: detail={detail:.3} adapt={adapt:.3} pede um quad de {lo:.5}, abaixo \
+                     do piso {floor:.5} que a malha consegue resolver -- e' o canto que devolve a \
+                     peca esburacada"
+                );
+                assert!(
+                    hi >= lo,
+                    "{name}: detail={detail:.3} adapt={adapt:.3} devolveu a faixa INVERTIDA \
+                     [{lo:.5}, {hi:.5}]"
+                );
+            }
+        }
+    }
+}
+
+/// ⭐ **PERTO DO PISO A ADAPTAÇÃO PARA BAIXO PERDE O CURSO** — a consequência
+/// honesta do conserto, afirmada em vez de descoberta.
+///
+/// ⚠️ **Este gate existe para que ninguém a leia como regressão.** Em
+/// `detail = 1,00` o `edge` **é** o piso: não há folga por baixo, então a
+/// adaptação só pode subir. O `range` colapsa contra o piso pelo lado de baixo, e
+/// isso é o recurso a dizer o que é. *Uma propriedade que surpreende alguém daqui
+/// a um mês é uma propriedade que devia ter um teste.*
+#[test]
+fn at_the_floor_the_adaptive_field_can_only_grow_upwards() {
+    let mesh = fixture();
+    let floor = super::resolvable_edge_range(&mesh).0;
+    let f = ScaleField::adaptive(&mesh, super::edge_for_detail(&mesh, 1.0), 1.0);
+    let (lo, hi) = f.range();
+    eprintln!("[quadflow] no piso {floor:.5}: faixa [{lo:.5}, {hi:.5}]");
+    assert!(
+        (lo - floor).abs() <= 1.0e-4 * floor,
+        "no piso o menor quad saiu {lo:.5} e o piso e' {floor:.5} -- se ele desceu, o conserto \
+         de 2026-08-19 foi desfeito e a peca volta a esburacar"
+    );
+    assert!(
+        hi > lo,
+        "no piso a adaptacao ficou INERTE ({lo:.5}..{hi:.5}) -- ela ainda tem de poder CRESCER \
+         onde a forma e' chapada"
+    );
 }

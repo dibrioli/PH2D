@@ -255,23 +255,44 @@ fn every_point_of_the_detail_slider_returns_a_piece() {
     use std::collections::BTreeMap;
     let gpu = gpu_or_skip!();
     let mut counts: Vec<usize> = Vec::new();
-    for step in 0..=4u32 {
-        let detail = step as f32 / 4.0;
-        // ⚠️ **A malha da cena `=35` e nao a `uv_sphere(24,36)` das irmas.** Numa
-        // malha de 830 vertices o piso (3 arestas de entrada) ja' passa o teto
-        // (100 quads), a faixa legal colapsa num ponto, e o slider inteiro
-        // devolve **a mesma malha** — medido: `0,3701` nos cinco pontos. Um gate
-        // sobre aquela fixtura ficaria verde sem tocar no knob que ele nomeia.
-        let mut s = Sculpt3dScene::new(&gpu.device, uv_sphere(96, 144, 1.0), 1.0);
+    // ⚠️ **A GRELHA DOS DOIS KNOBS, e não a varredura de UM.** O botão passa
+    // dois (`sculpt3d_panel.rs`: `quad_remesh(quad_detail, quad_adapt)`), e os
+    // três testes que chamavam `quad_remesh` pinavam o segundo em `0.0` — que é
+    // exatamente o único valor em que `ScaleField::adaptive` sai
+    // antecipadamente e o eixo não é exercitado. Medido pela auditoria de
+    // 2026-08-19: **9 das 25 células** desta grelha devolviam a peça
+    // esburacada, e o gate de um eixo ficava verde sobre todas elas.
+    //
+    // ⚠️ E o roteiro do smoke manda visitar o pior canto: o passo (5) põe o
+    // `Detail` na ponta e o passo (6) manda pôr o `Follow Curvature` em 1,0.
+    for step in 0..=24u32 {
+        let detail = (step / 5) as f32 / 4.0;
+        let adapt = (step % 5) as f32 / 4.0;
+        // ⚠️ **A MALHA DA CENA `=35`, AMASSADA — e não a esfera lisa.** Duas
+        // correções aqui, e a segunda foi paga em foto:
+        //
+        // 1. a `uv_sphere(24,36)` das irmãs tem 830 vértices, e nela o piso já
+        //    passa o teto: a faixa legal colapsa num ponto e o slider inteiro
+        //    devolve a mesma malha (medido: `0,3701` nos cinco pontos);
+        // 2. ⚠️ **a esfera LISA não contém o fenômeno.** A cena abre amassada, e
+        //    foi na amassada que o smoke devolveu a peça esburacada
+        //    (Enio, 2026-08-19). Um gate sobre a lisa fica verde sobre
+        //    exatamente o defeito que o artista vê. *A fixtura só prova o que
+        //    ela contém.*
+        let mut s = Sculpt3dScene::new(
+            &gpu.device,
+            crate::sculpt3d::fixtures::wrinkled_sphere(),
+            1.0,
+        );
         s.viewport = (900, 700);
-        let r = s
-            .quad_remesh(detail, 0.0)
-            .unwrap_or_else(|e| panic!("detail={detail:.2}: a retopologia recusou ({e:?})"));
+        let r = s.quad_remesh(detail, adapt).unwrap_or_else(|e| {
+            panic!("detail={detail:.2} adapt={adapt:.2}: a retopologia recusou ({e:?})")
+        });
 
         let mesh = s.mesh();
         assert!(
             r.verts > 0 && !mesh.faces().is_empty(),
-            "detail={detail:.2}: a peca sumiu -- a extracao devolveu malha vazia"
+            "detail={detail:.2} adapt={adapt:.2}: a peca sumiu -- a extracao devolveu malha vazia"
         );
 
         let mut undirected: BTreeMap<(u32, u32), usize> = BTreeMap::new();
@@ -302,20 +323,56 @@ fn every_point_of_the_detail_slider_returns_a_piece() {
         }
         let open = undirected.values().filter(|c| **c == 1).count();
         eprintln!(
-            "[sculpt3d] detail={detail:.2}: quad {:.4}, {} vertices, {:.1}% quads, volume {volume:+.3}",
+            "[sculpt3d] detail={detail:.2} adapt={adapt:.2}: quad {:.4}, {} vertices, {:.1}% quads, volume {volume:+.3}, borda {open}",
             r.edge,
             r.verts,
             100.0 * r.quads as f64 / (r.quads + r.non_quads).max(1) as f64
         );
         assert_eq!(
             open, 0,
-            "detail={detail:.2}: {open} arestas com UMA face -- a peca saiu esburacada"
+            "detail={detail:.2} adapt={adapt:.2}: {open} arestas com UMA face -- a peca saiu \
+             esburacada, e e' isto que o artista fotografa"
         );
         assert!(
             volume > 0.0,
-            "detail={detail:.2}: volume com sinal {volume:+.3} -- a peca esta' do avesso"
+            "detail={detail:.2} adapt={adapt:.2}: volume com sinal {volume:+.3} -- do avesso"
         );
-        counts.push(r.verts);
+        // ⚠️ **UMA componente, e a asserção é nova.** Uma peça pode ser fechada e
+        // orientada em CADA pedaço e ainda assim ter-se partido em quinze: foi o
+        // que a grelha mediu no canto `1,00`/`1,00`. Nenhuma das outras três
+        // asserções vê isso.
+        let mut seen = vec![false; mesh.vert_count()];
+        let mut stack = vec![0u32];
+        let mut reached = 0usize;
+        if !mesh.faces().is_empty() {
+            seen[0] = true;
+            while let Some(v) = stack.pop() {
+                reached += 1;
+                for (a, b) in undirected.keys() {
+                    let w = if *a == v {
+                        *b
+                    } else if *b == v {
+                        *a
+                    } else {
+                        continue;
+                    };
+                    if !seen[w as usize] {
+                        seen[w as usize] = true;
+                        stack.push(w);
+                    }
+                }
+            }
+        }
+        assert_eq!(
+            reached,
+            mesh.vert_count(),
+            "detail={detail:.2} adapt={adapt:.2}: a peca partiu-se -- so' {reached} dos {} \
+             vertices estao ligados ao primeiro",
+            mesh.vert_count()
+        );
+        if adapt == 0.0 {
+            counts.push(r.verts);
+        }
     }
     // ⚠️ **E O KNOB TEM DE FAZER ALGUMA COISA.** Um slider que devolve a mesma
     // malha nos cinco pontos passa em todas as asserções acima — a peça existe,
@@ -328,4 +385,66 @@ fn every_point_of_the_detail_slider_returns_a_piece() {
         counts[0],
         counts[4]
     );
+}
+
+/// ⭐ **DOIS CLIQUES SEM DESFAZER AINDA DEVOLVEM UMA PEÇA** — porque é isso que o
+/// roteiro do smoke manda fazer.
+///
+/// ⚠️ **Nenhum dos três testes chamava `quad_remesh` duas vezes**, e o roteiro da
+/// cena `=35` pede exatamente isso: o passo (5) manda arrastar o `Detail` e
+/// clicar, e o passo (6) manda mudar o `Follow Curvature` e comparar — sem
+/// `Ctrl+Z` no meio.
+///
+/// O que a composição faz: o lado do quad sai da malha de **ENTRADA**
+/// (`edge_for_detail`), e a saída **substitui** a entrada. Então o segundo clique
+/// lê a malha do primeiro, cuja aresta média é muito maior — e o piso
+/// (`3 × aresta`) sobe atrás dela. A peça tem de continuar a fechar em cada
+/// degrau, e é só isso que este gate afirma: *cada clique devolve uma casca*.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn two_clicks_without_undo_still_return_a_piece() {
+    use std::collections::BTreeMap;
+    let gpu = gpu_or_skip!();
+    let mut s = Sculpt3dScene::new(
+        &gpu.device,
+        crate::sculpt3d::fixtures::wrinkled_sphere(),
+        1.0,
+    );
+    s.viewport = (900, 700);
+
+    for click in 1..=3u32 {
+        let r = s
+            .quad_remesh(1.0, 1.0)
+            .unwrap_or_else(|e| panic!("clique {click}: a retopologia recusou ({e:?})"));
+        let mesh = s.mesh();
+        let mut undirected: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+        for f in mesh.faces() {
+            let v = f.verts();
+            for i in 0..v.len() {
+                let (a, b) = (v[i], v[(i + 1) % v.len()]);
+                *undirected
+                    .entry(if a < b { (a, b) } else { (b, a) })
+                    .or_insert(0) += 1;
+            }
+        }
+        let open = undirected.values().filter(|c| **c == 1).count();
+        eprintln!(
+            "[sculpt3d] clique {click}: quad {:.4}, {} vertices, {} buracos reportados, borda {open}",
+            r.edge, r.verts, r.holes
+        );
+        assert!(r.verts > 0, "clique {click}: a peca sumiu");
+        assert_eq!(
+            open, 0,
+            "clique {click}: {open} arestas com UMA face -- o segundo remesh sobre a saida do \
+             primeiro esburacou a peca"
+        );
+        // ⚠️ **O relatório tem de CONCORDAR com a malha.** Se o número de buracos
+        // que o log imprime divergir do que a malha tem, o log é pior que
+        // nenhum: ele afirma uma casca fechada sobre uma peça furada.
+        assert_eq!(
+            r.holes, 0,
+            "clique {click}: o relatorio diz {} buracos e a malha tem {open} arestas de borda",
+            r.holes
+        );
+    }
 }

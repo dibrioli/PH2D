@@ -190,6 +190,124 @@ repo quase declarou sucesso sobre uma casca murcha.
 
 ---
 
+## §5-novies — ⭐ A AUDITORIA MULTIAGÊNTICA, e o que ela achou
+
+> *"Uma bosta. Auditoria multiagêntica."* — Enio, 2026-08-19, terceira foto: a
+> peça com **retalhos retangulares faltando**, deixando ver o interior escuro,
+> com a silhueta ainda lisa.
+
+Seis lentes independentes sobre o caminho inteiro (da malha ao pixel · o que um
+remesh invalida · o gate mede o que diz? · o porte do grafo · o porte das faces ·
+reprodução numérica), **34 achados brutos**, cada um passado a um refutador
+adversarial instruído a assumir que o auditor estava errado. **5 sobreviveram.**
+
+### ⭐ A CAUSA, e ela tem endereço
+
+`crates/ph2d-quadflow/src/scale.rs` — **`ScaleField::adaptive` dividia por dois o
+piso que `edge_for_detail` acabara de respeitar.**
+
+```rust
+let lo = edge / MAX_ADAPTIVE_RATIO.sqrt();   // = edge / 2
+```
+
+1. `edge_for_detail` garante `edge ≥ 3,0 × aresta_de_entrada`, e o doc dela diz
+   *"todo valor do curso é legal, por construção"* — verdade **só do caminho
+   uniforme**;
+2. `adaptive` constrói o seu limite inferior **só a partir do `edge`**. Nunca
+   consulta `resolvable_edge_range`;
+3. com `detail = 1,00` o `edge` **é** o piso, então `lo = 1,50 ×`;
+4. e `1,50×` é, textualmente, a linha da tabela do `FLOOR_IN_INPUT_EDGES`
+   anotada **«a foto do Enio»** — ciclo de 352 lados, 58 % do volume perdido.
+
+⇒ **A cura e a reincidência moravam no mesmo arquivo, a 130 linhas uma da
+outra.**
+
+Medido (grelha `detail` × `adapt`, malha da cena `=35`), `borda` = arestas com
+uma só face:
+
+| detail | adapt | quad | min/aresta | verts | borda | componentes |
+|---|---|---|---|---|---|---|
+| 1,00 | 0,00 | 0,0912 | 3,00× | 1600 | **0** | 1 |
+| 0,75 | 0,95 | 0,1281 | 2,21× | 1077 | **37** | 1 |
+| 1,00 | 0,90 | 0,0912 | 1,65× | 1970 | **173** | 3 |
+| 1,00 | 1,00 | 0,0912 | 1,50× | 1887 | **191** | **15** |
+
+⚠️ **E o roteiro do smoke manda visitar o pior canto:** o passo (5) põe o
+`Detail` na ponta, o passo (6) manda pôr o `Follow Curvature` em `1,0`.
+
+### ⚠️ Por que NENHUM gate via — e é a lição
+
+O botão passa **dois** knobs (`quad_remesh(quad_detail, quad_adapt)`). Os **três**
+testes que chamavam `quad_remesh` pinavam o segundo em `0.0` — que é **o único
+valor em que `adaptive` sai antecipadamente** e o eixo não é exercitado.
+
+E o gate que existia na crate (`the_adaptive_range_is_bounded`) não podia vê-lo
+**por construção**: ele afere a **razão** entre os dois extremos, que continua
+`4,0` mesmo com os dois extremos no fundo do poço. *Uma razão sobrevive a uma
+translação; um piso não.*
+
+⚠️ **O invariante violado não morava em nenhuma das duas funções — morava na
+COMPOSIÇÃO delas.** Os cinco gates que chamavam `adaptive` passavam
+`edge = 0.1` escrito à mão; nenhum compunha `edge_for_detail → adaptive`.
+
+### ✅ O que foi refutado, e vale registrar
+
+O caminho **da malha ao pixel está SÃO**, e isso foi medido, não suposto:
+`upload_at` recomputa `triangle_indices()` e o `index_count` nas duas rotas
+(realoca e reusa); `mesh_rebuilt` põe `uploaded = false`, o que torna o upload
+por-região **inalcançável** no quadro do remesh; `Mesh::from_parts` chama
+`rebuild()` e recomputa as normais; os três pipelines declaram `cull_mode: None`,
+então nenhuma face some por sentido. **Refutado por leitura e por medição** — o
+renderer desenha exatamente os triângulos que a malha tem, nos 5 pontos do curso.
+
+⇒ A dicotomia do briefing resolveu-se na segunda metade: *o gate não media outra
+coisa — o defeito estava num caminho que ele não percorria*.
+
+### As correções
+
+| # | o quê | onde |
+|---|---|---|
+| C1 | o piso do recurso passa a valer no campo adaptativo | `scale.rs` |
+| C2 | a contagem de buracos **viaja no resultado** e chega ao log (`casca FECHADA` / `⚠️ N BURACO(S)`) | `im_faces.rs` · `extract.rs` · `sculpt3d_panel.rs` |
+| C3 | o gate de produto varre a **grelha dos dois knobs** + componentes conexas | `sculpt3d_undo_tests.rs` |
+| C4 | gate dos **dois cliques** sem desfazer, que é o que o roteiro pede | `sculpt3d_undo_tests.rs` |
+
+⚠️ **C2 curava um segundo defeito de tabela:** o diagnóstico dos buracos estava
+guardado em `stats[0]`/`stats[1]`, e o chamador deriva `max_sides` do maior
+índice com contagem não-nula — ele passava a ver *"existe face de 1 lado"* sempre
+que sobrava um laço. *Dois fatos num vetor divergem no dia em que alguém deriva
+um terceiro deles.*
+
+### Os gates novos (todos com prova de mutação)
+
+- `every_point_of_the_detail_slider_returns_a_piece` — grelha **5×5**, mais
+  **componentes conexas = 1**. Reprovava em 9 das 25 células; desfazendo C1 ele
+  volta a vermelho (`detail=0,75 adapt=1,00: 4 arestas com UMA face`).
+- `the_adaptive_field_never_asks_below_the_resolvable_floor` — a composição, em
+  81 pontos × 3 fixturas.
+- `at_the_floor_the_adaptive_field_can_only_grow_upwards` — a **consequência
+  honesta** de C1, afirmada em vez de descoberta: no piso a adaptação para baixo
+  fica sem curso, e isso é o recurso, não uma perda.
+- `two_clicks_without_undo_still_return_a_piece`.
+
+### ⛔ Recusa MEDIDA
+
+| # | o que foi tentado | o que a medição disse |
+|---|---|---|
+| 16 | manter `the_adaptive_scale_shrinks_where_the_curvature_bites` com `edge = 0.1` | aquele literal é **abaixo do piso** da fixtura; com C1 o campo inteiro clampa e a lei fica inerte — o gate reprovava sobre código correto. Ele passa a pedir o `edge` pela **porta do produto**. *Pedir o impossível não é o fenômeno.* |
+
+### ⚠️ O que a auditoria NÃO mediu, e fica nomeado
+
+1. **Ninguém renderizou uma malha com buracos.** As sondas de GPU rodaram só
+   sobre `adapt = 0,00` — as linhas em que `borda = 0`. A cadeia *«191 arestas
+   abertas → retalhos escuros»* é **inferência** de `cull_mode: None`; não foi
+   lida em pixel nenhum.
+2. O eixo `adapt` **no shell** (o widget entrega mesmo `0..1`?).
+3. A composição *segundo clique × campo adaptativo* — hoje coberta pelo gate C4,
+   mas medida só depois do conserto.
+
+---
+
 ## §5-octies — ⛔ EU ESTAVA INVENTANDO. O código da referência foi BAIXADO e PORTADO
 
 > *"Uma bosta!!! Acho que vc está inventando!!! Pare de inventar. Identifique o

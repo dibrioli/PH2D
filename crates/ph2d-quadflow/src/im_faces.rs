@@ -32,7 +32,24 @@ pub(crate) struct ExtractedFaces {
     /// Os vértices, que podem ter crescido (os centroides do `fill_face`).
     pub verts: Vec<[f32; 3]>,
     /// Quantas faces saíram com cada número de lados — `stats[k]` para `k` lados.
+    ///
+    /// ⚠️ **Índices 3..=8 e mais nada.** Os slots `0..=2` estiveram a carregar o
+    /// diagnóstico dos buracos, e a sobrecarga **corrompia o `max_sides`** do
+    /// chamador: ele deriva o maior número de lados do maior índice com contagem
+    /// não-nula, e passava a ver *"existe face de 1 lado"* sempre que sobrava um
+    /// laço por fechar. *Dois fatos num vetor divergem no dia em que alguém
+    /// deriva um terceiro deles.*
     pub stats: [usize; 9],
+    /// **Quantos laços de borda a extração NÃO conseguiu fechar** — zero quer
+    /// dizer *a saída é uma casca*.
+    ///
+    /// ⚠️ **Ele viaja no resultado e não num `eprintln!`.** A extração sempre
+    /// soube este número e o chamador o descartava; enquanto ele não chegava ao
+    /// log, toda recorrência do defeito só era detectável por FOTO. O ADR-0160
+    /// §5-novies registra a auditoria que o achou.
+    pub unfilled: usize,
+    /// O maior laço de borda encontrado, fechado ou não — `0` se não houve nenhum.
+    pub largest_hole: usize,
 }
 
 /// **EXTRAI AS FACES** do grafo.
@@ -111,17 +128,14 @@ pub(crate) fn extract_faces(
     }
 
     let mut kept = remove_nonmanifold(&faces);
-    let (unfilled, largest) = close_boundary_loops(&mut kept, &mut verts, &mut normals);
-    // ⚠️ **O que NÃO se fechou viaja no resultado**, e não num `eprintln!`: é o
-    // número que diz se a saída é uma casca. `stats[0]` = laços de borda que
-    // sobraram, `stats[1]` = o maior deles.
-    stats[0] = unfilled;
-    stats[1] = largest;
+    let (unfilled, largest_hole) = close_boundary_loops(&mut kept, &mut verts, &mut normals);
 
     ExtractedFaces {
         faces: kept,
         verts,
         stats,
+        unfilled,
+        largest_hole,
     }
 }
 

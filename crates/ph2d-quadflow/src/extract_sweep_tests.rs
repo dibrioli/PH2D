@@ -477,8 +477,8 @@ fn measure_the_ported_graph_valence() {
                 "[quadflow]         faces por lados: {:?} (3..8) | {} faces | bordas por fechar: {} (maior {})",
                 &f.stats[3..=8],
                 f.faces.len(),
-                f.stats[0],
-                f.stats[1]
+                f.unfilled,
+                f.largest_hole
             );
         }
     }

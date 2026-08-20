@@ -301,6 +301,45 @@ pub(crate) fn build_initial_state(
     if hero_screen_enabled {
         let _ = ph2d_panel_registry_init::register_all_panels();
     }
+    // ⚠️ **O registry de TOOLS tem de estar instalado ANTES do primeiro `HeroScreen::new`** —
+    // pela MESMA razão que o de painéis, logo acima, e este bloco vivia 50 linhas abaixo do hero.
+    //
+    // O `topbar::populate()` (que corre dentro do `HeroScreen::new`) dá `InteractiveState` a cada
+    // pill da fila de Image Tools **percorrendo a fila derivada do registry**. Sem registry
+    // instalado ela cai no fallback de três (trim · make_square · bgremoval) e **os outros oito
+    // pills nascem sem estado: pintados, hit-registered e MORTOS sob o rato** (Enio, 2026-08-19:
+    // *"padding, Color equalization, Rasterize, Upscale e Painter não estão funcionando"*).
+    //
+    // ⚠️ Foi uma regressão que eu introduzi ao curar exatamente este defeito para UM tool: troquei
+    // a lista escrita à mão por uma derivada, sem reparar que a derivação corria antes da fonte
+    // existir. *Uma lista derivada de algo que ainda não existe é uma lista vazia com cara de
+    // correta.* O gate `the_tool_registry_is_installed_before_the_hero` fixa esta ordem.
+    //
+    // PR 8 of the convention-by-discovery migration: build the tool
+    // registry at boot. `register_all` adds every manifest declared
+    // in `ph2d-tool-registry-init`'s append-only list; `build()`
+    // detects id duplicates + NodeId hash collisions + sorts
+    // deterministically per HR-5. Held on `AppGfx` for PR 9 (generic
+    // dispatcher) and chrome derivation follow-ups.
+    let mut registry = ph2d_tool_registry::Registry::default();
+    ph2d_tool_registry_init::register_all(&mut registry);
+    registry
+        .build()
+        .expect("registry build must succeed at boot");
+    let manifest_count = registry.manifests().len();
+    // Wave 2 PR 11.4: hand the built registry to `ph2d-editor` so the
+    // hero painters can derive chrome (Image Tools action row, future
+    // TopBar clusters) from manifests instead of hardcoded lists.
+    // `install_registry` returns true on first install; subsequent
+    // calls from re-init paths in tests get false and silently drop
+    // the second registry (safe — the manifests are identical).
+    ph2d_editor::install_registry(registry);
+    println!(
+        "[{:>6}ms] PR 8: tool registry built ({} manifests, installed in editor)",
+        handler.elapsed_ms(),
+        manifest_count,
+    );
+
     let hero_screen = if hero_screen_enabled {
         let mut hero = HeroScreen::new(NodeId(1)).theme(theme);
         // Cross-session palettes: restore the named-palette set saved last run (the picker was just
@@ -336,31 +375,6 @@ pub(crate) fn build_initial_state(
 
     let _ = hero_screen_enabled; // explicitly mark consumed
     let _ = Lifecycle::Foreground; // exercise import; lifecycle hook fires from caller.
-
-    // PR 8 of the convention-by-discovery migration: build the tool
-    // registry at boot. `register_all` adds every manifest declared
-    // in `ph2d-tool-registry-init`'s append-only list; `build()`
-    // detects id duplicates + NodeId hash collisions + sorts
-    // deterministically per HR-5. Held on `AppGfx` for PR 9 (generic
-    // dispatcher) and chrome derivation follow-ups.
-    let mut registry = ph2d_tool_registry::Registry::default();
-    ph2d_tool_registry_init::register_all(&mut registry);
-    registry
-        .build()
-        .expect("registry build must succeed at boot");
-    let manifest_count = registry.manifests().len();
-    // Wave 2 PR 11.4: hand the built registry to `ph2d-editor` so the
-    // hero painters can derive chrome (Image Tools action row, future
-    // TopBar clusters) from manifests instead of hardcoded lists.
-    // `install_registry` returns true on first install; subsequent
-    // calls from re-init paths in tests get false and silently drop
-    // the second registry (safe — the manifests are identical).
-    ph2d_editor::install_registry(registry);
-    println!(
-        "[{:>6}ms] PR 8: tool registry built ({} manifests, installed in editor)",
-        handler.elapsed_ms(),
-        manifest_count,
-    );
 
     // ADR-0054 W0.T6: image I/O registries populated at boot. Same
     // "drop a crate, zero central edit" mechanism as the tool registry

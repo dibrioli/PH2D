@@ -694,9 +694,40 @@ pub(super) fn publish(
                 false,
             ),
         };
+        // **ESTAR NUMA FOLHA JÁ É SER HAND-PACKED** (Enio, 2026-08-19: *"ao colocar uma imagem
+        // numa sheet, no inspector ainda diz que ela usa a estratégia Individual"*).
+        //
+        // ⚠️ **O modelo já concordava com ele e o código não seguia** — a nota logo acima diz que
+        // *"a estratégia é uma pergunta de AUTORIA, não de armazenamento"*, e a autoria estava a
+        // ser lida só do `SpriteSheetRef`, que **nasce no bake**. Entre pôr a peça na folha e
+        // assá-la, o painel dizia `Individual` — que é verdade sobre os PIXELS e mentira sobre o
+        // que o artista acabou de fazer. *Uma resposta correta à pergunta errada lê-se como um
+        // bug, e é.*
+        //
+        // A autoria passa a ter duas fontes, na ordem em que se tornam verdadeiras: o
+        // `SpriteSheetRef` (assado — sabe a região) e, na falta dele, **ser filho de uma folha**
+        // (arranjado — ainda não sabe). O rótulo diz qual das duas é.
+        let unbaked_sheet = if matches!(
+            source_kind,
+            ph2d_editor::InspectorSpriteSource::Individual { .. }
+                | ph2d_editor::InspectorSpriteSource::Atlas { .. }
+        ) {
+            world
+                .get::<ph2d_ecs::ChildOf>(entity)
+                .map(|c| c.parent())
+                .filter(|p| world.get::<ph2d_ecs::SpriteSheetFrame>(*p).is_some())
+                .map(|p| {
+                    world
+                        .get::<ph2d_ecs::Name>(p)
+                        .map(|n| n.0.clone())
+                        .unwrap_or_else(|| "Sprite Sheet".to_string())
+                })
+        } else {
+            None
+        };
         // O rótulo legível de uma origem hand-packed. Derivado AQUI (e não no painel) porque o
         // painel é chrome e não pode depender do documento de folhas sem inverter a seta.
-        let sheet_label = match source_kind {
+        let baked_label = match source_kind {
             ph2d_editor::InspectorSpriteSource::HandPacked { sheet, region } => {
                 sheets.get(&sheet).and_then(|s| {
                     s.region(region)
@@ -705,6 +736,8 @@ pub(super) fn publish(
             }
             _ => None,
         };
+        let (source_kind, sheet_label) =
+            sheet_authorship(source_kind, unbaked_sheet.as_deref(), baked_label);
         let world_size = [
             sprite.size[0] * transform.scale.x,
             sprite.size[1] * transform.scale.y,
@@ -962,5 +995,93 @@ pub(super) fn publish(
             inspector_visibility_section,
             inspector_name,
         );
+    }
+}
+
+/// **A autoria de folha que o painel MOSTRA** — a regra, isolada do mundo para poder ser testada.
+///
+/// Duas fontes, na ordem em que se tornam verdadeiras:
+///
+/// 1. **assado** (`SpriteSheetRef`) — o `storage` já chega como `HandPacked` e há uma região
+///    nomeada; o rótulo é `folha · região`;
+/// 2. **arranjado** (filho de uma folha, ainda sem `SpriteSheetRef`) — o armazenamento é mesmo
+///    `Individual`/`Atlas`, mas a AUTORIA já é da folha. Mostra `HandPacked` com o rótulo a dizer
+///    que ainda não foi assado.
+///
+/// ⚠️ **Os ids `0/0` do caso 2 não significam nada**, e é o rótulo (sempre presente aí) que
+/// impede que alguém os leia: a linha `Storage` prefere-o, e só cai nos números quando ele falta —
+/// o que neste caso não pode acontecer. *Um número sem significado é aceitável enquanto for
+/// inalcançável; deixar de o ser é a regressão a vigiar.*
+fn sheet_authorship(
+    storage: ph2d_editor::InspectorSpriteSource,
+    unbaked_sheet: Option<&str>,
+    baked_label: Option<String>,
+) -> (ph2d_editor::InspectorSpriteSource, Option<String>) {
+    match unbaked_sheet {
+        Some(name) => (
+            ph2d_editor::InspectorSpriteSource::HandPacked {
+                sheet: 0,
+                region: 0,
+            },
+            Some(format!("{name} \u{00b7} not baked yet")),
+        ),
+        None => (storage, baked_label),
+    }
+}
+
+#[cfg(test)]
+mod sheet_authorship_tests {
+    use super::sheet_authorship;
+    use ph2d_editor::InspectorSpriteSource as S;
+
+    /// ⚠️ **O caso que o Enio relatou.** A peça está na folha e ainda não foi assada: o
+    /// armazenamento é mesmo `Individual`, mas a AUTORIA já é da folha — e é a autoria que a linha
+    /// `Strategy` responde (a nota que já estava no `snapshots.rs` di-lo desde sempre; o código é
+    /// que não a seguia).
+    #[test]
+    fn a_piece_dropped_into_a_sheet_reads_as_hand_packed() {
+        let (kind, label) = sheet_authorship(S::Individual { texture_id: 7 }, Some("Fruits"), None);
+        assert!(matches!(kind, S::HandPacked { .. }));
+        assert_eq!(label.as_deref(), Some("Fruits \u{00b7} not baked yet"));
+    }
+
+    /// O mesmo para uma peça que ainda vive no atlas — pô-la na folha é o mesmo gesto.
+    #[test]
+    fn an_atlas_piece_in_a_sheet_reads_the_same() {
+        let (kind, _) = sheet_authorship(S::Atlas { key: 3 }, Some("Fruits"), None);
+        assert!(matches!(kind, S::HandPacked { .. }));
+    }
+
+    /// **Assado ganha do arranjado**, e não o contrário: quando há região nomeada, é ela que o
+    /// artista quer ler (é por ela que ele reencontra o desenho no Aseprite).
+    #[test]
+    fn a_baked_piece_keeps_its_region_name() {
+        let (kind, label) = sheet_authorship(
+            S::HandPacked {
+                sheet: 4,
+                region: 2,
+            },
+            None,
+            Some("hero \u{00b7} idle_0".into()),
+        );
+        assert!(matches!(
+            kind,
+            S::HandPacked {
+                sheet: 4,
+                region: 2
+            }
+        ));
+        assert_eq!(label.as_deref(), Some("hero \u{00b7} idle_0"));
+    }
+
+    /// **Controle positivo:** fora de uma folha nada muda. Sem isto, a regra podia estar a
+    /// devolver `HandPacked` para toda a gente e os testes acima passariam na mesma.
+    #[test]
+    fn a_sprite_outside_any_sheet_is_untouched() {
+        let (kind, label) = sheet_authorship(S::Individual { texture_id: 7 }, None, None);
+        assert!(matches!(kind, S::Individual { texture_id: 7 }));
+        assert!(label.is_none());
+        let (kind, _) = sheet_authorship(S::Atlas { key: 1 }, None, None);
+        assert!(matches!(kind, S::Atlas { key: 1 }));
     }
 }

@@ -118,20 +118,46 @@ simetria.*
 
 Cada wave é fechável e testável sozinha. A ordem é obrigatória: cada uma remove a parede da seguinte.
 
-### W1 — A representação e a importação (foundational, append-only)
-- `Asset::ImageRgba16 { width, height, pixels: Arc<[u16]> }` — variante irmã (M4).
-- `loader.rs` deixa de recusar `FlatHdr` (M3) e passa a produzi-la.
-- Os importadores de PNG/TIFF param de esmagar 16 bits → 8
-  ([`imageio-png/src/lib.rs:16`](../../crates/ph2d-imageio-png/src/lib.rs) documenta a perda hoje, e
-  há teste a fixá-la: `import_quantizes_16bit_to_8bit_with_documented_loss` — **esse teste inverte-se**).
-- Conversões puras `to_16` / `to_8`, e o gate da ida-e-volta (§3.2).
+### W1 — A representação (foundational, append-only) ✅ **FEITA** (`80a9e9afa`, `b67b9679c`)
+- ✅ [`precision.rs`](../../crates/ph2d-imageio/src/precision.rs) — `Precision` + as quatro
+  conversões, meio-float à mão (o `f16` nativo é instável no toolchain fixado), e a lei exaustiva
+  `8 → 16 → 8` sobre os 256 bytes.
+- ✅ `Asset::ImageRgba16 { width, height, pixels: Arc<[u16]> }` (M4) + `Asset::image_rgba8` (porta
+  única, `Cow`) + `Asset::precision`.
 
-### W2 — A GPU (⚠️ abre com o gate de M5-bis)
+⚠️ **A prova de mutação mudou o desenho dos gates.** Trocar *round-to-nearest-even* por truncagem
+deixou **verdes** a tabela IEEE (valores sem bits a largar) **e** a varredura exaustiva (a folga
+entre a precisão do meio-float e o espaçamento sRGB absorve o erro). *O mutante sobrevivente era o
+nome do gate em falta* — `the_rounding_is_nearest_even_and_not_truncation`.
+
+### W1-bis — ⚠️ A ORDEM MUDOU, e a razão é a lei desta linha
+
+A redação original mandava a W1 **também** virar os importadores de PNG/TIFF para preservarem 16
+bits, e o `loader.rs` deixar de recusar `FlatHdr` (M3). **Está movido para o FIM da W2**, e não é
+detalhe de agenda:
+
+> Virar a importação antes de a GPU saber desenhar 16 bits faria uma imagem de 16 bits ser
+> importada com sucesso e **não aparecer** — trocando um erro claro (*"HDR import not yet bridged"*)
+> por um silêncio. É a mesma falha que esta linha acabou de curar duas vezes (o pill pintado e morto;
+> os oito pills sem `InteractiveState`): **uma capacidade que nasce antes do seu consumidor nasce
+> muda**, e o gate que a mede escolhe a ordem cómoda.
+
+⛔ Não reverter esta ordem sem ler [`the_registry_is_installed_before_the_hero.rs`](../../shells/desktop/tests/the_registry_is_installed_before_the_hero.rs).
+
+### W2 — A GPU (⚠️ abre com o gate de M5-bis) · **a wave grande**
 - Store `Rgba16Float` irmão do `individual.rs`.
 - **Gate de paridade primeiro**: a mesma imagem pelos dois caminhos tem de renderizar dentro da barra
   derivada do formato. É este gate que apanha a dupla-conversão de sRGB, e ele é escrito **antes** do
   código que ele mede.
 - Mip generator do formato novo.
+- **A auditoria dos 56 sítios de `ImageRgba8`** (`git grep -n ImageRgba8 -- crates shells`, 20
+  ficheiros). ⚠️ **O `cargo check` NÃO a entrega**: `Asset` é `#[non_exhaustive]`, então todo `match`
+  de fora da crate tem braço `_` e **aceita a variante nova em silêncio**. Ou o sítio passa pela
+  porta `Asset::image_rgba8`, ou trata o ramo — e quem decide é a leitura, não o compilador.
+- **Por fim**, e só aqui: virar a importação (W1-bis) — `loader.rs` deixa de recusar `FlatHdr` (M3)
+  e os importadores de PNG/TIFF param de esmagar 16 bits → 8
+  ([`imageio-png/src/lib.rs:16`](../../crates/ph2d-imageio-png/src/lib.rs) documenta a perda hoje, e
+  há teste a fixá-la: `import_quantizes_16bit_to_8bit_with_documented_loss` — **esse teste inverte-se**).
 
 ### W3 — Persistência
 - `PROJECT_SCHEMA` +1 · `SHEET_DOC_VERSION` +1 (⚠️ ambos são números que **somam entre linhas**:

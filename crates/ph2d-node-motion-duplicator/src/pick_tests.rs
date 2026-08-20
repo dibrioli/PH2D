@@ -45,7 +45,7 @@ fn worn(s: &Stream) -> Vec<f32> {
 /// that is new.
 #[test]
 fn off_is_the_cartesian_product_this_node_always_emitted() {
-    let out = duplicate(&shapes(3), &points(4), 4, Pick::Off, 0);
+    let out = duplicate(&shapes(3), &points(4), 4, Pick::Off, 0, 0.0);
     assert_eq!(out.count(), 12, "3 shapes at 4 points is 12 stamps");
     // Shape-major: the first four wear shape 0, and so on.
     assert_eq!(
@@ -57,7 +57,7 @@ fn off_is_the_cartesian_product_this_node_always_emitted() {
     // And a seed cannot reach a mode that does not consult one.
     for seed in [0u32, 7, 12345] {
         assert_eq!(
-            worn(&duplicate(&shapes(3), &points(4), 4, Pick::Off, seed)),
+            worn(&duplicate(&shapes(3), &points(4), 4, Pick::Off, seed, 0.0)),
             worn(&out),
             "the seed is Random's alone"
         );
@@ -68,7 +68,7 @@ fn off_is_the_cartesian_product_this_node_always_emitted() {
 /// `id mod shapes`. This is the reference default in all four tools.
 #[test]
 fn cycle_gives_each_point_one_shape_and_wraps() {
-    let out = duplicate(&shapes(3), &points(7), 7, Pick::Cycle, 0);
+    let out = duplicate(&shapes(3), &points(7), 7, Pick::Cycle, 0, 0.0);
     assert_eq!(
         out.count(),
         7,
@@ -95,8 +95,8 @@ fn the_shape_travels_with_the_point_through_a_reorder() {
         )
         .with("Index", Column::Scalar(vec![3.0, 2.0, 1.0, 0.0]));
 
-    let a = worn(&duplicate(&shapes(3), &straight, 4, Pick::Cycle, 0));
-    let mut b = worn(&duplicate(&shapes(3), &reversed, 4, Pick::Cycle, 0));
+    let a = worn(&duplicate(&shapes(3), &straight, 4, Pick::Cycle, 0, 0.0));
+    let mut b = worn(&duplicate(&shapes(3), &reversed, 4, Pick::Cycle, 0, 0.0));
     b.reverse();
     assert_eq!(a, b, "reordering the points does not re-deal the shapes");
 }
@@ -107,7 +107,7 @@ fn the_shape_travels_with_the_point_through_a_reorder() {
 fn a_point_stream_without_an_index_column_falls_back_to_its_position() {
     let bare = Stream::new(5).with("P", Column::Vec2(vec![[0.0, 0.0]; 5]));
     assert_eq!(
-        worn(&duplicate(&shapes(2), &bare, 5, Pick::Cycle, 0)),
+        worn(&duplicate(&shapes(2), &bare, 5, Pick::Cycle, 0, 0.0)),
         vec![10.0, 20.0, 10.0, 20.0, 10.0]
     );
 }
@@ -124,7 +124,7 @@ fn a_negative_id_wraps_the_other_way_instead_of_panicking() {
         .with("Index", Column::Scalar(vec![-1.0, -2.0, -3.0, -4.0]));
     // -1 mod 3 = 2, -2 -> 1, -3 -> 0, -4 -> 2.
     assert_eq!(
-        worn(&duplicate(&shapes(3), &neg, 4, Pick::Cycle, 0)),
+        worn(&duplicate(&shapes(3), &neg, 4, Pick::Cycle, 0, 0.0)),
         vec![30.0, 20.0, 10.0, 30.0]
     );
 }
@@ -136,7 +136,7 @@ fn a_negative_id_wraps_the_other_way_instead_of_panicking() {
 /// points that an off-by-one at the top would show rather than hide.
 #[test]
 fn random_scatters_within_range_and_the_seed_chooses_which_scatter() {
-    let out = duplicate(&shapes(3), &points(200), 200, Pick::Random, 0);
+    let out = duplicate(&shapes(3), &points(200), 200, Pick::Random, 0, 0.0);
     assert_eq!(out.count(), 200, "still one stamp per point");
     let w = worn(&out);
     assert!(
@@ -149,11 +149,25 @@ fn random_scatters_within_range_and_the_seed_chooses_which_scatter() {
         assert!(w.contains(&s), "shape {s} never came up in 200 draws");
     }
     // A different seed is a different scatter, and the same seed repeats.
-    let other = worn(&duplicate(&shapes(3), &points(200), 200, Pick::Random, 9));
+    let other = worn(&duplicate(
+        &shapes(3),
+        &points(200),
+        200,
+        Pick::Random,
+        9,
+        0.0,
+    ));
     assert_ne!(w, other, "the seed selects the assignment");
     assert_eq!(
         w,
-        worn(&duplicate(&shapes(3), &points(200), 200, Pick::Random, 0)),
+        worn(&duplicate(
+            &shapes(3),
+            &points(200),
+            200,
+            Pick::Random,
+            0,
+            0.0
+        )),
         "and the same seed is the same scatter, every cook"
     );
 }
@@ -214,7 +228,7 @@ fn the_variant_modes_do_not_pay_for_a_product_they_never_build() {
 /// built.
 #[test]
 fn the_renumbering_counts_the_stamps_that_exist() {
-    let out = duplicate(&shapes(3), &points(4), 4, Pick::Cycle, 0);
+    let out = duplicate(&shapes(3), &points(4), 4, Pick::Cycle, 0, 0.0);
     let Some(Column::Scalar(idx)) = out.get("Index") else {
         panic!("Index")
     };

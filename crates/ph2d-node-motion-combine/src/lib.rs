@@ -18,7 +18,7 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{GpuKernel, StreamOp};
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -51,8 +51,48 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[],
+    // **A RENUMERAÇÃO** (doc 89 folha 08). `0` = as colunas de identidade viajam
+    // verbatim, que é o que sempre aconteceu; `1` = a lista junta ganha um `Index`
+    // e um `Count` honestos. Ver [`REINDEX`].
+    params: &[ParamSpec {
+        name: "reindex",
+        default: 0.0,
+    }],
     lowerings: &[LoweringKind::Cpu],
+};
+
+/// As duas colunas de IDENTIDADE de um stream — quem é este elemento na lista, e
+/// quantos elementos a lista tem.
+const INDEX: &str = "Index";
+const COUNT: &str = "Count";
+
+/// **A RENUMERAÇÃO** (doc 89 folha 08 — a célula do `reindex`).
+///
+/// Medido antes desta wave (`measure_stream_join_defects`): `grid(9) + grid(4)` devolve
+/// **13 linhas** com `Index = [0..8, 0..3]` e `Count = [9×9, 4×4]` — as duas colunas
+/// **mentem**, e todo efeito dirigido por índice a jusante (uma rampa de cor, um
+/// stagger) lê a lista como se fossem duas. Os irmãos `motion.clone` e
+/// `motion.duplicator` renumeram de propósito (*"so a downstream ramp reads one
+/// 0..total run"*); este não.
+///
+/// ⚠️ **O DEFAULT É `0`, e isso NÃO é a escolha certa — é a escolha conservadora.** A
+/// referência de origem (MiniCavalry `combineStreams`) tem `reindex` com default
+/// **`true`**, e documenta o gotcha do contrário. Ligá-lo por omissão mudaria arte já
+/// autorada, o que nesta casa é decisão do Enio e não do agente — o param entra
+/// desligado, e a pergunta vai com o smoke.
+///
+/// ⚠️ **E ele RECUSA o device quando ligado**, pela mesma porta que os dois modos do
+/// `value.reduce` usam (`applicable`): a concatenação no device é um `StreamOp::Concat`
+/// que o sequenciador executa com `copy_buffer_to_buffer`, sem shader — renumerar ali
+/// seria uma segunda implementação da mesma lei, e duas implementações de uma lei é
+/// como elas divergem. Desligado (o default) nada recua.
+const REINDEX: &str = "reindex";
+
+/// O kernel deste nó: o passthrough de sempre, **mais a recusa** quando a
+/// renumeração está ligada.
+const GPU_KERNEL: GpuKernel = GpuKernel {
+    applicable: Some(|p| p(REINDEX) < 0.5),
+    ..GpuKernel::PASSTHROUGH
 };
 
 /// A cloned snapshot of one input (so several inputs can be held at once).
@@ -117,6 +157,24 @@ fn combine(snaps: &[Snap]) -> Stream {
     out
 }
 
+/// **Reescreve as duas colunas de identidade** para a lista JUNTA: `Index = 0..n−1` e
+/// `Count = n` em todas as linhas.
+///
+/// ⚠️ **Escreve as duas mesmo que nenhuma entrada as trouxesse**, e é isso que o torna
+/// uma renumeração e não um remendo: com `reindex` ligado o artista pediu identidade
+/// para a lista junta, e uma lista sem `Index` é uma em que o nó a jusante inventa a
+/// dele a partir da posição — a mesma resposta por acidente, até alguém pôr um `sort`
+/// no meio.
+fn reindex(out: &mut Stream) {
+    let n = out.count();
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de elementos")]
+    let idx: Vec<f32> = (0..n).map(|i| i as f32).collect();
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de elementos")]
+    let total = n as f32;
+    out.set(INDEX, Column::Scalar(idx));
+    out.set(COUNT, Column::Scalar(vec![total; n]));
+}
+
 struct MotionCombine;
 
 impl NodeOp for MotionCombine {
@@ -134,7 +192,11 @@ impl NodeOp for MotionCombine {
                 snaps.push(s);
             }
         }
-        ctx.emit(combine(&snaps));
+        let mut out = combine(&snaps);
+        if ctx.param(REINDEX) >= 0.5 {
+            reindex(&mut out);
+        }
+        ctx.emit(out);
     }
 }
 
@@ -145,13 +207,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // ADR-0136: concatenation is `copy_buffer_to_buffer` + zero-fill in the
     // sequencer — no shader, so the kernel is the passthrough (it makes the
     // plan claim the node; the `StreamOp::Concat` is what runs).
-    reg.register_gpu_kernel(MANIFEST.id, GpuKernel::PASSTHROUGH);
+    reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_stream_op(
         MANIFEST.id,
         StreamOp::Concat {
             ports: &[0, 1, 2, 3],
         },
     );
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -162,6 +225,17 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     Ok(())
 }
+
+/// ⚠️ **Um `Toggle`, e não um slider**: a renumeração acontece ou não acontece — meia
+/// renumeração não quer dizer nada, e um slider convidaria a procurar o meio.
+static PARAM_HINTS: &[ph2d_node_registry::ParamUiHint] = &[ph2d_node_registry::ParamUiHint {
+    param: REINDEX,
+    label: "Reindex",
+    min: 0.0,
+    max: 1.0,
+    step: 1.0,
+    widget: ph2d_node_registry::ParamWidget::Toggle,
+}];
 
 #[cfg(test)]
 mod tests {
@@ -292,3 +366,7 @@ mod tests {
         assert_eq!(out[0].as_stream().count(), 5, "3 + 2 merged");
     }
 }
+
+#[cfg(test)]
+#[path = "reindex_tests.rs"]
+mod reindex_tests;

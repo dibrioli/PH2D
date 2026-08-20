@@ -27,7 +27,7 @@ fn the_duplicator_stamps_each_shape_at_each_point() {
     // RED) and sits at its point's position.
     let s = shapes(&[7.0, 3.0]);
     let p = points(&[[10.0, 0.0], [20.0, 0.0], [30.0, 0.0]]);
-    let out = duplicate(&s, &p, 3, Pick::Off, 0);
+    let out = duplicate(&s, &p, 3, Pick::Off, 0, 0.0);
     assert_eq!(out.count(), 6);
     let Column::Scalar(ids) = out.get("texture_id").unwrap() else {
         panic!("texture_id")
@@ -60,7 +60,7 @@ fn p_and_rot_sum_both_inputs() {
     let p = Stream::new(2)
         .with("P", Column::Vec2(vec![[0.0, 5.0], [0.0, 9.0]]))
         .with("rot", Column::Scalar(vec![1.0, 2.0]));
-    let out = duplicate(&s, &p, 2, Pick::Off, 0);
+    let out = duplicate(&s, &p, 2, Pick::Off, 0, 0.0);
     let Column::Vec2(pp) = out.get("P").unwrap() else {
         panic!("P")
     };
@@ -75,7 +75,14 @@ fn p_and_rot_sum_both_inputs() {
 fn no_rot_column_when_neither_input_has_one() {
     // A pure position stamp emits no `rot` column — the lowering's default 0 is
     // the answer, and an empty column would be noise a downstream node reads.
-    let out = duplicate(&shapes(&[7.0]), &points(&[[1.0, 1.0]]), 1, Pick::Off, 0);
+    let out = duplicate(
+        &shapes(&[7.0]),
+        &points(&[[1.0, 1.0]]),
+        1,
+        Pick::Off,
+        0,
+        0.0,
+    );
     assert!(out.get("rot").is_none());
 }
 
@@ -89,6 +96,7 @@ fn index_and_count_are_continuous_across_the_product() {
         3,
         Pick::Off,
         0,
+        0.0,
     );
     let Column::Scalar(idx) = out.get("Index").unwrap() else {
         panic!("Index")
@@ -104,7 +112,7 @@ fn index_and_count_are_continuous_across_the_product() {
 fn no_points_passes_the_shapes_through() {
     // A duplicator with nowhere to stamp is a passthrough of its shapes.
     let s = shapes(&[7.0, 3.0]);
-    let out = duplicate(&s, &Stream::new(0), 0, Pick::Off, 0);
+    let out = duplicate(&s, &Stream::new(0), 0, Pick::Off, 0, 0.0);
     assert_eq!(out.count(), 2);
     let Column::Scalar(ids) = out.get("texture_id").unwrap() else {
         panic!("texture_id")
@@ -229,7 +237,7 @@ fn measure_duplicate_is_flat_in_n() {
     for &n in &[16usize, 256, 4096, 65536] {
         let pts = points(&vec![[0.0, 0.0]; n]);
         // Warm, then take the median of a few runs (shared machine, doc 28 §5.49).
-        let _ = duplicate(&shape, &pts, n, Pick::Off, 0);
+        let _ = duplicate(&shape, &pts, n, Pick::Off, 0, 0.0);
         let mut best = f64::INFINITY;
         for _ in 0..5 {
             let t = Instant::now();
@@ -239,6 +247,7 @@ fn measure_duplicate_is_flat_in_n() {
                 n,
                 Pick::Off,
                 0,
+                0.0,
             ));
             best = best.min(t.elapsed().as_secs_f64());
             assert_eq!(out.count(), n);
@@ -249,4 +258,99 @@ fn measure_duplicate_is_flat_in_n() {
             best * 1e9 / n as f64
         );
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// **A ESCALA DO PONTO** (doc 89 folha 08 — o defeito, não o knob).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Um stream de pontos com `size` por elemento (o que um `motion.scatter` produz).
+fn points_sized(ps: &[[f32; 2]], sizes: &[f32]) -> Stream {
+    let mut s = points(ps);
+    s.set(
+        "size",
+        Column::Vec2(sizes.iter().map(|&v| [v, v]).collect()),
+    );
+    s
+}
+
+/// **`point_scale = 0` É O MUNDO DE SEMPRE, E A AUSÊNCIA DA COLUNA FAZ PARTE DELE.**
+///
+/// ⚠️ **A metade que quase escapou:** escrever `1.0` em toda a linha quando ninguém autorou
+/// escala CRIA uma coluna `size` que não existia — e uma coluna a mais viaja, é serializada
+/// e muda o que um nó a jusante vê. O mundo de sempre é a **ausência** dela.
+#[test]
+fn a_point_scale_of_zero_leaves_the_stamp_exactly_as_it_shipped() {
+    let s = shapes(&[5.0]);
+    let p = points_sized(&[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], &[0.5, 1.0, 2.0]);
+    let off = duplicate(&s, &p, 3, Pick::Off, 0, 0.0);
+    assert!(
+        off.get("size").is_none(),
+        "sem escala pedida, o carimbo não pode inventar uma coluna `size`"
+    );
+    // O CONTROLE de que a fixture contém o fenômeno: com o peso a 1 ela aparece.
+    let on = duplicate(&s, &p, 3, Pick::Off, 0, 1.0);
+    assert!(
+        on.get("size").is_some(),
+        "com o peso a 1 a escala do ponto TEM de chegar ao carimbo"
+    );
+}
+
+/// **A ESCALA DO PONTO CHEGA, E O PESO INTERPOLA.**
+///
+/// Medido antes desta wave (`measure_stream_join_defects`): pontos com `size = [0, 4, 8, 12]`
+/// davam uma saída **sem coluna `size` nenhuma**.
+#[test]
+fn the_points_scale_reaches_the_stamp_and_the_weight_interpolates() {
+    let s = shapes(&[5.0]);
+    let p = points_sized(&[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], &[0.5, 1.0, 3.0]);
+    let read = |t: f32| match duplicate(&s, &p, 3, Pick::Off, 0, t).get("size") {
+        Some(Column::Vec2(v)) => v.iter().map(|q| q[0]).collect::<Vec<_>>(),
+        _ => Vec::new(),
+    };
+    // `t = 1`: a escala do ponto INTEIRA (a forma não autorou `size`, logo multiplica 1).
+    assert_eq!(read(1.0), vec![0.5, 1.0, 3.0]);
+    // `t = 0.5`: `lerp(1, p, 0.5)` — meio caminho entre não escalar e escalar.
+    let half = read(0.5);
+    for (got, want) in half.iter().zip([0.75f32, 1.0, 2.0]) {
+        assert!(
+            (got - want).abs() < 1e-6,
+            "meio peso é o meio caminho: {half:?}"
+        );
+    }
+}
+
+/// **A ESCALA DA FORMA E A DO PONTO MULTIPLICAM-SE** — a forma continua a ser o template, e
+/// o ponto MODULA-a; ele não a substitui.
+///
+/// ⚠️ É a distinção que separa esta wave de um `Set`: substituir apagaria o `size` que a
+/// forma autorou, e a referência (Houdini `pscale`, Blender `Scale`) compõe.
+#[test]
+fn the_shape_scale_and_the_point_scale_multiply() {
+    let mut s = shapes(&[5.0]);
+    s.set("size", Column::Vec2(vec![[2.0, 2.0]]));
+    let p = points_sized(&[[0.0, 0.0], [1.0, 0.0]], &[0.5, 3.0]);
+    let out = duplicate(&s, &p, 2, Pick::Off, 0, 1.0);
+    let Some(Column::Vec2(v)) = out.get("size") else {
+        panic!("size")
+    };
+    assert_eq!(
+        v.iter().map(|q| q[0]).collect::<Vec<_>>(),
+        vec![1.0, 6.0],
+        "2 × 0,5 e 2 × 3"
+    );
+}
+
+/// **PONTOS SEM ESCALA NÃO ACORDAM O CAMINHO** — pedir peso sobre pontos que não autoraram
+/// `size` deixa o carimbo intacto, em vez de o escalar por uma identidade inventada.
+#[test]
+fn points_without_a_size_column_leave_the_stamp_alone() {
+    let mut s = shapes(&[5.0]);
+    s.set("size", Column::Vec2(vec![[2.0, 2.0]]));
+    let p = points(&[[0.0, 0.0], [1.0, 0.0]]);
+    let out = duplicate(&s, &p, 2, Pick::Off, 0, 1.0);
+    let Some(Column::Vec2(v)) = out.get("size") else {
+        panic!("size")
+    };
+    assert_eq!(v, &vec![[2.0, 2.0]; 2], "a escala da forma, replicada");
 }

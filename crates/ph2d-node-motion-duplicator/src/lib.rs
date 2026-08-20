@@ -96,6 +96,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 0.0,
         },
+        // **A ESCALA DO PONTO** (doc 89 folha 08). `0` = a escala do ponto é deitada
+        // fora, que é o que sempre aconteceu; `1` = ela multiplica a da forma. Ver
+        // [`POINT_SCALE`].
+        ParamSpec {
+            name: "point_scale",
+            default: 0.0,
+        },
     ],
     // Changes the element count (shapes → shapes·points), which is structural,
     // not a per-element `ph2d-expr` map an `eval_column` could lower; and no
@@ -109,6 +116,33 @@ const P: &str = "P";
 const ROT: &str = "rot";
 const INDEX: &str = "Index";
 const COUNT: &str = "Count";
+/// A escala por-elemento, `Vec2` (a coluna que o `motion.drive(Size)` escreve).
+const SIZE: &str = "size";
+/// **A escala de uma coluna `size` AUSENTE é `1`, nunca `0`** — é a lei do §5 do
+/// `CLAUDE.md` (`SIZE_IDENTITY`), e ela decide o caso comum: uma forma sem `size`
+/// autorado desenha ao natural, então a escala do ponto tem de multiplicar UM.
+const SIZE_IDENTITY: f32 = 1.0;
+
+/// **A ESCALA DO PONTO** (doc 89 folha 08 — a célula *"a ESCALA do ponto nunca chega
+/// ao carimbo"*).
+///
+/// Medido antes (`measure_stream_join_defects`): pontos com `size = [0, 4, 8, 12]`
+/// carimbados numa forma davam uma saída **sem coluna `size` nenhuma** — só `P` e
+/// `rot` somavam e todo o resto do ponto era deitado fora. As três referências são
+/// unânimes: Houdini honra `pscale` na pilha documentada, Blender *Instance on
+/// Points* tem o socket `Scale`, Cavalry tem `Shape Scale` por cópia.
+///
+/// ⚠️ **É um PESO, não um interruptor, e isso é de propósito:** `0` é o mundo de
+/// sempre (a forma manda), `1` é a escala do ponto inteira, e o meio interpola —
+/// `lerp(1, escala_do_ponto, t)`. Um booleano daria os dois extremos e nada entre
+/// eles, e "quanto da variação do scatter eu quero" é exactamente o gesto de
+/// afinação que a referência oferece.
+///
+/// ⚠️ **A CERCA que existia cobre a COR, não a escala.** O doc-comment deste nó
+/// declara *"a per-point tint would be a future extension — the shape is the
+/// template"*; a célula reconferiu-a e ela é sobre `tint`. Para a escala não há
+/// cerca, há três referências a dizer o contrário.
+const POINT_SCALE: &str = "point_scale";
 
 /// **Which shape lands on a point** (doc 89 folha 08 — the P0).
 ///
@@ -307,7 +341,14 @@ fn points_within_budget(mode: Pick, ns: usize, np: usize, max: usize) -> usize {
 /// appearance columns unchanged and add the point's `P`/`rot`. Pure and
 /// isolated so the product order, the offset sum, and the `Index`/`Count`
 /// renumbering are unit-tested directly. `np` must already be budget-clamped.
-fn duplicate(shape: &Stream, points: &Stream, np: usize, mode: Pick, seed: u32) -> Stream {
+fn duplicate(
+    shape: &Stream,
+    points: &Stream,
+    np: usize,
+    mode: Pick,
+    seed: u32,
+    point_scale: f32,
+) -> Stream {
     // No points: the duplicator has nowhere to stamp → pass the shapes through
     // (the reference's `points`-less behaviour). Cloning is refcount, not copy.
     if np == 0 {
@@ -357,7 +398,58 @@ fn duplicate(shape: &Stream, points: &Stream, np: usize, mode: Pick, seed: u32) 
         }
         out.set(name.clone(), spread(col, &pairs));
     }
+    apply_point_scale(&mut out, shape, points, &pairs, point_scale);
     out
+}
+
+/// A escala `Vec2` de um elemento, com a identidade [`SIZE_IDENTITY`] quando a coluna
+/// não existe — ou quando ela é escalar (um valor, os dois eixos).
+fn size_at(col: Option<&Column>, i: usize) -> [f32; 2] {
+    match col {
+        Some(Column::Vec2(v)) => v.get(i).copied().unwrap_or([SIZE_IDENTITY; 2]),
+        Some(Column::Scalar(v)) => {
+            let s = v.get(i).copied().unwrap_or(SIZE_IDENTITY);
+            [s, s]
+        }
+        _ => [SIZE_IDENTITY; 2],
+    }
+}
+
+/// **Multiplica a escala da forma pela do PONTO**, pesada por `t ∈ [0, 1]`.
+///
+/// ⚠️ **`t = 0` sai pelo caminho literal, e não pela aritmética**: sem coluna `size` na
+/// forma nem no ponto, escrever `1.0` em toda a linha criaria uma coluna que não existia —
+/// e uma coluna a mais viaja, é serializada e muda o que um nó a jusante vê. O mundo de
+/// sempre é a AUSÊNCIA dela, não um `size` de uns.
+fn apply_point_scale(
+    out: &mut Stream,
+    shape: &Stream,
+    points: &Stream,
+    pairs: &[(usize, usize)],
+    t: f32,
+) {
+    if t <= 0.0 {
+        return;
+    }
+    let t = t.min(1.0);
+    let (shape_size, point_size) = (shape.get(SIZE), points.get(SIZE));
+    if point_size.is_none() {
+        return; // os pontos não autoraram escala: nada a compor
+    }
+    let scaled = pairs
+        .iter()
+        .map(|&(si, pi)| {
+            let base = size_at(shape_size, si);
+            let p = size_at(point_size, pi);
+            // `lerp(1, p, t)` — em `t = 1` a escala do ponto inteira, em `t = 0` a da
+            // forma intacta (e este ramo nem corre).
+            [
+                base[0] * (SIZE_IDENTITY + (p[0] - SIZE_IDENTITY) * t),
+                base[1] * (SIZE_IDENTITY + (p[1] - SIZE_IDENTITY) * t),
+            ]
+        })
+        .collect();
+    out.set(SIZE, Column::Vec2(scaled));
 }
 
 struct MotionDuplicator;
@@ -379,7 +471,7 @@ impl NodeOp for MotionDuplicator {
             points.count(),
             RECOMMENDED_MAX_ELEMENTS,
         );
-        let out = duplicate(shape, points, np, mode, seed);
+        let out = duplicate(shape, points, np, mode, seed, ctx.param(POINT_SCALE));
         ctx.emit(out);
     }
 }
@@ -424,6 +516,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 999.0,
         step: 1.0,
         widget: ParamWidget::Seed,
+    },
+    // ⚠️ **NÃO é gateado pelo `pick`**, e isso é a leitura certa do mecanismo: a escala do
+    // ponto compõe-se com o carimbo nos três modos — no produto cartesiano cada forma herda
+    // a escala do ponto em que pousou, tal como no `Cycle` e no `Random`.
+    ParamUiHint {
+        param: POINT_SCALE,
+        label: "Point Scale",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
     },
 ];
 

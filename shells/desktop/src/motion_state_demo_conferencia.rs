@@ -496,3 +496,35 @@ pub(super) fn substep(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeI
 // na forca que a cena autora — raio maximo em 3 s, partindo de 4,0.
 const SUB_TOP: f32 = 4.65;
 const SUB_ONE: f32 = 12.86;
+
+/// **A CENA `=62` — OS DOIS DEFEITOS DE JUNÇÃO** (doc 89, folha 08).
+///
+/// Dois pares, cada um com o seu CONTROLE: o carimbo que deitava fora a escala do ponto, e
+/// a junção cujas colunas de identidade mentem.
+pub(super) fn join(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_join::build_join_demo_document(doc, registry).unwrap_or_default();
+    eprintln!(
+        "[join-demo] DOIS PARES ({} bandas). Cada par e' um DEFEITO, com o controle ao lado.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_join::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) 1-2, A ESCALA DO PONTO: a MESMA fileira de pontos nas duas, e o tamanho de cada
+  ponto cresce da esquerda para a direita. Na banda 1 os carimbos saem TODOS IGUAIS -- o
+  duplicator somava P e rot e deitava fora toda outra coluna do ponto. Na 2 eles crescem.
+  SE AS DUAS FOREM IGUAIS, PARE. O knob e' `Point Scale`, e ele e' um PESO: 0,5 da' metade
+  da variacao.
+  (!) 3-4, A JUNCAO: as MESMAS duas grelhas (9 + 4 = 13 pecas) tingidas por um degrade que
+  le' a coluna `Index`. Na banda 3 a cor REINICIA no meio -- cada grelha escreveu o seu
+  proprio `Index = 0..n` e a juncao copiou os dois verbatim, entao as 13 pecas dizem ser
+  duas listas. Na 4 o degrade corre UMA vez sobre as 13. O knob e' `Reindex`.
+  (!) ⚠️ O `Reindex` nasce DESLIGADO, e essa e' uma pergunta PARA VOCE: a referencia de onde
+  o no' veio (Cavalry `combineStreams`) tem o contrario -- ligado por omissao. Liga-lo aqui
+  por omissao mudaria arte ja' feita, entao a escolha e' sua, nao minha.
+  (!) DEU ERRADO se as bandas de cada par parecerem iguais, ou se a banda 4 mostrar duas
+  passagens de cor."
+    );
+    sinks
+}

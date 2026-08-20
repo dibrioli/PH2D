@@ -130,7 +130,7 @@ e *"isto corre depressa?"* — e faz a segunda mentir sobre a primeira.
 |---|---|
 | **8 amostras por borda** (9 níveis de cobertura em vez de 5) | ⛔ **Não feito.** Custaria ~+15 % em cima dos +15 % atuais — está **disponível**, e a qualidade ainda não o pediu. 4 amostras é o que a indústria shipa |
 | **Perspectiva** | Aberto desde a W2. Muda o *feel* de um modelador e merece comparação lado a lado, não uma troca silenciosa |
-| **Órbita por mouse** | W4, junto com a fiação de entrada da ferramenta |
+| **Órbita por mouse** | ✅ **Feita** — ver §6 |
 | **O sintoma de BANDA** no sombreado | ⚠️ Não reproduzido nem atribuído. Se voltar a aparecer, os suspeitos por ordem são: o próprio matcap (um matcap de esfera iluminada **tem** anéis tonais), a saída de 8 bits, e a normal por diferença central |
 
 **Instrumento para olhar:** `dump_frame` escreve um PPM por variante (com e sem AA) em
@@ -139,3 +139,66 @@ e *"isto corre depressa?"* — e faz a segunda mentir sobre a primeira.
 ```
 PH2D_FIELD_DUMP=/tmp cargo test -p ph2d-field-render --release -- --ignored --nocapture dump_frame
 ```
+
+---
+
+## §6 — A navegação (W4, 19/08): o que se fez, e o teto que DEIXOU de existir
+
+Órbita, pan e zoom pelo mouse — em [`field3d_input.rs`](../../shells/desktop/src/field3d_input.rs),
+no **shell** e nunca numa `Tool` ([ADR-0150](../architecture/decisions/0150-3d-sculpt-is-a-mesh-that-donates-shading-sculptgl-referenced.md)),
+que é o que mantém o `Tool=12` congelado fora do caminho.
+
+| Gesto | O que faz |
+|---|---|
+| Arrastar **esquerdo** ou **direito** | Orbita |
+| Arrastar **do meio** | Pan |
+| **Roda** | Zoom |
+
+⚠️ **Os botões e as constantes são os MESMOS do módulo de escultura** (`ORBIT_RAD_PER_PX = 0,01`,
+`1,1` por passo de roda). Não é herança por analogia — são duas janelas 3D no mesmo aplicativo, e
+uma mão que aprendeu a girar numa tem de girar na outra. Divergir seria uma decisão, e não havia
+nenhuma a tomar.
+
+⭐ **O prato para de girar ao primeiro toque.** *Feature nova = auto-play* é a lei da casa, mas
+continuar a girar **depois** de alguém a ter posto num ângulo é desfazer o gesto dele a cada quadro.
+E a partir daí só se traça o que mudou: **uma peça parada custa zero**.
+
+### §6.1 — ⭐ O teto de zoom não foi escrito; a causa dele foi removida
+
+A tolerância de acerto era `2·10⁻⁴` **fixa**. Isso não é uma constante de conforto: é um **teto de
+zoom disfarçado**. Assim que o pixel fica mais fino que ela, a superfície deixa de ganhar nitidez e
+passa a ganhar franja — e numa peça pequena a forma sai **inchada**:
+
+| Peça de raio 10⁻³, enquadrada a 2·10⁻³ | Área na tela |
+|---|---:|
+| A geometria | 0,196 |
+| Com tolerância FIXA | **0,283** (+44 %) |
+| Com tolerância derivada do pixel | 0,198 |
+
+O 0,283 não é uma estimativa: é o número que a **prova de mutação** devolveu ao voltar a fixar as
+tolerâncias, com o gate `zooming_in_does_not_inflate_the_part` vermelho.
+
+⚠️ `CLAUDE.md §0` proíbe escrever um limite antes de medir — e o que a medição disse aqui foi que o
+limite **não devia existir**. As duas tolerâncias (acerto e diferença central da normal) passam a
+descer com o tamanho do pixel, e param num piso que **nomeia o seu recurso**: a precisão de `f32`
+(`PRECISION_FLOOR = 10⁻⁶`). *A cura de um teto herdado quase nunca é um número melhor; é a causa.*
+
+Os dois únicos limites de faixa que sobraram dizem de que recurso são:
+
+| Limite | Recurso |
+|---|---|
+| `MIN_HALF_EXTENT = 10⁻⁴` (~8000× de aproximação) | **Precisão da representação** — abaixo, um pixel mede menos que o erro de `f32` |
+| `MAX_HALF_EXTENT = 4,0` | **Alcance da marcha** — os raios cobrem ±4 de profundidade em torno do alvo |
+
+### §6.2 — Os gates medem o MODELO NA TELA, nunca o sinal
+
+`dragging_right_turns_the_model_right_and_dragging_down_shows_its_top` traça uma esfera na face de
+cá, aplica o arrasto e mede **para onde o centro de massa foi**. É deliberado: a `line/sculpt3d`
+errou os dois sinais de uma vez argumentando sobre `yaw += dx`, e o que os pegou foi um smoke.
+
+⚠️ **Prova de mutação feita:** trocar os dois sinais deixa o gate vermelho com
+`59,5 -> 46,5` — ele morde.
+
+A peça em `+Z` (e não em `+X`) também não é decorativa: de frente ela cai **no centro** do quadro,
+então qualquer giro a tira de lá e o lado para onde ela sai responde à pergunta sem ambiguidade.
+Uma peça em `+X` começaria deslocada e giraria *para dentro* — a armadilha desta medição.

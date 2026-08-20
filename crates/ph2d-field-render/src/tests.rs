@@ -527,3 +527,31 @@ fn dump_frame() {
         println!("[dump] {path} — {} pixels de borda", g.edges.len());
     }
 }
+
+/// ⭐ **Aproximar mostra MAIS forma, e não uma forma inchada.**
+///
+/// Um campo implícito tem detalhe infinito, e a tolerância de acerto é o que decidia se ele
+/// aparecia. Com um `HIT_EPS` fixo em 2·10⁻⁴, uma peça de raio 10⁻³ vista de perto sairia com raio
+/// **1,2·10⁻³** — 20 % maior, e a área na tela **44 %** maior. Não é franja: é a peça errada.
+///
+/// A cura não foi um limite de zoom, foi tirar a causa: as tolerâncias descem com o pixel
+/// ([`Sharpness`]). Este gate é o que impede alguém de as voltar a fixar "para simplificar".
+#[test]
+fn zooming_in_does_not_inflate_the_part() {
+    let radius = 1.0e-3_f32;
+    let cam = Orbit {
+        half_extent: 2.0e-3,
+        ..Orbit::default()
+    };
+    let (w, h) = (200u32, 200u32);
+    let g = trace(&sphere(radius), &cam, w, h);
+
+    let frac = f64::from(radius) / f64::from(cam.half_extent);
+    let expected = std::f64::consts::PI * frac * frac / 4.0;
+    let got = g.hits() as f64 / f64::from(w * h);
+    assert!(
+        (got - expected).abs() < 0.01,
+        "de muito perto a esfera devia cobrir {expected:.4} do quadro e cobriu {got:.4} — com \
+         tolerância FIXA isto dá 0,283 contra 0,196"
+    );
+}

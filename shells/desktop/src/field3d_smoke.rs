@@ -3,27 +3,30 @@
 //! Põe na tela o que o módulo de facto é: o **campo traçado**, não uma malha. É por aqui que o Enio
 //! vê a quina de navalha e o filete liso que a W0 mediu.
 //!
-//! # É um PRATO GIRATÓRIO, e a escolha tem motivo
+//! # Gira sozinho ATÉ ALGUÉM PEGAR nele
 //!
-//! A peça gira sozinha. Isso é a lei da casa — *feature nova = auto-play* — e aqui ela também evita
-//! o que mais importa: **não toco no despacho de entrada**. A `line/sculpt3d` está viva e edita os
-//! mesmos arquivos de `shells/desktop/`, e o `input_dispatch.rs` é exatamente onde duas linhas se
-//! encontrariam. Órbita por mouse chega junto com a ferramenta (W4), onde a fiação de entrada é
-//! parte do trabalho de qualquer forma.
+//! A peça roda em prato giratório — a lei da casa, *feature nova = auto-play*. Mas ao primeiro
+//! arrasto ou passo de roda ela **para onde a mão a deixou** ([`Smoke::manual`]): continuar a girar
+//! depois disso é desfazer o gesto do artista a cada quadro. A navegação em si vive no arquivo irmão
+//! [`crate::field3d_input`], que é também onde estão as quatro linhas que este módulo põe no
+//! `input_dispatch.rs`.
 //!
 //! # Estado contido, de propósito
 //!
 //! O estado vive **neste arquivo**, num `thread_local`, em vez de num campo do `App`. Não é
-//! preguiça: `app_state.rs` é compartilhado e a outra linha o edita: um campo novo lá é uma colisão
-//! por conveniência. O que este módulo toca fora de si são **duas linhas** — o `mod` e a chamada.
+//! preguiça: `app_state.rs` é compartilhado e a `line/sculpt3d` edita-o — um campo novo lá é uma
+//! colisão por conveniência. A porta é [`with_smoke`].
 //!
-//! # A requisição em voo é UMA
+//! # A requisição em voo é UMA, e só se traça o que MUDOU
 //!
-//! Traçar 640×480 custa ~25 ms (medido, `ph2d-field-render::measure_trace_cost`), e fazê-lo dentro
-//! do laço de quadro comeria o orçamento inteiro (HR-4). Então o traçado roda **fora** da thread de
-//! UI, com **uma requisição em voo por vez** — a mesma disciplina que o modelador original pagou
-//! para descobrir (`docs/3DModeling/00_plano_port.md` §1.2.7): as respostas que chegam durante a
-//! espera já nasceram velhas, e só a última interessa.
+//! Traçar custa dezenas de milissegundos (medido, `docs/3DModeling/05_resultados_imagem.md`), e
+//! fazê-lo dentro do laço de quadro comeria o orçamento inteiro (HR-4). Então o traçado roda **fora**
+//! da thread de UI, com **uma requisição em voo por vez** — a mesma disciplina que o modelador
+//! original pagou para descobrir (`docs/3DModeling/00_plano_port.md` §1.2.7): as respostas que
+//! chegam durante a espera já nasceram velhas, e só a última interessa.
+//!
+//! E a requisição só sai quando a câmera ou o tamanho mudaram. Com o prato a girar isso é todo
+//! quadro; com a mão no controlo, **uma peça parada custa zero**.
 
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -54,18 +57,44 @@ const SPIN_RATE: f32 = 0.5;
 /// do app aparece por baixo, e o módulo deixa de ter opinião sobre o fundo.
 const BACKGROUND: [u8; 4] = [0, 0, 0, 0];
 
-struct Smoke {
+pub(crate) struct Smoke {
     doc: FieldDoc,
     matcap: Arc<MatcapTexels>,
-    cam: Orbit,
+    pub(crate) cam: Orbit,
     /// O último quadro pronto — com o tamanho a que foi traçado, para o desenhar sem esticar
     /// enquanto o próximo (já do tamanho novo) não chega.
     frame: Option<(Arc<Vec<u8>>, u32, u32)>,
     inflight: Option<Receiver<Ready>>,
     /// Quando o pedido em voo saiu — é o relógio que faz a rotação ser por SEGUNDO.
     since: std::time::Instant,
+    /// A câmera e o tamanho do último pedido — a memória que impede re-traçar o que não mudou.
+    requested: Option<(Orbit, u32, u32)>,
     /// Já anunciou o primeiro quadro? Ver a nota do `boot`.
     announced: bool,
+    /// **A área onde o quadro foi desenhado da última vez** — é ela que responde *"este clique é
+    /// meu?"*. Sem isto a cena engoliria gestos de qualquer canto da janela.
+    pub(crate) area: Option<EditorRect>,
+    /// O arrasto em curso, se houver ([`crate::field3d_input`]).
+    pub(crate) drag: Option<Drag>,
+    /// A última posição do ponteiro, para o delta do arrasto.
+    pub(crate) last_pointer: (f32, f32),
+    /// ⭐ **O prato para de girar assim que o artista toca nele.**
+    ///
+    /// A lei da casa é *feature nova = auto-play*: a peça gira sozinha para provar que existe. Mas
+    /// continuar a girar **depois** de alguém a ter posto num ângulo é desfazer o gesto dele a cada
+    /// quadro — a auto-demonstração deixa de ser um convite e passa a ser uma disputa.
+    pub(crate) manual: bool,
+}
+
+/// O gesto de navegação em curso.
+///
+/// ⚠️ Os botões são os **mesmos** do módulo de escultura (`sculpt3d_input.rs`): esquerdo e direito
+/// orbitam, o do meio faz pan. Não é herança por analogia — são duas janelas 3D no mesmo app, e uma
+/// mão que aprendeu a girar numa tem de girar na outra.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Drag {
+    Orbit,
+    Pan,
 }
 
 /// O que uma requisição de traçado devolve.
@@ -321,7 +350,27 @@ fn boot() -> Option<Smoke> {
         frame: None,
         inflight: None,
         since: std::time::Instant::now(),
+        requested: None,
         announced: false,
+        area: None,
+        drag: None,
+        last_pointer: (0.0, 0.0),
+        manual: false,
+    })
+}
+
+/// **A porta única para o estado do smoke**, e é por ela que a metade de entrada chega.
+///
+/// ⚠️ O estado vive num `thread_local` deste arquivo, e não num campo do `App`, de propósito: o
+/// `app_state.rs` é compartilhado e a `line/sculpt3d` edita-o. Um campo novo lá seria uma colisão
+/// por conveniência. Isto custa uma função e não custa um conflito.
+///
+/// Devolve `None` quando o smoke não está armado — e é isso que faz cada gancho de entrada ser
+/// **inerte** (e portanto invisível) fora dele.
+pub(crate) fn with_smoke<R>(f: impl FnOnce(&mut Smoke) -> R) -> Option<R> {
+    STATE.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        slot.get_or_insert_with(boot).as_mut().map(f)
     })
 }
 
@@ -368,13 +417,23 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
             (area.h.round().max(1.0) as u32).max(MIN_TRACE),
         );
 
-        // Uma requisição em voo por vez: só pede a próxima quando a anterior chegou.
-        if smoke.inflight.is_none() {
+        smoke.area = Some(area);
+
+        if !smoke.manual && smoke.inflight.is_none() {
             let dt = smoke.since.elapsed().as_secs_f32();
             smoke.since = std::time::Instant::now();
-            // Trava o passo: se a janela ficou minimizada meia hora, a peça não dá vinte voltas de
-            // uma vez.
+            // Trava o passo: se a janela ficou minimizada meia hora, a peça não dá vinte voltas
+            // de uma vez.
             smoke.cam.yaw += SPIN_RATE * dt.min(0.25);
+        }
+
+        // ⭐ **Só se traça o que MUDOU.** Uma requisição em voo por vez, e só quando a câmera ou o
+        // tamanho já não são os do último pedido — senão uma cena parada re-traçaria o mesmo quadro
+        // para sempre, queimando um núcleo por nada. Com o prato a girar a câmera muda todo quadro,
+        // então isto é invisível ali; com a mão no controlo, uma peça parada custa **zero**.
+        let want = (smoke.cam, tw, th);
+        if smoke.inflight.is_none() && (smoke.requested != Some(want) || smoke.frame.is_none()) {
+            smoke.requested = Some(want);
             let (tx, rx) = channel::<Ready>();
             let doc = smoke.doc.clone();
             let cam = smoke.cam;

@@ -2833,6 +2833,11 @@ impl App {
         if self.sculpt3d_pointer_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // ADR-0161 W4: a órbita da janela 3D de MODELAGEM (irmã da de cima, e com
+        // a mesma lei: só consome com um arrasto EM CURSO).
+        if self.field3d_pointer_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // Audio Editor piece drag (SHELL-only): Move / Scale own the pointer while they are live.
         #[cfg(feature = "panel-audio-editor")]
         if self.audio_piece_drag_move(self.last_pointer.0) {
@@ -3083,6 +3088,10 @@ impl App {
         if !over_panel && self.sculpt3d_wheel(dy / 16.0) {
             return;
         }
+        // ADR-0161 W4: o mesmo para a janela 3D de modelagem.
+        if !over_panel && self.field3d_wheel(dy / 16.0) {
+            return;
+        }
         // **O ajuste modal do Gap Closure** (doc 06 §8): em modo Fill, Ctrl+roda sobre o
         // canvas ajusta o alcance — e os helpers no canvas mostram, ao vivo, quais vãos
         // o valor atual fecha (`flip_gap_live`). A roda CRUA continua sendo zoom
@@ -3164,6 +3173,18 @@ impl App {
             let taken = match state {
                 ElementState::Pressed => self.sculpt3d_pointer_down(button),
                 ElementState::Released => self.sculpt3d_pointer_up(),
+            };
+            if taken {
+                return;
+            }
+        }
+        // ADR-0161 W4: a janela 3D de modelagem toma o botão para navegar. Inerte
+        // (e portanto invisível) sem o smoke armado, e ela só reclama o gesto que
+        // começa DENTRO da área que ela desenhou.
+        {
+            let taken = match state {
+                ElementState::Pressed => self.field3d_pointer_down(button),
+                ElementState::Released => self.field3d_pointer_up(),
             };
             if taken {
                 return;

@@ -34,13 +34,53 @@ use rayon::prelude::*;
 /// o furo aparece como pixel de fundo no meio da peça.
 const SAFE_STEP: f32 = std::f32::consts::FRAC_1_SQRT_2;
 
-/// Distância abaixo da qual o raio considerou-se na superfície.
+/// Distância abaixo da qual o raio considerou-se na superfície — **o teto**, nunca o valor fixo.
+///
+/// ⚠️ Ver [`Sharpness`]: o valor efetivo desce com o zoom.
 const HIT_EPS: f32 = 2.0e-4;
 /// Quanto um raio anda antes de desistir.
 const T_MAX: f32 = 8.0;
 const MAX_STEPS: usize = 400;
-/// Passo da diferença central que devolve a normal.
+/// Passo da diferença central que devolve a normal — **o teto**, pelo mesmo motivo.
 const NORMAL_EPS: f32 = 1.0e-4;
+/// O piso dos dois, e ele nomeia o recurso de que é: a **precisão da representação**.
+///
+/// O campo é avaliado em `f32`. À escala de uma peça de tamanho unitário isso dá ~10⁻⁷ de erro
+/// absoluto, então uma diferença central com passo abaixo de ~10⁻⁶ mede ruído de cancelamento, não
+/// gradiente. Abaixo daqui, refinar **piora**.
+const PRECISION_FLOOR: f32 = 1.0e-6;
+
+/// As duas tolerâncias da marcha, **derivadas do tamanho do pixel em mundo**.
+///
+/// # ⭐ Por que elas não são constantes
+///
+/// Um campo implícito tem detalhe infinito: aproximar a câmera devia mostrar mais forma. Com um
+/// `HIT_EPS` fixo isso **para** — assim que o pixel fica mais fino que a tolerância, a superfície
+/// deixa de ganhar nitidez e passa a ganhar franja, e o módulo herda um teto de zoom que nada na
+/// física pedia.
+///
+/// A cura não é escrever um limite de zoom: é **remover a causa** (`CLAUDE.md §0`). As duas
+/// tolerâncias descem com o pixel, e só param no [`PRECISION_FLOOR`], que é um limite legítimo
+/// porque diz de que recurso é.
+///
+/// ⚠️ São **tetos**, e no enquadramento normal nada muda: a 480 px de altura com `half_extent = 0,8`
+/// o pixel mede 0,0033 e o teto de 2·10⁻⁴ continua a mandar. A adaptação só morde a partir de ~4×
+/// de aproximação, que é exatamente onde o problema começava.
+#[derive(Clone, Copy, Debug)]
+struct Sharpness {
+    hit: f32,
+    normal: f32,
+}
+
+impl Sharpness {
+    fn for_frame(half_extent: f32, side_px: usize) -> Self {
+        let pixel = 2.0 * half_extent / (side_px.max(1) as f32);
+        Self {
+            hit: HIT_EPS.min(pixel * 0.25).max(PRECISION_FLOOR),
+            normal: NORMAL_EPS.min(pixel * 0.5).max(PRECISION_FLOOR),
+        }
+    }
+}
 
 /// A câmera em órbita. **Ortográfica** — ver a nota de [`Orbit::basis`].
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -202,13 +242,20 @@ pub fn trace_with(
     let basis = cam.basis();
     let (w, h) = (width as usize, height as usize);
     let plane = Plane::new(w, h, cam.half_extent);
+    let sharp = Sharpness::for_frame(cam.half_extent, w.min(h));
+    let scene = Scene {
+        shape: &shape,
+        cam,
+        basis,
+        sharp,
+    };
 
     // Passo 1: um raio por pixel, uma fatia por linha.
     let row = |y: usize| -> (Vec<bool>, Vec<[f32; 3]>) {
         let pts: Vec<(f32, f32)> = (0..w)
             .map(|x| plane.at(x as f32 + 0.5, y as f32 + 0.5))
             .collect();
-        march(&shape, cam, basis, &pts)
+        march(&scene, &pts)
     };
     let rows: Vec<(Vec<bool>, Vec<[f32; 3]>)> = if parallel {
         (0..h).into_par_iter().map(row).collect()
@@ -224,7 +271,7 @@ pub fn trace_with(
 
     // Passo 2: re-amostrar as bordas.
     let edges = if antialias {
-        resample_edges(&shape, cam, basis, plane, &hit, &normal, parallel)
+        resample_edges(&scene, plane, &hit, &normal, parallel)
     } else {
         Vec::new()
     };
@@ -238,18 +285,26 @@ pub fn trace_with(
     }
 }
 
+/// **Tudo o que uma marcha precisa de saber, e que não muda entre lotes.**
+///
+/// Os quatro viajam sempre juntos — a árvore compilada, a câmera, a base dela e as tolerâncias do
+/// quadro. Passá-los soltos era o que fazia as duas funções abaixo crescerem para oito parâmetros,
+/// e uma lista de oito é onde dois deles trocam de lugar sem o compilador reparar.
+struct Scene<'a> {
+    shape: &'a Engine,
+    cam: &'a Orbit,
+    basis: ([f32; 3], [f32; 3], [f32; 3]),
+    sharp: Sharpness,
+}
+
 /// **O núcleo**: marcha um lote arbitrário de raios e devolve `(acertou, normal de vista)`.
 ///
 /// Recebe posições no **plano da câmera** (unidades de mundo), e não índices de pixel, e é isso que
 /// o deixa servir às duas passagens — a linha inteira e as quatro amostras espalhadas de um pixel
 /// de borda. *Uma marcha, um lugar.*
-fn march(
-    shape: &Engine,
-    cam: &Orbit,
-    basis: ([f32; 3], [f32; 3], [f32; 3]),
-    screen: &[(f32, f32)],
-) -> (Vec<bool>, Vec<[f32; 3]>) {
-    let (right, up, fwd) = basis;
+fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>) {
+    let (right, up, fwd) = scene.basis;
+    let (shape, cam, sharp) = (scene.shape, scene.cam, scene.sharp);
     let n = screen.len();
     // Um avaliador POR LOTE: a `fidget` precisa de estado mutável para avaliar, e partilhá-lo entre
     // threads exigiria trava. Criar o próprio é barato e mantém a escrita disjunta, que é a
@@ -294,7 +349,7 @@ fn march(
         for (k, &i) in alive.iter().enumerate() {
             let iu = i as usize;
             let d = out[k];
-            if d < HIT_EPS {
+            if d < sharp.hit {
                 hit[iu] = true;
                 continue;
             }
@@ -320,13 +375,14 @@ fn march(
             oy[i] + dir[1] * t[i],
             oz[i] + dir[2] * t[i],
         );
+        let e = sharp.normal;
         for (dx, dy, dz) in [
-            (NORMAL_EPS, 0.0, 0.0),
-            (-NORMAL_EPS, 0.0, 0.0),
-            (0.0, NORMAL_EPS, 0.0),
-            (0.0, -NORMAL_EPS, 0.0),
-            (0.0, 0.0, NORMAL_EPS),
-            (0.0, 0.0, -NORMAL_EPS),
+            (e, 0.0, 0.0),
+            (-e, 0.0, 0.0),
+            (0.0, e, 0.0),
+            (0.0, -e, 0.0),
+            (0.0, 0.0, e),
+            (0.0, 0.0, -e),
         ] {
             gx.push(px + dx);
             gy.push(py + dy);
@@ -399,9 +455,7 @@ impl Plane {
 }
 
 fn resample_edges(
-    shape: &Engine,
-    cam: &Orbit,
-    basis: ([f32; 3], [f32; 3], [f32; 3]),
+    scene: &Scene<'_>,
     plane: Plane,
     hit: &[bool],
     normal: &[[f32; 3]],
@@ -452,7 +506,7 @@ fn resample_edges(
                 pts.push(plane.at(x + dx, y + dy));
             }
         }
-        let (hits, normals) = march(shape, cam, basis, &pts);
+        let (hits, normals) = march(scene, &pts);
         c.iter()
             .enumerate()
             .map(|(k, &p)| {

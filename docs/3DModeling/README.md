@@ -36,7 +36,12 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-3DModeling && env PH2D_FIE
 `=1` junção de 3 com filete interno e aros externos · `=2` cubo arredondado · `=3` caixa furada com
 a boca arredondada · ⭐ `=4` **cantoneira DESENHADA** (o perfil vem de um path do editor vetorial,
 com raio vivo de quina) · ⭐ `=5` **o torno** (o mesmo tipo de contorno girado em torno de Y — um
-vaso oco). A peça gira sozinha (prato giratório).
+vaso oco).
+
+**A peça gira sozinha até alguém pegar nela.** Depois, o mouse manda — **os mesmos botões do módulo
+de escultura**: arrastar com o **esquerdo ou o direito** gira · com o **do meio** desloca · a **roda**
+aproxima. ⭐ Aproximar mostra **mais forma**, não uma forma inchada: as tolerâncias da marcha descem
+com o pixel ([doc 05](05_resultados_imagem.md) e o gate `zooming_in_does_not_inflate_the_part`).
 ⚠️ **O terminal imprime três linhas** — a cena montada, o traçado, e *"primeiro quadro desenhado —
 N pixels de peça"*. **Se a terceira não aparecer, PARE**: a janela vazia é falha de caminho, não de
 geometria.

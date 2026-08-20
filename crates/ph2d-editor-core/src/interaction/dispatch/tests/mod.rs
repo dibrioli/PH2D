@@ -278,6 +278,7 @@ fn focused_text_input(text: &str, caret: usize, anchor: Option<usize>) -> Widget
 }
 
 mod clipboard;
+mod context_menu_close;
 mod curve;
 mod field_hover;
 mod graph;

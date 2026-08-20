@@ -170,10 +170,6 @@ pub fn populate(store: &mut WidgetStore) {
             ids::IMAGE_ACTION_PAINTER,
             ph2d_i18n::tr("tool.painter.tooltip"),
         ),
-        (
-            ids::IMAGE_ACTION_SHEET_PACKER,
-            ph2d_i18n::tr("tool.sheet_packer.tooltip"),
-        ),
         (ids::TOPBAR_SETTINGS, "Project settings"),
         (ids::TOPBAR_PROJECT, "Project"),
         (ids::TOPBAR_PLAY_BUTTON, "Play \u{00b7} Space"),

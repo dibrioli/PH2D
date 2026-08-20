@@ -117,49 +117,18 @@ pub(crate) fn paint_render_source_section(
         }
     };
 
-    paint_text(
-        text_system,
-        scene,
-        "Strategy",
-        x,
-        cur_y,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
-    let strategy_btn_h = ROW_H_PX;
-    // Adaptive segmented GROUP — when the panel is narrow, drops
-    // "Hand-packed" (the longest) to its own row instead of wrapping
-    // the label. Returns the actual height used.
-    let strategy_h = paint_segmented_group_adaptive(
-        Rect::new(x, cur_y, w, strategy_btn_h),
-        &[
-            (
-                "Atlas",
-                matches!(info.source_kind, InspectorSpriteSource::Atlas { .. }),
-                ids::INSP_RENDER_STRATEGY_ATLAS,
-            ),
-            (
-                "Individual",
-                matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
-                ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
-            ),
-            (
-                "Hand-packed",
-                matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }),
-                ids::INSP_RENDER_STRATEGY_HANDPACKED,
-            ),
-        ],
+    cur_y = paint_strategy_row(
         scene,
         text_system,
         theme,
-        store,
         hit_index,
+        store,
+        info,
+        x,
+        w,
+        cur_y,
+        label_font,
     );
-    // Inter-row gap inside Render Source — matches Transform's row_gap
-    // (SECTION_INNER_ROW_GAP_PX) so Render Source feels like Transform.
-    cur_y += strategy_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
     cur_y = paint_storage_rows(info, cur_y, |label, value, yy| {
         paint_pair(scene, text_system, label, value, yy)
     });
@@ -219,6 +188,72 @@ pub(crate) fn paint_render_source_section(
         hit_index,
         cur_y + reimport_h + SECTION_BOTTOM_PAD_PX,
     )
+}
+
+/// **A linha "Strategy"** — o rótulo e o grupo segmentado de três (Atlas / Individual /
+/// Hand-packed). Devolve o `y` a seguir a ela.
+///
+/// ⚠️ Saiu do [`paint_render_source_section`] por medição: o `cargo fmt --all` re-expandiu a
+/// função-mãe de 199 para 205 linhas, contra um tecto de 200 — a memória
+/// `feedback_loc_cap_split_not_allowlist_and_fmt_reexpands` avisa exatamente por este caminho, e
+/// a cura registada é **cortar**, não tolerar. Este é o segundo corte desta função (o primeiro foi
+/// a `paint_region_num_cell`), e ambos são o *"per-row split"* que a tolerância antiga nomeava
+/// como diferido.
+#[allow(clippy::too_many_arguments)]
+fn paint_strategy_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    info: &InspectorSpriteInfo,
+    x: f32,
+    w: f32,
+    mut cur_y: f32,
+    label_font: f32,
+) -> f32 {
+    paint_text(
+        text_system,
+        scene,
+        "Strategy",
+        x,
+        cur_y,
+        label_font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
+    // Adaptive segmented GROUP — when the panel is narrow, drops
+    // "Hand-packed" (the longest) to its own row instead of wrapping
+    // the label. Returns the actual height used.
+    let strategy_h = paint_segmented_group_adaptive(
+        Rect::new(x, cur_y, w, ROW_H_PX),
+        &[
+            (
+                "Atlas",
+                matches!(info.source_kind, InspectorSpriteSource::Atlas { .. }),
+                ids::INSP_RENDER_STRATEGY_ATLAS,
+            ),
+            (
+                "Individual",
+                matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
+                ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+            ),
+            (
+                "Hand-packed",
+                matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }),
+                ids::INSP_RENDER_STRATEGY_HANDPACKED,
+            ),
+        ],
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    // Inter-row gap inside Render Source — matches Transform's row_gap
+    // (SECTION_INNER_ROW_GAP_PX) so Render Source feels like Transform.
+    cur_y + strategy_h + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX
 }
 
 /// **Uma célula X/Y/W/H da região** — rótulo do eixo + o campo numérico.

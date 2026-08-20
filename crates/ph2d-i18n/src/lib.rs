@@ -57,10 +57,6 @@ pub fn tr(key: &str) -> &'static str {
         "tool.color_equalization.tooltip" => {
             "Color Equalization · CLAHE + brightness/contrast/saturation + auto-WB"
         }
-        "tool.sheet_packer.label" => "SHEET",
-        "tool.sheet_packer.tooltip" => {
-            "Sheet Packer \u{00b7} pack the selection into one sprite sheet"
-        }
         "tool.equalize_sizes.label" => "EQSZ",
         "tool.equalize_sizes.tooltip" => {
             "Equalize Sizes · normalize selection to Max / Fixed / Grid target"

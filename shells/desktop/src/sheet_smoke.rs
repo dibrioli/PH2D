@@ -15,11 +15,16 @@
 //! nem do [`crate::sheet_frame`]. Sai de ser um retângulo com filhos. É o smoke que torna essa
 //! afirmação verificável em vez de uma promessa no doc.
 //!
-//! ⚠️ **Ele já NÃO é a porta** — a porta é o pill `[SHEET]` da fila de Image Tools
-//! (`ph2d-tool-sheet-packer`), que nasceu na mesma wave. O que este smoke faz agora é montar a
-//! cena em UM passo, para o gesto poder ser exercido sem o artista ter de importar cinco imagens
-//! antes. *Um smoke que continua a dizer-se «a porta provisória» depois de a definitiva existir
-//! é a próxima nota a envelhecer.*
+//! ⚠️ **Ele já NÃO é a porta** — a porta é o **"Pack into Sheet"** do menu de contexto de uma
+//! linha da hierarquia. O que este smoke faz é montar a cena em UM passo, para o gesto poder ser
+//! exercido sem o artista ter de importar cinco imagens antes.
+//!
+//! ⚠️ Houve um pill `[SHEET]` na fila de Image Tools (crate `ph2d-tool-sheet-packer`), e ele foi
+//! **retirado por decisão do Enio** em 2026-08-19, com a crate inteira. A razão é de desenho, não
+//! de defeito: aquela fila é **por-sprite** — a chrome difunde uma ação por entidade selecionada —
+//! e este verbo é da **seleção**, então o dreno tinha de voltar a juntar o que a chrome acabara de
+//! separar. O menu da hierarquia entrega a linha clicada + a seleção de uma vez. *Não reconstrua
+//! o pill sem ler isto.*
 
 use ph2d_core::Vec2;
 

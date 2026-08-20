@@ -39,7 +39,6 @@ pub(super) fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::IMAGE_ACTION_RASTERIZE => "Rasterize",
         x if x == ids::IMAGE_ACTION_UPSCALE => "Upscale",
         x if x == ids::IMAGE_ACTION_PAINTER => "Painter",
-        x if x == ids::IMAGE_ACTION_SHEET_PACKER => "Sheet Packer",
         x if x == ids::TOPBAR_LEFT_BACKDROP => "Left Backdrop",
         x if x == ids::TOPBAR_RIGHT_BACKDROP => "Right Backdrop",
         x if x == ids::TOPBAR_IMAGE_TOOLS_BACKDROP => "Image Tools Backdrop",

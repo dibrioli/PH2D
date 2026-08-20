@@ -2622,7 +2622,6 @@ impl crate::App {
             // isoladamente, e este junta a leva inteira para criar **uma** folha. N atos
             // independentes dariam N folhas de uma peça cada — um verbo que fala da RELAÇÃO
             // entre as peças não cabe num evento por peça.
-            let mut sheet_packer_entities: Vec<u64> = Vec::new();
             let mut undo_image_edit = false;
             // ADR-0108 Fase 1: a Boolean button (Union/Subtract/Intersect) in the
             // docked Vector panel forwards a `ToolPanelEvent::Click`; the op acts
@@ -3698,9 +3697,6 @@ impl crate::App {
                         }
                         "rasterize" => {
                             rasterize_entities.push(entity_bits);
-                        }
-                        "sheet_packer" => {
-                            sheet_packer_entities.push(entity_bits);
                         }
                         "bgremoval" => {
                             bgremoval_leftover.push(oneshot);
@@ -8736,29 +8732,31 @@ impl crate::App {
             //
             // ⚠️ **UMA chamada para a leva INTEIRA**, e não uma por entidade: empacotar N sprites
             // é um ato só. A folha nasce, eles viram filhos dela e o arranjo automático coloca-os.
-            // **A MESMA porta serve as duas entradas do verbo** — o pill `[SHEET]` e o
-            // "Pack into Sheet" do menu de contexto da hierarquia (Enio, 2026-08-19). O alvo é o
-            // que difere: o pill traz a seleção difundida pela chrome; o menu resolve a linha
-            // clicada e aplica a lei do "Merge Sprites" vizinho (a seleção inteira quando a linha
-            // faz parte dela, só ela quando não faz — duas semânticas de seleção no mesmo menu
-            // seriam adivinhação).
+            // **EMPACOTAR NUMA FOLHA** — uma porta só: o "Pack into Sheet" do menu de contexto
+            // da hierarquia. ⚠️ O pill `[SHEET]` da fila de Image Tools EXISTIU e foi **retirado
+            // por decisão do Enio** (2026-08-19), com a crate inteira: aquela fila é por-sprite,
+            // e este verbo é da SELEÇÃO — o pill difundia uma ação por entidade e o dreno tinha
+            // de as voltar a juntar. O menu resolve a linha clicada e aplica a lei do "Merge
+            // Sprites" vizinho: a seleção inteira quando a linha faz parte dela, só ela quando
+            // não faz. *Não reconstrua o pill sem ler isto.*
+            let mut sheet_targets: Vec<u64> = Vec::new();
             if let Some(row) = pack_sheet_row
                 && let Some(live) = hero_live.as_ref()
                 && let Some(anchor) = live.bridge.entity_for(row)
             {
                 if hero.gizmo.is_selected(anchor) {
-                    sheet_packer_entities.extend(hero.gizmo.iter_selected());
+                    sheet_targets.extend(hero.gizmo.iter_selected());
                 } else {
-                    sheet_packer_entities.push(anchor);
+                    sheet_targets.push(anchor);
                 }
             }
-            if !sheet_packer_entities.is_empty() {
+            if !sheet_targets.is_empty() {
                 let ppm = hero.project.pixels_per_meter;
                 if let Some(sheet) = crate::sheet_frame::pack_or_repack(
                     sim,
                     vec_scene,
                     &mut self.vec_entities,
-                    &sheet_packer_entities,
+                    &sheet_targets,
                     ppm,
                     toasts,
                 ) {

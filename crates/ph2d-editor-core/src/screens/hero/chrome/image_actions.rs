@@ -96,13 +96,8 @@ fn oneshot_tool_for(id: ph2d_a11y::NodeId) -> Option<&'static str> {
     }
 
     // Test/pre-boot fallback — table-driven (não if-else hardcoded).
-    const ONESHOT_TOOL_IDS: &[&str] = &[
-        "make_square",
-        "rasterize",
-        "real_size",
-        "sheet_packer",
-        "trim_transparency",
-    ];
+    const ONESHOT_TOOL_IDS: &[&str] =
+        &["make_square", "rasterize", "real_size", "trim_transparency"];
     ONESHOT_TOOL_IDS
         .iter()
         .find(|slug| hash_node_id(slug) == id)

@@ -38,7 +38,6 @@ pub fn register_all(reg: &mut Registry) {
     ph2d_tool_painter::register(reg);
     ph2d_tool_rasterize::register(reg);
     ph2d_tool_real_size::register(reg);
-    ph2d_tool_sheet_packer::register(reg);
     ph2d_tool_trim_transparency::register(reg);
     ph2d_tool_upscale::register(reg);
     ph2d_tool_vector::register(reg);
@@ -124,7 +123,6 @@ mod tests {
         "rasterize",
         "upscale",
         "painter",
-        "sheet_packer",
         // <ph2d-tool-sync:image-tools-order:end>
         ];
         assert_eq!(ids, expected);

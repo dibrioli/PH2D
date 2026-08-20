@@ -110,16 +110,6 @@ pub const UPS_PANEL: NodeId = hash_node_id("panel.upscale");
 /// it per-sprite via `UpscaleTool::run_full_resolution`.
 pub const IMAGE_ACTION_UPSCALE: NodeId = hash_node_id("upscale");
 
-/// Image Tools action — Sheet Packer pill (`[SHEET]`). One-shot, e o único da fila que age sobre
-/// a **seleção inteira**: empacotar N sprites é um ato só, e N atos independentes dariam N folhas
-/// de uma peça cada. Dois verbos no mesmo botão, escolhidos pelo que está selecionado — sprites
-/// ⇒ cria a folha; uma folha ⇒ re-arranja os filhos dela.
-///
-/// ⚠️ Esta const existe para a tooltip e o nome legível; o **despacho** já não a lê. Ele deriva do
-/// registry (`image_actions::oneshot_tool_for`), porque foi uma lista escrita à mão que fez este
-/// pill nascer morto — vide o cabeçalho daquela função.
-pub const IMAGE_ACTION_SHEET_PACKER: NodeId = hash_node_id("sheet_packer");
-
 /// Image Tools action — Painter pill. Stateful workhorse (sucessor do
 /// Procreate, cascata W0 ratificada 2026-05-26 — ADRs 0043..0053). Click
 /// raises `EditorAction::ActivateTool { tool_id: "painter" }`; activation

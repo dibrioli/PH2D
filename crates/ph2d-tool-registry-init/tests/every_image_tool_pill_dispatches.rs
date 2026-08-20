@@ -4,6 +4,11 @@
 //! manifesto foi lido pelo painter, o pill apareceu na barra — e o clique não fazia **nada**. Sem
 //! erro, sem toast, sem log. Duas listas centrais não sabiam do tool novo:
 //!
+//! ⚠️ **Aquela crate já não existe** — o pill foi retirado por decisão de produto no mesmo dia,
+//! porque a fila é por-sprite e o verbo era da seleção. O gate FICA, e é o ponto: ele não conhecia
+//! o `sheet_packer` nem conhece o próximo. Ele pergunta ao registry quem existe **agora**, e por
+//! isso continua a valer para os dez pills que sobraram e para o que vier a seguir.
+//!
 //! 1. **`topbar::populate()`** — a lista de `store.register(id, InteractiveState::Button)`. Sem
 //!    registro, `is_focusable() == false`: o Down nunca arma o `active`, o Up nunca emite `Click`.
 //!    *O pill está morto debaixo do rato antes de qualquer despacho existir.*

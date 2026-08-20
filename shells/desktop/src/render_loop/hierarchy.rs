@@ -38,6 +38,44 @@ pub(super) enum HierarchySelectIntent {
     },
 }
 
+/// ⭐ **Quem sabe duplicar esta entidade.**
+///
+/// ⚠️ A decisão mora aqui, com nome, porque **a escolha errada é silenciosa**: o braço genérico
+/// copia `Transform` + `Sprite` + `Name`, e para uma entidade que guarda a geometria noutro sítio
+/// isso produz um **sósia que não desenha nada** — uma linha na Hierarchy sobre coisa nenhuma.
+///
+/// Já aconteceu duas vezes, em dois módulos:
+///
+/// | Entidade | O que o braço genérico produzia | Quem duplica de verdade |
+/// |---|---|---|
+/// | um **path vetorial** (`VecPathRef`) | um sósia sem geometria — ou, pior, dois donos do mesmo path | o documento vetorial, pela porta do painel |
+/// | um **nó de modelagem 3D** (`FieldNode`) | uma linha sem `FieldNode` nem `FieldPose`, invisível ao traçado | `field3d_scene::duplicate_node`, a porta do painel |
+///
+/// *Uma entidade cuja geometria não está nela não se duplica clonando-a.*
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum DuplicateKind {
+    /// Um nó de modelagem 3D (ADR-0161).
+    Field,
+    /// Um path do editor vetorial (ADR-0110).
+    VecPath,
+    /// Tudo o resto: sprites e entidades comuns, que **são** o que guardam.
+    Entity,
+}
+
+/// Ver [`DuplicateKind`].
+pub(super) fn duplicate_kind(
+    world: &bevy_ecs::world::World,
+    src: ph2d_ecs::Entity,
+) -> DuplicateKind {
+    if world.get::<ph2d_field_ecs::FieldNode>(src).is_some() {
+        DuplicateKind::Field
+    } else if world.get::<ph2d_ecs::VecPathRef>(src).is_some() {
+        DuplicateKind::VecPath
+    } else {
+        DuplicateKind::Entity
+    }
+}
+
 /// Dispatches camera-reset, view-focus, and 9 hierarchy intents.
 /// Returns `true` if any dispatch pushed a toast.
 #[allow(clippy::too_many_arguments)]
@@ -183,7 +221,17 @@ pub(super) fn dispatch(
         //
         // Então o clone é um **PATH**, feito pela porta que o botão Duplicate do painel usa, e o
         // `sync` cunha a entidade dele (com nome único e `RootOrder`) no mesmo frame.
-        if let Some(vp) = sim.world().get::<ph2d_ecs::VecPathRef>(src).copied() {
+        // ⚠️ **Quem duplica esta entidade não é óbvio, e a escolha errada é SILENCIOSA** — ver
+        // [`duplicate_kind`], que é onde a decisão mora (e onde um gate lhe chega).
+        if duplicate_kind(sim.world(), src) == DuplicateKind::Field {
+            if let Some(copy) = crate::field3d_scene::duplicate_node(sim.world_mut(), src) {
+                // ⭐ A cópia fica selecionada, como no botão do painel: é o que põe o gizmo em cima
+                // dela sem ninguém a ter de procurar.
+                hero.gizmo.replace_selection(Some(copy));
+                toasts.push(Toast::success("Duplicated shape"));
+                title_dirty = true;
+            }
+        } else if let Some(vp) = sim.world().get::<ph2d_ecs::VecPathRef>(src).copied() {
             let (dx, dy) = crate::input_dispatch::screen_offset_world(
                 camera,
                 window_size,
@@ -474,4 +522,49 @@ pub(super) fn dispatch(
     }
 
     title_dirty
+}
+
+/// O gate do **roteamento** de `Duplicate` — ver [`DuplicateKind`].
+///
+/// ⚠️ Ele existe por uma prova de mutação que **passou**: os gates do módulo 3D chamavam a porta de
+/// duplicar diretamente, então apagar o braço daqui não reprovava nada. *A costura não-testada é a
+/// causa nº 1 da `DIRETIVA_IMPLEMENTACAO` §1*, e este arquivo era onde ela estava.
+#[cfg(test)]
+mod duplicate_routing {
+    use super::{DuplicateKind, duplicate_kind};
+
+    /// ⭐ **Cada tipo de entidade vai para quem sabe duplicá-la.**
+    #[test]
+    fn a_field_node_never_goes_to_the_generic_arm() {
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let world = sim.world_mut();
+
+        // Um nó de modelagem 3D, criado pela porta de produção.
+        let root = ph2d_field_ecs::spawn_doc(world, &crate::field3d_smoke::scene(1), "Model");
+        assert_eq!(
+            duplicate_kind(world, root),
+            DuplicateKind::Field,
+            "um nó de campo no braço genérico sai como um sósia sem geometria"
+        );
+
+        // Uma entidade comum continua a ir para o braço genérico — senão o roteamento passaria a
+        // reclamar tudo, e o gate acima ficaria verde por reclamar de mais.
+        let plain = world
+            .spawn((
+                ph2d_ecs::Name::new("Sprite"),
+                ph2d_ecs::Transform::default(),
+            ))
+            .id();
+        assert_eq!(duplicate_kind(world, plain), DuplicateKind::Entity);
+
+        // E um path vetorial vai para o dono da geometria dele.
+        let path = world
+            .spawn((
+                ph2d_ecs::Name::new("Path"),
+                ph2d_ecs::Transform::default(),
+                ph2d_ecs::VecPathRef(7),
+            ))
+            .id();
+        assert_eq!(duplicate_kind(world, path), DuplicateKind::VecPath);
+    }
 }

@@ -41,9 +41,12 @@ pub(crate) fn ecs_bridge(
     selected: Option<u64>,
     extras: &[u64],
 ) -> Option<SelectRequest> {
-    let (initial, ms, pending, pick) = with_smoke(|s| {
+    // ⚠️ **A semente é TIRADA**, não copiada: ela vale uma vez. Oferecer o documento cozido no
+    // lugar dela — que era o que estava aqui — fazia apagar a peça na Hierarquia **replantá-la** no
+    // quadro seguinte, porque a ponte não encontrava raiz e semeava o que tinha acabado de cozer.
+    let (seed, ms, pending, pick) = with_smoke(|s| {
         (
-            s.doc.clone(),
+            s.seed.take(),
             s.last_trace_ms,
             s.pending_move.take(),
             s.pending_pick.take(),
@@ -71,7 +74,7 @@ pub(crate) fn ecs_bridge(
         .chain(extras.iter())
         .map(|b| bevy_ecs::entity::Entity::from_bits(*b))
         .collect();
-    let (cooked, born) = sync_scene_and_birth(sim, initial.as_ref(), &chosen, ms);
+    let (cooked, born) = sync_scene_and_birth(sim, seed.as_ref(), &chosen, ms);
     // ⭐ **O clique é resolvido AQUI**, e não no ponteiro: a pergunta *"de quem é este ponto?"*
     // precisa do mundo, e o ponteiro corre fora do quadro.
     //
@@ -121,10 +124,10 @@ fn resolve_pick(sim: &mut SimWorld, doc: Option<&FieldDoc>, px: [f32; 2]) -> Opt
 #[cfg(test)]
 pub(crate) fn sync_scene(
     sim: &mut SimWorld,
-    initial: Option<&FieldDoc>,
+    seed: Option<&FieldDoc>,
     last_trace_ms: f32,
 ) -> Option<FieldDoc> {
-    sync_scene_and_birth(sim, initial, &[], last_trace_ms).0
+    sync_scene_and_birth(sim, seed, &[], last_trace_ms).0
 }
 
 /// A mesma coisa, mais **quem selecionar quando a peça acaba de nascer**.
@@ -136,7 +139,7 @@ pub(crate) fn sync_scene(
 /// escolher outro.
 pub(crate) fn sync_scene_and_birth(
     sim: &mut SimWorld,
-    initial: Option<&FieldDoc>,
+    seed: Option<&FieldDoc>,
     selection: &[bevy_ecs::entity::Entity],
     last_trace_ms: f32,
 ) -> (Option<FieldDoc>, Option<SelectRequest>) {
@@ -145,10 +148,11 @@ pub(crate) fn sync_scene_and_birth(
     let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
     let root = match q.iter(world).next().map(|(e, _)| e) {
         Some(e) => e,
-        // A primeira vez: a peça inicial explode em objetos. Depois disto a **cena** é a fonte e
-        // ninguém volta a chamar isto — inclusive porque `initial` deixa de existir.
+        // A primeira vez: a semente explode em objetos. Depois disto a **cena** é a fonte, e a
+        // semente já não existe — ver `Smoke::seed`. Sem raiz e sem semente não há peça, e é isso
+        // que faz apagar a peça na Hierarquia apagá-la de verdade.
         None => {
-            let Some(doc) = initial else {
+            let Some(doc) = seed else {
                 return (None, None);
             };
             let root = ph2d_field_ecs::spawn_doc(world, doc, PART_NAME);
@@ -169,19 +173,6 @@ pub(crate) fn sync_scene_and_birth(
     let mut cleared = false;
     // A câmera é o «onde estou a olhar»: uma forma nova nasce no centro do quadro e no tamanho dele.
     let cam = with_smoke(|s| s.cam).unwrap_or_default();
-    // O enquadramento, para o degrau da grelha (ver a ação de duplicar).
-    let view_screen = with_smoke(|s| {
-        let a = s
-            .area
-            .unwrap_or(ph2d_editor::zones::Rect::new(0.0, 0.0, 1.0, 1.0));
-        ph2d_field_render::Screen::new(
-            a.w.round().max(1.0) as u32,
-            a.h.round().max(1.0) as u32,
-            s.cam.half_extent,
-        )
-    })
-    .unwrap_or_else(|| ph2d_field_render::Screen::new(1, 1, 1.0));
-
     // As edições do painel escrevem no COMPONENTE do nó, que é a peça de verdade.
     for intent in ph2d_panel_model3d::drain_intents() {
         match intent {
@@ -211,25 +202,7 @@ pub(crate) fn sync_scene_and_birth(
             ph2d_panel_model3d::ModelIntent::Act { slot } => {
                 if let Some(&one) = selection.first() {
                     match slot {
-                        0 => {
-                            // ⭐ **A cópia sai UM DEGRAU da grelha para a direita da TELA.**
-                            //
-                            // ⚠️ Não é decoração. Duplicar em cima do original é o que o Blender faz
-                            // — e ele resolve o resto entrando logo em modo de mover. Aqui não há
-                            // esse modo, então uma cópia exatamente por baixo seria um botão que
-                            // **parece não fazer nada**: a única prova seria uma linha nova na
-                            // Hierarquia.
-                            //
-                            // O degrau é o da grelha (derivado do enquadramento: o menor número
-                            // redondo que ainda se consegue mirar), e a direção é a **direita da
-                            // câmera**, que é para onde «o próximo» vai em qualquer arrumação.
-                            let (right, _, _) = cam.basis();
-                            let step = crate::field3d_gizmo::snap_step(view_screen);
-                            let off = [right[0] * step, right[1] * step, right[2] * step];
-                            if let Some(copy) = ph2d_field_ecs::duplicate(world, one, off) {
-                                created = Some(copy.to_bits());
-                            }
-                        }
+                        0 => created = duplicate_node(world, one),
                         // ⚠️ O que foi apagado não pode continuar selecionado: o gizmo ficaria
                         // aceso sobre uma entidade que já não existe.
                         1 if ph2d_field_ecs::remove(world, one) => cleared = true,
@@ -502,6 +475,68 @@ fn op_at(slot: usize) -> Option<Op> {
         1 => Op::Difference(Blend::Sharp),
         2 => Op::Intersection(Blend::Sharp),
         _ => return None,
+    })
+}
+
+/// ⭐ **Duplicar um nó** — a porta ÚNICA, e os dois lugares que duplicam chamam-na.
+///
+/// ⚠️ **Uma lei, dois chamadores**: o botão do painel e a linha *Duplicate* da Hierarquia. Cada um
+/// com a sua conta seria a segunda resposta a *"onde vai a cópia?"*, e elas divergiriam no primeiro
+/// ajuste — com o artista a ver o mesmo gesto fazer duas coisas conforme por onde o pediu. É a mesma
+/// lição que o bloco vetorial da Hierarquia já tem escrita ao lado.
+///
+/// # A cópia sai UM DEGRAU da grelha, para a direita da TELA
+///
+/// ⚠️ Não é decoração, e a alternativa foi considerada: **duplicar em cima do original** é o que o
+/// Blender faz — e ele resolve o resto entrando logo em modo de mover. Aqui não há esse modo, então
+/// uma cópia exatamente por baixo seria **um botão que parece não fazer nada**: a única prova seria
+/// uma linha nova na Hierarquia.
+///
+/// O **quanto** é o degrau da grelha (derivado do enquadramento: o menor número redondo que ainda se
+/// consegue mirar); o **para onde** é a direita da câmera, que é para onde «o próximo» vai em
+/// qualquer arrumação.
+///
+/// Devolve os bits da cópia, para quem chamar a poder selecionar. `None` quando não há o que
+/// duplicar (ver `ph2d_field_ecs::duplicate`: a raiz **é** a peça).
+pub(crate) fn duplicate_node(
+    world: &mut bevy_ecs::world::World,
+    node: bevy_ecs::entity::Entity,
+) -> Option<u64> {
+    let (cam, screen) = view()?;
+    duplicate_with_view(world, node, &cam, screen)
+}
+
+/// A mesma lei, **com a vista em mãos** — e é a separação que o resto do módulo já usa.
+///
+/// ⚠️ Ela existe para o gate: [`duplicate_node`] lê a câmera do estado do módulo, e um teste não
+/// consegue (nem deve) encená-lo. Aqui a vista entra por parâmetro e o resto é o caminho de
+/// produção inteiro.
+pub(crate) fn duplicate_with_view(
+    world: &mut bevy_ecs::world::World,
+    node: bevy_ecs::entity::Entity,
+    cam: &ph2d_field_render::Orbit,
+    screen: ph2d_field_render::Screen,
+) -> Option<u64> {
+    let (right, _, _) = cam.basis();
+    let step = crate::field3d_gizmo::snap_step(screen);
+    let off = [right[0] * step, right[1] * step, right[2] * step];
+    ph2d_field_ecs::duplicate(world, node, off).map(|e| e.to_bits())
+}
+
+/// A câmera e o enquadramento deste quadro — `None` quando o módulo não está armado.
+fn view() -> Option<(ph2d_field_render::Orbit, ph2d_field_render::Screen)> {
+    with_smoke(|s| {
+        let a = s
+            .area
+            .unwrap_or(ph2d_editor::zones::Rect::new(0.0, 0.0, 1.0, 1.0));
+        (
+            s.cam,
+            ph2d_field_render::Screen::new(
+                a.w.round().max(1.0) as u32,
+                a.h.round().max(1.0) as u32,
+                s.cam.half_extent,
+            ),
+        )
     })
 }
 

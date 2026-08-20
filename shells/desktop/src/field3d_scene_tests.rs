@@ -13,6 +13,14 @@ use ph2d_field_ecs::{FieldNode, FieldObject, FieldPose};
 use super::sync_scene;
 use crate::field3d_smoke::scene;
 
+/// Uma vista qualquer, para os gates que precisam de uma. ⚠️ Explícita de propósito: a porta de
+/// produção lê-a do estado do módulo, e um teste não encena esse estado.
+fn a_view() -> (ph2d_field_render::Orbit, ph2d_field_render::Screen) {
+    let cam = ph2d_field_render::Orbit::default();
+    let screen = ph2d_field_render::Screen::new(800, 600, cam.half_extent);
+    (cam, screen)
+}
+
 fn a_world() -> SimWorld {
     SimWorld::new()
 }
@@ -1022,5 +1030,128 @@ fn deleting_a_group_takes_its_children_with_it() {
         ph2d_field_ecs::cook(world, root)
             .expect("não vazia")
             .is_ok()
+    );
+}
+
+/// ⭐ **Apagar a peça na Hierarquia apaga-a de VERDADE** — ela não volta no quadro seguinte.
+///
+/// ⚠️ Era um bug, e o comentário do código afirmava o contrário do que o código fazia. A ponte
+/// oferecia o documento **cozido** como semente («a peça inicial»), e o comentário dizia que ele
+/// *"deixa de existir"* — o que nunca foi verdade: ele é reescrito a cada quadro. Apagar a raiz
+/// deixava a ponte sem raiz, e ela **replantava o que tinha acabado de cozer**.
+///
+/// *Uma semente usa-se uma vez.*
+/// ⚠️ **Passa pelo `ecs_bridge`**, e não pela metade de baixo: a decisão que estava errada era
+/// *o que a ponte oferece como semente*, e um gate que passasse `None` à mão nunca lhe chegaria.
+/// (Foi assim que a primeira versão deste gate ficou verde com o bug reposto.)
+#[test]
+fn deleting_the_part_does_not_replant_it_next_frame() {
+    let _ = ph2d_panel_model3d::drain_intents();
+    crate::field3d_smoke::set_armed_by_panel(true);
+    let mut sim = a_world();
+
+    // Quadro 1: a ponte planta a semente.
+    super::ecs_bridge(&mut sim, None, &[]);
+    let root = {
+        let world = sim.world_mut();
+        let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
+        q.iter(world).next().map(|(e, _)| e).expect("a peça nasceu")
+    };
+
+    // A Hierarquia apaga a peça (cascata: a raiz leva os filhos).
+    sim.world_mut().despawn(root);
+
+    // Quadro 2: a ponte corre outra vez — e **não replanta**.
+    super::ecs_bridge(&mut sim, None, &[]);
+    let world = sim.world_mut();
+    let mut q = world.query::<&FieldObject>();
+    assert_eq!(
+        q.iter(world).count(),
+        0,
+        "a peça voltou — a ponte replantou o que tinha acabado de cozer"
+    );
+}
+
+/// ⭐ **Duplicar pela Hierarquia e pelo painel é a MESMA porta.**
+///
+/// ⚠️ O braço genérico da Hierarquia copia `Transform` + `Sprite` + `Name`. Um nó de campo **não tem
+/// nenhum dos dois** — sairia uma linha na Hierarchy sobre geometria nenhuma, invisível para o
+/// traçado. É o mesmo defeito que a nota vetorial daquele bloco já descreve, no módulo seguinte.
+///
+/// O gate mede o que a cópia **é**, e não que ela existe: sem `FieldNode` ela é o sósia.
+#[test]
+fn a_duplicate_is_a_real_node_not_a_nameless_twin() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let first = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .next()
+        .expect("o primeiro");
+
+    let bits = super::duplicate_with_view(world, first, &a_view().0, a_view().1).expect("duplica");
+    let copy = bevy_ecs::entity::Entity::from_bits(bits);
+
+    assert!(
+        world.get::<FieldNode>(copy).is_some(),
+        "a cópia tem de SER um nó — sem isto ela é uma linha na Hierarchy sobre nada"
+    );
+    assert!(world.get::<FieldPose>(copy).is_some(), "e ter pose própria");
+    assert_eq!(world.get::<ChildOf>(copy).map(|c| c.0), Some(root));
+    // E ela entra na peça: o cozimento tem de a conter.
+    let cooked = ph2d_field_ecs::cook(world, root)
+        .expect("não vazia")
+        .expect("válida");
+    assert_eq!(
+        cooked.nodes().len(),
+        5,
+        "três cilindros + a cópia + a união"
+    );
+}
+
+/// ⚠️ **A porta da Hierarquia é a MESMA do painel**, e o gate prende-o: as duas cópias saem no mesmo
+/// sítio relativo.
+///
+/// Duas contas para *"onde vai a cópia?"* divergiriam no primeiro ajuste — com o artista a ver o
+/// mesmo gesto fazer duas coisas conforme por onde o pediu.
+#[test]
+fn both_doors_put_the_copy_in_the_same_place() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let kids: Vec<bevy_ecs::entity::Entity> = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .collect();
+
+    let offset_of = |world: &mut bevy_ecs::world::World, src: bevy_ecs::entity::Entity| {
+        let before = ph2d_field_ecs::world_xform(world, src).translation;
+        let bits =
+            super::duplicate_with_view(world, src, &a_view().0, a_view().1).expect("duplica");
+        let after = ph2d_field_ecs::world_xform(world, bevy_ecs::entity::Entity::from_bits(bits))
+            .translation;
+        [
+            after[0] - before[0],
+            after[1] - before[1],
+            after[2] - before[2],
+        ]
+    };
+    let a = offset_of(world, kids[0]);
+    let b = offset_of(world, kids[1]);
+    for k in 0..3 {
+        assert!(
+            (a[k] - b[k]).abs() < 1e-6,
+            "as duas cópias saíram em sítios diferentes: {a:?} e {b:?}"
+        );
+    }
+    // E o deslocamento não é zero — senão o gate passaria com as duas portas a não fazer nada.
+    assert!(
+        a.iter().any(|v| v.abs() > 1e-6),
+        "a cópia ficou em cima do original"
     );
 }

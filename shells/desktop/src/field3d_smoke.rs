@@ -62,6 +62,16 @@ pub(crate) struct Smoke {
     /// nenhuma — apagar o último filho na Hierarquia é um gesto normal, e o resultado normal dele
     /// é a tela ficar vazia.
     pub(crate) doc: Option<FieldDoc>,
+    /// ⭐ **A SEMENTE** — a cena inicial, que a ponte planta **uma vez** e depois deita fora.
+    ///
+    /// ⚠️ **Ela é separada do `doc` de propósito, e a mistura era um bug.** A ponte oferecia o `doc`
+    /// **cozido** como semente, e o comentário ao lado afirmava que ele *"deixa de existir"* — o que
+    /// nunca foi verdade: ele é reescrito a cada quadro. O sintoma: apagar a peça na Hierarquia
+    /// **fazia-a voltar no quadro seguinte**, porque a ponte não encontrava raiz e replantava o que
+    /// tinha acabado de cozer.
+    ///
+    /// *Uma semente usa-se uma vez.* Depois de plantada, a cena é a fonte — e apagar a peça apaga-a.
+    pub(crate) seed: Option<FieldDoc>,
     matcap: Arc<MatcapTexels>,
     pub(crate) cam: Orbit,
     /// O último quadro pronto — com o tamanho a que foi traçado, para o desenhar sem esticar
@@ -420,7 +430,8 @@ fn boot() -> Option<Smoke> {
          feche a janela para sair"
     );
     Some(Smoke {
-        doc: Some(doc),
+        doc: Some(doc.clone()),
+        seed: Some(doc),
         matcap: Arc::new(load_matcap()),
         cam: Orbit::default(),
         frame: None,

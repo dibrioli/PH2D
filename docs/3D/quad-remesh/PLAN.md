@@ -3,7 +3,7 @@
 > **Documento VIVO.** Decisão e fronteira jurídica: [ADR-0161](../../architecture/decisions/0161-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md).
 > O que o porte local entregou e por quê: [ADR-0160](../../architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md).
 > ✅ **Aprovado pelo Enio em 2026-08-20** (*"Siga como achar melhor... buscamos o estado da arte independente dos custos"*).
-> Estado: **F1 FEITA** (§4-bis). Próximo: **F2** (campo cruzado com rounding inteiro) — que a medição do F1 confirmou ser o lever.
+> Estado: **F1 e F2 FEITAS** (§4-bis, §4-ter). O CAMPO está em paridade com o estado da arte (8 singularidades numa esfera, o ótimo teórico).\n> Próximo: **F3 → F4** — é onde o valor do campo passa a ser colhível. ⚠️ Nem F1 nem F2 estão ligados ao produto: ligá-los hoje pioraria o que o artista vê.
 
 ---
 
@@ -151,7 +151,7 @@ Cada fase fecha com o benchmark verde sobre o corpus e um sumário curto de desv
 |---|---|---|
 | **F0** | harness na bancada: corpus + oráculo + `metrics.py` + Hausdorff + screenshots | as três colunas (atual · oráculo · nova) saem de **um** comando; ⚠️ a baseline já está medida (§1.3) — falta o Hausdorff e o harness sair do `#[cfg(test)]` do shell |
 | **F1** | sanitização + **remesh isotrópico** + sizing field | ✅ **FEITO em 2026-08-20** (`crates/ph2d-remesh-iso`) — ver §4-bis |
-| **F2** | cross field MIQ-style + streamlines no viewport | ⭐ **vértices irregulares ≤ 2 %** no corpus liso (hoje: 21–49 %). É esta fase que mata os sintomas 1 e 2 |
+| **F2** | cross field MIQ-style + streamlines no viewport | ✅ **O CAMPO FEITO em 2026-08-20** (`crates/ph2d-crossfield`) — ver §4-ter. ⚠️ O critério *«irregulares ≤ 2 %»* era sobre a MALHA, e a malha só melhora no F5 |
 | **F3** | tracing + patches | nº de patches na mesma ordem do oráculo (15 na `sculpt_hooked`); zero patch não-disco |
 | **F4** | ⭐ **solver Bi-MDF** | quads **= 100,0 %** no corpus fechado; χ preservado; **fase crítica** |
 | **F5** | quadrangulação por patch + smoothing + a porta no shell | desvio angular médio ≤ oráculo × 1,2; Hausdorff ≤ oráculo × 1,2; ⭐ **`sculpt_hooked` sem aglomerado e sem colapso na feature** (gate de regressão do §9) |
@@ -225,6 +225,74 @@ ganho: ele entra **junto com o F2**, que é quem o consome.
    está portada.
 2. A **sanitização** (manifold/orientação/degenerados) ainda não existe como
    estágio próprio — `sculpt_punctured` entra quebrada e sai quebrada.
+
+---
+
+## 4-ter — ✅ F2: o CAMPO chegou ao ótimo teórico. A MALHA não, e a razão é o F5
+
+`crates/ph2d-crossfield` — MIQ (Bommes et al. 2009) **clean-room**: campo por
+FACE, saltos de período **inteiros** por aresta dual, gauge de árvore geradora,
+rounding guloso em lote.
+
+### ⭐ A régua nova: o índice, medido no CAMPO e não na malha
+
+⚠️ **Todas as medições anteriores desta linha contavam vértices irregulares da
+malha extraída — que é o campo MAIS o extrator.** Um número ruim ali não diz de
+quem é a culpa. O índice de singularidade sai do campo direto, e tem uma
+invariante topológica que serve de oráculo: **`Σ índice = 4·χ`**
+(Poincaré–Hopf), `8` numa esfera e `0` num toro. *Ela não depende do solver, da
+malha nem dos pesos.*
+
+### ⛔ E a primeira tentativa PASSOU no gate topológico sendo péssima
+
+A alternância ingênua *(resolve `θ` com `p` fixo → arredonda `p` com `θ` fixo)*,
+partindo de `p = 0`, **converge na primeira rodada e não faz nada**: os resíduos
+ficam todos abaixo de `π/4` e nenhum `p` chega a mudar.
+
+| | alternância | **MIQ com gauge + rounding** | ótimo teórico |
+|---|---|---|---|
+| esfera 24×36 | **2** singularidades, índices `+4 +4` | **8**, todas `+1` | **8** |
+| esfera 48×64 | **2**, `+4 +4` | **8** | **8** |
+| cubo subdividido | **2**, `+4 +4` | **8** | **8** |
+| toro | 0 | 6 (soma 0) | 0 |
+| energia | 7,67 | **4,48** | — |
+
+⚠️ **A soma passava nas duas** (`Σ = 8`, correto) **e uma delas era inútil.** Uma
+singularidade de índice `+4` é um ponto onde a cruz dá uma volta inteira; nenhuma
+grade de quads a contorna. *A invariante prova que o campo FECHA, não que ele
+presta* — foi preciso a segunda régua (a **contagem**) para ver. A alternância
+fica como controle em `solve_alternating`.
+
+⭐ **Oito singularidades numa esfera é o número que a topologia pede e o que o
+oráculo entrega.** Neste eixo o F2 está em paridade com o estado da arte.
+
+⚠️ **O toro sai com 6 onde o ótimo é 0** — um toro admite campo sem
+singularidade. É o item aberto do F2, e é qualidade de rounding (o MIQ congela
+**um** inteiro de cada vez; nós congelamos um oitavo por rodada, para trocar 851
+resoluções por 48). ⛔ Não mexer no lote sem a tabela qualidade × relógio.
+
+### ⛔ E a MALHA piorou — o que também estava previsto
+
+Alimentando o extrator **local** que já existe com o campo novo:
+
+| malha | atual | +F1 | **+F1+F2** | oráculo |
+|---|---|---|---|---|
+| `sphere_uv_96x144` | 69 % / 39,7 % | 73 % / 35,3 % | **51 % / 69,9 %** | 100 % / 0,2 % |
+| `sculpt_hooked` | 71 % / 40,5 % | 81 % / 32,0 % | **46 % / 75,9 %** | 100 % / 0,3 % |
+| `sphere_sculpt_98k` | 83 % / 21,2 % | 76 % / 33,5 % | **49 % / 85,2 %** | 100 % / 0,2 % |
+
+⭐ **A causa está declarada na porta que faz a ponte** (`to_vertex_dirs`): a
+conversão para por-vértice **joga fora os saltos de período**, que são onde a
+estrutura global mora. O extrator do Instant Meshes não tem como os ler — ele
+re-deriva a estrutura dele a partir das direções médias, e a média de um campo
+com singularidades REAIS é pior, para ele, que o campo liso que ele mesmo produz.
+
+⇒ **O valor do F2 só se colhe com o F3+F4+F5** (traçado → patches → quantização →
+quadrangulação por patch), que é literalmente o que o plano diz. A costura de hoje
+mede um **piso**, não o valor.
+
+⚠️ **Por isso NEM o F1 NEM o F2 estão ligados ao produto.** O botão hoje é o que
+sempre foi. Ligar qualquer um deles agora pioraria o que o artista vê.
 
 ---
 

@@ -100,10 +100,17 @@ fn dump_the_quad_remesh_corpus() {
 #[test]
 #[ignore = "sonda de preparacao -- baseline do remesher atual sobre o corpus (ADR-0161)"]
 fn dump_the_current_remesher_baseline() {
-    let sub = if std::env::var("PH2D_BENCH_ISO").ok().as_deref() == Some("1") {
-        "ours_iso"
-    } else {
-        "ours"
+    // ⚠️ **Um diretório por CONFIGURAÇÃO, e a combinação tem nome próprio.** A
+    // primeira versão só olhava o `ISO` e a corrida `ISO+MIQ` **sobrescreveu** a
+    // do `ISO` sozinho — as duas colunas da tabela passaram a ser a mesma, e a
+    // comparação teria mentido sem nada acusar.
+    let iso = std::env::var("PH2D_BENCH_ISO").ok().as_deref() == Some("1");
+    let miq = std::env::var("PH2D_BENCH_MIQ").ok().as_deref() == Some("1");
+    let sub = match (iso, miq) {
+        (true, true) => "ours_iso_miq",
+        (true, false) => "ours_iso",
+        (false, true) => "ours_miq",
+        (false, false) => "ours",
     };
     let dir = Path::new(CORPUS).parent().expect("a bancada").join(sub);
     std::fs::create_dir_all(&dir).expect("o diretorio da bancada existe");
@@ -144,7 +151,29 @@ fn dump_the_current_remesher_baseline() {
         let t = std::time::Instant::now();
         let edge = ph2d_quadflow::edge_for_detail(&mesh, 0.5);
         let scale = ph2d_quadflow::ScaleField::adaptive(&mesh, edge, 0.0);
-        let (orient, pos) = ph2d_quadflow::solve_fields(&mesh, &scale);
+        // ⚠️ **O CAMPO DO F2, injetado no lugar do local.** É assim que o F2 se
+        // mede antes de o F5 (quadrangulação por patch) existir: o campo novo
+        // entra, o extrator antigo fica, e a diferença é do campo. ⚠️ A conversão
+        // para por-vértice PERDE os saltos de período — está declarado na
+        // `to_vertex_dirs`, e é por isso que este número é um **piso** do que o
+        // F2 vale, não o valor dele.
+        let miq = std::env::var("PH2D_BENCH_MIQ").ok().as_deref() == Some("1");
+        let (orient, pos) = if miq {
+            mesh.triangulate();
+            let dual = ph2d_crossfield::Dual::build(&mesh);
+            let (field, r) = ph2d_crossfield::solve_miq(&dual);
+            let (sing, sum) = ph2d_crossfield::singularities(&mesh, &dual, &field);
+            eprintln!(
+                "[baseline]   F2: {sing} singularidades (soma {sum}), {} resolucoes, {} inteiros",
+                r.solves, r.free_integers
+            );
+            let dirs = ph2d_crossfield::to_vertex_dirs(&mesh, &dual, &field);
+            let orient = ph2d_quadflow::orientation_from(dirs);
+            let pos = ph2d_quadflow::solve_position(&mesh, &orient, &scale, 32);
+            (orient, pos)
+        } else {
+            ph2d_quadflow::solve_fields(&mesh, &scale)
+        };
         match ph2d_quadflow::extract(&mesh, &orient, &pos, &scale) {
             Ok(q) => {
                 let ms = t.elapsed().as_secs_f64() * 1000.0;

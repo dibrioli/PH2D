@@ -1,0 +1,379 @@
+//! **CAMPO CRUZADO 4-RoSy COM DECISÃO GLOBAL** (ADR-0161, F2).
+//!
+//! Clean-room a partir de **Bommes, Zimmer, Kobbelt, *Mixed-Integer
+//! Quadrangulation*, SIGGRAPH 2009** (`ph2d-quadbench/docs/papers/miq-2009.pdf`)
+//! e QuadWild 2021 §5. ⛔ Nenhuma linha traduzida de fonte GPL — ADR-0161.
+//!
+//! # Por que ele existe: a medição, não a opinião
+//!
+//! O campo que a `ph2d-quadflow` resolve é **local**: cada vértice absorve os
+//! vizinhos e o passe roda até convergir. Ele nunca negocia globalmente, e o
+//! preço está medido no corpus (`ph2d-quadbench`, 2026-08-20): **21 a 49 % dos
+//! vértices da saída são irregulares**, contra **0,2 %** do oráculo. Uma grade
+//! numa esfera admite **oito**.
+//!
+//! ⚠️ **E o F1 provou que não era a malha de entrada.** Uniformizar a entrada
+//! (`ph2d-remesh-iso`) moveu a agulha alguns pontos, **para os dois lados**. Se a
+//! doença fosse a entrada, curá-la teria derrubado o número. *É a classe do
+//! algoritmo.*
+//!
+//! # A formulação, numa frase
+//!
+//! Cada **face** guarda um ângulo `θ_f` (a direção da cruz na moldura dela). Cada
+//! **aresta dual** guarda um inteiro `p_e` — quantos quartos de volta a cruz dá
+//! ao atravessar aquela aresta. A energia é
+//!
+//! ```text
+//! E = Σ_e w_e · ( θ_f − θ_g + κ_e + (π/2)·p_e )²
+//! ```
+//!
+//! onde `κ_e` é o desencontro entre as duas molduras, medido **através da aresta
+//! partilhada**. ⭐ **Os `p_e` são a decisão global**: eles são inteiros, e é a
+//! escolha deles — não a suavização — que decide **onde as singularidades ficam**.
+//! É exatamente o que a família local não tem.
+//!
+//! # O que este crate NÃO faz, de propósito
+//!
+//! ⛔ Ele não extrai malha. O F2 entrega **o campo**; a decomposição em patches
+//! (F3), a quantização Bi-MDF (F4) e a quadrangulação por patch (F5) são as fases
+//! seguintes do [`PLAN.md`](../../../docs/3D/quad-remesh/PLAN.md). O que se pode
+//! fazer hoje é **converter para por-vértice** ([`to_vertex_dirs`]) e alimentar o
+//! extrator que já existe — que é como o F2 se mede antes de o F5 existir.
+
+#![forbid(unsafe_code)]
+
+use std::collections::BTreeMap;
+
+use ph2d_mesh::Mesh;
+
+mod index;
+mod solve;
+
+pub use index::{singularities, vertex_index};
+pub use solve::{SolveReport, cycle_count, energy, solve_alternating, solve_miq};
+
+/// **UM QUARTO DE VOLTA** — o passo do campo 4-RoSy.
+pub const QUARTER: f32 = core::f32::consts::FRAC_PI_2;
+
+/// **O campo resolvido.**
+///
+/// ⚠️ **Os dois vetores juntos SÃO o campo, e nenhum deles sozinho é.** O `theta`
+/// diz para onde a cruz aponta *na moldura de cada face*; os `period` dizem como
+/// as molduras se costuram. Guardar só o primeiro perde as singularidades, que é
+/// a informação inteira.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CrossField {
+    /// O ângulo da cruz na moldura de cada face.
+    theta: Vec<f32>,
+    /// O salto de período de cada aresta dual, na ordem de [`Dual::edges`].
+    period: Vec<i32>,
+}
+
+impl CrossField {
+    /// O ângulo da face `f`, na moldura dela.
+    #[must_use]
+    pub fn theta(&self, f: usize) -> f32 {
+        self.theta[f]
+    }
+
+    /// O salto de período da aresta dual `e`.
+    #[must_use]
+    pub fn period(&self, e: usize) -> i32 {
+        self.period[e]
+    }
+
+    /// Quantas faces o campo cobre.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.theta.len()
+    }
+
+    /// Um campo sem faces.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.theta.is_empty()
+    }
+
+    /// **A DIREÇÃO 3D da cruz na face `f`** — o representante.
+    #[must_use]
+    pub fn direction(&self, dual: &Dual, f: usize) -> [f32; 3] {
+        let fr = &dual.frames[f];
+        let (s, c) = self.theta[f].sin_cos();
+        let t = cross(fr.n, fr.e);
+        [
+            c.mul_add(fr.e[0], s * t[0]),
+            c.mul_add(fr.e[1], s * t[1]),
+            c.mul_add(fr.e[2], s * t[2]),
+        ]
+    }
+}
+
+/// A moldura de uma face: uma tangente de referência e a normal.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Frame {
+    /// A tangente de referência — a primeira aresta da face, normalizada.
+    pub e: [f32; 3],
+    /// A normal da face.
+    pub n: [f32; 3],
+}
+
+/// Uma aresta do grafo DUAL: as duas faces e o desencontro entre as molduras.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DualEdge {
+    /// A face de um lado.
+    pub f: u32,
+    /// A face do outro.
+    pub g: u32,
+    /// `κ` — o desencontro entre as molduras, medido **através da aresta
+    /// partilhada**. Ver [`Dual::build`].
+    pub kappa: f32,
+    /// O peso do termo, na energia.
+    pub weight: f32,
+}
+
+/// **O GRAFO DUAL da malha** — as faces são os nós, as arestas partilhadas são
+/// as ligações.
+///
+/// ⚠️ **Ele é construído UMA vez e vive fora do campo**, porque o solver o
+/// percorre dezenas de vezes e reconstruí-lo por iteração seria pagar o grafo
+/// para resolver o campo.
+#[derive(Clone, Debug)]
+pub struct Dual {
+    frames: Vec<Frame>,
+    edges: Vec<DualEdge>,
+    /// Por face, os índices das arestas duais que a tocam.
+    incident: Vec<Vec<u32>>,
+}
+
+impl Dual {
+    /// As molduras, uma por face.
+    #[must_use]
+    pub fn frames(&self) -> &[Frame] {
+        &self.frames
+    }
+
+    /// As arestas duais.
+    #[must_use]
+    pub fn edges(&self) -> &[DualEdge] {
+        &self.edges
+    }
+
+    /// As arestas duais que tocam a face `f`.
+    #[must_use]
+    pub fn incident(&self, f: usize) -> &[u32] {
+        &self.incident[f]
+    }
+
+    /// **CONSTRÓI o grafo dual e mede os `κ`.**
+    ///
+    /// ⚠️ **A malha é TRIANGULADA na porta.** Uma face de quatro lados não tem
+    /// uma moldura única (os dois triângulos dela podem não ser coplanares), e o
+    /// `κ` deixaria de ser o desencontro de duas molduras para ser a média de
+    /// duas coisas diferentes.
+    ///
+    /// ⚠️ **`κ` é medido ATRAVÉS DA ARESTA PARTILHADA, e é a única forma que
+    /// funciona.** A alternativa óbvia — comparar as duas tangentes de referência
+    /// direto — mede o ângulo entre duas arestas quaisquer de dois triângulos
+    /// quaisquer, e não tem nada a ver com o transporte paralelo. Aqui a direção
+    /// da aresta comum é escrita nas DUAS molduras, e `κ` é a diferença dos dois
+    /// ângulos: é exatamente quanto se tem de girar a moldura de `g` para ela
+    /// concordar com a de `f` ao cruzar aquela aresta.
+    #[must_use]
+    pub fn build(mesh: &Mesh) -> Self {
+        let p = mesh.positions();
+        let faces = mesh.faces();
+        let normals = mesh.face_normals();
+
+        let frames: Vec<Frame> = faces
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                let v = f.verts();
+                let e = normalize_or(sub(p[v[1] as usize], p[v[0] as usize]), [1.0, 0.0, 0.0]);
+                let n = normals[i];
+                // A referência tem de ser TANGENTE: uma aresta de um triângulo
+                // quase degenerado pode não o ser, depois do normalize.
+                let d = dot(e, n);
+                Frame {
+                    e: normalize_or(
+                        [
+                            d.mul_add(-n[0], e[0]),
+                            d.mul_add(-n[1], e[1]),
+                            d.mul_add(-n[2], e[2]),
+                        ],
+                        tangent_of(n),
+                    ),
+                    n,
+                }
+            })
+            .collect();
+
+        // Aresta da malha -> as faces que a usam. ⚠️ `BTreeMap`, nunca `HashMap`:
+        // a ordem das arestas duais entra na numeração dos `p_e`, e a numeração
+        // tem de ser byte-reprodutível (HR-5).
+        let mut owner: BTreeMap<(u32, u32), Vec<u32>> = BTreeMap::new();
+        for (fi, f) in faces.iter().enumerate() {
+            let v = f.verts();
+            for k in 0..v.len() {
+                let (a, b) = (v[k], v[(k + 1) % v.len()]);
+                let key = if a < b { (a, b) } else { (b, a) };
+                owner.entry(key).or_default().push(fi as u32);
+            }
+        }
+
+        let mut edges: Vec<DualEdge> = Vec::new();
+        let mut incident: Vec<Vec<u32>> = vec![Vec::new(); faces.len()];
+        for ((a, b), who) in &owner {
+            if who.len() != 2 {
+                // Uma aresta de borda não liga duas faces — não há transporte a
+                // medir, e ela simplesmente não entra no grafo dual.
+                continue;
+            }
+            let (fi, gi) = (who[0], who[1]);
+            let u = normalize_or(sub(p[*b as usize], p[*a as usize]), [1.0, 0.0, 0.0]);
+            let alpha_f = angle_in(&frames[fi as usize], u);
+            let alpha_g = angle_in(&frames[gi as usize], u);
+            // ⚠️ `κ = α_g − α_f`: com ele, `θ_f − θ_g + κ` é o desencontro entre
+            // as duas cruzes medido no referencial da aresta comum, que é o que
+            // a energia quer minimizar (a menos de quartos de volta).
+            let kappa = wrap(alpha_g - alpha_f);
+            let e = edges.len() as u32;
+            incident[fi as usize].push(e);
+            incident[gi as usize].push(e);
+            edges.push(DualEdge {
+                f: fi,
+                g: gi,
+                kappa,
+                // ⚠️ **Peso 1, e é uma DECISÃO por medir.** O MIQ pesa pelo
+                // comprimento da aresta dual; o efeito no nosso corpus ainda não
+                // foi medido, e um peso escolhido sem medição é um palpite com
+                // aparência de teoria. ⛔ Não o mude sem a tabela ao lado.
+                weight: 1.0,
+            });
+        }
+
+        Self {
+            frames,
+            edges,
+            incident,
+        }
+    }
+}
+
+/// **CONVERTE o campo por-FACE para por-VÉRTICE** — a ponte para o extrator que
+/// já existe.
+///
+/// ⚠️ **É uma PERDA, e ela está declarada.** O campo do MIQ vive nas faces e
+/// carrega os saltos de período; um vetor por vértice não tem onde os guardar.
+/// Esta porta existe só para medir o F2 **antes** de o F5 existir — a
+/// quadrangulação por patch consome o campo de face direto. *Uma conversão que
+/// perde informação e não diz que perde é como um número fabricado nasce.*
+///
+/// A média é feita reduzindo cada face ao representante mais próximo do
+/// acumulador (a simetria de 4 dobras), que é a única forma de somar duas
+/// descrições da mesma cruz sem elas se cancelarem.
+#[must_use]
+pub fn to_vertex_dirs(mesh: &Mesh, dual: &Dual, field: &CrossField) -> Vec<[f32; 3]> {
+    let normals = mesh.normals();
+    let adj = mesh.adjacency();
+    (0..mesh.vert_count())
+        .map(|v| {
+            let nv = normals[v];
+            let mut acc: Option<[f32; 3]> = None;
+            for &f in adj.vert_faces.neighbours(v) {
+                let d = field.direction(dual, f as usize);
+                // Projetar no plano tangente do VÉRTICE antes de somar: a
+                // direção é tangente à face, e a face tem outro plano.
+                let t = dot(d, nv);
+                let d = normalize_or(
+                    [
+                        t.mul_add(-nv[0], d[0]),
+                        t.mul_add(-nv[1], d[1]),
+                        t.mul_add(-nv[2], d[2]),
+                    ],
+                    tangent_of(nv),
+                );
+                acc = Some(match acc {
+                    None => d,
+                    Some(a) => {
+                        let b = nearest_representative(a, d, nv);
+                        normalize_or([a[0] + b[0], a[1] + b[1], a[2] + b[2]], a)
+                    }
+                });
+            }
+            acc.unwrap_or_else(|| tangent_of(nv))
+        })
+        .collect()
+}
+
+/// O representante de `d` (entre as quatro) mais alinhado com `a`.
+fn nearest_representative(a: [f32; 3], d: [f32; 3], n: [f32; 3]) -> [f32; 3] {
+    let t = cross(n, d);
+    let (mut best, mut out) = (f32::NEG_INFINITY, d);
+    for cand in [d, t, [-d[0], -d[1], -d[2]], [-t[0], -t[1], -t[2]]] {
+        let s = dot(a, cand);
+        if s > best {
+            best = s;
+            out = cand;
+        }
+    }
+    out
+}
+
+/// O ângulo de um vetor tangente `u` na moldura `fr`.
+pub(crate) fn angle_in(fr: &Frame, u: [f32; 3]) -> f32 {
+    let t = cross(fr.n, fr.e);
+    dot(u, t).atan2(dot(u, fr.e))
+}
+
+/// Traz um ângulo para `(−π, π]`.
+pub(crate) fn wrap(mut a: f32) -> f32 {
+    const TAU: f32 = core::f32::consts::TAU;
+    while a > core::f32::consts::PI {
+        a -= TAU;
+    }
+    while a <= -core::f32::consts::PI {
+        a += TAU;
+    }
+    a
+}
+
+pub(crate) fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
+}
+
+pub(crate) fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1].mul_add(b[2], -(a[2] * b[1])),
+        a[2].mul_add(b[0], -(a[0] * b[2])),
+        a[0].mul_add(b[1], -(a[1] * b[0])),
+    ]
+}
+
+pub(crate) fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+pub(crate) fn normalize_or(a: [f32; 3], fallback: [f32; 3]) -> [f32; 3] {
+    let len = dot(a, a).sqrt();
+    if len > 1.0e-20 {
+        [a[0] / len, a[1] / len, a[2] / len]
+    } else {
+        fallback
+    }
+}
+
+/// Uma tangente qualquer de `n`, mas sempre a mesma (Duff et al., JCGT 2017).
+pub(crate) fn tangent_of(n: [f32; 3]) -> [f32; 3] {
+    let sign = 1.0f32.copysign(n[2]);
+    let a = -1.0 / (sign + n[2]);
+    let b = n[0] * n[1] * a;
+    normalize_or(
+        [sign.mul_add(n[0] * n[0] * a, 1.0), sign * b, -sign * n[0]],
+        [1.0, 0.0, 0.0],
+    )
+}
+
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;

@@ -70,7 +70,10 @@ pub mod solve;
 
 pub use extract::{Clustering, Quadrangulation, extract, extract_with};
 pub use hierarchy::Hierarchy;
-pub use orientation::{OrientationField, compat_orientation_extrinsic_4, solve_orientation};
+pub use orientation::{
+    OrientationField, compat_orientation_extrinsic_4, field_from as orientation_from,
+    solve_orientation,
+};
 pub use position::{PositionField, compat_position_extrinsic_4, position_round_4, solve_position};
 pub use scale::{
     FLOOR_IN_INPUT_EDGES, MAX_ADAPTIVE_RATIO, MIN_QUADS, ScaleField, edge_for_detail, mean_edge,

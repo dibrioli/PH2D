@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-crossfield"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O CAMPO CRUZADO 4-RoSy com DECISAO GLOBAL (ADR-0161, F2). Clean-room a partir
+# de Bommes et al., "Mixed-Integer Quadrangulation" (SIGGRAPH 2009) e QuadWild
+# 2021 §5. Nenhuma linha traduzida de fonte GPL.
+#
+# ⚠️ Ele NAO substitui o campo da `ph2d-quadflow`: aquele e' local (cada vertice
+# absorve os vizinhos) e este poe os saltos de periodo como VARIAVEIS INTEIRAS do
+# problema -- e' isso que decide onde as singularidades ficam. A medicao que
+# separa os dois esta' no `docs/3D/quad-remesh/PLAN.md`.
+
+[dependencies]
+ph2d-mesh = { path = "../ph2d-mesh" }

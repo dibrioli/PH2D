@@ -40,11 +40,26 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 | base | `main` `ee1432203` — a linha foi **reaberta por fast-forward** depois de a integração ter entrado |
 | commits desta janela | `git log --oneline main..HEAD` (⚠️ não se pina aqui — o commit que escreve o número muda o número) |
 | estado | **verde** — `fmt` 0, `clippy` 0, LOC 0, suítes das crates tocadas 0 falhas |
-| smoke pendente | **`PH2D_GPU_COOK_DEMO=60`** — a **v1 foi REPROVADA** e a v2 aguarda re-smoke (lei 8 do §4) |
+| smoke pendente | **nenhum** — os quatro desta janela foram aprovados pelo Enio |
 
-⚠️ **Dois smokes de ontem também nunca foram vistos pelo Enio** e já estão no `main`:
+⚠️ **Dois smokes de ontem nunca foram vistos pelo Enio** e já estão no `main`:
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
+
+### §1.1 — O que a JANELA de 2026-08-19 fechou (a conferência foi de **P1 59 → 52**)
+
+| grupo | entrega | smoke |
+|---|---|---|
+| **S** | o 2º `fx.glow` mudo passa a **avisar**; o aviso cego ao tipo de coluna **dissolveu-se** por medição e virou teste de classe | — |
+| **T** | ✅ **folha 17 fechou** — o `motion.integrate` **declara `substeps`**, e o motor já existia (as rotas (c)/(d) da célula caíram em 12/08 sem ninguém reconferir). Achado no caminho: a palavra `substeps` tinha **dois donos** e o app corria as duas leis — a corda caía **4,8× menos** que os gates dela medem | `=61` ✔ · `=52` ✔ |
+| **T** | ✅ **folha 15 fechou** — o `value.switch` de N entradas é **exprimível** (`2·⌈(N−4)/3⌉+1` nós, per-elemento preservado); e a ramificação MORTA de um switch ganhou badge | `AUTOFIX=8` ✔ |
+| **U** | `source.shape`: **sweep/start/inner** + **raio por canto/smoothing**; e o `corner` deixou de ser da caixa para ser do **catálogo** (4 → **38** espécies) | `SHAPE_SMOKE=3` ✔ |
+| **U** | ⛔ **três refutações medidas**: o *trim/dash* (a cura, não o item — 42 de 47 formas são fechadas), o *`fill_rule`* (a estrela citada **nunca** auto-intersecta) e o *Pick Instances* (já existe: `combine` + `duplicator(pick)`) | — |
+
+⚠️ **E uma correção de GEOMETRIA em `ph2d-vec-scene`, que o smoke do Enio devolveu:** a
+borda que fecha uma fatia **abaulava** 19–25% do raio, porque o handle do arco sobrava na
+ponta — e era o mesmo defeito que fazia o motor de quinas não ver quina nenhuma ali. Os 387
+testes daquela crate passaram sem uma edição de asserção.
 
 ---
 
@@ -94,34 +109,52 @@ defeito, cure-o"* e a medição mostrou que o defeito era **alcançável só por
 produto esconde**. *Meça o TAMANHO do buraco antes de escolher o tamanho da cura* — vale para
 todas as células dos grupos abaixo.
 
-### Grupo T — as folhas que FECHAM (3 células, 2 folhas)
+### ~~Grupo T~~ — ✅ **FECHADO (2026-08-19): as duas folhas não têm mais P1**
 
-Fechar uma folha é um marco que o Enio lê, e estas duas custam pouco:
+⚠️ **Nenhuma das três células era o que dizia ser, e as três lições valem para o resto:**
 
-| folha | P1 | o pedido |
-|---|---|---|
-| **17_zero_param_debug** | 1 | `motion.integrate`: **sub-steps / o timestep exposto** (Blender GN *Simulation Zone* dá **Delta Time** como input do nó) |
-| **15_value** | 2 | `value.unary`: **Ceil · Round · Truncate** (Blender *Float to Integer*) · `value.switch`: **N entradas** (Blender *Index Switch*) |
+1. **`motion.integrate` sub-steps** — o motor já existia (`Cook::substep`, folha 13, 12/08) e
+   a célula listava rotas recusadas que **caíram quatro dias depois** sem ninguém reconferir.
+   Faltava o nó **declarar**. ⚠️ *Sempre que uma célula diz «inalcançável», datar a afirmação
+   e ver o que aterrou desde então.*
+2. **`value.unary` Ceil/Round/Truncate** — o `P1` era um **PONTEIRO** para o item do
+   `value.quantize`, que fechou em 15/08. Uma contagem que soma ponteiros conta duas vezes.
+3. **`value.switch` N entradas** — a nota dizia *"contrato congelado"* e conflaciava duas
+   coisas: `&'static [PortSpec]` barra a arity **dinâmica**, não uma lista estática maior (o
+   §6 congela a contagem de CAMPOS do `NodeManifest`). E a composição já o exprime, medido.
 
-⚠️ **O `value.switch` de N entradas mexe no MANIFESTO** (a lista de portas cresce) — leia a
-lei das portas apendadas no §4 antes de desenhar.
+⚠️ **A frase «mexe no MANIFESTO, leia a lei das portas apendadas» estava neste handoff e
+estava ERRADA** — não era preciso mexer em porta nenhuma.
 
-### Grupo U — `source.shape`, e o item mais pedido do catálogo
+### Grupo U — `source.shape` · **parcialmente fechado (7 → 3 P1)**
 
-A folha 14 tem **7 P1** e quatro são do `source.shape`. O **TRIM / dash** é o que a própria
-folha marca como *"o item mais pedido"* (Cavalry *Trim Path*, AE *Trim Paths*). Os outros:
-`fill_rule` não exposto · sweep/start/inner (pizza, rosquinha, anel parcial) · raio POR CANTO
-e *corner smoothing* (squircle) · e o estrutural *"`size` é GEOMETRIA, não coluna"*.
+✅ **Feito:** sweep/start/inner · raio por canto + smoothing · o `corner` geral (4 → 38
+espécies) · e a correção de geometria que o smoke do Enio devolveu (a borda da fatia
+abaulava 19–25% do raio). ⛔ **Refutados por medição:** `fill_rule` (a estrela citada nunca
+auto-intersecta; só 2 de 43 espécies distinguem as regras, e nelas a actual é a certa) e
+*Pick Instances* (já existe: `combine` + `duplicator(pick)`).
 
-⚠️ Este grupo é o único que provavelmente **encosta no módulo Vector** (o trim de um path
-desenhado). Se encostar num arquivo fora do Motion, é caso de **parar e reportar ao Enio**
-(CLAUDE.md §0.2) — não renegoceie com outra linha.
+**O que SOBRA na folha 14 — três, e cada um com a nota que a medição deixou:**
+
+| item | o que a medição já disse |
+|---|---|
+| **TRIM / dash** | ⚠️ **A cura da célula está refutada, o item não.** `trim_path` recusa contorno fechado, e **42 das 47** formas da biblioteca são fechadas — as 5 que ele corta (Spiral · Line · Arc · NoteBracket · Brace) **não estão** neste nó. Ligar a função daria dois sliders inertes em 100% do catálogo dele. A cura é a do AE: **abrir o contorno** antes de cortar, e o resultado só se vê com o `stroke_width` (que existe) |
+| **`size` é GEOMETRIA, não coluna** | ⚠️ **Meça ANTES de mexer:** o `encode` já compõe `pose = T(P)·R(basis)·S(size)`, então a escala da INSTÂNCIA já existe e cozer a geometria em tamanho 1 daria **um** `VecPath` por descritor em vez de um por valor visitado. O `corner` é fracção, o `aspect` é razão e sweep/start/inner são invariantes de escala ⇒ a imagem seria a mesma. **O que muda é a SEMÂNTICA**: um `motion.drive(Size, mode = Set)` a jusante passaria a APAGAR o tamanho autorado em vez de o multiplicar. Isso é decisão de produto, não refactor |
+| **a POSE do objeto não viaja** (`source.object`, *Transform Space*) | por medir |
+
+⚠️ Este grupo **encostou no módulo Vector e foi certo encostar**: a correção de
+`cap_arc_ends` é em `ph2d-vec-scene` (foundational, Modo L permite) e os 387 testes daquela
+crate passaram sem uma edição de asserção. Contrato congelado (§6) continua a ser parar e
+reportar.
 
 ### Grupo V — as folhas grandes, por ORDEM DE DEFEITO
 
-`08_stream_utilidade` (8) · `14_source` (o resto) · `01_distribuicao` (6) · `04_deformers`
-(6) · `10_field` (6) · `11_fx_raster` (o resto) · `02_force` (5) · `05_transform` (4) ·
-`03_simulacao` (3) · `07_tempo` (3) · `09_cor` (3).
+`08_stream_utilidade` (8) · `01_distribuicao` (6) · `04_deformers` (6) · `10_field` (6) ·
+`02_force` (5) · `11_fx_raster` (5) · `05_transform` (4) · `03_simulacao` (3) ·
+`07_tempo` (3) · `09_cor` (3) · `14_source` (3, na tabela acima).
+
+⚠️ **A contagem por folha se DERIVA** (`python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"`),
+nunca se lê daqui: esta lista envelhece a cada célula fechada.
 
 ⚠️ **Não ataque por tamanho.** Dentro de cada folha, o que vem primeiro é o que a célula
 descreve como **comportamento errado** (o `fx.glow` inerte, o `motion.duplicator` que perde a

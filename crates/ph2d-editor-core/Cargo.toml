@@ -53,6 +53,13 @@ smallvec              = "1"
 bumpalo               = { version = "3", features = ["collections"] }
 
 [dev-dependencies]
+# O gate `every_registered_panel_is_reachable_by_the_z_order_walk` compara o REGISTRO real
+# com a lista de z-order. Ele precisa do registro que o app monta, e nao de uma copia.
+#
+# ⚠️ Dependencia de DEV apontando "para cima" (a registry-init depende desta crate): so
+# possivel porque cargo permite ciclos via dev-dependencies. Sem isto o gate teria de
+# receber a lista de paineis de fora, e uma lista transcrita nao mede nada.
+ph2d-panel-registry-init = { path = "../ph2d-panel-registry-init" }
 # dhat-rs: HR-3 enforcement bench — counts allocations in
 # `interaction_dispatch_no_alloc` test to assert hot path is
 # allocation-free. See ADR-0024 "Plano de conformidade HR-3".

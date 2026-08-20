@@ -1,5 +1,95 @@
 use super::*;
 
+/// **Todo painel que o passeio de z-order alcança**, mesmo que o store ainda não o tenha visto.
+///
+/// ⚠️ **Estar no registro e estar visível NÃO chega**: se o id não passa por aqui, o painel é
+/// registado, visível e **nunca pintado** — nada quebra e nada avisa. Este arquivo pagou esse
+/// defeito seis vezes (as notas dentro da lista são o registo de cada uma), e a última foi um smoke
+/// reprovado do painel de modelagem 3D.
+///
+/// ⭐ Desde 2026-08-19 há um gate — `every_registered_panel_is_reachable_by_the_z_order_walk` — que
+/// compara esta lista com o REGISTRO. É por isso que ela é uma const com nome em vez de um array
+/// anônimo dentro do `for`: uma lista que um teste não consegue ler é uma lista que ninguém confere.
+pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
+    ids::HIER_PANEL,
+    ids::INSP_PANEL,
+    // Geometry-graph smoke panel (ADR-0065): docks over the inspector rect
+    // when `PH2D_VECTOR_GRAPH=1`. Its own `paint()` no-ops when hidden, so
+    // this is inert in the normal app. After INSP_PANEL → paints on top.
+    ids::VGRAPH_PANEL,
+    ids::BGR_PANEL,
+    ids::PAD_PANEL,
+    ids::CEQ_PANEL,
+    ids::EQS_PANEL,
+    ids::UPS_PANEL,
+    ids::PAINTER_SIDEBAR_PANEL,
+    ids::VECTOR_INSPECTOR_PANEL,
+    // Vector tool Style panel (ADR-0108 docked `ph2d-panel-vector`): docks
+    // over the inspector slot while the `vector` tool is active. Its
+    // `paint()` no-ops when hidden, so this is inert otherwise.
+    ids::VECTOR_PANEL,
+    // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`): docks
+    // over the inspector slot while the `flip` tool is active (bridge-driven
+    // visibility). Its `paint()` no-ops when hidden, so this is inert
+    // otherwise. WITHOUT this entry the registered+visible panel is never
+    // reached by the z-order walk → never painted.
+    ids::FLIP_PANEL,
+    // Flip frame strip (ADR-0114 W3 docked `ph2d-panel-flip-frames`): a faixa
+    // INFERIOR da tool Flip (células + transporte). Mesma disciplina: sem esta
+    // entrada o painel registrado e visível nunca é alcançado pelo walk — e
+    // nunca é pintado.
+    ids::FLIP_STRIP_PANEL,
+    // Motion Nodes docked panels (M0.T9): the graph-editor panel fills the
+    // `motion_graph` split region, the params panel takes the inspector slot.
+    // Both `paint()` no-op when the `motion` tool is inactive (bridge-driven
+    // visibility), so they're inert otherwise. WITHOUT these entries a
+    // registered+visible panel is never reached by this z-order walk → never
+    // painted (the split would be invisible).
+    ids::MOTION_GRAPH_PANEL,
+    ids::MOTION_PARAMS_PANEL,
+    // General timeline (docs/Timeline W2): bottom-docked, visibility toggled
+    // by the `timeline` key. WITHOUT this entry the registered+visible panel
+    // is never reached by the z-order walk → never painted.
+    ids::TIMELINE_PANEL,
+    // Physics world panel (ADR-0131 D8 docked `ph2d-panel-physics`): the
+    // world/scene-settings category — always available, not tool-gated.
+    // Its `paint()` no-ops when hidden. WITHOUT this entry the panel is
+    // registered, visible, and NEVER painted — nothing breaks, nothing warns.
+    ids::PHYSICS_PANEL,
+    // Wet Tuning side panel (doc 22, docked beside the painter panel):
+    // visibility mirrored from the tool's Tuning checkbox by the painter
+    // bridge; `paint()` no-ops when hidden. WITHOUT this entry the panel
+    // is registered, visible, and NEVER painted.
+    ids::WET_TUNING_PANEL,
+    // Tokens world panel (plano UI/UX W6, docked `ph2d-panel-tokens`): a
+    // tabela de cor do design system, mesma categoria do painel de física.
+    // `paint()` no-ops when hidden — sem esta entrada ele fica registado,
+    // visível, e NUNCA pintado.
+    ids::TOKENS_PANEL,
+    // O painel AUTORADO (plano UI/UX W8b.2): o painel que o artista desenhou. `paint()`
+    // no-opa quando escondido — sem esta entrada ele fica registado, visível, e NUNCA
+    // pintado (nada quebra, nada avisa).
+    ids::AUTHORED_PANEL,
+    // O painel da cena 3D (ADR-0150 W12): mesma categoria dos dois acima.
+    // O `paint()` dele sai no primeiro `if` sem cena viva — sem esta entrada
+    // ele fica registrado, visível, e NUNCA pintado.
+    ids::SCULPT3D_PANEL,
+    // O painel de MODELAGEM 3D (ADR-0161 W4) — irmão do de cima, e não ele:
+    // `sculpt3d` é escultura, `model3d` é modelagem por campo implícito.
+    //
+    // ⚠️ **A ausência desta linha foi um smoke reprovado** (Enio, 2026-08-19:
+    // *"o painel não abre"*): a crate existia, estava no registro, a
+    // visibilidade estava escrita, os 6 gates dela passavam — e este passeio
+    // nunca chegava nele. É a **sexta** vez que este arquivo paga o mesmo
+    // defeito, e as cinco notas acima já o diziam.
+    ids::MODEL3D_PANEL,
+    ids::INSP_BLENDER_PICKER,
+    ids::GAL_PANEL,
+    ids::AUDIO_MIXER_PANEL,
+    ids::AUDIO_EDITOR_PANEL,
+    crate::grid_snap::ids::GS_PANEL,
+];
+
 /// Top-level hero paint orchestrator. Clears + re-populates the
 /// hit-index, then walks each region painter in z-order
 /// (canvas → selection overlay → chrome → HUD).
@@ -400,76 +490,7 @@ pub fn paint_hero_screen(
     // zero edits to this iteration — drop `PANEL_MANIFEST` in the
     // panel module + 1 line in `panel_registry::PANEL_REGISTRY`.
     let mut z_order: Vec<ph2d_a11y::NodeId> = hero.store.panel_z_order().to_vec();
-    for &fallback in &[
-        ids::HIER_PANEL,
-        ids::INSP_PANEL,
-        // Geometry-graph smoke panel (ADR-0065): docks over the inspector rect
-        // when `PH2D_VECTOR_GRAPH=1`. Its own `paint()` no-ops when hidden, so
-        // this is inert in the normal app. After INSP_PANEL → paints on top.
-        ids::VGRAPH_PANEL,
-        ids::BGR_PANEL,
-        ids::PAD_PANEL,
-        ids::CEQ_PANEL,
-        ids::EQS_PANEL,
-        ids::UPS_PANEL,
-        ids::PAINTER_SIDEBAR_PANEL,
-        ids::VECTOR_INSPECTOR_PANEL,
-        // Vector tool Style panel (ADR-0108 docked `ph2d-panel-vector`): docks
-        // over the inspector slot while the `vector` tool is active. Its
-        // `paint()` no-ops when hidden, so this is inert otherwise.
-        ids::VECTOR_PANEL,
-        // Flip tool Style panel (ADR-0114 W2 docked `ph2d-panel-flip`): docks
-        // over the inspector slot while the `flip` tool is active (bridge-driven
-        // visibility). Its `paint()` no-ops when hidden, so this is inert
-        // otherwise. WITHOUT this entry the registered+visible panel is never
-        // reached by the z-order walk → never painted.
-        ids::FLIP_PANEL,
-        // Flip frame strip (ADR-0114 W3 docked `ph2d-panel-flip-frames`): a faixa
-        // INFERIOR da tool Flip (células + transporte). Mesma disciplina: sem esta
-        // entrada o painel registrado e visível nunca é alcançado pelo walk — e
-        // nunca é pintado.
-        ids::FLIP_STRIP_PANEL,
-        // Motion Nodes docked panels (M0.T9): the graph-editor panel fills the
-        // `motion_graph` split region, the params panel takes the inspector slot.
-        // Both `paint()` no-op when the `motion` tool is inactive (bridge-driven
-        // visibility), so they're inert otherwise. WITHOUT these entries a
-        // registered+visible panel is never reached by this z-order walk → never
-        // painted (the split would be invisible).
-        ids::MOTION_GRAPH_PANEL,
-        ids::MOTION_PARAMS_PANEL,
-        // General timeline (docs/Timeline W2): bottom-docked, visibility toggled
-        // by the `timeline` key. WITHOUT this entry the registered+visible panel
-        // is never reached by the z-order walk → never painted.
-        ids::TIMELINE_PANEL,
-        // Physics world panel (ADR-0131 D8 docked `ph2d-panel-physics`): the
-        // world/scene-settings category — always available, not tool-gated.
-        // Its `paint()` no-ops when hidden. WITHOUT this entry the panel is
-        // registered, visible, and NEVER painted — nothing breaks, nothing warns.
-        ids::PHYSICS_PANEL,
-        // Wet Tuning side panel (doc 22, docked beside the painter panel):
-        // visibility mirrored from the tool's Tuning checkbox by the painter
-        // bridge; `paint()` no-ops when hidden. WITHOUT this entry the panel
-        // is registered, visible, and NEVER painted.
-        ids::WET_TUNING_PANEL,
-        // Tokens world panel (plano UI/UX W6, docked `ph2d-panel-tokens`): a
-        // tabela de cor do design system, mesma categoria do painel de física.
-        // `paint()` no-ops when hidden — sem esta entrada ele fica registado,
-        // visível, e NUNCA pintado.
-        ids::TOKENS_PANEL,
-        // O painel AUTORADO (plano UI/UX W8b.2): o painel que o artista desenhou. `paint()`
-        // no-opa quando escondido — sem esta entrada ele fica registado, visível, e NUNCA
-        // pintado (nada quebra, nada avisa).
-        ids::AUTHORED_PANEL,
-        // O painel da cena 3D (ADR-0150 W12): mesma categoria dos dois acima.
-        // O `paint()` dele sai no primeiro `if` sem cena viva — sem esta entrada
-        // ele fica registrado, visível, e NUNCA pintado.
-        ids::SCULPT3D_PANEL,
-        ids::INSP_BLENDER_PICKER,
-        ids::GAL_PANEL,
-        ids::AUDIO_MIXER_PANEL,
-        ids::AUDIO_EDITOR_PANEL,
-        crate::grid_snap::ids::GS_PANEL,
-    ] {
+    for &fallback in PANEL_Z_ORDER_FALLBACK {
         if !z_order.contains(&fallback) {
             z_order.push(fallback);
         }

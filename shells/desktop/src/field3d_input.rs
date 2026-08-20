@@ -198,18 +198,30 @@ impl App {
 
     /// **Repõe a vista.** Devolve `true` se a tecla era desta janela.
     ///
-    /// ⚠️ **A porta pergunta se o smoke está ARMADO, e a nota tem de ser reconferida no dia em que
-    /// isso mudar.** Hoje o módulo só existe com `PH2D_FIELD_SMOKE` posta, então num run normal
-    /// `with_smoke` devolve `None` e esta tecla nem chega a ser considerada. A `line/sculpt3d`
-    /// pagou exatamente esta nota a envelhecer: a cena dela passou a nascer ao primeiro clique, a
-    /// porta continuou a perguntar *"a cena existe?"*, e a partir daí ela **comia as teclas de todo
-    /// painel do app, para sempre**. Quem der a este módulo uma entrada que não seja a variável de
-    /// ambiente tem de trocar esta pergunta por *"a janela 3D está NA TELA?"*.
+    /// ⚠️ **Só morde com o ponteiro SOBRE a janela 3D** — ver a nota dentro da função. A porta
+    /// perguntava apenas *"o smoke está armado?"*, o que bastava enquanto a única entrada era a
+    /// variável de ambiente; o pill do topo tornou isso falso no mesmo dia.
     pub(crate) fn field3d_home_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
         if code != winit::keyboard::KeyCode::Home {
             return false;
         }
+        let pos = self.last_pointer;
         with_smoke(|s| {
+            // ⚠️ **Só com o ponteiro SOBRE a janela 3D**, e esta linha é a diferença entre uma tecla
+            // e um sequestro. Enquanto o módulo entrava só por variável de ambiente, perguntar "o
+            // smoke está armado?" bastava; com o pill ele pode estar ligado numa sessão normal, e
+            // aí um `Home` engolido é um `Home` que não chega ao campo de texto onde o artista está
+            // a escrever.
+            //
+            // É exatamente a nota que a `line/sculpt3d` viu envelhecer: a porta dela perguntava "a
+            // cena existe?", o dia em que a cena passou a nascer sozinha chegou, e a partir dali ela
+            // comia as teclas de todo painel do app. *Quem move o número que tornava uma nota
+            // verdadeira tem de reconferir a nota* — e aqui quem o moveu fui eu, no mesmo dia.
+            if !s.area.is_some_and(|a| {
+                pos.0 >= a.x && pos.1 >= a.y && pos.0 < a.x + a.w && pos.1 < a.y + a.h
+            }) {
+                return false;
+            }
             law::home(&mut s.cam);
             // Repor não é "voltar ao prato giratório": a mão continua no comando.
             s.manual = true;

@@ -34,6 +34,7 @@ use std::sync::mpsc::{Receiver, TryRecvError, channel};
 
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Profile, Xform};
+use ph2d_field_ecs::FieldObject;
 use ph2d_field_render::{Matcap, Orbit, shade, trace};
 use ph2d_vec_scene::{VecPath, VecVertex};
 use ph2d_vector::{Affine, ImageQuality, VectorScene};
@@ -340,7 +341,7 @@ fn load_matcap() -> MatcapTexels {
 }
 
 fn boot() -> Option<Smoke> {
-    let n: u32 = std::env::var("PH2D_FIELD_SMOKE").ok()?.parse().unwrap_or(1);
+    let n = armed_scene()?;
     let doc = scene(n);
     println!(
         "[field-smoke] traçado no tamanho REAL da área, com anti-serrilhado — prato giratório, \
@@ -381,7 +382,91 @@ pub(crate) fn take_open_panel_request() -> bool {
     PENDING.with(|p| p.replace(false))
 }
 
-/// **A ponte com o painel**: drena o que ele pediu, aplica ao documento, e publica o retrato novo.
+/// ⭐ **A ponte com a CENA**: a peça é uma **entidade**, e não um documento escondido num
+/// `thread_local`.
+///
+/// # Por que isto teve de mudar
+///
+/// A W1 criou o componente [`FieldObject`], registou-o e provou por gate que ele atravessa o
+/// snapshot — mas **ninguém o produzia**. O documento vivia no estado deste módulo, então a peça não
+/// existia para o resto do app: não aparecia na Hierarquia, não era selecionável, e o "salvo e
+/// desfeito" da W1 valia para um componente que nenhuma cena continha.
+///
+/// *Um componente registado sem produtor é um cano ligado a nada* — e é exatamente a fiação órfã
+/// que a `DIRETIVA_IMPLEMENTACAO` §1 proíbe. Foi um smoke do Enio que a encontrou (2026-08-19:
+/// *"os objetos não aparecem na hierarchy"*), o que quer dizer que o gate da W1 media a metade
+/// errada: ele provava que o componente **sobrevive** ao snapshot, nunca que alguma coisa o **põe**
+/// no mundo.
+///
+/// ⚠️ **A partir daqui o MUNDO é a verdade** e o `Smoke::doc` é um cache do quadro para a thread do
+/// traçado (que precisa de uma cópia própria de qualquer forma).
+///
+/// A entidade nasce com `Transform` e sem pai, que é exatamente o que a Hierarquia enumera
+/// (`HierarchyWalkState::roots`), e com `RootOrder` explícito — a lei do shell: *não se escolhe um
+/// desempate melhor, não se tem empate*.
+pub(crate) fn ecs_bridge(sim: &mut ph2d_ecs::SimWorld) {
+    let Some((initial, ms)) = with_smoke(|s| (s.doc.clone(), s.last_trace_ms)) else {
+        return;
+    };
+    let doc = sync_scene(sim, &initial, ms);
+    with_smoke(|s| {
+        // O cache que a thread do traçado leva. ⚠️ Só se escreve quando MUDOU: atribuir todo quadro
+        // faria o documento parecer novo e re-traçar para sempre, matando o "só se traça o que
+        // mudou".
+        if s.doc != doc {
+            s.doc = doc;
+        }
+    });
+}
+
+/// O que a ponte **faz**, separado de **se** ela corre.
+///
+/// ⚠️ A separação existe para o gate: `ecs_bridge` pergunta pela variável de ambiente, e um teste
+/// não consegue (nem deve) encená-la. Aqui o documento inicial entra por parâmetro, e o resto é o
+/// caminho de produção inteiro — mundo, entidade, componente, intents, retrato.
+fn sync_scene(sim: &mut ph2d_ecs::SimWorld, initial: &FieldDoc, last_trace_ms: f32) -> FieldDoc {
+    let world = sim.world_mut();
+    let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
+    let existing: Option<bevy_ecs::entity::Entity> = q.iter(world).next().map(|(e, _)| e);
+
+    let entity = match existing {
+        Some(e) => e,
+        None => world
+            .spawn((
+                ph2d_ecs::Name::new("Model"),
+                ph2d_ecs::Transform::default(),
+                ph2d_ecs::RootOrder(0),
+                FieldObject {
+                    doc: initial.clone(),
+                },
+            ))
+            .id(),
+    };
+
+    // As edições do painel escrevem no COMPONENTE, que é o documento de verdade.
+    let intents = ph2d_panel_model3d::drain_intents();
+    if !intents.is_empty()
+        && let Some(mut obj) = world.get_mut::<FieldObject>(entity)
+    {
+        for intent in intents {
+            match intent {
+                ph2d_panel_model3d::ModelIntent::SetRadius { node, radius } => {
+                    // Uma recusa é informação, não erro: o documento diz que aquele raio não cabe,
+                    // e o retrato publicado logo abaixo devolve o controle ao valor que ficou.
+                    let _ = obj.doc.set_radius(NodeId(node), radius);
+                }
+            }
+        }
+    }
+
+    let doc = world
+        .get::<FieldObject>(entity)
+        .map_or_else(|| initial.clone(), |o| o.doc.clone());
+    publish_snapshot(&doc, last_trace_ms);
+    doc
+}
+
+/// **A ponte com o painel**: publica o retrato do documento.
 ///
 /// ⭐ **A ordem é load-bearing.** Drenar ANTES de publicar é o que faz a edição aparecer no mesmo
 /// quadro: se o retrato saísse primeiro, o painel pintaria o valor antigo por um quadro e o
@@ -390,17 +475,7 @@ pub(crate) fn take_open_panel_request() -> bool {
 ///
 /// ⚠️ **O shell é a única coisa que toca no documento**, e por isso a aplicação é aqui e não no
 /// painel: o `set_radius` **revalida**, e uma recusa tem de deixar o documento como estava.
-fn panel_bridge(doc: &mut FieldDoc, last_trace_ms: f32) {
-    for intent in ph2d_panel_model3d::drain_intents() {
-        match intent {
-            ph2d_panel_model3d::ModelIntent::SetRadius { node, radius } => {
-                // Uma recusa é informação, não erro: o documento diz que aquele raio não cabe, e o
-                // retrato publicado logo abaixo devolve o controle ao valor que de facto ficou.
-                let _ = doc.set_radius(NodeId(node), radius);
-            }
-        }
-    }
-
+fn publish_snapshot(doc: &FieldDoc, last_trace_ms: f32) {
     let rows: Vec<ph2d_panel_model3d::RadiusRow> = (0..doc.nodes().len() as u32)
         .filter_map(|i| {
             let id = NodeId(i);
@@ -438,6 +513,40 @@ fn kind_key(node: &Node) -> &'static str {
     }
 }
 
+thread_local! {
+    /// O pill do topo pediu o módulo ligado.
+    static PILL_ARMED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// **A porta de ARMAR**, escrita pelo shell a partir da visibilidade do painel.
+///
+/// ⭐ O módulo passa a ter **duas** entradas: a variável de ambiente (a do smoke dirigido) e o
+/// **pill do topo** — que é a que um artista encontra. Enquanto a única porta era a `env`, o módulo
+/// não existia para quem abre o app (Enio, 2026-08-19: *"não temos um Pill no topo"*).
+///
+/// ⚠️ Uma porta que só quem já sabe consegue abrir é o mesmo que não existir — a lição que o pill do
+/// SCULPT já tinha registado ao lado, e que este módulo repetiu.
+pub(crate) fn set_armed_by_panel(open: bool) {
+    // ⚠️ **Trava ligado, e não segue o painel.** Fechar o painel fecha o PAINEL; a peça continua na
+    // cena, porque ela é um objeto do documento — está na Hierarquia, é salva e é desfeita. Fazer o
+    // X do painel apagar o modelo da tela seria um segundo significado para o mesmo gesto, e o
+    // artista perderia a peça sem a ter apagado.
+    //
+    // Desligar o módulo é apagar a entidade, que é trabalho da Hierarquia — e é a única porta que
+    // pode fazê-lo sem ambiguidade.
+    if open {
+        PILL_ARMED.with(|c| c.set(true));
+    }
+}
+
+fn armed_scene() -> Option<u32> {
+    if let Ok(v) = std::env::var("PH2D_FIELD_SMOKE") {
+        return Some(v.parse().unwrap_or(1));
+    }
+    // Aberto pelo pill: a cena 1 é a que mostra os dois arredondamentos de uma vez.
+    PILL_ARMED.with(std::cell::Cell::get).then_some(1)
+}
+
 /// **A porta única para o estado do smoke**, e é por ela que a metade de entrada chega.
 ///
 /// ⚠️ O estado vive num `thread_local` deste arquivo, e não num campo do `App`, de propósito: o
@@ -449,7 +558,14 @@ fn kind_key(node: &Node) -> &'static str {
 pub(crate) fn with_smoke<R>(f: impl FnOnce(&mut Smoke) -> R) -> Option<R> {
     STATE.with(|cell| {
         let mut slot = cell.borrow_mut();
-        slot.get_or_insert_with(boot).as_mut().map(f)
+        // ⚠️ **Re-tenta enquanto não nasceu**, e não uma vez só: com o pill, o módulo pode ser
+        // armado a meio da sessão. Um `get_or_insert_with` puro guardaria o `None` da primeira
+        // pergunta e o pill nunca acenderia nada — o mesmo defeito de "a porta existe e não abre"
+        // que este módulo acabou de pagar noutro sítio.
+        if slot.as_ref().is_none_or(Option::is_none) {
+            *slot = Some(boot());
+        }
+        slot.as_mut().and_then(Option::as_mut).map(f)
     })
 }
 
@@ -498,7 +614,6 @@ pub(crate) fn draw(area: EditorRect, scene_out: &mut VectorScene) {
         );
 
         smoke.area = Some(area);
-        panel_bridge(&mut smoke.doc, smoke.last_trace_ms);
 
         if !smoke.manual && smoke.inflight.is_none() {
             let dt = smoke.since.elapsed().as_secs_f32();
@@ -581,18 +696,68 @@ mod snapshot_tests;
 mod scene_tests {
     use super::*;
 
-    /// ⭐ **A edição do painel chega ao documento NO MESMO QUADRO.**
+    fn a_world() -> ph2d_ecs::SimWorld {
+        ph2d_ecs::SimWorld::new()
+    }
+
+    /// ⭐ **A peça é uma ENTIDADE do mundo, e é isso que a põe na Hierarquia.**
     ///
-    /// Esta é a costura da W4, e ela é do tipo que falha em silêncio: um retrato publicado antes
-    /// de a edição ser aplicada pinta o valor antigo por um quadro, e o controle dá um salto para
-    /// trás debaixo do dedo. O gate prende a ORDEM — drenar, aplicar, publicar — medindo o que o
-    /// painel vai ler.
+    /// ⚠️ O gate existe por um smoke reprovado (Enio, 2026-08-19: *"os objetos não aparecem na
+    /// hierarchy"*). A W1 provou que o componente **sobrevive** ao snapshot e nunca que alguma
+    /// coisa o **põe** no mundo — media a metade errada, e o cano ficou ligado a nada.
+    ///
+    /// A condição de aparecer na Hierarquia é concreta: `Transform` e **sem pai**
+    /// (`HierarchyWalkState::roots`). É isso que se afirma, e não "spawnou alguma coisa".
     #[test]
-    fn a_panel_edit_reaches_the_document_and_the_snapshot_in_the_same_frame() {
+    fn the_part_is_an_entity_the_hierarchy_can_see() {
         let _ = ph2d_panel_model3d::drain_intents();
-        let mut doc = scene(1);
+        let mut sim = a_world();
+        sync_scene(&mut sim, &scene(1), 0.0);
+
+        let world = sim.world_mut();
+        let mut q = world
+            .query_filtered::<(&ph2d_ecs::Name, &FieldObject), bevy_ecs::query::Without<bevy_ecs::hierarchy::ChildOf>>();
+        let found: Vec<&str> = q.iter(world).map(|(n, _)| n.as_str()).collect();
+        assert_eq!(
+            found,
+            vec!["Model"],
+            "a peça tem de ser UMA entidade raiz com nome — é assim que a Hierarquia a enumera"
+        );
+        let mut t = world.query::<(&ph2d_ecs::Transform, &FieldObject)>();
+        assert_eq!(
+            t.iter(world).count(),
+            1,
+            "sem `Transform` a entidade não é raiz de hierarquia nenhuma"
+        );
+    }
+
+    /// **A ponte não cria uma peça por quadro.** Correr dez vezes deixa UMA entidade.
+    ///
+    /// ⚠️ É o modo de falha natural de um "spawn se não existe" escrito ao contrário, e ele seria
+    /// invisível num quadro: dez `Model` empilhados no mesmo sítio desenham como um.
+    #[test]
+    fn the_bridge_spawns_the_part_once_not_once_per_frame() {
+        let _ = ph2d_panel_model3d::drain_intents();
+        let mut sim = a_world();
+        for _ in 0..10 {
+            sync_scene(&mut sim, &scene(1), 0.0);
+        }
+        let world = sim.world_mut();
+        let mut q = world.query::<&FieldObject>();
+        assert_eq!(q.iter(world).count(), 1);
+    }
+
+    /// ⭐ **A edição do painel chega ao COMPONENTE e ao retrato no mesmo quadro.**
+    ///
+    /// A ordem — drenar, aplicar, publicar — é load-bearing: se o retrato saísse primeiro, o painel
+    /// pintaria o valor antigo por um quadro e o controle daria um salto para trás debaixo do dedo.
+    #[test]
+    fn a_panel_edit_reaches_the_component_and_the_snapshot_in_the_same_frame() {
+        let _ = ph2d_panel_model3d::drain_intents();
+        let mut sim = a_world();
+        let doc = scene(1);
         let root = doc.root();
-        let before = doc.radius_of(root).expect("a raiz da cena 1 é uma união");
+        sync_scene(&mut sim, &doc, 0.0);
 
         ph2d_panel_model3d::state::push_intent_for_test(
             ph2d_panel_model3d::ModelIntent::SetRadius {
@@ -600,24 +765,18 @@ mod scene_tests {
                 radius: 0.2,
             },
         );
-        panel_bridge(&mut doc, 7.5);
+        sync_scene(&mut sim, &doc, 7.5);
 
+        let world = sim.world_mut();
+        let mut q = world.query::<&FieldObject>();
+        let stored = q.iter(world).next().expect("a peça existe");
         assert!(
-            (doc.radius_of(root).expect("continua a ter raio") - 0.2).abs() < 1e-6,
-            "o documento tem de ter o raio novo: {before} -> {:?}",
-            doc.radius_of(root)
+            (stored.doc.radius_of(root).expect("tem raio") - 0.2).abs() < 1e-6,
+            "o COMPONENTE tem de guardar o raio novo — senão o salvar e o desfazer levam o antigo"
         );
         let snap = ph2d_panel_model3d::state::current();
-        let row = snap
-            .rows
-            .iter()
-            .find(|r| r.node == root.0)
-            .expect("a raiz tem linha");
-        assert!(
-            (row.radius - 0.2).abs() < 1e-6,
-            "o retrato do MESMO quadro tem de mostrar 0,2 e mostra {}",
-            row.radius
-        );
+        let row = snap.rows.iter().find(|r| r.node == root.0).expect("linha");
+        assert!((row.radius - 0.2).abs() < 1e-6, "o retrato do MESMO quadro");
         assert!((snap.last_trace_ms - 7.5).abs() < 1e-6);
     }
 
@@ -626,9 +785,11 @@ mod scene_tests {
     #[test]
     fn a_refused_edit_publishes_the_value_the_document_actually_kept() {
         let _ = ph2d_panel_model3d::drain_intents();
+        let mut sim = a_world();
         // A cena 2 é um cubo de meia-extensão 0,45: o `round` não pode chegar a 0,45.
-        let mut doc = scene(2);
+        let doc = scene(2);
         let before = doc.radius_of(NodeId(0)).expect("o cubo tem round");
+        sync_scene(&mut sim, &doc, 0.0);
 
         ph2d_panel_model3d::state::push_intent_for_test(
             ph2d_panel_model3d::ModelIntent::SetRadius {
@@ -636,12 +797,8 @@ mod scene_tests {
                 radius: 5.0,
             },
         );
-        panel_bridge(&mut doc, 0.0);
+        sync_scene(&mut sim, &doc, 0.0);
 
-        assert!(
-            (doc.radius_of(NodeId(0)).expect("continua") - before).abs() < 1e-6,
-            "o documento tem de recusar e ficar como estava"
-        );
         let snap = ph2d_panel_model3d::state::current();
         assert!(
             (snap.rows[0].radius - before).abs() < 1e-6,
@@ -654,12 +811,13 @@ mod scene_tests {
     ///
     /// ⚠️ O `tr` da casa devolve a **própria chave** quando não conhece uma (de propósito: o
     /// identificador feio na tela é o alarme). Então "traduziu" mede-se por *"o que voltou é
-    /// diferente da chave"*, e não por "voltou alguma coisa".
+    /// diferente da chave"*.
     #[test]
     fn every_row_kind_has_a_translation() {
         for n in 1..=5 {
-            let mut doc = scene(n);
-            panel_bridge(&mut doc, 0.0);
+            let _ = ph2d_panel_model3d::drain_intents();
+            let mut sim = a_world();
+            sync_scene(&mut sim, &scene(n), 0.0);
             for row in ph2d_panel_model3d::state::current().rows {
                 assert_ne!(
                     ph2d_i18n::tr(row.kind_key),

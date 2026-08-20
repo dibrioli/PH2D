@@ -6668,6 +6668,16 @@ impl crate::App {
                     fixed_dt: self.fixed_step.fixed_dt(),
                 },
             );
+            // ADR-0161 W4: a peça de modelagem 3D é uma ENTIDADE, e esta é a ponte
+            // que a mantém assim — nasce no mundo, aparece na Hierarquia, e as
+            // edições do painel escrevem no COMPONENTE. Inerte sem o smoke armado.
+            // ⭐ **O pill é a porta de armar.** A visibilidade do painel É o interruptor do
+            // módulo: enquanto a única entrada era `PH2D_FIELD_SMOKE`, ele não existia
+            // para quem abre o app.
+            crate::field3d_smoke::set_armed_by_panel(
+                hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID),
+            );
+            crate::field3d_smoke::ecs_bridge(sim);
             // O painel de TOKENS (plano UI/UX W6), na MESMA fase e pela mesma razão: um painel de
             // MUNDO, cuja visibilidade é do artista. ⚠️ Ele tem de correr DEPOIS do dispatch de
             // eventos (o intent de Reset é enfileirado ali) e ANTES do paint (senão o frame

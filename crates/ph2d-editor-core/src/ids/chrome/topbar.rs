@@ -109,3 +109,15 @@ pub const TOPBAR_AUTHORED: NodeId = hash_node_id("topbar_authored");
 /// decisão que mantém a superfície congelada (`Tool=12`) fora do caminho, e um id de manifesto aqui
 /// faria o reconcile de ferramenta ativa procurar uma tool que não existe.
 pub const TOPBAR_SCULPT3D: NodeId = hash_node_id("topbar_sculpt3d");
+
+/// O pill **MODEL** — abre o módulo de **modelagem 3D** por campo implícito (ADR-0161).
+///
+/// ⚠️ **Não confundir com o SCULPT ao lado.** Aquele é escultura de malha; este é modelagem
+/// paramétrica, onde a booleana e o arredondamento são aritmética de campo. São dois módulos 3D e
+/// duas linhas de trabalho, e a vizinhança dos dois pills é de propósito — quem procura "3D" tem de
+/// encontrar os dois e ver que são coisas diferentes.
+///
+/// ⚠️ **Ele é irmão do PHYS/TOK, e não do SCULPT:** abre um MÓDULO com o seu painel, e não muda quem
+/// é dono do ponteiro fora da área que ele desenha. Por isso não precisa da saída de emergência que
+/// a nota do vizinho descreve.
+pub const TOPBAR_MODEL3D: NodeId = hash_node_id("topbar_model3d");

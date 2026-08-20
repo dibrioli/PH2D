@@ -117,6 +117,12 @@ pub fn topbar_clusters() -> Vec<(ph2d_a11y::NodeId, TopBarCluster)> {
             ids::TOPBAR_SCULPT3D,
             TopBarCluster::single("SCULPT", IconId::Cube),
         ),
+        // Modelagem 3D por campo implícito (ADR-0161) — o vizinho do SCULPT de propósito: quem
+        // procura "3D" tem de encontrar os dois e ver que são módulos diferentes.
+        (
+            ids::TOPBAR_MODEL3D,
+            TopBarCluster::single("MODEL", IconId::Cube),
+        ),
         (ids::TOPBAR_PLAY_BUTTON, TopBarCluster::play()),
         (ids::TOPBAR_RIGHT_LAYERS, TopBarCluster::right()),
         // Widget Gallery (palette) — toggles a floating reference

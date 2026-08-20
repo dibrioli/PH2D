@@ -453,6 +453,8 @@ mod cluster_painter;
 // A fila de Image Tools — a única do topbar DERIVADA do registry. Saiu para irmã quando
 // este ficheiro passou o teto de 700 LOC (2026-08-19).
 mod image_action_row;
+// A tabela de tooltips — saiu para irmã na W4 do 3DModeling (2026-08-22), pelo mesmo teto.
+mod tooltips;
 
 use chip_name::topbar_chip_name;
 use cluster_painter::{

@@ -63,6 +63,10 @@ pub mod menu_rows;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;
 mod paint;
+// ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
+// lista que um teste não consegue ler é uma lista que ninguém confere — e esta já custou
+// seis defeitos.
+pub use paint::PANEL_Z_ORDER_FALLBACK;
 
 pub use inspector_model::*;
 pub use inspector_model_anchor::*;
@@ -663,6 +667,10 @@ fn canonical_panel_id(id: &str) -> Option<&'static str> {
         // smoke — vazá-la pelo `Box::leak` seria uma alocação por processo, o
         // que é barato e mesmo assim errado quando o nome é conhecido.
         "sculpt3d" => Some("sculpt3d"),
+        // O painel de MODELAGEM 3D (ADR-0161 W4) — o irmão do de cima. Sem esta entrada o
+        // `set_panel_visible` cai no `Box::leak`, o que funciona e mesmo assim é errado
+        // quando o nome é conhecido.
+        "model3d" => Some("model3d"),
         _ => None,
     }
 }

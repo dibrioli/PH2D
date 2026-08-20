@@ -34,3 +34,6 @@ ph2d-field = { path = "../ph2d-field" }
 # tem de dirigir um `WidgetEvent` REAL e afirmar o efeito observável. Os testes
 # dentro da crate mediam a FILA; este mede a costura.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+# O gate `the_panel_is_in_the_registry_the_app_builds`: um painel que existe e nao esta
+# no registro e invisivel, e nenhum teste DENTRO da crate consegue ver isso.
+ph2d-panel-registry-init = { path = "../ph2d-panel-registry-init", features = ["panel-model3d"] }

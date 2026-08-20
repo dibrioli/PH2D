@@ -144,7 +144,38 @@ detalhe de agenda:
 
 ⛔ Não reverter esta ordem sem ler [`the_registry_is_installed_before_the_hero.rs`](../../shells/desktop/tests/the_registry_is_installed_before_the_hero.rs).
 
-### W2 — A GPU (⚠️ abre com o gate de M5-bis) · **a wave grande**
+### W2 — A GPU (⚠️ abre com o gate de M5-bis) · **a wave grande** — 3 de 4 feitas
+
+- ✅ **W2.1** (`d6276c490`) — `IndividualTextureStore::acquire_16` + `FORMAT_16` + um `MipGenerator`
+  por formato. O gate `precision_parity_gpu` **reprovou sobre código certo**, e o diagnóstico é o
+  achado: `esperado 0,701102 · gpu16 0,701172 · gpu8 0,699219` — quem se afasta da curva sRGB exacta
+  é o caminho de **8 bits**, porque *a decodificação sRGB do hardware é aproximada*. A barra passou
+  a ser **a imagem** (os dois voltam a byte sRGB e têm de dar o mesmo byte).
+  ⚠️ *Quando um gate reprova, a primeira pergunta é qual dos dois lados é o oráculo.*
+- ✅ **W2.2** (`9c745088f`) — `SpriteRenderer::acquire_individual_16` + `individual_format`.
+- ✅ **W2.3** (`71902be05`) — a auditoria. Doze sítios de falha **silenciosa**, dez encaminhados pela
+  porta `Asset::image_rgba8` / `image_dimensions`, e o gate
+  [`reading_pixels_goes_through_the_precision_door`](../../shells/desktop/tests/reading_pixels_goes_through_the_precision_door.rs)
+  a impedir o décimo-terceiro — **sem allowlist central**: o bypass declara-se no sítio com
+  `PRECISION-BYPASS:`.
+- ⏳ **W2.4** — virar a importação. ⚠️ **BLOQUEADA PELA W3**, ver W2-ter.
+
+### W2-ter — ⚠️ A ORDEM MUDA OUTRA VEZ, e desta vez foi a auditoria que a mudou
+
+A W1-bis já tinha movido a viragem da importação para o fim da W2 (uma capacidade sem consumidor
+nasce muda). A auditoria da W2.3 mostrou que **isso ainda é cedo**:
+
+> `project_sprite_pixels.rs` e `project_assets.rs` são caminhos de **ESCRITA**. Enquanto eles não
+> souberem gravar 16 bits, um asset de 16 bits que exista é **silenciosamente rebaixado a 8 no
+> save** — ou pior, descartado. Importar 16 bits antes disso não dá ao artista precisão: dá-lhe uma
+> precisão que **desaparece ao gravar**, que é pior que não a ter.
+
+⛔ **A viragem da importação é o ÚLTIMO passo da W3, não o último da W2.**
+
+*As duas correcções de ordem desta wave têm a mesma forma: o que decide a sequência não é a
+dependência de compilação, é onde o dado morre em silêncio.*
+
+### W2 (referência) — o que a wave continha
 - Store `Rgba16Float` irmão do `individual.rs`.
 - **Gate de paridade primeiro**: a mesma imagem pelos dois caminhos tem de renderizar dentro da barra
   derivada do formato. É este gate que apanha a dupla-conversão de sRGB, e ele é escrito **antes** do
@@ -159,10 +190,13 @@ detalhe de agenda:
   ([`imageio-png/src/lib.rs:16`](../../crates/ph2d-imageio-png/src/lib.rs) documenta a perda hoje, e
   há teste a fixá-la: `import_quantizes_16bit_to_8bit_with_documented_loss` — **esse teste inverte-se**).
 
-### W3 — Persistência
-- `PROJECT_SCHEMA` +1 · `SHEET_DOC_VERSION` +1 (⚠️ ambos são números que **somam entre linhas**:
-  contam-se lendo o código, `CLAUDE.md` §5.0 — e o `project_schema.rs` tem **três** sítios).
+### W3 — Persistência · **a próxima, e ela desbloqueia a importação**
+- `SpritePixelDoc` e `SavedAsset` ganham ramo de 16 bits — os dois `PRECISION-BYPASS:` da W2.3.
+- `PROJECT_SCHEMA` +1 (⚠️ número que **soma entre linhas**: conta-se lendo o código, `CLAUDE.md`
+  §5.0 — e o `project_schema.rs` tem **três** sítios, com a escada e a tripla ao lado).
 - Carregar um projeto antigo dá 8 bits, que é o que ele era.
+- **Por fim** (W2.4, movida para cá pela W2-ter): virar a importação — `loader.rs` deixa de recusar
+  `FlatHdr` e os importadores de PNG/TIFF param de esmagar 16 bits → 8.
 
 ### W4 — As ferramentas
 - A regra do §3.4, num ponto de entrega só, com o aviso.

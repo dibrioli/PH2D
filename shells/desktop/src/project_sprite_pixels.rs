@@ -231,12 +231,10 @@ impl crate::App {
             let Some(&texture_id) = gfx.sheet_textures.get(&r.sheet) else {
                 continue; // referência a uma folha que o arquivo não trouxe
             };
-            let Some(rect) = gfx
-                .sheets
-                .get(&r.sheet)
-                .and_then(|s| s.region(r.region))
-                .map(|reg| reg.rect)
-            else {
+            let Some((rect, needs_clip)) = gfx.sheets.get(&r.sheet).and_then(|s| {
+                s.region(r.region)
+                    .map(|reg| (reg.rect, s.regions_need_filter_clip()))
+            }) else {
                 eprintln!(
                     "[proj] sprite aponta para a regiao {} da folha {}, que nao existe",
                     r.region, r.sheet
@@ -248,7 +246,10 @@ impl crate::App {
                 .world_mut()
                 .get_mut::<Sprite>(Entity::from_bits(bits))
             {
-                bind_sheet_region(&mut sprite, texture_id, rect);
+                // ⚠️ A folha carregada pode ter vindo de qualquer lado, então a decisão sai da
+                // GEOMETRIA dela, não da proveniência: se as regiões têm folga, o recuo de meio
+                // texel não defende de nada e só corta borda.
+                bind_sheet_region(&mut sprite, texture_id, rect, needs_clip);
             }
         }
     }
@@ -296,13 +297,27 @@ fn reattach_pixels(sprite: &mut Sprite, texture_id: u32, premultiplied: bool) {
 /// - **o retângulo** é o `region_rect` + `region_enabled` que o `region_subrect()` já converte em
 ///   UV, com testes, usando as dimensões que o store devolve.
 ///
-/// ⚠️ **`region_filter_clip = true` não é conforto:** numa folha há vizinhos de verdade a um
-/// texel de distância, e sem o clamp a amostragem bilinear puxa o desenho ao lado pela borda. É a
-/// mesma razão pela qual o construtor `Sprite::atlas` o traz ligado.
+/// ⚠️ **`filter_clip` é uma DECISÃO MEDIDA, não um `true` de conforto** (Enio, 2026-08-19: *"ao
+/// fazer o bake sheet a borda transparente muda"*). Ele liga o recuo de meio texel por lado que o
+/// `sim_extract::region_subrect` aplica — a defesa contra a amostragem bilinear puxar o vizinho de
+/// atlas pela borda. Numa folha **de origem desconhecida** (um `.png` do Aseprite, que pode
+/// empacotar colado) ele é obrigatório.
+///
+/// ⚠️ Mas ele **não é grátis: o recuo come meio texel da própria região**, e num sprite com borda
+/// suavizada esse meio texel É a parte mais fraca do contorno. Quando há folga transparente entre
+/// as peças — e o empacotador põe `padding` de propósito —, não há vizinho a puxar, e ligá-lo
+/// custaria fidelidade de borda **em troca de nada**. Foi essa troca silenciosa que o Enio viu.
+///
+/// *Um clamp que se liga «por segurança» sem olhar para o que ele corta é um palpite com custo.*
 ///
 /// ⚠️ E **não se toca no `size`** — ele é a pose em METROS e já veio do snapshot. O retângulo é
 /// em pixels da folha; confundir os dois é o canvas de 1024 metros do Painter outra vez.
-pub(crate) fn bind_sheet_region(sprite: &mut Sprite, texture_id: u32, rect: [u32; 4]) {
+pub(crate) fn bind_sheet_region(
+    sprite: &mut Sprite,
+    texture_id: u32,
+    rect: [u32; 4],
+    filter_clip: bool,
+) {
     sprite.source = SpriteSource::Individual { texture_id };
     // Uma folha do artista é alfa reto (é um PNG); a nossa ferramenta de empacotar grava igual.
     sprite.premultiplied = false;
@@ -313,7 +328,7 @@ pub(crate) fn bind_sheet_region(sprite: &mut Sprite, texture_id: u32, rect: [u32
         rect[2] as f32,
         rect[3] as f32,
     ];
-    sprite.region_filter_clip = true;
+    sprite.region_filter_clip = filter_clip;
 }
 
 #[cfg(test)]

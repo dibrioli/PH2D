@@ -306,6 +306,11 @@ fn rebind(
     texture_id: u32,
     sheet_id: u32,
 ) {
+    // ⚠️ **A decisão que devolve a borda.** O recuo de meio texel come a parte mais fraca do
+    // contorno de cada peça, e só compensa quando há um vizinho a um texel de distância. As peças
+    // desta folha estão onde o artista as pôs — se ele (ou o auto-arranjo, com `padding` 2) deixou
+    // folga, não há nada a defender. *Medido na folha, não assumido pela proveniência.*
+    let filter_clip = authored.regions_need_filter_clip();
     for (entity, name) in entities {
         // ⚠️ O índice vem da lista ORDENADA POR NOME, não da ordem em que se leu os filhos: é essa
         // ordenação que faz o índice sobreviver a um save/load (o construtor de `AuthoredSheet`
@@ -316,7 +321,12 @@ fn rebind(
         let rect = authored.regions[region].rect;
         if let Ok(mut e) = sim.world_mut().get_entity_mut(*entity) {
             if let Some(mut sprite) = e.get_mut::<Sprite>() {
-                crate::project_sprite_pixels::bind_sheet_region(&mut sprite, texture_id, rect);
+                crate::project_sprite_pixels::bind_sheet_region(
+                    &mut sprite,
+                    texture_id,
+                    rect,
+                    filter_clip,
+                );
             }
             e.insert(SpriteSheetRef {
                 sheet: sheet_id,

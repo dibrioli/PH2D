@@ -186,6 +186,7 @@ pub(crate) fn import_sheet(
     let gap = crate::image_import::IMPORT_GRID_GAP_FRAC * max_w.max(max_h);
     let (pitch_x, pitch_y) = (max_w + gap, max_h + gap);
 
+    let needs_clip = sheet.regions_need_filter_clip();
     let mut bits = Vec::with_capacity(n);
     for (k, region) in sheet.regions.iter().enumerate() {
         let world_size = [region.rect[2] as f32 / ppm, region.rect[3] as f32 / ppm];
@@ -197,7 +198,14 @@ pub(crate) fn import_sheet(
         // Aseprite, e é por ele que ele vai procurar na hierarquia.
         let label = crate::name_unique::unique_name(sim, &region.name);
         let mut sprite = Sprite::individual(texture_id, world_size, [1.0, 1.0, 1.0, 1.0]);
-        crate::project_sprite_pixels::bind_sheet_region(&mut sprite, texture_id, region.rect);
+        // ⚠️ MEDIDO na folha, não assumido: um `.png` do Aseprite pode vir com as regiões
+        // coladas (aí o recuo defende) ou com padding (aí ele só cortaria borda).
+        crate::project_sprite_pixels::bind_sheet_region(
+            &mut sprite,
+            texture_id,
+            region.rect,
+            needs_clip,
+        );
         let entity = sim
             .world_mut()
             .spawn((

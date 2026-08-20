@@ -182,6 +182,34 @@ impl AuthoredSheet {
         self.regions.get(index as usize)
     }
 
+    /// **Esta folha precisa do recuo de meio texel na amostragem?**
+    ///
+    /// `true` quando duas regiões ficam a menos de um pixel uma da outra. Aí a amostragem
+    /// bilinear — que alcança meio texel para lá da borda — puxaria o desenho vizinho, e o recuo
+    /// (`Sprite::region_filter_clip`) é a defesa.
+    ///
+    /// ⚠️ **Mas ele não é grátis, e é por isso que esta pergunta existe:** o recuo come meio texel
+    /// da própria região, e num sprite com borda suavizada esse meio texel é a parte mais fraca do
+    /// contorno. Ligá-lo numa folha com folga custa fidelidade de borda **em troca de nada** — foi
+    /// exatamente isso que o Enio viu ao assar (2026-08-19: *"a borda transparente muda"*).
+    ///
+    /// *Uma defesa que se liga sem olhar para o que ela corta é um palpite com custo.* Aqui a
+    /// resposta é DERIVADA da folha, então uma folha do empacotador (que separa por `padding`) não
+    /// paga, e uma folha colada de fora paga — cada uma pelo que de facto é.
+    #[must_use]
+    pub fn regions_need_filter_clip(&self) -> bool {
+        // O `padding` de uma folha nossa é 2 px, então o caso comum sai por aqui sem comparar
+        // nada quando há 0 ou 1 região.
+        for (i, a) in self.regions.iter().enumerate() {
+            for b in &self.regions[i + 1..] {
+                if rects_within_one_pixel(a.rect, b.rect) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     fn validate(&self) -> Result<(), SheetDocError> {
         let expected = (self.width as usize)
             .saturating_mul(self.height as usize)
@@ -208,6 +236,24 @@ impl AuthoredSheet {
         }
         Ok(())
     }
+}
+
+/// Dois retângulos a menos de um pixel um do outro — encostados, sobrepostos, ou separados por
+/// zero pixels de folga.
+///
+/// ⚠️ **A conta é feita EXPANDINDO um deles em 1 px** e testando interseção, em `i64`: expandir em
+/// `u32` daria a volta num retângulo colado à origem, e o teste diria «longe» sobre um vizinho
+/// colado.
+fn rects_within_one_pixel(a: [u32; 4], b: [u32; 4]) -> bool {
+    let ax0 = i64::from(a[0]) - 1;
+    let ay0 = i64::from(a[1]) - 1;
+    let ax1 = i64::from(a[0]) + i64::from(a[2]) + 1;
+    let ay1 = i64::from(a[1]) + i64::from(a[3]) + 1;
+    let bx0 = i64::from(b[0]);
+    let by0 = i64::from(b[1]);
+    let bx1 = bx0 + i64::from(b[2]);
+    let by1 = by0 + i64::from(b[3]);
+    ax0 < bx1 && bx0 < ax1 && ay0 < by1 && by0 < ay1
 }
 
 /// O documento como o arquivo o guarda.
@@ -336,6 +382,72 @@ pub fn decode(bytes: &[u8]) -> Result<(Vec<SpritePixelDoc>, Vec<AuthoredSheet>),
         s.validate()?;
     }
     Ok((doc.pixels, doc.sheets))
+}
+
+#[cfg(test)]
+mod filter_clip_tests {
+    use super::*;
+
+    fn sheet(rects: &[[u32; 4]]) -> AuthoredSheet {
+        AuthoredSheet::new(
+            0,
+            "s".into(),
+            256,
+            256,
+            vec![0; 256 * 256 * 4],
+            rects.iter().enumerate().map(|(i, r)| (format!("r{i}"), *r)),
+        )
+    }
+
+    /// ⚠️ **O caso que devolve a borda ao artista.** Uma folha do empacotador separa por
+    /// `padding` (2 px por omissão) — não há vizinho ao alcance da amostragem bilinear, e ligar o
+    /// recuo custaria meio texel do contorno de cada peça em troca de nada.
+    #[test]
+    fn a_sheet_with_padding_needs_no_clip() {
+        assert!(!sheet(&[[0, 0, 10, 10], [12, 0, 10, 10]]).regions_need_filter_clip());
+    }
+
+    /// ⚠️ E o caso que o exige: coladas, a amostragem puxa a vizinha pela borda.
+    #[test]
+    fn touching_regions_need_the_clip() {
+        assert!(sheet(&[[0, 0, 10, 10], [10, 0, 10, 10]]).regions_need_filter_clip());
+    }
+
+    /// **UM pixel de folga já chega** — e a primeira versão deste teste afirmava o contrário.
+    ///
+    /// ⚠️ Eu tinha escrito *"a amostragem alcança meio texel para cada lado, e as duas metades
+    /// encontram-se"*. Está errado, e a conta di-lo: a região `A` acaba em `x = 10.0`; amostrar na
+    /// borda dela alcança `x = 10.5`, que cai no texel 10 — **a folga**, transparente. Para tocar
+    /// no primeiro texel de `B` (o 11) seria preciso alcançar um texel inteiro, e a bilinear
+    /// alcança meio. *Só um dos lados amostra; as metades não se somam.*
+    ///
+    /// O código estava certo e o teste errado — e isso só se descobre fazendo a conta com os
+    /// índices na mão, que é o que este comentário guarda para a próxima vez.
+    #[test]
+    fn one_pixel_of_gap_is_already_enough() {
+        assert!(!sheet(&[[0, 0, 10, 10], [11, 0, 10, 10]]).regions_need_filter_clip());
+    }
+
+    /// O eixo Y conta como o X — uma folha em coluna não pode escapar por o teste só olhar em X.
+    #[test]
+    fn the_vertical_axis_counts_too() {
+        assert!(sheet(&[[0, 0, 10, 10], [0, 10, 10, 10]]).regions_need_filter_clip());
+        assert!(!sheet(&[[0, 0, 10, 10], [0, 12, 10, 10]]).regions_need_filter_clip());
+    }
+
+    /// Uma região sozinha (ou nenhuma) não tem vizinho — nunca precisa.
+    #[test]
+    fn a_lone_region_never_needs_it() {
+        assert!(!sheet(&[[0, 0, 10, 10]]).regions_need_filter_clip());
+        assert!(!sheet(&[]).regions_need_filter_clip());
+    }
+
+    /// ⚠️ Colada à ORIGEM: expandir em `u32` daria a volta e o teste diria «longe» sobre um
+    /// vizinho encostado. A conta é em `i64` por causa deste caso.
+    #[test]
+    fn a_region_at_the_origin_does_not_wrap() {
+        assert!(sheet(&[[0, 0, 4, 4], [4, 0, 4, 4]]).regions_need_filter_clip());
+    }
 }
 
 #[cfg(test)]

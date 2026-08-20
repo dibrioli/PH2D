@@ -45,7 +45,8 @@ mod tests {
     fn register_attaches_manifest_to_registry() {
         let mut reg = ph2d_tool_registry::Registry::default();
         register(&mut reg);
-        reg.build().expect("registry should build with sheet-packer");
+        reg.build()
+            .expect("registry should build with sheet-packer");
         let found = reg
             .by_id("sheet_packer")
             .expect("sheet_packer should be registered by id");

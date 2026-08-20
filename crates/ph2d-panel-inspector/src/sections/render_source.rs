@@ -192,7 +192,13 @@ pub(crate) fn paint_render_source_section(
     // `Rgba8UnormSrgb` de ponta a ponta (atlas, individual, mips), então não há escolha a
     // oferecer — há um facto a dizer, na mesma forma das outras linhas de proveniência. Um
     // seletor de RGBA16 volta quando o MODELO o entregar, com a medição de banda ao lado.
-    cur_y = paint_pair(scene, text_system, "Format", info.source_kind.pixel_format(), cur_y);
+    cur_y = paint_pair(
+        scene,
+        text_system,
+        "Format",
+        info.source_kind.pixel_format(),
+        cur_y,
+    );
 
     let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height
     let btn_rect = Rect::new(x, cur_y, w, reimport_h);

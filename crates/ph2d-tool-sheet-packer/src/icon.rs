@@ -48,8 +48,14 @@ mod tests {
     #[test]
     fn the_glyph_fits_the_24x24_design_box() {
         let b = sheet_packer_bezpath().bounding_box();
-        assert!(b.x0 >= 0.0 && b.y0 >= 0.0, "sai pelo canto superior-esquerdo");
-        assert!(b.x1 <= 24.0 && b.y1 <= 24.0, "sai pelo canto inferior-direito");
+        assert!(
+            b.x0 >= 0.0 && b.y0 >= 0.0,
+            "sai pelo canto superior-esquerdo"
+        );
+        assert!(
+            b.x1 <= 24.0 && b.y1 <= 24.0,
+            "sai pelo canto inferior-direito"
+        );
     }
 
     /// ⚠️ As peças ficam DENTRO da moldura. Um desenho em que uma peça atravessa a borda leria

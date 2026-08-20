@@ -5714,6 +5714,7 @@ dependencies = [
  "ph2d-eval-motion",
  "ph2d-field",
  "ph2d-field-ecs",
+ "ph2d-field-eval",
  "ph2d-field-profile",
  "ph2d-field-render",
  "ph2d-flip",

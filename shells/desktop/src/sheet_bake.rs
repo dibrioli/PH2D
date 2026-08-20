@@ -113,6 +113,12 @@ pub(crate) fn compose_sheet(
     };
     let size_px = cfg.pixels_for(sheet_half[0] * 2.0).max(1);
 
+    if std::env::var_os("PH2D_SHEET_BAKE_LOG").is_some() {
+        eprintln!(
+            "[bake] folha {size_px}x{size_px} px, densidade {} px/m, padding {}",
+            cfg.pixels_per_meter, cfg.padding
+        );
+    }
     let baked = read_pieces(
         sim,
         renderer,
@@ -264,6 +270,31 @@ fn read_pieces(
         // A rotação **não** entra aqui: ela já está na caixa (`piece_box`), e passá-la de novo
         // rodaria os pixels uma segunda vez.
         let r = ph2d_tool_rasterize::rasterize(&straight.pixels, sw, sh, sx, sy, 0.0);
+        // **A SONDA** (`PH2D_SHEET_BAKE_LOG=1`) — o que o bake FAZ a cada peça, em uma linha.
+        //
+        // ⚠️ Ela existe porque eu errei a causa duas vezes a raciocinar sobre este caminho (o
+        // resample sem necessidade: refutado por medição; o recuo de meio texel: corrigido e o
+        // sintoma ficou). *A terceira suposição vale menos que a primeira medição.* O que ela
+        // imprime é exatamente o conjunto de factos de que a explicação precisa: o tamanho de
+        // ORIGEM, o tamanho ALVO, se houve reamostragem, e as duas bandeiras que decidem como os
+        // bytes são interpretados.
+        if std::env::var_os("PH2D_SHEET_BAKE_LOG").is_some() {
+            let (pre, region) = sim
+                .world()
+                .get::<Sprite>(child)
+                .map(|s| (s.premultiplied, s.region_enabled))
+                .unwrap_or((false, false));
+            eprintln!(
+                "[bake] {:<20} src={sw}x{sh} alvo={want_w}x{want_h} escala={sx:.6}x{sy:.6}                  reamostrou={} saiu={}x{} premul={pre} regiao={region}",
+                sim.world()
+                    .get::<Name>(child)
+                    .map(|n| n.0.clone())
+                    .unwrap_or_default(),
+                r.did_change,
+                r.width,
+                r.height,
+            );
+        }
         let [x, y] = corner_px(bx.center, bx.half, sheet_half, cfg.pixels_per_meter);
         // Negativo não acontece com a folha sã (a `health` já recusou), mas um `as u32` sobre um
         // negativo daria a volta em silêncio — este `max(0)` é o cinto do suspensório.

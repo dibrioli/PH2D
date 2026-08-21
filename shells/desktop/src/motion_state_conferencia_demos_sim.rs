@@ -56,8 +56,22 @@ const MARK_RGB: [f32; 3] = [1.0, 1.0, 1.0];
 /// ⚠️ **Ela é MENOR que a força do vento de propósito** — senão o pin nunca rasgaria e a
 /// linha ficaria com as duas metades iguais. O gate `the_tear_threshold_is_below_the_wind`
 /// deriva a comparação em vez de a repetir.
-pub(crate) const BREAK_ABOVE: f32 = 4.0;
-pub(crate) const WIND: f32 = 9.0;
+/// ⚠️ **O VENTO SOBE COM O TEMPO, e é isso que faz o rasgo ser VISÍVEL.**
+///
+/// O smoke devolveu *"não rasga"* com um vento constante — e ele estava certo: com a
+/// carga acima do limiar desde o primeiro quadro, o pano da direita já nasce a voar.
+/// Não se **vê** rasgar; vê-se um painel vazio. ⚠️ A rajada também não serve: o ruído do
+/// `force.wind` é **por instância**, então alguma das peças pregadas já nasce perto do
+/// pico — MEDIDO, todos os limiares até 5,5 eram cruzados a **0,02 s**.
+///
+/// A cura é uma carga que CRUZA o limiar com o tempo: `value.time → value.map_range`
+/// dirige o `strength` do vento por um fio (`Graph::drive_param`, doc 58). O vento vai
+/// de `0` a [`WIND_TOP`] em [`RAMP_SECS`], igual nas duas metades — então o pano pendura,
+/// começa a levantar, e a certa altura o da direita **solta-se**.
+pub(crate) const BREAK_ABOVE: f32 = 4.6;
+/// O topo da rampa do vento e quanto tempo ela leva a lá chegar.
+pub(crate) const WIND_TOP: f32 = 9.0;
+pub(crate) const RAMP_SECS: f32 = 4.0;
 /// O ângulo do vento — para cima e para o lado, para que o rasgo se veja subir.
 const WIND_ANGLE: f32 = 60.0;
 /// A fileira de cima da cortina 6×6: a grelha é row-major de BAIXO para cima, então as
@@ -177,10 +191,38 @@ fn tear_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     let wind = node(
         g,
         "force.wind",
-        &[("angle", WIND_ANGLE), ("strength", WIND), ("gust", 0.0)],
+        &[("angle", WIND_ANGLE), ("gust", 0.0)],
         ey + 150.0,
         320.0,
     );
+    // **A RAMPA que dirige a força do vento** — ver [`BREAK_ABOVE`]. O relógio nasce de
+    // uma grelha 1×1 própria: alimentá-lo do tecido fecharia um ciclo, e o
+    // `drive_param` recusa-o (com razão).
+    let clock = node(
+        g,
+        "motion.grid",
+        &[("rows", 1.0), ("cols", 1.0)],
+        ey + 300.0,
+        0.0,
+    );
+    let now = push(g, clock, "value.time", &[("rate", 1.0)], ey + 300.0, 130.0);
+    let ramp = push(
+        g,
+        now,
+        "value.map_range",
+        &[
+            ("in_lo", 0.0),
+            ("in_hi", RAMP_SECS),
+            ("out_lo", 0.0),
+            ("out_hi", WIND_TOP),
+            // Travado no topo: sem isto o vento cresce para sempre e a cena deixa de
+            // ter um estado final para se olhar.
+            ("clamp", 1.0),
+        ],
+        ey + 300.0,
+        280.0,
+    );
+    g.drive_param(wind, "strength", (ramp, 0)).ok()?;
     let (first, count) = pinned_run();
     let pin = node(
         g,

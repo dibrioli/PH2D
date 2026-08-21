@@ -227,7 +227,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As CINQUENTA E QUATRO LEIS que esta linha pagou para aprender
+## §4 — As CINQUENTA E SEIS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -603,6 +603,20 @@ são estilo.
     caminho da arte e receber a carga por uma porta própria. *A cena feia estava a
     esconder que a arquitetura tinha um idioma melhor.*
 
+55. ⚠️ **Um evento que acontece no PRIMEIRO quadro não se vê acontecer.** O rasgo do pin
+    estava correcto — o gate media-o, a sonda media-o — e o smoke voltou com *"não
+    rasga"*, porque com a carga acima do limiar desde o tique 0 o pano da direita já
+    NASCE a voar: não se vê rasgar, vê-se um painel vazio. ⚠️ E a rajada não serviu de
+    cura: o ruído do `force.wind` é **por instância**, então alguma das peças pregadas já
+    nasce perto do pico — MEDIDO, todos os limiares até 5,5 cruzavam a **0,02 s**. A cura
+    é uma carga que sobe com o TEMPO (`value.time → value.map_range → drive_param`), e o
+    limiar no meio da subida. *Uma transição só é demonstrável se houver um ANTES na tela.*
+56. ⚠️ **Uma janela de medição curta demais diz «não há diferença» sobre uma cena que a
+    tem.** A `measure_scene_motion` corria 2 s; a rampa desta cena cruza o limiar aos
+    2,05 s, e as duas metades saíam com o MESMO número. ⚠️ E o mesmo vale para o gate: a
+    janela dele passou a ser **derivada da rampa** (`RAMP_SECS · 60 + 120`), nunca uma
+    constante. *A janela de uma sonda temporal é um parâmetro da CENA, não da sonda.*
+
 
 ---
 
@@ -662,10 +676,12 @@ bash scripts/collision-surface.sh main
 Duas linhas, rotuladas no canvas. ⚠️ **SÓ com o PLAY** — as duas são simulação. As
 pedras são desenhadas de propósito.
 
-⚠️ **Esta é a v3, e as duas correcções vieram de smokes.** A v1 foi reprovada (*"tudo
+⚠️ **Esta é a v4, e as três correcções vieram de smokes.** A v1 foi reprovada (*"tudo
 foi levado pelo vento, nada rasgou"*): o pin estava no laço do integrador, que lê o
 `inv_mass` do `rest`. A v2 foi reprovada por *"porque usar grid se temos nós de
-tecido?"* — a cortina é agora um `motion.soft_body`. Leis **52**, **53** e **54**.
+tecido?"* — a cortina é agora um `motion.soft_body`. A v3 por *"não rasga"*: o rasgo
+estava certo mas acontecia no primeiro quadro, e o vento passou a SUBIR com o tempo.
+Leis **52** a **56**.
 
 ### `=74` — a folha 02 inteira (o alvo do atrator, e a mira)
 

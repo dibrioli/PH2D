@@ -507,8 +507,13 @@ mod tests {
     #[test]
     #[ignore = "sonda de movimento, não um gate — `-- --ignored --nocapture`"]
     fn measure_scene_motion() {
-        /// Quantos tiques a sonda corre — dois segundos a 60 fps.
-        const TICKS: u32 = 120;
+        /// Quantos tiques a sonda corre — **cinco** segundos a 60 fps.
+        ///
+        /// ⚠️ **Dois segundos não chegavam, e isso é uma medição:** a cena `=75` faz o
+        /// vento SUBIR ao longo de 4 s, e o pano só solta lá pelos 2. Com a janela curta
+        /// as duas metades saíam com o mesmo número — a sonda dizia *"não há diferença"*
+        /// sobre uma cena que a tem, cinco décimos de segundo mais tarde.
+        const TICKS: u32 = 300;
         use ph2d_nodegraph::attr::Column;
         let mut reg = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registra");

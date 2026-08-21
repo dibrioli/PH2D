@@ -118,32 +118,53 @@ fn the_tear_row_changes_only_the_threshold() {
     }
     assert_eq!(param(&doc, pins[0], "break_above"), 0.0, "esquerda: nunca");
     assert_eq!(param(&doc, pins[1], "break_above"), BREAK_ABOVE);
-    // E os dois ventos são o mesmo vento.
-    let winds = nodes_of(&doc, "force.wind");
-    assert_eq!(
-        param(&doc, winds[0], "strength"),
-        param(&doc, winds[1], "strength")
-    );
+    // E os dois ventos são o mesmo vento — mas a força deles é DIRIGIDA por um fio, não
+    // um param, então é a rampa que se compara.
+    //
+    // ⚠️ **A versão anterior deste gate comparava `param(wind, "strength")` e passou a
+    // comparar `NaN` com `NaN` no dia em que o param passou a ser dirigido** — um gate
+    // que deixou de medir sem ficar vermelho. É a mesma classe do knob morto: um
+    // `unwrap_or(NaN)` responde a uma pergunta que já não faz sentido.
+    let ramps = nodes_of(&doc, "value.map_range");
+    assert_eq!(ramps.len(), 2, "uma rampa de vento por metade");
+    for r in &ramps {
+        assert_eq!(param(&doc, *r, "in_hi"), RAMP_SECS, "a mesma subida");
+        assert_eq!(param(&doc, *r, "out_hi"), WIND_TOP, "e o mesmo topo");
+    }
+    for (w, r) in nodes_of(&doc, "force.wind").iter().zip(&ramps) {
+        let src = doc
+            .graph
+            .param_sources(*w)
+            .and_then(|m| m.get("strength").copied());
+        assert_eq!(
+            src,
+            Some((*r, 0)),
+            "a força do vento tem de vir da rampa, por fio"
+        );
+    }
 }
 
-/// **O LIMIAR ESTÁ ABAIXO DO VENTO — senão o pin NUNCA rasga.**
+/// **O LIMIAR CAI DENTRO DA RAMPA DO VENTO — nem antes dela, nem depois.**
 ///
-/// ⚠️ Derivado das duas constantes, não repetido: um vento afinado para baixo deixaria
-/// a metade da direita idêntica à da esquerda, e a linha ficaria verde e muda. É a
-/// mesma classe de erro que o pentágono maior que a grelha na `=73`.
+/// ⚠️ **As duas metades desta asserção vieram de dois smokes reprovados.** Abaixo do
+/// início: a carga já passa o limiar no primeiro quadro e o pano nasce a voar — foi o
+/// *"não rasga"* (não se vê rasgar, vê-se um painel vazio). Acima do topo: nunca rasga.
+/// O limiar tem de ficar no MEIO da subida, e a margem é o que garante que o pano
+/// pendura um bocado antes de soltar.
 #[test]
-fn the_tear_threshold_is_below_the_wind() {
-    // ⚠️ `black_box` para que o compilador NÃO dobre a comparação: dois `const` dão um
-    // `assert!` de valor constante, que o clippy recusa — e com razão, porque um
-    // assert dobrado não corre. Ele tem de correr, porque é o que reprova quando
-    // alguém afinar o vento para baixo.
-    let (limiar, vento) = (
+fn the_tear_threshold_lands_inside_the_wind_ramp() {
+    let (limiar, topo) = (
         std::hint::black_box(BREAK_ABOVE),
-        std::hint::black_box(WIND),
+        std::hint::black_box(WIND_TOP),
     );
     assert!(
-        limiar < vento,
-        "o limiar ({limiar}) tem de ser menor que o vento ({vento})"
+        limiar > topo * 0.25,
+        "o limiar ({limiar}) tem de ficar bem depois do início da rampa, senão o pano \
+         rasga antes de se ver que ele estava pendurado"
+    );
+    assert!(
+        limiar < topo * 0.9,
+        "e antes do topo ({topo}), senão ele nunca rasga"
     );
 }
 
@@ -259,11 +280,15 @@ fn the_left_cloth_hangs_and_the_right_one_tears_free() {
     )]
     let (first, count) = (first as usize, count as usize);
 
-    // Dois segundos a 60 fps — tempo de sobra para o vento decidir.
+    // ⚠️ **Quatro segundos, e o número é DERIVADO da rampa:** a carga só cruza o limiar
+    // lá pelos 2 s (a rampa leva `RAMP_SECS` a chegar ao topo), então uma janela de 2 s
+    // mediria o pano AINDA pendurado dos dois lados — verde sobre uma cena que não
+    // mostra nada. Medido: o limiar 4,5 é cruzado a **2,00 s**.
+    let ticks = (RAMP_SECS * 60.0) as u32 + 120;
     let run = |sink: NodeId| -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
         let mut cook = Cook::new();
         let (mut inicio, mut fim) = (Vec::new(), Vec::new());
-        for k in 0..120 {
+        for k in 0..ticks {
             let t = f64::from(k) / 60.0;
             let out = cook.cook(&doc.graph, &reg, sink, t).expect("cozinha");
             if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {

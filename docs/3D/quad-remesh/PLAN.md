@@ -1192,6 +1192,66 @@ medido: **18** nas fixturas do gate, e **o mesmo 18** com densidades de 2 809 a
 
 ---
 
+## 4-duodecies — ⭐⭐ F5.2: **A PORTA** — o botão passou a chamar a cadeia global
+
+**Entregue:** `shells/desktop/src/sculpt3d_history_retopo_global.rs`
+(`Sculpt3dScene::quad_remesh_global`), as três recusas novas, o log com os
+irregulares, e a porta de bissecação `PH2D_RETOPO_LEGACY=1`.
+
+⭐ **É a primeira vez que alguma coisa deste pivô é alcançável por um gesto.** Até
+aqui a cadeia existia e era medida por sondas; o `Quad Retopology` continuava a
+chamar o porte local do ADR-0160.
+
+### As decisões, e por que cada uma
+
+1. **O botão passa a ser a cadeia GLOBAL, e o local FICA.** Não é remoção: o porte
+   BSD responde em sub-segundo e este leva segundos — é o *preview* do F7, e o
+   ADR-0161 já o dizia. ⛔ `PH2D_RETOPO_LEGACY=1` volta a ele, **para bissecar**:
+   um resultado mau só se atribui a esta cadeia depois de se ver o que o outro faz
+   com a mesma peça.
+2. **O `detail` atravessa pela MESMA lei dos dois** (`edge_for_detail`). *Duas leis
+   para o mesmo knob é como um botão passa a precisar de duas explicações.*
+3. ⚠️ **O `adapt` NÃO é passado, e o painel diz isso em voz alta.** Esta cadeia não
+   tem densidade adaptativa; passá-lo seria um knob que o painel mostra, o artista
+   mexe e **nada consome**.
+4. **A reprojeção do F5 é contra a malha ORIGINAL, não contra a remalhada** —
+   somar os dois erros perderia a silhueta que o artista esculpiu.
+5. **Três recusas novas com nome próprio** (`Layout` · `Quantize` · `Fill`) em vez
+   de uma. ⭐ **O `match` exaustivo obrigou os três sítios de despacho a decidir** —
+   é exactamente o que ele existe para fazer.
+
+### Medido, pelo gesto
+
+| | |
+|---|---|
+| fixtura | `wrinkled_sphere`, `detail = 0,5` |
+| saída | **530 quads · 0 não-quads · 0 arestas de bordo** |
+| irregulares | **22** (chão topológico 8) |
+| relógio | **874 ms** |
+| undo | ✅ Ctrl+Z devolve a malha byte-a-byte |
+
+### ⚠️ E o gate que se pode e o que não se pode ter
+
+O gesto precisa de **GPU** (a cena segura buffers de device), então um gate sobre
+ele é `skip` gracioso numa máquina sem adapter — e *skip gracioso não é verde*. ⇒ A
+**decisão** de qual motor correr foi separada numa função **pura**
+(`legacy_from`), e é ela que corre em toda a máquina. ⚠️ *Esta crate proíbe
+`unsafe`, e desde a edição 2024 o `std::env::set_var` é `unsafe`: um gate que
+quisesse mexer na variável **não compilava**.* A separação não é estética — é o que
+torna a lei testável.
+
+### ⛔ O que a porta NÃO resolve
+
+- ⛔ **Sem feature lines**: uma quina dura não é respeitada, e é isso que a
+  `sculpt_hooked` do diagnóstico exige. A peça com bico ainda sai com a feição
+  arredondada.
+- ⚠️ **Sem barra de progresso.** Segundos de espera sem sinal na tela leem-se como
+  travamento. O log da consola diz o relógio; a UI não diz nada.
+- ⚠️ **`adapt` continua no painel sem consumidor** neste backend — hoje um aviso,
+  amanhã ou uma lei ou um knob desligado.
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |

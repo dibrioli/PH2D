@@ -616,10 +616,13 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
     // contava braços contra uma constante que ninguém tinha reconferido. *Um
     // gate que carrega a contagem que ele deveria derivar envelhece com a
     // primeira variante nova.*
-    let enum_src = std::fs::read_to_string("src/sculpt3d_history.rs")
+    // ⚠️ **O enum MUDOU DE FICHEIRO em 2026-08-21** (o pai estourou a HR-18), e
+    // este gate reprovou por isso — que é o gate a funcionar: ele afirma sobre o
+    // fonte, e o fonte mudou de sítio.
+    let enum_src = std::fs::read_to_string("src/sculpt3d_remesh_refusal.rs")
         .expect("o enum das recusas é legível a partir do pacote");
     let body = enum_src
-        .split("pub(super) enum RemeshRefusal {")
+        .split("pub(in crate::sculpt3d) enum RemeshRefusal {")
         .nth(1)
         .and_then(|t| t.split("\n}").next())
         .expect("o enum das recusas tem corpo");
@@ -653,8 +656,8 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
     let key = function_body(&sculpt_src(), "sculpt3d_key");
     let block = braced_block(&key, "code == K::KeyV");
     assert!(
-        block.contains("RemeshRefusal::MultiresStack"),
-        "o braço da recusa tem de existir e dizer por quê"
+        block.contains("e.explain()"),
+        "o braço da recusa tem de existir e CHEGAR ao artista pela frase do tipo"
     );
     // ⚠️ **E cada causa precisa do braço DELA.** Este gate ancorava em `return
     // None` e num braço `None =>`, o que era a GRAFIA de uma recusa, não a
@@ -662,24 +665,34 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
     // causas (pilha montada · cena vazia · o campo sem interior) entravam num
     // `Option` só, e o chamador elegia UMA mensagem para as três. Um campo que
     // vazava mandava o artista reverter níveis que ele não tem.
-    for cause in &causes_list {
-        assert!(
-            block.contains(cause),
-            "a recusa `{cause}` sumiu do despacho: o artista não é informado dela"
-        );
-    }
     // ⚠️ **E a presença do NOME não basta** — a primeira versão deste laço
     // afirmava só isso, e a mutação que colapsa duas causas num braço só
     // (`MultiresStack | EmptyScene =>`) passou por ele: o nome continua no
     // texto, dentro do braço da outra. O que o artista recebe é uma MENSAGEM, e
-    // a propriedade é que haja uma por causa — então o gate conta BRAÇOS.
-    let arms = block.matches("Err(RemeshRefusal::").count();
-    assert_eq!(
-        arms,
-        causes_list.len(),
-        "são {arms} braços de recusa para {} causas: alguma partilha a mensagem de outra, \
-         que é o defeito de origem — um campo vazado mandando reverter níveis inexistentes",
-        causes_list.len()
+    // a propriedade é que haja **uma por causa**.
+    //
+    // ⭐ **Desde 2026-08-21 a mensagem mora com o TIPO** (`explain`), e não em
+    // cinco braços no painel mais cinco nas teclas — que era o defeito de origem
+    // por outro lado: dois textos para a mesma recusa, e nada a obrigá-los a
+    // concordar. ⇒ O gate segue a propriedade para onde ela foi.
+    let explain = function_body(&enum_src, "explain");
+    for cause in &causes_list {
+        assert!(
+            explain.contains(&format!("Self::{cause}")),
+            "a causa `{cause}` não tem frase própria em `explain`: o artista lê a mensagem de outra"
+        );
+    }
+    // ⚠️ **A mutação que este gate existe para matar:** colapsar duas causas num
+    // braço só. Depois de normalizar o espaço, um braço agrupado escreve-se
+    // sempre `| Self::` — e um `_ =>` varreria todas de uma vez.
+    let flat: String = explain.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        !flat.contains("| Self::"),
+        "duas causas partilham um braço em `explain`: o artista recebe a mensagem de outra"
+    );
+    assert!(
+        !flat.contains("_ =>"),
+        "`explain` tem um braço curinga: uma causa nova sairia com a frase de outra, em silêncio"
     );
 }
 

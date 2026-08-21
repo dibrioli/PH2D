@@ -46,41 +46,6 @@ const AO_FIELD_RESOLUTION: u32 = ph2d_sdf::DEFAULT_RESOLUTION;
 /// nomeiam nada no nível 2, então desfazê-lo de pé lá em cima escreveria as
 /// posições certas nos vértices errados — em silêncio. Desfazer VOLTA ao nível
 /// da edição, que é também o que o artista espera de um Ctrl+Z.
-/// Por que o botão de reconstruir RECUSOU.
-///
-/// ⚠️ **Três causas, três nomes.** Elas cabiam num `Option` e o chamador tinha
-/// de eleger UMA mensagem para as três: elegeu a da pilha de multires, então um
-/// campo que vazou mandava o artista reverter níveis inexistentes. O conserto
-/// não é uma mensagem melhor — é o tipo deixar de perder a informação.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum RemeshRefusal {
-    /// A pilha de multires está montada: o remesh troca a topologia, e todo
-    /// nível acima é subdivisão da base.
-    MultiresStack,
-    /// Não há peça na cena para reconstruir.
-    EmptyScene,
-    /// O motor recusou — hoje, o campo sem interior.
-    Engine(ph2d_sdf::RemeshError),
-    /// **A RETOPOLOGIA não fechou uma malha bem formada.**
-    ///
-    /// ⚠️ Caso próprio e não um `Engine` reaproveitado: as duas reconstruções
-    /// falham por motivos que não se parecem — aquela por um campo sem interior,
-    /// esta por um grafo de células degenerado —, e uma variante só faria o
-    /// chamador eleger UMA mensagem para as duas. É a mesma lição que partiu o
-    /// `Option` original em três casos.
-    Quad(ph2d_mesh::MeshError),
-    /// **A GRADE NÃO TEM ONDE POUSAR** — a extração devolveu zero faces.
-    ///
-    /// ⚠️ **Caso próprio porque a peça ficaria INVISÍVEL, e sem uma palavra.**
-    /// Uma retopologia não pode resolver uma grade mais fina que a malha que ela
-    /// lê; abaixo desse piso a extração não devolve erro nenhum — ela devolve uma
-    /// malha **vazia**, e o artista vê o objeto sumir. Foi o que o painel oferecia
-    /// no extremo esquerdo do slider até 2026-08-19, e o que o Enio fotografou.
-    /// Com o knob de `detail` isto passou a ser inalcançável; a variante fica
-    /// porque *o próximo chamador pode não passar pelo knob*.
-    TooCoarseToResolve,
-}
-
 pub(super) enum StrokeUndo {
     /// A janela de um traço. Não há um segundo sistema a construir: a lei do
     /// traço já congela o `pre` por vértice tocado, e `touched` +
@@ -266,6 +231,22 @@ mod undo;
 /// outros: o corte é de responsabilidade.
 #[path = "sculpt3d_history_remesh.rs"]
 mod remesh;
+
+/// **A CADEIA GLOBAL** (ADR-0161) — ver [`retopo_global`]. Irmão do [`remesh`], e
+/// o corte é o mesmo: lá o voxel remesh e a retopologia LOCAL, aqui a global.
+#[path = "sculpt3d_history_retopo_global.rs"]
+mod retopo_global;
+
+/// **POR QUE UM REMESH RECUSOU** — ver [`refusal`]. Irmão do [`remesh`], e o corte
+/// é o que a HR-18 forçou: o tipo mais a explicação dele em prosa saíam a 616 LOC
+/// aqui dentro. ⭐ **E o corte pagou uma dívida real**: a mesma recusa era
+/// explicada em dois sítios (o painel e as teclas) com dois textos diferentes.
+#[path = "sculpt3d_remesh_refusal.rs"]
+mod refusal;
+
+pub(super) use refusal::RemeshRefusal;
+
+pub(super) use retopo_global::legacy_requested;
 
 /// **QUANTO a história pode pesar** — ver [`budget`]. Irmão do [`undo`], e o
 /// corte é o mesmo: *o que se guarda* aqui, *quanto disso cabe* lá.

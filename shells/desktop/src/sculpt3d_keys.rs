@@ -8,7 +8,7 @@
 //! ⚠️ A porta é a mesma de sempre: sem cena armada ela devolve `false` no primeiro `if`, e o
 //! teclado do app segue para o `store` como se este módulo não existisse.
 
-use super::{LIGHT_STEP_DEG, MaskOp, Merge, Primitive, RADIUS_STEP, RemeshRefusal, Verb};
+use super::{LIGHT_STEP_DEG, MaskOp, Merge, Primitive, RADIUS_STEP, Verb};
 use crate::app_state::App;
 
 impl App {
@@ -387,30 +387,18 @@ impl App {
                     "[sculpt3d] reconstruida: {} -> {} vertices / {} -> {} faces ({} celulas, {} buraco(s) tapado(s))",
                     r.verts.0, r.verts.1, r.faces.0, r.faces.1, r.cells, r.holes_filled
                 ),
-                Err(RemeshRefusal::MultiresStack) => eprintln!(
-                    "[sculpt3d] nao' reconstroi com a pilha montada: o remesh troca a TOPOLOGIA, e todo nivel acima e' subdivisao dela -- ACHATE a pilha antes"
-                ),
-                Err(RemeshRefusal::EmptyScene) => {
-                    eprintln!("[sculpt3d] nao' reconstroi: nao ha' peca na cena")
-                }
-                // ⚠️ A escultura CONTINUA na tela — é isto que a recusa compra.
-                // Antes daqui o campo vazado devolvia uma malha vazia que o
-                // shell instalava, e a peça sumia com log de sucesso.
-                Err(RemeshRefusal::Engine(e)) => eprintln!(
-                    "[sculpt3d] nao' reconstroi, e a escultura fica como esta': {e} -- tente outra resolucao"
-                ),
-                // ⚠️ **INALCANÇÁVEL: o voxel remesh não fala esta recusa.** Ela é
-                // da retopologia por campo cruzado, e o braço existe porque o
-                // `match` é exaustivo — foi ele que obrigou este sítio a
-                // decidir quando a variante nasceu, que é o ponto.
-                Err(RemeshRefusal::Quad(e)) => {
+                // ⚠️ **UMA frase, e ela mora com o tipo** — ver
+                // `sculpt3d_remesh_refusal.rs`. Antes eram cinco braços aqui e
+                // outros cinco no painel, com textos que nada obrigava a
+                // concordar. ⭐ A escultura CONTINUA na tela: é isto que a recusa
+                // compra, e antes daqui o campo vazado devolvia uma malha vazia
+                // que o shell instalava — a peça sumia com log de sucesso.
+                Err(e) => {
                     debug_assert!(
-                        false,
-                        "o voxel remesh devolveu a recusa da retopologia: {e}"
+                        e.reaches_voxel_remesh(),
+                        "o voxel remesh devolveu uma recusa que nao e' dele: {e:?}"
                     );
-                }
-                Err(RemeshRefusal::TooCoarseToResolve) => {
-                    debug_assert!(false, "o voxel remesh devolveu a recusa da retopologia");
+                    eprintln!("[sculpt3d] {}", e.explain());
                 }
             }
             return true;

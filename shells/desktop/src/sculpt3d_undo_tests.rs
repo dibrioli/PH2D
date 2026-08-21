@@ -175,6 +175,75 @@ fn a_geometry_stroke_leaves_the_mask_channel_alone() {
 /// retopologia entra na história pela MESMA entrada do voxel remesh
 /// (`StrokeUndo::Remeshed`, que carrega a malha inteira de antes), porque um
 /// remesh não partilha estrutura nenhuma com o que estava lá.
+/// ⭐⭐ **O BOTÃO ENTREGA A PROMESSA DA CADEIA GLOBAL** — 100 % de quads, casca
+/// fechada, e a contagem de irregulares perto do chão topológico.
+///
+/// ⚠️ **É o gate da PORTA e não do algoritmo.** A cadeia já é gateada, sem GPU, na
+/// `ph2d-quadfill`; o que só se pode afirmar aqui é que **o gesto do artista**
+/// chega àquela cadeia — que o `detail` do painel atravessa, que a peça é
+/// substituída e que o Ctrl+Z a devolve.
+///
+/// ⚠️ **A barra dos quads é `100 %` e não *"a maioria"***, ao contrário do irmão
+/// local: é a promessa inteira desta família de algoritmos, e afrouxá-la seria
+/// deixar de medir a única coisa que o pivô comprou.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_button_delivers_the_global_chain() {
+    let gpu = gpu_or_skip!();
+    let mut s = Sculpt3dScene::new(
+        &gpu.device,
+        crate::sculpt3d::fixtures::wrinkled_sphere(),
+        1.0,
+    );
+    s.viewport = (900, 700);
+    let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
+
+    let r = s
+        .quad_remesh_global(0.5)
+        .expect("a cadeia global correu sobre uma peca de um nivel");
+    eprintln!(
+        "[sculpt3d] GLOBAL: {} vertices, {} quads, {} nao-quads, {} irregulares, bordo {}, \
+         quad de {:.4}, {:.0} ms",
+        r.verts, r.quads, r.non_quads, r.irregular, r.holes, r.edge, r.ms
+    );
+
+    assert_eq!(
+        r.non_quads, 0,
+        "sairam {} faces que nao sao quads",
+        r.non_quads
+    );
+    assert!(r.quads > 0, "a cadeia devolveu uma malha vazia");
+    // ⚠️ Uma aresta com UMA face só é a assinatura da casca rasgada, e nenhum
+    // render a mostra.
+    assert_eq!(
+        r.holes, 0,
+        "a casca saiu ABERTA: {} arestas de bordo",
+        r.holes
+    );
+    // ⭐ O chão topológico de uma esfera é 8. A barra é `3×` — a mesma da
+    // `ph2d-quadfill`, e pela mesma razão: é a CONTAGEM que é estrutural, e
+    // medi-la em percentagem faz o número melhorar sozinho com a densidade.
+    assert!(
+        (8..=24).contains(&r.irregular),
+        "{} vertices irregulares: o chao de uma esfera e' 8 e a barra e' 24",
+        r.irregular
+    );
+    assert_ne!(
+        s.mesh().positions(),
+        &before[..],
+        "a retopologia global nao mudou a malha"
+    );
+    assert!(
+        s.undo_stroke(),
+        "a cadeia global nao gravou passo de undo: o artista perde a peca"
+    );
+    assert_eq!(
+        s.mesh().positions(),
+        &before[..],
+        "o Ctrl+Z nao devolveu a malha de antes"
+    );
+}
+
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn the_quad_retopology_changes_the_mesh_and_undoes_whole() {

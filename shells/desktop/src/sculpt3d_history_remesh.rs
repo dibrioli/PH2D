@@ -44,6 +44,16 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     pub ms: f64,
     /// **Quantos buracos ficaram na casca** — `0` é o que se espera.
     pub holes: usize,
+    /// ⭐ **Quantos vértices IRREGULARES** (valência ≠ 4) — a grandeza que o pivô
+    /// do ADR-0161 existiu para derrubar, e a que o artista de facto vê.
+    ///
+    /// ⚠️ **É a CONTAGEM e não uma percentagem**, e a diferença é medida: a mesma
+    /// peça com o dobro da densidade tem os mesmos irregulares e metade da
+    /// percentagem. Uma esfera admite **oito**; o motor local entregava milhares.
+    ///
+    /// ⚠️ O backend LOCAL não a mede — ele reporta `usize::MAX` como *"não sei"*,
+    /// que é diferente de zero e não pode ser lido como um resultado bom.
+    pub irregular: usize,
 }
 
 impl Sculpt3dScene {
@@ -136,6 +146,10 @@ impl Sculpt3dScene {
             edge,
             ms: t.elapsed().as_secs_f64() * 1000.0,
             holes: q.holes,
+            // ⚠️ **`MAX` é *"não sei"*, e é a resposta honesta.** Este backend não
+            // conta valências; escrever `0` seria afirmar uma grade perfeita
+            // sobre um motor que entrega 21 a 49 % de irregulares.
+            irregular: usize::MAX,
         };
         let previous =
             core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);

@@ -323,6 +323,13 @@ ph2d-sdf = { path = "../../crates/ph2d-sdf", optional = true }
 ph2d-quadflow = { path = "../../crates/ph2d-quadflow" }
 ph2d-remesh-iso = { path = "../../crates/ph2d-remesh-iso" }
 ph2d-crossfield = { path = "../../crates/ph2d-crossfield" }
+# As tres fases restantes da cadeia GLOBAL (ADR-0161): tracado dos patches,
+# quantizacao Bi-MDF e a quadrangulacao por patch. Nao sao `optional` pela mesma
+# razao das duas de cima: a `quad_remesh_global` e' um gesto do shell, e a
+# feature `sculpt3d` cobre a CENA, nao o algoritmo.
+ph2d-trace = { path = "../../crates/ph2d-trace" }
+ph2d-quantize = { path = "../../crates/ph2d-quantize" }
+ph2d-quadfill = { path = "../../crates/ph2d-quadfill" }
 # O balde (ADR-0114 W4) — solver CPU puro; o shell é a fronteira modelo↔solver.
 ph2d-flip-fill = { path = "../../crates/ph2d-flip-fill" }
 ph2d-flip-colorize = { path = "../../crates/ph2d-flip-colorize" }

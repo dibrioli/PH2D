@@ -17,7 +17,7 @@
 use ph2d_panel_sculpt3d::{Sculpt3dIntent, Sculpt3dSnapshot, Sculpt3dUi};
 
 use super::dyntopo::DETAIL_STEPS;
-use super::{MaskOp, Primitive, RemeshRefusal, Sculpt3dScene};
+use super::{MaskOp, Primitive, Sculpt3dScene, legacy_requested};
 
 /// **O que o LAÇO DE FRAME tem de cumprir** por um gesto do painel.
 ///
@@ -351,43 +351,59 @@ impl Sculpt3dScene {
                     "[sculpt3d] reconstruida: {} -> {} vertices / {} -> {} faces",
                     r.verts.0, r.verts.1, r.faces.0, r.faces.1
                 ),
-                Err(RemeshRefusal::MultiresStack) => {
-                    eprintln!("[sculpt3d] nao' reconstroi com a pilha montada: ACHATE antes")
-                }
-                Err(RemeshRefusal::EmptyScene) => {
-                    eprintln!("[sculpt3d] nao' reconstroi: nao ha' peca na cena")
-                }
-                // ⚠️ A escultura CONTINUA na tela — ver o irmão no `sculpt3d_keys`.
-                Err(RemeshRefusal::Engine(e)) => eprintln!(
-                    "[sculpt3d] nao' reconstroi, e a escultura fica como esta': {e} -- tente outra resolucao"
-                ),
-                // ⚠️ **INALCANÇÁVEL: o voxel remesh não fala esta recusa.** Ela é
-                // da retopologia por campo cruzado, e o braço existe porque o
-                // `match` é exaustivo — foi ele que obrigou este sítio a
-                // decidir quando a variante nasceu, que é o ponto.
-                Err(RemeshRefusal::Quad(e)) => {
+                // ⚠️ **UMA frase, e ela mora com o tipo** — ver
+                // `sculpt3d_remesh_refusal.rs`. ⭐ A escultura CONTINUA na tela.
+                Err(e) => {
                     debug_assert!(
-                        false,
-                        "o voxel remesh devolveu a recusa da retopologia: {e}"
+                        e.reaches_voxel_remesh(),
+                        "o voxel remesh devolveu uma recusa que nao e' dele: {e:?}"
                     );
-                }
-                Err(RemeshRefusal::TooCoarseToResolve) => {
-                    debug_assert!(false, "o voxel remesh devolveu a recusa da retopologia");
+                    eprintln!("[sculpt3d] {}", e.explain());
                 }
             },
             Sculpt3dIntent::QuadRemesh => {
-                match self.quad_remesh(self.quad_detail, self.quad_adapt) {
+                // ⭐ **A cadeia GLOBAL é o motor deste botão desde 2026-08-21**
+                // (ADR-0161): 100 % de quads e ~14 vértices irregulares numa
+                // esfera, contra 68,7 % e ~1 800 do porte local. ⚠️ Ela é **muito
+                // mais lenta** (segundos contra sub-segundo), e é essa a troca
+                // que o ADR declara.
+                //
+                // ⚠️ **O `adapt` não tem consumidor nesta cadeia**, e o log diz
+                // isso em voz alta: um knob que o painel mostra e nada lê é o
+                // defeito que já custou uma caçada nesta base.
+                if !legacy_requested() && self.quad_adapt != 0.0 {
+                    eprintln!(
+                        "[sculpt3d] ⚠️ o 'Adapt' ({:.2}) nao tem efeito na retopologia global -- \
+                         so' o porte local (PH2D_RETOPO_LEGACY=1) o consome",
+                        self.quad_adapt
+                    );
+                }
+                let outcome = if legacy_requested() {
+                    self.quad_remesh(self.quad_detail, self.quad_adapt)
+                } else {
+                    self.quad_remesh_global(self.quad_detail)
+                };
+                match outcome {
                     // ⚠️ **O log NOMEIA os buracos.** Enquanto ele não o fazia, a
                     // única forma de detectar uma casca furada era o artista
                     // fotografar a tela — e foi o que aconteceu três vezes em
                     // 2026-08-19. Um `0` aqui é a afirmação de que a peça fechou.
+                    // ⭐ **O log nomeia os IRREGULARES**, que é a grandeza que o
+                    // pivô existiu para derrubar e a que o artista vê. Uma esfera
+                    // admite **oito**; o motor local não os conta e diz `?`, que é
+                    // diferente de dizer zero.
                     Ok(r) => eprintln!(
-                        "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads) \
-                         com quad de {:.4} em {:.0} ms{}",
+                        "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
+                         {} irregulares, com quad de {:.4} em {:.0} ms{}",
                         r.verts,
                         r.quads,
                         r.non_quads,
                         100.0 * r.quads as f64 / (r.quads + r.non_quads).max(1) as f64,
+                        if r.irregular == usize::MAX {
+                            String::from("?")
+                        } else {
+                            r.irregular.to_string()
+                        },
                         r.edge,
                         r.ms,
                         if r.holes == 0 {
@@ -396,25 +412,10 @@ impl Sculpt3dScene {
                             format!(" -- ⚠️ {} BURACO(S) na casca", r.holes)
                         }
                     ),
-                    Err(RemeshRefusal::MultiresStack) => {
-                        eprintln!("[sculpt3d] nao' retopologiza com a pilha montada: ACHATE antes")
-                    }
-                    Err(RemeshRefusal::EmptyScene) => {
-                        eprintln!("[sculpt3d] nao' retopologiza: nao ha' peca na cena")
-                    }
-                    // ⚠️ A escultura CONTINUA na tela — a mesma lei do irmão.
-                    Err(RemeshRefusal::Quad(e)) => eprintln!(
-                        "[sculpt3d] a retopologia nao fechou uma malha, e a escultura fica como esta': {e}"
-                    ),
-                    Err(RemeshRefusal::Engine(e)) => eprintln!("[sculpt3d] retopologia: {e}"),
-                    // ⚠️ **A mensagem nomeia o CONSERTO**, que e' a diferenca
-                    // entre uma recusa util e uma muda: o `Detail` nao alcanca
-                    // este estado, entao quem chega aqui tem uma malha grossa
-                    // demais para ser retopologizada de todo.
-                    Err(RemeshRefusal::TooCoarseToResolve) => eprintln!(
-                        "[sculpt3d] a malha e' grossa demais para uma grade de quads, e a \
-                         escultura fica como esta': subdivida (ou use o Remesh) antes"
-                    ),
+                    // ⚠️ **UMA frase, e ela mora com o tipo.** Cinco braços
+                    // aqui e cinco nas teclas explicavam a MESMA recusa com
+                    // textos que nada obrigava a concordar.
+                    Err(e) => eprintln!("[sculpt3d] {}", e.explain()),
                 }
             }
             Sculpt3dIntent::BakeAo => {

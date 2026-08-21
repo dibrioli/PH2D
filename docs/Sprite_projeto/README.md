@@ -208,6 +208,7 @@ Lista canônica de cada MCP op exposta pelo Sprite Inspector v2 com classificaç
 | [13_referencias.md](13_referencias.md) | Pesquisa multi-engine + community sources. |
 | [15_plano_de_implementacao.md](15_plano_de_implementacao.md) | Plano executável W0..W7 com tasks T-W.N granulares. |
 | [16_i18n_catalog.md](16_i18n_catalog.md) | **Lens D D3 fix:** catálogo completo Fluent i18n strings (~155 keys) + bundle paths + naming convention + gate `sprite_inspector_i18n_keys_present`. |
+| [20_auditoria_do_inspector_2026-08-21.md](20_auditoria_do_inspector_2026-08-21.md) | ⚠️ **Auditoria multiagêntica (7 lentes) do que está MORTO ou INCOMPLETO no Inspector.** 3 cabeçalhos que não dobram · 7 pontos de cor mortos · «Anti-halo: enabled» sobre feature inexistente · Texture Filter que reporta Linear sobre Nearest · 6 verbos sem fan-out de BulkSelect · Region apagado pela troca de precisão · **30 testes desligados + ~132 controlos sem gate** · 3 das 12 seções nunca construídas. Traz a tabela **⛔ Não persiga**. |
 
 ## 10. Como contribuir com este spec
 

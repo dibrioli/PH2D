@@ -256,6 +256,40 @@ bug existia; mantê-lo seria ensinar que uma composição válida está errada. 
 medir a AUSÊNCIA dele (com controle positivo no `Shadowed`), para ninguém o ressuscitar
 de um commit antigo sem reler isto.
 
+### A SEGUNDA causa, achada por instrumento depois de um *"não funcionou"*
+
+A cura acima estava certa e **não funcionou**, e a diferença entre as duas frases é o
+que este parágrafo regista.
+
+O `PH2D_GLOW_DIAG=1` (posto exactamente para isto) devolveu:
+
+```
+[glow-diag] assador de formas: pedidas=1 com_tile_agora=1
+[glow-diag] sprites=119 vetor_vivo=1 (tile_objeto=0 tile_forma=1 SEM_TILE=0) camada=120 glow=intensidade 1.6
+```
+
+Tudo do lado da CPU estava certo — o tile existia, a camada tinha os 120, o nó estava lá
+com intensidade `1,6`. Então a falha era **dentro do tile**: ele saía **inteiramente
+transparente**.
+
+⚠️ **Um `source.shape` nu é um PRIMITIVO** — sem `fill` e sem `stroke` autorados —, e as
+duas portas de desenho da `ph2d-vec-render` **discordam** sobre ele:
+
+| porta | um primitivo nu | quem a usa |
+|---|---|---|
+| `draw_path` (DOCUMENTO) | encoda **0** caminhos | o `dispatch` da cena vetorial |
+| `draw_shape_instance_tessellated` (INSTÂNCIA) | preenche a **silhueta** | o caminho crispo de `source.shape` |
+
+O bake chamava a do documento. Ela está certa **para ela** — um caminho do documento
+sempre tem paint —, e o ramo que salva o primitivo mora na outra, que é justamente a que
+o caminho crispo desta mesma forma já usava. O `draw_path_standalone` passou a chamar a
+porta de INSTÂNCIA, com o tint **branco** (o da cópia multiplica no shader).
+
+Gate `a_bare_primitive_encodes_its_silhouette`, com o irmão de CONTROLE
+`the_document_route_draws_nothing_for_the_same_bare_primitive` — sem o segundo, o
+primeiro ficaria verde num mundo em que as duas portas fossem a mesma, e não diria por
+que a escolha da porta importa.
+
 ### Lições generalizáveis
 
 1. ⚠️ **Um efeito de PASSE só alcança a metade do stream que o passe re-renderiza.**
@@ -272,7 +306,16 @@ de um commit antigo sem reler isto.
    levou a diagnosticar isto como decisão de renderer. O que destravou não foi vencer o
    bloqueio: foi medir que o consumidor — um bright-pass seguido de seis reduções de
    mip — **não precisa** do que o bloqueio negava.
-5. ⚠️ **Um AVISO tem prazo de validade igual ao do bug.** O `BlindPass` foi certo por
+5. ⚠️ **DUAS PORTAS para «desenhar um caminho» discordam no caso NU, e o desacordo é
+   mudo.** Escolher a porta pelo que a coisa **É** (uma forma de instância) e não pelo
+   que ela **PARECE** (um caminho) é a regra. O sintoma foi um tile transparente, e o
+   renderer **pula um run sem bind group em silêncio** — nenhum erro em lado nenhum.
+6. ⚠️ **Quando a cura certa «não funciona», INSTRUMENTE em vez de tentar a próxima
+   hipótese.** *"O halo não aparece"* tinha cinco causas indistinguíveis a olho; o
+   `PH2D_GLOW_DIAG` custou uma corrida e eliminou quatro numa linha. ⛔ *Chutar entre
+   cinco consertos é como se perde uma tarde — e como se conserta o que não estava
+   partido.*
+7. ⚠️ **Um AVISO tem prazo de validade igual ao do bug.** O `BlindPass` foi certo por
    uma wave e virou mentira na seguinte. ⛔ Curar um bug sem apagar o aviso dele deixa
    uma armadilha que ensina o artista a não usar o que passou a funcionar — e o gate
    que fixa a ausência é o que impede a ressurreição por `git revert` distraído.

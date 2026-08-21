@@ -319,9 +319,23 @@ pub fn standalone_path_screen_bounds(path: &VecPath, xf: Affine) -> Option<(f64,
 /// PARECE, não uma segunda rasterização.
 ///
 /// ⚠️ **Sem tint de instância, de propósito.** O `tint` é por-CÓPIA e multiplica o
-/// tile no shader de sprite; aplicá-lo aqui pintaria a cor duas vezes.
+/// tile no shader de sprite; aplicá-lo aqui pintaria a cor duas vezes. É por isso
+/// que o BRANCO abaixo é a identidade certa, e não uma escolha de cor.
+///
+/// ⚠️ **Passa pela porta de INSTÂNCIA e não pela do DOCUMENTO, e a diferença foi um
+/// bug** (Enio, 2026-08-20: *"não funcionou"*). Um `source.shape` nu — sem fill nem
+/// stroke autorados — é um **PRIMITIVO**, e as duas portas discordam sobre ele: a
+/// de instância ([`draw_shape_instance_tessellated`]) tem um ramo que preenche a
+/// SILHUETA, e a do documento ([`draw_path`]) não desenha nada. O tile saía
+/// **totalmente transparente**, o quad desenhava nada, e o modo de falha é mudo —
+/// medido pelo `PH2D_GLOW_DIAG`, que mostrava a camada CERTA (`tile_forma=1`,
+/// `camada=120`) e nenhum halo.
+///
+/// ⚠️ *Escolher a porta pelo que ela É (uma forma de instância) e não pelo que ela
+/// PARECE (um caminho) é a regra; o crispo desta mesma forma passa por aqui.*
 pub fn draw_path_standalone(path: &VecPath, transform: Affine, target: &mut VectorScene) {
-    draw_path(path, transform, target);
+    let tess = instance::tessellate_shape_instance(path);
+    instance::draw_shape_instance_tessellated(path, &tess, transform, [1.0, 1.0, 1.0, 1.0], target);
 }
 
 /// O transbordo do traço sobre a caixa do fill — extraído junto com [`path_bounds_under`].
@@ -700,3 +714,7 @@ mod open_contour_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "standalone_tests.rs"]
+mod standalone_tests;

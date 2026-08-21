@@ -53,12 +53,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ "Radial" gira em torno do **Z** do objeto — o eixo em que um cilindro aponta, que é o
         // eixo de um flange. Cada modificador nomeia o seu, como as primitivas já fazem.
         "panel.model3d.mod.radial" => "Radial",
+        // ⚠️ "Taper" e não "Draft": a palavra de moldagem nomeia o PORQUÊ (tirar a peça do molde) e
+        // a de modelagem nomeia o QUE ACONTECE (a secção afina). Quem usa isto aqui está a dar
+        // forma, não a projetar um molde.
+        "panel.model3d.mod.taper" => "Taper",
         // ⭐ Os nomes das linhas de número dos modificadores. ⚠️ Um modificador pode ter VÁRIOS
         // (a matriz tem dois) e pode não ter nenhum (o espelho).
         "field.mod.thickness" => "Thickness",
         "field.mod.distance" => "Distance",
         "field.mod.count" => "Copies",
         "field.mod.spacing" => "Spacing",
+        "field.mod.slope" => "Slope",
         // Ações sobre o objeto escolhido.
         "panel.model3d.act.duplicate" => "Duplicate",
         "panel.model3d.act.delete" => "Delete",

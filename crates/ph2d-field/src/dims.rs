@@ -103,6 +103,13 @@ pub enum Span {
     /// O caso de hoje é o terceiro ângulo na trava de cardan — ver
     /// [`crate::xform::rotation_axis_is_free`], que é a **mesma** porta que recusa a escrita.
     Locked,
+    /// ⭐ **Simétrica, e fechada pelo DOCUMENTO**: `±max`, sem a vista ter voto.
+    ///
+    /// ⚠️ É a irmã da [`Span::Free`] com as pontas fechadas, e a diferença é de onde vem o número:
+    /// numa posição não há limite nenhum e a vista escolhe o alcance; aqui o limite é um **facto**
+    /// do documento — hoje, o custo de marcha que a inclinação paga
+    /// ([`crate::mods::MAX_TAPER_SLOPE`]).
+    Walls(f32),
     /// ⭐ **Uma CONTAGEM**: inteira, de 1 a `max`. Quantas cópias uma matriz tem.
     ///
     /// ⚠️ É uma faixa **própria** e não uma `Positive` disfarçada, porque três coisas mudam de uma

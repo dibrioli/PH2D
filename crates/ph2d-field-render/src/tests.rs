@@ -891,3 +891,43 @@ fn a_screen_sized_arm_measures_the_same_at_any_distance() {
         );
     }
 }
+
+/// ⚠️ **O custo REAL da inclinação** — o relógio de um quadro, e não um proxy.
+///
+/// A sonda irmã (`ph2d_field_eval::measure_taper_cost`) mede `min ‖∇f‖`: quão curto é o **pior**
+/// passo. Ela não diz quantos pixels pagam esse pior passo. Esta mede a coisa que o artista sente,
+/// e é ela que escolhe o [`ph2d_field::mods::MAX_TAPER_SLOPE`].
+///
+/// ⚠️ Vive **aqui** e não junto da lei porque o avaliador não pode depender do traçador — o
+/// traçador é que depende dele. A medição mora onde a marcha mora.
+#[test]
+#[ignore = "medição, não gate — corre com --ignored --nocapture"]
+fn measure_taper_frame_cost() {
+    use ph2d_field::{Node, NodeId, NodeKind, Primitive, Unary, Xform};
+    println!("declive | ms/quadro (320x240) | razão");
+    let mut base = 0.0f64;
+    for slope in [0.0f32, 0.25, 0.5, 0.75, 1.0, 1.5] {
+        let doc = ph2d_field::FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.4 }),
+                mods: vec![Unary::Taper { slope }],
+            }],
+            NodeId(0),
+        )
+        .expect("esfera inclinada");
+        let cam = Orbit::default();
+        // Aquece: a primeira corrida paga a compilação da árvore.
+        let _ = trace(&doc, &cam, 320, 240);
+        let t0 = std::time::Instant::now();
+        const N: u32 = 5;
+        for _ in 0..N {
+            let _ = trace(&doc, &cam, 320, 240);
+        }
+        let ms = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(N);
+        if slope == 0.0 {
+            base = ms;
+        }
+        println!("{slope:7.2} | {ms:19.2} | {:5.2}x", ms / base);
+    }
+}

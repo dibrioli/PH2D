@@ -1076,6 +1076,76 @@ o fizesse passaria sem nada a defender.
 
 ---
 
+## §19 — W18: a INCLINAÇÃO — o primeiro operador que não é exato, e a conta que a medição refutou (20/08)
+
+Fecha a W4 do plano. `Taper` inclina a secção transversal ao longo do **Y**: `k(y) = 1 + declive·y`,
+o ponto vai para o espaço não-inclinado e o valor volta multiplicado por `k` — a mesma receita de
+duas metades que a pose usa para a escala uniforme.
+
+### ⛔ Ele NÃO devolve uma distância exata, e é o primeiro do módulo
+
+A escala **varia com `y`**, e é essa variação que estraga: `∇g` ganha um termo que a multiplicação
+por `k` não cancela. Perto da superfície o erro desaparece — que é onde a marcha mais precisa dele —,
+mas longe ele **superestima**, e superestimar é o erro que faz o raio saltar por cima da peça.
+
+A cura é dividir, o que torna o campo um **bound conservador**. E é aqui que a wave ensinou:
+
+### ⭐ A minha conta estava errada, e a sonda refutou-a
+
+Derivei à mão que dividir por `1 + |declive|` bastava. A medição de `‖∇f‖`:
+
+| declive | com `1 + s` | com `1 + 2s` |
+|---|---|---|
+| 0,25 | **1,12** ⛔ | 0,93 ✅ |
+| 0,50 | **1,20** ⛔ | 0,90 ✅ |
+| 1,00 | **1,30** ⛔ | 0,87 ✅ |
+| 2,00 | **1,40** ⛔ | 0,84 ✅ |
+
+⚠️ **Acima de 1 o campo superestima** — a falha exata que a divisão existe para evitar, em **todo**
+o alcance. O `2` saiu da tabela, não da álgebra. *Uma derivação à mão é uma hipótese; a tabela é o
+facto.*
+
+### ⭐ E a primeira medição do CUSTO também enganava
+
+A sonda do gradiente diz que o **pior passo** no declive 1 é 1/300 de um passo cheio. Isso sugeriria
+um teto muito mais baixo. O quadro traçado (320×240) diz outra coisa:
+
+| declive | ms/quadro | razão |
+|---|---|---|
+| 0,00 | 9,89 | 1,00× |
+| 0,25 | 12,22 | 1,24× |
+| 0,50 | 15,09 | 1,53× |
+| **1,00** | **20,00** | **2,02×** |
+| 1,50 | 24,77 | 2,51× |
+
+**Pouquíssimos pixels pagam o pior passo.** *O pior caso não é o custo; o quadro é.*
+
+Não há joelho — o custo sobe liso —, então o teto é uma escolha de **orçamento**, e o número escrito
+é o que ele compra: **no teto, o traçado custa o dobro**. `MAX_TAPER_SLOPE = 1` são 45°, generoso
+para o que um draft de moldagem pede (1° a 5°) e suficiente para dar forma.
+
+⚠️ **O piso em `k` impede a inversão**: em `y = −1/declive` a secção colapsa, e passando disso ela
+viraria do avesso — a peça sairia com o interior para fora. Preso a `0,01`, o que acontece além do
+ápice é a secção ficar congelada nele: uma forma, não um defeito.
+
+### `Span::Walls` — simétrica e fechada pelo DOCUMENTO
+
+O declive é adimensional: a vista não tem o que dizer sobre ele, e as duas pontas são um **facto**
+(o custo de marcha). É a irmã da `Span::Free` com as pontas fechadas, e a diferença é de onde vem o
+número.
+
+### Provas de mutação
+
+| Mutação | Reprovou |
+|---|---|
+| o divisor volta à conta derivada à mão | `the_taper_never_overestimates_the_distance` |
+| a inclinação perde o sinal (um `abs()` a mais) | `the_taper_narrows_one_way_and_widens_the_other` |
+
+⚠️ O segundo gate mede os **dois** sentidos de propósito: sem a metade negativa, um `abs()` a mais
+passaria despercebido e o artista nunca conseguiria a forma oposta.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -1090,9 +1160,8 @@ o fizesse passaria sem nada a defender.
 - ⏸️ **o ESPELHO não se consegue demonstrar** (Enio, smoke da W17): ele dobra em torno do centro do
   nó, e toda peça das cenas — folhas *e* grupos — é simétrica. O verbo está correto e gateado; o que
   falta é um alvo descentrado, ou um pivô de espelho autorado. Adiado por decisão dele
-- ⏸️ **draft** (paredes inclinadas) — o que resta da W4 do plano. ⚠️ Ele é o primeiro modificador que
-  **não** preserva a distância exata (um cisalhamento do domínio dá um *bound*), e isso tem de entrar
-  medido, não de lado
+- ✅ **draft/taper FECHOU** na W18 (§19), e a W4 do plano com ele — o primeiro operador não-exato do
+  módulo, com as duas tabelas ao lado do número
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

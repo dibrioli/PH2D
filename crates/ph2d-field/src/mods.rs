@@ -64,6 +64,12 @@ pub enum Unary {
     ///
     /// ⚠️ Mesmo eixo, mesma razão do [`Unary::Mirror`].
     Array { count: u32, spacing: f32 },
+    /// **Inclinação (draft/taper)**: a secção transversal cresce ou encolhe ao longo do **Y local**,
+    /// à razão de `slope` por unidade de altura.
+    ///
+    /// ⚠️ **É o primeiro modificador deste módulo que NÃO devolve uma distância exata.** Ver o doc
+    /// do módulo e [`ph2d_field_eval`], onde o preço está medido.
+    Taper { slope: f32 },
     /// **Matriz radial**: `count` cópias em círculo, em torno do **Z local**.
     ///
     /// ⚠️ **Z, e não X** — e o critério não é a coerência com os irmãos acima, é a **coerência com
@@ -136,6 +142,13 @@ impl Unary {
             // ⚠️ **Sem espaçamento**: numa coroa o espaçamento é o próprio ângulo, e ele já está
             // dito pela contagem (`2π/n`). Um segundo número aqui seria uma forma de pedir uma
             // coroa incompleta — que é outra feature, com outro nome.
+            Unary::Taper { slope } => vec![crate::Dim {
+                key: "field.mod.slope",
+                value: slope,
+                // ⚠️ Uma parede dos **dois** lados: inclinar para dentro e para fora são os dois
+                // gestos, e o teto é do CUSTO da marcha (ver `MAX_TAPER_SLOPE`).
+                span: Span::Walls(MAX_TAPER_SLOPE),
+            }],
             Unary::Radial { count } => vec![crate::Dim {
                 key: "field.mod.count",
                 value: count as f32,
@@ -183,6 +196,9 @@ impl Unary {
                 }
                 *spacing = value;
             }
+            (Unary::Taper { slope }, 0) => {
+                *slope = value.clamp(-MAX_TAPER_SLOPE, MAX_TAPER_SLOPE);
+            }
             (Unary::Radial { count }, 0) => {
                 if value < 1.0 {
                     return Err(bad("count"));
@@ -222,6 +238,8 @@ impl Unary {
             // ⚠️ **Seis, e não dois.** Numa coroa, duas cópias a 180° leem-se como um espelho e não
             // como uma coroa — o gesto não se explica sozinho. Seis é o menor número em que a
             // circularidade é imediata, e é o que uma flange de verdade costuma ter.
+            // Zero é o ponto neutro: a peça intacta, e o sítio de onde se começa a arrastar.
+            UnaryKind::Taper => Unary::Taper { slope: 0.0 },
             UnaryKind::Radial => Unary::Radial { count: 6 },
         }
     }
@@ -234,6 +252,7 @@ impl Unary {
             Unary::Offset { .. } => UnaryKind::Offset,
             Unary::Mirror => UnaryKind::Mirror,
             Unary::Array { .. } => UnaryKind::Array,
+            Unary::Taper { .. } => UnaryKind::Taper,
             Unary::Radial { .. } => UnaryKind::Radial,
         }
     }
@@ -254,6 +273,32 @@ const SHELL_BIRTH_FRACTION: f32 = 0.1;
 /// regime de origem — o artista vê duas cópias separadas e limpas, e é ele que decide apertá-las.
 const ARRAY_BIRTH_SPAN: f32 = 2.0;
 
+/// **Até onde a inclinação vai**, e o recurso é o **custo da marcha de raios**.
+///
+/// ⚠️ Escrito por **MEDIÇÃO**, e as duas tabelas estão ao lado dos números que as produziram.
+/// A inclinação deforma o domínio, e o campo que sai é um **bound** conservador: para nunca
+/// superestimar (a condição de a marcha não atravessar a peça) ele divide por `1 + 2·|declive|`, e
+/// a marcha paga isso em passos.
+///
+/// **O custo REAL, medido** (`measure_taper_frame_cost`, quadro de 320×240):
+///
+/// | declive | ms/quadro | razão |
+/// |---|---|---|
+/// | 0,00 | 9,89 | 1,00× |
+/// | 0,25 | 12,22 | 1,24× |
+/// | 0,50 | 15,09 | 1,53× |
+/// | **1,00** | **20,00** | **2,02×** |
+/// | 1,50 | 24,77 | 2,51× |
+///
+/// ⭐ **E a primeira medição enganava.** A sonda do `‖∇f‖` diz que o **pior passo** no declive 1 é
+/// 1/300 de um passo cheio — o que sugeriria um teto muito mais baixo. O quadro custa **2,02×**:
+/// pouquíssimos pixels pagam o pior passo. *O pior caso não é o custo; o quadro é.*
+///
+/// Não há joelho — o custo sobe liso. Então o teto é uma escolha de **orçamento**, e o número
+/// escrito é o que ele compra: **no teto, o traçado custa o dobro**. Declive 1 é 45°, generoso para
+/// o que um draft de moldagem pede (1° a 5°) e suficiente para dar forma.
+pub const MAX_TAPER_SLOPE: f32 = 1.0;
+
 /// A **natureza** de um modificador, sem o número dele — o que um botão nomeia.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UnaryKind {
@@ -262,17 +307,19 @@ pub enum UnaryKind {
     Mirror,
     Array,
     Radial,
+    Taper,
 }
 
 impl UnaryKind {
     /// ⭐ **A fonte da contagem.** O painel deriva os botões daqui, como já faz com `Mode::ALL` — um
     /// modificador novo acrescenta-se aqui e o painel segue sem uma linha de mudança.
-    pub const ALL: [UnaryKind; 5] = [
+    pub const ALL: [UnaryKind; 6] = [
         UnaryKind::Shell,
         UnaryKind::Offset,
         UnaryKind::Mirror,
         UnaryKind::Array,
         UnaryKind::Radial,
+        UnaryKind::Taper,
     ];
 
     /// A chave i18n do botão que o acrescenta.
@@ -284,6 +331,7 @@ impl UnaryKind {
             UnaryKind::Mirror => "panel.model3d.mod.mirror",
             UnaryKind::Array => "panel.model3d.mod.array",
             UnaryKind::Radial => "panel.model3d.mod.radial",
+            UnaryKind::Taper => "panel.model3d.mod.taper",
         }
     }
 }

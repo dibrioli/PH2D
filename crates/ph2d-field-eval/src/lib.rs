@@ -87,10 +87,67 @@ fn stacked(inner: &Tree, mods: &[Unary]) -> Tree {
             Unary::Mirror => acc.remap_xyz(Tree::x().abs(), Tree::y(), Tree::z()),
             Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing)),
             Unary::Radial { count } => radial(&acc, count),
+            Unary::Taper { slope } => taper(&acc, f64::from(slope)),
         };
     }
     acc
 }
+
+/// ⭐ **A inclinação (draft/taper)** — e o **primeiro operador deste módulo que não é exato**.
+///
+/// A secção transversal escala por `k(y) = 1 + slope·y`: o ponto vai para o espaço não-inclinado
+/// (`x/k`, `y`, `z/k`) e o valor volta multiplicado por `k` — a mesma receita de duas metades que a
+/// [`place`] usa para a escala uniforme, e pela mesma razão (sem a segunda metade o campo deixa de
+/// ser uma distância).
+///
+/// # ⚠️ Por que ele não pode ser exato, e o que se paga em vez disso
+///
+/// A escala **varia com `y`**, e é essa variação que estraga: `∇g` ganha um termo de ordem
+/// `slope·f` que a multiplicação por `k` não cancela. Perto da superfície (`f ≈ 0`) o erro
+/// desaparece — que é onde a marcha mais precisa dele —, mas longe ele **superestima**, e
+/// superestimar é o erro que faz o raio saltar por cima da peça.
+///
+/// A cura é dividir por `1 + |slope|`, o que torna o campo um **bound conservador**: ele nunca
+/// passa da distância verdadeira, e a marcha continua correta. O preço é o número de passos, e ele
+/// está medido em `measure_taper_cost` — é dali que sai o
+/// [`ph2d_field::mods::MAX_TAPER_SLOPE`].
+///
+/// ⚠️ **O piso em `k` impede a inversão.** Em `y = −1/slope` a secção colapsa e, passando disso,
+/// ela **vira do avesso** — a peça sairia com o interior para fora. Preso a [`TAPER_FLOOR`], o que
+/// acontece além do ápice é a secção ficar congelada nele, que é uma forma e não um defeito.
+fn taper(inner: &Tree, slope: f64) -> Tree {
+    if slope == 0.0 || !slope.is_finite() {
+        return inner.clone();
+    }
+    let k = (Tree::constant(1.0) + Tree::y() * Tree::constant(slope)).max(TAPER_FLOOR);
+    let shrunk = inner.remap_xyz(Tree::x() / k.clone(), Tree::y(), Tree::z() / k.clone());
+    shrunk * k / Tree::constant(1.0 + TAPER_SAFETY * slope.abs())
+}
+
+/// O menor fator de secção que a inclinação admite — ver [`taper`].
+///
+/// ⚠️ Não é um épsilon de gosto: abaixo dele o `x/k` explode e o campo passa a devolver números que
+/// a marcha lê como "muito longe" dentro da própria peça. Um centésimo é duas ordens de grandeza
+/// abaixo da secção nominal, o que põe o ápice bem fora de qualquer peça enquadrada.
+const TAPER_FLOOR: f64 = 0.01;
+
+/// Quanto o divisor da inclinação cresce por unidade de declive — **medido, e a primeira tentativa
+/// estava errada**.
+///
+/// ⚠️ A conta que eu escrevi primeiro dividia por `1 + |slope|`, derivada à mão. A sonda
+/// `measure_taper_cost` **refutou-a**: `‖∇f‖` continuava acima de 1 em todo o alcance, ou seja o
+/// campo **superestimava** — exatamente a falha que a divisão existe para evitar.
+///
+/// | declive | `‖∇f‖` máx com `1 + s` | com `1 + 2s` |
+/// |---|---|---|
+/// | 0,25 | **1,12** ⛔ | 0,93 ✅ |
+/// | 0,50 | **1,20** ⛔ | 0,90 ✅ |
+/// | 1,00 | **1,30** ⛔ | 0,87 ✅ |
+/// | 2,00 | **1,40** ⛔ | 0,84 ✅ |
+///
+/// *Uma derivação à mão é uma hipótese; a tabela é o facto.* O `2` é o degrau que a medição deu —
+/// com ele `‖∇f‖ ≤ 1` em todo o alcance, que é a condição de a marcha não atravessar a peça.
+const TAPER_SAFETY: f64 = 2.0;
 
 /// ⭐ **A matriz radial**: `count` cópias em coroa, em torno do **Z**.
 ///

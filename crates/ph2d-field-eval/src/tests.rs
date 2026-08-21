@@ -1188,3 +1188,111 @@ fn the_radial_axis_answers_instead_of_producing_a_nan() {
         assert!(v > 0.0, "o meio da coroa é vazio, e em z={z} veio {v}");
     }
 }
+
+/// ⚠️ **A tabela que escolhe o teto da inclinação** — `‖∇f‖` e o custo, por declive.
+///
+/// A condição que importa é `‖∇f‖ ≤ 1`: acima dela o campo **superestima** e a marcha salta por
+/// cima da peça. O custo é o inverso — quanto mais conservador o bound, mais passos.
+#[test]
+#[ignore = "medição, não gate — corre com --ignored --nocapture"]
+fn measure_taper_cost() {
+    use ph2d_field::Unary;
+    println!("declive | max ‖∇f‖ | min ‖∇f‖ (= fração do passo)");
+    for slope in [0.0f32, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0] {
+        let doc = shelled(0.4, vec![Unary::Taper { slope }]);
+        let f = Field::new(&doc);
+        let (mut hi, mut lo) = (0.0f64, f64::INFINITY);
+        for i in 0..25 {
+            for j in 0..25 {
+                for k in 0..25 {
+                    let p = |n: i32| f64::from(n) / 12.0 - 1.0;
+                    let (x, y, z) = (p(i), p(j), p(k));
+                    let g = f.gradient_norm(x, y, z, 1e-3);
+                    if g.is_finite() && g > 1e-6 {
+                        hi = hi.max(g);
+                        lo = lo.min(g);
+                    }
+                }
+            }
+        }
+        println!("{slope:7.2} | {hi:9.4} | {lo:9.4}");
+    }
+}
+
+/// ⭐ **A inclinação NUNCA superestima a distância** — a condição que impede a marcha de atravessar
+/// a peça.
+///
+/// ⚠️ **É o gate que refutou a minha primeira conta.** A correção derivada à mão (`1/(1+|s|)`)
+/// deixava `‖∇f‖` acima de 1 em **todo** o alcance — 1,12 · 1,20 · 1,30 — ou seja o campo
+/// superestimava, que é exatamente a falha que a correção existe para evitar. O `2` do divisor saiu
+/// da tabela, não da álgebra.
+///
+/// ⚠️ Este é o **primeiro operador não-exato** do módulo, e o gate mede o que sobrou: ele não é
+/// exato, mas é **conservador** — e conservador é seguro.
+#[test]
+fn the_taper_never_overestimates_the_distance() {
+    use ph2d_field::{Unary, mods::MAX_TAPER_SLOPE};
+    for slope in [0.1f32, 0.25, 0.5, MAX_TAPER_SLOPE] {
+        let doc = shelled(0.4, vec![Unary::Taper { slope }]);
+        let f = Field::new(&doc);
+        let mut worst = 0.0f64;
+        for i in 0..17 {
+            for j in 0..17 {
+                for k in 0..17 {
+                    let p = |n: i32| f64::from(n) / 8.0 - 1.0;
+                    let g = f.gradient_norm(p(i), p(j), p(k), 1e-3);
+                    if g.is_finite() {
+                        worst = worst.max(g);
+                    }
+                }
+            }
+        }
+        assert!(
+            worst <= 1.0 + 1e-3,
+            "declive {slope}: ‖∇f‖ chegou a {worst:.4} — acima de 1 o campo SUPERESTIMA e a marcha \
+             salta por cima da superfície"
+        );
+    }
+}
+
+/// ⭐ **A inclinação de facto INCLINA** — e o gate mede os dois lados, porque o sinal é metade da
+/// ferramenta.
+///
+/// ⚠️ Sem a metade negativa, um `abs()` a mais na lei passaria: a peça afinaria para cima nos dois
+/// casos e o artista nunca conseguiria a forma oposta.
+#[test]
+fn the_taper_narrows_one_way_and_widens_the_other() {
+    use ph2d_field::Unary;
+    let r = 0.4f64;
+    // A largura da secção a uma altura: o `x` onde o campo cruza zero.
+    let width_at = |slope: f32, y: f64| -> f64 {
+        let doc = shelled(r as f32, vec![Unary::Taper { slope }]);
+        let f = Field::new(&doc);
+        let (mut lo, mut hi) = (0.0f64, 3.0f64);
+        for _ in 0..40 {
+            let mid = 0.5 * (lo + hi);
+            if f.at(mid, y, 0.0) < 0.0 {
+                lo = mid
+            } else {
+                hi = mid
+            }
+        }
+        0.5 * (lo + hi)
+    };
+    let s = 0.5f32;
+    let (below, above) = (width_at(s, -0.2), width_at(s, 0.2));
+    assert!(
+        above > below * 1.1,
+        "declive positivo tem de ALARGAR para cima: {below:.4} em baixo, {above:.4} em cima"
+    );
+    let (below, above) = (width_at(-s, -0.2), width_at(-s, 0.2));
+    assert!(
+        above < below * 0.9,
+        "declive negativo tem de AFINAR para cima: {below:.4} em baixo, {above:.4} em cima"
+    );
+    // E o zero é o ponto neutro: a peça intacta.
+    assert!(
+        (width_at(0.0, 0.2) - width_at(0.0, -0.2)).abs() < 1e-4,
+        "declive zero não pode inclinar nada"
+    );
+}

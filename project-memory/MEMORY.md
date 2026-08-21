@@ -93,6 +93,9 @@
 
 ## Auditoria (famílias — 2 saltos)
 - [Reprodução/diagnóstico (18)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
+- [Régua que DEDUPLICA não vê duplicação](feedback_a_ruler_that_deduplicates_cannot_report_duplication.md) — χ verde sobre malha não-variedade; conte por ocorrência
+- [Invariante CONSERVADA não mede qualidade](feedback_a_conserved_invariant_cannot_grade_quality.md) — Σ índice = 4·χ é verde por construção; a régua é a CONTAGEM
+- [Curva que achata pode precisar de mais pontos](feedback_a_flattening_curve_may_need_more_points.md) — 4 pontos diziam "2º mecanismo"; 2 pontos a mais diziam "é a causa"
 - [Ofício de gate (32)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei

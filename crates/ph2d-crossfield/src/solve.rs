@@ -61,10 +61,49 @@ const CG_TOLERANCE: f32 = 1.0e-7;
 /// ⚠️ **É uma DIVERGÊNCIA DECLARADA da referência, e ela tem preço por medir:**
 /// congelar em lote pode fixar um inteiro que a re-resolução teria mudado.
 /// ⛔ Não a mexa sem a tabela de qualidade × relógio ao lado.
+///
+/// ⭐ **A tabela chegou em 2026-08-21, e o preço era grande** — ver
+/// [`Rounding`] e o `PLAN.md` §4-octies.
 const BATCH_FRACTION: usize = 8;
 
+/// **A POLÍTICA DE ARREDONDAMENTO** — quantos inteiros congelar por rodada, e
+/// quão confiante um deles tem de ser.
+///
+/// ⚠️ **Ela existe porque a lei em lote tinha um preço que ninguém tinha medido.**
+/// Medido: a mesma esfera remalhada isotropicamente sai com **8** singularidades a
+/// 2 608 vértices e **194** a 10 251 — enquanto a esfera ESTRUTURADA de 13 682 sai
+/// com **7**. Não é resolução (a estruturada é maior), não é convergência do CG (a
+/// estruturada tem o pior resíduo da tabela) e não é a finura da referência
+/// (7× mais fina move 194 → 168). *É o lote: ele congela `livres/8` de uma vez, e
+/// `livres` cresce com a malha.*
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Rounding {
+    /// Congela no máximo `livres / fraction` por rodada. `1` congela todos os que
+    /// passarem no [`Self::max_deviation`]; um número grande aproxima-se do
+    /// *um-de-cada-vez* da referência.
+    pub fraction: usize,
+    /// ⭐ **A distância máxima a um inteiro que ainda conta como confiante.**
+    /// `0,5` aceita qualquer um (é a lei antiga, que só ordenava); um valor
+    /// pequeno recusa os genuinamente fracionários e deixa-os para a rodada
+    /// seguinte, **depois** de a re-resolução os ter movido.
+    ///
+    /// ⚠️ **Um por rodada é sempre congelado**, mesmo que nenhum passe — senão o
+    /// laço não termina.
+    pub max_deviation: f32,
+}
+
+impl Default for Rounding {
+    /// A lei em vigor: um oitavo por rodada, sem exigência de confiança.
+    fn default() -> Self {
+        Self {
+            fraction: BATCH_FRACTION,
+            max_deviation: 0.5,
+        }
+    }
+}
+
 /// O que o solver fez.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SolveReport {
     /// Quantas resoluções do sistema linear correram.
     pub solves: usize,
@@ -72,17 +111,51 @@ pub struct SolveReport {
     pub free_integers: usize,
     /// Quantos saltos de período saíram diferentes de zero.
     pub nonzero_periods: usize,
+    /// ⭐ **Quantas resoluções gastaram as [`CG_ITERATIONS`] sem atingir a
+    /// tolerância** — ou seja, quantas devolveram uma resposta que o método ainda
+    /// estava a construir.
+    ///
+    /// ⚠️ **Este campo existe porque a sua ausência custou um diagnóstico
+    /// inteiro** (2026-08-21): a mesma esfera remalhada mais fina passava de **8**
+    /// para **194** singularidades, e a soma dos índices continuava `8` — porque
+    /// ela é forçada por Poincaré–Hopf e não pode denunciar nada. *Um teto de
+    /// recurso sem instrumento é indistinguível de um algoritmo errado.*
+    pub cg_capped: usize,
+    /// O pior resíduo relativo com que uma resolução saiu — `≤ 1e-7` quando todas
+    /// convergiram.
+    pub cg_worst_residual: f32,
+}
+
+impl SolveReport {
+    /// Regista o resíduo com que uma resolução saiu.
+    fn note(&mut self, residual: f32) {
+        self.cg_worst_residual = self.cg_worst_residual.max(residual);
+        if residual > CG_TOLERANCE {
+            self.cg_capped += 1;
+        }
+    }
 }
 
 /// **RESOLVE o campo cruzado** — MIQ com gauge de árvore e rounding guloso.
 #[must_use]
 pub fn solve_miq(dual: &Dual) -> (CrossField, SolveReport) {
+    solve_miq_with(dual, Rounding::default())
+}
+
+/// **A mesma coisa, com a política de arredondamento na mão** — ver [`Rounding`].
+///
+/// ⚠️ **Ponto de extensão append-only** (`CLAUDE.md` §0.2): o [`solve_miq`] passa
+/// a ser esta função com o `default`, e nada que o chame vê diferença.
+#[must_use]
+pub fn solve_miq_with(dual: &Dual, policy: Rounding) -> (CrossField, SolveReport) {
     let n = dual.frames().len();
     let m = dual.edges().len();
     let mut report = SolveReport {
         solves: 0,
         free_integers: 0,
         nonzero_periods: 0,
+        cg_capped: 0,
+        cg_worst_residual: 0.0,
     };
     if n == 0 {
         return (
@@ -105,8 +178,9 @@ pub fn solve_miq(dual: &Dual) -> (CrossField, SolveReport) {
 
     let mut theta = vec![0.0f32; n];
     while !free.is_empty() {
-        let q = solve_relaxation(dual, &fixed, &free, &mut theta);
+        let (q, residual) = solve_relaxation(dual, &fixed, &free, &mut theta);
         report.solves += 1;
+        report.note(residual);
 
         // ⚠️ **A CONFIANÇA é a distância a um inteiro**, e o desempate é o índice
         // da aresta — sem ele a ordem de congelamento dependeria da ordem de
@@ -118,8 +192,17 @@ pub fn solve_miq(dual: &Dual) -> (CrossField, SolveReport) {
             .collect();
         order.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
 
-        let take = (free.len() / BATCH_FRACTION).max(1);
-        let mut freeze: Vec<usize> = order.iter().take(take).map(|(i, _)| *i).collect();
+        // ⚠️ **As duas portas são independentes, e o `.max(1)` é a que garante
+        // TERMINAÇÃO**: se nenhum candidato passar na confiança, congela-se
+        // mesmo assim o mais confiante de todos — senão o laço não anda.
+        let take = (free.len() / policy.fraction.max(1)).max(1);
+        let confident = order
+            .iter()
+            .take(take)
+            .take_while(|(_, d)| *d <= policy.max_deviation)
+            .count()
+            .max(1);
+        let mut freeze: Vec<usize> = order.iter().take(confident).map(|(i, _)| *i).collect();
         freeze.sort_unstable();
         for &i in freeze.iter().rev() {
             let e = free[i];
@@ -129,8 +212,9 @@ pub fn solve_miq(dual: &Dual) -> (CrossField, SolveReport) {
     }
 
     // A resolução final, com todos os inteiros congelados.
-    solve_relaxation(dual, &fixed, &[], &mut theta);
+    let (_, residual) = solve_relaxation(dual, &fixed, &[], &mut theta);
     report.solves += 1;
+    report.note(residual);
 
     let period: Vec<i32> = fixed.iter().map(|p| p.unwrap_or(0)).collect();
     report.nonzero_periods = period.iter().filter(|p| **p != 0).count();
@@ -152,7 +236,7 @@ pub fn solve_alternating(dual: &Dual, max_rounds: usize) -> (CrossField, usize) 
     for round in 1..=max_rounds {
         rounds = round;
         let fixed: Vec<Option<i32>> = period.iter().map(|p| Some(*p)).collect();
-        solve_relaxation(dual, &fixed, &[], &mut theta);
+        let _ = solve_relaxation(dual, &fixed, &[], &mut theta);
         let mut changed = 0usize;
         for (e, de) in dual.edges().iter().enumerate() {
             let r = theta[de.f as usize] - theta[de.g as usize] + de.kappa;
@@ -214,7 +298,7 @@ fn solve_relaxation(
     fixed: &[Option<i32>],
     free: &[usize],
     theta: &mut [f32],
-) -> Vec<f32> {
+) -> (Vec<f32>, f32) {
     let n = theta.len();
     let c = free.len();
     let dim = n + c;
@@ -273,7 +357,7 @@ fn solve_relaxation(
     }
 
     theta.copy_from_slice(&x[..n]);
-    x[n..].to_vec()
+    (x[n..].to_vec(), rr.sqrt() / r0)
 }
 
 /// `A x`, com a linha e a coluna do gauge de `θ` zeradas.

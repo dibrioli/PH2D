@@ -50,7 +50,9 @@ mod index;
 mod solve;
 
 pub use index::{singularities, vertex_index};
-pub use solve::{SolveReport, cycle_count, energy, solve_alternating, solve_miq};
+pub use solve::{
+    Rounding, SolveReport, cycle_count, energy, solve_alternating, solve_miq, solve_miq_with,
+};
 
 /// **UM QUARTO DE VOLTA** — o passo do campo 4-RoSy.
 pub const QUARTER: f32 = core::f32::consts::FRAC_PI_2;

@@ -20,3 +20,9 @@ authors.workspace = true
 
 [dependencies]
 ph2d-mesh = { path = "../ph2d-mesh" }
+
+[dev-dependencies]
+# ⚠️ SO' para a sonda `singularity_census`: ela precisa de remalhar a MESMA
+# esfera com conectividade irregular, e o passe que o faz vive no F1. Nao ha'
+# ciclo -- a `ph2d-remesh-iso` depende so' da `ph2d-mesh`.
+ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }

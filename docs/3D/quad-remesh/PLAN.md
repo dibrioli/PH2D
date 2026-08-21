@@ -7,9 +7,14 @@
 > ⭐ **A cadeia devolve MALHA, com código nosso e com os números do pivô**: 100 % de quads, característica
 > de Euler exata, e os vértices irregulares de **39,7 % para 0,5 %** — um fator de ~85 sobre o motor que
 > ela substitui, e a mesma ordem de grandeza do oráculo (que fica em 0,2 %).
-> Próximo: **a porta no shell** (o botão passar a chamar esta cadeia) e as *feature lines*.
-> ⚠️ Nada disto está ligado ao produto ainda; ⛔ o F3 desenterrou um defeito de sanitização no **F1**, e
-> ⛔ a esfera EMBARALHADA ainda não fecha (§4-sexies).
+> ⭐ **2026-08-21:** a não-variedade que travava o `cube` era do **flip** da `ph2d-mesh`, curada e gateada
+> (§4-septies) — e com ela a cadeia passou a fechar também na esfera **sacudida** (> 20 min → 1,6 s) e na
+> **ruidosa**.
+> ⛔ **Mas o mesmo trabalho revogou o título do §4-ter:** o campo do F2 só chega ao ótimo em malhas bem
+> distribuídas — sobre distribuição irregular ele passa de **8** para **194** singularidades, e em duas
+> malhas do corpus a soma dos índices **viola Poincaré–Hopf** (§4-octies).
+> Próximo: **o F2**, à frente da porta no shell — ligar o botão hoje é ligar o caso mau.
+> ⚠️ Nada disto está ligado ao produto ainda.
 
 ---
 
@@ -39,7 +44,7 @@ de escultura são desenhadas com os **verbos do produto** e não existem fora do
 | `torus_64x32` | 2 048 | 4 096 | gênero 1 — um remesh que costura o buraco reprova aqui |
 | `sphere_sculpt_98k` | 98 306 | 196 608 | a malha que o módulo **abre** |
 | `sphere_noisy` | 13 682 | 27 360 | ruído sem feature — o pior caso do campo |
-| `sphere_shuffled` | 13 682 | 27 360 | a mesma forma com ordem de índice embaralhada (**controle de determinismo**) |
+| `sphere_shuffled` | 13 682 | 27 360 | ⚠️ a mesma forma com a **DISTRIBUIÇÃO** torta (jitter tangencial + reprojeção) |
 | ⭐ `sculpt_hooked` | 3 386 | 6 768 | **a esfera-com-bico do diagnóstico** — o gate de regressão do §9 |
 | `sculpt_wrinkled` | 13 682 | 27 360 | sete sulcos (`Crease`) |
 | `sculpt_ridged` | 13 682 | 27 360 | cristas |
@@ -62,6 +67,17 @@ Nosso: defaults do painel (`detail = 0,50`, `adapt = 0,00`). Oráculo: `basic_se
 | `sphere_noisy` | 78,0 % → **100,0 %** | **29,4 % → 4,5 %** | 6,89° → **16,21°** |
 | `cube` | **saída vazia** | — | — |
 | `sculpt_punctured` | 76,0 % → 100,0 % | 34,4 % → 2,2 % (χ=1, **88 arestas de borda**) | — |
+
+⚠️ **CORREÇÃO (2026-08-21): o `sphere_shuffled` NÃO embaralha ordem de índice.**
+[`shapes::uv_sphere_shuffled`] sacode cada vértice **tangencialmente** e reprojeta
+— a forma fica exacta e a **distribuição** é que fica torta. ⇒ Duas consequências
+que este plano vinha a arrastar:
+
+1. ⛔ **O corpus não tem controle de determinismo nenhum**, e o §4-sexies atribuiu
+   a uma dependência de ordem (*"o passeio é guloso e a ordem das sementes decide
+   quem pára em quem"*) um defeito que é de **distribuição de triângulos**. *Uma
+   fixtura só prova o que ela contém, e o nome dela não é a régua.*
+2. ⭐ **O que ela de facto mede é o regime em que o F2 se parte** — ver §4-octies.
 
 ⭐ **A grandeza que decide é a coluna do meio.** Uma grade de quads numa esfera admite **oito**
 vértices irregulares. Nós entregamos **21 a 49 % de todos os vértices**; o oráculo entrega **0,2 %**.
@@ -241,7 +257,15 @@ ganho: ele entra **junto com o F2**, que é quem o consome.
 
 ---
 
-## 4-ter — ✅ F2: o CAMPO chegou ao ótimo teórico. A MALHA não, e a razão é o F5
+## 4-ter — ⚠️ F2: o campo chega ao ótimo em malhas BEM DISTRIBUÍDAS — e só nelas
+
+> ⛔ **Título REVOGADO em 2026-08-21.** Ele dizia *"o CAMPO chegou ao ótimo
+> teórico"*, e isso foi medido **só em grades `uv`**, que são o caso mais fácil que
+> existe: a própria grade já é um campo cruzado perfeito. Sobre distribuição
+> irregular a contagem passa de **8** para **194**, e em duas malhas do corpus a
+> soma dos índices **viola Poincaré–Hopf**. A medição inteira está no §4-octies, e
+> ela é o próximo trabalho da linha. *O resto desta secção continua a valer — o que
+> cai é a extrapolação do título.*
 
 `crates/ph2d-crossfield` — MIQ (Bommes et al. 2009) **clean-room**: campo por
 FACE, saltos de período **inteiros** por aresta dual, gauge de árvore geradora,
@@ -610,6 +634,10 @@ não-manifold. As outras linhas do F1 não dependem dela, mas essa cai.
 [`TraceReport::open_rings`] é o instrumento que o denuncia de agora em diante.
 *Uma fase a jusante que expõe um defeito a montante é o pipeline a funcionar.*
 
+✅ **CURADO em 2026-08-21 — e não era do F1: era do FLIP da `ph2d-mesh`.** Ver
+§4-septies. ⚠️ **E não era do cubo só:** a mesma colisão atingia a esfera
+embaralhada e a ruidosa, que são justamente as duas que a cadeia não fechava.
+
 ### O que ficou aberto no F3
 
 - ⚠️ **Ainda saem cerca do DOBRO dos patches do oráculo** (15 contra 8 numa
@@ -700,21 +728,225 @@ solver.
 
 ### O que ficou aberto no F5
 
-- ⛔ **`sphere_shuffled` não fecha.** É a **mesma esfera** com a ordem de índice
-  trocada — o controle de determinismo do corpus — e o layout que sai dela é sujo
-  o bastante para o F4 não o quantizar dentro do orçamento. ⚠️ *Um resultado que
-  depende da ordem em que os vértices foram escritos é um defeito, não um acaso*,
-  e ele mora no F3 (o passeio é guloso e a ordem das sementes decide quem pára em
-  quem).
-- ⚠️ **O relógio é do LAYOUT, não do tamanho.** A esfera de **98 k vértices**
-  resolve em **33 s**; a de 13 k embaralhada passa de **vinte minutos**. É o mesmo
-  mecanismo que o §4-quater mediu no F4 — a busca cresce com a sujidade do layout.
+- ~~⛔ **`sphere_shuffled` não fecha** … e ele mora no F3 (o passeio é guloso).~~
+  ✅ **FECHADO em 2026-08-21, e o diagnóstico estava DUAS FASES ERRADO.** Com o F1
+  na frente, ela fecha em **1,6 s** com 100 % de quads. ⚠️ E a atribuição a *"ordem
+  de índice"* era falsa duas vezes: a fixtura não embaralha ordem nenhuma (§1.2), e
+  a causa era a colisão de diagonal do flip (§4-septies). *Uma nota que nomeia a
+  fase errada custa a jornada inteira de quem a for seguir.*
+- ⚠️ **O relógio é do LAYOUT, não do tamanho** — e a cura do §4-septies mostrou-o
+  pelo outro lado: a esfera de **98 k** desceu de 33 s para **8,5 s** só por o F1
+  entrar antes, e a sacudida de **> 20 min** para **1,6 s** sem que o F4 mudasse
+  uma linha. *O F4 nunca foi lento; ele estava a receber lixo.*
 - ⛔ **Sem *feature lines*** (herdado do F3): uma quina dura não é respeitada, e é
   isso que a `sculpt_hooked` do diagnóstico exige.
 - ⛔ **Nem Hausdorff nem desvio angular** foram medidos aqui — a régua do §9 do
   briefing continua por correr sobre a saída nova.
 - ⛔ **Nada disto está ligado ao botão.** O `Quad Retopology` continua a chamar a
   `ph2d-quadflow`, e ligar a cadeia nova é o F5.2 (a porta no shell).
+
+---
+
+## 4-septies — ⭐ A não-variedade não era do F1: era do FLIP, e custava uma troca em dez mil
+
+**Entregue:** a **recusa 4** em [`ph2d-mesh/src/dyntopo_flip.rs`], o gate
+`a_round_of_flips_never_creates_the_same_diagonal_twice` (na `ph2d-mesh`) e o
+gate `the_remesh_returns_a_closed_manifold` (na `ph2d-remesh-iso`).
+
+### O mecanismo — e ele explica por que três guardas corretas não bastavam
+
+O operador de troca de diagonal já recusava **borda**, **diagonal que já existe**
+e **dobra**. A segunda pergunta *"o anel de `c` contém `d`?"* — e ⚠️ **esse anel é
+o de ANTES da rodada**. Duas trocas da mesma rodada, sobre pares de faces
+**disjuntos** (logo fora do alcance do `spent`, que só protege a face), produzem a
+mesma diagonal `c—d`: nenhuma das duas vê a outra, e a malha sai com **duas
+arestas entre o mesmo par**.
+
+⭐ **A assinatura que provou o mecanismo em vez de o supor:** a aresta ofensora sai
+com **quatro** faces. Uma diagonal criada *por cima* de uma que já existia teria
+**três** — logo não é a recusa 2 a falhar, é a rodada a colidir consigo mesma.
+*Um número, e ele distingue as duas hipóteses.*
+
+### A medição — uma rodada de `relax_valence`, com a recusa 4 desligada
+
+| fixtura | vértices | trocas | arestas de valência ≠ 2 |
+|---|---|---|---|
+| `uv_sphere` (lisa, qualquer tamanho) | — | **0** | 0 — *não flipa, não prova nada* |
+| `uv_sphere_shuffled(48,72)` | 3 386 | 2 390 | 0 |
+| ⭐ `uv_sphere_noisy(24,36)` | **830** | 457 | **7** ← a menor que contém o fenómeno |
+| `uv_sphere_shuffled(96,144)` | 13 682 | 9 968 | 1 |
+| `uv_sphere_noisy(96,144)` | 13 682 | 8 590 | **185** |
+
+⚠️ **A esfera LISA é o controle negativo que quase enganou**: ela não aceita troca
+nenhuma, então passaria com o operador inteiro apagado. É o **ruído** que dá ao par
+`c,d` a valência alta de que a colisão precisa — e é por isso que a fixtura do gate
+é ruidosa e pequena, não lisa e grande.
+
+⭐ **O preço da cura, medido: UMA troca em 9 968.** A recusa 4 é reservada só
+depois das guardas de ângulo e de dobra — reservá-la antes faria um candidato
+**rejeitado** bloquear uma troca válida com a mesma diagonal.
+
+### O que a cura destravou — e é muito mais do que o cubo
+
+| malha | anéis abertos, antes → depois | o que a cadeia fazia → faz |
+|---|---|---|
+| `cube` (após F1) | **18 → 0** | ❌ o F4 recusava → ✅ **quantiza com prova**, 2 146 quads |
+| `sphere_shuffled` | 2 → 0 | ⛔ **> 20 min sem fechar** → ✅ **1,6 s**, 100 % quads |
+| `sphere_noisy` | — | ⛔ orçamento esgotado em 47 s → ✅ **1,7 s**, 100 % quads |
+| `sphere_sculpt_98k` | 0 → 0 | 33 s → **8,5 s** |
+
+⭐ **O `sphere_shuffled` era o controle de determinismo do corpus, e o §4-sexies
+atribuiu a culpa ao passeio guloso do F3.** ⚠️ **Estava errado.** A causa era duas
+fases a montante, e a cura não tocou uma linha do F3. *Uma nota que nomeia a fase
+errada custa a jornada inteira de quem a for seguir.*
+
+### As duas provas de mutação
+
+⚠️ **Um gate que ninguém viu VERMELHO não afirma nada.** Com a recusa 4 trocada
+por um `insert` cujo valor de retorno se ignora:
+
+| gate | veredito sem a cura |
+|---|---|
+| `a_round_of_flips_never_creates_the_same_diagonal_twice` | ❌ `left: 7, right: 0` |
+| `the_remesh_returns_a_closed_manifold` | ❌ *cubo: borda 0, **não-variedade 3**, dirigida-repetida 16* |
+| `the_genus_survives` (com o cubo acrescentado) | ❌ *cubo: o remesh mudou o GÉNERO* |
+
+⚠️ **E o `the_genus_survives` passava, antes, sobre a malha quebrada** — porque ele
+conta arestas num `BTreeSet`, que **funde** o par duplicado. *Uma régua que
+deduplica não pode denunciar duplicação*, e é por isso que o gate novo conta por
+**ocorrência** e faz as três perguntas separadas (borda · não-variedade · aresta
+dirigida repetida).
+
+### ⛔ O que a cura NÃO comprou
+
+- ⛔ **O `cube` continua com a soma de índices errada** (`−5`, e a topologia exige
+  `+8`) — mas agora **sem um único anel aberto**. ⇒ *A causa mudou de sítio:* o
+  campo mente nas 12 arestas vivas do cubo porque **não há feature lines**, que já
+  era o item aberto nº 1 do F3. O que a cura fez foi **separar os dois defeitos**,
+  que até aqui liam como um.
+- ⚠️ **Com o F1 na frente, os irregulares SOBEM** (esfera 21 → 47, toro 30 → 66) —
+  ver o parágrafo seguinte. A cadeia ficou **robusta e rápida** e ainda não ficou
+  **melhor**.
+
+---
+
+## 4-octies — ⛔ O F2 NÃO chegou ao ótimo: ele chega ao ótimo em malhas BEM DISTRIBUÍDAS
+
+⚠️ **Esta secção REVOGA o título do §4-ter** (*"o CAMPO chegou ao ótimo teórico"*).
+Ele foi medido em esferas de grade `uv`, que são o caso mais fácil que existe — a
+própria grade **é** um campo cruzado perfeito. Sobre malhas com distribuição de
+triângulos irregular, o campo parte-se, e parte-se **com o tamanho**.
+
+### O censo — a régua é a CONTAGEM, e a soma não podia denunciar nada
+
+⭐ **`Σ índice = 4·χ` é forçada pela topologia**: vale `8` numa esfera com um campo
+óptimo *e com um campo péssimo*, porque um par `+1/−1` espúrio cancela-se. ⚠️ O
+módulo do solver já registava essa lição (a alternância ingénua passava no gate da
+soma com singularidades de índice `+4`) — e mesmo assim **nenhum gate media a
+contagem contra o refinamento da malha**.
+
+| malha | vértices | **singularidades** | soma |
+|---|---|---|---|
+| `uv_sphere(24,36)` estruturada | 830 | **8** | 8 |
+| `uv_sphere(96,144)` estruturada | **13 682** | **7** | 8 |
+| esfera iso `α=0,020` | 2 608 | **8** | 8 |
+| esfera iso `α=0,017` | 3 571 | 10 | 8 |
+| esfera iso `α=0,014` | 5 291 | **50** | 8 |
+| esfera iso `α=0,012` | 7 147 | **110** | 8 |
+| esfera iso `α=0,010` | 10 251 | **194** | 8 |
+| ⛔ `sphere_shuffled` (crua) | 13 682 | **448** | **−147** |
+| ⛔ `sphere_noisy` (crua) | 13 682 | **1 115** | **−288** |
+
+⛔ **As duas últimas linhas são pior que qualidade: a soma VIOLA Poincaré–Hopf**
+numa superfície fechada, variedade, com **zero anéis abertos**. Isso só é possível
+se o índice de alguns vértices não estiver a ser calculado — e o
+[`vertex_index`] tem **quatro `return 0` silenciosos** para os casos em que ele
+não consegue. *Um vértice cujo índice não se sabe calcular está a ser afirmado
+como REGULAR.* ⇒ **Defeito nomeado, ainda por corrigir.**
+
+### As três hipóteses que a medição REFUTOU — e por que registá-las
+
+⛔ **Cada uma parecia óbvia, e as três estavam erradas.** Sem a medição, qualquer
+delas teria comprado uma jornada:
+
+| hipótese | o que a mataria | o que a medição deu |
+|---|---|---|
+| *"o passe do F1 sai no teto de rodadas e entrega malha torta"* | rodadas gastas e dispersão de aresta | ⛔ **converge em todos os alvos** (7–13 rodadas de 24), e a dispersão é **plana** (0,127–0,140) |
+| *"o CG não converge em malha grande"* | resíduo por resolução | ⛔ a esfera **estruturada** de 13 682 tem o **pior** resíduo da tabela (`8,8e-4`, 68 resoluções não-convergidas) — **e sai com 7** |
+| *"a reprojeção sobre uma referência facetada faz a curvatura virar ruído"* | referência muito mais fina | ⛔ referência **7× mais fina** (97 922 vértices) move `194 → 168` |
+
+### ⭐ A tabela que o `BATCH_FRACTION` exigia desde que nasceu
+
+O comentário daquela constante dizia, à letra: *"é uma divergência declarada da
+referência… ⛔ não a mexa sem a tabela de qualidade × relógio ao lado."* Aqui está,
+sobre a esfera iso `α=0,010` (10 251 vértices, o caso que sai com 194):
+
+| política | singularidades | resoluções | relógio |
+|---|---|---|---|
+| **1/8 por rodada** (em vigor) | **194** | 67 | **1 841 ms** |
+| 1/16 | 132 | 126 | 3 360 ms |
+| 1/32 | 84 | 232 | 6 335 ms |
+| 1/64 | 72 | 423 | 11 407 ms |
+| 1/128 | **40** | 760 | 22 852 ms |
+| ⭐ 1/256 | **24** | 1 343 | 42 184 ms |
+| ⛔ 1/8, só se `|d| ≤ 0,25` | 194 | 439 | 8 497 ms |
+| ⛔ 1/8, só se `|d| ≤ 0,15` | 194 | 1 074 | 25 365 ms |
+| ⛔ 1/8, só se `|d| ≤ 0,08` | **196** | 2 582 | 72 546 ms |
+| ⛔ 1/8, só se `|d| ≤ 0,04` | 192 | 4 186 | **129 348 ms** |
+
+⭐⭐ **A curva NÃO achata: `194 → 24`, oito vezes melhor, e ainda a descer.** ⇒ **O
+lote não é uma alavanca, é a CAUSA** — e o chão de 8 está ao alcance da lei da
+referência (um inteiro por rodada), que é o limite desta série.
+
+⚠️ **Correção de percurso registada de propósito:** com a série a parar em `1/64`
+(72) eu concluí *"há um segundo mecanismo"*. Dois pontos a mais mataram essa
+leitura. **Uma curva de três pontos que achata pode ser uma curva de cinco que
+não** — e a diferença entre as duas conclusões era uma jornada a procurar um
+mecanismo que não existe.
+
+⛔ **E o limiar de CONFIANÇA é uma RECUSA MEDIDA:** `194 → 192` por **70× de
+relógio**. *Recusar congelar os genuinamente fracionários não compra nada — a
+re-resolução não os move para onde interessa.* ⛔ Não reconstruir.
+
+### ⭐ Por que o lote existe, e qual é a cura real
+
+⚠️ **A lei da referência foi ORÇADA e não corrida**, e o orçamento é o achado: são
+`E − F + 1 ≈ 10 250` resoluções, e as primeiras têm quase todos os inteiros livres
+(dimensão ~30 700, até 600 iterações de CG cada). Dá **mais de uma hora**, contra
+11 s de `1/64`.
+
+⇒ **O lote existe para tapar a falta de um solver INCREMENTAL.** O MIQ da
+referência refatoriza (Cholesky esparso) e faz *update* de posto 1 a cada inteiro
+congelado, então uma re-resolução custa quase nada e um-de-cada-vez é acessível.
+Nós resolvemos por **CG do zero, com o vetor dos inteiros livres a partir de
+ZERO**, todas as vezes. *A cura não é escolher um ponto da tabela: é tornar a
+re-resolução barata.* Duas rotas, por ordem de preço:
+
+1. **Warm-start do bloco dos inteiros** (barato, mede-se numa tarde) — hoje só o
+   `θ` viaja de rodada em rodada; o `q` recomeça em zero, e o CG tem de reconstruir
+   uma resposta que quase não mudou. ⚠️ Instrumento já existe:
+   [`SolveReport::cg_capped`] diz que **23 de 67** resoluções gastam as 600
+   iterações sem convergir.
+2. **Fatoração direta com update** (a rota da referência) — é o que torna a lei
+   de um-de-cada-vez pagável, e é trabalho de crate.
+
+### O que isto muda no plano
+
+1. ⛔ **A quantização (F4) e a montagem (F5) estão a ser alimentadas por um campo
+   mau nas malhas difíceis.** Os 21 irregulares da esfera são o que a cadeia dá
+   quando o campo está bom; os 47 (com o F1 na frente) são o que ela dá quando não
+   está. *O gargalo mudou de fase.*
+2. ⭐ **O F2 volta a ser o próximo trabalho**, à frente da porta no shell — porque
+   ligar o botão hoje é ligar o caso mau.
+3. ⚠️ O `Rounding` já é um parâmetro (`solve_miq_with`), então o compromisso é
+   **exposto e medido**, não escondido numa constante. ⛔ **A constante em vigor
+   NÃO foi mexida** — mudá-la sem a rota (1) seria trocar 194 singularidades por
+   42 segundos de espera, e o pivô não existe para escolher entre dois números
+   maus.
+4. ⛔ **E há um defeito ainda por corrigir que não é de qualidade:** os quatro
+   `return 0` silenciosos do [`vertex_index`]. Um vértice cujo índice não se
+   consegue calcular está a ser afirmado **regular**, e é isso que deixa a soma
+   sair `−147` onde a topologia exige `+8`.
 
 ---
 
@@ -734,9 +966,18 @@ solver.
 
 ## 6 — Esforço e ordem de ataque
 
-Ordem recomendada: ~~F0 → F1 → F2 → (F4 protótipo) → F3~~ **→ F5 → F7 → F6 → F8**, com a sanitização
-do F1 (§4-quinquies) a entrar na frente do F5 — ⛔ ela não é polimento: uma malha não-manifold faz o
-campo mentir, e tudo a jusante herda a mentira.
+Ordem recomendada: ~~F0 → F1 → F2 → (F4 protótipo) → F3 → F5~~ **→ F2-bis → F5.2 (a porta) → F7 → F6 → F8**.
+
+⚠️ **A ordem mudou em 2026-08-21, e a razão é uma medição.** A sanitização entrou
+à frente do F5 como este parágrafo mandava, e ⭐ **a causa não era o F1**: era uma
+colisão de diagonal no flip da `ph2d-mesh` (§4-septies). Curá-la destravou três
+malhas do corpus — e **expôs o gargalo seguinte**, que é o campo (§4-octies).
+
+⛔ **A porta no shell (F5.2) desce na fila de propósito.** Ligar o botão hoje é
+ligar o caso mau: sobre malhas com distribuição irregular — que é o que sai de um
+sculpt real — o campo dá **194 singularidades** onde a topologia admite 8. *Uma
+porta aberta para o pior caso é pior que porta nenhuma, porque o veredito do Enio
+seria sobre o defeito e não sobre a cadeia.*
 
 ⚠️ **F4 saiu da ordem natural de propósito, e a aposta pagou.** Ela era a fase de maior risco e a que o
 produto inteiro depende; medi-la sobre os patches que o oráculo **já exporta** custou uma jornada e

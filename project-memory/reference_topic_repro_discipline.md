@@ -28,3 +28,4 @@ metadata:
 - [[feedback_a_component_missing_its_contract_suspect_the_caller_first]] — trocar o componente esconde a causa e costuma trazer um 2º defeito
 - [[feedback_a_per_pass_gain_becomes_a_product_gain_only_through_the_cadence]] — 1,56× virou 1,10×; e razão não se transporta entre cenas
 - [[feedback_a_rule_copied_to_a_second_site_may_lose_its_premise]] — ablacione um braço por vez; o outro sítio pode ser o controle positivo
+- [[feedback_a_flattening_curve_may_need_more_points]] — curva de 4 pontos que achata pode ser uma de 6 que nao; nao declare 2o mecanismo cedo

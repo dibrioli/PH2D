@@ -14,6 +14,8 @@ metadata:
 - [[feedback_layered_defenses_need_per_layer_gates]] — defesa em camadas = gate POR camada
 - [[feedback_a_threshold_must_live_where_the_domain_is_empty]] — limiar mora onde o domínio é VAZIO
 - [[feedback_a_ratio_between_two_sick_channels_is_green_by_construction]] — razão entre dois canais doentes é verde; ancore no que o produto promete
+- [[feedback_a_ruler_that_deduplicates_cannot_report_duplication]] — regua que DEDUPLICA nao denuncia duplicacao; conte por OCORRENCIA
+- [[feedback_a_conserved_invariant_cannot_grade_quality]] — invariante CONSERVADA e' verde por construcao; a regua e' a CONTAGEM
 - [[feedback_a_green_gate_may_be_green_by_accident]] — verde de 1ª pode ser acidente; suspeite do fixture
 - [[feedback_a_fixture_can_land_in_a_chaotic_regime]] — Δ enorme? compare com quantidade física
 - [[feedback_an_arch_gate_anchored_on_a_file_fails_when_the_loc_cap_moves_the_code]] — arch-gate ancorado num ARQUIVO morre no corte de LOC; leia a FAMÍLIA por porta única

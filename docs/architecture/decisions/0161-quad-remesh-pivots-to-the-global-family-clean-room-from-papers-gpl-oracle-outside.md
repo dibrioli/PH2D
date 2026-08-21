@@ -77,7 +77,7 @@ harness.
 | crate | paper-fonte | o que a medição diz |
 |---|---|---|
 | `ph2d-remesh-iso` | QuadWild 2021 §4 | ⚠️ **NÃO é a alavanca** — cura o `cube` e move a agulha nos dois sentidos no resto (PLAN §4-bis) |
-| `ph2d-crossfield` | Bommes 2009 (MIQ) + QuadWild §5 | ⭐ **paridade no CAMPO**: 8 singularidades numa esfera, o ótimo topológico (PLAN §4-ter) |
+| `ph2d-crossfield` | Bommes 2009 (MIQ) + QuadWild §5 | ⚠️ **paridade no CAMPO só em malha BEM DISTRIBUÍDA** — 8 numa grade `uv`, **194** na mesma esfera com distribuição irregular (⛔ célula corrigida em 21/08; PLAN §4-octies) |
 | `ph2d-quantize` | **Bi-MDF 2023 §3 e §4.4** | ⭐ **fecha com o ótimo DEMONSTRADO** em todos os layouts fechados do oráculo (PLAN §4-quater) |
 | `ph2d-trace` | QuadWild 2021 §6 | ⭐ **a cadeia fecha**: o layout deixou de vir do oráculo e o F4 quantiza-o com prova (PLAN §4-quinquies) |
 | `ph2d-quadfill` | QuadWild 2021 §7–§8 | ⭐⭐ **a MALHA**: 100 % quads, χ exata, irregulares de **39,7 % → 0,5 %** — ~85× (PLAN §4-sexies) |
@@ -108,6 +108,29 @@ vértices irregulares. Com a cadeia F1..F5 completa, a mesma tabela, nas mesmas 
 ⭐ **A decisão deste ADR está PAGA**: a fração caiu ~85× e passou a ser da mesma ordem do oráculo.
 ⚠️ **E não é o chão.** Uma esfera admite **8** irregulares; o oráculo fica praticamente nele, nós
 ficamos em **21**. O resto vem dos ~2× patches a mais do F3 — nomeado, medido, e não escondido.
+
+## Emenda 3 (2026-08-21) — o gargalo mudou de fase, e a tese do ADR não muda
+
+A cadeia deixou de tropeçar na topologia e passou a tropeçar no **campo**.
+
+1. ⭐ **A não-variedade que travava o `cube` era do FLIP da `ph2d-mesh`**, não do
+   F1: duas trocas da mesma rodada criavam a mesma diagonal, e nenhuma a via na
+   adjacência de entrada. Curada por uma quarta recusa, com dois gates e duas
+   provas de mutação. Custo medido: **uma troca em 9 968**. Ela destravou o `cube`,
+   a esfera sacudida (**> 20 min → 1,6 s**) e a ruidosa (PLAN §4-septies).
+2. ⛔ **E expôs que o F2 só chega ao ótimo em malhas bem distribuídas** — 8
+   singularidades numa grade `uv` de 13 682 vértices, **194** na mesma esfera
+   remalhada isotropicamente a 10 251. A causa é o **lote** do rounding guloso
+   (`194 → 24` ao apertá-lo), que por sua vez existe porque a re-resolução é um CG
+   do zero em vez de uma fatoração com *update* (PLAN §4-octies).
+
+⚠️ **Nada disto toca a decisão deste ADR** — a família global continua a ser a
+certa, e a tabela da Emenda 2 continua a valer nas malhas em que foi medida. O que
+muda é **onde está o trabalho**: a porta no shell desce na fila, porque ligar o
+botão hoje é ligar o pior caso.
+
+⚠️ **E a fronteira jurídica não foi tocada por nada disto**: a cura é da nossa
+crate de malha, e a tabela de rounding saiu de medir o nosso próprio solver.
 
 ## Papers (o que é permitido)
 

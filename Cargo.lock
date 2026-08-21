@@ -5101,6 +5101,7 @@ name = "ph2d-crossfield"
 version = "0.0.0"
 dependencies = [
  "ph2d-mesh",
+ "ph2d-remesh-iso",
 ]
 
 [[package]]

@@ -1,6 +1,8 @@
 # 18 — Precisão de 16 bits nas sprites (o par `Format` volta, agora COM modelo)
 
-> **Estado:** plano aberto. W1 em construção.
+> **Estado:** **W1–W6 FEITAS.** Abertos: exportar PNG de 16 bits (espera pedido real) e a sprite
+> emissiva (produto). As recusas medidas estão na tabela no fim — **leia-a antes de propor
+> qualquer coisa aqui**.
 > **Ordem:** Enio, 2026-08-20 — *"vamos corrigir a UI da sprite no painel com as duas opções e com os
 > botões que a partir de agora devem converter a imagem."*
 > **Antecedente obrigatório:** [`17_plano_render_source_e_hand_packed.md`](17_plano_render_source_e_hand_packed.md) §5,
@@ -19,9 +21,17 @@ congelado. Foi feito. A objeção apresentada, com os números:
    vem da luz somada em cima dela, e essa conta já é 16 bits*.
 2. **8 → 16 não cria informação.** Uma sprite que nasceu 8-bit convertida para 16 continua com 256
    degraus por canal; ganha prateleiras vazias.
-3. **O defeito visual real** (anéis/faixas num degradê limpo) está na **descida final sem dither** —
-   `git grep -i dither` sobre `crates/*/src` + `shells/desktop/src` devolve **um** hit, e é um
-   rótulo de painel de smoke. Não há dither em lugar nenhum do produto.
+3. **O defeito visual real** (anéis/faixas num degradê limpo) está na **descida final sem dither**.
+   ⚠️ ~~`git grep -i dither` devolve **um** hit, e é um rótulo de painel de smoke.~~ **A evidência
+   estava ERRADA, e foi corrigida ao construir a W6:** o grep devolve **dezenas**, e o Color
+   Equalization tem um Floyd–Steinberg completo, com dois sliders e gate de brilho médio
+   ([`posterize_quantize.rs`](../../crates/ph2d-tool-color-equalization/src/algorithm/posterize_quantize.rs)).
+   ⛔ **Mas ele é OUTRA COISA:** aquele é um efeito **de estilo** — reduz a imagem a N níveis *de
+   propósito* para dar o aspecto de arte por pixels. O que faltava é o **técnico e invisível**, de
+   amplitude abaixo de meio passo, na quantização final. *Duas coisas com o mesmo nome, e só uma
+   delas o utilizador quer ver.*
+   A **afirmação** («não há dither na quantização final») era verdadeira; a **prova** citada não a
+   provava. *Uma nota de diferido não é spec — confere-se e corrige-se no sítio.*
 
 **Veredito do Enio: construir 16 bits de verdade.** A decisão está tomada e este doc a executa. O
 que os três pontos acima passam a valer é **escopo**: eles dizem onde 16 bits *não* deve ser
@@ -271,16 +281,101 @@ reprova.
 - ✅ A nota de custo aparece **antes** do clique (*"RGBA16 doubles memory and forces Individual"*) —
   *uma consequência que só aparece depois do clique lê-se como um bug*.
 
+### W6 — O dither da descida para 8 bits · ✅ **FEITA** (metade), ⛔ **RECUSADA** (a outra)
+
+> Enio, 2026-08-21: *"siga implementando"*, sobre o item que a lista de abertos chamava de *"o
+> defeito visual **real** desta conversa"*.
+
+⚠️ **A wave partiu-se em duas ao ser medida, e as duas metades chegaram a respostas opostas.** Há
+**duas** descidas para 8 bits, e elas não se parecem nada:
+
+| | onde | quem manda | dither? |
+|---|---|---|---|
+| **W6.1** | o botão `RGBA8` do Inspector | **o autor**, e o resultado fica gravado | ✅ **ship*ou*** |
+| **W6.2** | o passe de tonemap → ecrã | ninguém; acontece a cada quadro | ⛔ **recusado, com número** |
+
+#### W6.1 — a descida que o autor COMANDA ✅
+
+[`ph2d-color/src/dither.rs`](../../crates/ph2d-color/src/dither.rs). Bayer 8×8 ordenado, **não**
+Floyd–Steinberg: o padrão é função **só da posição do pixel**, e numa engine em que a mesma imagem é
+recortada e ladrilhada um dither que dependesse do varrimento faria o mesmo pixel sair diferente
+conforme o recorte em que calhou (HR-5 também proíbe RNG por quadro). A matriz é **derivada** da
+recorrência num `const fn` — 64 números à mão continuariam a *parecer* um dither se um estivesse
+trocado.
+
+⚠️ **A amplitude é MEDIDA, e é ela que torna a ida-e-volta exacta.** Meio passo inteiro estragaria
+arte por pixels: o valor que chega já não está na grelha, porque a mantissa de 11 bits do meio-float
+o devolve ao lado. Medido sobre os 256 bytes:
+
+| canal | deriva máxima | onde |
+|---|---|---|
+| cor (atravessa a curva sRGB) | 0,037231 LSB | byte 192 |
+| **alfa** (escala directa) | **0,062012 LSB** | byte 239 |
+
+⚠️ **É o alfa que manda, e é contra-intuitivo:** sem curva nenhuma, o erro relativo do meio-float
+(2⁻¹²) aparece **inteiro** em LSB no topo da faixa, enquanto na cor a derivada da sRGB o encolhe. *O
+canal sem curva é o que tem menos folga.* Daí `DITHER_SPAN_LSB = 1 − 2 × 0,062012`.
+
+Gate exaustivo: 256 bytes × 64 células = **16 384 casos**, nenhum byte já na grelha se mexe. **Prova
+de mutação:** com a deriva a `0.0` (o meio passo «de manual») o gate morre alto, 96 valores movidos.
+
+**Duas portas, de propósito:** `rgba16_to_rgba8` é **fiel** e serve leituras (*um read que devolvesse
+valores diferentes dos guardados não é um read*); `rgba16_to_rgba8_dithered` serve o botão. Há gate
+de costura contra o refactor que as colapsa — ele não daria erro nenhum, e as faixas voltavam em
+silêncio.
+
+#### W6.2 — a descida do ECRÃ ⛔ recusada, e o que ficou no lugar
+
+Construída, medida ([`tonemap_descent_gpu`](../../crates/ph2d-render/tests/tonemap_descent_gpu.rs),
+RTX + wgpu 28) e **revertida** — o código executável do shader não mudou uma linha:
+
+| | |
+|---|---|
+| folga máxima que não move byte nenhum | **~0,0283 LSB** (de 0,5 possíveis) |
+| com o pico que a W6.1 usa (0,4311 LSB) | **5,98%** dos pixels movidos |
+
+Um dither ali teria de caber em **7%** da amplitude do caminho de software, e a 7% não espalha nada.
+A alternativa é 6% de uma cor chapada virar mosquito — numa ferramenta de arte por pixels, o defeito
+pior de todos.
+
+⚠️ **O mecanismo, que é o que impede reconstruir isto:** o valor que chega ao tonemap é
+`hw_decode(byte)`, e a **tabela sRGB do hardware não é a curva ideal** (a W2 já a tinha medido a
+`0,00195` em linear, ~0,34 de um código). `hw_encode(hw_decode(N)) == N` é garantido pelas
+especificações — mas só enquanto ninguém empurra o valor pelo meio. Um shader que re-codifique com a
+curva *ideal*, some o viés e volte a descodificar mede a distância à fronteira com uma régua que não
+é a do hardware, e a folga que sobra é **propriedade da placa**. ⛔ Encolher a amplitude até passar
+trocaria um defeito visível por um número ajustado a uma placa só.
+
+**No lugar do dither ficaram duas coisas que não existiam:**
+
+1. ✅ **`a_flat_eight_bit_colour_survives_the_descent`** — o gate de que uma cor chapada atravessa o
+   passe final **byte-exacta**, os 256 bytes nas 64 posições. É a promessa central de uma ferramenta
+   2D e atravessa três traduções que ninguém escolheu; ⚠️ ela é verdadeira **por cancelamento, não
+   por exactidão**, e nunca tinha sido medida.
+2. ✅ **A sonda**, que mede a folga em **qualquer** máquina. Quem quiser reabrir isto começa por a
+   correr, não por escrever um shader.
+
+⚠️ **O erro que a sonda cometeu primeiro vale mais que o resultado.** A primeira versão somava o viés
+**antes** do meio-float — outra cadeia: o `f16` é uma quantização, e um viés infinitesimal que mude o
+lado para que ele arredonda vira um salto de 0,037 LSB. Ela respondia *«folga = 0,0000»*, que é a
+resposta certa à pergunta errada. O **controle negativo** (viés zero tem de dar exactamente o que o
+passe de produção dá) é o que agora o impede, e não existia. *Um aparelho que mede uma cadeia
+diferente da que se vai construir dá um número verdadeiro sobre nada.*
+
+#### E uma nota que esta wave invalidou
+
+O gatilho de migração do AgX em [`tonemap.wgsl`](../../crates/ph2d-render/src/shaders/tonemap.wgsl)
+dizia «quando a importação HDR (EXR / HDR / **PNG de 16 bits**) ship*ar*». **Ship*ou* — na W2.4
+desta mesma wave.** A nota está corrigida no sítio (`CLAUDE.md` §0.0: *quem move o número que tornava
+algo inalcançável tem de reconferir a nota*). ⛔ E mesmo assim o LUT **não** se acende: o que falta
+não é o gatilho, é o **bake**, que continua TBD — e o LUT identidade aplica a curva log que produz o
+*«dull look»* que o Enio já recusou na ronda 7 do M14.5.
+
 ### ⏳ O que fica ABERTO, e por quê
 
-1. **O dither na descida para 8 bits** (§1.3) — o defeito visual **real** desta conversa, e o único
-   item que não é sobre 16 bits. Continua sem dono: `git grep -i dither` sobre o produto dá **zero**.
-   ⚠️ Ele não pertence a esta wave (é o último passo do pipeline de ecrã, não do armazenamento de
-   sprite), mas foi o que motivou a pergunta do Enio — *fechar a wave sem o nomear seria deixá-lo
-   morrer com a conversa*.
-2. **Exportar PNG de 16 bits** — a importação preserva; o `PngExporter` continua a emitir 8 bits e a
+1. **Exportar PNG de 16 bits** — a importação preserva; o `PngExporter` continua a emitir 8 bits e a
    recusar `FlatHdr`. Espera um pedido real.
-3. ⛔ **Sprite emissiva** (§6.1) — o `Rgba16Float` dá a folga acima de 1.0 de graça, e não há
+2. ⛔ **Sprite emissiva** (§6.1) — o `Rgba16Float` dá a folga acima de 1.0 de graça, e não há
    conceito de emissivo em sprite nenhuma. É produto, não formato.
 
 ---
@@ -307,3 +402,20 @@ reprova.
 3. ⛔ **32 bits.** `LinearRgba` é `f32` no decode porque é a moeda do importador; **armazenar** f32
    seria 16 B/px (4×) sem consumidor que o peça.
 4. ⛔ **Vender isto como melhoria de bloom.** §1.1. A UI não pode sugeri-lo.
+5. ⛔ **Dither no passe de tonemap** (W6.2). Folga medida: **0,0283 LSB** de 0,5 — 7% do que o
+   caminho de software usa. A tabela sRGB do hardware não é a curva ideal, e a folga é propriedade
+   **da placa**. Sonda: `tonemap_descent_gpu`.
+
+---
+
+## ⛔ Recusas MEDIDAS
+
+| O que foi tentado | O que a medição disse | Onde |
+|---|---|---|
+| Dither no passe de tonemap (ecrã) | folga **0,0283 LSB** de 0,5; ao pico da CPU, **5,98%** dos pixels movem | [`tonemap.wgsl`](../../crates/ph2d-render/src/shaders/tonemap.wgsl) · [sonda](../../crates/ph2d-render/tests/tonemap_descent_gpu.rs) |
+| Dither com meio passo inteiro (o «de manual») | move 96 valores que já estavam na grelha | [`dither.rs`](../../crates/ph2d-color/src/dither.rs) |
+| Acender o LUT AgX agora que o gatilho disparou | falta o **bake**; o LUT identidade aplica curva log (o *dull look* recusado no M14.5 r7) | [`tonemap.wgsl`](../../crates/ph2d-render/src/shaders/tonemap.wgsl) |
+| Preservar 16 bits no Upscale filtrado / Rasterize / Equalize / Color-Eq / Painter | eles **calculam** o pixel de saída; sem resampler de 16 bits o rótulo mentiria | [doc 19 §4](19_auditoria_precisao_por_ferramenta.md) |
+| Promover 8→16 em `Asset::image_rgba16()` | não cria informação; deixaria o chamador a crer em degraus que não existem | [`asset.rs`](../../crates/ph2d-asset/src/asset.rs) |
+| Bloom/iluminação como argumento para 16 bits | o `GameRt` e o `fx_stack` já são meio-float; ganho **nenhum** | §1.1 |
+| `Rgba16Unorm` em vez de `Rgba16Float` | exige `TEXTURE_FORMAT_16BIT_NORM`, que é mascarada pelo adapter | §2 (M5) |

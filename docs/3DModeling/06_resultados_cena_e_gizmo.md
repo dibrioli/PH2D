@@ -919,6 +919,72 @@ passaria com a paralela também convergente.
 
 ---
 
+## §17 — W16: a casca e o afastamento — a tese em duas linhas de aritmética (20/08)
+
+O plano da linha (§6, W4) pede *"união/diferença/intersecção com raio por operação, **casca,
+offset**, draft, padrões"*. As booleanas fecharam na W9; estes dois não existiam — e são onde a tese
+do módulo mais aparece.
+
+### ⭐ Por que estes dois, e não outros dois
+
+| verbo | a conta | por que ela não pode falhar |
+|---|---|---|
+| **casca** | `\|f\| − t/2` | o módulo de uma distância **é** a distância à mesma superfície, vista dos dois lados |
+| **afastamento** | `f − d` | deslocar a superfície por uma distância é o que uma distância assinada **é** |
+
+⚠️ **Numa malha, a casca é a operação que FALHA**: ela pede um offset da superfície, e um offset de
+malha auto-intersecta em toda concavidade mais apertada do que a espessura. Todo modelador de malha
+tem um botão de casca com uma lista de exceções ao lado. *Aqui a lista não existe*, e é essa a razão
+de o módulo ser um campo.
+
+⭐ **E o gate prova-o com um oráculo INDEPENDENTE**, na disciplina desta crate: a casca de uma esfera
+é comparada com a **subtração de duas esferas analíticas** — escrita com as primitivas e a booleana
+que já existiam. A igualdade é **exata**, não aproximada. Um gate que comparasse a casca consigo
+mesma provaria que o código faz o que o código faz.
+
+### A PILHA, e de onde a forma dela vem
+
+Os modificadores de um nó são uma **lista ordenada**, não um grafo: encascar-e-afastar não é
+afastar-e-encascar, e a ordem tem de ser dita. É a mesma forma que os *Live Path Effects* do
+vetorial mediram ([ADR-0132]: *"uma pilha por path, não um grafo de nós"*) — um grafo paga um editor
+de grafo para exprimir uma sequência. Há gate: as duas ordens têm de **discordar** no mesmo ponto,
+senão um conjunto sem ordem teria entrado no lugar da lista sem nada acusar.
+
+### Onde cada peça foi parar, e por quê
+
+| decisão | razão |
+|---|---|
+| `FieldMods` é **componente próprio e opcional** | quase nenhum nó tem modificador; e apendar campo a um componente **posicional** quebraria todo projeto já gravado. Um componente **novo** custa zero degraus de `PROJECT_SCHEMA` — precedente do `VecStrokeProfile`/ADR-0148, escrito na escada |
+| a pilha corre **antes** da pose | assim a espessura é um número **local**, e um ancestral escala-a junto com tudo o mais do nó — *uma regra para todo número deste módulo* |
+| os botões são **interruptores** | um modificador é um **estado** do nó; um botão que só acrescenta deixaria o artista a empilhar cascas sem perceber, e sem forma de tirar a não ser desfazendo |
+| tirar o último **remove o componente** | o undo compara **bytes**: um componente presente e vazio não muda a forma e muda os bytes, e ligar-e-desligar deixaria um passo a mais do que o artista fez |
+| a casca **nasce numa fração da peça** | um número absoluto é invisível numa peça grande e engole uma pequena — nos dois casos o botão parece não ter feito nada. Há gate com duas peças de escalas diferentes |
+
+⚠️ **`FIELD_DOC_VERSION` 2 → 3**, e a migração é **vazia** — o que tem de estar escrito: nada
+persiste um `FieldDoc` (ele é cozido da cena a cada quadro; o arquivo guarda os *componentes*). O
+degrau sobe na mesma, porque a alternativa é o número deixar de querer dizer alguma coisa no dia em
+que alguém o persistir. Os dois gates de bytes pinados foram **re-pinados com a conta ao lado**
+(145 → 148 e 84 → 85: um byte de comprimento da pilha vazia, por nó) — *legítimo porque a versão
+subiu junto e a conta bate*.
+
+### Provas de mutação
+
+| Mutação | Reprovou |
+|---|---|
+| a casca deixa de centrar a parede | `the_shell_of_a_sphere_is_exactly_the_difference_of_two_analytic_spheres` · `the_wall_measures_the_thickness_that_was_asked_for` |
+| a pilha deixa de correr | os quatro gates do avaliador |
+| a espessura de nascimento vira constante | `a_shell_is_born_as_a_fraction_of_the_part_not_a_fixed_number` |
+| o interruptor volta a só acrescentar | `the_modifier_button_is_a_switch_not_a_stack_of_shells` |
+
+⚠️ **E uma prova de mutação foi interrompida pelo tempo LIMITE com o código mutado na árvore.** O
+`cp` de restauro é a última linha do laço, e o corte veio antes dela. Só o `git status` o denunciou.
+*Uma mutação que não é desfeita é uma mutação que shipa* — a defesa é a mesma de sempre: conferir a
+árvore, não a saída.
+
+[ADR-0132]: ../architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)

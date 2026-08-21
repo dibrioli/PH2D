@@ -39,6 +39,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.op.union" => "Union",
         "panel.model3d.op.subtract" => "Subtract",
         "panel.model3d.op.intersect" => "Intersect",
+        // ⭐ Os MODIFICADORES. ⚠️ São interruptores: aceso quer dizer que o objeto já tem um.
+        // "Hollow" e não "Shell" — o rótulo diz o que se OBTÉM ("oco"), e "Shell" num app 3D é
+        // ambíguo com a casca de superfície. "Grow/Shrink" diria os dois sentidos, mas o número faz
+        // isso melhor: negativo encolhe, e o rótulo fica com o nome da operação.
+        "panel.model3d.mod.shell" => "Hollow",
+        "panel.model3d.mod.offset" => "Offset",
+        // ⭐ Os nomes das linhas de número dos modificadores.
+        "field.mod.shell" => "Thickness",
+        "field.mod.offset" => "Offset",
         // Ações sobre o objeto escolhido.
         "panel.model3d.act.duplicate" => "Duplicate",
         "panel.model3d.act.delete" => "Delete",

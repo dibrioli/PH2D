@@ -61,6 +61,11 @@ pub enum Param {
     Scale,
     /// Uma dimensão da forma — a posição na lista de [`dims`].
     Dim(u16),
+    /// O número de um **modificador**, pela posição dele na pilha do nó. Ver [`crate::mods`].
+    ///
+    /// ⚠️ A posição, e não a natureza: a pilha pode ter duas cascas, e uma chave por natureza não
+    /// as distinguiria — escrever numa escreveria na outra.
+    Mod(u16),
 }
 
 /// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.

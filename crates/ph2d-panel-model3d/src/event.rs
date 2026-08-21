@@ -115,6 +115,13 @@ pub(crate) fn apply_event(
                 true
             }
         }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_mod_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_mod_button).unwrap_or(0);
+            slot < state::current().mods.len() && {
+                state::push_intent(ModelIntent::ToggleMod { slot });
+                true
+            }
+        }
         WidgetEvent::Click(id) if slot_in(id, ids::model3d_act_button).is_some() => {
             let slot = slot_in(id, ids::model3d_act_button).unwrap_or(0);
             slot < state::current().acts.len() && {

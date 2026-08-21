@@ -55,6 +55,7 @@ pub(crate) fn node_under(
             vec![Node {
                 xform: ph2d_field_ecs::world_xform(world, e),
                 kind: NodeKind::Leaf(prim.clone()),
+                mods: Vec::new(),
             }],
             NodeId(0),
         );

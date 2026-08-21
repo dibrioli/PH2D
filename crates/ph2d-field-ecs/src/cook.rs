@@ -11,7 +11,7 @@ use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::world::World;
 use ph2d_field::{FieldDoc, FieldError, Node, NodeId, NodeKind, NodeShape, Xform};
 
-use crate::{FieldNode, FieldPose};
+use crate::{FieldMods, FieldNode, FieldPose};
 
 /// **Coze a subárvore de `root` num [`FieldDoc`].**
 ///
@@ -83,11 +83,19 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
                 let xform = world
                     .get::<FieldPose>(e)
                     .map_or(Xform::IDENTITY, |p| p.xform);
+                // ⚠️ **A pilha é um componente OPCIONAL**, e a esmagadora maioria dos nós não a
+                // tem: pô-la dentro do `FieldNode` custaria bytes em todo nó e mudaria a forma
+                // posicional de um componente que já está gravado em projetos.
+                let mods = world
+                    .get::<FieldMods>(e)
+                    .map(|m| m.stack.clone())
+                    .unwrap_or_default();
                 let id = match &node.shape {
                     NodeShape::Leaf(p) => {
                         nodes.push(Node {
                             xform,
                             kind: NodeKind::Leaf(p.clone()),
+                            mods,
                         });
                         Some(NodeId(nodes.len() as u32 - 1))
                     }
@@ -102,6 +110,7 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
                             nodes.push(Node {
                                 xform,
                                 kind: NodeKind::Combine { op: *op, children },
+                                mods,
                             });
                             Some(NodeId(nodes.len() as u32 - 1))
                         }

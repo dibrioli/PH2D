@@ -37,6 +37,7 @@ fn a_doc() -> FieldDoc {
                 half: [0.4, 0.3, 0.2],
                 round: 0.05,
             }),
+            mods: Vec::new(),
         }],
         NodeId(0),
     )

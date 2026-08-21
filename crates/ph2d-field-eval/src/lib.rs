@@ -21,7 +21,7 @@ pub mod profile;
 
 use fidget::context::Tree;
 use fidget::mesh::{Octree, Settings};
-use ph2d_field::{Blend, FieldDoc, Node, NodeKind, Op, Primitive, Xform};
+use ph2d_field::{Blend, FieldDoc, Node, NodeKind, Op, Primitive, Unary, Xform};
 
 /// O motor de avaliação. Ver a nota do `Cargo.toml` sobre o `jit` estar ligado por medição.
 pub type Engine = fidget::jit::JitShape;
@@ -36,7 +36,11 @@ pub fn compile(doc: &FieldDoc) -> Tree {
             NodeKind::Leaf(p) => primitive(p),
             NodeKind::Combine { op, children } => combine(*op, children, &built),
         };
-        built.push(place(&inner, node.xform));
+        // ⭐ **A pilha corre entre o que o nó É e onde ele ESTÁ**, e a ordem das duas metades é a
+        // lei: em local, a espessura de uma casca é um número do nó, e a pose de um ancestral
+        // escala-a junto com tudo o mais do nó — exatamente como a largura de uma caixa. Aplicá-la
+        // depois de `place` faria o único número deste módulo que **não** obedece à cadeia.
+        built.push(place(&stacked(&inner, &node.mods), node.xform));
     }
     built[doc.root().0 as usize].clone()
 }
@@ -61,6 +65,25 @@ fn primitive(p: &Primitive) -> Tree {
         } => profile::sd_extrude(profile, f64::from(half_height), f64::from(round)),
         Primitive::Revolve { ref profile } => profile::sd_revolve(profile),
     }
+}
+
+/// ⭐ **A pilha de modificadores de um nó**, aplicada na ordem em que ela está.
+///
+/// ⚠️ **A ordem importa e é por isso que ela é uma lista**: encascar-e-afastar não é afastar-e-
+/// encascar. `|f| − t` seguido de `− d` dá uma parede mais grossa; `f − d` seguido de `| | − t` dá
+/// uma parede da mesma espessura noutro sítio. Um conjunto sem ordem teria de escolher uma em
+/// silêncio.
+fn stacked(inner: &Tree, mods: &[Unary]) -> Tree {
+    let mut acc = inner.clone();
+    for m in mods {
+        acc = match *m {
+            // ⭐ A casca inteira: o módulo de uma distância É a distância à mesma superfície vista
+            // dos dois lados, e afastá-la meia espessura para cada lado dá a parede.
+            Unary::Shell { thickness } => ops::offset(&acc.abs(), f64::from(thickness) * 0.5),
+            Unary::Offset { distance } => ops::offset(&acc, f64::from(distance)),
+        };
+    }
+    acc
 }
 
 fn blended(b: Blend) -> ops::Blended {
@@ -228,10 +251,7 @@ impl Field {
 /// Atalho de leitura para quem monta um documento à mão.
 #[must_use]
 pub fn leaf(p: Primitive, xform: Xform) -> Node {
-    Node {
-        xform,
-        kind: NodeKind::Leaf(p),
-    }
+    Node::new(xform, NodeKind::Leaf(p))
 }
 
 #[cfg(test)]

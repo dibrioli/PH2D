@@ -119,6 +119,9 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // ⭐ **Criar e combinar** — sem estes dois, o módulo edita a cena que veio pronta e mais nada.
     y = paint_chips(ctx, &snapshot.adds, ids::model3d_add_button, x, w, y);
     y = paint_chips(ctx, &snapshot.ops, ids::model3d_op_button, x, w, y);
+    // ⭐ **O que se faz À forma depois de ela existir** — a casca e o afastamento, os dois verbos em
+    // que a tese do módulo mais aparece (ver `ph2d_field::mods`).
+    y = paint_chips(ctx, &snapshot.mods, ids::model3d_mod_button, x, w, y);
     y = paint_chips(ctx, &snapshot.acts, ids::model3d_act_button, x, w, y);
     if snapshot.rows.is_empty() {
         y = paint_note(ctx, tr("panel.model3d.empty"), x, w, y);

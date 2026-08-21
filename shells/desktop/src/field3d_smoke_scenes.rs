@@ -37,10 +37,12 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
     let combine = |op: Op, children: Vec<NodeId>| Node {
         xform: Xform::IDENTITY,
         kind: NodeKind::Combine { op, children },
+        mods: Vec::new(),
     };
     let leaf = |p: Primitive, x: Xform| Node {
         xform: x,
         kind: NodeKind::Leaf(p),
+        mods: Vec::new(),
     };
     let s = std::f32::consts::FRAC_1_SQRT_2;
 

@@ -12,11 +12,11 @@ use ph2d_field::xform::{
     quat_axis_angle, quat_conj, quat_mul, quat_normalize, quat_rotate, set_rotation_degree,
 };
 use ph2d_field::{
-    Bound, Dim, FieldError, NodeShape, Op, Param, Primitive, Span, Xform, characteristic_size,
-    round_limit, set_shape_radius,
+    Bound, Dim, FieldError, NodeShape, Op, Param, Primitive, Span, Unary, Xform,
+    characteristic_size, round_limit, set_shape_radius,
 };
 
-use crate::{FieldNode, FieldPose};
+use crate::{FieldMods, FieldNode, FieldPose};
 
 /// **A árvore em pré-ordem**, com a profundidade de cada nó — a mesma ordem e o mesmo aninhamento
 /// que a Hierarquia mostra.
@@ -189,7 +189,78 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 .map(|(i, d)| (Param::Dim(i as u16), d)),
         ),
     }
+    // ⭐ **Os modificadores vêm por ÚLTIMO**, e é a ordem em que eles correm: primeiro o que a forma
+    // é, depois o que se fez a ela. Uma linha de casca acima da largura da caixa leria como se a
+    // parede fosse uma propriedade da caixa, e ela é uma operação sobre o resultado.
+    out.extend(
+        mods_of(world, entity)
+            .into_iter()
+            .enumerate()
+            .map(|(i, m)| {
+                (
+                    Param::Mod(i as u16),
+                    Dim {
+                        key: m.key(),
+                        value: m.value(),
+                        span: m.span(),
+                    },
+                )
+            }),
+    );
     out
+}
+
+/// ⭐ **A pilha de modificadores deste nó** — vazia quando ele não tem nenhum.
+#[must_use]
+pub fn mods_of(world: &World, entity: Entity) -> Vec<Unary> {
+    world
+        .get::<FieldMods>(entity)
+        .map(|m| m.stack.clone())
+        .unwrap_or_default()
+}
+
+/// ⭐ **Acrescenta um modificador ao nó**, no ponto neutro da natureza dele.
+///
+/// ⚠️ **O tamanho de nascimento vem da PEÇA**, não de uma constante: uma casca é uma fração da
+/// menor peça sob o nó ([`subtree_scale`]), porque só quem vê a peça sabe o que é fino nela. Um
+/// número absoluto seria invisível numa peça grande e engoliria uma pequena — nos dois casos o
+/// artista conclui que o botão não fez nada.
+///
+/// No-op silencioso se a entidade não é um nó.
+pub fn add_mod(world: &mut World, entity: Entity, kind: ph2d_field::UnaryKind) {
+    if world.get::<FieldNode>(entity).is_none() {
+        return;
+    }
+    let born = Unary::born(kind, subtree_scale(world, entity));
+    let mut e = world.entity_mut(entity);
+    if let Some(mut m) = e.get_mut::<FieldMods>() {
+        m.stack.push(born);
+    } else {
+        e.insert(FieldMods { stack: vec![born] });
+    }
+}
+
+/// ⭐ **Tira do nó o PRIMEIRO modificador daquela natureza**, e diz se tirou algum.
+///
+/// ⚠️ O primeiro, e não todos: a pilha é ordenada, e apagar em bloco tiraria um que o artista pôs
+/// de propósito depois de outro. Devolve `false` quando não havia nenhum — é o que faz o botão ser
+/// um interruptor honesto.
+pub fn remove_mod(world: &mut World, entity: Entity, kind: ph2d_field::UnaryKind) -> bool {
+    let Some(mut m) = world.get_mut::<FieldMods>(entity) else {
+        return false;
+    };
+    let Some(i) = m.stack.iter().position(|u| u.kind() == kind) else {
+        return false;
+    };
+    m.stack.remove(i);
+    // ⚠️ **A pilha vazia sai do nó.** Um componente presente e vazio não muda a forma, mas muda os
+    // BYTES — e o undo compara bytes: acrescentar e tirar um modificador deixaria a peça diferente
+    // de si mesma, e o desfazer teria um passo a mais do que o artista fez.
+    let empty = m.stack.is_empty();
+    if empty {
+        world.entity_mut(entity).remove::<FieldMods>();
+    }
+    true
 }
 
 /// As chaves i18n dos três eixos da posição.
@@ -262,6 +333,22 @@ pub fn set_param(
             Ok(())
         }
         Param::Dim(i) => set_dim(world, entity, i as usize, value),
+        // ⚠️ A escrita passa pela porta do próprio modificador (`Unary::set_value`), que é a mesma
+        // que a validação do documento usa — ver a nota lá sobre duas listas de regras.
+        Param::Mod(i) => {
+            let id = entity.to_bits() as u32;
+            let Some(mut m) = world.get_mut::<FieldMods>(entity) else {
+                return Err(FieldError::BadRoot);
+            };
+            let Some(slot) = m.stack.get_mut(i as usize) else {
+                return Err(FieldError::BadRoot);
+            };
+            let previous = *slot;
+            slot.set_value(id, value).inspect_err(|_| {
+                // Uma recusa deixa o nó **como estava** — a invariante do módulo.
+                *slot = previous;
+            })
+        }
     }
 }
 

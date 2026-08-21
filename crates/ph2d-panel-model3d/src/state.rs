@@ -99,6 +99,12 @@ pub struct ModelSnapshot {
     /// nada é pior do que um que não aparece. Ele mostra-se quando uma operação está selecionada
     /// (e aí o ativo diz qual ela é) ou quando há dois nós irmãos escolhidos.
     pub ops: Vec<ModeChip>,
+    /// ⭐ **Os modificadores** — casca e afastamento. São **interruptores**: `active` diz que o nó
+    /// já tem um daquela natureza, e clicar tira-o.
+    ///
+    /// ⚠️ Interruptor e não ação, ao contrário das formas: um modificador é um **estado** do nó, e
+    /// um botão que só acrescenta deixaria o artista sem forma de o tirar a não ser desfazendo.
+    pub mods: Vec<ModeChip>,
     /// ⭐ As ações sobre o objeto escolhido (duplicar, apagar). Vazio quando não há nenhum — e aí a
     /// fileira não é pintada, pela mesma razão da de operações.
     pub acts: Vec<ModeChip>,
@@ -139,6 +145,8 @@ pub enum ModelIntent {
     AddShape { slot: usize },
     /// Aplicar uma operação booleana ao que está selecionado, pela **posição** no seletor.
     ApplyOp { slot: usize },
+    /// Liga ou desliga um modificador do nó, pela **posição** no seletor.
+    ToggleMod { slot: usize },
     /// Uma ação sobre o objeto escolhido, pela **posição** no seletor.
     Act { slot: usize },
 }

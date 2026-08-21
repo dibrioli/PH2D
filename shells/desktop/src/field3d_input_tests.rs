@@ -22,6 +22,7 @@ fn nose() -> FieldDoc {
         vec![Node {
             xform: Xform::at(0.0, 0.0, 0.45),
             kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.12 }),
+            mods: Vec::new(),
         }],
         NodeId(0),
     )

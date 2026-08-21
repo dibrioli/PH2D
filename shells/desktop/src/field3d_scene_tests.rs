@@ -336,10 +336,12 @@ fn a_world_pose_is_the_whole_chain_composed() {
             ph2d_field::Node {
                 xform: Xform::at(0.1, 0.0, 0.0),
                 kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+                mods: Vec::new(),
             },
             ph2d_field::Node {
                 xform: Xform::at(0.1, 0.0, 0.0),
                 kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+                mods: Vec::new(),
             },
             ph2d_field::Node {
                 xform: Xform::at(1.0, 2.0, 3.0),
@@ -347,6 +349,7 @@ fn a_world_pose_is_the_whole_chain_composed() {
                     op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
                     children: vec![ph2d_field::NodeId(0), ph2d_field::NodeId(1)],
                 },
+                mods: Vec::new(),
             },
         ],
         ph2d_field::NodeId(2),
@@ -448,10 +451,12 @@ fn a_world_delta_lands_where_the_gizmo_asked_even_under_a_rotated_parent() {
             ph2d_field::Node {
                 xform: Xform::at(0.1, 0.0, 0.0),
                 kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+                mods: Vec::new(),
             },
             ph2d_field::Node {
                 xform: Xform::at(0.2, 0.0, 0.0),
                 kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+                mods: Vec::new(),
             },
             ph2d_field::Node {
                 // Um quarto de volta em Z, e escala 2: as duas metades da inversa que faltavam.
@@ -464,6 +469,7 @@ fn a_world_delta_lands_where_the_gizmo_asked_even_under_a_rotated_parent() {
                     op: ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
                     children: vec![ph2d_field::NodeId(0), ph2d_field::NodeId(1)],
                 },
+                mods: Vec::new(),
             },
         ],
         ph2d_field::NodeId(2),

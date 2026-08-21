@@ -516,3 +516,6 @@ fn typing_a_non_positive_scale_is_refused() {
     }
     assert!((world.get::<FieldPose>(root).expect("pose").xform.scale - 1.0).abs() < 1e-6);
 }
+
+#[path = "field3d_scene_mods_tests.rs"]
+mod mods;

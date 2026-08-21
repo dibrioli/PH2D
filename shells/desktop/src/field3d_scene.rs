@@ -210,6 +210,20 @@ pub(crate) fn sync_scene_and_birth(
                     }
                 }
             }
+            // ⭐ **Ligar ou desligar um modificador** — a casca e o afastamento.
+            //
+            // ⚠️ **Tirar primeiro, e só acrescentar se não tirou**: o botão é um interruptor, e uma
+            // ordem ao contrário acrescentaria um segundo e tiraria o primeiro no mesmo clique —
+            // que da tela lê como *"não aconteceu nada"*.
+            ph2d_panel_model3d::ModelIntent::ToggleMod { slot } => {
+                if let (Some(&one), Some(kind)) = (
+                    selection.first(),
+                    ph2d_field::UnaryKind::ALL.get(slot).copied(),
+                ) && !ph2d_field_ecs::remove_mod(world, one, kind)
+                {
+                    ph2d_field_ecs::add_mod(world, one, kind);
+                }
+            }
             // ⭐ **Combinar** — trocar a operação de uma, ou embrulhar as escolhidas numa nova.
             ph2d_panel_model3d::ModelIntent::ApplyOp { slot } => {
                 if let Some(op) = op_at(slot) {

@@ -53,14 +53,15 @@ mod spawn;
 
 pub use cook::{cook, world_xform};
 pub use edit::{
-    add_leaf, dims_of, duplicate, params_of, radius_bound, radius_of, remove, rotate_world,
-    scale_by, set_dim, set_op, set_param, set_radius, translate_world, walk, wrap_in_op,
+    add_leaf, add_mod, dims_of, duplicate, mods_of, params_of, radius_bound, radius_of, remove,
+    remove_mod, rotate_world, scale_by, set_dim, set_op, set_param, set_radius, translate_world,
+    walk, wrap_in_op,
 };
 pub use spawn::{shape_name, spawn_doc};
 
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{Component, SimComponent};
-use ph2d_field::{Blend, FieldDoc, FieldError, NodeShape, Xform};
+use ph2d_field::{Blend, FieldDoc, FieldError, NodeShape, Unary, Xform};
 use serde::{Deserialize, Serialize};
 
 /// **A raiz de uma peça de modelagem.** Marca a entidade que a Hierarquia mostra como objeto.
@@ -87,8 +88,25 @@ pub struct FieldPose {
     pub xform: Xform,
 }
 
+/// ⭐ **A pilha de modificadores do nó** — casca, afastamento. Ver [`ph2d_field::mods`].
+///
+/// ⚠️ **Componente PRÓPRIO, e opcional**, e não um campo apendado ao [`FieldNode`]. As duas razões
+/// pesam para o mesmo lado:
+///
+/// - a esmagadora maioria dos nós **não tem** modificador nenhum, e um `Vec` vazio em cada um é
+///   bytes em todo save por uma coisa que quase ninguém usa;
+/// - o blob de um componente é postcard **posicional**, então apendar um campo ao `FieldNode`
+///   quebraria todo projeto que já o gravou — enquanto um componente **novo** custa zero (é o
+///   precedente do `VecStrokeProfile`/ADR-0148 e dos overrides da física, escrito na escada do
+///   `PROJECT_SCHEMA`).
+#[derive(Component, Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+pub struct FieldMods {
+    pub stack: Vec<Unary>,
+}
+
 impl SimComponent for FieldNode {}
 impl SimComponent for FieldPose {}
+impl SimComponent for FieldMods {}
 
 impl Default for FieldPose {
     fn default() -> Self {
@@ -110,6 +128,7 @@ pub fn register_field_components(reg: &mut ComponentRegistry) {
     reg.register::<FieldObject>("ph2d::field::FieldObject");
     reg.register::<FieldNode>("ph2d::field::FieldNode");
     reg.register::<FieldPose>("ph2d::field::FieldPose");
+    reg.register::<FieldMods>("ph2d::field::FieldMods");
 }
 
 /// O campo de uma **cena**: a união de todos os objetos, na ordem da chave.

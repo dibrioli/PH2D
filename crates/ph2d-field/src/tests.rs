@@ -6,10 +6,7 @@
 use super::*;
 
 fn leaf(p: Primitive) -> Node {
-    Node {
-        xform: Xform::IDENTITY,
-        kind: NodeKind::Leaf(p),
-    }
+    Node::new(Xform::IDENTITY, NodeKind::Leaf(p))
 }
 
 fn cube(half: f32, round: f32) -> Node {
@@ -31,6 +28,7 @@ fn two_boxes() -> FieldDoc {
                     op: Op::Union(Blend::Exact { radius: 0.05 }),
                     children: vec![NodeId(0), NodeId(1)],
                 },
+                mods: Vec::new(),
             },
         ],
         NodeId(2),
@@ -61,6 +59,7 @@ fn a_forward_reference_is_refused_because_it_is_how_a_cycle_would_enter() {
                     // Aponta para a frente: é exatamente por aqui que um ciclo entraria.
                     children: vec![NodeId(1)],
                 },
+                mods: Vec::new(),
             },
             cube(0.4, 0.0),
         ],
@@ -113,13 +112,13 @@ fn a_round_that_fits_exactly_under_the_limit_is_accepted() {
 #[test]
 fn a_non_positive_or_non_finite_scale_is_refused() {
     for bad in [0.0_f32, -1.0, f32::NAN, f32::INFINITY] {
-        let node = Node {
-            xform: Xform {
+        let node = Node::new(
+            Xform {
                 scale: bad,
                 ..Xform::IDENTITY
             },
-            kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.5 }),
-        };
+            NodeKind::Leaf(Primitive::Sphere { radius: 0.5 }),
+        );
         assert_eq!(
             FieldDoc::new(vec![node], NodeId(0)).unwrap_err(),
             FieldError::BadScale { node: 0 },
@@ -137,6 +136,7 @@ fn an_empty_combine_is_refused() {
                 op: Op::Union(Blend::Sharp),
                 children: vec![],
             },
+            mods: Vec::new(),
         }],
         NodeId(0),
     )
@@ -182,7 +182,12 @@ fn the_shape_of_a_saved_field_is_pinned() {
         bytes.len(),
         // ⚠️ MEDIDO na criação do gate (2026-08-19), não adivinhado. Pinar um número na primeira
         // escrita é medição; re-pinar depois de ele quebrar é apagar a prova.
-        145,
+        //
+        // ⭐ **145 → 148 na v3**, e o degrau está escrito: cada nó ganhou a pilha de modificadores
+        // (`Node::mods`), e um `Vec` vazio em postcard custa **um byte de comprimento**. Três nós,
+        // três bytes. *Re-pinar aqui é legítimo porque a versão SUBIU junto e a conta bate* — o que
+        // o doc do gate proíbe é re-pinar sem as duas coisas.
+        148,
         "a forma serializada mudou — suba FIELD_DOC_VERSION e escreva a migração, \
          não re-pine este número"
     );
@@ -429,7 +434,8 @@ fn the_shape_of_a_saved_profile_is_pinned() {
     assert_eq!(
         bytes.len(),
         // ⚠️ MEDIDO na criação do gate (2026-08-19): 4 pontos × 2 × f32 + o cabeçalho da árvore.
-        84,
+        // **84 → 85 na v3**: um nó, um byte de comprimento da pilha vazia. Ver o gate irmão.
+        85,
         "a forma serializada do perfil mudou — suba FIELD_DOC_VERSION e escreva a migração, \
          não re-pine este número"
     );
@@ -489,6 +495,7 @@ fn editing_the_number_does_not_change_an_organic_blend_into_an_exact_one() {
                     op: Op::Union(Blend::Organic { k: 0.05 }),
                     children: vec![NodeId(0), NodeId(1)],
                 },
+                mods: Vec::new(),
             },
         ],
         NodeId(2),
@@ -644,6 +651,7 @@ fn shrinking_a_shape_shrinks_its_fillet_instead_of_refusing() {
         vec![Node {
             xform: Xform::IDENTITY,
             kind: NodeKind::Leaf(b),
+            mods: Vec::new(),
         }],
         NodeId(0),
     )

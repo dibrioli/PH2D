@@ -27,6 +27,7 @@ fn scene_with_one_union() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        mods: Vec::new(),
         acts: Vec::new(),
         rows: vec![ParamRow {
             entity: THE_UNION,
@@ -207,6 +208,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        mods: Vec::new(),
         acts: Vec::new(),
         rows: nodes,
         node_count: 4,
@@ -284,6 +286,7 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        mods: Vec::new(),
         acts: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
@@ -320,6 +323,7 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        mods: Vec::new(),
         acts: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
@@ -367,6 +371,7 @@ fn the_axis_selector_is_its_own_family() {
         ],
         adds: Vec::new(),
         ops: Vec::new(),
+        mods: Vec::new(),
         acts: Vec::new(),
         rows: Vec::new(),
         node_count: 0,
@@ -413,6 +418,10 @@ fn the_selectors_never_answer_for_each_other() {
             chip("panel.model3d.op.union"),
             chip("panel.model3d.op.subtract"),
         ],
+        mods: vec![
+            chip("panel.model3d.mod.shell"),
+            chip("panel.model3d.mod.offset"),
+        ],
         acts: vec![
             chip("panel.model3d.act.duplicate"),
             chip("panel.model3d.act.delete"),
@@ -430,6 +439,7 @@ fn the_selectors_never_answer_for_each_other() {
     assert_eq!(click(ids::model3d_frame_button(1)), EventOutcome::Consumed);
     assert_eq!(click(ids::model3d_add_button(1)), EventOutcome::Consumed);
     assert_eq!(click(ids::model3d_op_button(1)), EventOutcome::Consumed);
+    assert_eq!(click(ids::model3d_mod_button(1)), EventOutcome::Consumed);
     assert_eq!(click(ids::model3d_act_button(1)), EventOutcome::Consumed);
 
     assert_eq!(
@@ -439,6 +449,7 @@ fn the_selectors_never_answer_for_each_other() {
             ModelIntent::SetGizmoFrame { slot: 1 },
             ModelIntent::AddShape { slot: 1 },
             ModelIntent::ApplyOp { slot: 1 },
+            ModelIntent::ToggleMod { slot: 1 },
             ModelIntent::Act { slot: 1 },
         ],
         "cada família tem de responder por si — se dois intents forem iguais, os ids colidiram"
@@ -477,6 +488,7 @@ fn scene_with_one_position_row() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        mods: Vec::new(),
         acts: Vec::new(),
         rows: vec![ParamRow {
             entity: THE_UNION,

@@ -57,6 +57,15 @@ pub fn model3d_op_button(slot: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.op.{slot}"))
 }
 
+/// ⭐ **O botão de um MODIFICADOR** (casca, afastamento), pela posição.
+///
+/// ⚠️ Família própria, como as outras: um interruptor de modificador e um botão de operação vivem
+/// no mesmo painel, e partilhar a família faria «Casca» disparar «Unir».
+#[must_use]
+pub fn model3d_mod_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.mod.{slot}"))
+}
+
 /// ⭐ **O botão de uma AÇÃO sobre o objeto escolhido** (duplicar, apagar), pela posição.
 #[must_use]
 pub fn model3d_act_button(slot: u32) -> NodeId {

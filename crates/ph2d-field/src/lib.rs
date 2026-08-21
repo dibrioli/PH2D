@@ -28,11 +28,13 @@
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
 pub mod dims;
+pub mod mods;
 pub mod profile;
 pub mod radius;
 pub mod xform;
 
 pub use dims::{Dim, Param, Span, clamp_round, dims, scale_primitive, set_dim};
+pub use mods::{Unary, UnaryKind};
 pub use profile::{FillRule, Profile, ProfileError};
 pub use radius::{Bound, characteristic_size, round_limit, set_shape_radius};
 pub use xform::Xform;
@@ -48,8 +50,15 @@ use serde::{Deserialize, Serialize};
 /// v2: as primitivas de **perfil** ([`Primitive::Extrude`] / [`Primitive::Revolve`]) — o desenho do
 /// editor vetorial virando sólido.
 ///
+/// v3: o [`Node`] ganhou a pilha de **modificadores** ([`mods::Unary`] — casca e afastamento). É
+/// campo novo numa struct, e postcard é **posicional**, então um documento v2 não desserializa aqui.
+/// ⚠️ **A migração é vazia, e isso tem de estar escrito:** nada persiste um [`FieldDoc`] — ele é
+/// **cozido** da cena a cada quadro, e o que o arquivo de projeto guarda são os *componentes* ECS.
+/// O degrau sobe na mesma, porque a alternativa é o número deixar de querer dizer alguma coisa no
+/// dia em que alguém o persistir.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 2;
+pub const FIELD_DOC_VERSION: u32 = 3;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -201,6 +210,22 @@ pub enum NodeShape {
 pub struct Node {
     pub xform: Xform,
     pub kind: NodeKind,
+    /// ⭐ **A pilha de modificadores**, aplicada ao campo deste nó **depois** do que ele é e
+    /// **antes** da pose dele. Vazia na esmagadora maioria dos nós. Ver [`crate::mods`].
+    #[serde(default)]
+    pub mods: Vec<Unary>,
+}
+
+impl Node {
+    /// Um nó sem modificadores — a forma curta, que é o caso de quase todo nó.
+    #[must_use]
+    pub fn new(xform: Xform, kind: NodeKind) -> Self {
+        Self {
+            xform,
+            kind,
+            mods: Vec::new(),
+        }
+    }
 }
 
 /// O documento: a arena de nós e a raiz.
@@ -309,6 +334,7 @@ impl FieldDoc {
                 op: Op::Union(blend),
                 children: roots,
             },
+            mods: Vec::new(),
         });
         Some(Self::new(nodes, root))
     }
@@ -338,6 +364,13 @@ impl FieldDoc {
                     }
                 }
                 NodeKind::Leaf(p) => validate_primitive(idx, p)?,
+            }
+            // ⚠️ **A pilha valida com a MESMA porta que a escreve** (`Unary::set_value`), e não com
+            // uma segunda cópia das regras aqui: duas listas de *"o que é um número aceitável"*
+            // divergem na primeira variante nova, e a que fica errada é sempre a que ninguém lê.
+            for m in &node.mods {
+                let mut probe = *m;
+                probe.set_value(idx, m.value())?;
             }
         }
         Ok(())

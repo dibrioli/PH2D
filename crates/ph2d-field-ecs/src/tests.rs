@@ -9,6 +9,7 @@ fn doc(radius: f32) -> FieldDoc {
         vec![Node {
             xform: Xform::IDENTITY,
             kind: NodeKind::Leaf(Primitive::Sphere { radius }),
+            mods: Vec::new(),
         }],
         NodeId(0),
     )

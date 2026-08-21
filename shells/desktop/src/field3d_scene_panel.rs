@@ -49,6 +49,7 @@ pub(crate) fn publish_snapshot(
         .map(|key| ph2d_panel_model3d::ModeChip { key, active: false })
         .collect();
     let ops = ops_for(world, selection);
+    let mods = mods_for(world, selection);
     // ⚠️ Vazio sem seleção, pela mesma razão da fileira de operações: um controle que aparece e não
     // faz nada é pior do que um que não aparece.
     let acts = if selection.is_empty() {
@@ -63,6 +64,7 @@ pub(crate) fn publish_snapshot(
         frames,
         adds,
         ops,
+        mods,
         acts,
         rows,
         node_count: all.len(),
@@ -139,6 +141,36 @@ pub(crate) const SHAPES: [&str; 4] = [
 ];
 
 /// As ações sobre o objeto escolhido, na ordem do seletor.
+/// ⭐ **Os modificadores oferecidos, e quais o nó já tem** — interruptores, não ações.
+///
+/// ⚠️ **A lista é derivada de [`ph2d_field::UnaryKind::ALL`]**, que é a fonte da contagem: um
+/// modificador novo entra lá e o painel segue sem uma linha de mudança. É a mesma lei do `Mode::ALL`
+/// e do `SHAPES`.
+///
+/// ⚠️ Vazio sem seleção — um interruptor sem nó para ligar não tem o que dizer.
+pub(crate) fn mods_for(
+    world: &bevy_ecs::world::World,
+    selection: &[bevy_ecs::entity::Entity],
+) -> Vec<ph2d_panel_model3d::ModeChip> {
+    let Some(&one) = selection.first() else {
+        return Vec::new();
+    };
+    if world.get::<FieldNode>(one).is_none() {
+        return Vec::new();
+    }
+    let have = ph2d_field_ecs::mods_of(world, one);
+    ph2d_field::UnaryKind::ALL
+        .iter()
+        .map(|k| ph2d_panel_model3d::ModeChip {
+            key: k.key(),
+            // ⭐ **Aceso = o nó JÁ TEM um daquela natureza.** É o que faz o botão dizer o estado em
+            // vez de só disparar — e é a diferença entre um interruptor e um botão que empilha
+            // cascas sem o artista perceber.
+            active: have.iter().any(|u| u.kind() == *k),
+        })
+        .collect()
+}
+
 pub(crate) const ACTS: [&str; 2] = ["panel.model3d.act.duplicate", "panel.model3d.act.delete"];
 
 /// As três booleanas, na ordem do seletor.

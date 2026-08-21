@@ -14,10 +14,7 @@ use ph2d_field::{Blend, FieldDoc, NodeId, Op, Primitive, Xform};
 const EPS: f64 = 2e-6;
 
 fn combine(op: Op, children: Vec<NodeId>) -> Node {
-    Node {
-        xform: Xform::IDENTITY,
-        kind: NodeKind::Combine { op, children },
-    }
+    Node::new(Xform::IDENTITY, NodeKind::Combine { op, children })
 }
 
 /// Duas caixas em **L**, cuja quina côncava fica exatamente na origem.
@@ -716,6 +713,182 @@ fn the_gizmo_and_the_field_agree_on_where_a_node_is() {
             f(p[0], p[1], p[2]).abs() < 1e-5,
             "o ponto local {local:?} devia estar NA superfície e o campo dá {}",
             f(p[0], p[1], p[2])
+        );
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OS MODIFICADORES — a casca e o afastamento.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Uma esfera de raio `r`, com a pilha de modificadores dada.
+fn shelled(r: f32, mods: Vec<ph2d_field::Unary>) -> FieldDoc {
+    FieldDoc::new(
+        vec![Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Leaf(Primitive::Sphere { radius: r }),
+            mods,
+        }],
+        NodeId(0),
+    )
+    .expect("esfera com modificadores")
+}
+
+/// ⭐ **A casca de uma esfera É, exatamente, a subtração de duas esferas analíticas.**
+///
+/// ⚠️ **Oráculo INDEPENDENTE**, e é a disciplina desta crate (o mesmo padrão do `n`-gono extrudado
+/// contra o `Cylinder`): o lado esquerdo é `|f| − t/2` sobre uma esfera; o direito é
+/// `esfera(r + t/2) menos esfera(r − t/2)`, escrito com as primitivas e a booleana que já existiam.
+/// Um gate que comparasse a casca **consigo mesma** provaria que o código faz o que o código faz.
+///
+/// A igualdade é **exata**, não aproximada, e a conta está no doc de [`ph2d_field::mods`] — é essa
+/// exatidão que faz a casca não poder falhar, que é a razão de o módulo ser um campo.
+#[test]
+fn the_shell_of_a_sphere_is_exactly_the_difference_of_two_analytic_spheres() {
+    let (r, t) = (0.5f32, 0.12f32);
+    let shell = shelled(r, vec![ph2d_field::Unary::Shell { thickness: t }]);
+    let oracle = FieldDoc::new(
+        vec![
+            leaf(
+                Primitive::Sphere {
+                    radius: r + t * 0.5,
+                },
+                Xform::IDENTITY,
+            ),
+            leaf(
+                Primitive::Sphere {
+                    radius: r - t * 0.5,
+                },
+                Xform::IDENTITY,
+            ),
+            combine(Op::Difference(Blend::Sharp), vec![NodeId(0), NodeId(1)]),
+        ],
+        NodeId(2),
+    )
+    .expect("duas esferas");
+
+    let a = Field::new(&shell);
+    let b = Field::new(&oracle);
+    // Uma amostra que atravessa a parede, o vazio de dentro e o lado de fora.
+    for k in 0..40 {
+        let x = f64::from(k) / 20.0 - 1.0;
+        for (y, z) in [(0.0, 0.0), (0.13, -0.07), (-0.3, 0.21)] {
+            let (p, q) = (a.at(x, y, z), b.at(x, y, z));
+            assert!(
+                (p - q).abs() < EPS,
+                "em ({x:.3}, {y}, {z}) a casca deu {p:.8} e as duas esferas deram {q:.8}"
+            );
+        }
+    }
+}
+
+/// ⭐ **A parede mede a espessura PEDIDA** — medida ao longo de um raio, e não afirmada.
+///
+/// ⚠️ E o gate mede o **centro** da parede também: `|f| − t/2` deixa metade para dentro e metade
+/// para fora da superfície que lá estava. Uma casca só-para-dentro (`|f + t| − t`) passaria na
+/// primeira metade e reprovaria nesta — e é uma decisão de produto diferente, escrita no doc de
+/// [`ph2d_field::Unary::Shell`].
+#[test]
+fn the_wall_measures_the_thickness_that_was_asked_for() {
+    let (r, t) = (0.5f64, 0.12f64);
+    let doc = shelled(
+        r as f32,
+        vec![ph2d_field::Unary::Shell {
+            thickness: t as f32,
+        }],
+    );
+    let f = Field::new(&doc);
+
+    for (name, radius) in [
+        ("parede de fora", r + t / 2.0),
+        ("parede de dentro", r - t / 2.0),
+    ] {
+        let v = f.at(radius, 0.0, 0.0);
+        assert!(
+            v.abs() < EPS,
+            "{name}: a superfície tinha de estar em {radius}, e o campo lá vale {v:.8}"
+        );
+    }
+    // No meio da parede — onde a superfície original estava — o campo vale menos meia espessura.
+    let mid = f.at(r, 0.0, 0.0);
+    assert!(
+        (mid + t / 2.0).abs() < EPS,
+        "a parede é CENTRADA: no raio original o campo devia valer −t/2 ({:.4}) e vale {mid:.8}",
+        -t / 2.0
+    );
+    // E o interior é vazio: no centro da esfera o campo é positivo.
+    assert!(
+        f.at(0.0, 0.0, 0.0) > 0.0,
+        "o miolo tem de estar VAZIO — é isso que uma casca é"
+    );
+}
+
+/// ⭐ **O afastamento move a superfície pela distância pedida** — nos dois sentidos.
+///
+/// ⚠️ **Os dois sentidos**, e é metade da razão de o afastamento existir: encolher é o gesto de
+/// folga de encaixe, e um gate só do lado positivo passaria com o negativo recusado.
+#[test]
+fn the_offset_moves_the_surface_by_the_distance_asked_in_both_directions() {
+    let r = 0.5f64;
+    for d in [0.2f64, -0.2, 0.0] {
+        let doc = shelled(
+            r as f32,
+            vec![ph2d_field::Unary::Offset { distance: d as f32 }],
+        );
+        let f = Field::new(&doc);
+        let want = r + d;
+        assert!(
+            f.at(want, 0.0, 0.0).abs() < EPS,
+            "com afastamento {d} a superfície tinha de estar em {want}, e o campo lá vale {:.8}",
+            f.at(want, 0.0, 0.0)
+        );
+    }
+}
+
+/// ⭐ **A pilha corre NA ORDEM**, e trocar a ordem dá outra peça.
+///
+/// ⚠️ É a razão de ela ser uma lista e não um conjunto. O gate compara os dois arranjos no MESMO
+/// ponto: se um `HashSet` tivesse entrado no lugar do `Vec`, os dois dariam o mesmo número e a
+/// escolha teria sido feita em silêncio por uma ordem de iteração.
+#[test]
+fn the_stack_runs_in_order_and_swapping_it_gives_another_part() {
+    use ph2d_field::Unary::{Offset, Shell};
+    let (r, t, d) = (0.5f32, 0.1f32, 0.15f32);
+    let shell_then_offset = shelled(r, vec![Shell { thickness: t }, Offset { distance: d }]);
+    let offset_then_shell = shelled(r, vec![Offset { distance: d }, Shell { thickness: t }]);
+    let (a, b) = (
+        Field::new(&shell_then_offset),
+        Field::new(&offset_then_shell),
+    );
+    // Encascar e depois afastar engrossa a parede em 2·d; afastar e depois encascar mantém a
+    // espessura e muda o raio. No raio original os dois têm de discordar.
+    let (p, q) = (a.at(f64::from(r), 0.0, 0.0), b.at(f64::from(r), 0.0, 0.0));
+    assert!(
+        (p - q).abs() > f64::from(d) * 0.5,
+        "as duas ordens deram praticamente o mesmo ({p:.6} e {q:.6}) — a pilha não está a ser \
+         percorrida na ordem, ou o gate escolheu um ponto onde elas coincidem"
+    );
+}
+
+/// **Sem modificadores, o campo é BYTE a byte o de antes.**
+///
+/// ⚠️ É a metade que garante que a pilha não custa nada a quem não a usa — e é o controle negativo
+/// dos gates acima: sem ele, um `stacked` que aplicasse sempre uma casca de zero passaria neles.
+#[test]
+fn an_empty_stack_leaves_the_field_untouched() {
+    let with = shelled(0.5, Vec::new());
+    let plain = FieldDoc::new(
+        vec![leaf(Primitive::Sphere { radius: 0.5 }, Xform::IDENTITY)],
+        NodeId(0),
+    )
+    .expect("esfera");
+    let (a, b) = (Field::new(&with), Field::new(&plain));
+    for k in 0..20 {
+        let x = f64::from(k) / 10.0 - 1.0;
+        assert_eq!(
+            a.at(x, 0.07, -0.11),
+            b.at(x, 0.07, -0.11),
+            "uma pilha vazia tem de ser o campo intacto, em {x}"
         );
     }
 }

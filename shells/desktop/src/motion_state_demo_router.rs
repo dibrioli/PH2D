@@ -413,6 +413,82 @@ mod tests {
     /// ⛔ **Se uma cena futura encenar um defeito DE PROPÓSITO**, ela não entra numa
     /// allowlist muda: ou o defeito não é de SETUP (a `=45` encena um nome que não
     /// resolve, e passa), ou o gate ganha o nível NOMEADO com o motivo ao lado.
+    /// **O QUE UMA CENA DE FACTO DESENHA** — a caixa de cada banda, medida.
+    ///
+    /// ⚠️ **Este instrumento nasceu de um smoke reprovado** (Enio, 2026-08-21: *"esses
+    /// exemplos não são compreensíveis. tudo misturado e bagunçado"*), e a causa não era
+    /// nenhuma das features: era eu a **autorar cenas às cegas**. Um `motion.move(dx, dy)`
+    /// diz onde o CENTRO de uma banda vai; ele não diz nada sobre a LARGURA dela, e a
+    /// largura sai de `(cols − 1) · gap`, três nós acima. Duas bandas cujos centros
+    /// distam 12 unidades sobrepõem-se alegremente se cada uma medir 8.
+    ///
+    /// ⚠️ **Não há como ver isto sem cozinhar.** O grafo é o que eu escrevo; a IMAGEM é o
+    /// que o cook devolve — e até esta sonda existir, o único instrumento que media a
+    /// diferença entre os dois era o olho do Enio, depois de compilar em release.
+    ///
+    /// `PH2D_LAYOUT_LEVEL=73 cargo test -p ph2d-host-desktop --bins
+    /// measure_scene_layout -- --ignored --nocapture` (sem a env, varre tudo).
+    #[test]
+    #[ignore = "sonda de layout, não um gate — `-- --ignored --nocapture`"]
+    fn measure_scene_layout() {
+        let mut reg = NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
+        let only = std::env::var("PH2D_LAYOUT_LEVEL").ok();
+        for level in 1..=MAX_DEMO_LEVEL {
+            if only.as_deref().is_some_and(|w| w != level.to_string()) {
+                continue;
+            }
+            let mut doc = MotionDoc::default();
+            let sinks = build_level(Some(&level.to_string()), &mut doc, &reg);
+            if sinks.is_empty() {
+                continue;
+            }
+            println!("--- cena =`{level}` · {} bandas", sinks.len());
+            for (k, sink) in sinks.iter().enumerate() {
+                match band_box(&doc, &reg, *sink) {
+                    Some((n, lo, hi)) => println!(
+                        "  banda {:>2}: n={n:<6} x [{:>7.2} .. {:>7.2}]  y [{:>7.2} .. {:>7.2}]  ({:.2} x {:.2})",
+                        k + 1,
+                        lo[0],
+                        hi[0],
+                        lo[1],
+                        hi[1],
+                        hi[0] - lo[0],
+                        hi[1] - lo[1]
+                    ),
+                    None => println!("  banda {:>2}: VAZIA", k + 1),
+                }
+            }
+        }
+    }
+
+    /// A contagem e a caixa envolvente de uma banda, cozinhada em `t = 0`.
+    fn band_box(
+        doc: &MotionDoc,
+        reg: &NodeRegistry,
+        sink: ph2d_nodegraph::graph::NodeId,
+    ) -> Option<(usize, [f32; 2], [f32; 2])> {
+        use ph2d_nodegraph::attr::Column;
+        let mut cook = ph2d_nodegraph::cook::Cook::new();
+        let out = cook.cook(&doc.graph, reg, sink, 0.0).ok()?;
+        let s = out.first()?.as_stream();
+        let Some(Column::Vec2(p)) = s.get("P") else {
+            return None;
+        };
+        if p.is_empty() {
+            return None;
+        }
+        let mut lo = [f32::INFINITY; 2];
+        let mut hi = [f32::NEG_INFINITY; 2];
+        for q in p {
+            for a in 0..2 {
+                lo[a] = lo[a].min(q[a]);
+                hi[a] = hi[a].max(q[a]);
+            }
+        }
+        Some((p.len(), lo, hi))
+    }
+
     #[test]
     fn no_conference_scene_ships_a_setup_hole() {
         let mut reg = NodeRegistry::new();

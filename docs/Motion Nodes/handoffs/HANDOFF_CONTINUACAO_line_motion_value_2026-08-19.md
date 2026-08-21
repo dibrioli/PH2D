@@ -184,7 +184,7 @@ ausente.
 
 ---
 
-## §4 — As QUARENTA E DUAS LEIS que esta linha pagou para aprender
+## §4 — As QUARENTA E SEIS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -465,6 +465,35 @@ são estilo.
     sem ela ligar o nó SEM tocar no knob repinta a cena. *Teste a identidade de um knob
     no topo do domínio dele, não no meio.*
 
+43. ⚠️ **POSICIONAR É UPSTREAM DA MÁSCARA — e isto invalidou uma cena inteira.** Todo
+    comportamento desta biblioteca multiplica o seu efeito pelo `falloff` (§1.2 — é a
+    razão de os `field.*` existirem), e isso inclui o `motion.move`/`motion.transform`
+    que se usa para **pôr uma banda no quadrante dela**. Posto DEPOIS do campo, o
+    deslocamento de colocação vira `dx · falloff_i`: cada peça anda uma distância
+    diferente e a banda estica-se por cima das vizinhas. Medido na cena `=73` v1: uma
+    fileira de **7,5** de largura por construção saiu com **1,50** (o passo colapsou de
+    0,50 para 0,10), e uma grelha de 2,94 saiu com **8,94**. *A colocação corre logo a
+    seguir à fonte, onde ainda não há coluna de máscara nenhuma.*
+44. ⚠️ **Eu autorava cenas ÀS CEGAS, e esse era o buraco real.** O grafo é o que eu
+    escrevo; a IMAGEM é o que o cook devolve — e até 2026-08-21 o único instrumento que
+    media a diferença entre os dois era **o olho do Enio, depois de compilar em
+    release**. Nenhum dos nove gates daquela cena viu o defeito, porque nenhum media
+    ONDE as peças ficam: todos mediam params. A cura é a sonda
+    `measure_scene_layout` (`PH2D_LAYOUT_LEVEL=<n>`), que cozinha cada banda e imprime
+    a caixa dela, mais o gate `no_band_leaves_its_slot`, cuja caixa prevista é
+    **derivada** da tabela de grelhas. *Um smoke que só o Enio pode correr é um teste
+    com uma pessoa no meio do laço.*
+45. ⚠️ **Um exemplo que só se entende lendo o terminal não é um exemplo** (Enio,
+    2026-08-21: *"tudo misturado e bagunçado sem explicação simples"*). As três curas,
+    e nenhuma delas é código de feature: **legenda no CANVAS** (`source.text` — a linha
+    diz o nome dela ao lado dela), **uma pergunta de sim/não por linha** em vez de uma
+    lista de oito rótulos no `stderr`, e **quadrantes com margem medida** em vez de
+    posições escolhidas a olho.
+46. ⚠️ **O branco não é o «apagado».** O default do `motion.tint` é branco opaco, então
+    numa cena de MÁSCARA as peças **não** acesas eram a coisa mais clara da tela e o
+    padrão desaparecia dentro delas. A leitura de uma máscara é *escuro → aceso*: pinte
+    o repouso de cinza-chumbo **antes** do campo, e a cor viva **depois** dele.
+
 
 ---
 
@@ -521,9 +550,14 @@ bash scripts/collision-surface.sh main
   env PH2D_GPU_COOK_DEMO=73 cargo run -p ph2d-host-desktop --release
 ```
 
-Quatro pares. ⚠️ **O par 1 lê-se pela COR, não pelo número de peças** — as duas metades
-cortam igual; o que difere é a contagem que a lista ANUNCIA ao degradê. ⚠️ O par 4 é o
-nó novo (`field.shape`): um pentágono ligado como forma decide quem acende.
+Quatro linhas, cada uma com o nome escrito **no canvas** e uma pergunta de sim/não:
+**CORTE** (a fileira acende até o fim?) · **BANDA** (as peças acesas ficam juntas ou
+espalhadas?) · **RAMPA** (ela recomeça no meio?) · **FORMA** (o pentágono acende cheio
+ou só a borda?). Esquerda = como era, direita = o knob novo.
+
+⚠️ **Esta é a v2.** A v1 foi reprovada (*"tudo misturado e bagunçado"*) e a causa não
+era feature nenhuma — era a colocação das bandas correr **depois** do campo, logo
+mascarada por ele. Mecanismo e instrumento nas leis **43** e **44** do §4.
 
 ### `=72` — a folha 09 inteira + o pareamento do `motion.step`
 

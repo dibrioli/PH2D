@@ -350,39 +350,41 @@ pub(crate) fn color_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<
     sinks
 }
 
-/// **A CENA `=73` — IDENTIDADE, POSTO, CURVA E FORMA**
-/// (doc 89: folha 08 inteira, duas células; folha 10 inteira, duas células).
+/// **A CENA `=73` — quatro exemplos, um por linha** (doc 89: folha 08 inteira, duas
+/// células; folha 10 inteira, duas células).
 ///
-/// ⚠️ **O par 1 lê-se pela COR, não pelo número de peças** — as duas metades cortam
-/// igual; o que difere é a contagem que a lista ANUNCIA ao degradê.
+/// ⚠️ **A prosa aqui é para o ENIO, e a v1 dela foi reprovada** (*"tudo misturado e
+/// bagunçado sem explicação simples"*). O que mudou: cada linha tem o nome escrito
+/// **no canvas**, a leitura de cada uma é UMA pergunta de sim/não, e o texto abaixo
+/// não nomeia um nó sem dizer onde clicar.
 pub(crate) fn rank_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
     let sinks = conferencia_demos_rank::build_rank_demo_document(doc, registry).unwrap_or_default();
-    let (shift, dist) = conferencia_demos_rank::authored();
+    let (shift, _) = conferencia_demos_rank::authored();
     eprintln!(
-        "[rank-demo] QUATRO pares, {} bandas. Esquerda = como era; direita = o que mudou.",
+        "[cena 73] Quatro exemplos, um por linha -- {} blocos.
+  ESQUERDA = como era. DIREITA = o que mudou. O nome de cada linha esta' escrito
+  no meio da tela, entre os dois blocos.
+
+  CORTE  As duas fileirinhas tem o MESMO numero de pecas e acendem da esquerda
+         para a direita. A da esquerda APAGA antes do fim; a da direita acende
+         ate' a ultima peca.
+         > clique no no' Cull e ligue/desligue `Renumber Survivors`.
+
+  BANDA  Os dois quadrados acendem a MESMA quantidade de pecas. A` esquerda elas
+         ficam todas JUNTAS, numa faixa. A` direita ficam ESPALHADAS -- e repare
+         que nenhuma peca mudou de lugar.
+
+  RAMPA  As duas fileiras acendem da esquerda para a direita. A de baixo
+         RECOMECA no meio do caminho: apaga de repente e volta a acender.
+         > clique no no' Remap e arraste o `Curve Offset` ({shift:.2} hoje).
+
+  FORMA  E' o NO' NOVO. Um pentagono decide quem acende. A` esquerda ele acende
+         CHEIO, como um bloco. A` direita so' a BORDA dele acende, e o miolo apaga.
+         > clique no no' Shape Field e troque o `Path Mode`.
+
+  DEU ERRADO se as duas metades de qualquer linha ficarem IGUAIS, ou se algum
+  bloco sair de cima do outro.",
         sinks.len(),
-    );
-    for (i, label) in conferencia_demos_rank::band_labels() {
-        eprintln!("  {}. {label}", i + 1);
-    }
-    eprintln!(
-        "  (!) Par 1 (as duas grades de cima, amarelo->vermelho): as duas tem o MESMO numero
-  de pecas -- metade da grade, cortada igual. O que muda e' a COR: a` esquerda o degrade'
-  pa'ra no laranja, porque a lista continua a dizer que tem 36 pecas quando tem 18. A`
-  direita ele chega ao vermelho. Clique no no' Cull e ligue/desligue `Renumber Survivors`.
-  (!) Par 2 (azul): a MESMA banda estreita acende 20% das pecas. A` esquerda ela e' um
-  BLOCO contiguo (a ordem da lista). A` direita ela segue o valor de um campo, entao sai
-  ESPALHADA -- e nenhuma peca mudou de lugar. Era isso que ate' hoje so' se conseguia
-  reordenando o conjunto inteiro.
-  (!) Par 3 (rosa, as duas fileiras): a mesma rampa de cor ao longo da fileira. A` direita
-  ela esta' deslocada {shift:.2} -- desfila e REENTRA pelo comeco, com uma costura visivel.
-  Clique no no' Remap e arraste o `Curve Offset`: a rampa anda ao vivo.
-  (!) Par 4 (verde) -- NO' NOVO: um pentagono, ligado como FORMA, decide quem acende.
-  A` esquerda ele e' uma mascara solida (`Filled Path`); a` direita so' a BORDA acende
-  (`Path Edges`) e o miolo apaga. A penumbra tem {dist:.2} de largura nos dois.
-  (!) DEU ERRADO se as duas grades do par 1 sairem com a mesma cor no fim, se a banda da
-  direita do par 2 sair contigua, se as duas fileiras do par 3 sairem iguais, ou se o
-  pentagono nao aparecer de todo (a` esquerda ele tem de ser um bloco CHEIO)."
     );
     sinks
 }

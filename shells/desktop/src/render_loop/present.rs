@@ -256,17 +256,28 @@ impl crate::App {
                 //   else). Additive = emitted light, so it bleeds over whatever is
                 //   in front — the sparks look lit, not pasted.
                 let glow = ph2d_node_fx_glow::from_graph(&motion.doc.graph);
+                // ⚠️ **A LISTA DO GLOW É A CAMADA MOTION, e não o passe de sprites**
+                // (bug do Enio, 2026-08-20: *"Glow não funciona com shape"*, e a
+                // ordem dele depois: *"tudo deve brilhar"*). Ver
+                // [`super::motion_glow_layer`] — a metade vetorial viva entra aqui
+                // pelo TILE assado, porque um halo é imediatamente reduzido por seis
+                // níveis de mip e nunca precisou de nitidez de tela.
+                let glow_layer = super::motion_glow_layer::layer_instances(
+                    &motion.pump.instances,
+                    &motion.pump.vector_instances,
+                    &motion.object_bake,
+                );
                 if let Some(glow) = glow
                     && motion_active
                     && glow.intensity > 0.0
-                    && !motion.pump.instances.is_empty()
+                    && !glow_layer.is_empty()
                 {
                     renderer.render_instances_only(
                         motion_fx.rt_view(),
                         camera,
                         window_size,
                         wgpu::Color::TRANSPARENT,
-                        &motion.pump.instances,
+                        &glow_layer,
                         // SAME sub-rect the fused scene used above — or the glow
                         // desyncs from the sparks (the halo floats away).
                         scene_viewport,

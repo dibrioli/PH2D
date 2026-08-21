@@ -241,6 +241,10 @@ mod wet_grid_look_probe;
 /// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
 pub(crate) mod motion_audio_gen;
 pub(crate) mod motion_externals;
+/// **A CAMADA que o glow bright-passa** (bug do Enio, 2026-08-20): a lista de
+/// instâncias do passe de isolamento, que é a camada MOTION inteira e não só o
+/// passe de sprites — a metade vetorial viva entra pelo tile assado.
+pub(crate) mod motion_glow_layer;
 /// ADR-0154: the shell half of `source.shape` — build each shape's `VecPath` from
 /// its node params, publish it into the cook, and draw the cooked instances as
 /// live GPU vector into the shared vector scene.

@@ -36,6 +36,7 @@ const ENTITY: u64 = 0xC0FF_EE00;
 /// certo para perguntar *"consigo mudar de estratégia?"*.
 fn atlas_sprite(can_reimport: bool) -> InspectorSpriteInfo {
     InspectorSpriteInfo {
+        emissive: 0.0,
         entity_bits: ENTITY,
         name: "fruits".into(),
         world_size: [1.0, 1.0],

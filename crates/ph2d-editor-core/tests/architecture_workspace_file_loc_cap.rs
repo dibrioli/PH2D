@@ -64,7 +64,14 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     ("ph2d-painter-effects/src/adjustments/mod.rs", 946),
     ("ph2d-painter-effects/src/adjustments/spatial.rs", 856),
     ("ph2d-render/src/compressed_pipeline.rs", 993),
-    ("ph2d-render/src/individual.rs", 969),
+    // Ratcheted 969 -> 722 em 2026-08-21. A wave dos 16 bits (`docs/Sprite_projeto/18`)
+    // acrescentou-lhe o `readback_rgba8` e o ficheiro chegou a 1029; a LEITURA DE VOLTA inteira
+    // (`readback` / `_rgba8` / `_mip` / `replace_pixels*` / a fn livre `readback_texture`) saiu
+    // para `individual_read.rs`. É o TERCEIRO corte deste ficheiro por responsabilidade — o store
+    // possui, o `individual_entry` constrói, o `individual_read` lê de volta — e a tolerância
+    // desce com o corte, como este gate manda. Segue acima dos 700 simples: o que resta é o store
+    // + as cópias textura-a-textura, e o próximo que lhe tocar corta as cópias.
+    ("ph2d-render/src/individual.rs", 722),
     ("ph2d-render/src/layer_compositor/mod.rs", 934),
     ("ph2d-render/src/renderer.rs", 1000),
     ("ph2d-tool-bgremoval/src/algorithm/chroma/mod.rs", 704),

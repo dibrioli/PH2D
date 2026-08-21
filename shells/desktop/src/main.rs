@@ -99,6 +99,8 @@ mod dither_smoke;
 mod donated_form;
 mod driven_row_smoke;
 mod echo_family_smoke;
+/// `PH2D_EMISSIVE_SMOKE` — a sprite como fonte de luz (plano `docs/Sprite_projeto/18` W8).
+mod emissive_smoke;
 mod emitter_smoke;
 mod envelope_gesture;
 mod envelope_live;
@@ -732,6 +734,7 @@ impl App {
             mask_smoke_done: false,
             sheet_smoke_done: false,
             dither_smoke_done: false,
+            emissive_smoke_done: false,
             taper_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,
@@ -751,6 +754,7 @@ impl App {
             physics_smoke_done: false,
             show_colliders: true,
             onion_ghosts: Vec::new(),
+            emissive_instances: Vec::new(),
             interaction: ph2d_physics_ecs::InteractionSettings::default(),
             blast_flash: None,
             bake_channels: crate::render_loop::physics_bake::BakeChannels::default(),

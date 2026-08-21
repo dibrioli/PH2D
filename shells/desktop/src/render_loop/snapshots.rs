@@ -766,6 +766,13 @@ pub(super) fn publish(
             world_size,
             source_kind,
             source_precision,
+            // **Quanto esta sprite emite** (plano `docs/Sprite_projeto/18` W8). Ausente = `0.0`:
+            // para o painel, «sem componente» e «componente a zero» são a mesma coisa, e é isso que
+            // deixa o slider voltar a zero remover a linha em vez de a deixar morta no ficheiro.
+            emissive: sim
+                .world()
+                .get::<ph2d_ecs::SpriteEmissive>(entity)
+                .map_or(0.0, |e| e.clamped()),
             source_pixels,
             can_reimport,
             flip_x: sprite.flip_x,

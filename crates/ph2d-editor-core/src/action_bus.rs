@@ -166,6 +166,18 @@ pub enum EditorAction {
         precision: ph2d_color::Precision,
     },
 
+    /// **Quanto esta sprite EMITE** — `docs/Sprite_projeto/18` W8. Levantada pelo slider `Emissive`
+    /// da secção Render Source.
+    ///
+    /// ⚠️ **Não é um campo do `Sprite`, e por isso não viaja pelo `SpriteFieldEdit`.** O que ela
+    /// muda é a presença de um **componente opcional** (`ph2d_ecs::SpriteEmissive`), e quem tem o
+    /// `ComponentRegistry` para o inserir ou remover é o shell — o mesmo caminho do `TextureFilter`.
+    ///
+    /// ⚠️ **Intensidade zero REMOVE o componente**, em vez de o deixar a zero. Uma sprite que não
+    /// emite não tem por que carregar a linha no ficheiro, e o quadro tem de voltar a ser
+    /// byte-idêntico ao de antes de alguém ter mexido no slider.
+    InspectorSpriteEmissiveChange { entity_bits: u64, intensity: f32 },
+
     /// Undo the most recent image-edit (Trim Transparency / Make
     /// Square / Bg Removal). No payload — the shell owns the
     /// snapshot. Single-level by design, and it is now the FALLBACK of

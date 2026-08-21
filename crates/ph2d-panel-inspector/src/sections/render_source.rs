@@ -174,6 +174,20 @@ pub(crate) fn paint_render_source_section(
         label_font,
     );
 
+    // **A SPRITE COMO FONTE DE LUZ** (plano `docs/Sprite_projeto/18` W8). Vizinha do `Format` de
+    // propósito: a emissão é a única coisa no app que precisa da folga acima de 1.0 que os 16 bits
+    // dão. ⚠️ Vive num ficheiro IRMÃO porque este está no tecto de LOC (`emissive_row.rs`).
+    cur_y = super::emissive_row::paint_emissive_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+    );
+
     let reimport_h = 30.0_f32; // LITERAL-PX-OK: Reimport button height
     let btn_rect = Rect::new(x, cur_y, w, reimport_h);
     let id = ids::INSP_RENDER_SOURCE_REIMPORT;

@@ -274,6 +274,9 @@ pub(crate) mod point_gizmo;
 mod present;
 mod sim_extract;
 mod snapshots;
+/// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — lê o espelho pelo `SimRef` e
+/// devolve as instâncias que emitem. ⚠️ Irmão do `sim_extract` de propósito: ele está no tecto de LOC.
+pub(crate) mod sprite_emissive;
 mod upscale_bridge;
 // ADR-0108 cutover: the single Vector-tool bridge (style sync + recolour).
 // Rendering of `AppGfx.vec_scene` stays inline below (ph2d_vec_render).
@@ -1445,6 +1448,31 @@ impl crate::App {
                 toasts.push(Toast::success(
                     "Dither smoke: one gradient, two descents — the top half has bands, \
                      the bottom half does not"
+                        .to_string(),
+                ));
+                self.title_dirty = true;
+            }
+        }
+
+        // **A SPRITE COMO FONTE DE LUZ** (`PH2D_EMISSIVE_SMOKE=1`, plano `docs/Sprite_projeto/18`
+        // W8): duas lâmpadas iguais, e só a da direita carrega `SpriteEmissive`. A da esquerda
+        // existe para o «antes» estar no ecrã — um halo sozinho parece só uma sprite clara.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::emissive_smoke::enabled()
+            && !std::mem::replace(&mut self.emissive_smoke_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            if let Some(bits) =
+                crate::emissive_smoke::spawn_if_enabled(sim, renderer, asset_db, ppm)
+            {
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::All,
+                    });
+                toasts.push(Toast::success(
+                    "Emissive smoke: same lamp twice — only the right one emits. \
+                     Drag `Emissive` in the Inspector to dial it"
                         .to_string(),
                 ));
                 self.title_dirty = true;
@@ -2653,6 +2681,10 @@ impl crate::App {
             // O pedido de troca de PRECISAO (plano `docs/Sprite_projeto/18` W5). `Option` e nao
             // `Vec`: o par so' existe com uma sprite selecionada.
             let mut precision_request: Option<(u64, ph2d_color::Precision)> = None;
+            // **A SPRITE COMO FONTE DE LUZ** (plano `docs/Sprite_projeto/18` W8). Recolhido aqui e
+            // drenado com o irmão `precision_request` — o mesmo padrão, porque o componente só pode
+            // ser escrito onde o `sim` está emprestado mutavelmente.
+            let mut emissive_request: Option<(u64, f32)> = None;
             // Fase 0e: per-sprite tools collect a Vec<u64> instead of
             // Option<u64> so a multi-select OneShotImageOp broadcast
             // applies the bake to every selected sprite (legacy
@@ -3739,6 +3771,18 @@ impl crate::App {
                         precision,
                     } => {
                         precision_request.get_or_insert((entity_bits, precision));
+                    }
+                    // **A SPRITE COMO FONTE DE LUZ** (plano `docs/Sprite_projeto/18` W8).
+                    //
+                    // ⚠️ **Zero REMOVE o componente**, e é o que faz o quadro voltar a ser
+                    // byte-idêntico: uma sprite que não emite não tem por que carregar a linha no
+                    // ficheiro nem uma entrada na varredura do passe. Mesmo caminho do
+                    // `TextureFilter` — quem tem o `ComponentRegistry` é o shell.
+                    EditorAction::InspectorSpriteEmissiveChange {
+                        entity_bits,
+                        intensity,
+                    } => {
+                        emissive_request.get_or_insert((entity_bits, intensity));
                     }
                     // ADR-0040 TG-A: generic one-shot image-op dispatch.
                     // Trim/MakeSquare/RealSize collect into per-tool Option<u64>
@@ -8846,6 +8890,26 @@ impl crate::App {
                 toasts,
             ) {
                 self.title_dirty = true;
+            }
+            // **A emissao autorada** (plano `docs/Sprite_projeto/18` W8). Zero REMOVE o componente:
+            // uma sprite que nao emite nao carrega a linha no ficheiro nem uma entrada na varredura
+            // do passe, e o quadro volta a ser byte-identico.
+            //
+            // ⚠️ Escreve o componente DIRETO, e nao pela `EditorCommandQueue`: o undo deste projeto
+            // e' por DIFF de snapshot (`App::post_frame_undo`), e o `SpriteEmissive` esta' registado,
+            // logo ele entra na captura como qualquer outro componente. A fila serve os caminhos que
+            // precisam de aplicar por NOME vindo do painel; aqui o tipo e' conhecido.
+            if let Some((bits, intensity)) = emissive_request {
+                let entity = ph2d_ecs::Entity::from_bits(bits);
+                let em = ph2d_ecs::SpriteEmissive(intensity);
+                if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {
+                    if em.emits() {
+                        e.insert(ph2d_ecs::SpriteEmissive(em.clamped()));
+                    } else {
+                        e.remove::<ph2d_ecs::SpriteEmissive>();
+                    }
+                    self.title_dirty = true;
+                }
             }
             // ⚠️ **Este bloco fica DEPOIS do dreno do pivot do joint, de propósito.** Ele esteve
             // no meio do par `let joint_pivot_commit = …` → `if let Some(…) = joint_pivot_commit`,

@@ -1,5 +1,17 @@
 use super::*;
 
+/// **O tecto da intensidade de emissão, do lado da UI** — plano `docs/Sprite_projeto/18` W8.
+///
+/// ⚠️ **É uma CÓPIA de [`ph2d_ecs::EMISSIVE_MAX`], e a cópia é deliberada.** O painel é *chrome* e
+/// não depende do `ph2d-ecs` — essa seta está ausente de propósito (o painel desenha; o ECS é o
+/// modelo). Um shader não importa constantes de Rust e um painel não importa o modelo: nos dois
+/// casos a resposta é a mesma, uma cópia **com um gate a medir que as duas concordam**
+/// (`the_emissive_ceiling_is_one_law` no shell, que é quem vê as duas crates).
+///
+/// O número, e o porquê dele, vivem ao lado do original: ele é o tecto da **representação**
+/// (meio-float do `GameRt`), não um conforto.
+pub const EMISSIVE_MAX_UI: f32 = 64.0; // LITERAL-PX-OK: teto de INTENSIDADE de emissão (cópia de `ph2d_ecs::EMISSIVE_MAX`), não uma medida de desenho
+
 /// Snapshot of the selected sprite's editor-facing fields. Host
 /// rebuilds this each frame from `gizmo_selection` + SimWorld;
 /// inspector renders read-only display + a Reimport button.
@@ -25,6 +37,10 @@ pub struct InspectorSpriteInfo {
     /// o plano 17 §5 apanhou. Uma sprite de 16 bits tem de dizer 16, e quem sabe é o store de
     /// texturas, não o painel.
     pub source_precision: Option<ph2d_color::Precision>,
+    /// **Quanto esta sprite emite** (`docs/Sprite_projeto/18` W8). `0.0` = não emite, que é também
+    /// o estado de uma sprite sem o componente `SpriteEmissive` — as duas coisas leem igual aqui de
+    /// propósito, porque para o painel elas **são** a mesma coisa.
+    pub emissive: f32,
     /// **O nome legível** de uma origem hand-packed: `Some("folha · região")`.
     ///
     /// ⚠️ Vem pronto do host porque o painel **não conhece o documento de folhas** — ele não pode

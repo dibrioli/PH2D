@@ -244,6 +244,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::OnScreenEnabler>("ph2d::ecs::OnScreenEnabler");
     reg.register::<crate::UvTransform>("ph2d::ecs::UvTransform");
     reg.register::<crate::BlendMode>("ph2d::ecs::BlendMode");
+    // A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8). Opcional: sem o componente o
+    // quadro é byte-idêntico, e um projeto antigo carrega sem ele — mas quem o autorou tem de o
+    // reencontrar depois de gravar, e sem esta linha o `world_to_snapshot` descartava-o em silêncio.
+    reg.register::<crate::SpriteEmissive>("ph2d::ecs::SpriteEmissive");
     // Trava e group-lock: markers que o Hierarchy edita e que o save/undo precisa
     // preservar (sem eles, `world_to_snapshot` os descartava em silêncio).
     reg.register::<crate::Locked>("ph2d::ecs::Locked");
@@ -463,8 +467,9 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 60);
+        assert_eq!(reg.len(), 61);
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetFrame").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());

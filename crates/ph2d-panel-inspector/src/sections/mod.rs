@@ -34,6 +34,9 @@ pub(crate) use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeT
 pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
 
 mod color_tint;
+/// A linha `Emissive` (plano `docs/Sprite_projeto/18` W8) — irmã do `render_source`, que está no
+/// tecto de LOC.
+mod emissive_row;
 mod identity;
 pub(crate) mod joint;
 mod joint_pair_rows;

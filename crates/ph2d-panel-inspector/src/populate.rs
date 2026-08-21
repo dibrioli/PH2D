@@ -256,6 +256,47 @@ fn populate_color_tint(store: &mut WidgetStore) {
     // Opacity is a hard `0..100 %` — drag-scrub on the chip spans the whole range proportionally
     // (coherent with its limits, like the texture number boxes; Enio 2026-06-26).
     store.set_number_range(ids::INSP_SPRITE_OPACITY_CHIP, 0.0, 100.0, 1.0); // LITERAL-PX-OK: opacity percent scale
+
+    // **EMISSIVE** — a sprite como fonte de luz (plano `docs/Sprite_projeto/18` W8).
+    //
+    // ⚠️ **O slider guarda `0..1` normalizado; a chip mostra a intensidade REAL** (`0..EMISSIVE_MAX`).
+    // Mesmo par que a Opacidade, e pela mesma razão: um slider cujo curso fosse `0..64` daria ao
+    // artista 63/64 do percurso para valores que ele nunca usa. O mapeamento vive AQUI, num sítio só
+    // — se ele se duplicasse, o número que o artista lê e o que o motor aplica divergiriam.
+    store.register(
+        ids::INSP_SPRITE_EMISSIVE,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.0,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        ids::INSP_SPRITE_EMISSIVE_CHIP,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 0.0,
+            buffer: format_number(0.0),
+            caret: 0,
+            last_committed: 0.0,
+            selection_anchor: None,
+        },
+    );
+    // ⚠️ **A escala vem de `ph2d_ecs::EMISSIVE_MAX`, não de um literal.** Ela é o tecto da
+    // REPRESENTAÇÃO (o meio-float do `GameRt`), documentado ao lado da constante; escrevê-lo aqui
+    // outra vez faria a UI e o motor discordarem no dia em que alguém remedisse o tecto.
+    store.link_slider_number_mapped(
+        ids::INSP_SPRITE_EMISSIVE,
+        ids::INSP_SPRITE_EMISSIVE_CHIP,
+        ph2d_editor_core::EMISSIVE_MAX_UI,
+        0.0,
+    );
+    store.set_number_range(
+        ids::INSP_SPRITE_EMISSIVE_CHIP,
+        0.0,
+        f64::from(ph2d_editor_core::EMISSIVE_MAX_UI),
+        0.1, // LITERAL-PX-OK: passo de scrub da intensidade, não um token de desenho
+    );
     store.register(
         ids::INSP_SPRITE_TINT_FILL,
         InteractiveState::Checkbox {

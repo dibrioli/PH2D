@@ -20,7 +20,7 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{
     InspectorOrderingInfo, InspectorSpriteInfo, SpriteFieldEdit,
 };
-use ph2d_editor_core::widget::{CheckboxValue, SliderState, TextInputState};
+use ph2d_editor_core::widget::{CheckboxValue, TextInputState};
 
 pub(crate) fn sync_inspector_from_snapshots(
     inspector_state: &mut state::InspectorState,
@@ -406,35 +406,12 @@ fn sync_sprite_fields(
             }
         }
     }
-    // Opacity Slider (0..1 storage) + linked percent chip. Skip while
-    // the slider is being dragged or the chip is focused so we don't
-    // fight the user's input.
-    let dragging = matches!(
-        host.store().slider(ids::INSP_SPRITE_OPACITY),
-        Some((SliderState::Dragging, _))
-    );
-    if !dragging
-        && focus != Some(ids::INSP_SPRITE_OPACITY_CHIP)
-        && drag != Some(ids::INSP_SPRITE_OPACITY_CHIP)
-    {
-        // The slider track can't show "Mixed", so it parks at the
-        // primary's value; the blank percent chip is the Mixed signal.
-        if let Some(InteractiveState::Slider { value, .. }) =
-            host.store_mut().get_mut(ids::INSP_SPRITE_OPACITY)
-        {
-            *value = sp.opacity;
-        }
-        if sp.mixed.opacity {
-            host.store_mut()
-                .blank_number_input(ids::INSP_SPRITE_OPACITY_CHIP);
-        } else {
-            // Chip lives in display space (percent) per the integer map.
-            host.store_mut().set_number_value(
-                ids::INSP_SPRITE_OPACITY_CHIP,
-                (sp.opacity * 100.0) as f64, // LITERAL-PX-OK: opacity percent scale
-            );
-        }
-    }
+    // **Os dois sliders-com-chip da sprite** — Opacidade e Emissive. Saíram para o irmão
+    // [`crate::sync_sprite_value`] em 2026-08-21: a linha `Emissive` (plano
+    // `docs/Sprite_projeto/18` W8) empurrou esta função para 223 contra uma tolerância de 202, e a
+    // catraca deste projeto **só desce**. Levar os dois juntos (e não só o novo) é o que a faz
+    // descer de facto — 223 → ~178, e a tolerância deixa de ter objeto.
+    crate::sync_sprite_value::sync_sprite_sliders(host, sp, focus, drag);
     // Tint / Self Tint swatches. The BlenderColorPicker round-trips
     // the chosen color through `widget_color(<swatch>)` (mirrored
     // each frame from the picker in `hero.rs`, BEFORE this panel

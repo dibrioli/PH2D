@@ -105,8 +105,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/event.rs",
         "apply_event_impl",
-        410,
-        "was frozen at a mis-measured 353; truly 477, ratcheted to 452 when W3's two physics colour dots pushed it over and the colour-dot arm moved out to `section_color_click`; ratcheted again to 442 when W-Signal's text row pushed it to 470 and the two TEXT arms moved out to `section_text_changed`; ratcheted to 410 em 2026-08-20 quando o par de PRECISAO (plano `docs/Sprite_projeto/18` W5) o empurrou e os DOIS pares da seccao Render Source (Strategy + Format) sairam para `event_precision.rs` — irmao e nao funcao irma, porque o ficheiro tambem estava a rocar o teto de 600 e extrair no mesmo ficheiro curaria um teto e estouraria o outro. A catraca so' desce: um cluster de cada vez. Sequence of independent first-match-wins `if let WidgetEvent::…` blocks",
+        399,
+        "was frozen at a mis-measured 353; truly 477, ratcheted to 452 when W3's two physics colour dots pushed it over and the colour-dot arm moved out to `section_color_click`; ratcheted again to 442 when W-Signal's text row pushed it to 470 and the two TEXT arms moved out to `section_text_changed`; ratcheted to 410 em 2026-08-20 quando o par de PRECISAO (plano `docs/Sprite_projeto/18` W5) o empurrou e os DOIS pares da seccao Render Source (Strategy + Format) sairam para `event_precision.rs` — irmao e nao funcao irma, porque o ficheiro tambem estava a rocar o teto de 600 e extrair no mesmo ficheiro curaria um teto e estouraria o outro. A catraca so' desce: um cluster de cada vez. Ratcheted a 399 em 2026-08-21 quando a linha `Emissive` (plano `docs/Sprite_projeto/18` W8) o levou a 433 e os DOIS sliders-com-chip da sprite (Opacidade + Emissive) sairam juntos para `event_sprite_value.rs` -- levar so' o novo devolveria o numero a 410 exactos, e ficar no mesmo sitio nao e' encolher. Sequence of independent first-match-wins `if let WidgetEvent::…` blocks",
     ),
     (
         "ph2d-panel-inspector/src/paint.rs",
@@ -123,12 +123,11 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
          a fez cruzar e a geometria partilhada por TODA row (a largura de um chip e o empilhar da \
          seção) saiu para `chip_metrics`. Per-row split segue diferido (needs smoke)",
     ),
-    (
-        "ph2d-panel-inspector/src/sync.rs",
-        "sync_sprite_fields",
-        202,
-        "unmasked by the 2026-07-10 parser fix; field-by-field mirror, 2 LOC over — split is mechanical",
-    ),
+    // (A tolerancia do inspector `sync_sprite_fields` (202) esta' GONE: a linha `Emissive`
+    // (plano `docs/Sprite_projeto/18` W8) empurrou-a para 223, e os DOIS sliders-com-chip da sprite
+    // sairam para `sync_sprite_value.rs` -- 179 LOC, debaixo do teto de 200, tolerancia nenhuma
+    // precisa. Que e' exactamente para isto que o teto serve, e o que o "split is mechanical" de
+    // 2026-07-10 tinha adiado.)
     // (The painter-layers `apply_event_impl` allowance is GONE: adding the per-layer Impasto rows
     // pushed it over its 281, so the `ValueChanged` arm was extracted whole into `route_value_changed`
     // — 181 LOC, under the 200 cap, no allowance needed. Which is exactly what the cap is for.)

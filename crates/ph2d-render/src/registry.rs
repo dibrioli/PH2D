@@ -41,7 +41,8 @@ mod tests {
         //
         // Na integracao ele SOMA entre linhas — recontar e' obrigatorio, escolher um dos lados e' o
         // erro que deixa o workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 61);
+        assert_eq!(reg.len(), 62);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
     }
 }

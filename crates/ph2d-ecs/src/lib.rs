@@ -42,6 +42,8 @@
 
 pub mod baked_form;
 pub mod blend;
+/// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — módulo irmão, append-only.
+pub mod emissive;
 pub mod flip_object_ref;
 pub mod masking;
 pub mod name;
@@ -70,6 +72,7 @@ pub mod visibility_layer;
 
 pub use baked_form::BakedForm;
 pub use blend::BlendMode;
+pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
 pub use flip_object_ref::FlipObjectRef;
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use name::{Name, stable_name_id};

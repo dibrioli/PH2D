@@ -64,6 +64,16 @@ pub const INSP_RENDER_STRATEGY_HANDPACKED: NodeId = hash_node_id("insp_render_st
 pub const INSP_RENDER_FORMAT_RGBA8: NodeId = hash_node_id("insp_render_format_rgba8");
 pub const INSP_RENDER_FORMAT_RGBA16: NodeId = hash_node_id("insp_render_format_rgba16");
 
+/// **A SPRITE COMO FONTE DE LUZ** (`docs/Sprite_projeto/18` W8) — o slider `Emissive` + a chip
+/// ligada, na mesma secção que o par `Format`.
+///
+/// ⚠️ **Vizinho do `Format` de propósito.** A emissão é a única coisa que precisa da folga acima de
+/// 1.0 que os 16 bits dão, e pô-la aqui é o que faz a ligação aparecer ao artista sem uma palavra de
+/// explicação. Ela **funciona** em 8 bits (o multiplicador empurra a cor para cima na hora do
+/// desenho); o que 16 bits acrescenta é poder **guardar** o brilho na própria textura.
+pub const INSP_SPRITE_EMISSIVE: NodeId = hash_node_id("insp_sprite_emissive");
+pub const INSP_SPRITE_EMISSIVE_CHIP: NodeId = hash_node_id("insp_sprite_emissive_chip");
+
 /// M14.E: editable entity-name TextInput at the top of the Inspector
 /// body. Replaces the read-only name display that previously lived in
 /// the Inspector header subtitle and again as a "Name" row inside the

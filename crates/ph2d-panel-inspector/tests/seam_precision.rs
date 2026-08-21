@@ -37,6 +37,7 @@ const ENTITY: u64 = 0xBEEF_0001;
 
 fn sprite(kind: InspectorSpriteSource, precision: Option<Precision>) -> InspectorSpriteInfo {
     InspectorSpriteInfo {
+        emissive: 0.0,
         entity_bits: ENTITY,
         name: "hero".into(),
         world_size: [1.0, 1.0],

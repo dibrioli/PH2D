@@ -572,6 +572,8 @@ pub(crate) struct App {
     pub(crate) sheet_smoke_done: bool,
     /// Latch one-shot de `PH2D_DITHER_SMOKE` — as duas descidas para 8 bits (plano Sprite 18 W6.1).
     pub(crate) dither_smoke_done: bool,
+    /// Latch one-shot de `PH2D_EMISSIVE_SMOKE` — a sprite como fonte de luz (plano Sprite 18 W8).
+    pub(crate) emissive_smoke_done: bool,
     /// `PH2D_TAPER_SMOKE` one-shot latch (the Procreate Touch Taper scene).
     pub(crate) taper_smoke_done: bool,
     /// Latch for the `PH2D_WETPAINT_SMOKE` canvas (Wet Paint mode, ADR-0134 W1; same rationale).
@@ -663,6 +665,13 @@ pub(crate) struct App {
     /// padrão do `motion.pump.instances` (cozinha numa fase, desenha noutra). Vazio quando
     /// o onion está desligado.
     pub(crate) onion_ghosts: Vec<ph2d_render::RenderInstance>,
+    /// **As instâncias que EMITEM neste frame** (plano `docs/Sprite_projeto/18` W8), recolhidas e
+    /// consumidas dentro do `run_present_phase`.
+    ///
+    /// ⚠️ Vive aqui, e não numa `Vec` local, por HR-3: com uma sprite emissora em cena o passe corre
+    /// **todo frame**, e uma `Vec` nova por frame seria uma alocação no laço quente. Vazio (e
+    /// portanto grátis) em toda cena que não tenha um emissor — que são todas, por omissão.
+    pub(crate) emissive_instances: Vec<ph2d_render::RenderInstance>,
     /// **A ferramenta de INTERAÇÃO com a física** (W-Hand) — o que o ponteiro faz
     /// a uma cena que está rodando: a MÃO (segura um corpo), a EXPLOSÃO (um
     /// estouro radial) ou a ATRAÇÃO (um campo sustentado).

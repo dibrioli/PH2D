@@ -21,6 +21,8 @@ mod event_ordering;
 mod event_physics;
 mod event_player;
 mod event_precision;
+/// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `event`, que estava no tecto.
+mod event_sprite_value;
 mod event_wheel;
 mod paint;
 mod paint_frame;
@@ -30,6 +32,8 @@ mod sections;
 pub mod state;
 mod sync;
 mod sync_physics;
+/// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `sync`, que estava no tecto.
+mod sync_sprite_value;
 
 /// The §11 Bake button's label — exported so a gate can hold the claim that
 /// the button shows the range it would cover.

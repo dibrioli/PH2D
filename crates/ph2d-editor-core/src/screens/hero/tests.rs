@@ -1065,6 +1065,7 @@ fn strategy_click_raises_pending_when_kind_differs() {
     use crate::action_bus::EditorAction;
     let mut hero = HeroScreen::new(NodeId(1));
     hero.inspector.sprite = Some(InspectorSpriteInfo {
+        emissive: 0.0,
         entity_bits: 0xC0FF_EE00,
         name: "Player".into(),
         world_size: [1.0, 1.0],
@@ -1293,6 +1294,7 @@ fn strategy_click_resets_button_state_to_normal() {
     crate::test_support::ensure_panel_registry();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.inspector.sprite = Some(InspectorSpriteInfo {
+        emissive: 0.0,
         entity_bits: 0x00C0_FFEE,
         name: "S".into(),
         world_size: [1.0, 1.0],

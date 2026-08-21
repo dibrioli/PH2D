@@ -244,6 +244,40 @@ impl crate::App {
                     );
                     gpu.queue.submit([enc.finish()]);
                 }
+                // Pass 1b-bis: **A SPRITE COMO FONTE DE LUZ** (plano `docs/Sprite_projeto/18` W8,
+                //   Enio 2026-08-21). Mesma máquina do glow do Motion logo abaixo, outra lista:
+                //   re-desenha em ISOLAMENTO as sprites que carregam `SpriteEmissive` — com o
+                //   `tint` já multiplicado pela intensidade — no RT `Rgba16Float` do `motion_fx`,
+                //   e SOMA o bright-pass borrado sobre o `game_rt`, antes do tonemap.
+                //
+                // ⚠️ **Corre ANTES do glow do Motion, e a ordem é load-bearing.** Os dois passes
+                //   partilham o RT do `motion_fx` e cada um escreve-o inteiro para o consumir logo
+                //   a seguir — em sequência funciona, entrelaçados um apagaria o outro.
+                //
+                // ⚠️ Sem nenhuma sprite a emitir a lista sai VAZIA e este bloco não toca a GPU: o
+                //   quadro é byte-idêntico ao de antes desta feature existir (há gate).
+                crate::render_loop::sprite_emissive::collect(
+                    sim,
+                    present,
+                    &mut self.emissive_instances,
+                );
+                if !self.emissive_instances.is_empty() {
+                    renderer.render_instances_only(
+                        motion_fx.rt_view(),
+                        camera,
+                        window_size,
+                        wgpu::Color::TRANSPARENT,
+                        &self.emissive_instances,
+                        // O MESMO sub-rect da cena fundida — senão o halo desliza para fora da
+                        // sprite que o emitiu (o mesmo cuidado que o glow do Motion documenta).
+                        scene_viewport,
+                    );
+                    motion_fx.bloom_over(
+                        surface.gpu(),
+                        game_rt.view(),
+                        &crate::render_loop::sprite_emissive::bloom_params(),
+                    );
+                }
                 // Pass 1c: Motion glow (doc 67, Option B) — the Motion module's
                 //   OWN HDR effect, authored as an `fx.glow` node in the graph.
                 //   Only runs when the artist has dropped that node (and dialed

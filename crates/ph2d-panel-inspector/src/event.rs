@@ -279,22 +279,11 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         });
         return true;
     }
-    // W2 Color & Tint — Opacity Slider moved (drag or linked-chip edit
-    // both fire ValueChanged on the slider id). The slider stores the
-    // raw 0..1 opacity.
-    if let WidgetEvent::ValueChanged(id) = ev
-        && id == ids::INSP_SPRITE_OPACITY
-        && let Some(info) = state::current_inspector_sprite()
-    {
-        let opacity = host
-            .store()
-            .slider(ids::INSP_SPRITE_OPACITY)
-            .map(|(_, v)| v)
-            .unwrap_or(info.opacity);
-        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
-            entity_bits: info.entity_bits,
-            edit: SpriteFieldEdit::Opacity(opacity),
-        });
+    // **Os dois sliders-com-chip da sprite** — Opacidade e Emissive, no irmão
+    // [`crate::event_sprite_value`]. Saíram juntos em 2026-08-21 quando a linha `Emissive` (plano
+    // `docs/Sprite_projeto/18` W8) empurrou este despachante para 433 contra uma tolerância de 410:
+    // levar só o novo devolveria o número a 410 e não desceria nada, e *a catraca só desce*.
+    if crate::event_sprite_value::apply_sprite_slider_event(host, ev) {
         return true;
     }
     // W3 §7 Ordering — all ordering widget events (sibling module, LOC).

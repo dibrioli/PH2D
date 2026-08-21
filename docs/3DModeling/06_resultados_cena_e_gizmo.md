@@ -987,8 +987,16 @@ subiu junto e a conta bate*.
 
 ## §18 — W17: os PADRÕES — e a pilha aguentou-os sem arquitetura nova (20/08)
 
-Fecha a W4 do plano menos o *draft*: **espelho** e **matriz linear**. Entraram como mais dois
-[`Unary`] na pilha da W16 — *zero* arquitetura nova, que é o sinal de que a forma da W16 estava certa.
+Fecha a W4 do plano menos o *draft*: **espelho**, **matriz linear** e **matriz radial**. Entraram
+como mais três [`Unary`] na pilha da W16 — *zero* arquitetura nova, que é o sinal de que a forma da
+W16 estava certa.
+
+> ⚠️ **Achado do Enio, no smoke: o espelho é INVISÍVEL nas cenas que temos.** *"mirror não pode ser
+> visto pois usa o centro do objeto e nossos objetos são simétricos."* Ele está certo, e o doc-comment
+> do gate já dizia metade disto (*"espelhar uma folha centrada em si é um no-op por construção"*) —
+> **sem tirar a conclusão de produto**: o único alvo útil é um **grupo** descentrado, e os grupos
+> das cenas de smoke também são simétricos. O verbo funciona e **não se consegue demonstrar**.
+> Adiado por decisão dele (*"depois resolveremos"*); fica no §13.
 
 ### ⭐ O que um campo dá de graça, e uma malha cobra N vezes
 
@@ -1044,6 +1052,22 @@ no mesmo painel, ao lado do gizmo e da pose.
 | Mutação | Reprovou |
 |---|---|
 | a matriz volta a olhar só a célula do ponto | `an_off_centre_shape_still_measures_to_the_nearest_copy` |
+| a coroa volta a olhar só a fatia do ponto | `a_radial_array_of_n_is_exactly_the_union_of_n_rotated_copies` |
+
+### A coroa, e a MESMA armadilha uma quarta vez
+
+A matriz radial é a mesma ideia noutra coordenada: em vez de dobrar o `x`, dobra-se o **ângulo**
+(`θ − Δ·k`, com `Δ = 2π/count`). Duas fatias pelo mesmo motivo, e o eixo é o **Z** — o do
+[`Primitive::Cylinder`], porque uma coroa de parafusos gira em torno do eixo do flange.
+
+⚠️ **No eixo (`x = y = 0`) não há ângulo.** A conta não divide por `r` — ela reconstrói o ponto por
+`r·cos θ'` —, então em `r = 0` o resultado é a origem, sem caso especial e sem `NaN`. Um `NaN` ali
+envenenaria o traçado **inteiro**: a marcha compara com `NaN` e nenhum pixel acerta.
+
+⛔ **E a prova de mutação da coroa passou VERDE à primeira, pela quarta vez pelo mesmo motivo.** A
+fixture tinha as esferas **centradas na fatia** — e aí a receita de uma fatia só já é exata. A classe
+tem agora nome escrito: *a repetição só erra com a forma **descentrada na coordenada repetida***.
+Curado pondo a esfera a **meia fatia** do centro dela.
 
 ⚠️ E o gate do espelho leva a mesma armadilha da matriz escrita por extenso: a pilha corre **antes**
 da pose do nó, então deslocar a folha pela pose dela **não** a tira do plano do espelho — a fixture
@@ -1063,6 +1087,12 @@ o fizesse passaria sem nada a defender.
   que a nota prescreve.*
 - ✅ **duplicar e apagar FECHARAM** na W11 (§10)
 - ✅ **a rotação em números FECHOU** na W14 (§14) — e com ela o piso de toda linha
+- ⏸️ **o ESPELHO não se consegue demonstrar** (Enio, smoke da W17): ele dobra em torno do centro do
+  nó, e toda peça das cenas — folhas *e* grupos — é simétrica. O verbo está correto e gateado; o que
+  falta é um alvo descentrado, ou um pivô de espelho autorado. Adiado por decisão dele
+- ⏸️ **draft** (paredes inclinadas) — o que resta da W4 do plano. ⚠️ Ele é o primeiro modificador que
+  **não** preserva a distância exata (um cisalhamento do domínio dá um *bound*), e isso tem de entrar
+  medido, não de lado
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

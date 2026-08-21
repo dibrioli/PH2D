@@ -64,6 +64,13 @@ pub enum Unary {
     ///
     /// ⚠️ Mesmo eixo, mesma razão do [`Unary::Mirror`].
     Array { count: u32, spacing: f32 },
+    /// **Matriz radial**: `count` cópias em círculo, em torno do **Z local**.
+    ///
+    /// ⚠️ **Z, e não X** — e o critério não é a coerência com os irmãos acima, é a **coerência com
+    /// a peça**: o [`crate::Primitive::Cylinder`] aponta em Z, e uma coroa de parafusos à volta de
+    /// um flange gira em torno do eixo dele. Cada modificador nomeia o seu eixo e diz porquê, que é
+    /// o que as primitivas já fazem (o cilindro é Z, o torno é Y, e cada um tem a razão escrita).
+    Radial { count: u32 },
 }
 
 /// Quantas cópias uma matriz consegue ter.
@@ -126,6 +133,16 @@ impl Unary {
                     span: Span::Positive,
                 },
             ],
+            // ⚠️ **Sem espaçamento**: numa coroa o espaçamento é o próprio ângulo, e ele já está
+            // dito pela contagem (`2π/n`). Um segundo número aqui seria uma forma de pedir uma
+            // coroa incompleta — que é outra feature, com outro nome.
+            Unary::Radial { count } => vec![crate::Dim {
+                key: "field.mod.count",
+                value: count as f32,
+                span: Span::Count {
+                    max: MAX_ARRAY_COUNT,
+                },
+            }],
         }
     }
 
@@ -166,6 +183,12 @@ impl Unary {
                 }
                 *spacing = value;
             }
+            (Unary::Radial { count }, 0) => {
+                if value < 1.0 {
+                    return Err(bad("count"));
+                }
+                *count = (value.round() as u32).min(MAX_ARRAY_COUNT);
+            }
             _ => return Err(bad("mod")),
         }
         Ok(())
@@ -196,6 +219,10 @@ impl Unary {
                 count: 2,
                 spacing: fraction(ARRAY_BIRTH_SPAN),
             },
+            // ⚠️ **Seis, e não dois.** Numa coroa, duas cópias a 180° leem-se como um espelho e não
+            // como uma coroa — o gesto não se explica sozinho. Seis é o menor número em que a
+            // circularidade é imediata, e é o que uma flange de verdade costuma ter.
+            UnaryKind::Radial => Unary::Radial { count: 6 },
         }
     }
 
@@ -207,6 +234,7 @@ impl Unary {
             Unary::Offset { .. } => UnaryKind::Offset,
             Unary::Mirror => UnaryKind::Mirror,
             Unary::Array { .. } => UnaryKind::Array,
+            Unary::Radial { .. } => UnaryKind::Radial,
         }
     }
 }
@@ -233,16 +261,18 @@ pub enum UnaryKind {
     Offset,
     Mirror,
     Array,
+    Radial,
 }
 
 impl UnaryKind {
     /// ⭐ **A fonte da contagem.** O painel deriva os botões daqui, como já faz com `Mode::ALL` — um
     /// modificador novo acrescenta-se aqui e o painel segue sem uma linha de mudança.
-    pub const ALL: [UnaryKind; 4] = [
+    pub const ALL: [UnaryKind; 5] = [
         UnaryKind::Shell,
         UnaryKind::Offset,
         UnaryKind::Mirror,
         UnaryKind::Array,
+        UnaryKind::Radial,
     ];
 
     /// A chave i18n do botão que o acrescenta.
@@ -253,6 +283,7 @@ impl UnaryKind {
             UnaryKind::Offset => "panel.model3d.mod.offset",
             UnaryKind::Mirror => "panel.model3d.mod.mirror",
             UnaryKind::Array => "panel.model3d.mod.array",
+            UnaryKind::Radial => "panel.model3d.mod.radial",
         }
     }
 }

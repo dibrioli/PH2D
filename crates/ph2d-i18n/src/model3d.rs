@@ -50,6 +50,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // modificador seria um terceiro vocabulário de orientação no mesmo painel.
         "panel.model3d.mod.mirror" => "Mirror",
         "panel.model3d.mod.array" => "Array",
+        // ⚠️ "Radial" gira em torno do **Z** do objeto — o eixo em que um cilindro aponta, que é o
+        // eixo de um flange. Cada modificador nomeia o seu, como as primitivas já fazem.
+        "panel.model3d.mod.radial" => "Radial",
         // ⭐ Os nomes das linhas de número dos modificadores. ⚠️ Um modificador pode ter VÁRIOS
         // (a matriz tem dois) e pode não ter nenhum (o espelho).
         "field.mod.thickness" => "Thickness",

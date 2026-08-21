@@ -1087,3 +1087,104 @@ fn the_mirror_folds_the_domain_exactly() {
     // E entre as duas há vazio: a dobra não preenche o meio.
     assert!(f.at(0.0, 0.0, 0.0) > 0.0, "o plano do espelho fica vazio");
 }
+
+/// ⭐ **Uma coroa de N é, exatamente, a UNIÃO de N cópias ROTACIONADAS.**
+///
+/// ⚠️ Oráculo independente, como o da matriz linear: o lado direito são N esferas postas à mão nos
+/// ângulos certos, unidas com a booleana de sempre. A dobra do ângulo custa o mesmo com N = 2 e com
+/// N = 32; a união custa N.
+#[test]
+fn a_radial_array_of_n_is_exactly_the_union_of_n_rotated_copies() {
+    use ph2d_field::Unary;
+    let (r, ring, n) = (0.22f32, 0.5f32, 6u32);
+    // ⚠️ **A esfera fica a MEIA FATIA do centro dela**, e não sobre ela. Uma peça centrada na fatia
+    // não contém o fenómeno: com `round`, a fatia do ponto é a do centro mais próximo, e para uma
+    // forma radialmente simétrica **centrada** isso já é a cópia mais próxima — a receita de uma
+    // fatia só passaria. É a mesma armadilha da matriz linear, na coordenada angular.
+    let half_wedge = std::f32::consts::TAU / n as f32 * 0.5;
+    let (hs, hc) = half_wedge.sin_cos();
+    let arrayed = FieldDoc::new(
+        vec![
+            leaf(
+                Primitive::Sphere { radius: r },
+                Xform::at(ring * hc, ring * hs, 0.0),
+            ),
+            Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Combine {
+                    op: Op::Union(Blend::Sharp),
+                    children: vec![NodeId(0)],
+                },
+                mods: vec![Unary::Radial { count: n }],
+            },
+        ],
+        NodeId(1),
+    )
+    .expect("coroa");
+    let copies = {
+        let step = std::f32::consts::TAU / n as f32;
+        let mut nodes: Vec<Node> = (0..n)
+            .map(|k| {
+                let (s, c) = step.mul_add(k as f32, half_wedge).sin_cos();
+                leaf(
+                    Primitive::Sphere { radius: r },
+                    Xform::at(ring * c, ring * s, 0.0),
+                )
+            })
+            .collect();
+        nodes.push(combine(
+            Op::Union(Blend::Sharp),
+            (0..n).map(NodeId).collect(),
+        ));
+        FieldDoc::new(nodes, NodeId(n)).expect("as cópias à mão")
+    };
+
+    let (a, b) = (Field::new(&arrayed), Field::new(&copies));
+    let mut worst = 0.0f64;
+    for k in 0..60 {
+        let t = f64::from(k) / 60.0 * std::f64::consts::TAU;
+        // ⚠️ A varredura passa **pelas fronteiras de fatia** de propósito: é ali, e só ali, que a
+        // fatia do ponto deixa de ser a cópia mais próxima.
+        for radius in [0.0f64, 0.25, 0.5, 0.75] {
+            let (x, y) = (radius * t.cos(), radius * t.sin());
+            worst = worst.max((a.at(x, y, 0.07) - b.at(x, y, 0.07)).abs());
+        }
+    }
+    assert!(
+        worst < 1e-3,
+        "a coroa afastou-se das {n} cópias reais em {worst:.4}"
+    );
+}
+
+/// ⚠️ **No eixo da coroa não há ângulo, e o campo tem de responder na mesma.**
+///
+/// `atan2(0, 0)` é indefinido em matemática e uma escolha em `f32`. A conta desta crate não divide
+/// por `r` — ela reconstrói o ponto por `r·cos θ'` —, então em `r = 0` o resultado é a origem, sem
+/// caso especial e sem `NaN`. Um `NaN` aqui envenenaria o traçado **inteiro**: a marcha compara com
+/// `NaN` e nenhum pixel acerta.
+#[test]
+fn the_radial_axis_answers_instead_of_producing_a_nan() {
+    use ph2d_field::Unary;
+    let doc = FieldDoc::new(
+        vec![
+            leaf(Primitive::Sphere { radius: 0.1 }, Xform::at(0.5, 0.0, 0.0)),
+            Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Combine {
+                    op: Op::Union(Blend::Sharp),
+                    children: vec![NodeId(0)],
+                },
+                mods: vec![Unary::Radial { count: 8 }],
+            },
+        ],
+        NodeId(1),
+    )
+    .expect("coroa");
+    let f = Field::new(&doc);
+    for z in [-0.3f64, 0.0, 0.3] {
+        let v = f.at(0.0, 0.0, z);
+        assert!(v.is_finite(), "no eixo (z={z}) o campo deu {v}");
+        // E no eixo há VAZIO: a coroa tem um buraco no meio, por construção.
+        assert!(v > 0.0, "o meio da coroa é vazio, e em z={z} veio {v}");
+    }
+}

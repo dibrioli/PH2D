@@ -86,9 +86,42 @@ fn stacked(inner: &Tree, mods: &[Unary]) -> Tree {
             // de a booleana e a casca não poderem falhar.
             Unary::Mirror => acc.remap_xyz(Tree::x().abs(), Tree::y(), Tree::z()),
             Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing)),
+            Unary::Radial { count } => radial(&acc, count),
         };
     }
     acc
+}
+
+/// ⭐ **A matriz radial**: `count` cópias em coroa, em torno do **Z**.
+///
+/// A conta é a mesma ideia da linear numa coordenada diferente: em vez de dobrar o `x`, dobra-se o
+/// **ângulo**. Leva-se o ponto para a fatia dele (`θ − Δ·k`, com `Δ = 2π/count`) e avalia-se **uma**
+/// forma — uma coroa de 32 custa o mesmo que uma de 2.
+///
+/// ⚠️ **Duas fatias**, pelo mesmíssimo motivo da linear: com uma só, uma forma que transborde a
+/// fatia faz o campo **superestimar**, e superestimar é o que faz a marcha de raios saltar por cima
+/// da superfície. Ver [`array`], onde o mecanismo está escrito por extenso.
+///
+/// ⚠️ **No eixo (`x = y = 0`) não há ângulo**, e é por isso que a conta não divide por `r`: ela
+/// reconstrói o ponto por `r·cos θ'` / `r·sin θ'`, e em `r = 0` isso é a origem — a resposta certa,
+/// sem caso especial e sem `NaN`.
+fn radial(inner: &Tree, count: u32) -> Tree {
+    if count <= 1 {
+        return inner.clone();
+    }
+    let step = std::f64::consts::TAU / f64::from(count);
+    let d = Tree::constant(step);
+    let r = (Tree::x().square() + Tree::y().square()).sqrt();
+    let theta = Tree::y().atan2(Tree::x());
+    let raw = (theta.clone() / d.clone()).round();
+    // A fatia vizinha é a do lado para onde o ponto pende — mesma lei da linear.
+    let toward = theta.clone() / d.clone() - raw.clone();
+    let other = raw.clone() + toward.compare(Tree::constant(0.0));
+    let wedge = |k: Tree| {
+        let t = theta.clone() - d.clone() * k;
+        inner.remap_xyz(r.clone() * t.clone().cos(), r.clone() * t.sin(), Tree::z())
+    };
+    wedge(raw).min(wedge(other))
 }
 
 /// ⭐ **A matriz linear**: `count` cópias espaçadas de `spacing` no X, **sem N cópias da árvore**.

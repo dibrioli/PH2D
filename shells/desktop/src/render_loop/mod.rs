@@ -1420,6 +1420,32 @@ impl crate::App {
             }
         }
 
+        // **AS FAIXAS, E A CURA** (`PH2D_DITHER_SMOKE=1`, plano `docs/Sprite_projeto/18` W6.1):
+        // duas sprites do MESMO degradê de 16 bits, descidas para 8 bits pelos dois caminhos.
+        // Esquerda = a porta fiel (faixas duras); direita = a porta com dither (liso).
+        //
+        // ⚠️ A da DIREITA fica selecionada: é a que responde à pergunta, e enquadrar a resposta
+        // poupa ao artista descobrir qual das duas é qual.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::dither_smoke::enabled()
+            && !std::mem::replace(&mut self.dither_smoke_done, true)
+        {
+            let ppm = hero.project.pixels_per_meter;
+            if let Some(bits) = crate::dither_smoke::spawn_if_enabled(sim, renderer, asset_db, ppm)
+            {
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::All,
+                    });
+                toasts.push(Toast::success(
+                    "Dither smoke: same gradient, two descents — left has bands, right does not"
+                        .to_string(),
+                ));
+                self.title_dirty = true;
+            }
+        }
+
         // Taper smoke (`PH2D_TAPER_SMOKE=1`): the same dance for the Procreate Touch Taper. Nothing but
         // the canvas is staged — the taper opens OFF, because the first thing this scene asks is
         // whether an untouched build still paints what it painted yesterday.

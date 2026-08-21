@@ -152,7 +152,7 @@ fn base_label(path: &Path, cell_idx: u32) -> String {
 /// stem see each other already in the world and get distinct " (1)" /
 /// " (2)" labels — same convention as `HierDuplicate` / `AddChild` /
 /// rename (mirrors the duplicate-`Name` bug fixed 2026-05-27).
-fn spawn_sprite(
+pub(crate) fn spawn_sprite(
     sim: &mut SimWorld,
     source: PackedSource,
     world_center: Vec2,
@@ -282,7 +282,7 @@ struct Packed {
 /// mesma. Isso importaria um ficheiro de alta precisão **rebaixando-o em silêncio**, que é
 /// exatamente o que esta wave existe para deixar de fazer.
 #[derive(Clone, Copy, Debug)]
-enum PackedSource {
+pub(crate) enum PackedSource {
     /// Uma célula do atlas partilhado (o caminho de sempre, e o de toda imagem de 8 bits).
     Atlas { cell_idx: u32 },
     /// Uma textura própria — o único sítio onde 16 bits pode viver.

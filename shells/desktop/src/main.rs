@@ -92,6 +92,8 @@ mod corner_handles;
 mod cursor_pos;
 /// **O Width Tool** — as alças de largura na curva (plano 25 W2, ADR-0148).
 mod cut_smoke;
+/// `PH2D_DITHER_SMOKE` — as faixas e a cura, lado a lado (plano `docs/Sprite_projeto/18` W6.1).
+mod dither_smoke;
 /// O canal da **DOAÇÃO de forma** para a tinta do Painter — plano de normais + o tamanho do canvas.
 /// Sem `cfg`, de propósito: o que atravessa é `Vec<f32>`, nunca um tipo do módulo 3D.
 mod donated_form;
@@ -729,6 +731,7 @@ impl App {
             sculpt3d_pending: None,
             mask_smoke_done: false,
             sheet_smoke_done: false,
+            dither_smoke_done: false,
             taper_smoke_done: false,
             wetpaint_smoke_done: false,
             stack_smoke_done: false,

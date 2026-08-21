@@ -57,6 +57,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.pos_x" => "Position X",
         "field.dim.pos_y" => "Position Y",
         "field.dim.pos_z" => "Position Z",
+        // ⭐ A ROTAÇÃO, em GRAUS. ⚠️ "Rotation X/Y/Z" é o que o Blender chama aos mesmos três
+        // números, na mesma ordem — e a ordem é parte do significado: quem lê "Rotation Y" espera o
+        // segundo giro de um XYZ Euler, não um eixo qualquer.
+        "field.dim.rot_x" => "Rotation X",
+        "field.dim.rot_y" => "Rotation Y",
+        "field.dim.rot_z" => "Rotation Z",
         // ⚠️ A escala só aparece numa OPERAÇÃO: numa forma, o tamanho são as dimensões dela.
         "field.dim.scale" => "Scale",
         "panel.model3d.kind.union" => "Union",

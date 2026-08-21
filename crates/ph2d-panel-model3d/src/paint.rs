@@ -22,11 +22,44 @@ use crate::{Model3dPanel, populate::MAX_MODES, populate::MAX_ROWS};
 /// A goteira do rótulo. Os rótulos aqui são o **tipo do nó** ("Union", "Cylinder"), não uma frase.
 const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
 
-/// Casas decimais de uma dimensão.
+/// Em quantos passos o arrasto atravessa o curso de uma linha.
 ///
-/// ⚠️ **Três, e não duas.** Um filete de CAD é pequeno em relação à peça — os das cenas de smoke vão
-/// de 0,02 a 0,12 — e duas casas transformariam metade da faixa útil no mesmo número na tela.
-const RADIUS_DECIMALS: usize = 3;
+/// ⚠️ **Em centésimos do CURSO, e não num passo absoluto**: um passo fixo seria grosseiro num filete
+/// de 0,02 e fino demais num ângulo de 360 de curso. ⭐ É daqui que sai o passo, e é o passo que
+/// decide quantas casas a linha mostra ([`decimals_for_step`]) — os dois números têm de vir da mesma
+/// fonte, senão a tela deixa de acompanhar o arrasto sem que nada pareça errado.
+const STEPS_ACROSS_THE_RANGE: f32 = 100.0; // LITERAL-PX-OK: granularidade de arrasto, não métrica de design
+
+/// ⭐ **Quantas casas decimais uma linha mostra — DERIVADO do passo do arrasto dela.**
+///
+/// ⚠️ Isto era a constante `RADIUS_DECIMALS = 3`, escrita quando a única linha do painel era o
+/// filete. Ela passou a servir cinco grandezas de escalas diferentes, e uma delas é um **ângulo**:
+/// `90,000` gasta três casas a dizer nada, enquanto um filete de `0,0012` de passo precisa de mais
+/// do que três para dois passos vizinhos não lerem igual.
+///
+/// A regra é a única que não é um palpite: **o número na tela tem de distinguir dois passos
+/// consecutivos do arrasto**. Com passo `s`, isso é `ceil(−log10 s)`; a casa extra é para o que o
+/// artista **digita** entre dois passos (senão escrever `45,5` mostraria `46`, e o painel mentiria
+/// sobre o documento).
+///
+/// ⚠️ **Só a direção FINA é uma lei; a grossa é legibilidade.** Faltar uma casa faz dois passos
+/// lerem igual — a tela deixa de acompanhar o arrasto, e isso tem gate. Sobrar uma casa é feio
+/// (`90,000` gasta três dígitos a dizer nada) e nada mais; o gate não a defende, e dizer isto aqui é
+/// mais honesto do que escrever um gate que finge medi-la.
+///
+/// # O teto de 6, e de que recurso ele é
+///
+/// É a precisão do `f32` no ponto que interessa: o ULP de uma coordenada de ordem 1 é **1,19e-7**,
+/// então a sexta casa (1e-6) é a **última** que ainda distingue dois valores de verdade — a sétima
+/// escreveria ruído do tipo, não da peça. Abaixo disso o passo não é representável, e um campo mais
+/// largo não o traria de volta.
+fn decimals_for_step(step: f32) -> usize {
+    if !step.is_finite() || step <= 0.0 {
+        return 1;
+    }
+    let needed = (-step.log10()).ceil().max(0.0) as usize + 1;
+    needed.clamp(1, 6)
+}
 
 pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(Model3dPanel::ID) {
@@ -157,7 +190,14 @@ fn paint_row(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y: f
     // família de 64. A entidade viaja no intent, que é onde ela importa.
     let slider = ids::model3d_radius_slider(slot);
     let chip = ids::model3d_radius_chip(slot);
-    let top = row.bound.value().max(f32::MIN_POSITIVE);
+    // ⚠️ **DUAS pontas, e o piso não é zero em toda linha.** Uma posição vai para os dois lados da
+    // origem e um ângulo para os dois lados do zero; escrever `0.0` aqui — como esta função fazia —
+    // era o que tornava um número negativo indigitável, em silêncio (ver `ParamRow::lo`).
+    let lo = row.lo;
+    let hi = row.bound.value();
+    // Uma faixa degenerada continua a ter de dar um mapeamento invertível: sem isto, `scale = 0`
+    // produziria ±inf ao espelhar o campo no slider.
+    let scale = (hi - lo).max(f32::MIN_POSITIVE);
 
     // ⚠️ **A faixa real é escrita por LINHA, todo quadro.** O teto de um raio é do nó — a caixa
     // aceita menos do que o cilindro —, e o par slider↔campo foi ligado em 0..1 no `populate`
@@ -166,28 +206,21 @@ fn paint_row(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y: f
     // ⚠️ Sem `set_number_range` o campo deriva o passo do arrasto do TEXTO do buffer e escorrega
     // ~50 unidades por pixel (a nota que o painel de aquarela deixou: digitar continua a funcionar,
     // o que esconde o defeito).
+    let step = scale / STEPS_ACROSS_THE_RANGE;
     {
         let store = ctx.host.store_mut();
-        store.link_slider_number_mapped(slider, chip, top, 0.0);
-        // LITERAL-PX-OK: não é métrica de design — é a granularidade do arrasto, em
-        // CENTÉSIMOS DO CURSO. Ela é relativa ao teto da linha de propósito: um passo
-        // absoluto seria grosseiro num raio de 0,02 e fino demais num de 2,0.
-        const STEPS_ACROSS_THE_RANGE: f64 = 100.0; // LITERAL-PX-OK: granularidade de arrasto, não métrica de design
-        store.set_number_range(
-            chip,
-            0.0,
-            f64::from(top),
-            f64::from(top) / STEPS_ACROSS_THE_RANGE,
-        );
+        store.link_slider_number_mapped(slider, chip, scale, lo);
+        store.set_number_range(chip, f64::from(lo), f64::from(hi), f64::from(step));
     }
 
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
     // A verdade é o documento; a posição guardada é só o que o arrasto deixou para trás. Semear a
     // trilha a partir do valor todo quadro é o que mantém o controle honesto quando o raio muda de
     // outro lado — um desfazer, um arquivo aberto, uma segunda linha.
-    let track = (row.value / top).clamp(0.0, 1.0);
+    let track = ((row.value - lo) / scale).clamp(0.0, 1.0);
     let display = f64::from(row.value);
-    let text = format!("{display:.RADIUS_DECIMALS$}");
+    let decimals = decimals_for_step(step);
+    let text = format!("{display:.decimals$}");
 
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(x, y, w, ROW_H_PX),
@@ -258,3 +291,7 @@ fn paint_footer(ctx: &mut PaintCtx, snap: &state::ModelSnapshot, x: f32, w: f32,
 fn bound_is_wall(b: Bound) -> bool {
     matches!(b, Bound::Hard(_))
 }
+
+#[cfg(test)]
+#[path = "paint_tests.rs"]
+mod tests;

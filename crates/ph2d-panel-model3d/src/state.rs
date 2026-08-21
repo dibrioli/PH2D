@@ -44,11 +44,20 @@ pub struct ParamRow {
     /// ⚠️ Uma **chave**, nunca um rótulo pronto: HR-15. Quem traduz é o painel.
     pub key: &'static str,
     pub value: f32,
+    /// ⭐ **O piso da linha** — e ele existe porque nem toda grandeza começa em zero.
+    ///
+    /// ⚠️ **Este campo é uma correção.** Sem ele o painel punha zero em todas as linhas, e uma
+    /// **posição** negativa era impossível de digitar: o espelho do controle reescrevia `-0,5` para
+    /// `0` e a peça saltava para a origem, sem mensagem nenhuma. Um número que a UI recusa em
+    /// silêncio é a pior forma de recusa — e ela sobreviveu a um smoke porque o valor experimentado
+    /// era positivo.
+    pub lo: f32,
     /// Até onde ele vai, e **de que natureza é o limite**.
     ///
     /// ⚠️ [`Bound::Hard`] é a **parede do documento** (um filete que não cabe); [`Bound::Soft`] é o
     /// alcance do **gesto**, que a vista escolhe — uma largura de caixa não tem teto físico, e
-    /// inventar um seria escrever um limite que a física não pede.
+    /// inventar um seria escrever um limite que a física não pede; [`Bound::Wrap`] é a própria
+    /// **representação** — meia volta, num ângulo.
     pub bound: Bound,
 }
 

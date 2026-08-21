@@ -8,9 +8,11 @@
 use bevy_ecs::entity::Entity;
 use bevy_ecs::hierarchy::Children;
 use bevy_ecs::world::World;
-use ph2d_field::xform::{quat_axis_angle, quat_conj, quat_mul, quat_normalize, quat_rotate};
+use ph2d_field::xform::{
+    quat_axis_angle, quat_conj, quat_mul, quat_normalize, quat_rotate, set_rotation_degree,
+};
 use ph2d_field::{
-    Bound, Dim, FieldError, NodeShape, Op, Param, Primitive, Xform, characteristic_size,
+    Bound, Dim, FieldError, NodeShape, Op, Param, Primitive, Span, Xform, characteristic_size,
     round_limit, set_shape_radius,
 };
 
@@ -101,7 +103,11 @@ fn subtree_scale(world: &World, root: Entity) -> f32 {
 
 /// ⭐ **Todos os números autorados de um nó**, na ordem em que o painel os mostra.
 ///
-/// Posição · escala (só onde ela não compete com nada) · dimensões da forma.
+/// Posição · rotação · escala (só onde ela não compete com nada) · dimensões da forma.
+///
+/// ⚠️ **A ordem é a do Inspector de objeto que todo modelador tem** (posição, rotação, escala, e só
+/// depois o que a forma mede). Ela não é decorativa: os três primeiros trios existem em **todo** nó,
+/// então uma peça inteira lê-se com o olho no mesmo sítio de linha para linha.
 ///
 /// ⚠️ **A escala aparece só numa OPERAÇÃO.** Numa folha, o tamanho visível são as dimensões — e
 /// mostrar as duas coisas daria ao artista dois controles para a mesma coisa, sem forma de saber
@@ -115,6 +121,7 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
     let pose = world
         .get::<FieldPose>(entity)
         .map_or(Xform::IDENTITY, |p| p.xform);
+    let degrees = ph2d_field::xform::rotation_degrees(pose);
     let mut out: Vec<(Param, Dim)> = (0..3u8)
         .map(|k| {
             (
@@ -122,12 +129,22 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 Dim {
                     key: POS_KEYS[k as usize],
                     value: pose.translation[k as usize],
-                    // ⚠️ Uma posição não tem parede: ela pode ser qualquer número. Quem escolhe o
-                    // alcance do gesto é a vista (ver `Dim::limit`).
-                    limit: None,
+                    // ⚠️ Uma posição não tem parede **nem piso**: a origem não é um canto do mundo.
+                    // Quem fecha as duas pontas é a vista (ver `Span::Free`).
+                    span: Span::Free,
                 },
             )
         })
+        .chain((0..3u8).map(|k| {
+            (
+                Param::Rot(k),
+                Dim {
+                    key: ROT_KEYS[k as usize],
+                    value: degrees[k as usize],
+                    span: Span::Turn(HALF_TURN_DEG),
+                },
+            )
+        }))
         .collect();
     match &node.shape {
         NodeShape::Combine(_) => {
@@ -136,7 +153,7 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 Dim {
                     key: "field.dim.scale",
                     value: pose.scale,
-                    limit: None,
+                    span: Span::Positive,
                 },
             ));
             // A única dimensão de uma operação é o raio da mistura, e ela entra pela porta de
@@ -147,10 +164,14 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                     Dim {
                         key: "field.dim.round",
                         value: v,
-                        limit: match radius_bound(world, entity) {
-                            Some(Bound::Hard(h)) => Some(h),
-                            _ => None,
-                        },
+                        // ⚠️ **Uma mistura não tem parede**: o campo continua a ser uma distância com
+                        // qualquer raio ([`radius_bound`] devolve sempre `Soft` aqui).
+                        //
+                        // ⏸️ O `radius_bound` sabe um alcance mais **apertado** do que o da vista — a
+                        // menor peça sob o nó, que é o raio a partir do qual a mistura a engole.
+                        // Trocá-lo pelo da vista muda o **tato** do arrasto desta linha e de mais
+                        // nenhuma, e isso é número do Enio, com a peça à frente.
+                        span: Span::Positive,
                     },
                 ));
             }
@@ -167,6 +188,17 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
 
 /// As chaves i18n dos três eixos da posição.
 const POS_KEYS: [&str; 3] = ["field.dim.pos_x", "field.dim.pos_y", "field.dim.pos_z"];
+
+/// As chaves i18n dos três ângulos.
+const ROT_KEYS: [&str; 3] = ["field.dim.rot_x", "field.dim.rot_y", "field.dim.rot_z"];
+
+/// Meia volta, em graus — as duas pontas da faixa de um ângulo canónico.
+///
+/// ⚠️ **Não é uma escolha de UI**: é o alcance da própria representação, e é o mesmo número que faz
+/// 200° aparecer como −160° (ver [`ph2d_field::xform::set_rotation_degree`]). Um teto menor
+/// **recusaria** orientações legítimas; um maior daria ao slider metade do curso a nomear sítios que
+/// a linha já mostra do outro lado.
+const HALF_TURN_DEG: f32 = 180.0;
 
 /// ⭐ **Escreve um número autorado de um nó**, ou recusa — a porta ÚNICA do painel.
 ///
@@ -194,6 +226,18 @@ pub fn set_param(
             Ok(())
         }
         Param::Pos(_) => Err(FieldError::BadRoot),
+        // ⚠️ **Escrever um ângulo lê os outros dois primeiro.** A pose guarda um quaternion, e três
+        // ângulos são o nome canónico dele: pôr só um sem os companheiros seria construir uma
+        // orientação a partir de um terço da informação. A lei — e o que ela renomeia — está em
+        // [`set_rotation_degree`].
+        Param::Rot(k) if k < 3 => {
+            let Some(mut pose) = world.get_mut::<FieldPose>(entity) else {
+                return Err(FieldError::BadRoot);
+            };
+            set_rotation_degree(&mut pose.xform, k, value);
+            Ok(())
+        }
+        Param::Rot(_) => Err(FieldError::BadRoot),
         Param::Scale => {
             if value <= 0.0 {
                 return Err(FieldError::NonPositive {

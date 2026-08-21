@@ -716,7 +716,10 @@ fn every_shape_with_a_fillet_exposes_it_with_its_wall() {
         );
         // E a parede que a lista mostra é a MESMA que a validação aplica.
         if let Some(d) = crate::dims(&p).iter().find(|d| d.key == "field.dim.round") {
-            assert_eq!(d.limit, crate::round_limit(&p));
+            assert_eq!(
+                d.span,
+                crate::Span::Wall(crate::round_limit(&p).expect("tem parede"))
+            );
         }
         // ⚠️ Nenhuma dimensão que NÃO é o filete tem parede: inventar um teto para a largura de uma
         // caixa seria escrever um limite que a física não pede.
@@ -724,7 +727,216 @@ fn every_shape_with_a_fillet_exposes_it_with_its_wall() {
             .iter()
             .filter(|d| d.key != "field.dim.round")
         {
-            assert_eq!(d.limit, None, "{p:?}: `{}` ganhou um teto inventado", d.key);
+            assert_eq!(
+                d.span,
+                crate::Span::Positive,
+                "{p:?}: `{}` ganhou um teto inventado",
+                d.key
+            );
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A ROTAÇÃO COMO TRÊS ÂNGULOS — o nome canónico de um quaternion.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A distância entre duas rotações, em componentes.
+///
+/// ⚠️ **`q` e `−q` são a MESMA rotação.** Comparar componente a componente sem isto reprovaria
+/// metade das ida-e-voltas **corretas** — e o gate a passar a acusar o código certo é a forma cara
+/// de um gate errado.
+fn rotation_gap(a: [f32; 4], b: [f32; 4]) -> f32 {
+    let same = (0..4).map(|i| (a[i] - b[i]).abs()).fold(0.0f32, f32::max);
+    let flipped = (0..4).map(|i| (a[i] + b[i]).abs()).fold(0.0f32, f32::max);
+    same.min(flipped)
+}
+
+/// A tolerância de uma ida-e-volta de orientação. Ver `EULER_LOCK_EPS`: entrar no ramo da trava a
+/// `|cos β| = 1e-4` custa um desvio da mesma ordem, e é ESSE o número que a barra tem de admitir —
+/// não o `f32::EPSILON`, que reprovaria o caso que a lei trata de propósito.
+const ROT_EPS: f32 = 2.0e-4;
+
+/// Uma amostra de orientações que inclui o caso difícil.
+fn orientation_sample() -> Vec<[f32; 4]> {
+    use crate::xform::{quat_axis_angle, quat_from_euler, quat_mul};
+    let d = f32::to_radians;
+    let mut out = vec![
+        [0.0, 0.0, 0.0, 1.0],
+        quat_axis_angle([1.0, 0.0, 0.0], d(90.0)),
+        quat_axis_angle([0.0, 1.0, 0.0], d(-90.0)),
+        quat_axis_angle([0.0, 0.0, 1.0], d(179.0)),
+        quat_axis_angle([1.0, 2.0, -3.0], d(137.0)),
+        quat_mul(
+            quat_axis_angle([0.0, 1.0, 0.0], d(45.0)),
+            quat_axis_angle([1.0, 0.0, 0.0], d(60.0)),
+        ),
+    ];
+    // ⭐ **A trava de cardan, pelos dois polos** — o caso que uma amostra "genérica" nunca sorteia,
+    // e o único em que o trio deixa de ser um nome de três partes.
+    for beta in [90.0f32, -90.0] {
+        for (a, c) in [(0.0f32, 0.0f32), (30.0, 40.0), (-120.0, 75.0)] {
+            out.push(quat_from_euler([d(a), d(beta), d(c)]));
+        }
+    }
+    out
+}
+
+/// ⭐ **O que fecha o ciclo é a ORIENTAÇÃO, nunca o trio.**
+///
+/// ⚠️ É a lei inteira desta representação, e é o que torna legítimo o painel **não** guardar os três
+/// ângulos: eles são um *nome* do quaternion, e o quaternion é o facto. Um trio somado de uma volta
+/// nomeia o mesmo sítio; nos polos, uma família inteira o nomeia. Um gate que exigisse
+/// `to_euler(from_euler(e)) == e` para todo `e` estaria a exigir do código uma coisa que não é
+/// verdade — e a cura seria guardar o trio, que é a segunda verdade que este módulo recusa.
+#[test]
+fn the_orientation_round_trips_even_though_the_triple_need_not() {
+    use crate::xform::{quat_from_euler, quat_to_euler};
+    for q in orientation_sample() {
+        let back = quat_from_euler(quat_to_euler(q));
+        let gap = rotation_gap(q, back);
+        assert!(
+            gap <= ROT_EPS,
+            "a orientação não voltou: {q:?} -> {:?} -> {back:?} (folga {gap:e})",
+            quat_to_euler(q).map(f32::to_degrees)
+        );
+    }
+}
+
+/// ⭐ **Nos polos a extração é FINITA e determinística** — e o eixo Z fica exatamente em zero.
+///
+/// ⚠️ Sem o ramo da trava, `atan2(0, 0)` daria zero por acidente num sítio e o ruído de `f32`
+/// escolheria um ângulo qualquer noutro: o painel mostraria três números a tremer numa peça parada.
+#[test]
+fn at_the_pole_the_extraction_is_finite_and_the_third_angle_is_pinned() {
+    use crate::xform::{quat_from_euler, quat_to_euler};
+    let d = f32::to_radians;
+    for beta in [90.0f32, -90.0] {
+        for (a, c) in [(0.0f32, 0.0f32), (30.0, 40.0), (-120.0, 75.0)] {
+            let q = quat_from_euler([d(a), d(beta), d(c)]);
+            let e = quat_to_euler(q);
+            assert!(e.iter().all(|v| v.is_finite()), "{beta} {a} {c}: {e:?}");
+            assert_eq!(e[2], 0.0, "no polo o Z é fixado em zero, e não sorteado");
+            assert!(
+                (e[1].to_degrees() - beta).abs() < 0.05,
+                "o eixo do meio tinha de ficar no polo: {}",
+                e[1].to_degrees()
+            );
+        }
+    }
+}
+
+/// ⭐ **A ordem é a do «XYZ Euler» do Blender: `R = Rz · Ry · Rx`.**
+///
+/// ⚠️ O oráculo é uma **matriz montada à mão** no teste, e não a composição de quaternions que a
+/// função usa: um gate que compusesse `quat_mul` na mesma ordem provaria que o código faz o que o
+/// código faz. Trocar a ordem (ou a mão) muda para onde a peça aponta, e as duas versões são
+/// igualmente "verdes" contra si próprias.
+#[test]
+fn the_order_is_the_blender_xyz_euler() {
+    use crate::xform::{quat_from_euler, quat_rotate};
+    type M = [[f32; 3]; 3];
+    let mul = |a: M, b: M| -> M {
+        let mut o = [[0.0f32; 3]; 3];
+        for (i, row) in o.iter_mut().enumerate() {
+            for (j, cell) in row.iter_mut().enumerate() {
+                *cell = (0..3).map(|k| a[i][k] * b[k][j]).sum();
+            }
+        }
+        o
+    };
+    let apply =
+        |m: M, v: [f32; 3]| -> [f32; 3] { [0, 1, 2].map(|i| (0..3).map(|k| m[i][k] * v[k]).sum()) };
+    let d = f32::to_radians;
+    let (ax, ay, az) = (d(37.0), d(-52.0), d(114.0));
+    let (sx, cx) = ax.sin_cos();
+    let (sy, cy) = ay.sin_cos();
+    let (sz, cz) = az.sin_cos();
+    let rx: M = [[1.0, 0.0, 0.0], [0.0, cx, -sx], [0.0, sx, cx]];
+    let ry: M = [[cy, 0.0, sy], [0.0, 1.0, 0.0], [-sy, 0.0, cy]];
+    let rz: M = [[cz, -sz, 0.0], [sz, cz, 0.0], [0.0, 0.0, 1.0]];
+    let m = mul(mul(rz, ry), rx);
+
+    let q = quat_from_euler([ax, ay, az]);
+    for v in [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [0.3, -0.7, 0.5],
+    ] {
+        let by_matrix = apply(m, v);
+        let by_quat = quat_rotate(q, v);
+        for k in 0..3 {
+            assert!(
+                (by_matrix[k] - by_quat[k]).abs() < 1e-5,
+                "a ordem (ou a mão) diverge em {v:?}: matriz {by_matrix:?} vs quaternion {by_quat:?}"
+            );
+        }
+    }
+}
+
+/// ⭐ **Escrever um ângulo deixa os outros dois onde estavam.**
+///
+/// ⚠️ Fora dos polos, e é a diferença entre um painel com três campos e um com um só: se pôr o X
+/// mexesse no Z, o artista teria de repor os três a cada correção.
+#[test]
+fn writing_one_angle_leaves_the_other_two_where_they_were() {
+    use crate::xform::{rotation_degrees, set_rotation_degree};
+    let mut pose = Xform::IDENTITY;
+    set_rotation_degree(&mut pose, 0, 20.0);
+    set_rotation_degree(&mut pose, 1, -35.0);
+    set_rotation_degree(&mut pose, 2, 110.0);
+    let before = rotation_degrees(pose);
+    set_rotation_degree(&mut pose, 1, 12.0);
+    let after = rotation_degrees(pose);
+    assert!((after[1] - 12.0).abs() < 0.01, "o eixo pedido: {after:?}");
+    assert!(
+        (after[0] - before[0]).abs() < 0.01 && (after[2] - before[2]).abs() < 0.01,
+        "os outros dois mexeram-se: {before:?} -> {after:?}"
+    );
+}
+
+/// ⭐ **Um ângulo além de meia volta não é RECUSADO — ele é RENOMEADO, e à vista.**
+///
+/// ⚠️ O gate mede as duas metades, porque só juntas elas são a lei: a peça vai **exatamente** para
+/// onde 200° a põem (a orientação é a mesma), e o número que o painel passa a mostrar é −160°, que
+/// é o nome canónico do mesmo sítio. Um `clamp` a 180° passaria na segunda metade e reprovaria na
+/// primeira — e seria uma UI a recusar uma orientação legítima.
+#[test]
+fn an_angle_past_half_a_turn_is_renamed_not_refused() {
+    use crate::xform::{quat_from_euler, rotation_degrees, set_rotation_degree};
+    let mut pose = Xform::IDENTITY;
+    set_rotation_degree(&mut pose, 2, 200.0);
+    let gap = rotation_gap(
+        pose.rotation,
+        quat_from_euler([0.0, 0.0, 200.0f32.to_radians()]),
+    );
+    assert!(
+        gap <= ROT_EPS,
+        "a peça não foi para onde 200° a põem: {gap:e}"
+    );
+    let shown = rotation_degrees(pose);
+    assert!(
+        (shown[2] + 160.0).abs() < 0.01,
+        "o painel tinha de passar a chamar-lhe −160°: {shown:?}"
+    );
+}
+
+/// **Um eixo que não existe, ou um número que não é número, deixam a pose como estava.**
+///
+/// ⚠️ Um no-op silencioso e não um erro: não há quarto ângulo a escrever, e um `NaN` que entrasse na
+/// pose envenenaria o traçado inteiro — a marcha de raios devolve `NaN` para **todos** os pixels.
+#[test]
+fn a_bad_axis_or_a_bad_number_leaves_the_pose_alone() {
+    use crate::xform::set_rotation_degree;
+    let mut pose = Xform::IDENTITY;
+    set_rotation_degree(&mut pose, 0, 33.0);
+    let kept = pose.rotation;
+    for (axis, value) in [(3u8, 10.0f32), (9, 10.0), (0, f32::NAN), (1, f32::INFINITY)] {
+        set_rotation_degree(&mut pose, axis, value);
+        assert_eq!(
+            pose.rotation, kept,
+            "eixo {axis} valor {value} mexeu a pose"
+        );
     }
 }

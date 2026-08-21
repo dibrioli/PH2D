@@ -8,15 +8,25 @@
 //!
 //! # A divisão: o documento dá a PAREDE, a vista dá o CONFORTO
 //!
-//! Cada dimensão diz se tem um **limite de validade** ([`Dim::limit`]) — o `round` de uma caixa não
-//! pode chegar à meia-extensão dela, porque a fonte encolhida deixaria de existir. Isso é do
-//! documento e não se negoceia.
+//! Cada grandeza diz o que **admite** ([`Dim::span`]) — o `round` de uma caixa não pode chegar à
+//! meia-extensão dela, porque a fonte encolhida deixaria de existir. Isso é do documento e não se
+//! negoceia.
 //!
 //! ⛔ **O teto de um slider NÃO é isso.** A largura de uma caixa não tem limite nenhum: escrever um
 //! aqui seria inventar um número que a física não pede — o que o [`CLAUDE.md §0`] proíbe. Quem
 //! escolhe até onde o **gesto** vai é a vista, e a resposta natural é *o que cabe no enquadramento*
 //! — uma dimensão maior do que o quadro é uma cujo efeito não se vê. O campo numérico continua sem
 //! teto, porque digitar 1000 é uma afirmação sobre a peça e não sobre a janela.
+//!
+//! # ⚠️ Uma faixa tem DUAS pontas, e o piso não é sempre zero
+//!
+//! Foi o que faltou à primeira versão: [`Dim`] só dizia o **teto**, e o painel punha o piso em zero
+//! para todas as linhas. Numa largura isso está certo (o documento recusa ≤ 0); numa **posição** é um
+//! defeito com sintoma mudo — digitar `-0,5` era reescrito para `0` pelo espelho do controle, e a
+//! peça ia para a origem. O smoke não o apanhou porque o número experimentado foi positivo.
+//!
+//! Daí o [`Span`]: cada grandeza diz a **forma** da sua faixa e de que recurso vem cada ponta, e
+//! quem fecha as pontas abertas é a vista, num sítio só.
 //!
 //! # Meias-extensões não aparecem
 //!
@@ -42,22 +52,47 @@ pub enum Param {
     /// Inspector mostra"*. Um painel que mostrasse mundo contradiria o número ao lado no dia em que
     /// alguém agrupasse.
     Pos(u8),
+    /// Um dos três ângulos da rotação **local**, por eixo (0 = X), em **graus**.
+    ///
+    /// ⚠️ A pose guarda um **quaternion**; estes três são o nome canónico dele. Ver
+    /// [`crate::xform::set_rotation_degree`], que é onde a lei (e o que ela recusou) está escrita.
+    Rot(u8),
     /// A escala **uniforme** do nó. Ver a nota de [`crate::Xform::scale`].
     Scale,
     /// Uma dimensão da forma — a posição na lista de [`dims`].
     Dim(u16),
 }
 
-/// Uma dimensão editável de uma forma.
+/// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.
+///
+/// ⚠️ Nenhuma variante escolhe um número por conforto: ou a ponta é do **documento** (a peça deixa
+/// de existir acima dela), ou é da **representação** (um ângulo canónico não passa de meia volta),
+/// ou está **aberta** e quem a fecha é a vista — que é a única a saber o que cabe no quadro.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Span {
+    /// Positiva e sem parede: uma largura, um raio, uma escala. O documento recusa `≤ 0`; o teto é
+    /// o alcance da **vista**.
+    Positive,
+    /// Positiva, com **parede** do documento: o filete. Acima de `wall` a fonte encolhida deixaria
+    /// de existir e o campo deixaria de ser uma distância.
+    Wall(f32),
+    /// Simétrica e sem parede nenhuma: uma **posição**. As duas pontas são o alcance da vista, e a
+    /// de baixo é negativa — a origem não é um canto do mundo.
+    Free,
+    /// **Periódica**: um ângulo. As pontas são `±half` e são a própria **representação** — nem o
+    /// documento nem a vista têm voto, e um número além delas não é recusado, é renomeado.
+    Turn(f32),
+}
+
+/// Uma grandeza editável de um nó.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Dim {
     /// A chave i18n do nome. ⚠️ Uma **chave**, nunca um rótulo pronto (HR-15).
     pub key: &'static str,
     /// O valor que o artista vê — já em unidades inteiras (ver o doc do módulo).
     pub value: f32,
-    /// **A parede de validade**, se houver uma. `None` ⇒ a dimensão não tem limite superior, e quem
-    /// escolhe o alcance do gesto é a vista.
-    pub limit: Option<f32>,
+    /// **O que ela admite**, e de onde vem cada ponta. Ver [`Span`].
+    pub span: Span,
 }
 
 /// **O que esta forma mede.** Vazio quando ela não tem número nenhum a mexer.
@@ -70,31 +105,34 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
     let round_dim = |value: f32| Dim {
         key: "field.dim.round",
         value,
-        limit: round_limit(p),
+        // ⚠️ `Positive` só sobra para uma forma que tenha filete e não tenha meia-extensão de onde
+        // derivar a parede — não existe hoje, e a alternativa (um `expect`) transformaria uma
+        // primitiva nova num pânico em vez de num slider sem teto.
+        span: round_limit(p).map_or(Span::Positive, Span::Wall),
     };
     match p {
         Primitive::Box { half, round } => vec![
             Dim {
                 key: "field.dim.width",
                 value: half[0] * 2.0,
-                limit: None,
+                span: Span::Positive,
             },
             Dim {
                 key: "field.dim.height",
                 value: half[1] * 2.0,
-                limit: None,
+                span: Span::Positive,
             },
             Dim {
                 key: "field.dim.depth",
                 value: half[2] * 2.0,
-                limit: None,
+                span: Span::Positive,
             },
             round_dim(*round),
         ],
         Primitive::Sphere { radius } => vec![Dim {
             key: "field.dim.radius",
             value: *radius,
-            limit: None,
+            span: Span::Positive,
         }],
         Primitive::Cylinder {
             radius,
@@ -104,12 +142,12 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.radius",
                 value: *radius,
-                limit: None,
+                span: Span::Positive,
             },
             Dim {
                 key: "field.dim.height",
                 value: half_height * 2.0,
-                limit: None,
+                span: Span::Positive,
             },
             round_dim(*round),
         ],
@@ -117,12 +155,12 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.radius",
                 value: *major,
-                limit: None,
+                span: Span::Positive,
             },
             Dim {
                 key: "field.dim.thickness",
                 value: *minor,
-                limit: None,
+                span: Span::Positive,
             },
         ],
         Primitive::Extrude {
@@ -131,7 +169,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             Dim {
                 key: "field.dim.height",
                 value: half_height * 2.0,
-                limit: None,
+                span: Span::Positive,
             },
             round_dim(*round),
         ],

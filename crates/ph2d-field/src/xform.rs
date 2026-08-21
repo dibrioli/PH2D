@@ -148,6 +148,111 @@ pub fn quat_rotate(q: [f32; 4], v: [f32; 3]) -> [f32; 3] {
     ]
 }
 
+/// ⭐ **A rotação como três ângulos X/Y/Z**, em radianos — na forma **canónica**.
+///
+/// # A ordem, e de onde ela vem
+///
+/// `R = Rz(γ) · Ry(β) · Rx(α)`: roda-se primeiro em torno do X, depois do Y, depois do Z. É o
+/// «XYZ Euler» do Blender, que é a referência declarada da casa para as palavras desta UI — quem já
+/// modela lê os três números sem os ter de experimentar.
+///
+/// # ⚠️ O TRIO não é único; a ORIENTAÇÃO é
+///
+/// Uma orientação tem infinitos trios que a nomeiam (somar uma volta a qualquer um deles; e, nos
+/// polos, uma família inteira). Esta função devolve o **canónico**: `β ∈ [−90°, 90°]`, os outros
+/// dois em `(−180°, 180°]`. O que fecha o ciclo é
+/// `quat_from_euler(quat_to_euler(q)) == q` **como rotação** — nunca a igualdade do trio, e o gate
+/// `the_orientation_round_trips_even_though_the_triple_need_not` diz isso por extenso.
+///
+/// # ⚠️ Trava de cardan
+///
+/// Em `β = ±90°` o X e o Z deixam de ser distinguíveis: só a soma (ou a diferença) deles é um facto
+/// do mundo. Ali esta função põe `γ = 0` e dá o resto ao X — uma escolha **determinística**, e não
+/// um `NaN` nem um trio que muda de quadro para quadro.
+#[must_use]
+pub fn quat_to_euler(q: [f32; 4]) -> [f32; 3] {
+    let [x, y, z, w] = quat_normalize(q);
+    // Só as entradas da matriz que a extração usa — construir as nove seria trabalho para deitar
+    // fora, e cada uma a mais é uma a poder estar errada.
+    let r00 = 1.0 - 2.0 * (y * y + z * z);
+    let r10 = 2.0 * (x * y + w * z);
+    let r20 = 2.0 * (x * z - w * y);
+    let r21 = 2.0 * (y * z + w * x);
+    let r22 = 1.0 - 2.0 * (x * x + y * y);
+    // ⚠️ `hypot(r21, r22)` **é** `|cos β|`, e é por aí que o `β` sai robusto: um `asin(−r20)` com o
+    // argumento a passar de 1 por um ULP devolveria `NaN` exatamente no caso que mais interessa.
+    let cos_beta = r21.hypot(r22);
+    let beta = (-r20).atan2(cos_beta);
+    if cos_beta > EULER_LOCK_EPS {
+        [r21.atan2(r22), beta, r10.atan2(r00)]
+    } else {
+        // Trava: `γ = 0` e o X fica com a combinação que **é** um facto.
+        let r01 = 2.0 * (x * y - w * z);
+        let r02 = 2.0 * (x * z + w * y);
+        let alpha = if r20 < 0.0 {
+            r01.atan2(r02)
+        } else {
+            (-r01).atan2(-r02)
+        };
+        [alpha, beta, 0.0]
+    }
+}
+
+/// ⭐ **O quaternion de três ângulos X/Y/Z**, em radianos — a inversa de [`quat_to_euler`].
+#[must_use]
+pub fn quat_from_euler(e: [f32; 3]) -> [f32; 4] {
+    let qx = quat_axis_angle([1.0, 0.0, 0.0], e[0]);
+    let qy = quat_axis_angle([0.0, 1.0, 0.0], e[1]);
+    let qz = quat_axis_angle([0.0, 0.0, 1.0], e[2]);
+    quat_normalize(quat_mul(quat_mul(qz, qy), qx))
+}
+
+/// **Abaixo deste `|cos β|` a divisão entre X e Z é RUÍDO**, e a extração passa ao ramo da trava.
+///
+/// ⚠️ O número é derivado de um recurso, e o recurso é a **precisão de `f32`**: as entradas da
+/// matriz saem de produtos de componentes unitárias, com erro absoluto de alguns ULP de 1,0 (~1e-7).
+/// Perto do polo `r21` e `r22` valem ambas ~`cos β`, então o `atan2` deles carrega ~`1e-7 / cos β`
+/// radianos de erro. Em `cos β = 1e-4` isso é ~1e-3 rad (0,06°) — abaixo do que qualquer casa
+/// decimal deste painel mostra. Entrar no ramo da trava a essa altura custa, do outro lado, um
+/// desvio da mesma ordem (~1e-4 rad) na orientação reconstruída: as duas pontas estão medidas, e é
+/// por isso que a tolerância do gate de ida-e-volta é `2e-4` e não `f32::EPSILON`.
+const EULER_LOCK_EPS: f32 = 1.0e-4;
+
+/// ⭐ **A rotação de uma pose em GRAUS** — os três números que o painel mostra.
+///
+/// ⚠️ Graus e não radianos, e a conversão mora **aqui**, num sítio: ninguém escreve 1,5708 num campo
+/// para pôr uma peça de pé.
+#[must_use]
+pub fn rotation_degrees(pose: Xform) -> [f32; 3] {
+    quat_to_euler(pose.rotation).map(f32::to_degrees)
+}
+
+/// ⭐ **Escreve UM dos três ângulos**, em graus, deixando os outros dois onde estão.
+///
+/// # ⚠️ Um ângulo fora da faixa canónica não é recusado — ele é RENOMEADO
+///
+/// Escrever 200° no Z põe a peça exatamente onde 200° a põem, e o painel passa a chamar-lhe −160°,
+/// que é o mesmo sítio. É a mesma lei do filete que encolhe com a caixa ([`crate::set_dim`]): em
+/// silêncio, mas **à vista** — o número muda na linha que o artista está a olhar.
+///
+/// ⚠️ E é daí que vem o **reflexo do eixo do meio**: passar dos 90° no Y dá uma orientação cujo nome
+/// canónico traz o Y a descer de volta e salta os outros dois 180°. A peça vai para onde foi pedida;
+/// o que muda é o nome.
+///
+/// ⛔ **A alternativa foi pesada e recusada**: guardar o trio autorado ao lado do quaternion. O gizmo
+/// roda em torno de eixos **arbitrários** (a argola da vista não é X, Y nem Z) e escreve o
+/// quaternion — logo o trio guardado seria um cache invalidado por **todo** arrasto, e o documento
+/// passaria a ter duas respostas para *"como é que isto está rodado"*. Um eixo fora do alcance
+/// (`>= 3`) é no-op silencioso: não há quarto ângulo a escrever.
+pub fn set_rotation_degree(pose: &mut Xform, axis: u8, degrees: f32) {
+    if axis >= 3 || !degrees.is_finite() {
+        return;
+    }
+    let mut e = quat_to_euler(pose.rotation);
+    e[axis as usize] = degrees.to_radians();
+    pose.rotation = quat_from_euler(e);
+}
+
 #[must_use]
 pub fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
     [

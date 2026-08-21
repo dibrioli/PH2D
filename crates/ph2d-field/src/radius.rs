@@ -252,13 +252,18 @@ pub enum Bound {
     Hard(f32),
     /// Não há limite de validade. Este é o alcance **útil**, derivado do tamanho da peça.
     Soft(f32),
+    /// ⭐ **A ponta é a própria REPRESENTAÇÃO.** Um ângulo canónico não passa de meia volta, e um
+    /// número maior não é recusado nem cortado: ele é **renomeado** para o sítio equivalente dentro
+    /// da faixa. Nem o documento nem a vista escolhem isto — ver
+    /// [`crate::xform::set_rotation_degree`].
+    Wrap(f32),
 }
 
 impl Bound {
     #[must_use]
     pub fn value(self) -> f32 {
         match self {
-            Bound::Hard(v) | Bound::Soft(v) => v,
+            Bound::Hard(v) | Bound::Soft(v) | Bound::Wrap(v) => v,
         }
     }
 }

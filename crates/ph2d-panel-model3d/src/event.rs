@@ -55,8 +55,18 @@ pub(crate) fn apply_event(
                             // posição escreveria noutro número.
                             entity: row.entity,
                             param: row.param,
-                            // A trilha é 0..1; o valor é ela vezes o teto **daquela linha**.
-                            value: track * row.bound.value(),
+                            // ⚠️ **A trilha é 0..1 e a faixa tem DUAS pontas** — esta conta era
+                            // `track * bound`, com o piso implícito em zero. Ela concordava com a
+                            // pintura só enquanto toda linha começava em zero: numa **posição**
+                            // (piso negativo) a ponta esquerda do slider emitiria `0` em vez do
+                            // mínimo, e o objeto saltaria para a origem a meio do arrasto.
+                            //
+                            // ⭐ É a **mesma** aritmética que o `paint` instala em
+                            // `link_slider_number_mapped(slider, chip, hi - lo, lo)`, e o gate
+                            // `the_dispatched_value_is_the_one_the_painted_mapping_promises` prende
+                            // as duas portas uma à outra — porque um par destes só falha quando
+                            // discordam, e cada lado sozinho parece certo.
+                            value: row.lo + track * (row.bound.value() - row.lo),
                         });
                         true
                     }

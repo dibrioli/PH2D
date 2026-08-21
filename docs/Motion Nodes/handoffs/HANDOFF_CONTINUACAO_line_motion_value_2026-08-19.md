@@ -184,7 +184,7 @@ ausente.
 
 ---
 
-## §4 — As QUARENTA E SEIS LEIS que esta linha pagou para aprender
+## §4 — As QUARENTA E OITO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -493,6 +493,23 @@ são estilo.
     numa cena de MÁSCARA as peças **não** acesas eram a coisa mais clara da tela e o
     padrão desaparecia dentro delas. A leitura de uma máscara é *escuro → aceso*: pinte
     o repouso de cinza-chumbo **antes** do campo, e a cor viva **depois** dele.
+
+47. ⚠️ **O ramo que o estado DEFAULT toma é o que menos se testa — e é o único que o
+    artista vê primeiro.** O `curve_offset` do `field.remap` estava escrito
+    `curve.map_or(t, |c| c.eval(shifted(t, off)))`: com **nada autorado** (o estado em
+    que o nó nasce) o `map_or` devolve `t` e o `shifted` **nunca corre**. Três coisas
+    numa: (a) o knob estava morto exactamente onde se mexe nele primeiro; (b) o gate
+    não viu porque o FIXTURE dele passava `Some(&curva)` — o outro ramo do `map_or`;
+    (c) o **device fazia o contrário** (a LUT assa a identidade e o WGSL amostra-a já
+    deslocada), então os dois caminhos divergiam em silêncio. *Ao pôr um knob atrás de
+    um `Option`, teste o braço `None` — ele é o default.*
+48. ⚠️ **Um par de demonstração tem de diferir na IMAGEM, e isso só se mede
+    COZINHANDO.** Nove gates daquela cena afirmavam que cada par difere no param que
+    anuncia; as duas metades da linha da RAMPA saíam **byte-idênticas** e os nove
+    passavam. O gate certo lê as colunas cozidas das duas metades e exige que ALGUMA
+    difira — sobre **todas** as colunas, não sobre uma escolhida (escolher a coluna é
+    escrever a resposta ao lado da pergunta). *É a terceira vez que esta linha paga a
+    mesma lei: um gate de param não é um gate de produto.*
 
 
 ---

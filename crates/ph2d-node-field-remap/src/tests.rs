@@ -602,3 +602,104 @@ fn the_kernel_carries_the_offset_and_the_same_zero_guard() {
         "e o deslocamento tem de entrar SÓ no braço da curva"
     );
 }
+
+/// **SEM CURVA AUTORADA, O DESLOCAMENTO CONTINUA A AGIR — e isto é o bug do smoke.**
+///
+/// ⚠️ **O estado em que o nó NASCE é o estado sem curva.** A primeira versão escrevia
+/// `curve.map_or(t, |c| c.eval(shifted(t, off)))`: com `None` o `map_or` devolvia `t` e
+/// o `shifted` nunca corria, então o knob estava morto exactamente onde o artista o
+/// encontra primeiro. Uma curva ausente É a identidade, e a identidade deslocada é um
+/// **dente de serra** — uma resposta, não um no-op.
+///
+/// ⚠️ **O gate anterior não viu isto porque o FIXTURE dele tinha curva.** `Some(&ramp)`
+/// e `None` tomam ramos diferentes do `map_or`, e eu só exercitava um. *Um fixture só
+/// prova o que contém* — a terceira vez que esta linha paga essa lei.
+#[test]
+fn the_offset_still_acts_when_no_curve_is_authored() {
+    // `t = 0.3` deslocado 0,35 ⇒ 0,65. Sem a cura, saía 0,3.
+    let got = contour(4, 0.3, 0.0, 4.0, None, 0.35);
+    assert!(
+        (got - 0.65).abs() < 1e-6,
+        "sem curva, o offset tem de agir: {got}"
+    );
+    // …e a volta continua a existir: 0,8 + 0,35 reentra em 0,15.
+    let wrapped = contour(4, 0.8, 0.0, 4.0, None, 0.35);
+    assert!((wrapped - 0.15).abs() < 1e-6, "e ele dá a volta: {wrapped}");
+    // O CONTROLE: sem deslocamento, sem curva, é o passthrough EXACTO de sempre.
+    for t in [0.0_f32, 0.3, 0.8, 1.0] {
+        assert_eq!(contour(4, t, 0.0, 4.0, None, 0.0), t);
+    }
+}
+
+/// **A CPU E O DEVICE CONCORDAM NO CASO SEM CURVA — e antes NÃO concordavam.**
+///
+/// O `fill_curve_lut` de uma string ausente escreve a **identidade** (`out[k] = t`), e o
+/// WGSL amostra-a em `rm_shifted(t, offset)`. Ou seja: o device sempre deslocou. A CPU
+/// é que saía antes. Este gate compara os dois pela LUT que o device de facto recebe.
+#[test]
+fn the_device_and_the_cpu_agree_with_no_curve_authored() {
+    let mut lut = vec![0.0_f32; LUT_RESOLUTION as usize];
+    fill_curve_lut("", &mut lut);
+    let sample = |t: f32| {
+        #[expect(clippy::cast_precision_loss, reason = "resolução pequena")]
+        let last = (lut.len() - 1) as f32;
+        let x = t.clamp(0.0, 1.0) * last;
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "índice"
+        )]
+        let i0 = x.floor() as usize;
+        let i1 = (i0 + 1).min(lut.len() - 1);
+        #[expect(clippy::cast_precision_loss, reason = "índice pequeno")]
+        let f = x - i0 as f32;
+        lut[i0] * (1.0 - f) + lut[i1] * f
+    };
+    for off in [0.0_f32, 0.35, -0.2] {
+        for t in [0.0_f32, 0.25, 0.7, 1.0] {
+            let cpu = contour(4, t, 0.0, 4.0, None, off);
+            let gpu = sample(shifted(t, off));
+            assert!(
+                (cpu - gpu).abs() < 1e-4,
+                "off={off} t={t}: CPU {cpu} contra device {gpu}"
+            );
+        }
+    }
+}
+
+/// **OS TRÊS NÚMEROS DE CONTORNO SÓ APARECEM NO CONTORNO QUE OS LÊ.**
+///
+/// ⚠️ **Nasceu do mesmo smoke:** o Enio estava em `Curve` e tinha ao lado, vivos, o
+/// `curvature` (do Quadratic) e o `steps` (do Step/Quantize). Um controle vivo que não
+/// muda nada é indistinguível de um bug — e foi lido como um.
+///
+/// ⛔ O `curve` (o editor) fica FORA da tabela de propósito — ver o doc do
+/// [`PARAM_GATES`].
+#[test]
+fn every_contour_number_is_gated_to_the_contour_that_reads_it() {
+    let by = |p: &str| {
+        PARAM_GATES
+            .iter()
+            .find(|g| g.param == p)
+            .unwrap_or_else(|| panic!("`{p}` tem de ser gateado"))
+    };
+    assert_eq!(by("curvature").values, &[1]);
+    assert_eq!(by("steps").values, &[2, 3]);
+    assert_eq!(by("curve_offset").values, &[4]);
+    for g in PARAM_GATES {
+        assert_eq!(g.when, "contour", "todos gateiam pelo mesmo modo");
+        assert_ne!(
+            g.param, CURVE_KEY,
+            "o editor de curva NÃO é gateado — ver o doc de PARAM_GATES"
+        );
+    }
+    // CONTROLE: cada param gateado existe mesmo no manifesto (um nome mal escrito
+    // esconderia nada e passaria verde).
+    for g in PARAM_GATES {
+        assert!(
+            MANIFEST.params.iter().any(|p| p.name == g.param),
+            "`{}` não é param deste nó",
+            g.param
+        );
+    }
+}

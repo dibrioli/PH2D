@@ -375,6 +375,48 @@ fn the_pentagon_fits_the_grid_and_shares_its_quadrant() {
     }
 }
 
+/// **AS DUAS METADES DE CADA LINHA TÊM DE SAIR DIFERENTES — COZINHADAS.**
+///
+/// ⚠️ **Este gate é o terceiro capítulo da mesma lição, e foi o Enio que o pediu de
+/// novo** (2026-08-21: *"Em Rampa: Remap: Curve offset ... não tem efeito"*). Os outros
+/// gates desta cena afirmam que cada par difere no PARAM que anuncia; nenhum deles
+/// olhava a IMAGEM. A linha da RAMPA saía com as duas metades **byte-idênticas** — o
+/// `field.remap` com o contorno `Curve` e nada autorado devolvia `t` antes de o
+/// deslocamento correr — e os nove gates passavam, porque o param estava lá.
+///
+/// ⚠️ **A comparação é sobre TODAS as colunas**, não sobre uma escolhida: a linha do
+/// corte difere no `tint`, as outras três no `falloff`. Escolher a coluna seria
+/// escrever a resposta ao lado da pergunta.
+#[test]
+fn each_pair_actually_differs_in_the_cooked_result() {
+    let (doc, sinks) = scene();
+    let reg = registry();
+    let cooked = |sink: NodeId| {
+        let mut cook = Cook::new();
+        let out = cook.cook(&doc.graph, &reg, sink, 0.0).expect("cozinha");
+        let s = out[0].as_stream();
+        let mut cols: Vec<(String, Column)> =
+            s.columns().map(|(n, c)| (n.clone(), c.clone())).collect();
+        cols.sort_by(|a, b| a.0.cmp(&b.0));
+        cols
+    };
+    for row in 0..4 {
+        let (a, b) = (cooked(sinks[row * 2]), cooked(sinks[row * 2 + 1]));
+        assert_eq!(
+            a.iter().map(|(n, _)| n).collect::<Vec<_>>(),
+            b.iter().map(|(n, _)| n).collect::<Vec<_>>(),
+            "linha {row}: as duas metades têm de ter as MESMAS colunas"
+        );
+        let differs = a.iter().zip(&b).any(|((_, x), (_, y))| x != y);
+        assert!(
+            differs,
+            "linha {row} ({}): as duas metades saíram IDÊNTICAS — o knob não chega à \
+             imagem, e um par que não difere não demonstra nada",
+            ROW_LABELS[row]
+        );
+    }
+}
+
 /// **O DIAGNOSER DA CASA NÃO ACHA BURACO NESTA CENA.**
 #[test]
 fn the_house_diagnoser_finds_no_hole_in_this_scene() {

@@ -214,7 +214,18 @@ fn contour(
             let n = steps.max(2.0);
             round_haz(t * (n - 1.0)) / (n - 1.0)
         }
-        4 => curve.map_or(t, |c| c.eval(shifted(t, curve_offset))),
+        // ⚠️ **O deslocamento corre ANTES de consultar a curva, e a ordem é o bug.**
+        // A primeira versão era `curve.map_or(t, |c| c.eval(shifted(t, off)))`: com
+        // NADA autorado o `map_or` devolvia `t` e o `shifted` nunca corria — o knob
+        // ficava morto exactamente no estado em que o nó nasce. Pior, o device fazia o
+        // contrário (a LUT assa a IDENTIDADE e o WGSL amostra-a já deslocada), então os
+        // dois caminhos discordavam sem nada dizer. *Uma curva ausente é a identidade,
+        // e a identidade deslocada é um dente de serra — que é uma resposta, não um
+        // no-op.* Achado por um smoke do Enio (2026-08-21).
+        4 => {
+            let u = shifted(t, curve_offset);
+            curve.map_or(u, |c| c.eval(u))
+        }
         _ => t, // None/Linear (0) passes through.
     }
 }
@@ -476,6 +487,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_luts(MANIFEST.id, LUTS);
@@ -512,6 +524,37 @@ static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("strength", "Output"),
     ParamGroup::new("probability", "Output"),
     ParamGroup::new("seed", "Output"),
+];
+
+/// **UM NÚMERO POR CONTORNO, E SÓ O DO CONTORNO ESCOLHIDO APARECE.**
+///
+/// ⚠️ **Isto nasceu de um smoke** (Enio, 2026-08-21: *"Curve offset e outros parâmetros
+/// não têm efeito"*). Ele estava com o contorno em `Curve` e tinha ao lado, vivos no
+/// painel, o `curvature` (que é do Quadratic) e o `steps` (que é do Step/Quantize) —
+/// dois knobs que ali não fazem nada **por desenho**. Um controle vivo que não muda
+/// nada é indistinguível de um bug, e foi lido como um.
+///
+/// ⛔ **O `curve` (o editor de curva) NÃO é gateado, de propósito.** O gate
+/// `selected_field_remap_yields_an_interactive_curve_row` afirma que ele é a PRIMEIRA
+/// linha e é interactivo; gateá-lo por `contour == 4` esconderia-o no modo default
+/// (Quadratic) e reprovaria aquele gate. Se um dia a decisão for escondê-lo, é aquele
+/// gate que se reconcilia primeiro — não este.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "curvature",
+        when: "contour",
+        values: &[1],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "steps",
+        when: "contour",
+        values: &[2, 3],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "curve_offset",
+        when: "contour",
+        values: &[4],
+    },
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[

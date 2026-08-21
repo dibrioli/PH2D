@@ -643,6 +643,120 @@ apanhou-o: apagar a declaração de verdade deixava-o verde.
 
 ---
 
+## §14 — W14: a rotação em números, e um piso que faltava a TODA linha (20/08)
+
+A pose já se movia e crescia por número; **rodar** só existia com o rato. E ao ir escrever a linha
+descobriu-se que a faixa de uma linha só tinha **uma** ponta.
+
+### ⭐ O trio é um NOME do quaternion, não uma segunda verdade
+
+A pose guarda um quaternion. O painel mostra o **XYZ Euler canónico** dele, em graus, na ordem do
+Blender (`R = Rz · Ry · Rx`) — e o que fecha o ciclo é a **orientação**, nunca o trio:
+
+| | |
+|---|---|
+| `quat_from_euler(quat_to_euler(q))` | `== q` **como rotação** — é o gate |
+| `quat_to_euler(quat_from_euler(e))` | `== e` **só para `e` canónico** — e não é o gate |
+
+Uma orientação tem infinitos trios que a nomeiam (mais uma volta em qualquer eixo; nos polos, uma
+família inteira). Exigir a segunda linha do código seria exigir uma coisa que **não é verdade**, e a
+cura seria guardar o trio.
+
+⛔ **Guardar o trio autorado ao lado do quaternion foi pesado e recusado.** O gizmo roda em torno de
+eixos **arbitrários** (a argola da vista não é X, Y nem Z) e escreve o quaternion — o trio guardado
+seria um cache invalidado por **todo** arrasto, e o documento passaria a ter duas respostas para
+*"como é que isto está rodado"*. O que se paga por não o guardar está medido e escrito: um ângulo
+além de meia volta é **renomeado** (200° aparece como −160°, o mesmo sítio), e o eixo do meio
+**reflete** ao passar de 90°. A peça vai sempre para onde foi pedida; o que muda é o nome.
+
+**Trava de cardan:** em `β = ±90°` o X e o Z deixam de ser distinguíveis — só a soma (ou a diferença)
+é um facto. Ali a extração põe `γ = 0` e dá o resto ao X: determinístico, e não três números a tremer
+numa peça parada. O limiar `EULER_LOCK_EPS = 1e-4` é derivado do **`f32`** (as entradas da matriz
+carregam ~1e-7 de erro; a `|cos β| = 1e-4` o `atan2` já vale ~0,06°), e é ele que fixa a tolerância
+`2e-4` do gate de ida-e-volta — não o `f32::EPSILON`, que reprovaria o caso que a lei trata de
+propósito.
+
+### ⭐ Uma faixa tem DUAS pontas — a regressão que a W13 embarcou
+
+`Dim` só dizia o **teto**, e o painel punha o piso em **zero** para todas as linhas. Numa largura
+está certo (o documento recusa `≤ 0`); numa **posição** é um defeito com sintoma **mudo**: digitar
+`-0,5` era reescrito para `0` pelo espelho do controle, e a peça ia para a origem. *Um número que a
+UI recusa em silêncio é a pior forma de recusa* — e ele sobreviveu ao smoke da W13 porque o valor
+experimentado foi positivo.
+
+A cura é o [`Span`]: cada grandeza diz a **forma** da faixa e de que recurso vem cada ponta, e quem
+fecha as pontas abertas é a **vista**, num sítio só ([`param_rows`]).
+
+| `Span` | piso | teto | de que recurso |
+|---|---|---|---|
+| `Positive` | 0 | vista | o documento recusa `≤ 0`; o teto é o que cabe no quadro |
+| `Wall(w)` | 0 | `w` | a única ponta que o **documento** impõe (o filete) |
+| `Free` | −vista | +vista | a origem não é um canto do mundo |
+| `Turn(180)` | −180 | +180 | a própria **representação** — nem documento nem vista têm voto |
+
+⚠️ E eram **duas portas** sobre a mesma faixa: o `paint` instala o mapeamento e o `event` faz a conta
+à mão. Um par destes só falha quando **discordam**, e cada lado lido sozinho parece certo — daí o
+gate `the_dispatched_value_is_the_one_the_painted_mapping_promises`, que lê o mapeamento do *store*
+(o que a pintura de facto deixou lá) e o compara com o número que saiu pela fila, nas duas pontas.
+
+### As casas decimais passaram a ser DERIVADAS
+
+`RADIUS_DECIMALS = 3` foi escrito quando a única linha era o filete, e passou a servir cinco
+grandezas. A regra que não é palpite: **o número na tela tem de distinguir dois passos consecutivos
+do arrasto** — `ceil(−log10 passo)`, mais uma casa para o que se digita entre dois passos (senão
+escrever `45,5` mostraria `46`, e o painel mentiria sobre o documento).
+
+| linha | passo | casas |
+|---|---|---|
+| filete (curso 0,12) | 0,0012 | 4 |
+| largura / posição (curso 2,4) | 0,024 | 3 |
+| ângulo (curso 360) | 3,6 | 1 |
+
+### ⚠️ Um portão que estava VERMELHO desde antes desta linha
+
+O `shell_files_respect_hr18_loc_cap` reprovava com **cinco** arquivos acima de 600 LOC — três deles
+sem uma linha minha esta wave. Ele nunca apareceu porque as corridas anteriores levavam **filtro**, e
+o filtro é onde a resposta se perde (`CLAUDE.md` §2: 98,9% das corridas com filtro escrito à mão).
+
+Curado por **corte, não por exceção** — e por **assunto**, não por tamanho:
+
+| Antes | Depois |
+|---|---|
+| `field3d_gizmo.rs` 819 | 547 + `field3d_gizmo_drag.rs` 298 (*onde estão as alças* vs *o que o arrasto pede*) |
+| `field3d_smoke.rs` 803 | 454 + `_scenes.rs` 199 + `_draw.rs` 180 |
+| `field3d_scene.rs` 664 | 450 + `field3d_scene_panel.rs` 236 (a ponte com o painel) |
+| `field3d_gizmo_tests.rs` 739 | 303 + `field3d_gizmo_drag_tests.rs` 449 |
+| `field3d_scene_tests.rs` 1469 | 538 + `_gesture_tests.rs` 434 + `_edit_tests.rs` 518 |
+
+⭐ **Todos são módulos-filhos com `use super::*` e re-export**: as fixtures continuam a existir **uma
+vez** (duas cópias divergiriam na primeira mudança, e os dois arquivos mediriam cenas diferentes com
+o mesmo nome), e nenhum chamador mudou uma linha. *Cortar um arquivo não pode custar uma reescrita em
+cada sítio que o chamava.*
+
+### Provas de mutação
+
+| Mutação | Reprovou |
+|---|---|
+| a extração de Euler perde o ramo da trava | `at_the_pole_the_extraction_is_finite_and_the_third_angle_is_pinned` |
+| a ordem passa a `Rx · Ry · Rz` | `the_order_is_the_blender_xyz_euler` |
+| o despacho volta a `track * teto` | `the_dispatched_value_is_the_one_the_painted_mapping_promises` · `a_row_whose_floor_is_negative_can_reach_it` |
+| as casas decimais voltam a ser constantes | `two_neighbouring_drag_steps_never_read_the_same` · `a_value_typed_between_two_steps_is_not_rounded_away` |
+
+⚠️ **A quarta mutação passou VERDE à primeira, e o defeito era do gate.** Ele sondava os cursos de
+0,12 a 360 — e três casas fixas de facto distinguem dois passos em todos eles. A tabela não continha
+a ponta que a regra existe para servir. Curado com o **filete de uma peça de 2e-4** (nada impede
+digitar um raio desse tamanho) e com sondas **relativas ao curso**: sondar um passo de `2e-6` a
+partir de `45,0` mediria o ULP do `f32` em 45 (`3,8e-6`), não a formatação.
+
+⭐ E o teto das casas passou a ser derivado no mesmo movimento: **6**, porque o ULP de uma coordenada
+de ordem 1 é `1,19e-7` — a sexta casa é a última que ainda distingue dois valores de verdade.
+*Uma fixture só prova o que ela contém.*
+
+[`Span`]: ../../crates/ph2d-field/src/dims.rs
+[`param_rows`]: ../../shells/desktop/src/field3d_scene_panel.rs
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -653,6 +767,7 @@ apanhou-o: apagar a declaração de verdade deixava-o verde.
   do shell já existia e o que faltava era o módulo dizer-se. *Meça o mecanismo antes de construir o
   que a nota prescreve.*
 - ✅ **duplicar e apagar FECHARAM** na W11 (§10)
+- ✅ **a rotação em números FECHOU** na W14 (§14) — e com ela o piso de toda linha
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

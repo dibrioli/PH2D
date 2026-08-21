@@ -54,6 +54,20 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// ⚠️ O backend LOCAL não a mede — ele reporta `usize::MAX` como *"não sei"*,
     /// que é diferente de zero e não pode ser lido como um resultado bom.
     pub irregular: usize,
+    /// ⭐⭐ **A ARESTA MAIS LONGA, em múltiplos do `edge` pedido** — a primeira
+    /// grandeza GEOMÉTRICA que este relatório carrega.
+    ///
+    /// ⛔ **Todos os outros campos sobrevivem a posições embaralhadas.** Foi assim
+    /// que o botão devolveu uma malha destruída com `100 % quads · casca fechada ·
+    /// 22 irregulares` e 10.515 gates verdes (auditoria de 2026-08-21). Medido: o
+    /// caminho correcto fica **≤ 4×**; o destruído deu **18×**, que era o diâmetro
+    /// da peça.
+    ///
+    /// ⚠️ `f32::NAN` quando o backend não a mede — que é diferente de `0`.
+    pub edge_max_ratio: f32,
+    /// A aresta mediana em múltiplos do `edge` pedido — ⭐ esta diz se a DENSIDADE
+    /// saiu no alvo. Medido: correcto ≈ **0,9×**; destruído **4,6×**.
+    pub edge_median_ratio: f32,
 }
 
 impl Sculpt3dScene {
@@ -150,6 +164,11 @@ impl Sculpt3dScene {
             // conta valências; escrever `0` seria afirmar uma grade perfeita
             // sobre um motor que entrega 21 a 49 % de irregulares.
             irregular: usize::MAX,
+            // ⚠️ `NAN` é *"não sei"*, e o log escreve `?`. Este backend não mede
+            // as arestas da saída, e escrever `1,0` seria afirmar uma grade
+            // perfeita.
+            edge_max_ratio: f32::NAN,
+            edge_median_ratio: f32::NAN,
         };
         let previous =
             core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);

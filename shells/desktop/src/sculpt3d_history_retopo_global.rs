@@ -91,13 +91,28 @@ impl Sculpt3dScene {
 
         // ── F5. A malha.
         //
-        // ⚠️ **A referência da reprojeção é a malha ORIGINAL e não a remalhada.**
+        // ⚠️ **A superfície da reprojeção é a malha ORIGINAL e não a remalhada.**
         // Reprojetar sobre a saída do F1 seria alisar contra uma superfície que já
         // é uma aproximação — o erro das duas somaria, e a silhueta que o artista
         // esculpiu perderia o que o F1 já tinha arredondado.
-        let (out, r) =
-            ph2d_quadfill::fill(&reference, &layout, &quant, ph2d_quadfill::SMOOTHING_ROUNDS)
-                .map_err(RemeshRefusal::Fill)?;
+        //
+        // ⛔ **Este raciocínio está CERTO e foi ele que escreveu o bug**, porque a
+        // função tinha um parâmetro só para dois papéis: a mesma malha servia de
+        // superfície **e** de tabela de posições dos índices do layout. *Um
+        // argumento correto para metade dos usos do mesmo argumento.*
+        let (out, r) = ph2d_quadfill::fill(
+            // ⭐ **`work` INDEXA, `reference` recebe.** As duas malhas são
+            // diferentes aqui, e passá-las trocadas foi o defeito que destruiu o
+            // produto em 2026-08-21 — com todos os gates verdes, porque o dano é
+            // só geométrico. A assinatura de duas portas é a cura; ver o doc do
+            // `ph2d_quadfill::fill`.
+            &work,
+            &reference,
+            &layout,
+            &quant,
+            ph2d_quadfill::SMOOTHING_ROUNDS,
+        )
+        .map_err(RemeshRefusal::Fill)?;
         if out.faces().is_empty() {
             return Err(RemeshRefusal::TooCoarseToResolve);
         }
@@ -113,6 +128,8 @@ impl Sculpt3dScene {
             // mesma grandeza que o irmão local reporta na coluna `holes`.
             holes: r.boundary_edges,
             irregular: r.irregular,
+            edge_max_ratio: r.edge_max / target,
+            edge_median_ratio: r.edge_median / target,
         };
         let previous = core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, out);
         self.record(StrokeUndo::Remeshed(Box::new(previous)));
@@ -147,6 +164,19 @@ pub(in crate::sculpt3d) fn legacy_requested() -> bool {
 #[must_use]
 fn legacy_from(value: Option<&str>) -> bool {
     value.is_some_and(|v| v != "0")
+}
+
+/// **Uma razão de aresta, para o log** — `?` quando o backend não a mede.
+///
+/// ⚠️ **`NAN` não é `0`, e a diferença importa.** O porte local não mede as
+/// arestas da saída; escrever `0,0×` ali leria como uma grade perfeita, que é o
+/// oposto do que ele entrega.
+pub(in crate::sculpt3d) fn ratio(v: f32) -> String {
+    if v.is_finite() {
+        format!("{v:.2}x")
+    } else {
+        String::from("?")
+    }
 }
 
 #[cfg(test)]

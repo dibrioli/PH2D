@@ -409,3 +409,10 @@ impl Sculpt3dScene {
 #[cfg(test)]
 #[path = "sculpt3d_undo_tests.rs"]
 mod tests;
+
+/// **Os gates da cadeia GLOBAL, pelo gesto** — ver [`global_retopo`]. Irmão dos
+/// [`tests`], e o corte foi forçado pela HR-18 mais o assunto: lá o undo de um
+/// traço, aqui o botão do ADR-0161.
+#[cfg(test)]
+#[path = "sculpt3d_global_retopo_tests.rs"]
+mod global_retopo;

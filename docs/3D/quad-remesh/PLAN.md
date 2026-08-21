@@ -22,7 +22,9 @@
 > a parede zigue-zagueia sobre arestas de malha e vira 90° sem que nada vire. A lei nova é *um canto só
 > existe onde a parede se ramifica*.
 > Próximo: os **patches de três lados** (a fusão de separatrizes do QuadWild §6) e a **porta no shell**.
-> ⚠️ Nada disto está ligado ao produto ainda.
+> ⛔ **2026-08-21, o Enio mandou a foto: o produto saiu DESTRUÍDO com os 10.515 gates verdes.** Auditoria
+> multi-agente, causa raiz numa linha, três camadas de cura, e a lição que fica: **nenhuma asserção desta
+> cadeia olhava uma coordenada** (§4-terdecies).
 
 ---
 
@@ -1249,6 +1251,119 @@ torna a lei testável.
   travamento. O log da consola diz o relógio; a UI não diz nada.
 - ⚠️ **`adapt` continua no painel sem consumidor** neste backend — hoje um aviso,
   amanhã ou uma lei ou um knob desligado.
+
+---
+
+## 4-terdecies — ⛔⛔ O PRODUTO SAIU DESTRUÍDO COM 10.515 GATES VERDES
+
+**Achado por:** o Enio, numa foto. **Diagnosticado por:** auditoria multi-agente
+(6 lentes, 29 achados, 21 sobreviveram a dois céticos cada).
+
+### O que o artista viu
+
+Clicou no botão numa esfera esculpida. A malha voltou em **lascas finas** com um
+emaranhado de **linhas retas a atravessar a peça de lado a lado**, com a silhueta
+da esfera ainda a adivinhar-se por baixo.
+
+E o log dizia: `100 % quads · casca FECHADA · 22 irregulares`. **As duas coisas
+eram verdade ao mesmo tempo.**
+
+### A causa raiz — uma linha, e um raciocínio CORRETO que a escreveu
+
+[`fill`] tinha **um** parâmetro, `reference`, a servir **dois papéis**:
+
+1. a tabela de posições que os índices do `layout` indexam
+2. a superfície sobre a qual reprojetar
+
+A porta do shell passou-lhe a malha **original**, raciocinando — corretamente —
+sobre o papel (2). Mas o layout foi traçado sobre a saída do **F1**, que tem espaço
+de índice próprio. ⇒ Cada `arc_chain[i]` foi ler a posição de um vértice
+**arbitrário**.
+
+⚠️ **O F1 quase sempre REDUZ a contagem** (98 306 → 2 679), então todo índice caía
+**dentro** do alcance: sem panic, sem erro, leitura silenciosa.
+
+| | quads | não-quads | bordo | irreg. | aresta mediana | aresta MAX |
+|---|---|---|---|---|---|---|
+| o que o produto fez | 5 978 | 0 | 0 | 21 | **0,2315** (4,6× o alvo) | **2,0141** |
+| o que devia fazer | 5 978 | 0 | 0 | 21 | 0,0454 (= o alvo) | 0,4077 |
+
+⭐ **Os quatro números que os gates leem são bit-a-bit os mesmos.** E `2,0141` numa
+peça de raio 1,0 é o **diâmetro** — uma aresta a atravessar a esfera.
+
+⚠️ **E a última operação do F5 é `project_onto(surface, …)`**, que repõe cada
+vértice sobre a superfície original: é literalmente por isso que a foto mostra
+escombro **colado à silhueta certa**.
+
+### ⛔ Por que 10.515 gates ficaram verdes — e não foi azar
+
+1. ⭐ **O `FillReport` é função pura dos ÍNDICES, por construção.** `quads` e
+   `non_quads` saem da aridade das faces; `boundary_edges` de um mapa de pares;
+   `irregular` da valência. As faces saem de `layout` + `quant`. **Nenhuma posição
+   escolhe um índice** ⇒ embaralhar posições deixa o relatório **byte-idêntico**.
+2. **O gate do gesto era LITERALMENTE invariante sob o defeito.** As suas seis
+   asserções: quatro do relatório, um `assert_ne!(positions, before)` que passa
+   trivialmente (comprimentos diferentes), e o round-trip do undo — que mede a
+   malha **de antes**. *Não passou por sorte: não tinha como reprovar.*
+3. **Nenhum teste da árvore corria a ordem do produto.** Em 100 % da cobertura, os
+   dois papéis colapsavam na **mesma variável** — costura não-testada clássica
+   (`DIRETIVA_IMPLEMENTACAO`, causa nº 1).
+4. ⚠️ **E o gate nem correu:** é `#[ignore]` + precisa de GPU. Os 10.515 verdes
+   nunca o incluíram.
+
+### A cura — três camadas, e a primeira torna o erro INEXPRIMÍVEL
+
+1. ⭐⭐ **Partir o parâmetro:** `fill(indexed, surface, …)`. ⛔ *Trocar o argumento
+   para `&work` teria consertado a geometria e apagado, em silêncio, uma intenção
+   declarada e legítima.* **Um erro que a assinatura torna inexprimível não precisa
+   de gate.**
+2. **Uma pré-condição dentro do `fill`** — o comprimento da polilinha de cada arco,
+   medido na malha que se vai amostrar, contra o `arc_length` que o F3 declarou.
+   Barra `1e-3`; medido: coerente **1,000 exacto**, destruído **5,40×** (pior arco
+   9,04×). Três ordens de grandeza de margem. *E o `get` no lugar do `[]` converte
+   de graça o panic do §seguinte numa recusa nomeada.*
+3. **Duas asserções GEOMÉTRICAS** no relatório e no gate: aresta **máxima** ≤ 4× o
+   alvo e **mediana** na faixa 0,5×–2,0×.
+   ⚠️ **As duas, e não uma:** com o defeito reintroduzido, nesta fixtura a máxima
+   saiu **1,64× — debaixo da barra** — e quem apanhou foi a mediana (0,27×); na
+   fixtura de 98 k a auditoria mediu o inverso (máxima 18×). *O dano geométrico não
+   escolhe sempre a mesma régua.*
+
+### ⛔ O segundo defeito, da mesma raiz: o SEGUNDO CLIQUE era panic certo
+
+`remesh_isotropic` leva a malha ao alvo `α × diagonal`, logo **densifica** toda
+entrada mais grossa que ~2 500 vértices. O clique 1 deixava ~500 vértices; o clique
+2 tomava-os como `reference` e o layout tinha índices até 2 887 contra `len` 492 ⇒
+`index out of bounds`, **a janela morria com a peça por gravar** (`catch_unwind` não
+cobre este caminho). Reproduzido também com `torus`, `cube`, e com qualquer OBJ
+low-poly importado.
+
+### ⛔ E os gates que apontavam para o motor errado
+
+`two_clicks_without_undo_still_return_a_piece` e
+`every_point_of_the_detail_slider_returns_a_piece` chamam o irmão **local**. Quando
+o botão foi repontado para a cadeia global, **nenhum foi repontado**: a
+`quad_remesh_global` ficou com **um** chamador de teste em toda a workspace, com um
+clique, `detail = 0,5`, sobre a única fixtura que caía do lado que não partia.
+⇒ Os dois ganharam irmão global em `sculpt3d_global_retopo_tests.rs`.
+
+### ⛔ O defeito que o gate novo encontrou, e que fica ABERTO
+
+O **terceiro clique** recusa com `Broken { patch: 6, side: 12 }` — a fronteira de um
+patch não fecha. A cadeia nunca tinha corrido sobre uma malha que ela própria
+produziu, e o F1 grosseira a peça a cada clique (270 vértices ao clique 2) até o
+traçado sair degenerado. ⚠️ **O gate afirma o contrato que de facto importa —
+*recusar sem destruir*** — e nomeia o defeito em vez de o esconder.
+
+### ⭐ O que NÃO é problema — não repetir
+
+1. **A reprojeção sobre a malha ORIGINAL está CERTA.** ⛔ Não reverta: o defeito era
+   o parâmetro único servir também a indexação.
+2. **F1, F2, F3 e F4 estão inocentes** — provado por controlo: os dois ramos
+   partilham o **mesmo `layout` e o mesmo `quant`**; um sai bom e o outro sai a foto.
+3. ⛔ **Hausdorff vértice→superfície numa direção só é TAUTOLÓGICO aqui**: a malha
+   destruída pontua **0,0000** contra 0,0015 da correta, porque `project_onto` é a
+   última operação do F5. *A régua destruída pontuava melhor.*
 
 ---
 

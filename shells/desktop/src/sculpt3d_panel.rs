@@ -17,7 +17,7 @@
 use ph2d_panel_sculpt3d::{Sculpt3dIntent, Sculpt3dSnapshot, Sculpt3dUi};
 
 use super::dyntopo::DETAIL_STEPS;
-use super::{MaskOp, Primitive, Sculpt3dScene, legacy_requested};
+use super::{MaskOp, Primitive, Sculpt3dScene, legacy_requested, ratio};
 
 /// **O que o LAÇO DE FRAME tem de cumprir** por um gesto do painel.
 ///
@@ -394,7 +394,8 @@ impl Sculpt3dScene {
                     // diferente de dizer zero.
                     Ok(r) => eprintln!(
                         "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
-                         {} irregulares, com quad de {:.4} em {:.0} ms{}",
+                         {} irregulares, aresta mediana {} e MAXIMA {} do alvo, com quad de {:.4} \
+                         em {:.0} ms{}",
                         r.verts,
                         r.quads,
                         r.non_quads,
@@ -404,6 +405,8 @@ impl Sculpt3dScene {
                         } else {
                             r.irregular.to_string()
                         },
+                        ratio(r.edge_median_ratio),
+                        ratio(r.edge_max_ratio),
                         r.edge,
                         r.ms,
                         if r.holes == 0 {

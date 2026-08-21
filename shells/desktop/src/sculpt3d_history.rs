@@ -246,7 +246,7 @@ mod refusal;
 
 pub(super) use refusal::RemeshRefusal;
 
-pub(super) use retopo_global::legacy_requested;
+pub(super) use retopo_global::{legacy_requested, ratio};
 
 /// **QUANTO a história pode pesar** — ver [`budget`]. Irmão do [`undo`], e o
 /// corte é o mesmo: *o que se guarda* aqui, *quanto disso cabe* lá.

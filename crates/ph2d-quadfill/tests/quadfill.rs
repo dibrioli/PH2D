@@ -27,7 +27,7 @@ fn chain_with_layout(mut mesh: Mesh, target_edge: f32) -> (Mesh, ph2d_quadfill::
     let non_quad_patches = layout.side_arcs.iter().filter(|s| s.len() != 4).count();
     let l = layout.to_layout(target_edge).expect("o layout fecha");
     let (q, _) = quantize(&l).expect("quantiza");
-    let (m, r) = fill(&mesh, &layout, &q, SMOOTHING_ROUNDS).expect("monta");
+    let (m, r) = fill(&mesh, &mesh, &layout, &q, SMOOTHING_ROUNDS).expect("monta");
     (m, r, non_quad_patches)
 }
 

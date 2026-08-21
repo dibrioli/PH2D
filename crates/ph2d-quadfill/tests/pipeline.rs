@@ -99,7 +99,7 @@ fn run_with_alpha(name: &str, mut mesh: Mesh, target_edge: f32, alpha: Option<f3
             return;
         }
     };
-    match fill(&mesh, &layout, &q, SMOOTHING_ROUNDS) {
+    match fill(&mesh, &mesh, &layout, &q, SMOOTHING_ROUNDS) {
         Ok((_out, r)) => {
             let pct = if r.verts == 0 {
                 0.0

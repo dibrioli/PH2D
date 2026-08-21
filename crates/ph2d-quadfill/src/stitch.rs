@@ -16,7 +16,10 @@ use ph2d_trace::PatchLayout;
 use crate::fan::{coons, resample, segment};
 
 /// Por que a malha não pôde ser montada.
-#[derive(Debug, Clone, PartialEq, Eq)]
+// ⚠️ Deixou de ser `Eq` quando a `ArcNotOfThisMesh` passou a carregar os dois
+// comprimentos: sem eles, a recusa diria *que* não bate e não **quanto**, e a
+// diferença entre `1,0001×` e `5,40×` é a diferença entre ruído e catástrofe.
+#[derive(Debug, Clone, PartialEq)]
 pub enum FillError {
     /// ⚠️ **A lei do patch não bate com a quantização.** `L_i` tinha de ser
     /// `e_{i-1} + e_{i+1}`, e não é. Isto é **bug a montante**, não uma
@@ -42,10 +45,34 @@ pub enum FillError {
     },
     /// A malha resultante não monta.
     Mesh(String),
+    /// ⭐⭐ **O LAYOUT NÃO É DESTA MALHA** — o defeito que destruiu o produto em
+    /// 2026-08-21, e que nenhum dos 10.515 gates conseguia ver.
+    ///
+    /// ⚠️ **É a pré-condição mais barata que existe**, e ela existe porque o
+    /// sintoma é invisível a jusante: um `arc_chain` de outra malha produz uma
+    /// saída com **topologia perfeita** — 100 % quads, característica de Euler
+    /// exacta, zero arestas de bordo, contagem de irregulares idêntica — e
+    /// geometria destruída. *Nenhum número do [`FillReport`] muda.*
+    ///
+    /// A régua: o comprimento da polilinha de cada arco, medido **na malha que se
+    /// vai amostrar**, tem de bater com o `arc_length` que o F3 declarou e que o
+    /// F4 já usou para decidir quantos segmentos aquele arco leva. Medido: no
+    /// caminho coerente a razão é **1,000 exacto** (é a mesma soma dos mesmos
+    /// `f32`); no caminho destruído foi **5,40×**, com o pior arco a **9,04×**.
+    /// *Três ordens de grandeza de margem — não há flake possível.*
+    ArcNotOfThisMesh {
+        /// Qual arco.
+        arc: usize,
+        /// O comprimento que o F3 declarou.
+        declared: f32,
+        /// O que a malha recebida de facto mede — ou `None` se um índice do arco
+        /// nem sequer existe nela.
+        measured: Option<f32>,
+    },
 }
 
 /// O que a montagem mediu.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct FillReport {
     /// Quantos quads.
     pub quads: usize,
@@ -73,6 +100,23 @@ pub struct FillReport {
     /// um patch é da valência que o F3 entregou, e um no interior de uma grade
     /// seria um bug desta crate.
     pub by_provenance: [usize; Provenance::COUNT],
+    /// ⭐⭐ **A ARESTA MAIS LONGA da saída** — e ela é a primeira grandeza
+    /// GEOMÉTRICA que este relatório alguma vez teve.
+    ///
+    /// ⛔ **Todo o resto deste struct é função pura dos ÍNDICES.** `quads`,
+    /// `non_quads`, `boundary_edges` e `irregular` saem da combinatória das faces;
+    /// uma malha com as posições embaralhadas dá exactamente os mesmos números.
+    /// Foi assim que 10.515 gates ficaram verdes sobre um produto destruído
+    /// (auditoria de 2026-08-21): *não existia uma única asserção que olhasse uma
+    /// coordenada.*
+    ///
+    /// A régua do chamador é a razão para o alvo dele. Medido: caminho correcto
+    /// **≤ 4× o alvo**; caminho destruído **18×** — que era o **diâmetro da peça**,
+    /// uma aresta a atravessar a esfera de lado a lado.
+    pub edge_max: f32,
+    /// A aresta mediana. ⭐ É a que diz se a DENSIDADE saiu no alvo — a máxima diz
+    /// se alguma coisa se partiu, esta diz se a grade tem o passo pedido.
+    pub edge_median: f32,
 }
 
 /// **De onde um vértice da saída veio** — a chave para saber de quem é a dívida.
@@ -136,17 +180,92 @@ impl Points {
 /// ver a tabela do `PLAN.md` §4-sexies.
 pub const SMOOTHING_ROUNDS: usize = 6;
 
+/// **A TOLERÂNCIA da pré-condição**, em fração do comprimento declarado.
+///
+/// ⚠️ **Ela é folga de ARREDONDAMENTO e nada mais.** No caminho correto os dois
+/// números são a **mesma soma dos mesmos `f32`**, então a razão é `1,000` exacto;
+/// `1e-3` cobre uma reordenação de soma e ainda deixa **três ordens de grandeza**
+/// até o `5,40×` que o defeito produziu. ⛔ Alargá-la não compra robustez nenhuma:
+/// compra o direito de voltar a montar uma malha sobre índices de outra.
+const ARC_LENGTH_TOLERANCE: f32 = 1.0e-3;
+
+/// **O LAYOUT É DESTA MALHA?** — a pré-condição do [`fill`].
+///
+/// ⭐ **Ela responde à única pergunta que a montagem não pode responder sozinha**,
+/// e responde-a com aritmética que já está paga: o F3 mediu o comprimento de cada
+/// arco quando o traçou, e o F4 usou esse número para decidir a quantização. Se a
+/// malha que chega aqui medir outra coisa, o `arc_chain` **não é dela**.
+///
+/// ⚠️ **E ela absorve de graça o segundo defeito da mesma família:** quando o F1
+/// REFINA em vez de grosseirar (toda entrada mais grossa que ~2.500 vértices), o
+/// índice sai do alcance e o `src[v]` **panica** — a janela morre com a peça por
+/// gravar. Aqui o mesmo `get` devolve uma recusa nomeada. *Reproduzido: o SEGUNDO
+/// clique do botão era panic certo.*
+fn check_arcs_belong_to(mesh: &Mesh, layout: &PatchLayout) -> Result<(), FillError> {
+    let pos = mesh.positions();
+    for (a, chain) in layout.arc_chain.iter().enumerate() {
+        let declared = layout.arc_length.get(a).copied().unwrap_or(0.0);
+        let mut measured = 0.0f32;
+        for w in chain.windows(2) {
+            // ⚠️ `get` e não `[]`: um índice fora do alcance é a MESMA doença, e
+            // um panic no meio de um gesto do artista é a pior forma de a dizer.
+            let (Some(a0), Some(a1)) = (pos.get(w[0] as usize), pos.get(w[1] as usize)) else {
+                return Err(FillError::ArcNotOfThisMesh {
+                    arc: a,
+                    declared,
+                    measured: None,
+                });
+            };
+            let d = [a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2]];
+            measured += d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+        }
+        if (measured - declared).abs() > ARC_LENGTH_TOLERANCE * declared.max(1.0e-6) {
+            return Err(FillError::ArcNotOfThisMesh {
+                arc: a,
+                declared,
+                measured: Some(measured),
+            });
+        }
+    }
+    Ok(())
+}
+
 /// **MONTA A MALHA DE QUADS.**
+///
+/// # Os DOIS mesh, e por que eles são dois parâmetros
+///
+/// ⭐ **`indexed` é a malha que o `layout` INDEXA; `surface` é onde o resultado
+/// pousa.** Elas são a mesma coisa em quase todo chamador — e na cadeia do produto
+/// **não são**: o traçado corre sobre a saída da remalha isotrópica (F1), que tem
+/// espaço de índice próprio, enquanto a forma que o artista esculpiu vive na malha
+/// original.
+///
+/// ⛔ **Isto era UM parâmetro chamado `reference`, e a confusão custou o produto
+/// inteiro** (auditoria de 2026-08-21). A porta do shell passou-lhe a malha
+/// original — raciocinando, **corretamente**, sobre o papel de reprojeção — e com
+/// isso cada `arc_chain[i]`, que é um índice da malha remalhada, foi ler a posição
+/// de um vértice **arbitrário** da original. Medido: aresta mediana **4,6× o
+/// alvo**, aresta máxima **2,01 numa peça de raio 1,0** — o diâmetro, uma aresta a
+/// atravessar a esfera de lado a lado. *E os quatro números do relatório saíram
+/// **bit-a-bit iguais** aos da corrida correta.*
+///
+/// ⚠️ **A cura não foi trocar o argumento: foi partir o parâmetro**, porque a
+/// assinatura antiga **não permitia exprimir** a intenção certa. Um erro que a
+/// assinatura torna inexprimível não precisa de gate.
 ///
 /// # Errors
 /// [`FillError`] quando a estrutura a montante não fecha — ver as variantes.
 pub fn fill(
-    reference: &Mesh,
+    indexed: &Mesh,
+    surface: &Mesh,
     layout: &PatchLayout,
     quant: &Quantization,
     smoothing: usize,
 ) -> Result<(Mesh, FillReport), FillError> {
-    let src = reference.positions();
+    // ⭐⭐ **A PRÉ-CONDIÇÃO, e ela é a mais barata que existe.** Ver
+    // [`check_arcs_belong_to`].
+    check_arcs_belong_to(indexed, layout)?;
+    let src = indexed.positions();
     let mut pts = Points::new();
     let mut faces: Vec<Face> = Vec::new();
 
@@ -242,9 +361,9 @@ pub fn fill(
         #[allow(clippy::cast_precision_loss)]
         let inv = if count == 0 { 0.0 } else { 1.0 / count as f32 };
         let center = ph2d_remesh_iso::project_onto(
-            reference,
+            surface,
             [c[0] * inv, c[1] * inv, c[2] * inv],
-            bbox_seed(reference),
+            bbox_seed(surface),
         );
         let center_vid = pts.push(center, Provenance::Center);
 
@@ -306,7 +425,7 @@ pub fn fill(
 
     // ── 4. Alisar, reprojetando sempre.
     for _ in 0..smoothing {
-        smooth_once(&mut mesh, reference);
+        smooth_once(&mut mesh, surface);
     }
 
     let report = measure(&mesh, &pts.prov, smoothing, flipped);
@@ -453,6 +572,18 @@ fn measure(mesh: &Mesh, prov: &[Provenance], smoothing: usize, flipped: usize) -
     }
     let boundary_edges = count.values().filter(|&&c| c == 1).count();
     let adj = mesh.adjacency();
+    // ⭐ **As duas grandezas geométricas**, medidas sobre as arestas da saída.
+    let mut lens: Vec<f32> = Vec::with_capacity(count.len());
+    let pos = mesh.positions();
+    for (a, b) in count.keys() {
+        let (p, q) = (pos[*a as usize], pos[*b as usize]);
+        let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+        lens.push(d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt());
+    }
+    lens.sort_by(f32::total_cmp);
+    let edge_max = lens.last().copied().unwrap_or(0.0);
+    let edge_median = lens.get(lens.len() / 2).copied().unwrap_or(0.0);
+
     let mut by_provenance = [0usize; Provenance::COUNT];
     let irregular = (0..mesh.vert_count())
         .filter(|&v| !adj.is_border(v) && adj.valence(v) != 4)
@@ -464,6 +595,8 @@ fn measure(mesh: &Mesh, prov: &[Provenance], smoothing: usize, flipped: usize) -
         .count();
     FillReport {
         by_provenance,
+        edge_max,
+        edge_median,
         quads,
         non_quads: faces.len() - quads,
         verts: mesh.vert_count(),

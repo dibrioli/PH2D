@@ -350,6 +350,51 @@ impl Field {
     }
 }
 
+/// **O documento avaliado EM LOTE, com JIT** — a porta rápida.
+///
+/// ⚠️ **É a mesma porta que o traçado e a extração já montavam cada um por si**, e a razão de ela
+/// existir aqui é que a fita (`ShapeTape`) é o objeto caro: montar uma por consumidor é pagar o JIT
+/// duas vezes, e ter duas montagens é ter dois sítios onde a próxima wave tem de trocar o avaliador.
+///
+/// ⚠️ **Ela é `&mut self` de propósito**: o avaliador da `fidget` empresta o buffer de saída, então
+/// a fatia devolvida vive até à chamada seguinte. Quem precisar de guardar copia.
+pub struct Batch {
+    eval: fidget::shape::ShapeBulkEval<
+        <fidget::jit::JitFunction as fidget::eval::Function>::FloatSliceEval,
+    >,
+    tape: fidget::shape::ShapeTape<
+        <<fidget::jit::JitFunction as fidget::eval::Function>::FloatSliceEval as
+            fidget::eval::BulkEvaluator>::Tape,
+    >,
+}
+
+impl Batch {
+    #[must_use]
+    pub fn new(doc: &FieldDoc) -> Self {
+        Self::from_tree(&compile(doc))
+    }
+
+    #[must_use]
+    pub fn from_tree(tree: &Tree) -> Self {
+        use fidget::shape::EzShape;
+        let shape = Engine::from(tree.clone());
+        Self {
+            eval: Engine::new_float_slice_eval(),
+            tape: shape.ez_float_slice_tape(),
+        }
+    }
+
+    /// `f` em cada ponto. As três fatias têm de ter o mesmo comprimento.
+    ///
+    /// # Errors
+    /// Se o avaliador recusar o lote (comprimentos diferentes, ou variável livre na árvore).
+    pub fn eval(&mut self, xs: &[f32], ys: &[f32], zs: &[f32]) -> Result<&[f32], MeshError> {
+        self.eval
+            .eval(&self.tape, xs, ys, zs)
+            .map_err(|e| MeshError::Rejected(format!("avaliação em lote: {e}")))
+    }
+}
+
 /// Atalho de leitura para quem monta um documento à mão.
 #[must_use]
 pub fn leaf(p: Primitive, xform: Xform) -> Node {

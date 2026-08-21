@@ -5472,6 +5472,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-field-mesh"
+version = "0.0.0"
+dependencies = [
+ "ph2d-mesh",
+ "ph2d-sdf",
+]
+
+[[package]]
 name = "ph2d-field-profile"
 version = "0.0.0"
 dependencies = [

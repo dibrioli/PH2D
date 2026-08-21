@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-field-mesh"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A PONTE entre a escultura e o campo implicito (ADR-0161 / plano W5): uma malha
+# vira um campo de distancia AMOSTRADO, e o campo amostrado entra na booleana do
+# modelo implicito como qualquer primitiva.
+#
+# ⚠️ Ela e' uma crate PROPRIA, e nao uma dependencia do `ph2d-field-eval`, por
+# uma promessa que os dois modulos fazem separadamente: o `docs/3D/02.3` diz que
+# apagar as quatro crates da escultura apaga o modulo, e o `ph2d-sdf` declara que
+# "nada fora do modulo depende dela". Se o avaliador do campo dependesse do
+# `ph2d-sdf`, as duas afirmacoes ficariam falsas no mesmo commit.
+#
+# Aqui elas continuam verdadeiras: apagar a escultura apaga TAMBEM esta ponte,
+# que e' a resposta certa — sem escultura nao ha o que fazer a ponte. E o
+# `ph2d-field-eval` continua a nao saber que existe malha.
+[dependencies]
+# A malha de entrada e a caixa dela.
+ph2d-mesh = { path = "../ph2d-mesh" }
+
+# ⭐ O voxelizador e o amostrador trilinear JA EXISTEM ali, escritos e gateados
+# pela linha da escultura (`VoxelField::voxelize` + `flood_fill` + `sample`).
+# Escrever um segundo seria a segunda resposta a "o que e' a distancia desta
+# malha", e a primeira ja tem as tabelas de custo ao lado.
+ph2d-sdf = { path = "../ph2d-sdf" }

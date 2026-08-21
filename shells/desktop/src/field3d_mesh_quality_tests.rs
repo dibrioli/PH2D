@@ -247,3 +247,86 @@ fn measure_export_mesh_quality() {
         }
     }
 }
+
+/// ⚠️ **A sonda que decide a W5**: *uma escultura pode entrar na booleana do campo?*
+///
+/// ⭐ **O plano dizia "malha esculpida → campo (via `ph2d-sdf`) → entra na booleana", e metade disso
+/// está BLOQUEADA por uma propriedade do motor.** A `fidget::context::TreeOp` é uma álgebra
+/// **fechada** — `Input(Var)` · `Const` · `Binary` · `Unary` · remapeamentos — e **não tem operação
+/// de consulta a dados**. Um campo em voxels não vira um nó de árvore, e portanto não entra no
+/// `compile` de hoje.
+///
+/// Sobram três caminhos, e esta sonda mede os números que escolhem entre eles:
+///
+/// | caminho | o que custa |
+/// |---|---|
+/// | a malha vira EXPRESSÃO (um termo por triângulo) | árvore de ~10 nós por triângulo — a sonda mede quantos triângulos uma escultura tem |
+/// | a booleana acontece na MALHA | ⛔ é exatamente o que falha, e é a tese do módulo que não falha |
+/// | ⭐ avaliador **híbrido**: folha analítica (JIT) ou folha **amostrada**, e a booleana é `min/max` nos dois | precisa que amostrar não seja muito mais caro que avaliar |
+///
+/// A pergunta decisiva é a última linha: **quanto custa uma amostra trilinear contra uma avaliação
+/// da árvore com JIT** — porque o traçado avalia milhões por quadro, em lote.
+#[test]
+#[ignore = "medição, não gate — corre com --ignored --nocapture"]
+fn measure_sculpt_to_field_bridge() {
+    println!("--- voxelizar uma malha (ph2d_sdf::VoxelField)");
+    println!("triângulos |  res | células | MB | ms (voxelizar+flood)");
+    for tris in [2_000usize, 20_000, 100_000] {
+        let mesh = ph2d_mesh::shapes::sphere_with_triangles(tris, 0.6);
+        for res in [64u32, 128, 256] {
+            let t0 = std::time::Instant::now();
+            let mut f = ph2d_sdf::VoxelField::for_bounds(mesh.bounds(), res);
+            f.voxelize(&mesh);
+            f.flood_fill();
+            let ms = t0.elapsed().as_secs_f64() * 1000.0;
+            // 4 B de distância + 3 B de travessia por célula.
+            let mb = f.cell_count() as f64 * 7.0 / (1024.0 * 1024.0);
+            println!(
+                "{:10} | {res:4} | {:7} | {mb:5.1} | {ms:8.1}",
+                mesh.faces().len(),
+                f.cell_count()
+            );
+        }
+    }
+
+    println!("\n--- o custo POR PONTO: amostra trilinear contra a árvore com JIT");
+    let mesh = ph2d_mesh::shapes::sphere_with_triangles(100_000, 0.6);
+    let mut vf = ph2d_sdf::VoxelField::for_bounds(mesh.bounds(), 256);
+    vf.voxelize(&mesh);
+    vf.flood_fill();
+
+    let n = 1_000_000usize;
+    // Um caminho determinístico que atravessa a caixa — sem `rand`, e reprodutível.
+    let pts: Vec<[f32; 3]> = (0..n)
+        .map(|i| {
+            let t = i as f32 / n as f32;
+            [
+                (t * 37.0).sin() * 0.7,
+                (t * 41.0).cos() * 0.7,
+                (t * 43.0).sin() * 0.7,
+            ]
+        })
+        .collect();
+
+    let t0 = std::time::Instant::now();
+    let mut acc = 0.0f32;
+    for p in &pts {
+        acc += vf.sample(*p);
+    }
+    let ms_sample = t0.elapsed().as_secs_f64() * 1000.0;
+
+    let doc = scene(1);
+    let mut batch = ph2d_field_eval::Batch::new(&doc);
+    let (xs, ys, zs): (Vec<f32>, Vec<f32>, Vec<f32>) = (
+        pts.iter().map(|p| p[0]).collect(),
+        pts.iter().map(|p| p[1]).collect(),
+        pts.iter().map(|p| p[2]).collect(),
+    );
+    let t0 = std::time::Instant::now();
+    let acc2: f32 = batch.eval(&xs, &ys, &zs).expect("lote").iter().sum();
+    let ms_tree = t0.elapsed().as_secs_f64() * 1000.0;
+
+    println!("amostra trilinear : {ms_sample:8.1} ms por 1 M pontos  ({acc:.3})");
+    println!("árvore com JIT    : {ms_tree:8.1} ms por 1 M pontos  ({acc2:.3})");
+    println!("razão             : {:8.2}x", ms_sample / ms_tree);
+}

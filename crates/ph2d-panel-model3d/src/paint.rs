@@ -215,7 +215,14 @@ fn paint_row(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y: f
     // ⚠️ Sem `set_number_range` o campo deriva o passo do arrasto do TEXTO do buffer e escorrega
     // ~50 unidades por pixel (a nota que o painel de aquarela deixou: digitar continua a funcionar,
     // o que esconde o defeito).
-    let step = scale / STEPS_ACROSS_THE_RANGE;
+    // ⚠️ **Numa linha inteira o passo é 1**, e não um centésimo do curso: meia cópia não existe, e um
+    // passo fracionário faria o arrasto percorrer valores que a escrita depois arredonda — o número
+    // a saltar debaixo do dedo sem que nada esteja errado.
+    let step = if row.integral {
+        1.0
+    } else {
+        scale / STEPS_ACROSS_THE_RANGE
+    };
     {
         let store = ctx.host.store_mut();
         store.link_slider_number_mapped(slider, chip, scale, lo);
@@ -228,7 +235,11 @@ fn paint_row(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y: f
     // outro lado — um desfazer, um arquivo aberto, uma segunda linha.
     let track = ((row.value - lo) / scale).clamp(0.0, 1.0);
     let display = f64::from(row.value);
-    let decimals = decimals_for_step(step);
+    let decimals = if row.integral {
+        0
+    } else {
+        decimals_for_step(step)
+    };
     let text = format!("{display:.decimals$}");
 
     let used = paint_slider_with_chip_layout_adaptive(

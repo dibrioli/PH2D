@@ -61,11 +61,16 @@ pub enum Param {
     Scale,
     /// Uma dimensão da forma — a posição na lista de [`dims`].
     Dim(u16),
-    /// O número de um **modificador**, pela posição dele na pilha do nó. Ver [`crate::mods`].
+    /// Um número de um **modificador** — `slot` é a posição na pilha, `field` é qual dos números
+    /// dele. Ver [`crate::mods`].
     ///
-    /// ⚠️ A posição, e não a natureza: a pilha pode ter duas cascas, e uma chave por natureza não
-    /// as distinguiria — escrever numa escreveria na outra.
-    Mod(u16),
+    /// ⚠️ **A posição, e não a natureza**: a pilha pode ter duas cascas, e uma chave por natureza
+    /// não as distinguiria — escrever numa escreveria na outra.
+    ///
+    /// ⚠️ **E DOIS índices, não um**: uma matriz tem quantas cópias *e* que espaçamento. Um índice
+    /// só obrigaria a achatar a pilha inteira numa lista de números, e aí inserir um modificador no
+    /// meio renumeraria tudo o que vem depois — com um arrasto a meio a escrever noutro campo.
+    Mod { slot: u16, field: u8 },
 }
 
 /// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.
@@ -98,6 +103,13 @@ pub enum Span {
     /// O caso de hoje é o terceiro ângulo na trava de cardan — ver
     /// [`crate::xform::rotation_axis_is_free`], que é a **mesma** porta que recusa a escrita.
     Locked,
+    /// ⭐ **Uma CONTAGEM**: inteira, de 1 a `max`. Quantas cópias uma matriz tem.
+    ///
+    /// ⚠️ É uma faixa **própria** e não uma `Positive` disfarçada, porque três coisas mudam de uma
+    /// vez: o passo do arrasto é **1** (e não um centésimo do curso), o número mostra-se **sem
+    /// casas decimais** (não existe meia cópia), e o piso é **1** e não zero (zero cópias é a peça a
+    /// desaparecer, e apagar já tem botão).
+    Count { max: u32 },
 }
 
 /// Uma grandeza editável de um nó.

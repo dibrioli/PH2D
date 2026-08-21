@@ -50,7 +50,8 @@ use serde::{Deserialize, Serialize};
 /// v2: as primitivas de **perfil** ([`Primitive::Extrude`] / [`Primitive::Revolve`]) — o desenho do
 /// editor vetorial virando sólido.
 ///
-/// v3: o [`Node`] ganhou a pilha de **modificadores** ([`mods::Unary`] — casca e afastamento). É
+/// v3: o [`Node`] ganhou a pilha de **modificadores** ([`mods::Unary`] — casca, afastamento,
+/// espelho e matriz). É
 /// campo novo numa struct, e postcard é **posicional**, então um documento v2 não desserializa aqui.
 /// ⚠️ **A migração é vazia, e isso tem de estar escrito:** nada persiste um [`FieldDoc`] — ele é
 /// **cozido** da cena a cada quadro, e o que o arquivo de projeto guarda são os *componentes* ECS.
@@ -369,8 +370,10 @@ impl FieldDoc {
             // uma segunda cópia das regras aqui: duas listas de *"o que é um número aceitável"*
             // divergem na primeira variante nova, e a que fica errada é sempre a que ninguém lê.
             for m in &node.mods {
-                let mut probe = *m;
-                probe.set_value(idx, m.value())?;
+                for (field, d) in m.dims().into_iter().enumerate() {
+                    let mut probe = *m;
+                    probe.set_dim(idx, field as u8, d.value)?;
+                }
             }
         }
         Ok(())

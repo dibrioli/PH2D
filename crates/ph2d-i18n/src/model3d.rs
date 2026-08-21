@@ -45,9 +45,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // isso melhor: negativo encolhe, e o rótulo fica com o nome da operação.
         "panel.model3d.mod.shell" => "Hollow",
         "panel.model3d.mod.offset" => "Offset",
-        // ⭐ Os nomes das linhas de número dos modificadores.
-        "field.mod.shell" => "Thickness",
-        "field.mod.offset" => "Offset",
+        // ⚠️ "Mirror" e "Array" espelham e repetem no **X local** do objeto — quem quer outro eixo
+        // roda o objeto, que é a mesma lei do cilindro e do torno. Um seletor de eixo por
+        // modificador seria um terceiro vocabulário de orientação no mesmo painel.
+        "panel.model3d.mod.mirror" => "Mirror",
+        "panel.model3d.mod.array" => "Array",
+        // ⭐ Os nomes das linhas de número dos modificadores. ⚠️ Um modificador pode ter VÁRIOS
+        // (a matriz tem dois) e pode não ter nenhum (o espelho).
+        "field.mod.thickness" => "Thickness",
+        "field.mod.distance" => "Distance",
+        "field.mod.count" => "Copies",
+        "field.mod.spacing" => "Spacing",
         // Ações sobre o objeto escolhido.
         "panel.model3d.act.duplicate" => "Duplicate",
         "panel.model3d.act.delete" => "Delete",

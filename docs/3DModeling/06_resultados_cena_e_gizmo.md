@@ -985,6 +985,73 @@ subiu junto e a conta bate*.
 
 ---
 
+## §18 — W17: os PADRÕES — e a pilha aguentou-os sem arquitetura nova (20/08)
+
+Fecha a W4 do plano menos o *draft*: **espelho** e **matriz linear**. Entraram como mais dois
+[`Unary`] na pilha da W16 — *zero* arquitetura nova, que é o sinal de que a forma da W16 estava certa.
+
+### ⭐ O que um campo dá de graça, e uma malha cobra N vezes
+
+Uma matriz num modelador de malhas são **N cópias da geometria**. Aqui é **uma dobra do domínio**:
+leva-se o ponto para a célula dele e avalia-se a forma **uma vez**. Uma matriz de 64 custa o mesmo
+que uma de 2 — e o gate prova-o com o **oráculo independente** de sempre: uma matriz de N é,
+byte a byte, a **união de N cópias transladadas** escritas à mão.
+
+⚠️ **E a matriz é FINITA.** A receita clássica (`mod`) repete para sempre, e uma matriz infinita não
+é uma peça: ela enche o quadro e não há como a parar. O índice preso (`clamp`) é o que a torna um
+objeto — com gate nas duas pontas.
+
+### ⚠️ Duas células, e por quê
+
+A receita clássica de repetição limitada olha **só a célula do ponto**, e ali ela **superestima** a
+distância quando a forma está descentrada: existe uma cópia vizinha mais perto do que a da célula, e
+o campo não a vê. *Superestimar é o erro caro numa marcha de raios* — o passo salta por cima da
+superfície, e o sintoma é a peça **com buracos**, não um erro. Olhar também a célula **do lado para
+onde o ponto pende** custa duas avaliações e devolve a distância exata enquanto a forma couber em
+1,5 células. Medido: em `x = 0,31`, a célula própria dá **0,54** e a vizinha **0,06** — nove vezes
+menos.
+
+### ⚠️ E o gate desse mecanismo ensinou duas coisas, as duas sobre o GATE
+
+**1. A primeira versão media `‖∇f‖ = 1` na costura e reprovava sobre um campo CORRETO.** No plano
+entre duas cópias está o **eixo medial**, onde uma distância assinada é legitimamente
+não-diferenciável — `∂f/∂x` é zero ali por simetria. `‖∇f‖ = 1` vale *quase* em todo lado, e o gate
+escolheu exatamente o ponto da exceção.
+
+**2. E a fixture não continha o fenómeno.** Com uma **esfera centrada na célula** a receita de uma
+célula só **já é exata**: com `round`, a célula do ponto é a do centro mais próximo, e para uma forma
+radialmente simétrica o centro mais próximo é a cópia mais próxima. O defeito só aparece com a forma
+**descentrada** — um grupo com a peça pendurada de lado. *Uma fixture só prova o que ela contém* —
+terceira vez nesta linha, e das três esta foi a que mais custou a ver.
+
+### ⭐ O eixo é o do NÓ, e isso apagou uma UI inteira
+
+Espelho e matriz trabalham no **X local**; quem quer outro eixo **roda o nó**. Não é economia: é a
+lei que o [`Primitive::Cylinder`] já escreve (*"outro eixo se obtém pela rotação do nó"*) e que o
+`Revolve` repete. Um seletor de eixo por modificador seria um **terceiro vocabulário de orientação**
+no mesmo painel, ao lado do gizmo e da pose.
+
+### O que a matriz forçou, e que era melhoria
+
+| antes | depois | por quê |
+|---|---|---|
+| um modificador tem **um** número | `Unary::dims()` / `set_dim(field, …)` | uma matriz tem *quantas cópias* **e** *que espaçamento*; separá-las em dois modificadores seria partir uma coisa em duas para caber num campo. É a mesma forma que `dims` já usa para uma primitiva — **um vocabulário, não dois** |
+| `Param::Mod(u16)` | `Param::Mod { slot, field }` | achatar a pilha numa lista de números faria inserir um modificador no meio **renumerar** tudo depois — com um arrasto a meio a escrever noutro campo |
+| toda linha é fracionária | `Span::Count { max }` + `ParamRow::integral` | três coisas mudam de uma vez: passo **1**, **zero** casas decimais, piso **1**. Deduzir *"parece inteiro, logo é"* daria uma linha que muda de comportamento quando o valor calha em `3,0` |
+
+### Provas de mutação
+
+| Mutação | Reprovou |
+|---|---|
+| a matriz volta a olhar só a célula do ponto | `an_off_centre_shape_still_measures_to_the_nearest_copy` |
+
+⚠️ E o gate do espelho leva a mesma armadilha da matriz escrita por extenso: a pilha corre **antes**
+da pose do nó, então deslocar a folha pela pose dela **não** a tira do plano do espelho — a fixture
+tem de ser um **grupo**. Espelhar uma folha centrada em si é um no-op por construção, e um gate que
+o fizesse passaria sem nada a defender.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)

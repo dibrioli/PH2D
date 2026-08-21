@@ -115,6 +115,9 @@ pub(crate) fn param_rows(
                 // duas pontas colapsam no próprio valor — não há para onde arrastar — e a linha
                 // segue marcada para o painel a pintar como facto.
                 Span::Locked => (d.value, Bound::Wrap(d.value)),
+                // ⭐ **Contagem**: as duas pontas são do DOCUMENTO — o piso é 1 porque zero cópias
+                // é a peça a desaparecer (e apagar já tem botão), e o teto é o da matriz.
+                Span::Count { max } => (1.0, Bound::Hard(max as f32)),
             };
             ph2d_panel_model3d::ParamRow {
                 entity: e.to_bits(),
@@ -124,6 +127,7 @@ pub(crate) fn param_rows(
                 lo,
                 bound,
                 live: d.span != Span::Locked,
+                integral: matches!(d.span, Span::Count { .. }),
             }
         })
         .collect()

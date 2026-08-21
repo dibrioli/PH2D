@@ -53,64 +53,120 @@ pub enum Unary {
     /// **Afastamento**: move a superfície por `distance`. Positivo cresce (e arredonda a quina
     /// convexa); negativo encolhe.
     Offset { distance: f32 },
+    /// **Espelho** no plano `x = 0` do nó: o que existe de um lado passa a existir dos dois.
+    ///
+    /// ⚠️ **Sem número nenhum, e sem escolha de eixo.** O eixo é o **X local**, e quem quer outro
+    /// **roda o nó** — é a mesma lei que o [`crate::Primitive::Cylinder`] já escreve (*"outro eixo
+    /// se obtém pela rotação do nó"*) e que o `Revolve` repete. Uma escolha de eixo por modificador
+    /// seria um terceiro vocabulário de orientação no mesmo módulo.
+    Mirror,
+    /// **Matriz linear**: `count` cópias espaçadas de `spacing` ao longo do **X local**.
+    ///
+    /// ⚠️ Mesmo eixo, mesma razão do [`Unary::Mirror`].
+    Array { count: u32, spacing: f32 },
 }
+
+/// Quantas cópias uma matriz consegue ter.
+///
+/// ⚠️ **É um limite de CUSTO, e ele está medido**: a repetição é feita por dobra do domínio, então
+/// N cópias custam o mesmo que uma — o que cresce é o número de **células vizinhas** que a lei tem
+/// de olhar para o campo continuar uma distância honesta (ver `ph2d_field_eval`), e isso é 2 por
+/// eixo, constante em N. O teto existe pelo outro lado: uma matriz de 4096 cópias sai do
+/// enquadramento e do orçamento de traçado muito antes de custar alguma coisa.
+///
+/// 64 é o que a peça inteira comporta a `half_extent` normal com espaçamento visível; acima disso a
+/// matriz já não cabe no quadro, e o que o artista vê é uma parede.
+pub const MAX_ARRAY_COUNT: u32 = 64;
 
 impl Unary {
     /// A chave i18n do nome. ⚠️ Uma **chave**, nunca um rótulo pronto (HR-15).
     #[must_use]
     pub fn key(self) -> &'static str {
-        match self {
-            Unary::Shell { .. } => "field.mod.shell",
-            Unary::Offset { .. } => "field.mod.offset",
-        }
+        self.kind().key()
     }
 
-    /// O número que o painel mostra e edita.
-    #[must_use]
-    pub fn value(self) -> f32 {
-        match self {
-            Unary::Shell { thickness } => thickness,
-            Unary::Offset { distance } => distance,
-        }
-    }
-
-    /// **O que este número admite.**
+    /// ⭐ **Os números deste modificador**, na ordem em que o painel os mostra.
     ///
-    /// ⚠️ São faixas **diferentes**, e a diferença é o significado: uma espessura negativa não quer
-    /// dizer nada, e um afastamento negativo é metade da razão de ele existir (encolher).
+    /// ⚠️ **Vários, e não um** — foi o que a matriz forçou, e é a forma certa: uma matriz tem
+    /// quantas cópias **e** que espaçamento, e enfiá-las em dois modificadores separados seria
+    /// partir uma coisa em duas para caber num campo. É a mesma forma que [`crate::dims`] já usa
+    /// para uma primitiva — *um vocabulário, não dois*.
+    ///
+    /// Um modificador **sem números** (o espelho) devolve vazio, e o painel não pinta linha nenhuma
+    /// para ele: o chip aceso já diz tudo o que há para dizer.
     #[must_use]
-    pub fn span(self) -> Span {
+    pub fn dims(self) -> Vec<crate::Dim> {
         match self {
-            // Sem parede: uma casca mais grossa do que a peça deixa de ser oca, o que é uma forma
-            // legítima e não um erro. O alcance útil é o da vista, como toda faixa aberta.
-            Unary::Shell { .. } => Span::Positive,
-            Unary::Offset { .. } => Span::Free,
+            Unary::Shell { thickness } => vec![crate::Dim {
+                key: "field.mod.thickness",
+                value: thickness,
+                // Sem parede: uma casca mais grossa do que a peça deixa de ser oca, o que é uma
+                // forma legítima e não um erro. O alcance útil é o da vista.
+                span: Span::Positive,
+            }],
+            // ⚠️ **Simétrica**, e é metade da razão de o afastamento existir: encolher é o gesto de
+            // folga de encaixe. Uma faixa só positiva mataria metade da ferramenta.
+            Unary::Offset { distance } => vec![crate::Dim {
+                key: "field.mod.distance",
+                value: distance,
+                span: Span::Free,
+            }],
+            Unary::Mirror => Vec::new(),
+            Unary::Array { count, spacing } => vec![
+                crate::Dim {
+                    key: "field.mod.count",
+                    value: count as f32,
+                    span: Span::Count {
+                        max: MAX_ARRAY_COUNT,
+                    },
+                },
+                crate::Dim {
+                    key: "field.mod.spacing",
+                    value: spacing,
+                    span: Span::Positive,
+                },
+            ],
         }
     }
 
-    /// ⭐ **Escreve o número**, ou recusa — a porta única.
+    /// ⭐ **Escreve um dos números**, ou recusa — a porta única.
     ///
     /// # Errors
-    /// [`FieldError::NonPositive`] para um valor não-finito, e para uma espessura `≤ 0` (uma casca
-    /// sem parede não é uma casca — é o sólido de volta, por um caminho que ninguém pediu).
-    pub fn set_value(&mut self, node: u32, value: f32) -> Result<(), FieldError> {
+    /// [`FieldError::NonPositive`] para um valor não-finito, para um índice que não é deste
+    /// modificador, e para os números cujo zero não quer dizer nada (uma casca sem parede não é uma
+    /// casca; uma matriz de espaçamento zero é N cópias no mesmo sítio).
+    pub fn set_dim(&mut self, node: u32, field: u8, value: f32) -> Result<(), FieldError> {
+        let bad = |what: &'static str| FieldError::NonPositive { node, what };
         if !value.is_finite() {
-            return Err(FieldError::NonPositive { node, what: "mod" });
+            return Err(bad("mod"));
         }
-        match self {
-            Unary::Shell { thickness } => {
+        match (&mut *self, field) {
+            (Unary::Shell { thickness }, 0) => {
                 if value <= 0.0 {
-                    return Err(FieldError::NonPositive {
-                        node,
-                        what: "thickness",
-                    });
+                    return Err(bad("thickness"));
                 }
                 *thickness = value;
             }
             // ⚠️ **Zero é legítimo aqui**: um afastamento de zero é o campo intacto, e é o ponto por
             // onde o número passa ao ir de encolher para crescer. Recusá-lo faria o slider ter um
             // buraco no meio.
-            Unary::Offset { distance } => *distance = value,
+            (Unary::Offset { distance }, 0) => *distance = value,
+            (Unary::Array { count, .. }, 0) => {
+                // ⚠️ **O documento é quem arredonda.** O painel mostra um inteiro porque a faixa diz
+                // que ele é um (`Span::Count`), mas quem garante é esta linha — um valor fracionário
+                // que chegasse por outra porta viraria `count` na mesma, e não meia cópia.
+                if value < 1.0 {
+                    return Err(bad("count"));
+                }
+                *count = (value.round() as u32).min(MAX_ARRAY_COUNT);
+            }
+            (Unary::Array { spacing, .. }, 1) => {
+                if value <= 0.0 {
+                    return Err(bad("spacing"));
+                }
+                *spacing = value;
+            }
+            _ => return Err(bad("mod")),
         }
         Ok(())
     }
@@ -124,11 +180,22 @@ impl Unary {
     /// vê a peça sabe o que é fino nela.
     #[must_use]
     pub fn born(kind: UnaryKind, scale: f32) -> Unary {
+        let fraction = |f: f32| (scale * f).max(f32::MIN_POSITIVE);
         match kind {
             UnaryKind::Shell => Unary::Shell {
-                thickness: (scale * SHELL_BIRTH_FRACTION).max(f32::MIN_POSITIVE),
+                thickness: fraction(SHELL_BIRTH_FRACTION),
             },
             UnaryKind::Offset => Unary::Offset { distance: 0.0 },
+            UnaryKind::Mirror => Unary::Mirror,
+            // ⚠️ **Duas cópias, e o espaçamento é a própria peça.** Uma matriz nasce com o número
+            // mínimo que se **vê** ser uma matriz (uma cópia é a peça intacta), e com as duas
+            // encostadas — que é onde o artista começa a afastá-las. Um espaçamento menor do que a
+            // peça faria as cópias nascerem sobrepostas, e a lei do campo tem um bound aí (ver
+            // `ph2d_field_eval`).
+            UnaryKind::Array => Unary::Array {
+                count: 2,
+                spacing: fraction(ARRAY_BIRTH_SPAN),
+            },
         }
     }
 
@@ -138,6 +205,8 @@ impl Unary {
         match self {
             Unary::Shell { .. } => UnaryKind::Shell,
             Unary::Offset { .. } => UnaryKind::Offset,
+            Unary::Mirror => UnaryKind::Mirror,
+            Unary::Array { .. } => UnaryKind::Array,
         }
     }
 }
@@ -150,17 +219,31 @@ impl Unary {
 /// não deixa vazio, um décimo é o degrau que cumpre as duas.
 const SHELL_BIRTH_FRACTION: f32 = 0.1;
 
+/// Que fração da menor peça uma matriz nova usa de espaçamento.
+///
+/// ⚠️ **Duas vezes a peça**, e o recurso é a **lei do campo**: a repetição por dobra do domínio é
+/// uma distância exata enquanto a forma cabe na célula, e nascer com o dobro põe a matriz nesse
+/// regime de origem — o artista vê duas cópias separadas e limpas, e é ele que decide apertá-las.
+const ARRAY_BIRTH_SPAN: f32 = 2.0;
+
 /// A **natureza** de um modificador, sem o número dele — o que um botão nomeia.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UnaryKind {
     Shell,
     Offset,
+    Mirror,
+    Array,
 }
 
 impl UnaryKind {
     /// ⭐ **A fonte da contagem.** O painel deriva os botões daqui, como já faz com `Mode::ALL` — um
     /// modificador novo acrescenta-se aqui e o painel segue sem uma linha de mudança.
-    pub const ALL: [UnaryKind; 2] = [UnaryKind::Shell, UnaryKind::Offset];
+    pub const ALL: [UnaryKind; 4] = [
+        UnaryKind::Shell,
+        UnaryKind::Offset,
+        UnaryKind::Mirror,
+        UnaryKind::Array,
+    ];
 
     /// A chave i18n do botão que o acrescenta.
     #[must_use]
@@ -168,6 +251,8 @@ impl UnaryKind {
         match self {
             UnaryKind::Shell => "panel.model3d.mod.shell",
             UnaryKind::Offset => "panel.model3d.mod.offset",
+            UnaryKind::Mirror => "panel.model3d.mod.mirror",
+            UnaryKind::Array => "panel.model3d.mod.array",
         }
     }
 }

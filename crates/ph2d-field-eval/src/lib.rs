@@ -81,9 +81,50 @@ fn stacked(inner: &Tree, mods: &[Unary]) -> Tree {
             // dos dois lados, e afastá-la meia espessura para cada lado dá a parede.
             Unary::Shell { thickness } => ops::offset(&acc.abs(), f64::from(thickness) * 0.5),
             Unary::Offset { distance } => ops::offset(&acc, f64::from(distance)),
+            // ⭐ **Dobra do domínio**: `x → |x|`. O que existe de um lado passa a existir dos dois, e
+            // o campo continua uma distância exata — não há costura a fechar, que é o mesmo motivo
+            // de a booleana e a casca não poderem falhar.
+            Unary::Mirror => acc.remap_xyz(Tree::x().abs(), Tree::y(), Tree::z()),
+            Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing)),
         };
     }
     acc
+}
+
+/// ⭐ **A matriz linear**: `count` cópias espaçadas de `spacing` no X, **sem N cópias da árvore**.
+///
+/// A conta é a dobra do domínio: leva-se o ponto para a célula dele (`x − s·k`, com `k` o índice da
+/// célula preso a `[0, count−1]`) e avalia-se **uma** forma. É a razão de uma matriz de 64 custar o
+/// mesmo que uma de 2 — numa malha ela custaria 64 vezes a geometria.
+///
+/// # ⚠️ Por que DUAS células, e não uma
+///
+/// A receita clássica (`opRepLim`) olha só a célula do ponto, e ela **superestima** a distância
+/// quando a forma transborda a célula: existe uma cópia vizinha mais perto do que a da célula, e o
+/// campo não a vê. Superestimar é o erro **caro** numa marcha de raios — o passo salta por cima da
+/// superfície, e o sintoma é a peça com buracos, não um erro.
+///
+/// Olhar a célula do ponto **e a vizinha do lado para onde ele pende** custa duas avaliações da
+/// subárvore e devolve a distância exata enquanto a forma couber em **1,5 células**. ⛔ Acima disso
+/// o bound volta, e a cura é olhar três — que é o dobro do custo por um caso que o nascimento da
+/// matriz (espaçamento = 2× a peça) já põe fora de alcance.
+fn array(inner: &Tree, count: u32, spacing: f64) -> Tree {
+    if count <= 1 || spacing <= 0.0 || !spacing.is_finite() {
+        return inner.clone();
+    }
+    let s = Tree::constant(spacing);
+    let last = f64::from(count - 1);
+    // O índice da célula, preso à matriz: `clamp(round(x/s), 0, count−1)`.
+    let raw = (Tree::x() / s.clone()).round();
+    let k = raw.max(Tree::constant(0.0)).min(Tree::constant(last));
+    // ⚠️ **A vizinha é a do lado para onde o ponto PENDE**, e não uma fixa: com o sinal errado a
+    // segunda avaliação cai na mesma célula metade das vezes e o gate passaria sem nada a defender.
+    let toward = Tree::x() / s.clone() - k.clone();
+    let neighbour = (k.clone() + toward.compare(Tree::constant(0.0)))
+        .max(Tree::constant(0.0))
+        .min(Tree::constant(last));
+    let cell = |idx: Tree| inner.remap_xyz(Tree::x() - s.clone() * idx, Tree::y(), Tree::z());
+    cell(k).min(cell(neighbour))
 }
 
 fn blended(b: Blend) -> ops::Blended {

@@ -192,19 +192,23 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
     // ⭐ **Os modificadores vêm por ÚLTIMO**, e é a ordem em que eles correm: primeiro o que a forma
     // é, depois o que se fez a ela. Uma linha de casca acima da largura da caixa leria como se a
     // parede fosse uma propriedade da caixa, e ela é uma operação sobre o resultado.
+    // ⚠️ **Um modificador pode ter VÁRIOS números** (uma matriz tem contagem e espaçamento) — e
+    // pode não ter nenhum (o espelho). O `flat_map` é o que exprime as duas pontas sem um caso
+    // especial para cada.
     out.extend(
         mods_of(world, entity)
             .into_iter()
             .enumerate()
-            .map(|(i, m)| {
-                (
-                    Param::Mod(i as u16),
-                    Dim {
-                        key: m.key(),
-                        value: m.value(),
-                        span: m.span(),
-                    },
-                )
+            .flat_map(|(slot, m)| {
+                m.dims().into_iter().enumerate().map(move |(field, d)| {
+                    (
+                        Param::Mod {
+                            slot: slot as u16,
+                            field: field as u8,
+                        },
+                        d,
+                    )
+                })
             }),
     );
     out
@@ -335,18 +339,18 @@ pub fn set_param(
         Param::Dim(i) => set_dim(world, entity, i as usize, value),
         // ⚠️ A escrita passa pela porta do próprio modificador (`Unary::set_value`), que é a mesma
         // que a validação do documento usa — ver a nota lá sobre duas listas de regras.
-        Param::Mod(i) => {
+        Param::Mod { slot, field } => {
             let id = entity.to_bits() as u32;
             let Some(mut m) = world.get_mut::<FieldMods>(entity) else {
                 return Err(FieldError::BadRoot);
             };
-            let Some(slot) = m.stack.get_mut(i as usize) else {
+            let Some(target) = m.stack.get_mut(slot as usize) else {
                 return Err(FieldError::BadRoot);
             };
-            let previous = *slot;
-            slot.set_value(id, value).inspect_err(|_| {
+            let previous = *target;
+            target.set_dim(id, field, value).inspect_err(|_| {
                 // Uma recusa deixa o nó **como estava** — a invariante do módulo.
-                *slot = previous;
+                *target = previous;
             })
         }
     }

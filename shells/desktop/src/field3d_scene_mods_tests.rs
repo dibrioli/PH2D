@@ -70,7 +70,7 @@ fn a_shell_is_born_as_a_fraction_of_the_part_not_a_fixed_number() {
         .expect("caixa");
         let root = ph2d_field_ecs::spawn_doc(world, &doc, "Model");
         ph2d_field_ecs::add_mod(world, root, UnaryKind::Shell);
-        ph2d_field_ecs::mods_of(world, root)[0].value()
+        ph2d_field_ecs::mods_of(world, root)[0].dims()[0].value
     };
     let (small, big) = (born_on(0.1), born_on(1.0));
     assert!(
@@ -95,15 +95,16 @@ fn a_modifier_row_reaches_the_panel_and_takes_a_typed_number() {
 
     let params = ph2d_field_ecs::params_of(world, root);
     let (param, dim) = *params.last().expect("a pilha entra no fim da lista");
-    assert_eq!(param, Param::Mod(0));
-    assert_eq!(dim.key, "field.mod.shell");
+    assert_eq!(param, Param::Mod { slot: 0, field: 0 });
+    assert_eq!(dim.key, "field.mod.thickness");
 
-    ph2d_field_ecs::set_param(world, root, Param::Mod(0), 0.07).expect("escreve a espessura");
-    assert!((ph2d_field_ecs::mods_of(world, root)[0].value() - 0.07).abs() < 1e-6);
+    ph2d_field_ecs::set_param(world, root, Param::Mod { slot: 0, field: 0 }, 0.07)
+        .expect("escreve a espessura");
+    assert!((ph2d_field_ecs::mods_of(world, root)[0].dims()[0].value - 0.07).abs() < 1e-6);
 
     // ⛔ E uma espessura não-positiva é recusada, deixando o nó como estava.
-    assert!(ph2d_field_ecs::set_param(world, root, Param::Mod(0), 0.0).is_err());
-    assert!((ph2d_field_ecs::mods_of(world, root)[0].value() - 0.07).abs() < 1e-6);
+    assert!(ph2d_field_ecs::set_param(world, root, Param::Mod { slot: 0, field: 0 }, 0.0).is_err());
+    assert!((ph2d_field_ecs::mods_of(world, root)[0].dims()[0].value - 0.07).abs() < 1e-6);
 }
 
 /// ⚠️ **Tirar o último modificador TIRA o componente**, e não deixa uma pilha vazia.
@@ -135,4 +136,80 @@ fn removing_the_last_modifier_removes_the_component_too() {
         after, before,
         "a peça tem de voltar IDÊNTICA — o undo compara bytes"
     );
+}
+
+/// ⭐ **Um modificador pode ter VÁRIOS números — ou nenhum.**
+///
+/// ⚠️ É o que a matriz forçou, e o gate mede as duas pontas na mesma corrida: o espelho não põe
+/// linha nenhuma (o chip aceso já diz tudo), e a matriz põe duas. Um gate só sobre a matriz passaria
+/// com um `flat_map` que inventasse uma linha vazia para o espelho.
+#[test]
+fn a_modifier_can_have_several_numbers_or_none_at_all() {
+    use ph2d_field::{Param, UnaryKind};
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(2), "Model");
+
+    let rows_of = |world: &bevy_ecs::world::World| -> Vec<Param> {
+        ph2d_field_ecs::params_of(world, root)
+            .into_iter()
+            .map(|(p, _)| p)
+            .filter(|p| matches!(p, Param::Mod { .. }))
+            .collect()
+    };
+
+    ph2d_field_ecs::add_mod(world, root, UnaryKind::Mirror);
+    assert!(
+        rows_of(world).is_empty(),
+        "o espelho não tem número nenhum — o chip aceso é a única coisa que há para dizer"
+    );
+
+    ph2d_field_ecs::add_mod(world, root, UnaryKind::Array);
+    assert_eq!(
+        rows_of(world),
+        vec![
+            Param::Mod { slot: 1, field: 0 },
+            Param::Mod { slot: 1, field: 1 },
+        ],
+        "a matriz põe DUAS linhas, e no slot 1 — o espelho continua a ocupar o slot 0"
+    );
+}
+
+/// ⭐ **A contagem de cópias é INTEIRA, e a linha do painel diz-se inteira.**
+///
+/// ⚠️ Três coisas dependem disto e nenhuma se deduz do valor: o passo do arrasto é **1**, o número
+/// mostra-se **sem casas**, e o piso é **1**. Deduzir *"parece inteiro, logo é"* daria uma linha que
+/// muda de comportamento quando o valor calha em `3,0`.
+#[test]
+fn the_copy_count_is_an_integer_row_with_a_floor_of_one() {
+    use ph2d_field::{Param, UnaryKind};
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(2), "Model");
+    ph2d_field_ecs::add_mod(world, root, UnaryKind::Array);
+    const VIEW: f32 = 2.5;
+
+    let count_row = |world: &bevy_ecs::world::World| {
+        crate::field3d_scene::panel::param_rows(world, Some(root), VIEW)
+            .into_iter()
+            .find(|r| r.param == Param::Mod { slot: 0, field: 0 })
+            .expect("a linha da contagem")
+    };
+    let row = count_row(world);
+    assert!(row.integral, "a contagem é inteira");
+    assert_eq!(
+        row.lo, 1.0,
+        "o piso é UMA cópia — zero é a peça a desaparecer"
+    );
+    assert!(row.bound.value() >= 2.0, "e há teto: {:?}", row.bound);
+
+    // Escrever um fracionário arredonda; escrever abaixo de 1 é recusado.
+    ph2d_field_ecs::set_param(world, root, Param::Mod { slot: 0, field: 0 }, 4.4)
+        .expect("escreve a contagem");
+    assert_eq!(count_row(world).value, 4.0, "4,4 cópias são 4 cópias");
+    assert!(
+        ph2d_field_ecs::set_param(world, root, Param::Mod { slot: 0, field: 0 }, 0.0).is_err(),
+        "zero cópias é recusado — apagar já tem botão"
+    );
+    assert_eq!(count_row(world).value, 4.0, "e a recusa deixa como estava");
 }

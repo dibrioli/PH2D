@@ -892,3 +892,198 @@ fn an_empty_stack_leaves_the_field_untouched() {
         );
     }
 }
+
+/// ⭐ **Uma matriz de N é, exatamente, a UNIÃO de N cópias transladadas.**
+///
+/// ⚠️ **Oráculo independente**, como o da casca: o lado esquerdo é uma dobra do domínio (uma
+/// avaliação da forma); o direito são N esferas escritas à mão, unidas com a booleana que já
+/// existia. A dobra custa o mesmo com N=2 e com N=64 — a união custa N — e é **essa** a razão de a
+/// matriz existir num campo.
+#[test]
+fn an_array_of_n_is_exactly_the_union_of_n_translated_copies() {
+    use ph2d_field::Unary;
+    let (r, s, n) = (0.15f32, 0.6f32, 4u32);
+    let array = shelled(
+        r,
+        vec![Unary::Array {
+            count: n,
+            spacing: s,
+        }],
+    );
+    let copies = {
+        let mut nodes: Vec<Node> = (0..n)
+            .map(|k| {
+                leaf(
+                    Primitive::Sphere { radius: r },
+                    Xform::at(s * k as f32, 0.0, 0.0),
+                )
+            })
+            .collect();
+        let kids: Vec<NodeId> = (0..n).map(NodeId).collect();
+        nodes.push(combine(Op::Union(Blend::Sharp), kids));
+        FieldDoc::new(nodes, NodeId(n)).expect("as cópias à mão")
+    };
+
+    let (a, b) = (Field::new(&array), Field::new(&copies));
+    for k in 0..60 {
+        let x = f64::from(k) / 20.0 - 0.6;
+        for (y, z) in [(0.0, 0.0), (0.1, -0.05), (-0.22, 0.17)] {
+            let (p, q) = (a.at(x, y, z), b.at(x, y, z));
+            assert!(
+                (p - q).abs() < EPS,
+                "em ({x:.3}, {y}, {z}) a matriz deu {p:.8} e as {n} cópias deram {q:.8}"
+            );
+        }
+    }
+}
+
+/// ⭐ **A matriz é FINITA** — ela não repete para sempre, e o gate mede as duas pontas.
+///
+/// ⚠️ A receita clássica de repetição (`mod`) é **infinita**, e uma matriz infinita não é uma peça:
+/// ela enche o quadro e o artista não tem como a parar. O índice preso é o que a torna um objeto.
+#[test]
+fn the_array_stops_at_the_count_instead_of_repeating_forever() {
+    use ph2d_field::Unary;
+    let (r, s, n) = (0.15f64, 0.6f64, 3u32);
+    let doc = shelled(
+        r as f32,
+        vec![Unary::Array {
+            count: n,
+            spacing: s as f32,
+        }],
+    );
+    let f = Field::new(&doc);
+    // Dentro: o centro de cada cópia vale −r.
+    for k in 0..n {
+        let c = s * f64::from(k);
+        assert!(
+            (f.at(c, 0.0, 0.0) + r).abs() < EPS,
+            "a cópia {k} tinha de estar em x={c}"
+        );
+    }
+    // Fora, dos DOIS lados: onde a quarta cópia estaria, e onde estaria a de índice −1.
+    for outside in [-s, s * f64::from(n)] {
+        assert!(
+            f.at(outside, 0.0, 0.0) > 0.0,
+            "em x={outside} não pode haver peça — a matriz tem {n} cópias, não infinitas"
+        );
+    }
+}
+
+/// ⭐ **Uma forma FORA do centro da célula mede até à cópia mais PRÓXIMA** — e é isto que a segunda
+/// célula compra.
+///
+/// # ⚠️ Duas coisas que este gate ensinou, e as duas eram do gate
+///
+/// **1. A primeira versão media `‖∇f‖ = 1` na costura, e reprovava sobre um campo CORRETO.** No
+/// plano entre duas cópias está o **eixo medial**, onde uma distância assinada é legitimamente
+/// não-diferenciável: `∂f/∂x` é zero ali por simetria, e a diferença central mede 0. `‖∇f‖ = 1` vale
+/// *quase* em todo lado, não em todo lado — e o gate escolheu exatamente o ponto da exceção.
+///
+/// **2. E a fixture não continha o fenómeno.** Com uma **esfera centrada na célula**, a receita de
+/// uma célula só já é exata: com `round`, a célula do ponto é sempre a do centro mais próximo, e
+/// para uma forma radialmente simétrica o centro mais próximo é a cópia mais próxima. O defeito só
+/// aparece com a forma **descentrada** — aqui, uma esfera pendurada num grupo. Medido: em
+/// `x = 0,31` a célula própria dá **0,54** e a vizinha dá **0,06**, nove vezes menos.
+///
+/// ⚠️ Superestimar é o erro **caro** numa marcha de raios: o passo salta por cima da superfície, e o
+/// sintoma é a peça **com buracos** — não um erro.
+#[test]
+fn an_off_centre_shape_still_measures_to_the_nearest_copy() {
+    use ph2d_field::Unary;
+    let (r, s, n, off) = (0.1f32, 0.6f32, 3u32, 0.25f32);
+    // Um GRUPO com a esfera pendurada fora do centro: é o que torna a célula assimétrica.
+    let arrayed = FieldDoc::new(
+        vec![
+            leaf(Primitive::Sphere { radius: r }, Xform::at(off, 0.0, 0.0)),
+            Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Combine {
+                    op: Op::Union(Blend::Sharp),
+                    children: vec![NodeId(0)],
+                },
+                mods: vec![Unary::Array {
+                    count: n,
+                    spacing: s,
+                }],
+            },
+        ],
+        NodeId(1),
+    )
+    .expect("grupo descentrado, arrayado");
+    // O oráculo: as mesmas cópias escritas à mão.
+    let copies = {
+        let mut nodes: Vec<Node> = (0..n)
+            .map(|k| {
+                leaf(
+                    Primitive::Sphere { radius: r },
+                    Xform::at(off + s * k as f32, 0.0, 0.0),
+                )
+            })
+            .collect();
+        nodes.push(combine(
+            Op::Union(Blend::Sharp),
+            (0..n).map(NodeId).collect(),
+        ));
+        FieldDoc::new(nodes, NodeId(n)).expect("as cópias à mão")
+    };
+
+    let (a, b) = (Field::new(&arrayed), Field::new(&copies));
+    // ⚠️ A varredura passa **pelas fronteiras de célula** de propósito (`±s/2` do centro): é ali, e
+    // só ali, que a célula própria deixa de ser a cópia mais próxima.
+    let mut worst = 0.0f64;
+    for k in 0..120 {
+        let x = f64::from(k) / 50.0 - 0.5;
+        let (p, q) = (a.at(x, 0.0, 0.0), b.at(x, 0.0, 0.0));
+        worst = worst.max((p - q).abs());
+    }
+    assert!(
+        worst < 1e-3,
+        "a matriz descentrada afastou-se das cópias reais em {worst:.4} — a célula vizinha não está \
+         a ser olhada, e a marcha vai saltar por cima da peça"
+    );
+}
+
+/// ⭐ **O espelho é uma dobra EXATA do domínio** — o que existe de um lado passa a existir dos dois.
+///
+/// ⚠️ **A fixture tem de ter a forma FORA do plano do espelho**, e isso obriga a um grupo: a pilha
+/// corre **antes** da pose do próprio nó, então deslocar a folha pela pose dela não a tira do plano
+/// — a dobra veria a esfera já centrada. É a mesma armadilha da matriz, e é o uso real (espelhar um
+/// **grupo** é o gesto; espelhar uma folha centrada em si é um no-op por construção).
+#[test]
+fn the_mirror_folds_the_domain_exactly() {
+    use ph2d_field::Unary;
+    let (r, off) = (0.12f64, 0.5f64);
+    let doc = FieldDoc::new(
+        vec![
+            leaf(
+                Primitive::Sphere { radius: r as f32 },
+                Xform::at(off as f32, 0.0, 0.0),
+            ),
+            Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Combine {
+                    op: Op::Union(Blend::Sharp),
+                    children: vec![NodeId(0)],
+                },
+                mods: vec![Unary::Mirror],
+            },
+        ],
+        NodeId(1),
+    )
+    .expect("grupo espelhado");
+    let f = Field::new(&doc);
+
+    // O original ficou onde estava…
+    assert!(
+        (f.at(off, 0.0, 0.0) + r).abs() < EPS,
+        "o lado original tem de ficar intacto"
+    );
+    // …e há uma cópia do outro lado, no simétrico.
+    assert!(
+        (f.at(-off, 0.0, 0.0) + r).abs() < EPS,
+        "o espelho tinha de pôr uma cópia em x = −{off}"
+    );
+    // E entre as duas há vazio: a dobra não preenche o meio.
+    assert!(f.at(0.0, 0.0, 0.0) > 0.0, "o plano do espelho fica vazio");
+}

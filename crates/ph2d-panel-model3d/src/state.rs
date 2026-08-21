@@ -63,6 +63,13 @@ pub struct ParamRow {
     /// ⛔ **E não é «esconder a linha»**: o valor continua a ser um facto que o artista precisa de
     /// ler, e uma linha que aparece e desaparece faria o painel saltar de tamanho a cada travessia.
     pub live: bool,
+    /// ⭐ **O número desta linha é INTEIRO** — quantas cópias, e não quanto.
+    ///
+    /// ⚠️ Três coisas mudam de uma vez, e é por isso que é um campo e não uma dedução do valor: o
+    /// passo do arrasto é **1** (e não um centésimo do curso), o número mostra-se **sem casas** (não
+    /// existe meia cópia), e o piso é **1**. Deduzir *"parece inteiro, logo é"* daria uma linha que
+    /// muda de comportamento quando o valor calha em `3,0`.
+    pub integral: bool,
     /// Até onde ele vai, e **de que natureza é o limite**.
     ///
     /// ⚠️ [`Bound::Hard`] é a **parede do documento** (um filete que não cabe); [`Bound::Soft`] é o

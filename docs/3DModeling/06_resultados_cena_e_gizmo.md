@@ -1146,6 +1146,79 @@ passaria despercebido e o artista nunca conseguiria a forma oposta.
 
 ---
 
+## §20 — W19: a peça SAI — e a porta existia, sem ninguém a abrir (20/08)
+
+Metade da W5 do plano. `ph2d_field_eval::mesh` estava escrita, testada na crate e com **zero
+chamadores**: o módulo sabia extrair uma malha e nada no app a pedia. *Uma porta que ninguém abre
+não é uma porta.*
+
+### ⭐ Exportar é a primeira vez que o módulo PERDE informação de propósito
+
+Um campo tem resolução **infinita** — o filete é uma fórmula, e ampliar não revela serrilha. Uma
+malha não: ela é uma escolha de quantos triângulos. Todo o resto foi construído para **não** decidir
+isso cedo (ADR-0161 §2), e aqui a decisão é inevitável. Então ela é **explícita e medida**.
+
+`measure_export_resolution`, cena 1 (três cilindros com filete), release:
+
+| prof | triângulos | ms | |
+|---|---|---|---|
+| 4 | 1 752 | 3,1 | |
+| **5** | **6 888** | **3,7** | ← *Draft* |
+| 6 | 27 716 | 8,2 | |
+| **7** | **61 540** | **17,9** | ← *Fine* |
+| 8 | 91 710 | 46,0 | |
+| **9** | **130 914** | **119,5** | ← *Max* |
+
+⭐ **Os triângulos SATURAM e o relógio não.** De 4 para 6 a contagem quadruplica por degrau; de 7
+para 9 ela só duplica, enquanto o tempo multiplica por **6,7**. A eficiência cai de **1 861**
+triângulos/ms no degrau 5 para **1 096** no 9 — a superfície é finita, e a partir de certo ponto
+paga-se tempo por pouco detalhe novo. ⛔ Acima de 9 não há degrau que compense, e *um nível que
+ninguém escolheria não é um nível*.
+
+### Os três são AÇÕES, não um modo guardado
+
+Um seletor de qualidade guardado obrigaria o artista a lembrar em que ficou — e a resposta certa
+está na peça que ele tem à frente, não numa preferência de ontem. O rótulo diz o nível; o **toast**
+diz o que saiu de facto (triângulos, KB, ms), porque o número depende da peça e prometê-lo no botão
+seria uma promessa que só o resultado pode fazer.
+
+### ⚠️ Nada de segunda tabela de formatos
+
+O diálogo, os três formatos (OBJ · PLY · STL) e o aviso do que se perde vêm todos da
+`ph2d_mesh::MeshFormat` e do `lost_by` que a **escultura** já tinha — promovido a `pub(crate)` em
+vez de copiado. Uma cópia local diria *"cor preservada"* sobre um STL no dia em que alguém trocasse o
+escritor, e **um aviso errado é pior que aviso nenhum**, porque o artista confia nele.
+
+⭐ E vem com a lição que aquele módulo pagou: **um filtro por formato**, não um filtro único com as
+três extensões — com o filtro único o diálogo nativo completa o nome com a **primeira** delas, e
+`volta.ply` sai `volta.ply.obj`.
+
+### Duas coisas de costura que a wave escolheu
+
+| decisão | razão |
+|---|---|
+| `field3d_export` recebe os **toasts**, não o `App` | ela é chamada de dentro do quadro, onde o `gfx` já está emprestado — pedir `&mut self` ali é um empréstimo duplo. *Pedir só o que se usa* é o que a torna chamável de onde precisa |
+| a pose da peça exportada é a **identidade** | o documento cozido já tem a cadeia inteira dentro do campo (`cook` compõe, `place` aplica): a malha sai em **mundo**. Uma pose ali aplicaria a transformação duas vezes |
+| o pedido atravessa por um **canal próprio** | escrever um arquivo é assunto do app; a ponte com a cena recebe o mundo. É o mesmo caminho que o pedido de *abrir o painel* já usava — uma porta, dois pedintes |
+
+### Provas de mutação
+
+| Mutação | Reprovou |
+|---|---|
+| os três níveis dão a mesma malha | `the_export_levels_the_panel_offers_come_from_one_source` · `the_part_becomes_a_mesh_and_more_resolution_gives_more_of_it` |
+| o botão não chega ao canal | `the_export_button_reaches_the_request_channel` |
+| o pedido fica no canal em vez de ser tirado | `the_export_button_reaches_the_request_channel` |
+
+⚠️ A terceira é a que mais importa e a menos óbvia: um pedido que ficasse no canal **reabriria o
+diálogo em todo quadro seguinte**, e o artista não conseguiria fechá-lo.
+
+⚠️ **A cwd do Bash voltou ao repositório primário a meio da medição** e a edição da sonda foi
+aplicada na árvore errada — a memória do projeto nomeia exatamente isto. O sintoma foi um
+`FileNotFoundError`, e não um número errado; se tivesse sido a segunda, a tabela acima estaria a
+medir o `main`.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -1162,6 +1235,8 @@ passaria despercebido e o artista nunca conseguiria a forma oposta.
   falta é um alvo descentrado, ou um pivô de espelho autorado. Adiado por decisão dele
 - ✅ **draft/taper FECHOU** na W18 (§19), e a W4 do plano com ele — o primeiro operador não-exato do
   módulo, com as duas tabelas ao lado do número
+- ⏸️ **a outra metade da W5**: malha esculpida → campo (via `ph2d-sdf`), para uma escultura entrar na
+  booleana. A saída já existe (§20); falta a entrada
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

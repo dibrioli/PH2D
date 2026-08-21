@@ -66,6 +66,12 @@ pub fn model3d_mod_button(slot: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.mod.{slot}"))
 }
 
+/// ⭐ **O botão de EXPORTAR** numa resolução, pela posição.
+#[must_use]
+pub fn model3d_export_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.export.{slot}"))
+}
+
 /// ⭐ **O botão de uma AÇÃO sobre o objeto escolhido** (duplicar, apagar), pela posição.
 #[must_use]
 pub fn model3d_act_button(slot: u32) -> NodeId {

@@ -217,6 +217,11 @@ mod import;
 #[path = "sculpt3d_export.rs"]
 mod export;
 
+/// ⭐ **O aviso do que cada formato NÃO carrega**, partilhado com a modelagem 3D
+/// ([`crate::field3d_export`]). Uma segunda cópia lá diria *"cor preservada"*
+/// sobre um STL no dia em que alguém trocasse o escritor — e um aviso errado é
+/// pior que aviso nenhum, porque o artista confia nele. **Uma tabela, um aviso.**
+pub(crate) use export::lost_by;
 pub(crate) use import::is_mesh_file;
 
 // ⚠️ Só o que ATRAVESSA a fronteira do módulo: o `SCULPT_DOC_VERSION` e o

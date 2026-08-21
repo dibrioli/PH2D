@@ -8907,6 +8907,12 @@ impl crate::App {
             // ADR-0161 W4: o painel de modelagem abre sozinho na primeira vez que o
             // smoke desenha (auto-play), e só nessa — reabri-lo todo quadro faria o
             // botao de fechar dele nao funcionar.
+            // ⭐ **O pedido de exportar**, tirado ao lado do de abrir o painel — os dois
+            // atravessam da ponte com a cena para o app pela mesma porta, e por isso são
+            // consumidos no mesmo sítio.
+            if let Some(level) = crate::field3d_smoke::take_export_request() {
+                crate::field3d_export::field3d_export(level, toasts);
+            }
             if crate::field3d_smoke::take_open_panel_request() {
                 // O ID vem do PAINEL, nunca de um literal: uma segunda cópia da chave de
                 // visibilidade é como se abre um painel que ninguém pinta.

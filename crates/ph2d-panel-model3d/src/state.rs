@@ -112,6 +112,12 @@ pub struct ModelSnapshot {
     /// ⚠️ Interruptor e não ação, ao contrário das formas: um modificador é um **estado** do nó, e
     /// um botão que só acrescenta deixaria o artista sem forma de o tirar a não ser desfazendo.
     pub mods: Vec<ModeChip>,
+    /// ⭐ **Sair para um arquivo**, por nível de resolução.
+    ///
+    /// ⚠️ Os três são **ações**, não um modo: nenhum fica aceso. Um seletor de qualidade guardado
+    /// obrigaria o artista a lembrar em que ficou, e a resposta certa está na peça que ele tem à
+    /// frente — não numa preferência de ontem.
+    pub exports: Vec<ModeChip>,
     /// ⭐ As ações sobre o objeto escolhido (duplicar, apagar). Vazio quando não há nenhum — e aí a
     /// fileira não é pintada, pela mesma razão da de operações.
     pub acts: Vec<ModeChip>,
@@ -154,6 +160,8 @@ pub enum ModelIntent {
     ApplyOp { slot: usize },
     /// Liga ou desliga um modificador do nó, pela **posição** no seletor.
     ToggleMod { slot: usize },
+    /// Escrever a peça num arquivo, pela **posição** no seletor de resolução.
+    Export { slot: usize },
     /// Uma ação sobre o objeto escolhido, pela **posição** no seletor.
     Act { slot: usize },
 }

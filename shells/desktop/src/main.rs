@@ -110,6 +110,7 @@ mod envelope_smoke;
 mod expr_blend_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
+mod field3d_export;
 mod field3d_gizmo;
 mod field3d_gizmo_paint;
 /// ADR-0161 — o smoke do módulo de modelagem 3D (`PH2D_FIELD_SMOKE=1..3`): o **campo traçado** na

@@ -302,6 +302,24 @@ fn needs_trace(
 /// aparecer é uma feature que ninguém alcança. Abrir **uma vez** é o que reconcilia isso com o botão
 /// de fechar: reabri-lo todo quadro faria o X não funcionar, que é a forma mais irritante de duas
 /// portas discordarem.
+/// ⭐ **O pedido de EXPORTAR, tirado uma vez.**
+///
+/// ⚠️ Ele existe porque a ponte com a cena recebe o **mundo**, e escrever um arquivo é assunto do
+/// **app** (diálogo, toast). O intent do painel é drenado lá dentro; o gesto atravessa por aqui, que
+/// é o mesmo caminho que o pedido de abrir o painel já usa — *uma porta, dois pedintes*.
+pub(crate) fn take_export_request() -> Option<crate::field3d_export::ExportLevel> {
+    EXPORT.with(std::cell::Cell::take)
+}
+
+pub(crate) fn ask_export(level: crate::field3d_export::ExportLevel) {
+    EXPORT.with(|c| c.set(Some(level)));
+}
+
+thread_local! {
+    static EXPORT: std::cell::Cell<Option<crate::field3d_export::ExportLevel>> =
+        const { std::cell::Cell::new(None) };
+}
+
 pub(crate) fn take_open_panel_request() -> bool {
     thread_local! {
         static PENDING: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };

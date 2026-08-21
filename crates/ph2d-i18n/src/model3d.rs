@@ -57,6 +57,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // a de modelagem nomeia o QUE ACONTECE (a secção afina). Quem usa isto aqui está a dar
         // forma, não a projetar um molde.
         "panel.model3d.mod.taper" => "Taper",
+        // ⭐ A porta de SAÍDA, por resolução. ⚠️ Os rótulos dizem o NÍVEL e não o número de
+        // triângulos: o número depende da peça, e prometê-lo no botão seria uma promessa que só o
+        // resultado pode fazer — é o toast que o diz, depois de sair.
+        "panel.model3d.export.draft" => "Export Draft",
+        "panel.model3d.export.fine" => "Export Fine",
+        "panel.model3d.export.max" => "Export Max",
         // ⭐ Os nomes das linhas de número dos modificadores. ⚠️ Um modificador pode ter VÁRIOS
         // (a matriz tem dois) e pode não ter nenhum (o espelho).
         "field.mod.thickness" => "Thickness",

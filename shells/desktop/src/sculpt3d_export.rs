@@ -111,6 +111,11 @@ impl crate::app_state::App {
 
 /// O que este formato deixa para trás, em palavras.
 ///
+/// ⚠️ **`pub(crate)` porque a modelagem 3D o CHAMA** ([`crate::field3d_export`]). Copiá-lo para lá
+/// era a alternativa, e é exatamente o defeito que o doc abaixo descreve: duas listas divergem, e a
+/// que fica errada diz *"cor preservada"* sobre um STL com a confiança da certa. **Uma tabela, um
+/// aviso** — e a máscara, que nenhum formato carrega, é dita nos dois sítios pelo mesmo motivo.
+///
 /// ⚠️ **Deriva da MESMA tabela que o escritor consulta.** Uma segunda lista aqui
 /// diria *"cor preservada"* sobre um STL no dia em que alguém trocasse o
 /// escritor — e um aviso errado é pior que aviso nenhum, porque o artista
@@ -118,7 +123,7 @@ impl crate::app_state::App {
 ///
 /// ⚠️ A **máscara** é dita sempre: nenhum dos três formatos tem campo para ela, e
 /// isso não é uma pergunta — é uma constante. Quem a preserva é o documento.
-fn lost_by(fmt: MeshFormat) -> String {
+pub(crate) fn lost_by(fmt: MeshFormat) -> String {
     let mut lost = vec!["mask"];
     if !fmt.keeps_colour() {
         lost.push("colour");

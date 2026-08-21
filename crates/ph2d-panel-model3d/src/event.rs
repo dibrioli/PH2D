@@ -122,6 +122,13 @@ pub(crate) fn apply_event(
                 true
             }
         }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_export_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_export_button).unwrap_or(0);
+            slot < state::current().exports.len() && {
+                state::push_intent(ModelIntent::Export { slot });
+                true
+            }
+        }
         WidgetEvent::Click(id) if slot_in(id, ids::model3d_act_button).is_some() => {
             let slot = slot_in(id, ids::model3d_act_button).unwrap_or(0);
             slot < state::current().acts.len() && {

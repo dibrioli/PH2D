@@ -50,6 +50,15 @@ pub(crate) fn publish_snapshot(
         .collect();
     let ops = ops_for(world, selection);
     let mods = mods_for(world, selection);
+    // ⚠️ **Derivado de `ExportLevel::ALL`**, que é a fonte da contagem — a mesma lei do `Mode::ALL`
+    // e do `SHAPES`. E sem `active` nenhum: são ações, não um modo.
+    let exports = crate::field3d_export::ExportLevel::ALL
+        .iter()
+        .map(|l| ph2d_panel_model3d::ModeChip {
+            key: l.key(),
+            active: false,
+        })
+        .collect();
     // ⚠️ Vazio sem seleção, pela mesma razão da fileira de operações: um controle que aparece e não
     // faz nada é pior do que um que não aparece.
     let acts = if selection.is_empty() {
@@ -65,6 +74,7 @@ pub(crate) fn publish_snapshot(
         adds,
         ops,
         mods,
+        exports,
         acts,
         rows,
         node_count: all.len(),

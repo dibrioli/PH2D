@@ -65,6 +65,12 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
         store.register(
+            ids::model3d_export_button(slot),
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+        store.register(
             ids::model3d_act_button(slot),
             InteractiveState::Button {
                 state: ButtonState::Normal,

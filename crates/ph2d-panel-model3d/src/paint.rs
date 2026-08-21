@@ -123,6 +123,9 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // que a tese do módulo mais aparece (ver `ph2d_field::mods`).
     y = paint_chips(ctx, &snapshot.mods, ids::model3d_mod_button, x, w, y);
     y = paint_chips(ctx, &snapshot.acts, ids::model3d_act_button, x, w, y);
+    // ⭐ **A porta de SAÍDA**, no fim: é o último gesto de uma peça, e é a primeira vez que o módulo
+    // troca resolução infinita por um número de triângulos (ver `crate::field3d_export` no shell).
+    y = paint_chips(ctx, &snapshot.exports, ids::model3d_export_button, x, w, y);
     if snapshot.rows.is_empty() {
         y = paint_note(ctx, tr("panel.model3d.empty"), x, w, y);
     }

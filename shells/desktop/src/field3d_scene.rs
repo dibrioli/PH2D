@@ -210,6 +210,14 @@ pub(crate) fn sync_scene_and_birth(
                     }
                 }
             }
+            // ⭐ **Sair para um arquivo.** ⚠️ O pedido só é ANOTADO aqui: escrever um arquivo é
+            // assunto do app (diálogo, toast) e esta função recebe o **mundo**. Ele atravessa pelo
+            // mesmo caminho que o pedido de abrir o painel já usava.
+            ph2d_panel_model3d::ModelIntent::Export { slot } => {
+                if let Some(level) = crate::field3d_export::ExportLevel::ALL.get(slot).copied() {
+                    crate::field3d_smoke::ask_export(level);
+                }
+            }
             // ⭐ **Ligar ou desligar um modificador** — a casca e o afastamento.
             //
             // ⚠️ **Tirar primeiro, e só acrescentar se não tirou**: o botão é um interruptor, e uma

@@ -213,3 +213,121 @@ fn the_copy_count_is_an_integer_row_with_a_floor_of_one() {
     );
     assert_eq!(count_row(world).value, 4.0, "e a recusa deixa como estava");
 }
+
+/// ⚠️ **A tabela que escolhe as resoluções de exportação** — triângulos e relógio, por profundidade.
+///
+/// ⭐ Um campo tem resolução **infinita**; uma malha não. Exportar é a primeira vez que este módulo
+/// **perde informação de propósito**, e o número que decide quanto se perde é a profundidade do
+/// octree. Ele não se escolhe: mede-se.
+#[test]
+#[ignore = "medição, não gate — corre com --ignored --nocapture"]
+fn measure_export_resolution() {
+    println!("prof | triângulos | ms");
+    for depth in 4u8..=9 {
+        let doc = scene(1);
+        let t0 = std::time::Instant::now();
+        match ph2d_field_eval::mesh(&doc, depth) {
+            Ok(m) => {
+                let ms = t0.elapsed().as_secs_f64() * 1000.0;
+                println!("{depth:4} | {:10} | {ms:8.1}", m.faces().len());
+            }
+            Err(e) => println!("{depth:4} | recusada: {e:?}"),
+        }
+    }
+}
+
+/// ⭐ **A peça vira MALHA, e a malha é sólida** — a porta de saída que existia e nunca era chamada.
+///
+/// ⚠️ Até esta wave, `ph2d_field_eval::mesh` tinha **zero chamadores**: a crate sabia extrair uma
+/// malha e nada no app o pedia. *Uma porta que ninguém abre não é uma porta.*
+///
+/// O gate mede as três coisas que separam "saiu alguma coisa" de "saiu a peça": há triângulos, eles
+/// **crescem** com a resolução, e a malha passa na validação da `ph2d-mesh` (que é quem sabe o que é
+/// uma malha sã).
+#[test]
+fn the_part_becomes_a_mesh_and_more_resolution_gives_more_of_it() {
+    use crate::field3d_export::ExportLevel;
+    let doc = scene(2);
+    let draft = ph2d_field_eval::mesh(&doc, ExportLevel::Draft.depth()).expect("malha em Draft");
+    let fine = ph2d_field_eval::mesh(&doc, ExportLevel::Fine.depth()).expect("malha em Fine");
+
+    assert!(draft.faces().len() > 100, "o Draft saiu vazio");
+    assert!(
+        fine.faces().len() > draft.faces().len() * 2,
+        "mais resolução tem de dar mais malha: {} contra {}",
+        draft.faces().len(),
+        fine.faces().len()
+    );
+    // ⚠️ E a peça está no sítio: a caixa da cena 2 tem meia-extensão 0,45, então nenhum vértice pode
+    // estar muito além disso. É o que distingue "uma malha" de "a malha DESTA peça".
+    for v in draft.positions() {
+        for c in v {
+            assert!(
+                c.abs() < 0.6,
+                "um vértice em {c} — a caixa tem meia-extensão 0,45, e a malha saiu noutro sítio"
+            );
+        }
+    }
+}
+
+/// ⭐ **Os três níveis de exportação são os que o painel mostra** — uma contagem, uma fonte.
+///
+/// ⚠️ É a lei que este painel já aplica aos verbos (`Mode::ALL`), às formas (`SHAPES`) e aos
+/// modificadores (`UnaryKind::ALL`): acrescentar um nível em `ExportLevel::ALL` faz o seletor seguir
+/// sem uma linha de mudança. Uma segunda lista no painel ficaria com quatro botões e três níveis —
+/// e o quarto escreveria um arquivo que ninguém pediu.
+#[test]
+fn the_export_levels_the_panel_offers_come_from_one_source() {
+    use crate::field3d_export::ExportLevel;
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(2), "Model");
+    crate::field3d_scene::panel::publish_snapshot(world, root, &[root], 2.0, 0.0);
+
+    let keys: Vec<&str> = ph2d_panel_model3d::state::current()
+        .exports
+        .iter()
+        .map(|c| c.key)
+        .collect();
+    assert_eq!(
+        keys,
+        ExportLevel::ALL.map(ExportLevel::key).to_vec(),
+        "o seletor tem de ser derivado de `ExportLevel::ALL`"
+    );
+    // ⚠️ E as profundidades **sobem**: dois níveis que dessem a mesma malha seriam dois botões com
+    // um resultado — o artista clicaria no segundo e concluiria que o primeiro não funcionou.
+    let depths: Vec<u8> = ExportLevel::ALL.map(ExportLevel::depth).to_vec();
+    assert!(
+        depths.windows(2).all(|w| w[1] > w[0]),
+        "cada nível tem de dar mais do que o anterior: {depths:?}"
+    );
+}
+
+/// ⭐ **O botão do painel chega ao pedido de exportar** — a costura, e não a fila.
+///
+/// ⚠️ O pedido atravessa da ponte com a cena para o app por um canal próprio, porque escrever um
+/// arquivo é assunto do app (diálogo, toast) e a ponte recebe o **mundo**. Este gate prova que o
+/// intent chega ao canal; sem ele, o botão ficaria pintado e mudo.
+#[test]
+fn the_export_button_reaches_the_request_channel() {
+    use crate::field3d_export::ExportLevel;
+    let _ = ph2d_panel_model3d::drain_intents();
+    let _ = crate::field3d_smoke::take_export_request();
+    let mut sim = a_world();
+    crate::field3d_scene::sync_scene(&mut sim, Some(&scene(2)), 0.0);
+    let root = the_root(&mut sim);
+
+    ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::Export {
+        slot: 1,
+    });
+    crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[root], 0.0);
+
+    assert_eq!(
+        crate::field3d_smoke::take_export_request(),
+        Some(ExportLevel::ALL[1]),
+        "o intent do painel tem de chegar ao canal, com o NÍVEL que foi clicado"
+    );
+    // ⚠️ E ele é tirado **uma vez**: um pedido que ficasse no canal abriria o diálogo em todo
+    // quadro seguinte, e o artista não conseguiria fechá-lo.
+    assert_eq!(crate::field3d_smoke::take_export_request(), None);
+}

@@ -6,14 +6,16 @@
 //! malha não — ela é uma escolha de quantos triângulos. Todo o resto do módulo foi construído para
 //! **não** decidir isso cedo ([ADR-0161 §2]), e aqui a decisão é inevitável.
 //!
-//! Então ela é **explícita e medida**: os três níveis são profundidades de octree, e cada uma tem o
-//! número ao lado ([`ExportLevel`]). O toast diz quantos triângulos saíram de facto — não uma
-//! promessa, o resultado.
+//! Então ela é **explícita e medida**: os três níveis são resoluções de grade, e cada uma tem o
+//! número ao lado ([`ExportLevel`]). O toast diz quantos quads e quantos triângulos saíram de facto
+//! — não uma promessa, o resultado.
 //!
-//! # ⚠️ A malha SERRILHA aresta viva, e é por isso que a tela não passa por aqui
+//! # ⚠️ A malha é uma GRADE DE QUADS, e a tela continua a não passar por aqui
 //!
-//! Medido no spike (`docs/3DModeling/01_resultados_spike.md` §2). É aceitável num artefato de
-//! exportação e **não** no que o artista julga — a tela continua a ser o campo traçado.
+//! O extrator é o da casa ([`ph2d_field_eval::extract`]), e ele fecha o que o spike deixou aberto:
+//! a aresta viva sai **exata** (a W0 media `0/49` faixas capturadas, hoje são `116/116` com desvio
+//! `0,00` de célula) e nenhuma face sai dobrada. Ainda assim a tela é o campo **traçado**: uma malha
+//! é uma resolução escolhida, e o campo não tem nenhuma.
 //!
 //! # ⚠️ Nada de segunda tabela de formatos
 //!
@@ -42,30 +44,37 @@ impl ExportLevel {
     pub(crate) const ALL: [ExportLevel; 3] =
         [ExportLevel::Draft, ExportLevel::Fine, ExportLevel::Max];
 
-    /// A profundidade de octree deste nível — **MEDIDA**, não escolhida.
+    /// A resolução da grade deste nível — **MEDIDA**, não escolhida.
     ///
-    /// `measure_export_resolution` sobre a cena 1 (três cilindros com filete), em release:
+    /// `measure_export_resolution` sobre a cena 1 (três cilindros com filete) e
+    /// `measure_export_mesh_quality` sobre as quatro cenas, em release:
     ///
-    /// | prof | triângulos | ms |
-    /// |---|---|---|
-    /// | 4 | 1 752 | 3,1 |
-    /// | **5** | **6 888** | **3,7** | ← Draft
-    /// | 6 | 27 716 | 8,2 |
-    /// | **7** | **61 540** | **17,9** | ← Fine
-    /// | 8 | 91 710 | 46,0 |
-    /// | **9** | **130 914** | **119,5** | ← Max
+    /// | prof | quads | triângulos | ms | faces dobradas (pior cena) |
+    /// |---|---|---|---|---|
+    /// | 4 | 438 | 876 | 0,8 | — |
+    /// | 5 | 1 830 | 3 660 | 1,9 | **68** ⛔ |
+    /// | **6** | **7 446** | **14 892** | **7,9** | **0** ← Draft |
+    /// | **7** | **29 502** | **59 004** | **35,5** | **0** ← Fine |
+    /// | 8 | 117 198 | 234 396 | 214,6 | 0 |
+    /// | **9** | **467 334** | **934 668** | **1 463** | **0** ← Max |
     ///
-    /// ⭐ **Os triângulos SATURAM e o relógio não.** De 4 para 6 a contagem quadruplica por degrau;
-    /// de 7 para 9 ela só duplica, enquanto o tempo multiplica por 6,7. A eficiência (triângulos por
-    /// ms) cai de **1 861** no degrau 5 para **1 096** no 9 — a superfície é finita, e a partir de
-    /// certo ponto paga-se tempo por pouco detalhe novo.
+    /// ⚠️ **O Draft subiu de 5 para 6 por MEDIÇÃO, e o motivo não é o relógio.** Na prof. 5 a célula
+    /// mede 0,0625 e a parede do vaso da cena 5 mede 0,06: a grade não consegue representar uma
+    /// parede mais fina que a própria célula, e o resultado tem faces dobradas **e** 40 arestas
+    /// não-manifold. A prof. 6 zera as duas coisas em todas as cenas e custa 6 ms a mais — *o degrau
+    /// mais barato deste módulo*.
     ///
-    /// Daí os três: **5** é instantâneo para ver, **7** é o dobro do detalhe ainda instantâneo, e
-    /// **9** é onde se aceita esperar uma batida por tudo o que a peça tem. ⛔ Acima de 9 não há
-    /// degrau que compense — e um nível que ninguém escolheria não é um nível.
+    /// ⭐ **A grade é uniforme, então a contagem quadruplica a cada degrau e o relógio segue.** Isto
+    /// é diferente do que a tabela anterior (extrator da `fidget`) dizia: lá os triângulos saturavam
+    /// porque o octree **colapsava** células, e `depth` era um teto e não uma resolução. Aqui os três
+    /// níveis são o que dizem ser.
+    ///
+    /// Daí os três: **6** é instantâneo e já é uma malha sã, **7** é o dobro do detalhe ainda
+    /// instantâneo, e **9** é onde se aceita esperar uma batida e meia por tudo o que a peça tem.
+    /// ⛔ A prof. 10 quadruplicaria para ~1,9 M quads e ~6 s — e a peça já não muda de forma.
     pub(crate) fn depth(self) -> u8 {
         match self {
-            ExportLevel::Draft => 5,
+            ExportLevel::Draft => 6,
             ExportLevel::Fine => 7,
             ExportLevel::Max => 9,
         }
@@ -130,7 +139,7 @@ pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::Toast
         };
 
         let t0 = std::time::Instant::now();
-        let mesh = match ph2d_field_eval::mesh(&doc, level.depth()) {
+        let mesh = match ph2d_field_eval::extract::extract(&doc, level.depth()) {
             Ok(m) => m,
             Err(e) => {
                 say(toasts, format!("Meshing failed: {e:?}"));
@@ -141,7 +150,12 @@ pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::Toast
         // ⚠️ **A pose é a identidade, e isso não é um esquecimento.** O documento cozido já tem
         // toda a cadeia de poses dentro do campo (`cook` compõe, `place` aplica), então a malha sai
         // em MUNDO. Uma pose aqui aplicaria a transformação duas vezes.
-        let tris = mesh.faces().len();
+        // ⚠️ **Quads e triângulos são contagens DIFERENTES, e o toast diz as duas.** A saída deste
+        // extrator é uma grade de quads (`extract`), e `faces().len()` conta quads; um STL só sabe
+        // triângulos, então o número que o artista vê no Blender é o dobro. Dizer "tris" sobre uma
+        // contagem de quads era uma etiqueta a prometer o que o modelo não entrega.
+        let quads = mesh.faces().len();
+        let tris: usize = mesh.faces().iter().map(ph2d_mesh::Face::tri_count).sum();
         let bytes = fmt.write(&[ExportPiece {
             name: None,
             mesh: &mesh,
@@ -155,7 +169,7 @@ pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::Toast
                 say(
                     toasts,
                     format!(
-                        "Exported {tris} tris, {} KB in {ms:.0} ms -- {name} ({})",
+                        "Exported {quads} quads = {tris} tris, {} KB in {ms:.0} ms -- {name} ({})",
                         size / 1024,
                         crate::sculpt3d::lost_by(fmt)
                     ),

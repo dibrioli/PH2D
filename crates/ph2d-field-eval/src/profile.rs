@@ -31,11 +31,11 @@
 //! # ⚠️ O que o intervalo faz com isto, e por que não morde onde importa
 //!
 //! O sinal é uma função **descontínua**: sobre uma região que atravessa a fronteira, a aritmética de
-//! intervalo devolve `[−1, 1]`, e o produto com a distância fica frouxo. Isso é irrelevante para o
-//! **traçado**, que é o caminho pelo qual o artista vê a peça: ele avalia ponto a ponto
-//! (`float_slice_tape`), onde não há intervalo nenhum e o valor é exato. Quem paga é a **malhagem**,
-//! que poda o octree por intervalo — e a malha é o artefato de exportação (ADR-0161 §2). O número
-//! está medido em `docs/3DModeling/01_resultados_spike.md`.
+//! intervalo devolve `[−1, 1]`, e o produto com a distância fica frouxo. Isso é irrelevante para os
+//! **dois** consumidores que existem hoje, e é por medição: o traçado avalia ponto a ponto
+//! (`float_slice_tape`) e a extração da W20 varre uma grade **uniforme**, também ponto a ponto —
+//! nenhum dos dois pergunta um intervalo a esta árvore. ⚠️ *Quem reabrir a poda por intervalos na
+//! extração (`ph2d_field_eval::extract`, secção "o que ele NÃO é") herda este parágrafo de volta.*
 
 use fidget::context::Tree;
 use ph2d_field::{FillRule, Profile};
@@ -47,7 +47,31 @@ use ph2d_field::{FillRule, Profile};
 /// cópia da fórmula**.
 #[must_use]
 pub fn sd_profile(profile: &Profile, u: &Tree, v: &Tree) -> Tree {
+    sd_profile_inner(profile, u, v, false)
+}
+
+/// A mesma coisa, com uma opção: `axis_seam` tira as arestas que **assentam no eixo** da conta da
+/// distância — e só dela.
+///
+/// # ⭐ Por que uma aresta no eixo não é superfície
+///
+/// Um torno gira o perfil em torno de `x = 0`. Uma aresta com `x > 0` varre um **anel**: é
+/// superfície. Uma aresta **sobre** o eixo varre uma **linha** — medida zero, superfície nenhuma. Ela
+/// existe no desenho porque um contorno tem de fechar, e é a costura do desenho, não uma parede da
+/// peça.
+///
+/// ⚠️ **Deixá-la na conta põe um nível zero DENTRO do sólido**, ao longo do eixo, e o efeito é
+/// exatamente o de uma parede que não existe: a extração encontra ali uma superfície e malha-a.
+/// Medido no vaso da cena 5 (§21): sobre o eixo o campo lia `f = −0,0000` com `‖∇f‖ = 0` onde devia
+/// ler `−0,02 … −0,08`, e a malha saía com um leque de lascas em `r ≈ 0,2`, `y = −0,45`.
+///
+/// ⚠️ **Só a DISTÂNCIA muda; o enrolamento continua a ver a aresta inteira** — é ele que sabe o que é
+/// dentro, e tirar a costura de lá abriria o contorno e inverteria o sinal de meia peça.
+fn sd_profile_inner(profile: &Profile, u: &Tree, v: &Tree, axis_seam: bool) -> Tree {
     let non_zero = profile.fill() == FillRule::NonZero;
+    // A mesma tolerância com que o perfil foi achatado: um vértice a menos que isso do eixo **é** o
+    // eixo, e um número próprio aqui seria uma segunda resposta a "o que encosta no eixo".
+    let on_axis = f64::from(profile.tolerance());
     let mut dist2: Option<Tree> = None;
     let mut crossings: Option<Tree> = None;
 
@@ -80,10 +104,12 @@ pub fn sd_profile(profile: &Profile, u: &Tree, v: &Tree) -> Tree {
             let qx = wx.clone() - h.clone() * Tree::constant(ex);
             let qy = wy.clone() - h * Tree::constant(ey);
             let seg2 = qx.square() + qy.square();
-            dist2 = Some(match dist2 {
-                None => seg2,
-                Some(acc) => acc.min(seg2),
-            });
+            if !(axis_seam && ax.abs() <= on_axis && bx.abs() <= on_axis) {
+                dist2 = Some(match dist2 {
+                    None => seg2,
+                    Some(acc) => acc.min(seg2),
+                });
+            }
 
             let dir = above[j].clone() - above[i].clone();
             let cross = Tree::constant(ex) * wy - Tree::constant(ey) * wx;
@@ -96,11 +122,14 @@ pub fn sd_profile(profile: &Profile, u: &Tree, v: &Tree) -> Tree {
         }
     }
 
-    // `Profile` garante ≥1 contorno com ≥3 pontos: os dois acumuladores existem.
-    let (dist2, crossings) = (
-        dist2.expect("um perfil válido tem ao menos uma aresta"),
-        crossings.expect("um perfil válido tem ao menos uma aresta"),
-    );
+    // `Profile` garante ≥1 contorno com ≥3 pontos: o acumulador do enrolamento existe sempre.
+    let crossings = crossings.expect("um perfil válido tem ao menos uma aresta");
+    // ⚠️ O da distância pode não existir — se `axis_seam` tirou TODAS as arestas, o perfil é um
+    // segmento sobre o eixo, e a revolução dele é uma linha. Recair na conta completa é o que faz
+    // esse caso degenerado continuar a devolver o mesmo que devolvia, em vez de entrar em pânico.
+    let Some(dist2) = dist2 else {
+        return sd_profile_inner(profile, u, v, false);
+    };
 
     // ⚠️ `crossings` é um INTEIRO exato (soma de ±1), então as duas reduções abaixo são exatas:
     // `min(|w|, 1)` vale 1 para qualquer enrolamento não-nulo, e o resto euclidiano por 2 é a
@@ -112,7 +141,7 @@ pub fn sd_profile(profile: &Profile, u: &Tree, v: &Tree) -> Tree {
         crossings.modulo(2.0)
     };
     let sign = Tree::constant(1.0) - Tree::constant(2.0) * inside;
-    dist2.sqrt() * sign
+    crate::ops::safe_sqrt(dist2) * sign
 }
 
 /// **O perfil puxado ao longo de Z**, com o aro arredondado em `round`.
@@ -132,12 +161,12 @@ pub fn sd_extrude(profile: &Profile, half_height: f64, round: f64) -> Tree {
         // arredondada é algebricamente idêntica, e paga dois nós a mais **por amostra** — e o
         // traçado avalia milhões de amostras por quadro.
         let w = Tree::z().abs() - Tree::constant(half_height);
-        let outside = (flat.max(0.0).square() + w.max(0.0).square()).sqrt();
+        let outside = crate::ops::safe_sqrt(flat.max(0.0).square() + w.max(0.0).square());
         return outside + flat.max(w).min(0.0);
     }
     let d = flat + Tree::constant(round);
     let w = Tree::z().abs() - Tree::constant(half_height - round);
-    let outside = (d.max(0.0).square() + w.max(0.0).square()).sqrt();
+    let outside = crate::ops::safe_sqrt(d.max(0.0).square() + w.max(0.0).square());
     outside + d.max(w).min(0.0) - Tree::constant(round)
 }
 
@@ -150,8 +179,13 @@ pub fn sd_extrude(profile: &Profile, half_height: f64, round: f64) -> Tree {
 ///
 /// Vale enquanto o perfil não cruzar o eixo — o que `ph2d_field::FieldError::ProfileCrossesAxis`
 /// garante no documento, antes de qualquer avaliação.
+///
+/// ⚠️ **E vale sobre as arestas que de facto varrem superfície.** A frase «a distância 3D é a
+/// distância 2D no plano (r, y)» é verdadeira para o **contorno**, e o contorno não é a fronteira do
+/// sólido: a aresta que fecha o desenho **no eixo** varre uma linha, não um anel. Ela sai da conta
+/// da distância (e só dela) — ver [`sd_profile_inner`].
 #[must_use]
 pub fn sd_revolve(profile: &Profile) -> Tree {
-    let r = (Tree::x().square() + Tree::z().square()).sqrt();
-    sd_profile(profile, &r, &Tree::y())
+    let r = crate::ops::safe_sqrt(Tree::x().square() + Tree::z().square());
+    sd_profile_inner(profile, &r, &Tree::y(), true)
 }

@@ -16,11 +16,11 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+pub mod extract;
 pub mod ops;
 pub mod profile;
 
 use fidget::context::Tree;
-use fidget::mesh::{Octree, Settings};
 use ph2d_field::{Blend, FieldDoc, Node, NodeKind, Op, Primitive, Unary, Xform};
 
 /// O motor de avaliação. Ver a nota do `Cargo.toml` sobre o `jit` estar ligado por medição.
@@ -168,7 +168,7 @@ fn radial(inner: &Tree, count: u32) -> Tree {
     }
     let step = std::f64::consts::TAU / f64::from(count);
     let d = Tree::constant(step);
-    let r = (Tree::x().square() + Tree::y().square()).sqrt();
+    let r = crate::ops::safe_sqrt(Tree::x().square() + Tree::y().square());
     let theta = Tree::y().atan2(Tree::x());
     let raw = (theta.clone() / d.clone()).round();
     // A fatia vizinha é a do lado para onde o ponto pende — mesma lei da linear.
@@ -305,43 +305,14 @@ fn inverse_rotation_matrix(q: [f32; 4]) -> [[f64; 3]; 3] {
 }
 
 /// Erros da extração de malha.
+///
+/// ⚠️ **A malha é o artefato de EXPORTAÇÃO, não o que o artista vê** (ADR-0161 §2) — a tela é o
+/// campo traçado, e por isso não passa por aqui. Quem extrai é [`extract::extract`], e o *porquê*
+/// de ele ser da casa está no doc-comment daquele módulo.
 #[derive(Debug)]
 pub enum MeshError {
-    /// A malhagem foi cancelada.
-    Cancelled,
     /// A malha saiu, mas a validação da `ph2d-mesh` a recusou.
     Rejected(String),
-}
-
-/// Extrai a malha do documento, na profundidade de octree pedida.
-///
-/// ⚠️ **A malha é o artefato de EXPORTAÇÃO, não o que o artista vê** (ADR-0161 §2). O extrator
-/// atual **serrilha aresta viva** — medido, com o mecanismo nomeado
-/// (`docs/3DModeling/01_resultados_spike.md` §2). Isso é aceitável para exportar e **não** para
-/// desenhar a tela, e é por isso que a tela não passa por aqui.
-///
-/// # Errors
-/// Ver [`MeshError`].
-pub fn mesh(doc: &FieldDoc, depth: u8) -> Result<ph2d_mesh::Mesh, MeshError> {
-    let tree = compile(doc);
-    let shape = Engine::from(tree);
-    let bound = shape
-        .try_into()
-        .map_err(|_| MeshError::Rejected("a árvore tem variáveis livres".into()))?;
-    let settings = Settings {
-        depth,
-        ..Default::default()
-    };
-    let octree = Octree::build(&bound, &settings).ok_or(MeshError::Cancelled)?;
-    let out = octree.walk_dual();
-
-    let positions: Vec<[f32; 3]> = out.vertices.iter().map(|v| [v.x, v.y, v.z]).collect();
-    let faces: Vec<ph2d_mesh::Face> = out
-        .triangles
-        .iter()
-        .map(|t| ph2d_mesh::Face::tri(t.x as u32, t.y as u32, t.z as u32))
-        .collect();
-    ph2d_mesh::Mesh::from_parts(positions, faces).map_err(|e| MeshError::Rejected(format!("{e:?}")))
 }
 
 /// Um documento avaliado ponto a ponto — a porta que o traçado e as sondas usam.

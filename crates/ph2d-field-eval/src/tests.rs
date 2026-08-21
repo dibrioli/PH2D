@@ -266,7 +266,7 @@ fn the_exported_mesh_sits_on_the_surface() {
     .expect("esfera");
     let f = Field::new(&doc);
     let worst_at = |depth: u8| -> f64 {
-        let m = mesh(&doc, depth).expect("a malha sai e a ph2d-mesh a aceita");
+        let m = crate::extract::extract(&doc, depth).expect("a malha sai e a ph2d-mesh a aceita");
         assert!(m.positions().len() > 100, "a esfera não pode sair vazia");
         m.positions()
             .iter()
@@ -277,54 +277,74 @@ fn the_exported_mesh_sits_on_the_surface() {
             .fold(0.0_f64, f64::max)
     };
 
-    // ⚠️ **A barra deste gate foi re-derivada DUAS vezes, e o caminho até ela é o conteúdo.**
+    // ⚠️ **A barra deste gate foi re-derivada TRÊS vezes, e o caminho é o conteúdo.**
     //
-    // 1ª tentativa: *"erro < 1 % da célula"* — número tirado do caso do **cubo**, onde o vértice do
-    //    QEF pousa exatamente na quina. Numa superfície **curva** isso é impossível por construção:
-    //    o QEF resolve o encontro de planos *tangentes*, e tangentes a uma esfera se encontram
-    //    **fora** dela. Medido: 3 % da célula, não 1 %.
-    // 2ª tentativa: *"o erro cai 4× ao dobrar a resolução"* (segunda ordem). Também falso — e a
-    //    medição disse **por quê**, o que é o achado de verdade:
+    // 1ª: *"erro < 1 % da célula"* — número tirado do caso do **cubo**, onde o vértice do QEF pousa
+    //    exatamente na quina. Numa superfície **curva** isso é impossível por construção: o QEF
+    //    resolve o encontro de planos *tangentes*, e tangentes a uma esfera se encontram **fora**
+    //    dela.
+    // 2ª: *"o erro cai 4× ao dobrar a resolução"*. Era falsa **do extrator da `fidget`**, e a
+    //    medição dizia por quê: a contagem de vértices ia de 12 532 a 12 490 entre as profundidades
+    //    6 e 7, quando quadruplicar seria o esperado. Aquele extrator é **adaptativo** — ele colapsa
+    //    a célula onde a superfície já está bem aproximada —, logo `depth` era um **teto** e não uma
+    //    resolução, e exigir segunda ordem dele era exigir que desobedecesse ao próprio critério.
+    // 3ª: ⭐ **com o extrator da casa (W20) a 2ª volta a ser VERDADE**, porque a grade é uniforme e
+    //    `depth` é literalmente a resolução. Medido (`probe_sphere_convergence`):
     //
     // ```text
-    // prof | célula  | vértices | erro médio | erro máx
-    //   4  | 0,12500 |      830 |   2,49e-3  |  7,33e-3
-    //   5  | 0,06250 |    3 518 |   5,83e-4  |  1,95e-3
-    //   6  | 0,03125 |   12 532 |   1,64e-4  |  1,19e-3
-    //   7  | 0,01562 |   13 490 |   1,00e-4  |  7,90e-4
+    // prof | célula  | vértices | erro médio | erro máx | máx/célula
+    //   4  | 0,12500 |      416 |  3,971e-3  | 6,702e-3 |   0,0536
+    //   5  | 0,06250 |    1 760 |  9,353e-4  | 1,750e-3 |   0,0280
+    //   6  | 0,03125 |    6 920 |  2,586e-4  | 5,364e-4 |   0,0172
+    //   7  | 0,01562 |   27 824 |  6,508e-5  | 1,750e-4 |   0,0112
+    //   8  | 0,00781 |  111 080 |  1,686e-5  | 1,200e-4 |   0,0154
     // ```
     //
-    // **Olhe a coluna dos vértices, não a do erro:** de 6 para 7 ela vai de 12 532 para 13 490,
-    // quando quadruplicar seria o esperado. O extrator é **adaptativo**: ele para de subdividir
-    // onde a superfície já está bem aproximada, e colapsa a célula. Logo `depth` é um **teto**, não
-    // uma resolução — e exigir convergência de segunda ordem dele é exigir que ele desobedeça ao
-    // próprio critério. (Que ele subdivide quando precisa está medido noutro lugar: a junção de
-    // três cilindros dá 372 mil triângulos na profundidade 8.)
-    //
-    // O que **é** verdade, e portanto o que se afirma: o erro **cai monotonicamente** com a
-    // profundidade, e cai bastante no conjunto do intervalo. Um extrator que parasse de convergir,
-    // ou que piorasse ao refinar, reprova aqui.
+    // Os vértices quadruplicam (×4,2 · ×3,9 · ×4,0 · ×4,0) e o erro médio **cai por 4** a cada
+    // degrau — segunda ordem, que é o que uma superfície lisa deve dar. *A nota que dizia o
+    // contrário não era um erro de medição: era uma medição correta de OUTRO extrator.*
     let errs: Vec<f64> = (4u8..=7).map(worst_at).collect();
     for w in errs.windows(2) {
         assert!(
-            w[1] < w[0],
-            "refinar não pode PIORAR a malha: {:.2e} -> {:.2e}",
+            w[1] < w[0] * 0.5,
+            "dobrar a resolução tem de cortar o erro ao meio, pelo menos: {:.2e} -> {:.2e}",
             w[0],
             w[1]
         );
     }
     let total = errs[0] / errs[errs.len() - 1];
     assert!(
-        total > 5.0,
-        "de prof. 4 a 7 o erro tem de cair pelo menos 5×: {:.2e} -> {:.2e} é {total:.1}×",
+        total > 20.0,
+        "de prof. 4 a 7 o erro tem de cair pelo menos 20x: {:.2e} -> {:.2e} e {total:.1}x",
         errs[0],
         errs[errs.len() - 1]
     );
     assert!(
         errs[1] < 0.0625 * 0.05,
-        "pior vértice na prof. 5 a {} da superfície (teto: 5 % da célula)",
+        "pior vertice na prof. 5 a {} da superficie (teto: 5 % da celula)",
         errs[1]
     );
+
+    // ⚠️ **E a contagem de vértices é metade do gate.** Sem ela, um extrator que voltasse a colapsar
+    // células passaria na coluna do erro (colapsar onde já está bom não piora o erro) e a nota da
+    // 2ª volta reapareceria sem ninguém a notar.
+    let verts: Vec<usize> = (5u8..=7)
+        .map(|d| {
+            crate::extract::extract(&doc, d)
+                .expect("malha")
+                .positions()
+                .len()
+        })
+        .collect();
+    for w in verts.windows(2) {
+        let ratio = w[1] as f64 / w[0] as f64;
+        assert!(
+            (3.5..4.5).contains(&ratio),
+            "a grade e UNIFORME: dobrar a resolucao tem de quadruplicar os vertices, e deu {ratio:.2}x ({} -> {})",
+            w[0],
+            w[1]
+        );
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -848,7 +868,7 @@ fn the_offset_moves_the_surface_by_the_distance_asked_in_both_directions() {
 /// ⭐ **A pilha corre NA ORDEM**, e trocar a ordem dá outra peça.
 ///
 /// ⚠️ É a razão de ela ser uma lista e não um conjunto. O gate compara os dois arranjos no MESMO
-/// ponto: se um `HashSet` tivesse entrado no lugar do `Vec`, os dois dariam o mesmo número e a
+/// ponto: se um conjunto tivesse entrado no lugar do `Vec`, os dois dariam o mesmo número e a
 /// escolha teria sido feita em silêncio por uma ordem de iteração.
 #[test]
 fn the_stack_runs_in_order_and_swapping_it_gives_another_part() {
@@ -1295,4 +1315,431 @@ fn the_taper_narrows_one_way_and_widens_the_other() {
         (width_at(0.0, 0.2) - width_at(0.0, -0.2)).abs() < 1e-4,
         "declive zero não pode inclinar nada"
     );
+}
+
+/// ⭐ **A COSTURA de um torno não é uma parede** — e o campo dentro do sólido tem de o saber.
+///
+/// ⚠️ **O mecanismo, e ele era invisível na tela.** Um contorno desenhado tem de fechar, e num vaso
+/// ele fecha **descendo pelo eixo**. Essa aresta existe no desenho e varre uma **linha** ao girar —
+/// medida zero, superfície nenhuma. Enquanto ela contava para a distância, o campo lia `f = 0` ao
+/// longo do eixo **dentro** do sólido: um nível zero fantasma, que a extração encontrava e malhava.
+/// A peça traçada não o mostrava (o traçado bate na parede externa primeiro); quem o via era a malha
+/// exportada, em lascas junto ao fundo.
+///
+/// O gate mede as duas metades que separam "curado" de "mascarado": o valor **e** o gradiente. Um
+/// campo que devolvesse a distância certa com `‖∇f‖ = 0` continuaria a não ser uma distância.
+#[test]
+fn the_seam_of_a_lathe_lies_on_the_axis_and_is_not_a_wall() {
+    // Um copo: fundo em y = −0,45, parede até y = 0,3, interior a descer até y = −0,25, e a costura
+    // a fechar pelo eixo de (0, −0,25) a (0, −0,45).
+    let cup = profile_of(
+        vec![vec![
+            [0.00, -0.45],
+            [0.30, -0.45],
+            [0.30, 0.30],
+            [0.24, 0.30],
+            [0.24, -0.25],
+            [0.00, -0.25],
+        ]],
+        FillRule::NonZero,
+    );
+    let f = Field::new(&doc_of(Primitive::Revolve { profile: cup }));
+
+    // ⚠️ **`y = −0,35` está de fora de propósito**: ali o fundo (−0,45) e o chão interno (−0,25)
+    // ficam à MESMA distância, que é a superfície medial — onde a distância não é diferenciável e
+    // `‖∇f‖` medido por diferença central dá **zero** sobre um campo perfeitamente correto. É a
+    // segunda vez que esta linha paga esse pedágio; a cura é a fixture, nunca a barra.
+    for y in [-0.43, -0.40, -0.28] {
+        let d = f.at(0.0, y, 0.0);
+        let want = -(y + 0.45).min(-0.25 - y);
+        assert!(
+            (d - want).abs() < 1e-3,
+            "no eixo, y = {y}: o campo leu {d:.4} e a parede mais próxima está a {want:.4} — a \
+             costura do desenho está a ser tratada como parede"
+        );
+        assert!(
+            (f.gradient_norm(0.0, y, 0.0, 1e-4) - 1.0).abs() < 1e-2,
+            "e ‖∇f‖ tem de valer 1 no eixo: um valor certo com gradiente nulo é um platô, não uma \
+             distância"
+        );
+    }
+
+    // ⚠️ E o controlo positivo: a costura continua a fechar o contorno para o SINAL. Um ponto
+    // dentro do material é negativo; um ponto no oco do copo, acima do fundo, é positivo.
+    assert!(f.at(0.27, 0.0, 0.0) < 0.0, "a parede é material");
+    assert!(f.at(0.0, 0.0, 0.0) > 0.0, "o oco do copo é vazio");
+    assert!(f.at(0.0, -0.44, 0.0) < 0.0, "e o fundo é material");
+}
+
+/// Sonda descartável — a convergência do extrator da casa numa esfera.
+#[test]
+#[ignore = "medição"]
+fn probe_sphere_convergence() {
+    let doc = FieldDoc::new(
+        vec![leaf(Primitive::Sphere { radius: 0.6 }, Xform::IDENTITY)],
+        NodeId(0),
+    )
+    .expect("esfera");
+    let f = Field::new(&doc);
+    println!("prof | célula  | vértices | erro médio | erro máx | máx/célula");
+    for depth in 4u8..=8 {
+        let cell = 2.0 / f64::from(1u32 << depth);
+        let m = crate::extract::extract(&doc, depth).expect("malha");
+        let errs: Vec<f64> = m
+            .positions()
+            .iter()
+            .map(|p| {
+                f.at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]))
+                    .abs()
+            })
+            .collect();
+        let mean = errs.iter().sum::<f64>() / errs.len() as f64;
+        let max = errs.iter().fold(0.0f64, |a, b| a.max(*b));
+        println!(
+            "{depth:4} | {cell:.5} | {:8} | {mean:10.3e} | {max:8.3e} | {:10.4}",
+            m.positions().len(),
+            max / cell
+        );
+    }
+}
+
+/// Sonda — a QUINA VIVA: existe vértice de malha sobre a aresta ideal do cubo?
+///
+/// Réplica exata do método da W0 §2.1 (`01_resultados_spike.md`), para que os números sejam
+/// comparáveis linha a linha: a aresta é fatiada em faixas de uma célula, e uma faixa conta como
+/// **capturada** quando existe vértice a menos de ¼ de célula da aresta ideal. O achado de lá foi
+/// que o desvio **é igual à fração de célula em que a face cai** — 0,10 → 0,10 · 0,50 → 0,50 ·
+/// 0,80 → 0,80 —, com `0/49` faixas capturadas.
+#[test]
+#[ignore = "medição"]
+fn probe_sharp_edge_capture() {
+    println!(
+        "meia-aresta | prof | célula  | face em células | fração | desvio médio | pior | capturadas"
+    );
+    for (half, depth) in [
+        (0.5f64, 6u8),
+        (0.45, 6),
+        (0.4703125, 6),
+        (0.4609375, 6),
+        (0.45, 7),
+        (0.45, 8),
+        (0.25, 7),
+    ] {
+        let cell = 2.0 / f64::from(1u32 << depth);
+        let doc = FieldDoc::new(
+            vec![leaf(
+                Primitive::Box {
+                    half: [half as f32; 3],
+                    round: 0.0,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("cubo");
+        let m = crate::extract::extract(&doc, depth).expect("malha");
+
+        // A aresta ideal: x = half, y = half, z livre em [−half, half].
+        let mut best = vec![f64::INFINITY; (2.0 * half / cell).ceil() as usize + 1];
+        for p in m.positions() {
+            let (x, y, z) = (f64::from(p[0]), f64::from(p[1]), f64::from(p[2]));
+            if z < -half || z > half {
+                continue;
+            }
+            let d = ((x - half).powi(2) + (y - half).powi(2)).sqrt();
+            let slot = ((z + half) / cell) as usize;
+            if let Some(s) = best.get_mut(slot) {
+                *s = s.min(d);
+            }
+        }
+        let finite: Vec<f64> = best.iter().copied().filter(|d| d.is_finite()).collect();
+        let mean = finite.iter().sum::<f64>() / finite.len().max(1) as f64 / cell;
+        let worst = finite.iter().fold(0.0f64, |a, b| a.max(*b)) / cell;
+        let caught = finite.iter().filter(|d| **d < cell * 0.25).count();
+        let in_cells = half / cell;
+        println!(
+            "{half:11.7} | {depth:4} | {cell:.5} | {in_cells:15.2} | {:6.2} | {mean:12.2} | \
+             {worst:4.2} | {caught:5}/{}",
+            in_cells.fract(),
+            finite.len()
+        );
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// W20 — a extração da casa. ⚠️ Os três gates abaixo são a resposta ao smoke que reprovou a malha
+// exportada ("baixa qualidade, sobreposição de faces"), e cada um mede uma metade DIFERENTE:
+// a face dobrada · a topologia · a quina viva. Um só deles passaria com a malha errada.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// As peças que os gates da extração medem.
+///
+/// ⚠️ **QUATRO famílias, e cada uma existe por uma medição.** Primitiva pura e booleana com filete
+/// cobrem caminhos de campo diferentes; o **cubo vivo** é o único que exibe a quina; e as duas de
+/// **perfil desenhado** (extrusão e torno) são as únicas em que o quad chega a ser côncavo — sem
+/// elas, a regra da diagonal de [`crate::extract`] passa verde ao ser mutada, que é o modo de falha
+/// que esta linha já pagou quatro vezes.
+fn extraction_fixtures() -> Vec<(&'static str, FieldDoc)> {
+    let cup = profile_of(
+        vec![vec![
+            [0.00, -0.45],
+            [0.30, -0.45],
+            [0.30, 0.30],
+            [0.24, 0.30],
+            [0.24, -0.25],
+            [0.00, -0.25],
+        ]],
+        FillRule::NonZero,
+    );
+    let cyl = |rot: [f32; 4]| {
+        leaf(
+            Primitive::Cylinder {
+                radius: 0.22,
+                half_height: 0.78,
+                round: 0.05,
+            },
+            Xform {
+                rotation: rot,
+                ..Xform::IDENTITY
+            },
+        )
+    };
+    let s = std::f32::consts::FRAC_1_SQRT_2;
+    vec![
+        (
+            "caixa arredondada",
+            doc_of(Primitive::Box {
+                half: [0.45; 3],
+                round: 0.08,
+            }),
+        ),
+        (
+            "cubo vivo",
+            doc_of(Primitive::Box {
+                half: [0.45; 3],
+                round: 0.0,
+            }),
+        ),
+        ("esfera", doc_of(Primitive::Sphere { radius: 0.6 })),
+        (
+            "junção de 3 cilindros com filete",
+            FieldDoc::new(
+                vec![
+                    cyl([0.0, 0.0, 0.0, 1.0]),
+                    cyl([s, 0.0, 0.0, s]),
+                    cyl([0.0, s, 0.0, s]),
+                    Node::new(
+                        Xform::IDENTITY,
+                        ph2d_field::NodeKind::Combine {
+                            op: Op::Union(Blend::Exact { radius: 0.12 }),
+                            children: vec![NodeId(0), NodeId(1), NodeId(2)],
+                        },
+                    ),
+                ],
+                NodeId(3),
+            )
+            .expect("junção"),
+        ),
+        (
+            "extrusão de um perfil desenhado",
+            doc_of(Primitive::Extrude {
+                profile: profile_of(vec![ngon(9, 0.42, [0.0, 0.0])], FillRule::NonZero),
+                half_height: 0.3,
+                round: 0.04,
+            }),
+        ),
+        ("torno em copo", doc_of(Primitive::Revolve { profile: cup })),
+    ]
+}
+
+/// ⭐ **NENHUMA face sai virada do avesso** — o gate do defeito que o smoke da W19 apanhou.
+///
+/// # ⚠️ O oráculo é a média das normais nos VÉRTICES, e chegar a isso custou duas refutações
+///
+/// 1. *`∇f` no baricentro* — o baricentro não está sobre o nível zero; numa parede fina ele cai
+///    dentro do material, e ali o gradiente aponta para a face **do outro lado**.
+/// 2. *`∇f` na superfície mais próxima do baricentro* (baricentro + Newton) — cura a parede fina e
+///    **reprova a quina viva**: num canto de 90° a projeção pousa numa das duas faces, enquanto um
+///    quad que atravessa o canto tem a normal **entre** elas. Medido no copo do torno: 32 faces
+///    corretas lidas como dobradas, com `n̂ = (0, 0,94, 0,35)` contra `ĝ = (−0,33, 0, −0,94)` — os
+///    dois vetores certos, de duas faces diferentes.
+///
+/// Os **vértices**, esses, estão sobre a superfície por construção (`|f| ≤ 1e-4 aqui`), e a média
+/// das três normais é justamente a direção "entre as faces" que um triângulo de canto tem. Uma face
+/// realmente invertida continua a dar `n̂ · ĝ ≈ −1` contra ela.
+///
+/// *É a terceira vez que esta linha aprende a mesma coisa: **onde o campo não é liso, o oráculo é o
+/// que reprova primeiro.***
+#[test]
+fn the_exported_mesh_never_folds_a_face() {
+    for (name, doc) in extraction_fixtures() {
+        let f = Field::new(&doc);
+        for depth in [6u8, 7] {
+            let cell = 2.0 / f64::from(1u32 << depth);
+            let m = crate::extract::extract(&doc, depth).expect("malha");
+            let pos = m.positions();
+            let mut folded = 0usize;
+            let mut worst = f64::INFINITY;
+            let mut tri = Vec::new();
+            for face in m.faces() {
+                tri.clear();
+                face.triangles(&mut tri);
+                for t in &tri {
+                    let v = t.map(|i| pos[i as usize].map(f64::from));
+                    let e1: [f64; 3] = std::array::from_fn(|k| v[1][k] - v[0][k]);
+                    let e2: [f64; 3] = std::array::from_fn(|k| v[2][k] - v[0][k]);
+                    let n = [
+                        e1[1] * e2[2] - e1[2] * e2[1],
+                        e1[2] * e2[0] - e1[0] * e2[2],
+                        e1[0] * e2[1] - e1[1] * e2[0],
+                    ];
+                    let area2 = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
+                    if area2 == 0.0 {
+                        folded += 1;
+                        continue;
+                    }
+                    let mut g = [0.0f64; 3];
+                    for p in v {
+                        let gv = normal_at(&f, p, cell / 8.0);
+                        for k in 0..3 {
+                            g[k] += gv[k];
+                        }
+                    }
+                    let gl = (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]).sqrt();
+                    if gl <= 0.0 {
+                        continue;
+                    }
+                    let cos = (n[0] * g[0] + n[1] * g[1] + n[2] * g[2]) / (area2 * gl);
+                    worst = worst.min(cos);
+                    if cos < 0.0 {
+                        folded += 1;
+                    }
+                }
+            }
+            assert_eq!(
+                folded, 0,
+                "{name}, prof. {depth}: {folded} triângulos com a normal ao contrário (pior \
+                 alinhamento {worst:.3}) — em shade smooth isso é uma mancha escura"
+            );
+        }
+    }
+}
+
+/// `∇f` normalizado em `p`, por diferença central.
+fn normal_at(f: &Field, p: [f64; 3], eps: f64) -> [f64; 3] {
+    let d = |i: usize| {
+        let (mut a, mut b) = (p, p);
+        a[i] += eps;
+        b[i] -= eps;
+        (f.at(a[0], a[1], a[2]) - f.at(b[0], b[1], b[2])) / (2.0 * eps)
+    };
+    let g = [d(0), d(1), d(2)];
+    let l = (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]).sqrt();
+    if l > 0.0 && l.is_finite() {
+        [g[0] / l, g[1] / l, g[2] / l]
+    } else {
+        [0.0; 3]
+    }
+}
+
+/// ⭐ **A malha é SÓLIDA e é feita de QUADS** — topologia e formato, que são coisas diferentes.
+///
+/// ⚠️ **Toda aresta tem exatamente duas faces.** Uma com uma é um buraco; uma com três é uma aba
+/// não-manifold, que nenhum *remesh* nem impressora 3D come. E os vértices coincidentes têm de ser
+/// zero: dois iguais são um triângulo de área zero à espera, e foi assim que a prisão à parede da
+/// célula se traiu antes do recuo ([`crate::extract`]).
+#[test]
+fn the_exported_mesh_is_a_watertight_quad_grid() {
+    use std::collections::{BTreeMap, BTreeSet};
+    for (name, doc) in extraction_fixtures() {
+        let m = crate::extract::extract(&doc, 6).expect("malha");
+        assert!(m.faces().len() > 100, "{name}: a malha saiu vazia");
+
+        let quads = m.faces().iter().filter(|f| !f.is_tri()).count();
+        assert_eq!(
+            quads,
+            m.faces().len(),
+            "{name}: {} faces não são quads — a saída deste extrator é uma grade de quads",
+            m.faces().len() - quads
+        );
+
+        let mut seen = BTreeSet::new();
+        for p in m.positions() {
+            assert!(
+                seen.insert(p.map(f32::to_bits)),
+                "{name}: dois vértices na mesma posição"
+            );
+        }
+
+        let mut inc: BTreeMap<(u32, u32), u32> = BTreeMap::new();
+        for f in m.faces() {
+            let v = f.verts();
+            for k in 0..v.len() {
+                let (a, b) = (v[k], v[(k + 1) % v.len()]);
+                *inc.entry((a.min(b), a.max(b))).or_default() += 1;
+            }
+        }
+        let bad = inc.values().filter(|&&n| n != 2).count();
+        assert_eq!(
+            bad, 0,
+            "{name}: {bad} arestas com incidência ≠ 2 — a malha não fecha"
+        );
+    }
+}
+
+/// ⭐ **A QUINA VIVA sai viva** — o kill-criterion nº 1 da W0, e ele estava aberto desde então.
+///
+/// ⚠️ **O mecanismo não era o extrator, era `sqrt(0)`.** `box_raw` é `length3(max(q,0)…)`, e dentro
+/// da peça inteira os três termos valem zero: o gradiente automático de `sqrt` em zero é infinito,
+/// devolve `NaN`, a célula fica sem QEF e o vértice cai no baricentro das travessias. O desvio que a
+/// W0 mediu (`0/49` faixas capturadas, e *"o desvio é igual à fração de célula em que a face cai"*)
+/// era literalmente esse baricentro — `0,72 × fração`. A cura é [`crate::ops::safe_sqrt`].
+///
+/// ⚠️ **A meia-aresta varia de propósito**, e é isso que torna o gate uma prova: era exatamente a
+/// FRAÇÃO de célula em que a face cai que governava o erro, então uma medida numa fração só passaria
+/// por sorte. `0,5` põe a face **em cima** da linha da grade, que é o caso degenerado.
+#[test]
+fn a_live_edge_lands_on_the_edge_not_on_the_grid() {
+    for (half, depth) in [
+        (0.5f64, 6u8),
+        (0.45, 6),
+        (0.4609375, 6),
+        (0.45, 7),
+        (0.25, 7),
+    ] {
+        let cell = 2.0 / f64::from(1u32 << depth);
+        let doc = doc_of(Primitive::Box {
+            half: [half as f32; 3],
+            round: 0.0,
+        });
+        let m = crate::extract::extract(&doc, depth).expect("malha");
+
+        // A aresta ideal x = half, y = half, fatiada em faixas de uma célula ao longo de z.
+        let slots = (2.0 * half / cell).ceil() as usize + 1;
+        let mut best = vec![f64::INFINITY; slots];
+        for p in m.positions() {
+            let (x, y, z) = (f64::from(p[0]), f64::from(p[1]), f64::from(p[2]));
+            if z < -half || z > half {
+                continue;
+            }
+            let d = ((x - half).powi(2) + (y - half).powi(2)).sqrt();
+            #[allow(clippy::cast_sign_loss)]
+            let slot = ((z + half) / cell) as usize;
+            if let Some(s) = best.get_mut(slot) {
+                *s = s.min(d);
+            }
+        }
+        let seen: Vec<f64> = best.iter().copied().filter(|d| d.is_finite()).collect();
+        assert!(
+            seen.len() > 10,
+            "meia-aresta {half}: a aresta nem foi coberta"
+        );
+        let worst = seen.iter().fold(0.0f64, |a, b| a.max(*b)) / cell;
+        assert!(
+            worst < 0.05,
+            "meia-aresta {half}, prof. {depth}: a pior faixa da aresta está a {worst:.2} célula do \
+             fio (teto: 0,05). A W0 media 0,80 — se isto voltou, o gradiente do campo voltou a ser \
+             NaN sobre a superfície"
+        );
+    }
 }

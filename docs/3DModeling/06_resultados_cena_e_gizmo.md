@@ -1219,6 +1219,245 @@ medir o `main`.
 
 ---
 
+## §21 — W20: a malha exportada, e a quina que estava aberta desde a W0 (21/08)
+
+> **O smoke da W19 aprovou a exportação e reprovou a MALHA.** O Enio abriu o `.obj` no Blender, deu
+> *Shade Smooth* e viu manchas escuras num reticulado regular; de perto, triângulos sobrepostos. E
+> perguntou o que era a decisão certa: **esperar pelo *quad remesh*** que a linha do sculpt está a
+> escrever, **ou consertar já**.
+>
+> ⭐ **A resposta veio da medição, e ela inverte a pergunta: um remesh a jusante não cura NADA disto
+> — ele herda a entrada.** Um remesh consome uma malha; faces dobradas e arestas não-manifold entram
+> nele e saem dele. A entrada tem de estar limpa **antes**, e por isso esperar não era uma opção,
+> era um adiamento.
+
+### §21.1 — O diagnóstico, e ele separou dois defeitos que pareciam um
+
+Um relatório de artista (*"baixa qualidade, sobreposição de faces"*) não é um mecanismo. A sonda
+`quality::measure_export_mesh_quality` transforma-o num, porque **o remédio depende de qual defeito
+é**. Sobre a cena 1 (junção de três cilindros com filete), extrator da `fidget`:
+
+| prof | tris | q<0,10 | q_min | **invertidas** | % | grandes | área média | ℓ máx | cos pior | arestas ruins | dups |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 5 | 6 888 | 68 | 0,0186 | **96** | 1,4 | 96 | 0,238 cél² | 2,00 | −1,000 | 0 | 0 |
+| 6 | 27 716 | 768 | 0,0282 | **364** | 1,3 | 364 | 0,174 | 2,06 | −1,000 | 0 | 0 |
+| 7 | 61 540 | 2 660 | 0,0076 | **2 161** | 3,5 | 1 584 | 0,146 | **4,11** | −1,000 | 0 | 0 |
+
+**A topologia estava perfeita e a malha estava sobre a superfície** (0 arestas ruins, 0 vértices
+repetidos, erro ≤ 0,07 de célula). O defeito era um só e era grande: **3,5 % dos triângulos com a
+normal ao contrário**, com área média de 0,15 célula² — não lascas invisíveis, faces inteiras. É
+exatamente o que *Shade Smooth* mostra como mancha.
+
+⚠️ **`ℓ máx = 4,11 células` é o mecanismo.** Em dual contouring, dois vértices duais vizinhos ficam a
+~1 célula um do outro. Um triângulo que mede 4 células diz que **um vértice fugiu da sua célula** —
+e o código da `fidget` confirma: `qef.rs::solve` promete *"increase the **likelihood** that the
+vertex is bounded in the cell"* (uma probabilidade), e o `bounds.contains` só existe no caminho de
+**colapso**, nunca na folha. Quando o vértice foge, o leque de quatro triângulos em torno da
+interseção da aresta enrola uma ou duas delas ao contrário.
+
+### §21.2 — O extrator da casa: `ph2d_field_eval::extract`
+
+Dual contouring sobre **grade uniforme**, saída em **quads**. Três propriedades, e cada uma existe
+por uma medição:
+
+1. **Um vértice por célula, PRESO à célula.** Apaga a face dobrada por construção, em vez de a
+   consertar a jusante.
+2. **Recuo de 1 % da parede** (`CELL_INSET`). Não é folga de segurança: torna as caixas de duas
+   células **disjuntas**, e é isso que impede dois vértices vizinhos de coincidirem. Sem ele, as
+   cenas 4 e 5 nasciam com 38–156 triângulos de área **exatamente** zero e 15–55 vértices repetidos.
+3. **Quads de verdade** (`ph2d_mesh::Face::quad`), valência 4 quase em toda a parte — a topologia que
+   subdivide bem e que um *remesh* consegue comer.
+
+⚠️ **A diagonal do quad é escolhida por PONTUAÇÃO, e duas regras mais simples foram refutadas.** O
+consumidor parte todo quad por `a–c` (`Face::tri_at`, a única resposta da casa, e ela **não** se
+toca) — então quem escreve o quad escolhe a diagonal ao **girá-lo**:
+
+| regra | resultado |
+|---|---|
+| a diagonal mais **curta** | ⛔ nas 32 faces dobradas do fundo do vaso ela escolhia justamente a de fora (0,0113 contra 0,0175) |
+| `n₁ · n₂ < 0` (as metades discordam) | ⛔ num quad em **sela** dispara nas duas diagonais e a regra não sabe qual está errada — foi assim que o copo do torno apareceu com 32 faces dobradas ao entrar na fixture |
+| ✅ `min(n̂ᵢ · N̂)` contra a normal **do quad** (Newell) | responde às duas: a normal do quad é a média, e quem discorda dela é quem está virado. Empate (quad plano) → a mais curta, que dá triângulos menos finos |
+
+### §21.3 — ⭐ A quina viva: o kill-criterion da W0 estava aberto, e o culpado era `sqrt(0)`
+
+A W0 mediu, e o achado dela era um **mecanismo**, não um sintoma: *o desvio da aresta é igual à
+fração de célula em que a face cai* — 0,10 → 0,10 · 0,50 → 0,50 · 0,80 → 0,80, com **0/49** faixas
+capturadas. A hipótese registada era o leque da `fidget`.
+
+**Quatro medições depois, três hipóteses estão refutadas e a quarta é a certa:**
+
+| hipótese | veredito | como se soube |
+|---|---|---|
+| o **leque** da `fidget` quantiza | ⛔ **REFUTADA** | o extrator da casa não tem leque nenhum e reproduzia o **mesmo** desvio, dígito a dígito |
+| a **interpolação linear** da travessia | ⛔ **REFUTADA** | 10 bisseções antes de interpolar não mexeram **um dígito** na tabela — e pioraram a esfera em 25 %, porque empurram `f` para dentro do ruído do `f32` |
+| perguntar a normal **sobre** a superfície | ⛔ **REFUTADA** | afastar o ponto 1/1000 de aresta para dentro não mexeu no 5º dígito |
+| ✅ **`sqrt` tem derivada infinita em zero** | **é esta** | `box_raw` é `length3(max(q,0)…)`: dentro da peça **inteira** os três termos são zero, o gradiente automático é `NaN`, a célula fica sem QEF e o vértice cai no **baricentro das travessias** — que é literalmente `0,72 × fração de célula` |
+
+A cura é do **campo**, não do extrator: `ops::safe_sqrt` põe um piso de `1e-30` no argumento
+(`sqrt(1e-30) = 1e-15`, oito ordens de grandeza abaixo do ULP de um `f32` de ordem 1 — o valor não
+muda num bit, e a derivada passa a ser a de uma constante, zero e **finita**). ⛔ `sqrt(s + ε)` não
+serve: muda o valor em `√ε` em toda a parte, e um raio de filete deixaria de ser o pedido.
+
+**O resultado, no mesmo formato da W0 §2.1** (`probe_sharp_edge_capture`):
+
+| meia-aresta | prof | célula | face em células | fração | desvio médio | pior | capturadas |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0,5 | 6 | 0,03125 | 16,00 | 0,00 | ~~0,72~~ → **0,01** | 0,01 | ~~0/32~~ → **32/32** |
+| 0,45 | 6 | 0,03125 | 14,40 | 0,40 | ~~0,29~~ → **0,00** | 0,00 | ~~0/29~~ → **29/29** |
+| 0,4609375 | 6 | 0,03125 | 14,75 | 0,75 | ~~0,54~~ → **0,00** | 0,00 | ~~0/30~~ → **30/30** |
+| 0,45 | 7 | 0,01562 | 28,80 | 0,80 | ~~0,57~~ → **0,00** | 0,00 | ~~0/58~~ → **58/58** |
+| 0,45 | 8 | 0,00781 | 57,60 | 0,60 | ~~0,44~~ → **0,00** | 0,00 | ~~0/116~~ → **116/116** |
+
+*O cubo sai com o fio exato.* E `sqrt(0)` era também a razão de o `sd_profile` não ter gradiente
+**sobre o próprio contorno** — as cinco raízes de soma de quadrados da crate passaram todas por
+`safe_sqrt`, que é a única resposta da casa a essa pergunta.
+
+### §21.4 — O corte de posto do QEF: o `1e-3` era da `fidget`, e é o primeiro degrau que reprova
+
+`QEF_RANK_CUTOFF` decide abaixo de que fração do maior autovalor uma direção é ignorada. Varrido nas
+seis fixtures, profundidades 6 e 7:
+
+| corte | faces dobradas (total) | aresta viva | erro médio da esfera (prof. 5) |
+|---|---:|---|---:|
+| 1e-1 | **0** | 116/116, desvio 0,00 | 9,010e-4 |
+| **3e-2** ← escolhido | **0** | 116/116, desvio 0,00 | 9,010e-4 |
+| 1e-2 | **0** | 116/116, desvio 0,00 | 9,010e-4 |
+| 1e-3 (o valor da `fidget`) | 32 | 116/116, desvio 0,00 | 9,353e-4 |
+| 1e-4 | 328 | 116/116, desvio 0,00 | — |
+| 1e-6 | 624 | 116/116, desvio 0,00 | — |
+
+⚠️ **A coluna da aresta viva não se mexe** — a suspeita de que este corte governasse a quina está
+**refutada** pela própria tabela, e o erro da esfera até **melhora** com o corte maior: não há troca
+a fazer. O patamar de zero vai de 1e-2 a 1e-1 e o valor fica no meio dele. ⛔ O `1e-3` anterior veio
+do `qef.rs` da `fidget`, onde está escrito *"somewhat arbitrarily"* — **valor de terceiro herdado
+sem medição própria**, e o primeiro degrau a reprovar.
+
+### §21.5 — ⭐ Um bug de CAMPO que a malha revelou: a costura do torno não é uma parede
+
+A sonda mediu o campo do vaso (cena 5) e encontrou, **sobre o eixo, dentro do sólido**:
+`f = −0,0000` com `‖∇f‖ = 0,000`, onde devia ler `−0,02 … −0,08`.
+
+**O mecanismo:** um contorno desenhado tem de fechar, e num vaso ele fecha **descendo pelo eixo**.
+Essa aresta existe no desenho e, ao girar, varre uma **linha** — medida zero, superfície nenhuma. Ela
+é a costura do desenho, não uma parede da peça. Enquanto contava para a distância, havia um **nível
+zero fantasma dentro do sólido**, e a extração encontrava-o e malhava-o.
+
+A cura (`sd_profile_inner(.., axis_seam: true)`) tira da conta da **distância** as arestas cujos dois
+extremos estão a menos da tolerância do perfil do eixo — e **só** da distância: o enrolamento
+continua a ver a aresta inteira, porque é ele que sabe o que é dentro, e abrir o contorno inverteria
+o sinal de meia peça.
+
+⚠️ **A peça traçada nunca mostrou isto** (o raio bate na parede externa primeiro). Quem o via era a
+malha exportada. *Um defeito de campo pode ser invisível no caminho que o artista usa para julgar.*
+
+### §21.6 — O resultado, lado a lado
+
+`measure_export_mesh_quality`, quatro cenas, quatro profundidades. Todas as colunas de topologia
+(área zero, arestas ruins, vértices repetidos) são **0** em todas as linhas, nas duas colunas de
+quads é **100 %**, e o que sobra é:
+
+| cena | prof | quads | **invertidas (fidget)** | **invertidas (casa)** | q_min (casa) | fora da superfície |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 — junção com filete | 5 | 1 830 | 96 | **0** | 0,585 | 0,042 cél |
+| | 6 | 7 446 | 364 | **0** | 0,532 | 0,053 |
+| | 7 | 29 502 | 2 161 | **0** | 0,695 | 0,021 |
+| | 8 | 117 198 | — | **0** | 0,678 | 0,016 |
+| 2 — cubo arredondado | 5 | 1 326 | 0 | **0** | 0,725 | 0,073 |
+| | 6 | 5 022 | 18 | **0** | 0,789 | 0,023 |
+| | 7 | 19 422 | 144 | **0** | 0,767 | 0,016 |
+| | 8 | 78 846 | — | **0** | 0,714 | 0,009 |
+| 4 — cantoneira desenhada | 5 | 406 | — | 6 ⚠️ | 0,093 | 0,373 |
+| | 6 | 1 644 | — | **0** | 0,093 | 0,095 |
+| | 7 | 6 238 | — | **0** | 0,442 | 0,112 |
+| | 8 | 25 260 | — | **0** | 0,517 | 0,050 |
+| 5 — torno (vaso oco) | 5 | 1 146 | — | 68 ⚠️ | 0,068 | 0,437 |
+| | 6 | 4 514 | — | **0** | 0,025 | 0,363 |
+| | 7 | 17 994 | — | **0** | 0,022 | 0,154 |
+| | 8 | 71 814 | — | **0** | 0,001 | 0,201 |
+
+⚠️ **As duas linhas com ⚠️ são a profundidade 5, e o motivo não é o extrator: é a grade.** A célula
+mede 0,0625 e a parede do vaso mede 0,06 — *uma grade não representa uma feição mais fina que a
+própria célula*, e a mesma linha traz **40 arestas não-manifold**, que é a assinatura disso. Foi esta
+medição que subiu o **Draft de 5 para 6**.
+
+### §21.7 — O custo, e a troca que ele representa
+
+`measure_export_resolution`, cena 1, release:
+
+| prof | quads | triângulos | ms |
+|---:|---:|---:|---:|
+| 4 | 438 | 876 | 0,8 |
+| 5 | 1 830 | 3 660 | 1,9 |
+| **6** | **7 446** | **14 892** | **7,9** ← Draft |
+| **7** | **29 502** | **59 004** | **35,5** ← Fine |
+| 8 | 117 198 | 234 396 | 214,6 |
+| **9** | **467 334** | **934 668** | **1 463** ← Max |
+
+⭐ **A contagem quadruplica a cada degrau e o relógio segue.** Isto é diferente do que a tabela da
+W19 dizia — lá os triângulos **saturavam** (91 710 → 130 914 do degrau 8 para o 9), porque o octree
+da `fidget` colapsa células e `depth` era um **teto**, não uma resolução. Aqui os três níveis são o
+que dizem ser, e a esfera prova-o: 416 → 1 760 → 6 920 → 27 824 → 111 080 vértices (×4,2 · ×3,9 ·
+×4,0 · ×4,0), com o erro médio a cair **por 4** a cada degrau — segunda ordem, que é o que uma
+superfície lisa deve dar.
+
+O preço é que a grade é **uniforme**: a extração é ~1,8× mais lenta que a da `fidget` na mesma
+profundidade nominal, e o Max leva 1,5 s. Para uma ação de clique com aviso, é aceitável; o eixo a
+abrir quando não for é a **poda por aritmética de intervalos**, que a `fidget` já expõe e que a
+secção *"o que ele NÃO é"* de `extract.rs` nomeia.
+
+### §21.8 — ⛔ Recusas MEDIDAS desta wave
+
+| o que | por que não | onde |
+|---|---|---|
+| esperar pelo *quad remesh* da linha do sculpt | um remesh **herda** a entrada; face dobrada e aresta não-manifold passam por ele | §21 (topo) |
+| bisseção da travessia antes de interpolar | não mexe um dígito na quina e **piora a esfera em 25 %** (empurra `f` para o ruído do `f32`) | §21.3 |
+| perguntar a normal deslocada para dentro | não mexe no 5º dígito | §21.3 |
+| diagonal do quad pela **mais curta** | escolhe a de fora nos quads côncavos | §21.2 |
+| diagonal do quad por `n₁ · n₂ < 0` | dispara nas duas diagonais de um quad em sela | §21.2 |
+| `QEF_RANK_CUTOFF = 1e-3` (o da `fidget`) | 32 faces dobradas; o patamar de zero começa em 1e-2 | §21.4 |
+| `sqrt(s + ε)` em vez do piso | muda o valor em `√ε` em toda a parte; um raio de filete deixaria de ser o pedido | §21.3 |
+| Draft na profundidade 5 | a parede do vaso é mais fina que a célula: 68 faces dobradas e 40 arestas não-manifold | §21.6 |
+
+### §21.9 — ⚠️ O ORÁCULO foi o que reprovou primeiro, pela terceira vez nesta linha
+
+O gate *"nenhuma face sai virada do avesso"* precisa de saber para onde a superfície olha, e as duas
+primeiras respostas **reprovaram geometria correta**:
+
+1. `∇f` no **baricentro** do triângulo — o baricentro não está sobre o nível zero; numa parede fina
+   ele cai dentro do material e o gradiente aponta para a face **do outro lado**.
+2. `∇f` na superfície mais próxima do baricentro (Newton) — cura a parede fina e **reprova a quina
+   viva**: num canto de 90° a projeção pousa numa das duas faces, enquanto o quad que atravessa o
+   canto tem a normal **entre** elas. Medido no copo do torno: 32 faces corretas lidas como dobradas,
+   com `n̂ = (0, 0,94, 0,35)` contra `ĝ = (−0,33, 0, −0,94)` — dois vetores certos, de faces
+   diferentes.
+3. ✅ a **média das normais nos três vértices** — os vértices estão sobre a superfície por
+   construção, e a média deles é justamente a direção "entre as faces". Uma face realmente invertida
+   continua a dar `n̂ · ĝ ≈ −1`.
+
+*Onde o campo não é liso, o oráculo é o que reprova primeiro.*
+
+### §21.10 — Provas de mutação
+
+| lei quebrada | gate que ficou vermelho |
+|---|---|
+| `sqrt` sem o piso (`safe_sqrt` → `sqrt`) | `a_live_edge_lands_on_the_edge_not_on_the_grid` |
+| vértice do QEF sem a prisão à célula | `the_exported_mesh_never_folds_a_face` |
+| `CELL_INSET = 0` (prisão até à parede) | `the_exported_mesh_is_a_watertight_quad_grid` |
+| diagonal sempre `a–c` | `the_exported_mesh_never_folds_a_face` |
+| costura do torno de volta à conta da distância | `the_seam_of_a_lathe_lies_on_the_axis_and_is_not_a_wall` |
+
+⚠️ **A fixture do gate das dobras tem SEIS peças, e duas delas entraram por causa desta tabela**: com
+só primitivas e booleanas, mutar a regra da diagonal passa **verde** — os quads só ficam côncavos nas
+peças de **perfil desenhado**. *É a quinta vez que esta linha vê uma mutação passar verde porque a
+fixture não continha o fenómeno.*
+
+### §21.11 — O que a `fidget` deixou de fazer
+
+A feature `mesh` saiu do `Cargo.toml`. Ela continua a fazer o que faz melhor que ninguém — **avaliar**
+o campo, em lote e com JIT —, e o `jit` fica ligado pela mesma medição de sempre.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)

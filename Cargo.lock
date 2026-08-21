@@ -2352,7 +2352,6 @@ dependencies = [
  "document-features",
  "fidget-core",
  "fidget-jit",
- "fidget-mesh",
  "workspace-hack",
 ]
 
@@ -2388,21 +2387,6 @@ dependencies = [
  "libc",
  "static_assertions",
  "windows 0.62.2",
- "workspace-hack",
-]
-
-[[package]]
-name = "fidget-mesh"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9d1c394abca268c1821951668d64087942e4e6b6cd39dc194ba1aa61a4581b2"
-dependencies = [
- "arrayvec",
- "fidget-core",
- "nalgebra 0.35.0",
- "ordered-float",
- "rayon",
- "static_assertions",
  "workspace-hack",
 ]
 

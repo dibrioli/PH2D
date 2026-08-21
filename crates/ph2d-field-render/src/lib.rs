@@ -4,9 +4,15 @@
 //! # Por que a tela não passa pela malha
 //!
 //! Medido na W0 (`docs/3DModeling/01_resultados_spike.md` §1c): traçando o campo, a quina do cubo
-//! sai como uma navalha e o filete sai liso; a **mesma** cena extraída em malha serrilha. A
+//! sai como uma navalha e o filete sai liso; a **mesma** cena extraída em malha serrilhava. A
 //! geometria estava certa e o defeito era inteiramente da extração. Deixar a malha desenhar a tela
 //! seria deixar **o caminho pior definir o teto do que se vê** — o que o [`CLAUDE.md §0`] proíbe.
+//!
+//! ⚠️ **A W20 curou aquela extração** (`ph2d_field_eval::extract`: a quina do cubo passou de `0/49`
+//! faixas capturadas para `116/116`, com desvio `0,00` de célula), e a conclusão **não muda** —
+//! muda de razão. Uma malha é uma resolução **escolhida** e um campo não tem nenhuma: ampliar dez
+//! vezes revela a faceta da melhor malha e não revela nada num campo. *Curar o segundo lugar não o
+//! promove.*
 //!
 //! # O que sai daqui é GEOMETRIA, não cor
 //!

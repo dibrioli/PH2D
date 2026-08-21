@@ -31,11 +31,17 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 #
 # ⚠️ `default-features = false`: o default dela traz `gui`, `rhai` e `raster`,
 # que são do app-demo do autor, e `wgpu`, que colidiria com o lockstep 28 da
-# casa. Ficam `mesh` (a extração) e `jit`.
+# casa. Fica **só** `jit`.
+#
+# ⚠️ **O `mesh` SAIU na W20**, e não por arrumação: o extrator dela reprovou duas
+# vezes pelo mesmo mecanismo — quina serrilhada (W0) e face dobrada (W19) —, e o
+# extrator da casa (`src/extract.rs`) o substituiu com **zero** face invertida nas
+# seis medições. O que a `fidget` continua a fazer aqui é o que ela faz melhor que
+# ninguém: **avaliar** o campo, em lote e com JIT.
 #
 # ⚠️ **O `jit` é `unsafe` (assembly escrita à mão) e está LIGADO por MEDIÇÃO,
 # como o HR-2 exige:** 5,3x no traçado do campo — que é o caminho pelo qual o
-# artista vê a peça — e 1,6x na malhagem. A primeira medição dizia "ganho zero"
-# e estava errada: comparava `VmShape` com `VmShape` (registro em
+# artista vê a peça. A primeira medição dizia "ganho zero" e estava errada:
+# comparava `VmShape` com `VmShape` (registro em
 # `docs/3DModeling/01_resultados_spike.md` §6).
-fidget = { version = "0.5", default-features = false, features = ["mesh", "jit"] }
+fidget = { version = "0.5", default-features = false, features = ["jit"] }

@@ -217,19 +217,21 @@ fn the_copy_count_is_an_integer_row_with_a_floor_of_one() {
 /// ⚠️ **A tabela que escolhe as resoluções de exportação** — triângulos e relógio, por profundidade.
 ///
 /// ⭐ Um campo tem resolução **infinita**; uma malha não. Exportar é a primeira vez que este módulo
-/// **perde informação de propósito**, e o número que decide quanto se perde é a profundidade do
-/// octree. Ele não se escolhe: mede-se.
+/// **perde informação de propósito**, e o número que decide quanto se perde é a resolução da grade.
+/// Ele não se escolhe: mede-se. ⚠️ A qualidade da malha em cada degrau é a sonda irmã
+/// (`quality::measure_export_mesh_quality`) — e foi ela, e não esta, que subiu o Draft de 5 para 6.
 #[test]
 #[ignore = "medição, não gate — corre com --ignored --nocapture"]
 fn measure_export_resolution() {
-    println!("prof | triângulos | ms");
+    println!("prof |      faces | triângulos | ms");
     for depth in 4u8..=9 {
         let doc = scene(1);
         let t0 = std::time::Instant::now();
-        match ph2d_field_eval::mesh(&doc, depth) {
+        match ph2d_field_eval::extract::extract(&doc, depth) {
             Ok(m) => {
                 let ms = t0.elapsed().as_secs_f64() * 1000.0;
-                println!("{depth:4} | {:10} | {ms:8.1}", m.faces().len());
+                let tris: usize = m.faces().iter().map(ph2d_mesh::Face::tri_count).sum();
+                println!("{depth:4} | {:10} | {tris:10} | {ms:8.1}", m.faces().len());
             }
             Err(e) => println!("{depth:4} | recusada: {e:?}"),
         }
@@ -238,7 +240,7 @@ fn measure_export_resolution() {
 
 /// ⭐ **A peça vira MALHA, e a malha é sólida** — a porta de saída que existia e nunca era chamada.
 ///
-/// ⚠️ Até esta wave, `ph2d_field_eval::mesh` tinha **zero chamadores**: a crate sabia extrair uma
+/// ⚠️ Até a W19, `ph2d_field_eval::extract` tinha **zero chamadores**: a crate sabia extrair uma
 /// malha e nada no app o pedia. *Uma porta que ninguém abre não é uma porta.*
 ///
 /// O gate mede as três coisas que separam "saiu alguma coisa" de "saiu a peça": há triângulos, eles
@@ -248,8 +250,10 @@ fn measure_export_resolution() {
 fn the_part_becomes_a_mesh_and_more_resolution_gives_more_of_it() {
     use crate::field3d_export::ExportLevel;
     let doc = scene(2);
-    let draft = ph2d_field_eval::mesh(&doc, ExportLevel::Draft.depth()).expect("malha em Draft");
-    let fine = ph2d_field_eval::mesh(&doc, ExportLevel::Fine.depth()).expect("malha em Fine");
+    let draft = ph2d_field_eval::extract::extract(&doc, ExportLevel::Draft.depth())
+        .expect("malha em Draft");
+    let fine =
+        ph2d_field_eval::extract::extract(&doc, ExportLevel::Fine.depth()).expect("malha em Fine");
 
     assert!(draft.faces().len() > 100, "o Draft saiu vazio");
     assert!(
@@ -331,3 +335,7 @@ fn the_export_button_reaches_the_request_channel() {
     // quadro seguinte, e o artista não conseguiria fechá-lo.
     assert_eq!(crate::field3d_smoke::take_export_request(), None);
 }
+
+/// ⚠️ **A sonda da qualidade da malha** vive no irmão — ver [`field3d_mesh_quality_tests`](self::quality).
+#[path = "field3d_mesh_quality_tests.rs"]
+mod quality;

@@ -17,7 +17,7 @@ fn draining_the_queue_empties_it() {
     let _ = state::drain_intents();
     state::push_intent(ModelIntent::SetParam {
         entity: 0,
-        index: 0,
+        param: ph2d_field::Param::Dim(0),
         value: 0.1,
     });
     assert_eq!(state::drain_intents().len(), 1);

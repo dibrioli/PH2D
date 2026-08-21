@@ -54,7 +54,7 @@ pub(crate) fn apply_event(
                             // — a lista muda quando a seleção muda, e um intent guardado por
                             // posição escreveria noutro número.
                             entity: row.entity,
-                            index: row.index,
+                            param: row.param,
                             // A trilha é 0..1; o valor é ela vezes o teto **daquela linha**.
                             value: track * row.bound.value(),
                         });

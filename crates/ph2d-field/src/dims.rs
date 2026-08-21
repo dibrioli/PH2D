@@ -28,6 +28,26 @@
 
 use crate::{FieldError, Primitive, round_limit};
 
+/// ⭐ **Que número autorado de um nó** — a identidade de uma linha do painel.
+///
+/// ⚠️ Um `usize` cru serviria, com o painel a saber que «0..2 é a posição e o resto são dimensões».
+/// Uma convenção implícita entre duas crates é o tipo de coisa que sobrevive até alguém acrescentar
+/// uma linha no meio — e aí o controle passa a escrever noutro número, em silêncio.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Param {
+    /// A translação **local** do nó, por eixo (0 = X).
+    ///
+    /// ⚠️ **Local, e é a convenção da casa**: o Inspector dela mostra o `Transform.translation`, que
+    /// é local, e o readout do gizmo 2D diz por extenso que o delta é local *"porque é isso que o
+    /// Inspector mostra"*. Um painel que mostrasse mundo contradiria o número ao lado no dia em que
+    /// alguém agrupasse.
+    Pos(u8),
+    /// A escala **uniforme** do nó. Ver a nota de [`crate::Xform::scale`].
+    Scale,
+    /// Uma dimensão da forma — a posição na lista de [`dims`].
+    Dim(u16),
+}
+
 /// Uma dimensão editável de uma forma.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Dim {
@@ -217,3 +237,59 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
 
 /// A folga entre o filete máximo e a parede, em fração da parede. Ver [`clamp_round`].
 const ROUND_MARGIN: f32 = 1.0e-3;
+
+/// ⭐ **Escala uma primitiva multiplicando as DIMENSÕES dela**, e não a pose.
+///
+/// # Por que uma folha não usa `Xform::scale`
+///
+/// ⚠️ **Uma folha escalada teria DUAS verdades sobre o mesmo tamanho visível**: a largura que o
+/// painel mostra e o fator da pose. Uma caixa de 1 de largura escalada 2× mede 2 na tela e continua
+/// a dizer «1» — e o artista não tem como saber qual das duas o próximo gesto vai mexer.
+///
+/// Multiplicar as dimensões dá **exatamente a mesma forma** (a escala uniforme é isso, aplicada ao
+/// campo) com **um** número a mudar — o que o painel já mostra.
+///
+/// ⚠️ Um grupo é o contrário: ele **não tem dimensões próprias**, então o fator da pose é a única
+/// resposta, e ali ele não compete com nada.
+///
+/// Devolve `false` para um fator não-positivo ou não-finito, sem tocar na forma.
+pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
+    if !factor.is_finite() || factor <= 0.0 {
+        return false;
+    }
+    match p {
+        Primitive::Box { half, round } => {
+            for h in half.iter_mut() {
+                *h *= factor;
+            }
+            *round *= factor;
+        }
+        Primitive::Sphere { radius } => *radius *= factor,
+        Primitive::Cylinder {
+            radius,
+            half_height,
+            round,
+        } => {
+            *radius *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::Torus { major, minor } => {
+            *major *= factor;
+            *minor *= factor;
+        }
+        Primitive::Extrude {
+            half_height, round, ..
+        } => {
+            // ⚠️ O **perfil** não é escalado: ele é o desenho, e o dono dele é o editor vetorial. O
+            // que esta escala mexe é a altura da extrusão e o aro — as duas grandezas que este
+            // módulo autora. Escalar um perfil aqui seria reescrever, em silêncio, um documento de
+            // outro módulo.
+            *half_height *= factor;
+            *round *= factor;
+        }
+        // Um torno é só o perfil: não há nada aqui que este módulo possua.
+        Primitive::Revolve { .. } => return false,
+    }
+    true
+}

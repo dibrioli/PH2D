@@ -233,15 +233,15 @@ pub(crate) fn sync_scene_and_birth(
             }
             ph2d_panel_model3d::ModelIntent::SetParam {
                 entity,
-                index,
+                param,
                 value,
             } => {
                 // Uma recusa é informação, não erro: o nó diz que aquele número não cabe, e o
                 // retrato publicado logo abaixo devolve o controle ao valor que ficou.
-                let _ = ph2d_field_ecs::set_dim(
+                let _ = ph2d_field_ecs::set_param(
                     world,
                     bevy_ecs::entity::Entity::from_bits(entity),
-                    index,
+                    param,
                     value,
                 );
             }
@@ -352,15 +352,16 @@ fn anchor_for(sim: &mut SimWorld, selected: Option<u64>) -> Option<crate::field3
     })
 }
 
-/// ⭐ **As dimensões do objeto selecionado** — o painel é o inspetor da seleção.
+/// ⭐ **Os números do objeto selecionado** — o painel é o inspetor da seleção.
 ///
 /// ⚠️ **Mudou de forma na W10.** Antes era uma linha por nó com o raio dele — uma segunda vista da
-/// estrutura, a competir com a Hierarquia e sem onde pôr as outras dimensões. A divisão passou a
-/// ser a da casa: a Hierarquia mostra **o que existe**, o painel mostra **os números do escolhido**.
+/// estrutura, a competir com a Hierarquia e sem onde pôr largura, altura e profundidade. A divisão
+/// passou a ser a da casa: a Hierarquia mostra **o que existe**, o painel mostra **os números do
+/// escolhido**.
 ///
-/// `view_span` é o alcance do **gesto** (ver [`Bound`]): uma largura de caixa não tem teto físico, e
-/// quem escolhe até onde o slider vai é a vista — o que cabe no enquadramento. O documento só
-/// contribui as **paredes** (um filete que não cabe).
+/// `view_span` é o alcance do **gesto** (ver [`ph2d_field::Bound`]): uma posição e uma largura não
+/// têm teto físico, e quem escolhe até onde o slider vai é a vista — o que cabe no enquadramento. O
+/// documento só contribui as **paredes** (um filete que não cabe).
 fn param_rows(
     world: &bevy_ecs::world::World,
     selected: Option<bevy_ecs::entity::Entity>,
@@ -369,48 +370,22 @@ fn param_rows(
     let Some(e) = selected else {
         return Vec::new();
     };
-    let Some(node) = world.get::<FieldNode>(e) else {
-        return Vec::new();
-    };
-    // ⚠️ O valor E o teto vêm os DOIS do nó. Um painel que guardasse o seu próprio valor teria duas
-    // verdades sobre o mesmo número, e a que aparece na tela seria a errada sempre que algo o
-    // mudasse de outro lado — um desfazer, um arquivo aberto, o gizmo.
-    let row = |index: usize, key: &'static str, value: f32, limit: Option<f32>| {
-        ph2d_panel_model3d::ParamRow {
+    // ⚠️ O valor E o teto vêm os DOIS do nó (`params_of`). Um painel que guardasse o seu próprio
+    // valor teria duas verdades sobre o mesmo número, e a que aparece na tela seria a errada sempre
+    // que algo o mudasse de outro lado — um desfazer, um arquivo aberto, o gizmo.
+    ph2d_field_ecs::params_of(world, e)
+        .into_iter()
+        .map(|(param, d)| ph2d_panel_model3d::ParamRow {
             entity: e.to_bits(),
-            index,
-            key,
-            value,
-            bound: limit.map_or(ph2d_field::Bound::Soft(view_span), ph2d_field::Bound::Hard),
-        }
-    };
-    match &node.shape {
-        // ⚠️ Uma operação tem **uma** dimensão: o raio da mistura. Ela entra pela mesma porta das
-        // outras (`set_dim`, índice 0), senão haveria dois caminhos de escrita a divergir.
-        NodeShape::Combine(_) => ph2d_field_ecs::radius_of(world, e)
-            .map(|v| {
-                vec![row(
-                    0,
-                    "field.dim.round",
-                    v,
-                    match ph2d_field_ecs::radius_bound(world, e) {
-                        Some(ph2d_field::Bound::Hard(h)) => Some(h),
-                        _ => None,
-                    },
-                )]
-            })
-            .unwrap_or_default(),
-        NodeShape::Leaf(_) => ph2d_field_ecs::dims_of(world, e)
-            .into_iter()
-            .enumerate()
-            .map(|(i, d)| row(i, d.key, d.value, d.limit))
-            .collect(),
-    }
+            param,
+            key: d.key,
+            value: d.value,
+            bound: d
+                .limit
+                .map_or(ph2d_field::Bound::Soft(view_span), ph2d_field::Bound::Hard),
+        })
+        .collect()
 }
-
-#[cfg(test)]
-#[path = "field3d_scene_tests.rs"]
-mod tests;
 
 /// ⭐ **As formas que se podem acrescentar**, na ordem do seletor.
 ///
@@ -606,4 +581,67 @@ fn ops_for(
             .len()
             == 1;
     if siblings { chips(None) } else { Vec::new() }
+}
+
+/// ⚠️ **Esta declaração já caiu uma vez, e a suíte ficou VERDE.** Um corte de bloco levou-a, 30
+/// gates deixaram de correr, e o que apareceu no terminal foi `✓ 52 passaram` — porque um teste que
+/// não é compilado não reprova, ele desaparece. *Contar é a única defesa: uma suíte que encolhe é
+/// uma suíte que perdeu alguma coisa.*
+#[cfg(test)]
+#[path = "field3d_scene_tests.rs"]
+mod tests;
+
+/// ⚠️ **Um arquivo de gates que ninguém declara não existe** — e a suíte fica VERDE.
+///
+/// Aconteceu neste módulo em 20/08: um corte de bloco levou a declaração do módulo de gates da
+/// cena, **30 gates deixaram de correr**, e o terminal disse `✓ 52 passaram`. Um teste que não é
+/// compilado não reprova — ele desaparece.
+///
+/// Este gate lê o diretório e exige que cada `field3d_*_tests.rs` seja **nomeado** por algum
+/// arquivo de código do módulo. Ele não prova que os gates lá dentro são bons; prova que eles
+/// **correm**, que era a metade que faltava.
+#[cfg(test)]
+mod no_orphan_test_files {
+    #[test]
+    fn every_field3d_test_file_is_declared_by_a_module() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        // ⚠️ **Sem os comentários**, e esta linha é a diferença entre um gate e um enfeite. A
+        // primeira versão lia o arquivo inteiro — e passava porque encontrava a declaração **no
+        // doc-comment deste próprio teste**, que a cita como exemplo. Uma prova de mutação apanhou-o:
+        // apagar a declaração de verdade deixava-o verde.
+        //
+        // *Um gate que procura texto tem de procurar CÓDIGO.*
+        let sources: String = std::fs::read_dir(&dir)
+            .expect("o diretório do shell existe")
+            .filter_map(Result::ok)
+            .filter(|e| e.path().extension().is_some_and(|x| x == "rs"))
+            .filter_map(|e| std::fs::read_to_string(e.path()).ok())
+            .flat_map(|src| {
+                src.lines()
+                    .filter(|l| !l.trim_start().starts_with("//"))
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let mut orphans: Vec<String> = Vec::new();
+        for entry in std::fs::read_dir(&dir).expect("lê o diretório").flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if !name.starts_with("field3d_") || !name.ends_with("_tests.rs") {
+                continue;
+            }
+            // Declarado por `#[path = "..."]`, ou por um `mod` do mesmo nome (sem `.rs`).
+            let by_path = sources.contains(&format!("#[path = \"{name}\"]"));
+            let by_mod = sources.contains(&format!("mod {};", name.trim_end_matches(".rs")));
+            if !by_path && !by_mod {
+                orphans.push(name);
+            }
+        }
+        assert!(
+            orphans.is_empty(),
+            "estes arquivos de gates existem e NÃO correm: {orphans:?} — a suíte está verde por \
+             não os compilar"
+        );
+    }
 }

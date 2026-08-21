@@ -148,7 +148,8 @@ fn a_panel_edit_reaches_the_node_and_the_snapshot_in_the_same_frame() {
 
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetParam {
         entity: root.to_bits(),
-        index: 0,
+        // A união tem uma dimensão só: o raio da mistura.
+        param: ph2d_field::Param::Dim(0),
         value: 0.2,
     });
     super::sync_scene_and_birth(&mut sim, None, &[root], 7.5);
@@ -162,8 +163,9 @@ fn a_panel_edit_reaches_the_node_and_the_snapshot_in_the_same_frame() {
     let row = snap
         .rows
         .iter()
-        .find(|r| r.entity == root.to_bits())
-        .expect("a linha da raiz");
+        .find(|r| r.param == ph2d_field::Param::Dim(0))
+        .expect("a linha do filete da união");
+    assert_eq!(row.entity, root.to_bits());
     assert!((row.value - 0.2).abs() < 1e-6, "o retrato do MESMO quadro");
     assert!((snap.last_trace_ms - 7.5).abs() < 1e-6);
 }
@@ -185,13 +187,17 @@ fn a_refused_edit_publishes_the_value_the_document_actually_kept() {
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::SetParam {
         entity: root.to_bits(),
         // A caixa da cena 2 é uma FOLHA: o filete é a última dimensão dela.
-        index: 3,
+        param: ph2d_field::Param::Dim(3),
         value: 5.0,
     });
     super::sync_scene_and_birth(&mut sim, None, &[root], 0.0);
 
     let snap = ph2d_panel_model3d::state::current();
-    let row = snap.rows.iter().find(|r| r.index == 3).expect("o filete");
+    let row = snap
+        .rows
+        .iter()
+        .find(|r| r.param == ph2d_field::Param::Dim(3))
+        .expect("o filete");
     assert!(
         (row.value - before).abs() < 1e-6,
         "o retrato tem de publicar o valor REAL ({before}), e publicou {}",
@@ -221,12 +227,22 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
     assert_eq!(
         keys,
         vec![
+            "field.dim.pos_x",
+            "field.dim.pos_y",
+            "field.dim.pos_z",
             "field.dim.width",
             "field.dim.height",
             "field.dim.depth",
             "field.dim.round",
         ],
-        "uma caixa tem quatro números, e são estes"
+        "uma caixa tem a POSE e quatro dimensões, nesta ordem"
+    );
+    // ⛔ **E NÃO tem `Scale`**: numa folha o tamanho visível são as dimensões, e mostrar as duas
+    // coisas daria dois controles para a mesma coisa — sem forma de saber qual o gesto seguinte
+    // mexe. Ver `ph2d_field::scale_primitive`.
+    assert!(
+        !keys.contains(&"field.dim.scale"),
+        "uma folha não pode ter escala E dimensões: são duas verdades sobre o mesmo tamanho"
     );
 
     // ⚠️ **Sem seleção, o painel diz-lo** — em vez de mostrar uma lista de tudo que ninguém pediu.
@@ -587,12 +603,16 @@ fn a_world_axis_spin_stays_on_the_world_axis_under_a_rotated_parent() {
     }
 }
 
-/// ⭐ **Escalar multiplica**, e a peça cozida sente.
+/// ⭐ **Numa FOLHA, crescer é crescer as DIMENSÕES** — e a pose fica em 1.
+///
+/// ⚠️ As duas dariam a mesma forma, mas só uma delas é o número que o painel mostra: escalar a pose
+/// deixaria uma caixa que mede 2 na tela e diz «1» no painel — duas verdades sobre o mesmo tamanho
+/// visível, sem forma de o artista saber qual o gesto seguinte mexe.
 ///
 /// ⛔ E o fator não-positivo é **recusado**: uma escala nula faria o campo deixar de ser uma
 /// distância, e a invariante do módulo é *um nó que existe está válido*.
 #[test]
-fn scaling_multiplies_and_a_non_positive_factor_is_refused() {
+fn scaling_a_leaf_grows_its_dimensions_and_leaves_the_pose_alone() {
     let mut sim = a_world();
     let world = sim.world_mut();
     let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
@@ -604,25 +624,62 @@ fn scaling_multiplies_and_a_non_positive_factor_is_refused() {
         .next()
         .expect("o primeiro");
 
+    let radius_of = |w: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity| {
+        ph2d_field_ecs::dims_of(w, e)
+            .iter()
+            .find(|d| d.key == "field.dim.radius")
+            .map(|d| d.value)
+            .expect("um cilindro tem raio")
+    };
+    let before = radius_of(world, child);
+
     ph2d_field_ecs::scale_by(world, child, 1.5);
     ph2d_field_ecs::scale_by(world, child, 2.0);
-    let s = world.get::<FieldPose>(child).expect("tem pose").xform.scale;
-    assert!((s - 3.0).abs() < 1e-6, "1,5 × 2 = 3, e deu {s}");
+
+    assert!(
+        (radius_of(world, child) / before - 3.0).abs() < 1e-5,
+        "1,5 x 2 = 3 sobre o RAIO, e deu {}",
+        radius_of(world, child) / before
+    );
+    assert!(
+        (world.get::<FieldPose>(child).expect("pose").xform.scale - 1.0).abs() < 1e-6,
+        "a pose de uma folha não é onde o tamanho mora"
+    );
 
     for bad in [0.0f32, -1.0, f32::NAN, f32::INFINITY] {
         ph2d_field_ecs::scale_by(world, child, bad);
-        let now = world.get::<FieldPose>(child).expect("tem pose").xform.scale;
         assert!(
-            (now - 3.0).abs() < 1e-6,
-            "o fator {bad} passou e deixou {now}"
+            (radius_of(world, child) / before - 3.0).abs() < 1e-5,
+            "o fator {bad} passou"
         );
     }
-
-    // E o cozimento continua a produzir uma peça válida.
     assert!(
         ph2d_field_ecs::cook(world, root)
             .expect("não vazia")
             .is_ok()
+    );
+}
+
+/// ⭐ **Numa OPERAÇÃO é a pose que escala** — ali ela não compete com nada, porque um grupo não tem
+/// dimensões próprias.
+#[test]
+fn scaling_a_group_multiplies_its_pose() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+
+    ph2d_field_ecs::scale_by(world, root, 1.5);
+    ph2d_field_ecs::scale_by(world, root, 2.0);
+    assert!(
+        (world.get::<FieldPose>(root).expect("pose").xform.scale - 3.0).abs() < 1e-5,
+        "1,5 x 2 = 3 na pose do grupo"
+    );
+    // E o painel mostra-a, porque ali ela é a única resposta.
+    assert!(
+        ph2d_field_ecs::params_of(world, root)
+            .iter()
+            .any(|(_, d)| d.key == "field.dim.scale"),
+        "uma operação tem de mostrar a escala — é o único tamanho que ela tem"
     );
 }
 
@@ -674,9 +731,17 @@ fn the_readout_is_the_pose_the_world_took() {
     let Motion::Scale(f) = sized else {
         panic!("escala")
     };
-    let s0 = world.get::<FieldPose>(child).expect("pose").xform.scale;
+    // ⚠️ Numa FOLHA o tamanho mora nas dimensões, não na pose — então é ali que a ficha se confere.
+    let radius = |w: &bevy_ecs::world::World| {
+        ph2d_field_ecs::dims_of(w, child)
+            .iter()
+            .find(|d| d.key == "field.dim.radius")
+            .map(|d| d.value)
+            .expect("um cilindro tem raio")
+    };
+    let s0 = radius(world);
     ph2d_field_ecs::scale_by(world, child, f);
-    let s1 = world.get::<FieldPose>(child).expect("pose").xform.scale;
+    let s1 = radius(world);
     assert!(
         (s1 / s0 - f).abs() < 1e-5,
         "a ficha diz x{f} e o mundo levou x{}",
@@ -1154,4 +1219,65 @@ fn both_doors_put_the_copy_in_the_same_place() {
         a.iter().any(|v| v.abs() > 1e-6),
         "a cópia ficou em cima do original"
     );
+}
+
+/// ⭐ **Digitar uma posição move o objeto** — o par da W10, que deu o tamanho e não a pose.
+///
+/// ⚠️ A posição é **LOCAL**, e é a convenção da casa: o Inspector dela mostra o `Transform`, que é
+/// local, e o readout do gizmo 2D diz por extenso que o delta é local *"porque é isso que o
+/// Inspector mostra"*. Um painel que mostrasse mundo contradiria o número ao lado no dia em que
+/// alguém agrupasse — e o gate prova-o com um pai deslocado.
+#[test]
+fn typing_a_position_moves_the_node_in_its_parents_frame() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    // O grupo sai do zero: se as linhas mostrassem MUNDO, elas passariam a incluir este offset.
+    ph2d_field_ecs::set_param(world, root, ph2d_field::Param::Pos(0), 1.0)
+        .expect("a raiz tem pose");
+
+    let child = world
+        .get::<Children>(root)
+        .expect("tem filhos")
+        .iter()
+        .copied()
+        .next()
+        .expect("o primeiro");
+    ph2d_field_ecs::set_param(world, child, ph2d_field::Param::Pos(2), 0.4).expect("escreve Z");
+
+    let local = world
+        .get::<FieldPose>(child)
+        .expect("pose")
+        .xform
+        .translation;
+    assert!((local[2] - 0.4).abs() < 1e-6, "o número escrito é o local");
+
+    // E o painel mostra o mesmo número — não o de mundo, que aqui é outro.
+    let shown = ph2d_field_ecs::params_of(world, child)
+        .into_iter()
+        .find(|(p, _)| *p == ph2d_field::Param::Pos(0))
+        .map(|(_, d)| d.value)
+        .expect("a linha de X");
+    assert!(
+        (shown - local[0]).abs() < 1e-6,
+        "o painel mostra {shown} e a pose local é {}",
+        local[0]
+    );
+    let world_x = ph2d_field_ecs::world_xform(world, child).translation[0];
+    assert!(
+        (world_x - local[0]).abs() > 0.5,
+        "a fixture tem de ter mundo != local, senão o gate não distingue os dois"
+    );
+}
+
+/// ⛔ **Uma escala não-positiva é recusada pela porta do painel**, e o nó fica como estava.
+#[test]
+fn typing_a_non_positive_scale_is_refused() {
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    for bad in [0.0f32, -2.0, f32::NAN] {
+        assert!(ph2d_field_ecs::set_param(world, root, ph2d_field::Param::Scale, bad).is_err());
+    }
+    assert!((world.get::<FieldPose>(root).expect("pose").xform.scale - 1.0).abs() < 1e-6);
 }

@@ -52,6 +52,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ "Fillet" e não "Round": é a palavra que um modelador usa, e é a promessa do módulo
         // dita pelo nome dela.
         "field.dim.round" => "Fillet",
+        // ⭐ A POSE. ⚠️ "Position" é LOCAL, como o Inspector da casa mostra o `Transform` — um painel
+        // que mostrasse mundo contradiria o número ao lado no dia em que alguém agrupasse.
+        "field.dim.pos_x" => "Position X",
+        "field.dim.pos_y" => "Position Y",
+        "field.dim.pos_z" => "Position Z",
+        // ⚠️ A escala só aparece numa OPERAÇÃO: numa forma, o tamanho são as dimensões dela.
+        "field.dim.scale" => "Scale",
         "panel.model3d.kind.union" => "Union",
         "panel.model3d.kind.intersection" => "Intersect",
         "panel.model3d.kind.difference" => "Subtract",

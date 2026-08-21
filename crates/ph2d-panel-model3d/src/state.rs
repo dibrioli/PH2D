@@ -32,11 +32,13 @@ pub struct ParamRow {
     /// o `populate` consegue cunhar às cegas (ver `MAX_ROWS`). A posição escolhe o controle; a
     /// entidade escolhe o nó. São duas perguntas e têm duas respostas.
     pub entity: u64,
-    /// **Qual dimensão daquele nó** — a posição na lista que o documento devolve.
+    /// **Que número daquele nó** — posição, escala ou uma dimensão da forma.
     ///
-    /// ⚠️ A posição, e não o nome: é o que um controle cunhado às cegas consegue guardar, e é o que
-    /// a porta de escrita recebe. Reordenar a lista do documento reordena os controles.
-    pub index: usize,
+    /// ⚠️ Um índice cru serviria, com o painel a saber que «0..2 é a posição e o resto são
+    /// dimensões». Uma convenção implícita entre duas crates sobrevive até alguém acrescentar uma
+    /// linha no meio — e aí o controle escreve noutro número, em silêncio. Ver
+    /// [`ph2d_field::Param`].
+    pub param: ph2d_field::Param,
     /// A chave i18n do NOME desta dimensão (`field.dim.*`).
     ///
     /// ⚠️ Uma **chave**, nunca um rótulo pronto: HR-15. Quem traduz é o painel.
@@ -106,7 +108,7 @@ pub enum ModelIntent {
     /// Escrever uma dimensão do nó — a **posição** dela na lista do documento, e o valor.
     SetParam {
         entity: u64,
-        index: usize,
+        param: ph2d_field::Param,
         value: f32,
     },
     /// Trocar o verbo do gizmo, pela **posição** no seletor.

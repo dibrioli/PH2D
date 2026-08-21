@@ -10,8 +10,8 @@ use bevy_ecs::hierarchy::Children;
 use bevy_ecs::world::World;
 use ph2d_field::xform::{quat_axis_angle, quat_conj, quat_mul, quat_normalize, quat_rotate};
 use ph2d_field::{
-    Bound, FieldError, NodeShape, Op, Primitive, Xform, characteristic_size, round_limit,
-    set_shape_radius,
+    Bound, Dim, FieldError, NodeShape, Op, Param, Primitive, Xform, characteristic_size,
+    round_limit, set_shape_radius,
 };
 
 use crate::{FieldNode, FieldPose};
@@ -96,6 +96,118 @@ fn subtree_scale(world: &World, root: Entity) -> f32 {
         best
     } else {
         1.0
+    }
+}
+
+/// ⭐ **Todos os números autorados de um nó**, na ordem em que o painel os mostra.
+///
+/// Posição · escala (só onde ela não compete com nada) · dimensões da forma.
+///
+/// ⚠️ **A escala aparece só numa OPERAÇÃO.** Numa folha, o tamanho visível são as dimensões — e
+/// mostrar as duas coisas daria ao artista dois controles para a mesma coisa, sem forma de saber
+/// qual o próximo gesto mexe. Ver [`ph2d_field::scale_primitive`], que é o outro lado da mesma
+/// decisão.
+#[must_use]
+pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
+    let Some(node) = world.get::<FieldNode>(entity) else {
+        return Vec::new();
+    };
+    let pose = world
+        .get::<FieldPose>(entity)
+        .map_or(Xform::IDENTITY, |p| p.xform);
+    let mut out: Vec<(Param, Dim)> = (0..3u8)
+        .map(|k| {
+            (
+                Param::Pos(k),
+                Dim {
+                    key: POS_KEYS[k as usize],
+                    value: pose.translation[k as usize],
+                    // ⚠️ Uma posição não tem parede: ela pode ser qualquer número. Quem escolhe o
+                    // alcance do gesto é a vista (ver `Dim::limit`).
+                    limit: None,
+                },
+            )
+        })
+        .collect();
+    match &node.shape {
+        NodeShape::Combine(_) => {
+            out.push((
+                Param::Scale,
+                Dim {
+                    key: "field.dim.scale",
+                    value: pose.scale,
+                    limit: None,
+                },
+            ));
+            // A única dimensão de uma operação é o raio da mistura, e ela entra pela porta de
+            // sempre — `Dim(0)`, que o `set_param` reencaminha.
+            if let Some(v) = node.shape.radius() {
+                out.push((
+                    Param::Dim(0),
+                    Dim {
+                        key: "field.dim.round",
+                        value: v,
+                        limit: match radius_bound(world, entity) {
+                            Some(Bound::Hard(h)) => Some(h),
+                            _ => None,
+                        },
+                    },
+                ));
+            }
+        }
+        NodeShape::Leaf(p) => out.extend(
+            ph2d_field::dims(p)
+                .into_iter()
+                .enumerate()
+                .map(|(i, d)| (Param::Dim(i as u16), d)),
+        ),
+    }
+    out
+}
+
+/// As chaves i18n dos três eixos da posição.
+const POS_KEYS: [&str; 3] = ["field.dim.pos_x", "field.dim.pos_y", "field.dim.pos_z"];
+
+/// ⭐ **Escreve um número autorado de um nó**, ou recusa — a porta ÚNICA do painel.
+///
+/// # Errors
+/// Ver [`set_dim`] e [`ph2d_field::set_shape_radius`]. [`FieldError::BadRoot`] se a entidade não é
+/// um nó, e [`FieldError::NonPositive`] para uma escala não-positiva.
+pub fn set_param(
+    world: &mut World,
+    entity: Entity,
+    param: Param,
+    value: f32,
+) -> Result<(), FieldError> {
+    if !value.is_finite() {
+        return Err(FieldError::NonPositive {
+            node: entity.to_bits() as u32,
+            what: "param",
+        });
+    }
+    match param {
+        Param::Pos(k) if k < 3 => {
+            let Some(mut pose) = world.get_mut::<FieldPose>(entity) else {
+                return Err(FieldError::BadRoot);
+            };
+            pose.xform.translation[k as usize] = value;
+            Ok(())
+        }
+        Param::Pos(_) => Err(FieldError::BadRoot),
+        Param::Scale => {
+            if value <= 0.0 {
+                return Err(FieldError::NonPositive {
+                    node: entity.to_bits() as u32,
+                    what: "scale",
+                });
+            }
+            let Some(mut pose) = world.get_mut::<FieldPose>(entity) else {
+                return Err(FieldError::BadRoot);
+            };
+            pose.xform.scale = value;
+            Ok(())
+        }
+        Param::Dim(i) => set_dim(world, entity, i as usize, value),
     }
 }
 
@@ -236,6 +348,17 @@ pub fn rotate_world(world: &mut World, entity: Entity, axis: [f32; 3], angle: f3
 /// [ADR-0161 §6]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 pub fn scale_by(world: &mut World, entity: Entity, factor: f32) {
     if !factor.is_finite() || factor <= 0.0 {
+        return;
+    }
+    // ⭐ **Numa FOLHA, crescer é crescer as DIMENSÕES** — e não o fator da pose. As duas dão a mesma
+    // forma, mas só uma delas é o número que o painel mostra: escalar a pose deixaria o artista com
+    // uma caixa que mede 2 na tela e diz «1» no painel. Ver `ph2d_field::scale_primitive`.
+    if let Some(mut node) = world.get_mut::<FieldNode>(entity)
+        && let NodeShape::Leaf(p) = &mut node.shape
+    {
+        if ph2d_field::scale_primitive(p, factor) {
+            ph2d_field::clamp_round(p);
+        }
         return;
     }
     if let Some(mut pose) = world.get_mut::<FieldPose>(entity) {

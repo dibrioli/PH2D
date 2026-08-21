@@ -30,7 +30,7 @@ fn scene_with_one_union() {
         acts: Vec::new(),
         rows: vec![ParamRow {
             entity: THE_UNION,
-            index: 0,
+            param: ph2d_field::Param::Dim(0),
             key: "field.dim.round",
             value: 0.05,
             // Faixa de 0,4 — o número que o gate abaixo usa para distinguir a escala da linha de
@@ -72,7 +72,7 @@ fn dragging_a_radius_slider_reaches_the_document_intent() {
         intents,
         vec![ModelIntent::SetParam {
             entity: THE_UNION,
-            index: 0,
+            param: ph2d_field::Param::Dim(0),
             value: 0.2
         }],
         "meio curso de uma faixa de 0,4 é 0,2 (0,5 = a escala da LINHA não foi aplicada), e a \
@@ -192,7 +192,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
     let nodes: Vec<ParamRow> = (0..4)
         .map(|n| ParamRow {
             entity: 100,
-            index: n as usize,
+            param: ph2d_field::Param::Dim(n as u16),
             key: "field.dim.round",
             value: 0.05,
             bound: Bound::Hard(0.22),

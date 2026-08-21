@@ -32,7 +32,7 @@ pub mod profile;
 pub mod radius;
 pub mod xform;
 
-pub use dims::{Dim, clamp_round, dims, set_dim};
+pub use dims::{Dim, Param, clamp_round, dims, scale_primitive, set_dim};
 pub use profile::{FillRule, Profile, ProfileError};
 pub use radius::{Bound, characteristic_size, round_limit, set_shape_radius};
 pub use xform::Xform;

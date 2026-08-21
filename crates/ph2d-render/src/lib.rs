@@ -95,7 +95,9 @@ pub use cooked_texture::{CookedTextureError, CookedTextureStore};
 pub use fx_stack::{FxOpGpu, FxStackPass, stack_reach};
 pub use fx_stack_res::make_output_texture;
 pub use game_rt::GameRt;
-pub use image_filter::{ImageFilterMode, create_sprite_sampler, wgpu_filter};
+pub use image_filter::{
+    ImageFilterMode, create_sprite_sampler, filter_tag_magnifies_by_point, wgpu_filter,
+};
 pub use impasto_light::{
     IMPASTO_MAX_LIGHTS, ImpastoLamp, ImpastoLightError, ImpastoLightInput, ImpastoLightPass,
 };

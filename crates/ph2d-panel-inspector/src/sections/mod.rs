@@ -79,6 +79,9 @@ pub(crate) use physics::paint_physics_section;
 pub use physics_join_rows::rig_button_label;
 pub(crate) use player::paint_player_section;
 pub(crate) use render_source::paint_render_source_section;
+/// ⚠️ Público para o gate `the_filter_segmented_tells_the_truth_about_what_renders` (shell), que é
+/// a única crate que vê o painel e o `ph2d-render` ao mesmo tempo.
+pub use sampling::FILTER_LABELS;
 pub(crate) use sampling::paint_sampling_section;
 pub(crate) use sprite_sheet::paint_sprite_sheet_section;
 pub(crate) use transform::paint_transform_section;

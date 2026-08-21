@@ -55,6 +55,24 @@ pub fn create_sprite_sampler(
     })
 }
 
+/// **A lei de ampliação de uma tag de `FilterMode`, PURA — `true` = ponto (pixel duro).**
+///
+/// `1 Nearest · 3 NearestMipmap · 5 NearestAniso` ampliam por ponto; todo o resto (incluindo
+/// `0 Inherit`, cujo fallback é linear) interpola.
+///
+/// # Por que isto é uma função e não três linhas dentro do `sampler_from_tags`
+///
+/// ⚠️ Enquanto a lei viveu lá dentro, **medi-la exigia um `wgpu::Device`** — e por isso ninguém a
+/// media. O painel do Inspector acendia «Linear» para as tags 3 e 5 (auditoria de 2026-08-21,
+/// `docs/Sprite_projeto/20` §2.2): ele dizia o contrário do que o ecrã desenhava, e nenhum gate
+/// podia notar, porque o único sítio que sabia a resposta precisava de GPU para responder.
+///
+/// Agora a lei é `const`, mora num sítio, o `sampler_from_tags` consome-a, e o gate
+/// `the_filter_segmented_tells_the_truth_about_what_renders` (shell) mede-a **sem adapter nenhum**.
+pub const fn filter_tag_magnifies_by_point(filter_tag: u8) -> bool {
+    matches!(filter_tag, 1 | 3 | 5)
+}
+
 /// Build a sprite sampler from a packed `RenderInstance::sampling` key
 /// (Sprite Inspector v2 W3.T3.11): `filter_tag (low byte) | repeat_tag
 /// << 8`, where the tags are the `ph2d_ecs::FilterMode`/`RepeatMode`
@@ -62,11 +80,10 @@ pub fn create_sprite_sampler(
 /// trilinear / anisotropic minification — both the atlas and the
 /// individual store carry a full mip chain since Phase 2 (2026-06-18).
 pub fn sampler_from_tags(device: &wgpu::Device, filter_tag: u8, repeat_tag: u8) -> wgpu::Sampler {
-    // FilterMode: 1 Nearest · 2 Linear · 3 NearestMipmap · 4 LinearMipmap
-    // · 5 NearestAniso · 6 LinearAniso (0 Inherit → Linear fallback).
-    let filter = match filter_tag {
-        1 | 3 | 5 => wgpu::FilterMode::Nearest,
-        _ => wgpu::FilterMode::Linear,
+    let filter = if filter_tag_magnifies_by_point(filter_tag) {
+        wgpu::FilterMode::Nearest
+    } else {
+        wgpu::FilterMode::Linear
     };
     // Trilinear (Linear mip blend) for every mipmapped/aniso variant now
     // that the sprite textures carry a real mip chain; plain Nearest(1)/

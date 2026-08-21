@@ -37,6 +37,7 @@ mod sync_sprite_value;
 
 /// The §11 Bake button's label — exported so a gate can hold the claim that
 /// the button shows the range it would cover.
+pub use sections::FILTER_LABELS;
 pub use sections::bake_label;
 pub use sections::paste_label;
 pub use sections::rig_button_label;

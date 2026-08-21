@@ -1,14 +1,16 @@
 use super::*;
 
 // ── Inspector Transform editor (M14.A) ──────────────────────────────────────
-// Live binding for `ph2d_ecs::Transform` on the selected entity. The
-// section paints when `HeroScreen::inspector_transform` is `Some` and
-// commits via `pending_transform_edit` → `EditorCommandQueue` at the
-// shell boundary (first real consumer of the editor command pipeline).
+// Live binding for `ph2d_ecs::Transform` on the selected entity. A seção pinta quando o snapshot
+// `current_inspector_transform()` é `Some` e comita pelo barramento de ações
+// (`EditorAction::InspectorTransformEdit`).
+//
+// ⚠️ Este bloco citava `HeroScreen::inspector_transform` e `pending_transform_edit` — **os dois
+// campos deixaram de existir** na migração do ADR-0029 Fase C.1, e o texto ficou a descrever uma
+// arquitetura morta (auditoria de 2026-08-21, `docs/Sprite_projeto/20` §2.3).
+//
 // Z is intentionally hidden — `Transform` is 2D by design (SKILL §3,
 // ADR-0025); X/Y NumberInputs only, with R/G axis-color labels.
-/// Collapsible section header for the Transform editor.
-pub const INSP_TRANSFORM_SECTION: NodeId = hash_node_id("insp_transform_section");
 /// Position X NumberInput (meters, R-tinted label).
 pub const INSP_TRANSFORM_POS_X: NodeId = hash_node_id("insp_transform_pos_x");
 /// Position Y NumberInput (meters, G-tinted label).
@@ -157,42 +159,6 @@ pub const INSP_ORDER_SP_CUSTOM: NodeId = hash_node_id("insp_order_sp_custom");
 /// Y-Sort Custom Axis NumberInputs (shown only when Sort Point = Custom).
 pub const INSP_ORDER_AXIS_X: NodeId = hash_node_id("insp_order_axis_x");
 pub const INSP_ORDER_AXIS_Y: NodeId = hash_node_id("insp_order_axis_y");
-
-/// W3 §9 Sampling — section accent color dot.
-pub const INSP_LIVE_SAMPLING_COLOR: NodeId = hash_node_id("insp_live_sampling_color");
-/// Texture Filter segmented items (Inherit / Nearest / Linear → tags 0/1/2).
-pub const INSP_SAMPLE_FILTER: [NodeId; 3] = [
-    hash_node_id("insp_sample_filter_inherit"),
-    hash_node_id("insp_sample_filter_nearest"),
-    hash_node_id("insp_sample_filter_linear"),
-];
-/// Texture Repeat segmented items (Inherit / Disabled / Enabled / Mirror
-/// → tags 0/1/2/3).
-pub const INSP_SAMPLE_REPEAT: [NodeId; 4] = [
-    hash_node_id("insp_sample_repeat_inherit"),
-    hash_node_id("insp_sample_repeat_disabled"),
-    hash_node_id("insp_sample_repeat_enabled"),
-    hash_node_id("insp_sample_repeat_mirror"),
-];
-/// UV tiling/scroll NumberInputs (W3 UvTransform): scale X/Y, offset X/Y.
-pub const INSP_SAMPLE_UV_SCALE_X: NodeId = hash_node_id("insp_sample_uv_scale_x");
-pub const INSP_SAMPLE_UV_SCALE_Y: NodeId = hash_node_id("insp_sample_uv_scale_y");
-pub const INSP_SAMPLE_UV_OFFSET_X: NodeId = hash_node_id("insp_sample_uv_offset_x");
-pub const INSP_SAMPLE_UV_OFFSET_Y: NodeId = hash_node_id("insp_sample_uv_offset_y");
-
-/// §10 Material & Blend — section accent color dot.
-pub const INSP_LIVE_BLEND_COLOR: NodeId = hash_node_id("insp_live_blend_color");
-/// §10 Blend Mode segmented items, indexed by `BlendMode::tag()` (0..5):
-/// Mix / Add / Subtract / Multiply / Screen / Premult. Tag 0 (Mix) =
-/// detach the optional `BlendMode` component (default).
-pub const INSP_SAMPLE_BLEND: [NodeId; 6] = [
-    hash_node_id("insp_sample_blend_mix"),
-    hash_node_id("insp_sample_blend_add"),
-    hash_node_id("insp_sample_blend_subtract"),
-    hash_node_id("insp_sample_blend_multiply"),
-    hash_node_id("insp_sample_blend_screen"),
-    hash_node_id("insp_sample_blend_premult"),
-];
 
 // ─── §11 Physics Body (ADR-0131 D8) ───────────────────────────────────
 /// §11 Physics Body — collapsible section header.

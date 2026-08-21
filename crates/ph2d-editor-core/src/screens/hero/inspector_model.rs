@@ -12,21 +12,34 @@ use super::*;
 /// (meio-float do `GameRt`), não um conforto.
 pub const EMISSIVE_MAX_UI: f32 = 64.0; // LITERAL-PX-OK: teto de INTENSIDADE de emissão (cópia de `ph2d_ecs::EMISSIVE_MAX`), não uma medida de desenho
 
-/// Snapshot of the selected sprite's editor-facing fields. Host
-/// rebuilds this each frame from `gizmo_selection` + SimWorld;
-/// inspector renders read-only display + a Reimport button.
+/// Snapshot of the selected sprite's editor-facing fields. Host rebuilds this each frame from
+/// `gizmo_selection` + SimWorld.
+///
+/// ⚠️ **Este doc dizia «inspector renders read-only display + a Reimport button»** e envelheceu
+/// mal: hoje ~20 destes campos são EDITÁVEIS, cada um com despacho vivo (auditoria de 2026-08-21,
+/// `docs/Sprite_projeto/20` §2.3). *Um comentário velho mente com a autoridade de quem esteve
+/// certo uma vez.*
 #[derive(Clone, Debug, PartialEq)]
 pub struct InspectorSpriteInfo {
     /// Entity bits (= same shape `gizmo_selection` carries).
     pub entity_bits: u64,
-    /// Display label — entity's `Name` component, or
-    /// `Entity_{hex_bits}` when nameless.
+    /// Display label — entity's `Name` component, or `Entity_{hex_bits}` when nameless.
+    ///
+    /// ⚠️ **NINGUÉM LÊ ISTO.** O campo de nome do painel é servido pelo `InspectorNameInfo`
+    /// (`sync.rs`), e esta cópia é um `clone` de `String` por quadro que nada pinta — medido na
+    /// auditoria de 2026-08-21 (`docs/Sprite_projeto/20` §8). Fica por enquanto porque removê-lo
+    /// mexe nos fixtures de quatro suítes; o corte vive na frente 5 do plano.
     pub name: String,
     /// World-space size in meters at the current Transform scale.
     pub world_size: [f32; 2],
-    /// Which storage strategy backs the sprite (Atlas / Hand-packed
-    /// / Individual). Surfaced as a read-only display for now;
-    /// switching strategies is M14.5 follow-up.
+    /// Which storage strategy backs the sprite (Atlas / Hand-packed / Individual).
+    ///
+    /// ⚠️ **Editável desde 2026-08-19/20** — segmentado de 3 vias em `sections/render_source.rs`,
+    /// despachado como `InspectorSpriteSourceChange`, executado em
+    /// `shells/desktop/src/render_loop/inspector_strategy.rs` (Atlas↔Individual convertem pixels a
+    /// sério e devolvem a célula de atlas). O doc anterior dizia «read-only display for now;
+    /// switching strategies is M14.5 follow-up», e o «M14.5» apontava para um plano **arquivado
+    /// como completo**. ⛔ Hand-packed continua a ser um ESTADO a que se chega, nunca um botão.
     pub source_kind: InspectorSpriteSource,
     /// **A precisão REAL desta imagem** — `None` quando não há uma a declarar (uma textura cozida
     /// é BC/ASTC/ETC2 e depende do tier resolvido).
@@ -57,7 +70,9 @@ pub struct InspectorSpriteInfo {
     /// resolves to an `AssetId` we can re-decode at the new px/m.
     pub can_reimport: bool,
     /// Logical horizontal flip (mirrors sampled U; survives reparenting).
-    /// Editable via the Render Source / Sprite Sheet Flip toggles (W2).
+    ///
+    /// ⚠️ Editável **só na Sprite Sheet** (`sections/sprite_sheet.rs`) — o doc dizia «Render Source
+    /// / Sprite Sheet» e a Render Source não regista id de flip nenhum.
     pub flip_x: bool,
     /// Logical vertical flip (mirrors sampled V).
     pub flip_y: bool,
@@ -498,10 +513,13 @@ impl InspectorSpriteSource {
 /// fields as raw arrays so the editor crate stays loose-coupled to
 /// glam types and the snapshot stays cheap to clone.
 ///
-/// Lifecycle: host writes this when the selection changes (or a
-/// gizmo-driven external mutation lands); inspector seeds its
-/// NumberInput buffers from it; commits flow back through
-/// [`HeroScreen::pending_transform_edit`].
+/// Lifecycle: host writes this when the selection changes (or a gizmo-driven external mutation
+/// lands) via `set_current_inspector_transform`; inspector seeds its NumberInput buffers from it;
+/// commits voltam pelo **barramento de ações** (`EditorAction::InspectorTransformEdit`).
+///
+/// ⚠️ O doc anterior apontava para `HeroScreen::pending_transform_edit`, **campo que já não
+/// existe** — era um link rustdoc quebrado a descrever a arquitetura anterior à migração do
+/// ADR-0029 Fase C.1.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct InspectorTransformInfo {
     /// Entity bits — same shape `gizmo_selection` carries.

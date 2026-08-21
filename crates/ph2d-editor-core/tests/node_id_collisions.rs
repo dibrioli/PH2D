@@ -68,7 +68,11 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("INSP_PANEL", ids::INSP_PANEL),
     ("INSP_DRAG_HANDLE", ids::INSP_DRAG_HANDLE),
     ("INSP_RESIZE_HANDLE", ids::INSP_RESIZE_HANDLE),
-    ("INSP_TRANSFORM_SECTION", ids::INSP_TRANSFORM_SECTION),
+    // ⛔ `INSP_TRANSFORM_SECTION` saiu daqui em 2026-08-21 porque foi APAGADO: ele era um id
+    // **órfão** — nunca pintado, nunca registado, nunca despachado — e a sua única referência em
+    // todo o workspace era esta linha. *Um gate de unicidade de hash fica verde para sempre sobre
+    // um cadáver, e foi o que o manteve vivo.* O cabeçalho real da secção é
+    // `INSP_LIVE_TRANSFORM_SECTION` (auditoria `docs/Sprite_projeto/20` §8).
     ("INSP_TRANSFORM_POS_X", ids::INSP_TRANSFORM_POS_X),
     ("INSP_TRANSFORM_POS_Y", ids::INSP_TRANSFORM_POS_Y),
     ("INSP_TRANSFORM_ROT", ids::INSP_TRANSFORM_ROT),

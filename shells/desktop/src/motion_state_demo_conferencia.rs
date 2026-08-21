@@ -501,5 +501,5 @@ const SUB_ONE: f32 = 12.86;
 mod utilidade;
 pub(super) use utilidade::{
     color_family, cursor, deform, drizzle, field_family, force_family, fx_family, goal_family,
-    join, rank_family, sortkey, taper, transform_family,
+    join, rank_family, sim_family, sortkey, taper, transform_family,
 };

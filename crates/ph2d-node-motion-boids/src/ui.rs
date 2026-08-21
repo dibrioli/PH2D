@@ -304,4 +304,32 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Toggle,
     },
+    // ── Desviar de obstáculos (doc 89 folha 03) ──────────────────────────────
+    // ⚠️ `0` DESLIGA a família inteira, e o rótulo diz isso: um raio e uma antecipação
+    // sem peso não fazem nada, e três knobs vivos sobre uma feature desligada são três
+    // knobs mortos.
+    ParamUiHint {
+        param: "avoid",
+        label: "Avoid (0 = off)",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "avoid_radius",
+        label: "Avoid Radius",
+        min: 0.0,
+        max: 8.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "lookahead",
+        label: "Look Ahead",
+        min: 0.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];

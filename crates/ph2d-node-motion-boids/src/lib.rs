@@ -92,6 +92,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "state",
             ty: INST_VEC2,
         },
+        // **OS OBSTÁCULOS** — pontos a evitar (modo ligado pelo `avoid`). APENDADO: os
+        // três índices anteriores não se mexem. Ver [`AVOID`].
+        PortSpec {
+            name: "obstacle",
+            ty: INST_VEC2,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -162,6 +168,21 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "speed_floor",
             default: MIN_SPEED_FRAC,
         },
+        // **DESVIAR DE OBSTÁCULOS** (doc 89 folha 03 — o POP Steer Avoid Obstacle).
+        // APENDADOS; `avoid = 0` desliga os três e o bando é o de sempre, ao bit.
+        // Ver [`AVOID`].
+        ParamSpec {
+            name: "avoid",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "avoid_radius",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "lookahead",
+            default: 0.0,
+        },
         ParamSpec {
             name: "spread",
             default: 0.0,
@@ -171,6 +192,73 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 };
 
 /// Resolved simulation weights (arithmetic-ready).
+/// **O PESO DO DESVIO** (doc 89 folha 03 — o *Obstacle Avoidance* do Reynolds, o POP
+/// Steer Avoid Obstacle do Houdini).
+///
+/// `0` desliga — e desliga os três params da família, porque um raio e uma antecipação
+/// sem peso não fazem nada. Todo bando autorado antes disto lê zero e voa como voava.
+///
+/// ⚠️ **A célula dizia *"a ausência de qualquer geometria de obstáculo alcançável de
+/// dentro"*, e isso deixou de ser verdade nesta janela:** a porta-template — um segundo
+/// stream lido como geometria — é o padrão que o `field.shape` estreou e o
+/// `force.attractor` repetiu. O obstáculo é a lista de pontos da porta `obstacle`.
+const AVOID: &str = "avoid";
+/// A que distância um obstáculo começa a incomodar.
+const AVOID_RADIUS: &str = "avoid_radius";
+
+/// **A ANTECIPAÇÃO, em segundos** — o *lookahead* do Reynolds.
+///
+/// O agente não pergunta *"há pedra onde estou?"* e sim *"há pedra onde vou estar?"*: a
+/// sonda é `p + v · lookahead`. `0` sonda a própria posição, que é o comportamento de um
+/// campo de repulsão comum — útil, e é o default porque é o mais previsível.
+///
+/// ⚠️ **É por isto que o desvio precisa da VELOCIDADE, e é o que o separa de uma
+/// simples repulsão:** um agente rápido tem de virar mais cedo, e o `lookahead` faz o
+/// raio efectivo crescer com a velocidade **dele**, sem um segundo knob.
+const LOOKAHEAD: &str = "lookahead";
+
+/// A ACELERAÇÃO DE DESVIO de um agente — para longe do obstáculo mais próximo da sonda.
+///
+/// `None` quando não há obstáculo dentro do raio (ou não há obstáculos de todo): quem
+/// chama não soma nada, nem sequer um zero.
+///
+/// ⚠️ **A força cresce para dentro, linearmente** (`1 − d/raio`), e não com o inverso do
+/// quadrado: um inverso do quadrado é infinito no contacto, e um agente que atravessa o
+/// centro de uma pedra receberia um impulso arbitrário. A rampa linear é a mesma forma
+/// que a `separation` deste nó já usa — uma lei, dois sítios.
+///
+/// ⚠️ **Empate de distância desempata pelo ÍNDICE MAIS BAIXO** (a ordem total dos
+/// irmãos), e o obstáculo EXACTAMENTE sob a sonda não produz direcção nenhuma — `d = 0`
+/// não tem para onde empurrar, então a resposta é zero em vez de um `NaN`.
+fn avoid_accel(
+    pos: [f32; 2],
+    vel: [f32; 2],
+    obstacles: &[[f32; 2]],
+    radius: f32,
+    lookahead: f32,
+) -> Option<[f32; 2]> {
+    if obstacles.is_empty() || radius <= 0.0 {
+        return None;
+    }
+    let probe = [pos[0] + vel[0] * lookahead, pos[1] + vel[1] * lookahead];
+    let mut best = [0.0f32; 2];
+    let mut best_d2 = f32::INFINITY;
+    for q in obstacles {
+        let (dx, dy) = (probe[0] - q[0], probe[1] - q[1]);
+        let d2 = dx * dx + dy * dy;
+        if d2 < best_d2 {
+            best_d2 = d2;
+            best = [dx, dy];
+        }
+    }
+    let d = best_d2.sqrt();
+    if d >= radius || d <= 0.0 {
+        return None;
+    }
+    let k = 1.0 - d / radius;
+    Some([best[0] / d * k, best[1] / d * k])
+}
+
 struct Params {
     count: usize,
     seed: u32,
@@ -205,6 +293,9 @@ struct Params {
     alignment: f32,
     cohesion: f32,
     seek: f32,
+    avoid: f32,
+    avoid_radius: f32,
+    lookahead: f32,
     max_speed: f32,
     /// **O orçamento de DIREÇÃO** — o segundo clamp de Reynolds (*Steering
     /// Behaviors For Autonomous Characters*, GDC 1999). `max_speed` limita quão
@@ -381,11 +472,16 @@ fn cos_half_fov(deg: f32) -> f32 {
     libm::cosf(deg.max(0.0).to_radians() * 0.5)
 }
 
+// Os oito são o estado do bando mais o mundo à volta dele; uma struct seria um
+// segundo modelo dos params que o `NodeManifest` já lista (o precedente do
+// `field.remap::remap`).
+#[allow(clippy::too_many_arguments)]
 fn step(
     pos: &[[f32; 2]],
     vel: &[[f32; 2]],
     ext_accel: &[[f32; 2]],
     inv_mass: &[f32],
+    obstacles: &[[f32; 2]],
     target: [f32; 2],
     dt: f32,
     p: &Params,
@@ -516,6 +612,14 @@ fn step(
         // Seek/home: a linear spring toward the target — herds AND bounds.
         accel[0] += (target[0] - pi[0]) * p.seek;
         accel[1] += (target[1] - pi[1]) * p.seek;
+        // Desvio de obstáculo: MÚSCULO do agente, então entra ANTES do tecto de
+        // steering — virar para não bater é exactamente o que o `max_force` orçamenta.
+        if p.avoid > 0.0
+            && let Some(a) = avoid_accel(pi, vi, obstacles, p.avoid_radius, p.lookahead)
+        {
+            accel[0] += a[0] * p.avoid;
+            accel[1] += a[1] * p.avoid;
+        }
         // Reynolds' STEERING BUDGET (GDC 1999) — truncate what the agent's own
         // muscle may ask for, before anything the WORLD does to it. `0` is off.
         //
@@ -566,7 +670,13 @@ fn step(
 
 /// The whole node as a pure function: seed on the first tick / a count change,
 /// else step. Emits `P` + the `vel`/`sim_t` state.
-fn simulate(target: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stream {
+fn simulate(
+    target: [f32; 2],
+    state: &Stream,
+    obstacles: &[[f32; 2]],
+    playhead: f32,
+    p: &Params,
+) -> Stream {
     let s_pos = vec2_col(state, "P");
     let s_vel = vec2_col(state, "vel");
 
@@ -578,7 +688,7 @@ fn simulate(target: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
         let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
         let accel = accel_col(state, p.count);
         let w = inv_mass_col(state, p.count);
-        step(&s_pos, &s_vel, &accel, &w, target, dt, p)
+        step(&s_pos, &s_vel, &accel, &w, obstacles, target, dt, p)
     } else {
         seed(target, p)
     };
@@ -609,6 +719,9 @@ impl NodeOp for MotionBoids {
             alignment: ctx.param("alignment").max(0.0),
             cohesion: ctx.param("cohesion").max(0.0),
             seek: ctx.param("seek").max(0.0),
+            avoid: ctx.param(AVOID).max(0.0),
+            avoid_radius: ctx.param(AVOID_RADIUS).max(0.0),
+            lookahead: ctx.param(LOOKAHEAD).max(0.0),
             max_speed: ctx.param("max_speed").max(0.01),
             max_force: ctx.param("max_force").max(0.0),
             // O cosseno é computado UMA vez por cook, nunca por vizinho — o laço
@@ -623,8 +736,16 @@ impl NodeOp for MotionBoids {
             value_head(&scalar_col(ctx.input(0), VALUE_COL)),
             value_head(&scalar_col(ctx.input(1), VALUE_COL)),
         ];
+        // ⚠️ A porta dos obstáculos é lida ANTES do estado e clonada: dois `ctx.input`
+        // não podem coexistir emprestados, e ela só é tocada quando o desvio está
+        // ligado (com `avoid = 0` a lista fica vazia e a lei nem corre).
+        let obstacles: Vec<[f32; 2]> = if p.avoid > 0.0 {
+            vec2_col(ctx.input(3), "P")
+        } else {
+            Vec::new()
+        };
         let state = ctx.input(2);
-        let out = simulate(target, state, playhead, &p);
+        let out = simulate(target, state, &obstacles, playhead, &p);
         ctx.emit(out);
     }
 }

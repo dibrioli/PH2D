@@ -46,7 +46,7 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que as JANELAS de 2026-08-19/21 fecharam (a conferência foi de **P1 59 → 10**)
+### §1.1 — O que as JANELAS de 2026-08-19/21 fecharam (a conferência foi de **P1 59 → 8**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: as janelas fecharam
 **trinta e duas** e ABRIRAM **duas**, ambas por medição no meio de uma wave. Uma conferência que só
@@ -72,6 +72,7 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | **folha 02 (`force.*`): TRÊS células** — `scale_x`/`scale_y` do `drag` · `curve` do `vortex` · a coluna `density` do `buoyancy`. ⚠️ **As três tinham veredito «NÃO»/«PARCIAL», e as três estavam certas *sobre a COMPOSIÇÃO*:** o arrasto anisotrópico é impossível de compor e trivial DENTRO do nó que escreve o `accel`; a densidade por-instância tinha escritor no catálogo o tempo todo (o canal **Custom** do `motion.drive`). A folha desce de **5 para 2 P1**, e as duas que sobram são de outra espécie (o alvo = outro STREAM) | `=71` |
 | **V** | ✅ **folha 11 (`fx.*`) FECHOU: cinco células, três nós, DUAS arquiteturas** — `softness` do `drop_shadow` (disco de Vogel, 16 taps, densidade preservada por raízes) · `stretch`+`angle`+`clamp` do `glow` (uniformes de PASSE: base 2×2 na tenda + teto do bright-pass) · `ParamUnit`/`ParamHardMax` nos três (a família tinha **ZERO** dos quatro canais). ⚠️ **A cerca C1 foi REESCRITA e não removida**: o borrão raster continua fora (o passe é aditivo, *um halo escuro não pode ser somado*); o que caiu foi a frase sobre a *pilha de fantasmas*, que era sobre ENCADEAR. ⚠️ **Uma objecção da célula estava 4× desatualizada** (`MAX_INSTANCES` é `262_144`, não `65_536`) | `=70` |
 | **V** | ✅ **folha 05 (transform) FECHOU: cinco células, cinco nós** — `space` (World/Local) do `move` · `use_falloff_y` do `scale` **+** `mask_channel` do `falloff` (uma célula, dois nós) · `flip_rot` do `mirror` · `reindex` do `mirror` **e** do `kaleidoscope` · `carry_rotation` do `orbit`. ⚠️ **As cinco eram a MESMA pergunta em cinco lugares**: o nó sabe o que cada ELEMENTO é (orientação, posição na lista, máscara) e respondia como se a lista fosse um bloco. Os 3 P2 que sobram não são dessa família | `=69` |
+| **V** | **folha 03 (simulação): DUAS das três** — o `break_above` do `motion.pin_constraint` (o pin que RASGA) e o desvio de obstáculo do `motion.boids` (porta `obstacle` + `avoid`/`avoid_radius`/`lookahead`). ⚠️ **As duas objecções da folha caíram por razões diferentes:** a do pin era verdadeira do SOLVER e falsa do STREAM (a carga já viaja como `accel`); a do boids era verdadeira até esta janela, e o que a derrubou foi a porta-template que o `field.shape` estreou. Sobra **1**: a forma arbitrária do `motion.soft_body`, que é de outro tamanho — o `shape_goals_weighted` é livre de topologia, mas o `cluster_goals_weighted` e a pressão precisam da grelha `rows×cols` | `=75` |
 | **V** | ✅ **folha 02 (`force.*`) FECHOU: as duas células que sobravam, e as duas eram do `force.attractor`** — `Target = Point/Stream` (a porta `target`: cada peça puxada pelo ponto MAIS PRÓXIMO daquele stream) e `Predict` (o tecto em segundos: `t = min(d/velocidade própria, lead)`, o intercepto **POR partícula**). ⚠️ **A segunda só existia por causa da primeira:** antecipar precisa da VELOCIDADE do alvo, e um par de params não tem velocidade. ⚠️ **`Stream` sem fio não faz força nenhuma**, de propósito — cair nos params ali seria o knob morto que o Enio acabara de reportar noutro nó | `=74` |
 | **V** | ✅ **folha 08 (stream & utilidade) FECHOU: as duas células que sobravam, de espécies diferentes** — o `reindex` do `motion.cull` (**defeito**: as colunas de identidade descreviam a lista de ANTES, e o degradê parava a meio) e o **`field.shape`**, nó NOVO (**ausência**: nem o `motion.falloff` nem nenhum `field.*` aceitava geometria como fonte de máscara — o gap era dos dois lados da porta). ⚠️ O `reindex` escreve **as DUAS** colunas, incluindo em stream que não as trazia: meia cura faz a rampa alcançar *metade, duas vezes* | `=73` |
 | **V** | ✅ **folha 10 (`field.*`) FECHOU: os 2 P1 estruturais** — `key = Attribute` + porta `attr` no `field.index_range` (o **posto** sem reordenar o stream) e `curve_offset` no `field.remap` (deslocar a curva, com wrap). ⚠️ **Uma medição ENCOLHEU um item:** o *Auto Range* citado ao lado do rank já era exprimível (`value.attribute → value.normalize → motion.drive(Falloff)`, device-resident), então só o posto era gap. ⚠️ E a guarda `offset == 0 ⇒ devolve t` do deslocamento é **load-bearing**: `x − floor(x)` leva `1.0` a `0.0`, e `t = 1` é o que toda peça a máscara cheia entrega | `=73` |
@@ -226,7 +227,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As QUARENTA E NOVE LEIS que esta linha pagou para aprender
+## §4 — As CINQUENTA E UMA LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -561,6 +562,20 @@ são estilo.
     de duas linhas. *Antes de abrir uma wave, olhe se a célula ao lado é a metade que
     falta.*
 
+50. ⚠️ **Uma objecção de célula pode ser verdadeira de um SÍTIO e falsa de outro.** A do
+    `motion.pin_constraint` dizia *"nenhum solver publica a força sentida no pin"* — e é
+    verdade **do solver**. Mas a carga já viaja no stream antes dele: as `force.*`
+    acumulam em `accel` e o integrador consome-a, então um pin posto **depois** das
+    forças e dentro do laço lê exactamente quanta força tenta movê-lo. *Antes de aceitar
+    um «não há de onde tirar», pergunte de onde o VIZINHO a jusante tira.*
+51. ⚠️ **Uma objecção pode CADUCAR por causa de uma wave anterior, e ninguém a
+    reconfere.** A do `motion.boids` dizia *"a ausência de qualquer geometria de
+    obstáculo alcançável de dentro"*, e era verdade — até a porta-template (um segundo
+    stream lido como geometria) ser estreada pelo `field.shape` e repetida pelo
+    `force.attractor`, duas waves antes. §0 outra vez: *quem move o número que tornava
+    algo inalcançável tem de reconferir a nota* — e aqui quem o moveu fui eu, três dias
+    antes, sem ligar as duas coisas.
+
 
 ---
 
@@ -609,6 +624,16 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `=75` — duas das três da folha 03 (o pin que rasga, o bando que desvia)
+
+```
+\
+  env PH2D_GPU_COOK_DEMO=75 cargo run -p ph2d-host-desktop --release
+```
+
+Duas linhas, rotuladas no canvas. ⚠️ **SÓ com o PLAY** — as duas são simulação. As
+pedras e os pinos são desenhados de propósito.
 
 ### `=74` — a folha 02 inteira (o alvo do atrator, e a mira)
 

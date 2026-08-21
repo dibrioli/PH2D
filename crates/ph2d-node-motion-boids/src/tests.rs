@@ -16,6 +16,12 @@ fn params(count: usize) -> Params {
         alignment: 0.0,
         cohesion: 0.0,
         seek: 0.0,
+        // O desvio de obstáculo DESLIGADO, declarado pela mesma razão que os
+        // vizinhos abaixo: `0` é *sem desvio*, e escrevê-lo é o que impede estes
+        // testes de mudarem de sentido em silêncio se o default se mover.
+        avoid: 0.0,
+        avoid_radius: 1.0,
+        lookahead: 0.0,
         max_speed: 4.0,
         // A fixture DECLARA o neutro em vez de o herdar: o `0` é *sem teto de
         // steering*, e escrevê-lo aqui é o que impede estes testes de mudarem de
@@ -83,7 +89,7 @@ fn run(target: [f32; 2], p: &Params, ticks: usize, dt: f32) -> Stream {
     let mut state = Stream::new(0); // Empty → tick 0 seeds
     let mut last = state.clone();
     for k in 0..ticks {
-        last = simulate(target, &state, k as f32 * dt, p);
+        last = simulate(target, &state, &[], k as f32 * dt, p);
         state = last.clone();
     }
     last
@@ -291,10 +297,10 @@ fn a_narrow_cone_ignores_the_neighbour_behind() {
     p.max_speed = 100.0;
     p.min_speed_frac = 0.0;
 
-    let wide = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &p).1[0];
+    let wide = step(&pos, &vel, &zero, &[], &[], [0.0, 0.0], 0.1, &p).1[0];
     let mut narrow = p;
     narrow.cos_half_fov = super::cos_half_fov(90.0);
-    let cone = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &narrow).1[0];
+    let cone = step(&pos, &vel, &zero, &[], &[], [0.0, 0.0], 0.1, &narrow).1[0];
 
     assert!(
         wide[0] < vel[0][0],
@@ -318,7 +324,7 @@ fn the_same_cone_still_sees_the_neighbour_ahead() {
     p.max_speed = 100.0;
     p.min_speed_frac = 0.0;
     p.cos_half_fov = super::cos_half_fov(90.0);
-    let v = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &p).1[0];
+    let v = step(&pos, &vel, &zero, &[], &[], [0.0, 0.0], 0.1, &p).1[0];
     assert!(
         v[0] > vel[0][0],
         "o vizinho a FRENTE puxa para a frente: {v:?}"
@@ -343,7 +349,7 @@ fn a_motionless_agent_is_not_blind() {
     p.max_speed = 100.0;
     p.min_speed_frac = 0.0;
     p.cos_half_fov = super::cos_half_fov(30.0); // um cone bem estreito
-    let v = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &p).1[0];
+    let v = step(&pos, &vel, &zero, &[], &[], [0.0, 0.0], 0.1, &p).1[0];
     assert!(
         v[0] < 0.0,
         "parado, ele ainda e' puxado pelo vizinho atras: {v:?}"
@@ -385,7 +391,7 @@ fn the_speed_floor_is_authored_and_its_default_is_the_old_constant() {
     let vel = [[0.01f32, 0.0]]; // bem abaixo do piso
     let zero = [[0.0f32, 0.0]; 1];
     let p = params(1);
-    let held = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &p).1[0];
+    let held = step(&pos, &vel, &zero, &[], &[], [0.0, 0.0], 0.1, &p).1[0];
     let want = p.max_speed * MIN_SPEED_FRAC;
     assert!(
         (held[0] - want).abs() < 1e-5,
@@ -396,7 +402,7 @@ fn the_speed_floor_is_authored_and_its_default_is_the_old_constant() {
     // tornava inalcançável.
     let mut free = p;
     free.min_speed_frac = 0.0;
-    let slow = step(&pos, &vel, &zero, &[], [0.0, 0.0], 0.1, &free).1[0];
+    let slow = step(&pos, &vel, &zero, &[], &[], [0.0, 0.0], 0.1, &free).1[0];
     assert!(slow[0] < 0.1, "com piso 0 ele fica lento: {slow:?}");
     assert_eq!(
         MANIFEST
@@ -434,6 +440,9 @@ fn product_params(count: usize, fov_deg: f32, seed: u32) -> Params {
         alignment: d("alignment"),
         cohesion: d("cohesion"),
         seek: d("seek"),
+        avoid: d("avoid"),
+        avoid_radius: d("avoid_radius"),
+        lookahead: d("lookahead"),
         max_speed: d("max_speed"),
         max_force: d("max_force"),
         cos_half_fov: cos_half_fov(fov_deg),
@@ -453,7 +462,7 @@ fn measure(p: &Params) -> (f32, f64, f32, f32) {
     let mut vels: Vec<Vec<[f32; 2]>> = Vec::with_capacity(TICKS);
     let mut last_pos: Vec<[f32; 2]> = Vec::new();
     for k in 0..TICKS {
-        let out = simulate([0.0, 0.0], &state, k as f32 * DT, p);
+        let out = simulate([0.0, 0.0], &state, &[], k as f32 * DT, p);
         vels.push(vec2_col(&out, "vel"));
         last_pos = vec2_col(&out, "P");
         state = out;
@@ -727,11 +736,143 @@ fn two_agents_that_cannot_see_each_other_still_push_apart() {
         .with("P", Column::Vec2(vec![[0.0, 0.0], [3.0, 0.0]]))
         .with("vel", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]]))
         .with("sim_t", Column::Scalar(vec![0.0, 0.0]));
-    let out = simulate([0.0, 0.0], &state, 1.0 / 60.0, &p);
+    let out = simulate([0.0, 0.0], &state, &[], 1.0 / 60.0, &p);
     let pos = vec2_col(&out, "P");
     let gap = (pos[1][0] - pos[0][0]).abs();
     assert!(
         gap > 3.0 + 1e-4,
         "os dois têm de se afastar mesmo sem se verem; o vão foi {gap:.6}"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Doc 89 folha 03 — DESVIAR DE OBSTÁCULOS. Ver [`AVOID`] e [`LOOKAHEAD`].
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **SEM OBSTÁCULOS, SEM DESVIO — e sem raio também não.**
+#[test]
+fn no_obstacle_and_no_radius_mean_no_steer() {
+    assert_eq!(avoid_accel([0.0, 0.0], [1.0, 0.0], &[], 2.0, 0.0), None);
+    assert_eq!(
+        avoid_accel([0.0, 0.0], [1.0, 0.0], &[[0.5, 0.0]], 0.0, 0.0),
+        None,
+        "raio zero é o desvio desligado"
+    );
+}
+
+/// **O DESVIO EMPURRA PARA LONGE, e cresce para dentro.**
+///
+/// Obstáculo em `(1,0)`, raio `2`. A `0,5` de distância o empurrão é `1 − 0.5/2 = 0.75`;
+/// a `1,5` é `0.25`. FALSIFICADO por um sinal invertido (o agente mergulharia na pedra)
+/// ou por uma lei que não decaísse com a distância.
+#[test]
+fn the_steer_pushes_away_and_grows_inward() {
+    let perto = avoid_accel([0.5, 0.0], [0.0, 0.0], &[[1.0, 0.0]], 2.0, 0.0).expect("dentro");
+    let longe = avoid_accel([-0.5, 0.0], [0.0, 0.0], &[[1.0, 0.0]], 2.0, 0.0).expect("dentro");
+    assert!(perto[0] < 0.0, "empurra PARA LONGE do obstáculo: {perto:?}");
+    assert!((perto[0] + 0.75).abs() < 1e-6, "1 − 0.5/2: {perto:?}");
+    assert!((longe[0] + 0.25).abs() < 1e-6, "1 − 1.5/2: {longe:?}");
+    assert!(perto[0].abs() > longe[0].abs(), "mais perto, mais forte");
+}
+
+/// **FORA DO RAIO NÃO HÁ DESVIO** — e o limite é fechado por fora.
+#[test]
+fn beyond_the_radius_there_is_nothing() {
+    assert_eq!(
+        avoid_accel([0.0, 0.0], [0.0, 0.0], &[[2.0, 0.0]], 2.0, 0.0),
+        None,
+        "exactamente no raio já é fora"
+    );
+    assert!(avoid_accel([0.0, 0.0], [0.0, 0.0], &[[1.9, 0.0]], 2.0, 0.0).is_some());
+}
+
+/// **O OBSTÁCULO EXACTAMENTE SOB A SONDA NÃO PRODUZ `NaN`.**
+///
+/// ⚠️ `d = 0` não tem direcção para onde empurrar; a resposta é *nada*, não uma divisão
+/// por zero a envenenar a aceleração do bando inteiro.
+#[test]
+fn an_obstacle_exactly_under_the_probe_is_finite() {
+    assert_eq!(
+        avoid_accel([1.0, 1.0], [0.0, 0.0], &[[1.0, 1.0]], 2.0, 0.0),
+        None
+    );
+}
+
+/// **A ANTECIPAÇÃO OLHA PARA ONDE O AGENTE VAI, e é por isso que ela precisa da
+/// velocidade.**
+///
+/// O agente está a `(0,0)` e o obstáculo a `(3,0)` — fora de um raio de `1`. Sem
+/// antecipação não há desvio; com `lookahead = 1` e velocidade `(3,0)` a sonda cai
+/// EM CIMA da rota e o desvio aparece.
+#[test]
+fn the_lookahead_probes_where_the_agent_is_going() {
+    let obst = [[3.0_f32, 0.0]];
+    assert_eq!(
+        avoid_accel([0.0, 0.0], [3.0, 0.0], &obst, 1.0, 0.0),
+        None,
+        "sem antecipação, a pedra está longe"
+    );
+    let visto = avoid_accel([0.0, 0.0], [2.5, 0.0], &obst, 1.0, 1.0);
+    assert!(visto.is_some(), "com antecipação o agente já a vê");
+}
+
+/// **UM AGENTE MAIS RÁPIDO VIRA MAIS CEDO, sem um segundo knob.**
+///
+/// ⚠️ É o que separa a antecipação de uma repulsão comum: o raio EFECTIVO cresce com a
+/// velocidade do próprio agente.
+#[test]
+fn a_faster_agent_reacts_sooner_at_the_same_lookahead() {
+    let obst = [[4.0_f32, 0.0]];
+    let devagar = avoid_accel([0.0, 0.0], [1.0, 0.0], &obst, 1.5, 1.0);
+    let rapido = avoid_accel([0.0, 0.0], [3.5, 0.0], &obst, 1.5, 1.0);
+    assert!(devagar.is_none(), "o lento ainda não vê nada");
+    assert!(rapido.is_some(), "o rápido já reage");
+}
+
+/// **EMPATE DE DISTÂNCIA DESEMPATA PELO ÍNDICE MAIS BAIXO.**
+#[test]
+fn a_tie_breaks_by_the_lowest_index() {
+    let a = avoid_accel([0.0, 0.0], [0.0, 0.0], &[[1.0, 0.0], [-1.0, 0.0]], 2.0, 0.0);
+    assert_eq!(a, Some([-0.5, 0.0]), "empurrado para longe do PRIMEIRO");
+}
+
+/// **O DESVIO CHEGA À ACELERAÇÃO DO PASSO, e `avoid = 0` é a identidade.**
+///
+/// ⚠️ Cozinha pelo `step` inteiro, não só pela lei: um termo escrito e nunca somado é
+/// exactamente o knob morto que esta linha anda a caçar.
+#[test]
+fn the_avoidance_reaches_the_step_and_zero_is_the_identity() {
+    let pos = [[0.0_f32, 0.0]];
+    let vel = [[0.0_f32, 0.0]];
+    let obst = [[0.6_f32, 0.0]];
+    let mut p = params(1);
+    p.avoid_radius = 2.0;
+    let inerte = step(&pos, &vel, &[[0.0; 2]], &[], &obst, [0.0, 0.0], 0.1, &p);
+    let sem_obst = step(&pos, &vel, &[[0.0; 2]], &[], &[], [0.0, 0.0], 0.1, &p);
+    assert_eq!(inerte.1, sem_obst.1, "`avoid = 0`: o obstáculo é invisível");
+    p.avoid = 5.0;
+    let vivo = step(&pos, &vel, &[[0.0; 2]], &[], &obst, [0.0, 0.0], 0.1, &p);
+    assert!(
+        vivo.1[0][0] < 0.0,
+        "ligado, ele foge da pedra: {:?}",
+        vivo.1
+    );
+}
+
+/// **O DESVIO LIGADO RECUSA O DEVICE, E O DESLIGADO NÃO.**
+#[test]
+fn the_avoidance_refuses_the_device_and_the_default_does_not() {
+    let f = crate::gpu::GPU_KERNEL
+        .applicable
+        .expect("o kernel declara as recusas");
+    let base = |n: &str| match n {
+        "radius" => 4.0,
+        "separation_radius" => 1.0,
+        _ => 0.0,
+    };
+    assert!(f(&base), "sem desvio: o device continua a valer");
+    assert!(
+        !f(&|n: &str| if n == AVOID { 3.0 } else { base(n) }),
+        "com desvio: a porta-template não tem canal no device"
     );
 }

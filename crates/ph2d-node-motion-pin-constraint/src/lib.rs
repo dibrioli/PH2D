@@ -104,10 +104,18 @@ const FALLOFF: &str = "falloff";
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.pin_constraint"),
     name: "motion.pin_constraint",
-    inputs: &[PortSpec {
-        name: "in",
-        ty: INST_VEC2,
-    }],
+    inputs: &[
+        PortSpec {
+            name: "in",
+            ty: INST_VEC2,
+        },
+        // A memória do que já RASGOU. APENDADO — o índice da porta 0 não se mexe, e
+        // desligada o nó é byte-idêntico. Ver [`BREAK_ABOVE`].
+        PortSpec {
+            name: "state",
+            ty: INST_VEC2,
+        },
+    ],
     outputs: &[PortSpec {
         name: "out",
         ty: INST_VEC2,
@@ -133,9 +141,73 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "strength",
             default: 1.0,
         },
+        // **A CARGA QUE RASGA O PIN.** APENDADO, default `0` = nunca rasga, ao bit.
+        // Ver [`BREAK_ABOVE`].
+        ParamSpec {
+            name: "break_above",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// A coluna transiente que as `force.*` acumulam — **a CARGA que este pin sente**.
+const ACCEL: &str = "accel";
+/// A memória do que já rasgou, carregada no `pre` self-loop: `1` = rasgado.
+const TORN: &str = "pin_torn";
+
+/// **O LIMIAR DE RUPTURA** (doc 89 folha 03 — o *Breaking Threshold* dos
+/// `vellumconstraints` do Houdini).
+///
+/// Um pin com carga acima de `break_above` **RASGA**: a partícula volta a ter massa
+/// finita e vai-se embora com o resto. `0` desliga — ver abaixo porquê é `0` e não `∞`.
+///
+/// ## A carga é o `accel`, e é por isso que a ORDEM de fiação importa
+///
+/// A célula dizia *"nenhum solver publica a força sentida no pin"*, e isso é verdade
+/// **do solver**. Mas a carga já viaja no stream antes dele: as `force.*` acumulam em
+/// `accel` e o integrador consome-a. Um pin posto **depois** das forças e antes do
+/// integrador lê exactamente quanta força tenta movê-lo:
+///
+/// ```text
+/// grid → force.wind → pin_constraint → integrate      (a carga chega ao pin)
+/// grid → pin_constraint → integrate ← force.wind      (o pin não vê carga nenhuma)
+/// ```
+///
+/// ⚠️ **Sem `accel` no stream a carga lê ZERO e nada rasga** — o que é a resposta certa
+/// (não há força a puxar) e não um erro silencioso: o nó não pode inventar uma carga que
+/// ninguém escreveu.
+///
+/// ## O rasgo é PERMANENTE, e é isso que exige a porta `state`
+///
+/// Sem memória, a partícula soltar-se-ia enquanto a rajada dura e voltaria a pinar
+/// quando ela passasse — um **cedimento elástico**, não um rasgo. A referência rasga de
+/// vez, então o que rasgou fica marcado na coluna [`TORN`] e viaja no `pre` self-loop
+/// (o mesmo mecanismo do `motion.step`; o editor plumba-o ao largar o nó).
+///
+/// ⚠️ **Com a porta `state` desligada o rasgo é por-tique** — a marca não sobrevive ao
+/// quadro. Não é um modo escondido: é a consequência de faltar o fio, e o gate
+/// `a_torn_pin_stays_torn_only_when_the_state_loop_exists` mede as duas metades.
+///
+/// ## Porquê `0` desliga
+///
+/// `0` seria *"rasga a qualquer carga ≥ 0"*, ou seja **nada fica pinado** — e um pin que
+/// não pina é a mesma coisa que o nó não existir. O valor mais útil naquele extremo do
+/// slider é o oposto, então `0` é o DESLIGADO, que é também a identidade: todo grafo
+/// autorado antes deste param lê zero e comporta-se como sempre.
+const BREAK_ABOVE: &str = "break_above";
+
+/// A carga sentida pelo elemento `i` — o módulo do `accel` acumulado. Ausente → `0`.
+///
+/// ⚠️ **O módulo, não o quadrado**: o limiar é uma aceleração e o slider mostra
+/// unidades de mundo/s². Comparar contra o quadrado pouparia uma raiz e faria o número
+/// do painel deixar de significar o que diz.
+fn load_at(s: &Stream, i: usize) -> f32 {
+    match s.get(ACCEL) {
+        Some(Column::Vec2(v)) => v.get(i).map_or(0.0, |a| (a[0] * a[0] + a[1] * a[1]).sqrt()),
+        _ => 0.0,
+    }
+}
 
 /// A param as a non-negative element index/count: non-finite reads as 0.
 fn as_index(v: f32) -> usize {
@@ -166,16 +238,33 @@ fn scalar_or(s: &Stream, name: &str, n: usize, fallback: f32) -> Vec<f32> {
 
 /// The whole node: multiply the pinned run's inverse mass down toward zero.
 /// Every other column (P included — the node moves nothing) rides through.
-fn pin(input: &Stream, first: usize, count: usize, strength: f32) -> Stream {
+fn pin(
+    input: &Stream,
+    state: &Stream,
+    first: usize,
+    count: usize,
+    strength: f32,
+    break_above: f32,
+) -> Stream {
     let n = input.count();
     let falloff = scalar_or(input, FALLOFF, n, 1.0);
     let prev = scalar_or(input, INV_MASS, n, 1.0);
+    // O que JÁ estava rasgado no tique anterior. Porta desligada ⇒ tudo inteiro, e o
+    // rasgo passa a ser por-tique (ver [`BREAK_ABOVE`]).
+    let was_torn = scalar_or(state, TORN, n, 0.0);
+    let breaks = break_above > 0.0;
+    let mut torn = Vec::with_capacity(n);
     // `first + count` cannot wrap: both are element counts (saturating on the
     // absurd param that a loaded document may carry).
     let last = first.saturating_add(count);
     let w: Vec<f32> = (0..n)
         .map(|i| {
-            let selected = i >= first && i < last;
+            // ⚠️ Rasgado ANTES ou rasga AGORA — as duas metades, e a primeira é o que
+            // torna o rasgo permanente. O `breaks` desligado deixa a coluna a zero,
+            // então um grafo sem limiar nunca escreve nada aqui.
+            let ripped = breaks && (was_torn[i] >= 0.5 || load_at(input, i) > break_above);
+            torn.push(f32::from(u8::from(ripped)));
+            let selected = i >= first && i < last && !ripped;
             // The pin AMOUNT (1 = nailed): the range mask times the field times
             // the strength. Its complement is the inverse mass, multiplied into
             // whatever an upstream pin already wrote (pins compose).
@@ -190,11 +279,16 @@ fn pin(input: &Stream, first: usize, count: usize, strength: f32) -> Stream {
 
     let mut out = Stream::new(n);
     for (name, col) in input.columns() {
-        if name != INV_MASS {
+        if name != INV_MASS && name != TORN {
             out.set(name.clone(), col.clone());
         }
     }
     out.set(INV_MASS, Column::Scalar(w));
+    // A memória do rasgo, para o `pre` do tique seguinte. ⚠️ Escrita SEMPRE (a zeros
+    // quando não há limiar): uma coluna que aparece e desaparece conforme o param faria
+    // o `pre` do tique seguinte ler um stream de forma diferente, e o pareamento por
+    // posição é o que este nó tem.
+    out.set(TORN, Column::Scalar(torn));
     out
 }
 
@@ -248,7 +342,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     params: &["first", "count", "strength"],
     count_law: None,
     variant_by_param: None,
-    applicable: None,
+    applicable: Some(|p| p(BREAK_ABOVE) <= 0.0),
 };
 
 struct MotionPinConstraint;
@@ -262,7 +356,20 @@ impl NodeOp for MotionPinConstraint {
         let first = as_index(ctx.param("first"));
         let count = as_index(ctx.param("count"));
         let strength = ctx.param("strength");
-        let out = pin(ctx.input(0), first, count, strength);
+        let break_above = ctx.param(BREAK_ABOVE).max(0.0);
+        // ⚠️ O estado é clonado ANTES do input 0: os dois `ctx.input` não podem
+        // coexistir emprestados. Uma coluna escalar, e só no tique em que há limiar.
+        let state = if break_above > 0.0 {
+            match ctx.input(1).get(TORN) {
+                Some(Column::Scalar(v)) => {
+                    Stream::new(v.len()).with(TORN, Column::Scalar(v.clone()))
+                }
+                _ => Stream::new(0),
+            }
+        } else {
+            Stream::new(0)
+        };
+        let out = pin(ctx.input(0), &state, first, count, strength, break_above);
         ctx.emit(out);
     }
 }
@@ -277,6 +384,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         MANIFEST.id,
         &[ph2d_node_registry::Coupling::Produces("inv_mass")],
     );
+    // ⚠️ **Mais a RECUSA quando o limiar está ligado**: o rasgo é ESTADO no `pre`, e o
+    // kernel deste nó é um mapa por-elemento sem memória. Reimplementá-lo ali seria a
+    // segunda cópia de uma lei — a mesma porta que o `motion.combine`/`motion.cull`
+    // usam. Desligado (o default) nada recua.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     reg.register_ui(
         MANIFEST.id,
@@ -351,6 +462,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 0.01,
         widget: ParamWidget::Slider,
+    }, // ⚠️ **`0` é DESLIGADO, e o rótulo diz isso** — ver [`BREAK_ABOVE`]. O topo da
+    // faixa é a aceleração que uma `force.*` típica entrega (o default do
+    // `force.attractor` é 5, o do `force.wind` da mesma ordem): acima disso o slider
+    // seria curso morto, porque nenhuma carga do catálogo lá chega.
+    ParamUiHint {
+        param: "break_above",
+        label: "Break Above (0 = never)",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
     },
 ];
 
@@ -382,7 +504,7 @@ mod tests {
     /// stream (the bug that would freeze every sim downstream).
     #[test]
     fn the_index_range_is_what_gets_pinned() {
-        let out = pin(&stream(5, None, None), 1, 2, 1.0);
+        let out = pin(&stream(5, None, None), &Stream::new(0), 1, 2, 1.0, 0.0);
         assert_eq!(weights(&out), vec![1.0, 0.0, 0.0, 1.0, 1.0]);
     }
 
@@ -390,7 +512,7 @@ mod tests {
     /// half the inverse mass, i.e. an element twice as heavy as its neighbours.
     #[test]
     fn strength_is_a_partial_pin() {
-        let out = pin(&stream(2, None, None), 0, 1, 0.25);
+        let out = pin(&stream(2, None, None), &Stream::new(0), 0, 1, 0.25, 0.0);
         assert_eq!(weights(&out), vec![0.75, 1.0]);
     }
 
@@ -398,7 +520,14 @@ mod tests {
     /// full field = nailed, half = heavy, zero = untouched.
     #[test]
     fn the_falloff_field_scales_the_pin() {
-        let out = pin(&stream(3, Some(vec![1.0, 0.5, 0.0]), None), 0, 3, 1.0);
+        let out = pin(
+            &stream(3, Some(vec![1.0, 0.5, 0.0]), None),
+            &Stream::new(0),
+            0,
+            3,
+            1.0,
+            0.0,
+        );
         assert_eq!(weights(&out), vec![0.0, 0.5, 1.0]);
     }
 
@@ -407,8 +536,8 @@ mod tests {
     /// quarter of the inverse mass.
     #[test]
     fn pins_compose_multiplicatively() {
-        let once = pin(&stream(1, None, None), 0, 1, 0.5);
-        let twice = pin(&once, 0, 1, 0.5);
+        let once = pin(&stream(1, None, None), &Stream::new(0), 0, 1, 0.5, 0.0);
+        let twice = pin(&once, &Stream::new(0), 0, 1, 0.5, 0.0);
         assert_eq!(weights(&twice), vec![0.25]);
     }
 
@@ -417,22 +546,39 @@ mod tests {
     #[test]
     fn an_empty_selection_is_the_identity() {
         assert_eq!(
-            weights(&pin(&stream(3, None, None), 0, 0, 1.0)),
+            weights(&pin(
+                &stream(3, None, None),
+                &Stream::new(0),
+                0,
+                0,
+                1.0,
+                0.0
+            )),
             vec![1.0; 3]
         );
         assert_eq!(
-            weights(&pin(&stream(3, None, None), 0, 3, 0.0)),
+            weights(&pin(
+                &stream(3, None, None),
+                &Stream::new(0),
+                0,
+                3,
+                0.0,
+                0.0
+            )),
             vec![1.0; 3]
         );
         let carried = stream(2, None, Some(vec![0.0, 0.5]));
-        assert_eq!(weights(&pin(&carried, 0, 0, 1.0)), vec![0.0, 0.5]);
+        assert_eq!(
+            weights(&pin(&carried, &Stream::new(0), 0, 0, 1.0, 0.0)),
+            vec![0.0, 0.5]
+        );
     }
 
     /// A non-finite param never poisons the weights (a hand-edited document can
     /// carry any `f32`): the element stays free rather than going NaN.
     #[test]
     fn a_non_finite_strength_reads_as_free() {
-        let out = pin(&stream(1, None, None), 0, 1, f32::NAN);
+        let out = pin(&stream(1, None, None), &Stream::new(0), 0, 1, f32::NAN, 0.0);
         assert_eq!(weights(&out), vec![1.0]);
     }
 
@@ -501,5 +647,155 @@ mod tests {
             Column::Vec2(v) => assert_eq!(v[1], [1.0, 0.0], "positions ride through"),
             _ => panic!("P"),
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Doc 89 folha 03 — o LIMIAR DE RUPTURA. Ver [`BREAK_ABOVE`] para o mecanismo.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Um stream de `n` elementos com a carga (`accel`) escrita à mão.
+    fn loaded(n: usize, accel: &[[f32; 2]]) -> Stream {
+        Stream::new(n)
+            .with("P", Column::Vec2(vec![[0.0, 0.0]; n]))
+            .with(ACCEL, Column::Vec2(accel.to_vec()))
+    }
+
+    fn inv_mass_of(s: &Stream) -> Vec<f32> {
+        match s.get(INV_MASS) {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => panic!("inv_mass"),
+        }
+    }
+
+    /// **`0` NÃO RASGA NADA — e é a identidade, com carga ou sem ela.**
+    ///
+    /// ⚠️ O braço COM carga é o que importa: um nó que comparasse `carga > 0` soltaria
+    /// todo pin de toda cena que tenha uma força, em silêncio.
+    #[test]
+    fn a_zero_threshold_never_tears_even_under_load() {
+        let sem = pin(
+            &loaded(2, &[[0.0, 0.0]; 2]),
+            &Stream::new(0),
+            0,
+            2,
+            1.0,
+            0.0,
+        );
+        let com = pin(
+            &loaded(2, &[[99.0, 0.0]; 2]),
+            &Stream::new(0),
+            0,
+            2,
+            1.0,
+            0.0,
+        );
+        assert_eq!(inv_mass_of(&sem), vec![0.0, 0.0], "pinado");
+        assert_eq!(
+            inv_mass_of(&com),
+            vec![0.0, 0.0],
+            "e continua pinado sob carga"
+        );
+    }
+
+    /// **ACIMA DO LIMIAR O PIN SOLTA; ABAIXO, SEGURA.**
+    ///
+    /// Carga `3` e `6` contra um limiar de `5`: a primeira segura, a segunda rasga.
+    /// FALSIFICADO por uma comparação invertida, ou por um limiar que agisse sobre o
+    /// stream todo em vez de por elemento.
+    #[test]
+    fn the_pin_tears_only_where_the_load_exceeds_the_threshold() {
+        let out = pin(
+            &loaded(2, &[[3.0, 0.0], [6.0, 0.0]]),
+            &Stream::new(0),
+            0,
+            2,
+            1.0,
+            5.0,
+        );
+        assert_eq!(inv_mass_of(&out), vec![0.0, 1.0], "só o segundo rasgou");
+    }
+
+    /// **A CARGA É O MÓDULO, não uma componente** — uma força só em Y rasga tanto como
+    /// uma só em X.
+    #[test]
+    fn the_load_is_the_magnitude_of_the_accumulated_force() {
+        let out = pin(
+            &loaded(3, &[[6.0, 0.0], [0.0, 6.0], [3.0, 4.0]]),
+            &Stream::new(0),
+            0,
+            3,
+            1.0,
+            4.9,
+        );
+        // 6, 6 e 5 — os três passam de 4,9.
+        assert_eq!(inv_mass_of(&out), vec![1.0, 1.0, 1.0]);
+    }
+
+    /// **SEM `accel` NO STREAM A CARGA É ZERO E NADA RASGA** — a resposta certa (não há
+    /// força a puxar), não um erro silencioso.
+    ///
+    /// ⚠️ É também o que documenta a ORDEM de fiação: um pin posto ANTES das forças não
+    /// vê carga nenhuma, porque a coluna ainda não existe.
+    #[test]
+    fn a_stream_without_accel_carries_no_load() {
+        let out = pin(&stream(2, None, None), &Stream::new(0), 0, 2, 1.0, 0.01);
+        assert_eq!(inv_mass_of(&out), vec![0.0, 0.0], "sem carga, nada rasga");
+    }
+
+    /// **O RASGO É PERMANENTE — mas SÓ com o laço de estado, e o gate mede as duas
+    /// metades.**
+    ///
+    /// ⚠️ Sem o `pre` a marca não sobrevive ao quadro e o pin volta a segurar quando a
+    /// rajada passa: um **cedimento elástico**, não um rasgo. Não é um modo escondido; é
+    /// a consequência de faltar o fio, e está escrito no doc do param.
+    #[test]
+    fn a_torn_pin_stays_torn_only_when_the_state_loop_exists() {
+        let rajada = loaded(1, &[[9.0, 0.0]]);
+        let calmo = loaded(1, &[[0.0, 0.0]]);
+        // Tique 1: rasga.
+        let t1 = pin(&rajada, &Stream::new(0), 0, 1, 1.0, 5.0);
+        assert_eq!(inv_mass_of(&t1), vec![1.0], "rasgou");
+        // Tique 2 COM o laço: a marca chega, e ele continua solto mesmo sem carga.
+        let com = pin(&calmo, &t1, 0, 1, 1.0, 5.0);
+        assert_eq!(inv_mass_of(&com), vec![1.0], "rasgado é rasgado");
+        // Tique 2 SEM o laço: ele volta a pinar — o cedimento elástico.
+        let sem = pin(&calmo, &Stream::new(0), 0, 1, 1.0, 5.0);
+        assert_eq!(inv_mass_of(&sem), vec![0.0], "sem memória, ele re-pina");
+        assert_ne!(
+            inv_mass_of(&com),
+            inv_mass_of(&sem),
+            "e as duas leis diferem"
+        );
+    }
+
+    /// **A MEMÓRIA SAI SEMPRE, mesmo a zeros** — uma coluna que aparece e desaparece
+    /// conforme o param faria o `pre` do tique seguinte ler um stream de outra forma.
+    #[test]
+    fn the_tear_memory_is_always_written() {
+        for limiar in [0.0_f32, 5.0] {
+            let out = pin(
+                &loaded(2, &[[0.0, 0.0]; 2]),
+                &Stream::new(0),
+                0,
+                2,
+                1.0,
+                limiar,
+            );
+            match out.get(TORN) {
+                Some(Column::Scalar(v)) => assert_eq!(v.len(), 2, "limiar {limiar}"),
+                _ => panic!("a coluna do rasgo tem de sair sempre (limiar {limiar})"),
+            }
+        }
+    }
+
+    /// **O LIMIAR LIGADO RECUSA O DEVICE, E O DESLIGADO NÃO.**
+    #[test]
+    fn the_tear_refuses_the_device_and_the_default_does_not() {
+        let f = GPU_KERNEL.applicable.expect("o kernel declara a recusa");
+        assert!(f(&|_: &str| 0.0), "sem limiar: o device continua a valer");
+        assert!(
+            !f(&|n: &str| if n == BREAK_ABOVE { 5.0 } else { 0.0 }),
+            "com limiar: o rasgo é estado, e o kernel é um mapa sem memória"
+        );
     }
 }

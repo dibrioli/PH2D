@@ -347,7 +347,13 @@ pub const GPU_KERNEL: GpuKernel = GpuKernel {
     // verdadeiro, e o kernel entao procura vizinhos a `|sep_r| = 4` numa grade de
     // celula `2`. *Uma guarda que existe para impedir a divergencia das duas rotas
     // tem de ler a mesma grandeza que elas.*
-    applicable: Some(|p| p("separation_radius").max(0.0) <= p("radius").max(0.0)),
+    // ⚠️ **Duas recusas, e a segunda é NOVA:** o desvio de obstáculo lê uma
+    // porta-template, e o leitor que isso pede (`ColumnAccess::SourceRead`) só existe
+    // emparelhado com um `StreamOp::SourceRows` — um nó que MUDA a contagem. Este
+    // preserva-a. Com `avoid = 0` (o default) nada recua.
+    applicable: Some(|p| {
+        p("separation_radius").max(0.0) <= p("radius").max(0.0) && p("avoid").max(0.0) <= 0.0
+    }),
 };
 
 /// The neighbourhood grid: over the state `P` (port 2, the `pre` feedback), cell

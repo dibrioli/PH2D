@@ -94,6 +94,8 @@ pub(crate) mod conferencia_demos_fx;
 pub(crate) mod conferencia_demos_goal;
 #[path = "motion_state_conferencia_demos_rank.rs"]
 pub(crate) mod conferencia_demos_rank;
+#[path = "motion_state_conferencia_demos_sim.rs"]
+pub(crate) mod conferencia_demos_sim;
 
 #[path = "motion_state_conferencia_demos_drizzle.rs"]
 pub(crate) mod conferencia_demos_drizzle;

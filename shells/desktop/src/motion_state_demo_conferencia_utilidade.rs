@@ -423,3 +423,36 @@ pub(crate) fn goal_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<N
     );
     sinks
 }
+
+/// **A CENA `=75` — dois exemplos, um por linha** (doc 89, folha 03: o pin que rasga e
+/// o bando que desvia).
+///
+/// ⚠️ **Só se julga com o PLAY** — as duas linhas são simulação.
+pub(crate) fn sim_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_sim::build_sim_demo_document(doc, registry).unwrap_or_default();
+    let (limiar, pedras) = conferencia_demos_sim::authored();
+    eprintln!(
+        "[cena 75] Dois exemplos, um por linha -- {n} blocos. ESQUERDA = como era,
+  DIREITA = o que mudou. O nome da linha esta' escrito no meio da tela.
+
+  >>> DE' PLAY. As duas linhas sao simulacao; paradas nao dizem nada.
+
+  RASGA  As duas cortinas tem a fileira de cima PREGADA e levam o mesmo vento.
+         A` esquerda a fileira de cima FICA onde esta', para sempre, e o resto
+         voa. A` direita o vento passa da carga que o prego aguenta ({limiar:.0}) e
+         ele ARRANCA: a fileira de cima solta-se e vai com as outras.
+         > clique no no' Pin Constraint e arraste o `Break Above` -- em 0 ele
+           nunca solta.
+
+  DESVIA Os dois bandos correm para o meio, onde ha' {pedras:.0} pedras brancas em
+         anel. A` esquerda eles ATRAVESSAM as pedras como se nao existissem. A`
+         direita eles CONTORNAM e param a` volta delas.
+         > clique no no' Boids e arraste o `Avoid` ate' 0: eles voltam a passar
+           por dentro.
+
+  DEU ERRADO se as duas metades de qualquer linha fizerem o mesmo, se alguma
+  nuvem ficar parada, ou se as pedras brancas nao aparecerem.",
+        n = sinks.len(),
+    );
+    sinks
+}

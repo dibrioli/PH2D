@@ -66,7 +66,8 @@ pub use color_ramp::{
 pub use color_ramp_text::{parse_gradient, serialize_gradient};
 pub use gradient_preset::{GradientPreset, default_gradient};
 pub use dither::{
-    BAYER_8X8, HALF_ROUND_TRIP_DRIFT_LSB, dither_offset_lsb, rgba16_to_rgba8_dithered,
+    BAYER_8X8, BAYER_SIDE, DITHER_SPAN_LSB, HALF_ROUND_TRIP_DRIFT_LSB, dither_offset_lsb,
+    rgba16_to_rgba8_dithered,
 };
 pub use linear::LinearRgba;
 pub use oklab::OklabColor;

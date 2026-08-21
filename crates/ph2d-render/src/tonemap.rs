@@ -462,4 +462,31 @@ mod tests {
             "AGX_MAX_EV constant drifted from Blender 4.0+ reference"
         );
     }
+
+    /// ⛔ **A recusa medida continua escrita no shader** — plano `docs/Sprite_projeto/18` W6.2.
+    ///
+    /// ⚠️ Uma recusa que vive só num doc é reconstruída pelo próximo agente: dither no passe de
+    /// tonemap é a ideia **óbvia**, e a única coisa que a impede é o número que a matou. Este gate
+    /// garante que esse número não desaparece num «limpar comentários».
+    ///
+    /// A sonda que o produziu é [`crate`]`::tests::tonemap_descent_gpu` — e ela mede a folga em
+    /// qualquer máquina, e não só naquela em que a recusa nasceu.
+    #[test]
+    fn the_measured_refusal_of_a_dither_here_stays_written_down() {
+        let src = include_str!("shaders/tonemap.wgsl");
+        for needle in [
+            "RECUSA MEDIDA",
+            "tonemap_descent_gpu",
+            "hw_encode(hw_decode(N)) == N",
+        ] {
+            assert!(
+                src.contains(needle),
+                "o shader deixou de dizer `{needle}`.\n\n\
+                 Dither neste passe foi CONSTRUIDO e MEDIDO em 2026-08-21: com um vies de Bayer de \
+                 +-0,431 LSB ele moveu 4 dos 256 bytes um codigo para baixo, porque a tabela sRGB \
+                 do hardware nao e' a curva ideal e a folga ate' a fronteira e' propriedade DA \
+                 PLACA. Sem esta nota, a proxima pessoa reconstroi-o e volta a paga'-lo."
+            );
+        }
+    }
 }

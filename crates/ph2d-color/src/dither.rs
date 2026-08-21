@@ -66,7 +66,12 @@ pub const HALF_ROUND_TRIP_DRIFT_LSB: f32 = 0.062_012;
 
 /// **O intervalo que o dither varre**, em passos de 8 bits: um passo inteiro menos a deriva de cada
 /// lado. Derivado, nunca escolhido.
-const DITHER_SPAN_LSB: f32 = 1.0 - 2.0 * HALF_ROUND_TRIP_DRIFT_LSB;
+///
+/// ⚠️ **É `pub` porque a GPU tem de o repetir.** O passe de tonemap desce o mesmo valor pela mesma
+/// lei ([`crates/ph2d-render/src/shaders/tonemap.wgsl`]), e um shader não pode importar uma
+/// constante de Rust — ele traz uma cópia, e um gate compara as duas. *Uma lei em dois motores só é
+/// uma lei enquanto alguém mede que são iguais.*
+pub const DITHER_SPAN_LSB: f32 = 1.0 - 2.0 * HALF_ROUND_TRIP_DRIFT_LSB;
 
 /// O lado da matriz de Bayer.
 pub const BAYER_SIDE: u32 = 8;

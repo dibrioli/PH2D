@@ -75,6 +75,10 @@ pub(crate) fn drain_upscale(
     // round-trip back to the source alpha mode at the chokepoint so a
     // premultiplied BgRemoval result survives Upscale byte-faithful.
     let source_alpha = src.image.alpha;
+    // ⚠️ As dimensões da ORIGEM, capturadas antes de o `into_straight` consumir a imagem — a
+    // replicação de 16 bits precisa delas para derivar o factor da mesma forma que o tool.
+    let (src_w, src_h) = (src.image.width, src.image.height);
+    let pixels_16 = src.pixels_16.clone();
     let straight = src.image.into_straight();
     // Wave 11 migration (ADR-0042 §6 #2): typed `Vec<SrgbRgba>` input.
     // Zero-copy cast via bytemuck (SrgbRgba is repr-transparent + Pod).
@@ -96,6 +100,21 @@ pub(crate) fn drain_upscale(
         )));
         return true;
     }
+    // **O modo `Nearest` PRESERVA a precisão** — achado da auditoria
+    // `docs/Sprite_projeto/19` §3.1.
+    //
+    // ⚠️ **A mesma ferramenta tem três modos e só um é geométrico.** O `Nearest` é replicação pura
+    // (`floor(x / factor)`, sem filtro) e não calcula valor nenhum; o `Lanczos3` e o `Xbr` filtram
+    // vizinhanças e têm de converter. *A resposta era do ALGORITMO, não do nome da ferramenta* — e
+    // foi por isso que a auditoria teve de ler os três.
+    let replicated_16 =
+        if ups.params.algorithm == ph2d_tool_upscale::params::UpscaleAlgorithm::Nearest {
+            pixels_16.as_ref().and_then(|px| {
+                crate::precision_geometry::replicate_rgba16(px, src_w, src_h, out_w, out_h)
+            })
+        } else {
+            None
+        };
     let edited_straight =
         ph2d_render::SpriteImage::from_bytes(out_w, out_h, out, ph2d_render::AlphaMode::Straight);
     let edited = if source_alpha.is_premultiplied() {
@@ -105,12 +124,13 @@ pub(crate) fn drain_upscale(
     };
     // Sprite.size GROWS by the upscale factor (in world meters).
     let new_size_world = [out_w as f32 / px_per_m, out_h as f32 / px_per_m];
-    match texture_edit::commit_edited_texture(
+    match texture_edit::commit_geometric_edit(
         entity,
         sim,
         renderer,
         asset_db,
         &edited,
+        replicated_16.as_deref(),
         new_size_world,
         toasts,
     ) {

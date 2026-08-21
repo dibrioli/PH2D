@@ -57,6 +57,17 @@ pub(crate) fn drain_bgremoval(
     let old_translation = src.old_translation;
     let old_premultiplied = src.old_premultiplied;
     let old_anchor = src.old_anchor;
+    // **O BG-Removal é uma operação de ALFA** — auditoria `docs/Sprite_projeto/19` §3.2: o
+    // compositor copia R, G e B **verbatim** e só calcula o quarto canal. Logo a cor de 16 bits
+    // pode atravessá-lo **exacta**.
+    //
+    // ⚠️ **Excepto com o DESPILL ligado.** Aí as bordas macias passam por
+    // `fg = (C − (1−a)·bg) / a` — isso é reescrever RGB, e o caminho tem de converter.
+    let pixels_16 = if bg.params.chroma.despill {
+        None
+    } else {
+        src.pixels_16.clone()
+    };
     // Segmentation reasons about TRUE colours → feed it straight alpha
     // (a re-run on an already-baked premultiplied sprite is recovered here).
     let straight = src.image.into_straight();
@@ -85,6 +96,13 @@ pub(crate) fn drain_bgremoval(
         // it PREMULTIPLIED so the sprite shader's bilinear sample
         // composites the edge like the Vello preview
         // (premultiply-before-sample) — no purple/dark fringe.
+        // ⚠️ **O de 16 bits fica em alfa RETO, e é deliberado.** O caminho de 8 bits premultiplica
+        // em espaço **sRGB**; premultiplicar valores **lineares** pelo mesmo alfa dá outro
+        // resultado (e mais correto). ⛔ Em vez de escolher entre dois erros, devolve-se reto e o
+        // shader premultiplica em linear no desenho — que é onde isso pertence.
+        let alpha_applied_16 = pixels_16
+            .as_ref()
+            .and_then(|px| crate::precision_geometry::apply_alpha8_to_rgba16(px, &out));
         let edited = ph2d_render::SpriteImage::from_bytes(
             out_w,
             out_h,
@@ -92,12 +110,13 @@ pub(crate) fn drain_bgremoval(
             ph2d_render::AlphaMode::Straight,
         )
         .into_premultiplied();
-        return match texture_edit::commit_edited_texture(
+        return match texture_edit::commit_geometric_edit(
             entity,
             sim,
             renderer,
             asset_db,
             &edited,
+            alpha_applied_16.as_deref(),
             old_size_world,
             toasts,
         ) {

@@ -83,6 +83,73 @@ pub(crate) fn blit_rgba16(
     Some(out)
 }
 
+/// **Replica pixels por vizinho-mais-próximo** — o que o `Upscale · Nearest` faz.
+///
+/// ⚠️ **Nearest não é um filtro, é uma cópia.** Cada pixel de destino lê **um** pixel de origem em
+/// `floor(x / factor)` e mais nada — nenhum valor é calculado. Achado da auditoria
+/// [`docs/Sprite_projeto/19`](../../../docs/Sprite_projeto/19_auditoria_precisao_por_ferramenta.md):
+/// *a mesma ferramenta tem três modos e só este é geométrico*, por isso a resposta não podia vir do
+/// nome dela.
+///
+/// ⚠️ **As dimensões de saída vêm de FORA**, do resultado do próprio tool — recalculá-las aqui
+/// seria uma segunda cópia da regra de arredondamento dele, a ter de concordar para sempre.
+pub(crate) fn replicate_rgba16(
+    src: &[u16],
+    src_w: u32,
+    src_h: u32,
+    out_w: u32,
+    out_h: u32,
+) -> Option<Vec<u16>> {
+    const CH: usize = 4;
+    if src.len() != (src_w as usize) * (src_h as usize) * CH || src_w == 0 || src_h == 0 {
+        return None;
+    }
+    if out_w == 0 || out_h == 0 {
+        return None;
+    }
+    // O factor é derivado das dimensões, tal como o tool o aplicou: destino/origem.
+    let fx = f64::from(out_w) / f64::from(src_w);
+    let fy = f64::from(out_h) / f64::from(src_h);
+    let mut out = vec![0u16; (out_w as usize) * (out_h as usize) * CH];
+    for y in 0..out_h as usize {
+        let sy = ((y as f64 / fy) as usize).min(src_h as usize - 1);
+        for x in 0..out_w as usize {
+            let sx = ((x as f64 / fx) as usize).min(src_w as usize - 1);
+            let from = (sy * src_w as usize + sx) * CH;
+            let to = (y * out_w as usize + x) * CH;
+            out[to..to + CH].copy_from_slice(&src[from..from + CH]);
+        }
+    }
+    Some(out)
+}
+
+/// **Aplica um ALFA de 8 bits a um buffer de 16 bits**, preservando a cor exacta.
+///
+/// É o que o `BG-Removal` sem despill precisa: ele **copia R, G, B verbatim** e só calcula o quarto
+/// canal (auditoria `docs/Sprite_projeto/19` §3.2).
+///
+/// ⚠️ **O alfa fica com 256 níveis, e isso não é uma mentira sobre o formato:** o armazenamento é
+/// mesmo de 16 bits, e o limite é da ferramenta. O ganho — RGB exacto — é onde a banda de facto
+/// mora.
+///
+/// ⚠️ **O resultado é alfa RETO, de propósito.** O caminho de 8 bits premultiplica em espaço sRGB;
+/// premultiplicar valores **lineares** pelo mesmo alfa dá um resultado diferente (e mais correto).
+/// ⛔ Em vez de escolher entre dois erros, isto devolve reto e deixa o shader premultiplicar em
+/// linear no desenho, que é onde isso pertence.
+pub(crate) fn apply_alpha8_to_rgba16(src: &[u16], alpha_rgba8: &[u8]) -> Option<Vec<u16>> {
+    const CH: usize = 4;
+    if src.len() != alpha_rgba8.len() || !src.len().is_multiple_of(CH) {
+        return None;
+    }
+    let mut out = src.to_vec();
+    for (px, a8) in out.chunks_exact_mut(CH).zip(alpha_rgba8.chunks_exact(CH)) {
+        // ⚠️ Meio-float, não inteiro: `1.0` é `0x3C00` e não `0xFFFF`. Escrever o byte esticado
+        // seria um alfa de ~2000× — a imagem inteira opaca e estourada.
+        px[3] = ph2d_color::f32_to_half(f32::from(a8[3]) / 255.0);
+    }
+    Some(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,6 +210,76 @@ mod tests {
         let framed = blit_rgba16(&src, 6, 5, [0, 0, 6, 5], 10, 9, 2, 2).expect("cabe");
         let back = blit_rgba16(&framed, 10, 9, [2, 2, 6, 5], 6, 5, 0, 0).expect("cabe");
         assert_eq!(back, src, "a geometria nao pode mexer num unico valor");
+    }
+
+    /// **A replicação leva o pixel CERTO, e nenhum valor é calculado.**
+    #[test]
+    fn nearest_replication_copies_and_never_computes() {
+        let src = tagged(2, 2);
+        let out = replicate_rgba16(&src, 2, 2, 4, 4).expect("cabe");
+        assert_eq!(out.len(), 4 * 4 * 4);
+        // Cada quadrante 2×2 do destino e' UM pixel da origem, repetido.
+        for (row, col, want) in [
+            (0, 0, [0u16, 0]),
+            (0, 3, [1, 0]),
+            (3, 0, [0, 1]),
+            (3, 3, [1, 1]),
+        ] {
+            let at = (row * 4 + col) * 4;
+            assert_eq!(
+                &out[at..at + 2],
+                &want,
+                "destino ({row},{col}) devia replicar a origem {want:?}"
+            );
+        }
+    }
+
+    /// ⚠️ **Controle: a replicação NÃO inventa um valor entre dois.** Se alguém a trocasse por uma
+    /// interpolação, apareceriam pixels que não existem na origem — e o modo `Nearest` deixaria de
+    /// ser o que o nome promete.
+    #[test]
+    fn nearest_replication_never_produces_a_value_the_source_lacks() {
+        let src = tagged(3, 1);
+        let out = replicate_rgba16(&src, 3, 1, 7, 1).expect("cabe");
+        for px in out.chunks_exact(4) {
+            assert!(
+                px[0] < 3,
+                "apareceu a coluna {} numa origem de 3 — isso e' interpolacao, nao replicacao",
+                px[0]
+            );
+        }
+    }
+
+    /// **O alfa de 8 bits entra como MEIO-FLOAT, não como inteiro esticado.**
+    ///
+    /// ⚠️ É o erro que mata este caminho em silêncio: em meio-float `1.0` é `0x3C00`, não `0xFFFF`.
+    /// Escrever o byte esticado daria um alfa de ~2000× — a imagem inteira opaca.
+    #[test]
+    fn the_alpha_lands_as_half_float_not_as_a_stretched_integer() {
+        let src = vec![0u16; 8];
+        let alpha = vec![0u8, 0, 0, 255, 0, 0, 0, 128];
+        let out = apply_alpha8_to_rgba16(&src, &alpha).expect("mesmo comprimento");
+        assert_eq!(
+            out[3],
+            ph2d_color::f32_to_half(1.0),
+            "alfa 255 devia ser 1.0"
+        );
+        assert!(
+            (ph2d_color::half_to_f32(out[7]) - 128.0 / 255.0).abs() < 1e-3,
+            "alfa 128 saiu {}",
+            ph2d_color::half_to_f32(out[7])
+        );
+    }
+
+    /// **A COR sobrevive exacta** — que e' a razao de existir deste caminho.
+    #[test]
+    fn applying_an_alpha_leaves_the_colour_untouched() {
+        let src = tagged(4, 4);
+        let alpha = vec![0u8; 4 * 4 * 4];
+        let out = apply_alpha8_to_rgba16(&src, &alpha).expect("mesmo comprimento");
+        for (before, after) in src.chunks_exact(4).zip(out.chunks_exact(4)) {
+            assert_eq!(&before[0..3], &after[0..3], "o RGB nao pode ser tocado");
+        }
     }
 
     /// **Um rectângulo que não cabe é RECUSADO**, nos dois lados.

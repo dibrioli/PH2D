@@ -3,7 +3,11 @@
 > **Documento VIVO.** Decisão e fronteira jurídica: [ADR-0161](../../architecture/decisions/0161-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md).
 > O que o porte local entregou e por quê: [ADR-0160](../../architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md).
 > ✅ **Aprovado pelo Enio em 2026-08-20** (*"Siga como achar melhor... buscamos o estado da arte independente dos custos"*).
-> Estado: **F1 e F2 FEITAS** (§4-bis, §4-ter). O CAMPO está em paridade com o estado da arte (8 singularidades numa esfera, o ótimo teórico).\n> Próximo: **F3 → F4** — é onde o valor do campo passa a ser colhível. ⚠️ Nem F1 nem F2 estão ligados ao produto: ligá-los hoje pioraria o que o artista vê.
+> Estado: **F1, F2 e o PROTÓTIPO do F4 FEITOS** (§4-bis, §4-ter, §4-quater). O CAMPO está em paridade com o
+> estado da arte (8 singularidades numa esfera, o ótimo teórico) e o **quantizador fecha com o ótimo
+> demonstrado** em todos os layouts fechados do oráculo. Próximo: **F3** — o traçado é a peça que falta
+> para o pipeline correr de ponta a ponta com código nosso.
+> ⚠️ Nada disto está ligado ao produto: ligar F1 ou F2 hoje pioraria o que o artista vê (§4-ter).
 
 ---
 
@@ -152,8 +156,8 @@ Cada fase fecha com o benchmark verde sobre o corpus e um sumário curto de desv
 | **F0** | harness na bancada: corpus + oráculo + `metrics.py` + Hausdorff + screenshots | as três colunas (atual · oráculo · nova) saem de **um** comando; ⚠️ a baseline já está medida (§1.3) — falta o Hausdorff e o harness sair do `#[cfg(test)]` do shell |
 | **F1** | sanitização + **remesh isotrópico** + sizing field | ✅ **FEITO em 2026-08-20** (`crates/ph2d-remesh-iso`) — ver §4-bis |
 | **F2** | cross field MIQ-style + streamlines no viewport | ✅ **O CAMPO FEITO em 2026-08-20** (`crates/ph2d-crossfield`) — ver §4-ter. ⚠️ O critério *«irregulares ≤ 2 %»* era sobre a MALHA, e a malha só melhora no F5 |
-| **F3** | tracing + patches | nº de patches na mesma ordem do oráculo (15 na `sculpt_hooked`); zero patch não-disco |
-| **F4** | ⭐ **solver Bi-MDF** | quads **= 100,0 %** no corpus fechado; χ preservado; **fase crítica** |
+| **F3** | tracing + patches | nº de patches na mesma ordem do oráculo (15 na `sculpt_hooked`); zero patch não-disco. ⚠️ **É a peça que falta**: o F4 já consome layout, e o F3 é quem o produzirá sem o oráculo |
+| **F4** | ⭐ **solver Bi-MDF** | ✅ **PROTÓTIPO FEITO em 2026-08-20** (`crates/ph2d-quantize`) — ver §4-quater. Fecha com o **ótimo demonstrado** em todos os layouts fechados do oráculo; falta só o consumidor (F5) e a válvula de emergência, que **nenhum layout pediu** |
 | **F5** | quadrangulação por patch + smoothing + a porta no shell | desvio angular médio ≤ oráculo × 1,2; Hausdorff ≤ oráculo × 1,2; ⭐ **`sculpt_hooked` sem aglomerado e sem colapso na feature** (gate de regressão do §9) |
 | **F6** | guide strokes: direção → feature → densidade | ⚠️ **a densidade por PRESSÃO depende da camada de tablet, que NÃO existe** (ADR-0161) — F6 entrega direção e feature; a pressão é um projeto irmão |
 | **F7** | dois backends (preview BSD + qualidade) partilhando o campo | preview < 1 s até 100 k triângulos; o preview mostra o alinhamento que o modo qualidade honra |
@@ -296,11 +300,235 @@ sempre foi. Ligar qualquer um deles agora pioraria o que o artista vê.
 
 ---
 
+## 4-quater — ✅ F4 (protótipo): o solver de quantização FECHA, e prova que fechou
+
+**Entregue:** `crates/ph2d-quantize` — clean-room de Heistermann/Warnett/Bommes,
+*Min-Deviation-Flow in Bi-directed Graphs for T-Mesh Quantization* (SIGGRAPH 2023),
+§3 e **§4.4** (o caso *polygonal T-mesh*, que é o do QuadWild), medido sobre os
+patches que o **oráculo já exporta em texto** — exatamente a mitigação que o §5
+prescreve para o risco nº 1.
+
+### ⭐ A lei é UMA, e ela engole os casos que a literatura escreve à parte
+
+Um patch de valência `n` ladrilhado com **um** vértice irregular interior é a
+subdivisão regular do leque que liga um ponto de cada lado ao centro. Chamando
+`e_j` a aresta interior que vai do centro ao ponto do lado `j`:
+
+```text
+    L_i = e_{i-1} + e_{i+1}        (índices módulo n,  e_j >= 1)
+```
+
+| valência | no que a lei vira | o nome usual |
+|---|---|---|
+| 3 | `L_0 = e_1+e_2`, … | paridade + desigualdade triangular |
+| **4** | **`L_0 = L_2` e `L_1 = L_3`** | *"lados opostos iguais"* |
+| 5, 6 | um sistema cíclico invertível | os padrões de Takayama |
+
+E a condição global de Takayama/Tarini sai de graça: `Σ L_i = 2·Σ e_j` é **par,
+sempre**. ⚠️ *Não se testa a paridade — ela não pode ser violada.* Ver
+[`corners.rs`](../../../crates/ph2d-quantize/src/corners.rs).
+
+### Por que isto é fluxo, e por que ele é BI-dirigido
+
+Um nó por **lado de patch**; a lei acima é a conservação nesse nó. Cada variável
+toca exatamente dois nós com coeficiente `±1` — matriz de incidência de um grafo.
+⚠️ Mas **os dois sinais são iguais**: um arco *soma* nos dois patches (`+1,+1`),
+uma aresta de leque é *consumida* pelos dois lados (`−1,−1`). Aresta com as duas
+pontas no mesmo sentido = **bi-dirigida**, e é isso que tira o problema do
+manual de min-cost-flow e o põe no de *matching*.
+
+### ⭐ O que o solver devolve é uma PROVA, não uma opinião
+
+*Dupla cobertura* (§3.6): duplica-se cada nó em `v⁺`/`v⁻` e a rede vira dirigida
+comum, que Dijkstra resolve exatamente. Todo fluxo bi-dirigido viável vira um
+fluxo **simétrico** ali, de custo exatamente o dobro — logo **o ótimo da dupla
+cobertura, a dividir por dois, é um limite inferior do ótimo inteiro**.
+
+O ótimo da dupla cobertura pode ser **assimétrico**; a média com o seu espelho é
+simétrica mas **meio-inteira**. Sobre as arestas meio-inteiras corre um
+**ramifica-e-limita** cujo limite de cada ramo é a mesma dupla cobertura. Quando a
+fila esgota, o custo é o **ótimo inteiro demonstrado** (`prova = sim`).
+
+### A medição, sobre os 10 layouts do oráculo
+
+Régua: `ph2d-quadbench/layout.py` reconstrói o layout de `.patch`/`.corners` e
+escreve um ficheiro de **números** (nenhum formato do oráculo entra na engine);
+a sonda é [`tests/oracle_bench.rs`](../../../crates/ph2d-quantize/tests/oracle_bench.rs).
+Alvo de cada arco = comprimento ÷ aresta média da saída final do oráculo.
+
+| malha | patches (valências) | arcos | meio-inteiras | expansões | fluxos | aumentos | **prova** | custo → limite | ms |
+|---|---|---|---|---|---|---|---|---|---|
+| `cube` | 8 (3) | 12 | 12 | 3 | 13 | 208 | **sim** | 2,85 → 2,68 | 1 |
+| `sphere_uv_96x144` | 8 (3) | 12 | 12 | 11 | 32 | 512 | **sim** | 3,83 → 2,77 | 1 |
+| `sphere_sculpt_98k` | 8 (3) | 12 | 12 | 10 | 23 | 343 | **sim** | 4,03 → 2,58 | 1 |
+| `sphere_shuffled` | 8 (3) | 12 | 12 | 12 | 30 | 492 | **sim** | 4,06 → 2,85 | 1 |
+| `sculpt_wrinkled` | 8 (3) | 12 | 12 | 9 | 48 | 698 | **sim** | 3,80 → 2,72 | 2 |
+| `torus_64x32` | 4 (4) | 8 | **0** | 0 | 1 | 12 | **sim** | 20,16 → 20,16 | 0 |
+| ⭐ `sculpt_hooked` | 15 (3·11, 4·1, 5·3) | 30 | 14 | 200 | 414 | 30 219 | **sim** | 29,81 → 29,36 | 91 |
+| `sculpt_ridged` | 18 (3·12, 4·2, 5·4) | 43 | 18 | 6 | 19 | 1 090 | **sim** | 28,75 → 28,67 | 7 |
+| `sculpt_punctured` | — | — | — | — | — | — | — | **layout RECUSADO** | — |
+| `sphere_noisy` | 1 318 (3·649, 4·178, 5·489, 6·2) | 3 613 | — | — | — | — | — | **ORÇAMENTO ESGOTADO** | 48 306 |
+
+⭐ **Os oito layouts fechados de tamanho normal quantizam, e TODOS com o ótimo
+demonstrado — o mais lento em 91 ms.** É a resposta à pergunta que o §5 diz que
+podia matar o plano, e ela chegou **antes** do F3, como o §6 mandava.
+
+⚠️ **Quatro leituras honestas:**
+
+1. **`sculpt_punctured` é recusado de propósito.** 18 dos seus 42 arcos são de
+   **bordo** (usados por um patch só), e esta fase pressupõe superfície fechada.
+   Devolver um número seria pior que recusar — e ⚠️ **o oráculo também não fecha
+   aquele buraco** (§1.3, nota 3). A sanitização é do F1 e não é opcional.
+2. ⚠️ **`sphere_noisy` sai por ORÇAMENTO, e a palavra importa.** Ele é a saída do
+   próprio oráculo sobre a malha ruidosa — **1 318 patches** onde as outras têm 8
+   a 18, que é o oráculo a falhar no traçado, não nós. O solver não diz *"não
+   existe"*: diz *"não coube no que me deste"*, e as duas são afirmações sobre
+   coisas diferentes (`SolveError::Exhausted` contra `Infeasible`).
+   ⛔ **E chegar a dizer isso levou três correções**, porque as primeiras versões
+   diziam a coisa errada — ver *"o teto que mentia"*, abaixo.
+3. **O `torus` sai com ZERO arestas meio-inteiras.** Ele é o único layout todo de
+   valência 4, e nele a estrutura bi-dirigida quase desaparece — o problema cai
+   num fluxo comum. *A dificuldade mora nas valências ímpares.*
+4. **O limite não é apertado.** Nas esferas o ótimo inteiro custa ~40 % acima do
+   limite fracionário: é o preço real da integralidade, não folga do solver — a
+   força bruta confirma o mesmo número (abaixo).
+
+### ⭐ E o que custa, medido — o custo NÃO é o tamanho, é a HETEROGENEIDADE
+
+Sonda: [`tests/scaling.rs`](../../../crates/ph2d-quantize/tests/scaling.rs), sobre grelhas toroidais de
+`n × m` patches de 4 lados (`2·n·m` arcos). *"Dispersão"* mistura alvos diferentes arco a arco.
+
+| arcos | dispersão | aumentos de fluxo | ms |
+|---|---|---|---|
+| 2 048 | 0,0 | **0** | **1** |
+| **8 192** | **0,0** | **0** | **6** |
+| 512 | 0,5 | 2 149 | 65 |
+| 512 | 0,9 | 5 107 | 129 |
+| 2 048 | 0,9 | 10 692 | 1 710 |
+
+⭐ **Oito mil arcos em 6 ms quando os alvos são uniformes, e ZERO aumentos** — o desequilíbrio inicial
+já é nulo. O relógio inteiro desta fase mora na coluna do meio.
+
+⚠️ **Duas curas, e as duas mudaram ordens de grandeza:**
+
+1. **Partida a quente das arestas de leque.** Elas têm custo **zero**, logo nada as empurra: partiam do
+   piso `1` enquanto os arcos já se pré-saturavam perto do alvo, e o desequilíbrio que sobrava em cada
+   nó era da ordem do **comprimento do lado**. Pôr-lhes fluxo inicial levou a grelha uniforme de 1 024
+   patches de **1 581 ms a 1 ms**.
+   ⭐ **E é EXATO, não heurístico:** a otimalidade exige que todo arco residual tenha custo `>= 0`; num
+   arco de **custo zero** ambos os sentidos custam zero, logo qualquer quantidade inicial preserva a
+   condição. *O ótimo é o mesmo — a força bruta continua a bater.*
+2. ⭐ **Primal-dual em vez de um caminho de cada vez.** O motor achava **um** caminho mais curto por
+   Dijkstra e empurrava o gargalo dele; com desequilíbrio grande isso são centenas de travessias do
+   grafo inteiro. Agora cada Dijkstra fixa os potenciais e um **fluxo bloqueante** (Dinic sobre o
+   subgrafo de custo reduzido zero) esgota **todos** os caminhos daquela fase de uma vez. A grelha de
+   2 048 arcos dispersos passou de **não terminar em meia hora** para **1,7 s**.
+   ⚠️ **E o nível NÃO substitui a admissibilidade**: um arco caro pode ligar dois níveis consecutivos
+   por acaso. Sem a segunda condição o fluxo escolhia a rota de custo 5 com a de custo 1 aberta — o gate
+   `the_cheaper_of_two_parallel_routes_wins` devolvia 32 onde o ótimo é 24.
+
+### ⛔ O teto que MENTIA — a correção que mais importa
+
+⚠️ **Um teto de capacidade que não escala transforma-se numa afirmação falsa sobre o layout.** A
+`sphere_noisy` devolvia `Infeasible` — *"não existe quantização regular para esta superfície"* — e o
+que não cabia era o **teto da rede**, não a superfície. Um teto inflado à mão fazia a mesma malha
+deixar de ser inviável.
+
+⇒ Hoje o teto **escala em degraus** (`CAP_STEPS = [1, 4, 16, 64]`) e só sobe quando o degrau anterior
+recusou; o [`Report::cap_step`] diz em qual coube e o `cap_binding` conta os arcos encostados nele
+(gate: **zero**). *Um limite que decide a resposta em vez de a limitar é um bug, não uma configuração.*
+
+⚠️ **E os três tetos são três, porque falham por motivos diferentes:** *expansões* limitam a busca (que
+é opcional — gastá-las devolve resposta sem prova), *resoluções* limitam também o mergulho (que é
+obrigatório), e *aumentos* são os únicos que limitam o relógio de **uma** resolução isolada.
+⛔ **Nenhum deles limita segundos**, porque um aumento não custa o mesmo em todo layout — e é por isso
+que o orçamento é **parâmetro** ([`Budget`]) e não só constante: quem conhece o tamanho é quem chama.
+
+### A régua que não partilha código com o solver
+
+⭐ Os gates comparam contra **força bruta**: enumerar todas as quantizações de um
+layout pequeno e ficar com a mais barata. Sobre um tetraedro (4 patches, 6 arcos,
+12 casos) e sobre a esfera mínima (2 patches colados por 3 arcos, 16 casos), o
+solver **acerta o ótimo em todos**. *É a única forma de uma afirmação de
+otimalidade não ser o solver a avaliar-se a si próprio.*
+
+### E quantos quads sai — com a divergência explicada
+
+| malha | nossos quads | oráculo | Δ |
+|---|---|---|---|
+| ⭐ `cube` | **4 816** | **4 816** | **0 %** |
+| `sculpt_ridged` | 4 147 | 4 109 | +0,9 % |
+| `sculpt_hooked` | 4 440 | 4 262 | +4 % |
+| `sphere_uv_96x144` | 2 860 | 3 352 | −15 % |
+| `sphere_shuffled` | 5 034 | 4 428 | +14 % |
+| `sphere_sculpt_98k` | 5 272 | 4 592 | +15 % |
+| `sculpt_wrinkled` | 5 470 | 4 696 | +16 % |
+| `torus_64x32` | 7 290 | 5 538 | +32 % |
+
+⚠️ **O `cube` bater EXATO e as formas curvas não é diagnóstico, não é ruído.** O
+alvo de cada arco foi normalizado pela aresta **média** da saída do oráculo. Num
+cubo a densidade dele é uniforme e a média é a lei inteira ⇒ bate exato. Numa
+forma curva a densidade dele **segue a curvatura**, e uma média única é o alvo
+errado arco a arco. *Isto confirma, por outro caminho, a incógnita nº 1 do §7 — a
+metade **adaptativa** da lei de densidade —, e não é um defeito do quantizador.*
+
+### ⛔ E os CINCO bugs, com o que cada um ensinou
+
+1. **Fonte e sorvedouro trocados** no motor de fluxo: o nó com excesso pendurado
+   no sorvedouro em vez de na fonte. O fluxo **fechava**, `solve` devolvia `Ok`, e
+   a resposta satisfazia a conservação de **outro** problema. Nenhuma inspeção do
+   resultado o mostraria; quem o apanhou foi a força bruta, quatro camadas acima.
+   Gate próprio hoje: `a_node_with_surplus_sends_it_away_instead_of_doubling_it`.
+2. **O piso errado ao remontar a resposta**: uma aresta presa por uma ronda
+   anterior guardava o piso da *rede*, não o da *ronda*. Só quebrava nos ramos em
+   que a fixação atuou — e a rede não acusa nada. Hoje há `debug_assert` de
+   conservação sobre o fluxo final.
+3. ⭐ **A busca ramificava em PONTOS**, não em meias-retas — `x = piso` e
+   `x = piso+1` em vez de `x <= piso` e `x >= piso+1`. Pontos **não particionam**:
+   todo inteiro fora dos dois era descartado em silêncio, e a busca continuava a
+   esgotar a fila e a **declarar-se provada**. Sintoma: a `sculpt_hooked` deu
+   **29,86**, **29,92** e — já curada — **29,81**, as três com `prova = sim`.
+   *Duas provas do mesmo ótimo não podem discordar; uma delas não era prova.*
+4. ⭐ **O teto da rede dizia `Infeasible`** — *"esta superfície não admite
+   quantização"* — quando o que não cabia era o teto. Ver *"o teto que mentia"*
+   acima; hoje ele **escala** e há gate.
+5. **O nível de Dinic sem a admissibilidade**: um arco caro que ligue dois níveis
+   consecutivos por acaso entra no fluxo bloqueante e paga custo a mais. O gate
+   `the_cheaper_of_two_parallel_routes_wins` devolveu **32** onde o ótimo é 24.
+
+⚠️ **E a lição de gate é a parte que fica.** Este terceiro bug **sobreviveu** à
+força bruta no tetraedro, no octaedro, no layout com junção em T e num prisma —
+instâncias pequenas raramente precisam que uma variável se afaste dois passos do
+valor fracionário, então o atalho acerta por acaso. O que o matou foi extrair a
+ramificação para uma função de três inteiros e gatear a **propriedade que a
+define** — *os dois ramos particionam a faixa* —, com aritmética pura e sem malha
+nenhuma (`the_two_branches_partition_the_range_they_came_from`).
+*Quando a mutação sobrevive ao gate do RESULTADO, suba um nível: gate a invariante.*
+
+### O que ficou aberto no F4
+
+- ⛔ **O nó de emergência do §4.4.1 NÃO foi construído**, e é decisão medida: ele
+  admite patches com mais de um vértice irregular, e com ele uma resposta
+  "válida" pode conter patches que o verificador não fecha — o certificado
+  deixaria de ser certificado. **Nenhum layout do oráculo precisou dele.** Ligá-lo
+  é meia hora no dia em que um layout real o exigir.
+- ⭐ **O solver exato por *matching* (§3.7, Blossom) passou a ter justificação
+  MEDIDA.** Ele não estava aqui por não haver número que o pedisse; agora há: o
+  custo desta fase é a **meia-integralidade**, não o tamanho (secção acima), e é
+  exatamente ela que o matching resolve de uma vez em vez de a procurar. *É o
+  próximo trabalho desta crate, e já não é especulação.*
+- ⛔ **O alinhamento de singularidades** (§4.4, *paired sides*) está fora: o preset
+  que o oráculo correu tem `alignSingularities 0`, logo não há nada para comparar.
+- A **isometria** é o único termo do custo; a *regularidade* do QuadWild
+  (`regularityNonQuadrilateralsWeight 0.9`) ainda não tem análogo.
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |
 |---|---|---|
-| ⭐ **Bi-MDF do zero** (F4) | não há min-cost-flow permissivo em Rust com grafo bi-dirigido e custo convexo; é a fase de que 100 % dos quads depende | atacar F4 **cedo** com um protótipo isolado sobre os patches que o **oráculo** exporta (`.patch`/`.corners` são texto) — assim F4 é medida **antes** de F3 estar pronta |
+| ~~⭐ **Bi-MDF do zero** (F4)~~ | ~~não há min-cost-flow permissivo em Rust com grafo bi-dirigido e custo convexo~~ | ✅ **RISCO FECHADO em 2026-08-20** pela mitigação que esta linha prescrevia: protótipo medido sobre os patches exportados pelo oráculo, **antes** do F3. Fecha com ótimo demonstrado (§4-quater) |
 | **rounding do campo divergir** (F2) | o paper descreve a energia; **a ordem do rounding** decide onde as singularidades caem, e é onde o oráculo tem escolhas não publicadas | comparar contagem+posição de singularidades contra o `.rosy` que o oráculo já escreve |
 | **a lei de densidade do estágio 2** | o oráculo dá ~4 500 vértices de qualquer entrada; não sabemos de onde vem | varrer os presets do oráculo e regredir a lei a partir das saídas — é medição, não leitura de fonte |
 | **degenerescências em sculpts** | `sculpt_punctured` sai com 88 arestas de borda **no oráculo** | a sanitização é nossa e é F1, não um "detalhe" |
@@ -312,11 +540,13 @@ sempre foi. Ligar qualquer um deles agora pioraria o que o artista vê.
 
 ## 6 — Esforço e ordem de ataque
 
-Ordem recomendada: **F0 → F1 → F2 → (F4 protótipo em paralelo, sobre patches do oráculo) → F3 → F4 → F5 → F7 → F6 → F8.**
+Ordem recomendada: ~~F0 → F1 → F2 → (F4 protótipo em paralelo, sobre patches do oráculo)~~ **→ F3 → F5 → F7 → F6 → F8.**
 
-⚠️ **F4 sai da ordem natural de propósito.** Ela é a fase de maior risco e a que o produto inteiro
-depende; medi-la sobre os patches que o oráculo **já exporta** custa pouco e responde cedo a pergunta
-que pode matar o plano. *Descobrir no fim que o solver não fecha seria descobrir tarde demais.*
+⚠️ **F4 saiu da ordem natural de propósito, e a aposta pagou.** Ela era a fase de maior risco e a que o
+produto inteiro depende; medi-la sobre os patches que o oráculo **já exporta** custou uma jornada e
+respondeu cedo a pergunta que podia matar o plano. *Descobrir no fim que o solver não fecha seria
+descobrir tarde demais.* ⭐ **O que sobra agora é uma cadeia sem furos de risco: o F3 produz o layout
+que o F4 já sabe consumir, e o F5 consome o que o F4 já sabe produzir.**
 
 | fase | esforço (jornadas de agente) | observação |
 |---|---|---|
@@ -334,7 +564,11 @@ que pode matar o plano. *Descobrir no fim que o solver não fecha seria descobri
 
 ## 7 — O que este plano ainda NÃO sabe
 
-1. ⛔ **A metade ADAPTATIVA da lei de densidade** — a uniforme está medida e portada (§4-bis); a que segue a curvatura, não.
+1. ⛔ **A metade ADAPTATIVA da lei de densidade** — a uniforme está medida e portada (§4-bis); a que
+   segue a curvatura, não. ⚠️ **Subiu para o primeiro lugar em 2026-08-20**: o F4 mostrou que, com um
+   alvo por arco vindo de uma aresta **média**, o `cube` bate o oráculo **exato** (0 %) e as formas
+   curvas erram entre −15 % e +24 % (§4-quater). *A incógnita deixou de ser teórica — ela é o maior
+   termo de erro que resta na contagem de quads.*
 2. ⛔ **O QEx 2013** não foi obtido.
 3. ⛔ **Ninguém mediu Hausdorff** ainda: `metrics.py` cobre contagem, topologia e ângulo; a fidelidade
    geométrica é a lacuna do F0.

@@ -72,6 +72,22 @@ com os verbos do produto e não existem fora dele (`shells/desktop/src/sculpt3d_
 `#[cfg(test)]`, escreve para um caminho **absoluto** fora da árvore). A F0 do plano move isto para o
 harness.
 
+## Emenda 1 (2026-08-20) — as três crates clean-room, e o que cada uma provou
+
+| crate | paper-fonte | o que a medição diz |
+|---|---|---|
+| `ph2d-remesh-iso` | QuadWild 2021 §4 | ⚠️ **NÃO é a alavanca** — cura o `cube` e move a agulha nos dois sentidos no resto (PLAN §4-bis) |
+| `ph2d-crossfield` | Bommes 2009 (MIQ) + QuadWild §5 | ⭐ **paridade no CAMPO**: 8 singularidades numa esfera, o ótimo topológico (PLAN §4-ter) |
+| `ph2d-quantize` | **Bi-MDF 2023 §3 e §4.4** | ⭐ **fecha com o ótimo DEMONSTRADO** em todos os layouts fechados do oráculo (PLAN §4-quater) |
+
+⚠️ **A fronteira jurídica aguentou os três.** Nenhuma linha traduzida; o que atravessa a fronteira do
+oráculo são **saídas** — e desde o F4 elas atravessam já convertidas em números por `layout.py`, que
+vive na bancada: **nenhum formato do oráculo (`.patch`, `.corners`, `.rosy`) tem parser dentro da
+engine.**
+
+⚠️ **E o `ph2d-quadflow` (porte BSD do Instant Meshes) FICA** — ele é o backend de *preview* do F7, e
+a sua licença permissiva é o que torna isso possível. O pivô não o revoga; repõe-no no lugar certo.
+
 ## Papers (o que é permitido)
 
 ✅ Ler, executar o binário, inspecionar SAÍDAS. ⛔ Traduzir/transcrever fonte GPL.

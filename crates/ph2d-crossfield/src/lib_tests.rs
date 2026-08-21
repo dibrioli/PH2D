@@ -191,7 +191,10 @@ fn flat_grid(n: usize) -> Mesh {
 fn the_naive_alternation_is_measurably_worse() {
     for (name, mesh) in [
         ("esfera 24x36", tri(shapes::uv_sphere(24, 36, 1.0))),
-        ("cubo subdividido", tri(shapes::sphere_with_triangles(4000, 1.0))),
+        (
+            "cubo subdividido",
+            tri(shapes::sphere_with_triangles(4000, 1.0)),
+        ),
     ] {
         let dual = Dual::build(&mesh);
         let (alt, rounds) = solve_alternating(&dual, 40);
@@ -204,7 +207,10 @@ fn the_naive_alternation_is_measurably_worse() {
             energy(&dual, &alt),
             energy(&dual, &miq)
         );
-        assert_eq!(s_alt, s_miq, "{name}: os dois campos fecham a MESMA topologia");
+        assert_eq!(
+            s_alt, s_miq,
+            "{name}: os dois campos fecham a MESMA topologia"
+        );
         assert!(
             energy(&dual, &miq) < energy(&dual, &alt),
             "{name}: o MIQ deixou de ganhar em energia da alternancia -- se isso e' verdade, o \

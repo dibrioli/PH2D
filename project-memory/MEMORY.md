@@ -98,6 +98,7 @@
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
 - [Provas de mutação (6)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
+- [Duas provas do mesmo ótimo não podem discordar](feedback_two_proofs_of_the_same_optimum_cannot_disagree.md) — gate a INVARIANTE (a partição), não o resultado; instância pequena acerta por acaso
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep

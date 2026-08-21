@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-quantize"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A QUANTIZACAO Bi-MDF (ADR-0161, F4). Clean-room a partir de Heistermann,
+# Warnett, Bommes, "Min-Deviation-Flow in Bi-directed Graphs for T-Mesh
+# Quantization" (SIGGRAPH 2023) §3-§4, e de QuadWild 2021 §7. Nenhuma linha
+# traduzida de fonte GPL; o oraculo `quadwild-bimdf` e' processo externo de
+# bancada, nunca dependencia.
+#
+# ⚠️ E' a crate-FOLHA da fase critica: ela nao conhece malha, nem campo, nem
+# geometria. A entrada e' um LAYOUT abstrato (patches, lados, arcos, alvos) e a
+# saida sao INTEIROS. E' isso que a torna testavel contra forca bruta.
+
+[dependencies]

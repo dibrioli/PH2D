@@ -47,6 +47,7 @@ mod gallery;
 mod inspector;
 mod inspector_joint;
 mod inspector_player;
+mod live_sections;
 mod menus;
 mod menus_timeline;
 
@@ -55,5 +56,6 @@ pub use gallery::*;
 pub use inspector::*;
 pub use inspector_joint::*;
 pub use inspector_player::*;
+pub use live_sections::*;
 pub use menus::*;
 pub use menus_timeline::*;

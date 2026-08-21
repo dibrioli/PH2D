@@ -6,16 +6,19 @@
 //! `(state: &mut InspectorState, host: &mut dyn PanelHostInternal,
 //! ev: WidgetEvent)`. All `hero.<field>` accesses route through
 //! [`PanelHostInternal`] trait methods.
-//! ⚠️ **The section colour-dot arm ENUMERATES its readers, and it has rotted.**
-//! Six dots are registered `Plain` in `pre_populate` and only some are listed
-//! in the match: `INSP_LIVE_NAME_COLOR` and `INSP_LIVE_VISIBILITY_COLOR` arm on
-//! click and open nothing, and ORDERING / SAMPLING / BLEND are in neither
-//! place. The physics pair (§11/§12) was in the same state until W3 and is now
-//! listed. The real fix is one `(section, colour)` table that `pre_populate`
-//! and the arm both read — one table, N consumers, the shape the physics
-//! panel's `SECTIONS` already uses — but that switches on three sections
-//! belonging to other waves, so it is named in the physics line's handoff
-//! rather than smuggled into it
+//! ✅ **O braço do ponto de cor deixou de ENUMERAR os seus leitores** (2026-08-21) — a cura que
+//! esta nota nomeava está feita: **uma** tabela [`ids::LIVE_SECTIONS`] de pares `(seção, cor)`, e
+//! `pre_populate` (dobra + registo) e este braço (despacho) são projeções dela.
+//!
+//! ⚠️ **A nota anterior estava certa no mecanismo e errada no número** — dizia que ORDERING /
+//! SAMPLING / BLEND estavam «em nenhum dos dois sítios»; a auditoria de 7 lentes mediu **sete**
+//! pontos mortos (mais Pulley Wheel e Platform Player) e **três** cabeçalhos que pintavam o chevron
+//! e não dobravam. *Uma nota de dívida também envelhece — foi por isso que a cura virou tabela e
+//! não uma sexta entrada na lista.*
+//!
+//! A varredura que impede a recaída é `tests/every_painted_id_is_reachable.rs`: ela pinta o
+//! Inspector inteiro e exige que **todo id registado no índice de acerto** passe na pergunta do
+//! `is_focusable`. Ela não tem lista nenhuma dentro — a lista é o que o painel pinta
 //! ([[feedback_a_condition_that_enumerates_its_readers_rots]]).
 //!
 
@@ -510,16 +513,13 @@ fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bo
 /// and the two physics dots (§11/§12) pushed it over. Returns whether the
 /// event was consumed.
 fn section_color_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    // ⚠️ **A condição deixou de ENUMERAR os seus leitores** (2026-08-21). Ela listava seis dos
+    // treze pontos, e a nota no topo deste ficheiro — que já denunciava a podridão — dizia
+    // **três**: *uma nota de dívida também envelhece*. Agora a fonte é `ids::LIVE_SECTIONS`, a
+    // mesma tabela que o `pre_populate` lê para registar o ponto e a dobra. Um ponto novo arma no
+    // dia em que a seção entra na tabela.
     if let WidgetEvent::Click(id) = ev
-        && matches!(
-            id,
-            ids::INSP_LIVE_TRANSFORM_COLOR
-                | ids::INSP_LIVE_RENDER_COLOR
-                | ids::INSP_LIVE_COLOR_COLOR
-                | ids::INSP_LIVE_SHEET_COLOR
-                | ids::INSP_LIVE_PHYSICS_COLOR
-                | ids::INSP_LIVE_JOINT_COLOR
-        )
+        && ids::LIVE_SECTION_COLOR_IDS.contains(&id)
     {
         let seed = host
             .store()

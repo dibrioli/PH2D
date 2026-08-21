@@ -105,8 +105,36 @@ impl MockPanelHost {
 
     /// A host with panel `P`'s widgets pre-registered (runs `P::populate`,
     /// the same boot step the host orchestrator runs once).
+    ///
+    /// ⚠️ **Esta é METADE do que o app faz.** Veja [`Self::with_panel_and_shared_chrome`] antes de
+    /// escrever um gate que pergunte *"este id está registado?"*.
     pub fn with_panel<P: Panel>() -> Self {
         let mut host = Self::new();
+        P::populate(&mut host.store);
+        host
+    }
+
+    /// **O host com as DUAS metades que o app de facto popula** — o chrome partilhado *e* o painel.
+    ///
+    /// # Por que existe
+    ///
+    /// O `HeroScreen::new` popula o store a partir de **duas** fontes
+    /// ([`hero.rs:278`](../../ph2d-editor-core/src/screens/hero.rs) → `pre_populate_store`):
+    /// o chrome partilhado (`pre_populate::populate_shared` — as marcas de seção colapsável, os
+    /// pontos de cor, as linhas de menu) **e** o `Panel::populate` de cada painel. O
+    /// [`Self::with_panel`] só corre a segunda.
+    ///
+    /// ⚠️ **Um gate montado só sobre a segunda mede um store que o app nunca tem** — e responde
+    /// «não registado» a ids que estão registadíssimos, o que o faz acusar o legítimo e ser
+    /// desligado. Foi exatamente o que aconteceu quando a varredura
+    /// `every_painted_id_is_reachable` nasceu (2026-08-21): ela acusou 22 ids, e **14 deles eram
+    /// falso-positivo desta lacuna** — incluindo cabeçalhos que funcionam há meses.
+    ///
+    /// Use este construtor sempre que a pergunta do teste envolver **registo**; o
+    /// [`Self::with_panel`] chega para perguntas que só tocam nos widgets do próprio painel.
+    pub fn with_panel_and_shared_chrome<P: Panel>() -> Self {
+        let mut host = Self::new();
+        ph2d_editor_core::screens::hero::pre_populate::populate_shared(&mut host.store);
         P::populate(&mut host.store);
         host
     }

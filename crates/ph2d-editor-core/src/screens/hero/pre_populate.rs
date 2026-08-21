@@ -517,20 +517,11 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
     // section's color-picker handler (Inspector apply_event seeds
     // INSP_BLENDER_PICKER). Same canon Widget Gallery's
     // SECTION_COLOR_IDS use.
-    for id in [
-        ids::INSP_LIVE_NAME_COLOR,
-        ids::INSP_LIVE_VISIBILITY_COLOR,
-        ids::INSP_LIVE_TRANSFORM_COLOR,
-        ids::INSP_LIVE_RENDER_COLOR,
-        ids::INSP_LIVE_COLOR_COLOR,
-        ids::INSP_LIVE_SHEET_COLOR,
-        // §11/§12 physics (ADR-0131 W2a/W3). Both painted a colour dot and
-        // registered its hit rect from the day they landed, and neither was
-        // here — so `is_focusable` answered false and the dot never armed.
-        // Painted, hit-registered, and dead under the mouse.
-        ids::INSP_LIVE_PHYSICS_COLOR,
-        ids::INSP_LIVE_JOINT_COLOR,
-    ] {
+    // ⚠️ **DERIVADO da mesma tabela `ids::LIVE_SECTIONS`.** Era uma lista à mão, e cinco pontos —
+    // Ordering · Sampling · Material & Blend · Pulley Wheel · Platform Player — estavam pintados,
+    // hit-registered e **dead under the mouse**, porque `is_focusable` respondia false. A §11/§12
+    // tinha sido curada aqui à mão pela mesma razão, e a cura não alcançou as vizinhas.
+    for id in ids::LIVE_SECTION_COLOR_IDS {
         store.register(id, InteractiveState::Plain);
     }
 
@@ -556,25 +547,22 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
     // section is collapsible (vide
     // `docs/UI_Padrao/components/section_header.md`). Each id is
     // marked here once; the dispatch flips collapse on left-click.
+    // ⚠️ **TODA seção viva, DERIVADA da tabela `ids::LIVE_SECTIONS`** — nunca enumerada aqui.
+    //
+    // Esta lista era escrita à mão e apodreceu exatamente como a irmã dos pontos de cor: as §11/§12
+    // (física) foram acrescentadas quando alguém notou que «o chevron prometia uma dobra que não
+    // podia acontecer», e as três vizinhas do sprite — **Ordering · Sampling · Material & Blend** —
+    // ficaram de fora e passaram meses a pintar um chevron morto (auditoria de 2026-08-21).
+    // *Uma cura escrita ao lado do buraco não o cobre.* Agora a seção nova nasce dobrável no dia em
+    // que entra na tabela, e o gate `every_id_the_inspector_paints_can_actually_be_clicked` varre o
+    // que o painel PINTA, por isso nem a tabela pode ficar para trás em silêncio.
+    for id in ids::LIVE_SECTION_IDS {
+        store.mark_collapsible_section(id);
+    }
     for id in [
-        // Inspector live sections.
-        ids::INSP_LIVE_NAME_SECTION,
-        ids::INSP_LIVE_VISIBILITY_SECTION,
-        // §8 Visibility Layer grid — collapsible sub-header.
+        // §8 Visibility Layer grid — collapsible sub-header (não é uma seção viva: vive DENTRO da
+        // §8, por isso não entra na tabela).
         ids::INSP_VIS_LAYER_HEADER,
-        ids::INSP_LIVE_TRANSFORM_SECTION,
-        ids::INSP_LIVE_RENDER_SECTION,
-        ids::INSP_LIVE_COLOR_SECTION,
-        ids::INSP_LIVE_SHEET_SECTION,
-        // §11/§12 physics. Both paint a `.collapsible(...)` chevron and read
-        // `is_collapsed`, and both were missing here — so the chevron promised
-        // a fold that could not happen and `is_collapsed` was pinned false.
-        ids::INSP_LIVE_PHYSICS_SECTION,
-        ids::INSP_LIVE_JOINT_SECTION,
-        // §13 Pulley Wheel (W-Pulley W1) — a irmã das duas acima.
-        ids::INSP_LIVE_WHEEL_SECTION,
-        // §14 Platform Player (W5) — a quarta da família.
-        ids::INSP_LIVE_PLAYER_SECTION,
         // Widget Gallery showcase sections.
         ids::INSP_SECTION_INPUTS,
         ids::INSP_SECTION_SLIDER,

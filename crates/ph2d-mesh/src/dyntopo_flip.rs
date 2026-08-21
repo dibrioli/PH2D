@@ -33,7 +33,7 @@
 //! incremental (Botsch–Kobbelt: *split · collapse · **flip** · smooth*), e a
 //! metade `collapse` é a wave seguinte.
 //!
-//! # As três recusas, e as três são geometria
+//! # As quatro recusas — três são geometria, e a quarta é a RODADA
 //!
 //! 1. **Aresta de borda** (uma face só) não tem diagonal a trocar.
 //! 2. **A diagonal nova já existe** — flipar criaria uma segunda aresta entre o
@@ -42,6 +42,28 @@
 //! 3. **A troca DOBRARIA a superfície** — se uma das faces novas aponta para o
 //!    lado oposto do par antigo, o flip é uma dobra e não uma melhoria. Sem esta
 //!    guarda um vinco afiado é "melhorado" para um bico invertido.
+//! 4. ⭐ **A diagonal nova já foi criada NESTA rodada** — e esta é a única que a
+//!    adjacência de entrada não sabe responder.
+//!
+//! ## Por que a recusa 4 existe, com o número que a nomeou
+//!
+//! A recusa 2 pergunta ao anel de `c` se `d` já lá está. ⚠️ **Esse anel é o de
+//! ANTES da rodada.** Duas trocas da mesma rodada, sobre pares de faces
+//! **disjuntos** — logo fora do alcance do `spent`, que só protege a face —,
+//! podem produzir a mesma diagonal `c—d`: nenhuma das duas a vê, e a malha sai
+//! com **duas arestas entre o mesmo par**.
+//!
+//! ⚠️ **É raro, silencioso, e apodrece tudo o que vem depois.** Medido em
+//! 2026-08-21 (`ph2d-remesh-iso/tests/manifold_probe.rs`): **UMA** ocorrência em
+//! 9 968 trocas de uma única rodada sobre a esfera de 13 682 vértices — e a
+//! aresta ofensora sai com **quatro** faces, que é a assinatura de *criada duas
+//! vezes* (uma diagonal criada por cima de outra que já existia teria três).
+//!
+//! O preço não é a aresta: é que o remesh isotrópico chama esta porta em laço, e
+//! o defeito **acumula**. O cubo saía do passe com **18 anéis abertos**, e três
+//! fases adiante isso virava **33 singularidades falsas** e uma soma de índices
+//! de `−1` onde a topologia exige `+8`. *A invariante de Poincaré–Hopf deixava de
+//! bater sem que nada no campo estivesse errado.*
 //!
 //! # Ele pergunta pela REGIÃO, e o número que obrigou isso
 //!
@@ -70,6 +92,8 @@
 //! fazia àquele grafo — *quem é a outra face desta aresta* e *a diagonal nova já
 //! existe?* — são as duas respondidas pela [`crate::Adjacency`], que a malha já
 //! carrega. `id_of` era, literalmente, uma varredura do anel de `c` atrás de `d`.
+
+use std::collections::BTreeSet;
 
 use crate::adjacency::Adjacency;
 use crate::face::Face;
@@ -148,6 +172,15 @@ fn one_round(mesh: &mut Mesh, seeds: &[u32], scratch: &mut RegionScratch) -> (us
         // adjacência de ENTRADA: uma face já trocada some do anel que a lista
         // descreve, e o guard a recusa antes de alguém ler o par errado.
         let mut spent = vec![false; src.len()];
+        // ⭐ **As diagonais que ESTA rodada já criou** — a recusa 4, e ela é a
+        // única das quatro que não se responde à adjacência de entrada. Ver o
+        // cabeçalho do módulo.
+        //
+        // ⚠️ `BTreeSet` e não `HashSet`: o conjunto não decide *o quê*, mas
+        // percorrê-lo em ordem de inserção arbitrária tornaria um dia um
+        // diagnóstico irreprodutível — e esta crate é a espinha do determinismo
+        // (`CLAUDE.md` §5.1, Física).
+        let mut made: BTreeSet<(u32, u32)> = BTreeSet::new();
         for &f in seeds {
             let i0 = f as usize;
             if i0 >= src.len() || !src[i0].is_tri() {
@@ -181,6 +214,21 @@ fn one_round(mesh: &mut Mesh, seeds: &[u32], scratch: &mut RegionScratch) -> (us
                     continue;
                 }
                 if folds(p(a), p(b), p(c), p(d)) {
+                    continue;
+                }
+                // ⭐ **Recusa 4 — e ela é INVISÍVEL para a adjacência de entrada.**
+                // Duas trocas desta mesma rodada, sobre pares de faces DISJUNTOS
+                // (logo fora do alcance do `spent`), podem produzir a MESMA
+                // diagonal `c—d`. Nenhuma das duas a vê no anel de `c`, porque
+                // esse anel é o de ANTES da rodada; a malha sairia com duas
+                // arestas entre o mesmo par — **quatro faces numa aresta** — e
+                // deixaria de ser variedade.
+                //
+                // ⚠️ **A reserva é feita AQUI e não junto da recusa 2**, e a
+                // diferença é medível: reservar antes das guardas de ângulo e de
+                // dobra faria um candidato REJEITADO bloquear uma troca válida
+                // que viesse depois com a mesma diagonal.
+                if !made.insert((c.min(d), c.max(d))) {
                     continue;
                 }
                 changes.push((i0, Face::tri(a, d, c)));

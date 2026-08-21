@@ -156,12 +156,76 @@ fn the_remesh_is_bit_reproducible() {
     assert_eq!(a.positions(), b.positions(), "duas corridas divergiram");
 }
 
+/// ⭐⭐ **A SAÍDA É UMA VARIEDADE FECHADA** — a promessa que TODO o resto do
+/// pipeline consome sem a verificar.
+///
+/// ⚠️ **Este gate nasceu de um defeito que passou por três fases sem ser visto**
+/// (2026-08-21). O `cube` saía deste passe com **18 anéis abertos**; o traçado a
+/// jusante lia 33 singularidades falsas e uma soma de índices de `−1` onde a
+/// topologia exige `+8`, e *nada no campo estava errado*. A causa era uma
+/// colisão de diagonal no flip da `ph2d-mesh` (ver a recusa 4 no cabeçalho de
+/// `dyntopo_flip`), e ela também atingia a esfera EMBARALHADA e a RUIDOSA.
+///
+/// ⚠️ **Por que o `the_genus_survives` não o apanhava:** ele conta as arestas num
+/// `BTreeSet`, que **funde** as duas arestas do par duplicado — a característica
+/// de Euler saía certa sobre uma malha que já não era variedade. *Uma régua que
+/// deduplica não pode denunciar duplicação.* Aqui a contagem é por OCORRÊNCIA.
+///
+/// | fixture | anéis abertos ANTES da cura | depois |
+/// |---|---|---|
+/// | `cube` | **18** | 0 |
+/// | `sphere_shuffled` | 2 | 0 |
+/// | `sphere_uv` · `torus` | 0 | 0 |
+#[test]
+fn the_remesh_returns_a_closed_manifold() {
+    use std::collections::BTreeMap;
+    for (name, mut mesh) in [
+        ("cubo", shapes::cube(1.0)),
+        ("esfera", shapes::uv_sphere(24, 36, 1.0)),
+        (
+            "esfera embaralhada",
+            shapes::uv_sphere_shuffled(24, 36, 1.0),
+        ),
+        ("esfera ruidosa", shapes::uv_sphere_noisy(24, 36, 1.0, 0.02)),
+        ("toro", shapes::torus(32, 16, 1.0, 0.35)),
+    ] {
+        remesh_isotropic(&mut mesh, ALPHA);
+        let mut undirected: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+        let mut directed: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+        for f in mesh.faces() {
+            let v = f.verts();
+            for i in 0..v.len() {
+                let (a, b) = (v[i], v[(i + 1) % v.len()]);
+                *undirected.entry((a.min(b), a.max(b))).or_default() += 1;
+                *directed.entry((a, b)).or_default() += 1;
+            }
+        }
+        let border = undirected.values().filter(|&&n| n == 1).count();
+        let nonmanifold = undirected.values().filter(|&&n| n > 2).count();
+        // ⚠️ **A terceira pergunta, e ela é DIFERENTE das outras duas.** Uma
+        // aresta dirigida usada duas vezes é orientação inconsistente ou face
+        // duplicada — nenhuma das quais move a contagem por aresta não-dirigida.
+        let repeated = directed.values().filter(|&&n| n > 1).count();
+        assert_eq!(
+            (border, nonmanifold, repeated),
+            (0, 0, 0),
+            "{name}: o passe devolveu uma malha que nao e' variedade fechada \
+             (borda {border}, nao-variedade {nonmanifold}, dirigida-repetida {repeated})"
+        );
+    }
+}
+
 /// ⭐ **A TOPOLOGIA ATRAVESSA** — o gênero da entrada é o da saída.
+///
+/// ⚠️ **O `cubo` está aqui desde 2026-08-21**, e é a fixtura que faltava: ele era
+/// a única do corpus que saía deste passe não-variedade, e este gate passava
+/// mesmo assim (ver [`the_remesh_returns_a_closed_manifold`]).
 #[test]
 fn the_genus_survives() {
     use std::collections::BTreeSet;
     for (name, mut mesh, want) in [
-        ("esfera", shapes::uv_sphere(24, 36, 1.0), 2i64),
+        ("cubo", shapes::cube(1.0), 2i64),
+        ("esfera", shapes::uv_sphere(24, 36, 1.0), 2),
         ("toro", shapes::torus(64, 32, 1.0, 0.35), 0),
     ] {
         remesh_isotropic(&mut mesh, ALPHA);

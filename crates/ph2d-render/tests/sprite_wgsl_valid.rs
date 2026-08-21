@@ -66,3 +66,42 @@ fn sprite_wgsl_instance_basis_is_vec4_at_location_6() {
          attribute (ADR-0070-amendment-4) is missing or the wrong shape"
     );
 }
+
+/// **A COR DA SPRITE PODE PASSAR DO BRANCO** — é disto que a emissão vive (plano
+/// `docs/Sprite_projeto/18` W8).
+///
+/// # A pergunta que o Enio fez, e a razão de ela virar gate
+///
+/// Enio, 2026-08-21: *"Emissive funciona para 8 e 16 bits, confere?"* — **sim, e pelo mesmo
+/// mecanismo nos dois casos**: o passe de emissão multiplica o `tint` da instância pela
+/// intensidade, o fragmento multiplica o texel pelo tint, e o alvo é `Rgba16Float`, onde valores
+/// acima de 1.0 **existem**. O que a textura guardou (8 ou 16 bits) não entra na conta — ela é
+/// amostrada para `[0, 1]` nos dois casos, e quem passa do branco é o multiplicador.
+///
+/// ⚠️ **A diferença entre os dois é outra, e é a que vale a pena saber:** uma textura de 16 bits
+/// pode guardar valores acima de 1.0 **por si** (um EXR importado), e então ela brilha **sem** o
+/// componente. Uma de 8 bits satura em branco e precisa sempre do multiplicador.
+///
+/// # O que este gate impede
+///
+/// ⚠️ Um `clamp`/`saturate` no valor devolvido pelo fragmento mataria a emissão **inteira**, em
+/// silêncio: a sprite continuaria a desenhar-se igual, o bright-pass deixaria de encontrar seja o
+/// que for, e o halo desapareceria sem um erro em lado nenhum. É a única linha do shader de que a
+/// feature depende, e não há nada no código dela a protegê-la.
+#[test]
+fn the_sprite_fragment_does_not_clamp_its_colour_output() {
+    // As duas linhas de retorno do fragmento principal — o ramo premultiplicado e o reto.
+    for needle in [
+        "return vec4<f32>(rgb * extra_alpha, alpha);",
+        "return vec4<f32>(rgb * alpha, alpha);",
+    ] {
+        assert!(
+            SPRITE_WGSL.contains(needle),
+            "o fragmento do sprite deixou de devolver `{needle}`.\n\n\
+             Se o retorno passou a ser envolvido num `clamp`/`saturate`, a EMISSAO morre em \
+             silencio: a sprite desenha-se igual, mas nenhuma cor passa de 1.0, o bright-pass do \
+             bloom nao encontra nada, e o halo desaparece sem erro nenhum.\n\
+             Ver `docs/Sprite_projeto/18` W8 e `shells/desktop/src/render_loop/sprite_emissive.rs`."
+        );
+    }
+}

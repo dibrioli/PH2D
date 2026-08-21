@@ -1274,6 +1274,61 @@ Listar com motivo de rejeição.
 
 ADRs proibidos sem rever este SKILL: qualquer um que mexa em HR-1 a HR-17.
 
+## 19-bis. Propostas para o futuro (decididas, não construídas)
+
+> Coisas que o Enio **quer**, cuja forma já foi medida, e que ainda não têm wave. Cada uma diz o que
+> foi feito, o que **não** foi, e o que a segunda metade custaria — para que quem a pegar comece na
+> medição e não do zero.
+
+### 19-bis.1 — A sprite como fonte de luz REAL (iluminar as vizinhas)
+
+**Ordem:** Enio, 2026-08-21 — *"sprite como fonte de luz"*, e depois *"coloque como proposta para o
+futuro no stack"*.
+
+⚠️ **«Fonte de luz» são duas coisas, e só a primeira ship*ou*** (plano
+[`docs/Sprite_projeto/18`](docs/Sprite_projeto/18_precisao_de_16_bits_nas_sprites.md) W8):
+
+| | o que é | estado |
+|---|---|---|
+| **emitir** | a sprite brilha; a luz dela sangra sobre o fundo à volta | ✅ **feito** — `ph2d_ecs::SpriteEmissive` + um passe de bloom sobre os emissores |
+| **iluminar** | a luz da sprite **incide** nas vizinhas: cai com a distância, é ocluída, faz sombra | ⏸️ **esta proposta** |
+
+**A diferença não é de grau, é de sistema.** O emissor é uma multiplicação e um bright-pass: nada na
+cena sabe que ele existe. Iluminar exige que **outras** superfícies leiam a luz — atenuação,
+oclusão, sombra —, e isso é um passe de propagação 2D que o motor não tem.
+
+#### O que já existe, e por que NÃO serve
+
+⚠️ **O [`ph2d-light`] parece a resposta e não é.** Ele é um rig de **sombreamento por normais**
+(lâmpadas + ambiente), construído para o impasto e para a malha do sculpt doar a normal a uma sprite
+chapada. Ele acende **uma superfície que tem relevo**; não sabe nada sobre uma sprite iluminar a
+vizinha, e não tem conceito de oclusor. *Reutilizá-lo seria confundir sombreamento com propagação.*
+
+**O que de facto está do lado certo da fronteira:**
+- o `GameRt` é `Rgba16Float` — há folga acima de 1.0 para a luz somar sem saturar;
+- o emissor já identifica **quem** emite e com que intensidade (`SpriteEmissive`), que é metade da
+  entrada de qualquer solver de luz;
+- o passe de emissão já demonstra o padrão «re-desenhar um subconjunto em isolamento e compor por
+  cima», que é a forma de qualquer passe de luz.
+
+#### O que a wave teria de decidir (e é aqui que ela começa)
+
+1. **2D com oclusores, ou lightmap?** Um solver por-fragmento com sombras duras (ray-march contra
+   uma máscara de oclusão) é o idioma do Godot 2D; um bake é o do Unity. ⚠️ **Isto decide tudo o
+   resto** e é a primeira medição, não a última.
+2. **Quem é oclusor?** Uma sprite opaca? Só quem o declarar? Um componente novo, na mesma família
+   append-only do `SpriteEmissive`.
+3. **A atenuação é autorada ou física?** Um raio + queda é o que um artista 2D espera; `1/r²` é o
+   que a física manda e quase ninguém quer em 2D.
+4. **Normais.** Sem elas a luz é chapada (só atenuação). Com elas há relevo — e aí o `ph2d-light`
+   **volta** a ser relevante, agora como o consumidor certo: a sprite passa a ter um plano de
+   normais, doado (o `docs/3D` já faz isso) ou pintado.
+
+⛔ **Não comece pelo shader.** As quatro decisões acima mudam-no inteiro, e é a ordem em que este
+projeto já pagou para aprender: *o passe publica o que a decisão diz; ele não a toma.*
+
+---
+
 ## 20. Última nota para a LLM lendo isso
 
 Este projeto é opinionado por design. Quando algo parecer estranho, há provavelmente uma razão registrada em ADR (`docs/architecture/decisions/`). Leia o ADR antes de propor mudança contrária. Se não houver ADR, é candidato a virar um.

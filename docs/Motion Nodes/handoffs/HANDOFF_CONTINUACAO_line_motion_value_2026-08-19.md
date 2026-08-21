@@ -227,7 +227,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As CINQUENTA E SEIS LEIS que esta linha pagou para aprender
+## §4 — As CINQUENTA E SETE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -616,6 +616,17 @@ são estilo.
     2,05 s, e as duas metades saíam com o MESMO número. ⚠️ E o mesmo vale para o gate: a
     janela dele passou a ser **derivada da rampa** (`RAMP_SECS · 60 + 120`), nunca uma
     constante. *A janela de uma sonda temporal é um parâmetro da CENA, não da sonda.*
+
+57. ⚠️ **O RÓTULO DE UMA CENA PROMETE, e o dele tem de ser o que o modelo entrega**
+    (Enio, 2026-08-21: *"funciona mas não rasga o pano (os cubos não se separam)"*).
+    Eu chamei a linha «RASGA» e o que ela faz é o **PINO romper** — a folha sai inteira.
+    Partir o TECIDO é outra feature, e ela não é uma omissão do knob: o `motion.soft_body`
+    guarda a forma por correspondência GLOBAL (Müller shape matching), **sem ligações
+    uma-a-uma**, então não há aresta que se possa quebrar. Num solver de arestas
+    (`motion.verlet_rope`) a pergunta faria sentido e é uma célula que ninguém abriu.
+    ⇒ a linha passou a chamar-se **SOLTA**, e o smoke diz em voz alta o que NÃO acontece.
+    *É a mesma lei da memória `feedback_a_label_must_promise_what_the_model_delivers`, e
+    é a segunda vez que esta casa a paga.*
 
 
 ---

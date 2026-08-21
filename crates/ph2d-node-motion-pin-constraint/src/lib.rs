@@ -164,8 +164,16 @@ const TORN: &str = "pin_torn";
 /// **O LIMIAR DE RUPTURA** (doc 89 folha 03 — o *Breaking Threshold* dos
 /// `vellumconstraints` do Houdini).
 ///
-/// Um pin com carga acima de `break_above` **RASGA**: a partícula volta a ter massa
+/// Um pin com carga acima de `break_above` **ROMPE**: a partícula volta a ter massa
 /// finita e vai-se embora com o resto. `0` desliga — ver abaixo porquê é `0` e não `∞`.
+///
+/// ⚠️ **O que rompe é o PINO, não o material** (Enio, 2026-08-21: *"não rasga o pano,
+/// os cubos não se separam"*). É também o que o *Breaking Threshold* do Vellum faz numa
+/// constraint de pin — o vínculo cede, a geometria sai inteira. **Partir o tecido** é
+/// outra feature e depende do solver: o `motion.soft_body` guarda a forma por
+/// correspondência GLOBAL, sem ligações uma-a-uma, então ali não há aresta que se
+/// quebre; num solver de arestas (`motion.verlet_rope`) a pergunta faria sentido e é
+/// uma célula que ninguém abriu ainda.
 ///
 /// ## A carga entra por uma PORTA PRÓPRIA, e o porquê foi medido num smoke reprovado
 ///

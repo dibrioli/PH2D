@@ -35,7 +35,13 @@ pub(crate) const COL_X: f32 = 3.1;
 pub(crate) const ROW_Y: [f32; 2] = [2.6, -2.9];
 const HEADER_Y: f32 = 5.6;
 const LABEL_SIZE: f32 = 0.42;
-pub(crate) const ROW_LABELS: [&str; 2] = ["RASGA", "DESVIA"];
+/// ⚠️ **`SOLTA`, e não «RASGA» — a palavra foi corrigida por um smoke** (Enio,
+/// 2026-08-21: *"funciona mas não rasga o pano (os cubos não se separam)"*). O que
+/// rompe é o **PREGO**; o pano sai inteiro. Partir o TECIDO é outra coisa e este solver
+/// não a tem: o `motion.soft_body` guarda a forma por correspondência GLOBAL (Müller
+/// shape matching), não por ligações uma-a-uma — não há aresta que se possa quebrar.
+/// *Um rótulo promete o que o modelo entrega.*
+pub(crate) const ROW_LABELS: [&str; 2] = ["SOLTA", "DESVIA"];
 
 /// A cortina da linha 1 — um **tecido**: `(colunas, linhas, passo, tamanho da peça)`.
 pub(crate) const CURTAIN: (f32, f32, f32, f32) = (7.0, 7.0, 0.22, 0.11);

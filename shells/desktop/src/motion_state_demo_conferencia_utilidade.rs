@@ -437,13 +437,16 @@ pub(crate) fn sim_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
 
   >>> DE' PLAY. As duas linhas sao simulacao; paradas nao dizem nada.
 
-  RASGA  Dois PANOS iguais (tecido de verdade), pregados pela fileira de cima. O
-         vento comeca em ZERO e vai SUBINDO -- os dois panos ficam pendurados,
-         depois comecam a levantar. La' pelos 2 segundos a forca passa do que o
-         prego da DIREITA aguenta ({limiar:.1}) e ele ARRANCA: aquela folha solta-se
-         e vai embora, enquanto a da esquerda continua presa.
+  SOLTA  Dois PANOS iguais (tecido de verdade), pregados pela fileira de cima. O
+         vento comeca em ZERO e vai SUBINDO -- os dois ficam pendurados, depois
+         comecam a levantar. La' pelos 2 segundos a forca passa do que o prego da
+         DIREITA aguenta ({limiar:.1}) e ele ROMPE: aquela folha solta-se e vai
+         embora INTEIRA, enquanto a da esquerda continua presa.
+         (!) O que rompe e' o PREGO, nao o pano -- as pecas nao se separam umas
+         das outras. Partir o tecido seria outra coisa, e este tecido nao tem
+         ligacoes uma-a-uma que se possam quebrar.
          > espere os 2 segundos. Depois clique no no' Pin Constraint da esquerda
-           e ponha `Break Above` em {limiar:.1}: ela solta tambem.
+           e ponha o `Break Above` em {limiar:.1}: ela solta tambem.
 
   DESVIA Os dois bandos correm para o meio, onde ha' {pedras:.0} pedras brancas em
          anel. A` esquerda eles ATRAVESSAM as pedras como se nao existissem. A`

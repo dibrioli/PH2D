@@ -216,10 +216,25 @@ pub(crate) fn drain_bgremoval(
                     [1.0, 1.0, 1.0, 1.0],
                 );
                 sprite.premultiplied = true;
+                // ⚠️ **O CARIMBO DURÁVEL DOS PIXELS, que faltava aqui desde que as ilhas nasceram.**
+                //
+                // Enio, 2026-08-20: *"remove background com separate islands fez cair para rgba8 e
+                // não permite voltar para 16"*. A conversão não achava os bytes — e a causa é bem
+                // pior que a conversão: **uma ilha sem `SpritePixels` NÃO É GRAVADA no projeto**.
+                // O `texture_id` é uma alocação de GPU que morre com o processo, e o
+                // `save_sprite_pixels` recolhe pelos carimbos. Fechar e reabrir devolvia as ilhas
+                // invisíveis, ou a mostrar os pixels de outra sprite.
+                //
+                // ⚠️ **O defeito é ANTERIOR a esta wave** — a precisão só o tornou VISÍVEL, porque
+                // «não consigo converter» acontece na hora e «a minha obra sumiu» acontece amanhã.
+                // *Um bug que só aparece depois de fechar o projeto tem de ser encontrado por outro
+                // caminho, e este foi o caminho.*
+                let pixels_id = asset_db.insert_image_rgba8(img.width, img.height, img.pixels);
                 sim.world_mut().spawn((
                     transform,
                     sprite,
                     ph2d_ecs::Name::new(format!("{base_name}_island{n}")),
+                    ph2d_ecs::SpritePixels(pixels_id),
                 ));
                 spawned += 1;
             }

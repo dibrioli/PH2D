@@ -423,6 +423,14 @@ pub(crate) fn drain_merge_sprites(
     let mut merged_sprite =
         Sprite::individual(texture_id, [union_w_m, union_h_m], [1.0, 1.0, 1.0, 1.0]);
     merged_sprite.premultiplied = true;
+    // ⚠️ **O CARIMBO DURÁVEL DOS PIXELS.** Irmão do que faltava nas ilhas do BG-Removal
+    // (2026-08-20): o `texture_id` é uma alocação de GPU e morre com o processo, e o
+    // `save_sprite_pixels` recolhe pelos carimbos — uma sprite `Individual` sem ele **não é
+    // gravada**, e reabrir o projeto devolvia o merge invisível.
+    //
+    // ⚠️ Aqui o desaparecimento é PIOR que nas ilhas: o merge **despawna os originais**, por isso
+    // não havia de onde refazer. *O gate irmão existe para que a terceira vez não aconteça.*
+    let merged_pixels_id = asset_db.insert_image_rgba8(out_w, out_h, out_rgba);
 
     // Uniqueness: a 2nd merge would otherwise produce another "Merged"
     // — collision risk per the 2026-05-27 same-name bug. Bump with the
@@ -435,12 +443,18 @@ pub(crate) fn drain_merge_sprites(
                 transform,
                 merged_sprite,
                 ph2d_ecs::Name::new(merged_name),
+                ph2d_ecs::SpritePixels(merged_pixels_id),
                 ph2d_ecs::ChildOf(parent),
             ))
             .id(),
         None => sim
             .world_mut()
-            .spawn((transform, merged_sprite, ph2d_ecs::Name::new(merged_name)))
+            .spawn((
+                transform,
+                merged_sprite,
+                ph2d_ecs::Name::new(merged_name),
+                ph2d_ecs::SpritePixels(merged_pixels_id),
+            ))
             .id(),
     };
 

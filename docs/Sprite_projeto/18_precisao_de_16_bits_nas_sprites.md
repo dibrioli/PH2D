@@ -324,6 +324,17 @@ valores diferentes dos guardados não é um read*); `rgba16_to_rgba8_dithered` s
 de costura contra o refactor que as colapsa — ele não daria erro nenhum, e as faixas voltavam em
 silêncio.
 
+**Smoke:** `PH2D_DITHER_SMOKE=1` — as duas descidas do **mesmo** degradê, lado a lado. A fixture
+atravessa **seis** códigos sRGB ao longo de 384 px (~64 px por faixa) porque a banda é um defeito de
+degradês **lentos**; uma fixture rápida esconderia o fenómeno que ela devia conter, e há dois gates
+sobre ela a dizê-lo.
+
+⚠️ **Uma propriedade do Bayer que só apareceu ao escrever esses gates:** o espalhamento dos limiares
+**por coluna** é desigual — a coluna `x%8 == 0` cobre a faixa toda (0…63), a `x%8 == 3` só o meio
+(20…43, ou seja ±0,21 em vez de ±0,43). Metade das colunas dither*a* com meia amplitude, e é daí que
+vem o xadrez característico do dither ordenado. Medido: **56%** das colunas se misturam, não os ~86%
+que a previsão analítica dava. ⛔ Não é defeito a curar — o olho integra ao longo de x.
+
 #### W6.2 — a descida do ECRÃ ⛔ recusada, e o que ficou no lugar
 
 Construída, medida ([`tonemap_descent_gpu`](../../crates/ph2d-render/tests/tonemap_descent_gpu.rs),

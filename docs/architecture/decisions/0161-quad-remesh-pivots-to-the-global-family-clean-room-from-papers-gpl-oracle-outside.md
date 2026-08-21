@@ -79,11 +79,16 @@ harness.
 | `ph2d-remesh-iso` | QuadWild 2021 §4 | ⚠️ **NÃO é a alavanca** — cura o `cube` e move a agulha nos dois sentidos no resto (PLAN §4-bis) |
 | `ph2d-crossfield` | Bommes 2009 (MIQ) + QuadWild §5 | ⭐ **paridade no CAMPO**: 8 singularidades numa esfera, o ótimo topológico (PLAN §4-ter) |
 | `ph2d-quantize` | **Bi-MDF 2023 §3 e §4.4** | ⭐ **fecha com o ótimo DEMONSTRADO** em todos os layouts fechados do oráculo (PLAN §4-quater) |
+| `ph2d-trace` | QuadWild 2021 §6 | ⭐ **a cadeia fecha**: o layout deixou de vir do oráculo e o F4 quantiza-o com prova (PLAN §4-quinquies) |
 
-⚠️ **A fronteira jurídica aguentou os três.** Nenhuma linha traduzida; o que atravessa a fronteira do
+⚠️ **A fronteira jurídica aguentou os quatro.** Nenhuma linha traduzida; o que atravessa a fronteira do
 oráculo são **saídas** — e desde o F4 elas atravessam já convertidas em números por `layout.py`, que
 vive na bancada: **nenhum formato do oráculo (`.patch`, `.corners`, `.rosy`) tem parser dentro da
 engine.**
+
+⭐ **Desde 2026-08-20 o oráculo deixou de ser NECESSÁRIO para a cadeia correr** — ele volta ao papel
+que este ADR sempre lhe deu: **régua**, não fornecedor. As fases F1..F4 consomem, hoje, só o que o F3
+produz.
 
 ⚠️ **E o `ph2d-quadflow` (porte BSD do Instant Meshes) FICA** — ele é o backend de *preview* do F7, e
 a sua licença permissiva é o que torna isso possível. O pivô não o revoga; repõe-no no lugar certo.

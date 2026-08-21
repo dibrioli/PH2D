@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-trace"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O TRACADO e a DECOMPOSICAO EM PATCHES (ADR-0161, F3). Clean-room a partir de
+# Pietroni et al., QuadWild (SIGGRAPH 2021) §6. Nenhuma linha traduzida de fonte
+# GPL; o oraculo `quadwild-bimdf` e' processo externo de bancada.
+#
+# ⚠️ E' a peca que fecha a cadeia: o F2 entrega o CAMPO, esta fase entrega o
+# LAYOUT, e o F4 (`ph2d-quantize`) ja' sabe consumir layout. Antes dela o layout
+# so' existia porque o oraculo o exportava.
+
+[dependencies]
+ph2d-mesh = { path = "../ph2d-mesh" }
+ph2d-crossfield = { path = "../ph2d-crossfield" }
+ph2d-quantize = { path = "../ph2d-quantize" }
+
+[dev-dependencies]
+ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }

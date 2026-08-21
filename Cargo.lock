@@ -7812,6 +7812,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-trace"
+version = "0.0.0"
+dependencies = [
+ "ph2d-crossfield",
+ "ph2d-mesh",
+ "ph2d-quantize",
+ "ph2d-remesh-iso",
+]
+
+[[package]]
 name = "ph2d-ui-codegen"
 version = "0.0.0"
 

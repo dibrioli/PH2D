@@ -389,10 +389,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   + undo), e a `Mesh` é **f32**. ⚠️ E o que o porte custou está registrado: **três vezes a RÉGUA se corrigiu antes do
   algoritmo**, e a fração de 96,4% que este §5 anunciava era **fabricada** (vinha de emparelhar triângulos e fechar
   n-gons com um nó no meio — operações que criam quads que a referência nunca emite).
-  ⚠️ **Três crates clean-room JÁ EXISTEM e NENHUMA está ligada ao produto** (ligar hoje pioraria o que o artista vê):
-  `ph2d-remesh-iso` (F1) · `ph2d-crossfield` (F2 — **8 singularidades numa esfera, o ótimo topológico**) ·
-  `ph2d-quantize` (F4 — a quantização Bi-MDF, **fecha com o ótimo demonstrado** em todo layout fechado do oráculo).
-  **Falta o F3 (traçado)** para o pipeline correr sem o oráculo. Estado por fase, com as tabelas: `PLAN.md` §4-bis/ter/quater.
+  ⭐ **A CADEIA NOVA FECHA com código nosso** e ⚠️ **NENHUMA parte dela está ligada ao produto** (ligar hoje
+  pioraria o que o artista vê): `ph2d-remesh-iso` (F1) · `ph2d-crossfield` (F2 — **8 singularidades numa esfera,
+  o ótimo topológico**) · `ph2d-trace` (F3 — traçado e patches) · `ph2d-quantize` (F4 — Bi-MDF, **ótimo
+  demonstrado**). Malha → campo → patches → quantização, com prova, em esfera e toro. **Falta o F5** (quadrangular
+  cada patch) para o artista ver alguma coisa. ⛔ E o F3 desenterrou um **defeito de sanitização no F1**: o cubo
+  remalhado chega **não-manifold** (18 anéis abertos), o que faz o campo mentir. Tabelas por fase: `PLAN.md`
+  §4-bis/ter/quater/quinquies.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que
   prova a inércia.
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·

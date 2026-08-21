@@ -3,11 +3,12 @@
 > **Documento VIVO.** Decisão e fronteira jurídica: [ADR-0161](../../architecture/decisions/0161-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md).
 > O que o porte local entregou e por quê: [ADR-0160](../../architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md).
 > ✅ **Aprovado pelo Enio em 2026-08-20** (*"Siga como achar melhor... buscamos o estado da arte independente dos custos"*).
-> Estado: **F1, F2 e o PROTÓTIPO do F4 FEITOS** (§4-bis, §4-ter, §4-quater). O CAMPO está em paridade com o
-> estado da arte (8 singularidades numa esfera, o ótimo teórico) e o **quantizador fecha com o ótimo
-> demonstrado** em todos os layouts fechados do oráculo. Próximo: **F3** — o traçado é a peça que falta
-> para o pipeline correr de ponta a ponta com código nosso.
-> ⚠️ Nada disto está ligado ao produto: ligar F1 ou F2 hoje pioraria o que o artista vê (§4-ter).
+> Estado: **F1, F2, F3 e o protótipo do F4 FEITOS** (§4-bis, §4-ter, §4-quater, §4-quinquies).
+> ⭐ **A cadeia fecha com código nosso**: malha → campo (8 singularidades numa esfera, o ótimo teórico)
+> → traçado → patches → quantização **com ótimo demonstrado**. Próximo: **F5** — quadrangular cada patch
+> e devolver a malha, que é o que o artista finalmente vê.
+> ⚠️ Nada disto está ligado ao produto ainda; e ⛔ o F3 desenterrou um defeito de sanitização no **F1**
+> (§4-quinquies).
 
 ---
 
@@ -156,7 +157,7 @@ Cada fase fecha com o benchmark verde sobre o corpus e um sumário curto de desv
 | **F0** | harness na bancada: corpus + oráculo + `metrics.py` + Hausdorff + screenshots | as três colunas (atual · oráculo · nova) saem de **um** comando; ⚠️ a baseline já está medida (§1.3) — falta o Hausdorff e o harness sair do `#[cfg(test)]` do shell |
 | **F1** | sanitização + **remesh isotrópico** + sizing field | ✅ **FEITO em 2026-08-20** (`crates/ph2d-remesh-iso`) — ver §4-bis |
 | **F2** | cross field MIQ-style + streamlines no viewport | ✅ **O CAMPO FEITO em 2026-08-20** (`crates/ph2d-crossfield`) — ver §4-ter. ⚠️ O critério *«irregulares ≤ 2 %»* era sobre a MALHA, e a malha só melhora no F5 |
-| **F3** | tracing + patches | nº de patches na mesma ordem do oráculo (15 na `sculpt_hooked`); zero patch não-disco. ⚠️ **É a peça que falta**: o F4 já consome layout, e o F3 é quem o produzirá sem o oráculo |
+| **F3** | tracing + patches | ✅ **FEITO em 2026-08-20** (`crates/ph2d-trace`) — ver §4-quinquies. O layout que ele produz é **quantizado com prova** pelo F4 em esfera e toro; falta a fusão de separatrizes (saem ~2× mais patches que o oráculo) e as *feature lines* |
 | **F4** | ⭐ **solver Bi-MDF** | ✅ **PROTÓTIPO FEITO em 2026-08-20** (`crates/ph2d-quantize`) — ver §4-quater. Fecha com o **ótimo demonstrado** em todos os layouts fechados do oráculo; falta só o consumidor (F5) e a válvula de emergência, que **nenhum layout pediu** |
 | **F5** | quadrangulação por patch + smoothing + a porta no shell | desvio angular médio ≤ oráculo × 1,2; Hausdorff ≤ oráculo × 1,2; ⭐ **`sculpt_hooked` sem aglomerado e sem colapso na feature** (gate de regressão do §9) |
 | **F6** | guide strokes: direção → feature → densidade | ⚠️ **a densidade por PRESSÃO depende da camada de tablet, que NÃO existe** (ADR-0161) — F6 entrega direção e feature; a pressão é um projeto irmão |
@@ -205,6 +206,13 @@ Corpus inteiro, o nosso remesher **sem** e **com** o F1 na frente:
 
 ⭐ **O F1 cura exatamente UM caso — o `cube`, que não tinha entrada para
 resolver — e nos outros nove move a agulha alguns pontos, para os DOIS lados.**
+
+⛔ **E essa única cura CAIU em 2026-08-20** (§4-quinquies): o `cube` que o F1
+devolve tem **18 vértices não-manifold**, medidos pelo [`TraceReport::open_rings`]
+do F3. A célula acima foi obtida sobre uma malha quebrada — os 100 % de quads dela
+não descrevem nada. *As outras nove linhas não dependem dela e continuam a valer;
+a tese do pivô, que é o que esta secção existe para provar, sai reforçada e não
+enfraquecida — o F1 cura ainda menos do que se pensava.*
 
 ⇒ **A tese do pivô está agora MEDIDA, não afirmada.** As 20–45 % de
 singularidades **não são a malha de entrada**: são a **classe** do algoritmo. Se
@@ -524,6 +532,98 @@ nenhuma (`the_two_branches_partition_the_range_they_came_from`).
 
 ---
 
+## 4-quinquies — ✅ F3: a CADEIA FECHOU — o layout deixou de vir do oráculo
+
+**Entregue:** `crates/ph2d-trace` — clean-room de Pietroni et al., *QuadWild*
+(SIGGRAPH 2021), **§6**. ⭐ **É a peça que faltava para o pipeline correr de ponta
+a ponta com código nosso**: até aqui o F4 só tinha layout porque o oráculo o
+exportava em texto.
+
+### O que ela faz
+
+De cada **singularidade** que o F2 decidiu partem curvas que seguem o campo — as
+*separatrizes* —, elas correm até bater noutra singularidade ou noutra
+separatriz, e o que sobra da superfície recortada por elas são os **patches**.
+
+⚠️ **As separatrizes correm sobre ARESTAS da malha**, vértice a vértice, e não
+como polilinhas a cortar triângulos. Não é preguiça: é o que faz a fronteira de
+cada patch ser um conjunto de arestas existentes, logo o patch é um conjunto de
+**faces inteiras** — que é exatamente o formato que o oráculo também produz
+(medido: as fronteiras dele, reconstruídas em 2026-08-20, caem **todas** em
+arestas da malha remalhada).
+
+### ⭐ As três leis que o traçado precisou, e o preço de cada uma
+
+1. **Uma singularidade emite `4 − índice` separatrizes, não quatro.** Num vértice
+   de índice `k` a cruz só fecha depois de `4 − k` quartos de volta, e as saídas
+   ficam espaçadas por `Θ/(4−k)` — onde `Θ` é o ângulo total à volta do vértice,
+   que **num cone não é `2π`**.
+   ⚠️ Emitir sempre quatro parece inofensivo: medido, davam **23 patches** numa
+   esfera onde o oráculo dá 8. *A quarta separatriz não tem para onde ir e vai
+   bater no meio de outra — e cada batida dessas é um patch a mais.*
+2. **A identidade de um arco é o CONJUNTO de arestas, nunca a sequência.** Os dois
+   patches que partilham um arco percorrem-no em sentidos **opostos**, então a
+   lista de um é a do outro ao contrário e o mesmo arco ganha dois ids. Sintoma:
+   o F4 a recusar com `ArcUse { uses: 1 }` — *um arco de bordo numa superfície
+   fechada*.
+3. **A fronteira percorre-se pivotando DENTRO do patch**, nunca saltando de
+   aresta em aresta. Num vértice onde quatro arestas de fronteira se cruzam,
+   *"a próxima que ainda não usei"* é ambíguo, e ali o laço salta para o patch
+   errado — sem erro nenhum, só com uma fronteira que descreve outra coisa.
+
+### E uma limpeza que não é cosmética
+
+Um patch de **dois lados** é uma lasca — duas separatrizes que correram quase
+juntas e prenderam uma tira entre elas. ⚠️ **Ele invalida o layout INTEIRO**: a lei
+do F4 pede pelo menos três lados, e um único degenerado derruba tudo. A cura é
+dissolver a **parede**, não o patch: removida ela, as faces juntam-se ao vizinho
+na inundação seguinte, e nenhuma face muda de sítio.
+
+### A medição
+
+| malha | vértices | sing (soma) | anéis abertos | separ. | patches | dissolv. | arcos | valências | o F4 |
+|---|---|---|---|---|---|---|---|---|---|
+| esfera 24×36 | 830 | 8 (**8**) | 0 | 22 | 14 | 2 | 45 | 3–9 | ✅ **quantiza com prova** |
+| ⭐ esfera 48×72 | 3 386 | 7 (**8**) | 0 | 20 | **15** | 0 | 39 | **3, 4, 5** | ✅ **quantiza com prova** |
+| toro 32×16 | 512 | 8 (**0**) | 0 | 27 | 15 | 4 | 53 | 3–9 | ✅ **quantiza com prova** |
+| esfera + F1 | 2 525 | 10 (**8**) | 0 | 25 | 17 | 0 | 79 | 3–19 | ✅ **quantiza com prova** |
+| cubo + F1 | 4 857 | 33 (**−1**) | ⛔ **18** | 81 | 59 | 0 | 226 | 0–13 | ❌ recusa |
+
+⭐ **Quatro das cinco correm a cadeia inteira e saem com o ótimo demonstrado.** E a
+esfera 48×72 sai com **todas as valências entre 3 e 5** — a mesma faixa em que o
+oráculo trabalha.
+
+### ⛔ E o achado que o F3 desenterrou no F1
+
+⚠️ **O `cube` remalhado pelo F1 chega com 18 ANÉIS ABERTOS** — vértices
+não-manifold. Todas as outras malhas chegam com **zero**. É isso, e não o traçado,
+que explica as 33 singularidades falsas, a soma **−1** onde a topologia exige `+8`,
+e os 59 patches fragmentados: um anel aberto não tem índice definido, o campo
+devolve `0` ali, e a invariante de Poincaré–Hopf deixa de bater **sem que nada no
+campo esteja errado**.
+
+⛔ **Isto reabre a única linha do §4-bis que dizia que o F1 tinha curado alguma
+coisa.** A célula *"o `cube`: vazio → 100 % / 3,7 %"* foi medida sobre uma malha
+não-manifold. As outras linhas do F1 não dependem dela, mas essa cai.
+⇒ **O F1 tem um defeito de sanitização nomeado e com número**, e o
+[`TraceReport::open_rings`] é o instrumento que o denuncia de agora em diante.
+*Uma fase a jusante que expõe um defeito a montante é o pipeline a funcionar.*
+
+### O que ficou aberto no F3
+
+- ⚠️ **Ainda saem cerca do DOBRO dos patches do oráculo** (15 contra 8 numa
+  esfera). Falta a fusão de separatrizes redundantes do QuadWild §6 — duas que
+  correm quase juntas deviam virar uma. Todas as valências ficarem em 3–5 diz que
+  a estrutura está certa e a **densidade** é que está grossa.
+- ⛔ **Feature lines não entram.** O QuadWild traça também a partir das arestas
+  vivas; sem isso uma quina dura não vira fronteira de patch, e o `sculpt_hooked`
+  (a esfera-com-bico) não terá a feição respeitada.
+- ⚠️ **Uma separatriz que não fecha é descartada** e contada em
+  [`TraceReport::dangling`]. Ligá-la à mais próxima é trabalho do dia em que o
+  número doer — medido, ele é **0** em quatro das cinco malhas.
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |
@@ -540,7 +640,9 @@ nenhuma (`the_two_branches_partition_the_range_they_came_from`).
 
 ## 6 — Esforço e ordem de ataque
 
-Ordem recomendada: ~~F0 → F1 → F2 → (F4 protótipo em paralelo, sobre patches do oráculo)~~ **→ F3 → F5 → F7 → F6 → F8.**
+Ordem recomendada: ~~F0 → F1 → F2 → (F4 protótipo) → F3~~ **→ F5 → F7 → F6 → F8**, com a sanitização
+do F1 (§4-quinquies) a entrar na frente do F5 — ⛔ ela não é polimento: uma malha não-manifold faz o
+campo mentir, e tudo a jusante herda a mentira.
 
 ⚠️ **F4 saiu da ordem natural de propósito, e a aposta pagou.** Ela era a fase de maior risco e a que o
 produto inteiro depende; medi-la sobre os patches que o oráculo **já exporta** custou uma jornada e

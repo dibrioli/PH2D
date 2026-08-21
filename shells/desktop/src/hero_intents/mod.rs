@@ -27,6 +27,7 @@ mod hierarchy;
 mod image_edit;
 mod sprite_merge;
 pub(crate) mod texture_edit;
+pub(crate) mod texture_rebind;
 mod view;
 
 pub(crate) use hierarchy::drain_reparent;

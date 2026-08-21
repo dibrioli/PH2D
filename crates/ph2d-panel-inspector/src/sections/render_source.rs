@@ -291,10 +291,21 @@ fn paint_precision_row(
     // A consequência, escrita ANTES do clique. Só aparece quando há algo a avisar — um sprite que
     // já é de 16 bits não precisa de ler o preço outra vez.
     if info.source_precision == Some(ph2d_editor_core::Precision::Rgba8) {
+        // ⚠️ **A consequência de SAIR DA FOLHA estava em falta** (auditoria
+        // `docs/Sprite_projeto/20` §4.2). Numa peça hand-packed a conversão faz
+        // `drop_sheet_authorship` — a sprite deixa de ser uma peça — e nem esta linha nem o toast
+        // («Format · RGBA16») o diziam, enquanto a linha Storage uma acima continuava a ler
+        // *«Hand-packed · folha · região»*. O doc desta função argumenta exatamente que *uma
+        // consequência que só aparece depois do clique lê-se como bug*; faltava aplicá-lo aqui.
+        let consequence = if matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
+            "RGBA16 doubles memory, forces Individual, and leaves the sheet"
+        } else {
+            "RGBA16 doubles memory and forces Individual"
+        };
         paint_text(
             text_system,
             scene,
-            "RGBA16 doubles memory and forces Individual",
+            consequence,
             x,
             cur_y,
             label_font,
@@ -330,6 +341,33 @@ fn paint_strategy_row(
         resolve(ColorToken::Text2, theme),
     );
     cur_y += label_font + SECTION_LABEL_TO_CONTROL_PX;
+    // ⚠️ **Uma textura cozida não tem estratégia autorável — e por isso não pinta botões.**
+    //
+    // Antes de 2026-08-21 os três botões saíam **igualmente acesos e com nada selecionado** (os
+    // três `matches!` abaixo são falsos para `CookedTexture`), e o artista só descobria que eram
+    // read-only depois de clicar. O par **Format**, quinze linhas acima, já resolve o mesmo caso
+    // do mesmo modo: esconde o controlo e afirma o facto. *Duas linhas irmãs na mesma seção não
+    // podem discordar sobre o que é editável* (auditoria `docs/Sprite_projeto/20` §4.6).
+    //
+    // ⛔ A alternativa — pintar os três a cinzento — exigia um eixo de `enabled` no
+    // `paint_segmented_group_adaptive`, que é partilhado; e um controlo desactivado que continua
+    // a despachar (o `strategy_click` roteia o cozido de propósito, para o toast sair) seria a
+    // pior das três hipóteses: *dimmed que despacha mente*.
+    if matches!(info.source_kind, InspectorSpriteSource::CookedTexture) {
+        paint_text(
+            text_system,
+            scene,
+            "From the asset pipeline \u{00b7} read-only",
+            x,
+            cur_y,
+            label_font,
+            w,
+            resolve(ColorToken::Text3, theme),
+        );
+        return cur_y
+            + label_font
+            + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX;
+    }
     // Adaptive segmented GROUP — when the panel is narrow, drops
     // "Hand-packed" (the longest) to its own row instead of wrapping
     // the label. Returns the actual height used.

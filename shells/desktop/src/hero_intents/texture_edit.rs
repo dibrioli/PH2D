@@ -23,6 +23,8 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_render::{AlphaMode, Sprite, SpriteImage, SpriteRenderer, SpriteSource};
 
+use super::texture_rebind::{SamplingWindow, rebind_to_individual};
+
 /// A sprite's source pixels (native alpha mode) plus the pre-edit
 /// transform metadata image tools need for undo + recenter.
 pub(crate) struct SourceRead {
@@ -277,6 +279,9 @@ pub(crate) fn commit_edited_texture(
         pixels_id,
         new_size_world,
         img.alpha.is_premultiplied(),
+        // Uma ferramenta de imagem escreve pixels NOVOS — a janela antiga deixa de significar
+        // alguma coisa sobre eles.
+        SamplingWindow::Dies,
     );
     Ok(texture_id)
 }
@@ -359,52 +364,10 @@ pub(crate) fn commit_edited_texture_16(
         pixels_id,
         new_size_world,
         premultiplied,
+        // Idem: este é o commit de 16 bits das MESMAS ferramentas geométricas.
+        SamplingWindow::Dies,
     );
     Ok(texture_id)
-}
-
-/// **A cauda do [`commit_edited_texture`] — as cinco invariantes de "esta sprite passou a ter
-/// pixels próprios", num sítio só.**
-///
-/// ⚠️ Extraída em 2026-08-20 (plano `docs/Sprite_projeto/18` W5) porque a conversão de precisão
-/// precisa **exatamente** delas e escrevê-las outra vez seria pedir que as duas cópias
-/// concordassem para sempre. Duas delas só falham **depois de fechar e reabrir o projeto**, que é o
-/// pior sítio para descobrir uma divergência.
-pub(crate) fn rebind_to_individual(
-    entity: Entity,
-    sim: &mut SimWorld,
-    texture_id: u32,
-    pixels_id: ph2d_asset::AssetId,
-    new_size_world: [f32; 2],
-    premultiplied: bool,
-) {
-    if let Some(mut sprite) = sim.world_mut().get_mut::<Sprite>(entity) {
-        sprite.source = SpriteSource::Individual { texture_id };
-        sprite.size = new_size_world;
-        sprite.premultiplied = premultiplied;
-        // ⚠️ **A JANELA MORRE COM A EDIÇÃO, e é a outra metade do bug das repetições.** Se o
-        // sprite era uma região de uma folha, a textura que acabou de subir é a imagem INTEIRA
-        // dele — amostrá-la pela janela antiga mostraria um recorte arbitrário dessa imagem nova.
-        // O `region_rect` fica como está de propósito (é ignorado enquanto `region_enabled` é
-        // falso, e zerá-lo só acrescentaria uma escrita que ninguém lê).
-        sprite.region_enabled = false;
-    }
-    // Stamped AFTER the sprite write and unconditionally: an entity whose `Sprite` vanished
-    // mid-frame gets no stamp because `insert` on a dead entity is the caller's bug, so guard on
-    // the same lookup the write used.
-    if sim.world().get::<Sprite>(entity).is_some() {
-        sim.world_mut()
-            .entity_mut(entity)
-            .insert(ph2d_ecs::SpritePixels(pixels_id));
-        // ⚠️ **E a AUTORIA morre com ela.** `SpriteSheetRef` diz *"os meus pixels são a região R da
-        // folha F"*, e isso deixou de ser verdade: os pixels agora são próprios, com nome durável
-        // (o `SpritePixels` acima). Deixá-lo faria o `restore_sprite_sheets` re-ligar o sprite à
-        // folha no load seguinte e **apagar a edição** — o defeito só apareceria depois de fechar
-        // e reabrir o projeto, que é o pior sítio para o descobrir.
-        sim.world_mut()
-            .entity_mut(entity)
-            .remove::<ph2d_ecs::SpriteSheetRef>();
-    }
 }
 
 #[cfg(test)]

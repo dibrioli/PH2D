@@ -153,13 +153,18 @@ pub(crate) fn apply(
     // ao atlas — mas o caminho de volta já existe e tem dono: o par `Strategy` logo acima, que
     // conta as referências da célula antes de a libertar. *Duas portas para o mesmo destino
     // divergem na primeira que ganhar uma regra.*
-    crate::hero_intents::texture_edit::rebind_to_individual(
+    crate::hero_intents::texture_rebind::rebind_to_individual(
         entity,
         sim,
         texture_id,
         pixels_id,
         sprite.size,
         sprite.premultiplied,
+        // ⚠️ **A conversão sobe A MESMA imagem noutra precisão** — mesmo conteúdo, mesmas
+        // dimensões — por isso o recorte do artista continua a apontar para os mesmos pixels.
+        // Este argumento é a correção do defeito de 2026-08-21: a cauda partilhada apagava a
+        // janela porque a regra do OUTRO chamador tinha vindo junto na extração.
+        crate::hero_intents::texture_rebind::SamplingWindow::Survives,
     );
     toasts.push(Toast::success(format!("Format · {}", wanted.label())));
     true

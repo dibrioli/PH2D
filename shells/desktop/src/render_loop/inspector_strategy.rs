@@ -97,6 +97,28 @@ pub(super) fn dispatch(
                 sprite_type_id,
             )
         }
+        // ⚠️ **«Individual» sobre uma peça de FOLHA parecia um botão partido** (auditoria
+        // `docs/Sprite_projeto/20` §4.5). O storage real de uma hand-packed **é** `Individual`, mas
+        // o painel acende «Hand-packed» (ele lê a autoria, não o storage) — então o artista via
+        // «Individual» apagado, clicava, e este braço devolvia `false`: sem conversão, sem toast,
+        // o botão a saltar para trás. O vizinho de baixo (Hand-packed sobre não-folha) **fala**;
+        // esta era a mesma forma com o feedback em falta.
+        //
+        // ⛔ **E não converte, de propósito.** «Sair da folha» é um verbo com consequência para a
+        // folha (ela perde uma peça, e o bake dela muda), não um efeito colateral de um radio —
+        // pela mesma razão que entrar nela não é um botão. O toast nomeia o gesto que existe.
+        (SpriteSource::Individual { .. }, RequestedSpriteStrategy::Individual)
+            if sim
+                .world()
+                .get::<ph2d_ecs::SpriteSheetRef>(entity)
+                .is_some() =>
+        {
+            toasts.push(Toast::info(
+                "This sprite is a piece of a sheet \u{00b7} its pixels already live in an individual texture",
+            ));
+            reject_visual_reset(hero, requested);
+            true
+        }
         // Pedido igual ao atual. O `apply_event` já curto-circuita cliques idênticos; este braço
         // existe para que uma publicação fora-de-banda (script, MCP futuro) também não faça nada.
         (SpriteSource::Atlas { .. }, RequestedSpriteStrategy::Atlas)
@@ -316,6 +338,19 @@ fn demote_to_atlas(
     // `atlas_asset_map`, pelo caminho do `collect_assets`. Deixá-lo faria o arquivo gravar os
     // mesmos pixels duas vezes, por dois donos.
     sim.world_mut().entity_mut(entity).remove::<SpritePixels>();
+    // ⚠️ **E a AUTORIA de folha morre com eles** — o irmão exato do que o `rebind_to_individual`
+    // já fazia no sentido oposto (`texture_edit.rs`), e que **faltava aqui**.
+    //
+    // `SpriteSheetRef` diz *"os meus pixels são a região R da folha F"*, e isto deixou de ser
+    // verdade: os pixels são agora uma célula do atlas partilhado. Deixá-lo faz o
+    // `restore_sprite_sheets` (`project_sprite_pixels.rs`, que corre incondicionalmente para toda
+    // entidade que carregue o componente) **re-ligar a sprite à folha no load seguinte e apagar a
+    // conversão**. ⚠️ O defeito só apareceria *depois de fechar e reabrir o projeto* — o pior
+    // sítio para o descobrir, e a razão de o irmão trazer esta linha desde o primeiro dia.
+    //
+    // Alcançável a partir de uma peça hand-packed **baked**: o storage dela é `Individual`, então
+    // clicar «Atlas» cai aqui (auditoria `docs/Sprite_projeto/20` §4.3).
+    crate::hero_intents::texture_rebind::drop_sheet_authorship(entity, sim);
     release_texture_if_unused(texture_id, sim, renderer);
     toasts.push(Toast::success(format!("Strategy · Atlas (cell {key})")));
     true

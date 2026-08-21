@@ -57,10 +57,20 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// O corpo sem comentários — vários deles **citam** os dois nomes precisamente para explicar esta
-/// regra, e um comentário não spawna nada.
+/// O corpo de PRODUÇÃO: sem comentários — vários deles **citam** os dois nomes precisamente para
+/// explicar esta regra, e um comentário não spawna nada — e **sem os módulos `#[cfg(test)]`**.
+///
+/// ⚠️ **A exclusão dos testes foi acrescentada em 2026-08-21, e APERTA o gate em vez de o
+/// afrouxar.** Um fixture de teste que constrói `Sprite::individual` não grava nada e não precisa
+/// de dono durável; enquanto ele contava, um ficheiro podia satisfazer a regra com um carimbo que
+/// só existia **dentro do `#[cfg(test)]`** — e é isso que agora deixa de passar. O falso positivo
+/// apareceu ao cortar a cauda de re-alojamento para `texture_rebind.rs`: o `texture_edit.rs`
+/// ficou com dois fixtures e nenhum carimbo, sobre zero construções de produção.
 fn code(src: &str) -> String {
-    src.lines()
+    src.split("#[cfg(test)]")
+        .next()
+        .unwrap_or("")
+        .lines()
         .map(|l| l.split("//").next().unwrap_or(""))
         .collect::<Vec<_>>()
         .join("\n")

@@ -1421,11 +1421,15 @@ impl crate::App {
         }
 
         // **AS FAIXAS, E A CURA** (`PH2D_DITHER_SMOKE=1`, plano `docs/Sprite_projeto/18` W6.1):
-        // duas sprites do MESMO degradê de 16 bits, descidas para 8 bits pelos dois caminhos.
-        // Esquerda = a porta fiel (faixas duras); direita = a porta com dither (liso).
+        // UMA sprite partida ao meio — cima a descida fiel (faixas duras), baixo a descida com
+        // dither (liso). As duas metades partem do mesmo degradê de 16 bits, coluna a coluna, e as
+        // arestas de cima param na costura.
         //
-        // ⚠️ A da DIREITA fica selecionada: é a que responde à pergunta, e enquadrar a resposta
-        // poupa ao artista descobrir qual das duas é qual.
+        // ⚠️ **Foram duas sprites lado a lado, e o Enio não viu diferença nenhuma.** Duas metades
+        // adjacentes valem muito mais que duas imagens vizinhas: a diferença é de UM código, que é
+        // perto do limiar do olho, e o olho compara muito melhor através de uma fronteira
+        // partilhada. A sprite traz também o seu `TextureFilter(Nearest)` — o filtro `Smooth` do
+        // projeto interpolava o degrau todo ao ampliar, e era isso que lavava a cena.
         if let Some(hero) = hero_screen.as_mut()
             && crate::dither_smoke::enabled()
             && !std::mem::replace(&mut self.dither_smoke_done, true)
@@ -1439,7 +1443,8 @@ impl crate::App {
                         kind: ph2d_editor::ViewFocusKind::All,
                     });
                 toasts.push(Toast::success(
-                    "Dither smoke: same gradient, two descents — left has bands, right does not"
+                    "Dither smoke: one gradient, two descents — the top half has bands, \
+                     the bottom half does not"
                         .to_string(),
                 ));
                 self.title_dirty = true;

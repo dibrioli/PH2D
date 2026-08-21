@@ -12,7 +12,45 @@
 
 use ph2d_field::xform::{dot, quat_axis_angle, quat_mul, quat_normalize, quat_rotate};
 
-/// A câmera. **Ortográfica**, e a orientação é um **quaternion**.
+/// ⭐ **A LENTE** — o que o olho faz com o que está longe.
+///
+/// ⚠️ **É uma escolha, não uma troca**: a nota que estava aqui dizia que a perspectiva *"merece a
+/// sua própria comparação lado a lado, não uma troca silenciosa"*. As duas ficam, e a tecla que as
+/// alterna é a comparação. O default é a convergente, que é o que um modelador espera; a paralela é
+/// a vista de CAD, e é ela que deixa medir e alinhar sem que a distância minta sobre o tamanho.
+///
+/// ⭐ **O `half_extent` continua a querer dizer a MESMA coisa nas duas**: quantas unidades de mundo
+/// cabem em meia altura de quadro **no plano do alvo**. É isso que faz a lente ser só uma lente —
+/// zoom, enquadramento e o passo da grelha não mudam de lei, e as duas imagens **coincidem
+/// exatamente** naquele plano.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Lens {
+    /// Raios **paralelos**: o tamanho na tela não depende da distância.
+    Ortho,
+    /// Raios que **convergem** num olho. O número é a **meia** abertura, medida no lado **menor** do
+    /// quadro — o mesmo lado de que o [`Screen::half`] toma metade, para as duas contas falarem da
+    /// mesma coisa.
+    Perspective { half_fov: f32 },
+}
+
+/// A meia-abertura default, **derivada da referência declarada** e não escolhida.
+///
+/// O Blender abre uma câmera com **50 mm** sobre um sensor de **36 mm**, e a viewport dele usa o
+/// mesmo número. A abertura inteira é `2·atan(18/50) = 39,6°`; a metade é `atan(18/50)`.
+///
+/// ⚠️ Escrito como a **conta**, e não como o resultado: quem quiser outra distância focal muda o
+/// numerador e vê logo o que está a mudar. Um `0.3456` solto seria um número sem procedência.
+pub const DEFAULT_HALF_FOV: f32 = 0.345_405_2; // atan(18.0 / 50.0)
+
+/// **Abaixo desta fração da distância do olho, um ponto não tem projeção.**
+///
+/// ⚠️ O recurso é a **aritmética**, não o gosto: a projeção multiplica por `dist / (dist − z)`, e
+/// esse fator explode quando o ponto encosta no olho. A `1e-3` ele vale 1000 — um pixel a ~240 mil
+/// de distância do centro, que ainda é um número, e já está tão fora do quadro que nada o desenha.
+/// Mais perto do que isso a resposta deixa de ser um pixel e passa a ser ruído com sinal.
+const NEAR_FRACTION: f32 = 1.0e-3;
+
+/// A câmera, com a orientação num **quaternion**.
 ///
 /// # ⭐ Por que não é `yaw`/`pitch`
 ///
@@ -35,20 +73,28 @@ pub struct Orbit {
     /// A orientação, como quaternion `(x, y, z, w)`: leva os eixos **locais** da câmera para o
     /// mundo.
     pub rotation: [f32; 4],
-    /// Quantas unidades de mundo cabem em meia altura de tela. Menor = mais perto.
+    /// Quantas unidades de mundo cabem em meia altura de tela **no plano do alvo**. Menor = mais
+    /// perto. ⚠️ A definição diz *"no plano do alvo"* de propósito: é o que faz [`Lens`] ser só uma
+    /// lente (ver o doc dela).
     pub half_extent: f32,
     /// O ponto que fica no centro do quadro.
     pub target: [f32; 3],
+    /// O que o olho faz com o que está longe. Ver [`Lens`].
+    pub lens: Lens,
 }
 
 impl Default for Orbit {
     fn default() -> Self {
         // Três-quartos, ligeiramente por cima: o ângulo em que uma aresta viva e um filete se
         // distinguem sem ambiguidade (escolhido na W0, ao olhar as imagens).
+        // ⚠️ Só a ROTAÇÃO vem de lá, e o resto é escrito aqui — ver a nota em `from_yaw_pitch`.
         Self {
             rotation: Self::from_yaw_pitch(0.72, 0.52).rotation,
             half_extent: 0.8,
             target: [0.0; 3],
+            lens: Lens::Perspective {
+                half_fov: DEFAULT_HALF_FOV,
+            },
         }
     }
 }
@@ -65,11 +111,73 @@ impl Orbit {
         // (`fwd = (cos p·sin y, sin p, cos p·cos y)`), verificada por gate.
         let (sy, cy) = (yaw * 0.5).sin_cos();
         let (sp, cp) = (-pitch * 0.5).sin_cos();
+        // ⛔ **Nada de `..Self::default()` aqui.** O `Default` é escrito em termos DESTA função (o
+        // enquadramento inicial é um yaw/pitch nomeado), então herdar dele seria recursão infinita —
+        // e ela aparece como um teste a estourar a pilha, não como um erro de compilação. Custou
+        // uma corrida para descobrir; o custo de a evitar é escrever os quatro campos.
         Self {
             rotation: quat_mul([0.0, sy, 0.0, cy], [sp, 0.0, 0.0, cp]),
             half_extent: 0.8,
             target: [0.0; 3],
+            lens: Lens::Perspective {
+                half_fov: DEFAULT_HALF_FOV,
+            },
         }
+    }
+
+    /// ⭐ **A que distância do plano do alvo está o olho** — `None` na paralela, onde ele está no
+    /// infinito e a pergunta não tem resposta finita.
+    ///
+    /// A conta é a que define a lente: `tan(meia abertura) = half_extent / dist`.
+    #[must_use]
+    pub fn eye_distance(&self) -> Option<f32> {
+        match self.lens {
+            Lens::Ortho => None,
+            Lens::Perspective { half_fov } => {
+                let t = half_fov.tan();
+                (t > 0.0 && t.is_finite()).then(|| self.half_extent / t)
+            }
+        }
+    }
+
+    /// Onde o olho está, no mundo. `None` na paralela, pela mesma razão.
+    #[must_use]
+    pub fn eye(&self) -> Option<[f32; 3]> {
+        let d = self.eye_distance()?;
+        let (_, _, fwd) = self.basis();
+        Some([
+            self.target[0] + fwd[0] * d,
+            self.target[1] + fwd[1] * d,
+            self.target[2] + fwd[2] * d,
+        ])
+    }
+
+    /// ⭐ **Quantos pixels mede uma unidade de mundo NAQUELE ponto.**
+    ///
+    /// ⚠️ Na paralela é uma constante do quadro; na convergente **depende da distância**, e é por
+    /// isso que esta pergunta tem de receber o ponto. Um gizmo dimensionado pela constante do quadro
+    /// encolheria e cresceria conforme a peça se afasta — e as alças deixariam de medir o que
+    /// dizem medir, que é o defeito que este módulo já nomeou uma vez (`MIN_ARM_PX`).
+    #[must_use]
+    pub fn px_per_world_at(&self, p: [f32; 3], screen: Screen) -> f32 {
+        let base = screen.px_per_world();
+        let Some(dist) = self.eye_distance() else {
+            return base;
+        };
+        let (_, _, fwd) = self.basis();
+        let z = dot(
+            [
+                p[0] - self.target[0],
+                p[1] - self.target[1],
+                p[2] - self.target[2],
+            ],
+            fwd,
+        );
+        let ahead = dist - z;
+        if ahead <= dist * NEAR_FRACTION {
+            return base;
+        }
+        base * dist / ahead
     }
 
     /// A base ortonormal da câmera: `(direita, cima, para-o-observador)`.
@@ -176,32 +284,92 @@ impl Orbit {
     /// Devolve `(pixel, profundidade)`, com a profundidade a crescer **na direção do observador** —
     /// é ela que resolve qual de duas alças sobrepostas está à frente.
     ///
-    /// ⚠️ Ortográfica: não há divisão por `w`, e por isso não há ponto que a projeção não saiba
-    /// responder. Quando a perspectiva entrar (item aberto), é **aqui** que ela entra — num sítio.
+    /// ⚠️ **`None` quando o ponto não TEM projeção** — na convergente, um ponto ao lado do olho ou
+    /// atrás dele. Não há pixel honesto para ele, e devolver um seria pintar uma alça num sítio
+    /// arbitrário: quem recebe `None` não desenha e não oferece (é o `live` do gizmo, que já
+    /// existia por outra razão). Na paralela **nunca** é `None` — não há divisão nenhuma.
     #[must_use]
-    pub fn project(&self, p: [f32; 3], screen: Screen) -> ([f32; 2], f32) {
+    pub fn project(&self, p: [f32; 3], screen: Screen) -> Option<([f32; 2], f32)> {
         let (right, up, fwd) = self.basis();
         let v = [
             p[0] - self.target[0],
             p[1] - self.target[1],
             p[2] - self.target[2],
         ];
-        let (x, y) = screen.pixel_of(dot(v, right), dot(v, up));
-        ([x, y], dot(v, fwd))
+        let z = dot(v, fwd);
+        let (mut u, mut w) = (dot(v, right), dot(v, up));
+        if let Some(dist) = self.eye_distance() {
+            let ahead = dist - z;
+            if ahead <= dist * NEAR_FRACTION {
+                return None;
+            }
+            // ⭐ A convergência inteira, numa linha: o que está mais longe do olho encolhe na mesma
+            // proporção. No plano do alvo (`z = 0`) o fator é 1 — é ali que as duas lentes coincidem.
+            let k = dist / ahead;
+            u *= k;
+            w *= k;
+        }
+        let (x, y) = screen.pixel_of(u, w);
+        Some(([x, y], z))
     }
 
-    /// O raio que sai de um pixel: `(origem, direção)`. A origem fica no plano da câmera que passa
-    /// pelo alvo, o que a torna útil para intersectar com um plano de arrasto sem inventar um
-    /// afastamento.
+    /// ⭐ **O raio de um pixel** — `(origem, direção unitária)`.
+    ///
+    /// ⚠️ **É a porta única**, e passou a sê-lo em 20/08: a marcha de raios reconstruía esta mesma
+    /// aritmética com um afastamento próprio, e duas respostas para *"que raio sai daqui?"* é como
+    /// uma alça se agarra meio pixel ao lado da superfície que ela diz mover — o defeito que o doc
+    /// deste arquivo já prometia não ter.
     #[must_use]
     pub fn ray(&self, x: f32, y: f32, screen: Screen) -> ([f32; 3], [f32; 3]) {
-        let (right, up, fwd) = self.basis();
         let (u, v) = screen.plane_at(x, y);
-        let o = [
+        self.ray_at_plane(u, v)
+    }
+
+    /// O mesmo raio, a partir de coordenadas **do plano do alvo** em unidades de mundo — que é o
+    /// que a marcha tem em mãos (ela varre o plano, não a grelha de pixels).
+    ///
+    /// ⚠️ **A origem fica FORA da peça**, e não sobre o plano do alvo: na paralela ela recua
+    /// [`ORTHO_START`]; na convergente ela **é o olho**, que já está recuado por construção. Uma
+    /// origem sobre o plano perderia tudo o que está à frente dele — metade da peça, em silêncio.
+    #[must_use]
+    pub fn ray_at_plane(&self, u: f32, v: f32) -> ([f32; 3], [f32; 3]) {
+        let (right, up, fwd) = self.basis();
+        let on_plane = [
             self.target[0] + right[0] * u + up[0] * v,
             self.target[1] + right[1] * u + up[1] * v,
             self.target[2] + right[2] * u + up[2] * v,
         ];
-        (o, [-fwd[0], -fwd[1], -fwd[2]])
+        match self.eye() {
+            None => (
+                [
+                    on_plane[0] + fwd[0] * ORTHO_START,
+                    on_plane[1] + fwd[1] * ORTHO_START,
+                    on_plane[2] + fwd[2] * ORTHO_START,
+                ],
+                [-fwd[0], -fwd[1], -fwd[2]],
+            ),
+            Some(eye) => {
+                let d = [
+                    on_plane[0] - eye[0],
+                    on_plane[1] - eye[1],
+                    on_plane[2] - eye[2],
+                ];
+                let len = dot(d, d).sqrt();
+                if len <= 0.0 || !len.is_finite() {
+                    return (eye, [-fwd[0], -fwd[1], -fwd[2]]);
+                }
+                (eye, [d[0] / len, d[1] / len, d[2] / len])
+            }
+        }
     }
 }
+
+/// Quanto o raio da lente **paralela** recua antes de marchar.
+///
+/// ⚠️ Sem olho não há afastamento natural, então este número tem de vir de algum lado: ele é o raio
+/// da maior peça que o enquadramento inicial comporta com folga. Uma peça maior do que isto começaria
+/// a ser marchada **por dentro**, e o que se veria era a superfície de trás.
+///
+/// ⚠️ Na convergente ele **não** é usado: ali o olho já está recuado `half_extent / tan(fov/2)`, e
+/// somar mais afastaria a origem do sítio de onde a projeção diz que ela vê.
+pub const ORTHO_START: f32 = 4.0;

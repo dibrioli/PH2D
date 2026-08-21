@@ -176,7 +176,9 @@ fn an_axis_that_points_at_the_camera_is_not_a_handle() {
 fn the_centre_belongs_to_the_view_disc() {
     let c = cam();
     let hs = handles(&c, Mode::Move);
-    let (o2, _) = c.project(anchor().origin, screen(&c));
+    let (o2, _) = c
+        .project(anchor().origin, screen(&c))
+        .expect("a fixture olha a peça");
     assert_eq!(pick(&hs, o2), Some(Handle::View));
     // E um pixel logo ao lado do centro também: a folga tem raio, não é um ponto.
     assert_eq!(
@@ -202,7 +204,9 @@ fn pointing_at_a_shaft_picks_that_axis_and_empty_space_picks_nothing() {
             "o meio da haste {n} tem de ser dela"
         );
     }
-    let (o2, _) = c.project(anchor().origin, screen(&c));
+    let (o2, _) = c
+        .project(anchor().origin, screen(&c))
+        .expect("a fixture olha a peça");
     assert_eq!(
         pick(&hs, [o2[0] + ARM_PX * 3.0, o2[1] + ARM_PX * 3.0]),
         None,

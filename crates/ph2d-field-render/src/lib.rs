@@ -90,7 +90,7 @@ impl Sharpness {
 mod camera;
 mod shade;
 
-pub use camera::{Orbit, Screen};
+pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Screen};
 pub use shade::Matcap;
 pub use shade::shade;
 
@@ -288,14 +288,17 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>,
         return (hit, normal, point);
     }
 
+    // ⭐ **O raio vem da CÂMERA**, e não de uma segunda cópia da conta dela. Este laço reconstruía
+    // a aritmética do `Orbit::ray` com um afastamento próprio — duas respostas para *"que raio sai
+    // daqui?"*, no mesmo módulo cujo doc promete que a projeção é a mesma do gizmo. Com a lente
+    // convergente a direção passou a ser **por raio**, e uma das duas cópias teria ficado paralela.
     let (mut ox, mut oy, mut oz) = (vec![0.0f32; n], vec![0.0f32; n], vec![0.0f32; n]);
+    let mut dir = vec![[0.0f32; 3]; n];
     for (i, &(sx, sy)) in screen.iter().enumerate() {
-        const START: f32 = 4.0;
-        ox[i] = cam.target[0] + right[0] * sx + up[0] * sy + fwd[0] * START;
-        oy[i] = cam.target[1] + right[1] * sx + up[1] * sy + fwd[1] * START;
-        oz[i] = cam.target[2] + right[2] * sx + up[2] * sy + fwd[2] * START;
+        let (o, d) = cam.ray_at_plane(sx, sy);
+        (ox[i], oy[i], oz[i]) = (o[0], o[1], o[2]);
+        dir[i] = d;
     }
-    let dir = [-fwd[0], -fwd[1], -fwd[2]];
 
     let mut t = vec![0.0f32; n];
     let mut alive: Vec<u32> = (0..n as u32).collect();
@@ -309,9 +312,9 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>,
         zs.clear();
         for &i in &alive {
             let i = i as usize;
-            xs.push(ox[i] + dir[0] * t[i]);
-            ys.push(oy[i] + dir[1] * t[i]);
-            zs.push(oz[i] + dir[2] * t[i]);
+            xs.push(ox[i] + dir[i][0] * t[i]);
+            ys.push(oy[i] + dir[i][1] * t[i]);
+            zs.push(oz[i] + dir[i][2] * t[i]);
         }
         let Ok(out) = eval.eval(&tape, &xs, &ys, &zs) else {
             break;
@@ -336,9 +339,9 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>,
     let idx: Vec<usize> = (0..n).filter(|i| hit[*i]).collect();
     for &i in &idx {
         point[i] = [
-            ox[i] + dir[0] * t[i],
-            oy[i] + dir[1] * t[i],
-            oz[i] + dir[2] * t[i],
+            ox[i] + dir[i][0] * t[i],
+            oy[i] + dir[i][1] * t[i],
+            oz[i] + dir[i][2] * t[i],
         ];
     }
     if idx.is_empty() {

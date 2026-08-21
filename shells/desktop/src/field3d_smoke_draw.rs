@@ -165,7 +165,9 @@ pub(crate) fn draw(
             // `0,503` enquanto a peça pousou em `0,500`. É a lei que o `gizmo/readout.rs` da casa já
             // escreveu, e o gate `the_readout_is_the_pose_the_world_took` prende-a aqui.
             if let Some(grip) = smoke.drag_grip {
-                let (o2, _) = smoke.cam.project(anchor.origin, screen);
+                let Some((o2, _)) = smoke.cam.project(anchor.origin, screen) else {
+                    return;
+                };
                 crate::field3d_gizmo_paint::paint_readout(
                     scene_out,
                     text,

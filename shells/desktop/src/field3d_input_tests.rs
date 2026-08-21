@@ -101,19 +101,48 @@ fn panning_carries_the_model_with_the_hand_at_any_zoom() {
         after.1
     );
 
-    // ⭐ E o deslocamento em PIXELS é o mesmo com outro zoom — é isso que "fração de tela"
-    // significa, e o que impede o pan de ficar inútil de perto e insano de longe.
-    let mut near = front();
-    near.half_extent = 0.2;
-    let base_near = centroid(&doc, &near).expect("a peça aparece de perto");
-    let mut near_moved = near;
-    law::pan(&mut near_moved, 20.0, 12.0, H as f32 * 0.5);
-    let after_near = centroid(&doc, &near_moved).expect("a peça continua no quadro");
-    let (a, b) = (after.0 - base.0, after_near.0 - base_near.0);
-    assert!(
-        (a - b).abs() < 2.0,
-        "o mesmo arrasto tem de mover os mesmos pixels em qualquer zoom: {a:.1} contra {b:.1}"
-    );
+    // ⭐ E o deslocamento em PIXELS é **exatamente** o do arrasto, em qualquer zoom e com qualquer
+    // lente — é isso que "fração de tela" significa, e o que impede o pan de ficar inútil de perto e
+    // insano de longe.
+    //
+    // ⚠️ **Isto media o centroide do TRAÇADO, e a fixture deixou de conter o fenómeno** quando a
+    // lente convergente entrou: a `half_extent = 0,2` põe o olho a 0,55 da peça, ela transborda o
+    // quadro, e o centroide de um quadro cheio é o centro dele — parado, com a lei correta por
+    // trás. *Uma fixture só prova o que ela contém.*
+    //
+    // A pergunta certa é sobre um ponto do **plano do alvo**, que é onde a lei do pan fala: mover o
+    // alvo `half_extent/half_px · dx` desloca-o `dx` pixels, e o fator da lente vale 1 ali. Um
+    // ponto, e não uma peça: uma peça tem profundidade, e sob convergência cada pedaço dela anda um
+    // tanto diferente — o que é a lente a funcionar, não o pan a falhar.
+    for lens in [
+        ph2d_field_render::Lens::Ortho,
+        ph2d_field_render::Lens::Perspective {
+            half_fov: ph2d_field_render::DEFAULT_HALF_FOV,
+        },
+    ] {
+        for zoom in [0.2f32, 0.8, 3.0] {
+            let mut cam = front();
+            cam.lens = lens;
+            cam.half_extent = zoom;
+            let screen = ph2d_field_render::Screen::new(W, H, cam.half_extent);
+            // Um ponto SOBRE o plano do alvo, e fora do centro — o centro andaria com o alvo.
+            let (right, _, _) = cam.basis();
+            let mark = [
+                cam.target[0] + right[0] * zoom * 0.3,
+                cam.target[1] + right[1] * zoom * 0.3,
+                cam.target[2] + right[2] * zoom * 0.3,
+            ];
+            let before = cam.project(mark, screen).expect("está à frente do olho").0;
+            law::pan(&mut cam, 20.0, 12.0, H as f32 * 0.5);
+            let screen = ph2d_field_render::Screen::new(W, H, cam.half_extent);
+            let after = cam.project(mark, screen).expect("continua à frente").0;
+            let moved = (after[0] - before[0], after[1] - before[1]);
+            assert!(
+                (moved.0 - 20.0).abs() < 0.05 && (moved.1 - 12.0).abs() < 0.05,
+                "{lens:?} @ zoom {zoom}: o arrasto foi (20, 12) px e o ponto andou {moved:?}"
+            );
+        }
+    }
 }
 
 /// **A roda aproxima**, e a peça cresce na tela.
@@ -221,215 +250,8 @@ fn home_restores_the_opening_view() {
     );
 }
 
-/// ⭐ **A costura ponteiro → gizmo → peça**, no caminho de produção inteiro.
-///
-/// ⚠️ **É este o gate que a `DIRETIVA_IMPLEMENTACAO` §1 exige**, e não os dois de cima. Ele pergunta
-/// *"clicar numa seta faz a peça andar?"* — a pergunta que a lei pura e a pintura, cada uma verde no
-/// seu canto, **não** respondem. A causa nº 1 da semana perdida no Painter foi exatamente esta:
-/// costura não-testada, com os dois lados dela corretos.
-mod seam {
-    use crate::field3d_gizmo::{self, Handle};
-    use crate::field3d_input::{advance, begin, hot_handle};
-    use crate::field3d_smoke::{Drag, set_armed_by_panel, with_smoke};
-    use ph2d_field_render::Screen;
-
-    const AREA: ph2d_editor::zones::Rect = ph2d_editor::zones::Rect {
-        x: 40.0,
-        y: 24.0,
-        w: 800.0,
-        h: 600.0,
-    };
-
-    /// Arma o módulo e põe o smoke num estado de quadro: com área desenhada e com o gizmo ancorado
-    /// na origem. É o que a ponte com a cena publica.
-    fn armed<R>(f: impl FnOnce(&mut crate::field3d_smoke::Smoke) -> R) -> R {
-        set_armed_by_panel(true);
-        with_smoke(|s| {
-            s.area = Some(AREA);
-            s.gizmo = Some(field3d_gizmo::Anchor::global(7, [0.0, 0.0, 0.0]));
-            s.pending_move = None;
-            s.drag = None;
-            s.gizmo_hot = None;
-            f(s)
-        })
-        .expect("o módulo está armado")
-    }
-
-    fn translation_of(m: field3d_gizmo::Motion) -> [f32; 3] {
-        match m {
-            field3d_gizmo::Motion::Translate(d) => d,
-            other => panic!("o modo de mover pede translação, e veio {other:?}"),
-        }
-    }
-
-    fn screen_of(s: &crate::field3d_smoke::Smoke) -> Screen {
-        Screen::new(AREA.w as u32, AREA.h as u32, s.cam.half_extent)
-    }
-
-    /// O ponto de janela, em pixels, do meio da haste do eixo `n`.
-    fn mid_of_axis(s: &crate::field3d_smoke::Smoke, n: usize) -> (f32, f32) {
-        let anchor = s.gizmo.expect("ancorado");
-        let handles = field3d_gizmo::project(anchor, &s.cam, screen_of(s), s.gizmo_mode);
-        let h = handles
-            .iter()
-            .find(|h| h.handle == Handle::Axis(n))
-            .expect("o eixo existe");
-        let field3d_gizmo::Shape::Arrow { from, to } = h.shape else {
-            panic!("um eixo é uma seta");
-        };
-        (
-            AREA.x + (from[0] + to[0]) * 0.5,
-            AREA.y + (from[1] + to[1]) * 0.5,
-        )
-    }
-
-    /// ⭐ **Carregar numa seta agarra a seta — e não orbita a câmera.**
-    #[test]
-    fn pressing_on_an_arrow_grabs_it_instead_of_orbiting() {
-        armed(|s| {
-            let p = mid_of_axis(s, 0);
-            let before = s.cam;
-            assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, p));
-            assert_eq!(
-                s.drag,
-                Some(Drag::Gizmo(Handle::Axis(0))),
-                "o clique sobre a seta virou gesto de câmera — a alça está pintada e morta"
-            );
-            assert_eq!(hot_handle(s), Some(Handle::Axis(0)), "e ela acende");
-
-            // E arrastar move a PEÇA, não a vista.
-            assert!(advance(s, p.0 + 60.0, p.1));
-            assert_eq!(s.cam, before, "a câmera não pode ter-se mexido");
-            let (entity, motion) = s.pending_move.expect("o arrasto tem de pedir um movimento");
-            assert_eq!(entity, 7, "e tem de pedi-lo para a entidade da âncora");
-            assert!(
-                !motion.is_idle(),
-                "o pedido saiu vazio: {motion:?} — o ponteiro não chegou à lei do arrasto"
-            );
-        });
-    }
-
-    /// **Longe do gizmo, o botão esquerdo continua a orbitar.** Sem isto o gizmo sequestraria a
-    /// navegação da janela inteira.
-    #[test]
-    fn pressing_away_from_the_gizmo_still_orbits() {
-        armed(|s| {
-            let far = (AREA.x + AREA.w - 5.0, AREA.y + 5.0);
-            assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, far));
-            assert_eq!(s.drag, Some(Drag::Orbit));
-            assert!(s.pending_move.is_none());
-        });
-    }
-
-    /// ⚠️ **O botão DIREITO orbita mesmo por cima da alça** — é a saída de quem quer girar a vista
-    /// sem primeiro tirar o rato de cima da peça.
-    #[test]
-    fn the_right_button_orbits_even_over_a_handle() {
-        armed(|s| {
-            let p = mid_of_axis(s, 0);
-            assert!(begin(s, winit::event::MouseButton::Right, Drag::Orbit, p));
-            assert_eq!(s.drag, Some(Drag::Orbit));
-        });
-    }
-
-    /// ⭐ **Os pedidos ACUMULAM entre quadros.**
-    ///
-    /// ⚠️ Entre dois quadros chegam vários eventos de ponteiro. Guardar só o último faria a peça
-    /// andar menos do que a mão — devagar, e **só quando o rato vai depressa**, que é o defeito mais
-    /// difícil de acreditar quando alguém o reporta.
-    #[test]
-    fn pointer_events_between_two_frames_add_up() {
-        armed(|s| {
-            let p = mid_of_axis(s, 0);
-            begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
-            advance(s, p.0 + 30.0, p.1);
-            let one = translation_of(s.pending_move.expect("primeiro evento").1);
-            advance(s, p.0 + 60.0, p.1);
-            let two = translation_of(s.pending_move.expect("segundo evento").1);
-            assert!(
-                (two[0] - one[0] * 2.0).abs() < one[0].abs() * 1e-3,
-                "dois passos iguais têm de somar: {one:?} depois {two:?}"
-            );
-        });
-    }
-
-    /// **Sem arrasto, mover o rato acende a alça e NÃO consome o evento.**
-    ///
-    /// ⚠️ As duas metades importam: sem a primeira o artista não sabe o que vai agarrar; com a
-    /// segunda invertida, a janela 3D engoliria todo movimento de rato do app 2D.
-    #[test]
-    fn hover_lights_the_handle_without_swallowing_the_event() {
-        armed(|s| {
-            let p = mid_of_axis(s, 1);
-            assert!(!advance(s, p.0, p.1), "hover não é um gesto desta janela");
-            assert_eq!(hot_handle(s), Some(Handle::Axis(1)));
-            assert!(!advance(s, AREA.x + 2.0, AREA.y + 2.0));
-            assert_eq!(hot_handle(s), None, "e apaga-se ao sair");
-        });
-    }
-
-    /// ⭐ **Soltar sem ter arrastado é um CLIQUE**, e um clique pede uma seleção.
-    ///
-    /// ⚠️ É a metade de entrada da seleção por clique. A outra (de quem é o ponto) precisa do MUNDO
-    /// e vive na ponte; sem esta, ela nunca é chamada — e o gizmo continuaria a só chegar pela
-    /// Hierarquia.
-    #[test]
-    fn a_press_and_release_without_dragging_asks_for_a_pick() {
-        armed(|s| {
-            let far = (AREA.x + AREA.w - 60.0, AREA.y + 40.0);
-            begin(s, winit::event::MouseButton::Left, Drag::Orbit, far);
-            s.last_pointer = far;
-            crate::field3d_input::finish_for_test(s);
-            let px = s.pending_pick.expect("um clique tem de pedir uma seleção");
-            assert!(
-                (px[0] - (far.0 - AREA.x)).abs() < 0.01 && (px[1] - (far.1 - AREA.y)).abs() < 0.01,
-                "o pixel pedido tem de ser o do CLIQUE, no referencial da área: {px:?}"
-            );
-        });
-    }
-
-    /// ⚠️ **Um arrasto NÃO é um clique** — girar a vista não pode trocar a seleção.
-    #[test]
-    fn dragging_the_camera_is_not_a_click() {
-        armed(|s| {
-            let far = (AREA.x + AREA.w - 60.0, AREA.y + 40.0);
-            begin(s, winit::event::MouseButton::Left, Drag::Orbit, far);
-            advance(s, far.0 + 40.0, far.1 + 30.0);
-            crate::field3d_input::finish_for_test(s);
-            assert!(
-                s.pending_pick.is_none(),
-                "orbitar a vista pediu uma seleção — o limiar de clique não está a morder"
-            );
-        });
-    }
-
-    /// ⚠️ **Soltar uma ALÇA do gizmo nunca é uma seleção.**
-    ///
-    /// Sem isto, mover um objeto trocaria a seleção para o que estivesse por baixo dele no fim do
-    /// gesto — e o artista perderia o objeto que acabou de posicionar.
-    #[test]
-    fn releasing_a_gizmo_handle_is_never_a_selection() {
-        armed(|s| {
-            let p = mid_of_axis(s, 0);
-            begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
-            assert!(matches!(s.drag, Some(Drag::Gizmo(_))));
-            crate::field3d_input::finish_for_test(s);
-            assert!(s.pending_pick.is_none());
-        });
-    }
-
-    /// ⚠️ **Durante o arrasto o realce fica na alça AGARRADA**, mesmo com o cursor longe dela — que
-    /// é onde o cursor está, porque arrastar é isso.
-    #[test]
-    fn the_grabbed_handle_stays_lit_while_the_cursor_walks_away() {
-        armed(|s| {
-            let p = mid_of_axis(s, 2);
-            begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
-            advance(s, AREA.x + AREA.w - 3.0, AREA.y + AREA.h - 3.0);
-            assert_eq!(hot_handle(s), Some(Handle::Axis(2)));
-        });
-    }
-}
+#[path = "field3d_input_seam_tests.rs"]
+mod seam;
 
 /// Os gates do **undo de um arrasto**.
 ///
@@ -531,4 +353,48 @@ mod mode_keys {
             Some(Mode::Rotate)
         );
     }
+}
+
+/// ⭐ **`Numpad5` alterna a lente, e volta.**
+///
+/// ⚠️ A lei é pura de propósito ([`law::other_lens`]): a porta da tecla não pode ser a única forma
+/// de a exercer, senão a troca só se prova abrindo uma janela. E a volta importa — uma troca que só
+/// funcionasse num sentido deixaria o artista preso na lente que ele escolheu para comparar.
+#[test]
+fn the_lens_key_toggles_and_comes_back() {
+    use ph2d_field_render::Lens;
+    let start = Lens::Perspective {
+        half_fov: ph2d_field_render::DEFAULT_HALF_FOV,
+    };
+    let flipped = law::other_lens(start);
+    assert_eq!(flipped, Lens::Ortho, "a convergente troca para a paralela");
+    assert_eq!(
+        law::other_lens(flipped),
+        start,
+        "e volta com a abertura da REFERÊNCIA, não com uma lembrada"
+    );
+}
+
+/// ⭐ **A câmera nasce CONVERGENTE** — é o que um modelador espera, e é a escolha declarada.
+///
+/// ⚠️ A nota que estava na câmera dizia que a perspectiva *"merece a sua própria comparação lado a
+/// lado, não uma troca silenciosa"*. A comparação é a tecla; este gate prende o **default**, que é
+/// a metade que uma tecla não prova.
+#[test]
+fn the_camera_is_born_converging() {
+    use ph2d_field_render::{Lens, Orbit};
+    assert!(
+        matches!(Orbit::default().lens, Lens::Perspective { .. }),
+        "o default é a lente convergente"
+    );
+    assert!(
+        Orbit::default().eye_distance().is_some(),
+        "e por isso ela tem olho"
+    );
+    // ⚠️ E a paralela **não** tem — o `None` é o que impede a conta da convergência de correr lá.
+    let flat = Orbit {
+        lens: Lens::Ortho,
+        ..Orbit::default()
+    };
+    assert!(flat.eye_distance().is_none());
 }

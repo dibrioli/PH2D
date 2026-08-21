@@ -98,7 +98,7 @@ const HOME_YAW_PITCH: (f32, f32) = (0.72, 0.52);
 /// direita?"* não seria escrito — e foi exatamente essa pergunta que a `line/sculpt3d` respondeu
 /// errado nos dois sinais até um smoke a pegar. Aqui o gate traça a peça e **mede-a na tela**.
 pub(crate) mod law {
-    use ph2d_field_render::Orbit;
+    use ph2d_field_render::{Lens, Orbit};
 
     use super::{
         HOME_YAW_PITCH, MAX_HALF_EXTENT, MIN_HALF_EXTENT, ORBIT_RAD_PER_PX, ZOOM_PER_STEP,
@@ -139,6 +139,21 @@ pub(crate) mod law {
         let (right, up, _) = cam.basis();
         for i in 0..3 {
             cam.target[i] += -right[i] * dx * k + up[i] * dy * k;
+        }
+    }
+
+    /// **A outra lente** — a troca, como lei pura.
+    ///
+    /// ⚠️ Ela mora aqui e não na porta da tecla porque é a lei, e uma lei tem de ser gateável sem
+    /// janela: a `half_fov` que a convergente recebe ao voltar é a da referência
+    /// ([`ph2d_field_render::DEFAULT_HALF_FOV`]), e não a última que estava — guardá-la seria um
+    /// estado a mais para responder a uma pergunta que a referência já responde.
+    pub(crate) fn other_lens(lens: Lens) -> Lens {
+        match lens {
+            Lens::Perspective { .. } => Lens::Ortho,
+            Lens::Ortho => Lens::Perspective {
+                half_fov: ph2d_field_render::DEFAULT_HALF_FOV,
+            },
         }
     }
 
@@ -219,9 +234,7 @@ impl App {
             // cena existe?", o dia em que a cena passou a nascer sozinha chegou, e a partir dali ela
             // comia as teclas de todo painel do app. *Quem move o número que tornava uma nota
             // verdadeira tem de reconferir a nota* — e aqui quem o moveu fui eu, no mesmo dia.
-            if !s.area.is_some_and(|a| {
-                pos.0 >= a.x && pos.1 >= a.y && pos.0 < a.x + a.w && pos.1 < a.y + a.h
-            }) {
+            if !over_window(s, pos) {
                 return false;
             }
             law::home(&mut s.cam);
@@ -243,15 +256,39 @@ impl App {
     /// mecânica é a que o Blender também tem entre a tecla e a barra de ferramentas dele.
     ///
     /// O seletor do PAINEL é a outra porta, e é a que se encontra sem saber que existe.
+    /// ⭐ **A tecla que alterna a LENTE** — convergente ou paralela.
+    ///
+    /// ⚠️ É a comparação que a nota da câmera pedia por extenso: *"a perspectiva merece a sua própria
+    /// comparação lado a lado, não uma troca silenciosa"*. Uma tecla é o lado a lado.
+    ///
+    /// `Numpad5` é a tecla do Blender para a mesma coisa, e a memória de dedo vale mais do que uma letra
+    /// livre. ⚠️ Com modificador não é atalho deste módulo, pela mesma razão do `mode_for_key`.
+    pub(crate) fn field3d_lens_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        if code != winit::keyboard::KeyCode::Numpad5
+            || self.modifiers.control_key()
+            || self.modifiers.alt_key()
+            || self.modifiers.super_key()
+        {
+            return false;
+        }
+        let pos = self.last_pointer;
+        with_smoke(|s| {
+            if !over_window(s, pos) {
+                return false;
+            }
+            s.cam.lens = law::other_lens(s.cam.lens);
+            true
+        })
+        .unwrap_or(false)
+    }
+
     pub(crate) fn field3d_mode_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
         let Some(mode) = mode_for_key(code, self.modifiers) else {
             return false;
         };
         let pos = self.last_pointer;
         with_smoke(|s| {
-            if !s.area.is_some_and(|a| {
-                pos.0 >= a.x && pos.1 >= a.y && pos.0 < a.x + a.w && pos.1 < a.y + a.h
-            }) {
+            if !over_window(s, pos) {
                 return false;
             }
             s.gizmo_mode = mode;
@@ -424,6 +461,23 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         }
     }
     true
+}
+
+/// ⭐ **O ponteiro está sobre a janela 3D?** — a guarda de TODA tecla deste módulo.
+///
+/// ⚠️ **É a diferença entre um atalho e um sequestro.** Enquanto o módulo entrava só por variável de
+/// ambiente, perguntar *"o smoke está armado?"* bastava; com o pill do topo ele pode estar ligado
+/// numa sessão normal, e aí uma tecla engolida é uma tecla que não chega ao campo de texto onde o
+/// artista está a escrever.
+///
+/// ⚠️ **Vive num sítio de propósito.** Ela estava escrita à mão em cada porta de tecla, com a nota
+/// só numa delas — e a tecla seguinte a nascer teria copiado a condição e deixado a nota para trás.
+/// É exatamente o que a `line/sculpt3d` viu envelhecer: a porta dela perguntava *"a cena existe?"*,
+/// o dia em que a cena passou a nascer sozinha chegou, e a partir dali ela comia as teclas de todo
+/// painel do app. *Quem move o número que tornava uma nota verdadeira tem de reconferir a nota.*
+fn over_window(s: &Smoke, pos: (f32, f32)) -> bool {
+    s.area
+        .is_some_and(|a| pos.0 >= a.x && pos.1 >= a.y && pos.0 < a.x + a.w && pos.1 < a.y + a.h)
 }
 
 /// **Que verbo esta tecla nomeia** — `None` quando ela não é deste módulo.

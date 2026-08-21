@@ -103,6 +103,15 @@ impl App {
             return;
         }
 
+        // ADR-0161 W15: `Numpad5` alterna a LENTE da janela 3D (convergente ↔ paralela), a tecla
+        // do Blender para a mesma coisa. Mesma guarda de ponteiro das outras — ver `over_window`.
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+            && self.field3d_lens_key(code)
+        {
+            return;
+        }
+
         self.handler.on_key(KeyEvent {
             keycode,
             modifiers: Self::convert_modifiers(self.modifiers),

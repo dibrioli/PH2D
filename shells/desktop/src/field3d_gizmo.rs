@@ -278,9 +278,18 @@ const WORLD_AXES: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 
 /// dentro da folga onde as setas não começam. Sem esta ordem, apontar o centro escolheria um eixo à
 /// sorte.
 pub(crate) fn project(anchor: Anchor, cam: &Orbit, screen: Screen, mode: Mode) -> Vec<Projected> {
-    let px_per_world = screen.px_per_world().max(f32::MIN_POSITIVE);
+    // ⭐ **A escala é a DAQUELE ponto**, e não a do quadro: com a lente convergente uma unidade de
+    // mundo mede menos pixels quanto mais longe está. Um braço dimensionado pela constante do quadro
+    // encolheria com a peça a afastar-se, e as alças deixariam de medir o que dizem medir.
+    let px_per_world = cam
+        .px_per_world_at(anchor.origin, screen)
+        .max(f32::MIN_POSITIVE);
     let arm = ARM_PX / px_per_world;
-    let (o2, _) = cam.project(anchor.origin, screen);
+    // ⚠️ **Sem projeção não há gizmo**: a âncora está ao lado do olho ou atrás dele, e desenhar
+    // alças num pixel inventado seria oferecer um gesto que agarra noutro sítio.
+    let Some((o2, _)) = cam.project(anchor.origin, screen) else {
+        return Vec::new();
+    };
     match mode {
         Mode::Move => move_handles(anchor, cam, screen, arm, o2),
         Mode::Rotate => rotate_handles(anchor, cam, screen, arm),
@@ -316,20 +325,27 @@ fn move_handles(
 
     for n in 0..3 {
         let (u, v) = ((n + 1) % 3, (n + 2) % 3);
-        let corner = |a: f32, b: f32| -> [f32; 2] {
+        let corner = |a: f32, b: f32| -> Option<[f32; 2]> {
             let mut p = anchor.origin;
             for (k, c) in p.iter_mut().enumerate() {
                 *c += anchor.axes[u][k] * a * arm + anchor.axes[v][k] * b * arm;
             }
-            cam.project(p, screen).0
+            cam.project(p, screen).map(|(px, _)| px)
         };
         let (lo, hi) = (PLANE_AT, PLANE_AT + PLANE_SIDE);
-        let quad = [
+        // ⚠️ **Um canto sem projeção mata a alça inteira**, e não só ele: um quadrilátero com três
+        // cantos é uma forma que o teste de acerto aceitaria e o olho não reconhece.
+        let corners = [
             corner(lo, lo),
             corner(hi, lo),
             corner(hi, hi),
             corner(lo, hi),
         ];
+        let quad = match corners {
+            [Some(a), Some(b), Some(c), Some(d)] => [a, b, c, d],
+            _ => [[0.0; 2]; 4],
+        };
+        let projects = corners.iter().all(Option::is_some);
         // ⚠️ **De perfil, um quadrado é um traço.** A pergunta certa não é a área: é se ele ainda é
         // largo o bastante para se apontar — o lado mais estreito tem de passar do raio de agarre.
         let narrow = (0..4)
@@ -338,17 +354,24 @@ fn move_handles(
         out.push(Projected {
             handle: Handle::Plane(n),
             shape: Shape::Quad(quad),
-            live: narrow >= GRAB_PX,
+            live: projects && narrow >= GRAB_PX,
         });
     }
 
     for (n, axis) in anchor.axes.iter().enumerate() {
-        let tip = cam.project(offset(anchor.origin, *axis, arm), screen).0;
-        let len = dist(o2, tip);
+        // Uma ponta sem projeção é uma seta que aponta para fora do mundo visível: ela não é
+        // desenhada e não é oferecida, pelo mesmo `live` que já trata a seta vista de topo.
+        let tip = cam
+            .project(offset(anchor.origin, *axis, arm), screen)
+            .map(|(px, _)| px);
+        let len = tip.map_or(0.0, |t| dist(o2, t));
         out.push(Projected {
             handle: Handle::Axis(n),
-            shape: Shape::Arrow { from: o2, to: tip },
-            live: len >= MIN_ARM_PX,
+            shape: Shape::Arrow {
+                from: o2,
+                to: tip.unwrap_or(o2),
+            },
+            live: tip.is_some() && len >= MIN_ARM_PX,
         });
     }
     out
@@ -410,16 +433,21 @@ fn front_arc(
     // sinal da conta passa a ser ruído. Aqui o deslocamento já é o que se quer, e o erro fica da
     // ordem de `radius · 10⁻⁷`.
     let (du, dv) = (dot(u, fwd), dot(v, fwd));
+    // ⚠️ **Não ter projeção CONTA como não estar à frente.** Com a lente convergente uma argola pode
+    // atravessar o plano do olho, e um ponto de lá não tem pixel nenhum: tratá-lo como frente
+    // deixaria um salto no meio da fita. A pergunta *"este ponto é desenhável?"* tem uma resposta,
+    // e é ela que entra na máscara — em vez de dois testes que podem discordar.
+    let at = |i: usize| cam.project(world(i), screen).map(|(px, _)| px);
     let front: Vec<bool> = (0..RING_SEGMENTS)
         .map(|i| {
             let t = i as f32 / RING_SEGMENTS as f32 * std::f32::consts::TAU;
             let (s, c) = t.sin_cos();
-            c.mul_add(du, s * dv) >= -RING_FRONT_EPS
+            c.mul_add(du, s * dv) >= -RING_FRONT_EPS && at(i).is_some()
         })
         .collect();
     if front.iter().all(|f| *f) {
         return (0..=RING_SEGMENTS)
-            .map(|i| cam.project(world(i % RING_SEGMENTS), screen).0)
+            .filter_map(|i| at(i % RING_SEGMENTS))
             .collect();
     }
     let Some(start) =
@@ -433,7 +461,9 @@ fn front_arc(
         if !front[i] {
             break;
         }
-        out.push(cam.project(world(i), screen).0);
+        if let Some(px) = at(i) {
+            out.push(px);
+        }
     }
     out
 }

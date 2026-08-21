@@ -61,7 +61,9 @@ fn clicking_a_shape_returns_that_shape() {
     let c = front();
     let s = Screen::new(W, H, c.half_extent);
     for (k, centre) in [(-0.45f32), 0.0, 0.45].into_iter().enumerate() {
-        let (px, _) = c.project([centre, 0.0, 0.0], s);
+        let (px, _) = c
+            .project([centre, 0.0, 0.0], s)
+            .expect("a fixture olha a peça");
         assert_eq!(
             node_under(sim.world(), root, &doc, &c, s, px),
             Some(kids[k]),
@@ -125,7 +127,9 @@ fn the_answer_uses_the_world_pose_not_the_local_one() {
     let c = front();
     let s = Screen::new(W, H, c.half_extent);
     // A esfera da ESQUERDA está, no mundo, em (0.05, 0.25) — e é ali que se clica.
-    let (px, _) = c.project([0.05, 0.25, 0.0], s);
+    let (px, _) = c
+        .project([0.05, 0.25, 0.0], s)
+        .expect("a fixture olha a peça");
     assert_eq!(
         node_under(sim.world(), root, &doc, &c, s, px),
         Some(kids[0]),
@@ -147,7 +151,9 @@ fn measure_pick_cost() {
     let root = ph2d_field_ecs::spawn_doc(world, &doc, "Model");
     let c = front();
     let s = Screen::new(1600, 1000, c.half_extent);
-    let (px, _) = c.project([0.0, 0.0, 0.0], s);
+    let (px, _) = c
+        .project([0.0, 0.0, 0.0], s)
+        .expect("a fixture olha a peça");
 
     let t0 = std::time::Instant::now();
     const N: u32 = 20;

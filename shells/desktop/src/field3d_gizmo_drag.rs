@@ -165,7 +165,11 @@ pub(crate) fn drag(
     from_px: [f32; 2],
     to_px: [f32; 2],
 ) -> Motion {
-    let px_per_world = screen.px_per_world().max(f32::MIN_POSITIVE);
+    // A MESMA escala que a projeção usa — ver `project`. Duas contas para o comprimento do braço
+    // dariam um arrasto que anda diferente do que a seta desenhada promete.
+    let px_per_world = cam
+        .px_per_world_at(anchor.origin, screen)
+        .max(f32::MIN_POSITIVE);
     let arm = ARM_PX / px_per_world;
     match handle {
         // A conta é uma projeção escalar: `d` é quanto o braço inteiro mede na tela, e a fração do
@@ -174,10 +178,13 @@ pub(crate) fn drag(
         // ⚠️ **Sem divisão por zero possível**: `dot(d,d)` só é nulo quando o eixo aponta ao
         // observador, e aí a alça já não está viva.
         Handle::Axis(n) => {
-            let (o2, _) = cam.project(anchor.origin, screen);
-            let tip = cam
-                .project(offset(anchor.origin, anchor.axes[n], arm), screen)
-                .0;
+            // Sem projeção não há para onde arrastar — a mesma condição que esconde a alça.
+            let (Some((o2, _)), Some((tip, _))) = (
+                cam.project(anchor.origin, screen),
+                cam.project(offset(anchor.origin, anchor.axes[n], arm), screen),
+            ) else {
+                return Motion::Translate([0.0; 3]);
+            };
             let d = [tip[0] - o2[0], tip[1] - o2[1]];
             let dd = d[0].mul_add(d[0], d[1] * d[1]);
             if dd < MIN_ARM_PX * MIN_ARM_PX {
@@ -214,7 +221,9 @@ pub(crate) fn drag(
         // ⭐ Tamanho é **razão de raios**, e não diferença: é o que faz duas metades de um arrasto
         // valerem o produto e não a soma — a mesma lei que um zoom de roda usa.
         Handle::Grip => {
-            let (o2, _) = cam.project(anchor.origin, screen);
+            let Some((o2, _)) = cam.project(anchor.origin, screen) else {
+                return Motion::Scale(1.0);
+            };
             let r0 = dist(o2, from_px);
             let r1 = dist(o2, to_px);
             // ⚠️ O piso é do RAIO INICIAL, não do fator: agarrar em cima do centro daria uma razão

@@ -847,6 +847,78 @@ em 90 ficaria verde sobre o defeito.
 
 ---
 
+## §16 — W15: a lente, e o raio que era construído duas vezes (20/08)
+
+Em projeção paralela não se julga forma: um cilindro de frente é um retângulo, e duas peças a
+profundidades diferentes medem o mesmo. A perspectiva era item aberto desde a W2.
+
+### ⭐ A lente é SÓ uma lente
+
+`Lens::{Ortho, Perspective { half_fov }}`, e o `half_extent` **continua a querer dizer a mesma
+coisa nas duas**: quantas unidades de mundo cabem em meia altura de quadro **no plano do alvo**.
+Daí sai a propriedade que mantém o resto do módulo intacto — as duas imagens **coincidem
+exatamente** naquele plano, e zoom, enquadramento, o passo da grelha e a lei do pan não mudam de
+lei. Uma perspectiva que mudasse o significado do `half_extent` obrigaria a reconferir cada número
+que dele deriva, e **nenhum deles ficaria vermelho** ao mudar.
+
+A distância do olho sai da definição: `dist = half_extent / tan(meia abertura)`. E a abertura é
+**derivada da referência declarada**, escrita como a conta e não como o resultado: o Blender abre
+uma câmera com 50 mm sobre um sensor de 36 mm ⇒ `atan(18/50)`.
+
+### ⭐ O raio era construído DUAS vezes
+
+A marcha de raios reconstruía a aritmética do `Orbit::ray` com um afastamento próprio — no mesmo
+módulo cujo doc promete que *"a projeção é a MESMA do traçador"*. Enquanto as duas eram paralelas,
+elas concordavam por acidente; a lente convergente teria deixado **uma delas paralela**, com a peça
+traçada de uma forma e as alças noutra, e nada vermelho.
+
+Passou a haver uma porta: `Orbit::ray_at_plane`, que a marcha chama. E um gate que a prende —
+manda um ponto pela projeção e pergunta ao raio daquele pixel se ele passa por lá, **nas duas
+lentes**.
+
+| o que mudou | por quê |
+|---|---|
+| `project` devolve `Option` | um ponto ao lado do olho ou atrás dele **não tem pixel**; inventar um seria oferecer um gesto que agarra noutro sítio. Encaixa no `live` do gizmo, que já existia |
+| `px_per_world_at(ponto)` | com convergência a escala **depende da distância**; um braço dimensionado pela constante do quadro encolheria com a peça a afastar-se, e o `MIN_ARM_PX` passaria a morder por distância em vez de por ângulo |
+| `ORTHO_START` nomeado | o `4.0` solto da marcha ganhou o recurso que o justifica, e a nota de que a convergente **não** o usa (o olho já está recuado) |
+
+### ⚠️ A tecla é a comparação que a nota pedia
+
+A nota da câmera dizia por extenso que a perspectiva *"merece a sua própria comparação lado a lado,
+não uma troca silenciosa"*. **`Numpad5`** alterna as duas — a tecla do Blender para a mesma coisa.
+O default é a convergente, que é o que um modelador espera, e há gate no default (a tecla não o
+prova).
+
+⭐ E a guarda *"o ponteiro está sobre a janela 3D?"* — escrita à mão em cada porta de tecla, com a
+nota só numa delas — virou uma função. A tecla seguinte a nascer teria copiado a condição e deixado
+a nota para trás.
+
+### ⚠️ Duas coisas que a lente quebrou, e nenhuma era a lei
+
+**1. Recursão infinita, e ela aparece como pilha estourada.** `from_yaw_pitch` passou a herdar
+`..Self::default()`, e o `Default` é escrito **em termos dela**. Não é erro de compilação: é um teste
+a abortar com `stack overflow`.
+
+**2. O gate do pan reprovou, e a causa era a FIXTURE.** Ele media o centroide do traçado a
+`half_extent = 0,2`; com a lente convergente isso põe o olho a 0,55 da peça, ela transborda o quadro,
+e o centroide de um quadro cheio é o centro dele — **parado, com a lei correta por trás**. A pergunta
+certa é sobre um ponto do **plano do alvo**, que é onde a lei do pan fala, e ali a afirmação é
+**exata** (`dx` pixels) em qualquer zoom e com qualquer lente. *Uma fixture só prova o que ela
+contém* — segunda vez nesta linha.
+
+### Provas de mutação
+
+| Mutação | Reprovou |
+|---|---|
+| o raio da convergente volta a ser paralelo | `the_ray_of_a_pixel_passes_through_what_projects_onto_it` (+4 gates do traçado) |
+| o braço volta à escala do quadro | `a_screen_sized_arm_measures_the_same_at_any_distance` |
+| um ponto atrás do olho ganha pixel | `a_point_at_or_behind_the_eye_has_no_projection` |
+
+⚠️ O gate das duas lentes mede **as duas** com a mesma medida: um gate só sobre a convergente
+passaria com a paralela também convergente.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -861,4 +933,5 @@ em 90 ficaria verde sobre o defeito.
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe
-- ⏸️ perspectiva (herdado da W2) — quando entrar, entra **num sítio**: `Orbit::project`
+- ✅ **perspectiva FECHOU** na W15 (§16) — entrou num sítio, como a nota previa, e revelou que o
+  raio era construído em dois. `Numpad5` alterna as lentes

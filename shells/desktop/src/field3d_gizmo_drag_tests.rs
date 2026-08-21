@@ -46,7 +46,7 @@ fn a_full_turn_of_the_cursor_is_a_full_turn_of_the_part() {
                 a.origin[1] + (u[1] * co + v[1] * si) * arm,
                 a.origin[2] + (u[2] * co + v[2] * si) * arm,
             ];
-            c.project(p, s).0
+            c.project(p, s).expect("a fixture olha a peça").0
         };
         const STEPS: usize = 36;
         let mut total = 0.0f32;
@@ -157,7 +157,9 @@ fn the_front_half_of_a_ring_is_one_unbroken_run() {
 fn size_is_a_ratio_so_two_halves_multiply() {
     let c = cam();
     let s = screen(&c);
-    let (o2, _) = c.project(anchor().origin, s);
+    let (o2, _) = c
+        .project(anchor().origin, s)
+        .expect("a fixture olha a peça");
     let at = |r: f32| [o2[0] + r, o2[1]];
 
     let whole = factor_of(drag(Handle::Grip, anchor(), &c, s, at(90.0), at(180.0)));
@@ -181,7 +183,9 @@ fn size_is_a_ratio_so_two_halves_multiply() {
 fn grabbing_at_the_centre_does_not_blow_the_part_up() {
     let c = cam();
     let s = screen(&c);
-    let (o2, _) = c.project(anchor().origin, s);
+    let (o2, _) = c
+        .project(anchor().origin, s)
+        .expect("a fixture olha a peça");
     let f = factor_of(drag(
         Handle::Grip,
         anchor(),

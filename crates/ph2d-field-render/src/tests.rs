@@ -673,7 +673,9 @@ fn a_point_projects_where_the_march_actually_hits_it() {
         }
     }
     let (cx, cy) = (sx / n, sy / n);
-    let ([px, py], depth) = cam.project(center, Screen::new(w, h, cam.half_extent));
+    let ([px, py], depth) = cam
+        .project(center, Screen::new(w, h, cam.half_extent))
+        .expect("o centro da peça está à frente do olho");
 
     assert!(
         (f64::from(px) - cx).abs() < 1.0 && (f64::from(py) - cy).abs() < 1.0,
@@ -681,15 +683,208 @@ fn a_point_projects_where_the_march_actually_hits_it() {
     );
     // E a profundidade cresce na direção do observador: o mesmo ponto empurrado para trás fica
     // com profundidade menor.
-    let (_, back) = cam.project(
-        {
-            let (_, _, fwd) = cam.basis();
-            [center[0] - fwd[0], center[1] - fwd[1], center[2] - fwd[2]]
-        },
-        Screen::new(w, h, cam.half_extent),
-    );
+    let (_, back) = cam
+        .project(
+            {
+                let (_, _, fwd) = cam.basis();
+                [center[0] - fwd[0], center[1] - fwd[1], center[2] - fwd[2]]
+            },
+            Screen::new(w, h, cam.half_extent),
+        )
+        .expect("um passo para trás continua à frente do olho");
     assert!(
         back < depth,
         "a profundidade tem de crescer para o observador"
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A LENTE — o que o olho faz com o que está longe.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐ **As duas lentes COINCIDEM no plano do alvo** — é o que faz a lente ser só uma lente.
+///
+/// ⚠️ É a propriedade que mantém o resto do módulo intacto: zoom, enquadramento, o passo da grelha e
+/// a lei do pan continuam a falar do mesmo `half_extent`, porque ele quer dizer a mesma coisa nas
+/// duas. Uma perspectiva que mudasse o significado dele obrigaria a reconferir cada número que dele
+/// deriva — e nenhum deles ficaria vermelho ao mudar.
+#[test]
+fn the_two_lenses_agree_exactly_on_the_target_plane() {
+    let ortho = Orbit {
+        lens: Lens::Ortho,
+        ..Orbit::default()
+    };
+    let persp = Orbit::default();
+    let s = Screen::new(400, 300, ortho.half_extent);
+    let (right, up, _) = ortho.basis();
+
+    for (a, b) in [(0.0f32, 0.0f32), (0.4, -0.2), (-0.7, 0.7)] {
+        let p = [
+            ortho.target[0] + right[0] * a + up[0] * b,
+            ortho.target[1] + right[1] * a + up[1] * b,
+            ortho.target[2] + right[2] * a + up[2] * b,
+        ];
+        let (o, _) = ortho.project(p, s).expect("paralela nunca recusa");
+        let (q, _) = persp.project(p, s).expect("está no plano do alvo");
+        assert!(
+            (o[0] - q[0]).abs() < 1e-3 && (o[1] - q[1]).abs() < 1e-3,
+            "no plano do alvo as duas lentes têm de dar o mesmo pixel: {o:?} vs {q:?}"
+        );
+    }
+}
+
+/// ⭐ **O que está mais longe do olho aparece MENOR** — e na paralela não aparece.
+///
+/// ⚠️ O gate mede as **duas** lentes com a mesma medida, porque é a diferença entre elas que se está
+/// a afirmar: um gate só sobre a convergente passaria com a paralela também convergente.
+#[test]
+fn distance_shrinks_under_the_converging_lens_and_not_under_the_parallel_one() {
+    let persp = Orbit::default();
+    let mut ortho = persp;
+    ortho.lens = Lens::Ortho;
+    let s = Screen::new(400, 300, persp.half_extent);
+    let (right, _, fwd) = persp.basis();
+    // Duas hastes do mesmo comprimento, uma perto e outra longe.
+    let bar = |depth: f32| -> [[f32; 3]; 2] {
+        let c = [
+            persp.target[0] + fwd[0] * depth,
+            persp.target[1] + fwd[1] * depth,
+            persp.target[2] + fwd[2] * depth,
+        ];
+        [
+            [
+                c[0] - right[0] * 0.2,
+                c[1] - right[1] * 0.2,
+                c[2] - right[2] * 0.2,
+            ],
+            [
+                c[0] + right[0] * 0.2,
+                c[1] + right[1] * 0.2,
+                c[2] + right[2] * 0.2,
+            ],
+        ]
+    };
+    let width = |cam: &Orbit, depth: f32| -> f32 {
+        let [a, b] = bar(depth);
+        let (pa, _) = cam.project(a, s).expect("à frente");
+        let (pb, _) = cam.project(b, s).expect("à frente");
+        (pb[0] - pa[0]).abs()
+    };
+    let (near, far) = (width(&persp, 0.6), width(&persp, -0.6));
+    assert!(
+        near > far * 1.2,
+        "a haste perto tinha de medir bem mais na tela: {near:.1} contra {far:.1}"
+    );
+    let (o_near, o_far) = (width(&ortho, 0.6), width(&ortho, -0.6));
+    assert!(
+        (o_near - o_far).abs() < 1e-3,
+        "na paralela a distância não pode mudar o tamanho: {o_near:.1} contra {o_far:.1}"
+    );
+}
+
+/// ⭐ **Um ponto ao lado do olho, ou atrás dele, NÃO tem projeção.**
+///
+/// ⚠️ E a paralela nunca recusa — não há divisão nenhuma nela. O gate mede as duas metades: sem a
+/// segunda, um `project` que devolvesse `None` sempre passaria na primeira.
+#[test]
+fn a_point_at_or_behind_the_eye_has_no_projection() {
+    let persp = Orbit::default();
+    let mut ortho = persp;
+    ortho.lens = Lens::Ortho;
+    let s = Screen::new(400, 300, persp.half_extent);
+    let dist = persp.eye_distance().expect("a convergente tem olho");
+    let (_, _, fwd) = persp.basis();
+    for beyond in [1.0f32, 1.5, 4.0] {
+        let p = [
+            persp.target[0] + fwd[0] * dist * beyond,
+            persp.target[1] + fwd[1] * dist * beyond,
+            persp.target[2] + fwd[2] * dist * beyond,
+        ];
+        assert!(
+            persp.project(p, s).is_none(),
+            "um ponto a {beyond}× a distância do olho não tem pixel"
+        );
+        assert!(
+            ortho.project(p, s).is_some(),
+            "a paralela não tem por que recusar: não há divisão"
+        );
+    }
+}
+
+/// ⭐ **O raio da MARCHA é o mesmo raio que a projeção promete** — e agora nas duas lentes.
+///
+/// ⚠️ Este é o gate que a consolidação exigiu: a marcha reconstruía a aritmética do `Orbit::ray` com
+/// um afastamento próprio, e a segunda cópia teria ficado **paralela** quando a convergente entrou —
+/// a peça traçada de uma forma e as alças noutra, sem nada vermelho. Aqui manda-se um ponto pela
+/// projeção e pergunta-se ao raio daquele pixel se ele passa por lá.
+#[test]
+fn the_ray_of_a_pixel_passes_through_what_projects_onto_it() {
+    for lens in [
+        Lens::Ortho,
+        Lens::Perspective {
+            half_fov: DEFAULT_HALF_FOV,
+        },
+    ] {
+        let cam = Orbit {
+            lens,
+            ..Orbit::default()
+        };
+        let s = Screen::new(400, 300, cam.half_extent);
+        let (right, up, fwd) = cam.basis();
+        for (a, b, c) in [
+            (0.0f32, 0.0f32, 0.0f32),
+            (0.3, -0.2, 0.25),
+            (-0.5, 0.4, -0.3),
+        ] {
+            let p = [
+                cam.target[0] + right[0] * a + up[0] * b + fwd[0] * c,
+                cam.target[1] + right[1] * a + up[1] * b + fwd[1] * c,
+                cam.target[2] + right[2] * a + up[2] * b + fwd[2] * c,
+            ];
+            let (px, _) = cam.project(p, s).expect("à frente do olho");
+            let (o, d) = cam.ray(px[0], px[1], s);
+            // A distância do ponto à reta do raio: `‖(p−o) − ((p−o)·d)d‖`.
+            let v = [p[0] - o[0], p[1] - o[1], p[2] - o[2]];
+            let t = v[0] * d[0] + v[1] * d[1] + v[2] * d[2];
+            let perp = [v[0] - d[0] * t, v[1] - d[1] * t, v[2] - d[2] * t];
+            let miss = (perp[0] * perp[0] + perp[1] * perp[1] + perp[2] * perp[2]).sqrt();
+            assert!(
+                miss < 1.0e-4,
+                "{lens:?}: o raio do pixel {px:?} passa a {miss:e} do ponto que lá projeta"
+            );
+        }
+    }
+}
+
+/// ⭐ **Uma alça de gizmo mede o mesmo na TELA a qualquer distância** — nas duas lentes.
+///
+/// ⚠️ É a razão de [`Orbit::px_per_world_at`] existir: com a lente convergente, um braço dimensionado
+/// pela constante do quadro encolheria conforme a peça se afasta, e `MIN_ARM_PX` — que decide se a
+/// alça é sequer oferecida — passaria a morder por distância em vez de por ângulo.
+#[test]
+fn a_screen_sized_arm_measures_the_same_at_any_distance() {
+    let cam = Orbit::default();
+    let s = Screen::new(400, 300, cam.half_extent);
+    let (right, _, fwd) = cam.basis();
+    const ARM_PX: f32 = 90.0;
+    for depth in [0.6f32, 0.0, -0.6, -1.2] {
+        let origin = [
+            cam.target[0] + fwd[0] * depth,
+            cam.target[1] + fwd[1] * depth,
+            cam.target[2] + fwd[2] * depth,
+        ];
+        let arm = ARM_PX / cam.px_per_world_at(origin, s);
+        let tip = [
+            origin[0] + right[0] * arm,
+            origin[1] + right[1] * arm,
+            origin[2] + right[2] * arm,
+        ];
+        let (a, _) = cam.project(origin, s).expect("à frente");
+        let (b, _) = cam.project(tip, s).expect("à frente");
+        let on_screen = ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt();
+        assert!(
+            (on_screen - ARM_PX).abs() < 1.0,
+            "a {depth} de profundidade o braço mediu {on_screen:.1} px e devia medir {ARM_PX}"
+        );
+    }
 }

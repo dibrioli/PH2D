@@ -940,3 +940,79 @@ fn a_bad_axis_or_a_bad_number_leaves_the_pose_alone() {
         );
     }
 }
+
+/// ⭐ **O eixo do meio PRENDE no quarto de volta; os de fora ENROLAM na meia volta.**
+///
+/// ⚠️ São duas leis diferentes e o gate mede as duas, porque trocá-las é o defeito: enrolar o do
+/// meio dá um sítio que a leitura seguinte renomeia (o ciclo de dois que o Enio viu), e prender os de
+/// fora recusaria uma orientação que existe.
+///
+/// ⚠️ **Prender não perde orientação nenhuma** — toda orientação tem um trio canónico com
+/// `|β| ≤ 90°`. Perde-se o nome, e a segunda metade do gate prova-o: o mesmo sítio que «Y = 120»
+/// nomeia é alcançável por `X = 180 · Y = 60 · Z = 180`.
+#[test]
+fn the_middle_angle_is_pinned_at_a_quarter_turn_and_the_outer_two_wrap() {
+    use crate::xform::{quat_from_euler, rotation_degrees, set_rotation_degree};
+    let mut pose = Xform::IDENTITY;
+    set_rotation_degree(&mut pose, 1, 120.0);
+    let shown = rotation_degrees(pose);
+    assert!(
+        (shown[1] - 90.0).abs() < 0.01,
+        "o eixo do meio tinha de PRENDER em 90: {shown:?}"
+    );
+
+    // Os de fora enrolam, e o sítio é o mesmo.
+    let mut z = Xform::IDENTITY;
+    set_rotation_degree(&mut z, 2, 200.0);
+    assert!(
+        rotation_gap(
+            z.rotation,
+            quat_from_euler([0.0, 0.0, 200.0f32.to_radians()])
+        ) <= ROT_EPS,
+        "200° no Z tinha de ir para onde 200° põem"
+    );
+
+    // ⭐ E o sítio que «Y = 120» nomeia continua alcançável — pelo nome canónico dele.
+    let d = f32::to_radians;
+    let wanted = quat_from_euler([0.0, d(120.0), 0.0]);
+    let mut by_name = Xform::IDENTITY;
+    set_rotation_degree(&mut by_name, 0, 180.0);
+    set_rotation_degree(&mut by_name, 1, 60.0);
+    set_rotation_degree(&mut by_name, 2, 180.0);
+    assert!(
+        rotation_gap(by_name.rotation, wanted) <= ROT_EPS,
+        "o mesmo sítio tinha de ser alcançável pelo trio canónico: {:?} vs {:?}",
+        rotation_degrees(by_name),
+        [0.0, 120.0, 0.0]
+    );
+}
+
+/// ⭐ **Na trava de cardan o terceiro ângulo é RECUSADO, e não aplicado aos poucos.**
+///
+/// ⚠️ Em `β = ±90°` o X e o Z são o mesmo eixo, e a forma canónica dá tudo ao X. Aplicar um Z ali
+/// faria o X escorregar mais um tanto a **cada** escrita — e um arrasto escreve o mesmo alvo quadro
+/// após quadro, então a peça giraria sozinha com o dedo parado. O gate escreve **três vezes** de
+/// propósito: uma escrita só não distingue «recusado» de «aplicado uma vez».
+#[test]
+fn at_the_pole_the_third_angle_is_refused_instead_of_creeping() {
+    use crate::xform::{rotation_degrees, set_rotation_degree};
+    let mut pose = Xform::IDENTITY;
+    set_rotation_degree(&mut pose, 0, 30.0);
+    set_rotation_degree(&mut pose, 1, 90.0);
+    let pinned = pose.rotation;
+    for _ in 0..3 {
+        set_rotation_degree(&mut pose, 2, 45.0);
+        assert!(
+            rotation_gap(pose.rotation, pinned) <= ROT_EPS,
+            "o Z na trava mexeu a peça: {:?}",
+            rotation_degrees(pose)
+        );
+    }
+    // ⭐ E o Y continua a responder — é por ele que se sai da trava.
+    set_rotation_degree(&mut pose, 1, 60.0);
+    assert!(
+        (rotation_degrees(pose)[1] - 60.0).abs() < 0.01,
+        "sair da trava tem de ser possível: {:?}",
+        rotation_degrees(pose)
+    );
+}

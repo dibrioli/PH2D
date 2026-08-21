@@ -666,8 +666,11 @@ cura seria guardar o trio.
 eixos **arbitrários** (a argola da vista não é X, Y nem Z) e escreve o quaternion — o trio guardado
 seria um cache invalidado por **todo** arrasto, e o documento passaria a ter duas respostas para
 *"como é que isto está rodado"*. O que se paga por não o guardar está medido e escrito: um ângulo
-além de meia volta é **renomeado** (200° aparece como −160°, o mesmo sítio), e o eixo do meio
-**reflete** ao passar de 90°. A peça vai sempre para onde foi pedida; o que muda é o nome.
+além de meia volta é **renomeado** (200° aparece como −160°, o mesmo sítio).
+
+> ⚠️ **Esta secção dizia também que «o eixo do meio reflete ao passar de 90°, e a peça vai sempre
+> para onde foi pedida». A segunda metade estava ERRADA** — e o Enio viu-o no smoke. Ali não havia
+> um nome novo para o mesmo sítio: havia **duas orientações a alternar**. Ver §15.
 
 **Trava de cardan:** em `β = ±90°` o X e o Z deixam de ser distinguíveis — só a soma (ou a diferença)
 é um facto. Ali a extração põe `γ = 0` e dá o resto ao X: determinístico, e não três números a tremer
@@ -754,6 +757,70 @@ de ordem 1 é `1,19e-7` — a sexta casa é a última que ainda distingue dois v
 
 [`Span`]: ../../crates/ph2d-field/src/dims.rs
 [`param_rows`]: ../../shells/desktop/src/field3d_scene_panel.rs
+
+---
+
+## §15 — W14.1: o bug do eixo do meio, e a lei que faltava (20/08)
+
+Enio, no smoke da W14: *"bug em rot y. Acima de 70 muda x e z e treme"*.
+
+### A medição, antes de qualquer hipótese
+
+Uma sonda varreu o Y como um arrasto varre, nos três cilindros da cena 1, escrevendo **o mesmo alvo
+duas vezes** — que é o que um arrasto faz, quadro após quadro:
+
+```
+Y= 90.0 -> [0.0, 90.0, 0.0]      / repetido [0.0, 90.0, 0.0]
+Y= 93.6 -> [180.0, 86.4, 180.0]  / repetido [~0, 86.4, ~0]   <<< NAO IDEMPOTENTE
+```
+
+⭐ **A escrita não era ponto fixo.** A segunda escrita do mesmo valor produzia **outra orientação**,
+porque partia do trio já **renomeado** pela leitura anterior. Num arrasto isso é um **ciclo de dois**:
+a peça alterna entre duas poses com o dedo parado. O «treme» tinha nome, e o «muda x e z» era o
+renome a piscar a 60 Hz.
+
+⚠️ **O «acima de 70» não era 70** — a quebra é em 90. O que se vê abaixo disso é o ciclo já em curso
+durante o arrasto. *O número que o utilizador reporta é onde ele NOTOU, não onde o mecanismo parte:
+a sonda é que diz onde.*
+
+### A lei que faltava
+
+> **Escrever o mesmo valor duas vezes não pode mexer a peça.**
+
+E a única forma de a cumprir sem guardar um segundo estado é **o alvo entrar já canónico**, para a
+leitura seguinte o devolver intacto:
+
+| eixo | faixa canónica | alvo fora dela |
+|---|---|---|
+| X, Z | `(−180°, 180°]` | **enrola** — 200° é o mesmo sítio que −160° |
+| Y (o do meio) | `[−90°, 90°]` | **prende** |
+
+⚠️ **Prender o do meio não perde orientação nenhuma**: toda orientação tem um trio canónico com
+`|β| ≤ 90°`. Perde-se o **nome** — «Y = 120» deixa de ser digitável, e o mesmo sítio escreve-se
+`X = 180 · Y = 60 · Z = 180` (há gate a prová-lo alcançável). É a diferença face ao Blender, e é o
+preço — agora concreto — de não guardar o trio.
+
+⭐ E foi o mesmo defeito na faixa da linha: `Span::Turn(180)` nas três oferecia ao slider do meio
+metade de um curso que a leitura seguinte renomeava. `ROT_SPAN_DEG = [180, 90, 180]`.
+
+### Na trava de cardan o Z é INERTE
+
+Em `β = ±90°` o X e o Z são o **mesmo** eixo e a forma canónica dá tudo ao X. Aplicar um Z ali fazia
+o X escorregar mais um tanto a **cada** escrita — o mesmo ciclo por outro caminho, e este girava
+sozinho. Ele passa a ser **recusado**, e a recusa é visível: o número volta ao 0 que a linha já
+mostrava. Sair da trava é mexer o Y, que continua a responder (há gate nas duas metades).
+
+### Provas de mutação
+
+| Mutação | Reprovou |
+|---|---|
+| o eixo do meio volta a enrolar | `writing_the_same_angle_twice_does_not_move_the_part` · `the_middle_angle_is_pinned_at_a_quarter_turn_and_the_outer_two_wrap` |
+| a trava deixa de recusar o Z | `at_the_pole_the_third_angle_is_refused_instead_of_creeping` |
+| a faixa do meio volta a 180 | `a_position_admits_negatives_a_dimension_does_not_and_an_angle_is_half_a_turn` |
+
+⚠️ O gate de idempotência escreve **três vezes** no caso da trava e varre **por cima** do quarto de
+volta: uma escrita só não distingue *"recusado"* de *"aplicado uma vez"*, e uma varredura que parasse
+em 90 ficaria verde sobre o defeito.
 
 ---
 

@@ -141,7 +141,7 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 Dim {
                     key: ROT_KEYS[k as usize],
                     value: degrees[k as usize],
-                    span: Span::Turn(HALF_TURN_DEG),
+                    span: Span::Turn(ROT_SPAN_DEG[k as usize]),
                 },
             )
         }))
@@ -192,13 +192,17 @@ const POS_KEYS: [&str; 3] = ["field.dim.pos_x", "field.dim.pos_y", "field.dim.po
 /// As chaves i18n dos três ângulos.
 const ROT_KEYS: [&str; 3] = ["field.dim.rot_x", "field.dim.rot_y", "field.dim.rot_z"];
 
-/// Meia volta, em graus — as duas pontas da faixa de um ângulo canónico.
+/// ⭐ **A faixa canónica de cada posição do trio, em graus** — e ela **não é a mesma nas três**.
 ///
-/// ⚠️ **Não é uma escolha de UI**: é o alcance da própria representação, e é o mesmo número que faz
-/// 200° aparecer como −160° (ver [`ph2d_field::xform::set_rotation_degree`]). Um teto menor
-/// **recusaria** orientações legítimas; um maior daria ao slider metade do curso a nomear sítios que
-/// a linha já mostra do outro lado.
-const HALF_TURN_DEG: f32 = 180.0;
+/// ⚠️ Não é uma escolha de UI: é o alcance da própria representação. Num XYZ Euler o ângulo do
+/// **meio** vive em `[−90°, 90°]` e os de fora em `(−180°, 180°]`, e é por isso que a linha do meio
+/// tem metade do curso. Dar-lhe 180 foi o defeito da primeira versão: o slider oferecia sítios que a
+/// leitura seguinte **renomeava**, e num arrasto isso vira um ciclo de dois (ver
+/// [`ph2d_field::xform::set_rotation_degree`], que é onde a lei e a medição estão).
+///
+/// ⚠️ **Prender o do meio não perde orientação nenhuma** — toda orientação tem um trio canónico com
+/// `|β| ≤ 90°`. Perde-se o *nome*: «Y = 120» escreve-se `X = 180 · Y = 60 · Z = 180`.
+const ROT_SPAN_DEG: [f32; 3] = [180.0, 90.0, 180.0];
 
 /// ⭐ **Escreve um número autorado de um nó**, ou recusa — a porta ÚNICA do painel.
 ///

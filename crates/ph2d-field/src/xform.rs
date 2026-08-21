@@ -229,28 +229,86 @@ pub fn rotation_degrees(pose: Xform) -> [f32; 3] {
 
 /// ⭐ **Escreve UM dos três ângulos**, em graus, deixando os outros dois onde estão.
 ///
-/// # ⚠️ Um ângulo fora da faixa canónica não é recusado — ele é RENOMEADO
+/// # ⚠️ A lei inteira: escrever o MESMO valor duas vezes não pode mexer a peça
 ///
-/// Escrever 200° no Z põe a peça exatamente onde 200° a põem, e o painel passa a chamar-lhe −160°,
-/// que é o mesmo sítio. É a mesma lei do filete que encolhe com a caixa ([`crate::set_dim`]): em
-/// silêncio, mas **à vista** — o número muda na linha que o artista está a olhar.
+/// Um arrasto escreve o alvo **quadro após quadro**. Uma escrita que não seja **ponto fixo** vira um
+/// ciclo de dois: a peça alterna entre duas orientações com o dedo parado.
 ///
-/// ⚠️ E é daí que vem o **reflexo do eixo do meio**: passar dos 90° no Y dá uma orientação cujo nome
-/// canónico traz o Y a descer de volta e salta os outros dois 180°. A peça vai para onde foi pedida;
-/// o que muda é o nome.
+/// Foi exatamente o que a primeira versão fazia, e o Enio viu-o (20/08: *"bug em rot y. Acima de 70
+/// muda x e z e treme"*). Ela escrevia o alvo cru no trio e deixava a leitura seguinte
+/// **renomear**; a escrita seguinte partia então de um trio **diferente** e produzia outra
+/// orientação. Medido: `Y = 93,6` dava `(180, 86,4, 180)` e, repetido, `(0, 86,4, 0)`.
+///
+/// ⭐ **A cura é fazer o alvo entrar já CANÓNICO**, porque é a única forma de a leitura seguinte o
+/// devolver intacto:
+///
+/// | eixo | faixa canónica | o que se faz a um alvo fora dela |
+/// |---|---|---|
+/// | X, Z | `(−180°, 180°]` | **enrola** — 200° é o mesmo sítio que −160° |
+/// | Y (o do meio) | `[−90°, 90°]` | **prende** — ver abaixo |
+///
+/// ⚠️ **Prender o eixo do meio não perde orientação nenhuma**: toda orientação tem um trio canónico
+/// com `|β| ≤ 90°`. O que se perde é o **nome** — «Y = 120» deixa de ser digitável, e o mesmo sítio
+/// escreve-se `X = 180 · Y = 60 · Z = 180`. É a diferença face ao Blender, e ela é o preço, já
+/// pago e medido, de não guardar o trio (ver abaixo).
+///
+/// # ⚠️ Na trava de cardan o Z é INERTE, e tem de ser
+///
+/// Em `β = ±90°` o X e o Z são o **mesmo** eixo: só a soma (ou a diferença) deles é um facto, e a
+/// forma canónica dá tudo ao X. Um Z escrito ali não tem onde ficar — aplicá-lo faria o X escorregar
+/// mais um tanto a **cada quadro** do arrasto, que é o mesmo ciclo por outro caminho. Aqui ele é
+/// **recusado**, e a recusa é visível: o número volta ao 0 que a linha já mostrava. Sair da trava é
+/// mexer o Y, que continua a responder.
 ///
 /// ⛔ **A alternativa foi pesada e recusada**: guardar o trio autorado ao lado do quaternion. O gizmo
 /// roda em torno de eixos **arbitrários** (a argola da vista não é X, Y nem Z) e escreve o
-/// quaternion — logo o trio guardado seria um cache invalidado por **todo** arrasto, e o documento
-/// passaria a ter duas respostas para *"como é que isto está rodado"*. Um eixo fora do alcance
-/// (`>= 3`) é no-op silencioso: não há quarto ângulo a escrever.
+/// quaternion — logo o trio guardado seria um cache invalidado por **todo** arrasto. E o preço maior
+/// é o undo: ele compara **bytes**, e duas poses com a mesma orientação e trios diferentes seriam
+/// snapshots diferentes — todo quadro viraria um passo espúrio, que é a doença que o
+/// `canonicalize()` do shell já pagou uma vez.
+///
+/// Um eixo fora do alcance (`>= 3`) é no-op silencioso: não há quarto ângulo a escrever.
 pub fn set_rotation_degree(pose: &mut Xform, axis: u8, degrees: f32) {
     if axis >= 3 || !degrees.is_finite() {
         return;
     }
     let mut e = quat_to_euler(pose.rotation);
-    e[axis as usize] = degrees.to_radians();
+    // ⚠️ A trava lê-se do estado ATUAL, e não do alvo: é o `β` de agora que decide se o Z tem onde
+    // ficar. Ver a tabela acima.
+    let at_the_pole = e[1].cos().abs() <= EULER_LOCK_EPS;
+    if axis == 2 && at_the_pole {
+        return;
+    }
+    let target = degrees.to_radians();
+    e[axis as usize] = if axis == 1 {
+        target.clamp(-QUARTER_TURN, QUARTER_TURN)
+    } else {
+        wrap_half_turn(target)
+    };
     pose.rotation = quat_from_euler(e);
+}
+
+/// Um quarto de volta, em radianos — a ponta da faixa canónica do eixo do **meio**.
+pub const QUARTER_TURN: f32 = std::f32::consts::FRAC_PI_2;
+
+/// Meia volta, em radianos — a ponta da faixa canónica dos eixos de **fora**.
+pub const HALF_TURN: f32 = std::f32::consts::PI;
+
+/// Traz um ângulo para `(−π, π]`, que é o que o `atan2` devolve e portanto o que a leitura mostra.
+///
+/// ⚠️ **Enrolar não é prender.** 200° e −160° são o mesmo sítio, e recusar o primeiro seria recusar
+/// uma orientação que existe; prendê-lo em 180° seria pô-la noutro sítio. Só o eixo do meio se
+/// prende, e por outra razão (a faixa dele é `[−90°, 90°]` na própria representação).
+#[must_use]
+pub fn wrap_half_turn(radians: f32) -> f32 {
+    let turn = 2.0 * HALF_TURN;
+    let mut a = radians % turn;
+    if a > HALF_TURN {
+        a -= turn;
+    } else if a <= -HALF_TURN {
+        a += turn;
+    }
+    a
 }
 
 #[must_use]

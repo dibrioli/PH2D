@@ -416,12 +416,17 @@ fn a_position_admits_negatives_a_dimension_does_not_and_an_angle_is_half_a_turn(
         pos.bound.value()
     );
 
-    let rot = find(Param::Rot(2));
-    assert_eq!(
-        (rot.lo, rot.bound),
-        (-180.0, Bound::Wrap(180.0)),
-        "um ângulo é meia volta para cada lado, e a ponta é da REPRESENTAÇÃO — não da vista"
-    );
+    // ⚠️ **As três linhas de ângulo NÃO têm a mesma faixa**, e é a correção do bug reportado: num
+    // XYZ Euler o ângulo do meio vive em [−90°, 90°] e os de fora em (−180°, 180°]. Dar 180 ao do
+    // meio oferecia sítios que a leitura seguinte renomeava — e num arrasto isso é um ciclo de dois.
+    for (axis, half) in [(0u8, 180.0f32), (1, 90.0), (2, 180.0)] {
+        let rot = find(Param::Rot(axis));
+        assert_eq!(
+            (rot.lo, rot.bound),
+            (-half, Bound::Wrap(half)),
+            "o eixo {axis} tem de ir a ±{half}: a ponta é da REPRESENTAÇÃO, não da vista"
+        );
+    }
 
     // O raio do cilindro: piso em zero, teto da vista. E o filete: piso em zero, teto do DOCUMENTO.
     let radius = find(Param::Dim(0));
@@ -440,4 +445,54 @@ fn a_position_admits_negatives_a_dimension_does_not_and_an_angle_is_half_a_turn(
         fillet.lo,
         fillet.bound
     );
+}
+
+/// ⭐ **Escrever o MESMO ângulo duas vezes não mexe a peça.**
+///
+/// ⚠️ **É o bug que o Enio reportou** (20/08: *"bug em rot y. Acima de 70 muda x e z e treme"*), e o
+/// nome dele é este: um arrasto escreve o mesmo alvo **quadro após quadro**, então uma escrita que
+/// não é ponto fixo vira um ciclo de dois — a peça alterna entre duas orientações enquanto o dedo
+/// está parado. Medido antes da cura: `Y = 93,6` dava `(180, 86,4, 180)` na primeira escrita e
+/// `(0, 86,4, 0)` na segunda, que **não é a mesma orientação**.
+///
+/// ⚠️ O gate varre os TRÊS eixos, nos TRÊS cilindros da cena 1 — um deles nasce **na trava de
+/// cardan** (90° em torno do Y), que é o caso em que o trio deixa de ter três partes independentes e
+/// onde uma cura ingénua reabre o mesmo ciclo por outro caminho.
+#[test]
+fn writing_the_same_angle_twice_does_not_move_the_part() {
+    use ph2d_field::Param;
+    for k in 0..3usize {
+        for axis in 0..3u8 {
+            let mut sim = a_world();
+            let world = sim.world_mut();
+            let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+            let e = world
+                .get::<Children>(root)
+                .expect("filhos")
+                .iter()
+                .copied()
+                .nth(k)
+                .expect("o cilindro");
+            // ⚠️ A varredura passa **por cima** do quarto de volta de propósito: é ali que a versão
+            // anterior partia, e um gate que parasse em 90 ficaria verde sobre o defeito.
+            for step in 0..40 {
+                let target = step as f32 * 9.0 - 180.0;
+                ph2d_field_ecs::set_param(world, e, Param::Rot(axis), target).expect("escreve");
+                let once = world.get::<FieldPose>(e).expect("pose").xform.rotation;
+                ph2d_field_ecs::set_param(world, e, Param::Rot(axis), target).expect("de novo");
+                let twice = world.get::<FieldPose>(e).expect("pose").xform.rotation;
+                let same = (0..4)
+                    .map(|i| (once[i] - twice[i]).abs())
+                    .fold(0.0f32, f32::max);
+                let flipped = (0..4)
+                    .map(|i| (once[i] + twice[i]).abs())
+                    .fold(0.0f32, f32::max);
+                assert!(
+                    same.min(flipped) < 1.0e-4,
+                    "cilindro {k}, eixo {axis}, alvo {target}: a segunda escrita do MESMO valor \
+                     mudou a peça ({once:?} -> {twice:?}) — num arrasto isto é um ciclo de dois"
+                );
+            }
+        }
+    }
 }

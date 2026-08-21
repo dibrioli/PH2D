@@ -1,6 +1,6 @@
-# W5 → W12 — a peça vira uma CENA de objetos, e o módulo vira um modelador (2026-08-20)
+# W5 → W13 — a peça vira uma CENA de objetos, e o módulo vira um modelador (2026-08-20)
 
-> **O que este doc é:** o mecanismo destas oito waves e os números que decidiram cada desenho.
+> **O que este doc é:** o mecanismo destas nove waves e os números que decidiram cada desenho.
 > O estado do módulo vive no [README](README.md); a história, no handoff.
 >
 > | § | Wave | O quê |
@@ -13,6 +13,7 @@
 > | 9 | **W10** | as **dimensões** de cada forma |
 > | 10 | **W11** | **duplicar** e **apagar** |
 > | 11 | **W12** | as mesmas duas ações, pela **Hierarquia** |
+> | 12 | **W13** | digitar a **posição**, e dois gates que não provavam |
 
 Enio, no smoke de 19/08:
 
@@ -590,7 +591,59 @@ genérico), senão ficaria verde por reclamar de mais.
 
 ---
 
-## §12 — Aberto
+## §12 — W13: digitar a posição, e dois gates que não provavam nada (20/08)
+
+Par da W10: dava para digitar o **tamanho** e não a **pose**. *"Move isto exatamente 10 para a
+direita"* era impossível — arrastar com grelha, sim; escrever o número, não.
+
+### Posição, e a convenção da casa
+
+`Position X/Y/Z` entram no painel, em coordenadas **LOCAIS** — que é o que o Inspector da casa
+mostra (`Transform.translation` é local, e o readout do gizmo 2D diz por extenso que o delta é local
+*"porque é isso que o Inspector mostra"*). ⚠️ Um painel que mostrasse **mundo** contradiria o número
+ao lado no dia em que alguém agrupasse. O gate usa um pai deslocado, onde mundo ≠ local.
+
+`Param::{Pos, Scale, Dim}` substitui o índice cru: uma convenção implícita entre duas crates
+(«0..2 é a posição») sobrevive até alguém acrescentar uma linha no meio — e aí o controle escreve
+noutro número, em silêncio.
+
+### ⛔ Escala não aparece numa folha, e o gizmo também não a usa lá
+
+Uma folha escalada teria **duas verdades sobre o mesmo tamanho visível**: a largura que o painel
+mostra e o fator da pose. Uma caixa de 1 escalada 2× mede 2 na tela e continua a dizer «1» — e o
+artista não tem como saber qual das duas o gesto seguinte mexe.
+
+| Nó | O que «crescer» mexe | Por quê |
+|---|---|---|
+| **folha** | as **dimensões** (`scale_primitive`) | mesma forma, **um** número a mudar — e é o que o painel mostra |
+| **grupo** | o fator da **pose** | ele não tem dimensões próprias: ali a pose é a única resposta e não compete com nada |
+
+### ⭐ Dois gates que não provavam nada
+
+**1. 30 gates deixaram de correr e a suíte ficou VERDE.** Um corte de bloco levou a declaração do
+módulo de gates da cena, e o terminal disse `✓ 52 passaram` — de 86. *Um teste que não é compilado
+não reprova: ele desaparece.* Só a contagem o denunciou.
+
+Cura: `every_field3d_test_file_is_declared_by_a_module`, que lê o diretório e exige que cada
+`field3d_*_tests.rs` seja **nomeado** por código.
+
+**2. E o gate novo passou pelo motivo errado.** Ele procurava a declaração no **texto** dos arquivos
+— e encontrava-a **no próprio doc-comment dele**, que a cita como exemplo. A prova de mutação
+apanhou-o: apagar a declaração de verdade deixava-o verde.
+
+⭐ *Um gate que procura texto tem de procurar **código**.* Ele passou a ignorar linhas de comentário.
+
+### Provas de mutação (as quatro restauradas)
+
+| Mutação | Reprovou |
+|---|---|
+| a declaração dos gates da cena é removida | `every_field3d_test_file_is_declared_by_a_module` (**depois** de curado) |
+| escalar uma folha volta a mexer na pose | `scaling_a_leaf_grows_its_dimensions_and_leaves_the_pose_alone` · `the_readout_is_the_pose_the_world_took` |
+| a posição escrita sai deslocada | `typing_a_position_moves_the_node_in_its_parents_frame` |
+
+---
+
+## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)

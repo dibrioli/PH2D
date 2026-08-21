@@ -439,7 +439,11 @@ impl SpriteRenderer {
         &self,
         texture_id: u32,
     ) -> Result<(u32, u32, Vec<u8>), IndividualTextureError> {
-        self.individual.readback(&self.gpu, texture_id)
+        // ⚠️ **`readback_rgba8` e não `readback`.** Esta é a porta do SHELL, e as ferramentas de
+        // imagem a jusante trabalham em `Vec<u8>` de 4 bytes por pixel. Devolver o buffer cru de
+        // uma textura de 16 bits daria o **dobro** dos bytes para as mesmas dimensões e o
+        // consumidor leria pares de bytes como cores (pânico reportado em 2026-08-20).
+        self.individual.readback_rgba8(&self.gpu, texture_id)
     }
 
     /// Convenience wrapper around [`IndividualTextureStore::replace_pixels`]

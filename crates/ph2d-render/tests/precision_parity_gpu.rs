@@ -368,6 +368,112 @@ fn to_byte(index: usize, linear: f32) -> u8 {
     }
 }
 
+/// **LER DE VOLTA uma textura de 16 bits não aborta, e devolve 4 bytes por pixel.**
+///
+/// # O pânico que este gate existe para impedir
+///
+/// Enio, 2026-08-20: *"RGBA16 + Background Removal = Panic · trim = panic · make square = panic ·
+/// padding = panic · ETC"*. **Todas** as ferramentas de imagem morriam sobre uma sprite de 16 bits.
+///
+/// A causa era uma linha: `let bytes_per_pixel: u32 = 4;` dentro do `readback_texture`.
+///
+/// ⚠️ **O mecanismo, medido com este gate e não suposto:** o wgpu **não** aborta. Com
+/// `bytes_per_row` alinhado a 256 e uma linha real de `W × 8`, a validação passa e a cópia
+/// acontece; o que se parte é o desempacotamento, que retira `W × 4` bytes de uma linha que tem
+/// `W × 8`. O buffer volta com **metade** da imagem, e o pânico é a jusante — um consumidor de
+/// 8 bits a indexar `w · h · 4` num buffer de `w · h · 2`.
+///
+/// *Um erro de stride não falha onde está escrito; falha em toda a gente que o consome* — e por
+/// isso o sintoma foram nove ferramentas ao mesmo tempo, nenhuma delas com um bug.
+///
+/// ⚠️ **A auditoria da W2 varreu doze sítios e não viu este**, e a razão é a lição: ela procurava
+/// `match`es na variante `Asset::ImageRgba8` — uma forma **sintática**, que o `grep` mostra. Aqui a
+/// suposição de 8 bits estava escrita como uma **constante**, num ficheiro que nem nomeia `Asset`.
+/// *Uma varredura por forma não vê uma premissa escrita como número.*
+///
+/// O teste afirma as duas metades: que a leitura **acontece** (não aborta) e que ela chega ao
+/// consumidor no formato que ele sabe ler (`w · h · 4` bytes) — porque devolver o buffer cru com o
+/// dobro dos bytes trocaria um pânico por uma imagem lida pela metade.
+#[test]
+fn reading_back_a_sixteen_bit_texture_returns_eight_bit_pixels() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("SEM ADAPTER — este teste NAO correu. Saltar nao e' verde.");
+        return;
+    };
+    let bgl = material_bgl(&gpu);
+    let mut store = IndividualTextureStore::new(&gpu);
+    let source = ramp();
+    let halves = ph2d_imageio::rgba8_to_rgba16(&source);
+    let id16 = store
+        .acquire_16(&gpu, &bgl, W, H, &halves)
+        .expect("acquire 16");
+
+    // ⚠️ É AQUI que abortava — antes de qualquer asserção.
+    let (w, h, px) = store
+        .readback_rgba8(&gpu, id16)
+        .expect("a leitura de uma textura de 16 bits tem de funcionar");
+    assert_eq!((w, h), (W, H));
+    assert_eq!(
+        px.len(),
+        (W * H * 4) as usize,
+        "a porta do shell tem de devolver 4 bytes por pixel; com 8 o consumidor le' metade da \
+         imagem e interpreta pares de bytes como cores"
+    );
+
+    // E os pixels são MESMO a rampa: sem isto, devolver um buffer de zeros do tamanho certo
+    // passaria.
+    let mut worst = 0i32;
+    for (a, b) in source.iter().zip(px.iter()) {
+        worst = worst.max((i32::from(*a) - i32::from(*b)).abs());
+    }
+    assert!(
+        worst <= 1,
+        "a ida-e-volta 8 -> textura de 16 -> 8 afastou-se {worst} codigos (esperado <= 1)"
+    );
+}
+
+/// **Uma escrita de 8 bits numa textura de 16 é RECUSADA, não aceite pela metade.**
+///
+/// ⚠️ **O irmão do pânico, do lado da escrita — e o pior dos dois.** Escrever bytes com passo de
+/// linha `w × 4` numa textura de `w × 8` **não** dá erro do wgpu: a validação só exige
+/// `bytes_per_row >= w × block`, e 4 bytes por pixel passam nessa conta. A escrita acontece,
+/// preenche metade de cada linha e deixa a outra metade com o que lá estava.
+///
+/// *Uma leitura com stride errado dá um pânico a jusante; uma escrita dá uma imagem estragada e
+/// silêncio.* Por isso este caminho recusa em vez de tentar adivinhar.
+#[test]
+fn an_eight_bit_write_to_a_sixteen_bit_texture_is_refused() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("SEM ADAPTER — este teste NAO correu. Saltar nao e' verde.");
+        return;
+    };
+    let bgl = material_bgl(&gpu);
+    let mut store = IndividualTextureStore::new(&gpu);
+    let source = ramp();
+    let halves = ph2d_imageio::rgba8_to_rgba16(&source);
+    let id16 = store
+        .acquire_16(&gpu, &bgl, W, H, &halves)
+        .expect("acquire 16");
+
+    let err = store
+        .replace_pixels(&gpu, &bgl, id16, W, H, &source)
+        .expect_err("uma escrita de 8 bits numa textura de 16 tem de ser RECUSADA");
+    assert!(
+        matches!(
+            err,
+            ph2d_render::IndividualTextureError::EightBitWriteToSixteenBitTexture { .. }
+        ),
+        "recusou pelo motivo errado: {err}"
+    );
+
+    // **Controle positivo:** o mesmo caminho continua a ACEITAR uma textura de 8 bits — senão o
+    // teste acima passaria numa implementação que recusa toda a gente.
+    let id8 = store.acquire(&gpu, &bgl, W, H, &source).expect("acquire 8");
+    store
+        .replace_pixels(&gpu, &bgl, id8, W, H, &source)
+        .expect("o caminho de 8 bits nao pode ter sido partido pela guarda");
+}
+
 /// **Controle positivo — sem ele o gate acima passaria por não medir nada.**
 ///
 /// Se o caminho de 8 bits e o de 16 bits devolvessem ambos zeros (textura vazia, bind group

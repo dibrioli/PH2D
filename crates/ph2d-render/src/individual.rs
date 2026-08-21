@@ -110,6 +110,17 @@ pub enum IndividualTextureError {
         tex_width: u32,
         tex_height: u32,
     },
+    /// **Um caminho de 8 bits foi apontado a uma textura de 16.**
+    ///
+    /// ⚠️ Existe porque o modo de falha alternativo é **corrupção silenciosa**: escrever bytes com
+    /// passo de linha `w × 4` numa textura de `w × 8` não dá erro do wgpu (a validação só exige
+    /// `bytes_per_row >= w × block`), preenche metade de cada linha e deixa a outra metade com o
+    /// que lá estava. O sintoma seria a imagem esticada ao meio, sem uma palavra.
+    ///
+    /// Irmão do pânico de 2026-08-20 — o mesmo erro de *stride*, do lado da escrita.
+    EightBitWriteToSixteenBitTexture {
+        id: u32,
+    },
     /// The GPU command queue accepted the copy but the buffer never
     /// finished mapping. Worth surfacing distinctly from a generic
     /// I/O error so the caller can decide whether to retry (device
@@ -145,6 +156,12 @@ impl std::fmt::Display for IndividualTextureError {
             } => write!(
                 f,
                 "region {width}×{height} at ({x},{y}) exceeds texture {tex_width}×{tex_height}"
+            ),
+            Self::EightBitWriteToSixteenBitTexture { id } => write!(
+                f,
+                "refused an 8-bit write to the 16-bit individual texture {id}: the row stride \
+                 differs (w*4 vs w*8), so the write would fill half of every row and leave the \
+                 rest stale, silently"
             ),
             Self::ReadbackFailed(detail) => write!(f, "GPU readback failed: {detail}"),
             Self::CopySizeMismatch {
@@ -719,6 +736,32 @@ impl IndividualTextureStore {
         readback_texture(gpu, &entry.texture, 0, entry.width, entry.height)
     }
 
+    /// **Lê uma entrada SEMPRE como RGBA8 sRGB**, convertendo quando ela é de 16 bits.
+    ///
+    /// ⚠️ **É esta a porta que o shell usa**, e a razão é o pânico de 2026-08-20: as ferramentas de
+    /// imagem trabalham em `Vec<u8>` de 4 bytes por pixel, e entregar-lhes o buffer cru de uma
+    /// textura `Rgba16Float` dá **o dobro dos bytes** para as mesmas dimensões — o consumidor
+    /// seguinte lê metade da imagem e interpreta pares de bytes como cores.
+    ///
+    /// A [`Self::readback`] crua fica pública para quem de facto queira os texels (os gates de
+    /// mip, a paridade). *A porta que o produto atravessa normaliza; a que os testes usam não.*
+    pub fn readback_rgba8(
+        &self,
+        gpu: &GpuContext,
+        id: u32,
+    ) -> Result<(u32, u32, Vec<u8>), IndividualTextureError> {
+        let is_16 = self.format(id) == Some(Self::FORMAT_16);
+        let (w, h, bytes) = self.readback(gpu, id)?;
+        if !is_16 {
+            return Ok((w, h, bytes));
+        }
+        let halves: Vec<u16> = bytes
+            .chunks_exact(2)
+            .map(|p| u16::from_le_bytes([p[0], p[1]]))
+            .collect();
+        Ok((w, h, ph2d_color::rgba16_to_rgba8(&halves)))
+    }
+
     /// Read back a specific **mip level** of an entry (level 0 = full res).
     /// Dimensions are `(width >> level).max(1) × (height >> level).max(1)`.
     /// Used by the mip-generation tests to assert the downsample is a correct
@@ -760,6 +803,12 @@ impl IndividualTextureStore {
         height: u32,
         rgba: &[u8],
     ) -> Result<(), IndividualTextureError> {
+        // ⚠️ **Irmão do pânico de 2026-08-20, do lado da ESCRITA.** Ver
+        // [`IndividualTextureError::EightBitWriteToSixteenBitTexture`]: aqui não há wgpu a
+        // reclamar, e o resultado seria metade de cada linha preenchida em silêncio.
+        if self.format(id) == Some(Self::FORMAT_16) {
+            return Err(IndividualTextureError::EightBitWriteToSixteenBitTexture { id });
+        }
         let expected = (width as usize) * (height as usize) * 4;
         if rgba.len() != expected {
             return Err(IndividualTextureError::PixelLengthMismatch {
@@ -840,6 +889,12 @@ impl IndividualTextureStore {
         if width == 0 || height == 0 {
             return Ok(()); // empty dirty-rect — nothing to upload
         }
+        // ⚠️ **Irmão do pânico de 2026-08-20, do lado da ESCRITA.** Ver
+        // [`IndividualTextureError::EightBitWriteToSixteenBitTexture`]: aqui não há wgpu a
+        // reclamar, e o resultado seria metade de cada linha preenchida em silêncio.
+        if self.format(id) == Some(Self::FORMAT_16) {
+            return Err(IndividualTextureError::EightBitWriteToSixteenBitTexture { id });
+        }
         let expected = (width as usize) * (height as usize) * 4;
         if region_rgba.len() != expected {
             return Err(IndividualTextureError::PixelLengthMismatch {
@@ -876,7 +931,28 @@ fn readback_texture(
     if width == 0 || height == 0 {
         return Ok((width, height, Vec::new()));
     }
-    let bytes_per_pixel: u32 = 4;
+    // ⚠️ **DERIVADO do formato, nunca fixo em 4.** Esta linha era `let bytes_per_pixel: u32 = 4;`
+    // e foi a causa de um pânico reportado pelo Enio (2026-08-20): *"RGBA16 + Background Removal =
+    // Panic · trim = panic · make square = panic · padding = panic · ETC"*.
+    //
+    // ⚠️ **O mecanismo MEDIDO, e não o que eu supus.** A primeira redação desta nota dizia que o
+    // wgpu **abortava** na validação. Não aborta: com `bytes_per_row = 256` (o alinhamento) e uma
+    // linha real de `W × 8`, a validação passa — `256 >= 64` — e a cópia **acontece**. O que se
+    // parte é o **desempacotamento**, que retira `W × 4` bytes por linha de uma linha que tem
+    // `W × 8`: o buffer volta com **metade** da imagem.
+    //
+    // O pânico é a jusante, quando um consumidor de 8 bits indexa `w · h · 4` num buffer de
+    // `w · h · 2`. *Um erro de stride não falha onde está escrito — falha em toda a gente que o
+    // consome, e por isso o sintoma foram NOVE ferramentas ao mesmo tempo.*
+    //
+    // ⚠️ **A auditoria da W2 não o apanhou**, e a razão é instrutiva: ela varreu quem lê os pixels
+    // do `Asset` (um `match` na variante, que o compilador e o `grep` mostram) e este sítio lê da
+    // **GPU**, onde a suposição de 8 bits não era um `match` — era uma **constante**.
+    // *Uma varredura por forma sintática não vê uma premissa escrita como número.*
+    let bytes_per_pixel: u32 = texture
+        .format()
+        .block_copy_size(None)
+        .expect("uma textura de cor tem tamanho de bloco");
     let unpadded_bpr = width * bytes_per_pixel;
     let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
     let padded_bpr = unpadded_bpr.div_ceil(align) * align;

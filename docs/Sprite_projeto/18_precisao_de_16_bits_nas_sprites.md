@@ -1,8 +1,8 @@
 # 18 — Precisão de 16 bits nas sprites (o par `Format` volta, agora COM modelo)
 
-> **Estado:** **W1–W7 FEITAS.** Abertos: exportar PNG de 16 bits (**bloqueado por contrato
-> congelado + não há porta de exportação**, ver §4) e a sprite emissiva (produto). As recusas
-> medidas estão na tabela no fim — **leia-a antes de propor qualquer coisa aqui**.
+> **Estado:** **W1–W10 FEITAS.** Aberto: só o encode de `.exr`, que é um **stub da linha do
+> `imageio`** cujo gatilho esta wave fez disparar (W9). As recusas medidas estão na tabela no fim —
+> **leia-a antes de propor qualquer coisa aqui**.
 > **Ordem:** Enio, 2026-08-20 — *"vamos corrigir a UI da sprite no painel com as duas opções e com os
 > botões que a partir de agora devem converter a imagem."*
 > **Antecedente obrigatório:** [`17_plano_render_source_e_hand_packed.md`](17_plano_render_source_e_hand_packed.md) §5,
@@ -409,9 +409,73 @@ A cura é uma lei num sítio só (`texture_edit::warn_precision_loss`, com o **r
 gate `a_verb_that_costs_precision_says_so`, que obriga quem lê pixels a declarar-se. Mecanismo,
 tabela e a prova de mutação que corrigiu o próprio gate: [doc 19 §5](19_auditoria_precisao_por_ferramenta.md).
 
+### W8 — A sprite como FONTE DE LUZ · ✅ **FEITA**
+
+> Enio, 2026-08-21: *"1) sprite como fonte de luz."* — o §6.1 tinha-o devolvido como decisão de
+> produto; decidido.
+
+⚠️ **«Fonte de luz» são DUAS coisas, e só uma é esta:**
+
+| leitura | o que exige | é isto? |
+|---|---|---|
+| a sprite **brilha** — a luz dela sangra à volta | um passe de bloom, que **já existia** | ✅ |
+| a sprite **ilumina** outras (sombra, atenuação) | propagação de luz 2D, do zero | ⛔ |
+
+Não é diferença de grau, é de sistema: o `ph2d-light` é um rig de **sombreamento por normais**
+(lâmpadas + ambiente, para o impasto e o sculpt) e não sabe nada sobre uma sprite iluminar a vizinha.
+
+O componente é [`ph2d_ecs::SpriteEmissive`] — um **multiplicador**, não uma cor: o halo herda a cor
+da arte. Tecto `64`, e o gate **deriva** o maior meio-float `(2 − 2⁻¹⁰) × 2¹⁵` em vez de o digitar.
+Zero **remove** o componente e o quadro volta a ser byte-idêntico. O slider vive ao lado do par
+`Format`, porque a emissão é a única coisa no app que precisa da folga acima de 1.0 que os 16 bits
+dão. **Smoke:** `PH2D_EMISSIVE_SMOKE=1`.
+
+### W9 — Exportar nos formatos suportados · ✅ **FEITA**
+
+> Enio, 2026-08-21: *"2) exportação nos vários formatos suportados."*
+
+⚠️ **Os dezasseis exportadores já existiam e já estavam registados.** O que faltava era **a porta**:
+nenhuma linha da shell chamava `find_for`. *Um exportador que nenhum gesto alcança não é um formato
+suportado — é código a compilar.* Agora há **"Export Image…"** no menu da hierarquia; o formato vem
+da **extensão** (não há dropdown: o nome do ficheiro já é o sítio do formato, e dois sítios
+discordam).
+
+**A sonda mediu quem carrega 16 bits hoje**, e a tabela é *impressa* pelo gate em vez de escrita:
+
+| carregam HDR | recusam |
+|---|---|
+| `.hdr` · `.avif` · `.ph2d` | os LDR (png/webp/jpeg/tga/qoi/tiff/gif/apng/ora) |
+| | ⚠️ `.exr`, `.jxl`, `.psd`, `.svg` são **stubs** com nota de diferimento |
+
+⚠️ **O `.exr` diz que o encode ficou à espera do «first real export client» — e essa wave é esta.** O
+gatilho disparou e está dito no gate. ⛔ Não se implementa aqui: o `.hdr` e o `.avif` já entregam a
+capacidade, e a API de canais tipados do `exr` 1.x é trabalho da linha do `imageio`.
+
+### W10 — "Merge to Layers" · ✅ **FEITA**
+
+> Enio, 2026-08-21: *"Merge Sprites em camadas (cria uma camada por sprite)."*
+
+A **mesma** geometria do Merge — mesma união, mesmo warp, mesmo «over» — com um **modo** que guarda
+o que cada fonte pôs em cada pixel. A sprite fica com a textura achatada (desenha e **grava** sem o
+Painter) **e** o Painter fica com o documento em camadas: se a única cópia fosse o documento, fechar
+o app antes de abrir o Painter perdia a fusão.
+
+Duas portas novas no Painter: `add_raster_layer_with_pixels` (os pixels de uma camada não eram
+alcançáveis de fora; ⛔ expor o `canvas_rgba` foi recusado — abriria escrita a meio de um traço, fora
+da janela que o undo captura) e `set_layer_name` (dava para trocar tudo menos o nome, que é o único
+que o artista lê a toda a hora).
+
+⚠️ **O gate `every_hierarchy_row_menu_entry_dispatches_something` apanhou as duas linhas novas
+mortas:** elas estavam ligadas na cadeia de eventos, mas o **guarda** no topo da função *enumera* os
+ids que passam. Uma linha de menu tem de ser acrescentada **duas vezes**. Esse gate nasceu porque o
+*"Use as Brush Shape"* shipou pintado e morto e ninguém deu por isso durante semanas; hoje custou um
+minuto.
+
 ### ⏳ O que fica ABERTO, e por quê
 
-1. **Exportar PNG de 16 bits.** ⚠️ **Duas medições fecham isto por agora, e não é preguiça:**
+1. ~~**Exportar PNG de 16 bits.**~~ ✅ **FECHADO pela W9** — há porta de exportação, e os 16 bits
+   saem por `.hdr`/`.avif`/`.ph2d`. O que segue verdadeiro do parágrafo antigo é só a parte do
+   contrato: ⚠️ **Duas medições, guardadas porque continuam a valer:**
    (a) o `ExportOpts` está **CONGELADO em 6 campos** por ADR-0054 W0.T4, com gate
    `architecture_imageio_contract_surface` — pedir um campo de profundidade é ADR + ordem do Enio
    (`CLAUDE.md` §6); (b) **nada na shell usa o `ExporterRegistry`** — ele é registado no `init` e a
@@ -419,8 +483,11 @@ tabela e a prova de mutação que corrigiu o próprio gate: [doc 19 §5](19_audi
    porta de exportação por onde os 16 bits se percam: a única exportação real é a da **folha**, que é
    de 8 bits por construção (W7) e agora avisa. *Não há assimetria a fechar — há uma porta que ainda
    não existe.*
-2. ⛔ **Sprite emissiva** (§6.1) — o `Rgba16Float` dá a folga acima de 1.0 de graça, e não há
-   conceito de emissivo em sprite nenhuma. É produto, não formato.
+2. ~~⛔ **Sprite emissiva**~~ ✅ **FECHADA pela W8** — o Enio decidiu, e ela ship*ou* como
+   **emissão** (a sprite brilha). ⛔ O que continua fora é a outra leitura: uma sprite **iluminar**
+   as vizinhas, que é propagação de luz 2D e um sistema próprio.
+3. ⚠️ **O encode de `.exr` é um stub, e o gatilho dele disparou** (W9). Trabalho da linha do
+   `imageio`, não desta — o `.hdr` e o `.avif` já entregam a capacidade.
 
 ---
 

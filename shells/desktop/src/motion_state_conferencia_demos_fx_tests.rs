@@ -19,7 +19,7 @@ fn bands() -> Vec<Stream> {
     let reg = registry();
     let mut doc = MotionDoc::default();
     let sinks = build_fx_demo_document(&mut doc, &reg).expect("a cena monta");
-    assert_eq!(sinks.len(), 4, "duas sombras, o glow e o vagalume");
+    assert_eq!(sinks.len(), 5, "duas sombras, o glow, o vagalume e a forma");
     doc.graph.validate(&reg).expect("bem-tipado");
     let mut cook = Cook::new();
     sinks

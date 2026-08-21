@@ -267,12 +267,67 @@ pub fn path_screen_bounds(
 ) -> Option<(f64, f64, f64, f64)> {
     let mut acc: Option<Rect> = None;
     let mut eat = |path: &VecPath, xf: Affine| {
-        let mut bp = build_bezpath(path);
-        if bp.elements().is_empty() {
-            return;
+        if let Some(r) = path_bounds_under(path, xf) {
+            acc = Some(acc.map_or(r, |cur| cur.union(r)));
         }
-        bp.apply_affine(xf);
-        let mut r = bp.bounding_box();
+    };
+    if let Some(items) = live.get(&id) {
+        // Derivada já em MUNDO ⇒ sobe pela câmera (como no `dispatch`).
+        for item in items {
+            eat(item, camera);
+        }
+    } else {
+        let path = scene.paths().iter().find(|p| p.id == id)?;
+        eat(path, path_to_screen(xforms, id, camera));
+    }
+    let r = acc?;
+    Some((r.x0, r.y0, r.x1, r.y1))
+}
+
+/// **A caixa de UM caminho AVULSO sob um afim** — a lei de limites desta crate, numa
+/// porta só.
+///
+/// ⚠️ **Ela era o corpo do fecho `eat` do [`path_screen_bounds`]**, e saiu de lá
+/// quando um segundo chamador apareceu: o bake de tile de um `source.shape`, cujo
+/// `VecPath` vive num store e **não** na cena vetorial (bug do Enio, 2026-08-20 —
+/// *"tudo deve brilhar"*). Duas transcrições desta conta divergiriam no
+/// transbordo do traço, e o sintoma seria a ponta CEIFADA que o parágrafo abaixo
+/// nomeia — num caminho e não no outro.
+///
+/// Inclui a metade da espessura do traço (o contorno transborda o fill), escalada
+/// pelo afim. `None` se o caminho não tem geometria que desenhe algo.
+#[must_use]
+pub fn path_bounds_under(path: &VecPath, xf: Affine) -> Option<Rect> {
+    let mut bp = build_bezpath(path);
+    if bp.elements().is_empty() {
+        return None;
+    }
+    bp.apply_affine(xf);
+    let r = bp.bounding_box();
+    Some(inflate_for_stroke(path, xf, r))
+}
+
+/// A caixa avulsa em coordenadas de tela, como o [`path_screen_bounds`] a devolve.
+#[must_use]
+pub fn standalone_path_screen_bounds(path: &VecPath, xf: Affine) -> Option<(f64, f64, f64, f64)> {
+    let r = path_bounds_under(path, xf)?;
+    Some((r.x0, r.y0, r.x1, r.y1))
+}
+
+/// **Desenha UM caminho avulso**, pela mesma [`draw_path`] do `dispatch` — a porta
+/// que o bake de tile de uma forma usa, e que garante que o tile é o que a forma
+/// PARECE, não uma segunda rasterização.
+///
+/// ⚠️ **Sem tint de instância, de propósito.** O `tint` é por-CÓPIA e multiplica o
+/// tile no shader de sprite; aplicá-lo aqui pintaria a cor duas vezes.
+pub fn draw_path_standalone(path: &VecPath, transform: Affine, target: &mut VectorScene) {
+    draw_path(path, transform, target);
+}
+
+/// O transbordo do traço sobre a caixa do fill — extraído junto com [`path_bounds_under`].
+fn inflate_for_stroke(path: &VecPath, xf: Affine, r: Rect) -> Rect {
+    let mut r = r;
+    {
         // O traço transborda o fill por metade da largura; escala com o afim.
         //
         // ⚠️ **E uma junta MITER vai MUITO além disso.** Numa quina de ângulo interno `θ` a ponta do
@@ -293,19 +348,8 @@ pub fn path_screen_bounds(
             let m = 0.5 * s.width * sx.max(sy) * reach;
             r = r.inflate(m, m);
         }
-        acc = Some(acc.map_or(r, |cur| cur.union(r)));
-    };
-    if let Some(items) = live.get(&id) {
-        // Derivada já em MUNDO ⇒ sobe pela câmera (como no `dispatch`).
-        for item in items {
-            eat(item, camera);
-        }
-    } else {
-        let path = scene.paths().iter().find(|p| p.id == id)?;
-        eat(path, path_to_screen(xforms, id, camera));
     }
-    let r = acc?;
-    Some((r.x0, r.y0, r.x1, r.y1))
+    r
 }
 
 /// **Desenha exatamente UM caminho, como o [`dispatch`] o desenharia, transladado por `offset`

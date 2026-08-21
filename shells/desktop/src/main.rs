@@ -233,6 +233,9 @@ mod motion_node_path_smoke;
 mod motion_object_bake;
 mod motion_object_smoke;
 mod motion_path_smoke;
+/// O tile de uma forma PARAMÉTRICA (`source.shape`) — irmão do `motion_object_bake`,
+/// e a metade que faz o glow alcançar as formas (bug do Enio, 2026-08-20).
+mod motion_shape_bake;
 mod motion_shape_smoke;
 mod motion_shape_smoke_knobs;
 mod motion_state;

@@ -12,7 +12,7 @@
 | # | Bug | Área | Estado | Data |
 |---|---|---|---|---|
 | [1](#bug-1--o-nó-acusado-estava-inocente-o-campo-gateia-o-pulso-e-não-gateia-a-memória) | **"Box inconsistente"** — marcar Invert e desmarcar não devolve o quadro inicial | `field.box` (acusado, **inocente**) + `pulse.counter`/`pulse.sample_hold` (a memória) | ✅ **Fechado — smoke aprovado** (porta `reset`) | 2026-08-10 |
-| [2](#bug-2--o-glow-e-a-forma-vivem-nos-dois-lados-do-tonemap-e-o-lod-troca-o-lado) | **"Glow não funciona com shape"** | `fx.glow` (acusado, **inocente**) + a partição de render sprite ⁄ vetor | ⚠️ **Diagnosticado e AVISADO** — a cura é decisão de renderer | 2026-08-20 |
+| [2](#bug-2--o-glow-e-a-forma-vivem-nos-dois-lados-do-tonemap-e-o-lod-troca-o-lado) | **"Glow não funciona com shape"** | `fx.glow` (acusado, **inocente**) + a partição de render sprite ⁄ vetor | ✅ **CURADO** (aguarda smoke) — o passe passou a ler a CAMADA | 2026-08-20 |
 
 ---
 
@@ -217,19 +217,44 @@ silêncio.
 - ⛔ *"o `stretch`/`clamp` novos quebraram"* — o neutro dos três é literal e tem gate;
   e o bug é anterior a eles (o glow nunca desenhou formas).
 
-### A cura, e por que ela NÃO está aqui
+### A cura (ordem do Enio: *"tudo deve brilhar"*)
 
-Rasterizar a metade vetorial **antes** do tonemap. Não é um param: o
-`render_to_texture` do Vello teria de aceitar o RT `Rgba16Float` do glow, e é um passe
-novo na ordem do frame — **decisão de renderer**, o mesmo lugar em que a
-[cerca C1 da folha 11](89_conferencia/11_fx_raster.md) põe o borrão da sombra, e pela
-mesma razão de fronteira.
+**O passe deixou de ler uma LISTA e passou a ler uma CAMADA.**
+`render_loop::motion_glow_layer::layer_instances` deriva o que o bright-pass desenha:
+os sprites **mais** toda geometria vetorial viva, convertida em quad a partir do seu
+**tile assado**.
 
-⚠️ **O que ESTA wave entregou é que o bug deixe de ser silencioso:** o diagnoser ganhou
-`Deficit::BlindPass`, e o `fx.glow` num grafo com fonte vetorial viva passa a exibir
-*"'fx.glow' only lights sprites — live vector shapes are drawn later and will not glow"*.
-A regra é **derivada** de `NodeRegistry::is_live_vector_source`, então a próxima fonte
-vetorial entra nela sem código novo.
+⚠️ **A rota "óbvia" está MEDIDA e recusada:** rasterizar a metade vetorial em alta
+fidelidade num alvo HDR é impossível hoje — o `render_to_texture` do Vello 0.8 escreve
+numa storage texture `Rgba8Unorm` (`vello_pass.rs`, textual), e o RT do glow é
+`Rgba16Float`; passar por um intermediário LDR perderia o HDR, que é onde o bloom vive.
+
+⚠️ **O que torna o tile suficiente — e não um remendo:** a primeira coisa que o passe
+faz com esse RT é um bright-pass em meia resolução seguido de **seis** reduções de mip.
+*Um halo nunca precisou de nitidez de tela.* O caminho crispo continua a desenhar o
+quadro visível; o que muda é só de onde o bloom tira a silhueta.
+
+⚠️ **E o HDR sobrevive**, que é o que a ponte por Vello não conseguiria: o tile é a arte
+da forma (sem o tint da cópia), e o shader de sprite multiplica os dois — um `tint` de
+`40` chega ao bright-pass como `40`.
+
+| origem | tile de onde | estado |
+|---|---|---|
+| `source.object` Sprite | desenhado direto | ✅ já brilhava |
+| `source.object` Vector / Flip | `motion_object_bake` | ✅ e **em qualquer contagem** |
+| `source.shape` (paramétrico) | `motion_shape_bake` (novo) | ✅ |
+| 3D | — | ⏸️ quando existir: assine `unreachable_geometries` |
+
+⚠️ **A ÂNCORA é o que separa isto de um halo torto.** Um `source.shape` emite `size`
+unitário (a dimensão vive na geometria), e o bbox dele não é necessariamente centrado na
+origem local. `motion_shape_bake::tile_quad` mede a forma, escala o quad pelo tile ×
+`vi.size`, e desloca o centro pelo bbox **através da base** da instância. Os três passos
+têm gate; o terceiro só falha quando alguém liga um `motion.rotate`.
+
+⚠️ **O aviso da wave anterior foi RETIRADO.** O `Deficit::BlindPass` existia enquanto o
+bug existia; mantê-lo seria ensinar que uma composição válida está errada. Há um gate a
+medir a AUSÊNCIA dele (com controle positivo no `Shadowed`), para ninguém o ressuscitar
+de um commit antigo sem reler isto.
 
 ### Lições generalizáveis
 
@@ -242,3 +267,12 @@ vetorial entra nela sem código novo.
 3. ⚠️ **O nó que o report acusa é quase sempre o que o artista TOCOU, não o culpado** —
    é a mesma lição do Bug #1, aqui a um nível acima: lá o acusado era o nó vizinho, aqui
    é o próprio efeito, e o culpado é a fronteira entre dois passes de render.
+4. ⚠️ **Quando a rota de alta fidelidade está bloqueada, pergunte de que FIDELIDADE o
+   consumidor precisa.** O bloqueio era real (o Vello não escreve em `Rgba16Float`) e
+   levou a diagnosticar isto como decisão de renderer. O que destravou não foi vencer o
+   bloqueio: foi medir que o consumidor — um bright-pass seguido de seis reduções de
+   mip — **não precisa** do que o bloqueio negava.
+5. ⚠️ **Um AVISO tem prazo de validade igual ao do bug.** O `BlindPass` foi certo por
+   uma wave e virou mentira na seguinte. ⛔ Curar um bug sem apagar o aviso dele deixa
+   uma armadilha que ensina o artista a não usar o que passou a funcionar — e o gate
+   que fixa a ausência é o que impede a ressurreição por `git revert` distraído.

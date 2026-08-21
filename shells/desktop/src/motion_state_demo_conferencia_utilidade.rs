@@ -269,8 +269,12 @@ pub(crate) fn fx_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<Nod
   (!) Embaixo a` direita: UMA peca {firefly}x mais brilhante que o branco. Ela lava a
   tela de proposito. Arraste o `Clamp` do no' Glow para cima de 1 e o estouro cede,
   sem a cena inteira apagar.
+  (!) Embaixo de tudo (verde): uma FORMA -- vetor vivo, nao uma peca comum. Ela e' o
+  caso que voce reportou: ate' hoje o brilho nao a alcancava. Ela tem de ter halo
+  como as outras, e o `Anamorphic` tem de estica-lo tambem.
   (!) DEU ERRADO se as duas sombras de cima sairem iguais, se a de baixo ficar mais
-  CLARA que a de cima, ou se mexer o Clamp apagar tambem o halo roxo do meio."
+  CLARA que a de cima, se mexer o Clamp apagar tambem o halo roxo do meio, ou se o
+  halo da FORMA aparecer DESLOCADO dela (ao lado, em vez de em volta)."
     );
     sinks
 }

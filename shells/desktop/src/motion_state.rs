@@ -343,6 +343,10 @@ pub(crate) struct MotionState {
     /// tile here; the membrane publishes the result. Cached by content, filled at
     /// the fx phase (`motion_bridge::bake_objects`), read by `publish_objects`.
     pub(crate) object_bake: crate::motion_object_bake::ObjectBake,
+    /// Os tiles das formas PARAMÉTRICAS (`source.shape`) — irmão do `object_bake`, e
+    /// a metade que faz o glow alcançá-las (bug do Enio, 2026-08-20). Só o
+    /// bright-pass o lê; o quadro visível continua a desenhar o caminho crispo.
+    pub(crate) shape_bake: crate::motion_shape_bake::ShapeBake,
     /// doc 86 §2 A3: named Flip objects baked to tiles (the same `BakedTile` output
     /// as `object_bake`, driven through the Flip raster + compositor).
     pub(crate) flip_object_bake: crate::motion_flip_bake::FlipObjectBake,
@@ -463,6 +467,7 @@ impl MotionState {
             // doc 86 §2 (A2): the vector→tile bake cache, empty until the fx
             // phase bakes a named vector a `source.object` brings in.
             object_bake: crate::motion_object_bake::ObjectBake::default(),
+            shape_bake: crate::motion_shape_bake::ShapeBake::default(),
             flip_object_bake: crate::motion_flip_bake::FlipObjectBake::default(),
             // ADR-0154: empty until the publish pass interns a `source.shape`.
             shape_store: crate::render_loop::motion_shape_gen::VecPathStore::default(),

@@ -7821,6 +7821,33 @@ impl crate::App {
                 surface.format(),
                 sim,
             );
+            // ⚠️ **E os tiles das formas PARAMÉTRICAS** (bug do Enio, 2026-08-20:
+            // *"tudo deve brilhar"*). Irmão do bake acima e no mesmo sítio pela mesma
+            // razão — `renderer` + `gpu` em mão. Só assa o que FALTA, e só o que o
+            // `object_bake` não cobre: as duas rotas partilham o store, então uma
+            // geometria de objeto já tem tile e não pode pagar um segundo.
+            {
+                let crate::motion_state::MotionState {
+                    shape_bake,
+                    shape_store,
+                    object_bake,
+                    pump,
+                    ..
+                } = &mut *motion;
+                let wanted: Vec<u32> = pump
+                    .vector_instances
+                    .iter()
+                    .map(|vi| vi.geometry_id)
+                    .filter(|gid| object_bake.tile_texture_for_gid(*gid).is_none())
+                    .collect();
+                shape_bake.bake_missing(
+                    shape_store,
+                    wanted,
+                    surface.gpu(),
+                    renderer,
+                    surface.format(),
+                );
+            }
             // doc 86 §2 (A3): bake the named FLIP objects to tiles, alongside the
             // vector bake. The Flip doc is destructured above (`flip`); the entity
             // map + playhead are disjoint `self` fields. Composes each object's

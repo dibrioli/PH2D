@@ -633,103 +633,32 @@ fn a_node_that_composes_is_never_called_shadowed() {
     );
 }
 
-/// **UM `fx.glow` SOBRE FORMA VETORIAL VIVA É REPORTADO CEGO** — o bug que o Enio
-/// relatou em 2026-08-20: *"Glow não funciona com shape"*.
+/// **UM `fx.glow` SOBRE FORMA VETORIAL VIVA NÃO É MAIS UM DEFEITO** — a cura.
 ///
-/// ⚠️ **A causa é de ARQUITETURA e não do nó**, e é por isso que o remédio é um
-/// aviso: o `fx.glow` bright-passa o RT em que o shell re-renderiza
-/// `pump.instances` (quads de sprite); um `source.shape` emite `geometry_id`, que
-/// vai para `pump.vector_instances` e é desenhado na cena VETORIAL, num passe Vello
-/// **depois do tonemap**. O passe e o elemento estão nos dois lados da fronteira HDR.
-#[test]
-fn a_glow_over_live_vector_geometry_is_reported_blind() {
-    let reg = registry();
-    let mut g = Graph::new();
-    let ids = chain(&mut g, &["source.shape", "fx.glow", "motion.output"]);
-    let d = diagnose(&g, &reg);
-    let blind: Vec<_> = d
-        .iter()
-        .filter(|x| matches!(x.deficit, Deficit::BlindPass(_)))
-        .collect();
-    assert_eq!(blind.len(), 1, "um aviso, no nó do PASSE: {d:?}");
-    assert_eq!(blind[0].node, ids[1], "o badge é do glow, não da forma");
-    assert_eq!(blind[0].deficit, Deficit::BlindPass("fx.glow"));
-    assert_eq!(blind[0].fix, Fix::Offer, "não há cura automática");
-}
-
-/// **E UM `fx.glow` SOBRE SPRITES É SAUDÁVEL** — o controle sem o qual a regra
-/// acima passaria por disparar sempre.
-#[test]
-fn a_glow_over_plain_sprites_is_not_blind() {
-    let reg = registry();
-    let mut g = Graph::new();
-    chain(&mut g, &["motion.grid", "fx.glow", "motion.output"]);
-    assert!(
-        !diagnose(&g, &reg)
-            .iter()
-            .any(|x| matches!(x.deficit, Deficit::BlindPass(_))),
-        "uma grelha de sprites é exactamente o que o passe alcança"
-    );
-}
-
-/// **A FORMA SOZINHA NÃO É UM DEFEITO** — ela desenha-se perfeitamente.
+/// ⚠️ **Este gate mede a AUSÊNCIA de um aviso, e é a segunda metade de um par.** Em
+/// 2026-08-20 o diagnoser ganhou um `Deficit::BlindPass` para o report do Enio
+/// (*"Glow não funciona com shape"*), porque o passe do glow re-renderizava só
+/// `pump.instances`. Horas depois o Enio decidiu a CURA — *"tudo deve brilhar"* — e
+/// o passe passou a ler a camada Motion inteira
+/// (`render_loop::motion_glow_layer`), com a metade vetorial a entrar pelo tile
+/// assado.
 ///
-/// ⚠️ O déficit é sobre a promessa QUEBRADA de um knob, e sem um glow no grafo não
-/// há promessa nenhuma. Um aviso aqui ensinaria que usar `source.shape` está errado.
+/// ⛔ **Um aviso sobre um bug curado é pior que aviso nenhum:** ele ensina que uma
+/// composição válida está errada, e o artista deixa de a usar. O déficit foi
+/// RETIRADO, e este gate é o que impede alguém de o ressuscitar a partir do commit
+/// antigo sem reler o porquê.
 #[test]
-fn a_shape_without_a_glow_is_never_warned_about() {
-    let reg = registry();
-    let mut g = Graph::new();
-    chain(&mut g, &["source.shape", "motion.output"]);
-    assert!(
-        !diagnose(&g, &reg)
-            .iter()
-            .any(|x| matches!(x.deficit, Deficit::BlindPass(_)))
-    );
-}
-
-/// **A REGRA É DERIVADA DO REGISTRY, e não de uma lista de nomes.**
-///
-/// ⚠️ O oráculo é o próprio canal: o que aciona o aviso é
-/// `is_live_vector_source`, então qualquer fonte que se declare assim entra de
-/// graça. Um `SINGLETON_SCREEN_PASSES`-style de nomes de FONTE apodreceria na
-/// próxima — é a lei que o ADR-0155 já paga em toda esta crate.
-#[test]
-fn the_blind_pass_rule_reads_the_live_vector_channel() {
-    let reg = registry();
-    let live: Vec<&str> = reg
-        .manifests()
-        .filter(|m| reg.is_live_vector_source(m.id))
-        .map(|m| m.name)
-        .collect();
-    assert!(
-        !live.is_empty(),
-        "controle: o registry tem de conhecer alguma fonte vetorial viva"
-    );
-    // E cada uma delas, posta debaixo de um glow, acende o aviso.
-    for name in live {
-        let mut g = Graph::new();
-        chain(&mut g, &[name, "fx.glow", "motion.output"]);
-        assert!(
-            diagnose(&g, &reg)
-                .iter()
-                .any(|x| matches!(x.deficit, Deficit::BlindPass(_))),
-            "`{name}` declara-se fonte vetorial viva e não acendeu o aviso"
-        );
-    }
-}
-
-/// **O SEGUNDO GLOW CONTINUA A GANHAR O AVISO DELE** — dois déficits sobre o mesmo
-/// nó ensinariam que há dois problemas, e o `Shadowed` é o que manda: um nó
-/// IGNORADO não tem promessa a cumprir.
-#[test]
-fn a_shadowed_glow_is_shadowed_and_not_also_blind() {
+fn a_glow_over_live_vector_geometry_is_no_longer_diagnosed() {
     let reg = registry();
     let mut g = Graph::new();
     chain(&mut g, &["source.shape", "fx.glow", "motion.output"]);
-    let second = g.add_node("fx.glow");
     let d = diagnose(&g, &reg);
-    let on_second: Vec<_> = d.iter().filter(|x| x.node == second).collect();
-    assert_eq!(on_second.len(), 1, "um aviso só sobre o segundo: {d:?}");
-    assert_eq!(on_second[0].deficit, Deficit::Shadowed("fx.glow"));
+    assert!(
+        d.is_empty(),
+        "a forma desenha, o glow alcança-a: nada a avisar — {d:?}"
+    );
+    // ⚠️ CONTROLE: o mesmo grafo com DOIS glows continua a avisar sobre o segundo,
+    // então a varredura não ficou muda por acidente.
+    g.add_node("fx.glow");
+    assert_eq!(diagnose(&g, &reg).len(), 1, "o `Shadowed` continua vivo");
 }

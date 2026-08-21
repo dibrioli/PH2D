@@ -64,7 +64,7 @@ pub(super) use objects::{bake_flip_objects, bake_objects, publish_objects};
 // ⚠️ **E o conversor de tile**, que o `motion_glow_layer` usa para a metade vetorial
 // viva chegar ao bright-pass (bug do Enio, 2026-08-20). A MESMA função que a
 // partição de LOD usa — duas vistas da mesma conversão nunca podem divergir.
-pub(super) use objects::vector_instance_as_tile;
+pub(crate) use objects::vector_instance_as_tile;
 // The cursor half of the same table (): the editor value a
 // document cannot hold. Re-exported beside the object publishes it must follow.
 

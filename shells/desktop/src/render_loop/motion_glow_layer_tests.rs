@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::motion_object_bake::ObjectBake;
+use crate::motion_shape_bake::ShapeBake;
 
 /// Uma instância vetorial viva daquela geometria, na posição `x`.
 fn vi(geometry_id: u32, x: f32) -> VectorInstance {
@@ -44,7 +45,7 @@ fn live_vector_geometry_reaches_the_glow_layer() {
     let bake = bake_with(&[5]);
     let sprites = vec![sprite(0.0)];
     let vectors = vec![vi(5, 1.0), vi(5, 2.0)];
-    let layer = layer_instances(&sprites, &vectors, &bake);
+    let layer = layer_instances(&sprites, &vectors, &bake, &ShapeBake::default());
     assert_eq!(layer.len(), 3, "um sprite + duas formas: {layer:?}");
     assert_eq!(layer[0].texture_id, 0, "o sprite vem primeiro");
     assert!(
@@ -65,7 +66,7 @@ fn the_layer_asks_no_question_about_how_many_copies_there_are() {
     for n in [1usize, 2, 17, 100] {
         #[expect(clippy::cast_precision_loss, reason = "uma fixture pequena")]
         let vectors: Vec<VectorInstance> = (0..n).map(|i| vi(5, i as f32)).collect();
-        let layer = layer_instances(&[], &vectors, &bake);
+        let layer = layer_instances(&[], &vectors, &bake, &ShapeBake::default());
         assert_eq!(layer.len(), n, "{n} cópias têm de dar {n} quads");
     }
 }
@@ -83,7 +84,7 @@ fn an_hdr_tint_survives_the_trip_through_the_tile() {
         tint: [40.0, 32.0, 24.0, 1.0],
         ..vi(5, 0.0)
     };
-    let layer = layer_instances(&[], &[hot], &bake);
+    let layer = layer_instances(&[], &[hot], &bake, &ShapeBake::default());
     assert_eq!(layer.len(), 1);
     assert_eq!(
         layer[0].tint,
@@ -102,13 +103,64 @@ fn an_hdr_tint_survives_the_trip_through_the_tile() {
 fn a_geometry_with_no_baked_tile_is_skipped_and_counted() {
     let bake = bake_with(&[5]);
     let vectors = vec![vi(5, 0.0), vi(77, 1.0), vi(77, 2.0)];
-    let layer = layer_instances(&[], &vectors, &bake);
+    let layer = layer_instances(&[], &vectors, &bake, &ShapeBake::default());
     assert_eq!(layer.len(), 1, "só a geometria com tile contribui");
     assert_eq!(
-        unreachable_geometries(&vectors, &bake),
+        unreachable_geometries(&vectors, &bake, &ShapeBake::default()),
         2,
         "e as outras duas são contadas, não engolidas"
     );
+}
+
+/// **A FORMA PARAMÉTRICA TAMBÉM CHEGA** — pelo assador irmão, e com a colocação
+/// dele (o tamanho vem do tile, não da instância).
+///
+/// ⚠️ É o caso EXACTO do report do Enio (*"Glow não funciona com shape"*): uma
+/// geometria que o `object_bake` não conhece, porque ela não está na cena vetorial.
+#[test]
+fn a_parametric_shape_reaches_the_layer_through_its_own_bake() {
+    let bake = ObjectBake::default(); // nenhum objeto: a rota é a do shape
+    let mut shapes = ShapeBake::default();
+    shapes.seed_for_test(
+        9,
+        crate::motion_shape_bake::ShapeTile {
+            texture_id: 77,
+            world_size: [2.0, 3.0],
+            local_center: [0.0, 0.0],
+        },
+    );
+    let layer = layer_instances(&[], &[vi(9, 0.0)], &bake, &shapes);
+    assert_eq!(layer.len(), 1, "a forma tem de entrar");
+    assert_eq!(layer[0].texture_id, 77);
+    assert_eq!(
+        layer[0].size,
+        [2.0, 3.0],
+        "e com o tamanho do TILE — a instância do shape emite `size` unitário"
+    );
+    assert_eq!(
+        unreachable_geometries(&[vi(9, 0.0)], &bake, &shapes),
+        0,
+        "e deixa de ser contada como inalcançável"
+    );
+}
+
+/// **O OBJETO GANHA do shape quando a geometria está nos DOIS** — as duas rotas
+/// partilham o `shape_store`, e a conversão do objeto é a que o publicador
+/// dimensionou.
+#[test]
+fn an_object_tile_wins_over_a_shape_tile_for_the_same_geometry() {
+    let bake = bake_with(&[5]);
+    let mut shapes = ShapeBake::default();
+    shapes.seed_for_test(
+        5,
+        crate::motion_shape_bake::ShapeTile {
+            texture_id: 77,
+            world_size: [9.0, 9.0],
+            local_center: [0.0, 0.0],
+        },
+    );
+    let layer = layer_instances(&[], &[vi(5, 0.0)], &bake, &shapes);
+    assert_eq!(layer[0].texture_id, 900, "o tile do objeto é o que vale");
 }
 
 /// **A CAMADA NÃO MOVE NADA** — as duas listas de origem saem intactas.
@@ -122,7 +174,7 @@ fn deriving_the_layer_leaves_the_visible_frame_untouched() {
     let sprites = vec![sprite(0.0)];
     let vectors = vec![vi(5, 1.0)];
     let (before_s, before_v) = (sprites.clone(), vectors.clone());
-    let _ = layer_instances(&sprites, &vectors, &bake);
+    let _ = layer_instances(&sprites, &vectors, &bake, &ShapeBake::default());
     assert_eq!(sprites.len(), before_s.len());
     assert_eq!(vectors.len(), before_v.len());
     assert_eq!(vectors[0].geometry_id, before_v[0].geometry_id);
@@ -131,5 +183,5 @@ fn deriving_the_layer_leaves_the_visible_frame_untouched() {
 /// **SEM NADA, A CAMADA É VAZIA** — o guarda do passe continua a saber pular.
 #[test]
 fn an_empty_motion_layer_stays_empty() {
-    assert!(layer_instances(&[], &[], &ObjectBake::default()).is_empty());
+    assert!(layer_instances(&[], &[], &ObjectBake::default(), &ShapeBake::default()).is_empty());
 }

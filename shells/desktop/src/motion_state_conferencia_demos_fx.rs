@@ -16,9 +16,15 @@
 //! | 1 e 2 | `fx.drop_shadow` — a sombra DURA de sempre contra a **`Softness`** nova |
 //! | 3 | a fonte emissiva do glow (`tint` > 1), com o **`Anamorphic`** ligado |
 //! | 4 | UMA peça-vagalume (`tint` 40×) — o alvo do **`Clamp`** |
+//! | 5 | uma FORMA paramétrica emissiva — o caso do report *"Glow não funciona com shape"* |
 //!
 //! ⚠️ **A banda 4 existe para o knob ter o que curar.** Um `Clamp` numa cena sem
 //! estouro é um controle que não faz nada, e a lei da casa proíbe pintar isso.
+//!
+//! ⚠️ **A banda 5 é vetor VIVO e não sprite**, e é a única que responde à pergunta do
+//! report: até 2026-08-20 o passe do glow lia só a metade de sprites. Ela entra pelo
+//! tile assado (`crate::motion_shape_bake`) — ver
+//! [`crate::render_loop::motion_glow_layer`] para o porquê de o tile bastar.
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -76,13 +82,13 @@ fn out_of(g: &mut Graph, head: NodeId, ey: f32) -> Option<NodeId> {
     Some(out)
 }
 
-/// Monta a cena. Devolve os quatro sinks.
+/// Monta a cena. Devolve os cinco sinks.
 pub(crate) fn build_fx_demo_document(
     doc: &mut MotionDoc,
     _registry: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {
     let g = &mut doc.graph;
-    let mut sinks = Vec::with_capacity(4);
+    let mut sinks = Vec::with_capacity(5);
 
     // ── Bandas 1 e 2: a sombra dura contra a macia. O MESMO grafo dos dois lados.
     for (col, softness) in [(0usize, 0.0), (1, SOFTNESS)] {
@@ -159,16 +165,45 @@ pub(crate) fn build_fx_demo_document(
     );
     sinks.push(out_of(g, ff, ey)?);
 
+    // ── Banda 5: uma FORMA paramétrica emissiva — o caso do report do Enio.
+    //
+    // ⚠️ **Ela é vetor VIVO, não sprite**: até 2026-08-20 o passe do glow não a
+    // alcançava (ver `render_loop::motion_glow_layer`). Está aqui para o smoke poder
+    // responder à pergunta que o report fez, e nenhuma das outras bandas responde.
+    let ey = 960.0;
+    let shape = g.add_node("source.shape");
+    g.set_pos(shape, Pos { x: 0.0, y: ey });
+    g.set_param(shape, "size", 1.1);
+    g.set_param(shape, "sides", 5.0);
+    let at = push(
+        g,
+        shape,
+        "motion.move",
+        &[("dx", -4.6), ("dy", -5.6)],
+        ey,
+        280.0,
+    );
+    let lit = push(
+        g,
+        at,
+        "motion.tint",
+        &[("r", 2.6), ("g", 5.0), ("b", 3.0)],
+        ey,
+        420.0,
+    );
+    sinks.push(out_of(g, lit, ey)?);
+
     Some(sinks)
 }
 
-/// Os rótulos das quatro bandas, na ordem em que a cena as monta.
+/// Os rótulos das cinco bandas, na ordem em que a cena as monta.
 pub(crate) fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
         "SOMBRA dura -- a borda do fantasma e' tao nitida quanto a da peca",
         "SOMBRA com Softness -- a mesma sombra com penumbra, e a MESMA densidade no miolo",
         "GLOW anamorfico -- o halo estica num eixo e aperta no outro",
         "VAGALUME -- uma peca 40x mais brilhante que o branco: o alvo do Clamp",
+        "FORMA emissiva -- vetor VIVO, e ate' hoje o glow nao a alcancava",
     ]
     .into_iter()
     .enumerate()

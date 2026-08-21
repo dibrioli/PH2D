@@ -48,14 +48,15 @@
 //! ## O que ainda não brilha, e onde está escrito
 //!
 //! Uma geometria viva **sem tile assado** não pode contribuir — não há de onde tirar
-//! a silhueta. Hoje isso é o `source.shape`, cujo caminho paramétrico vive no
-//! `shape_store` e nunca foi assado (os `source.object` de vetor e de Flip **são**
-//! assados, por [`crate::motion_object_bake`]). É a segunda metade desta ordem, e
-//! está registada no [`BUGS_motion_nodes.md`](../../../../docs/Motion%20Nodes/BUGS_motion_nodes.md)
-//! como Bug #2.
+//! a silhueta. Hoje **todas** têm um: os `source.object` (Sprite / Vector / Flip)
+//! por [`crate::motion_object_bake`], e o `source.shape` paramétrico por
+//! [`crate::motion_shape_bake`], o irmão que esta ordem trouxe. A sonda
+//! [`unreachable_geometries`] conta o que sobrar — ela é o que fará um caminho
+//! FUTURO (o 3D) nascer visível em vez de mudo.
 
 use super::motion_bridge::vector_instance_as_tile;
 use crate::motion_object_bake::ObjectBake;
+use crate::motion_shape_bake::ShapeBake;
 use ph2d_eval_motion::VectorInstance;
 use ph2d_render::RenderInstance;
 
@@ -76,12 +77,22 @@ pub(crate) fn layer_instances(
     sprites: &[RenderInstance],
     vectors: &[VectorInstance],
     bake: &ObjectBake,
+    shapes: &ShapeBake,
 ) -> Vec<RenderInstance> {
     let mut out = Vec::with_capacity(sprites.len() + vectors.len());
     out.extend_from_slice(sprites);
     for vi in vectors {
+        // ⚠️ **O OBJETO primeiro, e a ordem é load-bearing.** As duas rotas
+        // partilham o `shape_store`, então uma geometria de objeto pode existir nos
+        // dois assadores; a do objeto é a que o publicador escreveu com o tamanho de
+        // mundo no `size`, e é ela que o `vector_instance_as_tile` sabe converter.
         if let Some(texture_id) = bake.tile_texture_for_gid(vi.geometry_id) {
             out.push(vector_instance_as_tile(vi, texture_id));
+        } else if let Some(tile) = shapes.tile_for_gid(vi.geometry_id) {
+            // A forma PARAMÉTRICA: o tamanho vem do tile e a âncora do bbox — ver
+            // [`crate::motion_shape_bake::tile_quad`], que é onde um halo torto
+            // nasceria.
+            out.push(crate::motion_shape_bake::tile_quad(vi, tile));
         }
     }
     out
@@ -95,10 +106,17 @@ pub(crate) fn layer_instances(
 /// a reconferir esta nota — que é exactamente o que impede a nota de envelhecer.
 #[must_use]
 #[cfg(test)]
-pub(crate) fn unreachable_geometries(vectors: &[VectorInstance], bake: &ObjectBake) -> usize {
+pub(crate) fn unreachable_geometries(
+    vectors: &[VectorInstance],
+    bake: &ObjectBake,
+    shapes: &ShapeBake,
+) -> usize {
     vectors
         .iter()
-        .filter(|vi| bake.tile_texture_for_gid(vi.geometry_id).is_none())
+        .filter(|vi| {
+            bake.tile_texture_for_gid(vi.geometry_id).is_none()
+                && shapes.tile_for_gid(vi.geometry_id).is_none()
+        })
         .count()
 }
 

@@ -266,6 +266,7 @@ impl crate::App {
                     &motion.pump.instances,
                     &motion.pump.vector_instances,
                     &motion.object_bake,
+                    &motion.shape_bake,
                 );
                 if let Some(glow) = glow
                     && motion_active

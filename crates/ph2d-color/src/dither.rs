@@ -67,10 +67,15 @@ pub const HALF_ROUND_TRIP_DRIFT_LSB: f32 = 0.062_012;
 /// **O intervalo que o dither varre**, em passos de 8 bits: um passo inteiro menos a deriva de cada
 /// lado. Derivado, nunca escolhido.
 ///
-/// ⚠️ **É `pub` porque a GPU tem de o repetir.** O passe de tonemap desce o mesmo valor pela mesma
-/// lei ([`crates/ph2d-render/src/shaders/tonemap.wgsl`]), e um shader não pode importar uma
-/// constante de Rust — ele traz uma cópia, e um gate compara as duas. *Uma lei em dois motores só é
-/// uma lei enquanto alguém mede que são iguais.*
+/// ⚠️ **É `pub` para a SONDA, não para um segundo motor.** A descida do ecrã (o passe de tonemap)
+/// **não** leva dither: foi construída, medida e recusada — a folga que o hardware deixa lá é de
+/// `0,0283` LSB, 7% desta amplitude. A sonda que mediu isso
+/// (`crates/ph2d-render/tests/tonemap_descent_gpu.rs`) compara-se com este número, e é o único
+/// consumidor de fora.
+///
+/// ⛔ *Não* reconstrua o dither na GPU a partir daqui — o mecanismo está no cabeçalho de
+/// `crates/ph2d-render/src/shaders/tonemap.wgsl`, e a resposta curta é que a tabela sRGB do hardware
+/// não é a curva ideal, logo a folga é propriedade **da placa** e não cabe nesta constante.
 pub const DITHER_SPAN_LSB: f32 = 1.0 - 2.0 * HALF_ROUND_TRIP_DRIFT_LSB;
 
 /// O lado da matriz de Bayer.
@@ -174,7 +179,7 @@ pub fn rgba16_to_rgba8_dithered(halves: &[u16], width: u32) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{rgba16_to_rgba8, rgba8_to_rgba16};
+    use crate::{rgba8_to_rgba16, rgba16_to_rgba8};
 
     /// **Os 64 níveis, uma vez cada.** Uma matriz com um nível repetido continua a dither*ar* — só
     /// que com um degrau que nunca é cruzado, e a faixa que ele deixa parece um defeito da imagem.
@@ -311,7 +316,9 @@ mod tests {
             match p[0] {
                 100 => lows += 1,
                 101 => highs += 1,
-                other => panic!("o dither saiu da vizinhanca: byte {other} para um valor entre 100 e 101"),
+                other => panic!(
+                    "o dither saiu da vizinhanca: byte {other} para um valor entre 100 e 101"
+                ),
             }
         }
         assert!(

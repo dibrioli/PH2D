@@ -38,7 +38,8 @@ fn code(src: &str) -> String {
 #[test]
 fn the_inspector_conversion_uses_the_dithered_door() {
     let path = convert_site();
-    let body = code(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path:?}: {e}")));
+    let body =
+        code(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {path:?}: {e}")));
     assert!(
         body.contains(DITHERED_DOOR),
         "`precision_convert.rs` deixou de nomear `{DITHERED_DOOR}`.\n\n\

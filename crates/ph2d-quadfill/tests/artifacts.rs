@@ -128,8 +128,6 @@ fn probe(name: &str, mesh: Mesh, detail_edge: f32, smoothing: usize) {
     };
 
     let pos = out.positions();
-    let target_area = detail_edge * detail_edge;
-    let mut tiny = 0usize;
     let mut slivers = 0usize;
     let mut worst_aspect = 0.0f32;
     let mut folded = 0usize;
@@ -142,10 +140,7 @@ fn probe(name: &str, mesh: Mesh, detail_edge: f32, smoothing: usize) {
     let seed = norm(sub(rb.max, rb.min)) * 0.05;
     for f in out.faces() {
         let v = f.verts();
-        let (area, aspect) = area_and_aspect(pos, v);
-        if area < 0.01 * target_area {
-            tiny += 1;
-        }
+        let (_area, aspect) = area_and_aspect(pos, v);
         if aspect > 8.0 {
             slivers += 1;
         }
@@ -186,9 +181,10 @@ fn probe(name: &str, mesh: Mesh, detail_edge: f32, smoothing: usize) {
         }
     }
     println!(
-        "{name:<24} alis={smoothing:<2} {:<5} quads | DEGEN {tiny:<4} LASCAS {slivers:<4} \
-         pior-asp {worst_aspect:<7.1} DOBRADAS {folded:<4} RADIAL {:<4} | med {:.3} max {:.3}",
+        "{name:<24} alis={smoothing:<2} {:<5} quads | IRREG {:<5} LASCAS {slivers:<4} \
+         DOBRADAS {folded:<4} RADIAL {:<4} | med {:.3} max {:.3}",
         r.quads,
+        r.irregular,
         inward_faces(&out),
         r.edge_median,
         r.edge_max
@@ -353,5 +349,84 @@ fn which_arc_weight_law_protects_the_grid() {
                 r.edge_max
             );
         }
+    }
+}
+
+/// ⭐ **A DOBRA CONTRA A RAZÃO grão-de-quad ÷ grão-da-REFERÊNCIA.**
+///
+/// ⚠️ **É o eixo que nunca foi testado, e ele explode.** A reprojecção agarra cada
+/// ponto à FACETA mais próxima da malha de referência; quando o quad fica do
+/// tamanho da faceta, dois vizinhos da grade aterram em facetas com normais
+/// diferentes e o quad entre eles vira. *A referência não é uma superfície lisa: é
+/// um poliedro.*
+#[test]
+#[ignore = "sonda -- a dobra contra o grao da referencia"]
+fn how_fine_may_the_quad_be_against_the_reference_facet() {
+    for (rings, segs) in [(48usize, 72usize), (96, 144), (192, 288)] {
+        let reference = shapes::uv_sphere(rings, segs, 1.0);
+        // A aresta média da referência: o "grão" dela.
+        let rp = reference.positions();
+        let mut n = 0.0f64;
+        let mut sum = 0.0f64;
+        for f in reference.faces() {
+            let v = f.verts();
+            for k in 0..v.len() {
+                sum += f64::from(norm(sub(
+                    rp[v[(k + 1) % v.len()] as usize],
+                    rp[v[k] as usize],
+                )));
+                n += 1.0;
+            }
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        let facet = (sum / n) as f32;
+        let mut work = reference.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = Dual::build(&work);
+        let (field, _) = solve_miq(&dual);
+        let layout = trace_patches(&work, &dual, &field);
+        for target in [0.06f32] {
+            let Ok(spec) = layout.to_layout(target) else {
+                continue;
+            };
+            let Ok((quant, _)) = quantize_within(&spec, Budget::new(256, 512)) else {
+                continue;
+            };
+            // ⭐ **O EXPERIMENTO CONTROLADO: o MESMO layout, a MESMA quantização,
+            // e só a superfície de projeção muda.** É a única forma de separar
+            // "o layout é mau" de "a projeção é má", porque a referência decide as
+            // duas coisas ao mesmo tempo (ela alimenta o F1).
+            let Ok((out, r)) = fill(&work, &reference, &layout, &quant, SMOOTHING_ROUNDS) else {
+                continue;
+            };
+            // ⭐ A varredura do alisamento sobre a configuração RUIM.
+            for rounds in [6usize, 12, 24, 48, 96] {
+                let Ok((a, ra)) = fill(&work, &reference, &layout, &quant, rounds) else {
+                    continue;
+                };
+                #[allow(clippy::cast_precision_loss)]
+                let p = 100.0 * inward_faces(&a) as f64 / ra.quads.max(1) as f64;
+                println!(
+                    "    ref {rings}x{segs} alis={rounds:<3} DOBRADAS {p:.1} % | med {:.3} max {:.3}",
+                    ra.edge_median, ra.edge_max
+                );
+            }
+            let Ok((alt, _)) = fill(&work, &work, &layout, &quant, SMOOTHING_ROUNDS) else {
+                continue;
+            };
+            #[allow(clippy::cast_precision_loss)]
+            let pct = 100.0 * inward_faces(&out) as f64 / r.quads.max(1) as f64;
+            #[allow(clippy::cast_precision_loss)]
+            let pct_alt = 100.0 * inward_faces(&alt) as f64 / r.quads.max(1) as f64;
+            println!(
+                "  ref {rings}x{segs} (faceta {facet:.3}) alvo {target:.3} quad/faceta \
+                 {:.2}x | {:<5} quads | DOBRADAS: sobre a REFERENCIA {pct:.1} % · \
+                 sobre a ISO {pct_alt:.1} %",
+                target / facet,
+                r.quads
+            );
+        }
+        println!("  ──");
     }
 }

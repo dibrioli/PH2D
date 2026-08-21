@@ -113,3 +113,54 @@ fn what_kind_of_corners_does_the_trace_make() {
     census("toro 64x32 +F1", shapes::torus(64, 32, 1.0, 0.35), true);
     census("esfera 98k +F1", shapes::sculpt_sphere(1.0), true);
 }
+
+/// ⭐ **SONDA — os patches são DISCOS SIMPLES?**
+///
+/// ⚠️ Um laço de fronteira com um vértice REPETIDO é um disco **beliscado**: ele
+/// tem uma fronteira só (logo passa no teste de não-disco), e mesmo assim não é
+/// um retângulo topológico. O Coons sobre ele dobra, e nenhum alisamento cura —
+/// medido: numa referência as dobras vão de 1,6 % a **0,0 %** com 24 rondas, e
+/// noutra ficam em **29 %** com 96.
+#[test]
+#[ignore = "sonda -- os patches sao discos SIMPLES?"]
+fn are_the_patches_simple_disks() {
+    use std::collections::BTreeMap;
+    for (name, rings, segs) in [
+        ("ref 48x72", 48usize, 72usize),
+        ("ref 96x144", 96, 144),
+        ("ref 192x288", 192, 288),
+    ] {
+        let mut m = shapes::uv_sphere(rings, segs, 1.0);
+        ph2d_remesh_iso::remesh_isotropic(&mut m, ph2d_remesh_iso::ALPHA);
+        m.triangulate();
+        let dual = Dual::build(&m);
+        let (field, _) = solve_miq(&dual);
+        let out = trace_patches(&m, &dual, &field);
+        let mut pinched = 0usize;
+        let mut worst = 0usize;
+        for sides in &out.side_arcs {
+            let mut seen: BTreeMap<u32, usize> = BTreeMap::new();
+            for side in sides {
+                for &(a, _) in side {
+                    for &v in &out.arc_chain[a as usize] {
+                        *seen.entry(v).or_default() += 1;
+                    }
+                }
+            }
+            // Um vértice de CANTO é partilhado por dois lados, logo aparece 2x por
+            // construção; acima disso a fronteira toca-se a si mesma.
+            let bad = seen.values().filter(|&&c| c > 2).count();
+            if bad > 0 {
+                pinched += 1;
+                worst = worst.max(bad);
+            }
+        }
+        println!(
+            "{name:<12} {} patches, {} arcos | BELISCADOS {pinched} (pior: {worst} vertices \
+             repetidos) | val {:?}",
+            out.side_arcs.len(),
+            out.arc_length.len(),
+            out.report.valence
+        );
+    }
+}

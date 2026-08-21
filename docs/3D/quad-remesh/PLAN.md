@@ -27,8 +27,10 @@
 > cadeia olhava uma coordenada** (§4-terdecies).
 > ⭐ **E a foto seguinte foi uma grade de verdade a seguir o fluxo de uma orelha** — com **fendas**: faces
 > DOBRADAS, que não movem nenhuma outra régua. Metade delas caiu ao trocar a lei de peso do arco
-> (§4-quaterdecies). ⛔ O que separa isto do estado da arte tem nome: **feature lines** e a **grade plana
-> no patch de quatro lados**.
+> (§4-quaterdecies). ⛔ **E o que separa isto do estado da arte tem nome, MEDIDO (§4-quindecies):
+> PARAMETRIZAÇÃO POR PATCH.** A dobra não é da projeção nem do grão — é do **leque de Coons sobre um
+> patch grande**, e onde o layout é bom o alisamento cura até **0,0 %**, onde é mau nem 96 rondas movem a
+> agulha.
 
 ---
 

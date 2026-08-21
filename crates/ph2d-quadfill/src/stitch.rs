@@ -14,191 +14,63 @@ use ph2d_quantize::Quantization;
 use ph2d_trace::PatchLayout;
 
 use crate::fan::{coons, resample, segment};
-
-/// Por que a malha não pôde ser montada.
-// ⚠️ Deixou de ser `Eq` quando a `ArcNotOfThisMesh` passou a carregar os dois
-// comprimentos: sem eles, a recusa diria *que* não bate e não **quanto**, e a
-// diferença entre `1,0001×` e `5,40×` é a diferença entre ruído e catástrofe.
-#[derive(Debug, Clone, PartialEq)]
-pub enum FillError {
-    /// ⚠️ **A lei do patch não bate com a quantização.** `L_i` tinha de ser
-    /// `e_{i-1} + e_{i+1}`, e não é. Isto é **bug a montante**, não uma
-    /// propriedade da malha: o F4 devolve `e` que satisfazem a lei por
-    /// construção, logo ou os lados vieram fora de ordem ou o `e` é de outro
-    /// patch. Recusar em vez de remendar é o que impede uma malha torcida.
-    Mismatch {
-        /// Qual patch.
-        patch: usize,
-        /// Qual lado.
-        side: usize,
-        /// O que a lei exigia.
-        expected: u32,
-        /// O que os arcos somaram.
-        got: u32,
-    },
-    /// Um lado não emenda no seguinte — a fronteira do patch não fecha.
-    Broken {
-        /// Qual patch.
-        patch: usize,
-        /// Qual lado.
-        side: usize,
-    },
-    /// A malha resultante não monta.
-    Mesh(String),
-    /// ⭐⭐ **O LAYOUT NÃO É DESTA MALHA** — o defeito que destruiu o produto em
-    /// 2026-08-21, e que nenhum dos 10.515 gates conseguia ver.
-    ///
-    /// ⚠️ **É a pré-condição mais barata que existe**, e ela existe porque o
-    /// sintoma é invisível a jusante: um `arc_chain` de outra malha produz uma
-    /// saída com **topologia perfeita** — 100 % quads, característica de Euler
-    /// exacta, zero arestas de bordo, contagem de irregulares idêntica — e
-    /// geometria destruída. *Nenhum número do [`FillReport`] muda.*
-    ///
-    /// A régua: o comprimento da polilinha de cada arco, medido **na malha que se
-    /// vai amostrar**, tem de bater com o `arc_length` que o F3 declarou e que o
-    /// F4 já usou para decidir quantos segmentos aquele arco leva. Medido: no
-    /// caminho coerente a razão é **1,000 exacto** (é a mesma soma dos mesmos
-    /// `f32`); no caminho destruído foi **5,40×**, com o pior arco a **9,04×**.
-    /// *Três ordens de grandeza de margem — não há flake possível.*
-    ArcNotOfThisMesh {
-        /// Qual arco.
-        arc: usize,
-        /// O comprimento que o F3 declarou.
-        declared: f32,
-        /// O que a malha recebida de facto mede — ou `None` se um índice do arco
-        /// nem sequer existe nela.
-        measured: Option<f32>,
-    },
-}
-
-/// O que a montagem mediu.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct FillReport {
-    /// Quantos quads.
-    pub quads: usize,
-    /// Quantas faces que **não** são quads. ⭐ Tem de ser **zero** — é a promessa
-    /// inteira desta família de algoritmos.
-    pub non_quads: usize,
-    /// Quantos vértices.
-    pub verts: usize,
-    /// ⭐ Quantos vértices **irregulares** (valência ≠ 4). É a grandeza que o
-    /// artista vê, e a que o pivô existiu para derrubar: a família local entregava
-    /// 21 a 49 %, o oráculo entrega 0,2 %.
-    pub irregular: usize,
-    /// ⚠️ Quantas arestas ficaram com **uma** face só. Tem de ser zero numa
-    /// superfície fechada: é o instrumento que denuncia a malha rasgada.
-    pub boundary_edges: usize,
-    /// Quantas rondas de alisamento correram.
-    pub smoothing: usize,
-    /// ⚠️ Quantas faces tiveram de ser **invertidas** para o volume ficar
-    /// positivo. É `0` ou `todas` — qualquer outro número seria orientação
-    /// inconsistente, que é outro defeito.
-    pub flipped: usize,
-    /// ⭐ **DE ONDE vêm os irregulares** — ver [`Provenance`]. Sem esta
-    /// decomposição, `irregular: 47` diz que há trabalho e não diz **em que
-    /// fase**: um irregular num canto do layout é dívida do F3, um no centro de
-    /// um patch é da valência que o F3 entregou, e um no interior de uma grade
-    /// seria um bug desta crate.
-    pub by_provenance: [usize; Provenance::COUNT],
-    /// ⭐⭐ **A ARESTA MAIS LONGA da saída** — e ela é a primeira grandeza
-    /// GEOMÉTRICA que este relatório alguma vez teve.
-    ///
-    /// ⛔ **Todo o resto deste struct é função pura dos ÍNDICES.** `quads`,
-    /// `non_quads`, `boundary_edges` e `irregular` saem da combinatória das faces;
-    /// uma malha com as posições embaralhadas dá exactamente os mesmos números.
-    /// Foi assim que 10.515 gates ficaram verdes sobre um produto destruído
-    /// (auditoria de 2026-08-21): *não existia uma única asserção que olhasse uma
-    /// coordenada.*
-    ///
-    /// A régua do chamador é a razão para o alvo dele. Medido: caminho correcto
-    /// **≤ 4× o alvo**; caminho destruído **18×** — que era o **diâmetro da peça**,
-    /// uma aresta a atravessar a esfera de lado a lado.
-    pub edge_max: f32,
-    /// A aresta mediana. ⭐ É a que diz se a DENSIDADE saiu no alvo — a máxima diz
-    /// se alguma coisa se partiu, esta diz se a grade tem o passo pedido.
-    pub edge_median: f32,
-}
-
-/// **De onde um vértice da saída veio** — a chave para saber de quem é a dívida.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Provenance {
-    /// Um **canto do layout**: onde três ou mais arcos se encontram. A valência
-    /// dele é o número de arcos, e ⭐ **é o F3 que a decide** — cada junção em T
-    /// que o traçado cria é um canto a mais.
-    Corner,
-    /// O interior de um **arco** partilhado. Deviam ser todos regulares.
-    Arc,
-    /// O **centro** de um patch. A valência é a do patch, logo um patch de 3 ou 5
-    /// lados produz aqui um irregular **por construção** — é o preço do leque.
-    Center,
-    /// O interior de um **raio** do leque, do centro ao corte de um lado.
-    Spoke,
-    /// O interior de uma **grade** de Coons. ⛔ Um irregular aqui seria bug desta
-    /// crate: uma grade regular não tem nenhum.
-    Grid,
-}
-
-impl Provenance {
-    /// Quantas classes existem.
-    pub const COUNT: usize = 5;
-    /// Os nomes, na ordem do array de [`FillReport::by_provenance`].
-    pub const NAMES: [&'static str; Self::COUNT] =
-        ["canto (F3)", "arco", "centro (F3)", "raio", "grade"];
-}
-
-/// **OS PONTOS DA SAÍDA, com a origem de cada um.**
-///
-/// ⭐ **Existe para que a posição e a proveniência não possam divergir.** A
-/// primeira versão eram dois `Vec` a crescer lado a lado com um comentário a pedir
-/// que assim continuassem — e um `push` esquecido num dos cinco sítios daria uma
-/// decomposição deslocada, que **soma certo** e atribui a dívida à fase errada.
-/// Aqui há um único `push`, e ele exige as duas coisas.
-struct Points {
-    pos: Vec<[f32; 3]>,
-    prov: Vec<Provenance>,
-}
-
-impl Points {
-    fn new() -> Self {
-        Self {
-            pos: Vec::new(),
-            prov: Vec::new(),
-        }
-    }
-
-    /// Acrescenta um ponto e devolve o índice dele.
-    fn push(&mut self, p: [f32; 3], from: Provenance) -> u32 {
-        self.pos.push(p);
-        self.prov.push(from);
-        u32::try_from(self.pos.len() - 1).unwrap_or(u32::MAX)
-    }
-
-    /// **Acrescenta um ponto POUSADO na superfície.**
-    ///
-    /// ⭐⭐ **É a diferença entre construir a grade NO ESPAÇO e construí-la SOBRE a
-    /// forma**, e ela vale mais do que qualquer alisamento posterior.
-    ///
-    /// ⛔ **A primeira versão interpolava tudo em linha reta e deixava a
-    /// reprojecção para o alisamento no fim.** Numa esfera de raio 1,0 a corda de
-    /// um raio de leque mergulha para dentro, o Coons construído sobre cordas
-    /// mergulhadas fica pior ainda, e as faces **dobram sobre si mesmas** —
-    /// exactamente as fendas escuras que o Enio fotografou em 2026-08-21.
-    ///
-    /// Medido nessa esfera (4 922 quads), faces dobradas contra rondas de
-    /// alisamento: `0 → 405 · 1 → 403 · 3 → 289 · 6 → 205 · 12 → 135`. ⭐ **O
-    /// alisamento REPARA e não CAUSA** — ele nunca chega a zero porque o estrago
-    /// já veio pronto da construção. *Um remédio que melhora monotonicamente e não
-    /// cura está a tratar o sintoma.*
-    fn push_on(&mut self, mesh: &Mesh, p: [f32; 3], seed: f32, from: Provenance) -> u32 {
-        self.push(ph2d_remesh_iso::project_onto(mesh, p, seed), from)
-    }
-}
+use crate::report::{FillError, FillReport, Points, Provenance};
 
 /// ⚠️ **Quantas rondas de alisamento por omissão.** Elas não mudam a topologia —
 /// só onde os pontos ficam — e cada uma **reprojeta** sobre a superfície de
 /// referência, então a forma não escorre. O número está aqui e não numa opinião:
 /// ver a tabela do `PLAN.md` §4-sexies.
 pub const SMOOTHING_ROUNDS: usize = 6;
+
+/// **PREENCHE UM PATCH DE QUATRO LADOS COM UMA GRADE PLANA.**
+///
+/// ⭐⭐ **O leque é a construção errada para um retângulo, e o preço estava
+/// medido antes de eu o ver.** Num patch de `n` lados o leque põe um vértice
+/// **central** e `n` sub-grades em volta dele; para `n = 4` isso é: um vértice a
+/// mais que não precisa de existir, quatro raios que são **cordas retas** a
+/// atravessar a forma, e três costuras interiores onde não há fronteira nenhuma.
+/// *E é entre os gomos do leque que a face dobra.*
+///
+/// Aqui a lei do F4 é lida ao contrário: num patch de quatro lados ela obriga
+/// `L₀ = e₃ + e₁ = L₂` e `L₁ = e₀ + e₂ = L₃` — ⭐ **os lados opostos têm o mesmo
+/// número de segmentos, por construção**. Logo o patch É uma grade `L₀ × L₁`, e
+/// ela sai de **uma** interpolação de Coons sobre os quatro lados verdadeiros.
+///
+/// ⚠️ **Zero vértices novos de fronteira**: os quatro lados são os arcos que os
+/// vizinhos também usam, então a costura continua a ser a mesma. O que desaparece
+/// é só o interior inventado.
+fn fill_rectangle(
+    pts: &mut Points,
+    faces: &mut Vec<Face>,
+    surface: &Mesh,
+    seed: f32,
+    side_pts: &[Vec<u32>],
+) {
+    // O contorno: `bottom` e `top` opostos, `left` e `right` opostos. O lado 2
+    // corre ao contrário do 0 (a fronteira roda), e o 3 ao contrário do 1.
+    let bottom = side_pts[0].clone();
+    let right = side_pts[1].clone();
+    let top: Vec<u32> = side_pts[2].iter().rev().copied().collect();
+    let left: Vec<u32> = side_pts[3].iter().rev().copied().collect();
+    let (s, t) = (bottom.len() - 1, right.len() - 1);
+    debug_assert_eq!(
+        top.len() - 1,
+        s,
+        "a lei do F4 obriga os lados opostos a bater"
+    );
+    debug_assert_eq!(left.len() - 1, t, "idem para o outro par");
+    let grid = build_grid(pts, surface, seed, &bottom, &top, &left, &right, s, t);
+    for k in 0..s {
+        for l in 0..t {
+            faces.push(Face::quad(
+                grid[k][l],
+                grid[k + 1][l],
+                grid[k + 1][l + 1],
+                grid[k][l + 1],
+            ));
+        }
+    }
+}
 
 /// **A TOLERÂNCIA da pré-condição**, em fração do comprimento declarado.
 ///
@@ -345,7 +217,13 @@ pub fn fill(
                     pts = ids;
                 } else {
                     if *pts.last().unwrap_or(&u32::MAX) != ids[0] {
-                        return Err(FillError::Broken { patch: p, side: i });
+                        return Err(FillError::Broken {
+                            patch: p,
+                            side: i,
+                            ends_at: pts.last().copied(),
+                            next_starts_at: Some(ids[0]),
+                            sides: n,
+                        });
                     }
                     pts.extend_from_slice(&ids[1..]);
                 }
@@ -365,8 +243,21 @@ pub fn fill(
                 });
             }
             if side_pts[i].last() != side_pts[(i + 1) % n].first() {
-                return Err(FillError::Broken { patch: p, side: i });
+                return Err(FillError::Broken {
+                    patch: p,
+                    side: i,
+                    ends_at: side_pts[i].last().copied(),
+                    next_starts_at: side_pts[(i + 1) % n].first().copied(),
+                    sides: n,
+                });
             }
+        }
+
+        // ⭐⭐ **UM PATCH DE QUATRO LADOS É UM RETÂNGULO, e um retângulo não
+        // precisa de leque.** Ver [`fill_rectangle`].
+        if n == 4 {
+            fill_rectangle(&mut pts, &mut faces, surface, seed, &side_pts);
+            continue;
         }
 
         // O centro: a média dos pontos de fronteira, reprojetada.

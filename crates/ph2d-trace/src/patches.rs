@@ -51,6 +51,15 @@ pub struct PatchLayout {
     /// Por arco, as arestas de malha que o compõem. ⚠️ É o que permite **desfazer**
     /// uma parede: sem isto, um patch degenerado só se pode contar, não curar.
     pub arc_edges: Vec<BTreeSet<(u32, u32)>>,
+    /// ⭐ **Quantas fronteiras cada patch tem.** `1` é um disco; mais do que isso é
+    /// um anel, e ele **não é um patch**.
+    ///
+    /// ⚠️ **A ausência deste número custou o produto uma segunda vez**
+    /// (2026-08-21): os lados das DUAS fronteiras iam para a mesma lista, então o
+    /// último lado de uma não encadeava no primeiro da outra — e a montagem
+    /// recusava com `Broken`, três fases depois, nomeando a fase errada. O relatório
+    /// já contava `non_disk`; o que faltava era **quem** para se poder curar.
+    pub loops_per_patch: Vec<usize>,
     /// O que o traçado e a decomposição mediram.
     pub report: TraceReport,
 }
@@ -143,6 +152,7 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
     let mut arc_chain: Vec<Vec<u32>> = Vec::new();
     let mut side_arcs: Vec<Vec<Vec<(u32, bool)>>> = Vec::with_capacity(n_patches);
     let mut corners: Vec<Vec<u32>> = Vec::with_capacity(n_patches);
+    let loops_per_patch: Vec<usize> = loops.iter().map(Vec::len).collect();
     for (p, ls) in loops.iter().enumerate() {
         if ls.len() != 1 {
             report.non_disk += 1;
@@ -219,6 +229,7 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
         corners,
         arc_length,
         arc_edges,
+        loops_per_patch,
         report,
     }
 }
@@ -248,7 +259,14 @@ impl PatchLayout {
     #[must_use]
     pub fn degenerate(&self) -> Vec<usize> {
         (0..self.side_arcs.len())
-            .filter(|&p| self.side_arcs[p].len() < 3)
+            .filter(|&p| {
+                // ⭐ **Duas razões, e a segunda foi acrescentada em 2026-08-21.**
+                // Menos de três lados não satisfaz a lei do F4; e **mais de uma
+                // fronteira não é um disco** — os lados das duas iam para a mesma
+                // lista, e o último de uma não encadeava no primeiro da outra.
+                self.side_arcs[p].len() < 3
+                    || self.loops_per_patch.get(p).copied().unwrap_or(1) != 1
+            })
             .collect()
     }
 }

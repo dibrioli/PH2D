@@ -37,7 +37,10 @@
 
 /// **O PREENCHIMENTO de um patch** — o leque e a grade — ver [`fan`].
 pub mod fan;
+/// **O QUE A MONTAGEM DIZ** — recusa, relatório e proveniência — ver [`report`].
+pub mod report;
 /// **A COSTURA** — amostragem partilhada e montagem — ver [`stitch`].
 pub mod stitch;
 
-pub use stitch::{FillError, FillReport, Provenance, SMOOTHING_ROUNDS, fill};
+pub use report::{FillError, FillReport, Provenance};
+pub use stitch::{SMOOTHING_ROUNDS, fill};

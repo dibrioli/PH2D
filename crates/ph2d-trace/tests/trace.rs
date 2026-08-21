@@ -218,3 +218,65 @@ fn an_open_mesh_is_reported_not_silently_traced() {
         "uma malha rasgada tem de acusar aneis abertos"
     );
 }
+
+/// ⭐⭐ **OS LADOS DE UM PATCH ENCADEIAM-SE** — a invariante que o F5 assume e que
+/// o F3 tem de garantir.
+///
+/// ⚠️ **É a cerca que faltava, e o preço da ausência foi medido:** a montagem
+/// recusava com `Broken { patch: 3, side: 0, ends_at: 104, next_starts_at: 206 }`
+/// — o lado 0 acaba num vértice e o lado 1 começa noutro. Um patch cuja fronteira
+/// não fecha não é um patch, e **o F3 é quem o produz**: deixar o F5 descobri-lo é
+/// nomear a fase errada.
+///
+/// A régua é o `arc_chain`, e ela não precisa de geometria nenhuma: o último
+/// vértice do lado `i` tem de ser o primeiro do lado `i+1`, dando a volta.
+#[test]
+fn every_patch_side_chains_into_the_next() {
+    for (name, mesh) in [
+        ("esfera 24x36", shapes::uv_sphere(24, 36, 1.0)),
+        ("esfera 48x72", shapes::uv_sphere(48, 72, 1.0)),
+        ("toro 32x16", shapes::torus(32, 16, 1.0, 0.35)),
+        // ⭐ E a ordem do PRODUTO: com o F1 na frente, que é onde o defeito apareceu.
+        ("esfera 24x36 + F1", {
+            let mut m = shapes::uv_sphere(24, 36, 1.0);
+            ph2d_remesh_iso::remesh_isotropic(&mut m, ph2d_remesh_iso::ALPHA);
+            m
+        }),
+        ("esfera 48x72 + F1", {
+            let mut m = shapes::uv_sphere(48, 72, 1.0);
+            ph2d_remesh_iso::remesh_isotropic(&mut m, ph2d_remesh_iso::ALPHA);
+            m
+        }),
+    ] {
+        let (_, out) = decompose(mesh);
+        for (p, sides) in out.side_arcs.iter().enumerate() {
+            // Os pontos de cada lado, do canto de entrada ao de saída.
+            let ends: Vec<(Option<u32>, Option<u32>)> = sides
+                .iter()
+                .map(|side| {
+                    let first = side.first().map(|&(a, rev)| {
+                        let c = &out.arc_chain[a as usize];
+                        if rev { *c.last().unwrap() } else { c[0] }
+                    });
+                    let last = side.last().map(|&(a, rev)| {
+                        let c = &out.arc_chain[a as usize];
+                        if rev { c[0] } else { *c.last().unwrap() }
+                    });
+                    (first, last)
+                })
+                .collect();
+            for i in 0..ends.len() {
+                let j = (i + 1) % ends.len();
+                assert_eq!(
+                    ends[i].1,
+                    ends[j].0,
+                    "{name}: patch {p} ({} lados): o lado {i} acaba em {:?} e o lado {j} \
+                     comeca em {:?} -- a fronteira nao fecha",
+                    ends.len(),
+                    ends[i].1,
+                    ends[j].0
+                );
+            }
+        }
+    }
+}

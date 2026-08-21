@@ -98,8 +98,17 @@ impl SpriteRenderer {
     /// fused sprite+motion pass is untouched — this is an *additional* render, so
     /// the frame is byte-identical whenever the caller declines to run it.
     ///
-    /// Motion instances are all atlas (`texture_id == 0`), no clip/mask, no
-    /// `gpu_extra` — the plain single-pass path of [`draw_scratch`](Self::draw_scratch).
+    /// No clip/mask, no `gpu_extra` — the plain single-pass path of
+    /// [`draw_scratch`](Self::draw_scratch).
+    ///
+    /// ⚠️ **A frase «Motion instances are all atlas (`texture_id == 0`)» era desta
+    /// linha e CAIU em 2026-08-20** (a ordem do Enio: *"tudo deve brilhar"*). A
+    /// camada que o glow desenha passou a incluir a metade vetorial viva como TILES
+    /// (`render_loop::motion_glow_layer`), que são texturas INDIVIDUAIS. O
+    /// `material_bg` já as resolvia; o que a suposição escondia é o modo de falha —
+    /// **um run cuja bind group não existe é PULADO em silêncio** (o `else
+    /// { continue }` abaixo), então um tile que não subiu não desenha e não avisa.
+    /// Quem depurar «o halo não aparece» começa por aí.
     /// Clearing with a transparent `clear_color` yields a premultiplied HDR image
     /// the FX pass can bright-pass and blur.
     ///

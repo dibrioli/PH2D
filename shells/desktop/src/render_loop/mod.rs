@@ -7840,6 +7840,9 @@ impl crate::App {
                     .map(|vi| vi.geometry_id)
                     .filter(|gid| object_bake.tile_texture_for_gid(*gid).is_none())
                     .collect();
+                // ⚠️ **`PH2D_GLOW_DIAG=1`** diz se este assador correu e o que ele
+                // conseguiu — sem isto, «não assou» e «não foi chamado» leem igual.
+                let asked = wanted.len();
                 shape_bake.bake_missing(
                     shape_store,
                     wanted,
@@ -7847,6 +7850,16 @@ impl crate::App {
                     renderer,
                     surface.format(),
                 );
+                if asked > 0 && std::env::var_os("PH2D_GLOW_DIAG").is_some() {
+                    let done = pump
+                        .vector_instances
+                        .iter()
+                        .filter(|vi| shape_bake.tile_for_gid(vi.geometry_id).is_some())
+                        .count();
+                    eprintln!(
+                        "[glow-diag] assador de formas: pedidas={asked} com_tile_agora={done}"
+                    );
+                }
             }
             // doc 86 §2 (A3): bake the named FLIP objects to tiles, alongside the
             // vector bake. The Flip doc is destructured above (`flip`); the entity

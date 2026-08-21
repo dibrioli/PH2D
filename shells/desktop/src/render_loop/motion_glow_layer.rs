@@ -120,6 +120,65 @@ pub(crate) fn unreachable_geometries(
         .count()
 }
 
+/// **O DIAGNÓSTICO da camada** (`PH2D_GLOW_DIAG=1`) — imprime, quando os números
+/// MUDAM, de que é feita a lista que o bright-pass desenha.
+///
+/// ⚠️ **Existe porque «o halo não aparece» tem cinco causas indistinguíveis a olho:**
+/// o nó não foi encontrado · a intensidade é zero · a geometria não tem tile · o
+/// tile não subiu (e o run é **pulado em silêncio** pelo `material_bg` do
+/// renderer) · ou o tile está lá e o `threshold` do bright-pass não o alcança.
+/// Cada uma tem uma cura diferente, e a diferença entre elas é UMA linha de
+/// números.
+///
+/// ⚠️ **Só imprime na MUDANÇA.** Um diagnóstico por quadro afoga o terminal e o
+/// artista deixa de o ler — e a linha que interessa é a primeira.
+pub(crate) fn diag(
+    sprites: &[RenderInstance],
+    vectors: &[VectorInstance],
+    bake: &ObjectBake,
+    shapes: &ShapeBake,
+    glow: Option<f32>,
+    layer_len: usize,
+) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static LAST: AtomicU64 = AtomicU64::new(u64::MAX);
+    if std::env::var_os("PH2D_GLOW_DIAG").is_none() {
+        return;
+    }
+    let with_object = vectors
+        .iter()
+        .filter(|vi| bake.tile_texture_for_gid(vi.geometry_id).is_some())
+        .count();
+    let with_shape = vectors
+        .iter()
+        .filter(|vi| {
+            bake.tile_texture_for_gid(vi.geometry_id).is_none()
+                && shapes.tile_for_gid(vi.geometry_id).is_some()
+        })
+        .count();
+    let blind = vectors.len() - with_object - with_shape;
+    let key = (sprites.len() as u64) << 40
+        | (vectors.len() as u64) << 24
+        | (with_object as u64) << 12
+        | with_shape as u64;
+    if LAST.swap(key, Ordering::Relaxed) == key {
+        return;
+    }
+    eprintln!(
+        "[glow-diag] sprites={} vetor_vivo={} (tile_objeto={with_object} tile_forma={with_shape} \
+         SEM_TILE={blind}) camada={layer_len} glow={}",
+        sprites.len(),
+        vectors.len(),
+        glow.map_or_else(|| "ausente".to_string(), |i| format!("intensidade {i}")),
+    );
+    if blind > 0 {
+        eprintln!(
+            "  (!) {blind} geometria(s) viva(s) SEM TILE — elas não podem brilhar. \
+             Se for um `source.shape`, o assador dele não correu."
+        );
+    }
+}
+
 #[cfg(test)]
 #[path = "motion_glow_layer_tests.rs"]
 mod tests;

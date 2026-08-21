@@ -268,6 +268,17 @@ impl crate::App {
                     &motion.object_bake,
                     &motion.shape_bake,
                 );
+                // ⚠️ **`PH2D_GLOW_DIAG=1`** — de que é feita a camada, quando ela muda.
+                // Ver o doc de [`super::motion_glow_layer::diag`]: «o halo não
+                // aparece» tem cinco causas indistinguíveis a olho.
+                super::motion_glow_layer::diag(
+                    &motion.pump.instances,
+                    &motion.pump.vector_instances,
+                    &motion.object_bake,
+                    &motion.shape_bake,
+                    glow.as_ref().map(|g| g.intensity),
+                    glow_layer.len(),
+                );
                 if let Some(glow) = glow
                     && motion_active
                     && glow.intensity > 0.0

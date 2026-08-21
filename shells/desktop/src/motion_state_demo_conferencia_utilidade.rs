@@ -310,3 +310,42 @@ pub(crate) fn force_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<
     );
     sinks
 }
+
+/// **A CENA `=72` — A FAMÍLIA DA COR + O PAREAMENTO DO `motion.step`**
+/// (doc 89: folha 09 inteira, três células; folha 07, a célula do pareamento).
+///
+/// ⚠️ **O par 3 é o único cujos dois lados têm de ficar IGUAIS** — ver o doc do
+/// módulo da cena. E a quarta célula (o kernel de GPU do `motion.color_array`) não
+/// tem lado: prova-se pela AUSÊNCIA de diferença contra `PH2D_GPU_COOK=0`.
+pub(crate) fn color_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_color::build_color_demo_document(doc, registry).unwrap_or_default();
+    let (beat, steps) = conferencia_demos_color::authored();
+    eprintln!(
+        "[color-demo] TRES pares, {} bandas. Esquerda = como era; direita = o que mudou.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_color::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Par 1 (as duas grades de cima): as duas tem o MESMO degrade' por baixo e o
+  MESMO laranja por cima. A` esquerda o laranja substitui tudo e a grade fica chapada;
+  a` direita ele multiplica, e o degrade' continua la' dentro, agora quente. Clique no
+  segundo no' Tint e mude o `Blend` -- Mix, Add, Subtract, Multiply, Divide.
+  (!) Par 2 (as duas grades do meio): a MESMA paleta de quatro cores. A` esquerda as
+  listras sao regulares (a fatia sai do indice da peca). A` direita um campo dirige o
+  `Offset`, e cada peca escolhe a sua -- confete, nao listra. Ate' hoje esse campo era
+  jogado fora: o valor da PRIMEIRA peca valia por todas.
+  (!) Par 3 (as duas fileiras de baixo): DE' PLAY. As duas sobem e descem em degraus de
+  {beat:.1} s, {steps:.0} degraus ate' virar. A de cima recebe um batimento por peca; a de
+  BAIXO recebe UM batimento so', para o conjunto todo. As duas tem de subir em BLOCO.
+  (!) DEU ERRADO se, na fileira de baixo, so' a PRIMEIRA peca andar e as outras cinco
+  ficarem paradas -- era esse o defeito. Ou se a grade da direita do par 1 sair chapada,
+  ou se a do par 2 sair em listras regulares.
+  (!) A PARIDADE: rode outra vez com `PH2D_GPU_COOK=0` na frente do comando. A imagem
+  tem de ser a MESMA -- a paleta passou a correr na placa, e o caminho de referencia
+  continua a dar a mesma resposta."
+    );
+    sinks
+}

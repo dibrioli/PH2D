@@ -59,13 +59,30 @@
 //! append-only in every sense: the three existing port indices do not move and
 //! every saved graph keeps meaning what it meant.
 //!
-//! Positional per-instance (v1), matching the family: `in`/`pulse`/`state` pair
-//! by row order. Under a uniform clock every row shares one count (a global beat);
-//! per-instance generalises to per-dot pulses for free. **Known limitation
-//! (matching `pulse.threshold`):** a COUNT CHANGE misaligns the rows — new
-//! instances restart the staircase at 0 while survivors keep theirs, so a
-//! churning stream (the emitter) desyncs a "global" beat. Id-keyed pairing
-//! (as `motion.integrate`/`motion.spring` already do) is the v2 follow-up.
+//! ## Quem é quem: o estado casa por `id`, o pulso difunde (doc 89 folha 07)
+//!
+//! ✅ **A limitação que este cabeçalho declarava está CURADA**, e eram duas — o
+//! diagnóstico separa-as porque a cura de cada uma é outra (mecanismo e tabela em
+//! [`pairing`]):
+//!
+//! - o **`state`** vem do tique ANTERIOR, e entre os dois tiques o conjunto pode
+//!   ter girado (uma stream com `id` — o emitter — nasce e morre peças). Ele
+//!   casa agora por `id`, como o `motion.integrate`/`motion.spring` sempre
+//!   fizeram: uma peça sobrevivente leva o SEU degrau, uma peça nova semeia em 0,
+//!   e uma que morreu leva o degrau dela consigo. Sem `id` a identidade é
+//!   posicional; uma contagem estável pareia linha a linha (byte-idêntico ao que
+//!   shipava) e uma contagem MUDADA re-semeia, porque a linha 1 de uma grelha
+//!   2×3 não é a linha 1 de uma 2×2.
+//! - as portas **`pulse`/`reset`** vêm do MESMO tique, então não giram; o que
+//!   nelas desalinhava era o COMPRIMENTO. Um batimento global (uma linha só) era
+//!   esticado com zeros e chegava **apenas ao elemento 0** — o resto do conjunto
+//!   ficava parado. Elas leem agora a escada `0/1/n` da casa: ausente → 0,
+//!   comprimento 1 → difundido a todos, comprimento n → um por peça.
+//!
+//! ⚠️ **`count_prev` sai DIFUNDIDO.** É a memória de beira, e se ela guardasse a
+//! coluna crua enquanto o `pulse` de hoje é lido difundido, o tique seguinte veria
+//! `prev = 0` contra `pulse = 1` em toda peça a partir da linha 1 — uma beira de
+//! subida FABRICADA por quadro, e a escada subiria sem parar.
 
 #![forbid(unsafe_code)]
 
@@ -77,7 +94,9 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
+mod pairing;
 use channel::{apply_channel_delta, falloff_at};
+use pairing::{beat_at, pairing, raw_col};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The pulse type (mirror of `ph2d_node_pulse_threshold::PULSE`; kept local so
@@ -221,35 +240,38 @@ fn displayed(tick: i64, n: i64, mode: LimitMode) -> i64 {
     }
 }
 
-fn scalar_col(s: &Stream, name: &str, n: usize, id: f32) -> Vec<f32> {
-    let mut v = match s.get(name) {
-        Some(Column::Scalar(v)) => v.clone(),
-        _ => Vec::new(),
-    };
-    v.resize(n, id);
-    v
-}
-
 fn step(input: &Stream, pulse: &Stream, state: &Stream, reset: &Stream, p: &Params) -> Stream {
     let n = input.count();
-    let pulses = scalar_col(pulse, PULSE_COL, n, 0.0);
-    let prev_tick = scalar_col(state, TICK_COL, n, 0.0);
-    let prev_pulse = scalar_col(state, PREV_COL, n, 0.0);
+    // As portas do MESMO tique: a escada `0/1/n` (um batimento global alcança
+    // todas as peças, não só a linha 0 — ver `pairing::beat_at`).
+    let pulses = raw_col(pulse, PULSE_COL);
     // An unwired `reset` cooks to an empty stream, so this reads all-zero and the
     // node is byte-identical to the one that had no fourth port.
-    let resets = scalar_col(reset, PULSE_COL, n, 0.0);
+    let resets = raw_col(reset, PULSE_COL);
+    // O estado é do tique ANTERIOR: casa por `id` quando a stream tem identidade
+    // (`pairing`), e semeia quem não tinha linha lá.
+    let rows = pairing(input, state, n);
+    let prev_tick = raw_col(state, TICK_COL);
+    let prev_pulse = raw_col(state, PREV_COL);
 
     let mut tick = Vec::with_capacity(n);
     let mut count = Vec::with_capacity(n);
     let mut deltas = Vec::with_capacity(n);
+    // A coluna que sai como `count_prev`: o pulso DESTE elemento, já difundido —
+    // senão o `prev` de amanhã contradiz o `pulse` de hoje e a beira desaparece.
+    let mut pulse_out = Vec::with_capacity(n);
     for i in 0..n {
-        let t = advance_tick(
-            pulses[i],
-            prev_pulse[i],
-            prev_tick[i],
-            resets[i],
-            p.reset_to,
-        );
+        let (pt, pp) = match rows.as_ref().and_then(|r| r[i]) {
+            Some(j) => (
+                prev_tick.get(j).copied().unwrap_or(0.0),
+                prev_pulse.get(j).copied().unwrap_or(0.0),
+            ),
+            // Peça nova (ou o conjunto foi reconstruído): a escada começa em 0.
+            None => (0.0, 0.0),
+        };
+        let this_pulse = beat_at(&pulses, i);
+        pulse_out.push(this_pulse);
+        let t = advance_tick(this_pulse, pp, pt, beat_at(&resets, i), p.reset_to);
         let disp = displayed(t as i64, p.count_max, p.mode) as f32;
         tick.push(t);
         count.push(disp);
@@ -262,7 +284,7 @@ fn step(input: &Stream, pulse: &Stream, state: &Stream, reset: &Stream, p: &Para
     out.set(COUNT_COL, Column::Scalar(count));
     out.set(TICK_COL, Column::Scalar(tick));
     // This tick's pulse becomes next tick's `prev` (the edge memory).
-    out.set(PREV_COL, Column::Scalar(pulses));
+    out.set(PREV_COL, Column::Scalar(pulse_out));
     out
 }
 

@@ -46,10 +46,10 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que as JANELAS de 2026-08-19/20 fecharam (a conferência foi de **P1 59 → 20**)
+### §1.1 — O que as JANELAS de 2026-08-19/21 fecharam (a conferência foi de **P1 59 → 16**)
 
-⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: a janela fechou
-**vinte e oito** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
+⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: as janelas fecharam
+**trinta e duas** e ABRIRAM **duas**, ambas por medição no meio de uma wave. Uma conferência que só
 descesse seria uma que parou de olhar para os lados.
 
 | grupo | entrega | smoke |
@@ -72,6 +72,8 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | **folha 02 (`force.*`): TRÊS células** — `scale_x`/`scale_y` do `drag` · `curve` do `vortex` · a coluna `density` do `buoyancy`. ⚠️ **As três tinham veredito «NÃO»/«PARCIAL», e as três estavam certas *sobre a COMPOSIÇÃO*:** o arrasto anisotrópico é impossível de compor e trivial DENTRO do nó que escreve o `accel`; a densidade por-instância tinha escritor no catálogo o tempo todo (o canal **Custom** do `motion.drive`). A folha desce de **5 para 2 P1**, e as duas que sobram são de outra espécie (o alvo = outro STREAM) | `=71` |
 | **V** | ✅ **folha 11 (`fx.*`) FECHOU: cinco células, três nós, DUAS arquiteturas** — `softness` do `drop_shadow` (disco de Vogel, 16 taps, densidade preservada por raízes) · `stretch`+`angle`+`clamp` do `glow` (uniformes de PASSE: base 2×2 na tenda + teto do bright-pass) · `ParamUnit`/`ParamHardMax` nos três (a família tinha **ZERO** dos quatro canais). ⚠️ **A cerca C1 foi REESCRITA e não removida**: o borrão raster continua fora (o passe é aditivo, *um halo escuro não pode ser somado*); o que caiu foi a frase sobre a *pilha de fantasmas*, que era sobre ENCADEAR. ⚠️ **Uma objecção da célula estava 4× desatualizada** (`MAX_INSTANCES` é `262_144`, não `65_536`) | `=70` |
 | **V** | ✅ **folha 05 (transform) FECHOU: cinco células, cinco nós** — `space` (World/Local) do `move` · `use_falloff_y` do `scale` **+** `mask_channel` do `falloff` (uma célula, dois nós) · `flip_rot` do `mirror` · `reindex` do `mirror` **e** do `kaleidoscope` · `carry_rotation` do `orbit`. ⚠️ **As cinco eram a MESMA pergunta em cinco lugares**: o nó sabe o que cada ELEMENTO é (orientação, posição na lista, máscara) e respondia como se a lista fosse um bloco. Os 3 P2 que sobram não são dessa família | `=69` |
+| **V** | ✅ **folha 09 (cor) FECHOU: três células, dois nós** — `blend` (Mix·Add·Subtract·Multiply·Divide) do `motion.tint` · o `Offset` do `motion.color_array` como **CAMPO** (a escada `0/1/n`; a lei antiga lia `.first()` e DESCARTAVA o campo em silêncio) · e o **kernel de GPU** do `color_array`, que era o único dos quatro nós de cor sem um. ⚠️ **A rota do kernel NÃO é a que a célula sugeria:** ela apontava o canal de LUT do `color_ramp`, mas aquele acessor (`_sample(t)`) LERPA entre vizinhos e duas cores de uma paleta não têm nada entre si — a rota certa é a do `value.pattern` (contagem no slot 0, o corpo **indexa** o buffer). Teto **1024 cores**, do BUFFER, com a tabela ao lado da const | `=72` |
+| **V** | ✅ **folha 07: a célula do pareamento do `motion.step`** — e ⚠️ **eram DOIS defeitos com uma frase só.** O `state` vem do tique ANTERIOR (o conjunto girou) ⇒ casa por `id`, arm por arm com o `motion.integrate`; as portas `pulse`/`reset` vêm do MESMO tique e não giram ⇒ o que nelas desalinhava era o COMPRIMENTO, e um batimento **global** (uma linha) chegava **só ao elemento 0**. A folha desce a **2 P1** | `=72` |
 
 ⚠️ **E uma correção de GEOMETRIA em `ph2d-vec-scene`, que o smoke do Enio devolveu:** a
 borda que fecha uma fatia **abaulava** 19–25% do raio, porque o handle do arco sobrava na
@@ -180,7 +182,7 @@ ausente.
 
 ---
 
-## §4 — As TRINTA E QUATRO LEIS que esta linha pagou para aprender
+## §4 — As TRINTA E NOVE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -410,6 +412,36 @@ são estilo.
     correctamente arredondado; um `powf` é libm). Foi essa a razão de o disco da maciez ter
     **16** taps e não 12: a densidade do miolo pede `a = 1 − (1−A)^(1/N)`, e a alternativa
     ingénua `A/N` clareia a sombra em 15% ao ligar o knob.
+35. ⚠️ **A ROTA que uma célula sugere pode ser a errada pelo motivo certo.** A folha 09
+    apontava, para o kernel do `motion.color_array`, *"o canal de LUT que o `color_ramp` já
+    usa"*. O **canal** estava certo; o **acessor** não: o `<name>_sample(t)` que o gerador
+    emite LERPA entre vizinhos, e duas cores de uma paleta não têm nada entre si — a cor `k`
+    sairia misturada com a `k±1` por ~1e-7, invisível a olho e fatal num gate de paridade. A
+    resposta já estava paga por escrito no `value.pattern` (contagem no slot 0, o corpo
+    **indexa** o buffer). *Leia a célula, e depois procure quem já resolveu a mesma forma.*
+36. ⚠️ **Um fixture com a IDENTIDADE do operador apaga o teste que o usa.** O gate da ORDEM
+    do `blend` nasceu com `existing = 1.0` e `Multiply`: `1 · lerp(1, t, f)` **é**
+    `lerp(1, 1·t, f)`, então as duas ordens dão o mesmo número e o controlo não controlava
+    nada. A cura foi uma fonte cujos quatro canais não são 0 nem 1. *Escolha o fixture
+    contra a álgebra da lei, não contra o que é fácil de escrever.*
+37. ⚠️ **Uma mutação que sobrevive tem DUAS leituras, e a segunda é mais provável do que
+    parece: a mutação era EQUIVALENTE.** A prova do guarda de divisão por zero passou verde
+    à primeira porque eu escrevera `if t > 0 { e/t } else if t == 0 { e } else { e/t }` —
+    literalmente a mesma função. *Antes de escrever o gate que falta, leia a sua própria
+    mutação.* A real (`t.to_bits() == 0`, que só apanha o `+0.0`) sangrou.
+38. ⚠️ **Uma limitação declarada num cabeçalho pode ser DUAS.** *"Pareamento posicional"* no
+    `motion.step` juntava um **estado que gira no TEMPO** (o `pre`: entre dois tiques
+    nasceram e morreram peças ⇒ casa por `id`) com **portas que só variam em COMPRIMENTO**
+    (`pulse`/`reset`, cozidas no mesmo tique ⇒ a escada `0/1/n`). Curar as duas com a mesma
+    ferramenta teria posto id-keying numa porta que não precisa dele — e teria deixado o
+    defeito visível (o batimento global a alcançar só o elemento 0) de pé.
+39. ⚠️ **Uma nota que diz «não há máximo» tem prazo de validade.** O `DEFAULT_PALETTE` do
+    `color_array` dizia *"This is a DEFAULT, not a cap. There is no maximum"* — verdade
+    enquanto o nó era CPU-only, falsa no minuto em que o kernel entrou e o `storage` do
+    device passou a ser o teto. §0 outra vez, do outro lado: *quem move o número que tornava
+    a nota verdadeira tem de reconferir a nota* — e o teto novo diz **de que recurso é**
+    (16.388 B por nó, constante) com a tabela ao lado.
+
 
 ---
 
@@ -457,7 +489,23 @@ bash scripts/collision-surface.sh main
 
 ---
 
-## §7 — O smoke que está pendente
+## §7 — Os smokes que estão pendentes
+
+### `=72` — a folha 09 inteira + o pareamento do `motion.step`
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && \
+  env PH2D_GPU_COOK_DEMO=72 cargo run -p ph2d-host-desktop --release
+```
+
+Três pares. ⚠️ **O par 3 é o único cujos dois lados têm de ficar IGUAIS** — a leitura é
+*"as duas fileiras sobem em bloco"*, e o modo de falha a nomear é *"só a primeira peça da
+fileira de baixo anda"* (era esse o defeito: o batimento global chegava ao elemento 0 e a
+mais nenhum). ⚠️ **A quarta célula da folha 09 — o kernel de GPU do `color_array` — prova-se
+pela AUSÊNCIA de diferença:** rodar de novo com `PH2D_GPU_COOK=0` na frente tem de dar a
+mesma imagem.
+
+### `=60` — o ESPAÇO do campo do `motion.noise`
 
 ```
 cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && \

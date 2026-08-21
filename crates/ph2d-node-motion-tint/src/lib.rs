@@ -16,6 +16,37 @@
 //! Defaults: `mode` 0 (Solid); Start `r=g=b=a=1` (**opaque white** — the identity,
 //! so a fresh Tint is a no-op until the artist picks a colour); End `(0,0,0,1)`
 //! (black — so switching to Gradient shows a visible white→black ramp).
+//!
+//! ## `blend` — HOW the colour meets the one already there (doc 89 fam. 9)
+//!
+//! The node above computes a **target** colour; `blend` says how that target
+//! combines with the instance's EXISTING tint before the `falloff` mask lerps
+//! between them. It is the C4D MoGraph effector's *Color group → Blending Mode*
+//! (Mix · Add · Subtract · Multiply · Divide), and the reason it has to live
+//! **here** rather than be composed: `motion.mixer(Add)` sums every column the
+//! two streams share — `P` included, so the positions double — and its `blend`
+//! is `v.first()`, one global scalar rather than a field. There is no node in
+//! the catalogue that combines two `tint`s per instance.
+//!
+//! **`Mix` (0) is the default and is the law this node always had**, bit for
+//! bit: `blended` returns the target unchanged, so the pipeline is exactly
+//! `lerp(existing, target, falloff)`. Every graph authored before this param
+//! existed reads `0.0` and renders identically.
+//!
+//! ⚠️ **The four other modes act on all FOUR channels, alpha included, and
+//! nothing is clamped.** Alpha is not special-cased because a `Multiply` of two
+//! coverages is exactly the fade an artist means, and RGB is deliberately left
+//! HDR — an `Add` of two whites is `2.0` in linear, which is a bloom source
+//! `fx.glow` can see, not an error. Clamping here would be the slow path
+//! choosing the fast path's ceiling.
+//!
+//! ⚠️ **`Divide` by a zero channel returns the EXISTING channel**, not an
+//! infinity and not black. The function is genuinely singular there, so the
+//! value at the singularity is a choice; this one makes *"divide by nothing"*
+//! mean *"change nothing"*, keeps the column finite, and — the reason it is
+//! written `t == 0.0` rather than a sign test — catches `-0.0` too, since IEEE
+//! makes the two compare equal. A `NaN` or an `inf` leaving this node would
+//! travel every consumer downstream and poison what it touched.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
@@ -80,9 +111,81 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "a2",
             default: 1.0,
         },
+        // How the target meets the existing tint (see the module docs). 0 = Mix
+        // = the law this node always had, so an untouched graph is unchanged.
+        ParamSpec {
+            name: "blend",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// The blending modes, in the order the [`PARAM_HINTS`] enum paints them — the
+/// C4D effector's list. The discriminants ARE the param values, so this enum is
+/// the single place the mapping lives (a saved graph stores the number).
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum BlendMode {
+    /// The target replaces what is there — the law before this param existed.
+    Mix,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+}
+
+impl BlendMode {
+    /// The labels the panel paints, and the ONLY list of them — [`PARAM_HINTS`]
+    /// reads this, so a mode added to the enum without a label fails to compile
+    /// rather than shipping a nameless row.
+    pub const LABELS: [&'static str; 5] = ["Mix", "Add", "Subtract", "Multiply", "Divide"];
+
+    /// The mode a param value names. Rounded half-away-from-zero (Rust's own
+    /// `f32::round`, mirrored in WGSL by `tn_round`); anything outside the list
+    /// falls back to `Mix`, so a graph saved by a FUTURE build that grew a sixth
+    /// mode degrades to the identity instead of picking an arbitrary neighbour.
+    #[must_use]
+    pub fn from_param(v: f32) -> Self {
+        match v.round() as i32 {
+            1 => Self::Add,
+            2 => Self::Subtract,
+            3 => Self::Multiply,
+            4 => Self::Divide,
+            _ => Self::Mix,
+        }
+    }
+}
+
+/// One channel of the blend. See the module docs for why `Divide` returns `e` at
+/// a zero divisor and why nothing is clamped.
+fn blend_channel(e: f32, t: f32, mode: BlendMode) -> f32 {
+    match mode {
+        BlendMode::Mix => t,
+        BlendMode::Add => e + t,
+        BlendMode::Subtract => e - t,
+        BlendMode::Multiply => e * t,
+        // `t == 0.0` is true for `-0.0` as well (IEEE) — see the module docs.
+        BlendMode::Divide => {
+            if t == 0.0 {
+                e
+            } else {
+                e / t
+            }
+        }
+    }
+}
+
+/// The target colour AFTER it meets the existing one. At [`BlendMode::Mix`] this
+/// returns `target` itself — the same value, by the same expression — which is
+/// what makes the default byte-identical to the node that had no `blend`.
+fn blended(existing: [f32; 4], target: [f32; 4], mode: BlendMode) -> [f32; 4] {
+    [
+        blend_channel(existing[0], target[0], mode),
+        blend_channel(existing[1], target[1], mode),
+        blend_channel(existing[2], target[2], mode),
+        blend_channel(existing[3], target[3], mode),
+    ]
+}
 
 /// The multiplicative `falloff` weight for instance `i` (absent → `1.0`).
 fn falloff_at(stream: &Stream, i: usize) -> f32 {
@@ -174,6 +277,15 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20       tn_t.z * (1.0 - tn_g) + tn_end.z * tn_g,\n\
         \x20       tn_t.w * (1.0 - tn_g) + tn_end.w * tn_g);\n\
         }\n\
+        // The blend meets the existing colour BEFORE the mask lerps (the\n\
+        // CPU's `blended`); mode 0 (Mix) returns `tn_t` itself, so the\n\
+        // default path is the same expression it always was.\n\
+        let tn_m = i32(tn_round(params.blend));\n\
+        tn_t = vec4<f32>(\n\
+        \x20   tn_blend(tn_e.x, tn_t.x, tn_m),\n\
+        \x20   tn_blend(tn_e.y, tn_t.y, tn_m),\n\
+        \x20   tn_blend(tn_e.z, tn_t.z, tn_m),\n\
+        \x20   tn_blend(tn_e.w, tn_t.w, tn_m));\n\
         let tn_f = read_falloff(i);\n\
         write_tint(i, vec4<f32>(\n\
             tn_e.x * (1.0 - tn_f) + tn_t.x * tn_f,\n\
@@ -184,6 +296,20 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         fn tn_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn tn_blend(e: f32, t: f32, mode: i32) -> f32 {\n\
+            // The CPU's `blend_channel`, arm for arm and expression for\n\
+            // expression. Written as an if-chain rather than `select`, because\n\
+            // `select` evaluates BOTH sides and `e / 0.0` is exactly the value\n\
+            // the Divide arm exists to avoid producing.\n\
+            if (mode == 1) { return e + t; }\n\
+            if (mode == 2) { return e - t; }\n\
+            if (mode == 3) { return e * t; }\n\
+            if (mode == 4) {\n\
+            \x20   if (t == 0.0) { return e; }\n\
+            \x20   return e / t;\n\
+            }\n\
+            return t;\n\
         }\n",
     bindings: &[
         ColumnBinding {
@@ -217,7 +343,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["r", "g", "b", "a", "r2", "g2", "b2", "a2", "mode"],
+    params: &["r", "g", "b", "a", "r2", "g2", "b2", "a2", "mode", "blend"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -232,6 +358,7 @@ impl NodeOp for MotionTint {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let gradient = ctx.param("mode").round() as i32 == 1;
+        let blend = BlendMode::from_param(ctx.param("blend"));
         let start = [
             ctx.param("r"),
             ctx.param("g"),
@@ -272,7 +399,9 @@ impl NodeOp for MotionTint {
                         start
                     };
                     let e = base.get(i).copied().unwrap_or([1.0, 1.0, 1.0, 1.0]);
-                    mixed_tint(e, target, falloff_at(input, i))
+                    // The blend combines target with what is there; the mask then
+                    // lerps between the two. At Mix the first step is the identity.
+                    mixed_tint(e, blended(e, target, blend), falloff_at(input, i))
                 })
                 .collect();
             let mut out = Stream::new(n);
@@ -308,6 +437,16 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// The last valid `blend` value. Written as a literal because a `usize as f32`
+/// cast is not what a slider bound should cost — and pinned to the label list by
+/// a COMPILE-TIME assert, so a sixth mode that forgets this line fails to build
+/// instead of shipping a row the artist cannot reach.
+const BLEND_MAX: f32 = 4.0;
+const _: () = assert!(
+    BlendMode::LABELS.len() == 5,
+    "BLEND_MAX must be LABELS.len() - 1"
+);
 
 /// Param UI hints (M1.P1 → colour authoring): a **named** Solid/Gradient selector,
 /// then one canonical colour swatch → OKLCH picker per colour (never raw linear
@@ -346,190 +485,21 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             channels: ["r2", "g2", "b2", "a2"],
         },
     },
+    // How that colour meets the one already on the instance. The labels are
+    // [`BlendMode::LABELS`], never a second list — a mode added to the enum
+    // without a name would not compile.
+    ParamUiHint {
+        param: "blend",
+        label: "Blend",
+        min: 0.0,
+        max: BLEND_MAX,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &BlendMode::LABELS,
+        },
+    },
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::cook::{Cook, EvalCtx, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph};
-
-    // Source: 2 white instances with falloff [1, 0.5].
-    static SRC_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("motion.tint.test.src"),
-        name: "motion.tint.test.src",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Src;
-    impl NodeOp for Src {
-        fn manifest(&self) -> &'static NodeManifest {
-            &SRC_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            ctx.emit(
-                Stream::new(2)
-                    .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 1.0]]))
-                    .with("falloff", Column::Scalar(vec![1.0, 0.5])),
-            );
-        }
-    }
-    struct Ops;
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == SRC_MAN.id => Some(&Src),
-                t if t == MANIFEST.id => Some(&MotionTint),
-                _ => None,
-            }
-        }
-    }
-
-    #[test]
-    fn tint_sets_target_masked_by_falloff() {
-        let mut g = Graph::new();
-        let src = g.add_node("motion.tint.test.src");
-        let tn = g.add_node("motion.tint");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (tn, 0),
-            delayed: false,
-        })
-        .unwrap();
-        g.set_param(tn, "r", 1.0);
-        g.set_param(tn, "g", 0.0);
-        g.set_param(tn, "b", 0.0);
-        g.set_param(tn, "a", 0.4);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, tn, 0.0).unwrap();
-        match out[0].as_stream().get("tint").unwrap() {
-            // existing = white; target = (1,0,0,0.4).
-            // i0 f=1: exactly the target ; i1 f=0.5: lerp(white,target,0.5).
-            Column::Vec4(v) => {
-                assert_eq!(v, &vec![[1.0, 0.0, 0.0, 0.4], [1.0, 0.5, 0.5, 0.7]]);
-            }
-            _ => panic!("tint"),
-        }
-    }
-
-    fn default_of(name: &str) -> f32 {
-        MANIFEST
-            .params
-            .iter()
-            .find(|p| p.name == name)
-            .unwrap()
-            .default
-    }
-
-    #[test]
-    fn default_params_are_opaque_white_and_no_op_on_white() {
-        // The colour modifier's identity: Solid mode by default, Start opaque
-        // white → a white stream stays white at every falloff (no red/warm
-        // dominance from merely dropping in a Tint — the reported-cast fix).
-        assert_eq!(default_of("mode"), 0.0, "default mode is Solid");
-        let start = [
-            default_of("r"),
-            default_of("g"),
-            default_of("b"),
-            default_of("a"),
-        ];
-        assert_eq!(start, [1.0, 1.0, 1.0, 1.0]);
-        let white = [1.0, 1.0, 1.0, 1.0];
-        assert_eq!(mixed_tint(white, white, 1.0), white);
-        assert_eq!(mixed_tint(white, white, 0.5), white);
-        assert_eq!(mixed_tint(white, white, 0.0), white);
-    }
-
-    #[test]
-    fn lerp4_is_endpoint_exact() {
-        let a = [1.0, 1.0, 1.0, 1.0];
-        let b = [0.2, 0.4, 0.6, 0.3];
-        assert_eq!(lerp4(a, b, 0.0), a);
-        assert_eq!(lerp4(a, b, 1.0), b);
-        assert_eq!(lerp4(a, b, 0.5), [0.6, 0.7, 0.8, 0.65]);
-    }
-
-    #[test]
-    fn gradient_mode_ramps_start_to_end_by_normalized_index() {
-        // A 3-instance stream carrying Index[0,1,2]+Count[3,3,3]; Gradient mode,
-        // default Start=white / End=black → a grayscale ramp keyed by index.
-        static GSRC: NodeManifest = NodeManifest {
-            id: NodeTypeId::of("motion.tint.test.grid"),
-            name: "motion.tint.test.grid",
-            inputs: &[],
-            outputs: &[PortSpec {
-                name: "out",
-                ty: INST_VEC2,
-            }],
-            effect: Effect::Pure,
-            clock: Clock::Frame,
-            params: &[],
-            lowerings: &[LoweringKind::Cpu],
-        };
-        struct GSrc;
-        impl NodeOp for GSrc {
-            fn manifest(&self) -> &'static NodeManifest {
-                &GSRC
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                ctx.emit(
-                    Stream::new(3)
-                        .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]))
-                        .with("Index", Column::Scalar(vec![0.0, 1.0, 2.0]))
-                        .with("Count", Column::Scalar(vec![3.0, 3.0, 3.0])),
-                );
-            }
-        }
-        struct GOps;
-        impl OpResolver for GOps {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == GSRC.id => Some(&GSrc),
-                    t if t == MANIFEST.id => Some(&MotionTint),
-                    _ => None,
-                }
-            }
-        }
-        let mut g = Graph::new();
-        let src = g.add_node("motion.tint.test.grid");
-        let tn = g.add_node("motion.tint");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (tn, 0),
-            delayed: false,
-        })
-        .unwrap();
-        g.set_param(tn, "mode", 1.0); // Gradient (Start=white, End=black defaults)
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &GOps, tn, 0.0).unwrap();
-        match out[0].as_stream().get("tint").unwrap() {
-            // falloff absent → 1, so tint == target. t = 0, 0.5, 1 across the ramp.
-            Column::Vec4(v) => {
-                assert_eq!(v[0], [1.0, 1.0, 1.0, 1.0]); // start (white)
-                assert_eq!(v[1], [0.5, 0.5, 0.5, 1.0]); // mid grey
-                assert_eq!(v[2], [0.0, 0.0, 0.0, 1.0]); // end (black)
-            }
-            _ => panic!("tint"),
-        }
-    }
-
-    #[test]
-    fn mixed_tint_reaches_any_rgba_at_full_falloff() {
-        // f=0 → exactly existing (identity); f=1 → exactly the target (all RGBA).
-        assert_eq!(
-            mixed_tint([1.0, 1.0, 1.0, 1.0], [0.2, 0.4, 0.6, 0.3], 0.0),
-            [1.0, 1.0, 1.0, 1.0]
-        );
-        assert_eq!(
-            mixed_tint([1.0, 1.0, 1.0, 1.0], [0.2, 0.4, 0.6, 0.3], 1.0),
-            [0.2, 0.4, 0.6, 0.3]
-        );
-    }
-}
+#[path = "tests.rs"]
+mod tests;

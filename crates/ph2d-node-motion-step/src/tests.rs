@@ -314,3 +314,118 @@ fn letting_go_of_the_reset_does_not_manufacture_an_edge() {
     state = stepped(&dot(0.0), &fire(1.0), &state, &p);
     assert_eq!(count(&state), 1.0, "a real edge still counts");
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Doc 89 folha 07 — o pareamento. Estes gates correm o `step` INTEIRO ao longo de
+// vários tiques, não a função `pairing` isolada (essa tem gates próprios em
+// `pairing_tests.rs`): o que a célula alegava é que a ESCADA sai errada, e uma
+// escada só existe depois de dois tiques.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Uma stream de `n` peças com identidade — os `id` são a coluna que o emitter
+/// estampa.
+fn with_ids(ids: &[f32]) -> Stream {
+    let p: Vec<[f32; 2]> = ids.iter().map(|k| [k * 10.0, 0.0]).collect();
+    Stream::new(ids.len())
+        .with("P", Column::Vec2(p))
+        .with("id", Column::Scalar(ids.to_vec()))
+}
+fn fire_n(n: usize, v: f32) -> Stream {
+    Stream::new(n).with(PULSE_COL, Column::Scalar(vec![v; n]))
+}
+fn counts(s: &Stream) -> Vec<f32> {
+    match s.get(COUNT_COL).unwrap() {
+        Column::Scalar(v) => v.clone(),
+        _ => panic!(),
+    }
+}
+
+/// **UMA PEÇA QUE SOBREVIVE À ROTAÇÃO DO CONJUNTO MANTÉM A ESCADA DELA.**
+///
+/// É a célula inteira, encenada: três peças sobem dois degraus; depois duas
+/// morrem e uma nasce. O sobrevivente (`id 9`) tem de continuar em **2**, e o
+/// recém-nascido (`id 11`) tem de começar em **0**.
+///
+/// ⚠️ **A lei antiga daria `[2, 2]`** — posicionalmente o `9` de hoje leria a
+/// linha 0 e o `11` leria a linha 1, ambas com o tique 2. O gate exige o `0`
+/// explicitamente, senão um regresso ao pareamento posicional passava verde numa
+/// cena onde "as peças contam".
+#[test]
+fn a_survivor_keeps_its_staircase_when_the_set_churns() {
+    let p = params(16, LimitMode::Wrap);
+    let born = with_ids(&[7.0, 8.0, 9.0]);
+    let mut state = Stream::new(0);
+    for _ in 0..2 {
+        state = stepped(&born, &fire_n(3, 1.0), &state, &p);
+        state = stepped(&born, &fire_n(3, 0.0), &state, &p);
+    }
+    assert_eq!(counts(&state), vec![2.0; 3], "os três subiram dois degraus");
+
+    // O conjunto roda: 7 e 8 morrem, 11 nasce. Um tique sem pulso, para que só o
+    // pareamento decida o número.
+    let churned = with_ids(&[9.0, 11.0]);
+    let after = stepped(&churned, &fire_n(2, 0.0), &state, &p);
+    assert_eq!(
+        counts(&after),
+        vec![2.0, 0.0],
+        "o id 9 leva a escada dele; o id 11 é novo e semeia em 0"
+    );
+}
+
+/// **UM BATIMENTO GLOBAL (uma linha só) ALCANÇA TODAS AS PEÇAS.**
+///
+/// ⚠️ **Este é o segundo defeito da célula, e a lei antiga esticava com zeros:**
+/// só o elemento 0 contava, e os outros ficavam parados para sempre. A leitura
+/// na tela era *"o Step não faz nada"* — o pior modo de falha que esta casa
+/// conhece, porque não parece um bug, parece um knob morto.
+#[test]
+fn a_one_row_pulse_is_a_global_beat_not_a_pulse_for_element_zero() {
+    let p = params(16, LimitMode::Wrap);
+    let four = || {
+        Stream::new(4).with(
+            "P",
+            Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]]),
+        )
+    };
+    let global = |v: f32| Stream::new(1).with(PULSE_COL, Column::Scalar(vec![v]));
+    let mut state = Stream::new(4);
+    state = stepped(&four(), &global(1.0), &state, &p);
+    assert_eq!(counts(&state), vec![1.0; 4], "todas contaram uma vez");
+
+    // …e a beira continua a valer: segurar o batimento não conta outra vez.
+    // ⚠️ É aqui que se vê porque o `count_prev` tem de sair DIFUNDIDO: se ele
+    // guardasse a coluna crua (uma linha), as peças 1..3 leriam `prev = 0` contra
+    // `pulse = 1` e fabricariam uma beira por quadro.
+    state = stepped(&four(), &global(1.0), &state, &p);
+    assert_eq!(counts(&state), vec![1.0; 4], "segurar não conta de novo");
+    state = stepped(&four(), &global(0.0), &state, &p);
+    state = stepped(&four(), &global(1.0), &state, &p);
+    assert_eq!(
+        counts(&state),
+        vec![2.0; 4],
+        "largar e bater conta a segunda"
+    );
+}
+
+/// **UM RESET GLOBAL TAMBÉM ALCANÇA TODAS AS PEÇAS** — a porta irmã lê a mesma
+/// escada, e um botão de reset é exactamente uma linha só.
+#[test]
+fn a_one_row_reset_returns_the_whole_set_home() {
+    let p = params(16, LimitMode::Wrap);
+    let four = || {
+        Stream::new(4).with(
+            "P",
+            Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]]),
+        )
+    };
+    let mut state = Stream::new(4);
+    let none = Stream::new(0);
+    for _ in 0..3 {
+        state = step(&four(), &fire_n(4, 1.0), &state, &none, &p);
+        state = step(&four(), &fire_n(4, 0.0), &state, &none, &p);
+    }
+    assert_eq!(counts(&state), vec![3.0; 4]);
+    let global_reset = Stream::new(1).with(PULSE_COL, Column::Scalar(vec![1.0]));
+    state = step(&four(), &fire_n(4, 0.0), &state, &global_reset, &p);
+    assert_eq!(counts(&state), vec![0.0; 4], "o botão zera o conjunto todo");
+}

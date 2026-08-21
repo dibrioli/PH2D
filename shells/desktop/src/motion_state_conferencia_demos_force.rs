@@ -27,6 +27,11 @@ const GAP_Y: f32 = 5.2;
 const DRAG_Y: f32 = 6.0;
 /// A densidade que o par 3 dá à ROLHA (a pedra fica no neutro).
 const CORK: f32 = 3.0;
+/// A faixa da rampa de densidade do par 3. ⚠️ **O piso NÃO é zero, e é por isso que
+/// ele existe:** densidade zero é empuxo nenhum e a peça fica parada — o que numa cena
+/// de smoke lê como *"o knob não faz nada"* em vez de *"esta peça é pesada"*.
+const DENSITY_LO: f32 = 0.35;
+const DENSITY_HI: f32 = 2.2;
 
 fn wire(g: &mut Graph, from: NodeId, fp: u16, to: NodeId, tp: u16) -> Option<()> {
     g.connect(Edge {
@@ -216,33 +221,57 @@ pub(crate) fn build_force_demo_document(
                     if on < 0.5 {
                         return fit;
                     }
-                    // A rampa que vira densidade: o índice normalizado.
+                    // A rampa que vira densidade: o índice normalizado, remapeado
+                    // para uma faixa que **nunca chega a zero**.
+                    //
+                    // ⚠️ **A rampa PRECISA da fileira ligada nela** — o
+                    // `value.instance_field` diz no próprio doc: *"Cardinality follows
+                    // the geometry; unconnected → one degenerate value"*. Deixá-la
+                    // solta dava UM valor, o `drive` transmitia-o a todas as peças, e
+                    // ele era ZERO: densidade zero é empuxo NENHUM, e a fileira ficava
+                    // **parada** (reportado no smoke).
+                    //
+                    // ⚠️ **E o `map_range` não é enfeite:** um índice normalizado
+                    // começa em `0`, então sem ele a PRIMEIRA peça teria densidade zero
+                    // e ficaria parada sozinha — o mesmo defeito, um oitavo dele.
                     let ramp = g.add_node("value.instance_field");
                     g.set_pos(
                         ramp,
                         Pos {
-                            x: 0.0,
+                            x: 300.0,
                             y: ey + 140.0,
                         },
                     );
+                    let _ = wire(g, fit, 0, ramp, 0);
+                    let span = g.add_node("value.map_range");
+                    g.set_pos(
+                        span,
+                        Pos {
+                            x: 440.0,
+                            y: ey + 140.0,
+                        },
+                    );
+                    g.set_param(span, "in_lo", 0.0);
+                    g.set_param(span, "in_hi", 1.0);
+                    g.set_param(span, "out_lo", DENSITY_LO);
+                    g.set_param(span, "out_hi", DENSITY_HI);
+                    let _ = wire(g, ramp, 0, span, 0);
                     let drv = g.add_node("motion.drive");
                     g.set_pos(
                         drv,
                         Pos {
-                            x: 220.0,
+                            x: 580.0,
                             y: ey + 140.0,
                         },
                     );
-                    // ⚠️ **O canal CUSTOM** é o que torna a coluna alcançável — a
-                    // célula pedia um canal por-instância e o escritor já existia.
                     g.set_param(drv, "channel", 9.0);
-                    g.set_param(drv, "scale", 4.0);
+                    g.set_param(drv, "scale", 1.0);
                     // ⚠️ A chave é `"column"` (`ph2d_node_motion_drive::DRIVE_COL_KEY`),
                     // escrita literal porque a shell não depende daquela drop-crate —
                     // e o gate abaixo confere que a coluna que sai é `density`.
                     g.set_text_param(drv, "column", "density");
                     let _ = wire(g, fit, 0, drv, 0);
-                    let _ = wire(g, ramp, 0, drv, 1);
+                    let _ = wire(g, span, 0, drv, 1);
                     drv
                 },
                 |g, ey| {

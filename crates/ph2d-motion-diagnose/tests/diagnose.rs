@@ -662,3 +662,62 @@ fn a_glow_over_live_vector_geometry_is_no_longer_diagnosed() {
     g.add_node("fx.glow");
     assert_eq!(diagnose(&g, &reg).len(), 1, "o `Shadowed` continua vivo");
 }
+
+/// **A CABEÇA DE UMA CADEIA DE FORÇA NÃO É SOURCE-LESS** — ela é alimentada pelo
+/// `pre` do integrador.
+///
+/// ⚠️ **Este gate nasceu de um smoke reprovado, e o achado foi PRÉ-EXISTENTE.** A
+/// regra de isenção era *"a aresta atrasada do PRÓPRIO nó"* (`seeds_own_state`), e o
+/// laço canónico é `integrate ⟿pre⟿ força ⟿fwd⟿ integrate.forces` — a aresta vem de
+/// OUTRO nó. Medido: **seis** cenas da conferência marcadas, todas correctas, e o
+/// mesmo badge no grafo que o próprio auto-heal constrói. ⛔ *O diagnoser acusava a
+/// cura que a casa aplica.*
+#[test]
+fn a_force_fed_by_the_integrators_pre_loop_is_not_source_less() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let grid = g.add_node("motion.grid");
+    let integ = g.add_node("motion.integrate");
+    // ⚠️ **`force.vortex` e não `force.wind`**, e a escolha é o gate: o vento é uma
+    // força GLOBAL (não lê `P`), então ele nunca seria reportado e o teste passaria
+    // por VÁCUO. O vórtice lê a posição — é sobre ele que o déficit fala.
+    let vx = g.add_node("force.vortex");
+    let out = g.add_node("motion.output");
+    for (from, to, delayed) in [
+        ((grid, 0), (integ, 0), false),
+        ((integ, 0), (vx, 0), true),
+        ((vx, 0), (integ, 1), false),
+        ((integ, 0), (out, 0), false),
+    ] {
+        g.connect(Edge { from, to, delayed }).expect("connect");
+    }
+    let d = diagnose(&g, &reg);
+    assert!(
+        d.is_empty(),
+        "o laço canónico da força está CORRECTO e não pode acusar: {d:?}"
+    );
+}
+
+/// **E O CONTROLE: uma força com aresta NENHUMA continua a ser reportada.**
+///
+/// ⚠️ Sem esta metade, alargar a isenção teria ficado verde por ter calado o
+/// déficit inteiro — que é o defeito real que ele existe para pegar.
+#[test]
+fn a_force_with_no_edge_at_all_is_still_source_less() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let vx = g.add_node("force.vortex");
+    let out = g.add_node("motion.output");
+    g.connect(Edge {
+        from: (vx, 0),
+        to: (out, 0),
+        delayed: false,
+    })
+    .expect("connect");
+    assert!(
+        diagnose(&g, &reg)
+            .iter()
+            .any(|x| matches!(x.deficit, Deficit::MissingSource("P"))),
+        "uma força sem NADA ligado continua a ser um no-op silencioso"
+    );
+}

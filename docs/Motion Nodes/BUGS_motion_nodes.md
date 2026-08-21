@@ -13,6 +13,7 @@
 |---|---|---|---|---|
 | [1](#bug-1--o-nó-acusado-estava-inocente-o-campo-gateia-o-pulso-e-não-gateia-a-memória) | **"Box inconsistente"** — marcar Invert e desmarcar não devolve o quadro inicial | `field.box` (acusado, **inocente**) + `pulse.counter`/`pulse.sample_hold` (a memória) | ✅ **Fechado — smoke aprovado** (porta `reset`) | 2026-08-10 |
 | [2](#bug-2--o-glow-e-a-forma-vivem-nos-dois-lados-do-tonemap-e-o-lod-troca-o-lado) | **"Glow não funciona com shape"** | `fx.glow` (acusado, **inocente**) + a partição de render sprite ⁄ vetor | ✅ **CURADO** (aguarda smoke) — o passe passou a ler a CAMADA | 2026-08-20 |
+| [3](#bug-3--o-diagnoser-sabia-e-ninguem-perguntava) | **"Todas as peças paradas"** (cena `=71`, banda 6) | uma cena com um fio a menos — e o INSTRUMENTO que ninguém invocava | ✅ **CURADO** (aguarda smoke) — mais um falso positivo pré-existente do diagnoser | 2026-08-20 |
 
 ---
 
@@ -319,3 +320,80 @@ que a escolha da porta importa.
    uma wave e virou mentira na seguinte. ⛔ Curar um bug sem apagar o aviso dele deixa
    uma armadilha que ensina o artista a não usar o que passou a funcionar — e o gate
    que fixa a ausência é o que impede a ressurreição por `git revert` distraído.
+
+
+---
+
+## Bug #3 — O diagnoser SABIA, e ninguém perguntava
+
+**Sintoma (Enio, 2026-08-20):** *"6. EMPUXO com a coluna `density`. Todas as peças
+paradas"* — a banda 6 da cena `=71`.
+
+### A causa imediata: um fio a menos na CENA
+
+O `value.instance_field` que alimentava a densidade estava **solto**. O doc-comment
+dele já dizia o que isso faz — *"Cardinality follows the geometry; unconnected → one
+degenerate value"* —, então ele devolvia **um** valor em vez de oito, o `motion.drive`
+transmitia-o a toda a fileira, e ele era **zero**. Densidade zero é empuxo nenhum: a
+fileira ficava parada.
+
+⚠️ **E o `map_range` que entrou junto não é enfeite:** um índice normalizado começa em
+`0`, então mesmo com o fio ligado a PRIMEIRA peça teria densidade zero e ficaria parada
+sozinha — o mesmo defeito, um oitavo dele. A rampa agora vai de `0,35` a `2,2`.
+
+### A causa de fundo: o instrumento existia e nenhum passo o invocava
+
+O `ph2d_motion_diagnose` reporta `MissingSource`/`MissingInput` **exactamente** para um
+nó sem nada ligado. Ele existia desde o ADR-0155 e **nenhuma cena da conferência o
+consultava** — não havia sequer uma porta por onde um teste pudesse montar uma cena
+(o roteador lia a env var direto). Foi preciso extrair `demo_router::build_level` para
+que a pergunta fosse possível.
+
+### O que a sonda achou quando finalmente perguntou
+
+**Seis** cenas marcadas (`=3`, `=31`, `=38`, `=57`, `=61`, `=71`) — e cinco delas
+estavam **certas**. O falso positivo era do diagnoser:
+
+> A isenção de *«não é source-less»* exigia que a aresta atrasada viesse do **PRÓPRIO
+> nó** (`seeds_own_state`, escrita para as sims que se semeiam). Mas o laço canónico de
+> uma força é `integrate ⟿pre⟿ força ⟿fwd⟿ integrate.forces` — a aresta vem de OUTRO
+> nó. **Toda cadeia de força correctamente montada exibia um badge ⚠** a dizer *"este
+> nó não tem nada ligado"*, inclusive a que o próprio AUTO-HEAL constrói.
+
+Curado: qualquer aresta atrasada conta como stream. Gate + controle (uma força com
+aresta NENHUMA continua reportada), e a fixture usa `force.vortex` e não `force.wind` —
+o vento é uma força GLOBAL, não lê `P`, e o gate passaria por vácuo.
+
+### E o nó que ninguém conseguia diagnosticar
+
+Com o diagnoser curado, a mutação que devolvia o bug do Enio **ainda sobrevivia**: o
+`value.instance_field` não declarava precisar de nada. O `P` chega a ele pela CONTAGEM e
+pelo `id`, não por uma binding que o leia — nem o kernel nem uma `Coupling` o
+denunciavam. Ele passou a declarar `Requires("P")`, e agora **dois** gates pegam o
+defeito.
+
+### O portão que sobrou
+
+`no_conference_scene_ships_a_setup_hole` (no roteador, que é de quem ele é): monta as
+**71** cenas e exige zero déficits, com controle de contagem para não passar por vácuo.
+⛔ Se uma cena futura encenar um defeito de propósito, ela não entra numa allowlist
+muda — ou o defeito não é de SETUP, ou o gate ganha o nível **nomeado** com o motivo.
+
+### Lições generalizáveis
+
+1. ⚠️ **Um instrumento que nenhum passo INVOCA não protege nada.** O diagnoser sabia
+   apontar este buraco desde o ADR-0155; o que faltava era uma porta por onde perguntar.
+   *A cura não foi escrever análise nova — foi tornar a existente alcançável.*
+2. ⚠️ **MEÇA antes de a sonda virar barra.** A primeira corrida marcou seis cenas, e
+   cinco eram falso positivo. Um portão posto no lugar da sonda teria sido «consertar»
+   cinco cenas correctas para calar um bug do diagnoser.
+3. ⚠️ **Uma isenção escrita para UM caso costuma ser estreita demais para a FAMÍLIA.**
+   `seeds_own_state` estava certa para as sims que se semeiam e cega para o laço de
+   força — a pergunta real era *«tem stream?»*, e uma aresta atrasada é um stream venha
+   ela de onde vier.
+4. ⚠️ **Um nó cuja necessidade não é derivável TEM de a declarar.** O `P` do
+   `value.instance_field` chega pela contagem, não por uma binding — invisível ao
+   diagnoser, e por isso o `Coupling::Requires` existe. *Se o doc-comment avisa e o
+   registry não, o aviso não protege ninguém.*
+5. ⚠️ **Uma fixture de força tem de LER `P`.** `force.wind` é global e nunca é
+   reportado: um gate sobre ele fica verde nos dois mundos.

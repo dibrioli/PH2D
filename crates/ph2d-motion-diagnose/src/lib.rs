@@ -41,18 +41,25 @@
 //! WHICH source (grid / emitter / object) is a creative choice, never guessed. TWO kinds
 //! of node are NOT source-less. A pure `Write` generator (grid / emitter) does not
 //! [`reads`](ColumnAccess::reads), so it is never judged to need a column upstream. A
-//! STATEFUL source — a simulation (`boids` / `verlet_rope` / `soft_body` / `spring` /
-//! `integrate`) — DOES `reads()` `P` (a `ReadWrite` binding), but the `P` it reads is its
-//! OWN previous frame, arriving through the `pre` self-loop, and it MINTS the initial
-//! cloud itself (its `seed` on tick 0); it is exempt via [`seeds_own_state`] — a DELAYED
-//! self-loop, the derivable signal a deformer never carries. A re-producer that genuinely
-//! needs an upstream stream (a deformer's `ReadWrite` on `P`, read from its DATA port with
-//! no self-loop) READS it and is left to warn — the same re-producer rule the
-//! produces/consumes analysis rests on, on the required-upstream axis. The test is "no
-//! non-delayed incoming edge AND no `pre` self-loop", not a port index or a backward
-//! source-search: a P-reader with neither is unambiguously source-less, and a reader that
-//! IS fed (or self-seeds) is left alone — the safe, under-warning direction the
-//! "Node Help" toggle backstops.
+//! node fed by a **DELAYED** edge — a STATEFUL source reading its own previous `P`
+//! through the `pre` self-loop (`boids` / `verlet_rope` / `soft_body` / `spring` /
+//! `integrate`, which mint the initial cloud themselves), **or** the head of a force
+//! chain fed by an integrator's `pre` — is likewise not source-less: it HAS a stream,
+//! it is just last tick's. Both are exempt via [`fed_by_a_delayed_edge`].
+//!
+//! ⚠️ **Essa segunda metade custou um badge errado em toda cadeia de força.** A regra
+//! era «a aresta atrasada do PRÓPRIO nó» (`seeds_own_state`), e o laço canónico é
+//! `integrate ⟿pre⟿ força ⟿fwd⟿ integrate.forces` — a aresta vem de OUTRO nó. Medido em
+//! 2026-08-20: **seis** cenas da conferência marcadas, todas correctas, e o mesmo badge
+//! aparecia no grafo que o próprio AUTO-HEAL constrói.
+//!
+//! A re-producer that genuinely needs an upstream stream (a deformer's `ReadWrite` on
+//! `P`, read from its DATA port with no incoming edge at all) READS it and is left to
+//! warn — the same re-producer rule the produces/consumes analysis rests on, on the
+//! required-upstream axis. The test is "**no incoming edge, delayed or not**", not a
+//! port index or a backward source-search: a P-reader with none is unambiguously
+//! source-less, and a reader that IS fed is left alone — the safe, under-warning
+//! direction the "Node Help" toggle backstops.
 //!
 //! The per-PORT twin is [`Deficit::MissingInput`]: a node declares an input port REQUIRED
 //! (`NodeRegistry::required_inputs`, e.g. `motion.duplicator`'s `shape`/`points`) and that
@@ -371,11 +378,28 @@ fn missing_upstream(
     if has_input(graph, node) {
         return None; // fed: not source-less (the safe, under-warning direction)
     }
-    if seeds_own_state(graph, node) {
-        // A stateful source (boids/verlet/soft-body/spring/integrate) reads its OWN
-        // previous `P` through the `pre` self-loop and mints the initial cloud itself —
-        // not source-less, even though it `reads()` `P`. The self-loop is the derivable
-        // signal a deformer (which genuinely needs an upstream stream) never carries.
+    if fed_by_a_delayed_edge(graph, node) {
+        // ⚠️ **QUALQUER aresta atrasada é um stream**, e não só a auto-alça.
+        //
+        // A regra era `seeds_own_state` — *"a aresta atrasada do próprio nó para si"* —,
+        // escrita para as sims que se semeiam (boids / verlet / soft-body / spring /
+        // integrate). Ela é estreita DEMAIS, e o preço foi medido em 2026-08-20: numa
+        // cadeia de força o laço é `integrate ⟿pre⟿ força ⟿fwd⟿ integrate.forces`, então
+        // a força é alimentada por uma aresta atrasada que vem de OUTRO nó. Ela tinha
+        // stream, e o diagnoser dizia que não.
+        //
+        // ⚠️ **E o badge era VISÍVEL:** `inert_badges` filtra por `reaches_output`, e uma
+        // força no laço alcança. Toda cadeia de força correctamente montada exibia um ⚠
+        // a dizer *"este nó não tem nada ligado"* — inclusive a que o próprio AUTO-HEAL
+        // constrói (`heal.rs`: *"reconcile plumbs integrate.out ⟿pre⟿ chain_head.in0"*).
+        // ⛔ *O diagnoser acusava a cura que a casa aplica.*
+        //
+        // Medido pela sonda `which_conference_scenes_the_diagnoser_flags`: **seis** cenas
+        // da conferência (`=3`, `=31`, `=38`, `=57`, `=61`, `=71`), todas com a mesma
+        // forma, todas correctas.
+        //
+        // ⚠️ A direcção continua a ser a segura (SOB-avisar): um nó com aresta nenhuma
+        // segue reportado, que é o defeito real que este déficit existe para pegar.
         return None;
     }
     REQUIRED_UPSTREAM
@@ -384,19 +408,16 @@ fn missing_upstream(
         .find(|&col| reads_column(reg, ty, col))
 }
 
-/// Does `node` seed its OWN state — feed one of its own input ports from its own output
-/// via a DELAYED edge (the `pre` self-loop of a stateful simulation source:
-/// `motion.integrate` / `spring` / `boids` / `verlet_rope` / `soft_body`)? Such a node
-/// READS `P` (a `ReadWrite` binding on the feedback port), but the `P` it reads is its OWN
-/// previous frame and it mints the initial cloud itself, so it is NOT source-less. A
-/// deformer carries no self-loop — only a stateful sim node does — so this is the signal
-/// that separates a self-seeding source from a P-reader that genuinely needs an upstream
-/// stream.
-fn seeds_own_state(graph: &Graph, node: NodeId) -> bool {
-    graph
-        .edges()
-        .iter()
-        .any(|e| e.delayed && e.from.0 == node && e.to.0 == node)
+/// **O nó recebe um stream por uma aresta ATRASADA?** — a auto-alça de uma sim que se
+/// semeia (`motion.integrate` / `spring` / `boids` / `verlet_rope` / `soft_body`) **ou** o
+/// `pre` que um integrador manda à cabeça de uma cadeia de força.
+///
+/// Nos dois casos o `P` que ele lê é o do tique anterior, e nos dois casos ele TEM
+/// stream — que é a única coisa que este déficit pergunta. ⚠️ Exigir que a aresta fosse
+/// do próprio nó era a versão estreita desta regra, e ela acusava toda cadeia de força
+/// (ver [`missing_upstream`]).
+fn fed_by_a_delayed_edge(graph: &Graph, node: NodeId) -> bool {
+    graph.edges().iter().any(|e| e.delayed && e.to.0 == node)
 }
 
 /// Does `ty` READ `col` on its input — a deformer/force that needs the column present to

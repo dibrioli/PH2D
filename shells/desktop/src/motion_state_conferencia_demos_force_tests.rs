@@ -158,6 +158,35 @@ fn the_buoyancy_pair_drives_the_density_column_on_the_right_only() {
     }
 }
 
+/// **O DIAGNOSER DA CASA NÃO ACHA BURACO NESTA CENA** — e este gate nasceu de um
+/// smoke reprovado.
+///
+/// ⚠️ **A banda 6 saiu com as peças PARADAS**, e a causa era um fio que faltava: o
+/// `value.instance_field` que alimenta a densidade estava **solto**. O doc dele diz
+/// *"Cardinality follows the geometry; unconnected → one degenerate value"* — ele
+/// dava UM valor, o `motion.drive` transmitia-o a todas as peças, e ele era ZERO.
+/// Densidade zero é empuxo nenhum.
+///
+/// ⚠️ **A casa já sabia diagnosticar isto e NINGUÉM perguntava.** O
+/// `ph2d_motion_diagnose` reporta `MissingSource`/`MissingInput` exactamente para
+/// um nó sem nada ligado — e nenhuma cena da conferência o consultava. *Um
+/// instrumento que existe e que passo nenhum invoca não protege coisa nenhuma.*
+///
+/// ⚠️ **Aqui a barra é ZERO déficits, e é honesto** porque esta cena não encena
+/// defeito nenhum. ⛔ **Não generalize isto para todas as cenas sem medir**: várias
+/// (as do `AUTOFIX`, a `=45`) montam um grafo defeituoso DE PROPÓSITO, e um gate
+/// cego reprovaria o produto delas. A sonda irmã (`#[ignore]`) mede o resto.
+#[test]
+fn the_house_diagnoser_finds_no_hole_in_this_scene() {
+    let (doc, _) = scene();
+    let reg = registry();
+    let d = ph2d_motion_diagnose::diagnose(&doc.graph, &reg);
+    assert!(
+        d.is_empty(),
+        "a cena não encena defeito nenhum, então não pode ter um: {d:?}"
+    );
+}
+
 /// **AS DUAS BANDAS DE UM PAR PARTEM DA MESMA SEMENTE** — senão o par mede o layout.
 #[test]
 fn both_halves_of_each_pair_start_from_the_same_seed() {

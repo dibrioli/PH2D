@@ -353,6 +353,21 @@ impl NodeOp for ValueInstanceField {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(ValueInstanceField))?;
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    // ⚠️ **ELE PRECISA DA GEOMETRIA, e antes de 2026-08-20 não o dizia a ninguém.**
+    // O doc deste nó é explícito — *"Cardinality follows the geometry; unconnected →
+    // one degenerate value"* —, mas o diagnoser (ADR-0155) não tinha como saber: o
+    // `P` chega aqui pela CONTAGEM e pelo `id`, não por uma binding que o leia, então
+    // nem o kernel nem uma `Requires` o denunciavam.
+    //
+    // O preço foi medido num smoke reprovado (Enio: *"todas as peças paradas"*): uma
+    // cena deixou este nó SOLTO, ele devolveu o valor degenerado, um `motion.drive` o
+    // transmitiu a toda a fileira, e ele era **zero** — densidade zero é empuxo
+    // nenhum. Nenhum gate viu, porque o nó não declarava precisar de nada.
+    //
+    // ⚠️ **`Requires` e não `Consumes`:** ele não come uma coluna transiente — ele
+    // exige que a geometria ESTEJA lá para ter cardinalidade. É a mesma declaração
+    // que um deformador faz.
+    reg.register_couplings(MANIFEST.id, &[ph2d_node_registry::Coupling::Requires("P")]);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {

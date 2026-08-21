@@ -43,7 +43,10 @@ mod demo_conferencia;
 #[path = "motion_state_demo_conferencia_animadores.rs"]
 mod demo_conferencia_animadores;
 #[path = "motion_state_demo_router.rs"]
-mod demo_router;
+/// ⚠️ `pub(crate)` desde 2026-08-20, e por um consumidor real: a sonda que corre o
+/// DIAGNOSER sobre cada cena da conferência precisa de as MONTAR
+/// (`demo_router::build_level`), e antes disso nenhuma era alcançável de um teste.
+pub(crate) mod demo_router;
 /// ⚠️ **`pub(crate)` e não privada como as irmãs**, e por um consumidor real: as cenas do
 /// COMPASSO (`=25`) e do GRITO (`=26`) são a fixture dos gates da fronteira de sinais, que
 /// moram no `render_loop` (é lá que a tomada é lida). Uma cena existe para ser DIRIGIDA.

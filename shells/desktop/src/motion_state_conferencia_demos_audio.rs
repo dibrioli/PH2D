@@ -40,7 +40,7 @@ pub(crate) const SIZE_GAIN: f32 = 2.5;
 
 /// `bands → drive(Size)` sobre uma fileira, duas vezes. Devolve os DOIS sinks (o
 /// de cima é o controle).
-pub(super) fn build_audio_demo_document(
+pub(crate) fn build_audio_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {

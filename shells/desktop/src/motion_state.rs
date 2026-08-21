@@ -69,103 +69,12 @@ mod gpu_demos;
 #[path = "motion_state_gpu_field_demos.rs"]
 mod gpu_field_demos;
 
-/// As cenas da CONFERÊNCIA DOS NÓS (doc 89) — as quatro metades que só o olho
-/// julga, `PH2D_GPU_COOK_DEMO=32..35`.
-#[path = "motion_state_conferencia_demos.rs"]
-mod conferencia_demos;
-/// A cena da ARITMETICA (`=41`) — o grupo A da conferencia (cinco nos irmaos do
-/// dominio de VALOR), irmao pelo mesmo teto de LOC.
-#[path = "motion_state_conferencia_demos_arith.rs"]
-mod conferencia_demos_arith;
-
-/// A cena do AUDIO (`=40`), irmao pelo mesmo motivo — e porque ela escreve a
-/// propria fixture em disco (nao ha asset de audio no repo).
-#[path = "motion_state_conferencia_demos_audio.rs"]
-mod conferencia_demos_audio;
-/// A cena da DIRECAO (`=38`) mora num irmao: o pai bate no teto de LOC da shell.
-#[path = "motion_state_conferencia_demos_direction.rs"]
-mod conferencia_demos_direction;
-#[path = "motion_state_conferencia_demos_stats.rs"]
-mod conferencia_demos_stats;
-#[path = "motion_state_conferencia_demos_table_seed.rs"]
-mod conferencia_demos_table_seed;
-
-// O grupo E — a comparação e o nome que não resolve (cena `=45`).
-// ⚠️ `pub(crate)` porque o gate do badge da cena mora no `render_loop` (ver o doc
-// do `build_compare_demo_document`).
-#[path = "motion_state_conferencia_demos_compare.rs"]
-pub(crate) mod conferencia_demos_compare;
-// O grupo F — o ENVELOPE: que forma tem uma coisa que acende e apaga (cena `=46`).
-#[path = "motion_state_conferencia_demos_envelope.rs"]
-pub(crate) mod conferencia_demos_envelope;
-
-#[path = "motion_state_conferencia_demos_velocity.rs"]
-pub(crate) mod conferencia_demos_velocity;
-
-#[path = "motion_state_conferencia_demos_collide.rs"]
-pub(crate) mod conferencia_demos_collide;
-#[path = "motion_state_conferencia_demos_pin.rs"]
-pub(crate) mod conferencia_demos_pin;
-#[path = "motion_state_conferencia_demos_proximity.rs"]
-pub(crate) mod conferencia_demos_proximity;
-#[path = "motion_state_conferencia_demos_rate.rs"]
-pub(crate) mod conferencia_demos_rate;
-
-#[path = "motion_state_conferencia_demos_octave.rs"]
-pub(crate) mod conferencia_demos_octave;
-
-#[path = "motion_state_conferencia_demos_shape.rs"]
-pub(crate) mod conferencia_demos_shape;
-
-#[path = "motion_state_conferencia_demos_axes.rs"]
-pub(crate) mod conferencia_demos_axes;
-#[path = "motion_state_conferencia_demos_clock.rs"]
-pub(crate) mod conferencia_demos_clock;
-#[path = "motion_state_conferencia_demos_column.rs"]
-pub(crate) mod conferencia_demos_column;
-#[path = "motion_state_conferencia_demos_field_space.rs"]
-pub(crate) mod conferencia_demos_field_space;
-#[path = "motion_state_conferencia_demos_join.rs"]
-pub(crate) mod conferencia_demos_join;
-#[path = "motion_state_conferencia_demos_sortkey.rs"]
-pub(crate) mod conferencia_demos_sortkey;
-
-#[path = "motion_state_conferencia_demos_space.rs"]
-pub(crate) mod conferencia_demos_space;
-#[path = "motion_state_conferencia_demos_substep.rs"]
-pub(crate) mod conferencia_demos_substep;
-#[path = "motion_state_conferencia_demos_taper.rs"]
-pub(crate) mod conferencia_demos_taper;
-
-#[path = "motion_state_conferencia_demos_cursor.rs"]
-pub(crate) mod conferencia_demos_cursor;
-
-#[path = "motion_state_conferencia_demos_color.rs"]
-pub(crate) mod conferencia_demos_color;
-#[path = "motion_state_conferencia_demos_field.rs"]
-pub(crate) mod conferencia_demos_field;
-#[path = "motion_state_conferencia_demos_force.rs"]
-pub(crate) mod conferencia_demos_force;
-#[path = "motion_state_conferencia_demos_fx.rs"]
-pub(crate) mod conferencia_demos_fx;
-#[path = "motion_state_conferencia_demos_rank.rs"]
-pub(crate) mod conferencia_demos_rank;
-
-#[path = "motion_state_conferencia_demos_drizzle.rs"]
-pub(crate) mod conferencia_demos_drizzle;
-
-#[path = "motion_state_conferencia_demos_deform.rs"]
-pub(crate) mod conferencia_demos_deform;
-#[path = "motion_state_conferencia_demos_text.rs"]
-mod conferencia_demos_text;
-#[path = "motion_state_conferencia_demos_time.rs"]
-mod conferencia_demos_time;
-#[path = "motion_state_conferencia_demos_transform.rs"]
-pub(crate) mod conferencia_demos_transform;
-#[path = "motion_state_conferencia_demos_wave.rs"]
-pub(crate) mod conferencia_demos_wave;
-#[path = "motion_state_conferencia_demos_weight.rs"]
-pub(crate) mod conferencia_demos_weight;
+/// As DECLARAÇÕES dos módulos de cena da conferência (doc 89) — uma família num
+/// arquivo só, extraída quando este passou o teto de LOC do HR-18. ⚠️ Os caminhos não
+/// mudam: o `use` abaixo reexporta tudo como estava.
+#[path = "motion_state_conferencia_mods.rs"]
+mod conferencia_mods;
+pub(crate) use conferencia_mods::*;
 /// A cena da MARCA DO IMPACTO (doc 89, folha 13), arquivo próprio pela mesma razão: ela
 /// responde *"um nó a jusante consegue saber que houve uma COLISÃO?"* — o passo mexe em `P` e
 /// `vel` a cada tique, então até existir a coluna `hit` a pergunta não era exprimível.

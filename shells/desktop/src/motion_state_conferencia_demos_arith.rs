@@ -143,7 +143,7 @@ static ROWS_TABLE: &[Row] = &[
 
 /// `grid → scale → [rampa → (estica) → <nó> → drive(Y)] → transform → output`,
 /// dez vezes. Devolve os DEZ sinks.
-pub(super) fn build_arith_demo_document(
+pub(crate) fn build_arith_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {

@@ -388,3 +388,38 @@ pub(crate) fn rank_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<N
     );
     sinks
 }
+
+/// **A CENA `=74` — dois exemplos, um por linha** (doc 89, folha 02: as duas células
+/// que sobravam, e as duas são do `force.attractor`).
+///
+/// ⚠️ **Só se julga com o PLAY** — uma força acumula em `accel` e é o integrador que a
+/// aplica; parada, as quatro nuvens são quatro nuvens iguais.
+pub(crate) fn goal_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_goal::build_goal_demo_document(doc, registry).unwrap_or_default();
+    let (goals, lead) = conferencia_demos_goal::authored();
+    eprintln!(
+        "[cena 74] Dois exemplos, um por linha -- {n} blocos (as nuvens + os alvos brancos).
+  ESQUERDA = como era. DIREITA = o que mudou. O nome da linha esta' escrito no meio.
+
+  >>> DE' PLAY. Uma forca nao move nada sozinha; parada, a cena nao diz nada.
+
+  ALVO   As duas nuvens sao puxadas por um atrator. A` esquerda o alvo e' UM ponto
+         (o branco no meio), e a nuvem junta-se toda nele. A` direita ha' {goals:.0}
+         pontos brancos, e cada peca vai ao MAIS PROXIMO dela -- a nuvem parte-se
+         em {goals:.0} grupos.
+         > clique no no' Attractor e troque o `Target` entre Point e Stream.
+
+  MIRA   As duas fileiras perseguem o MESMO ponto branco, que sobe e desce. A de
+         cima mira onde ele ESTA' e chega sempre atrasada, fazendo zigue-zague
+         atras dele. A de baixo antecipa {lead:.1} s e corta caminho -- ela encontra
+         o alvo em vez de o seguir.
+         > clique no no' Attractor de baixo e arraste o `Predict` ate' 0: ela volta
+           a atrasar-se.
+
+  DEU ERRADO se as duas metades de qualquer linha fizerem o MESMO caminho, se
+  alguma nuvem ficar parada (a forca nao chegou ao integrador), ou se os pontos
+  brancos nao aparecerem.",
+        n = sinks.len(),
+    );
+    sinks
+}

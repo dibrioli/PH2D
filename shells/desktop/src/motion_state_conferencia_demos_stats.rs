@@ -261,7 +261,7 @@ pub(crate) const BAND_LABELS: [&str; BANDS] = [
 
 /// `grid → scale → [<cadeia de valor> → drive(Y)] → transform → output`, uma vez
 /// por lane. Devolve os sinks.
-pub(super) fn build_stats_demo_document(
+pub(crate) fn build_stats_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {

@@ -1,0 +1,112 @@
+//! **As cenas de smoke da CONFERÊNCIA DOS NÓS** (doc 89) — só as DECLARAÇÕES dos
+//! módulos, uma família num arquivo só.
+//!
+//! ⚠️ **Este arquivo existe por um teto de LOC, e o corte é por FAMÍLIA e não por
+//! data:** o `motion_state.rs` passou os 600 do HR-18 ao ganhar a 40ª cena, e um split
+//! por *"as declarações novas"* envelheceria na semana seguinte. Estas respondem todas
+//! à mesma pergunta — *que documento cada célula da conferência encena* — e é isso que
+//! as mantém juntas.
+//!
+//! ⚠️ **Os caminhos NÃO mudam.** O pai reexporta este módulo com `pub(crate) use`, então
+//! `motion_state::conferencia_demos_*` continua a resolver como sempre resolveu — um
+//! split que renomeasse 40 caminhos seria um diff de centenas de linhas para ganhar uma.
+
+/// As cenas da CONFERÊNCIA DOS NÓS (doc 89) — as quatro metades que só o olho
+/// julga, `PH2D_GPU_COOK_DEMO=32..35`.
+#[path = "motion_state_conferencia_demos.rs"]
+pub(crate) mod conferencia_demos;
+/// A cena da ARITMETICA (`=41`) — o grupo A da conferencia (cinco nos irmaos do
+/// dominio de VALOR), irmao pelo mesmo teto de LOC.
+#[path = "motion_state_conferencia_demos_arith.rs"]
+pub(crate) mod conferencia_demos_arith;
+
+/// A cena do AUDIO (`=40`), irmao pelo mesmo motivo — e porque ela escreve a
+/// propria fixture em disco (nao ha asset de audio no repo).
+#[path = "motion_state_conferencia_demos_audio.rs"]
+pub(crate) mod conferencia_demos_audio;
+/// A cena da DIRECAO (`=38`) mora num irmao: o pai bate no teto de LOC da shell.
+#[path = "motion_state_conferencia_demos_direction.rs"]
+pub(crate) mod conferencia_demos_direction;
+#[path = "motion_state_conferencia_demos_stats.rs"]
+pub(crate) mod conferencia_demos_stats;
+#[path = "motion_state_conferencia_demos_table_seed.rs"]
+pub(crate) mod conferencia_demos_table_seed;
+
+// O grupo E — a comparação e o nome que não resolve (cena `=45`).
+// ⚠️ `pub(crate)` porque o gate do badge da cena mora no `render_loop` (ver o doc
+// do `build_compare_demo_document`).
+#[path = "motion_state_conferencia_demos_compare.rs"]
+pub(crate) mod conferencia_demos_compare;
+// O grupo F — o ENVELOPE: que forma tem uma coisa que acende e apaga (cena `=46`).
+#[path = "motion_state_conferencia_demos_envelope.rs"]
+pub(crate) mod conferencia_demos_envelope;
+
+#[path = "motion_state_conferencia_demos_velocity.rs"]
+pub(crate) mod conferencia_demos_velocity;
+
+#[path = "motion_state_conferencia_demos_collide.rs"]
+pub(crate) mod conferencia_demos_collide;
+#[path = "motion_state_conferencia_demos_pin.rs"]
+pub(crate) mod conferencia_demos_pin;
+#[path = "motion_state_conferencia_demos_proximity.rs"]
+pub(crate) mod conferencia_demos_proximity;
+#[path = "motion_state_conferencia_demos_rate.rs"]
+pub(crate) mod conferencia_demos_rate;
+
+#[path = "motion_state_conferencia_demos_octave.rs"]
+pub(crate) mod conferencia_demos_octave;
+
+#[path = "motion_state_conferencia_demos_shape.rs"]
+pub(crate) mod conferencia_demos_shape;
+
+#[path = "motion_state_conferencia_demos_axes.rs"]
+pub(crate) mod conferencia_demos_axes;
+#[path = "motion_state_conferencia_demos_clock.rs"]
+pub(crate) mod conferencia_demos_clock;
+#[path = "motion_state_conferencia_demos_column.rs"]
+pub(crate) mod conferencia_demos_column;
+#[path = "motion_state_conferencia_demos_field_space.rs"]
+pub(crate) mod conferencia_demos_field_space;
+#[path = "motion_state_conferencia_demos_join.rs"]
+pub(crate) mod conferencia_demos_join;
+#[path = "motion_state_conferencia_demos_sortkey.rs"]
+pub(crate) mod conferencia_demos_sortkey;
+
+#[path = "motion_state_conferencia_demos_space.rs"]
+pub(crate) mod conferencia_demos_space;
+#[path = "motion_state_conferencia_demos_substep.rs"]
+pub(crate) mod conferencia_demos_substep;
+#[path = "motion_state_conferencia_demos_taper.rs"]
+pub(crate) mod conferencia_demos_taper;
+
+#[path = "motion_state_conferencia_demos_cursor.rs"]
+pub(crate) mod conferencia_demos_cursor;
+
+#[path = "motion_state_conferencia_demos_color.rs"]
+pub(crate) mod conferencia_demos_color;
+#[path = "motion_state_conferencia_demos_field.rs"]
+pub(crate) mod conferencia_demos_field;
+#[path = "motion_state_conferencia_demos_force.rs"]
+pub(crate) mod conferencia_demos_force;
+#[path = "motion_state_conferencia_demos_fx.rs"]
+pub(crate) mod conferencia_demos_fx;
+#[path = "motion_state_conferencia_demos_goal.rs"]
+pub(crate) mod conferencia_demos_goal;
+#[path = "motion_state_conferencia_demos_rank.rs"]
+pub(crate) mod conferencia_demos_rank;
+
+#[path = "motion_state_conferencia_demos_drizzle.rs"]
+pub(crate) mod conferencia_demos_drizzle;
+
+#[path = "motion_state_conferencia_demos_deform.rs"]
+pub(crate) mod conferencia_demos_deform;
+#[path = "motion_state_conferencia_demos_text.rs"]
+pub(crate) mod conferencia_demos_text;
+#[path = "motion_state_conferencia_demos_time.rs"]
+pub(crate) mod conferencia_demos_time;
+#[path = "motion_state_conferencia_demos_transform.rs"]
+pub(crate) mod conferencia_demos_transform;
+#[path = "motion_state_conferencia_demos_wave.rs"]
+pub(crate) mod conferencia_demos_wave;
+#[path = "motion_state_conferencia_demos_weight.rs"]
+pub(crate) mod conferencia_demos_weight;

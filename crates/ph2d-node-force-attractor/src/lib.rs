@@ -26,7 +26,7 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod accum;
-use accum::{add_accel, falloff_at, vec2_at};
+use accum::{add_accel, falloff_at, vec2_at, vec2_col};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -39,10 +39,18 @@ const DEAD_ZONE: f32 = 1e-3;
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("force.attractor"),
     name: "force.attractor",
-    inputs: &[PortSpec {
-        name: "in",
-        ty: INST_VEC2,
-    }],
+    inputs: &[
+        PortSpec {
+            name: "in",
+            ty: INST_VEC2,
+        },
+        // **O ALVO como STREAM** (modo `Stream`). APENDADO — o índice da porta 0 não
+        // se mexe, e no modo `Point` ela nem é lida. Ver [`TARGET_MODE`].
+        PortSpec {
+            name: "target",
+            ty: INST_VEC2,
+        },
+    ],
     outputs: &[PortSpec {
         name: "out",
         ty: INST_VEC2,
@@ -74,9 +82,69 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "repel",
             default: 0.0,
         },
+        // **DE ONDE VEM O ALVO.** APENDADO, default `0` = os dois params de sempre,
+        // ao bit. Ver [`TARGET_MODE`].
+        ParamSpec {
+            name: "target_mode",
+            default: 0.0,
+        },
+        // **O TETO DA ANTECIPAÇÃO**, em segundos. `0` = mirar onde o alvo ESTÁ, que é
+        // o que este nó sempre fez. Ver [`LEAD`].
+        ParamSpec {
+            name: "lead",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **DE ONDE VEM O ALVO** (doc 89 folha 02 — POP Attract *"Attraction Type:
+/// Particles / Points / Surface Points"*, e o **Goal** do Cavalry).
+///
+/// - `0` **Point** — os params `target_x`/`target_y`. O que este nó sempre fez.
+/// - `1` **Stream** — o ponto **MAIS PRÓXIMO** da porta `target`, por elemento.
+///
+/// ⚠️ **Isto não era exprimível por composição, e a célula tinha razão:** nada no
+/// catálogo entregava *"o ponto mais próximo daquele outro stream"* a uma força. O
+/// `motion.pin_constraint` e o `motion.look_at` leem o stream que os atravessa, não um
+/// segundo.
+///
+/// ⚠️ **Empate de distância desempata pelo ÍNDICE MAIS BAIXO** — uma ordem total, para
+/// que dois alvos equidistantes deem a mesma resposta em toda plataforma.
+///
+/// ⚠️ **No modo `Stream` com a porta VAZIA não há força nenhuma**, e é de propósito: um
+/// modo que diz *"o alvo é um stream"* e não encontra stream **não tem alvo**. Cair nos
+/// params ali daria a impressão de que o modo não faz nada — o knob morto que esta casa
+/// acabou de pagar noutro nó. ⛔ E `register_required_inputs` não serve: aquele canal é
+/// incondicional, e marcaria todo atrator em modo `Point`.
+///
+/// ⚠️ **Ligado, ele RECUSA o device** (`applicable`, a porta dos irmãos
+/// `motion.combine`/`motion.cull`/`field.index_range`): o vizinho mais próximo dentro de
+/// uma porta-template precisa do leitor `ColumnAccess::SourceRead`, que hoje só existe
+/// emparelhado com um `StreamOp::SourceRows` — um nó que MUDA a contagem. Este preserva-a.
+/// Desligado (o default) nada recua.
+const TARGET_MODE: &str = "target_mode";
+
+/// **O TETO DA ANTECIPAÇÃO, em segundos** (doc 89 folha 02 — POP Attract *Force
+/// Method: Follow / Predict Intercept*).
+///
+/// Cada partícula mira onde o alvo dela **vai estar** daqui a `t` segundos, com
+/// `t = min(distância / velocidade própria, lead)`. É o intercepto **POR PARTÍCULA** que
+/// a célula pedia: o tempo-de-chegada é dela, não um número global — a que está longe e
+/// devagar antecipa mais que a que já vai chegando.
+///
+/// ⚠️ **O `lead` é um TETO e não um multiplicador, e é isso que remove a
+/// singularidade.** `distância / velocidade` explode com a partícula parada; um tecto
+/// escrito pelo artista corta-o num número que ele próprio escolheu, em vez de numa
+/// constante inventada. Parada (velocidade 0) ela mira o tecto inteiro, que é a leitura
+/// certa: *não sei quanto vou demorar, então uso o horizonte que me deram.*
+///
+/// ⚠️ **`lead = 0` é a identidade EXACTA** — `t = 0`, a mira é o próprio alvo, e o nó
+/// devolve o que sempre devolveu.
+///
+/// ⚠️ **Ele só vive no modo `Stream`**, e o painel esconde-o fora dele: a antecipação
+/// precisa da VELOCIDADE do alvo, e um par de params não tem velocidade.
+const LEAD: &str = "lead";
 
 /// An edge curve on a pre-clamped `s ∈ [0,1]` — the same transcendental-free
 /// vocabulary as `motion.falloff` (HR-5). Endpoint-exact (`0→0`, `1→1`).
@@ -87,6 +155,46 @@ fn curve(kind: i32, s: f32) -> f32 {
         2 => s * s * (3.0 - 2.0 * s),                   // Smooth (smoothstep)
         _ => s * s * s * (s * (s * 6.0 - 15.0) + 10.0), // Smoother (smootherstep)
     }
+}
+
+/// O ALVO de um elemento — o ponto para onde ele é puxado, já LIDERADO.
+///
+/// `None` quando não há alvo nenhum (modo `Stream`, porta vazia): quem chama não soma
+/// contribuição, e nem sequer um zero — ver [`TARGET_MODE`] para o porquê.
+///
+/// ⚠️ **O vizinho mais próximo escolhe-se pela posição de AGORA, não pela liderada** —
+/// é o que a referência faz, e o contrário seria um ponto fixo a resolver por iteração.
+fn aim_at(
+    p: [f32; 2],
+    my_vel: [f32; 2],
+    tgt_p: &[[f32; 2]],
+    tgt_v: &[[f32; 2]],
+    lead: f32,
+) -> Option<[f32; 2]> {
+    let mut best = usize::MAX;
+    let mut best_d2 = f32::INFINITY;
+    for (j, q) in tgt_p.iter().enumerate() {
+        let (dx, dy) = (q[0] - p[0], q[1] - p[1]);
+        let d2 = dx * dx + dy * dy;
+        // `<` e não `<=`: o empate fica com o índice MAIS BAIXO, uma ordem total.
+        if d2 < best_d2 {
+            best_d2 = d2;
+            best = j;
+        }
+    }
+    let q = *tgt_p.get(best)?;
+    if lead <= 0.0 {
+        return Some(q);
+    }
+    // O tempo-de-chegada DESTA partícula, tectado pelo horizonte que o artista deu.
+    let speed = (my_vel[0] * my_vel[0] + my_vel[1] * my_vel[1]).sqrt();
+    let t = if speed > 0.0 {
+        (best_d2.sqrt() / speed).min(lead)
+    } else {
+        lead
+    };
+    let v = tgt_v.get(best).copied().unwrap_or([0.0, 0.0]);
+    Some([q[0] + v[0] * t, q[1] + v[1] * t])
 }
 
 /// GPU compute kernel (GPU/M5 **Fase 3**, ADR-0126 side channel): the exact
@@ -160,7 +268,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     count_law: None,
     variant_by_param: None,
-    applicable: None,
+    // A recusa do modo `Stream` — ver [`TARGET_MODE`] para o mecanismo.
+    applicable: Some(|p| p(TARGET_MODE) < 0.5),
 };
 
 struct ForceAttractor;
@@ -171,7 +280,16 @@ impl NodeOp for ForceAttractor {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let target = [ctx.param("target_x"), ctx.param("target_y")];
+        let point = [ctx.param("target_x"), ctx.param("target_y")];
+        let stream_mode = ctx.param(TARGET_MODE) >= 0.5;
+        let lead = ctx.param(LEAD).max(0.0);
+        // ⚠️ A porta do alvo é lida ANTES do input 0 e clonada: os dois `ctx.input`
+        // não podem coexistir emprestados, e ela só é tocada no modo que a lê.
+        let (tgt_p, tgt_v) = if stream_mode {
+            (vec2_col(ctx.input(1), "P"), vec2_col(ctx.input(1), "vel"))
+        } else {
+            (Vec::new(), Vec::new())
+        };
         let strength = ctx.param("strength");
         let radius = ctx.param("radius").max(DEAD_ZONE);
         let kind = ctx.param("curve").round() as i32;
@@ -182,6 +300,16 @@ impl NodeOp for ForceAttractor {
             // (bit-identical, no reduction). GPU/M5 Fase 0.
             let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
                 let p = vec2_at(input, "P", i, [0.0, 0.0]);
+                let target = if stream_mode {
+                    let my_vel = vec2_at(input, "vel", i, [0.0, 0.0]);
+                    match aim_at(p, my_vel, &tgt_p, &tgt_v, lead) {
+                        Some(t) => t,
+                        // Sem alvo não há força — nem um zero somado por engano.
+                        None => return [0.0, 0.0],
+                    }
+                } else {
+                    point
+                };
                 let dx = target[0] - p[0];
                 let dy = target[1] - p[1];
                 let d = (dx * dx + dy * dy).sqrt();
@@ -217,6 +345,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     // ADR-0130: per-element force: accumulates accel, identity preserved.
     reg.register_dense_window(MANIFEST.id);
@@ -277,6 +406,53 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Toggle,
     },
+    // ⚠️ Um Enum NOMEADO: o segundo modo precisa de um FIO na porta `target`, e é o
+    // rótulo *"Stream"* que faz o artista procurá-la.
+    ParamUiHint {
+        param: "target_mode",
+        label: "Target",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Point", "Stream"],
+        },
+    },
+    // O tecto da antecipação. ⚠️ A faixa para em 2 s porque acima disso a mira sai do
+    // raio de influência antes de a força chegar lá — curso morto, não mais alcance.
+    ParamUiHint {
+        param: "lead",
+        label: "Predict",
+        min: 0.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// **CADA CONTROLE DO ALVO SÓ APARECE NO MODO QUE O LÊ.**
+///
+/// ⚠️ **Escrito no mesmo dia em que um smoke pagou a lição** (Enio, 2026-08-21, sobre o
+/// `field.remap`: *"Curve offset e outros parâmetros não têm efeito"* — ele estava num
+/// modo com dois knobs de outro modo vivos ao lado). Aqui a armadilha é a mesma e
+/// simétrica: em `Stream` os dois `Target X/Y` não são lidos, e em `Point` a
+/// antecipação não tem velocidade de alvo para ler.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "target_x",
+        when: "target_mode",
+        values: &[0],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "target_y",
+        when: "target_mode",
+        values: &[0],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "lead",
+        when: "target_mode",
+        values: &[1],
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -289,6 +465,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 /// that is wrong is worse than a unit that is missing, because the artist can read
 /// a bare number but a mislabelled one teaches them something false.
 static PARAM_UNITS: &[ParamUnitDecl] = &[
+    // A antecipação é um TEMPO — a linha do painel diz o que o número É (doc 88).
+    ParamUnitDecl {
+        param: "lead",
+        unit: ParamUnit::Seconds,
+    },
     ParamUnitDecl {
         param: "target_x",
         unit: ParamUnit::Length,
@@ -304,187 +485,5 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::attr::{Column, Stream};
-    use ph2d_nodegraph::cook::{Cook, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
-
-    // Instances at x = 2 (inside R=4), x = 9 (outside), and at the target.
-    static SRC_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("force.attractor.test.src"),
-        name: "force.attractor.test.src",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Src;
-    impl NodeOp for Src {
-        fn manifest(&self) -> &'static NodeManifest {
-            &SRC_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            ctx.emit(
-                Stream::new(3)
-                    .with("P", Column::Vec2(vec![[2.0, 0.0], [9.0, 0.0], [0.0, 0.0]]))
-                    .with("falloff", Column::Scalar(vec![1.0, 1.0, 1.0])),
-            );
-        }
-    }
-    struct Ops;
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == SRC_MAN.id => Some(&Src),
-                t if t == MANIFEST.id => Some(&ForceAttractor),
-                _ => None,
-            }
-        }
-    }
-
-    fn accel_with(params: &[(&str, f32)]) -> Vec<[f32; 2]> {
-        let mut g = Graph::new();
-        let src = g.add_node("force.attractor.test.src");
-        let att = g.add_node("force.attractor");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (att, 0),
-            delayed: false,
-        })
-        .unwrap();
-        for (name, v) in params {
-            g.set_param(att, *name, *v);
-        }
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, att, 0.0).unwrap();
-        match out[0].as_stream().get("accel").unwrap() {
-            Column::Vec2(v) => v.clone(),
-            _ => panic!("accel"),
-        }
-    }
-
-    #[test]
-    fn pulls_toward_the_target_inside_the_radius_only() {
-        let a = accel_with(&[("curve", 0.0)]); // Linear: legible closed form
-        // x=2, target 0, R=4: w = 1 − 2/4 = 0.5 → accel = −5·0.5 = −2.5 in X.
-        assert!((a[0][0] + 2.5).abs() < 1e-4, "inside: pulled toward target");
-        assert_eq!(a[0][1], 0.0);
-        // x=9 is outside R=4 → untouched.
-        assert_eq!(a[1], [0.0, 0.0], "outside the radius: zero");
-        // At the target (dead zone) → zero, not NaN.
-        assert_eq!(a[2], [0.0, 0.0], "dead zone: zero");
-    }
-
-    #[test]
-    fn repel_flips_the_sign() {
-        let a = accel_with(&[("curve", 0.0), ("repel", 1.0)]);
-        assert!((a[0][0] - 2.5).abs() < 1e-4, "repel pushes away");
-    }
-
-    #[test]
-    fn falloff_column_gates_the_force() {
-        // Same graph but the src emits falloff 0.5 on instance 0 → half force.
-        static HALF_MAN: NodeManifest = NodeManifest {
-            id: NodeTypeId::of("force.attractor.test.half"),
-            name: "force.attractor.test.half",
-            inputs: &[],
-            outputs: &[PortSpec {
-                name: "out",
-                ty: INST_VEC2,
-            }],
-            effect: Effect::Pure,
-            clock: Clock::Frame,
-            params: &[],
-            lowerings: &[LoweringKind::Cpu],
-        };
-        struct Half;
-        impl NodeOp for Half {
-            fn manifest(&self) -> &'static NodeManifest {
-                &HALF_MAN
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                ctx.emit(
-                    Stream::new(1)
-                        .with("P", Column::Vec2(vec![[2.0, 0.0]]))
-                        .with("falloff", Column::Scalar(vec![0.5])),
-                );
-            }
-        }
-        struct HalfOps;
-        impl OpResolver for HalfOps {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == HALF_MAN.id => Some(&Half),
-                    t if t == MANIFEST.id => Some(&ForceAttractor),
-                    _ => None,
-                }
-            }
-        }
-        let mut g = Graph::new();
-        let src = g.add_node("force.attractor.test.half");
-        let att = g.add_node("force.attractor");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (att, 0),
-            delayed: false,
-        })
-        .unwrap();
-        g.set_param(att, "curve", 0.0);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &HalfOps, att, 0.0).unwrap();
-        match out[0].as_stream().get("accel").unwrap() {
-            Column::Vec2(v) => assert!((v[0][0] + 1.25).abs() < 1e-4, "falloff 0.5 halves it"),
-            _ => panic!("accel"),
-        }
-    }
-
-    #[test]
-    fn two_attractors_accumulate() {
-        let mut g = Graph::new();
-        let src = g.add_node("force.attractor.test.src");
-        let a1: NodeId = g.add_node("force.attractor");
-        let a2: NodeId = g.add_node("force.attractor");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (a1, 0),
-            delayed: false,
-        })
-        .unwrap();
-        g.connect(Edge {
-            from: (a1, 0),
-            to: (a2, 0),
-            delayed: false,
-        })
-        .unwrap();
-        for n in [a1, a2] {
-            g.set_param(n, "curve", 0.0);
-        }
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, a2, 0.0).unwrap();
-        match out[0].as_stream().get("accel").unwrap() {
-            Column::Vec2(v) => assert!((v[0][0] + 5.0).abs() < 1e-4, "chained forces sum"),
-            _ => panic!("accel"),
-        }
-    }
-
-    #[test]
-    fn curves_are_endpoint_exact() {
-        for k in 0..4 {
-            assert_eq!(curve(k, 0.0), 0.0, "curve {k} at 0");
-            assert!((curve(k, 1.0) - 1.0).abs() < 1e-6, "curve {k} at 1");
-        }
-    }
-
-    #[test]
-    fn registers_and_resolves() {
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-    }
-}
+#[path = "tests.rs"]
+mod tests;

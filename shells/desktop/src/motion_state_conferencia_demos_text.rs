@@ -36,7 +36,7 @@ pub(crate) const FAN_DEG: f32 = 55.0;
 
 /// `text → [instance_field → drive] → transform → output`, duas vezes. Devolve os
 /// DOIS sinks (o de cima é o controle).
-pub(super) fn build_text_demo_document(
+pub(crate) fn build_text_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {

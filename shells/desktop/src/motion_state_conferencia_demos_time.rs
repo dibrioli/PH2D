@@ -202,7 +202,7 @@ static ROWS_TABLE: &[Row] = &[
 
 /// `grid → scale → [<nó> → drive(Y)] → transform → output`, dez vezes.
 /// Devolve os DEZ sinks.
-pub(super) fn build_time_demo_document(
+pub(crate) fn build_time_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {

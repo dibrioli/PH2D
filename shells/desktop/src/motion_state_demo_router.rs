@@ -19,7 +19,7 @@ use super::*;
 /// não acusa (ele mede o piso). O que acusa é a cena nova nunca ser diagnosticada —
 /// então esta linha anda junto com o braço novo do `match`.
 #[cfg(test)]
-const MAX_DEMO_LEVEL: u32 = 73;
+const MAX_DEMO_LEVEL: u32 = 74;
 
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
 /// VAZIA com que o editor abre.
@@ -381,6 +381,7 @@ pub(crate) fn build_level(
         Some("71") => conferencia::force_family(doc, registry),
         Some("72") => conferencia::color_family(doc, registry),
         Some("73") => conferencia::rank_family(doc, registry),
+        Some("74") => conferencia::goal_family(doc, registry),
         _ => Vec::new(),
     }
 }

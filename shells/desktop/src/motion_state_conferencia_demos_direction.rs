@@ -39,7 +39,7 @@ pub(crate) const SPREAD: f32 = 3.4;
 
 /// `grid → scale → integrate ← (vortex → drag) → [attr → drive] → transform → output`, duas
 /// vezes. Devolve os DOIS sinks.
-pub(super) fn build_direction_demo_document(
+pub(crate) fn build_direction_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {

@@ -15,6 +15,16 @@ pub(crate) fn falloff_at(stream: &Stream, i: usize) -> f32 {
 }
 
 /// A `Vec2` column element (absent / wrong-typed / short → `default`).
+/// Uma coluna `Vec2` INTEIRA (ausente / mal-tipada → a lista vazia, que é o sinal de
+/// *"nada ligado"*). O irmão do [`vec2_at`] para quem precisa do stream todo — o alvo
+/// como STREAM lê os pontos da porta-template de uma vez, não elemento a elemento.
+pub(crate) fn vec2_col(stream: &Stream, name: &str) -> Vec<[f32; 2]> {
+    match stream.get(name) {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
 pub(crate) fn vec2_at(stream: &Stream, name: &str, i: usize, default: [f32; 2]) -> [f32; 2] {
     match stream.get(name) {
         Some(Column::Vec2(v)) => v.get(i).copied().unwrap_or(default),

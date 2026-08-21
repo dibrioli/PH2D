@@ -46,7 +46,7 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que as JANELAS de 2026-08-19/21 fecharam (a conferência foi de **P1 59 → 12**)
+### §1.1 — O que as JANELAS de 2026-08-19/21 fecharam (a conferência foi de **P1 59 → 10**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: as janelas fecharam
 **trinta e duas** e ABRIRAM **duas**, ambas por medição no meio de uma wave. Uma conferência que só
@@ -72,6 +72,7 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | **folha 02 (`force.*`): TRÊS células** — `scale_x`/`scale_y` do `drag` · `curve` do `vortex` · a coluna `density` do `buoyancy`. ⚠️ **As três tinham veredito «NÃO»/«PARCIAL», e as três estavam certas *sobre a COMPOSIÇÃO*:** o arrasto anisotrópico é impossível de compor e trivial DENTRO do nó que escreve o `accel`; a densidade por-instância tinha escritor no catálogo o tempo todo (o canal **Custom** do `motion.drive`). A folha desce de **5 para 2 P1**, e as duas que sobram são de outra espécie (o alvo = outro STREAM) | `=71` |
 | **V** | ✅ **folha 11 (`fx.*`) FECHOU: cinco células, três nós, DUAS arquiteturas** — `softness` do `drop_shadow` (disco de Vogel, 16 taps, densidade preservada por raízes) · `stretch`+`angle`+`clamp` do `glow` (uniformes de PASSE: base 2×2 na tenda + teto do bright-pass) · `ParamUnit`/`ParamHardMax` nos três (a família tinha **ZERO** dos quatro canais). ⚠️ **A cerca C1 foi REESCRITA e não removida**: o borrão raster continua fora (o passe é aditivo, *um halo escuro não pode ser somado*); o que caiu foi a frase sobre a *pilha de fantasmas*, que era sobre ENCADEAR. ⚠️ **Uma objecção da célula estava 4× desatualizada** (`MAX_INSTANCES` é `262_144`, não `65_536`) | `=70` |
 | **V** | ✅ **folha 05 (transform) FECHOU: cinco células, cinco nós** — `space` (World/Local) do `move` · `use_falloff_y` do `scale` **+** `mask_channel` do `falloff` (uma célula, dois nós) · `flip_rot` do `mirror` · `reindex` do `mirror` **e** do `kaleidoscope` · `carry_rotation` do `orbit`. ⚠️ **As cinco eram a MESMA pergunta em cinco lugares**: o nó sabe o que cada ELEMENTO é (orientação, posição na lista, máscara) e respondia como se a lista fosse um bloco. Os 3 P2 que sobram não são dessa família | `=69` |
+| **V** | ✅ **folha 02 (`force.*`) FECHOU: as duas células que sobravam, e as duas eram do `force.attractor`** — `Target = Point/Stream` (a porta `target`: cada peça puxada pelo ponto MAIS PRÓXIMO daquele stream) e `Predict` (o tecto em segundos: `t = min(d/velocidade própria, lead)`, o intercepto **POR partícula**). ⚠️ **A segunda só existia por causa da primeira:** antecipar precisa da VELOCIDADE do alvo, e um par de params não tem velocidade. ⚠️ **`Stream` sem fio não faz força nenhuma**, de propósito — cair nos params ali seria o knob morto que o Enio acabara de reportar noutro nó | `=74` |
 | **V** | ✅ **folha 08 (stream & utilidade) FECHOU: as duas células que sobravam, de espécies diferentes** — o `reindex` do `motion.cull` (**defeito**: as colunas de identidade descreviam a lista de ANTES, e o degradê parava a meio) e o **`field.shape`**, nó NOVO (**ausência**: nem o `motion.falloff` nem nenhum `field.*` aceitava geometria como fonte de máscara — o gap era dos dois lados da porta). ⚠️ O `reindex` escreve **as DUAS** colunas, incluindo em stream que não as trazia: meia cura faz a rampa alcançar *metade, duas vezes* | `=73` |
 | **V** | ✅ **folha 10 (`field.*`) FECHOU: os 2 P1 estruturais** — `key = Attribute` + porta `attr` no `field.index_range` (o **posto** sem reordenar o stream) e `curve_offset` no `field.remap` (deslocar a curva, com wrap). ⚠️ **Uma medição ENCOLHEU um item:** o *Auto Range* citado ao lado do rank já era exprimível (`value.attribute → value.normalize → motion.drive(Falloff)`, device-resident), então só o posto era gap. ⚠️ E a guarda `offset == 0 ⇒ devolve t` do deslocamento é **load-bearing**: `x − floor(x)` leva `1.0` a `0.0`, e `t = 1` é o que toda peça a máscara cheia entrega | `=73` |
 | **V** | ✅ **folha 09 (cor) FECHOU: três células, dois nós** — `blend` (Mix·Add·Subtract·Multiply·Divide) do `motion.tint` · o `Offset` do `motion.color_array` como **CAMPO** (a escada `0/1/n`; a lei antiga lia `.first()` e DESCARTAVA o campo em silêncio) · e o **kernel de GPU** do `color_array`, que era o único dos quatro nós de cor sem um. ⚠️ **A rota do kernel NÃO é a que a célula sugeria:** ela apontava o canal de LUT do `color_ramp`, mas aquele acessor (`_sample(t)`) LERPA entre vizinhos e duas cores de uma paleta não têm nada entre si — a rota certa é a do `value.pattern` (contagem no slot 0, o corpo **indexa** o buffer). Teto **1024 cores**, do BUFFER, com a tabela ao lado da const | `=72` |
@@ -182,9 +183,50 @@ descreve como **comportamento errado** (o `fx.glow` inerte, o `motion.duplicator
 escala do ponto, o `motion.step` com limitação auto-declarada), e só depois o que é knob
 ausente.
 
+### Grupo W — **a CAÇA AOS KNOBS MORTOS** (multi-agente) · ⚠️ NO FIM DA FILA
+
+> **Pedido do Enio, 2026-08-21**, imediatamente depois de o smoke do `=73` ter achado um:
+> *"Coloque no fim da fila de implementação auditoria multiagêntica a busca de parâmetros
+> mortos como esse."* ⚠️ **Ele disse NO FIM** — as células abertas da conferência vêm
+> primeiro. Isto abre quando a fila acima esvaziar, ou quando ele mandar.
+
+**O que é um knob morto:** um controle que o painel pinta e que **não muda a imagem**. A
+linha já encontrou **quatro espécies distintas**, e elas não se acham com a mesma sonda —
+é por isso que isto é uma varredura e não um grep:
+
+| espécie | caso medido | como se acha |
+|---|---|---|
+| **morto no braço DEFAULT** | `field.remap::curve_offset` — `curve.map_or(t, …)` saía antes de o deslocamento correr, e *sem curva autorada* é o estado em que o nó nasce | mutar o param e cozinhar **a partir do documento em branco**, não de uma fixture já configurada |
+| **inerte no MODO que o painel mostra** | `curvature`/`steps` do mesmo nó, vivos com o contorno em `Curve` | varrer o espaço de MODOS: inerte em *algum* modo e sem `ParamGate` ⇒ acusa |
+| **descartado a JUSANTE** | `motion.color_array::offset` lido por `.first()` — um campo por-instância evaporava | mutar o param **por elemento** e exigir que a saída varie por elemento |
+| **declarado e nunca LIDO** | — (nenhum medido ainda) | cruzar `MANIFEST.params` com os `ctx.param("…")` da crate |
+
+**O método, e é ele que torna a varredura paralelizável:** para cada nó × cada param ×
+cada modo, cozinhar duas vezes com valores diferentes do param e comparar as colunas de
+saída **ao bit**. Idênticas em todo o espaço alcançável ⇒ morto. Cada nó é independente
+de todos os outros ⇒ um agente por família de nós.
+
+⚠️ **A armadilha, e ela já mordeu:** *inerte* não é *morto*. Um param legitimamente
+inerte noutro modo é o que o `ParamGate` existe para esconder — o veredicto tem de
+separar **«inerte em TODO o espaço»** (defeito no nó) de **«inerte em ALGUM modo e não
+gateado»** (defeito no painel). Um audit que colapse os dois devolve uma lista de falsos
+positivos do tamanho do catálogo.
+
+**O que já existe e não se reconstrói:** `measure_node_params` (a sonda que deriva os
+params do registry) · `conferencia_vs_manifesto.py` (cruza a conferência com o manifesto)
+· `measure_scene_layout` (cozinha uma cena e mede o que ela desenha) ·
+`each_pair_actually_differs_in_the_cooked_result` (o molde do gate: comparar colunas
+cozidas, sobre TODAS as colunas).
+
+⚠️ **Isto é uma AUDITORIA, não uma wave de features** — o produto dela é uma tabela de
+acusações com o mecanismo ao lado de cada uma, e as curas entram na fila depois, uma a
+uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação sem cena de smoke
+é uma mudança de comportamento que ninguém olhou.
+
+---
 ---
 
-## §4 — As QUARENTA E OITO LEIS que esta linha pagou para aprender
+## §4 — As QUARENTA E NOVE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -511,6 +553,14 @@ são estilo.
     escrever a resposta ao lado da pergunta). *É a terceira vez que esta linha paga a
     mesma lei: um gate de param não é um gate de produto.*
 
+49. ⚠️ **Uma célula pode DEPENDER de outra da mesma folha, e implementá-las juntas é o
+    que a torna barata.** As duas últimas da folha 02 eram ambas do `force.attractor`:
+    *alvo = outro STREAM* e *Predict Intercept*. A segunda **não existe sem a
+    primeira** — antecipar exige a VELOCIDADE do alvo, e um par de params escalares não
+    tem velocidade. Separadas, a segunda pareceria «arquitetura»; juntas, foi um `min`
+    de duas linhas. *Antes de abrir uma wave, olhe se a célula ao lado é a metade que
+    falta.*
+
 
 ---
 
@@ -559,6 +609,18 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `=74` — a folha 02 inteira (o alvo do atrator, e a mira)
+
+```
+\
+  env PH2D_GPU_COOK_DEMO=74 cargo run -p ph2d-host-desktop --release
+```
+
+Duas linhas, rotuladas no canvas. ⚠️ **SÓ se julga com o PLAY** — uma força acumula em
+`accel` e é o integrador que aplica; parada, as quatro nuvens são iguais. Os alvos são
+os pontos **brancos**, desenhados de propósito: um alvo invisível faz a cena virar
+adivinha.
 
 ### `=73` — as folhas 08 e 10 inteiras (quatro células, e um nó NOVO)
 

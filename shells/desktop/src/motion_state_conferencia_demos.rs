@@ -75,7 +75,7 @@ fn tint(g: &mut ph2d_nodegraph::graph::Graph, rgb: [f32; 3]) -> NodeId {
 /// nela — os oito sliders de polígono de controle **somem**, porque deixam de ser
 /// lidos. A cena abre nos oito params de propósito: ela é o CONTROLE, o estado a
 /// partir do qual o gesto se faz.
-pub(super) fn build_write_on_demo_document(
+pub(crate) fn build_write_on_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {
@@ -154,7 +154,7 @@ pub(super) fn build_write_on_demo_document(
 /// `scale=2` também translada para (10,0)"*), e ela existe porque o sintoma é
 /// **espacial**: um gate mede as coordenadas e diz o número certo, mas *o layout
 /// fugiu de onde eu o pus* é uma frase sobre o que se vê.
-pub(super) fn build_pivot_demo_document(
+pub(crate) fn build_pivot_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {
@@ -235,7 +235,7 @@ pub(super) fn build_pivot_demo_document(
 ///
 /// ⚠️ **A aresta de realimentação é escrita à MÃO** — o editor a plumba ao soltar
 /// um nó, e um documento montado por `add_node` não a ganha.
-pub(super) fn build_formula_force_demo_document(
+pub(crate) fn build_formula_force_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {
@@ -319,7 +319,7 @@ pub(super) fn build_formula_force_demo_document(
 /// nenhum, e o gradiente da borda do campo aparece como uma **torção progressiva**
 /// entre a faixa que mira e a que não mira. Um gate mede o ângulo; o que ele não
 /// sabe dizer é se a transição parece contínua.
-pub(super) fn build_partial_aim_demo_document(
+pub(crate) fn build_partial_aim_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {
@@ -366,7 +366,7 @@ pub(super) fn build_partial_aim_demo_document(
 /// tinta — num campo de quads disjuntos `Add` e `Normal` desenham o mesmo pixel
 /// e a foto não separa os dois. Daí `gap` menor que o `amount`: cada cópia cobre
 /// a vizinha, e é NA sobreposição que `Add` clareia e `Multiply` escurece.
-pub(super) fn build_sink_blend_demo_document(
+pub(crate) fn build_sink_blend_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {
@@ -428,7 +428,7 @@ pub(super) fn build_sink_blend_demo_document(
 /// ⚠️ **`space = World` é o que torna a cena legível:** lido pela FILA o campo
 /// varia com a ordem do elemento na lista e a grade sai listrada; lido no espaço
 /// ele é uma imagem do campo, que é o que se quer julgar.
-pub(super) fn build_noise_kernel_demo_document(
+pub(crate) fn build_noise_kernel_demo_document(
     doc: &mut MotionDoc,
     reg: &NodeRegistry,
 ) -> Option<Vec<NodeId>> {

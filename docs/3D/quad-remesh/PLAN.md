@@ -1452,6 +1452,81 @@ interpolado por Coons afunda para dentro da forma.*
 
 ---
 
+## 4-sexdecies — ⭐⭐ AS LICENÇAS, VERIFICADAS — e o coração do QuadWild é MIT
+
+**Pedido do Enio (2026-08-21):** *"não quero um armengo na engine. Quero portar o
+estado da arte. QuadWild Bi-MDF, Instant Meshes, AutoRemesher."*
+
+⚠️ **O veredito do produto é dele e está aceite:** a foto seguinte à do vinco
+mostrou a topologia e o seguimento de curvatura **piores**. As secções anteriores
+são medição honesta de peças que, somadas, não deram um produto melhor.
+
+### O que se pode portar, verificado ficheiro a ficheiro no clone do oráculo
+
+| peça | onde vive | licença | pode entrar? |
+|---|---|---|---|
+| ⭐⭐ **Bi-MDF — a quantização** | `libs/satsuma` (**libSatsuma**) | **MIT** | ✅ **SIM** |
+| grafo de fluxo | `libs/lemon` | Boost | ✅ |
+| malha | `libs/OpenMesh` | BSD-3 | ✅ |
+| ⛔ campo cruzado (MIQ) | `libs/CoMISo` | **GPL-3** | ⛔ |
+| ⛔ traçado de separatrizes | `libs/xfield_tracer` | **GPL-3** | ⛔ |
+| ⛔ estruturas + cola | `libs/vcglib`, `quadwild` | **GPL-3** | ⛔ |
+| ✅ **Instant Meshes** | já portado (`ph2d-quadflow`, 5 117 LOC) | BSD-3 | ✅ **já cá está** |
+| ⛔ **AutoRemesher** | código próprio MIT, **mas** embute **CoMISo (GPL-3)** e **CGAL** | ⛔ | ⛔ |
+
+⭐⭐ **A peça que faz o QuadWild ser estado da arte em QUALIDADE — o solver Bi-MDF —
+é MIT, do próprio autor do paper, e são 3 884 linhas com uma dependência
+permissiva.** ⚠️ Isto **muda o ADR-0161**: ele diz *"clean-room a partir dos
+papers"* porque presumia que a fonte inteira era GPL. Para esta peça o clean-room
+**não é necessário** — um porte fiel com atribuição é legal, e é o mesmo padrão que
+o `ph2d-quadflow` (BSD) e o sculpt (MIT) já usam nesta árvore.
+
+⛔ **AutoRemesher está FORA e não é discutível:** o código dele é MIT mas os
+`ACKNOWLEDGEMENTS` listam **CoMISo (GPL-3)** e **CGAL** (GPL ou licença comercial
+paga). *Um binário MIT que embute GPL é um binário GPL.*
+
+### ⭐⭐ A fixtura que reproduz a FOTO, e que nunca esteve num gate
+
+Os dois backends, no mesmo gesto, na mesma peça:
+
+| fixtura | backend | quads | **bordo** | dobradas | relógio |
+|---|---|---|---|---|---|
+| amassada, `d=0,5` | GLOBAL | 540 (100 %) | 0 | **0,0 %** | 830 ms |
+| amassada, `d=0,5` | local | 378 (83 %) | 3 | 0,8 % | 267 ms |
+| ⛔ **com BICO**, `d=0,5` | **GLOBAL** | 260 (100 %) | ⛔ **17** | ⛔ **6,5 %** | 314 ms |
+| ⛔ **com BICO**, `d=0,5` | local | 177 (63 %) | **0** | **0,0 %** | 66 ms |
+| com CRISTAS, `d=1,0` | GLOBAL | 987 (100 %) | 0 | 0,0 % | 843 ms |
+
+⛔⛔ **Na `hooked_sphere` — a esfera-com-bico, a malha de DIAGNÓSTICO do corpus — a
+cadeia global devolve a casca ABERTA**: 11 a 22 arestas de bordo. Não são dobras:
+são **buracos**. E é exactamente o que a foto do Enio mostra.
+
+⛔ **E o slider quase não move a contagem ali:** 247 · 260 · 287 · 403 em todo o
+curso, contra 429 · 540 · 802 · 1 298 na amassada.
+
+⚠️ **A `hooked_sphere` está no corpus desde o §1.2 como *"o gate de regressão do
+§9"* — e nunca entrou num gate.** Todos os gates do gesto usam a `wrinkled_sphere`,
+onde tudo dá zero. *A fixtura que contém o fenómeno estava escrita no plano e não
+estava no código.*
+
+### O plano que substitui o improviso
+
+| # | peça | fonte | licença |
+|---|---|---|---|
+| 1 | ⛔ **os buracos na `hooked_sphere`** | nosso defeito | — |
+| 2 | ⭐ **Instant Meshes como backend de PRIMEIRA CLASSE** | já portado | BSD-3 |
+| 3 | ⭐ **porte fiel do libSatsuma** (Bi-MDF exacto) | `libs/satsuma` | **MIT** |
+| 4 | **parametrização por patch** (§4-quindecies) | clássica, sem dono | — |
+| 5 | **campo**: o do Instant Meshes no lugar do meu MIQ | já portado | BSD-3 |
+| 6 | ⛔ traçado do QuadWild | GPL | **não entra** |
+
+⚠️ **A quantização não é o buraco:** a minha prova o ótimo em todas as seis malhas
+do corpus. O porte do libSatsuma vale pela garantia da referência e pelo relógio,
+não por corrigir um defeito medido. ⇒ **A ordem acima é por VALOR MEDIDO, não por
+prestígio da peça.**
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |

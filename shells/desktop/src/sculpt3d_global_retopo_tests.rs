@@ -284,3 +284,113 @@ fn every_point_of_the_detail_slider_returns_a_piece_on_the_global_chain() {
         "os cinco pontos do slider deram a MESMA contagem {counts:?}: o knob nao faz nada"
     );
 }
+
+/// ⭐⭐ **OS DOIS BACKENDS, LADO A LADO, NA MESMA PEÇA.**
+///
+/// ⚠️ **É a medição que decide qual deles o botão deve chamar HOJE**, e ela não
+/// existia: o global entrou por decisão de arquitetura (ADR-0161) e nunca foi
+/// comparado com o local **no mesmo gesto, na mesma malha**.
+///
+/// As duas colunas que importam são de espécies diferentes:
+/// * o LOCAL entrega ~70 % de quads e casca furada, mas a grade **segue a
+///   curvatura** e nunca dobra;
+/// * o GLOBAL entrega 100 % de quads e casca fechada, e **dobra** onde o patch é
+///   grande.
+#[test]
+#[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
+fn the_two_backends_measured_on_the_same_piece() {
+    let gpu = gpu_or_skip!();
+    // ⚠️ **As TRÊS fixturas do corpus que têm feição**, e não só a amassada: a
+    // `hooked` é a esfera-com-bico do diagnóstico, e a `ridged` tem cristas. Uma
+    // fixtura de ondulação rasa **não contém o fenómeno** que a foto do Enio
+    // mostra — um vinco fundo com a grade a passar por cima.
+    for (fixture, make) in [("amassada", 0u8), ("com BICO", 1), ("com CRISTAS", 2)] {
+        for detail in [0.25f32, 0.5, 0.75, 1.0] {
+            let mesh = || match make {
+                1 => crate::sculpt3d::fixtures::hooked_sphere(),
+                2 => crate::sculpt3d::fixtures::ridged_sphere(),
+                _ => crate::sculpt3d::fixtures::wrinkled_sphere(),
+            };
+            let mut a = {
+                let mut s = Sculpt3dScene::new(&gpu.device, mesh(), 1.0);
+                s.viewport = (900, 700);
+                s
+            };
+            let g = a.quad_remesh_global(detail);
+            let mut b = {
+                let mut s = Sculpt3dScene::new(&gpu.device, mesh(), 1.0);
+                s.viewport = (900, 700);
+                s
+            };
+            let l = b.quad_remesh(detail, 0.0);
+            let fold = |s: &Sculpt3dScene| {
+                let pos = s.mesh().positions();
+                let bb = s.mesh().bounds();
+                let c = [
+                    (bb.min[0] + bb.max[0]) * 0.5,
+                    (bb.min[1] + bb.max[1]) * 0.5,
+                    (bb.min[2] + bb.max[2]) * 0.5,
+                ];
+                #[allow(clippy::cast_precision_loss)]
+                s.mesh()
+                    .faces()
+                    .iter()
+                    .filter(|f| {
+                        let v = f.verts();
+                        let (p0, p1, p2) =
+                            (pos[v[0] as usize], pos[v[1] as usize], pos[v[2] as usize]);
+                        let u = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+                        let w = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
+                        let n = [
+                            u[1].mul_add(w[2], -(u[2] * w[1])),
+                            u[2].mul_add(w[0], -(u[0] * w[2])),
+                            u[0].mul_add(w[1], -(u[1] * w[0])),
+                        ];
+                        let mut m = [0.0f32; 3];
+                        for &i in v {
+                            let q = pos[i as usize];
+                            for k in 0..3 {
+                                m[k] += q[k] / v.len() as f32;
+                            }
+                        }
+                        n[0].mul_add(m[0] - c[0], n[1].mul_add(m[1] - c[1], n[2] * (m[2] - c[2])))
+                            < 0.0
+                    })
+                    .count()
+            };
+            match (g, l) {
+                (Ok(gr), Ok(lr)) => {
+                    let gf = fold(&a);
+                    let lf = fold(&b);
+                    #[allow(clippy::cast_precision_loss)]
+                    {
+                        println!(
+                            "{fixture:<12} d={detail:.2} | GLOBAL {:<5} quads ({:.0}% quads) {:<4} irreg \
+                         {:<4} bordo {:<4} dobradas ({:.1} %) {:.0} ms",
+                            gr.quads,
+                            100.0 * gr.quads as f64 / (gr.quads + gr.non_quads).max(1) as f64,
+                            gr.irregular,
+                            gr.holes,
+                            gf,
+                            100.0 * gf as f64 / gr.quads.max(1) as f64,
+                            gr.ms
+                        );
+                        println!(
+                            "             | LOCAL  {:<5} quads ({:.0}% quads) {:<4} irreg \
+                         {:<4} bordo {:<4} dobradas ({:.1} %) {:.0} ms",
+                            lr.quads,
+                            100.0 * lr.quads as f64 / (lr.quads + lr.non_quads).max(1) as f64,
+                            0,
+                            lr.holes,
+                            lf,
+                            100.0 * lf as f64 / lr.quads.max(1) as f64,
+                            lr.ms
+                        );
+                    }
+                }
+                (g, l) => println!("{fixture} detail={detail:.2} | global {g:?} local {l:?}"),
+            }
+        }
+        println!("── {fixture} ──");
+    }
+}

@@ -182,6 +182,9 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::CTX_MENU_HIER_DUPLICATE, "Duplicate", None),
             (ids::CTX_MENU_HIER_ADD_CHILD, "Add Child", None),
             (ids::CTX_MENU_HIER_MERGE_SPRITES, "Merge Sprites", None),
+            // A mesma fusão, mas reversível: cada sprite fica numa camada do Painter. Vizinha da
+            // de cima porque a escolha entre as duas só existe neste instante.
+            (ids::CTX_MENU_HIER_MERGE_TO_LAYERS, "Merge to Layers", None),
             // Vizinho do Merge de propósito: os dois juntam a seleção num objeto. O Merge FUNDE
             // os pixels e destrói os originais; este ARRANJA-os e mantém cada peça viva e
             // editável dentro da folha. A ordem lê-se como "junte-os" → "quão junto?".

@@ -28,6 +28,16 @@ use ph2d_editor_core::screens::hero::{HeroSelection, HierReparentIntent, ViewFoc
 /// se afrouxa uma vez por linha nova não é um teto.*
 ///
 /// A cadeia é `first-match-wins` sobre ids: a ordem dos braços não é semântica, só a do guarda.
+///
+/// ⚠️ **O GUARDA É UM SEGUNDO SÍTIO A ACTUALIZAR, e ele apanhou-me** (2026-08-21). As duas linhas
+/// novas — `Merge to Layers` e `Export Image…` — foram ligadas na cadeia abaixo e ficaram **mortas
+/// na mesma**: o guarda enumera os ids que passam, e quem não está nele volta antes de chegar à
+/// cadeia. Quem acrescentar uma linha ao menu tem de a acrescentar **duas vezes**, aqui e lá.
+///
+/// O gate `every_hierarchy_row_menu_entry_dispatches_something` foi quem o disse, com os dois
+/// rótulos pelo nome — e é a razão de este esquecimento ter custado um minuto em vez de semanas,
+/// como custou ao *"Use as Brush Shape"* que o fez nascer. *A cura de raiz é o guarda ler a mesma
+/// tabela que o overlay pinta; enquanto não for, é o gate que segura.*
 fn try_context_menu_row(
     state: &mut state::HierarchyState,
     host: &mut dyn PanelHostInternal,
@@ -39,10 +49,12 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_DELETE
         || id == ids::CTX_MENU_HIER_RENAME
         || id == ids::CTX_MENU_HIER_MERGE_SPRITES
+        || id == ids::CTX_MENU_HIER_MERGE_TO_LAYERS
         || id == ids::CTX_MENU_HIER_PACK_SHEET
         || id == ids::CTX_MENU_HIER_ARRANGE_SHEET
         || id == ids::CTX_MENU_HIER_BAKE_SHEET
         || id == ids::CTX_MENU_HIER_EXPORT_SHEET
+        || id == ids::CTX_MENU_HIER_EXPORT_IMAGE
         || id == ids::CTX_MENU_HIER_REMOVE_FROM_SHEET
         || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE
         || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE
@@ -76,6 +88,8 @@ fn try_context_menu_row(
             host.bus_mut().push(EditorAction::HierDelete { row });
         } else if id == ids::CTX_MENU_HIER_MERGE_SPRITES {
             host.bus_mut().push(EditorAction::HierMergeSprites { row });
+        } else if id == ids::CTX_MENU_HIER_MERGE_TO_LAYERS {
+            host.bus_mut().push(EditorAction::HierMergeToLayers { row });
         } else if id == ids::CTX_MENU_HIER_PACK_SHEET {
             host.bus_mut().push(EditorAction::HierPackSheet { row });
         } else if id == ids::CTX_MENU_HIER_ARRANGE_SHEET {

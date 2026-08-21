@@ -38,6 +38,9 @@ use ph2d_editor::{Toast, ToastQueue};
 use ph2d_render::{Sprite, SpriteRenderer};
 
 use crate::EPS_PIXELS_PER_METER;
+use crate::hero_intents::sprite_merge_result::{
+    MergeResult, MergedLayers, last_merge_result_set, last_merged_layers_set,
+};
 use crate::hero_intents::texture_edit;
 
 /// Per-source record gathered in the read pass and reused twice (for
@@ -92,6 +95,12 @@ struct SrcRecord {
 pub(crate) fn drain_merge_sprites(
     entity_bits_list: Vec<u64>,
     primary_bits: u64,
+    // **Guardar cada fonte como uma CAMADA** (plano `docs/Sprite_projeto/18` W10, Enio
+    // 2026-08-21). A geometria é a mesma — mesma união, mesmo warp, mesmo resultado no ecrã —, e o
+    // que muda é que cada fonte fica também no seu próprio buffer, para o documento do Painter os
+    // receber como camadas. ⚠️ Custa N buffers do tamanho da saída em vez de um: é por isso que é
+    // um MODO e não o comportamento de sempre.
+    to_layers: bool,
     project_pixels_per_meter: f32,
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
@@ -356,6 +365,12 @@ pub(crate) fn drain_merge_sprites(
     // canonical Porter-Duff "over" without re-multiplying by alpha.
     let n_pixels = (out_w as usize) * (out_h as usize);
     let mut out_rgba = vec![0u8; n_pixels * 4];
+    // Um buffer por fonte, só no modo camadas — ver o parâmetro `to_layers`.
+    let mut layer_rgba: Vec<Vec<u8>> = if to_layers {
+        vec![vec![0u8; n_pixels * 4]; srcs.len()]
+    } else {
+        Vec::new()
+    };
     for out_y in 0..out_h {
         let wy = union_max_y - (out_y as f32 + 0.5) / out_pm;
         for out_x in 0..out_w {
@@ -364,7 +379,8 @@ pub(crate) fn drain_merge_sprites(
             let mut acc_g = 0.0_f32;
             let mut acc_b = 0.0_f32;
             let mut acc_a = 0.0_f32;
-            for src in &srcs {
+            let idx = ((out_y as usize) * (out_w as usize) + (out_x as usize)) * 4;
+            for (si, src) in srcs.iter().enumerate() {
                 if wx < src.world_min_x
                     || wx > src.world_max_x
                     || wy < src.world_min_y
@@ -381,6 +397,11 @@ pub(crate) fn drain_merge_sprites(
                 if pa_u8 == 0 {
                     continue;
                 }
+                // ⚠️ A camada guarda o que ESTA fonte pôs neste pixel, **antes** do «over» com as
+                // outras: é isso que faz dela uma camada em vez de uma fatia do resultado.
+                if to_layers {
+                    layer_rgba[si][idx..idx + 4].copy_from_slice(&[pr_u8, pg_u8, pb_u8, pa_u8]);
+                }
                 let pa = pa_u8 as f32 * (1.0 / 255.0);
                 let pr = pr_u8 as f32 * (1.0 / 255.0);
                 let pg = pg_u8 as f32 * (1.0 / 255.0);
@@ -391,7 +412,6 @@ pub(crate) fn drain_merge_sprites(
                 acc_b = pb + acc_b * inv;
                 acc_a = pa + acc_a * inv;
             }
-            let idx = ((out_y as usize) * (out_w as usize) + (out_x as usize)) * 4;
             out_rgba[idx] = (acc_r * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
             out_rgba[idx + 1] = (acc_g * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
             out_rgba[idx + 2] = (acc_b * 255.0 + 0.5).clamp(0.0, 255.0) as u8;
@@ -429,6 +449,20 @@ pub(crate) fn drain_merge_sprites(
     // despawns descendants too — same convention as `HierDelete`.
     let n_sources = srcs.len();
     let n_requested = total_requested;
+    // ⚠️ **Os nomes ANTES do despawn.** Uma camada chamada `sprite_3f00000001` não diz nada a
+    // ninguém; o nome que o artista deu diz tudo — e daqui a três linhas ele já não existe.
+    let layer_names: Vec<String> = if to_layers {
+        srcs.iter()
+            .map(|src| {
+                sim.world()
+                    .get::<ph2d_ecs::Name>(Entity::from_bits(src.bits))
+                    .map(|n| n.as_str().to_string())
+                    .unwrap_or_else(|| "Layer".to_string())
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     for src in &srcs {
         sim.world_mut().despawn(Entity::from_bits(src.bits));
     }
@@ -485,6 +519,19 @@ pub(crate) fn drain_merge_sprites(
     last_merge_result_set(MergeResult {
         new_entity_bits: new_entity.to_bits(),
     });
+    // **O documento em camadas**, quando foi ele que se pediu (plano `docs/Sprite_projeto/18` W10).
+    //
+    // ⚠️ Canal PRÓPRIO, e não mais um campo no `MergeResult`: aquele é `Copy` e vive num `Cell`,
+    // e um `Vec` lá dentro obrigaria a converter o canal inteiro por causa de um modo. *Um dado
+    // com outro tempo de vida merece o seu canal, não uma emenda no do vizinho.*
+    if to_layers {
+        last_merged_layers_set(MergedLayers {
+            entity_bits: new_entity.to_bits(),
+            width: out_w,
+            height: out_h,
+            layers: layer_names.into_iter().zip(layer_rgba).collect(),
+        });
+    }
 
     // Audit B-H3: surface skipped entities in the toast so the user
     // notices when a non-sprite / readback-failed entity was in the
@@ -498,33 +545,6 @@ pub(crate) fn drain_merge_sprites(
         toasts.push(Toast::success(format!("Merged {n_sources} sprites")));
     }
     true
-}
-
-/// Side channel for the caller to learn the newly-spawned merged
-/// entity's bits so it can promote it to the selection (audit B-H2).
-/// Threading a return field through the drain signature would change
-/// the public surface; a thread-local set-once cell keeps the drain
-/// API stable and follows the same pattern `brush_cursor` already
-/// uses for input-overlay state.
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct MergeResult {
-    pub new_entity_bits: u64,
-}
-
-thread_local! {
-    static LAST_MERGE: std::cell::Cell<Option<MergeResult>> = const { std::cell::Cell::new(None) };
-}
-
-fn last_merge_result_set(r: MergeResult) {
-    LAST_MERGE.with(|c| c.set(Some(r)));
-}
-
-/// Drain the most recent `MergeResult` (set by `drain_merge_sprites`
-/// on success). Returns `None` outside the immediate frame after a
-/// merge. Caller should read this AFTER `drain_merge_sprites` and
-/// before the next frame to promote the new entity to the selection.
-pub(crate) fn take_last_merge_result() -> Option<MergeResult> {
-    LAST_MERGE.with(|c| c.take())
 }
 
 /// World→source-pixel resample math (inverse mapping + premultiplied

@@ -251,6 +251,13 @@ pub enum EditorAction {
     /// anchor — the merge inherits its parent / z). Drain toasts when < 2 sprites are selected (no-op).
     HierMergeSprites { row: ph2d_a11y::NodeId },
 
+    /// **Fundir em CAMADAS** — plano `docs/Sprite_projeto/18` W10 (Enio, 2026-08-21).
+    ///
+    /// ⚠️ Mesma geometria da [`Self::HierMergeSprites`]; o que muda é que cada fonte fica também
+    /// numa camada do documento do Painter. Uma variante própria, e não um `bool` na de cima,
+    /// porque o menu tem **duas linhas** e cada uma tem de dizer o que faz pelo nome.
+    HierMergeToLayers { row: ph2d_a11y::NodeId },
+
     /// **Exportar UMA sprite** para o formato que a extensão escolhida nomear — plano
     /// `docs/Sprite_projeto/18` W9 (Enio, 2026-08-21).
     ///

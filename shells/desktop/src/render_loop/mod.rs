@@ -2672,6 +2672,9 @@ impl crate::App {
             // diferença está no nome: aquele escreve a FOLHA, este escreve uma sprite no formato
             // que a extensão escolhida nomear.
             let mut export_image_row: Option<NodeId> = None;
+            // **FUNDIR EM CAMADAS** (plano `docs/Sprite_projeto/18` W10) — a mesma geometria do
+            // Merge, e cada fonte fica também numa camada do documento do Painter.
+            let mut merge_to_layers_row: Option<NodeId> = None;
             let mut use_as_brush_texture_row: Option<NodeId> = None;
             let mut use_as_brush_shape_row: Option<NodeId> = None;
             let mut use_as_paper_row: Option<NodeId> = None;
@@ -3686,6 +3689,9 @@ impl crate::App {
                     }
                     EditorAction::HierMergeSprites { row } => {
                         merge_sprites_row.get_or_insert(row);
+                    }
+                    EditorAction::HierMergeToLayers { row } => {
+                        merge_to_layers_row.get_or_insert(row);
                     }
                     EditorAction::HierPackSheet { row } => {
                         pack_sheet_row.get_or_insert(row);
@@ -9433,7 +9439,9 @@ impl crate::App {
             // multi-selection comes from `hero.gizmo` — primary first,
             // extras after. Right-clicked row resolves to the "primary
             // anchor" the merged sprite parents under.
-            if let Some(row) = merge_sprites_row
+            // ⚠️ As DUAS entradas do menu caem aqui: «Merge Sprites» e «Merge to Layers». A
+            // geometria é a mesma e o modo é a única diferença — ver a chamada abaixo.
+            if let Some(row) = merge_sprites_row.or(merge_to_layers_row)
                 && let Some(live) = hero_live.as_ref()
                 && let Some(primary_bits) = live.bridge.entity_for(row)
             {
@@ -9459,6 +9467,10 @@ impl crate::App {
                     if hero_intents::drain_merge_sprites(
                         to_merge.clone(),
                         primary_bits,
+                        // ⚠️ O MODO vem de qual das duas linhas do menu foi clicada, e as duas
+                        // caem neste mesmo dreno: a geometria é idêntica e duplicá-la seria pedir
+                        // que duas cópias concordassem para sempre.
+                        merge_to_layers_row.is_some(),
                         hero.project.pixels_per_meter,
                         sim,
                         renderer,
@@ -9482,6 +9494,16 @@ impl crate::App {
                     // action (Move, Apply tool, etc.) operates on the
                     // merged result — matches Photoshop / Figma "after
                     // merge, the merged layer IS the selection".
+                    // **O DOCUMENTO EM CAMADAS** (plano `docs/Sprite_projeto/18` W10). A sprite
+                    // fundida já tem a textura achatada — ela desenha certo desde já, e grava. O
+                    // que isto acrescenta é o documento do Painter: abrir o Painter nela mostra
+                    // uma camada por sprite de origem, na ordem em que foram compostas.
+                    //
+                    // ⚠️ **Instala-se AQUI e não dentro da fusão**: quem tem a `ToolRegistry` é o
+                    // shell. O `sprite_merge` sabe geometria; não sabe onde vive a ferramenta.
+                    if let Some(doc) = hero_intents::take_last_merged_layers() {
+                        crate::merge_layers::install(tools, &doc, toasts);
+                    }
                     if let Some(result) = hero_intents::take_last_merge_result() {
                         hero.gizmo.replace_selection(Some(result.new_entity_bits));
                     } else if hero.gizmo.selection.is_none()

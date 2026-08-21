@@ -23,6 +23,22 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
+    /// **Renomeia uma camada.** No-op se `id` for desconhecido.
+    ///
+    /// ⚠️ **Faltava, e a ausência lia-se como decisão.** Dá para trocar a visibilidade, a opacidade,
+    /// o modo de mistura e a profundidade do impasto — mas não o nome, que é o único destes que o
+    /// artista lê a toda a hora. A fusão-em-camadas (plano `docs/Sprite_projeto/18` W10) precisou
+    /// dele: uma pilha de «Layer 1 / Layer 2 / Layer 3» não diz qual sprite é qual, que é
+    /// precisamente o que aquele verbo existe para mostrar.
+    ///
+    /// Mesma família dos três acima e pela mesma razão não é guardado por `!stroke_active`: mexe
+    /// num campo do [`Layer`], nunca em buffers.
+    pub fn set_layer_name(&mut self, id: RtLayerId, name: impl Into<String>) {
+        if let Some(layer) = self.layers.get_mut(id) {
+            layer.name = name.into();
+        }
+    }
+
     /// Set a layer's opacity (0..=1). No-op if `id` unknown.
     pub fn set_layer_opacity(&mut self, id: RtLayerId, opacity: f32) {
         self.layers.set_opacity(id, opacity);
@@ -278,6 +294,47 @@ impl PainterTool {
         self.replace_canvas(Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]));
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(id);
+        self.invalidate_composite();
+        Some(id)
+    }
+
+    /// **Uma camada nova que já NASCE com pixels** — plano
+    /// [`docs/Sprite_projeto/18`](../../../../../docs/Sprite_projeto/18_precisao_de_16_bits_nas_sprites.md)
+    /// W10, por ordem do Enio (2026-08-21): *"Merge Sprites em camadas (cria uma camada por
+    /// sprite)"*.
+    ///
+    /// # Por que uma porta nova, e não a de cima seguida de uma escrita
+    ///
+    /// ⚠️ **Os pixels de uma camada não são alcançáveis de fora.** A activa vive no `canvas_rgba` e
+    /// as outras num `BTreeMap` privado; o [`Self::add_raster_layer`] cria a camada **transparente**
+    /// e não há API pública para lá pôr nada. Quem quisesse montar um documento de N camadas a
+    /// partir de N imagens — que é exactamente o que a fusão-em-camadas faz — não tinha por onde.
+    ///
+    /// ⛔ **A alternativa recusada** era expor o `canvas_rgba`. Isso abriria a porta a alguém
+    /// escrever nele **a meio de um traço**, e o undo desta ferramenta é por planos capturados nas
+    /// fronteiras do gesto: uma escrita fora dessa janela não entra em snapshot nenhum e o Ctrl+Z
+    /// devolve pixels que nunca existiram. Esta porta faz a coisa **inteira** — cria, escreve e
+    /// fecha o passo estrutural — e não deixa a meio um estado que só ela saberia terminar.
+    ///
+    /// # Panics
+    ///
+    /// Nunca: um `rgba` do tamanho errado devolve `None`, como o resto desta família. Um documento
+    /// de 512² com uma camada de 64² não é um erro a corrigir adiante — é a chamada errada, e vale
+    /// mais recusá-la do que compor lixo.
+    pub fn add_raster_layer_with_pixels(
+        &mut self,
+        name: impl Into<String>,
+        rgba: Vec<u8>, // COLOR-RAW-OK: bytes de sprite, entregues verbatim como no `set_source`
+    ) -> Option<RtLayerId> {
+        let (w, h) = self.source_size;
+        // ⚠️ A conferência ANTES de mexer em coisa nenhuma: `add_raster_layer` faz um passo
+        // estrutural (flush da activa, undo, selecção), e descobrir o tamanho errado depois dele
+        // deixaria uma camada vazia na pilha que ninguém pediu.
+        if rgba.len() != (w as usize) * (h as usize) * 4 {
+            return None;
+        }
+        let id = self.add_raster_layer(name)?;
+        self.replace_canvas(std::sync::Arc::new(rgba));
         self.invalidate_composite();
         Some(id)
     }

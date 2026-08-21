@@ -193,6 +193,14 @@ pub const CTX_MENU_HIER_RENAME: NodeId = hash_node_id("ctx_menu_hier_rename");
 /// toast when fewer than 2 sprites are selected (silent no-op
 /// otherwise feels broken).
 pub const CTX_MENU_HIER_MERGE_SPRITES: NodeId = hash_node_id("ctx_menu_hier_merge_sprites");
+
+/// Enio, 2026-08-21: **"Merge to Layers"** — a mesma fusão do vizinho, mas cada sprite de origem
+/// fica também numa **camada** do documento do Painter (plano `docs/Sprite_projeto/18` W10).
+///
+/// ⚠️ **Vizinho do "Merge Sprites" de propósito, e a diferença é uma só:** aquele achata e não há
+/// volta; este achata **e guarda como separar outra vez**. Ler os dois seguidos é o que torna a
+/// escolha óbvia no momento de a fazer — que é o único momento em que ela ainda é possível.
+pub const CTX_MENU_HIER_MERGE_TO_LAYERS: NodeId = hash_node_id("ctx_menu_hier_merge_to_layers");
 /// Enio 2026-08-19: "Pack into Sheet" — **cria** a folha com os sprites da seleção dentro.
 ///
 /// ⚠️ **Ele CRIA, e só isso.** Já fez duas coisas conforme o alvo (com uma folha selecionada,

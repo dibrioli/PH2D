@@ -35,5 +35,10 @@ pub(crate) use image_edit::{
     drain_make_square, drain_padding, drain_painter, drain_rasterize, drain_trim_transparency,
     drain_undo_image_edit, drain_upscale,
 };
-pub(crate) use sprite_merge::{drain_merge_sprites, take_last_merge_result};
+pub(crate) use sprite_merge::drain_merge_sprites;
+/// Os dois canais de saída da fusão — irmão do `sprite_merge`, que estava no tecto da HR-18.
+mod sprite_merge_result;
+pub(crate) use sprite_merge_result::{
+    MergedLayers, take_last_merge_result, take_last_merged_layers,
+};
 pub(crate) use view::drain_view_focus;

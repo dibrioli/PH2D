@@ -275,6 +275,13 @@ fn pin(
     // rasgo passa a ser por-tique (ver [`BREAK_ABOVE`]).
     let was_torn = scalar_or(state, TORN, n, 0.0);
     let breaks = break_above > 0.0;
+    // **A PRECEDÊNCIA DA CARGA, num sítio só:** a porta `load` quando ela traz `accel`,
+    // senão o próprio `in`. Ver [`BREAK_ABOVE`] para os dois idiomas de fiação.
+    let carga = if matches!(load.get(ACCEL), Some(Column::Vec2(v)) if !v.is_empty()) {
+        load
+    } else {
+        input
+    };
     let mut torn = Vec::with_capacity(n);
     // `first + count` cannot wrap: both are element counts (saturating on the
     // absurd param that a loaded document may carry).
@@ -284,7 +291,7 @@ fn pin(
             // ⚠️ Rasgado ANTES ou rasga AGORA — as duas metades, e a primeira é o que
             // torna o rasgo permanente. O `breaks` desligado deixa a coluna a zero,
             // então um grafo sem limiar nunca escreve nada aqui.
-            let ripped = breaks && (was_torn[i] >= 0.5 || load_at(load, i) > break_above);
+            let ripped = breaks && (was_torn[i] >= 0.5 || load_at(carga, i) > break_above);
             torn.push(f32::from(u8::from(ripped)));
             let selected = i >= first && i < last && !ripped;
             // The pin AMOUNT (1 = nailed): the range mask times the field times
@@ -892,6 +899,35 @@ mod tests {
         assert!(
             !f(&|n: &str| if n == BREAK_ABOVE { 5.0 } else { 0.0 }),
             "com limiar: o rasgo é estado, e o kernel é um mapa sem memória"
+        );
+    }
+
+    /// **A CARGA VEM DA PORTA `load`; SEM ELA, DO PRÓPRIO `in`.**
+    ///
+    /// ⚠️ Os dois idiomas: com o `motion.integrate` o pin tem de estar no caminho da
+    /// arte (é de lá que o `inv_mass` é lido) e a carga chega-lhe pela porta; com um
+    /// GERADOR (`motion.soft_body`) ele cabe dentro da cadeia de estado e o `in` já a
+    /// traz. Uma precedência, não duas fontes.
+    #[test]
+    fn the_load_falls_back_to_the_nodes_own_input() {
+        let carga = loaded(1, &[[9.0, 0.0]]);
+        let limpo = stream(1, None, None);
+        // Pela PORTA: o `in` não tem carga nenhuma.
+        let pela_porta = pin(&limpo, &Stream::new(0), &carga, 0, 1, 1.0, 5.0);
+        assert_eq!(inv_mass_of(&pela_porta), vec![1.0], "a porta manda");
+        // Pelo `in`: a porta está vazia.
+        let pelo_in = pin(&carga, &Stream::new(0), &Stream::new(0), 0, 1, 1.0, 5.0);
+        assert_eq!(inv_mass_of(&pelo_in), vec![1.0], "o recuo funciona");
+        // E a PORTA VENCE o `in` quando as DUAS trazem carga — uma precedência, não uma
+        // soma. ⚠️ A precedência é sobre a COLUNA e não sobre o fio: uma porta ligada a
+        // um stream SEM `accel` não é fonte de carga nenhuma, e é indistinguível de uma
+        // porta desligada — que é o que o braço `limpo` acima já prova.
+        let leve = loaded(1, &[[1.0, 0.0]]);
+        let manda = pin(&carga, &Stream::new(0), &leve, 0, 1, 1.0, 5.0);
+        assert_eq!(
+            inv_mass_of(&manda),
+            vec![0.0],
+            "a carga da PORTA (1) está abaixo do limiar; a do `in` (9) não pode falar"
         );
     }
 }

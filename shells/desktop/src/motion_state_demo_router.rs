@@ -507,6 +507,8 @@ mod tests {
     #[test]
     #[ignore = "sonda de movimento, não um gate — `-- --ignored --nocapture`"]
     fn measure_scene_motion() {
+        /// Quantos tiques a sonda corre — dois segundos a 60 fps.
+        const TICKS: u32 = 120;
         use ph2d_nodegraph::attr::Column;
         let mut reg = NodeRegistry::new();
         ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registra");
@@ -524,7 +526,7 @@ mod tests {
             for (k, sink) in sinks.iter().enumerate() {
                 let mut cook = ph2d_nodegraph::cook::Cook::new();
                 let (mut a, mut b) = (Vec::new(), Vec::new());
-                for t in 0..40 {
+                for t in 0..TICKS {
                     let ph = f64::from(t) / 60.0;
                     let out = cook.cook(&doc.graph, &reg, *sink, ph).expect("cozinha");
                     if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {

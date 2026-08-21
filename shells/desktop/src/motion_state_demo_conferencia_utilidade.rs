@@ -437,10 +437,10 @@ pub(crate) fn sim_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
 
   >>> DE' PLAY. As duas linhas sao simulacao; paradas nao dizem nada.
 
-  RASGA  As duas cortinas tem a fileira de cima PREGADA e levam o mesmo vento.
-         A` esquerda a fileira de cima FICA onde esta', para sempre, e o resto
-         voa. A` direita o vento passa da carga que o prego aguenta ({limiar:.0}) e
-         ele ARRANCA: a fileira de cima solta-se e vai com as outras.
+  RASGA  Dois PANOS iguais (tecido de verdade, nao pontos soltos), pregados pela
+         fileira de cima, levando o mesmo vento. A` esquerda o pano fica
+         pendurado e balanca. A` direita o vento passa da carga que o prego
+         aguenta ({limiar:.0}) e ele ARRANCA: a folha inteira solta-se e vai embora.
          > clique no no' Pin Constraint e arraste o `Break Above` -- em 0 ele
            nunca solta.
 

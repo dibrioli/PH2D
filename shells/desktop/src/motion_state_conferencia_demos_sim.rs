@@ -9,17 +9,20 @@
 //! ⚠️ **SÓ SE JULGA COM O PLAY.** As duas linhas são simulação: paradas, as quatro
 //! bandas são quatro nuvens iguais.
 //!
-//! ⚠️ **O PIN VIVE NO CAMINHO DA ARTE, e a CARGA chega-lhe por uma porta.** A v1 desta
-//! cena pôs o pin dentro do laço da força, e o smoke voltou com *"tudo foi levado pelo
-//! vento, nada rasgou"*. MEDIDO: o `motion.integrate` lê o `accel` do `state`
-//! (`ctx.input(1)`) mas o **`inv_mass` do `rest`** (`ctx.input(0)`) — um pin no laço
-//! escreve um `inv_mass` que **ninguém lê**.
+//! ⚠️ **A cortina é um `motion.soft_body`, e não uma grelha de pontos soltos** (Enio,
+//! 2026-08-21: *"porque usar grid se temos nós de tecido?"*). Ele tinha razão, e o custo
+//! do erro era o exemplo: uma nuvem de pontos que voa não mostra um pano a **rasgar** —
+//! mostra pontos a irem embora. Com o tecido vê-se a folha inteira soltar-se.
+//!
+//! ⚠️ **E o tecido é o idioma FÁCIL do pin.** O `motion.soft_body` lê o `inv_mass` **e**
+//! o `accel` da MESMA cadeia — a de estado —, então o pin cabe dentro do laço e o `in`
+//! dele já traz a carga. (Com o `motion.integrate` não cabia: ele lê o `accel` do
+//! `state` mas o `inv_mass` do `rest`, e foi isso que fez a v1 desta cena sair com
+//! *"tudo foi levado pelo vento, nada rasgou"* — mecanismo no doc do `BREAK_ABOVE`.)
 //!
 //! ```text
-//! grid ──────────────► pin_constraint ──► integrate.rest      (o inv_mass chega)
-//! integrate ═pre═► force.wind ─────────► integrate.forces     (o vento move)
-//!                   force.wind ═pre═══► pin.load              (a carga chega ao pin)
-//!                                  pin ═pre═► pin.state       (a memória do rasgo)
+//! soft_body ═pre═► force.wind ──► pin_constraint ──► soft_body.state
+//!                                            pin ═pre═► pin.state   (a memória)
 //! ```
 //!
 //! ⚠️ **A colocação corre ANTES do campo** (a lei que a `=73` pagou).
@@ -34,12 +37,15 @@ const HEADER_Y: f32 = 5.6;
 const LABEL_SIZE: f32 = 0.42;
 pub(crate) const ROW_LABELS: [&str; 2] = ["RASGA", "DESVIA"];
 
-/// A cortina da linha 1: `(colunas, linhas, passo, tamanho da peça)`.
-pub(crate) const CURTAIN: (f32, f32, f32, f32) = (6.0, 6.0, 0.28, 0.13);
+/// A cortina da linha 1 — um **tecido**: `(colunas, linhas, passo, tamanho da peça)`.
+pub(crate) const CURTAIN: (f32, f32, f32, f32) = (7.0, 7.0, 0.22, 0.11);
+/// A gravidade e a rigidez do tecido — uma folha que PENDE e ondula, não uma
+/// placa: rígida demais ela não flutua, mole demais ela desfaz-se.
+const GRAVITY: f32 = 8.0;
+const STIFFNESS: f32 = 0.30;
 /// Quantas peças o bando da linha 2 tem, e o espalhamento inicial.
 pub(crate) const FLOCK: f32 = 40.0;
 
-const REST: [f32; 3] = [0.26, 0.27, 0.32];
 const LIT: [[f32; 3]; 2] = [[0.55, 0.85, 1.0], [1.0, 0.78, 0.40]];
 const LABEL_RGB: [f32; 3] = [0.62, 0.64, 0.70];
 /// A cor da PEDRA e dos pinos — branco, para se distinguirem de quem os sofre.
@@ -141,28 +147,40 @@ fn label(g: &mut Graph, word: &str, at: [f32; 2], ey: f32) -> Option<NodeId> {
     out_of(g, tinted, ey)
 }
 
-/// **LINHA 1 · RASGA** — a cortina pinada no topo, contra o vento.
+/// **LINHA 1 · RASGA** — o TECIDO pregado no topo, contra o vento.
+///
+/// ⚠️ O `pin` do próprio `motion.soft_body` fica em **0**: quem segura a folha é o
+/// `motion.pin_constraint`, porque é ele que sabe rasgar. Com o pin intrínseco ligado a
+/// folha ficaria presa de qualquer maneira e o par sairia mudo.
 fn tear_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     let ey = f32::from(u8::from(right)) * 240.0;
     let at = [if right { COL_X } else { -COL_X }, ROW_Y[0]];
-    let (cols, rows, gap, piece) = CURTAIN;
-    let grid = node(
+    let (cols, rows, spacing, piece) = CURTAIN;
+    let cloth = node(
         g,
-        "motion.grid",
+        "motion.soft_body",
         &[
             ("rows", rows),
             ("cols", cols),
-            ("gap_x", gap),
-            ("gap_y", gap),
+            ("spacing", spacing),
+            ("gravity", GRAVITY),
+            ("stiffness", STIFFNESS),
+            ("damping", 0.03),
+            // ⚠️ O pin INTRÍNSECO desligado — ver o doc acima.
+            ("pin", 0.0),
         ],
         ey,
         0.0,
     );
-    let scaled = push(g, grid, "motion.scale", &[("amount", piece)], ey, 110.0);
-    let placed = place(g, scaled, at, ey, 210.0);
-    let base = tint(g, placed, REST, ey, 310.0);
-
-    // O PIN, no caminho da ARTE — é de lá que o integrador lê o `inv_mass`.
+    // O LAÇO de estado do tecido: o vento acumula a carga, o pin lê-a e devolve o
+    // `inv_mass` pela mesma cadeia.
+    let wind = node(
+        g,
+        "force.wind",
+        &[("angle", WIND_ANGLE), ("strength", WIND), ("gust", 0.0)],
+        ey + 150.0,
+        320.0,
+    );
     let (first, count) = pinned_run();
     let pin = node(
         g,
@@ -173,29 +191,18 @@ fn tear_band(g: &mut Graph, right: bool) -> Option<NodeId> {
             ("strength", 1.0),
             ("break_above", if right { BREAK_ABOVE } else { 0.0 }),
         ],
-        ey,
-        420.0,
-    );
-    wire(g, base, 0, pin, 0)?;
-    let integ = node(g, "motion.integrate", &[], ey, 700.0);
-    wire(g, pin, 0, integ, 0)?;
-    // O LAÇO da força: é ele que MOVE.
-    let wind = node(
-        g,
-        "force.wind",
-        &[("angle", WIND_ANGLE), ("strength", WIND), ("gust", 0.0)],
         ey + 150.0,
-        560.0,
+        470.0,
     );
-    wire_pre(g, integ, wind, 0)?;
-    wire(g, wind, 0, integ, 1)?;
-    // A CARGA: o mesmo vento, pelo `pre` que quebra o ciclo. ⛔ Não duplique a força
-    // para dar carga ao pin — seriam dois números a dizer a mesma coisa.
-    wire_pre(g, wind, pin, 2)?;
+    wire_pre(g, cloth, wind, 0)?;
+    wire(g, wind, 0, pin, 0)?;
+    wire(g, pin, 0, cloth, 2)?;
     // A MEMÓRIA do rasgo: sem este fio ele cede e volta a pinar (elástico, não rasgo).
     wire_pre(g, pin, pin, 1)?;
 
-    let lit = tint(g, integ, LIT[0], ey, 900.0);
+    let sized = push(g, cloth, "motion.scale", &[("amount", piece)], ey, 620.0);
+    let placed = place(g, sized, at, ey, 760.0);
+    let lit = tint(g, placed, LIT[0], ey, 900.0);
     out_of(g, lit, ey)
 }
 

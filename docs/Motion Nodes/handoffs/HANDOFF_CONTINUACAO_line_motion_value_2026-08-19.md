@@ -227,7 +227,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As CINQUENTA E TRÊS LEIS que esta linha pagou para aprender
+## §4 — As CINQUENTA E QUATRO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -591,6 +591,18 @@ são estilo.
     andava — e dizia o mesmo da `=71`, que o Enio já aprovara. *Uma sonda que acusa a cena
     boa está a acusar-se a si própria; ponha sempre um caso conhecido-BOM no varrimento.*
 
+54. ⚠️ **Uma cena de smoke tem de usar o NÓ QUE O CATÁLOGO TEM, não o mais fácil de
+    montar** (Enio, 2026-08-21: *"porque usar grid se temos nós de tecido?"*). Eu montei
+    a cortina do `break_above` com uma `motion.grid` — pontos soltos — porque a fiação
+    era mais curta. O custo não foi técnico, foi o EXEMPLO: uma nuvem de pontos que voa
+    não mostra um pano a **rasgar**, mostra pontos a irem embora. Com o
+    `motion.soft_body` vê-se a folha inteira soltar-se.
+    ⚠️ **E o nó certo era também o mais fácil**, o que só se soube depois de olhar: o
+    `soft_body` lê o `inv_mass` **e** o `accel` da MESMA cadeia (a de estado), então ali
+    o pin cabe dentro do laço — enquanto com o `motion.integrate` ele tinha de ficar no
+    caminho da arte e receber a carga por uma porta própria. *A cena feia estava a
+    esconder que a arquitetura tinha um idioma melhor.*
+
 
 ---
 
@@ -650,9 +662,10 @@ bash scripts/collision-surface.sh main
 Duas linhas, rotuladas no canvas. ⚠️ **SÓ com o PLAY** — as duas são simulação. As
 pedras são desenhadas de propósito.
 
-⚠️ **Esta é a v2.** A v1 foi reprovada (*"tudo foi levado pelo vento, nada rasgou"*):
-o pin estava dentro do laço da força, e o integrador lê o `inv_mass` do `rest`. Leis
-**52** e **53** do §4.
+⚠️ **Esta é a v3, e as duas correcções vieram de smokes.** A v1 foi reprovada (*"tudo
+foi levado pelo vento, nada rasgou"*): o pin estava no laço do integrador, que lê o
+`inv_mass` do `rest`. A v2 foi reprovada por *"porque usar grid se temos nós de
+tecido?"* — a cortina é agora um `motion.soft_body`. Leis **52**, **53** e **54**.
 
 ### `=74` — a folha 02 inteira (o alvo do atrator, e a mira)
 

@@ -40,55 +40,69 @@ fn param(doc: &MotionDoc, id: NodeId, name: &str) -> f32 {
 fn the_scene_is_two_rows_with_its_marks_drawn() {
     let (doc, sinks) = scene();
     assert_eq!(sinks.len(), 6, "quatro nuvens + duas pedras");
-    assert_eq!(nodes_of(&doc, "motion.integrate").len(), 2, "só a linha 1");
+    assert_eq!(
+        nodes_of(&doc, "motion.soft_body").len(),
+        2,
+        "a linha 1 é TECIDO"
+    );
     assert_eq!(nodes_of(&doc, "motion.boids").len(), 2);
     assert_eq!(nodes_of(&doc, "motion.pin_constraint").len(), 2);
 }
 
-/// **O PIN ESTÁ NO CAMINHO DA ARTE, E A CARGA CHEGA-LHE PELA PORTA `load`.**
+/// **A CORTINA É UM TECIDO, e o pin vive na cadeia de estado dele.**
 ///
-/// ⚠️ **Este gate substitui um que afirmava o CONTRÁRIO, e o contrário era o bug.** A v1
-/// pôs o pin dentro do laço da força, e o smoke voltou com *"tudo foi levado pelo vento,
-/// nada rasgou"*. MEDIDO no `motion.integrate`: o `accel` vem do `state`
-/// (`ctx.input(1)`) mas o **`inv_mass` vem do `rest`** (`ctx.input(0)`) — um pin no laço
-/// escreve um `inv_mass` que ninguém lê.
+/// ⚠️ **Duas correcções de smoke numa só linha.** (1) *"porque usar grid se temos nós de
+/// tecido?"* — uma nuvem de pontos soltos não mostra um pano a rasgar. (2) A v1 pôs o
+/// pin no laço do `motion.integrate`, que lê o `inv_mass` do `rest` e não do `state`, e
+/// nada ficava pinado. O `motion.soft_body` lê **os dois** da cadeia de estado, então
+/// aqui o pin cabe dentro dela e o `in` dele já traz a carga.
 #[test]
-fn the_pin_is_on_the_art_path_and_the_load_arrives_by_its_own_port() {
+fn the_curtain_is_a_cloth_and_the_pin_lives_in_its_state_chain() {
     let (doc, _) = scene();
     let edges = doc.graph.edges();
-    for ((pin, wind), integ) in nodes_of(&doc, "motion.pin_constraint")
-        .into_iter()
+    let cloths = nodes_of(&doc, "motion.soft_body");
+    assert_eq!(cloths.len(), 2, "uma cortina de TECIDO por metade");
+    assert!(
+        nodes_of(&doc, "motion.integrate").is_empty(),
+        "o tecido é o próprio solver — um integrador aqui seria uma segunda física"
+    );
+    for ((cloth, wind), pin) in cloths
+        .iter()
         .zip(nodes_of(&doc, "force.wind"))
-        .zip(nodes_of(&doc, "motion.integrate"))
+        .zip(nodes_of(&doc, "motion.pin_constraint"))
     {
-        assert!(
-            edges
-                .iter()
-                .any(|e| e.from.0 == pin && e.to == (integ, 0) && !e.delayed),
-            "o pin tem de alimentar a porta `rest` — é de lá que o inv_mass é lido"
+        assert_eq!(
+            param(&doc, *cloth, "pin"),
+            0.0,
+            "o pin INTRÍNSECO tem de estar desligado — senão a folha fica presa de \
+             qualquer maneira e o par sai mudo"
         );
         assert!(
             edges
                 .iter()
-                .any(|e| e.from.0 == wind && e.to == (integ, 1) && !e.delayed),
-            "e o vento a porta `forces` — é de lá que o accel é lido"
+                .any(|e| e.from.0 == *cloth && e.to == (wind, 0) && e.delayed),
+            "o `pre` do tecido abre a cadeia de estado"
         );
         assert!(
             edges
                 .iter()
-                .any(|e| e.from.0 == wind && e.to == (pin, 2) && e.delayed),
-            "a carga chega ao pin pela porta `load`, com o `pre` que quebra o ciclo"
+                .any(|e| e.from.0 == wind && e.to == (pin, 0) && !e.delayed),
+            "o vento tem de estar A MONTANTE do pin — é assim que a carga lhe chega"
+        );
+        assert!(
+            edges
+                .iter()
+                .any(|e| e.from.0 == pin && e.to == (*cloth, 2) && !e.delayed),
+            "e o pin devolve o `inv_mass` pela porta `state` do tecido"
         );
         assert!(
             edges
                 .iter()
                 .any(|e| e.from.0 == pin && e.to == (pin, 1) && e.delayed),
-            "e o pin precisa da própria memória, senão ele CEDE em vez de rasgar"
+            "mais a própria memória, senão ele CEDE em vez de rasgar"
         );
     }
-    // ⛔ E há UM vento por banda: duplicá-lo para dar carga ao pin seriam dois números
-    // a dizer a mesma coisa.
-    assert_eq!(nodes_of(&doc, "force.wind").len(), 2);
+    assert_eq!(nodes_of(&doc, "force.wind").len(), 2, "um vento por metade");
 }
 
 /// **A LINHA 1 DIFERE SÓ NO `break_above`, e o pin selecciona a MESMA fileira.**
@@ -221,21 +235,22 @@ fn the_house_diagnoser_finds_no_hole_in_this_scene() {
     assert!(d.is_empty(), "a cena não encena defeito nenhum: {d:?}");
 }
 
-/// **A CORTINA DA ESQUERDA SEGURA A FILEIRA DE CIMA; A DA DIREITA PERDE-A — CORRIDO.**
+/// **A FOLHA DA ESQUERDA FICA PENDURADA; A DA DIREITA SOLTA-SE E VAI-SE EMBORA.**
 ///
-/// ⚠️ **Este é o gate que faltava, e é a terceira vez que esta linha paga a mesma
-/// lei.** O smoke voltou com *"tudo foi levado pelo vento, nada rasgou"* (Enio,
-/// 2026-08-21) e os NOVE gates desta cena estavam verdes — porque todos mediam a FORMA
-/// do grafo, e a forma que eu tinha escrito era a que eu ACREDITAVA estar certa. Um
-/// gate que corre a simulação e olha quem ficou não tem opinião nenhuma.
+/// ⚠️ **Este é o gate que faltava, e é a terceira vez que esta linha paga a mesma lei.**
+/// O smoke voltou com *"tudo foi levado pelo vento, nada rasgou"* e os NOVE gates desta
+/// cena estavam verdes — porque todos mediam a FORMA do grafo, e a forma que eu escrevera
+/// era a que eu ACREDITAVA estar certa. Um gate que corre a simulação e olha quem ficou
+/// não tem opinião nenhuma.
 ///
-/// ⚠️ **A leitura é a POSIÇÃO da fileira pinada depois de N tiques**, não um param: à
-/// esquerda ela tem de estar onde nasceu (ao bit — massa infinita não se move), à
-/// direita tem de ter saído.
+/// ⚠️ **As três barras são DERIVADAS do passo do tecido**, nunca escritas: um pano mais
+/// fechado ou mais aberto move números diferentes, e uma constante à mão deixaria de
+/// significar *"saiu"* no dia em que alguém mexesse na malha.
 #[test]
-fn the_left_curtain_holds_its_top_row_and_the_right_one_loses_it() {
+fn the_left_cloth_hangs_and_the_right_one_tears_free() {
     let (doc, sinks) = scene();
     let reg = registry();
+    let (_, _, spacing, _) = CURTAIN;
     let (first, count) = pinned_run();
     #[expect(
         clippy::cast_possible_truncation,
@@ -244,83 +259,60 @@ fn the_left_curtain_holds_its_top_row_and_the_right_one_loses_it() {
     )]
     let (first, count) = (first as usize, count as usize);
 
-    // A fileira pinada, cozida ao longo de 40 tiques de 1/60 s — tempo de sobra para o
-    // vento levar o que não estiver preso.
-    let run = |sink: NodeId| -> Vec<[f32; 2]> {
+    // Dois segundos a 60 fps — tempo de sobra para o vento decidir.
+    let run = |sink: NodeId| -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
         let mut cook = Cook::new();
-        let mut last = Vec::new();
-        for k in 0..40 {
+        let (mut inicio, mut fim) = (Vec::new(), Vec::new());
+        for k in 0..120 {
             let t = f64::from(k) / 60.0;
             let out = cook.cook(&doc.graph, &reg, sink, t).expect("cozinha");
             if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
-                last = p[first..first + count].to_vec();
-            }
-            // ⚠️ **O passo que faltava, e sem ele a sonda media ZERO.** O `pre` só
-            // avança quando o quadro é fechado; um laço que só `cook`a lê o mesmo tique
-            // quarenta vezes. Medido contra a cena `=71`, que o Enio já aprovara: ela
-            // também dava 0,0000, e foi isso que provou que o erro era do harness.
-            cook.advance_tick(&doc.graph, &reg, t)
-                .expect("avança o quadro");
-        }
-        last
-    };
-    let inicio = {
-        let mut cook = Cook::new();
-        let out = cook.cook(&doc.graph, &reg, sinks[0], 0.0).expect("cozinha");
-        match out[0].as_stream().get("P") {
-            Some(Column::Vec2(p)) => p[first..first + count].to_vec(),
-            _ => panic!("P"),
-        }
-    };
-
-    let esquerda = run(sinks[0]);
-    assert_eq!(
-        esquerda, inicio,
-        "a fileira pinada da ESQUERDA tem de ficar exactamente onde nasceu"
-    );
-
-    let direita = run(sinks[1]);
-    let andou = direita
-        .iter()
-        .zip(&inicio)
-        .map(|(a, b)| (a[0] - b[0]).abs() + (a[1] - b[1]).abs())
-        .fold(0.0_f32, f32::max);
-    assert!(
-        andou > 0.5,
-        "a fileira da DIREITA tinha de ter RASGADO e ido embora; andou {andou:.3}"
-    );
-}
-
-/// **E O RESTO DA CORTINA VOA NOS DOIS LADOS** — o controlo que impede o gate acima de
-/// passar por uma cena em que o vento não chega a ninguém.
-///
-/// ⚠️ Sem isto, um vento desligado daria *"a esquerda ficou parada"* (verdade) e o
-/// primeiro `assert` passaria enquanto a cena não mostrasse coisa nenhuma.
-#[test]
-fn the_unpinned_pieces_blow_away_on_both_sides() {
-    let (doc, sinks) = scene();
-    let reg = registry();
-    for sink in sinks.iter().take(2) {
-        let mut cook = Cook::new();
-        let mut first_p = Vec::new();
-        let mut last_p = Vec::new();
-        for k in 0..40 {
-            let t = f64::from(k) / 60.0;
-            let out = cook.cook(&doc.graph, &reg, *sink, t).expect("cozinha");
-            if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
                 if k == 0 {
-                    first_p = p.clone();
+                    inicio = p.clone();
                 }
-                last_p = p.clone();
+                fim = p.clone();
             }
+            // ⚠️ **O passo que faltava, e sem ele a sonda media ZERO.** O `pre` só avança
+            // quando o quadro FECHA; um laço que só `cook`a lê o mesmo tique cento e
+            // vinte vezes. Medido contra a cena `=71`, que o Enio já aprovara: ela também
+            // dava 0,0000, e foi isso que provou que o erro era do harness.
             cook.advance_tick(&doc.graph, &reg, t)
                 .expect("avança o quadro");
         }
-        // O elemento 0 é a fileira de BAIXO — nunca pinada, sempre livre.
-        let andou = (last_p[0][0] - first_p[0][0]).abs() + (last_p[0][1] - first_p[0][1]).abs();
-        assert!(
-            andou > 0.5,
-            "o vento tem de levar quem não está preso: {andou:.3}"
-        );
-    }
+        (inicio, fim)
+    };
+    let percurso = |a: &[[f32; 2]], b: &[[f32; 2]], faixa: std::ops::Range<usize>| -> f32 {
+        a[faixa.clone()]
+            .iter()
+            .zip(&b[faixa])
+            .map(|(p, q)| (q[0] - p[0]).abs() + (q[1] - p[1]).abs())
+            .fold(0.0_f32, f32::max)
+    };
+
+    let (a0, a1) = run(sinks[0]);
+    assert_eq!(
+        a1[first..first + count],
+        a0[first..first + count],
+        "a fileira PREGADA da esquerda tem de ficar onde nasceu, ao bit"
+    );
+    // CONTROLE: e o resto da folha tem de BALANÇAR — senão *"a esquerda ficou parada"*
+    // seria verdade sobre uma cena em que o vento não chega a ninguém.
+    let balanco = percurso(&a0, &a1, 0..count);
+    assert!(
+        balanco > spacing * 0.5,
+        "a barra da folha pendurada tem de oscilar (>{:.3}); oscilou {balanco:.3}",
+        spacing * 0.5
+    );
+
+    let (b0, b1) = run(sinks[1]);
+    let saiu = percurso(&b0, &b1, first..first + count);
+    assert!(
+        saiu > spacing * 4.0,
+        "a fileira da direita tinha de ter RASGADO e ido embora (>{:.3}); andou {saiu:.3}",
+        spacing * 4.0
+    );
+    assert!(
+        saiu > balanco * 4.0,
+        "e ela tem de andar MUITO mais que o balanço da esquerda ({saiu:.3} vs {balanco:.3})"
+    );
 }

@@ -158,6 +158,22 @@ pub(crate) fn drain(
     if !want_bake {
         return None;
     }
+    // **A PRECISÃO QUE A DOAÇÃO CUSTA** (plano `docs/Sprite_projeto/18` W7).
+    //
+    // ⚠️ O `base` do objeto assado é `Vec<u8>` e o passe de luz escreve numa textura de 8 bits — a
+    // conversão é **correcta** (o produto `base × luz` é aritmética sobre a cor), mas era **muda**.
+    // Aqui ela custa mais que numa ferramenta: o sprite passa a ser função da luz, e a próxima
+    // leitura já não devolve a imagem original.
+    //
+    // ⚠️ Lido ANTES do bake, porque o bake substitui a textura — depois já não há 16 bits que ver.
+    let lost_precision = selected.is_some_and(|bits| {
+        crate::hero_intents::texture_edit::holds_sixteen_bit(Entity::from_bits(bits), sim, renderer)
+    });
+    let note = if lost_precision {
+        " -- convertido para RGBA8: a forma assada e' de 8 bits"
+    } else {
+        ""
+    };
     Some(match selected {
         Some(bits) => match bake_one(
             scene,
@@ -172,8 +188,8 @@ pub(crate) fn drain(
             atlas_asset_map,
         ) {
             Ok((w, h)) => format!(
-                "[sculpt3d] ASSADO no sprite ({w}x{h}) -- mova a lampada (Q/E/R/F) e ele RE-ACENDE; \
-                 apague a peca que ele continua aceso, e SALVE que ele volta aceso"
+                "[sculpt3d] ASSADO no sprite ({w}x{h}){note} -- mova a lampada (Q/E/R/F) e ele \
+                 RE-ACENDE; apague a peca que ele continua aceso, e SALVE que ele volta aceso"
             ),
             Err(e) => format!("[sculpt3d] nao assou: {e}"),
         },

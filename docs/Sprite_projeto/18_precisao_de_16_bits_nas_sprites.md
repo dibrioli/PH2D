@@ -1,8 +1,8 @@
 # 18 — Precisão de 16 bits nas sprites (o par `Format` volta, agora COM modelo)
 
-> **Estado:** **W1–W6 FEITAS.** Abertos: exportar PNG de 16 bits (espera pedido real) e a sprite
-> emissiva (produto). As recusas medidas estão na tabela no fim — **leia-a antes de propor
-> qualquer coisa aqui**.
+> **Estado:** **W1–W7 FEITAS.** Abertos: exportar PNG de 16 bits (**bloqueado por contrato
+> congelado + não há porta de exportação**, ver §4) e a sprite emissiva (produto). As recusas
+> medidas estão na tabela no fim — **leia-a antes de propor qualquer coisa aqui**.
 > **Ordem:** Enio, 2026-08-20 — *"vamos corrigir a UI da sprite no painel com as duas opções e com os
 > botões que a partir de agora devem converter a imagem."*
 > **Antecedente obrigatório:** [`17_plano_render_source_e_hand_packed.md`](17_plano_render_source_e_hand_packed.md) §5,
@@ -392,10 +392,33 @@ algo inalcançável tem de reconferir a nota*). ⛔ E mesmo assim o LUT **não**
 não é o gatilho, é o **bake**, que continua TBD — e o LUT identidade aplica a curva log que produz o
 *«dull look»* que o Enio já recusou na ronda 7 do M14.5.
 
+### W7 — Os QUATRO verbos que a auditoria não tinha olhado · ✅ **FEITA**
+
+A [auditoria 19](19_auditoria_precisao_por_ferramenta.md) respondeu à ordem *"auditoria completa com
+cada tool"* e varreu as **ferramentas**. Estava certa e ficou incompleta, porque perguntou **por nome
+de menu**. Há quatro verbos que consomem pixels pela mesma porta e não estão naquele menu — **Pack /
+Bake Sheet**, **Merge Sprites**, **`Strategy → Atlas`** e **doar a forma ao 3D** —, e os quatro
+rebaixavam 16 bits **em silêncio**.
+
+⚠️ **Os quatro faziam a coisa CERTA.** Uma folha é uma textura de 8 bits, o atlas também, o «over» da
+fusão é aritmética sobre a cor, e o `base × luz` do 3D idem. O defeito não era converter — era
+**converter sem dizer**, e o único vestígio era a linha `Format` do Inspector mudar sozinha. *O
+`Strategy → Atlas` é o vizinho do par `Format` no mesmo painel.*
+
+A cura é uma lei num sítio só (`texture_edit::warn_precision_loss`, com o **recurso** nomeado) e o
+gate `a_verb_that_costs_precision_says_so`, que obriga quem lê pixels a declarar-se. Mecanismo,
+tabela e a prova de mutação que corrigiu o próprio gate: [doc 19 §5](19_auditoria_precisao_por_ferramenta.md).
+
 ### ⏳ O que fica ABERTO, e por quê
 
-1. **Exportar PNG de 16 bits** — a importação preserva; o `PngExporter` continua a emitir 8 bits e a
-   recusar `FlatHdr`. Espera um pedido real.
+1. **Exportar PNG de 16 bits.** ⚠️ **Duas medições fecham isto por agora, e não é preguiça:**
+   (a) o `ExportOpts` está **CONGELADO em 6 campos** por ADR-0054 W0.T4, com gate
+   `architecture_imageio_contract_surface` — pedir um campo de profundidade é ADR + ordem do Enio
+   (`CLAUDE.md` §6); (b) **nada na shell usa o `ExporterRegistry`** — ele é registado no `init` e a
+   própria anotação diz *"W0.T6 stages the registry; W1+ wires Save into find_for"*. Ou seja, não há
+   porta de exportação por onde os 16 bits se percam: a única exportação real é a da **folha**, que é
+   de 8 bits por construção (W7) e agora avisa. *Não há assimetria a fechar — há uma porta que ainda
+   não existe.*
 2. ⛔ **Sprite emissiva** (§6.1) — o `Rgba16Float` dá a folga acima de 1.0 de graça, e não há
    conceito de emissivo em sprite nenhuma. É produto, não formato.
 
@@ -438,5 +461,7 @@ não é o gatilho, é o **bake**, que continua TBD — e o LUT identidade aplica
 | Acender o LUT AgX agora que o gatilho disparou | falta o **bake**; o LUT identidade aplica curva log (o *dull look* recusado no M14.5 r7) | [`tonemap.wgsl`](../../crates/ph2d-render/src/shaders/tonemap.wgsl) |
 | Preservar 16 bits no Upscale filtrado / Rasterize / Equalize / Color-Eq / Painter | eles **calculam** o pixel de saída; sem resampler de 16 bits o rótulo mentiria | [doc 19 §4](19_auditoria_precisao_por_ferramenta.md) |
 | Promover 8→16 em `Asset::image_rgba16()` | não cria informação; deixaria o chamador a crer em degraus que não existem | [`asset.rs`](../../crates/ph2d-asset/src/asset.rs) |
+| Preservar 16 bits na folha / no atlas / na fusão / no bake 3D | cada um é **uma** textura de 8 bits, ou aritmética sobre a cor — converter é correcto; o defeito era o **silêncio** | [doc 19 §5](19_auditoria_precisao_por_ferramenta.md) |
+| Campo de profundidade no `ExportOpts` | **congelado em 6 campos** (ADR-0054 W0.T4) — e nada na shell usa o `ExporterRegistry` | §4 |
 | Bloom/iluminação como argumento para 16 bits | o `GameRt` e o `fx_stack` já são meio-float; ganho **nenhum** | §1.1 |
 | `Rgba16Unorm` em vez de `Rgba16Float` | exige `TEXTURE_FORMAT_16BIT_NORM`, que é mascarada pelo adapter | §2 (M5) |

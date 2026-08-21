@@ -126,6 +126,25 @@ pub(crate) fn drain_merge_sprites(
     }
     let total_requested = ordered_bits.len();
 
+    // **A PRECISÃO QUE A FUSÃO CUSTA** (plano `docs/Sprite_projeto/18` W7).
+    //
+    // ⚠️ O acumulador é de 8 bits e a composição «over» é **aritmética sobre a cor** — pela pergunta
+    // única da auditoria (`docs/Sprite_projeto/19` §1), converter aqui é **correcto**: preservar
+    // exigiria um compositor de 16 bits, que é código novo que ninguém pediu.
+    //
+    // ⚠️ **O que estava errado era o silêncio**, e aqui ele custa mais que numa ferramenta: a fusão
+    // **despawna os originais**. Uma ferramenta rebaixa uma sprite que se pode desfazer olhando
+    // para ela; esta apaga as fontes, e o artista só descobre a perda quando for exportar.
+    let downgraded = ordered_bits
+        .iter()
+        .filter(|&&bits| texture_edit::holds_sixteen_bit(Entity::from_bits(bits), sim, renderer))
+        .count();
+    if downgraded > 0 {
+        toasts.push(Toast::info(format!(
+            "Converted {downgraded} sprite(s) to RGBA8 — merging composites in 8-bit"
+        )));
+    }
+
     // Step 1 — read each source + snapshot its transform.
     let mut srcs: Vec<SrcRecord> = Vec::with_capacity(ordered_bits.len());
     for &bits in &ordered_bits {

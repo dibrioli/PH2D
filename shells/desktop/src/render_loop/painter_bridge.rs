@@ -210,6 +210,11 @@ pub(super) fn dispatch(
             .downcast_mut::<ph2d_tool_painter::PainterTool>()
         && let Some(bits) = hero.gizmo.selection
         && painter.needs_document_bind(bits)
+        // PRECISION-READONLY: isto é o BIND do documento do Painter, não uma escrita. O documento
+        // dele é de 8 bits por desenho (`docs/Sprite_projeto/19` §4), e quem escreve os pixels de
+        // volta é o `hero_intents::image_edit::painter`, no Apply, por `commit_edited_texture` — o
+        // funil que avisa. ⚠️ Selecionar um sprite com o Painter ligado **não** custa precisão
+        // nenhuma: sem Apply, a sprite não muda.
         && let Some(src) = crate::hero_intents::texture_edit::read_sprite_source(
             ph2d_ecs::Entity::from_bits(bits),
             sim,

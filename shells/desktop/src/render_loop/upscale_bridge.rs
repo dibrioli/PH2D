@@ -100,6 +100,10 @@ pub(super) fn dispatch(
             hero.gizmo.selection,
             last_pushed_entity,
             |entity| {
+                // PRECISION-READONLY: alimenta a PRÉVIA da ferramenta e mais nada. Quem escreve os
+                // pixels de volta é o `hero_intents::image_edit::upscale`, que relê a fonte e passa
+                // por `commit_geometric_edit` — e que preserva 16 bits no modo `Nearest`
+                // (`docs/Sprite_projeto/19` §3.1).
                 let src = crate::hero_intents::texture_edit::read_sprite_source(
                     entity,
                     sim,

@@ -248,6 +248,19 @@ fn demote_to_atlas(
         reject_visual_reset(hero, RequestedSpriteStrategy::Atlas);
         return true;
     };
+    // ⚠️ **O par `Strategy` é o VIZINHO do par `Format` no mesmo painel, e rebaixava em silêncio**
+    // (plano `docs/Sprite_projeto/18` W7). Empurrar uma sprite de 16 bits para o atlas custa-lhe a
+    // precisão — o atlas é uma textura só, e ela é de 8 bits (§3.3) — e o único vestígio era a
+    // linha `Format` mudar sozinha logo abaixo do botão que se acabou de clicar. É exactamente a
+    // queixa que o Enio fez das ferramentas em 2026-08-20: *"após aplicar algumas das tools a
+    // sprite volta para RGBA8 no inspector"*.
+    texture_edit::warn_precision_loss(
+        entity,
+        sim,
+        renderer,
+        toasts,
+        "the shared atlas is one texture, and it is 8-bit",
+    );
     // O atlas guarda alfa RETO. `into_straight` é no-op para quem já o é.
     let straight = read.image.into_straight();
     let (w, h) = (straight.width, straight.height);

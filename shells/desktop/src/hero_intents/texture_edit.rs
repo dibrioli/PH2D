@@ -207,6 +207,48 @@ fn crop_region(img: SpriteImage, sprite: &Sprite) -> SpriteImage {
 ///
 /// Doing it HERE is the whole point: an arch gate pins this function as the single door every
 /// image tool leaves through, so eight tools are covered by one stamp rather than eight.
+/// **Esta sprite tem 16 bits AGORA?** — o facto, lido da textura e não de um campo ao lado.
+///
+/// ⚠️ A pergunta é sobre o **formato da textura viva**, nunca sobre o asset: uma prévia pode ter
+/// mexido nos pixels, e é o que a GPU tem que a próxima leitura vai buscar. Uma sprite de atlas ou
+/// cozida responde `false` por construção — o atlas é uma textura só, e ela é de 8 bits.
+pub(crate) fn holds_sixteen_bit(entity: Entity, sim: &SimWorld, renderer: &SpriteRenderer) -> bool {
+    matches!(
+        sim.world().get::<Sprite>(entity).map(|s| s.source),
+        Some(SpriteSource::Individual { texture_id })
+            if renderer.individual_format(texture_id)
+                == Some(ph2d_render::IndividualTextureStore::FORMAT_16)
+    )
+}
+
+/// **UM verbo que custa a precisão diz-lo, e diz de QUE recurso é o limite.**
+///
+/// Plano [`docs/Sprite_projeto/18`](../../../docs/Sprite_projeto/18_precisao_de_16_bits_nas_sprites.md)
+/// W7, auditoria [`docs/Sprite_projeto/19`](../../../docs/Sprite_projeto/19_auditoria_precisao_por_ferramenta.md) §5.
+///
+/// ⚠️ **Existe porque a auditoria de 2026-08-20 só tinha olhado para as FERRAMENTAS.** Há quatro
+/// verbos que consomem pixels pela mesma porta (`read_sprite_source`) sem serem ferramentas —
+/// empacotar numa folha, fundir sprites, empurrar a estratégia para o atlas, doar a forma ao 3D — e
+/// os quatro rebaixavam 16 bits **em silêncio**. *Uma auditoria por NOME de menu deixa de fora tudo
+/// o que não está naquele menu; a pergunta certa é «quem lê pixels e os escreve de volta».*
+///
+/// ⚠️ **O `because` não é decoração.** `CLAUDE.md` §0: um limite legítimo diz de que recurso ele é.
+/// «Converted to RGBA8» sozinho manda o artista adivinhar se foi a ferramenta, o formato ou um bug;
+/// «a sheet is one texture, and it is 8-bit» diz-lhe o que mudar se não quiser pagar.
+pub(crate) fn warn_precision_loss(
+    entity: Entity,
+    sim: &SimWorld,
+    renderer: &SpriteRenderer,
+    toasts: &mut ph2d_editor::ToastQueue,
+    because: &str,
+) {
+    if holds_sixteen_bit(entity, sim, renderer) {
+        toasts.push(ph2d_editor::Toast::info(format!(
+            "Converted to RGBA8 — {because}"
+        )));
+    }
+}
+
 pub(crate) fn commit_edited_texture(
     entity: Entity,
     sim: &mut SimWorld,
@@ -218,29 +260,9 @@ pub(crate) fn commit_edited_texture(
 ) -> Result<u32, String> {
     // **A PERDA DE PRECISÃO tem de ser dita** (plano `docs/Sprite_projeto/18` W4).
     //
-    // ⚠️ Toda ferramenta de imagem trabalha em 8 bits — o `SpriteImage` é `Vec<u8>` — e este funil
-    // é por onde todas escrevem de volta. Sem este aviso, correr um Trim numa sprite de 16 bits
-    // **rebaixa-a em silêncio**: sem erro, sem log, e o único vestígio é a linha `Format` do
-    // Inspector, que o artista não estava a olhar.
-    //
-    // ⛔ **A alternativa recusada** era converter a ferramenta para 16 bits: nenhuma delas pede
-    // isso hoje, e emendar o contrato congelado `RasterEditTool` por simetria — em vez de por
-    // necessidade medida — é como se paga um contrato duas vezes.
-    //
     // O aviso é DEPOIS e não antes de propósito: antes exigiria interceptar a activação de cada
     // ferramenta (nove sítios) para dizer o que este único sítio sabe de facto.
-    if let SpriteSource::Individual { texture_id } = sim
-        .world()
-        .get::<Sprite>(entity)
-        .map(|s| s.source)
-        .unwrap_or(SpriteSource::Atlas { key: 0 })
-        && renderer.individual_format(texture_id)
-            == Some(ph2d_render::IndividualTextureStore::FORMAT_16)
-    {
-        toasts.push(ph2d_editor::Toast::info(
-            "Converted to RGBA8 — image tools work in 8-bit",
-        ));
-    }
+    warn_precision_loss(entity, sim, renderer, toasts, "image tools work in 8-bit");
     let texture_id = renderer
         .acquire_individual(img.width, img.height, &img.pixels)
         .map_err(|e| e.to_string())?;

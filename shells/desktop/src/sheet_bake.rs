@@ -119,6 +119,22 @@ pub(crate) fn compose_sheet(
             cfg.pixels_per_meter, cfg.padding
         );
     }
+    // **QUANTAS PEÇAS VÃO PAGAR A PRECISÃO** (plano `docs/Sprite_projeto/18` W7).
+    //
+    // ⚠️ Uma folha é **uma textura**, e ela é de 8 bits (`AuthoredSheet.rgba: Vec<u8>`) — a mesma lei
+    // do atlas partilhado (§3.3). Empacotar uma peça de 16 bits custa-lhe a precisão, e até aqui
+    // custava **em silêncio**: a auditoria de 2026-08-20 tinha olhado para as ferramentas, e assar
+    // uma folha não está no menu delas.
+    //
+    // ⚠️ **Um toast com a CONTA, e não um por peça.** Uma folha tem N filhos; N toasts iguais são
+    // ruído que esconde os outros avisos, e o número é a informação que falta («duas de doze» é uma
+    // decisão diferente de «doze de doze»).
+    let downgraded = sixteen_bit_pieces(sim, renderer, sheet);
+    if downgraded > 0 {
+        toasts.push(Toast::info(format!(
+            "Converted {downgraded} piece(s) to RGBA8 — a sheet is one texture, and it is 8-bit"
+        )));
+    }
     let baked = read_pieces(
         sim,
         renderer,
@@ -226,6 +242,22 @@ fn existing_sheet_id(sim: &SimWorld, sheet: Entity) -> Option<u32> {
 }
 
 /// Lê cada filho, redimensiona-o para o tamanho que ele ocupa na folha, e calcula o canto.
+/// Quantos filhos desta folha têm pixels de 16 bits **agora**.
+///
+/// ⚠️ Lê a mesma lista de filhos que o [`read_pieces`], e pela mesma ordem — se um dia elas
+/// divergirem, a conta do toast passa a descrever outra folha que não a que se assou.
+fn sixteen_bit_pieces(sim: &SimWorld, renderer: &SpriteRenderer, sheet: Entity) -> usize {
+    sim.world()
+        .get::<bevy_ecs::hierarchy::Children>(sheet)
+        .map(|c| {
+            c.iter()
+                .copied()
+                .filter(|&child| texture_edit::holds_sixteen_bit(child, sim, renderer))
+                .count()
+        })
+        .unwrap_or(0)
+}
+
 fn read_pieces(
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,

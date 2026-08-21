@@ -102,3 +102,53 @@ própria, e o `docs/Sprite_projeto/18` §6 já a nomeia como decisão de produto
 ⛔ **Converter o resultado de volta para cima** em qualquer um dos casos acima. É a opção que
 *parece* resolver e é a pior: o Inspector diria `RGBA16` sobre valores que atravessaram 8 bits.
 *O rótulo tem de prometer o que o modelo entrega* — esta wave já pagou essa lei três vezes.
+
+---
+
+## §5 — ⚠️ A auditoria estava INCOMPLETA, e o buraco era a forma da pergunta (2026-08-21)
+
+A §2 varreu as **ferramentas** — as nove entradas da fila de Image Tools. Estava certa, e ficou
+incompleta, porque a pergunta que ela fez foi *por NOME DE MENU*.
+
+⚠️ **Há quatro verbos que consomem pixels pela MESMA porta (`read_sprite_source`) e não estão
+naquele menu.** Os quatro rebaixavam 16 bits **sem uma palavra**:
+
+| verbo | onde | por que perde | é correcto perder? |
+|---|---|---|---|
+| **Pack / Bake Sheet** | [`sheet_bake.rs`](../../shells/desktop/src/sheet_bake.rs) | uma folha é **uma** textura, e o `AuthoredSheet.rgba` é `Vec<u8>` | **sim** — mesma lei do atlas (§3.3 do plano 18) |
+| **Merge Sprites** | [`sprite_merge.rs`](../../shells/desktop/src/hero_intents/sprite_merge.rs) | o acumulador é de 8 bits e o «over» é aritmética sobre a cor | **sim** — preservar pede um compositor de 16 bits |
+| **`Strategy → Atlas`** | [`inspector_strategy.rs`](../../shells/desktop/src/render_loop/inspector_strategy.rs) | o atlas partilhado é uma textura, e é de 8 bits | **sim** — é a própria lei do §3.3 |
+| **doar a forma ao 3D** | [`sculpt3d_bake.rs`](../../shells/desktop/src/sculpt3d_bake.rs) | o `base × luz` é escrito numa textura de 8 bits | **sim** — o produto é aritmética sobre a cor |
+
+⚠️ **Repare na última coluna: os quatro estavam a fazer a coisa CERTA.** O defeito não era converter
+— era **converter em silêncio**. E o único vestígio era a linha `Format` do Inspector mudar sozinha,
+que é *literalmente* a queixa que abriu esta wave (Enio, 2026-08-20: *"após aplicar algumas das tools
+a sprite volta para RGBA8 no inspector"*). *O `Strategy → Atlas` é o vizinho do par `Format` no mesmo
+painel, e rebaixava silenciosamente a sprite dois cliques ao lado do botão que a promovera.*
+
+⚠️ **A fusão é o pior dos quatro**, e por uma razão que não é de precisão: ela **despawna as fontes**.
+Uma ferramenta rebaixa uma sprite que ainda está lá para se olhar; esta apaga o de que veio, e a
+perda só aparece na exportação.
+
+### §5.1 — A cura, e o gate que impede o quinto verbo
+
+Uma lei só, num sítio só: `texture_edit::warn_precision_loss(entity, .., because)`. O `because` não é
+decoração — `CLAUDE.md` §0 exige que um limite diga **de que recurso** ele é. *«Converted to RGBA8»*
+sozinho manda o artista adivinhar se foi a ferramenta, o formato ou um bug; *«a sheet is one texture,
+and it is 8-bit»* diz-lhe o que mudar se não quiser pagar.
+
+O gate é [`a_verb_that_costs_precision_says_so`](../../shells/desktop/tests/a_verb_that_costs_precision_says_so.rs):
+todo ficheiro que chama `read_sprite_source` **nomeia** uma porta de commit, a lei, ou o marcador
+`PRECISION-READONLY:` com o motivo. ⛔ Não há allowlist, de propósito — a justificação viaja com o
+código.
+
+⚠️ **A varredura acusou mais quatro ficheiros, e os quatro eram legítimos:** o encaixe da âncora
+(mede o alfa, não escreve), as prévias do BG-Removal e do Upscale, e o *bind* do documento do Painter
+— nesses, quem escreve de volta é o handler da ferramenta, pelo funil que avisa. *Um gate que acusa o
+legítimo é desligado na primeira semana*: eles declaram-se, e a declaração diz porquê.
+
+⚠️ **Uma prova de mutação corrigiu o próprio gate.** A 1ª versão procurava os marcadores no ficheiro
+**inteiro**, e o `inspector_strategy.rs` passava por ter a frase *"converte para Individual
+(`commit_edited_texture`)"* num **doc-comment** — apagar a chamada de aviso real deixava-o **verde**.
+*Um ficheiro que fala sobre a porta não passa por ela.* Agora as chamadas são procuradas no corpo sem
+comentários, e só o marcador vive num comentário.

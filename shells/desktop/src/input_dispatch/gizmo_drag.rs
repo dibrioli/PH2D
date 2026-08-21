@@ -767,6 +767,9 @@ impl App {
             .world()
             .get::<ph2d_render::Sprite>(entity)
             .map(|s| s.size)?;
+        // PRECISION-READONLY: MEDIÇÃO pura — só o canal alfa entra, e só para achar a caixa
+        // opaca a que a âncora encaixa. Nenhum pixel volta para a sprite, por isso os 8 bits que
+        // o `read_sprite_source` devolve não custam precisão nenhuma a ninguém.
         let src = crate::hero_intents::texture_edit::read_sprite_source(
             entity,
             &gfx.sim,

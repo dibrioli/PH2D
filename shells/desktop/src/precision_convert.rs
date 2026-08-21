@@ -110,11 +110,25 @@ pub(crate) fn apply(
                 .map(|texture_id| (texture_id, pixels_id))
         }
         Precision::Rgba8 => {
-            let Some((_, _, straight)) = asset.image_rgba8() else {
-                toasts.push(Toast::error("Cannot convert — source is not an image"));
-                return true;
+            // ⚠️ **A descida é o ÚNICO dos dois sentidos que perde, e é aqui que ela ganha dither**
+            // (plano 18 W6). O `image_rgba8` continua a ser a porta **fiel** — ele serve leituras, e
+            // uma leitura que devolvesse valores diferentes dos guardados não é uma leitura. Este
+            // sítio não está a ler: está a **cumprir um pedido do autor** de ficar com 8 bits para
+            // sempre, e é exatamente onde as faixas de um degradê nascem.
+            //
+            // ⚠️ Quem chegou aqui de 8 bits já saiu no curto-circuito de `precision()` lá em cima,
+            // por isso o ramo `None` não é a imagem de 8 bits: é o asset deixar de ser imagem entre
+            // duas linhas. O `image_rgba8` apanha esse caso com a mesma lei de sempre.
+            let bytes = match asset.image_rgba16() {
+                Some((_, _, halves)) => ph2d_color::rgba16_to_rgba8_dithered(halves, width),
+                None => {
+                    let Some((_, _, straight)) = asset.image_rgba8() else {
+                        toasts.push(Toast::error("Cannot convert — source is not an image"));
+                        return true;
+                    };
+                    straight.into_owned()
+                }
             };
-            let bytes = straight.into_owned();
             let pixels_id = asset_db.insert_image_rgba8(width, height, bytes.clone());
             renderer
                 .acquire_individual(width, height, &bytes)

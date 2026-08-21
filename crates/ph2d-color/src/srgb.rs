@@ -109,17 +109,40 @@ pub fn srgb_to_linear_byte(byte: u8) -> f32 {
     srgb_to_linear_unit(byte as f32 / 255.0)
 }
 
+/// IEC 61966 linear → sRGB, **sem quantizar**: entra `[0.0, 1.0]` linear, sai `[0.0, 1.0]` sRGB.
+///
+/// ⚠️ É a inversa exata de [`srgb_to_linear_unit`], e existe pela mesma razão que ela: o dither da
+/// descida para 8 bits ([`crate::dither`]) precisa do valor **antes** do arredondamento, e uma
+/// segunda cópia da curva é uma divergência à espera de acontecer.
+#[inline]
+pub fn linear_to_srgb_unit(linear: f32) -> f32 {
+    let v = linear.clamp(0.0, 1.0);
+    if v <= 0.003_130_8 {
+        v * 12.92
+    } else {
+        1.055 * v.powf(1.0 / 2.4) - 0.055
+    }
+}
+
 /// IEC 61966 linear → sRGB transfer function on a linear intensity
 /// in `[0.0, 1.0]`. Returns an 8-bit byte.
 #[inline]
 pub fn linear_to_srgb_byte(linear: f32) -> u8 {
-    let v = linear.clamp(0.0, 1.0);
-    let encoded = if v <= 0.003_130_8 {
-        v * 12.92
-    } else {
-        1.055 * v.powf(1.0 / 2.4) - 0.055
-    };
-    (encoded * 255.0 + 0.5) as u8
+    linear_to_srgb_byte_biased(linear, 0.0)
+}
+
+/// [`linear_to_srgb_byte`] **com um viés medido em PASSOS de 8 bits**, aplicado ao valor já
+/// escalado para `0..255` e antes do arredondamento.
+///
+/// ⚠️ **É por aqui que o dither entra, e por nenhum outro sítio.** O viés é adimensional em LSB
+/// justamente porque é isso que a quantização enxerga: somar ruído ao valor *linear* teria uma
+/// amplitude diferente em cada ponto da curva, e é o erro clássico deste passo.
+///
+/// `bias_lsb = 0.0` devolve byte-a-byte o que [`linear_to_srgb_byte`] sempre devolveu.
+#[inline]
+pub fn linear_to_srgb_byte_biased(linear: f32, bias_lsb: f32) -> u8 {
+    let encoded = linear_to_srgb_unit(linear);
+    (encoded * 255.0 + 0.5 + bias_lsb).clamp(0.0, 255.0) as u8
 }
 
 #[cfg(test)]

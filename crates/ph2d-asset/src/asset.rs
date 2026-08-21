@@ -168,6 +168,28 @@ impl Asset {
             _ => None,
         }
     }
+
+    /// **Os meios-floats, e SÓ quando eles existem mesmo.**
+    ///
+    /// ⚠️ **A assimetria com [`Asset::image_rgba8`] é deliberada e é o ponto todo.** Aquela é uma
+    /// rede de segurança: um consumidor que só sabe 8 bits recebe 8 bits, convertendo se preciso,
+    /// e não perde nada que já não estivesse perdido. Esta **não converte para cima** — uma imagem
+    /// de 8 bits promovida a 16 continua com 256 degraus por canal, e devolvê-la aqui deixaria o
+    /// chamador a acreditar que tem informação que ninguém mediu. *Uma porta que mente para cima é
+    /// pior que porta nenhuma.*
+    ///
+    /// Quem quiser mesmo promover chama [`ph2d_imageio::rgba8_to_rgba16`], que diz no nome o que faz.
+    #[must_use]
+    pub fn image_rgba16(&self) -> Option<(u32, u32, &[u16])> {
+        match self {
+            Self::ImageRgba16 {
+                width,
+                height,
+                pixels,
+            } => Some((*width, *height, &**pixels)),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

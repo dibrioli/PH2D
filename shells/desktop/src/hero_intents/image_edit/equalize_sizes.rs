@@ -173,6 +173,11 @@ pub(crate) fn drain_equalize_sizes(
             old_source: src.old_source,
             old_premultiplied: src.old_premultiplied,
             old_anchor: src.old_anchor,
+            // ⚠️ `None` de propósito: o Equalize Sizes **redimensiona**, logo recalcula valores de
+            // pixel — não é uma das três ferramentas geométricas que preservam 16 bits (plano
+            // `docs/Sprite_projeto/18` W4-bis). Carregar aqui os 16 bits originais seria oferecer
+            // uma precisão que este caminho não pode honrar.
+            pixels_16: None,
         };
         entries.push(EqsEntry {
             bits,

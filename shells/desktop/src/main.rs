@@ -354,6 +354,8 @@ mod player_input;
 /// **A conversão de precisão dos pixels de uma sprite** — o que os botões `RGBA8 / RGBA16` do
 /// Inspector fazem (plano `docs/Sprite_projeto/18` W5).
 mod precision_convert;
+/// **As ferramentas que só movem pixels preservam a precisão** — veja os docs do módulo.
+mod precision_geometry;
 mod prefs;
 /// **A sonda da §4.3 do plano da UI viva** — o cursor pode ser PRESO nesta máquina? Só de teste:
 /// ela abre janela e precisa de uma mão mexendo o rato, então nunca entra num build de produto.

@@ -76,14 +76,43 @@ pub(crate) fn drain_trim_transparency(
             height: result.bounds.height,
         },
     );
+    // **O recorte PRESERVA a precisão** (plano `docs/Sprite_projeto/18` W4-bis).
+    //
+    // ⚠️ O Trim não calcula valor de pixel nenhum — ele só escolhe uma janela. Aplicar a MESMA
+    // janela ao buffer de 16 bits devolve a sprite intacta; deixá-la passar pelo caminho de 8 bits
+    // destruía 16 bits sem sequer olhar para um valor.
+    let cropped_16 = src.pixels_16.as_ref().and_then(|px| {
+        crate::precision_geometry::blit_rgba16(
+            px,
+            src.image.width,
+            src.image.height,
+            [
+                result.bounds.x,
+                result.bounds.y,
+                result.bounds.width,
+                result.bounds.height,
+            ],
+            result.width,
+            result.height,
+            0,
+            0,
+        )
+    });
     let edited = ph2d_render::SpriteImage::from_bytes(
         result.width,
         result.height,
         result.pixels,
         src.image.alpha,
     );
-    match texture_edit::commit_edited_texture(
-        entity, sim, renderer, asset_db, &edited, new_size, toasts,
+    match texture_edit::commit_geometric_edit(
+        entity,
+        sim,
+        renderer,
+        asset_db,
+        &edited,
+        cropped_16.as_deref(),
+        new_size,
+        toasts,
     ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Trim failed: {err}")));

@@ -81,18 +81,33 @@ pub(crate) fn drain_make_square(
     // Color-agnostic pad (transparent border): PRESERVE the source alpha
     // mode so a premultiplied BG-Removal result survives Make-Square
     // byte-exact — the chokepoint re-derives `Sprite.premultiplied`.
+    // **A moldura PRESERVA a precisão** (plano `docs/Sprite_projeto/18` W4-bis). O Make Square não
+    // calcula valor de pixel nenhum: põe a origem num canvas maior e enche o resto de transparente.
+    let framed_16 = src.pixels_16.as_ref().and_then(|px| {
+        crate::precision_geometry::blit_rgba16(
+            px,
+            src.image.width,
+            src.image.height,
+            [0, 0, src.image.width, src.image.height],
+            result.size,
+            result.size,
+            result.offset_x,
+            result.offset_y,
+        )
+    });
     let edited = ph2d_render::SpriteImage::from_bytes(
         result.size,
         result.size,
         result.pixels,
         src.image.alpha,
     );
-    match texture_edit::commit_edited_texture(
+    match texture_edit::commit_geometric_edit(
         entity,
         sim,
         renderer,
         asset_db,
         &edited,
+        framed_16.as_deref(),
         [new_side, new_side],
         toasts,
     ) {

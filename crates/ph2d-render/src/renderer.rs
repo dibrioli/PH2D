@@ -446,6 +446,27 @@ impl SpriteRenderer {
         self.individual.readback_rgba8(&self.gpu, texture_id)
     }
 
+    /// **Os texels CRUS de uma textura de 16 bits**, ou `None` se ela não for de 16 bits.
+    ///
+    /// ⚠️ Serve as ferramentas que **não calculam valor de pixel nenhum** — trim, make-square,
+    /// padding: elas só copiam e preenchem, por isso a precisão pode atravessá-las **exacta**. Sem
+    /// esta porta a única leitura era a normalizada para 8 bits, e essas três destruíam 16 bits por
+    /// nada (Enio, 2026-08-20: *"após aplicar algumas das tools a sprite volta para RGBA8"*).
+    pub fn readback_individual_16(&self, texture_id: u32) -> Option<(u32, u32, Vec<u16>)> {
+        if self.individual.format(texture_id) != Some(IndividualTextureStore::FORMAT_16) {
+            return None;
+        }
+        let (w, h, bytes) = self.individual.readback(&self.gpu, texture_id).ok()?;
+        Some((
+            w,
+            h,
+            bytes
+                .chunks_exact(2)
+                .map(|p| u16::from_le_bytes([p[0], p[1]]))
+                .collect(),
+        ))
+    }
+
     /// Convenience wrapper around [`IndividualTextureStore::replace_pixels`]
     /// that hides the renderer-internal `GpuContext` + `material_bgl`
     /// from callers. Used by tool live-preview bridges (BG-Removal,

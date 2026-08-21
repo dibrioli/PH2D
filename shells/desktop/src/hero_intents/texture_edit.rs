@@ -36,6 +36,16 @@ pub(crate) struct SourceRead {
     /// fixed; undo restores it. `[0,0]` for any sprite the TOOL_PIVOT
     /// tool hasn't moved the pivot on.
     pub old_anchor: [f32; 2],
+    /// **Os mesmos pixels em 16 bits**, quando a sprite os tem — plano
+    /// `docs/Sprite_projeto/18` W4-bis.
+    ///
+    /// ⚠️ **É o MESMO conteúdo do [`Self::image`], não outro**: mesma janela de região, mesmas
+    /// dimensões. O `image` é a versão convertida para 8 bits que as ferramentas sabem ler; este
+    /// é o original, para as três que **não calculam valor de pixel nenhum** poderem devolver a
+    /// precisão intacta (ver [`crate::precision_geometry`]).
+    ///
+    /// `None` para toda sprite de 8 bits — que é quase todas.
+    pub pixels_16: Option<Vec<u16>>,
 }
 
 /// Read `entity`'s sprite source as a [`SpriteImage`] carrying its native
@@ -62,6 +72,18 @@ pub(crate) fn read_sprite_source(
         .get::<Transform>(entity)
         .map(|t| [t.translation.x, t.translation.y])
         .unwrap_or([0.0, 0.0]);
+    // **Os 16 bits originais, quando existem** (plano `docs/Sprite_projeto/18` W4-bis).
+    //
+    // ⚠️ Passa pela MESMA janela de região que o `image` — senão as duas metades descreveriam
+    // imagens diferentes e a ferramenta geométrica devolveria a folha inteira no lugar da peça,
+    // que é exatamente o defeito das «múltiplas repetições» que o `crop_region` existe para curar.
+    let pixels_16 = match sprite.source {
+        SpriteSource::Individual { texture_id } => renderer
+            .readback_individual_16(texture_id)
+            .and_then(|(w, h, px)| crop_region_16(&px, w, h, sprite)),
+        // O atlas é de 8 bits por construção; uma cozida não tem pixels na CPU.
+        _ => None,
+    };
     let image = match sprite.source {
         SpriteSource::Atlas { key } => {
             let aid = atlas_asset_map.get(&key)?;
@@ -107,7 +129,31 @@ pub(crate) fn read_sprite_source(
         old_source,
         old_premultiplied,
         old_anchor,
+        pixels_16,
     })
+}
+
+/// O [`crop_region`] do buffer de 16 bits — a MESMA janela, dita para elementos em vez de bytes.
+///
+/// ⚠️ Devolve `None` (e não o todo) quando o rectângulo é impossível, ao contrário do irmão de 8
+/// bits: ali devolver a imagem inteira é errado de forma **visível**; aqui o consumidor é uma
+/// ferramenta que ia preservar precisão, e o que ela faz sem os 16 bits é **converter para 8** —
+/// que é o comportamento seguro. *Uma ausência degrada; um todo errado mente.*
+fn crop_region_16(px: &[u16], w: u32, h: u32, sprite: &Sprite) -> Option<Vec<u16>> {
+    if !sprite.region_enabled {
+        return Some(px.to_vec());
+    }
+    let [rx, ry, rw, rh] = sprite.region_rect;
+    let rect = [
+        rx.round().max(0.0) as u32,
+        ry.round().max(0.0) as u32,
+        rw.round().max(0.0) as u32,
+        rh.round().max(0.0) as u32,
+    ];
+    if rect[2] == 0 || rect[3] == 0 {
+        return None;
+    }
+    crate::precision_geometry::blit_rgba16(px, w, h, rect, rect[2], rect[3], 0, 0)
 }
 
 /// Recorta a imagem à janela que o sprite de facto usa (`region_rect`), ou devolve-a inteira.
@@ -209,6 +255,88 @@ pub(crate) fn commit_edited_texture(
         pixels_id,
         new_size_world,
         img.alpha.is_premultiplied(),
+    );
+    Ok(texture_id)
+}
+
+/// **A porta ÚNICA das ferramentas geométricas** — commita em 16 bits quando há 16 bits para
+/// commitar, e em 8 quando não há. Plano `docs/Sprite_projeto/18` W4-bis.
+///
+/// ⚠️ **Existe para as três caudas não se duplicarem.** A primeira tentativa deu ao Trim uma
+/// função-irmã com o corpo inteiro repetido — recentrar, empurrar o undo, dizer o toast — e só a
+/// chamada de commit diferente. Três dessas seriam três sítios a ter de concordar para sempre
+/// sobre coisas que nada têm a ver com precisão. *Quando duas metades só diferem numa chamada, o
+/// que se extrai é a chamada, não a metade.*
+///
+/// `halves` a `None` ⇒ caminho de 8 bits, idêntico ao de sempre (incluindo o aviso de perda).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn commit_geometric_edit(
+    entity: Entity,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    edited: &SpriteImage,
+    halves: Option<&[u16]>,
+    new_size_world: [f32; 2],
+    toasts: &mut ph2d_editor::ToastQueue,
+) -> Result<u32, String> {
+    match halves {
+        Some(h) => commit_edited_texture_16(
+            entity,
+            sim,
+            renderer,
+            asset_db,
+            h,
+            edited.width,
+            edited.height,
+            new_size_world,
+            edited.alpha.is_premultiplied(),
+        ),
+        None => commit_edited_texture(
+            entity,
+            sim,
+            renderer,
+            asset_db,
+            edited,
+            new_size_world,
+            toasts,
+        ),
+    }
+}
+
+/// **Irmã do [`commit_edited_texture`] para os resultados que continuam em 16 bits** — plano
+/// `docs/Sprite_projeto/18` W4-bis.
+///
+/// ⚠️ **Só as ferramentas que não calculam valor de pixel nenhum a usam** (trim, make-square,
+/// padding). Ver [`crate::precision_geometry`]: elas publicam a sua geometria, o shell aplica-a ao
+/// buffer de 16 bits, e nenhum valor atravessa 8 bits.
+///
+/// ⛔ **Nunca a chame com pixels que passaram por 8 bits.** Isso guardaria valores de 8 bits numa
+/// textura de 16 e faria o Inspector dizer `RGBA16` sobre uma imagem que já perdeu a precisão — a
+/// mentira exata que a linha `Format` levou duas versões a deixar de contar.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn commit_edited_texture_16(
+    entity: Entity,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    halves: &[u16],
+    width: u32,
+    height: u32,
+    new_size_world: [f32; 2],
+    premultiplied: bool,
+) -> Result<u32, String> {
+    let texture_id = renderer
+        .acquire_individual_16(width, height, halves)
+        .map_err(|e| e.to_string())?;
+    let pixels_id = asset_db.insert_image_rgba16(width, height, halves.to_vec());
+    rebind_to_individual(
+        entity,
+        sim,
+        texture_id,
+        pixels_id,
+        new_size_world,
+        premultiplied,
     );
     Ok(texture_id)
 }

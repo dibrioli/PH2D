@@ -114,18 +114,48 @@ pub(crate) fn drain_padding(
     // Color-agnostic resize (transparent border / crop): PRESERVE the
     // source alpha mode so a premultiplied BG-Removal result survives
     // byte-exact — the chokepoint re-derives `Sprite.premultiplied`.
+    // **O padding PRESERVA a precisão** (plano `docs/Sprite_projeto/18` W4-bis). Ele não calcula
+    // valor de pixel nenhum: recorta e/ou emoldura com transparente.
+    //
+    // ⚠️ **A geometria DERIVA-SE do que o resultado publica, sem reimplementar o clamp dele.**
+    // Cada borda do spec é um número COM SINAL — ou preenche, ou corta, nunca as duas — por isso
+    // `pivot_delta = padLeft − cropLeft` tem exatamente um dos termos não-nulo, e os dois cantos
+    // saem dali sem ambiguidade. Reimplementar o «clamp para ≥ 1px» seria uma segunda cópia da
+    // mesma lei, a ter de concordar para sempre.
+    //
+    // ⚠️ E se a derivação estiver errada, o `blit_rgba16` **recusa** e o caminho cai no de 8 bits:
+    // degrada, não corrompe.
+    let padded_16 = src.pixels_16.as_ref().and_then(|px| {
+        let dst_x = result.pivot_delta_x.max(0) as u32;
+        let dst_y = result.pivot_delta_y.max(0) as u32;
+        let src_x = (-result.pivot_delta_x).max(0) as u32;
+        let src_y = (-result.pivot_delta_y).max(0) as u32;
+        let run_w = (src.image.width - src_x).min(result.width - dst_x);
+        let run_h = (src.image.height - src_y).min(result.height - dst_y);
+        crate::precision_geometry::blit_rgba16(
+            px,
+            src.image.width,
+            src.image.height,
+            [src_x, src_y, run_w, run_h],
+            result.width,
+            result.height,
+            dst_x,
+            dst_y,
+        )
+    });
     let edited = ph2d_render::SpriteImage::from_bytes(
         result.width,
         result.height,
         result.pixels,
         src.image.alpha,
     );
-    match texture_edit::commit_edited_texture(
+    match texture_edit::commit_geometric_edit(
         entity,
         sim,
         renderer,
         asset_db,
         &edited,
+        padded_16.as_deref(),
         new_size_world,
         toasts,
     ) {

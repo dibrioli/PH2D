@@ -1053,7 +1053,7 @@ impl crate::App {
             // inside the render loop — W1 wires Open/Save user paths
             // through `imageio_importers.find_for(...)`.
             imageio_importers: _,
-            imageio_exporters: _,
+            imageio_exporters,
             // Motion Nodes: cooked per frame by `motion_bridge` (M0.T10) into its
             // reused instance buffer while the `motion` tool is active.
             motion,
@@ -2668,6 +2668,10 @@ impl crate::App {
             // ficheiros. Linhas separadas porque são dois pedidos diferentes.
             let mut bake_sheet_row: Option<NodeId> = None;
             let mut export_sheet_row: Option<NodeId> = None;
+            // **EXPORTAR UMA SPRITE** (plano `docs/Sprite_projeto/18` W9) — irmão do de cima, e a
+            // diferença está no nome: aquele escreve a FOLHA, este escreve uma sprite no formato
+            // que a extensão escolhida nomear.
+            let mut export_image_row: Option<NodeId> = None;
             let mut use_as_brush_texture_row: Option<NodeId> = None;
             let mut use_as_brush_shape_row: Option<NodeId> = None;
             let mut use_as_paper_row: Option<NodeId> = None;
@@ -3694,6 +3698,9 @@ impl crate::App {
                     }
                     EditorAction::HierExportSheet { row } => {
                         export_sheet_row.get_or_insert(row);
+                    }
+                    EditorAction::HierExportImage { row } => {
+                        export_image_row.get_or_insert(row);
                     }
                     EditorAction::HierRemoveFromSheet { row } => {
                         remove_from_sheet_row.get_or_insert(row);
@@ -9076,6 +9083,25 @@ impl crate::App {
                 )
             {
                 crate::sheet_export::export(&authored, toasts);
+            }
+            // **EXPORTAR UMA SPRITE** (plano `docs/Sprite_projeto/18` W9, Enio 2026-08-21). Os 16
+            // exportadores da engine já estavam registados e nenhum gesto os alcançava; esta é a
+            // porta. ⚠️ Uma sprite de 16 bits é oferecida em ALTA PRECISÃO primeiro, e só cai para
+            // 8 bits quando o formato escolhido a recusa (e aí diz-se).
+            if let Some(row) = export_image_row
+                && let Some(live) = hero_live.as_ref()
+                && let Some(bits) = live.bridge.entity_for(row)
+            {
+                crate::image_export::export_with_dialog(
+                    ph2d_ecs::Entity::from_bits(bits),
+                    sim,
+                    renderer,
+                    asset_db,
+                    atlas_asset_map,
+                    imageio_exporters,
+                    toasts,
+                );
+                self.title_dirty = true;
             }
             // O Create do modal — a criação de facto, com os alvos que ficaram reservados.
             if let Some(size_px) = hero.store.take_sheet_size_request() {

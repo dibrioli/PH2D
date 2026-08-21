@@ -251,6 +251,13 @@ pub enum EditorAction {
     /// anchor — the merge inherits its parent / z). Drain toasts when < 2 sprites are selected (no-op).
     HierMergeSprites { row: ph2d_a11y::NodeId },
 
+    /// **Exportar UMA sprite** para o formato que a extensão escolhida nomear — plano
+    /// `docs/Sprite_projeto/18` W9 (Enio, 2026-08-21).
+    ///
+    /// ⚠️ Levantar não é exportar: o painel não tem o `ExporterRegistry`, nem o renderer, nem os
+    /// pixels. O shell tem os três.
+    HierExportImage { row: ph2d_a11y::NodeId },
+
     /// "Pack into Sheet" — o mesmo verbo do pill `[SHEET]`, levantado do menu de contexto de uma
     /// linha da hierarquia (Enio 2026-08-19). Payload: a `NodeId` da linha clicada, que a shell
     /// resolve em entidade e usa como **âncora**: se ela pertence à seleção, a folha leva a

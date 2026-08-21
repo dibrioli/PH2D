@@ -84,6 +84,8 @@ fn try_context_menu_row(
             host.bus_mut().push(EditorAction::HierBakeSheet { row });
         } else if id == ids::CTX_MENU_HIER_EXPORT_SHEET {
             host.bus_mut().push(EditorAction::HierExportSheet { row });
+        } else if id == ids::CTX_MENU_HIER_EXPORT_IMAGE {
+            host.bus_mut().push(EditorAction::HierExportImage { row });
         } else if id == ids::CTX_MENU_HIER_REMOVE_FROM_SHEET {
             host.bus_mut()
                 .push(EditorAction::HierRemoveFromSheet { row });

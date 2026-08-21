@@ -193,6 +193,8 @@ mod guide_smoke;
 mod harmony_smoke;
 mod hero_bridge;
 mod hero_intents;
+/// `Export Image…` — a porta dos 16 exportadores (plano `docs/Sprite_projeto/18` W9).
+mod image_export;
 mod image_import;
 mod impasto_smoke;
 mod init;

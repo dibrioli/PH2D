@@ -198,6 +198,13 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // escreve ficheiros. Ler uma a seguir à outra é o que torna a diferença óbvia.
             (ids::CTX_MENU_HIER_BAKE_SHEET, "Bake Sheet", None),
             (ids::CTX_MENU_HIER_EXPORT_SHEET, "Export Sheet", None),
+            // A exportação de UMA sprite, ao lado da da folha: os dois escrevem ficheiros, e o
+            // nome diz qual. Plano `docs/Sprite_projeto/18` W9 (Enio, 2026-08-21).
+            (
+                ids::CTX_MENU_HIER_EXPORT_IMAGE,
+                "Export Image\u{2026}",
+                None,
+            ),
             (
                 ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
                 "Remove from Sheet",

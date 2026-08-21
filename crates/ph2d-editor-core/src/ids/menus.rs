@@ -204,6 +204,15 @@ pub const CTX_MENU_HIER_MERGE_SPRITES: NodeId = hash_node_id("ctx_menu_hier_merg
 /// Create. Semântica de seleção idêntica à do "Merge Sprites" vizinho: leva a seleção inteira
 /// quando a linha clicada faz parte dela, e só essa linha quando não faz.
 pub const CTX_MENU_HIER_PACK_SHEET: NodeId = hash_node_id("ctx_menu_hier_pack_sheet");
+
+/// Enio, 2026-08-21: *"exportação nos vários formatos suportados"* — **"Export Image…"**, a porta
+/// que faltava para os 16 exportadores que a engine já tinha registados e que nenhum gesto
+/// alcançava (plano `docs/Sprite_projeto/18` W9).
+///
+/// ⚠️ **Vizinho do "Export Sheet" de propósito, e a distinção está nos nomes:** aquele escreve a
+/// FOLHA (png + json, o par que o Aseprite lê); este escreve **uma sprite**, no formato que a
+/// extensão escolhida nomear. Ler os dois seguidos é o que torna a diferença óbvia.
+pub const CTX_MENU_HIER_EXPORT_IMAGE: NodeId = hash_node_id("ctx_menu_hier_export_image");
 /// Enio 2026-08-19: "Remove from Sheet" — a saída. A peça deixa de ser filha da folha e volta a
 /// ser um objeto de raiz, **onde está** (a preservação de mundo do reparent trata disso).
 ///

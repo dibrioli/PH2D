@@ -9,11 +9,18 @@
 //! ⚠️ **SÓ SE JULGA COM O PLAY.** As duas linhas são simulação: paradas, as quatro
 //! bandas são quatro nuvens iguais.
 //!
-//! ⚠️ **O PIN VIVE NO LAÇO DA FORÇA, e não no caminho da arte.** O
-//! `motion.integrate` lê o `accel` **e** o `inv_mass` da porta `forces` (`ctx.input(1)`),
-//! nunca da `rest` — então um pin posto antes do integrador, fora do laço, escreveria um
-//! `inv_mass` que ninguém leria, e um pin posto antes do vento não veria carga nenhuma.
-//! A ordem é `integrate =pre=> force.wind => pin => integrate.forces`.
+//! ⚠️ **O PIN VIVE NO CAMINHO DA ARTE, e a CARGA chega-lhe por uma porta.** A v1 desta
+//! cena pôs o pin dentro do laço da força, e o smoke voltou com *"tudo foi levado pelo
+//! vento, nada rasgou"*. MEDIDO: o `motion.integrate` lê o `accel` do `state`
+//! (`ctx.input(1)`) mas o **`inv_mass` do `rest`** (`ctx.input(0)`) — um pin no laço
+//! escreve um `inv_mass` que **ninguém lê**.
+//!
+//! ```text
+//! grid ──────────────► pin_constraint ──► integrate.rest      (o inv_mass chega)
+//! integrate ═pre═► force.wind ─────────► integrate.forces     (o vento move)
+//!                   force.wind ═pre═══► pin.load              (a carga chega ao pin)
+//!                                  pin ═pre═► pin.state       (a memória do rasgo)
+//! ```
 //!
 //! ⚠️ **A colocação corre ANTES do campo** (a lei que a `=73` pagou).
 
@@ -155,16 +162,7 @@ fn tear_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     let placed = place(g, scaled, at, ey, 210.0);
     let base = tint(g, placed, REST, ey, 310.0);
 
-    let integ = node(g, "motion.integrate", &[], ey, 700.0);
-    wire(g, base, 0, integ, 0)?;
-    // O LAÇO: o vento acumula a carga, e o pin lê-a.
-    let wind = node(
-        g,
-        "force.wind",
-        &[("angle", WIND_ANGLE), ("strength", WIND), ("gust", 0.0)],
-        ey + 150.0,
-        420.0,
-    );
+    // O PIN, no caminho da ARTE — é de lá que o integrador lê o `inv_mass`.
     let (first, count) = pinned_run();
     let pin = node(
         g,
@@ -175,12 +173,25 @@ fn tear_band(g: &mut Graph, right: bool) -> Option<NodeId> {
             ("strength", 1.0),
             ("break_above", if right { BREAK_ABOVE } else { 0.0 }),
         ],
+        ey,
+        420.0,
+    );
+    wire(g, base, 0, pin, 0)?;
+    let integ = node(g, "motion.integrate", &[], ey, 700.0);
+    wire(g, pin, 0, integ, 0)?;
+    // O LAÇO da força: é ele que MOVE.
+    let wind = node(
+        g,
+        "force.wind",
+        &[("angle", WIND_ANGLE), ("strength", WIND), ("gust", 0.0)],
         ey + 150.0,
         560.0,
     );
-    wire(g, wind, 0, pin, 0)?;
     wire_pre(g, integ, wind, 0)?;
-    wire(g, pin, 0, integ, 1)?;
+    wire(g, wind, 0, integ, 1)?;
+    // A CARGA: o mesmo vento, pelo `pre` que quebra o ciclo. ⛔ Não duplique a força
+    // para dar carga ao pin — seriam dois números a dizer a mesma coisa.
+    wire_pre(g, wind, pin, 2)?;
     // A MEMÓRIA do rasgo: sem este fio ele cede e volta a pinar (elástico, não rasgo).
     wire_pre(g, pin, pin, 1)?;
 

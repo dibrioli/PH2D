@@ -491,6 +491,65 @@ mod tests {
         Some((p.len(), lo, hi))
     }
 
+    /// **QUANTO UMA CENA DE FACTO ANDA** — a irmã temporal da [`measure_scene_layout`].
+    ///
+    /// ⚠️ **Ela nasceu de um smoke reprovado E provou-se contra uma cena APROVADA**
+    /// (Enio, 2026-08-21: *"tudo foi levado pelo vento. nada rasgou"*). A primeira
+    /// versão desta sonda dizia que a `=75` não andava — e dizia o mesmo da **`=71`**,
+    /// que o Enio já tinha aprovado. Foi isso que provou que o erro era do HARNESS: o
+    /// `pre` de um circuito sequencial só avança quando o quadro FECHA
+    /// ([`Cook::advance_tick`]), e um laço que só `cook`a lê o mesmo tique N vezes.
+    ///
+    /// *Uma sonda que acusa a cena boa está a acusar-se a si própria.*
+    ///
+    /// `PH2D_LAYOUT_LEVEL=75 cargo test -p ph2d-host-desktop --bins
+    /// measure_scene_motion -- --ignored --nocapture`
+    #[test]
+    #[ignore = "sonda de movimento, não um gate — `-- --ignored --nocapture`"]
+    fn measure_scene_motion() {
+        use ph2d_nodegraph::attr::Column;
+        let mut reg = NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registra");
+        let only = std::env::var("PH2D_LAYOUT_LEVEL").ok();
+        for level in (1..=MAX_DEMO_LEVEL).map(|l| l.to_string()) {
+            if only.as_deref().is_some_and(|w| *w != level) {
+                continue;
+            }
+            let level = level.as_str();
+            let mut doc = MotionDoc::default();
+            let sinks = build_level(Some(level), &mut doc, &reg);
+            if sinks.is_empty() {
+                continue;
+            }
+            for (k, sink) in sinks.iter().enumerate() {
+                let mut cook = ph2d_nodegraph::cook::Cook::new();
+                let (mut a, mut b) = (Vec::new(), Vec::new());
+                for t in 0..40 {
+                    let ph = f64::from(t) / 60.0;
+                    let out = cook.cook(&doc.graph, &reg, *sink, ph).expect("cozinha");
+                    if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
+                        if t == 0 {
+                            a = p.clone();
+                        }
+                        b = p.clone();
+                    }
+                    cook.advance_tick(&doc.graph, &reg, ph).expect("avança");
+                }
+                if a.is_empty() || b.is_empty() {
+                    continue;
+                }
+                // O MAIOR percurso da banda, não o do elemento 0: uma banda cujo
+                // primeiro elemento esteja pinado andaria zero e leria como parada.
+                let d = a
+                    .iter()
+                    .zip(&b)
+                    .map(|(p, q)| (q[0] - p[0]).abs() + (q[1] - p[1]).abs())
+                    .fold(0.0_f32, f32::max);
+                println!("  cena ={level} banda {:>2}: maior percurso {d:.4}", k + 1);
+            }
+        }
+    }
+
     #[test]
     fn no_conference_scene_ships_a_setup_hole() {
         let mut reg = NodeRegistry::new();

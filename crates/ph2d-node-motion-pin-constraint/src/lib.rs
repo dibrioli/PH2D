@@ -115,6 +115,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "state",
             ty: INST_VEC2,
         },
+        // **A CARGA** — a cadeia de forças, de onde sai o `accel`. Ver [`BREAK_ABOVE`].
+        PortSpec {
+            name: "load",
+            ty: INST_VEC2,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -162,21 +167,37 @@ const TORN: &str = "pin_torn";
 /// Um pin com carga acima de `break_above` **RASGA**: a partícula volta a ter massa
 /// finita e vai-se embora com o resto. `0` desliga — ver abaixo porquê é `0` e não `∞`.
 ///
-/// ## A carga é o `accel`, e é por isso que a ORDEM de fiação importa
+/// ## A carga entra por uma PORTA PRÓPRIA, e o porquê foi medido num smoke reprovado
 ///
 /// A célula dizia *"nenhum solver publica a força sentida no pin"*, e isso é verdade
 /// **do solver**. Mas a carga já viaja no stream antes dele: as `force.*` acumulam em
-/// `accel` e o integrador consome-a. Um pin posto **depois** das forças e antes do
-/// integrador lê exactamente quanta força tenta movê-lo:
+/// `accel`. A primeira versão desta wave leu-a do próprio `in` e pôs o pin **dentro do
+/// laço de força** — e o smoke voltou com *"tudo foi levado pelo vento, nada rasgou"*.
+///
+/// ⚠️ **MEDIDO, e desmente uma nota que eu próprio escrevi:** o `motion.integrate` lê o
+/// `accel` do `state` (`ctx.input(1)`) mas o **`inv_mass` do `rest`** (`ctx.input(0)`,
+/// `scalar_to_n(rest, INV_MASS, n, 1.0)`; o WGSL diz `read_rest_inv_mass`). Um pin no
+/// laço escreve um `inv_mass` que **ninguém lê** — nada fica pinado, e o vento leva tudo.
+///
+/// ⇒ o pin tem de estar no caminho da ARTE (para o `inv_mass` chegar) e mesmo assim ver
+/// a carga (que só existe na cadeia de FORÇAS). As duas coisas ao mesmo tempo pedem uma
+/// porta:
 ///
 /// ```text
-/// grid → force.wind → pin_constraint → integrate      (a carga chega ao pin)
-/// grid → pin_constraint → integrate ← force.wind      (o pin não vê carga nenhuma)
+/// grid ──────────────► pin_constraint ──► integrate.rest      (o inv_mass chega)
+/// integrate ═pre═► force.wind ─────────► integrate.forces     (o vento move)
+///                   force.wind ═pre═══► pin.load              (a carga chega ao pin)
+///                                  pin ═pre═► pin.state       (a memória do rasgo)
 /// ```
 ///
-/// ⚠️ **Sem `accel` no stream a carga lê ZERO e nada rasga** — o que é a resposta certa
-/// (não há força a puxar) e não um erro silencioso: o nó não pode inventar uma carga que
-/// ninguém escreveu.
+/// ⚠️ **O `pre` na aresta da carga é o que quebra o ciclo** (`pin → integrate → wind →
+/// pin`): o pin julga a carga do tique ANTERIOR, que é a única que existe quando ele
+/// decide. ⛔ E não há segundo vento: duplicar a força para dar carga ao pin seriam dois
+/// números a dizer a mesma coisa, e eles divergem no dia em que alguém afinar um.
+///
+/// ⚠️ **Porta `load` desligada ⇒ carga ZERO ⇒ nada rasga** — a resposta certa (não há
+/// força a puxar) e não um erro silencioso: o nó não pode inventar uma carga que ninguém
+/// escreveu.
 ///
 /// ## O rasgo é PERMANENTE, e é isso que exige a porta `state`
 ///
@@ -241,6 +262,7 @@ fn scalar_or(s: &Stream, name: &str, n: usize, fallback: f32) -> Vec<f32> {
 fn pin(
     input: &Stream,
     state: &Stream,
+    load: &Stream,
     first: usize,
     count: usize,
     strength: f32,
@@ -262,7 +284,7 @@ fn pin(
             // ⚠️ Rasgado ANTES ou rasga AGORA — as duas metades, e a primeira é o que
             // torna o rasgo permanente. O `breaks` desligado deixa a coluna a zero,
             // então um grafo sem limiar nunca escreve nada aqui.
-            let ripped = breaks && (was_torn[i] >= 0.5 || load_at(input, i) > break_above);
+            let ripped = breaks && (was_torn[i] >= 0.5 || load_at(load, i) > break_above);
             torn.push(f32::from(u8::from(ripped)));
             let selected = i >= first && i < last && !ripped;
             // The pin AMOUNT (1 = nailed): the range mask times the field times
@@ -369,7 +391,25 @@ impl NodeOp for MotionPinConstraint {
         } else {
             Stream::new(0)
         };
-        let out = pin(ctx.input(0), &state, first, count, strength, break_above);
+        // A carga, clonada pela mesma razão que o estado: dois `ctx.input` não podem
+        // coexistir emprestados, e ela só é tocada quando há limiar.
+        let load = if break_above > 0.0 {
+            match ctx.input(2).get(ACCEL) {
+                Some(Column::Vec2(v)) => Stream::new(v.len()).with(ACCEL, Column::Vec2(v.clone())),
+                _ => Stream::new(0),
+            }
+        } else {
+            Stream::new(0)
+        };
+        let out = pin(
+            ctx.input(0),
+            &state,
+            &load,
+            first,
+            count,
+            strength,
+            break_above,
+        );
         ctx.emit(out);
     }
 }
@@ -504,7 +544,15 @@ mod tests {
     /// stream (the bug that would freeze every sim downstream).
     #[test]
     fn the_index_range_is_what_gets_pinned() {
-        let out = pin(&stream(5, None, None), &Stream::new(0), 1, 2, 1.0, 0.0);
+        let out = pin(
+            &stream(5, None, None),
+            &Stream::new(0),
+            &Stream::new(0),
+            1,
+            2,
+            1.0,
+            0.0,
+        );
         assert_eq!(weights(&out), vec![1.0, 0.0, 0.0, 1.0, 1.0]);
     }
 
@@ -512,7 +560,15 @@ mod tests {
     /// half the inverse mass, i.e. an element twice as heavy as its neighbours.
     #[test]
     fn strength_is_a_partial_pin() {
-        let out = pin(&stream(2, None, None), &Stream::new(0), 0, 1, 0.25, 0.0);
+        let out = pin(
+            &stream(2, None, None),
+            &Stream::new(0),
+            &Stream::new(0),
+            0,
+            1,
+            0.25,
+            0.0,
+        );
         assert_eq!(weights(&out), vec![0.75, 1.0]);
     }
 
@@ -522,6 +578,7 @@ mod tests {
     fn the_falloff_field_scales_the_pin() {
         let out = pin(
             &stream(3, Some(vec![1.0, 0.5, 0.0]), None),
+            &Stream::new(0),
             &Stream::new(0),
             0,
             3,
@@ -536,8 +593,16 @@ mod tests {
     /// quarter of the inverse mass.
     #[test]
     fn pins_compose_multiplicatively() {
-        let once = pin(&stream(1, None, None), &Stream::new(0), 0, 1, 0.5, 0.0);
-        let twice = pin(&once, &Stream::new(0), 0, 1, 0.5, 0.0);
+        let once = pin(
+            &stream(1, None, None),
+            &Stream::new(0),
+            &Stream::new(0),
+            0,
+            1,
+            0.5,
+            0.0,
+        );
+        let twice = pin(&once, &Stream::new(0), &Stream::new(0), 0, 1, 0.5, 0.0);
         assert_eq!(weights(&twice), vec![0.25]);
     }
 
@@ -548,6 +613,7 @@ mod tests {
         assert_eq!(
             weights(&pin(
                 &stream(3, None, None),
+                &Stream::new(0),
                 &Stream::new(0),
                 0,
                 0,
@@ -560,6 +626,7 @@ mod tests {
             weights(&pin(
                 &stream(3, None, None),
                 &Stream::new(0),
+                &Stream::new(0),
                 0,
                 3,
                 0.0,
@@ -569,7 +636,15 @@ mod tests {
         );
         let carried = stream(2, None, Some(vec![0.0, 0.5]));
         assert_eq!(
-            weights(&pin(&carried, &Stream::new(0), 0, 0, 1.0, 0.0)),
+            weights(&pin(
+                &carried,
+                &Stream::new(0),
+                &Stream::new(0),
+                0,
+                0,
+                1.0,
+                0.0
+            )),
             vec![0.0, 0.5]
         );
     }
@@ -578,7 +653,15 @@ mod tests {
     /// carry any `f32`): the element stays free rather than going NaN.
     #[test]
     fn a_non_finite_strength_reads_as_free() {
-        let out = pin(&stream(1, None, None), &Stream::new(0), 0, 1, f32::NAN, 0.0);
+        let out = pin(
+            &stream(1, None, None),
+            &Stream::new(0),
+            &Stream::new(0),
+            0,
+            1,
+            f32::NAN,
+            0.0,
+        );
         assert_eq!(weights(&out), vec![1.0]);
     }
 
@@ -676,6 +759,7 @@ mod tests {
         let sem = pin(
             &loaded(2, &[[0.0, 0.0]; 2]),
             &Stream::new(0),
+            &loaded(2, &[[0.0, 0.0]; 2]),
             0,
             2,
             1.0,
@@ -684,6 +768,7 @@ mod tests {
         let com = pin(
             &loaded(2, &[[99.0, 0.0]; 2]),
             &Stream::new(0),
+            &loaded(2, &[[99.0, 0.0]; 2]),
             0,
             2,
             1.0,
@@ -707,6 +792,7 @@ mod tests {
         let out = pin(
             &loaded(2, &[[3.0, 0.0], [6.0, 0.0]]),
             &Stream::new(0),
+            &loaded(2, &[[3.0, 0.0], [6.0, 0.0]]),
             0,
             2,
             1.0,
@@ -722,6 +808,7 @@ mod tests {
         let out = pin(
             &loaded(3, &[[6.0, 0.0], [0.0, 6.0], [3.0, 4.0]]),
             &Stream::new(0),
+            &loaded(3, &[[6.0, 0.0], [0.0, 6.0], [3.0, 4.0]]),
             0,
             3,
             1.0,
@@ -738,7 +825,15 @@ mod tests {
     /// vê carga nenhuma, porque a coluna ainda não existe.
     #[test]
     fn a_stream_without_accel_carries_no_load() {
-        let out = pin(&stream(2, None, None), &Stream::new(0), 0, 2, 1.0, 0.01);
+        let out = pin(
+            &stream(2, None, None),
+            &Stream::new(0),
+            &Stream::new(0),
+            0,
+            2,
+            1.0,
+            0.01,
+        );
         assert_eq!(inv_mass_of(&out), vec![0.0, 0.0], "sem carga, nada rasga");
     }
 
@@ -753,13 +848,13 @@ mod tests {
         let rajada = loaded(1, &[[9.0, 0.0]]);
         let calmo = loaded(1, &[[0.0, 0.0]]);
         // Tique 1: rasga.
-        let t1 = pin(&rajada, &Stream::new(0), 0, 1, 1.0, 5.0);
+        let t1 = pin(&rajada, &Stream::new(0), &rajada, 0, 1, 1.0, 5.0);
         assert_eq!(inv_mass_of(&t1), vec![1.0], "rasgou");
         // Tique 2 COM o laço: a marca chega, e ele continua solto mesmo sem carga.
-        let com = pin(&calmo, &t1, 0, 1, 1.0, 5.0);
+        let com = pin(&calmo, &t1, &calmo, 0, 1, 1.0, 5.0);
         assert_eq!(inv_mass_of(&com), vec![1.0], "rasgado é rasgado");
         // Tique 2 SEM o laço: ele volta a pinar — o cedimento elástico.
-        let sem = pin(&calmo, &Stream::new(0), 0, 1, 1.0, 5.0);
+        let sem = pin(&calmo, &Stream::new(0), &calmo, 0, 1, 1.0, 5.0);
         assert_eq!(inv_mass_of(&sem), vec![0.0], "sem memória, ele re-pina");
         assert_ne!(
             inv_mass_of(&com),
@@ -776,6 +871,7 @@ mod tests {
             let out = pin(
                 &loaded(2, &[[0.0, 0.0]; 2]),
                 &Stream::new(0),
+                &loaded(2, &[[0.0, 0.0]; 2]),
                 0,
                 2,
                 1.0,

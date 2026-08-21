@@ -227,7 +227,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As CINQUENTA E UMA LEIS que esta linha pagou para aprender
+## §4 — As CINQUENTA E TRÊS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -576,6 +576,21 @@ são estilo.
     algo inalcançável tem de reconferir a nota* — e aqui quem o moveu fui eu, três dias
     antes, sem ligar as duas coisas.
 
+52. ⚠️ **Escrevi no doc uma afirmação sobre o VIZINHO que nunca medi — e o gate seguinte
+    pinou a afirmação errada.** *"O `motion.integrate` lê o `accel` e o `inv_mass` da
+    porta `forces`"* saiu de eu ter visto `Consumes("inv_mass")` no `register_couplings`
+    e ter completado o resto de cabeça. A verdade é `let w = scalar_to_n(rest, INV_MASS,
+    n, 1.0)`: o `accel` vem do `state`, o **`inv_mass` vem do `rest`**. A cena inteira
+    ficou com um `inv_mass` que ninguém lia, nove gates verdes, e o smoke a dizer *"tudo
+    foi levado pelo vento"*. *Um `Coupling` diz QUE coluna o nó consome; ele não diz de
+    que PORTA. Vá ao `eval`.*
+53. ⚠️ **Uma sonda de simulação que não fecha o quadro mede ZERO — e o que a desmascara é
+    corrê-la contra uma cena APROVADA.** O `pre` de um circuito sequencial só avança em
+    [`Cook::advance_tick`], *"once per frame, after the frame's cook(s)"*; um laço que só
+    `cook`a lê o mesmo tique quarenta vezes. A minha primeira sonda dizia que a `=75` não
+    andava — e dizia o mesmo da `=71`, que o Enio já aprovara. *Uma sonda que acusa a cena
+    boa está a acusar-se a si própria; ponha sempre um caso conhecido-BOM no varrimento.*
+
 
 ---
 
@@ -633,7 +648,11 @@ bash scripts/collision-surface.sh main
 ```
 
 Duas linhas, rotuladas no canvas. ⚠️ **SÓ com o PLAY** — as duas são simulação. As
-pedras e os pinos são desenhados de propósito.
+pedras são desenhadas de propósito.
+
+⚠️ **Esta é a v2.** A v1 foi reprovada (*"tudo foi levado pelo vento, nada rasgou"*):
+o pin estava dentro do laço da força, e o integrador lê o `inv_mass` do `rest`. Leis
+**52** e **53** do §4.
 
 ### `=74` — a folha 02 inteira (o alvo do atrator, e a mira)
 

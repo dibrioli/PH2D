@@ -1,6 +1,8 @@
 //! Os gates da cena `=75` — o pin que rasga e o bando que desvia.
 
 use super::*;
+use ph2d_nodegraph::attr::Column;
+use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::NodeId;
 
 fn registry() -> NodeRegistry {
@@ -43,39 +45,39 @@ fn the_scene_is_two_rows_with_its_marks_drawn() {
     assert_eq!(nodes_of(&doc, "motion.pin_constraint").len(), 2);
 }
 
-/// **O PIN VIVE NO LAÇO DA FORÇA, DEPOIS DO VENTO — e é isso que lhe dá carga.**
+/// **O PIN ESTÁ NO CAMINHO DA ARTE, E A CARGA CHEGA-LHE PELA PORTA `load`.**
 ///
-/// ⚠️ Duas afirmações numa, e as duas são load-bearing. O integrador lê `accel` **e**
-/// `inv_mass` da porta `forces`, nunca da `rest`: um pin fora do laço escreveria um
-/// `inv_mass` que ninguém lê. E um pin ANTES do vento não veria carga nenhuma, então
-/// nunca rasgaria — a linha ficaria verde e muda.
+/// ⚠️ **Este gate substitui um que afirmava o CONTRÁRIO, e o contrário era o bug.** A v1
+/// pôs o pin dentro do laço da força, e o smoke voltou com *"tudo foi levado pelo vento,
+/// nada rasgou"*. MEDIDO no `motion.integrate`: o `accel` vem do `state`
+/// (`ctx.input(1)`) mas o **`inv_mass` vem do `rest`** (`ctx.input(0)`) — um pin no laço
+/// escreve um `inv_mass` que ninguém lê.
 #[test]
-fn the_pin_sits_in_the_force_loop_downstream_of_the_wind() {
+fn the_pin_is_on_the_art_path_and_the_load_arrives_by_its_own_port() {
     let (doc, _) = scene();
     let edges = doc.graph.edges();
-    for (pin, wind, integ) in nodes_of(&doc, "motion.pin_constraint")
+    for ((pin, wind), integ) in nodes_of(&doc, "motion.pin_constraint")
         .into_iter()
         .zip(nodes_of(&doc, "force.wind"))
         .zip(nodes_of(&doc, "motion.integrate"))
-        .map(|((p, w), i)| (p, w, i))
     {
         assert!(
             edges
                 .iter()
-                .any(|e| e.from.0 == wind && e.to == (pin, 0) && !e.delayed),
-            "o vento tem de estar A MONTANTE do pin"
+                .any(|e| e.from.0 == pin && e.to == (integ, 0) && !e.delayed),
+            "o pin tem de alimentar a porta `rest` — é de lá que o inv_mass é lido"
         );
         assert!(
             edges
                 .iter()
-                .any(|e| e.from.0 == pin && e.to == (integ, 1) && !e.delayed),
-            "e o pin tem de alimentar a porta `forces` do integrador"
+                .any(|e| e.from.0 == wind && e.to == (integ, 1) && !e.delayed),
+            "e o vento a porta `forces` — é de lá que o accel é lido"
         );
         assert!(
             edges
                 .iter()
-                .any(|e| e.from.0 == integ && e.to == (wind, 0) && e.delayed),
-            "o `pre` fecha o laço na cabeça da cadeia"
+                .any(|e| e.from.0 == wind && e.to == (pin, 2) && e.delayed),
+            "a carga chega ao pin pela porta `load`, com o `pre` que quebra o ciclo"
         );
         assert!(
             edges
@@ -84,6 +86,9 @@ fn the_pin_sits_in_the_force_loop_downstream_of_the_wind() {
             "e o pin precisa da própria memória, senão ele CEDE em vez de rasgar"
         );
     }
+    // ⛔ E há UM vento por banda: duplicá-lo para dar carga ao pin seriam dois números
+    // a dizer a mesma coisa.
+    assert_eq!(nodes_of(&doc, "force.wind").len(), 2);
 }
 
 /// **A LINHA 1 DIFERE SÓ NO `break_above`, e o pin selecciona a MESMA fileira.**
@@ -214,4 +219,108 @@ fn the_house_diagnoser_finds_no_hole_in_this_scene() {
     let reg = registry();
     let d = ph2d_motion_diagnose::diagnose(&doc.graph, &reg);
     assert!(d.is_empty(), "a cena não encena defeito nenhum: {d:?}");
+}
+
+/// **A CORTINA DA ESQUERDA SEGURA A FILEIRA DE CIMA; A DA DIREITA PERDE-A — CORRIDO.**
+///
+/// ⚠️ **Este é o gate que faltava, e é a terceira vez que esta linha paga a mesma
+/// lei.** O smoke voltou com *"tudo foi levado pelo vento, nada rasgou"* (Enio,
+/// 2026-08-21) e os NOVE gates desta cena estavam verdes — porque todos mediam a FORMA
+/// do grafo, e a forma que eu tinha escrito era a que eu ACREDITAVA estar certa. Um
+/// gate que corre a simulação e olha quem ficou não tem opinião nenhuma.
+///
+/// ⚠️ **A leitura é a POSIÇÃO da fileira pinada depois de N tiques**, não um param: à
+/// esquerda ela tem de estar onde nasceu (ao bit — massa infinita não se move), à
+/// direita tem de ter saído.
+#[test]
+fn the_left_curtain_holds_its_top_row_and_the_right_one_loses_it() {
+    let (doc, sinks) = scene();
+    let reg = registry();
+    let (first, count) = pinned_run();
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "índices"
+    )]
+    let (first, count) = (first as usize, count as usize);
+
+    // A fileira pinada, cozida ao longo de 40 tiques de 1/60 s — tempo de sobra para o
+    // vento levar o que não estiver preso.
+    let run = |sink: NodeId| -> Vec<[f32; 2]> {
+        let mut cook = Cook::new();
+        let mut last = Vec::new();
+        for k in 0..40 {
+            let t = f64::from(k) / 60.0;
+            let out = cook.cook(&doc.graph, &reg, sink, t).expect("cozinha");
+            if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
+                last = p[first..first + count].to_vec();
+            }
+            // ⚠️ **O passo que faltava, e sem ele a sonda media ZERO.** O `pre` só
+            // avança quando o quadro é fechado; um laço que só `cook`a lê o mesmo tique
+            // quarenta vezes. Medido contra a cena `=71`, que o Enio já aprovara: ela
+            // também dava 0,0000, e foi isso que provou que o erro era do harness.
+            cook.advance_tick(&doc.graph, &reg, t)
+                .expect("avança o quadro");
+        }
+        last
+    };
+    let inicio = {
+        let mut cook = Cook::new();
+        let out = cook.cook(&doc.graph, &reg, sinks[0], 0.0).expect("cozinha");
+        match out[0].as_stream().get("P") {
+            Some(Column::Vec2(p)) => p[first..first + count].to_vec(),
+            _ => panic!("P"),
+        }
+    };
+
+    let esquerda = run(sinks[0]);
+    assert_eq!(
+        esquerda, inicio,
+        "a fileira pinada da ESQUERDA tem de ficar exactamente onde nasceu"
+    );
+
+    let direita = run(sinks[1]);
+    let andou = direita
+        .iter()
+        .zip(&inicio)
+        .map(|(a, b)| (a[0] - b[0]).abs() + (a[1] - b[1]).abs())
+        .fold(0.0_f32, f32::max);
+    assert!(
+        andou > 0.5,
+        "a fileira da DIREITA tinha de ter RASGADO e ido embora; andou {andou:.3}"
+    );
+}
+
+/// **E O RESTO DA CORTINA VOA NOS DOIS LADOS** — o controlo que impede o gate acima de
+/// passar por uma cena em que o vento não chega a ninguém.
+///
+/// ⚠️ Sem isto, um vento desligado daria *"a esquerda ficou parada"* (verdade) e o
+/// primeiro `assert` passaria enquanto a cena não mostrasse coisa nenhuma.
+#[test]
+fn the_unpinned_pieces_blow_away_on_both_sides() {
+    let (doc, sinks) = scene();
+    let reg = registry();
+    for sink in sinks.iter().take(2) {
+        let mut cook = Cook::new();
+        let mut first_p = Vec::new();
+        let mut last_p = Vec::new();
+        for k in 0..40 {
+            let t = f64::from(k) / 60.0;
+            let out = cook.cook(&doc.graph, &reg, *sink, t).expect("cozinha");
+            if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
+                if k == 0 {
+                    first_p = p.clone();
+                }
+                last_p = p.clone();
+            }
+            cook.advance_tick(&doc.graph, &reg, t)
+                .expect("avança o quadro");
+        }
+        // O elemento 0 é a fileira de BAIXO — nunca pinada, sempre livre.
+        let andou = (last_p[0][0] - first_p[0][0]).abs() + (last_p[0][1] - first_p[0][1]).abs();
+        assert!(
+            andou > 0.5,
+            "o vento tem de levar quem não está preso: {andou:.3}"
+        );
+    }
 }

@@ -296,6 +296,16 @@ fn explain(d: &Diagnostic) -> String {
         (Deficit::Shadowed(ty), _) => {
             format!("Another '{ty}' already drives this screen pass — only the first one in the graph has any effect")
         }
+        // ⚠️ **O passe não alcança as formas vetoriais vivas** (bug do Enio,
+        // 2026-08-20: *"Glow não funciona com shape"*). A mensagem diz o que o
+        // artista VÊ — as formas não brilham — e não `geometry_id` nem `pump`:
+        // ele não tem como saber que existem duas metades de stream. E diz a
+        // saída que ele TEM hoje, que é assar a forma numa textura.
+        (Deficit::BlindPass(ty), _) => {
+            format!(
+                "'{ty}' only lights sprites — live vector shapes are drawn later and will not glow"
+            )
+        }
         // ⚠️ **Uma ramificação morta no meio do roteador.** A mensagem nomeia a PORTA (é o
         // que ele tem de ligar) e diz o que o índice dela devolve hoje — sem isso ele lê um
         // zero e não sabe se a ramificação está vazia ou se ela vale zero.

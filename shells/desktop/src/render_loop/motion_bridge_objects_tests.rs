@@ -523,3 +523,45 @@ fn the_drawn_curve_survives_the_object_publisher() {
         "o nome cru continua sendo a aparencia: UMA instancia"
     );
 }
+
+/// **O QUE O GLOW ALCANÇA MUDA DE LADO NO LIMIAR DO LOD** — a metade cruel do bug
+/// que o Enio relatou em 2026-08-20 (*"Glow não funciona com shape"*).
+///
+/// ⚠️ **O passe do glow re-renderiza `instances`, e só ela.** Uma forma abaixo do
+/// limiar fica em `vector_instances` (desenhada pela cena vetorial, depois do
+/// tonemap) e **não brilha**; a MESMA forma acima do limiar é movida para
+/// `instances` como tile e **brilha**. Com `LOD_COUNT = 16_000` isso quer dizer,
+/// literalmente: *não brilha com 16 000 cópias, brilha com 16 001*.
+///
+/// ⚠️ **Este gate não CURA nada — ele fixa o degrau para ele não mudar em silêncio**,
+/// e é a metade medida do aviso `Deficit::BlindPass` (que mora no diagnoser, porque
+/// a cura real é um passe antes do tonemap: decisão de renderer).
+///
+/// FALSIFICADO por qualquer mudança que faça a partição mover — ou deixar de mover —
+/// no limiar, que é exactamente onde a aparência do glow vira.
+#[test]
+fn the_lod_threshold_is_where_a_shape_starts_being_visible_to_the_glow() {
+    let mut bake = crate::motion_object_bake::ObjectBake::default();
+    bake.seed_for_test(1, 7, 700, [1.0, 1.0]);
+    let stamps = |n: usize| -> Vec<VectorInstance> {
+        #[expect(clippy::cast_precision_loss, reason = "uma fixture pequena")]
+        let v = (0..n).map(|i| lod_vi(7, i as f32)).collect();
+        v
+    };
+    // NO limiar: nada se move — a forma continua invisível ao passe.
+    let (mut inst, mut vecs) = (Vec::new(), stamps(4));
+    apply_object_lod(&mut inst, &mut vecs, &bake, 4);
+    assert!(
+        inst.is_empty() && vecs.len() == 4,
+        "no limiar a forma fica crisp, e o glow não a vê"
+    );
+    // UM acima: todas viram tiles — e passam a ser exactamente o que o glow lê.
+    let (mut inst, mut vecs) = (Vec::new(), stamps(5));
+    apply_object_lod(&mut inst, &mut vecs, &bake, 4);
+    assert!(
+        vecs.is_empty() && inst.len() == 5,
+        "um acima do limiar a MESMA forma vira sprite, e passa a brilhar"
+    );
+    // ⚠️ E o degrau do app é este número, não o `4` da fixture.
+    assert_eq!(super::LOD_COUNT, 16_000, "o degrau que o artista encontra");
+}

@@ -135,6 +135,30 @@ pub enum Deficit {
     /// ⚠️ **Sempre [`Fix::Offer`]**: apagar qual dos dois é decisão do artista, e um
     /// auto-heal que apagasse um nó seria a única cura desta casa que destrói trabalho.
     Shadowed(&'static str),
+    /// **O passe de tela não ALCANÇA metade do stream** — o nó do passe está lá, o
+    /// elemento está lá, e eles vivem em lados diferentes do renderer. Carrega o
+    /// NOME DO TIPO do passe.
+    ///
+    /// ⚠️ **Bug relatado pelo Enio (2026-08-20): *"Glow não funciona com shape"*, e
+    /// a causa é de ARQUITETURA, não do nó.** O `fx.glow` bright-passa o RT em que
+    /// o shell re-renderiza `pump.instances` — os quads de sprite. Um
+    /// `source.shape` emite um `geometry_id`, que o bridge encaminha para
+    /// `pump.vector_instances` e o `motion_shape_gen::encode` desenha na CENA
+    /// VETORIAL, num passe Vello que corre **depois do tonemap**. O passe e o
+    /// elemento estão nos dois lados da fronteira HDR.
+    ///
+    /// ⚠️ **E o defeito é INTERMITENTE POR CONTAGEM, que é o que o torna cruel:** a
+    /// partição de LOD (`apply_object_lod`, `LOD_COUNT = 16_000`) MOVE para
+    /// `instances` toda geometria carimbada acima do limiar que tenha tile assado —
+    /// e essas passam a brilhar. *A mesma forma não brilha com 16 000 cópias e
+    /// brilha com 16 001.*
+    ///
+    /// ⚠️ **A cura NÃO é um param e não está aqui:** é rasterizar a metade vetorial
+    /// do Motion **antes** do tonemap, o que exige um alvo que o `render_to_texture`
+    /// do Vello aceite (o RT do glow é `Rgba16Float`) e um passe novo — decisão de
+    /// renderer, o mesmo lugar da cerca C1 da folha 11. O que este déficit compra é
+    /// que ele deixe de ser **silencioso**.
+    BlindPass(&'static str),
     /// **Um BURACO no meio das portas de um roteador** — `in1` vazia com `in2` ligada.
     ///
     /// Um `value.switch` escolhe por índice: `clamp(round(select), 0, N−1)`. Uma porta
@@ -177,6 +201,7 @@ impl Deficit {
         Deficit::MissingSource("P"),
         Deficit::MissingInput("shape"),
         Deficit::Shadowed("fx.glow"),
+        Deficit::BlindPass("fx.glow"),
         Deficit::DeadBranch("in1"),
     ];
 }
@@ -239,6 +264,26 @@ pub fn diagnose(graph: &Graph, reg: &NodeRegistry) -> Vec<Diagnostic> {
                 continue;
             }
             claimed.push(ty_name);
+            // ⚠️ **O passe VIVO que não alcança a metade vetorial do stream** — ver
+            // [`Deficit::BlindPass`]. É o nó do PASSE que leva o aviso, e não a
+            // forma: a forma desenha-se perfeitamente; o que não se cumpre é a
+            // promessa do knob que o artista arrastou.
+            //
+            // ⚠️ **Derivado do registry, nunca de uma lista de nomes:** qualquer
+            // fonte que se declare `register_live_vector_source` entra nesta regra
+            // de graça, que é o que impede a próxima de nascer muda.
+            if graph
+                .nodes()
+                .iter()
+                .any(|n| reg.is_live_vector_source(NodeTypeId::of(&n.type_name)))
+            {
+                out.push(Diagnostic {
+                    node: inst.id,
+                    deficit: Deficit::BlindPass(ty_name),
+                    fix: Fix::Offer,
+                });
+                continue;
+            }
         }
         // A node that READS a required-upstream column with nothing wired into it has no
         // stream to act on — the ROOT cause, and it subsumes any inert output it might

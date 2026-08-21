@@ -12,6 +12,7 @@
 | # | Bug | Área | Estado | Data |
 |---|---|---|---|---|
 | [1](#bug-1--o-nó-acusado-estava-inocente-o-campo-gateia-o-pulso-e-não-gateia-a-memória) | **"Box inconsistente"** — marcar Invert e desmarcar não devolve o quadro inicial | `field.box` (acusado, **inocente**) + `pulse.counter`/`pulse.sample_hold` (a memória) | ✅ **Fechado — smoke aprovado** (porta `reset`) | 2026-08-10 |
+| [2](#bug-2--o-glow-e-a-forma-vivem-nos-dois-lados-do-tonemap-e-o-lod-troca-o-lado) | **"Glow não funciona com shape"** | `fx.glow` (acusado, **inocente**) + a partição de render sprite ⁄ vetor | ⚠️ **Diagnosticado e AVISADO** — a cura é decisão de renderer | 2026-08-20 |
 
 ---
 
@@ -166,3 +167,78 @@ landar, a metade da inversão fica vermelha: **reescreva-a para a lei nova, não
    gateia um evento a montante de um estado, *sair do gate* vira um evento que ninguém observa.
 4. **Gate que cozinha de `t = 0` não testa AUTORIA.** Uma cena com estado tem dois
    comportamentos — o do boot e o do gesto — e o segundo custa um gate próprio.
+
+
+---
+
+## Bug #2 — O glow e a forma vivem nos DOIS LADOS do tonemap, e o LOD troca o lado
+
+**Sintoma (Enio, 2026-08-20):** *"Glow não funciona com shape"*.
+
+**O nó acusado está INOCENTE.** O `fx.glow` faz exactamente o que promete; ele nunca
+recebe a forma.
+
+### A causa-raiz, com os sítios
+
+O Motion tem **duas metades de render**, e depois do cook cada elemento cai numa delas:
+
+| metade | onde vive | quem a desenha | quando |
+|---|---|---|---|
+| sprites | `pump.instances` | `SpriteRenderer` → `game_rt` | **antes** do tonemap (HDR) |
+| vetor vivo | `pump.vector_instances` | `motion_shape_gen::encode` → cena Vello | **depois** do tonemap (LDR) |
+
+O passe do glow (`present.rs`, Pass 1c) chama
+`renderer.render_instances_only(motion_fx.rt_view(), …, &motion.pump.instances, …)` —
+**só a primeira metade**. Um `source.shape` emite uma instância com `geometry_id`
+(o doc-header do nó di-lo: *"it emits one instance carrying a `geometry_id`"*), que
+vai para a segunda. O bright-pass lê um RT em que a forma nunca foi desenhada.
+
+⚠️ **E há um segundo modo de falha, mais grosso:** o bloco do glow é guardado por
+`!motion.pump.instances.is_empty()`. Num grafo **só de formas** essa lista está vazia,
+então o passe nem corre.
+
+### O que torna este bug cruel: ele é INTERMITENTE POR CONTAGEM
+
+A partição de LOD (`apply_object_lod`, `LOD_COUNT = 16_000`) **move** para `instances`
+toda geometria carimbada acima do limiar que tenha tile assado — e essas passam a ser
+exactamente o que o glow lê.
+
+> **A mesma forma não brilha com 16 000 cópias e brilha com 16 001.**
+
+Fixado pelo gate `the_lod_threshold_is_where_a_shape_starts_being_visible_to_the_glow`
+(`motion_bridge_objects_tests.rs`) — ele não cura nada; impede o degrau de se mover em
+silêncio.
+
+### Hipóteses que caíram
+
+- ⛔ *"o `threshold` do glow está alto e a forma é LDR"* — seria verdade **também**
+  depois de a forma chegar ao passe, mas não é a causa: ela não chega. Testável em
+  segundos baixando o threshold a `0` — o halo continua ausente.
+- ⛔ *"o `stretch`/`clamp` novos quebraram"* — o neutro dos três é literal e tem gate;
+  e o bug é anterior a eles (o glow nunca desenhou formas).
+
+### A cura, e por que ela NÃO está aqui
+
+Rasterizar a metade vetorial **antes** do tonemap. Não é um param: o
+`render_to_texture` do Vello teria de aceitar o RT `Rgba16Float` do glow, e é um passe
+novo na ordem do frame — **decisão de renderer**, o mesmo lugar em que a
+[cerca C1 da folha 11](89_conferencia/11_fx_raster.md) põe o borrão da sombra, e pela
+mesma razão de fronteira.
+
+⚠️ **O que ESTA wave entregou é que o bug deixe de ser silencioso:** o diagnoser ganhou
+`Deficit::BlindPass`, e o `fx.glow` num grafo com fonte vetorial viva passa a exibir
+*"'fx.glow' only lights sprites — live vector shapes are drawn later and will not glow"*.
+A regra é **derivada** de `NodeRegistry::is_live_vector_source`, então a próxima fonte
+vetorial entra nela sem código novo.
+
+### Lições generalizáveis
+
+1. ⚠️ **Um efeito de PASSE só alcança a metade do stream que o passe re-renderiza.**
+   Ao ligar um FX de tela, a primeira pergunta não é *"o efeito está certo?"* e sim
+   ***"que lista o passe lê, e todo elemento está nela?"***
+2. ⚠️ **Uma partição por CONTAGEM transforma um bug determinístico num intermitente.**
+   O LOD existe por performance e não sabe que muda a aparência de um efeito; quem
+   escreve uma partição dessas tem de perguntar o que MAIS lê a lista que ela move.
+3. ⚠️ **O nó que o report acusa é quase sempre o que o artista TOCOU, não o culpado** —
+   é a mesma lição do Bug #1, aqui a um nível acima: lá o acusado era o nó vizinho, aqui
+   é o próprio efeito, e o culpado é a fronteira entre dois passes de render.

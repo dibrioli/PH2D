@@ -62,8 +62,16 @@ fn run_with_alpha(name: &str, mut mesh: Mesh, target_edge: f32, alpha: Option<f3
     let tr = &layout.report;
     println!(
         "{name:<16} sing={sing}(soma {sum}) patches={:<4} sep={:<4} soltas={:<3} \
-         nao-disco={:<3} dissolv={:<3} arcos={:<5} aneis-abertos={}",
-        tr.patches, tr.separatrices, tr.dangling, tr.non_disk, tr.dissolved, tr.arcs, tr.open_rings
+         nao-disco={:<3} dissolv={:<3} promov={:<4} arcos={:<5} aneis-abertos={} val={:?}",
+        tr.patches,
+        tr.separatrices,
+        tr.dangling,
+        tr.non_disk,
+        tr.dissolved,
+        tr.promoted,
+        tr.arcs,
+        tr.open_rings,
+        tr.valence
     );
     eprintln!(
         "[f5] {name}: tracado em {:.0} ms",
@@ -81,9 +89,15 @@ fn run_with_alpha(name: &str, mut mesh: Mesh, target_edge: f32, alpha: Option<f3
     // colisão de diagonal do flip. Com ela curada e o F1 na frente, a esfera
     // sacudida caiu de **> 20 min** para **1,6 s** e a de 98 k de 33 s para 8,5 s,
     // **sem o F4 mudar uma linha**. *O F4 nunca foi lento; recebia lixo.*
-    let Ok((q, qr)) = quantize_within(&l, Budget::new(256, 512)) else {
-        println!("{name:<16} nao quantiza");
-        return;
+    let (q, qr) = match quantize_within(&l, Budget::new(256, 512)) {
+        Ok(v) => v,
+        // ⚠️ **O ERRO, e não "nao quantiza".** Orçamento esgotado e layout
+        // inviável são coisas diferentes e pedem curas diferentes; a primeira
+        // versão desta linha imprimia as duas igual.
+        Err(e) => {
+            println!("{name:<16}   -> o F4 recusou: {e:?}");
+            return;
+        }
     };
     match fill(&mesh, &layout, &q, SMOOTHING_ROUNDS) {
         Ok((_out, r)) => {

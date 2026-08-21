@@ -61,6 +61,27 @@ impl Walls {
     pub fn blocks(&self, a: u32, b: u32) -> bool {
         self.edges.contains(&(a.min(b), a.max(b)))
     }
+
+    /// **QUANTAS ARESTAS DE PAREDE tocam cada vértice** — derivado de [`Self::edges`].
+    ///
+    /// ⭐ **É a RAMIFICAÇÃO do traçado, e não o mesmo que [`Self::degree`].** O
+    /// `degree` conta pontas de aresta **por passeio**, então uma aresta que duas
+    /// separatrizes partilham é contada duas vezes e um vértice interior aparece
+    /// com grau 4. Aqui a fonte é o conjunto de arestas, que é único por
+    /// construção — e é isso que torna `> 2` uma pergunta sobre a **estrutura**.
+    ///
+    /// A leitura: `2` é o interior de uma separatriz · `3` é uma junção em T ou
+    /// uma singularidade de índice `+1` · `4` é um cruzamento · `5` é uma
+    /// singularidade de índice `−1`.
+    #[must_use]
+    pub fn branching(&self) -> BTreeMap<u32, usize> {
+        let mut out: BTreeMap<u32, usize> = BTreeMap::new();
+        for &(a, b) in &self.edges {
+            *out.entry(a).or_default() += 1;
+            *out.entry(b).or_default() += 1;
+        }
+        out
+    }
 }
 
 /// **O PASSEADOR** — segura o que o passeio precisa e nada mais.

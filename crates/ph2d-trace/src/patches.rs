@@ -93,22 +93,48 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
         })
         .collect();
 
+    // ⭐ **UM CANTO SÓ EXISTE ONDE A PAREDE SE RAMIFICA** — ver [`is_corner`].
+    let branching = walls.branching();
+
     // ⚠️ **O canto é do par (patch, vértice)**, mas o CORTE em arcos é global: um
     // vértice que seja canto de qualquer patch parte a fronteira de todos os que
     // passam por ele. É isso que faz nascer a junção em T — o lado de um patch
     // com dois arcos, porque o vizinho tem um canto no meio dele.
     let mut any_corner: BTreeSet<u32> = BTreeSet::new();
-    for (p, ls) in loops.iter().enumerate() {
+    // ⚠️ **O canto PROMOVIDO é do patch que o promoveu, e só dele.** Ele parte a
+    // fronteira de todos (é `any_corner`), mas só fecha um lado de quem precisou
+    // dele — para o vizinho, a fronteira passa direito por ali. *É exactamente a
+    // relação de uma junção em T, e por isso a lista é por patch.*
+    let mut mine_corner: Vec<BTreeSet<u32>> = vec![BTreeSet::new(); n_patches];
+    let mut promoted = 0usize;
+    for (pi, ls) in loops.iter().enumerate() {
+        let p = u32::try_from(pi).unwrap_or(0);
         for lp in ls {
-            for &v in lp {
-                if quarters(mesh, faces, &face_patch, u32::try_from(p).unwrap_or(0), v)
-                    != FLAT_QUARTERS
-                {
-                    any_corner.insert(v);
-                }
+            let structural: Vec<u32> = lp
+                .iter()
+                .copied()
+                .filter(|&v| is_corner(mesh, faces, &face_patch, &branching, p, v))
+                .collect();
+            any_corner.extend(&structural);
+            mine_corner[pi].extend(&structural);
+            // ⭐ **A PROMOÇÃO — e ela é o degrau, não a regra.** Ver
+            // [`MIN_PATCH_CORNERS`].
+            if structural.len() < MIN_PATCH_CORNERS {
+                let got = promote(
+                    mesh,
+                    faces,
+                    &face_patch,
+                    p,
+                    lp,
+                    MIN_PATCH_CORNERS - structural.len(),
+                    &mut mine_corner[pi],
+                );
+                promoted += got;
             }
+            any_corner.extend(mine_corner[pi].iter().copied());
         }
     }
+    report.promoted = promoted;
 
     // Os arcos: a fronteira partida em TODO canto de QUALQUER patch.
     let mut arc_id: BTreeMap<BTreeSet<(u32, u32)>, u32> = BTreeMap::new();
@@ -125,13 +151,7 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
         let mut patch_corners: Vec<u32> = Vec::new();
         let mut flat = 0usize;
         for lp in ls {
-            let mine: Vec<bool> = lp
-                .iter()
-                .map(|&v| {
-                    quarters(mesh, faces, &face_patch, u32::try_from(p).unwrap_or(0), v)
-                        != FLAT_QUARTERS
-                })
-                .collect();
+            let mine: Vec<bool> = lp.iter().map(|v| mine_corner[p].contains(v)).collect();
             let cuts: Vec<usize> = (0..lp.len())
                 .filter(|&i| any_corner.contains(&lp[i]))
                 .collect();
@@ -404,6 +424,120 @@ fn quarters(mesh: &Mesh, faces: &[ph2d_mesh::Face], face_patch: &[u32], p: u32, 
     #[allow(clippy::cast_possible_truncation)]
     let q = (total / core::f32::consts::FRAC_PI_2).round() as i32;
     q
+}
+
+/// **ESTE VÉRTICE É CANTO DO PATCH `p`?** — a estrutura decide, a geometria
+/// desempata.
+///
+/// ⭐⭐ **A primeira porta é a RAMIFICAÇÃO, e ela é a correção de 2026-08-21.** Um
+/// vértice no interior de uma separatriz (ramificação `2`) tem a fronteira do
+/// patch a passar **direito** por ele — em termos de layout, uma separatriz é uma
+/// linha da grade e não vira. Se ele ali virar, quem virou foi a POLILINHA sobre
+/// as arestas da malha, não a estrutura.
+///
+/// ⚠️ **E isso não era detalhe: era o maior balde.** Censo dos cantos do layout
+/// (`tests/corner_census.rs`), antes desta porta:
+///
+/// | malha | cantos | singularidade | junção | ⛔ **artefacto** |
+/// |---|---|---|---|---|
+/// | esfera 96×144 + F1 | 52 | 6 | 19 | **27** |
+/// | toro 64×32 + F1 | 72 | 8 | 27 | **37** |
+/// | esfera 98 k + F1 | 68 | 6 | 25 | **37** |
+///
+/// ⛔ **Os artefactos eram TODOS irregulares na malha final** — cada um é um
+/// vértice de valência 3 que não corresponde a nada.
+///
+/// A segunda porta continua a ser o ângulo, e ela é necessária: numa junção em T
+/// (ramificação `3`) os dois patches que ladeiam o pé têm quina e o terceiro —
+/// o do lado de lá da parede que continua — tem a fronteira reta. *A estrutura
+/// diz ONDE pode haver canto; a geometria diz para QUEM ele é.*
+fn is_corner(
+    mesh: &Mesh,
+    faces: &[ph2d_mesh::Face],
+    face_patch: &[u32],
+    branching: &BTreeMap<u32, usize>,
+    p: u32,
+    v: u32,
+) -> bool {
+    branching.get(&v).copied().unwrap_or(0) > 2
+        && quarters(mesh, faces, face_patch, p, v) != FLAT_QUARTERS
+}
+
+/// **QUANTOS CANTOS um patch precisa de ter, no mínimo.**
+///
+/// ⛔ **Ele é um piso de VALIDADE, e a tentação de o usar como alvo de QUALIDADE
+/// foi construída, MEDIDA e rejeitada.** Um laço com menos de três cantos não
+/// descreve um patch — e a limpeza de degenerados dissolvia-o em cascata: com a
+/// porta estrutural sozinha, a esfera 24×36 colapsava de 14 patches para **1, com
+/// zero arcos**.
+///
+/// ⚠️ **`3` e não `4`, e as duas razões saíram da mesma tabela.** Pedir quatro
+/// parecia melhor — um patch de três lados produz, por construção, um irregular no
+/// centro (o leque do F5 põe lá um vértice de valência igual à do patch). Medido
+/// em 2026-08-21, com a cadeia completa e o mesmo alvo de densidade:
+///
+/// | malha | piso **4** | piso **3** |
+/// |---|---|---|
+/// | esfera 96×144 | 13 irreg. · 2 623 quads | 14 · **4 922** |
+/// | toro 64×32 | 23 · 3 666 | 24 · **5 071** |
+/// | esfera ruidosa | 20 · 3 949 | 20 · **4 503** |
+/// | `cube` | 48 · 2 778 | 48 · **3 020** |
+/// | esfera 98 k | ⛔ **o F4 recusa: `Infeasible`** | ✅ **21** · 5 978 |
+/// | esfera sacudida | ⛔ **`Infeasible`** | ✅ **14** · 2 568 |
+///
+/// ⭐ **Duas leituras, e as duas contra o `4`:**
+/// 1. ⛔ **Promover um quarto canto num patch que estruturalmente tem três torna o
+///    sistema INVIÁVEL** — não é orçamento, é o fluxo a não fechar. Duas das seis
+///    malhas do corpus deixavam de quantizar. *A promoção de mais 10 a 14 cantos
+///    por malha impõe restrições que os arcos partilhados não conseguem satisfazer
+///    ao mesmo tempo.*
+/// 2. ⚠️ **E não comprava qualidade nenhuma:** a contagem de irregulares fica
+///    dentro de **um** nas malhas que fechavam dos dois lados — e o piso 4
+///    **distorcia a densidade**, entregando 2 623 quads onde o alvo pede ~5 000.
+///
+/// ⇒ *O que a estrutura não dá, a promoção não inventa.* O piso fica no mínimo que
+/// a lei do F4 exige, e a dívida que sobra é do traçado.
+const MIN_PATCH_CORNERS: usize = 3;
+
+/// **PROMOVE os vértices que mais viram** até o laço ter cantos suficientes.
+///
+/// ⚠️ **É o degrau que a porta estrutural precisa, e ele é DELIBERADAMENTE o
+/// segundo a falar.** A regra é a estrutura (uma parede que não se ramifica não
+/// vira); esta função só existe para o caso em que a estrutura **não chega** para
+/// o laço ser um patch. Cada promoção é um vértice irregular a mais na malha
+/// final, e é por isso que ela é contada em [`crate::TraceReport::promoted`]:
+/// *um remendo que ninguém conta vira a regra sem que ninguém decida.*
+///
+/// A ordem é por quanto o patch vira ali (`|quartos − 2|`), com o índice do
+/// vértice a desempatar — sem o desempate a promoção dependeria da ordem de ponto
+/// flutuante e a decomposição deixaria de ser reprodutível (HR-5).
+fn promote(
+    mesh: &Mesh,
+    faces: &[ph2d_mesh::Face],
+    face_patch: &[u32],
+    p: u32,
+    lp: &[u32],
+    want: usize,
+    any_corner: &mut BTreeSet<u32>,
+) -> usize {
+    let mut by_turn: Vec<(i32, u32)> = lp
+        .iter()
+        .filter(|v| !any_corner.contains(v))
+        .map(|&v| {
+            (
+                -(quarters(mesh, faces, face_patch, p, v) - FLAT_QUARTERS).abs(),
+                v,
+            )
+        })
+        .collect();
+    by_turn.sort_unstable();
+    let taken = by_turn.into_iter().take(want);
+    let mut n = 0usize;
+    for (_, v) in taken {
+        any_corner.insert(v);
+        n += 1;
+    }
+    n
 }
 
 /// O ângulo em `o`, entre `a` e `b`.

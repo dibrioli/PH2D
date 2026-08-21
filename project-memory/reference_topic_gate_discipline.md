@@ -15,6 +15,7 @@ metadata:
 - [[feedback_a_threshold_must_live_where_the_domain_is_empty]] — limiar mora onde o domínio é VAZIO
 - [[feedback_a_ratio_between_two_sick_channels_is_green_by_construction]] — razão entre dois canais doentes é verde; ancore no que o produto promete
 - [[feedback_a_ruler_that_deduplicates_cannot_report_duplication]] — regua que DEDUPLICA nao denuncia duplicacao; conte por OCORRENCIA
+- [[feedback_a_polyline_on_a_mesh_turns_where_the_structure_does_not]] — teste geometrico sobre curva discreta conta o zigue-zague como estrutura
 - [[feedback_a_round_that_never_reports_its_residual_is_a_silent_lie]] — `round` sem residuo esconde erro de FORMULA; instrumente as perguntas todas de uma vez
 - [[feedback_a_conserved_invariant_cannot_grade_quality]] — invariante CONSERVADA e' verde por construcao; a regua e' a CONTAGEM
 - [[feedback_a_green_gate_may_be_green_by_accident]] — verde de 1ª pode ser acidente; suspeite do fixture

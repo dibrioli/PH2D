@@ -16,10 +16,12 @@
 > via em malha com triângulos de tamanhos muito diferentes. Corrigida, Poincaré–Hopf passa a valer
 > **exactamente** em todo o corpus — incluindo o `cube`, que era a última malha com a soma errada.
 > ⭐ **E a proveniência dos irregulares está medida** (§4-decies): **100 % vêm do layout do F3** —
-> zero em arco, raio e grade. Os 47 da esfera são **15 patches de valência ≠ 4** mais **32 junções em T**,
-> contra um chão de 8.
-> Próximo: **o F3** (fundir separatrizes redundantes e fazer os patches saírem de quatro lados), à frente
-> da porta no shell.
+> zero em arco, raio e grade.
+> ⭐⭐ **E o F3-bis fechou (§4-undecies): 47 → 14 numa esfera**, contra um chão de 8 e o oráculo em ~7.
+> A causa era **cantos-artefacto**: metade dos cantos do layout não tinha estrutura nenhuma por baixo —
+> a parede zigue-zagueia sobre arestas de malha e vira 90° sem que nada vire. A lei nova é *um canto só
+> existe onde a parede se ramifica*.
+> Próximo: os **patches de três lados** (a fusão de separatrizes do QuadWild §6) e a **porta no shell**.
 > ⚠️ Nada disto está ligado ao produto ainda.
 
 ---
@@ -1097,6 +1099,99 @@ layout**, que foi acrescentada precisamente porque as duas primeiras sobrevivera
 
 ---
 
+## 4-undecies — ⭐⭐ F3-bis: **um canto só existe onde a parede se ramifica** — 47 → 13
+
+**Entregue:** a porta estrutural em [`patches::is_corner`], a promoção contada em
+[`TraceReport::promoted`], e a sonda `corner_census`.
+
+### O que a medição encontrou
+
+O §4-decies disse que os 47 irregulares eram **32 cantos** + **15 centros**, e que
+o alvo era fundir separatrizes (QuadWild §6). ⚠️ **Antes de o fazer, medi de que
+espécie eram os 52 cantos** — e a resposta mudou o trabalho:
+
+| malha | cantos | singularidade | junção de paredes | ⛔ **artefacto** |
+|---|---|---|---|---|
+| esfera 96×144 + F1 | 52 | 6 | 19 | **27** |
+| toro 64×32 + F1 | 72 | 8 | 27 | **37** |
+| esfera 98 k + F1 | 68 | 6 | 25 | **37** |
+
+⛔ **O maior balde não tinha estrutura nenhuma por baixo** — grau de parede `≤ 2`,
+ou seja o **interior de uma separatriz**. E eram **todos** irregulares na malha
+final. *Uma jornada a fundir separatrizes não teria tocado neles.*
+
+### A causa, e a lei
+
+O canto era decidido pelo **ângulo interno** do patch no vértice, arredondado a
+quartos de volta. ⚠️ Uma parede é uma **polilinha sobre arestas de malha**: ela
+zigue-zagueia, e um vértice onde ela vira 60° dá `120°` de ângulo interno, que
+arredonda para **1 quarto** — canto. *Quem virou foi a polilinha, não a estrutura.*
+
+⭐ **A lei nova:** *um canto só pode existir onde a parede se ramifica*
+(`branching > 2`). No interior de uma separatriz a fronteira do patch passa
+**direito** por definição — uma separatriz é uma linha da grade e não vira.
+
+⚠️ **A geometria continua a falar, e é necessária:** numa junção em T os dois
+patches que ladeiam o pé têm quina e o terceiro tem a fronteira reta. *A estrutura
+diz ONDE pode haver canto; a geometria diz para QUEM ele é.*
+
+### ⛔ E a cerca de Chesterton que a porta sozinha derrubou
+
+Os cantos-artefacto eram **load-bearing**: eram eles que faziam cada laço ter lados
+suficientes para ser um patch. Com a porta sozinha, a esfera 24×36 colapsava de 14
+patches para **1, com zero arcos** (a limpeza de degenerados cascateia). ⇒ A
+promoção existe para isso, e ela é **contada**.
+
+### ⛔ E o piso da promoção: `4` foi construído, MEDIDO e rejeitado
+
+Pedir quatro cantos por patch parecia melhor — um patch de três lados produz um
+irregular no centro por construção. Medido:
+
+| malha | piso **4** | piso **3** |
+|---|---|---|
+| esfera 96×144 | 13 irreg. · 2 623 quads | 14 · **4 922** |
+| toro 64×32 | 23 · 3 666 | 24 · **5 071** |
+| esfera ruidosa | 20 · 3 949 | 20 · **4 503** |
+| `cube` | 48 · 2 778 | 48 · **3 020** |
+| esfera 98 k | ⛔ **`Infeasible`** | ✅ **21** · 5 978 |
+| esfera sacudida | ⛔ **`Infeasible`** | ✅ **14** · 2 568 |
+
+1. ⛔ **Promover um quarto canto onde a estrutura tem três torna o sistema
+   INVIÁVEL** — não é orçamento, é o fluxo do F4 a não fechar. **Duas das seis**
+   malhas deixavam de quantizar.
+2. ⚠️ **E não comprava qualidade:** a contagem fica dentro de **um**, e o piso 4
+   **distorcia a densidade** (2 623 quads onde o alvo pede ~5 000).
+
+⇒ *O que a estrutura não dá, a promoção não inventa.* ⛔ Não reconstruir.
+
+### ⭐ O resultado, na cadeia do produto
+
+| malha | irregulares antes | **depois** | valências dos patches, antes → depois |
+|---|---|---|---|
+| esfera 96×144 | 47 | **14** | `{3:7, 4:6, 5:2}` → `{3:9, 4:6}` |
+| toro 64×32 | 66 | **24** | 3–9 → `{3:8, 4:10, 5:4, 6:1}` |
+| esfera 98 k | 63 | **21** | 3–19 → `{3:12, 4:10, 5:1}` |
+| esfera sacudida | 59 | **14** | — |
+| esfera ruidosa | 61 | **20** | — |
+| `cube` | 128 | **48** | — |
+| ⭐ *e o F4 passou a provar o ótimo em **todas*** | | | |
+
+⭐ **14 numa esfera, contra um chão topológico de 8 e o oráculo em ~7.** De
+**5,9×** o chão para **1,75×**, e a barra do gate desceu de `6×` para `3×` —
+medido: **18** nas fixturas do gate, e **o mesmo 18** com densidades de 2 809 a
+14 202 quads. *A contagem é estrutural, como tem de ser.*
+
+### O que sobra
+
+- ⚠️ **A dívida mudou de forma:** de `32 cantos + 15 centros` para
+  `5 cantos + 9 centros` (esfera). Agora o balde maior são os **patches de três
+  lados** — e a cura deles é o traçado dar separatrizes que fechem retângulos, que
+  é a fusão do QuadWild §6 que este trabalho **não** fez.
+- ⚠️ O `cube` continua em 48, e a causa é a mesma de sempre: **sem feature lines**
+  o campo mente nas 12 arestas vivas.
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |
@@ -1113,7 +1208,7 @@ layout**, que foi acrescentada precisamente porque as duas primeiras sobrevivera
 
 ## 6 — Esforço e ordem de ataque
 
-Ordem recomendada: ~~F0 → F1 → F2 → (F4 protótipo) → F3 → F5 → F2-bis~~ **→ F3-bis → F5.2 (a porta) → F2-bis → F7 → F6 → F8**.
+Ordem recomendada: ~~F0 → F1 → F2 → (F4 protótipo) → F3 → F5 → F2-bis → F3-bis~~ **→ F5.2 (a porta) → F3-ter (fusão de separatrizes) → F2-bis → F7 → F6 → F8**.
 
 ⚠️ **A ordem mudou em 2026-08-21, e a razão é uma medição.** A sanitização entrou
 à frente do F5 como este parágrafo mandava, e ⭐ **a causa não era o F1**: era uma

@@ -94,17 +94,29 @@ fn the_irregular_vertices_stay_near_the_topological_floor() {
         ("esfera 48x72 fina", shapes::uv_sphere(48, 72, 1.0), 0.03, 8),
     ] {
         let (_, r) = chain(mesh, edge);
+        eprintln!(
+            "[f5] {name}: {} irregulares em {} quads (chao {floor}, {:.2}x)",
+            r.irregular,
+            r.quads,
+            r.irregular as f64 / floor as f64
+        );
         assert!(
             r.irregular >= floor,
             "{name}: {} irregulares e' ABAIXO do chao topologico {floor} — \
              a contagem esta' errada, nao a malha",
             r.irregular
         );
+        // ⚠️ **A barra foi de `6×` para `3×` em 2026-08-21**, quando a porta
+        // estrutural dos cantos (`patches::is_corner`) derrubou a contagem de
+        // **47 para 13** na cadeia do produto. Medido aqui: **18** nas três
+        // fixturas, e as três dão o MESMO 18 com densidades de 2 809 a 14 202
+        // quads — a contagem é estrutural, como tem de ser.
+        // ⛔ Uma barra que o resultado já bate por quatro vezes não afirma nada.
         assert!(
-            r.irregular <= 6 * floor,
-            "{name}: {} irregulares, acima de 6x o chao ({})",
+            r.irregular <= 3 * floor,
+            "{name}: {} irregulares, acima de 3x o chao ({})",
             r.irregular,
-            6 * floor
+            3 * floor
         );
     }
 }
@@ -114,16 +126,17 @@ fn the_irregular_vertices_stay_near_the_topological_floor() {
 /// ⚠️ **É a asserção que separa a dívida da culpa.** Medido em 2026-08-21, sobre
 /// as seis malhas do corpus com a cadeia completa:
 ///
-/// | malha | canto (F3) | centro (F3) | **arco** | **raio** | **grade** |
-/// |---|---|---|---|---|---|
-/// | esfera 96×144 | 32 | 15 | **0** | **0** | **0** |
-/// | toro 64×32 | 46 | 20 | **0** | **0** | **0** |
-/// | cubo | 90 | 38 | **0** | **0** | **0** |
+/// | malha | canto (F3) | centro (F3) | **arco** | **raio** | **grade** | total |
+/// |---|---|---|---|---|---|---|
+/// | esfera 96×144 | 5 | 9 | **0** | **0** | **0** | 14 |
+/// | toro 64×32 | 11 | 13 | **0** | **0** | **0** | 24 |
+/// | esfera 98 k | 8 | 13 | **0** | **0** | **0** | 21 |
+/// | cubo | 27 | 21 | **0** | **0** | **0** | 48 |
 ///
 /// ⭐ **Zero em arco, raio e grade, em todas.** O leque e a interpolação de Coons
-/// não introduzem um único vértice irregular: os `47` da esfera são **um por patch
-/// de valência ≠ 4** (15) mais **um por canto de layout de valência ≠ 4** (32) — e
-/// as duas grandezas são decididas pelo traçado, duas fases antes.
+/// não introduzem um único vértice irregular: o que sobra é **um por patch de
+/// valência ≠ 4** mais **um por canto de layout de valência ≠ 4** — e as duas
+/// grandezas são decididas pelo traçado, duas fases antes.
 ///
 /// ⛔ **Um irregular no interior de uma grade seria bug DESTA crate**, e é o que
 /// este gate defende: uma grade `s × t` regular não tem nenhum, por construção.

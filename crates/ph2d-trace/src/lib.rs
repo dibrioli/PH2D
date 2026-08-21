@@ -94,6 +94,12 @@ pub struct TraceReport {
     /// devolve `0` ali — o que faz a soma dos índices deixar de bater `4·χ` sem
     /// que nada no campo esteja errado.
     pub open_rings: usize,
+    /// ⭐ **Quantos cantos tiveram de ser PROMOVIDOS** por a estrutura não chegar
+    /// para o laço ser um patch — ver `patches::MIN_PATCH_CORNERS`.
+    ///
+    /// ⚠️ **Cada um é um vértice irregular a mais na malha final**, e por isso ele
+    /// é contado e não escondido: é a dívida que o traçado ainda deve, medida.
+    pub promoted: usize,
 }
 
 /// **TRAÇA e DECOMPÕE** — a porta desta fase.

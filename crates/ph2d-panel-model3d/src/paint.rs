@@ -182,6 +182,12 @@ fn paint_chips(
 /// ⭐ Neste arquivo **toda** função de pintura devolve o y seguinte. Uma convenção por arquivo, dita
 /// aqui: misturar as duas é como o erro entrou.
 fn paint_row(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y: f32) -> f32 {
+    // ⭐ **Uma linha que não pode agir não é pintada como se pudesse** — ver [`ParamRow::live`]. Ela
+    // sai daqui como facto e **não regista nada** no índice de acerto, então não há slider a agarrar
+    // nem campo a receber texto: é a mesma lei do [`paint_note`], neste mesmo arquivo.
+    if !row.live {
+        return paint_fact(ctx, row, x, w, y);
+    }
     let theme = ctx.host.theme();
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
@@ -239,6 +245,45 @@ fn paint_row(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y: f
         theme,
     );
     y + used + Spacing::Xs.px()
+}
+
+/// ⭐ **Uma linha como FACTO**: o rótulo e o número, em texto apagado, sem controle nenhum.
+///
+/// ⚠️ **Nada é registado no índice de acerto**, e é essa a metade que importa: um slider desenhado
+/// «desligado» mas ainda agarrável despacharia uma edição que a escrita depois recusa — e o artista
+/// veria o número saltar e voltar. Aqui não há o que agarrar, e o gate
+/// `an_inert_row_registers_nothing_to_click` mede exatamente isso.
+///
+/// ⚠️ Ela ocupa **a mesma altura** de uma linha viva: atravessar a trava não pode fazer o painel
+/// saltar de tamanho debaixo do cursor.
+fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32 {
+    let font = TypeToken::Sm.px();
+    let theme = ctx.host.theme();
+    let dim = resolve(ColorToken::Text2, theme);
+    let baseline = y + (ROW_H_PX - font) * 0.5;
+    paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        tr(row.key),
+        x,
+        baseline,
+        font,
+        LABEL_COL_W,
+        dim,
+    );
+    // O número fica na goteira do valor, como numa linha viva — o olho percorre a coluna sem saltar.
+    let text = format!("{:.d$}", f64::from(row.value), d = decimals_for_step(1.0));
+    paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        &text,
+        x + LABEL_COL_W,
+        baseline,
+        font,
+        (w - LABEL_COL_W).max(0.0),
+        dim,
+    );
+    y + ROW_H_PX + Spacing::Xs.px()
 }
 
 /// Texto puro — um fato, não um controle. Sem hit-index: uma affordance que ele não pode honrar

@@ -82,6 +82,17 @@ pub enum Span {
     /// **Periódica**: um ângulo. As pontas são `±half` e são a própria **representação** — nem o
     /// documento nem a vista têm voto, e um número além delas não é recusado, é renomeado.
     Turn(f32),
+    /// ⭐ **Não há faixa nenhuma agora**: a grandeza existe, tem valor, e **não é editável neste
+    /// estado**.
+    ///
+    /// ⚠️ É diferente de *"não aparece"*. O valor continua a ser um facto que o artista precisa de
+    /// ler — e esconder a linha faria o painel saltar de tamanho a cada travessia. O que ela perde é
+    /// o **controle**: quem a recebe pinta um facto, não um slider (*uma affordance que não pode ser
+    /// honrada é pior do que nenhuma*).
+    ///
+    /// O caso de hoje é o terceiro ângulo na trava de cardan — ver
+    /// [`crate::xform::rotation_axis_is_free`], que é a **mesma** porta que recusa a escrita.
+    Locked,
 }
 
 /// Uma grandeza editável de um nó.

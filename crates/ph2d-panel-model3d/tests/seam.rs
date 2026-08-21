@@ -34,6 +34,7 @@ fn scene_with_one_union() {
             key: "field.dim.round",
             value: 0.05,
             lo: 0.0,
+            live: true,
             // Faixa de 0,4 — o número que o gate abaixo usa para distinguir a escala da linha de
             // uma escala fixa.
             bound: Bound::Soft(0.4),
@@ -197,6 +198,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
             key: "field.dim.round",
             value: 0.05,
             lo: 0.0,
+            live: true,
             bound: Bound::Hard(0.22),
         })
         .collect();
@@ -482,6 +484,7 @@ fn scene_with_one_position_row() {
             key: "field.dim.pos_x",
             value: 0.0,
             lo: FLOOR,
+            live: true,
             bound: Bound::Soft(CEILING),
         }],
         node_count: 1,
@@ -588,4 +591,83 @@ fn the_typed_range_admits_the_whole_span_of_the_row() {
     );
     assert!((max - f64::from(CEILING)).abs() < 1e-5, "o teto: {max}");
     assert!(step > 0.0, "sem passo o arrasto do campo escorrega");
+}
+
+/// ⭐ **Uma linha inerte não regista NADA para clicar.**
+///
+/// ⚠️ É a metade que importa da lei: um slider desenhado «desligado» mas ainda no índice de acerto
+/// despacharia uma edição que a escrita depois recusa, e o artista veria o número saltar e voltar.
+/// O gate mede os **retângulos de hit** que a pintura deixa — a diferença entre *pintado* e
+/// *alcançável pelo rato*, que é onde este painel já quebrou uma vez.
+#[test]
+fn an_inert_row_registers_nothing_to_click() {
+    let row = |live: bool| ParamRow {
+        entity: THE_UNION,
+        param: ph2d_field::Param::Rot(2),
+        key: "field.dim.rot_z",
+        value: 0.0,
+        lo: -180.0,
+        live,
+        bound: Bound::Wrap(180.0),
+    };
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+
+    let painted = |host: &mut MockPanelHost, state: &mut Model3dPanelState, live: bool| -> bool {
+        publish(ModelSnapshot {
+            rows: vec![row(live)],
+            node_count: 1,
+            ..ModelSnapshot::default()
+        });
+        let rects = host.paint::<Model3dPanel>(state, viewport);
+        rects.iter().any(|(id, _)| {
+            *id == ids::model3d_radius_slider(0) || *id == ids::model3d_radius_chip(0)
+        })
+    };
+
+    // ⚠️ **O controle POSITIVO primeiro**: sem ele, um painel que não pintasse nada passaria.
+    assert!(
+        painted(&mut host, &mut panel_state, true),
+        "uma linha viva tem de registar o slider e o campo — senão o gate abaixo não prova nada"
+    );
+    assert!(
+        !painted(&mut host, &mut panel_state, false),
+        "a linha inerte deixou um controle agarrável: ele despacharia uma edição que a escrita recusa"
+    );
+}
+
+/// ⭐ **E se um evento chegar mesmo assim, ele não vira edição.**
+///
+/// ⚠️ O widget continua vivo no *store* (o `populate` cunha a família inteira às cegas), então um
+/// arrasto que atravesse a trava a meio ainda pode disparar. Ignorar aqui é o que impede a edição
+/// que a escrita recusa de chegar ao documento.
+#[test]
+fn an_inert_row_does_not_dispatch_even_if_an_event_arrives() {
+    let _ = drain_intents();
+    publish(ModelSnapshot {
+        rows: vec![ParamRow {
+            entity: THE_UNION,
+            param: ph2d_field::Param::Rot(2),
+            key: "field.dim.rot_z",
+            value: 0.0,
+            lo: -180.0,
+            live: false,
+            bound: Bound::Wrap(180.0),
+        }],
+        node_count: 1,
+        ..ModelSnapshot::default()
+    });
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+    let slider = ids::model3d_radius_slider(0);
+    host.set_slider_value(slider, 0.9);
+    let outcome =
+        host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::ValueChanged(slider));
+    assert_eq!(outcome, EventOutcome::Ignored);
+    assert!(
+        drain_intents().is_empty(),
+        "uma linha inerte não pode emitir uma edição"
+    );
 }

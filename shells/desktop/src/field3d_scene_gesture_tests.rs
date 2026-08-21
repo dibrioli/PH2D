@@ -496,3 +496,47 @@ fn writing_the_same_angle_twice_does_not_move_the_part() {
         }
     }
 }
+
+/// ⭐ **Na trava de cardan a linha do Z chega ao painel como FACTO, não como controle.**
+///
+/// ⚠️ O gate mede as duas travessias — entra na trava e sai dela —, porque uma linha que ficasse
+/// inerte para sempre depois de a peça passar por 90° seria um controle perdido em silêncio, e
+/// nenhum gate de um estado só o apanharia.
+#[test]
+fn at_the_pole_the_third_angle_reaches_the_panel_as_a_fact() {
+    use ph2d_field::Param;
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+    let leaf = a_leaf(world, root);
+    const VIEW: f32 = 2.5;
+
+    let live_of = |world: &bevy_ecs::world::World, axis: u8| -> bool {
+        crate::field3d_scene::panel::param_rows(world, Some(leaf), VIEW)
+            .into_iter()
+            .find(|r| r.param == Param::Rot(axis))
+            .map(|r| r.live)
+            .expect("a linha existe")
+    };
+
+    // Fora da trava as três respondem.
+    ph2d_field_ecs::set_param(world, leaf, Param::Rot(1), 45.0).expect("Y");
+    for axis in 0..3u8 {
+        assert!(
+            live_of(world, axis),
+            "fora da trava o eixo {axis} tem de responder"
+        );
+    }
+
+    // Dentro dela, o Z é um facto — e só ele.
+    ph2d_field_ecs::set_param(world, leaf, Param::Rot(1), 90.0).expect("Y no polo");
+    assert!(!live_of(world, 2), "no polo o Z não é um controle");
+    assert!(
+        live_of(world, 0) && live_of(world, 1),
+        "o X e o Y têm de continuar vivos — é pelo Y que se sai"
+    );
+
+    // E ao sair, ele volta: uma linha perdida em silêncio seria pior do que uma travada.
+    ph2d_field_ecs::set_param(world, leaf, Param::Rot(1), 60.0).expect("sai do polo");
+    assert!(live_of(world, 2), "sair da trava tem de devolver o Z");
+}

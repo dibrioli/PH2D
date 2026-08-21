@@ -141,7 +141,13 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 Dim {
                     key: ROT_KEYS[k as usize],
                     value: degrees[k as usize],
-                    span: Span::Turn(ROT_SPAN_DEG[k as usize]),
+                    // ⚠️ **A mesma porta que recusa a escrita** decide se há faixa: um eixo que a
+                    // trava de cardan tirou do mapa não é um slider curto, é um facto sem controle.
+                    span: if ph2d_field::xform::rotation_axis_is_free(pose, k) {
+                        Span::Turn(ROT_SPAN_DEG[k as usize])
+                    } else {
+                        Span::Locked
+                    },
                 },
             )
         }))

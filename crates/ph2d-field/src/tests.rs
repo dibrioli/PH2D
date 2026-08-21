@@ -1016,3 +1016,32 @@ fn at_the_pole_the_third_angle_is_refused_instead_of_creeping() {
         rotation_degrees(pose)
     );
 }
+
+/// ⭐ **O eixo que o painel marca como inerte é EXATAMENTE o que a escrita recusa.**
+///
+/// ⚠️ São duas portas sobre a mesma pergunta — «este eixo responde?» — e um par destas só falha
+/// quando **discorda**: um controle vivo sobre uma escrita recusada dá o número a saltar e a voltar,
+/// e um controle morto sobre uma escrita que funcionava esconde uma feature. O gate percorre a faixa
+/// inteira do eixo do meio, **incluindo os dois polos**.
+#[test]
+fn the_inert_axis_is_exactly_the_one_the_write_refuses() {
+    use crate::xform::{rotation_axis_is_free, set_rotation_degree};
+    for middle in [-90.0f32, -89.0, -45.0, 0.0, 45.0, 89.0, 90.0] {
+        let mut pose = Xform::IDENTITY;
+        set_rotation_degree(&mut pose, 1, middle);
+        for axis in 0..3u8 {
+            let free = rotation_axis_is_free(pose, axis);
+            let before = pose.rotation;
+            let mut probe = pose;
+            // Um alvo que MUDA a peça em qualquer estado — senão um no-op passaria por recusa.
+            set_rotation_degree(&mut probe, axis, if axis == 1 { 30.0 } else { 40.0 });
+            let moved = rotation_gap(before, probe.rotation) > ROT_EPS;
+            assert_eq!(
+                free,
+                moved,
+                "Y={middle}, eixo {axis}: o painel diz livre={free} e a escrita {}",
+                if moved { "aplicou" } else { "recusou" }
+            );
+        }
+    }
+}

@@ -109,6 +109,10 @@ pub(crate) fn param_rows(
                 Span::Free => (-view_span, Bound::Soft(view_span)),
                 // Periódica: as pontas são da representação, e a vista não tem voto.
                 Span::Turn(half) => (-half, Bound::Wrap(half)),
+                // ⭐ **Sem faixa nenhuma**: a grandeza tem valor e não é editável neste estado. As
+                // duas pontas colapsam no próprio valor — não há para onde arrastar — e a linha
+                // segue marcada para o painel a pintar como facto.
+                Span::Locked => (d.value, Bound::Wrap(d.value)),
             };
             ph2d_panel_model3d::ParamRow {
                 entity: e.to_bits(),
@@ -117,6 +121,7 @@ pub(crate) fn param_rows(
                 value: d.value,
                 lo,
                 bound,
+                live: d.span != Span::Locked,
             }
         })
         .collect()

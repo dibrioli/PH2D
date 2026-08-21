@@ -52,6 +52,17 @@ pub struct ParamRow {
     /// silêncio é a pior forma de recusa — e ela sobreviveu a um smoke porque o valor experimentado
     /// era positivo.
     pub lo: f32,
+    /// ⭐ **Esta linha pode ser mexida agora?** `false` ⇒ ela é pintada como um **facto** (rótulo e
+    /// número), sem slider, sem campo e **sem entrada no índice de acerto**.
+    ///
+    /// ⚠️ *Uma affordance que não pode ser honrada é pior do que nenhuma* — é a lei que este arquivo
+    /// já aplica ao texto puro e à fileira de operações vazia. O caso de hoje é o terceiro ângulo na
+    /// trava de cardan, onde ele deixa de ser um eixo independente
+    /// ([`ph2d_field::xform::rotation_axis_is_free`], que é a **mesma** porta que recusa a escrita).
+    ///
+    /// ⛔ **E não é «esconder a linha»**: o valor continua a ser um facto que o artista precisa de
+    /// ler, e uma linha que aparece e desaparece faria o painel saltar de tamanho a cada travessia.
+    pub live: bool,
     /// Até onde ele vai, e **de que natureza é o limite**.
     ///
     /// ⚠️ [`Bound::Hard`] é a **parede do documento** (um filete que não cabe); [`Bound::Soft`] é o

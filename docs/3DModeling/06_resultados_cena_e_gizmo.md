@@ -803,12 +803,33 @@ preço — agora concreto — de não guardar o trio.
 ⭐ E foi o mesmo defeito na faixa da linha: `Span::Turn(180)` nas três oferecia ao slider do meio
 metade de um curso que a leitura seguinte renomeava. `ROT_SPAN_DEG = [180, 90, 180]`.
 
-### Na trava de cardan o Z é INERTE
+### Na trava de cardan o Z é INERTE — e a linha DIZ-SE inerte
 
-Em `β = ±90°` o X e o Z são o **mesmo** eixo e a forma canónica dá tudo ao X. Aplicar um Z ali fazia
-o X escorregar mais um tanto a **cada** escrita — o mesmo ciclo por outro caminho, e este girava
-sozinho. Ele passa a ser **recusado**, e a recusa é visível: o número volta ao 0 que a linha já
-mostrava. Sair da trava é mexer o Y, que continua a responder (há gate nas duas metades).
+Em `β = ±90°` o X e o Z são o **mesmo** eixo físico e a forma canónica dá tudo ao X. Aplicar um Z ali
+fazia o X escorregar mais um tanto a **cada** escrita — o mesmo ciclo por outro caminho, e este
+girava sozinho.
+
+⛔ **As três saídas sem memória foram pesadas e nenhuma serve:**
+
+| | por que não |
+|---|---|
+| aplicar o Z encaminhado para o X | não é ponto fixo: o X escorrega a cada quadro — o ciclo, outra vez |
+| reinterpretar o Z como o parâmetro livre | idempotente **e destrutivo**: escrever o Z deitaria fora o X que lá estava |
+| impedir o Y de chegar a 90 | `90` é o ângulo que mais se digita; pô-lo fora de alcance é pior do que a trava |
+
+Sobra guardar o trio autorado (o que o Blender faz), que é a segunda verdade recusada acima. Então o
+Z é **recusado** — e, porque *uma affordance que não pode ser honrada é pior do que nenhuma*, a linha
+deixa de ser pintada como controle: ela sai como **facto** (rótulo + número, apagado), sem slider,
+sem campo e **sem entrada no índice de acerto**.
+
+⭐ **A mesma porta decide as duas coisas** ([`rotation_axis_is_free`]): quem recusa a escrita é quem
+diz ao painel que não há controle. Duas respostas para *"este eixo responde?"* dariam um controle
+vivo sobre uma escrita recusada — o número a saltar e a voltar —, e há gate a prendê-las.
+
+⚠️ E a linha **não desaparece**: o valor continua a ser um facto a ler, e uma linha que some faria o
+painel saltar de tamanho a cada travessia dos 90°.
+
+[`rotation_axis_is_free`]: ../../crates/ph2d-field/src/xform.rs
 
 ### Provas de mutação
 
@@ -817,6 +838,8 @@ mostrava. Sair da trava é mexer o Y, que continua a responder (há gate nas dua
 | o eixo do meio volta a enrolar | `writing_the_same_angle_twice_does_not_move_the_part` · `the_middle_angle_is_pinned_at_a_quarter_turn_and_the_outer_two_wrap` |
 | a trava deixa de recusar o Z | `at_the_pole_the_third_angle_is_refused_instead_of_creeping` |
 | a faixa do meio volta a 180 | `a_position_admits_negatives_a_dimension_does_not_and_an_angle_is_half_a_turn` |
+| a linha inerte volta a ser pintada como controle | `an_inert_row_registers_nothing_to_click` |
+| o painel deixa de perguntar se o eixo responde | `at_the_pole_the_third_angle_reaches_the_panel_as_a_fact` |
 
 ⚠️ O gate de idempotência escreve **três vezes** no caso da trava e varre **por cima** do quarto de
 volta: uma escrita só não distingue *"recusado"* de *"aplicado uma vez"*, e uma varredura que parasse

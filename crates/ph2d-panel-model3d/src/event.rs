@@ -47,6 +47,13 @@ pub(crate) fn apply_event(
                 let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
                 let snap = state::current();
                 match snap.rows.get(slot) {
+                    // ⚠️ **Uma linha inerte não despacha**, mesmo que um evento chegue: ela não
+                    // regista nada no índice de acerto, mas o widget continua vivo no *store* (o
+                    // `populate` cunha a família inteira às cegas), e um arrasto que atravessasse a
+                    // trava a meio ainda podia disparar. Emitir aqui daria uma edição que a escrita
+                    // recusa — o número a saltar e a voltar, que é o defeito na sua forma mais
+                    // confusa. Ver `ParamRow::live`.
+                    Some(row) if !row.live => false,
                     Some(row) => {
                         state::push_intent(ModelIntent::SetParam {
                             // ⭐ **A ENTIDADE e o ÍNDICE, nunca a posição do controle.** A posição

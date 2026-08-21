@@ -272,13 +272,14 @@ pub fn set_rotation_degree(pose: &mut Xform, axis: u8, degrees: f32) {
     if axis >= 3 || !degrees.is_finite() {
         return;
     }
-    let mut e = quat_to_euler(pose.rotation);
-    // ⚠️ A trava lê-se do estado ATUAL, e não do alvo: é o `β` de agora que decide se o Z tem onde
-    // ficar. Ver a tabela acima.
-    let at_the_pole = e[1].cos().abs() <= EULER_LOCK_EPS;
-    if axis == 2 && at_the_pole {
+    // ⚠️ **A MESMA porta que o painel usa para saber se pinta um controle** — ver
+    // [`rotation_axis_is_free`]. Duas respostas para *"este eixo responde?"* seria um controle vivo
+    // sobre uma escrita recusada, e o gate `the_inert_axis_is_exactly_the_one_the_write_refuses`
+    // prende as duas.
+    if !rotation_axis_is_free(*pose, axis) {
         return;
     }
+    let mut e = quat_to_euler(pose.rotation);
     let target = degrees.to_radians();
     e[axis as usize] = if axis == 1 {
         target.clamp(-QUARTER_TURN, QUARTER_TURN)
@@ -286,6 +287,37 @@ pub fn set_rotation_degree(pose: &mut Xform, axis: u8, degrees: f32) {
         wrap_half_turn(target)
     };
     pose.rotation = quat_from_euler(e);
+}
+
+/// ⭐ **Este eixo do trio responde AGORA?** — a porta única de *"há aqui um número a mexer"*.
+///
+/// ⚠️ Ela existe para o painel e a escrita darem **a mesma** resposta. Um controle vivo sobre uma
+/// escrita recusada é a affordance que mente — e este módulo já paga caro por cada par de portas que
+/// discorda sobre a mesma coisa.
+///
+/// # ⚠️ Na trava de cardan o terceiro ângulo não é um eixo
+///
+/// Em `β = ±90°` o X e o Z rodam em torno do **mesmo** eixo físico: só a soma (ou a diferença) deles
+/// é um facto do mundo, e a forma canónica dá tudo ao X. O Z ali não é um número pequeno nem um
+/// número difícil — ele **não existe** como grandeza independente.
+///
+/// ⛔ **As três alternativas foram pesadas e não sobrou nenhuma sem memória:**
+///
+/// | | por que não |
+/// |---|---|
+/// | aplicar o Z na mesma, encaminhado para o X | não é ponto fixo: o X escorrega mais um tanto a cada quadro do arrasto — é o ciclo que o Enio viu, por outro caminho |
+/// | reinterpretar o Z como o parâmetro livre | é idempotente **e destrutivo**: escrever o Z deitaria fora o X que lá estava |
+/// | impedir o Y de chegar a 90 | `90` é o ângulo que mais se digita — pô-lo fora de alcance é pior do que a trava |
+///
+/// Sobra guardar o trio autorado (o que o Blender faz), e isso é a segunda verdade que
+/// [`set_rotation_degree`] recusa, com o preço escrito lá.
+#[must_use]
+pub fn rotation_axis_is_free(pose: Xform, axis: u8) -> bool {
+    if axis >= 3 {
+        return false;
+    }
+    // O X e o Y respondem sempre — é pelo Y, aliás, que se sai da trava.
+    axis != 2 || quat_to_euler(pose.rotation)[1].cos().abs() > EULER_LOCK_EPS
 }
 
 /// Um quarto de volta, em radianos — a ponta da faixa canónica do eixo do **meio**.

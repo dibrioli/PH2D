@@ -133,7 +133,7 @@ fn every_arc_is_shared_by_exactly_two_patches() {
     ] {
         let (_, out) = decompose(mesh);
         let mut uses = vec![0usize; out.arc_length.len()];
-        for sides in &out.sides {
+        for sides in &out.sides() {
             for side in sides {
                 for &a in side {
                     uses[a as usize] += 1;
@@ -193,7 +193,7 @@ fn the_layout_we_produce_is_quantized_with_proof() {
         );
         assert_eq!(
             q.corners.len(),
-            out.sides.len(),
+            out.side_arcs.len(),
             "{name}: um leque por patch"
         );
     }

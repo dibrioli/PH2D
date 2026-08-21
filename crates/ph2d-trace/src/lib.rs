@@ -158,11 +158,9 @@ impl PatchLayout {
             .map(|&l| ArcSpec::new(f64::from(l / scale)))
             .collect();
         let patches = self
-            .sides
-            .iter()
-            .map(|sides| PatchSpec {
-                sides: sides.clone(),
-            })
+            .sides()
+            .into_iter()
+            .map(|sides| PatchSpec { sides })
             .collect();
         Layout::new(arcs, patches)
     }

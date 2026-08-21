@@ -33,8 +33,17 @@ const FLAT_QUARTERS: i32 = 2;
 pub struct PatchLayout {
     /// Por face, o patch a que ela pertence.
     pub face_patch: Vec<u32>,
-    /// Por patch, por lado, os ids de arco que o compõem.
-    pub sides: Vec<Vec<Vec<u32>>>,
+    /// Por patch, por lado, os arcos que o compõem: o id e **se o lado o
+    /// percorre ao contrário** da ordem canónica do arco.
+    ///
+    /// ⚠️ **O sentido é obrigatório e não é decoração.** Os dois patches que
+    /// partilham um arco percorrem-no em sentidos opostos; sem o registar, o F5
+    /// amostraria os pontos de um deles ao contrário e os dois lados da divisa
+    /// deixariam de coincidir — a malha sairia **rasgada** ao longo de cada
+    /// fronteira de patch, sem nenhum erro a acusar.
+    pub side_arcs: Vec<Vec<Vec<(u32, bool)>>>,
+    /// Por arco, a cadeia ORDENADA de vértices de malha, na ordem canónica.
+    pub arc_chain: Vec<Vec<u32>>,
     /// Por patch, os vértices-canto, na ordem da fronteira.
     pub corners: Vec<Vec<u32>>,
     /// Por arco, o comprimento geométrico.
@@ -105,13 +114,14 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
     let mut arc_id: BTreeMap<BTreeSet<(u32, u32)>, u32> = BTreeMap::new();
     let mut arc_length: Vec<f32> = Vec::new();
     let mut arc_edges: Vec<BTreeSet<(u32, u32)>> = Vec::new();
-    let mut sides: Vec<Vec<Vec<u32>>> = Vec::with_capacity(n_patches);
+    let mut arc_chain: Vec<Vec<u32>> = Vec::new();
+    let mut side_arcs: Vec<Vec<Vec<(u32, bool)>>> = Vec::with_capacity(n_patches);
     let mut corners: Vec<Vec<u32>> = Vec::with_capacity(n_patches);
     for (p, ls) in loops.iter().enumerate() {
         if ls.len() != 1 {
             report.non_disk += 1;
         }
-        let mut patch_sides: Vec<Vec<u32>> = Vec::new();
+        let mut patch_sides: Vec<Vec<(u32, bool)>> = Vec::new();
         let mut patch_corners: Vec<u32> = Vec::new();
         let mut flat = 0usize;
         for lp in ls {
@@ -128,7 +138,7 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
             if cuts.is_empty() {
                 continue;
             }
-            let mut open: Vec<u32> = Vec::new();
+            let mut open: Vec<(u32, bool)> = Vec::new();
             for k in 0..cuts.len() {
                 let (i, j) = (cuts[k], cuts[(k + 1) % cuts.len()]);
                 let chain = chain_between(lp, i, j);
@@ -149,9 +159,13 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
                         .sum();
                     arc_length.push(len);
                     arc_edges.push(key);
+                    arc_chain.push(chain.clone());
                     u32::try_from(arc_length.len() - 1).unwrap_or(u32::MAX)
                 });
-                open.push(id);
+                // ⚠️ O sentido: este lado percorre o arco na ordem canónica ou ao
+                // contrário? A resposta é a ponta por onde ele entra.
+                let reversed = arc_chain[id as usize].first() != chain.first();
+                open.push((id, reversed));
                 // O lado FECHA num canto DESTE patch, não num canto qualquer.
                 if mine[j] {
                     patch_sides.push(std::mem::take(&mut open));
@@ -172,7 +186,7 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
         }
         let _ = flat;
         *report.valence.entry(patch_sides.len()).or_default() += 1;
-        sides.push(patch_sides);
+        side_arcs.push(patch_sides);
         corners.push(patch_corners);
     }
     report.patches = n_patches;
@@ -180,7 +194,8 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
 
     PatchLayout {
         face_patch,
-        sides,
+        side_arcs,
+        arc_chain,
         corners,
         arc_length,
         arc_edges,
@@ -189,6 +204,20 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
 }
 
 impl PatchLayout {
+    /// Por patch, por lado, só os **ids** de arco — o que o F4 consome.
+    #[must_use]
+    pub fn sides(&self) -> Vec<Vec<Vec<u32>>> {
+        self.side_arcs
+            .iter()
+            .map(|sides| {
+                sides
+                    .iter()
+                    .map(|side| side.iter().map(|&(a, _)| a).collect())
+                    .collect()
+            })
+            .collect()
+    }
+
     /// **OS PATCHES DEGENERADOS** — menos de três lados.
     ///
     /// ⚠️ **Um patch de dois lados não é um erro de contagem, é uma lasca**: duas
@@ -198,8 +227,8 @@ impl PatchLayout {
     /// **um** deles.
     #[must_use]
     pub fn degenerate(&self) -> Vec<usize> {
-        (0..self.sides.len())
-            .filter(|&p| self.sides[p].len() < 3)
+        (0..self.side_arcs.len())
+            .filter(|&p| self.side_arcs[p].len() < 3)
             .collect()
     }
 }
@@ -218,22 +247,22 @@ pub fn dissolve(walls: &mut Walls, layout: &PatchLayout, victims: &[usize]) -> b
     for &p in victims {
         // O lado mais CURTO: dissolver o maior mudaria a forma do vizinho muito
         // mais do que o necessário para a lasca desaparecer.
-        let target = layout.sides[p]
+        let target = layout.side_arcs[p]
             .iter()
             .min_by(|a, b| {
-                let la: f32 = a.iter().map(|&i| layout.arc_length[i as usize]).sum();
-                let lb: f32 = b.iter().map(|&i| layout.arc_length[i as usize]).sum();
+                let la: f32 = a.iter().map(|&(i, _)| layout.arc_length[i as usize]).sum();
+                let lb: f32 = b.iter().map(|&(i, _)| layout.arc_length[i as usize]).sum();
                 la.total_cmp(&lb)
             })
             .cloned();
         let arcs: Vec<u32> = match target {
-            Some(side) => side,
+            Some(side) => side.into_iter().map(|(a, _)| a).collect(),
             // ⚠️ Sem lados nenhuns não há o que escolher: a fronteira inteira sai.
             // É o patch cuja fronteira não tinha um único canto — uma faixa
             // fechada, que não é disco e não tem lados por definição.
             None => (0..layout.arc_edges.len())
                 .map(|i| u32::try_from(i).unwrap_or(0))
-                .filter(|&i| layout.sides[p].iter().flatten().any(|&j| j == i))
+                .filter(|&i| layout.side_arcs[p].iter().flatten().any(|&(j, _)| j == i))
                 .collect(),
         };
         for a in arcs {

@@ -265,10 +265,14 @@ const LAMBDA: f32 = 0.5;
 
 /// **O PONTO MAIS PRÓXIMO da superfície de referência.**
 ///
+/// ⚠️ **É público porque o F5 o reusa**, e duas implementações de *"o ponto mais
+/// próximo da superfície"* divergiriam exatamente onde ninguém olha — na parte
+/// esparsa do modelo, que é onde o raio de busca decide tudo.
+///
 /// ⚠️ **O raio de busca DOBRA até achar face.** Um raio fixo devolve zero faces
 /// sobre uma parte esparsa do modelo, e a projeção vira um no-op **silencioso** —
 /// o Laplaciano então roda sem freio e a peça encolhe.
-fn project_onto(mesh: &Mesh, p: [f32; 3], seed_radius: f32) -> [f32; 3] {
+pub fn project_onto(mesh: &Mesh, p: [f32; 3], seed_radius: f32) -> [f32; 3] {
     let b = mesh.bounds();
     let d = [
         b.max[0] - b.min[0],

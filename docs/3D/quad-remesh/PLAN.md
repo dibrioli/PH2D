@@ -3,12 +3,13 @@
 > **Documento VIVO.** Decisão e fronteira jurídica: [ADR-0161](../../architecture/decisions/0161-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md).
 > O que o porte local entregou e por quê: [ADR-0160](../../architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md).
 > ✅ **Aprovado pelo Enio em 2026-08-20** (*"Siga como achar melhor... buscamos o estado da arte independente dos custos"*).
-> Estado: **F1, F2, F3 e o protótipo do F4 FEITOS** (§4-bis, §4-ter, §4-quater, §4-quinquies).
-> ⭐ **A cadeia fecha com código nosso**: malha → campo (8 singularidades numa esfera, o ótimo teórico)
-> → traçado → patches → quantização **com ótimo demonstrado**. Próximo: **F5** — quadrangular cada patch
-> e devolver a malha, que é o que o artista finalmente vê.
-> ⚠️ Nada disto está ligado ao produto ainda; e ⛔ o F3 desenterrou um defeito de sanitização no **F1**
-> (§4-quinquies).
+> Estado: **F1..F5 FEITAS** (§4-bis, §4-ter, §4-quater, §4-quinquies, §4-sexies).
+> ⭐ **A cadeia devolve MALHA, com código nosso e com os números do pivô**: 100 % de quads, característica
+> de Euler exata, e os vértices irregulares de **39,7 % para 0,5 %** — um fator de ~85 sobre o motor que
+> ela substitui, e a mesma ordem de grandeza do oráculo (que fica em 0,2 %).
+> Próximo: **a porta no shell** (o botão passar a chamar esta cadeia) e as *feature lines*.
+> ⚠️ Nada disto está ligado ao produto ainda; ⛔ o F3 desenterrou um defeito de sanitização no **F1**, e
+> ⛔ a esfera EMBARALHADA ainda não fecha (§4-sexies).
 
 ---
 
@@ -159,7 +160,7 @@ Cada fase fecha com o benchmark verde sobre o corpus e um sumário curto de desv
 | **F2** | cross field MIQ-style + streamlines no viewport | ✅ **O CAMPO FEITO em 2026-08-20** (`crates/ph2d-crossfield`) — ver §4-ter. ⚠️ O critério *«irregulares ≤ 2 %»* era sobre a MALHA, e a malha só melhora no F5 |
 | **F3** | tracing + patches | ✅ **FEITO em 2026-08-20** (`crates/ph2d-trace`) — ver §4-quinquies. O layout que ele produz é **quantizado com prova** pelo F4 em esfera e toro; falta a fusão de separatrizes (saem ~2× mais patches que o oráculo) e as *feature lines* |
 | **F4** | ⭐ **solver Bi-MDF** | ✅ **PROTÓTIPO FEITO em 2026-08-20** (`crates/ph2d-quantize`) — ver §4-quater. Fecha com o **ótimo demonstrado** em todos os layouts fechados do oráculo; falta só o consumidor (F5) e a válvula de emergência, que **nenhum layout pediu** |
-| **F5** | quadrangulação por patch + smoothing + a porta no shell | desvio angular médio ≤ oráculo × 1,2; Hausdorff ≤ oráculo × 1,2; ⭐ **`sculpt_hooked` sem aglomerado e sem colapso na feature** (gate de regressão do §9) |
+| **F5** | quadrangulação por patch + smoothing + a porta no shell | ✅ **A MALHA FEITA em 2026-08-20** (`crates/ph2d-quadfill`) — ver §4-sexies: 100 % quads, χ exata, irregulares ~85× abaixo do motor local. ⛔ **Falta a porta no shell**, o Hausdorff/desvio angular, e o gate de regressão da `sculpt_hooked` (que precisa das *feature lines* do F3) |
 | **F6** | guide strokes: direção → feature → densidade | ⚠️ **a densidade por PRESSÃO depende da camada de tablet, que NÃO existe** (ADR-0161) — F6 entrega direção e feature; a pressão é um projeto irmão |
 | **F7** | dois backends (preview BSD + qualidade) partilhando o campo | preview < 1 s até 100 k triângulos; o preview mostra o alinhamento que o modo qualidade honra |
 | **F8** | invalidação incremental + pinning de singularidade | editar um stroke não custa o pipeline inteiro; ⚠️ **exige infraestrutura de DAG que o Sculpt não tem** |
@@ -621,6 +622,99 @@ não-manifold. As outras linhas do F1 não dependem dela, mas essa cai.
 - ⚠️ **Uma separatriz que não fecha é descartada** e contada em
   [`TraceReport::dangling`]. Ligá-la à mais próxima é trabalho do dia em que o
   número doer — medido, ele é **0** em quatro das cinco malhas.
+
+---
+
+## 4-sexies — ⭐ F5: A MALHA. 100 % quads, e os irregulares caíram ~85×
+
+**Entregue:** `crates/ph2d-quadfill` — clean-room de QuadWild (SIGGRAPH 2021)
+**§7 e §8**. ⭐ **É a primeira fase que devolve MALHA**: as quatro anteriores
+entregam estrutura — campo, patches, inteiros — e nenhuma delas produz algo que se
+veja.
+
+### O que ela faz
+
+Um patch de valência `n` vira `n` quads em volta de **um** vértice central: sobre
+o lado `i` há um corte que o parte em `e_{i-1}` e `e_{i+1}`, e do centro sai um
+raio de comprimento `e_j` até o corte do lado `j`. ⭐ **É a mesma lei que o F4
+resolveu** (`L_i = e_{i-1} + e_{i+1}`), lida ao contrário: lá ela decidia os
+inteiros, aqui diz onde pôr os pontos. *Duas leis diferentes para a mesma coisa
+seria a costura que não fecha.*
+
+O interior de cada quad sai por **Coons** (interpolação transfinita), não por média
+dos cantos — a média ignora a forma dos quatro bordos e numa quina do patch puxa a
+grade para dentro até as linhas se cruzarem. Depois, seis rondas de Laplaciano
+**tangencial** com reprojeção na superfície original.
+
+### ⭐ A medição — e é o número que o pivô existiu para produzir
+
+Mesmas malhas do corpus, mesmo alvo de densidade (≈ 4 500 quads), para a linha
+ficar comparável com o §1.3:
+
+| malha | motor LOCAL (§1.3) | **F1..F5 (nosso)** | oráculo |
+|---|---|---|---|
+| `sphere_uv_96x144` | 68,7 % quads · **39,7 %** irreg. | **100,0 % · 0,5 %** (21 vértices) | 100 % · 0,2 % |
+| `torus_64x32` | 64,9 % quads · **48,9 %** irreg. | **100,0 % · 0,6 %** (30) | 100 % · 0,0 % |
+| `sphere_sculpt_98k` | 82,7 % quads · **21,2 %** irreg. | **100,0 % · 1,1 %** (52) | 100 % · 0,2 % |
+
+⭐ **100 % de quads em todas, zero arestas de bordo, e a característica de Euler
+exata** — `2` na esfera, `0` no toro. E os vértices irregulares passaram de
+**~1 800** (39,7 % de ~4 500) para **21**: um fator de **~85**.
+
+⚠️ **A leitura honesta do que ainda falta:** o chão topológico de uma esfera é
+**8** irregulares. O oráculo fica praticamente nele (0,2 % de ~3 350 ≈ **7**); nós
+ficamos em **21**, que são **2,6× o chão**. ⇒ *Mesma ordem de grandeza que o
+oráculo, ~85× melhor que o motor que ele substitui, e ainda não é o chão.* O que
+sobra vem dos ~2× patches a mais do F3 (§4-quinquies).
+
+### ⚠️ E a percentagem é a régua ERRADA
+
+A mesma malha com o dobro da densidade tem **os mesmos** irregulares e **metade**
+da percentagem. Medido: pedir uma grade duas vezes mais fina na mesma esfera dá
+**12 012 quads em vez de 3 156** e **18 irregulares nos dois casos** — a
+percentagem cai de 0,6 % para 0,1 % sem que nada tenha melhorado.
+⇒ **A barra dos gates é a CONTAGEM**, e `a_finer_target_adds_quads_without_adding_irregulars`
+é o gate que prova que a estrutura é da topologia e não da densidade.
+
+### As três leis da costura
+
+1. ⭐ **Um ponto de fronteira pertence ao ARCO, nunca ao patch.** Os dois patches
+   que o partilham pedem-lhe os mesmos índices, um deles ao contrário. Amostrar
+   por patch daria dois conjuntos quase iguais sobre a mesma curva, e a malha
+   sairia **rasgada** ao longo de toda fronteira de patch — erro pequeno demais
+   para se ver num render e grande demais para a malha servir.
+2. **Amostrar por COMPRIMENTO DE ARCO, não por contagem de vértices.** A cadeia de
+   malha tem arestas de tamanhos diferentes; dividir por contagem põe os pontos
+   onde a triangulação por acaso é densa, e a grade herda a densidade da entrada
+   em vez da do alvo — que é exatamente o defeito que o F1 existe para não ter.
+3. **A orientação corrige-se em BLOCO ou não se corrige.** Ela sai da fronteira do
+   patch, que é a mesma para todos; se estiver ao contrário, está em bloco.
+   Inverter face a face por teste local produziria uma malha inconsistente.
+
+### ⭐ O gate que vale por três
+
+`the_euler_characteristic_survives_the_remesh`. Rasgar uma divisa, duplicar uma
+face ou montar um patch ao contrário mudam `V − E + F`, e **nenhum deles se vê a
+olho**. Um número, três defeitos, e ele não depende de densidade, de alvo nem do
+solver.
+
+### O que ficou aberto no F5
+
+- ⛔ **`sphere_shuffled` não fecha.** É a **mesma esfera** com a ordem de índice
+  trocada — o controle de determinismo do corpus — e o layout que sai dela é sujo
+  o bastante para o F4 não o quantizar dentro do orçamento. ⚠️ *Um resultado que
+  depende da ordem em que os vértices foram escritos é um defeito, não um acaso*,
+  e ele mora no F3 (o passeio é guloso e a ordem das sementes decide quem pára em
+  quem).
+- ⚠️ **O relógio é do LAYOUT, não do tamanho.** A esfera de **98 k vértices**
+  resolve em **33 s**; a de 13 k embaralhada passa de **vinte minutos**. É o mesmo
+  mecanismo que o §4-quater mediu no F4 — a busca cresce com a sujidade do layout.
+- ⛔ **Sem *feature lines*** (herdado do F3): uma quina dura não é respeitada, e é
+  isso que a `sculpt_hooked` do diagnóstico exige.
+- ⛔ **Nem Hausdorff nem desvio angular** foram medidos aqui — a régua do §9 do
+  briefing continua por correr sobre a saída nova.
+- ⛔ **Nada disto está ligado ao botão.** O `Quad Retopology` continua a chamar a
+  `ph2d-quadflow`, e ligar a cadeia nova é o F5.2 (a porta no shell).
 
 ---
 

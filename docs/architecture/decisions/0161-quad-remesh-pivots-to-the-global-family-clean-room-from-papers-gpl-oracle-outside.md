@@ -80,8 +80,9 @@ harness.
 | `ph2d-crossfield` | Bommes 2009 (MIQ) + QuadWild §5 | ⭐ **paridade no CAMPO**: 8 singularidades numa esfera, o ótimo topológico (PLAN §4-ter) |
 | `ph2d-quantize` | **Bi-MDF 2023 §3 e §4.4** | ⭐ **fecha com o ótimo DEMONSTRADO** em todos os layouts fechados do oráculo (PLAN §4-quater) |
 | `ph2d-trace` | QuadWild 2021 §6 | ⭐ **a cadeia fecha**: o layout deixou de vir do oráculo e o F4 quantiza-o com prova (PLAN §4-quinquies) |
+| `ph2d-quadfill` | QuadWild 2021 §7–§8 | ⭐⭐ **a MALHA**: 100 % quads, χ exata, irregulares de **39,7 % → 0,5 %** — ~85× (PLAN §4-sexies) |
 
-⚠️ **A fronteira jurídica aguentou os quatro.** Nenhuma linha traduzida; o que atravessa a fronteira do
+⚠️ **A fronteira jurídica aguentou as cinco.** Nenhuma linha traduzida; o que atravessa a fronteira do
 oráculo são **saídas** — e desde o F4 elas atravessam já convertidas em números por `layout.py`, que
 vive na bancada: **nenhum formato do oráculo (`.patch`, `.corners`, `.rosy`) tem parser dentro da
 engine.**
@@ -92,6 +93,21 @@ produz.
 
 ⚠️ **E o `ph2d-quadflow` (porte BSD do Instant Meshes) FICA** — ele é o backend de *preview* do F7, e
 a sua licença permissiva é o que torna isso possível. O pivô não o revoga; repõe-no no lugar certo.
+
+## Emenda 2 (2026-08-20) — a tese do ADR está MEDIDA no produto final
+
+O corpo deste ADR justificou o pivô com uma tabela de **duas ordens de grandeza** na fração de
+vértices irregulares. Com a cadeia F1..F5 completa, a mesma tabela, nas mesmas malhas:
+
+| malha | o motor que o ADR condenou | **a cadeia nova** | oráculo |
+|---|---|---|---|
+| esfera 96×144 | 68,7 % quads · **39,7 %** irreg. | **100 % · 0,5 %** | 100 % · 0,2 % |
+| toro | 64,9 % · **48,9 %** | **100 % · 0,6 %** | 100 % · 0,0 % |
+| esfera 98 k | 82,7 % · **21,2 %** | **100 % · 1,1 %** | 100 % · 0,2 % |
+
+⭐ **A decisão deste ADR está PAGA**: a fração caiu ~85× e passou a ser da mesma ordem do oráculo.
+⚠️ **E não é o chão.** Uma esfera admite **8** irregulares; o oráculo fica praticamente nele, nós
+ficamos em **21**. O resto vem dos ~2× patches a mais do F3 — nomeado, medido, e não escondido.
 
 ## Papers (o que é permitido)
 

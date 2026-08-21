@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-quadfill"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A QUADRANGULACAO POR PATCH (ADR-0161, F5). Clean-room a partir de QuadWild
+# (SIGGRAPH 2021) §7-§8. Nenhuma linha traduzida de fonte GPL.
+#
+# ⚠️ E' a fase que devolve MALHA. As quatro anteriores entregam estrutura --
+# campo, patches, inteiros -- e nenhuma delas produz algo que o artista veja.
+
+[dependencies]
+ph2d-mesh = { path = "../ph2d-mesh" }
+ph2d-quantize = { path = "../ph2d-quantize" }
+ph2d-trace = { path = "../ph2d-trace" }
+ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
+
+[dev-dependencies]
+ph2d-crossfield = { path = "../ph2d-crossfield" }

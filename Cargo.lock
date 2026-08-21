@@ -7387,6 +7387,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-quadfill"
+version = "0.0.0"
+dependencies = [
+ "ph2d-crossfield",
+ "ph2d-mesh",
+ "ph2d-quantize",
+ "ph2d-remesh-iso",
+ "ph2d-trace",
+]
+
+[[package]]
 name = "ph2d-quadflow"
 version = "0.0.0"
 dependencies = [

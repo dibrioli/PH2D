@@ -13,23 +13,33 @@
 //! A régua honesta é a **CONTAGEM**: uma esfera admite **8** singularidades, e
 //! tudo acima disso é o campo a inventar pares que se anulam.
 
-use ph2d_crossfield::{Dual, singularities, solve_miq};
+use ph2d_crossfield::{Dual, solve_miq, vertex_index_with_report};
 use ph2d_mesh::{Mesh, shapes};
 
 fn census(name: &str, mut mesh: Mesh) {
     mesh.triangulate();
     let dual = Dual::build(&mesh);
     let (field, rep) = solve_miq(&dual);
-    let (n, sum) = singularities(&mesh, &dual, &field);
+    // ⭐ **A régua é auditada aqui, antes de se acreditar nela.** Uma contagem só
+    // vale se soubermos quantos vértices ela **desistiu** de medir — cada um deles
+    // entra na soma como se fosse regular — e quanto o `round` teve de inventar.
+    let (idx, ir) = vertex_index_with_report(&mesh, &dual, &field);
+    let n = idx.iter().filter(|k| **k != 0).count();
+    let sum: i32 = idx.iter().sum();
     println!(
-        "{name:<30} v {:<7} SING {:<5} soma {sum:<4} | resolucoes {:<5} inteiros {:<6} \
-         NAO-CONVERGIU {:<5} pior residuo {:.2e}",
+        "{name:<30} v {:<7} SING {:<5} soma {sum:<5} | CG nao-conv {:<5} ({:.1e}) \
+         | REGUA desistiu {:<5} (anel-aberto {} perdida {}) colisoes {:<4} \
+         pior-residuo {:.3} ambiguos {}",
         mesh.vert_count(),
         n,
-        rep.solves,
-        rep.free_integers,
         rep.cg_capped,
-        rep.cg_worst_residual
+        rep.cg_worst_residual,
+        ir.gave_up(),
+        ir.open_ring,
+        ir.lost_edge,
+        ir.key_collisions,
+        ir.worst_residual,
+        ir.ambiguous
     );
 }
 
@@ -70,6 +80,19 @@ fn does_the_count_depend_on_the_mesh() {
         ph2d_remesh_iso::remesh_isotropic(&mut m, 0.020);
         census(&format!("ref {before} -> iso a=0.020"), m);
     }
+    // ⛔ **AS DUAS QUE VIOLAM POINCARÉ–HOPF.** A soma sai `−147` e `−288` numa
+    // superfície fechada onde ela tem de ser `+8`. Ou a régua desistiu em muitos
+    // vértices, ou o `round` está a inventar — e as colunas de auditoria dizem
+    // qual das duas, sem hipóteses.
+    println!("── as CRUAS que violam a invariante ──");
+    census(
+        "sphere_shuffled (crua)",
+        shapes::uv_sphere_shuffled(96, 144, 1.0),
+    );
+    census(
+        "sphere_noisy (crua)",
+        shapes::uv_sphere_noisy(96, 144, 1.0, 0.02),
+    );
     println!("── toros ──");
     for (a, b) in [(32, 16), (64, 32)] {
         census(&format!("torus({a},{b})"), shapes::torus(a, b, 1.0, 0.35));

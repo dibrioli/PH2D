@@ -49,7 +49,7 @@ use ph2d_mesh::Mesh;
 mod index;
 mod solve;
 
-pub use index::{singularities, vertex_index};
+pub use index::{IndexReport, ring_totals, singularities, vertex_index, vertex_index_with_report};
 pub use solve::{
     Rounding, SolveReport, cycle_count, energy, solve_alternating, solve_miq, solve_miq_with,
 };

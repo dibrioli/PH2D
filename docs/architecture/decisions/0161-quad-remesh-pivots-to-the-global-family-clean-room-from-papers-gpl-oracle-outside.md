@@ -123,6 +123,14 @@ A cadeia deixou de tropeçar na topologia e passou a tropeçar no **campo**.
    remalhada isotropicamente a 10 251. A causa é o **lote** do rounding guloso
    (`194 → 24` ao apertá-lo), que por sua vez existe porque a re-resolução é um CG
    do zero em vez de uma fatoração com *update* (PLAN §4-octies).
+3. ⭐ **E a RÉGUA do F2 estava errada**: faltava o defeito angular `K_v` na fórmula
+   do índice. Em malha uniforme `K_v ≈ 4π/N` é minúsculo e o erro passava por ruído
+   numérico; em malha com triângulos de tamanhos muito diferentes o arredondamento
+   ficava em **empate** (0,4999) em milhares de vértices e a soma saía `−147` onde
+   a topologia exige `+8`. Corrigida, Poincaré–Hopf vale **exactamente** em todo o
+   corpus, e o `cube` — a última malha com a soma errada — fechou (PLAN §4-nonies).
+   ⚠️ **O gate da invariante existia e era VERDE**: as quatro fixturas dele são
+   todas bem distribuídas, e a soma fechava por cancelamento.
 
 ⚠️ **Nada disto toca a decisão deste ADR** — a família global continua a ser a
 certa, e a tabela da Emenda 2 continua a valer nas malhas em que foi medida. O que

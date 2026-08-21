@@ -31,6 +31,14 @@ fn tri(mut m: Mesh) -> Mesh {
 /// Ela é topologia: vale para qualquer campo 4-RoSy, em qualquer malha, com
 /// qualquer solver. Um campo que a viole está errado — e nenhuma inspeção visual
 /// diria isso, porque um campo errado ainda *parece* um campo.
+///
+/// ⚠️ **E ele passou dois meses verde sobre uma fórmula errada** (corrigido em
+/// 2026-08-21). Faltava o defeito angular `K_v`, e as quatro fixturas acima são
+/// todas **bem distribuídas** — nelas `K_v ≈ 4π/N` é minúsculo e o erro passa por
+/// ruído numérico. Numa malha com triângulos de tamanhos muito diferentes a soma
+/// saía **`−147`** onde a topologia exige `+8`.
+/// ⇒ As duas fixturas ⭐ de baixo são as que **contêm o fenómeno**, e sem elas
+/// este gate continua a ser verde sobre qualquer coisa.
 #[test]
 fn the_index_sum_is_four_times_the_euler_characteristic() {
     for (name, mesh) in [
@@ -41,22 +49,55 @@ fn the_index_sum_is_four_times_the_euler_characteristic() {
             "cubo subdividido",
             tri(shapes::sphere_with_triangles(4000, 1.0)),
         ),
+        // ⭐ Distribuição torta (jitter tangencial, forma exacta) e forma rugosa —
+        // as duas em que `K_v` deixa de ser desprezável.
+        (
+            "esfera SACUDIDA",
+            tri(shapes::uv_sphere_shuffled(32, 48, 1.0)),
+        ),
+        (
+            "esfera RUIDOSA",
+            tri(shapes::uv_sphere_noisy(32, 48, 1.0, 0.02)),
+        ),
     ] {
         let dual = Dual::build(&mesh);
         let (field, report) = solve_miq(&dual);
-        let (count, sum) = singularities(&mesh, &dual, &field);
+        let (idx, ir) = crate::vertex_index_with_report(&mesh, &dual, &field);
+        let count = idx.iter().filter(|k| **k != 0).count();
+        let sum: i32 = idx.iter().sum();
         let want = 4 * euler(&mesh);
         eprintln!(
             "[xfield] {name}: {count} singularidades, soma {sum} (esperado {want}), \
-             {} resolucoes, {} inteiros livres, energia {:.4}",
+             {} resolucoes, {} inteiros livres, energia {:.4}, pior residuo {:.4}",
             report.solves,
             report.free_integers,
-            energy(&dual, &field)
+            energy(&dual, &field),
+            ir.worst_residual
         );
         assert_eq!(
             i64::from(sum),
             want,
             "{name}: a soma dos indices e' {sum} e a topologia exige {want} -- o campo nao fecha"
+        );
+        // ⚠️ **A soma sozinha não prova a FÓRMULA**, e é por isso que esta segunda
+        // asserção existe. Ela pode fechar por sorte quando os arredondamentos
+        // errados se cancelam; o resíduo diz se cada vértice, individualmente,
+        // caiu num inteiro. `0,5` é um empate — a régua a decidir por sorteio.
+        assert!(
+            ir.worst_residual < 0.01,
+            "{name}: o pior residuo do arredondamento e' {:.4} -- o indice nao esta' a cair num \
+             inteiro, e a soma acima pode ter fechado por cancelamento ({} vertices ambiguos)",
+            ir.worst_residual,
+            ir.ambiguous
+        );
+        // E a régua não pode ter desistido de nenhum vértice: cada desistência
+        // entra na soma como se fosse um vértice regular.
+        assert_eq!(
+            (ir.gave_up(), ir.key_collisions),
+            (0, 0),
+            "{name}: a regua desistiu de {} vertices e teve {} colisoes de chave",
+            ir.gave_up(),
+            ir.key_collisions
         );
     }
 }

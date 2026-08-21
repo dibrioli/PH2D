@@ -11,8 +11,10 @@
 > (§4-septies) — e com ela a cadeia passou a fechar também na esfera **sacudida** (> 20 min → 1,6 s) e na
 > **ruidosa**.
 > ⛔ **Mas o mesmo trabalho revogou o título do §4-ter:** o campo do F2 só chega ao ótimo em malhas bem
-> distribuídas — sobre distribuição irregular ele passa de **8** para **194** singularidades, e em duas
-> malhas do corpus a soma dos índices **viola Poincaré–Hopf** (§4-octies).
+> distribuídas — sobre distribuição irregular ele passa de **8** para **194** singularidades (§4-octies).
+> ⭐ **E a RÉGUA estava errada** (§4-nonies): faltava o defeito angular na fórmula do índice, o que só se
+> via em malha com triângulos de tamanhos muito diferentes. Corrigida, Poincaré–Hopf passa a valer
+> **exactamente** em todo o corpus — incluindo o `cube`, que era a última malha com a soma errada.
 > Próximo: **o F2**, à frente da porta no shell — ligar o botão hoje é ligar o caso mau.
 > ⚠️ Nada disto está ligado ao produto ainda.
 
@@ -857,12 +859,16 @@ contagem contra o refinamento da malha**.
 | ⛔ `sphere_shuffled` (crua) | 13 682 | **448** | **−147** |
 | ⛔ `sphere_noisy` (crua) | 13 682 | **1 115** | **−288** |
 
-⛔ **As duas últimas linhas são pior que qualidade: a soma VIOLA Poincaré–Hopf**
-numa superfície fechada, variedade, com **zero anéis abertos**. Isso só é possível
-se o índice de alguns vértices não estiver a ser calculado — e o
-[`vertex_index`] tem **quatro `return 0` silenciosos** para os casos em que ele
-não consegue. *Um vértice cujo índice não se sabe calcular está a ser afirmado
-como REGULAR.* ⇒ **Defeito nomeado, ainda por corrigir.**
+⛔ **As duas últimas linhas eram pior que qualidade: a soma VIOLAVA Poincaré–Hopf**
+numa superfície fechada, variedade, com **zero anéis abertos**.
+✅ **RESOLVIDO no mesmo dia — e não era nenhuma das duas hipóteses óbvias.** Não
+eram os `return 0` silenciosos (a auditoria mostrou **zero** desistências e **zero**
+colisões de chave): era a **fórmula**. Ver §4-nonies.
+
+⚠️ **E as linhas das malhas ISO não mudaram um número com a correção** (194
+continua 194): ali o resíduo do arredondamento já era `0,002`, e a régua já era
+exacta. *A conclusão desta secção sobre o lote sai intacta — o que a correção
+mudou foram as duas linhas em que a régua estava a decidir por sorteio.*
 
 ### As três hipóteses que a medição REFUTOU — e por que registá-las
 
@@ -943,10 +949,91 @@ re-resolução barata.* Duas rotas, por ordem de preço:
    NÃO foi mexida** — mudá-la sem a rota (1) seria trocar 194 singularidades por
    42 segundos de espera, e o pivô não existe para escolher entre dois números
    maus.
-4. ⛔ **E há um defeito ainda por corrigir que não é de qualidade:** os quatro
-   `return 0` silenciosos do [`vertex_index`]. Um vértice cujo índice não se
-   consegue calcular está a ser afirmado **regular**, e é isso que deixa a soma
-   sair `−147` onde a topologia exige `+8`.
+4. ✅ **O defeito da régua está corrigido** — §4-nonies.
+
+---
+
+## 4-nonies — ⭐ A régua do F2 estava errada, e o erro escondia-se em malha uniforme
+
+**Entregue:** `+ K_v` na fórmula do índice, o [`IndexReport`] que audita a própria
+régua, e duas fixturas novas no gate de Poincaré–Hopf.
+
+### A pista, e por que ela é o método e não sorte
+
+A auditoria da régua respondeu **três** perguntas de uma vez, e foram elas que
+apontaram a causa:
+
+| malha | desistiu | colisões de chave | **pior resíduo** | ambíguos |
+|---|---|---|---|---|
+| `uv_sphere(96,144)` | 0 | 0 | 0,0009 | 0 |
+| esfera iso `α=0,010` | 0 | 0 | 0,002 | 0 |
+| `torus(32,16)` | 0 | 0 | 0,049 | 0 |
+| ⛔ `sphere_shuffled` | **0** | **0** | **0,4999** | **1 468** |
+| ⛔ `sphere_noisy` | **0** | **0** | **0,5000** | **4 472** |
+
+⭐ **`0,5` é o máximo possível: um empate — o `round` a decidir por sorteio.** E as
+duas primeiras colunas **excluíram** a hipótese óbvia (os `return 0` silenciosos):
+a régua não desistiu de vértice nenhum. *Instrumentar as três perguntas ao mesmo
+tempo é o que transformou "está errado algures" em "está errado AQUI".*
+
+⚠️ **E o resíduo tinha a ordem de grandeza do defeito angular.** Numa esfera `uv`
+de 13 682 vértices, `K_v ≈ 4π/13682 ≈ 0,0009 rad`, que em quartos de volta é
+`0,0006` — **exactamente** o resíduo medido. A hipótese escreveu-se sozinha.
+
+### A lei, e o teste que a escolheu
+
+```text
+índice_v = ( Σ_anel ±(κ_e + (π/2)·p_e)  +  K_v ) / (π/2),   K_v = 2π − Σ ângulos
+```
+
+Os `κ` medem a rotação da **moldura** de face para face; dar a volta ao vértice
+roda a moldura pela holonomia da superfície, que é exactamente `K_v`. ⛔ **Nenhuma
+das três variantes foi escolhida por dedução** — as três correram lado a lado:
+
+| variante | `uv_sphere` | `torus` | `sphere_shuffled` | `sphere_noisy` |
+|---|---|---|---|---|
+| só o total (a lei antiga) | 0,0009 | 0,0487 | **0,4999** | **0,5000** |
+| `total − K_v` | 0,0018 | 0,0974 | 0,4999 | 0,4999 |
+| ⭐ `total + K_v` | **0,0001** | **0,0000** | **0,0001** | **0,0000** |
+
+⚠️ **O controle da sonda é Gauss–Bonnet:** `Σ K_v / 2π` tem de dar `χ`, e dá
+`2,000` nas esferas e `0,000` no toro. *Uma sonda que julga uma fórmula tem de
+provar primeiro que a grandeza dela está certa.*
+
+### O resultado
+
+| malha | soma antes | soma depois | contagem antes → depois |
+|---|---|---|---|
+| `sphere_shuffled` | ⛔ **−147** | ✅ **+8** | 448 → **1 124** |
+| `sphere_noisy` | ⛔ **−288** | ✅ **+8** | 1 115 → **2 041** |
+| `cube` + F1 | ⛔ **−5** | ✅ **+8** | 21 → 23, e **52 → 42 patches** |
+| tudo o resto | correcta | correcta | **inalterada** |
+
+⚠️ **As contagens SUBIRAM naquelas duas, e isso é a correcção a funcionar:** os
+números antigos eram arredondamentos por sorteio. O campo é mesmo assim tão mau
+ali — agora está medido em vez de mascarado.
+
+⭐ **E o `cube` fechou a topologia:** ele era a única malha do corpus com a soma
+errada depois da cura do §4-septies, e a causa era esta. Menos 10 patches e o
+custo da quantização de 391 para **308**.
+
+### ⭐ A prova de mutação, e o que ela diz sobre as fixturas
+
+Com o `K_v` desligado, e a asserção de resíduo temporariamente afrouxada para se
+ver o que a SOMA sozinha apanharia:
+
+| fixtura | soma sem `K_v` | veredito |
+|---|---|---|
+| esfera 24×36 | 8 (esperado 8) | ✅ **passa** — resíduo 0,0145 |
+| esfera 48×64 | 8 | ✅ passa — resíduo 0,0041 |
+| toro | 0 | ✅ passa — resíduo 0,0122 |
+| cubo subdividido | 8 | ✅ passa — resíduo 0,0062 |
+| ⭐ **esfera SACUDIDA** | ⛔ **−4** (esperado 8) | ❌ **cai** |
+
+⚠️ **As quatro fixturas antigas passavam sobre a fórmula errada, e a soma fechava
+por CANCELAMENTO.** O gate existia há dois meses e era verde. ⇒ *A fixtura nova é
+o gate; o resto era decoração.* E a asserção de **resíduo** cai ainda mais cedo —
+já na primeira fixtura fácil —, porque ela julga cada vértice em vez da soma.
 
 ---
 

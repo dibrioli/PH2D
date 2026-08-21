@@ -12,14 +12,23 @@ use ph2d_quantize::quantize;
 use ph2d_trace::trace_patches;
 
 /// Corre a cadeia inteira e devolve a malha de quads e o relatório.
-fn chain(mut mesh: Mesh, target_edge: f32) -> (Mesh, ph2d_quadfill::FillReport) {
+fn chain(mesh: Mesh, target_edge: f32) -> (Mesh, ph2d_quadfill::FillReport) {
+    let (m, r, _) = chain_with_layout(mesh, target_edge);
+    (m, r)
+}
+
+/// A mesma cadeia, devolvendo também **quantos patches não são de quatro lados** —
+/// a fonte INDEPENDENTE contra a qual a decomposição por origem se confere.
+fn chain_with_layout(mut mesh: Mesh, target_edge: f32) -> (Mesh, ph2d_quadfill::FillReport, usize) {
     mesh.triangulate();
     let dual = Dual::build(&mesh);
     let (field, _) = solve_miq(&dual);
     let layout = trace_patches(&mesh, &dual, &field);
+    let non_quad_patches = layout.side_arcs.iter().filter(|s| s.len() != 4).count();
     let l = layout.to_layout(target_edge).expect("o layout fecha");
     let (q, _) = quantize(&l).expect("quantiza");
-    fill(&mesh, &layout, &q, SMOOTHING_ROUNDS).expect("monta")
+    let (m, r) = fill(&mesh, &layout, &q, SMOOTHING_ROUNDS).expect("monta");
+    (m, r, non_quad_patches)
 }
 
 /// `V − E + F` da malha.
@@ -96,6 +105,93 @@ fn the_irregular_vertices_stay_near_the_topological_floor() {
             "{name}: {} irregulares, acima de 6x o chao ({})",
             r.irregular,
             6 * floor
+        );
+    }
+}
+
+/// ⭐⭐ **ESTA CRATE NÃO CRIA IRREGULAR NENHUM** — todos vêm do layout.
+///
+/// ⚠️ **É a asserção que separa a dívida da culpa.** Medido em 2026-08-21, sobre
+/// as seis malhas do corpus com a cadeia completa:
+///
+/// | malha | canto (F3) | centro (F3) | **arco** | **raio** | **grade** |
+/// |---|---|---|---|---|---|
+/// | esfera 96×144 | 32 | 15 | **0** | **0** | **0** |
+/// | toro 64×32 | 46 | 20 | **0** | **0** | **0** |
+/// | cubo | 90 | 38 | **0** | **0** | **0** |
+///
+/// ⭐ **Zero em arco, raio e grade, em todas.** O leque e a interpolação de Coons
+/// não introduzem um único vértice irregular: os `47` da esfera são **um por patch
+/// de valência ≠ 4** (15) mais **um por canto de layout de valência ≠ 4** (32) — e
+/// as duas grandezas são decididas pelo traçado, duas fases antes.
+///
+/// ⛔ **Um irregular no interior de uma grade seria bug DESTA crate**, e é o que
+/// este gate defende: uma grade `s × t` regular não tem nenhum, por construção.
+/// Um irregular num arco significaria que os dois patches que o partilham o
+/// amostraram diferente — a costura rasgada que a lei nº 1 do módulo existe para
+/// impedir.
+///
+/// ⚠️ **Uma mutação SOBREVIVE a este gate, e ela é in-matável de propósito:**
+/// trocar o rótulo de um vértice de **grade** para qualquer outro não muda número
+/// nenhum, porque esses vértices são **sempre regulares** e por isso nunca entram
+/// na conta. Não é gate a faltar — é o alcance honesto da afirmação. Matá-la
+/// exigiria exportar o vetor de proveniência inteiro e afirmar coisas sobre
+/// vértices regulares, que é construir instrumento para uma afirmação que ninguém
+/// faz. *As duas mutações que IMPORTAM — o canto e o centro a mentirem sobre si
+/// mesmos — caem, e a segunda só cai por causa da conferência contra o layout.*
+#[test]
+fn this_crate_introduces_no_irregular_of_its_own() {
+    use ph2d_quadfill::Provenance;
+    for (name, mesh, edge) in [
+        ("esfera 24x36", shapes::uv_sphere(24, 36, 1.0), 0.08),
+        ("esfera 48x72", shapes::uv_sphere(48, 72, 1.0), 0.06),
+        ("toro 32x16", shapes::torus(32, 16, 1.0, 0.35), 0.08),
+    ] {
+        let (_, r, non_quad_patches) = chain_with_layout(mesh, edge);
+        let by = r.by_provenance;
+        // O controle POSITIVO: sem irregulares nenhuns a asserção de baixo é vazia.
+        assert!(
+            r.irregular > 0,
+            "{name}: zero irregulares -- este gate nao afirma nada sobre esta fixtura"
+        );
+        // ⭐ **A conferência contra fonte INDEPENDENTE**, e ela existe porque duas
+        // mutações do rótulo SOBREVIVERAM (2026-08-21): trocar a classe de um
+        // vértice de arco ou de grade não mudava nada, porque esses vértices são
+        // todos regulares e nunca entram na conta. *Uma mutação que sobrevive é um
+        // gate a faltar.* O leque põe exactamente **um** centro por patch, e ele é
+        // irregular exactamente quando o patch não tem quatro lados — quem sabe
+        // isso é o layout, que esta asserção lê do outro lado.
+        assert_eq!(
+            by[Provenance::Center as usize],
+            non_quad_patches,
+            "{name}: {} centros irregulares mas {non_quad_patches} patches de valencia != 4 -- \
+             a classificacao de origem nao bate com o layout",
+            by[Provenance::Center as usize]
+        );
+        assert_eq!(
+            (
+                by[Provenance::Arc as usize],
+                by[Provenance::Spoke as usize],
+                by[Provenance::Grid as usize]
+            ),
+            (0, 0, 0),
+            "{name}: a montagem criou irregulares seus -- arco {}, raio {}, grade {} \
+             (de {} no total; cantos {} e centros {} sao divida do layout)",
+            by[Provenance::Arc as usize],
+            by[Provenance::Spoke as usize],
+            by[Provenance::Grid as usize],
+            r.irregular,
+            by[Provenance::Corner as usize],
+            by[Provenance::Center as usize]
+        );
+        // E a decomposição tem de somar o total: uma classe esquecida daria um
+        // gate verde sobre metade da malha.
+        assert_eq!(
+            by.iter().sum::<usize>(),
+            r.irregular,
+            "{name}: a decomposicao soma {} e o total e' {}",
+            by.iter().sum::<usize>(),
+            r.irregular
         );
     }
 }

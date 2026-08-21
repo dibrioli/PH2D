@@ -15,7 +15,11 @@
 > ⭐ **E a RÉGUA estava errada** (§4-nonies): faltava o defeito angular na fórmula do índice, o que só se
 > via em malha com triângulos de tamanhos muito diferentes. Corrigida, Poincaré–Hopf passa a valer
 > **exactamente** em todo o corpus — incluindo o `cube`, que era a última malha com a soma errada.
-> Próximo: **o F2**, à frente da porta no shell — ligar o botão hoje é ligar o caso mau.
+> ⭐ **E a proveniência dos irregulares está medida** (§4-decies): **100 % vêm do layout do F3** —
+> zero em arco, raio e grade. Os 47 da esfera são **15 patches de valência ≠ 4** mais **32 junções em T**,
+> contra um chão de 8.
+> Próximo: **o F3** (fundir separatrizes redundantes e fazer os patches saírem de quatro lados), à frente
+> da porta no shell.
 > ⚠️ Nada disto está ligado ao produto ainda.
 
 ---
@@ -942,8 +946,10 @@ re-resolução barata.* Duas rotas, por ordem de preço:
    mau nas malhas difíceis.** Os 21 irregulares da esfera são o que a cadeia dá
    quando o campo está bom; os 47 (com o F1 na frente) são o que ela dá quando não
    está. *O gargalo mudou de fase.*
-2. ⭐ **O F2 volta a ser o próximo trabalho**, à frente da porta no shell — porque
-   ligar o botão hoje é ligar o caso mau.
+2. ⚠️ **~~O F2 volta a ser o próximo trabalho~~ — CORRIGIDO no mesmo dia pelo
+   §4-decies.** Na configuração que o produto corre (`α = 0,02`) o campo entrega
+   `sing = 8`: ele está bom. Os 194 desta secção só aparecem a `α = 0,010`. O
+   próximo trabalho é o **F3**, e a medição de proveniência diz porquê.
 3. ⚠️ O `Rounding` já é um parâmetro (`solve_miq_with`), então o compromisso é
    **exposto e medido**, não escondido numa constante. ⛔ **A constante em vigor
    NÃO foi mexida** — mudá-la sem a rota (1) seria trocar 194 singularidades por
@@ -1037,6 +1043,60 @@ já na primeira fixtura fácil —, porque ela julga cada vértice em vez da som
 
 ---
 
+## 4-decies — ⭐ De onde vêm os irregulares: **100 % do layout**, e o F5 não cria nenhum
+
+**Entregue:** [`FillReport::by_provenance`] e o gate
+`this_crate_introduces_no_irregular_of_its_own`.
+
+⚠️ **`47 irregulares` diz que há trabalho e não diz em que FASE.** Cada vértice da
+saída passou a carregar de onde veio, e a conta fecha:
+
+| malha | canto (F3) | centro (F3) | **arco** | **raio** | **grade** | total |
+|---|---|---|---|---|---|---|
+| esfera 96×144 | 32 | 15 | **0** | **0** | **0** | 47 |
+| toro 64×32 | 46 | 20 | **0** | **0** | **0** | 66 |
+| esfera 98 k | 42 | 21 | **0** | **0** | **0** | 63 |
+| esfera sacudida | 44 | 15 | **0** | **0** | **0** | 59 |
+| `cube` | 90 | 38 | **0** | **0** | **0** | 128 |
+
+⭐⭐ **Zero em arco, raio e grade, em todas as seis.** O leque e a interpolação de
+Coons **não introduzem um único irregular**. ⇒ *A dívida inteira é do traçado, e a
+montagem está limpa.*
+
+### A anatomia dos 47, e ela nomeia duas coisas diferentes
+
+1. **15 centros** = um por patch de valência ≠ 4. A esfera sai com **15 patches e
+   os 15 têm valência ≠ 4** — nenhum é um quadrilátero. Um patch de 3 ou 5 lados
+   **obriga** a um irregular; o que está errado é a valência, não o leque.
+2. **32 cantos** = cantos do layout onde não se encontram quatro arcos. O layout
+   tem **65 arcos para 15 patches**, logo `2 − 15 + 65 = 52` cantos — para **8**
+   singularidades. Os outros 44 são **junções em T**, e cada uma é um vértice de
+   valência 3.
+
+⇒ ⭐ **A conta do chão:** 8 singularidades + 0 junções em T + patches todos de
+quatro lados dariam **8** irregulares, que é exactamente onde o oráculo fica.
+
+### ⛔ Isto CORRIGE o "próximo trabalho" que o §4-octies escreveu
+
+O §4-octies apontou o **F2**. ⚠️ **Está errado para a configuração do produto:**
+com `α = 0,02` o campo entrega `sing = 8` em cinco das seis malhas — ele está
+**bom**. Os 194 do §4-octies só aparecem a `α = 0,010`, que não é o que a cadeia
+corre. *O F2 é dívida real e é dívida de mais tarde.*
+
+⇒ **O próximo trabalho é o F3**, e tem dois alvos com número:
+**(a)** matar junções em T (a fusão de separatrizes do QuadWild §6) — vale **32**
+dos 47; **(b)** fazer os patches saírem de quatro lados — vale **15**.
+
+### ⚠️ E uma mutação que SOBREVIVE de propósito
+
+Trocar o rótulo de um vértice de **grade** não muda número nenhum: esses vértices
+são sempre regulares e nunca entram na conta. ⛔ **Não é gate a faltar** — é o
+alcance honesto da afirmação. As duas mutações que importam (o canto e o centro a
+mentirem sobre si) caem, e a do centro **só cai por causa da conferência contra o
+layout**, que foi acrescentada precisamente porque as duas primeiras sobreviveram.
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |
@@ -1053,7 +1113,7 @@ já na primeira fixtura fácil —, porque ela julga cada vértice em vez da som
 
 ## 6 — Esforço e ordem de ataque
 
-Ordem recomendada: ~~F0 → F1 → F2 → (F4 protótipo) → F3 → F5~~ **→ F2-bis → F5.2 (a porta) → F7 → F6 → F8**.
+Ordem recomendada: ~~F0 → F1 → F2 → (F4 protótipo) → F3 → F5 → F2-bis~~ **→ F3-bis → F5.2 (a porta) → F2-bis → F7 → F6 → F8**.
 
 ⚠️ **A ordem mudou em 2026-08-21, e a razão é uma medição.** A sanitização entrou
 à frente do F5 como este parágrafo mandava, e ⭐ **a causa não era o F1**: era uma

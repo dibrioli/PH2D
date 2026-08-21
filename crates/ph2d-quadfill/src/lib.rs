@@ -40,4 +40,4 @@ pub mod fan;
 /// **A COSTURA** — amostragem partilhada e montagem — ver [`stitch`].
 pub mod stitch;
 
-pub use stitch::{FillError, FillReport, SMOOTHING_ROUNDS, fill};
+pub use stitch::{FillError, FillReport, Provenance, SMOOTHING_ROUNDS, fill};

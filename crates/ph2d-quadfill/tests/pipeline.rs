@@ -104,6 +104,19 @@ fn run_with_alpha(name: &str, mut mesh: Mesh, target_edge: f32, alpha: Option<f3
                 r.flipped,
                 if qr.proved { "sim" } else { "NAO" }
             );
+            // ⭐ **DE ONDE vêm os irregulares** — é o que decide de que FASE é a
+            // dívida, e sem ele `47` só diz que há trabalho.
+            let breakdown: Vec<String> = ph2d_quadfill::Provenance::NAMES
+                .iter()
+                .zip(r.by_provenance)
+                .filter(|(_, n)| *n > 0)
+                .map(|(name, n)| format!("{name} {n}"))
+                .collect();
+            println!(
+                "{:<16}   -> IRREGULARES POR ORIGEM: {}",
+                "",
+                breakdown.join(" · ")
+            );
             eprintln!("[f5] {name}: {:.0} ms", t.elapsed().as_secs_f64() * 1000.0);
         }
         Err(e) => println!("{name:<16} a montagem recusou: {e:?}"),

@@ -67,6 +67,67 @@ pub struct FillReport {
     /// positivo. É `0` ou `todas` — qualquer outro número seria orientação
     /// inconsistente, que é outro defeito.
     pub flipped: usize,
+    /// ⭐ **DE ONDE vêm os irregulares** — ver [`Provenance`]. Sem esta
+    /// decomposição, `irregular: 47` diz que há trabalho e não diz **em que
+    /// fase**: um irregular num canto do layout é dívida do F3, um no centro de
+    /// um patch é da valência que o F3 entregou, e um no interior de uma grade
+    /// seria um bug desta crate.
+    pub by_provenance: [usize; Provenance::COUNT],
+}
+
+/// **De onde um vértice da saída veio** — a chave para saber de quem é a dívida.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Provenance {
+    /// Um **canto do layout**: onde três ou mais arcos se encontram. A valência
+    /// dele é o número de arcos, e ⭐ **é o F3 que a decide** — cada junção em T
+    /// que o traçado cria é um canto a mais.
+    Corner,
+    /// O interior de um **arco** partilhado. Deviam ser todos regulares.
+    Arc,
+    /// O **centro** de um patch. A valência é a do patch, logo um patch de 3 ou 5
+    /// lados produz aqui um irregular **por construção** — é o preço do leque.
+    Center,
+    /// O interior de um **raio** do leque, do centro ao corte de um lado.
+    Spoke,
+    /// O interior de uma **grade** de Coons. ⛔ Um irregular aqui seria bug desta
+    /// crate: uma grade regular não tem nenhum.
+    Grid,
+}
+
+impl Provenance {
+    /// Quantas classes existem.
+    pub const COUNT: usize = 5;
+    /// Os nomes, na ordem do array de [`FillReport::by_provenance`].
+    pub const NAMES: [&'static str; Self::COUNT] =
+        ["canto (F3)", "arco", "centro (F3)", "raio", "grade"];
+}
+
+/// **OS PONTOS DA SAÍDA, com a origem de cada um.**
+///
+/// ⭐ **Existe para que a posição e a proveniência não possam divergir.** A
+/// primeira versão eram dois `Vec` a crescer lado a lado com um comentário a pedir
+/// que assim continuassem — e um `push` esquecido num dos cinco sítios daria uma
+/// decomposição deslocada, que **soma certo** e atribui a dívida à fase errada.
+/// Aqui há um único `push`, e ele exige as duas coisas.
+struct Points {
+    pos: Vec<[f32; 3]>,
+    prov: Vec<Provenance>,
+}
+
+impl Points {
+    fn new() -> Self {
+        Self {
+            pos: Vec::new(),
+            prov: Vec::new(),
+        }
+    }
+
+    /// Acrescenta um ponto e devolve o índice dele.
+    fn push(&mut self, p: [f32; 3], from: Provenance) -> u32 {
+        self.pos.push(p);
+        self.prov.push(from);
+        u32::try_from(self.pos.len() - 1).unwrap_or(u32::MAX)
+    }
 }
 
 /// ⚠️ **Quantas rondas de alisamento por omissão.** Elas não mudam a topologia —
@@ -86,7 +147,7 @@ pub fn fill(
     smoothing: usize,
 ) -> Result<(Mesh, FillReport), FillError> {
     let src = reference.positions();
-    let mut pos: Vec<[f32; 3]> = Vec::new();
+    let mut pts = Points::new();
     let mut faces: Vec<Face> = Vec::new();
 
     // ── 1. Os pontos de cada ARCO, amostrados UMA vez.
@@ -106,13 +167,11 @@ pub fn fill(
                 } else {
                     *chain.last().unwrap_or(&chain[0])
                 };
-                *corner_vid.entry(v).or_insert_with(|| {
-                    pos.push(src[v as usize]);
-                    u32::try_from(pos.len() - 1).unwrap_or(u32::MAX)
-                })
+                *corner_vid
+                    .entry(v)
+                    .or_insert_with(|| pts.push(src[v as usize], Provenance::Corner))
             } else {
-                pos.push(*p);
-                u32::try_from(pos.len() - 1).unwrap_or(u32::MAX)
+                pts.push(*p, Provenance::Arc)
             };
             ids.push(id);
         }
@@ -171,9 +230,9 @@ pub fn fill(
         // O centro: a média dos pontos de fronteira, reprojetada.
         let mut c = [0.0f32; 3];
         let mut count = 0usize;
-        for pts in &side_pts {
-            for &v in &pts[..pts.len() - 1] {
-                let q = pos[v as usize];
+        for side in &side_pts {
+            for &v in &side[..side.len() - 1] {
+                let q = pts.pos[v as usize];
                 for k in 0..3 {
                     c[k] += q[k];
                 }
@@ -187,8 +246,7 @@ pub fn fill(
             [c[0] * inv, c[1] * inv, c[2] * inv],
             bbox_seed(reference),
         );
-        pos.push(center);
-        let center_vid = u32::try_from(pos.len() - 1).unwrap_or(u32::MAX);
+        let center_vid = pts.push(center, Provenance::Center);
 
         // Os raios: do centro ao corte de cada lado.
         let mut spoke: Vec<Vec<u32>> = Vec::with_capacity(n);
@@ -196,12 +254,11 @@ pub fn fill(
             let cut = e[(i + n - 1) % n] as usize;
             let tip = side_pts[i][cut];
             let steps = e[i] as usize;
-            let line = segment(center, pos[tip as usize], steps);
+            let line = segment(center, pts.pos[tip as usize], steps);
             let mut ids = Vec::with_capacity(steps + 1);
             ids.push(center_vid);
             for q in line.iter().take(steps).skip(1) {
-                pos.push(*q);
-                ids.push(u32::try_from(pos.len() - 1).unwrap_or(u32::MAX));
+                ids.push(pts.push(*q, Provenance::Spoke));
             }
             ids.push(tip);
             spoke.push(ids);
@@ -217,7 +274,7 @@ pub fn fill(
             let right = &side_pts[j][..=cut_j];
             let top = &spoke[j];
             let left: Vec<u32> = spoke[i].iter().rev().copied().collect();
-            let grid = build_grid(&mut pos, bottom, top, &left, right, s, t);
+            let grid = build_grid(&mut pts, bottom, top, &left, right, s, t);
             for k in 0..s {
                 for l in 0..t {
                     faces.push(Face::quad(
@@ -233,7 +290,7 @@ pub fn fill(
 
     // ── 3. A malha, com a orientação conferida.
     let mut flipped = 0usize;
-    if signed_volume(&pos, &faces) < 0.0 {
+    if signed_volume(&pts.pos, &faces) < 0.0 {
         // ⚠️ **Ou todas ou nenhuma.** A orientação da grade sai da orientação da
         // fronteira do patch, que é a mesma para todos os patches; se ela estiver
         // ao contrário, está ao contrário em bloco. Inverter face a face por
@@ -244,20 +301,21 @@ pub fn fill(
         }
         flipped = faces.len();
     }
-    let mut mesh = Mesh::from_parts(pos, faces).map_err(|e| FillError::Mesh(format!("{e:?}")))?;
+    let mut mesh =
+        Mesh::from_parts(pts.pos, faces).map_err(|e| FillError::Mesh(format!("{e:?}")))?;
 
     // ── 4. Alisar, reprojetando sempre.
     for _ in 0..smoothing {
         smooth_once(&mut mesh, reference);
     }
 
-    let report = measure(&mesh, smoothing, flipped);
+    let report = measure(&mesh, &pts.prov, smoothing, flipped);
     Ok((mesh, report))
 }
 
 /// Os índices da grade: bordos vindos das curvas, interior por Coons.
 fn build_grid(
-    pos: &mut Vec<[f32; 3]>,
+    pts: &mut Points,
     bottom: &[u32],
     top: &[u32],
     left: &[u32],
@@ -266,10 +324,10 @@ fn build_grid(
     t: usize,
 ) -> Vec<Vec<u32>> {
     let at = |ids: &[u32], k: usize, pos: &[[f32; 3]]| pos[ids[k] as usize];
-    let b: Vec<[f32; 3]> = (0..=s).map(|k| at(bottom, k, pos)).collect();
-    let tp: Vec<[f32; 3]> = (0..=s).map(|k| at(top, k, pos)).collect();
-    let l: Vec<[f32; 3]> = (0..=t).map(|k| at(left, k, pos)).collect();
-    let r: Vec<[f32; 3]> = (0..=t).map(|k| at(right, k, pos)).collect();
+    let b: Vec<[f32; 3]> = (0..=s).map(|k| at(bottom, k, &pts.pos)).collect();
+    let tp: Vec<[f32; 3]> = (0..=s).map(|k| at(top, k, &pts.pos)).collect();
+    let l: Vec<[f32; 3]> = (0..=t).map(|k| at(left, k, &pts.pos)).collect();
+    let r: Vec<[f32; 3]> = (0..=t).map(|k| at(right, k, &pts.pos)).collect();
     let inner = coons(&b, &tp, &l, &r);
     let mut grid = vec![vec![0u32; t + 1]; s + 1];
     for (k, row) in grid.iter_mut().enumerate() {
@@ -283,8 +341,7 @@ fn build_grid(
             } else if k == s {
                 right[l_i]
             } else {
-                pos.push(inner[k][l_i]);
-                u32::try_from(pos.len() - 1).unwrap_or(u32::MAX)
+                pts.push(inner[k][l_i], Provenance::Grid)
             };
         }
     }
@@ -383,7 +440,7 @@ fn signed_volume(pos: &[[f32; 3]], faces: &[Face]) -> f32 {
 }
 
 /// As grandezas que o relatório carrega.
-fn measure(mesh: &Mesh, smoothing: usize, flipped: usize) -> FillReport {
+fn measure(mesh: &Mesh, prov: &[Provenance], smoothing: usize, flipped: usize) -> FillReport {
     let faces = mesh.faces();
     let quads = faces.iter().filter(|f| !f.is_tri()).count();
     let mut count: BTreeMap<(u32, u32), usize> = BTreeMap::new();
@@ -396,10 +453,17 @@ fn measure(mesh: &Mesh, smoothing: usize, flipped: usize) -> FillReport {
     }
     let boundary_edges = count.values().filter(|&&c| c == 1).count();
     let adj = mesh.adjacency();
+    let mut by_provenance = [0usize; Provenance::COUNT];
     let irregular = (0..mesh.vert_count())
         .filter(|&v| !adj.is_border(v) && adj.valence(v) != 4)
+        .inspect(|&v| {
+            if let Some(p) = prov.get(v) {
+                by_provenance[*p as usize] += 1;
+            }
+        })
         .count();
     FillReport {
+        by_provenance,
         quads,
         non_quads: faces.len() - quads,
         verts: mesh.vert_count(),

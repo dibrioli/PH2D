@@ -31,7 +31,17 @@ mod tests {
         // + 1 script component (LuauScript). SAO TRES contadores desta
         // familia (ecs, render, script): registrar um componente novo no ECS
         // tem de somar nos tres, e cada um so roda na suite da sua crate.
-        assert_eq!(reg.len(), 58);
+        // ⚠️ **ESTE contador ficou 4 atrás, e a nota acima já tinha PREVISTO como.** A
+        // `line/Sprite` levou o do `ph2d-ecs` de 57 a 61 em quatro componentes
+        // (`SpritePixels` · `SpriteSheetRef` · `SpriteSheetFrame` · `SpriteEmissive`), viu a suite
+        // da própria crate verde de cada vez, e nenhuma delas correu a da `ph2d-script`. Em `main`
+        // ele estava certo (57 + 1 = 58); aqui esteve errado durante a jornada inteira.
+        //
+        // ⚠️ **Quem o encontrou foi o gate BATCHED do fecho**, não o laço de trabalho — o
+        // `cargo check -p` e a suite das crates tocadas nunca o tocam. *Um contador que só fala na
+        // suite de outra crate é um contador que só fala no fecho*, e o irmão da `ph2d-render` tem
+        // esta mesma frase escrita ao lado dele por ter sofrido exactamente isto.
+        assert_eq!(reg.len(), 62);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

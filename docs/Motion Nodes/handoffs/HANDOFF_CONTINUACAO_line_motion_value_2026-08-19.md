@@ -46,7 +46,7 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que as JANELAS de 2026-08-19/21 fecharam (a conferência foi de **P1 59 → 16**)
+### §1.1 — O que as JANELAS de 2026-08-19/21 fecharam (a conferência foi de **P1 59 → 12**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: as janelas fecharam
 **trinta e duas** e ABRIRAM **duas**, ambas por medição no meio de uma wave. Uma conferência que só
@@ -72,6 +72,8 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | **folha 02 (`force.*`): TRÊS células** — `scale_x`/`scale_y` do `drag` · `curve` do `vortex` · a coluna `density` do `buoyancy`. ⚠️ **As três tinham veredito «NÃO»/«PARCIAL», e as três estavam certas *sobre a COMPOSIÇÃO*:** o arrasto anisotrópico é impossível de compor e trivial DENTRO do nó que escreve o `accel`; a densidade por-instância tinha escritor no catálogo o tempo todo (o canal **Custom** do `motion.drive`). A folha desce de **5 para 2 P1**, e as duas que sobram são de outra espécie (o alvo = outro STREAM) | `=71` |
 | **V** | ✅ **folha 11 (`fx.*`) FECHOU: cinco células, três nós, DUAS arquiteturas** — `softness` do `drop_shadow` (disco de Vogel, 16 taps, densidade preservada por raízes) · `stretch`+`angle`+`clamp` do `glow` (uniformes de PASSE: base 2×2 na tenda + teto do bright-pass) · `ParamUnit`/`ParamHardMax` nos três (a família tinha **ZERO** dos quatro canais). ⚠️ **A cerca C1 foi REESCRITA e não removida**: o borrão raster continua fora (o passe é aditivo, *um halo escuro não pode ser somado*); o que caiu foi a frase sobre a *pilha de fantasmas*, que era sobre ENCADEAR. ⚠️ **Uma objecção da célula estava 4× desatualizada** (`MAX_INSTANCES` é `262_144`, não `65_536`) | `=70` |
 | **V** | ✅ **folha 05 (transform) FECHOU: cinco células, cinco nós** — `space` (World/Local) do `move` · `use_falloff_y` do `scale` **+** `mask_channel` do `falloff` (uma célula, dois nós) · `flip_rot` do `mirror` · `reindex` do `mirror` **e** do `kaleidoscope` · `carry_rotation` do `orbit`. ⚠️ **As cinco eram a MESMA pergunta em cinco lugares**: o nó sabe o que cada ELEMENTO é (orientação, posição na lista, máscara) e respondia como se a lista fosse um bloco. Os 3 P2 que sobram não são dessa família | `=69` |
+| **V** | ✅ **folha 08 (stream & utilidade) FECHOU: as duas células que sobravam, de espécies diferentes** — o `reindex` do `motion.cull` (**defeito**: as colunas de identidade descreviam a lista de ANTES, e o degradê parava a meio) e o **`field.shape`**, nó NOVO (**ausência**: nem o `motion.falloff` nem nenhum `field.*` aceitava geometria como fonte de máscara — o gap era dos dois lados da porta). ⚠️ O `reindex` escreve **as DUAS** colunas, incluindo em stream que não as trazia: meia cura faz a rampa alcançar *metade, duas vezes* | `=73` |
+| **V** | ✅ **folha 10 (`field.*`) FECHOU: os 2 P1 estruturais** — `key = Attribute` + porta `attr` no `field.index_range` (o **posto** sem reordenar o stream) e `curve_offset` no `field.remap` (deslocar a curva, com wrap). ⚠️ **Uma medição ENCOLHEU um item:** o *Auto Range* citado ao lado do rank já era exprimível (`value.attribute → value.normalize → motion.drive(Falloff)`, device-resident), então só o posto era gap. ⚠️ E a guarda `offset == 0 ⇒ devolve t` do deslocamento é **load-bearing**: `x − floor(x)` leva `1.0` a `0.0`, e `t = 1` é o que toda peça a máscara cheia entrega | `=73` |
 | **V** | ✅ **folha 09 (cor) FECHOU: três células, dois nós** — `blend` (Mix·Add·Subtract·Multiply·Divide) do `motion.tint` · o `Offset` do `motion.color_array` como **CAMPO** (a escada `0/1/n`; a lei antiga lia `.first()` e DESCARTAVA o campo em silêncio) · e o **kernel de GPU** do `color_array`, que era o único dos quatro nós de cor sem um. ⚠️ **A rota do kernel NÃO é a que a célula sugeria:** ela apontava o canal de LUT do `color_ramp`, mas aquele acessor (`_sample(t)`) LERPA entre vizinhos e duas cores de uma paleta não têm nada entre si — a rota certa é a do `value.pattern` (contagem no slot 0, o corpo **indexa** o buffer). Teto **1024 cores**, do BUFFER, com a tabela ao lado da const | `=72` |
 | **V** | ✅ **folha 07: a célula do pareamento do `motion.step`** — e ⚠️ **eram DOIS defeitos com uma frase só.** O `state` vem do tique ANTERIOR (o conjunto girou) ⇒ casa por `id`, arm por arm com o `motion.integrate`; as portas `pulse`/`reset` vêm do MESMO tique e não giram ⇒ o que nelas desalinhava era o COMPRIMENTO, e um batimento **global** (uma linha) chegava **só ao elemento 0**. A folha desce a **2 P1** | `=72` |
 
@@ -182,7 +184,7 @@ ausente.
 
 ---
 
-## §4 — As TRINTA E NOVE LEIS que esta linha pagou para aprender
+## §4 — As QUARENTA E DUAS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -442,6 +444,27 @@ são estilo.
     a nota verdadeira tem de reconferir a nota* — e o teto novo diz **de que recurso é**
     (16.388 B por nó, constante) com a tabela ao lado.
 
+40. ⚠️ **Um item de lista pode ENCOLHER quando se mede — e metade dele não existir.** A
+    célula do `field.index_range` citava *"rank por atributo (min/max + **Auto Range**)"*
+    e parecia um item; medido, o Auto Range já era exprimível hoje e **sem cair para a
+    CPU** (`value.attribute → value.normalize(Range) → motion.drive(Falloff, Set)` — o
+    `normalize` DESCOBRE o extento, é a razão de ele existir). Só o posto era gap.
+    *Meça a composição antes de construir, mesmo quando a célula já traz uma citação —
+    a citação descreve a referência, não este repo.*
+41. ⚠️ **Um gate de CENA apanha um defeito de CENA, e vale a pena escrevê-lo assim.** O
+    `the_pentagon_fits_inside_the_grid_it_masks` reprovou o MEU layout: com o passo de
+    grelha que eu escolhera, o pentágono (raio + penumbra) transbordava a grade e as
+    duas bandas do par 4 sairiam mascaradas por inteiro — **iguais**, com o par verde e
+    mudo. O que o viu foi a conta ser **derivada da grelha** em vez de escrita à mão.
+    *Um par cujos dois lados podem colapsar por um número de layout precisa de um gate
+    sobre esse número, não sobre os params que ele compara.*
+42. ⚠️ **O ponto neutro de um knob de WRAP não é grátis.** `x − floor(x)` é o wrap certo
+    em todo o intervalo **menos no topo**: ele leva `1.0` a `0.0`. Onde o domínio é uma
+    máscara, `t = 1` não é um caso de canto — é o que toda peça a máscara cheia entrega,
+    ou seja metade da cena. A guarda explícita (`offset == 0 ⇒ devolve t`) é uma linha, e
+    sem ela ligar o nó SEM tocar no knob repinta a cena. *Teste a identidade de um knob
+    no topo do domínio dele, não no meio.*
+
 
 ---
 
@@ -490,6 +513,17 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `=73` — as folhas 08 e 10 inteiras (quatro células, e um nó NOVO)
+
+```
+\
+  env PH2D_GPU_COOK_DEMO=73 cargo run -p ph2d-host-desktop --release
+```
+
+Quatro pares. ⚠️ **O par 1 lê-se pela COR, não pelo número de peças** — as duas metades
+cortam igual; o que difere é a contagem que a lista ANUNCIA ao degradê. ⚠️ O par 4 é o
+nó novo (`field.shape`): um pentágono ligado como forma decide quem acende.
 
 ### `=72` — a folha 09 inteira + o pareamento do `motion.step`
 

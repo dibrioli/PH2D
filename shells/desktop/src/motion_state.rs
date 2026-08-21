@@ -148,6 +148,8 @@ pub(crate) mod conferencia_demos_field;
 pub(crate) mod conferencia_demos_force;
 #[path = "motion_state_conferencia_demos_fx.rs"]
 pub(crate) mod conferencia_demos_fx;
+#[path = "motion_state_conferencia_demos_rank.rs"]
+pub(crate) mod conferencia_demos_rank;
 
 #[path = "motion_state_conferencia_demos_drizzle.rs"]
 pub(crate) mod conferencia_demos_drizzle;

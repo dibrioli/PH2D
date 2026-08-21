@@ -30,16 +30,57 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+/// The value type of the `attr` input (mirror of `motion.look_at::VALUE`).
+const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
+const VALUE_COL: &str = "v";
+
+/// **O QUE ORDENA A BANDA** (doc 89 folha 10 — MOPs *"Falloff From Attribute"*, C4D
+/// Random effector modo **Indexed**).
+///
+/// - `0` **Index** — a ordem do stream, `s = i/(n−1)`. O que este nó sempre fez.
+/// - `1` **Attribute** — o **POSTO** do elemento no campo ligado à porta `attr`,
+///   `s = rank/(n−1)`. A ordenação **que não reordena**.
+///
+/// ⚠️ **A composição que já existia REORDENA, e é isso que a torna outra coisa.**
+/// `motion.sort(key) → field.index_range` dá o mesmo posto — é literalmente o
+/// mecanismo que a §4 do plano 89 cita no `motion.slit_scan` — mas o `sort` permuta o
+/// stream **para sempre a jusante**: a ordem-z muda, o pareamento por índice muda, e
+/// nas referências o falloff-por-atributo não reordena coisa nenhuma. O gap é o
+/// *não-destrutivo*, não o posto.
+///
+/// ⚠️ **O `Auto Range` da mesma citação NÃO entrou, e isso é uma MEDIÇÃO, não um
+/// esquecimento.** *"remapeia atributo existente→falloff (min/max + Auto Range)"* já é
+/// exprimível hoje, e sem cair para a CPU: `value.attribute → value.normalize(Range) →
+/// motion.drive(Falloff, Set)` — o `value.normalize` **descobre** o extento do campo
+/// (é a razão de ele existir) e é device-resident. Construir um segundo modo aqui seria
+/// construir o que já existe. *Meça se a composição já o exprime antes de escrever o
+/// item da lista.*
+///
+/// ⚠️ **Ligado, ele RECUSA o device** (`applicable`, a porta dos irmãos
+/// `motion.combine`/`motion.cull`): um posto é uma ORDENAÇÃO global, e um kernel
+/// por-elemento só a alcançaria contando `#{j : v_j < v_i}` — `O(n²)`, que a 262 mil
+/// elementos são 6,9·10¹⁰ comparações. Desligado (o default) nada recua.
+const KEY: &str = "key";
+/// O valor de [`KEY`] que pede o posto por atributo.
+const KEY_ATTRIBUTE: f32 = 1.0;
 
 /// The static contract of this node type (ADR-0031). The kernel is side-metadata
 /// (ADR-0126, `register_gpu_kernel`); `NodeManifest` stays the frozen 8 fields.
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("field.index_range"),
     name: "field.index_range",
-    inputs: &[PortSpec {
-        name: "in",
-        ty: INST_VEC2,
-    }],
+    inputs: &[
+        PortSpec {
+            name: "in",
+            ty: INST_VEC2,
+        },
+        // **O ATRIBUTO pelo qual ordenar** (modo `Attribute`). APENDADO — o índice
+        // da porta 0 não se mexe, e desligada o nó é byte-idêntico. Ver [`KEY`].
+        PortSpec {
+            name: "attr",
+            ty: VALUE,
+        },
+    ],
     outputs: &[PortSpec {
         name: "out",
         ty: INST_VEC2,
@@ -65,6 +106,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         ParamSpec {
             name: "invert",
+            default: 0.0,
+        },
+        // **O QUE ORDENA A BANDA.** APENDADO, default `0` = a ordem do stream, ao
+        // bit. Ver [`KEY`].
+        ParamSpec {
+            name: "key",
             default: 0.0,
         },
     ],
@@ -111,6 +158,46 @@ fn band_mask(s: f32, start: f32, end: f32, soft: f32, curve_kind: i32) -> f32 {
         0.0
     };
     curve(curve_kind, rise.min(fall))
+}
+
+/// O **ordinal normalizado** de cada elemento, `s ∈ [0,1]`.
+///
+/// Sem atributo (o modo `Index`, ou a porta desligada) é a posição no vector; com
+/// atributo é o **posto** dele — `s[i] = rank(i)/(n−1)`, e o stream não se mexe.
+///
+/// ⚠️ **O desempate é o ÍNDICE, e ele não é decorativo:** sem ele, dois elementos com o
+/// mesmo valor receberiam postos numa ordem que depende do algoritmo de ordenação, e o
+/// hash de replay deixaria de bater entre plataformas. `total_cmp` dá a ordem total
+/// (inclusive sobre `NaN` e `-0.0`), o índice fecha-a. *Não se escolhe um desempate
+/// melhor: não se tem empate.*
+///
+/// ⚠️ **A porta VAZIA cai no modo `Index`, e não num campo de zeros.** Um `key =
+/// Attribute` com nada ligado é o pedido incompleto do artista; responder com "todos
+/// empatados, desempate pelo índice" dá o MESMO número, mas por acidente — e deixaria de
+/// dar no dia em que o desempate mudasse. Cair no modo explícito diz a verdade.
+fn ordinals(n: usize, attr: &[f32]) -> Vec<f32> {
+    // `n.max(2) − 1` mantém o denominador ≥ 1 — o mesmo inteiro que o `max(count, 2u) − 1u`
+    // do WGSL.
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de elementos")]
+    let denom = (n.max(2) - 1) as f32;
+    #[expect(clippy::cast_precision_loss, reason = "um posto < n")]
+    let norm = |k: usize| if n > 1 { k as f32 / denom } else { 0.0 };
+    if attr.is_empty() {
+        return (0..n).map(norm).collect();
+    }
+    let mut order: Vec<usize> = (0..n).collect();
+    order.sort_by(|&a, &b| {
+        let (va, vb) = (
+            attr.get(a).copied().unwrap_or(0.0),
+            attr.get(b).copied().unwrap_or(0.0),
+        );
+        va.total_cmp(&vb).then(a.cmp(&b))
+    });
+    let mut s = vec![0.0_f32; n];
+    for (rank, &i) in order.iter().enumerate() {
+        s[i] = norm(rank);
+    }
+    s
 }
 
 /// GPU compute kernel (ADR-0126): a straight WGSL port of [`band_mask`] × [`curve`]
@@ -169,7 +256,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     params: &["start", "end", "soft", "curve", "invert"],
     count_law: None,
     variant_by_param: None,
-    applicable: None,
+    // A recusa do modo `Attribute` — ver [`KEY`] para a conta que a justifica.
+    applicable: Some(|p| p(KEY) < 0.5),
 };
 
 struct FieldIndexRange;
@@ -185,6 +273,16 @@ impl NodeOp for FieldIndexRange {
         let soft = ctx.param("soft");
         let curve_kind = ctx.param("curve").round() as i32;
         let invert = ctx.param("invert") >= 0.5;
+        // ⚠️ O atributo é lido ANTES do input 0 e clonado: os dois `ctx.input` não
+        // podem coexistir emprestados, e a coluna só é tocada no modo que a lê.
+        let attr: Vec<f32> = if ctx.param(KEY) >= KEY_ATTRIBUTE - 0.5 {
+            match ctx.input(1).get(VALUE_COL) {
+                Some(Column::Scalar(v)) => v.clone(),
+                _ => Vec::new(),
+            }
+        } else {
+            Vec::new()
+        };
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -193,11 +291,10 @@ impl NodeOp for FieldIndexRange {
                 Some(Column::Scalar(v)) => Some(v.as_slice()),
                 _ => None,
             };
-            // `n.max(2)` keeps the denominator ≥ 1 (a single element reads s = 0,
-            // guarded below); the GPU's `max(count, 2u) - 1u` is the same integer.
-            let denom = (n.max(2) - 1) as f32;
+            // O ordinal de cada peça: a posição no vector, ou o POSTO no atributo.
+            let ord = ordinals(n, &attr);
             let fall = par_build(n, |i| {
-                let s = if n > 1 { i as f32 / denom } else { 0.0 };
+                let s = ord[i];
                 let m = band_mask(s, start, end, soft, curve_kind);
                 let f = if invert { 1.0 - m } else { m };
                 let base = prev.and_then(|v| v.get(i).copied()).unwrap_or(1.0);
@@ -282,229 +379,20 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Toggle,
     },
+    // ⚠️ Um Enum NOMEADO, não um toggle: o segundo modo precisa de um FIO na porta
+    // `attr`, e um rótulo que diz *"Attribute"* é o que faz o artista procurá-la.
+    ParamUiHint {
+        param: "key",
+        label: "Order By",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Index", "Attribute"],
+        },
+    },
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::cook::{Cook, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
-
-    // Source: 11 instances (ordinals s = 0.0, 0.1, …, 1.0). Positions are inert
-    // here — this field never reads them — but the stream must carry a column so
-    // the count is real.
-    static SRC_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("field.index_range.test.src"),
-        name: "field.index_range.test.src",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Src(usize);
-    impl NodeOp for Src {
-        fn manifest(&self) -> &'static NodeManifest {
-            &SRC_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            let n = self.0;
-            let p = par_build(n, |i| [i as f32, 0.0]);
-            ctx.emit(Stream::new(n).with("P", Column::Vec2(p)));
-        }
-    }
-    // Holds the source so the resolver hands out a `&self`-lifetime op keyed by
-    // the count of THIS `Ops` — no shared static (which would pin the first n).
-    struct Ops {
-        src: Src,
-    }
-    impl Ops {
-        fn new(n: usize) -> Self {
-            Ops { src: Src(n) }
-        }
-    }
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == SRC_MAN.id => Some(&self.src),
-                t if t == MANIFEST.id => Some(&FieldIndexRange),
-                _ => None,
-            }
-        }
-    }
-
-    fn falloff_of(g: &Graph, ops: &Ops, target: NodeId) -> Vec<f32> {
-        let mut cook = Cook::new();
-        let out = cook.cook(g, ops, target, 0.0).unwrap();
-        match out[0].as_stream().get("falloff").unwrap() {
-            Column::Scalar(v) => v.clone(),
-            _ => panic!("falloff must be a Scalar column"),
-        }
-    }
-
-    /// A ramp value is inherently f32-inexact (`(0.3 − 0.25)/0.1` computes to
-    /// `0.5000001`, not `0.5`), so the mask SHAPE is asserted within a tolerance.
-    /// The neutral/passthrough tests below stay `assert_eq!` on purpose — an
-    /// identity that is off must be off AT THE BIT (D12), which is a stronger claim.
-    fn assert_close(actual: &[f32], expected: &[f32]) {
-        assert_eq!(actual.len(), expected.len(), "length");
-        for (i, (a, e)) in actual.iter().zip(expected).enumerate() {
-            assert!((a - e).abs() < 1e-5, "at {i}: {a} vs {e}");
-        }
-    }
-
-    fn chain() -> (Graph, NodeId) {
-        let mut g = Graph::new();
-        let src = g.add_node("field.index_range.test.src");
-        let foc = g.add_node("field.index_range");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (foc, 0),
-            delayed: false,
-        })
-        .unwrap();
-        (g, foc)
-    }
-
-    #[test]
-    fn default_middle_band_is_a_clean_trapezoid() {
-        let (mut g, foc) = chain();
-        // Linear curve so the ramp math is transparent; defaults start .25/end .75/soft .1.
-        g.set_param(foc, "curve", 0.0);
-        // s: .0 .1 .2 .3 .4 .5 .6 .7 .8 .9 1.0 — band [.25,.75], ramp width .1:
-        // rise 0 until .25, 1 by .35; fall 1 until .65, 0 by .75.
-        assert_close(
-            &falloff_of(&g, &Ops::new(11), foc),
-            &[0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0, 0.5, 0.0, 0.0, 0.0],
-        );
-    }
-
-    #[test]
-    fn full_range_no_softness_is_the_identity() {
-        // The neutral: start 0, end 1, soft 0 ⇒ mask 1 everywhere ⇒ the falloff
-        // column is multiplied by the identity (D12 — off is exactly off).
-        let (mut g, foc) = chain();
-        g.set_param(foc, "start", 0.0);
-        g.set_param(foc, "end", 1.0);
-        g.set_param(foc, "soft", 0.0);
-        assert_eq!(falloff_of(&g, &Ops::new(7), foc), vec![1.0; 7]);
-    }
-
-    #[test]
-    fn invert_flips_the_mask() {
-        let (mut g, foc) = chain();
-        g.set_param(foc, "curve", 0.0);
-        g.set_param(foc, "invert", 1.0);
-        // 1 − trapezoid.
-        assert_close(
-            &falloff_of(&g, &Ops::new(11), foc),
-            &[1.0, 1.0, 1.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0],
-        );
-    }
-
-    #[test]
-    fn start_after_end_auto_swaps() {
-        // Dragging Start past End yields the SAME band as End..Start — the mask is
-        // a function of the interval, not of which handle names which bound.
-        let a = band_mask(0.5, 0.25, 0.75, 0.1, 0);
-        let b = band_mask(0.5, 0.75, 0.25, 0.1, 0);
-        assert_eq!(a, b);
-        assert_eq!(a, 1.0);
-    }
-
-    #[test]
-    fn a_prior_falloff_column_is_multiplied_not_overwritten() {
-        // Fields COMPOSE multiplicatively (the MOPs contract): a carried `falloff`
-        // is scaled by this band, never replaced.
-        static FSRC_MAN: NodeManifest = NodeManifest {
-            id: NodeTypeId::of("field.index_range.test.fsrc"),
-            name: "field.index_range.test.fsrc",
-            inputs: &[],
-            outputs: &[PortSpec {
-                name: "out",
-                ty: INST_VEC2,
-            }],
-            effect: Effect::Pure,
-            clock: Clock::Frame,
-            params: &[],
-            lowerings: &[LoweringKind::Cpu],
-        };
-        struct FSrc;
-        impl NodeOp for FSrc {
-            fn manifest(&self) -> &'static NodeManifest {
-                &FSRC_MAN
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                // 3 instances, prior falloff [0.5, 0.9, 0.4].
-                ctx.emit(
-                    Stream::new(3)
-                        .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]))
-                        .with("falloff", Column::Scalar(vec![0.5, 0.9, 0.4])),
-                );
-            }
-        }
-        struct FOps;
-        impl OpResolver for FOps {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == FSRC_MAN.id => Some(&FSrc),
-                    t if t == MANIFEST.id => Some(&FieldIndexRange),
-                    _ => None,
-                }
-            }
-        }
-        let mut g = Graph::new();
-        let src = g.add_node("field.index_range.test.fsrc");
-        let foc = g.add_node("field.index_range");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (foc, 0),
-            delayed: false,
-        })
-        .unwrap();
-        // 3 instances ⇒ s = 0.0, 0.5, 1.0. Full range so mask = 1 everywhere ⇒
-        // the carried column survives unchanged.
-        g.set_param(foc, "start", 0.0);
-        g.set_param(foc, "end", 1.0);
-        g.set_param(foc, "soft", 0.0);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &FOps, foc, 0.0).unwrap();
-        match out[0].as_stream().get("falloff").unwrap() {
-            Column::Scalar(v) => assert_eq!(v, &vec![0.5, 0.9, 0.4]),
-            _ => panic!("falloff"),
-        }
-    }
-
-    #[test]
-    fn curves_are_monotone_and_endpoint_exact() {
-        for k in 0..=3 {
-            assert_eq!(curve(k, 0.0), 0.0, "curve {k} at 0");
-            assert_eq!(curve(k, 1.0), 1.0, "curve {k} at 1");
-        }
-        assert_eq!(curve(0, 0.5), 0.5); // Linear
-        assert_eq!(curve(1, 0.5), 0.25); // Quad
-        assert_eq!(curve(2, 0.5), 0.5); // Smoothstep symmetric
-        assert!((curve(3, 0.5) - 0.5).abs() < 1e-6); // Smootherstep symmetric
-    }
-
-    #[test]
-    fn degenerate_empty_band_masks_almost_everything() {
-        // start == end ⇒ the interval has no width ⇒ the mask is 0 everywhere
-        // except the single ordinal exactly on the point.
-        assert_eq!(band_mask(0.3, 0.5, 0.5, 0.1, 2), 0.0);
-        assert_eq!(band_mask(0.5, 0.5, 0.5, 0.1, 2), 1.0); // exactly on it
-        assert_eq!(band_mask(0.7, 0.5, 0.5, 0.1, 2), 0.0);
-    }
-
-    #[test]
-    fn single_element_reads_the_band_start_ordinal() {
-        // n == 1 ⇒ s = 0 (no division). With the default band starting at .25 the
-        // lone element sits below it ⇒ mask 0; a band containing 0 lights it.
-        let (g, foc) = chain();
-        assert_eq!(falloff_of(&g, &Ops::new(1), foc), vec![0.0]);
-    }
-}
+#[path = "tests.rs"]
+mod tests;

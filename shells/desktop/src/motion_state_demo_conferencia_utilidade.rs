@@ -349,3 +349,40 @@ pub(crate) fn color_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<
     );
     sinks
 }
+
+/// **A CENA `=73` — IDENTIDADE, POSTO, CURVA E FORMA**
+/// (doc 89: folha 08 inteira, duas células; folha 10 inteira, duas células).
+///
+/// ⚠️ **O par 1 lê-se pela COR, não pelo número de peças** — as duas metades cortam
+/// igual; o que difere é a contagem que a lista ANUNCIA ao degradê.
+pub(crate) fn rank_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_rank::build_rank_demo_document(doc, registry).unwrap_or_default();
+    let (shift, dist) = conferencia_demos_rank::authored();
+    eprintln!(
+        "[rank-demo] QUATRO pares, {} bandas. Esquerda = como era; direita = o que mudou.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_rank::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) Par 1 (as duas grades de cima, amarelo->vermelho): as duas tem o MESMO numero
+  de pecas -- metade da grade, cortada igual. O que muda e' a COR: a` esquerda o degrade'
+  pa'ra no laranja, porque a lista continua a dizer que tem 36 pecas quando tem 18. A`
+  direita ele chega ao vermelho. Clique no no' Cull e ligue/desligue `Renumber Survivors`.
+  (!) Par 2 (azul): a MESMA banda estreita acende 20% das pecas. A` esquerda ela e' um
+  BLOCO contiguo (a ordem da lista). A` direita ela segue o valor de um campo, entao sai
+  ESPALHADA -- e nenhuma peca mudou de lugar. Era isso que ate' hoje so' se conseguia
+  reordenando o conjunto inteiro.
+  (!) Par 3 (rosa, as duas fileiras): a mesma rampa de cor ao longo da fileira. A` direita
+  ela esta' deslocada {shift:.2} -- desfila e REENTRA pelo comeco, com uma costura visivel.
+  Clique no no' Remap e arraste o `Curve Offset`: a rampa anda ao vivo.
+  (!) Par 4 (verde) -- NO' NOVO: um pentagono, ligado como FORMA, decide quem acende.
+  A` esquerda ele e' uma mascara solida (`Filled Path`); a` direita so' a BORDA acende
+  (`Path Edges`) e o miolo apaga. A penumbra tem {dist:.2} de largura nos dois.
+  (!) DEU ERRADO se as duas grades do par 1 sairem com a mesma cor no fim, se a banda da
+  direita do par 2 sair contigua, se as duas fileiras do par 3 sairem iguais, ou se o
+  pentagono nao aparecer de todo (a` esquerda ele tem de ser um bloco CHEIO)."
+    );
+    sinks
+}

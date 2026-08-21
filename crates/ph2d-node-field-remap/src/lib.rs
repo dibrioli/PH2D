@@ -104,6 +104,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "strength",
             default: 1.0,
         },
+        // **O DESLOCAMENTO DA CURVA** — o C4D *Spline Offset* / *Spline Animation
+        // Speed* (doc 89 folha 10; o único item daquele dump com `!`). APENDADO,
+        // default `0` = a curva de hoje ao bit. Ver [`shifted`].
+        ParamSpec {
+            name: "curve_offset",
+            default: 0.0,
+        },
         ParamSpec {
             // Field → binary mask: each instance survives with this probability, decided
             // by a stable hash of its index. `1` (default) keeps everyone (neutral).
@@ -145,12 +152,49 @@ fn round_haz(x: f32) -> f32 {
     }
 }
 
+/// **O deslocamento da curva ao longo do X, com WRAP** — o C4D *Spline Offset*, e o
+/// mecanismo do *Spline Animation Speed* (uma expressão a somar tempo a este número faz
+/// a forma desfilar).
+///
+/// ⚠️ **`offset == 0.0` devolve `t` ANTES de qualquer aritmética, e essa linha é
+/// load-bearing.** O wrap natural (`x − floor(x)`) leva `1.0` a `0.0`, e `t = 1.0` não é
+/// um caso de canto aqui: é o que TODA peça a máscara cheia entrega. Sem a guarda, ligar
+/// o nó (sem tocar no knob) trocaria `curve.eval(1)` por `curve.eval(0)` em metade da
+/// cena. *O ponto neutro de um knob tem de ser a identidade, e o `rem_euclid` não é a
+/// identidade no topo do intervalo.*
+///
+/// ⚠️ **A costura é da CURVA, não do deslocamento.** Com o knob fora de zero há um salto
+/// onde `curve(1) ≠ curve(0)` — é o mesmo salto que qualquer marquise tem, e some
+/// sozinho numa curva cujos extremos concordam. Recortar o salto seria decidir pelo
+/// artista o que a curva dele diz.
+fn shifted(t: f32, offset: f32) -> f32 {
+    if offset == 0.0 {
+        return t;
+    }
+    let u = t + offset;
+    u - u.floor()
+}
+
 /// The **contour** transfer on `t ∈ [0,1]` — the C4D Remapping shapes, HR-5. `None`
 /// (0) is the identity; `Quadratic` (1) bends by `curvature` (`>0` ease-in `t²`, `<0`
 /// ease-out, `0` linear); `Step` (2) is a `steps`-level FLOOR staircase (holds, hits 0
 /// and 1); `Quantize` (3) is a `steps`-level ROUND (nearest); `Curve` (4) evaluates the
-/// authored `curve` (an unset/`None` curve is the identity — an exact passthrough).
-fn contour(mode: i32, t: f32, curvature: f32, steps: f32, curve: Option<&Curve>) -> f32 {
+/// authored `curve` at [`shifted`]`(t, curve_offset)` (an unset/`None` curve is the
+/// identity — an exact passthrough).
+///
+/// ⚠️ O `curve_offset` só entra no modo `Curve`, e é o único modo em que ele tem
+/// referente: as outras quatro formas são fórmulas, não uma tabela a deslizar. O nó não
+/// esconde o controle nos outros modos porque **nenhum** dos seus params inertes é
+/// escondido (o `curvature` e o `steps` também não) — uma excepção só para o mais novo
+/// seria a incoerência, e gatear os quatro esconderia o editor de curva no modo default.
+fn contour(
+    mode: i32,
+    t: f32,
+    curvature: f32,
+    steps: f32,
+    curve: Option<&Curve>,
+    curve_offset: f32,
+) -> f32 {
     match mode {
         1 => {
             let ease_in = t * t;
@@ -170,7 +214,7 @@ fn contour(mode: i32, t: f32, curvature: f32, steps: f32, curve: Option<&Curve>)
             let n = steps.max(2.0);
             round_haz(t * (n - 1.0)) / (n - 1.0)
         }
-        4 => curve.map_or(t, |c| c.eval(t)),
+        4 => curve.map_or(t, |c| c.eval(shifted(t, curve_offset))),
         _ => t, // None/Linear (0) passes through.
     }
 }
@@ -190,6 +234,7 @@ fn remap(
     curvature: f32,
     steps: f32,
     curve: Option<&Curve>,
+    curve_offset: f32,
     lo: f32,
     hi: f32,
     multiplier: f32,
@@ -202,7 +247,7 @@ fn remap(
     // core is a flat 1. Clamped below 1 so the denominator is never 0.
     let io = inner_offset.clamp(0.0, 0.999);
     t = (t / (1.0 - io)).min(1.0);
-    t = contour(mode, t, curvature, steps, curve);
+    t = contour(mode, t, curvature, steps, curve, curve_offset);
     let mut mapped = (lo + t * (hi - lo)) * multiplier;
     if clamp {
         mapped = mapped.clamp(0.0, 1.0);
@@ -230,7 +275,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         if (params.invert >= 0.5) { rm_t = 1.0 - rm_t; }\n\
         let rm_io = clamp(params.inner_offset, 0.0, 0.999);\n\
         rm_t = min(rm_t / (1.0 - rm_io), 1.0);\n\
-        rm_t = rm_contour(i32(rm_round(params.contour)), rm_t, params.curvature, params.steps);\n\
+        rm_t = rm_contour(\n\
+            i32(rm_round(params.contour)), rm_t,\n\
+            params.curvature, params.steps, params.curve_offset);\n\
         var rm_mapped = (params.min + rm_t * (params.max - params.min)) * params.multiplier;\n\
         if (params.clamp >= 0.5) { rm_mapped = clamp(rm_mapped, 0.0, 1.0); }\n\
         let rm_out = rm_in + (rm_mapped - rm_in) * params.strength;\n\
@@ -250,7 +297,15 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             x = x ^ (x >> 16u);\n\
             return f32(x >> 8u) / 16777216.0;\n\
         }\n\
-        fn rm_contour(mode: i32, t: f32, curvature: f32, steps: f32) -> f32 {\n\
+        fn rm_shifted(t: f32, offset: f32) -> f32 {\n\
+            // A guarda do zero e\x27 a identidade EXACTA no topo do intervalo:\n\
+            // `x - floor(x)` leva 1.0 a 0.0, e t = 1 e\x27 o que toda peca a\n\
+            // mascara cheia entrega. Ver o doc da `shifted` na CPU.\n\
+            if (offset == 0.0) { return t; }\n\
+            let u = t + offset;\n\
+            return u - floor(u);\n\
+        }\n\
+        fn rm_contour(mode: i32, t: f32, curvature: f32, steps: f32, offset: f32) -> f32 {\n\
             if (mode == 1) {\n\
                 let ease_in = t * t;\n\
                 let ease_out = 1.0 - (1.0 - t) * (1.0 - t);\n\
@@ -266,7 +321,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
                 let n = max(steps, 2.0);\n\
                 return rm_round(t * (n - 1.0)) / (n - 1.0);\n\
             }\n\
-            if (mode == 4) { return rm_curve_sample(t); }\n\
+            if (mode == 4) { return rm_curve_sample(rm_shifted(t, offset)); }\n\
             return t;\n\
         }\n",
     bindings: &[ColumnBinding {
@@ -287,6 +342,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "clamp",
         "invert",
         "strength",
+        "curve_offset",
         "probability",
         "seed",
     ],
@@ -349,6 +405,7 @@ impl NodeOp for FieldRemap {
         let clamp = ctx.param("clamp") >= 0.5;
         let invert = ctx.param("invert") >= 0.5;
         let strength = ctx.param("strength");
+        let curve_offset = ctx.param("curve_offset");
         let probability = ctx.param("probability");
         let seed = ctx.param("seed").max(0.0) as u32;
         // The Curve contour's shape lives in the text channel — parse it ONCE per cook
@@ -376,6 +433,7 @@ impl NodeOp for FieldRemap {
                     curvature,
                     steps,
                     curve.as_ref(),
+                    curve_offset,
                     lo,
                     hi,
                     multiplier,
@@ -541,6 +599,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Toggle,
+    },
+    // ⚠️ **A faixa é UMA VOLTA, e ela é a unidade natural do knob**: o deslocamento
+    // dá a volta em 1, então `−1..1` cobre o percurso inteiro nos dois sentidos e
+    // nada além disso é alcançável (`1.5` desenha o mesmo que `0.5`). Um slider mais
+    // largo seria curso morto.
+    ParamUiHint {
+        param: "curve_offset",
+        label: "Curve Offset",
+        min: -1.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
     },
     ParamUiHint {
         param: "strength",

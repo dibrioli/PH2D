@@ -278,3 +278,35 @@ pub(crate) fn fx_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<Nod
     );
     sinks
 }
+
+/// **A CENA `=71` — A FAMÍLIA `force.*`** (doc 89, folha 02: três células, três nós).
+///
+/// ⚠️ **Só se julga com o PLAY** — uma força acumula em `accel` e é o integrador que
+/// a aplica; parada, as seis bandas são seis nuvens idênticas.
+pub(crate) fn force_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_force::build_force_demo_document(doc, registry).unwrap_or_default();
+    let (drag_y, cork) = conferencia_demos_force::authored();
+    eprintln!(
+        "[force-demo] TRES pares, {} bandas. Esquerda = como era; direita = o numero novo.",
+        sinks.len(),
+    );
+    for (i, label) in conferencia_demos_force::band_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DE' PLAY. Uma forca nao move nada sozinha -- ela acumula e o integrador aplica.
+  Paradas, as seis bandas sao seis nuvens iguais: a leitura e' o CAMINHO de cada uma.
+  (!) Par 1 (azul): as duas comecam a cair na diagonal. A da direita tem `Drag Y {drag_y:.0}` e
+  o `Drag X` em 1 -- so' o vertical e' freado, entao a queda dela CURVA. A da esquerda desce
+  reta. Clique no no' Drag da direita e arraste o `Drag Y`: a curva abre e fecha ao vivo.
+  (!) Par 2 (laranja): o MESMO aro e a MESMA forca. So' o `Curve` muda. Olhe o MIOLO --
+  ele gira mais a` direita -- e a BORDA, que solta antes. Se os dois redemoinhos forem
+  iguais, o perfil nao chegou.
+  (!) Par 3 (verde): a mesma fileira submersa. A` esquerda todas tem a densidade {cork},
+  entao sobem juntas. A` direita cada peca tem a sua, e a fileira sobe em RAMPA.
+  (!) DEU ERRADO se as duas bandas de um par fizerem o mesmo caminho, ou se alguma nuvem
+  ficar parada (a forca nao chegou ao integrador)."
+    );
+    sinks
+}

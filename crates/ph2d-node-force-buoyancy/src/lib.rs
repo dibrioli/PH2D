@@ -54,6 +54,34 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod accum;
 mod trig;
 use accum::{add_accel, falloff_at, vec2_at};
+
+/// **A DENSIDADE POR-INSTÂNCIA** (doc 89 folha 02) — a coluna que multiplica o param
+/// global. Ausente ⇒ `1.0` ⇒ o nó que sempre shipou, ao bit.
+///
+/// ⚠️ **O doc-comment deste nó CONFESSAVA a lacuna** (*"This is what `size` would be
+/// if the substrate had one true notion of it"*), e a célula media o preço dela: uma
+/// **rolha e uma pedra na mesma água** é o caso de uso, não o exótico, e a única rota
+/// era `field.index_range → buoyancy → field.index_range → buoyancy` — **quatro nós
+/// por material**, particionando por RANK ordinal em vez de por *"que objeto é este"*.
+/// E o `falloff` não servia: ele escala empuxo **e** arrasto juntos, então não separa
+/// *quão denso* de *quanto está submerso*.
+///
+/// ⚠️ **É uma ESCALA e não um valor absoluto**, e a distinção é o que faz o neutro
+/// existir: um `density` por-instância absoluto teria de valer `0` quando ausente, e
+/// aí a coluna ausente afundaria tudo. Multiplicativa, a ausência é `1`.
+///
+/// ⚠️ **Quem a escreve já existe:** `motion.drive` no canal **Custom**, que escreve a
+/// coluna que o artista nomeia. *Um canal que ninguém consegue escrever não existe* —
+/// a lei que a folha 05 pagou —, e aqui o escritor já estava no catálogo.
+const DENSITY_COL: &str = "density";
+
+/// A escala de densidade de `i` (coluna ausente ou curta → `1.0`).
+fn scale_at(stream: &ph2d_nodegraph::attr::Stream, i: usize) -> f32 {
+    match stream.get(DENSITY_COL) {
+        Some(ph2d_nodegraph::attr::Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
+        _ => 1.0,
+    }
+}
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -160,9 +188,12 @@ impl NodeOp for ForceBuoyancy {
                     // Buoyancy is normal to the surface: n = normalize(−slope, 1). On the
                     // flank of a wave that tilts the push downhill, into the trough.
                     let inv_len = 1.0 / (slope * slope + 1.0).sqrt();
+                    // ⚠️ A densidade DESTE elemento — ver [`DENSITY_COL`]. Coluna
+                    // ausente ⇒ o param global, e a expressão é a de antes ao bit.
+                    let dens = density * scale_at(input, i);
                     [
-                        (density * -slope * inv_len - drag * vel[0]) * w,
-                        (density * inv_len - drag * vel[1]) * w,
+                        (dens * -slope * inv_len - drag * vel[0]) * w,
+                        (dens * inv_len - drag * vel[1]) * w,
                     ]
                 })
                 .collect();
@@ -214,7 +245,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let by_w = by_sub * read_falloff(i);\n\
         // Buoyancy is normal to the surface: n = normalize(-slope, 1).\n\
         let by_inv_len = 1.0 / sqrt(by_slope * by_slope + 1.0);\n\
-        let by_dens = max(params.density, 0.0);\n\
+        let by_dens = max(params.density, 0.0) * read_density(i);\n\
         let by_drag = max(params.drag, 0.0);\n\
         write_accel(i, read_accel(i) + vec2<f32>(\n\
         \x20   (by_dens * -by_slope * by_inv_len - by_drag * by_vel.x) * by_w,\n\
@@ -236,6 +267,16 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             return vec2<f32>(by_sin_cycles(phase + 0.25), by_sin_cycles(phase));\n\
         }\n",
     bindings: &[
+        // ⚠️ A escala de densidade POR ELEMENTO — `Read` com `identity: 1.0`, que é
+        // exactamente o que a CPU devolve quando a coluna falta (ver [`DENSITY_COL`]).
+        // As duas portas resolvem a mesma expressão, não uma parecida.
+        ColumnBinding {
+            column: DENSITY_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::Read,
+            identity: [1.0; 4],
+            port: 0,
+        },
         ColumnBinding {
             column: "accel",
             dim: Dim::Vec2,
@@ -679,3 +720,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "density_tests.rs"]
+mod density_tests;

@@ -40,13 +40,13 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 | base | `main` `ee1432203` — a linha foi **reaberta por fast-forward** depois de a integração ter entrado |
 | commits desta janela | `git log --oneline main..HEAD` (⚠️ não se pina aqui — o commit que escreve o número muda o número) |
 | estado | **verde** — `fmt` 0, `clippy` 0, LOC 0, suítes das crates tocadas 0 falhas |
-| smoke pendente | **`=70`** (a família `fx.*`) — a `=69` foi aprovada depois de o par 3 ser refeito |
+| smoke pendente | **`=71`** (a família `force.*`, e ela SÓ se julga com PLAY) — a `=70` foi aprovada depois de duas correcções |
 
 ⚠️ **Dois smokes de ontem nunca foram vistos pelo Enio** e já estão no `main`:
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que as JANELAS de 2026-08-19/20 fecharam (a conferência foi de **P1 59 → 23**)
+### §1.1 — O que as JANELAS de 2026-08-19/20 fecharam (a conferência foi de **P1 59 → 20**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: a janela fechou
 **vinte e oito** e ABRIU **duas**, ambas por medição no meio de uma wave. Uma conferência que só
@@ -69,6 +69,7 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | folha 01: **cinco células fecharam e QUATRO não custaram código** — `mode`/`spacing` do `distribute_curve`, `align` do `distribute_radial`, `size_random` e `dir_mode` do emitter já tinham shipado. A quinta é o **`probability`** do emitter, construído hoje. A folha desce de **6 para 1 P1** | `=67` |
 | **V** | 🔬 **e a SEGUNDA passagem do instrumento**, com o sinal FORTE (o param que a coluna «default que reduz» nomeia já está no manifesto): 7 acusadas, **2 verdadeiras** (`probability` do emitter — uma SEGUNDA célula pedia o mesmo — e `lacunarity` do `motion.noise`), 5 falsos positivos **todos da mesma forma**, agora tabelados no próprio instrumento | — |
 | **V** | **folha 04 (deformers): CINCO células numa wave** — a `direction` do `bend`, o `radius` e o `profile` do `twist`, o `radius_y` do `spherize` e o `mode` (Fit/Keep Length) do `spline_wrap`. As cinco são adição de param com default literal. A folha desce de **6 para 1 P1**, e o que sobra é de outro tamanho (as arestas de Bézier + patch de Coons do `four_point_warp`) | `=68` ✔ |
+| **V** | **folha 02 (`force.*`): TRÊS células** — `scale_x`/`scale_y` do `drag` · `curve` do `vortex` · a coluna `density` do `buoyancy`. ⚠️ **As três tinham veredito «NÃO»/«PARCIAL», e as três estavam certas *sobre a COMPOSIÇÃO*:** o arrasto anisotrópico é impossível de compor e trivial DENTRO do nó que escreve o `accel`; a densidade por-instância tinha escritor no catálogo o tempo todo (o canal **Custom** do `motion.drive`). A folha desce de **5 para 2 P1**, e as duas que sobram são de outra espécie (o alvo = outro STREAM) | `=71` |
 | **V** | ✅ **folha 11 (`fx.*`) FECHOU: cinco células, três nós, DUAS arquiteturas** — `softness` do `drop_shadow` (disco de Vogel, 16 taps, densidade preservada por raízes) · `stretch`+`angle`+`clamp` do `glow` (uniformes de PASSE: base 2×2 na tenda + teto do bright-pass) · `ParamUnit`/`ParamHardMax` nos três (a família tinha **ZERO** dos quatro canais). ⚠️ **A cerca C1 foi REESCRITA e não removida**: o borrão raster continua fora (o passe é aditivo, *um halo escuro não pode ser somado*); o que caiu foi a frase sobre a *pilha de fantasmas*, que era sobre ENCADEAR. ⚠️ **Uma objecção da célula estava 4× desatualizada** (`MAX_INSTANCES` é `262_144`, não `65_536`) | `=70` |
 | **V** | ✅ **folha 05 (transform) FECHOU: cinco células, cinco nós** — `space` (World/Local) do `move` · `use_falloff_y` do `scale` **+** `mask_channel` do `falloff` (uma célula, dois nós) · `flip_rot` do `mirror` · `reindex` do `mirror` **e** do `kaleidoscope` · `carry_rotation` do `orbit`. ⚠️ **As cinco eram a MESMA pergunta em cinco lugares**: o nó sabe o que cada ELEMENTO é (orientação, posição na lista, máscara) e respondia como se a lista fosse um bloco. Os 3 P2 que sobram não são dessa família | `=69` |
 
@@ -166,7 +167,7 @@ reportar.
 ### Grupo V — as folhas grandes, por ORDEM DE DEFEITO
 
 `08_stream_utilidade` (8) · `01_distribuicao` (6) · `04_deformers` (6) · `10_field` (6) ·
-`02_force` (5) · ~~`11_fx_raster`~~ ✅ · ~~`05_transform`~~ ✅ · `03_simulacao` (3) ·
+`02_force` (2) · ~~`11_fx_raster`~~ ✅ · ~~`05_transform`~~ ✅ · `03_simulacao` (3) ·
 `07_tempo` (3) · `09_cor` (3) · `14_source` (3, na tabela acima).
 
 ⚠️ **A contagem por folha se DERIVA** (`python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"`),
@@ -179,7 +180,7 @@ ausente.
 
 ---
 
-## §4 — As TRINTA E UMA LEIS que esta linha pagou para aprender
+## §4 — As TRINTA E QUATRO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -362,6 +363,23 @@ são estilo.
     `x = ±5,6` — estavam a medir o layout, não o nó. E depois de subtrair o centroide, a
     igualdade tem de ser APROXIMADA: `q − centroide` cancela ~5,6 de ~5,9 em `f32`, e os dois
     lados perdem bits diferentes (medido: `0,3000002` contra `0,2999997`).
+32. ⚠️ **«INEXPRIMÍVEL PELO CATÁLOGO» não é «inexprimível».** Três células da folha 02
+    tinham veredito **NÃO**/**PARCIAL** e as três estavam CERTAS — sobre a composição.
+    O arrasto anisotrópico é impossível de compor (nada escreve `accel` de um vetor
+    arbitrário) e é uma multiplicação **dentro do nó que escreve o `accel`**. ⛔ Um
+    veredito de composição **não decide** se o nó pode; ao ler «NÃO», pergunte *«NÃO
+    por quê — pela parede do substrato, ou por o nó não ter o knob?»*
+33. ⚠️ **Antes de declarar um canal inalcançável, procure o ESCRITOR no catálogo.** A
+    densidade por-instância do `force.buoyancy` mediu uma cadeia de **quatro nós por
+    material** e concluiu «não a custo pagável» — enquanto o canal **Custom** do
+    `motion.drive` escreve QUALQUER coluna por nome, e sempre escreveu. É a irmã da
+    lei 25 (*um canal que ninguém escreve não existe*) pelo outro lado: **um canal cujo
+    escritor você não procurou parece não existir.**
+34. ⚠️ **Um gate que reimplementa a lei mede a CÓPIA dele.** Escrevi seis gates para
+    esta folha com um `run()` local que repetia a aritmética do `eval`, e **quatro
+    mutações sobreviveram** — apagar a anisotropia, trocar os dois eixos, ignorar a
+    coluna de densidade, e nunca aplicar o perfil. Todos ficaram verdes porque o teste
+    tinha a lei certa e o produto não era chamado. *Um gate de nó COZINHA o nó.*
 28. ⚠️ **Um gate VERDE sobre `rot` não prova que a cena MOSTRA a orientação — a peça é
     simétrica.** O par 3 da `=69` nasceu como um leque de raios; o Enio reprovou-o com
     *"sem flip não pude entender"*, e a medição deu-lhe razão de duas maneiras: (a) uma

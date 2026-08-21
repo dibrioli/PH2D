@@ -26,6 +26,26 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod accum;
 use accum::{add_accel, falloff_at, vec2_at};
 
+/// **O ARRASTO ANISOTRÓPICO** (doc 89 folha 02 — o `Directional Scale` do POP Drag).
+///
+/// O arrasto era um escalar: `accel += −k·v`. Uma folha que cai **balançando** — que
+/// é o caso de uso, não o exótico — precisa de frear mais num eixo que no outro, e
+/// isso era **inexprimível**: o `falloff` é um escalar por construção (isotrópico),
+/// e nada no catálogo escreve `accel` de um vetor arbitrário.
+///
+/// ⚠️ **Dois escalares e não um vetor com ângulo, e a escolha tem dono:** o eixo do
+/// arrasto de uma folha é o do MUNDO (a gravidade define a vertical), e um ângulo
+/// por cima seria uma segunda porta para o que um `motion.rotate` a montante já faz
+/// ao layout inteiro. A referência (POP Drag) também expõe um vetor por-eixo.
+///
+/// ⚠️ **`1`/`1` é o nó que sempre shipou, AO BIT** — e aqui a identidade é
+/// ARITMÉTICA e não estrutural: multiplicar por `1.0` é exacto em IEEE-754 para todo
+/// finito, então não há braço literal a defender. É o caso raro em que a
+/// multiplicação neutra **é** o caminho de antes.
+const SCALE_X: &str = "scale_x";
+/// O gêmeo vertical do [`SCALE_X`].
+const SCALE_Y: &str = "scale_y";
+
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// The static contract of this node type (ADR-0031).
@@ -42,10 +62,21 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[ParamSpec {
-        name: "coefficient",
-        default: 1.0,
-    }],
+    params: &[
+        ParamSpec {
+            name: "coefficient",
+            default: 1.0,
+        },
+        // Apendados (doc 89 folha 02). `1`/`1` = o arrasto isotrópico de sempre.
+        ParamSpec {
+            name: "scale_x",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "scale_y",
+            default: 1.0,
+        },
+    ],
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -60,7 +91,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let dg_w = max(params.coefficient, 0.0) * read_falloff(i);\n\
         let dg_v = read_vel(i);\n\
-        write_accel(i, read_accel(i) + vec2<f32>(-dg_v.x * dg_w, -dg_v.y * dg_w));\n",
+        write_accel(i, read_accel(i) + vec2<f32>(\n\
+        \x20   -dg_v.x * dg_w * params.scale_x,\n\
+        \x20   -dg_v.y * dg_w * params.scale_y));\n",
     wgsl_lib: "",
     bindings: &[
         ColumnBinding {
@@ -86,7 +119,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["coefficient"],
+    params: &["coefficient", "scale_x", "scale_y"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -101,6 +134,7 @@ impl NodeOp for ForceDrag {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let k = ctx.param("coefficient").max(0.0);
+        let (sx, sy) = (ctx.param(SCALE_X), ctx.param(SCALE_Y));
         let out = {
             let input = ctx.input(0);
             // Pure per-instance map → parallel above the threshold
@@ -108,7 +142,7 @@ impl NodeOp for ForceDrag {
             let contrib: Vec<[f32; 2]> = par_build(input.count(), |i| {
                 let vel = vec2_at(input, "vel", i, [0.0, 0.0]);
                 let w = k * falloff_at(input, i);
-                [-vel[0] * w, -vel[1] * w]
+                [-vel[0] * w * sx, -vel[1] * w * sy]
             });
             add_accel(input, &contrib)
         };
@@ -152,14 +186,32 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 }];
 
 /// Param UI hints (M1.P1).
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "coefficient",
-    label: "Coefficient",
-    min: 0.0,
-    max: 10.0,
-    step: 0.05,
-    widget: ParamWidget::Slider,
-}];
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: SCALE_X,
+        label: "Drag X",
+        min: 0.0,
+        max: 3.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: SCALE_Y,
+        label: "Drag Y",
+        min: 0.0,
+        max: 3.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "coefficient",
+        label: "Coefficient",
+        min: 0.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -241,3 +293,7 @@ mod tests {
         assert!(reg.resolve(MANIFEST.id).is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "anisotropy_tests.rs"]
+mod anisotropy_tests;

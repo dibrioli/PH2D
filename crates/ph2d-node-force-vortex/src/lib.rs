@@ -31,6 +31,39 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// Dead-zone radius around the centre (direction is meaningless as d → 0).
 const DEAD_ZONE: f32 = 1e-3;
 
+/// **O PERFIL DA BORDA** (doc 89 folha 02) — `0` Linear (a rampa cravada que sempre
+/// shipou), `1` Quad, `2` Smooth, `3` Smoother.
+///
+/// ⚠️ **A célula não veio de uma referência: veio de uma ASSIMETRIA INTERNA.** O
+/// irmão `force.attractor` tem estes quatro perfis desde que nasceu; este tinha
+/// `(1 − d/R)` **cravado**. A nossa própria família discordava de si, e o artista
+/// que aprendeu o dropdown num nó não o encontrava no outro.
+///
+/// ⚠️ **São os MESMOS quatro polinómios, deliberadamente** — copiados do
+/// `force.attractor` (drop-crates não se importam entre si, ADR-0075) e não
+/// reinventados: dois `Smooth` que diferissem no terceiro decimal fariam o mesmo
+/// rótulo significar duas coisas. Endpoint-exactos (`0→0`, `1→1`), como lá.
+///
+/// ⚠️ **O `0` é literal:** `curve(0, t)` devolve o próprio `t`, então o Linear é a
+/// mesma expressão de antes, ao bit.
+///
+/// ⚠️ **O que este knob NÃO é:** o corte duro em `d > radius` continua lá. A célula
+/// pedia *"Soft Edge"* junto, e ela é outra pergunta — o perfil molda a rampa
+/// DENTRO do raio; suavizar o corte é mover a fronteira. Ficou por fazer, e a folha
+/// diz isso.
+const CURVE: &str = "curve";
+
+/// A rampa da borda em `s ∈ [0,1]` — transcendental-free (HR-5), e byte a byte a do
+/// `force.attractor`.
+fn curve(kind: i32, s: f32) -> f32 {
+    match kind {
+        1 => s * s,                                     // Quad
+        2 => s * s * (3.0 - 2.0 * s),                   // Smooth (smoothstep)
+        3 => s * s * s * (s * (s * 6.0 - 15.0) + 10.0), // Smoother (smootherstep)
+        _ => s,                                         // Linear
+    }
+}
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("force.vortex"),
@@ -62,6 +95,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "radius",
             default: 6.0,
         },
+        // Apendado (doc 89 folha 02). `0` = Linear, a rampa cravada que sempre shipou.
+        ParamSpec {
+            name: "curve",
+            default: 0.0,
+        },
         ParamSpec {
             name: "clockwise",
             default: 1.0,
@@ -88,7 +126,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         var vx_c = vec2<f32>(0.0, 0.0);\n\
         if (vx_d >= VX_DEAD_ZONE && vx_d <= vx_radius) {\n\
         \x20   let vx_mag =\n\
-        \x20       params.strength * (1.0 - vx_d / vx_radius) * read_falloff(i) / vx_d;\n\
+        \x20       params.strength * vx_curve(i32(vx_round(params.curve)),\n\
+        \x20           1.0 - vx_d / vx_radius) * read_falloff(i) / vx_d;\n\
         \x20   if (params.clockwise >= 0.5) {\n\
         \x20       vx_c = vec2<f32>(vx_dy * vx_mag, -vx_dx * vx_mag);\n\
         \x20   } else {\n\
@@ -97,7 +136,18 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         }\n\
         write_accel(i, read_accel(i) + vx_c);\n",
     wgsl_lib: "\
-        const VX_DEAD_ZONE: f32 = 1e-3;\n",
+        const VX_DEAD_ZONE: f32 = 1e-3;\n\
+        fn vx_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (o `round` do WGSL e' half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        // Os MESMOS quatro polinomios do `force.attractor` — a familia tem uma lei so'.\n\
+        fn vx_curve(kind: i32, s: f32) -> f32 {\n\
+            if (kind == 1) { return s * s; }\n\
+            if (kind == 2) { return s * s * (3.0 - 2.0 * s); }\n\
+            if (kind == 3) { return s * s * s * (s * (s * 6.0 - 15.0) + 10.0); }\n\
+            return s;\n\
+        }\n",
     bindings: &[
         ColumnBinding {
             column: "accel",
@@ -121,7 +171,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["center_x", "center_y", "strength", "radius", "clockwise"],
+    params: &[
+        "center_x",
+        "center_y",
+        "strength",
+        "radius",
+        "clockwise",
+        "curve",
+    ],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -139,6 +196,7 @@ impl NodeOp for ForceVortex {
         let strength = ctx.param("strength");
         let radius = ctx.param("radius").max(DEAD_ZONE);
         let clockwise = ctx.param("clockwise") >= 0.5;
+        let curve_kind = ctx.param(CURVE).round() as i32;
         let out = {
             let input = ctx.input(0);
             // Pure per-instance map → parallel above the threshold
@@ -151,8 +209,10 @@ impl NodeOp for ForceVortex {
                 if d < DEAD_ZONE || d > radius {
                     return [0.0, 0.0];
                 }
-                // Linear edge falloff (reference parity) × the focus field.
-                let mag = strength * (1.0 - d / radius) * falloff_at(input, i) / d;
+                // O perfil da borda × o campo de foco. ⚠️ `curve(0, t)` devolve o
+                // próprio `t`, então o Linear é a MESMA expressão de antes, ao bit.
+                let t = curve(curve_kind, 1.0 - d / radius);
+                let mag = strength * t * falloff_at(input, i) / d;
                 if clockwise {
                     [dy * mag, -dx * mag]
                 } else {
@@ -225,6 +285,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 20.0,
         step: 0.1,
         widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: CURVE,
+        label: "Curve",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+        },
     },
     ParamUiHint {
         param: "clockwise",
@@ -414,3 +484,7 @@ mod tests {
         assert!(reg.resolve(MANIFEST.id).is_some());
     }
 }
+
+#[cfg(test)]
+#[path = "curve_tests.rs"]
+mod curve_tests;

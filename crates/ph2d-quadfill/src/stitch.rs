@@ -172,6 +172,26 @@ impl Points {
         self.prov.push(from);
         u32::try_from(self.pos.len() - 1).unwrap_or(u32::MAX)
     }
+
+    /// **Acrescenta um ponto POUSADO na superfície.**
+    ///
+    /// ⭐⭐ **É a diferença entre construir a grade NO ESPAÇO e construí-la SOBRE a
+    /// forma**, e ela vale mais do que qualquer alisamento posterior.
+    ///
+    /// ⛔ **A primeira versão interpolava tudo em linha reta e deixava a
+    /// reprojecção para o alisamento no fim.** Numa esfera de raio 1,0 a corda de
+    /// um raio de leque mergulha para dentro, o Coons construído sobre cordas
+    /// mergulhadas fica pior ainda, e as faces **dobram sobre si mesmas** —
+    /// exactamente as fendas escuras que o Enio fotografou em 2026-08-21.
+    ///
+    /// Medido nessa esfera (4 922 quads), faces dobradas contra rondas de
+    /// alisamento: `0 → 405 · 1 → 403 · 3 → 289 · 6 → 205 · 12 → 135`. ⭐ **O
+    /// alisamento REPARA e não CAUSA** — ele nunca chega a zero porque o estrago
+    /// já veio pronto da construção. *Um remédio que melhora monotonicamente e não
+    /// cura está a tratar o sintoma.*
+    fn push_on(&mut self, mesh: &Mesh, p: [f32; 3], seed: f32, from: Provenance) -> u32 {
+        self.push(ph2d_remesh_iso::project_onto(mesh, p, seed), from)
+    }
 }
 
 /// ⚠️ **Quantas rondas de alisamento por omissão.** Elas não mudam a topologia —
@@ -266,6 +286,9 @@ pub fn fill(
     // [`check_arcs_belong_to`].
     check_arcs_belong_to(indexed, layout)?;
     let src = indexed.positions();
+    // ⭐⭐ **TODO ponto de INTERIOR nasce POUSADO na superfície.** Ver
+    // [`Points::push_on`].
+    let seed = bbox_seed(surface);
     let mut pts = Points::new();
     let mut faces: Vec<Face> = Vec::new();
 
@@ -360,12 +383,12 @@ pub fn fill(
         }
         #[allow(clippy::cast_precision_loss)]
         let inv = if count == 0 { 0.0 } else { 1.0 / count as f32 };
-        let center = ph2d_remesh_iso::project_onto(
+        let center_vid = pts.push_on(
             surface,
             [c[0] * inv, c[1] * inv, c[2] * inv],
-            bbox_seed(surface),
+            seed,
+            Provenance::Center,
         );
-        let center_vid = pts.push(center, Provenance::Center);
 
         // Os raios: do centro ao corte de cada lado.
         let mut spoke: Vec<Vec<u32>> = Vec::with_capacity(n);
@@ -373,11 +396,11 @@ pub fn fill(
             let cut = e[(i + n - 1) % n] as usize;
             let tip = side_pts[i][cut];
             let steps = e[i] as usize;
-            let line = segment(center, pts.pos[tip as usize], steps);
+            let line = segment(pts.pos[center_vid as usize], pts.pos[tip as usize], steps);
             let mut ids = Vec::with_capacity(steps + 1);
             ids.push(center_vid);
             for q in line.iter().take(steps).skip(1) {
-                ids.push(pts.push(*q, Provenance::Spoke));
+                ids.push(pts.push_on(surface, *q, seed, Provenance::Spoke));
             }
             ids.push(tip);
             spoke.push(ids);
@@ -393,7 +416,7 @@ pub fn fill(
             let right = &side_pts[j][..=cut_j];
             let top = &spoke[j];
             let left: Vec<u32> = spoke[i].iter().rev().copied().collect();
-            let grid = build_grid(&mut pts, bottom, top, &left, right, s, t);
+            let grid = build_grid(&mut pts, surface, seed, bottom, top, &left, right, s, t);
             for k in 0..s {
                 for l in 0..t {
                     faces.push(Face::quad(
@@ -433,8 +456,11 @@ pub fn fill(
 }
 
 /// Os índices da grade: bordos vindos das curvas, interior por Coons.
+#[allow(clippy::too_many_arguments)]
 fn build_grid(
     pts: &mut Points,
+    surface: &Mesh,
+    seed: f32,
     bottom: &[u32],
     top: &[u32],
     left: &[u32],
@@ -460,7 +486,7 @@ fn build_grid(
             } else if k == s {
                 right[l_i]
             } else {
-                pts.push(inner[k][l_i], Provenance::Grid)
+                pts.push_on(surface, inner[k][l_i], seed, Provenance::Grid)
             };
         }
     }

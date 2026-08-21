@@ -161,7 +161,10 @@ impl PatchLayout {
         let arcs = self
             .arc_length
             .iter()
-            .map(|&l| ArcSpec::new(f64::from(l / scale)))
+            // ⭐ **RELATIVA e não absoluta** — ver `ArcSpec::relative`. Com peso
+            // uniforme o solver esmagava um arco longo de uma vez em vez de
+            // distribuir o erro, e a malha saía com arestas de 6× o alvo.
+            .map(|&l| ArcSpec::relative(f64::from(l / scale)))
             .collect();
         let patches = self
             .sides()

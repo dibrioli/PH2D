@@ -25,6 +25,10 @@
 > ⛔ **2026-08-21, o Enio mandou a foto: o produto saiu DESTRUÍDO com os 10.515 gates verdes.** Auditoria
 > multi-agente, causa raiz numa linha, três camadas de cura, e a lição que fica: **nenhuma asserção desta
 > cadeia olhava uma coordenada** (§4-terdecies).
+> ⭐ **E a foto seguinte foi uma grade de verdade a seguir o fluxo de uma orelha** — com **fendas**: faces
+> DOBRADAS, que não movem nenhuma outra régua. Metade delas caiu ao trocar a lei de peso do arco
+> (§4-quaterdecies). ⛔ O que separa isto do estado da arte tem nome: **feature lines** e a **grade plana
+> no patch de quatro lados**.
 
 ---
 
@@ -1364,6 +1368,85 @@ traçado sair degenerado. ⚠️ **O gate afirma o contrato que de facto importa
 3. ⛔ **Hausdorff vértice→superfície numa direção só é TAUTOLÓGICO aqui**: a malha
    destruída pontua **0,0000** contra 0,0015 da correta, porque `project_onto` é a
    última operação do F5. *A régua destruída pontuava melhor.*
+
+---
+
+## 4-quaterdecies — ⭐ O ARTEFACTO É A FACE DOBRADA, e ela não move nenhuma outra régua
+
+**Achado por:** a segunda foto do Enio — *"o melhor resultado até agora, mas com
+artefactos"*: uma grade boa a seguir o fluxo de uma orelha, com **fendas escuras**
+ao longo do vinco. E o relatório dizia `casca FECHADA`.
+
+### A espécie, e o detector VALIDADO antes de se acreditar nele
+
+A fenda **não é buraco topológico** — zero arestas de bordo, χ exacta. É **face
+dobrada**: a normal aponta contra a superfície por baixo. Ela renderiza como fenda e
+**não move nenhuma das réguas que existem**: nem contagem, nem bordo, nem valência,
+nem comprimento de aresta.
+
+⚠️ **O detector foi validado primeiro**, e é por isso que os números valem: sobre a
+esfera crua (13 824 faces) e sobre a saída do F1 (5 212) ele acusa **zero**; e sobre
+a saída da cadeia dois detectores independentes — normal contra a face de referência
+mais próxima, e o teste **radial** num sólido estrelado — dão **exactamente o mesmo
+número**.
+
+### As três hipóteses, e as duas primeiras caíram
+
+| hipótese | como se testou | veredito |
+|---|---|---|
+| *o alisamento causa* | varrer 0·1·3·6·12 rondas | ⛔ **refutada**: 405·403·289·205·135 — ele **repara** monotonicamente e nunca cura. *Um remédio que melhora e não cura está a tratar o sintoma.* |
+| *a projeção tardia causa* | pousar TODO ponto de interior na superfície ao nascer | ⛔ **quase nada**: 405 → 389 |
+| *o alvo esmagado de um arco causa* | varrer 4 leis de peso | ⛔ **refutada, e ao contrário** — ver abaixo |
+
+### ⭐ A varredura das leis de peso do arco, e o que ela mostrou
+
+O custo de um arco desviado era `1 · |x − alvo|` — deviação **absoluta e
+uniforme**. ⇒ O solver é **indiferente** entre esmagar um arco que pedia 24
+segmentos até 4 e esticar vinte curtos em 1 cada. Medido: o arco `#17` pedia **24,3
+e recebeu 4** — uma aresta de 6× o alvo.
+
+| lei de peso | quads | **dobradas** | pior arco |
+|---|---|---|---|
+| uniforme `\|x−t\|` | 4 922 | 180 | 6,1× |
+| ⭐ **relativa `/t`** | 4 099 | **85** | 8,1× |
+| proporcional `×t` | 6 887 | 379 | **2,4×** |
+| raiz `×√t` | 5 516 | 236 | 3,5× |
+
+⭐⭐ **A que dá o MELHOR pior-arco dá o PIOR número de dobras**, e a que ganha tem o
+pior arco de todos. ⇒ *O comprimento de aresta não é o que causa a dobra* — a minha
+hipótese estava errada, e só a varredura o mostrou.
+
+⭐ **Entregue: `ArcSpec::relative` no `to_layout`** — dobras a **metade** nas duas
+fixturas (180→85 na lisa, 83→43 na esculpida). Prova de mutação: com a lei uniforme
+de volta, o gate novo dá **10,5 %** contra a barra de 6 %.
+
+⚠️ **`ArcSpec::new` (peso 1) FICA**, e não é resíduo: o oráculo de força bruta dos
+gates do F4 precisa do custo mais simples possível para as duas respostas serem
+comparáveis.
+
+### O que a dobra de facto acompanha: o GRÃO
+
+| fixtura (a mesma esfera) | quads | dobradas |
+|---|---|---|
+| alvo 0,08 | 663 | **31 (4,7 %)** |
+| alvo 0,06 | 2 958 | **2 (0,1 %)** |
+
+⇒ *Quanto mais grossa a grade, mais curvatura cada quad atravessa, e o interior
+interpolado por Coons afunda para dentro da forma.*
+
+### ⛔ A dívida que fica NOMEADA
+
+1. ⛔ **O leque é a construção errada para um patch de QUATRO lados.** Ele põe um
+   centro e `n` sub-grades onde uma grade `L₀ × L₁` simples bastaria — e é entre as
+   sub-grades que a dobra aparece. *Próxima medição: trocar o leque por grade plana
+   nos patches de valência 4 e recontar.*
+2. ⛔ **Sem feature lines** (herdado do F3): a grade não se alinha ao vinco da
+   orelha, ela **corre por cima dele**. É o item que separa isto do estado da arte,
+   e nenhuma das medições desta secção o toca.
+3. ⚠️ **Sem densidade adaptativa**: a grade tem o mesmo passo no vinco e na parte
+   lisa. O oráculo também não adapta por omissão, mas o estado da arte adapta.
+4. ⚠️ O gate da dobra tem a barra em **6 %** — ⛔ **não é o alvo, é o
+   anti-retrocesso.** O alvo é zero.
 
 ---
 

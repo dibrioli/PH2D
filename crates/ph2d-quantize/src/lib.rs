@@ -99,11 +99,42 @@ pub struct ArcSpec {
 
 impl ArcSpec {
     /// Um arco de peso unitário que não pode colapsar.
+    ///
+    /// ⚠️ **Peso `1` é deviação ABSOLUTA**, e ele existe para o oráculo de força
+    /// bruta dos gates: ali o custo tem de ser o mais simples possível para as duas
+    /// respostas serem comparáveis. ⛔ **Não é o que a malha quer** — ver
+    /// [`Self::relative`].
     #[must_use]
     pub fn new(target: f64) -> Self {
         Self {
             target,
             weight: 1.0,
+            min: 1,
+        }
+    }
+
+    /// **Um arco cujo custo é a deviação RELATIVA** — `|x − alvo| / alvo`.
+    ///
+    /// ⭐⭐ **É o que uma grade de quads de facto quer, e a diferença é visível a
+    /// olho.** Com peso uniforme, esmagar um arco que pedia **24 segmentos até 4**
+    /// custa `20`; esticar vinte arcos curtos em `1` cada custa `20` também. O
+    /// solver é **indiferente** entre as duas — e o ótimo escolhe livremente a
+    /// primeira, porque ela liberta a lei do patch de uma vez só.
+    ///
+    /// O resultado na malha é uma aresta de `0,30` onde o alvo era `0,05` — **6× o
+    /// pedido** — e a grade de Coons ao lado dela estica até dobrar sobre si mesma.
+    /// Medido na esfera lisa (2026-08-21): o arco `#17` pedia `24,3` e recebeu `4`.
+    ///
+    /// ⚠️ **A qualidade de uma grade é uma RAZÃO, nunca uma contagem.** Um arco que
+    /// pedia 24 e recebeu 20 está a 17 % do alvo; um que pedia 2 e recebeu 6 está a
+    /// 200 %. Com peso absoluto os dois custam `4`.
+    #[must_use]
+    pub fn relative(target: f64) -> Self {
+        Self {
+            target,
+            // ⚠️ O piso de `1` no divisor evita que um arco de alvo minúsculo ganhe
+            // peso arbitrariamente grande e passe a mandar no layout inteiro.
+            weight: 1.0 / target.max(1.0),
             min: 1,
         }
     }

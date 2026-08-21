@@ -121,6 +121,89 @@ fn the_irregular_vertices_stay_near_the_topological_floor() {
     }
 }
 
+/// ⭐⭐ **NENHUMA FACE DOBRA SOBRE SI MESMA** — a régua que a foto do Enio pediu.
+///
+/// ⚠️ **Uma face dobrada não move NENHUM dos outros números deste ficheiro.** Ela
+/// não é um buraco (`boundary_edges` fica em zero), não muda a característica de
+/// Euler, não muda a valência de vértice nenhum, e nem sequer alonga uma aresta —
+/// ela renderiza como uma **fenda escura** e mais nada. Foi assim que a segunda
+/// foto (2026-08-21) mostrou fendas ao longo do vinco de uma orelha com o relatório
+/// a dizer `casca FECHADA`.
+///
+/// **A régua é RADIAL e a fixtura é estrelada de propósito:** numa esfera a normal
+/// de toda face tem de concordar com o raio, e isso não é ambíguo. ⚠️ O detector
+/// foi validado antes de se acreditar nele — sobre a esfera crua e sobre a saída do
+/// F1 ele acusa **zero**, e sobre a saída da cadeia concorda **exactamente** com um
+/// segundo detector independente (normal contra a face mais próxima da referência).
+///
+/// A barra é **6 %** das faces. ⛔ **Não é o alvo — o alvo é ZERO**, e a diferença é
+/// dívida nomeada no `PLAN.md` §4-quaterdecies. Ela existe para **impedir o
+/// retrocesso** enquanto essa dívida não é paga.
+///
+/// ⚠️ **E a dobra é do GRÃO, não do tamanho da peça** — as duas fixturas são a
+/// mesma esfera:
+///
+/// | fixtura | quads | dobradas |
+/// |---|---|---|
+/// | esfera 24×36, alvo 0,08 | 663 | **31 (4,7 %)** |
+/// | esfera 48×72, alvo 0,06 | 2 958 | **2 (0,1 %)** |
+///
+/// ⇒ *Quanto mais GROSSA a grade, mais cada quad tem de curvatura para atravessar,
+/// e o interior interpolado por Coons afunda para dentro da forma.* A barra tem de
+/// caber no caso grosso; o caso fino já está praticamente limpo.
+#[test]
+fn no_face_folds_back_on_itself() {
+    for (name, mesh, edge) in [
+        ("esfera 24x36", shapes::uv_sphere(24, 36, 1.0), 0.08),
+        ("esfera 48x72", shapes::uv_sphere(48, 72, 1.0), 0.06),
+    ] {
+        let (out, r) = chain(mesh, edge);
+        let pos = out.positions();
+        let b = out.bounds();
+        let c = [
+            (b.min[0] + b.max[0]) * 0.5,
+            (b.min[1] + b.max[1]) * 0.5,
+            (b.min[2] + b.max[2]) * 0.5,
+        ];
+        #[allow(clippy::cast_precision_loss)]
+        let inward = out
+            .faces()
+            .iter()
+            .filter(|f| {
+                let v = f.verts();
+                let (p0, p1, p2) = (pos[v[0] as usize], pos[v[1] as usize], pos[v[2] as usize]);
+                let u = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+                let w = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
+                let n = [
+                    u[1].mul_add(w[2], -(u[2] * w[1])),
+                    u[2].mul_add(w[0], -(u[0] * w[2])),
+                    u[0].mul_add(w[1], -(u[1] * w[0])),
+                ];
+                let mut m = [0.0f32; 3];
+                for &i in v {
+                    let q = pos[i as usize];
+                    for k in 0..3 {
+                        m[k] += q[k] / v.len() as f32;
+                    }
+                }
+                n[0].mul_add(m[0] - c[0], n[1].mul_add(m[1] - c[1], n[2] * (m[2] - c[2]))) < 0.0
+            })
+            .count();
+        #[allow(clippy::cast_precision_loss)]
+        let pct = 100.0 * inward as f64 / r.quads.max(1) as f64;
+        eprintln!(
+            "[f5] {name}: {inward} faces dobradas de {} ({pct:.1} %)",
+            r.quads
+        );
+        assert!(
+            pct <= 6.0,
+            "{name}: {inward} de {} faces ({pct:.1} %) apontam para DENTRO -- \
+             cada uma e' uma fenda escura na peca do artista",
+            r.quads
+        );
+    }
+}
+
 /// ⭐⭐ **ESTA CRATE NÃO CRIA IRREGULAR NENHUM** — todos vêm do layout.
 ///
 /// ⚠️ **É a asserção que separa a dívida da culpa.** Medido em 2026-08-21, sobre

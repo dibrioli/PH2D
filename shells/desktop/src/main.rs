@@ -350,6 +350,10 @@ mod physics_smoke_zones;
 mod pick_order;
 mod picker_smoke;
 mod player_input;
+/// As fronteiras da folha — confinar uma peça, e contar o que está mal.
+/// **A conversão de precisão dos pixels de uma sprite** — o que os botões `RGBA8 / RGBA16` do
+/// Inspector fazem (plano `docs/Sprite_projeto/18` W5).
+mod precision_convert;
 mod prefs;
 /// **A sonda da §4.3 do plano da UI viva** — o cursor pode ser PRESO nesta máquina? Só de teste:
 /// ela abre janela e precisa de uma mão mexendo o rato, então nunca entra num build de produto.
@@ -382,7 +386,6 @@ mod shape_build;
 mod shape_build_gesture;
 /// O BAKE da folha — as peças passam a ser N janelas para UMA textura (plano §7.3, W5.2).
 mod sheet_bake;
-/// As fronteiras da folha — confinar uma peça, e contar o que está mal.
 mod sheet_bounds;
 /// A EXPORTAÇÃO da folha — `.png` + `.json`, o formato do Aseprite (plano §7.3, W5.2).
 mod sheet_export;

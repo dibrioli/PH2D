@@ -46,6 +46,24 @@ pub const INSP_RENDER_STRATEGY_ATLAS: NodeId = hash_node_id("insp_render_strateg
 pub const INSP_RENDER_STRATEGY_INDIVIDUAL: NodeId = hash_node_id("insp_render_strategy_individual");
 pub const INSP_RENDER_STRATEGY_HANDPACKED: NodeId = hash_node_id("insp_render_strategy_handpacked");
 
+// **O par de PRECISÃO** — plano
+// `docs/Sprite_projeto/18` W5.
+//
+// ⚠️ **Estes dois ids já existiram e foram APAGADOS**, e a história é o motivo de este comentário
+// ser longo. Na primeira encarnação eles eram pintados, registados e hit-indexados — e **sem arm de
+// dispatch em lado nenhum**: clicar não fazia nada, nem um toast. O aceso era o literal
+// `true`/`false`, não estado, então diziam "RGBA8" até para um sprite cozido. O plano 17 §5
+// removeu-os e pôs no lugar uma linha de facto.
+//
+// ⛔ **Ressuscitá-los só é legítimo porque agora existe o MODELO por trás**: o
+// `Asset::ImageRgba16`, o `IndividualTextureStore::FORMAT_16`, o `PixelPayload` no ficheiro e a
+// conversão nos dois sentidos. *Um controle nasce quando o modelo o entrega, não quando o desenho
+// o imagina.* Quem lá voltar a mexer tem três coisas a manter vivas ao mesmo tempo, e o gate
+// `every_precision_button_is_registered_and_dispatches` afirma-as: **pintado**, **registado no
+// `WidgetStore`** (senão não é focável e o clique morre) e **com braço no `event.rs`**.
+pub const INSP_RENDER_FORMAT_RGBA8: NodeId = hash_node_id("insp_render_format_rgba8");
+pub const INSP_RENDER_FORMAT_RGBA16: NodeId = hash_node_id("insp_render_format_rgba16");
+
 /// M14.E: editable entity-name TextInput at the top of the Inspector
 /// body. Replaces the read-only name display that previously lived in
 /// the Inspector header subtitle and again as a "Name" row inside the

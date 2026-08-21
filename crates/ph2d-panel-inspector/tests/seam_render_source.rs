@@ -40,6 +40,8 @@ fn atlas_sprite(can_reimport: bool) -> InspectorSpriteInfo {
         name: "fruits".into(),
         world_size: [1.0, 1.0],
         source_kind: InspectorSpriteSource::Atlas { key: 3 },
+        // Uma célula de atlas é `Rgba8UnormSrgb` por construção.
+        source_precision: Some(ph2d_editor_core::Precision::Rgba8),
         sheet_label: None,
         source_pixels: Some((256, 256)),
         can_reimport,

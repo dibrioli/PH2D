@@ -31,6 +31,10 @@ pub(crate) fn auto_commit_painter(
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     painter: &mut PainterTool,
+    // ⚠️ Esta rota "silenciosa" continua sem toast PRÓPRIO — mas o funil de commit precisa da fila
+    // para avisar de uma perda de precisão (plano `docs/Sprite_projeto/18` W4). *Um bake automático
+    // pode ser silencioso sobre TER acontecido; não pode ser silencioso sobre rebaixar a imagem.*
+    toasts: &mut ph2d_editor::ToastQueue,
 ) -> bool {
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
     let Some(src) =
@@ -46,8 +50,16 @@ pub(crate) fn auto_commit_painter(
     let edited =
         ph2d_render::SpriteImage::from_bytes(w, h, canvas, ph2d_render::AlphaMode::Straight)
             .into_premultiplied();
-    if texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &edited, old_size_world)
-        .is_ok()
+    if texture_edit::commit_edited_texture(
+        entity,
+        sim,
+        renderer,
+        asset_db,
+        &edited,
+        old_size_world,
+        toasts,
+    )
+    .is_ok()
     {
         painter.mark_baked();
         true
@@ -106,6 +118,7 @@ pub(crate) fn drain_painter(
         asset_db,
         &edited,
         old_size_world,
+        toasts,
     ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Painter failed: {err}")));

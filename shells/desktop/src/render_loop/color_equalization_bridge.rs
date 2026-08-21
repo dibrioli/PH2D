@@ -202,7 +202,7 @@ pub(super) fn dispatch(
             let image =
                 SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight).into_premultiplied();
             if let Err(e) = texture_edit::commit_edited_texture(
-                entity, sim, renderer, asset_db, &image, size_world,
+                entity, sim, renderer, asset_db, &image, size_world, toasts,
             ) {
                 toasts.push(Toast::error(format!(
                     "Color Equalization: GPU texture upload failed ({e})"
@@ -346,9 +346,9 @@ fn revert_all_and_clear(
     for (entity_bits, pixels, w, h, size_world, alpha) in entries {
         let entity = Entity::from_bits(entity_bits);
         let image = SpriteImage::from_bytes(w, h, pixels, alpha);
-        if let Err(e) =
-            texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &image, size_world)
-        {
+        if let Err(e) = texture_edit::commit_edited_texture(
+            entity, sim, renderer, asset_db, &image, size_world, toasts,
+        ) {
             toasts.push(Toast::error(format!(
                 "Color Equalization: GPU texture upload failed during revert ({e})"
             )));
@@ -388,9 +388,9 @@ fn prune_and_revert_unselected(
     for (entity_bits, pixels, w, h, size_world, alpha) in stale {
         let entity = Entity::from_bits(entity_bits);
         let image = SpriteImage::from_bytes(w, h, pixels, alpha);
-        if let Err(e) =
-            texture_edit::commit_edited_texture(entity, sim, renderer, asset_db, &image, size_world)
-        {
+        if let Err(e) = texture_edit::commit_edited_texture(
+            entity, sim, renderer, asset_db, &image, size_world, toasts,
+        ) {
             toasts.push(Toast::error(format!(
                 "Color Equalization: GPU texture upload failed during deselect revert ({e})"
             )));

@@ -28,6 +28,11 @@ ph2d-spring = { path = "../ph2d-spring" }
 # exact-version contract as ph2d-ecs (T1.3.5 spec carry-over).
 libm                  = { version = "=0.2.16", default-features = false }
 ph2d-tokens           = { path = "../ph2d-tokens" }
+# `Precision` para a linha **Format** do Inspector, e `SrgbRgba` para os testes que ja' o usavam.
+# ⚠️ Era dev-only ate' 2026-08-20 (plano `docs/Sprite_projeto/18` W5): a linha Format passou a
+# dizer a precisao MEDIDA em vez de um literal, e o tipo tem de atravessar o snapshot. Crate-folha
+# (bytemuck + serde), e o gate de ciclos so' proibe `ph2d-editor` e `ph2d-tool-*`.
+ph2d-color            = { path = "../ph2d-color" }
 # As GUIAS do documento (plano 25 §9): a régua só precisa do EIXO — o gesto que ela arma diz
 # se a linha nasce horizontal ou vertical, e esse vocabulário tem um dono só.
 ph2d-guides           = { path = "../ph2d-guides" }
@@ -60,10 +65,6 @@ dhat = "0.3"
 # (it parses [dependencies] only) and creates no runtime cycle.
 ph2d-tool-make-square = { path = "../ph2d-tool-make-square" }
 ph2d-tool-trim-transparency = { path = "../ph2d-tool-trim-transparency" }
-# Wave 11 — typed-color migration: the integration test
-# make_square_algorithm.rs casts its Vec<u8> fixtures into &[SrgbRgba]
-# via bytemuck::cast_slice before calling the migrated APIs.
-ph2d-color = { path = "../ph2d-color" }
 bytemuck = "1"
 # Wave 10 / Etapa 4.2 — staleness gate for chrome handler `mod` block.
 ph2d-chrome-sync = { path = "../../tools/ph2d-chrome-sync" }

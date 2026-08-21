@@ -20,6 +20,7 @@ mod event_joint;
 mod event_ordering;
 mod event_physics;
 mod event_player;
+mod event_precision;
 mod event_wheel;
 mod paint;
 mod paint_frame;

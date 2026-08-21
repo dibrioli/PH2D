@@ -105,8 +105,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/event.rs",
         "apply_event_impl",
-        442,
-        "was frozen at a mis-measured 353; truly 477, ratcheted to 452 when W3's two physics colour dots pushed it over and the colour-dot arm moved out to `section_color_click`; ratcheted again to 442 when W-Signal's text row pushed it to 470 and the two TEXT arms moved out to `section_text_changed` — the per-cluster split this entry has been promising, one cluster at a time. Sequence of independent first-match-wins `if let WidgetEvent::…` blocks",
+        410,
+        "was frozen at a mis-measured 353; truly 477, ratcheted to 452 when W3's two physics colour dots pushed it over and the colour-dot arm moved out to `section_color_click`; ratcheted again to 442 when W-Signal's text row pushed it to 470 and the two TEXT arms moved out to `section_text_changed`; ratcheted to 410 em 2026-08-20 quando o par de PRECISAO (plano `docs/Sprite_projeto/18` W5) o empurrou e os DOIS pares da seccao Render Source (Strategy + Format) sairam para `event_precision.rs` — irmao e nao funcao irma, porque o ficheiro tambem estava a rocar o teto de 600 e extrair no mesmo ficheiro curaria um teto e estouraria o outro. A catraca so' desce: um cluster de cada vez. Sequence of independent first-match-wins `if let WidgetEvent::…` blocks",
     ),
     (
         "ph2d-panel-inspector/src/paint.rs",
@@ -141,8 +141,13 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-equalize-sizes/src/paint.rs",
         "paint_body_sections",
-        249,
-        "unmasked by the 2026-07-10 parser fix; per-section split deferred (needs smoke)",
+        237,
+        "unmasked by the 2026-07-10 parser fix; ratcheted 249 -> 237 em 2026-08-20 quando a \
+         correccao do layout do modo Fixed o empurrou para 253 e as duas linhas de ACCAO sairam \
+         para o IRMAO `paint_actions.rs`. ⚠️ A primeira tentativa extraiu-as no MESMO ficheiro: \
+         curou este tecto e empurrou o do FICHEIRO para 608 contra 600 — os dois tetos medem \
+         grandezas diferentes, e o corte que cura ambos e' para o irmao. Split por seccao continua \
+         diferido (needs smoke)",
     ),
     (
         "ph2d-panel-audio-mixer/src/paint.rs",

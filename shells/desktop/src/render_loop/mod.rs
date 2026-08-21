@@ -2619,6 +2619,9 @@ impl crate::App {
             let mut rename_commit: Option<(NodeId, String)> = None;
             let mut view_focus_kind: Option<ph2d_editor::ViewFocusKind> = None;
             let mut reimport_entity: Option<u64> = None;
+            // O pedido de troca de PRECISAO (plano `docs/Sprite_projeto/18` W5). `Option` e nao
+            // `Vec`: o par so' existe com uma sprite selecionada.
+            let mut precision_request: Option<(u64, ph2d_color::Precision)> = None;
             // Fase 0e: per-sprite tools collect a Vec<u64> instead of
             // Option<u64> so a multi-select OneShotImageOp broadcast
             // applies the bake to every selected sprite (legacy
@@ -3700,6 +3703,12 @@ impl crate::App {
                     EditorAction::Reimport { entity_bits } => {
                         reimport_entity.get_or_insert(entity_bits);
                     }
+                    EditorAction::InspectorSpritePrecisionChange {
+                        entity_bits,
+                        precision,
+                    } => {
+                        precision_request.get_or_insert((entity_bits, precision));
+                    }
                     // ADR-0040 TG-A: generic one-shot image-op dispatch.
                     // Trim/MakeSquare/RealSize collect into per-tool Option<u64>
                     // for the existing per-tool drain functions; bgremoval bake
@@ -4286,6 +4295,7 @@ impl crate::App {
                             asset_db,
                             atlas_asset_map,
                             painter,
+                            toasts,
                         );
                         self.last_painter_pushed_entity = None; // bridge re-pushes the new selection
                     }
@@ -4304,6 +4314,7 @@ impl crate::App {
                             asset_db,
                             atlas_asset_map,
                             painter,
+                            toasts,
                         );
                         (painter as &mut dyn ph2d_editor::tool::RasterEditTool).deactivate();
                     }
@@ -8686,6 +8697,7 @@ impl crate::App {
                     asset_db,
                     atlas_asset_map,
                     painter,
+                    toasts,
                 );
                 self.last_painter_pushed_entity = None; // bridge re-pushes the freshly-baked source
                 let src = ph2d_ecs::Entity::from_bits(src_bits);
@@ -8704,6 +8716,7 @@ impl crate::App {
                         asset_db,
                         &read.image,
                         read.old_size_world,
+                        toasts,
                     );
                 }
             }
@@ -8782,6 +8795,26 @@ impl crate::App {
                 // canvas; ⚠️ aqui o sentinela É a resposta certa (uma roldana tem
                 // UM eixo, então não há segunda metade a perder como no joint).
                 ph2d_physics_ecs::reseat_mounted_axle(sim.world_mut(), e);
+            }
+            // A troca de PRECISÃO sai por uma porta própria (plano `docs/Sprite_projeto/18` W5).
+            //
+            // ⚠️ **E fica DEPOIS do dreno do pivot do joint pela MESMA razão que o bloco abaixo**,
+            // que já a tem escrita: o gate `the_position_commit_reseats_the_anchor_through_the_door`
+            // lê os 3000 bytes a seguir à captura do pivot, e um bloco alheio no meio empurra a
+            // porta para fora da janela. *A cura é tirar o intruso do meio, não alargar a janela* —
+            // e este bloco já esteve lá, e já a reprovou.
+            // ⚠️ Ela corre **depois** da troca de estratégia, e a ordem é load-bearing: converter
+            // para 16 bits FORÇA `Individual`, então deixá-la correr antes faria um clique em
+            // `Atlas` no mesmo quadro desfazer a conversão em silêncio.
+            if crate::precision_convert::apply(
+                precision_request,
+                sim,
+                renderer,
+                asset_db,
+                atlas_asset_map,
+                toasts,
+            ) {
+                self.title_dirty = true;
             }
             // ⚠️ **Este bloco fica DEPOIS do dreno do pivot do joint, de propósito.** Ele esteve
             // no meio do par `let joint_pivot_commit = …` → `if let Some(…) = joint_pivot_commit`,

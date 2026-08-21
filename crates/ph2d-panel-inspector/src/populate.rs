@@ -370,10 +370,28 @@ fn populate_render_strategy(store: &mut WidgetStore) {
             },
         );
     }
-    // ⚠️ `INSP_RENDER_FORMAT_RGBA8`/`_RGBA16` saíram daqui em 2026-08-19 (plano
-    // `docs/Sprite_projeto/17` §5): eram dois botões **registados e focáveis** cujo clique não
-    // tinha arm de dispatch em lado nenhum — nem um toast. O formato passou a ser uma linha de
-    // FACTO, derivada da estratégia, ao lado de `Storage` e `Source`.
+    // ⚠️ **`INSP_RENDER_FORMAT_RGBA8`/`_RGBA16` VOLTARAM** (plano `docs/Sprite_projeto/18` W5), e o
+    // registo aqui é a metade que os matava.
+    //
+    // Eles saíram em 2026-08-19 (plano 17 §5) por serem **registados e focáveis com o clique a cair
+    // no chão** — sem arm de dispatch em lado nenhum, nem um toast, e com o aceso vindo de um
+    // literal. O que mudou não foi a opinião sobre o botão: foi existir modelo por trás dele
+    // (`Asset::ImageRgba16`, `FORMAT_16`, `PixelPayload`, e a conversão nos dois sentidos).
+    //
+    // ⛔ Sem este `register` o botão nasce **sem `InteractiveState`**: não é focável, o Down não o
+    // arma, o Up nunca emite `Click`. Pintado, hit-registered e morto sob o rato — a mesma falha
+    // que apagou oito pills da barra em 2026-08-19.
+    for id in [
+        ids::INSP_RENDER_FORMAT_RGBA8,
+        ids::INSP_RENDER_FORMAT_RGBA16,
+    ] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ButtonState::Normal,
+            },
+        );
+    }
     store.register(
         ids::INSP_RENDER_SOURCE_REIMPORT,
         InteractiveState::Button {

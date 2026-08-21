@@ -43,6 +43,9 @@ pub mod game_rt;
 pub mod image_filter;
 pub mod impasto_light;
 pub mod individual;
+/// Como os bytes de uma textura individual viram uma entrada — irmão do [`individual`] pelo
+/// tecto de LOC (plano `docs/Sprite_projeto/18` W2).
+pub(crate) mod individual_entry;
 pub mod instance_buffer;
 /// KTX2 → wgpu texture-format mapping (KTX2 Fase 2, W2.T1). See
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).

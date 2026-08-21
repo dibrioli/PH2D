@@ -112,6 +112,7 @@ pub(crate) fn drain_upscale(
         asset_db,
         &edited,
         new_size_world,
+        toasts,
     ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Upscale failed: {err}")));

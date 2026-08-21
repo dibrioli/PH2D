@@ -133,6 +133,11 @@ pub use paint::{
     Paint, PaintCtx, fill_rounded_rect, paint_icon, paint_text, paint_text_centered,
     paint_text_title, paint_tool_palette_icons, resolve, stroke_rect, stroke_rounded_rect,
 };
+/// **Re-exportada porque faz parte da superfície do [`InspectorSpriteInfo`].**
+///
+/// Um painel que preenche esse struct precisa de a nomear, e obrigá-lo a declarar uma dependência
+/// no `ph2d-color` só para isso seria uma aresta nova por um campo — a chrome fala com a chrome.
+pub use ph2d_color::Precision;
 pub use progress::{Job, JobQueue, Progress};
 pub use project::{
     DEFAULT_PIXELS_PER_METER, DisplayUnit, ImageFilterMode, MAX_PIXELS_PER_METER,

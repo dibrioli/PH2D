@@ -151,6 +151,21 @@ pub enum EditorAction {
     /// only `Sprite.size` is recomputed.
     Reimport { entity_bits: u64 },
 
+    /// **Converter a PRECISÃO dos pixels de um sprite** — plano
+    /// `docs/Sprite_projeto/18` W5. Levantada pelo par `RGBA8 / RGBA16` da seção Render Source.
+    ///
+    /// ⚠️ **Levantar não é converter**, e a divisão importa: o painel não tem o `AssetDb` nem o
+    /// device, e a conversão para 16 bits **muda a estratégia** da sprite (o atlas é uma textura
+    /// com um formato, §3.3). Quem sabe as três coisas é o shell — o painel só diz *o que o artista
+    /// pediu*.
+    ///
+    /// ⚠️ Pedir a precisão que já está **não é uma edição**: o `event.rs` curto-circuita, senão um
+    /// clique distraído no botão já aceso viraria um passo de undo sobre uma cena que não mudou.
+    InspectorSpritePrecisionChange {
+        entity_bits: u64,
+        precision: ph2d_color::Precision,
+    },
+
     /// Undo the most recent image-edit (Trim Transparency / Make
     /// Square / Bg Removal). No payload — the shell owns the
     /// snapshot. Single-level by design, and it is now the FALLBACK of

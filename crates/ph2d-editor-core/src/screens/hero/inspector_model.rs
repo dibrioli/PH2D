@@ -16,6 +16,15 @@ pub struct InspectorSpriteInfo {
     /// / Individual). Surfaced as a read-only display for now;
     /// switching strategies is M14.5 follow-up.
     pub source_kind: InspectorSpriteSource,
+    /// **A precisão REAL desta imagem** — `None` quando não há uma a declarar (uma textura cozida
+    /// é BC/ASTC/ETC2 e depende do tier resolvido).
+    ///
+    /// ⚠️ **Vem MEDIDA do host**, nunca derivada da estratégia (plano
+    /// [`docs/Sprite_projeto/18`](../../../docs/Sprite_projeto/18_precisao_de_16_bits_nas_sprites.md)
+    /// W5). A versão anterior desta linha era o literal `"RGBA8"` para toda a gente — a mentira que
+    /// o plano 17 §5 apanhou. Uma sprite de 16 bits tem de dizer 16, e quem sabe é o store de
+    /// texturas, não o painel.
+    pub source_precision: Option<ph2d_color::Precision>,
     /// **O nome legível** de uma origem hand-packed: `Some("folha · região")`.
     ///
     /// ⚠️ Vem pronto do host porque o painel **não conhece o documento de folhas** — ele não pode
@@ -440,22 +449,30 @@ pub enum InspectorSpriteSource {
 }
 
 impl InspectorSpriteSource {
-    /// O formato de pixel que esta estratégia de facto usa, para a linha **Format** da seção
-    /// Render Source.
+    /// O rótulo da linha **Format**, dada a precisão **medida** pelo host.
     ///
-    /// ⚠️ **É um FACTO derivado da estratégia, nunca uma escolha do utilizador** (plano
-    /// `docs/Sprite_projeto/17` §5). O par segmentado `RGBA8 / RGBA16` que vivia ali não tinha
-    /// dispatch em lado nenhum **e** trazia o aceso como literal, então dizia "RGBA8" até para um
-    /// sprite cozido — que é BC/ASTC/ETC2 comprimido na GPU. O atlas e as texturas individuais são
-    /// `Rgba8UnormSrgb` de ponta a ponta (uma única `MipGenerator` serve cada store, e é isso que
-    /// o prova no fonte), então não há escolha a oferecer: há um facto a dizer.
-    pub fn pixel_format(self) -> &'static str {
+    /// # A história desta função, porque ela já mentiu duas vezes
+    ///
+    /// 1. Era um par segmentado `RGBA8 / RGBA16` **sem arm de dispatch em lado nenhum**: pintado,
+    ///    focável, hit-indexado, e clicar não fazia nada. O aceso era o literal `true`/`false`.
+    /// 2. O plano 17 §5 trocou-o por um facto — mas o facto era **derivado da estratégia**, e por
+    ///    isso dizia `"RGBA8"` para toda a gente. Era verdade enquanto o pipeline inteiro fosse de
+    ///    8 bits, e deixou de ser no dia em que o plano 18 acrescentou o `Rgba16Float`.
+    ///
+    /// ⚠️ Agora ela recebe a precisão **de quem a sabe** (o store de texturas, via o snapshot) e
+    /// não adivinha. *Uma linha de proveniência que deriva o que devia medir mente na primeira
+    /// exceção.*
+    pub fn pixel_format(self, precision: Option<ph2d_color::Precision>) -> &'static str {
         match self {
-            // O atlas e o store individual criam ambos `Rgba8UnormSrgb`.
-            Self::Atlas { .. } | Self::Individual { .. } | Self::HandPacked { .. } => "RGBA8",
             // Comprimida no dispositivo; o formato concreto depende do tier resolvido, e o
             // Inspector não o tem em mãos (o `snapshot` também não traz dimensões por isso).
             Self::CookedTexture => "GPU compressed",
+            _ => match precision {
+                Some(p) => p.label(),
+                // Sem precisão medida não se inventa uma: o sprite pode ser procedural, ou o id da
+                // textura pode já não existir. Dizer "RGBA8" aqui é como a mentira nº 2 começou.
+                None => "—",
+            },
         }
     }
 }
@@ -579,38 +596,56 @@ pub struct HierReparentIntent {
 #[cfg(test)]
 mod pixel_format_tests {
     use super::InspectorSpriteSource;
+    use ph2d_color::Precision;
 
-    /// O atlas e o store individual criam ambos `Rgba8UnormSrgb` — uma `MipGenerator` por store,
-    /// e é o fonte deles que o prova.
+    /// **A linha diz a precisão MEDIDA, e a mesma estratégia diz coisas diferentes conforme ela.**
+    ///
+    /// ⚠️ Este teste era o inverso: chamava-se `the_cpu_backed_strategies_are_rgba8` e afirmava que
+    /// Atlas/Individual/HandPacked dizem **sempre** "RGBA8". Era verdade enquanto o pipeline
+    /// inteiro fosse de 8 bits; o plano 18 acrescentou o `Rgba16Float` e um gate que exige o rótulo
+    /// antigo passou a defender a mentira. *Um gate derivado de uma premissa morre com ela.*
     #[test]
-    fn the_cpu_backed_strategies_are_rgba8() {
-        assert_eq!(
-            InspectorSpriteSource::Atlas { key: 0 }.pixel_format(),
-            "RGBA8"
-        );
-        assert_eq!(
-            InspectorSpriteSource::Individual { texture_id: 1 }.pixel_format(),
-            "RGBA8"
-        );
-        assert_eq!(
+    fn the_label_follows_the_measured_precision_not_the_strategy() {
+        for kind in [
+            InspectorSpriteSource::Atlas { key: 0 },
+            InspectorSpriteSource::Individual { texture_id: 1 },
             InspectorSpriteSource::HandPacked {
                 sheet: 0,
-                region: 0
-            }
-            .pixel_format(),
-            "RGBA8"
-        );
+                region: 0,
+            },
+        ] {
+            assert_eq!(kind.pixel_format(Some(Precision::Rgba8)), "RGBA8");
+            assert_eq!(
+                kind.pixel_format(Some(Precision::Rgba16)),
+                "RGBA16",
+                "a mesma estrategia tem de dizer 16 quando a textura E' de 16 — derivar da \
+                 estrategia era a mentira que o plano 18 veio acabar"
+            );
+        }
     }
 
-    /// ⚠️ **A mentira que este método existe para acabar.** O par segmentado trazia o aceso como
-    /// literal `true`, então o painel dizia "RGBA8" para um sprite cozido — que é BC/ASTC/ETC2
-    /// comprimido no dispositivo. Um rótulo tem de prometer o que o modelo entrega.
+    /// ⚠️ **A mentira que este método já existia para acabar.** O par segmentado original trazia o
+    /// aceso como literal `true`, então o painel dizia "RGBA8" para um sprite cozido — que é
+    /// BC/ASTC/ETC2 comprimido no dispositivo. Um rótulo tem de prometer o que o modelo entrega.
     #[test]
-    fn a_cooked_texture_is_not_claimed_to_be_rgba8() {
-        assert_ne!(
-            InspectorSpriteSource::CookedTexture.pixel_format(),
-            "RGBA8",
-            "uma textura cozida e' comprimida no dispositivo"
-        );
+    fn a_cooked_texture_is_never_claimed_to_be_a_cpu_format() {
+        for p in [None, Some(Precision::Rgba8), Some(Precision::Rgba16)] {
+            assert_eq!(
+                InspectorSpriteSource::CookedTexture.pixel_format(p),
+                "GPU compressed",
+                "uma textura cozida e' comprimida no dispositivo, e nem uma precisao medida a \
+                 pode transformar noutra coisa"
+            );
+        }
+    }
+
+    /// **Sem medição não se inventa um valor.** Um sprite procedural, ou um cujo id de textura já
+    /// não existe, não tem precisão a declarar — e dizer "RGBA8" ali é exatamente como a mentira
+    /// anterior começou.
+    #[test]
+    fn an_unmeasured_precision_says_nothing_instead_of_guessing() {
+        let label = InspectorSpriteSource::Individual { texture_id: 9 }.pixel_format(None);
+        assert_ne!(label, "RGBA8");
+        assert_ne!(label, "RGBA16");
     }
 }

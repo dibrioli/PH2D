@@ -39,7 +39,7 @@
 //! [`tests::the_round_trip_is_exact_for_every_byte`] varre-os todos. Não é um argumento sobre
 //! precisão relativa: é uma varredura. Se um dia um valor falhar, é o gate que o nomeia.
 
-use ph2d_color::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
+use crate::srgb::{linear_to_srgb_byte, srgb_to_linear_byte};
 
 /// A precisão com que uma imagem é guardada.
 ///

@@ -25,8 +25,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::screens::hero::{
-    InspectorNameInfo, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
-    RequestedSpriteStrategy, SpriteFieldEdit,
+    InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo, SpriteFieldEdit,
 };
 use ph2d_editor_core::widget::{ButtonState, CheckboxValue};
 
@@ -432,41 +431,9 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         });
         return true;
     }
-    // M14.C — Render Source Strategy switcher.
-    if let WidgetEvent::Click(id) = ev
-        && let Some(requested) = match id {
-            ids::INSP_RENDER_STRATEGY_ATLAS => Some(RequestedSpriteStrategy::Atlas),
-            ids::INSP_RENDER_STRATEGY_INDIVIDUAL => Some(RequestedSpriteStrategy::Individual),
-            ids::INSP_RENDER_STRATEGY_HANDPACKED => Some(RequestedSpriteStrategy::HandPacked),
-            _ => None,
-        }
-        && let Some(info) = state::current_inspector_sprite()
-    {
-        let current = match info.source_kind {
-            InspectorSpriteSource::Atlas { .. } => RequestedSpriteStrategy::Atlas,
-            InspectorSpriteSource::Individual { .. } => RequestedSpriteStrategy::Individual,
-            InspectorSpriteSource::HandPacked { .. } => RequestedSpriteStrategy::HandPacked,
-            // W2.T2: no `CookedTexture` strategy exists (cooked sources
-            // aren't authored from the inspector). Map to the read-only
-            // `HandPacked` strategy purely for change-detection.
-            InspectorSpriteSource::CookedTexture => RequestedSpriteStrategy::HandPacked,
-        };
-        // For a cooked source, route EVERY radio click (audit L2): mapping
-        // `current` to `HandPacked` above means a Hand-packed click would
-        // otherwise short-circuit `requested != current` and give no toast,
-        // while Atlas/Individual clicks do — inconsistent feedback. Force the
-        // route so `inspector_commits` rejects any strategy click uniformly.
-        let cooked = matches!(info.source_kind, InspectorSpriteSource::CookedTexture);
-        if requested != current || cooked {
-            host.bus_mut()
-                .push(EditorAction::InspectorSpriteSourceChange {
-                    entity_bits: info.entity_bits,
-                    strategy: requested,
-                });
-        }
-        if let Some(InteractiveState::Button { state }) = host.store_mut().get_mut(id) {
-            *state = ButtonState::Normal;
-        }
+    // **Os dois pares da seção Render Source** — estratégia e precisão — moram num irmão.
+    // Ver [`crate::event_precision`], e a nota de LOC lá dentro.
+    if crate::event_precision::render_source_click(host, ev) {
         return true;
     }
     if section_text_changed(host, ev) {

@@ -705,6 +705,25 @@ pub(super) fn publish(
         // A autoria passa a ter duas fontes, na ordem em que se tornam verdadeiras: o
         // `SpriteSheetRef` (assado — sabe a região) e, na falta dele, **ser filho de uma folha**
         // (arranjado — ainda não sabe). O rótulo diz qual das duas é.
+        // **A precisão MEDIDA, não derivada** (plano `docs/Sprite_projeto/18` W5). O store de
+        // texturas é quem sabe: o Inspector recebe o facto pronto, como já recebe o `sheet_label`.
+        //
+        // ⚠️ Uma célula de atlas é `Rgba8UnormSrgb` por construção; uma individual pode ser
+        // qualquer das duas, e é por isso que se **pergunta** em vez de assumir.
+        let source_precision = match sprite.source {
+            ph2d_render::SpriteSource::Atlas { .. } => Some(ph2d_color::Precision::Rgba8),
+            ph2d_render::SpriteSource::Individual { texture_id } => {
+                renderer.individual_format(texture_id).map(|f| {
+                    if f == ph2d_render::IndividualTextureStore::FORMAT_16 {
+                        ph2d_color::Precision::Rgba16
+                    } else {
+                        ph2d_color::Precision::Rgba8
+                    }
+                })
+            }
+            // Cozida: BC/ASTC/ETC2, e o formato concreto depende do tier resolvido.
+            ph2d_render::SpriteSource::CookedTexture { .. } => None,
+        };
         let unbaked_sheet = if matches!(
             source_kind,
             ph2d_editor::InspectorSpriteSource::Individual { .. }
@@ -746,6 +765,7 @@ pub(super) fn publish(
             name,
             world_size,
             source_kind,
+            source_precision,
             source_pixels,
             can_reimport,
             flip_x: sprite.flip_x,

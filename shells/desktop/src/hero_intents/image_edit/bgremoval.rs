@@ -99,6 +99,7 @@ pub(crate) fn drain_bgremoval(
             asset_db,
             &edited,
             old_size_world,
+            toasts,
         ) {
             Err(err) => {
                 toasts.push(Toast::error(format!("Bg Removal failed: {err}")));
@@ -167,6 +168,7 @@ pub(crate) fn drain_bgremoval(
         asset_db,
         &edited,
         largest_world,
+        toasts,
     ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Bg Removal failed: {err}")));

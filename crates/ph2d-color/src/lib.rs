@@ -48,6 +48,12 @@ pub mod oklch;
 pub mod palette;
 pub mod palette_text;
 pub mod pigment_space;
+/// A precisão com que uma imagem é guardada, e as conversões entre elas.
+///
+/// ⚠️ **Mora aqui, e não no `ph2d-imageio`, porque é uma pergunta de COR** — a conversão é a curva
+/// sRGB desta crate mais uma mudança de representação. Pô-la no imageio obrigava o `ph2d-color` a
+/// ser importado de volta por três consumidores que já o tinham (plano `docs/Sprite_projeto/18`).
+pub mod precision;
 pub mod premultiplied;
 pub mod srgb;
 pub mod value_ramp;
@@ -64,6 +70,7 @@ pub use oklch::OklchColor;
 pub use palette::{PaletteData, PaletteError, PaletteFormat};
 pub use palette_text::{DEFAULT_PALETTE_FALLBACK, parse_palette, serialize_palette};
 pub use pigment_space::PigmentLinearSrgb;
+pub use precision::{Precision, f32_to_half, half_to_f32, rgba8_to_rgba16, rgba16_to_rgba8};
 pub use premultiplied::Premultiplied;
 pub use srgb::SrgbRgba;
 pub use value_ramp::{MAX_VALUE_RAMP_STOPS, ValueRamp, ValueStop};

@@ -75,6 +75,7 @@ pub(crate) fn drain_color_equalization(
         asset_db,
         &edited,
         old_size_world,
+        toasts,
     ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Color EQ failed: {err}")));

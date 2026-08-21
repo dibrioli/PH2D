@@ -246,15 +246,42 @@ reprova.
 - ✅ O contador de células do atlas só avança quando uma célula foi mesmo consumida — senão cada
   import de 16 bits abriria um buraco no atlas.
 
-### W4 — As ferramentas
-- A regra do §3.4, num ponto de entrega só, com o aviso.
+### W4 — As ferramentas · ✅ **FEITA**
+- ✅ O aviso mora no **funil** (`commit_edited_texture`), num sítio só: toda ferramenta de imagem
+  trabalha em 8 bits (o `SpriteImage` é `Vec<u8>`) e todas escrevem de volta por ali.
+- ⚠️ **O aviso é DEPOIS, não antes**, e é decisão: *antes* exigiria interceptar a activação de cada
+  uma das nove ferramentas para dizer o que este único sítio sabe de facto.
+- ⛔ **`RasterEditTool` NÃO foi tocado** (§3.4) — nenhuma ferramenta pede 16 bits hoje, e emendar um
+  contrato congelado por **simetria** em vez de por necessidade medida é pagá-lo duas vezes.
 
-### W5 — A UI (o que o Enio pediu ver)
-- O par `Format` volta ao Inspector — agora **com arm de dispatch**, com o aceso lido do **estado**,
-  e mostrando o formato **real** (incluindo `GPU compressed` para cozidas, que é o que o §5 do doc 17
-  corrigiu e **não** se perde aqui).
-- Botão de converter, com o aviso do §3.3 (muda a estratégia) e do §3.2 (16→8 perde).
-- **O dither na descida** — o defeito real do §1.3, que só aqui tem dono.
+### W5 — A UI · ✅ **FEITA** (o que o Enio pediu ver)
+- ✅ A linha `Format` diz a precisão **MEDIDA**. ⚠️ Ela já mentiu **duas** vezes: primeiro como par
+  sem dispatch com o aceso literal; depois como facto **derivado da estratégia**, que dizia "RGBA8"
+  para toda a gente. *Uma linha de proveniência que deriva o que devia medir mente na primeira
+  exceção.* Sem medição ela diz `—`, nunca um palpite.
+- ✅ O par `RGBA8 / RGBA16` volta — **pintado, registado E com braço no `event.rs`**, e o gate
+  [`seam_precision`](../../crates/ph2d-panel-inspector/tests/seam_precision.rs) afirma as três
+  juntas, porque cada uma falha em silêncio de maneira diferente. ⛔ Ressuscitar aqueles ids só é
+  legítimo porque agora existe **modelo** por trás deles.
+- ✅ A conversão vive no shell ([`precision_convert.rs`](../../shells/desktop/src/precision_convert.rs)),
+  lê do **`AssetDb`** e nunca da GPU (a textura pode ter sido mexida por uma prévia), e sai pela
+  **mesma cauda** que toda ferramenta atravessa — `rebind_to_individual`, extraída para que as cinco
+  invariantes de *"esta sprite passou a ter pixels próprios"* não tenham duas cópias. Duas delas só
+  falham **depois de fechar e reabrir o projeto**.
+- ✅ A nota de custo aparece **antes** do clique (*"RGBA16 doubles memory and forces Individual"*) —
+  *uma consequência que só aparece depois do clique lê-se como um bug*.
+
+### ⏳ O que fica ABERTO, e por quê
+
+1. **O dither na descida para 8 bits** (§1.3) — o defeito visual **real** desta conversa, e o único
+   item que não é sobre 16 bits. Continua sem dono: `git grep -i dither` sobre o produto dá **zero**.
+   ⚠️ Ele não pertence a esta wave (é o último passo do pipeline de ecrã, não do armazenamento de
+   sprite), mas foi o que motivou a pergunta do Enio — *fechar a wave sem o nomear seria deixá-lo
+   morrer com a conversa*.
+2. **Exportar PNG de 16 bits** — a importação preserva; o `PngExporter` continua a emitir 8 bits e a
+   recusar `FlatHdr`. Espera um pedido real.
+3. ⛔ **Sprite emissiva** (§6.1) — o `Rgba16Float` dá a folga acima de 1.0 de graça, e não há
+   conceito de emissivo em sprite nenhuma. É produto, não formato.
 
 ---
 

@@ -168,7 +168,33 @@ pub(crate) fn commit_edited_texture(
     asset_db: &AssetDb,
     img: &SpriteImage,
     new_size_world: [f32; 2],
+    toasts: &mut ph2d_editor::ToastQueue,
 ) -> Result<u32, String> {
+    // **A PERDA DE PRECISÃO tem de ser dita** (plano `docs/Sprite_projeto/18` W4).
+    //
+    // ⚠️ Toda ferramenta de imagem trabalha em 8 bits — o `SpriteImage` é `Vec<u8>` — e este funil
+    // é por onde todas escrevem de volta. Sem este aviso, correr um Trim numa sprite de 16 bits
+    // **rebaixa-a em silêncio**: sem erro, sem log, e o único vestígio é a linha `Format` do
+    // Inspector, que o artista não estava a olhar.
+    //
+    // ⛔ **A alternativa recusada** era converter a ferramenta para 16 bits: nenhuma delas pede
+    // isso hoje, e emendar o contrato congelado `RasterEditTool` por simetria — em vez de por
+    // necessidade medida — é como se paga um contrato duas vezes.
+    //
+    // O aviso é DEPOIS e não antes de propósito: antes exigiria interceptar a activação de cada
+    // ferramenta (nove sítios) para dizer o que este único sítio sabe de facto.
+    if let SpriteSource::Individual { texture_id } = sim
+        .world()
+        .get::<Sprite>(entity)
+        .map(|s| s.source)
+        .unwrap_or(SpriteSource::Atlas { key: 0 })
+        && renderer.individual_format(texture_id)
+            == Some(ph2d_render::IndividualTextureStore::FORMAT_16)
+    {
+        toasts.push(ph2d_editor::Toast::info(
+            "Converted to RGBA8 — image tools work in 8-bit",
+        ));
+    }
     let texture_id = renderer
         .acquire_individual(img.width, img.height, &img.pixels)
         .map_err(|e| e.to_string())?;
@@ -176,10 +202,36 @@ pub(crate) fn commit_edited_texture(
     // mutability) and hashes dims + content, so re-committing an identical edit is idempotent
     // and two sprites that end up with the same pixels share one entry in the project file.
     let pixels_id = asset_db.insert_image_rgba8(img.width, img.height, img.pixels.clone());
+    rebind_to_individual(
+        entity,
+        sim,
+        texture_id,
+        pixels_id,
+        new_size_world,
+        img.alpha.is_premultiplied(),
+    );
+    Ok(texture_id)
+}
+
+/// **A cauda do [`commit_edited_texture`] — as cinco invariantes de "esta sprite passou a ter
+/// pixels próprios", num sítio só.**
+///
+/// ⚠️ Extraída em 2026-08-20 (plano `docs/Sprite_projeto/18` W5) porque a conversão de precisão
+/// precisa **exatamente** delas e escrevê-las outra vez seria pedir que as duas cópias
+/// concordassem para sempre. Duas delas só falham **depois de fechar e reabrir o projeto**, que é o
+/// pior sítio para descobrir uma divergência.
+pub(crate) fn rebind_to_individual(
+    entity: Entity,
+    sim: &mut SimWorld,
+    texture_id: u32,
+    pixels_id: ph2d_asset::AssetId,
+    new_size_world: [f32; 2],
+    premultiplied: bool,
+) {
     if let Some(mut sprite) = sim.world_mut().get_mut::<Sprite>(entity) {
         sprite.source = SpriteSource::Individual { texture_id };
         sprite.size = new_size_world;
-        sprite.premultiplied = img.alpha.is_premultiplied();
+        sprite.premultiplied = premultiplied;
         // ⚠️ **A JANELA MORRE COM A EDIÇÃO, e é a outra metade do bug das repetições.** Se o
         // sprite era uma região de uma folha, a textura que acabou de subir é a imagem INTEIRA
         // dele — amostrá-la pela janela antiga mostraria um recorte arbitrário dessa imagem nova.
@@ -203,7 +255,6 @@ pub(crate) fn commit_edited_texture(
             .entity_mut(entity)
             .remove::<ph2d_ecs::SpriteSheetRef>();
     }
-    Ok(texture_id)
 }
 
 #[cfg(test)]

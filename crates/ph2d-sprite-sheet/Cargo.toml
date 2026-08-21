@@ -18,8 +18,10 @@ ph2d-asset = { path = "../ph2d-asset" }
 # `Precision` — o MESMO tipo que a conversão e o `Asset` usam, para o acessor de
 # [`SpritePixelDoc::precision`]. ⚠️ Ele **não é serializado**: a variante do `PixelPayload` já É a
 # precisão, e por isso o formato de fio não tem um campo que possa discordar do payload
-# (plano `docs/Sprite_projeto/18` W3). Sem ciclo: já vinha transitivamente por `ph2d-asset`.
-ph2d-imageio = { path = "../ph2d-imageio" }
+# (plano `docs/Sprite_projeto/18` W3). ⚠️ Vem do `ph2d-color` e não do `ph2d-imageio`: a conversão
+# é a curva sRGB mais uma mudança de representação, logo é uma pergunta de COR — e este é o crate
+# leve (bytemuck + serde), não o dos formatos de ficheiro.
+ph2d-color = { path = "../ph2d-color" }
 serde = { version = "1", features = ["derive"] }
 # O MESMO formato de fio canônico do resto do projeto (ProjectFile, PrefabDoc, ComponentBlob).
 postcard = { version = "1", features = ["alloc"] }

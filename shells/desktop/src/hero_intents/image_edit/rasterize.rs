@@ -102,6 +102,7 @@ pub(crate) fn drain_rasterize(
         asset_db,
         &edited,
         new_size_world,
+        toasts,
     ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Rasterize failed: {err}")));

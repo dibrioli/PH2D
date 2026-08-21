@@ -94,6 +94,7 @@ pub(crate) fn drain_make_square(
         asset_db,
         &edited,
         [new_side, new_side],
+        toasts,
     ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Make Square failed: {err}")));

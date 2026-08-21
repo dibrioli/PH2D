@@ -56,7 +56,6 @@ mod exporter;
 mod importer;
 mod limits;
 mod opts;
-mod precision;
 mod registry;
 
 pub use buffer::ImageBuffer;
@@ -77,5 +76,12 @@ pub use opts::{
     ColorProfileStrictness, ExportFormat, ExportOpts, ImportOpts, MagicHint, MagicMatch,
     MetadataPolicy, ToneMap,
 };
-pub use precision::{Precision, f32_to_half, half_to_f32, rgba8_to_rgba16, rgba16_to_rgba8};
+/// **Re-exportado do [`ph2d_color`], onde a precisão de facto mora.**
+///
+/// ⚠️ Ela viveu aqui durante uma wave e mudou-se: a conversão é a curva sRGB do `ph2d-color` mais
+/// uma mudança de representação, logo é uma pergunta de **cor**. Mantê-la aqui obrigava o
+/// `ph2d-color` a ser importado de volta por três consumidores que já o tinham.
+///
+/// A re-exportação fica porque este é o sítio onde um leitor de código de **imagem** vai procurar.
+pub use ph2d_color::{Precision, f32_to_half, half_to_f32, rgba8_to_rgba16, rgba16_to_rgba8};
 pub use registry::{ExporterRegistry, ImporterRegistry};

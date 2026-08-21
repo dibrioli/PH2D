@@ -254,6 +254,7 @@ pub(crate) fn drain_equalize_sizes(
                 asset_db,
                 &edited,
                 new_size_world,
+                toasts,
             ) {
                 Err(err) => {
                     toasts.push(Toast::error(format!("Equalize Sizes failed: {err}")));

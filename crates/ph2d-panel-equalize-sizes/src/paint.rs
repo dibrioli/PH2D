@@ -362,35 +362,19 @@ fn paint_body_sections(
 
     y += row_gap;
 
-    // ── Reset (ghost, full width) row ──────────────────────────────
-    let btn_gap = Spacing::Sm.px();
-    let reset_rect = Rect::new(inner_x, y, inner_w, row_h);
-    let reset_state = store.button_visual(ids::EQS_RESET);
-    let reset = Button::new(ids::EQS_RESET, "Reset to Defaults")
-        .kind(ButtonKind::Default)
-        .visual(reset_state);
-    paint_button(&reset, reset_rect, scene, text_system, theme);
-    hit_index.register(ids::EQS_RESET, reset_rect);
-    y += row_h + row_gap;
-
-    // ── Cancel + Apply row ─────────────────────────────────────────
-    let half_btn = ((inner_w - btn_gap) * 0.5).max(0.0);
-    let cancel_rect = Rect::new(inner_x, y, half_btn, row_h);
-    let cancel_state = store.button_visual(ids::EQS_CANCEL);
-    let cancel = Button::new(ids::EQS_CANCEL, "Cancel")
-        .kind(ButtonKind::Default)
-        .visual(cancel_state);
-    paint_button(&cancel, cancel_rect, scene, text_system, theme);
-    hit_index.register(ids::EQS_CANCEL, cancel_rect);
-    let apply_rect = Rect::new(inner_x + half_btn + btn_gap, y, half_btn, row_h);
-    let apply_state = store.button_visual(ids::EQS_APPLY);
-    let apply = Button::new(ids::EQS_APPLY, "Apply")
-        .kind(ButtonKind::Accent)
-        .visual(apply_state);
-    paint_button(&apply, apply_rect, scene, text_system, theme);
-    hit_index.register(ids::EQS_APPLY, apply_rect);
-    y += row_h;
-    y
+    // As duas linhas de AÇÃO moram num IRMÃO — ver [`crate::paint_actions`].
+    crate::paint_actions::paint_action_rows(
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+        inner_x,
+        inner_w,
+        row_h,
+        row_gap,
+        y,
+    )
 }
 
 fn paint_scrollbar_and_publish(

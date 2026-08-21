@@ -127,6 +127,7 @@ pub(crate) fn drain_padding(
         asset_db,
         &edited,
         new_size_world,
+        toasts,
     ) {
         Err(err) => {
             toasts.push(Toast::error(format!("Padding failed: {err}")));

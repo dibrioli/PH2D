@@ -324,10 +324,20 @@ valores diferentes dos guardados não é um read*); `rgba16_to_rgba8_dithered` s
 de costura contra o refactor que as colapsa — ele não daria erro nenhum, e as faixas voltavam em
 silêncio.
 
-**Smoke:** `PH2D_DITHER_SMOKE=1` — as duas descidas do **mesmo** degradê, lado a lado. A fixture
-atravessa **seis** códigos sRGB ao longo de 384 px (~64 px por faixa) porque a banda é um defeito de
-degradês **lentos**; uma fixture rápida esconderia o fenómeno que ela devia conter, e há dois gates
-sobre ela a dizê-lo.
+**Smoke:** `PH2D_DITHER_SMOKE=1` — **uma** sprite partida ao meio: cima a descida fiel (faixas),
+baixo a com dither (liso). A fixture atravessa **seis** códigos sRGB ao longo de 512 px (~85 px por
+faixa) porque a banda é um defeito de degradês **lentos**; uma fixture rápida esconderia o fenómeno
+que ela devia conter, e há três gates sobre ela a dizê-lo.
+
+⚠️ **A primeira versão do smoke saía lisa dos DOIS lados, e a causa não estava no dither.** Enio,
+2026-08-21: *"com o zoom máximo ainda estão lisas"*. O filtro de imagem do projeto é **`Smooth` por
+omissão** (bilinear + anisotropia 16×) e em **ampliação** o bilinear interpola entre texels vizinhos
+— um degrau de um código vira uma rampa. *Aproximar o zoom não mostrava o defeito: apagava-o.* A
+sprite passa a trazer o seu próprio `TextureFilter(Nearest)`, e a cena deixou de ser duas imagens
+vizinhas para ser **uma partida ao meio**: em cada coluna as duas metades partem do mesmo valor, e as
+arestas de cima **param na costura**. *O olho compara através de uma fronteira partilhada muito
+melhor do que entre dois quadrados separados por um vão* — e aqui a diferença é de **um** código, o
+passo mais pequeno que existe.
 
 ⚠️ **Uma propriedade do Bayer que só apareceu ao escrever esses gates:** o espalhamento dos limiares
 **por coluna** é desigual — a coluna `x%8 == 0` cobre a faixa toda (0…63), a `x%8 == 3` só o meio

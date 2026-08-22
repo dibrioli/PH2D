@@ -397,25 +397,6 @@ impl WidgetStore {
         self.onion_modal = None;
     }
 
-    /// The Onion modal's top-left `(x, y)` in screen px, or `None` when closed. The painter gates the
-    /// card's render + hit registration on this being `Some`; the shell gates the store→onion read-back
-    /// on it too.
-    #[must_use]
-    pub fn onion_modal_pos(&self) -> Option<(f32, f32)> {
-        self.onion_modal
-    }
-
-    /// Offset the Onion modal's position by `(dx, dy)` screen px (the title-band drag). No-op when
-    /// closed. Not clamped here — the painter clamps to the viewport when it draws (so the accumulated
-    /// delta always equals `cursor − grab_offset` and the drag never dead-zones), mirroring
-    /// [`Self::move_fill_modal`].
-    pub fn move_onion_modal(&mut self, dx: f32, dy: f32) {
-        if let Some((x, y)) = self.onion_modal.as_mut() {
-            *x += dx;
-            *y += dy;
-        }
-    }
-
     /// Open the full-screen command palette with `model` (Motion's "Add Node"). Clears any stale pick so
     /// the shell's read-back only ever sees a fresh choice. The model is set ONCE here — never rebuilt
     /// per frame — mirroring [`Self::open_onion_modal`]'s value-seeding.

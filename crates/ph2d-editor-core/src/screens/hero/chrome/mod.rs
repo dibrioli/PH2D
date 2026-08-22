@@ -53,6 +53,7 @@ pub(super) fn cascade_anchor(hero: &HeroScreen, row_id: NodeId) -> (f32, f32) {
 // staleness gate catches drift.
 // <ph2d-chrome-sync:begin>
 mod authored_toggle;
+mod bool_graph_modal;
 mod command_palette;
 mod curve_point_handle;
 mod falloff_handle;
@@ -105,6 +106,8 @@ pub use fill_modal::paint_fill_adjust_modal;
 
 /// Paint the Onion settings floating modal (ADR-0142 W3b; gated on `store.onion_modal_pos()`).
 /// Re-exported so the hero paint pass renders it alongside the other floating dialogs.
+/// Desenha o DIAGRAMA da booleana viva (etapa 2; gateado em `store.bool_graph_pos()`).
+pub use bool_graph_modal::{bool_graph_op_label, paint_bool_graph_modal};
 pub use onion_modal::paint_onion_modal;
 
 /// Paint the full-screen command palette (Motion's "Add Node"; gated on `store.command_palette_model()`).
@@ -146,6 +149,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || sheet_size::apply(hero, event)
         || fill_modal::apply(hero, event)
         || onion_modal::apply(hero, event)
+        || bool_graph_modal::apply(hero, event)
         || command_palette::apply(hero, event)
         || scene_picker::apply(hero, event)
         || image_tools_toggle::apply(hero, event)

@@ -203,6 +203,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bool.live.off" => "Off",
         "panel.vector.bool.live.on" => "On",
         "panel.vector.bool.apply" => "Apply Boolean",
+        // O DIAGRAMA (etapa 2): a operação passa a ser da LIGAÇÃO, e não do grupo.
+        "panel.vector.bool.graph.open" => "Edit Links…",
+        "panel.vector.bool.graph.title" => "Boolean Links",
+        // ⚠️ O aviso é escrito para quem NÃO sabe o que é um ciclo: ele diz o que fazer, não como
+        // o motor se chama.
+        "panel.vector.bool.graph.cycle" => "A shape ends up feeding itself — remove one link",
+        "panel.vector.bool.graph.empty" => "Select a live boolean group to edit its links",
+        "panel.vector.bool.graph.hint" => {
+            "Drag between circles to link · click a link to change it"
+        }
+        "panel.vector.bool.graph.consumed" => "merged",
         "panel.vector.cut.apply" => "Cut",
         "panel.vector.cut.discard" => "Discard Cut Line",
         "panel.vector.marquee" => "Marquee",

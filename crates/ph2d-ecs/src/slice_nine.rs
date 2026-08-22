@@ -84,6 +84,12 @@ pub enum TileRegionMode {
     /// Repete o pedaço da fonte tantas vezes quantas couberem.
     Repeat,
     /// Repete espelhando a cada repetição — costura invisível em texturas não-tileáveis.
+    ///
+    /// ⚠️ **Espelhar impõe duas coisas ao resto da grelha, e ambas são consequência, não gosto:**
+    /// (1) o número de ladrilhos é sempre **inteiro** (um espelho cortado a meio não encosta em
+    /// borda nenhuma — ver [`SliceTileMode`]); (2) com um número **PAR** de ladrilhos a faixa
+    /// acaba numa cópia invertida, e a borda que combina com ela é a do **lado oposto,
+    /// espelhada**. Quem executa as duas é `ph2d_render::nine_slice`.
     Mirror,
     /// Não desenha nada nesta região (o «hide» do GameMaker).
     Blank,
@@ -169,6 +175,16 @@ impl SliceRegion {
 }
 
 /// Como o modo `Tiled` global distribui as repetições.
+///
+/// # ⚠️ A lei que estes três modos existem para exprimir (smoke do Enio, 2026-08-22)
+///
+/// **Uma faixa ladrilhada só encontra a sua borda quando contém um número INTEIRO de
+/// ladrilhos.** Um ladrilho cortado a meio acaba numa coluna qualquer da fonte, e a borda começa
+/// na coluna que o autor recortou: as duas nunca coincidem, e o resultado é uma emenda vertical
+/// (ou horizontal) rente ao canto — foi isso que as duas setas amarelas do smoke marcaram.
+///
+/// [`Self::Continuous`] aceita o corte de propósito (é o `TILE` do Godot); [`Self::Whole`] é a
+/// cura (o `TILE_FIT`). [`Self::Adaptive`] fica no meio: cura **só** quando o resto é pequeno.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SliceTileMode {
     /// Repete no tamanho intrínseco e deixa a última repetição cortada.
@@ -177,21 +193,29 @@ pub enum SliceTileMode {
     /// Ajusta a escala para caber um número inteiro de repetições, misturando com o esticar
     /// segundo `stretch_value` (o *Adaptive* do Unity).
     Adaptive,
+    /// **Sempre um número inteiro de ladrilhos**, arredondando ao mais próximo: os ladrilhos
+    /// esticam um pouco e a faixa encosta na borda sem emenda (o `TILE_FIT` do Godot).
+    ///
+    /// ⚠️ A distorção é no máximo de um meio-ladrilho repartido pelos que ficam — 33% num alvo
+    /// que só cabia 1,5 ladrilho, e tanto menos quanto mais ladrilhos couberem.
+    Whole,
 }
 
 impl SliceTileMode {
-    pub const ALL: [SliceTileMode; 2] = [Self::Continuous, Self::Adaptive];
+    pub const ALL: [SliceTileMode; 3] = [Self::Continuous, Self::Adaptive, Self::Whole];
 
     pub const fn tag(self) -> u8 {
         match self {
             Self::Continuous => 0,
             Self::Adaptive => 1,
+            Self::Whole => 2,
         }
     }
 
     pub const fn from_tag(tag: u8) -> Self {
         match tag {
             1 => Self::Adaptive,
+            2 => Self::Whole,
             _ => Self::Continuous,
         }
     }

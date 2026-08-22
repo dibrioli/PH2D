@@ -67,6 +67,12 @@ pub struct SlicePatch {
     /// para deixar o modo resolvido do nó em paz. Só é `Some` quando o quad de facto repete —
     /// um quad que estica não tem opinião sobre wrap.
     pub repeat_tag: Option<u8>,
+    /// `[flip_u, flip_v]` — este quad desenha o seu sub-rect **espelhado**.
+    ///
+    /// ⚠️ Só a coluna da direita e a linha de baixo o usam, e só quando a faixa vizinha acaba
+    /// numa cópia invertida (ver [`nine_slice_patches`]). É uma correção de **continuidade**,
+    /// não uma opção: sem ela a borda encosta na metade errada do ladrilho.
+    pub flip: [bool; 2],
 }
 
 /// Tag de `RepeatMode::Enabled` — o wrap.
@@ -167,6 +173,57 @@ pub fn nine_slice_patches(
     let x_left = -0.5 * w;
     let y_top = 0.5 * h;
 
+    // ⚠️ **A PARIDADE da faixa vizinha decide qual borda combina** (smoke do Enio, 2026-08-22).
+    //
+    // O espelho é uma onda triangular sobre `quv * n`: o ladrilho 0 sai direito, o 1 invertido, o
+    // 2 direito… A faixa **começa** sempre em `u_min`, e é por isso que a borda ESQUERDA e a de
+    // CIMA nunca precisam de nada. Mas ela **acaba** em `u_min` quando `n` é PAR e em `u_max`
+    // quando é ÍMPAR — e a borda direita mostra `u_max`. Com `n` par, as duas metades que se
+    // encontram são as duas pontas OPOSTAS da fonte: emenda dura, a toda a altura do sprite.
+    //
+    // A cura é a que o Enio descreveu: a coluna da direita passa a desenhar a **coluna esquerda,
+    // espelhada** — assim ela abre exatamente no `u_min` em que o último ladrilho fechou. O mesmo
+    // em Y para a linha de baixo. Os cantos herdam a decisão das duas faixas que tocam.
+    //
+    // ⚠️ Isto é o par da regra do número inteiro (`tile_count`): sem inteiro não há paridade
+    // definida — a faixa acaba a meio de um ladrilho e **nenhuma** borda a encontra.
+    let band_x = |row: usize| -> bool {
+        let Some(m) = region_mode_at(&s, 1, row) else {
+            return false;
+        };
+        ends_flipped(
+            m,
+            tile_count(
+                m,
+                s.draw_mode,
+                s.tile_mode,
+                s.stretch_value,
+                cols_m[1],
+                cols_src_m[1],
+                true,
+            ),
+        )
+    };
+    let band_y = |col: usize| -> bool {
+        let Some(m) = region_mode_at(&s, col, 1) else {
+            return false;
+        };
+        ends_flipped(
+            m,
+            tile_count(
+                m,
+                s.draw_mode,
+                s.tile_mode,
+                s.stretch_value,
+                rows_m[1],
+                rows_src_m[1],
+                true,
+            ),
+        )
+    };
+    let flip_x_at_row = [band_x(0), band_x(1), band_x(2)];
+    let flip_y_at_col = [band_y(0), band_y(1), band_y(2)];
+
     let mut out = none;
     for row in 0..3usize {
         for col in 0..3usize {
@@ -202,13 +259,15 @@ pub fn nine_slice_patches(
                 row == 1,
             );
             let repeats = tiles_x > 1.0 || tiles_y > 1.0;
+            // A coluna da direita e a linha de baixo trocam de fonte quando a faixa que lhes
+            // encosta acaba invertida — e só elas: o começo da faixa nunca inverte.
+            let flip = [
+                col == 2 && flip_x_at_row[row],
+                row == 2 && flip_y_at_col[col],
+            ];
+            let (uc, vr) = (if flip[0] { 0 } else { col }, if flip[1] { 0 } else { row });
             out[idx] = Some(SlicePatch {
-                uv: [
-                    u_edges[col],
-                    v_edges[row],
-                    u_edges[col + 1],
-                    v_edges[row + 1],
-                ],
+                uv: [u_edges[uc], v_edges[vr], u_edges[uc + 1], v_edges[vr + 1]],
                 // De MUNDO para LOCAL: a `basis` multiplica outra vez lá à frente.
                 size: [pw / sx, ph / sy],
                 center_offset: [cx / sx, cy / sy],
@@ -217,10 +276,30 @@ pub fn nine_slice_patches(
                     TileRegionMode::Mirror => REPEAT_MIRROR,
                     _ => REPEAT_ENABLED,
                 }),
+                flip,
             });
         }
     }
     out
+}
+
+/// O inteiro de ladrilhos mais próximo, nunca menos que um: uma faixa sem ladrilho nenhum é uma
+/// faixa vazia, e arredondar 0,4 para zero apagaria a região.
+fn whole(raw: f32) -> f32 {
+    raw.round().max(1.0)
+}
+
+/// A faixa acaba numa cópia **invertida**?
+///
+/// O espelho é uma onda triangular: `wrap(n)` vale `0` em `n` par e `1` em `n` ímpar. Logo uma
+/// faixa espelhada com um número par de ladrilhos fecha no `u_min` da fonte — o mesmo sítio em
+/// que ABRIU — e quem combina com ela é a borda oposta, espelhada.
+///
+/// Só `Mirror` inverte: `Repeat` com número inteiro fecha a aproximar-se de `u_max`, que é
+/// exatamente onde a borda direita começa.
+#[allow(clippy::cast_possible_truncation)] // `n` já é inteiro aqui (Mirror força `whole`)
+fn ends_flipped(mode: TileRegionMode, n: f32) -> bool {
+    mode == TileRegionMode::Mirror && (n.round() as i64) % 2 == 0
 }
 
 /// Encolhe um par de bordas proporcionalmente se a soma não couber em `total`.
@@ -272,6 +351,11 @@ fn centre_mode(s: &SliceNine) -> TileRegionMode {
 /// ladrilho parcial que sobra é menor que `stretch_value`, ele é descartado e os ladrilhos
 /// inteiros esticam para preencher; senão o parcial fica. É por isso que o slider tem unidade —
 /// ele é uma **fração de ladrilho**, não um ganho solto.
+///
+/// ⚠️ **`Mirror` IMPÕE o número inteiro, qualquer que seja o `tile_mode`.** Não é preferência: um
+/// espelho cortado a meio acaba numa coluna arbitrária da fonte e **nenhuma** borda a encontra —
+/// a paridade que escolhe a borda certa (ver [`nine_slice_patches`]) só existe sobre um inteiro.
+/// Em regiões espelhadas o `stretch_value` fica, portanto, inerte.
 fn tile_count(
     mode: TileRegionMode,
     draw: SliceDrawMode,
@@ -287,8 +371,12 @@ fn tile_count(
         return 1.0;
     }
     let raw = target_m / intrinsic_m;
+    if mode == TileRegionMode::Mirror {
+        return whole(raw);
+    }
     match tile_mode {
         SliceTileMode::Continuous => raw,
+        SliceTileMode::Whole => whole(raw),
         SliceTileMode::Adaptive => {
             let whole = raw.floor();
             let frac = raw - whole;
@@ -307,3 +395,7 @@ fn tile_count(
 #[cfg(test)]
 #[path = "nine_slice_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "nine_slice_parity_tests.rs"]
+mod parity_tests;

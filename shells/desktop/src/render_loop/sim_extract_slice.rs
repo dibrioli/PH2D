@@ -90,6 +90,13 @@ pub(super) fn apply_patch(base: &RenderInstance, p: &SlicePatch) -> RenderInstan
         base.anchor[1] + p.center_offset[1],
     ];
     ri.uv_xform = p.uv_xform;
+    // ⚠️ **XOR, nunca OR.** O sprite pode já estar espelhado, e o quad **troca** esse estado em
+    // vez de o impor: dois espelhos seguidos são a orientação original, e um OR faria a borda
+    // de um sprite invertido apontar para o lado errado. Os bits vêm do empacotador, não de
+    // literais — quem sabe onde `flip_x`/`flip_y` moram é a `RenderInstance`.
+    if p.flip[0] || p.flip[1] {
+        ri.flip_uv ^= RenderInstance::pack_flip_flags(p.flip[0], p.flip[1], false);
+    }
     if let Some(tag) = p.repeat_tag {
         // Limpa os bits de repeat do nó antes de pôr os do quad: um OR simples deixaria o modo
         // herdado misturado com o pedido, e `Disabled | Mirror` não é nenhum dos dois.
@@ -259,6 +266,7 @@ mod tests {
             center_offset: [-1.0, 2.0],
             uv_xform: [3.0, 1.0, 0.0, 0.0],
             repeat_tag: None,
+            flip: [false, false],
         };
         let ri = apply_patch(&b, &p);
         assert_eq!(ri.atlas_uv, p.uv);
@@ -357,6 +365,7 @@ mod tests {
             center_offset: [0.0, 0.0],
             uv_xform: [2.0, 1.0, 0.0, 0.0],
             repeat_tag: Some(3), // Mirror
+            flip: [false, false],
         };
         let ri = apply_patch(&b, &p);
         let bits = (ri.flip_uv >> RenderInstance::REPEAT_SHIFT) & 0b11;
@@ -366,5 +375,45 @@ mod tests {
             1,
             "o flip_x do sprite foi apagado pelo quad"
         );
+    }
+
+    /// ⚠️ **O espelho do quad é um XOR, não um OR** — e é isto que a distingue de uma imposição.
+    ///
+    /// A coluna da direita inverte-se para encostar num ladrilho que fechou invertido
+    /// (`ph2d_render::nine_slice`, a lei da paridade). Se o SPRITE já estiver espelhado, os dois
+    /// espelhos cancelam-se: a orientação certa é a original. Com um OR, a borda de um sprite
+    /// invertido apontaria para o lado errado — e o defeito só apareceria em sprites virados,
+    /// que é a classe de bug que ninguém encontra a olhar para o código.
+    #[test]
+    fn the_patch_flip_toggles_the_sprites_own_mirror_instead_of_forcing_it() {
+        let flipped_patch = SlicePatch {
+            uv: [0.0, 0.0, 0.25, 1.0],
+            size: [1.0, 1.0],
+            center_offset: [0.0, 0.0],
+            uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+            repeat_tag: None,
+            flip: [true, false],
+        };
+        // Sprite direito: o quad liga o espelho.
+        let plain = apply_patch(&base(), &flipped_patch);
+        assert_eq!(plain.flip_uv & 1, 1, "o quad nao ligou o espelho em X");
+        assert_eq!(plain.flip_uv & 2, 0, "ligou Y sem ninguem pedir");
+
+        // Sprite JÁ espelhado em X: os dois cancelam-se.
+        let mut b = base();
+        b.flip_uv = RenderInstance::pack_flip_flags(true, false, false);
+        let twice = apply_patch(&b, &flipped_patch);
+        assert_eq!(
+            twice.flip_uv & 1,
+            0,
+            "dois espelhos seguidos tem de dar a orientacao original — isto foi um OR"
+        );
+
+        // Um quad sem espelho não toca em nada, nem sequer nos bits do sprite.
+        let inert = SlicePatch {
+            flip: [false, false],
+            ..flipped_patch
+        };
+        assert_eq!(apply_patch(&b, &inert).flip_uv, b.flip_uv);
     }
 }

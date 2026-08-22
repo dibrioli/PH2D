@@ -43,21 +43,18 @@
 //! [`is_focusable`]: ph2d_editor_core::interaction
 
 use ph2d_editor_core::screens::hero::{
-    InspectorBlendInfo, InspectorBlendMixed, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorAnchorInfo, InspectorAnchorRow, InspectorOrderingMixed, InspectorSamplingInfo,
-    InspectorSamplingMixed, InspectorSliceInfo,
-    InspectorSliceMixed, InspectorSpriteInfo,
+    InspectorAnchorInfo, InspectorAnchorRow, InspectorBlendInfo, InspectorBlendMixed,
+    InspectorNameInfo, InspectorOrderingInfo, InspectorOrderingMixed, InspectorSamplingInfo,
+    InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed, InspectorSpriteInfo,
     InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
     InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
-    InspectorPanel, InspectorState, set_current_inspector_blend, set_current_inspector_name,
-    set_current_inspector_anchor, set_current_inspector_ordering, set_current_inspector_sampling,
-    set_current_inspector_slice,
-    set_current_inspector_sprite,
-    set_current_inspector_transform, set_current_inspector_visibility,
-    set_current_inspector_visibility_section,
+    InspectorPanel, InspectorState, set_current_inspector_anchor, set_current_inspector_blend,
+    set_current_inspector_name, set_current_inspector_ordering, set_current_inspector_sampling,
+    set_current_inspector_slice, set_current_inspector_sprite, set_current_inspector_transform,
+    set_current_inspector_visibility, set_current_inspector_visibility_section,
 };
 use ph2d_ui_testkit::MockPanelHost;
 

@@ -30,9 +30,10 @@ pub const INSP_SLICE_MODE: [NodeId; 3] = [
 ];
 
 /// **Tile Mode** global — `Continuous` / `Adaptive`, tags `0..=1`.
-pub const INSP_SLICE_TILE_MODE: [NodeId; 2] = [
+pub const INSP_SLICE_TILE_MODE: [NodeId; 3] = [
     hash_node_id("insp_slice_tile_continuous"),
     hash_node_id("insp_slice_tile_adaptive"),
+    hash_node_id("insp_slice_tile_whole"),
 ];
 
 /// As quatro bordas, em pixels da fonte: **`[left, top, right, bottom]`**.

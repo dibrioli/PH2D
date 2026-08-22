@@ -45,16 +45,16 @@ pub mod style;
 pub mod topbar;
 
 mod inspector_model;
+mod inspector_model_anchor;
 /// §12 Physics Joint + §13 Pulley Wheel — irmão do `inspector_model_physics`,
 /// separado dele no cap de 700 LOC (W-JointCopy).
 mod inspector_model_joint;
 mod inspector_model_ordering;
-mod inspector_model_anchor;
-mod inspector_model_slice;
 mod inspector_model_physics;
 /// §14 Platform Player — irmão dos dois acima: a §11 diz que CORPO é este, a
 /// §14 diz que COMPORTAMENTO ele tem.
 mod inspector_model_player;
+mod inspector_model_slice;
 /// O tique da UI viva (o `motion` + a corda) — irmão, e não corpo do `HeroScreen`: aquele diz o
 /// que uma tela É, este diz o que ela FAZ a cada quadro.
 mod live;
@@ -65,12 +65,12 @@ mod offers;
 mod paint;
 
 pub use inspector_model::*;
+pub use inspector_model_anchor::*;
 pub use inspector_model_joint::*;
 pub use inspector_model_ordering::*;
-pub use inspector_model_anchor::*;
-pub use inspector_model_slice::*;
 pub use inspector_model_physics::*;
 pub use inspector_model_player::*;
+pub use inspector_model_slice::*;
 pub use paint::*;
 
 pub use state::{GizmoStateGroup, GridState, ImageEditState, ViewState};

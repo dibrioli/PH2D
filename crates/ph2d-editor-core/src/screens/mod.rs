@@ -17,18 +17,16 @@ pub mod hero;
 pub mod layout;
 
 pub use hero::{
-    BlendFieldEdit, BottomHudStats, EMISSIVE_MAX_UI, HeroScreen, HeroSelection, InspectorBlendInfo,
-    InspectorBlendMixed, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorOrderingMixed, InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo,
-    InspectorAnchorInfo, InspectorAnchorRow,
-    InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed, InspectorSpriteInfo,
-    InspectorSpriteMixed, InspectorSpriteSource,
-    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilityMixed,
-    InspectorVisibilitySectionInfo, InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit,
-    AnchorFieldEdit,
-    PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit,
-    SliceFieldEdit, SpriteFieldEdit,
-    ViewFocusKind, VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen,
+    AnchorFieldEdit, BlendFieldEdit, BottomHudStats, EMISSIVE_MAX_UI, HeroScreen, HeroSelection,
+    InspectorAnchorInfo, InspectorAnchorRow, InspectorBlendInfo, InspectorBlendMixed,
+    InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo, InspectorOrderingMixed,
+    InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo, InspectorSamplingMixed,
+    InspectorSliceInfo, InspectorSliceMixed, InspectorSpriteInfo, InspectorSpriteMixed,
+    InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorVisibilityMixed, InspectorVisibilitySectionInfo, InspectorWheelInfo, JointFieldEdit,
+    OrderingFieldEdit, PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy,
+    SamplingFieldEdit, SliceFieldEdit, SpriteFieldEdit, ViewFocusKind, VisibilityFieldEdit,
+    WheelFieldEdit, paint_hero_screen,
 };
 pub use layout::{
     EDGE_PAD, HERO_VIEWPORT_H, HERO_VIEWPORT_W, HIER_ROW_H, HIERARCHY_W, HUD_BOTTOM_PAD, HUD_H,

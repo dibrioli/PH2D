@@ -42,8 +42,8 @@ pub const REGION_CELLS: [(usize, usize); 8] = [
 
 /// Rótulos do Draw Mode, na ordem das tags `0..=2` de `SliceDrawMode`.
 pub const MODE_LABELS: [&str; 3] = ["Simple", "Sliced", "Tiled"];
-/// Rótulos do Tile Mode global, tags `0..=1` de `SliceTileMode`.
-pub const TILE_MODE_LABELS: [&str; 2] = ["Continuous", "Adaptive"];
+/// Rótulos do Tile Mode global, tags `0..=2` de `SliceTileMode`.
+pub const TILE_MODE_LABELS: [&str; 3] = ["Continuous", "Adaptive", "Whole"];
 /// A inicial de cada `TileRegionMode`, tags `0..=3`. ASCII de propósito (sem tofu).
 pub const REGION_LETTERS: [&str; 4] = ["S", "R", "M", "-"];
 
@@ -284,6 +284,20 @@ fn tiled_rows(
         store,
         hit_index,
     ) + Spacing::Sm.px();
+    // ⚠️ **A emenda rente ao canto tem NOME aqui** (smoke do Enio, 2026-08-22). Ela não é um
+    // defeito de textura: é o último ladrilho cortado a meio, e o utilizador não tem como
+    // adivinhar que o remédio se chama «Whole». Uma linha diz onde ele está.
+    paint_text(
+        text_system,
+        scene,
+        "Whole = entire tiles, so the last one meets the border. Mirror always uses whole tiles.",
+        x,
+        cur_y,
+        label_font,
+        w,
+        resolve(ColorToken::Text3, theme),
+    );
+    cur_y += label_font + Spacing::Sm.px();
     if info.tile_mode_tag == 1 {
         let (_, value) = store
             .slider(ids::INSP_SLICE_STRETCH)

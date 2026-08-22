@@ -11,6 +11,8 @@
 - [Monitores da workstation](reference_display_topology_workstation.md) — perf no LG (RTX); AOC read-only
 - [A workstation travou 2× (08/08)](project_workstation_freeze_memory_reclaim.md) — livelock de reclaim, não bug do PH2D; 577 GB de `target/` é o combustível
 - [O VSCode morre por POLÍTICA, não por escolha (14/08)](project_vscode_dies_by_oompolicy_not_by_choice.md) — `OOMPolicy=stop` derruba o scope; o AND do earlyoom nunca fecha quando é o swap que acaba
+- [Disco cheio CORROMPE os .o e o mold morre em SIGBUS (22/08)](project_disk_full_corrupts_objects_mold_sigbus.md) — linker a 0% de CPU com `wchan=vfs_coredump`; cura é `cargo clean -p`, e o `df` já não mostra a causa
+- [«Disco cheio» com 526 GB livres = METADATA do btrfs; swap 100% = target em tmpfs no zram; csum corrompido = kernel 7.2.0 (22/08)](project_btrfs_metadata_starved_not_disk_full_2026_08_22.md) — três doenças, um instrumento: `scripts/btrfs-health.sh`; cura de metadata é balance (root), não `rm -rf`
 - [Prompt Deck](reference_prompt_deck_app.md) — apps pessoais em "Meus Apps"; fonte única `prompts.json`, 3 saídas geradas
 - [Atalho global no Plasma 6](reference_kde_plasma6_global_shortcut.md) — `[services][x.desktop]` + o grab que falta após o login
 - [HISTÓRICO: aquarela/wash](reference_topic_watercolor_historical.md) — ADR-0096/0099/0108; 17 memórias da era

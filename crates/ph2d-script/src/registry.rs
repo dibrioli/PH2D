@@ -41,7 +41,17 @@ mod tests {
         // `cargo check -p` e a suite das crates tocadas nunca o tocam. *Um contador que só fala na
         // suite de outra crate é um contador que só fala no fecho*, e o irmão da `ph2d-render` tem
         // esta mesma frase escrita ao lado dele por ter sofrido exactamente isto.
-        assert_eq!(reg.len(), 62);
+        //
+        // ⚠️⚠️ **E ACONTECEU OUTRA VEZ, na MESMA linha, com a nota acima já escrita** (2026-08-22):
+        // o `SliceNine` e o `NamedAnchorList` levaram o ECS de 61 a 63, os espelhos do `ph2d-ecs` e
+        // do `ph2d-render` foram atualizados no mesmo commit — e este ficou 2 atrás outra vez.
+        // *Uma nota que descreve o mecanismo não o impede*: quem o apanhou foi o
+        // `collision-surface.sh` do handoff, ao pôr os três contadores lado a lado e mostrar que
+        // este era o único que não guardava a relação `ecs + 1`. **É essa a leitura que fecha a
+        // linha** — não a suíte da crate tocada, que nunca chega aqui.
+        //
+        // O número CONTA-SE: 63 (`ph2d-ecs`) + 1 (`LuauScript`).
+        assert_eq!(reg.len(), 64);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

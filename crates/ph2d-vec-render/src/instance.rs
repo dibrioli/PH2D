@@ -56,6 +56,7 @@ pub(crate) fn tessellate_shape_instance(path: &VecPath) -> PathTess {
         PathTess {
             fill_bp: Some(fill_bp),
             stroke_bp,
+            dash: crate::dash_of(&cooked, path.stroke.as_ref()),
         }
     }
 }

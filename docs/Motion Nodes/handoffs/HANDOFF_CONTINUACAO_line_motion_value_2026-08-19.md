@@ -240,7 +240,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As SESSENTA E CINCO LEIS que esta linha pagou para aprender
+## §4 — As SESSENTA E SEIS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -717,6 +717,17 @@ são estilo.
     ⚠️ Terceira metade: o assador corria **sem consumidor**, e um tile por quadro é também um
     **readback de GPU** por quadro. Hoje ele pergunta pelo `fx.glow` pela mesma porta que o
     `present` usa.
+
+66. **Um padrão de comprimento FIXO percorrido num contorno FECHADO tem sempre uma emenda — e
+    ela é sempre no mesmo sítio.** O tracejado saiu a funcionar e a olho estava errado: um
+    traço curto encostado a um longo na quina inferior esquerda, porque o perímetro não é
+    múltiplo do período (Enio, 2026-08-22, com a seta a apontar). *Ligar o mecanismo certo não
+    é entregar o resultado certo — um padrão periódico sobre um domínio fechado precisa de
+    fechar a conta.* A cura é do Illustrator e não muda o número de traços, muda o **período**
+    (`n = round(L/p)`, `k = L/(n·p)`, traço e vão juntos, erro ≤ meio período). ⚠️ E ela obriga
+    a medir o caminho **COZIDO** — um Trim muda o comprimento —, o que decidiu onde o ajuste
+    mora: no `PathTess`, que é quem já pagou o cozimento. Medir o caminho de origem seria
+    barato e daria a cadência errada.
 
 
 ---

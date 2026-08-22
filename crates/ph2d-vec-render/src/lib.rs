@@ -353,7 +353,9 @@ fn inflate_for_stroke(path: &VecPath, xf: Affine, r: Rect) -> Rect {
             let [a, b, c, d, _, _] = xf.as_coeffs();
             let sx = (a * a + b * b).sqrt();
             let sy = (c * c + d * d).sqrt();
-            let k = kurbo_stroke(&s);
+            // Só a JUNTA e o `miter_limit` são lidos aqui; um tracejado não muda o
+            // transbordo, então medir o caminho para o ajustar seria trabalho por nada.
+            let k = kurbo_stroke(&s, None);
             let reach = if matches!(k.join, Join::Miter) {
                 k.miter_limit.max(1.0)
             } else {
@@ -402,6 +404,14 @@ pub(crate) struct PathTess {
     /// O `stroke_own`: TODOS os contornos, presente **só quando o desenho do traço DIFERE do
     /// preenchimento** (há contorno aberto, ou não há fill). `None` ⇒ o traço reusa `fill_bp`.
     stroke_bp: Option<BezPath>,
+    /// O tracejado JÁ AJUSTADO ao comprimento deste caminho ([`ph2d_vec_scene::dash_fit`]),
+    /// ou `None` para linha contínua.
+    ///
+    /// ⚠️ **Mora aqui porque o ajuste é do caminho COZIDO**, e o cozimento é o que esta
+    /// estrutura já pagou. Quem desenha só tem o `tess` em mão; se ele tivesse de cozer outra
+    /// vez para medir, o ajuste custaria uma pilha de efeitos por instância — ou, pior,
+    /// alguém mediria o caminho de ORIGEM e o tracejado sairia noutra cadência que o desenho.
+    dash: Option<[f64; 2]>,
 }
 
 /// Constrói a [`PathTess`] de um path: coze UMA vez e tessela o(s) `BezPath`(s) que o desenho
@@ -432,7 +442,19 @@ pub(crate) fn path_tess(path: &VecPath) -> PathTess {
     // desenhos diferentes e as duas construções são trabalho honesto.
     let stroke_bp = (path.stroke.is_some() && (open || fill_bp.is_none()))
         .then(|| build_contours(&cooked, None));
-    PathTess { fill_bp, stroke_bp }
+    PathTess {
+        fill_bp,
+        stroke_bp,
+        dash: dash_of(&cooked, path.stroke.as_ref()),
+    }
+}
+
+/// O tracejado AJUSTADO deste caminho cozido — `None` sem traço ou sem tracejado.
+///
+/// ⚠️ Mede o COZIDO (um Trim muda o comprimento) e só mede quando há tracejado: a medição é
+/// um `arclen` por segmento, e uma linha contínua não tem o que ajustar.
+pub(crate) fn dash_of(cooked: &VecPath, stroke: Option<&StrokeSpec>) -> Option<[f64; 2]> {
+    ph2d_vec_scene::dash_fit::dash_lengths_for(cooked, stroke?)
 }
 
 /// Desenha UM path já posicionado — o `transform` leva a geometria dele à tela. Fill primeiro,
@@ -516,14 +538,18 @@ pub(crate) fn draw_stroke_with(
                     // tesselação não remove — e a 160k estrelas era metade do que sobrava (byte-
                     // idêntico: um clone e o original encodam os mesmos bytes no Vello).
                     Cow::Borrowed(_) => {
-                        target
-                            .inner_mut()
-                            .stroke(&kurbo_stroke(&s), transform, &brush, None, bp);
+                        target.inner_mut().stroke(
+                            &kurbo_stroke(&s, tess.dash),
+                            transform,
+                            &brush,
+                            None,
+                            bp,
+                        );
                     }
                     Cow::Owned(p) => {
                         let line_bp = build_bezpath(&p);
                         target.inner_mut().stroke(
-                            &kurbo_stroke(&s),
+                            &kurbo_stroke(&s, tess.dash),
                             transform,
                             &brush,
                             None,
@@ -567,7 +593,7 @@ pub use overlays::{draw_overlays, overlay_transform};
 
 /// `StrokeSpec` → `kurbo::Stroke` (ponta/junção + dash). Larguras/dashes ficam em
 /// world-units; o `transform` do render escala p/ screen.
-pub(crate) fn kurbo_stroke(s: &StrokeSpec) -> Stroke {
+pub(crate) fn kurbo_stroke(s: &StrokeSpec, dash: Option<[f64; 2]>) -> Stroke {
     let cap = match s.cap {
         LineCap::Butt => Cap::Butt,
         LineCap::Round => Cap::Round,
@@ -581,7 +607,10 @@ pub(crate) fn kurbo_stroke(s: &StrokeSpec) -> Stroke {
     let stroke = Stroke::new(s.width).with_caps(cap).with_join(join);
     // Os comprimentos vêm do `StrokeSpec` (que guarda MÚLTIPLOS da largura) — porta única,
     // porque o Outline Stroke assa o mesmo tracejado com outra versão da kurbo.
-    match s.dash_lengths() {
+    // ⚠️ **O tracejado chega JÁ AJUSTADO ao comprimento do caminho** — quem o mede é a
+    // [`ph2d_vec_scene::dash_fit`], a porta única que o Outline Stroke também usa. Ler o
+    // `s.dash_lengths()` cru aqui poria de volta a emenda visível na junção do contorno.
+    match dash {
         Some(d) => stroke.with_dashes(0.0, d),
         None => stroke,
     }

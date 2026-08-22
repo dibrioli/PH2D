@@ -442,3 +442,43 @@ fn the_sweep_keeps_what_this_frame_asked_for() {
         );
     }
 }
+
+/// **O TRACEJADO DE UMA FORMA FECHA A VOLTA** — a emenda que o Enio apontou (2026-08-22).
+///
+/// ⚠️ **O gate é sobre a forma REAL do produto**, não sobre a lei pura (essa tem gate na
+/// `ph2d-vec-scene`): mede o retângulo que o `source.shape` de facto cozinha, com o traço e o
+/// tracejado que a cena `=76` autora, e exige que o padrão ajustado caiba um número INTEIRO
+/// de vezes no perímetro. Um traço curto encostado a um longo na quina é o que sobra quando
+/// não cabe.
+#[test]
+fn a_dashed_shape_closes_its_loop_without_a_seam() {
+    let path = build_shape_path(&ShapeParams::read(|n: &str| match n {
+        param::KIND => 3.0, // Rectangle
+        param::SIZE => 1.3,
+        param::ASPECT => 0.62,
+        param::CORNER => 0.22,
+        param::STROKE_WIDTH => 0.1,
+        param::DASH => 2.5,
+        param::DASH_GAP => 2.0,
+        other => manifest_default(other),
+    }));
+    let cooked = path.cooked();
+    let (total, closed) =
+        ph2d_vec_scene::dash_fit::longest_contour(&cooked).expect("o retangulo tem contorno");
+    assert!(closed, "e' fechado");
+    let d = ph2d_vec_scene::dash_fit::dash_lengths_for(&cooked, path.stroke.as_ref().unwrap())
+        .expect("ha' tracejado");
+    let n = total / (d[0] + d[1]);
+    assert!(
+        (n - n.round()).abs() < 1e-9,
+        "o padrao tem de fechar a volta: cabem {n} periodos em {total}"
+    );
+    // E o controle: SEM ajuste o padrão NÃO fecha — é o defeito, medido, para que este gate
+    // não fique verde num mundo onde o ajuste é a identidade.
+    let raw = path.stroke.as_ref().unwrap().dash_lengths().expect("cru");
+    let n_raw = total / (raw[0] + raw[1]);
+    assert!(
+        (n_raw - n_raw.round()).abs() > 1e-3,
+        "esta fixture tem de ter emenda SEM o ajuste, senao nao prova nada: {n_raw}"
+    );
+}

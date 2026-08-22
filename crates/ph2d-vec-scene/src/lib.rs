@@ -136,6 +136,10 @@ pub mod effect;
 /// **Trim Path** — o primeiro efeito da pilha (o *draw-on*). Módulo irmão de `effect`, e a
 /// matemática dele não conhece a pilha: é isso que mantém aberto o caminho de embrulhá-la
 /// num nó um dia (ADR-0132 §4).
+/// **O AJUSTE do tracejado ao caminho** — o período estica o mínimo para caber um número
+/// inteiro de vezes, e a emenda do contorno fechado deixa de se ver (Enio, 2026-08-22).
+/// Porta única: o renderer e o Outline Stroke têm de concordar sobre quanto mede um traço.
+pub mod dash_fit;
 pub mod fx_trim;
 
 /// **Zig Zag / Roughen** — o 2º efeito da pilha, e a prova de que a espinha (ADR-0132) faz o

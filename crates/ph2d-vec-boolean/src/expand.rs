@@ -141,7 +141,12 @@ fn tolerance(bez: &BezPath) -> f64 {
 }
 
 /// A caneta da LINHA: largura, ponta, junção e tracejado do estilo.
-fn line_pen(s: &StrokeSpec) -> Stroke {
+///
+/// ⚠️ **O tracejado é AJUSTADO ao caminho que vai ser traçado** (`ph2d_vec_scene::dash_fit`) —
+/// a MESMA porta que o renderer usa. Se um ajustasse e o outro não, a forma assada sairia com
+/// o tracejado noutra cadência que a desenhada; e sem ajuste nenhum a emenda do contorno
+/// fechado fica à vista (Enio, 2026-08-22).
+fn line_pen(line: &VecPath, s: &StrokeSpec) -> Stroke {
     let pen = Stroke::new(s.width)
         .with_caps(match s.cap {
             LineCap::Butt => Cap::Butt,
@@ -151,7 +156,7 @@ fn line_pen(s: &StrokeSpec) -> Stroke {
         .with_join(join_of(s.join));
     // Os comprimentos vêm do `StrokeSpec` — a MESMA porta que o renderer usa, senão o
     // tracejado assado sairia noutra cadência que o desenhado.
-    match s.dash_lengths() {
+    match ph2d_vec_scene::dash_fit::dash_lengths_for(line, s) {
         Some(d) => pen.with_dashes(0.0, d),
         None => pen,
     }
@@ -270,7 +275,7 @@ pub fn outline_stroke(path: &VecPath) -> Vec<VecPath> {
     for piece in stroke_plan(path, &s) {
         let region = match piece {
             StrokePiece::Line { path: p } => {
-                penned(&to_bez_with(&p, Closing::AsDrawn), &line_pen(&s))
+                penned(&to_bez_with(&p, Closing::AsDrawn), &line_pen(&p, &s))
             }
             // A caneta do símbolo é crua e sólida — ver `StrokePiece::Symbol`.
             StrokePiece::Symbol { path: p } => {

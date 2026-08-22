@@ -2161,6 +2161,84 @@ tecla **passa adiante** em vez de ser engolida.
 
 ---
 
+## §28 — W27: a SELEÇÃO é o sujeito do gesto — e o pivô é o meio dela (22/08)
+
+> Escolher duas peças na Hierarquia acendia as duas, e arrastar movia **uma**. A fileira de operações
+> contava com a seleção múltipla desde a **W9** (*"embrulhar irmãos numa nova operação"*); o gizmo
+> nunca soube dela. *Duas linhas acesas, uma a andar, lê-se como o gizmo estar partido.*
+
+### §28.1 — ⭐ A lei nova CONTÉM a antiga, e é isso que a torna segura
+
+Rodar e escalar passaram a aceitar um **pivô**
+([`rotate_world_about`](../../crates/ph2d-field-ecs/src/edit.rs) / `scale_about`) — e com o pivô em
+cima da origem do nó, a parcela de translação sai **exactamente zero**: o resultado é byte-a-byte o
+de antes. Não há um ramo *"se for um só"*; há uma lei mais geral cujo caso particular é a antiga, e
+um gate (`with_one_node_the_law_is_the_old_one`) que o prende.
+
+⚠️ **Orbitar é TRANSLADAR**, e é por isso que as duas se escrevem com as portas que já existiam — a
+orientação por `rotate_world`, a posição por `translate_world`. Uma terceira conta de pose divergiria
+das outras duas no dia em que a hierarquia mudasse de forma.
+
+### §28.2 — ⭐ O PIVÔ SOBREVIVE AO GESTO QUE ELE APLICA
+
+O pivô é recalculado a cada quadro a partir das origens (**uma** função, usada tanto pelo gizmo como
+pelo gesto — duas contas de *"onde está o pivô"* fariam a peça girar em torno de um ponto que não é
+aquele onde as argolas estão desenhadas). Mas o gesto **move as origens**.
+
+A propriedade que salva o desenho: **rodar e escalar em torno do centróide preservam o centróide**.
+Se ela não valesse, um arrasto contínuo descreveria uma **espiral** em vez de um arco — e o defeito só
+apareceria num gesto longo. Ela é matemática, mas a implementação pode parti-la: por isso está
+**medida** (`the_pivot_survives_the_motion_it_applies`, três gestos encadeados) e não escrita num
+comentário.
+
+### §28.3 — ⚠️ Um filho de outro escolhido NÃO anda duas vezes
+
+O defeito clássico de mover uma seleção: com o grupo **e** uma peça dele acesos, a peça recebe o gesto
+*e* herda o do grupo pela hierarquia — anda o dobro, e só ela. `ph2d_field_ecs::top_level` deixa
+passar só o topo de cada ramo, **preservando a ordem de entrada** (quem chama depende dela para saber
+quem é o principal).
+
+⚠️ **Quem está agarrado entra sempre**, mesmo que a seleção do app já não o contenha: o gesto foi
+começado nele e o `Grip` congelou-o.
+
+### §28.4 — O que ficou como estava, de propósito
+
+| | decisão |
+|---|---|
+| os **eixos** do gizmo | continuam a ser os do **principal** — é o que mantém o seletor Global/Local a significar alguma coisa numa seleção (o «Local» de um conjunto é o do objeto ativo, como em todo modelador) |
+| o **pivô** | a média das **origens**, não o centro das caixas: a caixa de um campo implícito custa uma varredura, e o que o artista agarra é o que ele vê — as setas estão sobre as origens |
+| a **identidade** do arrasto | a do principal: é ela que o `Grip` congela |
+
+### §28.5 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| o gesto volta a mover só o principal (**o defeito**) | `a_drag_moves_every_selected_node` |
+| o filho de um escolhido anda duas vezes | `a_child_of_a_selected_node_does_not_move_twice` |
+| o giro ignora o pivô | `rotating_a_selection_swings_them_around_the_shared_pivot` |
+| o tamanho ignora o pivô | `scaling_a_selection_spreads_them_from_the_shared_pivot` |
+| o pivô passa a ser o do principal | `the_gizmo_sits_at_the_middle_of_the_selection` |
+| rodar **um** objeto tira-o do sítio | `with_one_node_the_law_is_the_old_one` |
+
+### §28.6 — ⚠️ Um pedágio de ambiente, e o diagnóstico enganava
+
+Uma corrida de `cargo test -p ph2d-host-desktop <filtro>` morreu com `mold: failed to write to an
+output file. Disk full?` e `clang: Bus error`. **O disco tinha 435 GB livres** — a mensagem é do
+linker a falhar num pico de recursos ao ligar ~200 binários de teste de integração de uma vez. A cura
+é `--bin ph2d-host-desktop`: os gates deste módulo vivem todos no binário de unidade, e compilar os
+alvos de integração para os correr é trabalho que ninguém pediu. *É a irmã da lição já registada em
+[`feedback_a_ship_x_can_be_the_environment_not_the_code`](../../project-memory/feedback_a_ship_x_can_be_the_environment_not_the_code.md):
+um `✗` pode ser do ambiente — e a mensagem dele pode nomear o recurso errado.*
+
+### §28.7 — ⏸️ O que fica aberto
+
+- **O pivô continua a ser derivado**, nunca escolhido: o *cursor 3D* do Blender (pousar o pivô num
+  ponto qualquer) é produto, e entra com a UI que o põe lá.
+- A seleção múltipla **não tem gesto de canvas**: escolhe-se na Hierarquia com `Ctrl`. Um laço de
+  seleção na janela 3D é wave própria.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -2192,7 +2270,8 @@ tecla **passa adiante** em vez de ser engolida.
 - ✅ **digitar o número durante o arrasto FECHOU na W26** (§27) — a ficha passou a aceitar, o número
   é o **total** e `Esc` desfaz o gesto inteiro. ⏸️ Fica: escolher o eixo por tecla (exige gesto modal)
   e contas na entrada
-- ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
-  e entra com a UI que o escolhe
+- ✅ **o gesto passou a ser da SELEÇÃO INTEIRA na W27** (§28), e com ela o **pivô do centro da
+  seleção**. ⏸️ Fica o pivô **escolhido** (o cursor 3D do Blender), que é produto e pede a UI que o
+  põe lá — e um laço de seleção na janela 3D (hoje escolhe-se na Hierarquia com `Ctrl`)
 - ✅ **perspectiva FECHOU** na W15 (§16) — entrou num sítio, como a nota previa, e revelou que o
   raio era construído em dois. `Numpad5` alterna as lentes

@@ -6,7 +6,7 @@
 //! que a peça recusa, e o artista veria o controle parar sem explicação.
 
 use bevy_ecs::entity::Entity;
-use bevy_ecs::hierarchy::Children;
+use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::world::World;
 use ph2d_field::xform::{
     quat_axis_angle, quat_conj, quat_mul, quat_normalize, quat_rotate, set_rotation_degree,
@@ -499,6 +499,90 @@ pub fn rotate_world(world: &mut World, entity: Entity, axis: [f32; 3], angle: f3
     if let Some(mut pose) = world.get_mut::<FieldPose>(entity) {
         pose.xform.rotation = quat_normalize(quat_mul(sandwich, pose.xform.rotation));
     }
+}
+
+/// ⭐ **Roda um nó em torno de um PIVÔ que não é o dele** — o que uma seleção de vários exige.
+///
+/// ⚠️ **Ela CONTÉM a lei antiga em vez de a duplicar**, e essa é a propriedade que a torna segura:
+/// com o pivô em cima da origem do nó, a translação sai exactamente zero e o resultado é
+/// byte-a-byte o de [`rotate_world`]. Não há um caso especial para "um só nó" — há uma lei mais
+/// geral cujo caso particular é o antigo.
+///
+/// ⚠️ **Orbitar é TRANSLADAR**, e é por isso que isto se escreve com as duas portas que já existem:
+/// a orientação por [`rotate_world`], a posição por [`translate_world`]. Uma terceira conta de pose
+/// aqui divergiria das outras duas no dia em que a hierarquia mudasse de forma.
+pub fn rotate_world_about(
+    world: &mut World,
+    entity: Entity,
+    axis: [f32; 3],
+    angle: f32,
+    pivot: [f32; 3],
+) {
+    if !angle.is_finite() || angle == 0.0 || !pivot.iter().all(|v| v.is_finite()) {
+        return;
+    }
+    let before = crate::world_xform(world, entity).translation;
+    rotate_world(world, entity, axis, angle);
+    let arm = [
+        before[0] - pivot[0],
+        before[1] - pivot[1],
+        before[2] - pivot[2],
+    ];
+    let spun = quat_rotate(quat_axis_angle(axis, angle), arm);
+    translate_world(
+        world,
+        entity,
+        [
+            pivot[0] + spun[0] - before[0],
+            pivot[1] + spun[1] - before[1],
+            pivot[2] + spun[2] - before[2],
+        ],
+    );
+}
+
+/// ⭐ **Escala um nó em torno de um PIVÔ que não é o dele** — a irmã de [`rotate_world_about`], com
+/// a mesma propriedade: pivô na origem do nó ⇒ byte-a-byte o [`scale_by`] de sempre.
+pub fn scale_about(world: &mut World, entity: Entity, factor: f32, pivot: [f32; 3]) {
+    if !factor.is_finite() || factor <= 0.0 || !pivot.iter().all(|v| v.is_finite()) {
+        return;
+    }
+    let before = crate::world_xform(world, entity).translation;
+    scale_by(world, entity, factor);
+    translate_world(
+        world,
+        entity,
+        [
+            (before[0] - pivot[0]) * (factor - 1.0),
+            (before[1] - pivot[1]) * (factor - 1.0),
+            (before[2] - pivot[2]) * (factor - 1.0),
+        ],
+    );
+}
+
+/// ⭐ **Quem, de uma seleção, é o TOPO do seu ramo** — a lista que um gesto pode mover sem aplicar
+/// duas vezes ao mesmo objeto.
+///
+/// ⚠️ **É o defeito clássico de mover uma seleção**: com um pai e um filho ambos escolhidos, o
+/// filho recebe o gesto **e** herda o do pai pela hierarquia — ele anda o dobro, e só ele. Um
+/// artista que escolhe um grupo e uma peça dentro dele não está a pedir isso.
+///
+/// A ordem da entrada é preservada — quem chama depende dela para saber quem é o principal.
+#[must_use]
+pub fn top_level(world: &World, selection: &[Entity]) -> Vec<Entity> {
+    selection
+        .iter()
+        .copied()
+        .filter(|e| {
+            let mut up = world.get::<ChildOf>(*e).map(|c| c.0);
+            while let Some(p) = up {
+                if selection.contains(&p) {
+                    return false;
+                }
+                up = world.get::<ChildOf>(p).map(|c| c.0);
+            }
+            true
+        })
+        .collect()
 }
 
 /// ⭐ **Escala um nó por um fator UNIFORME.**

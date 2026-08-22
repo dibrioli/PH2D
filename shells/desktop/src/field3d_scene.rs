@@ -52,28 +52,16 @@ pub(crate) fn ecs_bridge(
             s.pending_pick.take(),
         )
     })?;
-    // ⭐ **O arrasto do gizmo entra AQUI**, antes do retrato e do cozimento, pela mesma razão que os
-    // intents do painel: o mundo é a verdade e este é o único sítio que a escreve.
-    if let Some((bits, motion)) = pending {
-        let entity = bevy_ecs::entity::Entity::from_bits(bits);
-        let world = sim.world_mut();
-        match motion {
-            crate::field3d_gizmo::Motion::Translate(d) => {
-                ph2d_field_ecs::translate_world(world, entity, d);
-            }
-            crate::field3d_gizmo::Motion::Rotate { axis, angle } => {
-                ph2d_field_ecs::rotate_world(world, entity, axis, angle);
-            }
-            crate::field3d_gizmo::Motion::Scale(f) => {
-                ph2d_field_ecs::scale_by(world, entity, f);
-            }
-        }
-    }
     let chosen: Vec<bevy_ecs::entity::Entity> = selected
         .iter()
         .chain(extras.iter())
         .map(|b| bevy_ecs::entity::Entity::from_bits(*b))
         .collect();
+    // ⭐ **O arrasto do gizmo entra AQUI**, antes do retrato e do cozimento, pela mesma razão que os
+    // intents do painel: o mundo é a verdade e este é o único sítio que a escreve.
+    if let Some((bits, motion)) = pending {
+        apply_motion(sim, bits, &chosen, motion);
+    }
     let (cooked, born) = sync_scene_and_birth(sim, seed.as_ref(), &chosen, ms);
     // ⭐ **O clique é resolvido AQUI**, e não no ponteiro: a pergunta *"de quem é este ponto?"*
     // precisa do mundo, e o ponteiro corre fora do quadro.
@@ -82,7 +70,7 @@ pub(crate) fn ecs_bridge(
     // e os dois só coincidem no primeiro quadro de uma peça — onde a ordem errada faria o primeiro
     // clique não pegar.
     let picked = pick.and_then(|px| resolve_pick(sim, cooked.as_ref(), px));
-    let anchor = anchor_for(sim, selected);
+    let anchor = anchor_for(sim, selected, &chosen);
     with_smoke(|s| {
         s.gizmo = anchor;
         // ⚠️ Só se escreve quando MUDOU: atribuir todo quadro faria o documento parecer novo e
@@ -92,6 +80,84 @@ pub(crate) fn ecs_bridge(
         }
     });
     picked.or(born)
+}
+
+/// ⭐ **O gesto vale para a SELEÇÃO INTEIRA** (W27), em torno do pivô que o gizmo mostra.
+///
+/// ⚠️ **O defeito que isto fecha:** a seleção deste módulo é a do app (clicar na Hierarquia com
+/// `Ctrl` escolhe vários, e a fileira de operações já contava com isso desde a W9) — e o arrasto
+/// movia **um**. Duas linhas acesas, uma a andar: o artista lê aquilo como o gizmo estar partido.
+///
+/// ⚠️ **O pivô é o do GIZMO, não o de cada nó**, e é o que faz um giro girar o conjunto em vez de
+/// cada peça sobre si mesma. Com um nó só, o pivô **é** a origem dele e as duas leis coincidem
+/// byte-a-byte (ver [`ph2d_field_ecs::rotate_world_about`]) — não há caso especial.
+fn apply_motion(
+    sim: &mut SimWorld,
+    primary: u64,
+    chosen: &[bevy_ecs::entity::Entity],
+    motion: crate::field3d_gizmo::Motion,
+) {
+    let world = sim.world_mut();
+    let primary = bevy_ecs::entity::Entity::from_bits(primary);
+    // ⚠️ **Quem está agarrado entra sempre**, mesmo que a seleção do app já não o contenha: o gesto
+    // foi começado nele, e o `Grip` congelou-o.
+    let mut all: Vec<bevy_ecs::entity::Entity> = vec![primary];
+    all.extend(chosen.iter().copied().filter(|e| *e != primary));
+    // ⚠️ E um filho de outro escolhido **não anda duas vezes** — ver `top_level`.
+    let targets = ph2d_field_ecs::top_level(world, &all);
+    let pivot = selection_pivot(world, &targets);
+    for e in targets {
+        match motion {
+            crate::field3d_gizmo::Motion::Translate(d) => {
+                ph2d_field_ecs::translate_world(world, e, d);
+            }
+            crate::field3d_gizmo::Motion::Rotate { axis, angle } => {
+                ph2d_field_ecs::rotate_world_about(world, e, axis, angle, pivot);
+            }
+            crate::field3d_gizmo::Motion::Scale(f) => {
+                ph2d_field_ecs::scale_about(world, e, f, pivot);
+            }
+        }
+    }
+}
+
+/// A mesma porta, aberta para os gates da W27 — o caminho real (`ecs_bridge`) pergunta pelo estado
+/// do smoke, que um teste não encena.
+#[cfg(test)]
+pub(crate) fn apply_motion_for_test(
+    sim: &mut SimWorld,
+    primary: u64,
+    chosen: &[bevy_ecs::entity::Entity],
+    motion: crate::field3d_gizmo::Motion,
+) {
+    apply_motion(sim, primary, chosen, motion);
+}
+
+#[cfg(test)]
+#[path = "field3d_selection_tests.rs"]
+mod selection_tests;
+
+/// **Onde o gizmo pousa numa seleção**: a média das origens de mundo dos escolhidos.
+///
+/// ⚠️ A média das ORIGENS, e não o centro das caixas: a caixa de um campo implícito custa uma
+/// varredura, e o que o artista agarra é o que ele vê — as setas estão sobre as origens.
+fn selection_pivot(
+    world: &bevy_ecs::world::World,
+    targets: &[bevy_ecs::entity::Entity],
+) -> [f32; 3] {
+    let mut sum = [0.0f32; 3];
+    let mut n = 0.0f32;
+    for e in targets {
+        let t = ph2d_field_ecs::world_xform(world, *e).translation;
+        for k in 0..3 {
+            sum[k] += t[k];
+        }
+        n += 1.0;
+    }
+    if n == 0.0 {
+        return [0.0; 3];
+    }
+    [sum[0] / n, sum[1] / n, sum[2] / n]
 }
 
 /// Resolve um clique guardado: `Some(Entity)` no que estiver sob ele, `Some(Clear)` no fundo.
@@ -366,16 +432,30 @@ pub(crate) use panel::{new_shape_size, op_at, publish_snapshot, shape_at};
 ///
 /// Devolve `None` quando o selecionado não é um nó de modelagem — um sprite selecionado não pode
 /// fazer aparecer um gizmo 3D em cima dele.
-fn anchor_for(sim: &mut SimWorld, selected: Option<u64>) -> Option<crate::field3d_gizmo::Anchor> {
+fn anchor_for(
+    sim: &mut SimWorld,
+    selected: Option<u64>,
+    chosen: &[bevy_ecs::entity::Entity],
+) -> Option<crate::field3d_gizmo::Anchor> {
     let bits = selected?;
     let frame = with_smoke(|s| s.gizmo_frame).unwrap_or_default();
     let entity = bevy_ecs::entity::Entity::from_bits(bits);
     let world = sim.world_mut();
     world.get::<FieldNode>(entity)?;
     let pose = ph2d_field_ecs::world_xform(world, entity);
+    // ⭐ **Com vários escolhidos, o gizmo pousa no MEIO deles** (W27) — e é esse ponto que o giro e
+    // o tamanho usam como pivô. Com um só, a média é a própria origem: a lei antiga é o caso
+    // particular desta, e não um ramo à parte.
+    //
+    // ⚠️ Os **eixos** continuam a ser os do principal: é o que mantém o seletor Global/Local a
+    // significar alguma coisa numa seleção (o «Local» de um conjunto é o do objeto ativo, que é o
+    // que todo modelador faz).
+    let mut all: Vec<bevy_ecs::entity::Entity> = vec![entity];
+    all.extend(chosen.iter().copied().filter(|e| *e != entity));
+    let targets = ph2d_field_ecs::top_level(world, &all);
     Some(crate::field3d_gizmo::Anchor {
         entity: bits,
-        origin: pose.translation,
+        origin: selection_pivot(world, &targets),
         // ⚠️ Os eixos viajam **já resolvidos**: a lei do gizmo não sabe que existe uma escolha de
         // referencial, e quem a faz é quem tem a pose. Ver `Anchor::axes`.
         axes: frame.axes(pose.rotation),

@@ -2909,3 +2909,56 @@ O autor do solver de contagem **já libertou a parte dele em MIT**. Autores acad
 relicenciam a pedido com frequência. Pedir licença permissiva para o `CoMISo` e o
 `xfield_tracer` ao grupo do QuadWild é barato e resolveria de vez. ⚠️ **É decisão do
 Enio, não da linha.**
+
+---
+
+## 4-tritricies — ⭐⭐⭐ **O CAMPO É O CULPADO, E AGORA HÁ UM ALVO: `12°`**
+
+> Primeira colheita do gabarito (§4-duotricies). Sonda `my_field_against_the_oracle`,
+> **sobre a malha remalhada DELE** — a única diferença entre as colunas é o solver.
+
+### ⛔ O nosso campo é praticamente aleatório onde a peça tem relevo
+
+| peça | ⛔ o NOSSO | ⭐ o do ORÁCULO | aleatório | discordância (faces `≥ 30°`) |
+|---|---|---|---|---|
+| **com cristas** | ⛔ **24,3°** | ⭐ **12,1°** | 22,5° | 43,2 % |
+| **com bico** | ⛔ **22,9°** | ⭐ **11,4°** | 22,5° | 38,2 % |
+| enrugada | 14,8° | 12,4° | 22,5° | 34,6 % |
+| esfera lisa *(conf 0,04 — sem sinal)* | 23,0° | 21,6° | — | 29,6 % |
+
+⭐⭐ **Duas das peças ficam do lado errado do aleatório.** E isto é medido **à saída
+da própria fase**, sem traçado, sem quantização, sem montagem — *o diagnóstico deixa
+de depender de quatro fases a jusante.*
+
+⚠️ **A régua é a mesma da `follows_relief`, aplicada ao CAMPO** em vez da malha.
+⛔ E a primeira versão dela estava errada: dobrava com `45 − |45 − x|`, que vai a
+**negativo** acima de `90°` (o `acos` chega a `180°`). O sintoma foi um desvio médio
+de **`−33,9°`**. *Uma régua que sai do próprio contradomínio está errada antes de
+dizer o que quer que seja.*
+
+### ⭐⭐⭐ E com o alvo à mão, o peso do alinhamento escolhe-se sozinho
+
+Sonda `which_alignment_weight_matches_the_oracle_field` — o **relevo do nosso campo**
+contra o do oráculo, na malha dele:
+
+| peso | cristas (alvo 12,1°) | bico (alvo 11,4°) | enrugada (alvo 12,4°) | singularidades (cristas · bico · enrugada) |
+|---|---|---|---|---|
+| **`0`** (o que shipa) | ⛔ 24,3° | ⛔ 22,9° | 14,8° | 10 · 26 · 8 |
+| `0,01` | 15,6° | 15,0° | 12,0° | 12 · 22 · 8 |
+| `0,03` | 14,7° | 13,9° | 11,7° | 12 · 22 · 8 |
+| ⭐⭐ **`0,1`** | ⭐ **13,2°** | ⭐ **12,5°** | ⭐ **11,4°** | **12 · 29 · 8** |
+| `0,3` | 11,3° | 11,2° | 11,0° | 22 · 33 · 10 |
+| `1,0` | 9,7° | 10,5° | 9,9° | ⛔ 48 · 50 · 8 |
+| `3,0` | 8,1° | 7,9° | 8,1° | ⛔ 74 · 126 · 24 |
+
+⭐⭐ **`0,1` alcança o oráculo nas três, e o preço em singularidades é quase nulo**
+(`10 → 12`, `26 → 29`, `8 → 8`), com a soma dos índices sempre em `8`.
+
+⚠️ **E isto contradiz a varredura anterior**, que rejeitou pesos muito menores. A
+diferença é onde se mede: aquela media o **relevo da malha montada**, onde o campo, o
+traçado, a quantização e a montagem estão todos misturados — e por isso dava tabelas
+não-monótonas. *O peso de uma energia escolhe-se à saída da fase em que ela vive.*
+
+⇒ **O passo seguinte é correr a cadeia INTEIRA a `0,1`** nas nossas fixturas, com o
+que hoje já está curado (a semente do `θ`, a ponte do anel, a lei `scale`) — e ver se
+os gates do género e da aresta máxima aguentam o que o campo agora sabe fazer.

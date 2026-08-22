@@ -444,3 +444,9 @@ mod retopo_field_probes;
 #[cfg(test)]
 #[path = "sculpt3d_photo_probes.rs"]
 mod photo_probes;
+
+/// **As sondas do ORÁCULO** — a comparação fase a fase contra o gabarito que ele
+/// grava em disco — ver [`oracle_probes`].
+#[cfg(test)]
+#[path = "sculpt3d_oracle_probes.rs"]
+mod oracle_probes;

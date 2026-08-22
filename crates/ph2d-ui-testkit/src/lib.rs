@@ -286,6 +286,18 @@ impl MockPanelHost {
         }
     }
 
+    /// Mutable access às definições do projeto — unidade de leitura, `pixels_per_meter`, snaps.
+    ///
+    /// **Porque é que o testkit precisava disto:** havia `project()` (leitura) e não havia o par.
+    /// A conversão px↔m do Inspector lê `host.project().display_unit` e `pixels_per_meter`, por
+    /// isso um teste de costura só conseguia exercitá-la no default (`Meters`, onde a conversão é
+    /// a identidade) — ou seja, **só na metade em que ela não faz nada**. Os dois testes que
+    /// provavam o round-trip em pixels estão desligados desde 2026-06, e esta ausência é a razão
+    /// mecânica: não havia porta por onde pôr o projeto em `Pixels`.
+    pub fn project_mut(&mut self) -> &mut ProjectSettings {
+        &mut self.project
+    }
+
     /// Set a registered **checkbox**'s stored value — the sibling of [`Self::set_toggle_on`] for
     /// the other of the two boolean widgets. Panics if `id` is absent or not a `Checkbox`.
     ///

@@ -234,16 +234,6 @@ fn hero_topbar_save_click_opens_save_menu() {
     ));
 }
 
-// ADR-0029 Phase C.2: Hierarchy moved to a typed panel that lives in
-// `ph2d-panel-hierarchy`. `hero.apply_event(Click(HIER_PLAYER))`
-// would consume only when the typed registry holds the Hierarchy
-// panel; editor-core's `ensure_panel_registry` seeds only the legacy
-// registry. Test ported to
-// `crates/ph2d-panel-hierarchy/tests/hierarchy_apply_event.rs`.
-#[cfg(any())]
-#[test]
-fn hero_apply_event_hierarchy_click_changes_selection() {}
-
 #[test]
 fn hero_apply_event_unrelated_click_returns_false() {
     crate::test_support::ensure_panel_registry();
@@ -327,87 +317,6 @@ fn gallery_publishes_scroll_bounds_after_paint() {
         after > before,
         "wheel down on gallery should increase panel_scroll \
          (before={before}, after={after})"
-    );
-}
-
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn inspector_position_value_displayed_in_pixels_round_trips_to_meters() {
-    crate::test_support::ensure_panel_registry();
-    // Sim position = 1.5 m; project in Pixels mode (default 100
-    // px/m) → store NumberInput shows 150. Editing to 200 and
-    // committing should publish 2.0 m (200 / 100) into
-    // `pending_transform_edit.translation`.
-    let mut hero = HeroScreen::new(NodeId(1));
-    hero.inspector.visible = true;
-    hero.project.display_unit = crate::project::DisplayUnit::Pixels;
-    hero.inspector.transform = Some(InspectorTransformInfo {
-        entity_bits: 1,
-        translation: [1.5, 0.0],
-        rotation_rad: 0.0,
-        scale: [1.0, 1.0],
-        skew_rad: [0.0, 0.0],
-    });
-    // Paint once so sync_inspector_from_snapshots seeds the store
-    // with the *converted* value (150 px, not 1.5 m).
-    let mut scene = VectorScene::new();
-    let mut text = TextSystem::without_system_fonts();
-    paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
-    let stored_x = hero
-        .store
-        .number_value(ids::INSP_TRANSFORM_POS_X)
-        .expect("Position X must be seeded");
-    assert!(
-        (stored_x - 150.0).abs() < 1e-3,
-        "Position X should be displayed in pixels (150), got {stored_x}"
-    );
-    // User edits 150 → 200 (in pixels), commits.
-    hero.store
-        .set_number_value(ids::INSP_TRANSFORM_POS_X, 200.0);
-    let _ = hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X));
-    let pending = hero
-        .bus
-        .drain()
-        .find_map(|a| match a {
-            crate::action_bus::EditorAction::InspectorTransformEdit(info) => Some(info),
-            _ => None,
-        })
-        .expect("commit must publish InspectorTransformEdit");
-    assert!(
-        (pending.translation[0] - 2.0).abs() < 1e-3,
-        "200 px should commit as 2.0 m (200 / 100 px/m), got {} m",
-        pending.translation[0]
-    );
-}
-
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn inspector_position_meters_mode_displays_raw_meters() {
-    crate::test_support::ensure_panel_registry();
-    // Sanity: default Meters mode is a no-op — store displays the
-    // raw meter value and commit is identity.
-    let mut hero = HeroScreen::new(NodeId(1));
-    hero.inspector.visible = true;
-    assert_eq!(
-        hero.project.display_unit,
-        crate::project::DisplayUnit::Meters
-    );
-    hero.inspector.transform = Some(InspectorTransformInfo {
-        entity_bits: 1,
-        translation: [1.5, 0.0],
-        rotation_rad: 0.0,
-        scale: [1.0, 1.0],
-        skew_rad: [0.0, 0.0],
-    });
-    let mut scene = VectorScene::new();
-    let mut text = TextSystem::without_system_fonts();
-    paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);
-    let stored_x = hero.store.number_value(ids::INSP_TRANSFORM_POS_X).unwrap();
-    assert!(
-        (stored_x - 1.5).abs() < 1e-3,
-        "Meters mode should display raw value 1.5, got {stored_x}"
     );
 }
 
@@ -907,316 +816,18 @@ fn click_on_image_tools_pill_toggles_mode() {
     assert!(!hero.image_edit.mode_on);
 }
 
-/// M14.A: a `ValueChanged` event on any Transform NumberInput
-/// pushes a fresh `EditorAction::InspectorTransformEdit` onto the
-/// bus (Wave 2.5 PR 11.8d — was `pending_transform_edit`), taking
-/// the current store values for every axis (X/Y/Rot/Scale-X/Scale-Y)
-/// plus the selected entity id from `inspector_transform`.
-/// Rotation is converted from degrees (UI) back to radians
-/// (canonical) at commit.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn transform_field_commit_raises_pending_with_selection() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    // No selection → no push even on commit (avoids silently
-    // editing a non-existent entity).
-    hero.inspector.transform = None;
-    assert!(!hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X)));
-    assert!(hero.bus.is_empty());
-
-    // With selection + custom store values → push mirrors the
-    // store snapshot exactly. We seed the store with non-identity
-    // numbers and verify the commit assembles them all.
-    hero.inspector.transform = Some(InspectorTransformInfo {
-        entity_bits: 0xCAFE_F00D,
-        translation: [0.0, 0.0],
-        rotation_rad: 0.0,
-        scale: [1.0, 1.0],
-        skew_rad: [0.0, 0.0],
-    });
-    hero.store.set_number_value(ids::INSP_TRANSFORM_POS_X, 1.5);
-    hero.store
-        .set_number_value(ids::INSP_TRANSFORM_POS_Y, -2.25);
-    hero.store.set_number_value(ids::INSP_TRANSFORM_ROT, 90.0); // degrees
-    hero.store
-        .set_number_value(ids::INSP_TRANSFORM_SCALE_X, 2.0);
-    hero.store
-        .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, 0.5);
-    assert!(hero.apply_event(WidgetEvent::ValueChanged(ids::INSP_TRANSFORM_POS_X)));
-    let pending = hero
-        .bus
-        .drain()
-        .find_map(|a| match a {
-            EditorAction::InspectorTransformEdit(info) => Some(info),
-            _ => None,
-        })
-        .expect("pending populated");
-    assert_eq!(pending.entity_bits, 0xCAFE_F00D);
-    assert_eq!(pending.translation, [1.5, -2.25]);
-    // 90° → π/2 rad. `to_radians` is bit-deterministic (HR-5).
-    assert!((pending.rotation_rad - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
-    assert_eq!(pending.scale, [2.0, 0.5]);
-}
-
-/// M14.A: clicking the Reset-to-Identity button pushes an
-/// Identity-shaped `EditorAction::InspectorTransformEdit` (Wave
-/// 2.5 PR 11.8d — was `pending_transform_edit`). Same commit
-/// path as a field ValueChanged so the shell's queue-push code
-/// stays uniform.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn transform_reset_button_publishes_identity() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    hero.inspector.transform = Some(InspectorTransformInfo {
-        entity_bits: 0xBABE_0042,
-        translation: [10.0, 20.0],
-        rotation_rad: 1.0,
-        scale: [3.0, 3.0],
-        skew_rad: [0.0, 0.0],
-    });
-    // Even if the store has garbage in it, Reset always publishes
-    // pure identity — independent of buffer state.
-    hero.store.set_number_value(ids::INSP_TRANSFORM_POS_X, 99.0);
-    assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_TRANSFORM_RESET)));
-    let pending = hero
-        .bus
-        .drain()
-        .find_map(|a| match a {
-            EditorAction::InspectorTransformEdit(info) => Some(info),
-            _ => None,
-        })
-        .expect("pending populated");
-    assert_eq!(pending.entity_bits, 0xBABE_0042);
-    assert_eq!(pending.translation, [0.0, 0.0]);
-    assert_eq!(pending.rotation_rad, 0.0);
-    assert_eq!(pending.scale, [1.0, 1.0]);
-
-    // Without a selection, Reset is a no-op (consumes the click
-    // returning false → dispatcher walks; matches non-sprite
-    // Reimport behavior).
-    hero.inspector.transform = None;
-    assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_TRANSFORM_RESET)));
-    assert!(hero.bus.is_empty());
-}
-
-/// M14.D: Toggled on the Visibility checkbox pushes
-/// `EditorAction::InspectorVisibilityEdit` (Wave 2.5 PR 11.8d —
-/// was `pending_visibility_edit`) with the POST-toggle store
-/// value. Sequence: snapshot says visible=true → dispatch flipped
-/// Checkbox to Unchecked → apply_event reads Unchecked → push
-/// `visible: false`.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn visibility_toggle_publishes_pending_with_selection() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    // Selection that has a Transform component (we don't paint
-    // here, just exercise apply_event semantics).
-    hero.inspector.visibility = Some(InspectorVisibilityInfo {
-        entity_bits: 0xBABE_BEEF,
-        visible: true,
-    });
-    // Simulate the dispatch having toggled Checked → Unchecked.
-    if let Some(InteractiveState::Checkbox { value, .. }) =
-        hero.store.get_mut(ids::INSP_VISIBILITY_CHECK)
-    {
-        *value = crate::widget::CheckboxValue::Unchecked;
-    }
-    assert!(hero.apply_event(WidgetEvent::Toggled(ids::INSP_VISIBILITY_CHECK)));
-    let pending = hero
-        .bus
-        .drain()
-        .find_map(|a| match a {
-            EditorAction::InspectorVisibilityEdit(info) => Some(info),
-            _ => None,
-        })
-        .expect("pending populated");
-    assert_eq!(pending.entity_bits, 0xBABE_BEEF);
-    assert!(!pending.visible, "toggle should commit visible=false");
-}
-
-/// M14.C: Click on a Strategy button different from the current
-/// `source_kind` pushes `EditorAction::InspectorSpriteSourceChange`
-/// (Wave 2.5 PR 11.8d — was `pending_sprite_source_change`) with
-/// the requested kind. Same-kind click is consumed silently.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn strategy_click_raises_pending_when_kind_differs() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    hero.inspector.sprite = Some(InspectorSpriteInfo {
-        emissive: 0.0,
-        entity_bits: 0xC0FF_EE00,
-        world_size: [1.0, 1.0],
-        source_kind: InspectorSpriteSource::Atlas { key: 7 },
-        source_pixels: Some((256, 256)),
-        can_reimport: true,
-        flip_x: false,
-        flip_y: false,
-        opacity: 1.0,
-        tint_fill: false,
-        hframes: 1,
-        vframes: 1,
-        frame: 0,
-        tint: [1.0, 1.0, 1.0, 1.0],
-        self_tint: [1.0, 1.0, 1.0, 1.0],
-        per_corner_tint: [[1.0, 1.0, 1.0, 1.0]; 4],
-        region_enabled: false,
-        region_rect: [0.0, 0.0, 0.0, 0.0],
-        region_filter_clip: true,
-        centered: true,
-        offset: [0.0, 0.0],
-        selected_count: 1,
-        mixed: InspectorSpriteMixed::default(),
-    });
-    // Current = Atlas → click on Individual button publishes.
-    assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
-    let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(
-        drained,
-        vec![EditorAction::InspectorSpriteSourceChange {
-            entity_bits: 0xC0FF_EE00,
-            strategy: RequestedSpriteStrategy::Individual
-        }]
-    );
-
-    // Click on Atlas (already-current) is consumed but no push.
-    assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_ATLAS)));
-    assert!(hero.bus.is_empty());
-
-    // HandPacked → publishes too (shell decides to skip with toast).
-    assert!(hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_HANDPACKED)));
-    let drained: Vec<_> = hero.bus.drain().collect();
-    assert_eq!(
-        drained,
-        vec![EditorAction::InspectorSpriteSourceChange {
-            entity_bits: 0xC0FF_EE00,
-            strategy: RequestedSpriteStrategy::HandPacked
-        }]
-    );
-}
-
-/// M14.C: Without `inspector_sprite` (nothing selected), Strategy
-/// clicks are no-ops — apply_event returns false so the dispatcher
-/// keeps walking and the bus stays empty.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn strategy_click_no_pending_without_sprite_selection() {
-    crate::test_support::ensure_panel_registry();
-    let mut hero = HeroScreen::new(NodeId(1));
-    hero.inspector.sprite = None;
-    assert!(!hero.apply_event(WidgetEvent::Click(ids::INSP_RENDER_STRATEGY_INDIVIDUAL)));
-    assert!(hero.bus.is_empty());
-}
-
-/// M14.E: `TextChanged` on the editable entity-name field pushes
-/// `EditorAction::InspectorNameEdit` (Wave 2.5 PR 11.8d — was
-/// `pending_name_edit`) with the current store text. Multiple
-/// keystrokes within one frame each push their own variant; the
-/// shell drains them in push order.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn name_text_changed_publishes_pending_with_current_text() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    hero.inspector.name = Some(InspectorNameInfo {
-        entity_bits: 0xDEAD_BEEF,
-        name: "Old".to_string(),
-    });
-    // Simulate the dispatch having mutated the TextInput buffer
-    // to "Player" via a sequence of keystrokes.
-    if let Some(InteractiveState::TextInput { text, caret, .. }) =
-        hero.store.get_mut(ids::INSP_ENTITY_NAME)
-    {
-        text.clear();
-        text.push_str("Player");
-        *caret = text.len();
-    }
-    assert!(hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
-    let pending = hero
-        .bus
-        .drain()
-        .find_map(|a| match a {
-            EditorAction::InspectorNameEdit(info) => Some(info),
-            _ => None,
-        })
-        .expect("pending populated after TextChanged");
-    assert_eq!(pending.entity_bits, 0xDEAD_BEEF);
-    assert_eq!(pending.name, "Player");
-}
-
-/// M14.E: without an `inspector_name` snapshot (no selection),
-/// `TextChanged` is a no-op — apply_event returns false so the
-/// dispatcher keeps walking.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn name_text_changed_no_pending_without_selection() {
-    crate::test_support::ensure_panel_registry();
-    let mut hero = HeroScreen::new(NodeId(1));
-    hero.inspector.name = None;
-    assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
-    assert!(hero.bus.is_empty());
-}
-
-/// M14.E: TextChanged on the entity-name field with a selection
-/// pushes `EditorAction::InspectorNameEdit` (Wave 2.5 PR 11.8d).
-/// Without a selection, returns false and the bus stays empty.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn entity_name_text_changed_raises_pending_with_selection() {
-    crate::test_support::ensure_panel_registry();
-    use crate::action_bus::EditorAction;
-    let mut hero = HeroScreen::new(NodeId(1));
-    // Seed the TextInput buffer with what the user just typed.
-    if let Some(InteractiveState::TextInput { text, caret, .. }) =
-        hero.store.get_mut(ids::INSP_ENTITY_NAME)
-    {
-        *text = "Player Two".to_string();
-        *caret = text.len();
-    }
-    hero.inspector.name = Some(InspectorNameInfo {
-        entity_bits: 0xDEAD_F00D,
-    });
-    assert!(hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
-    let p = hero
-        .bus
-        .drain()
-        .find_map(|a| match a {
-            EditorAction::InspectorNameEdit(info) => Some(info),
-            _ => None,
-        })
-        .expect("pending populated");
-    assert_eq!(p.entity_bits, 0xDEAD_F00D);
-    assert_eq!(p.name, "Player Two");
-
-    // No selection → no push.
-    hero.inspector.name = None;
-    assert!(!hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
-    assert!(hero.bus.is_empty());
-}
-
 /// Audit #2 fix (MEDIUM): `paint_hero_screen` selection-change
 /// block resets the entity-name TextInput state to `Normal` (not
 /// just `text`/`caret`/`selection_anchor`). Otherwise the
 /// painter keeps drawing the focused chrome (caret + focus ring)
 /// on a field the user hasn't authored yet — same canonical
 /// cleanup dispatch.rs:1189 does on Blur.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+// ⏸️ POR MIGRAR. O destino EXISTE desde 2026-08-21:
+// `crates/ph2d-panel-inspector/tests/inspector_regression{,_sections}.rs`.
+// O que falta aqui é o que nenhum dos dois cobre: a troca de SELEÇÃO entre dois
+// quadros — publicar a entidade A, pintar, publicar a B, pintar, e afirmar que o
+// estado do campo de texto voltou a `Normal`. As tabelas novas exercitam UM
+// snapshot de cada vez, de propósito; esta é a costura ENTRE quadros.
 #[cfg(any())]
 #[test]
 fn selection_switch_resets_entity_name_input_state_to_normal() {
@@ -1273,7 +884,13 @@ fn selection_switch_resets_entity_name_input_state_to_normal() {
 /// Audit fix #7 (HIGH): clicking a strategy button resets the
 /// stored ButtonState to Normal so the painter's snapshot-driven
 /// `Pressed` pin is the single visual source of truth.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+// ⏸️ POR MIGRAR. O destino EXISTE (ver acima).
+// `seam_render_source.rs` já prova que cada botão de Strategy levanta a sua ação,
+// que clicar no ativo não age e que um Reimport desativado não age; e a onda 2
+// prova que nenhum deles age sem sprite publicada. O que continua sem prova é o
+// RESÍDUO VISUAL: um botão momentâneo que fica `Pressed` depois do clique. Só
+// `EqualizeCorners` repõe `ButtonState::Normal` hoje — se essa é a lei, ela vale
+// para os três de Strategy também, e a resposta é de produto antes de ser de teste.
 #[cfg(any())]
 #[test]
 fn strategy_click_resets_button_state_to_normal() {
@@ -1317,21 +934,6 @@ fn strategy_click_resets_button_state_to_normal() {
         hero.store.button_state(ids::INSP_RENDER_STRATEGY_ATLAS),
         Some(crate::widget::ButtonState::Normal),
     ));
-}
-
-/// M14.D: Toggled without an `inspector_visibility` snapshot
-/// (e.g. nothing selected) is a no-op — apply_event returns
-/// false so the dispatcher keeps walking and the bus stays
-/// empty.
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
-#[cfg(any())]
-#[test]
-fn visibility_toggle_no_pending_without_selection() {
-    crate::test_support::ensure_panel_registry();
-    let mut hero = HeroScreen::new(NodeId(1));
-    hero.inspector.visibility = None;
-    assert!(!hero.apply_event(WidgetEvent::Toggled(ids::INSP_VISIBILITY_CHECK)));
-    assert!(hero.bus.is_empty());
 }
 
 /// Clicking the Trim Transparency action pill pushes a generic
@@ -1453,7 +1055,11 @@ fn paint_left_rail_painter_mode_smoke() {
     assert!(hits.rect_for(crate::ids::TOOL_ROTATE).is_none());
 }
 
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+// ⏸️ POR MIGRAR, e NÃO subsumido — a distinção importa. Todos os testes das duas
+// tabelas novas pintam o painel do Inspector com snapshot publicado, portanto o
+// smoke ao NÍVEL DO PAINEL está coberto muitas vezes. O que este cobria é outra
+// coisa: `paint_hero_screen` — o ecrã inteiro, com chrome, layout e o painel lá
+// dentro. Migrá-lo para a crate do painel perderia exatamente a parte que ele mede.
 #[cfg(any())]
 #[test]
 fn paint_inspector_smoke_with_selection() {
@@ -1474,7 +1080,7 @@ fn paint_inspector_smoke_with_selection() {
     );
 }
 
-// ADR-0029 Phase C.1: disabled — migrate to crates/ph2d-panel-inspector/tests/inspector_regression.rs.
+// ⏸️ POR MIGRAR — o par do de cima, na metade da ausência (sem seleção).
 #[cfg(any())]
 #[test]
 fn paint_inspector_smoke_no_selection() {
@@ -1493,16 +1099,6 @@ fn paint_inspector_smoke_no_selection() {
         &store,
     );
 }
-
-// ADR-0029 Phase C.2: `paint_hierarchy` migrated to
-// `ph2d_panel_hierarchy::paint::paint`. A dev-dep on
-// `ph2d-panel-hierarchy` from `ph2d-editor-core` tests creates a
-// duplicate-crate cycle (panel-hierarchy → editor-core → panel-
-// hierarchy via dev-dep), so the smoke test moves to the panel
-// crate's integration tests (`crates/ph2d-panel-hierarchy/tests/`).
-#[cfg(any())]
-#[test]
-fn paint_hierarchy_smoke() {}
 
 #[test]
 fn paint_bottom_hud_smoke() {
@@ -1548,41 +1144,6 @@ fn stage_hierarchy_row_snapshot(hero: &mut HeroScreen, row: NodeId) {
     hero.store.close_context_menu();
 }
 
-// ADR-0029 Phase C.2: the next 5 `hier_menu_*` tests dispatch
-// `CTX_MENU_HIER_*` clicks through `hero.apply_event`, which routes
-// to the typed `HierarchyPanel`. Editor-core's `ensure_panel_registry`
-// only installs the legacy registry; the typed registry isn't
-// reachable from this crate's test target without creating the
-// dev-dep cycle described in `docs/HANDOFF_WAVE_8_PHASE_C2.md` §4.1.
-// Tests ported to
-// `crates/ph2d-panel-hierarchy/tests/hierarchy_context_menu.rs`.
-#[cfg(any())]
-#[test]
-fn hier_menu_duplicate_sets_pending_duplicate() {}
-
-#[cfg(any())]
-#[test]
-fn hier_menu_add_child_sets_pending_add_child() {}
-
-#[cfg(any())]
-#[test]
-fn hier_menu_reset_transform_sets_pending() {}
-
-#[cfg(any())]
-#[test]
-fn hier_menu_delete_sets_pending_delete() {}
-
-#[cfg(any())]
-#[test]
-fn hier_menu_click_without_snapshot_consumes_but_no_pending() {}
-
-// ADR-0029 Phase C.2: `HeroScreen::sync_from_hierarchy` moved to
-// `ph2d_panel_hierarchy::sync_from_hierarchy`; the test moves to
-// the panel crate's integration tests to avoid the dev-dep cycle.
-#[cfg(any())]
-#[test]
-fn hierarchy_row_click_raises_pending_for_live_entries() {}
-
 #[test]
 fn hierarchy_row_click_silent_for_fixture_only_rows() {
     crate::test_support::ensure_panel_registry();
@@ -1592,13 +1153,6 @@ fn hierarchy_row_click_silent_for_fixture_only_rows() {
     let _ = hero.apply_event(WidgetEvent::Click(ids::HIER_PLAYER));
     assert!(hero.bus.is_empty());
 }
-
-// ADR-0029 Phase C.2: ported to
-// `crates/ph2d-panel-hierarchy/tests/hierarchy_context_menu.rs`
-// (same rationale as the `hier_menu_*` block above).
-#[cfg(any())]
-#[test]
-fn hier_menu_one_action_per_drain() {}
 
 // ───────────── W3.E4: timeline segment preset menu (chrome side) ─────────────
 

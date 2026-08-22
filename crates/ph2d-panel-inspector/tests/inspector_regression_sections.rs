@@ -40,6 +40,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::PanelHost;
 use ph2d_editor_core::screens::hero::{
     BlendFieldEdit, InspectorBlendInfo, InspectorBlendMixed, InspectorNameInfo,
     InspectorSamplingInfo, InspectorSamplingMixed, InspectorTransformInfo, InspectorVisibilityInfo,
@@ -640,6 +641,14 @@ fn no_section_control_acts_without_its_snapshot() {
                 Stimulus::Click,
             ),
             ("Entity Name", ids::INSP_ENTITY_NAME, Stimulus::Text("Hero")),
+            // A metade de ausência da §Render Source: `seam_render_source.rs` prova que cada
+            // botão de Strategy levanta a SUA ação e que clicar no ativo não age, mas não que
+            // ele se cala sem sprite nenhuma selecionada.
+            (
+                "Strategy Individual",
+                ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+                Stimulus::Click,
+            ),
         ])
         .collect();
 
@@ -659,6 +668,7 @@ fn no_section_control_acts_without_its_snapshot() {
                         | EditorAction::InspectorVisibilityEdit(_)
                         | EditorAction::InspectorTransformEdit(_)
                         | EditorAction::InspectorNameEdit(_)
+                        | EditorAction::InspectorSpriteSourceChange { .. }
                 )
             })
             .collect();
@@ -741,4 +751,120 @@ fn every_section_edit_variant_has_a_row() {
             "linhas da tabela de {enum_name} que ja nao correspondem a variante nenhuma: {stale:?}"
         );
     }
+}
+
+// ── A conversão px ↔ m ─────────────────────────────────────────────────────────
+
+/// Ressuscita `inspector_position_value_displayed_in_pixels_round_trips_to_meters`.
+///
+/// ⚠️ **A metade que ficou dois meses por provar.** O armazenamento da simulação é SEMPRE em
+/// metros; o que o `display_unit` do projeto muda é só o formato do que o artista vê e escreve.
+/// A costura tem, portanto, duas travessias — semear o widget (m → px) e commitar (px → m) — e
+/// nenhuma delas era exercitada, porque o default é `Meters`, onde a conversão é a identidade:
+/// todo teste existente media a metade em que ela não faz nada.
+///
+/// Um sentido invertido aqui multiplica a posição por `ppm²` (10.000×, no default) ou divide-a
+/// pelo mesmo — e nenhum gate o via.
+#[test]
+fn a_position_authored_in_pixels_commits_in_meters() {
+    clear_snapshots();
+    let mut info = transform_info();
+    info.translation = [1.5, 0.0];
+    set_current_inspector_transform(Some(info));
+
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    host.project_mut().display_unit = ph2d_editor_core::project::DisplayUnit::Pixels;
+    let ppm = host.project().pixels_per_meter;
+    let mut state = InspectorState::default();
+    host.settle_section_folds();
+    host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let _ = host.drained_actions();
+
+    // (a) semear: 1,5 m tem de aparecer na caixa como 150 px (com ppm = 100).
+    let shown = host
+        .store()
+        .number_value(ids::INSP_TRANSFORM_POS_X)
+        .expect("Position X tem de ser semeada pelo sync");
+    assert!(
+        (shown as f32 - 1.5 * ppm).abs() < 1e-3,
+        "a caixa mostrou {shown}, mas 1,5 m em pixels sao {}",
+        1.5 * ppm
+    );
+
+    // (b) commitar: o artista escreve 200 px, e o que sobe ao barramento sao 2,0 m.
+    drive(
+        &mut host,
+        &mut state,
+        ids::INSP_TRANSFORM_POS_X,
+        Stimulus::Number(200.0),
+    );
+    let got = host
+        .drained_actions()
+        .into_iter()
+        .find_map(|a| match a {
+            EditorAction::InspectorTransformEdit(i) => Some(i),
+            _ => None,
+        })
+        .expect("editar a posicao nao despachou nada");
+    assert!(
+        (got.translation[0] - 200.0 / ppm).abs() < 1e-3,
+        "200 px commitaram como {} m, esperado {} m — um sentido invertido multiplica ou divide \
+         a posicao por ppm^2",
+        got.translation[0],
+        200.0 / ppm
+    );
+}
+
+/// Ressuscita `inspector_position_meters_mode_displays_raw_meters` — o controlo do teste acima.
+///
+/// Em `Meters` a conversão tem de ser a **identidade** nos dois sentidos. Sem este par, um bug que
+/// aplicasse `ppm` sempre — em vez de só em modo pixels — passaria despercebido.
+///
+/// ⚠️ **O teste desligado dizia «default Meters mode», e o default é `Pixels`** (há gate:
+/// `project::tests::default_display_unit_is_pixels`). A afirmação envelheceu sem que ninguém
+/// reparasse, porque um teste sob `#[cfg(any())]` nunca corre e nunca é relido — é a doença que
+/// esta onda trata, apanhada no próprio material que ela migra. Por isso ambos os modos são
+/// postos aqui **explicitamente**: herdar o default faria os dois testes medirem o mesmo.
+#[test]
+fn in_meters_mode_the_position_round_trip_is_the_identity() {
+    clear_snapshots();
+    let mut info = transform_info();
+    info.translation = [1.5, 0.0];
+    set_current_inspector_transform(Some(info));
+
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    host.project_mut().display_unit = ph2d_editor_core::project::DisplayUnit::Meters;
+    let mut state = InspectorState::default();
+    host.settle_section_folds();
+    host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let _ = host.drained_actions();
+
+    let shown = host
+        .store()
+        .number_value(ids::INSP_TRANSFORM_POS_X)
+        .expect("Position X tem de ser semeada pelo sync");
+    assert!(
+        (shown - 1.5).abs() < 1e-3,
+        "em metros a caixa tem de mostrar o valor cru, mostrou {shown}"
+    );
+
+    drive(
+        &mut host,
+        &mut state,
+        ids::INSP_TRANSFORM_POS_X,
+        Stimulus::Number(2.0),
+    );
+    let got = host
+        .drained_actions()
+        .into_iter()
+        .find_map(|a| match a {
+            EditorAction::InspectorTransformEdit(i) => Some(i),
+            _ => None,
+        })
+        .expect("editar a posicao nao despachou nada");
+    assert!(
+        (got.translation[0] - 2.0).abs() < 1e-3,
+        "em metros o commit tem de ser identidade, deu {} m",
+        got.translation[0]
+    );
 }

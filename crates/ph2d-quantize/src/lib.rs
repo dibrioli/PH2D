@@ -70,14 +70,19 @@ pub mod corners;
 pub mod mcf;
 /// **O LAYOUT vira rede bi-dirigida** — ver [`network`].
 pub mod network;
+/// **A ESCADA DE CUSTO e o REFINAMENTO** — o porte do libSatsuma — ver [`refine`].
+pub mod refine;
+/// **O QUE A FASE DIZ** — o relatório — ver [`report`].
+pub mod report;
 /// **O SOLVER** — dupla cobertura, simetrização, reparo — ver [`solve`].
 pub mod solve;
 
 pub use corners::{CornerError, solve_corners};
 pub use network::BiNetwork;
+pub use refine::quantize_within;
+pub use report::Report;
 pub use solve::{
-    Budget, MAX_AUGMENTATIONS, MAX_EXPANSIONS, MAX_SOLVES, Report, SolveError, branch, quantize,
-    quantize_within,
+    Budget, MAX_AUGMENTATIONS, MAX_EXPANSIONS, MAX_SOLVES, SolveError, branch, quantize,
 };
 
 /// **UM ARCO** do layout — o pedaço de fronteira entre dois cantos consecutivos.

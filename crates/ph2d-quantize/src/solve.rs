@@ -33,7 +33,8 @@
 use std::collections::BTreeMap;
 
 use crate::mcf::{Mcf, McfError};
-use crate::network::{self, BiEdge, BiNetwork};
+use crate::network::{self, BiNetwork};
+use crate::report::Report;
 use crate::{CornerError, Layout, Quantization, verify};
 
 /// O que impede uma quantização de existir.
@@ -62,55 +63,12 @@ pub enum SolveError {
     },
 }
 
-impl From<CornerError> for SolveError {
-    fn from(e: CornerError) -> Self {
-        Self::Inconsistent(e)
-    }
-}
-
-/// O que o solver mediu ao resolver.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Report {
-    /// O custo de isometria da resposta.
-    pub cost: f64,
-    /// ⭐ O **limite inferior certificado** do ótimo inteiro.
-    pub lower_bound: f64,
-    /// `cost − lower_bound`. **Zero = ótimo demonstrado.**
-    pub gap: f64,
-    /// Quantas arestas saíram meio-inteiras na primeira resolução — a medida de
-    /// **quanto** o problema é bi-dirigido de facto.
-    pub half_integral: usize,
-    /// Quantos nós a busca expandiu.
-    pub expansions: usize,
-    /// Quantas resoluções de fluxo custou, mergulho incluído.
-    pub solves: usize,
-    /// ⭐ Quantos **aumentos** de fluxo ao todo — a unidade de esforço que de
-    /// facto move o relógio.
-    pub augmentations: usize,
-    /// ⭐ **A busca esgotou-se**, logo `cost` é o ótimo inteiro, demonstrado.
-    /// `false` quer dizer que o teto de expansões mordeu e a resposta é válida
-    /// mas apenas **boa** — e o `gap` diz quão boa.
-    pub proved: bool,
-    /// ⚠️ Quantos arcos ficaram **encostados no teto** da rede. Tem de ser `0`:
-    /// um arco no teto quer dizer que o teto — e não a medição — escolheu o
-    /// resultado. Ver [`crate::network`].
-    pub cap_binding: usize,
-    /// Quantos nós de lado. Serve para dimensionar o problema no relatório.
-    pub nodes: usize,
-    /// Quantas arestas bi-dirigidas.
-    pub edges: usize,
-    /// ⚠️ **Em que degrau de teto a rede coube** ([`crate::network::CAP_STEPS`]).
-    /// Acima de `1` quer dizer que o teto apertado teria dito *"inviável"* sobre
-    /// um layout que não é.
-    pub cap_step: i64,
-}
-
 /// **QUANTIZA UM LAYOUT.**
 ///
 /// # Errors
 /// Ver [`quantize_within`], que é onde este atalho vai dar.
 pub fn quantize(layout: &Layout) -> Result<(Quantization, Report), SolveError> {
-    quantize_within(layout, Budget::default())
+    crate::refine::quantize_within(layout, Budget::default())
 }
 
 /// **O ORÇAMENTO da fase**, nas duas unidades que ela de facto gasta.
@@ -168,10 +126,17 @@ impl Budget {
 /// fluxo antes de chegar a uma resposta — ⚠️ afirmação sobre o **solver**, não
 /// sobre o layout; [`SolveError::Inconsistent`] se o fluxo fechou mas um patch
 /// não, que é um bug.
-pub fn quantize_within(
+impl From<CornerError> for SolveError {
+    fn from(e: CornerError) -> Self {
+        Self::Inconsistent(e)
+    }
+}
+
+pub(crate) fn attempt(
     layout: &Layout,
     budget: Budget,
-) -> Result<(Quantization, Report), SolveError> {
+    guess: Option<&[i64]>,
+) -> Result<(Quantization, Report, Vec<i64>), SolveError> {
     // ⚠️ **Uma resolução de fluxo é a unidade de custo desta fase**, e o mergulho
     // pode precisar de muitas. Contá-las é o que impede o solver de correr sem
     // fim num layout patológico — ver [`MAX_SOLVES`].
@@ -180,7 +145,7 @@ pub fn quantize_within(
     // ele não chega o solver diria *"não existe quantização"* — uma afirmação
     // sobre o layout — quando o que não cabia era o teto. Medido em 2026-08-20 na
     // `sphere_noisy`. Cada degrau só corre se o anterior tiver recusado.
-    let mut net = BiNetwork::build_scaled(layout, network::CAP_STEPS[0]);
+    let mut net = BiNetwork::build_centred(layout, network::CAP_STEPS[0], guess);
     let mut root = run(&net, &BTreeMap::new(), &mut work, budget.augmentations);
     let mut cap_step = network::CAP_STEPS[0];
     for &step in &network::CAP_STEPS[1..] {
@@ -188,7 +153,7 @@ pub fn quantize_within(
             break;
         }
         cap_step = step;
-        net = BiNetwork::build_scaled(layout, step);
+        net = BiNetwork::build_centred(layout, step, guess);
         work = Work::default();
         root = run(&net, &BTreeMap::new(), &mut work, budget.augmentations);
     }
@@ -276,6 +241,14 @@ pub fn quantize_within(
         }
     }
     let (cost, flow) = best;
+    // ⭐ **O tamanho REAL da rede de fluxo** — ver [`Report::mcf_arcs`]. Medido na
+    // raiz (sem os cortes do ramifica-e-limita), que é a que todo nó da busca
+    // volta a percorrer.
+    let mcf_arcs: usize = net
+        .edges()
+        .iter()
+        .map(|e| crate::refine::segments(e, e.lo, e.hi).len() * 2)
+        .sum();
     debug_assert!(
         net.residual(&flow).iter().all(|r| *r == 0),
         "a conservacao da rede bi-dirigida E' a lei do patch: violá-la aqui e' bug do solver"
@@ -292,6 +265,23 @@ pub fn quantize_within(
         }
     }
     let corners = verify(layout, &x)?;
+    // ⭐⭐ **Quantas arestas acabaram FORA da janela exacta** — ver
+    // [`MAX_EXACT_DEVIATION`]. Zero quer dizer que a linearização nunca mordeu, e
+    // aí o `lower_bound` é do problema verdadeiro e a prova vale.
+    let outside_window = net
+        .edges()
+        .iter()
+        .enumerate()
+        // ⚠️ **Só as arestas com CUSTO têm escada.** Uma aresta de leque tem peso
+        // zero e vira **um** arco livre em [`segments`] — não há janela para ela
+        // morder. Contá-la aqui dava `fora-da-janela = 4` num layout cuja resposta
+        // tinha `gap = 0,000`, ou seja: a prova era negada por arestas que não
+        // participam da aproximação. *Um falso negativo numa prova custa tanto
+        // quanto um falso positivo — ele manda refinar o que já estava certo.*
+        .filter(|(e, edge)| {
+            edge.weight != 0.0 && (flow[*e] - edge.guess).abs() > crate::refine::MAX_EXACT_DEVIATION
+        })
+        .count();
     Ok((
         Quantization { arc: x, corners },
         Report {
@@ -302,12 +292,21 @@ pub fn quantize_within(
             expansions,
             solves: work.solves,
             augmentations: work.augmentations,
-            proved,
+            // ⚠️ **A prova exige a janela INTACTA.** Fora dela o custo da rede é
+            // uma linearização, então o limite inferior é de outro problema — e um
+            // `gap` calculado entre os dois pode até sair **negativo**, que foi o
+            // que a primeira versão desta escada imprimiu. *Um número que não pode
+            // ser negativo e sai negativo é a prova a dizer que não é prova.*
+            proved: proved && outside_window == 0,
             cap_binding,
             nodes: net.nodes(),
             edges: net.edges().len(),
+            mcf_arcs,
             cap_step,
+            outside_window,
+            refinements: 0,
         },
+        flow,
     ))
 }
 
@@ -605,7 +604,7 @@ fn run(
         let [(t1, h1), (t2, h2)] = dc_pair(edge.a as usize, edge.sa, edge.b as usize, edge.sb);
         let mut one = Vec::new();
         let mut two = Vec::new();
-        for (cap, cost) in segments(edge, lo, hi) {
+        for (cap, cost) in crate::refine::segments(edge, lo, hi) {
             one.push(mcf.arc(t1, h1, cap, cost));
             two.push(mcf.arc(t2, h2, cap, cost));
         }
@@ -660,33 +659,4 @@ fn dc_pair(a: usize, sa: i8, b: usize, sb: i8) -> [(usize, usize); 2] {
         // dirigida `a → b`.
         _ => [(ap, bp), (bm, am)],
     }
-}
-
-/// **O CUSTO CONVEXO, fatiado em degraus de custo constante.**
-///
-/// `w·|x − t|` tem no máximo **três** degraus: os passos abaixo do alvo (custo
-/// `−w`), o passo que atravessa o alvo (custo entre `−w` e `w`), e os de cima
-/// (custo `+w`). Fatiar em vez de emitir um arco por unidade é o que mantém a
-/// rede pequena — e a convexidade garante que o fluxo os preenche na ordem certa
-/// sozinho.
-fn segments(edge: &BiEdge, lo: i64, hi: i64) -> Vec<(i64, f64)> {
-    let mut out = Vec::new();
-    if hi <= lo {
-        return out;
-    }
-    if edge.weight == 0.0 {
-        out.push((hi - lo, 0.0));
-        return out;
-    }
-    let mut k = lo + 1;
-    while k <= hi {
-        let c = edge.step_cost(k);
-        let mut j = k;
-        while j < hi && edge.step_cost(j + 1) == c {
-            j += 1;
-        }
-        out.push((j - k + 1, c));
-        k = j + 1;
-    }
-    out
 }

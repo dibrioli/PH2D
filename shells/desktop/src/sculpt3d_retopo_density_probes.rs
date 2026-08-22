@@ -186,7 +186,7 @@ fn what_does_proving_the_optimum_cost() {
                     let quads: u32 = quant.arc.iter().sum();
                     println!(
                         "  {name} | {:>8.0} ms | custo {:>10.3} gap {:>8.3} {} | exp {:>4} \
-                         solves {:>4} aum {:>8} | Σsegmentos {quads}",
+                         solves {:>4} aum {:>8} | ⭐ARCOS DA REDE {:>7} fora-da-janela {:>4} ref {} | Σsegmentos {quads}",
                         ms,
                         r.cost,
                         r.gap,
@@ -194,6 +194,9 @@ fn what_does_proving_the_optimum_cost() {
                         r.expansions,
                         r.solves,
                         r.augmentations,
+                        r.mcf_arcs,
+                        r.outside_window,
+                        r.refinements,
                     );
                 }
                 Err(e) => println!("  {name} | RECUSOU {e:?}"),

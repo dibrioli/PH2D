@@ -54,6 +54,16 @@ pub struct BiEdge {
     pub kind: crate::Deviation,
     /// O arco do layout, quando esta aresta é um; `None` se é aresta de leque.
     pub arc: Option<u32>,
+    /// ⭐⭐ **O PALPITE em que a escada de custo é centrada** — ver
+    /// [`crate::solve::segments`].
+    ///
+    /// A rede emite a marginal **verdadeira** dentro de `± MAX_EXACT_DEVIATION`
+    /// deste valor e **lineariza** o resto em dois blocos. ⚠️ Ele nasce no inteiro
+    /// mais barato e o **refinamento** re-centra-o na solução da ronda anterior —
+    /// que é a lei do `Highlevel.cc` do libSatsuma: aproximar, re-centrar, repetir.
+    /// *Quando a solução para de se mexer, a janela deixou de morder e a resposta é
+    /// a exacta.*
+    pub guess: i64,
     /// **A PARTIDA A QUENTE** — o valor que esta aresta provavelmente terá, para
     /// o fluxo não ter de o descobrir uma unidade de cada vez.
     ///
@@ -80,6 +90,24 @@ impl BiEdge {
     #[must_use]
     pub fn step_cost(&self, k: i64) -> f64 {
         self.cost(k) - self.cost(k - 1)
+    }
+}
+
+/// **O INTEIRO MAIS BARATO de uma aresta** — porte do `find_optimal_integer` do
+/// libSatsuma (MIT).
+///
+/// ⚠️ O custo é convexo, então basta olhar o **piso e o tecto do alvo**: o mínimo
+/// inteiro é um dos dois. A faixa prende-os.
+#[must_use]
+fn cheapest_int(edge: &BiEdge) -> i64 {
+    #[allow(clippy::cast_possible_truncation)]
+    let floor = (edge.target.floor() as i64).clamp(edge.lo, edge.hi);
+    #[allow(clippy::cast_possible_truncation)]
+    let ceil = (edge.target.ceil() as i64).clamp(edge.lo, edge.hi);
+    if edge.cost(ceil) < edge.cost(floor) {
+        ceil
+    } else {
+        floor
     }
 }
 
@@ -127,6 +155,13 @@ impl BiNetwork {
     /// problema que já cabia.
     #[must_use]
     pub fn build_scaled(layout: &Layout, cap: i64) -> Self {
+        Self::build_centred(layout, cap, None)
+    }
+
+    /// **CONSTRÓI a rede com a escada centrada num PALPITE** — ver
+    /// [`BiEdge::guess`]. `None` centra-a no inteiro mais barato de cada aresta.
+    #[must_use]
+    pub fn build_centred(layout: &Layout, cap: i64, guess: Option<&[i64]>) -> Self {
         // Um nó por lado de patch, na ordem dos patches.
         let mut first_side = Vec::with_capacity(layout.patches().len());
         let mut nodes = 0usize;
@@ -168,6 +203,9 @@ impl BiNetwork {
                 kind: spec.kind,
                 arc: Some(u32::try_from(a).unwrap_or(u32::MAX)),
                 warm: lo,
+                // ⚠️ Preenchido depois, quando toda a aresta existe — o palpite por
+                // omissão precisa do custo, e o custo precisa da aresta montada.
+                guess: lo,
             });
         }
         let n_arcs = edges.len();
@@ -240,10 +278,19 @@ impl BiNetwork {
                     kind: crate::Deviation::Abs,
                     arc: None,
                     warm: warm.clamp(1, hi),
+                    guess: warm.clamp(1, hi),
                 });
             }
         }
 
+        // ⭐⭐ **O PALPITE, agora que toda a aresta existe.** Ou o que o chamador
+        // trouxe da ronda anterior (o refinamento), ou o inteiro mais barato.
+        for (e, edge) in edges.iter_mut().enumerate() {
+            edge.guess = guess
+                .and_then(|g| g.get(e).copied())
+                .unwrap_or_else(|| cheapest_int(edge))
+                .clamp(edge.lo, edge.hi);
+        }
         Self {
             nodes,
             edges,

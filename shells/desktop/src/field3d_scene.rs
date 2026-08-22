@@ -260,9 +260,9 @@ pub(crate) fn sync_scene_and_birth(
     };
 
     // ⭐ O que um gesto de criar/combinar acabou de fazer nascer — e que passa a estar selecionado.
+    // ⚠️ Ele entra no drenar das intenções e sai de lá atualizado: a importação de escultura (logo
+    // abaixo) e um botão do painel podem criar no MESMO quadro, e o mais recente ganha.
     let mut created: Option<u64> = None;
-    // Uma seleção que tem de ser LIMPA — o que ela apontava deixou de existir.
-    let mut cleared = false;
     // A câmera é o «onde estou a olhar»: uma forma nova nasce no centro do quadro e no tamanho dele.
     let cam = with_smoke(|s| s.cam).unwrap_or_default();
 
@@ -282,126 +282,8 @@ pub(crate) fn sync_scene_and_birth(
             created = Some(e.to_bits());
         }
     }
-    // As edições do painel escrevem no COMPONENTE do nó, que é a peça de verdade.
-    for intent in ph2d_panel_model3d::drain_intents() {
-        match intent {
-            // ⭐ O verbo do gizmo é estado de VISTA: ele não entra no mundo, entra no smoke.
-            ph2d_panel_model3d::ModelIntent::SetGizmoMode { slot } => {
-                if let Some(mode) = crate::field3d_gizmo::Mode::ALL.get(slot).copied() {
-                    with_smoke(|s| {
-                        s.gizmo_mode = mode;
-                        // Trocar de verbo com uma alça agarrada deixaria um arrasto órfão.
-                        s.drag = None;
-                        s.gizmo_hot = None;
-                    });
-                }
-            }
-            // ⭐ **Criar** — perto do que está selecionado, no tamanho do enquadramento.
-            ph2d_panel_model3d::ModelIntent::AddShape { slot } if slot == panel::SCULPT_SLOT => {
-                // ⚠️ **Só ANOTA.** Escolher um arquivo é um diálogo, e esta função recebe o mundo —
-                // a mesma divisão que a exportação já faz, e pela mesma razão.
-                crate::field3d_smoke::ask_import();
-            }
-            ph2d_panel_model3d::ModelIntent::AddShape { slot } => {
-                if let Some(prim) = shape_at(slot, new_shape_size(cam.half_extent)) {
-                    let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
-                    if let Ok(e) = ph2d_field_ecs::add_leaf(world, parent, prim, cam.target) {
-                        // ⭐ A forma nova fica SELECIONADA: é o que põe o gizmo em cima dela sem
-                        // ninguém ter de a procurar na Hierarquia.
-                        created = Some(e.to_bits());
-                    }
-                }
-            }
-            // ⭐ **Duplicar e apagar** — as duas ações sobre o objeto escolhido.
-            ph2d_panel_model3d::ModelIntent::Act { slot } => {
-                if let Some(&one) = selection.first() {
-                    match slot {
-                        0 => created = duplicate_node(world, one),
-                        // ⚠️ O que foi apagado não pode continuar selecionado: o gizmo ficaria
-                        // aceso sobre uma entidade que já não existe.
-                        1 if ph2d_field_ecs::remove(world, one) => cleared = true,
-                        _ => {}
-                    }
-                }
-            }
-            // ⭐ **Sair para um arquivo.** ⚠️ O pedido só é ANOTADO aqui: escrever um arquivo é
-            // assunto do app (diálogo, toast) e esta função recebe o **mundo**. Ele atravessa pelo
-            // mesmo caminho que o pedido de abrir o painel já usava.
-            ph2d_panel_model3d::ModelIntent::Export { slot } => {
-                if let Some(level) = crate::field3d_export::ExportLevel::ALL.get(slot).copied() {
-                    crate::field3d_smoke::ask_export(level);
-                }
-            }
-            // ⭐ **Ligar ou desligar um modificador** — a casca e o afastamento.
-            //
-            // ⚠️ **Tirar primeiro, e só acrescentar se não tirou**: o botão é um interruptor, e uma
-            // ordem ao contrário acrescentaria um segundo e tiraria o primeiro no mesmo clique —
-            // que da tela lê como *"não aconteceu nada"*.
-            ph2d_panel_model3d::ModelIntent::ToggleMod { slot } => {
-                if let (Some(&one), Some(kind)) = (
-                    selection.first(),
-                    ph2d_field::UnaryKind::ALL.get(slot).copied(),
-                ) && !ph2d_field_ecs::remove_mod(world, one, kind)
-                    && !ph2d_field_ecs::add_mod(world, one, kind)
-                {
-                    // ⚠️ **A porta recusou** (uma escultura, W25) — e uma recusa muda seria a metade
-                    // errada da cura: o painel já não oferece a fileira, mas um clique que chegue
-                    // aqui por outro caminho tem de dizer porquê em vez de não fazer nada.
-                    crate::field3d_notice::say(crate::field3d_notice::explain(
-                        &ph2d_field::FieldError::ModsOnSampled { node: 0 },
-                    ));
-                }
-            }
-            // ⭐ **Combinar** — trocar a operação de uma, ou embrulhar as escolhidas numa nova.
-            ph2d_panel_model3d::ModelIntent::ApplyOp { slot } => {
-                if let Some(op) = op_at(slot) {
-                    match selection {
-                        // ⭐ **Uma OPERAÇÃO escolhida sozinha troca de operação** — o gesto de sempre.
-                        [one]
-                            if matches!(
-                                world.get::<FieldNode>(*one).map(|n| &n.shape),
-                                Some(NodeShape::Combine(_))
-                            ) =>
-                        {
-                            let _ = ph2d_field_ecs::set_op(world, *one, op);
-                        }
-                        // ⭐ **Uma FORMA escolhida sozinha vira um GRUPO** (W31) — e era isto que
-                        // faltava: Enio, 2026-08-22, *"ainda não temos como criar novos grupos"*.
-                        //
-                        // ⚠️ O braço anterior tinha de ganhar a guarda: sem ela, um `set_op` numa
-                        // folha era recusado em silêncio e o clique não fazia nada. *Um gesto que só
-                        // funciona com dois selecionados não é um gesto de criar grupo.*
-                        many => {
-                            if let Some(group) = ph2d_field_ecs::wrap_in_op(world, many, op) {
-                                created = Some(group.to_bits());
-                            }
-                        }
-                    }
-                }
-            }
-            // O referencial dos eixos é estado de VISTA, como o verbo.
-            ph2d_panel_model3d::ModelIntent::SetGizmoFrame { slot } => {
-                if let Some(frame) = crate::field3d_gizmo::Frame::ALL.get(slot).copied() {
-                    with_smoke(|s| s.gizmo_frame = frame);
-                }
-            }
-            ph2d_panel_model3d::ModelIntent::SetParam {
-                entity,
-                param,
-                value,
-            } => {
-                // Uma recusa é informação, não erro: o nó diz que aquele número não cabe, e o
-                // retrato publicado logo abaixo devolve o controle ao valor que ficou.
-                let _ = ph2d_field_ecs::set_param(
-                    world,
-                    bevy_ecs::entity::Entity::from_bits(entity),
-                    param,
-                    value,
-                );
-            }
-        }
-    }
-
+    // ⭐ **O que o painel PEDE** vive no irmão — ver [`field3d_scene_intents`](self::intents).
+    let (created, cleared) = intents::apply(world, root, selection, cam, created);
     // ⭐ **SÓ UMA OPERAÇÃO PODE TER FILHOS** (W31), e a lei impõe-se aqui — na derivação, não em
     // cada gesto.
     //
@@ -467,6 +349,9 @@ pub(crate) fn sync_scene_and_birth(
 /// ⚠️ **O re-export lista só o que sai do módulo.** Um `use` largo compilaria e deixaria avisos de
 /// import morto a acumular, que é como uma fronteira deixa de dizer alguma coisa. Os gates alcançam
 /// o resto pelo caminho completo (`panel::param_rows`) — privado é visível para quem está dentro.
+#[path = "field3d_scene_intents.rs"]
+mod intents;
+
 #[path = "field3d_scene_panel.rs"]
 mod panel;
 pub(crate) use panel::{new_shape_size, op_at, publish_snapshot, shape_at};

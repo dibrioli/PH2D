@@ -70,17 +70,50 @@ fn the_pulse_scene_builds_every_row() {
     assert!(window >= 2.0, "a janela tem de deixar passar mais de uma");
 }
 
-/// **TODA FILEIRA SOBE** — uma escada parada é um metrónomo que não bate, e ela
-/// concordaria com qualquer outra escada parada.
+/// **TODA FILEIRA CONTINUA A SUBIR — e não «subiu alguma coisa».**
+///
+/// ⚠️ **Este gate nasceu de um smoke reprovado, e a versão anterior dele passou
+/// sobre a cena morta** (Enio, 2026-08-22: *"as duas últimas fileiras de baixo não
+/// se movem"*). O par da comparação era alimentado por um sinal **estático**, então
+/// cada peça armava **uma vez** e ficava: as duas fileiras subiam um degrau no
+/// primeiro quadro e nunca mais se mexiam. O gate media `top >= 1` no fim — que é
+/// **verdade de uma fileira que saltou uma vez e morreu**.
+///
+/// *Um total não distingue uma cena que anda de uma que andou.* O oráculo é a
+/// DIFERENÇA entre dois instantes, e a fileira da janela é a única que pode parar —
+/// e mesmo essa tem de ter andado ANTES de parar.
 #[test]
-fn every_row_climbs() {
-    let (h, bases) = heights_after(200);
-    for (r, row) in ROWS_TABLE.iter().enumerate() {
-        let top = (0..COLS as usize)
-            .map(|i| steps(&h, &bases, r, i))
+fn every_row_keeps_moving_and_only_the_window_stops() {
+    let early = heights_after(90); // 1,5 s
+    let mid = heights_after(200); // ~3,3 s
+    let late = heights_after(400); // ~6,7 s
+    let top = |(h, bases): &(Vec<Vec<f32>>, Vec<f32>), r: usize| -> i32 {
+        (0..COLS as usize)
+            .map(|i| steps(h, bases, r, i))
             .max()
-            .unwrap();
-        assert!(top >= 1, "fileira {r} ({}) nao subiu", row.label);
+            .unwrap()
+    };
+    for (r, row) in ROWS_TABLE.iter().enumerate() {
+        // Toda fileira ANDA no primeiro trecho — inclusive a que vai parar.
+        assert!(
+            top(&mid, r) > top(&early, r),
+            "fileira {r} ({}) nao andou entre 1,5 s e 3,3 s",
+            row.label
+        );
+        let is_window = matches!(row.kind, Kind::Beat { count, .. } if count > 0.5);
+        if is_window {
+            assert_eq!(
+                top(&late, r),
+                top(&mid, r),
+                "fileira {r}: a janela devia ter PARADO"
+            );
+        } else {
+            assert!(
+                top(&late, r) > top(&mid, r),
+                "fileira {r} ({}) parou de andar entre 3,3 s e 6,7 s",
+                row.label
+            );
+        }
     }
 }
 
@@ -164,15 +197,22 @@ fn the_per_element_threshold_draws_a_pattern_the_single_one_cannot() {
     };
     let single = risen(6);
     let per_el = risen(7);
-    // A de cima: um único bloco contíguo (a metade de cima da rampa).
-    let flips = |v: &[bool]| v.windows(2).filter(|w| w[0] != w[1]).count();
-    assert_eq!(flips(&single), 1, "o limiar unico corta a fila UMA vez");
+    // A de cima: TODA peça cruza o limiar único (ele está abaixo do pico da onda).
     assert!(
-        flips(&per_el) > 4,
-        "o limiar por-elemento tem de alternar, alternou {} vezes",
+        single.iter().all(|b| *b),
+        "o limiar unico devia subir a fila inteira"
+    );
+    // A de baixo: bolinha sim, bolinha não — as de limiar alto NUNCA cruzam.
+    let flips = |v: &[bool]| v.windows(2).filter(|w| w[0] != w[1]).count();
+    assert!(
+        flips(&per_el) > COLS as usize / 2,
+        "o limiar por-elemento tem de alternar peca a peca, alternou {} vezes",
         flips(&per_el)
     );
-    // E as duas de facto diferem — o controle do par.
+    assert!(
+        per_el.iter().any(|b| !*b),
+        "alguma peca tem de NAO subir, senao o par nao diz nada"
+    );
     assert_ne!(single, per_el, "os dois limiares desenharam o mesmo");
 }
 

@@ -241,7 +241,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As OITENTA E DUAS LEIS que esta linha pagou para aprender
+## §4 — As OITENTA E TRÊS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -861,6 +861,18 @@ são estilo.
     mesma grelha**, a discordar da primeira no dia em que alguém mexesse numa só. ⚠️ Irmã da
     lei 78: *leia o que os params EXISTENTES já significam antes de contar os que a célula
     pede* — as duas juntas apagaram um param e um nó inteiro nesta janela.
+
+83. **⚠️ UM TOTAL NÃO DISTINGUE UMA CENA QUE ANDA DE UMA QUE ANDOU.** A `=80` alimentava o
+    par da comparação com um sinal **estático** (uma rampa por índice), e um sinal estático faz
+    cada peça armar **uma vez** e ficar: as duas fileiras subiam um degrau no primeiro quadro e
+    nunca mais se mexiam. O gate media `top >= 1` no fim — **verdade de uma fileira que saltou
+    uma vez e morreu**. Smoke reprovado (Enio, 2026-08-22: *"as duas últimas fileiras de baixo
+    não se movem"*). ⚠️ **É a mesma família da lei do `=77`** (*um param autorado não é um
+    efeito acontecido*), num disfarce novo: lá o gate media que o controle existia, aqui media
+    que o total era não-nulo. *Numa cena TEMPORAL, o oráculo é a DIFERENÇA entre dois
+    instantes* — e a exceção (a fileira que é suposto parar) declara-se, com a metade que diz
+    que ela ANDOU antes de parar. Provado por mutação: com a amplitude do sinal em zero, o gate
+    novo fica vermelho na fileira certa.
 
 ---
 

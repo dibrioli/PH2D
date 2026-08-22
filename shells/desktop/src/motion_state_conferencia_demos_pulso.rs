@@ -63,8 +63,34 @@ const COUNT_MAX: f32 = 9.0;
 
 /// Os limiares por-elemento do último par — o padrão que o limiar único não sabe
 /// desenhar.
+///
+/// ⚠️ **`REF_B` está ACIMA do pico do sinal, de propósito.** O sinal varre
+/// `[SIGNAL_LOW .. SIGNAL_HIGH]`, então as peças de limiar `REF_A` cruzam a cada
+/// volta e as de `REF_B` **nunca** cruzam — a fileira sobe *bolinha sim, bolinha
+/// não*. Com os dois limiares abaixo do pico as duas metades subiriam igual, e o
+/// par não diria nada.
 const REF_A: f32 = 0.25;
 const REF_B: f32 = 0.75;
+
+/// O limiar ÚNICO da fileira de controle — abaixo do pico, logo TODA peça cruza.
+const SINGLE_RISE: f32 = 0.5;
+/// A largura da histerese das duas fileiras de comparação.
+const HYSTERESIS: f32 = 0.05;
+
+/// A onda que alimenta o par da comparação: um seno lento que **percorre** a
+/// fileira, varrendo `[0,10 .. 0,60]`.
+///
+/// ⚠️ **Ele existe porque a 1ª versão desta cena usou um sinal ESTÁTICO** (uma
+/// rampa por índice) — e um sinal estático faz cada peça armar **uma vez** e ficar.
+/// As duas fileiras subiam um degrau no primeiro quadro e nunca mais se mexiam.
+/// Smoke reprovado (Enio, 2026-08-22: *"as duas últimas fileiras de baixo não se
+/// movem"*), e o gate que existia media *"subiu alguma coisa?"* — que é verdade de
+/// uma fileira morta que saltou uma vez.
+const SIGNAL_PERIOD: f32 = 1.0;
+const SIGNAL_LOW: f32 = 0.10;
+const SIGNAL_HIGH: f32 = 0.60;
+/// O atraso da onda de peça para peça — ela PERCORRE a fileira em vez de piscar.
+const SIGNAL_STAGGER: f32 = 0.03;
 
 /// Que fileira é esta.
 #[derive(Clone, Copy)]
@@ -141,11 +167,11 @@ static ROWS_TABLE: &[Row] = &[
         },
     },
     Row {
-        label: "limiar UNICO -- sobe a METADE da fileira",
+        label: "limiar UNICO -- a fileira INTEIRA sobe",
         kind: Kind::Compare { per_element: false },
     },
     Row {
-        label: "limiar POR-ELEMENTO -- sobe um padrao ALTERNADO",
+        label: "limiar POR-ELEMENTO -- sobe bolinha SIM, bolinha NAO",
         kind: Kind::Compare { per_element: true },
     },
 ];
@@ -242,21 +268,25 @@ fn build_pulse(g: &mut ph2d_nodegraph::graph::Graph, kind: Kind, src: NodeId) ->
             b
         }
         Kind::Compare { per_element } => {
-            // O SINAL: uma rampa `0..1` ao longo da fileira. Ela é ESTÁTICA, então
-            // cada peça arma uma vez e fica — a escada dela é de um degrau só, e a
-            // fileira lê-se como *quem passou o limiar*.
-            let ramp = g.add_node("value.instance_field");
-            g.set_param(ramp, "mode", 1.0); // Ramp: i/(N−1)
-            wire(g, src, 0, ramp, 0)?;
+            // O SINAL: uma onda lenta que PERCORRE a fileira, varrendo
+            // `[SIGNAL_LOW .. SIGNAL_HIGH]`. ⚠️ Ele tem de ser ANIMADO — ver o doc
+            // de [`SIGNAL_PERIOD`] e o smoke que a versão estática reprovou.
+            let sig = g.add_node("value.lfo");
+            g.set_param(sig, "period", SIGNAL_PERIOD);
+            g.set_param(sig, "amplitude", (SIGNAL_HIGH - SIGNAL_LOW) * 0.5);
+            g.set_param(sig, "offset", (SIGNAL_HIGH + SIGNAL_LOW) * 0.5);
+            g.set_param(sig, "phase_stagger", SIGNAL_STAGGER);
+            wire(g, src, 0, sig, 0)?;
             let c = g.add_node("pulse.compare");
-            g.set_param(c, "rise", 0.5);
-            g.set_param(c, "fall", 0.5);
-            wire(g, ramp, 0, c, 0)?;
+            g.set_param(c, "rise", SINGLE_RISE);
+            g.set_param(c, "fall", SINGLE_RISE - HYSTERESIS);
+            wire(g, sig, 0, c, 0)?;
             wire_pre(g, c, c, 1)?;
             if per_element {
-                // O limiar POR-ELEMENTO: um padrão que alterna entre dois valores.
+                // O limiar POR-ELEMENTO: um padrão que alterna entre dois valores,
+                // um ABAIXO e outro ACIMA do pico da onda.
                 // ⚠️ É a coisa que um fio ligado ao PARAM não sabe fazer — ele
-                // colapsaria na linha 0 e desenharia a mesma metade da fileira.
+                // colapsaria na linha 0 e desenharia a fileira inteira igual.
                 let pat = g.add_node("value.pattern");
                 g.set_param(pat, "steps", 2.0);
                 g.set_param(pat, "v0", REF_A);

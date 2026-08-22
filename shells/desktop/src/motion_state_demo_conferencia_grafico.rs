@@ -165,11 +165,14 @@ pub(crate) fn pulse_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<
   (!) DUPLA 2: em cima a fileira sobe em BLOCO (todas as pecas a mesma altura); em baixo
   o degrau PERCORRE a fileira da esquerda para a direita, como uma onda.
   (!) DUPLA 3: em cima a escada nunca para; em baixo ela da' {window:.0} degraus e FICA.
-  (!) DUPLA 4: em cima sobe metade da fila, num bloco so'. Em baixo sobe um padrao
-  ALTERNADO -- peca sim, peca nao. E' a coisa que so' um limiar por-elemento desenha.
+  (!) DUPLA 4: uma onda lenta percorre as duas fileiras. Em cima TODA a fila sobe (o
+  limiar e' o mesmo para todas, e a onda passa por cima dele). Em baixo sobe BOLINHA
+  SIM, BOLINHA NAO: metade das pecas tem um limiar alto que a onda nunca alcanca.
+  E' a coisa que so' um limiar por-elemento desenha.
 
-  DEU ERRADO se alguma fileira ficar no chao com o Play a andar, se as duas escadas da
-  DUPLA 1 se separarem, ou se a ultima fileira sair igual a` de cima dela."
+  DEU ERRADO se alguma fileira PARAR de subir com o Play a andar (fora a de baixo da
+  DUPLA 3, que e' suposto parar), se as duas escadas da DUPLA 1 se separarem, ou se a
+  ultima fileira sair igual a` de cima dela."
     );
     sinks
 }

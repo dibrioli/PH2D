@@ -462,4 +462,5 @@ mod utilidade;
 pub(super) use utilidade::{
     color_family, cursor, deform, drizzle, field_family, force_family, fx_family, goal_family,
     join, operator_family, rank_family, sim_family, sortkey, style_family, taper, transform_family,
+    util_family,
 };

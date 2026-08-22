@@ -214,3 +214,48 @@ fn the_toggle_is_reachable_in_the_panel() {
         "o Reindex vale em todas as chaves"
     );
 }
+
+/// **O `shift` ROTACIONA A ORDEM — e `0` é a permutação de sempre.**
+///
+/// ⚠️ **A metade que importa é «continua a ser uma PERMUTAÇÃO».** Um deslocamento
+/// que empurrasse as pontas para fora perderia peças, e a saída deixaria de ter a
+/// contagem da entrada — a coisa que um nó de ORDEM nunca pode fazer, e que um
+/// teste de *"mudou alguma coisa?"* não apanha.
+#[test]
+fn the_shift_rotates_the_order_and_never_loses_a_piece() {
+    let p = vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0], [4.0, 0.0]];
+    let keys = keys(&p, KEY_X, [0.0, 0.0], 0, 0.0, &[]);
+    let base = permutation(&keys, false, 0);
+    assert_eq!(base, vec![0, 1, 2, 3, 4], "shift 0 e' a ordem de sempre");
+    assert_eq!(
+        permutation(&keys, false, 1),
+        vec![1, 2, 3, 4, 0],
+        "roda uma"
+    );
+    assert_eq!(
+        permutation(&keys, false, 5),
+        base,
+        "uma volta inteira e' identidade"
+    );
+    // ⚠️ Para trás: o `%` de Rust devolveria negativo e isto entraria em pânico.
+    assert_eq!(
+        permutation(&keys, false, -1),
+        vec![4, 0, 1, 2, 3],
+        "roda ao contrario"
+    );
+    assert_eq!(permutation(&keys, false, -7), permutation(&keys, false, 3));
+    // E em TODO shift ela continua a ser uma permutação de `0..n`.
+    for shift in -12i64..12 {
+        let mut seen = permutation(&keys, false, shift);
+        seen.sort_unstable();
+        assert_eq!(seen, vec![0, 1, 2, 3, 4], "shift {shift} perdeu ou repetiu");
+    }
+}
+
+/// **Uma lista VAZIA não entra em pânico** — `rotate_left` sobre `0` elementos com
+/// um `n` de zero seria uma divisão por zero no `rem_euclid`.
+#[test]
+fn an_empty_list_does_not_panic_on_a_shift() {
+    assert!(permutation(&[], false, 7).is_empty());
+    assert!(permutation(&[], true, -7).is_empty());
+}

@@ -32,9 +32,12 @@ fn xs(s: &Stream) -> Vec<f32> {
 fn the_weighted_average_divides_by_the_sum_of_the_weights() {
     let a = snap_p(vec![[0.0, 0.0]]);
     let b = snap_p(vec![[4.0, 0.0]]);
-    assert_eq!(xs(&mix(MODE_AVG, &[&a, &b], &[], &[1.0, 3.0])), vec![3.0]);
     assert_eq!(
-        xs(&mix(MODE_AVG, &[&a, &b], &[], &[3.0, 1.0])),
+        xs(&mix(MODE_AVG, &[&a, &b], &[], &[1.0, 3.0], None)),
+        vec![3.0]
+    );
+    assert_eq!(
+        xs(&mix(MODE_AVG, &[&a, &b], &[], &[3.0, 1.0], None)),
         vec![1.0],
         "e o peso é de quem o carrega, não do lugar"
     );
@@ -45,7 +48,10 @@ fn the_weighted_average_divides_by_the_sum_of_the_weights() {
 fn the_weighted_sum_stays_a_sum() {
     let a = snap_p(vec![[0.0, 0.0]]);
     let b = snap_p(vec![[4.0, 0.0]]);
-    assert_eq!(xs(&mix(MODE_ADD, &[&a, &b], &[], &[1.0, 3.0])), vec![12.0]);
+    assert_eq!(
+        xs(&mix(MODE_ADD, &[&a, &b], &[], &[1.0, 3.0], None)),
+        vec![12.0]
+    );
 }
 
 /// **TODOS OS PESOS A `1` É O QUE SEMPRE FOI, AO BIT** — e o oráculo é a lei ANTIGA, escrita
@@ -61,8 +67,14 @@ fn all_weights_at_one_reproduce_the_law_that_shipped() {
         let (a, b) = (snap_p(c.clone()), snap_p(vec![[7.7, 0.9]; 2]));
         let old_mean: Vec<f32> = c.iter().map(|q| (q[0] + 7.7) * 0.5).collect();
         let old_sum: Vec<f32> = c.iter().map(|q| q[0] + 7.7).collect();
-        assert_eq!(xs(&mix(MODE_AVG, &[&a, &b], &[], &[1.0, 1.0])), old_mean);
-        assert_eq!(xs(&mix(MODE_ADD, &[&a, &b], &[], &[1.0, 1.0])), old_sum);
+        assert_eq!(
+            xs(&mix(MODE_AVG, &[&a, &b], &[], &[1.0, 1.0], None)),
+            old_mean
+        );
+        assert_eq!(
+            xs(&mix(MODE_ADD, &[&a, &b], &[], &[1.0, 1.0], None)),
+            old_sum
+        );
     }
 }
 
@@ -75,7 +87,7 @@ fn all_weights_at_one_reproduce_the_law_that_shipped() {
 fn every_weight_at_zero_is_the_origin_not_a_nan() {
     let a = snap_p(vec![[3.0, 0.0]]);
     let b = snap_p(vec![[5.0, 0.0]]);
-    let got = xs(&mix(MODE_AVG, &[&a, &b], &[], &[0.0, 0.0]));
+    let got = xs(&mix(MODE_AVG, &[&a, &b], &[], &[0.0, 0.0], None));
     assert_eq!(got, vec![0.0]);
     assert!(got.iter().all(|x| x.is_finite()), "nada de NaN: {got:?}");
 }
@@ -85,8 +97,8 @@ fn every_weight_at_zero_is_the_origin_not_a_nan() {
 fn blend_is_deaf_to_the_weights() {
     let a = snap_p(vec![[0.0, 0.0]]);
     let b = snap_p(vec![[4.0, 0.0]]);
-    let flat = xs(&mix(MODE_BLEND, &[&a, &b], &[0.25], &[1.0, 1.0]));
-    let skew = xs(&mix(MODE_BLEND, &[&a, &b], &[0.25], &[9.0, 0.1]));
+    let flat = xs(&mix(MODE_BLEND, &[&a, &b], &[0.25], &[1.0, 1.0], None));
+    let skew = xs(&mix(MODE_BLEND, &[&a, &b], &[0.25], &[9.0, 0.1], None));
     assert_eq!(flat, skew, "o campo blend é a única porta neste modo");
     assert_eq!(flat, vec![1.0]);
     // …e o painel esconde os quatro, para não haver duas portas VISÍVEIS para uma pergunta.

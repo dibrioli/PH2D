@@ -544,3 +544,39 @@ pub(crate) fn operator_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> V
     );
     sinks
 }
+
+/// **A CENA `=81` — O VOCABULÁRIO DA UTILIDADE** (doc 89, folha 08): o mixer que
+/// dobra, a geometria presa a uma lane, a ordem rodada e o ponto polar.
+///
+/// ⚠️ Ela desenha **FIGURAS**, não perfis — três dos quatro pares respondem *que
+/// forma sai daqui*, e uma forma espremida num gráfico de altura deixa de ser a
+/// resposta. Por isso não mora com as cinco irmãs do `..._grafico.rs`.
+pub(crate) fn util_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks = conferencia_demos_util::build_util_demo_document(doc, registry).unwrap_or_default();
+    let (n, count, shift) = conferencia_demos_util::authored();
+    eprintln!(
+        "[cena 81] {n} linhas, {c} pecas por figura. ESQUERDA = como era, DIREITA = o que
+  mudou. Esta cena julga-se PARADA -- nada aqui depende do relogio.",
+        c = count as u32,
+    );
+    for (i, label) in conferencia_demos_util::row_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) LINHA 1, MISTURA: as duas entradas sao duas fileiras CRUZADAS (uma sobe, a
+  outra desce). A` esquerda a media delas e' uma RETA no meio. A` direita o modo `Min`
+  agarra sempre a mais baixa das duas, e o resultado e' uma TENDA.
+  (!) LINHA 2, A FORMA: as entradas sao um CIRCULO e uma fileira reta. A` esquerda elas
+  sao misturadas e sai uma LENTE -- uma forma que nenhuma das duas tinha. A` direita a
+  forma esta' presa a` primeira entrada, e o circulo volta INTEIRO.
+  (!) LINHA 3, A ORDEM: a mesma escada nas duas, so' que a da direita esta' RODADA em
+  {shift:.0} lugares -- o degrau mais alto muda de sitio e NENHUMA peca se perde.
+  (!) LINHA 4, O PONTO: as duas metades recebem os MESMOS dois numeros. A` esquerda eles
+  sao lidos como (x, y) e desenham uma DIAGONAL; a` direita como (raio, volta) e
+  desenham uma ESPIRAL de duas voltas.
+
+  DEU ERRADO se as duas metades de qualquer linha sairem iguais, se a linha 2 da direita
+  nao for um circulo redondo, ou se a linha 3 tiver contagens diferentes nos dois lados."
+    );
+    sinks
+}

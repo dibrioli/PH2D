@@ -13,6 +13,8 @@
 //! fields' own length does. Transcendental-free (HR-5): a coordinate pack, no maths.
 //! `Effect::Pure`.
 
+mod trig;
+
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
@@ -55,6 +57,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // QUAL coluna Vec2 o par (x, y) constrói. `0` = `P`, que é o nó que shipava.
         ParamSpec {
             name: "target",
+            default: 0.0,
+        },
+        // ⚠️ **Apendado**: o SISTEMA DE COORDENADAS do par (folha 08 linha 61).
+        // `0` = Cartesian, o nó que sempre shipou. Ver [`make_points`].
+        ParamSpec {
+            name: "mode",
             default: 0.0,
         },
     ],
@@ -127,9 +135,32 @@ fn at(v: &[f32], i: usize) -> f32 {
     }
 }
 
-/// Pack `x`/`y` into `n` positions.
-fn make_points(x: &[f32], y: &[f32], n: usize) -> Vec<[f32; 2]> {
-    (0..n).map(|i| [at(x, i), at(y, i)]).collect()
+/// Pack `x`/`y` into `n` positions — no sistema de coordenadas escolhido.
+///
+/// ⚠️ **O `mode` não muda o que as PORTAS significam, muda o que o PAR significa.**
+/// Em `Cartesian` o par é `(x, y)`; em `Polar` é `(raio, ângulo)`, e o ângulo está em
+/// **CICLOS** (uma volta = `1`), que é a régua de todo `phase`/`rotation` deste
+/// catálogo — um nó que falasse radianos obrigaria o artista a saber onde `2π` entra.
+///
+/// ⚠️ **A folha 08 dizia *«3 nós, e só a `motion.expression` alcança»*** (o
+/// `value.unary` não tem `Sin`/`Cos`), e a rota que ela nomeava é a única que existia.
+/// Aqui a conversão é um MODO porque ela é a mesma pergunta — *que ponto é este?* —
+/// noutra régua, e porque a trig da casa é livre de transcendentais (HR-5, ver
+/// [`trig`]): a rota da expressão traz um parser e um `sin` verdadeiro consigo.
+///
+/// `mode = Cartesian` ⇒ o nó que sempre shipou, literalmente.
+fn make_points(x: &[f32], y: &[f32], n: usize, polar: bool) -> Vec<[f32; 2]> {
+    (0..n)
+        .map(|i| {
+            let (a, b) = (at(x, i), at(y, i));
+            if polar {
+                let (c, s) = trig::cos_sin_cycles(b);
+                [a * c, a * s]
+            } else {
+                [a, b]
+            }
+        })
+        .collect()
 }
 
 struct MotionMakePoint;
@@ -146,7 +177,7 @@ impl NodeOp for MotionMakePoint {
         let in_stream = ctx.input(0);
         let in_count = in_stream.count();
         let n = in_count.max(x.len()).max(y.len());
-        let positions = make_points(&x, &y, n);
+        let positions = make_points(&x, &y, n, ctx.param("mode") >= 0.5);
         let mut out = Stream::new(n);
         // Carry the `in` columns through only when it set the count (they line up).
         // ⚠️ O que é excluído é a coluna ALVO, não `P` literal: escrevendo `vel`, o
@@ -194,19 +225,33 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "target",
-    label: "Builds",
-    min: 0.0,
-    max: 2.0,
-    step: 1.0,
-    // ⚠️ **Apendados**, nunca inseridos: o índice é o que o grafo guarda, então
-    // reordenar por gosto trocaria a coluna de todo documento já autorado — em
-    // silêncio, porque o param é um `f32` sem versão (a cerca do `motion.drive`).
-    widget: ParamWidget::Enum {
-        labels: &["Position", "Velocity", "Acceleration"],
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "target",
+        label: "Builds",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        // ⚠️ **Apendados**, nunca inseridos: o índice é o que o grafo guarda, então
+        // reordenar por gosto trocaria a coluna de todo documento já autorado — em
+        // silêncio, porque o param é um `f32` sem versão (a cerca do `motion.drive`).
+        widget: ParamWidget::Enum {
+            labels: &["Position", "Velocity", "Acceleration"],
+        },
     },
-}];
+    ParamUiHint {
+        param: "mode",
+        label: "Mode",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        // O que o PAR de entradas significa. `Cartesian` é o nó de sempre; em `Polar` a
+        // primeira porta é o RAIO e a segunda o ÂNGULO, em voltas (1 = uma volta).
+        widget: ParamWidget::Enum {
+            labels: &["Cartesian", "Polar"],
+        },
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -216,21 +261,21 @@ mod tests {
     /// them wrong (e.g. transposed).
     #[test]
     fn packs_x_and_y_element_wise() {
-        let p = make_points(&[1.0, 2.0, 3.0], &[4.0, 5.0, 6.0], 3);
+        let p = make_points(&[1.0, 2.0, 3.0], &[4.0, 5.0, 6.0], 3, false);
         assert_eq!(p, vec![[1.0, 4.0], [2.0, 5.0], [3.0, 6.0]]);
     }
 
     /// A length-1 field broadcasts to every element (a column of constant x).
     #[test]
     fn a_length_one_field_broadcasts() {
-        let p = make_points(&[5.0], &[1.0, 2.0, 3.0], 3);
+        let p = make_points(&[5.0], &[1.0, 2.0, 3.0], 3, false);
         assert_eq!(p, vec![[5.0, 1.0], [5.0, 2.0], [5.0, 3.0]]);
     }
 
     /// A missing field reads as 0 (a bare x becomes a horizontal line on y = 0).
     #[test]
     fn a_missing_field_is_zero() {
-        let p = make_points(&[1.0, 2.0], &[], 2);
+        let p = make_points(&[1.0, 2.0], &[], 2, false);
         assert_eq!(p, vec![[1.0, 0.0], [2.0, 0.0]]);
     }
 

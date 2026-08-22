@@ -241,7 +241,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As OITENTA E TRÊS LEIS que esta linha pagou para aprender
+## §4 — As OITENTA E CINCO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -874,6 +874,25 @@ são estilo.
     que ela ANDOU antes de parar. Provado por mutação: com a amplitude do sinal em zero, o gate
     novo fica vermelho na fileira certa.
 
+84. **UMA COLUNA DE IDENTIDADE NÃO SE MEDEIA — e o `motion.mixer` fazia-o.** Ele reduz TODA
+    coluna comum às lanes, e `geometry_id`/`texture_id` são a convenção `0 = nenhuma, m+1 = a
+    m-ésima`: a média de `1` e `3` é `2`, **uma terceira forma que nenhuma das duas entradas
+    tinha**. Não dá erro; desenha a arte errada. ⚠️ **A folha 08 apontava para isto e não o
+    nomeava** — a célula pedia *«de qual lane vem a geometria»*, que é a cura, sem dizer que
+    havia uma doença. ⚠️ E o default continua a misturar **de propósito**: mudar a lei de todo
+    documento autorado por causa de um canto que só aparece quando duas lanes carregam formas
+    diferentes seria pagar com o mundo inteiro. *Quando o remédio existe mas o default não pode
+    mudar, o preço é escrever a doença onde ela se lê* — no doc do nó e na célula.
+85. **⚠️ UM ORÁCULO PODE MEDIR A COLUNA CERTA DA COISA ERRADA.** O gate do `shift` do
+    `motion.sort` mediu as ALTURAS das duas metades e reprovou sobre produto correcto: a altura
+    é o POSTO na lista de saída, que é a rampa `0..1` **sempre** — a rotação move *quem* está em
+    cada altura, não as alturas. Ela só existe na relação entre a coluna X de uma peça e o sítio
+    onde ela ficou. ⚠️ Irmã da lei 79 e da 83, e a família já tem nome: *antes de escrever a
+    barra, pergunte QUAL COLUNA carrega a diferença* — e se a resposta for «a que eu não estou a
+    ler», nenhuma barra salva o gate. O mesmo erro deformou a CENA: com a chave `Random` as duas
+    metades eram duas dispersões, e «rodada» não se distingue de «outra aleatória» a olho nenhum;
+    com a chave `X` a esquerda é uma diagonal limpa e a direita é a mesma diagonal partida.
+
 ---
 
 ## §5 — O ritual de cada célula (o que fazer, na ordem)
@@ -932,6 +951,19 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `=81` — O VOCABULÁRIO DA UTILIDADE (folha 08, **quatro células**)
+
+```
+env PH2D_GPU_COOK_DEMO=81 cargo run -p ph2d-host-desktop --release
+```
+
+⚠️ **Ela desenha FIGURAS, não perfis** — é a primeira cena de conferência em que o oráculo é a
+FORMA, e por isso não mora no `..._grafico.rs`. Julga-se **parada**.
+
+Quatro linhas, esquerda/direita: a reta contra a tenda (`Avg` × `Min`) · a lente contra o
+círculo (a geometria presa a uma lane) · a diagonal contra a diagonal partida (o `shift`) · a
+diagonal contra a volta (o mesmo par de números em `Cartesian` e em `Polar`).
 
 ### `=80` — O METRÓNOMO (folha 12, que **FECHOU POR INTEIRO**)
 

@@ -171,6 +171,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "reindex",
             default: 1.0,
         },
+        // ⚠️ **Apendado**: a ROTAÇÃO da ordem (folha 08 linha 35). `0` = a
+        // permutação de sempre, literalmente. Ver [`permutation`].
+        ParamSpec {
+            name: "shift",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -221,12 +227,28 @@ fn keys(
         .collect()
 }
 
-/// The stable-sorted permutation of `0..n` by `k` (ascending; reversed if `descending`).
-fn permutation(k: &[f32], descending: bool) -> Vec<usize> {
+/// The stable-sorted permutation of `0..n` by `k` (ascending; reversed if
+/// `descending`), **rotated** by `shift`.
+///
+/// ⚠️ **O `shift` ROTACIONA, não desloca** (Houdini *Sort SOP* «Shift», Cavalry
+/// `Shuffle`): a lista continua a ser uma permutação de `0..n`, com toda peça
+/// exactamente uma vez. Um deslocamento que empurrasse as pontas para fora
+/// **perderia** peças e a saída deixaria de ter a contagem da entrada — que é a
+/// coisa que um nó de ORDEM nunca pode fazer.
+///
+/// A rotação é `rem_euclid` e não `%`: um shift negativo é o caso normal do knob
+/// (o artista arrasta para a esquerda), e o `%` de Rust devolve negativo.
+///
+/// `shift = 0` ⇒ a permutação de sempre, literalmente (`rotate_left(0)` é um no-op).
+fn permutation(k: &[f32], descending: bool, shift: i64) -> Vec<usize> {
     let mut perm: Vec<usize> = (0..k.len()).collect();
     perm.sort_by(|&a, &b| k[a].total_cmp(&k[b]));
     if descending {
         perm.reverse();
+    }
+    if !perm.is_empty() {
+        let n = perm.len() as i64;
+        perm.rotate_left(shift.rem_euclid(n) as usize);
     }
     perm
 }
@@ -285,7 +307,11 @@ impl NodeOp for MotionSort {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
-        let perm = permutation(&keys(&p, key, center, seed, axis, &weight), descending);
+        let perm = permutation(
+            &keys(&p, key, center, seed, axis, &weight),
+            descending,
+            ctx.param("shift").round() as i64,
+        );
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             out.set(name.clone(), permute(col, &perm));
@@ -384,6 +410,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Toggle,
     },
+    // A ROTAÇÃO da ordem. `0` = a permutação de sempre. ⚠️ Ela ROTACIONA — a lista
+    // continua a ter toda peça exactamente uma vez.
+    ParamUiHint {
+        param: "shift",
+        label: "Shift",
+        min: -32.0,
+        max: 32.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -422,7 +458,7 @@ mod tests {
     #[test]
     fn radial_sort_orders_by_distance() {
         let p = vec![[3.0, 0.0], [0.0, 1.0], [-2.0, 0.0], [0.5, 0.5]];
-        let perm = permutation(&keys(&p, KEY_RADIAL, O, 0, 0.0, &[]), false);
+        let perm = permutation(&keys(&p, KEY_RADIAL, O, 0, 0.0, &[]), false, 0);
         let sorted: Vec<[f32; 2]> = perm.iter().map(|&i| p[i]).collect();
         for w in sorted.windows(2) {
             assert!(r2(w[0]) <= r2(w[1]), "radii non-decreasing: {sorted:?}");
@@ -436,9 +472,9 @@ mod tests {
     #[test]
     fn x_sort_and_descending() {
         let p = vec![[2.0, 0.0], [-1.0, 0.0], [0.5, 0.0]];
-        let asc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), false);
+        let asc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), false, 0);
         assert_eq!(asc, vec![1, 2, 0], "ascending by x");
-        let desc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), true);
+        let desc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), true, 0);
         assert_eq!(desc, vec![0, 2, 1], "descending reverses");
     }
 
@@ -447,8 +483,8 @@ mod tests {
     #[test]
     fn random_is_a_deterministic_shuffle() {
         let p: Vec<[f32; 2]> = (0..20).map(|i| [i as f32, 0.0]).collect();
-        let a = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), false);
-        let b = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), false);
+        let a = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), false, 0);
+        let b = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), false, 0);
         assert_eq!(a, b, "deterministic");
         assert_ne!(a, (0..20).collect::<Vec<_>>(), "actually shuffled");
         let mut sorted = a.clone();

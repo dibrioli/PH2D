@@ -216,3 +216,59 @@ fn every_label_names_the_column_its_index_builds() {
         assert_eq!(built, expected, "o indice {i} constroi o que `{label}` diz");
     }
 }
+
+/// **`Cartesian` É O NÓ QUE SEMPRE SHIPOU — bit-a-bit.**
+#[test]
+fn cartesian_is_the_node_that_shipped() {
+    let x = [0.0f32, 1.5, -2.0, 7.25];
+    let y = [3.0f32, -1.0, 0.0, 0.5];
+    let got = make_points(&x, &y, 4, false);
+    for i in 0..4 {
+        assert_eq!(got[i], [x[i], y[i]], "i={i}");
+    }
+}
+
+/// **`Polar` PÕE O PONTO ONDE O ÂNGULO MANDA — e o ângulo é em VOLTAS.**
+///
+/// ⚠️ **Os quatro quadrantes, e não um ponto.** Um par `(cos, sin)` trocado desenha
+/// uma rotação de um quarto de volta que passa em qualquer teste de *"o raio está
+/// certo?"*, e um sinal invertido espelha a figura — as duas coisas só aparecem
+/// quando se amostra a volta inteira.
+#[test]
+fn polar_puts_the_point_where_the_angle_says() {
+    let r = [2.0f32; 4];
+    // 0 · ¼ · ½ · ¾ de volta.
+    let a = [0.0f32, 0.25, 0.5, 0.75];
+    let got = make_points(&r, &a, 4, true);
+    let want = [[2.0, 0.0], [0.0, 2.0], [-2.0, 0.0], [0.0, -2.0]];
+    for i in 0..4 {
+        assert!(
+            (got[i][0] - want[i][0]).abs() < 1e-5 && (got[i][1] - want[i][1]).abs() < 1e-5,
+            "quadrante {i}: {:?} contra {:?}",
+            got[i],
+            want[i]
+        );
+    }
+    // ⚠️ E o RAIO é o raio: a distância à origem é `|r|` em toda a volta (a senoide
+    // parabólica corrigida fica a ~2% do círculo — a mesma barra do irmão).
+    for k in 0..48 {
+        let ph = k as f32 / 48.0;
+        let p = make_points(&[3.0], &[ph], 1, true)[0];
+        let d = p[0].hypot(p[1]);
+        assert!((d - 3.0).abs() < 0.06, "raio {d} a {ph} de volta");
+    }
+}
+
+/// **UM ÂNGULO NEGATIVO OU MAIOR QUE UMA VOLTA CAI ONDE DEVE** — a régua é
+/// periódica, e um artista que anime o ângulo passa por lá.
+#[test]
+fn the_angle_wraps_like_a_turn_should() {
+    let a = make_points(&[1.0], &[0.25], 1, true)[0];
+    for ph in [1.25f32, -0.75, 5.25] {
+        let b = make_points(&[1.0], &[ph], 1, true)[0];
+        assert!(
+            (a[0] - b[0]).abs() < 1e-5 && (a[1] - b[1]).abs() < 1e-5,
+            "{ph} de volta devia cair em 1/4: {b:?}"
+        );
+    }
+}

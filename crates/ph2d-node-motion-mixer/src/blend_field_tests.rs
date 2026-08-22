@@ -270,3 +270,112 @@ fn the_blend_is_not_clamped_and_the_sibling_that_clamps_is_a_different_question(
         "blend 1.5 overshoots past in1, it is not pinned at it: {over:?}"
     );
 }
+
+/// Uma coluna escalar de teste.
+fn scal(v: &[f32]) -> Column {
+    Column::Scalar(v.to_vec())
+}
+
+/// Um snapshot de uma coluna só, com o nome dado.
+fn snap_of(name: &str, c: Column, n: usize) -> Snap {
+    Snap {
+        count: n,
+        cols: vec![(name.to_string(), c)],
+    }
+}
+
+/// **OS QUATRO MODOS APENDADOS DOBRAM AS ENTRADAS — e `0..2` não se mexeram.**
+///
+/// ⚠️ A segunda metade é o gate: um documento autorado guarda o ÍNDICE, não o nome.
+#[test]
+fn the_appended_fold_modes_do_what_they_say_and_the_old_indices_did_not_move() {
+    let a = snap_of("v", scal(&[6.0, 2.0]), 2);
+    let b = snap_of("v", scal(&[2.0, 8.0]), 2);
+    let got = |mode: i64| -> Vec<f32> {
+        let out = mix(mode, &[&a, &b], &[], &[1.0, 1.0], None);
+        match out.get("v").unwrap() {
+            Column::Scalar(v) => v.clone(),
+            _ => panic!("v"),
+        }
+    };
+    assert_eq!(got(MODE_AVG), vec![4.0, 5.0], "Avg (0) nao se mexeu");
+    assert_eq!(got(MODE_ADD), vec![8.0, 10.0], "Add (1) nao se mexeu");
+    assert_eq!(got(MODE_SUB), vec![4.0, -6.0], "Subtract (3)");
+    assert_eq!(got(MODE_MUL), vec![12.0, 16.0], "Multiply (4)");
+    assert_eq!(got(MODE_MIN), vec![2.0, 2.0], "Min (5)");
+    assert_eq!(got(MODE_MAX), vec![6.0, 8.0], "Max (6)");
+    // E o menu do painel oferece exactamente sete, na mesma ordem.
+    let mut reg = NodeRegistry::new();
+    register(&mut reg).unwrap();
+    let hints = reg.param_ui(MANIFEST.id).expect("hints");
+    let row = hints
+        .iter()
+        .find(|h| h.param == "mode")
+        .expect("row do mode");
+    let ParamWidget::Enum { labels } = row.widget else {
+        panic!("enum")
+    };
+    assert_eq!(labels.len(), 7, "um rotulo por indice");
+    assert_eq!(row.max, 6.0, "o teto do slider segue");
+}
+
+/// **COM UMA ENTRADA SÓ, UMA DOBRA É A IDENTIDADE** — a resposta certa, e a mesma
+/// que os modos antigos dão.
+#[test]
+fn a_fold_over_one_input_is_the_identity() {
+    let a = snap_of("v", scal(&[3.0, -7.0]), 2);
+    for mode in [MODE_SUB, MODE_MUL, MODE_MIN, MODE_MAX] {
+        let out = mix(mode, &[&a], &[], &[1.0], None);
+        match out.get("v").unwrap() {
+            Column::Scalar(v) => assert_eq!(v, &vec![3.0, -7.0], "modo {mode}"),
+            _ => panic!("v"),
+        }
+    }
+}
+
+/// **A GEOMETRIA VEM DA LANE ESCOLHIDA — e o resto continua misturado.**
+///
+/// ⚠️ **É o gate que separa «escolher a geometria» de «escolher tudo».** Uma
+/// implementação que tomasse a lane inteira passaria num teste que só olhasse `P`, e
+/// o nó deixaria de ser um mixer.
+#[test]
+fn the_chosen_lane_gives_the_geometry_and_the_rest_stays_mixed() {
+    let a = Snap {
+        count: 1,
+        cols: vec![
+            ("P".to_string(), Column::Vec2(vec![[0.0, 0.0]])),
+            ("geometry_id".to_string(), scal(&[1.0])),
+            ("size".to_string(), scal(&[2.0])),
+        ],
+    };
+    let b = Snap {
+        count: 1,
+        cols: vec![
+            ("P".to_string(), Column::Vec2(vec![[10.0, 0.0]])),
+            ("geometry_id".to_string(), scal(&[3.0])),
+            ("size".to_string(), scal(&[6.0])),
+        ],
+    };
+    // Sem escolha: a média de tudo — e o `geometry_id` sai `2`, uma TERCEIRA forma
+    // que nenhuma das duas entradas tinha. É o perigo que o knob cura.
+    let mixed = mix(MODE_AVG, &[&a, &b], &[], &[1.0, 1.0], None);
+    match mixed.get("geometry_id").unwrap() {
+        Column::Scalar(v) => assert_eq!(v, &vec![2.0], "a media inventa uma forma"),
+        _ => panic!(),
+    }
+    // Com a lane `a` escolhida: a forma e a posição são as DELA…
+    let picked = mix(MODE_AVG, &[&a, &b], &[], &[1.0, 1.0], Some(&a));
+    match picked.get("geometry_id").unwrap() {
+        Column::Scalar(v) => assert_eq!(v, &vec![1.0], "a forma vem da lane"),
+        _ => panic!(),
+    }
+    match picked.get("P").unwrap() {
+        Column::Vec2(v) => assert_eq!(v, &vec![[0.0, 0.0]], "a posicao tambem"),
+        _ => panic!(),
+    }
+    // …e o `size` continua MISTURADO — o nó não deixou de ser um mixer.
+    match picked.get("size").unwrap() {
+        Column::Scalar(v) => assert_eq!(v, &vec![4.0], "o size continua a media"),
+        _ => panic!(),
+    }
+}

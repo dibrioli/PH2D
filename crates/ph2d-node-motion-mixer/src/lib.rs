@@ -81,6 +81,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "mode",
             default: 0.0,
         },
+        // ⚠️ **Apendado**: de qual entrada vem a GEOMETRIA (folha 08 linha 44).
+        // `0` = **Mixed**, o nó que sempre shipou. Ver [`GEOMETRY_COLUMNS`].
+        ParamSpec {
+            name: "geom_from",
+            default: 0.0,
+        },
         // **O PESO DE CADA ENTRADA** — ver [`WEIGHTS`]. Apendados, todos `1` ⇒ literal.
         ParamSpec {
             name: "weight_0",
@@ -131,6 +137,76 @@ const WEIGHTS: [&str; 4] = ["weight_0", "weight_1", "weight_2", "weight_3"];
 
 /// Avg is mode `0` — nomeado porque o [`ParamGate`] dos pesos precisa do número.
 const MODE_AVG: i64 = 0;
+
+/// **OS QUATRO MODOS DE DOBRA apendados** (folha 08 linha 45) — `in0 op in1 op …`,
+/// elemento a elemento e componente a componente, sobre TODA coluna comum.
+///
+/// ⚠️ **São quatro e não os oito do `field.combine`, e a diferença é MEDIDA, não
+/// preguiça.** O irmão opera só na coluna `falloff`, que é `[0,1]` por contrato — e
+/// dois dos oito modos dele (`Screen` e `Overlay`) são **álgebra sobre «quão longe
+/// do cheio» um número está**: `1 − (1−a)(1−b)`. Este nó mistura `P`, `size`, `vel`
+/// e `tint` na mesma passagem, e um `Screen` sobre uma coordenada de mundo computa
+/// sem significar nada — ele leria a posição `x = 3` como *"300% do cheio"*. Os
+/// quatro que ficam são **livres de unidade**: valem o mesmo num metro, num pixel e
+/// numa fração. ⚠️ E o nono da lista do irmão — `Normal` — já existe aqui com outro
+/// nome: é o [`MODE_BLEND`].
+const MODE_SUB: i64 = 3;
+const MODE_MUL: i64 = 4;
+const MODE_MIN: i64 = 5;
+const MODE_MAX: i64 = 6;
+
+/// A dobra componente-a-componente de duas colunas do MESMO variant.
+///
+/// ⚠️ **O peso NÃO entra aqui, e isso é o desenho.** `Avg` e `Add` são reduções
+/// LINEARES, e um peso é exactamente o que uma redução linear sabe absorver; um
+/// `Min` ponderado não quer dizer nada (o mínimo de quê — do valor, ou do valor
+/// vezes o peso, que é outra grandeza?). Os pesos ficam `ParamGate`d nos dois modos
+/// que os leem, que é onde já estavam.
+fn fold_col(a: &Column, b: &Column, mode: i64) -> Column {
+    let f = |x: f32, y: f32| match mode {
+        MODE_SUB => x - y,
+        MODE_MUL => x * y,
+        MODE_MIN => x.min(y),
+        _ => x.max(y),
+    };
+    macro_rules! z {
+        ($va:expr, $vb:expr, $w:literal) => {{
+            $va.iter()
+                .zip($vb.iter())
+                .map(|(x, y)| {
+                    let mut r = *x;
+                    for c in 0..$w {
+                        r[c] = f(x[c], y[c]);
+                    }
+                    r
+                })
+                .collect()
+        }};
+    }
+    match (a, b) {
+        (Column::Scalar(x), Column::Scalar(y)) => {
+            Column::Scalar(x.iter().zip(y).map(|(a, b)| f(*a, *b)).collect())
+        }
+        (Column::Vec2(x), Column::Vec2(y)) => Column::Vec2(z!(x, y, 2)),
+        (Column::Vec3(x), Column::Vec3(y)) => Column::Vec3(z!(x, y, 3)),
+        (Column::Vec4(x), Column::Vec4(y)) => Column::Vec4(z!(x, y, 4)),
+        _ => a.clone(),
+    }
+}
+
+/// **AS COLUNAS QUE UMA MÉDIA NÃO SABE MISTURAR.**
+///
+/// `P` é a posição — mediá-la é o que este nó existe para fazer, e continua a ser o
+/// default. As outras duas são **IDENTIDADES**, não quantidades: `geometry_id` e
+/// `texture_id` são a convenção `0 = nenhuma, m+1 = a m-ésima`, e a média de `1` e
+/// `3` é `2` — **uma terceira forma, que nenhuma das duas entradas tinha**. Não é um
+/// erro que dê erro: é uma peça a desenhar a arte errada.
+///
+/// ⚠️ **O default continua a MISTURAR, e isso é deliberado:** mudar a lei de todo
+/// documento já autorado por causa de um caso que só aparece quando duas lanes
+/// carregam formas DIFERENTES seria pagar com o mundo inteiro por um canto dele. O
+/// que este knob dá é a cura — *escolha a lane* — e é ela que a folha 08 pedia.
+const GEOMETRY_COLUMNS: [&str; 3] = ["P", "geometry_id", "texture_id"];
 
 /// A cloned snapshot of one input.
 struct Snap {
@@ -294,7 +370,13 @@ fn common_columns(snaps: &[&Snap]) -> Vec<String> {
 /// Reduce the contributing inputs into one stream. `blend` is only used in Blend mode;
 /// `weights` is aligned to `contributing` and carries **each snapshot's own port weight**
 /// ([`WEIGHTS`]).
-fn mix(mode: i64, contributing: &[&Snap], blend: &[f32], weights: &[f32]) -> Stream {
+fn mix(
+    mode: i64,
+    contributing: &[&Snap],
+    blend: &[f32],
+    weights: &[f32],
+    geom_from: Option<&Snap>,
+) -> Stream {
     if contributing.is_empty() {
         return Stream::new(0);
     }
@@ -320,9 +402,26 @@ fn mix(mode: i64, contributing: &[&Snap], blend: &[f32], weights: &[f32]) -> Str
                     add_scaled(&acc, c, *w)
                 })
         };
+        // A GEOMETRIA vem de UMA lane quando o artista a escolhe — ver
+        // [`GEOMETRY_COLUMNS`]. Ela sai antes da mistura, não depois: misturar e
+        // depois deitar fora daria o mesmo número e o dobro do trabalho.
+        if let Some(src) = geom_from
+            && GEOMETRY_COLUMNS.contains(&name.as_str())
+            && let Some(c) = src.column(&name)
+        {
+            out.set(name, trunc(c, count));
+            continue;
+        }
         let mixed = match mode {
             MODE_BLEND if cols.len() >= 2 => lerp_col(&cols[0], &cols[1], blend, count),
             MODE_ADD => weighted_sum(),
+            // As quatro dobras apendadas. Com UMA entrada elas são a identidade —
+            // `fold` sobre uma lista de um devolve o elemento —, que é a resposta
+            // certa e a mesma que os outros modos dão.
+            MODE_SUB | MODE_MUL | MODE_MIN | MODE_MAX => cols
+                .iter()
+                .skip(1)
+                .fold(cols[0].clone(), |acc, c| fold_col(&acc, c, mode)),
             _ => {
                 // Avg (and Blend with a single input): the WEIGHTED mean over the inputs.
                 // ⚠️ `Σ w = 0` emite o numerador (zero) em vez de `0/0 = NaN` — ver
@@ -360,15 +459,30 @@ impl NodeOp for MotionMixer {
         // a valer para outra porta.
         let ws: Vec<f32> = WEIGHTS.iter().map(|w| ctx.param(w)).collect();
         // Snapshot the four stream inputs, one at a time.
-        let snaps: Vec<(Snap, f32)> = (0..4u16)
-            .map(|k| (snapshot(ctx.input(k as usize)), ws[k as usize]))
-            .filter(|(s, _)| s.count > 0)
+        // ⚠️ O índice da PORTA viaja com o snapshot, e não só o peso: o `geom_from`
+        // nomeia a porta que o artista vê (A..D), e uma porta vazia sai da lista —
+        // um índice contado na LISTA apontaria para outra porta.
+        let snaps: Vec<(usize, Snap, f32)> = (0..4usize)
+            .map(|k| (k, snapshot(ctx.input(k)), ws[k]))
+            .filter(|(_, s, _)| s.count > 0)
             .collect();
         // Blend uses only the first two inputs; Avg/Add use all non-empty.
         let taken = if mode == MODE_BLEND { 2 } else { snaps.len() };
-        let contributing: Vec<&Snap> = snaps.iter().take(taken).map(|(s, _)| s).collect();
-        let weights: Vec<f32> = snaps.iter().take(taken).map(|(_, w)| *w).collect();
-        ctx.emit(mix(mode, &contributing, &blend, &weights));
+        let contributing: Vec<&Snap> = snaps.iter().take(taken).map(|(_, s, _)| s).collect();
+        let weights: Vec<f32> = snaps.iter().take(taken).map(|(_, _, w)| *w).collect();
+        // `0` = Mixed. Uma porta escolhida que esteja VAZIA cai de volta na mistura
+        // — a alternativa seria a cena desaparecer por causa de um fio que faltava.
+        let want = ctx.param("geom_from").round() as i64;
+        let geom_from = (want >= 1)
+            .then(|| {
+                snaps
+                    .iter()
+                    .take(taken)
+                    .find(|(port, _, _)| *port + 1 == want as usize)
+                    .map(|(_, s, _)| s)
+            })
+            .flatten();
+        ctx.emit(mix(mode, &contributing, &blend, &weights, geom_from));
     }
 }
 
@@ -412,10 +526,24 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "mode",
         label: "Mode",
         min: 0.0,
-        max: 2.0,
+        max: 6.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Avg", "Add", "Blend"],
+            // ⚠️ Os quatro últimos são APENDADOS (folha 08 linha 45): `0..2` ficam
+            // onde estavam, então todo documento já autorado lê o mesmo modo. Ver
+            // [`fold_col`] para porque são QUATRO e não os oito do `field.combine`.
+            labels: &["Avg", "Add", "Blend", "Subtract", "Multiply", "Min", "Max"],
+        },
+    },
+    // De qual entrada vem a GEOMETRIA. `Mixed` é o nó de sempre.
+    ParamUiHint {
+        param: "geom_from",
+        label: "Geometry From",
+        min: 0.0,
+        max: 4.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Mixed", "In 0", "In 1", "In 2", "In 3"],
         },
     },
     weight_hint!(WEIGHTS[0], "Weight 0"),
@@ -451,154 +579,8 @@ static PARAM_GATES: &[ParamGate] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Avg mode (the production default arm), named here for the tests' readability.
-    const MODE_AVG: i64 = 0;
-
-    fn snap_p(p: Vec<[f32; 2]>) -> Snap {
-        Snap {
-            count: p.len(),
-            cols: vec![("P".to_string(), Column::Vec2(p))],
-        }
-    }
-
-    fn p_of(s: &Stream) -> Vec<[f32; 2]> {
-        match s.get("P").unwrap() {
-            Column::Vec2(v) => v.clone(),
-            _ => panic!("P"),
-        }
-    }
-
-    /// Avg is the midpoint of the inputs: two points averaged land halfway between.
-    #[test]
-    fn avg_is_the_midpoint() {
-        let a = snap_p(vec![[0.0, 0.0], [2.0, 0.0]]);
-        let b = snap_p(vec![[4.0, 0.0], [2.0, 4.0]]);
-        let out = mix(MODE_AVG, &[&a, &b], &[0.5], &[1.0, 1.0]);
-        assert_eq!(p_of(&out), vec![[2.0, 0.0], [2.0, 2.0]]);
-    }
-
-    /// Add sums the inputs component-wise.
-    #[test]
-    fn add_sums_the_inputs() {
-        let a = snap_p(vec![[1.0, 1.0]]);
-        let b = snap_p(vec![[2.0, 3.0]]);
-        let out = mix(MODE_ADD, &[&a, &b], &[0.5], &[1.0, 1.0]);
-        assert_eq!(p_of(&out), vec![[3.0, 4.0]]);
-    }
-
-    /// Blend lerps in0→in1: weight 0 is in0, 1 is in1, 0.25 is a quarter across.
-    /// FALSIFIED by an averaging that ignores the weight.
-    #[test]
-    fn blend_lerps_in0_to_in1() {
-        let a = snap_p(vec![[0.0, 0.0]]);
-        let b = snap_p(vec![[4.0, 8.0]]);
-        assert_eq!(
-            p_of(&mix(MODE_BLEND, &[&a, &b], &[0.0], &[1.0, 1.0])),
-            vec![[0.0, 0.0]]
-        );
-        assert_eq!(
-            p_of(&mix(MODE_BLEND, &[&a, &b], &[1.0], &[1.0, 1.0])),
-            vec![[4.0, 8.0]]
-        );
-        assert_eq!(
-            p_of(&mix(MODE_BLEND, &[&a, &b], &[0.25], &[1.0, 1.0])),
-            vec![[1.0, 2.0]]
-        );
-    }
-
-    /// Mismatched counts blend the common prefix (the minimum count).
-    #[test]
-    fn count_is_the_minimum() {
-        let a = snap_p(vec![[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]);
-        let b = snap_p(vec![[2.0, 2.0]]);
-        let out = mix(MODE_AVG, &[&a, &b], &[0.5], &[1.0, 1.0]);
-        assert_eq!(out.count(), 1, "truncated to the shorter input");
-    }
-
-    /// Deterministic + cooks through the registry: two sources blend to their midpoint at
-    /// blend 0.5.
-    #[test]
-    fn registers_and_mixes_through_the_cook() {
-        use ph2d_nodegraph::cook::{Cook, OpResolver};
-        use ph2d_nodegraph::graph::{Edge, Graph};
-
-        const fn src(id: &'static str) -> NodeManifest {
-            NodeManifest {
-                id: NodeTypeId::of(id),
-                name: id,
-                inputs: &[],
-                outputs: &[PortSpec {
-                    name: "out",
-                    ty: INST_VEC2,
-                }],
-                effect: Effect::Pure,
-                clock: Clock::Frame,
-                params: &[] as &[ParamSpec],
-                lowerings: &[LoweringKind::Cpu],
-            }
-        }
-        static SA: NodeManifest = src("motion.mixer.test.a");
-        static SB: NodeManifest = src("motion.mixer.test.b");
-        struct A;
-        impl NodeOp for A {
-            fn manifest(&self) -> &'static NodeManifest {
-                &SA
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                ctx.emit(Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]])));
-            }
-        }
-        struct B;
-        impl NodeOp for B {
-            fn manifest(&self) -> &'static NodeManifest {
-                &SB
-            }
-            fn eval(&self, ctx: &mut EvalCtx<'_>) {
-                ctx.emit(Stream::new(2).with("P", Column::Vec2(vec![[4.0, 0.0], [4.0, 0.0]])));
-            }
-        }
-        struct Ops;
-        impl OpResolver for Ops {
-            fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-                match ty {
-                    t if t == SA.id => Some(&A),
-                    t if t == SB.id => Some(&B),
-                    t if t == MANIFEST.id => Some(&MotionMixer),
-                    _ => None,
-                }
-            }
-        }
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-
-        let mut g = Graph::new();
-        let a = g.add_node("motion.mixer.test.a");
-        let b = g.add_node("motion.mixer.test.b");
-        let m = g.add_node("motion.mixer");
-        g.connect(Edge {
-            from: (a, 0),
-            to: (m, 0),
-            delayed: false,
-        })
-        .unwrap();
-        g.connect(Edge {
-            from: (b, 0),
-            to: (m, 1),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, m, 0.0).unwrap();
-        match out[0].as_stream().get("P").unwrap() {
-            Column::Vec2(v) => assert_eq!(v[0], [2.0, 0.0], "midpoint of the two sources"),
-            _ => panic!("P"),
-        }
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;
 
 #[cfg(test)]
 #[path = "blend_field_tests.rs"]

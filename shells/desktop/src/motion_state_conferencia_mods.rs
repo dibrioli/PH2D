@@ -115,6 +115,10 @@ pub(crate) mod conferencia_demos_sim;
 /// A cena do ESTILO (`=76`) — a borda, o Trim e o tracejado do `source.shape` (folha 14).
 #[path = "motion_state_conferencia_demos_style.rs"]
 pub(crate) mod conferencia_demos_style;
+/// A cena da UTILIDADE (`=81`) — o vocabulário do mixer, a ordem rodada e o
+/// ponto polar (folha 08). ⚠️ Ela desenha FIGURAS, não perfis.
+#[path = "motion_state_conferencia_demos_util.rs"]
+pub(crate) mod conferencia_demos_util;
 
 #[path = "motion_state_conferencia_demos_drizzle.rs"]
 pub(crate) mod conferencia_demos_drizzle;

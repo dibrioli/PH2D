@@ -265,7 +265,7 @@ fn the_exported_mesh_sits_on_the_surface() {
     )
     .expect("esfera");
     let f = Field::new(&doc);
-    let worst_at = |depth: u8| -> f64 {
+    let errors_at = |depth: u8| -> Vec<f64> {
         let m = crate::extract::extract(&doc, &Registry::new(), depth)
             .expect("a malha sai e a ph2d-mesh a aceita");
         assert!(m.positions().len() > 100, "a esfera não pode sair vazia");
@@ -275,8 +275,13 @@ fn the_exported_mesh_sits_on_the_surface() {
                 f.at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]))
                     .abs()
             })
-            .fold(0.0_f64, f64::max)
+            .collect()
     };
+    let mean_at = |depth: u8| -> f64 {
+        let e = errors_at(depth);
+        e.iter().sum::<f64>() / e.len() as f64
+    };
+    let worst_at = |depth: u8| -> f64 { errors_at(depth).into_iter().fold(0.0_f64, f64::max) };
 
     // ⚠️ **A barra deste gate foi re-derivada TRÊS vezes, e o caminho é o conteúdo.**
     //
@@ -304,27 +309,44 @@ fn the_exported_mesh_sits_on_the_surface() {
     // Os vértices quadruplicam (×4,2 · ×3,9 · ×4,0 · ×4,0) e o erro médio **cai por 4** a cada
     // degrau — segunda ordem, que é o que uma superfície lisa deve dar. *A nota que dizia o
     // contrário não era um erro de medição: era uma medição correta de OUTRO extrator.*
-    let errs: Vec<f64> = (4u8..=7).map(worst_at).collect();
-    for w in errs.windows(2) {
+    // ⚠️ **4ª: o gate media o MÁXIMO e a lei que ele cita é a do MÉDIO** — e a última coluna da
+    // tabela acima já o dizia: o máximo cai ×3,8 · ×3,3 · ×3,1 e depois **×1,46**, porque um máximo
+    // sobre 4× mais vértices amostra melhor a própria cauda. Ele passava por a varredura parar na
+    // profundidade 7; a W33 (a caixa da grade passou a ser a da peça) encolheu a célula e trouxe o
+    // regime da cauda para dentro da varredura. *Cada estatística mede-se pela lei que ela obedece:*
+    //
+    // - o **médio** cai por 4 (segunda ordem) — aqui exigido ≥ 2× por degrau, com folga;
+    // - o **máximo** é uma fração da CÉLULA (a coluna `máx/célula`: 0,011 a 0,054), e é isso que ele
+    //   tem de continuar a ser — uma barra livre de escala, que uma caixa nova não invalida.
+    let means: Vec<f64> = (4u8..=7).map(mean_at).collect();
+    for w in means.windows(2) {
         assert!(
             w[1] < w[0] * 0.5,
-            "dobrar a resolução tem de cortar o erro ao meio, pelo menos: {:.2e} -> {:.2e}",
+            "dobrar a resolução tem de cortar o erro MÉDIO ao meio, pelo menos: {:.2e} -> {:.2e}",
             w[0],
             w[1]
         );
     }
-    let total = errs[0] / errs[errs.len() - 1];
+    let total = means[0] / means[means.len() - 1];
     assert!(
         total > 20.0,
-        "de prof. 4 a 7 o erro tem de cair pelo menos 20x: {:.2e} -> {:.2e} e {total:.1}x",
-        errs[0],
-        errs[errs.len() - 1]
+        "de prof. 4 a 7 o erro médio tem de cair pelo menos 20x: {:.2e} -> {:.2e} e {total:.1}x",
+        means[0],
+        means[means.len() - 1]
     );
-    assert!(
-        errs[1] < 0.0625 * 0.05,
-        "pior vertice na prof. 5 a {} da superficie (teto: 5 % da celula)",
-        errs[1]
-    );
+
+    // ⭐ **O máximo, contra a CÉLULA** — a barra livre de escala. A tabela mede 0,011 a 0,054;
+    // 10 % dá quase o dobro de folga sobre o pior degrau medido, e é ela que apanha um vértice
+    // fugido da célula (o defeito que a W20 curou) em qualquer caixa.
+    for depth in 4u8..=7 {
+        let cell = crate::extract::cell_size(&doc, &Registry::new(), depth);
+        let w = worst_at(depth);
+        assert!(
+            w < 0.10 * cell,
+            "prof. {depth}: o pior vértice está a {w:.2e} da superfície, {:.3} da célula (teto:              0,100)",
+            w / cell
+        );
+    }
 
     // ⚠️ **E a contagem de vértices é metade do gate.** Sem ela, um extrator que voltasse a colapsar
     // células passaria na coluna do erro (colapsar onde já está bom não piora o erro) e a nota da
@@ -1766,6 +1788,10 @@ impl Sampled for AnalyticSphere {
     fn at(&self, p: [f32; 3]) -> f32 {
         (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt() - self.radius
     }
+
+    fn bounding_radius(&self) -> f32 {
+        self.radius
+    }
 }
 
 /// Uma varredura determinística do cubo `[-1, 1]`.
@@ -2022,4 +2048,139 @@ fn the_pose_of_a_sculpture_is_undone_on_the_sample() {
         (v[1] - 0.2).abs() < 1e-5,
         "e a 1,0 do centro a distância é 1,0 − 0,8: {v:?}"
     );
+}
+
+/// ⭐ **UMA PEÇA LONGE DA ORIGEM É EXPORTADA INTEIRA** (W33) — o corte silencioso que a caixa fixa
+/// fazia.
+///
+/// ⚠️ **O defeito não dava erro nenhum**: a grade era `[-1, 1]` fixo, uma peça em `x = 2,5` não tinha
+/// **uma única troca de sinal** lá dentro, e a exportação saía vazia (ou pela metade, se a peça
+/// estivesse a cavalo da parede). Nada na tela, nada no aviso — o artista abria o arquivo no Blender
+/// e não estava lá.
+#[test]
+fn a_piece_far_from_the_origin_is_exported_whole() {
+    let far = [2.5_f32, -1.2, 0.7];
+    let radius = 0.4_f32;
+    let doc = FieldDoc::new(
+        vec![leaf(
+            Primitive::Sphere { radius },
+            Xform::at(far[0], far[1], far[2]),
+        )],
+        NodeId(0),
+    )
+    .expect("esfera longe");
+
+    let m = crate::extract::extract(&doc, &Registry::new(), 6).expect("a malha sai");
+    assert!(
+        m.positions().len() > 100,
+        "a peça longe saiu com {} vértices — a caixa cortou-a",
+        m.positions().len()
+    );
+
+    // ⚠️ E ela saiu **onde está**, não trazida para a origem: o centro dos vértices tem de ser o
+    // centro da esfera, e o raio tem de ser o raio.
+    let n = m.positions().len() as f32;
+    let c = m.positions().iter().fold([0.0f32; 3], |a, p| {
+        [a[0] + p[0] / n, a[1] + p[1] / n, a[2] + p[2] / n]
+    });
+    for k in 0..3 {
+        assert!(
+            (c[k] - far[k]).abs() < 0.05,
+            "a peça saiu no sítio errado: centro {c:?}, esperado {far:?}"
+        );
+    }
+    let worst = m
+        .positions()
+        .iter()
+        .map(|p| {
+            let d = [p[0] - far[0], p[1] - far[1], p[2] - far[2]];
+            ((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() - radius).abs()
+        })
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst < 0.02,
+        "os vértices não estão na esfera: pior desvio {worst:.4}"
+    );
+}
+
+/// ⭐ **A caixa apertada COMPRA resolução** — e o número é o ponto da wave.
+///
+/// ⚠️ Ele mede a razão entre a célula antiga (`2/n`, a caixa fixa do motor) e a nova (a da peça): é
+/// quantas vezes mais fina a mesma profundidade passou a ser. Uma peça pequena — que é o caso normal,
+/// porque as formas nascem no tamanho do enquadramento — ganha o mais.
+#[test]
+fn a_tight_box_buys_resolution() {
+    let doc = FieldDoc::new(
+        vec![leaf(Primitive::Sphere { radius: 0.25 }, Xform::IDENTITY)],
+        NodeId(0),
+    )
+    .expect("esfera pequena");
+    let depth = 7u8;
+    let old_cell = 2.0 / f64::from(1u32 << depth);
+    let new_cell = crate::extract::cell_size(&doc, &Registry::new(), depth);
+    let gain = old_cell / new_cell;
+    assert!(
+        gain > 3.0,
+        "uma esfera de 0,25 na caixa de 2 unidades tinha de ganhar >3x de resolução; ganhou \
+         {gain:.2}x (célula {old_cell:.5} -> {new_cell:.5})"
+    );
+}
+
+/// ⭐ **A MALHA SAI FECHADA** — toda aresta pertence a exactamente duas faces.
+///
+/// ⚠️ **É a lei que a folga da caixa protege, e uma prova de mutação foi precisa para a encontrar:**
+/// tirar a folga (`half = r`, a superfície a encostar na parede) passava **verde** em todos os gates
+/// de erro — porque uma esfera toca a caixa em **seis pontos** e perder seis travessias não mexe numa
+/// média sobre milhares de vértices. O que se perde é outra coisa: os **buracos** que ficam lá, e um
+/// buraco não é um erro de posição — é uma malha que a fatiadora recusa e que o *shade smooth* do
+/// Blender denuncia como uma costura preta.
+///
+/// *Uma média não vê seis buracos; a topologia vê.*
+#[test]
+fn the_exported_mesh_is_closed() {
+    for (name, doc) in [
+        (
+            "esfera",
+            FieldDoc::new(
+                vec![leaf(Primitive::Sphere { radius: 0.6 }, Xform::IDENTITY)],
+                NodeId(0),
+            )
+            .expect("esfera"),
+        ),
+        (
+            "caixa arredondada",
+            FieldDoc::new(
+                vec![leaf(
+                    Primitive::Box {
+                        half: [0.5, 0.35, 0.4],
+                        round: 0.08,
+                    },
+                    Xform::at(1.7, 0.0, -0.9),
+                )],
+                NodeId(0),
+            )
+            .expect("caixa longe"),
+        ),
+    ] {
+        let m = crate::extract::extract(&doc, &Registry::new(), 6).expect("a malha sai");
+        let mut inc: std::collections::BTreeMap<(u32, u32), u32> =
+            std::collections::BTreeMap::new();
+        let mut tri = Vec::new();
+        for f in m.faces() {
+            tri.clear();
+            f.triangles(&mut tri);
+            for t in &tri {
+                for k in 0..3 {
+                    let (a, b) = (t[k], t[(k + 1) % 3]);
+                    *inc.entry((a.min(b), a.max(b))).or_default() += 1;
+                }
+            }
+        }
+        let open = inc.values().filter(|&&n| n != 2).count();
+        assert_eq!(
+            open, 0,
+            "{name}: {open} arestas com incidência ≠ 2 — a peça encostou na parede da caixa e saiu \
+             com buraco"
+        );
+    }
 }

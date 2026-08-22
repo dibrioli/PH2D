@@ -112,28 +112,84 @@ const JACOBI_SWEEPS: usize = 12;
 /// mover um vértice fugido 1 % de célula não seja visível em geometria nenhuma.
 const CELL_INSET: f64 = 0.01;
 
+/// Quanto a caixa da grade cresce além da esfera de bordo da peça.
+///
+/// # ⚠️ Uma prova de mutação SOBREVIVEU a este número, e a sobrevivência é a nota
+///
+/// Pôr a folga a **zero** deixa a malha da esfera **fechada** e o erro na mesma (medido: as duas
+/// metades do `the_exported_mesh_is_closed` e do `…sits_on_the_surface` passam). A razão é
+/// geométrica: uma superfície tangente à esfera de bordo toca-a em **pontos isolados**, e uma
+/// travessia com `f = 0` exactamente na parede continua a ser detectada — o sinal de dentro é
+/// negativo e o da parede não é.
+///
+/// ⭐ **Então o que esta folga protege não é a superfície: é o BORDO.** Ele é conservador por
+/// construção, mas composto de aproximações — o *taper*, as matrizes, e a caixa de uma escultura
+/// amostrada. 5 % do raio é a margem dessas aproximações, e custa 5 % da resolução.
+///
+/// *Um número que nenhum gate faz falhar tem de dizer de que ele é margem* — este diz, e é por isso
+/// que fica.
+const PAD_FRACTION: f64 = 0.05;
+
 /// A grade que a extração percorre.
 struct Grid {
     /// Células por eixo.
     n: usize,
     /// Aresta da célula.
     step: f64,
+    /// O canto mínimo da caixa, **por eixo**: o cubo que envolve a esfera de bordo da peça, e ele
+    /// deixou de ser centrado na origem na W33.
+    lo: [f64; 3],
 }
 
 impl Grid {
-    fn new(depth: u8) -> Self {
-        // ⚠️ `[-1, 1]` é a caixa do motor — a mesma que o `Octree::build` assume por omissão. Trocar
-        // por uma caixa apertada à peça multiplica a resolução efetiva e é wave própria: ela mexe
-        // no significado da profundidade, que já está escrita na tabela de exportação.
+    /// ⭐ **A caixa é a da PEÇA, não uma constante** (W33).
+    ///
+    /// ⚠️ Até aqui ela era `[-1, 1]` fixo — a caixa do motor —, com duas consequências:
+    ///
+    /// | | antes | agora |
+    /// |---|---|---|
+    /// | peça fora de `[-1, 1]` | ⛔ **cortada na exportação, em silêncio** | cabe |
+    /// | peça pequena no meio | resolução gasta em espaço vazio | a célula encolhe com a peça |
+    ///
+    /// ⚠️ **O significado da PROFUNDIDADE muda com isto, e é o preço declarado:** `n = 2^depth`
+    /// continua a ser o número de células por eixo — então a **contagem** de quads da tabela de
+    /// exportação continua a valer —, mas o **tamanho** de cada célula passa a ser relativo à peça.
+    /// Para uma peça que enchia a caixa antiga nada muda; para as outras, a mesma profundidade
+    /// entrega mais detalhe.
+    ///
+    /// ⚠️ **A folga é uma FRAÇÃO DO RAIO, nunca um número de células** — e a primeira versão desta
+    /// função errou-o. Com a folga em células, a caixa mudava com a profundidade, e **dobrar a
+    /// resolução deixava de quadruplicar os vértices** (medido: 4,61×). O gate
+    /// `the_exported_mesh_sits_on_the_surface` apanhou-o na hora: *uma grade uniforme tem de escalar
+    /// como uma grade uniforme.*
+    ///
+    /// Ela existe para a superfície não encostar na parede: a extração só emite quad onde o campo
+    /// **troca de sinal**, e a última amostra tem de cair **fora** da peça. 5 % chega com folga —
+    /// a esfera de bordo já é conservadora, e uma peça que a encha por completo (uma esfera) fica
+    /// com a amostra da parede a `0,05·r` de distância da superfície.
+    fn new(depth: u8, ball: crate::bounds::Ball) -> Self {
         let n = 1usize << depth;
+        // Um raio degenerado (peça vazia, número não-finito) volta à caixa do motor: é a resposta
+        // conservadora quando não há medição em que confiar.
+        let r = if ball.radius.is_finite() && ball.radius > 0.0 {
+            f64::from(ball.radius)
+        } else {
+            1.0
+        };
+        let half = r * (1.0 + PAD_FRACTION);
+        // ⚠️ **O cubo é centrado no BORDO, não na origem** — é isto que faz uma peça longe do zero
+        // ser exportada inteira, e era exactamente o que a caixa fixa cortava.
+        let c = ball.center.map(f64::from);
         Self {
             n,
-            step: 2.0 / n as f64,
+            step: 2.0 * half / n as f64,
+            lo: [c[0] - half, c[1] - half, c[2] - half],
         }
     }
 
-    fn coord(&self, i: usize) -> f64 {
-        (i as f64).mul_add(self.step, -1.0)
+    /// A coordenada da amostra `i` **no eixo `axis`**.
+    fn coord(&self, axis: usize, i: usize) -> f64 {
+        (i as f64).mul_add(self.step, self.lo[axis])
     }
 
     /// Amostras por eixo — uma a mais que as células.
@@ -232,9 +288,9 @@ fn crossings_of(
 ) -> (usize, usize) {
     let corner = |b: usize| {
         [
-            grid.coord(cell[0] + (b & 1)),
-            grid.coord(cell[1] + ((b >> 1) & 1)),
-            grid.coord(cell[2] + ((b >> 2) & 1)),
+            grid.coord(0, cell[0] + (b & 1)),
+            grid.coord(1, cell[1] + ((b >> 1) & 1)),
+            grid.coord(2, cell[2] + ((b >> 2) & 1)),
         ]
     };
     let start = out.len();
@@ -266,13 +322,37 @@ fn crossings_of(
 ///
 /// # Errors
 /// Ver [`MeshError`]. A malha sai **vazia** (e não em erro) quando o nível zero não cruza a caixa.
+/// ⭐ **A aresta da célula desta extração** — o que a grade de facto vai usar.
+///
+/// ⚠️ Ela é **perguntada, nunca copiada**: desde a W33 a caixa sai da peça, então uma segunda cópia
+/// da fórmula num gate mediria uma grade que não existe. É o que separa medir o extrator de medir
+/// uma lembrança dele.
+#[must_use]
+pub fn cell_size(doc: &ph2d_field::FieldDoc, reg: &crate::hybrid::Registry, depth: u8) -> f64 {
+    Grid::new(
+        depth,
+        crate::bounds::bounding_ball(doc, reg).unwrap_or(crate::bounds::Ball {
+            center: [0.0; 3],
+            radius: 1.0,
+        }),
+    )
+    .step
+}
+
 pub fn extract(
     doc: &ph2d_field::FieldDoc,
     reg: &crate::hybrid::Registry,
     depth: u8,
 ) -> Result<Mesh, MeshError> {
     let mut field = crate::hybrid::Hybrid::new(doc, reg);
-    let grid = Grid::new(depth);
+    // ⭐ A caixa da grade sai da PEÇA (W33) — ver `Grid::new`.
+    let grid = Grid::new(
+        depth,
+        crate::bounds::bounding_ball(doc, reg).unwrap_or(crate::bounds::Ball {
+            center: [0.0; 3],
+            radius: 1.0,
+        }),
+    );
     let m = grid.samples();
 
     let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
@@ -280,11 +360,11 @@ pub fn extract(
         xs.clear();
         ys.clear();
         zs.clear();
-        let z = grid.coord(k) as f32;
+        let z = grid.coord(2, k) as f32;
         for j in 0..m {
-            let y = grid.coord(j) as f32;
+            let y = grid.coord(1, j) as f32;
             for i in 0..m {
-                xs.push(grid.coord(i) as f32);
+                xs.push(grid.coord(0, i) as f32);
                 ys.push(y);
                 zs.push(z);
             }
@@ -415,9 +495,9 @@ fn cell_vertex(grid: &Grid, cell: [usize; 3], cross: &[[f64; 3]], grads: &[[f32;
     let center = [mass[0] / count, mass[1] / count, mass[2] / count];
     let inset = grid.step * CELL_INSET;
     let lo = [
-        grid.coord(cell[0]) + inset,
-        grid.coord(cell[1]) + inset,
-        grid.coord(cell[2]) + inset,
+        grid.coord(0, cell[0]) + inset,
+        grid.coord(1, cell[1]) + inset,
+        grid.coord(2, cell[2]) + inset,
     ];
     let hi = [
         lo[0] + grid.step - 2.0 * inset,

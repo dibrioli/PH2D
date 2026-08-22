@@ -2529,8 +2529,105 @@ divergir, e a paridade delas não teria como ser medida sem uma terceira funçã
 
 ---
 
+## §34 — W33: a caixa da grade é a da PEÇA — e um corte silencioso a menos (22/08)
+
+> O extrator montava a grade sobre `[-1, 1]` **fixo**, e a nota ao lado dizia: *"trocar por uma caixa
+> apertada à peça multiplica a resolução efetiva e é wave própria"*. Ela não dizia a outra metade —
+> **uma peça fora daquela caixa é cortada na exportação, sem uma palavra.**
+
+### §34.1 — Duas consequências, e a primeira é muda
+
+| | antes | agora |
+|---|---|---|
+| peça fora de `[-1, 1]` | ⛔ **cortada, em silêncio** (o artista abre no Blender e não está lá) | cabe |
+| peça pequena no meio | resolução gasta em espaço vazio | a célula encolhe com a peça (**>3×** medido numa esfera de 0,25) |
+
+⚠️ **O preço declarado:** `n = 2^depth` continua a ser o número de células por eixo — a **contagem**
+de quads da tabela de exportação continua a valer —, mas o **tamanho** de cada célula passa a ser
+relativo à peça. Para uma peça que enchia a caixa antiga, nada muda.
+
+### §34.2 — ⭐ O bordo é uma ESFERA, e conservador é a direção segura
+
+A esfera é **invariante à rotação**: subir a cadeia de poses custa `centro' = pose(centro)` e
+`raio' = raio · escala`. Uma **caixa** teria de ser re-envolvida a cada nível girado, e cada
+re-envolvimento cresce — três agrupamentos rodados dariam uma caixa muito maior do que a peça. *A
+moeda certa para compor bordos é a que a composição não estraga.*
+
+E toda aproximação erra **para cima**, por uma assimetria que é o critério inteiro: um bordo maior do
+que a peça custa **resolução**; um bordo menor **corta a peça e não diz nada**.
+
+⚠️ Duas leis que o gate prende: uma **subtração** não cresce com o cortador (o que se corta não
+acrescenta matéria — um cortador enorme e distante não pode inflar a caixa), e os **modificadores**
+crescem o bordo (casca, afastamento, matriz linear, radial, *taper*), cada um com a sua conta.
+
+### §34.3 — ⛔ O gate apanhou um erro de desenho meu, na hora
+
+A primeira versão punha a folga em **células** (`half = r·n/(n−4)`). Com isso a caixa mudava com a
+profundidade, e **dobrar a resolução deixava de quadruplicar os vértices** — 4,61× medido. O gate
+`the_exported_mesh_sits_on_the_surface` reprovou imediatamente: *uma grade uniforme tem de escalar
+como uma grade uniforme.* A folga passou a ser uma **fração do raio**.
+
+### §34.4 — ⛔ E o mesmo gate estava a medir a estatística ERRADA
+
+Depois da cura, ele continuou vermelho: *"dobrar a resolução tem de cortar o erro ao meio"*, e o
+máximo caiu só 1,75×. ⭐ **A tabela escrita no próprio gate já continha a resposta:** a coluna do
+máximo cai ×3,8 · ×3,3 · ×3,1 e depois **×1,46** — porque um máximo sobre 4× mais vértices amostra
+melhor a própria cauda. A lei da segunda ordem é do **erro médio**, e é o médio que a nota do gate
+sempre citou; ele passava por a varredura parar na profundidade 7, e a caixa apertada (células
+menores) trouxe o regime da cauda para dentro dela.
+
+O gate foi **reconstruído, não afrouxado** — cada estatística medida pela lei que ela obedece:
+
+| estatística | lei | barra |
+|---|---|---|
+| erro **médio** | segunda ordem (cai por 4) | ≥ 2× por degrau, e ≥ 20× de prof. 4 a 7 |
+| erro **máximo** | é uma fração da **célula** | < 10 % da célula (medido: 1,1 % a 5,4 %) |
+
+⚠️ A célula é **perguntada ao extrator** (`extract::cell_size`), nunca recopiada: desde esta wave ela
+depende da peça, e uma segunda cópia da fórmula mediria uma grade que não existe.
+
+### §34.5 — ⛔ Uma prova de mutação SOBREVIVEU, e a sobrevivência virou a nota
+
+Pôr a folga a **zero** — a superfície a encostar na parede — passa **verde** em tudo. A razão é
+geométrica: uma superfície tangente à esfera de bordo toca-a em **pontos isolados**, e uma travessia
+com `f = 0` exactamente na parede continua a ser detectada.
+
+⭐ Então **o que a folga protege não é a superfície: é o BORDO** — conservador por construção, mas
+composto de aproximações (o *taper*, as matrizes, a caixa de uma escultura amostrada). 5 % do raio é
+a margem dessas aproximações e custa 5 % da resolução. *Um número que nenhum gate faz falhar tem de
+dizer de que ele é margem.*
+
+⭐ E a procura por esse gate produziu o melhor da wave: **`the_exported_mesh_is_closed`** — toda
+aresta em exactamente duas faces. *Uma média não vê seis buracos; a topologia vê* — e um buraco não é
+erro de posição, é uma malha que a fatiadora recusa.
+
+### §34.6 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| a caixa volta a ser `[-1,1]` (**o corte silencioso**) | `a_piece_far_from_the_origin_is_exported_whole` |
+| a folga volta a depender da resolução | `the_exported_mesh_sits_on_the_surface` |
+| o bordo esquece a **escala** da pose | `the_ball_contains_every_point_the_field_calls_solid` |
+| o bordo esquece os **modificadores** | o mesmo gate |
+| a união de bordos vira o primeiro filho | o mesmo gate |
+| ⚠️ folga zero | **sobreviveu** — ver §34.5, com a razão escrita |
+
+### §34.7 — ⏸️ O que fica aberto
+
+- O bordo de uma **escultura** é a meia-diagonal da caixa da grade dela **mais** a distância do
+  centro: conservador com folga a mais quando a malha importada não estava centrada. Apertá-lo pede
+  a caixa da malha no trait, e o gatilho é uma medição que ainda ninguém fez.
+- A **exportação não diz o tamanho** da peça. Agora que o bordo existe, dizê-lo é uma linha — e é a
+  primeira pergunta de quem leva o arquivo para outro programa.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
+  `[-1,1]` era cortada em silêncio, e uma peça pequena gastava resolução em vazio (**>3×** de
+  ganho medido). ⏸️ Fica: a exportação **não diz o tamanho** da peça, e agora que o bordo existe
+  isso é uma linha
 - ✅ **o OLHO da Hierarquia passou a valer na W28** (§29) — esconder um nó tira-o da peça, e um
   grupo leva a subárvore consigo; um nó escondido não tem gizmo nem anda com a seleção.
   ⏸️ Fica **isolar** (mostrar só o escolhido), que é o gesto irmão

@@ -422,4 +422,26 @@ impl ph2d_field_eval::hybrid::Sampled for SampledField {
     fn at(&self, p: [f32; 3]) -> f32 {
         SampledField::at(self, p)
     }
+
+    /// ⭐ **A meia-diagonal da caixa da grade** (W33) — quem tem a grade sabe a caixa dela.
+    ///
+    /// ⚠️ Da **caixa**, não da malha: a grade já cresceu `PAD_CELLS` além dela, e o bordo tem de
+    /// conter o campo que se vai avaliar, não só a superfície. Errar para cima aqui custa resolução
+    /// de exportação; errar para baixo **corta a escultura**.
+    fn bounding_radius(&self) -> f32 {
+        let d = [
+            (self.box_.max[0] - self.box_.min[0]) * 0.5,
+            (self.box_.max[1] - self.box_.min[1]) * 0.5,
+            (self.box_.max[2] - self.box_.min[2]) * 0.5,
+        ];
+        // A malha é recentrada na importação, então o centro da caixa é ~a origem; a meia-diagonal
+        // cobre o resto com folga.
+        let c = [
+            (self.box_.max[0] + self.box_.min[0]) * 0.5,
+            (self.box_.max[1] + self.box_.min[1]) * 0.5,
+            (self.box_.max[2] + self.box_.min[2]) * 0.5,
+        ];
+        (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
+            + (c[0] * c[0] + c[1] * c[1] + c[2] * c[2]).sqrt()
+    }
 }

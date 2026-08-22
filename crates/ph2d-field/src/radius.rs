@@ -283,3 +283,60 @@ impl Bound {
         }
     }
 }
+
+/// ⭐ **O raio de uma esfera, centrada na origem local, que contém a primitiva INTEIRA.**
+///
+/// # Por que uma ESFERA, e não uma caixa
+///
+/// ⚠️ Uma esfera é **invariante à rotação**: subir a cadeia de poses custa `centro' = pose(centro)`
+/// e `raio' = raio · escala`, sem inflar nada. Uma caixa teria de ser re-envolvida a cada nível
+/// rodado — e cada re-envolvimento cresce, então uma peça com três agrupamentos girados acabaria com
+/// uma caixa muito maior do que ela. *A moeda certa para compor bordos é a que a composição não
+/// estraga.*
+///
+/// # ⚠️ Conservador é a direção SEGURA, e a assimetria é o critério
+///
+/// Este número decide a caixa da grade do extrator ([`ph2d_field_eval::extract`]). Um bordo **maior**
+/// do que a peça custa **resolução**; um bordo **menor** **CORTA a peça** e não diz nada. Toda
+/// aproximação aqui erra para cima, de propósito.
+///
+/// ⚠️ O arredondamento de uma caixa/cilindro **não cresce** o bordo: a lei encolhe a fonte e
+/// re-cresce por fora, então a extensão externa continua a ser a que o artista digitou.
+#[must_use]
+pub fn bounding_radius(p: &Primitive) -> f32 {
+    let hyp = |a: f32, b: f32| a.hypot(b);
+    match p {
+        Primitive::Box { half, .. } => {
+            (half[0] * half[0] + half[1] * half[1] + half[2] * half[2]).sqrt()
+        }
+        Primitive::Sphere { radius } => *radius,
+        Primitive::Cylinder {
+            radius,
+            half_height,
+            ..
+        } => hyp(*radius, *half_height),
+        // O tubo mais afastado do centro está a `major + minor`.
+        Primitive::Torus { major, minor } => major + minor,
+        Primitive::Extrude {
+            profile,
+            half_height,
+            ..
+        } => {
+            let (min, max) = profile.bounds();
+            let r = hyp(
+                min[0].abs().max(max[0].abs()),
+                min[1].abs().max(max[1].abs()),
+            );
+            hyp(r, *half_height)
+        }
+        // ⚠️ O torno gira em torno de **Y**: o raio do sólido é o maior `|x|` do contorno, e a altura
+        // é o maior `|y|`.
+        Primitive::Revolve { profile } => {
+            let (min, max) = profile.bounds();
+            hyp(
+                min[0].abs().max(max[0].abs()),
+                min[1].abs().max(max[1].abs()),
+            )
+        }
+    }
+}

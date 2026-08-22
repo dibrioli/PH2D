@@ -42,6 +42,14 @@ use crate::{Engine, MeshError};
 pub trait Sampled: Send + Sync {
     /// A distância com sinal em `p`, em coordenadas **do campo** (a pose do nó já foi desfeita).
     fn at(&self, p: [f32; 3]) -> f32;
+
+    /// ⭐ **O raio de uma esfera na origem que contém a escultura inteira** (W33).
+    ///
+    /// ⚠️ **Método exigido, sem `default`**, e é de propósito: um default devolveria um número que
+    /// **cabe compilar e não cabe a peça**, e o sintoma seria a escultura sair cortada da
+    /// exportação sem uma palavra. Quem tem uma grade sabe a caixa dela; quem não souber tem de
+    /// dizê-lo à mão.
+    fn bounding_radius(&self) -> f32;
 }
 
 /// Nome → campo amostrado.

@@ -44,17 +44,34 @@ pub(super) fn patches_for(
     atlas_uv: [f32; 4],
     src_dims: Option<(u32, u32)>,
     pixels_per_meter: f32,
+    basis: [f32; 4],
 ) -> Option<[Option<SlicePatch>; PATCH_COUNT]> {
     let slice = slice?;
     if !slice.draw_mode.is_nine() {
         return None;
     }
     let src_px = sub_rect_source_px(spr, src_dims)?;
-    let patches = nine_slice_patches(atlas_uv, src_px, slice, spr.size, pixels_per_meter);
+    let patches = nine_slice_patches(
+        atlas_uv,
+        src_px,
+        slice,
+        spr.size,
+        pixels_per_meter,
+        scale_of(basis),
+    );
     // Um 9-slice que não produziu quad nenhum (bordas maiores que o alvo nos dois eixos, tudo
     // Blank) NÃO pode devolver `Some([None; 9])`: isso faria o sprite desaparecer em silêncio.
     // Devolver `None` fá-lo cair no caminho normal — visível, e o artista vê o que fez.
     patches.iter().any(Option::is_some).then_some(patches)
+}
+
+/// A escala do mundo, tirada da `basis` 2×2 (colunas `[col0, col1]`).
+///
+/// ⚠️ **É o COMPRIMENTO de cada coluna**, não o elemento da diagonal: sob rotação a diagonal
+/// deixa de ser a escala (uma rotação de 90° põe zeros lá) enquanto o comprimento da coluna se
+/// mantém. Foi por ignorar a escala inteira que os cantos esticavam (smoke do Enio, 2026-08-22).
+pub(super) fn scale_of(basis: [f32; 4]) -> [f32; 2] {
+    [basis[0].hypot(basis[1]), basis[2].hypot(basis[3])]
 }
 
 /// A instância de UM quad, derivada da instância base do sprite.
@@ -108,6 +125,9 @@ mod tests {
     use super::*;
     use ph2d_ecs::{SliceDrawMode, SliceNine};
 
+    /// A `basis` de uma sprite sem rotação nem escala: `[col0, col1]` = identidade.
+    const IDENTITY_BASIS: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+
     fn spr() -> Sprite {
         Sprite::atlas(0, [2.0, 2.0], [1.0; 4])
     }
@@ -133,6 +153,30 @@ mod tests {
         }
     }
 
+    /// ⚠️ **A escala sai do COMPRIMENTO da coluna, não da diagonal.**
+    ///
+    /// Uma rotação de 90° põe zeros na diagonal da `basis`; ler a diagonal daria escala 0 e o
+    /// 9-slice dividiria por ela. O comprimento da coluna sobrevive à rotação — que é o que se
+    /// quer: rodar uma caixa não muda o tamanho do canto.
+    #[test]
+    fn the_scale_comes_from_the_column_length_not_the_diagonal() {
+        assert_eq!(scale_of(IDENTITY_BASIS), [1.0, 1.0]);
+        // Escala pura 3x / 2x.
+        assert_eq!(scale_of([3.0, 0.0, 0.0, 2.0]), [3.0, 2.0]);
+        // Rotação pura de 90°: a diagonal é [0, 0], mas a escala continua unitária.
+        let r = scale_of([0.0, 1.0, -1.0, 0.0]);
+        assert!(
+            (r[0] - 1.0).abs() < 1e-6 && (r[1] - 1.0).abs() < 1e-6,
+            "rodar mudou a escala: {r:?} — a diagonal foi lida no lugar da coluna"
+        );
+        // Rotação de 90° COM escala 4x em X: o comprimento da coluna 0 tem de ser 4.
+        let rs = scale_of([0.0, 4.0, -2.0, 0.0]);
+        assert!(
+            (rs[0] - 4.0).abs() < 1e-6 && (rs[1] - 2.0).abs() < 1e-6,
+            "deu {rs:?}"
+        );
+    }
+
     /// A medida das bordas é tirada da CÉLULA, não da folha inteira.
     #[test]
     fn the_source_px_is_the_cell_not_the_whole_sheet() {
@@ -154,7 +198,17 @@ mod tests {
     /// Sem 9-slice, ou em `Simple`, não há quads — o caminho de sempre.
     #[test]
     fn no_component_and_simple_mode_both_mean_the_ordinary_path() {
-        assert!(patches_for(None, &spr(), [0.0, 0.0, 1.0, 1.0], Some((64, 64)), 100.0).is_none());
+        assert!(
+            patches_for(
+                None,
+                &spr(),
+                [0.0, 0.0, 1.0, 1.0],
+                Some((64, 64)),
+                100.0,
+                IDENTITY_BASIS,
+            )
+            .is_none()
+        );
         let inert = SliceNine::INERT;
         assert!(
             patches_for(
@@ -162,7 +216,8 @@ mod tests {
                 &spr(),
                 [0.0, 0.0, 1.0, 1.0],
                 Some((64, 64)),
-                100.0
+                100.0,
+                IDENTITY_BASIS,
             )
             .is_none()
         );
@@ -186,7 +241,8 @@ mod tests {
                 &spr(),
                 [0.0, 0.0, 1.0, 1.0],
                 Some((64, 64)),
-                100.0
+                100.0,
+                IDENTITY_BASIS,
             )
             .is_none()
         );
@@ -239,6 +295,7 @@ mod tests {
             [0.0, 0.0, 1.0, 1.0],
             Some((64, 64)),
             100.0,
+            IDENTITY_BASIS,
         )
         .expect("um Sliced com bordas tem de produzir quads");
         let b = base();
@@ -279,6 +336,7 @@ mod tests {
             [0.0, 0.0, 1.0, 1.0],
             Some((64, 64)),
             100.0,
+            IDENTITY_BASIS,
         )
         .unwrap();
         let (_, n) = instances(&base(), &patches);

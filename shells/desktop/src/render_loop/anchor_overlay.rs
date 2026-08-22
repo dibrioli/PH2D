@@ -30,7 +30,8 @@
 //! hitbox da mão anda com a mão. Absoluto na imagem (a leitura do Aseprite) faria mover a âncora
 //! deixar a caixa para trás.
 
-use ph2d_ecs::{Entity, NamedAnchorList, World};
+use ph2d_core::Vec2;
+use ph2d_ecs::{Entity, NamedAnchor, NamedAnchorList, Transform, World};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke, VectorScene};
@@ -65,6 +66,39 @@ fn color_of(name: &str) -> [f32; 4] {
     [r, g, b, 0.95] // LITERAL-COLOR-OK: chrome de overlay, opacidade de marcador
 }
 
+/// **Onde um ponto da âncora cai no MUNDO.**
+///
+/// `sprite_world` é a pose composta da sprite (pais incluídos); `local_px` é um deslocamento em
+/// pixels da fonte relativo à âncora (`[0,0]` = o centro dela).
+///
+/// ⚠️ **Existe como função PURA porque o defeito morava exatamente aqui.** A primeira versão lia
+/// `GlobalTransform` do mundo da SIMULAÇÃO — e `GlobalTransform` é componente de APRESENTAÇÃO,
+/// reconstruído noutro mundo a cada quadro. A leitura devolvia sempre nada, caía no `Vec2::ZERO`,
+/// e as âncoras ficavam **cravadas na origem do mundo**, sem seguir a sprite (smoke do Enio,
+/// 2026-08-22). Uma leitura de componente enterrada num laço de desenho não é observável por
+/// teste nenhum; com nome, ela responde.
+pub(super) fn anchor_world_point(
+    sprite_world: Transform,
+    anchor: &NamedAnchor,
+    local_px: [f32; 2],
+    pixels_per_meter: f32,
+) -> Vec2 {
+    let ppm = if pixels_per_meter.is_finite() && pixels_per_meter > 0.0 {
+        pixels_per_meter
+    } else {
+        1.0
+    };
+    // A âncora sob a pose da sprite; depois o ponto sob a pose da âncora. `compose` é a MESMA
+    // porta que a propagação de hierarquia usa — rotação e escala vêm de graça, e por isso a
+    // caixa de dano roda e escala com o objeto.
+    let anchor_world = Transform::compose(sprite_world, anchor.transform);
+    let offset = Transform {
+        translation: Vec2::new(local_px[0] / ppm, local_px[1] / ppm),
+        ..Transform::default()
+    };
+    Transform::compose(anchor_world, offset).translation
+}
+
 /// Desenha os marcadores das âncoras da entidade selecionada.
 ///
 /// `expanded` é a seção §12 estar aberta — a spec §7.6 pede exatamente isso: os handles aparecem
@@ -92,9 +126,12 @@ pub(super) fn draw_anchor_marks(
     if list.is_empty() {
         return;
     }
-    let origin = sim
-        .get::<ph2d_ecs::GlobalTransform>(entity)
-        .map_or(ph2d_core::Vec2::ZERO, |g| g.translation());
+    // ⚠️ **`world_transform` do mundo da SIMULAÇÃO, não `GlobalTransform`.** O `GlobalTransform`
+    // é `PresentComponent` — vive no mundo de apresentação, reconstruído a cada quadro. Lê-lo
+    // daqui devolvia sempre `None`.
+    let Some(sprite_world) = ph2d_ecs::world_transform(sim, entity) else {
+        return;
+    };
     let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
     let to_screen = camera.world_to_screen_affine(window);
 
@@ -102,7 +139,7 @@ pub(super) fn draw_anchor_marks(
         let rgba = color_of(&a.name);
         let brush = Brush::Solid(Color::new(rgba));
         // O centro da âncora, em MUNDO, depois em tela.
-        let world = origin + a.transform.translation;
+        let world = anchor_world_point(sprite_world, a, [0.0, 0.0], ppm);
         let c = to_screen * Point::new(f64::from(world.x), f64::from(world.y));
 
         // A cruz: sempre, para toda âncora. É o «onde» — e o retângulo, quando existe, é o
@@ -130,7 +167,7 @@ pub(super) fn draw_anchor_marks(
                 continue;
             }
             let p = |px: f32, py: f32| {
-                let w = world + ph2d_core::Vec2::new(px / ppm, py / ppm);
+                let w = anchor_world_point(sprite_world, a, [px, py], ppm);
                 to_screen * Point::new(f64::from(w.x), f64::from(w.y))
             };
             let (a0, a1, a2, a3) = (
@@ -161,6 +198,70 @@ pub(super) fn draw_anchor_marks(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⚠️ **O DEFEITO QUE O SMOKE DO ENIO APANHOU (2026-08-22): a âncora tem de SEGUIR a sprite.**
+    ///
+    /// A leitura antiga caía em `Vec2::ZERO` e deixava toda âncora cravada na origem do mundo.
+    #[test]
+    fn an_anchor_follows_the_sprite_it_belongs_to() {
+        let mut a = NamedAnchor::socket("muzzle");
+        a.transform.translation = Vec2::new(0.5, 0.25);
+
+        let at_origin = Transform::default();
+        let p0 = anchor_world_point(at_origin, &a, [0.0, 0.0], 100.0);
+        assert!((p0.x - 0.5).abs() < 1e-6 && (p0.y - 0.25).abs() < 1e-6);
+
+        // A sprite anda 10 m para a direita: a âncora tem de andar com ela.
+        let moved = Transform {
+            translation: Vec2::new(10.0, 0.0),
+            ..Transform::default()
+        };
+        let p1 = anchor_world_point(moved, &a, [0.0, 0.0], 100.0);
+        assert!(
+            (p1.x - 10.5).abs() < 1e-6,
+            "a ancora nao seguiu a sprite: {p1:?} (ficou cravada no mundo)"
+        );
+        assert_ne!(p0, p1, "mover a sprite nao mexeu a ancora");
+    }
+
+    /// E segue a ESCALA e a ROTAÇÃO, não só a translação — é o que faz a caixa de dano andar com
+    /// o objeto quando ele é redimensionado ou rodado.
+    #[test]
+    fn the_mark_follows_scale_and_rotation_too() {
+        let mut a = NamedAnchor::socket("hand");
+        a.transform.translation = Vec2::new(1.0, 0.0);
+
+        let scaled = Transform {
+            scale: Vec2::new(3.0, 1.0),
+            ..Transform::default()
+        };
+        let p = anchor_world_point(scaled, &a, [0.0, 0.0], 100.0);
+        assert!(
+            (p.x - 3.0).abs() < 1e-5,
+            "a escala nao alcancou a ancora: {p:?}"
+        );
+
+        let turned = Transform {
+            rotation: std::f32::consts::FRAC_PI_2,
+            ..Transform::default()
+        };
+        let q = anchor_world_point(turned, &a, [0.0, 0.0], 100.0);
+        assert!(
+            q.x.abs() < 1e-5 && (q.y - 1.0).abs() < 1e-5,
+            "rodar 90 graus tinha de levar (1,0) para (0,1), deu {q:?}"
+        );
+    }
+
+    /// O canto de uma área sai em pixels da FONTE, convertido pelo `pixels_per_meter`.
+    #[test]
+    fn a_bounds_corner_converts_source_pixels_to_metres() {
+        let a = NamedAnchor::socket("box");
+        let p = anchor_world_point(Transform::default(), &a, [50.0, -25.0], 100.0);
+        assert!(
+            (p.x - 0.5).abs() < 1e-6 && (p.y + 0.25).abs() < 1e-6,
+            "deu {p:?}"
+        );
+    }
 
     /// A cor é **estável** e **distinta** — é o que permite distinguir duas âncoras
     /// sobrepostas, e o que faz o mesmo socket ter a mesma cor amanhã.

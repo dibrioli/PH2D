@@ -570,6 +570,7 @@ pub(super) fn run(
                         atlas_uv,
                         src_dims,
                         pixels_per_meter,
+                        basis,
                     ) {
                         None => {
                             builder.insert(base);

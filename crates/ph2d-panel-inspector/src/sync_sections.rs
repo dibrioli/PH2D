@@ -53,12 +53,6 @@ fn sync_slice_fields(
             host.store_mut().set_number_value(id, value);
         }
     }
-    if let Some(InteractiveState::Slider { state, value, .. }) =
-        host.store_mut().get_mut(ids::INSP_SLICE_STRETCH)
-        && *state != ph2d_editor_core::widget::SliderState::Dragging
-    {
-        *value = sl.stretch_value;
-    }
     // ⚠️ O checkbox só semeia na TROCA de entidade: reescrevê-lo todo o quadro faria um
     // clique voltar atrás antes de o commit chegar (o snapshot deste quadro ainda é o de
     // antes da edição). É a mesma lei dos checkboxes da §7.

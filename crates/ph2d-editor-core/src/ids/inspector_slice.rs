@@ -29,10 +29,12 @@ pub const INSP_SLICE_MODE: [NodeId; 3] = [
     hash_node_id("insp_slice_mode_tiled"),
 ];
 
-/// **Tile Mode** global — `Continuous` / `Adaptive`, tags `0..=1`.
-pub const INSP_SLICE_TILE_MODE: [NodeId; 3] = [
+/// **Tile Mode** global — `Continuous` / `Whole`, tags `0..=1`.
+///
+/// ⛔ Houve aqui um terceiro, `Adaptive`, com um slider `Stretch Value` — retirado em 2026-08-22
+/// porque o mecanismo não podia funcionar (o motivo, medido, está em `ph2d_ecs::SliceTileMode`).
+pub const INSP_SLICE_TILE_MODE: [NodeId; 2] = [
     hash_node_id("insp_slice_tile_continuous"),
-    hash_node_id("insp_slice_tile_adaptive"),
     hash_node_id("insp_slice_tile_whole"),
 ];
 
@@ -80,11 +82,6 @@ pub const INSP_SLICE_CENTRE: NodeId = hash_node_id("insp_slice_centre");
 
 /// `Fill Center` — o miolo desenha-se, ou a moldura fica oca.
 pub const INSP_SLICE_FILL_CENTER: NodeId = hash_node_id("insp_slice_fill_center");
-
-/// `Stretch Value` (só em `Adaptive`) — slider `0..1` e o chip que o acompanha.
-pub const INSP_SLICE_STRETCH: NodeId = hash_node_id("insp_slice_stretch");
-/// O chip ligado ao [`INSP_SLICE_STRETCH`] (`link_slider_number`).
-pub const INSP_SLICE_STRETCH_CHIP: NodeId = hash_node_id("insp_slice_stretch_chip");
 
 /// **«+ Add 9-Slice»** — anexa o componente. ⚠️ Anexar é INERTE (`SliceNine::INERT`): não muda
 /// um pixel. Um botão que abre uma seção não pode ser uma edição destrutiva disfarçada.

@@ -178,29 +178,6 @@ fn populate_slice(store: &mut WidgetStore) {
             },
         );
     }
-    // O par slider+chip do `Stretch`. ⚠️ Ambos vivem em `0..1` — ao contrário do Emissive, aqui
-    // **não há mapeamento**: o valor É uma fração de ladrilho, e mostrá-lo noutra escala seria
-    // inventar uma unidade que o modelo não tem.
-    store.register(
-        ids::INSP_SLICE_STRETCH,
-        InteractiveState::Slider {
-            state: SliderState::Normal,
-            value: 0.5,
-            orientation: SliderOrientation::Horizontal,
-        },
-    );
-    store.register(
-        ids::INSP_SLICE_STRETCH_CHIP,
-        InteractiveState::NumberInput {
-            state: TextInputState::Normal,
-            value: 0.5,
-            buffer: format_number(0.5),
-            caret: 0,
-            last_committed: 0.5,
-            selection_anchor: None,
-        },
-    );
-    store.link_slider_number(ids::INSP_SLICE_STRETCH, ids::INSP_SLICE_STRETCH_CHIP);
 }
 
 fn populate_sampling(store: &mut WidgetStore) {

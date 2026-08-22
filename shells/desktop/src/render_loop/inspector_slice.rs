@@ -58,7 +58,6 @@ pub(super) fn build_slice_info(
             mixed.tile_modes |=
                 o.tile_modes != s.tile_modes || o.centre_tile_mode != s.centre_tile_mode;
             mixed.tile_mode |= o.tile_mode != s.tile_mode;
-            mixed.stretch_value |= o.stretch_value != s.stretch_value;
             mixed.fill_center |= o.fill_center != s.fill_center;
         }
     }
@@ -76,7 +75,6 @@ pub(super) fn build_slice_info(
         tile_modes,
         centre_tile_mode,
         tile_mode_tag: s.tile_mode.tag(),
-        stretch_value: s.stretch_value,
         fill_center: s.fill_center,
         selected_count,
         mixed,
@@ -134,7 +132,6 @@ pub(super) fn apply_slice_edit(
         SliceFieldEdit::CentreMode(t) => {
             s.centre_tile_mode = ph2d_ecs::TileRegionMode::from_tag(t);
         }
-        SliceFieldEdit::StretchValue(v) => s.stretch_value = v,
         SliceFieldEdit::FillCenter(b) => s.fill_center = b,
     }
     // ⚠️ Saneia na PORTA DE ESCRITA também, não só na leitura: um valor infinito guardado

@@ -34,10 +34,8 @@ pub struct InspectorSliceInfo {
     pub tile_modes: [u8; 8],
     /// O modo do MIOLO — a nona célula. Tags `0..=2` (Blank não se usa aqui).
     pub centre_tile_mode: u8,
-    /// `SliceTileMode` — tag `0..=1` (Continuous / Adaptive).
+    /// `SliceTileMode` — tag `0..=1` (Continuous / Whole).
     pub tile_mode_tag: u8,
-    /// `0..1`, lido só em Adaptive.
-    pub stretch_value: f32,
     pub fill_center: bool,
     pub selected_count: usize,
     pub mixed: InspectorSliceMixed,
@@ -56,7 +54,6 @@ pub struct InspectorSliceMixed {
     pub size: bool,
     pub tile_modes: bool,
     pub tile_mode: bool,
-    pub stretch_value: bool,
     pub fill_center: bool,
 }
 
@@ -84,7 +81,6 @@ pub enum SliceFieldEdit {
     TileMode(u8),
     /// O modo do MIOLO — tag de `TileRegionMode`, ciclada pela nona célula da grelha.
     CentreMode(u8),
-    StretchValue(f32),
     FillCenter(bool),
 }
 
@@ -126,7 +122,6 @@ mod tests {
             tile_modes: [0; 8],
             centre_tile_mode: 0,
             tile_mode_tag: 0,
-            stretch_value: 0.5,
             fill_center: true,
             selected_count: 1,
             mixed: InspectorSliceMixed::default(),

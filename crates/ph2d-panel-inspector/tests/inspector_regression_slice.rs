@@ -25,9 +25,10 @@ const VIEWPORT: Rect = Rect {
     h: 8000.0,
 };
 
-/// Um 9-slice **presente**, em `Tiled` + `Adaptive` — o estado em que todos os controlos da
-/// seção existem. ⚠️ Um fixture em `Simple` não pinta a grelha nem o Stretch, e um teste sobre
-/// ele mediria o silêncio (a lei do fixture que não contém o fenómeno).
+/// Um 9-slice **presente**, em `Tiled` — o estado em que todos os controlos da seção existem.
+/// ⚠️ Um fixture em `Simple` não pinta nada além da dica e do «Remove» (o modo É a seção
+/// desligada), e um teste sobre ele mediria o silêncio: a lei do fixture que não contém o
+/// fenómeno.
 fn slice() -> InspectorSliceInfo {
     InspectorSliceInfo {
         entity_bits: ENTITY,
@@ -38,7 +39,6 @@ fn slice() -> InspectorSliceInfo {
         tile_modes: [0; 8],
         centre_tile_mode: 0,
         tile_mode_tag: 1,
-        stretch_value: 0.5,
         fill_center: true,
         selected_count: 1,
         mixed: InspectorSliceMixed::default(),
@@ -50,7 +50,6 @@ enum Stim {
     Click,
     Check(bool),
     Number(f64),
-    Slider(f32),
 }
 
 struct Case {
@@ -74,7 +73,7 @@ fn cases() -> Vec<Case> {
             expect: SliceFieldEdit::DrawMode(1),
         },
         Case {
-            what: "Tile Mode: Adaptive",
+            what: "Tile Mode: Whole",
             variant: "TileMode",
             id: ids::INSP_SLICE_TILE_MODE[1],
             stim: Stim::Click,
@@ -119,13 +118,6 @@ fn cases() -> Vec<Case> {
             expect: SliceFieldEdit::CentreMode(1),
         },
         Case {
-            what: "Stretch",
-            variant: "StretchValue",
-            id: ids::INSP_SLICE_STRETCH,
-            stim: Stim::Slider(0.25),
-            expect: SliceFieldEdit::StretchValue(0.25),
-        },
-        Case {
             what: "Fill Center",
             variant: "FillCenter",
             id: ids::INSP_SLICE_FILL_CENTER,
@@ -167,10 +159,6 @@ fn drive(host: &mut MockPanelHost, state: &mut InspectorState, id: NodeId, stim:
         }
         Stim::Number(v) => {
             host.set_number_value(id, v);
-            host.apply_panel_event::<InspectorPanel>(state, WidgetEvent::ValueChanged(id));
-        }
-        Stim::Slider(v) => {
-            host.set_slider_value(id, v);
             host.apply_panel_event::<InspectorPanel>(state, WidgetEvent::ValueChanged(id));
         }
     }

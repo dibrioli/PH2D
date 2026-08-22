@@ -401,20 +401,19 @@ fn tiled_mode_repeats_the_centre_on_both_axes() {
     assert_eq!(c.repeat_tag, Some(REPEAT_ENABLED));
 }
 
-/// `Adaptive` descarta o ladrilho parcial quando ele é menor que o limiar, e mantém-no
-/// quando não é. É o limiar documentado do Unity, e o slider é uma **fração de ladrilho**.
+/// **Os dois resultados que existem** — o parcial fica, ou o parcial não existe. Não há terceiro,
+/// e é por isso que o `Adaptive` (um slider a escolher entre estes dois) foi retirado.
 #[test]
-fn adaptive_drops_a_partial_tile_below_the_threshold() {
+fn continuous_keeps_the_partial_tile_and_whole_rounds_it_away() {
     // Faixa central da FONTE = 48 px = 0.48 m. O alvo tem de deixar um parcial de verdade:
     // com W = 4.16 m as bordas comem 0.16 e sobram 4.0 ⇒ raw = 8.333… (parcial de 0.333).
     // ⚠️ O primeiro fixture que escrevi usava W = 4.0, onde a divisão dá 8 EXATO — um
     // fixture que não continha o fenómeno que o teste dizia medir.
-    let mk = |stretch: f32| {
+    let mk = |tile_mode: SliceTileMode| {
         let s = SliceNine {
             draw_mode: SliceDrawMode::Tiled,
             borders: [8.0; 4],
-            tile_mode: SliceTileMode::Adaptive,
-            stretch_value: stretch,
+            tile_mode,
             ..SliceNine::INERT
         };
         nine_slice_patches(
@@ -428,13 +427,15 @@ fn adaptive_drops_a_partial_tile_below_the_threshold() {
             .unwrap()
             .uv_xform[0]
     };
-    // limiar 0.1 < parcial 0.333 ⇒ o parcial FICA (conta fracionária).
     assert!(
-        (mk(0.1).fract() - 0.3333).abs() < 1e-2,
-        "o parcial devia ter ficado"
+        (mk(SliceTileMode::Continuous).fract() - 0.3333).abs() < 1e-2,
+        "Continuous existe para DEIXAR o parcial — ele desapareceu"
     );
-    // limiar 0.9 > parcial 0.333 ⇒ o parcial cai, sobram 8 ladrilhos inteiros.
-    assert_eq!(mk(0.9), 8.0, "o parcial devia ter sido descartado");
+    assert_eq!(
+        mk(SliceTileMode::Whole),
+        8.0,
+        "Whole tinha de arredondar os 8,33 para oito inteiros"
+    );
 }
 
 /// Entradas impossíveis não produzem grelha — nunca um `NaN` que envenena o buffer da GPU.

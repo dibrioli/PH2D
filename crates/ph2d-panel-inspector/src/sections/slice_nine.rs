@@ -17,10 +17,7 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorSliceInfo;
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_editor_core::widget::{
-    SegmentedAdaptive, SegmentedOption, SliderState, paint_segmented_adaptive,
-    paint_slider_with_chip,
-};
+use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 
 /// **A grelha 3×3 que esta seção pinta: `(coluna, linha)` por região**, na ordem de
 /// `SliceRegion::ALL` (TL · T · TR · L · R · BL · B · BR), saltando o miolo.
@@ -42,10 +39,20 @@ pub const REGION_CELLS: [(usize, usize); 8] = [
 
 /// Rótulos do Draw Mode, na ordem das tags `0..=2` de `SliceDrawMode`.
 pub const MODE_LABELS: [&str; 3] = ["Simple", "Sliced", "Tiled"];
-/// Rótulos do Tile Mode global, tags `0..=2` de `SliceTileMode`.
-pub const TILE_MODE_LABELS: [&str; 3] = ["Continuous", "Adaptive", "Whole"];
+/// Rótulos do Tile Mode global, tags `0..=1` de `SliceTileMode`.
+pub const TILE_MODE_LABELS: [&str; 2] = ["Continuous", "Whole"];
 /// A inicial de cada `TileRegionMode`, tags `0..=3`. ASCII de propósito (sem tofu).
 pub const REGION_LETTERS: [&str; 4] = ["S", "R", "M", "-"];
+
+/// A dica do `Simple`. ⚠️ **Um modo que visivelmente não faz nada e não explica porquê lê-se como
+/// avariado** — foi a primeira coisa que o smoke do Enio devolveu sobre esta seção.
+const SIMPLE_HINT: &str = "Simple is 9-slice switched off - the sprite draws as one quad. \
+                           Pick Sliced or Tiled to set it up; your values are kept.";
+/// A dica do Tile Mode: é aqui que mora a cura da emenda rente à borda.
+const WHOLE_HINT: &str = "Whole = entire tiles, so the last one meets the border. \
+                          Mirror always uses whole tiles.";
+/// A legenda da grelha 3×3.
+const REGION_LEGEND: &str = "S stretch   R repeat   M mirror   - blank   (centre: S/R/M)";
 
 /// **Nenhum segmento aceso** — a afordância de divergência numa seleção múltipla.
 const NOTHING_LIT: usize = usize::MAX;
@@ -181,17 +188,7 @@ fn region_grid(
     );
     let grid_h = CELL * GRID as f32 + gap * (GRID - 1) as f32;
     let legend_y = grid_y + grid_h + Spacing::Xs.px();
-    paint_text(
-        text_system,
-        scene,
-        "S stretch   R repeat   M mirror   - blank   (centre: S/R/M)",
-        x,
-        legend_y,
-        label_font,
-        w,
-        resolve(ColorToken::Text3, theme),
-    );
-    legend_y + label_font + Spacing::Sm.px()
+    legend_y + hint(scene, text_system, theme, x, w, legend_y, REGION_LEGEND)
 }
 
 /// A seção quando a entidade **não tem** autoria de 9-slice: um convite, e nada mais.
@@ -287,35 +284,38 @@ fn tiled_rows(
     // ⚠️ **A emenda rente ao canto tem NOME aqui** (smoke do Enio, 2026-08-22). Ela não é um
     // defeito de textura: é o último ladrilho cortado a meio, e o utilizador não tem como
     // adivinhar que o remédio se chama «Whole». Uma linha diz onde ele está.
-    paint_text(
+    cur_y + hint(scene, text_system, theme, x, w, cur_y, WHOLE_HINT)
+}
+
+/// Uma dica de rodapé, na cor terciária. **Devolve a altura que ela de facto ocupou.**
+///
+/// ⚠️ **É `paint_text_block` e não `paint_text` de propósito, e o motivo é um defeito que este
+/// ficheiro cometeu** (smoke do Enio, 2026-08-22): estas dicas **quebram em duas linhas** num
+/// painel estreito, e avançar `label_font` por elas escrevia o rótulo seguinte por cima. O
+/// doc-comment do `paint_text_block` já descrevia exatamente este acidente, vindo do painel de
+/// física — *quem empilha texto de comprimento variável tem de PERGUNTAR ao pintor quanto ele
+/// gastou, nunca estimar*.
+#[allow(clippy::too_many_arguments)]
+fn hint(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    text: &str,
+) -> f32 {
+    let h = paint_text_block(
         text_system,
         scene,
-        "Whole = entire tiles, so the last one meets the border. Mirror always uses whole tiles.",
+        text,
         x,
-        cur_y,
-        label_font,
+        y,
+        TypeToken::Sm.px(),
         w,
         resolve(ColorToken::Text3, theme),
     );
-    cur_y += label_font + Spacing::Sm.px();
-    if info.tile_mode_tag == 1 {
-        let (_, value) = store
-            .slider(ids::INSP_SLICE_STRETCH)
-            .unwrap_or((SliderState::Normal, 0.5));
-        cur_y += paint_slider_with_chip(
-            Rect::new(x, cur_y, w, FIELD_H),
-            "Stretch",
-            value,
-            ids::INSP_SLICE_STRETCH,
-            ids::INSP_SLICE_STRETCH_CHIP,
-            store,
-            hit_index,
-            scene,
-            text_system,
-            theme,
-        );
-    }
-    cur_y
+    h + Spacing::Sm.px()
 }
 
 /// Pinta a §5 e devolve o `y` a seguir a ela.
@@ -400,22 +400,18 @@ pub(crate) fn paint_slice_section(
         hit_index,
     ) + Spacing::Sm.px();
 
-    // ⚠️ **`Simple` DIZ que não faz nada.** Ele é o 9-slice desligado — o sprite de sempre —, e
-    // isso é deliberado: anexar o componente não pode mudar a cena. Mas um modo que visivelmente
-    // não faz nada e **não explica porquê** lê-se como avariado (smoke do Enio, 2026-08-22). Os
-    // campos ficam: é assim que se medem as bordas ANTES de ligar.
+    // ⚠️ **`Simple` é o 9-slice DESLIGADO, e a seção fica desligada com ele.**
+    //
+    // A primeira versão dizia-o numa dica e mantinha os campos («é assim que se medem as bordas
+    // antes de ligar»). O Enio devolveu a pergunta certa — *«se Simple é desligado, porquê
+    // mostrar toda a UI abaixo?»* — e ela não tem resposta: seis controlos que o desenho ignora
+    // são seis afirmações falsas, que é a classe de defeito nº 1 desta auditoria. Os valores
+    // ficam guardados no componente e voltam intactos ao ligar; o que sai é a *encenação* de que
+    // há algo para afinar.
     if info.draw_mode_tag == 0 {
-        paint_text(
-            text_system,
-            scene,
-            "Simple draws one quad - 9-slice is off. Set the borders, then pick Sliced or Tiled.",
-            x,
-            cur_y,
-            label_font,
-            w,
-            resolve(ColorToken::Text3, theme),
-        );
-        cur_y += label_font + Spacing::Sm.px();
+        cur_y += hint(scene, text_system, theme, x, w, cur_y, SIMPLE_HINT);
+        cur_y = remove_button(scene, text_system, theme, hit_index, store, x, w, cur_y);
+        return fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX);
     }
 
     // Bordas, em pixels da fonte, na ordem do array: [L, T] e depois [R, B].
@@ -477,46 +473,60 @@ pub(crate) fn paint_slice_section(
     );
     cur_y += cb_h + Spacing::Sm.px();
 
-    // ⚠️ As três linhas seguintes só existem quando têm significado. Esconder é honesto aqui —
-    // em `Simple` não há regiões, e em `Continuous` não há limiar. Um controlo pintado sobre um
-    // modo que o ignora é a mentira que esta auditoria mediu sete vezes.
-    let is_nine = info.draw_mode_tag == 1 || info.draw_mode_tag == 2;
-    if is_nine {
-        cur_y = region_grid(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            info,
-        );
-    }
-    if info.draw_mode_tag == 2 {
-        cur_y = tiled_rows(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            info,
-        );
-    }
-    // Remover.
-    let rm_rect = Rect::new(x, cur_y, w, BTN_H);
-    hit_index.register(ids::INSP_SLICE_REMOVE, rm_rect);
+    // A grelha por-região e o Tile Mode valem nos DOIS modos de nove quads.
+    //
+    // ⚠️ **O Tile Mode esteve escondido em `Sliced` e isso era falso.** Ele governa a contagem
+    // de ladrilhos de *qualquer região que repita* — e uma célula posta em `R`/`M` repete
+    // também em `Sliced` (é a lei do `tile_count`: `Tiled` só acrescenta que o `S` passa a
+    // repetir). Escondê-lo ali punha o artista a mexer numa célula cujo resultado ele não podia
+    // afinar, que é a mesma classe de mentira do controlo pintado sobre um modo que o ignora.
+    cur_y = region_grid(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
+    );
+    cur_y = tiled_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
+    );
+    cur_y = remove_button(scene, text_system, theme, hit_index, store, x, w, cur_y);
+    fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
+}
+
+/// O «× Remove 9-Slice». **Sai para uma função porque tem DOIS chamadores** desde que o `Simple`
+/// passou a fechar a seção cedo — e uma segunda cópia da mesma linha é uma segunda oportunidade
+/// de a registar num rect e pintar noutro.
+#[allow(clippy::too_many_arguments)]
+fn remove_button(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let rect = Rect::new(x, y, w, BTN_H);
+    hit_index.register(ids::INSP_SLICE_REMOVE, rect);
     let rm = Button::new(ids::INSP_SLICE_REMOVE, "x Remove 9-Slice")
         .kind(ButtonKind::Default)
         .visual(store.button_visual(ids::INSP_SLICE_REMOVE));
-    paint_button(&rm, rm_rect, scene, text_system, theme);
-    cur_y += BTN_H;
-
-    fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
+    paint_button(&rm, rect, scene, text_system, theme);
+    y + BTN_H
 }
 
 #[cfg(test)]

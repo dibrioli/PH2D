@@ -142,18 +142,6 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             });
             return true;
         }
-        if id == ids::INSP_SLICE_STRETCH {
-            let v = host
-                .store()
-                .slider(id)
-                .map(|(_, v)| v)
-                .unwrap_or(info.stretch_value);
-            host.bus_mut().push(EditorAction::InspectorSliceEdit {
-                entity_bits: info.entity_bits,
-                edit: SliceFieldEdit::StretchValue(v),
-            });
-            return true;
-        }
     }
     false
 }

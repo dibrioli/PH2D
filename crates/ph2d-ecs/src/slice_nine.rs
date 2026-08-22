@@ -174,7 +174,11 @@ impl SliceRegion {
     }
 }
 
-/// Como o modo `Tiled` global distribui as repetições.
+/// Como QUALQUER região que repita distribui as suas repetições.
+///
+/// ⚠️ Não é «a opção do `Tiled`»: uma célula posta em `Repeat`/`Mirror` repete também em
+/// `Sliced` — `Tiled` só acrescenta que o `Stretch` passa a repetir. Foi por o ler como opção do
+/// `Tiled` que o painel o escondia em `Sliced`.
 ///
 /// # ⚠️ A lei que estes três modos existem para exprimir (smoke do Enio, 2026-08-22)
 ///
@@ -184,15 +188,33 @@ impl SliceRegion {
 /// (ou horizontal) rente ao canto — foi isso que as duas setas amarelas do smoke marcaram.
 ///
 /// [`Self::Continuous`] aceita o corte de propósito (é o `TILE` do Godot); [`Self::Whole`] é a
-/// cura (o `TILE_FIT`). [`Self::Adaptive`] fica no meio: cura **só** quando o resto é pequeno.
+/// cura (o `TILE_FIT`). São os dois modos que o Godot tem, e não por imitação: são os dois
+/// resultados que existem.
+///
+/// # ⛔ O `Adaptive` do Unity foi RETIRADO — o mecanismo dele não pode funcionar aqui
+///
+/// Ele existiu por um dia (2026-08-21 → 22) com um slider `stretch_value`: um **limiar** que
+/// decidia, pelo tamanho do resto, entre cortar e arredondar. O Enio reportou que «não funciona
+/// perfeitamente», e a medição diz que ele tem razão e que não era afinação:
+///
+/// - o resultado é **binário** (há emenda ou não há), e para um dado tamanho de caixa o resto é
+///   **fixo** — logo todo o curso do slider é morto menos **um ponto**, o do cruzamento;
+/// - esse ponto é invisível: o painel não sabe quantos ladrilhos o sprite tem;
+/// - misturar não salva o controlo — meio caminho entre cortado e inteiro continua **cortado**.
+///
+/// *Um botão de duas posições disfarçado de slider é a afordância a mentir* — e um controlo
+/// contínuo sobre um resultado binário nunca vai «funcionar perfeitamente».
+///
+/// ⚠️ **A capacidade que se perdeu tem um dono futuro:** escolher automaticamente ao
+/// **redimensionar** (o resto varre 0..1 e o limiar diz onde saltar) é real, e é invisível num
+/// editor de sprites de tamanho autorado. Quando houver UI redimensionável em runtime, ela volta
+/// como **caixa de seleção** — «arredonda quando sobra pouco» — que é o controlo honesto para um
+/// resultado de duas posições. Não voltar como slider é o ponto.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SliceTileMode {
     /// Repete no tamanho intrínseco e deixa a última repetição cortada.
     #[default]
     Continuous,
-    /// Ajusta a escala para caber um número inteiro de repetições, misturando com o esticar
-    /// segundo `stretch_value` (o *Adaptive* do Unity).
-    Adaptive,
     /// **Sempre um número inteiro de ladrilhos**, arredondando ao mais próximo: os ladrilhos
     /// esticam um pouco e a faixa encosta na borda sem emenda (o `TILE_FIT` do Godot).
     ///
@@ -202,20 +224,18 @@ pub enum SliceTileMode {
 }
 
 impl SliceTileMode {
-    pub const ALL: [SliceTileMode; 3] = [Self::Continuous, Self::Adaptive, Self::Whole];
+    pub const ALL: [SliceTileMode; 2] = [Self::Continuous, Self::Whole];
 
     pub const fn tag(self) -> u8 {
         match self {
             Self::Continuous => 0,
-            Self::Adaptive => 1,
-            Self::Whole => 2,
+            Self::Whole => 1,
         }
     }
 
     pub const fn from_tag(tag: u8) -> Self {
         match tag {
-            1 => Self::Adaptive,
-            2 => Self::Whole,
+            1 => Self::Whole,
             _ => Self::Continuous,
         }
     }
@@ -249,8 +269,6 @@ pub struct SliceNine {
     #[serde(default)]
     pub centre_tile_mode: TileRegionMode,
     pub tile_mode: SliceTileMode,
-    /// `0..1`, só lido em [`SliceTileMode::Adaptive`].
-    pub stretch_value: f32,
     /// `false` deixa o miolo vazio — uma moldura oca.
     pub fill_center: bool,
 }
@@ -268,7 +286,6 @@ impl SliceNine {
         tile_modes: [TileRegionMode::Stretch; 8],
         centre_tile_mode: TileRegionMode::Stretch,
         tile_mode: SliceTileMode::Continuous,
-        stretch_value: 0.5,
         fill_center: true,
     };
 
@@ -277,8 +294,8 @@ impl SliceNine {
         self.tile_modes[region as usize]
     }
 
-    /// Saneia a autoria para o que o cozimento pode consumir: bordas não-negativas e finitas,
-    /// `stretch_value` em `0..1`, tamanho não-negativo.
+    /// Saneia a autoria para o que o cozimento pode consumir: bordas e tamanho não-negativos e
+    /// finitos.
     ///
     /// ⚠️ **Sanear na LEITURA e não em cada gesto**: a lei é «imponha o invariante na derivação,
     /// não em cada porta» — há mais portas de escrita (painel, undo, carregamento de ficheiro,
@@ -303,11 +320,6 @@ impl SliceNine {
                 self.centre_tile_mode
             },
             tile_mode: self.tile_mode,
-            stretch_value: if self.stretch_value.is_finite() {
-                self.stretch_value.clamp(0.0, 1.0)
-            } else {
-                0.5
-            },
             fill_center: self.fill_center,
         }
     }
@@ -409,22 +421,11 @@ mod tests {
         let dirty = SliceNine {
             borders: [-4.0, f32::NAN, f32::INFINITY, 8.0],
             size: [-1.0, f32::NAN],
-            stretch_value: 5.0,
             ..SliceNine::INERT
         };
         let c = dirty.sanitized();
         assert_eq!(c.borders, [0.0, 0.0, 0.0, 8.0]);
         assert_eq!(c.size, [0.0, 0.0]);
-        assert_eq!(c.stretch_value, 1.0);
-        let nan_stretch = SliceNine {
-            stretch_value: f32::NAN,
-            ..SliceNine::INERT
-        }
-        .sanitized();
-        assert_eq!(
-            nan_stretch.stretch_value, 0.5,
-            "NaN volta ao default, nao a zero"
-        );
     }
 
     /// `size = 0` significa «usa o do sprite», por eixo independentemente.

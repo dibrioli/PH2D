@@ -193,15 +193,7 @@ pub fn nine_slice_patches(
         };
         ends_flipped(
             m,
-            tile_count(
-                m,
-                s.draw_mode,
-                s.tile_mode,
-                s.stretch_value,
-                cols_m[1],
-                cols_src_m[1],
-                true,
-            ),
+            tile_count(m, s.draw_mode, s.tile_mode, cols_m[1], cols_src_m[1], true),
         )
     };
     let band_y = |col: usize| -> bool {
@@ -210,15 +202,7 @@ pub fn nine_slice_patches(
         };
         ends_flipped(
             m,
-            tile_count(
-                m,
-                s.draw_mode,
-                s.tile_mode,
-                s.stretch_value,
-                rows_m[1],
-                rows_src_m[1],
-                true,
-            ),
+            tile_count(m, s.draw_mode, s.tile_mode, rows_m[1], rows_src_m[1], true),
         )
     };
     let flip_x_at_row = [band_x(0), band_x(1), band_x(2)];
@@ -244,7 +228,6 @@ pub fn nine_slice_patches(
                 mode,
                 s.draw_mode,
                 s.tile_mode,
-                s.stretch_value,
                 pw,
                 cols_src_m[col],
                 col == 1,
@@ -253,7 +236,6 @@ pub fn nine_slice_patches(
                 mode,
                 s.draw_mode,
                 s.tile_mode,
-                s.stretch_value,
                 ph,
                 rows_src_m[row],
                 row == 1,
@@ -347,20 +329,16 @@ fn centre_mode(s: &SliceNine) -> TileRegionMode {
 /// `1.0` = não repete (estica). `axis_stretches` diz se ESTE eixo é o que cresce: uma borda
 /// lateral cresce em Y e não em X, e repetir no eixo fixo seria desenhar o ladrilho comprimido.
 ///
-/// ⚠️ **`Adaptive` segue o limiar documentado do Unity** (`adaptiveModeThreshold`): quando o
-/// ladrilho parcial que sobra é menor que `stretch_value`, ele é descartado e os ladrilhos
-/// inteiros esticam para preencher; senão o parcial fica. É por isso que o slider tem unidade —
-/// ele é uma **fração de ladrilho**, não um ganho solto.
-///
 /// ⚠️ **`Mirror` IMPÕE o número inteiro, qualquer que seja o `tile_mode`.** Não é preferência: um
 /// espelho cortado a meio acaba numa coluna arbitrária da fonte e **nenhuma** borda a encontra —
 /// a paridade que escolhe a borda certa (ver [`nine_slice_patches`]) só existe sobre um inteiro.
-/// Em regiões espelhadas o `stretch_value` fica, portanto, inerte.
+///
+/// ⛔ O `Adaptive` do Unity foi retirado com o seu slider: o mecanismo dele não podia funcionar
+/// (o motivo, medido, está em [`SliceTileMode`]). Restam os dois resultados que existem.
 fn tile_count(
     mode: TileRegionMode,
     draw: SliceDrawMode,
     tile_mode: SliceTileMode,
-    stretch_value: f32,
     target_m: f32,
     intrinsic_m: f32,
     axis_stretches: bool,
@@ -377,18 +355,6 @@ fn tile_count(
     match tile_mode {
         SliceTileMode::Continuous => raw,
         SliceTileMode::Whole => whole(raw),
-        SliceTileMode::Adaptive => {
-            let whole = raw.floor();
-            let frac = raw - whole;
-            // Menos de um ladrilho inteiro nao tem "parcial a descartar" — descarta-lo deixaria
-            // a faixa VAZIA. Por isso as duas condicoes que devolvem `raw` sao a mesma lei:
-            // *o parcial fica*.
-            if whole < 1.0 || frac >= stretch_value {
-                raw
-            } else {
-                whole
-            }
-        }
     }
 }
 

@@ -530,11 +530,36 @@ pub fn marker_arc_insets(path: &VecPath, s: &StrokeSpec) -> (f64, f64) {
             .windows(2)
             .map(|w| (w[1].anchor[0] - w[0].anchor[0]).hypot(w[1].anchor[1] - w[0].anchor[1]))
             .sum();
-        if span <= 0.0 || !span.is_finite() || proj(span) <= inset {
-            return span.max(inset);
+        if span <= 0.0 || !span.is_finite() {
+            return inset;
         }
-        let (mut lo, mut hi) = (0.0_f64, span);
-        for _ in 0..48 {
+        // ⚠️ **A PRIMEIRA travessia a partir da ponta, e NÃO uma bissecção global.** A projeção
+        // não cresce monotonicamente com o recuo: numa curva em S ela sobe, volta a descer e pode
+        // subir outra vez, porque a curva DOBRA para trás. Uma bissecção sobre `[0, span]` assume
+        // a monotonia que não existe — e o teste de saturação (`proj(span) <= inset`) media
+        // justamente o ponto mais distante ao longo do arco, que numa curva dobrada está PERTO do
+        // bico na projeção. O resultado era declarar "não há espaço" e consumir a linha inteira:
+        // ela desaparecia, e desaparecia em função do ângulo (Enio, 2026-08-22).
+        //
+        // Varre-se do extremo para dentro até a projeção CRUZAR o `inset` pela primeira vez, e só
+        // então se refina. É a base do marcador que se procura — a mais próxima da ponta.
+        const STEPS: usize = 48;
+        let mut lo = 0.0_f64;
+        let mut hi = f64::NAN;
+        for i in 1..=STEPS {
+            let d = span * (i as f64) / (STEPS as f64);
+            let v = proj(d);
+            if v >= inset {
+                hi = d;
+                break;
+            }
+            lo = d;
+        }
+        if !hi.is_finite() {
+            // A curva INTEIRA não oferece, em ponto nenhum, o espaço que a ponta pede.
+            return span;
+        }
+        for _ in 0..32 {
             let mid = 0.5 * (lo + hi);
             if proj(mid) < inset {
                 lo = mid

@@ -336,3 +336,21 @@ fn measure_sculpt_to_field_bridge() {
     println!("árvore com JIT    : {ms_tree:8.1} ms por 1 M pontos  ({acc2:.3})");
     println!("razão             : {:8.2}x", ms_sample / ms_tree);
 }
+
+#[test]
+#[ignore = "sonda"]
+fn probe_scene_trace_cost() {
+    println!("cena | tempo de traçado 640x480 | pixels de peça");
+    for n in [1u32, 2, 6] {
+        let doc = scene(n);
+        let reg = crate::field3d_smoke::sampled_registry();
+        let t0 = std::time::Instant::now();
+        let g =
+            ph2d_field_render::trace(&doc, &reg, &ph2d_field_render::Orbit::default(), 640, 480);
+        println!(
+            "{n:4} | {:22.1} ms | {}",
+            t0.elapsed().as_secs_f64() * 1000.0,
+            g.hits()
+        );
+    }
+}

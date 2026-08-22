@@ -1562,10 +1562,59 @@ válido; a barreira só **removia caminhos**, e numa parede fina deixava o meio 
 Removida. *Uma precaução que a medição diz não fazer nada não é grátis: ela é a próxima pessoa a
 acreditar que ela faz.*
 
-### §22.6 — O smoke, e o que ele prova
+### §22.6 — ⛔ O smoke REPROVOU: um cubo furado, e a costura entre os dois regimes
 
-`PH2D_FIELD_SMOKE=6`: uma **esfera ruidosa de 9 mil triângulos** vira campo amostrado (96 de
-resolução, ~150 ms) e leva um **furo de 0,20 com a boca arredondada em 0,05**. A malha é gerada na
+> Enio, 21/08: *"a cena que vc criou mostra um objeto texturizado dentro de um cubo furado, com
+> artefatos de imagem, lento e bastante estranho"*.
+
+⭐ **O campo estava certo. A costura entre os dois regimes é que não estava.** A sonda mediu, ao
+longo de `+x`: `−0,445` no centro · `+0,000` em 0,54 (a casca) · `+0,088` em 0,66 — sinal certo,
+distância certa, malha fechada (0 arestas ruins), 37,8 % de interior. Nada disso é o defeito.
+
+**O defeito é um passo depois.** Junto da parede da caixa, por dentro, o campo valia **+0,10**; um
+passo para fora, o `at()` devolvia a distância à caixa, que **nasce em zero na própria parede**.
+
+⚠️ **Um campo que cai a zero numa superfície TEM uma superfície ali.** A marcha encontrava-a e
+parava: a caixa da grade virava um cubo sólido, e a peça só aparecia por dentro do furo que a
+booleana abrira.
+
+A cura é `max(distância à caixa, valor na parede)`: na parede vale exatamente o valor de dentro
+(**contínuo**), longe vale a distância à caixa (**cresce**), e continua a ser um minorante — para `p`
+fora, o ponto mais próximo da caixa fica **entre** `p` e qualquer ponto da malha, logo
+`d(p) ≥ d(parede)`.
+
+| | pixels de peça (640×480) | fração do quadro | relógio |
+|---|---:|---:|---:|
+| com o cubo falso | 215 921 | **70,3 %** | 20,0 ms |
+| curado | 128 608 | **41,9 %** | 23,1 ms |
+
+⚠️ **O cubo era mais RÁPIDO** — os raios paravam mais cedo, na parede —, e é por isso que o relógio
+não serve de gate: quem separa os dois casos é a **área**.
+
+#### ⚠️ Os sete gates da ponte passavam sobre o código quebrado
+
+Um media o regime de **dentro**, outro o de **fora**, e cada um estava certo no seu lado. Nenhum
+media a **emenda**. O gate que faltava —
+`there_is_no_false_surface_at_the_wall_of_the_box` — atravessa as seis paredes em passos de meia
+célula e exige duas coisas: continuidade (nenhum salto maior que uma célula) e um piso (o campo nunca
+chega perto de zero ali). Mutado o `at()` de volta, ele é o **único** dos oito a ficar vermelho.
+
+*Dois regimes certos não fazem um campo certo. Quem mede um de cada vez nunca vê a emenda.*
+
+#### ⛔ E a malha da cena estava errada por outro motivo
+
+A `ph2d_mesh::shapes::uv_sphere_noisy` desloca cada vértice por ruído **branco** — ela existe para os
+gates da escultura medirem malha irregular, não para alguém a olhar, e o resultado é **espinhoso**
+(*"bastante estranho"*). A cena passa a construir a bolha com uma onda **suave**
+(`1 + 0,16·sin(3·azimute)·sin(2·polar)`): forma grande e lisa, que é o que torna visível o que a cena
+existe para mostrar — o filete a acompanhar a curvatura da peça.
+
+### §22.6-bis — O smoke, e o que ele prova
+
+`PH2D_FIELD_SMOKE=6`: uma **bolha orgânica de 8 192 triângulos** vira campo amostrado (112 de
+resolução, ~171 ms) e leva um **furo de 0,20 com a boca arredondada em 0,05**. Traçar custa **32,6 ms
+a 640×480**, contra 15,5 ms da cena 1 — **2,1×**, que é o preço de uma folha amostrada mais o
+`CHAMFER_SAFETY` a encurtar cada passo. A malha é gerada na
 cena de propósito: o que se prova aqui é a **ponte**, e uma escultura vinda do módulo de sculpt traria
 consigo a pergunta de **autoria** — como o artista cria um destes —, que é wave própria e tem UI.
 

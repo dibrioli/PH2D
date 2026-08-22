@@ -498,6 +498,28 @@ mod trace_tests {
             "a cena 6 tem de ter UMA escultura — se der 0, o nome não chegou ao registo"
         );
         assert_eq!(h.tape_count(), 1, "e o cilindro é a única árvore analítica");
+
+        // ⭐ **E a SILHUETA prova que a caixa da grade não virou peça.**
+        //
+        // ⚠️ Este é o gate do smoke reprovado de 21/08 (*"um objeto texturizado dentro de um cubo
+        // furado"*): a costura entre os dois regimes do campo amostrado caía a zero na parede da
+        // caixa, e a marcha encontrava ali uma superfície. Medido, 640×480:
+        //
+        // | | pixels de peça | fração do quadro | relógio |
+        // |---|---:|---:|---:|
+        // | com o cubo falso | 215 921 | **70,3 %** | 20,0 ms |
+        // | curado | 128 608 | **41,9 %** | 23,1 ms |
+        //
+        // ⚠️ **O cubo era mais RÁPIDO**, e é por isso que o relógio não serve de gate aqui: os raios
+        // paravam mais cedo, na parede. Quem separa os dois casos é a área.
+        let g = ph2d_field_render::trace(&doc, &reg, &Orbit::default(), 320, 240);
+        let covered = g.hits() as f64 / (320.0 * 240.0);
+        assert!(
+            (0.2..0.55).contains(&covered),
+            "a peça cobre {:.1} % do quadro — acima de 55 % é a caixa da grade a virar sólido, \
+             abaixo de 20 % é a escultura a não chegar",
+            covered * 100.0
+        );
     }
 
     #[test]

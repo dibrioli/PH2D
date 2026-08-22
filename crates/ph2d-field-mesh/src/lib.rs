@@ -204,14 +204,41 @@ impl SampledField {
     /// ⭐ **A distância com sinal em `p`** — e ela vale **em toda a parte**, não só dentro da caixa.
     ///
     /// Dentro: interpolação trilinear da grade estendida.
-    /// Fora: a distância **à caixa**, que é um minorante honesto da distância à malha, porque a
-    /// malha está dentro dela. É isso que deixa a marcha aproximar-se sem saltar por cima.
+    /// Fora: **o MAIOR entre a distância à caixa e o valor na parede da caixa**.
+    ///
+    /// # ⛔ Devolver só a distância à caixa punha um CUBO na tela
+    ///
+    /// ⚠️ Foi um smoke reprovado (Enio, 21/08: *"um objeto texturizado dentro de um cubo furado"*), e
+    /// o mecanismo é uma **descontinuidade**: junto da parede, por dentro, o campo vale a distância à
+    /// peça — na esfera de teste, **+0,10**. Um passo para fora e a resposta caía para **0,000**,
+    /// porque a distância à caixa nasce em zero na própria parede.
+    ///
+    /// **Um campo que cai a zero numa superfície TEM uma superfície ali.** A marcha de raios
+    /// encontrava-a e parava: a caixa da grade virava um sólido, e a peça só aparecia por dentro do
+    /// furo que a booleana abrira. *O campo estava certo; o que estava errado era a costura entre os
+    /// dois regimes.*
+    ///
+    /// ⭐ O `max` cura as duas metades de uma vez: na parede vale exatamente o valor de dentro
+    /// (**contínuo**), e longe vale a distância à caixa (**cresce**). E continua a ser um minorante,
+    /// que é a condição da marcha: a distância à caixa nunca passa da distância à malha (a malha está
+    /// dentro), e o valor na parede também não — para `p` fora, o ponto mais próximo da caixa fica
+    /// **entre** `p` e qualquer ponto da malha, logo `d(p) ≥ d(parede)`.
     #[must_use]
     pub fn at(&self, p: [f32; 3]) -> f32 {
         let outside = distance_to_box(self.box_, p);
         if outside > 0.0 {
-            return outside;
+            let wall = [
+                p[0].clamp(self.box_.min[0], self.box_.max[0]),
+                p[1].clamp(self.box_.min[1], self.box_.max[1]),
+                p[2].clamp(self.box_.min[2], self.box_.max[2]),
+            ];
+            return outside.max(self.sample_inside(wall));
         }
+        self.sample_inside(p)
+    }
+
+    /// A interpolação trilinear, para um ponto que já se sabe estar dentro da caixa.
+    fn sample_inside(&self, p: [f32; 3]) -> f32 {
         let inv = 1.0 / self.step;
         let mut i0 = [0usize; 3];
         let mut frac = [0.0f32; 3];
@@ -219,7 +246,7 @@ impl SampledField {
             let g = (p[a] - self.origin[a]) * inv;
             // Inclui o `NaN`: a comparação negada apanha-o sem um ramo próprio.
             if !(g >= 0.0 && g <= (self.dims[a] - 1) as f32) {
-                return outside;
+                return distance_to_box(self.box_, p);
             }
             #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
             let i = (g.floor() as usize).min(self.dims[a] - 2);

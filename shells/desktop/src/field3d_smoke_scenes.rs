@@ -31,6 +31,33 @@ fn drawn_profile(pts: &[([f64; 2], f64)]) -> Profile {
     ph2d_field_profile::cook_path_auto(&path).expect("os contornos do smoke são perfis válidos")
 }
 
+/// **Uma bolha ORGÂNICA** — uma esfera deslocada por uma onda suave, para servir de escultura.
+///
+/// ⚠️ **A primeira versão usava a `uv_sphere_noisy` da casa e o smoke reprovou** (Enio, 21/08:
+/// *"bastante estranho"*): aquela função desloca cada vértice por ruído **branco**, o que dá uma
+/// superfície **espinhosa** — ela existe para os gates da escultura medirem malha irregular, não para
+/// alguém a olhar. Uma escultura de verdade tem forma **grande e lisa**, e é isso que torna visível o
+/// que esta cena existe para mostrar: o filete a acompanhar a curvatura da peça.
+///
+/// A onda é `1 + 0,16·sin(3·azimute)·sin(2·polar)` — três lobos em volta, dois de cima a baixo.
+fn organic_blob(rings: usize, segments: usize, radius: f32) -> ph2d_mesh::Mesh {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(rings, segments, radius);
+    for p in mesh.positions_mut() {
+        let l = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+        if l <= 1e-6 {
+            continue;
+        }
+        let azimuth = p[2].atan2(p[0]);
+        let polar = (p[1] / l).clamp(-1.0, 1.0).acos();
+        let k = 0.16f32.mul_add((3.0 * azimuth).sin() * (2.0 * polar).sin(), 1.0) * radius / l;
+        for v in p.iter_mut() {
+            *v *= k;
+        }
+    }
+    mesh.rebuild();
+    mesh
+}
+
 /// As cenas. ⚠️ **Cada uma imprime o que montou** — se a linha não aparecer no terminal, o smoke
 /// não chegou a construir nada, e a tela vazia é sintoma disso e não da geometria.
 pub(crate) fn scene(n: u32) -> FieldDoc {
@@ -174,9 +201,9 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
             // que um campo amostrado se combina com um analítico —, e uma escultura vinda do módulo
             // de sculpt traria consigo a pergunta de **autoria** (como o artista cria um destes),
             // que é wave própria e tem UI. Uma esfera ruidosa é o mínimo que já não é analítico.
-            let blob = ph2d_mesh::shapes::uv_sphere_noisy(48, 96, 0.55, 0.07);
+            let blob = organic_blob(64, 128, 0.5);
             let t0 = std::time::Instant::now();
-            let field = ph2d_field_mesh::SampledField::from_mesh(&blob, 96)
+            let field = ph2d_field_mesh::SampledField::from_mesh(&blob, 112)
                 .expect("a bolha não é uma malha vazia");
             let cell = field.cell();
             crate::field3d_smoke::register_sampled("blob", std::sync::Arc::new(field));

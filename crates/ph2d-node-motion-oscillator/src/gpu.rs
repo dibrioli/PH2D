@@ -39,6 +39,11 @@ const OSC_PARAMS: &[&str] = &[
     "phase",
     "time_mode",
     "bpm",
+    // A FAIXA — `range_mode = 0` devolve a expressão que estava aqui antes.
+    // ⚠️ Esta lista não é derivada do manifesto.
+    "range_mode",
+    "min",
+    "max",
 ];
 
 /// The falloff mask, bound identically by every variant.
@@ -92,7 +97,18 @@ const OSC_LIB: &str = "\
             let cps = osc_cycles_per_second();\n\
             let phase = osc_time(i) * cps + f32(i) * params.phase_stagger + params.phase;\n\
             let w = osc_wave(i32(osc_round(params.wave)), phase);\n\
-            return (w * params.amplitude + params.offset) * read_in_falloff(i);\n\
+            // A FAIXA: o gemeo de `gain_offset_for_range`, com a polaridade a\n\
+            // sair da FORMA -- o Spike (4) e' unipolar [0,1], as outras quatro\n\
+            // sao bipolares.\n\
+            var amp = params.amplitude;\n\
+            var off = params.offset;\n\
+            if (params.range_mode >= 0.5) {\n\
+                var lo = -1.0;\n\
+                if (i32(osc_round(params.wave)) == 4) { lo = 0.0; }\n\
+                amp = (params.max - params.min) / (1.0 - lo);\n\
+                off = params.min - lo * amp;\n\
+            }\n\
+            return (w * amp + off) * read_in_falloff(i);\n\
         }\n\
         fn osc_cycles_per_second() -> f32 {\n\
             // BPM: a MESMA grandeza noutra regua (batidas por minuto).\n\

@@ -28,6 +28,11 @@ pub(crate) const NS_PARAMS: &[&str] = &[
     "rotation",
     "uniform",
     "scale_y",
+    // A FAIXA — a régua alternativa da mesma saída. `range_mode = 0` devolve a
+    // expressão que estava aqui antes. ⚠️ Esta lista não é derivada do manifesto.
+    "range_mode",
+    "min",
+    "max",
 ];
 
 /// **A PORTA DE TEMPO** — ligada por todo variant, `ReadBroadcast` para herdar a regra
@@ -114,7 +119,17 @@ const NS_LIB: &str = "\
             \x20       seed, oct, params.roughness, ty, params.lacunarity);\n\
             \x20   s = sa + (sb - sa) * w;\n\
             }\n\
-            return s * params.amplitude * read_in_falloff(i);\n\
+            // A FAIXA: o gemeo de `ph2d_fbm::gain_offset_for_range`, com a\n\
+            // polaridade a sair do `type` — `Fbm` e' bipolar, `Turbulence` e\n\
+            // `Ridged` sao retificados e saem em [0,1].\n\
+            var raw = s * params.amplitude;\n\
+            if (params.range_mode >= 0.5) {\n\
+                var lo = -1.0;\n\
+                if (ty != 0) { lo = 0.0; }\n\
+                let gain = (params.max - params.min) / (1.0 - lo);\n\
+                raw = s * gain + (params.min - lo * gain);\n\
+            }\n\
+            return raw * read_in_falloff(i);\n\
         }\n\
         const NS_NORM: f32 = 1.0 / 1.5;\n\
         fn ns_round(x: f32) -> f32 {\n\

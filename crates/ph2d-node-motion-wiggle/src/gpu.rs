@@ -34,6 +34,11 @@ const WG_PARAMS: &[&str] = &[
     "octaves",
     "amp_mult",
     "loop_len",
+    // A FAIXA — `range_mode = 0` devolve a expressão que estava aqui antes.
+    // ⚠️ Esta lista não é derivada do manifesto.
+    "range_mode",
+    "min",
+    "max",
 ];
 
 /// **A biblioteca WGSL que os TRÊS variants compartilham.**
@@ -71,7 +76,14 @@ const WG_LIB: &str = "\
             \x20   let sb = wg_fbm(tb * params.frequency, ny, oct, params.amp_mult);\n\
             \x20   s = sa + (sb - sa) * w;\n\
             }\n\
-            return s * params.amplitude * read_in_falloff(i);\n\
+            // A FAIXA: o gemeo de `ph2d_fbm::gain_offset_for_range`. A faixa\n\
+            // natural e' `[-1, 1]` fixa -- o `ty` deste no' e' sempre Fbm.\n\
+            var raw = s * params.amplitude;\n\
+            if (params.range_mode >= 0.5) {\n\
+                let gain = (params.max - params.min) * 0.5;\n\
+                raw = s * gain + (params.min + gain);\n\
+            }\n\
+            return raw * read_in_falloff(i);\n\
         }\n\
         fn wg_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\

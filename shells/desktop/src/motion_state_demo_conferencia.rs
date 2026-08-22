@@ -77,6 +77,44 @@ pub(super) fn knobs(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId>
     sinks
 }
 
+/// **A CENA `=79` — A FAIXA QUE O NOME PROMETE** (doc 89, folha 06): três
+/// animadores que passam a dizer ONDE a saída cai, e a armadilha que isso curou.
+pub(super) fn band(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_faixa::build_band_demo_document(doc, registry).unwrap_or_default();
+    let (n, min, max, v) = conferencia_demos_faixa::authored();
+    eprintln!(
+        "[cena 79] {n} fileiras, AOS PARES. Cada fileira e' um GRAFICO: {cols} pecas, e a
+  ALTURA de cada peca E' o numero que sai do no'.
+
+  >>> AS DUAS BOLINHAS MAIORES A` ESQUERDA DE CADA FILEIRA SAO UMA REGUA: elas estao
+      exactamente onde o painel diz que o movimento tem de ir ({min:.2} em baixo,
+      {max:.2} em cima). A pergunta e' uma so': o movimento ENCOSTA nas duas?
+
+  >>> DE' PLAY. As tres primeiras duplas so' se leem com o relogio a andar.",
+        cols = conferencia_demos_faixa::COLS as u32,
+    );
+    for (i, label) in conferencia_demos_faixa::row_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) DUPLA 1 (as duas de cima): as duas metades sao IGUAIS, e tem de ser. E' o
+  controle -- a conta que um artista faz de cabeca esta' CERTA para esta forma, e a cena
+  nao esta' aqui para o acusar de um erro que ele nao comete.
+  (!) DUPLA 2 e DUPLA 3: agora as metades DIFEREM. A de cima usa so' a METADE DE CIMA da
+  regua -- ela nunca desce ate' a bolinha de baixo. A de baixo encosta nas duas. E' o
+  mesmo pedido nas duas: o que muda e' quem sabe a forma da onda.
+  (!) DUPLA 4 (as duas de baixo): a MESMA rampa. Em cima o valor SOMA e ela sobe inteira;
+  em baixo ele e' um TECTO em {v:.1} e a rampa achata quando bate nele.
+  > clique no no' Drive da ultima fileira e troque o `Mode`: Subtract, Divide e Max
+    tambem sao novos.
+
+  DEU ERRADO se a DUPLA 1 tiver metades diferentes, se a de baixo de qualquer dupla nao
+  encostar nas duas bolinhas, ou se as bolinhas da regua nao aparecerem."
+    );
+    sinks
+}
+
 /// O RUIDO e o RELOGIO (doc 89, o grupo B): os dois geradores TEMPORAIS,
 /// dez perfis, e a unica leitura desta jornada que so' o PLAY responde.
 pub(super) fn noise_clock(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {

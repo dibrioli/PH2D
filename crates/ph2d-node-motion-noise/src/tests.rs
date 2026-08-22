@@ -472,3 +472,145 @@ fn the_field_evolves_with_the_playhead() {
     g.set_param(noise, "speed", 1.0);
     assert_ne!(cook_y(&g, noise, 0.0), cook_y(&g, noise, 1.0));
 }
+
+/// **`range_mode = 0` É O NÓ QUE SEMPRE SHIPOU — BIT-A-BIT, NOS TRÊS TIPOS.**
+///
+/// O gate de neutralidade de toda régua apendada: um documento já autorado não
+/// pode mudar de imagem por um param que ele não conhece.
+#[test]
+fn the_amplitude_ruler_is_the_node_that_shipped_in_every_type() {
+    for ty in 0..=2 {
+        let before = field_with(|g, n| {
+            g.set_param(n, "type", ty as f32);
+            g.set_param(n, "amplitude", 0.7);
+        });
+        let after = field_with(|g, n| {
+            g.set_param(n, "type", ty as f32);
+            g.set_param(n, "amplitude", 0.7);
+            g.set_param(n, "range_mode", 0.0);
+            // ⚠️ Números NÃO-neutros nos dois: se o `range_mode` vazasse, isto
+            // apanhava-o. Com `min = -1, max = 1` (os defaults) o vazamento seria
+            // invisível para o `Fbm`.
+            g.set_param(n, "min", 3.0);
+            g.set_param(n, "max", 9.0);
+        });
+        assert_eq!(before, after, "tipo {ty}: a regua desligada mudou o campo");
+    }
+}
+
+/// O DESLOCAMENTO que o nó aplicou, isolado da posição de cada peça no bloco.
+///
+/// ⚠️ **A primeira versão dos dois gates abaixo comparava a posição ABSOLUTA, e
+/// reprovou sobre produto correto** (`Ridged` deu `[5,4 .. 8]` para uma faixa
+/// pedida de `[2 .. 6]`): o `cook_y` devolve onde a peça FICOU, e o bloco 3×3 já
+/// tem Y próprio. O campo estava certo; o instrumento é que somava o berço.
+fn delta_on_block(setup: impl Fn(&mut Graph, GNodeId)) -> Vec<f32> {
+    let moved = block_with(|g, n| setup(g, n));
+    // `amplitude = 0` com a régua de sempre ⇒ deslocamento zero ⇒ o berço.
+    let base = block_with(|g, n| g.set_param(n, "amplitude", 0.0));
+    moved.iter().zip(&base).map(|(m, b)| m - b).collect()
+}
+
+/// **NADA SAI DA FAIXA PEDIDA — NOS TRÊS TIPOS.** O continente, que é a promessa
+/// literal do nome do knob.
+#[test]
+fn nothing_leaves_the_range_you_asked_for() {
+    let (min, max) = (2.0f32, 6.0f32);
+    for ty in 0..=2 {
+        let ys = delta_on_block(|g, n| {
+            g.set_param(n, "type", ty as f32);
+            g.set_param(n, "octaves", 4.0);
+            g.set_param(n, "scale", 1.5);
+            g.set_param(n, "range_mode", 1.0);
+            g.set_param(n, "min", min);
+            g.set_param(n, "max", max);
+        });
+        let lo = ys.iter().copied().fold(f32::INFINITY, f32::min);
+        let hi = ys.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        assert!(
+            lo >= min - 1e-3 && hi <= max + 1e-3,
+            "tipo {ty}: o deslocamento saiu da faixa [{min}, {max}]: [{lo}, {hi}]"
+        );
+        assert!(hi > lo, "tipo {ty}: o campo nao se moveu");
+    }
+}
+
+/// **A ARMADILHA, MEDIDA EXACTAMENTE: o knob DOBRA a excursão que a conta de
+/// cabeça perde — e só nos tipos onde ela está errada.**
+///
+/// ⚠️ **É o oráculo certo, e a primeira versão deste gate usou o errado.** Eu pedi
+/// que o campo *encostasse* nas duas pontas da faixa, e nove amostras de um fBm
+/// não visitam os extremos da forma (medido em [`measure_natural_range`]: o
+/// `Ridged` a 4 oitavas tem piso empírico `0,098`). Essa barra é sobre a FIXTURE,
+/// não sobre o produto.
+///
+/// O que é exacto e não depende de fixture nenhuma: para as MESMAS amostras, a
+/// razão entre a excursão com o knob e a excursão com a conta do artista
+/// (`amplitude = (max−min)/2`) é `(hi_nat − lo_nat)/2` — **1× num campo bipolar**
+/// (a conta está certa) e **2× num retificado** (a conta perde metade). É a
+/// armadilha inteira, num número.
+#[test]
+fn the_knob_doubles_exactly_the_excursion_the_head_arithmetic_loses() {
+    let (min, max) = (2.0f32, 6.0f32);
+    let span_of = |ty: i32, ranged: bool| {
+        let ys = delta_on_block(move |g, n| {
+            g.set_param(n, "type", ty as f32);
+            g.set_param(n, "octaves", 4.0);
+            g.set_param(n, "scale", 1.5);
+            if ranged {
+                g.set_param(n, "range_mode", 1.0);
+                g.set_param(n, "min", min);
+                g.set_param(n, "max", max);
+            } else {
+                g.set_param(n, "amplitude", (max - min) * 0.5);
+            }
+        });
+        let lo = ys.iter().copied().fold(f32::INFINITY, f32::min);
+        let hi = ys.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        hi - lo
+    };
+    for (ty, want) in [(0, 1.0f32), (1, 2.0), (2, 2.0)] {
+        let ratio = span_of(ty, true) / span_of(ty, false);
+        assert!(
+            (ratio - want).abs() < 1e-3,
+            "tipo {ty}: a razao tem de ser {want}, e' {ratio}"
+        );
+    }
+}
+
+/// **SONDA: a faixa que cada tipo de facto ocupa** — não a que a fórmula promete.
+///
+/// ⚠️ **Nasceu de um gate vermelho (2026-08-22).** Declarei `Ridged` como `[0,1]`
+/// porque `(1−|n|)²` está em `[0,1]` *quando `|n| ≤ 1`* — e o ruído de gradiente
+/// do Perlin 2002 **passa de 1**. A teoria estava certa sobre a fórmula e errada
+/// sobre a ENTRADA dela.
+///
+/// `cargo test -p ph2d-node-motion-noise measure_natural_range -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda, não um gate — `-- --ignored --nocapture`"]
+fn measure_natural_range() {
+    for ty in [
+        ph2d_fbm::NoiseType::Fbm,
+        ph2d_fbm::NoiseType::Turbulence,
+        ph2d_fbm::NoiseType::Ridged,
+    ] {
+        for octaves in [1u32, 2, 4, 8] {
+            let spec = ph2d_fbm::Spec {
+                octaves,
+                lacunarity: 2.0,
+                roughness: 0.5,
+                ty,
+            };
+            let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+            for a in -300..300 {
+                for b in -300..300 {
+                    let v = fbm(a as f32 * 0.031, b as f32 * 0.029, 7, spec);
+                    lo = lo.min(v);
+                    hi = hi.max(v);
+                }
+            }
+            let declared = ty.natural_range();
+            println!("{ty:?} oct={octaves}: medido [{lo:.4} .. {hi:.4}]  declarado {declared:?}");
+        }
+    }
+}

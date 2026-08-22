@@ -13,6 +13,9 @@
 
 use ph2d_nodegraph::attr::{Column, Stream};
 
+// A aritmética dos modos mora no irmão `combine.rs` (teto de LOC, HR-18).
+pub(crate) use crate::combine::Combine;
+
 /// The multiplicative `falloff` weight for instance `i` (absent → `1.0`).
 pub(crate) fn falloff_at(stream: &Stream, i: usize) -> f32 {
     match stream.get("falloff") {
@@ -31,34 +34,6 @@ pub(crate) fn value_at(vals: &[f32], i: usize) -> f32 {
         0 => 0.0,
         1 => vals[0], // broadcast: one value → every instance (the 1→N rule)
         _ => vals.get(i).copied().unwrap_or(0.0),
-    }
-}
-
-/// How the driven value combines with the existing channel.
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub(crate) enum Combine {
-    /// `channel + value` — the additive default (matches `motion.step`).
-    Add,
-    /// `value` — overwrite the channel with the driven value.
-    Set,
-    /// `channel * value` — scale the existing channel by the value.
-    Multiply,
-}
-
-impl Combine {
-    pub(crate) fn from_param(v: f32) -> Self {
-        match v.round() as i32 {
-            1 => Combine::Set,
-            2 => Combine::Multiply,
-            _ => Combine::Add,
-        }
-    }
-    fn apply(self, channel: f32, value: f32) -> f32 {
-        match self {
-            Combine::Add => channel + value,
-            Combine::Set => value,
-            Combine::Multiply => channel * value,
-        }
     }
 }
 

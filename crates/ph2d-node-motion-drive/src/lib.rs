@@ -36,6 +36,8 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod channel;
+/// A aritmética que junta o valor conduzido ao canal — os sete modos.
+mod combine;
 pub use channel::DRIVE_COL_KEY;
 use channel::{
     CH_CUSTOM, CH_FALLOFF, CH_HUE, CH_SAT, CH_SIZE_X, CH_SIZE_Y, CH_VAL, Combine, drive_channel,
@@ -111,6 +113,16 @@ const DRIVE_LIB: &str = "\
     fn drive_combine(cur: f32, v: f32, mode: i32) -> f32 {\n\
         if (mode == 1) { return v; }\n\
         if (mode == 2) { return cur * v; }\n\
+        // Apendados (folha 06 linha 40) -- o gemeo de `Combine::apply`.\n\
+        if (mode == 3) { return cur - v; }\n\
+        if (mode == 4) {\n\
+            // A MESMA guarda da CPU, com o MESMO limiar: um `inf` num canal de\n\
+            // transform envenena a posicao e todo NaN a jusante vem sem endereco.\n\
+            if (abs(v) < 1e-9) { return 0.0; }\n\
+            return cur / v;\n\
+        }\n\
+        if (mode == 5) { return min(cur, v); }\n\
+        if (mode == 6) { return max(cur, v); }\n\
         return cur + v;\n\
     }\n";
 
@@ -564,10 +576,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "mode",
         label: "Mode",
         min: 0.0,
-        max: 2.0,
+        max: 6.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Add", "Set", "Multiply"],
+            // ⚠️ Os quatro últimos são APENDADOS (folha 06 linha 40): `0..2` ficam
+            // onde estavam, então todo documento já autorado lê o mesmo modo.
+            labels: &["Add", "Set", "Multiply", "Subtract", "Divide", "Min", "Max"],
         },
     },
 ];

@@ -103,6 +103,25 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "loop_len",
             default: 0.0,
         },
+        // ⚠️ **Apendados**: a FAIXA, a régua alternativa da mesma saída (Cavalry
+        // *Minimum/Maximum*). `0` = `Amplitude`, o nó que sempre shipou.
+        //
+        // ⚠️ **É também o único sítio onde este nó sabe dizer um CENTRO.** Ele nunca
+        // teve `offset` — a folha 06 registava o DC como *"o nó de transform do
+        // canal"*, ou seja um segundo nó —, e um `[min, max]` diz as duas coisas de
+        // uma vez. Ver [`ph2d_fbm::gain_offset_for_range`].
+        ParamSpec {
+            name: "range_mode",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "min",
+            default: -1.0,
+        },
+        ParamSpec {
+            name: "max",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -124,6 +143,15 @@ impl NodeOp for MotionWiggle {
         let amplitude = ctx.param("amplitude");
         let frequency = ctx.param("frequency");
         let seed = ctx.param("seed");
+        // A FAIXA — a régua alternativa. ⚠️ A polaridade é FIXA aqui (o `ty` deste
+        // nó é sempre `Fbm`, bipolar), mas a derivação é a MESMA folha que o irmão
+        // `motion.noise` usa: uma lei, dois consumidores.
+        let by_range = ctx.param("range_mode") >= 0.5;
+        let (gain, dc) = ph2d_fbm::gain_offset_for_range(
+            ph2d_fbm::NoiseType::Fbm.natural_range(),
+            ctx.param("min"),
+            ctx.param("max"),
+        );
         let spec = ph2d_fbm::Spec {
             octaves: (ctx.param("octaves").round().max(1.0) as u32).min(MAX_OCTAVES),
             // ⚠️ **A lacunaridade fica em 2 e NÃO vira param aqui.** O `wiggle()`
@@ -165,7 +193,13 @@ impl NodeOp for MotionWiggle {
                         let a = sample(t_a);
                         a + (sample(t_b) - a) * w
                     };
-                    s * amplitude * falloff_at(input, i)
+                    // O DC entra ANTES da máscara, como tudo nesta família.
+                    let raw = if by_range {
+                        s * gain + dc
+                    } else {
+                        s * amplitude
+                    };
+                    raw * falloff_at(input, i)
                 })
                 .collect();
             apply_channel_delta(input, channel, &deltas)
@@ -189,6 +223,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // ⚠️ As duas réguas são a MESMA saída: mostrar as duas seria três números na
+    // tela a discordar sobre a mesma grandeza (o precedente do `time_mode`/`bpm`).
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_channel_range(MANIFEST.id, PARAM_CHANNEL_RANGE);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
@@ -196,7 +233,26 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
+
+/// Só a régua escolhida aparece — o gêmeo do gate do irmão `motion.noise`.
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "amplitude",
+        when: "range_mode",
+        values: &[0],
+    },
+    ParamGate {
+        param: "min",
+        when: "range_mode",
+        values: &[1],
+    },
+    ParamGate {
+        param: "max",
+        when: "range_mode",
+        values: &[1],
+    },
+];
 
 /// Param UI hints (M1.P1). `channel` is a named selector; `seed` a seed widget.
 static PARAM_HINTS: &[ParamUiHint] = &[
@@ -214,6 +270,34 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "amplitude",
         label: "Amplitude",
         min: 0.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    // A RÉGUA da mesma saída — `Amplitude` é o nó que sempre shipou. É também a
+    // única forma de este nó dizer um CENTRO: ele nunca teve `offset`.
+    ParamUiHint {
+        param: "range_mode",
+        label: "Range",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Amplitude", "Min / Max"],
+        },
+    },
+    ParamUiHint {
+        param: "min",
+        label: "Minimum",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "max",
+        label: "Maximum",
+        min: -10.0,
         max: 10.0,
         step: 0.05,
         widget: ParamWidget::Slider,

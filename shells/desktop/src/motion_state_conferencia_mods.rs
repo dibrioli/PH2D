@@ -84,6 +84,10 @@ pub(crate) mod conferencia_demos_cursor;
 
 #[path = "motion_state_conferencia_demos_color.rs"]
 pub(crate) mod conferencia_demos_color;
+/// A cena da FAIXA (`=79`) — onde a saída de um animador cai, e a armadilha da
+/// polaridade que a entrega curou (folha 06).
+#[path = "motion_state_conferencia_demos_faixa.rs"]
+pub(crate) mod conferencia_demos_faixa;
 #[path = "motion_state_conferencia_demos_field.rs"]
 pub(crate) mod conferencia_demos_field;
 #[path = "motion_state_conferencia_demos_force.rs"]

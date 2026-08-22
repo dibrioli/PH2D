@@ -6282,3 +6282,83 @@ fn a_rotated_linear_falloff_matches_the_cpu_on_the_device() {
     connect(&mut g, tint, out);
     assert_gpu_parity(&gpu, &reg, &g, out, 3);
 }
+
+/// **A FAIXA (`Min`/`Max`) NO DEVICE, NOS TRÊS ANIMADORES** — e nas duas
+/// polaridades, que é onde a lei mora.
+///
+/// ⚠️ **A metade que importa é a coluna `shape`.** A derivação da faixa pergunta à
+/// FORMA qual é a polaridade dela, e essa pergunta é respondida duas vezes: uma em
+/// Rust e outra num literal de WGSL que compilador nenhum confere. Um kernel que
+/// assumisse bipolar em todos os casos passaria numa cadeia de `Fbm`/`Sine` e
+/// divergiria por metade da faixa no `Ridged` e no `Spike` — exactamente os dois
+/// casos que esta tabela inclui, e só eles distinguem as duas implementações.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_min_max_ruler_matches_the_cpu_on_the_device_in_both_polarities() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    // (nó, param que escolhe a forma, valor bipolar, valor unipolar)
+    for (ty, shape, bipolar, unipolar) in [
+        ("motion.oscillator", "wave", 0.0, 4.0), // Sine · Spike
+        ("motion.noise", "type", 0.0, 2.0),      // Fbm · Ridged
+        ("motion.wiggle", "octaves", 1.0, 1.0),  // sempre Fbm — o controle da tabela
+    ] {
+        for shape_v in [bipolar, unipolar] {
+            let mut g = Graph::new();
+            let grid = grid_node(&mut g, 40.0);
+            let node = g.add_node(ty);
+            g.set_param(node, "channel", 1.0); // Y
+            g.set_param(node, shape, shape_v);
+            g.set_param(node, "range_mode", 1.0);
+            g.set_param(node, "min", 2.0);
+            g.set_param(node, "max", 6.0);
+            connect(&mut g, grid, node);
+            let out = g.add_node("motion.output");
+            connect(&mut g, node, out);
+            assert_gpu_parity(&gpu, &reg, &g, out, 2); // grid + animador
+        }
+    }
+}
+
+/// **OS QUATRO MODOS APENDADOS DO `motion.drive`, NO DEVICE.**
+///
+/// ⚠️ O `Divide` é o que precisa do device: a guarda do divisor (quase) nulo está
+/// escrita **duas vezes** — em Rust e num literal de WGSL —, e um `inf` que só o
+/// device produzisse envenenaria a posição do elemento num grafo em que o artista
+/// já esqueceu qual nó dividia.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_appended_drive_modes_match_the_cpu_on_the_device() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    for mode in [3.0f32, 4.0, 5.0, 6.0] {
+        let mut g = Graph::new();
+        let grid = grid_node(&mut g, 40.0);
+        // Um campo que ATRAVESSA o zero, para o ramo degenerado do `Divide` ser de
+        // facto visitado — com um valor sempre longe de zero a guarda nunca corre e
+        // o gate ficaria verde sobre um kernel sem ela.
+        let value = g.add_node("value.instance_field");
+        g.set_param(value, "mode", 1.0); // Ramp: 0..1, e o 0 é o divisor nulo
+        connect(&mut g, grid, value);
+        let drive = g.add_node("motion.drive");
+        g.set_param(drive, "channel", 1.0); // Y
+        g.set_param(drive, "mode", mode);
+        g.set_param(drive, "scale", 2.0);
+        connect(&mut g, grid, drive);
+        g.connect(Edge {
+            from: (value, 0),
+            to: (drive, 1),
+            delayed: false,
+        })
+        .unwrap();
+        let out = g.add_node("motion.output");
+        connect(&mut g, drive, out);
+        assert_gpu_parity(&gpu, &reg, &g, out, 3); // grid + instance_field + drive
+    }
+}

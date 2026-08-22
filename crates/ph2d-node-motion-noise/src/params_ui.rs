@@ -31,11 +31,32 @@ pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[
 /// A linha do eixo Y pertence ao modo que a lê, e a mais nenhum — o precedente do
 /// `column` do `motion.drive` e do `curve` do `motion.time_remap`. Um slider de
 /// `Scale Y` pintado sob `uniform` seria um controle que não move um quadro.
-pub(crate) static PARAM_GATES: &[ParamGate] = &[ParamGate {
-    param: "scale_y",
-    when: "uniform",
-    values: &[0],
-}];
+pub(crate) static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "scale_y",
+        when: "uniform",
+        values: &[0],
+    },
+    // ⚠️ **A FAIXA e a AMPLITUDE são a MESMA saída em duas réguas**, então mostrar as
+    // duas seria pior que um botão morto: três números na tela a discordar sobre a
+    // mesma grandeza, sem nada a dizer qual manda. É verbatim a decisão que o
+    // `time_mode`/`bpm` do irmão `motion.oscillator` já tomou.
+    ParamGate {
+        param: "amplitude",
+        when: "range_mode",
+        values: &[0],
+    },
+    ParamGate {
+        param: "min",
+        when: "range_mode",
+        values: &[1],
+    },
+    ParamGate {
+        param: "max",
+        when: "range_mode",
+        values: &[1],
+    },
+];
 
 /// As SEÇÕES deste nó (doc 88 B3). Nove controles respondem a três perguntas.
 ///
@@ -86,6 +107,35 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "amplitude",
         label: "Amplitude",
         min: 0.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    // A RÉGUA da mesma saída — `Amplitude` é o nó que sempre shipou.
+    ParamUiHint {
+        param: "range_mode",
+        label: "Range",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Amplitude", "Min / Max"],
+        },
+    },
+    // ⚠️ Onde a saída de facto CAI — e ela cai lá seja qual for o `type`, que é a
+    // razão de este par existir (ver `NoiseType::natural_range`).
+    ParamUiHint {
+        param: "min",
+        label: "Minimum",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "max",
+        label: "Maximum",
+        min: -10.0,
         max: 10.0,
         step: 0.05,
         widget: ParamWidget::Slider,

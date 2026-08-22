@@ -443,3 +443,60 @@ fn measure_what_the_rotation_channel_honours() {
         );
     }
 }
+
+/// **OS QUATRO MODOS APENDADOS FAZEM O QUE O NOME DELES DIZ — e os três antigos
+/// não se mexeram.**
+///
+/// ⚠️ A segunda metade é o gate: um documento autorado guarda o ÍNDICE, não o
+/// nome, então inserir um modo no meio renomearia em silêncio toda `motion.drive`
+/// já salva.
+#[test]
+fn the_appended_modes_do_what_they_say_and_the_old_indices_did_not_move() {
+    let cases: &[(f32, f32, f32, f32)] = &[
+        // (índice, canal, valor, esperado)
+        (0.0, 3.0, 2.0, 5.0), // Add
+        (1.0, 3.0, 2.0, 2.0), // Set
+        (2.0, 3.0, 2.0, 6.0), // Multiply
+        (3.0, 3.0, 2.0, 1.0), // Subtract
+        (4.0, 3.0, 2.0, 1.5), // Divide
+        (5.0, 3.0, 2.0, 2.0), // Min
+        (6.0, 3.0, 2.0, 3.0), // Max
+    ];
+    for &(idx, cur, v, want) in cases {
+        let got = crate::combine::Combine::from_param(idx).apply(cur, v);
+        assert!((got - want).abs() < 1e-6, "modo {idx}: {got} contra {want}");
+    }
+    // E o menu do painel oferece exactamente esses sete, na mesma ordem.
+    let mut reg = NodeRegistry::new();
+    register(&mut reg).unwrap();
+    let hints = reg.param_ui(MANIFEST.id).expect("hints");
+    let row = hints
+        .iter()
+        .find(|h| h.param == "mode")
+        .expect("row do mode");
+    let ParamWidget::Enum { labels } = row.widget else {
+        panic!("o mode e' um enum")
+    };
+    assert_eq!(labels.len(), cases.len(), "um rotulo por indice");
+    assert_eq!(row.max, (cases.len() - 1) as f32, "o teto do slider segue");
+}
+
+/// **O `Divide` COLAPSA PARA ZERO NUM DIVISOR (QUASE) NULO — nunca `inf`.**
+///
+/// ⚠️ **É a guarda que o modo novo herda do `value.math`, com o MESMO limiar.** Um
+/// `inf` num canal de transform não fica onde caiu: ele envenena a posição do
+/// elemento e todo `NaN` a jusante chega sem endereço, num grafo em que o artista
+/// já esqueceu qual nó dividia.
+#[test]
+fn dividing_by_nothing_is_zero_not_an_infinity() {
+    let div = crate::combine::Combine::from_param(4.0);
+    for v in [0.0f32, -0.0, 1e-12, -1e-12] {
+        let got = div.apply(5.0, v);
+        assert_eq!(got, 0.0, "divisor {v}");
+        assert!(got.is_finite());
+    }
+    assert!(
+        (div.apply(5.0, 2.0) - 2.5).abs() < 1e-6,
+        "e divide de facto"
+    );
+}

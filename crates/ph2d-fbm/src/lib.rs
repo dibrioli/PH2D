@@ -49,6 +49,29 @@ pub enum NoiseType {
 }
 
 impl NoiseType {
+    /// **A FAIXA NATURAL da soma** — o que este tipo produz ANTES de qualquer
+    /// ganho, e o número que um controle de `Min`/`Max` precisa de saber.
+    ///
+    /// ⚠️ **É por causa dele que a aritmética óbvia do artista está ERRADA.** A
+    /// conta que toda a gente faz — `amplitude = (max − min)/2` — assume que o
+    /// campo é bipolar, e **dois dos três tipos não são**: `Turbulence` e `Ridged`
+    /// retificam por oitava e saem em `[0, 1]`. Com essa conta, trocar o `type` de
+    /// `Fbm` para `Ridged` **METADE a excursão e desloca o centro**, em silêncio,
+    /// sem que nenhum número do painel tenha mudado. A folha 06 registou isso como
+    /// *"armadilha real"* no irmão `motion.oscillator`, cujo `Spike` tem
+    /// exactamente a mesma polaridade — e é a mesma cura nos dois sítios.
+    ///
+    /// Ver [`gain_offset_for_range`], que é a outra metade da lei.
+    #[must_use]
+    pub const fn natural_range(self) -> (f32, f32) {
+        match self {
+            // Σ aᵢ·noise — com sinal.
+            Self::Fbm => (-1.0, 1.0),
+            // Σ aᵢ·|noise| e Σ aᵢ·(1−|noise|)² — retificados.
+            Self::Turbulence | Self::Ridged => (0.0, 1.0),
+        }
+    }
+
     /// O índice que um param `f32` carrega (o enum do painel guarda o índice).
     /// Um índice que não existe cai no `Fbm`, nunca num pânico.
     #[must_use]
@@ -59,6 +82,36 @@ impl NoiseType {
             _ => Self::Fbm,
         }
     }
+}
+
+/// **O GANHO E O DESLOCAMENTO que levam uma faixa NATURAL à faixa PEDIDA.**
+///
+/// Dado que a forma produz `[lo, hi]` e o artista quer `[min, max]`, a resposta é
+/// a única afim que leva as duas pontas às duas pontas:
+/// `gain = (max − min)/(hi − lo)` e `offset = min − lo·gain`.
+///
+/// ⚠️ **É UMA lei e não três**, e é isso que apaga o caso especial: para um campo
+/// bipolar ela dá a conta que o artista já fazia (`(max−min)/2` e `(min+max)/2`) e
+/// para um unipolar dá a que ele NÃO faria (`max−min` e `min`). Escrever as duas
+/// como ramos seria escrever duas leis que concordam hoje e divergem no dia em que
+/// aparecer uma terceira polaridade.
+///
+/// ⚠️ **Uma faixa natural degenerada (`hi == lo`) devolve ganho ZERO e o offset em
+/// `min`** — uma forma constante não pode ser esticada até uma faixa, e a resposta
+/// honesta é o piso dela, nunca um `inf`.
+///
+/// `min > max` é aceite e **INVERTE** o resultado (o ganho sai negativo). Isso é
+/// deliberado: é o *"Min>Max auto-invertido"* que a Cavalry documenta como default
+/// inteligente, e cai fora da fórmula sem um `if`.
+#[must_use]
+pub fn gain_offset_for_range(natural: (f32, f32), min: f32, max: f32) -> (f32, f32) {
+    let (lo, hi) = natural;
+    let span = hi - lo;
+    if span == 0.0 {
+        return (0.0, min);
+    }
+    let gain = (max - min) / span;
+    (gain, min - lo * gain)
 }
 
 /// A forma da soma fractal: quantas oitavas, o quanto a frequência sobe e a

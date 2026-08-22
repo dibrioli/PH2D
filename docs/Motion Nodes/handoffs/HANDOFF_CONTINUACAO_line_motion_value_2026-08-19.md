@@ -241,7 +241,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As SETENTA E SEIS LEIS que esta linha pagou para aprender
+## §4 — As SETENTA E NOVE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -808,6 +808,35 @@ são estilo.
     integração é onde ele aparece — com nove arquivos de dívida em vez de um. O §5 passou a
     nomeá-lo no fecho de cada grupo.
 
+77. **A FAIXA NATURAL de uma forma é um facto DELA — e a aritmética que o artista faz de
+    cabeça assume uma.** `amplitude = (max−min)/2` só está certa se o campo for bipolar, e
+    **três formas deste catálogo não são**: o `Spike` do `motion.oscillator` e o
+    `Turbulence`/`Ridged` do `motion.noise` saem em `[0, 1]`. Com essa conta, trocar de forma
+    **METADE a excursão e levanta o piso ao centro da faixa**, sem que nenhum número do painel
+    mude. ⚠️ **E é invisível porque o TOPO acerta por acidente** (o topo natural é `1` nos dois
+    casos): quem olha o pico vê o número certo. A cura é uma lei só —
+    `gain = (max−min)/(hi−lo)`, `offset = min − lo·gain` — com a polaridade a vir da FORMA;
+    escrita como ramos, seriam duas leis a concordar hoje e a divergir na terceira polaridade.
+78. **Uma célula pode pedir uma cura que o nó já dá — e o que sobraria a construir seria uma
+    REDEFINIÇÃO.** O *auto-invert* do `motion.stagger` (folha 06 linha 31): `min + ease(t)·
+    (max−min)` **já** inverte quando o artista troca os números (medido, `down = 1 − up` exacto
+    nas oito curvas). O que faltava era a OUTRA rampa descendente — a ascendente lida ao
+    contrário —, e essa já tem param dedicado (`reverse`). Construir o pedido seria ou um no-op
+    na curva linear, ou o `reverse` a mudar de sentido em silêncio. ⚠️ *Antes de construir,
+    pergunte não só «o substrato já exprime?» mas «o que sobra é uma adição ou uma
+    redefinição?»* — a segunda pergunta é a que transforma um P2 em ⛔.
+79. **⚠️ UMA BARRA DE «ENCOSTA NA PONTA» É UMA AFIRMAÇÃO SOBRE A FIXTURE, NÃO SOBRE O
+    PRODUTO — e esta linha pagou-a DUAS vezes na mesma janela.** (a) Pedi que o campo do
+    `motion.noise` encostasse nas duas pontas da faixa: 9 e depois 26 amostras de um fBm **não
+    visitam os extremos da forma** (piso empírico do `Ridged` a 4 oitavas: `0,098`, não `0`).
+    (b) Pedi o mesmo à onda do `motion.oscillator`: o `Saw` tem o topo **ABERTO** (`2f − 1` com
+    `f ∈ [0,1)`), e nenhuma varredura finita o apanha. As duas curas são a mesma forma: ou a
+    barra sai da RESOLUÇÃO (`sweep_tolerance`, dois passos de varredura) ou o oráculo deixa de
+    depender da fixture — e o melhor desta janela foi o segundo: *a razão entre a excursão com
+    o knob e a excursão com a conta de cabeça é `(hi−lo)/2`, exacta, para as MESMAS amostras.*
+    ⚠️ E o primeiro vermelho de todos acusou o produto e era o INSTRUMENTO: o gate media a
+    posição ABSOLUTA e o bloco de teste já tem Y próprio.
+
 ---
 
 ## §5 — O ritual de cada célula (o que fazer, na ordem)
@@ -862,6 +891,23 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `=79` — A FAIXA QUE O NOME PROMETE (folha 06, **três células + uma refutação**)
+
+```
+env PH2D_GPU_COOK_DEMO=79 cargo run -p ph2d-host-desktop --release
+```
+
+Oito fileiras aos pares, e **duas marcas maiores à esquerda de cada uma** — a régua, exactamente
+em `min` e `max`. A pergunta é uma só: *o movimento encosta nas duas?*
+
+⚠️ **A dupla 1 tem as duas metades IGUAIS de propósito** — a conta que o artista faz de cabeça
+está CERTA numa forma bipolar, e a cena não está lá para o acusar de um erro que ele não comete.
+São as duplas 2 e 3 (o `Spike` e o `Ridged`) que divergem, e é o PISO que diverge.
+
+Precisa de **Play** (as três primeiras duplas são temporais). A dupla 4 são os modos apendados
+do `motion.drive` — `Add` contra `Min` —, e as outras três (`Subtract`/`Divide`/`Max`) saem pelo
+dropdown do nó.
 
 ### `=78` — OS NOVE KNOBS do domínio de valor (folha 15, **dez células**)
 

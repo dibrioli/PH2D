@@ -174,6 +174,22 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "scale_y",
             default: 0.4,
         },
+        // ⚠️ **Apendados**: a FAIXA, a régua alternativa da mesma saída. `0` =
+        // `Amplitude`, o nó que sempre shipou. Ver [`ph2d_fbm::gain_offset_for_range`]
+        // — e ⚠️ a derivação pergunta ao `type` qual é a polaridade dele, que é
+        // precisamente a armadilha que a folha 06 nomeou.
+        ParamSpec {
+            name: "range_mode",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "min",
+            default: -1.0,
+        },
+        ParamSpec {
+            name: "max",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -199,6 +215,10 @@ impl NodeOp for MotionNoise {
         let ty = NoiseType::from_index(ctx.param("type"));
         let speed = ctx.param("speed");
         let seed = ctx.param("seed").round() as i32;
+        // A FAIXA: a régua alternativa. Desligada, o nó é a expressão de sempre.
+        let by_range = ctx.param("range_mode") >= 0.5;
+        let (gain, dc) =
+            ph2d_fbm::gain_offset_for_range(ty.natural_range(), ctx.param("min"), ctx.param("max"));
         let spec = ph2d_fbm::Spec {
             octaves,
             lacunarity: ctx.param("lacunarity"),
@@ -249,7 +269,15 @@ impl NodeOp for MotionNoise {
                         let a = sample(t_a);
                         a + (sample(t_b) - a) * w
                     };
-                    s * amplitude * falloff_at(input, i)
+                    // ⚠️ O DC entra ANTES da máscara, como tudo nesta família: um
+                    // piso que sobrevivesse a `falloff = 0` seria o nó a mexer num
+                    // elemento que o campo mandou não tocar.
+                    let raw = if by_range {
+                        s * gain + dc
+                    } else {
+                        s * amplitude
+                    };
+                    raw * falloff_at(input, i)
                 })
                 .collect();
             apply_channel_delta(input, channel, &deltas)

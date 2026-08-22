@@ -49,6 +49,35 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
+    // A RÉGUA da mesma saída — `Amplitude` é o par que sempre shipou.
+    // ⚠️ E `Min / Max` é a única que entrega a faixa PEDIDA seja qual for a onda:
+    // ver `natural_range`, e a armadilha do Spike que ela cura.
+    ParamUiHint {
+        param: "range_mode",
+        label: "Range",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Amplitude", "Min / Max"],
+        },
+    },
+    ParamUiHint {
+        param: "min",
+        label: "Minimum",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "max",
+        label: "Maximum",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "frequency",
         label: "Frequency",
@@ -129,6 +158,29 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
     ParamGate {
         param: "bpm",
         when: "time_mode",
+        values: &[1],
+    },
+    // ⚠️ A **FAIXA** é a segunda régua da mesma saída, e a lei é literalmente a de
+    // cima: `amplitude`+`offset` e `min`+`max` dizem a MESMA coisa em dois
+    // vocabulários, e mostrar os quatro seria quatro números a discordar.
+    ParamGate {
+        param: "amplitude",
+        when: "range_mode",
+        values: &[0],
+    },
+    ParamGate {
+        param: "offset",
+        when: "range_mode",
+        values: &[0],
+    },
+    ParamGate {
+        param: "min",
+        when: "range_mode",
+        values: &[1],
+    },
+    ParamGate {
+        param: "max",
+        when: "range_mode",
         values: &[1],
     },
 ];

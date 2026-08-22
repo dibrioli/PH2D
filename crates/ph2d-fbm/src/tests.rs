@@ -170,3 +170,88 @@ fn the_time_loop_closes_on_the_same_number_and_the_same_slope() {
     // pular a segunda amostra, que e o que torna `loop_len = 0` byte-identico.
     assert_eq!(loop_times(7.25, 0.0), (7.25, 7.25, 0.0));
 }
+
+/// **A FAIXA NATURAL É A DA RETIFICAÇÃO** — bipolar quando a soma tem sinal,
+/// unipolar quando ela é retificada por oitava.
+///
+/// ⚠️ **É o gate que fixa a assimetria que a armadilha explora.** Se as três
+/// respondessem `[-1,1]`, o `Min/Max` dos nós que consomem esta folha entregaria
+/// metade da faixa pedida em dois dos três tipos — sem erro, sem aviso, e sem
+/// nenhum número do painel ter mudado.
+#[test]
+fn the_natural_range_follows_the_rectification() {
+    assert_eq!(NoiseType::Fbm.natural_range(), (-1.0, 1.0));
+    assert_eq!(NoiseType::Turbulence.natural_range(), (0.0, 1.0));
+    assert_eq!(NoiseType::Ridged.natural_range(), (0.0, 1.0));
+}
+
+/// **A AFIM LEVA AS DUAS PONTAS ÀS DUAS PONTAS** — para qualquer faixa natural e
+/// qualquer alvo. O oráculo é a definição, não um valor a olho.
+#[test]
+fn the_affine_maps_both_ends_onto_both_ends() {
+    for natural in [(-1.0f32, 1.0f32), (0.0, 1.0), (-3.0, 7.0)] {
+        for (min, max) in [(0.0f32, 1.0f32), (-5.0, 5.0), (2.0, 3.5), (10.0, -10.0)] {
+            let (gain, off) = gain_offset_for_range(natural, min, max);
+            let at = |v: f32| v * gain + off;
+            assert!((at(natural.0) - min).abs() < 1e-5, "{natural:?} -> {min}");
+            assert!((at(natural.1) - max).abs() < 1e-5, "{natural:?} -> {max}");
+        }
+    }
+}
+
+/// **PARA UM CAMPO BIPOLAR ELA É A CONTA QUE O ARTISTA JÁ FAZIA, e para um
+/// unipolar é a que ele NÃO faria** — as duas metades da armadilha, num gate.
+#[test]
+fn it_agrees_with_the_artists_arithmetic_only_where_that_arithmetic_is_right() {
+    let (min, max) = (2.0f32, 6.0f32);
+    // Bipolar: a conta de cabeça — amplitude = (max−min)/2, centro = (min+max)/2.
+    let (gain, off) = gain_offset_for_range(NoiseType::Fbm.natural_range(), min, max);
+    assert!((gain - 2.0).abs() < 1e-6, "ganho bipolar: {gain}");
+    assert!((off - 4.0).abs() < 1e-6, "centro bipolar: {off}");
+    // Unipolar: a conta de cabeça daria 2 e 4 outra vez, e entregaria [2, 6]
+    // deslocado — a resposta certa é ganho 4 e piso 2.
+    let (gain_u, off_u) = gain_offset_for_range(NoiseType::Ridged.natural_range(), min, max);
+    assert!((gain_u - 4.0).abs() < 1e-6, "ganho unipolar: {gain_u}");
+    assert!((off_u - 2.0).abs() < 1e-6, "piso unipolar: {off_u}");
+    // ⚠️ **O CONTROLE, e a medição que nomeia o custo da armadilha.** A conta do
+    // artista aplicada a um campo unipolar acerta o TOPO por acidente (o topo
+    // natural é `1` nos dois casos) e erra o PISO por metade da faixa pedida: o
+    // campo passa a viver em `[4, 6]` quando o painel diz `[2, 6]`. É por isso que
+    // ela é silenciosa — quem olha o pico vê o número certo.
+    let wrong_floor = 0.0 * gain + off;
+    assert!(
+        (wrong_floor - min).abs() > (max - min) * 0.49,
+        "a armadilha tem de existir na fixture: piso {wrong_floor} contra {min}"
+    );
+    assert!(
+        (1.0 * gain + off - max).abs() < 1e-6,
+        "e o TOPO acerta — e' isso que a torna invisivel"
+    );
+}
+
+/// **UMA FAIXA NATURAL DEGENERADA NÃO DIVIDE POR ZERO** — ganho zero e o piso em
+/// `min`, nunca `inf`.
+#[test]
+fn a_degenerate_natural_range_is_not_an_infinity() {
+    let (gain, off) = gain_offset_for_range((3.0, 3.0), 1.0, 9.0);
+    assert_eq!(gain, 0.0);
+    assert_eq!(off, 1.0);
+    assert!(gain.is_finite() && off.is_finite());
+}
+
+/// **`min > max` INVERTE, e sai da fórmula sem um `if`** — o *"Min>Max
+/// auto-invertido"* que a Cavalry documenta como default inteligente.
+#[test]
+fn a_reversed_range_inverts_without_a_branch() {
+    let (gain, off) = gain_offset_for_range((-1.0, 1.0), 5.0, 1.0);
+    assert!(gain < 0.0, "o ganho tem de sair negativo: {gain}");
+    let (floor, ceil) = (-1.0f32, 1.0f32); // as pontas da faixa NATURAL
+    assert!(
+        (floor * gain + off - 5.0).abs() < 1e-6,
+        "o piso natural vai ao MAIOR"
+    );
+    assert!(
+        (ceil * gain + off - 1.0).abs() < 1e-6,
+        "e o topo natural ao MENOR"
+    );
+}

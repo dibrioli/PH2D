@@ -5368,7 +5368,7 @@ dependencies = [
  "ph2d-warp-style",
  "postcard",
  "serde",
- "smallvec",
+ "smallvec 1.15.1",
 ]
 
 [[package]]

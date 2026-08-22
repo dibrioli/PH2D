@@ -414,6 +414,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **56% da peça** (gate `#[ignore]` `the_ear_does_not_ship_an_edge_across_the_piece`) — e passava em TODAS as
   réguas. ⭐ A causa é **um** patch de perímetro **520% da diagonal** (o 2.º maior em 3 fixturas é 230%): as
   lascas dele forçam raios de leque `[1,39,1,1,39,1]`, e um raio `1` faz o sector ter **uma célula de fundo**.
+  ⚠️ **Cinco saídas já foram MEDIDAS e fechadas** (mais segmentos na lasca · `dissolve` · desligar a ponte ·
+  recuo do `uv` · faixa em vez de leque): ⇒ o problema **não é como o patch é preenchido, é o patch** — o traçado
+  tem de o CORTAR, que é o mesmo trabalho da asa que a ponte só adiou.
   ⛔ Outros buracos
   medidos: o F1 devolve o cubo **não-manifold** · a esfera **embaralhada** não fecha · **sem feature lines**.
   Tabelas por fase: `PLAN.md` §4-bis..§4-undetricies.

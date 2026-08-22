@@ -2785,3 +2785,65 @@ fundo**, e o quad dessa célula atravessa a peça.
 com a ponte como costura. *É o que o `fill_rectangle` já faz para `n = 4`; falta
 reconhecer este caso e mandá-lo para lá.* ⚠️ **E o reconhecimento é barato e
 inequívoco:** o patch tem um **arco repetido na própria lista de lados**.
+
+---
+
+## 4-untricies — ⛔ **A FAIXA foi construída, MEDIDA e REJEITADA** — e a peça continua a ser o problema
+
+> O §4-tricies concluiu, por eliminação, que o conserto morava no **preenchimento**:
+> um anel cortado não é um hexágono, e a lei do leque não o descreve. Construí-o.
+
+### O que se construiu
+
+`regroup_cut_annulus`: reconhecer o **arco repetido** na lista de lados do patch —
+inequívoco, e não uma heurística — e reagrupar os seis lados em quatro:
+
+```text
+    antes:  [16,17,4,5]   [6]   [7]   [8..14]   [15]   [7]
+              40           2     40      40       2     40
+    depois: [7]   [8..14, 15]   [7]   [16,17,4,5, 6]
+             40        42        40          42
+```
+
+⭐ **Lados opostos com contagens iguais** — um retângulo, que o F5 já preenche sem
+leque nenhum, e cuja lei o F4 passa a impor.
+
+### ⭐ Estruturalmente funcionou
+
+| | antes | com a faixa |
+|---|---|---|
+| maior valência de patch | 6 | ⭐ **4** |
+| valência máxima de vértice | 6 | ⭐ **5** |
+| quads (d = 0,25 · 1,0) | 603 · 45 407 | ⭐ **1 054 · 88 090** |
+
+### ⛔ E a agulha que importa não se mexeu — e a outra piorou
+
+| | antes | com a faixa |
+|---|---|---|
+| ⛔ **aresta máxima** | 56,5 % · 57,0 % | ⛔ **55,7 % · 58,6 %** |
+| ⛔ **dobras** (d = 1,0) | 2 204 (**4,85 %**) | ⛔ **7 795** (**8,85 %**) |
+
+⇒ **Revertido.** *Uma cura que acerta a forma do patch e piora a malha não é uma
+cura* — e é a segunda deste passo (a primeira foi o recuo do `uv`, §4-duodetricies).
+
+### ⇒ O que as duas rejeições ensinam, juntas
+
+⭐⭐ **O problema não é COMO o patch é preenchido: é o patch.** Ele dá três voltas à
+peça (perímetro `520 %` da diagonal) — e nem o leque nem a faixa fazem uma grade
+decente sobre uma banda que envolve uma esfera inteira, porque o achatamento tem de a
+esmagar num quadrado.
+
+⛔ **E as saídas fáceis já estão todas medidas e fechadas:**
+
+| saída | porque não |
+|---|---|
+| mais segmentos na lasca (F4) | a densidade dela **está certa** |
+| `dissolve` o patch (F3) | ele **junta**, e este já é o maior |
+| desligar a ponte (F3) | a orelha deixa de fechar (`GenusLost`) |
+| recuo do `uv` no achatamento (F5) | falhas `3 329 → 0`, aresta **inalterada**, dobras **+25 %** |
+| faixa em vez de leque (F3/F5) | forma do patch corrigida, aresta **inalterada**, dobras **+82 %** |
+
+⇒ ⭐⭐⭐ **O que resta é o traçado CORTAR aquele anel em vez de o abrir** — dois ou
+três patches em vez de uma banda que envolve a peça. É o mesmo trabalho que a asa
+pedia (§4-quatervicies) e que a ponte só **adiou**: ela tornou o layout *válido* sem
+o tornar *bom*.

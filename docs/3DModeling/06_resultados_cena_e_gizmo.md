@@ -2477,6 +2477,58 @@ no código.)
 
 ---
 
+## §33 — W32: o refinamento cede à mão — a última espera do preview (22/08)
+
+> A W24 fechou com um número escrito: *"um traçado em voo não se cancela — se a mão recomeça a mexer
+> no meio de um refinamento cheio, a resposta espera por ele, até **121 ms** medidos na cena mais
+> pesada"*. Este é esse item, e o gatilho era o próprio número.
+
+### §33.1 — ⛔ A regra óbvia mata a imagem
+
+*"Mudou? abandona o que está a correr"* tem um modo de falha fatal: numa **órbita contínua** a câmera
+muda a cada quadro, e um traçado grosso que leve mais do que um quadro seria cancelado antes de
+acabar — **sempre**. O artista arrastaria o rato contra uma imagem **congelada**, e o defeito seria
+muito pior do que a espera que se queria curar.
+
+⭐ **A regra que sobrevive nomeia o caso medido:** um **refinamento** cede à mão; um traçado de
+**movimento** corre até ao fim. E ela é consistente por construção — um refinamento só começa quando
+nada está a mudar, então ele nunca está no caminho de si mesmo.
+
+| em voo | pede-se | veredito |
+|---|---|---|
+| cheio (refinamento) | grosso (a mão voltou) | ⭐ **abandona** |
+| grosso (movimento) | grosso | ⛔ nunca — a imagem congelaria |
+| grosso (movimento) | cheio | ⛔ nunca — a imagem grossa é a que está a chegar |
+| cheio | cheio | ⛔ um refinamento não se cancela a si próprio |
+
+### §33.2 — A bandeira é lida POR LINHA, e o gate mede o tempo
+
+Uma marcha abandonada custa **o resto das linhas a zero**, não o resto da imagem. ⚠️ **Se a bandeira
+fosse lida uma vez no fim**, a função cumpriria o contrato (*devolve nada*) e não pouparia **um único
+milissegundo** — que era a razão de existir. Por isso o gate mede as duas metades: `is_none()` **e**
+`cut_ms < full_ms / 2`. O passe de anti-serrilhado cede pela mesma bandeira.
+
+⚠️ **Um corpo só**: `trace`, `trace_with` e `trace_cancellable` passaram a delegar num
+`trace_inner` com a bandeira opcional. Duas marchas seriam dois caminhos por onde a imagem pode
+divergir, e a paridade delas não teria como ser medida sem uma terceira função para as comparar.
+
+### §33.3 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| a bandeira é lida só no fim (o contrato cumpre-se, o tempo não) | `an_abandoned_march_returns_nothing_and_returns_fast` |
+| a marcha abandonada devolve a imagem a meio | o mesmo gate |
+| cancela-se **tudo** (a imagem congela) | `a_refinement_yields_to_the_hand_and_a_motion_trace_never_does` |
+| **nunca** se cancela nada (a espera de 121 ms volta) | o mesmo gate |
+
+### §33.4 — ⏸️ O que fica aberto
+
+- O trabalho abandonado é **deitado fora**, não reaproveitado. Um refinamento que já traçou 80 % das
+  linhas podia guardá-las — mas isso é um cache de linhas por câmera, e o gatilho para o construir
+  seria uma medição que ainda ninguém fez.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **o OLHO da Hierarquia passou a valer na W28** (§29) — esconder um nó tira-o da peça, e um
@@ -2513,8 +2565,9 @@ no código.)
   app ainda não faz por asset nenhum), a ligação à escultura **viva** do módulo 3D (hoje o vínculo
   passa pelo disco e acorda ao **abrir**), e os modificadores sobre uma escultura
 - ✅ **a LENTIDÃO que o Enio nomeou no smoke da cena 6 FECHOU na W24** (§25): a resolução do preview
-  passa a sair da **medição** — 4,2× e 7,3× mais rápido em movimento, sem um segundo motor. ⏸️ Fica:
-  um traçado em voo **não se cancela** (até 121 ms de espera medidos)
+  passa a sair da **medição** — 4,2× e 7,3× mais rápido em movimento, sem um segundo motor. ✅ E a
+  espera que sobrava (até 121 ms) **FECHOU na W32** (§33): um refinamento cede à mão, um traçado de
+  movimento nunca. ⏸️ Fica: o trabalho abandonado é deitado fora, não reaproveitado
 - ✅ **o ERRO na UI FECHOU na W25** (§26) — a peça que não cozinha diz porquê, e o clique que a
   apagava (um modificador sobre uma escultura) deixou de existir. ⏸️ Fica: o aviso não aponta **qual**
   nó é o culpado

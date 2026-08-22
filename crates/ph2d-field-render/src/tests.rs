@@ -960,3 +960,45 @@ fn measure_taper_frame_cost() {
         println!("{slope:7.2} | {ms:19.2} | {:5.2}x", ms / base);
     }
 }
+
+/// ⭐ **Uma marcha ABANDONADA devolve nada — e devolve depressa** (W32).
+///
+/// ⚠️ **As duas metades são o gate.** *Devolver nada* é o contrato (quem pediu já mudou de ideias, e
+/// um G-buffer meio traçado na tela seria pior do que a espera); *depressa* é a razão de existir —
+/// se a bandeira fosse lida uma vez no fim, a função cumpriria o contrato e não pouparia **um único
+/// milissegundo** dos 121 que a wave veio cortar.
+#[test]
+fn an_abandoned_march_returns_nothing_and_returns_fast() {
+    use std::sync::atomic::AtomicBool;
+    let doc = sphere(0.6);
+    let cam = Orbit::default();
+    let (w, h) = (320, 240);
+
+    // Aquece — a primeira corrida paga a compilação da fita.
+    let _ = trace(&doc, &Registry::new(), &cam, w, h);
+    let t0 = std::time::Instant::now();
+    let whole = trace(&doc, &Registry::new(), &cam, w, h);
+    let full_ms = t0.elapsed().as_secs_f64() * 1000.0;
+    assert!(whole.hits() > 0, "a fixture tem de desenhar alguma coisa");
+
+    let cancel = AtomicBool::new(true);
+    let t1 = std::time::Instant::now();
+    let out = trace_cancellable(&doc, &Registry::new(), &cam, w, h, &cancel);
+    let cut_ms = t1.elapsed().as_secs_f64() * 1000.0;
+
+    assert!(out.is_none(), "uma marcha abandonada não devolve imagem");
+    assert!(
+        cut_ms < full_ms * 0.5,
+        "abandonar tem de POUPAR o trabalho: {cut_ms:.2} ms contra {full_ms:.2} ms inteiros — a \
+         bandeira não está a ser lida por linha"
+    );
+
+    // ⚠️ E o CONTROLE: sem a bandeira, a mesma função devolve a mesma imagem de sempre.
+    let ok = trace_cancellable(&doc, &Registry::new(), &cam, w, h, &AtomicBool::new(false))
+        .expect("sem cancelamento, ela traça");
+    assert_eq!(
+        ok.hits(),
+        whole.hits(),
+        "a marcha cancelável e a de sempre são a MESMA marcha"
+    );
+}

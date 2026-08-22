@@ -274,6 +274,36 @@ fn a_sliver_of_an_area_never_asks_for_zero_pixels() {
     );
 }
 
+/// ⭐ **Um REFINAMENTO cede à mão; um traçado de MOVIMENTO nunca** (W32).
+///
+/// ⚠️ **A segunda metade é a que mata a regra óbvia.** *"Mudou? abandona o que está a correr"* tem um
+/// modo de falha fatal: numa órbita contínua a câmera muda **a cada quadro**, e um traçado grosso que
+/// leve mais do que um quadro seria cancelado antes de acabar, **sempre** — o artista arrastaria o
+/// rato contra uma imagem **congelada**. Um refinamento, esse, só começa quando nada está a mudar:
+/// ele nunca está no caminho de si mesmo.
+#[test]
+fn a_refinement_yields_to_the_hand_and_a_motion_trace_never_does() {
+    let full = FULL;
+    let coarse = (full.0 / 3, full.1 / 3);
+
+    assert!(
+        cancels_the_inflight(full, coarse, full),
+        "um refinamento cheio com a mão a pedir grosso TEM de ser abandonado — era a espera de 121 ms"
+    );
+    assert!(
+        !cancels_the_inflight(coarse, coarse, full),
+        "⛔ um traçado de MOVIMENTO nunca é cancelado — senão a imagem congela numa órbita contínua"
+    );
+    assert!(
+        !cancels_the_inflight(coarse, full, full),
+        "…nem quando o que se pede a seguir é o refinamento: a imagem grossa é a que está a chegar"
+    );
+    assert!(
+        !cancels_the_inflight(full, full, full),
+        "…e um refinamento não se cancela a si próprio"
+    );
+}
+
 /// ⭐ **A projeção do gizmo NÃO é construída no desenho** — ela tem um dono, e é o da área.
 ///
 /// ⚠️ **É a costura que esta wave podia partir e que nenhum gate de aritmética alcança.** Até aqui o

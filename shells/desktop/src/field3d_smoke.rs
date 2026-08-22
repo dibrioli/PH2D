@@ -34,7 +34,7 @@ use std::sync::mpsc::{Receiver, TryRecvError, channel};
 
 use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Profile, Xform};
-use ph2d_field_render::{Matcap, Orbit, shade, trace};
+use ph2d_field_render::{Matcap, Orbit, shade};
 use ph2d_vec_scene::{VecPath, VecVertex};
 use ph2d_vector::{Affine, ImageQuality, VectorScene};
 
@@ -57,6 +57,16 @@ const SPIN_RATE: f32 = 0.5;
 /// do app aparece por baixo, e o módulo deixa de ter opinião sobre o fundo.
 const BACKGROUND: [u8; 4] = [0, 0, 0, 0];
 
+/// ⭐ **O traçado que está em VOO** — e a bandeira que o pode abandonar (W32).
+///
+/// ⚠️ O `size` viaja com ele porque a decisão de cancelar precisa de saber **o que** está a correr:
+/// um refinamento cede à mão, um traçado de movimento nunca (ver `field3d_preview::cancels_the_inflight`).
+pub(crate) struct InFlight {
+    pub(crate) rx: Receiver<Ready>,
+    pub(crate) cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    pub(crate) size: (u32, u32),
+}
+
 pub(crate) struct Smoke {
     /// A peça a traçar, **cozida da cena** (`field3d_scene`). `None` quando não há geometria
     /// nenhuma — apagar o último filho na Hierarquia é um gesto normal, e o resultado normal dele
@@ -77,7 +87,7 @@ pub(crate) struct Smoke {
     /// O último quadro pronto — com o tamanho a que foi traçado, para o desenhar sem esticar
     /// enquanto o próximo (já do tamanho novo) não chega.
     frame: Option<(Arc<Vec<u8>>, u32, u32)>,
-    inflight: Option<Receiver<Ready>>,
+    inflight: Option<InFlight>,
     /// Quando o pedido em voo saiu — é o relógio que faz a rotação ser por SEGUNDO.
     since: std::time::Instant,
     /// **O que já foi pedido**: a câmera, o tamanho **e o DOCUMENTO**.
@@ -198,7 +208,7 @@ pub(crate) enum Drag {
 }
 
 /// O que uma requisição de traçado devolve.
-struct Ready {
+pub(crate) struct Ready {
     rgba: Vec<u8>,
     width: u32,
     height: u32,

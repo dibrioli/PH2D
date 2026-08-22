@@ -29,8 +29,8 @@ pub(crate) fn draw(
         };
 
         // Colhe o traçado que ficou pronto, se ficou.
-        if let Some(rx) = &smoke.inflight {
-            match rx.try_recv() {
+        if let Some(job) = &smoke.inflight {
+            match job.rx.try_recv() {
                 Ok(r) => {
                     if !smoke.announced {
                         smoke.announced = true;
@@ -115,17 +115,34 @@ pub(crate) fn draw(
             smoke.frame.is_some(),
             MIN_TRACE,
         );
+        // ⭐ **E um REFINAMENTO cede à mão** (W32): se o que está em voo é o quadro cheio e o que se
+        // pede agora é mais grosso, a mão voltou a mexer — abandona-se o refinamento em vez de o
+        // esperar (até **121 ms** medidos). ⛔ O contrário nunca: um traçado de movimento corre até
+        // ao fim, senão numa órbita contínua ele seria cancelado a cada quadro e a imagem
+        // **congelava**. Ver `field3d_preview::cancels_the_inflight`.
+        if let (Some(job), Some(asked)) = (&smoke.inflight, ask)
+            && crate::field3d_preview::cancels_the_inflight(job.size, asked, (tw, th))
+        {
+            job.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+            smoke.inflight = None;
+        }
         if let (None, Some((tw, th))) = (&smoke.inflight, ask) {
             smoke.requested = Some((smoke.cam, tw, th, doc.clone()));
             let (tx, rx) = channel::<Ready>();
             let cam = smoke.cam;
             let matcap = Arc::clone(&smoke.matcap);
+            let cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let flag = Arc::clone(&cancel);
             // ⚠️ O registo de esculturas atravessa a fronteira da thread como **cópia dos `Arc`** —
             // o `thread_local` que o guarda não existe do outro lado.
             let reg = crate::field3d_smoke::sampled_registry();
             std::thread::spawn(move || {
                 let t0 = std::time::Instant::now();
-                let g = trace(&doc, &reg, &cam, tw, th);
+                // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.
+                let Some(g) = ph2d_field_render::trace_cancellable(&doc, &reg, &cam, tw, th, &flag)
+                else {
+                    return;
+                };
                 let rgba = shade(
                     &g,
                     &Matcap {
@@ -144,7 +161,11 @@ pub(crate) fn draw(
                     millis: t0.elapsed().as_secs_f64() * 1000.0,
                 });
             });
-            smoke.inflight = Some(rx);
+            smoke.inflight = Some(crate::field3d_smoke::InFlight {
+                rx,
+                cancel,
+                size: (tw, th),
+            });
         }
 
         if let Some((frame, fw, fh)) = &smoke.frame {

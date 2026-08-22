@@ -175,6 +175,29 @@ pub fn trace(
     trace_with(doc, reg, cam, width, height, true, true)
 }
 
+/// ⭐ **A marcha CANCELÁVEL** — `None` quando o pedido foi abandonado a meio.
+///
+/// ⚠️ **Ela existe para uma latência medida, não por elegância** (ADR-0161 W32): o refinamento de um
+/// quadro cheio custa até **121 ms** na cena mais pesada, e enquanto ele corre a mão que recomeça a
+/// mexer espera por ele. O `cancel` é lido **por linha**: uma marcha abandonada custa o resto das
+/// linhas a zero, não o resto da imagem.
+///
+/// ⚠️ **Quem cancela decide, e a decisão não é daqui**: esta função não sabe o que vale a pena
+/// abandonar. Ver `field3d_preview::cancels_the_inflight` — cancelar tudo faria a imagem **nunca
+/// chegar** durante um arrasto contínuo.
+#[must_use]
+pub fn trace_cancellable(
+    doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &Orbit,
+    width: u32,
+    height: u32,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Option<Gbuffer> {
+    let g = trace_inner(doc, reg, cam, width, height, true, true, Some(cancel));
+    (!cancel.load(std::sync::atomic::Ordering::Relaxed)).then_some(g)
+}
+
 /// Igual a [`trace`], com o paralelismo sob controle — é o que o gate de byte-identidade dirige.
 #[must_use]
 pub fn trace_with_threads(
@@ -211,6 +234,24 @@ pub fn trace_with(
     parallel: bool,
     antialias: bool,
 ) -> Gbuffer {
+    trace_inner(doc, reg, cam, width, height, parallel, antialias, None)
+}
+
+/// O corpo, com a bandeira de cancelamento **opcional** — ver [`trace_cancellable`].
+///
+/// ⚠️ Um só corpo de propósito: duas marchas seriam dois caminhos por onde a imagem pode divergir, e
+/// a paridade delas não teria como ser medida sem uma terceira função para as comparar.
+#[allow(clippy::too_many_arguments)]
+fn trace_inner(
+    doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &Orbit,
+    width: u32,
+    height: u32,
+    parallel: bool,
+    antialias: bool,
+    cancel: Option<&std::sync::atomic::AtomicBool>,
+) -> Gbuffer {
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let basis = cam.basis();
     let (w, h) = (width as usize, height as usize);
@@ -233,6 +274,11 @@ pub fn trace_with(
             .collect();
         // O ponto de mundo não interessa a um quadro inteiro — quem o quer é a seleção por
         // clique (`surface_under`), um raio de cada vez.
+        // ⚠️ **A bandeira é lida POR LINHA.** Uma marcha abandonada custa o resto das linhas a
+        // zero — e não o resto da imagem, que é o que a espera de 121 ms era.
+        if cancel.is_some_and(|c| c.load(std::sync::atomic::Ordering::Relaxed)) {
+            return (vec![false; w], vec![[0.0; 3]; w]);
+        }
         let (h, n, _) = march(&scene, &pts);
         (h, n)
     };
@@ -249,11 +295,12 @@ pub fn trace_with(
     }
 
     // Passo 2: re-amostrar as bordas.
-    let edges = if antialias {
-        resample_edges(&scene, plane, &hit, &normal, parallel)
-    } else {
-        Vec::new()
-    };
+    let edges =
+        if antialias && !cancel.is_some_and(|c| c.load(std::sync::atomic::Ordering::Relaxed)) {
+            resample_edges(&scene, plane, &hit, &normal, parallel)
+        } else {
+            Vec::new()
+        };
 
     Gbuffer {
         width,

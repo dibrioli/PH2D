@@ -141,6 +141,35 @@ pub(crate) fn next_trace(
     ((rw, rh) != full).then_some(full)
 }
 
+/// ⭐ **Vale a pena ABANDONAR o traçado que está em voo?** (W32)
+///
+/// # A latência que isto fecha, com o número medido
+///
+/// A W24 deixou-o escrito: *"se a mão recomeça a mexer no meio de um refinamento cheio, a resposta
+/// espera por ele — até **121 ms** medidos na cena mais pesada"*. O refinamento é o único traçado
+/// que corre **depois** de a cena assentar, e é exactamente o que está no caminho quando a mão volta.
+///
+/// # ⛔ Cancelar TUDO faria a imagem nunca chegar
+///
+/// A regra óbvia — *"mudou? abandona o que está a correr"* — tem um modo de falha que a mata: numa
+/// órbita contínua a câmera muda **a cada quadro**, e um traçado grosso que leve mais do que um
+/// quadro seria cancelado antes de acabar, **sempre**. O artista arrastaria o rato contra uma imagem
+/// congelada, e o defeito seria muito pior do que a espera que se queria curar.
+///
+/// A regra que sobrevive é a que nomeia o caso medido: **um REFINAMENTO cede à mão; um traçado de
+/// movimento corre até ao fim.** Um refinamento só começa quando nada está a mudar, então ele nunca
+/// está no caminho de si mesmo.
+pub(crate) fn cancels_the_inflight(
+    inflight: (u32, u32),
+    asked: (u32, u32),
+    full: (u32, u32),
+) -> bool {
+    // Em voo está o CHEIO (um refinamento)…
+    inflight == full
+        // …e o que se pede agora é mais grosso (a mão voltou a mexer).
+        && (asked.0 < full.0 || asked.1 < full.1)
+}
+
 #[cfg(test)]
 #[path = "field3d_preview_tests.rs"]
 mod tests;

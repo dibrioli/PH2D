@@ -30,6 +30,11 @@ ph2d-vec-blend = { path = "../ph2d-vec-blend" }
 # das ferramentas de desenho cuja edição não animaria. A casa do tipo é esta folha, e é dela que
 # vem a mistura (`WidthStops::mix`): quem define `at` é quem pode garantir as pontas.
 ph2d-stroke-width = { path = "../ph2d-stroke-width" }
+# Os FILTROS (FX raster). Mesma história do perfil de largura, uma linha acima: o degrau é o
+# único canal de APARÊNCIA que não vive no `VecPath` nem na pose — ele é um componente ECS
+# (`ph2d-ecs::VecFilter`) —, então a pose tem de o carregar por si. Sem isto um blur ou um
+# glow seria o único efeito do editor que não pode diferir entre Default e Hover.
+ph2d-fx-op = { path = "../ph2d-fx-op" }
 # A MOLA. Vive numa folha própria desde 2026-08-12 (o chrome do app também a usa) e é
 # RE-EXPORTADA daqui, para nenhum consumidor desta crate mudar.
 ph2d-spring = { path = "../ph2d-spring" }

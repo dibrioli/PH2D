@@ -1,513 +1,20 @@
-//! **A PILHA de FX raster de uma forma** — Blur / Glow / Drop Shadow / Inner Shadow / Inner Glow /
-//! Outline / Color Overlay, encadeáveis.
+//! **A pilha de FX raster como COMPONENTE** — o embrulho que põe o degrau no documento.
 //!
-//! Irmão de [`crate::VecOffset`]/[`crate::VecTextPath`]/[`crate::VecEnvelope`] no padrão que esta
-//! linha já usou meia dúzia de vezes: o componente guarda a **relação** (que efeitos, em que
-//! ordem, com que parâmetros) e a aparência é **derivada** dela — a shell a produz por frame. De
-//! graça: **undo e save cobrem o FX sem uma linha a mais** (os dois capturam o mundo ECS, e este
-//! componente está registrado no `ComponentRegistry`).
+//! ⚠️ **O degrau em si mudou de casa em 2026-08-21**: o `FxOp` e o catálogo que o descreve vivem
+//! na folha [`ph2d_fx_op`], porque passaram a ter um terceiro consumidor que não pode ver o ECS —
+//! a POSE de um estado de UI (`ph2d_ui_state::ObjectPose`), para um blur ou um glow poderem
+//! diferir entre *Default* e *Hover*. É o precedente literal da `ph2d-stroke-width`, que existe
+//! pela mesma razão: quando um canal precisa de estar no documento **e** numa pose, a casa do
+//! tipo é uma folha e o componente é só o embrulho.
 //!
-//! # Por que uma PILHA LINEAR, e não um grafo
-//!
-//! O `<filter>` do SVG é um **DAG** de primitivas (`feGaussianBlur`/`feOffset`/`feComposite`/
-//! `feMerge`…) — poderosíssimo, e **abandonado como interface** por todo mundo que tentou: o
-//! Photoshop (Layer Styles), o After Effects (effect stack) e o Figma (Effects) convergiram numa
-//! **lista ordenada** de efeitos por objeto. O DAG sobrevive no *runtime* (o arquivo SVG), nunca
-//! na mão do artista. Nós já tínhamos a resposta em casa: a pilha de Live Path Effects
-//! (ADR-0132) é exatamente isto no eixo da GEOMETRIA, e esta é a irmã dela no eixo dos PIXELS.
-//!
-//! O Rive — a referência do módulo — não tem pilha nenhuma (feather + blend, com sombra e brilho
-//! DERIVADOS do feather). Poder encadear *sombra → borrão → brilho*, nessa ordem, com o resultado
-//! de um alimentando o seguinte, é o que esta seção entrega e ele não.
-//!
-//! # O invariante que faz a pilha compor: **um op é imagem → imagem**
-//!
-//! É a mesma frase do `ph2d_vec_scene::effect` (*"um efeito é `VecPath -> VecPath`, puro — é POR
-//! ISSO que a pilha compõe"*), traduzida para raster. A consequência prática e não-óbvia:
-//! **Glow e Drop Shadow compõem o halo POR BAIXO da fonte DENTRO do próprio op**, e devolvem UMA
-//! imagem. Um op que dissesse *"desenhe isto atrás da forma"* não teria como ser entrada do
-//! seguinte — e foi exactamente esse o modelo da W1 (o `FxMode::Below`), que morreu aqui.
-//!
-//! # As unidades, e por que MUNDO
-//!
-//! `radius`/`offset` são de **MUNDO**. A textura-scratch é rasterizada na resolução do device (o
-//! tamanho da forma NA TELA), então o kernel em pixels é `mundo × zoom` — o filtro fica
-//! **resolution-crisp**: re-renderizado por frame no zoom atual, proporcional em toda escala (a
-//! propriedade que o feather do Rive tem, por outra via). Guardar pixels congelaria o efeito num
-//! zoom; guardar fração exigiria re-derivar a escala da seleção a cada frame (lição do `VecOffset`).
-//!
-//! # Pilha vazia = sem filtro
-//!
-//! Não há variante "None": esvaziar a pilha no painel **REMOVE** o componente (a lei do
-//! `VecOffset`: um documento não acumula relações inertes que não desenham nada). Uma forma sem
-//! `VecFilter` flui pelo `dispatch` **byte-idêntica** ao mundo de hoje.
+//! O que fica aqui é o que é de facto ECS — a pilha que uma entidade carrega, e as perguntas que
+//! só fazem sentido sobre ela (o teto, se desenha alguma coisa, reordenar).
 
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
 
 use crate::SimComponent;
-pub use crate::vec_filter_kinds::FxKindSpec;
-use crate::vec_filter_kinds::{FALLOFF_MODES, SPECS};
-
-/// **Um degrau da pilha** — um efeito com os parâmetros dele.
-///
-/// Plain data `Copy`: o fold da GPU o lê por valor, o painel o desenha, o undo o compara. Os
-/// campos que um `kind` não usa ficam quietos (o painel não os oferece: knob morto é knob que
-/// ensina a desconfiar dos vivos).
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub struct FxOp {
-    /// Que efeito: [`FxOp::BLUR`] · [`FxOp::GLOW`] · [`FxOp::DROP_SHADOW`].
-    pub kind: u8,
-    /// O raio de suavização em unidades de MUNDO (o `stdDev` do gaussiano). A shell o converte
-    /// para pixels do device pelo zoom.
-    pub radius: f32,
-    /// O deslocamento em unidades de MUNDO (só a Drop Shadow o lê).
-    pub offset: [f32; 2],
-    /// A cor do halo, RGBA reta em `[0,1]` (o Blur a ignora — ele borra os próprios pixels).
-    pub color: [f32; 4],
-    /// **A SEGUNDA cor** — a ponta CLARA da rampa do Duotone (a [`Self::color`] é a escura).
-    ///
-    /// ⚠️ **Campo próprio, e não um par no [`Self::color`]** — as duas pontas são autoradas
-    /// SEPARADAMENTE (cada uma abre o picker por conta própria), ao contrário do `offset`, que é UM
-    /// vetor. É por isso que o rótulo delas também são dois campos na tabela
-    /// ([`FxKindSpec::color_label`] + [`FxKindSpec::color_b_label`]) em vez de uma tupla: a segunda
-    /// swatch é a PRIMEIRA outra vez, pela mesma função, com outro id.
-    pub color_b: [f32; 4],
-    /// A intensidade/opacidade DESTE degrau, em `[0,1]`.
-    pub opacity: f32,
-    /// O MODO deste degrau — o índice em [`FxKindSpec::modes`]. Zero (o 1º modo) para todo tipo
-    /// que não oferece escolha.
-    pub mode: u8,
-    /// Desligado = a pilha o SALTA, como se não estivesse lá — mas os parâmetros ficam. Espelha o
-    /// `FxEntry::enabled` da pilha de geometria: desarmar não pode custar números que o artista
-    /// teria de lembrar.
-    pub enabled: bool,
-    /// **A LEI DE MISTURA deste degrau** — o código de `ph2d_painter_effects::BlendMode`
-    /// (`0` = Normal, o neutro). Só os tipos com [`FxKindSpec::takes_blend`] o leem.
-    ///
-    /// ⚠️ **Um `u8` CRU, e não o enum.** É o mesmo desenho que o `LayerCompositor` já ship: o
-    /// `ph2d-ecs` não depende do `ph2d-painter-effects`, e não devia — este componente é um
-    /// DOCUMENTO, e um documento não tem por que arrastar a crate de efeitos de pintura para dentro
-    /// do grafo de dependências de toda cena. O nome de cada código é publicado à UI pela shell,
-    /// que alcança os dois lados (o padrão do `set_filter_kinds`).
-    ///
-    /// ⚠️ **Código desconhecido cai em Normal** (o `from_u8` do enum já o faz), então um arquivo de
-    /// uma versão futura desenha o efeito sem lei exótica em vez de não desenhar nada.
-    pub blend: u8,
-    /// **O TAMANHO das ondulações do ruído**, em unidades de MUNDO (o `baseFrequency` do SVG, pelo
-    /// avesso: ali é frequência, aqui é comprimento — um artista pensa em *quão grandes são os
-    /// caroços*, não em quantos cabem por unidade).
-    ///
-    /// ⚠️ **Em MUNDO como o `radius`, e é isso que torna o padrão zoom-invariante:** a coordenada
-    /// de ruído é `pixel/escala_px` com `escala_px = escala_mundo × zoom`, ou seja o zoom cancela.
-    /// Guardado em pixels, dar zoom re-sortearia a textura.
-    pub scale: f32,
-    /// **Quantas OITAVAS** o ruído soma (o `numOctaves`). Cada uma tem metade do tamanho e metade
-    /// da amplitude da anterior: 1 é uma ondulação limpa, 4 já tem grão fino dentro dos caroços.
-    pub detail: u8,
-    /// **Qual das infinitas realizações** — o `seed`. Não muda a estatística do campo, só qual
-    /// desenho ele é; é o botão *"me dá outro"* que todo artista de AE aperta primeiro.
-    pub seed: u8,
-    /// **Quanto a silhueta ENGORDA**, em unidades de MUNDO — e o sinal é a metade que importa:
-    /// positivo cresce, negativo encolhe, **zero não faz nada**.
-    ///
-    /// ⚠️ **UM número com sinal, e não um par (modo, quantidade)** — é onde a pesquisa converge e
-    /// não é gosto: o SVG (`operator="erode|dilate"`) e o Photoshop (*Minimum*/*Maximum*, dois
-    /// itens de menu) partem em dois porque um é formato declarativo e o outro herdou a UI de 1990;
-    /// quem desenhou isto como CONTROLE — o *Simple Choker* do AE, o *Dilate/Erode* do Blender, o
-    /// *Offset Path* do Illustrator — usa **um slider com sinal**. Crescer e encolher são a mesma
-    /// operação em sinais opostos, e quem afina um choke quer atravessar o zero sem trocar de modo.
-    pub grow: f32,
-    /// **A MATIZ**, em VOLTAS (`0.25` = um quarto de volta). Rotação rígida do croma em OKLab.
-    ///
-    /// ⚠️ **Voltas, e não graus, porque é a unidade do MODELO** — o `HsbParams::h` do
-    /// `ph2d-painter-effects` fala em voltas, e este degrau é a MESMA lei (ver
-    /// [`Self::COLOR_ADJUST`]). O painel converte para graus na fronteira, como a §12 da física
-    /// faz com radianos: uma unidade no modelo, outra no olho, e a conversão num sítio só.
-    pub hue: f32,
-    /// **A SATURAÇÃO**, em `-1..1` — escala o croma: `-1` é cinza, `0` é neutro, `+1` é o dobro.
-    pub sat: f32,
-    /// **O BRILHO**, em `-1..1` — lerp para preto (`-1`) ou branco (`+1`) em luz LINEAR, então os
-    /// extremos são preto e branco EXACTOS.
-    pub bright: f32,
-    /// **Os STOPS da rampa** do Gradient Map — RGBA reto em `[0,1]`, um por posição em
-    /// [`Self::stop_pos`]. Só os primeiros [`Self::stop_count`] contam.
-    ///
-    /// ⚠️ **Array de tamanho fixo, e não uma `Vec`** — o `FxOp` é `Copy` e viaja por valor em todo
-    /// o pipeline (componente → resolução em pixels → uniform do device); uma `Vec` o tiraria de
-    /// `Copy` e mudaria a natureza de um tipo que é *plain data* de propósito. O teto é
-    /// [`Self::MAX_GRADIENT_STOPS`], e o recurso de que ele é sai medido (ver lá).
-    ///
-    /// ⚠️ **RGBA, e o ALFA é a FORÇA daquele stop** — é a mesma convenção das duas pontas do
-    /// Duotone (`color.a`/`color_b.a`), e é ela que permite ao gate afirmar que um Gradient Map de
-    /// dois stops é o Duotone **ao byte**.
-    pub stops: [[f32; 4]; Self::MAX_GRADIENT_STOPS],
-    /// **Onde cada stop cai na rampa**, em `[0,1]`. Fora de ordem é legal — quem consome ordena
-    /// (a autoria não pode ser refém da ordem em que o artista clicou).
-    pub stop_pos: [f32; Self::MAX_GRADIENT_STOPS],
-    /// Quantos dos [`Self::stops`] valem. `0` cai na rampa preto→branco (a identidade em luma).
-    pub stop_count: u8,
-}
-
-/// O degrau neutro sobre o qual os defaults de cada tipo são escritos.
-pub(crate) const BLANK: FxOp = FxOp {
-    kind: FxOp::BLUR,
-    radius: 0.0,
-    offset: [0.0, 0.0],
-    color: [0.0, 0.0, 0.0, 1.0],
-    color_b: [1.0, 1.0, 1.0, 1.0],
-    opacity: 1.0,
-    mode: FxOp::MODE_CONTOUR,
-    enabled: true,
-    blend: FxOp::BLEND_NORMAL,
-    scale: 0.25,
-    detail: 3,
-    seed: 0,
-    grow: 0.0,
-    hue: 0.0,
-    sat: 0.0,
-    bright: 0.0,
-    stops: [[0.0, 0.0, 0.0, 1.0]; FxOp::MAX_GRADIENT_STOPS],
-    stop_pos: [0.0; FxOp::MAX_GRADIENT_STOPS],
-    stop_count: 0,
-};
-
-impl FxOp {
-    /// Código de painel: um blur puro (borra o que chegou).
-    pub const BLUR: u8 = 0;
-    /// Código de painel: um brilho externo (a silhueta borrada, tingida, POR BAIXO do que chegou).
-    pub const GLOW: u8 = 1;
-    /// Código de painel: uma sombra projetada (o Glow deslocado por um offset).
-    pub const DROP_SHADOW: u8 = 2;
-    /// Código de painel: a sombra que cai **para dentro** — o alfa INVERTIDO, borrado, deslocado e
-    /// mascarado pela própria forma. É o que faz um recorte parecer FUNDO (Photoshop/Figma).
-    pub const INNER_SHADOW: u8 = 3;
-    /// Código de painel: o brilho de dentro (a Inner Shadow sem deslocamento).
-    pub const INNER_GLOW: u8 = 4;
-    /// Código de painel: o **contorno** — o halo de borda DURA, largura autorada, por baixo da
-    /// forma. É o traço de sticker, e é o que uma Gaussiana sozinha não desenha.
-    pub const OUTLINE: u8 = 5;
-    /// Código de painel: o **feather** — a borda fica macia SEM borrar o miolo, por uma rampa de
-    /// largura autorada CENTRADA na fronteira. É o headline do Rive, e o que um borrão não faz (ele
-    /// mistura a COR também).
-    pub const FEATHER: u8 = 6;
-    /// Código de painel: o **bevel** — a borda ganha relevo: a face virada para a luz clareia, a
-    /// oposta escurece, e o efeito morre para o miolo. O "3D" do Layer Style.
-    pub const BEVEL: u8 = 7;
-    /// Código de painel: repinta o que chegou com uma cor, **sem borrar e sem mover cobertura**.
-    /// Pontual ⇒ margem zero e UM dispatch.
-    pub const COLOR_OVERLAY: u8 = 8;
-    /// Código de painel: a **turbulência** — a imagem é DEFORMADA por um campo de ruído
-    /// procedural. Amount pequeno = borda rasgada/orgânica (o *Roughen*); Amount grande = a forma
-    /// inteira liquefaz. É o `feTurbulence` + `feDisplacementMap` do SVG **num degrau só**, que é
-    /// como o AE (*Turbulent Displace*) e todo mundo depois dele o embrulharam.
-    pub const TURBULENCE: u8 = 9;
-    /// Código de painel: **Grow / Shrink** — a silhueta ENGORDA ou AFINA, por um limiar no campo
-    /// de distância. É o `feMorphology` do SVG (`dilate`/`erode`), o *Simple Choker* do AE e o
-    /// *Minimum/Maximum* do Photoshop, num knob com sinal.
-    ///
-    /// ⚠️ **É o único da família do campo que mede a IMAGEM, não a FORMA** — ver
-    /// [`Self::measures_the_image`].
-    pub const MORPHOLOGY: u8 = 10;
-    /// Código de painel: **Color Adjust** — matiz, saturação e brilho. É o `feColorMatrix` do SVG
-    /// (os tipos `hueRotate` + `saturate` + o brilho que a `matrix` exprime) na forma em que TODO
-    /// mundo que o desenhou como CONTROLE o embrulhou: a ficha *Hue/Saturation* do Photoshop, do
-    /// AE, do Krita e do Blender. O `type` de quatro valores é interface de formato DECLARATIVO.
-    ///
-    /// ⚠️ **A lei NÃO é nova, e essa é a decisão inteira da wave:** ela é a MESMA do
-    /// `AdjustmentKind::HueSaturationBrightness` que o Painter já ship (`ph2d-painter-effects`,
-    /// rotulado literalmente *"Hue/Saturation"*), pelo MESMO kernel WGSL — que foi extraído para
-    /// um arquivo compartilhado quando ganhou este segundo consumidor. Uma segunda resposta a
-    /// *"o que o slider de matiz faz?"* divergiria no único lugar onde ninguém lê um número.
-    ///
-    /// ⚠️ **O `luminanceToAlpha` do SVG não é um quarto slider daqui — é um VERBO próprio**, e
-    /// existe: [`Self::LUMA_TO_ALPHA`]. (Uma nota anterior aqui dizia que ele estava fora *porque*
-    /// move cobertura; move mesmo, e é essa a razão de ser um tipo em vez de um knob deste.)
-    pub const COLOR_ADJUST: u8 = 11;
-    /// Código de painel: **Duotone** — a imagem é remapeada para uma rampa de DUAS pontas: a
-    /// luminância de cada texel escolhe entre a cor ESCURA e a CLARA. É a `Gradient Map` de dois
-    /// stops do Photoshop, o *Tint* do AE (`Map Black To` / `Map White To`) e o duotone de
-    /// impressão que dá nome à coisa.
-    ///
-    /// ⚠️ **Duas pontas, e é isso que o separa do Color Overlay:** o Overlay SUBSTITUI a cor por
-    /// UMA; este preserva a MODELAGEM (o sombreado, o volume, o degradê) e só troca a paleta em
-    /// que ela é lida. Pontual ⇒ margem zero, um dispatch, cobertura intacta.
-    pub const DUOTONE: u8 = 12;
-    /// Código de painel: **Luma to Alpha** — o BRILHO vira COBERTURA: o que é claro fica opaco, o
-    /// que é escuro fica transparente. É o `type="luminanceToAlpha"` do `feColorMatrix`, e o modo
-    /// de fazer uma máscara a partir da própria arte.
-    ///
-    /// ⚠️ **É o único tipo PONTUAL que move cobertura**, e por isso é um verbo e não um slider do
-    /// Color Adjust ao lado. Ele nunca CRIA cobertura (a luminância vive em `[0,1]` e um texel
-    /// vazio é preto ⇒ segue vazio), então a margem continua zero.
-    pub const LUMA_TO_ALPHA: u8 = 13;
-    /// Quantos tipos existem — o painel oferece um "Add" por tipo, a partir daqui.
-    /// Código de painel: a **RAMPA** — o brilho de cada texel escolhe uma cor numa rampa de N
-    /// stops (o *Gradient Map* do Photoshop / o `feComponentTransfer type="table"` do SVG).
-    ///
-    /// ⚠️ **É a generalização do [`Self::DUOTONE`]**, e isso está gateado: com dois stops nas
-    /// pontas ele é o Duotone **ao byte**. A régua é a MESMA (`L` do OKLab) — duas leis vizinhas na
-    /// mesma pilha que discordassem sobre *"quão claro é este texel"* seriam descobertas pelo
-    /// artista no primeiro experimento.
-    pub const GRADIENT_MAP: u8 = 14;
-    pub const KINDS: usize = 15;
-
-    /// **Quantos stops uma rampa carrega.**
-    ///
-    /// ⚠️ **O número é MEDIDO, e a primeira medição estava ERRADA.** O candidato óbvio a recurso
-    /// era o `UNIFORM_STRIDE` do passe (256 bytes, dos quais o `Globals` já usava 144) — mas
-    /// dobrá-lo para 512 é **grátis**: o mesmo frame de 32 formas custa **2,345 ms contra 2,332**,
-    /// dentro do ruído (duas corridas cada). ⚠️ A leitura ANTERIOR dizia 3× pior e era **carga da
-    /// máquina** — *repita antes de explicar*.
-    ///
-    /// Com o stride fora do caminho, o recurso que aperta é o **TRILHO no painel**: os punhos têm
-    /// uma caixa de agarre, e stops mais juntos que ela deixam de ser alcançáveis pelo ponteiro. É
-    /// disso que o teto é, e há gate a afirmá-lo sobre a largura REAL do card.
-    pub const MAX_GRADIENT_STOPS: usize = 8;
-
-    /// **A rampa como o DISPOSITIVO a quer: ordenada por posição e empacotada.** A porta única de
-    /// *"que rampa este degrau desenha?"*.
-    ///
-    /// ⚠️ **O documento guarda a ordem de AUTORIA e quem consome ordena uma CÓPIA** — é o modelo
-    /// que o Gradient Map do Painter já ship (`move_gradient_stop`: *"the stops keep their Vec
-    /// order (a stable index per editor handle, so a drag never re-binds to a different stop)"*).
-    /// Ordenar o documento faria o punho sob o dedo do artista **trocar de stop** no instante em
-    /// que ele cruzasse o vizinho, que é a forma exacta de perder o gesto no meio dele.
-    ///
-    /// ⚠️ **E é UMA porta porque o shader assume ordenado.** Se o produto ordenasse e o gate não
-    /// (ou o inverso), o gate mediria uma rampa que ninguém desenha; e o EMPACOTAMENTO nos dois
-    /// `vec4` — que existe porque o WGSL dá stride 16 a um `array<f32>` de uniform — escrito duas
-    /// vezes derivaria em silêncio no dia em que o teto deixasse de ser múltiplo de 4.
-    ///
-    /// `stop_count == 0` devolve a contagem `0`, e o shader a lê como a rampa preto→branco (a
-    /// identidade em luma) — sem stop nenhum não há o que ordenar.
-    #[must_use]
-    pub fn ramp_for_device(&self) -> ([[f32; 4]; Self::MAX_GRADIENT_STOPS], [[f32; 4]; 2], u32) {
-        const _: () = assert!(FxOp::MAX_GRADIENT_STOPS == 8, "o empacotamento é 2 x vec4");
-        let n = (self.stop_count as usize).min(Self::MAX_GRADIENT_STOPS);
-        let mut order: [usize; Self::MAX_GRADIENT_STOPS] = core::array::from_fn(|i| i);
-        // `total_cmp`, o mesmo do Painter: ordem TOTAL, então `NaN` numa posição não faz o sort
-        // entrar em pânico nem deixa a lista meio-ordenada.
-        order[..n].sort_by(|&a, &b| self.stop_pos[a].total_cmp(&self.stop_pos[b]));
-        let mut stops = [[0.0_f32; 4]; Self::MAX_GRADIENT_STOPS];
-        let mut packed = [[0.0_f32; 4]; 2];
-        for (slot, &src) in order[..n].iter().enumerate() {
-            stops[slot] = self.stops[src];
-            packed[slot / 4][slot % 4] = self.stop_pos[src];
-        }
-        (stops, packed, n as u32)
-    }
-
-    /// Modo de queda: **a PROXIMIDADE do outro lado** (a silhueta borrada — o modelo do
-    /// Photoshop). Lê como PROFUNDIDADE: uma parte fina escurece INTEIRA, porque tudo nela está
-    /// perto de fora, e uma reentrância quase não recebe efeito, porque o outro lado ali subtende
-    /// um ângulo pequeno.
-    pub const MODE_PROXIMITY: u8 = 0;
-    /// Modo de queda: **a DISTÂNCIA à borda** — uma banda de largura constante ao longo de TODO o
-    /// contorno, reentrâncias incluídas. É o que "sombra interna" desenha em quem olha a forma, e é
-    /// o default dos degraus de DENTRO.
-    pub const MODE_CONTOUR: u8 = 1;
-
-    /// Modo de ruído: a soma COM SINAL das oitavas (o `fractalNoise` do SVG) — ondulações macias.
-    pub const MODE_SMOOTH: u8 = 0;
-    /// Modo de ruído: a soma dos MÓDULOS (o `turbulence` do SVG) — vincos onde as oitavas cruzam
-    /// o zero.
-    ///
-    /// ⚠️ **Colide numericamente com [`Self::MODE_CONTOUR`], e a colisão é REAL, não teórica.** O
-    /// `mode` é um índice na lista do TIPO, então o mesmo `1` quer dizer coisas diferentes em
-    /// tipos diferentes — e o `plan_of` da `ph2d-render` roteava por `mode == MODE_CONTOUR` para
-    /// QUALQUER tipo com modos, o que mandaria uma turbulência *Creased* para o campo de
-    /// distância. Quem pergunta *"como este degrau é executado?"* tem de olhar o TIPO primeiro;
-    /// há gate lá a exigir isso nos dois modos.
-    pub const MODE_CREASED: u8 = 1;
-
-    /// **Quantas oitavas o ruído pode somar.**
-    ///
-    /// ⚠️ **Não é teto de CUSTO — isso foi medido e é falso.** Na RTX, a 512², somar de 1 a 12
-    /// oitavas move o passe de 0,058 para 0,12 ms, o que é a própria dispersão da medição: o laço
-    /// é aritmética pura sobre um registro, e ela desaparece ao lado da largura de banda da
-    /// textura (`measure_the_turbulence_octave_cost`).
-    ///
-    /// O teto é de **REPRESENTAÇÃO**: cada oitava tem metade do tamanho e metade da amplitude da
-    /// anterior, então a `n`-ésima desenha detalhe de `Size/2ⁿ⁻¹` com peso `1/2ⁿ⁻¹`. Medido no que
-    /// o artista vê — quanto a BORDA anda ao acrescentar a oitava, com Size 40 px
-    /// (`measure_what_an_extra_octave_still_moves`):
-    ///
-    /// | oitava | a borda anda |
-    /// |---|---|
-    /// | 4 → 5 | 0,072 px |
-    /// | 5 → 6 | 0,044 px |
-    /// | **6 → 7** | **0,019 px** |
-    /// | 9 → 10 | 0,002 px |
-    ///
-    /// A partir da sétima o desenho muda menos de um cinquenta avos de pixel, e o detalhe que ela
-    /// acrescenta já é menor que o texel que o amostra — ele não aparece, ele **serrilha**.
-    pub const MAX_DETAIL: u8 = 6;
-
-    /// A lei de mistura NEUTRA (`BlendMode::Normal`). Um degrau nasce aqui, e nela o degrau é
-    /// **byte-idêntico** ao mundo pré-blend — é isso que torna esta wave uma adição e não uma
-    /// mudança de aparência.
-    pub const BLEND_NORMAL: u8 = 0;
-
-    /// Quantas leis de mistura um degrau oferece — os códigos `0..BLEND_KINDS`.
-    ///
-    /// ⚠️ **VINTE, e o `BlendMode` do Rust tem 22** — os dois que ficam de fora (`Behind` e
-    /// `Clear`, códigos 20 e 21) não são leis de COR: são operações de **COBERTURA** (o próprio
-    /// `apply` do Rust os desvia antes da função de mistura). Um degrau de FX aplica a sua lei
-    /// exactamente onde a cobertura já está decidida pela lei DELE — o `inner_tint` existe para
-    /// *não mover a cobertura*, e foi um bug real resolvido —, então os dois não teriam onde
-    /// pousar. Oferecê-los e depois os dobrar em Normal no dispositivo seria a opção que despacha
-    /// e mente; há gate na shell (o único lugar que vê os dois lados) a exigir que este número
-    /// continue a ser o dos códigos não-de-cobertura.
-    pub const BLEND_KINDS: u8 = 20;
-
-    /// **A tabela dos tipos**, indexada pelo `kind` — mora no irmão [`crate::vec_filter_kinds`],
-    /// que é o arquivo que cresce a cada wave. Re-exportada aqui porque `FxOp::SPECS` é a porta
-    /// que a shell publica ao painel, e mover a tabela não pode mover a porta.
-    pub const SPECS: [FxKindSpec; Self::KINDS] = SPECS;
-
-    /// A spec de um `kind`. **Porta única** — quem pergunta *"este tipo tem offset / cresce / borra?"*
-    /// pergunta aqui, nunca por aritmética de índice espalhada pelos consumidores.
-    ///
-    /// ⚠️ **Não há uma família `reads_noise` / `reads_grow` / `reads_adjust` / `reads_color_b`, e
-    /// ela EXISTIU** — quatro acessores `pub` sobre a [`Self::SPECS`], cada um com um doc-comment a
-    /// afirmar *"porta única com dois consumidores: o painel a consulta para OFERECER, o produtor da
-    /// GPU para HONRAR"*. **Nenhum dos quatro tinha um único chamador**, e a frase era falsa nos dois
-    /// lados: o painel **não alcança esta crate** (vive de snapshots, e lê os rótulos do
-    /// `FilterKindView` que a shell publica a partir da `SPECS`), e o produtor copia os campos
-    /// incondicionalmente — quem HONRA é o ramo por `kind` dentro do shader.
-    ///
-    /// Foram removidos. Um `pub fn` sem chamador não é código morto silencioso: é uma **segunda
-    /// resposta** à espera de quem acredite no doc-comment, e ela pode divergir da tabela publicada
-    /// no dia em que alguém a chamar. (Descoberto por uma mutação que SOBREVIVEU — `reads_color_b`
-    /// cravado em `false` não moveu um gate. Os que ficam — [`Self::tints`], [`Self::displaces`],
-    /// [`Self::takes_blend`] — têm chamador, e é essa a diferença.)
-    ///
-    /// Um código desconhecido (arquivo de uma versão futura) cai no Blur, que é o tipo mais inerte:
-    /// borra o que chegou e não inventa cor nenhuma.
-    #[must_use]
-    pub fn spec(kind: u8) -> &'static FxKindSpec {
-        let i = kind as usize;
-        if i < Self::KINDS {
-            &Self::SPECS[i]
-        } else {
-            &Self::SPECS[Self::BLUR as usize]
-        }
-    }
-
-    /// O nome que o painel mostra. Mora na [`Self::SPECS`] (junto do `kind`) para não haver duas
-    /// tabelas a discordar sobre qual índice é o quê.
-    #[must_use]
-    pub fn kind_name(kind: u8) -> &'static str {
-        Self::spec(kind).name
-    }
-
-    /// Este degrau tinge (tem cor)? Blur não — ele reusa os pixels que chegaram.
-    #[must_use]
-    pub fn tints(self) -> bool {
-        Self::spec(self.kind).color_label.is_some()
-    }
-
-    /// Este degrau lê o par de offset? (a direção da sombra, ou a da luz.)
-    #[must_use]
-    pub fn displaces(self) -> bool {
-        Self::spec(self.kind).offset_labels.is_some()
-    }
-
-    /// **Este degrau tem uma lei de mistura a honrar?** Vista da [`FxKindSpec::takes_blend`].
-    ///
-    /// ⚠️ **Porta ÚNICA, com dois consumidores que fazem perguntas diferentes:** o painel a
-    /// consulta para OFERECER o controle, e o produtor da GPU para o HONRAR. Sem a segunda metade,
-    /// um arquivo com `blend` sobrevivente num tipo que deixou de o tomar desenharia uma lei que
-    /// a UI não mostra — e sem a primeira, um knob morto. (O `is_hinge` dos joints é o precedente
-    /// exato.)
-    #[must_use]
-    pub fn takes_blend(self) -> bool {
-        Self::spec(self.kind).takes_blend
-    }
-
-    /// A lei de mistura que este degrau de facto aplica — [`Self::BLEND_NORMAL`] em todo tipo que
-    /// não a toma. É esta que o produtor manda ao dispositivo.
-    #[must_use]
-    pub fn blend_code(self) -> u8 {
-        if self.takes_blend() {
-            self.blend
-        } else {
-            Self::BLEND_NORMAL
-        }
-    }
-
-    /// **Este degrau está no ponto NEUTRO do ajuste de cor?** — e nele a lei devolve a entrada AO
-    /// BIT (o early-out do `adjust_hsb`, espelho exacto do `apply_hsb` do Painter).
-    ///
-    /// ⚠️ **A exactidão é do FLOAT.** Em 8 bits a identidade vale mesmo sem o ramo — medido, uma
-    /// rampa sRGB completa sai com 0 de 4096 bytes diferentes.
-    ///
-    /// ⚠️ Existe como porta porque a resposta é lida em DOIS sítios que não podem discordar: o
-    /// gate de byte-identidade e o próprio kernel. Um `== 0.0` reescrito no chamador é a segunda
-    /// cópia que passa a admitir um épsilon e deixa de ser identidade.
-    #[must_use]
-    pub fn adjust_is_neutral(self) -> bool {
-        self.hue == 0.0 && self.sat == 0.0 && self.bright == 0.0
-    }
-
-    /// **Contra o QUÊ este degrau mede a distância — a IMAGEM que recebeu, ou a FORMA?**
-    ///
-    /// Quatro tipos da família do campo (contorno, feather, bevel, os de dentro em modo Contour)
-    /// são efeitos de **BORDA DA FORMA**: eles perguntam *a que distância da silhueta autorada eu
-    /// estou*, e é por isso que empilhá-los recorta pela forma. A morfologia é a única definida
-    /// sobre a **IMAGEM** — o `feMorphology` do SVG dilata *a entrada dele* —, e é isso que faz
-    /// `Outline → Grow` engordar o contorno em vez de o recortar de volta à silhueta.
-    ///
-    /// ⚠️ **Porta única, e o preço de não a ter era mudo:** com geometria disponível o produtor
-    /// resolve o campo pelo pé EXATO dos segmentos da forma, então um degrau que pergunta pela
-    /// imagem receberia a resposta sobre a forma — o desenho certo para quatro tipos, e a resposta
-    /// errada para o quinto, sem erro nenhum.
-    #[must_use]
-    pub fn measures_the_image(kind: u8) -> bool {
-        kind == Self::MORPHOLOGY
-    }
-
-    /// **O `mode` deste tipo escolhe entre PROXIMIDADE e CONTORNO?** A porta única de *"o modo
-    /// deste degrau manda no PLANO de passes, ou é assunto interno do kernel?"*.
-    ///
-    /// ⚠️ **O `mode` é um índice na lista DO TIPO, então o mesmo `1` quer dizer coisas diferentes
-    /// em tipos diferentes** — e a regra que isto substitui perguntava *"tem modos, e escolheu o
-    /// 1?"*, uma enumeração disfarçada de regra que já apodreceu **duas vezes**: a turbulência
-    /// *Creased* precisou de uma isenção escrita à mão, e o Gradient Map em *Smooth* era varrido
-    /// para o campo de distância e saía **no-op completo** (medido: saída byte-idêntica à fonte,
-    /// com o Linear correto ao lado — a forma exacta de um controlo que não faz nada).
-    ///
-    /// ⚠️ **Ela deriva da DECLARAÇÃO, não de uma lista de tipos:** a pergunta é *"a lista de modos
-    /// deste tipo É o par de falloff?"*, e [`FALLOFF_MODES`] é o que dá identidade a esse par. Um
-    /// falloff novo entra por construção (que era a intenção da regra antiga) e um tipo com
-    /// vocabulário próprio **não** é varrido — sem uma segunda lista para alguém esquecer.
-    #[must_use]
-    pub fn mode_selects_the_distance_plan(kind: u8) -> bool {
-        Self::spec(kind).modes == FALLOFF_MODES
-    }
-
-    /// As oitavas que este degrau de facto soma — pelo menos uma, no máximo [`Self::MAX_DETAIL`].
-    /// **Porta única**: o painel mostra este número e o produtor manda este número.
-    #[must_use]
-    pub fn detail_clamped(self) -> u8 {
-        self.detail.clamp(1, Self::MAX_DETAIL)
-    }
-
-    /// Este degrau contribui? Desligado, a pilha o salta (espelho do `FxEntry::is_active`).
-    #[must_use]
-    pub fn is_active(self) -> bool {
-        self.enabled
-    }
-
-    /// Zera o modo de quem não tem modos (porta única do `new`).
-    pub(crate) fn with_default_mode(mut self) -> Self {
-        if Self::spec(self.kind).modes.is_empty() {
-            self.mode = 0;
-        }
-        self
-    }
-}
+pub use ph2d_fx_op::{FxKindSpec, FxOp};
 
 /// **A pilha de FX raster de uma forma.** A entidade que a carrega também tem um
 /// [`crate::VecPathRef`]: o `VecPath` dela continua a curva AUTORADA (o modo Node a edita); o
@@ -572,5 +79,58 @@ impl VecFilter {
 }
 
 #[cfg(test)]
-#[path = "vec_filter_tests.rs"]
-mod tests;
+mod tests {
+    use super::*;
+
+    fn stack(kinds: &[u8]) -> VecFilter {
+        VecFilter {
+            ops: kinds.iter().map(|k| FxOp::new(*k)).collect(),
+        }
+    }
+
+    /// **Reordenar troca DOIS vizinhos, e as pontas são no-ops** — subir na primeira linha e descer
+    /// na última não fazem nada, e o painel nem desenha essas setas. Aqui prova-se que, mesmo se
+    /// alguém as despachasse, a pilha não se deforma (um `swap` fora de faixa entraria em pânico).
+    #[test]
+    fn reordering_swaps_neighbours_and_the_ends_are_no_ops() {
+        let mut f = stack(&[FxOp::BLUR, FxOp::GLOW, FxOp::DROP_SHADOW]);
+        assert!(f.move_down(0));
+        assert_eq!(
+            f.ops.iter().map(|o| o.kind).collect::<Vec<_>>(),
+            vec![FxOp::GLOW, FxOp::BLUR, FxOp::DROP_SHADOW]
+        );
+        assert!(f.move_up(2));
+        assert_eq!(
+            f.ops.iter().map(|o| o.kind).collect::<Vec<_>>(),
+            vec![FxOp::GLOW, FxOp::DROP_SHADOW, FxOp::BLUR]
+        );
+        let before = f.clone();
+        assert!(!f.move_up(0), "subir na primeira linha não faz nada");
+        assert!(!f.move_down(2), "descer na última não faz nada");
+        assert!(!f.move_down(9), "nem uma linha que não existe");
+        assert_eq!(f, before, "e nenhuma delas pode deformar a pilha");
+    }
+
+    /// **Uma pilha só desenha se algum degrau estiver LIGADO** — a porta única que o produtor e a
+    /// remoção do componente perguntam. Vazia e toda-desligada são o mesmo fato para quem desenha.
+    #[test]
+    fn a_stack_is_active_only_while_some_op_is_enabled() {
+        assert!(!VecFilter::default().is_active(), "vazia não desenha nada");
+        let mut f = stack(&[FxOp::BLUR, FxOp::GLOW]);
+        assert!(f.is_active());
+        f.ops[0].enabled = false;
+        assert!(f.is_active(), "um degrau ligado basta");
+        f.ops[1].enabled = false;
+        assert!(!f.is_active(), "toda desligada é o mesmo que vazia");
+    }
+
+    /// O teto é respondido pela pilha, não contado no chamador.
+    #[test]
+    fn the_ceiling_is_the_stacks_own_answer() {
+        let mut f = VecFilter::default();
+        while f.has_room() {
+            f.ops.push(FxOp::new(FxOp::BLUR));
+        }
+        assert_eq!(f.ops.len(), VecFilter::MAX_OPS);
+    }
+}

@@ -367,7 +367,12 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // caminho), entao os dois numeros ao lado ficam onde estavam.
         // ⚠️ Nasceu como 84→85 na `line/Vector`; RECONTADO para 86→87 na integracao de
         // 2026-08-22 porque a `line/Sprite` (85, 86) entrou antes.
-        (87, 13, 14),
+        // PROJECT 87→88: o `ObjectPose` (estados de UI) ganhou `filters` — a pilha de FX
+        // raster daquele estado. Irmao exacto do `width`: os dois sao canais que vivem em
+        // COMPONENTES e nao no `VecPath`, entao a pose tem de os carregar por si.
+        // ⚠️ A `VecScene` de novo NAO mudou (um filtro e' fato de ENTIDADE), entao os dois
+        // numeros ao lado ficam. (Nasceu como 85→86 na linha; recontado na integracao.)
+        (88, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

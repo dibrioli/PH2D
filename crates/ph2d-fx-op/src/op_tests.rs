@@ -1,50 +1,8 @@
 //! Gates do [`super`] — irmão por `#[path]`, e portanto FILHO: `use super::*` alcança os
-//! privados, e o `vec_filter.rs` volta para debaixo do teto de 700 LOC.
+//! privados, e o `op.rs` volta para debaixo do teto de 700 LOC.
 use super::*;
 // O vocabulário dos MODOS mora no catálogo, que é quem o consome (a `SPECS`).
-use crate::vec_filter_kinds::FALLOFF_MODES;
-
-fn stack(kinds: &[u8]) -> VecFilter {
-    VecFilter {
-        ops: kinds.iter().map(|k| FxOp::new(*k)).collect(),
-    }
-}
-
-/// **Reordenar troca DOIS vizinhos, e as pontas são no-ops** — subir na primeira linha e descer
-/// na última não fazem nada, e o painel nem desenha essas setas. Aqui prova-se que, mesmo se
-/// alguém as despachasse, a pilha não se deforma (um `swap` fora de faixa entraria em pânico).
-#[test]
-fn reordering_swaps_neighbours_and_the_ends_are_no_ops() {
-    let mut f = stack(&[FxOp::BLUR, FxOp::GLOW, FxOp::DROP_SHADOW]);
-    assert!(f.move_down(0));
-    assert_eq!(
-        f.ops.iter().map(|o| o.kind).collect::<Vec<_>>(),
-        vec![FxOp::GLOW, FxOp::BLUR, FxOp::DROP_SHADOW]
-    );
-    assert!(f.move_up(2));
-    assert_eq!(
-        f.ops.iter().map(|o| o.kind).collect::<Vec<_>>(),
-        vec![FxOp::GLOW, FxOp::DROP_SHADOW, FxOp::BLUR]
-    );
-    let before = f.clone();
-    assert!(!f.move_up(0), "subir na primeira linha não faz nada");
-    assert!(!f.move_down(2), "descer na última não faz nada");
-    assert!(!f.move_down(9), "nem uma linha que não existe");
-    assert_eq!(f, before, "e nenhuma delas pode deformar a pilha");
-}
-
-/// **Uma pilha só desenha se algum degrau estiver LIGADO** — a porta única que o produtor e a
-/// remoção do componente perguntam. Vazia e toda-desligada são o mesmo fato para quem desenha.
-#[test]
-fn a_stack_is_active_only_while_some_op_is_enabled() {
-    assert!(!VecFilter::default().is_active(), "vazia não desenha nada");
-    let mut f = stack(&[FxOp::BLUR, FxOp::GLOW]);
-    assert!(f.is_active());
-    f.ops[0].enabled = false;
-    assert!(f.is_active(), "um degrau ligado basta");
-    f.ops[1].enabled = false;
-    assert!(!f.is_active(), "toda desligada é o mesmo que vazia");
-}
+use crate::kinds::FALLOFF_MODES;
 
 /// **Os defaults de cada tipo são VISÍVEIS** — armar no neutro seria um clique que não muda um
 /// pixel, e o artista concluiria que o botão está quebrado.
@@ -301,14 +259,4 @@ fn a_law_on_a_kind_that_does_not_take_one_never_reaches_the_device() {
         );
         assert_eq!(op.takes_blend(), FxOp::spec(kind).takes_blend);
     }
-}
-
-/// O teto é respondido pela pilha, não contado no chamador.
-#[test]
-fn the_ceiling_is_the_stacks_own_answer() {
-    let mut f = VecFilter::default();
-    while f.has_room() {
-        f.ops.push(FxOp::new(FxOp::BLUR));
-    }
-    assert_eq!(f.ops.len(), VecFilter::MAX_OPS);
 }

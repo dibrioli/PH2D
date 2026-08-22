@@ -177,6 +177,13 @@ impl Transition {
                         // perfil uniforme, então um lado sem perfil é um lado com o perfil que
                         // não faz nada. Não há caso especial a escrever.
                         width: mix_width(from.width.as_ref(), to.width.as_ref(), tc),
+                        // **Os FILTROS pela porta da folha que os define** — e o alinhamento é
+                        // que carrega a lei: um degrau que só existe de um lado cresce do NEUTRO
+                        // em vez de saltar, então acrescentar um blur depois de o Default já ter
+                        // sido gravado anima na mesma (Enio, 2026-08-21). ⚠️ `tc`, e não `t`:
+                        // um overshoot daria raio e intensidade NEGATIVOS, que é lixo e não
+                        // exagero — a mesma razão da opacidade e da escala aqui em cima.
+                        filters: ph2d_fx_op::mix_stacks(&from.filters, &to.filters, tc),
                     };
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`
                     // interpolou por conta: se o objeto sai auto-consistente daqui, ninguém a

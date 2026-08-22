@@ -554,4 +554,16 @@
 /// ⚠️ **Este degrau nasceu como v85 na `line/Vector` e foi RECONTADO na integração de
 /// 2026-08-22**: a `line/Sprite` entrou antes com v85/v86, e *número que soma entre linhas se
 /// CONTA, nunca se escolhe* (CLAUDE.md §5.0) — o handoff da linha ainda diz 85.
-pub(crate) const PROJECT_SCHEMA: u32 = 87;
+/// v88 (`line/Vector` — OS FILTROS NOS ESTADOS DE UI): o `ph2d_ui_state::ObjectPose` ganhou
+/// **`filters`**, a pilha de FX raster daquele estado (`ph2d_fx_op::FxOp`), apendada ao fim.
+/// ⚠️ **É o irmão exacto do `width`**, e pela mesma razão que aquele campo existe: os dois são
+/// canais que NÃO vivem no `VecPath` — são componentes ECS (`VecStrokeProfile`, `VecFilter`) —,
+/// então a pose tem de os carregar por si. Sem ele um blur era o único efeito do editor incapaz
+/// de diferir entre *Default* e *Hover* (Enio, 2026-08-21).
+/// ⚠️ O bump é posicional como sempre: o campo entra dentro de cada `ObjectPose`, que viaja no
+/// `HostStates` (v83), que viaja no `ProjectFile`.
+/// ⚠️ E o degrau MUDOU DE CASA na mesma wave — `FxOp` saiu do `ph2d-ecs` para a folha
+/// `ph2d-fx-op`, para a `ph2d-ui-state` (que deliberadamente não vê ECS) o poder carregar. A
+/// forma serializada é a MESMA; o que mudou foi de que crate o tipo vem.
+/// ⚠️ Nasceu como v86 na `line/Vector`; RECONTADO para v88 na integração de 2026-08-22 (ver v87).
+pub(crate) const PROJECT_SCHEMA: u32 = 88;

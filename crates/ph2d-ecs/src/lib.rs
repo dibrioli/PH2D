@@ -134,8 +134,6 @@ mod vec_component;
 mod vec_contour;
 mod vec_cut_path;
 mod vec_filter;
-mod vec_filter_kinds;
-mod vec_filter_new;
 mod vec_frame;
 mod vec_layout;
 mod vec_offset;
@@ -157,6 +155,9 @@ pub use vec_clip_content::VecClipContent;
 pub use vec_component::{InstanceOverride, OverrideSlot, VecComponentMain, VecInstance};
 pub use vec_contour::{MAX_CONTOUR_STEPS, VecContour};
 pub use vec_cut_path::VecCutPath;
+// ⚠️ `FxOp`/`FxKindSpec` são RE-EXPORTADOS da folha `ph2d-fx-op` (2026-08-21), onde o degrau
+// passou a morar para poder viajar numa pose de estado de UI. O re-export é o que mantém
+// `ph2d_ecs::FxOp` a funcionar em todos os consumidores sem uma linha mudada neles.
 pub use vec_filter::{FxKindSpec, FxOp, VecFilter};
 pub use vec_frame::VecFrame;
 pub use vec_layout::{

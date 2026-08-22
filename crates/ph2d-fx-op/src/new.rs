@@ -8,7 +8,7 @@
 //! um clique que não muda um pixel, e o artista concluiria que o "Add" não funcionou. A exceção é o
 //! que o degrau não controla: um valor que o kernel ignora fica no `BLANK`.
 
-use super::vec_filter::{BLANK, FxOp};
+use super::op::{BLANK, FxOp};
 
 impl FxOp {
     /// O degrau que um "Add" recém-clicado deve criar, com defaults **VISÍVEIS** — armar no

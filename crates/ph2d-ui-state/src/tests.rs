@@ -539,3 +539,121 @@ fn the_live_pose_carries_the_shape_it_is_standing_on() {
         "a transicao encadeada nao casou forma nenhuma: a forma vai SALTAR"
     );
 }
+
+// ─── FILTROS E EFEITOS NOS ESTADOS (Enio, 2026-08-21) ────────────────────────────────────
+//
+// ⚠️ Até aqui **nada defendia** que um efeito da pilha animasse. O `Transition::new` afirma-o num
+// comentário ("é isso que faz um Fillet, um Chamfer ou um efeito da pilha VIAJAREM") e o
+// `same_shape` compara `a.effects == b.effects` — mas uma capacidade sem gate é uma afirmação, e
+// este repo já pagou por acreditar numa: o campo `geometry` existia, o motor sabia casá-lo, e
+// nenhum produtor o preenchia por uma wave inteira.
+
+/// **UM EFEITO ACRESCENTADO A UM ESTADO SÓ VIAJA** — em vez de aparecer de uma vez no fim.
+///
+/// É o caso que o Enio nomeia: o efeito entra DEPOIS, então um lado da transição não o tem. A lei
+/// que o resolve já é o vocabulário da pilha — `ZigZagSpec::default()` tem `amplitude: 0.0`, e o
+/// neutro de um efeito **é** o valor zero. O lado sem efeito é o lado com o efeito que não faz
+/// nada, exactamente como `mix_width` trata um lado sem perfil.
+#[test]
+fn a_path_effect_added_in_one_state_travels_instead_of_snapping() {
+    use ph2d_vec_scene::effect::{FxEntry, PathEffect};
+    use ph2d_vec_scene::fx_zigzag::ZigZagSpec;
+
+    let plain = rect(7);
+    let mut wavy = rect(7);
+    wavy.effects = vec![FxEntry::new(PathEffect::ZigZag(ZigZagSpec {
+        amplitude: 40.0,
+        ..Default::default()
+    }))];
+
+    let a = vec![ObjectPose {
+        geometry: Some(plain),
+        ..posed(7)
+    }];
+    let b = vec![ObjectPose {
+        geometry: Some(wavy),
+        ..posed(7)
+    }];
+
+    let tr = Transition::new(&a, &b);
+    assert_eq!(
+        tr.plans_built(),
+        1,
+        "as duas formas diferem SO' na pilha de efeitos, e o casamento corre na geometria \
+         COZIDA -- sem Plan o efeito aparece de uma vez no fim"
+    );
+
+    let geom = |t: f64| {
+        tr.at(t)[0]
+            .geometry
+            .clone()
+            .expect("a pose tem de trazer geometria")
+    };
+    let (start, mid, end) = (geom(0.0), geom(0.5), geom(1.0));
+    assert_ne!(
+        start.verts, end.verts,
+        "controlo positivo: as pontas TEM de desenhar coisas diferentes, senao o gate passa vazio"
+    );
+    assert_ne!(
+        mid.verts, start.verts,
+        "o meio e' igual a' PARTIDA: o efeito nao viaja, ele salta no fim"
+    );
+    assert_ne!(
+        mid.verts, end.verts,
+        "o meio e' igual a' CHEGADA: o efeito salta no primeiro quadro"
+    );
+}
+
+/// **UM FILTRO VIAJA ENTRE ESTADOS** — a metade que não existia: `VecFilter` é um componente, e
+/// até 2026-08-21 a pose não o carregava, então um blur era o mesmo nos quatro papéis.
+///
+/// ⚠️ **A fixture grava o Default SEM o filtro**, que é o caso que o Enio nomeou: ele foi
+/// acrescentado depois. O que o gate afirma é que isso não produz um salto — o degrau existe nas
+/// duas pontas e o valor cresce do zero.
+#[test]
+fn a_filter_travels_between_states_even_when_added_after_the_fact() {
+    use ph2d_fx_op::FxOp;
+
+    let plain = ObjectPose {
+        geometry: Some(rect(3)),
+        ..posed(3)
+    };
+    let blurred = ObjectPose {
+        geometry: Some(rect(3)),
+        filters: vec![FxOp {
+            radius: 24.0,
+            ..FxOp::new(FxOp::BLUR)
+        }],
+        ..posed(3)
+    };
+
+    let tr = Transition::new(std::slice::from_ref(&plain), std::slice::from_ref(&blurred));
+    assert_eq!(
+        tr.len(),
+        1,
+        "as duas poses diferem SO' no filtro -- se elas passam por iguais, o blur nunca anima"
+    );
+    assert_eq!(
+        tr.plans_built(),
+        0,
+        "a forma e' a MESMA: um filtro nao pode custar a busca de fase do Blend"
+    );
+
+    let radius = |t: f64| {
+        let f = &tr.at(t)[0].filters;
+        assert_eq!(f.len(), 1, "o degrau tem de existir em t={t}");
+        f[0].radius
+    };
+    assert!(
+        radius(0.0).abs() < 1e-6,
+        "o Default nao conhecia o filtro: ele tem de partir do valor ZERO"
+    );
+    assert!(
+        (radius(0.5) - 12.0).abs() < 1e-3,
+        "o meio nao esta' entre as pontas: o blur salta em vez de crescer"
+    );
+    assert!(
+        (radius(1.0) - 24.0).abs() < 1e-3,
+        "a chegada e' o valor autorado"
+    );
+}

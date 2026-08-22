@@ -1,6 +1,7 @@
 //! **A POSE** — tudo o que um objeto pode ter de diferente entre dois estados, e nada mais.
 
 use crate::role::StateRole;
+use ph2d_fx_op::FxOp;
 use ph2d_stroke_width::WidthStops;
 use ph2d_vec_scene::{Paint, StrokeSpec, VecPath, VecPathId};
 use serde::{Deserialize, Serialize};
@@ -55,6 +56,18 @@ pub struct ObjectPose {
     /// Width Tool seria a única ferramenta de desenho cuja edição não animaria entre dois
     /// estados, e a ausência não teria nome nenhum.
     pub width: Option<WidthStops>,
+    /// **A pilha de FX raster** (blur, glow, sombra, ajuste de cor) neste estado. Vazia = sem
+    /// filtro.
+    ///
+    /// ⚠️ **Pela mesma razão do [`Self::width`]**: é um canal de APARÊNCIA que não vive no
+    /// `VecPath` — ele é um componente ECS (`ph2d_ecs::VecFilter`) —, então a pose tem de o
+    /// carregar por si. Sem ele, um blur seria o único efeito do editor incapaz de diferir entre
+    /// *Default* e *Hover*, e a seção Filters do painel ficaria muda dentro de um botão animado.
+    ///
+    /// ⚠️ **E o vazio NÃO é "herda"**, é *sem filtro* — a mesma lei do `fill`. Quando um dos
+    /// lados não conhece um degrau que o outro tem, quem resolve é o alinhamento
+    /// (`ph2d_fx_op::mix_stacks`), que o faz crescer do neutro em vez de o omitir.
+    pub filters: Vec<FxOp>,
 }
 
 impl ObjectPose {
@@ -71,6 +84,7 @@ impl ObjectPose {
             stroke: None,
             geometry: None,
             width: None,
+            filters: Vec::new(),
         }
     }
 

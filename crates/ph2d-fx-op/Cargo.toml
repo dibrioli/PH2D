@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-fx-op"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A CASA ÚNICA do degrau de FX raster. Ele vive em três lugares: o documento o guarda
+# (`ph2d-ecs::VecFilter`), o device o desenha (`ph2d-render::fx_stack`) e uma POSE de estado de UI
+# o carrega (`ph2d-ui-state::ObjectPose`, 2026-08-21). `ph2d-ecs` é fundação e `ph2d-ui-state` é
+# folha que deliberadamente NÃO conhece ECS; nenhuma das duas pode ser a casa, então a casa é
+# esta folha — exatamente o argumento (e o precedente) da `ph2d-stroke-width`.
+#
+# serde: os degraus viajam no save (dentro do `VecFilter`) e agora também dentro de uma `UiState`.
+serde = { version = "1", features = ["derive"] }

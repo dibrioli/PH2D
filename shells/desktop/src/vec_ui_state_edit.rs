@@ -21,7 +21,7 @@
 //! porque nada aqui o escreve, mas ele **não anima** entre dois estados. Nomeado em vez de
 //! descoberto.
 
-use ph2d_ecs::{Entity, SimWorld, Transform, VecStrokeProfile};
+use ph2d_ecs::{Entity, SimWorld, Transform, VecFilter, VecStrokeProfile};
 use ph2d_ui_state::{ObjectPose, StateRole, StateSets, UiState};
 use ph2d_vec_scene::WidthStops;
 use ph2d_vec_scene::{VecPathId, VecScene};
@@ -161,6 +161,15 @@ pub(crate) fn capture(
             .world()
             .get::<VecStrokeProfile>(e)
             .map(|w| w.stops.clone());
+        // **OS FILTROS** (FX raster) — o outro canal que mora num componente, e pela mesma razão
+        // aqui. Sem esta linha a pose nasce sempre vazia de filtros e o `install` apagaria o blur
+        // do artista no primeiro Show: um produtor que falta não dá erro nenhum, ele só perde o
+        // canal em silêncio (é o que aconteceu com a `geometry` por uma wave inteira).
+        pose.filters = sim
+            .world()
+            .get::<VecFilter>(e)
+            .map(|f| f.ops.clone())
+            .unwrap_or_default();
     }
     if let Some(p) = scene.paths().iter().find(|p| p.id == id) {
         pose.fill.clone_from(&p.fill);
@@ -224,6 +233,24 @@ pub(crate) fn install(
             &[pose.id],
             pose.width.as_ref().unwrap_or(&WidthStops::default()),
         );
+        // **OS FILTROS.** ⚠️ Pilha vazia REMOVE o componente — a lei do `VecOffset` que o próprio
+        // `ph2d-fx-op` já enuncia (*"um documento não acumula relações inertes que não desenham
+        // nada"*), e é ela que faz um estado sem filtro devolver a forma byte-idêntica em vez de
+        // lhe pendurar uma pilha vazia.
+        //
+        // ⚠️ **Vazio ≠ neutro, e a diferença é load-bearing:** a pose do MEIO de uma transição
+        // traz degraus de intensidade zero (não uma pilha vazia), então o componente existe e o
+        // device desenha nada — que é o que faz o filtro CRESCER. Tratar o meio como vazio o
+        // faria piscar de volta ao original em cada quadro.
+        if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
+            if pose.filters.is_empty() {
+                em.remove::<VecFilter>();
+            } else {
+                em.insert(VecFilter {
+                    ops: pose.filters.clone(),
+                });
+            }
+        }
     }
     if let Some(p) = scene.paths_mut().iter_mut().find(|p| p.id == pose.id) {
         p.fill.clone_from(&pose.fill);
@@ -473,6 +500,11 @@ pub(crate) fn signal_name_row(id: ph2d_editor::NodeId) -> Option<usize> {
 #[cfg(test)]
 #[path = "vec_ui_state_edit_tests.rs"]
 mod tests;
+
+/// Os gates do canal de FILTROS na pose — irmão por LOC (HR-18), com fixture própria.
+#[cfg(test)]
+#[path = "vec_ui_state_edit_filter_tests.rs"]
+mod filter_tests;
 
 #[cfg(test)]
 #[path = "vec_ui_state_signal_tests.rs"]

@@ -31,6 +31,10 @@ ph2d-warp-style = { path = "../ph2d-warp-style" }
 # `WidthStops`, e o MESMO tipo é consumido pelo motor da fita (`ph2d-vec-boolean`,
 # via o re-export da `ph2d-vec-scene`). Fundação e modelo puro não se veem, então a
 # casa é esta folha — mesmo argumento e mesmo precedente da `ph2d-warp-style` acima.
+# O DEGRAU de FX raster (2026-08-21). Ele saiu daqui para uma folha porque uma POSE de estado
+# de UI passou a carregá-lo (`ph2d-ui-state`), e aquela crate deliberadamente não vê ECS.
+# Mesmo precedente, e mesma linha acima: a `ph2d-stroke-width`.
+ph2d-fx-op = { path = "../ph2d-fx-op" }
 ph2d-stroke-width = { path = "../ph2d-stroke-width" }
 # A casa ÚNICA do vocabulário de simetria: `VecSymmetry` guarda um `SymmetrySpec`, e o MESMO tipo
 # é consumido pelo motor que produz as cópias (`ph2d-vec-scene::symmetry`). Fundação e modelo puro

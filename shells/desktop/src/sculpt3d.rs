@@ -523,6 +523,9 @@ pub(crate) struct Sculpt3dScene {
     quad_detail: f32,
     /// Quanto a densidade da retopologia segue a curvatura.
     quad_adapt: f32,
+    /// ⭐ **QUAL MOTOR de retopologia o botão chama** — ver
+    /// [`ph2d_panel_sculpt3d::state::RetopoMode`].
+    retopo_mode: ph2d_panel_sculpt3d::state::RetopoMode,
     stroke: SculptStroke,
     undo: Vec<Entry>,
     /// **O futuro guardado** — o que um Ctrl+Z tirou e um Ctrl+Shift+Z devolve.

@@ -112,6 +112,11 @@ impl Sculpt3dScene {
             // artista consegue prever antes de clicar.
             quad_detail: 0.5,
             quad_adapt: 0.0,
+            // ⚠️ **DERIVADO do catálogo**, como o `filter_kind` do vizinho: o
+            // `Sculpt3dUi::default()` do painel nasce com o mesmo primeiro
+            // elemento, e um default escrito duas vezes é o que diverge no dia em
+            // que a ordem da lista mudar.
+            retopo_mode: ph2d_panel_sculpt3d::state::RetopoMode::ALL[0],
             stroke: SculptStroke::default(),
             undo: Vec::new(),
             redo: Vec::new(),

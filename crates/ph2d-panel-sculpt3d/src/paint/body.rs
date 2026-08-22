@@ -287,6 +287,33 @@ fn paint_topology(ctx: &mut PaintCtx, snap: &Sculpt3dSnapshot, x: f32, w: f32, y
     // reconstroem a malha, e o artista escolhe entre elas pela pergunta que faz —
     // *arrumar o que a escultura destruiu* contra *pôr a grade a correr ao longo
     // da forma* (ADR-0160 §1).
+    //
+    // ⭐ **E QUAL dos dois motores, logo ACIMA do botão que os chama.** Ver
+    // [`crate::state::RetopoMode`]: o `Global` entrega 100 % de quads e paga em
+    // relógio; o `Local` é o porte do Instant Meshes, sub-segundo e robusto.
+    // ⛔ Ele viveu atrás de `PH2D_RETOPO_LEGACY=1` a wave inteira — *um motor que o
+    // painel não oferece não existe para o artista.*
+    {
+        let selected = crate::state::RetopoMode::ALL
+            .iter()
+            .position(|&m| m == snap.ui.retopo_mode)
+            .unwrap_or(0);
+        let labels: Vec<&str> = crate::state::RetopoMode::ALL
+            .iter()
+            .map(|m| m.label())
+            .collect();
+        y = widgets::labelled_seg(
+            ctx,
+            tr("panel.sculpt3d.retopo_mode"),
+            ids::SCULPT3D_SEC_TOPOLOGY,
+            &ids::SCULPT3D_RETOPO_MODE,
+            &labels,
+            selected,
+            x,
+            w,
+            y,
+        ) + gap;
+    }
     y = command(
         ctx,
         ids::SCULPT3D_QUAD_REMESH,

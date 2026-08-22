@@ -34,12 +34,14 @@ mod preview;
 pub mod rows;
 pub mod slots;
 pub mod state;
+/// **AS ESCOLHAS nomeadas** — os enums que um chip escreve — ver [`state_modes`].
+pub mod state_modes;
 
 mod event;
 
 pub use state::{
-    Sculpt3dIntent, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel, alpha_chip_index,
-    drain_intents, last_content_h, last_visible_h, set_current_sculpt3d,
+    RetopoMode, Sculpt3dIntent, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel,
+    alpha_chip_index, drain_intents, last_content_h, last_visible_h, set_current_sculpt3d,
 };
 
 use ph2d_a11y::NodeId;

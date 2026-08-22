@@ -45,67 +45,11 @@ thread_local! {
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
 }
 
-/// **COM QUE PROFUNDIDADE O PAINEL SE MOSTRA** (§2 do plano).
+/// **As ESCOLHAS nomeadas** — `UiLevel` e `RetopoMode` — ver [`crate::state_modes`].
 ///
-/// ⚠️ **Isto não são dois conjuntos de features — é divulgação progressiva do
-/// MESMO estado**, e essa escolha é o que impede duas fontes de verdade. Em
-/// `Pro` o artista não ganha números novos: ele ganha *acesso* aos números que o
-/// verbo e o modo já haviam armado por ele.
-///
-/// ⚠️ **A regra de quem pode ser `Pro`, e ela é testável:** só uma row cujo
-/// valor **o slot do verbo já traz** ([`VerbSlot::for_verb`]). Esconder um
-/// número que a ferramenta escolheu bem é divulgação progressiva; esconder um
-/// que nasce neutro e tem de ser fornecido é amputação — o artista ficaria com
-/// uma ferramenta que não faz o que o nome dela diz e sem nada na tela
-/// explicando por quê.
-///
-/// ⚠️ **Ela é NECESSÁRIA e não suficiente, e é isso que o falloff custou:** a
-/// curva nasce no slot do verbo, logo *podia* ser `Pro` — e era, e o
-/// smoke reprovou (*"não dá a opção de escolher o falloff e deveria dar"*).
-/// Quem decide a segunda metade é a REFERÊNCIA, medida e não lembrada: no
-/// Blender a curva é *dobrada* (`DEFAULT_CLOSED` com cabeçalho à vista, mais um
-/// popover no cabeçalho de ferramenta), nunca *ausente*. **Dobrar é divulgação
-/// progressiva; sumir sem rastro é amputação**, e o nosso `Pro` fazia o segundo.
-///
-/// ⚠️ **`Ord` é a lei inteira:** uma row aparece quando `nível do painel >=
-/// nível da row`. Escrito como dois `if`s (um por lado) o terceiro degrau nasce
-/// fora da regra.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub enum UiLevel {
-    /// O que TODO pincel tem: o verbo, a referência, o raio, a força e a
-    /// **CURVA**.
-    ///
-    /// ⚠️ **Isto dizia *"o vocabulário do SculptGL"* e a frase custou um
-    /// smoke.** O SculptGL **não tem** seletor de curva — a dele é fixa —, então
-    /// herdar o vocabulário dele apagava do Basic um controle que a nossa malha
-    /// tem **doze** vezes e que a OUTRA referência trata como primeiro-classe (o
-    /// `FalloffPanel` do Blender não é `brush_settings_advanced`, e no cabeçalho
-    /// de ferramenta ele é um popover sempre visível). *Um vocabulário herdado
-    /// descreve a ferramenta de onde veio, não a que se está a construir.*
-    #[default]
-    Basic,
-    /// Mais os knobs que o modo tinha armado.
-    Pro,
-}
-
-impl UiLevel {
-    /// A ordem em que os chips são pintados. **É** a ordem do enum.
-    pub const ALL: [Self; 2] = [Self::Basic, Self::Pro];
-
-    /// Chave i18n do rótulo.
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Basic => ph2d_i18n::tr("panel.sculpt3d.ui_level.basic"),
-            Self::Pro => ph2d_i18n::tr("panel.sculpt3d.ui_level.pro"),
-        }
-    }
-
-    /// **Uma coisa que exige `needs` aparece neste nível?** A porta única — o
-    /// pintor a consulta para desenhar e o gate de costura para varrer.
-    pub fn shows(self, needs: Self) -> bool {
-        needs <= self
-    }
-}
+/// ⚠️ **Re-exportadas daqui de propósito:** o corte foi do teto de LOC, e nenhum
+/// caminho de chamador muda por causa dele.
+pub use crate::state_modes::{RetopoMode, UiLevel};
 
 /// **O estado AUTORADO da cena 3D** — tudo o que um controle contínuo ou um
 /// rádio deste painel escreve.
@@ -221,6 +165,8 @@ pub struct Sculpt3dUi {
     /// **Quão FINA a retopologia persegue a grade** — fração do curso (`0` grossa,
     /// `1` o mais fino que a entrada resolve). ⚠️ **Não é um tamanho**; o porquê
     /// está na row (`rows_topology::TOPOLOGY`).
+    /// ⭐ **QUAL MOTOR de retopologia** — ver [`RetopoMode`].
+    pub retopo_mode: RetopoMode,
     pub quad_detail: f32,
     /// Quanto a densidade segue a curvatura — `0` uniforme, `1` a faixa inteira.
     pub quad_adapt: f32,
@@ -307,6 +253,10 @@ impl Default for Sculpt3dUi {
             remesh_res: 150.0, // LITERAL-PX-OK: resolucao de voxel, nao metrica de layout
             // O MEIO do curso. Medido na malha da cena `=35`: 384 vertices e
             // 88,2% de quads -- nem a blocagem nem o teto da entrada.
+            // ⚠️ **DERIVADO do catálogo, e não um literal:** o mesmo primeiro
+            // elemento que o painel pinta como seleccionado. Um default escrito
+            // duas vezes é o que diverge no dia em que a ordem da lista mudar.
+            retopo_mode: RetopoMode::ALL[0],
             quad_detail: 0.5, // LITERAL-PX-OK: fracao do curso, nao metrica de layout
             quad_adapt: 0.0,  // LITERAL-PX-OK: fracao, nao metrica de layout
 

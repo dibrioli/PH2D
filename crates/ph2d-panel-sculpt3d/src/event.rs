@@ -371,6 +371,11 @@ fn group_chip_ui(
         // não a escolha de uma ferramenta. Re-resolver aqui devolveria a família
         // que a medição elegeu, apagando o gesto no instante em que ele acontece.
         ui.brush.elastic_scales = ph2d_sculpt3d::kelvinlet::Scales::ALL[i];
+    } else if let Some(i) = index_of(&ids::SCULPT3D_RETOPO_MODE, id) {
+        // ⚠️ **Sem re-armar nada:** escolher o motor de retopologia é uma escolha
+        // sobre o BOTÃO, não sobre a ferramenta em mãos. O `detail` e o `adapt`
+        // que o artista afinou continuam onde estavam.
+        ui.retopo_mode = state::RetopoMode::ALL[i];
     } else if let Some(i) = index_of(&ids::SCULPT3D_UI_LEVEL, id) {
         // ⚠️ **Sem trocar de slot:** mudar o nível não é escolher uma
         // ferramenta, é escolher quanto dela ver — passar pela porta de troca

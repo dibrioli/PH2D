@@ -75,6 +75,7 @@ impl Sculpt3dScene {
                 remesh_res: self.remesh_res as f32,
                 quad_detail: self.quad_detail,
                 quad_adapt: self.quad_adapt,
+                retopo_mode: self.retopo_mode,
             },
             dyntopo: self.dyntopo.armed,
             level: self.level(),
@@ -228,6 +229,7 @@ impl Sculpt3dScene {
         // smoke que escreva direto entram por outra.
         self.quad_detail = ui.quad_detail.clamp(0.0, 1.0);
         self.quad_adapt = ui.quad_adapt.clamp(0.0, 1.0);
+        self.retopo_mode = ui.retopo_mode;
     }
 
     /// **Um gesto do painel**, traduzido para a cena — os mesmos desfechos que as
@@ -371,14 +373,32 @@ impl Sculpt3dScene {
                 // ⚠️ **O `adapt` não tem consumidor nesta cadeia**, e o log diz
                 // isso em voz alta: um knob que o painel mostra e nada lê é o
                 // defeito que já custou uma caçada nesta base.
-                if !legacy_requested() && self.quad_adapt != 0.0 {
+                // ⭐⭐ **O MOTOR É UMA ESCOLHA DO PAINEL desde 2026-08-21**, e não
+                // mais uma variável de ambiente. Ver
+                // [`ph2d_panel_sculpt3d::state::RetopoMode`]: `Even Grid` é a
+                // cadeia global (100 % de quads, mais lenta) e `Fast` é o porte do
+                // Instant Meshes (sub-segundo, robusto, ~65 % de quads).
+                //
+                // ⚠️ **A env var continua a existir e a MANDAR**, e o motivo é
+                // bissecar: ela força o local sem tocar no estado autorado, então
+                // um smoke pode comparar os dois sem mexer no painel do artista.
+                let mode = if legacy_requested() {
+                    ph2d_panel_sculpt3d::state::RetopoMode::Local
+                } else {
+                    self.retopo_mode
+                };
+                // ⚠️ **O `adapt` só tem consumidor num dos motores**, e o log diz
+                // isso em voz alta: um knob que o painel mostra e nada lê é o
+                // defeito que já custou uma caçada nesta base. ⭐ A pergunta é
+                // feita ao MODO (`uses_adaptive`), nunca a uma lista de nomes.
+                if !mode.uses_adaptive() && self.quad_adapt != 0.0 {
                     eprintln!(
-                        "[sculpt3d] ⚠️ o 'Adapt' ({:.2}) nao tem efeito na retopologia global -- \
-                         so' o porte local (PH2D_RETOPO_LEGACY=1) o consome",
+                        "[sculpt3d] ⚠️ o 'Follow Curvature' ({:.2}) nao tem efeito no motor \
+                         'Even Grid' -- so' o 'Fast' o consome",
                         self.quad_adapt
                     );
                 }
-                let outcome = if legacy_requested() {
+                let outcome = if mode.uses_adaptive() {
                     self.quad_remesh(self.quad_detail, self.quad_adapt)
                 } else {
                     self.quad_remesh_global(self.quad_detail)

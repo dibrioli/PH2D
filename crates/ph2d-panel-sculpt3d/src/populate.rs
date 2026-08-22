@@ -75,6 +75,10 @@ pub fn populate(store: &mut WidgetStore) {
         // a fileira só onde o verbo declara campo E o nível é Pro.
         &ids::SCULPT3D_ELASTIC_SCALES[..],
         &ids::SCULPT3D_UI_LEVEL[..],
+        // ⚠️ Os DOIS entram sempre: registrar só o motor corrente faria o chip do
+        // outro nascer morto — e um chip pintado que ninguém registrou é uma
+        // affordance que não faz nada.
+        &ids::SCULPT3D_RETOPO_MODE[..],
         &ids::SCULPT3D_FALLOFF[..],
         &ids::SCULPT3D_ALPHA[..],
         &ids::SCULPT3D_DETAIL[..],

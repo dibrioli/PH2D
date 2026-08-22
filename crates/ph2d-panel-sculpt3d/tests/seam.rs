@@ -18,8 +18,8 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_sculpt3d::{
-    Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi, UiLevel,
-    drain_intents, ids, rows, set_current_sculpt3d,
+    RetopoMode, Sculpt3dIntent, Sculpt3dPanel, Sculpt3dPanelState, Sculpt3dSnapshot, Sculpt3dUi,
+    UiLevel, drain_intents, ids, rows, set_current_sculpt3d,
 };
 use ph2d_sculpt3d::{Alpha, Falloff, FilterKind, RefMode, TransformKind, Verb, kelvinlet::Scales};
 use ph2d_ui_testkit::MockPanelHost;
@@ -1999,6 +1999,61 @@ fn the_filter_is_offered_to_every_verb_and_the_picker_only_when_armed() {
         vec![Sculpt3dIntent::ArmFilter],
         "o clique no filtro não chegou ao shell"
     );
+}
+
+/// ⭐⭐ **OS DOIS MOTORES DE RETOPOLOGIA SÃO ESCOLHÍVEIS** — pintados, vivos sob o
+/// mouse, e cada chip escreve o SEU.
+///
+/// ⛔ **O porte do Instant Meshes viveu a wave inteira do pivô atrás de
+/// `PH2D_RETOPO_LEGACY=1`** — alcançável só por quem soubesse o nome da variável.
+/// *Um motor que o painel não oferece não existe para o artista*, e o Enio pediu-o
+/// pelo nome (2026-08-21).
+///
+/// ⚠️ **A metade que carrega o gate é a ÚLTIMA:** um selector cujos dois chips
+/// despachem o mesmo índice é pintado, clicável e passa em todo sweep de
+/// clicabilidade — e o artista escolhe `Fast` para receber a cadeia lenta.
+#[test]
+fn every_retopo_engine_is_pickable_and_writes_its_own() {
+    assert_eq!(
+        ids::SCULPT3D_RETOPO_MODE.len(),
+        RetopoMode::ALL.len(),
+        "a lista de chips e a lista de motores têm tamanhos diferentes — algum motor é \
+         inalcançável, ou algum chip nomeia um motor que não existe"
+    );
+    for (i, mode) in RetopoMode::ALL.into_iter().enumerate() {
+        let ui = Sculpt3dUi {
+            // ⚠️ **A fixture começa no OUTRO motor**, senão a iteração `i = 0` é
+            // verde por vácuo: o `default()` já vale `ALL[0]`, e um chip que não
+            // escrevesse nada passaria a asserção.
+            retopo_mode: RetopoMode::ALL[(i + 1) % RetopoMode::ALL.len()],
+            ..Sculpt3dUi::default()
+        };
+        let (mut host, mut state) = arrange_with(snapshot(ui, true));
+
+        let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+        let rect = painted
+            .iter()
+            .find(|(id, _)| *id == ids::SCULPT3D_RETOPO_MODE[i])
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("{mode:?}: o chip do motor não foi pintado"));
+        let evs = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+        assert!(
+            evs.iter().any(
+                |e| matches!(e, WidgetEvent::Click(id) if *id == ids::SCULPT3D_RETOPO_MODE[i])
+            ),
+            "{mode:?}: o chip do motor está pintado e morto sob o mouse"
+        );
+        for e in evs {
+            let _ = host.apply_panel_event::<Sculpt3dPanel>(&mut state, e);
+        }
+        let Sculpt3dIntent::SetUi(got) = only_intent("chip de motor") else {
+            panic!("{mode:?}: o chip enfileirou o intent errado");
+        };
+        assert_eq!(
+            got.retopo_mode, mode,
+            "{mode:?}: o chip escreveu OUTRO motor -- o artista escolhe um e recebe outro"
+        );
+    }
 }
 
 /// ⭐ **AS SETE LEIS SÃO ESCOLHÍVEIS** — pintadas, vivas sob o mouse, e cada

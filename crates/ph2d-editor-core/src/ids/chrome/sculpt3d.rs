@@ -184,6 +184,18 @@ pub const SCULPT3D_UI_LEVEL: [NodeId; 2] = [
     hash_node_id("sculpt3d.ui_level.1"),
 ];
 
+/// **QUAL MOTOR DE RETOPOLOGIA** — os chips `Global` · `Local`.
+///
+/// ⚠️ **O tamanho se CONTA e não se escolhe** — o seam
+/// `the_panel_offers_every_retopo_mode_the_engine_has` compara este array com o
+/// `RetopoMode::ALL`, então um motor novo que não passe por aqui nasce
+/// inalcançável no painel e o gate fica vermelho em vez de o chip sumir em
+/// silêncio.
+pub const SCULPT3D_RETOPO_MODE: [NodeId; 2] = [
+    hash_node_id("sculpt3d.retopo_mode.0"),
+    hash_node_id("sculpt3d.retopo_mode.1"),
+];
+
 // ── O pincel ────────────────────────────────────────────────────────────────
 /// As curvas de `ph2d_sculpt3d::Falloff::ALL`.
 ///

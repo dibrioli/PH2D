@@ -403,8 +403,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `boundary_loops` é que exigia que a face do outro lado fosse de OUTRO patch, e ignorava uma parede interior.
   Honrá-la (`decompose_with(cut_open)`), sob a guarda de que a melhoria seja **estrita**, dá 3 096 quads e `χ = 0`
   com **zero** dissoluções. Duas cercas ficam: `LayoutError::GenusLost` (`V−E+F` do complexo contra o `χ` da peça)
-  e `the_cleanup_never_worsens_the_topology`. ⚠️ **O `ALIGN_WEIGHT` continua a ZERO, e agora por outra razão:**
-  não há mais malha de género errado em célula nenhuma, mas o alinhamento faz **algumas peças recusarem**.
+  e `the_cleanup_never_worsens_the_topology`. ⭐⭐⭐ **O `ALIGN_WEIGHT` SHIPA a `0,03` desde 22/08**, e o número
+  veio do **campo do oráculo** (`*.rosy`), não de varredura no fim da cadeia: a orelha vai de uma aresta de
+  **57% da peça para 5,5%** e de **2 204 dobras para 171**; o relevo vai de 24,2° para **13,7°**. ⚠️ Preço: o
+  toro 32×16 recusa (o traçado dá fronteira malformada com campo alinhado — gate `#[ignore]`
+  `the_tracer_survives_the_aligned_field`), e **a rede da porta apanha-o** (cai para o só-suavidade, e o log diz).
   ⭐ **E a grade vinha 3× mais grossa do que se pedia:** a varredura que escolheu o custo do arco media dobras e
   pior-arco, e **nenhuma das duas vê uma grade uniformemente grossa** — o F4 devolvia **0,39×–0,98%** do que o F3
   pedia. Com a coluna nova (`Σquant/Σalvo`) a lei passou a ser o **`ScaleFactor`** da referência, e o toro 48×24

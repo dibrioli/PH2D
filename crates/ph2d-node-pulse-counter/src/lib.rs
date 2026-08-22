@@ -374,10 +374,28 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // ⚠️ O teto DIGITÁVEL da contagem — outra grandeza que o curso da mão.
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     Ok(())
 }
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+/// **O TETO DIGITÁVEL da contagem — e ele existe porque o slider NÃO é um limite.**
+///
+/// ⚠️ **Isto é um defeito, não uma feature** (folha 12 linha 45, §0 do `CLAUDE.md`):
+/// o slider parava em `32` e **não havia `ParamHardMax`**, então o bridge caía no
+/// `hint.max` e uma contagem maior que 32 era **indigitável** — num nó cuja
+/// referência (TD/Max `counter`) conta sem teto nenhum. O `32` nunca teve medição
+/// atrás: ele era o curso confortável da mão, promovido a limite por omissão.
+///
+/// O teto real é o do TIPO: a contagem vive num `i64` no `displayed` e num `f32` no
+/// stream, e `1e6` está muito abaixo dos `2²⁴` onde um `f32` deixa de contar
+/// inteiros um a um. O curso do slider **não muda**.
+static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
+    param: "count_max",
+    max: 1_000_000.0,
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

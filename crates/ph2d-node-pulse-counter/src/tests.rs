@@ -523,3 +523,97 @@ fn registers_and_resolves() {
     register(&mut reg).unwrap();
     assert!(reg.resolve(MANIFEST.id).is_some());
 }
+
+/// Os `n` primeiros valores mostrados, batendo o pulso a cada tique — o
+/// instrumento dos dois gates abaixo.
+fn ticks_with(n: usize, count_max: i64, mode: LimitMode, reset_to: f32, step_by: f32) -> Vec<i64> {
+    let mut state = Stream::new(1);
+    let mut out = Vec::with_capacity(n);
+    for k in 0..n {
+        // Alterna alto/baixo para cada batida ser uma BORDA (um pulso segurado
+        // conta uma vez só — a lei que o gate do topo deste arquivo pina).
+        let p = fire(if k == 0 { 0.0 } else { 1.0 });
+        state = step(
+            &p,
+            &state,
+            &Stream::new(0),
+            count_max,
+            mode,
+            reset_to,
+            step_by,
+        )
+        .value;
+        out.push(value(&state) as i64);
+        let low = fire(0.0);
+        state = step(
+            &low,
+            &state,
+            &Stream::new(0),
+            count_max,
+            mode,
+            reset_to,
+            step_by,
+        )
+        .value;
+    }
+    out
+}
+
+/// **CONTAR PARA BAIXO JÁ FUNCIONA — com ZERO nós, pelo `step` deste nó.**
+///
+/// ⚠️ **Este gate nasceu de uma célula REFUTADA** (folha 12 linha 44, marcada P2
+/// com a composição *"`value.math(Subtract, …)` inverte a escada — 1 nó"*). Medido
+/// em 2026-08-22: o `step` já aceita negativos (`min: -8.0` no hint, e o comentário
+/// ao lado dele diz que a faixa negativa é *a capacidade que este param compra*), e
+/// `advance_tick` é `prev_tick + step`. A resposta certa não custa um nó: custa um
+/// sinal.
+///
+/// O gate pina as três metades — a escada DESCE, ela dá a volta pelo `Wrap`, e o
+/// `Clamp` para no piso em vez de mostrar negativo.
+#[test]
+fn counting_down_already_works_through_the_step_param() {
+    // Uma escada descendente com `Wrap` sobre 4: 0 → 3 → 2 → 1 → 0 → 3 …
+    let down = ticks_with(6, 4, LimitMode::Wrap, 0.0, -1.0);
+    assert_eq!(down, vec![0, 3, 2, 1, 0, 3], "a escada desce e da' a volta");
+    // E o controle: com `step = +1` ela sobe, sobre a MESMA fixture.
+    let up = ticks_with(6, 4, LimitMode::Wrap, 0.0, 1.0);
+    assert_eq!(up, vec![0, 1, 2, 3, 0, 1], "o controle sobe");
+    // Com `Clamp` ela para no PISO — e não mostra contagem negativa (a lei que o
+    // `displayed` já documentava por causa deste mesmo `step`).
+    let clamped = ticks_with(6, 4, LimitMode::Clamp, 0.0, -1.0);
+    assert!(
+        clamped.iter().all(|v| *v >= 0),
+        "o Clamp nao pode mostrar negativo: {clamped:?}"
+    );
+    assert_eq!(*clamped.last().unwrap(), 0, "e ele para no piso");
+}
+
+/// **O TETO DIGITÁVEL DA CONTAGEM ESTÁ MUITO ACIMA DO SLIDER** — o defeito da
+/// folha 12 linha 45, fechado.
+///
+/// ⚠️ **O que o gate mede não é o número, é a RELAÇÃO:** sem um `ParamHardMax` o
+/// bridge cai no `hint.max`, e o teto do curso da mão vira o teto do produto. Uma
+/// contagem maior que 32 era **indigitável**, num nó cuja referência conta sem teto.
+#[test]
+fn the_typed_ceiling_of_the_count_is_far_above_the_slider() {
+    let mut reg = NodeRegistry::new();
+    register(&mut reg).unwrap();
+    let hints = reg.param_ui(MANIFEST.id).expect("hints");
+    let slider = hints
+        .iter()
+        .find(|h| h.param == "count_max")
+        .expect("count_max");
+    let hard = reg
+        .param_hard_max(MANIFEST.id, "count_max")
+        .expect("o no' declara um teto digitavel para a contagem");
+    assert!(
+        hard > slider.max * 1000.0,
+        "o teto digitavel ({hard}) tem de estar MUITO acima do curso da mao ({})",
+        slider.max
+    );
+    assert!(
+        (slider.max - 32.0).abs() < 1e-6,
+        "o slider mudou: {}",
+        slider.max
+    );
+}

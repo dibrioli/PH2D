@@ -241,7 +241,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As SETENTA E NOVE LEIS que esta linha pagou para aprender
+## §4 — As OITENTA E DUAS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -837,6 +837,31 @@ são estilo.
     ⚠️ E o primeiro vermelho de todos acusou o produto e era o INSTRUMENTO: o gate media a
     posição ABSOLUTA e o bloco de teste já tem Y próprio.
 
+80. **⚠️ UM SLIDER SEM `ParamHardMax` É O TETO DO PRODUTO — e isso é um defeito do §0,
+    escrito por OMISSÃO.** O bridge cai no `hint.max` quando não há teto digitável declarado
+    (`motion_bridge_params.rs`, `.unwrap_or(max)`), então o curso confortável da mão vira o
+    limite do que existe. Medido na folha 12: uma batida mais lenta que **8 s** e uma contagem
+    maior que **32** eram *indigitáveis*, e nenhum dos dois números tinha medição atrás — as
+    referências (TD/Max `counter`) não têm teto nenhum. ⚠️ **O gate não deve medir o NÚMERO, e
+    sim a RELAÇÃO** (`hard > slider · 1000`): o defeito não era o `8` ser pequeno, era ele ser
+    o **único** teto. *Ao escrever um `ParamUiHint`, pergunte se o `max` dele é o curso da mão
+    ou o limite do recurso — e se for o primeiro, declare o segundo.*
+81. **UM PARAM DIRIGIDO POR FIO COLAPSA NA LINHA 0 — e isso é a resposta certa metade das
+    vezes.** O `driven_value` (doc 58) é `xs.first()`: contra um sinal UNIFORME é exactamente
+    o que se quer e custa zero nós; contra um **CAMPO** é um número plausível e errado, sem
+    erro e sem aviso. ⚠️ **A folha 12 linha 40 escreveu *«já exprimível»* e as duas metades
+    estavam lá** — a nota via a primeira e não a segunda. A cura, quando o nó tem sentido
+    por-elemento, é uma **PORTA** (o precedente do `c` do `value.math`): apendada no fim,
+    desligada ⇒ os params de sempre, e per-elemento por construção. *Antes de aceitar «já
+    exprimível», pergunte se a rota barata é UNIFORME e se o nó é per-elemento.*
+82. **A CÉLULA PODE PEDIR MAIS PARAMS DO QUE O DESENHO PRECISA.** A janela de atividade do
+    `pulse.beat` foi escrita como *«começa em T, N batidas, para»* — dois números —, e custou
+    **um**: o `offset` já É o T (o doc dele diz *«beats land at `offset + k·period`»*), então
+    o índice `k` já é contado a partir dele. Um `start` novo seria uma **segunda origem da
+    mesma grelha**, a discordar da primeira no dia em que alguém mexesse numa só. ⚠️ Irmã da
+    lei 78: *leia o que os params EXISTENTES já significam antes de contar os que a célula
+    pede* — as duas juntas apagaram um param e um nó inteiro nesta janela.
+
 ---
 
 ## §5 — O ritual de cada célula (o que fazer, na ordem)
@@ -855,12 +880,16 @@ são estilo.
    `const` presos por um gate que lê o fonte da narração.
 7. **Reconcilie a `Contagem`** da folha rodando o placar (ele **imprime e sai vermelho**;
    `--write` não existe).
-8. **⚠️ CORRA O GATE DE LOC**, pelo nome, ao fechar o grupo:
+8. **⚠️ CORRA OS **DOIS** GATES DE LOC**, pelos nomes, ao fechar o grupo:
    ```
-   cargo test -p ph2d-editor-core --test architecture_workspace_file_loc_cap
+   cargo test -p ph2d-editor-core --test architecture_workspace_file_loc_cap   # crates/, teto 700
+   cargo test -p ph2d-host-desktop --test file_loc_caps                        # shells/, teto 600
    ```
-   Ele **não** está na suíte do shell (mora noutra crate), e foi por isso que ficou vermelho
-   nove arquivos seguidos — ver a lei 76. A cura de um teto é sempre um **split por
+   ⚠️ **São DOIS, com tetos diferentes, em crates diferentes** — e a lei 76 mordeu duas vezes
+   na mesma jornada por causa disso: em 22/08 corri o primeiro, dei-o por verde, e o segundo
+   apanhou o `motion_state_demo_conferencia.rs` a **614**. O primeiro não está na suíte do
+   shell; o segundo ESTÁ, mas eu tinha filtrado a suíte pelo nome da cena. *Um gate que corre
+   dentro de um filtro também não corre.* A cura de um teto é sempre um **split por
    responsabilidade**, nunca uma entrada na allowlist (HR-18).
 9. **`CLAUDE.md §5` recebe UMA LINHA** — a narrativa vai no handoff.
 
@@ -891,6 +920,23 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `=80` — O METRÓNOMO (folha 12, que **FECHOU POR INTEIRO**)
+
+```
+env PH2D_GPU_COOK_DEMO=80 cargo run -p ph2d-host-desktop --release
+```
+
+Oito fileiras aos pares. Cada uma sobe **um degrau por batida** — a altura das peças é quantas
+batidas passaram. ⚠️ **Precisa de Play**: parada, a cena inteira fica no chão, e é isso que
+uma cena de metrónomo é.
+
+O `pulse.counter` está em **`Clamp`** de propósito: com `Wrap` a fileira que PAROU voltaria ao
+chão e ficaria indistinguível de uma que deu a volta.
+
+Duplas: a régua (`0,5 s` contra `120 BPM`, que têm de subir em lock-step) · a fase por-linha
+(bloco contra onda) · a janela (eterno contra 4 batidas) · o limiar (único contra por-elemento —
+o par que mostra o colapso silencioso do fio-no-param).
 
 ### `=79` — A FAIXA QUE O NOME PROMETE (folha 06, **três células + uma refutação**)
 

@@ -104,6 +104,10 @@ pub(crate) mod conferencia_demos_knobs;
 /// flash, que a folha 07 dizia serem um conserto só.
 #[path = "motion_state_conferencia_demos_operator.rs"]
 pub(crate) mod conferencia_demos_operator;
+/// A cena do METRÓNOMO (`=80`) — a régua, a fase por-linha, a janela e a
+/// referência por-elemento (folha 12, que fechou por inteiro).
+#[path = "motion_state_conferencia_demos_pulso.rs"]
+pub(crate) mod conferencia_demos_pulso;
 #[path = "motion_state_conferencia_demos_rank.rs"]
 pub(crate) mod conferencia_demos_rank;
 #[path = "motion_state_conferencia_demos_sim.rs"]

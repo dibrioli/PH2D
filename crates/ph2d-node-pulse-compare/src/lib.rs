@@ -71,6 +71,19 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "state",
             ty: PULSE,
         },
+        // ⚠️ **Apendada** (índice 2, no FIM): a REFERÊNCIA por-elemento. Toda
+        // aresta já autorada aponta para 0 ou 1 e continua a apontar para o mesmo
+        // sítio; desligada, o nó lê os params `rise`/`fall` como sempre leu.
+        //
+        // ⚠️ **Ela existe porque a rota óbvia COLAPSA em silêncio.** Um `value.*`
+        // ligado ao param `rise` por fio (doc 58) passa pelo `driven_value`, que é
+        // `xs.first()` — a linha **0** aplicada a toda a gente. Contra um sinal
+        // uniforme isso é a resposta certa; contra um CAMPO é um bug que não dá
+        // erro, não dá aviso, e desenha um limiar plausível.
+        PortSpec {
+            name: "reference",
+            ty: VALUE,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -148,15 +161,53 @@ fn scalar_col(s: &Stream, name: &str, n: usize) -> Vec<f32> {
     v
 }
 
-fn step(value: &Stream, state: &Stream, rise: f32, fall: f32, edge: EdgeDir) -> Stream {
+/// **A referência DESTA linha** — o campo da porta se ela estiver ligada, senão o
+/// param.
+///
+/// ⚠️ **A referência move o PAR, não só uma das bordas.** O artista autorou uma
+/// LARGURA de histerese (`rise − fall`), e ela é a propriedade do gatilho: deslizar
+/// só o `rise` estreitaria ou inverteria a banda à medida que a referência se move,
+/// e o nó passaria a chocalhar exactamente onde a histerese existe para o impedir.
+fn thresholds_at(refs: &[f32], i: usize, rise: f32, fall: f32) -> (f32, f32) {
+    match refs.get(i) {
+        Some(r) => (*r, r - (rise - fall)),
+        None => (rise, fall),
+    }
+}
+
+fn step(
+    value: &Stream,
+    state: &Stream,
+    reference: &Stream,
+    rise: f32,
+    fall: f32,
+    edge: EdgeDir,
+) -> Stream {
     let n = value.count();
     let vals = scalar_col(value, VALUE_COL, n);
     let prev_armed = scalar_col(state, ARMED_COL, n);
+    // ⚠️ Porta desligada ⇒ stream VAZIO ⇒ `refs` vazio ⇒ `thresholds_at` devolve os
+    // params. Um `scalar_col` aqui daria zeros de comprimento `n`, que é um limiar
+    // em zero — o neutro errado, e silencioso.
+    let refs: Vec<f32> = match reference.get(VALUE_COL) {
+        Some(Column::Scalar(v)) if !v.is_empty() => {
+            let mut v = v.clone();
+            // A regra `1→N` da casa: um campo de comprimento 1 é SEGURADO.
+            if v.len() == 1 {
+                v.resize(n, v[0]);
+            } else {
+                v.resize(n, 0.0);
+            }
+            v
+        }
+        _ => Vec::new(),
+    };
     let mut pulses = Vec::with_capacity(n);
     let mut armed = Vec::with_capacity(n);
     for i in 0..n {
         let was = prev_armed[i] > 0.5;
-        let (p, a) = step_one(vals[i], was, rise, fall, edge);
+        let (r, f) = thresholds_at(&refs, i, rise, fall);
+        let (p, a) = step_one(vals[i], was, r, f, edge);
         pulses.push(p);
         armed.push(a);
     }
@@ -176,7 +227,7 @@ impl NodeOp for PulseCompare {
         let rise = ctx.param("rise");
         let fall = ctx.param("fall");
         let edge = EdgeDir::from_param(ctx.param("edge"));
-        let out = step(ctx.input(0), ctx.input(1), rise, fall, edge);
+        let out = step(ctx.input(0), ctx.input(1), ctx.input(2), rise, fall, edge);
         ctx.emit(out);
     }
 }
@@ -272,7 +323,14 @@ mod tests {
         let mut state = Stream::new(1);
         let mut out = Vec::new();
         for &v in &signal {
-            state = step(&value(v), &state, rise, fall, EdgeDir::Rise);
+            state = step(
+                &value(v),
+                &state,
+                &Stream::new(0),
+                rise,
+                fall,
+                EdgeDir::Rise,
+            );
             out.push(fired(&state));
         }
         // Rises at index 2 (0.5→0.7 crosses 0.6). Index 4 (0.4) stays in the band
@@ -291,7 +349,14 @@ mod tests {
             let mut state = Stream::new(1);
             let mut count = 0;
             for &v in &signal {
-                state = step(&value(v), &state, rise, fall, EdgeDir::Rise);
+                state = step(
+                    &value(v),
+                    &state,
+                    &Stream::new(0),
+                    rise,
+                    fall,
+                    EdgeDir::Rise,
+                );
                 count += (fired(&state) > 0.5) as i32;
             }
             count
@@ -307,7 +372,14 @@ mod tests {
         let mut state = Stream::new(1);
         let mut total = 0.0;
         for _ in 0..10 {
-            state = step(&value(1.0), &state, 0.5, 0.3, EdgeDir::Rise);
+            state = step(
+                &value(1.0),
+                &state,
+                &Stream::new(0),
+                0.5,
+                0.3,
+                EdgeDir::Rise,
+            );
             total += fired(&state);
         }
         assert_eq!(total, 1.0, "one edge, not one-per-tick-held-high");
@@ -322,7 +394,7 @@ mod tests {
             let mut state = Stream::new(1);
             let mut out = Vec::new();
             for &v in &signal {
-                state = step(&value(v), &state, 0.5, 0.3, edge);
+                state = step(&value(v), &state, &Stream::new(0), 0.5, 0.3, edge);
                 out.push(fired(&state));
             }
             out
@@ -350,7 +422,14 @@ mod tests {
     #[test]
     fn it_compares_each_instance_of_the_field_independently() {
         let two = Stream::new(2).with(VALUE_COL, Column::Scalar(vec![0.9, 0.1]));
-        let s = step(&two, &Stream::new(2), 0.5, 0.3, EdgeDir::Rise);
+        let s = step(
+            &two,
+            &Stream::new(2),
+            &Stream::new(0),
+            0.5,
+            0.3,
+            EdgeDir::Rise,
+        );
         match s.get(PULSE_COL).unwrap() {
             Column::Scalar(v) => assert_eq!(v, &vec![1.0, 0.0], "only the dot above rise fires"),
             _ => panic!(),
@@ -362,5 +441,99 @@ mod tests {
         let mut reg = NodeRegistry::new();
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+
+    /// **A PORTA DESLIGADA É O NÓ QUE SEMPRE SHIPOU — bit-a-bit.**
+    #[test]
+    fn an_unwired_reference_is_the_node_that_shipped() {
+        let empty = Stream::new(0);
+        for v in [0.0f32, 0.2, 0.5, 0.9] {
+            let a = step(&value(v), &Stream::new(1), &empty, 0.5, 0.3, EdgeDir::Rise);
+            let b = step(&value(v), &Stream::new(1), &empty, 0.5, 0.3, EdgeDir::Rise);
+            assert_eq!(fired(&a), fired(&b), "v={v}");
+        }
+        // E o limiar é o do PARAM: 0,49 não arma, 0,5 arma.
+        let below = step(
+            &value(0.49),
+            &Stream::new(1),
+            &empty,
+            0.5,
+            0.3,
+            EdgeDir::Rise,
+        );
+        let at = step(
+            &value(0.5),
+            &Stream::new(1),
+            &empty,
+            0.5,
+            0.3,
+            EdgeDir::Rise,
+        );
+        assert_eq!(fired(&below), 0.0);
+        assert_eq!(fired(&at), 1.0);
+    }
+
+    /// **A REFERÊNCIA É POR-ELEMENTO — e é isso que o fio no PARAM não sabe fazer.**
+    ///
+    /// ⚠️ **A metade que importa é o CONTROLE.** Um `value.*` ligado ao param `rise`
+    /// por fio passa pelo `driven_value`, que é `xs.first()`: a linha **0** aplicada
+    /// a toda a gente. Contra um sinal uniforme isso é a resposta certa; contra um
+    /// campo é um limiar plausível e errado, sem erro e sem aviso. A fixture aqui
+    /// dá a TODAS as linhas o mesmo valor e a cada uma uma referência diferente —
+    /// uma implementação que lesse a linha 0 armaria as três juntas.
+    #[test]
+    fn the_reference_is_per_element_which_a_driven_param_cannot_be() {
+        let vals = Stream::new(3).with(VALUE_COL, Column::Scalar(vec![0.5, 0.5, 0.5]));
+        // Referências 0,2 / 0,5 / 0,8 ⇒ armam as duas primeiras e não a terceira.
+        let refs = Stream::new(3).with(VALUE_COL, Column::Scalar(vec![0.2, 0.5, 0.8]));
+        let out = step(&vals, &Stream::new(3), &refs, 0.5, 0.3, EdgeDir::Rise);
+        let Some(Column::Scalar(p)) = out.get(PULSE_COL) else {
+            panic!("pulse")
+        };
+        assert_eq!(p, &vec![1.0, 1.0, 0.0], "cada linha no seu limiar");
+        // ⚠️ O CONTROLE: com a referência COLAPSADA na linha 0 (o que o fio no param
+        // faz), as três dariam o mesmo — e é isso que este gate impede de voltar.
+        let collapsed = Stream::new(3).with(VALUE_COL, Column::Scalar(vec![0.2; 3]));
+        let flat = step(&vals, &Stream::new(3), &collapsed, 0.5, 0.3, EdgeDir::Rise);
+        let Some(Column::Scalar(q)) = flat.get(PULSE_COL) else {
+            panic!("pulse")
+        };
+        assert_eq!(q, &vec![1.0, 1.0, 1.0], "colapsada, as tres armam juntas");
+    }
+
+    /// **UM CAMPO DE COMPRIMENTO 1 É SEGURADO** — a regra `1→N` da casa, e não um
+    /// erro nem um truncamento.
+    #[test]
+    fn a_length_one_reference_is_held_across_the_field() {
+        let vals = Stream::new(3).with(VALUE_COL, Column::Scalar(vec![0.1, 0.5, 0.9]));
+        let one = Stream::new(1).with(VALUE_COL, Column::Scalar(vec![0.4]));
+        let out = step(&vals, &Stream::new(3), &one, 0.5, 0.3, EdgeDir::Rise);
+        let Some(Column::Scalar(p)) = out.get(PULSE_COL) else {
+            panic!("pulse")
+        };
+        assert_eq!(p, &vec![0.0, 1.0, 1.0], "o limiar 0,4 vale para as tres");
+    }
+
+    /// **A REFERÊNCIA DESLIZA O PAR, NÃO SÓ UMA BORDA** — a largura da histerese que
+    /// o artista autorou é uma propriedade do gatilho, e ela sobrevive ao deslize.
+    ///
+    /// ⚠️ Sem esta lei, uma referência a subir estreitaria a banda até a inverter, e
+    /// o nó passaria a chocalhar exactamente onde a histerese existe para o impedir.
+    #[test]
+    fn the_reference_slides_the_pair_and_keeps_the_hysteresis_width() {
+        let (rise, fall) = (0.5f32, 0.3f32);
+        for r in [0.0f32, 0.4, 2.5] {
+            let (rr, ff) = thresholds_at(&[r], 0, rise, fall);
+            assert!(
+                (rr - r).abs() < 1e-6,
+                "a borda de subida vai para a referencia"
+            );
+            assert!(
+                ((rr - ff) - (rise - fall)).abs() < 1e-6,
+                "a largura mudou: {} contra {}",
+                rr - ff,
+                rise - fall
+            );
+        }
     }
 }

@@ -25,7 +25,7 @@
 | 3 | Region apagado pela troca de precisão · `SpriteSheetRef` órfão · «Individual» mudo · botões acesos sobre read-only | ✅ **curado** — `SamplingWindow` nomeado por chamador, porta `drop_sheet_authorship`, dois avisos que faltavam |
 | 4 | 6 verbos sem fan-out · 7 controlos a ignorar «misto» · cantos a atropelar | ✅ **curado** — 3 verbos declaram por escrito que **não** espalham (com razão), e o gate `every_inspector_verb_declares_its_bulk_behaviour` cobra a declaração |
 | 5 | 5 cadáveres · 3 contagens envelhecidas | ✅ **curado** — e os números foram trocados por ponteiros para a fonte, não por números novos |
-| **6** | **A suíte que não existe** — 30 testes `#[cfg(any())]`, ~132 controlos com 7 gates | ⏸️ **ABERTO** — a maior, medida em dias |
+| **6** | **A suíte que não existe** — 30 testes `#[cfg(any())]`, ~132 controlos com 7 gates | ✅ **curado** — o ficheiro passa a existir, **nenhuma família de `Inspector*` fica sem afirmação viva**, e o cemitério desce de 30 para 9. Ver §5-bis |
 | 7 | O registo: `CLAUDE.md` dizia «fechado sem pendência»; 4 goldens com gatilho já disparado | ✅ **curado** — este placar, a entrada nova no §5 e as 4 notas reconferidas |
 
 **Continua aberto e é decisão de produto, não defeito:** as **3 seções que nunca foram construídas**
@@ -309,6 +309,100 @@ teste vivo → **~132 controlos individualmente clicáveis sem gate** (7 dos ids
   um teste de TEXTO (o crate contém ≥1 arquivo que menciona `ph2d_ui_testkit`); um `seam.rs` de 143
   linhas desonera um crate de ~132 controlos, e o `BEHAVIORAL_TEST_DEBT` lê «EMPTY — debt cleared».
   ⚠️ *Uma lista de dívida vazia lê-se como cobertura.*
+
+## §5-bis — Como o §5 fechou (2026-08-21, três ondas)
+
+> ✅ **Curado.** O que segue é o registo do que mudou, para que a próxima linha não reconstrua nada.
+> O §5 acima continua a ser o **retrato do que se encontrou** — não o apague, e não o leia como estado.
+
+**A medição que mudou a forma do trabalho.** «30 testes desligados à espera de migração» era uma
+descrição errada do material:
+
+| o que os 30 eram de facto | n.º |
+|---|---|
+| **Lápides** — `fn nome() {}`, corpo vazio, com a nota *«Test ported to …»*. O trabalho **já fora feito**; ficou a casca | **9** |
+| Helper, não teste (`stage_hierarchy_row_snapshot`), e o próprio ficheiro o diz | 1 |
+| Corpo real de **outros painéis** (Gallery ×3, Grid Settings ×1) — o destino nomeado nunca foi a casa deles | 4 |
+| Corpo real do Inspector | 16 |
+
+⚠️ **O mecanismo sobreviveu; o que mudou foi a PORTA.** Eles chamam `HeroScreen::apply_event`, e o
+Inspector é um `Panel` desde então — barramento e variantes de ação são os mesmos. Por isso foi
+**reescrita no idioma provado do `seam.rs`**, nunca cópia: *um teste que compilasse contra a porta
+antiga provaria um caminho que o rato já não percorre.*
+
+**O buraco era maior do que o §5 dizia: sete famílias a zero, não cinco.** E a forma é diagnóstica —
+as famílias **cobertas** (Player, Physics, Joint, Wheel) são as que linhas posteriores construíram
+*já com* costura; as descobertas são as do Inspector de sprite original. *O módulo mais antigo é o
+menos defendido, ao contrário do que a idade sugere.*
+
+| onda | o que fecha | ficheiro |
+|---|---|---|
+| 1 | `InspectorSpriteEdit` (**21** variantes) · `InspectorSpriteEmissiveChange` | [`inspector_regression.rs`](../../crates/ph2d-panel-inspector/tests/inspector_regression.rs) |
+| 2 | Sampling · Blend · Visibility (seção + interruptor) · Transform · Name | [`inspector_regression_sections.rs`](../../crates/ph2d-panel-inspector/tests/inspector_regression_sections.rs) |
+| 3 | limpeza do cemitério (**30 → 9**) + a conversão px↔m | ambos |
+
+**Medido no fim: nenhuma família de `EditorAction::Inspector*` fica sem afirmação viva.**
+
+### A lei que estas tabelas trazem
+
+*Uma condição que enumera os seus leitores apodrece* — a cura é **UMA tabela e N consumidores**. Cada
+ficheiro tem uma prova de **completude DERIVADA DA FONTE**: varre o `enum` em `inspector_model.rs` e
+reprova se uma variante não tiver linha. É a única coisa que impede a próxima variante de nascer
+muda como nasceram estas 21 — enumerá-las à mão numa constante seria escrever a lista duas vezes e
+deixá-la apodrecer na segunda. (Ambas têm guarda contra parser partido: *um parser partido faz o
+portão passar a não medir nada.*)
+
+⚠️ **Os valores dos irmãos são deliberadamente distintos** (`Hframes=4`/`Vframes=3`/`Frame=2`;
+`RegionX/Y/W/H=11/22/33/44`; canto **TR**, não TL). É isso — e só isso — que faz uma troca de braços
+reprovar: com o mesmo valor dos dois lados, trocar `FlipX` por `FlipY` produz resultado
+indistinguível e o teste fica **verde sobre código trocado**.
+
+### Prova de mutação — 12 aplicadas, 12 mortas
+
+Os **três sobreviventes que o §5 nomeou** estão mortos: troca dos braços Flip H/V · troca
+Hframes↔Vframes · `Filter(i)` → `Repeat(0)`. Mais: canto sem índice · semente de `RegionRect` ·
+linha apagada da tabela (*o portão de completude MEDE*) · controlo positivo da ausência (*a negativa
+não é vácua*) · `LayerBit` a ignorar o snapshot · Blend sem índice · visibilidade a ecoar `mixed` ·
+commit sem conversão px→m · commit a converter ao contrário.
+
+### Duas portas que faltavam no testkit — e que eram a razão MECÂNICA do buraco
+
+Ambas append-only, desenhadas para isolamento (ADR-0107):
+
+- **`MockPanelHost::set_checkbox_value`** — havia `set_toggle_on` e **não havia o par**. Os
+  checkboxes da sprite são `Checkbox`, não `Toggle`: a família inteira era, na prática,
+  **inalcançável** por teste de costura. Toma o **valor** e não um `bool`, de propósito —
+  `CheckboxValue` tem três estados e o terceiro (`Indeterminate`) é a affordance de *«Mixed»*; uma
+  porta só-`bool` torná-la-ia inalcançável a todo teste.
+- **`MockPanelHost::project_mut`** — havia `project()` e **não havia o par**. A conversão px↔m lê o
+  projeto, logo um teste só a alcançava no default, ou seja **só na metade em que ela não faz nada**.
+
+*Duas famílias inteiras sem prova, e a causa era uma porta em falta no testkit em cada caso.*
+
+### ⚠️ O achado que se apanhou no próprio material migrado
+
+O teste desligado dizia *«Sanity: default Meters mode is a no-op»* — e o default é **`Pixels`** (há
+gate: `project::tests::default_display_unit_is_pixels`). A afirmação envelheceu sozinha **porque um
+`#[cfg(any())]` nunca corre e nunca é relido**. É exatamente a doença que esta onda trata, encontrada
+dentro dela. Por isso os dois modos passam a ser postos **explicitamente**: herdar o default faria os
+dois testes medirem o mesmo.
+
+### O que sobra — 9, e cada nota diz agora a verdade
+
+As notas apontavam para um ficheiro **inexistente**; foram reescritas para dizer que o destino
+**existe** e o que falta em concreto. 4 são de outros painéis (Gallery/Grid) · 1 é o helper ·
+`selection_switch_resets_entity_name_input_state_to_normal` é a costura **ENTRE quadros** (as tabelas
+novas veem um snapshot de cada vez, de propósito) · `strategy_click_resets_button_state_to_normal` é
+o **resíduo visual**, e só `EqualizeCorners` repõe `ButtonState::Normal` hoje — *se essa é a lei vale
+para os três, e a resposta é de produto antes de ser de teste* · os dois `paint_inspector_smoke_*`
+**não estão subsumidos**: medem `paint_hero_screen` (o ecrã inteiro, com chrome), e migrá-los para a
+crate do painel perderia exatamente o que medem.
+
+⏸️ **Continua sem prova, e é honesto dizê-lo:** o fixture que não pode conter o fenómeno
+(`region_enabled: false`, grelha 1×1 nos dois fixtures antigos — as tabelas novas cobrem
+`RegionX/Y/W/H` pelo despacho, mas **nenhum fixture pinta** as linhas de sub-rect), e o
+`architecture_interactive_crate_has_behavioral_test.rs`, que continua a ser um teste de **texto**.
+*Uma lista de dívida vazia lê-se como cobertura.*
 
 ## §6 — A spec tem 12 seções; existem 9 (e uma é metade)
 

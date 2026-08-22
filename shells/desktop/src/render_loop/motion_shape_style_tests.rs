@@ -269,14 +269,13 @@ fn a_wire_driven_param_reaches_the_publisher_and_the_geometry_follows_the_clock(
     );
 }
 
-/// **SONDA — quanto o cache de geometria CRESCE com um param animado.**
+/// **SONDA — o que o cache de geometria guarda ao longo de uma animação.**
 ///
-/// ⚠️ Ela existe porque a wave do Trim tornou o crescimento **alcançável na prática**: até
-/// 2026-08-21 um param conduzido por fio fazia a forma desaparecer, então ninguém animava um
-/// `source.shape` por fio; hoje anima, e cada valor visitado é uma chave nova no
-/// `VecPathStore`. O `size` saiu da chave nesta mesma wave (a célula da folha 14) e por isso
-/// **não** cresce; o Trim, o `sweep` e os outros continuam a crescer, porque mudam a
-/// geometria de facto.
+/// ⚠️ Ela imprime DUAS coisas, e a distinção é a que custou um OOM de GPU: o **handle**, que
+/// é um contador monotónico e sobe um por quadro por construção (um id reciclado apontaria
+/// para outra forma dentro do quadro em que alguém ainda o carrega), e o **tamanho** do
+/// store, que é a memória de facto. Antes da varredura os dois subiam juntos; hoje o
+/// primeiro sobe e o segundo fica em 1.
 ///
 /// `cargo test -p ph2d-host-desktop --bins measure_shape_store_growth -- --ignored --nocapture`
 #[test]
@@ -304,11 +303,12 @@ fn measure_shape_store_growth() {
         if let Some(Column::Scalar(ids)) = out[0].as_stream().get("geometry_id") {
             last = ids[0] as u32;
         }
+        state.shape_store.sweep();
     }
     println!(
-        "\n=== VecPathStore apos {FRAMES} quadros com `trim_offset` conduzido: {last} \
-         geometrias internadas ({:.1} por quadro)\n",
-        f64::from(last) / f64::from(FRAMES)
+        "\n=== {FRAMES} quadros com `trim_offset` conduzido: ultimo handle {last} \
+         (contador, sobe 1/quadro por desenho) · store guarda {} geometrias\n",
+        state.shape_store.len()
     );
 }
 
@@ -374,4 +374,71 @@ fn the_size_column_makes_set_and_multiply_mean_different_things() {
         (mul - 6.0).abs() < 1e-3,
         "Multiply COMPOE com o 2 autorado: {mul}"
     );
+}
+
+/// **UM PARAM ANIMADO NÃO FAZ O STORE CRESCER** — o crash, ao contrário.
+///
+/// ⚠️ **Este gate nasceu de um OOM de GPU medido** (Enio, 2026-08-21: *"panic movendo um nó
+/// de shape"* → `wgpu error: Out of Memory` no quadro **19706** da cena `=76`). A cena anima
+/// o `trim_offset` por um fio; cada quadro dá uma chave de conteúdo nova, e cada chave nova
+/// dava uma entrada no `VecPathStore` **e uma textura de GPU** no assador de tiles. O que
+/// matou foi a textura; o que a chamou foi esta tabela.
+///
+/// ⚠️ O oráculo é o TAMANHO do store depois da varredura, não o handle: handles são
+/// monotónicos de propósito (um id reciclado apontaria para outra forma), então contá-los
+/// mediria o contador e não a memória.
+#[test]
+fn an_animated_param_does_not_grow_the_store() {
+    const FRAMES: u32 = 240;
+    let mut state = MotionState::new();
+    let n = state.doc.graph.add_node("source.shape");
+    state.doc.graph.set_param(n, param::STROKE_WIDTH, 0.05);
+    let clock = state.doc.graph.add_node("value.time");
+    state
+        .doc
+        .graph
+        .drive_param(n, param::TRIM_OFFSET, (clock, 0))
+        .expect("drive");
+    for f in 0..FRAMES {
+        let sec = f64::from(f) / 60.0;
+        super::publish(&mut state, sec);
+        state.shape_store.sweep();
+    }
+    assert_eq!(
+        state.shape_store.len(),
+        1,
+        "a forma do quadro, e mais nada — {FRAMES} quadros de um param animado"
+    );
+}
+
+/// **E A VARREDURA NÃO COME A FORMA QUE ESTÁ EM CENA** — o controle sem o qual o gate acima
+/// ficaria verde num `sweep` que apagasse tudo.
+#[test]
+fn the_sweep_keeps_what_this_frame_asked_for() {
+    let mut state = MotionState::new();
+    let a = state.doc.graph.add_node("source.shape");
+    let b = state.doc.graph.add_node("source.shape");
+    state.doc.graph.set_param(b, param::KIND, 5.0); // uma espécie diferente
+    super::publish(&mut state, 0.0);
+    state.shape_store.sweep();
+    assert_eq!(
+        state.shape_store.len(),
+        2,
+        "duas formas distintas, dois VecPath"
+    );
+    // O cook de cada nó tem de continuar a achar a geometria dele depois da varredura.
+    for node in [a, b] {
+        let out = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, node, 0.0)
+            .expect("cook");
+        let Some(Column::Scalar(ids)) = out[0].as_stream().get("geometry_id") else {
+            panic!("geometry_id column");
+        };
+        assert!(
+            state.shape_store.get(ids[0] as u32).is_some(),
+            "a varredura comeu uma forma viva"
+        );
+    }
 }

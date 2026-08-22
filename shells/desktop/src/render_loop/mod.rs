@@ -7827,6 +7827,14 @@ impl crate::App {
             // `object_bake` não cobre: as duas rotas partilham o store, então uma
             // geometria de objeto já tem tile e não pode pagar um segundo.
             {
+                // ⚠️ **E só assa se HOUVER quem consuma o tile.** Ele existe para o
+                // bright-pass do glow e para mais nada; o `present` já pergunta pelo
+                // `fx.glow` com esta mesma função, e a pergunta é feita AQUI pela MESMA
+                // porta para as duas não divergirem. Sem a guarda, uma forma com um param
+                // animado paga um **readback de GPU por quadro** por um tile que ninguém
+                // lê — e o readback é a metade lenta deste assador, como o doc dele diz.
+                let glows = ph2d_node_fx_glow::from_graph(&motion.doc.graph)
+                    .is_some_and(|g| g.intensity > 0.0);
                 let crate::motion_state::MotionState {
                     shape_bake,
                     shape_store,
@@ -7834,10 +7842,21 @@ impl crate::App {
                     pump,
                     ..
                 } = &mut *motion;
-                let wanted: Vec<u32> = pump
+                // ⚠️ **O conjunto VIVO é o de todas as instâncias deste quadro** — é ele
+                // que decide o DESPEJO. O pedido ao assador é um subconjunto (tira o que
+                // o `object_bake` já cobre); despejar por ele largaria um tile que ainda
+                // está em cena. Ver `ShapeBake::evict_outside`, e o OOM que o motivou.
+                let live: std::collections::BTreeSet<u32> = pump
                     .vector_instances
                     .iter()
                     .map(|vi| vi.geometry_id)
+                    .collect();
+                // Sem glow ninguém lê tile nenhum, então o conjunto pedido é VAZIO — e o
+                // despejo abaixo corre na mesma, largando o que a sessão já assou.
+                let wanted: Vec<u32> = live
+                    .iter()
+                    .copied()
+                    .filter(|_| glows)
                     .filter(|gid| object_bake.tile_texture_for_gid(*gid).is_none())
                     .collect();
                 // ⚠️ **`PH2D_GLOW_DIAG=1`** diz se este assador correu e o que ele
@@ -7850,6 +7869,13 @@ impl crate::App {
                     renderer,
                     surface.format(),
                 );
+                // ⚠️ **E LARGA o que saiu de cena, libertando a textura.** Sem isto um
+                // param de forma animado assa um tile por QUADRO e a placa acaba
+                // (medido: OOM no quadro 19706 da `=76`).
+                let freed = shape_bake.evict_outside(&live, renderer);
+                if freed > 0 && std::env::var_os("PH2D_GLOW_DIAG").is_some() {
+                    eprintln!("[glow-diag] assador de formas: tiles largados={freed}");
+                }
                 if asked > 0 && std::env::var_os("PH2D_GLOW_DIAG").is_some() {
                     let done = pump
                         .vector_instances

@@ -132,3 +132,31 @@ fn an_unbaked_geometry_reports_absence_rather_than_a_guess() {
     assert_eq!(bake.tile_for_gid(1), None);
     assert_eq!(bake.tile_for_gid(0), None);
 }
+
+/// **O QUE SAIU DE CENA É LARGADO** — a lei que faltava, e que custou um OOM de GPU.
+///
+/// ⚠️ **Medido** (Enio, 2026-08-21): `wgpu error: Out of Memory` no quadro **19706** da cena
+/// `=76`, cujo `trim_offset` é conduzido pelo relógio. Cada quadro dava um `geometry_id`
+/// novo, este cache guardava mais um tile, e **cada tile é uma textura de GPU**. O
+/// doc-comment do cache já dizia *"o antigo fica órfão até o `release`"* — e o `release` não
+/// existia. *Uma frase de doc que descreve uma disciplina não é a disciplina.*
+///
+/// O gate mede a metade PURA (quem sai), porque a outra é uma linha de `release` e exigiria
+/// uma placa de vídeo para correr.
+#[test]
+fn a_geometry_that_left_the_scene_is_dropped() {
+    let mut bake = ShapeBake::default();
+    for gid in 1..=4u32 {
+        bake.seed_for_test(gid, tile(1.0, 1.0, [0.0, 0.0]));
+    }
+    let live: std::collections::BTreeSet<u32> = [2u32, 3].into_iter().collect();
+    assert_eq!(
+        bake.stale_for_test(&live),
+        vec![1, 4],
+        "os que sairam de cena, e so' eles"
+    );
+    // E o controle: com tudo vivo, nada é largado — um despejo que largasse o que está
+    // em cena apagaria o halo da forma no quadro em que ela ainda se vê.
+    let all: std::collections::BTreeSet<u32> = (1..=4u32).collect();
+    assert!(bake.stale_for_test(&all).is_empty());
+}

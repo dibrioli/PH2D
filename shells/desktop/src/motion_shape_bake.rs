@@ -63,8 +63,17 @@ pub(crate) struct ShapeTile {
 /// Os tiles das formas paramétricas deste documento, por `geometry_id`.
 ///
 /// ⚠️ **Cache por HANDLE, e o handle é por chave de CONTEÚDO** (`shape_store::intern`):
-/// mudar um param do nó dá outra chave, outro handle e outro tile, e o antigo fica
-/// órfão até o `release`. É a mesma disciplina do irmão.
+/// mudar um param do nó dá outra chave, outro handle e outro tile, e o antigo tem de
+/// ser LIBERTADO. É a mesma disciplina do irmão.
+///
+/// ⚠️ **E ela não existia aqui — o `release` estava só no comentário.** Medido (Enio,
+/// 2026-08-21): `wgpu error: Out of Memory` no quadro **19706** da cena `=76`, cujo
+/// `trim_offset` é conduzido pelo relógio. Cada quadro dava um `geometry_id` novo,
+/// este mapa guardava mais um tile, e cada tile é uma **textura de GPU** — ~5 minutos
+/// até a placa acabar. O irmão [`crate::motion_object_bake`] pareia cada `acquire`
+/// com um `release` desde que nasceu (*"so a tile never leaks VRAM"*); este assador
+/// foi escrito depois, herdou a frase e não a lei. *Um cache de recurso de GPU sem
+/// despejo é uma fuga à espera de uma chave que mude depressa.*
 #[derive(Default)]
 pub(crate) struct ShapeBake {
     tiles: std::collections::BTreeMap<u32, ShapeTile>,
@@ -105,6 +114,48 @@ impl ShapeBake {
                 self.tiles.insert(gid, tile);
             }
         }
+    }
+
+    /// **Larga o tile de toda geometria que já não está em cena, e LIBERTA a textura.**
+    ///
+    /// `live` são os `geometry_id` que as instâncias deste quadro carregam — o conjunto
+    /// que ainda pode ser desenhado. Chamada logo a seguir ao [`Self::bake_missing`],
+    /// no mesmo sítio, porque é lá que o `renderer` está em mão.
+    ///
+    /// ⚠️ **`live` é o conjunto INTEIRO, não o que foi pedido ao assador.** O pedido
+    /// exclui os `gid` que o `ObjectBake` já cobre; despejar por ele largaria um tile
+    /// que ainda está a ser mostrado no quadro em que a cobertura trocasse de dono.
+    ///
+    /// Devolve quantos largou — o número que a sonda do glow imprime.
+    pub(crate) fn evict_outside(
+        &mut self,
+        live: &std::collections::BTreeSet<u32>,
+        renderer: &mut SpriteRenderer,
+    ) -> usize {
+        let gone = self.stale(live);
+        for gid in &gone {
+            if let Some(tile) = self.tiles.remove(gid) {
+                renderer.individual_mut().release(tile.texture_id);
+            }
+        }
+        gone.len()
+    }
+
+    /// **Quais tiles saíram de cena** — a metade PURA do [`Self::evict_outside`], separada
+    /// para que a lei do despejo tenha gate sem uma placa de vídeo. A metade impura é uma
+    /// linha (`release`), e ela mora junto do `acquire` de propósito.
+    fn stale(&self, live: &std::collections::BTreeSet<u32>) -> Vec<u32> {
+        self.tiles
+            .keys()
+            .copied()
+            .filter(|gid| !live.contains(gid))
+            .collect()
+    }
+
+    /// A metade pura, para o gate. Ver [`Self::stale`].
+    #[cfg(test)]
+    pub(crate) fn stale_for_test(&self, live: &std::collections::BTreeSet<u32>) -> Vec<u32> {
+        self.stale(live)
     }
 
     fn bake_one(

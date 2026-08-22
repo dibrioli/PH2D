@@ -194,8 +194,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   a **14** com o **Trim** (`fx_trim`, na pilha de efeitos do `VecPath`), o **tracejado** e o `size` como
   **coluna** (geometria em raio 1); ⚠️ **um param de forma conduzido por FIO fazia a forma DESAPARECER** —
   a chave de conteúdo é pré-cook e o valor conduzido é do cook (`motion_externals::driven_params`) —,
-  o traço **apagava o preenchimento**, e um param animado interna **uma geometria por quadro** (~30 KB/s,
-  ⛔ podar o store está bloqueado pelos handles por-índice do `source.object`) —
+  o traço **apagava o preenchimento**, e ⚠️ **um param de forma animado matava o app em ~5 min**
+  (`wgpu OOM` no quadro 19706): o assador de tiles guardava **uma textura de GPU por `geometry_id`**
+  e nunca a libertava — hoje o store e os tiles são **varridos por quadro**, e o assador só corre
+  se houver `fx.glow` a consumir —
   a 05 numa wave só: `space`/`use_falloff_y`+`mask_channel`/`flip_rot`/`reindex`/`carry_rotation`, e
   ⚠️ **`falloff_y` é uma coluna NOVA** que só o `motion.falloff(Mask Channel)` escreve e só o
   `motion.scale(Separate Y Mask)` lê; a 09 com o `blend` do `motion.tint`, o `Offset`-como-CAMPO e o

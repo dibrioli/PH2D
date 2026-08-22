@@ -34,6 +34,12 @@ pub(crate) fn publish_all(motion: &mut MotionState, seconds: f64) {
     // As bandas de áudio — função do ARQUIVO e do PLAYHEAD (doc 63 §6), e a única
     // das três que muda com o relógio.
     super::motion_audio_gen::publish(motion, seconds);
+    // ⚠️ **E VARRE o que ninguém pediu neste quadro** — depois das três, nunca no meio:
+    // a forma e o texto internam no MESMO store, e varrer entre elas apagaria as
+    // geometrias que a seguinte ainda ia pedir. Um param de forma conduzido por um
+    // relógio muda a chave de conteúdo a 60 Hz, e sem esta linha o store cresce uma
+    // entrada por quadro (ver `VecPathStore::sweep`, e o OOM que a escreveu).
+    let _dropped = motion.shape_store.sweep();
 }
 
 /// **Os params de `node` que um FIO conduz, já resolvidos** (doc 58) — vazio no caso comum.

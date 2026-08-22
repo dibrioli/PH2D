@@ -240,7 +240,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As SESSENTA E QUATRO LEIS que esta linha pagou para aprender
+## §4 — As SESSENTA E CINCO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -702,6 +702,21 @@ são estilo.
     check` é cego a isto por construção, e o `applicable` de dois deles escondia-o na maioria
     dos grafos. *Um kernel novo, uma porta nova ou um rename de porta obrigam a rodar o
     validador de WGSL — ele é o único compilador daquela string.*
+
+65. **Um CACHE cuja chave pode mudar a 60 Hz não é um cache — é uma fuga com memória.** O
+    smoke da `=76` matou o app: `wgpu error: Out of Memory` no **quadro 19706** (~5 min). O
+    `trim_offset` conduzido pelo relógio dá uma chave de conteúdo nova por quadro, e o
+    `ShapeBake` guardava **uma textura de GPU por `geometry_id`** sem nunca a libertar — o
+    doc-comment dele dizia *"o antigo fica órfão até o `release`"* e o `release` **não
+    existia**; o irmão `ObjectBake` pareia `acquire`/`release` desde que nasceu, e este
+    assador herdou a frase sem a lei. ⚠️ **Eu tinha MEDIDO o crescimento e escrito o número
+    errado**: a sonda contava as entradas do `VecPathStore` (~500 B cada, "30 KB/s") e não
+    viu que quem paga é a **VRAM**. *Medir o cache barato e não o caro é medir e ainda assim
+    não saber.* ⚠️ E a poda estava bloqueada por um `Vec` indexado por posição — o handle
+    passou a ser um **contador** num `BTreeMap`, que remove no meio sem renomear ninguém.
+    ⚠️ Terceira metade: o assador corria **sem consumidor**, e um tile por quadro é também um
+    **readback de GPU** por quadro. Hoje ele pergunta pelo `fx.glow` pela mesma porta que o
+    `present` usa.
 
 
 ---

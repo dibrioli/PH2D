@@ -59,8 +59,6 @@ mod body_pose;
 /// Os GESTOS da booleana viva: armar (criar/re-mirar) e consolidar. O documento mora aqui; o
 /// motor, no `bool_live`.
 mod bool_gesture;
-mod bool_graph_input;
-mod bool_graph_ui;
 /// A BOOLEANA VIVA (plano UI/UX W1): um grupo cujos filhos se combinam e continuam editáveis.
 /// O 7º produtor de `LiveGeometry`, e o segundo que TRANSFORMA o mapa em vez de o estender.
 mod bool_live;

@@ -61,18 +61,6 @@ pub(crate) fn arm(
     if let Some(g) = group_of_selection(sim, map, selected) {
         // Re-mira. O componente é `Copy`, então re-inserir é a edição inteira.
         sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
-        // ⚠️ **E o GRAFO tem de acompanhar, senão estes oito botões ficam MORTOS.** Com um grafo
-        // presente, quem manda é a operação de cada LIGAÇÃO — mudar só o `VecBoolGroup` deixaria o
-        // artista a clicar *Subtract* e a ver a arte não mudar, que é o defeito *"parâmetro que não
-        // muda nada"* na sua forma mais pura.
-        //
-        // As duas metades são de naturezas diferentes:
-        // - uma das quatro de CONJUNTO reescreve TODAS as ligações (o botão passa a ser o
-        //   *"ponha tudo neste verbo"*, e o diagrama continua lá para diferenciá-las de novo);
-        // - uma das quatro RECEITAS **remove o grafo**, porque ela é uma afirmação sobre a pilha
-        //   inteira e não há tradução dela em pares. ⚠️ É destrutivo para o diagrama, e é a
-        //   leitura honesta: ignorar o clique deixaria um botão que não faz nada.
-        crate::bool_graph_ui::retarget_graph(sim, g, op);
         return true;
     }
     // ⚠️ A triagem é a MESMA da booleana destrutiva (`selected_closed_z`): só regiões FECHADAS
@@ -111,45 +99,22 @@ pub(crate) fn bake(
     plan: &crate::bool_live::Cooked,
     g: Entity,
 ) -> usize {
-    // Os z ANTES de remover seja o que for — é a fatia que cada resultado ocupa, a mesma regra da
-    // booleana destrutiva (*"o resultado ocupa a fatia de z dela, não salta pro topo"*).
-    let z = |id: VecPathId| scene.paths().iter().position(|p| p.id == id).unwrap_or(0);
-    let mut sinks: Vec<(usize, Vec<ph2d_vec_scene::VecPath>)> = plan
-        .sinks
+    // O z da base, ANTES de remover seja o que for — é a fatia que o resultado ocupa, a mesma
+    // regra da booleana destrutiva (*"o resultado ocupa a fatia de z dela, não salta pro topo"*).
+    let at = scene
+        .paths()
         .iter()
-        .map(|(id, out)| (z(*id), out.clone()))
-        .collect();
-    sinks.sort_by_key(|(at, _)| *at);
-    // ⚠️ Quem sai são os consumidos MAIS os sumidouros: o sumidouro é substituído pelo próprio
-    // resultado. Um operando que desenhou a si próprio (sem ligação nenhuma) não está em nenhuma
-    // das duas listas e **não é tocado** — removê-lo e repô-lo daria um id novo a uma forma que a
-    // operação nunca consumiu.
-    let mut doomed: Vec<usize> = plan
-        .consumed
-        .iter()
-        .chain(plan.sinks.iter().map(|(id, _)| id))
-        .map(|id| z(*id))
-        .collect();
-    doomed.sort_unstable();
-    for id in plan
-        .consumed
-        .iter()
-        .chain(plan.sinks.iter().map(|(id, _)| id))
-    {
+        .position(|p| p.id == plan.base)
+        .unwrap_or(0);
+    for id in &plan.operands {
         scene.remove_path(*id);
     }
-    // A remoção desloca os índices: o lugar de cada sumidouro é o z dele MENOS quantos removidos
-    // estavam à frente dele, mais quantos já foram inseridos.
-    let mut new_ids: Vec<VecPathId> = Vec::new();
-    let mut inserted = 0usize;
-    for (at, out) in &sinks {
-        let shift = doomed.iter().filter(|d| *d < at).count();
-        let base = at.saturating_sub(shift) + inserted;
-        for (k, r) in out.iter().enumerate() {
-            new_ids.push(scene.insert_path(base + k, r.clone()));
-        }
-        inserted += out.len();
-    }
+    let new_ids: Vec<VecPathId> = plan
+        .out
+        .iter()
+        .enumerate()
+        .map(|(k, r)| scene.insert_path(at + k, r.clone()))
+        .collect();
     // O grupo inteiro morre: os operandos já saíram do documento, e um grupo vazio na Hierarquia
     // é lixo que o artista teria de apagar à mão. `despawn` leva os descendentes junto.
     if let Ok(e) = sim.world_mut().get_entity_mut(g) {

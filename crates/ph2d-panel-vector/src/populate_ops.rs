@@ -81,7 +81,6 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_LIVE_OFF);
     button(store, ids::VECTOR_BOOL_LIVE_ON);
     button(store, ids::VECTOR_BOOL_APPLY);
-    button(store, ids::VECTOR_BOOL_GRAPH_OPEN);
     // As quatro da W5 — sem estas linhas os botoes pintam e ficam MORTOS sob o mouse.
     button(store, ids::VECTOR_BOOL_MINUS_BACK);
     button(store, ids::VECTOR_BOOL_TRIM);

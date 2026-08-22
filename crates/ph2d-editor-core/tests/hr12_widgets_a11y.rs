@@ -42,15 +42,6 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "panel_chrome/menu.rs",
         "placement arithmetic only; paints nothing, registers nothing — the caller owns a11y",
     ),
-    // A DISPOSIÇÃO do diagrama da booleana viva: onde cada círculo fica, por onde passa cada arco,
-    // e o que está sob o dedo. Geometria pura — não pinta, não regista, não conhece um `NodeId`.
-    // Quem anuncia é o card que a desenha (`screens::hero::chrome::bool_graph_modal`), e a razão
-    // do corte é a MESMA que o torna testável: quem pinta e quem acerta o clique têm de ler o
-    // mesmo mapa, e um mapa que anunciasse por si seria um segundo dono da posição.
-    (
-        "bool_graph.rs",
-        "layout + hit-test arithmetic only; paints nothing, registers nothing — the chrome card owns a11y",
-    ),
     // The command palette's MEASURE half, split out for the widget LOC cap. It computes sizes and
     // placements and returns them — it never touches the scene nor the hit index, então não há o que
     // anunciar; quem pinta e registra é o pai (`command_palette.rs`), e é ele que constrói o nó.

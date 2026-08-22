@@ -20,8 +20,6 @@ thread_local! {
     static LIVE_ON: Cell<bool> = const { Cell::new(false) };
     /// Há um grupo booleano vivo na seleção deste frame?
     static GROUP_SELECTED: Cell<bool> = const { Cell::new(false) };
-    /// **O verbo do DIAGRAMA**, quando a seleção tem um. Ver [`bool_graph_op`].
-    static GRAPH_OP: Cell<Option<Option<u8>>> = const { Cell::new(None) };
 }
 
 /// O modo escolhido pelo artista. **`false` por default, de propósito:** ligar a booleana viva
@@ -46,25 +44,4 @@ pub fn set_bool_group_selected(sel: bool) {
 #[must_use]
 pub(crate) fn bool_group_selected() -> bool {
     GROUP_SELECTED.with(Cell::get)
-}
-
-/// **O verbo que o DIAGRAMA usa**, publicado pela shell.
-///
-/// Três estados, e eles são coisas diferentes:
-/// - `None` — a seleção não tem diagrama: os oito botões são a operação do grupo, como sempre.
-/// - `Some(None)` — há diagrama e as ligações **discordam**: *misto*.
-/// - `Some(Some(op))` — há diagrama e todas as ligações usam este verbo.
-///
-/// ⚠️ A distinção existe porque um botão que não muda nada é o pior defeito possível de um painel.
-/// Com diagrama, quem manda é a operação de cada LIGAÇÃO — e o artista tem de VER isso antes de
-/// clicar, senão ele clica *Subtract*, o clique reescreve as oito ligações de uma vez, e ele não
-/// tinha como saber que era isso que ia acontecer.
-#[must_use]
-pub(crate) fn bool_graph_op() -> Option<Option<u8>> {
-    GRAPH_OP.with(Cell::get)
-}
-
-/// A shell publica o verbo do diagrama (shell → painel).
-pub fn set_bool_graph_op(op: Option<Option<u8>>) {
-    GRAPH_OP.with(|c| c.set(op));
 }

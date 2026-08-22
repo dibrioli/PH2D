@@ -367,25 +367,6 @@ impl BodyCtx<'_> {
             ],
             y,
         );
-        // **O verbo do DIAGRAMA, quando há um.** Sem esta linha os oito botões abaixo mudariam as
-        // ligações todas de uma vez sem que nada na tela dissesse que era isso que ia acontecer —
-        // e o artista não teria como saber que a operação deixou de ser do grupo.
-        if let Some(uniforme) = crate::state::bool_graph_op() {
-            let verbo = match uniforme {
-                Some(0) => tr("panel.vector.bool.union"),
-                Some(1) => tr("panel.vector.bool.subtract"),
-                Some(2) => tr("panel.vector.bool.intersect"),
-                Some(3) => tr("panel.vector.bool.exclude"),
-                Some(_) | None => tr("panel.vector.bool.graph.mixed"),
-            };
-            // `label_line` e não uma linha com id: é um FACTO que se lê, não um controle. A regra
-            // do painel é essa mesma — *"um facto que o artista precisa de ler é uma FRASE; um
-            // facto sobre que ele pode agir é um botão"* —, e agir aqui são os oito abaixo.
-            y = self.label_line(
-                &format!("{}: {verbo}", tr("panel.vector.bool.graph.links")),
-                y,
-            );
-        }
         // **O Apply só existe com uma booleana viva selecionada.** Sem ela não há o que
         // consolidar, e um botão que não aplica nada é pior que botão nenhum — a mesma lei do
         // Apply da simetria e dos dois botões do corte.
@@ -394,18 +375,6 @@ impl BodyCtx<'_> {
                 ids::VECTOR_BOOL_APPLY,
                 tr("panel.vector.bool.apply"),
                 ButtonKind::Accent,
-                y,
-            );
-            // **Editar as LIGAÇÕES** — abre o diagrama, onde a operação passa a ser de cada par.
-            // Mesma condição do Apply, e pelo mesmo motivo: sem grupo vivo não há ligações a
-            // editar, e um botão que abre um diagrama vazio é pior que botão nenhum.
-            y = self.action_button_kind(
-                ids::VECTOR_BOOL_GRAPH_OPEN,
-                tr("panel.vector.bool.graph.open"),
-                // `Default` (fantasma) e não `Accent`: o Apply logo acima é a ação PRIMÁRIA da
-                // seção, e dois botões cheios lado a lado disputariam o olho sem que nada os
-                // distinguisse — abrir um diagrama é reversível, consolidar não é.
-                ButtonKind::Default,
                 y,
             );
         }

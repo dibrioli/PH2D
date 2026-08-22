@@ -229,7 +229,6 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BOOL_LIVE_OFF
         || id == ids::VECTOR_BOOL_LIVE_ON
         || id == ids::VECTOR_BOOL_APPLY
-        || id == ids::VECTOR_BOOL_GRAPH_OPEN
         || is_prefab_click(id)
         || id == ids::VECTOR_BOOL_MINUS_BACK
         || id == ids::VECTOR_BOOL_TRIM

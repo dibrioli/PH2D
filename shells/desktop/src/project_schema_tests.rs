@@ -372,18 +372,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // COMPONENTES e nao no `VecPath`, entao a pose tem de os carregar por si.
         // ⚠️ A `VecScene` de novo NAO mudou (um filtro e' fato de ENTIDADE), entao os dois
         // numeros ao lado ficam. (Nasceu como 85→86 na linha; recontado na integracao.)
-        // PROJECT 88→89: o componente `VecBoolEdges` (o GRAFO da booleana viva — a operacao por
-        // LIGACAO, com direcao) entrou no `ComponentRegistry`, entao uma cena com um grafo grava
-        // blobs novos nas linhas do `WorldSnapshot`. ⚠️ E' o caso do v16 (RigidBody/Collider): um
-        // leitor velho leria esses bytes na posicao errada. Registo 64 → 65.
-        // ⚠️ A `VecScene` de novo NAO mudou (uma ligacao e' fato de ENTIDADE, nao de caminho),
-        // entao os dois numeros ao lado ficam. (Nasceu como 86→87 na linha; recontado.)
-        // PROJECT 89→90: o componente `VecBoolGraphPos` (a DISPOSICAO do diagrama — onde cada
-        // circulo foi posto) entrou no registo (65 → 66). Mesma razao do v89: o REGISTO obriga,
-        // porque uma cena com diagrama arrumado grava blobs novos nas linhas do WorldSnapshot.
-        // ⚠️ A `VecScene` de novo NAO mudou (a disposicao e' fato de ENTIDADE), entao os dois
-        // numeros ao lado ficam. (Nasceu como 87→88 na linha; recontado.)
-        (90, 13, 14),
+        (88, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

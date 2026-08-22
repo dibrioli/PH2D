@@ -566,28 +566,4 @@
 /// `ph2d-fx-op`, para a `ph2d-ui-state` (que deliberadamente não vê ECS) o poder carregar. A
 /// forma serializada é a MESMA; o que mudou foi de que crate o tipo vem.
 /// ⚠️ Nasceu como v86 na `line/Vector`; RECONTADO para v88 na integração de 2026-08-22 (ver v87).
-/// v89 (`line/Vector` — O GRAFO DA BOOLEANA VIVA, etapa 1): o componente
-/// `ph2d_ecs::VecBoolEdges` entrou no `ComponentRegistry` (registo **64 → 65**). Ele guarda as
-/// ligações **dirigidas** de um grupo booleano — *quem OPERA sobre quem, e com que operação* —, o
-/// que faz a mesma forma somar com uma vizinha e subtrair de outra (Enio, 2026-08-22).
-/// ⚠️ **Quem obriga o bump é o REGISTO, não um campo**, e é o caso do v16 (`RigidBody`/`Collider`):
-/// uma cena com grafo grava blobs novos nas linhas do `WorldSnapshot`, e um leitor v88 os leria na
-/// posição errada. Um componente que não passa por `register_ecs_components` é descartado em
-/// silêncio pelo snapshot — e aqui o modo de falha é o PARCIAL: o `VecBoolGroup` sobreviveria com a
-/// operação única, então reabrir o projeto devolveria a booleana desenhando **outra coisa**, com
-/// todas as formas no lugar e nada a dizer por quê.
-/// ⚠️ A `VecScene` **não** mudou de forma: uma ligação é fato de ENTIDADE, não de caminho — e os
-/// ids que ela guarda são `VecPathId` (que atravessam undo e save), nunca bits de `Entity`.
-/// ⚠️ Nasceu como v87 na `line/Vector`; RECONTADO para v89 na integração de 2026-08-22 (ver v87).
-/// v90 (`line/Vector` — A DISPOSIÇÃO DO DIAGRAMA): o componente `ph2d_ecs::VecBoolGraphPos` entrou
-/// no `ComponentRegistry` (registo **65 → 66**). Ele guarda **onde cada círculo do diagrama
-/// booleano foi posto** pelo artista (Enio, 2026-08-22: *"o modal ficou muito pequeno e não é
-/// possível organizar os ítens no espaço 2d… liberdade para arrastar os círculos"*).
-/// ⚠️ Quem obriga o bump é o REGISTO, como no v89 e no v16: uma cena com diagrama arrumado grava
-/// blobs novos nas linhas do `WorldSnapshot`, e um leitor v89 os leria na posição errada.
-/// ⚠️ **Componente PRÓPRIO, e não um campo do `VecBoolEdges`**, e o corte é por NATUREZA: as
-/// ligações são semântica (mudam o desenho), a disposição é cosmética (não muda um pixel).
-/// Misturá-las faria mover um círculo parecer, aos bytes, o mesmo tipo de edição que trocar uma
-/// operação — e um documento que nunca abriu o diagrama carregaria posições que ninguém escolheu.
-/// ⚠️ Nasceu como v88 na `line/Vector`; RECONTADO para v90 na integração de 2026-08-22 (ver v87).
-pub(crate) const PROJECT_SCHEMA: u32 = 90;
+pub(crate) const PROJECT_SCHEMA: u32 = 88;

@@ -587,18 +587,6 @@ pub fn paint_hero_screen(
         &hero.store,
         viewport,
     );
-    // **O DIAGRAMA da booleana viva** — o card onde a operação é da LIGAÇÃO (no-op fechado). Mesma
-    // camada flutuante dos dois acima. ⚠️ Ele recebe `&mut hero.store` porque PUBLICA o rect que
-    // desenhou: a shell precisa dele para o acerto do clique, e recalculá-lo do canto pedido
-    // repetiria a prisão ao viewport — duas contas que divergem.
-    chrome::paint_bool_graph_modal(
-        scene,
-        text_system,
-        hero.theme,
-        &mut hero.hit_index,
-        &mut hero.store,
-        viewport,
-    );
     // Command palette (Motion's "Add Node") — a full-screen dimmed modal painted over the whole app
     // (no-op when closed). Above the floating dialogs so it dominates; its full-viewport scrim registers
     // FIRST so the card + item pills (registered after) win the back-to-front hit walk.

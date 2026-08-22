@@ -24,24 +24,6 @@ fn scene_with_group(op: u8) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>
     (sim, scene, map, vec![a, b], g)
 }
 
-/// Como [`scene_with_group`], mas com TRÊS retângulos em escada — o mínimo em que *"soma com uma e
-/// subtrai de outra"* é dizível.
-fn scene_with_three(op: u8) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>, Entity) {
-    let mut sim = SimWorld::default();
-    let mut scene = VecScene::new();
-    let mut map = VecEntityMap::new();
-    let a = scene.push_path(rectangle([0.0, 0.0], [2.0, 2.0]));
-    let b = scene.push_path(rectangle([1.0, 0.0], [3.0, 2.0]));
-    let c = scene.push_path(rectangle([2.0, 0.0], [4.0, 2.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&a], map[&b], map[&c]], "Bool".into())
-            .unwrap(),
-    );
-    sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
-    (sim, scene, map, vec![a, b, c], g)
-}
-
 fn run(sim: &SimWorld, scene: &VecScene, map: &VecEntityMap, live: &mut LiveGeometry) -> BoolLive {
     let mut bl = BoolLive::default();
     bl.recook(scene, sim, map, &VecXforms::default(), live);
@@ -314,219 +296,6 @@ fn area_of(items: &[VecPath]) -> f64 {
     items.iter().map(|p| ph2d_vec_boolean::area(p).abs()).sum()
 }
 
-/// O mapa inteiro, comparável — o que a tela mostra, e não uma entrada dele.
-fn snapshot(live: &LiveGeometry, ids: &[VecPathId]) -> Vec<Option<Vec<VecPath>>> {
-    ids.iter().map(|id| live.get(id).cloned()).collect()
-}
-
-/// **A ESTRELA MATERIALIZADA NO COMPONENTE NÃO MOVE A ARTE.**
-///
-/// O gate irmão de `a_estrela_derivada_desenha_o_que_o_grupo_de_hoje_desenha` (que prova a
-/// igualdade no MOTOR); este prova que a **costura** da shell honra a mesma igualdade — o mesmo
-/// mapa, para os mesmos ids, com e sem grafo.
-///
-/// ⚠️ É a licença da etapa 2: abrir a janela do diagrama sobre um grupo que já existe escreve as
-/// ligações, e nada na tela pode mudar por causa disso. Sem esta prova, a feature de VISUALIZAR
-/// alteraria o que se está a visualizar.
-#[test]
-fn a_estrela_materializada_no_componente_nao_move_a_arte() {
-    for op in 0u8..4 {
-        let (mut sim, scene, map, ids, g) = scene_with_three(op);
-        let mut sem = LiveGeometry::new();
-        run(&sim, &scene, &map, &mut sem);
-
-        let edges = ph2d_vec_boolean::derive_star(&ids, super::op_of_code(op).unwrap());
-        sim.world_mut().entity_mut(g).insert(VecBoolEdges::new(
-            edges
-                .iter()
-                .map(|e| VecBoolEdge {
-                    from: e.from,
-                    to: e.to,
-                    op: super::code_of_op(e.op),
-                })
-                .collect(),
-        ));
-        let mut com = LiveGeometry::new();
-        run(&sim, &scene, &map, &mut com);
-
-        assert_eq!(
-            snapshot(&com, &ids),
-            snapshot(&sem, &ids),
-            "op {op}: materializar a estrela mudou o desenho"
-        );
-    }
-}
-
-/// **A MESMA FORMA SOMA COM UMA VIZINHA E SUBTRAI DE OUTRA** — o pedido do Enio, pela costura real.
-///
-/// Escada de três retângulos `2×2` em `x = 0/1/2`. `b` soma com `a` e é subtraída de `c`:
-/// - `a ∪ b` = `[0,3] × [0,2]` ⇒ área 6.
-/// - `c − b` = `[3,4] × [0,2]` ⇒ área 2.
-///
-/// ⚠️ A operação do GRUPO fica em `Merge` de propósito — uma receita que nem sequer é dizível numa
-/// ligação. Se a shell caísse no caminho antigo, o resultado seria outro, e o gate diria.
-#[test]
-fn o_grafo_liga_a_mesma_forma_a_duas_com_operacoes_diferentes() {
-    let (mut sim, scene, map, ids, g) = scene_with_three(7); // Merge
-    sim.world_mut().entity_mut(g).insert(VecBoolEdges::new(vec![
-        VecBoolEdge {
-            from: ids[1],
-            to: ids[0],
-            op: 0,
-        }, // Union
-        VecBoolEdge {
-            from: ids[1],
-            to: ids[2],
-            op: 1,
-        }, // Subtract
-    ]));
-    let mut live = LiveGeometry::new();
-    run(&sim, &scene, &map, &mut live);
-
-    let uniao = area_of(live.get(&ids[0]).expect("o sumidouro a desenha"));
-    assert!((uniao - 6.0).abs() < 1e-6, "a ∪ b deu {uniao}, esperado 6");
-    let resto = area_of(live.get(&ids[2]).expect("o sumidouro c desenha"));
-    assert!((resto - 2.0).abs() < 1e-6, "c − b deu {resto}, esperado 2");
-    assert_eq!(
-        live.get(&ids[1]).map(Vec::len),
-        Some(0),
-        "b foi consumido pelas duas ligações e tem de desenhar NADA"
-    );
-}
-
-/// **O MEMO VÊ O GRAFO** — trocar só a operação de uma ligação re-cozinha.
-///
-/// ⚠️ Sem o grafo na chave, a geometria não mudou e o memo daria acerto: a resposta velha ficaria
-/// na tela até que o artista MEXESSE numa das formas. É o modo de falha que ninguém atribui ao
-/// cache, porque tudo o que se vê é *"o app ignorou o meu clique"*.
-#[test]
-fn o_memo_ve_o_grafo_e_trocar_so_a_ligacao_re_cozinha() {
-    let (mut sim, scene, map, ids, g) = scene_with_three(0);
-    let liga = |op: u8| {
-        VecBoolEdges::new(vec![
-            VecBoolEdge {
-                from: ids[1],
-                to: ids[0],
-                op,
-            },
-            VecBoolEdge {
-                from: ids[2],
-                to: ids[0],
-                op,
-            },
-        ])
-    };
-    sim.world_mut().entity_mut(g).insert(liga(0)); // Union
-    let mut live = LiveGeometry::new();
-    let mut bl = BoolLive::default();
-    bl.recook(&scene, &sim, &map, &VecXforms::default(), &mut live);
-    let uniao = area_of(live.get(&ids[0]).unwrap());
-
-    sim.world_mut().entity_mut(g).insert(liga(2)); // Intersect
-    // ⚠️ O MESMO `BoolLive`, de propósito: um objeto novo não teria memo, e o gate passaria sem
-    // provar nada. E um mapa NOVO, também de propósito — o `render_loop` reconstrói o mapa a cada
-    // frame, e reusá-lo aqui faria os operandos entrarem com o RESULTADO do frame anterior.
-    let mut live2 = LiveGeometry::new();
-    bl.recook(&scene, &sim, &map, &VecXforms::default(), &mut live2);
-    let inter = area_of(live2.get(&ids[0]).unwrap());
-
-    assert!(
-        inter < uniao * 0.5,
-        "a interseção ({inter:.3}) não é bem menor que a união ({uniao:.3}) -- o memo não viu a ligação mudar"
-    );
-}
-
-/// **UMA LIGAÇÃO ÓRFÃ NÃO APAGA A BOOLEANA DO GRUPO.**
-///
-/// O resolvedor recusa o grafo inteiro quando uma ligação nomeia um nó ausente — e é a lei certa
-/// lá dentro. Aqui a shell filtra pelos operandos vivos ANTES de perguntar, senão apagar uma forma
-/// qualquer da cena apagaria a booleana de um grupo que o artista nem tocou.
-#[test]
-fn uma_ligacao_orfa_nao_apaga_a_booleana_do_grupo() {
-    let (mut sim, scene, map, ids, g) = scene_with_three(0);
-    sim.world_mut().entity_mut(g).insert(VecBoolEdges::new(vec![
-        VecBoolEdge {
-            from: ids[1],
-            to: ids[0],
-            op: 0,
-        },
-        VecBoolEdge {
-            from: 9_999,
-            to: ids[0],
-            op: 0,
-        }, // uma forma que não existe
-    ]));
-    let mut live = LiveGeometry::new();
-    run(&sim, &scene, &map, &mut live);
-
-    let uniao = area_of(live.get(&ids[0]).expect("a base continua a desenhar"));
-    assert!((uniao - 6.0).abs() < 1e-6, "a ∪ b deu {uniao}, esperado 6");
-    assert_eq!(
-        live.get(&ids[2]).map(Vec::len),
-        Some(1),
-        "c ficou solto e tem de se desenhar a si próprio -- uma peça"
-    );
-}
-
-/// **UM GRAFO VAZIO NÃO REINSTALA A OPERAÇÃO DO GRUPO** — cortar o último elo SEPARA as formas.
-///
-/// ⚠️ É a distinção entre *lista vazia* e *componente ausente*, e ela é load-bearing pelo gesto: no
-/// diagrama, cortar a última ligação tem de deixar as formas soltas. Se a lista vazia caísse de
-/// volta na operação única, cortar o último elo faria as formas **fundirem-se** — o oposto exato do
-/// que o artista acabou de fazer, e um bug que nenhum teste de geometria apanha, porque a geometria
-/// está certa: é a LEI que está errada.
-#[test]
-fn um_grafo_vazio_nao_reinstala_a_operacao_do_grupo() {
-    let (mut sim, scene, map, ids, g) = scene_with_three(0); // Union
-    sim.world_mut()
-        .entity_mut(g)
-        .insert(VecBoolEdges::default());
-    let mut live = LiveGeometry::new();
-    run(&sim, &scene, &map, &mut live);
-
-    for (k, id) in ids.iter().enumerate() {
-        assert_eq!(
-            live.get(id).map(Vec::len),
-            Some(1),
-            "a forma {k} tem de se desenhar a si própria -- a união voltou pela porta dos fundos"
-        );
-    }
-    let total: f64 = ids.iter().map(|id| area_of(live.get(id).unwrap())).sum();
-    assert!(
-        (total - 12.0).abs() < 1e-6,
-        "as três formas somam {total}, esperado 12 (a união daria 8)"
-    );
-}
-
-/// **UM CICLO DEIXA A ARTE COMO ESTAVA** — a recusa não pisca a tela.
-///
-/// ⚠️ O mapa fica **intocado**, e não vazio: vazio significaria *"desenhe nada"*, e a forma
-/// desapareceria enquanto o artista arrasta a ligação que fechou o ciclo.
-#[test]
-fn um_ciclo_deixa_a_arte_exatamente_como_estava() {
-    let (mut sim, scene, map, ids, g) = scene_with_three(0);
-    let mut live = LiveGeometry::new();
-    let mut bl = BoolLive::default();
-    bl.recook(&scene, &sim, &map, &VecXforms::default(), &mut live);
-    let antes = snapshot(&live, &ids);
-
-    sim.world_mut().entity_mut(g).insert(VecBoolEdges::new(vec![
-        VecBoolEdge {
-            from: ids[0],
-            to: ids[1],
-            op: 0,
-        },
-        VecBoolEdge {
-            from: ids[1],
-            to: ids[0],
-            op: 0,
-        },
-    ]));
-    bl.recook(&scene, &sim, &map, &VecXforms::default(), &mut live);
-
-    assert_eq!(snapshot(&live, &ids), antes, "o ciclo mexeu na arte");
-}
-
 /// **Quanto custa um frame de booleana viva** — o número que decide se ela é animável.
 ///
 /// Rodar: `cargo test -p ph2d-host-desktop --bins measure_a_live_boolean_frame --release
@@ -541,58 +310,40 @@ fn measure_a_live_boolean_frame() {
     println!("\n--- custo de UM frame de booleana viva (o `recook` inteiro) ---");
     for (name, op) in [("Union", 0u8), ("Subtract", 1), ("Intersect", 2)] {
         for (shape, n) in [("par simples", 2usize), ("dez operandos", 10)] {
-            for (via, graph) in [("grupo", false), ("grafo", true)] {
-                let mut sim = SimWorld::default();
-                let mut scene = VecScene::new();
-                let mut map = VecEntityMap::new();
-                let mut ids = Vec::new();
-                for i in 0..n {
-                    let x = i as f64 * 0.7;
-                    ids.push(scene.push_path(ph2d_vec_scene::ellipse([x, 0.0], 1.0, 1.0)));
-                }
-                crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-                let members: Vec<u64> = ids.iter().map(|i| map[i]).collect();
-                let g = Entity::from_bits(
-                    crate::vec_entities::group_entities(&mut sim, &members, "B".into()).unwrap(),
-                );
-                sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
-                // ⚠️ A ESTRELA, para a mesma cena — o que se quer saber não é o custo do grafo em
-                // abstrato, é se ele custa MAIS que o grupo que ele substitui. A estrela derivada
-                // desenha o mesmo (há gate), então a diferença de relógio é só do caminho.
-                if graph {
-                    let edges = ph2d_vec_boolean::derive_star(&ids, super::op_of_code(op).unwrap());
-                    sim.world_mut().entity_mut(g).insert(VecBoolEdges::new(
-                        edges
-                            .iter()
-                            .map(|e| VecBoolEdge {
-                                from: e.from,
-                                to: e.to,
-                                op: super::code_of_op(e.op),
-                            })
-                            .collect(),
-                    ));
-                }
+            let mut sim = SimWorld::default();
+            let mut scene = VecScene::new();
+            let mut map = VecEntityMap::new();
+            let mut ids = Vec::new();
+            for i in 0..n {
+                let x = i as f64 * 0.7;
+                ids.push(scene.push_path(ph2d_vec_scene::ellipse([x, 0.0], 1.0, 1.0)));
+            }
+            crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+            let members: Vec<u64> = ids.iter().map(|i| map[i]).collect();
+            let g = Entity::from_bits(
+                crate::vec_entities::group_entities(&mut sim, &members, "B".into()).unwrap(),
+            );
+            sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
 
-                let mut bl = BoolLive::default();
-                let xf = VecXforms::default();
-                // Uma corrida a frio, e depois a MEDIÇÃO com o memo INVALIDADO a cada volta — é o
-                // caso do arrasto, que é o único em que o custo importa. Um memo quente mede zero.
+            let mut bl = BoolLive::default();
+            let xf = VecXforms::default();
+            // Uma corrida a frio, e depois a MEDIÇÃO com o memo INVALIDADO a cada volta — é o
+            // caso do arrasto, que é o único em que o custo importa. Um memo quente mede zero.
+            let mut live = LiveGeometry::new();
+            bl.recook(&scene, &sim, &map, &xf, &mut live);
+            let t = Instant::now();
+            const N: u32 = 20;
+            for k in 0..N {
+                // Move um operando: invalida o memo, como um arrasto faz.
+                let dx = f64::from(k) * 1e-4;
+                for v in &mut scene.path_mut(ids[0]).unwrap().verts {
+                    v.anchor[0] += dx;
+                }
                 let mut live = LiveGeometry::new();
                 bl.recook(&scene, &sim, &map, &xf, &mut live);
-                let t = Instant::now();
-                const N: u32 = 20;
-                for k in 0..N {
-                    // Move um operando: invalida o memo, como um arrasto faz.
-                    let dx = f64::from(k) * 1e-4;
-                    for v in &mut scene.path_mut(ids[0]).unwrap().verts {
-                        v.anchor[0] += dx;
-                    }
-                    let mut live = LiveGeometry::new();
-                    bl.recook(&scene, &sim, &map, &xf, &mut live);
-                }
-                let ms = t.elapsed().as_secs_f64() * 1000.0 / f64::from(N);
-                println!("  {op:>1} {name:<10} | {shape:<14} | {via:<5} | {ms:>7.3} ms/frame");
             }
+            let ms = t.elapsed().as_secs_f64() * 1000.0 / f64::from(N);
+            println!("  {op:>1} {name:<10} | {shape:<14} | {ms:>7.3} ms/frame");
         }
     }
     println!("\nOrcamento de um quadro a 60 fps: 16,6 ms.");

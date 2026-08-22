@@ -33,10 +33,6 @@ const WIDGET_OPT_OUT: &[(&str, &str)] = &[
         "chrome-internal: full-screen modal opened by a key (A), no idle visual — same reason as modal/context_menu",
     ),
     (
-        "bool_graph",
-        "not a widget: it is the pure GEOMETRY of the live-boolean diagram (layout, arcs, hit-test) with no painter of its own — the card that draws it is chrome (screens::hero::chrome::bool_graph_modal), and a gallery section would have to invent a graph to show",
-    ),
-    (
         "blender_color_picker",
         "chrome-internal: full picker is painted out-of-band atop every panel",
     ),

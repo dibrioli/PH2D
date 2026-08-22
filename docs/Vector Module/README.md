@@ -93,7 +93,7 @@ cd /home/enio/Documentos/Projetos/PH2D && env PH2D_BUILD_SMOKE=<n> cargo run -p 
 | **o que já quebrou, e o padrão que se repete** | [`BUGS_vector.md`](BUGS_vector.md) — os 26 estão fechados; o que vale são as **recusas ⛔**, os **padrões** e o índice com o mecanismo |
 | **os FX raster** | [`24_plano_fx_raster.md`](24_plano_fx_raster.md) |
 | **as ferramentas de desenho** | [`25_plano_ferramentas_de_desenho.md`](25_plano_ferramentas_de_desenho.md) |
-| **o GRAFO da booleana viva** (a operação por LIGAÇÃO) | [`26_plano_grafo_booleano_vivo.md`](26_plano_grafo_booleano_vivo.md) — a lei, o custo medido, e o que falta à janela |
+| ⛔ **o GRAFO da booleana viva** — CONSTRUÍDO E RETIRADO | [`26_plano_grafo_booleano_vivo.md`](26_plano_grafo_booleano_vivo.md) — o registo da recusa (*"confuso de usar"*), o custo medido, as leis derivadas, e **um defeito pré-existente que ele expôs e que segue aberto** |
 | **texto em caminho · pattern along path · envelope/warp** | [`22_…`](22_plano_texto_em_caminho.md) · [`23_…`](23_plano_pattern_along_path.md) · [`21_…`](21_pesquisa_envelope_warp.md) |
 | **o estado por wave** | [`handoffs/README.md`](handoffs/README.md) |
 | **a história até 2026-08-18** | [`docs/archive/estado-2026-08-18/vector.md`](../archive/estado-2026-08-18/vector.md) |

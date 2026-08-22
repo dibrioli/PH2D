@@ -416,18 +416,6 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte
     // simplesmente teria evaporado — nada some, tudo aparece, e o desenho está errado.
     reg.register::<crate::VecClipContent>("ph2d::ecs::VecClipContent");
-    // O GRAFO da booleana viva: com que operação cada PAR de filhos se combina, e em que direção.
-    // Mesma razão do irmão acima, e mais aguda: o grupo sobreviveria (ele tem a operação única),
-    // então reabrir o projeto devolveria a booleana desenhando outra coisa — todas as formas no
-    // lugar, a operação certa, e o diagrama que o artista compôs simplesmente ausente. Um estado
-    // PARCIALMENTE restaurado é o modo de falha que ninguém atribui ao save.
-    reg.register::<crate::VecBoolEdges>("ph2d::ecs::VecBoolEdges");
-    // ONDE cada círculo do diagrama fica — a disposição que o artista arrumou à mão. Cosmética,
-    // mas AUTORADA: sem o registo, reabrir o projeto embaralharia o diagrama de volta ao anel
-    // default, e o trabalho de o organizar (que é a razão de a janela existir) evaporaria a cada
-    // Ctrl+Z. ⚠️ Componente PRÓPRIO, e não um campo das ligações: mover um círculo não muda um
-    // pixel da arte, e misturá-lo com a semântica faria os dois parecerem a mesma edição.
-    reg.register::<crate::VecBoolGraphPos>("ph2d::ecs::VecBoolGraphPos");
 }
 
 #[cfg(test)]
@@ -501,13 +489,8 @@ mod tests {
         // + 1 recorte (VecClipContent — o bit que SAIU do VecFrame para valer em qualquer
         //   forma fechada, 2026-08-21). ⚠️ CONTADO na integracao de 2026-08-22: a `line/Sprite`
         //   (+6) entrou antes da `line/Vector` (+2) — o valor e' a SOMA, nao o de nenhum lado.
-        // + 1 grafo da booleana viva (VecBoolEdges — a operação por LIGAÇÃO, com direção,
-        //   2026-08-22)
-        // + 1 disposição do diagrama (VecBoolGraphPos — cosmética, mas autorada)
-        assert_eq!(reg.len(), 66);
+        assert_eq!(reg.len(), 64);
         assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecBoolEdges").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecBoolGraphPos").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetRef").is_some());

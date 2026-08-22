@@ -18,7 +18,6 @@
 //! instead of O(1), trivial at editor widget counts (~50).
 
 mod blender_ops;
-mod bool_graph_ops;
 mod chrome_ops;
 /// **O que um estado de widget É** (o `InteractiveState` + a paleta nomeada).
 mod kinds;
@@ -328,33 +327,6 @@ pub struct WidgetStore {
     /// slider/swatch values live in the `TIMELINE_ONION_MODAL_*` widgets — the shell reads them back
     /// into `TimelineState::onion` each frame the modal is open (WidgetStore is the shared blackboard).
     pub(super) onion_modal: Option<(f32, f32)>,
-    /// **O DIAGRAMA da booleana viva** (etapa 2): `Some((x, y))` = o canto do card, aberto;
-    /// `None` = fechado. Irmão exacto do `onion_modal` acima — a shell abre (só ela alcança o
-    /// grupo booleano), a banda de título desloca.
-    pub(super) bool_graph: Option<(f32, f32)>,
-    /// **O que o diagrama MOSTRA neste frame** — publicado pela shell, que é a única que enxerga o
-    /// ECS. Vazio = nada a desenhar.
-    ///
-    /// ⚠️ É uma FOTOGRAFIA, não estado: a shell reescreve-a a cada frame a partir do mundo, e o
-    /// card nunca a muta. É o que impede duas respostas para *"quais são as ligações deste
-    /// grupo?"* — a do documento e a que o card se lembra.
-    pub(super) bool_graph_view: crate::widget::BoolGraphView,
-    /// **O retângulo que o painter DE FACTO desenhou** (já preso ao viewport), ou `None` se ele não
-    /// desenhou neste frame.
-    ///
-    /// ⚠️ Existe para haver **uma porta só**: a shell precisa do rect para correr o acerto do
-    /// clique (`bool_graph_node_at`/`_link_at`), e recalculá-lo do canto pedido significaria repetir
-    /// a prisão ao viewport — duas contas que divergem no dia em que uma delas mudar, e o artista
-    /// clicando ao lado do que vê.
-    pub(super) bool_graph_drawn: Option<Rect>,
-    /// **O arrasto em curso no diagrama**, enquanto ele está no ar.
-    ///
-    /// ⚠️ Mover um círculo é PRÉ-VISTO aqui e só escrito no documento ao SOLTAR: escrever a cada
-    /// frame criaria um passo de undo por frame, e o Ctrl+Z andaria pixel a pixel para trás.
-    pub(super) bool_graph_dragging: Option<crate::widget::BoolGraphDrag>,
-    /// As intenções que o artista produziu e a shell ainda não drenou (ela é quem escreve o
-    /// documento — o card não muta nada).
-    pub(super) bool_graph_intents: Vec<crate::widget::BoolGraphIntent>,
     /// Full-screen command palette (Motion's "Add Node"): `Some(model)` = open, painted over the whole
     /// app by `chrome::paint_command_palette`; `None` = closed. The model (grouped, coloured items) is
     /// set ONCE on open by the shell — never rebuilt per frame — mirroring `open_onion_modal`'s

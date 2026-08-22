@@ -44,6 +44,22 @@ pub const TILE_MODE_LABELS: [&str; 2] = ["Continuous", "Whole"];
 /// A inicial de cada `TileRegionMode`, tags `0..=3`. ASCII de propósito (sem tofu).
 pub const REGION_LETTERS: [&str; 4] = ["S", "R", "M", "-"];
 
+/// As letras de um CANTO — `[desenhado, apagado]`.
+///
+/// ⚠️ **`F` de FIXO, e não `S` de stretch, porque um canto não estica nem repete.** Ele fica no
+/// tamanho intrínseco: é essa a razão de existir do 9-slice. Reaproveitar o `S` ali fazia a
+/// legenda («S stretch») afirmar sobre o canto o contrário do que ele faz — e escondia que as
+/// suas únicas duas posições são desenhar e não desenhar (auditoria 2026-08-22).
+pub const CORNER_LETTERS: [&str; 2] = ["F", "-"];
+
+/// A célula `i` da grelha é um dos quatro cantos? Deriva de [`REGION_CELLS`], nunca de uma
+/// segunda cópia da tabela.
+pub fn is_corner_cell(i: usize) -> bool {
+    REGION_CELLS
+        .get(i)
+        .is_some_and(|&(col, row)| col != 1 && row != 1)
+}
+
 /// A dica do `Simple`. ⚠️ **Um modo que visivelmente não faz nada e não explica porquê lê-se como
 /// avariado** — foi a primeira coisa que o smoke do Enio devolveu sobre esta seção.
 const SIMPLE_HINT: &str = "Simple is 9-slice switched off - the sprite draws as one quad. \
@@ -52,7 +68,13 @@ const SIMPLE_HINT: &str = "Simple is 9-slice switched off - the sprite draws as 
 const WHOLE_HINT: &str = "Whole = entire tiles, so the last one meets the border. \
                           Mirror always uses whole tiles.";
 /// A legenda da grelha 3×3.
-const REGION_LEGEND: &str = "S stretch   R repeat   M mirror   - blank   (centre: S/R/M)";
+///
+/// ⚠️ **Ela diz TRÊS coisas que a versão anterior escondia** (auditoria 2026-08-22): que os
+/// cantos são fixos e só ligam/desligam · que o miolo não tem `blank` (isso é o `Fill Center`) ·
+/// e que em `Tiled` uma célula em `S` **repete**, que é a reinterpretação que o motor faz e sobre
+/// a qual a legenda antiga afirmava «stretch».
+const REGION_LEGEND: &str = "Corners F fixed (on/off). Edges + centre: S stretch, R repeat, \
+                             M mirror, - blank. In Tiled, S repeats.";
 
 /// **Nenhum segmento aceso** — a afordância de divergência numa seleção múltipla.
 const NOTHING_LIT: usize = usize::MAX;
@@ -154,10 +176,14 @@ fn region_grid(
         );
         hit_index.register(id, rect);
         // Divergente na seleção: a célula não afirma modo nenhum.
+        let tag = usize::from(info.tile_modes[i]);
         let letter = if info.mixed.tile_modes {
             "?"
+        } else if is_corner_cell(i) {
+            // Um canto só tem duas posições, e é `F` — fixo — não `S`.
+            CORNER_LETTERS[usize::from(tag == 3)]
         } else {
-            REGION_LETTERS[usize::from(info.tile_modes[i]).min(REGION_LETTERS.len() - 1)]
+            REGION_LETTERS[tag.min(REGION_LETTERS.len() - 1)]
         };
         let btn = Button::new(id, letter)
             .kind(ButtonKind::Default)

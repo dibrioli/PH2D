@@ -16,6 +16,22 @@
 //!
 //! A da direita nasce **selecionada**: é ela que abre a seção **9-Slice** no Inspector, onde as
 //! bordas, o modo e a grelha 3×3 de modos por-região se mexem ao vivo.
+//!
+//! # As três cenas, e porque são três
+//!
+//! | `=n` | O que ela mostra |
+//! |---|---|
+//! | `1` | **Os CANTOS** — sprite normal contra 9-slice, ao mesmo tamanho. |
+//! | `2` | **A EMENDA contra a borda** — ladrilho cortado contra `Whole` + espelho (paridade). |
+//! | `3` | **`Sliced` contra `Tiled`** — esticar contra repetir. |
+//!
+//! ⚠️ **A cena 3 nasceu de uma auditoria, não de uma feature nova** (2026-08-22). O Enio reportou
+//! *«tanto faz estar em Sliced ou Tiled»*, e a medição inocentou o motor: os dois modos produzem
+//! geometria diferente (gate `sliced_and_tiled_are_not_the_same_drawing`). Quem não continha o
+//! fenómeno eram as **cenas 1 e 2** — as faixas das duas texturas são de cor UNIFORME ao longo do
+//! eixo que ladrilha, e esticar uma faixa lisa é indistinguível de a repetir. *Um smoke só mostra
+//! o que a sua textura contém* — a lei dos fixtures, aplicada ao sítio onde o dono do produto
+//! aprende a ferramenta.
 
 use ph2d_core::Vec2;
 
@@ -39,7 +55,12 @@ pub(crate) fn enabled() -> bool {
     std::env::var_os("PH2D_SLICE_SMOKE").is_some()
 }
 
-/// Qual cena. `1` (o default) é a moldura; `2` é o estudo da emenda contra a borda.
+/// Barras da cena 3, em pixels — a estrutura que torna «esticar» distinguível de «repetir».
+const STRIPE_PX: u32 = 8;
+/// A cena 3 estica ~4,7× em X sobre a faixa central, o bastante para a diferença gritar.
+const MODES_TARGET: [f32; 2] = [2.24, 0.64];
+
+/// Qual cena. `1` (o default) é a moldura; `2` é a emenda contra a borda; `3` é Sliced vs Tiled.
 fn scene() -> u32 {
     std::env::var("PH2D_SLICE_SMOKE")
         .ok()
@@ -173,6 +194,83 @@ fn spawn_parity(sim: &mut ph2d_ecs::SimWorld, cell: u32) -> Option<u64> {
     Some(whole)
 }
 
+/// Os pixels da cena 3 — **a textura que distingue esticar de repetir**.
+///
+/// ⚠️ **Toda faixa que ladrilha tem ESTRUTURA ao longo do eixo em que ladrilha**, e é essa a
+/// única coisa que esta função faz de diferente das outras duas: barras verticais no miolo e nas
+/// faixas de cima e de baixo. Esticar uma faixa lisa e repeti-la dão a mesma imagem — foi por
+/// isso que as cenas 1 e 2 não mostravam o `Draw Mode` (auditoria 2026-08-22). Aqui, esticar
+/// alarga as barras e repetir multiplica-as: a diferença conta-se com o dedo.
+fn modes_pixels() -> Vec<u8> {
+    let n = SRC_PX as usize;
+    let b = PARITY_BORDER_PX as usize;
+    let stripe = STRIPE_PX as usize;
+    let mut px = vec![0u8; n * n * 4];
+    for y in 0..n {
+        for x in 0..n {
+            let corner = (x < b || x >= n - b) && (y < b || y >= n - b);
+            let bar = ((x - x.min(b)) / stripe).is_multiple_of(2);
+            let rgba: [u8; 4] = if corner {
+                [250, 200, 70, 255] // LITERAL-COLOR-OK: canto (âmbar) — o que fica FIXO
+            } else if x < b || x >= n - b {
+                [120, 128, 145, 255] // LITERAL-COLOR-OK: faixas laterais (cinza)
+            } else if y < b || y >= n - b {
+                // Faixas de cima/baixo: barras, para se ver o que elas fazem em X.
+                if bar {
+                    [90, 100, 120, 255] // LITERAL-COLOR-OK
+                } else {
+                    [150, 160, 180, 255] // LITERAL-COLOR-OK
+                }
+            } else if bar {
+                [40, 70, 190, 255] // LITERAL-COLOR-OK: miolo, barra escura
+            } else {
+                [225, 90, 70, 255] // LITERAL-COLOR-OK: miolo, barra clara
+            };
+            let i = (y * n + x) * 4;
+            px[i..i + 4].copy_from_slice(&rgba);
+        }
+    }
+    px
+}
+
+/// **Cena 3 — `Sliced` contra `Tiled`.** Duas barras empilhadas, do mesmo pixel e do mesmo
+/// tamanho, e a ÚNICA diferença entre elas é o `Draw Mode`:
+///
+/// - **em cima, `Sliced`:** as barras do miolo ESTICAM — poucas e largas.
+/// - **em baixo, `Tiled`:** as barras REPETEM no tamanho original — muitas e finas.
+///
+/// Os cantos âmbar ficam idênticos nas duas, que é a metade que o 9-slice sempre garantiu.
+fn spawn_modes(sim: &mut ph2d_ecs::SimWorld, cell: u32) -> Option<u64> {
+    let mk = |sim: &mut ph2d_ecs::SimWorld, y: f32, name: &str| -> u64 {
+        crate::image_import::spawn_sprite(
+            sim,
+            crate::image_import::PackedSource::Atlas { cell_idx: cell },
+            Vec2::new(0.0, y),
+            MODES_TARGET,
+            name,
+        )
+        .1
+    };
+    let stretched = mk(sim, 0.6, "Bar (Sliced - stretches)");
+    let tiled = mk(sim, -0.6, "Bar (Tiled - repeats)");
+    for (bits, draw_mode) in [
+        (stretched, ph2d_ecs::SliceDrawMode::Sliced),
+        (tiled, ph2d_ecs::SliceDrawMode::Tiled),
+    ] {
+        if let Ok(mut e) = sim
+            .world_mut()
+            .get_entity_mut(ph2d_ecs::Entity::from_bits(bits))
+        {
+            e.insert(ph2d_ecs::SliceNine {
+                draw_mode,
+                borders: [PARITY_BORDER_PX as f32; 4],
+                ..ph2d_ecs::SliceNine::INERT
+            });
+        }
+    }
+    Some(tiled)
+}
+
 /// Cria as duas caixas. Devolve os bits da que fica selecionada (a fatiada).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn spawn_if_enabled(
@@ -182,11 +280,11 @@ pub(crate) fn spawn_if_enabled(
     next_cell: &mut u32,
     atlas_asset_map: &mut std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
 ) -> Option<u64> {
-    let parity = scene() == 2;
-    let pixels = if parity {
-        parity_pixels()
-    } else {
-        frame_pixels()
+    let which = scene();
+    let pixels = match which {
+        2 => parity_pixels(),
+        3 => modes_pixels(),
+        _ => frame_pixels(),
     };
     let cell = *next_cell;
     let asset_id = asset_db.insert_image_rgba8(SRC_PX, SRC_PX, pixels.clone());
@@ -206,8 +304,10 @@ pub(crate) fn spawn_if_enabled(
         return None;
     }
     *next_cell += 1;
-    if parity {
-        return spawn_parity(sim, cell);
+    match which {
+        2 => return spawn_parity(sim, cell),
+        3 => return spawn_modes(sim, cell),
+        _ => {}
     }
 
     // As duas, do mesmo pixel e do mesmo tamanho. A diferença é SÓ o componente.
@@ -316,6 +416,43 @@ mod tests {
             "{tiles} ladrilhos e' IMPAR — a cena deixaria de mostrar a troca de borda"
         );
         assert!(tiles >= 2.0, "com menos de dois ladrilhos nao ha' espelho");
+    }
+
+    /// ⚠️ **A cena 3 só mede o que a sua textura contém — e o que ela tem de conter é ESTRUTURA
+    /// ao longo do eixo que ladrilha.**
+    ///
+    /// Este é o teste que faltava às cenas 1 e 2, e é a razão de a auditoria de 2026-08-22 ter
+    /// existido: as faixas das duas eram de cor uniforme em X, e esticar uma faixa lisa desenha
+    /// exatamente o mesmo que a repetir. O `Draw Mode` funcionava e o smoke não o mostrava.
+    #[test]
+    fn the_modes_fixture_has_structure_along_the_axis_that_tiles() {
+        let px = modes_pixels();
+        let n = SRC_PX as usize;
+        let b = PARITY_BORDER_PX as usize;
+        let at = |x: usize, y: usize| -> [u8; 4] {
+            let i = (y * n + x) * 4;
+            [px[i], px[i + 1], px[i + 2], px[i + 3]]
+        };
+        let mid_y = n / 2;
+        // A faixa CENTRAL alterna em X — senao esticar e repetir dao a mesma imagem.
+        let colours: std::collections::BTreeSet<[u8; 4]> =
+            (b..n - b).map(|x| at(x, mid_y)).collect();
+        assert!(
+            colours.len() >= 2,
+            "o miolo e' liso em X: a cena 3 nao consegue mostrar Sliced contra Tiled"
+        );
+        // E a faixa de CIMA tambem, porque ela ladrilha no mesmo eixo.
+        let top: std::collections::BTreeSet<[u8; 4]> = (b..n - b).map(|x| at(x, b / 2)).collect();
+        assert!(top.len() >= 2, "a faixa de cima e' lisa em X");
+        // O CANTO e' de uma cor propria: e' a metade que fica igual nos dois modos, e sem ela
+        // nao se ve que o 9-slice preservou alguma coisa.
+        let corner = at(b / 2, b / 2);
+        assert_ne!(corner, at(mid_y, mid_y), "o canto confunde-se com o miolo");
+        assert_ne!(
+            corner,
+            at(b / 2, mid_y),
+            "o canto confunde-se com a lateral"
+        );
     }
 
     /// ⚠️ **A borda tem de conter o canto inteiro.** Se `borders < RADIUS`, a fatia do canto

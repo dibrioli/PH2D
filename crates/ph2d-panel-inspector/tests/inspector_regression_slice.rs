@@ -228,6 +228,63 @@ fn a_region_cell_cycles_against_the_snapshot_and_wraps() {
     }
 }
 
+/// **(2b) ⚠️ UM CANTO CICLA ENTRE DUAS POSIÇÕES, não quatro** — achado nº 1 da auditoria de
+/// 2026-08-22.
+///
+/// Um canto nunca ladrilha (medido: `Stretch`/`Repeat`/`Mirror` dão geometria byte-idêntica lá,
+/// gate `a_corner_never_tiles_whatever_mode_it_is_given`), portanto três das quatro posições que
+/// a célula oferecia eram **inertes**: o artista clicava, a letra mudava, e o desenho ficava
+/// igual. As duas posições que um canto tem são desenhar e não desenhar.
+#[test]
+fn a_corner_cell_only_has_the_two_states_a_corner_actually_has() {
+    // As quatro células de canto, na ordem de `REGION_CELLS`.
+    let corners: Vec<usize> = (0..8)
+        .filter(|&i| ph2d_panel_inspector::is_corner_cell(i))
+        .collect();
+    assert_eq!(
+        corners,
+        vec![0, 2, 5, 7],
+        "a grelha deixou de ter os cantos onde estavam"
+    );
+
+    for &cell in &corners {
+        // Qualquer estado que não seja `blank` vai para `blank`; `blank` volta para desenhado.
+        for (from, to) in [(0u8, 3u8), (1, 3), (2, 3), (3, 0)] {
+            let mut info = slice();
+            info.tile_modes[cell] = from;
+            let case = Case {
+                what: "canto",
+                variant: "RegionMode",
+                id: ids::INSP_SLICE_REGION[cell],
+                stim: Stim::Click,
+                expect: SliceFieldEdit::RegionMode(cell as u8, to),
+            };
+            assert_eq!(
+                run(&case, info),
+                vec![SliceFieldEdit::RegionMode(cell as u8, to)],
+                "canto {cell}: {from} devia ir para {to}, nao passear pelos modos que nao fazem nada"
+            );
+        }
+    }
+}
+
+/// E a letra de um canto é **`F` (fixo)**, nunca `S` — ele não estica: fica no tamanho
+/// intrínseco, que é a razão de existir do 9-slice. A legenda antiga dizia «S stretch» sobre
+/// quatro células que não esticam.
+#[test]
+fn a_corner_shows_that_it_is_fixed_not_stretched() {
+    assert_eq!(ph2d_panel_inspector::CORNER_LETTERS, ["F", "-"]);
+    for i in 0..8 {
+        let corner = ph2d_panel_inspector::is_corner_cell(i);
+        let (col, row) = ph2d_panel_inspector::REGION_CELLS[i];
+        assert_eq!(
+            corner,
+            col != 1 && row != 1,
+            "a celula {i} ({col},{row}) discorda de si mesma sobre ser canto"
+        );
+    }
+}
+
 /// **(3) Nenhum controlo age sem snapshot publicado.**
 #[test]
 fn no_slice_control_acts_without_its_snapshot() {

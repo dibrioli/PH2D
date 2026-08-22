@@ -28,6 +28,39 @@ const REGION_MODE_COUNT: u8 = 4;
 /// Quantos modos o MIOLO cicla — três, sem o `Blank`: apagar o miolo é o `Fill Center`.
 const CENTRE_MODE_COUNT: u8 = 3;
 
+/// Tag de `TileRegionMode::Stretch`.
+const MODE_STRETCH: u8 = 0;
+/// Tag de `TileRegionMode::Blank`.
+const MODE_BLANK: u8 = 3;
+
+/// O próximo modo da célula `i` da grelha.
+///
+/// ⚠️ **Um CANTO só tem duas posições, e descobri-lo foi o achado nº 1 da auditoria de
+/// 2026-08-22.** Um canto nunca ladrilha — por construção: `tile_count` só repete no eixo que
+/// *cresce*, e num canto nenhum dos dois cresce (ele fica no tamanho intrínseco, que é a razão de
+/// existir do 9-slice). Logo `Stretch`, `Repeat` e `Mirror` produzem geometria **idêntica** ali:
+/// medido, três dos quatro estados eram inertes, e a célula ciclava por eles a fingir que fazia
+/// alguma coisa. *Um controlo com quatro posições sobre um modelo de duas é a afordância a
+/// mentir* — as duas que um canto tem são **desenhar** e **não desenhar**.
+fn next_region_mode(cell: usize, cur: u8) -> u8 {
+    if is_corner(cell) {
+        return if cur == MODE_BLANK {
+            MODE_STRETCH
+        } else {
+            MODE_BLANK
+        };
+    }
+    (cur + 1) % REGION_MODE_COUNT
+}
+
+/// A célula `i` é um dos quatro cantos? Deriva de [`crate::REGION_CELLS`] — a mesma tabela que o
+/// pintor itera e que o gate da shell confronta com o motor, **nunca** uma segunda cópia.
+fn is_corner(cell: usize) -> bool {
+    crate::REGION_CELLS
+        .get(cell)
+        .is_some_and(|&(col, row)| col != 1 && row != 1)
+}
+
 /// Despacha um evento da §5. `true` = consumido.
 pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // Anexar / retirar existem SEM snapshot de componente — são o que o cria.
@@ -77,9 +110,7 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                     .iter()
                     .position(|&o| o == id)
                     .map(|i| {
-                        let cur = info.tile_modes[i];
-                        let next = (cur + 1) % REGION_MODE_COUNT;
-                        SliceFieldEdit::RegionMode(i as u8, next)
+                        SliceFieldEdit::RegionMode(i as u8, next_region_mode(i, info.tile_modes[i]))
                     })
             });
         if let Some(edit) = edit {

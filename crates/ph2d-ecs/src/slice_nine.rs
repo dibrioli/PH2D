@@ -302,6 +302,20 @@ impl SliceNine {
     /// animação futura) do que leitores, e uma delas esquece sempre.
     pub fn sanitized(&self) -> Self {
         let f = |v: f32| if v.is_finite() { v.max(0.0) } else { 0.0 };
+        // ⚠️ **Um CANTO só tem dois estados: desenhar, ou não desenhar.** Ele nunca ladrilha, por
+        // construção — o 9-slice repete no eixo que CRESCE, e num canto nenhum dos dois cresce
+        // (ficar no tamanho intrínseco é a razão de existir dele). `Repeat` e `Mirror` num canto
+        // produzem geometria byte-idêntica a `Stretch`: guardá-los seria guardar autoria que não
+        // significa nada, e foi assim que a grelha do painel passou a ter três posições inertes
+        // (auditoria 2026-08-22). Normalizar aqui — na derivação — cura também o que já estiver
+        // gravado num ficheiro de projeto.
+        let mut tile_modes = self.tile_modes;
+        for r in SliceRegion::ALL {
+            let (col, row) = r.cell();
+            if col != 1 && row != 1 && tile_modes[r as usize] != TileRegionMode::Blank {
+                tile_modes[r as usize] = TileRegionMode::Stretch;
+            }
+        }
         Self {
             draw_mode: self.draw_mode,
             borders: [
@@ -311,7 +325,7 @@ impl SliceNine {
                 f(self.borders[3]),
             ],
             size: [f(self.size[0]), f(self.size[1])],
-            tile_modes: self.tile_modes,
+            tile_modes,
             // `Blank` no miolo é o estado que `fill_center` já exprime; saneia para Stretch em
             // vez de deixar duas portas discordarem sobre a mesma coisa.
             centre_tile_mode: if self.centre_tile_mode == TileRegionMode::Blank {
@@ -426,6 +440,44 @@ mod tests {
         let c = dirty.sanitized();
         assert_eq!(c.borders, [0.0, 0.0, 0.0, 8.0]);
         assert_eq!(c.size, [0.0, 0.0]);
+    }
+
+    /// ⚠️ **Um CANTO só tem duas posições, e o saneamento é quem o impõe.** `Repeat`/`Mirror`
+    /// num canto produzem geometria byte-idêntica a `Stretch` (ele nunca ladrilha, por
+    /// construção), portanto guardá-los é guardar autoria sem significado — o que fez a grelha do
+    /// painel oferecer três posições inertes por canto até 2026-08-22. ⚠️ O `Blank` **fica**:
+    /// essa é a segunda posição real.
+    #[test]
+    fn a_corner_keeps_only_the_two_states_it_actually_has() {
+        let mut dirty = SliceNine::INERT;
+        for r in SliceRegion::ALL {
+            dirty.tile_modes[r as usize] = TileRegionMode::Mirror;
+        }
+        let c = dirty.sanitized();
+        for r in SliceRegion::ALL {
+            let (col, row) = r.cell();
+            let is_corner = col != 1 && row != 1;
+            if is_corner {
+                assert_eq!(
+                    c.region_mode(r),
+                    TileRegionMode::Stretch,
+                    "{r:?} e' um canto e ficou com um modo que nao faz nada"
+                );
+            } else {
+                assert_eq!(
+                    c.region_mode(r),
+                    TileRegionMode::Mirror,
+                    "{r:?} e' uma borda — o saneamento comeu autoria com significado"
+                );
+            }
+        }
+        // Apagar um canto continua a ser possivel: e' a sua segunda posicao.
+        let mut blanked = SliceNine::INERT;
+        blanked.tile_modes[SliceRegion::TopLeft as usize] = TileRegionMode::Blank;
+        assert_eq!(
+            blanked.sanitized().region_mode(SliceRegion::TopLeft),
+            TileRegionMode::Blank
+        );
     }
 
     /// `size = 0` significa «usa o do sprite», por eixo independentemente.

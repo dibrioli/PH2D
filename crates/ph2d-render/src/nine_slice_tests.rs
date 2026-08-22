@@ -500,3 +500,139 @@ fn the_grid_stays_inside_the_incoming_sub_rect() {
         );
     }
 }
+
+/// ⚠️ **UM CANTO NUNCA LADRILHA — e por isso `Stretch`/`Repeat`/`Mirror` são a MESMA coisa ali.**
+///
+/// Achado nº 1 da auditoria de 2026-08-22. O 9-slice só repete no eixo que **cresce**, e num
+/// canto nenhum dos dois cresce: ficar no tamanho intrínseco é a razão de existir dele. A grelha
+/// do painel oferecia quatro posições por célula, e nos quatro cantos **três delas eram inertes**
+/// — um controlo com quatro posições sobre um modelo de duas.
+///
+/// Este gate afirma a metade do MOTOR (as três dão geometria idêntica); a metade do painel — que
+/// o canto passa a ciclar só entre desenhar e apagar — está em `event_slice.rs`.
+#[test]
+fn a_corner_never_tiles_whatever_mode_it_is_given() {
+    let target = [2.24, 2.24];
+    let corners = SliceRegion::ALL
+        .iter()
+        .filter(|r| {
+            let (c, l) = r.cell();
+            c != 1 && l != 1
+        })
+        .count();
+    assert_eq!(corners, 4, "a moldura deixou de ter quatro cantos");
+
+    for r in SliceRegion::ALL {
+        let (c, l) = r.cell();
+        if c == 1 || l == 1 {
+            continue; // uma BORDA cresce num eixo — essa tem de reagir, e reage (teste irmão)
+        }
+        let mk = |mode: TileRegionMode| {
+            let mut s = sliced([16.0; 4]);
+            s.tile_modes[r as usize] = mode;
+            nine_slice_patches(
+                [0.0, 0.0, 1.0, 1.0],
+                [64.0, 64.0],
+                &s,
+                target,
+                100.0,
+                [1.0, 1.0],
+            )[l * 3 + c]
+        };
+        let stretch = mk(TileRegionMode::Stretch);
+        assert!(stretch.is_some(), "{r:?} nao desenhou");
+        assert_eq!(
+            mk(TileRegionMode::Repeat),
+            stretch,
+            "{r:?}: `Repeat` mudou o canto — se isto passar a ser verdade, a grelha do painel \
+             tem de voltar a oferecer as quatro posicoes neste canto"
+        );
+        assert_eq!(
+            mk(TileRegionMode::Mirror),
+            stretch,
+            "{r:?}: `Mirror` mudou o canto"
+        );
+        // A quarta posição É a que existe: apagar.
+        assert_eq!(
+            mk(TileRegionMode::Blank),
+            None,
+            "{r:?}: `Blank` nao apagou o canto"
+        );
+    }
+}
+
+/// **Uma BORDA reage ao seu modo — é o par do teste acima.** Sem isto, «o canto não reage» leria
+/// como «a grelha inteira não reage», e a cura teria sido apagar a grelha em vez de a corrigir.
+#[test]
+fn an_edge_band_does_react_to_its_own_mode() {
+    let target = [2.24, 2.24];
+    for r in SliceRegion::ALL {
+        let (c, l) = r.cell();
+        if c != 1 && l != 1 {
+            continue; // cantos: o teste irmão
+        }
+        let mk = |mode: TileRegionMode| {
+            let mut s = sliced([16.0; 4]);
+            s.tile_modes[r as usize] = mode;
+            nine_slice_patches(
+                [0.0, 0.0, 1.0, 1.0],
+                [64.0, 64.0],
+                &s,
+                target,
+                100.0,
+                [1.0, 1.0],
+            )[l * 3 + c]
+        };
+        assert_ne!(
+            mk(TileRegionMode::Repeat),
+            mk(TileRegionMode::Stretch),
+            "{r:?} nao reagiu a `Repeat` — a celula dela e' inerte"
+        );
+    }
+}
+
+/// ⚠️ **`Sliced` e `Tiled` TÊM de desenhar diferente.** O Enio reportou «tanto faz» (2026-08-22),
+/// e a medição diz que o motor diferencia: o que não diferenciava era o **smoke**, cuja textura
+/// tinha as faixas de cor uniforme — esticar e repetir uma faixa lisa dão a mesma imagem.
+///
+/// O gate fica porque a afirmação é do produto: se um dia os dois modos colapsarem, um deles é um
+/// botão que não faz nada.
+#[test]
+fn sliced_and_tiled_are_not_the_same_drawing() {
+    let target = [2.24, 0.64];
+    let mk = |draw: SliceDrawMode| {
+        let s = SliceNine {
+            draw_mode: draw,
+            borders: [16.0; 4],
+            ..SliceNine::INERT
+        };
+        nine_slice_patches(
+            [0.0, 0.0, 1.0, 1.0],
+            [64.0, 64.0],
+            &s,
+            target,
+            100.0,
+            [1.0, 1.0],
+        )
+    };
+    let a = mk(SliceDrawMode::Sliced);
+    let b = mk(SliceDrawMode::Tiled);
+    let n = (0..PATCH_COUNT).filter(|i| a[*i] != b[*i]).count();
+    assert!(n >= 3, "so' {n} quads diferem entre Sliced e Tiled");
+    // E a diferença é exatamente a que a autoria default promete: as faixas que CRESCEM em X
+    // passam de esticar (1 ladrilho) a repetir. As colunas laterais e os cantos ficam iguais.
+    for idx in [1, CENTRE_INDEX, 7] {
+        assert_eq!(
+            a[idx].unwrap().uv_xform[0],
+            1.0,
+            "quad {idx} em Sliced devia esticar"
+        );
+        assert!(
+            b[idx].unwrap().uv_xform[0] > 1.0,
+            "quad {idx} em Tiled devia repetir"
+        );
+    }
+    for idx in [0, 2, 3, 5, 6, 8] {
+        assert_eq!(a[idx], b[idx], "quad {idx} nao devia mudar com o Draw Mode");
+    }
+}

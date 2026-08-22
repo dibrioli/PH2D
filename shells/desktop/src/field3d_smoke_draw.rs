@@ -6,6 +6,14 @@
 
 use super::*;
 
+/// ⭐ **O diagnóstico do laço do preview** (W24): imprime cada traçado com o tamanho que ele teve.
+///
+/// ⚠️ É a única forma de ver o laço a decidir — o divisor não aparece em lado nenhum na tela, e é
+/// suposto não aparecer: o artista vê a peça, não a régua.
+fn trace_log() -> bool {
+    std::env::var("PH2D_FIELD_TRACE_LOG").is_ok()
+}
+
 /// Desenha o smoke sobre a área dada. No-op silencioso quando a variável não está posta.
 pub(crate) fn draw(
     area: EditorRect,
@@ -37,6 +45,19 @@ pub(crate) fn draw(
                         );
                     }
                     smoke.last_trace_ms = r.millis as f32;
+                    // ⭐ **A medição que fecha o laço** (W24): o tempo **com** os pixels a que foi
+                    // medido. O pedido seguinte sai daqui, e é por isso que este módulo não precisa
+                    // de saber em que máquina corre.
+                    smoke.measured = Some(crate::field3d_preview::Measured {
+                        pixels: u64::from(r.width) * u64::from(r.height),
+                        millis: r.millis as f32,
+                    });
+                    if trace_log() {
+                        println!(
+                            "[field-smoke] traçado {}x{} em {:.1} ms ({} px de peça)",
+                            r.width, r.height, r.millis, r.hits
+                        );
+                    }
                     smoke.frame = Some((Arc::new(r.rgba), r.width, r.height));
                     smoke.inflight = None;
                 }
@@ -79,19 +100,22 @@ pub(crate) fn draw(
                 .turn_world([0.0, 1.0, 0.0], -SPIN_RATE * dt.min(0.25));
         }
 
-        // ⭐ **Só se traça o que MUDOU.** Uma requisição em voo por vez, e só quando a câmera ou o
-        // tamanho já não são os do último pedido — senão uma cena parada re-traçaria o mesmo quadro
-        // para sempre, queimando um núcleo por nada. Com o prato a girar a câmera muda todo quadro,
-        // então isto é invisível ali; com a mão no controlo, uma peça parada custa **zero**.
-        let stale = needs_trace(
-            smoke.requested.as_ref(),
+        // ⭐ **Só se traça o que MUDOU — e o TAMANHO do que se traça sai da medição** (W24).
+        //
+        // Uma requisição em voo por vez. Quando a câmera ou o documento mudam, o pedido sai no
+        // tamanho que **cabe num quadro** segundo o que o último traçado custou; quando nada muda e
+        // o que está na tela ainda é grosso, sai o **cheio**. Uma cena parada e já nítida custa
+        // **zero** — senão re-traçaria o mesmo quadro para sempre, queimando um núcleo por nada.
+        let ask = crate::field3d_preview::next_trace(
+            smoke.requested.as_ref().map(|(c, w, h, d)| (c, *w, *h, d)),
             &smoke.cam,
-            tw,
-            th,
             &doc,
+            (tw, th),
+            smoke.measured,
             smoke.frame.is_some(),
+            MIN_TRACE,
         );
-        if smoke.inflight.is_none() && stale {
+        if let (None, Some((tw, th))) = (&smoke.inflight, ask) {
             smoke.requested = Some((smoke.cam, tw, th, doc.clone()));
             let (tx, rx) = channel::<Ready>();
             let cam = smoke.cam;
@@ -150,9 +174,14 @@ pub(crate) fn draw(
         // escondida por trás da superfície que ela move seria inalcançável exatamente quando o
         // artista precisa dela. É o que todo modelador faz, e a razão é essa.
         if let Some(anchor) = smoke.gizmo {
-            let screen = ph2d_field_render::Screen::new(tw, th, smoke.cam.half_extent);
-            let handles =
-                crate::field3d_gizmo::project(anchor, &smoke.cam, screen, smoke.gizmo_mode);
+            // ⚠️ **A projeção é a da ÁREA e vem do dono dela** ([`crate::field3d_input::handles`]) —
+            // nunca uma segunda conta a partir do tamanho do traçado. Desde a W24 os dois números
+            // são diferentes enquanto a mão mexe, e uma cópia aqui poria as alças a um terço do
+            // tamanho: o gizmo agarraria longe da superfície, **só durante o movimento**.
+            let Some(screen) = crate::field3d_input::area_screen(smoke) else {
+                return;
+            };
+            let handles = crate::field3d_input::handles(smoke);
             let hot = crate::field3d_input::hot_handle(smoke);
             scene_out.push_clip(&ph2d_vector::Rect::new(
                 f64::from(area.x),

@@ -337,21 +337,96 @@ fn measure_sculpt_to_field_bridge() {
     println!("razão             : {:8.2}x", ms_sample / ms_tree);
 }
 
+/// **O custo do traçado no TAMANHO REAL de uma janela** — a sonda que decide se o preview precisa
+/// de outro motor (plano §5.3/§8.2, a pergunta que ficou aberta *até haver números*).
+///
+/// ⚠️ 640×480 é **um oitavo** de uma janela de 1920×1080: medir só ali responde a uma pergunta que
+/// ninguém faz. O que o artista sente é o tempo entre mexer num número e a peça mudar, e esse é o
+/// traçado no tamanho da área dele.
 #[test]
 #[ignore = "sonda"]
 fn probe_scene_trace_cost() {
-    println!("cena | tempo de traçado 640x480 | pixels de peça");
+    println!("cena |      tamanho | ms | pixels de peça");
     for n in [1u32, 2, 6] {
         let doc = scene(n);
         let reg = crate::field3d_smoke::sampled_registry();
+        for (w, h) in [(640u32, 480u32), (1280, 800), (1920, 1080), (2560, 1440)] {
+            let t0 = std::time::Instant::now();
+            let g =
+                ph2d_field_render::trace(&doc, &reg, &ph2d_field_render::Orbit::default(), w, h);
+            println!(
+                "{n:4} | {w:5}x{h:<5} | {:6.1} | {}",
+                t0.elapsed().as_secs_f64() * 1000.0,
+                g.hits()
+            );
+        }
+    }
+}
+
+/// ⭐ **A PARTE FIXA de um traçado** — o que se paga por quadro mesmo que a imagem seja de 1 pixel.
+///
+/// ⚠️ A sonda irmã mostrou custo **sub-linear** nos pixels (6,75× os pixels custaram 2,6× o tempo na
+/// cena 1), e isso só tem uma leitura: há um custo **por chamada** que não depende do tamanho. Se
+/// ele for a compilação da fita, ele é pago a cada quadro de uma câmera a girar — sobre um documento
+/// que **não mudou**.
+#[test]
+#[ignore = "sonda"]
+fn probe_the_fixed_cost_of_a_trace() {
+    println!("cena | Hybrid::new (ms) | traçado 1920x1080 (ms) | fração fixa");
+    for n in [1u32, 2, 6] {
+        let doc = scene(n);
+        let reg = crate::field3d_smoke::sampled_registry();
+        // Uma vez a frio, depois a média de 20 — a fita é recompilada em cada uma.
+        let _ = ph2d_field_eval::hybrid::Hybrid::new(&doc, &reg);
         let t0 = std::time::Instant::now();
+        const REPS: u32 = 20;
+        for _ in 0..REPS {
+            let h = ph2d_field_eval::hybrid::Hybrid::new(&doc, &reg);
+            std::hint::black_box(h.tape_count());
+        }
+        let build = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(REPS);
+
+        let t1 = std::time::Instant::now();
         let g =
-            ph2d_field_render::trace(&doc, &reg, &ph2d_field_render::Orbit::default(), 640, 480);
+            ph2d_field_render::trace(&doc, &reg, &ph2d_field_render::Orbit::default(), 1920, 1080);
+        let full = t1.elapsed().as_secs_f64() * 1000.0;
+        std::hint::black_box(g.hits());
         println!(
-            "{n:4} | {:22.1} ms | {}",
-            t0.elapsed().as_secs_f64() * 1000.0,
-            g.hits()
+            "{n:4} | {build:16.2} | {full:22.1} | {:10.1} %",
+            100.0 * build / full
         );
+    }
+}
+
+/// ⭐ **Até onde se pode baixar a resolução do preview sem MENTIR sobre a forma.**
+///
+/// ⚠️ O critério não é "quando fica feio" — isso é gosto. É **quando a peça deixa de ser a mesma
+/// peça**: a fração da tela que ela ocupa (silhueta) tem de ficar onde estava. Uma feição fina —
+/// um filete de 0,05 — some primeiro, e ela some **da área**, que é mensurável.
+#[test]
+#[ignore = "sonda"]
+fn probe_how_coarse_a_preview_can_be() {
+    const FULL: (u32, u32) = (1920, 1080);
+    println!("cena |  D | tamanho do traçado | ms | silhueta (%) | deriva vs D=1");
+    for n in [1u32, 2, 6] {
+        let doc = scene(n);
+        let reg = crate::field3d_smoke::sampled_registry();
+        let mut base = 0.0f64;
+        for d in [1u32, 2, 3, 4, 6, 8] {
+            let (w, h) = (FULL.0 / d, FULL.1 / d);
+            let t0 = std::time::Instant::now();
+            let g =
+                ph2d_field_render::trace(&doc, &reg, &ph2d_field_render::Orbit::default(), w, h);
+            let ms = t0.elapsed().as_secs_f64() * 1000.0;
+            let frac = 100.0 * g.hits() as f64 / f64::from(w * h);
+            if d == 1 {
+                base = frac;
+            }
+            println!(
+                "{n:4} | {d:2} | {w:8}x{h:<8} | {ms:6.1} | {frac:11.3} | {:+8.2} %",
+                100.0 * (frac - base) / base
+            );
+        }
     }
 }
 

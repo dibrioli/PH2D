@@ -1901,6 +1901,116 @@ duas idênticas, no meio do quadro.
 
 ---
 
+## §25 — W24: o preview responde à mão — e a resolução sai do RELÓGIO (22/08)
+
+> Enio, no smoke da cena 6: *"lento e bastante estranho"*. O **estranho** era um bug de campo e foi
+> curado na hora (§22.6). O **lento** ficou por medir durante duas waves — e era o defeito maior dos
+> dois.
+
+### §25.1 — O que ele estava a ver, medido
+
+Traçado no tamanho **real** de uma janela (release, máquina calma; `probe_scene_trace_cost`):
+
+| cena | 640×480 | 1280×800 | **1920×1080** | 2560×1440 |
+|---|---:|---:|---:|---:|
+| 1 — três cilindros com filete | 15,0 ms | 25,7 | **39,2** | 58,8 |
+| 2 — cubo arredondado | 10,5 | 20,5 | **33,1** | 47,5 |
+| 6 — escultura com furo | 22,3 | 60,8 | **113,9** | 198,8 |
+
+⚠️ **640×480 é um oitavo de uma janela de 1080p**: a sonda antiga media ali e respondia a uma
+pergunta que ninguém faz. No tamanho a que o artista de facto usa o módulo, a imagem atualiza a
+**21 fps** numa peça simples e a **8 fps** com uma escultura dentro.
+
+⚠️ **A janela nunca trava** — o traçado corre noutra thread e a chrome continua a 60 fps. O que fica
+lento é a **imagem**, que é a única coisa que diz onde a peça está.
+
+### §25.2 — ⛔ Duas hipóteses medidas e REFUTADAS antes de escrever uma linha
+
+**(a) "Há um custo fixo por traçado — a fita é recompilada a cada quadro."** A tabela sugeria-o (6,75×
+os pixels custavam 2,6× o tempo, o que só se explica com uma parcela constante). `Hybrid::new` mede
+**0,02–0,10 ms**, ou **0,2 %** do quadro. A sub-linearidade é outra coisa: o anti-serrilhado corre
+sobre as **arestas**, e numa imagem pequena a fração de pixels de aresta é maior — o custo *por
+pixel* **sobe** quando a imagem encolhe. Isso não é um custo fixo a eliminar; é a curva a conhecer.
+
+**(b) "O piso do divisor é onde a forma começa a mudar."** A sonda `probe_how_coarse_a_preview_can_be`
+mediu a deriva da silhueta até D=8 e ela **não existe** — **0,15 %** no pior caso. *A métrica não
+contém o fenómeno*: a área é dominada pelas formas grandes, e o que uma resolução grosseira come é a
+**feição fina**, que quase não pesa em área. Chamar àquilo uma medição do piso seria dressar um
+palpite. O piso teve de vir de outro sítio (§25.4).
+
+### §25.3 — ⭐ A lei: o divisor sai da MEDIÇÃO, e o laço fecha-se sozinho
+
+Um traçado devolve quanto custou; dividir pelos pixels dá o custo por pixel **desta máquina, desta
+peça, deste momento**. O pedido seguinte escolhe o maior tamanho cujo custo previsto cabe no
+**orçamento de um quadro a 60 Hz** (16,7 ms — o número é do monitor, não uma preferência).
+
+⚠️ **A previsão erra, e o laço não se importa.** Prever o grosso a partir do cheio é otimista (§25.2a);
+a medição seguinte corrige. Convergência, com os números reais:
+
+| cena | cheio | 1ª escolha | assenta em | custo final | ganho |
+|---|---:|---:|---:|---:|---:|
+| 1 | 46,0 ms | D=2 (17,8) | **D=3** | **11,0 ms** | **4,2×** |
+| 6 | 121,0 ms | D=3 (16,6) | **D=3** | **16,6 ms** | **7,3×** |
+
+Enquanto a mão mexe, a imagem passa de 21/8 fps para **60 fps** nas duas. É o mesmo motor — *não há
+segundo avaliador*, e a recusa medida do plano continua de pé.
+
+### §25.4 — ⚠️ O piso é o ORÇAMENTO, e o gate mede a RELAÇÃO
+
+`MAX_PREVIEW_DIVISOR = 3` porque **a D=3 a cena mais pesada já cabe** (16,6 de 16,7 ms). Descer mais
+não compra nada que o orçamento peça e custa nitidez. Se um dia uma peça não couber a D=3, o laço fica
+**preso no piso e a imagem fica lenta em vez de virar papa** — a direção conservadora para um módulo
+cuja razão de existir é a aresta.
+
+E as duas metades da lei, porque uma sozinha é meio gate: uma peça **cara** tem de sair mais grossa, e
+uma peça **barata nunca é suavizada** (o traçado cheio já cabe: baixar a resolução seria perder
+nitidez de graça).
+
+### §25.5 — O primeiro traçado é sempre CHEIO, e isso é produto
+
+Sem medição não há previsão, e o primeiro traçado **é** a medição. O efeito: a primeira coisa que se
+vê é a peça **nítida**; a suavização só aparece depois, em movimento, que é onde não se nota. *A
+propriedade caiu da lei, não de um caso especial.*
+
+### §25.6 — ⚠️ A costura que esta wave podia partir
+
+O tamanho do traçado e o da área eram **o mesmo número** desde sempre, e o desenho projetava o gizmo
+a partir do do traçado — correto por coincidência. Com o preview grosso os dois divergem: as alças
+sairiam a um terço do tamanho e agarrariam longe da superfície **só durante o movimento** — o defeito
+mais difícil de reproduzir que este módulo poderia ter. A projeção passou a ter **um dono**
+(`field3d_input::area_screen`), e o gate proíbe o desenho de construir a dele.
+
+### §25.7 — ⛔ Uma prova de mutação passou VERDE (a 2ª vez nesta linha)
+
+Pôr `MAX_PREVIEW_DIVISOR` a 8 não punha nada a vermelho: o gate comparava o resultado **com a própria
+constante**, então mutá-la movia a produção e a expectativa ao mesmo tempo. É o gémeo exacto do
+`SCULPT_SLOT` da W22, e a cura é a mesma — medir a **relação** com a tabela medida: a `D` a cena mais
+pesada cabe no orçamento, e a `D−1` **não** cabe. *Um teste que lê a constante que testa não testa a
+constante.*
+
+### §25.8 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| `preview_size` ignora a medição | `the_loop_settles_inside_the_budget_on_the_measured_scenes` |
+| devolve sempre o piso | `a_cheap_piece_is_never_softened` |
+| assentar não refina | `a_settled_view_refines_to_full_exactly_once` |
+| refina a cada quadro | `a_settled_view_refines_to_full_exactly_once` |
+| o piso sobe para 8 | `the_floor_is_the_shallowest_divisor_that_fits_the_budget` |
+| o desenho projeta o gizmo sozinho | `the_draw_does_not_build_its_own_projection` |
+
+### §25.9 — ⏸️ O que fica aberto
+
+- **Um traçado em voo não se cancela**: se a mão recomeça a mexer no meio de um refinamento cheio, a
+  resposta espera por ele — até **121 ms** medidos na cena mais pesada. A cura é um traçado
+  cancelável (o worker teria de olhar uma bandeira por linha), e o gatilho é este número.
+- O divisor **não aparece na tela**, de propósito (o artista vê a peça, não a régua). Quem quiser
+  vê-lo tem `PH2D_FIELD_TRACE_LOG=1`.
+- ⛔ **Um segundo motor em GPU continua recusado** e agora por mais uma razão: o que fazia falta era a
+  **taxa de atualização em movimento**, e ela foi comprada sem duplicar o avaliador.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -1923,6 +2033,9 @@ duas idênticas, no meio do quadro.
   ⏸️ Fica: um arquivo que **mudou de sítio** não se reencontra (religar pede UI, e é a pergunta que o
   app ainda não faz por asset nenhum), a ligação à escultura **viva** do módulo 3D (hoje o vínculo
   passa pelo disco e acorda ao **abrir**), e os modificadores sobre uma escultura
+- ✅ **a LENTIDÃO que o Enio nomeou no smoke da cena 6 FECHOU na W24** (§25): a resolução do preview
+  passa a sair da **medição** — 4,2× e 7,3× mais rápido em movimento, sem um segundo motor. ⏸️ Fica:
+  um traçado em voo **não se cancela** (até 121 ms de espera medidos)
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

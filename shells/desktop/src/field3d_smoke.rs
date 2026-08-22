@@ -93,6 +93,12 @@ pub(crate) struct Smoke {
     /// Quanto custou o último traçado — o número que o painel mostra, porque quem mexe num raio
     /// é quem paga o traçado seguinte.
     pub(crate) last_trace_ms: f32,
+    /// ⭐ **O que o último traçado custou, COM o tamanho a que foi medido** — a entrada do laço que
+    /// escolhe a resolução do preview ([`crate::field3d_preview`]).
+    ///
+    /// ⚠️ Separado do `last_trace_ms` de propósito: aquele é para o artista ler, este é para a
+    /// máquina decidir, e um tempo sem os pixels ao lado não prevê coisa nenhuma.
+    pub(crate) measured: Option<crate::field3d_preview::Measured>,
     /// Já anunciou o primeiro quadro? Ver a nota do `boot`.
     announced: bool,
     /// **A área onde o quadro foi desenhado da última vez** — é ela que responde *"este clique é
@@ -256,6 +262,7 @@ fn boot() -> Option<Smoke> {
         since: std::time::Instant::now(),
         requested: None,
         last_trace_ms: 0.0,
+        measured: None,
         announced: false,
         area: None,
         drag: None,
@@ -273,28 +280,11 @@ fn boot() -> Option<Smoke> {
     })
 }
 
-/// **Vale a pena traçar de novo?** — a pergunta inteira, num só sítio e pura.
-///
-/// ⚠️ **As TRÊS entradas contam, e a terceira foi esquecida.** A primeira versão comparava só a
-/// câmera e o tamanho; mexer num raio mudava o documento, o painel mostrava o número novo, e a peça
-/// na tela **não se mexia** (Enio, 2026-08-19: *"slider disfuncional"*). *Um cache que não conhece
-/// uma das entradas não é um cache — é um congelador*, e o sintoma culpa o controle, que está certo.
-///
-/// Pura e separada de propósito: é o que a torna gateável sem janela nem GPU.
-fn needs_trace(
-    requested: Option<&(Orbit, u32, u32, FieldDoc)>,
-    cam: &Orbit,
-    w: u32,
-    h: u32,
-    doc: &FieldDoc,
-    has_frame: bool,
-) -> bool {
-    // Sem quadro nenhum ainda: traçar, mesmo que nada tenha "mudado".
-    if !has_frame {
-        return true;
-    }
-    requested.is_none_or(|(c, rw, rh, rdoc)| c != cam || *rw != w || *rh != h || rdoc != doc)
-}
+// ⚠️ **`needs_trace` VIVEU AQUI e foi absorvida** pela `field3d_preview::next_trace` (W24). Ela
+// respondia *"vale a pena traçar de novo?"*; a pergunta passou a ser *"traçar de novo a QUE
+// tamanho?"*, e as duas na mesma função é a única forma de não haver duas ideias de *o que mudou*.
+// A lei que ela defendia — o **documento** faz parte da chave, o smoke do *"slider disfuncional"* —
+// continua gateada, agora em `field3d_preview_tests`.
 
 /// **O painel abre sozinho na primeira vez** que o smoke desenha, e só nessa.
 ///
@@ -517,31 +507,48 @@ mod trace_tests {
     /// A primeira versão da pergunta *"mudou alguma coisa?"* olhava a câmera e o tamanho. Um raio
     /// editado mudava o documento, o painel mostrava o número novo, e a peça na tela ficava
     /// **congelada** — com o controle a levar a culpa.
+    ///
+    /// ⚠️ A pergunta mudou de casa na W24 (passou a devolver **a que tamanho**), e este gate veio
+    /// com ela: *uma lei não se apaga quando a função que a carregava é absorvida.*
     #[test]
     fn changing_the_document_asks_for_a_new_trace() {
+        use crate::field3d_preview::next_trace;
         let cam = Orbit::default();
         let doc = scene(1);
-        let asked = (cam, 640, 480, doc.clone());
+        let full = (640u32, 480u32);
+        let asked = (&cam, full.0, full.1, &doc);
 
-        assert!(
-            !needs_trace(Some(&asked), &cam, 640, 480, &doc, true),
-            "nada mudou: traçar de novo seria queimar um núcleo por nada"
+        assert_eq!(
+            next_trace(Some(asked), &cam, &doc, full, None, true, MIN_TRACE),
+            None,
+            "nada mudou e já está no tamanho cheio: traçar de novo seria queimar um núcleo por nada"
         );
 
         let mut edited = doc.clone();
         edited.set_radius(edited.root(), 0.2).expect("raio válido");
         assert!(
-            needs_trace(Some(&asked), &cam, 640, 480, &edited, true),
+            next_trace(Some(asked), &cam, &edited, full, None, true, MIN_TRACE).is_some(),
             "o DOCUMENTO mudou e o traçado tem de correr — foi esta a linha que faltava"
         );
 
-        // E as outras duas entradas continuam a contar.
+        // E as outras entradas continuam a contar.
         let mut moved = cam;
         crate::field3d_input::law::orbit(&mut moved, 10.0, 0.0);
-        assert!(needs_trace(Some(&asked), &moved, 640, 480, &doc, true));
-        assert!(needs_trace(Some(&asked), &cam, 800, 480, &doc, true));
+        assert!(
+            next_trace(Some(asked), &moved, &doc, full, None, true, MIN_TRACE).is_some(),
+            "a câmera mudou"
+        );
+        assert_eq!(
+            next_trace(Some(asked), &cam, &doc, (800, 480), None, true, MIN_TRACE),
+            Some((800, 480)),
+            "a área mudou de tamanho: o traçado novo sai NÍTIDO, não grosso"
+        );
         // Sem quadro nenhum, traça — mesmo com tudo igual.
-        assert!(needs_trace(Some(&asked), &cam, 640, 480, &doc, false));
+        assert_eq!(
+            next_trace(Some(asked), &cam, &doc, full, None, false, MIN_TRACE),
+            Some(full),
+            "sem quadro nenhum traça, e traça CHEIO: o primeiro traçado é a medição"
+        );
     }
 
     /// ⭐ **Toda cena do smoke constrói E DESENHA.**

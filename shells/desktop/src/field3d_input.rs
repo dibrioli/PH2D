@@ -37,16 +37,26 @@ use ph2d_field_render::Screen;
 /// ⚠️ Recalculadas a cada pergunta, e não guardadas: a câmera muda a cada quadro do prato giratório,
 /// e uma lista de alças em cache seria a resposta de um enquadramento anterior — o mesmo congelador
 /// que o traçado já pagou, só que a apontar em vez de a desenhar.
-fn handles(s: &Smoke) -> Vec<field3d_gizmo::Projected> {
-    let (Some(anchor), Some(area)) = (s.gizmo, s.area) else {
+pub(crate) fn handles(s: &Smoke) -> Vec<field3d_gizmo::Projected> {
+    let (Some(anchor), Some(screen)) = (s.gizmo, area_screen(s)) else {
         return Vec::new();
     };
-    let screen = Screen::new(
+    field3d_gizmo::project(anchor, &s.cam, screen, s.gizmo_mode)
+}
+
+/// ⭐ **O enquadramento deste módulo é o da ÁREA — nunca o do traçado.**
+///
+/// ⚠️ **Os dois foram sempre o mesmo número e deixaram de o ser na W24**: o preview passou a traçar
+/// mais grosso enquanto a mão mexe (ver [`crate::field3d_preview`]), então `Screen::new(tw, th, …)`
+/// projetaria as alças a um terço do tamanho — o gizmo pousaria longe da superfície que ele move,
+/// e só durante o movimento. *Uma projeção, um dono.*
+pub(crate) fn area_screen(s: &Smoke) -> Option<Screen> {
+    let area = s.area?;
+    Some(Screen::new(
         area.w.round().max(1.0) as u32,
         area.h.round().max(1.0) as u32,
         s.cam.half_extent,
-    );
-    field3d_gizmo::project(anchor, &s.cam, screen, s.gizmo_mode)
+    ))
 }
 
 /// O ponto do cursor no referencial da **área desenhada** — que é o referencial em que o gizmo foi
@@ -359,11 +369,7 @@ pub(crate) fn begin(
     s.drag_grip = grabbed.and_then(|h| {
         let anchor = s.gizmo?;
         let from = local(s, pos)?;
-        let screen = Screen::new(
-            area.w.round().max(1.0) as u32,
-            area.h.round().max(1.0) as u32,
-            s.cam.half_extent,
-        );
+        let screen = area_screen(s)?;
         Some(Grip {
             anchor,
             from,
@@ -421,14 +427,10 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         // com a cena aplica no início do quadro seguinte. É o mesmo caminho dos intents do
         // painel, e pela mesma razão — o mundo tem um só escritor.
         Drag::Gizmo(handle) => {
-            let (Some(grip), Some(area)) = (s.drag_grip, s.area) else {
+            let (Some(grip), Some(screen), Some(area)) = (s.drag_grip, area_screen(s), s.area)
+            else {
                 return true;
             };
-            let screen = Screen::new(
-                area.w.round().max(1.0) as u32,
-                area.h.round().max(1.0) as u32,
-                s.cam.half_extent,
-            );
             // ⭐ **O TOTAL desde a pegada**, contra a âncora congelada — nunca um incremento contra
             // a pose de agora, que é o que este gesto está a mudar.
             let total = field3d_gizmo::drag(

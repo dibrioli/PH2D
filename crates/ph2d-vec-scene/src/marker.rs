@@ -415,28 +415,63 @@ pub fn trim_path(path: &VecPath, start: f64, end: f64) -> Option<VecPath> {
 /// Recua `d` a partir de uma das pontas. `false` = o caminho é curto demais.
 fn trim_end(verts: &mut Vec<VecVertex>, d: f64, from_start: bool) -> bool {
     let n = verts.len();
-    // Caminha do extremo para dentro, consumindo `d`.
+    // Caminha do extremo para dentro, consumindo `d` de ARCO.
     let mut left = d;
     let mut i = 0_usize;
     loop {
-        let (a, b) = if from_start {
-            (verts[i].anchor, verts[i + 1].anchor)
+        // O segmento cúbico entre os dois vértices, ORIENTADO no sentido da caminhada: o
+        // primeiro ponto de controlo é sempre o extremo de onde se está a recuar.
+        let (ia, ib) = if from_start {
+            (i, i + 1)
         } else {
-            (verts[n - 1 - i].anchor, verts[n - 2 - i].anchor)
+            (n - 1 - i, n - 2 - i)
         };
-        let seg = (b[0] - a[0]).hypot(b[1] - a[1]);
+        let (va, vb) = (verts[ia], verts[ib]);
+        let c: crate::arclen::Cubic = if from_start {
+            [va.anchor, va.out_handle, vb.in_handle, vb.anchor]
+        } else {
+            [va.anchor, va.in_handle, vb.out_handle, vb.anchor]
+        };
+        // ⚠️ **ARCO da cúbica, não a corda entre âncoras.** Esta linha media
+        // `(b - a).hypot(..)` — a distância RETA —, e numa extremidade curva isso não é o
+        // caminho que o traço percorre: o recuo saía errado por tanto quanto a alça
+        // encurvasse (medido: 3,30 de arco removido ao pedir 4,00, com a alça a 56°).
+        let seg = crate::arclen::arclen(&c);
         if seg >= left {
-            // O ponto novo cai DENTRO deste segmento.
-            let t = if seg > 1e-12 { left / seg } else { 0.0 };
-            let np = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-            let idx = if from_start { i } else { n - 1 - i };
-            // A âncora anda; os handles a acompanham (o recuo é curto, então a curva
-            // praticamente não muda de forma — e uma quina continua quina).
-            let v = &mut verts[idx];
-            let (sx, sy) = (np[0] - v.anchor[0], np[1] - v.anchor[1]);
-            v.anchor = np;
-            v.in_handle = [v.in_handle[0] + sx, v.in_handle[1] + sy];
-            v.out_handle = [v.out_handle[0] + sx, v.out_handle[1] + sy];
+            // ⚠️ **A sub-curva REAL, e não a âncora empurrada ao longo da corda.** A versão
+            // anterior punha o ponto novo em `a + (b - a)·t` — um ponto da CORDA, que numa curva
+            // encurvada está longe da curva — e depois TRANSLADAVA os handles, com o argumento de
+            // que *"o recuo é curto, então a curva praticamente não muda de forma"*. Isso é falso
+            // assim que a alça é longa ou angulada: a extremidade do traço saía de cima da curva,
+            // deslocada lateralmente, e o desvio crescia com o ângulo (Enio, 2026-08-22).
+            //
+            // `inv_arclen` dá o `t` do arco pedido e `subsegment` devolve os quatro pontos de
+            // controlo da parte que FICA — a extremidade cai exatamente sobre a curva original, e
+            // a forma do que resta é a mesma.
+            let t = crate::arclen::inv_arclen(&c, left);
+            let keep = crate::arclen::subsegment(&c, t, 1.0);
+            // `keep` vai do ponto de corte até `vb`; reescreve as duas pontas dele.
+            {
+                let v = &mut verts[ia];
+                v.anchor = keep[0];
+                // O handle que olha para DENTRO do segmento é o do corte; o de fora deixa de
+                // descrever coisa nenhuma (não há mais curva daquele lado) e acompanha a âncora.
+                if from_start {
+                    v.out_handle = keep[1];
+                    v.in_handle = keep[0];
+                } else {
+                    v.in_handle = keep[1];
+                    v.out_handle = keep[0];
+                }
+            }
+            {
+                let w = &mut verts[ib];
+                if from_start {
+                    w.in_handle = keep[2];
+                } else {
+                    w.out_handle = keep[2];
+                }
+            }
             // Descarta os vértices que ficaram para fora.
             if from_start {
                 verts.drain(0..i);
@@ -451,125 +486,6 @@ fn trim_end(verts: &mut Vec<VecVertex>, d: f64, from_start: bool) -> bool {
             return false; // consumiu o caminho inteiro
         }
     }
-}
-
-/// **O RECUO EM ARCO que põe o fim da linha na BASE do marcador** — um por ponta.
-///
-/// # O defeito que ela corrige
-///
-/// A ponta ocupa uma extensão **RETA** ao longo do próprio eixo (`Marker::inset`), mas encurtar
-/// a linha é uma operação em **ARCO** (`trim_path` anda ao longo da curva). Numa extremidade
-/// encurvada as duas medidas divergem, e o erro cresce com o ângulo da alça — medido, com a ponta
-/// a pedir 4,0 de espaço:
-///
-/// | ângulo da alça | recuo obtido no eixo | erro |
-/// |---|---|---|
-/// | 0° (reta) | 4,000 | 0,000 |
-/// | 37° | 3,200 | −0,80 |
-/// | 56° | 2,219 | −1,78 |
-/// | 80° | 0,658 | **−3,34** |
-///
-/// A linha andava 4,0 ao longo da curva e chegava a um ponto que, na direção da ponta, tinha
-/// recuado menos de um sexto disso — então ela não parava nas costas do marcador: parava ao lado
-/// dele. É o *"a depender do ângulo do handle o stroke não se encaixa no objeto do start ou do
-/// end"* do Enio (2026-08-22), e a razão de ele depender do ângulo.
-///
-/// # A cura
-///
-/// Recuar até a **projeção sobre o eixo** valer o `inset` — que é a pergunta que o marcador de
-/// facto faz (*"onde é que a minha base cruza a curva?"*). Bissecção sobre o arco, porque a
-/// projeção cresce com ele e não há forma fechada para uma cúbica arbitrária.
-///
-/// ⚠️ **Satura no comprimento do caminho.** Uma linha mais curta que a ponta não tem onde recuar,
-/// e o `stroke_plan` já trata o caso em que não sobra linha nenhuma (a peça `Line` some e ficam
-/// só as pontas).
-///
-/// ⚠️ **O CUSTO, medido** (release, estrela de 10 vértices, duas pontas): **2,57 µs por caminho**
-/// ⇒ 100 caminhos com ponta num frame custam **0,257 ms, 1,5% de um quadro de 60 fps**. A conta é
-/// a bissecção a chamar o `trim_path`, e ela só corre quando o estilo TEM marcadores
-/// (`has_markers()` guarda a porta) — um traço sem ponta não paga nada.
-#[must_use]
-pub fn marker_arc_insets(path: &VecPath, s: &StrokeSpec) -> (f64, f64) {
-    let want = |m: Marker| m.inset(s.marker_scale) * s.width;
-    let (a, b) = (want(s.marker_start), want(s.marker_end));
-    if path.closed || path.verts.len() < 2 || (a <= 0.0 && b <= 0.0) {
-        return (a, b);
-    }
-    // ⚠️ **A bissecção corre sobre o PRÓPRIO `trim_path`, e não sobre uma medida de arco ao
-    // lado.** Ele mede por CORDA entre âncoras e interpola linearmente dentro do segmento — uma
-    // régua diferente da do `ArcPath` (Gauss-Legendre). Medir com uma régua e cortar com outra
-    // deixa um resíduo que depende da curvatura: medido, sobrava 0,069 numa alça de 14°, e o
-    // marcador voltava a não encostar. Perguntar à função que CORTA elimina a discordância por
-    // construção, seja qual for a régua dela.
-    let solve = |at_start: bool, inset: f64| -> f64 {
-        if inset <= 0.0 {
-            return 0.0;
-        }
-        let Some((tip, dir)) = end_tangent(path, at_start) else {
-            return inset;
-        };
-        // Quanto o fim da linha recuou NA DIREÇÃO da ponta, ao pedir `d` de recuo ao `trim_path`.
-        let proj = |d: f64| -> f64 {
-            let t = if at_start {
-                trim_path(path, d, 0.0)
-            } else {
-                trim_path(path, 0.0, d)
-            };
-            let Some(t) = t else { return f64::INFINITY };
-            let end = if at_start {
-                t.verts.first()
-            } else {
-                t.verts.last()
-            };
-            let Some(e) = end else { return f64::INFINITY };
-            (tip[0] - e.anchor[0]) * dir[0] + (tip[1] - e.anchor[1]) * dir[1]
-        };
-        // O teto: a soma das cordas é o máximo que o `trim_path` sabe consumir.
-        let span: f64 = path
-            .verts
-            .windows(2)
-            .map(|w| (w[1].anchor[0] - w[0].anchor[0]).hypot(w[1].anchor[1] - w[0].anchor[1]))
-            .sum();
-        if span <= 0.0 || !span.is_finite() {
-            return inset;
-        }
-        // ⚠️ **A PRIMEIRA travessia a partir da ponta, e NÃO uma bissecção global.** A projeção
-        // não cresce monotonicamente com o recuo: numa curva em S ela sobe, volta a descer e pode
-        // subir outra vez, porque a curva DOBRA para trás. Uma bissecção sobre `[0, span]` assume
-        // a monotonia que não existe — e o teste de saturação (`proj(span) <= inset`) media
-        // justamente o ponto mais distante ao longo do arco, que numa curva dobrada está PERTO do
-        // bico na projeção. O resultado era declarar "não há espaço" e consumir a linha inteira:
-        // ela desaparecia, e desaparecia em função do ângulo (Enio, 2026-08-22).
-        //
-        // Varre-se do extremo para dentro até a projeção CRUZAR o `inset` pela primeira vez, e só
-        // então se refina. É a base do marcador que se procura — a mais próxima da ponta.
-        const STEPS: usize = 48;
-        let mut lo = 0.0_f64;
-        let mut hi = f64::NAN;
-        for i in 1..=STEPS {
-            let d = span * (i as f64) / (STEPS as f64);
-            let v = proj(d);
-            if v >= inset {
-                hi = d;
-                break;
-            }
-            lo = d;
-        }
-        if !hi.is_finite() {
-            // A curva INTEIRA não oferece, em ponto nenhum, o espaço que a ponta pede.
-            return span;
-        }
-        for _ in 0..32 {
-            let mid = 0.5 * (lo + hi);
-            if proj(mid) < inset {
-                lo = mid
-            } else {
-                hi = mid
-            }
-        }
-        0.5 * (lo + hi)
-    };
-    (solve(true, a), solve(false, b))
 }
 
 /// A tangente de saída num extremo do caminho, apontando **para fora** — a direção em que a

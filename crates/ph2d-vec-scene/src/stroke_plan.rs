@@ -86,13 +86,12 @@ pub fn stroke_plan<'a>(path: &'a VecPath, s: &StrokeSpec) -> Vec<StrokePiece<'a>
     let mut out = Vec::new();
     // Sem pontas nada é encurtado — e `Cow::Borrowed` é o que torna o caso comum gratuito.
     let line = if s.has_markers() {
-        // ⚠️ **O recuo é em ARCO, e a ponta mede-se em RETA** — converter é o que faz a linha
-        // parar nas COSTAS do marcador em vez de ao lado dele. Passar o `inset` cru ao
-        // `trim_path` anda esse comprimento ao longo da CURVA, e numa extremidade encurvada isso
-        // recua muito menos na direção da ponta: medido, com a alça a 80° a linha recuava 0,66
-        // de um `inset` de 4,0. Ver `marker_arc_insets`.
-        let (a, b) = crate::marker_arc_insets(path, s);
-        trim_path(path, a, b).map(Cow::Owned)
+        trim_path(
+            path,
+            s.marker_start.inset(s.marker_scale) * s.width,
+            s.marker_end.inset(s.marker_scale) * s.width,
+        )
+        .map(Cow::Owned)
     } else {
         Some(Cow::Borrowed(path))
     };

@@ -236,7 +236,7 @@ pub use iso::{iso_cone, iso_cube, iso_pyramid};
 /// propriedade do STROKE — nascem na ponta de qualquer caminho aberto, herdam a cor e a
 /// largura dele, e giram sozinhas com a tangente da curva.
 mod marker;
-pub use marker::{ALL_MARKERS, Marker, end_tangent, marker_arc_insets, stroke_head, trim_path};
+pub use marker::{ALL_MARKERS, Marker, end_tangent, stroke_head, trim_path};
 
 /// O **ESTILO do traço** (`LineCap` · `LineJoin` · `StrokeSpec`) — módulo irmão pelo teto
 /// de 700 LOC deste arquivo, e coeso: é o vocabulário de uma caneta, com os seus defaults e

@@ -540,3 +540,130 @@ fn the_head_still_points_at_the_target_after_scaling_and_rounding() {
         }
     }
 }
+
+// ─── O CORTE SEGUE A CURVA (Enio, 2026-08-22) ────────────────────────────────────────────
+
+/// **O RECUO CONSOME O ARCO PEDIDO, E A PONTA FICA SOBRE A CURVA** — as duas metades do
+/// defeito reportado (*"o desenho do path nas extremidades é deslocado a depender do ângulo
+/// da alça"*).
+///
+/// O `trim_end` media por **corda entre âncoras** e punha o ponto novo em `a + (b−a)·t` — um
+/// ponto da corda, que numa curva encurvada está longe da curva —, transladando os handles com o
+/// argumento de que *"o recuo é curto, então a curva praticamente não muda de forma"*. Medido, ao
+/// pedir 4,00 de recuo: removia **3,30** de arco com a alça a 56°, e a extremidade saía de cima da
+/// curva. Agora corta a cúbica de verdade (`inv_arclen` + `subsegment`).
+///
+/// ⚠️ **O laço varre ÂNGULOS DE ALÇA, e é isso que o torna um gate.** Numa extremidade reta corda
+/// e arco coincidem e o defeito é invisível — foi exatamente o caso em que ele passou despercebido.
+#[test]
+fn the_trim_cuts_the_curve_itself_at_any_handle_angle() {
+    let curve = |hx: f64, hy: f64| VecPath {
+        verts: vec![
+            VecVertex {
+                anchor: [0.0, 0.0],
+                in_handle: [0.0, 0.0],
+                out_handle: [4.0, 0.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+            VecVertex {
+                anchor: [10.0, 0.0],
+                in_handle: [10.0 + hx, hy],
+                out_handle: [10.0, 0.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+        ],
+        closed: false,
+        ..VecPath::default()
+    };
+    let arc = |p: &VecPath| {
+        crate::arc_path::ArcPath::from_contour(&p.verts, false)
+            .expect("contorno")
+            .total()
+    };
+    let want = 4.0;
+
+    for (hx, hy) in [
+        (-4.0, 0.0),
+        (-4.0, 1.0),
+        (-4.0, 3.0),
+        (-4.0, 6.0),
+        (-1.0, 6.0),
+    ] {
+        let p = curve(hx, hy);
+        let t = trim_path(&p, 0.0, want).expect("trim");
+        let removed = arc(&p) - arc(&t);
+        assert!(
+            (removed - want).abs() < 1e-3,
+            "alca ({hx}, {hy}): pedi {want} de recuo e saiu {removed:.4} de arco"
+        );
+
+        // A extremidade que ficou tem de estar SOBRE a curva original.
+        let ap = crate::arc_path::ArcPath::from_contour(&p.verts, false).expect("ap");
+        let end = t.verts.last().expect("fim").anchor;
+        let mut best = f64::MAX;
+        for k in 0..=2000 {
+            let q = ap.frame_at(ap.total() * f64::from(k) / 2000.0).0;
+            best = best.min((q[0] - end[0]).hypot(q[1] - end[1]));
+        }
+        assert!(
+            best < 5e-3,
+            "alca ({hx}, {hy}): a ponta do traco caiu a {best:.4} da curva -- ela saiu de cima dela"
+        );
+    }
+}
+
+/// **UM RECUO QUE ATRAVESSA MAIS DE UM SEGMENTO consome o ARCO, não a soma das cordas.**
+///
+/// ⚠️ **Este gate existe porque o de cima NÃO continha o fenómeno.** Com um segmento só, a régua
+/// que mede não decide nada — ela só responde *"o corte cai aqui?"*, e o corte em si já usa
+/// `inv_arclen`, que fala arco. Trocar a régua por corda passava naquele gate. É preciso o recuo
+/// ATRAVESSAR um segmento para o erro se acumular no `left -= seg`, e é isso que se monta aqui:
+/// vários segmentos bem encurvados, e um recuo que come mais de um.
+#[test]
+fn a_recuo_que_atravessa_segmentos_consome_arco_e_nao_cordas() {
+    // Três segmentos em arco, cada um bem encurvado (a corda é bem menor que o arco).
+    let v = |a: [f64; 2], i: [f64; 2], o: [f64; 2]| VecVertex {
+        anchor: a,
+        in_handle: i,
+        out_handle: o,
+        kind: VertexKind::Smooth,
+        corner_radius: 0.0,
+    };
+    let p = VecPath {
+        verts: vec![
+            v([0.0, 0.0], [0.0, 0.0], [0.0, 4.0]),
+            v([4.0, 4.0], [0.0, 4.0], [8.0, 4.0]),
+            v([8.0, 0.0], [8.0, 4.0], [8.0, -4.0]),
+            v([12.0, -4.0], [8.0, -4.0], [12.0, -4.0]),
+        ],
+        closed: false,
+        ..VecPath::default()
+    };
+    let arc = |q: &VecPath| {
+        crate::arc_path::ArcPath::from_contour(&q.verts, false)
+            .expect("contorno")
+            .total()
+    };
+    let full = arc(&p);
+    let chord: f64 = p
+        .verts
+        .windows(2)
+        .map(|w| (w[1].anchor[0] - w[0].anchor[0]).hypot(w[1].anchor[1] - w[0].anchor[1]))
+        .sum();
+    assert!(
+        full > chord * 1.05,
+        "controlo positivo: o arco ({full:.3}) tem de ser bem maior que a soma das cordas \
+         ({chord:.3}), senao as duas reguas dao o mesmo e o gate nao separa nada"
+    );
+
+    // Um recuo que come MAIS de um segmento.
+    let want = full * 0.5;
+    let t = trim_path(&p, 0.0, want).expect("trim");
+    let removed = full - arc(&t);
+    assert!(
+        (removed - want).abs() < 1e-2,
+        "pedi {want:.3} de arco e saiu {removed:.3} -- a caminhada somou CORDAS pelo caminho"
+    );
+}

@@ -133,6 +133,20 @@ impl Domain<'_> {
         fallback: [f32; 3],
         prov: Provenance,
     ) -> u32 {
+        // ⛔⛔ **O RECUO PARA DENTRO DO DOMÍNIO foi construído, MEDIDO e
+        // REJEITADO** (2026-08-22). A ideia: quando o `uv` cai fora, puxá-lo para o
+        // centro até acertar, em vez de usar o ponto de espaço.
+        //
+        // ⭐ Ele **curou o que prometia**: as falhas de amostragem da esfera com
+        // orelha foram de **3 329 para 0**. ⛔ **E não moveu o defeito da foto**: a
+        // aresta de **56 % da peça**, entre dois pontos antipodais, ficou lá — e as
+        // faces dobradas **subiram 25 %** (2 204 → 2 768).
+        //
+        // ⇒ *As falhas de amostragem não eram a causa.* Elas são um sintoma que
+        // acompanha o defeito naquela peça, e curá-las sozinhas piora a saída — o
+        // ponto puxado para o centro do patch é pior vizinho do que o de espaço.
+        // **A causa da aresta antipodal continua por achar** (`PLAN.md`
+        // §4-duodetricies).
         let hit = self.param.and_then(|q| q.sample(uv));
         let (ok, miss) = self.tally.get();
         self.tally.set(if hit.is_some() {

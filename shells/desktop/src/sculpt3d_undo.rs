@@ -437,3 +437,10 @@ mod retopo_density_probes;
 #[cfg(test)]
 #[path = "sculpt3d_retopo_field_probes.rs"]
 mod retopo_field_probes;
+
+/// **As sondas da FOTO** — o defeito geométrico que o artista fotografou — ver
+/// [`photo_probes`]. Irmã da [`retopo_field_probes`] pelo teto de LOC da shell
+/// (HR-18, 600).
+#[cfg(test)]
+#[path = "sculpt3d_photo_probes.rs"]
+mod photo_probes;

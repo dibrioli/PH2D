@@ -2615,3 +2615,66 @@ reabertura é a única que não envelhece em silêncio.*
 ⚠️ **Não é cura completa:** sobram células a `0,73–0,83×`, e a **aresta máxima**
 continua em `12–24×` o alvo em várias — um defeito geométrico separado, que nenhuma
 coluna desta secção explica e que o `edge_max_span` do relatório já sabe medir.
+
+---
+
+## 4-duodetricies — ⛔⛔ **AS TRÊS FOTOS: uma aresta de 56 % DA PEÇA, e nenhuma régua piscou**
+
+> *"muito ruim"* — o artista, 2026-08-22, com três fotos e duas setas verdes.
+
+### ⛔ O que a saída marcava quando ele tirou a foto
+
+100 % de quads · casca **fechada** · característica de Euler **exacta** · densidade
+no alvo (mediana `1,02×`) · **15** irregulares · valência máxima **6** · e a forma
+preservada a `0,085 %` da diagonal. **Todas verdes.**
+
+⇒ *Uma peça pode passar em toda asserção e estar visivelmente destruída* — e desta
+vez a régua **existia**: `QuadRemeshReport::edge_max_span`, barra `≤ 0,20`. Ela só
+corria sobre a `wrinkled_sphere`, que mede `6 %`.
+
+### ⭐ O número, e ele é exclusivo da orelha
+
+| fixtura | aresta máxima em fração da peça (d = 0,25 · 0,5 · 1,0) | dobras (d = 1,0) |
+|---|---|---|
+| ⛔ **orelha** | ⛔ **56,5 % · 56,3 % · 57,0 %** | ⛔ **2 204** (4,85 %) |
+| gancho | 9,2 % · 8,0 % · 11,6 % | 19 |
+| enrugada | 10,0 % · 6,4 % · 6,1 % | 70 |
+
+⭐⭐ **O que se sabe da aresta:** ela liga dois pontos **ANTIPODAIS**, ambos a raio
+`1,00` — na parte **lisa** da esfera, não no vinco da orelha — e mede `1,98`, o
+**diâmetro**. ⚠️ **Ela não encolhe** quando o alvo encolhe 10×: *não é falta de
+resolução, é um ponto no sítio errado.*
+
+⭐ **E o controlo ilibou as fases de montante:** a maior aresta da **fixtura** é
+`1,8 %`; a da saída do **F1** é `3,3 %`. A cadeia cria-a.
+
+⚠️ **O que ela NÃO é**, medido: não é valência (o máximo é `6`, e não há um único
+vértice `≥ 7`) · não é o leque (`patch max 6` lados) · não é perda de forma
+(`detail_lost` p95 `0,085 %`).
+
+### ⛔ Uma hipótese construída, MEDIDA e REJEITADA
+
+O achatamento falhava **3 329 amostras** na orelha (`8,4 %`) e **zero** nas outras
+duas fixturas — um sinal limpo. O recurso de uma falha é um ponto de Coons no
+**espaço 3D**, que num patch grande passa perto do centro da peça e é depois
+projectado para o lado que estiver mais perto. *Parecia a causa exacta da aresta
+antipodal.*
+
+Curei-as com um recuo do `uv` para dentro do domínio (o polígono é estrelado a
+partir de `(0,0)`, então encolher o raio chega sempre lá dentro):
+
+| | antes | com o recuo |
+|---|---|---|
+| falhas de amostragem | 3 329 | ⭐ **0** |
+| ⛔ aresta máxima | 57,0 % | ⛔ **57,0 %** |
+| ⛔ dobras | 2 204 | ⛔ **2 768** (+25 %) |
+
+⇒ **As falhas acompanham o defeito naquela peça; não o causam.** E curá-las sozinhas
+**piora** a saída — o ponto puxado para o centro do patch é pior vizinho que o de
+espaço. Revertido, com o mecanismo no doc do `Domain::place`.
+
+### ⇒ O que fica
+
+⭐ O gate `the_ear_does_not_ship_an_edge_across_the_piece` (`#[ignore]`, **vermelho**)
+é o endereço do defeito, com a barra que o relatório já definia. ⛔ **A causa
+continua por achar** — e as três coisas que ela **não** é já estão eliminadas.

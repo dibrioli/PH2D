@@ -98,6 +98,9 @@
 ## Auditoria (famílias — 2 saltos)
 - [Reprodução/diagnóstico (18)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
 - [⛔ Suíte TOPOLÓGICA é cega a geometria](feedback_a_suite_of_topological_assertions_is_blind_to_geometry.md) — 10.515 verdes sobre o produto destruído; use DUAS réguas de aresta
+- [⛔ Extremo GLOBAL não é régua por-face](feedback_a_global_extreme_is_not_a_per_face_ruler.md) — `edge_max` caiu de 57% para 5,5% e o artista disse «péssimo»; a barra sai de um oráculo
+- [Cura que FALHA delimita a causa](feedback_if_relaxation_cannot_move_the_median_the_defect_is_in_the_connectivity.md) — 16 rondas não moveram a mediana ⇒ o defeito é da conectividade, não das posições
+- [Gate TAUTOLÓGICO](feedback_a_gate_that_asserts_what_construction_guarantees_is_a_tautology.md) — afirma o que a construção garante; rodar a fixtura não salva, a cura é um oráculo independente
 - [Um parâmetro, dois papéis = erro DEFENSÁVEL](feedback_one_parameter_two_roles_makes_the_wrong_call_defensible.md) — o comentário que justifica o argumento é o alarme
 - [Régua que DEDUPLICA não vê duplicação](feedback_a_ruler_that_deduplicates_cannot_report_duplication.md) — χ verde sobre malha não-variedade; conte por ocorrência
 - [`round` sem resíduo é mentira silenciosa](feedback_a_round_that_never_reports_its_residual_is_a_silent_lie.md) — resíduo 0,4999 = empate; e a ordem de grandeza dele NOMEIA a parcela que falta

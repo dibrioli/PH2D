@@ -68,6 +68,27 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// A aresta mediana em múltiplos do `edge` pedido — ⭐ esta diz se a DENSIDADE
     /// saiu no alvo. Medido: correcto ≈ **0,9×**; destruído **4,6×**.
     pub edge_median_ratio: f32,
+    /// ⭐⭐ **A ARESTA MAIS LONGA em FRAÇÃO DA PEÇA** (da diagonal da caixa).
+    ///
+    /// ⚠️ **Ela existe porque a razão-ao-alvo NÃO é a grandeza que a asserção
+    /// afirma.** O `assert` diz *"alguma coisa na malha atravessa a peça"*, e isso é
+    /// um fato **absoluto**: uma aresta de metade do modelo é catastrófica quer o
+    /// alvo seja grosso ou fino. Com a razão, a mesma barra aperta sozinha a cada
+    /// passo do slider — medido em 2026-08-21, na mesma malha e sem defeito nenhum:
+    ///
+    /// | alvo | quads | `edge_max / alvo` | **`edge_max / diagonal`** |
+    /// |---|---|---|---|
+    /// | `3,00×` a aresta de entrada | 1 336 | 2,71× | **7,2 %** |
+    /// | `1,50×` | 4 885 | 4,82× | **6,4 %** |
+    /// | `0,75×` | 20 039 | 7,71× | **5,1 %** |
+    /// | `0,54×` | 38 315 | 9,48× | **4,5 %** |
+    ///
+    /// ⭐ **A razão triplica e a fração até MELHORA** — porque não há defeito
+    /// nenhum: o que muda é o denominador. E o defeito real que a barra existe para
+    /// apanhar (a geometria montada sobre índices de outra malha, 2026-08-21) media
+    /// **2,01 numa peça de diagonal 3,46 = 58 %**, contra os 5 a 7 % do caminho
+    /// correcto. *Onze vezes de margem, e a barra deixa de apertar sozinha.*
+    pub edge_max_span: f32,
     /// ⭐⭐ **QUANTAS FACES DOBRARAM contra a peça original** — a medida da fenda
     /// escura que o artista fotografa. Ver [`ph2d_quadfill::folded_against`].
     ///
@@ -177,6 +198,7 @@ impl Sculpt3dScene {
             // perfeita.
             edge_max_ratio: f32::NAN,
             edge_median_ratio: f32::NAN,
+            edge_max_span: f32::NAN,
             // ⭐ **A MESMA régua do outro backend, e é por isso que ela é medida
             // aqui e não estimada.** Sem esta linha o motor local aparecia como
             // *"não dobra"* por não ter quem contasse — que é o mesmo defeito do

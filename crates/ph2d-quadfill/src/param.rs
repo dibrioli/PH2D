@@ -85,7 +85,12 @@ impl PatchParam {
     /// Devolve `None` quando o patch não é um disco triangulável — e ⚠️ **`None` é
     /// uma resposta e não uma falha**: o chamador volta à construção antiga, que
     /// dobra mas devolve malha.
-    pub(crate) fn build(mesh: &Mesh, faces: &[u32], boundary: &[Vec<u32>]) -> Option<Self> {
+    pub(crate) fn build(
+        mesh: &Mesh,
+        faces: &[u32],
+        boundary: &[Vec<u32>],
+        tau: &[Vec<f32>],
+    ) -> Option<Self> {
         let n = boundary.len();
         if n < 3 || faces.is_empty() {
             return None;
@@ -128,15 +133,18 @@ impl PatchParam {
         let poly = corners_for(n);
         for (i, chain) in boundary.iter().enumerate() {
             let (a, b) = (poly[i], poly[(i + 1) % n]);
-            let total: f32 = chain
-                .windows(2)
-                .map(|w| dist(pos_src[w[0] as usize], pos_src[w[1] as usize]))
-                .sum();
-            let mut run = 0.0f32;
+            // ⭐⭐ **Pelo `τ` do layout, a MESMA régua que o [`crate::patch::side_uv`]
+            // usa para os pontos de saída.** Sem graduação ele é o comprimento de
+            // arco e nada muda; com ela, um vértice de malha e um ponto de saída na
+            // mesma posição do arco recebem o mesmo `uv`. *Duas réguas aqui dariam
+            // uma grade torcida junto ao bordo, sem nada a acusar.*
+            let side_tau = tau.get(i)?;
+            if side_tau.len() != chain.len() {
+                return None;
+            }
+            let total: f32 = side_tau.last().copied().unwrap_or(0.0);
             for (k, &g) in chain.iter().enumerate() {
-                if k > 0 {
-                    run += dist(pos_src[chain[k - 1] as usize], pos_src[g as usize]);
-                }
+                let run = side_tau[k];
                 let f = if total > 0.0 { run / total } else { 0.0 };
                 let l = *local.get(&g)? as usize;
                 // ⚠️ O último vértice de um lado é o primeiro do seguinte; escrever
@@ -401,9 +409,4 @@ fn cell(p: [f32; 2], side: usize) -> [usize; 2] {
 
 fn edge(a: [f32; 2], b: [f32; 2], c: [f32; 2]) -> f32 {
     (b[0] - a[0]).mul_add(c[1] - a[1], -((c[0] - a[0]) * (b[1] - a[1])))
-}
-
-fn dist(a: [f32; 3], b: [f32; 3]) -> f32 {
-    let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-    d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
 }

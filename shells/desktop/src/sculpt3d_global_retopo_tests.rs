@@ -86,7 +86,7 @@ fn the_button_delivers_the_global_chain() {
     let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
 
     let r = s
-        .quad_remesh_global(0.5)
+        .quad_remesh_global(0.5, 0.0)
         .expect("a cadeia global correu sobre uma peca de um nivel");
     eprintln!(
         "[sculpt3d] GLOBAL: {} vertices, {} quads, {} nao-quads, {} irregulares, bordo {}, \
@@ -133,11 +133,19 @@ fn the_button_delivers_the_global_chain() {
     //
     // Medido, na mesma fixtura: caminho correcto **máx 3,0×** e mediana 0,9× do
     // alvo; caminho destruído **18×** (= o diâmetro da peça) e mediana 4,6×.
+    // ⭐⭐ **A barra é a FRAÇÃO DA PEÇA, e não a razão ao alvo.** Ver
+    // `QuadRemeshReport::edge_max_span`: a asserção afirma *"alguma coisa atravessa
+    // a peça"*, que é um fato absoluto — com a razão, a mesma barra aperta sozinha a
+    // cada passo do slider, e mediu-se `2,71× → 9,48×` sobre a mesma malha **sem
+    // defeito nenhum**, só por o denominador encolher. O defeito real que ela existe
+    // para apanhar media **58 % da diagonal**; o caminho correcto fica em 4,5 a
+    // 7,2 %. ⛔ *Isto não é afrouxar a barra: é medi-la na grandeza que ela afirma.*
     assert!(
-        r.edge_max_ratio <= 4.0,
-        "a aresta MAIS LONGA saiu {:.2}x o alvo (barra 4x): alguma coisa na malha \
-         atravessa a peca -- e' o sintoma de geometria montada sobre indices de OUTRA malha",
-        r.edge_max_ratio
+        r.edge_max_span <= 0.20,
+        "a aresta MAIS LONGA e' {:.1} % da diagonal da peca (barra 20 %): alguma coisa \
+         na malha atravessa a peca -- e' o sintoma de geometria montada sobre indices \
+         de OUTRA malha, que mediu 58 %",
+        100.0 * r.edge_max_span
     );
     assert!(
         (0.5..=2.0).contains(&r.edge_median_ratio),
@@ -212,7 +220,7 @@ fn three_clicks_in_a_row_still_return_a_usable_piece() {
     let mut s = wrinkled(&gpu.device);
     for click in 1..=3u32 {
         let before: Vec<[f32; 3]> = s.mesh().positions().to_vec();
-        let r = match s.quad_remesh_global(1.0) {
+        let r = match s.quad_remesh_global(1.0, 0.0) {
             Ok(r) => r,
             // ⭐⭐ **O CONTRATO QUE DE FACTO IMPORTA: uma recusa NUNCA destrói.**
             //
@@ -259,9 +267,9 @@ fn three_clicks_in_a_row_still_return_a_usable_piece() {
         );
         // ⭐ E a geometria, que é a régua que a auditoria mostrou que faltava.
         assert!(
-            r.edge_max_ratio <= 4.0,
-            "clique {click}: a aresta mais longa saiu {:.2}x o alvo",
-            r.edge_max_ratio
+            r.edge_max_span <= 0.20,
+            "clique {click}: a aresta mais longa e' {:.1} % da diagonal da peca",
+            100.0 * r.edge_max_span
         );
         assert!(
             (0.5..=2.0).contains(&r.edge_median_ratio),
@@ -287,7 +295,7 @@ fn every_point_of_the_detail_slider_returns_a_piece_on_the_global_chain() {
         let detail = step as f32 / 4.0;
         let mut s = wrinkled(&gpu.device);
         let r = s
-            .quad_remesh_global(detail)
+            .quad_remesh_global(detail, 0.0)
             .unwrap_or_else(|e| panic!("detail={detail:.2}: a cadeia global recusou ({e:?})"));
         eprintln!(
             "[sculpt3d] detail={detail:.2}: {} quads, {} irregulares, aresta mediana {:.2}x \
@@ -302,9 +310,9 @@ fn every_point_of_the_detail_slider_returns_a_piece_on_the_global_chain() {
             "detail={detail:.2}: a casca saiu ABERTA"
         );
         assert!(
-            r.edge_max_ratio <= 4.0,
-            "detail={detail:.2}: a aresta mais longa saiu {:.2}x o alvo",
-            r.edge_max_ratio
+            r.edge_max_span <= 0.20,
+            "detail={detail:.2}: a aresta mais longa e' {:.1} % da diagonal da peca",
+            100.0 * r.edge_max_span
         );
         counts.push(r.quads);
     }
@@ -362,7 +370,7 @@ fn the_two_backends_measured_on_the_same_piece() {
                 s.viewport = (900, 700);
                 s
             };
-            let g = a.quad_remesh_global(detail);
+            let g = a.quad_remesh_global(detail, 0.0);
             let mut b = {
                 let mut s = Sculpt3dScene::new(&gpu.device, mesh(), 1.0);
                 s.viewport = (900, 700);

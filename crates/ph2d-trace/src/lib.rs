@@ -156,17 +156,78 @@ impl PatchLayout {
     /// um arco de bordo, um patch de menos de 3 lados. ⚠️ **É a mesma cerca que o
     /// F4 já tinha**, e ela é aqui que passa a proteger o nosso traçado e não só
     /// o do oráculo.
+    /// **GRADUA a densidade por um campo de TAMANHO por vértice.**
+    ///
+    /// ⭐⭐ **É o que faz o `Follow Curvature` significar alguma coisa na cadeia
+    /// global.** Até 2026-08-21 o knob existia no painel, era lido pelo motor local
+    /// e **nada** na cadeia global o consumia — o log dizia isso em voz alta, e o
+    /// artista lia *"não funciona"*, que é a leitura correcta.
+    ///
+    /// `size[v]` é o lado de quad que se quer no vértice `v`, na mesma unidade do
+    /// mundo — exactamente o que a [`ph2d_quadflow::ScaleField`] já calcula a partir
+    /// da curvatura. Cada troço da cadeia passa a valer
+    ///
+    /// ```text
+    ///     |Δ| × alvo / tamanho_local
+    /// ```
+    ///
+    /// ⇒ onde o campo pede quads **menores** que o alvo, o troço "mede" **mais** e
+    /// recebe mais segmentos. ⭐ **O alvo entra dividido de propósito:** assim o
+    /// `τ` continua a ser um comprimento efectivo e o [`Self::to_layout`] continua a
+    /// dividir por `alvo` — *um campo uniforme igual ao alvo devolve o τ original,
+    /// bit a bit*, e a graduação nunca é um caso especial.
+    ///
+    /// ⚠️ **O tamanho de um troço é a MÉDIA HARMÓNICA das duas pontas**, e não a
+    /// aritmética: densidade é `1/tamanho`, e o que se integra ao longo do arco é a
+    /// densidade. Com a média aritmética, um troço entre um vértice muito denso e um
+    /// muito folgado receberia menos segmentos do que a ponta densa exige.
+    pub fn grade(&mut self, mesh: &Mesh, size: &[f32], target_edge: f32) {
+        let pos = mesh.positions();
+        let scale = if target_edge > 0.0 { target_edge } else { 1.0 };
+        for (a, chain) in self.arc_chain.iter().enumerate() {
+            let Some(tau) = self.arc_tau.get_mut(a) else {
+                continue;
+            };
+            tau.clear();
+            tau.push(0.0);
+            let mut run = 0.0f32;
+            for w in chain.windows(2) {
+                let (i, j) = (w[0] as usize, w[1] as usize);
+                let (Some(p), Some(q)) = (pos.get(i), pos.get(j)) else {
+                    continue;
+                };
+                let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+                let len = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+                // ⚠️ **Média HARMÓNICA** — ver o doc acima.
+                let (si, sj) = (
+                    size.get(i).copied().unwrap_or(scale).max(1.0e-9),
+                    size.get(j).copied().unwrap_or(scale).max(1.0e-9),
+                );
+                let harmonic = 2.0 / (1.0 / si + 1.0 / sj);
+                run += len * scale / harmonic;
+                tau.push(run);
+            }
+        }
+    }
+
     pub fn to_layout(&self, target_edge: f32) -> Result<Layout, ph2d_quantize::LayoutError> {
         let scale = if target_edge > 0.0 { target_edge } else { 1.0 };
+        // ⭐⭐ **O ALVO SAI DO `τ`, e não do comprimento geométrico.** Sem
+        // graduação os dois são o MESMO número por construção; com ela, o `τ` é o
+        // comprimento **efectivo** e é ele que carrega a densidade pedida. Ver
+        // [`PatchLayout::arc_tau`].
         let arcs = self
-            .arc_length
+            .arc_tau
             .iter()
-            // ⭐⭐ **QUADRÁTICA, como a referência a escreve** — ver
-            // `ArcSpec::isometric`. Sobre um custo LINEAR o ótimo é indiferente
-            // entre esmagar um arco longo e espalhar o erro, e com peso `1/alvo`
-            // ele passava a *preferir* esmagar. É a marginal crescente do
-            // quadrático que faz o solver distribuir.
-            .map(|&l| ArcSpec::isometric(f64::from(l / scale)))
+            .map(|t| {
+                let tau = t.last().copied().unwrap_or(0.0);
+                // ⭐⭐ **QUADRÁTICA, como a referência a escreve** — ver
+                // `ArcSpec::isometric`. Sobre um custo LINEAR o ótimo é indiferente
+                // entre esmagar um arco longo e espalhar o erro, e com peso
+                // `1/alvo` ele passava a *preferir* esmagar. É a marginal crescente
+                // do quadrático que faz o solver distribuir.
+                ArcSpec::isometric(f64::from(tau / scale))
+            })
             .collect();
         let patches = self
             .sides()

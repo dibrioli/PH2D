@@ -88,6 +88,27 @@ impl ScaleField {
     /// incompatíveis.
     #[must_use]
     pub fn adaptive(mesh: &Mesh, edge: f32, strength: f32) -> Self {
+        Self::adaptive_with(mesh, edge, strength, FLOOR_IN_INPUT_EDGES)
+    }
+
+    /// **ADAPTATIVA, com o piso do CHAMADOR** — ver
+    /// [`resolvable_edge_range_with`].
+    ///
+    /// ⛔⛔ **Sem isto o campo COLAPSA para uma constante, e o knob morre em
+    /// silêncio.** O `lo`/`hi` abaixo são recortados pelo piso, e o piso era sempre
+    /// o do motor LOCAL (`3,0` arestas de entrada). Quando o chamador pede um alvo
+    /// mais fino que esse piso — que é exactamente o que a cadeia global faz desde
+    /// que ganhou o seu próprio piso —, `lo` e `hi` batem no mesmo número e **todo
+    /// vértice recebe o mesmo tamanho**. Medido em 2026-08-21 na esfera com cristas:
+    /// `min = mediana = max = 0,2301` com alvo `0,0910`, em `adapt = 0,5` **e** em
+    /// `adapt = 1,0` — dois valores do knob, saída idêntica.
+    ///
+    /// ⚠️ **E o sintoma não era *"não adapta"*, era *"perdeu dois terços das
+    /// faces"***: o campo constante valia `2,5×` o alvo, então a peça saía com 451
+    /// quads em vez de 1 336. *Um knob que colapsa não fica neutro — ele passa a
+    /// mandar.*
+    #[must_use]
+    pub fn adaptive_with(mesh: &Mesh, edge: f32, strength: f32, floor_in_input_edges: f32) -> Self {
         let edge = edge.max(MIN_EDGE);
         let s = strength.clamp(0.0, 1.0);
         if s == 0.0 {
@@ -134,7 +155,7 @@ impl ScaleField {
         // BAIXO fica sem curso — não há folga sob o piso. Isso é o recurso a
         // dizer o que é, não uma perda: a adaptação para CIMA (quads maiores onde
         // a forma é chapada) continua inteira, e é ela que o `hi` carrega.
-        let floor = resolvable_edge_range(mesh).0;
+        let floor = resolvable_edge_range_with(mesh, floor_in_input_edges).0;
         let lo = (edge / MAX_ADAPTIVE_RATIO.sqrt()).max(floor);
         let hi = (edge * MAX_ADAPTIVE_RATIO.sqrt()).max(lo);
         let per_vertex = curv
@@ -186,6 +207,34 @@ impl ScaleField {
 ///
 /// **3,00×** é o primeiro degrau em que as três fixturas concordam.
 pub const FLOOR_IN_INPUT_EDGES: f32 = 3.0;
+
+/// **O PISO DA CADEIA GLOBAL** — MEDIDO, e ele é **quatro vezes mais fino** que o
+/// do motor local.
+///
+/// ⛔ **O `3,0` acima é do motor LOCAL e estava a definir o teto do global**, que é
+/// outro algoritmo: ele não extrai de retícula nenhuma. Medido em 2026-08-21 na
+/// esfera amassada, **sem tocar no mapa de patches** (28 patches, 67 arcos, `work`
+/// de 5 136 triângulos), só descendo o alvo:
+///
+/// | alvo | quads | dobras | mediana | **aresta máx / diagonal** | F4 |
+/// |---|---|---|---|---|---|
+/// | `3,00×` (o piso local) | 1 336 | 0,00 % | 1,03× | 7,2 % | 24 ms |
+/// | `1,50×` | 4 885 | 0,02 % | 1,05× | 6,4 % | 148 ms |
+/// | ⭐ **`0,75×` (este)** | **20 039** | **0,03 %** | **1,03×** | **5,1 %** | **2,7 s** |
+/// | `0,54×` | 38 315 | 0,08 % | 1,03× | 4,5 % | 1,5 s |
+/// | ⛔ `0,375×` | 78 883 | 0,09 % | 1,04× | 4,8 % | ⛔ **50 s, sem prova** |
+///
+/// ⭐ **O detalhe NÃO se perde ao pedir quads mais finos que o `work`**: todo ponto
+/// de interior é reprojectado sobre a malha **ORIGINAL** do artista, não sobre a
+/// remalhada — então quads mais finos apanham detalhe que o F1 já tinha deitado
+/// fora.
+///
+/// ⚠️ **De que recurso é este limite:** do **relógio da quantização**, e de mais
+/// nada. As dobras ficam em 0,03 %, a mediana em 1,03× e a aresta máxima em
+/// **fração da peça** até melhora. O que explode é a busca do F4 — 2,7 s aqui,
+/// 50 s um degrau abaixo, e sem prova de ótimo. *O porte do solver de refinamento
+/// do libSatsuma é o que move este número, e é a próxima peça do plano.*
+pub const GLOBAL_FLOOR_IN_INPUT_EDGES: f32 = 0.75;
 
 /// **O MENOR NÚMERO DE QUADS que ainda descreve uma forma** — o teto, MEDIDO.
 ///
@@ -254,7 +303,22 @@ pub fn surface_area(mesh: &Mesh) -> f32 {
 /// por aritmética — que é o defeito que esta função existe para impedir.
 #[must_use]
 pub fn resolvable_edge_range(mesh: &Mesh) -> (f32, f32) {
-    let floor = (FLOOR_IN_INPUT_EDGES * mean_edge(mesh)).max(MIN_EDGE);
+    resolvable_edge_range_with(mesh, FLOOR_IN_INPUT_EDGES)
+}
+
+/// **A FAIXA, com o piso do CHAMADOR** — ver [`FLOOR_IN_INPUT_EDGES`].
+///
+/// ⭐⭐ **Ela existe porque o piso de `3,0` é do motor LOCAL, e ele estava a
+/// definir o teto do outro.** Aqui a extração liga células de uma retícula: um
+/// quad mais fino que o triângulo de entrada devolve um ciclo de 352 lados com
+/// 58 % do volume perdido (a foto de 2026-08-19), e daí sai o `3,0`. ⚠️ **A cadeia
+/// global não extrai de retícula nenhuma** — ela reamostra arcos por comprimento e
+/// amostra o interior dentro de um triângulo achatado —, então esse número não é
+/// dela. *Nunca deixe o caminho mais limitado definir o teto do outro* (CLAUDE.md
+/// §0.0).
+#[must_use]
+pub fn resolvable_edge_range_with(mesh: &Mesh, floor_in_input_edges: f32) -> (f32, f32) {
+    let floor = (floor_in_input_edges * mean_edge(mesh)).max(MIN_EDGE);
     let ceiling = (surface_area(mesh) / MIN_QUADS).sqrt().max(floor);
     (floor, ceiling)
 }
@@ -273,7 +337,13 @@ pub fn resolvable_edge_range(mesh: &Mesh) -> (f32, f32) {
 /// pergunta que a malha não tem como responder.
 #[must_use]
 pub fn edge_for_detail(mesh: &Mesh, detail: f32) -> f32 {
-    let (floor, ceiling) = resolvable_edge_range(mesh);
+    edge_for_detail_with(mesh, detail, FLOOR_IN_INPUT_EDGES)
+}
+
+/// **O LADO DO QUAD, com o piso do CHAMADOR** — ver [`resolvable_edge_range_with`].
+#[must_use]
+pub fn edge_for_detail_with(mesh: &Mesh, detail: f32, floor_in_input_edges: f32) -> f32 {
+    let (floor, ceiling) = resolvable_edge_range_with(mesh, floor_in_input_edges);
     // ⚠️ **`clamp` NÃO fecha o `NaN`** — ele o propaga, e um `NaN` aqui vira um
     // `scale` `NaN` que envenena o campo inteiro sem erro nenhum. O gate
     // `every_point_of_the_detail_slider_is_legal` o pegou. O `NaN` cai no

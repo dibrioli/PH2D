@@ -172,6 +172,15 @@ pub struct FillReport {
     /// construção lhe toca. *Uma contagem de defeitos sem proveniência nomeia a fase
     /// errada.*
     pub folded_prov: [usize; Provenance::COUNT],
+    /// ⭐⭐ **DE QUE FASE são as pontas das arestas LONGAS** (acima de `3×` a
+    /// mediana) — ver [`Provenance`].
+    ///
+    /// ⚠️ **É a régua que diz até onde o slider pode ir.** Medido em 2026-08-21: ao
+    /// pedir `15×` mais quads a mediana fica em `1,03×` o alvo — a densidade está
+    /// certa — e a **máxima** vai de `2,71×` a `8,14×`. *Uma grandeza que não
+    /// acompanha o alvo tem um dono, e sem esta decomposição procura-se por
+    /// eliminação.*
+    pub edge_long_prov: [usize; Provenance::COUNT],
 }
 
 /// **QUANTAS FACES DA SAÍDA APONTAM CONTRA A SUPERFÍCIE POR BAIXO DELAS.**

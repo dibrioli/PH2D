@@ -42,10 +42,18 @@ impl Sculpt3dScene {
     /// **A RETOPOLOGIA GLOBAL** — a cadeia inteira do ADR-0161. Devolve o
     /// [`QuadRemeshReport`].
     ///
-    /// ⚠️ **Ela NÃO recebe o `adaptive`, e a ausência é deliberada.** Este backend
-    /// não tem densidade adaptativa: passá-lo aqui seria um knob que o painel
-    /// mostra, o artista mexe e **nada consome** — o defeito que já custou uma
-    /// caçada nesta base. O painel diz isso em voz alta quando ele não é zero.
+    /// ⭐⭐ **Ela RECEBE o `adaptive` desde 2026-08-21, e ele tem consumidor.**
+    ///
+    /// ⛔ Antes disso não recebia, o painel avisava em voz alta que o knob não
+    /// fazia nada nesta cadeia, e o artista lia *"o Follow Curvature não
+    /// funciona"* — **que é a leitura correcta**: o motor por omissão é este.
+    /// *Um aviso no terminal não é uma feature; é a confissão de um controlo
+    /// morto.*
+    ///
+    /// A densidade entra pela [`ph2d_trace::PatchLayout::grade`], com o **mesmo**
+    /// campo de tamanho que o motor local usa
+    /// ([`ph2d_quadflow::ScaleField::adaptive`]) — então o knob significa a mesma
+    /// coisa nos dois, que é o que o `detail` já fazia.
     ///
     /// ⚠️ **O `detail` atravessa pela MESMA lei do irmão local**
     /// (`ph2d_quadflow::edge_for_detail`), e isso é o que faz o slider significar
@@ -58,6 +66,7 @@ impl Sculpt3dScene {
     pub(in crate::sculpt3d) fn quad_remesh_global(
         &mut self,
         detail: f32,
+        adaptive: f32,
     ) -> Result<QuadRemeshReport, RemeshRefusal> {
         if self.level_count() != 1 {
             return Err(RemeshRefusal::MultiresStack);
@@ -85,20 +94,59 @@ impl Sculpt3dScene {
         // para `ALPHA × diagonal`, que é uma constante: o extremo fino do curso
         // ancorava-se num número que **não depende do que o artista pediu**.
         //
+        // ⭐⭐ **E o PISO é o da cadeia GLOBAL, quatro vezes mais fino que o do
+        // motor local** — ver [`ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES`]. O
+        // `3,0` do local foi medido para a extração por retícula dele; esta cadeia
+        // reamostra arcos e amostra dentro de um triângulo achatado, e a medição diz
+        // que ela resolve **20 039 quads** onde antes parava em 1 336, com as dobras
+        // em 0,03 % e a mediana em 1,03× o alvo.
+        //
         // ⚠️ **E ela deixa um defeito ABERTO, com a causa medida:** quando o alvo é
         // maior que o comprimento típico de um arco, o piso `ArcSpec::min = 1` passa
         // a escolher o passo da grade e a densidade da saída é a do **layout**, não
         // a do slider. É o que se vê no 3.º clique seguido (mediana `0,16×`), e a
         // cura é grosseirar o layout — não trocar esta linha. Ver `PLAN.md`
         // §4-septdecies.
-        let target = ph2d_quadflow::edge_for_detail(&reference, detail);
+        let target = ph2d_quadflow::edge_for_detail_with(
+            &reference,
+            detail,
+            ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
+        );
 
         // ── F2. O campo cruzado com decisão inteira global.
         let dual = ph2d_crossfield::Dual::build(&work);
         let (field, _) = ph2d_crossfield::solve_miq(&dual);
 
         // ── F3. As paredes e os patches.
-        let layout = ph2d_trace::trace_patches(&work, &dual, &field);
+        let mut layout = ph2d_trace::trace_patches(&work, &dual, &field);
+
+        // ⭐⭐ **O `Follow Curvature`, e ele entra AQUI e não na extração.** A
+        // cadeia global não extrai de retícula nenhuma: quem decide a densidade é
+        // quantos segmentos cada arco leva, e isso sai do `τ`. Graduar o `τ` por um
+        // campo de tamanho faz o adensamento atravessar a quantização **e** a
+        // amostragem de uma vez — ver [`ph2d_trace::PatchLayout::grade`].
+        //
+        // ⚠️ **O campo é o MESMO do motor local** (`ScaleField::adaptive`), então o
+        // knob significa a mesma coisa nos dois. *Duas leis para o mesmo knob é
+        // como dois botões passam a precisar de duas explicações.*
+        //
+        // ⚠️ **Ele é calculado sobre a `work` e não sobre a original**, e é
+        // obrigatório: o `grade` indexa `size` pelos vértices do `arc_chain`, que
+        // são índices da `work`. *A mesma família do parâmetro que servia dois
+        // papéis, e aqui a assinatura já não a deixa exprimir.*
+        if adaptive > 0.0 {
+            // ⚠️ **Com o PISO desta cadeia**, e não com o do motor local: sem isso
+            // o campo colapsa numa constante e o knob passa a **grosseirar** a peça
+            // em vez de a adaptar. Ver [`ph2d_quadflow::ScaleField::adaptive_with`].
+            let sizing = ph2d_quadflow::ScaleField::adaptive_with(
+                &work,
+                target,
+                adaptive,
+                ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
+            );
+            let sizes: Vec<f32> = (0..sizing.len()).map(|v| sizing.at(v)).collect();
+            layout.grade(&work, &sizes, target);
+        }
         let spec = layout.to_layout(target).map_err(RemeshRefusal::Layout)?;
 
         // ── F4. A quantização Bi-MDF.
@@ -147,6 +195,9 @@ impl Sculpt3dScene {
             irregular: r.irregular,
             edge_max_ratio: r.edge_max / target,
             edge_median_ratio: r.edge_median / target,
+            // ⚠️ **Da malha ORIGINAL e não da de saída**: a caixa da saída pode ser
+            // ligeiramente menor, e a régua tem de ser a mesma antes e depois.
+            edge_max_span: r.edge_max / span(&reference),
             folded: r.folded,
         };
         let previous = core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, out);
@@ -156,6 +207,22 @@ impl Sculpt3dScene {
         self.mesh_rebuilt();
         Ok(report)
     }
+}
+
+/// **A DIAGONAL da caixa da peça** — o denominador da fração absoluta.
+///
+/// ⚠️ **A diagonal e não o maior lado**: a régua tem de ser a mesma que a foto do
+/// defeito de 2026-08-21 usou (`2,01` numa esfera de raio `1,0`, diagonal `3,46`),
+/// senão a margem de onze vezes registada no doc do `edge_max_span` deixa de ser
+/// comparável.
+fn span(mesh: &ph2d_mesh::Mesh) -> f32 {
+    let b = mesh.bounds();
+    let d = [
+        b.max[0] - b.min[0],
+        b.max[1] - b.min[1],
+        b.max[2] - b.min[2],
+    ];
+    d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
 }
 
 /// **O motor LOCAL foi pedido explicitamente?** — `PH2D_RETOPO_LEGACY=1`.

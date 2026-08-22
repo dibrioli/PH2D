@@ -71,12 +71,6 @@ pub fn coons<const D: usize>(
 /// a do alvo. *O que se quer amostrar é a CURVA, não a lista.*
 #[must_use]
 pub fn resample(chain: &[[f32; 3]], n: usize) -> Vec<[f32; 3]> {
-    if chain.is_empty() {
-        return Vec::new();
-    }
-    if n == 0 || chain.len() == 1 {
-        return vec![chain[0]];
-    }
     let mut cum = Vec::with_capacity(chain.len());
     let mut total = 0.0f32;
     cum.push(0.0f32);
@@ -84,6 +78,33 @@ pub fn resample(chain: &[[f32; 3]], n: usize) -> Vec<[f32; 3]> {
         total += dist(w[0], w[1]);
         cum.push(total);
     }
+    resample_by(chain, &cum, n)
+}
+
+/// **AMOSTRA uma polilinha em `n` passos iguais de `tau`.**
+///
+/// ⭐⭐ **É a metade do `Follow Curvature` que vive nesta fase.** O `tau` é o
+/// comprimento **efectivo** cumulativo que o F3 calculou
+/// ([`ph2d_trace::PatchLayout::arc_tau`]): sem graduação ele é o comprimento de
+/// arco e esta função devolve, bit a bit, o que o [`resample`] devolvia; com
+/// graduação, os pontos adensam onde o campo de tamanho pede quads menores.
+///
+/// ⚠️ **O MESMO `tau` que decidiu quantos segmentos o arco leva.** Se a
+/// quantização usasse uma densidade e a amostragem outra, o arco teria o número
+/// certo de pontos nos sítios errados — e nenhuma contagem no relatório o veria.
+///
+/// ⚠️ `tau` tem de ter um valor por vértice da `chain`; comprimentos diferentes
+/// devolvem a cadeia sem tocar, que é a resposta honesta a *"isto não é desta
+/// polilinha"*.
+#[must_use]
+pub fn resample_by(chain: &[[f32; 3]], cum: &[f32], n: usize) -> Vec<[f32; 3]> {
+    if chain.is_empty() {
+        return Vec::new();
+    }
+    if n == 0 || chain.len() == 1 || cum.len() != chain.len() {
+        return vec![chain[0]];
+    }
+    let total = cum[cum.len() - 1];
     if total <= 0.0 {
         return vec![chain[0]; n + 1];
     }

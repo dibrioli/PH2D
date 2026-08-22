@@ -168,14 +168,21 @@ pub(crate) fn side_uv(
     let poly = corners_for(n);
     let (a, b) = (poly[i], poly[(i + 1) % n]);
     let side = &sides[i];
-    let total: f32 = side
-        .iter()
-        .map(|&(x, _)| layout.arc_length[x as usize])
-        .sum();
+    // ⚠️ **Pelo `τ` e não pelo comprimento**, e não é detalhe: o `uv` de um ponto
+    // de saída tem de cair entre os `uv` dos vértices de malha à volta dele, e o
+    // achatamento distribui a fronteira por... comprimento. Ver o aviso abaixo.
+    let tau_of = |x: u32| {
+        layout
+            .arc_tau
+            .get(x as usize)
+            .and_then(|t| t.last().copied())
+            .unwrap_or(0.0)
+    };
+    let total: f32 = side.iter().map(|&(x, _)| tau_of(x)).sum();
     let mut out: Vec<[f32; 2]> = Vec::new();
     let mut run = 0.0f32;
     for &(x, _) in side {
-        let len = layout.arc_length[x as usize];
+        let len = tau_of(x);
         let steps = quant.arc[x as usize].max(1) as usize;
         for k in 0..=steps {
             if k == 0 && !out.is_empty() {

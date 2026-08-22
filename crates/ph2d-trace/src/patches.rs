@@ -47,7 +47,28 @@ pub struct PatchLayout {
     /// Por patch, os vértices-canto, na ordem da fronteira.
     pub corners: Vec<Vec<u32>>,
     /// Por arco, o comprimento geométrico.
+    ///
+    /// ⚠️ **Ele é a régua da PRÉ-CONDIÇÃO e não a da densidade** — o
+    /// `ph2d_quadfill` mede-o na malha que recebe e compara com este número para
+    /// provar que o layout é daquela malha. Quem decide **quantos quads** um arco
+    /// leva é o [`Self::arc_tau`].
     pub arc_length: Vec<f32>,
+    /// ⭐⭐ **O COMPRIMENTO EFECTIVO cumulativo ao longo de cada arco** — o `τ`, um
+    /// valor por vértice da cadeia, começando em `0`.
+    ///
+    /// ⭐ **Ele é a fonte ÚNICA da densidade, e as duas fases a leem.** O F4 tira
+    /// dele o alvo de quads do arco (`τ_fim / aresta_alvo`) e o F5 reamostra a
+    /// cadeia por ele — então *é inexprimível* o alvo dizer uma densidade e a
+    /// amostragem realizar outra. ⛔ Duas contas separadas foi o que destruiu o
+    /// produto em 2026-08-21, noutra fase.
+    ///
+    /// ⚠️ **Sem graduação ele É o comprimento cumulativo** (`τ_fim == arc_length`),
+    /// e o resultado é byte-idêntico ao de uma reamostragem por comprimento de
+    /// arco. Com [`PatchLayout::grade`] cada troço passa a valer
+    /// `|Δ| × alvo/tamanho_local`: onde o campo de tamanho pede quads menores, o
+    /// troço "mede" mais e recebe mais segmentos. *A densidade vira uma integral,
+    /// não um caso especial.*
+    pub arc_tau: Vec<Vec<f32>>,
     /// Por arco, as arestas de malha que o compõem. ⚠️ É o que permite **desfazer**
     /// uma parede: sem isto, um patch degenerado só se pode contar, não curar.
     pub arc_edges: Vec<BTreeSet<(u32, u32)>>,
@@ -148,6 +169,7 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
     // Os arcos: a fronteira partida em TODO canto de QUALQUER patch.
     let mut arc_id: BTreeMap<BTreeSet<(u32, u32)>, u32> = BTreeMap::new();
     let mut arc_length: Vec<f32> = Vec::new();
+    let mut arc_tau: Vec<Vec<f32>> = Vec::new();
     let mut arc_edges: Vec<BTreeSet<(u32, u32)>> = Vec::new();
     let mut arc_chain: Vec<Vec<u32>> = Vec::new();
     let mut side_arcs: Vec<Vec<Vec<(u32, bool)>>> = Vec::with_capacity(n_patches);
@@ -183,10 +205,17 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
                     .map(|w| (w[0].min(w[1]), w[0].max(w[1])))
                     .collect();
                 let id = *arc_id.entry(key.clone()).or_insert_with(|| {
-                    let len = chain
-                        .windows(2)
-                        .map(|w| dist(pos[w[0] as usize], pos[w[1] as usize]))
-                        .sum();
+                    // ⭐ O `τ` nasce como o comprimento cumulativo — a graduação
+                    // neutra. Ver [`PatchLayout::arc_tau`].
+                    let mut tau = Vec::with_capacity(chain.len());
+                    let mut run = 0.0f32;
+                    tau.push(0.0);
+                    for w in chain.windows(2) {
+                        run += dist(pos[w[0] as usize], pos[w[1] as usize]);
+                        tau.push(run);
+                    }
+                    let len = run;
+                    arc_tau.push(tau);
                     arc_length.push(len);
                     arc_edges.push(key);
                     arc_chain.push(chain.clone());
@@ -228,6 +257,7 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
         arc_chain,
         corners,
         arc_length,
+        arc_tau,
         arc_edges,
         loops_per_patch,
         report,

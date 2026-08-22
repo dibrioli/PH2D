@@ -423,3 +423,10 @@ mod global_retopo;
 #[cfg(test)]
 #[path = "sculpt3d_global_retopo_probes.rs"]
 mod global_retopo_probes;
+
+/// **As sondas da DENSIDADE e do RELÓGIO** — ver [`retopo_density_probes`]. Irmãs
+/// das [`global_retopo_probes`]: lá o defeito, aqui até onde o slider pode ir e o
+/// que o limita.
+#[cfg(test)]
+#[path = "sculpt3d_retopo_density_probes.rs"]
+mod retopo_density_probes;

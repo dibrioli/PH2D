@@ -13,7 +13,7 @@ use ph2d_mesh::{Face, Mesh};
 use ph2d_quantize::Quantization;
 use ph2d_trace::PatchLayout;
 
-use crate::fan::{resample, segment};
+use crate::fan::{resample_by, segment};
 use crate::param::PatchParam;
 use crate::patch::{Chains, Chains2, Domain, build_grid, fill_rectangle, side_uv};
 use crate::report::{FillError, FillReport, Points, Provenance};
@@ -122,7 +122,11 @@ pub fn fill(
     for (a, chain) in layout.arc_chain.iter().enumerate() {
         let n = quant.arc[a].max(1) as usize;
         let curve: Vec<[f32; 3]> = chain.iter().map(|&v| src[v as usize]).collect();
-        let sampled = resample(&curve, n);
+        // ⭐⭐ **Pelo `τ` do layout, e não pelo comprimento.** É o MESMO número que
+        // decidiu quantos segmentos este arco leva — ver
+        // [`ph2d_trace::PatchLayout::arc_tau`]. Sem graduação os dois coincidem;
+        // com ela, os pontos adensam onde o campo de tamanho pede.
+        let sampled = resample_by(&curve, &layout.arc_tau[a], n);
         let mut ids = Vec::with_capacity(n + 1);
         for (k, p) in sampled.iter().enumerate() {
             // As pontas são cantos de malha, e um canto é de TODOS os arcos que
@@ -220,25 +224,48 @@ pub fn fill(
         // ⭐⭐ **O ACHATAMENTO DO PATCH** — ver [`crate::param`]. A partir daqui a
         // grade é construída no DOMÍNIO e volta pela triangulação; a interpolação
         // em `ℝ³` fica como caminho de recurso para o patch que não achatar.
-        let mesh_sides: Vec<Vec<u32>> = sides
-            .iter()
-            .map(|side| {
-                let mut chain: Vec<u32> = Vec::new();
-                for &(a, rev) in side {
-                    let mut c = layout.arc_chain[a as usize].clone();
-                    if rev {
-                        c.reverse();
-                    }
-                    if chain.is_empty() {
-                        chain = c;
-                    } else {
-                        chain.extend_from_slice(&c[1..]);
-                    }
+        // ⚠️ **A fronteira leva o `τ` junto, e não é conforto.** O achatamento põe
+        // cada vértice de malha da fronteira na aresta do polígono pela sua fração
+        // de `τ`, e o [`side_uv`] põe cada ponto de SAÍDA pela dele — se as duas
+        // usassem réguas diferentes (uma o comprimento, outra o `τ`), um ponto de
+        // fronteira teria um `uv` que discorda dos vértices de malha à volta dele, e
+        // a grade nasceria torcida junto ao bordo. *Uma régua, duas leituras.*
+        //
+        // ⚠️ **Um arco percorrido ao contrário tem o `τ` ESPELHADO**
+        // (`τ' = τ_fim − τ`), não invertido na ordem: `τ` é uma medida acumulada, e
+        // virar a lista sem virar os valores daria uma cadeia decrescente.
+        let mut mesh_sides: Vec<Vec<u32>> = Vec::with_capacity(n);
+        let mut mesh_tau: Vec<Vec<f32>> = Vec::with_capacity(n);
+        for side in sides {
+            let (mut chain, mut tau): (Vec<u32>, Vec<f32>) = (Vec::new(), Vec::new());
+            for &(a, rev) in side {
+                let mut c = layout.arc_chain[a as usize].clone();
+                let src_tau = &layout.arc_tau[a as usize];
+                let end = src_tau.last().copied().unwrap_or(0.0);
+                let mut t: Vec<f32> = if rev {
+                    src_tau.iter().rev().map(|v| end - v).collect()
+                } else {
+                    src_tau.clone()
+                };
+                if rev {
+                    c.reverse();
                 }
-                chain
-            })
-            .collect();
-        let param = PatchParam::build(indexed, &patch_faces[p], &mesh_sides);
+                let base = tau.last().copied().unwrap_or(0.0);
+                for v in &mut t {
+                    *v += base;
+                }
+                if chain.is_empty() {
+                    chain = c;
+                    tau = t;
+                } else {
+                    chain.extend_from_slice(&c[1..]);
+                    tau.extend_from_slice(&t[1..]);
+                }
+            }
+            mesh_sides.push(chain);
+            mesh_tau.push(tau);
+        }
+        let param = PatchParam::build(indexed, &patch_faces[p], &mesh_sides, &mesh_tau);
         if param.is_some() {
             flattened += 1;
         }
@@ -528,6 +555,22 @@ fn measure(
     lens.sort_by(f32::total_cmp);
     let edge_max = lens.last().copied().unwrap_or(0.0);
     let edge_median = lens.get(lens.len() / 2).copied().unwrap_or(0.0);
+    // ⭐⭐ **De que FASE são as pontas das arestas longas** — ver
+    // [`FillReport::edge_long_prov`]. A barra é relativa à MEDIANA e não ao alvo:
+    // esta função não conhece o alvo do chamador, e a mediana é o alvo realizado.
+    let mut edge_long_prov = [0usize; Provenance::COUNT];
+    for ((a, b), _) in count.iter() {
+        let (p, q) = (pos[*a as usize], pos[*b as usize]);
+        let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+        let len = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+        if len > edge_median * 3.0 {
+            for v in [*a, *b] {
+                if let Some(pr) = prov.get(v as usize) {
+                    edge_long_prov[*pr as usize] += 1;
+                }
+            }
+        }
+    }
 
     let mut by_provenance = [0usize; Provenance::COUNT];
     let irregular = (0..mesh.vert_count())
@@ -556,6 +599,7 @@ fn measure(
         sample_misses: 0,
         flatten_residual: 0.0,
         flatten_rounds: 0,
+        edge_long_prov,
         // ⭐⭐ **A CONTAGEM DE DOBRAS entra no relatório da fase**, e não numa
         // sonda. Ela é o defeito que o artista fotografa e o único campo, com os
         // dois de aresta, que uma malha de posições embaralhadas não reproduz.

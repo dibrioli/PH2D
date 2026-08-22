@@ -387,21 +387,17 @@ impl Sculpt3dScene {
                 } else {
                     self.retopo_mode
                 };
-                // ⚠️ **O `adapt` só tem consumidor num dos motores**, e o log diz
-                // isso em voz alta: um knob que o painel mostra e nada lê é o
-                // defeito que já custou uma caçada nesta base. ⭐ A pergunta é
-                // feita ao MODO (`uses_adaptive`), nunca a uma lista de nomes.
-                if !mode.uses_adaptive() && self.quad_adapt != 0.0 {
-                    eprintln!(
-                        "[sculpt3d] ⚠️ o 'Follow Curvature' ({:.2}) nao tem efeito no motor \
-                         'Even Grid' -- so' o 'Fast' o consome",
-                        self.quad_adapt
-                    );
-                }
-                let outcome = if mode.uses_adaptive() {
-                    self.quad_remesh(self.quad_detail, self.quad_adapt)
-                } else {
-                    self.quad_remesh_global(self.quad_detail)
+                // ⭐⭐ **O `Follow Curvature` chega aos DOIS motores desde
+                // 2026-08-21.** Ele era lido só pelo local, e como o motor por
+                // omissão é o global o artista lia *"não funciona"* — que era a
+                // leitura correcta. *Um aviso no terminal não é uma feature.*
+                let outcome = match mode {
+                    ph2d_panel_sculpt3d::state::RetopoMode::Local => {
+                        self.quad_remesh(self.quad_detail, self.quad_adapt)
+                    }
+                    ph2d_panel_sculpt3d::state::RetopoMode::Global => {
+                        self.quad_remesh_global(self.quad_detail, self.quad_adapt)
+                    }
                 };
                 match outcome {
                     // ⚠️ **O log NOMEIA os buracos.** Enquanto ele não o fazia, a
@@ -419,7 +415,7 @@ impl Sculpt3dScene {
                     // certa de irregulares, e mesmo assim estar cheia delas.
                     Ok(r) => eprintln!(
                         "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
-                         {} irregulares, aresta mediana {} e MAXIMA {} do alvo, com quad de {:.4} \
+                         {} irregulares, aresta mediana {} do alvo e a mais longa {}, com quad de {:.4} \
                          em {:.0} ms{}{}",
                         r.verts,
                         r.quads,
@@ -431,7 +427,22 @@ impl Sculpt3dScene {
                             r.irregular.to_string()
                         },
                         ratio(r.edge_median_ratio),
-                        ratio(r.edge_max_ratio),
+                        // ⚠️ **A MÁXIMA vai nas DUAS réguas, e a que decide é a
+                        // fração.** Ver `QuadRemeshReport::edge_max_span`: a razão
+                        // ao alvo triplica com o slider **sem defeito nenhum** (o
+                        // denominador é que encolhe), e é a fração da peça que
+                        // responde *"alguma coisa atravessa a peça?"*. Imprimir só
+                        // uma delas deixaria o leitor a comparar números que não são
+                        // comparáveis entre duas corridas do slider.
+                        if r.edge_max_span.is_finite() {
+                            format!(
+                                "{} do alvo = {:.1}% da peca",
+                                ratio(r.edge_max_ratio),
+                                100.0 * r.edge_max_span
+                            )
+                        } else {
+                            String::from("?")
+                        },
                         r.edge,
                         r.ms,
                         if r.holes == 0 {

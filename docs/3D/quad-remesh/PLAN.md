@@ -1799,6 +1799,125 @@ extremo fino do curso passava a ancorar-se numa constante (`ALPHA × diagonal`).
 
 ---
 
+## 4-undevicies — ⭐⭐ O TETO ERA DO MOTOR ERRADO: `1 336` → `20 039` quads, e o `Follow Curvature` estava MORTO NA ORIGEM
+
+> Dois reports do artista, e os dois eram defeitos reais: *"o máximo de Detail ainda
+> é de muito baixa resolução"* e *"Follow Curvature não funciona"*.
+
+### 1. ⛔ O piso do slider era do motor LOCAL
+
+A [`edge_for_detail`](../../../crates/ph2d-quadflow/src/scale.rs) ancora o extremo
+fino em `FLOOR_IN_INPUT_EDGES = 3,0` **arestas da malha de entrada**, e esse número
+foi medido para a extração por retícula do porte local: ali um quad mais fino que o
+triângulo de entrada devolve um ciclo de 352 lados com 58 % do volume perdido (a
+foto de 2026-08-19). ⚠️ **A cadeia global não extrai de retícula nenhuma** — ela
+reamostra arcos por comprimento e amostra o interior dentro de um triângulo
+achatado. *O caminho mais limitado definia o teto do outro* (CLAUDE.md §0.0).
+
+Medido **sem tocar no mapa de patches** (28 patches, 67 arcos, `work` de 5 136
+triângulos), só descendo o alvo:
+
+| alvo | quads | dobras | mediana | **máx / diagonal** | F4 |
+|---|---|---|---|---|---|
+| `3,00×` (o piso local) | 1 336 | 0,00 % | 1,03× | 7,2 % | 24 ms |
+| `1,50×` | 4 885 | 0,02 % | 1,05× | 6,4 % | 148 ms |
+| ⭐ **`0,75×` — ADOTADO** | **20 039** | **0,03 %** | **1,03×** | **5,1 %** | **2,7 s** |
+| `0,54×` | 38 315 | 0,08 % | 1,03× | 4,5 % | 1,5 s |
+| ⛔ `0,375×` | 78 883 | 0,09 % | 1,04× | 4,8 % | ⛔ **50 s, sem prova** |
+
+⭐ **O detalhe não se perde ao pedir quads mais finos que o `work`:** todo ponto de
+interior é reprojectado sobre a malha **ORIGINAL** do artista, não sobre a remalhada.
+
+⚠️ **De que recurso é o novo teto:** do **relógio da quantização**, e de mais nada.
+As dobras ficam em 0,03 %, a mediana em 1,03× e a aresta máxima **em fração da peça
+até melhora**. O que explode é a busca do F4.
+
+O slider inteiro, medido pelo gesto: `405 · 496 · 1 336 · 4 885 · **20 039**` quads.
+
+### ⭐ E a barra da aresta máxima media a grandeza errada
+
+O `assert` dizia *"alguma coisa na malha atravessa a peça"* e comparava
+`edge_max / alvo`. Isso é uma razão a um denominador que o slider encolhe:
+
+| alvo | quads | `máx / alvo` | **`máx / diagonal`** |
+|---|---|---|---|
+| `3,00×` | 1 336 | 2,71× | **7,2 %** |
+| `0,75×` | 20 039 | 7,71× | **5,1 %** |
+| `0,54×` | 38 315 | 9,48× | **4,5 %** |
+
+⭐ **A razão triplica e a fração melhora** — não há defeito nenhum, muda o
+denominador. E o defeito que a barra existe para apanhar (a geometria montada sobre
+índices de outra malha) media **2,01 numa peça de diagonal 3,46 = 58 %**. ⇒ a barra
+passa a ser **20 % da diagonal**, com onze vezes de margem, e deixa de apertar
+sozinha. ⛔ *Isto não é afrouxar: é medir a grandeza que a asserção afirma.*
+
+⭐⭐ **E com ela o `three_clicks_in_a_row_still_return_a_usable_piece` passou** —
+vermelho desde `5ec438e17`, agora `20 039 · 41 619 · 19 411` quads com mediana
+`1,03 · 0,99 · 1,13`.
+
+### 2. ⛔⛔ O `Follow Curvature` estava morto — e não ficava neutro, MANDAVA
+
+Duas causas, uma em cada motor:
+
+**(a) A cadeia global não o lia.** O knob era consumido só pelo porte local; o motor
+por omissão é o global, e o log limitava-se a avisar. *Um aviso no terminal não é
+uma feature.* ⇒ a densidade entra agora pelo
+[`PatchLayout::grade`](../../../crates/ph2d-trace/src/lib.rs), que gradua o **`τ`** —
+o comprimento efectivo cumulativo de cada arco. ⭐ **Um só número, lido pelas duas
+fases:** o F4 tira dele o alvo de quads e o F5 reamostra a cadeia por ele, então *é
+inexprimível* o alvo dizer uma densidade e a amostragem realizar outra.
+
+**(b) O campo de tamanho COLAPSAVA numa constante.** O `lo`/`hi` da
+[`ScaleField::adaptive`](../../../crates/ph2d-quadflow/src/scale.rs) são recortados
+pelo piso — e o piso era sempre o do motor local. Com um alvo mais fino que ele,
+`lo == hi` e **todo vértice recebia o mesmo tamanho**. Medido: `min = mediana = max
+= 0,2301` com alvo `0,0910`, em `adapt = 0,5` **e** em `adapt = 1,0`.
+
+⚠️ **E o sintoma não era "não adapta":** o campo constante valia `2,5×` o alvo,
+então o knob **grosseirava a peça** — 451 quads em vez de 1 336. *Um knob que
+colapsa não fica neutro; ele passa a mandar.*
+
+### ⚠️ Quanto do adensamento chega à saída — e o CONTROLO que o mede
+
+| campo | contraste do campo | dispersão realizada nos quads |
+|---|---|---|
+| `adapt = 0` | 1,0× | 1,32× (o basal) |
+| `adapt = 1` (curvatura) | 3,2× | 1,30× |
+| ⭐ **sintético, 9× de contraste** | 9,0× | **2,21×** |
+
+⭐⭐ **O controlo sintético é o que torna a linha do meio legível.** Ele não é um
+modo do produto: é a metade que separa *"a graduação não chega à saída"* de *"a
+curvatura desta peça não pede muito"*. Com 9× o mecanismo entrega 2,2× ⇒ **a
+máquina funciona e o LAYOUT comprime**: a lei do patch (`L_i = e_{i-1} + e_{i+1}`)
+obriga lados opostos a bater, e com 28 patches numa esfera a adaptação quase não é
+exprimível.
+
+⇒ **Isto é a mesma dívida do passo 7** (grosseirar/afinar o layout), agora com um
+segundo sintoma a apontá-la. *A adaptação não se afina no campo: ela precisa de mais
+singularidades para caber.*
+
+### ⛔ Medido e rejeitado neste passo
+
+| tentativa | por quê parecia certo | o que a medição disse |
+|---|---|---|
+| pesos **cotangente** no achatamento | é o mapa quase-conforme, e a distorção de área era o suspeito das arestas longas | ganho marginal (máx `8,14×` → `7,71×`) e **pior no gate** (`0,0/1,9/0,0` contra `0,0/1,8/0,0`). ⇒ **as arestas longas não são distorção do mapa** |
+| acoplar a remalha do F1 ao alvo | pedir quads mais finos que o triângulo do F1 é pedir detalhe já deitado fora | ⛔ **271 patches, 778 arcos, quantização em 176 SEGUNDOS**. *Mais patches é o eixo caro; mais segmentos no mesmo mapa é o barato* |
+
+### ⛔ O que fica ABERTO, com o número
+
+⚠️ **A quantização recusa em alvos isolados** (`Exhausted { solves: 512 }` em dois
+dos sete pontos medidos), e a escala dela é brutal: **28 patches = 1 ms · 72 = 52 ms
+· 271 = 176 s**. É o mesmo dono das três dívidas abertas — o teto da resolução, a
+recusa, e a compressão da adaptação.
+
+⇒ ⭐⭐ **O porte do solver do libSatsuma deixa de ser "pela garantia e pelo
+relógio" e passa a ser o desbloqueador medido.** A referência não faz
+ramifica-e-limita: ela aproxima por **dupla cobertura** e depois **refina por
+matching** com `max_deviation = 2`, iterando até o custo parar de descer
+(`Highlevel.cc:69`). *É o passo 3 do plano, e agora ele é o passo 1.*
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |

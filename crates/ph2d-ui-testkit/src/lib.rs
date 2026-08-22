@@ -286,6 +286,32 @@ impl MockPanelHost {
         }
     }
 
+    /// Set a registered **checkbox**'s stored value — the sibling of [`Self::set_toggle_on`] for
+    /// the other of the two boolean widgets. Panics if `id` is absent or not a `Checkbox`.
+    ///
+    /// ⚠️ **Toma o VALOR, não um `bool`, de propósito.** `CheckboxValue` tem três estados, e o
+    /// terceiro — `Indeterminate` — é a affordance de *«Mixed»* que uma seleção múltipla com
+    /// valores divergentes pinta. Uma porta que só aceitasse `bool` tornaria esse estado
+    /// inalcançável a todo teste de costura, que é precisamente como ele passou a existir no
+    /// painter sem uma única afirmação a defendê-lo.
+    ///
+    /// **Porque é que o testkit precisava disto:** havia `set_toggle_on` e não havia o par. Os
+    /// checkboxes da sprite (Flip H/V, Centered, Tint Fill, Region…) são `Checkbox`, não `Toggle`
+    /// — e por isso a família inteira de `InspectorSpriteEdit` era, na prática, **inalcançável**
+    /// por um teste de costura. Vinte e uma variantes chegaram a 2026-08 com zero afirmações
+    /// vivas, e esta ausência é metade da razão.
+    pub fn set_checkbox_value(
+        &mut self,
+        id: NodeId,
+        value: ph2d_editor_core::widget::CheckboxValue,
+    ) {
+        match self.store.get_mut(id) {
+            Some(InteractiveState::Checkbox { value: v, .. }) => *v = value,
+            Some(_) => panic!("set_checkbox_value: {id:?} is registered but is not a Checkbox"),
+            None => panic!("set_checkbox_value: {id:?} is not registered (did populate run?)"),
+        }
+    }
+
     /// Set a registered dropdown's open state — what the generic dispatcher writes when
     /// the user clicks a chip. Panics if `id` is absent or not a `Dropdown`.
     ///

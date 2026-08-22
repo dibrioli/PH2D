@@ -132,6 +132,37 @@ pub fn derive_star(nodes: &[u64], op: PathfinderOp) -> Vec<BoolEdge> {
     }
 }
 
+/// **O grafo morde-se a si próprio?** — a mesma pergunta que [`resolve_graph`] faz, sem geometria.
+///
+/// Existe para quem precisa da resposta **sem cozinhar**: o diagrama tem de DIZER na tela que há um
+/// ciclo, e no motor ele é uma recusa silenciosa (a arte fica como estava e nada explica por quê).
+///
+/// ⚠️ **Ela corre o MESMO Kahn** do resolvedor, e é isso que impede as duas respostas de
+/// divergirem. Uma segunda deteção — uma busca em profundidade escrita à parte — concordaria com
+/// esta em quase todo grafo e discordaria exatamente nos casos raros, que é onde ninguém olha.
+///
+/// Uma ligação que nomeia um nó ausente é IGNORADA aqui (ela é um problema de limpeza, não um
+/// ciclo); o `resolve_graph` continua a recusá-la, e essa recusa é dele.
+#[must_use]
+pub fn has_cycle(node_ids: &[u64], edges: &[BoolEdge]) -> bool {
+    let known: BTreeSet<u64> = node_ids.iter().copied().collect();
+    let mut incoming: BTreeMap<u64, Vec<(u64, BoolOp)>> = BTreeMap::new();
+    for e in edges {
+        if !known.contains(&e.from) || !known.contains(&e.to) {
+            continue;
+        }
+        if e.from == e.to {
+            return true;
+        }
+        incoming
+            .entry(e.to)
+            .or_default()
+            .push((e.from, BoolOp::Union));
+    }
+    let nodes: Vec<(u64, Vec<VecPath>)> = node_ids.iter().map(|id| (*id, Vec::new())).collect();
+    topological(&nodes, &incoming).is_err()
+}
+
 /// **Resolve o grafo**: o que cada nó desenha.
 ///
 /// `nodes` em ordem de **z (fundo → topo)**, tudo em MUNDO, ids únicos. A saída tem uma entrada

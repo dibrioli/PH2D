@@ -97,6 +97,15 @@ pub(crate) struct BoolLive {
     /// O que cada grupo desenhou NESTE frame, por bits de entidade. Reconstruído a cada
     /// `recook` — é uma fotografia, não estado.
     plans: Vec<(u64, Cooked)>,
+    /// **Quais formas cada grupo CONSIDEROU** neste frame, em ordem de z — por bits de entidade.
+    ///
+    /// ⚠️ Irmão de [`Self::plans`] e a distinção é a razão de existir: `plans` é *o que o grupo
+    /// DESENHOU*, e é `None` quando o motor recusou (ciclo, código desconhecido, varredura
+    /// falhada). O diagrama precisa da lista mesmo assim — é exatamente na recusa que ele tem de
+    /// mostrar os círculos e dizer o que está errado. Uma segunda triagem do lado da UI
+    /// divergiria desta no dia em que a definição de *operando* mudasse, e o artista veria no
+    /// diagrama formas que o motor não opera.
+    rosters: Vec<(u64, Vec<VecPathId>)>,
 }
 
 impl BoolLive {
@@ -113,6 +122,7 @@ impl BoolLive {
     ) {
         let mut touched: Vec<VecPathId> = Vec::new();
         self.plans.clear();
+        self.rosters.clear();
         for (group, op) in groups_deepest_first(scene, sim, map) {
             let ids = crate::vec_entities::subtree_paths(sim, scene, group);
             // Os operandos são as regiões FECHADAS, e só elas — a mesma triagem que a booleana
@@ -129,6 +139,12 @@ impl BoolLive {
             if operands.len() < 2 {
                 continue;
             }
+            // A lista vai para o registo ANTES de qualquer recusa: é na recusa que o diagrama mais
+            // precisa dela.
+            self.rosters.push((
+                group.to_bits(),
+                operands.iter().map(|(id, _)| *id).collect(),
+            ));
             let base = operands[0].0;
             // ⚠️ As ligações são filtradas pelos operandos VIVOS. Uma que nomeie uma forma apagada
             // (ou aberta, ou tirada do grupo) faria o resolvedor recusar o grafo INTEIRO, e a
@@ -205,11 +221,23 @@ impl BoolLive {
         self.plans.iter().find(|(b, _)| *b == bits).map(|(_, c)| c)
     }
 
+    /// **Quais formas este grupo considerou** neste frame, em ordem de z. `None` = ele nem chegou
+    /// a ter dois operandos fechados. Ver o campo — ela sobrevive à recusa, e o `plan` não.
+    #[must_use]
+    pub(crate) fn roster(&self, group: Entity) -> Option<&[VecPathId]> {
+        let bits = group.to_bits();
+        self.rosters
+            .iter()
+            .find(|(b, _)| *b == bits)
+            .map(|(_, v)| v.as_slice())
+    }
+
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira debaixo do
     /// memo, e os `VecPathId` são reciclados entre documentos.
     pub(crate) fn forget(&mut self) {
         self.memo.clear();
         self.plans.clear();
+        self.rosters.clear();
     }
 }
 

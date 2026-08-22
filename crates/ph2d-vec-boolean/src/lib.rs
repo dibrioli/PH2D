@@ -36,7 +36,7 @@ pub use pathfinder::{PathfinderOp, pathfinder};
 /// Pathfinder e pela mesma razão: ele não é geometria nova, é o MESMO fold da esquerda para a
 /// direita, com a ordem dada por setas em vez de pela pilha de z.
 pub mod graph;
-pub use graph::{BoolEdge, GraphRefusal, derive_star, resolve_graph};
+pub use graph::{BoolEdge, GraphRefusal, derive_star, has_cycle, resolve_graph};
 
 /// **O CORTE por uma linha** — uma forma fechada cortada dá formas FECHADAS. Módulo irmão pela
 /// mesma razão do arranjo: o motor é o mesmo, e o trabalho todo é dar ao motor um cortador

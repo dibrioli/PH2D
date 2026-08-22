@@ -2809,6 +2809,9 @@ impl crate::App {
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
             let mut pending_bool_apply = false;
+            // **Abrir o DIAGRAMA da booleana viva** — o canto nasce ancorado no botão que o
+            // abriu, como o card do onion. `None` = ninguém pediu neste frame.
+            let mut pending_bool_graph_open: Option<(f32, f32)> = None;
             // A MOLDURA (plano UI/UX W0): o chip de recorte e o preset de dispositivo.
             let mut pending_frame_clip: Option<bool> = None;
             // O AUTO LAYOUT (plano UI/UX W2, ADR-0153): um chip de radio e um campo numerico.
@@ -3257,6 +3260,15 @@ impl crate::App {
                                 pending_frame_preset = Some(p);
                             } else if *id == ph2d_editor::ids::VECTOR_BOOL_APPLY {
                                 pending_bool_apply = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_BOOL_GRAPH_OPEN {
+                                // Ancorado no botão, e à ESQUERDA dele: o painel de vetor mora na
+                                // direita da tela, e nascer por cima dele esconderia a seção de
+                                // onde o artista acabou de clicar.
+                                pending_bool_graph_open = Some(
+                                    hero.hit_index
+                                        .rect_for(*id)
+                                        .map_or((120.0, 120.0), |r| (r.x - 420.0, r.y - 60.0)),
+                                );
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
                             {
                                 pending_vec_bool = Some(op);
@@ -8081,6 +8093,44 @@ impl crate::App {
                 {
                     let n = crate::bool_gesture::bake(sim, vec_scene, &mut self.vec_pen, plan, g);
                     eprintln!("[ph2d-vec] boolean live: consolidada ({n} path[s])");
+                }
+                // ── O DIAGRAMA: abrir · escrever o que o artista pediu · publicar o que ele mostra
+                //
+                // ⚠️ **A ordem das três é a lei.** As intenções são escritas ANTES de a vista ser
+                // publicada, senão o diagrama mostraria o estado de antes do gesto e o artista
+                // veria o próprio clique não acontecer. (A ARTE só acompanha no frame seguinte — o
+                // `recook` já correu acima —, e é a mesma latência de um frame que todo produtor
+                // desta pipeline tem.)
+                // A varredura das ligações ÓRFÃS corre para TODOS os grupos, e não só o
+                // selecionado: quem apagou a forma pode nem ter o grupo em mãos. Ela só escreve
+                // quando de facto apaga (o undo é por diff de bytes).
+                crate::bool_graph_ui::prune_dead_edges(sim, vec_scene);
+                if let Some(g) = group {
+                    if let Some((x, y)) = pending_bool_graph_open {
+                        // Materializar a estrela NÃO move a arte: dois gates prendem a igualdade
+                        // com o que o grupo já desenhava.
+                        crate::bool_graph_ui::materialize_star(sim, &self.bool_live, g);
+                        hero.store.open_bool_graph(x, y);
+                    }
+                    let intents = hero.store.take_bool_graph_intents();
+                    crate::bool_graph_ui::apply_intents(sim, g, &intents);
+                    let view =
+                        crate::bool_graph_ui::view_of(sim, &self.vec_entities, &self.bool_live, g);
+                    hero.store.set_bool_graph_view(view);
+                    // O painel mostra o verbo do diagrama (ou *misto*): sem isso os oito botões
+                    // mudariam as ligações todas sem que nada na tela o anunciasse.
+                    ph2d_panel_vector::state::set_bool_graph_op(
+                        sim.world()
+                            .get::<ph2d_ecs::VecBoolEdges>(g)
+                            .map(|_| crate::bool_graph_ui::uniform_op(sim, g)),
+                    );
+                } else {
+                    // ⚠️ Sem grupo selecionado a vista é ESVAZIADA, e não deixada como estava: um
+                    // diagrama que continua a mostrar os círculos de um grupo que já não está em
+                    // mãos convida o artista a ligar formas que ele não vê.
+                    hero.store
+                        .set_bool_graph_view(ph2d_editor::widget::BoolGraphView::default());
+                    ph2d_panel_vector::state::set_bool_graph_op(None);
                 }
             }
             // **O AUTO LAYOUT roda entre a booleana e o alinhamento** (ADR-0153), e as duas

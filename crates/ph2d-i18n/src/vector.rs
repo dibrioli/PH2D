@@ -214,6 +214,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Drag between circles to link · click a link to change it"
         }
         "panel.vector.bool.graph.consumed" => "merged",
+        "panel.vector.bool.graph.links" => "Links",
+        "panel.vector.bool.graph.mixed" => "Mixed",
         "panel.vector.cut.apply" => "Cut",
         "panel.vector.cut.discard" => "Discard Cut Line",
         "panel.vector.marquee" => "Marquee",

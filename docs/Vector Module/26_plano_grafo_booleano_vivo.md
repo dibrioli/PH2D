@@ -6,7 +6,7 @@
 > com linhas e nessas linhas escolhemos o modo de interação de uma forma com a outra de modo que a
 > mesma forma pode usar Union para uma forma e Subtract para outra forma."*
 >
-> **Etapa 1 (o MODELO) está FECHADA.** Este doc é o roteador dela e a spec da etapa 2 (a janela).
+> **As duas etapas estão FECHADAS** — o modelo (§1-§6) e a janela (§7). Este doc é o roteador delas.
 
 ## 1. A ideia, e por que ela não é nova
 
@@ -121,26 +121,70 @@ geometria em mundo) e reaproveita o resultado. Cena parada ⇒ o motor **não ro
 
 Números que a etapa 1 moveu: `PROJECT_SCHEMA` **86 → 87** · registo de componentes **58 → 59**.
 
-## 7. Etapa 2 — a janela (POR FAZER)
+## 7. Etapa 2 — a janela (FEITA)
 
-O modelo está pronto e provado; falta a interface. O que ela tem de resolver:
+O diagrama existe e é operável. Três camadas, e o corte entre elas é o que as torna testáveis:
 
-1. **Um círculo por forma, uma linha por ligação.** A referência de gesto é o modal *Add Nodes* do
-   Motion Nodes — ⚠️ mas **não se reusa o motor daquele módulo**: são ~11 k linhas amarradas ao
-   `ph2d-nodegraph`, e o que aqui se precisa é um diagrama sobre `VecBoolEdges`, que é uma lista de
-   três `u64`.
-2. **Materializar a estrela ao abrir** sobre um grupo que ainda não tem grafo (§4 garante que não
-   move a arte).
-3. **A seta tem de ser VISÍVEL** — sem ela, o diagrama não diz `A−B` de `B−A`.
-4. **O ciclo tem de ser dito na tela.** Hoje ele é uma recusa silenciosa: a arte fica correta e
-   nada explica por quê. É aceitável para o modelo, ⛔ não para a janela.
-5. **Apagar uma forma tem de chamar `VecBoolEdges::forget`.** Hoje a ligação órfã é **filtrada** no
-   `recook` (gate `uma_ligacao_orfa_nao_apaga_a_booleana_do_grupo`), então ela nunca é fatal — mas
-   fica no documento. A limpeza é da porta de autoria, que é a etapa 2.
-6. **A operação do painel e o grafo têm de dizer a mesma coisa.** ⚠️ Um dropdown que não mexe em
-   nada porque há grafo é o defeito *"parâmetro que não muda NADA"*. Duas saídas legítimas: o
-   dropdown reescreve TODAS as ligações (e mostra *Mixed* quando elas discordam), ou ele fica
-   desligado com o motivo à vista. É decisão de produto.
+| camada | onde | o que faz |
+|---|---|---|
+| **geometria** | [`widget/bool_graph.rs`](../../crates/ph2d-editor-core/src/widget/bool_graph.rs) | onde cada círculo fica, por onde passa cada arco, o que está sob o dedo |
+| **card** | [`chrome/bool_graph_modal.rs`](../../crates/ph2d-editor-core/src/screens/hero/chrome/bool_graph_modal.rs) | desenha e publica INTENÇÕES; não muta nada |
+| **mundo** | [`bool_graph_ui.rs`](../../shells/desktop/src/bool_graph_ui.rs) + [`bool_graph_input.rs`](../../shells/desktop/src/bool_graph_input.rs) | a vista, a estrela, as intenções escritas, o gesto |
+
+### 7.1 A disposição: uma COLUNA por z, arcos à direita
+
+⚠️ **Não é um anel, e a razão é a lei.** Ligações que chegam ao mesmo nó dobram na ordem de **z** de
+quem opera (§3.2), então o diagrama TEM de mostrar z. Um anel espalha os círculos bonito e apaga
+exatamente o dado de que a lei depende. A coluna também não inventa convenção: é a leitura da lista
+de camadas que o artista já tem, **o mais ao FUNDO em baixo**.
+
+⚠️ Os arcos passam à **direita dos rótulos**, não da coluna: curvar a partir dos círculos riscaria
+por cima do nome das formas que a ligação salta — e o nome é como o artista sabe qual círculo é
+qual. Foi um **mutante sobrevivente** que expôs isto (o gate do card passava com a reserva de
+largura REMOVIDA, porque a folga dos rótulos já continha o arco).
+
+### 7.2 Os gestos
+
+| gesto | o que acontece |
+|---|---|
+| *Down* num círculo → *Up* noutro | **liga** os dois (`from` opera, `to` recebe) |
+| clique numa ligação | **gira** a operação entre as quatro de conjunto |
+| **Shift**+clique numa ligação | **corta** a ligação |
+
+⚠️ **A rotação NÃO inclui um estado *"sem ligação"*.** Cortar por sobre-rodar seria o engano mais
+fácil do diagrama: quem quer ir de *Union* a *Subtract* e passa do ponto apagaria a ligação.
+
+⚠️ **Uma ligação nova HERDA a operação das existentes** — é o que faz montar uma rede uniforme
+custar um arrasto por ligação, em vez de um arrasto mais quatro cliques a girar de volta ao mesmo
+verbo.
+
+### 7.3 As leis da costura
+
+- **O card publica o RECT QUE DESENHOU**, e é a porta única do acerto do clique. Recalculá-lo do
+  canto pedido repetiria a prisão ao viewport — duas contas que divergem.
+- **A vista vem do REGISTO do produtor** (`BoolLive::roster`), não de uma segunda triagem. E o
+  registo sobrevive à RECUSA, que é onde ele mais importa: com um ciclo não há plano, e é aí que o
+  diagrama tem de mostrar os círculos e dizer o que está errado.
+- **O ciclo ganha voz** — no motor ele é recusa silenciosa; no card, uma frase em língua de artista
+  (*"A shape ends up feeding itself — remove one link"*), sem a palavra *ciclo*.
+- **Os oito botões da seção Boolean agem NO DIAGRAMA.** Com um grafo presente quem manda é a
+  operação de cada ligação; mexer só no `VecBoolGroup` deixaria o artista a clicar *Subtract* e a
+  ver a arte não mudar — o defeito *"parâmetro que não muda nada"* na sua forma mais pura. Uma das
+  quatro de conjunto reescreve TODAS as ligações; uma das quatro **receitas remove o grafo** (ela é
+  uma afirmação sobre a pilha inteira e não tem tradução em pares).
+- **O painel mostra o verbo do diagrama, ou *Mixed***, para o artista SABER isso antes de clicar.
+- **Apagar uma forma leva as ligações dela** (`prune_dead_edges`), e a varredura **só escreve quando
+  de facto apaga** — o undo é por diff de bytes, e reescrever todo frame criaria um passo por frame.
+
+### 7.4 O que a janela ainda NÃO faz
+
+- ⏸️ **A linha elástica durante o arrasto** — o gesto decide-se no *Up*, e entre o *Down* e ele nada
+  segue o cursor. É a única coisa que o gesto não mostra, e fica registada em vez de silenciada.
+- ⏸️ **Pan/zoom do diagrama.** Com muitas formas a coluna cresce para além do card; ele prende-se ao
+  viewport, então as linhas de baixo saem da vista. ⛔ Antes de construir, MEÇA quantas formas um
+  grupo real tem — a composição pode já resolver (grupos aninhados).
+- ⏸️ **Reordenar z pelo diagrama.** Arrastar um círculo para cima mudaria a pilha — é dizível, e não
+  foi feito: o gesto já significa *ligar*.
 
 ---
 
@@ -153,3 +197,7 @@ O modelo está pronto e provado; falta a interface. O que ela tem de resolver:
 | Recusa PARCIAL num ciclo | Desenharia arte que nenhuma leitura do diagrama explica | §3.4, gate `um_ciclo_num_canto_recusa_o_grafo_inteiro` |
 | Lista vazia == componente ausente | Cortar o último elo faria as formas fundirem-se | §3.1, gate `um_grafo_vazio_nao_reinstala_a_operacao_do_grupo` |
 | Reusar o motor de nós do Motion | ~11 k linhas amarradas ao `ph2d-nodegraph`, para uma lista de três `u64` | §7.1 |
+| Um ANEL de círculos | Apaga o z, e é o z que decide a ordem de dobra | §7.1 |
+| Arco a curvar a partir da COLUNA | Risca por cima do nome das formas que salta | §7.1 |
+| Rotação da operação a incluir *"cortar"* | Sobre-rodar apagaria a ligação por engano | §7.2 |
+| Os oito botões a mexer só no `VecBoolGroup` | Ficariam MORTOS sobre um grupo com diagrama | §7.3 |

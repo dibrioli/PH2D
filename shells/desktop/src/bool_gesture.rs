@@ -61,6 +61,18 @@ pub(crate) fn arm(
     if let Some(g) = group_of_selection(sim, map, selected) {
         // Re-mira. O componente é `Copy`, então re-inserir é a edição inteira.
         sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
+        // ⚠️ **E o GRAFO tem de acompanhar, senão estes oito botões ficam MORTOS.** Com um grafo
+        // presente, quem manda é a operação de cada LIGAÇÃO — mudar só o `VecBoolGroup` deixaria o
+        // artista a clicar *Subtract* e a ver a arte não mudar, que é o defeito *"parâmetro que não
+        // muda nada"* na sua forma mais pura.
+        //
+        // As duas metades são de naturezas diferentes:
+        // - uma das quatro de CONJUNTO reescreve TODAS as ligações (o botão passa a ser o
+        //   *"ponha tudo neste verbo"*, e o diagrama continua lá para diferenciá-las de novo);
+        // - uma das quatro RECEITAS **remove o grafo**, porque ela é uma afirmação sobre a pilha
+        //   inteira e não há tradução dela em pares. ⚠️ É destrutivo para o diagrama, e é a
+        //   leitura honesta: ignorar o clique deixaria um botão que não faz nada.
+        crate::bool_graph_ui::retarget_graph(sim, g, op);
         return true;
     }
     // ⚠️ A triagem é a MESMA da booleana destrutiva (`selected_closed_z`): só regiões FECHADAS

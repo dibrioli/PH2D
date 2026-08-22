@@ -2934,6 +2934,10 @@ impl App {
         if self.onion_modal_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
+        // A banda de título do DIAGRAMA booleano — mesma forma que os dois acima.
+        if self.bool_graph_pointer_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         // ADR-0108 Fase 1: o gesto de REGIÃO do modo Node — o canto vivo segue, e o LAÇO grava
         // mais um ponto se andou o bastante. Early-return para não panar / desenhar. No-op parado.
         if let Some(m) = self.vec_marquee.as_mut() {
@@ -4640,6 +4644,12 @@ impl App {
             if self.arm_onion_modal_drag_if_on_handle(evt.x, evt.y) {
                 return;
             }
+            // Um Primary Down dentro do DIAGRAMA da booleana viva: a banda arrasta, um círculo arma
+            // uma ligação, uma ligação gira (Shift corta). ⚠️ Ele consome TUDO o que cai no corpo —
+            // sem isso o ponteiro atravessaria para a arte e o arrasto moveria as FORMAS.
+            if self.bool_graph_pointer_down(evt.x, evt.y, self.modifiers.shift_key()) {
+                return;
+            }
         }
         match (mapped_button, kind) {
             (ph2d_host::PointerButton::Secondary, PointerKind::Down)
@@ -4763,6 +4773,8 @@ impl App {
                 self.fill_modal_drag_up();
                 // End an onion settings modal title-band drag (ADR-0142 W3b). No-op when not dragging.
                 self.onion_modal_drag_up();
+                // Fecha o gesto do diagrama booleano: solta a banda e resolve o arrasto de ligação.
+                self.bool_graph_pointer_up(evt.x, evt.y);
             }
             _ => {}
         }

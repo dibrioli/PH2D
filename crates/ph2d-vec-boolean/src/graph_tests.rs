@@ -499,3 +499,92 @@ fn cada_sumidouro_desenha_no_proprio_id() {
     assert!(drawn(&out, 2).is_empty());
     assert!(drawn(&out, 5).is_empty());
 }
+
+/// **A DETEÇÃO SEM COZINHAR CONCORDA COM A RECUSA DO RESOLVEDOR** — para os dois vereditos.
+///
+/// ⚠️ É o gate que impede as duas respostas de divergirem. Elas são a MESMA caminhada de propósito,
+/// e este teste é o que torna essa afirmação verificável em vez de um comentário: uma segunda
+/// deteção escrita à parte concordaria em quase todo grafo e discordaria nos casos raros, que é
+/// exatamente onde ninguém olha.
+#[test]
+fn a_detecao_de_ciclo_concorda_com_a_recusa_do_resolvedor() {
+    let nodes = staircase();
+    let ids = ids(&nodes);
+    let casos: Vec<Vec<BoolEdge>> = vec![
+        // Aciclico: a estrela.
+        derive_star(&ids, PathfinderOp::Union),
+        // Cadeia.
+        vec![
+            BoolEdge {
+                from: 3,
+                to: 2,
+                op: PathfinderOp::Union,
+            },
+            BoolEdge {
+                from: 2,
+                to: 1,
+                op: PathfinderOp::Union,
+            },
+        ],
+        // Ciclo de 3.
+        vec![
+            BoolEdge {
+                from: 1,
+                to: 2,
+                op: PathfinderOp::Union,
+            },
+            BoolEdge {
+                from: 2,
+                to: 3,
+                op: PathfinderOp::Union,
+            },
+            BoolEdge {
+                from: 3,
+                to: 1,
+                op: PathfinderOp::Union,
+            },
+        ],
+        // Laço de 1.
+        vec![BoolEdge {
+            from: 2,
+            to: 2,
+            op: PathfinderOp::Union,
+        }],
+        // Ciclo num canto, com um nó solto.
+        vec![
+            BoolEdge {
+                from: 2,
+                to: 3,
+                op: PathfinderOp::Union,
+            },
+            BoolEdge {
+                from: 3,
+                to: 2,
+                op: PathfinderOp::Union,
+            },
+        ],
+    ];
+    for (k, edges) in casos.iter().enumerate() {
+        let sem_cozinhar = super::has_cycle(&ids, edges);
+        let recusou = resolve_graph(&nodes, edges) == Err(GraphRefusal::Cycle);
+        assert_eq!(
+            sem_cozinhar, recusou,
+            "caso {k}: sem-cozinhar disse {sem_cozinhar} e o resolvedor disse {recusou}"
+        );
+    }
+}
+
+/// **UMA LIGAÇÃO ÓRFÃ NÃO É UM CICLO.** Ela é um problema de limpeza, e chamá-la de ciclo poria na
+/// tela um aviso que não descreve nada que o artista possa consertar no diagrama.
+#[test]
+fn uma_ligacao_orfa_nao_e_um_ciclo() {
+    let ids = vec![1u64, 2, 3];
+    assert!(!super::has_cycle(
+        &ids,
+        &[BoolEdge {
+            from: 99,
+            to: 1,
+            op: PathfinderOp::Union
+        }]
+    ));
+}

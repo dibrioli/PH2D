@@ -200,13 +200,31 @@ pub(crate) fn draw(
                 let Some((o2, _)) = smoke.cam.project(anchor.origin, screen) else {
                     return;
                 };
-                crate::field3d_gizmo_paint::paint_readout(
-                    scene_out,
-                    text,
-                    grip.applied,
-                    [area.x + o2[0], area.y + o2[1]],
-                    theme,
-                );
+                let at = [area.x + o2[0], area.y + o2[1]];
+                // ⭐ **A digitar, a ficha mostra o que está a ser ESCRITO** (W26) — e não o valor.
+                //
+                // ⚠️ Enquanto se escreve `-0.` não há número nenhum, e uma ficha que saltasse para
+                // `0,000` mentiria sobre o que a tecla seguinte vai fazer. Assim que o texto é um
+                // número, o mundo já o aplicou — as duas metades dizem a mesma coisa.
+                match (
+                    smoke.typed.as_deref(),
+                    crate::field3d_input::hot_handle(smoke),
+                ) {
+                    (Some(t), Some(handle)) => crate::field3d_gizmo_paint::paint_readout_text(
+                        scene_out,
+                        text,
+                        &crate::field3d_typed::label(handle, t),
+                        at,
+                        theme,
+                    ),
+                    _ => crate::field3d_gizmo_paint::paint_readout(
+                        scene_out,
+                        text,
+                        grip.applied,
+                        at,
+                        theme,
+                    ),
+                }
             }
             scene_out.pop_layer();
         }

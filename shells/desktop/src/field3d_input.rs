@@ -292,6 +292,29 @@ impl App {
         .unwrap_or(false)
     }
 
+    /// ⭐ **O número digitado no meio do gesto** (W26) — o `G X 0,5` do Blender.
+    ///
+    /// ⚠️ **Ela vem ANTES da tecla de verbo** no roteador, e a ordem é a lei: com uma entrada aberta,
+    /// um `5` é um cinco. E as duas guardas continuam a valer — ponteiro sobre a janela 3D **e** uma
+    /// alça agarrada —, o que torna impossível esta porta comer uma tecla de um campo de texto: para
+    /// ela abrir é preciso ter o botão do rato em baixo, em cima de uma alça do gizmo.
+    pub(crate) fn field3d_typed_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        if self.modifiers.control_key() || self.modifiers.alt_key() || self.modifiers.super_key() {
+            return false;
+        }
+        let Some(stroke) = crate::field3d_typed::stroke_for(code) else {
+            return false;
+        };
+        let pos = self.last_pointer;
+        with_smoke(|s| {
+            if !over_window(s, pos) {
+                return false;
+            }
+            typed_key(s, stroke)
+        })
+        .unwrap_or(false)
+    }
+
     pub(crate) fn field3d_mode_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
         let Some(mode) = mode_for_key(code, self.modifiers) else {
             return false;
@@ -305,6 +328,7 @@ impl App {
             // Trocar de verbo no meio de um arrasto deixaria uma alça agarrada que já não existe.
             s.drag = None;
             s.gizmo_hot = None;
+            s.typed = None;
             true
         })
         .unwrap_or(false)
@@ -394,6 +418,92 @@ pub(crate) fn begin(
 const CLICK_SLOP_PX: f32 = ph2d_editor::interaction::NUMBER_INPUT_DRAG_THRESHOLD_PX;
 
 /// O ponteiro moveu. Devolve `true` só quando o gesto é desta janela.
+/// ⭐ **O que uma tecla numérica FAZ**, sobre o estado do smoke e nada mais — o irmão do [`advance`],
+/// e separado dos métodos de `App` pela mesma razão: era a costura que ficava sem gate.
+///
+/// Devolve `true` quando a tecla foi consumida.
+pub(crate) fn typed_key(s: &mut Smoke, stroke: crate::field3d_typed::Stroke) -> bool {
+    use crate::field3d_typed as typed;
+    // A entrada só existe **dentro de um arrasto de alça**, e só onde um número tem um significado.
+    let Some(Drag::Gizmo(handle)) = s.drag else {
+        return false;
+    };
+    if !typed::accepts(handle) {
+        return false;
+    }
+    match stroke {
+        // ⭐ **Cancelar desfaz o gesto INTEIRO**: o mundo recebe o inverso do que já lhe foi dado, e
+        // a peça volta a onde estava quando a alça foi agarrada. ⚠️ É por isso que o inverso se
+        // escreve com a própria álgebra (`neutral().since(applied)`) — uma segunda conta de «como se
+        // desfaz um giro» divergiria da primeira no dia em que um verbo novo entrasse.
+        typed::Stroke::Cancel => {
+            if let Some(grip) = s.drag_grip {
+                let back = grip.applied.neutral().since(grip.applied);
+                if !back.is_idle() {
+                    publish(s, grip.anchor.entity, back);
+                }
+            }
+            s.drag = None;
+            s.drag_grip = None;
+            s.typed = None;
+            s.press_at = None;
+            true
+        }
+        // Fechar guardando o que está — o mesmo que largar o botão.
+        typed::Stroke::Commit => {
+            s.typed = None;
+            finish(s);
+            true
+        }
+        stroke => {
+            // ⚠️ Uma entrada só **começa** com um dígito ou um ponto: um `Backspace` sem entrada
+            // aberta não é deste módulo, e engoli-lo tiraria a tecla a quem quer que a espere.
+            let open = s.typed.is_some();
+            if !open && matches!(stroke, typed::Stroke::Backspace) {
+                return false;
+            }
+            let before = s.typed.clone().unwrap_or_default();
+            s.typed = typed::edit(&before, stroke);
+            apply_typed(s, handle);
+            true
+        }
+    }
+}
+
+/// Manda ao mundo o que o número digitado pede — **o total**, contra o que já foi aplicado.
+fn apply_typed(s: &mut Smoke, handle: Handle) {
+    let (Some(text), Some(grip)) = (s.typed.clone(), s.drag_grip) else {
+        return;
+    };
+    let (_, _, fwd) = s.cam.basis();
+    let Some(total) = crate::field3d_typed::value_of(&text)
+        .and_then(|v| crate::field3d_typed::total(handle, &grip.anchor, fwd, v))
+    else {
+        return;
+    };
+    let delta = total.since(grip.applied);
+    if !delta.is_idle() {
+        publish(s, grip.anchor.entity, delta);
+        if let Some(g) = s.drag_grip.as_mut() {
+            g.applied = total;
+        }
+    }
+}
+
+/// O pedido que a ponte com a cena vai aplicar no início do quadro seguinte, acumulado.
+///
+/// ⚠️ **Um só sítio a escrever `pending_move`**: o ponteiro e o teclado mandam a mesma coisa pelo
+/// mesmo cano, e duas cópias da acumulação divergiriam no dia em que os dois acontecessem no mesmo
+/// quadro — que é exactamente o que digitar durante um arrasto é.
+fn publish(s: &mut Smoke, entity: u64, delta: field3d_gizmo::Motion) {
+    s.pending_move = Some((
+        entity,
+        s.pending_move
+            .filter(|(e, _)| *e == entity)
+            .map_or(delta, |(_, acc)| acc.merge(delta)),
+    ));
+}
+
 pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
     let Some(drag) = s.drag else {
         // ⚠️ **Sem arrasto, o hover ainda é atualizado — e o evento NÃO é consumido.** As
@@ -427,6 +537,12 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         // com a cena aplica no início do quadro seguinte. É o mesmo caminho dos intents do
         // painel, e pela mesma razão — o mundo tem um só escritor.
         Drag::Gizmo(handle) => {
+            // ⭐ **Com um número em cima da mesa, o rato CEDE** (W26). Sem esta linha o movimento
+            // seguinte do ponteiro sobrescreveria o que acabou de ser digitado, e o defeito leria
+            // como *"digitar não faz nada"* — porque o dedo nunca está completamente parado.
+            if s.typed.is_some() {
+                return true;
+            }
             let (Some(grip), Some(screen), Some(area)) = (s.drag_grip, area_screen(s), s.area)
             else {
                 return true;
@@ -519,6 +635,9 @@ fn mode_for_key(
 pub(crate) fn finish(s: &mut Smoke) -> (bool, bool) {
     let was = s.drag.take();
     s.drag_grip = None;
+    // A entrada numérica é do GESTO: ela morre com ele, senão o gesto seguinte abriria já a meio de
+    // um número que ninguém digitou.
+    s.typed = None;
     if was == Some(Drag::Orbit)
         && let (Some(from), Some(area)) = (s.press_at, s.area)
         && (s.last_pointer.0 - from.0).abs() <= CLICK_SLOP_PX

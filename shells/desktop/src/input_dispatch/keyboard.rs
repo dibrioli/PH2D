@@ -93,6 +93,15 @@ impl App {
         {
             return;
         }
+        // ADR-0161 W26: o NÚMERO digitado no meio de um gesto do gizmo (`G X 0,5`). ⚠️ **Antes da
+        // tecla de verbo**, e a ordem é a lei: com uma entrada aberta, um `5` é um cinco. Ela exige
+        // uma alça AGARRADA, então só pode disparar com o botão do rato em baixo sobre o gizmo.
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+            && self.field3d_typed_key(code)
+        {
+            return;
+        }
         // ADR-0161 W6: `G`/`R`/`S` trocam o verbo do gizmo 3D (mover/rodar/escalar), as letras
         // do Blender. ⚠️ Só com o ponteiro SOBRE a janela 3D — ver a nota de `field3d_mode_key`:
         // sem essa guarda, três letras comuns deixariam de chegar a qualquer campo de texto.

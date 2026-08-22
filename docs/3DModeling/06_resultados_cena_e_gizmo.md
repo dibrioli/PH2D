@@ -2092,6 +2092,75 @@ método fura.
 
 ---
 
+## §27 — W26: o número digitado no meio do gesto — o `G X 0,5` (22/08)
+
+> A ficha do gesto **mostra** o número desde a W8 e nunca o **aceitou**: para pôr uma peça a 0,5
+> exactos era preciso largar a alça e ir procurar a linha certa no painel. O painel continua a ser a
+> porta para *"quanto ela mede"*; isto é a porta para *"anda exactamente isto, agora"* — outro gesto,
+> e o do modelador.
+
+### §27.1 — ⭐ A lei: o que se digita é o TOTAL, e a álgebra já existia
+
+O arrasto deste módulo mede **o total desde a pegada** (`Grip::applied`, W6) e manda ao mundo
+`total.since(applied)`. Um número digitado é simplesmente **outro total** — mesma álgebra, outra
+fonte. É isso que faz digitar `0,5` depois de já ter arrastado `0,37` mandar `0,13` ao mundo, **sem
+uma linha de caso especial** e sem o gesto saltar.
+
+⚠️ O gate-mãe começa com o ponteiro a ter aplicado 0,37 de propósito: tratado como incremento, o
+mundo receberia 0,87 — a peça parava onde ninguém pediu **com a ficha a dizer o número certo**.
+
+### §27.2 — ⚠️ As três cedências que fazem isto funcionar
+
+| quem cede | o quê | porquê |
+|---|---|---|
+| o **rato** | enquanto há um número aberto, o ponteiro não mexe na peça | o dedo nunca está parado: sem isto o quadro seguinte sobrescreve o que se acabou de escrever, e o defeito lê como *"digitar não faz nada"* |
+| o **roteador de teclas** | a entrada numérica vem **antes** do `G`/`R`/`S` | com uma entrada aberta, um `5` é um cinco |
+| a **entrada** | um `Backspace` que a esvazia **sai** dela | um campo vazio com o rato mudo prendia o gesto sem nada na tela a dizer porquê |
+
+⚠️ **Impossível esta porta comer a tecla de outra pessoa:** para ela abrir é preciso ter o botão do
+rato **em baixo, sobre uma alça do gizmo**. As guardas antigas (ponteiro sobre a janela, sem
+`Ctrl`/`Alt`/`Super`) continuam todas.
+
+### §27.3 — As unidades são as da FICHA
+
+Unidades de mundo numa seta, **graus** numa argola, **fator** no punho — exactamente o que
+[`field3d_gizmo_paint::readout`](../../shells/desktop/src/field3d_gizmo_paint.rs) já escrevia. Um
+número que se digita em radianos e se lê em graus seria a segunda verdade clássica, invisível até
+alguém medir a peça. ⛔ E um fator não-positivo não é um tamanho: o texto fica na tela, o mundo não
+recebe nada.
+
+### §27.4 — ⭐ `Esc` desfaz o gesto INTEIRO, e pela própria álgebra
+
+O inverso do que já foi aplicado escreve-se `applied.neutral().since(applied)` — que dá `−d` numa
+translação, `−θ` num giro e `1/f` num tamanho, sem uma segunda tabela. *Uma conta nova de «como se
+desfaz um giro» divergiria da primeira no dia em que um verbo novo entrasse.*
+
+### §27.5 — ⚠️ Só onde um número tem UM significado
+
+As setas, as argolas e o punho aceitam; os **planos** e o **plano da tela** não — ali um número
+sozinho não diz para onde. É a mesma razão pela qual o Blender pede um eixo antes do número, e a
+tecla **passa adiante** em vez de ser engolida.
+
+### §27.6 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| o número vira incremento | `a_typed_number_is_the_total_not_one_more_step` |
+| o rato não cede | `the_pointer_gives_way_while_a_number_is_open` |
+| `Esc` larga sem desfazer | `escape_puts_the_piece_back_where_it_was` |
+| um plano aceita um número | `a_plane_handle_takes_no_number` |
+| a argola lê radianos | `the_typed_number_speaks_the_units_of_the_readout` |
+| a tecla é engolida em qualquer arrasto | `a_number_is_only_taken_while_a_handle_is_held` |
+
+### §27.7 — ⏸️ O que fica aberto
+
+- **Um eixo só se escolhe agarrando a alça dele.** O `X`/`Y`/`Z` do Blender (teclar o eixo *depois*
+  de `G`) exigiria o gesto modal sem botão premido, que é outro modelo de interação — e não o que
+  este módulo tem.
+- A entrada **não faz contas** (`0.5*2`). O painel também não; é a mesma decisão, num sítio novo.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -2120,7 +2189,9 @@ método fura.
 - ✅ **o ERRO na UI FECHOU na W25** (§26) — a peça que não cozinha diz porquê, e o clique que a
   apagava (um modificador sobre uma escultura) deixou de existir. ⏸️ Fica: o aviso não aponta **qual**
   nó é o culpado
-- ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
+- ✅ **digitar o número durante o arrasto FECHOU na W26** (§27) — a ficha passou a aceitar, o número
+  é o **total** e `Esc` desfaz o gesto inteiro. ⏸️ Fica: escolher o eixo por tecla (exige gesto modal)
+  e contas na entrada
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe
 - ✅ **perspectiva FECHOU** na W15 (§16) — entrou num sítio, como a nota previa, e revelou que o

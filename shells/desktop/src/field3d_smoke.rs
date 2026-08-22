@@ -144,6 +144,14 @@ pub(crate) struct Smoke {
     /// meio do arrasto, e é o que se quer — mira-se à mão até perto e prende-se no fim. Congelar o
     /// modificador na pegada obrigaria a soltar e repetir o gesto.
     pub(crate) snapping: bool,
+    /// ⭐ **O número que está a ser DIGITADO no meio do gesto** (W26, [`crate::field3d_typed`]).
+    ///
+    /// ⚠️ **Enquanto ele existe, o rato deixa de mandar** — e é isso que faz digitar funcionar: sem
+    /// essa cedência, o movimento seguinte do ponteiro sobrescreveria o número no quadro a seguir a
+    /// alguém o escrever, e o defeito leria como *"digitar não faz nada"*.
+    ///
+    /// `None` = não há entrada; o gesto é do ponteiro, como sempre foi.
+    pub(crate) typed: Option<String>,
     /// Onde o botão desceu — é o que distingue um **clique** (selecionar) de um **arrasto**
     /// (orbitar). ⚠️ Sem ele, todo clique na peça seria também um giro de zero graus, e a única
     /// forma de selecionar seria a Hierarquia.
@@ -273,6 +281,7 @@ fn boot() -> Option<Smoke> {
         pending_move: None,
         drag_grip: None,
         snapping: false,
+        typed: None,
         press_at: None,
         pending_pick: None,
         gizmo_mode: crate::field3d_gizmo::Mode::default(),

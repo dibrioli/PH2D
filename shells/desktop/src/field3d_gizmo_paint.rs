@@ -223,7 +223,22 @@ pub(crate) fn paint_readout(
     at: [f32; 2],
     theme: Theme,
 ) {
-    let line = readout(motion);
+    paint_readout_text(scene, text, &readout(motion), at, theme);
+}
+
+/// A mesma ficha, com o texto **dado** — é por aqui que a entrada numérica (W26) mostra o que está a
+/// ser escrito.
+///
+/// ⚠️ Uma segunda função de pintar seria uma segunda posição, um segundo tamanho e uma segunda cor —
+/// e a ficha do número digitado tem de aparecer exactamente onde a do gesto aparece, senão o artista
+/// olha para dois sítios diferentes para a mesma coisa.
+pub(crate) fn paint_readout_text(
+    scene: &mut VectorScene,
+    text: &mut ph2d_text::TextSystem,
+    line: &str,
+    at: [f32; 2],
+    theme: Theme,
+) {
     if line.is_empty() {
         return;
     }
@@ -234,7 +249,7 @@ pub(crate) fn paint_readout(
     ph2d_editor::paint::paint_text_block(
         text,
         scene,
-        &line,
+        line,
         x,
         y,
         font,

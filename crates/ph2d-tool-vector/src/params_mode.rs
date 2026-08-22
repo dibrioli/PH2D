@@ -4,6 +4,8 @@
 //! gesto de canvas está a fazer*, e não os parâmetros numéricos de um estilo. Re-exportado dali,
 //! então quem consome não percebe o corte.
 
+use ph2d_vec_scene::ShapeKind;
+
 /// The canvas gesture the Vector tool performs (ADR-0108 Fase 1). `Pen` is the
 /// draw + edit-anchor gesture (`PenTool`); the shape modes are drag-to-size
 /// (`ShapeTool`). The tool owns the mode; the docked panel's segmented row sets
@@ -86,11 +88,18 @@ pub enum DrawMode {
     Cut,
     /// **Moldura** (plano UI/UX W0): arrasta e nasce um CONTÊINER — uma tela, um card, um painel.
     ///
-    /// O gesto é o do retângulo, e literalmente: `shape_kind_for_mode` devolve
-    /// `ShapeKind::Rectangle` também para este modo, então restrição de Shift/Alt, pose, undo e
+    /// O gesto é o do retângulo, e literalmente: [`Self::shape_kind`] devolve
+    /// `ShapeKind::RoundRect` para este modo, então restrição de Shift/Alt, pose, undo e
     /// Live Shape vêm de graça. O que a moldura acrescenta ao nascer é **um componente**
     /// (`ph2d_ecs::VecFrame`) — ela É um retângulo vivo, e é essa decisão que lhe dá fill,
     /// gradiente, traço, raio de quina, efeitos, gizmo, z-order e save sem uma linha a mais.
+    ///
+    /// ⚠️ **`RoundRect` e não `Rectangle`, desde 2026-08-21** (Enio: *"o Frame é criado como
+    /// retângulo de quinas sem a possibilidade de arredondamento"*). A promessa de *"raio de
+    /// quina de graça"* acima era **falsa na prática**: a moldura herdava a única forma da
+    /// família que não tem campo de raio, e nenhum dos ajustes existia para ela. O raio nasce
+    /// zero e `rounded_rect(_, 0)` **é** `rectangle`, então a troca é invisível até o artista
+    /// mexer no primeiro ajuste.
     ///
     /// ⚠️ É um MODO e não um botão *"transformar em moldura"* pela razão do Shape: o gesto é
     /// **produzir**, e a tela quer ser desenhada onde vai ficar. Converter uma forma que já existe
@@ -99,6 +108,29 @@ pub enum DrawMode {
 }
 
 impl DrawMode {
+    /// **A forma que ESTE modo desenha** — `None` quando o gesto não produz forma nenhuma.
+    ///
+    /// ⚠️ **Uma porta só, e é o campo de VALORES que a exige.** O gesto de forma lê o `kind`
+    /// daqui e os parâmetros do **slot desse `kind`** (`VectorTool::draw_config`); enquanto a
+    /// moldura era `Rectangle` — a única forma da família que ignora todo parâmetro — as duas
+    /// perguntas podiam divergir sem sintoma nenhum, e divergiam: os valores saíam da forma
+    /// ATIVA DO CATÁLOGO. Com a moldura em `RoundRect` isso deixa de ser inofensivo — desenhar
+    /// uma moldura com a estrela ativa leria o **número de pontas** como raio de quina.
+    #[must_use]
+    pub fn shape_kind(self, catalog: ShapeKind) -> Option<ShapeKind> {
+        match self {
+            DrawMode::Shape => Some(catalog),
+            // ⚠️ **A moldura é um retângulo ARREDONDÁVEL, e o raio nasce ZERO.** O slot de
+            // parâmetros da tool zera todo campo em px (`default_shape_values`: *"nasce em 0
+            // (canto vivo) e o usuário autora"*), e `rounded_rect(_, 0)` devolve **literalmente**
+            // `rectangle(a, b)` — a mesma função, não uma aproximação. Trocar o kind não move um
+            // pixel da moldura que já existia; só abre os cinco ajustes da Round (raio, os três
+            // desvios por canto, suavização), que o painel pinta sozinho por ler o kind do alvo.
+            DrawMode::Frame => Some(ShapeKind::RoundRect),
+            _ => None,
+        }
+    }
+
     /// As ferramentas de QUINA (Fillet / Chamfer): clicar-e-arrastar sobre uma quina para
     /// arredondá-la ou chanfrá-la. Uma porta única para os sítios que roteiam o gesto delas.
     #[must_use]

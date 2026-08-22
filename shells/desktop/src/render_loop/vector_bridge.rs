@@ -70,7 +70,15 @@ pub(crate) fn shape_catalog(
         t.as_any_mut()
             .downcast_mut::<ph2d_tool_vector::VectorTool>()
     })?;
-    let k = tool.shape();
+    // ⚠️ **O kind EFECTIVO do modo, não o botão aceso do catálogo.** Sem seleção, estes são os
+    // campos que o painel semeia — e no modo Moldura os do catálogo não descrevem nada do que o
+    // gesto vai desenhar. Não há contradição a criar: o botão do catálogo só acende quando
+    // `snap.mode == DrawMode::Shape` (`paint_catalog`), então a Moldura já não reivindica nenhum.
+    // É o que deixa o raio ser autorado ANTES do primeiro arrasto, e não só depois de selecionar.
+    let k = tool
+        .mode()
+        .shape_kind(tool.shape())
+        .unwrap_or_else(|| tool.shape());
     Some((k, tool.shape_values(k)))
 }
 

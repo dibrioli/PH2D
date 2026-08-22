@@ -534,3 +534,98 @@ fn each_symmetry_chip_reaches_the_draw_config() {
         "e o chip Off desarma — é ele que faz as cópias sumirem sem destruir nada"
     );
 }
+
+// ─── A MOLDURA ARREDONDÁVEL (Enio, 2026-08-21) ───────────────────────────────────────────
+
+/// **Trocar a moldura para `RoundRect` não move um pixel da que já existia.** É o gate que
+/// AUTORIZA a troca de kind: sem ele, a promessa "é invisível até o artista mexer no ajuste"
+/// seria uma afirmação sem prova.
+///
+/// Ela se apoia em duas coisas que moram longe uma da outra — o raio de um campo em px nasce
+/// ZERO (`default_shape_values`) e `rounded_rect(_, 0)` devolve **literalmente** `rectangle(a,b)`
+/// (`ph2d_vec_scene::shapes`). Se qualquer uma delas mudar, isto fica vermelho aqui em vez de
+/// virar uma moldura com a quina comida num documento que ninguém tocou.
+#[test]
+fn a_frame_is_born_with_the_geometry_of_a_plain_rectangle() {
+    let mut t = VectorTool::new();
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_FRAME));
+    let cfg = t.draw_config();
+    let kind = cfg
+        .mode
+        .shape_kind(cfg.shape)
+        .expect("a moldura desenha forma");
+    assert_eq!(
+        kind,
+        ShapeKind::RoundRect,
+        "arredondavel, e nao o Rectangle"
+    );
+
+    let (a, b) = ([0.0, 0.0], [40.0, 25.0]);
+    let frame = ph2d_vec_scene::cook(kind, a, b, &cfg.values);
+    let plain = ph2d_vec_scene::cook(ShapeKind::Rectangle, a, b, &[]);
+    assert_eq!(
+        frame.verts, plain.verts,
+        "a moldura tem de NASCER com a geometria do retangulo -- o raio nasce zero"
+    );
+    assert_eq!(frame.closed, plain.closed, "e fechada, como sempre foi");
+}
+
+/// **Os parâmetros do gesto saem do kind que ele COZINHA, nunca do botão aceso do catálogo.**
+///
+/// Nasceu deste defeito: `draw_config` lia `shape_values(self.shape)` enquanto o gesto cozinhava
+/// com `DrawMode::shape_kind`. As duas respostas só coincidiam no modo Shape, e a divergência era
+/// **muda** enquanto a moldura era `Rectangle` — a única forma da família que ignora todo
+/// parâmetro. Com ela arredondável deixa de ser muda: a estrela ativa passaria o número de
+/// PONTAS ao campo de raio, e a moldura nasceria com a quina comida por um valor que o artista
+/// autorou noutra ferramenta.
+#[test]
+fn the_gesture_reads_the_parameters_of_the_kind_it_cooks() {
+    let mut t = VectorTool::new();
+    // A estrela ativa no catálogo — o `set_shape` também põe o modo em Shape.
+    t.set_shape(ShapeKind::Star);
+    let star = t.shape_values(ShapeKind::Star);
+    assert_ne!(
+        star[0],
+        t.shape_values(ShapeKind::RoundRect)[0],
+        "o controlo positivo: as duas formas TÊM de diferir no 1o campo, senao o teste passa vazio"
+    );
+
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_FRAME));
+    assert_eq!(
+        t.draw_config().values,
+        t.shape_values(ShapeKind::RoundRect),
+        "no modo Moldura o gesto le' os parametros do RoundRect"
+    );
+    assert_eq!(
+        t.draw_config().shape,
+        ShapeKind::Star,
+        "e o catalogo continua a dizer Star -- o modo nao o reescreve, so' deixa de o obedecer"
+    );
+}
+
+/// **Autorar o raio no modo Moldura escreve no MESMO slot que o gesto lê.**
+///
+/// A ponta que fecha o ciclo: `shape_catalog` semeia os campos do kind efetivo, então a escrita
+/// tem de ir ao mesmo lugar. Fossem slots diferentes, o ajuste funcionaria uma vez — sobre a
+/// moldura selecionada, que a shell edita por outra rota — e a moldura SEGUINTE nasceria reta,
+/// como se o painel tivesse esquecido o número. É o modo de falha que não dá erro nenhum.
+#[test]
+fn authoring_the_frame_radius_lands_where_the_gesture_will_read_it() {
+    let mut t = VectorTool::new();
+    t.set_shape(ShapeKind::Rectangle); // o catálogo aponta para uma forma SEM raio
+    Tool::handle_panel_event(&mut t, PanelEvent::Click(ids::VECTOR_MODE_FRAME));
+
+    Tool::handle_panel_event(
+        &mut t,
+        PanelEvent::SetValue(ids::vector_shape_field_id(0), 8.0),
+    );
+    assert!(
+        t.shape_values(ShapeKind::RoundRect)[0] > 0.0,
+        "o raio autorado tem de aterrar no slot do RoundRect"
+    );
+    assert_eq!(
+        t.draw_config().values[0],
+        t.shape_values(ShapeKind::RoundRect)[0],
+        "e o gesto tem de le-lo de volta -- ler e escrever sao o mesmo slot"
+    );
+}

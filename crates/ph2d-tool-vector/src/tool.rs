@@ -307,13 +307,19 @@ impl VectorTool {
         self.shape_values[k.as_u16() as usize]
     }
 
-    /// Escreve o parâmetro `i` da forma ATIVA (o valor vem da caixa do painel, já na
-    /// unidade de UI) — clampado à faixa que o catálogo declara.
+    /// Escreve o parâmetro `i` da forma que o modo DESENHA (o valor vem da caixa do painel, já
+    /// na unidade de UI) — clampado à faixa que o catálogo declara.
+    ///
+    /// ⚠️ **O mesmo kind efectivo que semeou o campo** ([`Self::draw_config`]): a leitura e a
+    /// escrita do slot têm de casar, senão o valor autorado cai num slot que o gesto não lê e a
+    /// próxima forma desenhada não o herda — o controlo funciona uma vez, sobre a forma
+    /// selecionada, e depois parece esquecer. Fora do modo Moldura isto é o que já era (o modo
+    /// Shape desenha o catálogo, e os outros não desenham forma nenhuma).
     pub fn set_shape_field(&mut self, i: usize, v: f64) {
         if i >= MAX_SHAPE_FIELDS {
             return;
         }
-        let k = self.shape;
+        let k = self.mode.shape_kind(self.shape).unwrap_or(self.shape);
         let slot = &mut self.shape_values[k.as_u16() as usize];
         slot[i] = v;
         crate::shapes::clamp(k, slot);
@@ -436,12 +442,18 @@ impl VectorTool {
     }
 
     /// Mode + shape parameters the shell mirrors to drive the `ShapeTool`.
+    ///
+    /// ⚠️ **Os valores são os do kind que o MODO desenha, não os da forma ativa do catálogo.**
+    /// O gesto cozinha com `DrawMode::shape_kind` e lia os parâmetros de `self.shape` — duas
+    /// perguntas diferentes que só concordavam no modo Shape. Ficou mudo enquanto a moldura era
+    /// `Rectangle` (que ignora todo parâmetro); com ela em `RoundRect`, desenhar uma moldura com
+    /// a estrela ativa passaria o **número de pontas** ao campo de raio.
     #[must_use]
     pub fn draw_config(&self) -> VectorDrawConfig {
         VectorDrawConfig {
             mode: self.mode,
             shape: self.shape,
-            values: self.shape_values(self.shape),
+            values: self.shape_values(self.mode.shape_kind(self.shape).unwrap_or(self.shape)),
             pencil_stabilizer: self.pencil_stabilizer,
             pencil_width_source: self.pencil_width_source,
             symmetry: self.symmetry,

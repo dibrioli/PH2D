@@ -1262,15 +1262,12 @@ fn keep_recipe_in_step(
 fn shape_kind_for_mode(
     cfg: &ph2d_tool_vector::VectorDrawConfig,
 ) -> Option<ph2d_vec_scene::ShapeKind> {
-    match cfg.mode {
-        ph2d_tool_vector::DrawMode::Shape => Some(cfg.shape),
-        // ⚠️ **A MOLDURA é um retângulo, e o gesto dela é literalmente o do retângulo.** Esta
-        // linha é o que lhe dá Shift/Alt, a pose, o undo, a Live Shape e o nascimento — de graça,
-        // e pelo MESMO caminho. O que a distingue acontece uma linha depois, no
-        // `make_committed_shape_live`: ela ganha um componente.
-        ph2d_tool_vector::DrawMode::Frame => Some(ph2d_vec_scene::ShapeKind::Rectangle),
-        _ => None,
-    }
+    // ⚠️ **A tabela mora na TOOL** (`DrawMode::shape_kind`), e esta função é o adaptador que a
+    // lê. Não é cerimónia: o `VectorTool::draw_config` precisa da MESMA resposta para escolher
+    // de que slot saem os `values`, e uma segunda tabela aqui divergiria dela em silêncio — que
+    // é exactamente o defeito que a moldura arredondável expôs (o gesto cozinhava um kind e lia
+    // os parâmetros de outro).
+    cfg.mode.shape_kind(cfg.shape)
 }
 
 /// As restrições do gesto de forma a partir do teclado — as de todo editor vetorial:
@@ -6192,6 +6189,29 @@ mod tests {
         for k in [ShapeKind::Rectangle, ShapeKind::Star, ShapeKind::Arc] {
             cfg.shape = k;
             assert_eq!(shape_kind_for_mode(&cfg), Some(k));
+        }
+    }
+
+    /// **A MOLDURA desenha um retângulo ARREDONDÁVEL** (Enio, 2026-08-21: *"o Frame é criado como
+    /// retângulo de quinas sem a possibilidade de arredondamento"*).
+    ///
+    /// ⚠️ **E o kind dela NÃO segue o catálogo** — é o par de asserções que importa. A moldura
+    /// tem de dar `RoundRect` mesmo com a estrela ativa, senão o gesto herdaria a forma do botão
+    /// aceso e a ferramenta Moldura deixaria de desenhar molduras.
+    #[test]
+    fn the_frame_draws_a_roundable_rectangle_whatever_the_catalogue_says() {
+        use ph2d_tool_vector::VectorDrawConfig;
+        let mut cfg = VectorDrawConfig {
+            mode: DrawMode::Frame,
+            ..Default::default()
+        };
+        for catalogue in [ShapeKind::Rectangle, ShapeKind::Star, ShapeKind::Heart] {
+            cfg.shape = catalogue;
+            assert_eq!(
+                shape_kind_for_mode(&cfg),
+                Some(ShapeKind::RoundRect),
+                "a moldura tem de ser arredondavel, e o catalogo ({catalogue:?}) nao manda nela"
+            );
         }
     }
 

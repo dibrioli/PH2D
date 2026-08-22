@@ -405,9 +405,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   com **zero** dissoluções. Duas cercas ficam: `LayoutError::GenusLost` (`V−E+F` do complexo contra o `χ` da peça)
   e `the_cleanup_never_worsens_the_topology`. ⚠️ **O `ALIGN_WEIGHT` continua a ZERO, e agora por outra razão:**
   não há mais malha de género errado em célula nenhuma, mas o alinhamento faz **algumas peças recusarem**.
+  ⭐ **E a grade vinha 3× mais grossa do que se pedia:** a varredura que escolheu o custo do arco media dobras e
+  pior-arco, e **nenhuma das duas vê uma grade uniformemente grossa** — o F4 devolvia **0,39×–0,98%** do que o F3
+  pedia. Com a coluna nova (`Σquant/Σalvo`) a lei passou a ser o **`ScaleFactor`** da referência, e o toro 48×24
+  foi de **3 096 para 6 221 quads**. ⚠️ A recusa que barrava essa lei (36,3% de dobras) **dissolveu** quando a
+  parametrização por patch curou o grão — hoje ela dá 0,0%. ⛔ Fica aberta a **aresta máxima** em 12–24× o alvo.
   ⛔ Outros buracos
   medidos: o F1 devolve o cubo **não-manifold** · a esfera **embaralhada** não fecha · **sem feature lines**.
-  Tabelas por fase: `PLAN.md` §4-bis..§4-quatervicies.
+  Tabelas por fase: `PLAN.md` §4-bis..§4-septvicies.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que
   prova a inércia.
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·

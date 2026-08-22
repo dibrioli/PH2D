@@ -823,3 +823,70 @@ fn are_the_interior_walls_slits_or_loops() {
         );
     }
 }
+
+/// ⭐⭐ **SONDA — onde a DENSIDADE se perde entre o alvo e a malha?**
+///
+/// ⛔ **O número que ficou por explicar** (`PLAN.md` §4-sexvicies): a esfera 24×36
+/// com alinhamento `0,03` entrega **357 quads** contra **1 997** a peso `0`, com o
+/// **mesmo** alvo de aresta. Um fator `5,6` sem que ninguém tenha mexido no slider —
+/// e é exactamente a queixa do artista, *"ainda com baixa resolução"*.
+///
+/// As colunas seguem a densidade pelas quatro fases, e cada par diz onde ela cai:
+///
+/// | coluna | o que é |
+/// |---|---|
+/// | `Στau/alvo` | ⭐ o que o **F3** pediu: a soma dos alvos de todos os arcos |
+/// | `Σquant` | o que o **F4** concedeu, em arestas de quad |
+/// | `no piso` | quantos arcos bateram no `ArcSpec::min = 1` — *aí o layout escolhe, não o slider* |
+/// | `quads` | o que o **F5** montou |
+///
+/// ⚠️ **`Σquant` muito abaixo de `Στau/alvo` é o F4 a comprimir;** os dois parecidos
+/// com poucos quads é o **layout** a ser grosso — patches grandes com poucos arcos.
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
+///     --test alignment_topology -- --ignored --nocapture where_does_the_density_go
+/// ```
+#[test]
+#[ignore = "sonda -- onde a densidade se perde entre o alvo e a malha"]
+fn where_does_the_density_go() {
+    for (name, mesh, edge) in [
+        ("esfera 24x36", shapes::uv_sphere(24, 36, 1.0), 0.08),
+        ("toro 48x24", shapes::torus(48, 24, 1.0, 0.35), 0.06),
+    ] {
+        println!("── {name} (alvo {edge}) ──");
+        for w in [0.0f32, 0.01, 0.02, 0.03, 0.05] {
+            let mut work = mesh.clone();
+            ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+            work.triangulate();
+            let dual = Dual::build(&work);
+            let (field, _) = solve_miq_aligned(&dual, Rounding::default(), w);
+            let layout = trace_patches(&work, &dual, &field);
+            let Ok(l) = layout.to_layout(edge) else {
+                println!("  peso {w:<5} | o layout RECUSOU");
+                continue;
+            };
+            let want: f64 = l.arcs().iter().map(|a| a.target).sum();
+            let Ok((q, _)) = quantize_within(&l, ph2d_quantize::Budget::new(256, 512)) else {
+                println!("  peso {w:<5} | a quantizacao RECUSOU");
+                continue;
+            };
+            let got: u32 = q.arc.iter().sum();
+            let floored = q.arc.iter().filter(|v| **v <= 1).count();
+            let Ok((_, r)) = fill(&work, &mesh, &layout, &q, SMOOTHING_ROUNDS) else {
+                println!("  peso {w:<5} | a montagem RECUSOU");
+                continue;
+            };
+            println!(
+                "  peso {w:<5} | patches {:<3} arcos {:<4} | Στau/alvo {want:>7.1} \
+                 Σquant {got:>5} ({:.2}x) | no piso {floored:<3} | {:>5} quads                  | aresta med {:.2}x max {:.2}x",
+                layout.side_arcs.len(),
+                layout.arc_chain.len(),
+                f64::from(got) / want.max(1.0),
+                r.quads,
+                r.edge_median / edge,
+                r.edge_max / edge,
+            );
+        }
+    }
+}

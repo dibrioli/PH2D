@@ -371,11 +371,21 @@ fn which_arc_weight_law_protects_the_grid() {
                 .fold(0.0f32, f32::max);
             #[allow(clippy::cast_precision_loss)]
             {
+                // ⭐⭐ **A DENSIDADE REALIZADA, e ela faltava na tabela que
+                // escolheu a lei.** `Σquant / Σalvo` é quanto da grade pedida o F4
+                // de facto concedeu — medido em 2026-08-22, o `quad · 1/t²` que
+                // shipa devolve **0,39× a 0,98×** conforme o layout, e a `med` ao
+                // lado confirma que a perda chega à malha (mediana `2,85×` o alvo no
+                // pior caso). *A lei foi escolhida por dobras e pior-arco; nenhuma
+                // das duas vê uma grade uniformemente grossa.*
+                let want: f64 = spec.arcs().iter().map(|a| a.target).sum();
+                let got: u32 = quant.arc.iter().sum();
                 println!(
-                    "  {law:<21} {:<5} quads | DOBRADAS {:<5} ({:.1} %) | \
+                    "  {law:<21} {:<5} quads | DENSIDADE {:.2}x | DOBRADAS {:<5} ({:.1} %) | \
                      pior arco {worst:>5.1}x | med {:.2}x max {:.2}x | \
                      gap {:.3} {} exp {:<5} aum {:<7} arestas {:<6} {ms:>6.0} ms",
                     r.quads,
+                    f64::from(got) / want.max(1.0),
                     r.folded,
                     100.0 * r.folded as f64 / r.quads.max(1) as f64,
                     r.edge_median / target,

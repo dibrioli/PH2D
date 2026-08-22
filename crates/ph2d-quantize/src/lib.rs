@@ -151,7 +151,10 @@ impl ArcSpec {
     /// ⚠️ **Peso `1` é deviação ABSOLUTA**, e ele existe para o oráculo de força
     /// bruta dos gates: ali o custo tem de ser o mais simples possível para as duas
     /// respostas serem comparáveis. ⛔ **Não é o que a malha quer** — ver
-    /// [`Self::relative`].
+    /// [`Self::isometric`].
+    ///
+    /// ⚠️ *(Este ponteiro dizia `Self::relative` até 2026-08-22 — o nome de uma
+    /// função que já não existia, e o `rustdoc` avisava-o desde então.)*
     #[must_use]
     pub fn new(target: f64) -> Self {
         Self {
@@ -162,57 +165,77 @@ impl ArcSpec {
         }
     }
 
-    /// **O ARCO ISOMÉTRICO** — `((x − alvo) / alvo)²`, o **quadrado do erro
-    /// RELATIVO**.
+    /// **O ARCO ISOMÉTRICO** — `max(x/alvo, alvo/x)`, o **fator de escala** entre o
+    /// que se pediu e o que se recebeu.
     ///
-    /// ⭐⭐ **A forma é a `QuadDeviation` da referência; o peso `1/alvo²` é o que
-    /// torna o custo uma RAZÃO.** Juntos eles são exactamente o princípio que esta
-    /// crate já afirmava e não implementava: *a qualidade de uma grade é uma razão,
-    /// nunca uma contagem* — um arco que pedia 24 e recebeu 20 está a 17 % do alvo;
-    /// um que pedia 2 e recebeu 6 está a 200 %.
+    /// ⭐⭐ **É o `ScaleFactor` da referência** (o `CostFunction` do libSatsuma), e
+    /// ele é o único dos cinco cuja unidade *é* a grandeza que a fase promete: a
+    /// qualidade de uma grade é uma **razão**, nunca uma contagem — um arco que pedia
+    /// 24 e recebeu 20 está a `1,2×`; um que pedia 2 e recebeu 6 está a `3×`.
     ///
-    /// ⛔ **A versão anterior — LINEAR com peso `1/alvo` — tinha o sinal invertido
-    /// no regime que importa.** Sobre um custo linear a marginal é constante, então
-    /// esmagar um arco e espalhar o erro custam o mesmo — e com `1/alvo` esmagar um
-    /// arco LONGO passa a ser **4× mais barato**. Medido na `hooked_sphere`
-    /// (2026-08-21): o arco `#21` pedia **4,1** segmentos e recebeu **1** — uma
-    /// corda recta de comprimento `1,105` numa peça de raio `1,0` —, e **6 de 50**
-    /// arcos pediam mais do dobro do que receberam. A grade de Coons construída
-    /// sobre uma corda dessas nasce do lado errado da forma, e ⚠️ **o alisamento
-    /// não a desfaz**: ele move o interior do patch, e a corda **é** a fronteira.
-    /// *Uma resposta provadamente óptima para o objectivo errado.*
+    /// # ⭐⭐ A régua que faltava, e ela mudou a escolha
     ///
-    /// ⭐ **A varredura que a escolheu** (`which_arc_weight_law_protects_the_grid`,
-    /// orçamento de busca grande para separar *inviável* de *acabou o tempo*):
+    /// ⛔ **A varredura de 2026-08-21 mediu DOBRAS e PIOR ARCO, e nenhuma das duas
+    /// vê uma grade uniformemente grossa.** Medido em 2026-08-22 com a coluna nova
+    /// (`Σquant / Σalvo`, quanto da grade pedida o F4 concedeu), a lei que shipava —
+    /// `quad · 1/t²` — devolvia **0,39× a 0,98×** conforme o layout, e a mediana da
+    /// aresta confirmava que a perda chega à malha: **2,85× o alvo** no pior caso.
+    /// *Uma grade três vezes mais grossa do que se pediu, e as duas colunas antigas
+    /// mostravam-na perfeita.*
     ///
-    /// | lei | dobras 48×72 | 96×144 | esculpida | **pior arco** | pior relógio |
-    /// |---|---|---|---|---|---|
-    /// | `abs · 1/t` (a anterior) | 30,4 % | 1,9 % | 0,2 % | 3,2 / **8,1** / 2,6 | 25 ms |
-    /// | `abs · 1` | 33,3 % | 3,4 % | 0,1 % | 1,7 / 6,1 / 1,3 | 156 ms |
-    /// | `quad · 1` (o default da referência) | 37,5 % | 2,8 % | 0,1 % | 2,8 / 2,4 / 1,7 | ⛔ **2 744 ms** |
-    /// | ⭐ **`quad · 1/t²` (esta)** | **26,2 %** | **1,8 %** | 0,1 % | 2,9 / 6,1 / 2,6 | 76 ms |
-    /// | ⏸️ `scale` (o `ScaleFactor` da referência) | ⛔ 36,3 % | 2,2 % | **0,0 %** | ⭐ **1,8 / 3,0 / 1,7** | 20 ms |
+    /// ⭐ A varredura, com a coluna nova (`densidade / dobras / pior arco`):
     ///
-    /// ⏸️ **A [`Deviation::Scale`] ganha na grandeza que nomeia o defeito** — o
-    /// pior arco, onde ela é a melhor das cinco nas três malhas — e dá **zero**
-    /// dobras na esculpida, que é a fixtura que se parece com o trabalho do
-    /// artista. Ela **não foi escolhida** porque reprova o gate da 48×72 (36,3 %
-    /// contra a barra de 33 %), e ⛔ **a barra não se afrouxa**. ⚠️ Mas essa
-    /// fixtura está num regime em que a aresta máxima é **33 a 40× o alvo em TODAS
-    /// as leis** — o artefacto de grão que a sonda
-    /// `how_fine_may_the_quad_be_against_the_reference_facet` mede —, então ela não
-    /// está a arbitrar entre custos. *Reabrir esta escolha depois de o grão estar
-    /// curado é trabalho pendente, não uma recusa.*
+    /// | lei | esfera 48×72 | esfera 96×144 | esculpida | pior relógio |
+    /// |---|---|---|---|---|
+    /// | `abs · 1` | 0,95 / 1 / 1,7 | 0,99 / 5 / 6,1 | 1,06 / 0 / 1,3 | 415 ms |
+    /// | `abs · 1/t` | 0,85 / 0 / 3,2 | 0,90 / 6 / 8,1 | 0,94 / 0 / 2,6 | 19 ms |
+    /// | `abs · t` | 1,14 / ⛔ 28 / 4,2 | 1,07 / ⛔ 21 / 2,4 | 1,09 / 0 / 2,0 | ⛔ 3 864 ms |
+    /// | `abs · √t` | 1,11 / ⛔ 18 / 4,2 | 1,03 / ⛔ 24 / 3,5 | 1,07 / 2 / 1,3 | 75 ms |
+    /// | `quad · 1` (o default da referência) | 1,03 / 5 / 2,8 | 1,00 / 8 / 2,4 | 1,02 / 0 / 1,7 | ⛔ 1 551 ms |
+    /// | `quad · 1/t` | 0,90 / 0 / 1,8 | 0,95 / 3 / 4,9 | 0,97 / 0 / 2,6 | 18 ms |
+    /// | ⛔ `quad · 1/t²` (a que shipava) | ⛔ **0,84** / 0 / 2,9 | 0,93 / 3 / ⛔ 6,1 | 0,94 / 0 / 2,6 | 393 ms |
+    /// | ⭐⭐ **`scale`** (esta) | ⭐ **0,99** / 1 / ⭐ **1,5** | ⭐ **0,99** / 7 / 3,0 | ⭐ **0,98** / 0 / 1,7 | ⭐ **14 ms** |
     ///
-    /// ⚠️ **O piso de `1` no divisor** evita que um arco de alvo minúsculo ganhe
-    /// peso arbitrariamente grande e passe a mandar no layout inteiro.
-    #[must_use]
+    /// ⭐ **Ela ganha a densidade nas três, ganha o pior arco em duas, e é a mais
+    /// rápida das oito** — 14 ms contra os 393 da anterior.
+    ///
+    /// # ⛔ Por que ela tinha sido REJEITADA, e por que a recusa dissolveu
+    ///
+    /// Em 2026-08-21 ela reprovava o gate da 48×72 com **36,3 % de faces dobradas**
+    /// contra a barra de 33 %. ⚠️ **Hoje ela dá `0,0 %` (uma dobra em 4 066)** na
+    /// mesma fixtura, e as outras sete leis caíram junto — a maior está em `0,6 %`.
+    ///
+    /// ⇒ **O que mudou não foi a lei: foi a montagem.** A parametrização por patch
+    /// (§4-duodevicies do `PLAN.md`) curou o grão que punha todas as leis naquele
+    /// regime, e o próprio doc anterior escreveu a condição: *"reabrir esta escolha
+    /// depois de o grão estar curado é trabalho pendente, não uma recusa."*
+    ///
+    /// # ⛔ As duas leis anteriores, e por que cada uma caiu
+    ///
+    /// 1. **LINEAR com peso `1/alvo`** — tinha o sinal invertido no regime que
+    ///    importa: sobre um custo linear a marginal é constante, então esmagar um
+    ///    arco e espalhar o erro custam o mesmo, e com `1/alvo` esmagar um arco
+    ///    **longo** era 4× mais barato. Medido na `hooked_sphere`: o arco `#21` pedia
+    ///    **4,1** segmentos e recebeu **1** — uma corda recta de comprimento `1,105`
+    ///    numa peça de raio `1,0`. ⚠️ E **o alisamento não a desfaz**: ele move o
+    ///    interior do patch, e a corda **é** a fronteira.
+    /// 2. ⛔ **QUADRÁTICO com peso `1/alvo²`** — corrigia aquilo e comprimia a grade
+    ///    inteira, que é o defeito desta secção. *Uma resposta provadamente óptima
+    ///    para um objectivo que ninguém tinha medido.*
+    ///
+    /// ⚠️ **O efeito no produto, ponta a ponta** (mesmo alvo de aresta, peso `0`):
+    ///
+    /// | fixtura | `quad · 1/t²` | ⭐ `scale` |
+    /// |---|---|---|
+    /// | toro 48×24 | 3 096 quads (densidade 0,69×) | ⭐ **6 221** (1,00×) |
+    /// | toro 32×16 | 3 600 | **4 011** |
+    /// | esfera 24×36 | 1 997 | **2 080** |
     pub fn isometric(target: f64) -> Self {
         Self {
             target,
-            weight: 1.0 / (target.max(1.0) * target.max(1.0)),
+            weight: 1.0,
             min: 1,
-            kind: Deviation::Quad,
+            kind: Deviation::Scale,
         }
     }
 

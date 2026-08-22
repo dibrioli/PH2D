@@ -2547,3 +2547,71 @@ honesta. ⛔ Mas o toro 32×16 passa a **recusar** em `0,005 · 0,01 · 0,02 · 
 *"o alinhamento faz algumas peças recusarem"*. ⚠️ E há um segundo número a explicar:
 a esfera 24×36 a `0,03` entrega **357 quads** contra 1 997 a peso `0` — um colapso de
 densidade que nada nesta secção explica.
+
+---
+
+## 4-septvicies — ⭐⭐⭐ **A GRADE VINHA 3× MAIS GROSSA DO QUE SE PEDIA**, e a régua faltava
+
+> O §4-sexvicies fechou com um número por explicar: a esfera 24×36 a `0,03` entregava
+> **357 quads** contra 1 997 a peso `0`, com o **mesmo** alvo de aresta.
+
+### ⭐ Onde a densidade se perdia
+
+Sonda `where_does_the_density_go` — segue a densidade pelas quatro fases:
+
+| fixtura · peso | `Σtau/alvo` (o F3 pede) | `Σquant` (o F4 concede) | razão | aresta mediana | quads |
+|---|---|---|---|---|---|
+| esfera · `0` | 348 | 342 | 0,98× | 1,03× | 1 997 |
+| ⛔ esfera · `0,03` | 438 | **169** | ⛔ **0,39×** | ⛔ **2,85×** | ⛔ 357 |
+| ⛔ **toro · `0`** | 725 | **503** | ⛔ **0,69×** | 1,11× | 3 096 |
+| ⛔ toro · `0,02` | 697 | **276** | ⛔ **0,40×** | 1,32× | 918 |
+
+⭐⭐ **O F3 pede a densidade certa e o F4 devolve 39 a 98 % dela — a peso ZERO
+também.** Não era do alinhamento; ⛔ **e não era o piso** (`min = 1` toca em 2 a 4
+arcos). A mediana de `2,85×` prova que a perda chega à malha: *uma grade quase três
+vezes mais grossa do que o artista pediu.*
+
+### ⭐⭐ A régua que faltava, e ela mudou a escolha da lei
+
+A varredura que escolheu o custo do arco (2026-08-21) mediu **dobras** e **pior
+arco**. ⛔ **Nenhuma das duas vê uma grade uniformemente grossa** — e a coluna que a
+vê, `Σquant / Σalvo`, não existia. Acrescentada, sobre as mesmas três fixturas
+(`densidade / dobras / pior arco`):
+
+| lei | esfera 48×72 | esfera 96×144 | esculpida | pior relógio |
+|---|---|---|---|---|
+| `abs · 1` | 0,95 / 1 / 1,7 | 0,99 / 5 / 6,1 | 1,06 / 0 / 1,3 | 415 ms |
+| `abs · 1/t` | 0,85 / 0 / 3,2 | 0,90 / 6 / 8,1 | 0,94 / 0 / 2,6 | 19 ms |
+| `abs · t` | 1,14 / ⛔ 28 / 4,2 | 1,07 / ⛔ 21 / 2,4 | 1,09 / 0 / 2,0 | ⛔ 3 864 ms |
+| `abs · √t` | 1,11 / ⛔ 18 / 4,2 | 1,03 / ⛔ 24 / 3,5 | 1,07 / 2 / 1,3 | 75 ms |
+| `quad · 1` (o default da referência) | 1,03 / 5 / 2,8 | 1,00 / 8 / 2,4 | 1,02 / 0 / 1,7 | ⛔ 1 551 ms |
+| `quad · 1/t` | 0,90 / 0 / 1,8 | 0,95 / 3 / 4,9 | 0,97 / 0 / 2,6 | 18 ms |
+| ⛔ `quad · 1/t²` (a que shipava) | ⛔ **0,84** / 0 / 2,9 | 0,93 / 3 / ⛔ 6,1 | 0,94 / 0 / 2,6 | 393 ms |
+| ⭐⭐ **`scale`** | ⭐ **0,99** / 1 / ⭐ **1,5** | ⭐ **0,99** / 7 / 3,0 | ⭐ **0,98** / 0 / 1,7 | ⭐ **14 ms** |
+
+⭐ **Ganha a densidade nas três, o pior arco em duas, e é a mais rápida das oito.**
+
+### ⛔ E a recusa que a barrava DISSOLVEU — o doc anterior tinha escrito a condição
+
+A `scale` foi rejeitada em 2026-08-21 por reprovar o gate da 48×72 com **36,3 %** de
+faces dobradas contra a barra de 33 %. ⚠️ **Hoje ela dá `0,0 %`** (uma dobra em
+4 066) na mesma fixtura — e as outras sete caíram junto, a maior em `0,6 %`.
+
+⇒ **O que mudou não foi a lei: foi a montagem.** A parametrização por patch
+(§4-duodevicies) curou o grão que punha todas as leis naquele regime. E o doc da lei
+antiga já dizia: *"reabrir esta escolha depois de o grão estar curado é trabalho
+pendente, não uma recusa."* ⭐ *Uma recusa medida que nomeia a sua própria condição de
+reabertura é a única que não envelhece em silêncio.*
+
+### ⭐⭐⭐ O efeito no produto
+
+| fixtura (peso `0`, mesmo alvo) | antes | ⭐ depois |
+|---|---|---|
+| **toro 48×24** | 3 096 quads (densidade `0,69×`) | ⭐ **6 221** (`1,00×`) |
+| toro 32×16 | 3 600 | **4 011** |
+| esfera 24×36 | 1 997 | **2 080** |
+| esfera 24×36 · `0,03` | ⛔ 357 (mediana `2,85×`) | **1 508** (mediana `1,23×`) |
+
+⚠️ **Não é cura completa:** sobram células a `0,73–0,83×`, e a **aresta máxima**
+continua em `12–24×` o alvo em várias — um defeito geométrico separado, que nenhuma
+coluna desta secção explica e que o `edge_max_span` do relatório já sabe medir.

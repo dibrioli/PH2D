@@ -65,7 +65,7 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
                 // Uma entidade sem `FieldNode` não é um nó do modelo — pode ser qualquer coisa que
                 // alguém pendurou aqui. Ela não participa, e os filhos dela também não: um nó de
                 // modelagem só é filho de outro nó de modelagem.
-                if world.get::<FieldNode>(e).is_none() {
+                if world.get::<FieldNode>(e).is_none() || is_hidden(world, e) {
                     continue;
                 }
                 stack.push(Step::Up(e));
@@ -129,6 +129,26 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
         }
     }
     done.get(&root).copied().flatten()
+}
+
+/// ⭐ **O olho da Hierarquia apaga o nó da peça** (W28) — e com ele a subárvore inteira.
+///
+/// ⚠️ **Nada de componente novo:** o app já tem **uma** ideia de *escondido*
+/// ([`ph2d_ecs::Visibility`], o ícone do olho), já a persiste, já a desfaz, e a Hierarquia já a
+/// escreve em **qualquer** entidade — inclusive num nó de modelagem. O que faltava era o cozimento
+/// perguntar. Até esta linha, clicar no olho de um cilindro escrevia o componente, acendia o ícone e
+/// **não mudava a peça**: um controle pintado, despachado, e mudo.
+///
+/// ⚠️ **A ausência é visível**, e é a lei do componente (HR-5): um nó sem `Visibility` conta.
+///
+/// ⚠️ A recusa acontece na **DESCIDA**, e é isso que faz esconder um grupo esconder o que está
+/// dentro dele: a travessia nunca chega aos filhos, e o pai vê um filho a menos — exactamente o
+/// mesmo caminho de um nó apagado.
+#[must_use]
+pub fn is_hidden(world: &World, e: Entity) -> bool {
+    world
+        .get::<ph2d_ecs::Visibility>(e)
+        .is_some_and(|v| v.hidden)
 }
 
 fn kids(world: &World, e: Entity) -> Vec<Entity> {

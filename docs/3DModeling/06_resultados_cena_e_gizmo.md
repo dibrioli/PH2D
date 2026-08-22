@@ -2239,7 +2239,79 @@ um `✗` pode ser do ambiente — e a mensagem dele pode nomear o recurso errado
 
 ---
 
+## §29 — W28: o olho da Hierarquia apaga o nó da peça (22/08)
+
+> Clicar no olho de um cilindro escrevia o componente, **acendia o ícone** — e a peça na tela ficava
+> igual. Um controle pintado, despachado, e mudo. É a terceira wave seguida da mesma família (o
+> modificador da W25, a seleção da W27), e a mais barata das três.
+
+### §29.1 — ⭐ A composição já exprimia isto: zero componente novo
+
+O app tem **uma** ideia de *escondido* — [`ph2d_ecs::Visibility`], o ícone do olho — e ela já é
+escrita pela Hierarquia em **qualquer** entidade, já é persistida, já é desfeita, e já tem a lei da
+casa: **a ausência é visível** (HR-5). O que faltava era **o cozimento perguntar**.
+
+⚠️ **A alternativa que não foi construída:** um `FieldHidden` próprio. Ele teria de ser registado,
+persistido, desfeito e mostrado — e daria ao app **duas** ideias de escondido, que divergiriam no
+primeiro gesto que tocasse só numa. *Antes de construir um item de lista aberta, meça se a composição
+já o exprime* (CLAUDE.md §5.0) — aqui ela exprimia, e a wave inteira é **uma linha** de produção mais
+os gates.
+
+### §29.2 — ⚠️ A recusa é na DESCIDA, e é isso que esconde a subárvore
+
+A travessia nunca chega aos filhos de um nó escondido, e o pai vê um filho a menos — exactamente o
+caminho de um nó apagado. Com a pergunta na **subida**, esconder um grupo deixaria os filhos dele
+emitidos na arena como órfãos.
+
+⚠️ **A fixture teve de mudar para conter o fenómeno:** com uma união rasa, *descida* e *subida* dão
+o mesmo resultado e o gate passa com as duas. Com um grupo **aninhado**, a contagem separa-as —
+**2 contra 4**. *Uma fixture só prova o que contém.*
+
+### §29.3 — E o buraco que o olho abria, fechado no mesmo passo
+
+Um nó escondido continuava a ter **setas** — e arrastá-las é um gesto **sem resposta na tela**, que é
+a família de defeito que a wave veio fechar, um passo à frente. Agora: um nó escondido **não tem
+gizmo** e **não anda com a seleção**. A linha da Hierarquia continua lá, e é por ela que se volta a
+acender o olho.
+
+### §29.4 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| o cozimento volta a ignorar o olho (**o defeito**) | `the_hierarchy_eye_takes_the_node_out_of_the_piece` |
+| a pergunta muda para a subida (o grupo esconde-se, os filhos ficam) | o mesmo gate, **2 contra 4** |
+| a ausência do componente conta como escondido | o mesmo gate |
+| o escondido continua a andar / a ter setas | `a_hidden_node_has_no_gizmo_and_does_not_move_with_the_selection` |
+
+### §29.5 — ⛔ A FERRAMENTA de mutação mentiu duas vezes hoje, de duas formas
+
+**(a)** A restauração com `shutil.copy2` **preserva o mtime**: o arquivo restaurado ficava a parecer
+mais velho que o objeto compilado da mutação, e a corrida seguinte servia a **build mutada** (§26.4).
+Cura: `copy` + `os.utime`, e **exigir ver o `Compiling`** na saída — *uma prova de mutação mede o
+binário, não o arquivo*.
+
+**(b)** Um `if "subida" in label` sobre um rótulo escrito `SUBIDA`: a mutação **nunca entrou**, o
+`assert` de "o arquivo mudou" passou (um comentário mudou-o), e o veredito saiu **VERDE**. À mão, a
+mesma mutação dá `Some(4)` contra `Some(2)`.
+
+⭐ **A cura é estrutural, não um remendo:** cada mutação passou a ser uma **lista de edições**, todas
+com `assert` de contagem, sem caso especial por rótulo — a forma que torna a classe inteira
+impossível. *Um falso VERDE numa prova de mutação é pior do que não a ter: ele certifica um gate que
+não mede nada.*
+
+### §29.6 — ⏸️ O que fica aberto
+
+- Esconder a **base** de uma subtração faz o cortador virar a base (a mesma regra de quando ela é
+  apagada). É consistente e pode surpreender; se um dia incomodar, a resposta é de produto.
+- Não há **isolar** (mostrar só o escolhido) — é o gesto irmão, e um botão.
+
+---
+
 ## §13 — Aberto
+
+- ✅ **o OLHO da Hierarquia passou a valer na W28** (§29) — esconder um nó tira-o da peça, e um
+  grupo leva a subárvore consigo; um nó escondido não tem gizmo nem anda com a seleção.
+  ⏸️ Fica **isolar** (mostrar só o escolhido), que é o gesto irmão
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)

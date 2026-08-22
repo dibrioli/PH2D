@@ -79,6 +79,114 @@ fn a_sculpture_refuses_a_modifier_and_the_world_is_left_alone() {
     assert_eq!(mods_of(&world, leaf).len(), 1);
 }
 
+/// ⭐ **O OLHO da Hierarquia apaga o nó da peça** — e a subárvore com ele (W28).
+///
+/// ⚠️ **O defeito era um controle mudo**: a Hierarquia escreve [`ph2d_ecs::Visibility`] em qualquer
+/// entidade, o ícone acendia, o componente entrava no mundo — e a peça na tela ficava igual, porque
+/// o cozimento nunca perguntava. É a mesma família do modificador da W25 e da seleção da W27.
+///
+/// O gate mede as três metades: o nó some, o **grupo** leva os filhos consigo, e **a ausência do
+/// componente é visível** (a lei do próprio `Visibility`, HR-5).
+#[test]
+fn the_hierarchy_eye_takes_the_node_out_of_the_piece() {
+    let mut world = bevy_ecs::world::World::new();
+    let ball = |x: f32| Node {
+        xform: Xform::at(x, 0.0, 0.0),
+        kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+        mods: Vec::new(),
+    };
+    let union = |children: Vec<NodeId>| Node {
+        xform: Xform::IDENTITY,
+        kind: NodeKind::Combine {
+            op: ph2d_field::Op::Union(Blend::Sharp),
+            children,
+        },
+        mods: Vec::new(),
+    };
+    // ⚠️ **Um grupo ANINHADO, e não uma união rasa** — é ele que separa *recusar na descida* de
+    // *recusar na subida*: com a pergunta na subida, esconder o grupo deixaria os filhos dele
+    // emitidos na arena (órfãos) e a contagem daria 4 em vez de 2. Uma fixture rasa não contém o
+    // fenómeno e passaria com as duas implementações.
+    let doc = FieldDoc::new(
+        vec![
+            ball(-0.6),
+            ball(0.2),
+            ball(0.6),
+            union(vec![NodeId(1), NodeId(2)]),
+            union(vec![NodeId(0), NodeId(3)]),
+        ],
+        NodeId(4),
+    )
+    .expect("três esferas em dois níveis");
+    let root = spawn_doc(&mut world, &doc, "peça");
+    let count =
+        |w: &bevy_ecs::world::World| cook(w, root).map(|r| r.expect("válida").nodes().len());
+    assert_eq!(
+        count(&world),
+        Some(5),
+        "sem esconder nada, a peça é inteira"
+    );
+
+    let rows: Vec<bevy_ecs::entity::Entity> =
+        walk(&world, root).into_iter().map(|(e, _)| e).collect();
+    let leaf = rows
+        .iter()
+        .copied()
+        .find(|e| {
+            matches!(
+                world.get::<FieldNode>(*e).map(|n| &n.shape),
+                Some(NodeShape::Leaf(_))
+            )
+        })
+        .expect("há folhas");
+    let group = rows
+        .iter()
+        .copied()
+        .find(|e| {
+            *e != root
+                && matches!(
+                    world.get::<FieldNode>(*e).map(|n| &n.shape),
+                    Some(NodeShape::Combine(_))
+                )
+        })
+        .expect("há um grupo aninhado");
+
+    world
+        .entity_mut(leaf)
+        .insert(ph2d_ecs::Visibility::hidden());
+    assert_eq!(
+        count(&world),
+        Some(4),
+        "o nó escondido não pode entrar no documento — era isto que o olho não fazia"
+    );
+
+    // ⚠️ E a ausência é VISÍVEL: repor o componente a `visible` traz o nó de volta.
+    world
+        .entity_mut(leaf)
+        .insert(ph2d_ecs::Visibility::visible());
+    assert_eq!(
+        count(&world),
+        Some(5),
+        "`Visibility::visible` conta como visível — a lei do componente é a ausência ser visível"
+    );
+
+    // ⭐ Esconder o GRUPO leva os filhos consigo: a travessia nem desce.
+    world
+        .entity_mut(group)
+        .insert(ph2d_ecs::Visibility::hidden());
+    assert_eq!(
+        count(&world),
+        Some(2),
+        "esconder um grupo tem de levar a subárvore inteira — sobram a esfera de fora e a raiz"
+    );
+
+    // …e esconder a RAIZ esvazia a peça, que é `None` e não um erro.
+    world
+        .entity_mut(root)
+        .insert(ph2d_ecs::Visibility::hidden());
+    assert!(cook(&world, root).is_none(), "peça vazia é `None`");
+}
+
 /// Cena vazia não tem campo — e um documento vazio inventado aqui seria uma forma que ninguém pediu.
 #[test]
 fn an_empty_scene_has_no_field() {

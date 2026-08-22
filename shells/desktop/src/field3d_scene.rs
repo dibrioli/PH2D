@@ -104,7 +104,13 @@ fn apply_motion(
     let mut all: Vec<bevy_ecs::entity::Entity> = vec![primary];
     all.extend(chosen.iter().copied().filter(|e| *e != primary));
     // ⚠️ E um filho de outro escolhido **não anda duas vezes** — ver `top_level`.
-    let targets = ph2d_field_ecs::top_level(world, &all);
+    //
+    // ⭐ **O que está ESCONDIDO não anda** (W28): mover um nó que a peça não mostra é um gesto sem
+    // resposta na tela — a mesma família de defeito que o olho mudo era.
+    let targets: Vec<bevy_ecs::entity::Entity> = ph2d_field_ecs::top_level(world, &all)
+        .into_iter()
+        .filter(|e| !ph2d_field_ecs::is_hidden(world, *e))
+        .collect();
     let pivot = selection_pivot(world, &targets);
     for e in targets {
         match motion {
@@ -442,6 +448,12 @@ fn anchor_for(
     let entity = bevy_ecs::entity::Entity::from_bits(bits);
     let world = sim.world_mut();
     world.get::<FieldNode>(entity)?;
+    // ⭐ **Um nó ESCONDIDO não tem gizmo** (W28): setas em cima de uma coisa que a peça não mostra
+    // seriam um gesto sem resposta na tela. A linha da Hierarquia continua lá, e é por ela que se
+    // volta a acender o olho.
+    if ph2d_field_ecs::is_hidden(world, entity) {
+        return None;
+    }
     let pose = ph2d_field_ecs::world_xform(world, entity);
     // ⭐ **Com vários escolhidos, o gizmo pousa no MEIO deles** (W27) — e é esse ponto que o giro e
     // o tamanho usam como pivô. Com um só, a média é a própria origem: a lei antiga é o caso

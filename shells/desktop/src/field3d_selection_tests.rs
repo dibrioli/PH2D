@@ -293,6 +293,46 @@ fn the_gizmo_sits_at_the_middle_of_the_selection() {
     );
 }
 
+/// ⭐ **O que está ESCONDIDO não tem gizmo e não anda com a seleção** (W28).
+///
+/// ⚠️ É a metade que o olho abriria se ficasse sozinha: setas em cima de uma coisa que a peça não
+/// mostra são um gesto **sem resposta na tela** — exactamente a família de defeito que a wave veio
+/// fechar, um passo à frente.
+#[test]
+fn a_hidden_node_has_no_gizmo_and_does_not_move_with_the_selection() {
+    let (mut sim, leaves) = scene_of_three();
+    let (a, b) = (leaves[0], leaves[2]);
+    sim.world_mut()
+        .entity_mut(b)
+        .insert(ph2d_ecs::Visibility::hidden());
+    let before = world_pos(sim.world(), b);
+
+    crate::field3d_scene::apply_motion_for_test(
+        &mut sim,
+        a.to_bits(),
+        &[a, b],
+        crate::field3d_gizmo::Motion::Translate([0.0, 0.4, 0.0]),
+    );
+    assert!(
+        (world_pos(sim.world(), b)[1] - before[1]).abs() < 1e-6,
+        "o escondido não pode andar — o artista não veria nada acontecer"
+    );
+
+    assert!(
+        super::anchor_for(&mut sim, Some(b.to_bits()), &[b]).is_none(),
+        "…e não pode ter setas em cima dele"
+    );
+    // ⚠️ O CONTROLE: destapado, ele volta a ter gizmo. Sem isto o gate passaria com o gizmo
+    // apagado para toda a gente.
+    sim.world_mut()
+        .entity_mut(b)
+        .insert(ph2d_ecs::Visibility::visible());
+    assert!(
+        super::anchor_for(&mut sim, Some(b.to_bits()), &[b]).is_some(),
+        "e destapado ele volta a ter"
+    );
+}
+
 /// **`top_level` guarda a ordem da entrada** — quem chama depende dela para saber quem é o principal.
 #[test]
 fn the_top_of_each_branch_keeps_the_order_it_came_in() {

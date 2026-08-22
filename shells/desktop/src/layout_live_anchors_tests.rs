@@ -26,9 +26,7 @@ fn frame_now(w: f64, n: usize) -> (SimWorld, VecScene, VecEntityMap, Entity, Vec
         .collect();
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
     let frame = Entity::from_bits(map[&frame_id]);
-    sim.world_mut()
-        .entity_mut(frame)
-        .insert(VecFrame { clip: false });
+    sim.world_mut().entity_mut(frame).insert(VecFrame);
     for k in &kids {
         let kid = Entity::from_bits(map[k]);
         sim.world_mut()
@@ -225,7 +223,7 @@ fn the_published_pose_takes_the_authored_geometry_to_what_is_drawn() {
     let kid = Entity::from_bits(map[&kid_id]);
     sim.world_mut()
         .entity_mut(outer)
-        .insert(VecFrame { clip: false })
+        .insert(VecFrame)
         .insert(VecLayout {
             dir: LayoutDir::Row,
             pad: [8.0, 8.0, 8.0, 8.0],
@@ -233,7 +231,7 @@ fn the_published_pose_takes_the_authored_geometry_to_what_is_drawn() {
         });
     sim.world_mut()
         .entity_mut(inner)
-        .insert(VecFrame { clip: false })
+        .insert(VecFrame)
         .insert(ph2d_ecs::ChildOf(outer));
     sim.world_mut()
         .entity_mut(kid)
@@ -295,14 +293,14 @@ fn the_anchor_does_not_feed_back_into_the_flows_measurement() {
         let kid = Entity::from_bits(map[&kid_id]);
         sim.world_mut()
             .entity_mut(outer)
-            .insert(VecFrame { clip: false })
+            .insert(VecFrame)
             .insert(VecLayout {
                 dir: LayoutDir::Row,
                 ..VecLayout::default()
             });
         sim.world_mut()
             .entity_mut(inner)
-            .insert(VecFrame { clip: false })
+            .insert(VecFrame)
             .insert(ph2d_ecs::ChildOf(outer))
             // ⚠️ O `grow` é o que torna a MEDIÇÃO observável: sem ele o alvo do fluxo é a caixa
             // medida, o afim é a identidade, e as duas ordens desenham a moldura no mesmo sítio.

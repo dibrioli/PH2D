@@ -1,8 +1,14 @@
 //! **O recorte da MOLDURA** — módulo irmão (teto de LOC), e a única coisa que o [`crate::dispatch`]
 //! precisa saber sobre contêineres.
 //!
-//! A moldura é um retângulo vivo que ganhou `ph2d_ecs::VecFrame` (o componente mora no ECS; aqui só
-//! chega o resultado, como `VecClipSpan` dentro do `VecViewState`).
+//! Quem recorta é qualquer forma FECHADA que carregue `ph2d_ecs::VecClipContent` — o componente
+//! mora no ECS e aqui só chega o resultado, como `VecClipSpan` dentro do `VecViewState`.
+//!
+//! ⚠️ **Este módulo nunca soube que era uma moldura**, e é por isso que generalizá-lo em
+//! 2026-08-21 custou zero linhas daqui: ele sempre recortou pela silhueta de um caminho ARBITRÁRIO
+//! (`build_fill_bezpath` + a regra de preenchimento do próprio caminho). O que mudou foi a
+//! elegibilidade, que é da shell. O nome do módulo e o campo `frame` do span guardam a época em
+//! que só uma moldura podia recortar.
 //!
 //! # O que este módulo DEIXOU de fazer, e por quê
 //!

@@ -59,6 +59,8 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::vector_symmetry::VECTOR_SECTION_SYMMETRY,
     // A MOLDURA (plano UI/UX W0): o contêiner.
     super::vector_frame::VECTOR_SECTION_FRAME,
+    // O RECORTE (2026-08-21): irmã da Frame, mas oferecida a QUALQUER forma fechada.
+    super::vector_frame::VECTOR_SECTION_CLIP,
     // O AUTO LAYOUT (plano UI/UX W2, ADR-0153): a moldura que EMPILHA.
     super::vector_layout::VECTOR_SECTION_LAYOUT,
     // AS ÂNCORAS (plano UI/UX W3): a regra do filho que NÃO flui.

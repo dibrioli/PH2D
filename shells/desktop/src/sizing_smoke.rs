@@ -116,7 +116,7 @@ fn adopt(app: &mut crate::App) {
         };
         let frame = Entity::from_bits(fb);
         if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(frame) {
-            e.insert(VecFrame { clip: false });
+            e.insert(VecFrame);
         }
         for k in 0..n - 1 {
             let Some(&kb) = app.vec_entities.get(&ids[base + k]) else {

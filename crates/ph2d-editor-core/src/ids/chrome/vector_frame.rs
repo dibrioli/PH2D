@@ -16,7 +16,21 @@ pub const VECTOR_MODE_FRAME: NodeId = hash_node_id("vector.mode.frame");
 /// O cabeçalho da seção **Frame** (só com uma moldura selecionada).
 pub const VECTOR_SECTION_FRAME: NodeId = hash_node_id("vector.section.frame");
 
+/// O cabeçalho da seção **Clip** — o recorte, que desde 2026-08-21 vale para qualquer forma
+/// vetorial FECHADA e não só para a moldura (Enio: *"coloque a feature Clip Content para qualquer
+/// forma vetorial fechada"*).
+///
+/// ⚠️ **Seção própria, e não uma linha da seção Frame**, porque a Frame não pode aparecer sobre
+/// uma estrela: ela carrega também o *Show as Panel* e os presets de dispositivo, que são
+/// perguntas sobre uma MOLDURA. Separar o cabeçalho é o que deixa o recorte alcançar toda forma
+/// fechada sem levar consigo três controles que não significam nada ali.
+pub const VECTOR_SECTION_CLIP: NodeId = hash_node_id("vector.section.clip");
+
 /// Os dois chips de **Clip content** (o par segmentado Off/On).
+///
+/// ⚠️ O nome guarda a época em que só a moldura recortava; eles são hoje os chips da seção
+/// [`VECTOR_SECTION_CLIP`], sobre qualquer forma fechada. Renomeá-los mudaria o `hash_node_id` —
+/// que é o id que o a11y e os testes de costura conhecem — para não mudar comportamento nenhum.
 pub const VECTOR_FRAME_CLIP_OFF: NodeId = hash_node_id("vector.frame.clip.off");
 /// Ver [`VECTOR_FRAME_CLIP_OFF`].
 pub const VECTOR_FRAME_CLIP_ON: NodeId = hash_node_id("vector.frame.clip.on");

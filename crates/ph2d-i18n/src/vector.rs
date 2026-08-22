@@ -30,6 +30,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.section.pencil" => "Pencil",
         "panel.vector.section.symmetry" => "Symmetry",
         "panel.vector.section.frame" => "Frame",
+        // A seção do RECORTE (2026-08-21): irmã da Frame, mas oferecida a qualquer forma fechada.
+        "panel.vector.section.clip" => "Clip",
         "panel.vector.token" => "Token",
         "panel.vector.token.none" => "None (use literal)",
         "panel.vector.frame.clip" => "Clip content",

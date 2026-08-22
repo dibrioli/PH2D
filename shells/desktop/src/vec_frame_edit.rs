@@ -41,7 +41,12 @@ use crate::vec_entities::VecEntityMap;
 const MAX_DEPTH: usize = 64;
 
 /// `who` é `root`, ou descende dela?
-fn is_within(sim: &SimWorld, root: Entity, who: Entity) -> bool {
+///
+/// ⚠️ `pub(crate)` porque o RECORTE (`crate::vec_clip_edit`) faz a mesma pergunta de parentesco
+/// sobre um conjunto de candidatos MAIOR (qualquer forma fechada, não só a moldura). Duas
+/// caminhadas de ancestral divergiriam no dia em que o teto de profundidade ou a regra de
+/// expansão mudasse, e as duas seções apareceriam em seleções diferentes.
+pub(crate) fn is_within(sim: &SimWorld, root: Entity, who: Entity) -> bool {
     let w = sim.world();
     let mut cur = who;
     for _ in 0..MAX_DEPTH {
@@ -57,7 +62,11 @@ fn is_within(sim: &SimWorld, root: Entity, who: Entity) -> bool {
 }
 
 /// A entidade VIVA de um caminho.
-fn entity_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<Entity> {
+///
+/// ⚠️ `pub(crate)` pela mesma razão do [`is_within`]: o recorte resolve o mesmo par
+/// caminho → entidade, e uma segunda resolução seria uma segunda resposta a *"esta seleção
+/// descreve um mundo que ainda existe?"*.
+pub(crate) fn entity_of(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<Entity> {
     let &bits = map.get(&id)?;
     let e = Entity::from_bits(bits);
     sim.world().get_entity(e).ok().map(|_| e)
@@ -91,44 +100,10 @@ pub(crate) fn frame_of_selection(
     })
 }
 
-/// A moldura da seleção deste frame: `None` = não é moldura.
-#[must_use]
-pub(crate) fn selected_frame_clip(
-    sim: &SimWorld,
-    map: &VecEntityMap,
-    selected: &[VecPathId],
-) -> Option<bool> {
-    let e = frame_of_selection(sim, map, selected)?;
-    sim.world().get::<VecFrame>(e).map(|f| f.clip)
-}
-
-/// Escreve o recorte na moldura selecionada. Devolve `true` se algo mudou — o `post_frame_undo`
-/// captura por diff, então um no-op não custa passo de undo.
-pub(crate) fn set_selected_frame_clip(
-    sim: &mut SimWorld,
-    map: &VecEntityMap,
-    selected: &[VecPathId],
-    clip: bool,
-) -> bool {
-    let Some(e) = frame_of_selection(sim, map, selected) else {
-        return false;
-    };
-    // ⚠️ Só escreve numa entidade que JÁ é moldura. O chip só é pintado sobre uma, então chegar
-    // aqui sobre outra coisa seria um clique roteado errado — e criar a moldura em silêncio
-    // transformaria um chip de opção num gesto de criação.
-    if sim
-        .world()
-        .get::<VecFrame>(e)
-        .is_none_or(|f| f.clip == clip)
-    {
-        return false;
-    }
-    if let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
-        em.insert(VecFrame { clip });
-        return true;
-    }
-    false
-}
+// ⚠️ **O RECORTE mudou-se para [`crate::vec_clip_edit`]** (2026-08-21). Ele deixou de ser um
+// campo da moldura e passou a valer para qualquer forma FECHADA, então a pergunta *"quem recorta
+// nesta seleção?"* tem um conjunto de candidatos maior do que *"qual é a moldura desta seleção?"*
+// — que é o que este módulo continua a responder, para a seção Frame, o auto layout e as âncoras.
 
 #[cfg(test)]
 #[path = "vec_frame_edit_tests.rs"]

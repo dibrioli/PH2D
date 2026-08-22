@@ -18,7 +18,7 @@ fn lone() -> (World, Entity) {
 #[test]
 fn a_frame_resizes_its_box_by_default() {
     let (mut w, e) = lone();
-    w.entity_mut(e).insert(VecFrame { clip: false });
+    w.entity_mut(e).insert(VecFrame);
     assert!(resizes_box(&w, e));
 }
 
@@ -30,7 +30,7 @@ fn a_frame_resizes_its_box_by_default() {
 #[test]
 fn a_frames_child_resizes_its_box_and_a_loose_object_does_not() {
     let mut w = World::new();
-    let frame = w.spawn(VecFrame { clip: false }).id();
+    let frame = w.spawn(VecFrame).id();
     let kid = w.spawn(ChildOf(frame)).id();
     let loose = w.spawn_empty().id();
     assert!(resizes_box(&w, kid), "o filho de moldura");
@@ -45,7 +45,7 @@ fn a_frames_child_resizes_its_box_and_a_loose_object_does_not() {
 #[test]
 fn the_rule_reaches_one_level_of_parenthood() {
     let mut w = World::new();
-    let frame = w.spawn(VecFrame { clip: false }).id();
+    let frame = w.spawn(VecFrame).id();
     let group = w.spawn(ChildOf(frame)).id();
     let grandkid = w.spawn(ChildOf(group)).id();
     assert!(resizes_box(&w, group), "o filho direto");
@@ -70,9 +70,7 @@ fn a_child_of_a_plain_group_is_not_covered() {
 #[test]
 fn the_override_wins_over_the_derived_default_both_ways() {
     let mut w = World::new();
-    let frame = w
-        .spawn((VecFrame { clip: false }, VecResizeBox(false)))
-        .id();
+    let frame = w.spawn((VecFrame, VecResizeBox(false))).id();
     let loose = w.spawn(VecResizeBox(true)).id();
     assert!(!resizes_box(&w, frame), "a moldura desmarcada escala tudo");
     assert!(resizes_box(&w, loose), "a forma marcada reescreve a caixa");
@@ -83,9 +81,7 @@ fn the_override_wins_over_the_derived_default_both_ways() {
 #[test]
 fn removing_the_override_returns_to_the_derived_answer() {
     let mut w = World::new();
-    let frame = w
-        .spawn((VecFrame { clip: false }, VecResizeBox(false)))
-        .id();
+    let frame = w.spawn((VecFrame, VecResizeBox(false))).id();
     assert!(!resizes_box(&w, frame));
     w.entity_mut(frame).remove::<VecResizeBox>();
     assert!(resizes_box(&w, frame), "voltou ao default derivado");
@@ -99,7 +95,7 @@ fn removing_the_override_returns_to_the_derived_answer() {
 #[test]
 fn an_instance_scales_its_pose_even_inside_a_frame() {
     let mut w = World::new();
-    let frame = w.spawn(VecFrame { clip: false }).id();
+    let frame = w.spawn(VecFrame).id();
     let plain_kid = w.spawn(crate::ChildOf(frame)).id();
     let instance_kid = w
         .spawn((crate::ChildOf(frame), crate::VecInstance::new(1)))

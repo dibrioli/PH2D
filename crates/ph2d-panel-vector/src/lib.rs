@@ -82,6 +82,8 @@ mod paint_anchors;
 mod paint_arrange;
 /// O catálogo de formas (categoria em dropdown + grade de thumbnails cozidos).
 mod paint_catalog;
+/// A seção **Clip** — o recorte, oferecido a qualquer forma vetorial FECHADA.
+mod paint_clip;
 mod paint_components;
 /// A seção do CONECTOR (Route / Jetty / Spread) — snapshot + seed + paint + evento.
 mod paint_connector;

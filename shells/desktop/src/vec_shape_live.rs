@@ -164,7 +164,12 @@ pub(crate) fn make_committed_shape_live(
             // ⚠️ **Recorta por default**, como o *Clip content* do Figma: o artista que desenha um
             // contêiner está a dizer *isto é uma tela*, e uma tela que deixa o conteúdo escapar
             // pelas bordas não é uma. O chip da seção Frame desliga.
-            e.insert(ph2d_ecs::VecFrame { clip: true });
+            //
+            // ⚠️ **DOIS componentes desde 2026-08-21**, e é a moldura que ficou sendo o caso
+            // particular: *ser um contêiner* (rótulo, alças, layout, âncoras) e *esconder o
+            // transbordo* deixaram de ser o mesmo bit, porque o recorte passou a valer para
+            // qualquer forma fechada. A moldura nasce com os dois — o comportamento de sempre.
+            e.insert((ph2d_ecs::VecFrame, ph2d_ecs::VecClipContent));
         }
         // O nascimento ACONTECEU: consome o pedido. Daqui em diante, a ausência do `VecShape`
         // significa "o artista congelou", e ninguém a ressuscita.

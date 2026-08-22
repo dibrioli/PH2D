@@ -7837,16 +7837,32 @@ impl crate::App {
                 // clique é honrado ANTES da publicação para o painel mostrar, no mesmo frame, o
                 // valor que o artista acabou de escolher — publicar primeiro deixaria o chip a
                 // piscar de volta ao valor antigo por um quadro.
+                //
+                // ⚠️ **O RECORTE deixou de ser a moldura** (2026-08-21): o chip vale para
+                // qualquer forma FECHADA, então o sujeito sai do `vec_clip_edit` — que precisa da
+                // cena para ler o `closed`, coisa que a pergunta da moldura nunca precisou.
                 if let Some(clip) = pending_frame_clip {
-                    crate::vec_frame_edit::set_selected_frame_clip(
+                    crate::vec_clip_edit::set_selected_clip(
                         sim,
+                        vec_scene,
                         &self.vec_entities,
                         &sel,
                         clip,
                     );
                 }
-                ph2d_panel_vector::state::set_frame_clip(
-                    crate::vec_frame_edit::selected_frame_clip(sim, &self.vec_entities, &sel),
+                ph2d_panel_vector::state::set_frame_clip(crate::vec_clip_edit::selected_clip(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &sel,
+                ));
+                // ⚠️ **A outra metade, e ela tem outro sujeito.** A seção Frame (Show as Panel +
+                // presets de dispositivo) pergunta pela MOLDURA, que continua a sair do
+                // `frame_of_selection` — publicar o recorte para as duas ofereceria os presets de
+                // telefone sobre uma elipse que o artista mandou recortar.
+                ph2d_panel_vector::state::set_frame_present(
+                    crate::vec_frame_edit::frame_of_selection(sim, &self.vec_entities, &sel)
+                        .is_some(),
                 );
                 // ⚠️ O chip *Show as Panel* le' a visibilidade REAL do painel autorado, e nao uma
                 // copia: o X do painel escreve o MESMO mapa, entao fechar por la' apaga o chip

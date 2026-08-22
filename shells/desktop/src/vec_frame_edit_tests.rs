@@ -8,7 +8,7 @@
 use super::*;
 use crate::vec_entities::{VecEntityMap, sync};
 use crate::vec_selection::{VecSelSync, sync_selection};
-use ph2d_ecs::{Transform, VecPathRef};
+use ph2d_ecs::{Transform, VecClipContent, VecPathRef};
 use ph2d_editor::screens::hero::GizmoStateGroup;
 use ph2d_vec_scene::{VecScene, rectangle};
 use std::collections::BTreeMap;
@@ -21,7 +21,10 @@ fn world(frame: Option<bool>) -> (SimWorld, VecEntityMap, VecPathId) {
         .spawn((Transform::default(), VecPathRef(7)))
         .id();
     if let Some(clip) = frame {
-        sim.world_mut().entity_mut(e).insert(VecFrame { clip });
+        sim.world_mut().entity_mut(e).insert(VecFrame);
+        if clip {
+            sim.world_mut().entity_mut(e).insert(VecClipContent);
+        }
     }
     let mut map: VecEntityMap = BTreeMap::new();
     map.insert(7, e.to_bits());
@@ -61,7 +64,10 @@ fn build(kids: usize, loose: usize, clip: bool) -> Scene {
     sync(&mut sim, &mut scene, &mut map);
 
     let fe = Entity::from_bits(map[&frame]);
-    sim.world_mut().entity_mut(fe).insert(VecFrame { clip });
+    sim.world_mut().entity_mut(fe).insert(VecFrame);
+    if clip {
+        sim.world_mut().entity_mut(fe).insert(VecClipContent);
+    }
     for id in &kid_ids {
         let e = Entity::from_bits(map[id]);
         sim.world_mut().entity_mut(e).insert(ChildOf(fe));
@@ -106,8 +112,15 @@ impl Scene {
         pen.selected_paths().to_vec()
     }
 
-    fn clip_of(&self, sel: &[VecPathId]) -> Option<bool> {
-        selected_frame_clip(&self.sim, &self.map, sel)
+    /// A moldura que a seleção nomeia.
+    ///
+    /// ⚠️ **Compara a ENTIDADE, e é mais forte do que o que estava aqui.** Até 2026-08-21 estes
+    /// gates liam o `Option<bool>` do recorte e distinguiam a moldura certa da errada pelo VALOR
+    /// do clip — um proxy que só funcionava porque as duas perguntas eram a mesma. Com o recorte
+    /// mudado para o `vec_clip_edit`, a resposta passou a ser a própria moldura, que é o que estes
+    /// testes sempre quiseram dizer.
+    fn frame_of(&self, sel: &[VecPathId]) -> Option<Entity> {
+        frame_of_selection(&self.sim, &self.map, sel)
     }
 }
 
@@ -134,7 +147,7 @@ fn a_frame_with_children_still_reports_its_clip() {
         "premissa da fixture: moldura + 3 filhos numa selecao so'; \
          sem isso este gate não contém o fenômeno"
     );
-    assert_eq!(s.clip_of(&sel), Some(true));
+    assert_eq!(s.frame_of(&sel), Some(s.entity(s.frame)));
 }
 
 /// A mesma moldura pela OUTRA rota (o clique de canvas publica só ela) dá a MESMA resposta — é
@@ -142,8 +155,9 @@ fn a_frame_with_children_still_reports_its_clip() {
 #[test]
 fn the_answer_does_not_depend_on_how_the_frame_was_selected() {
     let s = build(3, 0, false);
-    assert_eq!(s.clip_of(&[s.frame]), Some(false));
-    assert_eq!(s.clip_of(&s.select(&[s.entity(s.frame)])), Some(false));
+    let want = Some(s.entity(s.frame));
+    assert_eq!(s.frame_of(&[s.frame]), want);
+    assert_eq!(s.frame_of(&s.select(&[s.entity(s.frame)])), want);
 }
 
 /// **Um filho sozinho não é a moldura.** O artista selecionou a FORMA; oferecer ali os controles
@@ -153,7 +167,7 @@ fn a_child_alone_is_not_the_frame() {
     let s = build(2, 0, true);
     let sel = s.select(&[s.entity(s.kids[0])]);
     assert_eq!(sel, vec![s.kids[0]], "premissa: uma folha não expande");
-    assert_eq!(s.clip_of(&sel), None);
+    assert_eq!(s.frame_of(&sel), None);
 }
 
 /// **Moldura + forma solta não tem UMA resposta** — a moldura não contém a forma de fora.
@@ -165,7 +179,7 @@ fn a_frame_plus_an_outsider_reports_no_frame() {
         sel.contains(&s.loose[0]) && sel.contains(&s.frame),
         "premissa: os dois estão na seleção"
     );
-    assert_eq!(s.clip_of(&sel), None);
+    assert_eq!(s.frame_of(&sel), None);
 }
 
 /// **Duas molduras irmãs também não** — nenhuma contém a outra.
@@ -173,31 +187,25 @@ fn a_frame_plus_an_outsider_reports_no_frame() {
 fn two_sibling_frames_report_no_frame() {
     let mut s = build(1, 1, true);
     let other = s.entity(s.loose[0]);
-    s.sim
-        .world_mut()
-        .entity_mut(other)
-        .insert(VecFrame { clip: false });
+    s.sim.world_mut().entity_mut(other).insert(VecFrame);
     let sel = s.select(&[s.entity(s.frame), other]);
-    assert_eq!(s.clip_of(&sel), None);
+    assert_eq!(s.frame_of(&sel), None);
 }
 
 /// **Aninhadas: a de FORA vence**, porque é ela que contém tudo — e é nela que o artista clicou.
 #[test]
 fn the_outer_frame_wins_when_frames_nest() {
     let mut s = build(1, 0, true);
-    // O único filho vira ele próprio uma moldura, com o recorte OPOSTO: assim a resposta certa é
-    // distinguível da errada por VALOR, não só por presença.
+    // O único filho vira ele próprio uma moldura: assim há DUAS respostas possíveis e a certa é
+    // distinguível da errada pela identidade, não por acaso de haver só uma.
     let inner = s.entity(s.kids[0]);
-    s.sim
-        .world_mut()
-        .entity_mut(inner)
-        .insert(VecFrame { clip: false });
+    s.sim.world_mut().entity_mut(inner).insert(VecFrame);
     let sel = s.select(&[s.entity(s.frame), inner]);
     assert_eq!(sel.len(), 2, "premissa: as DUAS molduras na seleção");
-    assert_eq!(s.clip_of(&sel), Some(true), "a de FORA");
+    assert_eq!(s.frame_of(&sel), Some(s.entity(s.frame)), "a de FORA");
     assert_eq!(
-        s.clip_of(&[s.kids[0]]),
-        Some(false),
+        s.frame_of(&[s.kids[0]]),
+        Some(inner),
         "e a de dentro sozinha"
     );
 }
@@ -206,50 +214,26 @@ fn the_outer_frame_wins_when_frames_nest() {
 #[test]
 fn a_plain_shape_is_not_a_frame() {
     let (sim, map, id) = world(None);
-    assert_eq!(selected_frame_clip(&sim, &map, &[id]), None);
-    assert_eq!(selected_frame_clip(&sim, &map, &[]), None);
+    assert_eq!(frame_of_selection(&sim, &map, &[id]), None);
+    assert_eq!(frame_of_selection(&sim, &map, &[]), None);
 }
 
-/// Sobre uma moldura, o chip mostra o que o componente diz.
+/// **Uma forma que RECORTA não vira moldura por isso** — o par deste gate vive em
+/// `vec_clip_edit_tests`, e os dois juntos cercam a separação pelos dois lados: lá se prova que
+/// ligar o recorte não põe o `VecFrame`, aqui que a presença do recorte não faz a seção Frame
+/// (com os presets de dispositivo e o *Show as Panel*) aparecer sobre uma forma comum.
 #[test]
-fn a_frame_reports_its_clip() {
-    for clip in [false, true] {
-        let (sim, map, id) = world(Some(clip));
-        assert_eq!(selected_frame_clip(&sim, &map, &[id]), Some(clip));
-    }
-}
-
-/// O chip escreve — e escrever o MESMO valor não muda nada (o undo é por diff; um passo por
-/// clique repetido encheria a fila com estados idênticos).
-#[test]
-fn the_chip_writes_the_clip_and_a_no_op_changes_nothing() {
-    let (mut sim, map, id) = world(Some(true));
-    assert!(
-        !set_selected_frame_clip(&mut sim, &map, &[id], true),
-        "no-op"
-    );
-    assert!(set_selected_frame_clip(&mut sim, &map, &[id], false));
-    assert_eq!(selected_frame_clip(&sim, &map, &[id]), Some(false));
-}
-
-/// E o chip alcança a moldura **através da seleção expandida** — senão ele mostraria o estado
-/// certo e não editaria nada, que é a metade do defeito que um gate de leitura não pega.
-#[test]
-fn the_chip_writes_through_an_expanded_selection() {
-    let mut s = build(3, 0, true);
-    let mut subjects = vec![s.entity(s.frame)];
-    subjects.extend(s.kids.iter().map(|&k| s.entity(k)));
-    let sel = s.select(&subjects);
-    assert_eq!(sel.len(), 4, "premissa: a selecao carrega os filhos junto");
-    assert!(set_selected_frame_clip(&mut s.sim, &s.map, &sel, false));
-    assert_eq!(s.clip_of(&sel), Some(false));
-}
-
-/// ⚠️ **Escrever numa forma que não é moldura CRIARIA uma** — um chip de opção viraria um gesto
-/// de criação, e o artista ganharia um contêiner que nunca desenhou.
-#[test]
-fn the_chip_never_turns_a_plain_shape_into_a_frame() {
+fn a_clipping_shape_is_still_not_a_frame() {
     let (mut sim, map, id) = world(None);
-    assert!(!set_selected_frame_clip(&mut sim, &map, &[id], true));
-    assert_eq!(selected_frame_clip(&sim, &map, &[id]), None);
+    let e = Entity::from_bits(map[&id]);
+    sim.world_mut().entity_mut(e).insert(VecClipContent);
+    assert_eq!(
+        frame_of_selection(&sim, &map, &[id]),
+        None,
+        "recortar nao e' ser contentor -- a secao Frame nao pode abrir aqui"
+    );
 }
+
+// ⚠️ **Os gates do CHIP mudaram-se para `vec_clip_edit_tests`** (2026-08-21), junto com o que eles
+// testam: escrever o recorte, o no-op que não custa passo de undo, e o alcance através da seleção
+// expandida. O que ficou aqui é a pergunta deste módulo — *qual é a MOLDURA desta seleção?*

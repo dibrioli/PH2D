@@ -82,12 +82,14 @@ fn the_frame_pill_is_reachable_and_reaches_the_bus() {
 #[test]
 fn the_frame_controls_are_reachable_and_reach_the_bus() {
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     click_reaches_bus(ids::VECTOR_FRAME_CLIP_OFF, "o chip Clip=Off");
     click_reaches_bus(ids::VECTOR_FRAME_CLIP_ON, "o chip Clip=On");
     for p in DEVICE_PRESETS {
         click_reaches_bus(p.id, p.label);
     }
     state::set_frame_clip(None);
+    state::set_frame_present(false);
 }
 
 /// **O interruptor do painel AUTORADO** (plano UI/UX W8b.2) — os dois chips vivos sob o mouse e
@@ -99,9 +101,11 @@ fn the_frame_controls_are_reachable_and_reach_the_bus() {
 #[test]
 fn the_show_as_panel_switch_is_reachable_and_reaches_the_bus() {
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     click_reaches_bus(ids::VECTOR_FRAME_PANEL_OFF, "o chip Show as Panel=Off");
     click_reaches_bus(ids::VECTOR_FRAME_PANEL_ON, "o chip Show as Panel=On");
     state::set_frame_clip(None);
+    state::set_frame_present(false);
 }
 
 /// **E o chip MOSTRA a visibilidade real** — aceso quando o painel está aberto.
@@ -111,6 +115,7 @@ fn the_show_as_panel_switch_is_reachable_and_reaches_the_bus() {
 #[test]
 fn the_switch_shows_whether_the_panel_is_open() {
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     for open in [false, true] {
@@ -129,6 +134,7 @@ fn the_switch_shows_whether_the_panel_is_open() {
     }
     state::set_frame_panel_open(false);
     state::set_frame_clip(None);
+    state::set_frame_present(false);
 }
 
 /// **Sem moldura na seleção a seção não existe** — e é isto que a impede de ser seis controles
@@ -136,6 +142,7 @@ fn the_switch_shows_whether_the_panel_is_open() {
 #[test]
 fn the_frame_section_is_absent_without_a_frame() {
     state::set_frame_clip(None);
+    state::set_frame_present(false);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut panel_state = VectorPanelState;
     for id in [

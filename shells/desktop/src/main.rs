@@ -489,6 +489,9 @@ mod variant_smoke;
 mod vec_anchor_edit;
 mod vec_bindings;
 mod vec_blend;
+/// O chip *Clip content* — a projeção e a edição do RECORTE, que vale para qualquer forma
+/// vetorial FECHADA (e não só para a moldura, desde 2026-08-21).
+mod vec_clip_edit;
 mod vec_component_edit;
 mod vec_component_pieces;
 /// O painel edita o CONECTOR selecionado (Route / Jetty / Spread) — resolve o valor

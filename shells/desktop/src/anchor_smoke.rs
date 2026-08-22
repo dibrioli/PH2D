@@ -22,7 +22,7 @@
 //!   ficar exactamente onde nasceu em todos os passos. Uma diferença que apareça nele também não
 //!   é da âncora.
 
-use ph2d_ecs::{ChildOf, Entity, VecFrame};
+use ph2d_ecs::{ChildOf, Entity, VecClipContent, VecFrame};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, rectangle};
 
 /// Meia-largura e meia-altura da moldura — o "telefone deitado" com que a cena abre.
@@ -91,7 +91,7 @@ fn adopt(app: &mut crate::App) {
     };
     let frame = Entity::from_bits(fb);
     if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(frame) {
-        e.insert(VecFrame { clip: true });
+        e.insert((VecFrame, VecClipContent));
     }
     for id in ids.iter().take(PIECES.len()) {
         let Some(&kb) = app.vec_entities.get(id) else {

@@ -128,7 +128,7 @@ fn adopt(app: &mut crate::App) {
     };
     let frame = ph2d_ecs::Entity::from_bits(fb);
     if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(frame) {
-        e.insert(ph2d_ecs::VecFrame { clip: false });
+        e.insert(ph2d_ecs::VecFrame);
     }
     for k in kids {
         let Some(&kb) = app.vec_entities.get(k) else {

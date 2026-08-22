@@ -11,7 +11,7 @@
 
 use super::*;
 use ph2d_ecs::scene::{HierarchyWalkState, build_hierarchy_snapshot};
-use ph2d_ecs::{ChildOf, Transform, VecPathRef, ZIndexOverride};
+use ph2d_ecs::{ChildOf, Transform, VecClipContent, VecPathRef, ZIndexOverride};
 
 /// Os intervalos E a pilha de z do mesmo mundo, pelas duas portas do produto.
 fn spans_and_z(sim: &mut SimWorld) -> (Vec<VecClipSpan>, Vec<u64>) {
@@ -28,15 +28,22 @@ fn spans_of(sim: &mut SimWorld) -> Vec<VecClipSpan> {
     spans_and_z(sim).0
 }
 
-/// Uma cena com moldura: o retângulo `100` com `children` filhos vetoriais, mais um vizinho raiz
-/// (`900`) que a moldura NÃO contém.
+/// Uma cena com um RECORTE: o retângulo `100` com `children` filhos vetoriais, mais um vizinho
+/// raiz (`900`) que ele NÃO contém.
+///
+/// ⚠️ **Sem `VecFrame`**, e é de propósito desde 2026-08-21: o que abre intervalo é o
+/// `VecClipContent`, e montar a fixture com os dois esconderia uma dependência da moldura que este
+/// módulo não pode voltar a ter.
 fn scene(children: usize, clip: bool) -> (SimWorld, u64, Vec<u64>, u64) {
     let mut sim = SimWorld::new();
     let w = sim.world_mut();
     w.spawn((Transform::default(), VecPathRef(900)));
-    let frame = w
-        .spawn((Transform::default(), VecPathRef(100), VecFrame { clip }))
-        .id();
+    let frame = if clip {
+        w.spawn((Transform::default(), VecPathRef(100), VecClipContent))
+            .id()
+    } else {
+        w.spawn((Transform::default(), VecPathRef(100))).id()
+    };
     let mut kids = Vec::new();
     for k in 0..children {
         let id = 200 + k as u64;
@@ -108,17 +115,13 @@ fn nested_frames_come_outermost_first() {
     let mut sim = SimWorld::new();
     let w = sim.world_mut();
     let outer = w
-        .spawn((
-            Transform::default(),
-            VecPathRef(10),
-            VecFrame { clip: true },
-        ))
+        .spawn((Transform::default(), VecPathRef(10), VecClipContent))
         .id();
     let inner = w
         .spawn((
             Transform::default(),
             VecPathRef(20),
-            VecFrame { clip: true },
+            VecClipContent,
             ChildOf(outer),
         ))
         .id();

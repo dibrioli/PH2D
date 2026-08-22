@@ -630,7 +630,11 @@ fn every_section_header_is_registered_as_collapsible() {
         // vestida ou não: a face vazia é a que torna a feature alcançável.
         // +1 (plano UI/UX W7): STATES — as poses da forma e o tween entre elas. Oferecida para
         // QUALQUER forma única, com estados ou sem, pela mesma razão da WIDGET.
-        35,
+        // +1 (2026-08-21): CLIP — o recorte, irmã da FRAME mas oferecida a qualquer forma
+        // FECHADA. Elas aparecem JUNTAS sobre uma moldura, e só a CLIP sobre uma estrela; foi
+        // separá-las que deixou o recorte sair da moldura sem levar consigo os presets de
+        // dispositivo e o *Show as Panel*.
+        36,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

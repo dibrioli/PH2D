@@ -102,7 +102,7 @@ fn adopt(app: &mut crate::App) {
         };
         let frame = Entity::from_bits(fb);
         if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(frame) {
-            e.insert(VecFrame { clip: false });
+            e.insert(VecFrame);
             // ⚠️ **Só a de BAIXO é armada.** A de cima é a costura que esta wave existe para
             // provar, e armá-la aqui pularia exactamente o passo que o artista tem de fazer.
             if row == 1 {

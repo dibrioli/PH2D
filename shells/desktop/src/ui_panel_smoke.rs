@@ -291,7 +291,7 @@ fn name_and_parent(app: &mut crate::App) {
     gfx.sim
         .world_mut()
         .entity_mut(frame_e)
-        .insert(ph2d_ecs::VecFrame { clip: false });
+        .insert(ph2d_ecs::VecFrame);
     for (i, (_, name, kind)) in AUTHORED.iter().enumerate() {
         let Some(e) = ents[i] else { continue };
         let Ok(mut ent) = gfx.sim.world_mut().get_entity_mut(e) else {

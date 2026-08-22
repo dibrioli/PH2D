@@ -14,8 +14,14 @@
 //!
 //! # A seção só existe com uma moldura selecionada
 //!
-//! `state::frame_clip()` é `None` quando a seleção não é moldura, e então nada é pintado. Uma
+//! `state::frame_present()` é `false` quando a seleção não é moldura, e então nada é pintado. Uma
 //! seção *Frame* sempre visível seria dois controles mortos em toda seleção que não é moldura.
+//!
+//! ⚠️ **O gate era `frame_clip().is_some()` até 2026-08-21**, e deixou de servir quando o recorte
+//! passou a valer para qualquer forma FECHADA: um `Some` deixou de implicar moldura, e manter o
+//! gate antigo teria oferecido os presets de dispositivo e o *Show as Panel* sobre uma elipse. O
+//! chip de *Clip content* mudou-se para a seção irmã ([`super::paint_clip`]), que é a que uma
+//! estrela também recebe.
 
 use ph2d_i18n::tr;
 use ph2d_tool_vector::frames::DEVICE_PRESETS;
@@ -27,9 +33,9 @@ use crate::state;
 impl BodyCtx<'_> {
     /// **A seção FRAME** — o contêiner: recorta, e os atalhos de tamanho.
     pub(crate) fn frame_section(&mut self, y: f32) -> f32 {
-        let Some(clip) = state::frame_clip() else {
+        if !state::frame_present() {
             return y;
-        };
+        }
         let (mut y, collapsed) = self.section_header(
             ids::VECTOR_SECTION_FRAME,
             tr("panel.vector.section.frame"),
@@ -38,22 +44,6 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        y = self.segmented(
-            tr("panel.vector.frame.clip"),
-            &[
-                (
-                    ids::VECTOR_FRAME_CLIP_OFF,
-                    tr("panel.vector.frame.clip.off"),
-                    !clip,
-                ),
-                (
-                    ids::VECTOR_FRAME_CLIP_ON,
-                    tr("panel.vector.frame.clip.on"),
-                    clip,
-                ),
-            ],
-            y,
-        );
         // **O painel AUTORADO** (plano UI/UX W8b.2) — *que painel esta moldura descreve?*
         //
         // ⚠️ Oferecido para TODA moldura, inclusive a que ainda não tem um filho vestido: uma

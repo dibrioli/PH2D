@@ -411,6 +411,11 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // so'. Sem o registro, um artista que marca a boca da arma e grava o projeto reabre-o sem
     // ela: uma ancora nao e' re-derivavel de nada, e' uma medida que alguem tirou.
     reg.register::<crate::NamedAnchorList>("ph2d::ecs::NamedAnchorList");
+    // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA
+    // (2026-08-21). Sem o registro, o modo de falha é o mesmo da moldura e igualmente enganoso:
+    // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte
+    // simplesmente teria evaporado — nada some, tudo aparece, e o desenho está errado.
+    reg.register::<crate::VecClipContent>("ph2d::ecs::VecClipContent");
 }
 
 #[cfg(test)]
@@ -481,7 +486,11 @@ mod tests {
         //   em 2026-05 e construida em 2026-08-21)
         // + 1 lista de ancoras nomeadas (NamedAnchorList, ADR-0072 -- `Accepted` desde
         //   2026-05-28 sobre codigo que nao existia).
-        assert_eq!(reg.len(), 63);
+        // + 1 recorte (VecClipContent — o bit que SAIU do VecFrame para valer em qualquer
+        //   forma fechada, 2026-08-21). ⚠️ CONTADO na integracao de 2026-08-22: a `line/Sprite`
+        //   (+6) entrou antes da `line/Vector` (+2) — o valor e' a SOMA, nao o de nenhum lado.
+        assert_eq!(reg.len(), 64);
+        assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetRef").is_some());

@@ -17,7 +17,7 @@
 //! sobre ela tem de dar **ZOOM na câmera**, como em qualquer outro lugar do canvas — é ela que
 //! prova que a rolagem não roubou o gesto do dia inteiro.
 
-use ph2d_ecs::{ChildOf, Entity, VecFrame};
+use ph2d_ecs::{ChildOf, Entity, VecClipContent, VecFrame};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, rectangle};
 
 /// `(centro y, nº de itens, rótulo)` — a caixa é a mesma nas duas, e só o conteúdo difere.
@@ -105,7 +105,7 @@ fn adopt(app: &mut crate::App) {
         if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(frame) {
             // ⚠️ **`clip: true` já aqui**, e é material e não armação: sem recorte a lista não é
             // uma lista — é uma pilha de itens a atravessar a cena —, e a rolagem nem se oferece.
-            e.insert(VecFrame { clip: true });
+            e.insert((VecFrame, VecClipContent));
         }
         for k in 0..n - 1 {
             let Some(&kb) = app.vec_entities.get(&ids[base + k]) else {

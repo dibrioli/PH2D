@@ -98,7 +98,7 @@ fn adopt(app: &mut crate::App) {
         };
         let frame = Entity::from_bits(fb);
         if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(frame) {
-            e.insert(VecFrame { clip: false });
+            e.insert(VecFrame);
         }
         for k in 0..KIDS.len() {
             let Some(&kb) = app.vec_entities.get(&ids[base + k]) else {
@@ -365,9 +365,7 @@ mod tests {
         ));
         crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
         let frame = ph2d_ecs::Entity::from_bits(map[&frame_id]);
-        sim.world_mut()
-            .entity_mut(frame)
-            .insert(ph2d_ecs::VecFrame { clip: false });
+        sim.world_mut().entity_mut(frame).insert(ph2d_ecs::VecFrame);
         for id in &kids {
             let e = ph2d_ecs::Entity::from_bits(map[id]);
             sim.world_mut().entity_mut(e).insert(ChildOf(frame));

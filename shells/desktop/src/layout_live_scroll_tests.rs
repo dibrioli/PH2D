@@ -222,9 +222,7 @@ fn only_a_clipping_frame_is_a_wheel_target() {
         "sem VecFrame nao ha' recorte, logo nao ha' alvo"
     );
 
-    sim.world_mut()
-        .entity_mut(frame)
-        .insert(ph2d_ecs::VecFrame { clip: false });
+    sim.world_mut().entity_mut(frame).insert(ph2d_ecs::VecFrame);
     let _ = recook(&mut ll, &sim, &scene, &map);
     assert!(
         ll.scrollable_frame_at([50.0, 20.0]).is_none(),
@@ -233,7 +231,7 @@ fn only_a_clipping_frame_is_a_wheel_target() {
 
     sim.world_mut()
         .entity_mut(frame)
-        .insert(ph2d_ecs::VecFrame { clip: true });
+        .insert((ph2d_ecs::VecFrame, ph2d_ecs::VecClipContent));
     let _ = recook(&mut ll, &sim, &scene, &map);
     assert_eq!(
         ll.scrollable_frame_at([50.0, 20.0]),
@@ -252,7 +250,7 @@ fn a_frame_that_fits_is_not_a_wheel_target() {
     let (mut sim, scene, map, frame, _) = column_of(2);
     sim.world_mut()
         .entity_mut(frame)
-        .insert(ph2d_ecs::VecFrame { clip: true });
+        .insert((ph2d_ecs::VecFrame, ph2d_ecs::VecClipContent));
     let mut ll = LayoutLive::default();
     let _ = recook(&mut ll, &sim, &scene, &map);
     assert!(

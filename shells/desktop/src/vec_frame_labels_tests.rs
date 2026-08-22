@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::vec_entities::{VecEntityMap, sync};
-use ph2d_ecs::Entity;
+use ph2d_ecs::{Entity, VecClipContent, VecFrame};
 use ph2d_vec_scene::rectangle;
 
 /// Uma cena com uma moldura, uma forma comum, e o mapa.
@@ -16,7 +16,7 @@ fn scene() -> (SimWorld, VecScene, VecEntityMap, VecPathId, VecPathId) {
     let fe = Entity::from_bits(map[&frame]);
     sim.world_mut()
         .entity_mut(fe)
-        .insert(VecFrame { clip: true });
+        .insert((VecFrame, VecClipContent));
     sim.world_mut().entity_mut(fe).insert(Name::new("Capa"));
     (sim, scene, map, frame, plain)
 }

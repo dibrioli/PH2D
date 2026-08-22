@@ -452,7 +452,9 @@ impl LayoutLive {
             // existe — uma moldura que ABRAÇA acabou de mudar de tamanho, e re-medi-la noutro
             // sítio poria o alvo onde ela estava.
             if let Some(e) = ents[i] {
-                let clips = w.get::<ph2d_ecs::VecFrame>(e).is_some_and(|f| f.clip);
+                // O alvo da roda é quem RECORTA (só há o que rolar quando algo fica escondido),
+                // e desde 2026-08-21 isso é um componente próprio — não mais um campo da moldura.
+                let clips = w.get::<ph2d_ecs::VecClipContent>(e).is_some();
                 self.offer_scroll_target(e, clips, depth[i], target);
             }
             let x = fit(c.bbox, target);

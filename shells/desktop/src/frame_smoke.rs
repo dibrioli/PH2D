@@ -20,7 +20,7 @@
 //! - um **vizinho SOLTO** entre as duas, que não é filho de nenhuma: o recorte não pode alcançar
 //!   quem não está dentro.
 
-use ph2d_ecs::{ChildOf, Entity, VecFrame};
+use ph2d_ecs::{ChildOf, Entity, VecClipContent, VecFrame};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, ellipse, rectangle};
 
 /// O centro de cada moldura, em `x`. A largura do telefone é ~3,70 (o preset `Phone` com o lado
@@ -91,8 +91,13 @@ fn adopt(app: &mut crate::App) {
         };
         let frame = Entity::from_bits(fb);
         // ⚠️ A da direita é o CONTROLE: ela É moldura (a seção Frame aparece nela) e NÃO recorta.
+        // Desde 2026-08-21 o contraste é a PRESENÇA do `VecClipContent` — as duas são molduras
+        // por igual, e é só o recorte que as separa. É o que a cena existe para mostrar.
         if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(frame) {
-            e.insert(VecFrame { clip: i == 0 });
+            e.insert(VecFrame);
+            if i == 0 {
+                e.insert(VecClipContent);
+            }
         }
         for k in 0..3 {
             let Some(&kb) = app.vec_entities.get(&ids[base + k]) else {
@@ -137,9 +142,11 @@ fn announce(app: &mut crate::App) {
     eprintln!("  2. ⚠️ O FUNDO: o retangulo escuro da moldura fica ATRAS do conteudo, nao por");
     eprintln!("     cima. Na arvore ele e' o PAI, e um pai desenha na frente dos filhos — e' a");
     eprintln!("     moldura que e' a excecao, porque o preenchimento dela e' o fundo do card.");
-    eprintln!("  3. Selecione a moldura da ESQUERDA (clique no fundo escuro dela). Aparece a");
-    eprintln!("     secao **Frame**. Ponha 'Clip content' em Off: a barra sai inteira. Ligue de");
-    eprintln!("     volta: ela e' cortada outra vez.");
+    eprintln!("  3. Selecione a moldura da ESQUERDA (clique no fundo escuro dela). Aparecem DUAS");
+    eprintln!("     secoes: **Clip** e **Frame**. Na **Clip**, ponha 'Clip content' em Off: a");
+    eprintln!("     barra sai inteira. Ligue de volta: ela e' cortada outra vez.");
+    eprintln!("     ⚠️ Sao duas secoes de proposito: a **Clip** aparece em QUALQUER forma");
+    eprintln!("     fechada (veja o passo 8), a **Frame** so' numa moldura.");
     eprintln!("  4. Ainda com ela selecionada, clique **Desktop**. ⚠️ A moldura muda de forma e o");
     eprintln!("     CONTEUDO NAO SE MEXE — nao ha layout ainda, e e' isso que torna a W2 visivel.");
     eprintln!("     Os campos W/H da secao Transform mostram os numeros novos: o preset escreve");
@@ -151,6 +158,20 @@ fn announce(app: &mut crate::App) {
     eprintln!("  7. ⚠️ **O WIDTH pela CAIXA**: selecione a barra vermelha e DIGITE um numero na");
     eprintln!("     caixa ao lado do slider Width (Enter). O traco tem de engrossar na hora —");
     eprintln!("     era esse o bug. Depois escolha uma COR: a largura NAO pode mudar junto.");
+    eprintln!(
+        "  8. ⚠️ **O RECORTE SEM MOLDURA** (2026-08-21): pegue a ferramenta de forma, escolha"
+    );
+    eprintln!("     a ESTRELA no catalogo e desenhe uma grande no vazio. Com ela selecionada,");
+    eprintln!("     aparece a secao **Clip** — e NAO a **Frame** (a estrela nao e' contentor: sem");
+    eprintln!("     etiqueta com nome, sem presets de telefone). Ligue 'Clip content'. Agora");
+    eprintln!("     arraste uma forma para DENTRO da estrela na Hierarquia: ela passa a ser");
+    eprintln!("     recortada pela silhueta da estrela, pontas e tudo.");
+    eprintln!("  9. Na mesma estrela, desenhe uma LINHA (forma aberta) e selecione-a: a secao");
+    eprintln!("     **Clip** NAO aparece. Uma linha nao tem 'dentro' — nao ha' o que recortar.");
+    eprintln!(" 10. ⚠️ **A MOLDURA ARREDONDAVEL**: pegue o pill **Frame**, arraste uma moldura");
+    eprintln!("     nova e olhe a secao de parametros da forma: ha' 'Radius' (e mais quatro).");
+    eprintln!("     Suba o Radius — as quinas arredondam. Ela nasce com quina VIVA, como antes;");
+    eprintln!("     o que mudou e' que agora da' para arredondar.");
 }
 
 #[cfg(test)]

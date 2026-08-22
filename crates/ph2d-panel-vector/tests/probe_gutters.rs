@@ -39,6 +39,7 @@ fn rect(id: ph2d_a11y::NodeId) -> Option<Rect> {
 #[ignore = "sonda: imprime medidas, nao afirma nada"]
 fn measure_the_label_gutters() {
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(LayoutFlow {
         size: [
             ids::VECTOR_LAYOUT_SIZE_W_FIXED,
@@ -82,6 +83,7 @@ fn measure_the_label_gutters() {
         );
     }
     state::set_frame_clip(None);
+    state::set_frame_present(false);
     state::set_layout_flow(None);
     state::set_layout_item(None);
 }

@@ -64,6 +64,7 @@ fn grid_flow() -> LayoutFlow {
 
 fn clear() {
     state::set_frame_clip(None);
+    state::set_frame_present(false);
     state::set_layout_flow(None);
     state::set_layout_item(None);
 }
@@ -127,6 +128,7 @@ const OLD_FIXED_GUTTER_PX: f32 = 8.0 + 4.0;
 fn a_multi_letter_label_gets_more_room_than_one_character() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     let inner_x = rect_of(ids::VECTOR_LAYOUT_DIR_OFF, "o chip Off").x;
     let gap = rect_of(ids::VECTOR_LAYOUT_GAP_MAIN, "o campo Gap");
@@ -147,6 +149,7 @@ fn a_multi_letter_label_gets_more_room_than_one_character() {
 fn a_wider_label_pushes_its_field_further_right() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     state::set_layout_item(Some(LayoutItem {
         absolute: false,
@@ -175,6 +178,7 @@ fn a_wider_label_pushes_its_field_further_right() {
 fn a_lone_number_field_sits_in_half_the_row() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     let wrap = rect_of(ids::VECTOR_LAYOUT_DIR_WRAP, "o chip Wrap");
     let inner_right = wrap.x + wrap.w;
@@ -193,6 +197,7 @@ fn a_lone_number_field_sits_in_half_the_row() {
 fn the_four_direction_chips_are_reachable_and_reach_the_bus() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     for (id, what) in [
         (ids::VECTOR_LAYOUT_DIR_OFF, "o chip Off"),
         (ids::VECTOR_LAYOUT_DIR_ROW, "o chip Row"),
@@ -236,6 +241,7 @@ fn commit_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
 fn the_column_count_is_born_with_the_grid_and_reaches_the_bus() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     assert!(
         !painted(ids::VECTOR_LAYOUT_COLUMNS),
@@ -260,6 +266,7 @@ fn the_column_count_is_born_with_the_grid_and_reaches_the_bus() {
 fn the_two_distributions_are_not_offered_in_a_grid_but_survive_in_a_row() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     for id in [
         ids::VECTOR_LAYOUT_JUSTIFY_BETWEEN,
         ids::VECTOR_LAYOUT_JUSTIFY_AROUND,
@@ -292,6 +299,7 @@ fn the_two_distributions_are_not_offered_in_a_grid_but_survive_in_a_row() {
 fn the_alignment_chips_are_reachable_and_reach_the_bus() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     for id in [
         ids::VECTOR_LAYOUT_ALIGN_START,
@@ -317,6 +325,7 @@ fn the_alignment_chips_are_reachable_and_reach_the_bus() {
 fn a_frame_that_does_not_flow_paints_only_the_direction_row() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     assert!(
         painted(ids::VECTOR_LAYOUT_DIR_OFF),
         "a direcao e' oferecida"
@@ -340,6 +349,7 @@ fn a_frame_that_does_not_flow_paints_only_the_direction_row() {
 fn the_padding_mode_swaps_which_fields_are_painted() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
 
     // Modo *All* (o default): um campo, e os quatro lados NÃO estão na tela.
@@ -397,6 +407,7 @@ fn the_padding_mode_swaps_which_fields_are_painted() {
 fn the_cross_gap_is_born_with_the_mode_that_uses_it() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     assert!(painted(ids::VECTOR_LAYOUT_GAP_MAIN));
     assert!(
@@ -423,6 +434,7 @@ fn the_cross_gap_is_born_with_the_mode_that_uses_it() {
 fn the_item_rows_follow_the_child_and_coexist_with_the_frame_block() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     assert!(
         !painted(ids::VECTOR_LAYOUT_ITEM_GROW),
@@ -493,6 +505,7 @@ fn a_selected_child_alone_still_gets_its_two_rows() {
 fn a_row_that_does_not_fit_wraps_and_one_that_fits_does_not() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
 
     let first = rect_of(
@@ -525,6 +538,7 @@ fn a_row_that_does_not_fit_wraps_and_one_that_fits_does_not() {
 fn the_size_chips_are_reachable_and_reach_the_bus() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     for (id, what) in [
         (ids::VECTOR_LAYOUT_SIZE_W_FIXED, "Width: Fixed"),
@@ -546,6 +560,7 @@ fn the_size_chips_are_reachable_and_reach_the_bus() {
 fn the_absolute_toggle_is_live_and_hides_grow_and_shrink() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     state::set_layout_item(Some(LayoutItem {
         grow: 0.0,
@@ -582,6 +597,7 @@ fn the_absolute_toggle_is_live_and_hides_grow_and_shrink() {
 fn the_four_bounds_are_painted_when_the_frame_flows() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     for (id, what) in [
         (ids::VECTOR_LAYOUT_MIN_W, "Min W"),
@@ -606,6 +622,7 @@ fn the_four_bounds_are_painted_when_the_frame_flows() {
 fn the_item_block_explains_itself_when_the_parent_does_not_flow() {
     clear();
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(row_flow()));
     state::set_layout_item(Some(LayoutItem {
         grow: 0.0,

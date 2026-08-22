@@ -20,9 +20,7 @@ fn frame_with(n: usize) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>) {
         .collect();
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
     let frame = Entity::from_bits(map[&frame_id]);
-    sim.world_mut()
-        .entity_mut(frame)
-        .insert(VecFrame { clip: false });
+    sim.world_mut().entity_mut(frame).insert(VecFrame);
     for k in &kids {
         let kid = Entity::from_bits(map[k]);
         sim.world_mut()

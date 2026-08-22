@@ -17,18 +17,22 @@
 //! o traço, o raio de canto vivo, a pilha de efeitos, o gizmo de escala, o hit-test, o z-order, o
 //! undo e o save.
 //!
-//! # O recorte NÃO é o [`crate::ClipChildren`]
+//! # O recorte SAIU daqui (2026-08-21)
 //!
-//! ⚠️ O plano supunha delegar a ele; a leitura do código diz o contrário. `ClipChildren` é do
-//! pipeline de **SPRITE** (o passe de stencil em `ph2d-render`), e ele não alcança um caminho
-//! vetorial — quem desenha vetor é o Vello, por `ph2d-vec-render::dispatch`. O recorte de uma
-//! moldura é uma **camada de clip do Vello** (`VectorScene::push_clip`), a mesma que os painéis
-//! roláveis do editor já usam; quem a abre e fecha é o renderer, sobre o intervalo contíguo que a
-//! sub-árvore da moldura ocupa na pilha de z.
+//! ⚠️ Este componente teve um campo `clip: bool`, e ele mora agora no [`crate::VecClipContent`].
+//! O motivo é o pedido do Enio — *"coloque a feature Clip Content para qualquer forma vetorial
+//! fechada"* — encontrando o que a moldura de facto é: **ser uma moldura não é só recortar**. A
+//! presença deste componente também dá o rótulo flutuante com o nome, as alças de redimensionar,
+//! e a elegibilidade a auto layout e a âncoras. Uma estrela que quisesse recortar teria de virar
+//! moldura para consegui-lo, e receberia um nome flutuante em cima.
 //!
-//! Corolário: uma moldura recorta os **descendentes VETORIAIS**. Um sprite filho é do outro
-//! renderer e continua com o `ClipChildren` dele — os dois recortes existem, e cada um é do
-//! desenhista que o entende.
+//! O doc-comment do campo já dizia que as duas perguntas eram independentes (*"«isto é um
+//! contêiner?» e «ele esconde o que sai?»"*); elas eram independentes na prosa e **acopladas no
+//! tipo**. Hoje são dois componentes, e uma moldura é simplesmente uma entidade que carrega os
+//! dois — como nasce, por default.
+//!
+//! O mecanismo do recorte (a camada do Vello, o intervalo de z, e por que não é o
+//! `ClipChildren` do pipeline de sprite) está escrito uma vez só, lá.
 //!
 //! # O que NÃO está aqui, e por quê
 //!
@@ -48,16 +52,11 @@ use crate::SimComponent;
 /// CONTÉM — que os filhos dela são *conteúdo*, e não vizinhos que por acaso estão por cima.
 ///
 /// Ausência do componente = retângulo comum, e o mundo é byte-idêntico ao de antes desta feature.
+///
+/// ⚠️ **Sem recorte aqui.** Uma moldura que não esconde o transbordo continua inteiramente uma
+/// moldura (a dona de um tamanho autorado, a raiz do que for responsivo, a que mostra o que
+/// transborda enquanto o artista compõe) — ela só não carrega o [`crate::VecClipContent`].
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct VecFrame {
-    /// Recorta os descendentes à silhueta da moldura.
-    ///
-    /// ⚠️ Desligado, a moldura **continua sendo uma moldura** (a dona de um tamanho autorado, a
-    /// raiz do que for responsivo) — ela só deixa de esconder o transbordo. É o *"Clip content"* do
-    /// Figma: a pergunta *"isto é um contêiner?"* (a presença do componente) e a pergunta *"ele
-    /// esconde o que sai?"* (este campo) são independentes, e colapsá-las tiraria do artista a
-    /// moldura que mostra o que transborda enquanto ele compõe.
-    pub clip: bool,
-}
+pub struct VecFrame;
 
 impl SimComponent for VecFrame {}

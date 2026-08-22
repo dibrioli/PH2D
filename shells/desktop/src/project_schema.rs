@@ -540,4 +540,18 @@
 /// ⚠️ Adicionar o `SliceNine` e o `NamedAnchorList` ao registo (2026-08-21) **não** pediu degrau —
 /// isso é aditivo numa tabela por NOME, e um arquivo velho apenas não os tem. O que pede degrau é
 /// **mudar a forma de uma chave que já existe**.
-pub(crate) const PROJECT_SCHEMA: u32 = 86;
+/// v87 (`line/Vector` — O RECORTE SAIU DA MOLDURA): o `VecFrame` perdeu o campo `clip` e virou
+/// **marcador**, e o recorte passou a ser o componente próprio `ph2d_ecs::VecClipContent`, que
+/// qualquer forma FECHADA pode carregar (Enio: *"coloque a feature Clip Content para qualquer
+/// forma vetorial fechada"*).
+/// ⚠️ **Quem obriga o bump é o campo REMOVIDO**, e é o caso inverso ao do v84: o postcard é
+/// posicional, então um leitor novo sobre bytes velhos leria o `bool` do `clip` como o começo do
+/// componente seguinte — e ao contrário de um campo apendado, aqui nem o tamanho bate. O número
+/// transforma isso num erro de VERSÃO honesto.
+/// ⚠️ E o registro de componentes subiu junto (63 → 64): um componente que não passa por
+/// `register_ecs_components` é descartado em silêncio pelo snapshot, e o recorte evaporaria no
+/// primeiro Ctrl+Z com a arte toda no lugar — o modo de falha mais enganoso da lista.
+/// ⚠️ **Este degrau nasceu como v85 na `line/Vector` e foi RECONTADO na integração de
+/// 2026-08-22**: a `line/Sprite` entrou antes com v85/v86, e *número que soma entre linhas se
+/// CONTA, nunca se escolhe* (CLAUDE.md §5.0) — o handoff da linha ainda diz 85.
+pub(crate) const PROJECT_SCHEMA: u32 = 87;

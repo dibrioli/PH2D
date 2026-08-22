@@ -21,7 +21,7 @@
 //! - um **quadrado CINZA solto**, que é o **CONTROLE**: nunca é arrastado, então tem de ficar
 //!   exactamente onde nasceu em todos os passos. Uma diferença que apareça nele não é da âncora.
 
-use ph2d_ecs::{ChildOf, Entity, VecFrame};
+use ph2d_ecs::{ChildOf, Entity, VecClipContent, VecFrame};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, ellipse, rectangle};
 
 /// A forma comum: `(x0, y0, x1, y1)` em unidades de mundo.
@@ -119,7 +119,7 @@ fn adopt(app: &mut crate::App) {
     };
     let frame = Entity::from_bits(fb);
     if let Ok(mut e) = gfx.sim.world_mut().get_entity_mut(frame) {
-        e.insert(VecFrame { clip: true });
+        e.insert((VecFrame, VecClipContent));
     }
     for id in &ids[3..5] {
         let Some(&kb) = app.vec_entities.get(id) else {

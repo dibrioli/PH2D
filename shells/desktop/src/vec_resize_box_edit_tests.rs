@@ -19,9 +19,7 @@ fn scene() -> (SimWorld, VecEntityMap, [VecPathId; 3]) {
     let loose_id = scene.push_path(rectangle([500.0, 0.0], [5.0, 5.0]));
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
     let frame = Entity::from_bits(map[&frame_id]);
-    sim.world_mut()
-        .entity_mut(frame)
-        .insert(VecFrame { clip: false });
+    sim.world_mut().entity_mut(frame).insert(VecFrame);
     let kid = Entity::from_bits(map[&kid_id]);
     sim.world_mut()
         .entity_mut(kid)

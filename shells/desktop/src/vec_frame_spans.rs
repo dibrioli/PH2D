@@ -1,9 +1,13 @@
 //! **Os intervalos de RECORTE deste frame**, resolvidos contra a pilha de z que se vai desenhar.
 //!
-//! A metade que a shell possui: ela sabe a ÁRVORE (o parentesco e o `ph2d_ecs::VecFrame` moram em
-//! entidades) e o renderer sabe DESENHAR, então o que atravessa a fronteira é um par de ids por
-//! moldura — `ph2d_vec_scene::VecClipSpan`, dentro do `VecViewState` que já leva *"o que a árvore
-//! diz sobre os paths"*.
+//! A metade que a shell possui: ela sabe a ÁRVORE (o parentesco e o `ph2d_ecs::VecClipContent`
+//! moram em entidades) e o renderer sabe DESENHAR, então o que atravessa a fronteira é um par de
+//! ids por recorte — `ph2d_vec_scene::VecClipSpan`, dentro do `VecViewState` que já leva *"o que a
+//! árvore diz sobre os paths"*.
+//!
+//! ⚠️ **"Moldura" aqui é história, não requisito** (2026-08-21): quem recorta é qualquer forma
+//! FECHADA que carregue o `VecClipContent`, e o campo `frame` do `VecClipSpan` guarda o nome de
+//! quando só a moldura podia. O que se lê abaixo vale igual para uma elipse e para uma tela.
 //!
 //! # O que este módulo DEIXOU de produzir (2026-08-04)
 //!
@@ -27,7 +31,7 @@
 //! `pop_layer` no lugar errado.
 
 use ph2d_ecs::scene::HierarchySnapshot;
-use ph2d_ecs::{Entity, SimWorld, VecFrame};
+use ph2d_ecs::{Entity, SimWorld, VecClipContent};
 use ph2d_vec_scene::{VecClipSpan, VecPathId};
 
 /// Os intervalos que a árvore dita, **de fora para dentro** e **bem-aninhados**.
@@ -48,9 +52,12 @@ pub(crate) fn clip_spans(
         let Some(frame_path) = e.vec_path else {
             continue;
         };
-        if !w
-            .get::<VecFrame>(Entity::from_bits(e.entity))
-            .is_some_and(|f| f.clip)
+        // ⚠️ **A pergunta é o RECORTE, não a moldura** (2026-08-21): qualquer forma fechada com
+        // `VecClipContent` abre intervalo, seja ela contêiner ou não. Este sítio nunca precisou
+        // saber o que a silhueta é — o renderer já recortava por um caminho arbitrário, com a
+        // regra de preenchimento dele.
+        if w.get::<VecClipContent>(Entity::from_bits(e.entity))
+            .is_none()
         {
             continue;
         }

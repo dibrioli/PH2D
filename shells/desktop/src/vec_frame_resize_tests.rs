@@ -25,9 +25,7 @@ fn frame_and_kid() -> (SimWorld, VecScene, VecEntityMap, [VecPathId; 2]) {
     let kid_id = scene.push_path(rectangle([10.0, 10.0], [20.0, 20.0]));
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
     let frame = Entity::from_bits(map[&frame_id]);
-    sim.world_mut()
-        .entity_mut(frame)
-        .insert(VecFrame { clip: false });
+    sim.world_mut().entity_mut(frame).insert(VecFrame);
     let kid = Entity::from_bits(map[&kid_id]);
     sim.world_mut()
         .entity_mut(kid)
@@ -350,9 +348,7 @@ fn live_frame() -> (SimWorld, VecScene, VecEntityMap, VecPathId) {
     let id = scene.push_path(rectangle([-50.0, -20.0], [50.0, 20.0]));
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
     let e = Entity::from_bits(map[&id]);
-    sim.world_mut()
-        .entity_mut(e)
-        .insert(VecFrame { clip: false });
+    sim.world_mut().entity_mut(e).insert(VecFrame);
     if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(e) {
         t.translation = ph2d_core::Vec2::new(200.0, 100.0);
     }
@@ -405,9 +401,7 @@ fn resizing_a_live_shape_keeps_its_recipe_in_step() {
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
     let e = Entity::from_bits(map[&id]);
     sim.world_mut().entity_mut(e).insert(shape);
-    sim.world_mut()
-        .entity_mut(e)
-        .insert(VecFrame { clip: false });
+    sim.world_mut().entity_mut(e).insert(VecFrame);
     let width = |s: &VecScene| {
         let (lo, hi) = s.path_curve_bbox(id).expect("a forma");
         hi[0] - lo[0]

@@ -42,12 +42,13 @@ mod bool_state;
 pub(crate) use bool_state::bool_group_selected;
 pub use bool_state::{bool_live_on, set_bool_group_selected, set_bool_live_on};
 
-/// **A MOLDURA selecionada** (plano UI/UX W0) — um `Option<bool>` que responde às duas
-/// perguntas: existe moldura na seleção, e ela recorta?
+/// **O RECORTE e a MOLDURA da seleção** (plano UI/UX W0; separados em 2026-08-21) — o
+/// `Option<bool>` responde *"a seleção oferece o recorte, e ele está ligado?"* para qualquer forma
+/// FECHADA, e o bool ao lado responde *"…e ela é uma moldura?"*, que é outra pergunta.
 #[path = "state_frame.rs"]
 mod frame_state;
-pub(crate) use frame_state::{frame_clip, frame_panel_open};
-pub use frame_state::{set_frame_clip, set_frame_panel_open};
+pub(crate) use frame_state::{frame_clip, frame_panel_open, frame_present};
+pub use frame_state::{set_frame_clip, set_frame_panel_open, set_frame_present};
 
 /// **RESIZE BOX** (plano UI/UX W3b) — o que a alça do gizmo faz ao objeto selecionado. Irmão do
 /// `frame_clip` na forma (`Option<bool>` = *existe resposta* + *qual é*) e na razão: a verdade

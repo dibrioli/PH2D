@@ -358,7 +358,16 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // componente — o que o numero separa e' o formato de ontem do de hoje.
         // ⚠️ Registar um componente NOVO nao pede degrau (aditivo numa tabela por
         // nome); mudar a forma de uma chave que ja' existe, pede.
-        (86, 13, 14),
+        // PROJECT 86→87: o `VecFrame` perdeu o campo `clip` (virou MARCADOR) e o recorte
+        // mudou-se para o componente proprio `VecClipContent`, que qualquer forma FECHADA
+        // pode carregar. ⚠️ E' o caso INVERSO ao do v84: la' um campo apendado fazia o
+        // leitor velho ler bytes a mais, aqui um campo REMOVIDO faz o leitor novo ler o
+        // `bool` do clip como o comeco do componente seguinte — e nem o tamanho bate.
+        // ⚠️ A `VecScene` NAO mudou de forma (o recorte e' fato de ENTIDADE, nao de
+        // caminho), entao os dois numeros ao lado ficam onde estavam.
+        // ⚠️ Nasceu como 84→85 na `line/Vector`; RECONTADO para 86→87 na integracao de
+        // 2026-08-22 porque a `line/Sprite` (85, 86) entrou antes.
+        (87, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -345,6 +345,7 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
 
     // Sem moldura: nenhum dos dois.
     state::set_frame_clip(None);
+    state::set_frame_present(false);
     state::set_layout_flow(None);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
@@ -358,6 +359,7 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
 
     // Em linha: o principal existe, o transversal não.
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     for (dir, cross_expected) in [
         (ids::VECTOR_LAYOUT_DIR_ROW, false),
         (ids::VECTOR_LAYOUT_DIR_WRAP, true),
@@ -391,6 +393,7 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
         );
     }
     state::set_frame_clip(None);
+    state::set_frame_present(false);
     state::set_layout_flow(None);
     state::set_token_bindings(None);
 }
@@ -442,6 +445,7 @@ fn every_pickers_painted_list_is_its_own_table() {
 fn every_token_slot_is_alive_and_lists_its_own_table() {
     state::set_token_bindings(Some(bound(None, None, true)));
     state::set_frame_clip(Some(true));
+    state::set_frame_present(true);
     state::set_layout_flow(Some(state::LayoutFlow {
         size: [
             ids::VECTOR_LAYOUT_SIZE_W_FIXED,
@@ -481,6 +485,7 @@ fn every_token_slot_is_alive_and_lists_its_own_table() {
         );
     }
     state::set_frame_clip(None);
+    state::set_frame_present(false);
     state::set_layout_flow(None);
     state::set_token_bindings(None);
 }

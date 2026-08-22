@@ -22,7 +22,8 @@ use std::collections::BTreeMap;
 mod ui;
 pub use ui::{
     Coupling, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamChannelRange, ParamGate,
-    ParamGateText, ParamGroup, ParamHardMax, ParamUiHint, ParamWidget, ReadChannel, card_title,
+    ParamGateAbove, ParamGateText, ParamGroup, ParamHardMax, ParamUiHint, ParamWidget, ReadChannel,
+    card_title,
 };
 
 /// The param UNIT vocabulary (doc 88, Wave A) — a sibling module rather than more
@@ -68,6 +69,10 @@ pub struct NodeRegistry {
     /// Absent ⇒ every param is always shown (the pre-gate behaviour).
     param_gates: BTreeMap<NodeTypeId, &'static [ParamGate]>,
     param_gates_text: BTreeMap<NodeTypeId, &'static [ParamGateText]>,
+    /// Gates de LIMIAR ([`ParamGateAbove`]) — o irmão contínuo do `param_gates`,
+    /// para *"apareça quando aquela grandeza sair do zero"*. Mesmo molde: ausente
+    /// ⇒ nada gateado.
+    param_gates_above: BTreeMap<NodeTypeId, &'static [ParamGateAbove]>,
     /// GPU/M5 Fase 1 (ADR-0126) — per-type WGSL compute kernel, keyed the same
     /// way and kept OUT of the frozen `NodeManifest` exactly like the UI
     /// metadata. Opt-in: a node without one runs its CPU `eval` (the canonical
@@ -302,6 +307,18 @@ impl NodeRegistry {
     #[must_use]
     pub fn param_gates_text(&self, id: NodeTypeId) -> Option<&'static [ParamGateText]> {
         self.param_gates_text.get(&id).copied()
+    }
+
+    /// Declare the **threshold** visibility gates of `id` ([`ParamGateAbove`]).
+    /// Side-metadata, default `&[]` — the same mould as `param_gates`.
+    pub fn register_param_gates_above(&mut self, id: NodeTypeId, gates: &'static [ParamGateAbove]) {
+        self.param_gates_above.insert(id, gates);
+    }
+
+    /// The threshold visibility gates of `id`, if any.
+    #[must_use]
+    pub fn param_gates_above(&self, id: NodeTypeId) -> Option<&'static [ParamGateAbove]> {
+        self.param_gates_above.get(&id).copied()
     }
 
     /// Register a node type's semantic [`Coupling`]s (ADR-0155). Additive; last

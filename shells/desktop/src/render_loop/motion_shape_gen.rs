@@ -6,14 +6,22 @@
 //! the vector library or the GPU (the property that lets the cook memoize and
 //! replay bit-exactly). So the shell is where a shape *descriptor* becomes
 //! *geometry*: [`publish`] scans every `source.shape` node, reads its params
-//! through the SAME door the node reads ([`ShapeParams::read`] over
-//! override-else-manifest-default — and the node has no inputs, so its `ctx.param`
-//! has no *driven* layer to disagree with), builds the `VecPath` once, interns it
+//! through the SAME door the node reads ([`ShapeParams::read`] over the ladder the
+//! `EvalCtx` uses — driven, else override, else manifest default), builds the
+//! `VecPath` once, interns it
 //! under [`shape_key`], and sets a one-row instance stream `(P, geometry_id)`
 //! external the node's `eval` clones. Identical descriptors share ONE `VecPath`
 //! (the store is content-addressed), so a `motion.duplicator` stamping 10k stars
 //! interns once. [`encode`] draws each cooked instance into the shared vector
 //! scene, so a shape composites behind the chrome and over the sprites (Fase 1).
+//!
+//! ⚠️ **A camada CONDUZIDA da escada foi medida, não deduzida** (2026-08-21): esta
+//! nota dizia *"o nó não tem entradas, então o `ctx.param` dele não tem camada
+//! conduzida com que discordar"* — e a frase confundia **porta de entrada** com
+//! **param conduzido**, que é um fio para um PARAM e não precisa de porta nenhuma.
+//! Com `trim_end` conduzido o cook devolvia contagem **0** e a forma desaparecia em
+//! silêncio. O mecanismo e a cura estão em
+//! [`super::motion_externals::driven_params`].
 
 use std::collections::BTreeMap;
 
@@ -274,6 +282,15 @@ fn vec_recipe(p: &ShapeParams) -> (VecKind, [f64; 2], [f64; 2], Vec<f64>) {
                     v[0] = swept(k, 0);
                     v[1] = start;
                 }
+                // ⚠️ **O raio de quina do balão vem em unidades de MUNDO, e é o ÚNICO do
+                // catálogo assim** (medido: `the_unit_geometry_scaled_is_the_geometry_at_the_
+                // authored_size` percorre as 43 espécies e só esta divergia, por 23%). Todos
+                // os outros `defaults()` que a receita passa verbatim são frações, ângulos ou
+                // contagens — livres de escala. Sem esta multiplicação a quina do balão não
+                // acompanha o `size`: enorme num balão pequeno, imperceptível num grande. O
+                // `0,12` da biblioteca é tomado sobre o semi-eixo unitário, então em `size = 1`
+                // isto é byte-idêntico ao que sempre saiu.
+                VecKind::SpeechRect => v[0] *= s,
                 _ => {}
             }
             (k, box_.0, box_.1, v)
@@ -335,9 +352,31 @@ pub(crate) fn build_shape_path(p: &ShapeParams) -> VecPath {
     // caminho com os dois em `None`. `stroke_width = 0` ⇒ `None` ⇒ a forma que
     // sempre shipou, byte-idêntica.
     if let Some(st) = p.stroke {
-        path.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
-            rgba8(st.rgba),
-            f64::from(st.width),
+        let mut spec = ph2d_vec_scene::StrokeSpec::new(rgba8(st.rgba), f64::from(st.width));
+        // ⚠️ **O TRACEJADO já mora no `StrokeSpec`** (doc 89 folha 14) — `Some((dash, gap))`
+        // em MÚLTIPLOS da largura, e `dash <= 0` é contínuo. O que faltava era o nó ter
+        // onde dizê-lo: nenhuma linha de código nova desenha um tracejado.
+        spec.dash = p.dash.map(|(d, g)| (f64::from(d), f64::from(g.max(0.0))));
+        path.stroke = Some(spec);
+    }
+    // ⚠️ **O TRIM entra na PILHA de efeitos do caminho, nunca na geometria** (doc 89 folha
+    // 14, a linha do *trim/dash*). O `cooked()` — que é quem o renderer já chama — corre a
+    // pilha, então isto alcança de uma vez os contornos compostos (o furo da engrenagem, o
+    // anel) sem uma linha de fiação por espécie. E o neutro `{0, 1, 0}` faz `run_stack`
+    // devolver `None` ⇒ `Cow::Borrowed` ⇒ a forma de sempre, byte-idêntica.
+    //
+    // ⚠️ **NÃO é o `marker::trim_path`**, que a célula da folha 14 apontava: aquele recua as
+    // pontas em unidades de MUNDO para dar lugar às setas e devolve um caminho FECHADO
+    // intocado — inerte em 42 das 47 formas da biblioteca. Este mede por arco exato e ABRE
+    // o contorno, que é o que faz um traço correr em torno de um círculo.
+    let trim = ph2d_vec_scene::fx_trim::TrimSpec {
+        start: f64::from(p.trim[0].clamp(0.0, 1.0)),
+        end: f64::from(p.trim[1].clamp(0.0, 1.0)),
+        offset: f64::from(p.trim[2]),
+    };
+    if !trim.is_neutral() {
+        path.effects.push(ph2d_vec_scene::effect::FxEntry::new(
+            ph2d_vec_scene::effect::PathEffect::Trim(trim),
         ));
     }
     path
@@ -392,33 +431,54 @@ pub(crate) fn build_shape_path_as_it_shipped(p: &ShapeParams) -> VecPath {
 /// POST-edit key ⇒ the node clones an empty external for one frame ⇒ the shape
 /// vanishes = **flicker on edit**. It only ADDS (the drawn-curve publish already
 /// ran `clear_externals`), under the `shape:` key namespace the node reads.
-pub(crate) fn publish(motion: &mut MotionState) {
-    // Collect the (key, params) jobs first so the graph borrow drops before we
-    // mutate the store and the cook (three disjoint fields of `MotionState`).
-    let graph = &motion.doc.graph;
-    let jobs: Vec<(String, ShapeParams)> = graph
+pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
+    let ids: Vec<ph2d_nodegraph::graph::NodeId> = motion
+        .doc
+        .graph
         .nodes()
         .iter()
         .filter(|n| n.type_name == MANIFEST.name)
-        .map(|n| {
-            // ⚠️ A chave e o descritor leem pelo MESMO getter — é o que faz a
-            // chave do shell e a do nó serem os mesmos bits.
-            let ov = graph.node_param_overrides(n.id);
-            let get = |name: &str| {
-                ov.and_then(|m| m.get(name).copied())
-                    .unwrap_or_else(|| manifest_default(name))
-            };
-            (shape_key(get), ShapeParams::read(get))
-        })
+        .map(|n| n.id)
         .collect();
-    for (key, p) in jobs {
+    // Collect the (key, params) jobs first so the graph borrow drops before we
+    // mutate the store and the cook (three disjoint fields of `MotionState`).
+    let mut jobs: Vec<(String, ShapeParams, f32)> = Vec::with_capacity(ids.len());
+    for id in ids {
+        let driven = super::motion_externals::driven_params(motion, id, seconds);
+        let graph = &motion.doc.graph;
+        // ⚠️ A chave e o descritor leem pelo MESMO getter — é o que faz a
+        // chave do shell e a do nó serem os mesmos bits. E os dois passam pela
+        // NORMALIZAÇÃO (`unit_value`), então a chave nomeia a geometria em raio 1
+        // que o `build_shape_path` de facto constrói.
+        let ov = graph.node_param_overrides(id);
+        // ⚠️ **A escada é a MESMA do `EvalCtx::param`: conduzido → override → default.**
+        // Ver [`driven_params`] para o porquê de o shell ter de resolver o conduzido.
+        let get = |name: &str| {
+            driven
+                .get(name)
+                .copied()
+                .or_else(|| ov.and_then(|m| m.get(name).copied()))
+                .unwrap_or_else(|| manifest_default(name))
+        };
+        let (unit, scale) = ShapeParams::read_unit(get);
+        jobs.push((shape_key(get), unit, scale));
+    }
+    for (key, p, scale) in jobs {
         let handle = motion.shape_store.intern(&key, || build_shape_path(&p));
         // One-row instance at the origin, carrying the geometry handle. The
         // duplicator/deformers move, rotate, scale and tint it downstream; a bare
-        // shape is white at the origin. `size`/`rot`/`tint` are absent ⇒ their
-        // stream defaults (unit / 0 / white).
+        // shape is white at the origin. `rot`/`tint` are absent ⇒ their stream
+        // defaults (0 / white).
+        //
+        // ⚠️ **O `size` É a coluna** (doc 89 folha 14): a geometria interna vive em raio
+        // 1 e o tamanho autorado viaja aqui, onde o `lower_to_vector_instances_onto` já o
+        // lê (`vec2_at(size, i, [1, 1])`) e a pose da instância o aplica. Duas
+        // consequências, e as duas eram o item: animar o `size` deixa de internar um
+        // `VecPath` por valor visitado, e um `value.attribute("size")` a jusante passa a
+        // VER o tamanho da forma — antes a coluna não existia.
         let stream = Stream::new(1)
             .with("P", Column::Vec2(vec![[0.0, 0.0]]))
+            .with("size", Column::Vec2(vec![[scale, scale]]))
             .with("geometry_id", Column::Scalar(vec![handle as f32]));
         motion.pump.cook.set_external(key, stream);
     }
@@ -470,3 +530,7 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_shape_catalogue_tests.rs"]
 mod catalogue_tests;
+
+#[cfg(test)]
+#[path = "motion_shape_style_tests.rs"]
+mod style_tests;

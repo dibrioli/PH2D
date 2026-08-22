@@ -81,12 +81,77 @@ fn the_key_is_deterministic_and_separates_every_param() {
         let nudged = |n: &str| {
             if n == *name { dflt(n) + 1.0 } else { dflt(n) }
         };
+        // ⚠️ **O `size` é a EXCEÇÃO, e é o item da folha 14** — a chave nomeia a geometria
+        // em RAIO 1, então mexer no tamanho tem de deixá-la parada (senão animar o slider
+        // interna um `VecPath` por valor visitado). A lei dele tem gate PRÓPRIO abaixo.
+        if *name == param::SIZE {
+            continue;
+        }
         assert_ne!(
             shape_key(nudged),
             shape_key(base),
             "`{name}` tem de mover a chave, senao duas formas distintas partilham a geometria"
         );
     }
+}
+
+/// **O `size` NÃO move a chave — e é isso que o tira do cache de geometria** (doc 89
+/// folha 14, a linha do *`size` é GEOMETRIA, não coluna*).
+///
+/// ⚠️ **A metade que importa é a SEGUNDA:** uma chave parada só é correta porque a escala
+/// sai por outro canal (a coluna `size` da instância). Um gate que só verificasse a chave
+/// ficaria verde numa implementação que simplesmente **ignorasse** o tamanho.
+#[test]
+fn the_size_leaves_the_key_and_rides_the_instance_column() {
+    let dflt = |n: &str| {
+        MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == n)
+            .map_or(0.0, |p| p.default)
+    };
+    let at = |s: f32| move |n: &str| if n == param::SIZE { s } else { dflt(n) };
+    assert_eq!(
+        shape_key(at(1.0)),
+        shape_key(at(7.5)),
+        "duas formas do mesmo desenho partilham UM VecPath, qualquer que seja o tamanho"
+    );
+    let (unit, scale) = ShapeParams::read_unit(at(7.5));
+    assert_eq!(scale, 7.5, "e o tamanho autorado sai inteiro pela escala");
+    assert_eq!(unit.size, 1.0, "a geometria interna vive em raio 1");
+}
+
+/// **COM TRAÇO, o `size` VOLTA a mover a chave** — e tem de voltar.
+///
+/// A largura do traço é a única grandeza do descritor em unidades de MUNDO, e a pose da
+/// instância multiplica tudo o que ela leva. Duas formas do mesmo desenho com tamanhos
+/// diferentes e a MESMA largura de traço são geometrias **diferentes** em raio 1 (a
+/// largura normalizada difere), e partilhar um `VecPath` entre elas engordaria o traço de
+/// uma delas.
+#[test]
+fn a_stroke_puts_the_size_back_in_the_key() {
+    let dflt = |n: &str| {
+        MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == n)
+            .map_or(0.0, |p| p.default)
+    };
+    let at = |s: f32| {
+        move |n: &str| match n {
+            param::SIZE => s,
+            param::STROKE_WIDTH => 0.2,
+            _ => dflt(n),
+        }
+    };
+    assert_ne!(shape_key(at(1.0)), shape_key(at(4.0)));
+    let (unit, scale) = ShapeParams::read_unit(at(4.0));
+    assert_eq!(scale, 4.0);
+    let w = unit.stroke.expect("ha' traco").width;
+    assert!(
+        (w - 0.05).abs() < 1e-6,
+        "0,2 de mundo em raio 1/4 sao 0,05: {w}"
+    );
 }
 
 /// `read` over a source that returns the manifest defaults reconstructs the

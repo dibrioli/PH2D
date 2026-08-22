@@ -19,7 +19,7 @@ use super::*;
 /// não acusa (ele mede o piso). O que acusa é a cena nova nunca ser diagnosticada —
 /// então esta linha anda junto com o braço novo do `match`.
 #[cfg(test)]
-const MAX_DEMO_LEVEL: u32 = 75;
+const MAX_DEMO_LEVEL: u32 = 76;
 
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
 /// VAZIA com que o editor abre.
@@ -383,6 +383,7 @@ pub(crate) fn build_level(
         Some("73") => conferencia::rank_family(doc, registry),
         Some("74") => conferencia::goal_family(doc, registry),
         Some("75") => conferencia::sim_family(doc, registry),
+        Some("76") => conferencia::style_family(doc, registry),
         _ => Vec::new(),
     }
 }
@@ -433,21 +434,26 @@ mod tests {
     #[test]
     #[ignore = "sonda de layout, não um gate — `-- --ignored --nocapture`"]
     fn measure_scene_layout() {
-        let mut reg = NodeRegistry::new();
-        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("todo nó registra");
         let only = std::env::var("PH2D_LAYOUT_LEVEL").ok();
         for level in 1..=MAX_DEMO_LEVEL {
             if only.as_deref().is_some_and(|w| w != level.to_string()) {
                 continue;
             }
-            let mut doc = MotionDoc::default();
-            let sinks = build_level(Some(&level.to_string()), &mut doc, &reg);
+            // ⚠️ **Um `MotionState` inteiro, e não um `MotionDoc` solto.** Uma cena de FORMA
+            // ou de TEXTO lê a geometria por CANAL EXTERNO, que só o shell publica — um cook
+            // virgem não tem external nenhum e devolve **zero instâncias**, que esta sonda
+            // imprimiria como `VAZIA`. Seria ela a acusar a cena de um defeito dela própria,
+            // pela terceira vez nesta linha (a sonda de movimento e o harness do texto
+            // pagaram as outras duas).
+            let mut state = MotionState::new();
+            let sinks = build_level(Some(&level.to_string()), &mut state.doc, &state.registry);
             if sinks.is_empty() {
                 continue;
             }
+            crate::render_loop::motion_externals::publish_all(&mut state, 0.0);
             println!("--- cena =`{level}` · {} bandas", sinks.len());
             for (k, sink) in sinks.iter().enumerate() {
-                match band_box(&doc, &reg, *sink) {
+                match band_box(&mut state, *sink) {
                     Some((n, lo, hi)) => println!(
                         "  banda {:>2}: n={n:<6} x [{:>7.2} .. {:>7.2}]  y [{:>7.2} .. {:>7.2}]  ({:.2} x {:.2})",
                         k + 1,
@@ -465,14 +471,22 @@ mod tests {
     }
 
     /// A contagem e a caixa envolvente de uma banda, cozinhada em `t = 0`.
+    ///
+    /// ⚠️ **A caixa é a das POSIÇÕES, não a da tinta.** Uma banda de uma instância só —
+    /// típica de uma cena de FORMA, em que a arte inteira é um `geometry_id` — mede
+    /// `0.00 x 0.00`, e isso não quer dizer *vazia*: quer dizer *um ponto*. A extensão
+    /// desenhada ali é a do `VecPath` vezes a coluna `size`, e vive no store, não no stream.
     fn band_box(
-        doc: &MotionDoc,
-        reg: &NodeRegistry,
+        state: &mut MotionState,
         sink: ph2d_nodegraph::graph::NodeId,
     ) -> Option<(usize, [f32; 2], [f32; 2])> {
         use ph2d_nodegraph::attr::Column;
-        let mut cook = ph2d_nodegraph::cook::Cook::new();
-        let out = cook.cook(&doc.graph, reg, sink, 0.0).ok()?;
+        // ⚠️ O cook do PRÓPRIO estado — é nele que o `publish_all` escreveu os externals.
+        let out = state
+            .pump
+            .cook
+            .cook(&state.doc.graph, &state.registry, sink, 0.0)
+            .ok()?;
         let s = out.first()?.as_stream();
         let Some(Column::Vec2(p)) = s.get("P") else {
             return None;

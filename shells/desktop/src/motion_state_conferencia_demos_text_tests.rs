@@ -23,7 +23,7 @@ fn registry() -> NodeRegistry {
 /// instâncias**, que é a assinatura exata da feature quebrada. Foi o que a 1ª
 /// versão deste harness fez, e ele acusou o produto de um defeito da fixture.
 fn cook(state: &mut MotionState, reg: &NodeRegistry, sink: NodeId) -> Stream {
-    crate::render_loop::motion_text_gen::publish(state);
+    crate::render_loop::motion_text_gen::publish(state, 0.0);
     let out = state
         .pump
         .cook

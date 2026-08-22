@@ -58,6 +58,7 @@ descesse seria uma que parou de olhar para os lados.
 | **T** | ✅ **folha 17 fechou** — o `motion.integrate` **declara `substeps`**, e o motor já existia (as rotas (c)/(d) da célula caíram em 12/08 sem ninguém reconferir). Achado no caminho: a palavra `substeps` tinha **dois donos** e o app corria as duas leis — a corda caía **4,8× menos** que os gates dela medem | `=61` ✔ · `=52` ✔ |
 | **T** | ✅ **folha 15 fechou** — o `value.switch` de N entradas é **exprimível** (`2·⌈(N−4)/3⌉+1` nós, per-elemento preservado); e a ramificação MORTA de um switch ganhou badge | `AUTOFIX=8` ✔ |
 | **U** | `source.shape`: **sweep/start/inner** + **raio por canto/smoothing**; e o `corner` deixou de ser da caixa para ser do **catálogo** (4 → **38** espécies) | `SHAPE_SMOKE=3` ✔ |
+| **U** | ✅ **folha 14 FECHOU** — `source.shape` ganha **Trim** (`fx_trim`, arco exato, na pilha de efeitos) + **tracejado** (o `StrokeSpec` já o falava) + o **`size` como COLUNA** (geometria em raio 1). Achados no caminho: o traço **apagava o preenchimento** de toda forma; o `Speech Rect` era a única espécie cujo raio de quina **não escalava**; e um param **conduzido por fio** fazia a forma DESAPARECER | `=76` ⏳ |
 | **U** | ⛔ **três refutações medidas**: o *trim/dash* (a cura, não o item — 42 de 47 formas são fechadas), o *`fill_rule`* (a estrela citada **nunca** auto-intersecta) e o *Pick Instances* (já existe: `combine` + `duplicator(pick)`) | — |
 | **V** | folha 08: `motion.sort` ganha **direção arbitrária** (`axis_angle`) e a **chave como CAMPO** (porta `weight`, modo 5) | `=63` ✔ |
 | **V** | folha 08: ✅ **o `reindex` do `motion.sort`** — a ordenação não chegava ao efector indexado. **Aberta por um smoke do Enio**, não por uma tabela | `=63` ✔ |
@@ -150,7 +151,7 @@ todas as células dos grupos abaixo.
 ⚠️ **A frase «mexe no MANIFESTO, leia a lei das portas apendadas» estava neste handoff e
 estava ERRADA** — não era preciso mexer em porta nenhuma.
 
-### Grupo U — `source.shape` · **parcialmente fechado (7 → 3 P1)**
+### ~~Grupo U~~ — ✅ **FECHADO (2026-08-21): a folha 14 não tem mais P1**
 
 ✅ **Feito:** sweep/start/inner · raio por canto + smoothing · o `corner` geral (4 → 38
 espécies) · e a correção de geometria que o smoke do Enio devolveu (a borda da fatia
@@ -158,13 +159,22 @@ abaulava 19–25% do raio). ⛔ **Refutados por medição:** `fill_rule` (a estr
 auto-intersecta; só 2 de 43 espécies distinguem as regras, e nelas a actual é a certa) e
 *Pick Instances* (já existe: `combine` + `duplicator(pick)`).
 
-**O que SOBRA na folha 14 — três, e cada um com a nota que a medição deixou:**
+**As TRÊS que fecharam em 2026-08-21, e o que cada uma ensinou:**
 
-| item | o que a medição já disse |
+| item | como fechou |
 |---|---|
-| **TRIM / dash** | ⚠️ **A cura da célula está refutada, o item não.** `trim_path` recusa contorno fechado, e **42 das 47** formas da biblioteca são fechadas — as 5 que ele corta (Spiral · Line · Arc · NoteBracket · Brace) **não estão** neste nó. Ligar a função daria dois sliders inertes em 100% do catálogo dele. A cura é a do AE: **abrir o contorno** antes de cortar, e o resultado só se vê com o `stroke_width` (que existe) |
-| **`size` é GEOMETRIA, não coluna** | ⚠️ **Meça ANTES de mexer:** o `encode` já compõe `pose = T(P)·R(basis)·S(size)`, então a escala da INSTÂNCIA já existe e cozer a geometria em tamanho 1 daria **um** `VecPath` por descritor em vez de um por valor visitado. O `corner` é fracção, o `aspect` é razão e sweep/start/inner são invariantes de escala ⇒ a imagem seria a mesma. **O que muda é a SEMÂNTICA**: um `motion.drive(Size, mode = Set)` a jusante passaria a APAGAR o tamanho autorado em vez de o multiplicar. Isso é decisão de produto, não refactor |
-| **a POSE do objeto não viaja** (`source.object`, *Transform Space*) | por medir |
+| **TRIM / dash** | A recusa medida apontava a **função errada**. O *Trim Paths* é o [`fx_trim`](../../../crates/ph2d-vec-scene/src/fx_trim.rs) — arco exato, **abre** o contorno, testado desde os Live Path Effects. Entra na **pilha de efeitos** do `VecPath` (o `cooked()` corre-a), então alcança contornos compostos sem uma linha por espécie, e o neutro `{0,1,0}` volta a `Cow::Borrowed`. O tracejado já morava no `StrokeSpec`. **Lei 59.** |
+| **`size` é GEOMETRIA, não coluna** | Geometria em **raio 1** + coluna `size`. A linearidade da receita foi **medida nas 43 espécies**, e a medição achou a exceção: o **`Speech Rect`** tirava o raio de quina dos `defaults()` em unidades de MUNDO (erro de 23%) — a quina do balão não crescia com o balão. ⚠️ **A mudança de semântica que esta tabela previu ACONTECEU e é a certa** (medido, com o tamanho autorado 2 e um valor 3): `Add = 5`, `Set = 3`, `Multiply = 6`. Sem a coluna, o `drive` partia da identidade unitária e `Set` e `Multiply` davam **o mesmo número** — o modo era um controle sem diferença. |
+| **a POSE do objeto não viaja** | ✅ fechada na janela anterior (`Transform = Position Only / Object Pose`, canal `external::pose_of`). |
+
+⚠️ **O que a wave ABRIU, com o número medido:** um param de forma animado interna **uma
+geometria por quadro** (`measure_shape_store_growth`: 600 em 600 quadros, ~500 B cada ⇒
+**~30 KB/s por forma animada**). O `size` saiu da chave e por isso não cresce; o Trim, o
+`sweep` e os outros crescem, porque mudam a geometria de facto. ⛔ **A cura NÃO é uma
+allowlist nem um teto adivinhado:** é podar o `VecPathStore` para as chaves publicadas no
+quadro — e isso está **bloqueado** por o `push()` sem chave do `source.object` partilhar o
+mesmo `by_handle` indexado por posição, então podar invalidaria handles vivos. O passo é
+handle com geração, e é uma wave própria.
 
 ⚠️ Este grupo **encostou no módulo Vector e foi certo encostar**: a correção de
 `cap_arc_ends` é em `ph2d-vec-scene` (foundational, Modo L permite) e os 387 testes daquela
@@ -175,7 +185,9 @@ reportar.
 
 `08_stream_utilidade` (8) · `01_distribuicao` (6) · `04_deformers` (6) · `10_field` (6) ·
 `02_force` (2) · ~~`11_fx_raster`~~ ✅ · ~~`05_transform`~~ ✅ · `03_simulacao` (3) ·
-`07_tempo` (3) · `09_cor` (3) · `14_source` (3, na tabela acima).
+`07_tempo` (2) · ~~`09_cor`~~ ✅ · ~~`14_source`~~ ✅.
+
+⚠️ **Derivado, não escrito:** rode `python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"`. Em 2026-08-21 o TOTAL é **P1 = 5**: folha 01 (1) · 03 (1) · 04 (1) · 07 (2).
 
 ⚠️ **A contagem por folha se DERIVA** (`python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"`),
 nunca se lê daqui: esta lista envelhece a cada célula fechada.
@@ -228,7 +240,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As CINQUENTA E OITO LEIS que esta linha pagou para aprender
+## §4 — As SESSENTA E QUATRO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -639,6 +651,58 @@ são estilo.
     «pose ausente» que os dois `if let` já implementavam) — a terceira vez esta semana.
     A guarda saiu: ela LIA como uma lei e não era uma.
 
+59. **Uma recusa MEDIDA fecha uma HIPÓTESE, nunca o item.** A célula do *trim/dash* levava
+    ⛔ *"a cura foi refutada por medição"*, e a medição estava certa: o `marker::trim_path`
+    devolve o caminho intocado em **42 das 47** formas da biblioteca. Só que ele é o recuo de
+    ponta para dar lugar a uma seta — o *Trim Paths* do AE chama-se **`fx_trim`**, mede por
+    arco exato, **abre** o contorno, e estava testado no repo desde a wave dos Live Path
+    Effects, com o cabeçalho a dizer *"keyar `end` de 0 a 1 desenha a forma"*. A recusa
+    apontava a função errada e ninguém reconferiu por dois dias. *Leia o que a recusa MEDIU,
+    não o que ela CONCLUIU — e pergunte se a hipótese refutada era a única.*
+60. **Uma frase sobre a ARQUITETURA envelhece como uma nota, e esta custava a arte inteira.**
+    O `motion_shape_gen` dizia *"o nó não tem entradas, então o `ctx.param` dele não tem
+    camada conduzida com que discordar"* — e confundia **porta de entrada** com **param
+    conduzido** (doc 58), que é um fio para um PARAM e não precisa de porta nenhuma. Medido:
+    `drive_param(shape, trim_end, …)` ⇒ o cook devolve contagem **0**, a forma desaparece,
+    nada fica vermelho. A cura é o shell resolver o fio pela **porta do cook** (que memoiza,
+    então não custa nada). *Uma afirmação de doc que autoriza a NÃO fazer uma coisa é a que
+    mais precisa de um gate ao lado.*
+61. **Uma premissa de gate DISSOLVE-SE sem o gate ficar vermelho.** O
+    `every_node_fits_the_inspector_dock` afirmava *"o painel **não rola**"* — e o painel de
+    params rola desde a wave da rolagem, com o `forwarding.rs` a interceptar a roda e um
+    arch-gate a guardar a ligação. O gate continuou verde a medir a coisa errada até um param
+    novo o acordar. *Um gate cujo corpo afirma um FACTO do produto tem de citar quem o
+    mantém verdadeiro; senão ele vira uma nota com `assert!` à volta.* ⚠️ E a recalibração
+    dele também errou à primeira: comparar `fundo − conteúdo` contra uma constante do censo
+    assumia um crome uniforme, e o `motion.color_array` mede **110** contra os 114 dos outros
+    115 nós, porque uma linha de PALETA fecha com outra folga. *Uma segunda aritmética sobre
+    o layout diverge do layout* — o oráculo passou a ser **rolar de verdade e perguntar onde
+    a última linha ficou**.
+62. **Um controle que faz a ARTE SUMIR é pior que um controle morto, e pede o mesmo remédio.**
+    O Trim sem traço não é um botão inerte: um contorno aparado é ABERTO, não tem interior, e
+    a forma **desaparece**. O `ParamGate` não sabia perguntar *"apareça quando esta grandeza
+    sair do zero"* (ele arredonda a inteiro, o que é exato para um `Enum` e inútil para um
+    slider de `0..1`), então a família ganhou o irmão **`ParamGateAbove`**. *Quando o gate de
+    visibilidade não exprime a condição, o gate é que está incompleto — não a condição.*
+63. **Uma sonda que não pode ver a metade que o SHELL publica acusa a cena boa.** A
+    `measure_scene_layout` cozinhava num `Cook::new()` virgem: uma cena de FORMA ou de TEXTO
+    lê a geometria por canal externo, e um cook sem externals devolve zero instâncias — que a
+    sonda imprimia como `VAZIA`. Terceira vez nesta linha (a sonda de movimento e o harness
+    do texto pagaram as outras duas). *Um instrumento que não passa pela mesma porta do
+    produto mede a si próprio.*
+
+64. **Acrescentar uma PORTA a um nó com kernel RENOMEIA todos os acessores de leitura dele —
+    e o compilador não vê nada.** O `codegen::accessor_suffix` qualifica pelo nome da porta
+    **quando o nó tem mais de uma entrada**, e o corpo do kernel é uma STRING. Três nós desta
+    linha ganharam portas em waves anteriores e ficaram com o corpo a chamar `read_falloff`
+    num módulo onde ele passara a chamar-se `read_in_falloff`: **`motion.pin_constraint`**
+    (`state`/`load`), **`field.index_range`** (`attr`) e **`force.attractor`** (`target`) —
+    os três com o caminho de GPU **quebrado**, e nada vermelho até
+    `every_registered_kernel_validates_across_the_whole_presence_space` correr. ⚠️ O `cargo
+    check` é cego a isto por construção, e o `applicable` de dois deles escondia-o na maioria
+    dos grafos. *Um kernel novo, uma porta nova ou um rename de porta obrigam a rodar o
+    validador de WGSL — ele é o único compilador daquela string.*
+
 
 ---
 
@@ -687,6 +751,20 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `=76` — a folha 14 inteira (o Trim, o tracejado, e o traço que apagava o miolo)
+
+```
+env PH2D_GPU_COOK_DEMO=76 cargo run -p ph2d-host-desktop --release
+```
+
+Três linhas, duas colunas. **BORDA**: a mesma estrela azul, à direita com borda laranja — e o
+miolo continua azul (antes, `stroke_width > 0` deixava a forma OCA). **APARADO**: um anel
+branco inteiro contra um trecho de 28% dele que **dá a volta** (o `trim_offset` é conduzido
+por um fio — precisa de PLAY). **PICOTADO**: o mesmo retângulo com linha contínua e com linha
+picotada. ⚠️ **Pôr o `Stroke Width` em 0 faz o Trim, o Dash e a cor da borda SUMIREM do
+painel** — é o `ParamGateAbove`, e a razão é que sem traço aparar a forma a faz desaparecer.
+
 
 ### `PH2D_MOTION_OBJ_SMOKE=8` — a POSE do objeto (folha 14)
 

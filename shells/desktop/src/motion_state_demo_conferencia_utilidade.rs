@@ -460,3 +460,46 @@ pub(crate) fn sim_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
     );
     sinks
 }
+
+/// **A CENA `=76` — três exemplos, um por linha** (doc 89, folha 14: as duas células que a
+/// fecharam, mais o preenchimento que o traço apagava).
+///
+/// ⚠️ **Só a linha do meio precisa de PLAY** — o `trim_offset` dela é conduzido pelo relógio
+/// por um fio. As outras duas leem-se paradas.
+pub(crate) fn style_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_style::build_style_demo_document(doc, registry).unwrap_or_default();
+    let (span, lap) = conferencia_demos_style::authored();
+    eprintln!(
+        "[cena 76] Tres exemplos, um por linha -- {n} formas. ESQUERDA = como era,
+  DIREITA = o que mudou. O nome da linha esta' escrito no meio da tela.
+
+  BORDA    A MESMA estrela azul duas vezes. A` esquerda ela e' so' azul chapado. A`
+           direita ela tem uma BORDA laranja a` volta -- e o miolo continua azul.
+           (Antes, por o traco a mais de zero a estrela ficava OCA: a cor de dentro
+           desaparecia.)
+           > clique no no' Shape da direita e arraste o `Stroke Width` ate' 0: a
+             borda some e a estrela fica igual a` da esquerda.
+
+  APARADO  Um anel branco, so' o contorno. A` esquerda ele esta' inteiro. A` direita
+           so' {span:.0}% dele aparece -- e esse trecho DA' A VOLTA ao anel, uma volta
+           a cada {lap:.0} segundos.
+           >>> DE' PLAY para ver o trecho correr.
+           > clique no no' Shape da direita e arraste o `Trim End` de 0 ate' 1: o
+             anel desenha-se sozinho, como uma caneta a correr.
+
+  PICOTADO O mesmo retangulo verde, so' o contorno. A` esquerda a linha e' continua;
+           a` direita ela e' PICOTADA.
+           > clique no no' Shape da direita e arraste o `Dash Gap`: os buracos abrem
+             e fecham.
+
+  (!) OS TRES CONTROLES NOVOS SO' APARECEM COM BORDA. Ponha o `Stroke Width` em 0 e
+      o `Trim`, o `Dash` e a cor da borda somem do painel -- sem borda eles nao
+      fazem nada, e aparar uma forma sem borda faria a forma DESAPARECER.
+
+  DEU ERRADO se as duas metades de qualquer linha ficarem iguais, se a estrela da
+  direita sair oca, ou se o trecho branco nao andar com o Play.",
+        n = sinks.len(),
+    );
+    sinks
+}

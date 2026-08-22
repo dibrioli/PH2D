@@ -96,6 +96,9 @@ pub(crate) mod conferencia_demos_goal;
 pub(crate) mod conferencia_demos_rank;
 #[path = "motion_state_conferencia_demos_sim.rs"]
 pub(crate) mod conferencia_demos_sim;
+/// A cena do ESTILO (`=76`) — a borda, o Trim e o tracejado do `source.shape` (folha 14).
+#[path = "motion_state_conferencia_demos_style.rs"]
+pub(crate) mod conferencia_demos_style;
 
 #[path = "motion_state_conferencia_demos_drizzle.rs"]
 pub(crate) mod conferencia_demos_drizzle;

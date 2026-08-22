@@ -463,7 +463,6 @@ pub(crate) fn draw_path_with(
     target: &mut VectorScene,
 ) {
     let fill_bp = tess.fill_bp.as_ref();
-    let stroke_own = tess.stroke_bp.as_ref();
     if let Some(fill) = &path.fill {
         let fp = fill_bp.expect("fill => fill_bp construido");
         if let Paint::MultiPoint { points } = fill {
@@ -483,6 +482,24 @@ pub(crate) fn draw_path_with(
             );
         }
     }
+    draw_stroke_with(path, tess, transform, target);
+}
+
+/// **A metade do TRAÇO** de [`draw_path_with`] — extraída porque a rota de INSTÂNCIA de
+/// Motion precisa dela sem a metade do preenchimento (a cor de um primitivo é o `tint` da
+/// instância, não o `path.fill`).
+///
+/// ⚠️ **Extraída, e não copiada.** O traço é o que o [`ph2d_vec_scene::stroke_plan`] lista —
+/// tracejado, pontas, alinhamento — e uma segunda cópia disso divergiria no primeiro ajuste
+/// ([[feedback_two_doors_to_the_same_question_diverge]]). Quem quiser traçar passa por aqui.
+pub(crate) fn draw_stroke_with(
+    path: &VecPath,
+    tess: &PathTess,
+    transform: Affine,
+    target: &mut VectorScene,
+) {
+    let fill_bp = tess.fill_bp.as_ref();
+    let stroke_own = tess.stroke_bp.as_ref();
     if let Some(s) = path.stroke {
         let bp = stroke_own
             .or(fill_bp)

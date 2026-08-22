@@ -157,31 +157,42 @@ pub(crate) fn build_stream(
 /// razão: publicar antes do dreno mintaria a chave PRÉ-edição enquanto o cook lê a
 /// PÓS-edição ⇒ o nó clona um externo vazio por um quadro ⇒ **o texto pisca ao
 /// editar**.
-pub(crate) fn publish(motion: &mut MotionState) {
-    // Junta os trabalhos primeiro para o empréstimo do grafo morrer antes de
-    // mutarmos o store e o cook (três campos disjuntos do `MotionState`).
-    let graph = &motion.doc.graph;
-    let jobs: Vec<(String, TextParams, String, String)> = graph
+pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
+    let ids: Vec<ph2d_nodegraph::graph::NodeId> = motion
+        .doc
+        .graph
         .nodes()
         .iter()
         .filter(|n| n.type_name == MANIFEST.name)
-        .map(|n| {
-            let ov = graph.node_param_overrides(n.id);
-            let get = |name: &str| {
-                ov.and_then(|m| m.get(name).copied())
-                    .unwrap_or_else(|| manifest_default(name))
-            };
-            let tov = graph.node_text_params().get(&n.id);
-            let text = text_of(tov.and_then(|m| m.get(TEXT_KEY)).map(String::as_str)).to_string();
-            let font = font_of(tov.and_then(|m| m.get(FONT_KEY)).map(String::as_str)).to_string();
-            (
-                text_key(get, &font, &text),
-                TextParams::read(get),
-                font,
-                text,
-            )
-        })
+        .map(|n| n.id)
         .collect();
+    // Junta os trabalhos primeiro para o empréstimo do grafo morrer antes de
+    // mutarmos o store e o cook (três campos disjuntos do `MotionState`).
+    let mut jobs: Vec<(String, TextParams, String, String)> = Vec::with_capacity(ids.len());
+    for id in ids {
+        // ⚠️ **A mesma escada da irmã das formas — conduzido → override → default.** Um
+        // `size`/`weight` conduzido por fio fazia o texto DESAPARECER: ver
+        // [`super::motion_externals::driven_params`], onde o mecanismo está escrito.
+        let driven = super::motion_externals::driven_params(motion, id, seconds);
+        let graph = &motion.doc.graph;
+        let ov = graph.node_param_overrides(id);
+        let get = |name: &str| {
+            driven
+                .get(name)
+                .copied()
+                .or_else(|| ov.and_then(|m| m.get(name).copied()))
+                .unwrap_or_else(|| manifest_default(name))
+        };
+        let tov = graph.node_text_params().get(&id);
+        let text = text_of(tov.and_then(|m| m.get(TEXT_KEY)).map(String::as_str)).to_string();
+        let font = font_of(tov.and_then(|m| m.get(FONT_KEY)).map(String::as_str)).to_string();
+        jobs.push((
+            text_key(get, &font, &text),
+            TextParams::read(get),
+            font,
+            text,
+        ));
+    }
     for (key, p, font, text) in jobs {
         let stream = build_stream(&mut motion.shape_store, &p, &font, &text);
         motion.pump.cook.set_external(key, stream);

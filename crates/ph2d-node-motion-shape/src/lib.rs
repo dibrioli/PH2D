@@ -274,6 +274,12 @@ pub struct ShapeParams {
     pub corner_offsets: [f32; 3],
     /// A suavização do canto (`0..1`, o *corner smoothing*).
     pub smoothing: f32,
+    /// **O TRIM** — `(start, end, offset)` em frações do comprimento do contorno.
+    /// `(0, 1, 0)` é o neutro, e o neutro é no-op byte-idêntico (ver [`param::TRIM_START`]).
+    pub trim: [f32; 3],
+    /// **O TRACEJADO** — `Some((dash, gap))` em múltiplos da largura do traço;
+    /// `None` (ou `dash <= 0`) = contínuo, que é o traço de sempre.
+    pub dash: Option<(f32, f32)>,
 }
 
 /// A largura e a cor do traço de uma forma.
@@ -286,89 +292,7 @@ pub struct Stroke {
 /// The names of the f32 params — the ONE list the manifest, the UI hints, the
 /// gates, the node's `eval` and the shell's reader all key off (no drifting
 /// string literal).
-pub mod param {
-    pub const KIND: &str = "kind";
-    pub const SIZE: &str = "size";
-    pub const ASPECT: &str = "aspect";
-    pub const SIDES: &str = "sides";
-    pub const CORNER: &str = "corner";
-    pub const STAR_DEPTH: &str = "star_depth";
-    pub const CLEFT: &str = "cleft";
-    pub const TOOTH_DEPTH: &str = "tooth_depth";
-    pub const HOLE: &str = "hole";
-    /// A largura do TRAÇO em unidades de mundo. `0` = sem traço ⇒ a forma de
-    /// sempre, byte-idêntica (ver [`super::ShapeParams::stroke`]).
-    pub const STROKE_WIDTH: &str = "stroke_width";
-    pub const STROKE_R: &str = "stroke_r";
-    pub const STROKE_G: &str = "stroke_g";
-    pub const STROKE_B: &str = "stroke_b";
-    pub const STROKE_A: &str = "stroke_a";
-
-    /// **A ABERTURA do arco**, em graus (doc 89 folha 14, a linha do *sweep / start /
-    /// inner*). A família do círculo (`Ellipse`/`Circle`/`Pie`/`Segment`) é uma só forma na
-    /// biblioteca; o que a faz pizza, rosquinha ou anel parcial são estes três números, que
-    /// a receita passava **fixos**.
-    ///
-    /// ⚠️ **`0` é SENTINELA: *"como a forma nasce"***, e não *"uma fatia de zero graus"*.
-    /// Sem ela o default não reduz: um círculo passa `0` hoje (a biblioteca lê isso como
-    /// volta inteira) mas uma `Pie` passa `k.defaults()`, o ângulo canónico dela — um
-    /// default único quebraria uma das duas. O que se perde é autorar uma fatia de
-    /// exactamente 0°, que não desenha nada.
-    pub const SWEEP: &str = "sweep";
-    /// **Onde o arco COMEÇA**, em graus. `0` é o default da biblioteca para as três formas,
-    /// então aqui ele é o valor neutro de verdade, não uma sentinela.
-    pub const START: &str = "start";
-    /// **O RAIO INTERNO** como fracção do externo (`0` = maciço, o default da biblioteca).
-    /// É o que leva a pizza a rosquinha e o arco a anel parcial.
-    ///
-    /// ⚠️ Não vale para a `Segment`: a corda (`ellipse_chord`) não tem miolo — e o gate
-    /// `no_kind_hides_a_live_knob_or_shows_a_dead_one` é quem o prova, mexendo no número.
-    pub const INNER: &str = "inner";
-
-    /// **Os três DESVIOS de raio por canto** (doc 89 folha 14, a linha do *raio por canto*),
-    /// somados ao `corner` — `[TL, TR, BR, BL]` e o `corner` é o TL. `0` em todos ⇒ o
-    /// round-rect uniforme, e a `rounded_rect_corners` desvia literalmente para a
-    /// `rounded_rect` de sempre quando os quatro raios são iguais e a suavização é zero.
-    pub const CORNER_TR: &str = "corner_tr";
-    pub const CORNER_BR: &str = "corner_br";
-    pub const CORNER_BL: &str = "corner_bl";
-    /// **A SUAVIZAÇÃO do canto** (`0..1`, o *corner smoothing* do Figma / o squircle do
-    /// iOS). `0` = o arco circular de sempre.
-    pub const SMOOTHING: &str = "smoothing";
-
-    /// **TODOS eles, na ordem do manifesto.**
-    ///
-    /// ⚠️ Ela existe para a CHAVE do cache ser derivada em vez de enumerada. A
-    /// `shape_key` listava os nove campos à mão, e uma chave que enumera as
-    /// entradas de um valor é como a próxima é esquecida — o param novo passa a
-    /// não mintar entrada nova, a forma antiga volta do cache, e o controle fica
-    /// **inerte depois da primeira vez** (foi o defeito do *Pattern Offset* do
-    /// sculpt3d, 2026-08-09). Um param acrescentado aqui entra na chave e no
-    /// manifesto de uma vez.
-    pub const ALL: &[&str] = &[
-        KIND,
-        SIZE,
-        ASPECT,
-        SIDES,
-        CORNER,
-        STAR_DEPTH,
-        CLEFT,
-        TOOTH_DEPTH,
-        HOLE,
-        STROKE_WIDTH,
-        STROKE_R,
-        STROKE_G,
-        STROKE_B,
-        STROKE_A,
-        SWEEP,
-        START,
-        INNER,
-        CORNER_TR,
-        CORNER_BR,
-        CORNER_BL,
-        SMOOTHING,
-    ];
-}
+pub mod param;
 
 impl ShapeParams {
     /// Read the descriptor from any param source — the node passes
@@ -410,7 +334,56 @@ impl ShapeParams {
                 get(param::CORNER_BL),
             ],
             smoothing: get(param::SMOOTHING),
+            trim: [
+                get(param::TRIM_START),
+                get(param::TRIM_END),
+                get(param::TRIM_OFFSET),
+            ],
+            // `dash <= 0` ⇒ `None`, o mesmo desenho do `stroke`: a AUSÊNCIA do
+            // tracejado é o traço contínuo de sempre, não um tracejado de período
+            // zero (que o plano de traço ainda percorreria).
+            dash: (get(param::DASH) > 0.0).then(|| (get(param::DASH), get(param::DASH_GAP))),
         }
+    }
+
+    /// **O descritor em RAIO 1 e a ESCALA que ele deixa para a instância** (doc 89 folha 14,
+    /// a linha do *`size` é GEOMETRIA, não coluna*).
+    ///
+    /// ⚠️ **É o que tira o `size` do cache de geometria.** O `size` entrava na
+    /// [`shape_key`], então *"um slider animado re-interna um `VecPath` por valor
+    /// visitado"* (o próprio doc do `VecPathStore` o admitia) — e nada a jusante que
+    /// lesse a coluna `size` via o tamanho da forma. A receita inteira é **linear no
+    /// `size`** (`ry = size·aspect`, e o `corner`/os três desvios são FRAÇÕES dele),
+    /// então construí-la em raio 1 e publicar `size = escala` na instância dá a MESMA
+    /// imagem — com uma entrada só no cache para toda a excursão do slider.
+    ///
+    /// ⚠️ **A largura do traço é dividida pela escala, e tem de ser:** ela é a única
+    /// grandeza do descritor em unidades de MUNDO, e a pose da instância multiplica
+    /// tudo o que ela leva. Sem a divisão, engordar o `size` engordaria o traço.
+    #[must_use]
+    pub fn read_unit(get: impl Fn(&str) -> f32) -> (ShapeParams, f32) {
+        let scale = scale_of(&get);
+        (ShapeParams::read(|n| unit_value(&get, n, scale)), scale)
+    }
+}
+
+/// **A ESCALA que o descritor deixa para a instância** — o `size` clampado exactamente
+/// como a receita do shell o lê (`size.max(0.01)`), para que os dois lados nunca dividam
+/// por um número que o outro não usou.
+#[must_use]
+pub fn scale_of(get: impl Fn(&str) -> f32) -> f32 {
+    get(param::SIZE).max(0.01)
+}
+
+/// O valor do param `name` no descritor **NORMALIZADO** — a UMA porta por onde a
+/// [`shape_key`] e a [`ShapeParams::read_unit`] passam, e é isso que garante que a chave e
+/// a geometria são o mesmo descritor. Tudo o mais no descritor é fração, ângulo ou
+/// contagem: já é livre de escala.
+fn unit_value(get: &impl Fn(&str) -> f32, name: &str, scale: f32) -> f32 {
+    match name {
+        param::SIZE => 1.0,
+        param::STROKE_WIDTH => get(name) / scale,
+        _ => get(name),
     }
 }
 
@@ -421,12 +394,18 @@ impl ShapeParams {
 /// publish cannot diverge (gated). Hashes the WHOLE descriptor: a hidden param
 /// stays at its default for any shape an artist authors, so identical shapes still
 /// share geometry, and no per-kind branch can drift from the reader.
+///
+/// ⚠️ **A chave é do descritor em RAIO 1** ([`ShapeParams::read_unit`]), não do descritor
+/// cru: a geometria que ela nomeia é a normalizada, e o `size` viaja na coluna da
+/// instância. É por isso que animar o `size` deixou de crescer o `VecPathStore` — e é
+/// também por isso que duas formas de tamanhos diferentes **partilham** um `VecPath`.
 #[must_use]
 pub fn shape_key(get: impl Fn(&str) -> f32) -> String {
+    let scale = scale_of(&get);
     let mut k = String::from("shape");
     for name in param::ALL {
         k.push(':');
-        k.push_str(&get(name).to_bits().to_string());
+        k.push_str(&unit_value(&get, name, scale).to_bits().to_string());
     }
     k
 }
@@ -535,6 +514,31 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::SMOOTHING,
             default: 0.0,
         },
+        // ⚠️ **Apendados** (doc 89 folha 14, a linha do *trim/dash*). `{0, 1, 0}` é o
+        // NEUTRO do `TrimSpec`, e a pilha de efeitos salta um efeito neutro por inteiro
+        // ⇒ a forma que sempre shipou, byte-idêntica. O `dash_gap` nasce em `1` porque
+        // um vão de zero seria um tracejado contínuo com custo — mas ele só existe
+        // quando o `dash` sai do zero.
+        ParamSpec {
+            name: param::TRIM_START,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::TRIM_END,
+            default: 1.0,
+        },
+        ParamSpec {
+            name: param::TRIM_OFFSET,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::DASH,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::DASH_GAP,
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -575,6 +579,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_gates_above(MANIFEST.id, PARAM_GATES_ABOVE);
     // Its output carries `geometry_id` (a live vector shape) drawn by the vector
     // pass. The GPU-resident cook has no `geometry_id` route, so a document
     // bringing a shape in recuses to the CPU render (ADR-0154/0155). Unlike an
@@ -602,4 +607,4 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
 mod tests;
 
 mod hints;
-use hints::{PARAM_GATES, PARAM_HINTS};
+use hints::{PARAM_GATES, PARAM_GATES_ABOVE, PARAM_HINTS};

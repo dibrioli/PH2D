@@ -48,7 +48,7 @@ fn publish_then_cook_the_node_reads_its_own_text() {
     let n = state.doc.graph.add_node("source.text");
     state.doc.graph.set_text_param(n, "text", "AB");
 
-    publish(&mut state);
+    publish(&mut state, 0.0);
 
     let out = state
         .pump
@@ -228,7 +228,7 @@ fn dropping_the_node_leaves_it_alive() {
         "o texto de fabrica esta no GRAFO, onde o painel tambem o le"
     );
 
-    publish(&mut state);
+    publish(&mut state, 0.0);
     let out = state
         .pump
         .cook
@@ -247,7 +247,7 @@ fn dropping_the_node_leaves_it_alive() {
 fn a_node_built_without_a_gesture_draws_nothing() {
     let mut state = MotionState::new();
     let n = state.doc.graph.add_node("source.text");
-    publish(&mut state);
+    publish(&mut state, 0.0);
     let out = state
         .pump
         .cook

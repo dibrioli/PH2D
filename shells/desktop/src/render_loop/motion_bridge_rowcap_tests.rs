@@ -316,9 +316,25 @@ use ph2d_editor::zones::Rect;
 /// de Paleta devolve a própria), então *mais linhas* não é o mesmo que *mais alto* — e uma
 /// segunda aritmética divergiria exatamente no nó composto, que é o caso que importa.
 fn height_census() -> Vec<(&'static str, f32)> {
+    let mut census: Vec<(&'static str, f32)> = reach_census()
+        .into_iter()
+        .map(|(ty, bottom, _)| (ty, bottom))
+        .collect();
+    census.sort_by(|a, b| b.1.total_cmp(&a.1));
+    census
+}
+
+/// `(tipo, fundo do último retângulo registado, altura de CONTEÚDO publicada)` por nó.
+///
+/// ⚠️ **A terceira coluna é a que passou a decidir**, e a razão é uma medição: o corpo do
+/// painel **ROLA** desde a wave da rolagem (`lib_scroll_tests`), e o `dispatch_wheel` deriva
+/// o `max_scroll` de `content_h`/`visible_h`. Enquanto ele não rolava, *desenhar abaixo do
+/// dock* era o fim da linha; hoje o fim da linha é outro: uma linha registada **além do
+/// conteúdo publicado** não tem rolamento que a alcance — o painel para antes dela.
+fn reach_census() -> Vec<(&'static str, f32, f32)> {
     let mut motion = MotionState::new();
     let types: Vec<&'static str> = motion.registry.manifests().map(|m| m.name).collect();
-    let mut census: Vec<(&'static str, f32)> = types
+    let census: Vec<(&'static str, f32, f32)> = types
         .into_iter()
         .map(|ty| {
             let node = motion.doc.graph.add_node(ty);
@@ -341,12 +357,15 @@ fn height_census() -> Vec<(&'static str, f32)> {
             // O fundo do retângulo mais baixo que o painel registrou: o último pixel que o
             // artista consegue apontar.
             let bottom = rects.iter().map(|(_, r)| r.y + r.h).fold(0.0f32, f32::max);
-            (ty, bottom)
+            let content = host
+                .store()
+                .panel_content_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+                .unwrap_or(0.0);
+            (ty, bottom, content)
         })
-        .collect();
+        .collect::<Vec<_>>();
     ph2d_panel_motion_params::set_current_params(None);
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
-    census.sort_by(|a, b| b.1.total_cmp(&a.1));
     census
 }
 
@@ -372,21 +391,107 @@ fn measure_the_param_height_census() {
     );
 }
 
-/// **E as linhas CABEM no dock** — a outra metade do corte silencioso.
+/// **TODA LINHA REGISTADA CABE NO CONTEÚDO PUBLICADO** — a outra metade do corte silencioso,
+/// **recalibrada em 2026-08-21 porque a premissa da anterior dissolveu**.
 ///
-/// O gate irmão prova que nenhum param é descartado pelo `.take()`. Ele não vê a segunda porta
-/// para a MESMA invisibilidade: um teto de linhas alto o bastante para todo nó só é honesto se
-/// essas linhas couberem na altura do inspector, senão a linha 14 deixa de ser cortada pelo
-/// `.take()` e passa a ser cortada pela borda da tela. O painel **não rola**.
+/// O gate irmão prova que nenhum param é descartado pelo `.take()` do `MAX_PARAM_ROWS`. Este
+/// vê a segunda porta para a MESMA invisibilidade — e qual é essa porta mudou:
 ///
-/// ⚠️ Este gate é a razão pela qual o `INSPECTOR_MAX_H` foi NOMEADO (era literal solto no
-/// `Rect::new` do layout), e ele não existia — a constante ganhou um dono e ficou sem leitor.
+/// ⚠️ **Este gate chamava-se `every_node_fits_the_inspector_dock` e o corpo dele afirmava
+/// *"o painel **não rola**"*.** Isso era verdade quando ele nasceu e deixou de ser: o corpo
+/// do painel de params **rola** desde a wave da rolagem (`ph2d-panel-motion-params::
+/// lib_scroll_tests`, cujo cabeçalho diz literalmente *"a altura deixa de ser um limite de
+/// produto"*), o `forwarding.rs` intercepta a roda sobre o `MOTION_PARAMS_PANEL`, e o
+/// arch-gate `scrollable_panels_intercept_the_wheel` guarda essa ligação. Desenhar abaixo de
+/// 880 px deixou de ser inalcançável.
 ///
-/// Medido hoje: o pior nó é o `field.remap` com **778 px** de **880**, ou seja **102 px** de
-/// folga — menos que duas linhas. Não é margem confortável: é a distância entre o catálogo de
-/// hoje e um param a mais no nó mais cheio.
+/// ⚠️ **O que NÃO mudou é o que este gate passa a medir:** o `dispatch_wheel` deriva o
+/// `max_scroll` de `content_h`/`visible_h`, então uma linha registada **além do conteúdo
+/// publicado** continua fora de alcance — o rolamento para antes dela, e o modo de falha é o
+/// mesmo de sempre (o param existe, o painel o regista, o artista não chega lá).
+///
+/// ⚠️ **O oráculo é ROLAR de verdade, não uma aritmética ao lado.** A primeira versão desta
+/// recalibração comparava `fundo − conteúdo` contra uma constante derivada do censo, e a
+/// premissa dela era falsa: o desvio é 114 px em 115 nós e **110 no `motion.color_array`**,
+/// porque uma linha de PALETA fecha com folga diferente de uma escalar. Uma segunda
+/// aritmética sobre o layout diverge do layout — então aqui se põe o rolamento no máximo que
+/// o painel publica e se pergunta ao painel onde a última linha FICOU.
+///
+/// ⚠️ O `INSPECTOR_MAX_H` continua a ser lido — ele é a altura VISÍVEL, e é o que separa
+/// *cabe* de *rola*; a sonda irmã imprime os dois.
+/// ⚠️ **A fixture TRANSBORDA de propósito**, e é o que separa este gate de um verde por
+/// acidente: no estado de DEFAULT o nó mais alto do catálogo cabe no dock (a sonda irmã
+/// imprime o número), então rolar não teria o que provar. Um `source.shape` com traço abre a
+/// família inteira do traço — cor, tracejado e os três do Trim — e é o pior caso REAL do
+/// catálogo de hoje. *Uma fixture só prova o que contém.*
 #[test]
-fn every_node_fits_the_inspector_dock() {
+fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
+    let tallest = "source.shape";
+    let mut motion = MotionState::new();
+    let node = motion.doc.graph.add_node(tallest);
+    motion
+        .doc
+        .graph
+        .set_param(node, ph2d_node_motion_shape::param::STROKE_WIDTH, 0.2);
+    ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+    ph2d_panel_motion_params::set_current_params(build_params_snapshot(
+        &motion,
+        ProjectSettings::default(),
+    ));
+    let mut host =
+        ph2d_ui_testkit::MockPanelHost::with_panel::<ph2d_panel_motion_params::MotionParamsPanel>();
+    let dock = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: ph2d_editor::screens::layout::INSPECTOR_W,
+        h: INSPECTOR_MAX_H,
+    };
+    let paint = |host: &mut ph2d_ui_testkit::MockPanelHost| -> f32 {
+        let mut state = ph2d_panel_motion_params::MotionParamsPanelState;
+        host.paint::<ph2d_panel_motion_params::MotionParamsPanel>(&mut state, dock)
+            .iter()
+            .map(|(_, r)| r.y + r.h)
+            .fold(0.0f32, f32::max)
+    };
+    let at_rest = paint(&mut host);
+    let content = host
+        .store()
+        .panel_content_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+        .expect("o painel publica a altura do CONTEÚDO");
+    let visible = host
+        .store()
+        .panel_visible_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+        .expect("...e a VISÍVEL, que é a régua do `dispatch_wheel`");
+    assert!(
+        at_rest > INSPECTOR_MAX_H,
+        "a fixture tem de TRANSBORDAR, senao rolar nao prova nada: {at_rest:.0} px de \
+         {INSPECTOR_MAX_H}"
+    );
+    // O rolamento máximo que o `dispatch_wheel` deixa o artista pedir — derivado do painel,
+    // nunca de uma segunda conta.
+    let max_scroll = (content - visible).max(0.0);
+    use ph2d_editor::panel::PanelHostInternal as _;
+    host.store_mut()
+        .set_panel_scroll(ph2d_editor::ids::MOTION_PARAMS_PANEL, max_scroll);
+    let rolled = paint(&mut host);
+    ph2d_panel_motion_params::set_current_params(None);
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    assert!(
+        rolled <= INSPECTOR_MAX_H + 0.5,
+        "o nó mais alto ({tallest}) tem {at_rest:.0} px de linhas e o painel só deixa rolar \
+         {max_scroll:.0} px (conteúdo {content:.0}, visível {visible:.0}) — no fim do \
+         rolamento a última linha ainda termina em {rolled:.0}, além do dock de \
+         {INSPECTOR_MAX_H} px, e nenhum gesto a alcança"
+    );
+}
+
+/// **E o dock ainda é medido** — a sonda do gate acima, agora que caber deixou de ser lei.
+///
+/// Um nó mais alto que o dock não é um defeito (ele rola), mas é um FATO de produto: abrir o
+/// inspector e já precisar da roda é pior UX que caber. O número fica escrito aqui, e a
+/// mutação que o prova é esconder um param — a altura desce.
+#[test]
+fn the_dock_overflow_is_named_not_discovered() {
     let census = height_census();
     let (worst_ty, worst_h) = census.first().copied().expect("o registry não é vazio");
     let over: Vec<String> = census
@@ -396,8 +501,8 @@ fn every_node_fits_the_inspector_dock() {
         .collect();
     assert!(
         over.is_empty(),
-        "estes nós desenham além da altura do dock ({INSPECTOR_MAX_H} px) e o excedente sai \
-         pela borda da tela — o param existe, o painel o registra, e o artista não o vê: \
+        "estes nós desenham além da altura do dock ({INSPECTOR_MAX_H} px) no estado de \
+         DEFAULT — alcançáveis pela roda, mas o inspector abre já a precisar dela: \
          {over:?}. O pior é {worst_ty} com {worst_h:.0} px."
     );
 }

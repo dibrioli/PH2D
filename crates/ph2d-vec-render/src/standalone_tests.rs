@@ -65,12 +65,35 @@ fn the_document_route_draws_nothing_for_the_same_bare_primitive() {
 
 /// **UM CAMINHO COM PAINT ENCODA IGUAL PELAS DUAS PORTAS** — a mudança não mexeu no
 /// que já funcionava (os `source.object`, que trazem fill/stroke do documento).
+///
+/// ⚠️ **A fixture ganhou o FILL em 2026-08-21, e a falta dele era o defeito que ela
+/// deixava passar.** Ela punha só o `stroke`, e um caminho com stroke e **sem fill**
+/// continua a ser um PRIMITIVO — a cor dele é o `tint` da instância. O gate ficava verde
+/// pelo motivo errado: as duas portas concordavam em desenhar *só o traço*, que era
+/// exactamente o bug (a forma ficava oca ao mexer na largura). *Uma fixture só prova o
+/// que contém* — esta agora contém um caminho de DOCUMENTO, que é o que o nome promete.
 #[test]
 fn a_painted_path_encodes_the_same_through_either_door() {
     let mut p = bare_primitive();
+    p.fill = Some(ph2d_vec_scene::Paint::solid(Rgba8::new(0, 0, 255, 255)));
     p.stroke = Some(StrokeSpec::new(Rgba8::new(255, 0, 0, 255), 0.1));
     assert_eq!(encoded_standalone(&p), encoded_document_route(&p));
     assert!(encoded_standalone(&p) >= 1, "e desenha alguma coisa");
+}
+
+/// **E UM CAMINHO SÓ COM TRAÇO SEGUE SENDO UM PRIMITIVO** — o controle que dá sentido ao
+/// de cima, e a lei que o fix de 2026-08-21 escreveu.
+///
+/// A porta do documento desenha só o traço (o `fill` é `None`); a de instância desenha a
+/// silhueta com o `tint` **e** o traço por cima. As duas divergem de propósito, e é a
+/// divergência certa: quem escolhe a porta é o que a coisa **É** (uma forma de instância),
+/// não o que ela parece.
+#[test]
+fn a_stroke_only_path_is_still_a_primitive_and_the_doors_differ() {
+    let mut p = bare_primitive();
+    p.stroke = Some(StrokeSpec::new(Rgba8::new(255, 0, 0, 255), 0.1));
+    assert_eq!(encoded_standalone(&p), 2, "silhueta do tint + traco");
+    assert_eq!(encoded_document_route(&p), 1, "so' o traco");
 }
 
 /// **A CAIXA DE UM PRIMITIVO NU NÃO É VAZIA** — o irmão da lei acima, do lado dos

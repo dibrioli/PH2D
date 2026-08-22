@@ -26,7 +26,7 @@ fn publish_then_cook_the_node_reads_its_own_shape() {
     state.doc.graph.set_param(n, "sides", 6.0);
 
     // The real publish: intern the geometry + set the external on the pump's cook.
-    super::publish(&mut state);
+    super::publish(&mut state, 0.0);
 
     let out = state
         .pump
@@ -248,7 +248,7 @@ fn a_shape_stamped_on_a_grid_lowers_to_sixteen_vectors() {
     };
     let _ = src;
 
-    super::publish(&mut state);
+    super::publish(&mut state, 0.0);
     let cooked = state
         .pump
         .cook

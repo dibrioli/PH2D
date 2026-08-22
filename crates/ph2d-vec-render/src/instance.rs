@@ -36,16 +36,26 @@ pub fn draw_shape_instance(
 /// vetor-DOCUMENTO `source.object` carrega o próprio fill/stroke, então tessela pela mesma
 /// [`path_tess`] que o [`draw_path`](crate::draw_path) usa (o preenchimento e o traço quando difere).
 pub(crate) fn tessellate_shape_instance(path: &VecPath) -> PathTess {
-    if path.fill.is_some() || path.stroke.is_some() {
+    if path.fill.is_some() {
         path_tess(path)
     } else {
-        // Primitivo: só a silhueta. (Sem `count_cook` — o caminho antigo cozia cru aqui, e os
-        // contadores do `encode_cost_tests` têm de bater byte-a-byte com ele.)
+        // Primitivo: a silhueta é do `tint` da instância, e o traço (se houver) é do próprio
+        // path. (Sem `count_cook` — o caminho antigo cozia cru aqui, e os contadores do
+        // `encode_cost_tests` têm de bater byte-a-byte com ele.)
         let cooked = path.cooked();
+        // ⚠️ **O preenchimento leva só os contornos FECHADOS** (`Some(true)`) — é isso que
+        // faz um caminho APARADO (Trim) desenhar só o traço, sem um `if` que pergunte se
+        // houve trim: um trecho de contorno não tem interior, e fechá-lo implicitamente
+        // desenharia a corda.
         let fill_bp = build_contours(&cooked, Some(true));
+        // O traço leva TODOS os contornos. Sem contorno aberto ele é **o mesmo desenho** do
+        // preenchimento ⇒ partilham uma construção só (a mesma economia do [`path_tess`]).
+        let open =
+            (0..cooked.contour_count()).any(|c| cooked.contour(c).is_some_and(|(_, cl)| !cl));
+        let stroke_bp = (path.stroke.is_some() && open).then(|| build_contours(&cooked, None));
         PathTess {
             fill_bp: Some(fill_bp),
-            stroke_bp: None,
+            stroke_bp,
         }
     }
 }
@@ -65,7 +75,7 @@ pub(crate) fn draw_shape_instance_tessellated(
     tint: [f32; 4],
     target: &mut VectorScene,
 ) {
-    if path.fill.is_some() || path.stroke.is_some() {
+    if path.fill.is_some() {
         draw_path_with(path, tess, transform, target);
     } else {
         let fill_bp = tess
@@ -76,6 +86,14 @@ pub(crate) fn draw_shape_instance_tessellated(
         target
             .inner_mut()
             .fill(fill_rule(path), transform, &brush, None, fill_bp);
+        // ⚠️ **O traço vem DEPOIS, e não em vez do preenchimento** (medido 2026-08-21). Um
+        // primitivo com `stroke_width > 0` ia pela rota do DOCUMENTO, que só preenche quando
+        // `path.fill.is_some()` — e um primitivo tem `fill: None` de propósito, porque a cor
+        // dele é o `tint` da instância. A forma ficava **oca** no instante em que o artista
+        // mexia na largura do traço, e o `motion.tint` a jusante deixava de pintar coisa
+        // nenhuma. Pela porta ÚNICA do traço ([`crate::draw_stroke_with`]), então tracejado,
+        // pontas e alinhamento são os mesmos de um caminho de documento.
+        crate::draw_stroke_with(path, tess, transform, target);
     }
 }
 
@@ -106,3 +124,7 @@ pub fn draw_shared_instances<'p>(
         draw_shape_instance_tessellated(path, tess, transform, tint, target);
     }
 }
+
+#[cfg(test)]
+#[path = "instance_tests.rs"]
+mod tests;

@@ -211,11 +211,18 @@ fn aim_at(
 ///
 /// `sqrt` is IEEE correctly-rounded on both sides (HR-5 bars transcendentals,
 /// not exact operations), so no approximation is needed here.
+/// ⚠️ **Os leitores são QUALIFICADOS PELA PORTA (`read_in_*`), e o `in_` nasce da CONTAGEM
+/// de portas** (`codegen::accessor_suffix`: um nó de uma entrada usa o nome nu, um de várias
+/// qualifica). Este nó tinha UMA porta quando o kernel foi escrito e ganhou a `target` na wave
+/// do alvo-por-stream — o corpo ficou a chamar `read_P`/`read_falloff`/`read_accel` num módulo
+/// onde eles passaram a chamar-se `read_in_*`, e o `naga` recusou. *Acrescentar uma PORTA a um
+/// nó com kernel renomeia todos os acessores de LEITURA dele*; o de escrita não, porque a saída
+/// é uma só. O gate é o `every_registered_kernel_validates_across_the_whole_presence_space`.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let at_radius = max(params.radius, AT_DEAD_ZONE);\n\
         let at_sign = select(1.0, -1.0, params.repel >= 0.5);\n\
-        let at_p = read_P(i);\n\
+        let at_p = read_in_P(i);\n\
         let at_dx = params.target_x - at_p.x;\n\
         let at_dy = params.target_y - at_p.y;\n\
         let at_d = sqrt(at_dx * at_dx + at_dy * at_dy);\n\
@@ -224,10 +231,10 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   let at_w = at_curve(\n\
         \x20       i32(at_round(params.curve)),\n\
         \x20       clamp(1.0 - at_d / at_radius, 0.0, 1.0));\n\
-        \x20   let at_mag = params.strength * at_w * at_sign * read_falloff(i);\n\
+        \x20   let at_mag = params.strength * at_w * at_sign * read_in_falloff(i);\n\
         \x20   at_c = vec2<f32>((at_dx / at_d) * at_mag, (at_dy / at_d) * at_mag);\n\
         }\n\
-        write_accel(i, read_accel(i) + at_c);\n",
+        write_accel(i, read_in_accel(i) + at_c);\n",
     wgsl_lib: "\
         const AT_DEAD_ZONE: f32 = 1e-3;\n\
         fn at_round(x: f32) -> f32 {\n\

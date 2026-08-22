@@ -342,6 +342,16 @@ fn pin(
 /// param reads as 0, so an absurd number in a loaded document selects nothing
 /// rather than wrapping into a huge range. The `first + count` sum saturates for
 /// the same reason (`u32` here, `usize` on the CPU — both far past any real count).
+///
+/// ⚠️ **Os acessores são QUALIFICADOS PELA PORTA (`read_in_*`), e a qualificação nasce da
+/// CONTAGEM de portas** (`codegen::accessor_suffix`: um nó de uma entrada usa o nome nu, um
+/// de várias qualifica). Este nó tinha UMA porta quando o kernel foi escrito e passou a ter
+/// **três** (`state`/`load`, a wave do `break_above`) — e a wave não reescreveu o corpo, que
+/// ficou a chamar `read_falloff` num módulo onde ele passou a chamar-se `read_in_falloff`.
+/// O `naga` recusou (`no definition in scope`), o `applicable` deste kernel mantinha-o fora
+/// do caminho na maioria dos grafos, e o gate que o apanhou foi o
+/// `every_registered_kernel_validates_across_the_whole_presence_space`. *Acrescentar uma
+/// PORTA a um nó com kernel renomeia todos os acessores dele.*
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let pc_first = pc_index(params.first);\n\
@@ -349,9 +359,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let pc_sel = i >= pc_first && i < pc_last;\n\
         let pc_amount = select(\n\
         \x20   0.0,\n\
-        \x20   clamp(params.strength * read_falloff(i), 0.0, 1.0),\n\
+        \x20   clamp(params.strength * read_in_falloff(i), 0.0, 1.0),\n\
         \x20   pc_sel);\n\
-        write_inv_mass(i, read_inv_mass(i) * (1.0 - pc_amount));\n",
+        write_inv_mass(i, read_in_inv_mass(i) * (1.0 - pc_amount));\n",
     wgsl_lib: "\
         fn pc_index(v: f32) -> u32 {\n\
             // Rust `as_index`: non-finite or negative reads as 0, else round\n\

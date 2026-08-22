@@ -210,6 +210,14 @@ fn ordinals(n: usize, attr: &[f32]) -> Vec<f32> {
 /// width, = port 0's element count = the CPU's `input.count()`) so the two `s`
 /// arithmetics are bit-identical. `ReadWrite` on `falloff` mirrors the CPU: an absent
 /// column starts from the `1.0` identity (fields multiply) and is always written.
+///
+/// ⚠️ **O leitor é `read_in_falloff`, e o `in_` nasce da CONTAGEM de portas**
+/// (`codegen::accessor_suffix`: um nó de uma entrada usa o nome nu, um de várias qualifica
+/// pela porta). Este nó tinha UMA porta quando o kernel foi escrito e ganhou a `attr` na wave
+/// do `key = Attribute` — o corpo ficou a chamar `read_falloff` num módulo onde ele passou a
+/// chamar-se `read_in_falloff`, e o `naga` recusou. *Acrescentar uma PORTA a um nó com kernel
+/// renomeia todos os acessores de leitura dele* (o de escrita nunca é qualificado: há uma
+/// saída só). O gate é o `every_registered_kernel_validates_across_the_whole_presence_space`.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let ir_denom = f32(max(params.count, 2u) - 1u);\n\
@@ -222,7 +230,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             i32(ir_round(params.curve)));\n\
         var ir_f = ir_m;\n\
         if (params.invert >= 0.5) { ir_f = 1.0 - ir_m; }\n\
-        write_falloff(i, read_falloff(i) * ir_f);\n",
+        write_falloff(i, read_in_falloff(i) * ir_f);\n",
     wgsl_lib: "\
         fn ir_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\

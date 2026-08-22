@@ -308,6 +308,36 @@ pub struct ParamGateText {
     pub when_present: bool,
 }
 
+/// **Um gate de visibilidade cuja condição é um LIMIAR** — o terceiro irmão do
+/// [`ParamGate`], para a pergunta que ele também não sabe fazer.
+///
+/// O [`ParamGate`] compara o valor de outro param **arredondado a inteiro** contra
+/// uma lista, o que é exato para um `Enum` (que guarda o índice) e inútil para uma
+/// GRANDEZA contínua: um slider de `0..1` com passo `0,005` arredonda para `0` até
+/// metade do curso, então *"apareça quando isto sair do zero"* é inexprimível nele.
+///
+/// O caso canônico é a família do TRAÇO do `source.shape`: a cor, o tracejado e o
+/// Trim só têm sentido com `stroke_width > 0` — e o Trim é mais que um controle
+/// morto sem ele, porque um contorno APARADO não tem interior e a forma
+/// simplesmente **desaparece**. *Um controle que faz a arte sumir é pior que um
+/// controle que não faz nada*, e o remédio é o mesmo: não o pinte.
+///
+/// ⚠️ **Um LIMIAR e não um mínimo/máximo:** a pergunta é binária (*este recurso
+/// está ligado?*), e o valor que a responde é o mesmo que o desliga. Uma faixa
+/// daria duas fronteiras onde só há uma.
+///
+/// Side-metadata do registry, como o [`ParamGate`] e o [`Coupling`] — **nunca** um
+/// campo do `NodeManifest` congelado. Um nó sem entrada aqui não é gateado.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParamGateAbove {
+    /// O `ParamSpec::name` que este gate condicionalmente MOSTRA.
+    pub param: &'static str,
+    /// O `ParamSpec::name` cuja grandeza decide.
+    pub when: &'static str,
+    /// O limiar: `param` aparece quando `when > above` (estritamente).
+    pub above: f32,
+}
+
 /// **What a node PRODUCES, CONSUMES, REQUIRES, or GENERATES on its instance
 /// stream** — the semantic side-channel (ADR-0155) that lets the editor detect a
 /// node placed where its output is INERT. The canonical case: a `force.*` node is

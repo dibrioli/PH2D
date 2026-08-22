@@ -11,7 +11,7 @@
 //! fazia com que acrescentar um param exigisse duas viagens ao `lib.rs`.
 
 use super::{KIND_LABELS, ShapeKind, param};
-use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamGateAbove, ParamUiHint, ParamWidget};
 
 /// The param rows: a real dropdown for the shape family (the segmented `Enum`
 /// widget the Vector panel uses for Cap/Join), then the geometry sliders. Every
@@ -184,6 +184,52 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 1.0,
         step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ **O TRIM** (doc 89 folha 14). Faixa `0..1` em fração do comprimento, como o
+    // `TrimSpec` a fala — nunca em unidades de mundo: o mesmo `End = 0.5` revela metade
+    // de um círculo e metade de uma estrela, que é a promessa do *Trim Paths*.
+    ParamUiHint {
+        param: param::TRIM_START,
+        label: "Trim Start",
+        min: 0.0,
+        max: 1.0,
+        step: 0.005,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::TRIM_END,
+        label: "Trim End",
+        min: 0.0,
+        max: 1.0,
+        step: 0.005,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::TRIM_OFFSET,
+        label: "Trim Offset",
+        min: 0.0,
+        max: 1.0,
+        step: 0.005,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ **O TRACEJADO em múltiplos da LARGURA**, então o teto de 20 é *vinte larguras
+    // de traço*, não vinte unidades de mundo — a faixa que cobre do pontilhado denso à
+    // linha de corte larga sem que engrossar o traço mude o ritmo.
+    ParamUiHint {
+        param: param::DASH,
+        label: "Dash",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::DASH_GAP,
+        label: "Dash Gap",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
         widget: ParamWidget::Slider,
     },
 ];
@@ -387,5 +433,50 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
         param: param::SMOOTHING,
         when: param::KIND,
         values: &[ShapeKind::Square as i32, ShapeKind::Rectangle as i32],
+    },
+];
+
+/// **A FAMÍLIA DO TRAÇO aparece com o traço** — a visibilidade que o `ParamGate` por-espécie
+/// não sabe fazer, porque a condição não é uma escolha de enum e sim uma GRANDEZA.
+///
+/// ⚠️ **O Trim está nesta lista, e é o motivo de a lista existir.** Um contorno aparado é
+/// ABERTO, e um contorno aberto **não tem interior** — a silhueta não é preenchida (é a mesma
+/// lei que impede a tampa do cilindro de recortar a forma). Sem traço, então, mexer no Trim não
+/// dá um controle morto: dá a **forma a desaparecer**, com o nó certo selecionado e nada na
+/// tela. *Um controle que apaga a arte é pior que um que não faz nada.*
+///
+/// ⚠️ E a cor entra pelo `stroke_r`, que é a ÂNCORA do swatch (os outros três canais são
+/// dobrados nele e nem chegam a ter linha própria) — gatear um canal dobrado não esconderia
+/// nada.
+pub(crate) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
+    ParamGateAbove {
+        param: param::STROKE_R,
+        when: param::STROKE_WIDTH,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::DASH,
+        when: param::STROKE_WIDTH,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::DASH_GAP,
+        when: param::STROKE_WIDTH,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::TRIM_START,
+        when: param::STROKE_WIDTH,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::TRIM_END,
+        when: param::STROKE_WIDTH,
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: param::TRIM_OFFSET,
+        when: param::STROKE_WIDTH,
+        above: 0.0,
     },
 ];

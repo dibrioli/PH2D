@@ -37,12 +37,11 @@ use std::collections::BTreeMap;
 /// frame index is re-clamped whenever the grid shrinks so a stale frame
 /// can never index past the sheet. This is the single authoring write
 /// boundary for editable Sprite fields (mirrors `Transform::clamp_skew`).
-fn apply_sprite_field(sprite: &mut Sprite, edit: SpriteFieldEdit) {
+pub(super) fn apply_sprite_field(sprite: &mut Sprite, edit: SpriteFieldEdit) {
     match edit {
         SpriteFieldEdit::FlipX(b) => sprite.flip_x = b,
         SpriteFieldEdit::FlipY(b) => sprite.flip_y = b,
         SpriteFieldEdit::Centered(b) => sprite.centered = b,
-        SpriteFieldEdit::Offset(o) => sprite.offset = o,
         // Per-axis: preserve the OTHER axis (so a bulk edit of one axis
         // can't stomp a diverging sibling — audit D-1).
         SpriteFieldEdit::OffsetX(x) => sprite.offset[0] = x,
@@ -77,7 +76,17 @@ fn apply_sprite_field(sprite: &mut Sprite, edit: SpriteFieldEdit) {
         SpriteFieldEdit::SelfTint(c) => sprite.self_tint = c,
         SpriteFieldEdit::TintFill(b) => sprite.tint_fill = b,
         SpriteFieldEdit::Opacity(o) => sprite.opacity = o.clamp(0.0, 1.0),
-        SpriteFieldEdit::PerCornerTint(p) => sprite.per_corner_tint = p,
+        // ⚠️ Um canto, lido e escrito **na sprite desta iteração** — é isso que faz o fan-out
+        // preservar os cantos divergentes das outras em vez de os atropelar.
+        SpriteFieldEdit::PerCornerTintAt(i, rgba) => {
+            if let Some(slot) = sprite.per_corner_tint.get_mut(usize::from(i)) {
+                *slot = rgba;
+            }
+        }
+        // Cada sprite iguala pelo SEU próprio TL — «igualar» é uma operação, não um valor.
+        SpriteFieldEdit::EqualizeCorners => {
+            sprite.per_corner_tint = [sprite.per_corner_tint[0]; 4];
+        }
     }
 }
 

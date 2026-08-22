@@ -42,6 +42,8 @@ mod gizmo_readout;
 mod hierarchy;
 mod image_edit;
 mod inspector_commits;
+#[cfg(test)]
+mod inspector_commits_tests;
 pub(crate) mod inspector_joint;
 /// The BREAK half (W-J7): the switch, the two thresholds, and the fact that
 /// neither is converted. Its own file for the shell's LOC cap.

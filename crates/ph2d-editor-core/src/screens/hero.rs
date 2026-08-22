@@ -48,6 +48,7 @@ mod inspector_model;
 /// §12 Physics Joint + §13 Pulley Wheel — irmão do `inspector_model_physics`,
 /// separado dele no cap de 700 LOC (W-JointCopy).
 mod inspector_model_joint;
+mod inspector_model_ordering;
 mod inspector_model_physics;
 /// §14 Platform Player — irmão dos dois acima: a §11 diz que CORPO é este, a
 /// §14 diz que COMPORTAMENTO ele tem.
@@ -63,6 +64,7 @@ mod paint;
 
 pub use inspector_model::*;
 pub use inspector_model_joint::*;
+pub use inspector_model_ordering::*;
 pub use inspector_model_physics::*;
 pub use inspector_model_player::*;
 pub use paint::*;

@@ -187,8 +187,6 @@ pub enum SpriteFieldEdit {
     FlipY(bool),
     /// `false` = top-left origin + `offset` applies; `true` = centered.
     Centered(bool),
-    /// Intrinsic-pixel offset (whole vector) applied after `centered`.
-    Offset([f32; 2]),
     /// Intrinsic-pixel offset X only — leaves Y untouched. The Inspector
     /// emits this (not [`Offset`]) so editing one axis on a multi-selection
     /// can't stomp a diverging Y (BulkSelect, audit D-1).
@@ -227,94 +225,29 @@ pub enum SpriteFieldEdit {
     TintFill(bool),
     /// Final opacity multiplier (`[0, 1]`; clamped).
     Opacity(f32),
-    /// Per-corner bilinear tint `[TL, TR, BL, BR]`.
-    PerCornerTint([[f32; 4]; 4]),
-}
-
-/// Snapshot of the selected entity's W3 ordering/sorting components
-/// published to the Inspector §7 (Ordering / Sorting). Every field is
-/// *optional* (the components are presence-overrides, spec §02): `None`
-/// / `false` markers mean "component absent → pipeline default". Raw
-/// primitives keep editor-core loose-coupled from `ph2d-ecs`.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct InspectorOrderingInfo {
-    pub entity_bits: u64,
-    /// `ZIndexOverride` — `None` = absent (DFS counter). `Some(v)` =
-    /// forced Z (spec §3.7: "Z Index: —" vs explicit).
-    pub z_index: Option<i32>,
-    /// `ZAsRelative.0` — only meaningful when `z_index.is_some()`.
-    pub z_as_relative: bool,
-    /// `ShowBehindParent` marker present.
-    pub show_behind_parent: bool,
-    /// `SortingLayer.0.0` (LayerId index); default-layer index when absent.
-    pub sorting_layer: u8,
-    /// `OrderInLayer.0`.
-    pub order_in_layer: i32,
-    /// `YSort.enabled` (false when the component is absent).
-    pub y_sort_enabled: bool,
-    /// `YSort.sort_point` as a tag: 0 Center · 1 Pivot · 2 Custom.
-    pub y_sort_point: u8,
-    /// `YSort.axis` (only meaningful when `y_sort_point == 2`).
-    pub y_sort_axis: [f32; 2],
-    /// `SortingGroup` present.
-    pub sorting_group: bool,
-    /// `SortingGroup.sort_at_root` (only meaningful when `sorting_group`).
-    pub sort_at_root: bool,
-    /// `TopLevel` marker present.
-    pub top_level: bool,
-    pub selected_count: usize,
-    pub mixed: InspectorOrderingMixed,
-}
-
-/// BulkSelect (T2.0) divergence flags for the §7 ordering fields.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct InspectorOrderingMixed {
-    pub z_index: bool,
-    pub z_as_relative: bool,
-    pub show_behind_parent: bool,
-    pub sorting_layer: bool,
-    pub order_in_layer: bool,
-    pub y_sort_enabled: bool,
-    pub y_sort_point: bool,
-    pub y_sort_axis: bool,
-    pub sorting_group: bool,
-    pub sort_at_root: bool,
-    pub top_level: bool,
-}
-
-/// A single editable §7 ordering field, dispatched Inspector → shell as
-/// [`EditorAction::InspectorOrderingEdit`]. Unlike [`SpriteFieldEdit`]
-/// (which mutates the always-present `Sprite`), each variant maps to an
-/// *optional* ECS component: the shell reads the component-or-default,
-/// applies the edit, and commits via `EditorCommand::SetComponent`
-/// (insert/update) or `EditorCommand::RemoveComponent` (detach). The
-/// full set is declared up front so the action contract is stable; only
-/// wired controls emit today (spec §3.7).
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum OrderingFieldEdit {
-    /// `Some(v)` attaches/updates `ZIndexOverride(v)` (clamped to
-    /// ±i32::MAX/2 at commit); `None` detaches it (back to DFS).
-    ZIndex(Option<i32>),
-    /// `ZAsRelative(b)` (attaches the component if absent).
-    ZAsRelative(bool),
-    /// Toggle the `ShowBehindParent` marker (insert / remove).
-    ShowBehindParent(bool),
-    /// `SortingLayer(LayerId(idx))`.
-    SortingLayer(u8),
-    /// `OrderInLayer(v)`.
-    OrderInLayer(i32),
-    /// `YSort.enabled` (read-modify-write the YSort component).
-    YSortEnabled(bool),
-    /// `YSort.sort_point` tag: 0 Center · 1 Pivot · 2 Custom.
-    YSortPoint(u8),
-    /// `YSort.axis`.
-    YSortAxis([f32; 2]),
-    /// Toggle `SortingGroup` presence (insert default / remove).
-    SortingGroup(bool),
-    /// `SortingGroup.sort_at_root` (attaches the component if absent).
-    SortAtRoot(bool),
-    /// Toggle the `TopLevel` marker (insert / remove).
-    TopLevel(bool),
+    // ⛔ **`PerCornerTint([[f32;4];4])` e `Offset([f32;2])` foram REMOVIDOS em 2026-08-21.**
+    //
+    // Os dois eram variantes «o objeto inteiro» de gestos que editam **uma parte**, e os dois
+    // ficaram sem emissor pela mesma lei: numa multi-seleção, mandar o valor completo da PRIMÁRIA
+    // atropela o que diverge nas outras. O `Offset` já tinha sido superado por `OffsetX`/`OffsetY`
+    // (audit D-1) e sobrevivia como um braço consumidor que nunca disparava; o `PerCornerTint`
+    // seguiu-o quando o canto ganhou `PerCornerTintAt`.
+    //
+    // ⚠️ *Um variante sem emissor não é «API pronta para quando alguém precisar»: é um braço morto
+    // que lê como funcionalidade.* Se a autoria por script vier a querer escrever os quatro cantos
+    // de uma vez, o gesto certo é quatro `PerCornerTintAt` — que é o que o fan-out sabe respeitar.
+    /// **UM canto** — `(índice `0..=3` na ordem TL/TR/BL/BR, rgba linear)`.
+    ///
+    /// O irmão de `OffsetX`/`OffsetY` e de `RegionX/Y/W/H`, e pela lei que os criou: *um gesto que
+    /// edita um eixo não pode carregar os outros três consigo.*
+    PerCornerTintAt(u8, [f32; 4]),
+    /// **Igualar os cantos ao TL** — sem carga, de propósito.
+    ///
+    /// ⚠️ A versão anterior deste botão mandava `PerCornerTint([tl_da_primária; 4])`, o que numa
+    /// multi-seleção punha o TL **da primária** nas quatro pontas de todas as outras. «Igualar»
+    /// é uma operação **sobre cada sprite**, não a difusão de um valor; sem carga, cada uma iguala
+    /// pelo seu próprio TL.
+    EqualizeCorners,
 }
 
 /// Snapshot of the selected entity's W3 §9 sampling components

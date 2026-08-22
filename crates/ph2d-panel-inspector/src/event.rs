@@ -107,10 +107,9 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         && id == ids::INSP_SPRITE_CORNER_EQUALIZE
         && let Some(info) = state::current_inspector_sprite()
     {
-        let tl = info.per_corner_tint[0];
         host.bus_mut().push(EditorAction::InspectorSpriteEdit {
             entity_bits: info.entity_bits,
-            edit: SpriteFieldEdit::PerCornerTint([tl; 4]),
+            edit: SpriteFieldEdit::EqualizeCorners,
         });
         // Momentary button — demote the visual back to Normal so it
         // doesn't stick Pressed after the click.

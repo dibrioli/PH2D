@@ -484,10 +484,13 @@ fn sync_sprite_fields(
             host.store_mut().set_widget_color(swatch_id, committed);
         }
     }
-    // Per-corner tint swatches (TL, TR, BL, BR). Same regime as
-    // Tint/Self, but `PerCornerTint` has no per-index variant, so the
-    // edit carries the WHOLE [[f32;4];4] array with just the picked
-    // corner replaced.
+    // Per-corner tint swatches (TL, TR, BL, BR). Same regime as Tint/Self.
+    //
+    // ⚠️ **Um canto por edição** (`PerCornerTintAt`), e não o array inteiro. Enquanto o edit
+    // carregava os quatro cantos da PRIMÁRIA, o fan-out de BulkSelect atropelava os cantos
+    // divergentes de todas as outras — enquanto o painter pintava «Mixed» para esse mesmo estado.
+    // *A promessa e o verbo discordavam* (auditoria `docs/Sprite_projeto/20` §3.2). É a lei que já
+    // tinha criado `OffsetX`/`OffsetY` e `RegionX/Y/W/H`; faltava aplicá-la aqui.
     let corner_ids = [
         ids::INSP_SPRITE_CORNER_TL,
         ids::INSP_SPRITE_CORNER_TR,
@@ -500,11 +503,12 @@ fn sync_sprite_fields(
             if let Some(picked) = host.store().widget_color(corner_id)
                 && picked != committed
             {
-                let mut arr = sp.per_corner_tint;
-                arr[i] = state::tint_u8_to_f32(picked);
                 host.bus_mut().push(EditorAction::InspectorSpriteEdit {
                     entity_bits: sp.entity_bits,
-                    edit: SpriteFieldEdit::PerCornerTint(arr),
+                    edit: SpriteFieldEdit::PerCornerTintAt(
+                        u8::try_from(i).unwrap_or(0),
+                        state::tint_u8_to_f32(picked),
+                    ),
                 });
             }
         } else {

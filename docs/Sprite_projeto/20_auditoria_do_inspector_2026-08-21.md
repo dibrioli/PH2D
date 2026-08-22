@@ -12,6 +12,26 @@
 > Chesterton e um que é dead-by-design. *Um ❌ «recusado com motivo» e um ❌ «ninguém fez» leem
 > igual numa lista.*
 
+## §0-bis — PLACAR (atualizado 2026-08-21, no fim da jornada)
+
+> ⚠️ **Leia isto ANTES do resto.** O corpo deste doc é o retrato do que a auditoria *encontrou*;
+> a maior parte já foi curada na mesma jornada. Tratar um item ✅ como aberto é reconstruir trabalho
+> pago — a doença que a tabela `⛔ Não persiga` (§7) existe para impedir.
+
+| Frente | O quê | Estado |
+|---|---|---|
+| 1 | 3 cabeçalhos que não dobravam · 7 pontos de cor mortos | ✅ **curado** — uma tabela `ids::LIVE_SECTIONS`, e o gate derivado `every_painted_id_is_reachable` |
+| 2 | «Anti-halo: enabled» sobre feature inexistente · Texture Filter a reportar Linear sobre Nearest · 6 docs a descrever código apagado | ✅ **curado** — e o teto do filtro subiu de 3 para os **7** modos que o motor tem |
+| 3 | Region apagado pela troca de precisão · `SpriteSheetRef` órfão · «Individual» mudo · botões acesos sobre read-only | ✅ **curado** — `SamplingWindow` nomeado por chamador, porta `drop_sheet_authorship`, dois avisos que faltavam |
+| 4 | 6 verbos sem fan-out · 7 controlos a ignorar «misto» · cantos a atropelar | ✅ **curado** — 3 verbos declaram por escrito que **não** espalham (com razão), e o gate `every_inspector_verb_declares_its_bulk_behaviour` cobra a declaração |
+| 5 | 5 cadáveres · 3 contagens envelhecidas | ✅ **curado** — e os números foram trocados por ponteiros para a fonte, não por números novos |
+| **6** | **A suíte que não existe** — 30 testes `#[cfg(any())]`, ~132 controlos com 7 gates | ⏸️ **ABERTO** — a maior, medida em dias |
+| 7 | O registo: `CLAUDE.md` dizia «fechado sem pendência»; 4 goldens com gatilho já disparado | ✅ **curado** — este placar, a entrada nova no §5 e as 4 notas reconferidas |
+
+**Continua aberto e é decisão de produto, não defeito:** as **3 seções que nunca foram construídas**
+(§5 9-Slice · §11 Animation · §12 Sockets/Âncoras) e a metade do slot Material — §6 abaixo.
+⚠️ O **ADR-0072 está `Accepted`** sobre um `NamedAnchorList` que não existe em código nenhum.
+
 ## §0 — Método (e por que sete lentes e não uma)
 
 Seis subagentes em paralelo, cada um com **uma pergunta diferente**, para que nenhum herdasse o

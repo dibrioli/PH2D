@@ -33,6 +33,19 @@ Um Inspector de Sprite que casa **profundidade-de-Godot** (skew, modulate hierá
 
 **12 seções canônicas** (detalhe em [`03_inspector_secoes.md`](03_inspector_secoes.md)). Cap `inspector_section_count_canonical = 12` FROZEN (pre-W0 audit corrigiu inconsistência prévia "11"):
 
+> ⚠️ **MEDIDO 2026-08-21 — existem 9, e a 10ª é meia.** As seções **5 (9-Slice)**, **11 (Animation)**
+> e **12 (Sockets/Âncoras)** nunca foram construídas: `git grep SliceNine` devolve **zero** em todo o
+> repo, e `SpriteAnimator`/`NamedAnchor` só aparecem em doc-comments e em testes `#[ignore]`. A **10
+> (Material & Blend)** tem o Blend real e o slot Material como *placeholder read-only*.
+>
+> ⛔ **E o cap `inspector_section_count_canonical` nunca foi escrito** — «FROZEN» descreve uma
+> intenção, não um gate: `git grep` por esse nome só encontra este documento. Dois irmãos na mesma
+> situação: `sprite_inspector_i18n_keys_present` ([16](16_i18n_catalog.md)) e
+> `bulk_edit_confirmation_required_fields` ([03 §3.14](03_inspector_secoes.md)).
+>
+> *Um cap declarado num doc e ausente do código é um número que ninguém defende.* Placar completo e
+> o que já foi curado: [20 — auditoria de 7 lentes](20_auditoria_do_inspector_2026-08-21.md).
+
 1. **Identity** — Name · Tags · Notes
 2. **Transform** — Position · Rotation · Scale · **Skew X/Y** · Top Level · Reset · Look At
 3. **Render Source** (existente, ampliada) — Strategy · Storage detail · Source W×H · **Region toggle + Rect** · **Region Filter Clip** · Pixel Format · Reimport

@@ -15,6 +15,22 @@
 //! As each wave lands its `.scene` fixture + PNG goldens, the gate
 //! grows to actually load the scenes through `./play.command`
 //! headless and bit-compare against the goldens.
+//!
+//! # ⚠️ ESTADO MEDIDO EM 2026-08-21 (auditoria `docs/Sprite_projeto/20` §6.1)
+//!
+//! **Nada disto foi construído.** As duas pastas contêm **um README cada e zero ficheiros**; o
+//! único teste que corre afirma que as pastas existem — uma tautologia. Os quatro testes de golden
+//! são `unimplemented!()` sob `#[ignore]`.
+//!
+//! E o mais importante: **o gatilho escrito no `#[ignore]` de dois deles JÁ DISPAROU.** As notas
+//! diziam *«quando a W2 aterrar per_corner_tint + self_tint + tint_fill + opacity»* e *«depende de
+//! SortingLayer / ZIndexOverride / YSort / SortingGroup / ShowBehindParent»* — e as **nove** peças
+//! existem, medidas. As notas ficaram a apontar para um futuro que já é passado.
+//!
+//! ⛔ **O bloqueio real não é o que elas dizem.** É a ausência de três coisas que ninguém escreveu:
+//! os `.scene`, os PNG de referência, e um **arnês de render headless** que os compare. Cada nota
+//! abaixo foi reescrita para nomear ISSO — *quem move o número que tornava algo inalcançável tem de
+//! reconferir a nota* (`CLAUDE.md` §0.0).
 
 use std::path::PathBuf;
 
@@ -57,7 +73,7 @@ fn smoke_goldens_dir_canonical_path_exists() {
 }
 
 #[test]
-#[ignore = "W2.T2.X smoke fixture: smoke_w2_color_tint.scene + 5 PNG goldens. Un-ignore + replace body when the W2 wave lands its scene + per_corner_tint + self_tint + tint_fill + opacity features."]
+#[ignore = "W2 goldens NAO EXISTEM. ⚠️ O gatilho antigo ('quando a W2 aterrar per_corner_tint/self_tint/tint_fill/opacity') JA' DISPAROU -- os quatro existem desde 2026-05. O que falta e' o que ninguem escreveu: smoke_w2_color_tint.scene, os 5 PNG e um arnes de render headless."]
 fn w2_smoke_scene_loads_without_panic_and_matches_goldens() {
     unimplemented!(
         "W2.T2.X smoke fixture not yet wired. Replace this body with: \
@@ -69,7 +85,7 @@ fn w2_smoke_scene_loads_without_panic_and_matches_goldens() {
 }
 
 #[test]
-#[ignore = "W3.T3.X smoke fixture: smoke_w3_sorting.scene + 5 PNG goldens. Depends on SortingLayer / ZIndexOverride / YSort / SortingGroup / ShowBehindParent landing in W3."]
+#[ignore = "W3 goldens NAO EXISTEM. ⚠️ O gatilho antigo (SortingLayer/ZIndexOverride/YSort/SortingGroup/ShowBehindParent) JA' DISPAROU -- os cinco componentes existem. Falta smoke_w3_sorting.scene, os 5 PNG e o arnes headless."]
 fn w3_smoke_scene_loads_without_panic_and_matches_goldens() {
     unimplemented!(
         "W3.T3.X smoke fixture not yet wired. Replace this body with: \
@@ -81,7 +97,7 @@ fn w3_smoke_scene_loads_without_panic_and_matches_goldens() {
 }
 
 #[test]
-#[ignore = "W4.T4.X smoke fixture: smoke_w4_material_animation.scene + 3 PNG goldens. Depends on Material + UseParentMaterial + InstanceShaderParams + SpriteAnimator."]
+#[ignore = "W4 goldens NAO EXISTEM, e o gatilho AINDA E' VERDADE: `SpriteAnimator` e `InstanceShaderParams` nao tem implementacao nenhuma (a §11 Animation nunca foi construida -- `docs/Sprite_projeto/20` §6)."]
 fn w4_smoke_scene_loads_without_panic_and_matches_goldens() {
     unimplemented!(
         "W4.T4.X smoke fixture not yet wired. Replace this body with: \
@@ -93,7 +109,7 @@ fn w4_smoke_scene_loads_without_panic_and_matches_goldens() {
 }
 
 #[test]
-#[ignore = "W5.T5.X smoke fixture: smoke_w5_named_anchors.scene + 4 PNG goldens. Depends on NamedAnchorList (socket / slice / 9slice) + per-frame override."]
+#[ignore = "W5 goldens NAO EXISTEM, e o gatilho AINDA E' VERDADE: `NamedAnchorList` nao existe em codigo nenhum, apesar de o ADR-0072 estar Accepted (a §12 nunca foi construida -- `docs/Sprite_projeto/20` §6)."]
 fn w5_smoke_scene_loads_without_panic_and_matches_goldens() {
     unimplemented!(
         "W5.T5.X smoke fixture not yet wired. Replace this body with: \

@@ -523,9 +523,23 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **CONGELADO** — §6; fan-out aberto) · [`2026-05-wave-11-carry-overs.md`](docs/plans/2026-05-wave-11-carry-overs.md)
   ([ADR-0042](docs/architecture/decisions/0042-wave-10-closure.md)) ·
   [história](docs/archive/estado-2026-08-18/planos-de-nos.md).
-  Fechados sem pendência: **Sprite Inspector v2** ([ADR-0069..0074](docs/architecture/decisions/)) · **KTX2 Fase 2**
+  Fechados sem pendência: **KTX2 Fase 2**
   ([ADR-0055](docs/architecture/decisions/0055-cooked-texture-compression-pipeline.md), W3 = integração com o Painter) · **imageio AVIF**
   ([ADR-0054](docs/architecture/decisions/0054-imageio-pipeline.md)).
+
+- **Sprite Inspector** ([ADR-0069..0074](docs/architecture/decisions/)) — ⚠️ **esta linha dizia
+  «fechado sem pendência» e a spec pede 12 seções: existem 9** (a 10ª é meia — o slot Material é
+  placeholder). ⛔ **9-Slice · Animation · Sockets/Âncoras nunca foram construídas**, e o ADR-0072
+  (âncoras) está `Accepted` sobre código que não existe. Estava escrito desde 2026-05-31 num handoff
+  **arquivado**, e o roteador dizia o contrário — *a informação existia; o roteador é o que se lê*.
+  **Aberto:** a suíte de regressão que **30 testes `#[cfg(any())]` esperam há dois meses**
+  (`inspector_regression.rs`, nunca criado) — hoje ~132 controlos têm **7** gates · os 4 goldens são
+  `unimplemented!()` e as pastas têm só README · três gates declarados na spec e nunca escritos
+  (`inspector_section_count_canonical` · `sprite_inspector_i18n_keys_present` ·
+  `bulk_edit_confirmation_required_fields`, este último é o que destrava o fan-out dos 3 verbos
+  destrutivos).
+  **Ler:** ⚠️ [auditoria de 7 lentes](docs/Sprite_projeto/20_auditoria_do_inspector_2026-08-21.md)
+  (o que estava morto/incompleto, **com o que já foi curado marcado**) · [spec](docs/Sprite_projeto/README.md)
 
 ## §6 — Contratos congelados (mexer = Coord-only + ADR; DIRETRIZ §4)
 

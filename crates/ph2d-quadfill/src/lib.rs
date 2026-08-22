@@ -46,5 +46,7 @@ pub mod report;
 /// **A COSTURA** — amostragem partilhada e montagem — ver [`stitch`].
 pub mod stitch;
 
-pub use report::{FillError, FillReport, Provenance, folded_against, folded_by_neighbours};
+pub use report::{
+    FillError, FillReport, Provenance, detail_lost, folded_against, folded_by_neighbours,
+};
 pub use stitch::{SMOOTHING_ROUNDS, fill};

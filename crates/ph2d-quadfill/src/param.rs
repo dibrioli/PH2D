@@ -256,7 +256,7 @@ impl PatchParam {
     /// aresta partilhada por dois triângulos cai no primeiro que o aceitar, e os
     /// dois devolvem o mesmo ponto — a interpolação baricêntrica é contínua
     /// através da aresta.
-    pub(crate) fn sample(&self, q: [f32; 2]) -> Option<[f32; 3]> {
+    pub(crate) fn sample(&self, q: [f32; 2]) -> Option<([f32; 3], [f32; 3])> {
         let c = cell(q, self.side);
         for ring in 0..=1i64 {
             for dy in -ring..=ring {
@@ -280,7 +280,15 @@ impl PatchParam {
         None
     }
 
-    fn at(&self, t: usize, q: [f32; 2]) -> Option<[f32; 3]> {
+    /// O ponto 3D e a **NORMAL do triângulo** em que ele caiu.
+    ///
+    /// ⭐⭐ **A normal viaja com o ponto porque a reprojeção precisa dela.** Ver
+    /// [`ph2d_remesh_iso::project_facing`]: dentro de um vinco côncavo o ponto mais
+    /// próximo da superfície original pode estar do **outro lado** da dobra, e é
+    /// isso que rasga a malha. O ponto sabe de que lado veio — ele nasceu sobre uma
+    /// face concreta da malha achatada —, e essa informação estava a ser deitada
+    /// fora uma linha antes de quem precisava dela.
+    fn at(&self, t: usize, q: [f32; 2]) -> Option<([f32; 3], [f32; 3])> {
         let tri = self.tris[t];
         let (a, b, c) = (
             self.uv[tri[0] as usize],
@@ -310,7 +318,21 @@ impl PatchParam {
                 p[j] = w[k].mul_add(s[j], p[j]);
             }
         }
-        Some(p)
+        let (p0, p1, p2) = (
+            self.pos[tri[0] as usize],
+            self.pos[tri[1] as usize],
+            self.pos[tri[2] as usize],
+        );
+        let (e1, e2) = (
+            [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]],
+            [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]],
+        );
+        let n = [
+            e1[1].mul_add(e2[2], -(e1[2] * e2[1])),
+            e1[2].mul_add(e2[0], -(e1[0] * e2[2])),
+            e1[0].mul_add(e2[1], -(e1[1] * e2[0])),
+        ];
+        Some((p, n))
     }
 }
 

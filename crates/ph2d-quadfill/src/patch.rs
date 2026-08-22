@@ -140,7 +140,15 @@ impl Domain<'_> {
         } else {
             (ok, miss + 1)
         });
-        pts.push_on(surface, hit.unwrap_or(fallback), seed, prov)
+        // ⭐⭐ **A normal viaja com o ponto.** Ele nasceu sobre uma face concreta do
+        // patch achatado, então sabe de que lado da forma veio — e é essa a
+        // informação que impede a reprojeção de o mandar para o outro lado de um
+        // vinco côncavo. Ver [`ph2d_remesh_iso::project_facing`].
+        let (p, facing) = match hit {
+            Some((p, n)) => (p, Some(n)),
+            None => (fallback, None),
+        };
+        pts.push_facing(surface, p, seed, facing, prov)
     }
 }
 

@@ -111,7 +111,7 @@ pub fn fill(
     check_arcs_belong_to(indexed, layout)?;
     let src = indexed.positions();
     // ⭐⭐ **TODO ponto de INTERIOR nasce POUSADO na superfície.** Ver
-    // [`Points::push_on`].
+    // [`Points::push_facing`].
     let seed = bbox_seed(surface);
     let mut pts = Points::new();
     let mut faces: Vec<Face> = Vec::new();
@@ -480,7 +480,17 @@ fn smooth_once(mesh: &mut Mesh, reference: &Mesh) {
             ];
         }
     }
-    for q in &mut next {
+    // ⛔⛔ **AQUI a reprojeção é SEM direção, e a alternativa foi medida e
+    // rejeitada.** Parece a irmã da colocação — que passou a levar a normal para
+    // não atravessar um vinco côncavo ([`ph2d_remesh_iso::project_facing`]) — mas
+    // não é: lá a normal é um **facto** (o ponto nasceu sobre uma face concreta do
+    // patch achatado); aqui seria a normal de vértice da malha **que o alisamento
+    // está a mexer**, ou seja uma estimativa que a própria ronda invalida.
+    //
+    // Medido em 2026-08-22, esfera 24×36: com a direção no alisamento as dobras
+    // foram de **1 para 10** e a aresta máxima de `2,58×` para `5,85×`. *Uma
+    // estimativa que se realimenta é pior que nenhuma.*
+    for q in next.iter_mut() {
         *q = ph2d_remesh_iso::project_onto(reference, *q, seed);
     }
     mesh.positions_mut().copy_from_slice(&next);

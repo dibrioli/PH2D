@@ -11,7 +11,9 @@
 //! segunda resposta a *"como uma crista é feita"*, e ela divergiria da primeira
 //! no dia em que o depósito mudasse.
 
-use super::fixtures::{hooked_sphere, punctured_sphere, ridged_sphere, wrinkled_sphere};
+use super::fixtures::{
+    eared_sphere, hooked_sphere, punctured_sphere, ridged_sphere, wrinkled_sphere,
+};
 
 /// A cena está armada? — **qualquer nível ≥ 1**.
 ///
@@ -358,6 +360,11 @@ pub(crate) mod filter;
 #[path = "sculpt3d_scenes_quad.rs"]
 pub(crate) mod quad;
 
+/// **A CENA DA ORELHA** (`=36`) — a retopologia sobre um vinco CÔNCAVO fundo, que
+/// é a feição que nenhuma outra fixtura tinha. Irmã da [`quad`].
+#[path = "sculpt3d_scenes_ear.rs"]
+pub(crate) mod ear;
+
 /// **A CENA DA DEMÃO** (`=33`) — irmã da [`surface`] pela mesma linha de corte.
 #[path = "sculpt3d_scenes_layer.rs"]
 pub(crate) mod layer;
@@ -425,6 +432,12 @@ pub(crate) fn smoke_mesh() -> ph2d_mesh::Mesh {
     // dois chips novos leriam como controles mortos.
     // ⚠️ A `=35` abre na MESMA malha rugosa: uma retopologia só se distingue de
     // um voxel remesh se houver FORMA para a grade seguir.
+    // ⭐ **A `=36` abre na ORELHA**, e a razão é a mesma que pôs a `=35` na
+    // amassada, um degrau acima: uma retopologia só se julga sobre a feição que ela
+    // tem de preservar, e um vinco côncavo fundo é a que a quebra.
+    if ear::ear_scene() {
+        return eared_sphere();
+    }
     if cavity_scene() || filter::filter_scene() || quad::quad_scene() {
         return wrinkled_sphere();
     }

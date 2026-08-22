@@ -273,6 +273,34 @@ const LAMBDA: f32 = 0.5;
 /// sobre uma parte esparsa do modelo, e a projeção vira um no-op **silencioso** —
 /// o Laplaciano então roda sem freio e a peça encolhe.
 pub fn project_onto(mesh: &Mesh, p: [f32; 3], seed_radius: f32) -> [f32; 3] {
+    project_facing(mesh, p, seed_radius, None)
+}
+
+/// **O PONTO MAIS PRÓXIMO QUE OLHA PARA O MESMO LADO.**
+///
+/// ⭐⭐ **Dentro de um vinco CÔNCAVO o ponto mais próximo pode estar do outro lado
+/// da dobra**, e é aí que a malha rasga. A razão é geométrica e não numérica: o
+/// eixo medial de uma concavidade **encosta na superfície**, então dois pontos a
+/// milímetros um do outro têm pés opostos. Um deles atravessa a dobra, e a face
+/// entre os dois vira uma lasca — a fenda que a foto de 2026-08-22 mostra colada à
+/// borda da orelha.
+///
+/// ⚠️ **A cura clássica não é um raio menor: é uma DIREÇÃO.** Com `facing =
+/// Some(n)`, uma face candidata só entra se a normal dela concordar com `n`. Sem
+/// candidato nenhum que concorde, ela **cai para o mais próximo** — porque uma
+/// projeção que falha é pior que uma que erra de lado: o Laplaciano roda sem freio
+/// e a peça encolhe.
+///
+/// ⚠️ **O limiar é `0`, e não um cosseno afinado.** *Do mesmo lado* é uma pergunta
+/// de sinal; qualquer número acima disso seria uma segunda escolha a defender, e a
+/// superfície de referência é um poliedro cujas normais saltam de faceta em faceta.
+#[must_use]
+pub fn project_facing(
+    mesh: &Mesh,
+    p: [f32; 3],
+    seed_radius: f32,
+    facing: Option<[f32; 3]>,
+) -> [f32; 3] {
     let b = mesh.bounds();
     let d = [
         b.max[0] - b.min[0],
@@ -294,9 +322,19 @@ pub fn project_onto(mesh: &Mesh, p: [f32; 3], seed_radius: f32) -> [f32; 3] {
         return p;
     }
     let (verts, faces) = (mesh.positions(), mesh.faces());
+    let normals = mesh.face_normals();
     let (mut best, mut best_p) = (f32::INFINITY, p);
+    // ⚠️ **O de RECURSO é acumulado na mesma passagem**, e não numa segunda: uma
+    // segunda varredura pagaria a consulta ao octree outra vez, e o caminho sem
+    // candidato concordante é justamente o caro.
+    let (mut any, mut any_p) = (f32::INFINITY, p);
     for &f in &hits {
         let v = faces[f as usize].verts();
+        let agrees = facing.is_none_or(|n| {
+            normals
+                .get(f as usize)
+                .is_none_or(|m| n[0].mul_add(m[0], n[1].mul_add(m[1], n[2] * m[2])) > 0.0)
+        });
         for k in 1..v.len() - 1 {
             let q = closest_on_triangle(
                 p,
@@ -306,13 +344,17 @@ pub fn project_onto(mesh: &Mesh, p: [f32; 3], seed_radius: f32) -> [f32; 3] {
             );
             let d = sub(q, p);
             let dist = dot(d, d);
-            if dist < best {
+            if dist < any {
+                any = dist;
+                any_p = q;
+            }
+            if agrees && dist < best {
                 best = dist;
                 best_p = q;
             }
         }
     }
-    best_p
+    if best.is_finite() { best_p } else { any_p }
 }
 
 /// O ponto do triângulo mais próximo de `p` — as sete regiões de Voronoi.

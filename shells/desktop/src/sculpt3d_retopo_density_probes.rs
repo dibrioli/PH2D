@@ -420,3 +420,95 @@ fn does_follow_curvature_reach_the_global_chain() {
         }
     }
 }
+
+/// ⭐⭐ **SONDA — A ORELHA SOBREVIVE?** (as fotos de 2026-08-22)
+///
+/// ⛔ **A terceira foto mostra a orelha ACHATADA**, e nenhuma régua do relatório a
+/// veria: 100 % de quads, casca fechada, contagem de irregulares boa. *Uma peça
+/// pode passar em toda asserção e ter perdido a forma.*
+///
+/// ⭐ **A régua nova é a [`ph2d_quadfill::detail_lost`], e o SENTIDO é o ponto
+/// inteiro**: `referência → saída`. O contrário é tautológico — a última coisa que
+/// a montagem faz é pousar cada ponto na referência.
+///
+/// ⭐⭐ **E a coluna que decide é a `F1`**: a mesma régua aplicada à malha
+/// remalhada, **antes** de a cadeia começar. Se a orelha já morreu ali, nenhum
+/// conserto a jusante a traz de volta — e a cura é outra (o `α` do F1), não o
+/// traçado nem a montagem.
+///
+/// ```text
+/// \
+///   cargo test -p ph2d-host-desktop --release --bins \
+///   does_the_ear_survive_the_chain -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda -- a orelha sobrevive a' cadeia?"]
+fn does_the_ear_survive_the_chain() {
+    let reference = crate::sculpt3d::fixtures::eared_sphere();
+    println!(
+        "── orelha: {} vertices, {} faces ──",
+        reference.vert_count(),
+        reference.faces().len()
+    );
+    for alpha_mult in [1.0f32, 0.5] {
+        let alpha = ph2d_remesh_iso::ALPHA * alpha_mult;
+        let mut work = reference.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, alpha);
+        work.triangulate();
+        // ⭐⭐ **O QUE O F1 JÁ CUSTOU**, antes de a cadeia começar.
+        let (f1_p95, f1_max) = ph2d_quadfill::detail_lost(&reference, &work);
+        println!(
+            "  α {:.4} | work {:>7} tris | ⭐ o F1 sozinho ja' perdeu p95 {:.3} % max {:.3} % \
+             da diagonal",
+            alpha,
+            work.faces().len(),
+            100.0 * f1_p95,
+            100.0 * f1_max
+        );
+        let dual = ph2d_crossfield::Dual::build(&work);
+        let (field, _) = ph2d_crossfield::solve_miq(&dual);
+        let layout = ph2d_trace::trace_patches(&work, &dual, &field);
+        for detail in [1.0f32] {
+            let target = ph2d_quadflow::edge_for_detail_with(
+                &reference,
+                detail,
+                ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
+            );
+            let Ok(spec) = layout.to_layout(target) else {
+                println!("    d={detail:.2} | o layout RECUSOU");
+                continue;
+            };
+            let Ok((quant, _)) =
+                ph2d_quantize::quantize_within(&spec, ph2d_quantize::Budget::new(256, 512))
+            else {
+                println!("    d={detail:.2} | a quantizacao RECUSOU");
+                continue;
+            };
+            match ph2d_quadfill::fill(
+                &work,
+                &reference,
+                &layout,
+                &quant,
+                ph2d_quadfill::SMOOTHING_ROUNDS,
+            ) {
+                #[allow(clippy::cast_precision_loss)]
+                Ok((out, r)) => {
+                    let (p95, mx) = ph2d_quadfill::detail_lost(&reference, &out);
+                    println!(
+                        "    d={detail:.2} alvo {target:.4} | {:>6} quads {:>4} irreg {:>3} bordo \
+                         | dobras {:>4} ({:.2} %) | ⭐ PERDEU p95 {:.3} % max {:.3} % | patches {}",
+                        r.quads,
+                        r.irregular,
+                        r.boundary_edges,
+                        r.folded_local,
+                        100.0 * r.folded_local as f64 / r.quads.max(1) as f64,
+                        100.0 * p95,
+                        100.0 * mx,
+                        r.patches,
+                    );
+                }
+                Err(e) => println!("    d={detail:.2} | a montagem RECUSOU {e:?}"),
+            }
+        }
+    }
+}

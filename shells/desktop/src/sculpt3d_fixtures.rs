@@ -188,3 +188,83 @@ pub(super) fn wrinkled_sphere() -> ph2d_mesh::Mesh {
     }
     mesh
 }
+
+/// ⭐⭐ **A esfera com uma ORELHA** — a fixtura que contém o fenómeno das fotos de
+/// 2026-08-22, e que nenhuma das outras continha.
+///
+/// ⚠️ **O que a torna diferente não é ser mais difícil: é a ESPÉCIE da feição.** A
+/// `ridged` tem cristas (convexas), a `wrinkled` sulcos rasos, a `hooked` um bico
+/// esticado. Nenhuma tem o que uma orelha tem — **uma borda saliente com um vinco
+/// FUNDO e CÔNCAVO colado a ela**, que é a geometria em que:
+///
+/// | o quê | por que a orelha o expõe |
+/// |---|---|
+/// | ⛔ a **projeção pelo ponto mais próximo** | dentro de um vinco côncavo o ponto mais próximo pode estar do **outro lado** da dobra — o eixo medial encosta na superfície |
+/// | ⛔ a **remalha isotrópica** do F1 | ela remalha para `α × diagonal`, e a espessura da borda da orelha é **menor que isso** ⇒ a feição desaparece antes de o traçado a ver |
+/// | ⛔ o **campo cruzado** | as direções principais giram 90° ao atravessar a crista, e é ali que as singularidades se acumulam |
+///
+/// ⚠️ **Esculpida com os verbos do produto**, a lei deste ficheiro: a borda com
+/// `Draw`, o vinco com `Crease` e a concha com um `Draw` invertido. Um relevo
+/// escrito à mão nos vértices seria uma segunda resposta a *"o que um Crease
+/// deixa"*.
+#[must_use]
+pub(super) fn eared_sphere() -> ph2d_mesh::Mesh {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(128, 192, 1.0);
+    let mut stroke = SculptStroke::default();
+    const STEPS: usize = 96;
+    // O centro da orelha, na calota que olha para a câmera.
+    let c = [0.42f32, 0.10, 0.90];
+    let (u, v) = ([0.90f32, 0.0, -0.42], [0.0f32, 1.0, 0.0]);
+    let on = |a: f32, r: f32| {
+        let p = [
+            c[0] + r * (a.cos() * u[0] + a.sin() * v[0]),
+            c[1] + r * (a.cos() * u[1] + a.sin() * v[1]),
+            c[2] + r * (a.cos() * u[2] + a.sin() * v[2]),
+        ];
+        // De volta à esfera: a fixtura é uma orelha NA esfera, não no espaço.
+        let l = p[0]
+            .mul_add(p[0], p[1].mul_add(p[1], p[2] * p[2]))
+            .sqrt()
+            .max(1.0e-6);
+        [p[0] / l, p[1] / l, p[2] / l]
+    };
+    // ⚠️ **Três passes, e a ordem importa:** a borda primeiro (ela dá o volume), o
+    // vinco depois (ele morde a borda que já existe), a concha por último. Cavar
+    // antes de levantar deixaria o vinco no meio de nada.
+    for (verb, radius, strength, r0, inward) in [
+        (Verb::Draw, 0.11f32, 1.0f32, 0.30f32, false),
+        (Verb::Crease, 0.055, 1.0, 0.235, false),
+        (Verb::Draw, 0.13, 0.55, 0.10, true),
+    ] {
+        let brush = Brush {
+            verb,
+            radius,
+            strength,
+            ..Brush::default()
+        };
+        // ⚠️ Duas voltas: um `reach` por traço é a lei do envelope, e uma volta só
+        // deixa a borda rasa demais para o vinco ter em que morder.
+        for _ in 0..2 {
+            stroke.begin(&mesh);
+            for i in 0..=STEPS {
+                let a = std::f32::consts::TAU * i as f32 / STEPS as f32;
+                // ⚠️ A orelha não é um círculo: `0,72` no eixo vertical é o que a
+                // torna uma forma com um lado mais fechado que o outro, que é onde
+                // o vinco fica mais apertado.
+                let p = on(a, r0 * (1.0 - 0.28 * a.sin().abs()));
+                let dir = if inward {
+                    [p[0], p[1], p[2]]
+                } else {
+                    [-p[0], -p[1], -p[2]]
+                };
+                stroke.dab(
+                    &mut mesh,
+                    &brush,
+                    &Dab::at(p, radius, dir),
+                    Symmetry::default(),
+                );
+            }
+        }
+    }
+    mesh
+}

@@ -238,6 +238,40 @@ pub fn folded_against(reference: &Mesh, out: &Mesh) -> usize {
     folded
 }
 
+/// **QUANTO DA FORMA SE PERDEU** — a distância de cada vértice da referência ao
+/// ponto mais próximo da saída, em fração da diagonal. Devolve `(p95, máx)`.
+///
+/// ⭐⭐ **O SENTIDO é o ponto inteiro, e o contrário é uma régua TAUTOLÓGICA.** A
+/// última coisa que a montagem faz é pousar cada ponto na referência, então
+/// `saída → referência` dá ~zero **mesmo quando a peça está destruída** — foi
+/// exactamente isso que uma régua desta família mediu em 2026-08-21 (`0,0000` na
+/// malha destruída contra `0,0015` na boa: *a destruída pontuava melhor*).
+///
+/// ⭐ **`referência → saída` pergunta a coisa certa:** *"todo pedaço que o artista
+/// esculpiu tem malha nova por perto?"*. Uma orelha achatada deixa os vértices dela
+/// longe de tudo, e o número dispara — mesmo com 100 % de quads e casca fechada.
+///
+/// ⚠️ **O `p95` vem primeiro porque é ele que descreve a peça.** O máximo é de um
+/// vértice, e um único pico de importação move-o sem que nada se tenha perdido.
+#[must_use]
+pub fn detail_lost(reference: &Mesh, out: &Mesh) -> (f32, f32) {
+    let b = reference.bounds();
+    let d = sub(b.max, b.min);
+    let diag = norm(d).max(1.0e-9);
+    let seed = diag * 0.02;
+    let mut worst: Vec<f32> = Vec::with_capacity(reference.vert_count());
+    for &p in reference.positions() {
+        let q = ph2d_remesh_iso::project_onto(out, p, seed);
+        worst.push(norm(sub(q, p)) / diag);
+    }
+    worst.sort_by(f32::total_cmp);
+    if worst.is_empty() {
+        return (0.0, 0.0);
+    }
+    let k = (worst.len() * 95) / 100;
+    (worst[k.min(worst.len() - 1)], worst[worst.len() - 1])
+}
+
 /// **QUANTAS FACES DISCORDAM DOS PRÓPRIOS VIZINHOS** — a segunda régua, e ela
 /// **não consulta a referência**.
 ///
@@ -421,7 +455,20 @@ impl Points {
     /// alisamento REPARA e não CAUSA** — ele nunca chega a zero porque o estrago
     /// já veio pronto da construção. *Um remédio que melhora monotonicamente e não
     /// cura está a tratar o sintoma.*
-    pub(crate) fn push_on(&mut self, mesh: &Mesh, p: [f32; 3], seed: f32, from: Provenance) -> u32 {
-        self.push(ph2d_remesh_iso::project_onto(mesh, p, seed), from)
+    /// ⭐⭐ **E ele leva a DIREÇÃO de que lado o ponto veio.** Ver
+    /// [`ph2d_remesh_iso::project_facing`]: dentro de um vinco côncavo o ponto mais
+    /// próximo pode estar do **outro lado** da dobra — o eixo medial encosta na
+    /// superfície —, e a face entre dois vizinhos assim aterrados vira uma lasca.
+    /// `None` é o caminho antigo, e continua a ser o certo onde a direção seria uma
+    /// **estimativa** em vez de um facto (ver o alisamento em [`crate::stitch`]).
+    pub(crate) fn push_facing(
+        &mut self,
+        mesh: &Mesh,
+        p: [f32; 3],
+        seed: f32,
+        facing: Option<[f32; 3]>,
+        from: Provenance,
+    ) -> u32 {
+        self.push(ph2d_remesh_iso::project_facing(mesh, p, seed, facing), from)
     }
 }

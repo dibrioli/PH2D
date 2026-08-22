@@ -175,12 +175,13 @@ fn a_sculpture_whose_file_vanished_speaks_once() {
 #[test]
 fn the_missing_file_reaches_the_artist_through_the_bridge() {
     forget_tried();
-    let _ = crate::field3d_smoke::take_missing_report();
+    crate::field3d_notice::clear();
+    let _ = crate::field3d_notice::drain();
     let key = "/tmp/ph2d-w23-nunca-existiu.obj";
     let mut sim = SimWorld::new();
     let _ = crate::field3d_scene::sync_scene(&mut sim, Some(&a_part_naming(key)), 0.0);
 
-    let report = crate::field3d_smoke::take_missing_report();
+    let report = crate::field3d_notice::drain();
     assert!(
         report.iter().any(|m| m.contains("nunca-existiu.obj")),
         "o cozimento tem de ENTREGAR o aviso ao app; entregou {report:?}"

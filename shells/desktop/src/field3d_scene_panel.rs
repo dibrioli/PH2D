@@ -179,8 +179,16 @@ pub(crate) fn mods_for(
     let Some(&one) = selection.first() else {
         return Vec::new();
     };
-    if world.get::<FieldNode>(one).is_none() {
-        return Vec::new();
+    // ⭐ **Uma escultura não aceita modificadores** (W25) — e a fileira dela **não é pintada**.
+    //
+    // ⚠️ É a mesma lei que a fileira de operações já segue: *um controle que aparece e não faz nada
+    // é pior do que um que não aparece*. Antes desta linha, clicar em `Shell` com uma escultura
+    // selecionada escrevia um documento que o cozimento recusa, e a peça **inteira** sumia da tela
+    // sem uma palavra.
+    let shape = world.get::<FieldNode>(one).map(|n| &n.shape);
+    match shape {
+        None | Some(ph2d_field::NodeShape::Sampled { .. }) => return Vec::new(),
+        Some(_) => {}
     }
     let have = ph2d_field_ecs::mods_of(world, one);
     ph2d_field::UnaryKind::ALL

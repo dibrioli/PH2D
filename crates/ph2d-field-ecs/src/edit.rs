@@ -238,10 +238,21 @@ pub fn mods_of(world: &World, entity: Entity) -> Vec<Unary> {
 /// número absoluto seria invisível numa peça grande e engoliria uma pequena — nos dois casos o
 /// artista conclui que o botão não fez nada.
 ///
-/// No-op silencioso se a entidade não é um nó.
-pub fn add_mod(world: &mut World, entity: Entity, kind: ph2d_field::UnaryKind) {
-    if world.get::<FieldNode>(entity).is_none() {
-        return;
+/// Devolve `false` sem escrever nada quando a entidade não é um nó, ou é uma **escultura** (ver
+/// abaixo) — e é o `false` que deixa quem chamou dizê-lo ao artista.
+pub fn add_mod(world: &mut World, entity: Entity, kind: ph2d_field::UnaryKind) -> bool {
+    let Some(node) = world.get::<FieldNode>(entity) else {
+        return false;
+    };
+    // ⭐ **Uma escultura NÃO aceita modificadores, e a recusa é aqui** (W25).
+    //
+    // ⚠️ **A regra já existia — no documento** ([`ph2d_field::FieldError::ModsOnSampled`]) — e
+    // ninguém a consultava antes de escrever. O componente entrava no mundo, o cozimento do quadro
+    // seguinte recusava o documento inteiro, e a peça **inteira** desaparecia da tela com a
+    // Hierarquia intacta. *Uma invariante que só o validador conhece é uma invariante que a UI
+    // descobre partindo-se.*
+    if matches!(node.shape, NodeShape::Sampled { .. }) {
+        return false;
     }
     let born = Unary::born(kind, subtree_scale(world, entity));
     let mut e = world.entity_mut(entity);
@@ -250,6 +261,7 @@ pub fn add_mod(world: &mut World, entity: Entity, kind: ph2d_field::UnaryKind) {
     } else {
         e.insert(FieldMods { stack: vec![born] });
     }
+    true
 }
 
 /// ⭐ **Tira do nó o PRIMEIRO modificador daquela natureza**, e diz se tirou algum.

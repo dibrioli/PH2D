@@ -38,6 +38,47 @@ fn the_scene_field_does_not_depend_on_the_order_the_query_returns() {
     assert_eq!(one, two, "a ordem da consulta vazou para o documento");
 }
 
+/// ⭐ **A porta RECUSA um modificador sobre uma escultura** — e o mundo fica como estava.
+///
+/// ⚠️ **A regra já vivia no documento** ([`ph2d_field::FieldError::ModsOnSampled`]) e ninguém a
+/// consultava antes de escrever: o componente entrava, o cozimento do quadro seguinte recusava o
+/// documento **inteiro**, e a peça desaparecia da tela com a Hierarquia intacta. *Uma invariante que
+/// só o validador conhece é uma invariante que a UI descobre partindo-se.*
+///
+/// O gate mede as **duas** metades — a recusa **e** que uma forma normal continua a aceitar —, senão
+/// passaria com `add_mod` a recusar toda a gente.
+#[test]
+fn a_sculpture_refuses_a_modifier_and_the_world_is_left_alone() {
+    let mut world = bevy_ecs::world::World::new();
+    let sculpture = world
+        .spawn(FieldNode {
+            shape: NodeShape::Sampled {
+                key: "/tmp/uma.obj".into(),
+            },
+        })
+        .id();
+    let leaf = world
+        .spawn(FieldNode {
+            shape: NodeShape::Leaf(Primitive::Sphere { radius: 0.3 }),
+        })
+        .id();
+
+    assert!(
+        !add_mod(&mut world, sculpture, ph2d_field::UnaryKind::Shell),
+        "uma escultura não aceita modificadores — a recusa é da porta, não do validador"
+    );
+    assert!(
+        world.get::<FieldMods>(sculpture).is_none(),
+        "…e uma recusa não pode deixar rasto: um componente escrito e recusado é o documento \
+         inválido que a wave existe para impedir"
+    );
+    assert!(
+        add_mod(&mut world, leaf, ph2d_field::UnaryKind::Shell),
+        "uma forma normal TEM de continuar a aceitar — senão o gate acima passa com tudo partido"
+    );
+    assert_eq!(mods_of(&world, leaf).len(), 1);
+}
+
 /// Cena vazia não tem campo — e um documento vazio inventado aqui seria uma forma que ninguém pediu.
 #[test]
 fn an_empty_scene_has_no_field() {

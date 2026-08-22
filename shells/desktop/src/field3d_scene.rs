@@ -250,8 +250,14 @@ pub(crate) fn sync_scene_and_birth(
                     selection.first(),
                     ph2d_field::UnaryKind::ALL.get(slot).copied(),
                 ) && !ph2d_field_ecs::remove_mod(world, one, kind)
+                    && !ph2d_field_ecs::add_mod(world, one, kind)
                 {
-                    ph2d_field_ecs::add_mod(world, one, kind);
+                    // ⚠️ **A porta recusou** (uma escultura, W25) — e uma recusa muda seria a metade
+                    // errada da cura: o painel já não oferece a fileira, mas um clique que chegue
+                    // aqui por outro caminho tem de dizer porquê em vez de não fazer nada.
+                    crate::field3d_notice::say(crate::field3d_notice::explain(
+                        &ph2d_field::FieldError::ModsOnSampled { node: 0 },
+                    ));
                 }
             }
             // ⭐ **Combinar** — trocar a operação de uma, ou embrulhar as escolhidas numa nova.
@@ -300,7 +306,24 @@ pub(crate) fn sync_scene_and_birth(
     // `None` aqui, e a tela mostra o que o cozimento **de facto** produziu. Guardar o último
     // documento válido faria a tela mentir sobre a cena — que é exatamente o defeito que este
     // módulo acabou de pagar no cache do traçado.
-    let cooked = ph2d_field_ecs::cook(world, root).and_then(Result::ok);
+    // ⭐ **UMA PEÇA QUE NÃO COZINHA DIZ PORQUÊ** (W25). O `Err` estava a ser deitado fora por um
+    // `.and_then(Result::ok)`, e o resultado era a peça **inteira** a desaparecer da tela com a
+    // Hierarquia intacta e nada a explicar — indistinguível de um problema de câmera.
+    //
+    // ⚠️ **`None` e `Err` são coisas diferentes e só uma é um problema**: apagar o último filho de
+    // uma peça devolve `None` e é um gesto normal, cujo resultado normal é a tela ficar vazia.
+    let cooked = match ph2d_field_ecs::cook(world, root) {
+        Some(Ok(doc)) => {
+            // Voltou a estar bem: o próximo problema — mesmo que seja o mesmo — volta a ser dito.
+            crate::field3d_notice::clear();
+            Some(doc)
+        }
+        Some(Err(e)) => {
+            crate::field3d_notice::say(crate::field3d_notice::explain(&e));
+            None
+        }
+        None => None,
+    };
     // ⭐ **AS ESCULTURAS QUE FALTAM VOLTAM AQUI** (W23) — colado ao cozimento, e não no load do
     // projeto, por uma razão de alcance: o documento é quem **nomeia** as esculturas, e ele nasce
     // deste `cook`. Um gancho no `project_load` cobriria o Ctrl+O e deixaria de fora tudo o resto
@@ -311,7 +334,7 @@ pub(crate) fn sync_scene_and_birth(
     // conhecer todos os nomes, e aí `missing_keys` devolve vazio sem tocar no disco. Quem lê arquivo
     // é a **primeira** vez de cada nome (ver `field3d_reload`, e a tabela de custo no doc 06 §24).
     if let Some(doc) = cooked.as_ref() {
-        crate::field3d_smoke::report_missing(crate::field3d_reload::resolve_missing(doc));
+        crate::field3d_notice::say_all(crate::field3d_reload::resolve_missing(doc));
     }
     (
         cooked,

@@ -360,24 +360,10 @@ thread_local! {
     static SCULPT_EXTENT: std::cell::Cell<Option<f32>> = const { std::cell::Cell::new(None) };
 }
 
-/// ⭐ **As esculturas que NÃO voltaram do arquivo** (W23), pela mesma porta dos outros três pedidos.
-///
-/// ⚠️ Ela existe pela razão simétrica: quem descobre a falta é a ponte com a cena (é lá que o
-/// documento é cozido, e é o documento que nomeia as esculturas), e quem tem a fila de avisos é o
-/// app. Sem este canal o silêncio seria total — que é exactamente o defeito da W23.
-pub(crate) fn take_missing_report() -> Vec<String> {
-    MISSING.with(|c| std::mem::take(&mut *c.borrow_mut()))
-}
-
-pub(crate) fn report_missing(msgs: Vec<String>) {
-    if !msgs.is_empty() {
-        MISSING.with(|c| c.borrow_mut().extend(msgs));
-    }
-}
-
-thread_local! {
-    static MISSING: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
-}
+// ⚠️ **O canal de avisos VIVEU AQUI** (W23: as esculturas que não voltaram do arquivo) e mudou-se
+// para [`crate::field3d_notice`] na W25, quando apareceu o segundo produtor — a peça que não
+// cozinha. Dois canais paralelos teriam duas leis de repetição, dois drenos, e dois sítios onde
+// alguém se esquece de drenar. *O módulo fala por uma boca.*
 
 pub(crate) fn take_open_panel_request() -> bool {
     thread_local! {

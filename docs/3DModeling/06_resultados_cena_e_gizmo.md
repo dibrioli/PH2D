@@ -2011,6 +2011,87 @@ constante.*
 
 ---
 
+## §26 — W25: a peça que não cozinha DIZ porquê — e o clique que a partia deixou de existir (22/08)
+
+> Um clique. Selecionar uma escultura, carregar em **Shell**, e a peça **inteira** desaparecia da
+> tela — com a Hierarquia intacta e sem uma palavra. *Um erro engolido é pior do que um erro: ele
+> parece um problema de câmera.*
+
+### §26.1 — O mecanismo, e ele tinha três camadas todas «certas»
+
+| camada | o que fazia | veredito |
+|---|---|---|
+| o **documento** | recusa modificadores sobre uma escultura (`ModsOnSampled`) | ✅ certo, e a regra estava escrita desde a W21 |
+| o **mundo** | `add_mod` escrevia o componente sem perguntar | ⛔ a regra existia e ninguém a consultava |
+| o **cozimento** | `cook(…).and_then(Result::ok)` | ⛔ **deitava o `Err` fora** |
+| o **painel** | oferecia a fileira de modificadores para tudo | ⛔ oferecia o que não se pode fazer |
+
+⭐ *Uma invariante que só o validador conhece é uma invariante que a UI descobre partindo-se.*
+
+### §26.2 — A cura tem duas metades e as duas eram necessárias
+
+**A porta recusa** (`add_mod` devolve `false` numa escultura, e o painel **não pinta** a fileira) — a
+mesma lei que a fileira de operações já segue: *um controle que aparece e não faz nada é pior do que
+um que não aparece*.
+
+**E a voz existe para o resto**: o `Err` do cozimento passou a virar uma frase. ⚠️ **Isto não é sobre
+este bug, é sobre a classe dele** — um projeto de uma versão anterior, um perfil desenhado a cruzar o
+eixo, ou um escritor novo produzem o mesmo documento inválido, e o sintoma seria o mesmo
+desaparecimento mudo.
+
+⚠️ **`None` e `Err` são coisas diferentes e só uma é um problema**: apagar o último filho de uma peça
+devolve `None` e é um gesto normal, cujo resultado normal é a tela ficar vazia.
+
+### §26.3 — ⭐ O módulo passa a falar por UMA boca
+
+A W23 abriu o primeiro canal de avisos (a escultura que não voltou do arquivo) e esta wave precisava
+do segundo. Dois canais paralelos teriam **duas** leis de repetição, dois drenos e dois sítios onde
+alguém se esquece de drenar — então há **um** ([`field3d_notice`](../../shells/desktop/src/field3d_notice.rs)),
+com uma lei: **não repete a última coisa que disse**. O cozimento corre a cada quadro e uma peça
+inválida continua inválida; sem isso seriam 60 avisos por segundo sobre a mesma frase. Uma frase
+*diferente* passa sempre, e a peça voltar a ficar válida **esquece** a última — senão o mesmo
+problema, se voltasse, ficaria mudo na segunda vez.
+
+⚠️ **As frases são para o Enio**: dizem o que está errado na peça, nunca o nome da variante ou do nó.
+E o `match` que as escolhe **não tem braço `_`**, de propósito: um erro novo no documento tem de
+fazer aquele arquivo não compilar, que é o momento certo para escolher as palavras.
+
+### §26.4 — ⚠️ E o achado da jornada não foi do módulo: era da FERRAMENTA de mutação
+
+Uma corrida do gate novo saiu **vermelha sobre código correto**, e a causa não estava no código: o
+laço de mutação restaurava o arquivo com `shutil.copy2`, que **preserva o mtime**. O cargo decide por
+mtime — o arquivo restaurado ficava a parecer mais **velho** que o objeto compilado da mutação, e a
+corrida seguinte servia a **build mutada**. O `rustfmt` costumava mascarar isto (ele reescreve o
+arquivo e carimba a data), e mascarou-o em todas as waves anteriores; nesta o arquivo já estava
+formatado, o `rustfmt` não lhe tocou, e o fantasma apareceu.
+
+⛔ **A cura: `shutil.copy` + `os.utime(path, None)`.** E a lição é maior do que a ferramenta: *uma
+prova de mutação mede o binário, não o arquivo* — se a restauração não for observável pelo sistema de
+build, o verde e o vermelho seguintes valem zero. Este laço já tinha pago duas vezes o irmão deste
+defeito (uma mutação sobreviver a um timeout); é a terceira vez que a **restauração** é onde o
+método fura.
+
+### §26.5 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| o cozimento volta a engolir o `Err` | `a_piece_that_cannot_cook_says_why` |
+| o canal repete a última frase | `the_same_notice_is_not_said_twice_in_a_row` |
+| o painel volta a oferecer a fileira | `the_panel_offers_no_modifiers_for_a_sculpture` |
+| a porta volta a aceitar o modificador | `a_sculpture_refuses_a_modifier_and_the_world_is_left_alone` |
+| a porta recusa **toda a gente** (cura larga demais) | o mesmo gate, pelo controle |
+
+### §26.6 — ⏸️ O que fica aberto
+
+- A frase aparece como aviso no canto. Uma peça inválida **também não desenha**, e a Hierarquia não
+  marca **qual** nó é o culpado — o erro do documento traz o índice, e traduzi-lo de volta para a
+  entidade é trabalho de outra wave.
+- ⛔ **Os outros oito erros do documento não têm caminho conhecido a partir da UI** — as portas
+  recusam antes. As frases existem para o dia em que tiverem, e o gate garante que nenhuma nasce
+  vazia.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -2036,6 +2117,9 @@ constante.*
 - ✅ **a LENTIDÃO que o Enio nomeou no smoke da cena 6 FECHOU na W24** (§25): a resolução do preview
   passa a sair da **medição** — 4,2× e 7,3× mais rápido em movimento, sem um segundo motor. ⏸️ Fica:
   um traçado em voo **não se cancela** (até 121 ms de espera medidos)
+- ✅ **o ERRO na UI FECHOU na W25** (§26) — a peça que não cozinha diz porquê, e o clique que a
+  apagava (um modificador sobre uma escultura) deixou de existir. ⏸️ Fica: o aviso não aponta **qual**
+  nó é o culpado
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

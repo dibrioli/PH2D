@@ -1,9 +1,14 @@
 #![forbid(unsafe_code)]
 //! ph2d-vec-boolean — operações booleanas **edit-time** da pipeline vetorial nova
 //! (ADR-0108, Fase 1). União / interseção / subtração / xor de regiões fechadas
-//! via o motor exato `linesweeper` (MIT/Apache). É destrutivo por design: o
-//! resultado é um path editável, não um nó vivo — sem boolean em runtime
-//! (ADR-0108 §2 D4).
+//! via o motor exato `linesweeper` (MIT/Apache). Continua **sem boolean em
+//! runtime de jogo** (ADR-0108 §2 D4): tudo aqui roda no editor.
+//!
+//! ⚠️ A frase *"é destrutivo por design"* viveu aqui e **deixou de ser verdade**: a
+//! shell tem uma booleana VIVA (`bool_live`) que re-cozinha por frame com os
+//! operandos preservados, e o [`graph`] leva-a a um diagrama de relações. O que
+//! esta crate é, e sempre foi, é **pura**: ela devolve geometria, não guarda nada
+//! e não decide quando correr — quem escolhe entre assar e re-cozinhar é a shell.
 //!
 //! **Buracos são de primeira classe.** O `linesweeper` devolve os contornos já
 //! agrupados por containment (`Contours::grouped`): o de fora primeiro, os de
@@ -26,6 +31,12 @@ pub use arrangement::{Arrangement, FaceId, MAX_BUILD_SHAPES, Membership};
 /// operações novas são COMPOSIÇÕES do fold daqui, não geometria nova.
 pub mod pathfinder;
 pub use pathfinder::{PathfinderOp, pathfinder};
+
+/// **O GRAFO** — a operação deixa de ser do grupo e passa a ser da LIGAÇÃO. Módulo irmão do
+/// Pathfinder e pela mesma razão: ele não é geometria nova, é o MESMO fold da esquerda para a
+/// direita, com a ordem dada por setas em vez de pela pilha de z.
+pub mod graph;
+pub use graph::{BoolEdge, GraphRefusal, derive_star, resolve_graph};
 
 /// **O CORTE por uma linha** — uma forma fechada cortada dá formas FECHADAS. Módulo irmão pela
 /// mesma razão do arranjo: o motor é o mesmo, e o trabalho todo é dar ao motor um cortador

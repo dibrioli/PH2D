@@ -99,22 +99,45 @@ pub(crate) fn bake(
     plan: &crate::bool_live::Cooked,
     g: Entity,
 ) -> usize {
-    // O z da base, ANTES de remover seja o que for — é a fatia que o resultado ocupa, a mesma
-    // regra da booleana destrutiva (*"o resultado ocupa a fatia de z dela, não salta pro topo"*).
-    let at = scene
-        .paths()
+    // Os z ANTES de remover seja o que for — é a fatia que cada resultado ocupa, a mesma regra da
+    // booleana destrutiva (*"o resultado ocupa a fatia de z dela, não salta pro topo"*).
+    let z = |id: VecPathId| scene.paths().iter().position(|p| p.id == id).unwrap_or(0);
+    let mut sinks: Vec<(usize, Vec<ph2d_vec_scene::VecPath>)> = plan
+        .sinks
         .iter()
-        .position(|p| p.id == plan.base)
-        .unwrap_or(0);
-    for id in &plan.operands {
+        .map(|(id, out)| (z(*id), out.clone()))
+        .collect();
+    sinks.sort_by_key(|(at, _)| *at);
+    // ⚠️ Quem sai são os consumidos MAIS os sumidouros: o sumidouro é substituído pelo próprio
+    // resultado. Um operando que desenhou a si próprio (sem ligação nenhuma) não está em nenhuma
+    // das duas listas e **não é tocado** — removê-lo e repô-lo daria um id novo a uma forma que a
+    // operação nunca consumiu.
+    let mut doomed: Vec<usize> = plan
+        .consumed
+        .iter()
+        .chain(plan.sinks.iter().map(|(id, _)| id))
+        .map(|id| z(*id))
+        .collect();
+    doomed.sort_unstable();
+    for id in plan
+        .consumed
+        .iter()
+        .chain(plan.sinks.iter().map(|(id, _)| id))
+    {
         scene.remove_path(*id);
     }
-    let new_ids: Vec<VecPathId> = plan
-        .out
-        .iter()
-        .enumerate()
-        .map(|(k, r)| scene.insert_path(at + k, r.clone()))
-        .collect();
+    // A remoção desloca os índices: o lugar de cada sumidouro é o z dele MENOS quantos removidos
+    // estavam à frente dele, mais quantos já foram inseridos.
+    let mut new_ids: Vec<VecPathId> = Vec::new();
+    let mut inserted = 0usize;
+    for (at, out) in &sinks {
+        let shift = doomed.iter().filter(|d| *d < at).count();
+        let base = at.saturating_sub(shift) + inserted;
+        for (k, r) in out.iter().enumerate() {
+            new_ids.push(scene.insert_path(base + k, r.clone()));
+        }
+        inserted += out.len();
+    }
     // O grupo inteiro morre: os operandos já saíram do documento, e um grupo vazio na Hierarquia
     // é lixo que o artista teria de apagar à mão. `despawn` leva os descendentes junto.
     if let Ok(e) = sim.world_mut().get_entity_mut(g) {

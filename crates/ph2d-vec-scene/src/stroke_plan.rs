@@ -21,7 +21,7 @@
 
 use std::borrow::Cow;
 
-use crate::{StrokeSpec, VecPath, stroke_head, trim_path};
+use crate::{StrokeSpec, VecPath, stroke_head};
 
 /// Uma peça do que o traço desenha.
 #[derive(Clone, Debug, PartialEq)]
@@ -47,9 +47,10 @@ pub enum StrokePiece<'a> {
 /// o Outline Stroke assar o tracejado noutra cadência que a desenhada, que é o defeito que o doc
 /// de [`StrokeSpec::dash_lengths`] já nomeia.
 ///
-/// ⚠️ **Recebe a LINHA que vai ser traçada, não o objeto.** Com marcadores ela chega já encurtada
-/// (`trim_path`, para a ponta caber), e é o comprimento DELA que o padrão tem de encaixar — medir
-/// o caminho inteiro poria o último traço fora da linha e a ponta descolada.
+/// ⚠️ **Recebe a LINHA que vai ser traçada**, que desde 2026-08-22 é o caminho INTEIRO: a ponta
+/// cresce para fora do nó e a linha deixou de ser encurtada, então o padrão encaixa no comprimento
+/// todo. (Enquanto a linha recuava, era o comprimento da parte que SOBRAVA que contava — e essa
+/// dependência é uma das coisas que a lei nova apaga.)
 ///
 /// ⚠️ **O caso comum não paga NADA, e a ordem das duas perguntas é o que garante isso.** Medir
 /// custa um `arclen` por segmento (Gauss-Legendre de 16 nós), e isto corre por caminho e por
@@ -84,17 +85,15 @@ pub fn dash_for(path: &VecPath, s: &StrokeSpec) -> Option<[f64; 2]> {
 #[must_use]
 pub fn stroke_plan<'a>(path: &'a VecPath, s: &StrokeSpec) -> Vec<StrokePiece<'a>> {
     let mut out = Vec::new();
-    // Sem pontas nada é encurtado — e `Cow::Borrowed` é o que torna o caso comum gratuito.
-    let line = if s.has_markers() {
-        trim_path(
-            path,
-            s.marker_start.inset(s.marker_scale) * s.width,
-            s.marker_end.inset(s.marker_scale) * s.width,
-        )
-        .map(Cow::Owned)
-    } else {
-        Some(Cow::Borrowed(path))
-    };
+    // ⚠️ **A LINHA NÃO É MAIS ENCURTADA** (2026-08-22). A ponta cresce para FORA do nó
+    // (`stroke_head`), então não há espaço a libertar — e o `Cow::Borrowed` que era o prémio dos
+    // 99% sem marcador passa a valer para TODOS os traços, marcados ou não.
+    //
+    // ⚠️ O que se ganha não é a alocação, é a CLASSE DE DEFEITOS que desaparece: encurtar obrigava
+    // a converter o corpo RETO do marcador num recuo de ARCO sobre a curva, e essa conversão
+    // depende da curvatura. Ela custou três waves — a ponta descolada, a extremidade fora da
+    // curva, e o traço a desaparecer em certos ângulos.
+    let line = Some(Cow::Borrowed(path));
     if let Some(path) = line {
         out.push(StrokePiece::Line { path });
     }

@@ -388,10 +388,22 @@ fn baking_an_arrow_keeps_its_head() {
         with_head > bare * 1.15,
         "com cabeça {with_head} vs sem {bare}: a ponta não chegou no forno"
     );
+    // ⚠️ **O bico fica ALÉM do fim da linha** (2026-08-22): a ponta cresce para fora do nó e a
+    // linha deixou de ser encurtada (Enio: *"o desenho da seta fica além do fim do path"*). Este
+    // gate afirmava o contrário — o bico EM x=20 —, que era a lei de quando a linha recuava.
+    //
+    // ⚠️ O alcance sai da MESMA fonte que o desenho usa (`Marker::inset`), e não de um número
+    // escrito aqui: um gate com a constante copiada passa a mentir no dia em que a ponta mudar de
+    // tamanho, e mente afirmando exactamente o que devia proteger.
+    let reach = ph2d_vec_scene::Marker::Triangle
+        .inset(arrow.stroke.map_or(1.0, |s| s.marker_scale))
+        * arrow.stroke.map_or(1.0, |s| s.width);
     let right = out.iter().map(|p| bbox(p).x1).fold(f64::MIN, f64::max);
     assert!(
-        (right - 20.0).abs() < 0.2,
-        "o bico da seta ficou em x={right} (a linha acaba em 20)"
+        (right - (20.0 + reach)).abs() < 0.2,
+        "o bico da seta ficou em x={right}; a linha acaba em 20 e a ponta estende {reach:.3} \
+         para fora, entao ele devia estar em {:.3}",
+        20.0 + reach
     );
 }
 

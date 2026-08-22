@@ -72,10 +72,15 @@ fn the_arrowhead_itself_is_clickable_not_just_the_thin_line() {
     let (sim, scene, map, _) = scene_with_line(1.0, Marker::Triangle, 1.0);
     let tiny = 0.01;
 
-    // Dentro do corpo do triangulo (que se estende para TRAS da ponta em (100, 0)), acima do
-    // eixo da linha — fora do alcance da folga minuscula e da meia-tinta (0,5).
+    // Dentro do corpo do triangulo, acima do eixo da linha — fora do alcance da folga minuscula
+    // e da meia-tinta (0,5).
+    //
+    // ⚠️ **A cabeca estende-se para a FRENTE do no', nao para tras** (2026-08-22): a linha deixou
+    // de ser encurtada e a ponta cresce para fora (Enio: *"o desenho da seta fica alem do fim do
+    // path"*). Este gate clicava em x=98,5 — DENTRO da linha —, que era onde a cabeca ficava
+    // enquanto o traco recuava para lhe dar espaco.
     assert!(
-        hits(&sim, &scene, &map, [98.5_f32, 0.7], tiny),
+        hits(&sim, &scene, &map, [101.0_f32, 0.7], tiny),
         "clicar DENTRO da cabeca da seta nao selecionou nada — a parte gorda do desenho \
          continua invisivel para o mouse"
     );

@@ -380,6 +380,16 @@ fn circle(c: [f64; 2], r: f64) -> VecPath {
     }
 }
 
+/// ⚠️ **SEM CONSUMIDOR EM PRODUÇÃO desde 2026-08-22**, e isto está escrito para a próxima leitura
+/// não supor o contrário. O único chamador era o `stroke_plan`, que encurtava a linha para a ponta
+/// caber; a ponta passou a crescer para FORA do nó e o recuo deixou de existir.
+///
+/// Fica porque é uma primitiva correta e testada — e porque foi corrigida na mesma data para
+/// cortar a CÚBICA (`inv_arclen` + `subsegment`) em vez de andar sobre a corda entre âncoras. Quem
+/// a for usar herda essa correção; quem a for remover não perde nada que o `git` não guarde.
+///
+/// ⚠️ Não confundir com o `PathEffect::Trim` (`crate::fx_trim`), que é o *draw-on* do artista e
+/// tem dono próprio — a distinção está escrita no cabeçalho daquele módulo.
 /// **Encurta um caminho aberto** para dar lugar às pontas: recua `start` unidades de mundo
 /// no começo e `end` no fim, ao longo da curva.
 ///
@@ -543,7 +553,21 @@ pub fn stroke_head(path: &VecPath, s: &StrokeSpec, at_start: bool) -> Option<(Ma
     if marker == Marker::None {
         return None;
     }
-    let (tip, dir) = end_tangent(path, at_start)?;
+    let (node, dir) = end_tangent(path, at_start)?;
+    // ⚠️ **A ponta cresce PARA FORA do nó, e a linha não recua** (Enio, 2026-08-22: *"o fim da
+    // curva e o início da seta em cima do nó — o desenho da seta fica além do fim do path"*).
+    //
+    // O `build` desenha do bico para DENTRO (o `a` das tabelas anda contra `dir`), então empurrar
+    // o bico por um `inset` ao longo de `dir` põe a BASE exatamente no nó e o corpo além dele.
+    //
+    // ⚠️ **É a decisão que apaga a classe inteira de defeitos do recuo**, e não um ajuste de
+    // gosto. Encurtar a linha para a ponta caber obriga a converter uma medida RETA (o corpo do
+    // marcador) numa medida de ARCO (andar sobre a curva) — uma conversão que depende da
+    // curvatura e que esta linha pagou em três waves: a ponta descolava, o traço saía de cima da
+    // curva, e a linha chegou a desaparecer. Sem recuo não há conversão, e sem conversão não há
+    // erro que dependa do ângulo da alça.
+    let reach = marker.inset(s.marker_scale) * s.width;
+    let tip = [node[0] + dir[0] * reach, node[1] + dir[1] * reach];
     let geo = marker.build(tip, dir, s.width, s.marker_scale, s.marker_round)?;
     Some((marker, geo))
 }

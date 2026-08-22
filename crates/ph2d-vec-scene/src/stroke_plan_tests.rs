@@ -174,20 +174,72 @@ fn a_filled_head_fills_and_an_open_head_is_a_symbol() {
     );
 }
 
-/// **Uma linha mais curta que os recuos somados não tem linha** — só as pontas. Cair de
-/// volta na linha inteira desenharia exatamente o traço que o recuo existe para esconder.
+/// **A LINHA NUNCA É ENCURTADA, e uma linha curta continua a desenhar** — a lei mudou em
+/// 2026-08-22, e este gate é o que a fixa.
+///
+/// Antes, a linha recuava para a ponta caber, e uma linha mais curta que os recuos somados
+/// desaparecia. Hoje a ponta cresce para FORA do nó (Enio: *"o desenho da seta fica além do fim
+/// do path"*), então não há espaço a libertar e não há linha a perder.
+///
+/// ⚠️ **O que se ganha não é a alocação — é a classe de defeitos.** Encurtar obrigava a converter
+/// o corpo RETO do marcador num recuo de ARCO sobre a curva, e essa conversão depende da
+/// curvatura: custou três waves (a ponta descolada, a extremidade fora da curva, o traço a
+/// desaparecer em certos ângulos). Sem recuo não há conversão.
 #[test]
-fn a_line_shorter_than_its_heads_has_no_line_piece() {
+fn a_short_line_keeps_its_line_because_the_head_grows_outward() {
     let p = line(0.5);
     let mut s = head_spec(Marker::Triangle, 1.0, 0.0);
-    s.width = 4.0; // caneta gorda: os recuos somam mais que o comprimento
+    s.width = 4.0; // caneta gorda: as pontas somam bem mais que o comprimento
     s.marker_start = Marker::Triangle;
     let plan = stroke_plan(&p, &s);
-    assert!(
-        !plan.is_empty(),
-        "as pontas continuam existindo — some a LINHA, não o desenho"
+    let l = line_piece(&plan).expect("a linha nao pode desaparecer debaixo das pontas");
+    assert_eq!(
+        l.verts.len(),
+        p.verts.len(),
+        "a linha tem de ser a MESMA -- nao ha recuo a aplicar"
     );
-    assert!(line_piece(&plan).is_none(), "não sobra linha para desenhar");
+    assert_eq!(
+        l.verts.first().map(|v| v.anchor),
+        p.verts.first().map(|v| v.anchor),
+        "a ponta de partida moveu-se: alguem ainda esta' a encurtar"
+    );
+}
+
+/// **A BASE da ponta cai EXACTAMENTE sobre o nó, e o corpo dela fica além** — a outra metade da
+/// lei nova, e a que o olho julga.
+///
+/// ⚠️ Sem ela, mover o marcador para fora podia passar com o deslocamento errado (meio corpo, dois
+/// corpos) e o gate de cima continuaria verde — ele só afirma que a LINHA não encolheu.
+#[test]
+fn the_head_sits_with_its_base_on_the_node() {
+    use crate::end_tangent;
+    let p = line(10.0);
+    let s = head_spec(Marker::Triangle, 1.0, 0.0);
+    let (node, dir) = end_tangent(&p, false).expect("tangente");
+    let (_, geo) = crate::stroke_head(&p, &s, false).expect("a ponta");
+
+    // A projeção de cada ponto da ponta sobre o eixo, medida a partir do nó: nenhum ponto pode
+    // cair ATRÁS do nó (para dentro da linha), e o mais distante é o bico.
+    let proj = |q: [f64; 2]| (q[0] - node[0]) * dir[0] + (q[1] - node[1]) * dir[1];
+    let lo = geo
+        .verts
+        .iter()
+        .map(|v| proj(v.anchor))
+        .fold(f64::MAX, f64::min);
+    let hi = geo
+        .verts
+        .iter()
+        .map(|v| proj(v.anchor))
+        .fold(f64::MIN, f64::max);
+    assert!(
+        lo > -1e-9,
+        "a ponta invade a linha: o ponto mais recuado dela esta' a {lo:.4} ATRAS do no'"
+    );
+    let reach = Marker::Triangle.inset(s.marker_scale) * s.width;
+    assert!(
+        (hi - reach).abs() < 1e-6,
+        "o bico devia estar a {reach:.4} do no' e esta' a {hi:.4}"
+    );
 }
 
 /// Um contorno FECHADO não tem extremo onde pôr uma ponta — nem com o seletor marcado. E

@@ -57,6 +57,20 @@ fn sync_slice_fields(
     // clique voltar atrás antes de o commit chegar (o snapshot deste quadro ainda é o de
     // antes da edição). É a mesma lei dos checkboxes da §7.
     if entity_changed {
+        // ⚠️ **A caixa que LIGA o 9-slice** — ela lê `present` E o modo. Um sprite sem componente
+        // e um com o modo desligado são o mesmo estado para quem olha: 9-slice desligado.
+        let enable = if sl.mixed.draw_mode || sl.mixed.present {
+            CheckboxValue::Indeterminate
+        } else if sl.present && sl.draw_mode_tag == 1 {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        };
+        if let Some(InteractiveState::Checkbox { value: slot, .. }) =
+            host.store_mut().get_mut(ids::INSP_SLICE_ENABLE)
+        {
+            *slot = enable;
+        }
         let value = if sl.mixed.fill_center {
             CheckboxValue::Indeterminate
         } else if sl.fill_center {

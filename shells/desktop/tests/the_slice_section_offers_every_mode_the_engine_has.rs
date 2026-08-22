@@ -24,11 +24,14 @@ use ph2d_editor::ids;
 /// variantes = um botão que despacha uma tag que o motor não sabe ler.
 #[test]
 fn every_engine_variant_has_exactly_one_control() {
+    // ⚠️ O `SliceDrawMode` deixou de ter um botão por variante: ele tem DUAS variantes, e duas
+    // variantes são uma CAIXA (Enio, 2026-08-22). O gate muda de forma com o controlo — o que
+    // ele afirma agora é que continuam a ser duas, porque um terceiro modo teria de voltar a ser
+    // um segmentado e esta caixa passaria a esconder-lhe uma opção.
     assert_eq!(
-        ids::INSP_SLICE_MODE.len(),
         SliceDrawMode::ALL.len(),
-        "o Draw Mode tem {} botoes para {} variantes do motor",
-        ids::INSP_SLICE_MODE.len(),
+        2,
+        "o Draw Mode tem {} variantes e o painel oferece uma CAIXA — a terceira e' inalcancavel",
         SliceDrawMode::ALL.len()
     );
     assert_eq!(

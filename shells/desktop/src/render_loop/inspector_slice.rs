@@ -85,8 +85,10 @@ pub(super) fn build_slice_info(
 ///
 /// ⚠️ **Toda edição de campo lê-modifica-escreve o componente atual** (ou o inerte, quando ele
 /// ainda não existe): editar uma borda não pode repor as outras três nem o modo. E toda edição de
-/// campo **anexa** o componente se ele faltar — mexer num controlo da seção é autorar, e exigir
-/// carregar «Add» primeiro seria um passo que não explica nada.
+/// campo **anexa** o componente se ele faltar — mexer num controlo da seção é autorar. É isso que
+/// faz a caixa «Enable 9-slice» bastar sozinha: ela manda um `DrawMode(1)`, e o anexo vem de
+/// borda. ⚠️ Houve aqui um `Attach` explícito, e ele morreu com o botão «+ Add»: dois passos de
+/// undo para um clique, e uma variante que nenhum controlo produzia.
 pub(super) fn apply_slice_edit(
     sim: &SimWorld,
     entity_bits: u64,
@@ -99,12 +101,11 @@ pub(super) fn apply_slice_edit(
         return;
     }
     let entity = Entity::from_bits(entity_bits);
-    let present = sim.world().get::<SliceNine>(entity);
-    let mut s = present.copied().unwrap_or(SliceNine::INERT);
-    // Anexar não é editar: se já existe, deixa como está em vez de repor o inerte.
-    if matches!(edit, SliceFieldEdit::Attach) && present.is_some() {
-        return;
-    }
+    let mut s = sim
+        .world()
+        .get::<SliceNine>(entity)
+        .copied()
+        .unwrap_or(SliceNine::INERT);
     if !write_field(&mut s, edit) {
         return;
     }
@@ -127,7 +128,6 @@ pub(super) fn write_field(s: &mut SliceNine, edit: SliceFieldEdit) -> bool {
         // Já tratado pelo chamador; repetido para o `match` ficar exaustivo sem braço-curinga —
         // um curinga aqui engoliria em silêncio a próxima variante que alguém acrescentasse.
         SliceFieldEdit::Detach => return false,
-        SliceFieldEdit::Attach => *s = SliceNine::INERT,
         SliceFieldEdit::DrawMode(t) => s.draw_mode = ph2d_ecs::SliceDrawMode::from_tag(t),
         SliceFieldEdit::Border(i, v) => {
             if let Some(slot) = s.borders.get_mut(usize::from(i)) {

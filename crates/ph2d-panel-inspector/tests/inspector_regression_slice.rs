@@ -66,13 +66,6 @@ struct Case {
 fn cases() -> Vec<Case> {
     vec![
         Case {
-            what: "Draw Mode: Sliced",
-            variant: "DrawMode",
-            id: ids::INSP_SLICE_MODE[1],
-            stim: Stim::Click,
-            expect: SliceFieldEdit::DrawMode(1),
-        },
-        Case {
             what: "Tile Mode: Whole",
             variant: "TileMode",
             id: ids::INSP_SLICE_TILE_MODE[1],
@@ -134,18 +127,28 @@ fn cases() -> Vec<Case> {
             expect: SliceFieldEdit::AllRegions(0),
         },
         Case {
+            // ⚠️ **A caixa que liga o 9-slice manda UMA edição.** Ela substituiu o segmentado
+            // `Simple`/`9-Slice` E o botão `+ Add` (duas portas para o mesmo estado), e o anexo
+            // do componente vem de borda no commit — não de um `Attach` antes.
+            what: "Enable 9-slice (ligar)",
+            variant: "DrawMode",
+            id: ids::INSP_SLICE_ENABLE,
+            stim: Stim::Check(true),
+            expect: SliceFieldEdit::DrawMode(1),
+        },
+        Case {
+            what: "Enable 9-slice (desligar)",
+            variant: "DrawMode",
+            id: ids::INSP_SLICE_ENABLE,
+            stim: Stim::Check(false),
+            expect: SliceFieldEdit::DrawMode(0),
+        },
+        Case {
             what: "Fill Center",
             variant: "FillCenter",
             id: ids::INSP_SLICE_FILL_CENTER,
             stim: Stim::Check(false),
             expect: SliceFieldEdit::FillCenter(false),
-        },
-        Case {
-            what: "+ Add 9-Slice",
-            variant: "Attach",
-            id: ids::INSP_SLICE_ADD,
-            stim: Stim::Click,
-            expect: SliceFieldEdit::Attach,
         },
         Case {
             what: "x Remove 9-Slice",
@@ -366,13 +369,15 @@ fn every_slice_field_edit_variant_has_a_row() {
     );
 }
 
-/// **(5) A seção existe mesmo SEM o componente** — e é onde vive o «+ Add».
+/// **(5) A caixa que LIGA o 9-slice é alcançável num sprite sem o componente** — e é a única
+/// coisa que a seção mostra nesse estado.
 ///
 /// ⚠️ Uma seção que só aparece depois de a feature estar ligada é uma feature que ninguém
-/// descobre. O botão de anexar tem de ser alcançável a partir do estado em que quase toda sprite
-/// está: sem 9-slice nenhum.
+/// descobre. E ⚠️ **um sprite sem componente e um com o 9-slice desligado são o MESMO estado**
+/// para quem olha: por isso a caixa serve os dois, e o botão `+ Add` que dizia a mesma coisa por
+/// outro caminho foi retirado (Enio, 2026-08-22).
 #[test]
-fn the_add_button_is_reachable_on_a_sprite_without_the_component() {
+fn the_enable_checkbox_is_reachable_on_a_sprite_without_the_component() {
     let mut info = slice();
     info.present = false;
     set_current_inspector_slice(Some(info));
@@ -380,9 +385,9 @@ fn the_add_button_is_reachable_on_a_sprite_without_the_component() {
     let mut state = InspectorState::default();
     host.settle_section_folds();
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
-    let hit = rects.iter().find(|(id, _)| *id == ids::INSP_SLICE_ADD);
+    let hit = rects.iter().find(|(id, _)| *id == ids::INSP_SLICE_ENABLE);
     let Some((_, r)) = hit else {
-        panic!("o botao '+ Add 9-Slice' nao foi pintado num sprite sem o componente");
+        panic!("a caixa 'Enable 9-slice' nao foi pintada num sprite sem o componente");
     };
     assert!(r.w > 0.0 && r.h > 0.0, "area zero: inalcancavel na pratica");
     // E os controlos de edição NÃO estão lá: não há valores para mostrar.
@@ -392,4 +397,45 @@ fn the_add_button_is_reachable_on_a_sprite_without_the_component() {
             "uma borda foi pintada sobre um sprite sem autoria de 9-slice — ausencia nao e' zero"
         );
     }
+    // Nem o «Remove»: não há nada guardado para remover.
+    assert!(
+        !rects.iter().any(|(pid, _)| *pid == ids::INSP_SLICE_REMOVE),
+        "o «Remove» apareceu sobre um sprite que nao tem 9-slice nenhum"
+    );
+}
+
+/// **(6) DESLIGADA, a seção mostra a caixa e o «Remove» — e mais nada.**
+///
+/// ⚠️ Este é o estado que a pergunta do Enio criou: *«se Simple é desligado, porquê mostrar toda
+/// a UI abaixo?»*. O «Remove» fica porque **há** autoria guardada (desmarcar preserva os
+/// valores); os controlos saem porque o desenho os ignora.
+#[test]
+fn switched_off_the_section_shows_only_the_box_and_remove() {
+    let mut info = slice();
+    info.present = true;
+    info.draw_mode_tag = 0;
+    set_current_inspector_slice(Some(info));
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    host.settle_section_folds();
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let painted = |id| rects.iter().any(|(pid, _)| *pid == id);
+    assert!(painted(ids::INSP_SLICE_ENABLE), "a caixa sumiu");
+    assert!(
+        painted(ids::INSP_SLICE_REMOVE),
+        "ha' autoria guardada e nao ha' como a remover"
+    );
+    for id in ids::INSP_SLICE_BORDER {
+        assert!(
+            !painted(id),
+            "uma borda foi pintada com o 9-slice desligado"
+        );
+    }
+    for id in ids::INSP_SLICE_REGION {
+        assert!(!painted(id), "a grelha foi pintada com o 9-slice desligado");
+    }
+    assert!(
+        !painted(ids::INSP_SLICE_ALL_TILE),
+        "um atalho da grelha foi pintado com o 9-slice desligado"
+    );
 }

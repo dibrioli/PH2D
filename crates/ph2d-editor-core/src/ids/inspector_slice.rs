@@ -22,16 +22,19 @@ pub const INSP_LIVE_SLICE_SECTION: NodeId = hash_node_id("insp_live_slice_sectio
 /// §5 9-Slice — ponto de cor do cabeçalho.
 pub const INSP_LIVE_SLICE_COLOR: NodeId = hash_node_id("insp_live_slice_color");
 
-/// **Draw Mode** — um segmento por variante de `SliceDrawMode`, tags `0..=1`.
+/// **A CAIXA que liga o 9-slice** — e a única porta para esse estado.
 ///
-/// ⛔ Houve aqui um terceiro, `Tiled`, retirado em 2026-08-22: ele era o `Sliced` mais uma
-/// reinterpretação que tornava «esticar» INEXPRIMÍVEL por região, e a conveniência dele vive
-/// agora nos dois atalhos [`INSP_SLICE_ALL_TILE`]/[`INSP_SLICE_ALL_STRETCH`], que escrevem nas
-/// nove células de verdade. Motivo medido em `ph2d_ecs::SliceDrawMode`.
-pub const INSP_SLICE_MODE: [NodeId; 2] = [
-    hash_node_id("insp_slice_mode_simple"),
-    hash_node_id("insp_slice_mode_sliced"),
-];
+/// ⚠️ **Ela substituiu DUAS coisas que diziam o mesmo** (Enio, 2026-08-22): um segmentado de dois
+/// segmentos (`Simple` / `9-Slice`) e um botão `+ Add 9-Slice`. Um controlo de dois estados
+/// disfarçado de escolha entre modos é a mesma afordância a mentir que os cantos da grelha
+/// tinham; e ter *também* um botão de anexar dava **duas portas para «o 9-slice está ligado?»**,
+/// que é como duas portas divergem.
+///
+/// Ligá-la numa sprite sem componente **anexa-o** — e continua a ser inerte, porque as bordas
+/// nascem a zero e bordas a zero colapsam no sprite de sempre (gate
+/// `zero_borders_collapse_to_the_plain_sprite`). Desligá-la **guarda** os valores: uma caixa que
+/// perdesse dados ao desmarcar não seria uma caixa.
+pub const INSP_SLICE_ENABLE: NodeId = hash_node_id("insp_slice_enable");
 
 /// **«Tile all»** — escreve `Repeat` nas nove células de uma vez.
 ///
@@ -98,8 +101,5 @@ pub const INSP_SLICE_CENTRE: NodeId = hash_node_id("insp_slice_centre");
 /// `Fill Center` — o miolo desenha-se, ou a moldura fica oca.
 pub const INSP_SLICE_FILL_CENTER: NodeId = hash_node_id("insp_slice_fill_center");
 
-/// **«+ Add 9-Slice»** — anexa o componente. ⚠️ Anexar é INERTE (`SliceNine::INERT`): não muda
-/// um pixel. Um botão que abre uma seção não pode ser uma edição destrutiva disfarçada.
-pub const INSP_SLICE_ADD: NodeId = hash_node_id("insp_slice_add");
 /// **«× Remove 9-Slice»** — retira o componente.
 pub const INSP_SLICE_REMOVE: NodeId = hash_node_id("insp_slice_remove");

@@ -19,15 +19,9 @@ use ph2d_editor_core::screens::hero::InspectorSliceInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 
-/// Rótulos do Draw Mode, na ordem das tags `0..=1` de `SliceDrawMode`.
-pub const MODE_LABELS: [&str; 2] = ["Simple", "9-Slice"];
 /// Rótulos do Tile Mode global, tags `0..=1` de `SliceTileMode`.
 pub const TILE_MODE_LABELS: [&str; 2] = ["Continuous", "Whole"];
 
-/// A dica do `Simple`. ⚠️ **Um modo que visivelmente não faz nada e não explica porquê lê-se como
-/// avariado** — foi a primeira coisa que o smoke do Enio devolveu sobre esta seção.
-const SIMPLE_HINT: &str = "Simple is 9-slice switched off - the sprite draws as one quad. \
-                           Pick 9-Slice to set it up; your values are kept.";
 /// A dica do Tile Mode: é aqui que mora a cura da emenda rente à borda.
 const WHOLE_HINT: &str = "Whole = entire tiles, so the last one meets the border. \
                           Mirror always uses whole tiles.";
@@ -89,40 +83,6 @@ fn pair_row(
         );
     }
     row_y + FIELD_H + Spacing::Sm.px()
-}
-
-/// A seção quando a entidade **não tem** autoria de 9-slice: um convite, e nada mais.
-#[allow(clippy::too_many_arguments)]
-fn absent_body(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    let label_font = TypeToken::Sm.px();
-    paint_text(
-        text_system,
-        scene,
-        "No 9-slice on this sprite.",
-        x,
-        y,
-        label_font,
-        w,
-        resolve(ColorToken::Text3, theme),
-    );
-    let btn_y = y + label_font + Spacing::Sm.px();
-    let rect = Rect::new(x, btn_y, w, BTN_H);
-    let id = ids::INSP_SLICE_ADD;
-    hit_index.register(id, rect);
-    let btn = Button::new(id, "+ Add 9-Slice")
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(id));
-    paint_button(&btn, rect, scene, text_system, theme);
-    btn_y + BTN_H
 }
 
 /// As duas linhas que só existem em `Tiled`: o Tile Mode global e, dentro de `Adaptive`, o
@@ -255,62 +215,44 @@ pub(crate) fn paint_slice_section(
         return y + header_h;
     };
     let mut cur_y = y + header_h;
-    let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    let label_color = resolve(ColorToken::Text2, theme);
 
-    if !info.present {
-        cur_y = absent_body(scene, text_system, theme, hit_index, store, x, w, cur_y);
-        return fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX);
-    }
-
-    // Draw Mode — a porta de tudo o resto.
-    paint_text(
-        text_system,
-        scene,
-        "Draw Mode",
-        x,
-        cur_y + (label_h - label_font) * 0.5,
-        label_font,
-        w,
-        label_color,
-    );
-    cur_y += label_h;
-    let seg = SegmentedAdaptive::new(
-        ids::INSP_LIVE_SLICE_SECTION,
-        "Draw Mode",
-        ids::INSP_SLICE_MODE
-            .iter()
-            .zip(MODE_LABELS)
-            .map(|(&id, label)| SegmentedOption::new(id, label))
-            .collect(),
-    )
-    .selected(if info.mixed.draw_mode {
-        NOTHING_LIT
+    // ⚠️ **UMA CAIXA, e ela é a única porta.** Antes disto havia duas — um segmentado
+    // `Simple`/`9-Slice` e um botão `+ Add 9-Slice` — a dizer a mesma coisa por caminhos
+    // diferentes (Enio, 2026-08-22). *Duas portas para o mesmo estado é como as duas divergem*, e
+    // um controlo de dois estados disfarçado de escolha entre modos é a mesma afordância a mentir
+    // que os cantos da grelha tinham.
+    //
+    // Ligá-la sem componente ANEXA-O — e continua inerte, porque as bordas nascem a zero e bordas
+    // a zero colapsam no sprite de sempre. Desligá-la GUARDA os valores: uma caixa que perdesse
+    // dados ao desmarcar não seria uma caixa.
+    let cb_h = 18.0_f32; // LITERAL-PX-OK: altura visual do Checkbox
+    let on = info.present && info.draw_mode_tag == 1;
+    let en_value = if info.mixed.draw_mode || info.mixed.present {
+        CheckboxValue::Indeterminate
+    } else if on {
+        CheckboxValue::Checked
     } else {
-        usize::from(info.draw_mode_tag).min(MODE_LABELS.len() - 1)
-    });
-    cur_y += paint_segmented_adaptive(
-        &seg,
-        Rect::new(x, cur_y, w, FIELD_H),
+        CheckboxValue::Unchecked
+    };
+    let en_rect = Rect::new(x, cur_y, w, cb_h);
+    hit_index.register(ids::INSP_SLICE_ENABLE, en_rect);
+    paint_checkbox(
+        &Checkbox::new(ids::INSP_SLICE_ENABLE, "Enable 9-slice")
+            .visual(store.checkbox_visual(ids::INSP_SLICE_ENABLE))
+            .value(en_value),
+        en_rect,
         scene,
         text_system,
         theme,
-        store,
-        hit_index,
-    ) + Spacing::Sm.px();
+    );
+    cur_y += cb_h + Spacing::Sm.px();
 
-    // ⚠️ **`Simple` é o 9-slice DESLIGADO, e a seção fica desligada com ele.**
-    //
-    // A primeira versão dizia-o numa dica e mantinha os campos («é assim que se medem as bordas
-    // antes de ligar»). O Enio devolveu a pergunta certa — *«se Simple é desligado, porquê
-    // mostrar toda a UI abaixo?»* — e ela não tem resposta: seis controlos que o desenho ignora
-    // são seis afirmações falsas, que é a classe de defeito nº 1 desta auditoria. Os valores
-    // ficam guardados no componente e voltam intactos ao ligar; o que sai é a *encenação* de que
-    // há algo para afinar.
-    if info.draw_mode_tag == 0 {
-        cur_y += hint(scene, text_system, theme, x, w, cur_y, SIMPLE_HINT);
-        cur_y = remove_button(scene, text_system, theme, hit_index, store, x, w, cur_y);
+    // Desligado: a seção não tem mais nada a mostrar. O «Remove» só aparece quando há de facto
+    // autoria guardada para remover — sem componente, não há.
+    if !on {
+        if info.present {
+            cur_y = remove_button(scene, text_system, theme, hit_index, store, x, w, cur_y);
+        }
         return fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX);
     }
 
@@ -356,7 +298,6 @@ pub(crate) fn paint_slice_section(
     );
 
     // Fill Center.
-    let cb_h = 18.0_f32; // LITERAL-PX-OK: altura visual do Checkbox
     let (_, fc_value) = store
         .checkbox(ids::INSP_SLICE_FILL_CENTER)
         .unwrap_or((CheckboxState::Normal, CheckboxValue::Checked));
@@ -442,7 +383,6 @@ mod tests {
     /// `shells/desktop/tests/the_slice_section_offers_every_mode_the_engine_has.rs`.
     #[test]
     fn every_id_array_has_a_label_for_each_slot() {
-        assert_eq!(ids::INSP_SLICE_MODE.len(), MODE_LABELS.len());
         assert_eq!(ids::INSP_SLICE_TILE_MODE.len(), TILE_MODE_LABELS.len());
         // ⚠️ A contagem de regiões contra o MOTOR vive no gate da shell — aqui só a grelha.
         assert_eq!(

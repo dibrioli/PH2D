@@ -17,8 +17,8 @@
 //! em mais linhas, portanto **tem de** empurrar para baixo tudo o que vem depois dela. Se a altura
 //! for estimada em vez de medida, os dois layouts saem à MESMA altura — e é isso que o gate vê.
 //!
-//! O intervalo medido é o que fica **entre o segmented do Draw Mode e o botão Remove**, que em
-//! `Simple` contém a dica e mais nada: qualquer outra âncora misturaria a adaptação do próprio
+//! O intervalo medido é o que fica **entre o segmented do Tile Mode e o botão Remove**, que
+//! contém a dica do `Whole` e mais nada: qualquer outra âncora misturaria a adaptação do próprio
 //! segmented na conta.
 
 use ph2d_editor_core::ids;
@@ -33,12 +33,15 @@ const NARROW_W: f32 = 300.0;
 /// Largura larga o bastante para as dicas caberem numa linha só.
 const WIDE_W: f32 = 1100.0;
 
-/// A §5 em `Simple`: o modo em que a seção está DESLIGADA e o corpo dela é a dica + o «Remove».
+/// A §5 LIGADA — é aí que vivem as dicas que quebram (a do Tile Mode e a legenda da grelha).
+///
+/// ⚠️ Um fixture desligado não serve: a seção desligada mostra a caixa e o «Remove», e nenhuma
+/// dica. Foi o que ela passou a ser quando a caixa «Enable 9-slice» substituiu o segmentado.
 fn simple_slice() -> InspectorSliceInfo {
     InspectorSliceInfo {
         entity_bits: ENTITY,
         present: true,
-        draw_mode_tag: 0,
+        draw_mode_tag: 1,
         borders: [8.0; 4],
         size: [0.0, 0.0],
         tile_modes: [0; 8],
@@ -50,7 +53,7 @@ fn simple_slice() -> InspectorSliceInfo {
     }
 }
 
-/// O vão entre o fim do segmented do Draw Mode e o topo do «Remove», a esta largura de painel.
+/// O vão entre o fim do segmented do Tile Mode e o topo do «Remove», a esta largura de painel.
 ///
 /// ⚠️ **A largura tem de entrar pelo `HeroLayout`, não pelo viewport.** O Inspector é uma doca de
 /// largura FIXA: alargar o viewport só afasta o canvas, e a primeira versão deste gate media
@@ -82,9 +85,10 @@ fn hint_gap(width: f32) -> f32 {
             .map(|(_, r)| *r)
             .unwrap_or_else(|| panic!("id nao foi pintado a largura {width}"))
     };
-    // O último segmento do Draw Mode é o que fica mais em baixo quando o segmented adapta e
-    // quebra em duas filas — por isso o fundo do vão é o MÁXIMO dos três, nunca o primeiro.
-    let seg_bottom = ids::INSP_SLICE_MODE
+    // O último segmento do Tile Mode é o que fica mais em baixo quando o segmented adapta e
+    // quebra em duas filas — por isso o fundo do vão é o MÁXIMO deles, nunca o primeiro. Entre
+    // ele e o «Remove» só existe a dica do `Whole`, que é o que este gate mede.
+    let seg_bottom = ids::INSP_SLICE_TILE_MODE
         .iter()
         .map(|&id| {
             let r = find(id);
@@ -106,8 +110,8 @@ fn a_hint_that_wraps_pushes_what_comes_after_it_down() {
         "o vao da dica nao mudou com a largura ({narrow} vs {wide}): a altura dela esta a ser \
          ESTIMADA, e a linha seguinte vai ser escrita por cima"
     );
-    // E a diferença é de LINHAS, não de arredondamento: a dica do `Simple` tem ~110 caracteres e
-    // a 300 px ela ocupa pelo menos mais uma linha inteira do que a 1100 px.
+    // E a diferença é de LINHAS, não de arredondamento: a dica tem ~100 caracteres e a 300 px
+    // ela ocupa pelo menos mais uma linha inteira do que a 1100 px.
     let one_line = ph2d_tokens::TypeToken::Sm.px();
     assert!(
         narrow - wide >= one_line,
@@ -117,13 +121,12 @@ fn a_hint_that_wraps_pushes_what_comes_after_it_down() {
     );
 }
 
-/// A dica **existe** em `Simple`: sem ela o modo não explica porque não faz nada, que foi a
-/// primeira coisa que o smoke devolveu. Um vão de zero significaria que ela deixou de ser pintada
-/// — e o teste acima passaria na mesma se as duas larguras dessem zero.
+/// A dica **existe**: um vão de zero significaria que ela deixou de ser pintada — e o teste
+/// acima passaria na mesma se as duas larguras dessem zero.
 #[test]
-fn the_simple_hint_is_actually_painted() {
+fn the_whole_hint_is_actually_painted() {
     assert!(
         hint_gap(WIDE_W) > 0.0,
-        "nao ha' vao nenhum entre o Draw Mode e o Remove: a dica do Simple desapareceu"
+        "nao ha' vao nenhum entre o Tile Mode e o Remove: a dica do Whole desapareceu"
     );
 }

@@ -146,7 +146,6 @@ fn populate_anchors(store: &mut WidgetStore) {
 }
 
 fn populate_slice(store: &mut WidgetStore) {
-    register_button_ids(store, &ids::INSP_SLICE_MODE);
     register_button_ids(store, &ids::INSP_SLICE_TILE_MODE);
     // As oito células da grelha 3×3 são BOTÕES que ciclam — não segmentos.
     register_button_ids(store, &ids::INSP_SLICE_REGION);
@@ -157,7 +156,16 @@ fn populate_slice(store: &mut WidgetStore) {
         store,
         &[ids::INSP_SLICE_ALL_TILE, ids::INSP_SLICE_ALL_STRETCH],
     );
-    register_button_ids(store, &[ids::INSP_SLICE_ADD, ids::INSP_SLICE_REMOVE]);
+    register_button_ids(store, &[ids::INSP_SLICE_REMOVE]);
+    // ⚠️ **A caixa que liga o 9-slice** — ela substituiu o segmentado `Simple`/`9-Slice` E o
+    // botão `+ Add`: duas portas para o mesmo estado (Enio, 2026-08-22).
+    store.register(
+        ids::INSP_SLICE_ENABLE,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Unchecked,
+        },
+    );
     store.register(
         ids::INSP_SLICE_FILL_CENTER,
         InteractiveState::Checkbox {

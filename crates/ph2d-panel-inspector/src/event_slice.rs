@@ -65,38 +65,48 @@ fn is_corner(cell: usize) -> bool {
 
 /// Despacha um evento da §5. `true` = consumido.
 pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    // Anexar / retirar existem SEM snapshot de componente — são o que o cria.
-    if let WidgetEvent::Click(id) = ev
+    // ⚠️ **A CAIXA que liga o 9-slice é UMA edição, não duas.**
+    //
+    // Ligá-la numa sprite sem componente escreve `DrawMode(1)`, e o commit da shell já anexa o
+    // componente em qualquer edição de campo — por isso não é preciso um `Attach` antes. Emitir
+    // os dois seria **dois passos de undo para um clique**, e a variante `Attach` deixou de ter
+    // produtor: foi retirada em vez de ficar como um braço que ninguém alcança.
+    if let WidgetEvent::Toggled(id) = ev
+        && id == ids::INSP_SLICE_ENABLE
         && let Some(info) = state::current_inspector_slice()
-        && (id == ids::INSP_SLICE_ADD || id == ids::INSP_SLICE_REMOVE)
     {
-        let edit = if id == ids::INSP_SLICE_ADD {
-            SliceFieldEdit::Attach
-        } else {
-            SliceFieldEdit::Detach
-        };
+        let on = matches!(
+            host.store().checkbox(id).map(|(_, v)| v),
+            Some(CheckboxValue::Checked)
+        );
         host.bus_mut().push(EditorAction::InspectorSliceEdit {
             entity_bits: info.entity_bits,
-            edit,
+            edit: SliceFieldEdit::DrawMode(u8::from(on)),
+        });
+        return true;
+    }
+
+    // Retirar existe SEM snapshot de componente — ele é o que o apaga.
+    if let WidgetEvent::Click(id) = ev
+        && let Some(info) = state::current_inspector_slice()
+        && id == ids::INSP_SLICE_REMOVE
+    {
+        host.bus_mut().push(EditorAction::InspectorSliceEdit {
+            entity_bits: info.entity_bits,
+            edit: SliceFieldEdit::Detach,
         });
         demote_button(host, id);
         return true;
     }
 
-    // Os dois segmentados: a POSIÇÃO no array É a tag.
+    // O segmentado do Tile Mode: a POSIÇÃO no array É a tag.
     if let WidgetEvent::Click(id) = ev
         && let Some(info) = state::current_inspector_slice()
     {
-        let edit = ids::INSP_SLICE_MODE
+        let edit = ids::INSP_SLICE_TILE_MODE
             .iter()
             .position(|&o| o == id)
-            .map(|i| SliceFieldEdit::DrawMode(i as u8))
-            .or_else(|| {
-                ids::INSP_SLICE_TILE_MODE
-                    .iter()
-                    .position(|&o| o == id)
-                    .map(|i| SliceFieldEdit::TileMode(i as u8))
-            })
+            .map(|i| SliceFieldEdit::TileMode(i as u8))
             .or_else(|| {
                 // ⚠️ **O MIOLO cicla só três** — Stretch → Repeat → Mirror. `Blank` é o que o
                 // `Fill Center` já exprime, e oferecê-lo aqui daria duas portas para o mesmo

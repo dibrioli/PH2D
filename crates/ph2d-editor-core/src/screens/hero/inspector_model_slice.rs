@@ -65,8 +65,6 @@ pub struct InspectorSliceMixed {
 /// divergentes de todas as outras entidades. *Edita-se o que se tocou, nunca o vetor todo.*
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SliceFieldEdit {
-    /// Anexa `SliceNine::INERT`. Inerte de propósito: anexar não muda um pixel.
-    Attach,
     /// Retira o componente.
     Detach,
     /// Tag de `SliceDrawMode`.

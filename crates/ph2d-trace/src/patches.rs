@@ -215,6 +215,17 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
     let mut corners: Vec<Vec<u32>> = Vec::with_capacity(n_patches);
     let loops_per_patch: Vec<usize> = loops.iter().map(Vec::len).collect();
     let chi = crate::topology::patch_chi(faces, &face_patch, n_patches);
+    // ⚠️ **Aqui, e não numa sonda:** é o único sítio onde as paredes e a
+    // decomposição que elas produziram existem ao mesmo tempo. Ver
+    // [`crate::TraceReport::interior_walls`].
+    report.interior_walls = walls
+        .edges
+        .iter()
+        .filter(|&&(a, b)| match (half.get(&(a, b)), half.get(&(b, a))) {
+            (Some(&f), Some(&g)) => face_patch[f as usize] == face_patch[g as usize],
+            _ => false,
+        })
+        .count();
     report.with_genus = chi.iter().filter(|c| **c != 1).count();
     for (p, ls) in loops.iter().enumerate() {
         let _ = p;

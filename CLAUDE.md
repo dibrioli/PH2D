@@ -167,6 +167,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   de código de produção. Ela mede a razão de duas medianas de uma operação **sub-milissegundo**, com um
   piso de 200 µs no divisor: sob 16 mil testes em paralelo isso é ruído. *Re-rode sozinho **antes** de
   suspeitar da sua mudança* — irmã da flake já listada na Timeline.
+  ⚠️ **A terceira, e ela também é de RELÓGIO:** `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs`
+  ([`ph2d-tool-painter`](crates/ph2d-tool-painter/src/tool/paint/wetpaint/tests.rs)) reprova no fan-out e passa
+  **5 de 5** sozinha (0,1 s). Está registada desde 2026-08-16 em
+  [`39_auditoria_solid_e_tracos.md`](docs/Painter/39_auditoria_solid_e_tracos.md) — mas **não estava aqui**, e é
+  aqui que se olha quando o gate batched fica vermelho.
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na
   primeira falha**: use `--no-fail-fast`, senão suítes inteiras nunca chegam a correr.
 

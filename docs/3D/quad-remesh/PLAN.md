@@ -2419,3 +2419,68 @@ walls.blocks(a, b) && half.get(&(b, a)).is_none_or(|&g| face_patch[g] != p)
 passeio da fronteira saiba percorrer uma parede **dos dois lados** — que é
 exactamente a representação «cortar e abrir», e mexe numa rotina com dez gates em
 cima. *É esse o trabalho, e agora ele tem tamanho.*
+
+---
+
+## 4-quinvicies — ⭐ **A PISTA DO CORTE, medida — e três tentativas rejeitadas**
+
+> O §4-quatervicies deixou a precondição: *"o `boundary_loops` exige que a face do
+> outro lado da parede não seja do mesmo patch, logo uma ponte interior é
+> invisível"*. Este passo mede quanto custaria mudá-la. ⛔ **Não fecha, e é honesto
+> dizê-lo: o que fica é o instrumento e a pista, não o conserto.**
+
+### ⭐ O instrumento: `TraceReport::interior_walls`
+
+Quantas arestas de parede têm o **mesmo patch dos dois lados** — invisíveis para o
+passeio da fronteira. Medido dentro do `decompose`, que é o único sítio onde as
+paredes e a decomposição que elas produziram existem ao mesmo tempo:
+
+| fixtura | paredes | **interiores (cru)** | **interiores (limpo)** | rondas |
+|---|---|---|---|---|
+| esfera 24×36 | 362 | 0 | 0 | 0 |
+| esfera 48×72 | 442 | 2 | ⛔ **172** | 5 |
+| toro 32×16 | 532 | 8 | ⛔ **30** | 1 |
+| toro 48×24 | 511 | 18 | ⛔ **184** | 9 |
+| toro 64×32 | 466 | 0 | 0 | 0 |
+| cubo subdividido | 646 | 0 | 0 | 0 |
+
+⭐⭐ **A limpeza deixa 172 a 184 arestas de parede mortas.** O `dissolve` apaga as
+arestas de **um lado** do patch degenerado; o resto da separatriz fica lá dentro,
+bloqueando o `flood` e não produzindo fronteira nenhuma. *São cortes que já existem e
+que ninguém percorre.*
+
+⛔ **E a primeira versão desta sonda contou errado** — media as paredes **cruas**
+contra os patches **limpos**, que não se correspondem porque a limpeza dissolve
+paredes. Dava `204` onde o número é `18`. *Uma contagem sobre dois estados que não se
+correspondem não é uma medição.*
+
+### ⭐ A pista: honrar as paredes interiores **corrige o toro mau**
+
+Experiência: tirar a segunda condição do `outside`, isto é, tratar toda parede como
+fronteira e percorrê-la **dos dois lados** (a representação *"cortar e abrir"*).
+
+| fixtura | antes | com a mudança |
+|---|---|---|
+| ⛔ toro 48×24 | `χ = 1` (recusa) | ⭐ **`χ = 0`** ✓, 20 patches, **zero** rondas de limpeza |
+| ⭐ toro 32×16 | `χ = 0` ✓ | ⛔ **`χ = −1`** |
+| toro 64×32 · esfera 24×36 | ✓ | ✓ inalterados |
+
+⇒ **A direcção está certa e a regra é larga demais.** O mecanismo da quebra tem nome:
+o passeio ganha **arco** sem ganhar **canto**, e a conta desce `1` por cada um.
+
+### ⛔ As três tentativas, medidas e rejeitadas
+
+| tentativa | resultado |
+|---|---|
+| honrar em **todo** patch | toro 48×24 fecha ✓, toro 32×16 parte (`0 → −1`) ⛔ |
+| honrar só no patch **doente** (`χ ≠ 1`), com o `χ` calculado antes das fronteiras | ⛔ **idêntico** — o patch que parte é o próprio doente |
+| ⭐ **a ponta da fenda é canto** (`ramificação == 1`, sem perguntar o ângulo) | ⛔ **não move a agulha** — as paredes interiores daquele patch são **laços fechados**, sem ponta livre |
+
+⇒ ⚠️ **E a terceira revelou o resto do mecanismo:** um laço de parede fechado sem
+canto nenhum é **descartado inteiro** pelo `decompose` (`if cuts.is_empty() {
+continue; }`). Cortar com um laço exige **promover um canto** nele — e é aí que a
+conta `V += 1, E += 1` fecha em `0` em vez de descer.
+
+⇒ ⭐⭐ **O próximo passo tem nome e é pequeno:** honrar as paredes interiores **e**
+promover um canto em cada laço de parede fechado que passe a ser fronteira. As três
+tentativas acima dizem exactamente por que as duas coisas têm de vir juntas.

@@ -628,3 +628,67 @@ fn would_a_pair_of_walls_cure_it() {
     }
     println!("  ⇒ pares que curam: {cured} de {}", n * (n - 1) / 2);
 }
+
+/// ⭐⭐ **SONDA — já existem paredes INTERIORES a um patch?**
+///
+/// ⛔ **A pergunta que precifica o corte.** O `boundary_loops` só conta uma aresta
+/// de parede como fronteira quando a face do outro lado é de **outro** patch:
+///
+/// ```text
+///     walls.blocks(a, b) && half[(b, a)] pertence a outro patch
+/// ```
+///
+/// ⇒ uma **ponte** interior a um patch — que é o que corta uma asa — seria
+/// invisível. Tirar a segunda condição é a representação *"cortar e abrir"*, mas ela
+/// mexe numa rotina com dez gates em cima, e o preço depende desta contagem:
+///
+/// | se hoje houver | então tirar a condição |
+/// |---|---|
+/// | ⭐ **zero** paredes interiores | é **inerte** — nada existente muda, e só as pontes novas passam a ser vistas |
+/// | algumas | muda decomposições que hoje funcionam, e cada uma precisa de ser medida |
+///
+/// ⛔ **A primeira versão desta sonda contou errado**, e o erro é instrutivo: ela
+/// media as paredes **CRUAS** contra os patches **LIMPOS** — duas coisas que não se
+/// correspondem, porque a limpeza dissolve paredes. Dava `204` onde o número é `18`.
+/// *A contagem tem de ser feita onde os dois existem ao mesmo tempo*, e por isso ela
+/// vive agora no `TraceReport::interior_walls`, dentro do `decompose`.
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
+///     --test alignment_topology -- --ignored --nocapture are_there_interior_walls_today
+/// ```
+#[test]
+#[ignore = "sonda -- ja' existem paredes interiores a um patch?"]
+fn are_there_interior_walls_today() {
+    use ph2d_trace::patches::decompose;
+    use ph2d_trace::walk::Walker;
+
+    for (name, mesh) in [
+        ("esfera 24x36", shapes::uv_sphere(24, 36, 1.0)),
+        ("esfera 48x72", shapes::uv_sphere(48, 72, 1.0)),
+        ("toro 32x16", shapes::torus(32, 16, 1.0, 0.35)),
+        ("toro 48x24", shapes::torus(48, 24, 1.0, 0.35)),
+        ("toro 64x32", shapes::torus(64, 32, 1.0, 0.35)),
+        ("cubo subdividido", shapes::sphere_with_triangles(4000, 1.0)),
+    ] {
+        let mut work = mesh.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = Dual::build(&work);
+        let (field, _) = solve_miq_aligned(&dual, Rounding::default(), 0.0);
+        let walker = Walker::new(&work, &dual, &field);
+        let (walls, base) = walker.trace_all();
+        let raw = decompose(&work, &walls, base);
+        let cleaned = ph2d_trace::trace_patches(&work, &dual, &field);
+        println!(
+            "  {name:<18} | paredes {:<5} | CRU: interiores {:<4} patches {:<3} \
+             | LIMPO: interiores {:<4} patches {:<3} ({} rondas)",
+            walls.edges.len(),
+            raw.report.interior_walls,
+            raw.side_arcs.len(),
+            cleaned.report.interior_walls,
+            cleaned.side_arcs.len(),
+            cleaned.report.rounds,
+        );
+    }
+}

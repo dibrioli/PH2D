@@ -94,6 +94,23 @@ pub struct TraceReport {
     /// [`PatchLayout::to_layout`], pela régua do COMPLEXO — ver
     /// [`patches::PatchLayout::chi`] para porque é que a régua por patch não serve.
     pub with_genus: usize,
+    /// ⭐⭐ **Quantas arestas de parede têm o MESMO patch dos dois lados.**
+    ///
+    /// ⚠️ **Elas são invisíveis para o passeio da fronteira**, e é isso que este
+    /// número mede: o `boundary_loops` só conta uma parede como fronteira quando a
+    /// face do outro lado é de **outro** patch, então uma parede interior não
+    /// aparece em lado nenhum — nem como fronteira, nem como aviso.
+    ///
+    /// ⭐ **Ela existe para precificar o CORTE de uma asa** (`PLAN.md`
+    /// §4-quatervicies): cortar é acrescentar uma parede interior, e ela só serve
+    /// para alguma coisa se o passeio passar a percorrê-la **dos dois lados**.
+    /// Antes de mexer nessa regra é preciso saber quantas já existem — porque cada
+    /// uma delas mudaria de significado.
+    ///
+    /// ⚠️ **Ela é do par (paredes, decomposição)**, e por isso mora aqui e não numa
+    /// sonda: medir as paredes CRUAS contra os patches LIMPOS dá um número sem
+    /// sentido (foi o primeiro que esta sonda produziu, e ele dizia 204).
+    pub interior_walls: usize,
     /// Quantos arcos o layout tem.
     pub arcs: usize,
     /// Quantas paredes foram **dissolvidas** para curar patches degenerados.

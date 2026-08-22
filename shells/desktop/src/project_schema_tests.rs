@@ -372,7 +372,16 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // COMPONENTES e nao no `VecPath`, entao a pose tem de os carregar por si.
         // ⚠️ A `VecScene` de novo NAO mudou (um filtro e' fato de ENTIDADE), entao os dois
         // numeros ao lado ficam. (Nasceu como 85→86 na linha; recontado na integracao.)
-        (88, 13, 14),
+        // PROJECT 88→89: o componente novo `VecBoolOp` — o verbo com que UMA forma dobra sobre
+        // o resultado das anteriores, dentro de uma booleana viva. ⚠️ Aqui quem obriga o bump
+        // NAO e' um campo, e' o REGISTRO (64 → 65): um componente fora do
+        // `register_ecs_components` e' descartado em silencio pelo snapshot, e o Ctrl+Z
+        // devolveria a receita achatada no `op` do grupo — sem nada em falta na tela a
+        // denunciar. ⚠️ A `VecScene` de novo NAO mudou (o verbo e' fato de ENTIDADE, nao de
+        // caminho), entao os dois numeros ao lado ficam onde estavam.
+        // ⚠️ Nasceu como 86→87 na `line/Vector`; RECONTADO para 88→89 na integracao de
+        // 2026-08-22 (a `line/Sprite` ocupou 85 e 86 antes).
+        (89, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

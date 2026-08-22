@@ -2607,6 +2607,12 @@ impl crate::App {
                 },
                 // The candidate a live anchor drag has caught (the crosshair).
                 self.joint_anchor_drag.and_then(|d| d.snap),
+                // **O SELO do papel booleano de cada linha** (2026-08-22). ⚠️ Ele lê o plano do
+                // quadro ANTERIOR: a hierarquia publica aqui, e a booleana cozinha lá em baixo
+                // no mesmo `run_render_frame`. O atraso é de um quadro e o `vec_bool_shape` o
+                // documenta — mover qualquer das duas metades na ordem do frame é mudança com
+                // gates próprios e sem nada a ganhar.
+                &crate::vec_bool_shape::badges(sim, &self.vec_entities, &self.bool_live),
             );
             // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
             // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE
@@ -2811,6 +2817,11 @@ impl crate::App {
             let mut pending_bool_apply = false;
             // A MOLDURA (plano UI/UX W0): o chip de recorte e o preset de dispositivo.
             let mut pending_frame_clip: Option<bool> = None;
+            // **O VERBO DA FORMA selecionada** dentro de uma booleana viva (2026-08-22).
+            // Irmao exacto do `pending_frame_clip`, e pelo mesmo motivo: o valor mora num
+            // COMPONENTE, entao quem escreve e' a shell — o painel so' mostra qual chip
+            // esta' aceso.
+            let mut pending_bool_shape_op: Option<u8> = None;
             // O AUTO LAYOUT (plano UI/UX W2, ADR-0153): um chip de radio e um campo numerico.
             let mut pending_layout_edit: Option<crate::vec_layout_edit::LayoutEdit> = None;
             let mut pending_anchor_edit: Option<crate::vec_anchor_edit::AnchorEdit> = None;
@@ -3166,6 +3177,21 @@ impl crate::App {
                                 ph2d_panel_vector::state::set_bool_live_on(
                                     *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_ON,
                                 );
+                            } else if let Some(code) = [
+                                ph2d_editor::ids::VECTOR_BOOL_SHAPE_UNION,
+                                ph2d_editor::ids::VECTOR_BOOL_SHAPE_SUBTRACT,
+                                ph2d_editor::ids::VECTOR_BOOL_SHAPE_INTERSECT,
+                                ph2d_editor::ids::VECTOR_BOOL_SHAPE_EXCLUDE,
+                            ]
+                            .iter()
+                            .position(|chip| chip == id)
+                            {
+                                // **O VERBO DESTA FORMA.** ⚠️ A posicao no array E' o codigo do
+                                // `PathfinderOp` (0..=3), e nao um segundo mapa: a ordem dos
+                                // quatro chips e' a mesma dos quatro primeiros discriminantes, e
+                                // uma tabela paralela divergiria dela no dia em que alguem
+                                // reordenasse a fileira do painel.
+                                pending_bool_shape_op = u8::try_from(code).ok();
                             } else if *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_OFF
                                 || *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_ON
                             {
@@ -8080,6 +8106,30 @@ impl crate::App {
                 );
                 let group = crate::bool_gesture::group_of_selection(sim, &self.vec_entities, &sel);
                 ph2d_panel_vector::state::set_bool_group_selected(group.is_some());
+                // **O VERBO DA FORMA: honrar o clique ANTES de publicar** — a ordem é a mesma do
+                // chip do recorte, e pela mesma razão: publicar primeiro deixaria o chip a piscar
+                // de volta ao valor antigo por um quadro.
+                //
+                // ⚠️ O escritor **reconfere** a triagem em vez de confiar no que o painel pintou:
+                // entre pintar a fileira e o clique chegar passa um frame, e nele a seleção pode
+                // ter mudado.
+                if let Some(code) = pending_bool_shape_op {
+                    crate::vec_bool_shape::set_selected_shape_op(
+                        sim,
+                        &self.vec_entities,
+                        &self.bool_live,
+                        &sel,
+                        code,
+                    );
+                }
+                ph2d_panel_vector::state::set_bool_shape_op(
+                    crate::vec_bool_shape::shape_op_of_selection(
+                        sim,
+                        &self.vec_entities,
+                        &self.bool_live,
+                        &sel,
+                    ),
+                );
                 if pending_bool_apply
                     && let Some(g) = group
                     && let Some(plan) = self.bool_live.plan(g)

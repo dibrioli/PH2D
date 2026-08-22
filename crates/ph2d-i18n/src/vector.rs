@@ -203,6 +203,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.bool.live.off" => "Off",
         "panel.vector.bool.live.on" => "On",
         "panel.vector.bool.apply" => "Apply Boolean",
+        // O verbo de UMA forma dentro da booleana viva. O rótulo diz de quem é a escolha — sem
+        // ele a fileira lê-se como um quinto par de botões de ação sobre a seleção inteira.
+        "panel.vector.bool.shape" => "This Shape",
+        "panel.vector.bool.shape.union" => "Union",
+        "panel.vector.bool.shape.subtract" => "Subtract",
+        "panel.vector.bool.shape.intersect" => "Intersect",
+        "panel.vector.bool.shape.exclude" => "Exclude",
         "panel.vector.cut.apply" => "Cut",
         "panel.vector.cut.discard" => "Discard Cut Line",
         "panel.vector.marquee" => "Marquee",

@@ -13,7 +13,9 @@
 //! mão se move.* Tudo o mais é consequência.
 //!
 //! O que ela monta, e por quê:
-//! - **o PAR** (um quadrado e um círculo que se cruzam) — o material das oito operações;
+//! - **o TRIO** (um quadrado, um círculo que o cruza, e uma barra que morde os dois) — o material
+//!   das oito operações, e o mínimo em que *"somo com esta, subtraio aquela"* se vê: com duas
+//!   formas o verbo POR FORMA não tem a segunda metade da frase;
 //! - a **ROSQUINHA e a barra** — o par onde `Subtract` e `Intersect` dão figuras claramente
 //!   diferentes, para o re-mirar ser visível num clique;
 //! - uma **LINHA ABERTA** sobre o par, o CONTROLE: ela não é operando, e uma booleana à volta
@@ -42,7 +44,11 @@ fn build(app: &mut crate::App) {
         return;
     };
     let s = &mut gfx.vec_scene;
-    // Rig 1 — o PAR: quadrado + círculo que se cruzam.
+    // Rig 1 — o TRIO: quadrado + círculo que se cruzam, e uma barra por cima dos dois.
+    //
+    // ⚠️ **Três, e não dois, desde 2026-08-22:** o verbo por FORMA só se vê com um terceiro
+    // operando. Com dois, *"somo com esta, subtraio aquela"* não tem a segunda metade — e um
+    // smoke que não consegue encenar a frase do pedido não prova a feature.
     s.push_path(tint(
         rectangle([RIG_X[0] - 0.9, 0.6], [RIG_X[0] + 0.5, 2.0]),
         [235, 120, 120],
@@ -50,6 +56,10 @@ fn build(app: &mut crate::App) {
     s.push_path(tint(
         ellipse([RIG_X[0] + 0.4, 1.3], 0.8, 0.8),
         [120, 200, 235],
+    ));
+    s.push_path(tint(
+        rectangle([RIG_X[0] - 0.6, 1.05], [RIG_X[0] + 1.1, 1.55]),
+        [235, 200, 120],
     ));
     // Rig 2 — a ROSQUINHA e a barra: `Subtract` abre uma fenda, `Intersect` deixa dois toquinhos.
     s.push_path(tint(ellipse([RIG_X[1], 1.3], 1.0, 1.0), [235, 200, 120]));
@@ -86,16 +96,16 @@ fn announce(app: &mut crate::App) {
         return;
     };
     eprintln!(
-        "[bool] cena montada: {} formas — o PAR, a ROSQUINHA+barra, e o rig do CONTROLE (duas \
+        "[bool] cena montada: {} formas — o TRIO, a ROSQUINHA+barra, e o rig do CONTROLE (duas \
          formas + uma LINHA ABERTA por cima).",
         gfx.vec_scene.paths().len()
     );
     eprintln!("[bool] o modo Live nasce OFF — o default do produto. Quem liga é você.");
     eprintln!("[bool] o roteiro (pegue a ferramenta VECTOR primeiro):");
-    eprintln!("  1. Seção Boolean: a row 'Live'. Deixe em Off, selecione o PAR (Shift+clique) e");
+    eprintln!("  1. Seção Boolean: a row 'Live'. Deixe em Off, selecione o TRIO (Shift+clique) e");
     eprintln!("     clique Union. ⚠️ É o mundo de sempre: os operandos SOMEM, vira uma forma só.");
     eprintln!("     Ctrl+Z para devolvê-los.");
-    eprintln!("  2. Agora ligue Live=On, selecione o PAR e clique Subtract. A forma combinada");
+    eprintln!("  2. Agora ligue Live=On, selecione o TRIO e clique Subtract. A forma combinada");
     eprintln!("     aparece — e ⚠️ os DOIS operandos continuam na Hierarquia, dentro de um grupo");
     eprintln!("     chamado 'Boolean'.");
     eprintln!("  3. Abra o grupo, selecione o CÍRCULO e ARRASTE. ⚠️ A pergunta da wave: o");
@@ -104,6 +114,21 @@ fn announce(app: &mut crate::App) {
     eprintln!("     novo no MESMO ponto e a seleção passa ao operando seguinte — inclusive o");
     eprintln!("     que foi COMIDO por um Subtract e não desenha nada. ⚠️ E o contrário tem de");
     eprintln!("     valer: clicar DENTRO do buraco não pega nada, porque ali não há tinta.");
+    eprintln!("  3c. UM VERBO POR FORMA. Com o grupo em Union, clique UMA das formas do trio (na");
+    eprintln!("     Hierarquia ou no canvas). A seção Boolean mostra a row 'This Shape' com os");
+    eprintln!("     quatro modos. Escolha Subtract: ⚠️ só AQUELA forma passa a furar, e as outras");
+    eprintln!("     continuam a somar. É a frase do pedido: somo com esta, subtraio aquela.");
+    eprintln!(
+        "  3d. Olhe a HIERARQUIA: cada linha do grupo ganhou um selo — UNI/SUB/INT/EXC — e a"
+    );
+    eprintln!(
+        "     de baixo diz BSE (a base, que não tem verbo: as outras dobram sobre ela). ⚠️ A"
+    );
+    eprintln!("     receita inteira lê-se aí, de cima para baixo, sem clicar em nada.");
+    eprintln!(
+        "  3e. ARRASTE uma linha do grupo na Hierarquia para mudar a ORDEM. ⚠️ O desenho tem"
+    );
+    eprintln!("     de mudar: quem está mais abaixo atua sobre o resultado dos de cima.");
     eprintln!("  4. Com o grupo selecionado, clique Intersect. ⚠️ Ele TROCA a operação — não cria");
     eprintln!("     um segundo grupo e não consome nada. Os oito botões são o seletor.");
     eprintln!("  5. Faça o mesmo na ROSQUINHA+barra: Subtract abre uma fenda, Intersect deixa");
@@ -147,5 +172,38 @@ mod tests {
             "as duas formas do rig do CONTROLE não se cruzam (união {u:.3} = soma {:.3})",
             a + b
         );
+    }
+
+    /// **A BARRA DO TRIO tem de morder as DUAS outras** — senão o passo 3c não encena nada.
+    ///
+    /// ⚠️ É a disciplina de fixture inteira numa frase: com a barra a tocar só uma delas, pôr
+    /// `Subtract` nela abriria um furo idêntico ao de uma booleana de dois, e o roteiro pediria
+    /// ao Enio que visse uma diferença que a geometria não produz. Um smoke assim **passa** e não
+    /// prova coisa nenhuma.
+    #[test]
+    fn the_trio_bar_bites_both_of_its_siblings() {
+        let quad = tint(
+            rectangle([RIG_X[0] - 0.9, 0.6], [RIG_X[0] + 0.5, 2.0]),
+            [1, 2, 3],
+        );
+        let circ = tint(ellipse([RIG_X[0] + 0.4, 1.3], 0.8, 0.8), [1, 2, 3]);
+        let bar = tint(
+            rectangle([RIG_X[0] - 0.6, 1.05], [RIG_X[0] + 1.1, 1.55]),
+            [1, 2, 3],
+        );
+        for (name, other) in [("o QUADRADO", &quad), ("o CÍRCULO", &circ)] {
+            let refs: Vec<&VecPath> = vec![other, &bar];
+            let inter: f64 =
+                ph2d_vec_boolean::pathfinder(&refs, ph2d_vec_boolean::PathfinderOp::Intersect)
+                    .unwrap()
+                    .iter()
+                    .map(|p| ph2d_vec_boolean::area(p).abs())
+                    .sum();
+            assert!(
+                inter > 1e-3,
+                "a barra do TRIO não cruza {name} (interseção {inter:.5}) — \
+                 o passo 3c não teria o que mostrar"
+            );
+        }
     }
 }

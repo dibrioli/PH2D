@@ -566,4 +566,19 @@
 /// `ph2d-fx-op`, para a `ph2d-ui-state` (que deliberadamente não vê ECS) o poder carregar. A
 /// forma serializada é a MESMA; o que mudou foi de que crate o tipo vem.
 /// ⚠️ Nasceu como v86 na `line/Vector`; RECONTADO para v88 na integração de 2026-08-22 (ver v87).
-pub(crate) const PROJECT_SCHEMA: u32 = 88;
+/// v89 (`line/Vector` — UM VERBO POR FORMA na booleana viva): o componente novo
+/// `ph2d_ecs::VecBoolOp` guarda, **por forma**, a operação com que ela dobra sobre o resultado das
+/// anteriores (Enio, 2026-08-22: *"o modo do boolean é escolhido por shape e na ordem em que
+/// aparece na hierarquia atua sobre o resultante das operações pregressas"*).
+/// ⚠️ **Quem obriga o bump é o REGISTRO, não um campo.** O componente não muda a forma de nenhum
+/// tipo já serializado — ele é uma entrada NOVA no `ComponentRegistry` (64 → 65). E o modo de
+/// falha de esquecer o registro é o mais enganoso desta escada inteira: um componente que não
+/// passa por `register_ecs_components` é **descartado em silêncio** pelo snapshot, então o
+/// primeiro Ctrl+Z devolveria a arte toda no lugar, a combinação intacta — e a receita achatada de
+/// volta no `op` do grupo, desenhando outra coisa **sem nada em falta na tela a denunciá-lo**.
+/// ⚠️ Ausência do componente continua a ser **herança** do `op` do grupo, e é isso que faz todo
+/// arquivo ≤ v88 desenhar byte-idêntico: nenhuma forma o tem, todas herdam, e herdar é o que o
+/// grupo já fazia.
+/// ⚠️ Nasceu como v87 na `line/Vector` (o handoff dela diz «86 → 87»); RECONTADO para v89 na
+/// integração de 2026-08-22 — a `line/Sprite` entrou antes com v85/v86 (ver v87).
+pub(crate) const PROJECT_SCHEMA: u32 = 89;

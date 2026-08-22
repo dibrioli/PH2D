@@ -91,8 +91,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-hierarchy/src/row.rs",
         "paint_hierarchy_row",
-        291,
-        "row painter (icons + twirl + rename + companions); re-baselined 300→291 by the comment-aware parser",
+        281,
+        "row painter (icons + twirl + rename + companions); 291 -> 281 em 2026-08-22, quando a tabela de TOM dos selos saiu para `badge_tone` (split, nunca allowlist)",
     ),
     // ⚠️ `ph2d-panel-hierarchy/src/event.rs::apply_event` ESTEVE aqui, tolerado a 216 — e a
     // entrada foi REMOVIDA em 2026-08-19, não subida para 219. O "Pack into Sheet" ia

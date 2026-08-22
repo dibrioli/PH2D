@@ -18,6 +18,19 @@
 
 const SRC: &str = include_str!("../src/render_loop/mod.rs");
 
+/// **A chamada do COZIMENTO da booleana** — a âncora dos dois gates de ordem abaixo.
+///
+/// ⚠️ Ela foi `"self.bool_live"` até 2026-08-22, e deixou de servir no dia em que um segundo
+/// consumidor passou a LER o `bool_live` mais cedo no frame (o selo do papel booleano na
+/// hierarquia, que consome o plano do quadro anterior de propósito). O `find` devolvia essa
+/// leitura: um dos gates ficou **vermelho sobre uma ordem correcta**, e o outro ficou **VERDE POR
+/// ACIDENTE** — ele só exigia `boolean < plan`, e a leitura precoce satisfazia isso sozinha.
+///
+/// ⛔ A lição não é *"o gate estava errado"*. Um arch-gate ancorado no NOME DO CAMPO afirma
+/// *"ninguém mais toca neste campo"* — bem mais forte que a ordem que ele quer provar, e uma
+/// afirmação que envelhece sozinha. A âncora certa é a chamada que ele mede.
+const COOK: &str = ".recook(vec_scene, sim, &self.vec_entities, &vec_xf, &mut vec_live)";
+
 /// Onde a chamada `needle` aparece — falha nomeando quem sumiu.
 fn at(needle: &str) -> usize {
     SRC.find(needle)
@@ -37,7 +50,7 @@ fn the_boolean_cooks_after_the_five_and_before_the_alignment() {
     let profile = SRC
         .rfind("vec_live.extend(")
         .expect("os `extend` que fundem o mapa sumiram do render_loop");
-    let boolean = at("self.bool_live");
+    let boolean = at(COOK);
     let align = at("self.align_live.recook(");
     let silhouette = at("self.fx_silhouette");
 
@@ -65,7 +78,7 @@ fn the_boolean_cooks_after_the_five_and_before_the_alignment() {
 /// arte saltar entre o último frame desenhado e o clique.
 #[test]
 fn the_apply_materialises_the_plan_the_producer_just_cooked() {
-    let boolean = at("self.bool_live");
+    let boolean = at(COOK);
     let plan = at("self.bool_live.plan(g)");
     let bake = at("crate::bool_gesture::bake(");
     assert!(

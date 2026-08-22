@@ -20,6 +20,8 @@ thread_local! {
     static LIVE_ON: Cell<bool> = const { Cell::new(false) };
     /// Há um grupo booleano vivo na seleção deste frame?
     static GROUP_SELECTED: Cell<bool> = const { Cell::new(false) };
+    /// O verbo da forma selecionada, quando a pergunta se pode fazer.
+    static SHAPE_OP: Cell<Option<u8>> = const { Cell::new(None) };
 }
 
 /// O modo escolhido pelo artista. **`false` por default, de propósito:** ligar a booleana viva
@@ -44,4 +46,28 @@ pub fn set_bool_group_selected(sel: bool) {
 #[must_use]
 pub(crate) fn bool_group_selected() -> bool {
     GROUP_SELECTED.with(Cell::get)
+}
+
+/// **O verbo da forma selecionada** dentro de uma booleana viva (shell → painel).
+///
+/// `None` faz a fileira **não existir**, e ele carrega a regra inteira — irmão exacto do
+/// `frame_clip`, e pela mesma razão: quem alcança o mundo é a shell, e uma segunda resposta a
+/// *"esta forma pode escolher um verbo?"* divergiria da primeira no dia seguinte.
+///
+/// A shell devolve `None` em quatro casos, e cada um é uma decisão:
+///
+/// - a seleção não é **exactamente uma** forma — o verbo é de uma forma, não de um conjunto;
+/// - a forma não está numa booleana viva;
+/// - ela é a **BASE** — o verbo dela é inerte, e um controlo inerte pintado como vivo é pior que
+///   controlo nenhum;
+/// - o grupo está numa **RECEITA** (`Trim`/`Crop`/`Merge`/`MinusBack`), que é verbo da pilha
+///   inteira e ignora os das formas.
+pub fn set_bool_shape_op(op: Option<u8>) {
+    SHAPE_OP.with(|c| c.set(op));
+}
+
+/// O verbo da forma selecionada — `None` = a fileira não é oferecida.
+#[must_use]
+pub(crate) fn bool_shape_op() -> Option<u8> {
+    SHAPE_OP.with(Cell::get)
 }

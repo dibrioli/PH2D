@@ -49,6 +49,12 @@ use crate::vec_entities::VecEntityMap;
 /// Uma entrada do memo: o que ENTROU (a operação + a lista de mundo) e o que SAIU.
 struct Memo {
     op: u8,
+    /// O verbo de cada path da entrada, já resolvido (override da forma ⟶ senão o do grupo).
+    ///
+    /// ⚠️ **Ele faz parte da CHAVE, e não é decoração.** Trocar o modo de uma forma não muda nem a
+    /// geometria de entrada nem o `op` do grupo — sem este campo o memo daria acerto, a resposta
+    /// velha seria re-servida, e o clique no seletor não faria coisa nenhuma na tela.
+    verbs: Vec<ph2d_vec_boolean::BoolOp>,
     input: Vec<VecPath>,
     out: Vec<VecPath>,
 }
@@ -110,22 +116,67 @@ impl BoolLive {
             }
             let base = operands[0].0;
             let input: Vec<VecPath> = operands.iter().flat_map(|(_, v)| v.clone()).collect();
+            let Some(pf) = op_of_code(op) else {
+                // Código que este build não conhece: o grupo desenha como grupo comum. É a
+                // degradação que não perde arte (o doc do componente a declara).
+                continue;
+            };
+            // **O VERBO DE CADA PATH DA ENTRADA.** Um operando pode contribuir com VÁRIOS paths
+            // (um offset vivo, um composto), e o verbo é da FORMA — então ele repete-se por
+            // quantos paths aquela forma trouxe. Uma lista por operando não serviria: quem dobra
+            // é cada path, um de cada vez.
+            let verbs: Vec<ph2d_vec_boolean::BoolOp> = pf.as_bool().map_or_else(Vec::new, |g| {
+                operands
+                    .iter()
+                    .flat_map(|(id, v)| {
+                        std::iter::repeat_n(operand_verb(sim, map, *id, g), v.len())
+                    })
+                    .collect()
+            });
             let hit = self
                 .memo
                 .get(&base)
-                .is_some_and(|m| m.op == op && m.input == input);
+                .is_some_and(|m| m.op == op && m.verbs == verbs && m.input == input);
             if !hit {
-                let refs: Vec<&VecPath> = input.iter().collect();
-                let Some(pf) = op_of_code(op) else {
-                    // Código que este build não conhece: o grupo desenha como grupo comum. É a
-                    // degradação que não perde arte (o doc do componente a declara).
-                    continue;
+                let out = match (pf.as_bool(), input.split_first()) {
+                    // **As quatro de CONJUNTO: a cadeia com um verbo por passo.** Sem nenhum
+                    // override isto é byte-idêntico à porta N-ária de sempre — todos os verbos
+                    // são o do grupo, e a cadeia uniforme *é* o `apply_many_checked` (há gate no
+                    // motor).
+                    (Some(_), Some((first, rest))) => {
+                        let folds: Vec<(&VecPath, ph2d_vec_boolean::BoolOp)> = rest
+                            .iter()
+                            .zip(verbs.iter().skip(1))
+                            .map(|(p, &v)| (p, v))
+                            .collect();
+                        let Ok(out) = ph2d_vec_boolean::apply_chain_checked(first, &folds) else {
+                            // O motor recusou. O mapa fica INTOCADO — a arte continua como estava.
+                            continue;
+                        };
+                        out
+                    }
+                    // ⛔ **As quatro RECEITAS são verbos da PILHA INTEIRA**, e por isso o verbo
+                    // por forma não se aplica a elas: *"cada forma menos a união do que está
+                    // acima dela"* não é uma relação entre duas. Elas correm exatamente como
+                    // sempre correram — e é a UI que tem de não oferecer o seletor por forma
+                    // quando o grupo está numa receita, senão ele é um controlo inerte.
+                    _ => {
+                        let refs: Vec<&VecPath> = input.iter().collect();
+                        let Ok(out) = ph2d_vec_boolean::pathfinder(&refs, pf) else {
+                            continue;
+                        };
+                        out
+                    }
                 };
-                let Ok(out) = ph2d_vec_boolean::pathfinder(&refs, pf) else {
-                    // O motor recusou. O mapa fica INTOCADO — a arte continua como estava.
-                    continue;
-                };
-                self.memo.insert(base, Memo { op, input, out });
+                self.memo.insert(
+                    base,
+                    Memo {
+                        op,
+                        verbs,
+                        input,
+                        out,
+                    },
+                );
             }
             if let Some(m) = self.memo.get(&base) {
                 touched.push(base);
@@ -154,6 +205,21 @@ impl BoolLive {
     pub(crate) fn plan(&self, group: Entity) -> Option<&Cooked> {
         let bits = group.to_bits();
         self.plans.iter().find(|(b, _)| *b == bits).map(|(_, c)| c)
+    }
+
+    /// **O PLANO QUE CONSOME `id`**, e o grupo dele. `None` = ela não é operando de booleana viva
+    /// nenhuma neste frame.
+    ///
+    /// ⚠️ **O mais INTERNO vence**, e não por acaso: com grupos aninhados, a base de um grupo
+    /// interno é também operando do externo, e os planos estão ordenados por profundidade
+    /// decrescente. O verbo de uma forma vale dentro do grupo *dela* — quem consome o resultado
+    /// desse grupo é outra pergunta, com outra resposta.
+    #[must_use]
+    pub(crate) fn plan_containing(&self, id: VecPathId) -> Option<(Entity, &Cooked)> {
+        self.plans
+            .iter()
+            .find(|(_, c)| c.operands.contains(&id))
+            .map(|(bits, c)| (Entity::from_bits(*bits), c))
     }
 
     /// **QUEM ABSORVEU cada operando neste frame** — o par *(operando, base que carrega a tinta)*,
@@ -189,6 +255,33 @@ impl BoolLive {
         self.memo.clear();
         self.plans.clear();
     }
+}
+
+/// **O verbo com que ESTA forma dobra** — o override dela, quando ele é uma das quatro operações
+/// de conjunto; senão o do grupo.
+///
+/// ⚠️ **Ausência é HERANÇA, e é isso que mantém os oito botões do grupo vivos.** Um seletor de
+/// grupo que deixasse de decidir assim que as formas passassem a mandar seria o defeito
+/// *"parâmetro que não muda nada"*; aqui ele é o **padrão** de quem não se pronunciou — e é
+/// também o que faz todo documento anterior a esta feature desenhar byte-idêntico.
+///
+/// ⚠️ Na BASE o resultado é ignorado, e não por um `if`: o verbo viaja emparelhado com o path que
+/// ENTRA na cadeia, e a base não entra — ela é o acumulador inicial. É a representação a apagar o
+/// caso especial.
+fn operand_verb(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    id: VecPathId,
+    group: ph2d_vec_boolean::BoolOp,
+) -> ph2d_vec_boolean::BoolOp {
+    map.get(&id)
+        .and_then(|&bits| {
+            sim.world()
+                .get::<ph2d_ecs::VecBoolOp>(Entity::from_bits(bits))
+        })
+        .and_then(|v| op_of_code(v.op))
+        .and_then(ph2d_vec_boolean::PathfinderOp::as_bool)
+        .unwrap_or(group)
 }
 
 /// A base que de facto **desenha**, subindo a cadeia de absorções a partir de `base`.

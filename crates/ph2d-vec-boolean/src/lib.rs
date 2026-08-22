@@ -134,21 +134,49 @@ pub fn apply_many(paths: &[&VecPath], op: BoolOp) -> Vec<VecPath> {
 /// [`SweepFailed`] quando o `linesweeper` recusa a entrada (coordenada não-finita, precisão
 /// insuficiente).
 pub fn apply_many_checked(paths: &[&VecPath], op: BoolOp) -> Result<Vec<VecPath>, SweepFailed> {
-    let ([first, rest @ ..], Some(style)) = (paths, paths.last()) else {
+    let [first, rest @ ..] = paths else {
         return Ok(Vec::new());
     };
-    if rest.is_empty() {
+    // O mesmo verbo em cada dobra — que é o que esta porta sempre foi.
+    let folds: Vec<(&VecPath, BoolOp)> = rest.iter().map(|p| (*p, op)).collect();
+    apply_chain_checked(first, &folds)
+}
+
+/// **A cadeia com um verbo POR PASSO** — a booleana N-ária em que cada dobra traz a sua própria
+/// operação, em vez de todas partilharem uma.
+///
+/// `base` é o path de **trás**; `folds[i]` é *(o path que entra, o verbo com que ele dobra sobre o
+/// acumulado)*, em ordem de z crescente. O resultado é
+/// `((base op₀ p₀) op₁ p₁) op₂ p₂ …` — a mesma dobra à esquerda de sempre, com o verbo a variar.
+///
+/// ⚠️ **A base NÃO tem verbo, e isso é estrutural.** Não há nada sobre o que ela possa operar
+/// antes de existir um acumulado, e é por isso que o par vive no `folds` em vez de numa lista
+/// paralela: duas listas com comprimentos que têm de bater é o convite a passar uma a menos e
+/// desenhar o nada em silêncio. É também o que o Illustrator faz num compound shape vivo — o
+/// componente de baixo tem um modo na UI e ele é **inerte**.
+///
+/// O estilo continua a vir do path do **topo** (o último de `folds`), como no Illustrator.
+///
+/// # Errors
+/// [`SweepFailed`] quando o `linesweeper` recusa a entrada.
+pub fn apply_chain_checked(
+    base: &VecPath,
+    folds: &[(&VecPath, BoolOp)],
+) -> Result<Vec<VecPath>, SweepFailed> {
+    let Some((style, _)) = folds.last() else {
+        // Menos de duas entradas: não há operação nenhuma a fazer, e o vazio é a resposta —
+        // exatamente como quando esta porta recebia um `paths` de um só.
         return Ok(Vec::new());
-    }
-    let lop = op.to_linesweeper();
-    let mut acc = to_bez(first);
+    };
+    let mut acc = to_bez(base);
     // A regra de entrada do 1º fold precisa ler os contornos das FONTES. Só um
     // compound depende de EvenOdd (é o que faz seu contorno interno ser buraco);
     // um contorno único lê igual sob as duas regras — exceto se auto-intersectar,
     // caso em que NonZero (o default do modelo) é o que o render mostra.
-    let mut acc_rule = first.fill_rule;
+    let mut acc_rule = base.fill_rule;
     let mut grouped: Vec<Vec<BezPath>> = Vec::new();
-    for other in rest {
+    for (other, op) in folds {
+        let lop = op.to_linesweeper();
         let rule = if acc_rule == FillRule::EvenOdd || other.fill_rule == FillRule::EvenOdd {
             LsFillRule::EvenOdd
         } else {

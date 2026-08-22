@@ -23,6 +23,11 @@ a medição dizia que cabia folgado no orçamento de quadro. O que reprovou foi 
 que a memória `feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason`
 nomeia: *leia o MOTIVO do revert, não o diff.*
 
+✅ **E a capacidade CHEGOU por outro caminho, no mesmo dia:** o verbo passou a ser uma propriedade
+de cada FORMA, lida na ordem que a hierarquia já mostra — sem janela, sem gesto e sem posições a
+guardar ([27](27_um_verbo_por_forma.md)). *O que estava errado nunca foi o modelo; era a segunda
+superfície inventada para o exprimir.*
+
 ⚠️ Corolário duro: **uma 2ª tentativa não começa por reconstruir isto.** Ela começa por perguntar
 *o que era confuso* — e a resposta **não está neste doc, porque eu não a tenho**. A árvore inteira
 sobrevive em `e0796e537` (e as etapas em `c781b77f8`, `fb37eb28f`, `25b8b7b64`, `783d1b8b7`).

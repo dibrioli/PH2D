@@ -489,6 +489,9 @@ mod variant_smoke;
 mod vec_anchor_edit;
 mod vec_bindings;
 mod vec_blend;
+/// **O papel de cada forma dentro de uma booleana viva** — a porta única de *"que verbo é o
+/// dela?"*, que o painel e a linha da hierarquia partilham.
+mod vec_bool_shape;
 /// O chip *Clip content* — a projeção e a edição do RECORTE, que vale para qualquer forma
 /// vetorial FECHADA (e não só para a moldura, desde 2026-08-21).
 mod vec_clip_edit;

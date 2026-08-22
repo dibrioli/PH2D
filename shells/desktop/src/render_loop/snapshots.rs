@@ -180,6 +180,11 @@ pub(super) fn publish(
     // the candidate a live drag has caught, for the crosshair.
     joint_anchor_handles: Vec<ph2d_editor::gizmo::PointHandle>,
     joint_anchor_snap: Option<[f32; 2]>,
+    // **O SELO de cada linha da hierarquia** por bits de entidade (2026-08-22): o papel
+    // que aquela forma tem dentro da booleana viva que a consome. Resolvido pelo caller,
+    // que tem o `bool_live` em maos, e stampado aqui porque e' aqui que as linhas ainda
+    // sao mutaveis -- o mesmo sitio, e o mesmo motivo, do `entry.selected`.
+    bool_badges: &std::collections::BTreeMap<u64, &'static str>,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -227,6 +232,19 @@ pub(super) fn publish(
                     .get(&node)
                     .map(|e| (e.name.clone(), e.badge.clone()))
             });
+        // **O SELO DO PAPEL BOOLEANO**, stampado DEPOIS do `primary_label` de propósito: o
+        // cabeçalho usa o badge como *tipo* da seleção, e sobrescrevê-lo antes faria a
+        // barra de cima dizer `SUB` onde sempre disse `ENT`. São dois consumidores do
+        // mesmo campo, e só um deles pediu esta informação.
+        if !bool_badges.is_empty() {
+            for (&bits, &badge) in bool_badges {
+                if let Some(node_id) = live.bridge.node_for(bits)
+                    && let Some(entry) = entries.get_mut(&node_id)
+                {
+                    entry.badge = Some(badge.to_string());
+                }
+            }
+        }
         ph2d_panel_hierarchy::sync_from_hierarchy(&mut hero.store, &ordered, entries);
         if let Some((label, badge)) = primary_label {
             hero.selection = Some(ph2d_editor::HeroSelection {

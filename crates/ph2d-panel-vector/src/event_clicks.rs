@@ -237,6 +237,14 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_BOOL_SUBTRACT
         || id == ids::VECTOR_BOOL_INTERSECT
         || id == ids::VECTOR_BOOL_EXCLUDE
+        // O VERBO DE UMA FORMA (2026-08-22). Ids proprios, e nao os quatro de cima: os dois
+        // conjuntos convivem na mesma seccao e fazem coisas diferentes sobre a mesma selecao.
+        // O valor mora num COMPONENTE, entao o clique atravessa o barramento -- fora daqui os
+        // quatro chips pintariam, acenderiam sob o mouse, e estariam MORTOS.
+        || id == ids::VECTOR_BOOL_SHAPE_UNION
+        || id == ids::VECTOR_BOOL_SHAPE_SUBTRACT
+        || id == ids::VECTOR_BOOL_SHAPE_INTERSECT
+        || id == ids::VECTOR_BOOL_SHAPE_EXCLUDE
         || id == ids::VECTOR_COMPOUND_MAKE
         || id == ids::VECTOR_COMPOUND_RELEASE
         // Expand: os dois COMANDOS (a junção não vem aqui — é panel-local).

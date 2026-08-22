@@ -35,7 +35,8 @@ O que existe: **13 modos** (Select · Node · Pen · Build · Width · Tesoura �
 [ADR-0112](../architecture/decisions/)) · **Live Corners** ([ADR-0121](../architecture/decisions/)) ·
 **blend** ([ADR-0128](../architecture/decisions/)) · **largura viva**
 ([ADR-0148](../architecture/decisions/)) · **auto layout** via `taffy` atrás de uma crate-folha
-([ADR-0153](../architecture/decisions/)) · guias e régua · **simetria como modo** · booleana viva ·
+([ADR-0153](../architecture/decisions/)) · guias e régua · **simetria como modo** · **booleana viva
+com um verbo POR FORMA** ([27](27_um_verbo_por_forma.md)) ·
 moldura · **tokens no documento** · **estados de UI + Smart Animate** · a **árvore autorada como
 painel vivo** (o app escreve o código do painel) · e a pilha de **FX raster**
 ([`24_plano_fx_raster.md`](24_plano_fx_raster.md)).
@@ -93,6 +94,7 @@ cd /home/enio/Documentos/Projetos/PH2D && env PH2D_BUILD_SMOKE=<n> cargo run -p 
 | **o que já quebrou, e o padrão que se repete** | [`BUGS_vector.md`](BUGS_vector.md) — os 26 estão fechados; o que vale são as **recusas ⛔**, os **padrões** e o índice com o mecanismo |
 | **os FX raster** | [`24_plano_fx_raster.md`](24_plano_fx_raster.md) |
 | **as ferramentas de desenho** | [`25_plano_ferramentas_de_desenho.md`](25_plano_ferramentas_de_desenho.md) |
+| **um VERBO POR FORMA na booleana viva** | [`27_um_verbo_por_forma.md`](27_um_verbo_por_forma.md) — a lei, o padrão-ouro (compound shape vivo do Illustrator), as três decisões, e ⚠️ **os três harnesses de mutação que mentiram** |
 | ⛔ **o GRAFO da booleana viva** — CONSTRUÍDO E RETIRADO | [`26_plano_grafo_booleano_vivo.md`](26_plano_grafo_booleano_vivo.md) — o registo da recusa (*"confuso de usar"*), o custo medido, as leis derivadas, e o defeito pré-existente que ele expôs (**✅ curado à parte**: *a tinta do GRUPO é a porta dos operandos dele*, §3) |
 | **texto em caminho · pattern along path · envelope/warp** | [`22_…`](22_plano_texto_em_caminho.md) · [`23_…`](23_plano_pattern_along_path.md) · [`21_…`](21_pesquisa_envelope_warp.md) |
 | **o estado por wave** | [`handoffs/README.md`](handoffs/README.md) |

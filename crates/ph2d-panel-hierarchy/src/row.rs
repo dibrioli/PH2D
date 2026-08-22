@@ -17,6 +17,31 @@ use ph2d_tokens::{
 };
 use ph2d_vector::VectorScene;
 
+/// **O TOM de cada selo de linha.** Porta única: o selo é um código, e o tom é o que o olho lê
+/// antes de decifrar as três letras.
+///
+/// ⚠️ Ela saiu de dentro do `paint_hierarchy_row` em 2026-08-22, quando os selos do papel booleano
+/// empurraram aquela função para fora do teto de LOC. ⛔ **Split, nunca allowlist** — e o número
+/// do allowlist desceu junto, que é a única direção em que ele pode andar.
+fn badge_tone(badge: &str) -> TagTone {
+    match badge {
+        "PRF" | "SPR" => TagTone::Accent,
+        "OUT" | "LGT" => TagTone::Warn,
+        "CAM" => TagTone::Success,
+        "TRG" => TagTone::Danger,
+        // O PAPEL de uma forma dentro de uma booleana viva (2026-08-22). O tom separa **o que
+        // acrescenta** do **o que tira** — a leitura que o olho faz ao percorrer a receita.
+        //
+        // ⚠️ `UNI` cai no Neutral por já existir acima com outro significado, e ⛔ **não se muda o
+        // tom daquele** para acomodar este: seria repintar um selo de outra família.
+        "SUB" => TagTone::Warn,
+        "INT" | "EXC" => TagTone::Accent,
+        // A BASE não tem verbo e a RECEITA é do grupo inteiro: nenhum dos dois é escolha daquela
+        // linha, e o neutro é o que os separa dos que são.
+        _ => TagTone::Neutral,
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_hierarchy_row(
     entity: &fixture::HierarchyEntity,
@@ -258,17 +283,7 @@ pub(crate) fn paint_hierarchy_row(
             badge_w,
             badge_h,
         );
-        let tone = match badge.as_str() {
-            "PRF" => TagTone::Accent,
-            "UNI" => TagTone::Neutral,
-            "OUT" => TagTone::Warn,
-            "CAM" => TagTone::Success,
-            "TIL" => TagTone::Neutral,
-            "TRG" => TagTone::Danger,
-            "LGT" => TagTone::Warn,
-            "SPR" => TagTone::Accent,
-            _ => TagTone::Neutral,
-        };
+        let tone = badge_tone(badge);
         let tag = Tag::new(ph2d_a11y::NodeId(0), badge)
             .tone(tone)
             .state(if entity.muted {

@@ -367,6 +367,46 @@ impl BodyCtx<'_> {
             ],
             y,
         );
+        // **O VERBO DESTA FORMA** (Enio, 2026-08-22): *"o modo do boolean é escolhido por shape e
+        // na ordem em que aparece na hierarquia atua sobre o resultante das operações pregressas"*.
+        // É o compound shape vivo do Illustrator, em que cada componente guarda o seu Shape Mode.
+        //
+        // ⚠️ **A fileira vem ANTES dos oito botões, e não junto deles.** Estes quatro são uma
+        // PROPRIEDADE da forma em mãos; os oito são AÇÕES sobre a seleção (criam ou re-miram o
+        // grupo). Vizinhos, leriam-se como uma família de doze, e o artista descobriria pelo
+        // efeito que quatro mudam uma forma e oito mexem no grupo inteiro.
+        //
+        // ⚠️ `None` faz a fileira **não existir**, e a regra inteira mora do lado da shell
+        // (`vec_bool_shape`) — inclusive as duas recusas que ela carrega: a BASE não tem verbo, e
+        // um grupo numa RECEITA não deixa forma nenhuma escolher.
+        if let Some(code) = crate::state::bool_shape_op() {
+            y = self.segmented(
+                tr("panel.vector.bool.shape"),
+                &[
+                    (
+                        ids::VECTOR_BOOL_SHAPE_UNION,
+                        tr("panel.vector.bool.shape.union"),
+                        code == 0,
+                    ),
+                    (
+                        ids::VECTOR_BOOL_SHAPE_SUBTRACT,
+                        tr("panel.vector.bool.shape.subtract"),
+                        code == 1,
+                    ),
+                    (
+                        ids::VECTOR_BOOL_SHAPE_INTERSECT,
+                        tr("panel.vector.bool.shape.intersect"),
+                        code == 2,
+                    ),
+                    (
+                        ids::VECTOR_BOOL_SHAPE_EXCLUDE,
+                        tr("panel.vector.bool.shape.exclude"),
+                        code == 3,
+                    ),
+                ],
+                y,
+            );
+        }
         // **O Apply só existe com uma booleana viva selecionada.** Sem ela não há o que
         // consolidar, e um botão que não aplica nada é pior que botão nenhum — a mesma lei do
         // Apply da simetria e dos dois botões do corte.

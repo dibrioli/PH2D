@@ -1,5 +1,10 @@
-//! **Quanto custa uma REDE de booleanas vivas, por quadro** — o número que decide se o
-//! *Live Boolean Graph* (Enio, 2026-08-21) tem teto útil ou não.
+//! **Quanto custa uma CADEIA de booleanas vivas, por quadro.**
+//!
+//! ⚠️ Esta sonda nasceu para decidir se o *Live Boolean Graph* tinha teto útil (Enio, 2026-08-21).
+//! O grafo foi **retirado** (`docs/Vector Module/26_*.md`) — os NÚMEROS não, e hoje ela mede
+//! exactamente o que shipa: a cadeia com um verbo por passo
+//! (`docs/Vector Module/27_um_verbo_por_forma.md`), que faz o mesmo número de operações binárias
+//! que a de verbo fixo.
 //!
 //! # A pergunta que esta sonda existe para responder
 //!
@@ -22,7 +27,7 @@
 //! ⚠️ **Formas com vértices a sério** (estrelas de 5 a 12 pontas), não retângulos: o custo do
 //! motor é função do número de cruzamentos, e um par de caixas mediria o caso que não acontece.
 //!
-//! Rodar: `cargo test -p ph2d-vec-boolean --test measure_live_boolean_graph --release -- --ignored --nocapture`
+//! Rodar: `cargo test -p ph2d-vec-boolean --test measure_live_boolean_chain --release -- --ignored --nocapture`
 //!
 //! ⚠️ **A máquina tem de estar CALMA** — o `CLAUDE.md` mede que a mesma passagem deu 11,36 e
 //! 5,50 ms sob carga. Um número colhido durante um `cargo build` não vale nada.

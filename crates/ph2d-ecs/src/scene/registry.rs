@@ -416,6 +416,11 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte
     // simplesmente teria evaporado — nada some, tudo aparece, e o desenho está errado.
     reg.register::<crate::VecClipContent>("ph2d::ecs::VecClipContent");
+    // O VERBO DE UMA FORMA dentro dessa booleana (2026-08-22). Sem o registro, reabrir o
+    // projeto devolveria toda a receita achatada no `op` do GRUPO: as formas continuariam lá,
+    // a combinação continuaria a existir, e ela desenharia OUTRA coisa — a perda mais
+    // traiçoeira desta familia, porque nao ha nada em falta na tela a denunciá-la.
+    reg.register::<crate::VecBoolOp>("ph2d::ecs::VecBoolOp");
 }
 
 #[cfg(test)]
@@ -489,8 +494,10 @@ mod tests {
         // + 1 recorte (VecClipContent — o bit que SAIU do VecFrame para valer em qualquer
         //   forma fechada, 2026-08-21). ⚠️ CONTADO na integracao de 2026-08-22: a `line/Sprite`
         //   (+6) entrou antes da `line/Vector` (+2) — o valor e' a SOMA, nao o de nenhum lado.
-        assert_eq!(reg.len(), 64);
+        // + 1 verbo POR FORMA dentro dela (VecBoolOp, 2026-08-22)
+        assert_eq!(reg.len(), 65);
         assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetRef").is_some());

@@ -53,7 +53,8 @@ mod tests {
         // O número CONTA-SE: 63 (`ph2d-ecs`) + 1 (`LuauScript`).
         // 2026-08-22 (integracao): +1 `VecClipContent` da `line/Vector` — o ECS esta' em 64,
         // e este e' `ecs + 1` (LuauScript). ⛔ Grandezas DIFERENTES do `ph2d-ecs`; nao copie.
-        assert_eq!(reg.len(), 65);
+        // +1 `VecBoolOp` (um verbo por forma, 2026-08-22): ECS 65 ⇒ aqui 66.
+        assert_eq!(reg.len(), 66);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

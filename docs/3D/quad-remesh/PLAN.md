@@ -2256,3 +2256,73 @@ fielmente o que o layout manda.
 o género*. O arredondamento do MIQ — o bloqueio de ontem — **está resolvido**; o que
 está na frente agora é um defeito de correção que já existia e que ninguém via.
 
+
+---
+
+## 4-tervicies — ⭐⭐ **A ASA CABIA NUM PATCH, e a cerca que existia era CEGA a ela**
+
+> O §4-duovicies fechou com o passo nomeado: *"o traçado (F3) tem de preservar o
+> género"*. Este passo mede **onde exactamente** ele o perde, e põe a cerca.
+
+### ⭐ O mecanismo, com a aritmética a bater
+
+Sonda `is_every_patch_a_disk` — o `χ` da **região de faces** de cada patch:
+
+| fixtura | patches | discos | anéis | pior | o traçado diz não-disco |
+|---|---|---|---|---|---|
+| toro 32×16 (bom) | 27 | 27 | 0 | 0 | 0 |
+| ⛔ **toro 48×24 (mau)** | 9 | 8 | 0 | **1** | **0** |
+| toro 64×32 (bom) | 23 | 23 | 0 | 0 | 0 |
+
+⛔ **Patch 0 do toro mau tem `χ = −1` e `loops_per_patch = 1`.** Ele **engoliu a asa
+inteira** — e tem **uma** fronteira, então a única cerca que existia (*"a fronteira é
+um laço só"*) deixava-o passar.
+
+⭐⭐ **A régua completa é `χ = 2 − 2g − b`.** Contar fronteiras dá o `b` e apanha o
+anel (`b = 2 ⇒ χ = 0`); **o género só aparece quando se mede o `χ` também**. E a
+aritmética fecha: um patch com `χ = −1` contado como disco (`+1`) sobre-estima o
+complexo em exactamente `2` — que é a diferença medida (`2` em vez de `0`).
+
+### ⛔ E a cura óbvia foi construída, MEDIDA e REJEITADA no mesmo passo
+
+Pôr `χ ≠ 1` no `degenerate()` parecia a linha de uma só palavra. O laço de limpeza
+cura degenerados com `dissolve`, que **apaga uma parede** e faz o patch **crescer** —
+a direcção errada para uma asa. Medido: **27 patches viraram 1**, e a decomposição
+inteira foi comida antes de a cadeia recusar.
+
+⚠️ **E `χ(região) == 1` nem sequer é a condição certa para o corte.** Uma asa cortada
+por um laço não-separante continua a ser a **mesma região de faces** (o `flood` não
+duplica vértices), logo o `χ` dela não muda — a condição seria inalcançável, e o laço
+nunca convergiria. *A estrutura CW mínima de um toro é UM patch com uma aresta dupla,
+e ela é perfeitamente válida.*
+
+### ⭐⭐ A cerca certa é a do COMPLEXO, e ela é exacta
+
+```text
+    V(cantos) − E(arcos) + F(patches)  ==  χ(malha)
+```
+
+`PatchLayout::complex_euler()`, comparada com `PatchLayout::mesh_chi` dentro do
+`to_layout`, que recusa com `LayoutError::GenusLost { complex, surface }`.
+
+⭐ **Medido sobre 3 toros × 9 pesos + esfera: zero falsos positivos e zero falsos
+negativos.** Toda célula que produzia uma malha de género errado passa a recusar;
+toda célula que produzia uma malha correcta continua a produzi-la, bit a bit.
+
+| | antes | depois |
+|---|---|---|
+| toro que perde o buraco | malha com `χ = 2`, 100 % quads, zero bordo | ⭐ **recusa com nome** |
+| toro que fecha | malha correcta | malha correcta |
+
+⚠️ **A frase da recusa é PRÓPRIA**, e não a genérica: *"tente outro Detail"* mandaria
+o artista para o sítio errado — a decomposição não depende do alvo de densidade
+nenhum, e o mesmo toro falha em **todos** os pesos enquanto o do lado passa em todos.
+
+### O que fica ABERTO — e agora tem uma pergunta pequena
+
+⛔ **O F3 continua sem saber CORTAR a asa.** A cura é acrescentar um laço de parede
+(um gerador de `H₁` do patch, por *tree-cotree*) em vez de apagar uma — e é trabalho
+novo, não uma linha. O gate `#[ignore]` `the_genus_survives_on_every_torus` exige uma
+**malha**, não uma recusa: ele é o endereço do bloqueio.
+
+⇒ **E é isso que trava o `ALIGN_WEIGHT`**, que funciona (`25,7° → 13,7°`).

@@ -95,6 +95,18 @@ impl RemeshRefusal {
                 "a malha e' grossa demais para uma grade de quads, e a escultura fica como \
                  esta': subdivida (ou use o Remesh) antes",
             ),
+            // ⭐⭐ **O género perdido tem CONSERTO PRÓPRIO, e é por isso que ele
+            // não cai no braço geral.** ⛔ *"tente outro Detail"* seria mandar o
+            // artista para o sítio errado: a decomposição não depende do alvo de
+            // densidade nenhum — ela é do campo e do traçado, e mexer no slider
+            // devolve exactamente a mesma recusa. Medido em 2026-08-22: o mesmo
+            // toro falha em **todos** os pesos, e o toro do lado passa em todos.
+            Self::Layout(ph2d_quantize::LayoutError::GenusLost { complex, surface }) => format!(
+                "esta peca tem um buraco (ou uma alca) que o tracado nao soube contornar, e a \
+                 escultura fica como esta': a decomposicao fechou como {complex} e a peca e' \
+                 {surface}. Mexer no Detail nao muda isto -- use PH2D_RETOPO_LEGACY=1, ou passe \
+                 o Remesh na peca antes"
+            ),
             Self::Layout(e) => format!(
                 "o tracado nao fechou um layout, e a escultura fica como esta': {e:?} -- \
                  tente outro Detail, ou PH2D_RETOPO_LEGACY=1"

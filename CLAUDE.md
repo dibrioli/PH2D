@@ -393,10 +393,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   local só para bissecar) — 100% de quads e irregulares de **39,7% para 0,5%** (o oráculo fica em 0,2%).
   Cinco crates: `ph2d-remesh-iso` (F1) · `ph2d-crossfield` (F2) · `ph2d-trace` (F3) · `ph2d-quantize` (F4, Bi-MDF
   com ótimo demonstrado) · `ph2d-quadfill` (F5). ⛔⛔ **VERMELHO PRÉ-EXISTENTE, medido 22/08: o F3 PERDE ASAS** —
-  o toro 48×24 sai com `χ = 2` **e passa em TODAS as outras réguas** (100% quads, zero bordo, zero não-manifold,
-  irregulares na ordem certa); o *complexo* de patches já erra **antes** da montagem (gate `#[ignore]`
-  `the_genus_survives_on_every_torus`). É o que trava o `ALIGN_WEIGHT` — que **funciona** (obediência ao relevo
-  `25,7° → 13,7°`, o número do Instant Meshes) e ships a **zero**, com as duas tabelas ao lado. ⛔ Outros buracos
+  no toro 48×24 **um patch engole a asa** (`χ = −1` com UMA fronteira, logo a cerca antiga era cega) e a malha saía
+  com `χ = 2` **passando em TODAS as outras réguas**. ✅ **Já não sai:** a cerca é `V−E+F` do complexo contra o `χ` da
+  peça (`LayoutError::GenusLost`), medida com **zero falsos positivos em 3 toros × 9 pesos** — hoje ele **recusa com
+  nome**. ⛔ Falta CORTAR a asa (gate `#[ignore]` `the_genus_survives_on_every_torus`), e é o que trava o
+  `ALIGN_WEIGHT` — que **funciona** (relevo `25,7° → 13,7°`, o número do Instant Meshes) e ships a **zero**. ⛔ Outros buracos
   medidos: o F1 devolve o cubo **não-manifold** · a esfera **embaralhada** não fecha · **sem feature lines**.
   Tabelas por fase: `PLAN.md` §4-bis..§4-duovicies.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que

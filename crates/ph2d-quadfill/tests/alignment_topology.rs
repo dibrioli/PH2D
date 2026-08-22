@@ -103,6 +103,12 @@ fn the_genus_survives_the_shipped_weight() {
 /// patch não-disco. A malha de entrada tem `χ = 0`; a montagem realiza fielmente o
 /// que o layout manda. ⇒ **A asa perde-se no F3, o traçado.**
 ///
+/// ⭐⭐ **E desde 2026-08-22 a cadeia RECUSA em vez de mentir** — a cerca do
+/// complexo (`LayoutError::GenusLost`) apanha exactamente estes casos. ⚠️ **Por
+/// isso este gate exige uma MALHA**, não apenas uma que esteja certa: uma recusa
+/// continua a ser o traçado a não saber decompor um toro, e um gate que aceitasse
+/// a recusa ficaria verde sobre o bloqueio que ele existe para nomear.
+///
 /// ⚠️ **`#[ignore]` porque é vermelho, não porque é lento** — e fica assim para o
 /// bloqueio ter endereço em vez de se dissolver numa nota. É o item nº 1 do
 /// `PLAN.md` §4-duovicies, e é o que trava o `ALIGN_WEIGHT`.
@@ -112,13 +118,18 @@ fn the_genus_survives_the_shipped_weight() {
 ///     --test alignment_topology -- --ignored the_genus_survives_on_every_torus
 /// ```
 #[test]
-#[ignore = "VERMELHO PRE-EXISTENTE -- o tracado perde asas no toro 48x24, ver o doc"]
+#[ignore = "VERMELHO PRE-EXISTENTE -- o tracado nao decompoe o toro 48x24, ver o doc"]
 fn the_genus_survives_on_every_torus() {
     for (name, mesh, edge) in [
         ("toro 32x16", shapes::torus(32, 16, 1.0, 0.35), 0.06),
         ("toro 48x24", shapes::torus(48, 24, 1.0, 0.35), 0.06),
         ("toro 64x32", shapes::torus(64, 32, 1.0, 0.35), 0.06),
     ] {
+        let out = chain(&mesh, edge, 0.0);
+        assert!(
+            out.is_some(),
+            "{name}: a cadeia RECUSOU -- o tracado nao sabe decompor este toro"
+        );
         check_genus(name, &mesh, edge, 0, 0.0);
     }
 }
@@ -261,6 +272,97 @@ fn where_is_the_genus_lost() {
                 euler(&out),
                 if euler(&out) == want { "✓" } else { "⛔" }
             );
+        }
+    }
+}
+
+/// ⭐⭐ **SONDA — CADA PATCH É MESMO UM DISCO?**
+///
+/// ⛔ **A conta que a hipótese exige.** O complexo sai com `χ = 2` onde a peça é
+/// `0`, com todos os arcos usados duas vezes e `loops_per_patch == 1` em todos —
+/// ou seja, **o traçado afirma que todo patch é um disco**. Se dois deles forem
+/// **anéis**, contá-los como discos sobre-estima o `χ` em exactamente `+1` cada, e
+/// `+2` é a diferença medida.
+///
+/// ⚠️ **A régua é a do MESMO patch como sub-malha** (`V − E + F` sobre as faces que
+/// ele contém), e não a contagem de fronteiras que o traçado publica: *o que se quer
+/// saber é se o `loops_per_patch` está a mentir*, e perguntar-lhe seria pedir-lhe
+/// para se auto-conferir.
+///
+/// | `χ` do patch | o que ele é |
+/// |---|---|
+/// | `1` | ⭐ um disco — o que a fase promete |
+/// | `0` | ⛔ um ANEL (ou um cilindro): duas fronteiras |
+/// | `< 0` | ⛔ pior: uma asa inteira dentro de um patch |
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
+///     --test alignment_topology -- --ignored --nocapture is_every_patch_a_disk
+/// ```
+#[test]
+#[ignore = "sonda -- cada patch e' mesmo um disco?"]
+fn is_every_patch_a_disk() {
+    for (name, mesh, w) in [
+        (
+            "toro 32x16 peso 0 (BOM)",
+            shapes::torus(32, 16, 1.0, 0.35),
+            0.0,
+        ),
+        (
+            "toro 48x24 peso 0 (MAU)",
+            shapes::torus(48, 24, 1.0, 0.35),
+            0.0,
+        ),
+        (
+            "toro 64x32 peso 0 (BOM)",
+            shapes::torus(64, 32, 1.0, 0.35),
+            0.0,
+        ),
+    ] {
+        let mut work = mesh.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = Dual::build(&work);
+        let (field, _) = solve_miq_aligned(&dual, Rounding::default(), w);
+        let layout = trace_patches(&work, &dual, &field);
+
+        let n = layout.side_arcs.len();
+        let mut chis: Vec<i64> = Vec::with_capacity(n);
+        for p in 0..n {
+            let mut verts = std::collections::BTreeSet::new();
+            let mut edges = std::collections::BTreeSet::new();
+            let mut faces = 0i64;
+            for (f, owner) in layout.face_patch.iter().enumerate() {
+                if *owner as usize != p {
+                    continue;
+                }
+                faces += 1;
+                let v = work.faces()[f].verts();
+                for k in 0..v.len() {
+                    verts.insert(v[k]);
+                    let (a, b) = (v[k], v[(k + 1) % v.len()]);
+                    edges.insert((a.min(b), a.max(b)));
+                }
+            }
+            chis.push(verts.len() as i64 - edges.len() as i64 + faces);
+        }
+        let discs = chis.iter().filter(|c| **c == 1).count();
+        let rings = chis.iter().filter(|c| **c == 0).count();
+        let worse = chis.iter().filter(|c| **c < 0).count();
+        let sum: i64 = chis.iter().sum();
+        println!(
+            "── {name}: {n} patches | discos {discs}  ANEIS {rings}  pior {worse} \
+             | Σχ(patch) {sum} | o tracado diz nao-disco: {}",
+            layout.loops_per_patch.iter().filter(|l| **l != 1).count()
+        );
+        for (p, c) in chis.iter().enumerate() {
+            if *c != 1 {
+                println!(
+                    "    ⛔ patch {p}: χ {c}, {} lados, loops_per_patch {}",
+                    layout.side_arcs[p].len(),
+                    layout.loops_per_patch[p]
+                );
+            }
         }
     }
 }

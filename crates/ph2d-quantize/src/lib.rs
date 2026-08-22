@@ -301,6 +301,34 @@ pub enum LayoutError {
         /// O arco culpado.
         arc: u32,
     },
+    /// ⭐⭐ **O COMPLEXO DE PATCHES NÃO É A SUPERFÍCIE** — a decomposição perdeu
+    /// (ou inventou) topologia.
+    ///
+    /// ⛔ **Esta variante nasceu de um remesh que fechava o buraco de um toro em
+    /// silêncio** (2026-08-22). A malha saía com `χ = 2` onde a topologia exige
+    /// `0`, e passava em **todas** as outras cercas: 100 % de quads, zero arestas
+    /// de bordo, zero não-manifold, cada arco usado exactamente duas vezes.
+    ///
+    /// ⭐ **A régua é `V − E + F` sobre *cantos · arcos · patches*.** Uma
+    /// decomposição honesta da superfície devolve o `χ` dela, seja qual for o
+    /// número de patches — a estrutura CW mínima de um toro é *um* patch com uma
+    /// aresta dupla, e dá `1 − 2 + 1 = 0`. Quando o número não bate, há um patch a
+    /// ser contado como disco sem o ser: uma região com **género** entra na conta
+    /// como `+1` quando vale `−1`, e a diferença é exactamente `2`.
+    ///
+    /// ⚠️ **É a única cerca desta fase que prevê o `χ` da MALHA final** — as outras
+    /// falam de contagens, e um patch com uma asa lá dentro produz contagens
+    /// perfeitamente válidas.
+    ///
+    /// ⚠️ **Recusar é o certo enquanto o F3 não souber CORTAR a asa.** Uma malha
+    /// que perdeu o buraco é indistinguível de uma boa em toda coluna que o artista
+    /// tem — e uma recusa com nome manda-o para o conserto.
+    GenusLost {
+        /// `V − E + F` sobre cantos, arcos e patches.
+        complex: i64,
+        /// A característica de Euler da superfície que entrou.
+        surface: i64,
+    },
 }
 
 impl Layout {

@@ -45,6 +45,8 @@
 pub mod patches;
 /// **O ANEL de um vértice e as SEMENTES** — ver [`ring`].
 pub mod ring;
+/// **A TOPOLOGIA da decomposição** — as contas de `V − E + F` — ver [`topology`].
+pub mod topology;
 /// **O PASSEIO** que segue o campo — ver [`walk`].
 pub mod walk;
 
@@ -75,9 +77,23 @@ pub struct TraceReport {
     /// o oráculo: ele entrega 3 a 6, e um patch de 12 lados é o sintoma de uma
     /// separatriz que faltou.
     pub valence: BTreeMap<usize, usize>,
-    /// ⚠️ Quantos patches **não são disco** (a fronteira deles não é um laço só).
+    /// ⚠️ Quantos patches têm mais de uma fronteira (`b ≠ 1`) — um anel.
     /// O F4 recusa layout aberto; um patch anelar não tem lados definidos.
+    ///
+    /// ⛔ **Ela é CEGA AO GÉNERO** — ver [`Self::with_genus`].
     pub non_disk: usize,
+    /// ⭐⭐ **Quantos patches têm GÉNERO** — `χ(região) ≠ 1`.
+    ///
+    /// ⛔ **A [`Self::non_disk`] é CEGA a isto, e a cegueira custou o produto**
+    /// (2026-08-22): num toro, um patch engolia a asa inteira e saía com **uma**
+    /// fronteira, então a única cerca que havia deixava-o passar — e a malha final
+    /// vinha com `χ = 2` onde a topologia exige `0`, com 100 % de quads, zero bordo
+    /// e zero não-manifold.
+    ///
+    /// ⚠️ **É diagnóstico, não cerca.** Quem recusa é o
+    /// [`PatchLayout::to_layout`], pela régua do COMPLEXO — ver
+    /// [`patches::PatchLayout::chi`] para porque é que a régua por patch não serve.
+    pub with_genus: usize,
     /// Quantos arcos o layout tem.
     pub arcs: usize,
     /// Quantas paredes foram **dissolvidas** para curar patches degenerados.
@@ -144,18 +160,6 @@ pub fn trace_patches(mesh: &Mesh, dual: &Dual, field: &CrossField) -> PatchLayou
 const MAX_CLEANUP_ROUNDS: usize = 32;
 
 impl PatchLayout {
-    /// **O LAYOUT que o F4 consome**, com os alvos derivados de `target_edge`.
-    ///
-    /// ⚠️ **`target_edge` é o comprimento de aresta desejado no quad final**, na
-    /// mesma unidade do mundo. O alvo de cada arco é o comprimento geométrico
-    /// dele a dividir por esse número — é a mesma régua que a bancada usa para
-    /// medir o oráculo, e é o que torna as duas colunas comparáveis.
-    ///
-    /// # Errors
-    /// Devolve [`ph2d_quantize::LayoutError`] quando a decomposição não fecha —
-    /// um arco de bordo, um patch de menos de 3 lados. ⚠️ **É a mesma cerca que o
-    /// F4 já tinha**, e ela é aqui que passa a proteger o nosso traçado e não só
-    /// o do oráculo.
     /// **GRADUA a densidade por um campo de TAMANHO por vértice.**
     ///
     /// ⭐⭐ **É o que faz o `Follow Curvature` significar alguma coisa na cadeia
@@ -210,8 +214,44 @@ impl PatchLayout {
         }
     }
 
+    /// **O LAYOUT que o F4 consome**, com os alvos derivados de `target_edge`.
+    ///
+    /// ⚠️ **`target_edge` é o comprimento de aresta desejado no quad final**, na
+    /// mesma unidade do mundo. O alvo de cada arco é o comprimento geométrico dele
+    /// a dividir por esse número — é a mesma régua que a bancada usa para medir o
+    /// oráculo, e é o que torna as duas colunas comparáveis.
+    ///
+    /// ⚠️ **Os dois parágrafos acima estavam colados ao [`Self::grade`]** até
+    /// 2026-08-22 — um `///` sem item entre eles, e o `rustdoc` do `to_layout`
+    /// aparecia vazio enquanto o do `grade` prometia devolver um `Layout`.
+    ///
+    /// # Errors
+    /// Devolve [`ph2d_quantize::LayoutError`] quando a decomposição não fecha — um
+    /// arco de bordo, um patch de menos de 3 lados, ou ⭐ **um patch que não é um
+    /// disco** ([`ph2d_quantize::LayoutError::NotADisk`]).
+    ///
+    /// ⛔ **A última cerca nasceu de um remesh que mudava o GÉNERO da peça em
+    /// silêncio** (2026-08-22): num toro, um patch engolia a asa inteira, saía com
+    /// `χ = −1` e **uma** fronteira, e a malha final vinha com `χ = 2` onde a
+    /// topologia exige `0` — com 100 % de quads, zero bordo e zero não-manifold.
+    /// *Todas as réguas que o produto tinha continuavam verdes.*
+    ///
+    /// ⚠️ **Recusar é o certo enquanto o F3 não souber CORTAR a asa**, e é a
+    /// escolha explícita: uma recusa com nome manda o artista para o conserto; uma
+    /// malha que perdeu o buraco manda-o para lado nenhum, porque ela parece boa.
     pub fn to_layout(&self, target_edge: f32) -> Result<Layout, ph2d_quantize::LayoutError> {
         let scale = if target_edge > 0.0 { target_edge } else { 1.0 };
+        // ⭐⭐ **A CERCA DO COMPLEXO, e ela é a PRIMEIRA de propósito.** As outras
+        // recusas do `Layout::new` falam de contagens, e um patch com uma asa lá
+        // dentro produz contagens perfeitamente válidas — cada arco usado duas
+        // vezes, toda fronteira um laço só, valências entre 3 e 6.
+        let complex = self.complex_euler();
+        if complex != self.mesh_chi {
+            return Err(ph2d_quantize::LayoutError::GenusLost {
+                complex,
+                surface: self.mesh_chi,
+            });
+        }
         // ⭐⭐ **O ALVO SAI DO `τ`, e não do comprimento geométrico.** Sem
         // graduação os dois são o MESMO número por construção; com ela, o `τ` é o
         // comprimento **efectivo** e é ele que carrega a densidade pedida. Ver

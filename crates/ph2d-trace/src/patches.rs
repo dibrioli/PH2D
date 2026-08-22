@@ -81,6 +81,45 @@ pub struct PatchLayout {
     /// recusava com `Broken`, três fases depois, nomeando a fase errada. O relatório
     /// já contava `non_disk`; o que faltava era **quem** para se poder curar.
     pub loops_per_patch: Vec<usize>,
+    /// ⭐⭐ **A CARACTERÍSTICA DE EULER da região de faces de cada patch** —
+    /// `V − E + F` sobre as faces que ele contém. **Um disco dá `1`.**
+    ///
+    /// ⛔ **Ela existe porque o [`Self::loops_per_patch`] é CEGO AO GÉNERO, e isso
+    /// custou o produto** (2026-08-22): num toro, um patch engolia a asa inteira e
+    /// saía com **uma** fronteira — a única cerca que havia deixava-o passar — e a
+    /// malha final vinha com `χ = 2` onde a topologia exige `0`. *Uma peça pode
+    /// passar em toda asserção e ter deixado de ser um toro.*
+    ///
+    /// ⚠️ **A régua completa é `χ = 2 − 2g − b`.** Contar fronteiras dá o `b` e
+    /// apanha o anel (`b = 2 ⇒ χ = 0`); o género só aparece quando se mede o `χ`
+    /// também. Um disco é `b = 1` **e** `χ = 1`; a asa engolida é `b = 1` e
+    /// `χ = −1`, que é `g = 1`.
+    ///
+    /// ⚠️ **Ela é da REGIÃO DE FACES, não do passeio da fronteira** — de propósito.
+    /// Perguntar ao passeio se ele é um disco seria pedir-lhe que se auto-conferisse
+    /// com a mesma informação que já o deixou passar.
+    ///
+    /// ⛔⛔ **E ela é DIAGNÓSTICO, nunca gatilho de [`Self::degenerate`]** — medido
+    /// no mesmo dia. A cura dos degenerados é `dissolve`, que **apaga uma parede** e
+    /// faz o patch CRESCER; para uma asa isso é a direcção errada, e o laço de
+    /// limpeza comeu a decomposição inteira: **27 patches viraram 1**. Uma asa
+    /// cura-se **acrescentando** um corte, e esse trabalho ainda não existe.
+    ///
+    /// ⚠️ **E `χ(região) == 1` nem sequer é a condição certa para o corte**: uma
+    /// asa cortada por um laço não-separante continua a ser a mesma região de faces
+    /// (o `flood` não duplica vértices), logo o `χ` dela **não muda**. A régua que
+    /// de facto decide é a do COMPLEXO — `V − E + F` sobre cantos, arcos e patches
+    /// — e é ela que o [`super::PatchLayout::to_layout`] usa como cerca. *A estrutura
+    /// CW mínima de um toro é UM patch com uma aresta dupla, e ela é válida.*
+    pub chi: Vec<i64>,
+    /// ⭐⭐ **A CARACTERÍSTICA DE EULER da malha que entrou** — `2` numa esfera,
+    /// `0` num toro.
+    ///
+    /// ⚠️ **Ela viaja no layout porque a CERCA precisa dela e não tem a malha.** O
+    /// [`super::PatchLayout::to_layout`] compara o complexo de patches com este
+    /// número; guardá-lo aqui é o que torna a comparação possível sem passar a
+    /// malha por mais uma porta — e sem uma segunda conta que pudesse discordar.
+    pub mesh_chi: i64,
     /// O que o traçado e a decomposição mediram.
     pub report: TraceReport,
 }
@@ -175,7 +214,10 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
     let mut side_arcs: Vec<Vec<Vec<(u32, bool)>>> = Vec::with_capacity(n_patches);
     let mut corners: Vec<Vec<u32>> = Vec::with_capacity(n_patches);
     let loops_per_patch: Vec<usize> = loops.iter().map(Vec::len).collect();
+    let chi = crate::topology::patch_chi(faces, &face_patch, n_patches);
+    report.with_genus = chi.iter().filter(|c| **c != 1).count();
     for (p, ls) in loops.iter().enumerate() {
+        let _ = p;
         if ls.len() != 1 {
             report.non_disk += 1;
         }
@@ -260,6 +302,8 @@ pub fn decompose(mesh: &Mesh, walls: &Walls, mut report: TraceReport) -> PatchLa
         arc_tau,
         arc_edges,
         loops_per_patch,
+        chi,
+        mesh_chi: crate::topology::mesh_euler(faces),
         report,
     }
 }

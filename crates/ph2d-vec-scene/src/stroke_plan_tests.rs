@@ -375,3 +375,127 @@ fn the_dash_closes_the_cooked_loop_not_the_authored_one() {
         "o padrao fechou a volta AUTORADA -- e' a geometria que ninguem desenha"
     );
 }
+
+/// **A LINHA PARA NAS COSTAS DO MARCADOR, seja qual for o ângulo da alça.**
+///
+/// O defeito (Enio, 2026-08-22): *"a depender do ângulo do handle/alça o stroke não se encaixa no
+/// objeto do start ou do end"*. A ponta ocupa uma extensão RETA; encurtar a linha anda em ARCO. Na
+/// extremidade encurvada as duas divergem — medido, com a ponta a pedir 4,0 de espaço, uma alça a
+/// 80° recuava **0,66** no eixo dela.
+///
+/// ⚠️ **O laço varre ÂNGULOS, e é isso que o torna um gate e não um exemplo.** Um caso só — a
+/// extremidade reta — passa mesmo com o defeito inteiro presente, porque ali arco e reta
+/// coincidem. É exatamente o caso em que o bug era invisível.
+#[test]
+fn the_line_stops_on_the_markers_back_at_any_handle_angle() {
+    use crate::{Marker, VertexKind, end_tangent};
+
+    let curve = |hx: f64, hy: f64| crate::VecPath {
+        verts: vec![
+            crate::VecVertex {
+                anchor: [0.0, 0.0],
+                in_handle: [0.0, 0.0],
+                out_handle: [4.0, 0.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+            crate::VecVertex {
+                anchor: [10.0, 0.0],
+                in_handle: [10.0 + hx, hy],
+                out_handle: [10.0, 0.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+        ],
+        closed: false,
+        ..crate::VecPath::default()
+    };
+
+    let mut s = StrokeSpec::new(crate::Rgba8::new(255, 255, 255, 255), 1.0);
+    s.marker_end = Marker::Triangle;
+    let want = Marker::Triangle.inset(s.marker_scale) * s.width;
+
+    // ⚠️ Ângulos em que a curva AINDA oferece o espaço que a ponta pede. O caso em que ela não
+    // oferece é degenerado e tem gate próprio (abaixo) — misturá-los aqui obrigaria este a
+    // aceitar duas respostas, e um gate que aceita duas respostas não separa nada.
+    for (hx, hy) in [(-4.0, 0.0), (-4.0, 1.0), (-4.0, 3.0), (-4.0, 6.0)] {
+        let p = curve(hx, hy);
+        let (tip, dir) = end_tangent(&p, false).expect("tangente");
+        let (a, b) = crate::marker_arc_insets(&p, &s);
+        let t = crate::trim_path(&p, a, b).expect("trim");
+        let last = t.verts.last().expect("fim").anchor;
+        let proj = (tip[0] - last[0]) * dir[0] + (tip[1] - last[1]) * dir[1];
+        assert!(
+            (proj - want).abs() < 1e-6,
+            "alca ({hx}, {hy}): a linha parou a {proj:.4} do bico, e a ponta ocupa {want:.4} -- \
+             ela nao encaixa nas costas do marcador"
+        );
+    }
+}
+
+/// **Uma extremidade RETA continua a recuar exatamente o `inset`** — o controlo que impede a cura
+/// de virar uma segunda deformação.
+///
+/// ⚠️ Sem ele, uma conversão arco→reta com erro de escala passaria no gate acima (que compara
+/// contra a mesma conta) e mudaria em silêncio TODA linha reta com ponta — o caso comum.
+#[test]
+fn a_straight_end_still_recedes_exactly_the_inset() {
+    use crate::Marker;
+    let line = crate::line([0.0, 0.0], [10.0, 0.0]);
+    let mut s = StrokeSpec::new(crate::Rgba8::new(255, 255, 255, 255), 1.0);
+    s.marker_end = Marker::Triangle;
+    let want = Marker::Triangle.inset(s.marker_scale) * s.width;
+    let (_, b) = crate::marker_arc_insets(&line, &s);
+    assert!(
+        (b - want).abs() < 1e-9,
+        "numa reta o arco E' a reta: esperado {want}, veio {b}"
+    );
+}
+
+/// **QUANDO A CURVA NÃO TEM O ESPAÇO QUE A PONTA PEDE, a linha recua o máximo e não sobra lixo.**
+///
+/// Uma alça muito angulada faz a curva dobrar sobre si: a extensão dela NA DIREÇÃO da ponta fica
+/// menor que a própria ponta (medido: 1,64 disponíveis para uma ponta de 4,0). Não há recuo que
+/// ponha a linha nas costas do marcador, porque não há costas onde pô-la.
+///
+/// A resposta honesta é saturar — a linha some e fica a ponta, que é o que o `stroke_plan` já
+/// documenta para *"uma linha mais curta que os recuos somados"*. O que este gate proíbe é o
+/// contrário: um recuo que PARE no meio e deixe um coto de linha atravessado na ponta.
+#[test]
+fn a_marker_bigger_than_the_curve_can_offer_consumes_the_line() {
+    use crate::{Marker, VertexKind};
+    let p = crate::VecPath {
+        verts: vec![
+            crate::VecVertex {
+                anchor: [0.0, 0.0],
+                in_handle: [0.0, 0.0],
+                out_handle: [4.0, 0.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+            crate::VecVertex {
+                anchor: [10.0, 0.0],
+                in_handle: [9.0, 6.0],
+                out_handle: [10.0, 0.0],
+                kind: VertexKind::Smooth,
+                corner_radius: 0.0,
+            },
+        ],
+        closed: false,
+        ..crate::VecPath::default()
+    };
+    let mut s = StrokeSpec::new(crate::Rgba8::new(255, 255, 255, 255), 1.0);
+    s.marker_end = Marker::Triangle;
+
+    let (_, b) = crate::marker_arc_insets(&p, &s);
+    let span: f64 = p
+        .verts
+        .windows(2)
+        .map(|w| (w[1].anchor[0] - w[0].anchor[0]).hypot(w[1].anchor[1] - w[0].anchor[1]))
+        .sum();
+    assert!(
+        b >= span - 1e-9,
+        "sem espaco para a ponta, o recuo tem de consumir a linha INTEIRA ({b} de {span}) -- \
+         parar no meio deixaria um coto atravessado no marcador"
+    );
+}

@@ -38,6 +38,7 @@
 - [Comentário velho e código morto MENTEM](feedback_stale_comment_and_dead_code_lie.md)
 - ["O design rejeita X"? grepe o gate](feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate.md)
 - [Nota de diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) — confira e corrija a nota
+- [Coluna de sonda sem rótulo é lida ao contrário](feedback_an_unlabelled_probe_column_gets_read_backwards.md) — reportei «17 buracos» onde a linha dizia `0 bordo · 17 dobradas`; e quase culpei o instrumento certo
 - ["NÃO toque neste arquivo" é uma AFIRMAÇÃO](feedback_a_handoff_can_be_wrong_about_its_own_dirty_file.md) — o handoff errou sobre a própria crate; meça antes de honrar
 - [A regra tem de estar no CAMINHO de quem a executa](feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it.md) — doc órfão do roteador = regra inexistente
 - [Ferramenta só é adotada se um PASSO a chama pelo nome](feedback_a_tool_is_adopted_only_when_a_written_step_names_it.md) — medido: 5 usos contra 13.791 do comando cru; ponteiro ≠ adoção
@@ -107,6 +108,7 @@
 - [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
 - [Provas de mutação (6)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Duas provas do mesmo ótimo não podem discordar](feedback_two_proofs_of_the_same_optimum_cannot_disagree.md) — gate a INVARIANTE (a partição), não o resultado; instância pequena acerta por acaso
+- [«Ótimo provado» é afirmação sobre o OBJETIVO](feedback_proven_optimal_is_a_claim_about_the_objective_not_the_answer.md) — custo linear não separa «esmagar» de «espalhar»; a razão vai DENTRO do quadrado
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep

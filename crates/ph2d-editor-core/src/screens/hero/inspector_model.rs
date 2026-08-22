@@ -23,13 +23,11 @@ pub const EMISSIVE_MAX_UI: f32 = 64.0; // LITERAL-PX-OK: teto de INTENSIDADE de 
 pub struct InspectorSpriteInfo {
     /// Entity bits (= same shape `gizmo_selection` carries).
     pub entity_bits: u64,
-    /// Display label — entity's `Name` component, or `Entity_{hex_bits}` when nameless.
-    ///
-    /// ⚠️ **NINGUÉM LÊ ISTO.** O campo de nome do painel é servido pelo `InspectorNameInfo`
-    /// (`sync.rs`), e esta cópia é um `clone` de `String` por quadro que nada pinta — medido na
-    /// auditoria de 2026-08-21 (`docs/Sprite_projeto/20` §8). Fica por enquanto porque removê-lo
-    /// mexe nos fixtures de quatro suítes; o corte vive na frente 5 do plano.
-    pub name: String,
+    // ⛔ **`name: String` foi REMOVIDO em 2026-08-21.** O host construía-o todo o quadro — um
+    // `clone` da `Name`, com um `format!("Entity_{bits:x}")` de reserva — e **nenhum sítio o
+    // lia**: o campo de nome do painel é servido pelo `InspectorNameInfo` (`sync.rs`), que é um
+    // snapshot próprio. *Trabalho por quadro que ninguém pinta, e um doc-comment a descrever um
+    // ecrã que nunca existiu* (auditoria `docs/Sprite_projeto/20` §8).
     /// World-space size in meters at the current Transform scale.
     pub world_size: [f32; 2],
     /// Which storage strategy backs the sprite (Atlas / Hand-packed / Individual).
@@ -187,11 +185,12 @@ pub enum SpriteFieldEdit {
     FlipY(bool),
     /// `false` = top-left origin + `offset` applies; `true` = centered.
     Centered(bool),
-    /// Intrinsic-pixel offset X only — leaves Y untouched. The Inspector
-    /// emits this (not [`Offset`]) so editing one axis on a multi-selection
-    /// can't stomp a diverging Y (BulkSelect, audit D-1).
+    /// Intrinsic-pixel offset X only — leaves Y untouched, para que editar um eixo numa
+    /// multi-seleção não atropele um Y divergente (BulkSelect, audit D-1).
     ///
-    /// [`Offset`]: SpriteFieldEdit::Offset
+    /// ⚠️ O `Offset([f32; 2])` que este variante substituiu **já não existe** — ele sobreviveu
+    /// dois meses como um braço consumidor que nunca disparava, e o doc daqui ainda lhe apontava
+    /// um link (auditoria `docs/Sprite_projeto/20` §8).
     OffsetX(f32),
     /// Intrinsic-pixel offset Y only — leaves X untouched. See [`OffsetX`].
     ///

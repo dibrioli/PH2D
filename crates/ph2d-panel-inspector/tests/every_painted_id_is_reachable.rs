@@ -68,7 +68,6 @@ const ENTITY: u64 = 0x5EED_1234;
 fn publish_the_whole_sprite_scene() {
     set_current_inspector_sprite(Some(InspectorSpriteInfo {
         entity_bits: ENTITY,
-        name: "hero_idle".into(),
         world_size: [1.0, 1.0],
         source_kind: InspectorSpriteSource::Atlas { key: 3 },
         source_precision: Some(ph2d_editor_core::Precision::Rgba8),

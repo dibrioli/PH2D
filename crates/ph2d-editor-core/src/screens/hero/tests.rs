@@ -165,18 +165,8 @@ fn down(x: f32, y: f32) -> PointerEvent {
     }
 }
 
-#[allow(dead_code)]
-fn up(x: f32, y: f32) -> PointerEvent {
-    PointerEvent {
-        x,
-        y,
-        pressure: 1.0,
-        kind: PointerKind::Up,
-        source: PointerSource::Mouse,
-        button: ph2d_host::PointerButton::Primary,
-        timestamp_ns: 0,
-    }
-}
+// ⛔ `fn up(...)` foi REMOVIDA em 2026-08-21: zero call sites, e o `#[allow(dead_code)]` em
+// cima dela estava a silenciar um cadáver real (auditoria `docs/Sprite_projeto/20` §8).
 
 #[test]
 fn hero_pre_populates_store_with_topbar_and_tools() {
@@ -1067,7 +1057,6 @@ fn strategy_click_raises_pending_when_kind_differs() {
     hero.inspector.sprite = Some(InspectorSpriteInfo {
         emissive: 0.0,
         entity_bits: 0xC0FF_EE00,
-        name: "Player".into(),
         world_size: [1.0, 1.0],
         source_kind: InspectorSpriteSource::Atlas { key: 7 },
         source_pixels: Some((256, 256)),
@@ -1202,7 +1191,6 @@ fn entity_name_text_changed_raises_pending_with_selection() {
     }
     hero.inspector.name = Some(InspectorNameInfo {
         entity_bits: 0xDEAD_F00D,
-        name: "Player".into(),
     });
     assert!(hero.apply_event(WidgetEvent::TextChanged(ids::INSP_ENTITY_NAME)));
     let p = hero
@@ -1241,7 +1229,6 @@ fn selection_switch_resets_entity_name_input_state_to_normal() {
     //    (simulating user click on the field).
     hero.inspector.name = Some(InspectorNameInfo {
         entity_bits: 0xAAAA_0001,
-        name: "Player A".into(),
     });
     hero.inspector.transform = Some(InspectorTransformInfo {
         entity_bits: 0xAAAA_0001,
@@ -1261,7 +1248,6 @@ fn selection_switch_resets_entity_name_input_state_to_normal() {
     //    snapshot the user left on entity A.
     hero.inspector.name = Some(InspectorNameInfo {
         entity_bits: 0xBBBB_0002,
-        name: "Player B".into(),
     });
     hero.inspector.transform = Some(InspectorTransformInfo {
         entity_bits: 0xBBBB_0002,
@@ -1296,7 +1282,6 @@ fn strategy_click_resets_button_state_to_normal() {
     hero.inspector.sprite = Some(InspectorSpriteInfo {
         emissive: 0.0,
         entity_bits: 0x00C0_FFEE,
-        name: "S".into(),
         world_size: [1.0, 1.0],
         source_kind: InspectorSpriteSource::Individual { texture_id: 1 },
         source_pixels: Some((64, 64)),

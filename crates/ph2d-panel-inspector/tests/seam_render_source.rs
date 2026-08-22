@@ -38,7 +38,6 @@ fn atlas_sprite(can_reimport: bool) -> InspectorSpriteInfo {
     InspectorSpriteInfo {
         emissive: 0.0,
         entity_bits: ENTITY,
-        name: "fruits".into(),
         world_size: [1.0, 1.0],
         source_kind: InspectorSpriteSource::Atlas { key: 3 },
         // Uma célula de atlas é `Rgba8UnormSrgb` por construção.

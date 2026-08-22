@@ -427,8 +427,9 @@ const FALL_ROWS: [PlayerRow; 1] = [(
 /// cada id, e a **varredura de seam** clica tudo. Uma row nova nasce pintada,
 /// com dica e varrida, ou não nasce.
 ///
-/// ⚠️ **Os títulos são os módulos da lei** (`ride` · `walk` · `jump` · o perdão
-/// · `react` · `wall` · `dash` · `crouch` · `swim`), não uma arrumação de gosto: quando o artista
+/// ⚠️ **Os títulos são os módulos da lei** (`ride` · `walk` · `jump` · o perdão · `react` · `wall`
+/// · `dash` · `crouch` · `swim` · `ledge` · `glide` · `fall`), não uma arrumação de gosto: quando o
+/// artista
 /// pergunta *"o que este número faz?"*, a primeira metade da resposta é *"a que
 /// pergunta ele pertence"*, e ela passou a estar escrita na tela (Enio,
 /// 2026-08-04: *"esse tanto de parâmetros juntos não fica bem; organize-os em

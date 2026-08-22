@@ -39,7 +39,6 @@ fn sprite(kind: InspectorSpriteSource, precision: Option<Precision>) -> Inspecto
     InspectorSpriteInfo {
         emissive: 0.0,
         entity_bits: ENTITY,
-        name: "hero".into(),
         world_size: [1.0, 1.0],
         source_kind: kind,
         source_precision: precision,

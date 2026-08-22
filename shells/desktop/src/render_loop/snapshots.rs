@@ -660,10 +660,6 @@ pub(super) fn publish(
         if inspector_selection.len() > 1 {
             mixed.emissive = compute_emissive_mixed(world, &inspector_selection, emissive);
         }
-        let name = world
-            .get::<Name>(entity)
-            .map(|n| n.0.clone())
-            .unwrap_or_else(|| format!("Entity_{bits:x}"));
         let (source_kind, source_pixels, can_reimport) = match sprite.source {
             ph2d_render::SpriteSource::Atlas { key } => {
                 // ⚠️ `image_dimensions` e não um `match` na variante — ver o irmão em
@@ -786,7 +782,6 @@ pub(super) fn publish(
         Some(ph2d_editor::InspectorSpriteInfo {
             sheet_label,
             entity_bits: bits,
-            name,
             world_size,
             source_kind,
             source_precision,

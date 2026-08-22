@@ -43,34 +43,24 @@ pub use sections::paste_label;
 pub use sections::rig_button_label;
 /// **Quantas rows numéricas a §14 Platform Player pinta.**
 ///
+/// ⚠️ **A contagem vive no CÓDIGO, nunca num comentário** — este cluster já teve «dezanove
+/// números e os três botões» escrito ao lado de uma tabela com 52 rows e 5 botões
+/// (auditoria `docs/Sprite_projeto/20` §8). A fonte é `player_row_count()`.
+///
 /// ⚠️ Exportado para que a varredura de seam possa afirmar que cobre a tabela
 /// INTEIRA. Sem ele o gate iteraria a própria lista que testa — o oráculo
 /// auto-referente que a `line/Painter` já pagou: encolher o array encolhe a
 /// varredura, e a mutação passa.
 pub const PLAYER_ROW_COUNT: usize = crate::sections::player::player_row_count();
 
-/// Os RÓTULOS que a §14 pinta, na ordem da tabela.
-///
-/// ⚠️ Existe para a cena de smoke poder afirmar que o roteiro dela nomeia um
-/// controle que o painel de fato desenha — um roteiro que cita um nome que a UI
-/// não usa faz o artista procurar o que não existe.
-/// **Todo id que a §14 pinta e que precisa de dica** — os dezenove números e os
-/// três botões, na ordem da tabela.
-///
-/// ⚠️ Exportado pelo mesmo motivo do [`PLAYER_ROW_COUNT`]: sem ele a varredura
-/// de dicas iteraria a própria lista que testa. Aqui a lista vem da tabela do
-/// pintor, e a contagem é conferida contra ela.
-pub fn player_control_ids() -> Vec<ph2d_a11y::NodeId> {
-    crate::sections::player::PLAYER_CARDS
-        .iter()
-        .flat_map(|(_, _, rows)| rows.iter().map(|(_, id, _)| *id))
-        .chain(
-            crate::sections::player::PLAYER_BUTTON_TIPS
-                .iter()
-                .map(|(id, _)| *id),
-        )
-        .collect()
-}
+// ⛔ **`player_control_ids()` foi REMOVIDA em 2026-08-21.** Zero call sites em todo o workspace —
+// a sua única outra ocorrência era o doc-comment do gate que a **substituiu**
+// (`tests/seam_player.rs`: *«Ele varria `player_control_ids()` — a mesma tabela de onde tirava
+// a…»*), que hoje deriva a varredura como uma DIFERENÇA em vez de iterar a lista.
+//
+// ⚠️ **O doc dela ainda afirmava a necessidade que esse gate tinha refutado** — *«sem ele a
+// varredura de dicas iteraria a própria lista que testa»*. Um cadáver a defender-se com o
+// argumento certo sobre o mundo errado (auditoria `docs/Sprite_projeto/20` §8).
 
 /// O passo de um card da §14 ao próximo — a régua que o pintor TEM de usar.
 ///
@@ -91,6 +81,14 @@ pub fn player_card_spans() -> Vec<(&'static str, Vec<ph2d_a11y::NodeId>)> {
         .collect()
 }
 
+/// Os RÓTULOS que a §14 pinta, na ordem da tabela.
+///
+/// ⚠️ Existe para a cena de smoke poder afirmar que o roteiro dela nomeia um controle que o painel
+/// de fato desenha — um roteiro que cita um nome que a UI não usa faz o artista procurar o que não
+/// existe.
+///
+/// ⚠️ **Este doc estava colado no item errado** até 2026-08-21: ele descrevia esta função e
+/// aderia à `player_control_ids` três parágrafos acima, enquanto esta ficava sem doc nenhum.
 pub fn player_row_labels() -> Vec<&'static str> {
     crate::sections::player::PLAYER_CARDS
         .iter()

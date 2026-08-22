@@ -29,7 +29,11 @@ use ph2d_editor_core::widget::SectionFold;
 /// controle continua pintado e o artista continua sem saber o que ele faz.
 pub(crate) type PlayerRow = (&'static str, ph2d_a11y::NodeId, &'static str);
 
-/// A tabela dos nove cards — irmã por RESPONSABILIDADE (ver o topo dela).
+/// A tabela dos cards da §14 — irmã por RESPONSABILIDADE (ver o topo dela).
+///
+/// ⚠️ **Este doc dizia «os nove cards» e a tabela tem doze** desde que `LEDGE`/`GLIDE`/`FALL`
+/// entraram. ⛔ Não escreva o número aqui: a fonte é `PLAYER_CARDS.len()`, e uma contagem
+/// copiada para um comentário envelhece sozinha (auditoria `docs/Sprite_projeto/20` §8).
 ///
 /// ⚠️ **`table`, e não `rows`:** a `sections::rows` já existe (os primitivos
 /// `card_frame`/`num_row`/`seg_row` que este pintor consome), e um segundo

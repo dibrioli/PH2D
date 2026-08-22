@@ -244,6 +244,72 @@ fn what_do_the_photos_measure() {
                     len.iter().sum::<f32>(),
                     100.0 * len.iter().sum::<f32>() / diag,
                 );
+                // ⭐⭐ **O ÂNGULO EM CADA CANTO.** Um canto de patch é onde a
+                // fronteira **vira**; perto de 180° ela passa direito, e o «canto»
+                // ali é um artefacto — os dois lados que ele separa deviam ser UM.
+                // ⛔ *Um canto a mais não é um vértice a mais: é um lado partido em
+                // dois, e um deles pode sair uma lasca.*
+                if len.iter().sum::<f32>() > 4.0 * diag {
+                    let dir_at = |j: usize, last: bool| -> Option<[f32; 3]> {
+                        let side = &layout.side_arcs[pp][j];
+                        let (a, rev) = if last { *side.last()? } else { *side.first()? };
+                        let c = &layout.arc_chain[a as usize];
+                        if c.len() < 2 {
+                            return None;
+                        }
+                        let (u, v) = match (last, rev) {
+                            (true, false) => (c[c.len() - 2], c[c.len() - 1]),
+                            (true, true) => (c[1], c[0]),
+                            (false, false) => (c[1], c[0]),
+                            (false, true) => (c[c.len() - 2], c[c.len() - 1]),
+                        };
+                        let (a3, b3) = (work.positions()[u as usize], work.positions()[v as usize]);
+                        Some([b3[0] - a3[0], b3[1] - a3[1], b3[2] - a3[2]])
+                    };
+                    let ang: Vec<String> = (0..n)
+                        .map(|i| {
+                            let (Some(inc), Some(out)) =
+                                (dir_at(i, true), dir_at((i + 1) % n, false))
+                            else {
+                                return String::from("?");
+                            };
+                            let nrm = |d: [f32; 3]| {
+                                let l = d[0]
+                                    .mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2]))
+                                    .sqrt()
+                                    .max(1.0e-9);
+                                [d[0] / l, d[1] / l, d[2] / l]
+                            };
+                            let (a3, b3) = (nrm(inc), nrm(out));
+                            let c = a3[0]
+                                .mul_add(b3[0], a3[1].mul_add(b3[1], a3[2] * b3[2]))
+                                .clamp(-1.0, 1.0);
+                            format!("{:.0}", 180.0 - c.acos().to_degrees())
+                        })
+                        .collect();
+                    // ⭐⭐ **OS ARCOS DE CADA LADO.** Se o mesmo id aparecer em dois
+                    // lados, este patch é um **anel cortado e aberto** pela ponte: a
+                    // fronteira percorre a ponte duas vezes, e é isso que faz o
+                    // «hairpin» de 14°. *Um leque sobre uma fronteira que dobra
+                    // sobre si mesma não é o preenchimento certo.*
+                    let ids: Vec<Vec<u32>> = (0..n)
+                        .map(|i| layout.side_arcs[pp][i].iter().map(|&(a, _)| a).collect())
+                        .collect();
+                    let flat: Vec<u32> = ids.iter().flatten().copied().collect();
+                    let repetido: Vec<u32> = flat
+                        .iter()
+                        .copied()
+                        .filter(|a| flat.iter().filter(|b| *b == a).count() > 1)
+                        .collect();
+                    println!(
+                        "        ⭐ arcos por lado: {ids:?} | REPETIDOS no mesmo patch: {repetido:?}"
+                    );
+                    println!(
+                        "        ⭐ angulos nos cantos: {:?} graus | lados {:?}",
+                        ang,
+                        len.iter().map(|v| format!("{v:.2}")).collect::<Vec<_>>()
+                    );
+                }
             }
             // ⭐⭐ **OS PATCHES RETANGULARES, e se os LADOS OPOSTOS estão longe.**
             // A face da aresta liga **dois pares** de pontos — cada par junto, os
@@ -411,8 +477,40 @@ fn what_do_the_photos_measure() {
 /// passam a `384` segmentos e os raios continuam `[6, 384, 10, 1, 379, 4]` — o
 /// sector continua a ter **um** de fundo.
 ///
-/// ⇒ **O conserto é a montante**: o F3 não devia emitir um patch assim. ⛔ E
-/// `dissolve` não serve — ele **junta** patches, e este já é grande demais.
+/// # ⭐⭐⭐ E o patch é um ANEL CORTADO E ABERTO — a cadeia causal fecha
+///
+/// Os lados de `patch 1`, pelos arcos que os compõem:
+///
+/// ```text
+///     [16,17,4,5]   [6]   [7]   [8..14]   [15]   [7]
+///        6,78      0,27  2,15    6,80     0,09   2,15
+/// ```
+///
+/// ⭐⭐ **O arco `7` aparece DUAS vezes** — e os dois lados de `2,15` são ele, ida e
+/// volta. Os ângulos nos cantos confirmam-no: `[74, 77, ⭐14, 118, 70, ⭐26]`, com os
+/// dois *hairpins* exactamente nas pontas da ponte. ⇒ **Este patch é o anel que a
+/// ponte abriu** (`PLAN.md` §4-sexvicies), e os lados de `6,78`/`6,80` são as duas
+/// fronteiras dele — quase a circunferência da esfera cada uma.
+///
+/// ⭐⭐ **E o controlo mostra que a ponte não é opcional:** com ela desligada, a
+/// orelha **RECUSA** nos três níveis do slider (`GenusLost`) — o layout dela não
+/// fecha de outra maneira. *A ponte é o que a faz existir; o defeito é como o patch
+/// dela é preenchido.*
+///
+/// # ⇒ Onde o conserto mora, por eliminação
+///
+/// | candidato | porque NÃO |
+/// |---|---|
+/// | a quantização dar mais segmentos à lasca | ⛔ a densidade dela **está certa**: `0,27` de comprimento com `2` segmentos é `0,135` cada, contra um alvo de `0,167` |
+/// | `dissolve` o patch | ⛔ ele **junta** patches, e este já dá três voltas à peça |
+/// | desligar a ponte | ⛔ a orelha deixa de fechar |
+///
+/// ⭐ **Sobra o PREENCHIMENTO.** A lei do leque (`L_i = e_{i−1} + e_{i+1}`) é a da
+/// referência e está certa para um `n`-gono de verdade; ⛔ **um anel cortado não é
+/// um hexágono** — duas das seis arestas dele são a *mesma* curva. O preenchimento
+/// certo para ele é uma **faixa**: uma grade entre as duas fronteiras, com a ponte
+/// como costura. *É o que o `fill_rectangle` já faz para `n = 4`, e é preciso
+/// reconhecer este caso para lá o mandar.*
 ///
 /// ```text
 /// \

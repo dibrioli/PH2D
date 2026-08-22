@@ -2735,3 +2735,53 @@ patches, e este já é grande demais. As duas direcções abertas:
 
 ⚠️ **A segunda mexe nas restrições do F4**, cujo ótimo é demonstrado — e mudar o
 `min` muda o problema que ele prova. *Não é uma linha.*
+
+---
+
+## 4-tricies — ⭐⭐⭐ **A CADEIA CAUSAL FECHA: um ANEL CORTADO preenchido como LEQUE**
+
+> O §4-undetricies parou no patch de perímetro `520 %`. Ele é o anel que a ponte
+> abriu — e a ponte não é opcional.
+
+### ⭐ O patch, pelos arcos
+
+```text
+    lado:   [16,17,4,5]   [6]   [7]   [8..14]   [15]   [7]
+    comp:      6,78      0,27  2,15    6,80     0,09   2,15
+    canto:      74°       77°   14°     118°     70°    26°
+```
+
+⭐⭐ **O arco `7` aparece DUAS vezes** — os dois lados de `2,15` são ele, ida e volta.
+Os dois *hairpins* (`14°` e `26°`) caem exactamente nas pontas dele. ⇒ **Este patch é
+o anel que a ponte do §4-sexvicies abriu**, e os lados de `6,78`/`6,80` são as duas
+fronteiras dele, quase a circunferência da esfera cada uma.
+
+### ⭐ E a ponte NÃO é opcional — o controlo
+
+| | orelha |
+|---|---|
+| com a ponte | malha, com a aresta de **56 %** |
+| ⛔ **sem a ponte** | ⛔ **RECUSA nos três níveis** (`GenusLost`) |
+
+⇒ *A ponte é o que a faz existir; o defeito é como o patch dela é preenchido.*
+
+### ⇒ Onde o conserto mora, por ELIMINAÇÃO
+
+| candidato | porque **não** |
+|---|---|
+| dar mais segmentos à lasca (F4) | ⛔ a densidade dela **está certa** — `0,27` com `2` segmentos é `0,135` cada, contra um alvo de `0,167` |
+| `dissolve` o patch (F3) | ⛔ ele **junta** patches, e este já dá três voltas à peça |
+| desligar a ponte (F3) | ⛔ a orelha deixa de fechar |
+| ⭐ **o preenchimento (F5)** | ⭐ **é o que sobra, e é onde a premissa quebra** |
+
+⭐⭐ **A lei do leque (`L_i = e_{i−1} + e_{i+1}`) é a da referência e está certa para
+um `n`-gono de verdade.** ⛔ **Um anel cortado não é um hexágono:** duas das seis
+arestas dele são a *mesma* curva. Alimentada com `L = [40, 2, 40, 40, 2, 40]`, a lei
+devolve `e = [1, 39, 1, 1, 39, 1]` — e é **forçada**, não escolhida: para `n` par o
+sistema tem solução única. Quatro raios a `1` são quatro sectores com **uma célula de
+fundo**, e o quad dessa célula atravessa a peça.
+
+⇒ ⭐⭐⭐ **O preenchimento certo é uma FAIXA** — uma grade entre as duas fronteiras,
+com a ponte como costura. *É o que o `fill_rectangle` já faz para `n = 4`; falta
+reconhecer este caso e mandá-lo para lá.* ⚠️ **E o reconhecimento é barato e
+inequívoco:** o patch tem um **arco repetido na própria lista de lados**.

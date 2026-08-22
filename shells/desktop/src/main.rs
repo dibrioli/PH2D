@@ -411,6 +411,8 @@ mod sim_populate;
 mod sizing_smoke;
 /// As cenas de smoke do Sketch (=31) e do Hatch (=32) — irmão de `build_smoke`, teto de LOC.
 mod sketch_hatch_smoke;
+/// **9-slice, lado a lado com o que ele conserta** (`PH2D_SLICE_SMOKE=1`).
+mod slice_smoke;
 mod smoke_layout;
 mod smoke_script;
 mod snap_label_smoke;
@@ -737,6 +739,7 @@ impl App {
             sculpt3d_pending: None,
             mask_smoke_done: false,
             sheet_smoke_done: false,
+            slice_smoke_done: false,
             dither_smoke_done: false,
             emissive_smoke_done: false,
             taper_smoke_done: false,

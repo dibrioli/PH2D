@@ -461,20 +461,19 @@ pub(super) fn run(
                     // a full-frame bake whose pixel space doesn't match the
                     // authored source's `region_rect`). Default
                     // `region_enabled = false` → no-op for legacy sprites.
+                    // Dimensoes em pixels da FONTE. Hoisted (2026-08-21): a regiao ja' as
+                    // pedia, e o 9-slice precisa das MESMAS para medir as bordas. Duas copias
+                    // deste match divergiriam no dia em que nascesse uma quarta `SpriteSource`.
+                    let src_dims = match spr.source {
+                        ph2d_render::SpriteSource::Atlas { key } => atlas.region_px(key),
+                        ph2d_render::SpriteSource::Individual { texture_id } => {
+                            renderer.individual().dims(texture_id)
+                        }
+                        ph2d_render::SpriteSource::CookedTexture { .. } => {
+                            renderer.cooked().dims(texture_id)
+                        }
+                    };
                     let atlas_uv = if spr.region_enabled && override_for_entity.is_none() {
-                        let src_dims = match spr.source {
-                            ph2d_render::SpriteSource::Atlas { key } => atlas.region_px(key),
-                            ph2d_render::SpriteSource::Individual { texture_id } => {
-                                renderer.individual().dims(texture_id)
-                            }
-                            // W2.T4: a cooked sprite owns its native-resolution
-                            // texture; `texture_id` here is the resolved cooked
-                            // id (region_enabled defaults false, so this is a
-                            // no-op for the common cooked sprite).
-                            ph2d_render::SpriteSource::CookedTexture { .. } => {
-                                renderer.cooked().dims(texture_id)
-                            }
-                        };
                         match src_dims {
                             Some((sw, sh)) => {
                                 // Half-texel size in the SAMPLED texture's UV
@@ -525,7 +524,7 @@ pub(super) fn run(
                     } else {
                         sprite_sheet_subrect(atlas_uv, spr.hframes, spr.vframes, spr.frame)
                     };
-                    builder.insert(RenderInstance {
+                    let base = RenderInstance {
                         world_pos: [p.x, p.y],
                         // LOCAL size — the basis applies world scale.
                         size: spr.size,
@@ -556,7 +555,49 @@ pub(super) fn run(
                         // itself (ADR-0070-amendment-7). Placeholder here.
                         clip_group: RenderInstance::CLIP_GROUP_NONE,
                         clip_meta: 0,
-                    });
+                    };
+                    // **9-SLICE** (spec Sprite 03 §3.5): um sprite fatiado desenha-se como até
+                    // NOVE quads. `patches_for` devolve `None` para todo sprite normal — e para
+                    // um 9-slice que não produziria quad nenhum —, e aí o caminho abaixo é o de
+                    // sempre, byte-idêntico.
+                    //
+                    // ⚠️ Os nove partilham o `SimRef`: é isso que faz o passe pós-caminhada
+                    // (z_order + clip) servir os nove sem saber que 9-slice existe. Os oito
+                    // extra levam `SlicePatchMirror` para o HUD não os contar como entidades.
+                    match crate::render_loop::sim_extract_slice::patches_for(
+                        sim.get::<ph2d_ecs::SliceNine>(sim_entity),
+                        spr,
+                        atlas_uv,
+                        src_dims,
+                        pixels_per_meter,
+                    ) {
+                        None => {
+                            builder.insert(base);
+                        }
+                        Some(patches) => {
+                            // O fan-out em si é uma função PURA (e testada); aqui só resta
+                            // colocá-las. Sem alocar: array fixo + contagem (HR-3).
+                            let (insts, n) = crate::render_loop::sim_extract_slice::instances(
+                                &base, &patches,
+                            );
+                            builder.insert(insts[0]);
+                            // ⚠️ **O `drop` é pelo EMPRÉSTIMO, não pelo valor.** `builder` tem o
+                            // `present` emprestado mutavelmente; sem o largar aqui, os oito
+                            // `present.spawn` abaixo não compilam. O lint `drop_non_drop` avisa
+                            // que o tipo não tem `Drop` — verdade, e irrelevante: o que acaba
+                            // aqui é o empréstimo.
+                            #[allow(clippy::drop_non_drop)]
+                            drop(builder);
+                            for ri in insts.iter().take(n).skip(1) {
+                                present.spawn((
+                                    SimRef(sim_entity),
+                                    gt,
+                                    *ri,
+                                    ph2d_render::nine_slice::SlicePatchMirror,
+                                ));
+                            }
+                        }
+                    }
                 }
             },
         );

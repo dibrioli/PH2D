@@ -44,14 +44,16 @@
 
 use ph2d_editor_core::screens::hero::{
     InspectorBlendInfo, InspectorBlendMixed, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSpriteInfo,
+    InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo,
+    InspectorSliceMixed, InspectorSpriteInfo,
     InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
     InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, set_current_inspector_blend, set_current_inspector_name,
-    set_current_inspector_ordering, set_current_inspector_sampling, set_current_inspector_sprite,
+    set_current_inspector_ordering, set_current_inspector_sampling, set_current_inspector_slice,
+    set_current_inspector_sprite,
     set_current_inspector_transform, set_current_inspector_visibility,
     set_current_inspector_visibility_section,
 };
@@ -138,6 +140,23 @@ fn publish_the_whole_sprite_scene() {
         uv_offset: [0.0, 0.0],
         selected_count: 1,
         mixed: InspectorSamplingMixed::default(),
+    }));
+    // §5 9-Slice. ⚠️ `Tiled` + `Adaptive` de propósito: é o único estado em que TODOS os
+    // controlos da seção são pintados (a grelha 3×3 só existe em modo de nove quads, e o slider
+    // de Stretch só em Adaptive). Um fixture em `Simple` deixaria onze ids fora da amostra — um
+    // fixture que não contém o fenómeno que o gate diz medir.
+    set_current_inspector_slice(Some(InspectorSliceInfo {
+        entity_bits: ENTITY,
+        present: true,
+        draw_mode_tag: 2,
+        borders: [8.0; 4],
+        size: [0.0, 0.0],
+        tile_modes: [0; 8],
+        tile_mode_tag: 1,
+        stretch_value: 0.5,
+        fill_center: true,
+        selected_count: 1,
+        mixed: InspectorSliceMixed::default(),
     }));
     set_current_inspector_blend(Some(InspectorBlendInfo {
         entity_bits: ENTITY,

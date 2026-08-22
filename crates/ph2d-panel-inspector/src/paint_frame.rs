@@ -121,7 +121,7 @@ pub(crate) fn paint_physics_sections(
             ids::INSP_LIVE_PHYSICS_SECTION,
             y_before,
             new_y,
-            slot(9),
+            slot(10),
         );
     }
     // §12 Physics Joint — only for an entity that IS a joint. Unlike §11 it has
@@ -162,7 +162,7 @@ pub(crate) fn paint_physics_sections(
             ids::INSP_LIVE_JOINT_SECTION,
             y_before,
             new_y,
-            slot(10),
+            slot(11),
         );
     }
     // §13 Pulley Wheel — só para uma entidade que É uma roldana. Como a §12 e
@@ -203,7 +203,7 @@ pub(crate) fn paint_physics_sections(
             ids::INSP_LIVE_WHEEL_SECTION,
             y_before,
             new_y,
-            slot(11),
+            slot(12),
         );
     }
     // §14 Platform Player — para todo corpo Dynamic, COM ou SEM o componente:
@@ -243,7 +243,7 @@ pub(crate) fn paint_physics_sections(
             ids::INSP_LIVE_PLAYER_SECTION,
             y_before,
             new_y,
-            slot(12),
+            slot(13),
         );
     }
     y
@@ -320,10 +320,14 @@ pub(crate) fn any_live_section(flags: [bool; 11]) -> bool {
 /// ⚠️ **O tamanho do array é uma slot por seção viva.** Dimensionado errado, uma
 /// nota ancorada na ÚLTIMA seção cai em silêncio no `trailing` em vez de onde o
 /// autor a pôs — e o silêncio é o problema, não o deslocamento.
-pub(crate) type SectionNotes = ([Vec<(usize, NoteData)>; 13], Vec<(usize, NoteData)>);
+pub(crate) type SectionNotes = ([Vec<(usize, NoteData)>; 14], Vec<(usize, NoteData)>);
 
 pub(crate) fn split_notes(store: &WidgetStore) -> SectionNotes {
-    let mut per_section: [Vec<(usize, NoteData)>; 13] = Default::default();
+    // ⚠️ **CATORZE desde 2026-08-21** — a §5 9-Slice entrou no slot 6 e empurrou todas as que
+    // vêm depois. O array estava CHEIO (0..12): renumerar sem o crescer punha a §10 Blend no
+    // slot 9, que é o do Physics Body, e as duas passavam a partilhar as mesmas notas em
+    // silêncio. *Um índice que soma entre seções conta-se; não se escolhe um livre que não há.*
+    let mut per_section: [Vec<(usize, NoteData)>; 14] = Default::default();
     let mut trailing: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in store
         .notes_for_panel(ids::INSP_PANEL)

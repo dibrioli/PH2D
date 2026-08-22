@@ -195,6 +195,7 @@ fn paint_inspector(
     let visibility_info = current_inspector_visibility();
     let ordering_info = current_inspector_ordering();
     let sampling_info = current_inspector_sampling();
+    let slice_info = crate::state::current_inspector_slice();
     let blend_info = current_inspector_blend();
     let (physics_info, joint_info, wheel_info, player_info) =
         crate::paint_frame::physics_family_infos();
@@ -351,58 +352,30 @@ fn paint_inspector(
             )
         });
     }
-    // W3 §7 Ordering / Sorting — applies to any Transform-bearing entity
-    // (not sprite-only), so it sits outside the `sprite_info` block.
-    if let Some(ord) = ordering_info.as_ref() {
-        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
-        y = live_section!(ids::INSP_LIVE_ORDERING_SECTION, 6, SECTION_HEAD_H, {
-            sections::paint_ordering_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-                ord,
-            )
-        });
-    }
-    // W3 §9 Sampling — Transform-bearing entity, sibling of §7.
-    if let Some(samp) = sampling_info.as_ref() {
-        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
-        y = live_section!(ids::INSP_LIVE_SAMPLING_SECTION, 7, SECTION_HEAD_H, {
-            sections::paint_sampling_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-                samp,
-            )
-        });
-    }
-    // §10 Material & Blend — Transform-bearing entity, sibling of §9.
-    if let Some(blend) = blend_info.as_ref() {
-        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
-        y = live_section!(ids::INSP_LIVE_BLEND_SECTION, 8, SECTION_HEAD_H, {
-            sections::paint_material_blend_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-                blend,
-            )
-        });
-    }
+    // **As quatro seções COMPARTILHADAS** — §5 9-Slice, §7 Ordering, §9 Sampling e §10 Material
+    // & Blend — moram em `paint_frame`, como a família da física e pela mesma razão: este
+    // orquestrador está numa catraca que só desce, e a §5 (2026-08-21) empurrou-o para 436
+    // contra 414. As quatro andam juntas porque partilham a mesma porta — qualquer entidade com
+    // `Transform` — e porque os seus quatro slots de nota (6..9) ficam obviamente distintos ao
+    // lado uns dos outros.
+    y = crate::paint_frame_shared::paint_shared_sections(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        &mut section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        SECTION_HEAD_H,
+        slice_info.as_ref(),
+        ordering_info.as_ref(),
+        sampling_info.as_ref(),
+        blend_info.as_ref(),
+        &notes_per_section,
+    );
     y = crate::paint_frame::paint_physics_sections(
         scene,
         text_system,

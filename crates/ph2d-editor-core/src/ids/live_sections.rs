@@ -13,7 +13,7 @@ use super::*;
 /// **A TABELA ÚNICA das seções vivas do Inspector: `(cabeçalho, ponto de cor)`.**
 ///
 /// Name · Visibility · Transform · Render · Color & Tint · Sprite Sheet · Ordering · Sampling ·
-/// Material & Blend · Physics Body · Physics Joint · Pulley Wheel · Platform Player.
+/// **9-Slice** · Material & Blend · Physics Body · Physics Joint · Pulley Wheel · Platform Player.
 ///
 /// # Por que UMA tabela de PARES, e não duas listas
 ///
@@ -30,7 +30,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 13] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 14] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
@@ -39,6 +39,7 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 13] = [
     (INSP_LIVE_SHEET_SECTION, INSP_LIVE_SHEET_COLOR),
     (INSP_LIVE_ORDERING_SECTION, INSP_LIVE_ORDERING_COLOR),
     (INSP_LIVE_SAMPLING_SECTION, INSP_LIVE_SAMPLING_COLOR),
+    (INSP_LIVE_SLICE_SECTION, INSP_LIVE_SLICE_COLOR),
     (INSP_LIVE_BLEND_SECTION, INSP_LIVE_BLEND_COLOR),
     (INSP_LIVE_PHYSICS_SECTION, INSP_LIVE_PHYSICS_COLOR),
     (INSP_LIVE_JOINT_SECTION, INSP_LIVE_JOINT_COLOR),

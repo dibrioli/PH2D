@@ -264,9 +264,14 @@ pub(super) fn publish(
         .query::<&ph2d_render::RenderInstance>()
         .iter(present.world_mut())
         .count() as u32;
+    // ⚠️ **Sem os quads de 9-slice.** Os nove quads de um sprite fatiado partilham o `SimRef`
+    // da entidade (é o que faz o carimbo de `z_order` servir os nove), por isso contá-los aqui
+    // faria UMA caixa de diálogo aparecer no HUD como NOVE entidades — um número que passaria a
+    // mentir exatamente quando a cena fica interessante. A contagem de INSTÂNCIAS acima sobe de
+    // propósito: nove quads são nove quads, e isso é o que um contador de desenho deve dizer.
     let entity_count = present
         .world_mut()
-        .query::<&SimRef>()
+        .query_filtered::<&SimRef, bevy_ecs::query::Without<ph2d_render::nine_slice::SlicePatchMirror>>()
         .iter(present.world_mut())
         .count() as u32;
     let fps = if frame_ms_ewma > 0.001 {
@@ -885,6 +890,13 @@ pub(super) fn publish(
     let inspector_blend = hero.gizmo.selection.and_then(|b| {
         super::inspector_ordering::build_blend_info(sim.world(), b, sel, selected_count)
     });
+    // §5 9-Slice. ⚠️ Publicado para TODA entidade digna de Inspector, com ou sem o componente:
+    // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add 9-Slice».
+    // Publicar só quando o componente existe faria a seção aparecer depois de a feature estar
+    // ligada — ou seja, nunca, porque não haveria por onde ligá-la.
+    let inspector_slice = hero.gizmo.selection.and_then(|b| {
+        super::inspector_slice::build_slice_info(sim.world(), b, sel, selected_count)
+    });
     // W3: the Join gesture needs exactly TWO bodies, and only the shell can
     // see the selection — the panel is handed one entity at a time. Asked once
     // here, so the painter (which offers the button) and the event handler
@@ -1023,6 +1035,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
         ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
         ph2d_panel_inspector::set_current_inspector_blend(inspector_blend);
+        ph2d_panel_inspector::set_current_inspector_slice(inspector_slice);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);

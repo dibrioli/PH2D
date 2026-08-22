@@ -570,6 +570,8 @@ pub(crate) struct App {
     pub(crate) mask_smoke_done: bool,
     /// Latch one-shot de `PH2D_SHEET_SMOKE` — a folha como objeto (plano Sprite 17 §7).
     pub(crate) sheet_smoke_done: bool,
+    /// `PH2D_SLICE_SMOKE` — encenado uma vez por sessão.
+    pub(crate) slice_smoke_done: bool,
     /// Latch one-shot de `PH2D_DITHER_SMOKE` — as duas descidas para 8 bits (plano Sprite 18 W6.1).
     pub(crate) dither_smoke_done: bool,
     /// Latch one-shot de `PH2D_EMISSIVE_SMOKE` — a sprite como fonte de luz (plano Sprite 18 W8).

@@ -117,6 +117,7 @@ pub(super) fn dispatch(
     ordering_edits: &[(u64, OrderingFieldEdit)],
     sampling_edits: &[(u64, SamplingFieldEdit)],
     blend_edits: &[(u64, BlendFieldEdit)],
+    slice_edits: &[(u64, ph2d_editor::SliceFieldEdit)],
     physics_edits: &[(u64, PhysicsFieldEdit)],
     visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
@@ -324,6 +325,21 @@ pub(super) fn dispatch(
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
             toasts.push(Toast::error(format!("Sampling commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+    // §5 9-Slice — a autoria de 9-slice (componente opcional; `Attach`/`Detach` são edições
+    // como as outras). Ver `inspector_slice`.
+    for &(entity_bits, edit) in slice_edits {
+        super::inspector_slice::apply_slice_edit(
+            sim,
+            entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+        );
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("9-Slice commit failed: {e}")));
             title_dirty = true;
         }
     }

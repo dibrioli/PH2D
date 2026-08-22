@@ -244,6 +244,8 @@ mod wet_grid_look_probe;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
+/// **§5 9-Slice** — snapshot e commit da seção. Irmão do `inspector_ordering`.
+mod inspector_slice;
 /// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
 /// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
 /// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
@@ -275,6 +277,8 @@ pub(crate) mod painter_stamp_device;
 pub(crate) mod point_gizmo;
 mod present;
 mod sim_extract;
+/// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
+mod sim_extract_slice;
 mod snapshots;
 /// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — lê o espelho pelo `SimRef` e
 /// devolve as instâncias que emitem. ⚠️ Irmão do `sim_extract` de propósito: ele está no tecto de LOC.
@@ -1423,6 +1427,34 @@ impl crate::App {
                 )));
                 self.title_dirty = true;
             }
+        }
+
+        // **9-SLICE** (`PH2D_SLICE_SMOKE=1`, spec Sprite 03 §3.5): duas caixas do MESMO desenho,
+        // esticadas ao mesmo tamanho — a da esquerda sem 9-slice (cantos redondos viram elipses),
+        // a da direita com. ⚠️ A comparação É o smoke: uma caixa sozinha com a feature ligada
+        // parece só «uma caixa».
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::slice_smoke::enabled()
+            && !std::mem::replace(&mut self.slice_smoke_done, true)
+            && let Some(sliced) = crate::slice_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                next_import_cell,
+                atlas_asset_map,
+            )
+        {
+            hero.gizmo.replace_selection(Some(sliced));
+            hero.bus
+                .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                    kind: ph2d_editor::ViewFocusKind::Selected,
+                });
+            toasts.push(Toast::success(
+                "9-Slice smoke: LEFT is plain (corners stretch), RIGHT is sliced — see the \
+                 9-Slice section"
+                    .to_string(),
+            ));
+            self.title_dirty = true;
         }
 
         // **AS FAIXAS, E A CURA** (`PH2D_DITHER_SMOKE=1`, plano `docs/Sprite_projeto/18` W6.1):
@@ -2928,6 +2960,7 @@ impl crate::App {
             let mut ordering_edits: Vec<(u64, ph2d_editor::OrderingFieldEdit)> = Vec::new();
             let mut sampling_edits: Vec<(u64, ph2d_editor::SamplingFieldEdit)> = Vec::new();
             let mut blend_edits: Vec<(u64, ph2d_editor::BlendFieldEdit)> = Vec::new();
+            let mut slice_edits: Vec<(u64, ph2d_editor::SliceFieldEdit)> = Vec::new();
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
             // signature is already the length its own doc-comment warns about,
@@ -3896,6 +3929,18 @@ impl crate::App {
                         } else {
                             for &t in &inspector_selection {
                                 blend_edits.push((t, edit));
+                            }
+                        }
+                    }
+                    // §5 9-Slice. Espalha sobre a BulkSelect como as irmãs: uma caixa de diálogo
+                    // e as suas variantes partilham a mesma moldura, e ter de repetir a borda em
+                    // cada uma seria o gesto que esta seção existe para evitar.
+                    EditorAction::InspectorSliceEdit { entity_bits, edit } => {
+                        if inspector_selection.is_empty() {
+                            slice_edits.push((entity_bits, edit));
+                        } else {
+                            for &t in &inspector_selection {
+                                slice_edits.push((t, edit));
                             }
                         }
                     }
@@ -8847,6 +8892,7 @@ impl crate::App {
                 &ordering_edits,
                 &sampling_edits,
                 &blend_edits,
+                &slice_edits,
                 &physics_edits,
                 &visibility_section_edits,
                 hero,

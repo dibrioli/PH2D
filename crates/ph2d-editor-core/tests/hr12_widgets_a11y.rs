@@ -404,6 +404,14 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // `paint_sections.rs` for the LOC cap. Its buttons delegate to
     // `BodyCtx::row2` / `action_button` (in paint_sections), which paint via the
     // a11y-wired `paint_button` primitive; this file has no widget of its own.
+    // As QUATRO seções compartilhadas do Inspector (§5 9-Slice, §7 Ordering, §9 Sampling,
+    // §10 Material & Blend). ⚠️ Orquestrador PURO: ele decide moldura, separador e slot de nota,
+    // e cada corpo é pintado por `sections::paint_*_section`, que são os ficheiros com a fiação
+    // de a11y. Um widget próprio aqui seria a duplicação que este corte existe para evitar.
+    (
+        "ph2d-panel-inspector/src/paint_frame_shared.rs",
+        "orquestrador puro: delega os quatro corpos a `sections::paint_*_section` (a11y-wired)",
+    ),
     (
         "ph2d-panel-vector/src/paint_arrange.rs",
         "delegates to row2/action_button (paint_button-backed) in paint_sections",

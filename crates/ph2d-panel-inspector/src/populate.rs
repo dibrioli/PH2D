@@ -26,6 +26,7 @@ pub fn populate(store: &mut WidgetStore) {
     populate_name_editor(store);
     populate_ordering(store);
     populate_sampling(store);
+    populate_slice(store);
     populate_visibility_section(store);
     populate_blend(store);
     super::populate_physics::populate_physics(store);
@@ -89,6 +90,68 @@ pub(crate) fn register_button_ids(store: &mut WidgetStore, ids: &[ph2d_a11y::Nod
 /// `Button`s (is_focusable → clicks route). Selection is snapshot-driven.
 fn populate_blend(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_SAMPLE_BLEND);
+}
+
+/// **§5 9-Slice** (spec Sprite 03 §3.5) — construída em 2026-08-21.
+///
+/// ⚠️ **Cada id aqui é o que torna o widget FOCÁVEL**, e é a ponta que este repositório já perdeu
+/// seis vezes: um controlo pintado e não registado é indistinguível de um partido — o ponteiro
+/// nunca lhe chega e todo gate de compilação continua verde (DIRETIVA §2). O gate
+/// `every_painted_id_is_reachable` cobra esta metade.
+fn populate_slice(store: &mut WidgetStore) {
+    register_button_ids(store, &ids::INSP_SLICE_MODE);
+    register_button_ids(store, &ids::INSP_SLICE_TILE_MODE);
+    // As oito células da grelha 3×3 são BOTÕES que ciclam — não segmentos.
+    register_button_ids(store, &ids::INSP_SLICE_REGION);
+    register_button_ids(store, &[ids::INSP_SLICE_ADD, ids::INSP_SLICE_REMOVE]);
+    store.register(
+        ids::INSP_SLICE_FILL_CENTER,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Checked,
+        },
+    );
+    // Bordas (px da fonte) e tamanho alvo (m). O `0.0` de partida é o do componente inerte.
+    for id in ids::INSP_SLICE_BORDER
+        .iter()
+        .chain(ids::INSP_SLICE_SIZE.iter())
+        .copied()
+    {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: format_number(0.0),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+    }
+    // O par slider+chip do `Stretch`. ⚠️ Ambos vivem em `0..1` — ao contrário do Emissive, aqui
+    // **não há mapeamento**: o valor É uma fração de ladrilho, e mostrá-lo noutra escala seria
+    // inventar uma unidade que o modelo não tem.
+    store.register(
+        ids::INSP_SLICE_STRETCH,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.5,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    store.register(
+        ids::INSP_SLICE_STRETCH_CHIP,
+        InteractiveState::NumberInput {
+            state: TextInputState::Normal,
+            value: 0.5,
+            buffer: format_number(0.5),
+            caret: 0,
+            last_committed: 0.5,
+            selection_anchor: None,
+        },
+    );
+    store.link_slider_number(ids::INSP_SLICE_STRETCH, ids::INSP_SLICE_STRETCH_CHIP);
 }
 
 fn populate_sampling(store: &mut WidgetStore) {

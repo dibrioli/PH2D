@@ -205,6 +205,9 @@ pub(crate) fn sync_inspector_from_snapshots(
             }
         }
     }
+    if let Some(sl) = crate::state::current_inspector_slice() {
+        sync_slice_fields(host, &sl, entity_changed);
+    }
     // W3 §8 — reflect the Mask Alpha Cutoff + Enabler Rect NumberInputs.
     if let Some(vis) = current_inspector_visibility_section() {
         let focus = host.store().focus_id();
@@ -219,6 +222,54 @@ pub(crate) fn sync_inspector_from_snapshots(
             if focus != Some(id) && drag != Some(id) {
                 host.store_mut().set_number_value(id, value);
             }
+        }
+    }
+}
+
+/// Reflete o snapshot da §5 9-Slice nos widgets.
+///
+/// ⚠️ **Função irmã por CAP** (200): com este bloco inline a `sync_inspector_from_snapshots`
+/// media 240. *A cura de um teto estourado é o corte.*
+fn sync_slice_fields(
+    host: &mut dyn PanelHostInternal,
+    sl: &ph2d_editor_core::screens::hero::InspectorSliceInfo,
+    entity_changed: bool,
+) {
+    let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
+    for (id, value) in [
+        (ids::INSP_SLICE_BORDER[0], f64::from(sl.borders[0])),
+        (ids::INSP_SLICE_BORDER[1], f64::from(sl.borders[1])),
+        (ids::INSP_SLICE_BORDER[2], f64::from(sl.borders[2])),
+        (ids::INSP_SLICE_BORDER[3], f64::from(sl.borders[3])),
+        (ids::INSP_SLICE_SIZE[0], f64::from(sl.size[0])),
+        (ids::INSP_SLICE_SIZE[1], f64::from(sl.size[1])),
+    ] {
+        if focus != Some(id) && drag != Some(id) {
+            host.store_mut().set_number_value(id, value);
+        }
+    }
+    if let Some(InteractiveState::Slider { state, value, .. }) =
+        host.store_mut().get_mut(ids::INSP_SLICE_STRETCH)
+        && *state != ph2d_editor_core::widget::SliderState::Dragging
+    {
+        *value = sl.stretch_value;
+    }
+    // ⚠️ O checkbox só semeia na TROCA de entidade: reescrevê-lo todo o quadro faria um
+    // clique voltar atrás antes de o commit chegar (o snapshot deste quadro ainda é o de
+    // antes da edição). É a mesma lei dos checkboxes da §7.
+    if entity_changed {
+        let value = if sl.mixed.fill_center {
+            CheckboxValue::Indeterminate
+        } else if sl.fill_center {
+            CheckboxValue::Checked
+        } else {
+            CheckboxValue::Unchecked
+        };
+        if let Some(InteractiveState::Checkbox { value: slot, .. }) =
+            host.store_mut().get_mut(ids::INSP_SLICE_FILL_CENTER)
+        {
+            *slot = value;
         }
     }
 }

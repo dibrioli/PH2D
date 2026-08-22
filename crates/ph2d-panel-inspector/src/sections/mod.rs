@@ -65,6 +65,8 @@ mod render_source_precision;
 /// re-exporta para o gate de GEOMETRIA da §14.
 pub(crate) mod rows;
 mod sampling;
+/// **§5 9-Slice** — a seção que a spec declarou em 2026-05 e que nasceu em 2026-08-21.
+pub(crate) mod slice_nine;
 mod sprite_sheet;
 mod transform;
 mod visibility;

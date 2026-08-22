@@ -20,10 +20,12 @@ pub use hero::{
     BlendFieldEdit, BottomHudStats, EMISSIVE_MAX_UI, HeroScreen, HeroSelection, InspectorBlendInfo,
     InspectorBlendMixed, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
     InspectorOrderingMixed, InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo,
-    InspectorSamplingMixed, InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource,
+    InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed, InspectorSpriteInfo,
+    InspectorSpriteMixed, InspectorSpriteSource,
     InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilityMixed,
     InspectorVisibilitySectionInfo, InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit,
-    PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit, SpriteFieldEdit,
+    PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit,
+    SliceFieldEdit, SpriteFieldEdit,
     ViewFocusKind, VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen,
 };
 pub use layout::{

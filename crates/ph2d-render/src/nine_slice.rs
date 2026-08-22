@@ -28,7 +28,24 @@
 //! sprite de sempre, byte-idêntico. *Não é coincidência: é o teste de identidade embutido no
 //! modelo*, e está afirmado em [`tests::zero_borders_collapse_to_the_plain_sprite`].
 
-use ph2d_ecs::{SliceDrawMode, SliceNine, SliceRegion, SliceTileMode, TileRegionMode};
+use bevy_ecs::component::Component;
+use ph2d_ecs::{PresentComponent, SliceDrawMode, SliceNine, SliceRegion, SliceTileMode, TileRegionMode};
+
+/// Marca uma instância que é um **quad EXTRA** de um 9-slice — os oito do anel, quando o
+/// primeiro já foi para o espelho principal da entidade.
+///
+/// ⚠️ **Existe por uma razão só, e ela é de honestidade de contagem.** Os nove quads partilham o
+/// mesmo `SimRef` (é isso que faz o `z_order` e o agrupamento de clip serem carimbados uma vez
+/// para todos), mas o HUD conta espelhos de `SimRef` para dizer *«quantas entidades há»*. Sem
+/// esta marca, ligar 9-slice num sprite fá-lo-ia contar como nove — um número que passa a mentir
+/// exatamente quando a cena fica interessante.
+///
+/// Componente de PRESENTE: reconstruído a cada quadro, nunca serializado, e por isso **fora do
+/// `ComponentRegistry`** (não mexe nos dois contadores).
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct SlicePatchMirror;
+
+impl PresentComponent for SlicePatchMirror {}
 
 /// Um dos até nove quads em que um sprite com 9-slice se desenha.
 #[derive(Copy, Clone, Debug, PartialEq)]

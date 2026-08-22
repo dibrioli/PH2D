@@ -13,9 +13,9 @@
 
 use ph2d_editor_core::screens::hero::{
     InspectorBlendInfo, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo, InspectorSpriteInfo,
-    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilitySectionInfo,
-    InspectorWheelInfo,
+    InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo, InspectorSliceInfo,
+    InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorVisibilitySectionInfo, InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -88,6 +88,10 @@ thread_local! {
     /// W3 §9: live sampling snapshot for the Sampling section.
     pub(crate) static CURRENT_INSPECTOR_SAMPLING:
         std::cell::Cell<Option<InspectorSamplingInfo>> = const { std::cell::Cell::new(None) };
+
+    /// §5 9-Slice: o snapshot vivo da autoria de 9-slice (spec Sprite 03 §3.5).
+    pub(crate) static CURRENT_INSPECTOR_SLICE:
+        std::cell::Cell<Option<InspectorSliceInfo>> = const { std::cell::Cell::new(None) };
 
     /// §10: live Material & Blend snapshot for the Blend section.
     pub(crate) static CURRENT_INSPECTOR_BLEND:
@@ -175,6 +179,14 @@ pub fn set_current_inspector_sampling(info: Option<InspectorSamplingInfo>) {
 
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {
     CURRENT_INSPECTOR_SAMPLING.with(|c| c.get())
+}
+
+pub fn set_current_inspector_slice(info: Option<InspectorSliceInfo>) {
+    CURRENT_INSPECTOR_SLICE.with(|c| c.set(info));
+}
+
+pub(crate) fn current_inspector_slice() -> Option<InspectorSliceInfo> {
+    CURRENT_INSPECTOR_SLICE.with(|c| c.get())
 }
 
 pub fn set_current_inspector_blend(info: Option<InspectorBlendInfo>) {

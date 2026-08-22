@@ -460,6 +460,13 @@ pub enum EditorAction {
         entity_bits: u64,
         edit: crate::screens::hero::SamplingFieldEdit,
     },
+    /// §5 9-Slice (spec Sprite 03 §3.5) — uma edição da autoria de 9-slice, incluindo anexar e
+    /// retirar o próprio componente. A seção nasceu em 2026-08-21; até aí a spec descrevia-a e o
+    /// repositório não tinha uma linha dela.
+    InspectorSliceEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::SliceFieldEdit,
+    },
 
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]

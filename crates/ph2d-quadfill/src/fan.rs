@@ -25,23 +25,29 @@
 ///
 /// ⚠️ **Os cantos têm de bater**: `bottom[0] == left[0]`, e por aí. Quem os passa
 /// trocados recebe uma grade que parece plausível e tem os bordos torcidos.
+///
+/// ⭐⭐ **Ela é genérica na DIMENSÃO, e isso é uma decisão e não elegância.** A
+/// mesma lei corre em `ℝ³` (a grade no espaço, que é o caminho de recurso) e em
+/// `ℝ²` (a grade no **domínio** do patch achatado, que é o caminho bom — ver
+/// [`crate::param`]). *Duas cópias divergiriam no dia em que a fórmula mudasse, e a
+/// que decide o resultado é a de 2D.*
 #[must_use]
-pub fn coons(
-    bottom: &[[f32; 3]],
-    top: &[[f32; 3]],
-    left: &[[f32; 3]],
-    right: &[[f32; 3]],
-) -> Vec<Vec<[f32; 3]>> {
+pub fn coons<const D: usize>(
+    bottom: &[[f32; D]],
+    top: &[[f32; D]],
+    left: &[[f32; D]],
+    right: &[[f32; D]],
+) -> Vec<Vec<[f32; D]>> {
     let s = bottom.len().saturating_sub(1);
     let t = left.len().saturating_sub(1);
-    let mut grid = vec![vec![[0.0f32; 3]; t + 1]; s + 1];
+    let mut grid = vec![vec![[0.0f32; D]; t + 1]; s + 1];
     for (k, row) in grid.iter_mut().enumerate() {
         #[allow(clippy::cast_precision_loss)]
         let u = if s == 0 { 0.0 } else { k as f32 / s as f32 };
         for (l, cell) in row.iter_mut().enumerate() {
             #[allow(clippy::cast_precision_loss)]
             let w = if t == 0 { 0.0 } else { l as f32 / t as f32 };
-            for c in 0..3 {
+            for c in 0..D {
                 // As duas réguas lineares, menos a bilinear dos cantos — é isso
                 // que faz os quatro bordos serem respeitados **exatamente**.
                 let along = (1.0 - w).mul_add(bottom[k][c], w * top[k][c]);
@@ -101,18 +107,20 @@ pub fn resample(chain: &[[f32; 3]], n: usize) -> Vec<[f32; 3]> {
     out
 }
 
-/// Interpola `n` segmentos entre dois pontos.
+/// Interpola `n` segmentos entre dois pontos — genérica na dimensão, pela mesma
+/// razão que o [`coons`]: o raio do leque é uma recta no **domínio**, e a recta no
+/// espaço é só o caminho de recurso.
 #[must_use]
-pub fn segment(a: [f32; 3], b: [f32; 3], n: usize) -> Vec<[f32; 3]> {
+pub fn segment<const D: usize>(a: [f32; D], b: [f32; D], n: usize) -> Vec<[f32; D]> {
     (0..=n)
         .map(|k| {
             #[allow(clippy::cast_precision_loss)]
             let f = if n == 0 { 0.0 } else { k as f32 / n as f32 };
-            [
-                f.mul_add(b[0] - a[0], a[0]),
-                f.mul_add(b[1] - a[1], a[1]),
-                f.mul_add(b[2] - a[2], a[2]),
-            ]
+            let mut out = [0.0f32; D];
+            for c in 0..D {
+                out[c] = f.mul_add(b[c] - a[c], a[c]);
+            }
+            out
         })
         .collect()
 }

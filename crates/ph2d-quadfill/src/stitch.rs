@@ -13,7 +13,9 @@ use ph2d_mesh::{Face, Mesh};
 use ph2d_quantize::Quantization;
 use ph2d_trace::PatchLayout;
 
-use crate::fan::{coons, resample, segment};
+use crate::fan::{resample, segment};
+use crate::param::PatchParam;
+use crate::patch::{Chains, Chains2, Domain, build_grid, fill_rectangle, side_uv};
 use crate::report::{FillError, FillReport, Points, Provenance};
 
 /// ⚠️ **Quantas rondas de alisamento por omissão.** Elas não mudam a topologia —
@@ -21,56 +23,6 @@ use crate::report::{FillError, FillReport, Points, Provenance};
 /// referência, então a forma não escorre. O número está aqui e não numa opinião:
 /// ver a tabela do `PLAN.md` §4-sexies.
 pub const SMOOTHING_ROUNDS: usize = 6;
-
-/// **PREENCHE UM PATCH DE QUATRO LADOS COM UMA GRADE PLANA.**
-///
-/// ⭐⭐ **O leque é a construção errada para um retângulo, e o preço estava
-/// medido antes de eu o ver.** Num patch de `n` lados o leque põe um vértice
-/// **central** e `n` sub-grades em volta dele; para `n = 4` isso é: um vértice a
-/// mais que não precisa de existir, quatro raios que são **cordas retas** a
-/// atravessar a forma, e três costuras interiores onde não há fronteira nenhuma.
-/// *E é entre os gomos do leque que a face dobra.*
-///
-/// Aqui a lei do F4 é lida ao contrário: num patch de quatro lados ela obriga
-/// `L₀ = e₃ + e₁ = L₂` e `L₁ = e₀ + e₂ = L₃` — ⭐ **os lados opostos têm o mesmo
-/// número de segmentos, por construção**. Logo o patch É uma grade `L₀ × L₁`, e
-/// ela sai de **uma** interpolação de Coons sobre os quatro lados verdadeiros.
-///
-/// ⚠️ **Zero vértices novos de fronteira**: os quatro lados são os arcos que os
-/// vizinhos também usam, então a costura continua a ser a mesma. O que desaparece
-/// é só o interior inventado.
-fn fill_rectangle(
-    pts: &mut Points,
-    faces: &mut Vec<Face>,
-    surface: &Mesh,
-    seed: f32,
-    side_pts: &[Vec<u32>],
-) {
-    // O contorno: `bottom` e `top` opostos, `left` e `right` opostos. O lado 2
-    // corre ao contrário do 0 (a fronteira roda), e o 3 ao contrário do 1.
-    let bottom = side_pts[0].clone();
-    let right = side_pts[1].clone();
-    let top: Vec<u32> = side_pts[2].iter().rev().copied().collect();
-    let left: Vec<u32> = side_pts[3].iter().rev().copied().collect();
-    let (s, t) = (bottom.len() - 1, right.len() - 1);
-    debug_assert_eq!(
-        top.len() - 1,
-        s,
-        "a lei do F4 obriga os lados opostos a bater"
-    );
-    debug_assert_eq!(left.len() - 1, t, "idem para o outro par");
-    let grid = build_grid(pts, surface, seed, &bottom, &top, &left, &right, s, t);
-    for k in 0..s {
-        for l in 0..t {
-            faces.push(Face::quad(
-                grid[k][l],
-                grid[k + 1][l],
-                grid[k + 1][l + 1],
-                grid[k][l + 1],
-            ));
-        }
-    }
-}
 
 /// **A TOLERÂNCIA da pré-condição**, em fração do comprimento declarado.
 ///
@@ -192,6 +144,18 @@ pub fn fill(
         arc_points.push(ids);
     }
 
+    // ⭐ **AS FACES DE CADA PATCH**, uma passagem só. É o que o achatamento
+    // consome, e reconstruí-lo por patch seria `O(patches × faces)`.
+    let mut patch_faces: Vec<Vec<u32>> = vec![Vec::new(); layout.side_arcs.len()];
+    for (f, &pp) in layout.face_patch.iter().enumerate() {
+        if let Some(slot) = patch_faces.get_mut(pp as usize) {
+            slot.push(u32::try_from(f).unwrap_or(0));
+        }
+    }
+    let mut flattened = 0usize;
+    let (mut sampled, mut misses) = (0usize, 0usize);
+    let (mut flatten_rounds, mut flatten_residual) = (0usize, 0.0f32);
+
     // ── 2. Cada patch vira o seu leque.
     for (p, sides) in layout.side_arcs.iter().enumerate() {
         let n = sides.len();
@@ -253,14 +217,58 @@ pub fn fill(
             }
         }
 
+        // ⭐⭐ **O ACHATAMENTO DO PATCH** — ver [`crate::param`]. A partir daqui a
+        // grade é construída no DOMÍNIO e volta pela triangulação; a interpolação
+        // em `ℝ³` fica como caminho de recurso para o patch que não achatar.
+        let mesh_sides: Vec<Vec<u32>> = sides
+            .iter()
+            .map(|side| {
+                let mut chain: Vec<u32> = Vec::new();
+                for &(a, rev) in side {
+                    let mut c = layout.arc_chain[a as usize].clone();
+                    if rev {
+                        c.reverse();
+                    }
+                    if chain.is_empty() {
+                        chain = c;
+                    } else {
+                        chain.extend_from_slice(&c[1..]);
+                    }
+                }
+                chain
+            })
+            .collect();
+        let param = PatchParam::build(indexed, &patch_faces[p], &mesh_sides);
+        if param.is_some() {
+            flattened += 1;
+        }
+        if let Some(q) = param.as_ref() {
+            flatten_rounds = flatten_rounds.max(q.rounds);
+            flatten_residual = flatten_residual.max(q.residual);
+        }
+        let dom = Domain {
+            param: param.as_ref(),
+            side_uv: (0..n).map(|i| side_uv(layout, quant, sides, i)).collect(),
+            tally: std::cell::Cell::new((0, 0)),
+        };
+
         // ⭐⭐ **UM PATCH DE QUATRO LADOS É UM RETÂNGULO, e um retângulo não
         // precisa de leque.** Ver [`fill_rectangle`].
         if n == 4 {
-            fill_rectangle(&mut pts, &mut faces, surface, seed, &side_pts);
+            fill_rectangle(&mut pts, &mut faces, surface, seed, &side_pts, &dom);
+            let (o, m) = dom.tally.get();
+            sampled += o;
+            misses += m;
             continue;
         }
 
-        // O centro: a média dos pontos de fronteira, reprojetada.
+        // O centro: o do polígono no domínio, e a média de fronteira como recurso.
+        //
+        // ⚠️ **No domínio o centro é `(0,0)` e não uma média** — o polígono é
+        // regular e convexo, então o seu centro está lá por construção. A média dos
+        // pontos de fronteira em `ℝ³` é o que sobra quando o patch não achata, e é
+        // exactamente ela que, num patch dobrado sobre um gancho, cai **dentro** da
+        // peça.
         let mut c = [0.0f32; 3];
         let mut count = 0usize;
         for side in &side_pts {
@@ -274,27 +282,49 @@ pub fn fill(
         }
         #[allow(clippy::cast_precision_loss)]
         let inv = if count == 0 { 0.0 } else { 1.0 / count as f32 };
-        let center_vid = pts.push_on(
+        // ⭐ **O centro é o CENTRÓIDE DOS CORTES no domínio, não a origem.** Os `n`
+        // cortes são as pontas dos raios; o ponto que os equilibra é o que faz as
+        // `n` sub-grades saírem parecidas. A origem só coincide com ele quando os
+        // cortes estão simétricos, que é o caso raro.
+        let center_uv = {
+            let mut c = [0.0f32; 2];
+            for i in 0..n {
+                let cut = e[(i + n - 1) % n] as usize;
+                let q = dom.side_uv[i][cut];
+                c[0] += q[0];
+                c[1] += q[1];
+            }
+            #[allow(clippy::cast_precision_loss)]
+            let inv = 1.0 / n as f32;
+            [c[0] * inv, c[1] * inv]
+        };
+        let center_vid = dom.place(
+            &mut pts,
             surface,
-            [c[0] * inv, c[1] * inv, c[2] * inv],
             seed,
+            center_uv,
+            [c[0] * inv, c[1] * inv, c[2] * inv],
             Provenance::Center,
         );
 
-        // Os raios: do centro ao corte de cada lado.
+        // Os raios: do centro ao corte de cada lado, rectos NO DOMÍNIO.
         let mut spoke: Vec<Vec<u32>> = Vec::with_capacity(n);
+        let mut spoke_uv: Vec<Vec<[f32; 2]>> = Vec::with_capacity(n);
         for i in 0..n {
             let cut = e[(i + n - 1) % n] as usize;
             let tip = side_pts[i][cut];
             let steps = e[i] as usize;
+            let tip_uv = dom.side_uv[i][cut];
             let line = segment(pts.pos[center_vid as usize], pts.pos[tip as usize], steps);
+            let line_uv = segment(center_uv, tip_uv, steps);
             let mut ids = Vec::with_capacity(steps + 1);
             ids.push(center_vid);
-            for q in line.iter().take(steps).skip(1) {
-                ids.push(pts.push_on(surface, *q, seed, Provenance::Spoke));
+            for (k, q) in line.iter().enumerate().take(steps).skip(1) {
+                ids.push(dom.place(&mut pts, surface, seed, line_uv[k], *q, Provenance::Spoke));
             }
             ids.push(tip);
             spoke.push(ids);
+            spoke_uv.push(line_uv);
         }
 
         // As `n` grades.
@@ -307,7 +337,28 @@ pub fn fill(
             let right = &side_pts[j][..=cut_j];
             let top = &spoke[j];
             let left: Vec<u32> = spoke[i].iter().rev().copied().collect();
-            let grid = build_grid(&mut pts, surface, seed, bottom, top, &left, right, s, t);
+            let bottom_uv = &dom.side_uv[i][cut_i..];
+            let right_uv = &dom.side_uv[j][..=cut_j];
+            let left_uv: Vec<[f32; 2]> = spoke_uv[i].iter().rev().copied().collect();
+            let grid = build_grid(
+                &mut pts,
+                surface,
+                seed,
+                Chains {
+                    bottom,
+                    top,
+                    left: &left,
+                    right,
+                },
+                Chains2 {
+                    bottom: bottom_uv,
+                    top: &spoke_uv[j],
+                    left: &left_uv,
+                    right: right_uv,
+                },
+                (s, t),
+                &dom,
+            );
             for k in 0..s {
                 for l in 0..t {
                     faces.push(Face::quad(
@@ -319,6 +370,9 @@ pub fn fill(
                 }
             }
         }
+        let (o, m) = dom.tally.get();
+        sampled += o;
+        misses += m;
     }
 
     // ── 3. A malha, com a orientação conferida.
@@ -342,46 +396,14 @@ pub fn fill(
         smooth_once(&mut mesh, surface);
     }
 
-    let report = measure(&mesh, surface, &pts.prov, smoothing, flipped);
+    let mut report = measure(&mesh, surface, &pts.prov, smoothing, flipped);
+    report.flattened = flattened;
+    report.patches = layout.side_arcs.len();
+    report.sampled = sampled;
+    report.sample_misses = misses;
+    report.flatten_rounds = flatten_rounds;
+    report.flatten_residual = flatten_residual;
     Ok((mesh, report))
-}
-
-/// Os índices da grade: bordos vindos das curvas, interior por Coons.
-#[allow(clippy::too_many_arguments)]
-fn build_grid(
-    pts: &mut Points,
-    surface: &Mesh,
-    seed: f32,
-    bottom: &[u32],
-    top: &[u32],
-    left: &[u32],
-    right: &[u32],
-    s: usize,
-    t: usize,
-) -> Vec<Vec<u32>> {
-    let at = |ids: &[u32], k: usize, pos: &[[f32; 3]]| pos[ids[k] as usize];
-    let b: Vec<[f32; 3]> = (0..=s).map(|k| at(bottom, k, &pts.pos)).collect();
-    let tp: Vec<[f32; 3]> = (0..=s).map(|k| at(top, k, &pts.pos)).collect();
-    let l: Vec<[f32; 3]> = (0..=t).map(|k| at(left, k, &pts.pos)).collect();
-    let r: Vec<[f32; 3]> = (0..=t).map(|k| at(right, k, &pts.pos)).collect();
-    let inner = coons(&b, &tp, &l, &r);
-    let mut grid = vec![vec![0u32; t + 1]; s + 1];
-    for (k, row) in grid.iter_mut().enumerate() {
-        for (l_i, cell) in row.iter_mut().enumerate() {
-            *cell = if l_i == 0 {
-                bottom[k]
-            } else if l_i == t {
-                top[k]
-            } else if k == 0 {
-                left[l_i]
-            } else if k == s {
-                right[l_i]
-            } else {
-                pts.push_on(surface, inner[k][l_i], seed, Provenance::Grid)
-            };
-        }
-    }
-    grid
 }
 
 /// Um passo de Laplaciano tangencial, seguido de reprojeção.
@@ -527,9 +549,33 @@ fn measure(
         boundary_edges,
         smoothing,
         flipped,
+        // ⚠️ Preenchidos pelo `fill`, que é quem sabe quantos patches achataram.
+        flattened: 0,
+        patches: 0,
+        sampled: 0,
+        sample_misses: 0,
+        flatten_residual: 0.0,
+        flatten_rounds: 0,
         // ⭐⭐ **A CONTAGEM DE DOBRAS entra no relatório da fase**, e não numa
         // sonda. Ela é o defeito que o artista fotografa e o único campo, com os
         // dois de aresta, que uma malha de posições embaralhadas não reproduz.
         folded: crate::report::folded_against(surface, mesh),
+        // ⭐ **A SEGUNDA régua, e ela não consulta a referência.** Ver
+        // [`crate::report::folded_by_neighbours`] — a primeira tem piso de ruído
+        // numa peça com bico fino, e uma sozinha não decide.
+        folded_local: crate::report::folded_by_neighbours(mesh),
+        // ⭐⭐ **A PROVENIÊNCIA das faces dobradas — quem nomeia a FASE.** Ver
+        // [`FillReport::folded_prov`].
+        folded_prov: {
+            let mut tally = [0usize; Provenance::COUNT];
+            for f in crate::report::folded_faces_by_neighbours(mesh) {
+                for &v in mesh.faces()[f as usize].verts() {
+                    if let Some(p) = prov.get(v as usize) {
+                        tally[*p as usize] += 1;
+                    }
+                }
+            }
+            tally
+        },
     }
 }

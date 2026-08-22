@@ -59,6 +59,13 @@ fn the_two_engines_on_the_same_piece_without_a_device() {
             let mut work = reference.clone();
             ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
             work.triangulate();
+            // ⭐⭐ **O CONTROLE DO DETECTOR, nesta peça e não numa esfera.** A
+            // `work` é a mesma forma remalhada isotropicamente: ela **não tem
+            // dobra nenhuma**. Se o detector a acusar, quem está a medir a forma
+            // — e não o defeito — é ele. *Uma régua que julga dobras tem de provar
+            // primeiro que não acusa uma malha que não tem nenhuma.*
+            let control = ph2d_quadfill::folded_against(&reference, &work);
+            let control2 = ph2d_quadfill::folded_by_neighbours(&work);
             let dual = ph2d_crossfield::Dual::build(&work);
             let (field, _) = ph2d_crossfield::solve_miq(&dual);
             let layout = ph2d_trace::trace_patches(&work, &dual, &field);
@@ -78,6 +85,18 @@ fn the_two_engines_on_the_same_piece_without_a_device() {
                         *m.entry(c).or_default() += 1;
                         m
                     });
+            // ⭐⭐ **O CENSO virou ASSERÇÃO.** Ele nasceu como coluna impressa para
+            // responder *"de onde vêm os buracos?"*, e a resposta foi que **não
+            // havia buracos**: todo arco é citado por exactamente dois lados de
+            // patch, em toda densidade e nas três fixturas. ⚠️ *Uma coluna que
+            // imprime sempre o mesmo número é um invariante à espera de virar
+            // barra* — e esta custa uma linha.
+            assert_eq!(
+                census.keys().copied().collect::<Vec<_>>(),
+                vec![2],
+                "{name} d={detail:.2}: ha' arco citado por um numero de lados != 2 \
+                 ({census:?}) -- cada um vira aresta de bordo na saida"
+            );
             let Ok(spec) = layout.to_layout(target) else {
                 println!("{name:<12} d={detail:.2} | o layout RECUSOU");
                 continue;
@@ -99,16 +118,24 @@ fn the_two_engines_on_the_same_piece_without_a_device() {
                 Ok((out, r)) => {
                     println!(
                         "{name:<12} d={detail:.2} alvo {target:.4} | GLOBAL {:<5} quads \
-                         {:<4} irreg {:<3} bordo {:<4} DOBRADAS ({:.1} %) | med {:.2}x max {:.2}x \
-                         | patches {:<4} arcos {:<4} uso {census:?} promovidos {}",
+                         {:<4} irreg {:<3} bordo | DOBRAS ref {:<4} ({:.1} %) vizinho {:<4} {:?} | med {:.2}x max {:.2}x \
+                         | ACHATOU {}/{} pontos {}+{} FORA | ⚠️CONTROLE ref {} vz {} de {} | arcos {:<4} promovidos {}",
                         r.quads,
                         r.irregular,
                         r.boundary_edges,
                         r.folded,
                         100.0 * r.folded as f64 / r.quads.max(1) as f64,
+                        r.folded_local,
+                        r.folded_prov,
                         r.edge_median / target,
                         r.edge_max / target,
-                        layout.side_arcs.len(),
+                        r.flattened,
+                        r.patches,
+                        r.sampled,
+                        r.sample_misses,
+                        control,
+                        control2,
+                        work.faces().len(),
                         layout.arc_chain.len(),
                         layout.report.promoted,
                     );

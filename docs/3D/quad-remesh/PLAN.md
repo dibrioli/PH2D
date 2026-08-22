@@ -1725,6 +1725,80 @@ a barra, e não é a lei de custo (a medição controlada acima prova as duas co
 
 ---
 
+## 4-duodevicies — ⭐⭐ A GRADE PASSA A NASCER **NA SUPERFÍCIE**, e o defeito da foto cai 18 → 1
+
+### O que se construiu
+
+Um patch deixa de ser preenchido por interpolação em `ℝ³` seguida de *agarra à face
+mais próxima*, e passa a ser **achatado** sobre um polígono convexo — embutimento
+baricêntrico de **Tutte** (1963) com **coordenadas de valor médio** (Floater, 2003)
+—, com a grade construída **no domínio** e devolvida à malha pela triangulação.
+Ficheiro novo: [`param.rs`](../../../crates/ph2d-quadfill/src/param.rs); a montagem
+de um patch saiu para [`patch.rs`](../../../crates/ph2d-quadfill/src/patch.rs) (teto
+de LOC: 817 contra 700).
+
+⭐ **Tutte é uma GARANTIA e não uma esperança:** fronteira convexa + pesos positivos
+⇒ embutimento sem dobras. As coordenadas de valor médio são sempre positivas (a
+cotangente **não** é, num triângulo obtuso), então a garantia sobrevive à troca de
+pesos.
+
+### O resultado, nas duas réguas
+
+| fixtura | dobras ANTES | **DEPOIS** | aresta máx ANTES | **DEPOIS** |
+|---|---|---|---|---|
+| ⛔ **com BICO** `d=0,50` | 18 (6,9 %) | ⭐ **1 (0,4 %)** | 5,29× | ⭐ **1,86×** |
+| ⛔ **com BICO** `d=1,00` | 22 (6,2 %) | ⭐ **1 (0,3 %)** | 8,16× | ⭐ **2,57×** |
+| esfera 48×72 (o gate) | 25,9 % | ⭐ **0,0 %** | 24,81× | ⭐ **4,24×** |
+| esfera 24×36 | 12,2 % | ⭐ **1,8 %** | 8,72× | ⭐ **2,58×** |
+| esfera esculpida | 0,1 % | ⭐ **0,0 %** | 11,87× | ⭐ **4,69×** |
+| amassada · com cristas | 0 | 0 | 3,78× · 5,68× | **2,71× · 5,55×** |
+
+⚠️ **Nenhuma barra foi tocada.** As do gate `no_face_folds_back_on_itself`
+continuam `33 / 14 / 0,5`.
+
+### ⛔⛔ E eu quase rejeitei a cura certa — três vezes
+
+| # | o que eu media | o que concluí | por que estava errado |
+|---|---|---|---|
+| 1 | a `hooked_sphere` sozinha | *"o achatamento não cura"* | ⛔ nessa peça só **1 de 28** pontas de face dobrada é do interior de grade; ela **não contém** o fenómeno que a cura ataca |
+| 2 | o polígono **regular** | *"o domínio tem um esticão embutido"* | ⭐ verdade — mas o polígono **proporcional ao comprimento** degenera e **313 pontos** caíram fora do achatamento (dobras 2,1 % → 13,2 %). **Medido e rejeitado** |
+| 3 | o centro do leque na **origem** | — | ⭐⭐ era **aqui**: o centro tem de ser o **centróide dos cortes no domínio**. Com essa linha, 48×72 foi de `2,1 %` a **`0,0 %`** e a aresta máxima de `24,81×` a **`4,24×`** |
+
+⇒ ⚠️ **Uma cura pode ser boa e a medição dela ser feita numa fixtura que não a
+contém.** O que salvou foi correr o **gate da crate** (que mede outras três malhas)
+em vez de só a sonda do shell. *Julgar uma cura pela peça mais atípica é o mesmo
+erro que julgá-la pela mais fácil, com o sinal trocado.*
+
+### Os instrumentos que decidiram, e ficam
+
+| instrumento | o que responde |
+|---|---|
+| [`folded_by_neighbours`] | a **2.ª régua**, que não consulta a referência — piso de ruído `3/3 566` contra `24/3 566` da 1.ª na `hooked_sphere` |
+| [`FillReport::folded_prov`] | **de que FASE** são os vértices das faces dobradas — foi ela que disse *"1 de 28 é grade"* |
+| `flattened` · `sampled` · `sample_misses` | se a cura **correu** e se ela **colocou** ponto — `19/19` patches com `0` pontos fora |
+| censo de arcos, agora **asserção** | todo arco citado por exactamente **2** lados: é a prova de que a casca fecha |
+
+⚠️ **O controlo da 1.ª régua na peça do diagnóstico:** ela acusa **24 de 3 566**
+faces da malha **remalhada isotropicamente**, que não tem dobra nenhuma. *Um piso de
+0,7 % debaixo de um sinal de 7 % ainda deixa o sinal — mas não se optimiza contra uma
+régua sem se conhecer o piso dela.*
+
+### ⛔ E o que continua ABERTO, com a causa afiada
+
+O 3.º clique seguido: mediana `0,16×` o alvo. ⭐ **A causa agora tem nome:** ao 3.º
+clique a entrada é a saída grosseira do 2.º, o alvo do slider fica grande, o F1
+devolve um `work` fino, e os arcos ficam muito mais curtos que o alvo — com
+`ArcSpec::min = 1` cada um leva **um** segmento, e **a densidade da saída passa a ser
+a do LAYOUT, não a do slider**.
+
+⛔ **Derivar o alvo do `work` foi construído e MEDIDO:** os cinco pontos do slider
+passaram a dar `405 · 405 · 406 · 406 · 451` quads contra `405 … 1 336`, porque o
+extremo fino do curso passava a ancorar-se numa constante (`ALPHA × diagonal`).
+*Trocar um defeito no 3.º clique por um slider morto não é uma troca.* ⇒ a cura é
+**grosseirar o layout**, e continua a ser o passo 7.
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |

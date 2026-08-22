@@ -213,8 +213,16 @@ fn no_face_folds_back_on_itself() {
         #[allow(clippy::cast_precision_loss)]
         let pct = 100.0 * inward as f64 / r.quads.max(1) as f64;
         eprintln!(
-            "[f5] {name}: {inward} faces dobradas de {} ({pct:.1} %)",
-            r.quads
+            "[f5] {name}: {inward} faces dobradas de {} ({pct:.1} %) | vizinho {} \
+             proveniencia {:?} | achatou {}/{} pontos {}+{} fora | max {:.2}x",
+            r.quads,
+            r.folded_local,
+            r.folded_prov,
+            r.flattened,
+            r.patches,
+            r.sampled,
+            r.sample_misses,
+            r.edge_max / edge,
         );
         assert!(
             pct <= bar,

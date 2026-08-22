@@ -63,7 +63,6 @@ impl Sculpt3dScene {
             return Err(RemeshRefusal::MultiresStack);
         }
         let t = std::time::Instant::now();
-        let target = ph2d_quadflow::edge_for_detail(self.mesh(), detail);
 
         // ── F1. A remalha isotrópica, sobre uma CÓPIA.
         //
@@ -75,6 +74,24 @@ impl Sculpt3dScene {
         let mut work = reference.clone();
         ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
         work.triangulate();
+
+        // ⭐⭐ **O ALVO SAI DA MALHA QUE O ARTISTA TROUXE**, e a alternativa foi
+        // construída, medida e REJEITADA.
+        //
+        // ⛔ Derivá-lo da malha REMALHADA parecia mais coerente — é nela que o
+        // layout vive — e **mata o slider**: medido em 2026-08-21 na esfera
+        // amassada, os cinco pontos do curso deram `405 · 405 · 406 · 406 · 451`
+        // quads, contra `405 · … · 1 336` com esta lei. A razão é que o F1 remalha
+        // para `ALPHA × diagonal`, que é uma constante: o extremo fino do curso
+        // ancorava-se num número que **não depende do que o artista pediu**.
+        //
+        // ⚠️ **E ela deixa um defeito ABERTO, com a causa medida:** quando o alvo é
+        // maior que o comprimento típico de um arco, o piso `ArcSpec::min = 1` passa
+        // a escolher o passo da grade e a densidade da saída é a do **layout**, não
+        // a do slider. É o que se vê no 3.º clique seguido (mediana `0,16×`), e a
+        // cura é grosseirar o layout — não trocar esta linha. Ver `PLAN.md`
+        // §4-septdecies.
+        let target = ph2d_quadflow::edge_for_detail(&reference, detail);
 
         // ── F2. O campo cruzado com decisão inteira global.
         let dual = ph2d_crossfield::Dual::build(&work);

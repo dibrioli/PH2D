@@ -37,10 +37,14 @@
 
 /// **O PREENCHIMENTO de um patch** — o leque e a grade — ver [`fan`].
 pub mod fan;
+/// **O PATCH ACHATADO** — a grade nasce na superfície, não no espaço — ver [`param`].
+mod param;
+/// **UM PATCH VIRA QUADS** — o domínio, os bordos e a grade — ver [`patch`].
+mod patch;
 /// **O QUE A MONTAGEM DIZ** — recusa, relatório e proveniência — ver [`report`].
 pub mod report;
 /// **A COSTURA** — amostragem partilhada e montagem — ver [`stitch`].
 pub mod stitch;
 
-pub use report::{FillError, FillReport, Provenance, folded_against};
+pub use report::{FillError, FillReport, Provenance, folded_against, folded_by_neighbours};
 pub use stitch::{SMOOTHING_ROUNDS, fill};

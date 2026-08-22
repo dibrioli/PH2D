@@ -125,6 +125,32 @@ pub struct FillReport {
     /// A aresta mediana. ⭐ É a que diz se a DENSIDADE saiu no alvo — a máxima diz
     /// se alguma coisa se partiu, esta diz se a grade tem o passo pedido.
     pub edge_median: f32,
+    /// ⭐⭐ **QUANTOS PATCHES ACHATARAM** — ver [`crate::param`].
+    ///
+    /// ⚠️ **É a régua que diz se a cura CHEGOU ao patch que dói.** Um patch que não
+    /// achata volta à construção antiga — a que interpola em `ℝ³` e agarra à face
+    /// mais próxima —, e ela dobra. Sem esta contagem, *"as dobras não caíram"* não
+    /// distingue *"a cura não funciona"* de *"a cura não correu"*.
+    pub flattened: usize,
+    /// Quantos patches o layout tinha — o denominador do [`Self::flattened`].
+    pub patches: usize,
+    /// ⭐⭐ **QUANTOS PONTOS DE INTERIOR CAÍRAM FORA do achatamento** e tiveram de
+    /// usar o caminho antigo.
+    ///
+    /// ⚠️ **Sem ele, `flattened: 19/19` mente por omissão.** Um patch pode achatar e
+    /// mesmo assim não colocar ponto nenhum pelo domínio — basta o `uv` de cada
+    /// ponto cair fora de todo triângulo. *Uma contagem de FASES não substitui uma
+    /// contagem de PONTOS* ([[feedback_a_defect_count_without_provenance_names_the_wrong_phase]]).
+    pub sample_misses: usize,
+    /// Quantos pontos de interior o domínio de facto colocou.
+    pub sampled: usize,
+    /// ⚠️ **O pior resíduo com que um achatamento parou.** O teorema de Tutte fala
+    /// da solução **convergida**; uma iteração parada a meio continua dentro do
+    /// polígono mas pode ter triângulos virados. *Se este número não for pequeno, a
+    /// garantia não se aplica.*
+    pub flatten_residual: f32,
+    /// Quantas rondas o achatamento mais caro gastou.
+    pub flatten_rounds: usize,
     /// ⭐⭐ **QUANTAS FACES DOBRARAM** — ver [`folded_against`], que é quem a mede.
     ///
     /// ⚠️ **É o defeito que o artista fotografa**, e é geométrico: as fendas
@@ -133,6 +159,19 @@ pub struct FillReport {
     /// malha com 100 % de quads, casca fechada e a contagem certa de irregulares
     /// pode estar cheia delas.
     pub folded: usize,
+    /// ⭐⭐ **A SEGUNDA régua** — ver [`folded_by_neighbours`]. Ela não consulta a
+    /// referência, então o pescoço fino não a confunde. ⚠️ **As duas juntas é que
+    /// são a régua**: esta é cega a uma malha inteiramente ao contrário, aquela tem
+    /// piso de ruído onde a superfície se dobra sobre si mesma.
+    pub folded_local: usize,
+    /// ⭐⭐ **DE QUE FASE são os vértices das faces DOBRADAS** — ver [`Provenance`].
+    ///
+    /// ⚠️ **É a régua que impede arranjar a fase errada.** `folded: 18` diz que há
+    /// trabalho e **não diz onde**: uma dobra entre pontos de `Grid` é da construção
+    /// do interior; uma entre pontos de `Arc` é do TRAÇADO, e nenhuma mudança na
+    /// construção lhe toca. *Uma contagem de defeitos sem proveniência nomeia a fase
+    /// errada.*
+    pub folded_prov: [usize; Provenance::COUNT],
 }
 
 /// **QUANTAS FACES DA SAÍDA APONTAM CONTRA A SUPERFÍCIE POR BAIXO DELAS.**
@@ -190,6 +229,83 @@ pub fn folded_against(reference: &Mesh, out: &Mesh) -> usize {
     folded
 }
 
+/// **QUANTAS FACES DISCORDAM DOS PRÓPRIOS VIZINHOS** — a segunda régua, e ela
+/// **não consulta a referência**.
+///
+/// ⭐⭐ **Ela existe porque a primeira não é limpa em toda peça.** A
+/// [`folded_against`] pergunta à face da referência mais próxima, e num **bico
+/// fino** — uma fita da superfície dobrada sobre si mesma — a face mais próxima
+/// pode estar do outro lado do pescoço. Medido em 2026-08-21 na `hooked_sphere`:
+/// a própria malha remalhada isotropicamente, que **não tem dobra nenhuma**, é
+/// acusada de **24 faces em 3 566 (0,67 %)**. *Um piso de ruído de 0,7 % debaixo
+/// de um sinal de 7 % ainda deixa o sinal, mas não se optimiza contra uma régua sem
+/// se conhecer o piso dela.*
+///
+/// Esta pergunta outra coisa: a normal de cada face contra a **média das faces que
+/// partilham uma aresta com ela**. Uma face virada discorda dos vizinhos por
+/// construção, e ⭐ **nenhuma vizinhança entra em jogo através do espaço** — a
+/// adjacência é combinatória, então o pescoço fino não a confunde.
+///
+/// ⚠️ **Ela é cega ao que a outra vê**: uma malha inteiramente ao contrário
+/// concorda consigo mesma e passa aqui. *As duas juntas é que são a régua; nenhuma
+/// sozinha.*
+#[must_use]
+pub fn folded_by_neighbours(mesh: &Mesh) -> usize {
+    folded_faces_by_neighbours(mesh).len()
+}
+
+/// **QUAIS** faces discordam dos vizinhos — a lista, para quem precisa de saber
+/// **onde** e não só **quantas**.
+///
+/// ⭐ **É o que separa *"a cura não funciona"* de *"a cura não é desta fase"*.** Uma
+/// contagem de dobras sem a proveniência dos vértices delas manda arranjar a fase
+/// errada — foi assim que uma parametrização por patch inteira foi construída,
+/// medida e **rejeitada**: as dobras não estavam no interior das grades.
+#[must_use]
+pub fn folded_faces_by_neighbours(mesh: &Mesh) -> Vec<u32> {
+    let faces = mesh.faces();
+    let pos = mesh.positions();
+    let normals: Vec<[f32; 3]> = faces.iter().map(|f| face_normal(pos, f.verts())).collect();
+    // Aresta -> as faces que a usam.
+    let mut by_edge: std::collections::BTreeMap<(u32, u32), Vec<u32>> =
+        std::collections::BTreeMap::new();
+    for (i, f) in faces.iter().enumerate() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            by_edge
+                .entry((a.min(b), a.max(b)))
+                .or_default()
+                .push(u32::try_from(i).unwrap_or(0));
+        }
+    }
+    let mut nb: Vec<Vec<u32>> = vec![Vec::new(); faces.len()];
+    for who in by_edge.values() {
+        if who.len() == 2 {
+            nb[who[0] as usize].push(who[1]);
+            nb[who[1] as usize].push(who[0]);
+        }
+    }
+    (0..faces.len())
+        .filter(|&i| {
+            if nb[i].is_empty() {
+                return false;
+            }
+            let mut avg = [0.0f32; 3];
+            for &j in &nb[i] {
+                let n = normals[j as usize];
+                let len = norm(n).max(f32::MIN_POSITIVE);
+                for k in 0..3 {
+                    avg[k] += n[k] / len;
+                }
+            }
+            let n = normals[i];
+            n[0].mul_add(avg[0], n[1].mul_add(avg[1], n[2] * avg[2])) < 0.0
+        })
+        .map(|i| u32::try_from(i).unwrap_or(0))
+        .collect()
+}
+
 fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
@@ -227,6 +343,7 @@ fn face_normal(pos: &[[f32; 3]], v: &[u32]) -> [f32; 3] {
 
 /// **De onde um vértice da saída veio** — a chave para saber de quem é a dívida.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(usize)]
 pub enum Provenance {
     /// Um **canto do layout**: onde três ou mais arcos se encontram. A valência
     /// dele é o número de arcos, e ⭐ **é o F3 que a decide** — cada junção em T

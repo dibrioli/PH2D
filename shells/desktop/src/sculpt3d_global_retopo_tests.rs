@@ -181,26 +181,30 @@ fn the_button_delivers_the_global_chain() {
 ///
 /// # ⛔⛔ VERMELHO ABERTO — a aresta mediana do CLIQUE 3, e ele é PRÉ-EXISTENTE
 ///
-/// | lei de custo do F4 | clique 1 | clique 2 | **clique 3** |
+/// | o que mudou | clique 1 | clique 2 | **clique 3** |
 /// |---|---|---|---|
-/// | `abs · 1/t` (a de `5ec438e17`) | 1,05× | 0,76× | ⛔ **0,32×** |
-/// | `quad · 1/t²` (a de hoje) | 1,04× | 0,64× | ⛔ **0,43×** |
+/// | `abs · 1/t` (a lei de `5ec438e17`) | 1,05× | 0,76× | ⛔ **0,32×** |
+/// | `quad · 1/t²` (o custo novo) | 1,04× | 0,64× | ⛔ **0,43×** |
+/// | + achatamento por patch | 1,03× | 0,81× | ⛔ **0,16×** |
 ///
-/// ⚠️ **Ele já estava vermelho quando o custo mudou hoje** — a medição acima é
-/// controlada, a mesma máquina, só a lei trocada. O `assert` nasceu em `3d51cf18c`
-/// e o `5ec438e17` (peso relativo) partiu-o **sem que ninguém soubesse**: este gate
-/// é `#[ignore]` + GPU, então o lote do `ship.sh` **nunca o corre**. *Um gate que
-/// só corre à mão fica verde na memória de quem o escreveu.*
+/// ⚠️ **Ele já estava vermelho antes de tudo isto** — as medições são controladas,
+/// a mesma máquina, uma variável de cada vez. O `assert` nasceu em `3d51cf18c` e o
+/// `5ec438e17` (peso relativo) partiu-o **sem que ninguém soubesse**: este gate é
+/// `#[ignore]` + GPU, então o lote do `ship.sh` **nunca o corre**. *Um gate que só
+/// corre à mão fica verde na memória de quem o escreveu.*
 ///
-/// ⭐ **A causa, medida:** o `edge_for_detail` deriva o alvo da malha de ENTRADA, e
-/// ao 3.º clique ela é a saída grosseira do 2.º (275 vértices). O F1, que remalha
-/// para `α × diagonal`, **refina** essa peça — então o layout fica **mais fino que
-/// a densidade pedida**, o piso `ArcSpec::min = 1` morde em quase todo arco, e quem
-/// escolhe o passo da grade passa a ser o piso e não o alvo.
+/// ⭐⭐ **A causa, medida e agora afiada:** ao 3.º clique a entrada é a saída
+/// grosseira do 2.º (218 vértices), então o alvo do slider fica **grande**; o F1
+/// remalha para `α × diagonal` e devolve um `work` **fino**; e o layout traçado
+/// sobre ele tem arcos muito mais curtos que o alvo. Com `ArcSpec::min = 1`, cada
+/// um leva **um** segmento — ⇒ **a densidade da saída passa a ser a do LAYOUT e não
+/// a do slider**, e a mediana cai para a aresta do `work`.
 ///
-/// ⛔ **A cura NÃO é afrouxar a barra**, e nem é a lei de custo: é grosseirar o
-/// layout quando ele é mais fino do que o alvo pede — o mesmo item que a contagem
-/// de patches ~2× acima do necessário já pedia. Ver `PLAN.md` §4-septdecies.
+/// ⛔ **A cura NÃO é afrouxar a barra**, e ⛔ **não é derivar o alvo do `work`** —
+/// isso foi construído e medido no mesmo dia: os cinco pontos do slider passaram a
+/// dar `405 · 405 · 406 · 406 · 451` quads contra `405 … 1 336`, porque o extremo
+/// fino do curso passava a ancorar-se numa constante. A cura é **grosseirar o
+/// layout** quando ele é mais fino do que o alvo pede. Ver `PLAN.md` §4-septdecies.
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn three_clicks_in_a_row_still_return_a_usable_piece() {

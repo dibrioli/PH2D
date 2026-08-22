@@ -1,4 +1,4 @@
-//! **O smoke do módulo de modelagem 3D** — `PH2D_FIELD_SMOKE=1..3` (ADR-0161).
+//! **O smoke do módulo de modelagem 3D** — `PH2D_FIELD_SMOKE=1..6` (ADR-0161).
 //!
 //! Põe na tela o que o módulo de facto é: o **campo traçado**, não uma malha. É por aqui que o Enio
 //! vê a quina de navalha e o filete liso que a W0 mediu.
@@ -366,6 +366,33 @@ fn armed_scene() -> Option<u32> {
     PILL_ARMED.with(std::cell::Cell::get).then_some(1)
 }
 
+thread_local! {
+    /// ⭐ **O registo de esculturas: nome → campo amostrado.**
+    ///
+    /// ⚠️ **Ele é separado do documento de propósito.** Uma grade de 128³ pesa 12 MB; o documento é
+    /// **cozido da cena a cada quadro**, e pô-la lá dentro faria cada quadro copiar isso. O documento
+    /// guarda o NOME (`NodeKind::Sampled`), e é aqui que o nome vira campo.
+    ///
+    /// ⚠️ **`Arc` e não clone**: o traçado corre noutra thread, e o que viaja para lá é um `Arc` por
+    /// escultura — o custo de mandar uma escultura para o worker é um incremento de contador.
+    static SAMPLED: std::cell::RefCell<ph2d_field_eval::hybrid::Registry> =
+        std::cell::RefCell::new(ph2d_field_eval::hybrid::Registry::new());
+}
+
+/// O registo, para quem vai avaliar. ⚠️ Devolve uma **cópia dos `Arc`**, que é o que atravessa a
+/// fronteira da thread.
+pub(crate) fn sampled_registry() -> ph2d_field_eval::hybrid::Registry {
+    SAMPLED.with(|r| r.borrow().clone())
+}
+
+/// Põe uma escultura no registo, sob um nome.
+pub(crate) fn register_sampled(
+    key: &str,
+    field: std::sync::Arc<dyn ph2d_field_eval::hybrid::Sampled>,
+) {
+    SAMPLED.with(|r| r.borrow_mut().insert(key.to_string(), field));
+}
+
 /// **A porta única para o estado do smoke**, e é por ela que a metade de entrada chega.
 ///
 /// ⚠️ O estado vive num `thread_local` deste arquivo, e não num campo do `App`, de propósito: o
@@ -454,11 +481,31 @@ mod trace_tests {
     /// perfil recusado, o campo que saiu sem interior. A linha *"primeiro quadro desenhado — N
     /// pixels"* existe para o Enio conseguir ver isso; este gate existe para ninguém precisar de
     /// abrir a janela para saber.
+    /// ⭐ **A cena 6 é a PONTE, e o gate mede que ela é MISTA** — não uma peça analítica disfarçada.
+    ///
+    /// ⚠️ **A cena traçar alguma coisa não prova nada aqui.** Se a escultura não chegasse ao registo,
+    /// o nome ficaria por resolver, leria como espaço vazio, e a subtração devolveria... vazio — o
+    /// gate irmão apanharia isso. Mas se alguém trocasse a escultura por uma esfera analítica, tudo
+    /// continuaria a passar e a ponte deixaria de ser exercitada por teste nenhum.
+    #[test]
+    fn the_bridge_scene_really_has_a_sculpture_in_it() {
+        let doc = scene(6);
+        let reg = sampled_registry();
+        let h = ph2d_field_eval::hybrid::Hybrid::new(&doc, &reg);
+        assert_eq!(
+            h.sampled_count(),
+            1,
+            "a cena 6 tem de ter UMA escultura — se der 0, o nome não chegou ao registo"
+        );
+        assert_eq!(h.tape_count(), 1, "e o cilindro é a única árvore analítica");
+    }
+
     #[test]
     fn every_smoke_scene_builds_and_draws_something() {
-        for n in 1..=5 {
+        for n in 1..=6 {
             let doc = scene(n);
-            let g = ph2d_field_render::trace(&doc, &Orbit::default(), 160, 120);
+            let g =
+                ph2d_field_render::trace(&doc, &sampled_registry(), &Orbit::default(), 160, 120);
             assert!(
                 g.hits() > 200,
                 "a cena {n} traçou só {} pixels de peça em 160x120 — a peça está fora do quadro \

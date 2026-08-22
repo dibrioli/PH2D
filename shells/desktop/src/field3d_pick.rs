@@ -38,7 +38,13 @@ pub(crate) fn node_under(
     screen: Screen,
     px: [f32; 2],
 ) -> Option<Entity> {
-    let p = surface_under(doc, cam, screen, px)?;
+    let p = surface_under(
+        doc,
+        &crate::field3d_smoke::sampled_registry(),
+        cam,
+        screen,
+        px,
+    )?;
     let mut best: Option<(f32, Entity)> = None;
     for (e, _) in ph2d_field_ecs::walk(world, root) {
         let Some(FieldNode {

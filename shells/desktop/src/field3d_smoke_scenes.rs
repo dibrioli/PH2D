@@ -166,6 +166,52 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                 NodeId(0),
             )
         }
+        6 => {
+            // ⭐ **A PONTE DA ESCULTURA (plano W5)**: uma malha orgânica entra na booleana do campo
+            // implícito e leva um furo preciso, com a boca arredondada.
+            //
+            // ⚠️ **A malha é gerada aqui de propósito.** O que esta cena tem de provar é a *ponte* —
+            // que um campo amostrado se combina com um analítico —, e uma escultura vinda do módulo
+            // de sculpt traria consigo a pergunta de **autoria** (como o artista cria um destes),
+            // que é wave própria e tem UI. Uma esfera ruidosa é o mínimo que já não é analítico.
+            let blob = ph2d_mesh::shapes::uv_sphere_noisy(48, 96, 0.55, 0.07);
+            let t0 = std::time::Instant::now();
+            let field = ph2d_field_mesh::SampledField::from_mesh(&blob, 96)
+                .expect("a bolha não é uma malha vazia");
+            let cell = field.cell();
+            crate::field3d_smoke::register_sampled("blob", std::sync::Arc::new(field));
+            println!(
+                "[field-smoke] cena 6 — A PONTE: uma ESCULTURA de {} triângulos virou campo em \
+                 {:.0} ms (célula {cell:.4}) e leva um furo de 0,20 com a boca em 0,05",
+                blob.faces().len(),
+                t0.elapsed().as_secs_f64() * 1000.0,
+            );
+            FieldDoc::new(
+                vec![
+                    Node {
+                        xform: Xform::IDENTITY,
+                        kind: ph2d_field::NodeKind::Sampled { key: "blob".into() },
+                        mods: Vec::new(),
+                    },
+                    leaf(
+                        Primitive::Cylinder {
+                            radius: 0.20,
+                            half_height: 1.2,
+                            round: 0.0,
+                        },
+                        Xform {
+                            rotation: [s, 0.0, 0.0, s],
+                            ..Xform::IDENTITY
+                        },
+                    ),
+                    combine(
+                        Op::Difference(Blend::Exact { radius: 0.05 }),
+                        vec![NodeId(0), NodeId(1)],
+                    ),
+                ],
+                NodeId(2),
+            )
+        }
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

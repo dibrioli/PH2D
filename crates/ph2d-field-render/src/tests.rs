@@ -2,6 +2,7 @@
 
 use super::*;
 use ph2d_field::{NodeId, Primitive, Xform};
+use ph2d_field_eval::hybrid::Registry;
 
 fn sphere(radius: f32) -> FieldDoc {
     FieldDoc::new(
@@ -27,8 +28,8 @@ fn sphere(radius: f32) -> FieldDoc {
 fn the_threaded_trace_is_byte_identical_to_the_serial_one() {
     let doc = sphere(0.6);
     let cam = Orbit::default();
-    let par = trace_with_threads(&doc, &cam, 96, 72, true);
-    let ser = trace_with_threads(&doc, &cam, 96, 72, false);
+    let par = trace_with_threads(&doc, &Registry::new(), &cam, 96, 72, true);
+    let ser = trace_with_threads(&doc, &Registry::new(), &cam, 96, 72, false);
     assert_eq!(
         par.hit, ser.hit,
         "a máscara divergiu entre paralelo e serial"
@@ -60,7 +61,7 @@ fn a_sphere_covers_exactly_the_area_geometry_predicts() {
         ..Orbit::default()
     };
     let (w, h) = (200u32, 200u32);
-    let g = trace(&sphere(radius), &cam, w, h);
+    let g = trace(&sphere(radius), &Registry::new(), &cam, w, h);
 
     // Meia altura de tela = `half_extent` unidades ⇒ o disco tem raio `radius/half_extent` em
     // frações de meia-tela, e ocupa `π r² / 4` do quadro (o quadro tem lado 2 em meia-telas).
@@ -79,7 +80,7 @@ fn a_sphere_covers_exactly_the_area_geometry_predicts() {
 /// Aqui isso vira teste: o disco da esfera não pode ter um único pixel de fundo dentro dele.
 #[test]
 fn the_march_never_steps_through_the_surface() {
-    let g = trace(&sphere(0.6), &Orbit::default(), 128, 128);
+    let g = trace(&sphere(0.6), &Registry::new(), &Orbit::default(), 128, 128);
     let (w, h) = (g.width as usize, g.height as usize);
     let mut holes = 0usize;
     for y in 1..h - 1 {
@@ -103,8 +104,20 @@ fn the_march_never_steps_through_the_surface() {
 #[test]
 fn orbiting_does_not_change_the_shape() {
     let doc = sphere(0.5);
-    let a = trace(&doc, &Orbit::from_yaw_pitch(0.0, 0.0), 160, 160);
-    let b = trace(&doc, &Orbit::from_yaw_pitch(1.1, -0.7), 160, 160);
+    let a = trace(
+        &doc,
+        &Registry::new(),
+        &Orbit::from_yaw_pitch(0.0, 0.0),
+        160,
+        160,
+    );
+    let b = trace(
+        &doc,
+        &Registry::new(),
+        &Orbit::from_yaw_pitch(1.1, -0.7),
+        160,
+        160,
+    );
     let (ha, hb) = (a.hits() as f64, b.hits() as f64);
     assert!(
         (ha - hb).abs() / ha < 0.01,
@@ -116,7 +129,7 @@ fn orbiting_does_not_change_the_shape() {
 /// Sem isto, um matcap amostraria fora do disco e a peça sairia com a cor errada — sem erro nenhum.
 #[test]
 fn the_view_space_normal_faces_the_camera_and_is_unit_length() {
-    let g = trace(&sphere(0.6), &Orbit::default(), 101, 101);
+    let g = trace(&sphere(0.6), &Registry::new(), &Orbit::default(), 101, 101);
     let centre = (g.height as usize / 2) * g.width as usize + g.width as usize / 2;
     assert!(g.hit[centre], "o centro do quadro tem de estar na esfera");
     let n = g.normal[centre];
@@ -150,7 +163,15 @@ fn toy(side: u32, texels: &[f32]) -> Matcap<'_> {
 /// mede o AA é o gate irmão.
 #[test]
 fn without_antialiasing_shading_is_exactly_the_mask() {
-    let g = trace_with(&sphere(0.5), &Orbit::default(), 64, 64, true, false);
+    let g = trace_with(
+        &sphere(0.5),
+        &Registry::new(),
+        &Orbit::default(),
+        64,
+        64,
+        true,
+        false,
+    );
     let bg = [7u8, 8, 9, 255];
     let rgba = shade(&g, &toy(2, &TOY_MATCAP), bg);
     assert!(g.edges.is_empty(), "com `antialias = false` não há bordas");
@@ -185,7 +206,7 @@ fn without_antialiasing_shading_is_exactly_the_mask() {
 #[test]
 fn antialiasing_produces_real_partial_coverage_on_the_silhouette() {
     let cam = Orbit::default();
-    let g = trace(&sphere(0.5), &cam, 64, 64);
+    let g = trace(&sphere(0.5), &Registry::new(), &cam, 64, 64);
     assert!(
         !g.edges.is_empty(),
         "uma esfera contra o fundo TEM silhueta — sem bordas o detector não está a olhar"
@@ -244,7 +265,7 @@ fn the_edge_detector_sees_a_sharp_crease_inside_the_mask() {
         NodeId(0),
     )
     .expect("cubo");
-    let g = trace(&cube, &Orbit::default(), 96, 96);
+    let g = trace(&cube, &Registry::new(), &Orbit::default(), 96, 96);
 
     // As bordas que estão INTEIRAMENTE dentro da máscara: as quatro amostras acertam, e os quatro
     // vizinhos do pixel também. Só uma quina produz isso.
@@ -313,7 +334,7 @@ fn measure_trace_cost() {
     for (w, h) in [(640u32, 480u32), (1280, 720), (1920, 1080)] {
         for parallel in [false, true] {
             let t0 = std::time::Instant::now();
-            let g = trace_with_threads(&doc, &Orbit::default(), w, h, parallel);
+            let g = trace_with_threads(&doc, &Registry::new(), &Orbit::default(), w, h, parallel);
             let dt = t0.elapsed().as_secs_f64() * 1000.0;
             println!(
                 "{w}x{h} {:9} {dt:7.1} ms  ({} pixels de peça)",
@@ -360,7 +381,15 @@ fn measure_profile_trace_cost() {
         let mut row = format!("{n:7} |");
         for (parallel, aa) in [(false, false), (true, false), (true, true)] {
             let t0 = std::time::Instant::now();
-            let g = trace_with(&doc, &Orbit::default(), 640, 480, parallel, aa);
+            let g = trace_with(
+                &doc,
+                &Registry::new(),
+                &Orbit::default(),
+                640,
+                480,
+                parallel,
+                aa,
+            );
             row.push_str(&format!(
                 " {:9.1} ms |",
                 t0.elapsed().as_secs_f64() * 1000.0
@@ -419,10 +448,10 @@ fn measure_antialias_cost() {
     println!("     quadro |  sem AA |  com AA |  bordas | % da imagem");
     for (w, h) in [(640u32, 480u32), (1024, 1024), (1600, 1200)] {
         let t0 = std::time::Instant::now();
-        let plain = trace_with(&doc, &Orbit::default(), w, h, true, false);
+        let plain = trace_with(&doc, &Registry::new(), &Orbit::default(), w, h, true, false);
         let raw = t0.elapsed().as_secs_f64() * 1000.0;
         let t1 = std::time::Instant::now();
-        let aa = trace(&doc, &Orbit::default(), w, h);
+        let aa = trace(&doc, &Registry::new(), &Orbit::default(), w, h);
         let full = t1.elapsed().as_secs_f64() * 1000.0;
         let px = (w as usize) * (h as usize);
         println!(
@@ -496,7 +525,7 @@ fn dump_frame() {
 
     for (name, aa) in [("sem-aa", false), ("com-aa", true)] {
         let (w, h) = (400u32, 400u32);
-        let g = trace_with(&doc, &Orbit::default(), w, h, true, aa);
+        let g = trace_with(&doc, &Registry::new(), &Orbit::default(), w, h, true, aa);
         let rgba = shade(&g, &toy(SIDE as u32, &texels), [0, 0, 0, 0]);
         // Composição sobre cinza médio: `dst = src + (1-a)*bg`, com `src` já pré-multiplicado.
         let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
@@ -529,7 +558,7 @@ fn zooming_in_does_not_inflate_the_part() {
         ..Orbit::default()
     };
     let (w, h) = (200u32, 200u32);
-    let g = trace(&sphere(radius), &cam, w, h);
+    let g = trace(&sphere(radius), &Registry::new(), &cam, w, h);
 
     let frac = f64::from(radius) / f64::from(cam.half_extent);
     let expected = std::f64::consts::PI * frac * frac / 4.0;
@@ -616,8 +645,8 @@ fn free_rotation_never_hits_a_pole() {
         "depois de mil giros a norma do quaternion é {n}: a peça está a ser escalada, não girada"
     );
     let doc = sphere(0.55);
-    let before = trace(&doc, &Orbit::default(), 120, 120).hits() as f64;
-    let after = trace(&doc, &cam, 120, 120).hits() as f64;
+    let before = trace(&doc, &Registry::new(), &Orbit::default(), 120, 120).hits() as f64;
+    let after = trace(&doc, &Registry::new(), &cam, 120, 120).hits() as f64;
     assert!(
         (before - after).abs() / before < 0.02,
         "girar não pode mudar o TAMANHO da peça: {before} -> {after} pixels"
@@ -664,7 +693,7 @@ fn a_point_projects_where_the_march_actually_hits_it() {
 
     let (w, h) = (256u32, 200u32);
     let cam = Orbit::default();
-    let g = trace(&doc, &cam, w, h);
+    let g = trace(&doc, &Registry::new(), &cam, w, h);
     assert!(g.hits() > 100, "a esfera não apareceu no quadro");
 
     let (mut sx, mut sy, mut n) = (0.0f64, 0.0f64, 0.0f64);
@@ -918,11 +947,11 @@ fn measure_taper_frame_cost() {
         .expect("esfera inclinada");
         let cam = Orbit::default();
         // Aquece: a primeira corrida paga a compilação da árvore.
-        let _ = trace(&doc, &cam, 320, 240);
+        let _ = trace(&doc, &Registry::new(), &cam, 320, 240);
         let t0 = std::time::Instant::now();
         const N: u32 = 5;
         for _ in 0..N {
-            let _ = trace(&doc, &cam, 320, 240);
+            let _ = trace(&doc, &Registry::new(), &cam, 320, 240);
         }
         let ms = t0.elapsed().as_secs_f64() * 1000.0 / f64::from(N);
         if slope == 0.0 {

@@ -34,7 +34,6 @@
 //! [`CLAUDE.md §0`]: ../../../CLAUDE.md
 
 use ph2d_field::FieldDoc;
-use ph2d_field_eval::Engine;
 use rayon::prelude::*;
 
 /// `1/√2` — o passo seguro da marcha.
@@ -166,20 +165,27 @@ impl Gbuffer {
 
 /// Marcha o campo do documento e devolve o G-buffer, **com anti-serrilhado adaptativo**.
 #[must_use]
-pub fn trace(doc: &FieldDoc, cam: &Orbit, width: u32, height: u32) -> Gbuffer {
-    trace_with(doc, cam, width, height, true, true)
+pub fn trace(
+    doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &Orbit,
+    width: u32,
+    height: u32,
+) -> Gbuffer {
+    trace_with(doc, reg, cam, width, height, true, true)
 }
 
 /// Igual a [`trace`], com o paralelismo sob controle — é o que o gate de byte-identidade dirige.
 #[must_use]
 pub fn trace_with_threads(
     doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
     cam: &Orbit,
     width: u32,
     height: u32,
     parallel: bool,
 ) -> Gbuffer {
-    trace_with(doc, cam, width, height, parallel, true)
+    trace_with(doc, reg, cam, width, height, parallel, true)
 }
 
 /// A porta completa.
@@ -198,14 +204,14 @@ pub fn trace_with_threads(
 #[must_use]
 pub fn trace_with(
     doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
     cam: &Orbit,
     width: u32,
     height: u32,
     parallel: bool,
     antialias: bool,
 ) -> Gbuffer {
-    let tree = ph2d_field_eval::compile(doc);
-    let shape = Engine::from(tree);
+    let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let basis = cam.basis();
     let (w, h) = (width as usize, height as usize);
     // ⚠️ **A MESMA conta que o gizmo projeta** ([`Screen`]): a marcha constrói os raios a partir
@@ -264,7 +270,7 @@ pub fn trace_with(
 /// quadro. Passá-los soltos era o que fazia as duas funções abaixo crescerem para oito parâmetros,
 /// e uma lista de oito é onde dois deles trocam de lugar sem o compilador reparar.
 struct Scene<'a> {
-    shape: &'a Engine,
+    shape: &'a ph2d_field_eval::hybrid::Hybrid,
     cam: &'a Orbit,
     basis: ([f32; 3], [f32; 3], [f32; 3]),
     sharp: Sharpness,
@@ -277,13 +283,12 @@ struct Scene<'a> {
 /// de borda. *Uma marcha, um lugar.*
 fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>, Vec<[f32; 3]>) {
     let (right, up, fwd) = scene.basis;
-    let (shape, cam, sharp) = (scene.shape, scene.cam, scene.sharp);
+    let (cam, sharp) = (scene.cam, scene.sharp);
     let n = screen.len();
     // Um avaliador POR LOTE: a `fidget` precisa de estado mutável para avaliar, e partilhá-lo entre
     // threads exigiria trava. Criar o próprio é barato e mantém a escrita disjunta, que é a
     // condição do ADR-0109.
-    let tape = shape.float_slice_tape(Default::default());
-    let mut eval = Engine::new_float_slice_eval();
+    let mut eval = scene.shape.fork();
     let mut hit = vec![false; n];
     let mut normal = vec![[0.0f32; 3]; n];
     // ⭐ **Onde o raio parou, no MUNDO.** Ele sai de graça (a marcha já sabe o `t`), e é o que uma
@@ -322,7 +327,7 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>,
             ys.push(oy[i] + dir[i][1] * t[i]);
             zs.push(oz[i] + dir[i][2] * t[i]);
         }
-        let Ok(out) = eval.eval(&tape, &xs, &ys, &zs) else {
+        let Ok(out) = eval.eval(&xs, &ys, &zs) else {
             break;
         };
         let mut next = Vec::with_capacity(alive.len());
@@ -372,7 +377,7 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>,
             gz.push(pz + dz);
         }
     }
-    if let Ok(g) = eval.eval(&tape, &gx, &gy, &gz) {
+    if let Ok(g) = eval.eval(&gx, &gy, &gz) {
         for (k, &i) in idx.iter().enumerate() {
             let b = k * 6;
             let world = [g[b] - g[b + 1], g[b + 2] - g[b + 3], g[b + 4] - g[b + 5]];
@@ -404,11 +409,12 @@ fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>,
 #[must_use]
 pub fn surface_under(
     doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
     cam: &Orbit,
     screen: Screen,
     px: [f32; 2],
 ) -> Option<[f32; 3]> {
-    let shape = Engine::from(ph2d_field_eval::compile(doc));
+    let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let side = screen.width().min(screen.height()) as usize;
     let scene = Scene {
         shape: &shape,

@@ -20,6 +20,7 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
         NodeShape::Combine(Op::Union(_)) => "Union",
         NodeShape::Combine(Op::Intersection(_)) => "Intersect",
         NodeShape::Combine(Op::Difference(_)) => "Difference",
+        NodeShape::Sampled { .. } => "Sculpt",
         NodeShape::Leaf(p) => match p {
             Primitive::Box { .. } => "Box",
             Primitive::Sphere { .. } => "Sphere",

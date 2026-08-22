@@ -26,6 +26,11 @@ authors.workspace = true
 # A malha de entrada e a caixa dela.
 ph2d-mesh = { path = "../ph2d-mesh" }
 
+# O trait `Sampled` que o avaliador hibrido consome. A direcao e' esta e nunca a
+# inversa: o `ph2d-field-eval` nao sabe o que e' uma malha, e e' isso que mantem a
+# escultura removivel.
+ph2d-field-eval = { path = "../ph2d-field-eval" }
+
 # ⭐ O voxelizador e o amostrador trilinear JA EXISTEM ali, escritos e gateados
 # pela linha da escultura (`VoxelField::voxelize` + `flood_fill` + `sample`).
 # Escrever um segundo seria a segunda resposta a "o que e' a distancia desta

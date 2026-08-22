@@ -58,8 +58,13 @@ use serde::{Deserialize, Serialize};
 /// O degrau sobe na mesma, porque a alternativa é o número deixar de querer dizer alguma coisa no
 /// dia em que alguém o persistir.
 ///
+/// v4: o [`NodeKind`] ganhou a **escultura** ([`NodeKind::Sampled`]) — a ponte da W5. É variante
+/// nova num `enum`, e postcard escreve o discriminante por índice, então um documento v3 leria um nó
+/// `Sampled` onde havia outra coisa. ⚠️ **A migração continua vazia pelo mesmo motivo de sempre**
+/// (nada persiste um [`FieldDoc`]), e o degrau sobe pela mesma razão.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 3;
+pub const FIELD_DOC_VERSION: u32 = 4;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -172,7 +177,28 @@ impl Op {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum NodeKind {
     Leaf(Primitive),
-    Combine { op: Op, children: Vec<NodeId> },
+    Combine {
+        op: Op,
+        children: Vec<NodeId>,
+    },
+    /// ⭐ **Uma ESCULTURA**, referida pelo nome — a ponte da W5.
+    ///
+    /// ⚠️ **É um `NodeKind` e não uma `Primitive`, e a diferença é a razão de ele existir.** Uma
+    /// primitiva é uma forma com **números** (raio, meia-extensão, `round`), e o painel deriva as
+    /// linhas dela. Uma escultura não tem números: ela é uma malha, e o que a define vive noutro
+    /// módulo. Metê-la entre as primitivas obrigaria toda a tabela de dimensões a ter um caso que
+    /// não devolve nada.
+    ///
+    /// ⚠️ **O documento guarda o NOME, nunca a grade.** Uma grade de 128³ pesa 12 MB; pô-la aqui
+    /// faria cada `cook` — que corre por quadro — copiar isso, e faria um projeto guardado carregar
+    /// a grade em vez de a **regenerar** da malha, que é a fonte. Quem resolve nome → campo é o
+    /// registo do avaliador (`ph2d_field_eval::hybrid::Registry`).
+    ///
+    /// ⚠️ **Um nome desconhecido lê como espaço VAZIO**, e não como sólido: numa união some, numa
+    /// subtração não corta. O oposto encheria a cena de um bloco que ninguém autorizou.
+    Sampled {
+        key: String,
+    },
 }
 
 impl NodeKind {
@@ -182,6 +208,7 @@ impl NodeKind {
         match self {
             NodeKind::Leaf(p) => NodeShape::Leaf(p.clone()),
             NodeKind::Combine { op, .. } => NodeShape::Combine(*op),
+            NodeKind::Sampled { key } => NodeShape::Sampled { key: key.clone() },
         }
     }
 }
@@ -205,6 +232,10 @@ impl NodeKind {
 pub enum NodeShape {
     Leaf(Primitive),
     Combine(Op),
+    /// A escultura, pelo nome. Ver [`NodeKind::Sampled`].
+    Sampled {
+        key: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -262,6 +293,10 @@ pub enum FieldError {
     /// O perfil de um [`Primitive::Revolve`] tem ponto com `x < 0` — a superfície de revolução
     /// auto-intersecta e o campo deixa de ser uma distância.
     ProfileCrossesAxis { node: u32, min_x: f32 },
+    /// Uma escultura sem nome não pode ser resolvida contra registo nenhum.
+    EmptySampledKey { node: u32 },
+    /// ⚠️ Modificadores sobre uma escultura — ver a nota de [`NodeKind::Sampled`] na validação.
+    ModsOnSampled { node: u32 },
 }
 
 impl FieldDoc {
@@ -365,6 +400,19 @@ impl FieldDoc {
                     }
                 }
                 NodeKind::Leaf(p) => validate_primitive(idx, p)?,
+                NodeKind::Sampled { key } => {
+                    if key.is_empty() {
+                        return Err(FieldError::EmptySampledKey { node: idx });
+                    }
+                    // ⚠️ **A pilha de modificadores NÃO corre sobre uma escultura, e recusar é a
+                    // única resposta honesta.** Aplicá-la exigiria a casca, a matriz e a inclinação
+                    // escritas uma segunda vez em números — cada uma com o gate de paridade que a
+                    // segure. Deixá-la passar em silêncio daria um botão que não faz nada, que é o
+                    // modo de falha que nenhum smoke apanha.
+                    if !node.mods.is_empty() {
+                        return Err(FieldError::ModsOnSampled { node: idx });
+                    }
+                }
             }
             // ⚠️ **A pilha valida com a MESMA porta que a escreve** (`Unary::set_value`), e não com
             // uma segunda cópia das regras aqui: duas listas de *"o que é um número aceitável"*

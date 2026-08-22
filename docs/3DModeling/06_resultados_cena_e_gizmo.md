@@ -1458,6 +1458,129 @@ o campo, em lote e com JIT —, e o `jit` fica ligado pela mesma medição de se
 
 ---
 
+## §22 — W21: a ponte da escultura, e o achado que o plano não previa (21/08)
+
+> Plano W5: *"malha esculpida → campo (via `ph2d-sdf`) → entra na booleana"*. A metade da **saída**
+> fechou na W19/W20; esta é a **entrada**.
+
+### §22.1 — ⛔ Uma malha NÃO pode virar uma árvore de avaliação
+
+`fidget::context::TreeOp` é uma álgebra **fechada**: `Input(Var)` · `Const` · `Binary` · `Unary` ·
+remapeamentos. **Não há operação de consulta a dados.** Um campo em voxels não é exprimível ali.
+
+| caminho | veredito |
+|---|---|
+| a malha vira **expressão** (um termo por triângulo) | ⛔ ~10 nós por triângulo — meio milhão de nós para uma escultura média, avaliados milhões de vezes por quadro |
+| a booleana acontece na **malha** | ⛔ é exatamente o que falha, e a tese do módulo é que não falha |
+| ⭐ folha **amostrada** dentro da árvore de operações | ✅ **1,39×** por ponto |
+
+O número que decide (`measure_sculpt_to_field_bridge`): **uma amostra trilinear custa 1,39× uma
+avaliação da árvore com JIT** — 7,6 ms contra 5,5 ms por milhão de pontos. Misturar uma escultura
+custa aproximadamente o mesmo que uma folha analítica a mais.
+
+### §22.2 — ⛔ O campo do `ph2d-sdf` é uma BANDA ESTREITA
+
+A distância só é escrita nas células dentro da caixa de algum triângulo; o resto fica em `±INFINITY`,
+que o amostrador de lá doma para a **diagonal da grade**. Está certo para os consumidores dele —
+oclusão, espessura e remesh só perguntam **junto** da superfície — e é **fatal** para uma marcha de
+esfera: um passo do tamanho da diagonal salta a peça inteira. Medido: erro de **89 células** contra a
+esfera analítica.
+
+⭐ **Cura: propagação de chanfro** (duas varreduras, pesos `1 / √2 / √3`), na crate-ponte. Ela anda
+**pela grade**, logo **superestima** — e uma marcha só é correta contra um **minorante**:
+
+| resolução | célula | maior razão `chanfro / verdadeiro` |
+|---:|---:|---:|
+| 48 | 0,02500 | 1,1151 |
+| 96 | 0,01250 | **1,1174** |
+| 192 | 0,00625 | 1,1000 |
+
+⛔ **A primeira volta escreveu `CHAMFER_SAFETY = 1,05` por palpite.** A sonda mediu **1,1174** — o
+campo teria superestimado 5 % e a marcha atravessaria a peça. O valor é **1,15** (o limite teórico da
+métrica em 3D é ~1,14). *Um número de segurança que não veio de uma tabela é o defeito que ele diz
+prevenir.*
+
+Mais: a caixa cresce **8 células** além da malha (`PAD_CELLS`, com a resolução a crescer junto para o
+passo não mudar). Sem isso a grade encosta na malha com 1,51 células, e **fora dela a resposta é a
+distância à CAIXA** — seguro para a marcha, errado para um **filete**, que acontece até um raio para
+fora da peça.
+
+### §22.3 — O avaliador HÍBRIDO, e a fusão que protege o caminho rápido
+
+`ph2d_field_eval::hybrid`: o documento compila para uma árvore de operações cujas folhas são **ou**
+uma fita de JIT **ou** um campo amostrado. ⭐ **Um `Combine` cujos filhos são todos analíticos volta a
+ser analítico** — logo um documento sem escultura produz **uma** fita e o caminho rápido não muda um
+bit. O gate `an_all_analytic_document_stays_one_tape` prende isso, e a mutação que desliga a fusão
+põe-no vermelho: sem ele o traçado ficaria várias vezes mais lento **sem um único teste vermelho**,
+porque o resultado continuaria certo.
+
+⚠️ **A booleana existe agora DUAS vezes** — como árvore (`ops`) e como aritmética `f32` (`hybrid`).
+Não há como fugir: um `min` entre uma fita de JIT e uma grade de voxels não cabe dentro de nenhuma
+das duas. O que torna isso seguro é o gate de **paridade**: a mesma peça montada com a esfera como
+primitiva e como escultura, comparada ponto a ponto, nos **três** operadores × **três** caracteres de
+mistura. *Dois motores, uma lei — e a lei tem juiz.*
+
+⚠️ **O gradiente**: um campo amostrado não tem gradiente analítico. Quando há escultura, a normal sai
+por **diferença central**; quando não há, o caminho **exato** fica — e isso é load-bearing, porque a
+diferença central numa quina viva devolve a média dos dois lados e desfaria o achado da W20 (§21.3).
+
+### §22.4 — O documento: `NodeKind::Sampled { key }`
+
+⚠️ **Um `NodeKind`, e não uma `Primitive`.** Uma primitiva é uma forma com **números**, e o painel
+deriva as linhas dela; uma escultura não tem números. E o documento guarda o **NOME**, nunca a grade:
+128³ pesa 12 MB, o documento é cozido **por quadro**, e um projeto guardado tem de **regenerar** a
+grade da malha, que é a fonte.
+
+⚠️ **Um nome desconhecido lê como espaço VAZIO**, nunca como sólido — numa união some, numa subtração
+não corta. O oposto encheria a cena de um bloco que ninguém autorizou.
+
+⛔ **Modificadores sobre uma escultura são RECUSADOS** (`FieldError::ModsOnSampled`), e recusar é a
+resposta honesta: aplicá-los exigiria a casca, a matriz e a inclinação escritas uma segunda vez em
+números, cada uma com o seu gate de paridade. Deixá-los passar daria um botão que não faz nada, que é
+o modo de falha que nenhum smoke apanha.
+
+`FIELD_DOC_VERSION` 3 → **4**.
+
+### §22.5 — ⛔ Recusas MEDIDAS e provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| sem a propagação de chanfro | `the_sampled_field_marches_like_a_distance` |
+| `CHAMFER_SAFETY = 1,0` | `inside_the_box_the_field_never_overshoots` |
+| fora da caixa superestima | `outside_the_box_the_distance_never_overshoots` |
+| `PAD_CELLS = 0` | `the_box_leaves_room_for_a_fillet` |
+| De Morgan da diferença trocado | `the_numeric_law_is_the_same_law_as_the_tree` |
+| sinal do filete exato trocado | `the_numeric_law_is_the_same_law_as_the_tree` |
+| fusão analítica desligada | `an_all_analytic_document_stays_one_tape` |
+| ausente lê como sólido | `an_unknown_sculpture_reads_as_empty_space` |
+| sem a 2ª metade da pose (`× escala`) | `the_pose_of_a_sculpture_is_undone_on_the_sample` |
+
+⭐ **E uma mutação passou VERDE, o que é o achado**: a barreira que impedia a propagação de chanfro
+de atravessar a superfície era **inerte**. O motivo é aritmética — `|d|` é 1-Lipschitz **inclusive
+através do nível zero** —, então um caminho que atravessa a parede continua a dar um majorante
+válido; a barreira só **removia caminhos**, e numa parede fina deixava o meio dela sem vizinho útil.
+Removida. *Uma precaução que a medição diz não fazer nada não é grátis: ela é a próxima pessoa a
+acreditar que ela faz.*
+
+### §22.6 — O smoke, e o que ele prova
+
+`PH2D_FIELD_SMOKE=6`: uma **esfera ruidosa de 9 mil triângulos** vira campo amostrado (96 de
+resolução, ~150 ms) e leva um **furo de 0,20 com a boca arredondada em 0,05**. A malha é gerada na
+cena de propósito: o que se prova aqui é a **ponte**, e uma escultura vinda do módulo de sculpt traria
+consigo a pergunta de **autoria** — como o artista cria um destes —, que é wave própria e tem UI.
+
+### §22.7 — ⏸️ O que fica aberto, nomeado
+
+- **A autoria**: não há gesto que crie um `Sampled` — nem botão, nem importação, nem ligação à
+  escultura viva do módulo 3D. A cena 6 é o único sítio onde um existe.
+- **Persistência**: o `key` viaja no documento, mas nada regenera a grade ao carregar um projeto.
+- **Modificadores** sobre uma escultura (recusados, §22.4) e **pose/modificadores de um `Combine`
+  MISTO** (o `Combine` é avaliado na pose dele próprio).
+- **A escala característica** de uma escultura é `INFINITY` no `subtree_scale` — o teto do slider de
+  filete não a conhece. Só morde quando a escultura for a **única** peça sob o nó.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -1474,8 +1597,10 @@ o campo, em lote e com JIT —, e o `jit` fica ligado pela mesma medição de se
   falta é um alvo descentrado, ou um pivô de espelho autorado. Adiado por decisão dele
 - ✅ **draft/taper FECHOU** na W18 (§19), e a W4 do plano com ele — o primeiro operador não-exato do
   módulo, com as duas tabelas ao lado do número
-- ⏸️ **a outra metade da W5**: malha esculpida → campo (via `ph2d-sdf`), para uma escultura entrar na
-  booleana. A saída já existe (§20); falta a entrada
+- ⭐ **a outra metade da W5 — o MOTOR — fechou** (§22): uma escultura vira campo amostrado e entra na
+  booleana, com o avaliador híbrido e o gate de paridade. ⏸️ **falta a AUTORIA**: não há gesto que
+  crie um destes (nem botão, nem importação, nem ligação à escultura viva), e o `key` não regenera a
+  grade ao carregar um projeto. A cena 6 do smoke é o único sítio onde um existe
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

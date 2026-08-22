@@ -5475,6 +5475,7 @@ dependencies = [
 name = "ph2d-field-mesh"
 version = "0.0.0"
 dependencies = [
+ "ph2d-field-eval",
  "ph2d-mesh",
  "ph2d-sdf",
 ]
@@ -5707,6 +5708,7 @@ dependencies = [
  "ph2d-field",
  "ph2d-field-ecs",
  "ph2d-field-eval",
+ "ph2d-field-mesh",
  "ph2d-field-profile",
  "ph2d-field-render",
  "ph2d-flip",

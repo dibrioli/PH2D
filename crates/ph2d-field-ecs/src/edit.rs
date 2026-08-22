@@ -66,6 +66,8 @@ pub fn radius_bound(world: &World, entity: Entity) -> Option<Bound> {
     match &world.get::<FieldNode>(entity)?.shape {
         NodeShape::Leaf(p) => round_limit(p).map(Bound::Hard),
         NodeShape::Combine(_) => Some(Bound::Soft(subtree_scale(world, entity))),
+        // Uma escultura não tem raio autorado: a aresta dela é a malha.
+        NodeShape::Sampled { .. } => None,
     }
 }
 
@@ -85,6 +87,10 @@ fn subtree_scale(world: &World, root: Entity) -> f32 {
         let acc = acc * world.get::<FieldPose>(e).map_or(1.0, |p| p.xform.scale);
         match &node.shape {
             NodeShape::Leaf(p) => best = best.min(characteristic_size(p) * acc),
+            // ⚠️ A escala característica de uma escultura é a caixa dela, e a caixa vive no campo
+            // amostrado, que o mundo não conhece. Não contribuir é a resposta certa quando há outra
+            // peça a dar a escala — e o item aberto quando ela for a única.
+            NodeShape::Sampled { .. } => {}
             NodeShape::Combine(_) => {
                 if let Some(children) = world.get::<Children>(e) {
                     for c in children.iter().copied().collect::<Vec<_>>() {
@@ -153,6 +159,8 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
         }))
         .collect();
     match &node.shape {
+        // Uma escultura tem pose e mais nada: o que ela é vive na malha.
+        NodeShape::Sampled { .. } => {}
         NodeShape::Combine(_) => {
             out.push((
                 Param::Scale,
@@ -388,6 +396,7 @@ pub fn set_dim(
     };
     let id = entity.to_bits() as u32;
     match &mut node.shape {
+        NodeShape::Sampled { .. } => Err(FieldError::BadRoot),
         // Uma operação tem uma dimensão só: o raio da mistura.
         NodeShape::Combine(_) if index == 0 => {
             let mut shape = node.shape.clone();

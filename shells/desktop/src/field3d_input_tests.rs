@@ -38,7 +38,15 @@ fn front() -> Orbit {
 /// ⚠️ **Sem anti-serrilhado de propósito**: o que se mede aqui é para onde a forma foi, e a máscara
 /// crua responde a isso sem uma segunda variável no meio.
 fn centroid(doc: &FieldDoc, cam: &Orbit) -> Option<(f32, f32)> {
-    let g = trace_with(doc, cam, W, H, true, false);
+    let g = trace_with(
+        doc,
+        &crate::field3d_smoke::sampled_registry(),
+        cam,
+        W,
+        H,
+        true,
+        false,
+    );
     let (mut sx, mut sy, mut n) = (0.0f64, 0.0f64, 0usize);
     for i in 0..(W as usize) * (H as usize) {
         if g.hit[i] {
@@ -151,10 +159,28 @@ fn panning_carries_the_model_with_the_hand_at_any_zoom() {
 fn the_wheel_zooms_in_and_the_part_grows() {
     let doc = nose();
     let cam = front();
-    let before = trace_with(&doc, &cam, W, H, true, false).hits();
+    let before = trace_with(
+        &doc,
+        &crate::field3d_smoke::sampled_registry(),
+        &cam,
+        W,
+        H,
+        true,
+        false,
+    )
+    .hits();
     let mut closer = cam;
     law::zoom(&mut closer, 3.0);
-    let after = trace_with(&doc, &closer, W, H, true, false).hits();
+    let after = trace_with(
+        &doc,
+        &crate::field3d_smoke::sampled_registry(),
+        &closer,
+        W,
+        H,
+        true,
+        false,
+    )
+    .hits();
     assert!(
         after > before,
         "três passos de roda para a frente têm de APROXIMAR: {before} -> {after} pixels"

@@ -215,7 +215,12 @@ fn measure_export_mesh_quality() {
             // A grade cobre [-1, 1] em cada eixo: a célula é 2 / 2^prof.
             let cell = 2.0 / f64::from(1u32 << depth);
             let t0 = std::time::Instant::now();
-            let m = ph2d_field_eval::extract::extract(&doc, depth).expect("a cena malha");
+            let m = ph2d_field_eval::extract::extract(
+                &doc,
+                &crate::field3d_smoke::sampled_registry(),
+                depth,
+            )
+            .expect("a cena malha");
             let ms = t0.elapsed().as_secs_f64() * 1000.0;
             let quads = m.faces().iter().filter(|f| !f.is_tri()).count();
             let r = measure(&m, &field, cell);
@@ -316,7 +321,8 @@ fn measure_sculpt_to_field_bridge() {
     let ms_sample = t0.elapsed().as_secs_f64() * 1000.0;
 
     let doc = scene(1);
-    let mut batch = ph2d_field_eval::Batch::new(&doc);
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let mut batch = ph2d_field_eval::hybrid::Hybrid::new(&doc, &reg);
     let (xs, ys, zs): (Vec<f32>, Vec<f32>, Vec<f32>) = (
         pts.iter().map(|p| p[0]).collect(),
         pts.iter().map(|p| p[1]).collect(),

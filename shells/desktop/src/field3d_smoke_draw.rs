@@ -96,9 +96,12 @@ pub(crate) fn draw(
             let (tx, rx) = channel::<Ready>();
             let cam = smoke.cam;
             let matcap = Arc::clone(&smoke.matcap);
+            // ⚠️ O registo de esculturas atravessa a fronteira da thread como **cópia dos `Arc`** —
+            // o `thread_local` que o guarda não existe do outro lado.
+            let reg = crate::field3d_smoke::sampled_registry();
             std::thread::spawn(move || {
                 let t0 = std::time::Instant::now();
-                let g = trace(&doc, &cam, tw, th);
+                let g = trace(&doc, &reg, &cam, tw, th);
                 let rgba = shade(
                     &g,
                     &Matcap {

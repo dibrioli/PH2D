@@ -359,6 +359,11 @@ ph2d-crossfield = { path = "../../crates/ph2d-crossfield" }
 ph2d-trace = { path = "../../crates/ph2d-trace" }
 ph2d-quantize = { path = "../../crates/ph2d-quantize" }
 ph2d-quadfill = { path = "../../crates/ph2d-quadfill" }
+
+# A ponte da escultura para o campo implicito (ADR-0161 W5): uma malha vira campo
+# amostrado e entra na booleana. NAO e' opcional porque o smoke do campo (cena 6)
+# a usa, e o `field3d_*` ja depende do `sculpt3d` por outra via (`lost_by`).
+ph2d-field-mesh = { path = "../../crates/ph2d-field-mesh" }
 # O balde (ADR-0114 W4) — solver CPU puro; o shell é a fronteira modelo↔solver.
 ph2d-flip-fill = { path = "../../crates/ph2d-flip-fill" }
 ph2d-flip-colorize = { path = "../../crates/ph2d-flip-colorize" }
@@ -440,8 +445,7 @@ rfd = "0.15"
 # CoreGraphics for the live cursor instead. Already a transitive
 # dep via winit/macos; promoting to a direct dep is free (no extra
 # compile unit) and keeps the crate `forbid(unsafe_code)`-clean
-# because all wrapping is inside the core-graphics crate itself.
-# ⚠️ Os dois entram por DOIS motivos, e o segundo é o que os torna obrigatórios aqui: a
+# because all wrapping is inside the core-graphics crate itself.# ⚠️ Os dois entram por DOIS motivos, e o segundo é o que os torna obrigatórios aqui: a
 # cena `=77` autora o `Echo Operator`/`Flash Operator` pelo NOME do param (nunca por um
 # literal), e o arch-gate do operador por-linha pina o vocabulário deles contra o do sink —
 # um nó é uma folha e não importa do irmão, então a shell é o único sítio que vê os três.

@@ -139,7 +139,8 @@ pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::Toast
         };
 
         let t0 = std::time::Instant::now();
-        let mesh = match ph2d_field_eval::extract::extract(&doc, level.depth()) {
+        let reg = crate::field3d_smoke::sampled_registry();
+        let mesh = match ph2d_field_eval::extract::extract(&doc, &reg, level.depth()) {
             Ok(m) => m,
             Err(e) => {
                 say(toasts, format!("Meshing failed: {e:?}"));

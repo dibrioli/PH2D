@@ -355,3 +355,14 @@ fn distance_to_box(b: Aabb, p: [f32; 3]) -> f32 {
 
 #[cfg(test)]
 mod tests;
+
+/// ⭐ **A ponte fecha aqui**: um campo amostrado é uma folha que o avaliador híbrido sabe consumir.
+///
+/// ⚠️ **A implementação é de UMA linha e é o ponto inteiro da crate.** O `ph2d-field-eval` declara o
+/// trait e não sabe o que é uma malha; esta crate sabe as duas coisas e não é conhecida por nenhuma
+/// das duas. Apagar a escultura apaga esta crate, e mais nada.
+impl ph2d_field_eval::hybrid::Sampled for SampledField {
+    fn at(&self, p: [f32; 3]) -> f32 {
+        SampledField::at(self, p)
+    }
+}

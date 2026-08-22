@@ -23,6 +23,8 @@ impl FieldDoc {
                 | Primitive::Extrude { round, .. } => Some(*round),
                 _ => None,
             },
+            // Uma escultura não tem aresta autorada: o `round` dela é a malha.
+            NodeKind::Sampled { .. } => None,
         }
     }
 
@@ -35,6 +37,7 @@ impl FieldDoc {
             // porque um filete maior do que ela engole-a.
             NodeKind::Combine { .. } => Some(Bound::Soft(self.subtree_scale(node))),
             NodeKind::Leaf(p) => round_limit(p).map(Bound::Hard),
+            NodeKind::Sampled { .. } => None,
         }
     }
 
@@ -51,6 +54,11 @@ impl FieldDoc {
                     .iter()
                     .map(|c| scale[c.0 as usize])
                     .fold(f32::INFINITY, f32::min),
+                // ⚠️ A escala característica de uma escultura é a caixa dela, e a caixa vive no
+                // campo amostrado, que o documento não conhece. `INFINITY` faz o `min` do pai
+                // ignorá-la — o que é a resposta certa quando há outra peça a dar a escala, e a
+                // resposta a melhorar quando a escultura for a única (nomeado, não escondido).
+                NodeKind::Sampled { .. } => f32::INFINITY,
             };
         }
         let s = scale[node.0 as usize];
@@ -85,6 +93,7 @@ impl FieldDoc {
         set_shape_radius(&mut shape, node.0, radius)?;
         self.nodes[idx].kind = match (shape, &self.nodes[idx].kind) {
             (NodeShape::Leaf(p), _) => NodeKind::Leaf(p),
+            (NodeShape::Sampled { key }, _) => NodeKind::Sampled { key },
             (NodeShape::Combine(op), NodeKind::Combine { children, .. }) => NodeKind::Combine {
                 op,
                 children: children.clone(),
@@ -107,6 +116,7 @@ impl NodeShape {
     pub fn radius(&self) -> Option<f32> {
         match self {
             NodeShape::Combine(op) => Some(op.blend().amount()),
+            NodeShape::Sampled { .. } => None,
             NodeShape::Leaf(p) => match p {
                 Primitive::Box { round, .. }
                 | Primitive::Cylinder { round, .. }
@@ -140,6 +150,12 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
         });
     }
     match shape {
+        // Uma escultura não tem raio autorado: recusar é o que impede um slider de existir sem nada
+        // do outro lado.
+        NodeShape::Sampled { .. } => Err(FieldError::NonPositive {
+            node,
+            what: "radius",
+        }),
         NodeShape::Combine(op) => {
             let blend = match op.blend() {
                 // O caráter ORGÂNICO é uma escolha de produto e sobrevive a mudar o número;

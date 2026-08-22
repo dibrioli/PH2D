@@ -227,7 +227,11 @@ fn measure_export_resolution() {
     for depth in 4u8..=9 {
         let doc = scene(1);
         let t0 = std::time::Instant::now();
-        match ph2d_field_eval::extract::extract(&doc, depth) {
+        match ph2d_field_eval::extract::extract(
+            &doc,
+            &ph2d_field_eval::hybrid::Registry::new(),
+            depth,
+        ) {
             Ok(m) => {
                 let ms = t0.elapsed().as_secs_f64() * 1000.0;
                 let tris: usize = m.faces().iter().map(ph2d_mesh::Face::tri_count).sum();
@@ -250,10 +254,18 @@ fn measure_export_resolution() {
 fn the_part_becomes_a_mesh_and_more_resolution_gives_more_of_it() {
     use crate::field3d_export::ExportLevel;
     let doc = scene(2);
-    let draft = ph2d_field_eval::extract::extract(&doc, ExportLevel::Draft.depth())
-        .expect("malha em Draft");
-    let fine =
-        ph2d_field_eval::extract::extract(&doc, ExportLevel::Fine.depth()).expect("malha em Fine");
+    let draft = ph2d_field_eval::extract::extract(
+        &doc,
+        &ph2d_field_eval::hybrid::Registry::new(),
+        ExportLevel::Draft.depth(),
+    )
+    .expect("malha em Draft");
+    let fine = ph2d_field_eval::extract::extract(
+        &doc,
+        &ph2d_field_eval::hybrid::Registry::new(),
+        ExportLevel::Fine.depth(),
+    )
+    .expect("malha em Fine");
 
     assert!(draft.faces().len() > 100, "o Draft saiu vazio");
     assert!(

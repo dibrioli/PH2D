@@ -17,6 +17,7 @@
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
 pub mod extract;
+pub mod hybrid;
 pub mod ops;
 pub mod profile;
 
@@ -35,6 +36,11 @@ pub fn compile(doc: &FieldDoc) -> Tree {
         let inner = match &node.kind {
             NodeKind::Leaf(p) => primitive(p),
             NodeKind::Combine { op, children } => combine(*op, children, &built),
+            // ⚠️ **Uma escultura NÃO é exprimível numa árvore** — ver [`hybrid`]. Aqui ela lê como
+            // espaço vazio, que é o degenerado seguro: numa união some, numa subtração não corta.
+            // Quem quiser a escultura de facto compila pelo [`hybrid::Hybrid`], e é ele que a
+            // produção usa; esta porta serve às sondas e aos gates analíticos.
+            NodeKind::Sampled { .. } => Tree::constant(f64::from(hybrid::ABSENT)),
         };
         // ⭐ **A pilha corre entre o que o nó É e onde ele ESTÁ**, e a ordem das duas metades é a
         // lei: em local, a espessura de uma casca é um número do nó, e a pose de um ancestral
@@ -45,7 +51,7 @@ pub fn compile(doc: &FieldDoc) -> Tree {
     built[doc.root().0 as usize].clone()
 }
 
-fn primitive(p: &Primitive) -> Tree {
+pub(crate) fn primitive(p: &Primitive) -> Tree {
     match *p {
         Primitive::Box { half, round } => ops::sd_box(
             [f64::from(half[0]), f64::from(half[1]), f64::from(half[2])],
@@ -73,7 +79,7 @@ fn primitive(p: &Primitive) -> Tree {
 /// encascar. `|f| − t` seguido de `− d` dá uma parede mais grossa; `f − d` seguido de `| | − t` dá
 /// uma parede da mesma espessura noutro sítio. Um conjunto sem ordem teria de escolher uma em
 /// silêncio.
-fn stacked(inner: &Tree, mods: &[Unary]) -> Tree {
+pub(crate) fn stacked(inner: &Tree, mods: &[Unary]) -> Tree {
     let mut acc = inner.clone();
     for m in mods {
         acc = match *m {
@@ -226,11 +232,19 @@ fn blended(b: Blend) -> ops::Blended {
 }
 
 fn combine(op: Op, children: &[ph2d_field::NodeId], built: &[Tree]) -> Tree {
-    let child = |i: usize| built[children[i].0 as usize].clone();
+    let trees: Vec<Tree> = children
+        .iter()
+        .map(|c| built[c.0 as usize].clone())
+        .collect();
+    combine_trees(op, &trees)
+}
+
+/// A mesma combinação, já sobre as árvores — a porta que o avaliador híbrido partilha.
+pub(crate) fn combine_trees(op: Op, trees: &[Tree]) -> Tree {
     let b = blended(op.blend());
-    let mut acc = child(0);
-    for i in 1..children.len() {
-        let rhs = child(i);
+    let mut acc = trees[0].clone();
+    for rhs in &trees[1..] {
+        let rhs = rhs.clone();
         acc = match op {
             Op::Union(_) => ops::union(&acc, &rhs, b),
             Op::Intersection(_) => ops::intersection(&acc, &rhs, b),
@@ -247,7 +261,7 @@ fn combine(op: Op, children: &[ph2d_field::NodeId], built: &[Tree]) -> Tree {
 /// espaço local — `p' = R⁻¹(p − t) / s` — e o **valor** volta multiplicado por `s`. Sem essa
 /// multiplicação o campo deixa de ser uma distância assim que houver escala: um raio de 1 mm num
 /// nó escalado 2× mediria 0,5 mm, e a `f − r` da casca mentiria junto.
-fn place(inner: &Tree, x: Xform) -> Tree {
+pub(crate) fn place(inner: &Tree, x: Xform) -> Tree {
     let s = f64::from(x.scale);
     let [tx, ty, tz] = x.translation.map(f64::from);
     let m = inverse_rotation_matrix(x.rotation);
@@ -270,7 +284,7 @@ fn place(inner: &Tree, x: Xform) -> Tree {
 
 /// A matriz da rotação **inversa** (transposta, porque a rotação é ortonormal), a partir do
 /// quaternion `(x, y, z, w)`.
-fn inverse_rotation_matrix(q: [f32; 4]) -> [[f64; 3]; 3] {
+pub(crate) fn inverse_rotation_matrix(q: [f32; 4]) -> [[f64; 3]; 3] {
     let [x, y, z, w] = q.map(f64::from);
     let n = (x * x + y * y + z * z + w * w).sqrt();
     // Quaternion nulo não define rotação nenhuma; a identidade é a única resposta honesta, e o
@@ -347,51 +361,6 @@ impl Field {
         let gy = (self.at(x, y + eps, z) - self.at(x, y - eps, z)) / (2.0 * eps);
         let gz = (self.at(x, y, z + eps) - self.at(x, y, z - eps)) / (2.0 * eps);
         (gx * gx + gy * gy + gz * gz).sqrt()
-    }
-}
-
-/// **O documento avaliado EM LOTE, com JIT** — a porta rápida.
-///
-/// ⚠️ **É a mesma porta que o traçado e a extração já montavam cada um por si**, e a razão de ela
-/// existir aqui é que a fita (`ShapeTape`) é o objeto caro: montar uma por consumidor é pagar o JIT
-/// duas vezes, e ter duas montagens é ter dois sítios onde a próxima wave tem de trocar o avaliador.
-///
-/// ⚠️ **Ela é `&mut self` de propósito**: o avaliador da `fidget` empresta o buffer de saída, então
-/// a fatia devolvida vive até à chamada seguinte. Quem precisar de guardar copia.
-pub struct Batch {
-    eval: fidget::shape::ShapeBulkEval<
-        <fidget::jit::JitFunction as fidget::eval::Function>::FloatSliceEval,
-    >,
-    tape: fidget::shape::ShapeTape<
-        <<fidget::jit::JitFunction as fidget::eval::Function>::FloatSliceEval as
-            fidget::eval::BulkEvaluator>::Tape,
-    >,
-}
-
-impl Batch {
-    #[must_use]
-    pub fn new(doc: &FieldDoc) -> Self {
-        Self::from_tree(&compile(doc))
-    }
-
-    #[must_use]
-    pub fn from_tree(tree: &Tree) -> Self {
-        use fidget::shape::EzShape;
-        let shape = Engine::from(tree.clone());
-        Self {
-            eval: Engine::new_float_slice_eval(),
-            tape: shape.ez_float_slice_tape(),
-        }
-    }
-
-    /// `f` em cada ponto. As três fatias têm de ter o mesmo comprimento.
-    ///
-    /// # Errors
-    /// Se o avaliador recusar o lote (comprimentos diferentes, ou variável livre na árvore).
-    pub fn eval(&mut self, xs: &[f32], ys: &[f32], zs: &[f32]) -> Result<&[f32], MeshError> {
-        self.eval
-            .eval(&self.tape, xs, ys, zs)
-            .map_err(|e| MeshError::Rejected(format!("avaliação em lote: {e}")))
     }
 }
 

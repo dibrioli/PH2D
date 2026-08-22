@@ -91,6 +91,14 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
                     .map(|m| m.stack.clone())
                     .unwrap_or_default();
                 let id = match &node.shape {
+                    NodeShape::Sampled { key } => {
+                        nodes.push(Node {
+                            xform,
+                            kind: NodeKind::Sampled { key: key.clone() },
+                            mods,
+                        });
+                        Some(NodeId(nodes.len() as u32 - 1))
+                    }
                     NodeShape::Leaf(p) => {
                         nodes.push(Node {
                             xform,

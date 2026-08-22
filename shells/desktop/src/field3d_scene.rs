@@ -401,7 +401,8 @@ fn where_to_add(
     };
     match world.get::<FieldNode>(e).map(|n| &n.shape) {
         Some(NodeShape::Combine(_)) => e,
-        Some(NodeShape::Leaf(_)) => world
+        // Uma escultura é uma FOLHA para efeitos de onde uma peça nova entra.
+        Some(NodeShape::Leaf(_) | NodeShape::Sampled { .. }) => world
             .get::<bevy_ecs::hierarchy::ChildOf>(e)
             .map_or(root, |c| c.0),
         None => root,

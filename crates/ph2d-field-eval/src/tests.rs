@@ -266,7 +266,8 @@ fn the_exported_mesh_sits_on_the_surface() {
     .expect("esfera");
     let f = Field::new(&doc);
     let worst_at = |depth: u8| -> f64 {
-        let m = crate::extract::extract(&doc, depth).expect("a malha sai e a ph2d-mesh a aceita");
+        let m = crate::extract::extract(&doc, &Registry::new(), depth)
+            .expect("a malha sai e a ph2d-mesh a aceita");
         assert!(m.positions().len() > 100, "a esfera não pode sair vazia");
         m.positions()
             .iter()
@@ -330,7 +331,7 @@ fn the_exported_mesh_sits_on_the_surface() {
     // 2ª volta reapareceria sem ninguém a notar.
     let verts: Vec<usize> = (5u8..=7)
         .map(|d| {
-            crate::extract::extract(&doc, d)
+            crate::extract::extract(&doc, &Registry::new(), d)
                 .expect("malha")
                 .positions()
                 .len()
@@ -1384,7 +1385,7 @@ fn probe_sphere_convergence() {
     println!("prof | célula  | vértices | erro médio | erro máx | máx/célula");
     for depth in 4u8..=8 {
         let cell = 2.0 / f64::from(1u32 << depth);
-        let m = crate::extract::extract(&doc, depth).expect("malha");
+        let m = crate::extract::extract(&doc, &Registry::new(), depth).expect("malha");
         let errs: Vec<f64> = m
             .positions()
             .iter()
@@ -1437,7 +1438,7 @@ fn probe_sharp_edge_capture() {
             NodeId(0),
         )
         .expect("cubo");
-        let m = crate::extract::extract(&doc, depth).expect("malha");
+        let m = crate::extract::extract(&doc, &Registry::new(), depth).expect("malha");
 
         // A aresta ideal: x = half, y = half, z livre em [−half, half].
         let mut best = vec![f64::INFINITY; (2.0 * half / cell).ceil() as usize + 1];
@@ -1576,7 +1577,7 @@ fn the_exported_mesh_never_folds_a_face() {
         let f = Field::new(&doc);
         for depth in [6u8, 7] {
             let cell = 2.0 / f64::from(1u32 << depth);
-            let m = crate::extract::extract(&doc, depth).expect("malha");
+            let m = crate::extract::extract(&doc, &Registry::new(), depth).expect("malha");
             let pos = m.positions();
             let mut folded = 0usize;
             let mut worst = f64::INFINITY;
@@ -1652,7 +1653,7 @@ fn normal_at(f: &Field, p: [f64; 3], eps: f64) -> [f64; 3] {
 fn the_exported_mesh_is_a_watertight_quad_grid() {
     use std::collections::{BTreeMap, BTreeSet};
     for (name, doc) in extraction_fixtures() {
-        let m = crate::extract::extract(&doc, 6).expect("malha");
+        let m = crate::extract::extract(&doc, &Registry::new(), 6).expect("malha");
         assert!(m.faces().len() > 100, "{name}: a malha saiu vazia");
 
         let quads = m.faces().iter().filter(|f| !f.is_tri()).count();
@@ -1712,7 +1713,7 @@ fn a_live_edge_lands_on_the_edge_not_on_the_grid() {
             half: [half as f32; 3],
             round: 0.0,
         });
-        let m = crate::extract::extract(&doc, depth).expect("malha");
+        let m = crate::extract::extract(&doc, &Registry::new(), depth).expect("malha");
 
         // A aresta ideal x = half, y = half, fatiada em faixas de uma célula ao longo de z.
         let slots = (2.0 * half / cell).ceil() as usize + 1;
@@ -1742,4 +1743,283 @@ fn a_live_edge_lands_on_the_edge_not_on_the_grid() {
              NaN sobre a superfície"
         );
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// W21 — o avaliador HÍBRIDO. ⚠️ O gate decisivo é o de **paridade**: a booleana existe duas vezes
+// (como árvore e como aritmética `f32`), porque um `min` entre uma fita de JIT e uma grade de voxels
+// não cabe dentro de nenhuma das duas. Dois motores, uma lei — e aqui está o juiz.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+use crate::hybrid::{Hybrid, Registry, Sampled};
+
+/// Um campo "amostrado" que na verdade é **analítico** — o duplo que torna a paridade mensurável.
+///
+/// ⚠️ **É isto que faz o gate de paridade existir.** Comparar o caminho híbrido com o da árvore exige
+/// que os dois consigam representar a MESMA peça, e uma grade de voxels nunca é bit-a-bit igual a uma
+/// fórmula. Com um duplo exato, toda a diferença que sobrar é **da lei**, que é o que se quer medir.
+struct AnalyticSphere {
+    radius: f32,
+}
+
+impl Sampled for AnalyticSphere {
+    fn at(&self, p: [f32; 3]) -> f32 {
+        (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt() - self.radius
+    }
+}
+
+/// Uma varredura determinística do cubo `[-1, 1]`.
+fn grid_points(n: usize) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
+    let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
+    for i in 0..n {
+        let t = i as f32 / n as f32;
+        xs.push((t * 37.0).sin() * 0.9);
+        ys.push((t * 41.0).cos() * 0.9);
+        zs.push((t * 43.0).sin() * 0.9);
+    }
+    (xs, ys, zs)
+}
+
+/// ⭐ **Um documento SEM escultura continua a ser uma fita só** — o caminho rápido não regride.
+///
+/// ⚠️ **É metade do desenho, e sem gate ela apodrece em silêncio.** Se a fusão parasse de funcionar,
+/// cada `Combine` viraria uma fita de JIT própria e a booleana passaria a acontecer em `f32` fora
+/// delas: o resultado continuaria **certo** (é a mesma lei) e o traçado ficaria várias vezes mais
+/// lento, sem um único teste vermelho.
+#[test]
+fn an_all_analytic_document_stays_one_tape() {
+    let reg = Registry::new();
+    for (name, doc) in extraction_fixtures() {
+        let h = Hybrid::new(&doc, &reg);
+        assert_eq!(h.tape_count(), 1, "{name}: a fusão não fundiu");
+        assert_eq!(
+            h.sampled_count(),
+            0,
+            "{name}: não há escultura nenhuma aqui"
+        );
+    }
+}
+
+/// ⭐ **A lei numérica é a MESMA lei da árvore** — o juiz dos dois motores.
+///
+/// A mesma peça é montada duas vezes: uma com a esfera como **primitiva** (a booleana corre dentro
+/// da árvore, em `ops`) e outra com a esfera como **escultura** (a booleana corre em `f32`, em
+/// `hybrid::apply`). Se as duas fórmulas divergirem — num filete, num sinal, num `max` trocado — os
+/// números separam-se aqui.
+///
+/// ⚠️ **Os três operadores e os três caracteres de mistura**, e não um só: a diferença passa por
+/// De Morgan duas vezes, e é exatamente aí que um sinal se perde.
+#[test]
+fn the_numeric_law_is_the_same_law_as_the_tree() {
+    use ph2d_field::{Node, NodeId, NodeKind};
+    let radius = 0.5f32;
+    let mut reg = Registry::new();
+    reg.insert(
+        "esfera".into(),
+        std::sync::Arc::new(AnalyticSphere { radius }),
+    );
+
+    let (xs, ys, zs) = grid_points(4_000);
+    for blend in [
+        Blend::Sharp,
+        Blend::Exact { radius: 0.08 },
+        Blend::Organic { k: 0.08 },
+    ] {
+        for op in [
+            Op::Union(blend),
+            Op::Intersection(blend),
+            Op::Difference(blend),
+        ] {
+            let cyl = || {
+                leaf(
+                    Primitive::Cylinder {
+                        radius: 0.3,
+                        half_height: 0.8,
+                        round: 0.0,
+                    },
+                    Xform::IDENTITY,
+                )
+            };
+            let tree_doc = FieldDoc::new(
+                vec![
+                    leaf(Primitive::Sphere { radius }, Xform::IDENTITY),
+                    cyl(),
+                    Node::new(
+                        Xform::IDENTITY,
+                        NodeKind::Combine {
+                            op,
+                            children: vec![NodeId(0), NodeId(1)],
+                        },
+                    ),
+                ],
+                NodeId(2),
+            )
+            .expect("doc analítico");
+            let mixed_doc = FieldDoc::new(
+                vec![
+                    Node::new(
+                        Xform::IDENTITY,
+                        NodeKind::Sampled {
+                            key: "esfera".into(),
+                        },
+                    ),
+                    cyl(),
+                    Node::new(
+                        Xform::IDENTITY,
+                        NodeKind::Combine {
+                            op,
+                            children: vec![NodeId(0), NodeId(1)],
+                        },
+                    ),
+                ],
+                NodeId(2),
+            )
+            .expect("doc misto");
+
+            let mut a = Hybrid::new(&tree_doc, &reg);
+            let mut b = Hybrid::new(&mixed_doc, &reg);
+            assert_eq!(a.tape_count(), 1, "o analítico funde numa fita");
+            assert_eq!(b.sampled_count(), 1, "o misto tem uma folha amostrada");
+
+            let va = a.eval(&xs, &ys, &zs).expect("lote").to_vec();
+            let vb = b.eval(&xs, &ys, &zs).expect("lote").to_vec();
+            let worst = va
+                .iter()
+                .zip(&vb)
+                .map(|(p, q)| (p - q).abs())
+                .fold(0.0f32, f32::max);
+            // ⚠️ A barra é de **representação**, não de gosto: os dois caminhos fazem as mesmas
+            // contas noutra ordem, em `f32`. Um erro de LEI (um sinal, um `max` trocado) mede-se em
+            // décimos, não em `1e-5`.
+            assert!(
+                worst < 1e-5,
+                "{op:?}: a lei numérica divergiu da árvore em {worst:.2e}"
+            );
+        }
+    }
+}
+
+/// ⚠️ **Uma escultura que o registo não conhece lê como espaço VAZIO** — nunca como sólido.
+///
+/// O caso não é hipotético: é um projeto carregado antes de a malha ser regenerada. Ler como sólido
+/// encheria a cena de um bloco que ninguém autorizou, e numa **subtração** ele comeria a peça toda.
+#[test]
+fn an_unknown_sculpture_reads_as_empty_space() {
+    use ph2d_field::{Node, NodeId, NodeKind};
+    let reg = Registry::new();
+    let (xs, ys, zs) = grid_points(500);
+    let cyl = || {
+        leaf(
+            Primitive::Cylinder {
+                radius: 0.3,
+                half_height: 0.8,
+                round: 0.0,
+            },
+            Xform::IDENTITY,
+        )
+    };
+    let alone = FieldDoc::new(vec![cyl()], NodeId(0)).expect("só o cilindro");
+    for op in [
+        Op::Union(Blend::Sharp),
+        Op::Difference(Blend::Sharp),
+        Op::Intersection(Blend::Sharp),
+    ] {
+        let with_ghost = FieldDoc::new(
+            vec![
+                cyl(),
+                Node::new(
+                    Xform::IDENTITY,
+                    NodeKind::Sampled {
+                        key: "não existe".into(),
+                    },
+                ),
+                Node::new(
+                    Xform::IDENTITY,
+                    NodeKind::Combine {
+                        op,
+                        children: vec![NodeId(0), NodeId(1)],
+                    },
+                ),
+            ],
+            NodeId(2),
+        )
+        .expect("doc com fantasma");
+        let mut a = Hybrid::new(&alone, &reg);
+        let mut b = Hybrid::new(&with_ghost, &reg);
+        let va = a.eval(&xs, &ys, &zs).expect("lote").to_vec();
+        let vb = b.eval(&xs, &ys, &zs).expect("lote").to_vec();
+        // Na união e na subtração o fantasma não faz nada. Na intersecção ele **apaga** — e é isso
+        // que "vazio" quer dizer; o gate mede o sinal, não o valor.
+        match op {
+            Op::Intersection(_) => assert!(
+                vb.iter().all(|v| *v > 0.0),
+                "intersectar com o vazio tem de dar vazio"
+            ),
+            _ => {
+                let worst = va
+                    .iter()
+                    .zip(&vb)
+                    .map(|(p, q)| (p - q).abs())
+                    .fold(0.0f32, f32::max);
+                assert!(
+                    worst < 1e-4,
+                    "{op:?}: o fantasma mexeu na peça ({worst:.2e})"
+                );
+            }
+        }
+    }
+}
+
+/// ⭐ **A POSE de uma escultura é desfeita na amostragem** — as duas metades, translação e escala.
+///
+/// ⚠️ A segunda metade é a que se esquece: o valor tem de voltar **multiplicado pela escala**. Sem
+/// ela o campo deixa de ser uma distância assim que houver escala, e todo raio de filete contra a
+/// escultura mede outra coisa.
+#[test]
+fn the_pose_of_a_sculpture_is_undone_on_the_sample() {
+    use ph2d_field::{Node, NodeId, NodeKind};
+    let mut reg = Registry::new();
+    reg.insert(
+        "esfera".into(),
+        std::sync::Arc::new(AnalyticSphere { radius: 0.4 }),
+    );
+    let posed = |t: [f32; 3], s: f32| {
+        FieldDoc::new(
+            vec![Node::new(
+                Xform {
+                    translation: t,
+                    scale: s,
+                    ..Xform::IDENTITY
+                },
+                NodeKind::Sampled {
+                    key: "esfera".into(),
+                },
+            )],
+            NodeId(0),
+        )
+        .expect("doc posado")
+    };
+
+    // Movida: o centro vai com ela.
+    let doc = posed([0.3, 0.0, 0.0], 1.0);
+    let mut h = Hybrid::new(&doc, &reg);
+    let v = h
+        .eval(&[0.3, 0.0], &[0.0, 0.0], &[0.0, 0.0])
+        .expect("lote")
+        .to_vec();
+    assert!((v[0] + 0.4).abs() < 1e-5, "o centro mudou-se: {v:?}");
+    assert!((v[1] + 0.1).abs() < 1e-5, "e a origem ficou a 0,1 dentro");
+
+    // Escalada 2×: o raio dobra, **e a distância também** — é a segunda metade.
+    let doc = posed([0.0; 3], 2.0);
+    let mut h = Hybrid::new(&doc, &reg);
+    let v = h
+        .eval(&[0.0, 1.0], &[0.0, 0.0], &[0.0, 0.0])
+        .expect("lote")
+        .to_vec();
+    assert!((v[0] + 0.8).abs() < 1e-5, "o raio tem de dobrar: {v:?}");
+    assert!(
+        (v[1] - 0.2).abs() < 1e-5,
+        "e a 1,0 do centro a distância é 1,0 − 0,8: {v:?}"
+    );
 }

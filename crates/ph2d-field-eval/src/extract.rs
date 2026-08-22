@@ -45,11 +45,9 @@
 //! que a tabela disser o contrário, o eixo a abrir é a poda por aritmética de intervalos, que a
 //! `fidget` já expõe.
 
-use fidget::shape::EzShape;
-use fidget::types::Grad;
 use ph2d_mesh::{Face, Mesh};
 
-use crate::{Engine, MeshError};
+use crate::MeshError;
 
 /// As 12 arestas do cubo, como pares de cantos `b = dx + 2·dy + 4·dz`.
 const CUBE_EDGES: [(usize, usize); 12] = [
@@ -268,18 +266,17 @@ fn crossings_of(
 ///
 /// # Errors
 /// Ver [`MeshError`]. A malha sai **vazia** (e não em erro) quando o nível zero não cruza a caixa.
-pub fn extract(doc: &ph2d_field::FieldDoc, depth: u8) -> Result<Mesh, MeshError> {
-    let shape = Engine::from(crate::compile(doc));
+pub fn extract(
+    doc: &ph2d_field::FieldDoc,
+    reg: &crate::hybrid::Registry,
+    depth: u8,
+) -> Result<Mesh, MeshError> {
+    let mut field = crate::hybrid::Hybrid::new(doc, reg);
     let grid = Grid::new(depth);
     let m = grid.samples();
 
-    let mut feval = Engine::new_float_slice_eval();
-    let ftape = shape.ez_float_slice_tape();
-    let mut geval = Engine::new_grad_slice_eval();
-    let gtape = shape.ez_grad_slice_tape();
-
     let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
-    let mut sample = |k: usize, out: &mut Vec<f32>| -> Result<(), MeshError> {
+    let plane_coords = |k: usize, xs: &mut Vec<f32>, ys: &mut Vec<f32>, zs: &mut Vec<f32>| {
         xs.clear();
         ys.clear();
         zs.clear();
@@ -292,17 +289,12 @@ pub fn extract(doc: &ph2d_field::FieldDoc, depth: u8) -> Result<Mesh, MeshError>
                 zs.push(z);
             }
         }
-        let v = feval
-            .eval(&ftape, &xs, &ys, &zs)
-            .map_err(|e| MeshError::Rejected(format!("avaliação em lote: {e}")))?;
-        out.clear();
-        out.extend_from_slice(v);
-        Ok(())
     };
 
     let mut plane_lo = Vec::new();
     let mut plane_hi = Vec::new();
-    sample(0, &mut plane_lo)?;
+    plane_coords(0, &mut xs, &mut ys, &mut zs);
+    plane_lo.extend_from_slice(field.eval(&xs, &ys, &zs)?);
 
     let mut positions: Vec<[f32; 3]> = Vec::new();
     let mut faces: Vec<Face> = Vec::new();
@@ -312,15 +304,14 @@ pub fn extract(doc: &ph2d_field::FieldDoc, depth: u8) -> Result<Mesh, MeshError>
     // Reaproveitados a cada camada — a alocação mora fora do laço de propósito.
     let mut cross: Vec<[f64; 3]> = Vec::new();
     let mut spans: Vec<(usize, usize, usize, usize)> = Vec::new();
-    // ⚠️ A entrada do avaliador de gradiente é **dual**: cada eixo entra com a sua própria derivada
-    // a 1 e as outras a 0. Passar `f32` cru compila (há `From<f32>`) e devolve gradiente **zero** —
-    // o modo de falha silencioso deste avaliador.
-    let (mut gx, mut gy, mut gz): (Vec<Grad>, Vec<Grad>, Vec<Grad>) =
+    let (mut gx, mut gy, mut gz): (Vec<f32>, Vec<f32>, Vec<f32>) =
         (Vec::new(), Vec::new(), Vec::new());
-    let mut grads: Vec<Grad> = Vec::new();
+    let mut grads: Vec<[f32; 3]> = Vec::new();
 
     for k in 0..grid.n {
-        sample(k + 1, &mut plane_hi)?;
+        plane_coords(k + 1, &mut xs, &mut ys, &mut zs);
+        plane_hi.clear();
+        plane_hi.extend_from_slice(field.eval(&xs, &ys, &zs)?);
 
         // — Passo 1: as travessias de cada célula da camada.
         cross.clear();
@@ -355,14 +346,14 @@ pub fn extract(doc: &ph2d_field::FieldDoc, depth: u8) -> Result<Mesh, MeshError>
             gy.clear();
             gz.clear();
             for p in &cross {
-                gx.push(Grad::new(p[0] as f32, 1.0, 0.0, 0.0));
-                gy.push(Grad::new(p[1] as f32, 0.0, 1.0, 0.0));
-                gz.push(Grad::new(p[2] as f32, 0.0, 0.0, 1.0));
+                gx.push(p[0] as f32);
+                gy.push(p[1] as f32);
+                gz.push(p[2] as f32);
             }
-            let g = geval
-                .eval(&gtape, &gx, &gy, &gz)
-                .map_err(|e| MeshError::Rejected(format!("gradiente em lote: {e}")))?;
-            grads.extend_from_slice(g);
+            // ⚠️ O passo da diferença central só é usado quando há escultura (ver
+            // [`Hybrid::gradients`]); um documento analítico continua a ter gradiente EXATO, que é
+            // o que prende a quina viva.
+            field.gradients(&gx, &gy, &gz, (grid.step * 0.01) as f32, &mut grads)?;
         }
 
         // — Passo 3: um vértice por célula, preso à célula.
@@ -392,7 +383,7 @@ pub fn extract(doc: &ph2d_field::FieldDoc, depth: u8) -> Result<Mesh, MeshError>
 }
 
 /// O vértice de uma célula, das suas travessias e das normais nelas.
-fn cell_vertex(grid: &Grid, cell: [usize; 3], cross: &[[f64; 3]], grads: &[Grad]) -> [f64; 3] {
+fn cell_vertex(grid: &Grid, cell: [usize; 3], cross: &[[f64; 3]], grads: &[[f32; 3]]) -> [f64; 3] {
     let mut ata = [[0.0f64; 3]; 3];
     let mut atb = [0.0f64; 3];
     let mut mass = [0.0f64; 3];
@@ -400,7 +391,7 @@ fn cell_vertex(grid: &Grid, cell: [usize; 3], cross: &[[f64; 3]], grads: &[Grad]
         for r in 0..3 {
             mass[r] += p[r];
         }
-        let mut nrm = [f64::from(g.dx), f64::from(g.dy), f64::from(g.dz)];
+        let mut nrm = [f64::from(g[0]), f64::from(g[1]), f64::from(g[2])];
         let len = nrm[2]
             .mul_add(nrm[2], nrm[0].mul_add(nrm[0], nrm[1] * nrm[1]))
             .sqrt();

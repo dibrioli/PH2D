@@ -420,8 +420,13 @@ fn what_do_the_photos_measure() {
     }
 }
 
-/// ⛔⛔ **VERMELHO — A ORELHA SAI COM UMA ARESTA DE 56 % DA PEÇA** (as fotos de
-/// 2026-08-22).
+/// ⭐⭐⭐ **VERDE desde 2026-08-22** — a aresta de **56 %** que o artista fotografou
+/// mede hoje **12,4 % · 7,8 % · 5,5 %** nos três níveis do slider, e as dobras
+/// caíram de **2 204 para 171**. O que a curou foi o **campo**: `ALIGN_WEIGHT`
+/// deixou de ser zero, e o número dele saiu do gabarito do oráculo (`PLAN.md`
+/// §4-tritricies), não de uma varredura no fim da cadeia.
+///
+/// ⛔ **O que ela foi** (as fotos de 2026-08-22).
 ///
 /// ⚠️ **O artista mandou três fotos e a palavra «muito ruim», e NENHUMA régua desta
 /// linha piscou:** 100 % de quads · casca fechada · característica de Euler exacta ·
@@ -524,7 +529,6 @@ fn what_do_the_photos_measure() {
 ///   the_ear_does_not_ship_an_edge_across_the_piece -- --ignored --nocapture
 /// ```
 #[test]
-#[ignore = "VERMELHO -- a orelha sai com uma aresta de 56% da peca, ver o doc"]
 fn the_ear_does_not_ship_an_edge_across_the_piece() {
     let reference = crate::sculpt3d::fixtures::eared_sphere();
     let b = reference.bounds();

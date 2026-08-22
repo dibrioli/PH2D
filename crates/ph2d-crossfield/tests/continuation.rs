@@ -50,20 +50,31 @@ fn the_continuation_is_inert_without_alignment() {
             cr.recentres, 0,
             "{name}: re-centrou sem ter termo a re-centrar"
         );
-
-        // ⭐⭐ **E ESTA LINHA É O TRIPWIRE DO `ALIGN_WEIGHT`.** Enquanto ele for
-        // `0`, o caminho do produto tem de ser byte-idêntico à lei antiga; no dia
-        // em que alguém o mover, é aqui que ele repara — e o doc da constante
-        // explica-lhe porque é que ela está a zero apesar de o termo funcionar (o
-        // toro perde o buraco). ⛔ Se esta asserção reprovar, o conserto é o gate
-        // `the_genus_survives_every_alignment_weight`, não esta linha.
-        let (shipped, _) = solve_miq_with(&dual, Rounding::default());
-        assert_eq!(
-            base, shipped,
-            "{name}: o caminho do produto divergiu da lei so'-suavidade -- \
-             o ALIGN_WEIGHT saiu de zero? leia o doc dele antes de mexer aqui"
-        );
     }
+}
+
+/// ⭐⭐⭐ **O CAMPO QUE SHIPA É O ALINHADO** — e este gate morre se alguém puser o
+/// `ALIGN_WEIGHT` de volta a zero.
+///
+/// ⛔ **Ele existe porque a constante já esteve a zero, com uma tabela a explicar
+/// porquê.** Voltar a zero é uma decisão legítima — o que não pode é acontecer em
+/// silêncio: sem esta asserção o produto perderia a obediência ao relevo (medido:
+/// `24,2°` contra `13,7°` na fixtura com cristas) e **todas** as outras réguas
+/// continuariam verdes — 100 % de quads, casca fechada, contagem de irregulares boa.
+///
+/// ⚠️ **A fixtura tem de ter anisotropia**, senão o termo encolhe-se sozinho e a
+/// diferença desaparece por razão errada. O toro tem-na em toda a parte.
+#[test]
+fn the_shipped_field_is_the_aligned_one() {
+    let mesh = tri(shapes::torus(48, 24, 1.0, 0.35));
+    let dual = Dual::build(&mesh);
+    let (shipped, _) = solve_miq_with(&dual, Rounding::default());
+    let (smooth, _) = solve_miq_continued(&dual, Rounding::default(), 0.0, RAW);
+    assert_ne!(
+        shipped, smooth,
+        "o campo que shipa e' identico ao SO'-SUAVIDADE -- o ALIGN_WEIGHT voltou a \
+         zero? leia o doc dele antes de mexer aqui"
+    );
 }
 
 /// ⭐⭐ **PRESENÇA — com alinhamento o aquecimento MUDA o campo.**

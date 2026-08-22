@@ -25,57 +25,57 @@ use super::solve::{Rounding, SolveReport, round_once};
 /// (onde as duas curvaturas são iguais) o termo encolhe-se sozinho. *Um alinhamento
 /// que puxa onde a forma não tem direção põe uma costura onde ela não pede nenhuma.*
 ///
-/// # ⭐ O termo FUNCIONA, e a varredura escolheu `0,03`
+/// # ⭐⭐⭐ O NÚMERO SAIU DO GABARITO DO ORÁCULO, não de uma varredura no fim
 ///
-/// Sonda `how_much_alignment_can_the_field_take`, 2026-08-22, cinco fixturas, com a
-/// [`Continuation`] ligada. A coluna é o **desvio ao relevo**, entre parênteses as
-/// **dobras**:
+/// ⛔ **A primeira varredura media o relevo da MALHA MONTADA** — onde o campo, o
+/// traçado, a quantização e a montagem estão todos misturados. Ela dava tabelas
+/// não-monótonas, escolhia `0,03` por acaso e o número partia noutro sítio; e a
+/// conclusão de então foi *"o termo funciona mas não shipa"*.
 ///
-/// | peso | CRISTAS | ENRUGADA | GANCHO | ORELHA | LISA (controlo) |
-/// |---|---|---|---|---|---|
-/// | **`0`** | 25,7° (0) | 22,9° (0) | 24,6° (0) | 22,9° (5) | 20,0° |
-/// | `0,01` | 16,7° (0) | 16,9° ⛔(10) | 21,0° (0) | 25,2° (0) | 29,3° |
-/// | ⭐ **`0,03`** | **13,7°** (0) | **13,7°** (0) | **17,1°** (1) | 23,5° (0) | 14,4° |
-/// | `0,05` | 14,4° ⛔(40) | 16,1° (0) | 17,7° (0) | 21,8° (0) | 17,3° |
-/// | `0,2` | 17,4° (0) | 11,9° (0) | 17,4° (2) | 19,4° (0) | 27,1° |
+/// ⭐⭐ **O oráculo grava o campo dele em disco** (`*_rem.rosy`, uma direção por
+/// face — `PLAN.md` §4-duotricies). Medido **na malha remalhada DELE**, com a régua
+/// da [`ph2d_quadfill::follows_relief`] aplicada ao **campo** e não à malha:
 ///
-/// ⭐ `0,03` melhora as três fixturas com sinal e mantém as dobras em zero-ou-uma
-/// nas cinco — e leva o desvio a **13,7°**, o mesmo número do Instant Meshes.
+/// | peça | o NOSSO a `0` | ⭐ o do ORÁCULO | aleatório |
+/// |---|---|---|---|
+/// | com cristas | ⛔ **24,3°** | ⭐ **12,1°** | 22,5° |
+/// | com bico | ⛔ **22,9°** | ⭐ **11,4°** | 22,5° |
+/// | enrugada | 14,8° | 12,4° | 22,5° |
 ///
-/// ⚠️ **A `ORELHA` não vota** (confiança da régua `0,02`–`0,05` contra `0,10`–`0,24`
-/// nas outras: aquela peça é quase esférica, e `22,9°` ali é *"não há para onde
-/// olhar"*), e a **`LISA` é o controlo que se lê ao contrário** — confiança `0,00`,
-/// número puro ruído. ⛔ Nunca compare o relevo entre fixturas de confiança
-/// diferente.
+/// ⇒ **Duas das três ficavam do lado errado do aleatório.** Com um alvo à saída da
+/// própria fase, o peso escolhe-se sozinho:
 ///
-/// # ⛔⛔ E MESMO ASSIM ELE É ZERO — porque `0,03` REGRIDE a topologia
+/// | peso | cristas (alvo 12,1°) | bico (11,4°) | enrugada (12,4°) | singularidades |
+/// |---|---|---|---|---|
+/// | `0` | ⛔ 24,3° | ⛔ 22,9° | 14,8° | 10 · 26 · 8 |
+/// | `0,01` | 15,6° | 15,0° | 12,0° | 12 · 22 · 8 |
+/// | ⭐⭐ **`0,03`** | **14,7°** | **13,9°** | **11,7°** | **12 · 22 · 8** |
+/// | `0,1` | 13,2° | 12,5° | 11,4° | 12 · 29 · 8 |
+/// | `1,0` | 9,7° | 10,5° | 9,9° | ⛔ 48 · 50 · 8 |
 ///
-/// ⛔ **O toro perde o buraco.** Medido no mesmo dia
-/// (`which_alignment_weights_keep_the_genus`), característica de Euler da saída,
-/// onde um toro exige `0`:
+/// # ⭐⭐⭐ E a cadeia inteira, nas nossas fixturas
 ///
-/// | fixtura | peso `0` | peso `0,03` |
+/// | fixtura | peso `0` | ⭐ **`0,03`** |
 /// |---|---|---|
-/// | toro 32×16 | ✓ `0` | ⛔ **`2`** |
-/// | toro 48×24 | ⛔ **`2`** | ✓ `0` |
-/// | toro 64×32 | ✓ `0` | ⛔ **`2`** |
+/// | ⛔ **orelha**, aresta máxima | ⛔ **56,5 % · 56,3 % · 57,0 %** da peça | ⭐ **12,4 % · 7,8 % · 5,5 %** |
+/// | ⛔ **orelha**, dobras | ⛔ 42 · 134 · **2 204** | ⭐ **0 · 0 · 171** |
+/// | com cristas, relevo | 24,2° | ⭐ **13,7°** |
+/// | enrugada, relevo | 23,1° | ⭐ **13,8°** |
+/// | com bico, relevo | 23,9° | ⭐ **19,0°** |
 ///
-/// ⇒ **`0,03` parte dois dos três; o zero parte um.** Ligá-lo hoje seria trocar o
-/// relevo por uma regressão de topologia, e topologia não se negoceia.
+/// ⭐⭐ **É a aresta que o artista fotografou três vezes**, e ela desaparece.
 ///
-/// ⚠️⚠️ **E a linha do meio é a notícia grande: o defeito É PRÉ-EXISTENTE.** O toro
-/// 48×24 sai errado **hoje, no produto, sem alinhamento nenhum** — e passa em todas
-/// as outras réguas (100 % de quads, zero bordo, zero não-manifold, contagem de
-/// irregulares na ordem certa). *Uma peça pode passar em toda asserção e ter deixado
-/// de ser um toro.* O alinhamento não causou nada: só mudou **qual** toro cai.
+/// ⚠️ **`0,1` é melhor no campo e recusa na cadeia** (a quantização do gancho não
+/// fecha). `0,03` é o maior peso que fecha em todas as cinco fixturas.
 ///
-/// ⇒ ⭐⭐ **O próximo passo tem nome, e a sonda já o localizou:** a topologia
-/// perde-se no **F3, o traçado** — o *complexo* de patches (`V − E + F` sobre
-/// cantos, arcos e patches) já sai com `χ = 2` antes de a montagem começar, e o F5
-/// realiza fielmente o que o layout manda. Ver `where_is_the_genus_lost` e o
-/// `PLAN.md` §4-duovicies. **Este peso liga-se no dia em que o traçado parar de
-/// perder asas** — não antes.
-pub const ALIGN_WEIGHT: f32 = 0.0;
+/// # ⚠️ O preço, dito por extenso
+///
+/// ⛔ **O toro 32×16 passa a RECUSAR** (`GenusLost`) onde a `0` ele entregava malha.
+/// ⭐ **E a rede apanha-o:** a porta do produto tenta o campo alinhado e cai para o
+/// só-suavidade quando o layout não fecha (`quad_remesh_global`), com o relatório a
+/// dizer qual correu. *A rede foi construída no mesmo dia e é agora que ela ganha o
+/// lugar dela.*
+pub const ALIGN_WEIGHT: f32 = 0.03;
 
 /// ⭐⭐ **A CONTINUAÇÃO DO ALINHAMENTO** — como o arredondamento inteiro absorve
 /// um termo que muda o `θ` debaixo dele.

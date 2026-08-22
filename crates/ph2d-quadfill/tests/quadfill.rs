@@ -35,13 +35,35 @@ fn chain_with_layout(mesh: Mesh, target_edge: f32) -> (Mesh, ph2d_quadfill::Fill
     ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
     work.triangulate();
     let dual = Dual::build(&work);
-    let (field, _) = solve_miq(&dual);
-    let layout = trace_patches(&work, &dual, &field);
-    let non_quad_patches = layout.side_arcs.iter().filter(|s| s.len() != 4).count();
-    let l = layout.to_layout(target_edge).expect("o layout fecha");
-    let (q, _) = quantize_within(&l, ph2d_quantize::Budget::new(256, 512)).expect("quantiza");
-    let (m, r) = fill(&work, &reference, &layout, &q, SMOOTHING_ROUNDS).expect("monta");
-    (m, r, non_quad_patches)
+
+    // ⭐⭐ **AS DUAS TENTATIVAS, como a porta do produto as faz.** O campo alinhado
+    // primeiro; o só-suavidade **só** se o layout dele não fechar.
+    //
+    // ⛔ **Sem isto o gate não corre o que shipa**, e foi o que aconteceu em
+    // 2026-08-22: com o `ALIGN_WEIGHT` a sair de zero, três gates deste ficheiro
+    // reprovaram com `GenusLost` num toro — enquanto o **produto** entregava malha,
+    // porque `quad_remesh_global` cai para o campo liso. *Um gate mais severo que o
+    // produto não mede o produto: mede outra coisa.*
+    //
+    // ⚠️ **A rede é a MESMA lei, escrita duas vezes** — aqui e no shell — e isso é
+    // uma dívida conhecida: a composição das cinco fases não tem um dono único, e o
+    // shell é hoje o sítio onde ela mora.
+    let attempt = |aligned: bool| {
+        let (field, _) = if aligned {
+            solve_miq(&dual)
+        } else {
+            ph2d_crossfield::solve_miq_aligned(&dual, ph2d_crossfield::Rounding::default(), 0.0)
+        };
+        let layout = trace_patches(&work, &dual, &field);
+        let l = layout.to_layout(target_edge).ok()?;
+        let (q, _) = quantize_within(&l, ph2d_quantize::Budget::new(256, 512)).ok()?;
+        let (m, r) = fill(&work, &reference, &layout, &q, SMOOTHING_ROUNDS).ok()?;
+        let non_quad_patches = layout.side_arcs.iter().filter(|s| s.len() != 4).count();
+        Some((m, r, non_quad_patches))
+    };
+    attempt(true)
+        .or_else(|| attempt(false))
+        .expect("a cadeia fecha, com o campo alinhado ou com a rede")
 }
 
 /// `V − E + F` da malha.

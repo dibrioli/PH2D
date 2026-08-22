@@ -2962,3 +2962,56 @@ não-monótonas. *O peso de uma energia escolhe-se à saída da fase em que ela 
 ⇒ **O passo seguinte é correr a cadeia INTEIRA a `0,1`** nas nossas fixturas, com o
 que hoje já está curado (a semente do `θ`, a ponte do anel, a lei `scale`) — e ver se
 os gates do género e da aresta máxima aguentam o que o campo agora sabe fazer.
+
+---
+
+## 4-quattuortricies — ⭐⭐⭐ **O CAMPO ALINHADO SHIPA, e a aresta da FOTO desaparece**
+
+> `ALIGN_WEIGHT` deixou de ser zero. O número veio do gabarito do oráculo
+> (§4-tritricies), não de uma varredura no fim da cadeia.
+
+### ⭐⭐⭐ O que o artista vê
+
+| | peso `0` | ⭐ **`0,03`** |
+|---|---|---|
+| ⛔ **orelha — aresta máxima** | ⛔ **56,5 % · 56,3 % · 57,0 %** da peça | ⭐ **12,4 % · 7,8 % · 5,5 %** |
+| ⛔ **orelha — dobras** | ⛔ 42 · 134 · **2 204** | ⭐ **0 · 0 · 171** |
+| gancho — aresta / dobras (d=1) | 11,6 % / 19 | ⭐ **5,3 % / 18** |
+| enrugada — aresta / dobras (d=1) | 6,1 % / 70 | ⭐ **3,6 % / 11** |
+| com cristas — relevo | 24,2° | ⭐ **13,7°** |
+| enrugada — relevo | 23,1° | ⭐ **13,8°** |
+| com bico — relevo | 23,9° | ⭐ **19,0°** |
+
+⭐⭐ **É a aresta que o artista fotografou três vezes, e ela desaparece.** O gate
+`the_ear_does_not_ship_an_edge_across_the_piece` deixou de ser `#[ignore]`.
+
+⚠️ **`0,1` é melhor no campo e recusa na cadeia** (a quantização do gancho não fecha);
+`0,03` é o maior peso que fecha nas cinco fixturas de escultura.
+
+### ⚠️ O preço, dito por extenso
+
+⛔ **O toro 32×16 passa a RECUSAR** — e pior: com o campo alinhado o **traçado**
+produz ali uma fronteira malformada (*"o lado 5 acaba em 81 e o lado 6 começa em
+200"*, um patch de nove lados).
+
+⭐ **O produto está protegido por duas coisas construídas no mesmo dia:** a cerca
+`LayoutError::GenusLost` recusa o layout, e a porta cai para o campo só-suavidade
+(`quad_remesh_global`), com o relatório a dizer qual correu. *A rede foi construída de
+manhã e é agora que ela ganha o lugar dela.*
+
+⛔ **E a fragilidade tem gate próprio e vermelho:**
+`the_tracer_survives_the_aligned_field` (`#[ignore]`, em `ph2d-trace/tests/trace.rs`).
+
+### ⭐ Um gate mais severo que o produto não mede o produto
+
+Ao ligar o peso, **seis gates reprovaram** — e nenhum por o produto estar mau:
+
+| gate | porque reprovou | o conserto |
+|---|---|---|
+| 3 × `ph2d-quadfill::quadfill` | o helper `chain()` **não tinha a rede** que a porta tem | passou a fazer as duas tentativas, como o produto |
+| 3 × `ph2d-trace` | afirmam coisas sobre o **traçado** e corriam sobre o campo do **produto** | passaram a correr sobre o campo só-suavidade |
+
+⚠️ **A segunda linha é a lição:** um gate do F3 que muda de cor quando uma constante
+do F2 se move está a testar **duas** fases, e no dia em que reprova não diz qual
+quebrou. *Um gate, uma afirmação* — e a afirmação sobre a fragilidade passou a ter
+gate próprio em vez de contaminar seis.

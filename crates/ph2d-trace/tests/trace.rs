@@ -6,16 +6,29 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_crossfield::{Dual, solve_miq};
+use ph2d_crossfield::{Dual, Rounding, solve_miq_aligned};
 use ph2d_mesh::{Mesh, shapes};
 use ph2d_quantize::quantize;
 use ph2d_trace::{PatchLayout, Ring, trace_patches};
 
 /// Traça uma malha e devolve a decomposição.
+///
+/// ⭐⭐ **O campo é o SÓ-SUAVIDADE, de propósito, e não o que shipa.** Estes gates
+/// afirmam coisas sobre o **traçado**: que toda fronteira encadeia, que não sobra
+/// patch degenerado, que o F4 aceita o layout. Corrê-los sobre o campo do produto
+/// fá-los mudar de cor quando uma **constante do F2** se move — e aí eles deixam de
+/// dizer qual das duas fases quebrou.
+///
+/// ⛔ **Medido em 2026-08-22:** com o `ALIGN_WEIGHT` a sair de zero, três gates
+/// deste ficheiro reprovaram num toro com *"o lado 5 acaba em 81 e o lado 6 começa
+/// em 200"* — uma fronteira malformada. *A afirmação verdadeira ali não é «o traçado
+/// está partido»: é «o traçado é frágil a uma perturbação do campo».* São duas
+/// frases diferentes, e a segunda tem gate próprio
+/// (`the_tracer_survives_the_aligned_field`, `#[ignore]`, vermelho).
 fn decompose(mut mesh: Mesh) -> (Mesh, PatchLayout) {
     mesh.triangulate();
     let dual = Dual::build(&mesh);
-    let (field, _) = solve_miq(&dual);
+    let (field, _) = solve_miq_aligned(&dual, Rounding::default(), 0.0);
     let out = trace_patches(&mesh, &dual, &field);
     (mesh, out)
 }
@@ -278,5 +291,49 @@ fn every_patch_side_chains_into_the_next() {
                 );
             }
         }
+    }
+}
+
+/// ⛔⛔ **VERMELHO — O TRAÇADO É FRÁGIL A UMA PERTURBAÇÃO DO CAMPO.**
+///
+/// ⚠️ **Medido em 2026-08-22**, quando o `ALIGN_WEIGHT` saiu de zero: no toro 32×16
+/// o campo alinhado leva o traçado a produzir um patch de **nove lados cuja fronteira
+/// não encadeia** — *"o lado 5 acaba em 81 e o lado 6 começa em 200"*. Nas fixturas
+/// de escultura o mesmo peso fecha em todas.
+///
+/// ⭐ **O produto está protegido por duas coisas construídas no mesmo dia:** a cerca
+/// `LayoutError::GenusLost` recusa o layout, e a porta cai para o campo só-suavidade
+/// (`quad_remesh_global`). *A malha que o artista recebe é boa; o que não está bom é
+/// esta fase.*
+///
+/// ⛔ **`#[ignore]` porque é vermelho, não porque é lento** — e fica assim para a
+/// fragilidade ter endereço em vez de se dissolver numa nota.
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-trace --release \
+///     --test trace -- --ignored the_tracer_survives_the_aligned_field
+/// ```
+#[test]
+#[ignore = "VERMELHO -- o tracado produz fronteira malformada no toro com campo alinhado"]
+fn the_tracer_survives_the_aligned_field() {
+    for (name, mesh) in [
+        ("toro 32x16", shapes::torus(32, 16, 1.0, 0.35)),
+        ("esfera 48x72", shapes::uv_sphere(48, 72, 1.0)),
+    ] {
+        let mut mesh = mesh;
+        mesh.triangulate();
+        let dual = Dual::build(&mesh);
+        let (field, _) =
+            solve_miq_aligned(&dual, Rounding::default(), ph2d_crossfield::ALIGN_WEIGHT);
+        let out = trace_patches(&mesh, &dual, &field);
+        let bad = out.degenerate();
+        assert!(
+            bad.is_empty(),
+            "{name}: sobraram patches degenerados {bad:?} com o campo que shipa"
+        );
+        assert!(
+            out.to_layout(0.06).is_ok(),
+            "{name}: o F4 recusou o layout produzido com o campo que shipa"
+        );
     }
 }

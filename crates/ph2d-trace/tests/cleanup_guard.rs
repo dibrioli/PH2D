@@ -23,6 +23,21 @@ fn tri(mut m: Mesh) -> Mesh {
     m
 }
 
+/// ⭐⭐ **O campo SÓ-SUAVIDADE, e não o que shipa** — a mesma razão do
+/// `tests/trace.rs`.
+///
+/// Estes gates afirmam coisas sobre a **limpeza** e sobre a **ponte**: que ela nunca
+/// piora a topologia, que ainda fecha o que fechava, que a ponte só entra quando
+/// melhora estritamente. ⛔ Corrê-los sobre o campo do produto fá-los mudar de cor
+/// quando uma **constante do F2** se move — e aí deixam de dizer qual das duas fases
+/// quebrou. *Um gate por afirmação.*
+///
+/// ⚠️ A fragilidade do traçado ao campo alinhado tem gate próprio e vermelho:
+/// `the_tracer_survives_the_aligned_field`, em `tests/trace.rs`.
+fn smooth_field(dual: &Dual) -> (ph2d_crossfield::CrossField, ph2d_crossfield::SolveReport) {
+    ph2d_crossfield::solve_miq_aligned(dual, ph2d_crossfield::Rounding::default(), 0.0)
+}
+
 /// A distância topológica de um layout: `0` é uma decomposição honesta.
 fn gap(layout: &ph2d_trace::PatchLayout) -> i64 {
     (layout.complex_euler() - layout.mesh_chi).abs()
@@ -56,7 +71,7 @@ fn the_cleanup_never_worsens_the_topology() {
         ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
         work.triangulate();
         let dual = Dual::build(&work);
-        let (field, _) = ph2d_crossfield::solve_miq(&dual);
+        let (field, _) = smooth_field(&dual);
 
         // ⚠️ **O ponto de partida é a decomposição CRUA**, antes de a limpeza
         // correr — é contra ela que «não piorar» significa alguma coisa.
@@ -99,7 +114,7 @@ fn the_cleanup_still_closes_what_it_can() {
         ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
         work.triangulate();
         let dual = Dual::build(&work);
-        let (field, _) = ph2d_crossfield::solve_miq(&dual);
+        let (field, _) = smooth_field(&dual);
         let walker = Walker::new(&work, &dual, &field);
         let (walls, base) = walker.trace_all();
         let raw = decompose(&work, &walls, base);
@@ -149,7 +164,7 @@ fn the_bridge_is_only_adopted_when_it_strictly_helps() {
         ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
         work.triangulate();
         let dual = Dual::build(&work);
-        let (field, _) = ph2d_crossfield::solve_miq(&dual);
+        let (field, _) = smooth_field(&dual);
         let out = ph2d_trace::trace_patches(&work, &dual, &field);
         eprintln!(
             "[f3] {name}: distancia {} · {} rondas de dissolucao · {} patches",

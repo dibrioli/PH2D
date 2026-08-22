@@ -78,6 +78,71 @@ fn hits_derived(items: &[ph2d_vec_scene::VecPath], p: [f64; 2], stroke_hit_r: f6
     })
 }
 
+/// **Por que porta** um caminho foi pego — é isto, e só isto, que ordena a lista do
+/// clique-cíclico.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum HitKind {
+    /// O ponto cai na geometria **desta** forma. É o caso de toda forma que se desenha, e o
+    /// único que existia antes da booleana viva.
+    Own,
+    /// A forma foi **ABSORVIDA** por uma booleana viva e o ponto cai na tinta do GRUPO. Ela está
+    /// legitimamente ali dentro — mas não é ela que está sob o dedo, e por isso entra **depois**
+    /// de quem está.
+    Door,
+}
+
+/// `p` (mundo) pega o path `id`, **e por que porta**: pela geometria dele, ou — sendo ele um
+/// operando absorvido por uma booleana viva — pela tinta do grupo que o absorveu.
+#[allow(clippy::too_many_arguments)] // as mesmas entradas que DESENHAR um caminho pede
+fn hit_kind(
+    sim: &SimWorld,
+    scene: &VecScene,
+    live: &LiveGeometry,
+    view_state: &VecViewState,
+    entity: Entity,
+    id: VecPathId,
+    p: [f32; 2],
+    stroke_hit_r: f64,
+) -> Option<HitKind> {
+    // A DERIVADA manda quando existe: com um offset vivo o documento guarda a curva autorada e
+    // a tela mostra outra coisa, então apalpar a fonte pegaria a forma onde ela NÃO está (e
+    // deixaria de pegá-la onde está). O mesmo `live` que o renderer consome, pela mesma chave.
+    if let Some(items) = live.get(&id) {
+        let pw = [f64::from(p[0]), f64::from(p[1])];
+        if !items.is_empty() {
+            return hits_derived(items, pw, stroke_hit_r).then_some(HitKind::Own);
+        }
+        // ⚠️ **Uma entrada VAZIA são DUAS coisas — idênticas aqui, OPOSTAS no significado.** A
+        // *aniquilação* (o offset comeu a forma) não deixou nada na tela, e não há nada a pegar.
+        // A *absorção* por uma booleana viva não apagou coisa alguma: o operando continua no
+        // documento, continua a contribuir, e o **grupo desenha por ele**. Quem separa os dois é
+        // a tabela que o `bool_live` publica no `VecViewState` — sem ela o operando absorvido
+        // ficava inalcançável pelo canvas, que foi o report do Enio (2026-08-22: *"depois de
+        // configurar só é possível selecionar e mover no canvas uma shape"*).
+        let base = view_state.absorbed_door(id)?;
+        // ⚠️ **A porta é a TINTA DO GRUPO, e mais nada.** É o que mantém *nada desenhado, nada
+        // pego* **intacta** em vez de furada: o cortador de um `Subtract` ocupa exactamente o
+        // BURACO, e alcançá-lo pelo próprio footprint faria um clique em tela limpa selecionar
+        // uma forma invisível — e roubá-lo de quem está por baixo.
+        if !live
+            .get(&base)
+            .is_some_and(|door| hits_derived(door, pw, stroke_hit_r))
+        {
+            return None;
+        }
+        // Dentro da tinta do grupo, quem de facto está sob o dedo vem antes de quem só está lá
+        // dentro: clicar no lobo esquerdo de uma união tem de nomear o círculo esquerdo.
+        return Some(
+            if hits_source(sim, scene, view_state, entity, id, p, stroke_hit_r) {
+                HitKind::Own
+            } else {
+                HitKind::Door
+            },
+        );
+    }
+    hits_source(sim, scene, view_state, entity, id, p, stroke_hit_r).then_some(HitKind::Own)
+}
+
 /// `p` (mundo) pega o path `id`: no INTERIOR (formas fechadas) OU a ≤ `stroke_hit_r`
 /// do TRAÇO (formas abertas e a borda de fechadas).
 #[allow(clippy::too_many_arguments)] // as mesmas entradas que DESENHAR um caminho pede
@@ -91,12 +156,22 @@ fn contains_path(
     p: [f32; 2],
     stroke_hit_r: f64,
 ) -> bool {
-    // A DERIVADA manda quando existe: com um offset vivo o documento guarda a curva autorada e
-    // a tela mostra outra coisa, então apalpar a fonte pegaria a forma onde ela NÃO está (e
-    // deixaria de pegá-la onde está). O mesmo `live` que o renderer consome, pela mesma chave.
-    if let Some(items) = live.get(&id) {
-        return hits_derived(items, [f64::from(p[0]), f64::from(p[1])], stroke_hit_r);
-    }
+    hit_kind(sim, scene, live, view_state, entity, id, p, stroke_hit_r).is_some()
+}
+
+/// O mesmo teste, contra a geometria da **FONTE** — a curva autorada, posta no mundo pela pose.
+///
+/// É o caminho de quem não tem derivada nenhuma no mapa, e também o desempate de quem foi
+/// absorvido: a fonte de um operando não se moveu, e é ela que diz se ele está sob o dedo.
+fn hits_source(
+    sim: &SimWorld,
+    scene: &VecScene,
+    view_state: &VecViewState,
+    entity: Entity,
+    id: VecPathId,
+    p: [f32; 2],
+    stroke_hit_r: f64,
+) -> bool {
     // ⚠️ **A POSE do auto layout entra aqui.** A forma colocada é DESENHADA pela geometria assada
     // (o ramo acima), mas quando o pick não recebe essa geometria o que sobra é a pose autorada —
     // e ela não se mexeu: o clique procurava a forma no lugar de onde ela saiu. A pose vem DEPOIS
@@ -187,7 +262,16 @@ pub(crate) fn pick_all_at_world(
     p: [f32; 2],
     stroke_hit_r: f64,
 ) -> Vec<u64> {
-    let mut out = Vec::new();
+    // ⚠️ **Duas classes, não duas listas concorrentes.** Um operando absorvido por uma booleana
+    // viva é alcançável em toda a tinta do grupo — logo, sobre uma união de quatro formas, as
+    // quatro respondem em qualquer ponto. Se elas entrassem só pela ordem de z, clicar no lobo
+    // ESQUERDO nomearia o círculo mais ao topo, que pode ser o da direita. Quem está mesmo sob o
+    // dedo vem primeiro; os demais seguem, ainda em z, ao alcance do clique seguinte.
+    //
+    // Para toda forma que NÃO foi absorvida isto é um no-op exacto: ela só entra na lista quando
+    // o ponto cai nela, portanto é sempre `Own`, e a ordem continua a ser a de z.
+    let mut own = Vec::new();
+    let mut door = Vec::new();
     for path in scene.paths().iter().rev() {
         if !view_state.is_pickable(path.id) {
             continue;
@@ -196,13 +280,17 @@ pub(crate) fn pick_all_at_world(
             continue;
         };
         let e = Entity::from_bits(bits);
-        if sim.world().get_entity(e).is_ok()
-            && contains_path(sim, scene, live, view_state, e, path.id, p, stroke_hit_r)
-        {
-            out.push(bits);
+        if sim.world().get_entity(e).is_err() {
+            continue;
+        }
+        match hit_kind(sim, scene, live, view_state, e, path.id, p, stroke_hit_r) {
+            Some(HitKind::Own) => own.push(bits),
+            Some(HitKind::Door) => door.push(bits),
+            None => {}
         }
     }
-    out
+    own.extend(door);
+    own
 }
 
 /// A forma mais ao topo sob `p`, ou `None`. Conveniência dos testes: o canvas
@@ -231,10 +319,19 @@ fn world_bbox(
     sim: &SimWorld,
     scene: &VecScene,
     live: &LiveGeometry,
+    view_state: &VecViewState,
     e: Entity,
     id: VecPathId,
 ) -> Option<([f64; 2], [f64; 2])> {
-    if let Some(items) = live.get(&id) {
+    // ⚠️ Um operando ABSORVIDO tem entrada vazia, e cair no ramo derivado dava-lhe caixa
+    // NENHUMA — o marquee passava por cima de um grupo booleano e levava só a base, de modo que
+    // arrastar a seleção movia uma forma e deixava as outras para trás. A caixa dele é a da
+    // FONTE, que é exactamente a que o gizmo desenha (`vec_gizmo_view`): as duas metades do
+    // mesmo gesto têm de medir o mesmo retângulo.
+    let absorbed = view_state.absorbed_door(id).is_some();
+    if let Some(items) = live.get(&id)
+        && !(absorbed && items.is_empty())
+    {
         // Já é de mundo: a união das caixas das peças, sem passar pela pose (assá-la de novo
         // colocaria a caixa duas vezes longe da forma).
         return items
@@ -288,7 +385,7 @@ pub(crate) fn pick_in_world_rect(
         if sim.world().get_entity(e).is_err() {
             continue;
         }
-        let Some((wlo, whi)) = world_bbox(sim, scene, live, e, path.id) else {
+        let Some((wlo, whi)) = world_bbox(sim, scene, live, view_state, e, path.id) else {
             continue;
         };
         let overlaps = whi[0] >= f64::from(rect_min[0])
@@ -316,3 +413,8 @@ mod hit_tests;
 #[cfg(test)]
 #[path = "vec_offset_pick_tests.rs"]
 mod offset_pick_tests;
+
+/// Os gates do pick sobre a BOOLEANA viva — o operando absorvido, e a tela limpa que continua limpa.
+#[cfg(test)]
+#[path = "vec_bool_pick_tests.rs"]
+mod bool_pick_tests;

@@ -100,6 +100,10 @@ fn announce(app: &mut crate::App) {
     eprintln!("     chamado 'Boolean'.");
     eprintln!("  3. Abra o grupo, selecione o CÍRCULO e ARRASTE. ⚠️ A pergunta da wave: o");
     eprintln!("     recorte segue a mão, quadro a quadro, enquanto você arrasta.");
+    eprintln!("  3b. Agora SEM a Hierarquia: clique na forma combinada, no canvas. Clique de");
+    eprintln!("     novo no MESMO ponto e a seleção passa ao operando seguinte — inclusive o");
+    eprintln!("     que foi COMIDO por um Subtract e não desenha nada. ⚠️ E o contrário tem de");
+    eprintln!("     valer: clicar DENTRO do buraco não pega nada, porque ali não há tinta.");
     eprintln!("  4. Com o grupo selecionado, clique Intersect. ⚠️ Ele TROCA a operação — não cria");
     eprintln!("     um segundo grupo e não consome nada. Os oito botões são o seletor.");
     eprintln!("  5. Faça o mesmo na ROSQUINHA+barra: Subtract abre uma fenda, Intersect deixa");

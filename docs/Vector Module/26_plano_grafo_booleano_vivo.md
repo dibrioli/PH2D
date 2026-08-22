@@ -47,7 +47,7 @@ Vale registar, porque a 2ª nasceu de uma correção pedida à 1ª:
 - **A correção de acessibilidade do `paint_clip.rs`** ficou: era um defeito REAL da tarefa do recorte
   (2026-08-21), apanhado de passagem, e nada tem a ver com o grafo.
 
-## 3. ⚠️ O DEFEITO que o diagrama expôs — e que VOLTOU com a retirada
+## 3. ✅ O DEFEITO que o diagrama expôs — CURADO, e sem diagrama nenhum
 
 Durante o smoke, o Enio reportou:
 
@@ -55,14 +55,62 @@ Durante o smoke, o Enio reportou:
 
 **Isto não era do grafo.** É uma lei pré-existente da booleana viva: um operando consumido desenha
 **VAZIO** no mapa, e a regra do canvas é *"nada desenhado, nada pego"*
-([`vec_gizmo_pick`](../../shells/desktop/src/vec_gizmo_pick.rs)) — ele fica inalcançável **pelo
-clique no canvas**. Está assim desde que a booleana viva shipou; o diagrama só o tornou óbvio, e
+([`vec_gizmo_pick`](../../shells/desktop/src/vec_gizmo_pick.rs)) — ele ficava inalcançável **pelo
+clique no canvas**. Estava assim desde que a booleana viva shipou; o diagrama só o tornou óbvio, e
 depois passou a ser a porta que o contornava (clicar num círculo selecionava a forma).
 
-⚠️ **Com o diagrama fora, essa porta foi-se e o defeito volta ao que era.** Ele fica aqui registado
-porque é a única coisa desta wave que era um problema de verdade, independente do diagrama, e
-**continua por resolver**. Curá-lo não exige um grafo — exige decidir por onde um operando consumido
-se alcança (a Hierarquia? um modo de isolamento como o do Illustrator? um ciclo de `Tab`?).
+Retirado o diagrama, o defeito voltou ao que era — e foi **curado à parte, em 2026-08-22**.
+
+### 3.1 A lei, numa frase
+
+> **A tinta do GRUPO é a porta dos operandos dele.** Onde a booleana desenha, cada operando
+> absorvido é alcançável; onde ela não desenha, nada é pego.
+
+⚠️ **A cura não fura a lei do pick — dá ao operando a porta que ele de facto tem.** Um operando
+absorvido não desapareceu: ele continua no documento, continua a contribuir, e o grupo desenha *por*
+ele. O que faltava era distinguir isso da **ANIQUILAÇÃO** (o offset que come a forma), e no mapa as
+duas são o mesmo `Some(vec![])`.
+
+### 3.2 O mecanismo
+
+O `bool_live` publica os pares *(operando, base que carrega a tinta)* no `VecViewState.absorbed` —
+a mesma prateleira dos `clips` e das `poses`, e pela mesma razão: é um fato que só o DESENHO sabe, e
+o hit-test monta o estado dele do zero a cada evento de ponteiro. Zero assinaturas de pick mudaram.
+
+Três consequências, cada uma com gate:
+
+1. **A porta é a tinta do grupo, nunca o footprint do operando.** ⛔ A variante ingênua — alcançar o
+   operando onde ele está — passa no gate do alcance e **falha** no do `Subtract`: o cortador ocupa
+   exactamente o BURACO, então clicar em tela limpa selecionaria uma forma invisível e roubaria o
+   clique de quem está por baixo.
+2. **Quem está sob o dedo vem primeiro.** Dentro da tinta, TODOS os operandos respondem em qualquer
+   ponto — sem uma partição, clicar no lobo esquerdo de uma união nomearia o círculo do topo, que
+   pode ser o da direita. O resto da lista fica ao alcance do clique seguinte, pelo ciclo que o
+   canvas já tinha.
+3. **O aninhamento resolve-se na publicação, não no pick.** A base de um grupo interno é ela própria
+   operando do externo, logo o mapa dela também acaba vazio: um par direto apontaria para uma porta
+   **sem tinta**, e o defeito voltaria inteiro — só nos documentos aninhados, que são os que ninguém
+   smoka.
+
+E o gizmo não precisou de nada: a caixa dele **já** vinha da FONTE (decisão do `vec_gizmo_view`,
+não esquecimento), então o operando alcançado nasce com caixa e alças no sítio certo. O marquee é
+que precisou da mesma tabela — sem ela apanhava só a base, e arrastar a seleção partia a booleana
+ao meio.
+
+### 3.3 A prova
+
+Oito gates em [`vec_bool_pick_tests.rs`](../../shells/desktop/src/vec_bool_pick_tests.rs), em pares
+alcance/regressão, e **sete mutantes mortos com sangramento diferenciado** — a mutação canônica (o
+`absorbed_door` a devolver sempre `None`, que é o produto de antes) sangra os seis de alcance e
+deixa **verdes** os dois que defendem a tela limpa.
+
+⚠️ **A primeira rodada de mutação MENTIU, e no sentido perigoso:** o harness restaurava os arquivos
+com `shutil.copy2`, que repõe o **mtime original** — mais antigo que o artefacto recém-compilado. O
+cargo deixou de reconstruir a crate, e os seis mutantes seguintes correram **com o primeiro ainda
+ligado**, todos a sangrar exactamente os mesmos seis gates. Sete mortos, zero provados. *O sinal de
+que era harness e não prova foi o sangramento ser IDÊNTICO — um mutante que só toca o aninhamento
+não pode derrubar o gate de duas formas.* Restaure por `write_text`, e ponha um controlo que exige
+o verde de volta antes do mutante seguinte.
 
 ## 4. O que foi MEDIDO (os números sobrevivem à recusa)
 
@@ -126,6 +174,9 @@ degrau errado. Registo de componentes **60 → 58**.
 | O quê | Por quê | Onde |
 |---|---|---|
 | **O diagrama inteiro** | *"não ficou legal. confuso de usar"* — veredito de produto, **não** do modelo nem do custo | §1 |
+| Alcançar o operando absorvido pelo **próprio footprint** | O cortador de um `Subtract` ocupa o BURACO: seria um clique em tela limpa a selecionar forma invisível | §3.2 |
+| Ordenar a lista do clique só por **z** | Todos os operandos respondem em qualquer ponto da tinta ⇒ clicar num lobo nomearia o círculo do outro | §3.2 |
+| Mapear o absorvido para a **base imediata** (sem cadeia) | Num grupo aninhado essa base também tem o mapa vazio: porta sem tinta | §3.2 |
 | Grafo de nós para efeitos de UMA forma | Medido e rejeitado antes; a pilha por-path venceu | [ADR-0132](../architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md) |
 | Receita (`Trim`/`Crop`/`Merge`/`MinusBack`) numa ligação | Não é relação entre DOIS; é afirmação sobre a pilha inteira | §5.3 |
 | Um ANEL/plano SEM mostrar z | Apaga o dado que decide a ordem de dobra | §5.2 |

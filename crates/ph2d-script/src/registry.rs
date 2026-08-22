@@ -51,7 +51,9 @@ mod tests {
         // linha** — não a suíte da crate tocada, que nunca chega aqui.
         //
         // O número CONTA-SE: 63 (`ph2d-ecs`) + 1 (`LuauScript`).
-        assert_eq!(reg.len(), 64);
+        // 2026-08-22 (integracao): +1 `VecClipContent` da `line/Vector` — o ECS esta' em 64,
+        // e este e' `ecs + 1` (LuauScript). ⛔ Grandezas DIFERENTES do `ph2d-ecs`; nao copie.
+        assert_eq!(reg.len(), 65);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

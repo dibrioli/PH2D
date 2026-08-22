@@ -156,12 +156,55 @@ impl BoolLive {
         self.plans.iter().find(|(b, _)| *b == bits).map(|(_, c)| c)
     }
 
+    /// **QUEM ABSORVEU cada operando neste frame** — o par *(operando, base que carrega a tinta)*,
+    /// publicado no `VecViewState` para o hit-test e o marquee.
+    ///
+    /// A base de cada grupo **não** entra: ela carrega o resultado, logo é alcançável pela própria
+    /// entrada do mapa, como qualquer forma desenhada.
+    ///
+    /// # O ANINHAMENTO é resolvido AQUI, e não no pick
+    ///
+    /// ⚠️ A base de um grupo interno é ela própria um operando do grupo externo — e portanto o
+    /// mapa dela também acaba **VAZIO**. Um par direto `(operando_interno → base_interna)`
+    /// apontaria para uma porta sem tinta, e o operando ficaria tão inalcançável quanto antes: o
+    /// defeito voltaria, **só nos documentos aninhados**, que são precisamente os que ninguém
+    /// smoka. Seguir a cadeia até quem de facto desenha é uma volta por frame, e deixa o pick a
+    /// fazer uma pergunta só.
+    #[must_use]
+    pub(crate) fn absorbed(&self) -> Vec<(VecPathId, VecPathId)> {
+        let direct: Vec<(VecPathId, VecPathId)> = self
+            .plans
+            .iter()
+            .flat_map(|(_, c)| c.operands.iter().skip(1).map(|&id| (id, c.base)))
+            .collect();
+        direct
+            .iter()
+            .map(|&(operand, base)| (operand, outermost_door(&direct, base)))
+            .collect()
+    }
+
     /// Esquece tudo — o load de projeto e o restore de undo trocam a cena inteira debaixo do
     /// memo, e os `VecPathId` são reciclados entre documentos.
     pub(crate) fn forget(&mut self) {
         self.memo.clear();
         self.plans.clear();
     }
+}
+
+/// A base que de facto **desenha**, subindo a cadeia de absorções a partir de `base`.
+///
+/// Uma base absorvida por um grupo mais externo tem o mapa vazio; quem tem tinta é a base do
+/// grupo do topo. O teto é o número de pares — a cadeia é estritamente ascendente por
+/// profundidade, então não há ciclo a temer, e o limite é defesa contra um estado corrompido.
+fn outermost_door(direct: &[(VecPathId, VecPathId)], base: VecPathId) -> VecPathId {
+    let mut cur = base;
+    for _ in 0..direct.len() {
+        match direct.iter().find(|(operand, _)| *operand == cur) {
+            Some(&(_, next)) => cur = next,
+            None => break,
+        }
+    }
+    cur
 }
 
 /// A entrada de um operando: o que o mapa já diz, ou a fonte assada em MUNDO.

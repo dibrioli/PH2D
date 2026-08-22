@@ -7824,6 +7824,11 @@ impl crate::App {
             //   componente do PAI, então convive com o offset de cada filho.
             self.bool_live
                 .recook(vec_scene, sim, &self.vec_entities, &vec_xf, &mut vec_live);
+            // **QUEM FOI ABSORVIDO**, publicado no mesmo fôlego em que a absorção acontece. Sem
+            // isto o operando consumido — que recebe uma lista VAZIA logo acima — fica
+            // indistinguível de uma forma ANIQUILADA por um offset, e a lei *nada desenhado, nada
+            // pego* torna-o inalcançável pelo canvas (Enio, 2026-08-22).
+            vec_view.absorbed = self.bool_live.absorbed();
             // **O Apply corre AQUI, e não no dreno**, porque ele materializa o `plan` que o
             // `recook` acabou de computar — *o que está na tela*. Chamar o motor de novo lá em
             // cima seria a segunda porta, e ela faria a forma SALTAR no clique.
@@ -8111,12 +8116,16 @@ impl crate::App {
             // geometria: as âncoras do modo Node, a caixa do gizmo e o hit-test leem a pose
             // AUTORADA, e ela não se mexeu com o layout.
             vec_view.poses = self.layout_live.poses();
-            // **E os dois fatos derivados são PUBLICADOS** para quem vier depois do desenho. O
+            // **E os TRÊS fatos derivados são PUBLICADOS** para quem vier depois do desenho. O
             // hit-test monta o `VecViewState` dele do zero a cada evento de ponteiro, e aquela
             // porta só sabe o que a ÁRVORE diz (escondido, travado) — sem isto ele decide como se
-            // nenhuma moldura existisse e nenhuma forma tivesse sido colocada.
+            // nenhuma moldura existisse, nenhuma forma tivesse sido colocada e nenhum operando
+            // tivesse sido absorvido.
             self.vec_view_derived.clips.clone_from(&vec_view.clips);
             self.vec_view_derived.poses.clone_from(&vec_view.poses);
+            self.vec_view_derived
+                .absorbed
+                .clone_from(&vec_view.absorbed);
             // **O ALINHAMENTO roda por ÚLTIMO, e TRANSFORMA o mapa em vez de o estender.**
             // Os cinco acima são mutuamente exclusivos (um componente cada, um por vez no
             // painel), e é isso que torna o `extend` seguro. O alinhamento não é membro dessa

@@ -45,7 +45,10 @@ mod tests {
         // comentario e' a prova de que o precedente acima funciona: o gate do ECS ficou verde
         // primeiro, e foi ESTE que cobrou a segunda metade.
         // 2026-08-21: +1 `NamedAnchorList` (ADR-0072).
-        assert_eq!(reg.len(), 64);
+        // 2026-08-22 (integracao): +1 `VecClipContent` da `line/Vector` — o ECS esta' em 64,
+        // e este e' `ecs + 1`. ⛔ Nao copie para aqui o numero que o `ph2d-ecs` afirma: sao
+        // grandezas DIFERENTES, e copiar foi o erro que trouxe este gate ao vermelho na linha.
+        assert_eq!(reg.len(), 65);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

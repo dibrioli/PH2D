@@ -145,13 +145,13 @@ pub(crate) fn next_root_order(sim: &mut SimWorld) -> u32 {
 ///
 /// - *escondido* e *travado* saem do mundo **deste instante** (o artista pode ter acabado de
 ///   apagar o olhinho, e o clique tem de honrá-lo já);
-/// - os **intervalos das molduras** e as **poses do auto layout** são resultado do passe de
-///   layout, que roda no desenho — e o artista clica no que está na TELA, que é o último frame
-///   desenhado.
+/// - os **intervalos das molduras**, as **poses do auto layout** e **quem foi ABSORVIDO por uma
+///   booleana viva** são resultado do passe de desenho — e o artista clica no que está na TELA,
+///   que é o último frame desenhado.
 ///
-/// Sem esta fusão o gesto vê as duas listas VAZIAS e decide como se nenhuma moldura existisse:
-/// a moldura ganha o clique dos próprios filhos, e o hit-test procura cada forma colocada no
-/// lugar de onde ela saiu.
+/// Sem esta fusão o gesto vê as três listas VAZIAS e decide como se nenhuma moldura existisse:
+/// a moldura ganha o clique dos próprios filhos, o hit-test procura cada forma colocada no
+/// lugar de onde ela saiu, e um operando absorvido fica inalcançável pelo canvas.
 #[must_use]
 pub(crate) fn view_state_for_pick(
     sim: &SimWorld,
@@ -161,6 +161,7 @@ pub(crate) fn view_state_for_pick(
     let mut v = view_state(sim, map);
     v.clips.clone_from(&derived.clips);
     v.poses.clone_from(&derived.poses);
+    v.absorbed.clone_from(&derived.absorbed);
     v
 }
 

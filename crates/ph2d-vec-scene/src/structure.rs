@@ -58,6 +58,28 @@ pub struct VecViewState {
     /// ⚠️ **Composição:** o mundo desta forma é `pose ∘ xform_of(id)` — a pose vem DEPOIS, porque
     /// ela age sobre a geometria já posta no mundo.
     pub poses: Vec<(VecPathId, crate::Xform)>,
+    /// **QUEM ABSORVEU cada operando de uma booleana viva** — o par *(operando, BASE)*, em que a
+    /// base é o caminho que carrega a tinta do grupo no mapa. Vazio = nenhuma booleana viva neste
+    /// frame, e tudo se lê **exactamente** como antes.
+    ///
+    /// # Por que o hit-test precisa disto
+    ///
+    /// Um operando absorvido recebe uma lista **VAZIA** no mapa (`bool_live`), e a lei do pick é
+    /// *nada desenhado, nada pego* — logo ele fica **inalcançável pelo canvas**. Era o report do
+    /// Enio (2026-08-22): *"depois de configurar só é possível selecionar e mover no canvas uma
+    /// shape"*. A cura não é uma exceção à lei; é dar ao operando a porta que ele de facto tem.
+    ///
+    /// ⚠️ **`vazio` de ANIQUILAÇÃO e `vazio` de ABSORÇÃO são idênticos no mapa e OPOSTOS no
+    /// significado.** Um offset que come a forma não deixou nada na tela e não há nada a pegar; a
+    /// absorção não apagou coisa nenhuma — o operando continua no documento, continua a
+    /// contribuir, e o grupo desenha *por* ele. **Esta tabela é a única coisa que separa os dois
+    /// casos**: olhando só para o mapa, os dois são `Some(vec![])`.
+    ///
+    /// ⚠️ **A porta é a TINTA DO GRUPO, nunca o footprint do operando** — e é isso que mantém a
+    /// lei intacta em vez de a furar. O cortador de um `Subtract` ocupa exactamente o **BURACO**:
+    /// alcançá-lo pelo próprio footprint faria um clique em tela limpa selecionar algo invisível,
+    /// e roubaria o clique de quem está por baixo.
+    pub absorbed: Vec<(VecPathId, VecPathId)>,
 }
 
 /// **Uma moldura que recorta**, dita em termos da pilha de z: *do `frame` (exclusive) até o `last`
@@ -94,6 +116,21 @@ impl VecViewState {
             .iter()
             .find(|(p, _)| *p == id)
             .map_or(crate::Xform::IDENTITY, |(_, x)| *x)
+    }
+
+    /// **A BASE que absorveu `id`** — a forma cuja tinta é a porta deste operando. `None` = ele
+    /// não foi absorvido por booleana nenhuma neste frame, e o vazio dele no mapa é a
+    /// aniquilação de sempre.
+    ///
+    /// ⚠️ **Porta única**, pela razão exacta do [`Self::layout_pose`]: o hit-test e o marquee
+    /// fazem a MESMA pergunta, e duas leituras da mesma tabela é como um dos dois volta a não
+    /// achar a forma.
+    #[must_use]
+    pub fn absorbed_door(&self, id: VecPathId) -> Option<VecPathId> {
+        self.absorbed
+            .iter()
+            .find(|(operand, _)| *operand == id)
+            .map(|(_, base)| *base)
     }
 
     /// A tinta resolvida desta forma, se algum token a dirige.

@@ -97,6 +97,18 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// esfera com bico — que não é um sólido estrelado — acusava os dois motores
     /// de dobrar sem que nenhum dos dois tivesse dobrado.
     pub folded: usize,
+    /// ⭐⭐ **O campo desta corrida obedeceu ao RELEVO?**
+    ///
+    /// ⛔ **Ele existe porque a cadeia global tem uma REDE**, e uma rede silenciosa
+    /// é indistinguível de uma feature que regrediu: quando o layout do campo
+    /// alinhado não fecha, a porta volta a correr o campo só-suavidade e devolve uma
+    /// malha perfeitamente boa por todas as outras réguas — 100 % de quads, casca
+    /// fechada, contagem de irregulares na mesma ordem. *Sem este campo, «o
+    /// alinhamento deixou de funcionar» leria exactamente como «funcionou».*
+    ///
+    /// ⚠️ **`false` no backend LOCAL**, e não é *"não sei"*: aquele motor não tem
+    /// campo cruzado com termo de alinhamento nenhum, então a resposta é um facto.
+    pub aligned: bool,
 }
 
 impl Sculpt3dScene {
@@ -199,6 +211,9 @@ impl Sculpt3dScene {
             edge_max_ratio: f32::NAN,
             edge_median_ratio: f32::NAN,
             edge_max_span: f32::NAN,
+            // ⚠️ **`false` é um FACTO aqui**, não um *"não sei"*: este motor não tem
+            // campo cruzado nenhum, logo não tem termo de alinhamento para ligar.
+            aligned: false,
             // ⭐ **A MESMA régua do outro backend, e é por isso que ela é medida
             // aqui e não estimada.** Sem esta linha o motor local aparecia como
             // *"não dobra"* por não ter quem contasse — que é o mesmo defeito do

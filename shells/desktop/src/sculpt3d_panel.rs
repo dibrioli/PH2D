@@ -17,7 +17,7 @@
 use ph2d_panel_sculpt3d::{Sculpt3dIntent, Sculpt3dSnapshot, Sculpt3dUi};
 
 use super::dyntopo::DETAIL_STEPS;
-use super::{MaskOp, Primitive, Sculpt3dScene, legacy_requested, ratio};
+use super::{MaskOp, Primitive, Sculpt3dScene, legacy_requested, retopo_line};
 
 /// **O que o LAÇO DE FRAME tem de cumprir** por um gesto do painel.
 ///
@@ -413,53 +413,10 @@ impl Sculpt3dScene {
                     // grandeza de defeito **geométrico** desta linha: uma peça
                     // pode sair com 100 % de quads, casca fechada e a contagem
                     // certa de irregulares, e mesmo assim estar cheia delas.
-                    Ok(r) => eprintln!(
-                        "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
-                         {} irregulares, aresta mediana {} do alvo e a mais longa {}, com quad de {:.4} \
-                         em {:.0} ms{}{}",
-                        r.verts,
-                        r.quads,
-                        r.non_quads,
-                        100.0 * r.quads as f64 / (r.quads + r.non_quads).max(1) as f64,
-                        if r.irregular == usize::MAX {
-                            String::from("?")
-                        } else {
-                            r.irregular.to_string()
-                        },
-                        ratio(r.edge_median_ratio),
-                        // ⚠️ **A MÁXIMA vai nas DUAS réguas, e a que decide é a
-                        // fração.** Ver `QuadRemeshReport::edge_max_span`: a razão
-                        // ao alvo triplica com o slider **sem defeito nenhum** (o
-                        // denominador é que encolhe), e é a fração da peça que
-                        // responde *"alguma coisa atravessa a peça?"*. Imprimir só
-                        // uma delas deixaria o leitor a comparar números que não são
-                        // comparáveis entre duas corridas do slider.
-                        if r.edge_max_span.is_finite() {
-                            format!(
-                                "{} do alvo = {:.1}% da peca",
-                                ratio(r.edge_max_ratio),
-                                100.0 * r.edge_max_span
-                            )
-                        } else {
-                            String::from("?")
-                        },
-                        r.edge,
-                        r.ms,
-                        if r.holes == 0 {
-                            String::from(" -- casca FECHADA")
-                        } else {
-                            format!(" -- ⚠️ {} BURACO(S) na casca", r.holes)
-                        },
-                        if r.folded == 0 {
-                            String::new()
-                        } else {
-                            format!(
-                                " -- ⚠️ {} face(s) DOBRADA(S) ({:.1}%)",
-                                r.folded,
-                                100.0 * r.folded as f64 / (r.quads + r.non_quads).max(1) as f64
-                            )
-                        }
-                    ),
+                    // ⚠️ **A LINHA mora no irmão que produz o relatório** — teto
+                    // de 600 LOC por arquivo da shell (HR-18), e o corte é de
+                    // assunto: quem sabe o que cada coluna significa é quem a mediu.
+                    Ok(r) => eprintln!("{}", retopo_line(&r)),
                     // ⚠️ **UMA frase, e ela mora com o tipo.** Cinco braços
                     // aqui e cinco nas teclas explicavam a MESMA recusa com
                     // textos que nada obrigava a concordar.

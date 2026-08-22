@@ -80,7 +80,7 @@ mod view;
 #[path = "sculpt3d_history.rs"]
 mod history;
 
-use history::{Entry, StrokeUndo, legacy_requested, ratio};
+use history::{Entry, StrokeUndo, legacy_requested, retopo_line};
 
 use donation::FormRole;
 use donation::FormStamp;

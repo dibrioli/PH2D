@@ -389,15 +389,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   + undo), e a `Mesh` é **f32**. ⚠️ E o que o porte custou está registrado: **três vezes a RÉGUA se corrigiu antes do
   algoritmo**, e a fração de 96,4% que este §5 anunciava era **fabricada** (vinha de emparelhar triângulos e fechar
   n-gons com um nó no meio — operações que criam quads que a referência nunca emite).
-  ⭐ **A CADEIA NOVA ENTREGA MALHA, e com os números do pivô** — 100% de quads, característica de Euler exata,
-  e vértices irregulares de **39,7% para 0,5%** (fator ~85 sobre o motor local; o oráculo fica em 0,2%).
-  Cinco crates: `ph2d-remesh-iso` (F1) · `ph2d-crossfield` (F2 — **8 singularidades numa esfera, o ótimo
-  topológico**) · `ph2d-trace` (F3 — traçado e patches) · `ph2d-quantize` (F4 — Bi-MDF, **ótimo demonstrado**) ·
-  `ph2d-quadfill` (F5 — a malha). ⚠️ **NENHUMA está ligada ao produto**: o botão `Quad Retopology` continua a
-  chamar a `ph2d-quadflow`, e a porta no shell é o próximo passo. ⛔ Três buracos MEDIDOS: o F1 devolve o cubo
-  **não-manifold** (18 anéis abertos, o que faz o campo mentir) · a esfera **embaralhada** não fecha (resultado
-  que depende da ordem dos índices = defeito) · **sem feature lines**, uma quina dura não é respeitada.
-  Tabelas por fase: `PLAN.md` §4-bis/ter/quater/quinquies/sexies.
+  ⭐ **A CADEIA NOVA É O BOTÃO** (`Quad Retopology`, modo `Global` por omissão; `PH2D_RETOPO_LEGACY=1` volta ao
+  local só para bissecar) — 100% de quads e irregulares de **39,7% para 0,5%** (o oráculo fica em 0,2%).
+  Cinco crates: `ph2d-remesh-iso` (F1) · `ph2d-crossfield` (F2) · `ph2d-trace` (F3) · `ph2d-quantize` (F4, Bi-MDF
+  com ótimo demonstrado) · `ph2d-quadfill` (F5). ⛔⛔ **VERMELHO PRÉ-EXISTENTE, medido 22/08: o F3 PERDE ASAS** —
+  o toro 48×24 sai com `χ = 2` **e passa em TODAS as outras réguas** (100% quads, zero bordo, zero não-manifold,
+  irregulares na ordem certa); o *complexo* de patches já erra **antes** da montagem (gate `#[ignore]`
+  `the_genus_survives_on_every_torus`). É o que trava o `ALIGN_WEIGHT` — que **funciona** (obediência ao relevo
+  `25,7° → 13,7°`, o número do Instant Meshes) e ships a **zero**, com as duas tabelas ao lado. ⛔ Outros buracos
+  medidos: o F1 devolve o cubo **não-manifold** · a esfera **embaralhada** não fecha · **sem feature lines**.
+  Tabelas por fase: `PLAN.md` §4-bis..§4-duovicies.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que
   prova a inércia.
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·

@@ -124,6 +124,10 @@ pub struct SolveReport {
     /// O pior resíduo relativo com que uma resolução saiu — `≤ 1e-7` quando todas
     /// convergiram.
     pub cg_worst_residual: f32,
+    /// ⭐ **Quantas RE-CENTRAGENS do arredondamento inteiro melhoraram o
+    /// objectivo** — ver [`Continuation`]. `0` quando a primeira passagem já era a
+    /// melhor (é sempre o caso com `align = 0`, e o gate exige-o).
+    pub recentres: usize,
 }
 
 impl SolveReport {
@@ -148,36 +152,22 @@ pub fn solve_miq(dual: &Dual) -> (CrossField, SolveReport) {
 /// a ser esta função com o `default`, e nada que o chame vê diferença.
 #[must_use]
 pub fn solve_miq_with(dual: &Dual, policy: Rounding) -> (CrossField, SolveReport) {
-    solve_miq_aligned(dual, policy, ALIGN_WEIGHT)
+    crate::continuation::solve_miq_aligned(dual, policy, crate::ALIGN_WEIGHT)
 }
 
-/// **O MIQ com o PESO DO ALINHAMENTO explícito** — ver [`ALIGN_WEIGHT`].
+/// **UMA PASSAGEM COMPLETA do arredondamento guloso**, a partir do `theta` dado.
 ///
-/// ⚠️ **Ele é um parâmetro porque o número tem de sair de uma VARREDURA**, e a
-/// primeira tentativa provou-o: com `1,0` a cadeia inteira parou de fechar —
-/// patches de **39, 98 e 127 lados**, quantização a recusar em toda fixtura.
-/// *Um peso de energia escolhido sem tabela é um palpite com aparência de teoria.*
-#[must_use]
-pub fn solve_miq_aligned(dual: &Dual, policy: Rounding, align: f32) -> (CrossField, SolveReport) {
-    let n = dual.frames().len();
+/// ⚠️ **O `theta` entra como SEMENTE e sai como resultado**, e é isso que torna a
+/// [`Continuation`] possível: a passagem seguinte herda o campo da anterior, então
+/// o representante 4-RoSy do [`solve_relaxation`] já nasce certo.
+pub(super) fn round_once(
+    dual: &Dual,
+    policy: Rounding,
+    align: f32,
+    theta: &mut [f32],
+    report: &mut SolveReport,
+) -> Vec<i32> {
     let m = dual.edges().len();
-    let mut report = SolveReport {
-        solves: 0,
-        free_integers: 0,
-        nonzero_periods: 0,
-        cg_capped: 0,
-        cg_worst_residual: 0.0,
-    };
-    if n == 0 {
-        return (
-            CrossField {
-                theta: Vec::new(),
-                period: Vec::new(),
-            },
-            report,
-        );
-    }
-
     // ── O GAUGE: `p = 0` em toda aresta de uma árvore geradora ───────────────
     let tree = spanning_tree(dual);
     let mut fixed: Vec<Option<i32>> = vec![None; m];
@@ -187,9 +177,8 @@ pub fn solve_miq_aligned(dual: &Dual, policy: Rounding, align: f32) -> (CrossFie
     let mut free: Vec<usize> = (0..m).filter(|e| fixed[*e].is_none()).collect();
     report.free_integers = free.len();
 
-    let mut theta = vec![0.0f32; n];
     while !free.is_empty() {
-        let (q, residual) = solve_relaxation(dual, &fixed, &free, &mut theta, align);
+        let (q, residual) = solve_relaxation(dual, &fixed, &free, theta, align);
         report.solves += 1;
         report.note(residual);
 
@@ -223,13 +212,10 @@ pub fn solve_miq_aligned(dual: &Dual, policy: Rounding, align: f32) -> (CrossFie
     }
 
     // A resolução final, com todos os inteiros congelados.
-    let (_, residual) = solve_relaxation(dual, &fixed, &[], &mut theta, align);
+    let (_, residual) = solve_relaxation(dual, &fixed, &[], theta, align);
     report.solves += 1;
     report.note(residual);
-
-    let period: Vec<i32> = fixed.iter().map(|p| p.unwrap_or(0)).collect();
-    report.nonzero_periods = period.iter().filter(|p| **p != 0).count();
-    (CrossField { theta, period }, report)
+    fixed.iter().map(|p| p.unwrap_or(0)).collect()
 }
 
 /// **⛔ A ALTERNÂNCIA INGÊNUA — construída, MEDIDA e REJEITADA.** Ver o doc do
@@ -307,48 +293,11 @@ fn spanning_tree(dual: &Dual) -> Vec<u32> {
 /// **A RELAXAÇÃO CONTÍNUA** — resolve `θ` (e os `q` livres) por CG.
 ///
 /// Devolve os valores contínuos dos inteiros ainda livres, na ordem de `free`.
-/// ⭐⭐ **O PESO DO ALINHAMENTO na energia** — quanto a cruz é puxada para a
-/// direção principal de curvatura, contra a suavidade.
 ///
-/// ⛔ **Sem ele a energia é SÓ suavidade, e o campo não tem como ver o relevo.**
-/// Medido em 2026-08-22 com a régua [`ph2d_quadfill::follows_relief`], na fixtura
-/// com cristas: a nossa cadeia dava **25,7°** de desvio — **pior que os 22,5° de
-/// uma grade aleatória** — contra **13,7°** do porte do Instant Meshes.
-///
-/// ⚠️ **Ele é MULTIPLICADO PELA ANISOTROPIA de cada face**, então numa esfera
-/// (onde as duas curvaturas são iguais e não há direção preferida) o termo
-/// desaparece sozinho. *Um alinhamento que puxa onde a forma não tem direção põe
-/// uma costura onde ela não pede nenhuma.*
-///
-/// ⛔⛔ **HOJE ELE É ZERO, e isso é uma MEDIÇÃO e não um esquecimento.** O termo
-/// está construído e funciona — o desvio ao relevo cai —, mas **o arredondamento
-/// do MIQ não o absorve**: com qualquer peso não-nulo o traçado parte. Medido em
-/// 2026-08-22 (`how_much_alignment_can_the_field_take`), fixtura com cristas:
-///
-/// | peso | desvio ao relevo | patches | maior valência | a cadeia fecha? |
-/// |---|---|---|---|---|
-/// | **`0` (hoje)** | 25,7° | **21** | **5** | ✅ |
-/// | `0,01` | ⭐ **20,4°** | ⛔ 104 | ⛔ 15 | ⚠️ fecha, com 139 irregulares |
-/// | `0,03` | — | 134 | ⛔ **60** | ⛔ a montagem recusa |
-/// | `1,0` | — | 98 | ⛔ **98** | ⛔ recusa |
-///
-/// ⭐ **O termo move a agulha certa** (`25,7° → 20,4°`, contra os `22,5°` de uma
-/// grade aleatória e os `13,7°` do porte do Instant Meshes). ⛔ **E o layout
-/// explode de 21 para 104 patches com um peso de `0,01`** — uma perturbação
-/// minúscula de `θ` troca quais inteiros o arredondamento guloso congela, e cada
-/// troca é uma singularidade a mais. *Um patch de 60 lados não é «mais detalhe»:
-/// é traçado partido.*
-///
-/// ⛔ **Suavizar o guia foi construído, medido e REJEITADO no mesmo dia:** média
-/// 4-RoSy sobre o grafo dual, transportada pelo `κ`, 32 rondas. O desvio ao relevo
-/// **piorou** (`20,4° → 24,5°`) e o layout continuou a explodir. *A causa não é a
-/// qualidade do guia; é a fragilidade do arredondamento.*
-///
-/// ⇒ **O próximo passo tem nome:** o arredondamento do MIQ tem de aguentar o
-/// termo — a referência não congela guloso sobre um `θ` que acabou de mudar. Até
-/// lá, ligar isto seria trocar uma grade que ignora o relevo por uma que não fecha.
-const ALIGN_WEIGHT: f32 = 0.0;
-
+/// ⚠️ **O `align` entra por parâmetro e o representante 4-RoSy sai do `theta`
+/// CORRENTE** — é dessa dependência que a [`crate::Continuation`] vive: mudar a
+/// semente muda o alvo de cada face, e é por isso que refazer o arredondamento a
+/// partir de um `θ` melhor não é a mesma conta outra vez.
 fn solve_relaxation(
     dual: &Dual,
     fixed: &[Option<i32>],

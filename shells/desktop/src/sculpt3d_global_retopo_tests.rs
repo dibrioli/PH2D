@@ -108,6 +108,22 @@ fn the_button_delivers_the_global_chain() {
         r.non_quads
     );
     assert!(r.quads > 0, "a cadeia devolveu uma malha vazia");
+    // ⭐⭐ **A REDE NÃO PODE TER SIDO USADA NESTA PEÇA.**
+    //
+    // ⛔ A porta tenta o campo **alinhado ao relevo** e cai para o só-suavidade
+    // quando o layout dele não fecha — e a queda **não move nenhuma outra asserção
+    // deste gate**: quads, bordo, irregulares e as duas de aresta continuam todas
+    // dentro da barra. *Sem esta linha, o dia em que o alinhamento parasse de fechar
+    // nesta fixtura leria exactamente como o dia em que ele funcionava.*
+    //
+    // ⚠️ **A rede em si é legítima e fica** (o arredondamento é caótico e uma peça
+    // pode ser aquela que não fecha); o que não pode é ela apagar-se. Se esta
+    // asserção reprovar, o conserto é a varredura do `ALIGN_WEIGHT`, não afrouxar a
+    // linha.
+    assert!(
+        r.aligned,
+        "a peca saiu do campo SO'-SUAVIDADE: o layout alinhado nao fechou nesta fixtura"
+    );
     // ⚠️ Uma aresta com UMA face só é a assinatura da casca rasgada, e nenhum
     // render a mostra.
     assert_eq!(

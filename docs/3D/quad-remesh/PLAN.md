@@ -2125,3 +2125,134 @@ que o F4 já sabe consumir, e o F5 consome o que o F4 já sabe produzir.**
 3. ⛔ **Ninguém mediu Hausdorff** ainda: `metrics.py` cobre contagem, topologia e ângulo; a fidelidade
    geométrica é a lacuna do F0.
 4. ⛔ **O preset `Mechanical` não foi corrido** — só o `Organic`. Um segundo eixo por medir.
+
+---
+
+## 4-duovicies — ⭐⭐ **A EXPLOSÃO NUNCA FOI DO TERMO: ERA DO `θ = 0`**
+
+> O §4-vicies-semel fechou com um passo *nomeado*: *"o arredondamento do MIQ tem de
+> aguentar o termo — a referência não congela guloso sobre um `θ` que acabou de
+> mudar."* Este passo executa-o, e a hipótese estava certa.
+
+### O mecanismo, escrito por extenso
+
+O arredondamento guloso congela `livres/8` inteiros **depois da primeira
+resolução** e nunca os revisita. Sem alinhamento isso é benigno: o `θ` da primeira
+resolução **já é** o campo suave, e as resoluções seguintes só o afinam.
+
+⛔ **Com alinhamento, a primeira resolução parte de `θ = 0`.** O representante
+4-RoSy de cada face é escolhido *pelo `θ` corrente* — `k = round((θ_f − α_f)/(π/2))`
+— então a `θ = 0` o alvo de toda face é `α_f` dobrado para `[−π/4, π/4]`, que **não
+é** o braço que o campo convergido quer. O guloso congela um oitavo dos inteiros
+sobre esse alvo errado, e **cada inteiro errado é uma singularidade a mais**.
+
+⇒ *Não era o termo que partia o traçado: era decidir sobre um `θ` que ainda ia
+mudar.* A mesma doença que o F4 tinha (§4-undevicies), no outro solver.
+
+### As três curas construídas, e a tabela que escolheu uma
+
+`ph2d-crossfield/src/continuation.rs` (irmão novo, o `solve.rs` bateu no teto da
+HR-18 a 703 linhas). Sonda `does_the_continuation_save_the_alignment_term`, fixtura
+**com cristas**, peso `0,01`. A base sem alinhamento é *21 patches · valência 5 · 14
+irregulares · 0 dobras · **25,7°***:
+
+| lei | resoluções | patches | valência | irreg | dobras | ⭐ relevo |
+|---|---|---|---|---|---|---|
+| `cru` (a lei antiga) | 56 | ⛔ **104** | ⛔ 15 | ⛔ 139 | ⛔ 23 | 20,4° |
+| ⭐⭐ **`warm`** (só a semente) | 112 | **17** | **4** | **10** | **0** | ⭐ **16,7°** |
+| `warm` + 4 re-centragens | 168 | 17 | 4 | 10 | 0 | 16,7° |
+| `rampa3` sem semente | 224 | 18 | 7 | 26 | 2 | 16,6° |
+| `warm` + `rampa3` | 280 | 17 | 5 | 14 | 3 | 17,5° |
+| `warm` + `rampa3` + re4 | 448 | 6 | 4 | 11 | 0 | ⛔ 24,2° |
+
+⭐ **A semente sozinha ganha em todas as colunas — e ganha à própria base.** Menos
+patches (17 contra 21), menos irregulares (10 contra 14), zero dobras, e o relevo de
+**25,7° para 16,7°** (a grade que não olha vale 22,5°; o porte do Instant Meshes
+mede 13,7°). Ela é **uma passagem inteira com `align = 0` cujo único produto que
+sobrevive é o `θ`** — os inteiros dela vão para o lixo de propósito.
+
+⚠️ **E a semente cura a explosão em TODA a varredura, não só a `0,01`.** Onde a lei
+antiga dava 104 / 132 / 166 patches (cristas) e 133 / 180 / 167 (orelha), com
+recusas de montagem a `0,05` e `0,2`, a semente devolve **15 a 21 patches e valência
+4 a 6 em todas as células medidas**.
+
+### ⛔ E duas das três curas foram MEDIDAS E REJEITADAS — o mecanismo tem nome
+
+A escada de pesos (`ramp_steps`) e as re-centragens não são caras: são **erradas ao
+peso que interessa**. A última linha custa **8× as resoluções** e devolve `24,2°` —
+praticamente uma grade que não olhou.
+
+⇒ **O árbitro entre passagens é o `objective`, que soma suavidade + alinhamento.** A
+`0,01` a **suavidade domina**, então "melhor objectivo" ≈ "mais liso" — e o campo
+mais liso é exatamente aquele que ignora o relevo. *Um laço que melhora o número que
+mede não melhora o número que importa, quando são dois números.*
+
+⚠️ **Ficam como parâmetros, não como código morto** — são eles que tornam esta
+tabela reproduzível, e a rejeição é do **default**, não da existência.
+
+### ⛔⛔ E O PESO **NÃO SHIPA**, por uma razão que não é o alinhamento
+
+A varredura fina (`how_much_alignment_can_the_field_take`, cinco fixturas × oito
+pesos, agora com a semente ligada) elegeu **`0,03`**: ele leva o desvio ao relevo de
+`25,7°` para **`13,7°`** na fixtura com cristas — *o número do Instant Meshes* — e
+faz o mesmo na enrugada, com as dobras em zero-ou-uma nas cinco peças.
+
+⛔ **E ele reprovou no gate de topologia, que nasceu para o julgar.** Característica
+de Euler da saída, onde um toro exige `0`:
+
+| fixtura | peso `0` | peso `0,03` |
+|---|---|---|
+| toro 32×16 | ✓ `0` | ⛔ **`2`** |
+| toro 48×24 | ⛔ **`2`** | ✓ `0` |
+| toro 64×32 | ✓ `0` | ⛔ **`2`** |
+
+⇒ `0,03` parte **dois** dos três; o zero parte **um**. Ligá-lo hoje é trocar relevo
+por regressão de topologia, e topologia não se negoceia. **`ALIGN_WEIGHT` fica em
+`0`**, agora com a tabela do relevo **e** a da topologia ao lado.
+
+---
+
+## ⛔⛔ O ACHADO: **O TRAÇADO PERDE ASAS**, e é anterior a tudo isto
+
+⚠️⚠️ **A linha do meio da tabela é a notícia.** O toro 48×24 sai errado **hoje, no
+produto, sem alinhamento nenhum** — e passa em **todas** as outras réguas: 100 % de
+quads, zero arestas de bordo, **zero não-manifold**, contagem de irregulares na ordem
+certa. *Uma peça pode passar em toda asserção e ter deixado de ser um toro.*
+
+⛔ **Ninguém o tinha medido porque nenhuma fixtura gateada o continha:** o único toro
+do corpus era o 32×16, e nele o defeito não aparece
+(`reference_topic_fixture_discipline`).
+
+### ⭐ E a sonda já disse ONDE — `where_is_the_genus_lost`
+
+Ela compara três `χ`: o da malha de entrada, o do **complexo de patches**
+(`V − E + F` sobre *cantos · arcos · patches*) e o da malha de saída.
+
+| fixtura | peso | entrada | **complexo (F3)** | saída (F5) |
+|---|---|---|---|---|
+| toro 32×16 | `0` | `0` | ✓ `0` | ✓ `0` |
+| toro 32×16 | `0,03` | `0` | ⛔ **`2`** | ⛔ `2` |
+| toro 48×24 | `0` | `0` | ⛔ **`2`** | ⛔ `2` |
+| toro 64×32 | `0,03` | `0` | ⛔ **`2`** | ⛔ `2` |
+
+⭐⭐ **O complexo já sai errado antes de a montagem começar**, com **todos os arcos
+usados exactamente duas vezes** e **nenhum patch não-disco** — ou seja, a colagem é
+uma superfície fechada legítima, só que **de género errado**. A montagem realiza
+fielmente o que o layout manda.
+
+⇒ **A asa perde-se no F3.** O F1 entrega `χ = 0`, o F5 é fiel: sobra o traçado.
+
+### O que ficou construído, e o endereço do bloqueio
+
+| peça | onde | estado |
+|---|---|---|
+| a semente do `θ` (a cura da explosão) | `ph2d-crossfield/src/continuation.rs` | ⭐ medida e no lugar, **inerte** enquanto o peso for `0` |
+| o termo de alinhamento + a varredura | `ALIGN_WEIGHT` | ⭐ funciona (`25,7° → 13,7°`), **desligado** pelo bloqueio |
+| ⭐⭐ o gate do género | `ph2d-quadfill/tests/alignment_topology.rs` | varre `[0, ALIGN_WEIGHT]` — **liga-se sozinho** quando a constante sair de zero |
+| ⛔ o vermelho pré-existente | `the_genus_survives_on_every_torus` | `#[ignore]`, com o mecanismo no doc |
+| a rede da porta (`aligned` no relatório) | `quad_remesh_global` | guardada por `ALIGN_WEIGHT == 0`, para não pagar a cadeia duas vezes por nada |
+
+⇒ ⭐⭐ **O próximo passo tem nome e mudou de dono:** *o traçado (F3) tem de preservar
+o género*. O arredondamento do MIQ — o bloqueio de ontem — **está resolvido**; o que
+está na frente agora é um defeito de correção que já existia e que ninguém via.
+

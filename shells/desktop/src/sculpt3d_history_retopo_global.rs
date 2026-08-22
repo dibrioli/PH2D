@@ -115,10 +115,87 @@ impl Sculpt3dScene {
 
         // ── F2. O campo cruzado com decisão inteira global.
         let dual = ph2d_crossfield::Dual::build(&work);
-        let (field, _) = ph2d_crossfield::solve_miq(&dual);
 
+        // ⭐⭐ **DUAS TENTATIVAS, e a ordem é a lei do produto.** A primeira corre o
+        // campo **alinhado ao relevo** (`ALIGN_WEIGHT`, hoje `0,03`), que é o que o
+        // artista pediu três vezes seguidas — *"sem nenhuma obediência ao relevo"*.
+        // A segunda, e só se a primeira **recusar**, corre o campo só-suavidade.
+        //
+        // ⚠️ **Ela existe porque o arredondamento é caótico**, não porque o
+        // alinhamento seja duvidoso: uma célula da varredura do `ALIGN_WEIGHT`
+        // move-se com a malha, e uma peça pode ser aquela em que o layout alinhado
+        // não fecha. ⛔ **O liso é a REDE, nunca o produto** (CLAUDE.md §0.0): ele
+        // só apara quando a outra não fecha, e o relatório diz qual correu — senão
+        // uma regressão do alinhamento leria como sucesso.
+        let attempt = |aligned: bool| {
+            let policy = ph2d_crossfield::Rounding::default();
+            // ⚠️ O `solve_miq` **é** o alinhado: o peso vive na crate do campo
+            // (`ALIGN_WEIGHT`), e a rede pede explicitamente `0,0`.
+            let (field, _) = if aligned {
+                ph2d_crossfield::solve_miq(&dual)
+            } else {
+                ph2d_crossfield::solve_miq_aligned(&dual, policy, 0.0)
+            };
+            Self::global_chain(&work, &reference, &field, &dual, target, adaptive)
+        };
+        let (aligned, (out, r)) = match attempt(true) {
+            Ok(ok) => (true, ok),
+            // ⚠️ **Com o peso a ZERO as duas tentativas são a MESMA conta**, e
+            // repeti-la seria pagar a cadeia inteira por nada. Hoje o
+            // `ALIGN_WEIGHT` está a zero (o traçado perde asas num toro — ver o doc
+            // dele), então esta guarda é o que impede a rede de existir enquanto não
+            // há nada de que salvar.
+            Err(e) if ph2d_crossfield::ALIGN_WEIGHT == 0.0 => return Err(e),
+            // ⚠️ **A recusa que o artista vê é a da REDE**, e não a da primeira
+            // tentativa: se nem o campo liso fecha, o problema não é o alinhamento e
+            // apontar para ele mandaria o diagnóstico para o sítio errado.
+            Err(_) => (false, attempt(false)?),
+        };
+        if out.faces().is_empty() {
+            return Err(RemeshRefusal::TooCoarseToResolve);
+        }
+        let report = QuadRemeshReport {
+            verts: r.verts,
+            quads: r.quads,
+            non_quads: r.non_quads,
+            edge: target,
+            ms: t.elapsed().as_secs_f64() * 1000.0,
+            // ⚠️ **`boundary_edges` e não uma contagem de buracos por inundação.**
+            // Uma aresta com uma face só é a assinatura da casca aberta, e é a
+            // mesma grandeza que o irmão local reporta na coluna `holes`.
+            holes: r.boundary_edges,
+            irregular: r.irregular,
+            edge_max_ratio: r.edge_max / target,
+            edge_median_ratio: r.edge_median / target,
+            // ⚠️ **Da malha ORIGINAL e não da de saída**: a caixa da saída pode ser
+            // ligeiramente menor, e a régua tem de ser a mesma antes e depois.
+            edge_max_span: r.edge_max / span(&reference),
+            folded: r.folded,
+            aligned,
+        };
+        let previous = core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, out);
+        self.record(StrokeUndo::Remeshed(Box::new(previous)));
+        // A malha é OUTRA: o traço em voo fala de vértices que não existem mais.
+        self.stroke = SculptStroke::default();
+        self.mesh_rebuilt();
+        Ok(report)
+    }
+
+    /// **F3 → F5 sobre um campo já resolvido** — a metade que a tentativa repete.
+    ///
+    /// ⚠️ **Ela recebe o campo e não o peso**, de propósito: assim a rede de
+    /// recurso do [`Self::quad_remesh_global`] é *literalmente o mesmo caminho* com
+    /// outro campo, e nenhuma divergência pode entrar entre as duas tentativas.
+    fn global_chain(
+        work: &ph2d_mesh::Mesh,
+        reference: &ph2d_mesh::Mesh,
+        field: &ph2d_crossfield::CrossField,
+        dual: &ph2d_crossfield::Dual,
+        target: f32,
+        adaptive: f32,
+    ) -> Result<(ph2d_mesh::Mesh, ph2d_quadfill::FillReport), RemeshRefusal> {
         // ── F3. As paredes e os patches.
-        let mut layout = ph2d_trace::trace_patches(&work, &dual, &field);
+        let mut layout = ph2d_trace::trace_patches(work, dual, field);
 
         // ⭐⭐ **O `Follow Curvature`, e ele entra AQUI e não na extração.** A
         // cadeia global não extrai de retícula nenhuma: quem decide a densidade é
@@ -139,13 +216,13 @@ impl Sculpt3dScene {
             // o campo colapsa numa constante e o knob passa a **grosseirar** a peça
             // em vez de a adaptar. Ver [`ph2d_quadflow::ScaleField::adaptive_with`].
             let sizing = ph2d_quadflow::ScaleField::adaptive_with(
-                &work,
+                work,
                 target,
                 adaptive,
                 ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
             );
             let sizes: Vec<f32> = (0..sizing.len()).map(|v| sizing.at(v)).collect();
-            layout.grade(&work, &sizes, target);
+            layout.grade(work, &sizes, target);
         }
         let spec = layout.to_layout(target).map_err(RemeshRefusal::Layout)?;
 
@@ -171,8 +248,8 @@ impl Sculpt3dScene {
             // produto em 2026-08-21 — com todos os gates verdes, porque o dano é
             // só geométrico. A assinatura de duas portas é a cura; ver o doc do
             // `ph2d_quadfill::fill`.
-            &work,
-            &reference,
+            work,
+            reference,
             &layout,
             &quant,
             ph2d_quadfill::SMOOTHING_ROUNDS,
@@ -182,30 +259,7 @@ impl Sculpt3dScene {
             return Err(RemeshRefusal::TooCoarseToResolve);
         }
 
-        let report = QuadRemeshReport {
-            verts: r.verts,
-            quads: r.quads,
-            non_quads: r.non_quads,
-            edge: target,
-            ms: t.elapsed().as_secs_f64() * 1000.0,
-            // ⚠️ **`boundary_edges` e não uma contagem de buracos por inundação.**
-            // Uma aresta com uma face só é a assinatura da casca aberta, e é a
-            // mesma grandeza que o irmão local reporta na coluna `holes`.
-            holes: r.boundary_edges,
-            irregular: r.irregular,
-            edge_max_ratio: r.edge_max / target,
-            edge_median_ratio: r.edge_median / target,
-            // ⚠️ **Da malha ORIGINAL e não da de saída**: a caixa da saída pode ser
-            // ligeiramente menor, e a régua tem de ser a mesma antes e depois.
-            edge_max_span: r.edge_max / span(&reference),
-            folded: r.folded,
-        };
-        let previous = core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, out);
-        self.record(StrokeUndo::Remeshed(Box::new(previous)));
-        // A malha é OUTRA: o traço em voo fala de vértices que não existem mais.
-        self.stroke = SculptStroke::default();
-        self.mesh_rebuilt();
-        Ok(report)
+        Ok((out, r))
     }
 }
 
@@ -262,6 +316,85 @@ pub(in crate::sculpt3d) fn ratio(v: f32) -> String {
     } else {
         String::from("?")
     }
+}
+
+/// **A LINHA DE LOG da retopologia** — a única leitura que o smoke tem.
+///
+/// ⚠️ **Ela NOMEIA os buracos.** Enquanto o log não o fazia, a única forma de
+/// detectar uma casca furada era o artista fotografar a tela — e foi o que
+/// aconteceu três vezes em 2026-08-19. Um `0` aqui é a afirmação de que a peça
+/// fechou.
+///
+/// ⭐ **E nomeia os IRREGULARES**, que é a grandeza que o pivô do ADR-0161 existiu
+/// para derrubar e a que o artista de facto vê. Uma esfera admite **oito**; o motor
+/// local não os conta e diz `?`, que é diferente de dizer zero.
+///
+/// ⭐⭐ **E as faces DOBRADAS** — a fenda escura fotografada em 2026-08-21, e a
+/// única grandeza de defeito **geométrico** desta linha: uma peça pode sair com
+/// 100 % de quads, casca fechada e a contagem certa de irregulares, e mesmo assim
+/// estar cheia delas.
+///
+/// ⚠️ **Ela mora aqui e não no painel** por causa do teto de 600 LOC por arquivo da
+/// shell (HR-18) — e o corte calhou no sítio certo: quem sabe o que cada coluna
+/// significa é o módulo que a mediu.
+pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
+    format!(
+        "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
+         {} irregulares, aresta mediana {} do alvo e a mais longa {}, com quad de {:.4} \
+         em {:.0} ms{}{}{}",
+        r.verts,
+        r.quads,
+        r.non_quads,
+        100.0 * r.quads as f64 / (r.quads + r.non_quads).max(1) as f64,
+        if r.irregular == usize::MAX {
+            String::from("?")
+        } else {
+            r.irregular.to_string()
+        },
+        ratio(r.edge_median_ratio),
+        // ⚠️ **A MÁXIMA vai nas DUAS réguas, e a que decide é a
+        // fração.** Ver `QuadRemeshReport::edge_max_span`: a razão
+        // ao alvo triplica com o slider **sem defeito nenhum** (o
+        // denominador é que encolhe), e é a fração da peça que
+        // responde *"alguma coisa atravessa a peça?"*. Imprimir só
+        // uma delas deixaria o leitor a comparar números que não são
+        // comparáveis entre duas corridas do slider.
+        if r.edge_max_span.is_finite() {
+            format!(
+                "{} do alvo = {:.1}% da peca",
+                ratio(r.edge_max_ratio),
+                100.0 * r.edge_max_span
+            )
+        } else {
+            String::from("?")
+        },
+        r.edge,
+        r.ms,
+        if r.holes == 0 {
+            String::from(" -- casca FECHADA")
+        } else {
+            format!(" -- ⚠️ {} BURACO(S) na casca", r.holes)
+        },
+        if r.folded == 0 {
+            String::new()
+        } else {
+            format!(
+                " -- ⚠️ {} face(s) DOBRADA(S) ({:.1}%)",
+                r.folded,
+                100.0 * r.folded as f64 / (r.quads + r.non_quads).max(1) as f64
+            )
+        },
+        // ⭐⭐ **QUAL CAMPO correu.** A cadeia global tenta o campo
+        // ALINHADO ao relevo e cai para o só-suavidade quando o
+        // layout dele não fecha — e a queda é invisível em todas as
+        // outras colunas desta linha. ⛔ Sem esta palavra, uma
+        // regressão do alinhamento lê-se como uma corrida boa.
+        if r.aligned {
+            String::new()
+        } else {
+            String::from(" -- ⚠️ campo SO'-SUAVIDADE (o alinhado nao fechou)")
+        }
+    )
 }
 
 #[cfg(test)]

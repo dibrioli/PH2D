@@ -499,3 +499,57 @@ fn a_marker_bigger_than_the_curve_can_offer_consumes_the_line() {
          parar no meio deixaria um coto atravessado no marcador"
     );
 }
+
+/// **UMA CURVA EM S NÃO PERDE A LINHA** — o fenómeno que o gate dos ângulos NÃO continha.
+///
+/// ⚠️ Aquele laço variava a INCLINAÇÃO da alça sobre uma curva que nunca dobrava para trás. O
+/// defeito do Enio (2026-08-22: *"a depender do ângulo a linha até some"*) precisa da DOBRA: é
+/// ela que faz a projeção sobre o eixo do marcador subir e voltar a descer, e era essa
+/// não-monotonia que a bissecção global lia como *"não há espaço para a ponta"* — consumindo o
+/// traço inteiro.
+///
+/// O gate afirma o mínimo indispensável e o mais forte: **sobra linha**. Um recuo que engula a
+/// curva deixa o artista com uma seta solta no vazio, que foi exatamente o print recebido.
+#[test]
+fn an_s_curve_keeps_its_line_under_a_marker() {
+    use crate::{Marker, VertexKind};
+    let v = |a: [f64; 2], i: [f64; 2], o: [f64; 2]| crate::VecVertex {
+        anchor: a,
+        in_handle: i,
+        out_handle: o,
+        kind: VertexKind::Smooth,
+        corner_radius: 0.0,
+    };
+    // Um S: sobe à esquerda, dobra ao meio, e sai para a direita — a forma dos prints.
+    let p = crate::VecPath {
+        verts: vec![
+            v([0.0, 0.0], [0.0, 0.0], [0.0, 6.0]),
+            v([6.0, 8.0], [2.0, 9.0], [10.0, 7.0]),
+            v([14.0, 2.0], [12.0, 6.0], [14.0, 2.0]),
+        ],
+        closed: false,
+        ..crate::VecPath::default()
+    };
+    let mut s = StrokeSpec::new(crate::Rgba8::new(255, 255, 255, 255), 1.0);
+    s.marker_start = Marker::Diamond;
+    s.marker_end = Marker::Triangle;
+
+    let span: f64 = p
+        .verts
+        .windows(2)
+        .map(|w| (w[1].anchor[0] - w[0].anchor[0]).hypot(w[1].anchor[1] - w[0].anchor[1]))
+        .sum();
+    let (a, b) = crate::marker_arc_insets(&p, &s);
+    assert!(
+        a + b < span,
+        "os recuos ({a:.3} + {b:.3}) engoliram a curva inteira ({span:.3}) -- a linha SOME e \
+         sobram duas pontas soltas no vazio"
+    );
+
+    let plan = crate::stroke_plan(&p, &s);
+    assert!(
+        plan.iter()
+            .any(|piece| matches!(piece, StrokePiece::Line { .. })),
+        "o plano nao tem peca de LINHA: o traco desapareceu debaixo dos marcadores"
+    );
+}

@@ -2622,6 +2622,111 @@ erro de posição, é uma malha que a fatiadora recusa.
 
 ---
 
+## §35 — W34: o gesto de criar grupo existia e ninguém lhe chegava (22/08)
+
+> A W31 (§32) fechou dizendo *"criar grupo passa a ser um gesto"*. Era meia verdade. O **tratador**
+> aprendeu a aceitar uma forma sozinha; o **painel** continuou a exigir duas, e por isso os três
+> botões de operação **nunca eram pintados** nesse caso. O gesto existia no código, tinha gates
+> verdes, e o artista não tinha como o disparar.
+
+### §35.1 — ⛔ Por que os gates da W31 não notaram
+
+Todos eles empurram a intenção diretamente:
+
+```text
+push_intent(ApplyOp { slot }) → sync_scene → o documento mudou?  ✅ VERDE
+```
+
+**Isso prova o TRATADOR, nunca a ALCANÇABILIDADE.** Empurrar a intenção encena um clique que o
+artista não tem como dar — e um clique impossível passa em qualquer teste que o simule. É a **quinta**
+reincidência da família da costura muda deste módulo (o modificador na escultura §26, a multi-seleção
+§28, o olho §29, o cadeado §30, o reparentar §31) — e a primeira em que o buraco estava no **gate**,
+não no código.
+
+⚠️ *Uma cura pode entrar pela metade e a prova ficar verde, quando a prova entra pelo lado que a cura
+já tinha.*
+
+### §35.2 — ⭐ A cura é a LEI, não o caso
+
+Acrescentar o caso que faltava curaria hoje e nada mais. O que ficou preso é a relação:
+
+> ⭐ Para **toda fileira** de controles e **toda seleção**, *«o painel publica a fileira»* tem de valer
+> **exatamente** *«a intenção daquela fileira muda o documento»*.
+
+Ela apanha os dois sentidos: `oferecido=false age=true` é um gesto inalcançável (o defeito desta
+wave); `oferecido=true age=false` é um botão pintado e mudo (a affordance que mente). E é lida do
+**retrato publicado** (`state::current()`), não das funções que o montam: um `ops_for` correto que
+ninguém ligasse ao `publish_snapshot` continua vermelho.
+
+**Estruturalmente**, o que impede a divergência de voltar é não haver duas cópias da regra. Duas
+funções novas em `ph2d-field-ecs`, cada uma consumida pelo gesto que ela guarda **e** pelo painel:
+
+| pergunta | função | quem a consome |
+|---|---|---|
+| *"estes nós embrulham-se?"* | `can_wrap` | `wrap_in_op` + a fileira de operações |
+| *"este nó destaca-se da peça?"* | `can_detach` | `duplicate`, `remove` + a fileira de ações |
+
+⚠️ O gate `can_wrap_answers_exactly_what_wrap_in_op_does` mede o predicado **contra a função que ele
+guarda**, não contra uma tabela escrita à mão: uma regra nova que entre num lado e não no outro fica
+vermelha mesmo que ninguém se lembre de vir escrever o caso.
+
+### §35.3 — ⭐ A generalização pagou no mesmo dia
+
+Escrita para as operações, a lei foi apontada às outras duas fileiras que dependem da seleção — e
+encontrou uma **irmã que ninguém procurava**:
+
+| fileira | seleção | oferecido | age |
+|---|---|---|---|
+| operações | uma forma sozinha | ⛔ **false** | true ← o defeito da W31 |
+| ações (*Duplicar/Apagar*) | a **raiz** da peça | ⛔ true | **false** ← o achado |
+
+Com a peça inteira escolhida, os dois botões eram pintados e **os dois recusam a raiz** — por decisão
+escrita em cada função (*"a raiz **é** a peça"*: duplicá-la seria uma segunda peça, apagá-la deixaria
+o módulo sem nada para onde voltar). ⚠️ **A recusa era uma decisão; a affordance que a ignorava era
+um defeito.** *Uma lei sobre uma fileira teria curado uma; sobre todas, encontrou a irmã.*
+
+⚠️ **Quais fileiras entram:** só as que dependem da seleção (operações, modificadores, ações). As
+formas, os verbos do gizmo e a exportação são ações sempre disponíveis — a de exportar nem sequer
+toca o documento (ela anota um pedido), e medi-la por *«o documento mudou»* seria a pergunta errada.
+
+### §35.4 — A tabela, medida
+
+Estado depois da cura, sobre duas fixtures (`A ∪ B` plana e `A ∪ (B − C)` aninhada):
+
+| seleção | operações | modificadores | ações |
+|---|---|---|---|
+| nada | — | — | — |
+| uma forma sozinha | **cria grupo** | casca/afastamento | duplicar/apagar |
+| dois irmãos | **embrulha-os** | do primeiro | do primeiro |
+| a **raiz** da peça | troca o verbo | casca/afastamento | ⛔ **nenhuma** (recusadas) |
+| um grupo **interno** | troca o verbo | casca/afastamento | duplicar/apagar |
+| formas de **pais diferentes** | ⛔ nenhuma (mover é outro gesto) | do primeiro | do primeiro |
+
+### §35.5 — Provas de mutação
+
+| mutação | gate que ficou vermelho |
+|---|---|
+| a fileira de operações volta a exigir **dois** (o defeito da W31) | `the_gestures_the_product_promises_are_all_reachable` |
+| a fileira de operações é publicada **sempre** | `the_rows_stay_silent_where_the_gesture_is_refused` |
+| a fileira de ações volta a olhar só se **há seleção** | `the_panel_offers_exactly_what_the_gesture_does` |
+| o `can_wrap` esquece o **pai comum** | `wrapping_refuses_nodes_that_do_not_share_a_parent` |
+| o `can_detach` esquece que a **raiz não tem pai** | `the_rows_stay_silent_where_the_gesture_is_refused` |
+| o `wrap_in_op` deixa de **consumir** o `can_wrap` | `can_wrap_answers_exactly_what_wrap_in_op_does` |
+
+6 mutações, 6 vermelhas.
+
+### §35.6 — ⏸️ O que fica aberto
+
+- A lei cobre as fileiras que **dependem da seleção**. Um controle novo que dependa de outra coisa
+  (um modo, um estado de câmera) não é apanhado por ela — e o padrão para o apanhar é o desta wave:
+  publicar a partir do **predicado que o gesto consome**.
+- ⚠️ Continua sem existir quem **diga** que um grupo nasceu (W31), e não há grupo **vazio**.
+- ⚠️ Os botões de operação com uma forma sozinha mostram *Union/Subtract/Intersect* — o rótulo diz o
+  **verbo**, não *"criar grupo"*. É legível para quem já sabe; a pergunta de produto é se devia
+  haver um rótulo para o caso de um só.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
@@ -2637,9 +2742,15 @@ erro de posição, é uma malha que a fatiadora recusa.
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W34 (§35): o painel passou a oferecer EXATAMENTE o que o gesto faz** — a fileira de operações
+  aparece com **uma** forma escolhida (o gesto de criar grupo, que a W31 escreveu e ninguém
+  alcançava), e a de *Duplicar/Apagar* deixa de ser pintada sobre a **raiz**, que as recusa. A lei
+  vale para as três fileiras que dependem da seleção. ⏸️ Fica: um controle que dependa de outra coisa
+  que não a seleção não é apanhado por ela
 - ✅ **W31 (§32): um objeto largado em cima de outro deixou de SUMIR** — só uma operação pode ter
   filhos, e a forma anfitriã é promovida a grupo (a peça na tela não muda). E **criar grupo** passa
-  a ser um gesto: uma forma sozinha + um botão de operação. ⏸️ Fica: ninguém **diz** que um grupo
+  a ser um gesto: uma forma sozinha + um botão de operação — ⚠️ **alcançável só desde a W34**, que é
+  quando o painel passou a pintar a fileira nesse caso. ⏸️ Fica: ninguém **diz** que um grupo
   nasceu, e não há grupo VAZIO
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)

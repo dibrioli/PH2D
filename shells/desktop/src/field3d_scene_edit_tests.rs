@@ -190,6 +190,79 @@ fn wrapping_refuses_nodes_that_do_not_share_a_parent() {
     );
 }
 
+/// ⭐ **[`ph2d_field_ecs::can_wrap`] responde EXATAMENTE o que o `wrap_in_op` faz** (W34).
+///
+/// # Por que esta equivalência é um gate e não um comentário
+///
+/// O painel tem de saber, **antes** do clique, se o gesto vai acontecer — e não pode mutar o mundo
+/// para descobrir. Enquanto a regra viveu só dentro do `wrap_in_op`, o painel escreveu a dele, as
+/// duas divergiram, e o gesto de criar grupo ficou **inalcançável** durante uma wave inteira.
+///
+/// ⚠️ Este gate não mede o `can_wrap` contra uma tabela escrita à mão: mede-o contra a **função que
+/// ele guarda**. Uma regra nova que entre num dos lados e não no outro fica vermelha aqui, mesmo que
+/// ninguém se lembre de vir escrever o caso.
+#[test]
+fn can_wrap_answers_exactly_what_wrap_in_op_does() {
+    let op = ph2d_field::Op::Union(ph2d_field::Blend::Sharp);
+    // Cada caso monta um mundo NOVO: o `wrap_in_op` muta quando aceita, e reutilizar a árvore mediria
+    // o segundo caso sobre a hierarquia que o primeiro deixou.
+    let case = |pick: fn(
+        &mut bevy_ecs::world::World,
+        bevy_ecs::entity::Entity,
+    ) -> Vec<bevy_ecs::entity::Entity>,
+                name: &str| {
+        let mut sim = a_world();
+        let world = sim.world_mut();
+        let root = ph2d_field_ecs::spawn_doc(world, &scene(1), "Model");
+        let sel = pick(world, root);
+        let said = ph2d_field_ecs::can_wrap(world, &sel);
+        let did = ph2d_field_ecs::wrap_in_op(world, &sel, op).is_some();
+        assert_eq!(
+            said, did,
+            "«{name}»: o can_wrap disse {said} e o wrap_in_op fez {did} — \
+             o painel vai oferecer o que o gesto não faz (ou esconder o que ele faz)"
+        );
+        did
+    };
+
+    fn kids(
+        world: &bevy_ecs::world::World,
+        root: bevy_ecs::entity::Entity,
+    ) -> Vec<bevy_ecs::entity::Entity> {
+        world
+            .get::<Children>(root)
+            .expect("tem filhos")
+            .iter()
+            .copied()
+            .collect()
+    }
+
+    assert!(!case(|_, _| Vec::new(), "nada selecionado"));
+    assert!(case(
+        |w, r| vec![kids(w, r)[0]],
+        "uma forma sozinha (cria grupo)"
+    ));
+    assert!(case(
+        |w, r| kids(w, r).into_iter().take(2).collect(),
+        "dois irmãos"
+    ));
+    assert!(!case(|_w, r| vec![r], "a raiz, que não tem pai"));
+    assert!(!case(
+        |w, r| vec![r, kids(w, r)[0]],
+        "a raiz e um filho dela"
+    ));
+    // ⚠️ Um nó que **não é do campo** (uma anotação qualquer do mundo, irmã das formas) não se
+    // embrulha: o grupo referenciá-lo-ia e o cozimento não teria o que emitir.
+    assert!(!case(
+        |w, r| {
+            let alien = w.spawn(ph2d_ecs::Name::new("nota")).id();
+            w.entity_mut(r).add_child(alien);
+            vec![kids(w, r)[0], alien]
+        },
+        "um nó que não é do campo"
+    ));
+}
+
 /// **Dois irmãos com o mesmo tipo não ficam com o mesmo nome.**
 ///
 /// ⚠️ A Hierarquia é a única superfície em que estes objetos têm identidade legível, e três linhas

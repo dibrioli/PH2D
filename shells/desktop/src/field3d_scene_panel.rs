@@ -59,14 +59,23 @@ pub(crate) fn publish_snapshot(
             active: false,
         })
         .collect();
-    // ⚠️ Vazio sem seleção, pela mesma razão da fileira de operações: um controle que aparece e não
-    // faz nada é pior do que um que não aparece.
-    let acts = if selection.is_empty() {
-        Vec::new()
-    } else {
+    // ⚠️ Vazio quando o escolhido **não se destaca da peça**, pela mesma razão da fileira de
+    // operações: um controle que aparece e não faz nada é pior do que um que não aparece.
+    //
+    // ⭐ **A RAIZ era o caso que a lia errado** (W34): `selection.is_empty()` deixava a fileira
+    // aparecer com a peça inteira escolhida, e ali **`duplicate` e `remove` recusam os dois** — por
+    // decisão escrita, não por acaso (a raiz *é* a peça). Dois botões pintados e mudos na linha de
+    // topo da Hierarquia. ⚠️ Quem responde é [`ph2d_field_ecs::can_detach`], a mesma função que os
+    // dois gestos consomem: *a recusa era uma decisão; a affordance que a ignorava era um defeito.*
+    let acts = if selection
+        .first()
+        .is_some_and(|&e| ph2d_field_ecs::can_detach(world, e))
+    {
         ACTS.iter()
             .map(|key| ph2d_panel_model3d::ModeChip { key, active: false })
             .collect()
+    } else {
+        Vec::new()
     };
     ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
         modes,
@@ -260,12 +269,26 @@ pub(crate) fn op_at(slot: usize) -> Option<Op> {
 /// ⭐ **Quais operações fazem sentido AGORA** — e vazio quando nenhuma faz.
 ///
 /// ⚠️ Publicar a fileira sempre daria três botões que às vezes não fazem nada, que é a affordance
-/// que mente. Ela aparece em dois casos, e em cada um quer dizer uma coisa precisa:
+/// que mente. Ela aparece em três casos, e em cada um quer dizer uma coisa precisa:
 ///
 /// | Selecionado | O que os botões fazem | O «ativo» |
 /// |---|---|---|
 /// | uma **operação** | trocam-na (união vira subtração) | a operação que ela é |
+/// | uma **forma sozinha** | **cria um grupo** com ela dentro (W31) | nenhum |
 /// | **dois ou mais irmãos** | embrulham-nos numa operação nova | nenhum |
+///
+/// # ⚠️ A segunda linha faltava, e o gesto ficou inalcançável (W34)
+///
+/// A W31 ensinou o **tratador** a aceitar uma forma sozinha — a resposta ao *"ainda não temos como
+/// criar novos grupos"* do Enio — e esta função continuou a exigir **dois irmãos**. Os três botões
+/// nunca eram pintados nesse caso, então o gesto existia e ninguém lhe chegava; os gates da W31
+/// empurravam a intenção diretamente e por isso não notaram. *Empurrar a intenção prova o tratador,
+/// nunca a alcançabilidade.*
+///
+/// ⭐ **A cura estrutural é não ter aqui uma segunda cópia da regra:** quem responde *"estes nós
+/// embrulham-se?"* é [`ph2d_field_ecs::can_wrap`], a mesma função que o `wrap_in_op` consome. Os
+/// dois lados divergirem outra vez passa a exigir mudar a lei única. O gate-mãe é
+/// `the_panel_offers_an_operation_exactly_when_the_gesture_does_something`.
 pub(crate) fn ops_for(
     world: &bevy_ecs::world::World,
     selected: &[bevy_ecs::entity::Entity],
@@ -290,15 +313,9 @@ pub(crate) fn ops_for(
             Op::Intersection(_) => 2,
         }));
     }
-    let siblings = selected.len() >= 2
-        && selected
-            .iter()
-            .all(|e| world.get::<FieldNode>(*e).is_some())
-        && selected
-            .iter()
-            .map(|e| world.get::<bevy_ecs::hierarchy::ChildOf>(*e).map(|c| c.0))
-            .collect::<std::collections::BTreeSet<_>>()
-            .len()
-            == 1;
-    if siblings { chips(None) } else { Vec::new() }
+    if ph2d_field_ecs::can_wrap(world, selected) {
+        chips(None)
+    } else {
+        Vec::new()
+    }
 }

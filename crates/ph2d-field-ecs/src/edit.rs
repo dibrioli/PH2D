@@ -745,6 +745,44 @@ pub fn set_op(world: &mut World, entity: Entity, op: Op) -> Result<(), FieldErro
     Ok(())
 }
 
+/// ⭐ **[`wrap_in_op`] aceitaria estes nós?** — a MESMA pergunta, sem mutar nada (W34).
+///
+/// # Por que ela existe separada
+///
+/// Quem **pinta** os botões de operação tem de saber a resposta antes de o artista clicar, e não
+/// pode mutar o mundo para descobrir. Enquanto a regra viveu só dentro do `wrap_in_op`, o painel
+/// escreveu a dele — e as duas divergiram: a W31 ensinou o gesto a aceitar **uma** forma sozinha e o
+/// painel continuou a exigir **duas**, então o gesto de criar grupo ficou inalcançável e os gates
+/// (que empurram a intenção) passaram verdes. ⚠️ *Uma affordance derivada de uma segunda cópia da
+/// regra é uma affordance que envelhece sozinha.*
+///
+/// ⭐ **`wrap_in_op` consome esta função**, e é isso que impede a divergência de voltar: elas não são
+/// duas leis parecidas, é uma lei e o seu único porteiro. O gate
+/// `can_wrap_answers_exactly_what_wrap_in_op_does` mede a equivalência sobre uma tabela.
+///
+/// ⚠️ **UM basta** (W31): embrulhar uma forma sozinha é como se **cria um grupo** — Enio,
+/// 2026-08-22, *"ainda não temos como criar novos grupos"*. O `>= 2` de origem vinha de o gesto ter
+/// nascido como *«juntar os escolhidos»*; uma operação com um filho é o que ela sempre foi (um
+/// `Union` de um é esse um), e passa a ter onde receber o segundo.
+#[must_use]
+pub fn can_wrap(world: &World, nodes: &[Entity]) -> bool {
+    let Some(first) = nodes.first() else {
+        return false;
+    };
+    // ⚠️ **Sem pai não há lugar onde pôr o grupo**: quem não tem `ChildOf` é a raiz da peça, e
+    // embrulhá-la mudaria o que a Hierarquia mostra COMO peça.
+    let Some(parent) = world
+        .get::<bevy_ecs::hierarchy::ChildOf>(*first)
+        .map(|c| c.0)
+    else {
+        return false;
+    };
+    nodes.iter().all(|n| {
+        world.get::<FieldNode>(*n).is_some()
+            && world.get::<bevy_ecs::hierarchy::ChildOf>(*n).map(|c| c.0) == Some(parent)
+    })
+}
+
 /// ⭐ **Embrulha os nós dados numa operação nova**, que fica no lugar deles.
 ///
 /// É a autoria da booleana: escolhem-se duas formas e diz-se *"tira esta daquela"*.
@@ -753,28 +791,19 @@ pub fn set_op(world: &mut World, entity: Entity, op: Op) -> Result<(), FieldErro
 /// seguintes. Ordenar por qualquer outra coisa — pelos bits da entidade, pela ordem da consulta —
 /// faria o gesto tirar a peça errada, de forma que parece aleatória entre sessões.
 ///
-/// Devolve `None` quando não há o que embrulhar (menos de dois nós, ou eles não partilham pai).
+/// Devolve `None` exatamente quando [`can_wrap`] diz que não — lista vazia, um nó sem pai (a raiz),
+/// algo que não é do campo, ou nós que não partilham pai. ⚠️ **Um nó basta** desde a W31, e esta
+/// linha dizia «menos de dois» meses depois de a lei mudar: *um comentário que sobrevive à regra que
+/// descreve é uma segunda fonte, e é sempre a errada.*
 ///
 /// ⚠️ **Pai comum é EXIGIDO**, e não uma conveniência: mover um nó para debaixo de outra operação
 /// muda o que ele é subtraído de — um segundo gesto, com o seu próprio desfazer. Um «embrulhar» que
 /// o fizesse em silêncio seria dois gestos com um nome só.
 pub fn wrap_in_op(world: &mut World, nodes: &[Entity], op: Op) -> Option<Entity> {
-    // ⭐ **UM basta** (W31): embrulhar uma forma sozinha é como se **cria um grupo** — e era o que
-    // faltava. Enio, 2026-08-22: *"ainda não temos como criar novos grupos"*. O `>= 2` de origem
-    // vinha de o gesto ter nascido como *«juntar os escolhidos»*; a operação com um filho é a
-    // mesma coisa que ela sempre foi (um `Union` de um é esse um), e passa a ter onde receber o
-    // segundo.
-    if nodes.is_empty() {
+    if !can_wrap(world, nodes) {
         return None;
     }
     let parent = world.get::<bevy_ecs::hierarchy::ChildOf>(nodes[0])?.0;
-    for n in nodes {
-        if world.get::<FieldNode>(*n).is_none()
-            || world.get::<bevy_ecs::hierarchy::ChildOf>(*n).map(|c| c.0) != Some(parent)
-        {
-            return None;
-        }
-    }
     let shape = NodeShape::Combine(op);
     let name = unique_sibling_name(world, parent, crate::shape_name(&shape));
     let group = world
@@ -893,6 +922,23 @@ fn unique_sibling_name(world: &World, parent: Entity, base: &str) -> String {
         .unwrap_or_else(|| base.to_string())
 }
 
+/// ⭐ **Este nó pode ser DESTACADO da peça?** — duplicado ou apagado (W34).
+///
+/// Os dois gestos recusam a mesma coisa e pela mesma razão: um nó **sem pai** é a raiz, e a raiz *é*
+/// a peça. Duplicá-la seria uma segunda peça (gesto da cena) e apagá-la deixaria o módulo sem nada
+/// para onde voltar — as duas decisões estão escritas em [`duplicate`] e [`remove`].
+///
+/// ⚠️ Ela existe **separada** pela razão do [`can_wrap`]: quem pinta a fileira *Duplicar/Apagar* tem
+/// de saber a resposta antes do clique e não pode mutar o mundo para descobrir. Enquanto a regra
+/// viveu só dentro dos dois gestos, o painel publicava a fileira para **qualquer** seleção — e com a
+/// raiz escolhida os dois botões apareciam e não faziam nada. *A recusa era uma decisão; a affordance
+/// que a ignorava era um defeito.*
+#[must_use]
+pub fn can_detach(world: &World, entity: Entity) -> bool {
+    world.get::<FieldNode>(entity).is_some()
+        && world.get::<bevy_ecs::hierarchy::ChildOf>(entity).is_some()
+}
+
 /// ⭐ **Duplica um nó e tudo o que está debaixo dele**, como irmão.
 ///
 /// Devolve a cópia. `offset` é o deslocamento de **mundo** que a separa do original.
@@ -906,6 +952,9 @@ fn unique_sibling_name(world: &World, parent: Entity, base: &str) -> String {
 /// Devolve `None` para um nó sem pai — a raiz **é** a peça, e uma segunda peça é um gesto da cena,
 /// não uma edição desta.
 pub fn duplicate(world: &mut World, entity: Entity, offset: [f32; 3]) -> Option<Entity> {
+    if !can_detach(world, entity) {
+        return None;
+    }
     let parent = world.get::<bevy_ecs::hierarchy::ChildOf>(entity)?.0;
     let copy = copy_subtree(world, entity, parent)?;
     translate_world(world, copy, offset);
@@ -946,9 +995,7 @@ fn copy_subtree(world: &mut World, from: Entity, into: Entity) -> Option<Entity>
 ///
 /// Devolve `false` quando não apagou nada.
 pub fn remove(world: &mut World, entity: Entity) -> bool {
-    if world.get::<FieldNode>(entity).is_none()
-        || world.get::<bevy_ecs::hierarchy::ChildOf>(entity).is_none()
-    {
+    if !can_detach(world, entity) {
         return false;
     }
     world.entity_mut(entity).despawn();

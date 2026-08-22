@@ -55,6 +55,17 @@ extend-ignore-identifiers-re = [
     "^PILAR$",
     "^espace$",
     "^continuasse$",
+    # `regresso` — PORTUGUÊS correto, lido pelo `typos` como `regression`. É o
+    # substantivo de *regressar*: o par ida-e-volta (**o regresso** de uma pose
+    # composta pela inversa, `Xform::local_under`) e o **REGRESSO** da escultura
+    # ao reabrir o projeto, que é o nome da wave (W23) e o título de uma seção
+    # inteira. Trocá-lo por «regression» diria outra coisa — o oposto do que a
+    # prosa afirma. ⚠️ Entrada SEPARADA para a caixa alta, pela razão escrita no
+    # `^PILAR$` acima: esta lista é COMPARTILHADA e um `(?i)` na linha existente
+    # arriscaria perder num merge o que outra linha lhe tenha acrescentado.
+    # (2026-08-22, `line/3DModeling`.)
+    "^regresso$",
+    "^REGRESSO$",
     # `inh` — the IN-handle of a Hobby-spline vertex (`ph2d-vec-edit::hobby`),
     # paired with `out`. A deliberate short identifier, not a typo of `in`.
     # Anchored (2026-07-31).

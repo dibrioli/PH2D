@@ -144,6 +144,10 @@ mod selection_tests;
 #[path = "field3d_group_tests.rs"]
 mod group_tests;
 
+#[cfg(test)]
+#[path = "field3d_reach_tests.rs"]
+mod reach_tests;
+
 /// ⭐ **Este nó pode ser mexido por um gesto?** — a pergunta única, e ela junta duas leis da CASA.
 ///
 /// | lei | de onde vem | o que significa aqui |

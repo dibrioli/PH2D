@@ -37,6 +37,62 @@ use ph2d_mesh::{MeshFormat, Pose};
 /// desfaz.
 const FRAMING_FRACTION: f32 = 0.5;
 
+/// O que um arquivo de malha dá: o campo, mais os números que o artista lê.
+pub(crate) struct Loaded {
+    pub field: ph2d_field_mesh::SampledField,
+    /// A maior aresta da caixa da malha, **nas unidades do arquivo** — a entrada do enquadramento.
+    pub extent: f32,
+    pub tris: usize,
+    pub millis: f64,
+}
+
+/// ⭐ **UMA resposta a "que campo este arquivo dá"** — e é por isso que ela é uma função e não o
+/// corpo do diálogo.
+///
+/// ⚠️ **O recarregamento (W23) chama exactamente esta**, e é o que impede a divergência mais cara
+/// deste desenho: o documento guarda o **caminho**, não a grade, então o que volta do arquivo tem de
+/// ser byte-a-byte o que entrou por ele. Uma segunda cópia — com outra resolução, ou sem o
+/// `recenter` — daria uma peça que muda de forma ao reabrir o projeto, e **sem nada na tela a
+/// dizê-lo**.
+///
+/// # Errors
+/// A mensagem é a que o artista vê no aviso; ela nomeia o que falhou, nunca o mecanismo.
+pub(crate) fn field_from_file(path: &std::path::Path) -> Result<Loaded, String> {
+    let pieces = match crate::sculpt3d::import::read_pieces(path) {
+        Ok(p) if !p.is_empty() => p,
+        Ok(_) => return Err("that file has no mesh in it".into()),
+        Err(e) => return Err(format!("could not read it ({e})")),
+    };
+
+    // ⚠️ **As peças de um OBJ viram UM corpo.** Uma escultura entra na booleana como uma coisa só —
+    // um `Difference` contra "três peças" precisaria de escolher qual, e a resposta certa é que o
+    // arquivo é a escultura.
+    let refs: Vec<(&ph2d_mesh::Mesh, Pose)> =
+        pieces.iter().map(|p| (&p.mesh, Pose::IDENTITY)).collect();
+    let mut mesh =
+        ph2d_mesh::merge(&refs).map_err(|e| format!("could not merge its pieces ({e:?})"))?;
+    let tris = mesh.faces().len();
+    mesh.recenter();
+    let extent = {
+        let b = mesh.bounds();
+        (b.max[0] - b.min[0])
+            .max(b.max[1] - b.min[1])
+            .max(b.max[2] - b.min[2])
+            .max(f32::MIN_POSITIVE)
+    };
+
+    let t0 = std::time::Instant::now();
+    let field =
+        ph2d_field_mesh::SampledField::from_mesh(&mesh, ph2d_field_mesh::DEFAULT_RESOLUTION)
+            .ok_or_else(|| "that mesh is empty".to_string())?;
+    Ok(Loaded {
+        field,
+        extent,
+        tris,
+        millis: t0.elapsed().as_secs_f64() * 1000.0,
+    })
+}
+
 /// Abre o diálogo, lê o arquivo, constrói o campo e **anota** a escultura para o próximo quadro.
 ///
 /// ⚠️ Ela devolve o nome (o caminho) por um canal e não cria o nó: quem tem o `&mut World` é a ponte
@@ -55,57 +111,26 @@ pub(crate) fn field3d_import(toasts: &mut ph2d_editor::ToastQueue) {
         return;
     };
 
-    let pieces = match crate::sculpt3d::import::read_pieces(&path) {
-        Ok(p) if !p.is_empty() => p,
-        Ok(_) => {
-            say(toasts, "That file has no mesh in it".into());
-            return;
-        }
+    let name = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("?")
+        .to_string();
+    let loaded = match field_from_file(&path) {
+        Ok(l) => l,
         Err(e) => {
-            say(toasts, format!("Could not read the mesh: {e}"));
+            say(toasts, format!("Could not import {name}: {e}"));
             return;
         }
     };
-
-    // ⚠️ **As peças de um OBJ viram UM corpo.** Uma escultura entra na booleana como uma coisa só —
-    // um `Difference` contra "três peças" precisaria de escolher qual, e a resposta certa é que o
-    // arquivo é a escultura.
-    let refs: Vec<(&ph2d_mesh::Mesh, Pose)> =
-        pieces.iter().map(|p| (&p.mesh, Pose::IDENTITY)).collect();
-    let mut mesh = match ph2d_mesh::merge(&refs) {
-        Ok(m) => m,
-        Err(e) => {
-            say(toasts, format!("Could not merge the pieces: {e:?}"));
-            return;
-        }
-    };
-    let tris = mesh.faces().len();
-    mesh.recenter();
-    let extent = {
-        let b = mesh.bounds();
-        (b.max[0] - b.min[0])
-            .max(b.max[1] - b.min[1])
-            .max(b.max[2] - b.min[2])
-            .max(f32::MIN_POSITIVE)
-    };
-
-    let t0 = std::time::Instant::now();
-    let Some(field) =
-        ph2d_field_mesh::SampledField::from_mesh(&mesh, ph2d_field_mesh::DEFAULT_RESOLUTION)
-    else {
-        say(toasts, "That mesh is empty".into());
-        return;
-    };
-    let ms = t0.elapsed().as_secs_f64() * 1000.0;
-    let cell = field.cell();
+    let (tris, ms, cell) = (loaded.tris, loaded.millis, loaded.field.cell());
 
     // ⭐ **A chave é o CAMINHO**, e é isso que torna a persistência possível sem guardar a grade.
     let key = path.to_string_lossy().to_string();
-    crate::field3d_smoke::register_sampled(&key, std::sync::Arc::new(field));
+    crate::field3d_smoke::register_sampled(&key, std::sync::Arc::new(loaded.field));
     crate::field3d_smoke::ask_spawn_sculpt(key);
-    crate::field3d_smoke::ask_sculpt_extent(extent);
+    crate::field3d_smoke::ask_sculpt_extent(loaded.extent);
 
-    let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
     say(
         toasts,
         format!("Imported {name}: {tris} tris -> field in {ms:.0} ms (detail {cell:.4})"),

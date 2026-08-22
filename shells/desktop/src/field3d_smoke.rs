@@ -370,6 +370,25 @@ thread_local! {
     static SCULPT_EXTENT: std::cell::Cell<Option<f32>> = const { std::cell::Cell::new(None) };
 }
 
+/// ⭐ **As esculturas que NÃO voltaram do arquivo** (W23), pela mesma porta dos outros três pedidos.
+///
+/// ⚠️ Ela existe pela razão simétrica: quem descobre a falta é a ponte com a cena (é lá que o
+/// documento é cozido, e é o documento que nomeia as esculturas), e quem tem a fila de avisos é o
+/// app. Sem este canal o silêncio seria total — que é exactamente o defeito da W23.
+pub(crate) fn take_missing_report() -> Vec<String> {
+    MISSING.with(|c| std::mem::take(&mut *c.borrow_mut()))
+}
+
+pub(crate) fn report_missing(msgs: Vec<String>) {
+    if !msgs.is_empty() {
+        MISSING.with(|c| c.borrow_mut().extend(msgs));
+    }
+}
+
+thread_local! {
+    static MISSING: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
 pub(crate) fn take_open_panel_request() -> bool {
     thread_local! {
         static PENDING: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };

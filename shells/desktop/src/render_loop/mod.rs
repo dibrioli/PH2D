@@ -8917,6 +8917,13 @@ impl crate::App {
             if crate::field3d_smoke::take_import_request() {
                 crate::field3d_import::field3d_import(toasts);
             }
+            // ⭐ **E a escultura que NÃO voltou do arquivo** (W23): a ponte com a cena descobre a
+            // falta ao cozer o documento, e a fila de avisos é daqui. Sem esta linha o regresso
+            // falha em silêncio — o nó existe, a peça é vazia (ou some inteira, numa interseção) e
+            // nada na tela diz que o arquivo mudou de sítio.
+            for msg in crate::field3d_smoke::take_missing_report() {
+                toasts.push(ph2d_editor::Toast::info(msg));
+            }
             if crate::field3d_smoke::take_open_panel_request() {
                 // O ID vem do PAINEL, nunca de um literal: uma segunda cópia da chave de
                 // visibilidade é como se abre um painel que ninguém pinta.

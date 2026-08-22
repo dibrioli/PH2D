@@ -86,6 +86,68 @@ fn the_whole_part_survives_the_world_snapshot_round_trip() {
     assert_eq!(after, before, "a peça voltou diferente do que entrou");
 }
 
+/// ⭐ **A escultura atravessa o snapshot a carregar o NOME do arquivo** — a premissa da W23.
+///
+/// ⚠️ **É a única coisa que o documento guarda de uma escultura**, e é onde ela é diferente de todo
+/// o resto da peça: as outras formas viajam como números, esta viaja como um `String` — o caminho do
+/// arquivo. Se ele não atravessar (ou atravessar truncado, ou com os bytes trocados), regenerar
+/// procura o arquivo errado, e o sintoma é o da wave inteira: a peça abre sem a escultura.
+///
+/// Por isso o nome do fixture tem **espaço e acento**: um caminho de verdade tem-nos, e um
+/// serializador que os estrague só o mostra num deles.
+#[test]
+fn a_sculpture_crosses_the_snapshot_carrying_its_file_name() {
+    const KEY: &str = "/tmp/uma escultura àé.obj";
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let mut prop = TransformPropagationState::new(sim.world_mut());
+    let mut worklist = WorklistBuf::default();
+    let doc = FieldDoc::new(
+        vec![ph2d_field::Node {
+            xform: Xform::at(0.1, 0.2, 0.3),
+            kind: ph2d_field::NodeKind::Sampled { key: KEY.into() },
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("documento válido");
+    let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &doc, "peça");
+    let before = ph2d_field_ecs::cook(sim.world(), root)
+        .expect("não vazia")
+        .expect("válida");
+
+    let mut snap = WorldSnapshot::new();
+    world_to_snapshot(sim.world(), &mut prop, &mut worklist, &reg, &mut snap)
+        .expect("o snapshot só falha se um componente registrado não (de)serializa");
+    let mut restored = SimWorld::new();
+    snapshot_to_world(restored.world_mut(), &snap, &reg).expect("restaura");
+
+    let mut q = restored.world_mut().query::<(Entity, &FieldObject)>();
+    let root = q
+        .iter(restored.world())
+        .map(|(e, _)| e)
+        .next()
+        .expect("a peça voltou");
+    let after = ph2d_field_ecs::cook(restored.world(), root)
+        .expect("não vazia")
+        .expect("válida");
+    assert_eq!(after, before, "a escultura voltou diferente do que entrou");
+    let keys: Vec<&str> = after
+        .nodes()
+        .iter()
+        .filter_map(|n| match &n.kind {
+            ph2d_field::NodeKind::Sampled { key } => Some(key.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        keys,
+        vec![KEY],
+        "o caminho do arquivo é a ÚNICA coisa que o documento guarda da escultura — sem ele, \
+         regenerar procura o arquivo errado"
+    );
+}
+
 /// ⚠️ **O controle NEGATIVO, e ele é o que dá valor ao gate acima.** Sem o registro, o mesmo
 /// caminho perde os componentes **sem erro nenhum** — é essa a forma exata da falha que se está a
 /// prevenir. Um gate que só mostra o caso feliz não distingue *"funciona"* de *"o teste não

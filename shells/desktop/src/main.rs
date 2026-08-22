@@ -119,6 +119,8 @@ mod field3d_import;
 /// tela, que é o caminho pelo qual o artista vê a peça (a malha é só para exportar).
 mod field3d_input;
 mod field3d_pick;
+/// ADR-0161 W23 — o REGRESSO: um projeto carregado regenera cada escultura do arquivo que a nomeia.
+mod field3d_reload;
 mod field3d_scene;
 mod field3d_smoke;
 /// Motion Nodes: o gizmo de canvas de um field espacial (`field.box`, …). Espelho do

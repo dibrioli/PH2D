@@ -19,9 +19,14 @@ são `min` e um operador sobre dois números, e o **raio do fillet fica editáve
 | [`02_o_que_torna_boolean_e_fillet_extraordinarios.md`](02_o_que_torna_boolean_e_fillet_extraordinarios.md) | **Por que esta rota.** Mede que o Blender 4.5 já resolveu a booleana e que o buraco é o arredondamento. As 3 famílias candidatas |
 | [`00_plano_port.md`](00_plano_port.md) | ⛔ **Rota substituída** — não execute as waves. Continuam fonte: o **§1** (estudo do original: 9 leis, 19 operações) e o **§2** (inventário da PH2D). O **§7** segue válido: por que **não** se escreve um kernel do zero |
 
-**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3 e W5→W13
-fechadas** · a W2 tem o traçado no shell e a perspectiva **aberta**; o canvas 3D de primeira classe
-segue **aberto**.
+**Estado:** **W0 fechada e aprovada** pelo Enio no smoke de 19/08 (*"excepcional"*) · **W1, W3 e
+W5→W23 fechadas** · a W2 tem o traçado no shell; o canvas 3D de primeira classe segue **aberto**.
+
+⚠️ **A tabela abaixo pára na W13 de propósito** — as waves **W14→W23** (perspectiva, gizmo em
+números, casca/afastamento, *draft*, a saída para arquivo, o extrator da casa, a ponte com a
+escultura, o botão `+ Sculpt…` e o **regresso ao abrir o projeto**) vivem no
+[doc 06](06_resultados_cena_e_gizmo.md), uma seção cada, e a lista viva do que ficou aberto é o
+**§13** dele. *Duplicá-las aqui criaria a segunda resposta a «o que está feito».*
 
 | Wave | Estado | O que ficou |
 |---|---|---|

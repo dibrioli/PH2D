@@ -1672,9 +1672,11 @@ consigo a pergunta de **autoria** — como o artista cria um destes —, que é 
 
 ### §22.7 — ⏸️ O que fica aberto, nomeado
 
-- **A autoria**: não há gesto que crie um `Sampled` — nem botão, nem importação, nem ligação à
-  escultura viva do módulo 3D. A cena 6 é o único sítio onde um existe.
-- **Persistência**: o `key` viaja no documento, mas nada regenera a grade ao carregar um projeto.
+- ~~**A autoria**: não há gesto que crie um `Sampled` — nem botão, nem importação, nem ligação à
+  escultura viva do módulo 3D. A cena 6 é o único sítio onde um existe.~~ ✅ **FECHOU na W22** (§23) —
+  o botão `+ Sculpt…`. ⏸️ A ligação à escultura **viva** continua aberta.
+- ~~**Persistência**: o `key` viaja no documento, mas nada regenera a grade ao carregar um
+  projeto.~~ ✅ **FECHOU na W23** (§24) — a reconciliação mora no cozimento, e o que não voltar fala.
 - **Modificadores** sobre uma escultura (recusados, §22.4) e **pose/modificadores de um `Combine`
   MISTO** (o `Combine` é avaliado na pose dele próprio).
 - **A escala característica** de uma escultura é `INFINITY` no `subtree_scale` — o teto do slider de
@@ -1760,6 +1762,145 @@ inteiro), `timeout=` no subprocesso, `finally` a restaurar, e um `diff` explíci
 
 ---
 
+## §24 — W23: o REGRESSO — a escultura volta com o arquivo (22/08)
+
+> A W22 fechou com uma linha na lista de aberto: *"regenerar a grade ao carregar continua por fazer"*.
+> Ela lia-se como acabamento e era um **buraco de correção**: o projeto salvava a peça, reabria com a
+> Hierarquia certa — e a escultura **não estava lá**, sem uma palavra.
+
+### §24.1 — O defeito tinha três caras, e a pior não parece deste módulo
+
+| onde a escultura estava | o que aparecia ao reabrir |
+|---|---|
+| sozinha, ou numa união | **nada** — o nó existe, a linha está na Hierarquia, a tela é vazia |
+| como base de uma subtração | **nada**, pela mesma conta |
+| numa **interseção** | ⚠️ **a peça INTEIRA some** — `max(a, ABSENT)` é `ABSENT` |
+
+⭐ **A decisão de fundo está certa e é anterior a esta wave**: um nome que o registo não conhece lê
+como espaço **vazio**, nunca como sólido ([`hybrid::ABSENT`](../../crates/ph2d-field-eval/src/hybrid.rs)) —
+o oposto encheria a cena de um bloco que ninguém autorizou e que o artista não teria como apagar. O
+que faltava é que **ler como vazio EM SILÊNCIO** é, para quem olha, indistinguível de o app ter
+perdido o trabalho.
+
+⚠️ **A premissa foi gateada, não assumida.** De uma escultura o documento guarda **uma coisa só**: o
+caminho do arquivo, como `String` — enquanto todas as outras formas viajam como números. Se ele não
+atravessasse o snapshot (ou atravessasse truncado), regenerar procuraria o arquivo errado e o sintoma
+seria o mesmo da wave inteira. O gate `a_sculpture_crosses_the_snapshot_carrying_its_file_name` usa um
+nome **com espaço e com acento**, que é o que um caminho de verdade tem.
+
+### §24.2 — ⭐ A reconciliação mora no COZIMENTO, e não no load do projeto
+
+O gancho óbvio era `project_load_from` (o Ctrl+O). Ele está errado por **alcance**: quem *nomeia* as
+esculturas é o **documento**, e o documento nasce do `cook` da cena — que corre a cada quadro. Um
+gancho no load cobriria o Ctrl+O e deixaria de fora tudo o resto que traz um nó de volta:
+
+| caminho | passa pelo load? | passa pelo `cook`? |
+|---|---|---|
+| Ctrl+O | ✅ | ✅ |
+| **undo de um apagar** | ❌ | ✅ |
+| duplicar a subárvore | ❌ | ✅ |
+| um documento semeado (smoke, cena nova) | ❌ | ✅ |
+
+…e cada buraco teria o **mesmo sintoma mudo**. *Um invariante se impõe na derivação, não em cada
+gesto* — a mesma lei que o `canonicalize()` do shell paga.
+
+⚠️ Isto tem a vantagem lateral de manter o gancho **fora** de `project_load.rs`, que é arquivo
+compartilhado com outras linhas.
+
+### §24.3 — ⭐ Recarregar é a MESMA função que importar
+
+`field3d_import::field_from_file` passou a ser a única resposta a *"que campo este arquivo dá"*, e o
+diálogo ficou a ser o que sempre foi: um diálogo. ⚠️ **Uma segunda cópia — com outra resolução, ou sem
+o `recenter` — daria uma peça que muda de forma ao reabrir o projeto**, e nada na tela o diria. O
+documento guarda o caminho e não a grade, então *a função que lê o arquivo é parte do formato*.
+
+⚠️ **A agulha do gate é o LEITOR, não o voxelizador**, e a diferença apareceu na primeira corrida
+dele: a cena 6 do smoke também chama `SampledField::from_mesh`, sobre uma malha que ela **fabrica**.
+Essa não pode divergir do arquivo — não há arquivo. O que não pode existir duas vezes é *ler um
+arquivo de malha e chamar-lhe escultura*.
+
+### §24.4 — O que não volta FALA — e fala UMA vez
+
+O arquivo pode ter sido movido, renomeado, ou estar noutra máquina. A resposta continua a ser espaço
+vazio (§24.1), mas com o **nome do arquivo** num aviso: `Sculpture blob.obj is missing: could not
+read it (…)`.
+
+⚠️ **A cena 6 do smoke é o caso-limite honesto**: a escultura dela é **fabricada** (a chave é `blob`,
+não um caminho), então salvar e reabrir essa cena não a pode trazer de volta — e o aviso di-lo, em vez
+de a peça sumir calada. *Uma escultura sem arquivo não tem de onde voltar.*
+
+⚠️ **E uma tentativa por nome.** A reconciliação corre no cozimento, que corre a cada quadro, e um
+caminho que falha **falha sempre** — o arquivo não volta sozinho. Sem o conjunto `TRIED` seriam 60
+leituras falhadas e 60 avisos **por segundo**, e a tela ficaria ilegível exactamente no caso em que o
+artista precisa de a ler.
+
+### §24.5 — O custo, medido (`measure_the_cost_of_coming_back`)
+
+**Regenerar** (o que se paga uma vez, ao abrir):
+
+| triângulos | KB do `.obj` | ms (ler + merge + voxelizar) |
+|---:|---:|---:|
+| 288 | 14 | **274,3** |
+| 2 048 | 109 | 255,5 |
+| 8 192 | 452 | 409,5 |
+| 32 768 | 1 919 | **468,3** |
+
+⭐ **O custo é da GRADE, não da malha**, e a tabela di-lo sozinha: 288 triângulos já pagam 274 ms, e
+**114× mais triângulos** custam **1,7×** mais tempo. A grade é 144³ (`DEFAULT_RESOLUTION` 128 mais
+2×`PAD_CELLS`) ≈ 3,0 M células, e a propagação chanfrada varre 13 vizinhos nos dois sentidos. *Uma
+escultura mais pesada não torna abrir o projeto mais lento; uma resolução maior torna.*
+
+**Varrer** (o que se paga por quadro, no caso normal — nada em falta):
+
+| nós no documento | µs por varredura |
+|---:|---:|
+| 1 | 0,007 |
+| 8 | 0,008 |
+| 64 | 0,026 |
+| 512 | **0,162** |
+
+0,162 µs é **0,001 %** de um quadro de 16,7 ms: o caso normal não toca no disco e não se mede.
+
+⚠️ **O que isto NÃO diz:** a regeneração corre **dentro do quadro**, então abrir um projeto com uma
+escultura tranca a janela por ~0,3 s (com quatro, ~1,5 s). É o mesmo preço que o import já cobra, e o
+irmão da casa faz o mesmo (a escultura decodifica o documento dela no próprio `project_load`). ⏸️ **O
+gatilho para o tirar do quadro é esse número** — várias esculturas, ou uma resolução maior —, não uma
+preferência.
+
+### §24.6 — Uma consequência que é produto: a escultura é um VÍNCULO, não uma cópia
+
+Como o que se guarda é o **caminho** e o campo é reconstruído do arquivo, editar o `.obj` no
+escultor e reabrir o projeto traz a versão **nova** para dentro da peça — a booleana e o filete
+seguem-na. Isso não é acidente do desenho, é o desenho; e é a metade barata da ⏸️ *ligação à escultura
+viva*, que continua aberta (hoje o vínculo passa pelo disco, e acorda ao abrir, não ao vivo).
+
+### §24.7 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| a ponte não reconcilia | `a_project_that_reopens_gets_its_sculpture_back` (**vermelho antes de existir a costura** — red-first) |
+| `first_try` sempre verdadeiro | `a_sculpture_whose_file_vanished_speaks_once` |
+| `missing_keys` sem `dedup` | `missing_keys_names_exactly_what_the_registry_cannot_answer` |
+| `missing_keys` ignora o que o registo já sabe | `missing_keys_names_exactly_what_the_registry_cannot_answer` |
+| a ponte não **entrega** o aviso ao app | `the_missing_file_reaches_the_artist_through_the_bridge` |
+
+⚠️ **O último gate nasceu de olhar para a lista antes de a correr**: `a_sculpture_whose_file…` chama
+`resolve_missing` de frente e mede o que ela devolve — apagar a linha que **entrega** esse resultado
+ao canal do app deixá-lo-ia verde e o artista mudo, que é o modo de falha desta wave inteira uma
+emenda mais à frente. A última emenda (o canal → `Toast`) continua sem gate: é uma linha ao lado de
+duas idênticas, no meio do quadro.
+
+### §24.8 — ⏸️ O que fica aberto
+
+- **Um arquivo que mudou de sítio não se reencontra** — a chave é o caminho absoluto, então mover a
+  pasta (ou abrir noutra máquina) perde a escultura, com aviso. Religar pede UI (*"onde está este
+  arquivo?"*), que é a mesma pergunta que o resto do app ainda não faz por nenhum asset.
+- **A regeneração corre no quadro** (§24.5): o gatilho para a tirar de lá está escrito e é um número.
+- Um nome que falhou **não é re-tentado** nesta sessão, mesmo que o arquivo reapareça. Re-importar
+  pelo botão resolve, e é o gesto que o artista já tem.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -1776,10 +1917,12 @@ inteiro), `timeout=` no subprocesso, `finally` a restaurar, e um `diff` explíci
   falta é um alvo descentrado, ou um pivô de espelho autorado. Adiado por decisão dele
 - ✅ **draft/taper FECHOU** na W18 (§19), e a W4 do plano com ele — o primeiro operador não-exato do
   módulo, com as duas tabelas ao lado do número
-- ✅ **a W5 FECHOU**: o motor na W21 (§22) e a **autoria** na W22 (§23) — o botão `+ Sculpt…` traz um
-  arquivo de malha para dentro da peça, e a booleana corta-o. ⏸️ Fica: **regenerar a grade ao
-  carregar** um projeto (a chave já é o caminho do arquivo, então o desenho está feito), a ligação à
-  escultura **viva** do módulo 3D (hoje é pelo arquivo), e os modificadores sobre uma escultura
+- ✅ **a W5 FECHOU**: o motor na W21 (§22), a **autoria** na W22 (§23) e o **regresso** na W23 (§24) —
+  o botão `+ Sculpt…` traz um arquivo de malha para dentro da peça, a booleana corta-o, e reabrir o
+  projeto **regenera-o do arquivo que o nomeia** (o que não voltar **fala**, com o nome do arquivo).
+  ⏸️ Fica: um arquivo que **mudou de sítio** não se reencontra (religar pede UI, e é a pergunta que o
+  app ainda não faz por asset nenhum), a ligação à escultura **viva** do módulo 3D (hoje o vínculo
+  passa pelo disco e acorda ao **abrir**), e os modificadores sobre uma escultura
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

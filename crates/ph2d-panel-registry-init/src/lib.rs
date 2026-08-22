@@ -153,6 +153,15 @@ mod tests {
         {
             n += 1;
         }
+        // ⚠️ **O painel de MODELAGEM 3D esteve REGISTADO e NÃO CONTADO** desde a W4 desta linha
+        // (2026-08-19) até ao fecho dela. O braço do `push` acima ganhou o `#[cfg]` e este ficou
+        // para trás — e o vermelho é **invisível de dentro do módulo**: só a unificação de features
+        // da workspace liga o painel, então `cargo test -p <crate>` passa e o `ship.sh` reprova.
+        // *A nota acima já dizia isto; quem acrescentou o painel não a leu.*
+        #[cfg(feature = "panel-model3d")]
+        {
+            n += 1;
+        }
         #[cfg(feature = "panel-physics")]
         {
             n += 1;

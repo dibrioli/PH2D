@@ -140,6 +140,10 @@ pub(crate) fn apply_motion_for_test(
 #[path = "field3d_selection_tests.rs"]
 mod selection_tests;
 
+#[cfg(test)]
+#[path = "field3d_group_tests.rs"]
+mod group_tests;
+
 /// ⭐ **Este nó pode ser mexido por um gesto?** — a pergunta única, e ela junta duas leis da CASA.
 ///
 /// | lei | de onde vem | o que significa aqui |
@@ -348,9 +352,21 @@ pub(crate) fn sync_scene_and_birth(
             ph2d_panel_model3d::ModelIntent::ApplyOp { slot } => {
                 if let Some(op) = op_at(slot) {
                     match selection {
-                        [one] => {
+                        // ⭐ **Uma OPERAÇÃO escolhida sozinha troca de operação** — o gesto de sempre.
+                        [one]
+                            if matches!(
+                                world.get::<FieldNode>(*one).map(|n| &n.shape),
+                                Some(NodeShape::Combine(_))
+                            ) =>
+                        {
                             let _ = ph2d_field_ecs::set_op(world, *one, op);
                         }
+                        // ⭐ **Uma FORMA escolhida sozinha vira um GRUPO** (W31) — e era isto que
+                        // faltava: Enio, 2026-08-22, *"ainda não temos como criar novos grupos"*.
+                        //
+                        // ⚠️ O braço anterior tinha de ganhar a guarda: sem ela, um `set_op` numa
+                        // folha era recusado em silêncio e o clique não fazia nada. *Um gesto que só
+                        // funciona com dois selecionados não é um gesto de criar grupo.*
                         many => {
                             if let Some(group) = ph2d_field_ecs::wrap_in_op(world, many, op) {
                                 created = Some(group.to_bits());
@@ -381,6 +397,16 @@ pub(crate) fn sync_scene_and_birth(
             }
         }
     }
+
+    // ⭐ **SÓ UMA OPERAÇÃO PODE TER FILHOS** (W31), e a lei impõe-se aqui — na derivação, não em
+    // cada gesto.
+    //
+    // ⚠️ Enio, 2026-08-22: *"Se coloco um objeto como filho do outro ele some."* E somia mesmo: o
+    // cozimento emite uma **forma** e nunca olha para os filhos dela, então o nó largado ali ficava
+    // no mundo, aparecia na Hierarquia, e não entrava em documento nenhum. Reparar **onde a árvore
+    // é lida** apanha o arrasto da Hierarquia, o do futuro, e qualquer outro caminho que produza a
+    // mesma forma inválida — um remendo no drenar do arrasto deixaria os outros de fora.
+    ph2d_field_ecs::promote_leaf_hosts(world, root);
 
     // ⭐ O alcance do gesto é **o que cabe no quadro**: uma dimensão maior do que ele é uma cujo
     // efeito não se vê. O campo numérico continua sem teto, porque digitar 1000 é uma afirmação

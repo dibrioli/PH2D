@@ -759,7 +759,12 @@ pub fn set_op(world: &mut World, entity: Entity, op: Op) -> Result<(), FieldErro
 /// muda o que ele é subtraído de — um segundo gesto, com o seu próprio desfazer. Um «embrulhar» que
 /// o fizesse em silêncio seria dois gestos com um nome só.
 pub fn wrap_in_op(world: &mut World, nodes: &[Entity], op: Op) -> Option<Entity> {
-    if nodes.len() < 2 {
+    // ⭐ **UM basta** (W31): embrulhar uma forma sozinha é como se **cria um grupo** — e era o que
+    // faltava. Enio, 2026-08-22: *"ainda não temos como criar novos grupos"*. O `>= 2` de origem
+    // vinha de o gesto ter nascido como *«juntar os escolhidos»*; a operação com um filho é a
+    // mesma coisa que ela sempre foi (um `Union` de um é esse um), e passa a ter onde receber o
+    // segundo.
+    if nodes.is_empty() {
         return None;
     }
     let parent = world.get::<bevy_ecs::hierarchy::ChildOf>(nodes[0])?.0;
@@ -784,6 +789,83 @@ pub fn wrap_in_op(world: &mut World, nodes: &[Entity], op: Op) -> Option<Entity>
         world.entity_mut(group).add_child(*n);
     }
     Some(group)
+}
+
+/// ⭐ **SÓ UMA OPERAÇÃO PODE TER FILHOS** — e esta função repara quem quebrou a lei (W31).
+///
+/// # O defeito, com as palavras do Enio
+///
+/// *"Se coloco um objeto como filho do outro ele some."* (2026-08-22). E some mesmo: no idioma do
+/// campo, uma **forma** é uma folha — o cozimento emite-a e **nunca olha para os filhos dela**. Um
+/// nó largado ali fica no mundo, aparece na Hierarquia, e não é referenciado por documento nenhum.
+/// *Uma árvore que a UI aceita e a linguagem não exprime é um objeto que desaparece em silêncio.*
+///
+/// # A cura: PROMOVER o anfitrião, não recusar o gesto
+///
+/// A forma que recebeu o filho passa a viver dentro de uma **união** nova, no lugar dela — e o filho
+/// entra ao lado. ⭐ **A peça na tela não muda com isto**: os dois já lá estavam, e a união deles é
+/// exactamente o que se via. O artista ganha o aninhamento que pediu, e não perde nada.
+///
+/// ⚠️ **A ordem dos irmãos é preservada**, e não é cerimónia: em `children[0] menos os seguintes`, a
+/// primeira posição é a **base** da subtração. Um grupo acrescentado no fim mudaria quem corta quem.
+///
+/// Devolve quantos anfitriões foram promovidos.
+pub fn promote_leaf_hosts(world: &mut World, root: Entity) -> usize {
+    let hosts: Vec<Entity> = walk(world, root)
+        .into_iter()
+        .map(|(e, _)| e)
+        .filter(|e| {
+            matches!(
+                world.get::<FieldNode>(*e).map(|n| &n.shape),
+                Some(NodeShape::Leaf(_) | NodeShape::Sampled { .. })
+            ) && world
+                .get::<Children>(*e)
+                .is_some_and(|c| c.iter().any(|k| world.get::<FieldNode>(*k).is_some()))
+        })
+        .collect();
+    let mut done = 0;
+    for host in hosts {
+        let Some(parent) = world.get::<ChildOf>(host).map(|c| c.0) else {
+            // Uma folha SEM pai é a raiz da peça, e a raiz é dona do objeto: promovê-la mudaria o
+            // que a Hierarquia mostra como peça. Quem chega aqui é um caso que não existe hoje.
+            continue;
+        };
+        let siblings: Vec<Entity> = world
+            .get::<Children>(parent)
+            .map(|c| c.iter().copied().collect())
+            .unwrap_or_default();
+        let kids: Vec<Entity> = world
+            .get::<Children>(host)
+            .map(|c| c.iter().copied().collect())
+            .unwrap_or_default();
+
+        let shape = NodeShape::Combine(Op::Union(ph2d_field::Blend::Sharp));
+        let name = unique_sibling_name(world, parent, crate::shape_name(&shape));
+        let group = world
+            .spawn((
+                ph2d_ecs::Name::new(name),
+                FieldNode { shape },
+                FieldPose::default(),
+            ))
+            .id();
+        // O grupo toma o LUGAR do anfitrião entre os irmãos.
+        world.entity_mut(group).insert(ChildOf(parent));
+        world.entity_mut(group).add_child(host);
+        for k in kids {
+            world.entity_mut(group).add_child(k);
+        }
+        // …e a ordem dos irmãos é reposta com o grupo onde o anfitrião estava.
+        let order: Vec<Entity> = siblings
+            .into_iter()
+            .map(|s| if s == host { group } else { s })
+            .collect();
+        for s in order {
+            world.entity_mut(s).remove::<ChildOf>();
+            world.entity_mut(s).insert(ChildOf(parent));
+        }
+        done += 1;
+    }
+    done
 }
 
 /// Um nome que nenhum irmão já tem: `Cylinder`, `Cylinder 2`, `Cylinder 3`…

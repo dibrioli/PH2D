@@ -180,8 +180,14 @@ fn wrapping_refuses_nodes_that_do_not_share_a_parent() {
 
     // A raiz não tem pai, então também não se embrulha.
     assert!(ph2d_field_ecs::wrap_in_op(world, &[root, first], op).is_none());
-    // E um só nunca é «dois».
-    assert!(ph2d_field_ecs::wrap_in_op(world, &[first], op).is_none());
+    // ⭐ **UM basta, desde a W31** — e esta linha dizia o contrário. Enio, 2026-08-22: *"ainda não
+    // temos como criar novos grupos"*. Embrulhar uma forma sozinha **é** o gesto de criar grupo, e o
+    // `>= 2` vinha de o gesto ter nascido como *«juntar os escolhidos»*. *Uma lei que muda muda o
+    // gate; apagar o gate seria perder a metade dele que continua a valer* (pais diferentes, raiz).
+    assert!(
+        ph2d_field_ecs::wrap_in_op(world, &[first], op).is_some(),
+        "uma forma sozinha TEM de se embrulhar — é assim que se cria um grupo"
+    );
 }
 
 /// **Dois irmãos com o mesmo tipo não ficam com o mesmo nome.**

@@ -2410,6 +2410,73 @@ a mutação passou a vermelho.
 
 ---
 
+## §32 — W31: só uma OPERAÇÃO pode ter filhos — e criar um grupo passa a ser um gesto (22/08)
+
+> Enio, no smoke da W30: *"ainda não temos como criar novos grupos. Se coloco um objeto como filho do
+> outro ele some."*
+>
+> ⭐ **As duas frases são UM defeito.** No idioma do campo, uma **forma** é uma folha: o cozimento
+> emite-a e **nunca olha para os filhos dela**. Um nó largado ali fica no mundo, aparece na
+> Hierarquia, e não entra em documento nenhum. E a única forma de aninhar era o botão de operação,
+> que exigia **dois** selecionados. *Uma árvore que a UI aceita e a linguagem não exprime é um objeto
+> que desaparece em silêncio.*
+
+### §32.1 — A cura PROMOVE o anfitrião, em vez de recusar o gesto
+
+A forma que recebeu o filho passa a viver dentro de uma **união** nova, no lugar dela — e o filho
+entra ao lado. ⭐ **A peça na tela não muda com isso**: os dois já lá estavam, e a união deles é
+exactamente o que se via. O artista ganha o aninhamento que pediu e não perde nada.
+
+⚠️ **A ordem dos irmãos é preservada, e não é cerimónia:** em `children[0] menos os seguintes`, a
+primeira posição é a **base** da subtração. Um grupo acrescentado no fim faria o cortador virar base —
+a peça inverter-se-ia por alguém ter arrastado uma linha.
+
+⚠️ **A lei impõe-se na DERIVAÇÃO**, no cozimento da cena, e não no drenar do arrasto: assim ela
+apanha o arrasto da Hierarquia, um `add_child` de outro caminho, e o que vier a seguir. Um remendo no
+drenar deixaria os outros de fora — é a mesma decisão da W23 (a escultura que volta) e da W28 (o olho).
+
+### §32.2 — Criar um grupo: `wrap_in_op` passa a aceitar UM
+
+O `>= 2` vinha de o gesto ter nascido como *«juntar os escolhidos»* (W9). Uma operação com um filho é
+a mesma coisa que ela sempre foi — um `Union` de um é esse um —, e passa a ter **onde receber o
+segundo**. Escolher uma forma e carregar numa operação **cria o grupo**.
+
+⚠️ **O braço de trás precisou de guarda:** com uma seleção de um, o intent chamava `set_op`, que numa
+folha era recusado **em silêncio** — o clique não fazia nada. Agora: uma **operação** sozinha troca de
+operação (o gesto mais usado do módulo, com gate de controle), uma **forma** sozinha vira grupo.
+
+⚠️ **Um gate antigo prendia a lei que mudou** (`wrapping_refuses_nodes_that_do_not_share_a_parent`,
+na sua última linha). Ele foi **corrigido, não apagado**: as outras metades dele — pais diferentes, a
+raiz — continuam a valer. *Uma lei que muda muda o gate.*
+
+### §32.3 — ⛔ E o gate-mãe passou VERDE com a cura desligada
+
+Ele contava **folhas na arena** — e um nó que ninguém referencia continua **escrito** lá: o cozimento
+emite-o na subida, e é o **pai** que o deixa de fora. A contagem não continha o fenómeno.
+
+⭐ A cura foi trocar a métrica pela pergunta que o Enio de facto fez: **a peça tem matéria neste
+ponto?** — avaliar o campo onde a forma largada está. *O que ele viu foi a TELA, e é a tela que se
+tem de medir.* (Segunda vez em duas waves que uma prova de mutação encontra o buraco no gate, e não
+no código.)
+
+### §32.4 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| a promoção não corre (**o defeito**: o objeto some) | `a_shape_dropped_onto_a_shape_is_not_lost` |
+| a promoção põe o grupo no fim (o cortador vira base) | `promoting_a_host_keeps_who_cuts_whom` |
+| embrulhar volta a exigir dois | `one_selected_shape_becomes_a_group` |
+| uma operação sozinha passa a embrulhar-se | `an_operation_selected_alone_still_swaps_its_op` |
+
+### §32.5 — ⏸️ O que fica aberto
+
+- A promoção escolhe **união** por ser a operação neutra (a peça não muda). Trocar para subtração é
+  um clique a seguir — mas ninguém **diz** que um grupo nasceu.
+- ⏸️ Continua sem existir **grupo vazio**: cria-se a partir de uma forma, nunca do nada. É a mesma
+  pergunta de produto do *isolar* (W28) e do aviso de re-parentar (W30).
+
+---
+
 ## §13 — Aberto
 
 - ✅ **o OLHO da Hierarquia passou a valer na W28** (§29) — esconder um nó tira-o da peça, e um
@@ -2421,6 +2488,10 @@ a mutação passou a vermelho.
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W31 (§32): um objeto largado em cima de outro deixou de SUMIR** — só uma operação pode ter
+  filhos, e a forma anfitriã é promovida a grupo (a peça na tela não muda). E **criar grupo** passa
+  a ser um gesto: uma forma sozinha + um botão de operação. ⏸️ Fica: ninguém **diz** que um grupo
+  nasceu, e não há grupo VAZIO
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)
 - ✅ **clicar na peça para selecionar FECHOU** na W7 (§6) — e o custo está medido: **0,10 ms**

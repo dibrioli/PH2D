@@ -1053,3 +1053,69 @@ fn the_inert_axis_is_exactly_the_one_the_write_refuses() {
         }
     }
 }
+
+/// ⭐ **Compor e desfazer são a MESMA álgebra** — `local_under` é a inversa exacta de `compose`.
+///
+/// ⚠️ **É um par, e um par mede-se pelo regresso.** A inversa existe porque re-parentar um nó tem de
+/// o deixar **onde está** (a lei que o Enio escreveu para os sprites em 2026-06-08); escrita noutra
+/// crate, ela seria uma segunda convenção sobre a mesma álgebra — e a divergência só apareceria com
+/// um pai **girado e escalado** ao mesmo tempo, que é precisamente o caso que este gate contém.
+#[test]
+fn composing_and_undoing_a_pose_round_trip() {
+    use crate::xform::{Xform, quat_from_euler};
+    let poses = [
+        Xform::IDENTITY,
+        Xform::at(0.3, -1.2, 4.0),
+        Xform {
+            translation: [-2.0, 0.5, 0.25],
+            rotation: quat_from_euler([0.4, -1.1, 2.3]),
+            scale: 2.5,
+        },
+        Xform {
+            translation: [7.0, 7.0, -3.0],
+            rotation: quat_from_euler([-1.5, 0.2, 0.9]),
+            scale: 0.125,
+        },
+    ];
+    for parent in poses {
+        for child in poses {
+            let world = parent.compose(child);
+            let back = Xform::local_under(parent, world);
+            for k in 0..3 {
+                assert!(
+                    (back.translation[k] - child.translation[k]).abs() < 1e-3,
+                    "translação não voltou: {:?} -> {:?}",
+                    child.translation,
+                    back.translation
+                );
+            }
+            assert!(
+                (back.scale - child.scale).abs() < 1e-4,
+                "escala não voltou: {} -> {}",
+                child.scale,
+                back.scale
+            );
+            // ⚠️ Um quaternion e o seu simétrico são a MESMA rotação: compara-se o efeito.
+            let probe = [0.37, -0.81, 0.45];
+            let a = crate::xform::quat_rotate(child.rotation, probe);
+            let b = crate::xform::quat_rotate(back.rotation, probe);
+            for k in 0..3 {
+                assert!(
+                    (a[k] - b[k]).abs() < 1e-4,
+                    "rotação não voltou: {a:?} vs {b:?}"
+                );
+            }
+        }
+    }
+
+    // ⚠️ E o controle: uma escala de pai NULA não pode devolver `NaN` para dentro do documento.
+    let degenerate = Xform {
+        scale: 0.0,
+        ..Xform::IDENTITY
+    };
+    let out = Xform::local_under(degenerate, Xform::at(1.0, 2.0, 3.0));
+    assert!(
+        out.translation.iter().all(|v| v.is_finite()) && out.scale.is_finite(),
+        "uma escala de pai nula tem de sair finita, e saiu {out:?}"
+    );
+}

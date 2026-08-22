@@ -57,6 +57,11 @@ pub(crate) fn drain_reparent(
     let old_local = sim.world().get::<Transform>(dragged).copied();
     let old_world = old_local
         .map(|l| Transform::compose(ph2d_ecs::parent_world_transform(sim.world(), dragged), l));
+    // ⭐ **A MESMA lei para um nó de MODELAGEM 3D** (ADR-0161 W30), e ela precisa de linha própria
+    // por uma razão de tipo: a pose de uma peça de modelagem não é `Transform` — é `FieldPose`, com
+    // rotação em quaternion e escala uniforme —, então o `old_world` acima sai **`None`** e a peça
+    // saltava ao mudar de pai. Ver `ph2d_field_ecs::set_world_xform`.
+    let old_field_world = ph2d_field_ecs::field_world_xform(sim.world(), dragged);
     let sim_w = sim.world_mut();
     let would_cycle = new_parent_entity.is_some_and(|np| {
         let mut current = Some(np);
@@ -208,6 +213,11 @@ pub(crate) fn drain_reparent(
             t.skew_x = old_world.skew_x - new_parent.skew_x;
             t.skew_y = old_world.skew_y - new_parent.skew_y;
         }
+    }
+    // ⭐ **E o mesmo para a peça de MODELAGEM 3D** (W30) — a cadeia de pais nova já está no sítio, e
+    // a pose local é re-resolvida para o mundo capturado sobreviver.
+    if let Some(w) = old_field_world {
+        ph2d_field_ecs::set_world_xform(sim_w, dragged, w);
     }
     // **LARGAR UM SPRITE DENTRO DE UMA FOLHA PÕE-NO DENTRO DELA** (Enio 2026-08-19: *"Para
     // acrescentar um sprite numa sheet o usuário deve colocá-la como filha da sheet na hierarquia.

@@ -131,6 +131,37 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
     done.get(&root).copied().flatten()
 }
 
+/// ⭐ **A pose de mundo deste nó, se ele for de modelagem** — `None` para qualquer outra entidade.
+///
+/// ⚠️ Ela existe para o **re-parentar** (W30): quem arrasta uma linha da Hierarquia precisa de saber
+/// onde o nó estava **antes** de o pai mudar, e a resposta só é sua quando o nó é deste módulo.
+#[must_use]
+pub fn field_world_xform(world: &World, entity: Entity) -> Option<Xform> {
+    world.get::<FieldNode>(entity)?;
+    Some(world_xform(world, entity))
+}
+
+/// ⭐ **Põe o nó NESTA pose de mundo**, resolvendo o local sob o pai que ele tem agora.
+///
+/// ⚠️ **É a metade que faz um re-parentar não teleportar a peça.** A pose que o documento guarda é
+/// **local** (regra-mãe do módulo), então trocar de pai muda o que ela significa: sem esta função, o
+/// nó salta para onde a mesma pose local cai debaixo do pai novo. A lei é a mesma que o Enio escreveu
+/// para os sprites em 2026-06-08 — *"não pode saltar ao ganhar ou perder um pai"* —, e a álgebra é a
+/// [`Xform::local_under`], que vive ao lado da `compose` que ela desfaz.
+pub fn set_world_xform(world: &mut World, entity: Entity, target: Xform) {
+    if world.get::<FieldNode>(entity).is_none() {
+        return;
+    }
+    let parent = world
+        .get::<ChildOf>(entity)
+        .map(|c| c.0)
+        .map_or(Xform::IDENTITY, |p| world_xform(world, p));
+    let local = Xform::local_under(parent, target);
+    if let Some(mut pose) = world.get_mut::<FieldPose>(entity) {
+        pose.xform = local;
+    }
+}
+
 /// ⭐ **O olho da Hierarquia apaga o nó da peça** (W28) — e com ele a subárvore inteira.
 ///
 /// ⚠️ **Nada de componente novo:** o app já tem **uma** ideia de *escondido*

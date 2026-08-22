@@ -2355,6 +2355,61 @@ foi lida. *Uma decisão que já existe não se re-decide num módulo.*
 
 ---
 
+## §31 — W30: arrastar uma linha na Hierarquia não teleporta a peça (22/08)
+
+> A quinta da série — e a primeira que **não** era um controle mudo: era um **salto**. Arrastar um nó
+> de modelagem para dentro de outro grupo mudava o pai e a peça **aparecia noutro sítio**.
+
+### §31.1 — O mecanismo, e ele é de TIPO
+
+O re-parentar da casa já preserva o mundo, e a decisão é do Enio (2026-06-08): *"a sprite that is
+rotated / displaced must NOT jump when it gains or loses a parent"*. Ele fá-lo capturando o
+**`Transform`** antes e re-resolvendo o local depois.
+
+⚠️ **Um nó de modelagem não tem `Transform`** — a pose dele é `FieldPose`, com rotação em quaternion
+e escala uniforme. Então `old_world` saía **`None`**, a preservação não corria, e a mesma pose
+**local** passava a ser lida debaixo de outra cadeia de pais. *A lei estava certa e não alcançava
+este tipo.*
+
+### §31.2 — ⭐ A inversa vive ao lado da composição
+
+`Xform::local_under(parent, world)` é a inversa exacta de `Xform::compose`, e está **no mesmo
+arquivo**. Uma inversa escrita na crate da ponte seria uma segunda convenção sobre a mesma álgebra —
+e a divergência dela é invisível até alguém re-parentar um nó **girado e escalado**, que é
+precisamente o caso que o gate contém.
+
+O par mede-se pelo **regresso**: `composing_and_undoing_a_pose_round_trip` compõe 16 combinações de
+pai×filho e exige que a inversa devolva o filho — comparando o **efeito** da rotação, porque um
+quaternion e o seu simétrico são a mesma rotação.
+
+### §31.3 — ⛔ Uma prova de mutação achou um buraco no MEU gate
+
+A mutação *"a inversa esquece a rotação do pai"* passou **VERDE** contra o gate da costura: ele
+conferia a **posição** e o **tamanho** depois do re-parentar, e nunca a **orientação**. A peça ficava
+no sítio certo, do tamanho certo, e **virada**.
+
+⭐ *Uma prova de mutação não mede só o código: ela mede o gate.* O gate ganhou a terceira asserção, e
+a mutação passou a vermelho.
+
+### §31.4 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| a pose de mundo não é reposta (**o defeito**) | `reparenting_a_node_keeps_it_where_it_is` |
+| a inversa esquece a **rotação** do pai | o mesmo gate, **depois de ele ganhar a asserção que faltava** |
+| a inversa esquece a **escala** do pai | `composing_and_undoing_a_pose_round_trip` |
+| o arrasto da Hierarquia deixa de perguntar | `the_hierarchy_drag_asks_this_module_where_the_node_was` |
+
+### §31.5 — ⏸️ O que fica aberto
+
+- ⚠️ **Re-parentar muda a PEÇA, não só a arrumação**: pôr um cilindro dentro de uma subtração passa a
+  cortar com ele. É o que a árvore significa neste módulo, e é a razão de o gesto ser útil — mas
+  ninguém o **diz**. Um aviso ao mudar um nó de operação é produto.
+- O arrasto continua a não ter **desfazer próprio**: ele entra na fila do shell como qualquer edição
+  do mundo (é a mesma captura), o que é o certo — mas não foi medido nesta wave.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **o OLHO da Hierarquia passou a valer na W28** (§29) — esconder um nó tira-o da peça, e um
@@ -2363,7 +2418,9 @@ foi lida. *Uma decisão que já existe não se re-decide num módulo.*
 - ✅ **o CADEADO passou a valer na W29** (§30) — pelo predicado da casa, com a metade do
   `GroupedChildren`. ⛔ Ele **não** tranca os números do painel, e isso é lido do doc do componente,
   não decidido aqui
-
+- ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
+  mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
+  a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)
 - ✅ **clicar na peça para selecionar FECHOU** na W7 (§6) — e o custo está medido: **0,10 ms**

@@ -386,6 +386,110 @@ fn the_padlock_stops_the_gesture_and_the_group_locks_its_children() {
     );
 }
 
+/// ⭐ **Arrastar uma linha na Hierarquia NÃO teleporta a peça** (W30).
+///
+/// ⚠️ **O defeito não era mudo — era pior: era um salto.** A pose que o documento guarda é **local**
+/// (regra-mãe do módulo), e o re-parentar da casa preserva o mundo lendo o `Transform` — que um nó de
+/// modelagem **não tem**. Então mudar de pai reinterpretava a mesma pose local debaixo de outra
+/// cadeia, e a peça aparecia noutro sítio.
+///
+/// A fixture põe o pai novo **girado e escalado** de propósito: com um pai identidade o defeito não
+/// existe, e o gate passaria com a cura apagada.
+#[test]
+fn reparenting_a_node_keeps_it_where_it_is() {
+    let (mut sim, leaves) = scene_of_three();
+    let world = sim.world_mut();
+    let group = world
+        .get::<bevy_ecs::hierarchy::ChildOf>(leaves[0])
+        .map(|c| c.0)
+        .expect("as folhas estão sob a união");
+    // ⚠️ Um pai NOVO com pose que não é a identidade: é ele que contém o fenómeno.
+    let host = leaves[1];
+    {
+        let mut pose = world
+            .get_mut::<ph2d_field_ecs::FieldPose>(host)
+            .expect("a folha tem pose");
+        pose.xform = ph2d_field::Xform {
+            translation: [0.4, -0.2, 0.9],
+            rotation: ph2d_field::xform::quat_from_euler([0.3, 0.8, -0.5]),
+            scale: 1.7,
+        };
+    }
+    let moved = leaves[2];
+    let before = ph2d_field_ecs::world_xform(world, moved);
+
+    // O que o arrasto da Hierarquia faz: captura o mundo, troca o pai, repõe o mundo.
+    let captured = ph2d_field_ecs::field_world_xform(world, moved).expect("é um nó de modelagem");
+    world
+        .entity_mut(moved)
+        .insert(bevy_ecs::hierarchy::ChildOf(host));
+    ph2d_field_ecs::set_world_xform(world, moved, captured);
+
+    let after = ph2d_field_ecs::world_xform(world, moved);
+    for k in 0..3 {
+        assert!(
+            (after.translation[k] - before.translation[k]).abs() < 1e-3,
+            "a peça saltou ao mudar de pai: {:?} -> {:?}",
+            before.translation,
+            after.translation
+        );
+    }
+    assert!(
+        (after.scale - before.scale).abs() < 1e-4,
+        "…e o tamanho mudou: {} -> {}",
+        before.scale,
+        after.scale
+    );
+    // ⚠️ **E a ORIENTAÇÃO, que a primeira versão deste gate esquecia** — uma prova de mutação
+    // apanhou-o: esquecer a rotação do pai na inversa deixava a peça no sítio certo, do tamanho
+    // certo, e **virada**. Compara-se o efeito num ponto, porque um quaternion e o seu simétrico são
+    // a mesma rotação.
+    let probe = [0.31, -0.77, 0.55];
+    let (a, b) = (
+        ph2d_field::xform::quat_rotate(before.rotation, probe),
+        ph2d_field::xform::quat_rotate(after.rotation, probe),
+    );
+    for k in 0..3 {
+        assert!(
+            (a[k] - b[k]).abs() < 1e-3,
+            "a peça mudou de ORIENTAÇÃO ao mudar de pai: {a:?} vs {b:?}"
+        );
+    }
+    assert_eq!(
+        world
+            .get::<bevy_ecs::hierarchy::ChildOf>(moved)
+            .map(|c| c.0),
+        Some(host),
+        "e o pai novo é mesmo o novo — senão o gate mede um no-op"
+    );
+    assert_ne!(group, host, "a fixture tem de MUDAR de pai");
+}
+
+/// ⭐ **E o arrasto da Hierarquia CHAMA as duas metades** — a costura que nenhum gate de aritmética
+/// alcança.
+///
+/// ⚠️ O drenar do re-parentar exige a ponte de linhas do painel (`HeroLive`), que um teste não
+/// constrói. O que se pode medir é que aquele arquivo **pergunta** — é a mesma forma do gate irmão
+/// `the_undo_pass_asks_whether_this_module_is_mid_gesture`, e ela existe porque as duas metades
+/// certas e ninguém a ligá-las é a causa nº 1 da `DIRETIVA_IMPLEMENTACAO`.
+#[test]
+fn the_hierarchy_drag_asks_this_module_where_the_node_was() {
+    let src = include_str!("hero_intents/hierarchy.rs");
+    let code: String = src
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        code.contains("field_world_xform"),
+        "o re-parentar deixou de CAPTURAR a pose de mundo da peça — ela volta a saltar"
+    );
+    assert!(
+        code.contains("set_world_xform"),
+        "…ou deixou de a REPOR, que dá exactamente o mesmo salto"
+    );
+}
+
 /// **`top_level` guarda a ordem da entrada** — quem chama depende dela para saber quem é o principal.
 #[test]
 fn the_top_of_each_branch_keeps_the_order_it_came_in() {

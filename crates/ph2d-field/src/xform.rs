@@ -92,6 +92,39 @@ impl Xform {
     }
 }
 
+impl Xform {
+    /// ⭐ **A pose LOCAL que, debaixo de `parent`, dá esta pose de MUNDO** — a inversa exacta de
+    /// [`Xform::compose`].
+    ///
+    /// ⚠️ **Ela vive ao lado da `compose` de propósito.** Uma inversa escrita noutra crate seria uma
+    /// segunda convenção sobre a mesma álgebra, e a divergência dela é invisível até alguém
+    /// re-parentar um nó girado: a peça aparece noutro sítio e nada explica porquê. O gate
+    /// `composing_and_undoing_a_pose_round_trip` prende as duas juntas.
+    ///
+    /// ⚠️ Uma escala de pai nula é tratada como 1: ela não tem inversa, e devolver `NaN` propagaria
+    /// o problema para dentro do documento em vez de o deixar onde ele nasceu.
+    #[must_use]
+    pub fn local_under(parent: Self, world: Self) -> Self {
+        let s = if parent.scale.abs() > f32::MIN_POSITIVE {
+            parent.scale
+        } else {
+            1.0
+        };
+        let inv_rot = quat_conj(parent.rotation);
+        let d = [
+            world.translation[0] - parent.translation[0],
+            world.translation[1] - parent.translation[1],
+            world.translation[2] - parent.translation[2],
+        ];
+        let r = quat_rotate(inv_rot, d);
+        Self {
+            translation: [r[0] / s, r[1] / s, r[2] / s],
+            rotation: quat_normalize(quat_mul(inv_rot, world.rotation)),
+            scale: world.scale / s,
+        }
+    }
+}
+
 /// O **inverso** de uma rotação: o conjugado, que num quaternion unitário é a inversa exata.
 #[must_use]
 pub fn quat_conj(q: [f32; 4]) -> [f32; 4] {

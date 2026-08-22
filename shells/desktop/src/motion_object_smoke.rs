@@ -30,6 +30,16 @@ use ph2d_vec_scene::{Paint, Rgba8, VecPath};
 // A cena das DUAS FASES (`=7`, o `time_offset` do doc 89 folha 14) mora num irmão:
 // ela é um ASSUNTO — *o mesmo objeto em dois tempos* — e traz a própria fixture
 // animada, que nenhum dos outros modos precisa. Cortado pelo teto de LOC da shell.
+/// O modo `=8` — a POSE do objeto (doc 89 folha 14), irmão pelo corte que o `=7` já fez.
+/// O sufixo GPU do modo `=5`, irmão pela mesma razão: este arquivo é o DESPACHANTE, e
+/// a fiação de cada cena mora ao lado dele.
+#[path = "motion_object_smoke_osc.rs"]
+mod osc;
+use osc::build_stamp_graph_osc;
+
+#[path = "motion_object_smoke_pose.rs"]
+mod pose;
+
 #[path = "motion_object_smoke_times.rs"]
 pub(crate) mod times;
 use times::{build_two_times_graph, spawn_flip_walk_named};
@@ -90,48 +100,6 @@ fn build_stamp_graph(graph: &mut Graph, name: &str) -> NodeId {
 
     // Nasce SELECIONADO: o artista cai no PICKER (um chip "Object").
     ph2d_panel_motion_graph::request_graph_selection(vec![src.0]);
-    out
-}
-
-/// Como [`build_stamp_graph`], mas com um **`motion.oscillator`** (um deformer
-/// GPU por-elemento) entre o duplicator e o output: `source.object → duplicator
-/// ← grid → oscillator → output`. É esse sufixo GPU que torna o grafo **Hybrid**
-/// — o `duplicator` (CPU) vira o boundary, o oscillator roda no device, e o
-/// lowering carrega o `texture_id` do objeto até a word 41 (esta wave). Sem o
-/// oscillator o sufixo é só o `output` passthrough (0 dispatch → rota CPU).
-fn build_stamp_graph_osc(graph: &mut Graph, name: &str) -> NodeId {
-    let out = build_stamp_graph(graph, name);
-    // `out`'s input 0 is the duplicator; splice an oscillator in between.
-    let dup = graph
-        .edges()
-        .iter()
-        .find(|e| e.to == (out, 0))
-        .map(|e| e.from.0)
-        .expect("duplicator -> output edge");
-    let osc = graph.add_node("motion.oscillator");
-    graph.set_pos(
-        osc,
-        Pos {
-            x: 315.0,
-            y: -200.0,
-        },
-    );
-    graph.set_param(osc, "channel", 1.0); // Y
-    graph.set_param(osc, "amplitude", 0.5);
-    graph.set_param(osc, "frequency", 0.4);
-    graph.set_label(osc, "Wave");
-    // Re-route dup → out into dup → osc → out.
-    graph.disconnect(out, 0);
-    let wire = |g: &mut Graph, a: NodeId, ap: u16, b: NodeId, bp: u16| {
-        g.connect(Edge {
-            from: (a, ap),
-            to: (b, bp),
-            delayed: false,
-        })
-        .expect("connect");
-    };
-    wire(graph, dup, 0, osc, 0);
-    wire(graph, osc, 0, out, 0);
     out
 }
 
@@ -331,7 +299,7 @@ fn find_group(sim: &mut ph2d_ecs::SimWorld, name: &str) -> Option<ph2d_ecs::Enti
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// O modo: `0` off · `1` sprite (A1) · `2` vetor (A2) · `3` Flip (A3) · `4` grupo
-/// (A4) · `5` A WAVE (objeto vetor + oscillator GPU, cozido no device).
+/// (A4) · `5` A WAVE (objeto vetor + oscillator GPU) · `8` a POSE do objeto.
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -365,6 +333,9 @@ impl crate::App {
                      na Hierarchy e as copias somem (o nome E a referencia)."
                 );
             }
+            // A8 — a POSE do objeto (doc 89 folha 14). O corpo mora no irmão `pose`:
+            // ele traz a fiação própria da cena, e este despachante estava no teto.
+            8 if f == 3 => pose::run(self.gfx.as_mut().expect("gfx")),
             // A2 — vetor: a forma entra primeiro (frame 3); a ENTIDADE dela só
             // existe depois do `vec_entities::sync`, e e nela que o nome mora.
             2 if f == 3 => {

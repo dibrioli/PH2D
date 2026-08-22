@@ -94,6 +94,24 @@ pub fn position_of(name: &str) -> String {
     format!("{RESERVED_PREFIX}at:{name}")
 }
 
+/// The external the editor publishes a named object's **POSE** under — the rotation and
+/// the scale it carries in the scene, `rotation` (radians) + `size` (a `Vec2` factor).
+///
+/// ⚠️ **Um terceiro canal, e pela MESMA razão que o segundo existe** (ver
+/// [`position_of`]): a aparência diz *como a coisa é* e mora na origem, sem pose, porque
+/// o grafo é que decide onde as cópias vão. A POSIÇÃO já tinha canal próprio; a rotação
+/// e a escala não tinham nenhum — o `Transform` estava na query do shell e era
+/// **descartado** (doc 89 folha 14).
+///
+/// ⚠️ **Ele é lido só por quem PEDE a pose.** O `source.object` nasce em *Position Only*
+/// — o template de sempre, byte-idêntico — e só o modo *Object Pose* consulta este
+/// canal. Um canal publicado que ninguém lê custa um `set_external` por objeto por
+/// quadro; o revision é um hash do conteúdo, então um objeto parado não invalida nada.
+#[must_use]
+pub fn pose_of(name: &str) -> String {
+    format!("{RESERVED_PREFIX}pose:{name}")
+}
+
 /// The external the editor publishes a named drawing's **GEOMETRY** under — the
 /// flattened polyline of the curve, `P` per vertex.
 ///

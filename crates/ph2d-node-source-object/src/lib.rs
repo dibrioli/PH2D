@@ -36,6 +36,7 @@ use ph2d_node_registry::{
     NodeRegistry, ParamHardMax, ParamHardMin, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
     RegistryError,
 };
+use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
@@ -63,6 +64,36 @@ const OBJECT_PARAM: &str = "object";
 /// estado "deslocado de nada" para manter de acordo com o não-deslocado.
 pub const TIME_OFFSET_PARAM: &str = "time_offset";
 
+/// **A POSE DO OBJETO VIAJA COM O TEMPLATE?** (doc 89 folha 14 — o *Transform Space:
+/// Original | Relative* do Blender GN *Object Info*; o Cavalry documenta a escolha
+/// OPOSTA no Duplicator, *"transforms do input no nível-pai são ignorados"*.)
+///
+/// - `0` **Position Only** — o template é a aparência nua: forma, tamanho, cor. É o que
+///   este nó sempre devolveu, e continua a ser o default, ao bit.
+/// - `1` **Object Pose** — a ROTAÇÃO e a ESCALA do objeto nomeado entram no template, e
+///   toda cópia nasce já orientada como ele. Se o artista girar o objeto na cena, as
+///   cópias giram com ele.
+///
+/// ⚠️ **A composição NÃO exprime isto, e a célula tinha razão:** `source.object →
+/// motion.rotate` gira todas as cópias por um número que o artista **digita**, não que
+/// SEGUE o objeto — e manter os dois em sincronia é a falha das duas portas.
+///
+/// ⚠️ **O dado estava em mãos e era deitado fora.** O `Transform` já vinha na query do
+/// shell (`motion_bridge_objects::publish`) e só a translação era publicada; a rotação e
+/// a escala não tinham canal. Agora têm ([`ph2d_nodegraph::external::pose_of`]), pelo
+/// mesmo desenho do `position_of`: a APARÊNCIA mora na origem sem pose, de propósito.
+///
+/// ⚠️ **A escala MULTIPLICA o `size` do template, não o substitui** — o template já traz
+/// o tamanho da arte, e a escala do objeto é um factor sobre ela. Substituir faria um
+/// objeto a escala `1` apagar o tamanho da própria arte.
+///
+/// ⚠️ **Nomes que dizem o que ENTREGAM.** A referência chama-lhes *Original/Relative*, e
+/// os dois nomes são ambíguos fora do Blender (relativo a quê?). Aqui o rótulo diz o que
+/// acontece — a mesma lei que esta linha pagou duas vezes esta semana.
+pub const SPACE_PARAM: &str = "space";
+/// O valor de [`SPACE_PARAM`] que herda a pose.
+pub const SPACE_OBJECT_POSE: f32 = 1.0;
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("source.object"),
@@ -74,14 +105,71 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[ParamSpec {
-        // Segundos de deslocamento no relógio deste objeto. `0.0` = o quadro atual,
-        // que é o único frame que este nó soube pedir até 2026-08-13.
-        name: TIME_OFFSET_PARAM,
-        default: 0.0,
-    }],
+    params: &[
+        ParamSpec {
+            // Segundos de deslocamento no relógio deste objeto. `0.0` = o quadro atual,
+            // que é o único frame que este nó soube pedir até 2026-08-13.
+            name: TIME_OFFSET_PARAM,
+            default: 0.0,
+        },
+        // **A POSE do objeto viaja com o template?** APENDADO, default `0` = não, o
+        // template de sempre ao bit. Ver [`SPACE_PARAM`].
+        ParamSpec {
+            name: SPACE_PARAM,
+            default: 0.0,
+        },
+    ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// O template com a pose do objeto aplicada.
+///
+/// ⚠️ **Uma pose ausente devolve o template INTACTO** — um objeto sem `Transform` (ou um
+/// nome que não resolve) não tem pose para herdar, e inventar a identidade aqui seria
+/// escrever colunas que o modo *Position Only* não escreve, tornando os dois modos
+/// distinguíveis por uma coluna em vez de por uma imagem.
+fn with_pose(template: &Stream, pose: &Stream) -> Stream {
+    let n = template.count();
+    if n == 0 {
+        return template.clone();
+    }
+    let rot = match pose.get("rotation") {
+        Some(Column::Scalar(v)) => v.first().copied(),
+        _ => None,
+    };
+    let scale = match pose.get("size") {
+        Some(Column::Vec2(v)) => v.first().copied(),
+        _ => None,
+    };
+    // ⚠️ **Não há guarda de «pose ausente» aqui, e a ausência é deliberada:** os dois
+    // `if let` abaixo já a implementam — sem `rotation` e sem `size` na pose, nenhum
+    // corre e o que sai é o clone intacto. Uma guarda extra LERIA como uma lei e não
+    // seria uma (medido: uma mutação que a apagasse sobrevivia, porque era equivalente).
+    let mut out = template.clone();
+    if let Some(r) = rot {
+        // A rotação SOMA na que o template já tivesse (ele costuma não ter nenhuma) —
+        // compor é o que faz duas fontes de orientação conviverem.
+        let base = match template.get("rotation") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => vec![0.0; n],
+        };
+        out.set(
+            "rotation",
+            Column::Scalar(base.iter().map(|b| b + r).collect()),
+        );
+    }
+    if let Some(s) = scale {
+        let base = match template.get("size") {
+            Some(Column::Vec2(v)) => v.clone(),
+            _ => vec![[1.0, 1.0]; n],
+        };
+        out.set(
+            "size",
+            Column::Vec2(base.iter().map(|b| [b[0] * s[0], b[1] * s[1]]).collect()),
+        );
+    }
+    out
+}
 
 struct SourceObject;
 
@@ -101,7 +189,15 @@ impl NodeOp for SourceObject {
         // this key. Clone is refcount, not a copy (columns are `Arc`); a key
         // with no published object is the empty external → an empty stream.
         let stream = ctx.external(&key).clone();
-        ctx.emit(stream);
+        if ctx.param(SPACE_PARAM) < SPACE_OBJECT_POSE - 0.5 {
+            ctx.emit(stream);
+            return;
+        }
+        // **Object Pose**: a rotação e a escala do objeto entram no template.
+        let pose = ctx
+            .external(&ph2d_nodegraph::external::pose_of(&name))
+            .clone();
+        ctx.emit(with_pose(&stream, &pose));
     }
 }
 
@@ -176,6 +272,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: OFFSET_STEP,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ Um Enum NOMEADO pelo que ENTREGA, não pelos nomes da referência
+    // (*Original/Relative*), que são ambíguos fora do Blender. Ver [`SPACE_PARAM`].
+    ParamUiHint {
+        param: SPACE_PARAM,
+        label: "Transform",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Position Only", "Object Pose"],
+        },
+    },
 ];
 
 /// O offset é tempo de RELÓGIO, e é a unidade que o diz. Um número nu aqui leria
@@ -200,3 +308,83 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod pose_tests {
+    use super::*;
+
+    fn template() -> Stream {
+        Stream::new(1)
+            .with("P", Column::Vec2(vec![[0.0, 0.0]]))
+            .with("size", Column::Vec2(vec![[2.0, 3.0]]))
+    }
+    fn pose(rot: f32, sx: f32, sy: f32) -> Stream {
+        Stream::new(1)
+            .with("rotation", Column::Scalar(vec![rot]))
+            .with("size", Column::Vec2(vec![[sx, sy]]))
+    }
+    fn size_of(s: &Stream) -> [f32; 2] {
+        match s.get("size") {
+            Some(Column::Vec2(v)) => v[0],
+            _ => panic!("size"),
+        }
+    }
+    fn rot_of(s: &Stream) -> Option<f32> {
+        match s.get("rotation") {
+            Some(Column::Scalar(v)) => v.first().copied(),
+            _ => None,
+        }
+    }
+
+    /// **A POSE ENTRA NO TEMPLATE: a rotação SOMA, a escala MULTIPLICA.**
+    ///
+    /// ⚠️ A escala multiplica porque o template já traz o tamanho da ARTE — substituir
+    /// faria um objeto a escala `1` apagar o tamanho do próprio desenho.
+    #[test]
+    fn the_pose_rotates_and_scales_the_template() {
+        let out = with_pose(&template(), &pose(0.5, 2.0, 0.5));
+        assert_eq!(rot_of(&out), Some(0.5));
+        assert_eq!(size_of(&out), [4.0, 1.5], "2×2 e 3×0,5");
+    }
+
+    /// **UMA POSE AUSENTE DEVOLVE O TEMPLATE INTACTO — ao bit.**
+    ///
+    /// ⚠️ Inventar a identidade aqui escreveria uma coluna `rotation` que o modo
+    /// *Position Only* não escreve, e os dois modos passariam a distinguir-se por uma
+    /// COLUNA em vez de por uma imagem — o que quebra todo consumidor que ramifica
+    /// sobre a presença dela.
+    #[test]
+    fn a_missing_pose_returns_the_template_untouched() {
+        let t = template();
+        assert_eq!(with_pose(&t, &Stream::new(0)), t);
+        assert_eq!(with_pose(&t, &Stream::new(1)), t, "um objeto sem Transform");
+        assert_eq!(rot_of(&with_pose(&t, &Stream::new(0))), None);
+    }
+
+    /// **A ROTAÇÃO COMPÕE com a que o template já trouxesse.**
+    #[test]
+    fn the_rotation_composes_instead_of_replacing() {
+        let t = template().with("rotation", Column::Scalar(vec![0.25]));
+        assert_eq!(rot_of(&with_pose(&t, &pose(0.5, 1.0, 1.0))), Some(0.75));
+    }
+
+    /// **UM TEMPLATE VAZIO (nome que não resolve) SAI VAZIO** — sem pânico e sem
+    /// inventar uma peça.
+    #[test]
+    fn an_empty_template_stays_empty() {
+        assert_eq!(with_pose(&Stream::new(0), &pose(1.0, 2.0, 2.0)).count(), 0);
+    }
+
+    /// **O DEFAULT É `Position Only`** — todo grafo autorado antes deste param lê zero.
+    #[test]
+    fn the_default_is_the_bare_template() {
+        let d = MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == SPACE_PARAM)
+            .expect("o param existe")
+            .default;
+        assert_eq!(d, 0.0);
+        assert!(d < SPACE_OBJECT_POSE, "e é o modo que NÃO herda a pose");
+    }
+}

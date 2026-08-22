@@ -46,7 +46,7 @@ python3 "docs/Motion Nodes/ferramentas/placar_conferencia.py"   # o placar VIVO
 `=58` (re-smoke depois da correção do relógio que expirava) e `=59` (a porta de tempo).
 Se ele reportar algo sobre eles, o mecanismo está no handoff do FECHO.
 
-### §1.1 — O que as JANELAS de 2026-08-19/21 fecharam (a conferência foi de **P1 59 → 8**)
+### §1.1 — O que as JANELAS de 2026-08-19/21 fecharam (a conferência foi de **P1 59 → 7**)
 
 ⚠️ **O saldo de P1 não é o número de células fechadas**, e é bom que não seja: as janelas fecharam
 **trinta e duas** e ABRIRAM **duas**, ambas por medição no meio de uma wave. Uma conferência que só
@@ -72,6 +72,7 @@ descesse seria uma que parou de olhar para os lados.
 | **V** | **folha 02 (`force.*`): TRÊS células** — `scale_x`/`scale_y` do `drag` · `curve` do `vortex` · a coluna `density` do `buoyancy`. ⚠️ **As três tinham veredito «NÃO»/«PARCIAL», e as três estavam certas *sobre a COMPOSIÇÃO*:** o arrasto anisotrópico é impossível de compor e trivial DENTRO do nó que escreve o `accel`; a densidade por-instância tinha escritor no catálogo o tempo todo (o canal **Custom** do `motion.drive`). A folha desce de **5 para 2 P1**, e as duas que sobram são de outra espécie (o alvo = outro STREAM) | `=71` |
 | **V** | ✅ **folha 11 (`fx.*`) FECHOU: cinco células, três nós, DUAS arquiteturas** — `softness` do `drop_shadow` (disco de Vogel, 16 taps, densidade preservada por raízes) · `stretch`+`angle`+`clamp` do `glow` (uniformes de PASSE: base 2×2 na tenda + teto do bright-pass) · `ParamUnit`/`ParamHardMax` nos três (a família tinha **ZERO** dos quatro canais). ⚠️ **A cerca C1 foi REESCRITA e não removida**: o borrão raster continua fora (o passe é aditivo, *um halo escuro não pode ser somado*); o que caiu foi a frase sobre a *pilha de fantasmas*, que era sobre ENCADEAR. ⚠️ **Uma objecção da célula estava 4× desatualizada** (`MAX_INSTANCES` é `262_144`, não `65_536`) | `=70` |
 | **V** | ✅ **folha 05 (transform) FECHOU: cinco células, cinco nós** — `space` (World/Local) do `move` · `use_falloff_y` do `scale` **+** `mask_channel` do `falloff` (uma célula, dois nós) · `flip_rot` do `mirror` · `reindex` do `mirror` **e** do `kaleidoscope` · `carry_rotation` do `orbit`. ⚠️ **As cinco eram a MESMA pergunta em cinco lugares**: o nó sabe o que cada ELEMENTO é (orientação, posição na lista, máscara) e respondia como se a lista fosse um bloco. Os 3 P2 que sobram não são dessa família | `=69` |
+| **V** | **folha 14 (source): a POSE do objeto** — `Transform = Position Only / Object Pose` no `source.object`. ⚠️ **O dado estava em mãos e era deitado fora:** o `Transform` vinha na query do shell e só a translação era publicada. A pose ganhou canal próprio (`external::pose_of`), pelo desenho do `position_of`. ⚠️ **Achado por uma MUTAÇÃO SOBREVIVENTE:** trocar `t.rotation` por `0.0` no publicador não punha nada vermelho — a expressão estava enterrada num laço que precisa de mundo ECS e atlas para correr, e por isso ninguém a gateava. Extraída (`pose_stream`), tem um gate de três linhas | `PH2D_MOTION_OBJ_SMOKE=8` |
 | **V** | **folha 03 (simulação): DUAS das três** — o `break_above` do `motion.pin_constraint` (o pin que RASGA) e o desvio de obstáculo do `motion.boids` (porta `obstacle` + `avoid`/`avoid_radius`/`lookahead`). ⚠️ **As duas objecções da folha caíram por razões diferentes:** a do pin era verdadeira do SOLVER e falsa do STREAM (a carga já viaja como `accel`); a do boids era verdadeira até esta janela, e o que a derrubou foi a porta-template que o `field.shape` estreou. Sobra **1**: a forma arbitrária do `motion.soft_body`, que é de outro tamanho — o `shape_goals_weighted` é livre de topologia, mas o `cluster_goals_weighted` e a pressão precisam da grelha `rows×cols` | `=75` |
 | **V** | ✅ **folha 02 (`force.*`) FECHOU: as duas células que sobravam, e as duas eram do `force.attractor`** — `Target = Point/Stream` (a porta `target`: cada peça puxada pelo ponto MAIS PRÓXIMO daquele stream) e `Predict` (o tecto em segundos: `t = min(d/velocidade própria, lead)`, o intercepto **POR partícula**). ⚠️ **A segunda só existia por causa da primeira:** antecipar precisa da VELOCIDADE do alvo, e um par de params não tem velocidade. ⚠️ **`Stream` sem fio não faz força nenhuma**, de propósito — cair nos params ali seria o knob morto que o Enio acabara de reportar noutro nó | `=74` |
 | **V** | ✅ **folha 08 (stream & utilidade) FECHOU: as duas células que sobravam, de espécies diferentes** — o `reindex` do `motion.cull` (**defeito**: as colunas de identidade descreviam a lista de ANTES, e o degradê parava a meio) e o **`field.shape`**, nó NOVO (**ausência**: nem o `motion.falloff` nem nenhum `field.*` aceitava geometria como fonte de máscara — o gap era dos dois lados da porta). ⚠️ O `reindex` escreve **as DUAS** colunas, incluindo em stream que não as trazia: meia cura faz a rampa alcançar *metade, duas vezes* | `=73` |
@@ -227,7 +228,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As CINQUENTA E SETE LEIS que esta linha pagou para aprender
+## §4 — As CINQUENTA E OITO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -628,6 +629,16 @@ são estilo.
     *É a mesma lei da memória `feedback_a_label_must_promise_what_the_model_delivers`, e
     é a segunda vez que esta casa a paga.*
 
+58. ⚠️ **Uma expressão enterrada num laço que precisa de meio app para correr é uma
+    expressão que ninguém gateia.** A publicação da pose do objeto vivia dentro do
+    `publish` do shell, que exige um `SimWorld`, um `TextureAtlas` e um `ObjectBake` — e
+    a mutação *"troca `t.rotation` por `0.0`"* **sobreviveu**. Extraída para
+    `pose_stream(&Transform) -> Stream`, ela tem um gate de três linhas e a mutação
+    sangra. *Se montar a fixture custa mais que a lei, a lei está no sítio errado.*
+    ⚠️ E uma segunda mutação sobreviveu por ser **EQUIVALENTE** (uma guarda de
+    «pose ausente» que os dois `if let` já implementavam) — a terceira vez esta semana.
+    A guarda saiu: ela LIA como uma lei e não era uma.
+
 
 ---
 
@@ -676,6 +687,17 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `PH2D_MOTION_OBJ_SMOKE=8` — a POSE do objeto (folha 14)
+
+```
+\
+  env PH2D_MOTION_OBJ_SMOKE=8 cargo run -p ph2d-host-desktop --release
+```
+
+⚠️ **Não é uma cena `=N`, e não podia ser:** o `source.object` lê um objeto da CENA
+(um external publicado do mundo ECS), não do grafo — então o smoke tem de spawnar o
+objeto, e isso é o que a família `PH2D_MOTION_OBJ_SMOKE` faz.
 
 ### `=75` — duas das três da folha 03 (o pin que rasga, o bando que desvia)
 

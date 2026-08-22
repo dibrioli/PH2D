@@ -99,35 +99,15 @@ fn sprite_appearance(spr: &Sprite, atlas: &TextureAtlas) -> Option<([f32; 4], u3
     }
 }
 
-/// The one-instance appearance stream, at the origin. ⚠️ **The columns here are
-/// exactly the ones `lower_to_instances` reads** — `P` (world_pos), `size`,
-/// `tint`, `uv_rect` (atlas_uv), `texture_id` — so what the membrane publishes
-/// and what the sink lowers cannot diverge (the two-doors bug). Pure, so that
-/// column contract is unit-tested without a GPU atlas.
-fn appearance_tile(size: [f32; 2], tint: [f32; 4], uv_rect: [f32; 4], texture_id: u32) -> Stream {
-    Stream::new(1)
-        .with("P", Column::Vec2(vec![[0.0, 0.0]]))
-        .with("size", Column::Vec2(vec![size]))
-        .with("tint", Column::Vec4(vec![tint]))
-        .with("uv_rect", Column::Vec4(vec![uv_rect]))
-        // A small integer id, exact in f32; the lowering reads it back.
-        .with("texture_id", Column::Scalar(vec![texture_id as f32]))
-}
+/// Os streams que DESCREVEM um objeto — a aparência e a pose. Irmão pelo teto de LOC,
+/// e o corte é por FAMÍLIA: os três respondem *"o que o grafo recebe quando nomeia X"*.
+#[cfg(test)]
+#[path = "motion_bridge_objects_pose_tests.rs"]
+mod pose_tests;
 
-/// The one-instance appearance stream for a LIVE VECTOR (a `source.object` that
-/// names a vector, ADR-0154 reused for objects): `(P, size, tint, geometry_id)` —
-/// no `uv_rect`/`texture_id`, because a live vector is drawn crisp by the vector
-/// pass, not sampled as an atlas quad. The lowering routes a `geometry_id > 0` row
-/// there automatically (its `> 0.5` split), and the sprite lowering SKIPS it, so a
-/// mixed group stream draws each part once. The tint is WHITE — the drawing's own
-/// fill/stroke carry its colours ([`ph2d_vec_render::draw_shape_instance`]).
-fn appearance_vector(size: [f32; 2], tint: [f32; 4], geometry_id: u32) -> Stream {
-    Stream::new(1)
-        .with("P", Column::Vec2(vec![[0.0, 0.0]]))
-        .with("size", Column::Vec2(vec![size]))
-        .with("tint", Column::Vec4(vec![tint]))
-        .with("geometry_id", Column::Scalar(vec![geometry_id as f32]))
-}
+#[path = "motion_bridge_objects_streams.rs"]
+mod streams;
+pub(super) use streams::{appearance_tile, appearance_vector, pose_stream};
 
 /// Publish every **named sprite** into the cook (doc 86 §2).
 ///
@@ -193,6 +173,12 @@ pub(super) fn publish(
                     Column::Vec2(vec![[t.translation[0], t.translation[1]]]),
                 ),
             );
+            // ⚠️ **E a POSE, no canal dela** (doc 89 folha 14). O `Transform` estava
+            // nesta query desde sempre e só a translação era publicada — a rotação e a
+            // escala eram **descartadas**, então um `source.object` não tinha como
+            // herdar a orientação do objeto que ele nomeia. Canal próprio pela mesma
+            // razão do `position_of`: a APARÊNCIA mora na origem sem pose, de propósito.
+            cook.set_external(ph2d_nodegraph::external::pose_of(&name.0), pose_stream(t));
         }
     }
 

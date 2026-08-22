@@ -38,6 +38,18 @@ pub const FILTER_LABELS: [&str; 7] = [
     "Lin+Aniso",
 ];
 
+/// **Um rótulo por variante de `ph2d_ecs::RepeatMode`**, na ordem das tags `0..=3`.
+pub const REPEAT_LABELS: [&str; 4] = ["Inherit", "Clamp", "Repeat", "Mirror"];
+
+/// **O índice que significa «nenhum segmento aceso»** — a afordância de divergência.
+///
+/// ⚠️ O `SegmentedAdaptive` trata um índice fora de alcance como *nenhuma seleção*; o `Tabs` **não
+/// sabe**, porque o `selected()` dele clampa (`idx.min(len-1)`). Foi por isso que as duas rows desta
+/// seção passaram a adaptativas em 2026-08-21: enquanto a Repeat era um `Tabs`, ela era
+/// **incapaz** de dizer «misto», e o painel acendia o valor da primária como se toda a seleção
+/// concordasse (auditoria `docs/Sprite_projeto/20` §3.3).
+const NOTHING_LIT: usize = usize::MAX;
+
 /// **Qual segmento acende para uma tag de filtro.** Identidade, porque a posição **é** a tag.
 ///
 /// # Por que isto é uma função nomeada e não uma expressão
@@ -180,7 +192,11 @@ pub(crate) fn paint_sampling_section(
             .map(|(&id, label)| SegmentedOption::new(id, label))
             .collect(),
     )
-    .selected(filter_selected_index(info.filter_tag));
+    .selected(if info.mixed.filter {
+        NOTHING_LIT
+    } else {
+        filter_selected_index(info.filter_tag)
+    });
     let seg_h = paint_segmented_adaptive(
         &seg,
         Rect::new(x, yy, w, h),
@@ -204,24 +220,30 @@ pub(crate) fn paint_sampling_section(
         label_color,
     );
     yy += label_h;
-    let repeat_rect = Rect::new(x, yy, w, h);
-    let repeat_tabs = Tabs::new(
-        NodeId(0),
-        "",
-        vec![
-            TabItem::new(ids::INSP_SAMPLE_REPEAT[0], "Inherit"),
-            TabItem::new(ids::INSP_SAMPLE_REPEAT[1], "Clamp"),
-            TabItem::new(ids::INSP_SAMPLE_REPEAT[2], "Repeat"),
-            TabItem::new(ids::INSP_SAMPLE_REPEAT[3], "Mirror"),
-        ],
+    let repeat_seg = SegmentedAdaptive::new(
+        ids::INSP_LIVE_SAMPLING_SECTION,
+        "Texture Repeat",
+        ids::INSP_SAMPLE_REPEAT
+            .iter()
+            .zip(REPEAT_LABELS)
+            .map(|(&id, label)| SegmentedOption::new(id, label))
+            .collect(),
     )
-    .variant(TabsVariant::Segmented)
-    .selected((info.repeat_tag as usize).min(3));
-    paint_tabs(&repeat_tabs, repeat_rect, scene, text_system, theme);
-    for (i, item) in repeat_tabs.items.iter().enumerate() {
-        hit_index.register(item.id, repeat_tabs.tab_rect(repeat_rect, i));
-    }
-    yy += h + row_gap;
+    .selected(if info.mixed.repeat {
+        NOTHING_LIT
+    } else {
+        usize::from(info.repeat_tag).min(REPEAT_LABELS.len() - 1)
+    });
+    let repeat_h = paint_segmented_adaptive(
+        &repeat_seg,
+        Rect::new(x, yy, w, h),
+        scene,
+        text_system,
+        theme,
+        store,
+        hit_index,
+    );
+    yy += repeat_h + row_gap;
 
     // UV tiling (scale > 1 tiles) + scroll (offset) — W3 UvTransform. The
     // repeat segmented above picks how the tiled UV wraps.

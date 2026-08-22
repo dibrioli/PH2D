@@ -230,21 +230,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         ));
         return true;
     }
-    // M14.D — Visibility checkbox toggled.
-    if let WidgetEvent::Toggled(id) = ev
-        && id == ids::INSP_VISIBILITY_CHECK
-        && let Some(info) = state::current_inspector_visibility()
-    {
-        let visible = matches!(
-            host.store().checkbox(id).map(|(_, v)| v),
-            Some(CheckboxValue::Checked),
-        );
-        host.bus_mut().push(EditorAction::InspectorVisibilityEdit(
-            InspectorVisibilityInfo {
-                entity_bits: info.entity_bits,
-                visible,
-            },
-        ));
+    if visibility_toggle(host, ev) {
         return true;
     }
     // W2 Sprite Inspector v2 — logical Flip H / Flip V toggled.
@@ -512,6 +498,37 @@ fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bo
 /// Its own function because `apply_event_impl` is under a ratcheting LOC cap
 /// and the two physics dots (§11/§12) pushed it over. Returns whether the
 /// event was consumed.
+/// **A caixa «Visible» do topo** (M14.D) — extraída da mãe em 2026-08-21 pela catraca de LOC.
+///
+/// ⚠️ O que a fez crescer foi o **fan-out**: esta caixa editava só a primária enquanto a §8
+/// Visibility logo abaixo editava toda a seleção (auditoria `docs/Sprite_projeto/20` §3). Ganhar o
+/// espalhamento exigiu ganhar antes a afordância de divergência — *espalhar sem sinal troca um
+/// sub-aplicar silencioso por um esmagamento silencioso*.
+fn visibility_toggle(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if let WidgetEvent::Toggled(id) = ev
+        && id == ids::INSP_VISIBILITY_CHECK
+        && let Some(info) = state::current_inspector_visibility()
+    {
+        let visible = matches!(
+            host.store().checkbox(id).map(|(_, v)| v),
+            Some(CheckboxValue::Checked),
+        );
+        host.bus_mut().push(EditorAction::InspectorVisibilityEdit(
+            InspectorVisibilityInfo {
+                entity_bits: info.entity_bits,
+                visible,
+                // ⚠️ **A ação carrega `false` porque ela é uma DECISÃO, não um estado.** O `mixed`
+                // do snapshot descreve o que a seleção era *antes*; o que sobe aqui é o que o
+                // artista acabou de escolher para todos. Ecoar a divergência de volta faria o
+                // dreno ter de a interpretar — e ele já não a lê.
+                mixed: false,
+            },
+        ));
+        return true;
+    }
+    false
+}
+
 fn section_color_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // ⚠️ **A condição deixou de ENUMERAR os seus leitores** (2026-08-21). Ela listava seis dos
     // treze pontos, e a nota no topo deste ficheiro — que já denunciava a podridão — dizia

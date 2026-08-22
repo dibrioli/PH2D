@@ -171,7 +171,12 @@ pub(crate) fn sync_inspector_from_snapshots(
         && let Some(InteractiveState::Checkbox { value, .. }) =
             host.store_mut().get_mut(ids::INSP_VISIBILITY_CHECK)
     {
-        *value = if vis.visible {
+        // ⚠️ **Indeterminate é o sinal de divergência** — o mesmo que os seis checkboxes de sprite
+        // já usam (`sync.rs`, secção Mixed). Sem ele o fan-out novo esmagaria valores divergentes
+        // sem que nada na tela dissesse que eles divergiam.
+        *value = if vis.mixed {
+            CheckboxValue::Indeterminate
+        } else if vis.visible {
             CheckboxValue::Checked
         } else {
             CheckboxValue::Unchecked
@@ -273,14 +278,39 @@ fn sync_ordering_fields(
     }
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
-    for (id, value) in [
-        (ids::INSP_ORDER_Z_INDEX, ord.z_index.unwrap_or(0) as f64),
-        (ids::INSP_ORDER_ORDER_IN_LAYER, ord.order_in_layer as f64),
-        (ids::INSP_ORDER_AXIS_X, ord.y_sort_axis[0] as f64),
-        (ids::INSP_ORDER_AXIS_Y, ord.y_sort_axis[1] as f64),
+    // ⚠️ **Os quatro números da §7 escreviam o valor da primária MESMO em divergência**, três
+    // linhas abaixo dos checkboxes da mesma seção que já mostravam `Indeterminate` corretamente —
+    // *duas honestidades, uma aparência* (auditoria `docs/Sprite_projeto/20` §3.3). O sinal de
+    // divergência de um campo numérico é o **campo em branco**, o mesmo que a §6 já usa nos seus
+    // dez (`sync_sprite_fields`).
+    for (id, value, mixed) in [
+        (
+            ids::INSP_ORDER_Z_INDEX,
+            f64::from(ord.z_index.unwrap_or(0)),
+            ord.mixed.z_index,
+        ),
+        (
+            ids::INSP_ORDER_ORDER_IN_LAYER,
+            f64::from(ord.order_in_layer),
+            ord.mixed.order_in_layer,
+        ),
+        (
+            ids::INSP_ORDER_AXIS_X,
+            f64::from(ord.y_sort_axis[0]),
+            ord.mixed.y_sort_axis,
+        ),
+        (
+            ids::INSP_ORDER_AXIS_Y,
+            f64::from(ord.y_sort_axis[1]),
+            ord.mixed.y_sort_axis,
+        ),
     ] {
         if focus != Some(id) && drag != Some(id) {
-            host.store_mut().set_number_value(id, value);
+            if mixed {
+                host.store_mut().blank_number_input(id);
+            } else {
+                host.store_mut().set_number_value(id, value);
+            }
         }
     }
     // Sorting Layer dropdown selected index — seed on entity switch only

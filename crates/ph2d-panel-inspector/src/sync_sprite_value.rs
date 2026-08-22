@@ -79,7 +79,16 @@ pub(crate) fn sync_sprite_sliders(
         {
             *value = normalized;
         }
-        host.store_mut()
-            .set_number_value(ids::INSP_SPRITE_EMISSIVE_CHIP, f64::from(sp.emissive));
+        // ⚠️ **A MESMA honestidade da Opacidade, quinze linhas acima** — e ela faltava aqui. O
+        // slider não sabe dizer «misto» (ele é uma posição), por isso estaciona no valor da
+        // primária; quem dá o sinal é o **chip em branco**. Sem isto, o artista via a emissão da
+        // primária a falar por toda a seleção (auditoria `docs/Sprite_projeto/20` §3.1).
+        if sp.mixed.emissive {
+            host.store_mut()
+                .blank_number_input(ids::INSP_SPRITE_EMISSIVE_CHIP);
+        } else {
+            host.store_mut()
+                .set_number_value(ids::INSP_SPRITE_EMISSIVE_CHIP, f64::from(sp.emissive));
+        }
     }
 }

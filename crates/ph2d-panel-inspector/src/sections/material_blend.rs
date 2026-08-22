@@ -88,7 +88,15 @@ pub(crate) fn paint_material_blend_section(
             .map(|(&id, label)| SegmentedOption::new(id, label))
             .collect(),
     )
-    .selected((info.blend_tag as usize).min(BLEND_LABELS.len() - 1));
+    // ⚠️ **Índice fora de alcance = nenhum aceso**, que é como este widget diz «misto». A flag
+    // era calculada pelo host (`inspector_ordering.rs`) e **deitada fora aqui**: cinco sprites com
+    // três blends diferentes acendiam «Mix» como se concordassem, ao lado de checkboxes que
+    // mostravam Indeterminate corretamente (auditoria `docs/Sprite_projeto/20` §3.3).
+    .selected(if info.mixed.blend {
+        usize::MAX
+    } else {
+        usize::from(info.blend_tag).min(BLEND_LABELS.len() - 1)
+    });
     let seg_h = paint_segmented_adaptive(
         &seg,
         Rect::new(x, yy, w, h),

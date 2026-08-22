@@ -9,6 +9,7 @@
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorVisibilitySectionInfo;
 use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 
 /// Label-above row with a single NumberInput. Returns the next `y`.
 /// Mirrors §9 Sampling's `uv_pair_row` but for one value (cutoff, a rect
@@ -67,13 +68,15 @@ fn segmented_row(
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
+    store: &WidgetStore,
     x: f32,
     w: f32,
     y: f32,
     label: &str,
     ids3: [NodeId; 3],
     labels3: [&str; 3],
-    selected: usize,
+    // `None` = a seleção diverge; nenhum segmento acende.
+    selected: Option<usize>,
 ) -> f32 {
     let h = ROW_H_PX;
     let label_font = TypeToken::Sm.px();
@@ -90,22 +93,22 @@ fn segmented_row(
     );
     let row_y = y + label_h;
     let rect = Rect::new(x, row_y, w, h);
-    let tabs = Tabs::new(
+    // ⚠️ **`SegmentedAdaptive` e não `Tabs`, para poder dizer «misto».** O `Tabs::selected()`
+    // clampa (`idx.min(len-1)`), por isso é **incapaz** de renderizar «nenhum aceso» — e era isso
+    // que fazia estas duas rows acenderem o valor da primária como se toda a seleção concordasse,
+    // enquanto o host já calculava a divergência e a deitava fora
+    // (auditoria `docs/Sprite_projeto/20` §3.3).
+    let seg = SegmentedAdaptive::new(
         NodeId(0),
-        "",
-        vec![
-            TabItem::new(ids3[0], labels3[0]),
-            TabItem::new(ids3[1], labels3[1]),
-            TabItem::new(ids3[2], labels3[2]),
-        ],
+        label,
+        ids3.iter()
+            .zip(labels3)
+            .map(|(&id, l)| SegmentedOption::new(id, l))
+            .collect(),
     )
-    .variant(TabsVariant::Segmented)
-    .selected(selected.min(2));
-    paint_tabs(&tabs, rect, scene, text_system, theme);
-    for (i, item) in tabs.items.iter().enumerate() {
-        hit_index.register(item.id, tabs.tab_rect(rect, i));
-    }
-    row_y + h + Spacing::Sm.px()
+    .selected(selected.unwrap_or(usize::MAX));
+    let seg_h = paint_segmented_adaptive(&seg, rect, scene, text_system, theme, store, hit_index);
+    row_y + seg_h + Spacing::Sm.px()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -177,13 +180,14 @@ pub(crate) fn paint_visibility_section(
         text_system,
         theme,
         hit_index,
+        store,
         x,
         w,
         yy,
         "Clip Children",
         ids::INSP_VIS_CLIP,
         ["Disabled", "Clip", "Clip+Draw"],
-        info.clip_mode as usize,
+        (!info.mixed.clip_mode).then_some(usize::from(info.clip_mode)),
     );
 
     // Mask Interaction — None / VisibleInside / VisibleOutside (0/1/2).
@@ -192,13 +196,14 @@ pub(crate) fn paint_visibility_section(
         text_system,
         theme,
         hit_index,
+        store,
         x,
         w,
         yy,
         "Mask Interaction",
         ids::INSP_VIS_MASK,
         ["None", "Inside", "Outside"],
-        info.mask_mode as usize,
+        (!info.mixed.mask_mode).then_some(usize::from(info.mask_mode)),
     );
 
     // Mask alpha cutoff — only meaningful when the sprite obeys a mask.

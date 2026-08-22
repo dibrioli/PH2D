@@ -106,6 +106,7 @@ fn publish_the_whole_sprite_scene() {
     set_current_inspector_visibility(Some(InspectorVisibilityInfo {
         entity_bits: ENTITY,
         visible: true,
+        mixed: false,
     }));
     set_current_inspector_transform(Some(InspectorTransformInfo {
         entity_bits: ENTITY,

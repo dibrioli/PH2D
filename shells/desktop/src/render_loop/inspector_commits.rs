@@ -25,9 +25,8 @@ use ph2d_ecs::scene::{
 };
 use ph2d_ecs::{SimWorld, Transform, Visibility};
 use ph2d_editor::{
-    BlendFieldEdit, HeroScreen, InspectorNameInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    OrderingFieldEdit, PhysicsFieldEdit, SamplingFieldEdit, SpriteFieldEdit, Toast, ToastQueue,
-    VisibilityFieldEdit,
+    BlendFieldEdit, HeroScreen, InspectorNameInfo, InspectorTransformInfo, OrderingFieldEdit,
+    PhysicsFieldEdit, SamplingFieldEdit, SpriteFieldEdit, Toast, ToastQueue, VisibilityFieldEdit,
 };
 use ph2d_render::Sprite;
 use std::collections::BTreeMap;
@@ -101,7 +100,7 @@ fn clamp_frame(sprite: &mut Sprite) {
 pub(super) fn dispatch(
     reimport_entity: Option<u64>,
     transform_edit: Option<InspectorTransformInfo>,
-    visibility_edit: Option<InspectorVisibilityInfo>,
+    visibility_edits: &[(u64, bool)],
     name_edit: Option<InspectorNameInfo>,
     signal_edit: Option<InspectorNameInfo>,
     signal_leave_edit: Option<InspectorNameInfo>,
@@ -213,14 +212,15 @@ pub(super) fn dispatch(
     }
     // M14.D: drain Inspector Visibility commit → same
     // EditorCommandQueue path as Transform.
-    if let Some(info) = visibility_edit {
-        let v = Visibility {
-            hidden: !info.visible,
-        };
+    // ⚠️ **Uma FATIA, não um `Option`** — a caixa «Visible» do topo editava só a primária enquanto
+    // a §8 Visibility logo abaixo espalhava pela seleção. Duas linhas vizinhas, comportamentos
+    // opostos, aparência idêntica (auditoria `docs/Sprite_projeto/20` §3).
+    for &(entity_bits, visible) in visibility_edits {
+        let v = Visibility { hidden: !visible };
         match postcard::to_allocvec(&v) {
             Ok(data) => {
                 let push_res = editor_queue.push(EditorCommand::SetComponent {
-                    entity: info.entity_bits,
+                    entity: entity_bits,
                     type_id: visibility_type_id,
                     data,
                 });

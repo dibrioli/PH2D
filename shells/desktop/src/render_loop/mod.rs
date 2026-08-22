@@ -2691,7 +2691,10 @@ impl crate::App {
             // **A SPRITE COMO FONTE DE LUZ** (plano `docs/Sprite_projeto/18` W8). Recolhido aqui e
             // drenado com o irmão `precision_request` — o mesmo padrão, porque o componente só pode
             // ser escrito onde o `sim` está emprestado mutavelmente.
-            let mut emissive_request: Option<(u64, f32)> = None;
+            // ⚠️ **Um Vec, não um `Option`** — a emissão é uma edição de campo como a Opacidade, e
+            // a Opacidade espalha-se pela seleção. Enquanto isto foi `Option<(u64, f32)>` o slider
+            // parecia um bulk edit e mudava **uma** sprite (auditoria `docs/Sprite_projeto/20` §3).
+            let mut emissive_edits: Vec<(u64, f32)> = Vec::new();
             // Fase 0e: per-sprite tools collect a Vec<u64> instead of
             // Option<u64> so a multi-select OneShotImageOp broadcast
             // applies the bake to every selected sprite (legacy
@@ -2913,7 +2916,7 @@ impl crate::App {
             // "Convert to Curves" — bake the selected live shape(s) into raw paths.
             let mut pending_vec_convert = false;
             let mut transform_edit: Option<ph2d_editor::InspectorTransformInfo> = None;
-            let mut visibility_edit: Option<ph2d_editor::InspectorVisibilityInfo> = None;
+            let mut visibility_edits: Vec<(u64, bool)> = Vec::new();
             let mut sprite_source_change: Option<(u64, RequestedSpriteStrategy)> = None;
             // Sprite field edits (flip/region/sheet/tint/…) — a Vec so a
             // bulk edit that touches several fields in one frame all apply.
@@ -3795,7 +3798,14 @@ impl crate::App {
                         entity_bits,
                         intensity,
                     } => {
-                        emissive_request.get_or_insert((entity_bits, intensity));
+                        // BulkSelect fan-out, a mesma forma do `InspectorSpriteEdit` acima.
+                        if inspector_selection.is_empty() {
+                            emissive_edits.push((entity_bits, intensity));
+                        } else {
+                            for &t in &inspector_selection {
+                                emissive_edits.push((t, intensity));
+                            }
+                        }
                     }
                     // ADR-0040 TG-A: generic one-shot image-op dispatch.
                     // Trim/MakeSquare/RealSize collect into per-tool Option<u64>
@@ -3830,7 +3840,14 @@ impl crate::App {
                         transform_edit.get_or_insert(info);
                     }
                     EditorAction::InspectorVisibilityEdit(info) => {
-                        visibility_edit.get_or_insert(info);
+                        // BulkSelect fan-out, a mesma forma do `InspectorVisibilitySectionEdit`.
+                        if inspector_selection.is_empty() {
+                            visibility_edits.push((info.entity_bits, info.visible));
+                        } else {
+                            for &t in &inspector_selection {
+                                visibility_edits.push((t, info.visible));
+                            }
+                        }
                     }
                     EditorAction::InspectorSpriteSourceChange {
                         entity_bits,
@@ -8820,7 +8837,7 @@ impl crate::App {
             if inspector_commits::dispatch(
                 reimport_entity,
                 transform_edit,
-                visibility_edit,
+                &visibility_edits,
                 name_edit,
                 signal_edit,
                 signal_leave_edit,
@@ -8912,10 +8929,16 @@ impl crate::App {
             // e' por DIFF de snapshot (`App::post_frame_undo`), e o `SpriteEmissive` esta' registado,
             // logo ele entra na captura como qualquer outro componente. A fila serve os caminhos que
             // precisam de aplicar por NOME vindo do painel; aqui o tipo e' conhecido.
-            if let Some((bits, intensity)) = emissive_request {
+            for (bits, intensity) in emissive_edits.drain(..) {
                 let entity = ph2d_ecs::Entity::from_bits(bits);
                 let em = ph2d_ecs::SpriteEmissive(intensity);
                 if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {
+                    // ⚠️ Só escreve numa entidade que TEM `Sprite`: a seleção crua pode conter um
+                    // path vetorial ou um joint, e emitir luz é um facto sobre uma sprite. Mesmo
+                    // filtro que o fan-out do §11 aplica ao atravessar entidades sem `Collider`.
+                    if e.get::<ph2d_render::Sprite>().is_none() {
+                        continue;
+                    }
                     if em.emits() {
                         e.insert(ph2d_ecs::SpriteEmissive(em.clamped()));
                     } else {

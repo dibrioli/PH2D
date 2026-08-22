@@ -68,6 +68,23 @@ fn compute_sprite_mixed(
     m
 }
 
+/// **A divergência de EMISSÃO** — comparada à parte porque ela não vive no `Sprite`.
+///
+/// ⚠️ `SpriteEmissive` é um componente OPCIONAL, e a sua ausência **é** `EMISSIVE_OFF`: uma sprite
+/// sem o componente e outra com `0.0` concordam. Comparar `Option<&SpriteEmissive>` diretamente
+/// diria que divergem, e o chip branquearia sobre duas sprites que emitem exatamente o mesmo nada.
+fn emissive_of(world: &ph2d_ecs::World, entity: ph2d_ecs::Entity) -> f32 {
+    world
+        .get::<ph2d_ecs::SpriteEmissive>(entity)
+        .map_or(ph2d_ecs::EMISSIVE_OFF, |e| e.clamped())
+}
+
+fn compute_emissive_mixed(world: &ph2d_ecs::World, selected: &[u64], primary: f32) -> bool {
+    selected
+        .iter()
+        .any(|&bits| emissive_of(world, ph2d_ecs::Entity::from_bits(bits)) != primary)
+}
+
 /// Walks PresentWorld + SimWorld to build the per-frame snapshots
 /// and writes them onto the `HeroScreen`. Caller (orchestrator)
 /// already holds the destructured `AppGfx` refs and the per-frame
@@ -631,11 +648,18 @@ pub(super) fn publish(
         let world = sim.world();
         let sprite = world.get::<Sprite>(entity)?;
         let transform = world.get::<Transform>(entity)?;
-        let mixed = if inspector_selection.len() > 1 {
+        // ⚠️ A emissão é lida pela mesma porta que a comparação usa (`emissive_of`), senão as duas
+        // metades — o valor mostrado e a decisão de o mostrar — poderiam discordar sobre o que
+        // «ausente» significa.
+        let emissive = emissive_of(world, entity);
+        let mut mixed = if inspector_selection.len() > 1 {
             compute_sprite_mixed(world, &inspector_selection, sprite)
         } else {
             ph2d_editor::InspectorSpriteMixed::default()
         };
+        if inspector_selection.len() > 1 {
+            mixed.emissive = compute_emissive_mixed(world, &inspector_selection, emissive);
+        }
         let name = world
             .get::<Name>(entity)
             .map(|n| n.0.clone())
@@ -769,10 +793,7 @@ pub(super) fn publish(
             // **Quanto esta sprite emite** (plano `docs/Sprite_projeto/18` W8). Ausente = `0.0`:
             // para o painel, «sem componente» e «componente a zero» são a mesma coisa, e é isso que
             // deixa o slider voltar a zero remover a linha em vez de a deixar morta no ficheiro.
-            emissive: sim
-                .world()
-                .get::<ph2d_ecs::SpriteEmissive>(entity)
-                .map_or(0.0, |e| e.clamped()),
+            emissive,
             source_pixels,
             can_reimport,
             flip_x: sprite.flip_x,
@@ -825,9 +846,21 @@ pub(super) fn publish(
             .get::<Visibility>(entity)
             .map(|v| !v.hidden)
             .unwrap_or(true);
+        // ⚠️ A ausência de `Visibility` É visível — a mesma invariante que a leitura acima usa, e
+        // por isso a comparação passa pela mesma expressão. Compará-las como `Option` diria que
+        // uma sprite sem componente diverge de outra com `hidden: false`, e as duas estão visíveis.
+        let mixed = inspector_selection.iter().any(|&other| {
+            let e = ph2d_ecs::Entity::from_bits(other);
+            sim.world()
+                .get::<Visibility>(e)
+                .map(|v| !v.hidden)
+                .unwrap_or(true)
+                != visible
+        });
         Some(ph2d_editor::InspectorVisibilityInfo {
             entity_bits: bits,
             visible,
+            mixed,
         })
     });
     // M14.E: live `Name` snapshot. Falls back to

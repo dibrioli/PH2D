@@ -159,6 +159,13 @@ pub struct InspectorSpriteMixed {
     pub self_tint: bool,
     /// Any of the 4 per-corner tints diverge.
     pub per_corner: bool,
+    /// **A emissão diverge na seleção** (`SpriteEmissive`, ausente = `0.0`).
+    ///
+    /// ⚠️ **Esta flag nasceu 19 dias depois do controlo, e o buraco era visível ao lado dela:** o
+    /// chip da Opacidade branqueava em divergência e o do Emissivo escrevia incondicionalmente —
+    /// *dois controlos idênticos, no mesmo ficheiro, com honestidades opostas*
+    /// (auditoria `docs/Sprite_projeto/20` §3.1).
+    pub emissive: bool,
 }
 
 /// A single editable `Sprite` field, dispatched Inspector → shell as
@@ -559,6 +566,13 @@ pub struct InspectorTransformInfo {
 pub struct InspectorVisibilityInfo {
     pub entity_bits: u64,
     pub visible: bool,
+    /// **A visibilidade diverge na seleção.**
+    ///
+    /// ⚠️ Nasceu com o fan-out em 2026-08-21. Antes disso esta caixa editava **uma** sprite
+    /// enquanto a §8 Visibility logo abaixo editava todas — *duas linhas vizinhas, comportamentos
+    /// opostos, aparência idêntica* (auditoria `docs/Sprite_projeto/20` §3). Espalhar sem esta
+    /// flag teria sido pior: um clique passaria a esmagar valores divergentes **sem sinal**.
+    pub mixed: bool,
 }
 
 /// M14.E: snapshot of the selected entity's `Name` component.

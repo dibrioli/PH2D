@@ -191,73 +191,8 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
-/// Resolved simulation weights (arithmetic-ready).
-/// **O PESO DO DESVIO** (doc 89 folha 03 — o *Obstacle Avoidance* do Reynolds, o POP
-/// Steer Avoid Obstacle do Houdini).
-///
-/// `0` desliga — e desliga os três params da família, porque um raio e uma antecipação
-/// sem peso não fazem nada. Todo bando autorado antes disto lê zero e voa como voava.
-///
-/// ⚠️ **A célula dizia *"a ausência de qualquer geometria de obstáculo alcançável de
-/// dentro"*, e isso deixou de ser verdade nesta janela:** a porta-template — um segundo
-/// stream lido como geometria — é o padrão que o `field.shape` estreou e o
-/// `force.attractor` repetiu. O obstáculo é a lista de pontos da porta `obstacle`.
-const AVOID: &str = "avoid";
-/// A que distância um obstáculo começa a incomodar.
-const AVOID_RADIUS: &str = "avoid_radius";
-
-/// **A ANTECIPAÇÃO, em segundos** — o *lookahead* do Reynolds.
-///
-/// O agente não pergunta *"há pedra onde estou?"* e sim *"há pedra onde vou estar?"*: a
-/// sonda é `p + v · lookahead`. `0` sonda a própria posição, que é o comportamento de um
-/// campo de repulsão comum — útil, e é o default porque é o mais previsível.
-///
-/// ⚠️ **É por isto que o desvio precisa da VELOCIDADE, e é o que o separa de uma
-/// simples repulsão:** um agente rápido tem de virar mais cedo, e o `lookahead` faz o
-/// raio efectivo crescer com a velocidade **dele**, sem um segundo knob.
-const LOOKAHEAD: &str = "lookahead";
-
-/// A ACELERAÇÃO DE DESVIO de um agente — para longe do obstáculo mais próximo da sonda.
-///
-/// `None` quando não há obstáculo dentro do raio (ou não há obstáculos de todo): quem
-/// chama não soma nada, nem sequer um zero.
-///
-/// ⚠️ **A força cresce para dentro, linearmente** (`1 − d/raio`), e não com o inverso do
-/// quadrado: um inverso do quadrado é infinito no contacto, e um agente que atravessa o
-/// centro de uma pedra receberia um impulso arbitrário. A rampa linear é a mesma forma
-/// que a `separation` deste nó já usa — uma lei, dois sítios.
-///
-/// ⚠️ **Empate de distância desempata pelo ÍNDICE MAIS BAIXO** (a ordem total dos
-/// irmãos), e o obstáculo EXACTAMENTE sob a sonda não produz direcção nenhuma — `d = 0`
-/// não tem para onde empurrar, então a resposta é zero em vez de um `NaN`.
-fn avoid_accel(
-    pos: [f32; 2],
-    vel: [f32; 2],
-    obstacles: &[[f32; 2]],
-    radius: f32,
-    lookahead: f32,
-) -> Option<[f32; 2]> {
-    if obstacles.is_empty() || radius <= 0.0 {
-        return None;
-    }
-    let probe = [pos[0] + vel[0] * lookahead, pos[1] + vel[1] * lookahead];
-    let mut best = [0.0f32; 2];
-    let mut best_d2 = f32::INFINITY;
-    for q in obstacles {
-        let (dx, dy) = (probe[0] - q[0], probe[1] - q[1]);
-        let d2 = dx * dx + dy * dy;
-        if d2 < best_d2 {
-            best_d2 = d2;
-            best = [dx, dy];
-        }
-    }
-    let d = best_d2.sqrt();
-    if d >= radius || d <= 0.0 {
-        return None;
-    }
-    let k = 1.0 - d / radius;
-    Some([best[0] / d * k, best[1] / d * k])
-}
+mod avoid;
+use avoid::{AVOID, AVOID_RADIUS, LOOKAHEAD, avoid_accel};
 
 struct Params {
     count: usize,
@@ -373,69 +308,8 @@ impl Params {
     }
 }
 
-fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
-    match s.get(name) {
-        Some(Column::Scalar(v)) => v.clone(),
-        _ => Vec::new(),
-    }
-}
-
-fn vec2_col(s: &Stream, name: &str) -> Vec<[f32; 2]> {
-    match s.get(name) {
-        Some(Column::Vec2(v)) => v.clone(),
-        _ => Vec::new(),
-    }
-}
-
-/// The transient `accel` the state carries, at exactly `n` — **absent is zeros**.
-///
-/// A `force.*` wired into this flock's `state` chain (`boids.out --pre-->
-/// force.curl --> boids.state`) accumulates world-units/s² here, and this one
-/// read hands the flock the whole force family: curl (which IS Reynolds'
-/// *wander*), wind, an attractor, a vortex, drag (doc 89 §2.1). It joins the
-/// three flocking urges as a fourth term, so `max_speed` still bounds it.
-///
-/// ⚠️ **Consumed, never emitted** (the stream carries `P`/`vel`/`sim_t`), so
-/// every tick starts from zero acceleration; and zeros are the IDENTITY, so a
-/// flock no force reaches is byte-identical to the one that shipped.
-/// A massa INVERSA por agente (`motion.pin_constraint`): `1` = livre, `0` =
-/// pinado. **Ausente lê como livre**, e um peso negativo ou não-finito lê como
-/// pinado — o espelho exacto do leitor do `motion.collide`. Convenção de string
-/// soletrada LOCALMENTE (como `P` / `accel`), sem acoplar as crates.
-///
-/// ⚠️ **Consumida, nunca emitida** — a disciplina do `accel`, e pelo mesmo motivo
-/// medível: o pino MULTIPLICA no que já está no stream.
-fn inv_mass_col(s: &Stream, n: usize) -> Vec<f32> {
-    match s.get("inv_mass") {
-        Some(Column::Scalar(v)) if v.len() == n => v
-            .iter()
-            .map(|w| if w.is_finite() { w.max(0.0) } else { 0.0 })
-            .collect(),
-        _ => vec![1.0; n],
-    }
-}
-
-fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
-    match s.get("accel") {
-        Some(Column::Vec2(v)) if v.len() == n => v.clone(),
-        _ => vec![[0.0, 0.0]; n],
-    }
-}
-
-/// The value coordinate for the (single) target: **unconnected → 0.0** (origin).
-fn value_head(vals: &[f32]) -> f32 {
-    vals.first().copied().unwrap_or(0.0)
-}
-
-/// `(unit, len)` of `v`; `([0,0], 0)` for a ~zero vector (no NaN).
-fn norm(v: [f32; 2]) -> ([f32; 2], f32) {
-    let len = (v[0] * v[0] + v[1] * v[1]).sqrt();
-    if len < EPS {
-        ([0.0, 0.0], 0.0)
-    } else {
-        ([v[0] / len, v[1] / len], len)
-    }
-}
+mod stream;
+use stream::{accel_col, inv_mass_col, norm, scalar_col, value_head, vec2_col};
 
 /// Seed a hashed cloud of positions + velocities around `home` (tick 0 / a count
 /// change). Stateless: a pure function of `(seed, index)`, so it reproduces.

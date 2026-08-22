@@ -251,8 +251,14 @@ impl ObjectBake {
         let present = select_present(world, map);
 
         // Drop the ids that vanished (deleted, or an unnamed shape no group references
-        // any more). The store slot goes dead but is not reclaimed (no eviction); the
-        // LOD tile IS released so it never leaks VRAM.
+        // any more). O tile É libertado e a geometria É esquecida — os dois recursos
+        // que um bake adquire saem pela mesma porta.
+        //
+        // ⚠️ **O `store.forget` foi acrescentado em 2026-08-21, e a linha que ele
+        // substitui dizia o defeito em voz alta:** *"the store slot goes dead but is
+        // not reclaimed (no eviction)"*. A chave do bake inclui a TRANSFORMAÇÃO, então
+        // girar ou escalar um objeto deixava um `VecPath` morto **por quadro**. Numa
+        // engine cujo laço corre horas, «não reclamado» é «fuga» (Enio, 2026-08-21).
         let gone: Vec<VecPathId> = self
             .cache
             .keys()
@@ -262,6 +268,7 @@ impl ObjectBake {
         for id in gone {
             if let Some(b) = self.cache.remove(&id) {
                 renderer.individual_mut().release(b.texture_id);
+                store.forget(b.geometry_id);
             }
         }
 
@@ -286,9 +293,10 @@ impl ObjectBake {
                 continue;
             }
             // Changed or new: store the live geometry (→ `geometry_id`), upload the LOD
-            // tile (→ `texture_id`) and render the preview thumbnail. Release the previous
-            // tile AFTER the new bake (the store slot goes dead either way).
-            let old = self.cache.remove(&id).map(|b| b.texture_id);
+            // tile (→ `texture_id`) and render the preview thumbnail. Larga os DOIS
+            // recursos anteriores DEPOIS do novo bake (a ordem protege o caso em que o
+            // bake falha: o antigo ainda está lá para o quadro seguinte re-tentar).
+            let old = self.cache.remove(&id);
             let baked = bake_one(
                 &mut self.scratch,
                 store,
@@ -301,8 +309,9 @@ impl ObjectBake {
                 surface_format,
                 path,
             );
-            if let Some(t) = old {
-                renderer.individual_mut().release(t);
+            if let Some(b) = old {
+                renderer.individual_mut().release(b.texture_id);
+                store.forget(b.geometry_id);
             }
             if let Some((geometry_id, texture_id, size, thumb)) = baked {
                 self.cache.insert(

@@ -23,6 +23,12 @@ use std::collections::BTreeMap;
 
 use crate::motion_state::MotionState;
 
+/// **A SOAK do quadro** — nada acumula ao longo de horas de laço. Vive ao lado da porta das
+/// membranas porque é aqui que a varredura mora.
+#[cfg(test)]
+#[path = "motion_frame_soak_tests.rs"]
+mod soak_tests;
+
 /// Publica as três fontes externas do quadro. `seconds` é o relógio do playhead —
 /// as três o consomem: a de áudio porque as bandas são função dele, e as de forma e
 /// texto porque um param conduzido por fio só tem valor num INSTANTE ([`driven_params`]).

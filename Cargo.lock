@@ -5119,6 +5119,7 @@ dependencies = [
  "ph2d-asset",
  "ph2d-asset-cooker",
  "ph2d-core",
+ "ph2d-fx-op",
  "ph2d-render",
  "ph2d-stroke-width",
  "ph2d-symmetry",
@@ -5250,6 +5251,13 @@ version = "0.0.0"
 dependencies = [
  "ph2d-core",
  "ph2d-flip",
+]
+
+[[package]]
+name = "ph2d-fx-op"
+version = "0.0.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -7860,6 +7868,7 @@ name = "ph2d-ui-state"
 version = "0.0.0"
 dependencies = [
  "ph2d-anim",
+ "ph2d-fx-op",
  "ph2d-spring",
  "ph2d-stroke-width",
  "ph2d-vec-blend",

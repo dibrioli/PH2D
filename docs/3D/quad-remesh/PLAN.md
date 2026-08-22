@@ -1918,6 +1918,78 @@ matching** com `max_deviation = 2`, iterando até o custo parar de descer
 
 ---
 
+## 4-vicies — ⭐⭐ A ORELHA: a fixtura que faltava, e o dilema em DUAS LINHAS
+
+As fotos de 2026-08-22 trouxeram uma feição que **nenhuma fixtura tinha**: uma
+borda saliente com um **vinco fundo e côncavo** colado a ela. A `wrinkled` tem
+sulcos rasos, a `ridged` relevo convexo, a `hooked` uma protuberância esticada.
+
+⇒ [`eared_sphere`](../../../shells/desktop/src/sculpt3d_fixtures.rs) + a cena de
+smoke **`=36`**, esculpidas com os verbos do produto.
+
+### ⭐ A régua que faltava, e o SENTIDO dela
+
+[`detail_lost(referência, saída)`](../../../crates/ph2d-quadfill/src/report.rs):
+para cada vértice da **original**, a distância ao ponto mais próximo da saída.
+
+⛔ **O contrário é tautológico.** A última coisa que a montagem faz é pousar cada
+ponto na referência ⇒ `saída → referência` dá ~zero **mesmo com a peça destruída**
+(medido a 21/08: `0,0000` na destruída contra `0,0015` na boa — *a destruída
+pontuava melhor*). Nenhum campo do relatório via uma orelha achatada: 100 % de
+quads, casca fechada, irregulares em ordem.
+
+### ⭐⭐ O dilema, medido — e não há α bom hoje
+
+| `α` do F1 | `work` | **o F1 sozinho já perdeu** | patches | quads | irreg | dobras | perdeu (p95 / máx) |
+|---|---|---|---|---|---|---|---|
+| `0,020` (o de hoje) | 5 104 tris | máx **0,562 %** da diagonal | ⛔ **6** | 16 489 | 6 | 8 (0,05 %) | 0,097 % / 0,430 % |
+| `0,010` | 20 718 tris | máx 0,317 % | **218** | 32 335 | ⛔ **296** | 118 (0,36 %) | 0,038 % / **0,275 %** |
+
+⛔ **SEIS patches numa esfera com uma orelha inteira.** O campo mal a vê: o F1
+remalha para `α × diagonal = 0,04` e a peça do artista tem aresta média `~0,024`
+— *a primeira coisa que a cadeia faz é ficar mais grosseira que a malha que ele
+entregou*. Com 6 patches o layout é um cubo-mapa e a grade não tem nada que siga o
+vinco: é a **3.ª foto**, a orelha lida como um calombo liso.
+
+⭐ **O `α` fino resolve a forma** — a perda cai para metade — e **paga com 296
+irregulares, 0,36 % de dobras e minutos de relógio**. ⇒ **não existe `α` bom hoje**,
+e não porque o valor esteja mal escolhido: porque o eixo que ele move (mais
+patches) está bloqueado pelo mesmo sítio que tudo o resto.
+
+### ⭐ O rasgo da 2.ª foto: a projeção atravessava o vinco
+
+`project_onto` é o **ponto mais próximo**, e dentro de uma concavidade o pé mais
+próximo pode estar do **outro lado da dobra** — o eixo medial encosta na
+superfície, então dois pontos a milímetros um do outro têm pés opostos e a face
+entre eles vira uma lasca.
+
+⇒ [`project_facing`](../../../crates/ph2d-remesh-iso/src/lib.rs): uma face
+candidata só entra se a normal dela concordar, com **queda para o mais próximo**
+quando nenhuma concorda. ⭐ A normal viaja com o ponto desde o
+`PatchParam::sample` — *ele sabe de que lado veio, e essa informação estava a ser
+deitada fora uma linha antes de quem precisava dela.*
+
+⛔ **E pô-la no ALISAMENTO foi medido e rejeitado.** Parece a irmã e não é: lá a
+normal é um **facto** (o ponto nasceu sobre uma face concreta); no alisamento seria
+a normal de vértice da malha **que o próprio alisamento está a mexer**. Medido na
+esfera 24×36: dobras de **1 para 10**, aresta máxima de `2,58×` para `5,85×`.
+*Uma estimativa que se realimenta é pior que nenhuma.*
+
+### ⇒ As QUATRO dívidas abertas têm um dono só
+
+| dívida | o número |
+|---|---|
+| o teto da resolução | 50 s e sem prova um degrau abaixo do teto actual |
+| as recusas isoladas | `Exhausted` em 2 de 7 alvos medidos |
+| a adaptação comprimida | 9× de campo ⇒ 2,2× na saída |
+| ⛔ **a orelha achatada** | 6 patches; o `α` que a resolve custa **176 s** |
+
+**Todas** esperam a mesma coisa: um F4 que aguente 200+ patches. ⇒ o porte do
+solver do libSatsuma (dupla cobertura + refinamento por matching, `max_deviation =
+2`) é a **única** peça na frente das quatro.
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |

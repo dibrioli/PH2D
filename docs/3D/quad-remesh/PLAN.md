@@ -2847,3 +2847,65 @@ esmagar num quadrado.
 três patches em vez de uma banda que envolve a peça. É o mesmo trabalho que a asa
 pedia (§4-quatervicies) e que a ponte só **adiou**: ela tornou o layout *válido* sem
 o tornar *bom*.
+
+---
+
+## 4-duotricies — ⭐⭐⭐ **O GABARITO ESTAVA EM DISCO** — o oráculo grava as fases intermédias
+
+> **Pergunta do Enio (2026-08-22):** *"só me interessa o estado da arte. Os códigos
+> não abertos não podem ser estudados e adaptados?"*
+
+### A posição legal, em três linhas
+
+| | |
+|---|---|
+| **estudar** o código GPL | ✅ permitido — o algoritmo é ideia, e ideia não tem direito autoral |
+| ⛔ **adaptar / traduzir** | ⛔ obra derivada. Um porte C++→Rust de fonte GPL **é** GPL |
+| ⚠️ o risco prático | quem **lê** a fonte contamina tudo o que escreve depois; é por isso que existe sala limpa, e é por isso que o ADR-0161 partiu dos **papers** |
+
+### ⭐⭐⭐ E o que torna a pergunta quase irrelevante
+
+**O binário do oráculo grava as fases intermédias dele.** Em
+`ph2d-quadbench/ref/<peça>/`, por peça do corpus:
+
+| ficheiro | o que é | a nossa fase |
+|---|---|---|
+| `*_rem.obj` | a malha remalhada dele | **F1** |
+| ⭐⭐ `*_rem.rosy` | **o campo cruzado dele** — `9 464` direções para `9 464` faces | **F2** |
+| ⭐⭐ `*_rem_p0.patch` | **a decomposição dele** — o patch dono de cada face | **F3** |
+| `*_rem_p0.corners` | os cantos | F3 |
+| `*_rem.sharp` · `*.feature` | as quinas duras | (não temos) |
+| `*_quadrangulation.obj` | a malha final | F5 |
+
+⇒ ⭐⭐⭐ **As duas fases cujo código de referência é GPL — o campo (CoMISo) e o
+traçado (xfield_tracer) — têm o resultado delas em disco, na mesma malha, ficheiro a
+ficheiro.**
+
+⚠️ **E ler a SAÍDA de um programa não é obra derivada.** É legal, é o padrão, e é
+**mais forte** que ler o código: em vez de interpretar intenção, compara-se número
+com número.
+
+### ⛔ O que se estava a fazer errado
+
+A bancada compara o **resultado final** (`65–83 %` de quads contra `100 %`). ⛔ **O
+campo e a decomposição nunca foram comparados com o oráculo** — e são exactamente as
+duas fases em que esta linha está encalhada há dias. *Redescobrir às cegas com a
+resposta no disco.*
+
+### ⇒ O que isto destrava, em perguntas que hoje são chute
+
+| pergunta | hoje | com o gabarito |
+|---|---|---|
+| o campo dele obedece ao relevo (`13,7°`) e o meu não (`25,7°`) | *não sei onde* | **em que faces**, uma a uma |
+| o patch que dá três voltas à peça | *não sei se ele o tem* | ele corta ali, ou não |
+| singularidades na orelha | *não sei* | quantas e **onde** |
+
+⚠️ **A comparação corre sobre a malha DELE** (`*_rem.obj`), não sobre a nossa: assim
+a única diferença entre as duas colunas é o solver, e não o F1.
+
+### ⚠️ E uma terceira via que custa um e-mail
+
+O autor do solver de contagem **já libertou a parte dele em MIT**. Autores académicos
+relicenciam a pedido com frequência. Pedir licença permissiva para o `CoMISo` e o
+`xfield_tracer` ao grupo do QuadWild é barato e resolveria de vez. ⚠️ **É decisão do
+Enio, não da linha.**

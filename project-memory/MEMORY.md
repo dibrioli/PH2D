@@ -116,6 +116,7 @@
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md)
+- [O oráculo grava as FASES INTERMÉDIAS](feedback_the_oracle_writes_its_intermediate_stages_compare_phase_by_phase.md) — `ls` na saída dele antes de reimplementar; ler saída ≠ obra derivada
 - [A peça que falta pode JÁ estar construída](feedback_the_missing_piece_may_already_be_built_measure_its_structure_first.md) — meça a estrutura do que já lá está; material produzido-e-ignorado não aparece em régua nenhuma
 - [Laço de reparo pode ESCONDER o que agrava](feedback_a_repair_loop_can_hide_the_defect_it_worsens.md) — parar por «não há sinalizados» é critério sobre o DETECTOR; dê-lhe um invariante que ele não pode piorar
 - [Guloso que explode com um termo novo pede SEMENTE](feedback_a_perturbation_that_breaks_a_greedy_needs_a_seed_not_a_smaller_perturbation.md) — não baixe o peso nem suavize o guia; olhe o estado sobre o qual ele toma a 1.ª decisão

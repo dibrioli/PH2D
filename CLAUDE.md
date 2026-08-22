@@ -417,7 +417,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Cinco saídas já foram MEDIDAS e fechadas** (mais segmentos na lasca · `dissolve` · desligar a ponte ·
   recuo do `uv` · faixa em vez de leque): ⇒ o problema **não é como o patch é preenchido, é o patch** — o traçado
   tem de o CORTAR, que é o mesmo trabalho da asa que a ponte só adiou.
-  ⛔ Outros buracos
+  ⭐⭐ **O ORÁCULO GRAVA AS FASES INTERMÉDIAS** (achado 22/08, `PLAN.md` §4-duotricies): em
+  `ph2d-quadbench/ref/<peça>/` estão o **campo** dele (`*_rem.rosy`, uma direção por face) e a **decomposição**
+  dele (`*_rem_p0.patch`, o dono de cada face) — as duas fases cujo código é GPL. ⇒ Comparar fase a fase **na
+  malha dele** é legal (ler saída ≠ obra derivada), e é mais forte que ler código. ⛔ A bancada só comparava o
+  resultado FINAL. ⛔ Outros buracos
   medidos: o F1 devolve o cubo **não-manifold** · a esfera **embaralhada** não fecha · **sem feature lines**.
   Tabelas por fase: `PLAN.md` §4-bis..§4-undetricies.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que

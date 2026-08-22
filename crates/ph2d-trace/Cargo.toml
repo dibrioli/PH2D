@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# O TRACADO e a DECOMPOSICAO EM PATCHES (ADR-0161, F3). Clean-room a partir de
+# O TRACADO e a DECOMPOSICAO EM PATCHES (ADR-0162, F3). Clean-room a partir de
 # Pietroni et al., QuadWild (SIGGRAPH 2021) §6. Nenhuma linha traduzida de fonte
 # GPL; o oraculo `quadwild-bimdf` e' processo externo de bancada.
 #

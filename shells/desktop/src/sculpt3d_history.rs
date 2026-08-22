@@ -232,7 +232,7 @@ mod undo;
 #[path = "sculpt3d_history_remesh.rs"]
 mod remesh;
 
-/// **A CADEIA GLOBAL** (ADR-0161) — ver [`retopo_global`]. Irmão do [`remesh`], e
+/// **A CADEIA GLOBAL** (ADR-0162) — ver [`retopo_global`]. Irmão do [`remesh`], e
 /// o corte é o mesmo: lá o voxel remesh e a retopologia LOCAL, aqui a global.
 #[path = "sculpt3d_history_retopo_global.rs"]
 mod retopo_global;

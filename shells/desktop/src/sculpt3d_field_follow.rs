@@ -37,7 +37,7 @@
 //! bancada. Sem ele, um desvio de `25°` não se sabe se é mau — talvez nenhuma
 //! quadrangulação siga o campo tão de perto.
 
-/// Onde a bancada mora. ⚠️ Fora da árvore (ADR-0161).
+/// Onde a bancada mora. ⚠️ Fora da árvore (ADR-0162).
 const BENCH: &str = "/home/enio/Documentos/Projetos/ph2d-quadbench/ref";
 
 fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {

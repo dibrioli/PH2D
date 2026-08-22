@@ -1,4 +1,4 @@
-# ADR-0161 — O quad remesh PIVOTA para a família GLOBAL: clean-room a partir dos papers, oráculo GPL fora da árvore
+# ADR-0162 — O quad remesh PIVOTA para a família GLOBAL: clean-room a partir dos papers, oráculo GPL fora da árvore
 
 Status: **Aceito** (2026-08-20) · Supersede o **plano** do [ADR-0160](0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md) (o porte permanece, como backend de PREVIEW)
 Decisor: Enio · Plano vivo: [`docs/3D/quad-remesh/PLAN.md`](../../3D/quad-remesh/PLAN.md)

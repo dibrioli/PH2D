@@ -1,4 +1,4 @@
-//! **A PORTA DA CADEIA GLOBAL** — o botão a chamar o motor do pivô (ADR-0161).
+//! **A PORTA DA CADEIA GLOBAL** — o botão a chamar o motor do pivô (ADR-0162).
 //!
 //! Irmão (`#[path]`) do [`super`] e do [`crate::sculpt3d::history_remesh`], e o
 //! corte é de ASSUNTO: lá moram o voxel remesh e a retopologia **local** (o porte
@@ -19,7 +19,7 @@
 //! | esfera 98 k | 82,7 % · ~1 000 | **100 % · 21** | 100 % · ~9 |
 //!
 //! ⚠️ **E ela é LENTA em comparação**: o motor local responde em sub-segundo e
-//! este leva ~8,5 s numa escultura de 98 k. É a troca declarada do ADR-0161 — o
+//! este leva ~8,5 s numa escultura de 98 k. É a troca declarada do ADR-0162 — o
 //! local fica como *preview*, e é por isso que ele não foi removido.
 //!
 //! ⛔ **`PH2D_RETOPO_LEGACY=1` volta ao motor local**, e ele existe para bissecar:
@@ -39,7 +39,7 @@ use super::{RemeshRefusal, Sculpt3dScene, SculptStroke, StrokeUndo};
 const QUANTIZE_BUDGET: (usize, usize) = (256, 512);
 
 impl Sculpt3dScene {
-    /// **A RETOPOLOGIA GLOBAL** — a cadeia inteira do ADR-0161. Devolve o
+    /// **A RETOPOLOGIA GLOBAL** — a cadeia inteira do ADR-0162. Devolve o
     /// [`QuadRemeshReport`].
     ///
     /// ⭐⭐ **Ela RECEBE o `adaptive` desde 2026-08-21, e ele tem consumidor.**
@@ -326,7 +326,7 @@ pub(in crate::sculpt3d) fn ratio(v: f32) -> String {
 /// aconteceu três vezes em 2026-08-19. Um `0` aqui é a afirmação de que a peça
 /// fechou.
 ///
-/// ⭐ **E nomeia os IRREGULARES**, que é a grandeza que o pivô do ADR-0161 existiu
+/// ⭐ **E nomeia os IRREGULARES**, que é a grandeza que o pivô do ADR-0162 existiu
 /// para derrubar e a que o artista de facto vê. Uma esfera admite **oito**; o motor
 /// local não os conta e diz `?`, que é diferente de dizer zero.
 ///

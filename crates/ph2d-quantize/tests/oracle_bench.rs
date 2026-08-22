@@ -6,7 +6,7 @@
 //!
 //! ⚠️ **Nada aqui lê um formato do oráculo.** A bancada (`layout.py`, fora da
 //! árvore) converte `.patch`/`.corners` num ficheiro `.layout` de números; esta
-//! sonda lê só isso. ADR-0161, Trilha B.
+//! sonda lê só isso. ADR-0162, Trilha B.
 //!
 //! ```text
 //! cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quantize --release \
@@ -97,7 +97,7 @@ fn quads_of(corners: &[Vec<u32>]) -> u64 {
 }
 
 #[test]
-#[ignore = "sonda de bancada -- le os layouts que o oraculo exportou, fora da arvore (ADR-0161)"]
+#[ignore = "sonda de bancada -- le os layouts que o oraculo exportou, fora da arvore (ADR-0162)"]
 fn quantize_the_oracle_layouts() {
     let dir = Path::new(LAYOUTS);
     let mut entries: Vec<std::path::PathBuf> = std::fs::read_dir(dir)

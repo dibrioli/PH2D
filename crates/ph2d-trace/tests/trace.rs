@@ -1,4 +1,4 @@
-//! **OS GATES DO TRAÇADO** (ADR-0161, F3).
+//! **OS GATES DO TRAÇADO** (ADR-0162, F3).
 //!
 //! ⭐ **A régua principal é o FECHO DA CADEIA**: o layout que esta fase produz
 //! tem de ser aceite pelo F4 e quantizado com **prova**. Nenhum número interno do

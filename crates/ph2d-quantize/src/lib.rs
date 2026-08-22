@@ -7,7 +7,7 @@
 //! Clean-room a partir de Heistermann, Warnett e Bommes, *"Min-Deviation-Flow in
 //! Bi-directed Graphs for T-Mesh Quantization"* (SIGGRAPH 2023), §3 e §4.4, e de
 //! Pietroni et al., *QuadWild* (SIGGRAPH 2021), §7. ⚠️ Nenhuma linha traduzida
-//! de fonte GPL — ver **ADR-0161**, Trilha A.
+//! de fonte GPL — ver **ADR-0162**, Trilha A.
 //!
 //! # O problema, em uma frase
 //!

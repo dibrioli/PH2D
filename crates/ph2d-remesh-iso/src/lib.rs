@@ -1,4 +1,4 @@
-//! **REMESH ISOTRÓPICO** — o estágio que faltava inteiro (ADR-0161, F1).
+//! **REMESH ISOTRÓPICO** — o estágio que faltava inteiro (ADR-0162, F1).
 //!
 //! # Por que ele existe: a medição
 //!
@@ -37,7 +37,7 @@
 //!
 //! Clean-room a partir da literatura (Botsch & Kobbelt 2004, *A Remeshing
 //! Approach to Multiresolution Modeling*; QuadWild 2021 §4). ⛔ Nenhuma linha
-//! traduzida de fonte GPL — ADR-0161.
+//! traduzida de fonte GPL — ADR-0162.
 //!
 //! 1. **partir** as arestas acima de `4/3` do alvo — [`ph2d_mesh::refine_in_sphere`];
 //! 2. **colapsar** as abaixo de `4/5` — [`ph2d_mesh::collapse_in_sphere`];

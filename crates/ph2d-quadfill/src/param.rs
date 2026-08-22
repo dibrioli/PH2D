@@ -31,7 +31,7 @@
 //! ser só o passo que troca a malha remalhada pela original.*
 //!
 //! ⚠️ **Clean-room e sem dono:** Tutte (1963) e a interpolação transfinita são
-//! matemática clássica. Nenhuma linha vem de fonte GPL — ver ADR-0161.
+//! matemática clássica. Nenhuma linha vem de fonte GPL — ver ADR-0162.
 
 use std::collections::BTreeMap;
 

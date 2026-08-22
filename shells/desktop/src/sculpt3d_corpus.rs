@@ -1,5 +1,5 @@
 //! **O CORPUS DE BENCHMARK DO REMESHER** — a sonda que exporta as malhas de
-//! teste para o projeto de bancada (ADR-0161, Passo 0 do briefing de pivô).
+//! teste para o projeto de bancada (ADR-0162, Passo 0 do briefing de pivô).
 //!
 //! ⚠️ **Ela vive aqui e não na bancada porque as fixturas de escultura são
 //! `pub(super)` deste shell** — elas são desenhadas com os VERBOS do produto
@@ -24,7 +24,7 @@ use ph2d_mesh::{ExportPiece, Mesh, Pose, shapes, write_obj};
 /// ⚠️ **O caminho é absoluto e está aqui de propósito.** O projeto de bancada é
 /// GPL-isolado (ele invoca o oráculo `quadwild-bimdf`) e **não pode** virar um
 /// diretório desta árvore; um caminho relativo tornaria fácil, um dia, alguém o
-/// puxar para dentro. Ver ADR-0161 §Trilha B.
+/// puxar para dentro. Ver ADR-0162 §Trilha B.
 const CORPUS: &str = "/home/enio/Documentos/Projetos/ph2d-quadbench/corpus";
 
 fn dump(dir: &Path, name: &str, mesh: &Mesh) {
@@ -45,7 +45,7 @@ fn dump(dir: &Path, name: &str, mesh: &Mesh) {
 
 /// **ESCREVE O CORPUS.** ⚠️ `#[ignore]`: escreve em disco, fora do repo.
 #[test]
-#[ignore = "sonda de preparacao -- escreve o corpus de benchmark fora da arvore (ADR-0161)"]
+#[ignore = "sonda de preparacao -- escreve o corpus de benchmark fora da arvore (ADR-0162)"]
 fn dump_the_quad_remesh_corpus() {
     let dir = Path::new(CORPUS);
     std::fs::create_dir_all(dir).expect("o diretorio da bancada existe");
@@ -115,7 +115,7 @@ fn dump_the_quad_remesh_corpus() {
 /// honesto do ponto de partida, medido pela mesma régua que mede o oráculo
 /// (`metrics.py` da bancada). ⚠️ `#[ignore]`: escreve em disco, fora do repo.
 #[test]
-#[ignore = "sonda de preparacao -- baseline do remesher atual sobre o corpus (ADR-0161)"]
+#[ignore = "sonda de preparacao -- baseline do remesher atual sobre o corpus (ADR-0162)"]
 fn dump_the_current_remesher_baseline() {
     // ⚠️ **Um diretório por CONFIGURAÇÃO, e a combinação tem nome próprio.** A
     // primeira versão só olhava o `ISO` e a corrida `ISO+MIQ` **sobrescreveu** a

@@ -1,4 +1,4 @@
-//! **OS GATES DA QUADRANGULAÇÃO** (ADR-0161, F5).
+//! **OS GATES DA QUADRANGULAÇÃO** (ADR-0162, F5).
 //!
 //! ⭐ **A régua principal é a CARACTERÍSTICA DE EULER.** Ela apanha, com um só
 //! número, a malha rasgada, a face duplicada e o patch montado ao contrário —

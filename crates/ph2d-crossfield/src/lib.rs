@@ -1,8 +1,8 @@
-//! **CAMPO CRUZADO 4-RoSy COM DECISÃO GLOBAL** (ADR-0161, F2).
+//! **CAMPO CRUZADO 4-RoSy COM DECISÃO GLOBAL** (ADR-0162, F2).
 //!
 //! Clean-room a partir de **Bommes, Zimmer, Kobbelt, *Mixed-Integer
 //! Quadrangulation*, SIGGRAPH 2009** (`ph2d-quadbench/docs/papers/miq-2009.pdf`)
-//! e QuadWild 2021 §5. ⛔ Nenhuma linha traduzida de fonte GPL — ADR-0161.
+//! e QuadWild 2021 §5. ⛔ Nenhuma linha traduzida de fonte GPL — ADR-0162.
 //!
 //! # Por que ele existe: a medição, não a opinião
 //!

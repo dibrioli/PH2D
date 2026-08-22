@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# O CAMPO CRUZADO 4-RoSy com DECISAO GLOBAL (ADR-0161, F2). Clean-room a partir
+# O CAMPO CRUZADO 4-RoSy com DECISAO GLOBAL (ADR-0162, F2). Clean-room a partir
 # de Bommes et al., "Mixed-Integer Quadrangulation" (SIGGRAPH 2009) e QuadWild
 # 2021 §5. Nenhuma linha traduzida de fonte GPL.
 #

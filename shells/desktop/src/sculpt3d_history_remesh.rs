@@ -45,7 +45,7 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// **Quantos buracos ficaram na casca** — `0` é o que se espera.
     pub holes: usize,
     /// ⭐ **Quantos vértices IRREGULARES** (valência ≠ 4) — a grandeza que o pivô
-    /// do ADR-0161 existiu para derrubar, e a que o artista de facto vê.
+    /// do ADR-0162 existiu para derrubar, e a que o artista de facto vê.
     ///
     /// ⚠️ **É a CONTAGEM e não uma percentagem**, e a diferença é medida: a mesma
     /// peça com o dobro da densidade tem os mesmos irregulares e metade da

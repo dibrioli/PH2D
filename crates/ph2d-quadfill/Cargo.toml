@@ -9,7 +9,7 @@ authors.workspace = true
 
 [lib]
 
-# A QUADRANGULACAO POR PATCH (ADR-0161, F5). Clean-room a partir de QuadWild
+# A QUADRANGULACAO POR PATCH (ADR-0162, F5). Clean-room a partir de QuadWild
 # (SIGGRAPH 2021) §7-§8. Nenhuma linha traduzida de fonte GPL.
 #
 # ⚠️ E' a fase que devolve MALHA. As quatro anteriores entregam estrutura --

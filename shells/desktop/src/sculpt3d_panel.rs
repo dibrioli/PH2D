@@ -365,7 +365,7 @@ impl Sculpt3dScene {
             },
             Sculpt3dIntent::QuadRemesh => {
                 // ⭐ **A cadeia GLOBAL é o motor deste botão desde 2026-08-21**
-                // (ADR-0161): 100 % de quads e ~14 vértices irregulares numa
+                // (ADR-0162): 100 % de quads e ~14 vértices irregulares numa
                 // esfera, contra 68,7 % e ~1 800 do porte local. ⚠️ Ela é **muito
                 // mais lenta** (segundos contra sub-segundo), e é essa a troca
                 // que o ADR declara.

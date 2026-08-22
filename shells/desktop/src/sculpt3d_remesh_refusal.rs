@@ -47,14 +47,14 @@ pub(in crate::sculpt3d) enum RemeshRefusal {
     /// Com o knob de `detail` isto passou a ser inalcançável; a variante fica
     /// porque *o próximo chamador pode não passar pelo knob*.
     TooCoarseToResolve,
-    /// **O LAYOUT do traçado não fecha** — cadeia GLOBAL (ADR-0161).
+    /// **O LAYOUT do traçado não fecha** — cadeia GLOBAL (ADR-0162).
     ///
     /// ⚠️ Um arco que só um patch usa, ou um patch com menos de três lados. É
     /// recusa da fase de **decomposição**, e ela tem nome próprio pela mesma lei
     /// que partiu o `Option` original: a cura de um layout aberto não se parece
     /// nada com a de uma quantização inviável.
     Layout(ph2d_quantize::LayoutError),
-    /// **A QUANTIZAÇÃO não fecha** — cadeia GLOBAL (ADR-0161).
+    /// **A QUANTIZAÇÃO não fecha** — cadeia GLOBAL (ADR-0162).
     ///
     /// ⚠️ Ela distingue *inviável* de *orçamento esgotado*, e a diferença é o que
     /// o artista precisa: a primeira pede outra malha, a segunda pede paciência.

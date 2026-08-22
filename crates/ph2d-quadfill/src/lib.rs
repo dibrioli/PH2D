@@ -1,7 +1,7 @@
 //! **A QUADRANGULAÇÃO POR PATCH** — a fase **F5**, e a primeira que devolve malha.
 //!
 //! Clean-room a partir de Pietroni et al., *QuadWild* (SIGGRAPH 2021), **§7 e §8**.
-//! ⚠️ Nenhuma linha traduzida de fonte GPL — ver **ADR-0161**, Trilha A.
+//! ⚠️ Nenhuma linha traduzida de fonte GPL — ver **ADR-0162**, Trilha A.
 //!
 //! # O que ela recebe, e por que já está tudo decidido
 //!

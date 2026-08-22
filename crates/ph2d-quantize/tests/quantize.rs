@@ -1,4 +1,4 @@
-//! **OS GATES DA QUANTIZAÇÃO** (ADR-0161, F4).
+//! **OS GATES DA QUANTIZAÇÃO** (ADR-0162, F4).
 //!
 //! ⭐ **A régua principal é FORÇA BRUTA.** Para layouts pequenos, enumerar todas
 //! as quantizações e ficar com a mais barata dá o ótimo inteiro **sem** partilhar

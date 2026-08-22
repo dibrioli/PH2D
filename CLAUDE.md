@@ -382,7 +382,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   o **`DEFAULT_MATCAP` virou `Some(0)`** por decisão de produto em 09/08 ⇒ ela passou a medir *matcap contra rig*, que o
   doc dela já chamava de *"outra luz inteira"*. A vista agora é escrita **por nome, os 7 campos**, então um termo novo é
   **erro de compilação** ali. Voltou a **0,0020** — o número exato do autor · **quad remesh — PIVOTOU**
-  ([ADR-0161](docs/architecture/decisions/0161-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md),
+  ([ADR-0162](docs/architecture/decisions/0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md),
   plano vivo [`docs/3D/quad-remesh/PLAN.md`](docs/3D/quad-remesh/PLAN.md)). O que existe hoje é o **porte fiel** do
   Instant Meshes (BSD) em `ph2d-quadflow`, alcançável pelo botão **`Quad Retopology`** (smoke **`=35`**) — e ele
   **NÃO é o padrão-ouro**: medido lado a lado com o oráculo `quadwild-bimdf` sobre um corpus de 10 malhas

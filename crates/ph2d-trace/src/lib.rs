@@ -2,7 +2,7 @@
 //!
 //! Clean-room a partir de Pietroni et al., *Reliable Feature-Line Driven
 //! Quad-Remeshing* (SIGGRAPH 2021), **§6**. ⚠️ Nenhuma linha traduzida de fonte
-//! GPL — ver **ADR-0161**, Trilha A.
+//! GPL — ver **ADR-0162**, Trilha A.
 //!
 //! # O que ela fecha
 //!

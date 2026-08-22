@@ -1,6 +1,6 @@
 # PLAN — Quad Remesher estado-da-arte na PH2D
 
-> **Documento VIVO.** Decisão e fronteira jurídica: [ADR-0161](../../architecture/decisions/0161-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md).
+> **Documento VIVO.** Decisão e fronteira jurídica: [ADR-0162](../../architecture/decisions/0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md).
 > O que o porte local entregou e por quê: [ADR-0160](../../architecture/decisions/0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md).
 > ✅ **Aprovado pelo Enio em 2026-08-20** (*"Siga como achar melhor... buscamos o estado da arte independente dos custos"*).
 > Estado: **F1..F5 FEITAS** (§4-bis, §4-ter, §4-quater, §4-quinquies, §4-sexies).
@@ -193,11 +193,11 @@ Cada fase fecha com o benchmark verde sobre o corpus e um sumário curto de desv
 | **F3** | tracing + patches | ✅ **FEITO em 2026-08-20** (`crates/ph2d-trace`) — ver §4-quinquies. O layout que ele produz é **quantizado com prova** pelo F4 em esfera e toro; falta a fusão de separatrizes (saem ~2× mais patches que o oráculo) e as *feature lines* |
 | **F4** | ⭐ **solver Bi-MDF** | ✅ **PROTÓTIPO FEITO em 2026-08-20** (`crates/ph2d-quantize`) — ver §4-quater. Fecha com o **ótimo demonstrado** em todos os layouts fechados do oráculo; falta só o consumidor (F5) e a válvula de emergência, que **nenhum layout pediu** |
 | **F5** | quadrangulação por patch + smoothing + a porta no shell | ✅ **A MALHA FEITA em 2026-08-20** (`crates/ph2d-quadfill`) — ver §4-sexies: 100 % quads, χ exata, irregulares ~85× abaixo do motor local. ⛔ **Falta a porta no shell**, o Hausdorff/desvio angular, e o gate de regressão da `sculpt_hooked` (que precisa das *feature lines* do F3) |
-| **F6** | guide strokes: direção → feature → densidade | ⚠️ **a densidade por PRESSÃO depende da camada de tablet, que NÃO existe** (ADR-0161) — F6 entrega direção e feature; a pressão é um projeto irmão |
+| **F6** | guide strokes: direção → feature → densidade | ⚠️ **a densidade por PRESSÃO depende da camada de tablet, que NÃO existe** (ADR-0162) — F6 entrega direção e feature; a pressão é um projeto irmão |
 | **F7** | dois backends (preview BSD + qualidade) partilhando o campo | preview < 1 s até 100 k triângulos; o preview mostra o alinhamento que o modo qualidade honra |
 | **F8** | invalidação incremental + pinning de singularidade | editar um stroke não custa o pipeline inteiro; ⚠️ **exige infraestrutura de DAG que o Sculpt não tem** |
 
-⚠️ **F6 e F8 estão precificadas com o defeito de premissa embutido** (ADR-0161): elas não são
+⚠️ **F6 e F8 estão precificadas com o defeito de premissa embutido** (ADR-0162): elas não são
 "mais uma fase do remesher", são infraestrutura de produto que hoje não existe.
 
 ---
@@ -1214,7 +1214,7 @@ chamar o porte local do ADR-0160.
 
 1. **O botão passa a ser a cadeia GLOBAL, e o local FICA.** Não é remoção: o porte
    BSD responde em sub-segundo e este leva segundos — é o *preview* do F7, e o
-   ADR-0161 já o dizia. ⛔ `PH2D_RETOPO_LEGACY=1` volta a ele, **para bissecar**:
+   ADR-0162 já o dizia. ⛔ `PH2D_RETOPO_LEGACY=1` volta a ele, **para bissecar**:
    um resultado mau só se atribui a esta cadeia depois de se ver o que o outro faz
    com a mesma peça.
 2. **O `detail` atravessa pela MESMA lei dos dois** (`edge_for_detail`). *Duas leis
@@ -1476,7 +1476,7 @@ são medição honesta de peças que, somadas, não deram um produto melhor.
 
 ⭐⭐ **A peça que faz o QuadWild ser estado da arte em QUALIDADE — o solver Bi-MDF —
 é MIT, do próprio autor do paper, e são 3 884 linhas com uma dependência
-permissiva.** ⚠️ Isto **muda o ADR-0161**: ele diz *"clean-room a partir dos
+permissiva.** ⚠️ Isto **muda o ADR-0162**: ele diz *"clean-room a partir dos
 papers"* porque presumia que a fonte inteira era GPL. Para esta peça o clean-room
 **não é necessário** — um porte fiel com atribuição é legal, e é o mesmo padrão que
 o `ph2d-quadflow` (BSD) e o sculpt (MIT) já usam nesta árvore.
@@ -2861,7 +2861,7 @@ o tornar *bom*.
 |---|---|
 | **estudar** o código GPL | ✅ permitido — o algoritmo é ideia, e ideia não tem direito autoral |
 | ⛔ **adaptar / traduzir** | ⛔ obra derivada. Um porte C++→Rust de fonte GPL **é** GPL |
-| ⚠️ o risco prático | quem **lê** a fonte contamina tudo o que escreve depois; é por isso que existe sala limpa, e é por isso que o ADR-0161 partiu dos **papers** |
+| ⚠️ o risco prático | quem **lê** a fonte contamina tudo o que escreve depois; é por isso que existe sala limpa, e é por isso que o ADR-0162 partiu dos **papers** |
 
 ### ⭐⭐⭐ E o que torna a pergunta quase irrelevante
 

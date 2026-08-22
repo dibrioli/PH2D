@@ -28,7 +28,7 @@
 //! `#[ignore]` e saem em silêncio quando ele não existe. ⛔ *Skip gracioso não é
 //! verde* — nenhuma delas é gate.
 
-/// Onde o oráculo mora. ⚠️ Fora da árvore de propósito (ADR-0161): o binário é GPL,
+/// Onde o oráculo mora. ⚠️ Fora da árvore de propósito (ADR-0162): o binário é GPL,
 /// e o que entra aqui é a **saída** dele.
 const BENCH: &str = "/home/enio/Documentos/Projetos/ph2d-quadbench/ref";
 

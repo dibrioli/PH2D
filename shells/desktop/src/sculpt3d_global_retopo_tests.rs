@@ -1,4 +1,4 @@
-//! **OS GATES DA CADEIA GLOBAL, PELO GESTO** (ADR-0161, F5.2).
+//! **OS GATES DA CADEIA GLOBAL, PELO GESTO** (ADR-0162, F5.2).
 //!
 //! Irmão de teste do [`super`] (`#[path]`, `cfg(test)`), no molde do
 //! [`super::tests`]: um gesto exige uma cena e uma cena exige um device, então
@@ -361,7 +361,7 @@ fn every_point_of_the_detail_slider_returns_a_piece_on_the_global_chain() {
 /// ⭐⭐ **OS DOIS BACKENDS, LADO A LADO, NA MESMA PEÇA.**
 ///
 /// ⚠️ **É a medição que decide qual deles o botão deve chamar HOJE**, e ela não
-/// existia: o global entrou por decisão de arquitetura (ADR-0161) e nunca foi
+/// existia: o global entrou por decisão de arquitetura (ADR-0162) e nunca foi
 /// comparado com o local **no mesmo gesto, na mesma malha**.
 ///
 /// As duas colunas que importam são de espécies diferentes:

@@ -41,13 +41,19 @@ pub mod fan;
 mod param;
 /// **UM PATCH VIRA QUADS** — o domínio, os bordos e a grade — ver [`patch`].
 mod patch;
+/// ⭐ **A RELAXAÇÃO QUE OLHA PARA O ÂNGULO** — o ajuste de quadrado — ver [`relax`].
+mod relax;
 /// **O QUE A MONTAGEM DIZ** — recusa, relatório e proveniência — ver [`report`].
 pub mod report;
+/// ⭐ **A FORMA DE CADA QUAD** — a régua por-face — ver [`shape`].
+pub mod shape;
 /// **A COSTURA** — amostragem partilhada e montagem — ver [`stitch`].
 pub mod stitch;
 
+pub use relax::SQUARE_ROUNDS;
 pub use report::{
     FillError, FillReport, Provenance, detail_lost, folded_against, folded_by_neighbours,
     follows_relief,
 };
-pub use stitch::{SMOOTHING_ROUNDS, fill};
+pub use shape::{QuadShape, quad_shape};
+pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};

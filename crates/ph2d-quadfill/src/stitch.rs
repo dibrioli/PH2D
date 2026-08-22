@@ -106,6 +106,36 @@ pub fn fill(
     quant: &Quantization,
     smoothing: usize,
 ) -> Result<(Mesh, FillReport), FillError> {
+    fill_with(
+        indexed,
+        surface,
+        layout,
+        quant,
+        smoothing,
+        crate::relax::SQUARE_ROUNDS,
+    )
+}
+
+/// **A MONTAGEM com as duas relaxações à vista** — ver [`fill`], de que esta é a
+/// forma aberta.
+///
+/// ⭐⭐ **Ela existe porque as duas rondas medem coisas diferentes e a tabela que
+/// escolhe os números precisa de as variar em separado:** `smoothing` é o
+/// Laplaciano (comprimentos de aresta) e `square` é o ajuste de quadrado
+/// (ângulos). ⚠️ *Um parâmetro só, a somar as duas, tornaria a tabela
+/// inexprimível* — e o número que shipa sairia de um palpite em vez de uma
+/// medição.
+///
+/// # Errors
+/// [`FillError`] quando a estrutura a montante não fecha — ver as variantes.
+pub fn fill_with(
+    indexed: &Mesh,
+    surface: &Mesh,
+    layout: &PatchLayout,
+    quant: &Quantization,
+    smoothing: usize,
+    square: usize,
+) -> Result<(Mesh, FillReport), FillError> {
     // ⭐⭐ **A PRÉ-CONDIÇÃO, e ela é a mais barata que existe.** Ver
     // [`check_arcs_belong_to`].
     check_arcs_belong_to(indexed, layout)?;
@@ -422,8 +452,16 @@ pub fn fill(
     for _ in 0..smoothing {
         smooth_once(&mut mesh, surface);
     }
+    // ── 5. ⭐⭐ **Endireitar os ÂNGULOS** — ver [`crate::relax`]. Corre DEPOIS do
+    // Laplaciano de propósito: aquele iguala comprimentos e é quem tira a malha do
+    // estado em que nasce; este pega numa malha já de passo regular e ataca a
+    // única coisa que o outro não vê. ⚠️ *A ordem inversa foi medida* — ver a
+    // tabela em [`SQUARE_ROUNDS`].
+    for _ in 0..square {
+        crate::relax::square_once(&mut mesh, surface, seed);
+    }
 
-    let mut report = measure(&mesh, surface, &pts.prov, smoothing, flipped);
+    let mut report = measure(&mesh, surface, &pts.prov, smoothing + square, flipped);
     report.flattened = flattened;
     report.patches = layout.side_arcs.len();
     report.sampled = sampled;
@@ -610,6 +648,7 @@ fn measure(
         flatten_residual: 0.0,
         flatten_rounds: 0,
         edge_long_prov,
+        shape: crate::shape::quad_shape(mesh),
         // ⭐⭐ **A CONTAGEM DE DOBRAS entra no relatório da fase**, e não numa
         // sonda. Ela é o defeito que o artista fotografa e o único campo, com os
         // dois de aresta, que uma malha de posições embaralhadas não reproduz.

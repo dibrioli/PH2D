@@ -3015,3 +3015,122 @@ Ao ligar o peso, **seis gates reprovaram** — e nenhum por o produto estar mau:
 do F2 se move está a testar **duas** fases, e no dia em que reprova não diz qual
 quebrou. *Um gate, uma afirmação* — e a afirmação sobre a fragilidade passou a ter
 gate próprio em vez de contaminar seis.
+
+---
+
+## 4-quinquiestricies — ⛔⛔ **«PÉSSIMO» outra vez, e a régua verde estava a olhar para o lado errado**
+
+> **2026-08-22, a quarta foto.** No mesmo dia em que a `edge_max` da orelha caiu de
+> **57 % da peça para 5,5 %** (§4-quattuortricies), o artista mandou outra foto da
+> mesma peça com a palavra **«péssimo»**.
+
+### ⛔ O que estava errado com as réguas — e é a lição desta secção
+
+**Todas** as grandezas geométricas desta linha mediam **um extremo global**:
+`edge_max` é a aresta mais longa da malha inteira, `edge_median` a mediana de todas.
+⚠️ *Um quad de `0,02 × 0,30` não move nenhuma das duas* — a longa dele está muito
+abaixo da máxima e a curta afunda-se na mediana de dezenas de milhares.
+
+⇒ **O defeito da foto é POR-FACE**, e nenhuma asserção do repo olhava um quad de
+cada vez. A régua nova ([`ph2d_quadfill::QuadShape`](../../../crates/ph2d-quadfill/src/shape.rs)) tem três colunas, e as três são
+precisas **juntas**:
+
+| grandeza | o que apanha | a que é cega |
+|---|---|---|
+| **aspecto** (longa ÷ curta do mesmo quad) | o rectângulo `1 × 10` | o losango, que tem aspecto `1` |
+| ⭐ **enviesamento** (desvio de 90° no pior canto) | o losango de 30° | o rectângulo, que tem cantos rectos |
+| **área** (p99 ÷ p50) | a orelha grossa ao lado da calota fina | as duas de cima |
+
+### ⭐⭐⭐ A barra saiu do ORÁCULO, não de uma opinião
+
+⚠️ **A `sculpt_eared` não estava no corpus da bancada** — nove peças de que ninguém
+se queixou, e não a única de que alguém se queixou. Foi acrescentada e o oráculo
+correu sobre ela. Medido com **o mesmo código** nos dois lados:
+
+| `d = 1,0` | faces | aspecto p50 | p99 | `> 4×` | ⭐ **env. p50** | p99 | ⭐ **`> 60°`** |
+|---|---|---|---|---|---|---|---|
+| ⭐ **oráculo, orelha** | 4 658 | **`1,08`** | `1,4` | **0** | **`6°`** | `20°` | **`0`** |
+| ⛔ nós, orelha | 78 403 | `1,98` | `7,4` | 3 558 | `27°` | `79°` | **9 159 (12 %)** |
+| ⛔ nós, gancho | 8 772 | `1,62` | `6,6` | 581 | `28°` | `86°` | 1 872 (21 %) |
+| ⛔ nós, enrugada | 29 468 | `1,28` | `3,1` | 152 | `18°` | `87°` | 8 281 (28 %) |
+
+⭐ **A orelha é a peça MAIS LIMPA do corpus dele** (`1,08 / 1,4 / 1,6 / zero`). Ela é
+fácil para o oráculo; é a nossa cadeia que a destrói.
+
+⚠️ **E o CONTROLO ilibou a entrada:** a malha do F1 mede aspecto máximo `2,7` e
+**zero** faces acima de `4×`. A cadeia cria tudo isto.
+
+### ⛔ Três hipóteses construídas, medidas e REFUTADAS
+
+| hipótese | como morreu |
+|---|---|
+| «o alisador do oráculo é a cura» | ⛔ a saída **crua** dele já mede `1,11 / 28°`; o alisamento só a leva a `1,08 / 20°`. *A qualidade está no layout.* |
+| «os nossos patches são piores» | ⛔ a decomposição dele da orelha são **10 triângulos e 2 pentágonos**, com espalhamento de tamanho de **18×** — tão «má» como a nossa, e entrega `6°` |
+| «a nossa grade não segue o campo» | ⛔ medindo **uma** família de linhas, a nossa segue-o *melhor* que a dele (`5,5°` contra `7,3°` na enrugada) |
+
+### ⛔ E uma CURA construída, medida e rejeitada — [`SQUARE_ROUNDS = 0`](../../../crates/ph2d-quadfill/src/relax.rs)
+
+O alisador que temos é um **Laplaciano**: trata a malha como um grafo, iguala
+comprimentos de aresta e é cego ao ângulo — *um losango perfeito é ponto fixo dele*.
+Construí a relaxação que falta: cada face pede o **quadrado mais próximo de si**
+(forma fechada — o primeiro harmónico da DFT de quatro pontos), cada vértice vai
+para a média dos pedidos. Orelha, `d = 1,0`:
+
+| rondas | aspecto max | `> 4×` | ⭐ **env. p50** | ⛔ **dobras** | ms |
+|---|---|---|---|---|---|
+| **0** | `122,7` | 3 558 | **`27°`** | **171** | 5 063 |
+| 16 | `30,3` | 2 143 | **`26°`** | **576** | 16 009 |
+
+⭐ **A cauda melhora 4×; a mediana não se mexe.** Preço: `3,4×` as dobras.
+
+### ⭐⭐⭐ O que essa rejeição PROVA — e vale mais que a feature
+
+**Uma relaxação move vértices e mais nada.** Se dezasseis rondas de um método cuja
+função-objectivo *é* a esquadria não movem a mediana, então **endireitar um quad
+desendireita o vizinho** ⇒ o esmagamento está na **CONECTIVIDADE**, não nas
+posições, e nenhum alisador lhe toca.
+
+⚠️ *E há mecanismo para as dobras a mais:* num vértice irregular o pedido é
+**contraditório** — três quads a pedir 90° somam 270° e têm de fechar 360°.
+
+### ⭐⭐⭐ A causa, nomeada: **a SEGUNDA família de linhas**
+
+A sonda de uma família não discriminava. Medindo **as duas** ([`sculpt3d_field_follow.rs`](../../../shells/desktop/src/sculpt3d_field_follow.rs)):
+
+| | só a família `u` | ⭐ **as duas famílias** |
+|---|---|---|
+| ⭐ oráculo, gancho | `5,1°` | **`7,6°`** — mal se move |
+| ⛔ nós, gancho | `9,9°` | ⛔ **`19,2°`** — mais do dobro |
+| ⭐ oráculo, orelha | `6,0°` | **`7,8°`** |
+| ⛔ nós, orelha | `16,0°` | ⛔ **`21,7°`** |
+
+⇒ **A nossa primeira família segue o campo; a segunda não fica ORTOGONAL a ela.** É
+a assinatura da interpolação transfinita: ela casa com a **fronteira** do patch e
+enviesa no **meio**. ⚠️ E [`fill_with`](../../../crates/ph2d-quadfill/src/stitch.rs) nem sequer **recebe** o campo — uma fase que
+não o tem entre os argumentos não o pode seguir no interior.
+
+### ⇒ O próximo passo, e é ele que fecha o defeito da foto
+
+**O interior de um patch tem de nascer de uma parametrização alinhada ao campo**, não
+de uma interpolação da fronteira. O gate `the_quads_are_as_square_as_the_oracles`
+está **vermelho com esse endereço** e a barra é a do oráculo (`p50 ≤ 10°`, `> 60°`
+abaixo de `0,1 %`).
+
+### ⚠️ E a régua MUDOU-SE para o caminho do produto no mesmo dia
+
+⛔ Ela nasceu numa sonda `#[ignore]`, que é onde uma régua **não existe**. Hoje o
+[`FillReport::shape`](../../../crates/ph2d-quadfill/src/report.rs) mede-a na cadeia, o `QuadRemeshReport` carrega-a, e a linha que o
+artista lê **diz o enviesamento**. Dois gates verdes guardam isso —
+`the_report_carries_the_shape_of_every_quad` e uma asserção nova dentro de
+`the_button_delivers_the_global_chain` —, e **os dois foram provados por mutação**
+(apagar `shape: r.shape` na porta, e tirar a palavra da linha).
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| `SQUARE_ROUNDS > 0` | cauda melhora, mediana não; `3,4×` dobras | [`relax.rs`](../../../crates/ph2d-quadfill/src/relax.rs) |
+| alisador de quads como cura | a saída **crua** do oráculo já é boa | esta secção |
+| culpar a forma dos nossos patches | os dele são 10 triângulos com espalhamento `18×` | esta secção |
+| sonda de campo com **uma** família | um quad esmagado **passa** nela | [`sculpt3d_field_follow.rs`](../../../shells/desktop/src/sculpt3d_field_follow.rs) |
+| `a_rhombus_becomes_a_square` como prova da lei | é **tautologia**: `h·iᵏ` é quadrado para qualquer `h` | [`relax_tests.rs`](../../../crates/ph2d-quadfill/src/relax_tests.rs) |

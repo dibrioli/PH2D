@@ -170,6 +170,7 @@ impl Sculpt3dScene {
             // ⚠️ **Da malha ORIGINAL e não da de saída**: a caixa da saída pode ser
             // ligeiramente menor, e a régua tem de ser a mesma antes e depois.
             edge_max_span: r.edge_max / span(&reference),
+            shape: r.shape,
             folded: r.folded,
             aligned,
         };
@@ -341,7 +342,7 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
     format!(
         "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
          {} irregulares, aresta mediana {} do alvo e a mais longa {}, com quad de {:.4} \
-         em {:.0} ms{}{}{}",
+         em {:.0} ms{}{}{}, forma: aspecto {:.2}/{:.1} e enviesamento {:.0}/{:.0} graus{}",
         r.verts,
         r.quads,
         r.non_quads,
@@ -393,6 +394,26 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
             String::new()
         } else {
             String::from(" -- ⚠️ campo SO'-SUAVIDADE (o alinhado nao fechou)")
+        },
+        // ⭐⭐⭐ **A FORMA POR-FACE, e ela vai SEMPRE na linha.** Ver
+        // `QuadRemeshReport::shape`: em 2026-08-22 esta linha inteira
+        // ficou verde sobre a malha que o artista chamou «péssimo»,
+        // porque nenhuma coluna dela olhava para um quad de cada vez.
+        // ⛔ **O enviesamento não é opcional**: um losango tem as
+        // quatro arestas iguais, e todas as outras colunas daqui o
+        // dão por bom.
+        r.shape.aspect_p50,
+        r.shape.aspect_p99,
+        r.shape.skew_p50,
+        r.shape.skew_p99,
+        if r.shape.skew_over_60 == 0 {
+            String::new()
+        } else {
+            format!(
+                " -- ⚠️ {} face(s) com canto pior que 60 graus ({:.1}%)",
+                r.shape.skew_over_60,
+                100.0 * r.shape.skew_over_60 as f64 / (r.quads + r.non_quads).max(1) as f64
+            )
         }
     )
 }

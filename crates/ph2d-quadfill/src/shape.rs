@@ -1,0 +1,147 @@
+//! ⭐⭐⭐ **A FORMA DE CADA QUAD** — a régua POR-FACE, e a que faltava.
+//!
+//! ⚠️ **Irmã do [`crate::report`] pelo teto de LOC (HR-18, 700) e por ASSUNTO:**
+//! lá o que a montagem **diz** (recusa, proveniência, contagens); aqui a única
+//! grandeza deste crate que olha **um quad de cada vez**.
+//!
+//! ⛔⛔ **Todas as outras réguas geométricas desta linha medem UM EXTREMO.**
+//! [`crate::FillReport::edge_max`] é a aresta mais longa da malha inteira;
+//! `edge_median` é a mediana de todas as arestas. *Um quad de `0,02 × 0,30` não
+//! move nenhuma das duas* — a longa dele está muito abaixo da máxima e a curta
+//! afunda-se na mediana de dezenas de milhares.
+//!
+//! ⚠️ **E foi assim que a malha de 2026-08-22 passou em `edge_max ≤ 20 %` — depois
+//! de esse número ter caído de `57 %` da peça para `5,5 %` no mesmo dia — e o
+//! artista escreveu «péssimo» a olhar para ela.**
+
+use ph2d_mesh::Mesh;
+
+fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn norm(a: [f32; 3]) -> f32 {
+    a[0].mul_add(a[0], a[1].mul_add(a[1], a[2] * a[2])).sqrt()
+}
+
+fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1].mul_add(b[2], -(a[2] * b[1])),
+        a[2].mul_add(b[0], -(a[0] * b[2])),
+        a[0].mul_add(b[1], -(a[1] * b[0])),
+    ]
+}
+
+/// ⭐⭐⭐ **A FORMA DE CADA QUAD, em percentis** — a régua por-face.
+///
+/// ⚠️ **Percentis, não médias.** O defeito é uma **faixa** de faces más numa malha
+/// de dezenas de milhares de boas, e uma média dilui-a até desaparecer. *Medido em
+/// 2026-08-22 na `eared_sphere`: aspecto médio `1,4`, p99,9 de `73`.*
+///
+/// ⭐ **As três grandezas são precisas JUNTAS**, e nenhuma substitui outra:
+///
+/// | grandeza | o que é | o que ela apanha | a que ela é cega |
+/// |---|---|---|---|
+/// | **aspecto** | longa ÷ curta **do mesmo quad** | o rectângulo `1 × 10` | o losango, que tem aspecto `1` |
+/// | **enviesamento** | maior desvio de 90° nos cantos | o losango de 30° | o rectângulo, que tem cantos rectos |
+/// | **área** | espalhamento p99 ÷ p50 | a orelha grossa ao lado da calota fina | as duas de cima |
+///
+/// ⭐⭐ **A BARRA é o oráculo**, medida com este mesmo código sobre a saída dele
+/// (`ph2d-quadbench`, 2026-08-22):
+///
+/// | peça | aspecto p50 | p99 | `> 4×` | enviesamento p50 | p99 | `> 60°` |
+/// |---|---|---|---|---|---|---|
+/// | orelha | `1,08` | `1,4` | **0** | `6°` | `20°` | **0** |
+/// | gancho | `1,19` | `2,8` | **0** | `6°` | `48°` | 4 |
+/// | enrugada | `1,08` | `1,3` | **0** | `5°` | `17°` | **0** |
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct QuadShape {
+    /// Aspecto (longa ÷ curta do mesmo quad) — mediana.
+    pub aspect_p50: f32,
+    /// Aspecto — percentil 99.
+    pub aspect_p99: f32,
+    /// Aspecto — o pior quad da malha.
+    pub aspect_max: f32,
+    /// Quantas faces passam de `4×`. ⭐ O oráculo entrega **zero** em toda peça
+    /// orgânica do corpus.
+    pub aspect_over_4: usize,
+    /// Maior desvio de 90° num canto, em graus — mediana.
+    pub skew_p50: f32,
+    /// Enviesamento — percentil 99.
+    pub skew_p99: f32,
+    /// Enviesamento — o pior canto da malha.
+    pub skew_max: f32,
+    /// Quantas faces têm um canto pior que 60° de desvio (abaixo de 30° ou acima
+    /// de 150°). ⭐ O oráculo entrega `0` a `4`.
+    pub skew_over_60: usize,
+    /// Área p99 ÷ área p50 — o espalhamento da densidade.
+    pub area_spread: f32,
+}
+
+fn pct(sorted: &[f32], p: f32) -> f32 {
+    if sorted.is_empty() {
+        return 0.0;
+    }
+    #[allow(clippy::cast_precision_loss, clippy::cast_sign_loss)]
+    let i = ((sorted.len() - 1) as f32 * p).round() as usize;
+    sorted[i.min(sorted.len() - 1)]
+}
+
+/// **MEDE A FORMA DE CADA FACE** — ver [`QuadShape`].
+///
+/// ⚠️ Aceita faces de qualquer valência: um triângulo perdido na saída tem aspecto
+/// e enviesamento como qualquer outra face, e [`FillReport::non_quads`] é quem
+/// guarda a promessa de que ele não existe.
+#[must_use]
+pub fn quad_shape(mesh: &Mesh) -> QuadShape {
+    let pos = mesh.positions();
+    let mut aspect: Vec<f32> = Vec::with_capacity(mesh.faces().len());
+    let mut skew: Vec<f32> = Vec::with_capacity(mesh.faces().len());
+    let mut area: Vec<f32> = Vec::with_capacity(mesh.faces().len());
+    for f in mesh.faces() {
+        let v = f.verts();
+        let n = v.len();
+        if n < 3 {
+            continue;
+        }
+        let p: Vec<[f32; 3]> = v.iter().map(|&i| pos[i as usize]).collect();
+        let mut lo = f32::MAX;
+        let mut hi = 0.0f32;
+        let mut worst = 0.0f32;
+        for k in 0..n {
+            let e = norm(sub(p[(k + 1) % n], p[k]));
+            lo = lo.min(e);
+            hi = hi.max(e);
+            let a = sub(p[(k + n - 1) % n], p[k]);
+            let b = sub(p[(k + 1) % n], p[k]);
+            let (la, lb) = (norm(a).max(1.0e-12), norm(b).max(1.0e-12));
+            let c = a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2])) / (la * lb);
+            worst = worst.max((c.clamp(-1.0, 1.0).acos().to_degrees() - 90.0).abs());
+        }
+        aspect.push(hi / lo.max(1.0e-12));
+        skew.push(worst);
+        // Área por leque desde o primeiro vértice — exacta para um quad planar e a
+        // melhor aproximação para um alabeado.
+        let mut acc = 0.0f32;
+        for k in 1..n - 1 {
+            acc += 0.5 * norm(cross(sub(p[k], p[0]), sub(p[k + 1], p[0])));
+        }
+        area.push(acc);
+    }
+    let aspect_over_4 = aspect.iter().filter(|a| **a > 4.0).count();
+    let skew_over_60 = skew.iter().filter(|s| **s > 60.0).count();
+    aspect.sort_by(f32::total_cmp);
+    skew.sort_by(f32::total_cmp);
+    area.sort_by(f32::total_cmp);
+    QuadShape {
+        aspect_p50: pct(&aspect, 0.50),
+        aspect_p99: pct(&aspect, 0.99),
+        aspect_max: aspect.last().copied().unwrap_or(0.0),
+        aspect_over_4,
+        skew_p50: pct(&skew, 0.50),
+        skew_p99: pct(&skew, 0.99),
+        skew_max: skew.last().copied().unwrap_or(0.0),
+        skew_over_60,
+        area_spread: pct(&area, 0.99) / pct(&area, 0.50).max(1.0e-12),
+    }
+}

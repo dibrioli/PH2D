@@ -89,6 +89,20 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// **2,01 numa peça de diagonal 3,46 = 58 %**, contra os 5 a 7 % do caminho
     /// correcto. *Onze vezes de margem, e a barra deixa de apertar sozinha.*
     pub edge_max_span: f32,
+    /// ⭐⭐⭐ **A FORMA DE CADA QUAD** — ver [`ph2d_quadfill::QuadShape`].
+    ///
+    /// ⛔ **Ela entrou em 2026-08-22, e a razão está numa foto.** Nesse dia a
+    /// [`Self::edge_max_span`] da orelha caiu de `57 %` da peça para `5,5 %`, o
+    /// relatório ficou verde em toda a coluna — e a foto seguinte veio com a palavra
+    /// **«péssimo»**. *Todas as réguas geométricas deste struct são GLOBAIS*, e o
+    /// defeito é por-face: quads esmagados e enviesados em faixas, numa malha cujos
+    /// extremos estão bem.
+    ///
+    /// ⚠️ **O ENVIESAMENTO é a coluna que faltava**, e é a única que separa a nossa
+    /// saída da do oráculo quando o aspecto já está quase certo: na `wrinkled_sphere`
+    /// o aspecto p50 é `1,28` contra `1,08` dele — quase igual — e o enviesamento p50
+    /// é `18°` contra `5°`. *Um losango tem as quatro arestas iguais.*
+    pub shape: ph2d_quadfill::QuadShape,
     /// ⭐⭐ **QUANTAS FACES DOBRARAM contra a peça original** — a medida da fenda
     /// escura que o artista fotografa. Ver [`ph2d_quadfill::folded_against`].
     ///
@@ -211,6 +225,7 @@ impl Sculpt3dScene {
             edge_max_ratio: f32::NAN,
             edge_median_ratio: f32::NAN,
             edge_max_span: f32::NAN,
+            shape: ph2d_quadfill::QuadShape::default(),
             // ⚠️ **`false` é um FACTO aqui**, não um *"não sei"*: este motor não tem
             // campo cruzado nenhum, logo não tem termo de alinhamento para ligar.
             aligned: false,

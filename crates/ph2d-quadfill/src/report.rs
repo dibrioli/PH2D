@@ -181,6 +181,19 @@ pub struct FillReport {
     /// acompanha o alvo tem um dono, e sem esta decomposição procura-se por
     /// eliminação.*
     pub edge_long_prov: [usize; Provenance::COUNT],
+    /// ⭐⭐⭐ **A FORMA DE CADA QUAD** — ver [`QuadShape`] e [`quad_shape`].
+    ///
+    /// ⛔ **Ela entrou em 2026-08-22, depois de a quarta foto do artista vir com a
+    /// palavra «péssimo» sobre uma malha que passava em TODAS as réguas deste
+    /// struct** — incluindo [`Self::edge_max`], que nesse mesmo dia tinha caído de
+    /// `57 %` da peça para `5,5 %`.
+    ///
+    /// ⚠️ **Todas as outras grandezas geométricas daqui são GLOBAIS**: a aresta mais
+    /// longa da malha, a mediana de todas as arestas. *Um quad de `0,02 × 0,30` não
+    /// move nenhuma das duas* — a longa dele está muito abaixo da máxima e a curta
+    /// afunda-se na mediana de dezenas de milhares. E o defeito da foto é exactamente
+    /// esse: faces esmagadas em faixas, numa malha cujos extremos estão bem.
+    pub shape: crate::shape::QuadShape,
 }
 
 /// **QUANTAS FACES DA SAÍDA APONTAM CONTRA A SUPERFÍCIE POR BAIXO DELAS.**

@@ -79,6 +79,23 @@ fn dump_the_quad_remesh_corpus() {
     dump(dir, "sculpt_hooked", &super::fixtures::hooked_sphere());
     dump(dir, "sculpt_wrinkled", &super::fixtures::wrinkled_sphere());
     dump(dir, "sculpt_ridged", &super::fixtures::ridged_sphere());
+    // ⭐⭐⭐ **A PEÇA QUE O ARTISTA FOTOGRAFA**, e ela faltava neste corpus até
+    // 2026-08-22 — o dia em que a terceira foto dela veio com a palavra «péssimo».
+    //
+    // ⛔ **A bancada media nove peças de que ninguém se queixou e não media a
+    // única de que alguém se queixou.** As três fotos de 2026-08-22 e as três de
+    // 2026-08-21 são todas dela; o gabarito do oráculo cobria `hooked`,
+    // `wrinkled`, `ridged` e `punctured`. *Um corpus escolhido antes do defeito
+    // aparecer não contém o defeito* ([[reference_topic_fixture_discipline]]) — e
+    // sem a peça aqui, a comparação fase-a-fase contra o oráculo (`PLAN.md`
+    // §4-tritricies) responde sobre outra escultura.
+    //
+    // ⚠️ **Ela é a mais difícil do corpus de propósito:** o vinco da orelha é um
+    // vale estreito de curvatura alta ao lado de uma calota lisa, que é a
+    // configuração em que um campo de cruzes tem de virar depressa e a
+    // parametrização tem de comprimir. As outras três têm relevo, nenhuma tem
+    // esta transição.
+    dump(dir, "sculpt_eared", &super::fixtures::eared_sphere());
     // ⚠️ Esta chega QUEBRADA de propósito (faces arrancadas, beira crua): é o
     // caso que a sanitização do estágio 1 tem de resolver, e nenhum remesher da
     // família aceita entrada não-manifold.

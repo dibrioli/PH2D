@@ -450,3 +450,17 @@ mod photo_probes;
 #[cfg(test)]
 #[path = "sculpt3d_oracle_probes.rs"]
 mod oracle_probes;
+
+/// **A FORMA DE CADA QUAD** — ver [`quad_shape`]. ⚠️ Irmã das [`photo_probes`] e
+/// separada delas por ASSUNTO: lá as grandezas **globais** (a aresta mais longa da
+/// malha, a mediana); aqui a grandeza **por-face**, que é a que a foto de
+/// 2026-08-22 mostra e que nenhuma das outras vê.
+#[cfg(test)]
+#[path = "sculpt3d_quad_shape.rs"]
+mod quad_shape;
+
+/// ⭐⭐⭐ **A SAÍDA SEGUE O CAMPO?** — ver [`field_follow`]. A sonda que separa a
+/// dívida do **F2** (o campo está torto) da do **F5** (a montagem ignora-o).
+#[cfg(test)]
+#[path = "sculpt3d_field_follow.rs"]
+mod field_follow;

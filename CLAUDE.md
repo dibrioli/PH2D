@@ -413,9 +413,24 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   pedia. Com a coluna nova (`Σquant/Σalvo`) a lei passou a ser o **`ScaleFactor`** da referência, e o toro 48×24
   foi de **3 096 para 6 221 quads**. ⚠️ A recusa que barrava essa lei (36,3% de dobras) **dissolveu** quando a
   parametrização por patch curou o grão — hoje ela dá 0,0%. ⛔ Fica aberta a **aresta máxima** em 12–24× o alvo.
-  ⛔⛔ **VERMELHO do produto, medido 22/08 sobre a FOTO do Enio:** a esfera com orelha sai com uma aresta de
-  **56% da peça** (gate `#[ignore]` `the_ear_does_not_ship_an_edge_across_the_piece`) — e passava em TODAS as
-  réguas. ⭐ A causa é **um** patch de perímetro **520% da diagonal** (o 2.º maior em 3 fixturas é 230%): as
+  ⛔⛔⛔ **VERMELHO do produto, e é a QUARTA foto («péssimo», 22/08):** os nossos quads não são quadrados.
+  ⚠️ **Todas as réguas geométricas desta linha mediam um EXTREMO GLOBAL** (`edge_max`, `edge_median`) e nenhuma
+  olhava **um quad de cada vez** — um quad de `0,02 × 0,30` não move nenhuma das duas. A régua nova é
+  `ph2d_quadfill::QuadShape` (aspecto · **enviesamento** · área), e a barra saiu do **oráculo medido com o mesmo
+  código**: orelha `1,08 / 6° / ZERO` faces com canto pior que 60°, contra os nossos **`1,98 / 27° / 9 159`**.
+  ⚠️ **A `sculpt_eared` não estava no corpus da bancada** — nove peças de que ninguém se queixou; foi
+  acrescentada, e a orelha é a peça **mais limpa** do corpus dele. ⛔ **Três hipóteses e uma cura foram medidas e
+  REFUTADAS** (o alisador dele · a forma dos nossos patches · «não seguimos o campo» · a relaxação por ajuste de
+  quadrado, `SQUARE_ROUNDS = 0`): 16 rondas levam o aspecto máximo de 122,7 a 30,3 e o enviesamento mediano de
+  27° para **26°**, pagando **3,4× as dobras**. ⭐⭐⭐ *Se mover vértices 16× não move a mediana, o defeito está na
+  CONECTIVIDADE* — e a sonda `sculpt3d_field_follow` nomeia qual: medindo **as duas famílias** de linhas de grade
+  contra o campo, a nossa 2.ª família não fica ortogonal à 1.ª (gancho `9,9° → 19,2°`; o oráculo `5,1° → 7,6°`).
+  ⇒ **o interior de um patch tem de nascer de parametrização ALINHADA AO CAMPO**, não de interpolação da
+  fronteira — e o `fill_with` nem **recebe** o campo. Gate vermelho com esse endereço:
+  `the_quads_are_as_square_as_the_oracles`. ⚠️ **A régua mudou-se para o caminho do produto no mesmo dia**
+  (`FillReport::shape` → `QuadRemeshReport::shape` → a linha do log diz o enviesamento), com dois gates verdes
+  provados por mutação. ⛔ E a aresta de **56% da peça** (`the_ear_does_not_ship_an_edge_across_the_piece`)
+  passava em TODAS as réguas. ⭐ A causa é **um** patch de perímetro **520% da diagonal** (o 2.º maior em 3 fixturas é 230%): as
   lascas dele forçam raios de leque `[1,39,1,1,39,1]`, e um raio `1` faz o sector ter **uma célula de fundo**.
   ⚠️ **Cinco saídas já foram MEDIDAS e fechadas** (mais segmentos na lasca · `dissolve` · desligar a ponte ·
   recuo do `uv` · faixa em vez de leque): ⇒ o problema **não é como o patch é preenchido, é o patch** — o traçado

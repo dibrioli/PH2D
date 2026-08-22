@@ -1,0 +1,270 @@
+//! ⭐⭐⭐ **A SAÍDA SEGUE O CAMPO?** — a sonda que decide de que fase é a dívida do
+//! enviesamento, e a última pergunta em aberto de 2026-08-22.
+//!
+//! # O que já se sabia, e porque não bastava
+//!
+//! | medido | quem | valor |
+//! |---|---|---|
+//! | enviesamento p50 da nossa saída | nós | `18–27°` |
+//! | enviesamento p50 do oráculo | ele | ⭐ `5–6°` |
+//! | a mesma coisa depois de 16 rondas de ajuste de quadrado | nós | ⛔ `26°` — **não move** |
+//!
+//! ⛔ **Que a relaxação não mexa no p50 é a prova de que o defeito não está nas
+//! POSIÇÕES.** Uma relaxação move vértices e mais nada; se depois de dezasseis
+//! rondas a mediana ficou onde estava, então endireitar um quad desendireita o
+//! vizinho — *o esmagamento está na CONECTIVIDADE, em que direcção as linhas da
+//! grade correm.* E uma direcção de linha de grade não é coisa que um alisador
+//! possa mudar.
+//!
+//! # A pergunta que esta sonda responde
+//!
+//! Se as linhas da nossa grade **seguissem** o campo cruzado que o F2 calcula, elas
+//! estariam certas por construção — as quatro direcções de uma cruz são
+//! ortogonais, e uma grade que as siga é quadrada. Então:
+//!
+//! | se a medição der | a dívida é de |
+//! |---|---|
+//! | ⭐ **desvio grande** (a saída ignora o nosso próprio campo) | **F5** — a montagem, que nem sequer RECEBE o campo |
+//! | desvio pequeno mas o ângulo mau | **F2** — o campo, que está torto |
+//!
+//! ⚠️ **E a assinatura de [`ph2d_quadfill::fill_with`] já sugere a resposta:** ela
+//! recebe a malha, o layout e a quantização — **e não recebe o campo**. Uma fase
+//! que não tem o campo entre os argumentos não o pode seguir. *Esta sonda existe
+//! para pôr o número ao lado da observação, porque «não podia» e «não segue» são
+//! afirmações diferentes e só uma delas é medição.*
+//!
+//! ⭐ **O CONTROLO é o oráculo contra o campo DELE**, lido dos mesmos ficheiros de
+//! bancada. Sem ele, um desvio de `25°` não se sabe se é mau — talvez nenhuma
+//! quadrangulação siga o campo tão de perto.
+
+/// Onde a bancada mora. ⚠️ Fora da árvore (ADR-0161).
+const BENCH: &str = "/home/enio/Documentos/Projetos/ph2d-quadbench/ref";
+
+fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
+}
+
+fn unit(v: [f32; 3]) -> [f32; 3] {
+    let l = dot(v, v).sqrt().max(1.0e-12);
+    [v[0] / l, v[1] / l, v[2] / l]
+}
+
+/// **O desvio 4-RoSy entre duas direções, no plano de `n`, em graus** — dobrado em
+/// `[0°, 45°]`.
+///
+/// ⚠️ **Uma cruz tem quatro braços**, então `d` e `d` rodado de 90° dizem a mesma
+/// coisa; medir o ângulo cru daria `90°` a um acordo perfeito. ⛔ E a dobra tem de
+/// ser `deg % 90` **antes** do `min`: o `acos` chega a `180°`, e a forma ingénua
+/// `45 − |45 − deg|` fica **negativa** ali (medido em 2026-08-22: uma média de
+/// `−33,9°`, que é um número que não existe).
+fn rosy_deg(a: [f32; 3], b: [f32; 3], n: [f32; 3]) -> f32 {
+    let proj = |v: [f32; 3]| {
+        let d = dot(v, n);
+        unit([
+            d.mul_add(-n[0], v[0]),
+            d.mul_add(-n[1], v[1]),
+            d.mul_add(-n[2], v[2]),
+        ])
+    };
+    let (p, q) = (proj(a), proj(b));
+    let deg = dot(p, q).clamp(-1.0, 1.0).acos().to_degrees();
+    let m = deg % 90.0;
+    m.min(90.0 - m)
+}
+
+fn pct(sorted: &[f32], p: f32) -> f32 {
+    if sorted.is_empty() {
+        return 0.0;
+    }
+    let i = ((sorted.len() - 1) as f32 * p).round() as usize;
+    sorted[i.min(sorted.len() - 1)]
+}
+
+/// **Quanto as arestas de cada quad de `out` desviam do campo `dir_of` medido sobre
+/// `field_mesh`.** Devolve `(p50, p95, média)` em graus.
+///
+/// ⚠️ **A busca do vizinho DOBRA o raio até achar alguém**, com teto. Um raio fixo
+/// devolveria «sem vizinho» num quad grande sobre uma zona rala — e um quad sem
+/// vizinho não conta, o que faria a média **melhorar** exactamente onde a malha
+/// está pior ([`ph2d_quadfill::folded_against`] paga esta mesma lição).
+fn deviation(
+    out: &ph2d_mesh::Mesh,
+    field_mesh: &ph2d_mesh::Mesh,
+    dir_of: &dyn Fn(usize) -> [f32; 3],
+) -> (f32, f32, f32) {
+    let normals = field_mesh.face_normals();
+    let b = field_mesh.bounds();
+    let seed = dot(sub(b.max, b.min), sub(b.max, b.min)).sqrt() * 0.02;
+    let pos = out.positions();
+    let mut hits: Vec<u32> = Vec::new();
+    let mut devs: Vec<f32> = Vec::new();
+    let mut pares: Vec<f32> = Vec::new();
+    for f in out.faces() {
+        let v = f.verts();
+        if v.len() < 3 {
+            continue;
+        }
+        let mut c = [0.0f32; 3];
+        for &i in v {
+            let q = pos[i as usize];
+            for k in 0..3 {
+                c[k] += q[k] / v.len() as f32;
+            }
+        }
+        let mut best = (f32::INFINITY, usize::MAX);
+        let mut radius = seed;
+        while best.1 == usize::MAX && radius < seed * 64.0 {
+            field_mesh.octree().faces_in_sphere(c, radius, &mut hits);
+            for &fi in &hits {
+                let rv = field_mesh.faces()[fi as usize].verts();
+                let mut rc = [0.0f32; 3];
+                for &i in rv {
+                    let q = field_mesh.positions()[i as usize];
+                    for k in 0..3 {
+                        rc[k] += q[k] / rv.len() as f32;
+                    }
+                }
+                let d = dot(sub(rc, c), sub(rc, c)).sqrt();
+                if d < best.0 {
+                    best = (d, fi as usize);
+                }
+            }
+            radius *= 2.0;
+        }
+        let Some(&n) = normals.get(best.1) else {
+            continue;
+        };
+        // ⛔⛔ **AS DUAS FAMÍLIAS, e a primeira versão desta sonda media só UMA.**
+        //
+        // Uma cruz tem quatro braços a 90°, então perguntar *"a aresta 0 está perto
+        // de um braço?"* é uma pergunta que um quad **esmagado passa**: basta a
+        // família `u` seguir o campo, e a família `v` pode sair a 70° em vez de 90°
+        // que a aresta 0 continua a marcar `6°`. ⚠️ *Medir uma família não mede uma
+        // grade* — e foi com a versão de uma família que esta sonda disse, em
+        // 2026-08-22, que a nossa saída seguia o campo **melhor que a do oráculo**,
+        // sobre uma malha com quatro vezes o enviesamento dela.
+        let d = dir_of(best.1);
+        let a = rosy_deg(sub(pos[v[1] as usize], pos[v[0] as usize]), d, n);
+        let b = rosy_deg(sub(pos[v[2] as usize], pos[v[1] as usize]), d, n);
+        devs.push(a);
+        pares.push(a.max(b));
+    }
+    devs.sort_by(f32::total_cmp);
+    pares.sort_by(f32::total_cmp);
+    let mean = pares.iter().sum::<f32>() / pares.len().max(1) as f32;
+    (pct(&devs, 0.50), pct(&pares, 0.50), mean)
+}
+
+/// ⭐⭐⭐ **A SONDA.** Corre a nossa cadeia e mede a saída contra o **nosso** campo;
+/// depois lê a bancada e mede a saída do oráculo contra o campo **dele**.
+///
+/// ```text
+/// \
+///   cargo test -p ph2d-host-desktop --release --bins \
+///   does_the_output_follow_the_field -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda -- compara a saida com o campo que a produziu"]
+fn does_the_output_follow_the_field() {
+    for (name, piece, reference) in [
+        (
+            "ORELHA",
+            "sculpt_eared",
+            crate::sculpt3d::fixtures::eared_sphere(),
+        ),
+        (
+            "GANCHO",
+            "sculpt_hooked",
+            crate::sculpt3d::fixtures::hooked_sphere(),
+        ),
+        (
+            "ENRUGADA",
+            "sculpt_wrinkled",
+            crate::sculpt3d::fixtures::wrinkled_sphere(),
+        ),
+    ] {
+        eprintln!("── {name} ──");
+        let mut work = reference.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = ph2d_crossfield::Dual::build(&work);
+        let (field, _) = ph2d_crossfield::solve_miq(&dual);
+        let layout = ph2d_trace::trace_patches(&work, &dual, &field);
+        for detail in [0.5f32, 1.0] {
+            let target = ph2d_quadflow::edge_for_detail_with(
+                &reference,
+                detail,
+                ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
+            );
+            let Ok(spec) = layout.to_layout(target) else {
+                continue;
+            };
+            let Ok((quant, _)) =
+                ph2d_quantize::quantize_within(&spec, ph2d_quantize::Budget::new(256, 512))
+            else {
+                continue;
+            };
+            let Ok((out, _)) = ph2d_quadfill::fill(
+                &work,
+                &reference,
+                &layout,
+                &quant,
+                ph2d_quadfill::SMOOTHING_ROUNDS,
+            ) else {
+                continue;
+            };
+            let (p50, p95, mean) = deviation(&out, &work, &|f| field.direction(&dual, f));
+            eprintln!(
+                "  NOSSO d={detail:.2}: desvio da grade ao NOSSO campo — so a familia u {p50:>5.1}° · ⭐AS DUAS {p95:>5.1}° · media das duas {mean:>5.1}°  ({} quads)",
+                out.faces().len()
+            );
+        }
+        // ── ⭐ O CONTROLO: o oráculo contra o campo dele.
+        let dir = std::path::Path::new(BENCH).join(piece);
+        let (Ok(obj), Ok(rosy), Ok(quad)) = (
+            std::fs::read_to_string(dir.join(format!("{piece}_rem.obj"))),
+            std::fs::read_to_string(dir.join(format!("{piece}_rem.rosy"))),
+            std::fs::read_to_string(
+                dir.join(format!("{piece}_rem_p0_123_quadrangulation_smooth.obj")),
+            ),
+        ) else {
+            eprintln!("  (a bancada nao esta nesta maquina — sem controlo)");
+            continue;
+        };
+        let Some(mut omesh) = ph2d_mesh::import_obj(&obj).ok().and_then(|mut v| v.pop()) else {
+            continue;
+        };
+        omesh.mesh.triangulate();
+        let Some(oquad) = ph2d_mesh::import_obj(&quad).ok().and_then(|mut v| v.pop()) else {
+            continue;
+        };
+        // O formato: contagem, o `N` do `N`-RoSy, e depois uma direção por face.
+        let mut it = rosy.lines();
+        let Some(Ok(count)) = it.next().map(|l| l.trim().parse::<usize>()) else {
+            continue;
+        };
+        let _ = it.next();
+        let dirs: Vec<[f32; 3]> = it
+            .filter_map(|l| {
+                let v: Vec<f32> = l
+                    .split_whitespace()
+                    .filter_map(|t| t.parse().ok())
+                    .collect();
+                (v.len() >= 3).then(|| [v[0], v[1], v[2]])
+            })
+            .collect();
+        if dirs.len() != count || count != omesh.mesh.faces().len() {
+            eprintln!("  (o campo do oraculo nao alinha com a malha dele — sem controlo)");
+            continue;
+        }
+        let (p50, p95, mean) = deviation(&oquad.mesh, &omesh.mesh, &|f| dirs[f]);
+        eprintln!(
+            "  ⭐ ORACULO: desvio da grade ao campo DELE — so a familia u {p50:>5.1}° · ⭐AS DUAS {p95:>5.1}° · media das duas {mean:>5.1}°  ({} quads)",
+            oquad.mesh.faces().len()
+        );
+    }
+}

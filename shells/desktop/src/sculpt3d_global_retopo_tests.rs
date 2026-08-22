@@ -124,6 +124,24 @@ fn the_button_delivers_the_global_chain() {
         r.aligned,
         "a peca saiu do campo SO'-SUAVIDADE: o layout alinhado nao fechou nesta fixtura"
     );
+    // ⭐⭐⭐ **A FORMA POR-FACE CHEGA À PORTA** — o tripwire de 2026-08-22.
+    //
+    // ⛔ **A régua existia e não estava neste caminho, e foi essa a doença.** Nesse
+    // dia a malha da orelha passou em cada uma das asserções acima — `100 %` de
+    // quads, casca fechada, irregulares no chão, aresta máxima a `5,5 %` da peça — e
+    // a foto seguinte veio com a palavra «péssimo». *Todas as réguas deste gate são
+    // globais ou combinatórias; nenhuma olha um quad de cada vez.*
+    //
+    // ⚠️ **A asserção é de PRESENÇA, não de qualidade**, e é deliberado: a barra de
+    // qualidade vive em `the_quads_are_as_square_as_the_oracles` (vermelho, com a
+    // causa medida). O que este gate afirma é que o número **existe no relatório da
+    // porta** — porque um `QuadShape::default()` que passasse aqui é exactamente o
+    // estado em que o produto esteve.
+    assert!(
+        r.shape.skew_p50 > 0.0 && r.shape.aspect_p50 >= 1.0,
+        "o relatorio da PORTA nao traz a forma por-face: {:?}",
+        r.shape
+    );
     // ⚠️ Uma aresta com UMA face só é a assinatura da casca rasgada, e nenhum
     // render a mostra.
     assert_eq!(

@@ -40,6 +40,15 @@ fn drawn_profile(pts: &[([f64; 2], f64)]) -> Profile {
 /// que esta cena existe para mostrar: o filete a acompanhar a curvatura da peça.
 ///
 /// A onda é `1 + 0,16·sin(3·azimute)·sin(2·polar)` — três lobos em volta, dois de cima a baixo.
+#[cfg(test)]
+pub(crate) fn organic_blob_for_probe(
+    rings: usize,
+    segments: usize,
+    radius: f32,
+) -> ph2d_mesh::Mesh {
+    organic_blob(rings, segments, radius)
+}
+
 fn organic_blob(rings: usize, segments: usize, radius: f32) -> ph2d_mesh::Mesh {
     let mut mesh = ph2d_mesh::shapes::uv_sphere(rings, segments, radius);
     for p in mesh.positions_mut() {

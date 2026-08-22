@@ -228,38 +228,44 @@ fn the_box_leaves_room_for_a_fillet() {
 #[test]
 fn there_is_no_false_surface_at_the_wall_of_the_box() {
     let (mesh, _) = sphere(0.6);
-    let f = SampledField::from_mesh(&mesh, 96).expect("esfera");
-    let b = f.bounds();
-    let cell = f.cell();
-    // Atravessa cada uma das seis paredes, de dentro para fora, em passos de meia célula.
-    for axis in 0..3 {
-        for side in [-1.0f32, 1.0] {
-            let wall = if side < 0.0 { b.min[axis] } else { b.max[axis] };
-            let mut worst = f32::INFINITY;
-            let mut prev = f32::NAN;
-            for k in -8..=8 {
-                let mut p = [0.0f32; 3];
-                p[axis] = (k as f32 * 0.5).mul_add(cell * side, wall);
-                let v = f.at(p);
-                worst = worst.min(v);
-                if prev.is_finite() {
-                    // ⚠️ **Continuidade**: um salto de mais de meia célula entre amostras a meia
-                    // célula de distância é uma parede a nascer do nada.
-                    assert!(
-                        (v - prev).abs() < cell,
-                        "eixo {axis} lado {side}: salto de {:.4} entre amostras a {:.4} — é uma \
-                         descontinuidade, e uma descontinuidade que passa por zero é uma superfície",
-                        (v - prev).abs(),
-                        cell * 0.5
-                    );
+    // ⚠️ **A RESOLUÇÃO varre, e é isso que faz o gate provar alguma coisa.** A esfera sozinha, a uma
+    // resolução só, passava sobre o código quebrado: o índice da parede caía exato ali. Quem
+    // empurra o arredondamento para o outro lado é a combinação `dims`/`passo`, que muda a cada
+    // resolução — medido, **4 das 20 abaixo** reprovavam (62, 68, 76, 77).
+    for res in 60u32..80 {
+        let f = SampledField::from_mesh(&mesh, res).expect("esfera");
+        let b = f.bounds();
+        let cell = f.cell();
+        // Atravessa cada uma das seis paredes, de dentro para fora, em passos de meia célula.
+        for axis in 0..3 {
+            for side in [-1.0f32, 1.0] {
+                let wall = if side < 0.0 { b.min[axis] } else { b.max[axis] };
+                let mut worst = f32::INFINITY;
+                let mut prev = f32::NAN;
+                for k in -8..=8 {
+                    let mut p = [0.0f32; 3];
+                    p[axis] = (k as f32 * 0.5).mul_add(cell * side, wall);
+                    let v = f.at(p);
+                    worst = worst.min(v);
+                    if prev.is_finite() {
+                        // ⚠️ **Continuidade**: um salto maior que uma célula entre amostras a meia
+                        // célula de distância é uma parede a nascer do nada.
+                        assert!(
+                            (v - prev).abs() < cell,
+                            "res {res}, eixo {axis} lado {side}: salto de {:.4} entre amostras a \
+                             {:.4} — uma descontinuidade que passa perto de zero é uma superfície",
+                            (v - prev).abs(),
+                            cell * 0.5
+                        );
+                    }
+                    prev = v;
                 }
-                prev = v;
+                assert!(
+                    worst > cell,
+                    "res {res}, eixo {axis} lado {side}: o campo chegou a {worst:.4} na travessia \
+                     da parede — a caixa está a virar sólido"
+                );
             }
-            assert!(
-                worst > cell,
-                "eixo {axis} lado {side}: o campo chegou a {worst:.4} na travessia da parede — a \
-                 caixa está a virar sólido"
-            );
         }
     }
 }

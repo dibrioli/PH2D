@@ -1609,11 +1609,63 @@ gates da escultura medirem malha irregular, não para alguém a olhar, e o resul
 (`1 + 0,16·sin(3·azimute)·sin(2·polar)`): forma grande e lisa, que é o que torna visível o que a cena
 existe para mostrar — o filete a acompanhar a curvatura da peça.
 
+### §22.6-ter — ⛔ A 2ª volta: uma FACE SOLTA, e ela era a mesma parede pelo outro lado
+
+> Enio, 21/08 (2ª volta): *"temos uma face solta, com artefatos de imagem, quando vista por trás
+> aparecem apenas pontinhos"*.
+
+O `max(distância à caixa, valor na parede)` estava certo — e **não podia funcionar**, porque o valor
+de parede que ele recebia já era **zero**. Dentro do amostrador havia uma **guarda**: se o índice
+caísse fora do alcance, ele desistia e devolvia a distância à caixa. Parece defensivo e é o
+contrário: os dois chamadores garantem que o ponto está na caixa, então cair fora só pode ser
+**arredondamento** — e a resposta dela nesse caso era **zero na própria parede**.
+
+Medido, campo da bolha ao longo de `+x` (caixa até `0,5943`):
+
+| x | 0,55 | 0,57 | 0,59 | **0,61** | 0,63 |
+|---|---:|---:|---:|---:|---:|
+| com o defeito | +0,044 | +0,061 | +0,079 | **+0,016** ⛔ | +0,036 |
+| curado | +0,044 | +0,061 | +0,079 | **+0,082** | +0,082 |
+
+⚠️ **A esfera dos gates não expunha nada**: ela tem caixa **simétrica**, e ali o índice da parede caía
+exato. Foi a bolha — de caixa assimétrica — que empurrou o arredondamento para o outro lado. O gate
+passou a **varrer a resolução** (60 a 79), porque é a combinação `dims`/`passo` que decide: com o
+defeito, **4 das 20** reprovam (62, 68, 76, 77). *A guarda não era uma guarda: era um caminho
+alternativo escondido.*
+
+#### ⭐ E por que a MALHA exportada saía LIMPA enquanto a tela mostrava um plano
+
+Porque os dois consumidores procuram coisas **diferentes**:
+
+| consumidor | acha superfície onde |
+|---|---|
+| a extração | o campo **muda de sinal** |
+| a marcha de raios | o campo fica **pequeno** |
+
+O defeito punha um zero **na parede** sem que o sinal mudasse dos dois lados — uma folha de espessura
+zero. A extração não via **nada** (nenhuma travessia; a sonda mediu caixa `±0,52` e todos os vértices
+entre raio 0,2 e 0,6) e a marcha parava em cheio.
+
+⚠️ *Uma sonda que extrai malha não substitui uma que marcha.* A primeira medição desta volta — a que
+contou vértices e caixas — devolveu **"está tudo limpo"** sobre o código que produzia a imagem que o
+Enio tinha à frente.
+
+#### A silhueta, e por que o relógio não serve de gate
+
+| | pixels de peça (640×480) | fração do quadro | relógio |
+|---|---:|---:|---:|
+| **cubo** falso (a costura caía a zero) | 215 921 | **70,3 %** | 20,0 ms |
+| **plano** falso (a parede lia zero) | 128 608 | **41,9 %** | 23,1 ms |
+| curado | 80 581 | **26,2 %** | 25,0 ms |
+
+⚠️ **Os dois defeitos eram mais RÁPIDOS que o certo** — os raios paravam mais cedo, na parede. Quem
+separa os três casos é a **área**, e a barra do gate fica entre 26,2 % e 41,9 %.
+
 ### §22.6-bis — O smoke, e o que ele prova
 
 `PH2D_FIELD_SMOKE=6`: uma **bolha orgânica de 8 192 triângulos** vira campo amostrado (112 de
-resolução, ~171 ms) e leva um **furo de 0,20 com a boca arredondada em 0,05**. Traçar custa **32,6 ms
-a 640×480**, contra 15,5 ms da cena 1 — **2,1×**, que é o preço de uma folha amostrada mais o
+resolução, ~171 ms) e leva um **furo de 0,20 com a boca arredondada em 0,05**. Traçar custa **25,0 ms
+a 640×480**, contra 14,9 ms da cena 1 — **1,7×**, que é o preço de uma folha amostrada mais o
 `CHAMFER_SAFETY` a encurtar cada passo. A malha é gerada na
 cena de propósito: o que se prova aqui é a **ponte**, e uma escultura vinda do módulo de sculpt traria
 consigo a pergunta de **autoria** — como o artista cria um destes —, que é wave própria e tem UI.

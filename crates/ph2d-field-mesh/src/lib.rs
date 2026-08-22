@@ -237,17 +237,47 @@ impl SampledField {
         self.sample_inside(p)
     }
 
-    /// A interpolação trilinear, para um ponto que já se sabe estar dentro da caixa.
+    /// A interpolação trilinear, para um ponto que já se sabe estar **na ou dentro** da caixa.
+    ///
+    /// # ⛔ Aqui havia uma GUARDA, e ela punha um plano solto na tela
+    ///
+    /// ⚠️ A versão anterior **desistia** quando o índice caía fora do alcance e devolvia a distância
+    /// à caixa. Parece defensivo e é o contrário: os dois chamadores garantem que o ponto está na
+    /// caixa, então cair fora só pode ser **arredondamento** — e a resposta dela nesse caso era
+    /// **zero na própria parede**, que é a definição de uma superfície.
+    ///
+    /// Medido (Enio, 21/08, *"uma face solta"*): a caixa da bolha ia a `x = 0,5943`; por dentro o
+    /// campo valia **+0,083** ali, e um passo para fora caía para **+0,016** — a distância à caixa
+    /// crua. O `max` da [`SampledField::at`] existia para impedir exatamente isso e não podia
+    /// funcionar, porque o valor de parede que ele recebia já era zero.
+    ///
+    /// ⚠️ **A esfera dos gates não expunha o problema**: ela tem caixa simétrica, e ali o índice da
+    /// parede caía exato. Foi a bolha — de caixa assimétrica — que empurrou o arredondamento para o
+    /// outro lado. *A guarda não era uma guarda: era um caminho alternativo escondido.*
+    ///
+    /// Grampear o índice é a resposta certa **porque o ponto está na caixa por contrato**.
+    ///
+    /// # ⚠️ E por que a MALHA exportada saía limpa enquanto a tela mostrava um plano
+    ///
+    /// Porque os dois consumidores procuram coisas **diferentes**. A extração acha superfície onde o
+    /// campo **muda de sinal**; a marcha de raios acha superfície onde o campo fica **pequeno**. O
+    /// defeito punha um zero **na parede** sem que o sinal mudasse dos dois lados — uma folha de
+    /// espessura zero. A extração não via nada (nenhuma travessia) e a marcha parava em cheio.
+    ///
+    /// *Uma sonda que extrai malha não substitui uma que marcha.* Foi por isso que a primeira
+    /// medição desta wave — a que contou vértices e caixas — devolveu "está tudo limpo".
     fn sample_inside(&self, p: [f32; 3]) -> f32 {
         let inv = 1.0 / self.step;
         let mut i0 = [0usize; 3];
         let mut frac = [0.0f32; 3];
         for a in 0..3 {
-            let g = (p[a] - self.origin[a]) * inv;
-            // Inclui o `NaN`: a comparação negada apanha-o sem um ramo próprio.
-            if !(g >= 0.0 && g <= (self.dims[a] - 1) as f32) {
-                return distance_to_box(self.box_, p);
-            }
+            let top = (self.dims[a] - 1) as f32;
+            // ⚠️ O `NaN` cai no `else`: a comparação negada apanha-o sem um ramo próprio.
+            let g = if (p[a] - self.origin[a]) * inv >= 0.0 {
+                ((p[a] - self.origin[a]) * inv).min(top)
+            } else {
+                0.0
+            };
             #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
             let i = (g.floor() as usize).min(self.dims[a] - 2);
             i0[a] = i;

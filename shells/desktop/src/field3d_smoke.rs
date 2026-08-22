@@ -204,7 +204,7 @@ thread_local! {
 
 /// ⭐ **O catálogo das cenas** vive no irmão — ver [`field3d_smoke_scenes`](self::scenes).
 #[path = "field3d_smoke_scenes.rs"]
-mod scenes;
+pub(crate) mod scenes;
 pub(crate) use scenes::scene;
 
 /// Carrega um matcap da casa e converte para linear f32.
@@ -507,17 +507,19 @@ mod trace_tests {
         //
         // | | pixels de peça | fração do quadro | relógio |
         // |---|---:|---:|---:|
-        // | com o cubo falso | 215 921 | **70,3 %** | 20,0 ms |
-        // | curado | 128 608 | **41,9 %** | 23,1 ms |
+        // | **cubo** falso (a costura caía a zero) | 215 921 | **70,3 %** | 20,0 ms |
+        // | **plano** falso (a parede lia zero) | 128 608 | **41,9 %** | 23,1 ms |
+        // | curado | 80 581 | **26,2 %** | 25,0 ms |
         //
-        // ⚠️ **O cubo era mais RÁPIDO**, e é por isso que o relógio não serve de gate aqui: os raios
-        // paravam mais cedo, na parede. Quem separa os dois casos é a área.
+        // ⚠️ **Os dois defeitos eram mais RÁPIDOS que o certo**, e é por isso que o relógio não
+        // serve de gate aqui: os raios paravam mais cedo, na parede. Quem separa os três casos é a
+        // **área**, e a barra fica entre 26,2 % e 41,9 %.
         let g = ph2d_field_render::trace(&doc, &reg, &Orbit::default(), 320, 240);
         let covered = g.hits() as f64 / (320.0 * 240.0);
         assert!(
-            (0.2..0.55).contains(&covered),
-            "a peça cobre {:.1} % do quadro — acima de 55 % é a caixa da grade a virar sólido, \
-             abaixo de 20 % é a escultura a não chegar",
+            (0.18..0.35).contains(&covered),
+            "a peça cobre {:.1} % do quadro — acima de 35 % é a caixa da grade a virar superfície \
+             (plano a 41,9 %, cubo a 70,3 %), abaixo de 18 % é a escultura a não chegar",
             covered * 100.0
         );
     }

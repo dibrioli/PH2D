@@ -354,3 +354,67 @@ fn probe_scene_trace_cost() {
         );
     }
 }
+
+#[test]
+#[ignore = "sonda"]
+fn probe_scene6_stray_surface() {
+    let doc = scene(6);
+    let reg = crate::field3d_smoke::sampled_registry();
+    let m = ph2d_field_eval::extract::extract(&doc, &reg, 7).expect("malha");
+    let pos = m.positions();
+    println!("{} quads, {} vértices", m.faces().len(), pos.len());
+    let mut lo = [f32::INFINITY; 3];
+    let mut hi = [f32::NEG_INFINITY; 3];
+    for p in pos {
+        for k in 0..3 {
+            lo[k] = lo[k].min(p[k]);
+            hi[k] = hi[k].max(p[k]);
+        }
+    }
+    println!("caixa da malha: {lo:?} .. {hi:?}");
+    // Histograma por raio: a bolha vive em ~0,34..0,58; o que estiver além é intruso.
+    let mut bins = [0usize; 14];
+    for p in pos {
+        let r = (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+        let b = ((r * 10.0) as usize).min(13);
+        bins[b] += 1;
+    }
+    for (i, n) in bins.iter().enumerate() {
+        if *n > 0 {
+            println!(
+                "  raio {:.1}–{:.1}: {n}",
+                i as f32 / 10.0,
+                (i + 1) as f32 / 10.0
+            );
+        }
+    }
+    // ⭐ O campo da ESCULTURA sozinha, reconstruído igual ao da cena.
+    {
+        let blob = crate::field3d_smoke::scenes::organic_blob_for_probe(64, 128, 0.5);
+        let f = ph2d_field_mesh::SampledField::from_mesh(&blob, 112).expect("bolha");
+        let b = f.bounds();
+        println!(
+            "bolha: caixa x[{:.4}, {:.4}] célula {:.5}",
+            b.min[0],
+            b.max[0],
+            f.cell()
+        );
+        print!("  f(bolha) ao longo de +x: ");
+        for i in 0..40 {
+            let x = 0.45 + i as f32 * 0.02;
+            print!("{x:.2}:{:+.3} ", f.at([x, 0.0, 0.0]));
+        }
+        println!();
+    }
+
+    // O campo ao longo de +x, atravessando a parede da caixa da escultura.
+    let mut h = ph2d_field_eval::hybrid::Hybrid::new(&doc, &reg);
+    let xs: Vec<f32> = (0..40).map(|i| 0.45 + i as f32 * 0.02).collect();
+    let zeros: Vec<f32> = vec![0.0; xs.len()];
+    let v = h.eval(&xs, &zeros, &zeros).expect("lote").to_vec();
+    println!("f ao longo de +x (y=z=0):");
+    for (x, f) in xs.iter().zip(&v) {
+        print!("{x:.2}:{f:+.3} ");
+    }
+    println!();
+}

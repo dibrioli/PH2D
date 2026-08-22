@@ -190,7 +190,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `only_the_declared_clock_owners_offer_the_substeps_param`, teto **64** nos dois porque o ritmo é partilhado). Um
   sub-passo LOCAL de um solver folha usa outra chave — a `motion.verlet_rope` usa `solver_substeps` (rótulo "Substeps"),
   e enquanto usava a mesma o app corria as duas leis e a corda caía **4,8× menos** que os gates dela medem.
-  **Aberto:** os P1 restantes da folha 03 (simulação) · ⚠️ **o `blend` é uma COLUNA por LINHA**
+  **Aberto:** **91 P2 + 4 P1** na conferência (placar DERIVADO; ~20 dos P2 são *obras*, não knobs) · ⚠️ **os KNOBS MORTOS foram caçados e os 19 curados** — [doc 90](docs/Motion%20Nodes/90_caca_aos_knobs_mortos.md) tem a tabela verificada, os 8 pontos cegos da sonda e o que ficou de fora (a porta por-elemento lida no elemento 0, o `falloff` que o `motion.kaleidoscope` ignora, os knobs vivos e inalcançáveis pela UI); ⛔ **consulte-o antes de acusar um param de morto** · os P1 restantes da folha 03 (simulação) · ⚠️ **o `blend` é uma COLUNA por LINHA**
   (o *Echo Operator* do `motion.trail` e o *Flash Operator* do `motion.strobe`), com a escada
   `0 = o modo do sink` · `m+1 = o modo m` — ⛔ guardar o modo CRU faria a identidade de junção
   rebaixar linha alheia em silêncio; e **as DUAS rotas de lowering** a leem (a do device assava o

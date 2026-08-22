@@ -24,6 +24,7 @@
 - [Knob por-passo é ALVO, não taxa](feedback_a_knob_consumed_as_a_per_step_rate_is_a_target_not_a_rate.md) — resposta exponencial e composta por OUTRO knob; meça a fração ÚTIL do curso
 - [Remédio novo → velho é CONTAGEM DUPLA](feedback_a_new_remedy_makes_the_old_one_double_counting.md) — 3º ajuste da mesma constante = modelo errado
 - [Parâmetro que não muda NADA](feedback_a_parameter_that_changes_nothing_is_discarded_downstream.md) — grepe o consumidor
+- [Campo COLAPSADO não fica neutro — ele MANDA](feedback_a_collapsed_field_does_not_go_neutral_it_takes_over.md) — `min=mediana=max` a 2,5× o alvo: o knob grosseirava a peça; dois valores não-neutros idênticos é a assinatura
 - [Rótulo promete o que o MODELO entrega](feedback_a_label_must_promise_what_the_model_delivers.md) — "Air Drag" sobre damping uniforme
 - [Affordance herdada por analogia](feedback_inherited_affordance_must_be_rederived.md) — gate verde pode pinar bug de design
 - [Alvo não-idempotente não exclui autoria](feedback_a_nonidempotent_target_excludes_nothing_split_authoring_from_deposit.md) — separe autoria de depósito; funil no commit
@@ -32,6 +33,7 @@
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = auto-play
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão
 - [O teto é do HARDWARE](feedback_the_ceiling_is_the_hardwares_never_the_fallbacks.md) — meça antes de limitar
+- [Barra de RAZÃO aperta sozinha se o denominador é um knob](feedback_a_ratio_bar_tightens_itself_when_the_denominator_is_a_knob.md) — «atravessa a peça» é fração da peça; a razão triplicou sem defeito nenhum
 - [Produto final, não MVP: params PRO por nó](feedback_final_product_every_node_ships_the_full_pro_param_set.md) — o superset do catálogo, conferido por nó (o miss da rotação)
 - [Wave de pesquisa RECURSA](feedback_a_research_fanout_recurses_bound_it.md) — limite; verifique você o fato decisivo
 - [Painter: 4 causas](feedback_painter_inefficiency_4_causes.md) — costura não-testada / audit=compilar / órfão

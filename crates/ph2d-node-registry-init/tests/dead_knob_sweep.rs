@@ -58,7 +58,11 @@ use ph2d_nodegraph::value::CookValue;
 /// ⚠️ **Não é 1 de propósito.** Um param de simulação (`damping`, `stiffness`) não muda nada no
 /// primeiro tique — o estado ainda é a pose inicial. Uma sonda de um quadro acusaria de morta
 /// metade da pilha de simulação.
-const TICKS: usize = 12;
+/// ⚠️ **Era 12, e 12 é curto demais para um ENVELOPE.** Com os defaults do `pulse.adsr` o
+/// segmento de release só começa aos `0,35 s` — 21 quadros — então `release` e `release_shape`
+/// liam mortos por a sonda ter acabado antes de eles existirem. 48 quadros são `0,8 s`, que
+/// cobre o envelope inteiro e a segunda batida de um metrónomo a 120 BPM.
+const TICKS: usize = 48;
 const DT: f64 = 1.0 / 60.0;
 
 /// Os alimentadores preferidos, por ordem.
@@ -118,17 +122,40 @@ fn catalogue(reg: &NodeRegistry) -> Vec<&'static NodeManifest> {
 /// ⚠️ Uma tentativa falhada deixa nós órfãos no grafo. É inofensivo: o cook é *pull*, e um nó
 /// sem consumidor nunca é cozido — mas é a razão de esta função não poder ser usada para medir
 /// contagem de nós.
+/// `rotate` gira a ordem dos candidatos — é como duas portas do mesmo tipo recebem fontes
+/// DIFERENTES.
+///
+/// ⚠️ **Sem isto, todo nó binário recebe `a ≡ b` ao bit**, e um param que só se vê na
+/// diferença lê morto: o `epsilon` do `value.math` (que compara `|a−b|` contra ele), o `clamp`
+/// do `field.combine` (só o `Add` sai da faixa quando os dois lados são iguais), e o
+/// `field.shape` inteiro — a nuvem e o polígono eram o MESMO conjunto de pontos, logo cada
+/// elemento caía exactamente sobre um vértice e a distância era zero para toda a gente.
+/// *Duas entradas iguais não são uma fixture de um nó de duas entradas.*
 fn feed(
     g: &mut Graph,
     all: &[&'static NodeManifest],
     want: PortType,
     depth: usize,
     used: &mut Vec<&'static str>,
+    rotate: usize,
 ) -> Option<(NodeId, u16)> {
-    for m in all {
-        let Some(op) = m.outputs.iter().position(|o| o.ty.connects_directly(want)) else {
-            continue;
-        };
+    // ⚠️ A rotação corre sobre os CANDIDATOS que servem, nunca sobre o catálogo inteiro —
+    // girar a lista toda destruiria a ordem de preferência e daria alimentadores piores à
+    // primeira porta, que é a que mais importa.
+    let mut fits: Vec<(&'static NodeManifest, usize)> = all
+        .iter()
+        .filter_map(|m| {
+            m.outputs
+                .iter()
+                .position(|o| o.ty.connects_directly(want))
+                .map(|op| (*m, op))
+        })
+        .collect();
+    let n_fits = fits.len();
+    if n_fits > 0 {
+        fits.rotate_left(rotate % n_fits);
+    }
+    for (m, op) in fits {
         if m.inputs.is_empty() {
             used.push(m.name);
             return Some((g.add_node(m.name), op as u16));
@@ -139,7 +166,7 @@ fn feed(
         let node = g.add_node(m.name);
         let mut ok = true;
         for (i, p) in m.inputs.iter().enumerate() {
-            match feed(g, all, p.ty, depth - 1, used) {
+            match feed(g, all, p.ty, depth - 1, used, rotate) {
                 Some((s, sp)) => {
                     if g.connect(Edge {
                         from: (s, sp),
@@ -166,21 +193,58 @@ fn feed(
     None
 }
 
-/// Uma bancada para o nó. `self_loop` liga a saída dele à porta cujo tipo é o da própria saída,
-/// com atraso — é o que um nó de ESTADO precisa (`motion.integrate`, a pilha `sim.*`), e sem
-/// isso o acumulador nunca acumula e todo param de simulação lê como morto.
+/// Uma bancada para o nó.
+///
+/// - `loop_port`: qual porta (se alguma) recebe a saída do próprio nó, com atraso — o `pre` que
+///   um nó de ESTADO precisa (`motion.trail`, `motion.strobe`, `motion.wave`, a pilha `sim.*`).
+/// - `const_first`: inverte a preferência de alimentador, pondo as fontes CONSTANTES à frente
+///   das cadeias que variam.
+///
+/// ⚠️ **As duas opções nasceram da verificação das acusações, e cada uma explicava DEZENAS de
+/// falsos positivos.**
+///
+/// 1. *Laçar TODAS as portas do tipo da saída de uma vez esvazia o nó.* O `motion.trail` tem
+///    `in` **e** `state`, ambos do tipo da saída: laçar os dois deixa o nó sem fonte, o stream
+///    sai vazio, e `fade`/`shrink`/`spacing`/`hue_shift`/`saturation` leem todos mortos. A
+///    variante certa é laçar **uma** porta e alimentar as outras — por isso `loop_port` é um
+///    índice, e não um booleano.
+/// 2. *Uma fonte que VARIA pode ser pior que uma constante.* Uma porta de campo lida por
+///    `.first()` (o `driven_value` do doc 58) recebe do `value.instance_field(Ramp)` o elemento
+///    zero, que é exatamente `0.0` — e um `amount = 0` desliga o nó inteiro em silêncio. Foi o
+///    que matou os treze knobs de geometria do `motion.spline_wrap` e as iterações do
+///    `motion.voronoi`. A cadeia continua a ser a preferência **por defeito**, porque é ela que
+///    cura o ponto fixo do `value.gain`; a constante entra como bancada IRMÃ.
+///
+/// *As duas leis têm a mesma forma: uma bancada não prova a ausência de um efeito, só a ausência
+/// dele NAQUELA bancada — e a cura é ter mais de uma, nunca uma melhor.*
 fn bench(
     all: &[&'static NodeManifest],
     m: &'static NodeManifest,
-    self_loop: bool,
+    loop_port: Option<usize>,
+    const_first: bool,
+    required: Option<&'static [&'static str]>,
 ) -> Option<(Graph, NodeId, String)> {
     let mut g = Graph::new();
     let n = g.add_node(m.name);
-    let out_ty = m.outputs.first().map(|o| o.ty);
+    let mut pool: Vec<&'static NodeManifest> = all.to_vec();
+    if const_first {
+        // As fontes sem entrada primeiro — elas emitem um valor constante e não-nulo.
+        pool.sort_by_key(|x| (!x.inputs.is_empty(), x.name));
+    }
     let mut used: Vec<&'static str> = Vec::new();
     for (i, p) in m.inputs.iter().enumerate() {
-        let looped = self_loop && out_ty.is_some_and(|t| t.connects_directly(p.ty));
-        if looped {
+        // ⚠️ **Uma porta OPCIONAL ligada é uma porta que muda a lei do nó.** Meia dúzia de nós
+        // deste catálogo dizem, no cabeçalho, que um param só vale quando a porta homónima
+        // está DESLIGADA (`amount_of` = `porta.first().unwrap_or(param)`), e outros tantos têm
+        // um `reset` cujo estado alto congela o contador. Ligar tudo — o que a 1ª sonda fazia —
+        // é escolher a metade do espaço em que esses params são inertes **por contrato**.
+        // *O registry já sabe quais portas são obrigatórias; a sonda é que não estava a
+        // perguntar.*
+        if required.is_some_and(|req| !req.contains(&p.name)) {
+            used.push("<solta>");
+            continue;
+        }
+        if loop_port == Some(i) {
             g.connect(Edge {
                 from: (n, 0),
                 to: (n, i as u16),
@@ -190,7 +254,8 @@ fn bench(
             used.push("<self>");
             continue;
         }
-        let (s, sp) = feed(&mut g, all, p.ty, MAX_CHAIN, &mut used)?;
+        // `i` como rotação: a porta 0 recebe o alimentador preferido, a porta 1 o seguinte.
+        let (s, sp) = feed(&mut g, &pool, p.ty, MAX_CHAIN, &mut used, i)?;
         g.connect(Edge {
             from: (s, sp),
             to: (n, i as u16),
@@ -200,6 +265,44 @@ fn bench(
     }
     used.dedup();
     Some((g, n, used.join("+")))
+}
+
+/// Todas as bancadas a tentar para um nó: sem laço e com o laço em cada porta que o aceita,
+/// vezes as duas políticas de alimentador, vezes ligar-tudo / deixar-as-opcionais-soltas.
+///
+/// ⚠️ **Um knob só é MORTO se NENHUMA delas o faz mexer** — é a direcção conservadora, e é o
+/// que separa uma lista de acusações de uma lista de ruído.
+fn all_benches(
+    reg: &NodeRegistry,
+    all: &[&'static NodeManifest],
+    m: &'static NodeManifest,
+) -> Vec<(Graph, NodeId, String)> {
+    let out_ty = m.outputs.first().map(|o| o.ty);
+    let mut loops: Vec<Option<usize>> = vec![None];
+    for (i, p) in m.inputs.iter().enumerate() {
+        if out_ty.is_some_and(|t| t.connects_directly(p.ty)) {
+            loops.push(Some(i));
+        }
+    }
+    // `None` = liga toda porta. `Some(req)` = liga só as obrigatórias, deixando as opcionais
+    // soltas (o estado em que o artista larga o nó).
+    let mut wirings: Vec<Option<&'static [&'static str]>> = vec![None];
+    if let Some(req) = reg.required_inputs(m.id)
+        && req.len() < m.inputs.len()
+    {
+        wirings.push(Some(req));
+    }
+    let mut out = Vec::new();
+    for lp in loops {
+        for const_first in [false, true] {
+            for required in &wirings {
+                if let Some(b) = bench(all, m, lp, const_first, *required) {
+                    out.push(b);
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Os bits de uma coluna — comparação ao BIT, não por `==`.
@@ -216,22 +319,34 @@ fn bits(c: &Column) -> Vec<u32> {
     }
 }
 
-/// A saída do nó depois de `TICKS` quadros, como pares (coluna, bits).
+/// O TRAÇO do nó ao longo de `TICKS` quadros — todos os quadros, não só o último.
+///
+/// ⚠️ **Comparar só o último quadro é cegueira temporal, e ela custou caro.** Um envelope
+/// (`pulse.adsr`) tem `attack_shape` a governar os primeiros três quadros e `release_shape` os
+/// do fim: no instante em que a sonda lia, os dois já tinham entregado o mesmo patamar de
+/// sustain, e os DOIS liam mortos. O mesmo para o `sim.spawn::scatter`, que só escolhe a linha
+/// de um nascimento — e no quadro comparado não nascia ninguém.
+///
+/// *Um param temporal age numa JANELA; ler um instante é escolher não ver a janela dele.*
 fn snapshot(g: &Graph, reg: &NodeRegistry, n: NodeId) -> Option<Vec<(String, Vec<u32>)>> {
     let mut cook = Cook::new();
-    let mut last = None;
+    let mut trace: Vec<(String, Vec<u32>)> = Vec::new();
+    let mut any = false;
     for k in 0..TICKS {
         let t = k as f64 * DT;
         let out = cook.cook(g, reg, n, t).ok()?;
         if let Some(CookValue::Instances(s)) = out.first() {
-            let mut cols: Vec<(String, Vec<u32>)> =
-                s.columns().map(|(k, v)| (k.clone(), bits(v))).collect();
+            let mut cols: Vec<(String, Vec<u32>)> = s
+                .columns()
+                .map(|(c, v)| (format!("{k}/{c}"), bits(v)))
+                .collect();
             cols.sort_by(|a, b| a.0.cmp(&b.0));
-            last = Some(cols);
+            any |= !cols.is_empty();
+            trace.extend(cols);
         }
         cook.advance_tick(g, reg, t).ok()?;
     }
-    last.filter(|c| !c.is_empty())
+    any.then_some(trace)
 }
 
 /// Os valores com que sondar um param: os EXTREMOS que a UI permite, mais o meio.
@@ -241,9 +356,17 @@ fn probe_values(hint: Option<&ParamUiHint>, default: f32) -> Vec<f32> {
             // Um enum tem um espaço FINITO e exato — varre-o inteiro.
             ParamWidget::Enum { labels } => (0..labels.len()).map(|i| i as f32).collect(),
             ParamWidget::Toggle => vec![0.0, 1.0],
-            // ⚠️ O meio entra porque min/max podem ser SIMÉTRICOS num nó que só lê o
-            // módulo: `-1` e `+1` dariam a mesma saída e o knob passaria por morto.
-            _ => vec![h.min, (h.min + h.max) * 0.5, h.max],
+            // ⚠️ **Os TERÇOS, e não `min / meio / max`.** Um param ANGULAR com faixa
+            // `-360..360` — e há vários — tem `min`, `meio` e `max` todos **congruentes**:
+            // `-360°`, `0°` e `+360°` são o mesmo ângulo depois do `frac()`, então nenhuma
+            // rotação deste catálogo podia ser provada viva. Os terços dão quatro valores em
+            // que pelo menos dois são angularmente distintos em qualquer faixa.
+            // ⚠️ O meio CONTINUA a fazer falta pelo motivo oposto (uma faixa simétrica num nó
+            // que só lê o módulo), e é por isso que a lista tem quatro pontos e não dois.
+            _ => {
+                let span = h.max - h.min;
+                vec![h.min, h.min + span / 3.0, h.min + span * 2.0 / 3.0, h.max]
+            }
         },
         // Sem hint o painel pinta um slider genérico; sem faixa declarada, chuta em volta
         // do default — e a chutada tem de mudar de ORDEM DE GRANDEZA, senão um param cujo
@@ -309,17 +432,10 @@ fn hunt_the_dead_knobs() {
 
     let (mut vivo, mut morto, mut so_modo, mut sem_bancada, mut suspeita) = (0, 0, 0, 0, 0);
     for m in &all {
-        // As DUAS bancadas: alimentada, e com a porta de estado em laço. Um knob só é morto
-        // se nenhuma das duas o faz mexer — a direcção conservadora, que erra para MENOS
-        // acusação.
-        let mut benches: Vec<(Graph, NodeId, String)> = Vec::new();
-        for self_loop in [false, true] {
-            if let Some((g, n, chain)) = bench(&all, m, self_loop)
-                && snapshot(&g, &reg, n).is_some()
-            {
-                benches.push((g, n, chain));
-            }
-        }
+        let benches: Vec<(Graph, NodeId, String)> = all_benches(&reg, &all, m)
+            .into_iter()
+            .filter(|(g, n, _)| snapshot(g, &reg, *n).is_some())
+            .collect();
         if benches.is_empty() {
             sem_bancada += 1;
             println!(

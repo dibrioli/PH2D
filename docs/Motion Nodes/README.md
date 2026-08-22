@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**99 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**100 arquivos** · **2** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -103,6 +103,7 @@
 | 87 |   | [87_plano_correcao_automatica_setup.md](87_plano_correcao_automatica_setup.md) | plano | 87 — Correção automática de setup do grafo (o app conserta quando o artista erra o lugar do nó) |
 | 88 |   | [88_plano_parametros_nos_unidades_e_slider.md](88_plano_parametros_nos_unidades_e_slider.md) | plano | Doc 88 — PLANO: os parâmetros dos nós ganham unidades, slider dual e o conjunto PRO |
 | 89 | ◆ | [89_plano_conferencia_dos_nos.md](89_plano_conferencia_dos_nos.md) | plano | 89 — PLANO DE CONFERÊNCIA DOS NÓS (o super-upgrade, nó a nó) |
+| 90 |   | [90_caca_aos_knobs_mortos.md](90_caca_aos_knobs_mortos.md) | — | 90 · A CAÇA AOS KNOBS MORTOS — a tabela verificada |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

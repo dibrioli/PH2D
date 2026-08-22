@@ -16,9 +16,9 @@ onde o repo está vazio.
 
 | nó | params (`MANIFEST`) | lê colunas | escreve colunas | hard max | unidades | seções |
 |---|---|---|---|---|---|---|
-| `motion.boids` | 12 — `count·seed·radius·separation·separation_radius·alignment·cohesion·seek·max_speed·spread·fov·speed_floor` | — (só o próprio `state`) | `P·vel·sim_t` | `count 2 000` | **nenhuma** | 3 (Flocking/Steering/Spawn) |
-| `motion.verlet_rope` | 6 — `count·length·gravity·iterations·damping·pin_tail` | — | `P·rope_prev·sim_t` | `count 50 000` · `damping 0,5` | `length` = Length | — |
-| `motion.soft_body` | 8 — `rows·cols·spacing·gravity·stiffness·stretch·damping·pin` | — | `P·sb_vel·sim_t` | `rows/cols 512` | `spacing` = Length | — |
+| `motion.boids` | 16 — `count·seed·radius·separation·separation_radius·alignment·cohesion·seek·max_speed·spread·fov·speed_floor·avoid·avoid_radius·lookahead·max_force` | — (só o próprio `state`) | `P·vel·sim_t` | `count 2 000` | **nenhuma** | 3 (Flocking/Steering/Spawn) |
+| `motion.verlet_rope` | 8 — `count·length·gravity·iterations·damping·pin_tail·bend·solver_substeps` | — | `P·rope_prev·sim_t` | `count 50 000` · `damping 0,5` | `length` = Length | — |
+| `motion.soft_body` | 10 — `rows·cols·spacing·gravity·stiffness·stretch·damping·pin·pressure·clusters` | — | `P·sb_vel·sim_t` | `rows/cols 512` | `spacing` = Length | — |
 | `motion.collide` | 3 — `radius·iterations·strength` (+ porta `spread`) | `inv_mass` | `P` | **nenhum** | `radius` = Length | — |
 | `motion.spring` | 3 — `channel·tension·friction` | `falloff·inv_mass·id` | canal + `spring_value·spring_vel·sim_t` | **nenhum** | **nenhuma** | — |
 | `motion.pin_constraint` | 3 — `first·count·strength` | `falloff` | `inv_mass` | `first/count 1 000 000` | **nenhuma** | — |

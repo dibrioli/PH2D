@@ -213,3 +213,165 @@ fn a_closed_contour_has_no_heads() {
         "e ela não foi encurtada"
     );
 }
+
+// ─── O TRACEJADO QUE FECHA A VOLTA (Enio, 2026-08-22) ────────────────────────────────────
+
+/// Um traço tracejado de largura 1 — assim os MÚLTIPLOS que o `dash` guarda são, em número, os
+/// próprios comprimentos, e a aritmética do gate fica legível.
+fn dashed(d: f64, g: f64) -> StrokeSpec {
+    let mut s = StrokeSpec::new(crate::Rgba8::new(0, 0, 0, 255), 1.0);
+    s.dash = Some((d, g));
+    s
+}
+
+/// **A LEI: um número INTEIRO de períodos cabe na volta.**
+///
+/// É a única coisa que faz a emenda desaparecer — o padrão acaba exatamente onde começou, e a
+/// junta cai numa transição vão→traço indistinguível das outras.
+///
+/// ⚠️ O controlo positivo é a metade que importa: sem ele o gate passaria com o ajuste desligado,
+/// porque `12 / 3,5` sobrar `1,5` só é um defeito se alguém afirmar que sobrava.
+#[test]
+fn the_dash_closes_the_loop_on_a_shape_path() {
+    let rect = crate::rectangle([0.0, 0.0], [4.0, 2.0]); // perímetro 12
+    let s = dashed(2.5, 1.0); // período 3,5 — NÃO divide 12
+    let raw = s.dash_lengths().expect("ha' tracejado");
+    assert!(
+        (12.0 % (raw[0] + raw[1])).abs() > 1e-9,
+        "controlo positivo: o padrao cru TEM de sobrar, senao o gate nao prova nada"
+    );
+
+    let [d, g] = crate::dash_for(&rect, &s).expect("ha' tracejado");
+    let period = d + g;
+    let n = 12.0 / period;
+    assert!(
+        (n - n.round()).abs() < 1e-9,
+        "o padrao nao fecha a volta: cabem {n} periodos, e a emenda aparece no ponto inicial"
+    );
+    assert!(n.round() >= 1.0);
+}
+
+/// **A RAZÃO traço/vão é preservada** — é ela a assinatura visual do tracejado.
+///
+/// ⚠️ Esticar só o vão fecharia a volta na mesma e seria a cura errada: o pontilhado mudaria de
+/// caráter ao redimensionar a forma, e o artista veria o desenho dele derivar sozinho.
+#[test]
+fn fitting_the_loop_keeps_the_dash_to_gap_ratio() {
+    let rect = crate::rectangle([0.0, 0.0], [4.0, 2.0]);
+    let s = dashed(3.0, 1.0);
+    let [d, g] = crate::dash_for(&rect, &s).expect("ha' tracejado");
+    assert!(
+        (d / g - 3.0).abs() < 1e-9,
+        "a razao 3:1 virou {:.4}:1 -- o tracejado mudou de carater",
+        d / g
+    );
+}
+
+/// **UM CAMINHO ABERTO COMEÇA E ACABA EM TRAÇO** — as duas juntas dele são as PONTAS.
+///
+/// O artefato reportado (Enio, 2026-08-22): com marcadores, a seta e o círculo apareciam
+/// **descolados** do traço. A causa não era a posição do marcador — era o padrão a acabar no meio
+/// de um vão, deixando um espaço morto entre o último traço e a ponta.
+///
+/// A lei: `n` traços e `n − 1` vãos cobrem o comprimento exato, então há traço nas duas
+/// extremidades e o marcador encosta.
+///
+/// ⚠️ **Este gate substitui um que afirmava o CONTRÁRIO** (*"um caminho aberto mantém o dash
+/// autorado"*), escrito quando eu tinha decidido que só um contorno fechado tinha junta. A imagem
+/// do Enio mostrou a omissão: um caminho aberto tem DUAS.
+#[test]
+fn an_open_path_starts_and_ends_on_a_dash() {
+    let line = crate::line([0.0, 0.0], [10.0, 0.0]);
+    let s = dashed(2.5, 1.0);
+    let raw = s.dash_lengths().expect("ha' tracejado");
+    let n_raw = (10.0 + raw[1]) / (raw[0] + raw[1]);
+    assert!(
+        (n_raw - n_raw.round()).abs() > 1e-9,
+        "controlo positivo: o padrao cru TEM de nao encaixar, senao o gate passa vazio"
+    );
+
+    let [d, g] = crate::dash_for(&line, &s).expect("ha' tracejado");
+    let n = ((10.0 + g) / (d + g)).round();
+    let span = n * d + (n - 1.0) * g;
+    assert!(
+        (span - 10.0).abs() < 1e-9,
+        "os {n} tracos e {} vaos cobrem {span}, e a linha mede 10 -- sobra espaco morto na ponta",
+        n - 1.0
+    );
+    assert!(
+        (d / g - 2.5).abs() < 1e-9,
+        "a razao traco/vao mudou: o tracejado trocou de carater"
+    );
+}
+
+/// **Sem tracejado, a pergunta não chega à geometria.** É o gate do CUSTO: medir o perímetro é um
+/// `arclen` por segmento, e 99% dos traços são sólidos — pagá-lo neles seria uma regressão
+/// silenciosa em toda cena.
+///
+/// ⚠️ Ele prova a saída, não o caminho. A garantia real é a ORDEM dentro do `dash_for` (a guarda
+/// antes da medição), e é por isso que o doc dela nomeia a ordem explicitamente.
+#[test]
+fn a_solid_stroke_asks_nothing_of_the_geometry() {
+    let rect = crate::rectangle([0.0, 0.0], [4.0, 2.0]);
+    let solid = StrokeSpec::new(crate::Rgba8::new(0, 0, 0, 255), 1.0);
+    assert_eq!(crate::dash_for(&rect, &solid), None);
+}
+
+/// **Um período MAIOR que a volta não é encolhido até caber.** Ele satura em uma repetição: um
+/// tracejado grosso autorado não pode virar um pontilhado fino que ninguém escolheu.
+#[test]
+fn a_period_longer_than_the_loop_saturates_at_one() {
+    let small = crate::rectangle([0.0, 0.0], [1.0, 1.0]); // perímetro 4
+    let s = dashed(20.0, 5.0); // período 25 > 4
+    let [d, g] = crate::dash_for(&small, &s).expect("ha' tracejado");
+    assert!(
+        ((d + g) - 4.0).abs() < 1e-9,
+        "com n=1 o periodo tem de ser a volta inteira, e deu {}",
+        d + g
+    );
+}
+
+/// **FECHA A VOLTA COZIDA, NÃO A AUTORADA** — o artefato reportado (Enio, 2026-08-22: um resíduo
+/// de traço na junta de um retângulo ARREDONDADO).
+///
+/// Quem desenha traça a geometria derivada (`build_contours(&cooked, …)`); a fonte angulosa tem
+/// outro perímetro, porque o raio corta os cantos. Ajustar pela fonte encaixa o padrão numa volta
+/// que ninguém desenha, e a junta volta a aparecer — com o agravante de parecer corrigida.
+///
+/// ⚠️ As duas asserções finais são o par: a primeira diz que fecha no cozido, a segunda que NÃO
+/// fecha no autorado. Sem a segunda, um dia em que os dois perímetros coincidissem faria o gate
+/// passar sobre a versão errada.
+#[test]
+fn the_dash_closes_the_cooked_loop_not_the_authored_one() {
+    let mut r = crate::rectangle([0.0, 0.0], [4.0, 2.0]);
+    for v in &mut r.verts {
+        v.corner_radius = 0.5;
+    }
+    let len_of = |verts: &[crate::VecVertex]| {
+        crate::arc_path::ArcPath::from_contour(verts, true)
+            .expect("contorno")
+            .total()
+    };
+    let src = len_of(&r.verts);
+    let cooked = len_of(&r.cooked().verts);
+    assert!(
+        (src - cooked).abs() > 1e-6,
+        "controlo positivo: o raio TEM de encurtar a volta ({src} vs {cooked}), senao o gate \
+         nao distingue as duas geometrias"
+    );
+
+    let s = dashed(2.5, 1.0);
+    let [d, g] = crate::dash_for(&r, &s).expect("ha' tracejado");
+    let period = d + g;
+
+    let n_cooked = cooked / period;
+    assert!(
+        (n_cooked - n_cooked.round()).abs() < 1e-9,
+        "o padrao nao fecha a volta DESENHADA: cabem {n_cooked} periodos"
+    );
+    let n_src = src / period;
+    assert!(
+        (n_src - n_src.round()).abs() > 1e-9,
+        "o padrao fechou a volta AUTORADA -- e' a geometria que ninguem desenha"
+    );
+}

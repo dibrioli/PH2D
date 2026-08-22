@@ -260,7 +260,7 @@ pub use ph2d_stroke_width::{
 /// **O que um traço DESENHA** — a porta única, com dois consumidores: quem pinta
 /// (`ph2d-vec-render`) e quem assa (`ph2d_vec_boolean::outline_stroke`).
 mod stroke_plan;
-pub use stroke_plan::{StrokePiece, stroke_plan};
+pub use stroke_plan::{StrokePiece, dash_for, stroke_plan};
 
 /// **Onde uma linha ENCOSTA numa forma** — a borda real (o contorno achatado), não a caixa
 /// envolvente. É o que faz um conector parar na estrela em vez de por baixo dela.

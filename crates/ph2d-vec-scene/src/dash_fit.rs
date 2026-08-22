@@ -100,12 +100,18 @@ pub fn longest_contour(path: &VecPath) -> Option<(f64, bool)> {
 /// não, a forma assada sairia com outra cadência que a desenhada.
 ///
 /// ⚠️ **Recebe o caminho COZIDO.** Um Trim ou um efeito da pilha mudam o comprimento, e ajustar
-/// ao caminho de origem poria a emenda de volta — no sítio errado.
+/// ao caminho de origem poria a emenda de volta — no sítio errado. Quem tem a FONTE em mão
+/// chama [`crate::dash_for`], que coze e delega aqui — é a mesma lei, e é a única.
+///
+/// ⚠️ **Sem contorno que se meça, devolve o padrão AUTORADO, não `None`**: `None` é «sólido»,
+/// e um tracejado pedido sobre geometria degenerada continua a ser um tracejado pedido.
 #[must_use]
 pub fn dash_lengths_for(path: &VecPath, s: &StrokeSpec) -> Option<[f64; 2]> {
     let raw = s.dash_lengths()?;
-    let (total, closed) = longest_contour(path)?;
-    Some(fit(raw, total, closed))
+    Some(match longest_contour(path) {
+        Some((total, closed)) => fit(raw, total, closed),
+        None => raw,
+    })
 }
 
 #[cfg(test)]

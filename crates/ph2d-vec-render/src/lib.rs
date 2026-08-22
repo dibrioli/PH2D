@@ -547,9 +547,15 @@ pub(crate) fn draw_stroke_with(
                         );
                     }
                     Cow::Owned(p) => {
+                        // Encurtada pelos marcadores ⇒ o padrão tem de encaixar NA LINHA que se
+                        // traça, não no objeto: o `tess.dash` mede o caminho INTEIRO, e com a
+                        // seta a ponta ficava DESCOLADA do último traço (Enio, 2026-08-22). A
+                        // peça emprestada (acima) É o caminho, e aí o cache já é a resposta —
+                        // o caso comum segue sem medir nada por quadro.
+                        let dash = ph2d_vec_scene::dash_for(&p, &s);
                         let line_bp = build_bezpath(&p);
                         target.inner_mut().stroke(
-                            &kurbo_stroke(&s, tess.dash),
+                            &kurbo_stroke(&s, dash),
                             transform,
                             &brush,
                             None,

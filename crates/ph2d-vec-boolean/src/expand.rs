@@ -156,7 +156,10 @@ fn line_pen(line: &VecPath, s: &StrokeSpec) -> Stroke {
         .with_join(join_of(s.join));
     // Os comprimentos vêm do `StrokeSpec` — a MESMA porta que o renderer usa, senão o
     // tracejado assado sairia noutra cadência que o desenhado.
-    match ph2d_vec_scene::dash_fit::dash_lengths_for(line, s) {
+    // ⚠️ A peça chega da FONTE (o `stroke_plan` recebe o objeto e encurta a linha para a ponta
+    // caber), então é a porta que COZE e mede — a mesma conta que o `tess.dash` do renderer
+    // cacheia sobre o cozido. Uma só lei (`dash_fit`), duas portas, e a diferença é quem cozeu.
+    match ph2d_vec_scene::dash_for(line, s) {
         Some(d) => pen.with_dashes(0.0, d),
         None => pen,
     }

@@ -39,6 +39,48 @@ pub enum StrokePiece<'a> {
 /// O que `path` desenha sob `s`, na ordem em que desenha (a linha primeiro, as pontas por
 /// cima). Vazio é possível e correto: uma linha mais curta que os recuos somados de duas
 /// pontas gordas não tem linha nenhuma — só as pontas.
+/// **O tracejado que este caminho desenha** — comprimentos já reescalados para ENCAIXAR.
+///
+/// Porta única para os dois consumidores da receita do traço (quem pinta e quem assa). Eles falam
+/// com versões diferentes da kurbo e cada um constrói o próprio `Stroke`, mas têm de concordar
+/// sobre *quanto mede um traço* — e agora também sobre *quantos cabem*. Uma segunda medição faria
+/// o Outline Stroke assar o tracejado noutra cadência que a desenhada, que é o defeito que o doc
+/// de [`StrokeSpec::dash_lengths`] já nomeia.
+///
+/// ⚠️ **Recebe a LINHA que vai ser traçada, não o objeto.** Com marcadores ela chega já encurtada
+/// (`trim_path`, para a ponta caber), e é o comprimento DELA que o padrão tem de encaixar — medir
+/// o caminho inteiro poria o último traço fora da linha e a ponta descolada.
+///
+/// ⚠️ **O caso comum não paga NADA, e a ordem das duas perguntas é o que garante isso.** Medir
+/// custa um `arclen` por segmento (Gauss-Legendre de 16 nós), e isto corre por caminho e por
+/// frame — pagá-lo nos 99% dos traços sólidos seria uma regressão silenciosa em toda cena. O
+/// `dash_lengths()` sai primeiro e devolve `None` sem tocar na geometria.
+///
+/// ⚠️ **Mede o COZIDO, nunca a fonte.** Quem desenha traça a geometria derivada, então é o
+/// perímetro dela que o padrão fecha. Num retângulo com raio de quina os cantos encurtam a volta,
+/// e ajustar pela fonte angulosa deixa um resíduo de traço na junta — a costura fonte≠cozido do
+/// ADR-0121, no nível do tracejado.
+///
+/// ⚠️ **Mede o contorno PRINCIPAL, não os subpaths.** Um composto (forma com buracos) traça todos
+/// os anéis com o MESMO padrão — é um `Stroke` só —, e anéis de perímetros diferentes não têm um
+/// fator comum que feche os dois. O anel de fora é o que o olho segue; os buracos ficam como
+/// estavam. Fechá-los todos exigiria traçar anel a anel, que é outra estrutura.
+///
+/// ⚠️ **UMA lei, DUAS portas — e a diferença entre elas é só quem já cozeu.** A conta mora em
+/// [`crate::dash_fit`] (`fit` + `longest_contour`), e [`crate::dash_fit::dash_lengths_for`] é o
+/// núcleo que mede um caminho **já cozido** — é o que o cache de tesselação do renderer chama,
+/// porque ele já pagou o cozimento. Esta porta coze e delega; ela existe para a peça que chega
+/// da fonte (a linha encurtada pelos marcadores). Na integração de 2026-08-22 duas linhas
+/// tinham escrito a mesma lei duas vezes (`dash_fit` na `line/motion-value`,
+/// `dash_lengths_fitted` na `line/Vector`), com a MESMA fórmula; ficou uma, e as duas suítes
+/// provam-na.
+#[must_use]
+pub fn dash_for(path: &VecPath, s: &StrokeSpec) -> Option<[f64; 2]> {
+    // ⚠️ A guarda ANTES da medição — ver o ⚠️ do custo acima.
+    s.dash_lengths()?;
+    crate::dash_fit::dash_lengths_for(&path.cooked(), s)
+}
+
 #[must_use]
 pub fn stroke_plan<'a>(path: &'a VecPath, s: &StrokeSpec) -> Vec<StrokePiece<'a>> {
     let mut out = Vec::new();

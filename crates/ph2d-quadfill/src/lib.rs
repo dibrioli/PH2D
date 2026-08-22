@@ -48,5 +48,6 @@ pub mod stitch;
 
 pub use report::{
     FillError, FillReport, Provenance, detail_lost, folded_against, folded_by_neighbours,
+    follows_relief,
 };
 pub use stitch::{SMOOTHING_ROUNDS, fill};

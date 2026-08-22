@@ -430,3 +430,10 @@ mod global_retopo_probes;
 #[cfg(test)]
 #[path = "sculpt3d_retopo_density_probes.rs"]
 mod retopo_density_probes;
+
+/// **As sondas do CAMPO e do RELEVO** — ver [`retopo_field_probes`]. Irmãs das
+/// [`retopo_density_probes`]: lá até onde o slider vai, aqui se a grade obedece à
+/// forma.
+#[cfg(test)]
+#[path = "sculpt3d_retopo_field_probes.rs"]
+mod retopo_field_probes;

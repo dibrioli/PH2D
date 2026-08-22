@@ -51,7 +51,8 @@ mod solve;
 
 pub use index::{IndexReport, ring_totals, singularities, vertex_index, vertex_index_with_report};
 pub use solve::{
-    Rounding, SolveReport, cycle_count, energy, solve_alternating, solve_miq, solve_miq_with,
+    Rounding, SolveReport, cycle_count, energy, solve_alternating, solve_miq, solve_miq_aligned,
+    solve_miq_with,
 };
 
 /// **UM QUARTO DE VOLTA** — o passo do campo 4-RoSy.
@@ -143,6 +144,18 @@ pub struct DualEdge {
 pub struct Dual {
     frames: Vec<Frame>,
     edges: Vec<DualEdge>,
+    /// ⭐⭐ **O ALINHAMENTO por face** — `(α, confiança)`, onde `α` é a direção
+    /// principal de curvatura **medida na moldura da face** e a confiança é a
+    /// anisotropia em `[0, 1]`.
+    ///
+    /// ⛔ **Sem este termo a energia é SÓ suavidade**, e o campo mais suave sobre
+    /// uma esfera com duas orelhas é o campo de uma esfera lisa — *ele não tem como
+    /// ver as orelhas*. Medido em 2026-08-22 com a régua
+    /// [`ph2d_quadfill::follows_relief`] na fixtura com cristas: a nossa cadeia dava
+    /// **25,7°** de desvio (pior que os **22,5°** de uma grade aleatória) contra
+    /// **13,7°** do porte do Instant Meshes, que semeia o campo na superfície.
+    /// *A obediência ao relevo é um TERMO, não uma afinação.*
+    align: Vec<(f32, f32)>,
     /// Por face, os índices das arestas duais que a tocam.
     incident: Vec<Vec<u32>>,
 }
@@ -254,11 +267,39 @@ impl Dual {
             });
         }
 
+        // ⭐⭐ **O ALINHAMENTO** — a direção principal de curvatura de cada face,
+        // projectada na moldura dela e reduzida ao 4-RoSy.
+        //
+        // ⚠️ **`atan2` na moldura, e o resultado vive em `[0, π/2)`:** a cruz tem
+        // quatro braços, então `α` e `α + π/2` dizem a mesma coisa. Guardar o
+        // ângulo cru faria o solver puxar `θ` para um braço arbitrário dos quatro.
+        let align: Vec<(f32, f32)> = ph2d_mesh::principal_dirs(mesh)
+            .iter()
+            .zip(&frames)
+            .map(|(pd, fr)| {
+                if pd.anisotropy <= 0.0 {
+                    return (0.0, 0.0);
+                }
+                let b = cross(fr.n, fr.e);
+                let (x, y) = (dot(pd.dir, fr.e), dot(pd.dir, b));
+                let a = y.atan2(x).rem_euclid(QUARTER);
+                (a, pd.anisotropy)
+            })
+            .collect();
+
         Self {
             frames,
             edges,
             incident,
+            align,
         }
+    }
+
+    /// **O alinhamento da face `f`** — `(α na moldura, confiança)`. Ver
+    /// [`Dual::align`].
+    #[must_use]
+    pub fn align(&self, f: usize) -> (f32, f32) {
+        self.align.get(f).copied().unwrap_or((0.0, 0.0))
     }
 }
 

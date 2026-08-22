@@ -148,6 +148,17 @@ pub fn solve_miq(dual: &Dual) -> (CrossField, SolveReport) {
 /// a ser esta função com o `default`, e nada que o chame vê diferença.
 #[must_use]
 pub fn solve_miq_with(dual: &Dual, policy: Rounding) -> (CrossField, SolveReport) {
+    solve_miq_aligned(dual, policy, ALIGN_WEIGHT)
+}
+
+/// **O MIQ com o PESO DO ALINHAMENTO explícito** — ver [`ALIGN_WEIGHT`].
+///
+/// ⚠️ **Ele é um parâmetro porque o número tem de sair de uma VARREDURA**, e a
+/// primeira tentativa provou-o: com `1,0` a cadeia inteira parou de fechar —
+/// patches de **39, 98 e 127 lados**, quantização a recusar em toda fixtura.
+/// *Um peso de energia escolhido sem tabela é um palpite com aparência de teoria.*
+#[must_use]
+pub fn solve_miq_aligned(dual: &Dual, policy: Rounding, align: f32) -> (CrossField, SolveReport) {
     let n = dual.frames().len();
     let m = dual.edges().len();
     let mut report = SolveReport {
@@ -178,7 +189,7 @@ pub fn solve_miq_with(dual: &Dual, policy: Rounding) -> (CrossField, SolveReport
 
     let mut theta = vec![0.0f32; n];
     while !free.is_empty() {
-        let (q, residual) = solve_relaxation(dual, &fixed, &free, &mut theta);
+        let (q, residual) = solve_relaxation(dual, &fixed, &free, &mut theta, align);
         report.solves += 1;
         report.note(residual);
 
@@ -212,7 +223,7 @@ pub fn solve_miq_with(dual: &Dual, policy: Rounding) -> (CrossField, SolveReport
     }
 
     // A resolução final, com todos os inteiros congelados.
-    let (_, residual) = solve_relaxation(dual, &fixed, &[], &mut theta);
+    let (_, residual) = solve_relaxation(dual, &fixed, &[], &mut theta, align);
     report.solves += 1;
     report.note(residual);
 
@@ -236,7 +247,10 @@ pub fn solve_alternating(dual: &Dual, max_rounds: usize) -> (CrossField, usize) 
     for round in 1..=max_rounds {
         rounds = round;
         let fixed: Vec<Option<i32>> = period.iter().map(|p| Some(*p)).collect();
-        let _ = solve_relaxation(dual, &fixed, &[], &mut theta);
+        // ⚠️ **Sem alinhamento, de propósito.** Esta função é o CONTROLE medido e
+        // rejeitado do §doc do módulo (ela converge na primeira ronda e não faz
+        // nada); acrescentar-lhe um termo novo mudaria o que ela é o controle de.
+        let _ = solve_relaxation(dual, &fixed, &[], &mut theta, 0.0);
         let mut changed = 0usize;
         for (e, de) in dual.edges().iter().enumerate() {
             let r = theta[de.f as usize] - theta[de.g as usize] + de.kappa;
@@ -293,11 +307,54 @@ fn spanning_tree(dual: &Dual) -> Vec<u32> {
 /// **A RELAXAÇÃO CONTÍNUA** — resolve `θ` (e os `q` livres) por CG.
 ///
 /// Devolve os valores contínuos dos inteiros ainda livres, na ordem de `free`.
+/// ⭐⭐ **O PESO DO ALINHAMENTO na energia** — quanto a cruz é puxada para a
+/// direção principal de curvatura, contra a suavidade.
+///
+/// ⛔ **Sem ele a energia é SÓ suavidade, e o campo não tem como ver o relevo.**
+/// Medido em 2026-08-22 com a régua [`ph2d_quadfill::follows_relief`], na fixtura
+/// com cristas: a nossa cadeia dava **25,7°** de desvio — **pior que os 22,5° de
+/// uma grade aleatória** — contra **13,7°** do porte do Instant Meshes.
+///
+/// ⚠️ **Ele é MULTIPLICADO PELA ANISOTROPIA de cada face**, então numa esfera
+/// (onde as duas curvaturas são iguais e não há direção preferida) o termo
+/// desaparece sozinho. *Um alinhamento que puxa onde a forma não tem direção põe
+/// uma costura onde ela não pede nenhuma.*
+///
+/// ⛔⛔ **HOJE ELE É ZERO, e isso é uma MEDIÇÃO e não um esquecimento.** O termo
+/// está construído e funciona — o desvio ao relevo cai —, mas **o arredondamento
+/// do MIQ não o absorve**: com qualquer peso não-nulo o traçado parte. Medido em
+/// 2026-08-22 (`how_much_alignment_can_the_field_take`), fixtura com cristas:
+///
+/// | peso | desvio ao relevo | patches | maior valência | a cadeia fecha? |
+/// |---|---|---|---|---|
+/// | **`0` (hoje)** | 25,7° | **21** | **5** | ✅ |
+/// | `0,01` | ⭐ **20,4°** | ⛔ 104 | ⛔ 15 | ⚠️ fecha, com 139 irregulares |
+/// | `0,03` | — | 134 | ⛔ **60** | ⛔ a montagem recusa |
+/// | `1,0` | — | 98 | ⛔ **98** | ⛔ recusa |
+///
+/// ⭐ **O termo move a agulha certa** (`25,7° → 20,4°`, contra os `22,5°` de uma
+/// grade aleatória e os `13,7°` do porte do Instant Meshes). ⛔ **E o layout
+/// explode de 21 para 104 patches com um peso de `0,01`** — uma perturbação
+/// minúscula de `θ` troca quais inteiros o arredondamento guloso congela, e cada
+/// troca é uma singularidade a mais. *Um patch de 60 lados não é «mais detalhe»:
+/// é traçado partido.*
+///
+/// ⛔ **Suavizar o guia foi construído, medido e REJEITADO no mesmo dia:** média
+/// 4-RoSy sobre o grafo dual, transportada pelo `κ`, 32 rondas. O desvio ao relevo
+/// **piorou** (`20,4° → 24,5°`) e o layout continuou a explodir. *A causa não é a
+/// qualidade do guia; é a fragilidade do arredondamento.*
+///
+/// ⇒ **O próximo passo tem nome:** o arredondamento do MIQ tem de aguentar o
+/// termo — a referência não congela guloso sobre um `θ` que acabou de mudar. Até
+/// lá, ligar isto seria trocar uma grade que ignora o relevo por uma que não fecha.
+const ALIGN_WEIGHT: f32 = 0.0;
+
 fn solve_relaxation(
     dual: &Dual,
     fixed: &[Option<i32>],
     free: &[usize],
     theta: &mut [f32],
+    align: f32,
 ) -> (Vec<f32>, f32) {
     let n = theta.len();
     let c = free.len();
@@ -320,13 +377,36 @@ fn solve_relaxation(
         }
     }
 
+    // ⭐⭐ **O TERMO DE ALINHAMENTO, no lado direito.** A energia ganha
+    // `λ·c_f·(θ_f − α_f)²`, cuja normal-equação é `+λ·c_f` na diagonal e
+    // `+λ·c_f·α_f` no `b`.
+    //
+    // ⚠️ **O representante 4-RoSy é escolhido pelo `θ` CORRENTE**, e não é
+    // detalhe: `α` e `α ± k·π/2` descrevem a mesma cruz, e fixar um deles puxaria
+    // `θ` para um braço arbitrário — o campo daria meia volta onde a forma não
+    // vira. Na primeira resolução o `θ` é o de partida, e as resoluções seguintes
+    // já o refinam (o MIQ resolve dezenas de vezes).
+    let pull: Vec<f32> = (0..n)
+        .map(|f| {
+            let (a, conf) = dual.align(f);
+            if conf <= 0.0 {
+                return 0.0;
+            }
+            let k = ((theta[f] - a) / QUARTER).round();
+            align * conf * QUARTER.mul_add(k, a)
+        })
+        .collect();
+    for (f, item) in pull.iter().enumerate().take(n) {
+        b[f] += item;
+    }
+
     let pinned = 0usize;
     let mut x = vec![0.0f32; dim];
     x[..n].copy_from_slice(theta);
     x[pinned] = 0.0;
 
     let mut ax = vec![0.0f32; dim];
-    apply(dual, &slot, n, &x, &mut ax, pinned);
+    apply(dual, &slot, n, &x, &mut ax, pinned, align);
     let mut r: Vec<f32> = (0..dim).map(|i| b[i] - ax[i]).collect();
     r[pinned] = 0.0;
     let mut p = r.clone();
@@ -338,7 +418,7 @@ fn solve_relaxation(
         if rr.sqrt() <= CG_TOLERANCE * r0 {
             break;
         }
-        apply(dual, &slot, n, &p, &mut ap, pinned);
+        apply(dual, &slot, n, &p, &mut ap, pinned, align);
         let denom = ddot(&p, &ap);
         if denom.abs() <= 1.0e-30 {
             break;
@@ -361,7 +441,15 @@ fn solve_relaxation(
 }
 
 /// `A x`, com a linha e a coluna do gauge de `θ` zeradas.
-fn apply(dual: &Dual, slot: &[Option<usize>], n: usize, x: &[f32], out: &mut [f32], pinned: usize) {
+fn apply(
+    dual: &Dual,
+    slot: &[Option<usize>],
+    n: usize,
+    x: &[f32],
+    out: &mut [f32],
+    pinned: usize,
+    align: f32,
+) {
     out.fill(0.0);
     for (e, de) in dual.edges().iter().enumerate() {
         let (f, g) = (de.f as usize, de.g as usize);
@@ -377,6 +465,22 @@ fn apply(dual: &Dual, slot: &[Option<usize>], n: usize, x: &[f32], out: &mut [f3
         }
         if let Some(i) = slot[e] {
             out[n + i] += r * QUARTER;
+        }
+    }
+    // ⭐⭐ **A diagonal do ALINHAMENTO.** O termo `λ·c_f·(θ_f − α_f)²` contribui
+    // `λ·c_f` na diagonal de `A`; o `α_f` mora no `b` (ver [`solve_relaxation`]).
+    //
+    // ⚠️ **Ele também é o que torna o sistema DEFINIDO POSITIVO fora do gauge.**
+    // Sem alinhamento, somar uma constante a todo `θ` não muda a energia, e é por
+    // isso que o `pinned` existe; com ele, cada face confiante já tem um alvo — o
+    // `pinned` continua porque uma malha inteiramente isotrópica não tem nenhum.
+    for (f, o) in out.iter_mut().enumerate().take(n) {
+        if f == pinned {
+            continue;
+        }
+        let (_, conf) = dual.align(f);
+        if conf > 0.0 {
+            *o += align * conf * x[f];
         }
     }
     out[pinned] = x[pinned];

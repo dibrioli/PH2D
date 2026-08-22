@@ -36,14 +36,25 @@ use super::global_retopo::open_edges;
 #[test]
 #[ignore = "sonda -- os dois motores na mesma peca, sem GPU"]
 fn the_two_engines_on_the_same_piece_without_a_device() {
-    for (name, which) in [("com BICO", 1u8), ("amassada", 0), ("com CRISTAS", 2)] {
-        for detail in [0.25f32, 0.5, 0.75, 1.0] {
+    for (name, which) in [
+        ("ORELHA", 3u8),
+        ("com BICO", 1),
+        ("amassada", 0),
+        ("com CRISTAS", 2),
+    ] {
+        for detail in [0.5f32, 1.0] {
             let reference = match which {
                 1 => crate::sculpt3d::fixtures::hooked_sphere(),
                 2 => crate::sculpt3d::fixtures::ridged_sphere(),
+                3 => crate::sculpt3d::fixtures::eared_sphere(),
                 _ => crate::sculpt3d::fixtures::wrinkled_sphere(),
             };
-            let target = ph2d_quadflow::edge_for_detail(&reference, detail);
+            // ⭐ O piso da cadeia GLOBAL, que é o que o produto usa desde 22/08.
+            let target = ph2d_quadflow::edge_for_detail_with(
+                &reference,
+                detail,
+                ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
+            );
 
             // ── O motor LOCAL (porte BSD do Instant Meshes), pela mesma régua.
             let scale = ph2d_quadflow::ScaleField::adaptive(&reference, target, 0.0);
@@ -51,21 +62,21 @@ fn the_two_engines_on_the_same_piece_without_a_device() {
             let local = ph2d_quadflow::extract(&reference, &orient, &pos, &scale)
                 .map(|q| {
                     let f = ph2d_quadfill::folded_against(&reference, &q.mesh);
-                    (q.quads, q.non_quads, q.holes, f)
+                    // ⭐⭐ **A régua do RELEVO no motor que é conhecido por o
+                    // seguir.** O Instant Meshes suaviza um campo semeado na
+                    // superfície; a nossa cadeia minimiza só suavidade. Se os dois
+                    // derem o mesmo número, ou a régua não mede nada ou o
+                    // diagnóstico está errado — *um controlo positivo é o que
+                    // separa as duas hipóteses*.
+                    let (deg, conf) = ph2d_quadfill::follows_relief(&reference, &q.mesh);
+                    (q.quads, q.non_quads, q.holes, f, deg, conf)
                 })
-                .unwrap_or((0, 0, 0, 0));
+                .unwrap_or((0, 0, 0, 0, 45.0, 0.0));
 
             // ── A cadeia GLOBAL.
             let mut work = reference.clone();
             ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
             work.triangulate();
-            // ⭐⭐ **O CONTROLE DO DETECTOR, nesta peça e não numa esfera.** A
-            // `work` é a mesma forma remalhada isotropicamente: ela **não tem
-            // dobra nenhuma**. Se o detector a acusar, quem está a medir a forma
-            // — e não o defeito — é ele. *Uma régua que julga dobras tem de provar
-            // primeiro que não acusa uma malha que não tem nenhuma.*
-            let control = ph2d_quadfill::folded_against(&reference, &work);
-            let control2 = ph2d_quadfill::folded_by_neighbours(&work);
             let dual = ph2d_crossfield::Dual::build(&work);
             let (field, _) = ph2d_crossfield::solve_miq(&dual);
             let layout = ph2d_trace::trace_patches(&work, &dual, &field);
@@ -116,10 +127,11 @@ fn the_two_engines_on_the_same_piece_without_a_device() {
                 ph2d_quadfill::SMOOTHING_ROUNDS,
             ) {
                 Ok((out, r)) => {
+                    let (deg, conf) = ph2d_quadfill::follows_relief(&reference, &out);
                     println!(
                         "{name:<12} d={detail:.2} alvo {target:.4} | GLOBAL {:<5} quads \
                          {:<4} irreg {:<3} bordo | DOBRAS ref {:<4} ({:.1} %) vizinho {:<4} {:?} | med {:.2}x max {:.2}x \
-                         | ACHATOU {}/{} pontos {}+{} FORA | ⚠️CONTROLE ref {} vz {} de {} | arcos {:<4} promovidos {}",
+                         | ⭐RELEVO {:>5.1}° (conf {:.2}) | ACHATOU {}/{} | arcos {:<4} promovidos {}",
                         r.quads,
                         r.irregular,
                         r.boundary_edges,
@@ -129,13 +141,10 @@ fn the_two_engines_on_the_same_piece_without_a_device() {
                         r.folded_prov,
                         r.edge_median / target,
                         r.edge_max / target,
+                        deg,
+                        conf,
                         r.flattened,
                         r.patches,
-                        r.sampled,
-                        r.sample_misses,
-                        control,
-                        control2,
-                        work.faces().len(),
                         layout.arc_chain.len(),
                         layout.report.promoted,
                     );
@@ -151,14 +160,15 @@ fn the_two_engines_on_the_same_piece_without_a_device() {
             {
                 println!(
                     "             {:>17} | LOCAL  {:<5} quads ({:.0}% quads) \
-                     {:>9} {:<3} bordo {:<4} DOBRADAS ({:.1} %)",
+                     {:>28} {:<3} bordo {:<4} DOBRADAS | ⭐RELEVO {:>5.1}° (conf {:.2})",
                     "",
                     local.0,
                     100.0 * local.0 as f64 / (local.0 + local.1).max(1) as f64,
                     "",
                     local.2,
                     local.3,
-                    100.0 * local.3 as f64 / local.0.max(1) as f64,
+                    local.4,
+                    local.5,
                 );
             }
         }

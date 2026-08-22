@@ -1990,6 +1990,81 @@ solver do libSatsuma (dupla cobertura + refinamento por matching, `max_deviation
 
 ---
 
+## 4-vicies-semel — ⭐⭐ **O CAMPO NÃO TEM COMO OBEDECER AO RELEVO**, e agora há um número
+
+> Report do artista, terceira vez com a mesma palavra: *"sem nenhuma obediência ao
+> relevo, à topologia"*.
+
+### A causa está escrita na energia
+
+```text
+E = Σ_e w_e · ( θ_f − θ_g + κ_e + (π/2)·p_e )²
+```
+
+⛔ **É SÓ suavidade.** Não existe um único termo que puxe a cruz para a direção em
+que a superfície dobra. O campo mais suave sobre uma esfera com duas orelhas é o
+campo de uma esfera lisa — *ele não tem como ver as orelhas*. **Um alinhamento é um
+TERMO, não uma afinação.**
+
+### ⭐ A régua que transforma o report em número
+
+[`follows_relief(referência, saída)`](../../../crates/ph2d-quadfill/src/report.rs):
+o desvio médio, em graus, entre cada aresta da saída e a direção principal de
+curvatura da peça ali — **4-RoSy** (dobrado em `[0°, 45°]`, porque uma grade rodada
+90° está alinhada) e **ponderado pela anisotropia** (numa esfera não há direção
+preferida, e o desvio ali é ruído).
+
+⚠️ **O ponto de comparação é `22,5°`** — a média de um ângulo uniforme, ou seja
+**uma grade que ignora o relevo por completo**.
+
+| fixtura | **cadeia GLOBAL** | porte do Instant Meshes |
+|---|---|---|
+| ⭐ **com CRISTAS** (a mais anisotrópica) | ⛔ **25,7°** — *pior que aleatório* | ⭐ **13,7°** |
+| com BICO | 24,6° | 22,3° |
+| amassada | 22,9° | 22,9° |
+| ORELHA | 22,9° | 21,6° |
+
+⭐⭐ **O controlo positivo é o que torna a tabela conclusiva:** o porte do Instant
+Meshes — que semeia o campo **na superfície** — dá `13,7°` na fixtura com relevo
+direcional, e a nossa cadeia dá `25,7°`. *Se os dois dessem o mesmo número, ou a
+régua não media nada ou o diagnóstico estava errado.*
+
+### O que se construiu
+
+1. [`ph2d_mesh::principal_dirs`](../../../crates/ph2d-mesh/src/curvature_dirs.rs) —
+   a segunda forma fundamental por face, clean-room de **Rusinkiewicz 2004**, com a
+   **anisotropia** normalizada como confiança.
+2. `Dual::align` — a direção principal de cada face, na moldura dela, reduzida ao
+   4-RoSy.
+3. O termo `λ·c_f·(θ_f − α_f)²` na energia — diagonal em `A`, `α` no `b`, com o
+   representante 4-RoSy escolhido pelo `θ` corrente.
+
+### ⛔⛔ E ele NÃO SHIPA hoje — `ALIGN_WEIGHT = 0`, por medição
+
+| peso | desvio ao relevo | patches | maior valência | a cadeia fecha? |
+|---|---|---|---|---|
+| **`0` (hoje)** | 25,7° | **21** | **5** | ✅ |
+| `0,01` | ⭐ **20,4°** | ⛔ 104 | ⛔ 15 | ⚠️ fecha, com 139 irregulares e 23 dobras |
+| `0,03` | — | 134 | ⛔ **60** | ⛔ a montagem recusa |
+| `1,0` | — | 98 | ⛔ **98** | ⛔ recusa |
+
+⭐ **O termo move a agulha certa** e ⛔ **o layout explode de 21 para 104 patches
+com um peso de `0,01`**. A causa não é o termo: é que **uma perturbação minúscula de
+`θ` troca quais inteiros o arredondamento guloso congela**, e cada troca é uma
+singularidade a mais. *Um patch de 60 lados não é «mais detalhe»: é traçado partido.*
+
+⛔ **Suavizar o guia foi construído, medido e REJEITADO no mesmo dia** — média
+4-RoSy sobre o grafo dual, transportada pelo `κ`, 32 rondas: o desvio **piorou**
+(`20,4° → 24,5°`) e o layout continuou a explodir. *A causa não é a qualidade do
+guia; é a fragilidade do arredondamento.*
+
+⇒ ⭐⭐ **O próximo passo tem nome e é o mesmo dono de sempre:** o arredondamento do
+MIQ tem de aguentar o termo. A referência não congela guloso sobre um `θ` que
+acabou de mudar — e é a mesma família de cura que o F4 acabou de receber
+(§4-undevicies): *aproximar, re-centrar, repetir*, em vez de decidir de uma vez.
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |

@@ -238,6 +238,115 @@ pub fn folded_against(reference: &Mesh, out: &Mesh) -> usize {
     folded
 }
 
+/// **QUANTO A GRADE OBEDECE AO RELEVO** — o desvio médio, em graus, entre cada
+/// aresta da saída e a direção principal de curvatura da peça ali.
+///
+/// Devolve `(graus, confiança_média)`.
+///
+/// ⭐⭐ **É a régua que faltava para o report *"sem nenhuma obediência ao
+/// relevo"*.** Ela não pergunta se a malha é bonita: pergunta se as arestas correm
+/// ao longo da direção em que a superfície dobra — que é a promessa inteira de uma
+/// retopologia por campo cruzado, e o que a distingue de um voxel remesh.
+///
+/// ⚠️ **O desvio é 4-RoSy**, dobrado em `[0°, 45°]`: uma grade rodada 90° está
+/// **alinhada**, e medir o ângulo cru daria `90°` a um resultado perfeito.
+///
+/// ⭐ **A média é PONDERADA PELA ANISOTROPIA**, e sem isso a régua é ruído: numa
+/// esfera as duas curvaturas são iguais, não há direção preferida, e o desvio ali é
+/// uma coordenada aleatória. *Pesar pela confiança é o que faz a régua falar só
+/// onde a forma tem o que dizer.*
+///
+/// ⚠️ **O ponto de comparação é `22,5°`** — a média de um ângulo uniforme em
+/// `[0°, 45°]`, ou seja **uma grade que ignora o relevo por completo**. Um número
+/// perto disso não é *"um pouco desalinhado"*: é *"não olhou"*.
+#[must_use]
+pub fn follows_relief(reference: &Mesh, out: &Mesh) -> (f32, f32) {
+    let dirs = ph2d_mesh::principal_dirs(reference);
+    let ref_normals = reference.face_normals();
+    let rb = reference.bounds();
+    let seed = norm(sub(rb.max, rb.min)) * 0.02;
+    let pos = out.positions();
+    let mut hits: Vec<u32> = Vec::new();
+    let (mut wsum, mut asum, mut count) = (0.0f64, 0.0f64, 0usize);
+    // Cada aresta da saída, uma vez.
+    let mut seen: std::collections::BTreeSet<(u32, u32)> = std::collections::BTreeSet::new();
+    for f in out.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            if !seen.insert((a.min(b), a.max(b))) {
+                continue;
+            }
+            let (p, q) = (pos[a as usize], pos[b as usize]);
+            let mid = [
+                (p[0] + q[0]) * 0.5,
+                (p[1] + q[1]) * 0.5,
+                (p[2] + q[2]) * 0.5,
+            ];
+            let Some(rf) = nearest_face(reference, mid, seed, &mut hits) else {
+                continue;
+            };
+            let pd = dirs[rf];
+            if pd.anisotropy <= 0.0 {
+                count += 1;
+                continue;
+            }
+            // A aresta, projectada no plano tangente da face de referência.
+            let n = ref_normals[rf];
+            let e = sub(q, p);
+            let along = e[0].mul_add(n[0], e[1].mul_add(n[1], e[2] * n[2]));
+            let t = [
+                along.mul_add(-n[0], e[0]),
+                along.mul_add(-n[1], e[1]),
+                along.mul_add(-n[2], e[2]),
+            ];
+            let lt = norm(t);
+            if lt < 1.0e-9 {
+                continue;
+            }
+            let c = (t[0].mul_add(pd.dir[0], t[1].mul_add(pd.dir[1], t[2] * pd.dir[2])) / lt)
+                .clamp(-1.0, 1.0);
+            // ⭐ Dobrado em `[0°, 45°]`: `|cos|` mata o sentido, e o `45 − |45 − x|`
+            // mata a rotação de 90°.
+            let deg = c.abs().acos().to_degrees();
+            let folded = 45.0 - (45.0 - deg).abs();
+            wsum += f64::from(folded) * f64::from(pd.anisotropy);
+            asum += f64::from(pd.anisotropy);
+            count += 1;
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let confidence = if count == 0 { 0.0 } else { asum / count as f64 };
+    #[allow(clippy::cast_possible_truncation)]
+    let deg = if asum > 0.0 {
+        (wsum / asum) as f32
+    } else {
+        45.0
+    };
+    #[allow(clippy::cast_possible_truncation)]
+    (deg, confidence as f32)
+}
+
+/// A face da `mesh` cujo centróide está mais perto de `p` — o raio DOBRA até
+/// achar alguém. ⚠️ Porta única: três réguas deste ficheiro faziam a mesma busca,
+/// e uma delas com um raio inicial diferente.
+fn nearest_face(mesh: &Mesh, p: [f32; 3], seed: f32, hits: &mut Vec<u32>) -> Option<usize> {
+    let mut best = (f32::INFINITY, usize::MAX);
+    let mut radius = seed;
+    while best.1 == usize::MAX && radius < seed * 64.0 {
+        mesh.octree().faces_in_sphere(p, radius, hits);
+        for &fi in hits.iter() {
+            let rv = mesh.faces()[fi as usize].verts();
+            let d = norm(sub(centroid(mesh.positions(), rv), p));
+            if d < best.0 {
+                best = (d, fi as usize);
+            }
+        }
+        radius *= 2.0;
+    }
+    (best.1 != usize::MAX).then_some(best.1)
+}
+
 /// **QUANTO DA FORMA SE PERDEU** — a distância de cada vértice da referência ao
 /// ponto mais próximo da saída, em fração da diagonal. Devolve `(p95, máx)`.
 ///

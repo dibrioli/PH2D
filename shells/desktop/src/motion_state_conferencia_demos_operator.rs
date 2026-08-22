@@ -35,6 +35,11 @@ pub(crate) const ADD: f32 = 2.0;
 const PIECE: f32 = 0.34;
 const INK: [f32; 3] = [0.22, 0.42, 0.85];
 
+/// A tinta de repouso, para o gate que mede se o flash de facto move o tint. ⚠️ **Derivada,
+/// nunca re-escrita**: um gate com o número próprio ficaria verde sobre a cena errada.
+#[cfg(test)]
+pub(crate) const INK_FOR_TEST: [f32; 3] = INK;
+
 /// O laço que a peça percorre: amplitude e período. ⚠️ **Uma LEMNISCATA** (o `y` no dobro da
 /// frequência do `x`), que é o caminho mais barato que se cruza a si próprio.
 const LOOP_R: f32 = 1.5;
@@ -53,6 +58,26 @@ const TRAIL_SPACING: f32 = 2.0;
 /// O flash: de quanto em quanto tique ele dispara, e quanto dura a queda.
 const BEAT_PERIOD: f32 = 0.5;
 const FLASH_DECAY: f32 = 26.0;
+
+/// **A ROSETA da linha do flash** — quantas peças e em que raio.
+///
+/// ⚠️ **O raio é MENOR que a peça, e é a razão de a roseta existir.** `Add` só difere de
+/// `Normal` onde há **sobreposição**: contra o fundo os dois pintam quase o mesmo, e uma peça
+/// sozinha não tem o que somar. A primeira versão desta linha tinha UMA peça, e o smoke
+/// devolveu *"o flash não é evidente"* — estava certo, e o defeito era a cena, não a
+/// intensidade. (Gate: `the_flash_pieces_overlap_so_the_sum_has_somewhere_to_show`.)
+pub(crate) const ROSETTE_N: f32 = 5.0;
+pub(crate) const ROSETTE_R: f32 = 0.22;
+
+/// A cor do flash, e quanto dela se mistura no pico.
+///
+/// ⚠️ **Âmbar a 0,9, e NÃO branco a 1,0.** O strobe faz `lerp(tint, flash, amount·glow)`, então
+/// `flash = branco` com `amount = 1` põe a peça em **branco saturado** — e branco somado a
+/// branco continua branco. É a mesma lei que este arquivo já escreve para o [`INK`] do rastro
+/// (*"um azul MÉDIO de propósito … um branco já saturado não mostraria nada"*), e a primeira
+/// versão da linha do flash violou-a três funções abaixo de a ter escrito.
+pub(crate) const FLASH_RGB: [f32; 3] = [1.0, 0.72, 0.25];
+pub(crate) const FLASH_AMOUNT: f32 = 0.9;
 
 fn wire(g: &mut Graph, from: NodeId, fp: u16, to: NodeId, tp: u16) -> Option<()> {
     g.connect(Edge {
@@ -177,10 +202,40 @@ fn trail_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     out_of(g, trail, ey, 860.0)
 }
 
-/// A linha do FLASH: o mesmo strobe, e à direita ele SOMA.
+/// **A ROSETA que pisca** — as peças sobrepostas da linha do flash, já colocadas e pintadas.
+///
+/// Parada de propósito: a leitura desta linha é o FLASH, e pôr a roseta a andar acrescentaria
+/// uma segunda coisa a olhar sem acrescentar uma segunda coisa a ver.
+fn rosette(g: &mut Graph, right: bool, ey: f32) -> NodeId {
+    let ring = node(
+        g,
+        "motion.distribute_radial",
+        &[
+            ("count", ROSETTE_N),
+            ("rings", 1.0),
+            ("radius", ROSETTE_R),
+            ("inner", 0.0),
+        ],
+        ey,
+        0.0,
+    );
+    let scaled = push(g, ring, "motion.scale", &[("amount", PIECE)], ey, 110.0);
+    let at = [if right { COL_X } else { -COL_X }, ROW_Y[1]];
+    let placed = place(g, scaled, at, ey, 220.0);
+    push(
+        g,
+        placed,
+        "motion.tint",
+        &[("r", INK[0]), ("g", INK[1]), ("b", INK[2])],
+        ey,
+        340.0,
+    )
+}
+
+/// A linha do FLASH: a mesma roseta, e à direita ela SOMA.
 fn flash_band(g: &mut Graph, right: bool) -> Option<NodeId> {
     let ey = 520.0 + usize::from(right) as f32 * 240.0;
-    let head = piece(g, 1, right, ey);
+    let head = rosette(g, right, ey);
     let beat = node(
         g,
         "pulse.beat",
@@ -194,11 +249,10 @@ fn flash_band(g: &mut Graph, right: bool) -> Option<NodeId> {
         &[
             ("decay", FLASH_DECAY),
             ("size_boost", 1.6),
-            // Um flash BRANCO — com `Add` ele estoura, com `Normal` ele só tapa.
-            ("flash_r", 1.0),
-            ("flash_g", 1.0),
-            ("flash_b", 1.0),
-            ("flash_amount", 1.0),
+            ("flash_r", FLASH_RGB[0]),
+            ("flash_g", FLASH_RGB[1]),
+            ("flash_b", FLASH_RGB[2]),
+            ("flash_amount", FLASH_AMOUNT),
             (
                 ph2d_node_motion_strobe::FLASH_BLEND,
                 if right { ADD } else { 0.0 },
@@ -207,6 +261,20 @@ fn flash_band(g: &mut Graph, right: bool) -> Option<NodeId> {
         ey,
         700.0,
     );
+    // ⚠️ **O metrónomo LÊ a geometria** — a aresta que faltava, e sem ela ele emite ZERO
+    // linhas, o `scalar_col` do strobe redimensiona com `0.0` e o flash **nunca dispara**:
+    // a cena fica parada sem um erro. Medido pela sonda do tint no pico — as duas metades
+    // ficavam no azul da peça, sem uma faísca — e a mutação que a prova é apagar esta linha.
+    // O irmão `=46` traz o mesmo aviso; *um pulso que nunca chega é indistinguível de um
+    // pulso que não acende.*
+    //
+    // ⚠️ **O laço próprio do metrónomo entra por PRECEDENTE, não por medição.** Apagá-lo
+    // deixa o gate do flash VERDE — o harness cozinha instantes soltos e nunca chama
+    // `advance_tick`, então a memória de borda dele não se exerce ali. O `=46` declara-a
+    // necessária (*"sem eles nem a memória de borda do `pulse.beat` … existem"*), e é isso
+    // que a mantém aqui: uma aresta que o teste não alcança não é uma aresta desnecessária.
+    wire(g, head, 0, beat, 0)?;
+    wire_pre(g, beat, beat, 1)?;
     wire(g, head, 0, strobe, 0)?;
     wire(g, beat, 0, strobe, 1)?;
     wire_pre(g, strobe, strobe, 2)?;

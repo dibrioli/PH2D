@@ -241,7 +241,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As SESSENTA E SETE LEIS que esta linha pagou para aprender
+## §4 — As SESSENTA E OITO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -741,6 +741,21 @@ são estilo.
     lowering**: a rota do device assava o tag como CONSTANTE de codegen, então sem a segunda
     o operador funcionaria com `PH2D_GPU_COOK=0` e pararia sem ninguém tocar em nada — que é
     exactamente o modo de falha que o arch-gate do blend do sink já nomeava.
+
+68. **Um MODO DE COMPOSIÇÃO só se vê onde há SOBREPOSIÇÃO — uma cena sem ela reprova o
+    produto correcto.** O smoke do `=77` devolveu *"o flash não é evidente, talvez por
+    questão de intensidade"* (Enio, 2026-08-22). Não era a intensidade, e eram **três**
+    defeitos da CENA empilhados, todos meus: (a) o `pulse.beat` não lia a geometria, emitia
+    ZERO linhas, e **o flash nunca disparava** — medido pela sonda do tint no pico, que
+    ficava no azul da peça; (b) mesmo a disparar, a banda tinha **UMA peça**, e `Add` contra
+    o fundo desenha quase o que `Normal` desenha; (c) o flash era **branco a `amount = 1`**,
+    ou seja tint saturado, e branco somado a branco continua branco. ⚠️ **A (c) é a lei que
+    o próprio arquivo já escrevia** — o `INK` do rastro é *"um azul MÉDIO de propósito … um
+    branco já saturado não mostraria nada"* — e eu violei-a **três funções abaixo** de a ter
+    escrito. ⚠️ E os gates que existiam ficaram todos VERDES: eles mediam que o param estava
+    autorado e que a coluna chegava ao stream, e as duas coisas são verdade com a cena
+    parada. *Um param autorado não é um efeito acontecido* — a cena passou a ter gate de que
+    o flash MOVE o tint, de que sobra folga para somar, e de que as peças de facto se tocam.
 
 
 ---

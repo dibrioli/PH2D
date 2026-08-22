@@ -525,10 +525,15 @@ pub(crate) fn operator_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> V
           > clique no no' Trail da direita e troque o `Echo Operator` para `Normal`:
             o cruzamento apaga e ela fica igual a` da esquerda.
 
-  FLASH   A mesma bolinha, piscando a cada {beat:.1} s.
-          A` esquerda o flash branco TAPA a bolinha. A` direita ele SOMA -- o pico
-          estoura de branco e transborda.
-          > clique no no' Strobe da direita e troque o `Flash Operator` para `Normal`.
+  FLASH   Uma ROSETA de 5 bolinhas que se SOBREPOEM, piscando a cada {beat:.1} s.
+          OLHE O MEIO DA ROSETA, onde as 5 se cruzam.
+          A` esquerda o flash so' TAPA: o meio fica da mesma cor que as pontas.
+          A` direita ele SOMA: no pico o MEIO fica visivelmente mais claro que as
+          pontas, quase branco.
+          > clique no no' Strobe da direita e troque o `Flash Operator` para `Normal`:
+            o meio volta a ficar igual as pontas.
+          (!) E' por isso que sao 5 sobrepostas e nao uma so': somar so' se ve' onde
+              ha' SOBREPOSICAO. Uma bolinha sozinha desenha quase igual nos dois modos.
 
   (!) O `Sink` (o primeiro item dos dois dropdowns) NAO e' um modo: quer dizer
       \"o mesmo do Output\". E' o default, e e' por isso que nada muda ate' escolher.

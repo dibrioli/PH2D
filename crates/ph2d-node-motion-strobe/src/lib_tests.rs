@@ -637,3 +637,29 @@ fn an_instance_that_never_fired_does_not_swell_on_its_own() {
         glow(&up)
     );
 }
+
+/// **O OPERADOR DO FLASH É O IRMÃO DO ECO, E OBEDECE À MESMA ESCADA** (doc 89, folha 07 —
+/// a célula dizia *"um conserto serve os dois nós"*).
+///
+/// ⚠️ O gate mede a ESCADA, e não a tabela de rótulos: quem pina os rótulos contra o
+/// vocabulário do sink é o arch-gate da shell, que vê as três folhas. Aqui prova-se que o
+/// `0` é *sem escolha* (o default byte-idêntico), que o índice do dropdown É o valor da
+/// coluna, e que o teto é o da própria lista.
+#[test]
+fn the_flash_operator_uses_the_same_ladder_as_the_echo() {
+    assert_eq!(super::flash_blend_tag(0.0), None, "`Sink` = sem escolha");
+    assert_eq!(super::flash_blend_tag(-3.0), None, "negativo idem");
+    assert_eq!(super::flash_blend_tag(f32::NAN), None, "lixo idem");
+    assert_eq!(
+        super::flash_blend_tag(2.0),
+        Some(2.0),
+        "o indice E' o valor"
+    );
+    let top = (super::FLASH_BLEND_LABELS.len() - 1) as f32;
+    assert_eq!(super::flash_blend_tag(999.0), Some(top), "teto da lista");
+    assert_eq!(
+        super::FLASH_BLEND_LABELS[0],
+        "Sink",
+        "o 0 do dropdown tem de DIZER que e' o do sink"
+    );
+}

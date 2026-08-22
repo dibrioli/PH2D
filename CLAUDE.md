@@ -190,7 +190,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `only_the_declared_clock_owners_offer_the_substeps_param`, teto **64** nos dois porque o ritmo é partilhado). Um
   sub-passo LOCAL de um solver folha usa outra chave — a `motion.verlet_rope` usa `solver_substeps` (rótulo "Substeps"),
   e enquanto usava a mesma o app corria as duas leis e a corda caía **4,8× menos** que os gates dela medem.
-  **Aberto:** os P1 restantes da folha 03 (simulação) · ✅ **as folhas 02, 05, 06, 08, 09, 10, 11, 14 e 17 FECHARAM** (0 P1 —
+  **Aberto:** os P1 restantes da folha 03 (simulação) · ⚠️ **o `blend` é uma COLUNA por LINHA**
+  (o *Echo Operator* do `motion.trail` e o *Flash Operator* do `motion.strobe`), com a escada
+  `0 = o modo do sink` · `m+1 = o modo m` — ⛔ guardar o modo CRU faria a identidade de junção
+  rebaixar linha alheia em silêncio; e **as DUAS rotas de lowering** a leem (a do device assava o
+  tag como constante) · ✅ **as folhas 02, 05, 06, 08, 09, 10, 11, 14 e 17 FECHARAM** (0 P1 —
   a **14** com o **Trim** (`fx_trim`, na pilha de efeitos do `VecPath`), o **tracejado** e o `size` como
   **coluna** (geometria em raio 1); ⚠️ **um param de forma conduzido por FIO fazia a forma DESAPARECER** —
   a chave de conteúdo é pré-cook e o valor conduzido é do cook (`motion_externals::driven_params`) —,

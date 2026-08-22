@@ -92,6 +92,10 @@ pub(crate) mod conferencia_demos_force;
 pub(crate) mod conferencia_demos_fx;
 #[path = "motion_state_conferencia_demos_goal.rs"]
 pub(crate) mod conferencia_demos_goal;
+/// A cena do OPERADOR (`=77`) — o *Echo Operator* do rastro e o *Strobe Operator* do
+/// flash, que a folha 07 dizia serem um conserto só.
+#[path = "motion_state_conferencia_demos_operator.rs"]
+pub(crate) mod conferencia_demos_operator;
 #[path = "motion_state_conferencia_demos_rank.rs"]
 pub(crate) mod conferencia_demos_rank;
 #[path = "motion_state_conferencia_demos_sim.rs"]

@@ -91,3 +91,79 @@ fn the_gpu_route_reads_the_tag_from_the_one_door() {
          composita em Normal em silêncio"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// **O OPERADOR POR-LINHA** (doc 89, folha 07 — o *Echo Operator* do AE, e o
+// *Strobe Operator* que a mesma folha diz ser o mesmo conserto).
+//
+// Aqui há QUATRO peças que não podem ver-se umas às outras: o `motion.trail` e o
+// `motion.strobe` (duas folhas irmãs, e um nó não depende de outro), o
+// `motion.output` (que possui o vocabulário do sink) e o `ph2d-eval-motion` (que
+// lê a coluna). A shell é o único sítio que enxerga as quatro.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **OS TRÊS NÓS FALAM O MESMO VOCABULÁRIO.**
+///
+/// Os rótulos são copiados à mão em cada folha (nenhuma pode importar da outra), então a
+/// única coisa que impede o `Screen` de um ser o `Multiply` do outro é isto. ⚠️ O do sink
+/// não tem o `Sink` na frente — ele É o sink —, e é essa a única diferença permitida.
+#[test]
+fn the_row_operators_speak_the_sinks_vocabulary() {
+    let sink = ph2d_node_motion_output::BLEND_LABELS;
+    for (who, labels) in [
+        ("trail", ph2d_node_motion_trail::ECHO_BLEND_LABELS),
+        ("strobe", ph2d_node_motion_strobe::FLASH_BLEND_LABELS),
+    ] {
+        assert_eq!(
+            labels[0], "Sink",
+            "{who}: o indice 0 da coluna quer dizer *o modo do sink*, e o rotulo tem de o dizer"
+        );
+        assert_eq!(
+            &labels[1..],
+            &sink[..],
+            "{who}: os modos divergiram do vocabulario do sink — o artista escolhe um nome \
+             e recebe outro modo, com os dois lados verdes"
+        );
+    }
+}
+
+/// **OS DOIS NÓS ESCREVEM A MESMA COLUNA** — senão um deles seria simplesmente ignorado
+/// pelo lowering, sem erro nenhum.
+#[test]
+fn both_nodes_write_the_column_the_lowering_reads() {
+    assert_eq!(
+        ph2d_node_motion_trail::BLEND_COLUMN,
+        ph2d_node_motion_strobe::BLEND_COLUMN
+    );
+    // E ela é o mesmo nome do param do sink, de propósito: é a mesma grandeza, e um
+    // `value.attribute` a jusante lê o que o rastro escolheu.
+    assert_eq!(
+        ph2d_node_motion_trail::BLEND_COLUMN,
+        ph2d_node_motion_output::BLEND_PARAM
+    );
+}
+
+/// **O VOCABULÁRIO DOS NÓS CABE NOS PIPELINES DO RENDERER.**
+///
+/// ⚠️ Um nó é uma FOLHA e não alcança o renderer, então ele clampa pela própria lista; se
+/// essa lista crescesse além dos pipelines, o último modo do dropdown seria escolhível e
+/// silenciosamente rebaixado no lowering. É a metade que nenhum dos dois lados vê.
+#[test]
+fn no_node_offers_a_mode_the_renderer_cannot_draw() {
+    let pipelines = ph2d_render::pipeline::BLEND_PIPELINE_COUNT;
+    assert_eq!(
+        ph2d_node_motion_output::BLEND_LABELS.len(),
+        pipelines,
+        "o vocabulario do sink e o array de pipelines tem de ser a mesma lista"
+    );
+    for (who, labels) in [
+        ("trail", ph2d_node_motion_trail::ECHO_BLEND_LABELS.len()),
+        ("strobe", ph2d_node_motion_strobe::FLASH_BLEND_LABELS.len()),
+    ] {
+        assert_eq!(
+            labels - 1,
+            pipelines,
+            "{who}: os modos (fora o `Sink`) tem de ser exactamente os pipelines"
+        );
+    }
+}

@@ -59,6 +59,7 @@ descesse seria uma que parou de olhar para os lados.
 | **T** | ✅ **folha 15 fechou** — o `value.switch` de N entradas é **exprimível** (`2·⌈(N−4)/3⌉+1` nós, per-elemento preservado); e a ramificação MORTA de um switch ganhou badge | `AUTOFIX=8` ✔ |
 | **U** | `source.shape`: **sweep/start/inner** + **raio por canto/smoothing**; e o `corner` deixou de ser da caixa para ser do **catálogo** (4 → **38** espécies) | `SHAPE_SMOKE=3` ✔ |
 | **U** | ✅ **folha 14 FECHOU** — `source.shape` ganha **Trim** (`fx_trim`, arco exato, na pilha de efeitos) + **tracejado** (o `StrokeSpec` já o falava) + o **`size` como COLUNA** (geometria em raio 1). Achados no caminho: o traço **apagava o preenchimento** de toda forma; o `Speech Rect` era a única espécie cujo raio de quina **não escalava**; e um param **conduzido por fio** fazia a forma DESAPARECER | `=76` ⏳ |
+| **Y** | ✅ **folha 07 quase FECHOU** (2 P1 → 1) — o `Echo Operator` do rastro e o `Flash Operator` do flash, por UMA coluna de convenção (`blend`) que as duas rotas de lowering aprenderam. O P1 que resta é o `SUPERAR:` S1 (o rastro RE-COZIDO), que é wave com ADR | `=77` ⏳ |
 | **U** | ⛔ **três refutações medidas**: o *trim/dash* (a cura, não o item — 42 de 47 formas são fechadas), o *`fill_rule`* (a estrela citada **nunca** auto-intersecta) e o *Pick Instances* (já existe: `combine` + `duplicator(pick)`) | — |
 | **V** | folha 08: `motion.sort` ganha **direção arbitrária** (`axis_angle`) e a **chave como CAMPO** (porta `weight`, modo 5) | `=63` ✔ |
 | **V** | folha 08: ✅ **o `reindex` do `motion.sort`** — a ordenação não chegava ao efector indexado. **Aberta por um smoke do Enio**, não por uma tabela | `=63` ✔ |
@@ -240,7 +241,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As SESSENTA E SEIS LEIS que esta linha pagou para aprender
+## §4 — As SESSENTA E SETE LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -729,6 +730,18 @@ são estilo.
     mora: no `PathTess`, que é quem já pagou o cozimento. Medir o caminho de origem seria
     barato e daria a cadência errada.
 
+67. **Uma célula que nomeia a CAUSA de outra é um par, e fecha por um conserto só.** O
+    *Echo Operator* (P1) e o *Strobe Operator* (P2) estavam em linhas diferentes da folha
+    07, e a segunda dizia em voz alta *"mesma causa do Echo Operator do trail (o blend é do
+    renderer). Um conserto serve os dois nós"*. Era verdade, e ninguém tinha somado: a cura
+    é UMA coluna de convenção (`blend`, com a escada `0 = o do sink`, `m+1 = o modo m` — a
+    mesma do `texture_id`), e ela fecha as duas. ⚠️ **A escada não é arrumação:** guardar o
+    modo CRU faria a identidade de junção (`0`) baixar toda linha alheia para `Normal`, em
+    silêncio, e só numa cena que compõe em `Add`. ⚠️ E o conserto tem **duas metades de
+    lowering**: a rota do device assava o tag como CONSTANTE de codegen, então sem a segunda
+    o operador funcionaria com `PH2D_GPU_COOK=0` e pararia sem ninguém tocar em nada — que é
+    exactamente o modo de falha que o arch-gate do blend do sink já nomeava.
+
 
 ---
 
@@ -777,6 +790,19 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `=77` — o OPERADOR por linha (folha 07)
+
+```
+env PH2D_GPU_COOK_DEMO=77 cargo run -p ph2d-host-desktop --release
+```
+
+Duas linhas, e **as duas precisam de PLAY**. **RASTRO**: a mesma bolinha percorre um OITO
+(um caminho que se CRUZA — sem cruzamento não haveria o que somar, e há gate a exigi-lo);
+à esquerda a cauda TAPA, à direita ela SOMA e o cruzamento acende. **FLASH**: o mesmo
+strobe, à direita a somar. ⚠️ O primeiro item dos dois dropdowns (`Sink`) **não é um modo**
+— é *"o mesmo do Output"*, e é o default.
+
 
 ### `=76` — a folha 14 inteira (o Trim, o tracejado, e o traço que apagava o miolo)
 

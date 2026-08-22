@@ -667,3 +667,43 @@ fn the_ghost_inherits_the_mask_of_the_element_that_made_it() {
         after.count()
     );
 }
+
+/// **O OPERADOR DO ECO SÓ ESCREVE A COLUNA QUANDO O ARTISTA ESCOLHE** (doc 89, folha 07).
+///
+/// ⚠️ **As duas metades numa só de propósito.** O default tem de não escrever NADA — uma
+/// coluna a mais muda a impressão digital do stream e o custo de toda junção a jusante —, e
+/// quando ele escreve tem de escrever `modo + 1` em TODAS as linhas, cabeça inclusive: um
+/// rastro `Add` cuja cabeça ficasse `Normal` teria um ponto morto exactamente onde o brilho
+/// devia ser maior (é a lei do AE, e o gate é o que a fixa).
+#[test]
+fn the_echo_operator_writes_the_column_only_when_chosen() {
+    let live = Stream::new(2)
+        .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]))
+        .with("id", Column::Scalar(vec![0.0, 1.0]));
+
+    // Default (`Sink`): nenhuma coluna.
+    let neutral = Decay {
+        fade: 1.0,
+        shrink: 1.0,
+        hue_shift: 0.0,
+        saturation: 1.0,
+        spin: 0.0,
+    };
+    let plain = step(&live, &Stream::new(0), 4.0, neutral, 1.0);
+    assert!(
+        plain.get(super::BLEND_COLUMN).is_none(),
+        "o default nao pode escrever a coluna"
+    );
+
+    // `Add` é o índice 2 do dropdown (`Sink`, `Normal`, `Add`), e a coluna guarda o índice.
+    let tag = super::echo_blend_tag(2.0).expect("Add e' uma escolha");
+    assert!(
+        (tag - 2.0).abs() < 1e-6,
+        "o indice do dropdown E' o da coluna"
+    );
+    assert_eq!(super::echo_blend_tag(0.0), None, "`Sink` = sem escolha");
+    assert_eq!(super::echo_blend_tag(f32::NAN), None, "lixo = sem escolha");
+    // E o teto é o da lista, nunca um literal.
+    let top = (super::ECHO_BLEND_LABELS.len() - 1) as f32;
+    assert_eq!(super::echo_blend_tag(999.0), Some(top));
+}

@@ -158,13 +158,17 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
 }
 
 #[test]
-fn the_lowering_validates_for_all_64_column_subsets_and_every_blend() {
-    // Six columns now (`texture_id` joined `P`/`size`/`rot`/`tint`/`uv_rect`),
-    // so 64 subsets — bit 5 is the texture_id column. The blend tag (doc 89,
-    // folha 17) is a CODEGEN CONSTANT, so it is part of the source naga has to
-    // accept: a tag that produced malformed WGSL would only be found the first
-    // time an artist picked that mode, on a device, with no message.
-    for mask in 0u8..64 {
+fn the_lowering_validates_for_all_128_column_subsets_and_every_blend() {
+    // SETE colunas (`blend` juntou-se ao `texture_id`, doc 89 folha 07), então 128
+    // subconjuntos — o bit 6 é a coluna `blend`. O tag do sink (folha 17) continua a ser uma
+    // CONSTANTE DE CODEGEN, então ele é parte da fonte que o naga tem de aceitar: um tag que
+    // produzisse WGSL malformado só apareceria na primeira vez que um artista escolhesse
+    // aquele modo, num device, sem mensagem nenhuma.
+    //
+    // ⚠️ **O produto cartesiano é de propósito.** A palavra do `flip_uv` passou a ser um
+    // `if` sobre a coluna E a constante do sink; as duas metades só se encontram em
+    // `present[6] && blend > 0`, que é exactamente uma casa deste laço.
+    for mask in 0u8..128 {
         let present = std::array::from_fn(|i| mask & (1 << i) != 0);
         for blend in 0..ph2d_render::pipeline::BLEND_PIPELINE_COUNT as u8 {
             let src = ph2d_gpu_cook::lower::lower_module(present, blend);

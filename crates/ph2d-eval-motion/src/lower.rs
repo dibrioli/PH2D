@@ -24,6 +24,29 @@ use rayon::prelude::*;
 /// the grid spacing so the raw default document renders as clean, distinct
 /// quads; a headless caller passes the whole-atlas rect `[0,0,1,1]` and unit
 /// size `[1,1]`.
+/// O `flip_uv` de UMA linha: a coluna `blend` quando ela existe e diz alguma coisa, senão o
+/// do sink (`fallback`).
+///
+/// ⚠️ **`0` na coluna quer dizer *"o do sink"*, não `Normal`** — ver a nota no chamador. E o
+/// número é arredondado e limitado pelo mesmo teto que o `sink_blend_tag` usa (o array de
+/// pipelines do renderer), porque um valor fora da faixa vindo de um `value.*` qualquer não
+/// pode escolher um pipeline que não existe.
+#[must_use]
+fn blend_at(col: Option<&Column>, i: usize, fallback: u32) -> u32 {
+    let v = scalar_at(col, i, 0.0);
+    if !v.is_finite() || v < 0.5 {
+        return fallback;
+    }
+    let top = ph2d_render::pipeline::BLEND_PIPELINE_COUNT as f32;
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "clampado a 1..=BLEND_PIPELINE_COUNT antes do cast"
+    )]
+    let tag = (v.round().clamp(1.0, top) as u8) - 1;
+    RenderInstance::pack_blend_bits(tag)
+}
+
 pub fn lower_to_instances_into(
     stream: &Stream,
     default_uv_rect: [f32; 4],
@@ -68,6 +91,20 @@ pub fn lower_to_instances_onto(
     // `0`, which is what this lowering hardcoded before the param existed ⇒ the
     // default is byte-identical.
     let flip_uv = RenderInstance::pack_blend_bits(blend);
+    // doc 89, folha 07 (o *Echo Operator* do AE): a coluna `blend` deixa cada LINHA
+    // escolher como compõe, e não só o sink inteiro. É o que faz um rastro de LUZ — os
+    // ecos somam-se em vez de se taparem.
+    //
+    // ⚠️ **A convenção é `0 = o modo do SINK`, `m + 1 = o modo `m`** — a mesma escada do
+    // `texture_id`/`geometry_id`, e ela é o que mantém o default byte-idêntico: uma stream
+    // sem a coluna, e uma linha que a junção preencheu com a identidade `0`, leem os dois o
+    // número que o sink já dizia. Guardar o modo cru faria uma junção baixar toda linha
+    // alheia para `Normal`.
+    //
+    // ⚠️ E o gather só existe quando a coluna existe: o `flip_uv` continua HOISTED no caso
+    // comum (é um número para o sink inteiro), que é a razão por que ele foi tirado do
+    // `make` quando o param do sink nasceu.
+    let blend_col = stream.get("blend");
     out.reserve(n);
     // Each instance is a pure function of its own index (a five-column gather +
     // one `sin_cos`); no cross-element dependency. Above the threshold
@@ -100,7 +137,7 @@ pub fn lower_to_instances_onto(
             // bits stay zero, which is what `pack_blend_bits` writes.
             per_corner_tint: [[1.0; 4]; 4],
             opacity: 1.0,
-            flip_uv,
+            flip_uv: blend_at(blend_col, i, flip_uv),
             texture_id: scalar_at(tex, i, 0.0) as u32,
             // Node-graph emit doesn't have a hierarchy slot — every
             // motion node's instances share `z_order = 0`. Renderer's

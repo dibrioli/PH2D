@@ -503,3 +503,39 @@ pub(crate) fn style_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<
     );
     sinks
 }
+
+/// **A CENA `=77` — dois exemplos, um por linha** (doc 89, folha 07: o *Echo Operator* e o
+/// *Strobe Operator*, que a folha dizia serem **um conserto só**).
+///
+/// ⚠️ **Só se julga com o PLAY** — as duas linhas são temporais.
+pub(crate) fn operator_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_operator::build_operator_demo_document(doc, registry).unwrap_or_default();
+    let (len, beat) = conferencia_demos_operator::authored();
+    eprintln!(
+        "[cena 77] Dois exemplos, um por linha -- {n} bandas. ESQUERDA = como era,
+  DIREITA = o que mudou. O nome da linha esta' escrito no meio da tela.
+
+  >>> DE' PLAY. As duas linhas sao temporais; paradas, as metades sao iguais.
+
+  RASTRO  Uma bolinha azul percorre um OITO deitado, deixando {len:.0} ecos atras dela. Como
+          o caminho se CRUZA, a cauda passa por cima de si mesma.
+          A` esquerda a cauda TAPA o que esta' atras -- no cruzamento fica tudo igual.
+          A` direita ela SOMA: o cruzamento ACENDE, mais claro que os dois lados.
+          > clique no no' Trail da direita e troque o `Echo Operator` para `Normal`:
+            o cruzamento apaga e ela fica igual a` da esquerda.
+
+  FLASH   A mesma bolinha, piscando a cada {beat:.1} s.
+          A` esquerda o flash branco TAPA a bolinha. A` direita ele SOMA -- o pico
+          estoura de branco e transborda.
+          > clique no no' Strobe da direita e troque o `Flash Operator` para `Normal`.
+
+  (!) O `Sink` (o primeiro item dos dois dropdowns) NAO e' um modo: quer dizer
+      \"o mesmo do Output\". E' o default, e e' por isso que nada muda ate' escolher.
+
+  DEU ERRADO se as duas metades de qualquer linha ficarem iguais com o Play rodando,
+  ou se o cruzamento do oito da direita nao acender.",
+        n = sinks.len(),
+    );
+    sinks
+}

@@ -228,9 +228,74 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "spin",
             default: 0.0,
         },
+        // **O OPERADOR DO ECO** (doc 89 folha 07 — o *Echo Operator* do AE): como cada
+        // linha deste rastro COMPÕE. `0` = o modo do sink ⇒ nenhuma coluna escrita ⇒ o
+        // alpha-over de sempre, byte-idêntico. Ver [`ECHO_BLEND`].
+        ParamSpec {
+            name: ECHO_BLEND,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **O OPERADOR DO ECO** — como cada linha do rastro compõe na tela (doc 89, folha 07).
+///
+/// O look canónico de rastro de LUZ é o eco a **somar-se** em vez de se tapar; com
+/// alpha-over, a cauda de um cometa escurece onde devia acender. O AE chama-o *Echo
+/// Operator*, e a família inteira (`Add`/`Screen`/`Maximum`) existe por isto.
+///
+/// ⚠️ **`0` quer dizer *o modo do SINK*, e não `Normal`.** É a escada do `texture_id`: sem
+/// ela, um rastro dentro de uma cena cujo `motion.output` compõe em `Add` baixaria as
+/// próprias linhas para `Normal` no instante em que alguém tocasse neste knob — e um
+/// `motion.combine` que juntasse este rastro com outra stream preencheria as linhas
+/// ALHEIAS com a identidade `0`, que tem de continuar a querer dizer *o do sink*.
+///
+/// ⚠️ **Vale para a cabeça TAMBÉM, e é a lei do AE:** o operador é de como as cópias se
+/// compõem entre si, e a viva é uma delas. Um rastro `Add` cuja cabeça ficasse `Normal`
+/// teria um ponto morto exactamente onde o brilho devia ser maior.
+pub const ECHO_BLEND: &str = "echo_blend";
+
+/// A coluna de convenção que o `ph2d_eval_motion` lê por LINHA. O nome é o mesmo do param
+/// do sink, e é de propósito: é a mesma grandeza, e um `value.attribute("blend")` a jusante
+/// lê o que o rastro escolheu.
+pub const BLEND_COLUMN: &str = "blend";
+
+/// Os modos que este operador oferece, na ordem das tags — os MESMOS nomes que o
+/// `motion.output` pinta no `Blend` dele.
+///
+/// ⚠️ **Copiados, e não importados, porque um nó é uma FOLHA:** este crate não pode
+/// depender do `ph2d-node-motion-output` nem do `ph2d-ecs`, e é a mesma razão por que
+/// aquele nó também os escreve à mão. Quem impede as duas listas de divergir é um gate na
+/// shell, que vê os dois lados — a mesma solução que o `BLEND_PARAM` já usa.
+pub const ECHO_BLEND_LABELS: [&str; 7] = [
+    // ⚠️ O primeiro NÃO é um modo: é a ausência de escolha, e o rótulo tem de o dizer.
+    "Sink",
+    "Normal",
+    "Add",
+    "Subtract",
+    "Multiply",
+    "Screen",
+    "Premultiplied",
+];
+
+/// O valor da coluna para um `echo_blend` autorado — `None` quando ele é *o do sink*.
+///
+/// ⚠️ A coluna guarda **`modo + 1`**, que é exactamente o índice deste dropdown: o rótulo
+/// `Sink` é o `0`, e daí em diante o índice JÁ é `modo + 1`. Uma segunda aritmética entre o
+/// que o artista escolhe e o que a coluna guarda seria onde as duas escadas divergiriam.
+///
+/// O teto aqui é o desta lista; o do RENDERER (o array de pipelines) é aplicado no
+/// `ph2d_eval_motion`, que é quem pode alcançá-lo — um nó é uma folha.
+#[must_use]
+fn echo_blend_tag(v: f32) -> Option<f32> {
+    if !v.is_finite() || v < 0.5 {
+        return None;
+    }
+    #[expect(clippy::cast_precision_loss, reason = "sete rotulos")]
+    let top = (ECHO_BLEND_LABELS.len() - 1) as f32;
+    Some(v.round().clamp(1.0, top))
+}
 
 /// How many generations to keep, clamped by both the hard ceiling and the
 /// instance budget. Non-finite / negative → 1 (the identity), never 0 rows.
@@ -504,13 +569,20 @@ impl NodeOp for MotionTrail {
             saturation: ctx.param("saturation"),
             spin: ctx.param("spin"),
         };
-        let out = step(
+        let mut out = step(
             ctx.input(0),
             ctx.input(1),
             ctx.param("length"),
             decay,
             ctx.param("spacing"),
         );
+        // ⚠️ **Só escreve a coluna quando o artista escolheu**: `0` é *o modo do sink*, e
+        // não escrever é o que mantém o default byte-idêntico (uma coluna a mais muda a
+        // impressão digital do stream e o custo de toda junção a jusante).
+        if let Some(tag) = echo_blend_tag(ctx.param(ECHO_BLEND)) {
+            let n = out.count();
+            out = out.with(BLEND_COLUMN, Column::Scalar(vec![tag; n]));
+        }
         ctx.emit(out);
     }
 }
@@ -615,6 +687,19 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::IntSlider,
     },
+    // ⚠️ `Enum`, nunca slider: uma tag é um NOME, e não há meio-caminho entre `Add` e
+    // `Multiply` — a mesma razão que o `Blend` do `motion.output` já escreve.
+    ParamUiHint {
+        param: ECHO_BLEND,
+        label: "Echo Operator",
+        min: 0.0,
+        #[expect(clippy::cast_precision_loss, reason = "sete rotulos")]
+        max: (ECHO_BLEND_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &ECHO_BLEND_LABELS,
+        },
+    },
 ];
 
 /// O espaçamento é uma contagem de TICKS, os dois ângulos são GRAUS, e os três alvos
@@ -662,6 +747,8 @@ static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("spin", "Decay"),
     ParamGroup::new("hue_shift", "Colour"),
     ParamGroup::new("saturation", "Colour"),
+    // O operador é sobre a COR na tela, tanto quanto o matiz e a saturação.
+    ParamGroup::new(ECHO_BLEND, "Colour"),
 ];
 
 #[cfg(test)]

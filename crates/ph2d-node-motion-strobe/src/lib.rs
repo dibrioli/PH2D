@@ -218,6 +218,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "probability",
             default: 1.0,
         },
+        // **O OPERADOR DO FLASH** (doc 89 folha 07 — o *Strobe Operator* do AE): como cada
+        // linha compõe enquanto acende. Mesma escada e mesmo vocabulário do
+        // `motion.trail::ECHO_BLEND`, e pela mesma razão — a célula da folha dizia
+        // *"um conserto serve os dois nós"*. `0` = o modo do sink ⇒ nenhuma coluna ⇒ o
+        // lerp de sempre, byte-idêntico.
+        ParamSpec {
+            name: FLASH_BLEND,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -392,7 +401,13 @@ impl NodeOp for MotionStrobe {
             ],
             flash_amount: ctx.param("flash_amount"),
         };
-        let out = step(ctx.input(0), ctx.input(1), ctx.input(2), &p);
+        let mut out = step(ctx.input(0), ctx.input(1), ctx.input(2), &p);
+        // ⚠️ **Só escreve a coluna quando o artista escolheu** — `0` é *o modo do sink*, e
+        // não escrever é o que mantém o default byte-idêntico.
+        if let Some(tag) = flash_blend_tag(ctx.param(FLASH_BLEND)) {
+            let n = out.count();
+            out = out.with(BLEND_COLUMN, Column::Scalar(vec![tag; n]));
+        }
         ctx.emit(out);
     }
 }
@@ -454,6 +469,40 @@ static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("flash_r", "Look"),
 ];
 
+/// **O OPERADOR DO FLASH** — irmão do `motion.trail::ECHO_BLEND`, e a célula da folha 07
+/// pediu-os juntos: *"mesma causa do Echo Operator do trail (o blend é do renderer). Um
+/// conserto serve os dois nós"*.
+pub const FLASH_BLEND: &str = "flash_blend";
+
+/// A coluna de convenção que o `ph2d_eval_motion` lê por LINHA (a mesma do rastro).
+pub const BLEND_COLUMN: &str = "blend";
+
+/// Os modos, na ordem das tags. ⚠️ **Copiados e não importados** — um nó é uma folha e não
+/// alcança o `ph2d-ecs` nem o nó irmão; quem impede as listas de divergir é um gate na
+/// shell, que vê os dois lados.
+pub const FLASH_BLEND_LABELS: [&str; 7] = [
+    // O primeiro NÃO é um modo: é a ausência de escolha.
+    "Sink",
+    "Normal",
+    "Add",
+    "Subtract",
+    "Multiply",
+    "Screen",
+    "Premultiplied",
+];
+
+/// O valor da coluna para um `flash_blend` autorado — `None` quando ele é *o do sink*.
+/// O índice do dropdown JÁ é `modo + 1` (o `Sink` ocupa o `0`).
+#[must_use]
+fn flash_blend_tag(v: f32) -> Option<f32> {
+    if !v.is_finite() || v < 0.5 {
+        return None;
+    }
+    #[expect(clippy::cast_precision_loss, reason = "sete rotulos")]
+    let top = (FLASH_BLEND_LABELS.len() - 1) as f32;
+    Some(v.round().clamp(1.0, top))
+}
+
 static PARAM_HINTS: &[ParamUiHint] = &[
     // ⚠️ O RÓTULO mudou de "Flash Length" para "Decay", e é correção: ele
     // descrevia o flash INTEIRO quando a queda era o flash inteiro. Com attack e
@@ -514,6 +563,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 4.0,
         step: 0.05,
         widget: ParamWidget::Slider,
+    },
+    // ⚠️ `Enum`, nunca slider: uma tag é um NOME (a mesma lei do `Blend` do sink).
+    ParamUiHint {
+        param: FLASH_BLEND,
+        label: "Flash Operator",
+        min: 0.0,
+        #[expect(clippy::cast_precision_loss, reason = "sete rotulos")]
+        max: (FLASH_BLEND_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &FLASH_BLEND_LABELS,
+        },
     },
     // The flash colour authored as one swatch → OKLCH picker (the canonical
     // colour UI, like `motion.tint`), driving the three linear channels with

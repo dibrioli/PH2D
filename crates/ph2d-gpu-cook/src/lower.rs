@@ -31,7 +31,18 @@ pub const INSTANCE_WORDS: u32 = 46;
 /// binding and the default. `texture_id` is a `Scalar` column like `rot` — it
 /// is read as `f32` and truncated to `u32`, mirroring the CPU lowering's
 /// `scalar_at(tex, i, 0.0) as u32`.
-pub const LOWER_COLUMNS: [&str; 6] = ["P", "size", "rot", "tint", "uv_rect", "texture_id"];
+pub const LOWER_COLUMNS: [&str; 7] = [
+    "P",
+    "size",
+    "rot",
+    "tint",
+    "uv_rect",
+    "texture_id",
+    // doc 89, folha 07 — o OPERADOR POR-LINHA (o *Echo Operator* do AE). Escalar como o
+    // `rot`; ausente ⇒ `0`, que quer dizer *o modo do sink* e é o que esta geradora
+    // escrevia como constante antes da coluna existir ⇒ byte-idêntico.
+    "blend",
+];
 
 /// Generate the lowering module for a concrete column set. Binding 0 = the
 /// uniforms, binding 1 = the instance output; then one `read` binding per
@@ -44,8 +55,12 @@ pub const LOWER_COLUMNS: [&str; 6] = ["P", "size", "rot", "tint", "uv_rect", "te
 /// pipeline cache keys on it — a uniform would have cost a binding and a write
 /// per frame to say something the source can simply spell. Tag 0 emits the
 /// literal `0u` this generator wrote before the param existed ⇒ byte-identical.
-pub fn lower_module(present: [bool; 6], blend: u8) -> String {
+pub fn lower_module(present: [bool; 7], blend: u8) -> String {
     let blend_bits = ph2d_render::RenderInstance::pack_blend_bits(blend);
+    // O teto e o deslocamento vêm do RENDERER, nunca de literais: um `6`/`5` cravados aqui
+    // continuariam a compilar no dia em que um sétimo modo nascesse.
+    let top = ph2d_render::pipeline::BLEND_PIPELINE_COUNT;
+    let shift = ph2d_render::RenderInstance::BLEND_SHIFT;
     let mut src = String::with_capacity(2048);
     src.push_str(
         "struct LowerParams {\n\
@@ -63,6 +78,7 @@ pub fn lower_module(present: [bool; 6], blend: u8) -> String {
         "f32",
         "vec4<f32>",
         "vec4<f32>",
+        "f32",
         "f32",
     ];
     let mut slot = 2u32;
@@ -85,6 +101,7 @@ pub fn lower_module(present: [bool; 6], blend: u8) -> String {
         "vec4<f32>(1.0, 1.0, 1.0, 1.0)", // tint
         "params.default_uv",             // uv_rect (caller-supplied)
         "0.0",                           // texture_id (absent → atlas 0)
+        "0.0",                           // blend (absent → 0 = o modo do SINK)
     ];
     for (i, col) in LOWER_COLUMNS.iter().enumerate() {
         if present[i] {
@@ -148,7 +165,16 @@ pub fn lower_module(present: [bool; 6], blend: u8) -> String {
         \x20   }}\n\
         \x20   // opacity (35) = 1 · flip_uv (36) = the sink's blend bits · uv_xform (37-40) = identity.\n\
         \x20   wf(base + 35u, 1.0);\n\
-        \x20   instances[base + 36u] = {blend_bits}u;\n\
+        \x20   // ⚠️ **flip_uv (36): a coluna `blend` decide por LINHA, e `0` quer dizer\n\
+        \x20   // *o modo do sink*** (doc 89 folha 07) — a MESMA escada do `blend_at` da\n\
+        \x20   // rota da CPU, porque as duas têm de compor igual. Sem a coluna o\n\
+        \x20   // `read_blend` é a constante `0.0` e isto dobra na constante de sempre.\n\
+        \x20   let bt = read_blend(i);\n\
+        \x20   var bb = {blend_bits}u;\n\
+        \x20   if (bt >= 0.5) {{\n\
+        \x20       bb = ((min(u32(round(bt)), {top}u) - 1u) & 7u) << {shift}u;\n\
+        \x20   }}\n\
+        \x20   instances[base + 36u] = bb;\n\
         \x20   wf(base + 37u, 1.0);\n\
         \x20   wf(base + 38u, 1.0);\n\
         \x20   instances[base + 39u] = 0u;\n\
@@ -171,7 +197,7 @@ pub fn lower_module(present: [bool; 6], blend: u8) -> String {
 /// blend tag** — the two things [`lower_module`] bakes into its source. The tag
 /// rides above the column bits, so a document that only changes its sink's blend
 /// gets its own cached pipeline instead of silently reusing the previous mode's.
-pub fn lower_signature(present: [bool; 6], blend: u8) -> u64 {
+pub fn lower_signature(present: [bool; 7], blend: u8) -> u64 {
     let cols = present
         .iter()
         .enumerate()
@@ -196,7 +222,7 @@ mod tests {
 
     #[test]
     fn absent_columns_read_the_cpu_defaults() {
-        let src = lower_module([false; 6], 0);
+        let src = lower_module([false; 7], 0);
         assert!(src.contains("return vec2<f32>(0.0, 0.0);")); // P
         assert!(src.contains("return params.default_size;"));
         assert!(src.contains("return params.default_uv;"));
@@ -210,7 +236,7 @@ mod tests {
     /// tile handle only reaches the device if the lowering reads the column.
     #[test]
     fn the_lowering_carries_texture_id() {
-        let mut present = [false; 6];
+        let mut present = [false; 7];
         present[5] = true; // texture_id present
         let src = lower_module(present, 0);
         // The column is bound and read as f32 (like `rot`), truncated to u32.
@@ -225,7 +251,7 @@ mod tests {
     /// graph is byte-identical — the reader falls back to `0.0`, truncating to 0.
     #[test]
     fn absent_texture_id_is_the_atlas() {
-        let src = lower_module([false; 6], 0);
+        let src = lower_module([false; 7], 0);
         assert!(src.contains("fn read_texture_id(i: u32) -> f32 { _ = i; return 0.0; }"));
         assert!(src.contains("instances[base + 41u] = u32(read_texture_id(i));"));
     }
@@ -236,11 +262,15 @@ mod tests {
     /// byte-identical instance.
     #[test]
     fn the_neutral_blend_emits_the_zero_word_it_always_did() {
-        let src = lower_module([false; 6], 0);
+        let src = lower_module([false; 7], 0);
+        // ⚠️ A palavra deixou de ser um literal e passou a ser um `if` sobre a coluna
+        // `blend` (doc 89 folha 07). O que continua a valer é a CONSTANTE de que ele parte:
+        // sem coluna, o `read_blend` é `0.0`, o ramo nunca corre, e o que sai é este `0u`.
         assert!(
-            src.contains("instances[base + 36u] = 0u;"),
-            "the default stopped writing the word this generator always wrote"
+            src.contains("var bb = 0u;"),
+            "o default parou de escrever a constante que esta geradora sempre escreveu"
         );
+        assert!(src.contains("fn read_blend(i: u32) -> f32 { _ = i; return 0.0; }"));
     }
 
     /// **A chosen tag reaches word 36, in the RENDERER's packing.** The oracle is
@@ -255,12 +285,35 @@ mod tests {
     fn an_authored_blend_is_baked_into_the_generated_source() {
         for blend in 1..BLEND_PIPELINE_COUNT as u8 {
             let bits = ph2d_render::RenderInstance::pack_blend_bits(blend);
-            let src = lower_module([false; 6], blend);
+            let src = lower_module([false; 7], blend);
             assert!(
-                src.contains(&format!("instances[base + 36u] = {bits}u;")),
+                src.contains(&format!("var bb = {bits}u;")),
                 "blend {blend} did not reach word 36 of the generated source"
             );
         }
+    }
+
+    /// **A COLUNA `blend` CHEGA À PALAVRA 36 NA ROTA DA GPU** (doc 89, folha 07).
+    ///
+    /// ⚠️ **É a metade que nenhuma varredura de naga vê:** uma geradora que ligasse a coluna
+    /// e não a LESSE emite WGSL perfeitamente válido, e o `Echo Operator` funcionaria na CPU
+    /// e não no device — o defeito que o cabeçalho do arch-gate do sink chama de *"o artista
+    /// vê a feature funcionar e depois parar sem mexer em nada"*.
+    #[test]
+    fn the_blend_column_reaches_word_36_on_the_device_route() {
+        let mut present = [false; 7];
+        present[6] = true; // a coluna `blend`
+        let src = lower_module(present, 0);
+        assert!(src.contains("var<storage, read> in_blend: array<f32>;"));
+        assert!(src.contains("fn read_blend(i: u32) -> f32 { return in_blend[i]; }"));
+        assert!(
+            src.contains("let bt = read_blend(i);"),
+            "a palavra tem de LER a coluna"
+        );
+        assert!(src.contains("instances[base + 36u] = bb;"));
+        // E o deslocamento é o do RENDERER, nunca um literal desta geradora.
+        let shift = ph2d_render::RenderInstance::BLEND_SHIFT;
+        assert!(src.contains(&format!("<< {shift}u;")));
     }
 
     /// **The pipeline cache can TELL two blends apart.** The tag is a codegen
@@ -288,8 +341,8 @@ mod tests {
         }
         // And the column bits still separate column sets at a FIXED blend — the
         // tag must not have eaten the bits it rides above.
-        let a = lower_signature([false; 6], 0);
-        let b = lower_signature([true; 6], 0);
+        let a = lower_signature([false; 7], 0);
+        let b = lower_signature([true; 7], 0);
         assert_ne!(a, b, "the column bits stopped separating column sets");
     }
 }

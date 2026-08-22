@@ -402,6 +402,13 @@ rfd = "0.15"
 # dep via winit/macos; promoting to a direct dep is free (no extra
 # compile unit) and keeps the crate `forbid(unsafe_code)`-clean
 # because all wrapping is inside the core-graphics crate itself.
+# ⚠️ Os dois entram por DOIS motivos, e o segundo é o que os torna obrigatórios aqui: a
+# cena `=77` autora o `Echo Operator`/`Flash Operator` pelo NOME do param (nunca por um
+# literal), e o arch-gate do operador por-linha pina o vocabulário deles contra o do sink —
+# um nó é uma folha e não importa do irmão, então a shell é o único sítio que vê os três.
+ph2d-node-motion-trail = { path = "../../crates/ph2d-node-motion-trail" }
+ph2d-node-motion-strobe = { path = "../../crates/ph2d-node-motion-strobe" }
+
 [dev-dependencies]
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a
 # GEOMETRIA que um painel de fato registra. O censo de linhas (doc 88 B3) mede quantas

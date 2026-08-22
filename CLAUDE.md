@@ -410,9 +410,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   pedia. Com a coluna nova (`Σquant/Σalvo`) a lei passou a ser o **`ScaleFactor`** da referência, e o toro 48×24
   foi de **3 096 para 6 221 quads**. ⚠️ A recusa que barrava essa lei (36,3% de dobras) **dissolveu** quando a
   parametrização por patch curou o grão — hoje ela dá 0,0%. ⛔ Fica aberta a **aresta máxima** em 12–24× o alvo.
+  ⛔⛔ **VERMELHO do produto, medido 22/08 sobre a FOTO do Enio:** a esfera com orelha sai com uma aresta de
+  **56% da peça** (gate `#[ignore]` `the_ear_does_not_ship_an_edge_across_the_piece`) — e passava em TODAS as
+  réguas. ⭐ A causa é **um** patch de perímetro **520% da diagonal** (o 2.º maior em 3 fixturas é 230%): as
+  lascas dele forçam raios de leque `[1,39,1,1,39,1]`, e um raio `1` faz o sector ter **uma célula de fundo**.
   ⛔ Outros buracos
   medidos: o F1 devolve o cubo **não-manifold** · a esfera **embaralhada** não fecha · **sem feature lines**.
-  Tabelas por fase: `PLAN.md` §4-bis..§4-septvicies.
+  Tabelas por fase: `PLAN.md` §4-bis..§4-undetricies.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que
   prova a inércia.
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·

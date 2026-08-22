@@ -2678,3 +2678,60 @@ espaço. Revertido, com o mecanismo no doc do `Domain::place`.
 ⭐ O gate `the_ear_does_not_ship_an_edge_across_the_piece` (`#[ignore]`, **vermelho**)
 é o endereço do defeito, com a barra que o relatório já definia. ⛔ **A causa
 continua por achar** — e as três coisas que ela **não** é já estão eliminadas.
+
+---
+
+## 4-undetricies — ⭐⭐⭐ **A CAUSA DA FOTO: um patch que dá TRÊS VOLTAS à peça**
+
+> O §4-duodetricies deixou a aresta de 56 % com três explicações eliminadas e a causa
+> por achar. Ela estava num único patch, e o número que o denuncia tem margem.
+
+### ⭐ O patch
+
+`patch 1` da esfera com orelha, **seis lados**, comprimentos:
+
+```text
+    6,78 · 0,27 · 2,15 · 6,80 · 0,09 · 2,15      perímetro 18,2
+```
+
+⛔ **Perímetro = 520 % da diagonal da peça.** Os dois lados de `6,8` são quase a
+circunferência inteira (`6,28`); os de `0,09` e `0,27` são lascas.
+
+⭐⭐ **E o número separa-o de tudo o resto:** em três fixturas e dezenas de patches, o
+**segundo** maior perímetro é `230 %`. *Um contra 2,3× de folga não é a cauda de uma
+distribuição — é outra coisa.*
+
+| | perímetro / diagonal |
+|---|---|
+| ⛔ **orelha, `patch 1`** | ⛔ **520 %** |
+| o segundo maior (todas as fixturas) | 230 % |
+| a mediana | ~110 % |
+
+### ⭐⭐ O mecanismo, do perímetro à aresta
+
+As lascas recebem **2** segmentos e os lados longos **40**. A lei do leque
+(`L_i = e_{i−1} + e_{i+1}`) resolve isso com raios **`[1, 39, 1, 1, 39, 1]`** —
+quatro dos seis valem `1`.
+
+⇒ Um raio de `1` faz o sector ter **uma célula de fundo**, e o quad dessa célula liga
+um ponto lá longe de um lado a um ponto lá longe do seguinte. Num patch que dá três
+voltas à peça, **esse quad atravessa-a** — e as duas pontas saem antipodais, ambas a
+raio `1,00`. *Exactamente o que a foto mostra, e exactamente o que a face medida
+diz:* `[135, 136, 283, 282]`, dois pares vizinhos em lados opostos da esfera.
+
+⚠️ **E é por isso que ela não encolhe com o slider:** a `d = 1,0` os lados longos
+passam a `384` segmentos e os raios ficam `[6, 384, 10, 1, 379, 4]` — **o sector
+continua a ter `1` de fundo**.
+
+### ⇒ Onde o conserto mora
+
+⛔ **O F3 não devia emitir este patch**, e ⛔ **`dissolve` não serve** — ele *junta*
+patches, e este já é grande demais. As duas direcções abertas:
+
+| direcção | o que exige |
+|---|---|
+| **cortar** o patch gigante | o mesmo trabalho da asa: acrescentar parede, não apagar |
+| **piso do raio** no F5/F4 | um `min` de arco que olhe o comprimento **geométrico** do lado, em vez do `1` fixo |
+
+⚠️ **A segunda mexe nas restrições do F4**, cujo ótimo é demonstrado — e mudar o
+`min` muda o problema que ele prova. *Não é uma linha.*

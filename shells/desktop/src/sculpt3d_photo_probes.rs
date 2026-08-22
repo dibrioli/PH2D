@@ -206,6 +206,122 @@ fn what_do_the_photos_measure() {
                     }
                 }
             }
+            // ⭐⭐ **OS RAIOS DO LEQUE.** Num patch de valência `n` o F5 põe um
+            // centro e `n` raios de comprimento `e_j`; cada sector é uma grade
+            // `e_{j+1} × e_j`. ⛔ **Um `e_j` de 1 faz o sector ter UMA célula de
+            // fundo** — e o quad dela liga um ponto lá longe do lado `j` a um ponto
+            // lá longe do lado `j+1`. *Se o patch for grande, esse quad atravessa-o.*
+            for (pp, e) in quant.corners.iter().enumerate() {
+                let n = layout.side_arcs[pp].len();
+                let seg: Vec<u32> = (0..n)
+                    .map(|i| {
+                        layout.side_arcs[pp][i]
+                            .iter()
+                            .map(|&(a, _)| quant.arc[a as usize])
+                            .sum()
+                    })
+                    .collect();
+                let len: Vec<f32> = (0..n)
+                    .map(|i| {
+                        layout.side_arcs[pp][i]
+                            .iter()
+                            .map(|&(a, _)| layout.arc_length[a as usize])
+                            .sum()
+                    })
+                    .collect();
+                let lo = len.iter().copied().fold(f32::MAX, f32::min);
+                let hi = len.iter().copied().fold(0.0f32, f32::max);
+                let ratio = lo / hi.max(1.0e-9);
+                let _ = &seg;
+                // ⭐ Só os suspeitos: lado mais curto abaixo de um décimo do mais
+                // longo, **ou** um raio de leque a `1`.
+                if ratio > 0.10 && e.iter().copied().min().unwrap_or(9) > 1 {
+                    continue;
+                }
+                println!(
+                    "      patch {pp:<3} ({n} lados) curto/longo ⭐{ratio:.4}                      | raio min {} | perimetro {:.2} ({:.0}% da peca) | raios {e:?}",
+                    e.iter().copied().min().unwrap_or(0),
+                    len.iter().sum::<f32>(),
+                    100.0 * len.iter().sum::<f32>() / diag,
+                );
+            }
+            // ⭐⭐ **OS PATCHES RETANGULARES, e se os LADOS OPOSTOS estão longe.**
+            // A face da aresta liga **dois pares** de pontos — cada par junto, os
+            // pares antipodais. Isso é a assinatura de uma grade construída entre
+            // dois lados que não deviam estar frente a frente.
+            for (pp, sides) in layout.side_arcs.iter().enumerate() {
+                if sides.len() != 4 {
+                    continue;
+                }
+                // O ponto médio geométrico de cada lado, pela cadeia dos arcos dele.
+                let mid = |i: usize| -> [f32; 3] {
+                    let mut acc = [0.0f64; 3];
+                    let mut n = 0usize;
+                    for &(a, _) in &sides[i] {
+                        for &v in &layout.arc_chain[a as usize] {
+                            let q = work.positions()[v as usize];
+                            for k in 0..3 {
+                                acc[k] += f64::from(q[k]);
+                            }
+                            n += 1;
+                        }
+                    }
+                    let n = n.max(1) as f64;
+                    [
+                        (acc[0] / n) as f32,
+                        (acc[1] / n) as f32,
+                        (acc[2] / n) as f32,
+                    ]
+                };
+                let gap = |i: usize, j: usize| -> f32 {
+                    let (a, b) = (mid(i), mid(j));
+                    let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+                    d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
+                };
+                let (g02, g13) = (gap(0, 2), gap(1, 3));
+                if g02.max(g13) < 0.35 * diag {
+                    continue;
+                }
+                let seg = |i: usize| -> u32 {
+                    sides[i].iter().map(|&(a, _)| quant.arc[a as usize]).sum()
+                };
+                println!(
+                    "      ⛔ patch {pp} (4 lados): vao 0-2 {:.2} ({:.0}% da peca) · 1-3 {:.2}                      ({:.0}%) | segmentos {} {} {} {}",
+                    g02,
+                    100.0 * g02 / diag,
+                    g13,
+                    100.0 * g13 / diag,
+                    seg(0),
+                    seg(1),
+                    seg(2),
+                    seg(3),
+                );
+            }
+            // ⭐⭐ **A FACE INTEIRA, e não só a aresta.** Se três dos quatro cantos
+            // estão juntos e um está longe, o defeito é **um ponto** e a pergunta
+            // passa a ser *qual construção o pôs lá*; se dois e dois, é a face que
+            // liga duas regiões, e a pergunta é do **índice**.
+            for f in out.faces() {
+                let v = f.verts();
+                if !v.contains(&worst.1) || !v.contains(&worst.2) {
+                    continue;
+                }
+                let raios: Vec<String> = v
+                    .iter()
+                    .map(|&i| {
+                        let q = pos[i as usize];
+                        format!(
+                            "({:.2},{:.2},{:.2}) r={:.2}",
+                            q[0],
+                            q[1],
+                            q[2],
+                            q[0].mul_add(q[0], q[1].mul_add(q[1], q[2] * q[2])).sqrt()
+                        )
+                    })
+                    .collect();
+                println!("      a FACE da aresta: {:?}\n        ids {v:?}", raios);
+                break;
+            }
             let (pa, pb) = (pos[worst.1 as usize], pos[worst.2 as usize]);
             println!(
                 "      a MAIOR aresta: {:.3} de ({:.2}, {:.2}, {:.2}) a ({:.2}, {:.2}, {:.2})                  | raios {:.2} e {:.2}",
@@ -272,7 +388,37 @@ fn what_do_the_photos_measure() {
 /// **0** e ⛔ **não moveu a aresta**, com as dobras a **subir 25 %**. *Elas
 /// acompanham o defeito naquela peça; não o causam.*
 ///
-/// ⇒ **A causa continua por achar**, e é o item nº 1. Este gate é o endereço dela.
+/// # ⭐⭐⭐ A CAUSA, achada em 2026-08-22 — **um patch que dá três voltas à peça**
+///
+/// ⛔ **`patch 1` da orelha tem SEIS lados de comprimento**
+/// `6,78 · 0,27 · 2,15 · 6,80 · 0,09 · 2,15` — perímetro **18,2**, que é **520 % da
+/// diagonal da peça**. Os dois lados de `6,8` são quase a circunferência inteira
+/// (`6,28`); os de `0,09` e `0,27` são lascas.
+///
+/// ⭐ **E o número separa-o de tudo o resto com margem:** em três fixturas e
+/// dezenas de patches, o segundo maior perímetro é **230 %**. *Um contra 2,3× de
+/// folga não é uma cauda de distribuição: é outra coisa.*
+///
+/// ⇒ **O mecanismo, do perímetro à aresta:** as lascas recebem `2` segmentos e os
+/// lados longos `40`. A lei do leque (`L_i = e_{i−1} + e_{i+1}`) resolve isso com
+/// raios `[1, 39, 1, 1, 39, 1]` — **quatro dos seis raios valem `1`**. Um raio de
+/// `1` faz o sector ter **uma célula de fundo**, e o quad dessa célula liga um ponto
+/// lá longe de um lado a um ponto lá longe do seguinte. Num patch que dá três voltas
+/// à peça, esse quad **atravessa-a** — e as duas pontas saem antipodais, ambas a
+/// raio `1,00`, exactamente como a foto mostra.
+///
+/// ⚠️ **É por isso que ela não encolhe com o slider:** a `d = 1,0` os lados longos
+/// passam a `384` segmentos e os raios continuam `[6, 384, 10, 1, 379, 4]` — o
+/// sector continua a ter **um** de fundo.
+///
+/// ⇒ **O conserto é a montante**: o F3 não devia emitir um patch assim. ⛔ E
+/// `dissolve` não serve — ele **junta** patches, e este já é grande demais.
+///
+/// ```text
+/// \
+///   cargo test -p ph2d-host-desktop --release --bins \
+///   the_ear_does_not_ship_an_edge_across_the_piece -- --ignored --nocapture
+/// ```
 ///
 /// ```text
 /// \

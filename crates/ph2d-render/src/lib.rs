@@ -60,6 +60,7 @@ pub mod ktx2_format;
 pub mod layer_compositor;
 pub mod mipgen;
 pub mod motion_fx;
+pub mod nine_slice;
 pub mod picking;
 pub mod pipeline;
 pub mod premul;

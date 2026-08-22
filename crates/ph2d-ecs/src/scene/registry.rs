@@ -401,6 +401,12 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // um retangulo qualquer com sprites soltos por baixo -- a folha deixaria de ser uma folha, em
     // silencio, e o proximo bake nao teria o que assar.
     reg.register::<crate::SpriteSheetFrame>("ph2d::ecs::SpriteSheetFrame");
+    // A AUTORIA DE 9-SLICE (spec Sprite 03 §3.5) -- bordas, modo de desenho e os oito modos
+    // por-regiao. Declarada em 2026-05 e construida em 2026-08-21; ate' la' `git grep -c
+    // SliceNine` dava ZERO. Sem o registro, anexar 9-slice a uma caixa de dialogo e gravar o
+    // projeto devolveria, ao reabrir, um sprite esticado: as bordas nao sao re-derivaveis de
+    // nada -- sao uma medida que o artista tirou da imagem.
+    reg.register::<crate::SliceNine>("ph2d::ecs::SliceNine");
 }
 
 #[cfg(test)]
@@ -467,11 +473,14 @@ mod tests {
         // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
-        assert_eq!(reg.len(), 61);
+        // + 1 autoria de 9-slice (SliceNine, spec Sprite 03 §3.5 -- a secao 5, declarada
+        //   em 2026-05 e construida em 2026-08-21).
+        assert_eq!(reg.len(), 62);
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetFrame").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());

@@ -53,6 +53,7 @@ pub mod root_order;
 pub mod sampling;
 pub mod scene;
 pub mod sim;
+pub mod slice_nine;
 pub mod sort_key;
 pub mod sorting;
 pub mod sprite_pixels;
@@ -84,6 +85,7 @@ pub use sampling::{
     resolve_texture_repeat,
 };
 pub use sim::{SimComponent, SimWorld};
+pub use slice_nine::{SliceDrawMode, SliceNine, SliceRegion, SliceTileMode, TileRegionMode};
 pub use sort_key::{SortInput, SortKey, compute_sort_ranks, effective_z_index};
 pub use sorting::{
     LayerId, OrderInLayer, ShowBehindParent, SortPoint, SortingGroup, SortingLayer, SortingLayers,

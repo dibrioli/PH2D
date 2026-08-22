@@ -82,15 +82,15 @@ impl WidgetStore {
         self.bool_graph_drawn
     }
 
-    /// De que forma partiu o arrasto de ligação em curso.
+    /// O arrasto em curso no diagrama.
     #[must_use]
-    pub fn bool_graph_dragging(&self) -> Option<u64> {
+    pub fn bool_graph_dragging(&self) -> Option<crate::widget::BoolGraphDrag> {
         self.bool_graph_dragging
     }
 
-    /// Arma (ou desarma, com `None`) o arrasto de ligação.
-    pub fn set_bool_graph_dragging(&mut self, from: Option<u64>) {
-        self.bool_graph_dragging = from;
+    /// Arma (ou desarma, com `None`) o arrasto.
+    pub fn set_bool_graph_dragging(&mut self, drag: Option<crate::widget::BoolGraphDrag>) {
+        self.bool_graph_dragging = drag;
     }
 
     /// Empilha uma intenção do diagrama para a shell drenar.

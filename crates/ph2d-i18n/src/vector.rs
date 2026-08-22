@@ -210,8 +210,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // o motor se chama.
         "panel.vector.bool.graph.cycle" => "A shape ends up feeding itself — remove one link",
         "panel.vector.bool.graph.empty" => "Select a live boolean group to edit its links",
+        // ⚠️ A dica nomeia os QUATRO gestos, e o corte (Shift) é o que ela mais precisa de dizer:
+        // ele é o único que tem modificador, e um gesto com modificador que ninguém anuncia não
+        // existe.
         "panel.vector.bool.graph.hint" => {
-            "Drag between circles to link · click a link to change it"
+            "Click a circle to select · drag to move · drag from the rim to link · click a link to change, Shift-click to cut"
         }
         "panel.vector.bool.graph.consumed" => "merged",
         "panel.vector.bool.graph.links" => "Links",

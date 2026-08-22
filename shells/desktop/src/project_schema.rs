@@ -579,4 +579,15 @@
 /// ⚠️ A `VecScene` **não** mudou de forma: uma ligação é fato de ENTIDADE, não de caminho — e os
 /// ids que ela guarda são `VecPathId` (que atravessam undo e save), nunca bits de `Entity`.
 /// ⚠️ Nasceu como v87 na `line/Vector`; RECONTADO para v89 na integração de 2026-08-22 (ver v87).
-pub(crate) const PROJECT_SCHEMA: u32 = 89;
+/// v90 (`line/Vector` — A DISPOSIÇÃO DO DIAGRAMA): o componente `ph2d_ecs::VecBoolGraphPos` entrou
+/// no `ComponentRegistry` (registo **65 → 66**). Ele guarda **onde cada círculo do diagrama
+/// booleano foi posto** pelo artista (Enio, 2026-08-22: *"o modal ficou muito pequeno e não é
+/// possível organizar os ítens no espaço 2d… liberdade para arrastar os círculos"*).
+/// ⚠️ Quem obriga o bump é o REGISTO, como no v89 e no v16: uma cena com diagrama arrumado grava
+/// blobs novos nas linhas do `WorldSnapshot`, e um leitor v89 os leria na posição errada.
+/// ⚠️ **Componente PRÓPRIO, e não um campo do `VecBoolEdges`**, e o corte é por NATUREZA: as
+/// ligações são semântica (mudam o desenho), a disposição é cosmética (não muda um pixel).
+/// Misturá-las faria mover um círculo parecer, aos bytes, o mesmo tipo de edição que trocar uma
+/// operação — e um documento que nunca abriu o diagrama carregaria posições que ninguém escolheu.
+/// ⚠️ Nasceu como v88 na `line/Vector`; RECONTADO para v90 na integração de 2026-08-22 (ver v87).
+pub(crate) const PROJECT_SCHEMA: u32 = 90;

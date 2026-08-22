@@ -108,24 +108,30 @@ fn uma_receita_de_pilha_nao_ganha_estrela() {
 fn ligar_o_mesmo_par_substitui() {
     let (mut sim, scene, map, ids, g) = scene3(0);
     let _ = cook(&sim, &scene, &map);
-    assert!(apply_intents(
-        &mut sim,
-        g,
-        &[BoolGraphIntent::Link {
-            from: ids[1],
-            to: ids[0],
-            op: 0
-        }]
-    ));
-    assert!(apply_intents(
-        &mut sim,
-        g,
-        &[BoolGraphIntent::Link {
-            from: ids[1],
-            to: ids[0],
-            op: 1
-        }]
-    ));
+    assert!(
+        apply_intents(
+            &mut sim,
+            g,
+            &[BoolGraphIntent::Link {
+                from: ids[1],
+                to: ids[0],
+                op: 0
+            }]
+        )
+        .changed
+    );
+    assert!(
+        apply_intents(
+            &mut sim,
+            g,
+            &[BoolGraphIntent::Link {
+                from: ids[1],
+                to: ids[0],
+                op: 1
+            }]
+        )
+        .changed
+    );
     let e = sim.world().get::<VecBoolEdges>(g).unwrap();
     assert_eq!(e.edges.len(), 1, "empilhou uma segunda ligação invisível");
     assert_eq!(e.get(ids[1], ids[0]), Some(1));
@@ -144,20 +150,23 @@ fn uma_intencao_sem_efeito_nao_escreve() {
         to: ids[0],
         op: 0,
     }];
-    assert!(apply_intents(&mut sim, g, &liga));
+    assert!(apply_intents(&mut sim, g, &liga).changed);
     assert!(
-        !apply_intents(&mut sim, g, &liga),
+        !apply_intents(&mut sim, g, &liga).changed,
         "reescreveu o mesmo estado"
     );
     // E cortar uma ligação que não existe também não escreve.
-    assert!(!apply_intents(
-        &mut sim,
-        g,
-        &[BoolGraphIntent::Unlink {
-            from: ids[2],
-            to: ids[0]
-        }]
-    ));
+    assert!(
+        !apply_intents(
+            &mut sim,
+            g,
+            &[BoolGraphIntent::Unlink {
+                from: ids[2],
+                to: ids[0]
+            }]
+        )
+        .changed
+    );
 }
 
 /// **O CICLO É VISTO PELA MESMA CAMINHADA DO MOTOR** — e a vista di-lo.
@@ -338,4 +347,97 @@ fn a_varredura_corta_as_orfas_e_so_escreve_quando_corta() {
     assert!(e.edges.iter().all(|l| l.from != ids[1] && l.to != ids[1]));
     // E uma segunda varredura já não escreve.
     assert!(!prune_dead_edges(&mut sim, &scene));
+}
+
+/// **A VISTA LÊ A POSIÇÃO GUARDADA** — é o arrasto do artista a sobreviver.
+#[test]
+fn a_vista_le_a_posicao_guardada() {
+    let (mut sim, scene, map, ids, g) = scene3(0);
+    let bl = cook(&sim, &scene, &map);
+    assert!(
+        view_of(&sim, &map, &bl, g)
+            .nodes
+            .iter()
+            .all(|n| n.at.is_none()),
+        "uma forma nunca arrastada tem de cair no anel default"
+    );
+    let mut pos = ph2d_ecs::VecBoolGraphPos::default();
+    pos.set(ids[1], [123.0, 45.0]);
+    sim.world_mut().entity_mut(g).insert(pos);
+    let v = view_of(&sim, &map, &bl, g);
+    assert_eq!(v.nodes[1].at, Some([123.0, 45.0]));
+    assert_eq!(v.nodes[0].at, None, "as outras continuam no anel");
+}
+
+/// **MOVER ESCREVE A POSIÇÃO — E SÓ QUANDO ELA MUDA.**
+///
+/// ⚠️ A segunda metade protege o undo: ele é por diff de bytes, e reescrever a mesma posição
+/// criaria um passo que não mexeu em nada.
+#[test]
+fn mover_escreve_a_posicao_e_so_quando_ela_muda() {
+    let (mut sim, scene, map, ids, g) = scene3(0);
+    let _ = cook(&sim, &scene, &map);
+    let mover = [BoolGraphIntent::Move {
+        id: ids[0],
+        at: [80.0, 90.0],
+    }];
+    assert!(apply_intents(&mut sim, g, &mover).changed);
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_ecs::VecBoolGraphPos>(g)
+            .unwrap()
+            .get(ids[0]),
+        Some([80.0, 90.0])
+    );
+    assert!(
+        !apply_intents(&mut sim, g, &mover).changed,
+        "reescreveu a mesma posição"
+    );
+}
+
+/// **SELECIONAR NÃO MUDA O DOCUMENTO.**
+///
+/// ⚠️ Se contasse como mudança, cada clique num círculo viraria um passo de undo que não mexeu em
+/// nada — e desfazer um gesto de verdade exigiria passar por todos eles.
+#[test]
+fn selecionar_nao_muda_o_documento() {
+    let (mut sim, scene, map, ids, g) = scene3(0);
+    let _ = cook(&sim, &scene, &map);
+    let out = apply_intents(&mut sim, g, &[BoolGraphIntent::Select { id: ids[2] }]);
+    assert!(!out.changed, "selecionar sujou o undo");
+    assert_eq!(out.select, Some(ids[2]), "a seleção não chegou à shell");
+}
+
+/// **APAGAR UMA FORMA LEVA A POSIÇÃO DELA** — a outra metade da varredura.
+#[test]
+fn a_varredura_corta_tambem_as_posicoes_orfas() {
+    let (mut sim, mut scene, map, ids, g) = scene3(0);
+    let _ = cook(&sim, &scene, &map);
+    apply_intents(
+        &mut sim,
+        g,
+        &[
+            BoolGraphIntent::Move {
+                id: ids[0],
+                at: [10.0, 10.0],
+            },
+            BoolGraphIntent::Move {
+                id: ids[1],
+                at: [20.0, 20.0],
+            },
+        ],
+    );
+    assert!(
+        !prune_dead_edges(&mut sim, &scene),
+        "escreveu sem nada a apagar"
+    );
+
+    scene.remove_path(ids[1]);
+    assert!(
+        prune_dead_edges(&mut sim, &scene),
+        "não cortou a posição órfã"
+    );
+    let p = sim.world().get::<ph2d_ecs::VecBoolGraphPos>(g).unwrap();
+    assert_eq!(p.get(ids[1]), None, "sobrou a posição da forma apagada");
+    assert_eq!(p.get(ids[0]), Some([10.0, 10.0]), "levou a errada junto");
 }

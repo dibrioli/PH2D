@@ -347,8 +347,11 @@ pub struct WidgetStore {
     /// a prisão ao viewport — duas contas que divergem no dia em que uma delas mudar, e o artista
     /// clicando ao lado do que vê.
     pub(super) bool_graph_drawn: Option<Rect>,
-    /// O `VecPathId` de onde um arrasto de ligação partiu, enquanto ele está no ar.
-    pub(super) bool_graph_dragging: Option<u64>,
+    /// **O arrasto em curso no diagrama**, enquanto ele está no ar.
+    ///
+    /// ⚠️ Mover um círculo é PRÉ-VISTO aqui e só escrito no documento ao SOLTAR: escrever a cada
+    /// frame criaria um passo de undo por frame, e o Ctrl+Z andaria pixel a pixel para trás.
+    pub(super) bool_graph_dragging: Option<crate::widget::BoolGraphDrag>,
     /// As intenções que o artista produziu e a shell ainda não drenou (ela é quem escreve o
     /// documento — o card não muta nada).
     pub(super) bool_graph_intents: Vec<crate::widget::BoolGraphIntent>,

@@ -39,8 +39,8 @@ use crate::paint::{
 };
 use crate::screens::hero::HeroScreen;
 use crate::widget::{
-    BoolGraphView, Button, bool_graph_card_size, bool_graph_link_points, bool_graph_node_center,
-    bool_graph_node_radius, paint_button,
+    BoolGraphNode, BoolGraphView, Button, bool_graph_card_size, bool_graph_link_points,
+    bool_graph_node_center, bool_graph_node_radius, bool_graph_ring_inner_radius, paint_button,
 };
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
@@ -57,6 +57,14 @@ const RING_W: f32 = 1.5; // LITERAL-PX-OK: bool-graph node ring width
 const HEAD_W: f32 = 5.0; // LITERAL-PX-OK: bool-graph arrowhead half-width
 /// Comprimento da ponta da seta.
 const HEAD_L: f32 = 10.0; // LITERAL-PX-OK: bool-graph arrowhead length
+/// O recuo horizontal do glifo da operação, em frações da fonte — ele fica centrado no traço.
+const GLYPH_NUDGE: f32 = 0.35; // LITERAL-PX-OK: bool-graph op glyph centering, fraction of the font
+/// A margem do nome dentro do círculo, em frações do raio.
+const LABEL_INSET: f32 = 0.66; // LITERAL-PX-OK: bool-graph in-circle label inset, fraction of radius
+/// A altura do número de z acima do centro, em frações do raio.
+const BADGE_RISE: f32 = 0.72; // LITERAL-PX-OK: bool-graph z-badge rise, fraction of radius
+/// O recuo do número de z à esquerda do centro, em frações do raio.
+const BADGE_INSET: f32 = 0.5; // LITERAL-PX-OK: bool-graph z-badge inset, fraction of radius
 
 /// **O nome curto de cada operação**, para caber ao lado de um arco.
 ///
@@ -164,11 +172,10 @@ fn paint_title_band(
     paint_button(&close, close_rect, scene, text_system, theme);
 }
 
-/// Os arcos, cada um com a ponta no RECEPTOR e a operação escrita no topo.
+/// Os traços, cada um com a seta na ponta de quem RECEBE e a operação escrita no meio.
 ///
-/// ⚠️ Os arcos vêm ANTES dos círculos de propósito: a ponta da seta encosta no círculo do
-/// receptor, e desenhá-la por cima dele faria a seta parecer entrar na forma em vez de chegar a
-/// ela.
+/// ⚠️ Os traços vêm ANTES dos círculos de propósito: a seta encosta na borda do receptor, e
+/// desenhá-la por cima do círculo fá-la-ia parecer ENTRAR na forma em vez de chegar a ela.
 fn paint_links(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -176,26 +183,20 @@ fn paint_links(
     view: &BoolGraphView,
     rect: Rect,
 ) {
-    let font = TypeToken::Xs.px();
+    let font = TypeToken::Sm.px();
     for link in &view.links {
         let pts = bool_graph_link_points(rect, view, *link);
-        if pts.len() < 2 {
-            continue;
-        }
-        stroke_polyline(scene, &pts, LINK_W, resolve(ColorToken::Accent, theme));
-        paint_arrowhead(scene, theme, &pts);
-        // A operação vai no ponto mais à direita — o topo do arco, que é onde há espaço livre por
-        // construção (o arco passa à direita dos rótulos).
-        let apex = pts
-            .iter()
-            .copied()
-            .fold(pts[0], |m, p| if p.0 > m.0 { p } else { m });
+        let [a, b] = pts[..] else { continue };
+        stroke_polyline(scene, &[a, b], LINK_W, resolve(ColorToken::Accent, theme));
+        paint_arrowhead(scene, theme, &[a, b]);
+        // O verbo vai no MEIO do traço, que é onde ele não disputa espaço com nenhum círculo.
+        let mid = (a.0.midpoint(b.0), a.1.midpoint(b.1));
         paint_text(
             text_system,
             scene,
             op_glyph(link.op),
-            apex.0 - font * 0.5,
-            apex.1 - font * 0.5,
+            mid.0 - font * GLYPH_NUDGE,
+            mid.1 - font * 0.5,
             font,
             font * 2.0,
             resolve(ColorToken::Text1, theme),
@@ -221,7 +222,7 @@ fn paint_arrowhead(scene: &mut VectorScene, theme: Theme, pts: &[(f32, f32)]) {
     stroke_polyline(scene, &[wing(1.0), tip, wing(-1.0)], LINK_W, color);
 }
 
-/// Os círculos e os nomes.
+/// Os círculos: o disco, o **aro** (a alça de ligar), o nome DENTRO e o número de z.
 fn paint_nodes(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -230,28 +231,50 @@ fn paint_nodes(
     rect: Rect,
 ) {
     let r = bool_graph_node_radius();
-    let font = TypeToken::Sm.px();
+    let font = TypeToken::Xs.px();
     for (i, node) in view.nodes.iter().enumerate() {
         let (cx, cy) = bool_graph_node_center(rect, view, i);
-        // ⚠️ Um nó CONSUMIDO desenha-se oco: ele não põe nada na tela, e um disco cheio diria o
+        // ⚠️ Um nó CONSUMIDO desenha-se apagado: ele não põe nada na tela, e um disco aceso diria o
         // contrário. É a mesma distinção que o mapa faz (lista vazia = desenha nada).
         let fill = if node.consumed {
-            ColorToken::BgElev
+            ColorToken::Bg3
         } else {
             ColorToken::Accent
         };
         fill_circle(scene, cx, cy, r, resolve(fill, theme));
-        ring(scene, cx, cy, r, resolve(ColorToken::Border, theme));
-        let label_x = cx + r + Spacing::Sm.px();
+        // O ARO — a alça de ligar. Ele é desenhado como um anel MAIS CLARO por dentro do disco,
+        // para a banda que responde ao arrasto ser visível em vez de ser folclore.
+        ring(
+            scene,
+            cx,
+            cy,
+            bool_graph_ring_inner_radius(),
+            resolve(ColorToken::Border, theme),
+        );
+        ring(scene, cx, cy, r, resolve(ColorToken::Text1, theme));
+        // O NOME, dentro do círculo.
         paint_text(
             text_system,
             scene,
             &node.label,
-            label_x,
+            cx - r * LABEL_INSET,
             cy - font * 0.5,
             font,
-            rect.x + rect.w - label_x,
+            r * LABEL_INSET * 2.0,
             resolve(ColorToken::Text1, theme),
+        );
+        // O NÚMERO DE Z, no alto do círculo. ⚠️ É o que sobrou da coluna e é o essencial dela:
+        // ligações que chegam ao mesmo nó dobram na ordem de z de quem opera, e sem este número o
+        // resultado dependeria de uma coisa que o diagrama não mostra.
+        paint_text(
+            text_system,
+            scene,
+            &BoolGraphNode::z_badge(i).to_string(),
+            cx - r * BADGE_INSET,
+            cy - r * BADGE_RISE,
+            font,
+            font * 2.0,
+            resolve(ColorToken::Text2, theme),
         );
     }
 }
@@ -351,11 +374,13 @@ mod tests {
                     id: 1,
                     label: "A".into(),
                     consumed: false,
+                    at: None,
                 },
                 BoolGraphNode {
                     id: 2,
                     label: "B".into(),
                     consumed: true,
+                    at: None,
                 },
             ],
             links: vec![BoolGraphLink {

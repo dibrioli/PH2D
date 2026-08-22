@@ -22,7 +22,7 @@
 //! `a_estrela_materializada_no_componente_nao_move_a_arte` na costura) — sem eles, abrir o
 //! diagrama moveria a arte no instante em que o artista olhasse para ela.
 
-use ph2d_ecs::{Entity, Name, SimWorld, VecBoolEdge, VecBoolEdges, VecBoolGroup};
+use ph2d_ecs::{Entity, Name, SimWorld, VecBoolEdge, VecBoolEdges, VecBoolGraphPos, VecBoolGroup};
 use ph2d_editor::widget::{BoolGraphIntent, BoolGraphLink, BoolGraphNode, BoolGraphView};
 use ph2d_vec_scene::VecPathId;
 
@@ -75,12 +75,16 @@ pub(crate) fn view_of(
         .collect();
     // ⚠️ **Consumido = tem ligação de SAÍDA**, exatamente o predicado do resolvedor. Derivá-lo do
     // plano desenhado seria mais frágil e daria a resposta errada na recusa (onde não há plano).
+    let pos = sim.world().get::<VecBoolGraphPos>(g);
     let nodes: Vec<BoolGraphNode> = roster
         .iter()
         .map(|id| BoolGraphNode {
             id: *id,
             label: label_of(sim, map, *id),
             consumed: links.iter().any(|l| l.from == *id),
+            // ⚠️ `None` = ainda não foi arrastado, e o diagrama arruma no anel default. Inventar
+            // uma posição aqui faria o anel deixar de existir e todo círculo nascer no mesmo sítio.
+            at: pos.and_then(|p| p.get(*id)),
         })
         .collect();
     let bool_edges: Vec<ph2d_vec_boolean::BoolEdge> = edges
@@ -148,33 +152,70 @@ pub(crate) fn materialize_star(sim: &mut SimWorld, bl: &BoolLive, g: Entity) -> 
 /// `VecBoolEdges::set` garante. Sem isso, ligar duas formas outra vez empilharia uma segunda
 /// ligação invisível no diagrama (é uma linha só entre dois círculos) e o resolvedor dobraria `A`
 /// em `B` duas vezes.
-pub(crate) fn apply_intents(sim: &mut SimWorld, g: Entity, intents: &[BoolGraphIntent]) -> bool {
+/// O que uma leva de intenções produziu.
+pub(crate) struct IntentOutcome {
+    /// O documento mudou (e o `post_frame_undo` a capturará).
+    pub(crate) changed: bool,
+    /// A forma que o artista pediu para SELECIONAR no canvas, se pediu.
+    ///
+    /// ⚠️ Ela sai daqui em vez de ser aplicada lá dentro porque a seleção não é do mundo ECS — ela
+    /// é do `PenTool` da shell, e escrevê-la aqui daria a este módulo dois donos.
+    pub(crate) select: Option<VecPathId>,
+}
+
+pub(crate) fn apply_intents(
+    sim: &mut SimWorld,
+    g: Entity,
+    intents: &[BoolGraphIntent],
+) -> IntentOutcome {
+    let mut out = IntentOutcome {
+        changed: false,
+        select: None,
+    };
     if intents.is_empty() {
-        return false;
+        return out;
     }
     let mut edges = sim
         .world()
         .get::<VecBoolEdges>(g)
         .cloned()
         .unwrap_or_default();
-    let mut changed = false;
+    let mut pos = sim
+        .world()
+        .get::<VecBoolGraphPos>(g)
+        .cloned()
+        .unwrap_or_default();
+    let (mut edges_dirty, mut pos_dirty) = (false, false);
     for intent in intents {
         match *intent {
             BoolGraphIntent::Link { from, to, op } => {
                 if edges.get(from, to) != Some(op) {
                     edges.set(from, to, op);
-                    changed = true;
+                    edges_dirty = true;
                 }
             }
             BoolGraphIntent::Unlink { from, to } => {
-                changed |= edges.remove(from, to);
+                edges_dirty |= edges.remove(from, to);
             }
+            BoolGraphIntent::Move { id, at } => {
+                if pos.get(id) != Some(at) {
+                    pos.set(id, at);
+                    pos_dirty = true;
+                }
+            }
+            // ⚠️ Selecionar NÃO muda o documento — não entra no `changed`, senão cada clique num
+            // círculo viraria um passo de undo que não mexeu em nada.
+            BoolGraphIntent::Select { id } => out.select = Some(id),
         }
     }
-    if changed {
+    if edges_dirty {
         sim.world_mut().entity_mut(g).insert(edges);
     }
-    changed
+    if pos_dirty {
+        sim.world_mut().entity_mut(g).insert(pos);
+    }
+    out.changed = edges_dirty || pos_dirty;
+    out
 }
 
 /// **Re-mira o GRAFO** quando o artista clica num dos oito verbos com um grupo vivo em mãos.
@@ -207,6 +248,35 @@ pub(crate) fn retarget_graph(sim: &mut SimWorld, g: Entity, op: u8) -> bool {
     true
 }
 
+/// A metade da varredura que cuida das POSIÇÕES — mesma lei do irmão: só escreve quando apaga.
+fn prune_dead_positions(sim: &mut SimWorld, vivos: &std::collections::BTreeSet<VecPathId>) -> bool {
+    let mut q = sim.world_mut().query::<(Entity, &VecBoolGraphPos)>();
+    let mortos: Vec<(Entity, VecBoolGraphPos)> = q
+        .iter(sim.world())
+        .filter_map(|(e, pos)| {
+            let mut limpo = pos.clone();
+            for id in pos
+                .nodes
+                .iter()
+                .map(|n| n.id)
+                .filter(|id| !vivos.contains(id))
+                .collect::<Vec<_>>()
+            {
+                limpo.forget(id);
+            }
+            (limpo != *pos).then_some((e, limpo))
+        })
+        .collect();
+    // ⚠️ O `bool` não é cerimônia: sem ele a varredura escreveria o componente e diria *"nada
+    // mudou"*, e quem lê essa resposta (o sinal de documento sujo) discordaria do documento. Foi um
+    // gate que apanhou isto.
+    let mudou = !mortos.is_empty();
+    for (e, limpo) in mortos {
+        sim.world_mut().entity_mut(e).insert(limpo);
+    }
+    mudou
+}
+
 /// **Varre as ligações ÓRFÃS** — as que nomeiam uma forma que já não está no documento. Devolve
 /// `true` se apagou alguma.
 ///
@@ -219,6 +289,7 @@ pub(crate) fn retarget_graph(sim: &mut SimWorld, g: Entity, op: u8) -> bool {
 /// pareceria não fazer nada.
 pub(crate) fn prune_dead_edges(sim: &mut SimWorld, scene: &ph2d_vec_scene::VecScene) -> bool {
     let vivos: std::collections::BTreeSet<VecPathId> = scene.paths().iter().map(|p| p.id).collect();
+    let pos_mudou = prune_dead_positions(sim, &vivos);
     let mut q = sim.world_mut().query::<(Entity, &VecBoolEdges)>();
     let mortos: Vec<(Entity, VecBoolEdges)> = q
         .iter(sim.world())
@@ -236,7 +307,7 @@ pub(crate) fn prune_dead_edges(sim: &mut SimWorld, scene: &ph2d_vec_scene::VecSc
             (limpo != *edges).then_some((e, limpo))
         })
         .collect();
-    let mudou = !mortos.is_empty();
+    let mudou = !mortos.is_empty() || pos_mudou;
     for (e, limpo) in mortos {
         sim.world_mut().entity_mut(e).insert(limpo);
     }

@@ -7,8 +7,9 @@
 //! que está tudo bem enquanto o artista clica ao lado do que vê.
 
 use super::{
-    BoolGraphIntent, BoolGraphLink, BoolGraphNode, BoolGraphView, card_size, drop_intent, link_at,
-    link_points, node_at, node_center, node_radius,
+    BoolGraphIntent, BoolGraphLink, BoolGraphNode, BoolGraphView, NodeZone, canvas_rect, card_size,
+    clamp_to_plane, drop_intent, link_at, link_points, node_at, node_center, node_radius,
+    ring_inner_radius,
 };
 use crate::zones::Rect;
 
@@ -17,10 +18,11 @@ fn node(id: u64) -> BoolGraphNode {
         id,
         label: format!("Forma {id}"),
         consumed: false,
+        at: None,
     }
 }
 
-/// Três formas em z (1 é a mais ao fundo), sem ligações.
+/// Três formas sem posição guardada — elas caem no anel default.
 fn view3() -> BoolGraphView {
     BoolGraphView {
         nodes: vec![node(1), node(2), node(3)],
@@ -39,53 +41,92 @@ fn card(view: &BoolGraphView) -> Rect {
     }
 }
 
-/// **O MAIS AO FUNDO DESENHA-SE EM BAIXO** — a única inversão do módulo, e ela tem de estar lá.
+/// **SEM POSIÇÃO GUARDADA, O ANEL ARRUMA — E NINGUÉM SE SOBREPÕE.**
 ///
-/// ⚠️ É a costura com a lei: `nodes` chega em ordem de z (fundo → topo), a MESMA que o resolvedor
-/// consome. Se a coluna desenhasse na ordem crua, o diagrama diria "esta está por cima" sobre a
-/// forma que está por baixo — e a ordem de dobra das ligações que chegam depende exatamente disso.
+/// ⚠️ É o que faz abrir a janela pela primeira vez mostrar algo legível. Sem o anel, todas as
+/// formas nasceriam no mesmo ponto e o artista teria de as separar antes de poder ler o diagrama.
 #[test]
-fn o_mais_ao_fundo_desenha_se_em_baixo() {
+fn sem_posicao_guardada_o_anel_arruma_sem_sobreposicao() {
     let v = view3();
     let r = card(&v);
-    let fundo = node_center(r, &v, 0);
-    let meio = node_center(r, &v, 1);
-    let topo = node_center(r, &v, 2);
-    assert!(
-        fundo.1 > meio.1 && meio.1 > topo.1,
-        "y: fundo {} / meio {} / topo {} -- a coluna não está invertida",
-        fundo.1,
-        meio.1,
-        topo.1
-    );
-    // E a coluna é uma coluna: todos no mesmo x.
-    assert!((fundo.0 - topo.0).abs() < f32::EPSILON);
-}
-
-/// **O CLIQUE ACERTA O CÍRCULO QUE SE VÊ** — o ponto do teste vem da MESMA função que o painter usa.
-#[test]
-fn clicar_no_centro_de_um_circulo_acerta_aquela_forma() {
-    let v = view3();
-    let r = card(&v);
-    for i in 0..v.rows() {
-        assert_eq!(node_at(r, &v, node_center(r, &v, i)), Some(i), "forma {i}");
+    let cs: Vec<(f32, f32)> = (0..v.rows()).map(|i| node_center(r, &v, i)).collect();
+    for i in 0..cs.len() {
+        for j in (i + 1)..cs.len() {
+            let d = (cs[i].0 - cs[j].0).hypot(cs[i].1 - cs[j].1);
+            assert!(
+                d > node_radius() * 2.0,
+                "as formas {i} e {j} sobrepõem-se (distância {d})"
+            );
+        }
+    }
+    // E todas ficam dentro do plano.
+    let plane = canvas_rect(r);
+    for (i, c) in cs.iter().enumerate() {
+        assert!(
+            c.0 - node_radius() >= plane.x - 0.5 && c.0 + node_radius() <= plane.x + plane.w + 0.5,
+            "a forma {i} saiu do plano em x"
+        );
     }
 }
 
-/// **O RÓTULO NÃO É ALVO.** Um ponto à direita do círculo, na mesma linha, não acerta nada — é
-/// por lá que o arrasto de uma ligação passa, e engoli-lo tornaria o gesto impossível.
+/// **A POSIÇÃO GUARDADA MANDA SOBRE O ANEL.** É o gesto de arrastar a ter efeito.
 #[test]
-fn o_rotulo_ao_lado_nao_e_alvo_do_clique() {
+fn a_posicao_guardada_manda_sobre_o_anel() {
+    let mut v = view3();
+    v.nodes[1].at = Some([200.0, 120.0]);
+    let r = card(&v);
+    let plane = canvas_rect(r);
+    assert_eq!(
+        node_center(r, &v, 1),
+        (plane.x + 200.0, plane.y + 120.0),
+        "o anel ganhou de uma posição autorada"
+    );
+    // As outras continuam no anel.
+    assert_ne!(node_center(r, &v, 0), (plane.x + 200.0, plane.y + 120.0));
+}
+
+/// **O NÚMERO DE Z É A ORDEM DA LISTA, COMEÇANDO EM 1.**
+///
+/// ⚠️ É o que sobrou da coluna, e é o essencial dela: quando várias ligações chegam ao mesmo nó,
+/// elas dobram na ordem de z de quem opera. Sem este número no plano livre, o resultado dependeria
+/// de uma coisa que o diagrama não mostra.
+#[test]
+fn o_numero_de_z_e_a_ordem_da_lista() {
+    assert_eq!(BoolGraphNode::z_badge(0), 1, "o mais ao FUNDO é o número 1");
+    assert_eq!(BoolGraphNode::z_badge(2), 3);
+}
+
+/// **O CÍRCULO TEM DUAS ZONAS, E ELAS SÃO GESTOS DIFERENTES.**
+///
+/// ⚠️ Sem a separação, arrastar para mover e arrastar para ligar seriam o mesmo gesto — e um deles
+/// teria de ganhar, deixando o outro inexprimível.
+#[test]
+fn o_miolo_e_o_aro_sao_zonas_diferentes() {
     let v = view3();
     let r = card(&v);
-    let c = node_center(r, &v, 1);
-    let ao_lado = (c.0 + node_radius() * 3.0, c.1);
-    assert_eq!(node_at(r, &v, ao_lado), None);
+    let c = node_center(r, &v, 0);
+    assert_eq!(
+        node_at(r, &v, c),
+        Some((0, NodeZone::Core)),
+        "o centro é miolo"
+    );
+    let no_aro = (c.0 + (ring_inner_radius() + node_radius()) * 0.5, c.1);
+    assert_eq!(
+        node_at(r, &v, no_aro),
+        Some((0, NodeZone::Ring)),
+        "a banda é aro"
+    );
+    // E fora do círculo não é nada.
+    let fora = (c.0 + node_radius() * 2.0, c.1);
+    assert_eq!(node_at(r, &v, fora), None);
 }
 
-/// **UM ARCO COMEÇA E ACABA NOS DOIS CENTROS** — o desenho liga os círculos que diz ligar.
+/// **O TRAÇO VAI DE BORDA A BORDA, NUNCA DE CENTRO A CENTRO.**
+///
+/// ⚠️ Uma linha que entra no círculo passaria por cima do nome que está lá dentro — e o nome é como
+/// o artista sabe qual círculo é qual.
 #[test]
-fn o_arco_liga_os_dois_centros() {
+fn o_traco_para_na_borda_dos_circulos() {
     let mut v = view3();
     v.links.push(BoolGraphLink {
         from: 3,
@@ -94,135 +135,47 @@ fn o_arco_liga_os_dois_centros() {
     });
     let r = card(&v);
     let pts = link_points(r, &v, v.links[0]);
-    let a = node_center(r, &v, 2); // id 3 = índice 2
-    let b = node_center(r, &v, 0); // id 1 = índice 0
-    assert!((pts[0].0 - a.0).abs() < 1e-3 && (pts[0].1 - a.1).abs() < 1e-3);
-    let last = *pts.last().unwrap();
-    assert!((last.0 - b.0).abs() < 1e-3 && (last.1 - b.1).abs() < 1e-3);
+    let a = node_center(r, &v, 2);
+    let b = node_center(r, &v, 0);
+    let d_a = (pts[0].0 - a.0).hypot(pts[0].1 - a.1);
+    let d_b = (pts[1].0 - b.0).hypot(pts[1].1 - b.1);
+    assert!(
+        d_a > node_radius() * 0.9 && d_b > node_radius() * 0.9,
+        "o traço entrou no círculo (distâncias {d_a} / {d_b}, raio {})",
+        node_radius()
+    );
 }
 
-/// **O ARCO SAI DA COLUNA** — a barriga vai para a DIREITA, senão ele passaria por cima dos
-/// círculos que salta e ficaria inclicável.
+/// **`A→B` E `B→A` SÃO DUAS LINHAS, NÃO UMA RISCADA DUAS VEZES.**
+///
+/// ⚠️ Sem o deslocamento lateral, um par que opera nos dois sentidos seria indistinguível de um que
+/// opera num só — e clicar nele acertaria sempre a mesma das duas.
 #[test]
-fn a_barriga_do_arco_sai_para_a_direita_da_coluna() {
+fn os_dois_sentidos_de_um_par_sao_duas_linhas() {
     let mut v = view3();
     v.links.push(BoolGraphLink {
-        from: 3,
-        to: 1,
+        from: 1,
+        to: 2,
         op: 0,
     });
+    v.links.push(BoolGraphLink {
+        from: 2,
+        to: 1,
+        op: 1,
+    });
     let r = card(&v);
-    let coluna = node_center(r, &v, 0).0;
-    let pts = link_points(r, &v, v.links[0]);
-    let maior_x = pts.iter().fold(f32::MIN, |m, p| m.max(p.0));
-    assert!(
-        maior_x > coluna + node_radius(),
-        "a barriga chegou a {maior_x} e a coluna está em {coluna} -- o arco não saiu"
-    );
+    let ida = link_points(r, &v, v.links[0]);
+    let volta = link_points(r, &v, v.links[1]);
+    // O ponto médio de cada uma tem de estar separado do outro.
+    let m = |p: &[(f32, f32)]| (p[0].0.midpoint(p[1].0), p[0].1.midpoint(p[1].1));
+    let (a, b) = (m(&ida), m(&volta));
+    let d = (a.0 - b.0).hypot(a.1 - b.1);
+    assert!(d > 1.0, "as duas linhas do par coincidem (distância {d})");
 }
 
-/// **UM ARCO QUE SALTA MAIS FORMAS É MAIS LARGO** — é o que os faz aninhar em vez de se
-/// sobreporem, e é a única coisa que distingue duas ligações que partem do mesmo círculo.
+/// **CLICAR NUM TRAÇO ACERTA A LIGAÇÃO** — e o ponto vem da mesma geometria que o painter desenha.
 #[test]
-fn quem_salta_mais_formas_faz_arco_mais_largo() {
-    let mut v = BoolGraphView {
-        nodes: vec![node(1), node(2), node(3), node(4)],
-        links: vec![
-            BoolGraphLink {
-                from: 2,
-                to: 1,
-                op: 0,
-            },
-            BoolGraphLink {
-                from: 4,
-                to: 1,
-                op: 0,
-            },
-        ],
-        cycle: false,
-    };
-    let r = card(&v);
-    let curto = link_points(r, &v, v.links[0])
-        .iter()
-        .fold(f32::MIN, |m, p| m.max(p.0));
-    let longo = link_points(r, &v, v.links[1])
-        .iter()
-        .fold(f32::MIN, |m, p| m.max(p.0));
-    assert!(
-        longo > curto,
-        "o arco de 3 saltos ({longo}) não é mais largo que o de 1 ({curto})"
-    );
-    v.links.clear();
-}
-
-/// **O CARD CABE O ARCO MAIS LARGO — E A RESERVA É O QUE O FAZ CABER.**
-///
-/// ⚠️ Este gate JÁ EXISTIU numa forma que não provava nada: com o arco a curvar a partir da
-/// coluna, a folga dos rótulos sozinha já o continha, e apagar a reserva do `card_size` deixava-o
-/// verde. Um mutante sobrevivente expôs isso. Agora o arco passa **à direita dos rótulos**, então
-/// a reserva é a única coisa que o segura — e a segunda metade do gate mede exatamente isso.
-#[test]
-fn o_card_cabe_o_arco_mais_largo_e_a_reserva_e_o_que_o_segura() {
-    let v = BoolGraphView {
-        nodes: vec![node(1), node(2), node(3), node(4), node(5)],
-        links: vec![BoolGraphLink {
-            from: 5,
-            to: 1,
-            op: 0,
-        }],
-        cycle: false,
-    };
-    let r = card(&v);
-    let maior_x = link_points(r, &v, v.links[0])
-        .iter()
-        .fold(f32::MIN, |m, p| m.max(p.0));
-    assert!(
-        maior_x <= r.x + r.w,
-        "o arco chega a {maior_x} e o card acaba em {}",
-        r.x + r.w
-    );
-    // ⚠️ **Controlo positivo:** sem a reserva o arco SAIRIA. Se esta metade falhar, a largura do
-    // card é folgada por outro motivo e a primeira metade voltou a ser verde por acidente.
-    let sem_ligacao = BoolGraphView {
-        links: Vec::new(),
-        ..v.clone()
-    };
-    let (w_sem, _) = card_size(&sem_ligacao);
-    assert!(
-        maior_x > r.x + w_sem,
-        "o arco chega a {maior_x} e o card SEM reserva já acabava em {} -- a reserva não é o que \
-         o segura, e o gate não prova nada",
-        r.x + w_sem
-    );
-}
-
-/// **O ARCO NÃO ATRAVESSA OS RÓTULOS.** O nome é como o artista sabe qual círculo é qual; uma
-/// ligação riscada por cima dele torna dois círculos indistinguíveis exatamente quando há muitos.
-#[test]
-fn o_arco_passa_a_direita_dos_rotulos() {
-    let v = BoolGraphView {
-        nodes: vec![node(1), node(2), node(3), node(4)],
-        links: vec![BoolGraphLink {
-            from: 4,
-            to: 1,
-            op: 0,
-        }],
-        cycle: false,
-    };
-    let r = card(&v);
-    let pts = link_points(r, &v, v.links[0]);
-    // O topo do arco (o ponto mais à direita) tem de estar além da coluna de rótulos.
-    let topo = pts.iter().fold(f32::MIN, |m, p| m.max(p.0));
-    let fim_dos_rotulos = super::label_right(r);
-    assert!(
-        topo > fim_dos_rotulos,
-        "o topo do arco está em {topo} e os rótulos acabam em {fim_dos_rotulos}"
-    );
-}
-
-/// **CLICAR NO ARCO ACERTA A LIGAÇÃO** — e o ponto vem da mesma amostragem que o painter desenha.
-#[test]
-fn clicar_no_arco_acerta_a_ligacao() {
+fn clicar_no_traco_acerta_a_ligacao() {
     let mut v = view3();
     v.links.push(BoolGraphLink {
         from: 3,
@@ -231,68 +184,109 @@ fn clicar_no_arco_acerta_a_ligacao() {
     });
     let r = card(&v);
     let pts = link_points(r, &v, v.links[0]);
-    let meio = pts[pts.len() / 2];
+    let meio = (pts[0].0.midpoint(pts[1].0), pts[0].1.midpoint(pts[1].1));
     assert_eq!(link_at(r, &v, meio), Some(0));
-    // E longe dele não acerta nada.
-    assert_eq!(link_at(r, &v, (meio.0 + 200.0, meio.1)), None);
+    assert_eq!(link_at(r, &v, (meio.0, meio.1 + 200.0)), None);
 }
 
-/// **QUANDO DOIS ARCOS SE CRUZAM, GANHA O MAIS PRÓXIMO** — nunca o primeiro da lista.
+/// **QUANDO DOIS TRAÇOS SE CRUZAM, GANHA O MAIS PRÓXIMO** — nunca o primeiro da lista.
 ///
-/// ⚠️ A ordem em `links` é de armazenamento e não diz nada ao artista. Um acerto por "o primeiro
-/// que passa no raio" faria o mesmo pixel selecionar coisas diferentes conforme a ordem em que as
+/// ⚠️ A ordem em `links` é de armazenamento e não diz nada ao artista. Um acerto por *"o primeiro
+/// que passa no raio"* faria o mesmo pixel selecionar coisas diferentes conforme a ordem em que as
 /// ligações foram criadas — e essa ordem é invisível.
 #[test]
-fn quando_dois_arcos_se_cruzam_ganha_o_mais_proximo() {
-    // Duas ligações que CHEGAM ao mesmo círculo: perto dele os dois arcos convergem, e é aí que a
-    // desambiguação de facto acontece. Arcos que não se aproximam não testam nada.
+fn quando_dois_tracos_se_cruzam_ganha_o_mais_proximo() {
+    // Quatro formas no anel: 1 em cima, 2 à direita, 3 em baixo, 4 à esquerda. As duas DIAGONAIS
+    // (1→3 e 2→4) cruzam-se perto do centro — é ali que a desambiguação de facto acontece.
+    //
+    // ⚠️ Os dois sentidos do MESMO par NÃO servem: eles ficam a `2 × LINK_OFFSET = 14` px um do
+    // outro e a folga do clique é 9, então nenhum ponto está ao alcance dos dois. O controlo
+    // positivo abaixo apanhou exatamente isso na primeira escrita deste gate.
     let v = BoolGraphView {
-        nodes: vec![node(1), node(2), node(3)],
+        nodes: vec![node(1), node(2), node(3), node(4)],
         links: vec![
             BoolGraphLink {
-                from: 3,
-                to: 1,
+                from: 1,
+                to: 3,
                 op: 0,
             },
             BoolGraphLink {
                 from: 2,
-                to: 1,
+                to: 4,
                 op: 0,
             },
         ],
         cycle: false,
     };
     let r = card(&v);
-    // Um ponto sobre o SEGUNDO arco, perto do destino comum.
-    let pts = link_points(r, &v, v.links[1]);
-    let sobre = pts[pts.len() - 3];
+    let a = link_points(r, &v, v.links[0]);
+    let b = link_points(r, &v, v.links[1]);
 
-    // ⚠️ **Controlo positivo, e é ele que dá o gate.** Sem provar que o ponto está ao alcance dos
-    // DOIS, "ganha o mais próximo" e "ganha o primeiro da lista" respondem igual, e o gate fica
-    // verde sobre um acerto que nunca teve de escolher. Foi assim que um mutante sobreviveu.
-    let dist = |i: usize| {
-        link_points(r, &v, v.links[i])
-            .iter()
-            .fold(f32::INFINITY, |m, q| {
-                let (dx, dy) = (sobre.0 - q.0, sobre.1 - q.1);
-                m.min(dx.mul_add(dx, dy * dy))
-            })
-            .sqrt()
-    };
-    let (d0, d1) = (dist(0), dist(1));
-    assert!(
-        d0 <= super::LINK_GRAB,
-        "o outro arco está a {d0} px e a folga é {} -- o ponto não é ambíguo, e o gate não tem \
-         nada para desempatar",
-        super::LINK_GRAB
-    );
-    assert!(d1 < d0, "o segundo arco ({d1}) não é o mais próximo ({d0})");
+    // Procura, ao longo do SEGUNDO traço, um ponto que esteja ao alcance dos DOIS. ⚠️ Sem provar
+    // que ele existe, "ganha o mais próximo" e "ganha o primeiro da lista" respondem igual, e o
+    // gate fica verde sobre um acerto que nunca teve de escolher.
+    /// Quantas amostras ao longo do traço a busca examina. CONTAGEM, não pixel.
+    const SAMPLES: u16 = 100;
+    let ambiguo = (0..=SAMPLES)
+        .map(|k| {
+            #[allow(clippy::cast_precision_loss)] // índice de amostra, não medida
+            let t = f32::from(k) / f32::from(SAMPLES);
+            (
+                (b[1].0 - b[0].0).mul_add(t, b[0].0),
+                (b[1].1 - b[0].1).mul_add(t, b[0].1),
+            )
+        })
+        .find(|p| {
+            let d0 = super::dist_to_segment(*p, a[0], a[1]);
+            d0 > 0.5 && d0 <= super::LINK_GRAB
+        })
+        .expect("os dois traços têm de se cruzar -- senão este gate não desempata nada");
 
     assert_eq!(
-        link_at(r, &v, sobre),
+        link_at(r, &v, ambiguo),
         Some(1),
         "ganhou o primeiro da lista em vez do mais próximo"
     );
+}
+
+/// **UM CÍRCULO ARRASTADO PARA FORA É PRESO AO PLANO.**
+///
+/// ⚠️ É o que impede o gesto de criar um estado irreversível: um círculo largado fora do card
+/// ficaria fora do alcance do ponteiro para sempre.
+#[test]
+fn um_circulo_arrastado_para_fora_e_preso_ao_plano() {
+    let v = view3();
+    let r = card(&v);
+    let plane = canvas_rect(r);
+    let longe = clamp_to_plane(r, (plane.x - 5000.0, plane.y + 5000.0));
+    assert!(longe[0] >= node_radius(), "saiu pela esquerda: {longe:?}");
+    assert!(
+        longe[1] <= plane.h - node_radius() + 0.5,
+        "saiu por baixo: {longe:?}"
+    );
+    // E um ponto legítimo passa sem ser mexido.
+    let dentro = clamp_to_plane(r, (plane.x + 200.0, plane.y + 100.0));
+    assert_eq!(dentro, [200.0, 100.0]);
+}
+
+/// **O CARD CRESCE PARA CABER O CÍRCULO MAIS DISTANTE.**
+///
+/// ⚠️ Sem o crescimento, arrastar um círculo para longe o poria fora do card — e o gesto teria
+/// criado um estado de que não se pode voltar.
+#[test]
+fn o_card_cresce_para_caber_o_circulo_mais_distante() {
+    let base = card_size(&view3());
+    let mut v = view3();
+    v.nodes[0].at = Some([base.0 + 300.0, 100.0]);
+    let maior = card_size(&v);
+    assert!(
+        maior.0 > base.0,
+        "a largura não cresceu: {base:?} -> {maior:?}"
+    );
+    // E o círculo cabe.
+    let r = Rect::new(0.0, 0.0, maior.0, maior.1);
+    let c = node_center(r, &v, 0);
+    assert!(c.0 + node_radius() <= r.x + r.w, "o círculo saiu do card");
 }
 
 /// **O LAÇO DE UM NÓ CONSIGO MESMO É RECUSADO NO GESTO** — não só no resolvedor.
@@ -322,24 +316,14 @@ fn soltar_fora_do_diagrama_nao_e_uma_ligacao() {
     assert_eq!(drop_intent(&v, 99, 2, 0), None);
 }
 
-/// **A FAIXA DE AVISO SÓ OCUPA ALTURA QUANDO HÁ AVISO** — o card não reserva espaço para um
-/// estado que quase nunca acontece.
-#[test]
-fn o_aviso_de_ciclo_so_ocupa_altura_quando_existe() {
-    let calmo = view3();
-    let mut com_ciclo = view3();
-    com_ciclo.cycle = true;
-    let (w0, h0) = card_size(&calmo);
-    let (w1, h1) = card_size(&com_ciclo);
-    assert!((w0 - w1).abs() < f32::EPSILON, "a largura não muda");
-    assert!(h1 > h0, "o aviso não abriu espaço: {h0} -> {h1}");
-}
-
-/// **UMA VISTA VAZIA AINDA TEM CARD** — abrir o diagrama sobre nada não pode dar um card de altura
-/// zero (ele fica sem banda de título e o artista não consegue fechá-lo).
+/// **UMA VISTA VAZIA AINDA TEM CARD** — abrir o diagrama sobre nada não pode dar um card sem banda
+/// de título, que o artista não conseguiria fechar.
 #[test]
 fn uma_vista_vazia_ainda_tem_card_clicavel() {
     let v = BoolGraphView::default();
     let (w, h) = card_size(&v);
-    assert!(w > 0.0 && h > super::TITLE_H, "card {w}x{h}");
+    assert!(
+        w > 0.0 && h > super::TITLE_H + super::FOOTER_H,
+        "card {w}x{h}"
+    );
 }

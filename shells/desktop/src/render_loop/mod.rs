@@ -8113,9 +8113,23 @@ impl crate::App {
                         hero.store.open_bool_graph(x, y);
                     }
                     let intents = hero.store.take_bool_graph_intents();
-                    crate::bool_graph_ui::apply_intents(sim, g, &intents);
+                    let out = crate::bool_graph_ui::apply_intents(sim, g, &intents);
+                    // ⚠️ **Selecionar pelo diagrama é a única porta para um operando CONSUMIDO.**
+                    // Ele desenha vazio, e a lei do canvas é *"nada desenhado, nada pego"* — sem
+                    // isto ele fica inalcançável pelo ponteiro (Enio, 2026-08-22).
+                    if let Some(id) = out.select {
+                        self.vec_pen.select_many(&[id]);
+                    }
                     let view =
                         crate::bool_graph_ui::view_of(sim, &self.vec_entities, &self.bool_live, g);
+                    // A pré-visualização do arrasto entra AQUI, na vista publicada, e não no
+                    // painter: assim quem desenha e quem acerta o clique leem o mesmo círculo.
+                    // Aplicá-la só no painter faria o círculo aparecer debaixo do cursor e
+                    // responder no sítio antigo.
+                    let view = ph2d_editor::widget::bool_graph_with_drag(
+                        &view,
+                        hero.store.bool_graph_dragging(),
+                    );
                     hero.store.set_bool_graph_view(view);
                     // O painel mostra o verbo do diagrama (ou *misto*): sem isso os oito botões
                     // mudariam as ligações todas sem que nada na tela o anunciasse.

@@ -239,9 +239,49 @@ errado, é a metade A que reprova — e é para isso que ela existe.
 gate"* passa num gate que esconde o knob sempre (`values: &[]`) — o defeito oposto, e pior. A
 asserção é um par: **inerte fora, vivo dentro de pelo menos um**.
 
-### §7.3 — Ordem
+### §7.3 — Ordem (✅ **os quatro passos FECHARAM em 2026-08-22**)
 
-1. Os gates (11 crates, side-metadata — ⛔ nenhum toca o `NodeManifest` congelado, §6 do CLAUDE.md).
-2. A prova A, sobre os 19.
-3. A prova B, sobre os 11 nós.
-4. Uma cena de smoke em que o Enio veja o painel a mudar de tamanho ao girar o modo.
+1. ✅ Os gates — 17 tabelas em 11 crates, side-metadata (⛔ nenhum toca o `NodeManifest`
+   congelado, §6 do CLAUDE.md).
+2. ✅ A prova A — [`param_gates_are_exact.rs`](../../crates/ph2d-node-registry-init/tests/param_gates_are_exact.rs).
+   **Todos os 17 índices estavam certos**, e isso é uma medição, não uma verificação de leitura.
+3. ✅ A prova B — [`motion_bridge_params_visible_tests.rs`](../../shells/desktop/src/render_loop/motion_bridge_params_visible_tests.rs).
+4. ✅ A cena `=82` — [`..._demos_gates.rs`](../../shells/desktop/src/motion_state_conferencia_demos_gates.rs).
+
+### §7.4 — O que as PROVAS DE MUTAÇÃO encontraram (e uma delas era num teste meu)
+
+| mutação | esperado | o que aconteceu |
+|---|---|---|
+| `values: &[1..7]` → `&[0]` no `motion.stagger` | prova A vermelha | ✅ vermelha, com a mensagem exacta (*"AGE no modo 1, e o gate esconde-o lá"*) |
+| desregistar o gate do `value.step` | A e B vermelhas | ⚠️ **A vermelha, B VERDE** |
+
+A segunda é a lição. A prova B iterava `reg.param_gates(...)` e um nó sem tabela caía no
+`continue`: **a varredura ficava menor, e menor não é vermelho**. O piso `checked >= 13` também
+não a apanhava, porque os outros gates chegavam para o satisfazer.
+
+⚠️ *Um laço que salta o que não encontra não pode provar que alguma coisa existe.* A contagem é
+um piso; **a lista NOMEADA é o gate** — e é por isso que `the_enum_cures_live_on_the_nodes_the_audit_named`
+existe ao lado do laço, e não em vez dele.
+
+### §7.5 — Dois testes existentes reprovaram, e ambos fixavam o defeito
+
+`stagger_params_are_named_enums_and_a_checkbox` e
+`selected_tint_node_yields_mode_and_colour_swatch_rows` perguntavam com o nó no **default**. O
+assunto declarado dos dois é o **WIDGET** (*"um enum vira um seletor nomeado, uma cor vira um
+swatch"*) — a visibilidade era incidental, e eles fixavam-na sem o dizer.
+
+⚠️ *Um teste pode pinar um bug de desenho enquanto prova outra coisa, e continua verde a fazê-lo.*
+Passaram a perguntar no modo em que a row existe **e a afirmar também a ausência** no modo em que
+ela não age — o que os torna parte da prova em vez de um obstáculo a ela.
+
+### §7.6 — A cena `=82`, e a lei que ela pagou
+
+O oráculo é **contar linhas**: cada célula desenha o mesmo controle **duas vezes ao mesmo tempo**
+(no mínimo e no máximo). Onde ele é mudo as duas cópias coincidem ⇒ **uma** linha; onde age,
+**duas**. Sete linhas, esquerda muda / direita viva.
+
+⚠️ **A linha do CLAMP nasceu a passar dos dois lados, e a causa não estava onde eu olhava:** o
+`value.map_range` que o encanamento da cena usa para pôr o valor no eixo Y nasce com `clamp = 1`
+— ele **fechava a faixa** que a célula tinha aberto de propósito. *A fixture continha o fenómeno
+e a canalização a jusante apagava-o.* É o irmão difícil da lei da fixture fraca: o defeito não
+está na fixture, está no caminho entre ela e a medição.

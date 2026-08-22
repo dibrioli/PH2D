@@ -464,3 +464,9 @@ pub(super) use utilidade::{
     join, operator_family, rank_family, sim_family, sortkey, style_family, taper, transform_family,
     util_family,
 };
+
+/// A cena da CURA DOS KNOBS MORTOS (`=82`, doc 90) — sozinha por ASSUNTO, e o teto de LOC da
+/// irmã foi quem forçou a decidir onde cortar.
+#[path = "motion_state_demo_conferencia_gates.rs"]
+mod gates;
+pub(super) use gates::gate_family;

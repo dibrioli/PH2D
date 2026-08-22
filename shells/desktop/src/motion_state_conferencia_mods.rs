@@ -94,6 +94,11 @@ pub(crate) mod conferencia_demos_field;
 pub(crate) mod conferencia_demos_force;
 #[path = "motion_state_conferencia_demos_fx.rs"]
 pub(crate) mod conferencia_demos_fx;
+/// A cena da CURA DOS KNOBS MORTOS (`=82`) — doc 90. ⚠️ O oráculo dela é CONTAR
+/// LINHAS: cada célula desenha o mesmo controle no mínimo e no máximo ao mesmo
+/// tempo, e onde ele é mudo as duas cópias coincidem.
+#[path = "motion_state_conferencia_demos_gates.rs"]
+pub(crate) mod conferencia_demos_gates;
 #[path = "motion_state_conferencia_demos_goal.rs"]
 pub(crate) mod conferencia_demos_goal;
 /// A cena dos KNOBS (`=78`) — os nove controles apendados ao domínio de valor

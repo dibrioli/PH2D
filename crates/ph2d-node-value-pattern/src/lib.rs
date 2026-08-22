@@ -75,6 +75,88 @@ fn pattern_value(i: usize, steps: usize, vals: &[f32; SLOTS]) -> f32 {
     vals[i % steps]
 }
 
+/// Como uma FASE fracionária se resolve num ciclo de valores discretos.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Interp {
+    /// A fase encosta no slot mais próximo — o padrão salta de degrau em degrau,
+    /// que é o que um padrão de índices sempre foi.
+    Step,
+    /// A fase mistura os dois slots vizinhos — o padrão **desliza**.
+    Linear,
+}
+
+impl Interp {
+    fn from_param(p: f32) -> Self {
+        if p.round() as i32 == 1 {
+            Interp::Linear
+        } else {
+            Interp::Step
+        }
+    }
+}
+
+/// **O comprimento do ciclo** — a tabela autorada, se houver, senão os `steps`
+/// slots. Uma resposta só, para que a fase e o valor não possam discordar sobre
+/// quantos degraus existem.
+fn cycle_len(steps: usize, authored: &[f32]) -> usize {
+    if authored.is_empty() {
+        steps.clamp(1, SLOTS)
+    } else {
+        authored.len()
+    }
+}
+
+/// O valor na POSIÇÃO INTEIRA `k` do ciclo, com `k` a dar a volta nos dois
+/// sentidos (`rem_euclid`, nunca `%`: o `%` de Rust devolve negativo para `k`
+/// negativo, e um offset negativo é o caso normal deste knob).
+fn cycle_at(k: i64, steps: usize, vals: &[f32; SLOTS], authored: &[f32]) -> f32 {
+    let n = cycle_len(steps, authored);
+    let idx = k.rem_euclid(n as i64) as usize;
+    // As duas leis do ciclo continuam a ser as que sempre foram — esta função
+    // apenas as alcança numa posição que já deu a volta.
+    table::value_at(idx, authored).unwrap_or_else(|| pattern_value(idx, steps, vals))
+}
+
+/// **O valor do elemento `i` sob uma FASE.**
+///
+/// `offset` desloca o padrão em unidades de índice e **pode ser fracionário** —
+/// e é isso que dá sentido ao `interp`: num índice inteiro não há nada entre dois
+/// slots para interpolar, e é exatamente a fase que cria o entre. `Step` encosta
+/// no slot mais próximo (o padrão salta de posição inteira em posição inteira),
+/// `Linear` mistura o par (o padrão desliza continuamente, e um `offset` animado
+/// vira uma onda a percorrer a fileira em vez de um estroboscópio).
+///
+/// A volta é **periódica nos dois sentidos**: em `Linear`, o par no encaixe é o
+/// último com o primeiro, que é a única leitura coerente com um padrão que já se
+/// repetia.
+///
+/// ⚠️ **`offset = 0` é o nó que sempre shipou, bit-a-bit, nos DOIS modos.**
+/// `round(i)` e `floor(i)` são ambos `i` para um índice inteiro, e em `Linear` a
+/// fração é `0`, cujo ramo devolve o slot **verbatim** em vez de `a + 0·(b − a)`.
+fn phased_value(
+    i: usize,
+    offset: f32,
+    interp: Interp,
+    steps: usize,
+    vals: &[f32; SLOTS],
+    authored: &[f32],
+) -> f32 {
+    let p = i as f32 + offset;
+    match interp {
+        Interp::Step => cycle_at(p.round() as i64, steps, vals, authored),
+        Interp::Linear => {
+            let k0 = p.floor();
+            let t = p - k0;
+            let a = cycle_at(k0 as i64, steps, vals, authored);
+            if t == 0.0 {
+                return a;
+            }
+            let b = cycle_at(k0 as i64 + 1, steps, vals, authored);
+            a + t * (b - a)
+        }
+    }
+}
+
 /// The static contract of this node type (ADR-0031). The kernel is side-metadata
 /// (ADR-0126); `NodeManifest` stays the frozen 8 fields.
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -129,6 +211,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "v7",
             default: 0.0,
         },
+        // ⚠️ **Apendados**: a FASE do padrão (em unidades de índice, fracionária)
+        // e como ela se resolve. `0`/`Step` = o nó que sempre shipou, bit-a-bit.
+        // Ver [`phased_value`].
+        ParamSpec {
+            name: "offset",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "interp",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -161,30 +254,58 @@ static LUTS: &[LutSpec] = &[LutSpec {
 /// `steps` clamp mantém `vp_idx` dentro deles e o `switch` seleciona.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
-        // O cabecalho: quantos valores a tabela autorada carrega (0 = nenhuma).\n\
-        let vp_n = u32(max(lut_vp_table[0], 0.0));\n\
+        // A FASE: o gemeo de `phased_value`. `interp` decide se ela encosta no\n\
+        // slot mais proximo ou mistura o par que ela atravessa.\n\
+        let vp_p = f32(i) + params.offset;\n\
         var vp_v: f32;\n\
-        if (vp_n > 0u) {\n\
-        \x20   vp_v = lut_vp_table[1u + (i % vp_n)];\n\
-        } else {\n\
-        \x20   let vp_steps = clamp(i32(vp_round(params.steps)), 1, 8);\n\
-        \x20   let vp_idx = i32(i) % vp_steps;\n\
-        \x20   switch (vp_idx) {\n\
-        \x20       case 1: { vp_v = params.v1; }\n\
-        \x20       case 2: { vp_v = params.v2; }\n\
-        \x20       case 3: { vp_v = params.v3; }\n\
-        \x20       case 4: { vp_v = params.v4; }\n\
-        \x20       case 5: { vp_v = params.v5; }\n\
-        \x20       case 6: { vp_v = params.v6; }\n\
-        \x20       case 7: { vp_v = params.v7; }\n\
-        \x20       default: { vp_v = params.v0; }\n\
+        if (params.interp >= 0.5) {\n\
+        \x20   let vp_k0 = floor(vp_p);\n\
+        \x20   let vp_t = vp_p - vp_k0;\n\
+        \x20   let vp_a = vp_at(i32(vp_k0));\n\
+        \x20   if (vp_t == 0.0) {\n\
+        \x20       // Verbatim: uma fase inteira le' o slot, nao `a + 0*(b-a)`.\n\
+        \x20       vp_v = vp_a;\n\
+        \x20   } else {\n\
+        \x20       vp_v = vp_a + vp_t * (vp_at(i32(vp_k0) + 1) - vp_a);\n\
         \x20   }\n\
+        } else {\n\
+        \x20   vp_v = vp_at(i32(vp_round(vp_p)));\n\
         }\n\
         write_v(i, vp_v);\n",
     wgsl_lib: "\
         fn vp_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        // O cabecalho da LUT: quantos valores a tabela autorada carrega (0 =\n\
+        // nenhuma, e o ciclo sao os `steps` slots). O gemeo de `cycle_len`.\n\
+        fn vp_cycle_len() -> i32 {\n\
+            let authored = i32(max(lut_vp_table[0], 0.0));\n\
+            if (authored > 0) { return authored; }\n\
+            return clamp(i32(vp_round(params.steps)), 1, 8);\n\
+        }\n\
+        // O valor na posicao INTEIRA `k`, com `k` a dar a volta nos dois sentidos\n\
+        // (o gemeo do `rem_euclid`: o `%` do WGSL tambem devolve negativo, e um\n\
+        // offset negativo e' o caso normal deste knob).\n\
+        fn vp_at(k: i32) -> f32 {\n\
+            let n = vp_cycle_len();\n\
+            var idx = k % n;\n\
+            if (idx < 0) { idx = idx + n; }\n\
+            if (i32(max(lut_vp_table[0], 0.0)) > 0) {\n\
+                return lut_vp_table[1u + u32(idx)];\n\
+            }\n\
+            var v: f32;\n\
+            switch (idx) {\n\
+                case 1: { v = params.v1; }\n\
+                case 2: { v = params.v2; }\n\
+                case 3: { v = params.v3; }\n\
+                case 4: { v = params.v4; }\n\
+                case 5: { v = params.v5; }\n\
+                case 6: { v = params.v6; }\n\
+                case 7: { v = params.v7; }\n\
+                default: { v = params.v0; }\n\
+            }\n\
+            return v;\n\
         }\n",
     bindings: &[ColumnBinding {
         column: VALUE_COL,
@@ -193,7 +314,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         identity: [0.0; 4],
         port: 0,
     }],
-    params: &["steps", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7"],
+    // ⚠️ Esta lista não é derivada do manifesto: um param novo compila, coza na
+    // CPU, e o device recusa o shader (`invalid field accessor`).
+    params: &[
+        "steps", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "offset", "interp",
+    ],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -223,11 +348,11 @@ impl NodeOp for ValuePattern {
         let authored = table::parse(ctx.text_param(TABLE_KEY).unwrap_or(""));
         // The input is read for its COUNT only (like `instance_field`); the output
         // is a fresh field of that length.
+        let offset = ctx.param("offset");
+        let interp = Interp::from_param(ctx.param("interp"));
         let n = ctx.input(0).count();
         let out: Vec<f32> = (0..n)
-            .map(|i| {
-                table::value_at(i, &authored).unwrap_or_else(|| pattern_value(i, steps, &vals))
-            })
+            .map(|i| phased_value(i, offset, interp, steps, &vals, &authored))
             .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }
@@ -339,6 +464,26 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     slot("v5", "V5"),
     slot("v6", "V6"),
     slot("v7", "V7"),
+    // A FASE do padrão, em unidades de índice. `0` = o nó de sempre. Fracionária
+    // de propósito: é ela que cria o "entre dois slots" que o `interp` resolve.
+    ParamUiHint {
+        param: "offset",
+        label: "Offset",
+        min: -8.0,
+        max: 8.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "interp",
+        label: "Interp",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Step", "Linear"],
+        },
+    },
 ];
 
 #[cfg(test)]

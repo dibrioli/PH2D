@@ -92,6 +92,10 @@ pub(crate) mod conferencia_demos_force;
 pub(crate) mod conferencia_demos_fx;
 #[path = "motion_state_conferencia_demos_goal.rs"]
 pub(crate) mod conferencia_demos_goal;
+/// A cena dos KNOBS (`=78`) — os nove controles apendados ao domínio de valor
+/// (folha 15), cada um com o nó sem ele desenhado ao lado.
+#[path = "motion_state_conferencia_demos_knobs.rs"]
+pub(crate) mod conferencia_demos_knobs;
 /// A cena do OPERADOR (`=77`) — o *Echo Operator* do rastro e o *Strobe Operator* do
 /// flash, que a folha 07 dizia serem um conserto só.
 #[path = "motion_state_conferencia_demos_operator.rs"]

@@ -38,6 +38,45 @@ pub(super) fn arith(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId>
     sinks
 }
 
+/// **A CENA `=78` — OS KNOBS QUE FALTAVAM** (doc 89, folha 15): nove controles
+/// apendados a oito nós, cada um com o nó SEM ele desenhado ao lado.
+///
+/// ⚠️ Irmã da [`arith`] de propósito — mesma folha, mesmo idioma (o Y de cada peça
+/// É o valor), zero aprendizagem nova para quem já leu a `=41`.
+pub(super) fn knobs(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
+    let sinks =
+        conferencia_demos_knobs::build_knobs_demo_document(doc, registry).unwrap_or_default();
+    let (n, smin, fade) = conferencia_demos_knobs::authored();
+    eprintln!(
+        "[cena 78] {n} fileiras em DOIS blocos, esquerda e direita. Cada fileira e' um GRAFICO:
+  {cols} pecas, e a ALTURA de cada peca E' o numero que sai do no'.
+
+  >>> AS FILEIRAS ANDAM AOS PARES: a de cima e' como o no' ERA, a logo abaixo e' o
+      botao novo LIGADO. A pergunta nao e' \"apareceu alguma coisa?\" e sim \"as duas
+      desenham formas DIFERENTES?\".",
+        cols = conferencia_demos_knobs::COLS as u32,
+    );
+    for (i, label) in conferencia_demos_knobs::row_labels() {
+        eprintln!("  {}. {label}", i + 1);
+    }
+    eprintln!(
+        "  (!) BLOCO DA ESQUERDA, de cima para baixo: o S que sobe e o S ao contrario - a
+  escada com um DEGRAU no meio e a mesma escada com uma QUINA no meio - o zigue-zague
+  e o zigue-zague mais curto - a ESCADA de quatro degraus e a RETA em que ela se
+  dissolve - a TENDA e a tenda cedendo metade.
+  (!) BLOCO DA DIREITA: a soma que TRANSBORDA e a soma que PARA - a rampa e a rampa
+  que passa a DESCER - a quina SECA e a quina ARREDONDADA (aberta em {smin:.1}).
+  (!) AS DUAS ULTIMAS DA DIREITA SO' SE JULGAM COM O >>> PLAY <<<: a de cima nasce com a
+  onda inteira; a de baixo nasce PARADA e a onda cresce do nada ao longo de {fade:.0}
+  segundos. Depois disso as duas ficam identicas -- e' o que a rampa promete.
+
+  DEU ERRADO se qualquer par desenhar a MESMA forma, se alguma fileira ficar plana
+  (fora a ultima da direita nos primeiros {fade:.0} s), ou se os dois blocos se
+  encavalarem."
+    );
+    sinks
+}
+
 /// O RUIDO e o RELOGIO (doc 89, o grupo B): os dois geradores TEMPORAIS,
 /// dez perfis, e a unica leitura desta jornada que so' o PLAY responde.
 pub(super) fn noise_clock(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {

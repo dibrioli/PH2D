@@ -76,7 +76,7 @@ impl Mode {
 
 /// Snap one value to the grid: `q = mode(v / step) · step`. A (near-)zero `step`
 /// is a passthrough — the identity, never a divide-by-zero `NaN`.
-fn quantize_one(v: f32, step: f32, mode: Mode) -> f32 {
+fn snap(v: f32, step: f32, mode: Mode) -> f32 {
     if step.abs() < MIN_STEP {
         return v;
     }
@@ -90,6 +90,34 @@ fn quantize_one(v: f32, step: f32, mode: Mode) -> f32 {
         Mode::Truncate => n.trunc(),
     };
     k * step
+}
+
+/// The node as the artist sees it: the staircase, on a grid whose **PHASE** the
+/// `offset` moves. Quantise in the offset's frame and come back —
+/// `snap(v − offset) + offset`.
+///
+/// **The offset is what makes a grid a grid the artist chose.** Houdini's `snap`
+/// and TouchDesigner's Limit CHOP both expose it, and the reason is that a
+/// staircase pinned to the origin can only ever land on multiples of `step`: an
+/// artist quantising a rotation to 30° steps who wants the rest positions at 15°,
+/// 45°, 75° has no way to say so. The composition that fakes it —
+/// `math(Sub) → quantize → math(Add)` — is three nodes and the offset written
+/// twice, which drifts the day one of the two is tuned.
+///
+/// ⚠️ **The degenerate guard is repeated here, and that is load-bearing, not
+/// copy-paste.** `(v − offset) + offset` is **not** `v` in `f32`, so a passthrough
+/// routed through the shift would move the value the node promised not to touch —
+/// the identity would stop being the identity for exactly the artists who set an
+/// offset. Both spellings read the SAME `MIN_STEP`, so there is one number here,
+/// not two.
+///
+/// `offset = 0` reduces to [`snap`] **bit-for-bit**: `v − 0.0` and `k·step + 0.0`
+/// are exact in IEEE-754 for every finite `v`.
+fn quantize_one(v: f32, step: f32, mode: Mode, offset: f32) -> f32 {
+    if step.abs() < MIN_STEP {
+        return v;
+    }
+    snap(v - offset, step, mode) + offset
 }
 
 /// The static contract of this node type (ADR-0031). The kernel is side-metadata
@@ -116,6 +144,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "mode",
             default: 0.0,
         },
+        // ⚠️ **Apendado**: a FASE da grade. `0` = a grade pinada na origem, o nó
+        // que sempre shipou, bit-a-bit. Ver [`quantize_one`].
+        ParamSpec {
+            name: "offset",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -130,13 +164,15 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let vq_step = params.step;\n\
         var vq = read_v(i);\n\
         if (abs(vq_step) >= 1e-9) {\n\
-        \x20   let vq_n = vq / vq_step;\n\
+        \x20   // A FASE: quantiza no referencial do offset e volta. O ramo\n\
+        \x20   // degenerado nunca chega aqui, e por isso o passe e' verbatim.\n\
+        \x20   let vq_n = (vq - params.offset) / vq_step;\n\
         \x20   let vq_mode = i32(vq_round(params.mode));\n\
         \x20   var vq_k = vq_round(vq_n);\n\
         \x20   if (vq_mode == 1) { vq_k = floor(vq_n); }\n\
         \x20   else if (vq_mode == 2) { vq_k = ceil(vq_n); }\n\
         \x20   else if (vq_mode == 3) { vq_k = trunc(vq_n); }\n\
-        \x20   vq = vq_k * vq_step;\n\
+        \x20   vq = vq_k * vq_step + params.offset;\n\
         }\n\
         write_v(i, vq);\n",
     wgsl_lib: "\
@@ -151,7 +187,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         identity: [0.0; 4],
         port: 0,
     }],
-    params: &["step", "mode"],
+    // ⚠️ Esta lista não é derivada do manifesto: um param novo compila, coza na
+    // CPU, e o device recusa o shader (`invalid field accessor`).
+    params: &["step", "mode", "offset"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -167,13 +205,17 @@ impl NodeOp for ValueQuantize {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let step = ctx.param("step");
         let mode = Mode::from_param(ctx.param("mode"));
+        let offset = ctx.param("offset");
         let input: Vec<f32> = match ctx.input(0).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         };
         let n = input.len();
         // Unary map — the field's length is preserved exactly.
-        let out: Vec<f32> = input.iter().map(|&v| quantize_one(v, step, mode)).collect();
+        let out: Vec<f32> = input
+            .iter()
+            .map(|&v| quantize_one(v, step, mode, offset))
+            .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }
 }
@@ -220,6 +262,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Round", "Floor", "Ceil", "Truncate"],
         },
     },
+    // A FASE da grade, nas unidades da entrada. `0` = pinada na origem (o nó de
+    // sempre). Meio degrau move os patamares para o meio entre eles.
+    ParamUiHint {
+        param: "offset",
+        label: "Offset",
+        min: -1.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 #[cfg(test)]
@@ -232,7 +284,7 @@ mod tests {
     /// each value to its NEAREST multiple, so a smooth ramp becomes a staircase.
     #[test]
     fn round_snaps_to_the_nearest_multiple() {
-        let q = |v| quantize_one(v, 0.25, Mode::Round);
+        let q = |v| snap(v, 0.25, Mode::Round);
         assert_eq!(q(0.0), 0.0);
         assert_eq!(q(0.1), 0.0, "0.1 rounds down to 0");
         assert_eq!(q(0.2), 0.25, "0.2 rounds up to 0.25");
@@ -244,24 +296,14 @@ mod tests {
     /// on a `0.25` grid: floor holds at 0.5, ceil jumps to 0.75, round nears 0.5.
     #[test]
     fn floor_and_ceil_bracket_the_value() {
-        assert_eq!(
-            quantize_one(0.6, 0.25, Mode::Floor),
-            0.5,
-            "floor snaps down"
-        );
-        assert_eq!(quantize_one(0.6, 0.25, Mode::Ceil), 0.75, "ceil snaps up");
-        assert_eq!(quantize_one(0.6, 0.25, Mode::Round), 0.5, "round nears 0.5");
+        assert_eq!(snap(0.6, 0.25, Mode::Floor), 0.5, "floor snaps down");
+        assert_eq!(snap(0.6, 0.25, Mode::Ceil), 0.75, "ceil snaps up");
+        assert_eq!(snap(0.6, 0.25, Mode::Round), 0.5, "round nears 0.5");
         // Floor never exceeds the input; ceil is never below it.
         for k in 0..100 {
             let v = k as f32 * 0.037;
-            assert!(
-                quantize_one(v, 0.25, Mode::Floor) <= v + 1e-6,
-                "floor ≤ v at {v}"
-            );
-            assert!(
-                quantize_one(v, 0.25, Mode::Ceil) >= v - 1e-6,
-                "ceil ≥ v at {v}"
-            );
+            assert!(snap(v, 0.25, Mode::Floor) <= v + 1e-6, "floor ≤ v at {v}");
+            assert!(snap(v, 0.25, Mode::Ceil) >= v - 1e-6, "ceil ≥ v at {v}");
         }
     }
 
@@ -271,7 +313,7 @@ mod tests {
     fn a_zero_step_is_a_passthrough() {
         for k in 0..50 {
             let v = k as f32 * 0.13 - 3.0;
-            let out = quantize_one(v, 0.0, Mode::Round);
+            let out = snap(v, 0.0, Mode::Round);
             assert!(out.is_finite(), "finite at {v}");
             assert_eq!(out, v, "step 0 passes the value through unchanged");
         }
@@ -281,22 +323,18 @@ mod tests {
     /// GPU `vq_round` match): `-0.6` on a `0.25` grid rounds to `-0.5`, not `-0.75`.
     #[test]
     fn negatives_round_half_away_from_zero() {
-        assert_eq!(quantize_one(-0.6, 0.25, Mode::Round), -0.5);
+        assert_eq!(snap(-0.6, 0.25, Mode::Round), -0.5);
         assert_eq!(
-            quantize_one(-0.125, 0.25, Mode::Round),
+            snap(-0.125, 0.25, Mode::Round),
             -0.25,
             "0.5 case away from 0"
         );
         assert_eq!(
-            quantize_one(-0.6, 0.25, Mode::Floor),
+            snap(-0.6, 0.25, Mode::Floor),
             -0.75,
             "floor snaps toward -inf"
         );
-        assert_eq!(
-            quantize_one(-0.6, 0.25, Mode::Ceil),
-            -0.5,
-            "ceil snaps toward +inf"
-        );
+        assert_eq!(snap(-0.6, 0.25, Mode::Ceil), -0.5, "ceil snaps toward +inf");
     }
 
     /// A value source emitting a fixed field, so `value.quantize` can be driven
@@ -379,21 +417,21 @@ mod tests {
         for k in 1..40 {
             let v = k as f32 * 0.07;
             assert_eq!(
-                quantize_one(v, 0.25, Mode::Truncate),
-                quantize_one(v, 0.25, Mode::Floor),
+                snap(v, 0.25, Mode::Truncate),
+                snap(v, 0.25, Mode::Floor),
                 "acima de zero: v={v}"
             );
             assert_eq!(
-                quantize_one(-v, 0.25, Mode::Truncate),
-                quantize_one(-v, 0.25, Mode::Ceil),
+                snap(-v, 0.25, Mode::Truncate),
+                snap(-v, 0.25, Mode::Ceil),
                 "abaixo de zero: v={}",
                 -v
             );
         }
         // E onde importa, ele DIFERE do Floor -- o par que o gate existe para
         // separar.
-        assert_eq!(quantize_one(-0.6, 0.25, Mode::Truncate), -0.5);
-        assert_eq!(quantize_one(-0.6, 0.25, Mode::Floor), -0.75);
+        assert_eq!(snap(-0.6, 0.25, Mode::Truncate), -0.5);
+        assert_eq!(snap(-0.6, 0.25, Mode::Floor), -0.75);
     }
 
     /// **Truncate nunca AUMENTA a magnitude** -- o que "snap para zero" promete,
@@ -402,7 +440,7 @@ mod tests {
     fn truncate_never_grows_the_magnitude() {
         for k in -60..60 {
             let v = k as f32 * 0.037;
-            let q = quantize_one(v, 0.25, Mode::Truncate);
+            let q = snap(v, 0.25, Mode::Truncate);
             assert!(
                 q.abs() <= v.abs() + 1e-6,
                 "v={v} -> {q}: a magnitude cresceu"
@@ -411,6 +449,73 @@ mod tests {
                 q == 0.0 || q.signum() == v.signum(),
                 "v={v} -> {q}: trocou de lado do eixo"
             );
+        }
+    }
+
+    /// **`offset = 0` e' o no' que sempre shipou -- BIT-A-BIT**, nos quatro modos
+    /// e numa faixa de passos. `v − 0.0` e `k·step + 0.0` sao exactos em IEEE-754,
+    /// entao isto e' `assert_eq!` de f32 e nao um epsilon.
+    #[test]
+    fn a_zero_offset_is_the_node_that_shipped_bit_for_bit() {
+        for &m in &[Mode::Round, Mode::Floor, Mode::Ceil, Mode::Truncate] {
+            for &s in &[0.0, 0.1, 0.25, 1.0, 3.7] {
+                for k in -80..80 {
+                    let v = k as f32 * 0.041;
+                    assert_eq!(quantize_one(v, s, m, 0.0), snap(v, s, m), "v={v} s={s}");
+                }
+            }
+        }
+    }
+
+    /// **O OFFSET MOVE OS PATAMARES, e o resultado continua NA grade deslocada.**
+    ///
+    /// O oraculo e' a definicao, nao um valor a olho: toda saida tem de ser
+    /// `offset + k·step` para um inteiro `k`. Uma implementacao que somasse o
+    /// offset **sem** o subtrair antes passaria um teste de "mudou alguma coisa" e
+    /// reprovaria este -- ela deslocaria a grade E o valor, e a saida cairia entre
+    /// os degraus.
+    #[test]
+    fn the_offset_moves_the_treads_and_the_result_stays_on_the_shifted_grid() {
+        let (step, off) = (0.25f32, 0.125f32);
+        for k in -80..80 {
+            let v = k as f32 * 0.041;
+            let q = quantize_one(v, step, Mode::Round, off);
+            let n = ((q - off) / step).round();
+            assert!(
+                ((q - off) - n * step).abs() < 1e-5,
+                "v={v} -> {q}: fora da grade deslocada"
+            );
+            // E o erro nunca passa de meio degrau (a lei do Round, preservada).
+            assert!((q - v).abs() <= 0.5 * step + 1e-5, "v={v} -> {q}: saltou");
+        }
+        // Meio degrau poe os patamares no MEIO entre os antigos -- a razao de ser
+        // do knob, num ponto que qualquer um confere de cabeca.
+        assert_eq!(quantize_one(0.125, 0.25, Mode::Round, 0.125), 0.125);
+        assert_eq!(quantize_one(0.25, 0.25, Mode::Round, 0.125), 0.375);
+        // ⚠️ E o EMPATE cai onde a lei do `Round` manda (metade PARA LONGE do
+        // zero), medido no referencial DESLOCADO: `v = 0` fica a meio caminho de
+        // `−0,125` e `+0,125`, e a regra o manda para `−0,125`. Nao e' um capricho
+        // do teste -- e' a mesma `f32::round` que o `vq_round` do WGSL espelha, e
+        // um empate resolvido de outra forma seria uma divergencia CPU/GPU.
+        assert_eq!(quantize_one(0.0, 0.25, Mode::Round, 0.125), -0.125);
+    }
+
+    /// **Um passo degenerado e' passe VERBATIM mesmo com offset** -- o gate da
+    /// guarda repetida.
+    ///
+    /// ⚠️ **A mutacao que este gate mata e' delegar a guarda:** `snap(v−o) + o`
+    /// com passo zero devolve `(v−o)+o`, que em `f32` **nao e'** `v` (ex.: `v =
+    /// 1e-7`, `o = 1000` perde toda a mantissa). A identidade deixaria de ser a
+    /// identidade exactamente para quem pos um offset.
+    #[test]
+    fn a_degenerate_step_is_a_verbatim_passthrough_even_with_an_offset() {
+        for &off in &[0.0, 0.125, -3.0, 1000.0] {
+            for k in -40..40 {
+                let v = k as f32 * 0.037;
+                assert_eq!(quantize_one(v, 0.0, Mode::Round, off), v, "v={v} off={off}");
+            }
+            // O caso que a guarda delegada perderia: mantissa engolida pelo offset.
+            assert_eq!(quantize_one(1e-7, 0.0, Mode::Round, 1000.0), 1e-7);
         }
     }
 }

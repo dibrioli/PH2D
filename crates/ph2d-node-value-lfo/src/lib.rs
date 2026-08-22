@@ -108,9 +108,44 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "bpm",
             default: 120.0,
         },
+        // ⚠️ **Apendado**: a rampa de ENTRADA, em segundos. `0` = sem rampa, o nó
+        // que sempre shipou (`x · 1.0` é `x` em IEEE-754). Ver [`fade_envelope`].
+        ParamSpec {
+            name: "fade_in",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **A rampa de entrada da oscilação** — `clamp(t / fade_in, 0, 1)`, e `1` fixo
+/// quando não há rampa.
+///
+/// Cavalry chama-lhe *Strength Fade to Zero*, e o que ele resolve é concreto: uma
+/// LFO **começa no meio do movimento**. Uma senoide a `phase = 0` vale zero, mas a
+/// sua DERIVADA é máxima — o elemento arranca a toda a velocidade no primeiro
+/// quadro. Uma quadrada é pior: ela vale `+amplitude` no instante zero, e o objeto
+/// **salta** antes de qualquer coisa se mexer. A rampa multiplica a amplitude, não
+/// o valor: o `offset` (o centro da oscilação) fica onde está, e o que cresce do
+/// nada é o **desvio** em torno dele.
+///
+/// ⚠️ **A origem é a do PLAYHEAD, e é deliberadamente a mesma que a fase usa.**
+/// O nó não guarda estado (`Effect::Temporal`, pull-side) e portanto não tem uma
+/// noção de *"desde que EU comecei"* — dizer que tem seria inventar um relógio que
+/// o undo teria de ordenar. Ao partilhar a origem com a fase, a rampa e a onda
+/// começam juntas, que é o que o artista vê e o que ele quer.
+///
+/// ⚠️ **`fade_in ≤ 0` devolve `1.0` por um RAMO, não pela álgebra:** `t / 0` é
+/// `inf` (que o clamp salvaria) mas `0 / 0` é **NaN**, e um NaN no instante zero
+/// envenenaria o primeiro quadro de todo documento já autorado — precisamente o
+/// caso em que o param novo deveria ser invisível.
+fn fade_envelope(t: f32, fade_in: f32) -> f32 {
+    if fade_in <= 0.0 {
+        1.0
+    } else {
+        (t / fade_in).clamp(0.0, 1.0)
+    }
+}
 
 /// **Segundos por ciclo, na régua que o artista escolheu** (`time_mode`: `0`
 /// segundos, `1` BPM) — a porta única, e a razão de ela existir.
@@ -159,8 +194,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let lfo_period = max(lfo_sec, 1e-3);\n\
         let lfo_phase = params.playhead / lfo_period + params.phase\n\
         \x20   + f32(i) * params.phase_stagger;\n\
+        // A rampa de entrada -- o gemeo de `fade_envelope`. O ramo (e nao a\n\
+        // algebra) porque `0.0 / 0.0` e' NaN, e o instante zero e' o caso comum.\n\
+        var lfo_env = 1.0;\n\
+        if (params.fade_in > 0.0) {\n\
+        \x20   lfo_env = clamp(params.playhead / params.fade_in, 0.0, 1.0);\n\
+        }\n\
         let lfo_v = lfo_wave(i32(lfo_round(params.wave)), lfo_phase)\n\
-        \x20   * params.amplitude + params.offset;\n\
+        \x20   * params.amplitude * lfo_env + params.offset;\n\
         write_v(i, lfo_v);\n",
     wgsl_lib: "\
         fn lfo_round(x: f32) -> f32 {\n\
@@ -212,6 +253,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         // CPU, e o device recusa o shader (`invalid field accessor`).
         "time_mode",
         "bpm",
+        "fade_in",
     ],
     count_law: Some(lfo_count),
     variant_by_param: None,
@@ -250,13 +292,14 @@ impl NodeOp for ValueLfo {
         let phase0 = ctx.param("phase");
         let stagger = ctx.param("phase_stagger");
         let t = ctx.playhead() as f32;
+        let env = fade_envelope(t, ctx.param("fade_in"));
         // Cardinality follows the geometry: N from the (optional) input, else the
         // length-1 global oscillation (broadcast by `motion.drive`).
         let n = ctx.input(0).count().max(1);
         let value: Vec<f32> = (0..n)
             .map(|i| {
                 let phase = t / period + phase0 + i as f32 * stagger;
-                waveform(wave, phase) * amplitude + offset
+                waveform(wave, phase) * amplitude * env + offset
             })
             .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(value)));
@@ -377,6 +420,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Slider,
     },
+    // A rampa de ENTRADA, em segundos. `0` = sem rampa (o nó de sempre); acima
+    // disso a oscilação cresce do nada até à amplitude cheia.
+    ParamUiHint {
+        param: "fade_in",
+        label: "Fade In",
+        min: 0.0,
+        max: 5.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -388,224 +441,19 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 /// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
 /// that is wrong is worse than a unit that is missing, because the artist can read
 /// a bare number but a mislabelled one teaches them something false.
-static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "period",
-    unit: ParamUnit::Seconds,
-}];
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "period",
+        unit: ParamUnit::Seconds,
+    },
+    // A rampa é um TEMPO, e por isso é declarada — o irmão `bpm` não é (é uma
+    // taxa) e continua nu de propósito.
+    ParamUnitDecl {
+        param: "fade_in",
+        unit: ParamUnit::Seconds,
+    },
+];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::cook::{Cook, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
-
-    // A grid source: `n` instances at the origin, so the LFO can read a count.
-    static GRID_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("value.lfo.test.grid"),
-        name: "value.lfo.test.grid",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Grid;
-    impl NodeOp for Grid {
-        fn manifest(&self) -> &'static NodeManifest {
-            &GRID_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            ctx.emit(Stream::new(3).with("P", Column::Vec2(vec![[0.0, 0.0]; 3])));
-        }
-    }
-    struct Ops;
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == GRID_MAN.id => Some(&Grid),
-                t if t == MANIFEST.id => Some(&ValueLfo),
-                _ => None,
-            }
-        }
-    }
-
-    fn vals(s: &Stream) -> Vec<f32> {
-        match s.get(VALUE_COL).unwrap() {
-            Column::Scalar(v) => v.clone(),
-            _ => panic!("v"),
-        }
-    }
-
-    /// Cook the LFO at `playhead`; `connect_grid` decides whether it reads a
-    /// count from a source (length-N) or stands alone (length-1 global).
-    fn lfo_at(
-        playhead: f64,
-        connect_grid: bool,
-        setup: impl FnOnce(&mut Graph, NodeId),
-    ) -> Vec<f32> {
-        let mut g = Graph::new();
-        let lfo = g.add_node("value.lfo");
-        if connect_grid {
-            let grid = g.add_node("value.lfo.test.grid");
-            g.connect(Edge {
-                from: (grid, 0),
-                to: (lfo, 0),
-                delayed: false,
-            })
-            .unwrap();
-        }
-        setup(&mut g, lfo);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, lfo, playhead).unwrap();
-        vals(out[0].as_stream())
-    }
-
-    /// UNCONNECTED input → one global value (length-1). This is the field that
-    /// `motion.drive` broadcasts across every instance (the doc-12 rule).
-    #[test]
-    fn an_unconnected_lfo_emits_a_single_global_value() {
-        // Default Sine at t=0 is 0 (phase 0). amplitude 5 → still 0 at the zero.
-        let v = lfo_at(0.0, false, |g, lfo| {
-            g.set_param(lfo, "amplitude", 5.0);
-        });
-        assert_eq!(v, vec![0.0], "one global value");
-        // A quarter period reaches the parabolic peak → +amplitude.
-        let v = lfo_at(0.5, false, |g, lfo| {
-            g.set_param(lfo, "period", 2.0); // t=0.5 → phase ¼
-            g.set_param(lfo, "amplitude", 3.0);
-        });
-        assert_eq!(v, vec![3.0], "quarter period → peak amplitude");
-    }
-
-    /// CONNECTED input → the value field's length follows the geometry (N=3),
-    /// and `phase_stagger` sends a travelling wave across it: at t=0 with
-    /// stagger ¼, instance 0 sits at phase 0 (→0) and instance 1 at the peak.
-    #[test]
-    fn a_connected_lfo_emits_a_field_with_a_travelling_wave() {
-        let v = lfo_at(0.0, true, |g, lfo| {
-            g.set_param(lfo, "amplitude", 2.0);
-            g.set_param(lfo, "phase_stagger", 0.25);
-        });
-        assert_eq!(v.len(), 3, "length follows the connected geometry");
-        assert_eq!(v[0], 0.0, "instance 0 at phase 0");
-        assert_eq!(v[1], 2.0, "instance 1 staggered to the peak");
-    }
-
-    /// FALSIFICATION of the clamp/DC path: `offset` shifts the centre and
-    /// `phase` advances the cycle without touching the playhead.
-    #[test]
-    fn offset_shifts_the_centre_and_phase_advances_the_cycle() {
-        let v = lfo_at(0.0, false, |g, lfo| g.set_param(lfo, "offset", 2.0));
-        assert_eq!(v, vec![2.0], "DC offset with no oscillation");
-        // phase ¼ at t=0 starts the cycle at the peak.
-        let v = lfo_at(0.0, false, |g, lfo| {
-            g.set_param(lfo, "amplitude", 3.0);
-            g.set_param(lfo, "phase", 0.25);
-        });
-        assert_eq!(v, vec![3.0], "phase advances to the peak");
-    }
-
-    /// A tiny/zero `period` must not divide by zero — it clamps to `MIN_PERIOD`
-    /// and stays finite.
-    #[test]
-    fn a_zero_period_never_divides_by_zero() {
-        let v = lfo_at(1.0, false, |g, lfo| g.set_param(lfo, "period", 0.0));
-        assert!(v[0].is_finite(), "clamped period keeps the value finite");
-    }
-
-    /// **A régua BPM é a mesma grandeza noutra unidade** — e o número que a prova é
-    /// o que liga este nó ao irmão `motion.oscillator`.
-    ///
-    /// Ele fala Hz e converte `bpm/60`; este fala segundos-por-ciclo e converte
-    /// `60/bpm`. **120 BPM ⇒ 2 ciclos/s lá ⇒ 0,5 s por ciclo aqui**, e os dois são
-    /// recíprocos exactos — é isso que torna a palavra "BPM" a mesma palavra nos
-    /// dois nós em vez de duas convenções que se parecem.
-    ///
-    /// ⚠️ O gate vive AQUI e não num teste cruzado: uma crate-nó não pode depender
-    /// de outra crate-nó (drop-crate, ADR-0075), então o que se pina é o número, e
-    /// o doc nomeia o irmão.
-    #[test]
-    fn bpm_is_the_same_ruler_the_oscillator_uses() {
-        // A conversão, isolada da onda.
-        assert_eq!(seconds_per_cycle(1.0, 999.0, 120.0), 0.5, "120 BPM = 0,5 s");
-        assert_eq!(seconds_per_cycle(1.0, 999.0, 60.0), 1.0, "60 BPM = 1 s");
-        // E o recíproco do irmão: 120 BPM = 2 ciclos por segundo.
-        assert_eq!(1.0 / seconds_per_cycle(1.0, 999.0, 120.0), 120.0 / 60.0);
-        // ⚠️ CONTROLE: em Seconds o `bpm` é INERTE — sem isto, um modo que
-        // ignorasse o `time_mode` e lesse sempre o BPM passaria nas linhas acima.
-        assert_eq!(
-            seconds_per_cycle(0.0, 0.25, 999.0),
-            0.25,
-            "Seconds ignora o BPM"
-        );
-    }
-
-    /// **O default é o mundo anterior, ao bit** — a régua nova não move um valor
-    /// enquanto ninguém a escolhe.
-    ///
-    /// O oráculo é a expressão que SHIPAVA, escrita à mão: chamar
-    /// `seconds_per_cycle` para computar o que se espera dela seria o gate
-    /// sempre-verde que este repo já documentou três vezes.
-    #[test]
-    fn seconds_is_byte_identical_to_the_world_before_the_ruler() {
-        for period in [0.05f32, 0.25, 1.0, 2.5, 8.0, 0.0, -3.0] {
-            let want = period.max(MIN_PERIOD);
-            let got = seconds_per_cycle(0.0, period, 120.0);
-            assert_eq!(got.to_bits(), want.to_bits(), "period {period}");
-        }
-        // E pelo cook, no caminho real: o valor de sempre com os params novos nos
-        // defaults do manifesto.
-        let v = lfo_at(0.5, false, |g, lfo| {
-            g.set_param(lfo, "period", 2.0);
-            g.set_param(lfo, "amplitude", 3.0);
-        });
-        assert_eq!(v, vec![3.0], "quarto de período → pico, como antes");
-    }
-
-    /// **Um BPM degenerado nunca produz um valor não-finito.** O irmão deste gate
-    /// é `a_zero_period_never_divides_by_zero`, e o mecanismo é OUTRO: ali o
-    /// divisor é o param, aqui o param é o dividendo — `60/0` é `inf`, e o que
-    /// tem de ser provado é que `t/inf` sai finito em vez de NaN.
-    #[test]
-    fn a_degenerate_bpm_never_produces_a_non_finite_value() {
-        for bpm in [0.0f32, -1.0, -1e30, 1e30] {
-            let v = lfo_at(3.25, false, |g, lfo| {
-                g.set_param(lfo, "time_mode", 1.0);
-                g.set_param(lfo, "bpm", bpm);
-            });
-            assert!(v[0].is_finite(), "bpm {bpm} → {v:?}");
-        }
-        // E o caso ZERO é a fase CONGELADA, não uma onda: o mesmo valor em dois
-        // instantes distintos.
-        let frozen = |t: f64| {
-            lfo_at(t, false, |g, lfo| {
-                g.set_param(lfo, "time_mode", 1.0);
-                g.set_param(lfo, "bpm", 0.0);
-            })
-        };
-        assert_eq!(frozen(0.0), frozen(9.75), "bpm 0 congela a fase");
-    }
-
-    /// **A régua BPM anda o relógio** — o modo não é só uma etiqueta.
-    #[test]
-    fn the_bpm_ruler_drives_the_wave() {
-        // 120 BPM = 0,5 s por ciclo ⇒ em t = 0,125 s a fase é ¼ ⇒ o pico.
-        let v = lfo_at(0.125, false, |g, lfo| {
-            g.set_param(lfo, "time_mode", 1.0);
-            g.set_param(lfo, "bpm", 120.0);
-            g.set_param(lfo, "amplitude", 3.0);
-        });
-        assert_eq!(v, vec![3.0], "120 BPM põe o pico em t = 1/8 s");
-    }
-
-    #[test]
-    fn registers_and_resolves() {
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-    }
-}
+#[path = "lib_tests.rs"]
+mod tests;

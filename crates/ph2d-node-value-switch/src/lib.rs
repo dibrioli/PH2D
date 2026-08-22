@@ -27,7 +27,7 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, CountLawCtx, GpuKernel, SourceWindow};
-use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
+use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 /// The value type — the continuous per-instance scalar field on the `v` column
@@ -73,7 +73,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[],
+    params: &[
+        // ⚠️ **Apendado**: `0` = o roteador que sempre shipou (arredonda e
+        // salta), `1` = o crossfader (índice fracionário mistura o par). Ver
+        // [`switch`].
+        ParamSpec {
+            name: "blend",
+            default: 0.0,
+        },
+    ],
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -98,7 +106,21 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 /// Route the `ins` fields by the `select` field. Output length is the `max` of
 /// all inputs; element `i` reads `ins[clamp(round(select_i), 0, N-1)][i]` under
 /// the broadcast rule.
-fn switch(select: &[f32], ins: &[Vec<f32>]) -> Vec<f32> {
+///
+/// **`blend` turns a router into a CROSSFADER** — TouchDesigner's Switch CHOP
+/// ships the pair, and the reason is that a switch driven by an animated `select`
+/// POPS: the output jumps a whole input's worth in one frame, at the half-way
+/// point of a smooth ramp. With `blend` on, a fractional select reads the two
+/// inputs it sits between and lerps by the fraction, so the same ramp reads as a
+/// dissolve.
+///
+/// ⚠️ **The two laws are NOT the same function at a half-integer, and that is the
+/// whole point.** Rounding sends `select = 0.5` to `in1` (half away from zero);
+/// blending sends it to the MIDPOINT of `in0` and `in1`. Off is the node that
+/// shipped, bit-for-bit — an integer select lands on `t = 0`, which returns the
+/// lower input verbatim, so the crossfader agrees with the router everywhere the
+/// artist authored an integer.
+fn switch(select: &[f32], ins: &[Vec<f32>], blend: bool) -> Vec<f32> {
     let n = ins
         .iter()
         .map(|c| c.len())
@@ -108,9 +130,26 @@ fn switch(select: &[f32], ins: &[Vec<f32>]) -> Vec<f32> {
     let last = ins.len().saturating_sub(1) as i32;
     (0..n)
         .map(|i| {
-            // round-to-nearest, then clamp into the connected input range.
-            let idx = (field_at(select, i).round() as i32).clamp(0, last) as usize;
-            field_at(&ins[idx], i)
+            let s = field_at(select, i);
+            if !blend {
+                // round-to-nearest, then clamp into the connected input range.
+                let idx = (s.round() as i32).clamp(0, last) as usize;
+                return field_at(&ins[idx], i);
+            }
+            // The pair the fractional select sits between, each clamped into range
+            // — so the ends SATURATE rather than wrapping, the same edge law the
+            // rounding path has.
+            let lo = (s.floor() as i32).clamp(0, last) as usize;
+            let hi = (s.floor() as i32 + 1).clamp(0, last) as usize;
+            let t = (s - s.floor()).clamp(0.0, 1.0);
+            let a = field_at(&ins[lo], i);
+            // `t == 0` is returned VERBATIM: an authored integer select must read
+            // the input itself, not `a + 0.0·(b − a)`, which rounds.
+            if t == 0.0 {
+                return a;
+            }
+            let b = field_at(&ins[hi], i);
+            a + t * (b - a)
         })
         .collect()
 }
@@ -141,14 +180,36 @@ fn switch(select: &[f32], ins: &[Vec<f32>]) -> Vec<f32> {
 /// be wrong.
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
-        let vs_i = clamp(i32(vs_round(read_select_v(i))), 0, 3);\n\
-        var vs_r = read_in0_v(i);\n\
-        if (vs_i == 1) {\n\
-        \x20   vs_r = read_in1_v(i);\n\
-        } else if (vs_i == 2) {\n\
-        \x20   vs_r = read_in2_v(i);\n\
-        } else if (vs_i == 3) {\n\
-        \x20   vs_r = read_in3_v(i);\n\
+        let vs_s = read_select_v(i);\n\
+        // Os dois indices: o arredondado (roteador) e o par inferior/superior\n\
+        // (crossfader). O `blend` escolhe qual deles manda -- a mesma bifurcacao\n\
+        // do `switch` da CPU, e nao uma segunda lei.\n\
+        let vs_i = clamp(i32(vs_round(vs_s)), 0, 3);\n\
+        let vs_lo = clamp(i32(floor(vs_s)), 0, 3);\n\
+        let vs_hi = clamp(i32(floor(vs_s)) + 1, 0, 3);\n\
+        let vs_ia = select(vs_i, vs_lo, params.blend >= 0.5);\n\
+        var vs_a = read_in0_v(i);\n\
+        if (vs_ia == 1) {\n\
+        \x20   vs_a = read_in1_v(i);\n\
+        } else if (vs_ia == 2) {\n\
+        \x20   vs_a = read_in2_v(i);\n\
+        } else if (vs_ia == 3) {\n\
+        \x20   vs_a = read_in3_v(i);\n\
+        }\n\
+        var vs_r = vs_a;\n\
+        if (params.blend >= 0.5) {\n\
+        \x20   let vs_t = clamp(vs_s - floor(vs_s), 0.0, 1.0);\n\
+        \x20   if (vs_t != 0.0) {\n\
+        \x20       var vs_b = read_in0_v(i);\n\
+        \x20       if (vs_hi == 1) {\n\
+        \x20           vs_b = read_in1_v(i);\n\
+        \x20       } else if (vs_hi == 2) {\n\
+        \x20           vs_b = read_in2_v(i);\n\
+        \x20       } else if (vs_hi == 3) {\n\
+        \x20           vs_b = read_in3_v(i);\n\
+        \x20       }\n\
+        \x20       vs_r = vs_a + vs_t * (vs_b - vs_a);\n\
+        \x20   }\n\
         }\n\
         write_v(i, vs_r);\n",
     wgsl_lib: "\
@@ -200,7 +261,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &[],
+    // ⚠️ Esta lista não é derivada do manifesto: um param novo compila, coza na
+    // CPU, e o device recusa o shader (`invalid field accessor`).
+    params: &["blend"],
     count_law: Some(switch_count),
     variant_by_param: None,
     applicable: None,
@@ -227,7 +290,7 @@ impl NodeOp for ValueSwitch {
         let ins: Vec<Vec<f32>> = (0..N_INPUTS)
             .map(|k| scalar_col(ctx.input(k + 1), VALUE_COL))
             .collect();
-        let out = switch(&select, &ins);
+        let out = switch(&select, &ins, ctx.param("blend") >= 0.5);
         ctx.emit(Stream::new(out.len()).with(VALUE_COL, Column::Scalar(out)));
     }
 }
@@ -246,9 +309,24 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
             silhouette: ph2d_node_registry::NodeSilhouette::Rect,
         },
     );
-    // No params — the selection is a value input, so it can be animated.
+    // ⚠️ A SELEÇÃO continua sem param — ela é uma porta, para poder ser animada.
+    // O `blend` não escolhe *qual*, escolhe *como*: saltar ou dissolver.
+    reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     Ok(())
 }
+
+use ph2d_node_registry::{ParamUiHint, ParamWidget};
+
+static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
+    param: "blend",
+    label: "Blend",
+    min: 0.0,
+    max: 1.0,
+    step: 1.0,
+    widget: ParamWidget::Enum {
+        labels: &["Off", "On"],
+    },
+}];
 
 #[cfg(test)]
 mod tests {
@@ -260,8 +338,16 @@ mod tests {
     #[test]
     fn a_global_select_routes_the_whole_field() {
         let ins = vec![vec![10.0, 11.0], vec![20.0, 21.0], vec![], vec![]];
-        assert_eq!(switch(&[0.0], &ins), vec![10.0, 11.0], "select 0 → in0");
-        assert_eq!(switch(&[1.0], &ins), vec![20.0, 21.0], "select 1 → in1");
+        assert_eq!(
+            switch(&[0.0], &ins, false),
+            vec![10.0, 11.0],
+            "select 0 → in0"
+        );
+        assert_eq!(
+            switch(&[1.0], &ins, false),
+            vec![20.0, 21.0],
+            "select 1 → in1"
+        );
     }
 
     /// `select` rounds to the nearest input index (0.4 → 0, 0.6 → 1) and clamps
@@ -269,16 +355,28 @@ mod tests {
     #[test]
     fn select_rounds_to_nearest_and_clamps() {
         let ins = vec![vec![10.0], vec![20.0], vec![], vec![]];
-        assert_eq!(switch(&[0.4], &ins), vec![10.0], "0.4 rounds down to in0");
-        assert_eq!(switch(&[0.6], &ins), vec![20.0], "0.6 rounds up to in1");
+        assert_eq!(
+            switch(&[0.4], &ins, false),
+            vec![10.0],
+            "0.4 rounds down to in0"
+        );
+        assert_eq!(
+            switch(&[0.6], &ins, false),
+            vec![20.0],
+            "0.6 rounds up to in1"
+        );
         // clamp: N_INPUTS is 4, so index 3 is the top; 9.0 clamps to in3.
         let four = vec![vec![1.0], vec![2.0], vec![3.0], vec![4.0]];
         assert_eq!(
-            switch(&[9.0], &four),
+            switch(&[9.0], &four, false),
             vec![4.0],
             "9 clamps to the top input"
         );
-        assert_eq!(switch(&[-5.0], &four), vec![1.0], "negative clamps to in0");
+        assert_eq!(
+            switch(&[-5.0], &four, false),
+            vec![1.0],
+            "negative clamps to in0"
+        );
     }
 
     /// FALSIFICATION of per-element routing: a length-N `select` picks a possibly
@@ -289,7 +387,7 @@ mod tests {
         let ins = vec![vec![10.0, 11.0], vec![20.0, 21.0], vec![], vec![]];
         // select [0, 1] → element 0 from in0 (10), element 1 from in1 (21).
         assert_eq!(
-            switch(&[0.0, 1.0], &ins),
+            switch(&[0.0, 1.0], &ins, false),
             vec![10.0, 21.0],
             "each element its own input"
         );
@@ -301,7 +399,7 @@ mod tests {
     fn a_length_one_source_broadcasts_through_the_switch() {
         // in1 is a single global constant; select 1 over a 3-long select → held.
         let ins = vec![vec![], vec![7.0], vec![], vec![]];
-        assert_eq!(switch(&[1.0, 1.0, 1.0], &ins), vec![7.0, 7.0, 7.0]);
+        assert_eq!(switch(&[1.0, 1.0, 1.0], &ins, false), vec![7.0, 7.0, 7.0]);
     }
 
     /// End-to-end through the cook: two source fields and an animated select
@@ -376,5 +474,75 @@ mod tests {
         let mut reg = NodeRegistry::new();
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+
+    /// **NUM SELECT INTEIRO, O CROSSFADER E' O ROTEADOR -- BIT-A-BIT.** O gate de
+    /// neutralidade: e' assim que um documento ja' autorado sobrevive ao knob novo.
+    #[test]
+    fn on_an_integer_select_blend_is_the_router_bit_for_bit() {
+        let ins = vec![
+            vec![10.0, 11.0, 12.0],
+            vec![-20.0, 21.5, 22.0],
+            vec![30.0],
+            vec![40.0, 41.0, 42.0],
+        ];
+        for k in -2..=6 {
+            let s = vec![k as f32];
+            assert_eq!(
+                switch(&s, &ins, true),
+                switch(&s, &ins, false),
+                "select={k}"
+            );
+        }
+    }
+
+    /// **DESLIGADO, O NO' SALTA; LIGADO, ELE DISSOLVE** -- e o gate mede a
+    /// diferenca no ponto onde as duas leis discordam ao maximo.
+    ///
+    /// ⚠️ **A fixture escolhe o meio-inteiro de proposito.** Num select inteiro as
+    /// duas leis coincidem (o gate acima), entao um teste que so' amostrasse `0` e
+    /// `1` ficaria verde com o `blend` desligado por engano. Em `0.5` o roteador
+    /// arredonda PARA CIMA (metade para longe do zero) e le' `in1` inteiro; o
+    /// crossfader le' o ponto medio. A distancia entre as duas respostas e' meia
+    /// entrada, que e' precisamente o "pop" que o knob existe para apagar.
+    #[test]
+    fn a_half_integer_select_is_where_the_two_laws_disagree_most() {
+        let ins = vec![vec![0.0], vec![100.0], vec![], vec![]];
+        assert_eq!(switch(&[0.5], &ins, false), vec![100.0], "salta para in1");
+        assert_eq!(switch(&[0.5], &ins, true), vec![50.0], "dissolve no meio");
+        // E a dissolucao e' MONOTONA e cobre a distancia inteira -- a propriedade
+        // que um pop nao tem.
+        let mut prev = f32::NEG_INFINITY;
+        for k in 0..=20 {
+            let s = k as f32 / 20.0;
+            let o = switch(&[s], &ins, true)[0];
+            assert!(o >= prev, "select={s}: {o} < {prev}");
+            prev = o;
+        }
+        assert_eq!(prev, 100.0, "chega inteiro na outra ponta");
+    }
+
+    /// **AS PONTAS SATURAM, nao dao a volta** -- a mesma lei de borda do roteador.
+    /// Um `select` fora da faixa le' a entrada da ponta, e nunca mistura `in3` com
+    /// `in0` (que e' o que um `%` faria).
+    #[test]
+    fn the_ends_saturate_they_do_not_wrap() {
+        let four = vec![vec![1.0], vec![2.0], vec![3.0], vec![4.0]];
+        assert_eq!(
+            switch(&[3.7], &four, true),
+            vec![4.0],
+            "acima satura em in3"
+        );
+        assert_eq!(switch(&[-2.5], &four, true), vec![1.0], "abaixo em in0");
+        assert_eq!(switch(&[9.0], &four, true), vec![4.0], "bem acima");
+    }
+
+    /// **E' PER-ELEMENTO tambem quando dissolve** -- a propriedade que o no' anuncia
+    /// no doc e que a mistura poderia ter perdido se lesse `select` uma vez so'.
+    #[test]
+    fn the_crossfade_is_per_element() {
+        let ins = vec![vec![0.0, 0.0, 0.0], vec![10.0, 10.0, 10.0], vec![], vec![]];
+        let out = switch(&[0.0, 0.25, 1.0], &ins, true);
+        assert_eq!(out, vec![0.0, 2.5, 10.0]);
     }
 }

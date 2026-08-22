@@ -106,7 +106,7 @@ fn smootherstep(lo: f32, hi: f32, x: f32) -> f32 {
 /// Gate one value into a `[0,1]` mask. The input is NOT clamped (a comparison is
 /// meaningful on any scale); only the output is normalised. `width` is a **full**
 /// band centred on `threshold` and is ignored in Hard mode.
-fn step_one(v: f32, threshold: f32, width: f32, mode: Mode) -> f32 {
+fn rise(v: f32, threshold: f32, width: f32, mode: Mode) -> f32 {
     match mode {
         Mode::Hard => {
             if v >= threshold {
@@ -124,6 +124,27 @@ fn step_one(v: f32, threshold: f32, width: f32, mode: Mode) -> f32 {
             smootherstep(threshold - 0.5 * w, threshold + 0.5 * w, v)
         }
     }
+}
+
+/// The gate as the artist sees it: the rising mask, optionally **MIRRORED**.
+///
+/// ⚠️ **`invert` mirrors the MASK (`1 − m`), it does not flip the COMPARISON.**
+/// The difference is the whole design, and it is visible at exactly one place —
+/// the threshold itself. Flipping the comparison (`v < threshold`) would make the
+/// sample AT the threshold read `0` in Hard mode, so `step` and `step(invert)`
+/// would BOTH be `0` there and the pair would not partition the field. Mirroring
+/// keeps `m + invert(m) = 1` **everywhere and exactly**, which is the property a
+/// crossfade wants: the same driver into `value.mix`'s `t` on one side and its
+/// mirror on the other sums to the whole, with no seam and no double-counted
+/// sample. It is also the only reading that survives the smooth modes, where
+/// "below the threshold" is not a binary fact at all.
+///
+/// Blender resolves this with the `Less Than`/`Greater Than` PAIR and Cavalry's
+/// Falloff with an `Invert` toggle; ours is the toggle, and the law above is what
+/// makes it the toggle rather than a second comparison.
+fn step_one(v: f32, threshold: f32, width: f32, mode: Mode, invert: bool) -> f32 {
+    let m = rise(v, threshold, width, mode);
+    if invert { 1.0 - m } else { m }
 }
 
 /// The static contract of this node type (ADR-0031). The kernel is side-metadata
@@ -154,6 +175,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "mode",
             default: 0.0,
         },
+        // ⚠️ **Apendado**: espelha a MÁSCARA (`1 − m`), não a comparação. `0` = o
+        // nó que sempre shipou, byte-a-byte. Ver [`step_one`].
+        ParamSpec {
+            name: "invert",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -177,6 +204,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         } else {\n\
             vs_o = select(0.0, 1.0, vs_x >= vs_th);\n\
         }\n\
+        if (params.invert >= 0.5) { vs_o = 1.0 - vs_o; }\n\
         write_v(i, vs_o);\n",
     wgsl_lib: "\
         fn vs_round(x: f32) -> f32 {\n\
@@ -200,7 +228,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         identity: [0.0; 4],
         port: 0,
     }],
-    params: &["threshold", "width", "mode"],
+    // ⚠️ Esta lista não é derivada do manifesto: um param novo compila, coza na
+    // CPU, e o device recusa o shader (`invalid field accessor`).
+    params: &["threshold", "width", "mode", "invert"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -217,6 +247,7 @@ impl NodeOp for ValueStep {
         let threshold = ctx.param("threshold");
         let width = ctx.param("width");
         let mode = Mode::from_param(ctx.param("mode"));
+        let invert = ctx.param("invert") >= 0.5;
         let input: Vec<f32> = match ctx.input(0).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
@@ -225,7 +256,7 @@ impl NodeOp for ValueStep {
         // Unary map — the field's length is preserved exactly.
         let out: Vec<f32> = input
             .iter()
-            .map(|&v| step_one(v, threshold, width, mode))
+            .map(|&v| step_one(v, threshold, width, mode, invert))
             .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }
@@ -282,6 +313,15 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Hard", "Smooth", "Smoother"],
         },
     },
+    // O espelho da máscara. Desligado = o nó de sempre.
+    ParamUiHint {
+        param: "invert",
+        label: "Invert",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
 ];
 
 #[cfg(test)]
@@ -295,21 +335,13 @@ mod tests {
     #[test]
     fn hard_is_a_binary_gate_at_the_threshold() {
         for &w in &[0.0, 0.3, 0.9] {
-            assert_eq!(
-                step_one(0.49, 0.5, w, Mode::Hard),
-                0.0,
-                "below is 0 (w={w})"
-            );
-            assert_eq!(step_one(0.5, 0.5, w, Mode::Hard), 1.0, "at is 1 (w={w})");
-            assert_eq!(
-                step_one(0.51, 0.5, w, Mode::Hard),
-                1.0,
-                "above is 1 (w={w})"
-            );
+            assert_eq!(rise(0.49, 0.5, w, Mode::Hard), 0.0, "below is 0 (w={w})");
+            assert_eq!(rise(0.5, 0.5, w, Mode::Hard), 1.0, "at is 1 (w={w})");
+            assert_eq!(rise(0.51, 0.5, w, Mode::Hard), 1.0, "above is 1 (w={w})");
         }
         // The threshold moves the cut, on any scale.
-        assert_eq!(step_one(1.9, 2.0, 0.0, Mode::Hard), 0.0, "below index 2");
-        assert_eq!(step_one(2.0, 2.0, 0.0, Mode::Hard), 1.0, "at index 2");
+        assert_eq!(rise(1.9, 2.0, 0.0, Mode::Hard), 0.0, "below index 2");
+        assert_eq!(rise(2.0, 2.0, 0.0, Mode::Hard), 1.0, "at index 2");
     }
 
     /// **Smooth ramps across the band and pins the ends** — `0` below the band,
@@ -317,24 +349,16 @@ mod tests {
     #[test]
     fn smooth_ramps_across_the_band_and_pins_the_ends() {
         let (th, w) = (0.5, 0.4); // band [0.3, 0.7]
-        assert_eq!(
-            step_one(0.29, th, w, Mode::Smooth),
-            0.0,
-            "below the band is 0"
-        );
-        assert_eq!(
-            step_one(0.71, th, w, Mode::Smooth),
-            1.0,
-            "above the band is 1"
-        );
+        assert_eq!(rise(0.29, th, w, Mode::Smooth), 0.0, "below the band is 0");
+        assert_eq!(rise(0.71, th, w, Mode::Smooth), 1.0, "above the band is 1");
         assert!(
-            (step_one(0.5, th, w, Mode::Smooth) - 0.5).abs() < 1e-6,
+            (rise(0.5, th, w, Mode::Smooth) - 0.5).abs() < 1e-6,
             "0.5 at the threshold"
         );
         let mut prev = -1.0;
         for k in 0..=40 {
             let x = 0.3 + 0.4 * (k as f32 / 40.0);
-            let o = step_one(x, th, w, Mode::Smooth);
+            let o = rise(x, th, w, Mode::Smooth);
             assert!(o >= prev, "monotone rising across the band at x={x}");
             prev = o;
         }
@@ -348,8 +372,8 @@ mod tests {
             let x = k as f32 * 0.07;
             for &th in &[-0.3, 0.0, 0.5, 1.2] {
                 assert_eq!(
-                    step_one(x, th, 0.0, Mode::Smooth),
-                    step_one(x, th, 0.0, Mode::Hard),
+                    rise(x, th, 0.0, Mode::Smooth),
+                    rise(x, th, 0.0, Mode::Hard),
                     "smooth(width 0) == hard at x={x} th={th}"
                 );
             }
@@ -365,7 +389,7 @@ mod tests {
                 for &w in &[-0.5, 0.0, 0.4, 2.0] {
                     for k in -50..50 {
                         let v = k as f32 * 0.11;
-                        let o = step_one(v, th, w, m);
+                        let o = rise(v, th, w, m);
                         assert!(o.is_finite(), "finite at v={v} th={th} w={w} {m:?}");
                         assert!(
                             (0.0..=1.0).contains(&o),
@@ -457,18 +481,80 @@ mod tests {
     fn smoother_agrees_at_the_ends_and_differs_in_between() {
         let (th, w) = (0.5, 1.0); // banda [0,1]
         for &x in &[0.0, 0.5, 1.0] {
-            let c = step_one(x, th, w, Mode::Smooth);
-            let q = step_one(x, th, w, Mode::Smoother);
+            let c = rise(x, th, w, Mode::Smooth);
+            let q = rise(x, th, w, Mode::Smoother);
             assert!((c - q).abs() < 1e-6, "x={x}: {c} vs {q}");
         }
-        let c = step_one(0.25, th, w, Mode::Smooth);
-        let q = step_one(0.25, th, w, Mode::Smoother);
+        let c = rise(0.25, th, w, Mode::Smooth);
+        let q = rise(0.25, th, w, Mode::Smoother);
         assert!(
             (c - q).abs() > 0.04,
             "no quarto de caminho os dois tem de divergir: {c} vs {q}"
         );
         // A quintica e' a mais CHATA perto das pontas -- o que a torna util.
         assert!(q < c, "a quintica sobe mais devagar no primeiro quarto");
+    }
+
+    /// **DESLIGADO, o `invert` e' o no' que sempre shipou -- byte-a-byte.** O gate
+    /// de neutralidade de todo param apendado: ele varre os tres modos e uma faixa
+    /// de larguras, e compara com `rise`, que e' literalmente o corpo antigo.
+    #[test]
+    fn invert_off_is_byte_identical_to_the_node_that_shipped() {
+        for &m in &[Mode::Hard, Mode::Smooth, Mode::Smoother] {
+            for &w in &[0.0, 0.3, 1.0] {
+                for k in -40..40 {
+                    let x = k as f32 * 0.07;
+                    assert_eq!(
+                        step_one(x, 0.5, w, m, false),
+                        rise(x, 0.5, w, m),
+                        "x={x} w={w} {m:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// **O ESPELHO PARTICIONA O CAMPO: `m + invert(m) = 1` EXACTAMENTE.**
+    ///
+    /// ⚠️ **E' a lei que separa espelhar a mascara de virar a comparacao**, e a
+    /// mutacao que a mata e' `v < threshold` em vez de `1 − m`: no modo Hard, a
+    /// amostra NO limiar leria `0` dos dois lados, a soma daria `0` naquele ponto,
+    /// e um crossfade guiado pelo par abriria um buraco de uma amostra que nenhum
+    /// gate de faixa apanha. A soma e' exacta porque `1 − m` e' exacto para todo
+    /// `m ∈ [0,1]` em `f32` (o expoente nao cresce).
+    #[test]
+    fn the_mirror_partitions_the_field_exactly() {
+        for &m in &[Mode::Hard, Mode::Smooth, Mode::Smoother] {
+            for &w in &[0.0, 0.25, 0.9] {
+                for k in -40..40 {
+                    let x = k as f32 * 0.07;
+                    let up = step_one(x, 0.5, w, m, false);
+                    let down = step_one(x, 0.5, w, m, true);
+                    assert_eq!(up + down, 1.0, "x={x} w={w} {m:?}: {up} + {down}");
+                }
+            }
+        }
+        // E no limiar, em Hard, o par e' 1/0 -- nao 0/0 (a assinatura da comparacao
+        // virada).
+        assert_eq!(step_one(0.5, 0.5, 0.0, Mode::Hard, false), 1.0);
+        assert_eq!(step_one(0.5, 0.5, 0.0, Mode::Hard, true), 0.0);
+    }
+
+    /// **Invertido, a mascara continua uma mascara** -- `[0,1]` e finita para
+    /// qualquer entrada, limiar, largura e modo.
+    #[test]
+    fn the_inverted_mask_is_still_a_mask() {
+        for &m in &[Mode::Hard, Mode::Smooth, Mode::Smoother] {
+            for &th in &[-1.0, 0.0, 0.5, 3.0] {
+                for &w in &[-0.5, 0.0, 0.4, 2.0] {
+                    for k in -50..50 {
+                        let v = k as f32 * 0.11;
+                        let o = step_one(v, th, w, m, true);
+                        assert!(o.is_finite() && (0.0..=1.0).contains(&o), "v={v} {m:?}");
+                    }
+                }
+            }
+        }
     }
 
     /// **Largura zero colapsa no MESMO degrau duro nos tres modos.** A lei
@@ -479,9 +565,9 @@ mod tests {
     fn a_zero_width_band_collapses_to_the_hard_step_in_every_mode() {
         for k in -20..20 {
             let x = k as f32 * 0.07;
-            let hard = step_one(x, 0.3, 0.0, Mode::Hard);
-            assert_eq!(step_one(x, 0.3, 0.0, Mode::Smooth), hard, "x={x}");
-            assert_eq!(step_one(x, 0.3, 0.0, Mode::Smoother), hard, "x={x}");
+            let hard = rise(x, 0.3, 0.0, Mode::Hard);
+            assert_eq!(rise(x, 0.3, 0.0, Mode::Smooth), hard, "x={x}");
+            assert_eq!(rise(x, 0.3, 0.0, Mode::Smoother), hard, "x={x}");
         }
     }
 }

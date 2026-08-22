@@ -241,7 +241,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As SESSENTA E OITO LEIS que esta linha pagou para aprender
+## §4 — As SETENTA E CINCO LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -757,6 +757,45 @@ são estilo.
     parada. *Um param autorado não é um efeito acontecido* — a cena passou a ter gate de que
     o flash MOVE o tint, de que sobra folga para somar, e de que as peças de facto se tocam.
 
+69. **Um default *«que reduz ao de hoje»* NÃO reduz sozinho — a álgebra erra as duas pontas.**
+    `v + 1,0·(moldado − v)` não é `moldado` em `f32`, e `a + 0,0·(b − a)` não é `a`: os dois
+    arredondam duas vezes. Quatro dos nove knobs da wave de 22/08 precisaram de um **ramo**
+    explícito nas âncoras (`value.curve` factor, `value.switch` blend, `value.pattern` interp,
+    `value.math` MultiplyAdd). O que se perde sem ele não é precisão: é a **identidade** do nó
+    — o default deixa de ser o nó que shipava, por um ulp, em *todo* valor. *Um ulp não se vê;
+    um default mudado é exactamente o que um gate de identidade existe para proibir.*
+70. **Uma guarda degenerada REPETIDA pode ser load-bearing, e não copy-paste.** O `offset` do
+    `value.quantize` quantiza no referencial da fase (`snap(v − o) + o`), e com passo
+    degenerado isso devolve `(v − o) + o` — que **não é `v`** (um offset grande engole a
+    mantissa: `v = 1e−7`, `o = 1000`). A identidade deixaria de ser a identidade exactamente
+    para quem pôs um offset. O que torna a repetição legítima é as duas lerem a **MESMA**
+    constante: há um número, não dois.
+71. **Um param cujo default é `0` tem de sobreviver a `0/0`.** `smooth_min`
+    (`max(k − |a−b|, 0)/k` com `k = 0` e `a == b`) e a rampa do `value.lfo` (`t/fade` com
+    `t = 0`) são **NaN no caso mais banal que existe** — o nó recém-criado, sobre entradas
+    iguais, no instante zero. O ramo não é defensivo: é a definição, e o gate que o prova
+    afirma o caso exacto e não uma varredura.
+72. **Um knob que só tem sentido por causa de OUTRO fecha COM ele.** Num índice inteiro não há
+    nada entre dois slots do `value.pattern` para interpolar — o `interp` era literalmente
+    inexprimível até a `offset` **fracionária** criar o «entre». Duas células da folha, um
+    mecanismo só; separá-las teria dado uma delas como *«não composta»* para sempre.
+73. **Numa cena de PERFIS, uma fileira que colapsa para uma CONSTANTE é indistinguível de uma
+    cadeia partida.** Duas fileiras da `=78` foram desenhadas para dar exactamente `1` (a soma
+    travada e o `a·b + (1 − a)`), e o gate `every_row_draws_something` reprovou — com razão. A
+    cura não é baixar a barra: é escolher a fixture em que o knob muda a **FORMA** (a rampa
+    passa a DESCER; o tecto cai no MEIO da fileira). *Um resultado certo que se lê como avaria
+    não é um bom exemplo.*
+74. **Uma barra de paridade APERTADA não cabe num caminho que APROXIMA.** O `factor` do
+    `value.curve` reprovou o `1e−4` da tabela por **`4,4e−3`** no device — que é a LUT de 256
+    amostras a cortar a quina da tenda, medida e documentada há meses no gêmeo `field.remap`.
+    Alargar a barra da tabela inteira esconderia a divergência dos outros dezassete casos; a
+    cura foi um gate **próprio**, com a ε da LUT e o motivo ao lado dela.
+75. **A lista `params` de um `GpuKernel` NÃO é derivada do manifesto.** Um param novo compila,
+    coza na CPU, passa em todo gate de unidade — e o device recusa o shader com *`invalid
+    field accessor`*, que só aparece na máquina de quem tem adapter. Os oito nós desta wave
+    levam o aviso escrito ao lado da lista. O instrumento que apanha isto sem GPU é
+    `generated_wgsl_validates` (exaustivo sobre o espaço de presença, e **derivado** do
+    `register_all_nodes` — foi assim que o kernel mais novo do repo deixou de escapar).
 
 ---
 
@@ -805,6 +844,24 @@ bash scripts/collision-surface.sh main
 ---
 
 ## §7 — Os smokes que estão pendentes
+
+### `=78` — OS NOVE KNOBS do domínio de valor (folha 15, **dez células**)
+
+```
+env PH2D_GPU_COOK_DEMO=78 cargo run -p ph2d-host-desktop --release
+```
+
+Dezoito fileiras em dois blocos, **aos pares**: a de cima é o nó como era, a de baixo é o
+botão novo ligado. Cada fileira é um gráfico (o Y de cada peça É o valor) — o mesmo idioma da
+`=41`, de propósito.
+
+⚠️ **As duas últimas da direita só se julgam com o PLAY** (a rampa de entrada da `value.lfo`
+dura 3 s; depois disso as duas ficam idênticas, que é o que ela promete).
+
+Cobertura: `invert` do `step` · `offset` do `quantize` · `offset`+`interp` do `pattern` ·
+`blend` do `switch` · `factor` do `curve` · `clamp_result` do `mix` · `Multiply Add` (3ª porta)
+e `Smooth Min` (`distance`) do `math` · `fade_in` do `lfo`. Cada par tem o gêmeo medido no
+device em `gpu_cpu_parity_arith`.
 
 ### `=77` — o OPERADOR por linha (folha 07)
 

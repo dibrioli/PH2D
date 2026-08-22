@@ -89,6 +89,9 @@ ph2d-node-motion-voronoi = { path = "../ph2d-node-motion-voronoi" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }
 ph2d-node-motion-luminance = { path = "../ph2d-node-motion-luminance" }
 ph2d-node-value-map-range = { path = "../ph2d-node-value-map-range" }
+# O irmão de LUT do `field.remap` no domínio de valor — o `factor` dele é o que
+# o gate de paridade da fase/mistura cozinha nos dois caminhos.
+ph2d-node-value-curve = { path = "../ph2d-node-value-curve" }
 ph2d-node-motion-orbit = { path = "../ph2d-node-motion-orbit" }
 ph2d-node-motion-pin-constraint = { path = "../ph2d-node-motion-pin-constraint" }
 ph2d-node-motion-stagger = { path = "../ph2d-node-motion-stagger" }

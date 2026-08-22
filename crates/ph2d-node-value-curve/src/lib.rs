@@ -81,6 +81,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "out_hi",
             default: 1.0,
         },
+        // ⚠️ **Apendado**: quanto da resposta MOLDADA fica. `1` = o nó que sempre
+        // shipou, verbatim (ver [`blend_toward`]).
+        ParamSpec {
+            name: "factor",
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -109,6 +115,32 @@ fn shape_one(
     out_lo + s * (out_hi - out_lo)
 }
 
+/// **How much of the shaped answer to keep** — Blender's Float Curve ships this as
+/// its FIRST socket (`Factor`), and it is the difference between a curve node an
+/// artist can dial and one they can only switch on.
+///
+/// `1` is the curve, `0` is the input untouched, and in between it is the straight
+/// line from one to the other — literally `value.mix(a = input, b = shaped, t)`
+/// with the bifurcation of the wire already done for you.
+///
+/// ⚠️ **The two anchors are returned VERBATIM, and the branch is the reason.**
+/// `input + 1.0·(shaped − input)` is not `shaped` in `f32` — it rounds twice — so
+/// an algebraic-only blend would make the default of this node stop being the node
+/// that shipped, by a ulp, on every value. A ulp is not visible; a *changed
+/// default* is exactly the kind of drift that a byte-identity gate exists to
+/// forbid. `factor` is deliberately NOT clamped: past `1` it EXTRAPOLATES away
+/// from the input (the caricature of the curve), which is meaningful and which
+/// clamping would silently forbid.
+fn blend_toward(input: f32, shaped: f32, factor: f32) -> f32 {
+    if factor == 1.0 {
+        shaped
+    } else if factor == 0.0 {
+        input
+    } else {
+        input + factor * (shaped - input)
+    }
+}
+
 /// The Curve's LUT resolution (A1-gpu) — samples of the authored curve over
 /// `t ∈ [0,1]`. 256 keeps a smooth transfer within a few thousandths of the CPU
 /// `eval` while costing 1 KiB the sequencer uploads per cook (measured on the
@@ -127,13 +159,22 @@ const LUT_RESOLUTION: u32 = 256;
 /// divide; both devices answer `t = 0` there).
 const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
+        let vc_in = read_v(i);\n\
         let vc_span = params.in_hi - params.in_lo;\n\
         var vc_t = 0.0;\n\
         if (abs(vc_span) >= 1e-9) {\n\
-        \x20   vc_t = clamp((read_v(i) - params.in_lo) / vc_span, 0.0, 1.0);\n\
+        \x20   vc_t = clamp((vc_in - params.in_lo) / vc_span, 0.0, 1.0);\n\
         }\n\
         let vc_s = vc_curve_sample(vc_t);\n\
-        write_v(i, params.out_lo + vc_s * (params.out_hi - params.out_lo));\n",
+        let vc_shaped = params.out_lo + vc_s * (params.out_hi - params.out_lo);\n\
+        // As duas ancoras sao VERBATIM -- o gemeo do ramo de `blend_toward`, e a\n\
+        // razao e' a mesma dos dois lados: `a + 1.0*(b-a)` nao e' `b` em f32.\n\
+        var vc_o = vc_shaped;\n\
+        if (params.factor == 0.0) { vc_o = vc_in; }\n\
+        else if (params.factor != 1.0) {\n\
+        \x20   vc_o = vc_in + params.factor * (vc_shaped - vc_in);\n\
+        }\n\
+        write_v(i, vc_o);\n",
     wgsl_lib: "",
     bindings: &[ColumnBinding {
         column: VALUE_COL,
@@ -142,7 +183,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         identity: [0.0; 4],
         port: 0,
     }],
-    params: &["in_lo", "in_hi", "out_lo", "out_hi"],
+    // ⚠️ Esta lista não é derivada do manifesto: um param novo compila, coza na
+    // CPU, e o device recusa o shader (`invalid field accessor`).
+    params: &["in_lo", "in_hi", "out_lo", "out_hi", "factor"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -189,6 +232,7 @@ impl NodeOp for ValueCurve {
         let in_hi = ctx.param("in_hi");
         let out_lo = ctx.param("out_lo");
         let out_hi = ctx.param("out_hi");
+        let factor = ctx.param("factor");
         // Parse the curve ONCE per cook — an unset/malformed string is `None`,
         // which `shape_one` treats as the identity (a straight remap).
         let curve: Option<Curve> = ctx.text_param(CURVE_KEY).and_then(ph2d_curve::parse);
@@ -200,7 +244,10 @@ impl NodeOp for ValueCurve {
         // Unary map — the field's length is preserved exactly.
         let out: Vec<f32> = input
             .iter()
-            .map(|&v| shape_one(v, in_lo, in_hi, out_lo, out_hi, curve.as_ref()))
+            .map(|&v| {
+                let shaped = shape_one(v, in_lo, in_hi, out_lo, out_hi, curve.as_ref());
+                blend_toward(v, shaped, factor)
+            })
             .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }
@@ -283,6 +330,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: -100.0,
         max: 10.0,
         step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    // Quanto da curva fica. `1` = a curva (o nó de sempre); `0` = a entrada
+    // intacta. É o primeiro socket do *Float Curve* do Blender.
+    ParamUiHint {
+        param: "factor",
+        label: "Factor",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
         widget: ParamWidget::Slider,
     },
 ];
@@ -436,5 +493,56 @@ mod tests {
         let mut reg = NodeRegistry::new();
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+
+    /// **AS DUAS ANCORAS SAO VERBATIM** -- `factor = 1` devolve a curva bit-a-bit e
+    /// `factor = 0` devolve a entrada bit-a-bit.
+    ///
+    /// ⚠️ **A mutacao que este gate mata e' escrever so' a algebra** (`a + f·(b−a)`
+    /// sem ramo): ela erra as DUAS pontas por um ulp, e a ponta que importa e' a de
+    /// cima -- e' o DEFAULT do no'. Um no' cujo default mudou por um ulp passa em
+    /// todo teste de aparencia e reprova no unico que conta, o de identidade.
+    #[test]
+    fn the_two_anchors_are_verbatim() {
+        let curve = ph2d_curve::parse(TENT);
+        assert!(curve.is_some(), "a fixture tem de conter o fenomeno");
+        for k in -40..=140 {
+            let v = k as f32 * 0.01;
+            let shaped = shape_one(v, 0.0, 1.0, -3.5, 7.25, curve.as_ref());
+            assert_eq!(blend_toward(v, shaped, 1.0), shaped, "v={v}: factor 1");
+            assert_eq!(blend_toward(v, shaped, 0.0), v, "v={v}: factor 0");
+        }
+    }
+
+    /// **NO MEIO, E' A RETA ENTRE AS DUAS** -- e o gate mede onde a diferenca de
+    /// facto existe (o pico da tenda), nao num ponto onde a curva ja' vale a
+    /// entrada.
+    #[test]
+    fn half_a_factor_lands_halfway_between_the_input_and_the_curve() {
+        let curve = ph2d_curve::parse(TENT);
+        // No pico da tenda (t = 0.5) a saida moldada e' `out_hi` e a entrada e' 0.5:
+        // as duas divergem ao maximo, que e' onde um factor se ve.
+        let shaped = shape_one(0.5, 0.0, 1.0, 0.0, 1.0, curve.as_ref());
+        assert_eq!(shaped, 1.0, "a fixture contem o fenomeno: pico em 1.0");
+        let half = blend_toward(0.5, shaped, 0.5);
+        assert!((half - 0.75).abs() < 1e-6, "meio caminho: {half}");
+        // E e' MONOTONO de uma ponta a outra -- a propriedade que um artista dial.
+        let mut prev = f32::NEG_INFINITY;
+        for k in 0..=20 {
+            let f = k as f32 / 20.0;
+            let o = blend_toward(0.5, shaped, f);
+            assert!(o >= prev, "factor={f}: {o} < {prev}");
+            prev = o;
+        }
+    }
+
+    /// **Acima de `1` ele EXTRAPOLA** -- a caricatura da curva, que um clamp
+    /// proibiria em silencio. Declarado de proposito no doc de [`blend_toward`].
+    #[test]
+    fn past_one_the_factor_extrapolates_away_from_the_input() {
+        let curve = ph2d_curve::parse(TENT);
+        let shaped = shape_one(0.5, 0.0, 1.0, 0.0, 1.0, curve.as_ref());
+        let over = blend_toward(0.5, shaped, 2.0);
+        assert!((over - 1.5).abs() < 1e-6, "extrapolou para {over}");
     }
 }

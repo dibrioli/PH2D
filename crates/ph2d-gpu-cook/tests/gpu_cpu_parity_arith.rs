@@ -113,6 +113,9 @@ fn registry() -> NodeRegistry {
     ph2d_node_value_quantize::register(&mut reg).unwrap();
     ph2d_node_value_step::register(&mut reg).unwrap();
     ph2d_node_value_mix::register(&mut reg).unwrap();
+    ph2d_node_value_curve::register(&mut reg).unwrap();
+    ph2d_node_value_switch::register(&mut reg).unwrap();
+    ph2d_node_value_pattern::register(&mut reg).unwrap();
     reg
 }
 
@@ -326,6 +329,182 @@ fn mix_overlay(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
     mix_mode(g, ramp, 8.0)
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// A FASE, A INVERSÃO e a MISTURA — os knobs apendados em 2026-08-22 (folha 15).
+//
+// ⚠️ **Cada um entra em PAR: o nó sem o knob e o nó com ele.** É a única forma
+// destas linhas provarem o que dizem provar — um kernel que não lesse o param
+// novo produziria os dois membros do par IGUAIS, e `differs_from_previous`
+// reprova exatamente isso. Um caso solitário só provaria que o shader compila.
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn step_smoother_inverted(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let s = g.add_node("value.step");
+    g.set_param(s, "threshold", 0.5);
+    g.set_param(s, "width", 0.8);
+    g.set_param(s, "mode", 2.0); // Smoother
+    g.set_param(s, "invert", 1.0);
+    connect(g, ramp, s);
+    s
+}
+
+fn quantize_round(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let signed = stretch(g, ramp, -1.1, 1.1);
+    let q = g.add_node("value.quantize");
+    g.set_param(q, "step", 0.25);
+    connect(g, signed, q);
+    q
+}
+
+/// ⚠️ O offset é **meio degrau**, que é onde ele muda TODA amostra: um offset de
+/// um degrau inteiro daria a mesma grade e o par nasceria vazio.
+fn quantize_round_phased(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let q = quantize_round(g, _grid, ramp);
+    g.set_param(q, "offset", 0.125);
+    q
+}
+
+/// A rampa moldada por uma TENDA — o caminho da LUT no domínio de valor.
+fn curve_tent(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let c = g.add_node("value.curve");
+    g.set_text_param(c, "curve", "c1 0:0:L 0.5:1:L 1:0:L");
+    connect(g, ramp, c);
+    c
+}
+
+/// ⚠️ `factor = 0,5` e não `0`: em `0` a saída seria a ENTRADA, que é a rampa —
+/// e a rampa também é o que alimenta o caso anterior, então o par continuaria
+/// não-vazio por acidente em vez de por leitura do param.
+fn curve_tent_half(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let c = curve_tent(g, _grid, ramp);
+    g.set_param(c, "factor", 0.5);
+    c
+}
+
+/// `Add` sobre valores que TRANSBORDAM — sem transbordo o clamp do resultado não
+/// teria o que segurar e o par nasceria vazio.
+fn mix_add_overflowing(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let m = g.add_node("value.mix");
+    g.set_param(m, "factor", 1.0);
+    g.set_param(m, "blend", 1.0); // Add
+    connect(g, ramp, m);
+    let b = constant(g, 0.9);
+    connect_to(g, b, m, 1);
+    m
+}
+
+fn mix_add_clamped(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let m = mix_add_overflowing(g, _grid, ramp);
+    g.set_param(m, "clamp_result", 1.0);
+    m
+}
+
+/// Um switch cujo `select` é a rampa esticada para `[0, 3]` — ele **atravessa**
+/// os quatro índices, que é o que dá matéria ao crossfade.
+fn switch_router(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let sel = stretch(g, ramp, 0.0, 3.0);
+    let sw = g.add_node("value.switch");
+    connect(g, sel, sw);
+    for (k, v) in [(1u16, 0.0f32), (2, 1.0), (3, 2.0), (4, 3.0)] {
+        let c = constant(g, v);
+        connect_to(g, c, sw, k);
+    }
+    sw
+}
+
+fn switch_crossfader(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let sw = switch_router(g, _grid, ramp);
+    g.set_param(sw, "blend", 1.0);
+    sw
+}
+
+/// O padrão por índice — a grade dá a contagem, como o nó pede.
+fn pattern_steps(g: &mut Graph, grid: NodeId, _ramp: NodeId) -> NodeId {
+    let p = g.add_node("value.pattern");
+    g.set_param(p, "steps", 3.0);
+    g.set_param(p, "v0", 0.0);
+    g.set_param(p, "v1", 1.0);
+    g.set_param(p, "v2", 2.0);
+    connect(g, grid, p);
+    p
+}
+
+/// ⚠️ A fase é **fracionária de propósito**: é ela que cria o "entre dois slots"
+/// que o `interp` resolve, e é o único sítio onde `Step` e `Linear` divergem.
+fn pattern_phased_step(g: &mut Graph, grid: NodeId, ramp: NodeId) -> NodeId {
+    let p = pattern_steps(g, grid, ramp);
+    g.set_param(p, "offset", 0.5);
+    p
+}
+
+fn pattern_phased_linear(g: &mut Graph, grid: NodeId, ramp: NodeId) -> NodeId {
+    let p = pattern_phased_step(g, grid, ramp);
+    g.set_param(p, "interp", 1.0);
+    p
+}
+
+/// `a·b + c` com os TRÊS termos vivos — a terceira porta cozida no device.
+fn math_multiply_add(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let m = g.add_node("value.math");
+    g.set_param(m, "op", 14.0); // Multiply Add
+    connect(g, ramp, m);
+    let b = constant(g, 2.0);
+    connect_to(g, b, m, 1);
+    let c = constant(g, 0.25);
+    connect_to(g, c, m, 2);
+    m
+}
+
+/// O mesmo `a·b` SEM o `c` — o par que prova que a terceira porta é lida.
+fn math_multiply_add_without_c(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let m = g.add_node("value.math");
+    g.set_param(m, "op", 14.0);
+    connect(g, ramp, m);
+    let b = constant(g, 2.0);
+    connect_to(g, b, m, 1);
+    m
+}
+
+/// A rampa contra uma constante, dobrada por `Min` — a quina que a mistura
+/// arredonda cai **dentro** da rampa, senão o par nasceria vazio.
+fn math_smooth_min_hard(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let m = g.add_node("value.math");
+    g.set_param(m, "op", 15.0); // Smooth Min, distance = 0 => Min duro
+    connect(g, ramp, m);
+    let b = constant(g, 0.5);
+    connect_to(g, b, m, 1);
+    m
+}
+
+fn math_smooth_min_soft(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let m = math_smooth_min_hard(g, _grid, ramp);
+    g.set_param(m, "distance", 0.4);
+    m
+}
+
+fn math_smooth_max_soft(g: &mut Graph, _grid: NodeId, ramp: NodeId) -> NodeId {
+    let m = math_smooth_min_soft(g, _grid, ramp);
+    g.set_param(m, "op", 16.0); // Smooth Max
+    m
+}
+
+/// A LFO como campo (o `in` ligado à grade, para o device a cozer por elemento).
+fn lfo_plain(g: &mut Graph, grid: NodeId, _ramp: NodeId) -> NodeId {
+    let k = g.add_node("value.lfo");
+    g.set_param(k, "period", 0.5);
+    g.set_param(k, "phase_stagger", 0.01);
+    connect(g, grid, k);
+    k
+}
+
+/// ⚠️ A rampa é **maior que o playhead da fixture** (`0,37`), senão o envelope já
+/// estaria cheio e o par nasceria vazio: o knob só se vê DENTRO da rampa.
+fn lfo_fading_in(g: &mut Graph, grid: NodeId, ramp: NodeId) -> NodeId {
+    let k = lfo_plain(g, grid, ramp);
+    g.set_param(k, "fade_in", 2.0);
+    k
+}
+
 static CASES: &[Case] = &[
     Case {
         label: "math Modulo (assinado)",
@@ -416,6 +595,92 @@ static CASES: &[Case] = &[
         build: math_not_equal_wide,
         differs_from_previous: true,
     },
+    // ── Os knobs apendados em 2026-08-22 (folha 15), cada um com o seu par ──
+    Case {
+        label: "step Smoother (o controle do invert)",
+        build: step_smoother,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "step Smoother INVERTIDO",
+        build: step_smoother_inverted,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "quantize Round (o controle da fase)",
+        build: quantize_round,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "quantize Round com FASE de meio degrau",
+        build: quantize_round_phased,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "mix Add transbordando (o controle do clamp)",
+        build: mix_add_overflowing,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "mix Add com Clamp Result",
+        build: mix_add_clamped,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "switch roteador (o controle do blend)",
+        build: switch_router,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "switch CROSSFADER",
+        build: switch_crossfader,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "pattern com fase de meio slot (Step)",
+        build: pattern_phased_step,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "pattern com a MESMA fase, Linear",
+        build: pattern_phased_linear,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "math Multiply Add SEM o c (o controle da 3ª porta)",
+        build: math_multiply_add_without_c,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "math Multiply Add COM o c",
+        build: math_multiply_add,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "math Smooth Min a distance 0 (== Min duro)",
+        build: math_smooth_min_hard,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "math Smooth Min a distance 0,4",
+        build: math_smooth_min_soft,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "math Smooth MAX a distance 0,4",
+        build: math_smooth_max_soft,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "lfo sem rampa (o controle do fade_in)",
+        build: lfo_plain,
+        differs_from_previous: true,
+    },
+    Case {
+        label: "lfo com fade_in de 2 s",
+        build: lfo_fading_in,
+        differs_from_previous: true,
+    },
 ];
 
 fn worst_delta(a: &[f32], b: &[f32]) -> f32 {
@@ -424,6 +689,112 @@ fn worst_delta(a: &[f32], b: &[f32]) -> f32 {
         .zip(b)
         .map(|(x, y)| (x - y).abs())
         .fold(0.0, f32::max)
+}
+
+/// Coze UM caso nos dois caminhos e devolve `(cpu_y, gpu_y)` — a plumbing que o
+/// laço da tabela e o gate da LUT partilham.
+///
+/// O valor dirige Y para que ele atravesse o MESMO lowering que o produto usa, e
+/// não só a coluna solta.
+fn cook_on_both(
+    gpu: &GpuContext,
+    reg: &NodeRegistry,
+    build: Build,
+    label: &str,
+) -> (Vec<f32>, Vec<f32>) {
+    let mut g = Graph::new();
+    let (grid, ramp) = grid_and_ramp(&mut g);
+    let value = build(&mut g, grid, ramp);
+    let drive = g.add_node("motion.drive");
+    g.set_param(drive, "channel", 1.0); // Y
+    g.set_param(drive, "mode", 0.0); // Add
+    g.set_param(drive, "scale", 2.0);
+    connect(&mut g, grid, drive);
+    connect_to(&mut g, value, drive, 1);
+
+    g.validate(reg).unwrap_or_else(|e| panic!("{label}: {e:?}"));
+    let plan = ph2d_gpu_cook::plan(&g, reg, reg, drive);
+    assert!(
+        plan.is_fully_gpu(),
+        "{label}: a cadeia tem de ser reivindicada de ponta a ponta"
+    );
+
+    let mut cook = Cook::new();
+    let cpu = cook
+        .cook(&g, reg, drive, PLAYHEAD)
+        .unwrap_or_else(|e| panic!("{label}: cpu cook {e:?}"));
+    let mut gc = ph2d_gpu_cook::GpuCook::new();
+    gc.retain_streams_for_debug(true);
+    gc.cook(
+        gpu,
+        &g,
+        reg,
+        reg,
+        &plan,
+        &[],
+        CookClock::at(PLAYHEAD),
+        DEFAULT_UV,
+        DEFAULT_SIZE,
+        0,
+    )
+    .unwrap_or_else(|e| panic!("{label}: gpu cook {e:?}"));
+
+    let cpu_p: Vec<f32> = match cpu[0].as_stream().get("P") {
+        Some(Column::Vec2(v)) => v.iter().map(|p| p[1]).collect(),
+        _ => panic!("{label}: sem coluna P"),
+    };
+    let gpu_p = gc
+        .read_column_vec2(gpu, drive, "P")
+        .unwrap_or_else(|| panic!("{label}: P não volta do device"));
+    (cpu_p, gpu_p.iter().map(|p| p[1]).collect())
+}
+
+/// A ε da LUT — **medida, não escolhida**, e MUITO mais larga que a [`EPS`] da
+/// tabela acima.
+///
+/// A curva viaja para o device como uma tabela de 256 amostras com lerp, e uma
+/// tenda tem uma QUINA no pico: a tabela corta-a por cerca de um passo de
+/// amostra. Medido nesta fixture: `4,4e-3` sobre um Y que o `drive` amplifica 2×.
+/// É o mesmo compromisso que o gêmeo `field.remap` documenta há meses, e a razão
+/// de este caso viver fora da tabela em vez de afrouxar a barra dela — *uma barra
+/// larga aplicada a todos esconde a divergência de um*.
+const LUT_EPS: f32 = 1e-2;
+
+/// **O `factor` do `value.curve` é LIDO PELO DEVICE** — dentro da ε da LUT, e com
+/// o controle que prova que a fixture contém a diferença.
+///
+/// ⚠️ **`factor = 0,5` e não `0`:** em `0` a saída seria a ENTRADA (a rampa), que
+/// já é o que alimenta metade desta suíte — o par continuaria não-vazio por
+/// acidente em vez de por leitura do param.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_curve_factor_is_read_on_the_device_within_the_lut_epsilon() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let (cpu_full, gpu_full) = cook_on_both(&gpu, &reg, curve_tent, "curve tenda");
+    let (cpu_half, gpu_half) = cook_on_both(&gpu, &reg, curve_tent_half, "curve tenda a meio");
+    for (label, cpu, gpu_y) in [
+        ("curve tenda", &cpu_full, &gpu_full),
+        ("curve tenda a meio", &cpu_half, &gpu_half),
+    ] {
+        let worst = worst_delta(cpu, gpu_y);
+        eprintln!("{label:<34} max |d| = {worst:e} (ε da LUT)");
+        assert!(worst < LUT_EPS, "{label}: max |d| = {worst:e}");
+    }
+    // ⚠️ O CONTROLE: as duas metades TÊM de diferir, e por muito mais que a ε da
+    // LUT — senão isto estaria a medir um kernel cego ao `factor`.
+    let gap = worst_delta(&cpu_full, &cpu_half);
+    eprintln!("{:<34}   contra o controle: {gap:e}", "");
+    assert!(gap > MODE_GAP, "o factor nao muda nada ({gap:e})");
+    // E o device vê a MESMA diferença que a CPU vê — não só o mesmo valor.
+    let gap_gpu = worst_delta(&gpu_full, &gpu_half);
+    assert!(
+        (gap - gap_gpu).abs() < LUT_EPS,
+        "a diferenca do device ({gap_gpu:e}) nao e' a da CPU ({gap:e})"
+    );
 }
 
 /// **Os doze modos da aritmética de valor, no device, cada um com o seu
@@ -439,56 +810,7 @@ fn the_new_arithmetic_modes_match_the_cpu_on_the_device() {
     let mut previous: Option<Vec<f32>> = None;
 
     for case in CASES {
-        let mut g = Graph::new();
-        let (grid, ramp) = grid_and_ramp(&mut g);
-        let value = (case.build)(&mut g, grid, ramp);
-        // O valor dirige Y para que a comparação atravesse o mesmo lowering que
-        // o produto usa, e não só a coluna solta.
-        let drive = g.add_node("motion.drive");
-        g.set_param(drive, "channel", 1.0); // Y
-        g.set_param(drive, "mode", 0.0); // Add
-        g.set_param(drive, "scale", 2.0);
-        connect(&mut g, grid, drive);
-        connect_to(&mut g, value, drive, 1);
-
-        g.validate(&reg)
-            .unwrap_or_else(|e| panic!("{}: {e:?}", case.label));
-        let plan = ph2d_gpu_cook::plan(&g, &reg, &reg, drive);
-        assert!(
-            plan.is_fully_gpu(),
-            "{}: a cadeia tem de ser reivindicada de ponta a ponta",
-            case.label
-        );
-
-        let mut cook = Cook::new();
-        let cpu = cook
-            .cook(&g, &reg, drive, PLAYHEAD)
-            .unwrap_or_else(|e| panic!("{}: cpu cook {e:?}", case.label));
-        let mut gc = ph2d_gpu_cook::GpuCook::new();
-        gc.retain_streams_for_debug(true);
-        gc.cook(
-            &gpu,
-            &g,
-            &reg,
-            &reg,
-            &plan,
-            &[],
-            CookClock::at(PLAYHEAD),
-            DEFAULT_UV,
-            DEFAULT_SIZE,
-            0,
-        )
-        .unwrap_or_else(|e| panic!("{}: gpu cook {e:?}", case.label));
-
-        let cpu_stream = cpu[0].as_stream();
-        let cpu_p: Vec<f32> = match cpu_stream.get("P") {
-            Some(Column::Vec2(v)) => v.iter().map(|p| p[1]).collect(),
-            _ => panic!("{}: sem coluna P", case.label),
-        };
-        let gpu_p = gc
-            .read_column_vec2(&gpu, drive, "P")
-            .unwrap_or_else(|| panic!("{}: P não volta do device", case.label));
-        let gpu_y: Vec<f32> = gpu_p.iter().map(|p| p[1]).collect();
+        let (cpu_p, gpu_y) = cook_on_both(&gpu, &reg, case.build, case.label);
         let worst = worst_delta(&cpu_p, &gpu_y);
         eprintln!("{:<34} max |d| = {worst:e}", case.label);
         if worst >= EPS {

@@ -60,6 +60,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "b",
             ty: VALUE,
         },
+        // ⚠️ **Apendada** (índice 2, no FIM): o terceiro termo do `Multiply Add`.
+        // Toda aresta já autorada aponta para 0 ou 1 e continua a apontar para o
+        // mesmo sítio; desligada, a porta lê `0.0`, que é o neutro da soma — então
+        // um `Multiply Add` sem `c` é literalmente um `Multiply`.
+        PortSpec {
+            name: "c",
+            ty: VALUE,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -83,6 +91,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "epsilon",
             default: 0.001,
+        },
+        // ⚠️ **Apendado**: a largura da mistura do `Smooth Min`/`Smooth Max`
+        // (`ParamGate`d nesses dois). `0` = a mistura degenerada, que é o `Min`/
+        // `Max` duro — o mesmo default e a mesma lei do Blender.
+        ParamSpec {
+            name: "distance",
+            default: 0.0,
         },
     ],
     lowerings: &[LoweringKind::Cpu],
@@ -119,6 +134,39 @@ enum Op {
     Equal,
     /// `|a − b| > epsilon`
     NotEqual,
+    /// `a·b + c` — Blender GN *Multiply Add*, and the only op here that reads the
+    /// third port. It ships as an op of its own rather than as a chain because it
+    /// is the most frequent chain in the whole value domain (every affine remap,
+    /// every "scale then bias"), and because `mul` then `add` as two nodes costs
+    /// two dispatches for one FMA.
+    MultiplyAdd,
+    /// The POLYNOMIAL smooth minimum — Blender *Smooth Minimum*, IQ's `smin`.
+    /// Where `Min` creases, this rounds the corner over a band of `distance`.
+    SmoothMin,
+    /// `−smoothmin(−a, −b)` — Blender *Smooth Maximum*, derived from its twin
+    /// exactly as the reference derives it, so the two cannot drift apart.
+    SmoothMax,
+}
+
+/// **The polynomial smooth minimum** — `min(a,b)` rounded over a band of width
+/// `k`, transcendental-free (HR-5: `abs`/`max`/`min` and a cubic).
+///
+/// This is verbatim Blender's `smoothminf` (itself IQ's `smin`), and being
+/// verbatim is the point: it is the function an artist who knows the reference
+/// expects, and re-deriving "a smooth min" from first principles would land on a
+/// different curve that agrees at the ends and disagrees in the middle — the
+/// hardest kind of divergence to see and the easiest to ship.
+///
+/// ⚠️ **`k = 0` is the hard `min`, EXACTLY**, and by a branch rather than by the
+/// limit: `h = max(0 − |a−b|, 0)/0` is `0/0 = NaN` when `a == b`. The default of
+/// the param is `0`, so the NaN would be what a fresh `Smooth Min` produced on
+/// its most ordinary input.
+fn smooth_min(a: f32, b: f32, k: f32) -> f32 {
+    if k == 0.0 {
+        return a.min(b);
+    }
+    let h = (k - (a - b).abs()).max(0.0) / k;
+    a.min(b) - h * h * h * k * (1.0 / 6.0)
 }
 
 impl Op {
@@ -161,6 +209,9 @@ impl Op {
             11 => Op::GreaterOrEqual,
             12 => Op::Equal,
             13 => Op::NotEqual,
+            14 => Op::MultiplyAdd,
+            15 => Op::SmoothMin,
+            16 => Op::SmoothMax,
             _ => Op::Add,
         }
     }
@@ -176,7 +227,7 @@ impl Op {
     /// infinite precision) while `trunc(a/b)` rounds, so an exact CPU against a
     /// derived WGSL would disagree at the ulp on exactly the inputs a wrap lands
     /// on. Deriving on BOTH sides makes the parity bit-for-bit by construction.
-    fn apply(self, a: f32, b: f32, eps: f32) -> f32 {
+    fn apply(self, a: f32, b: f32, c: f32, eps: f32, dist: f32) -> f32 {
         match self {
             Op::Add => a + b,
             Op::Subtract => a - b,
@@ -222,6 +273,14 @@ impl Op {
             Op::GreaterOrEqual => f32::from(a >= b),
             Op::Equal => f32::from((a - b).abs() <= eps),
             Op::NotEqual => f32::from((a - b).abs() > eps),
+            // ⚠️ Escrito como `a·b + c` e NÃO como `a.mul_add(b, c)`: o `mul_add`
+            // é uma FMA de arredondamento único, e o WGSL não tem como pedir uma
+            // — a paridade CPU/GPU deixaria de ser bit-a-bit em troca de meio ulp
+            // de precisão que ninguém pediu.
+            Op::MultiplyAdd => a * b + c,
+            Op::SmoothMin => smooth_min(a, b, dist),
+            // O espelho, derivado do irmão exactamente como a referência o deriva.
+            Op::SmoothMax => -smooth_min(-a, -b, dist),
         }
     }
 }
@@ -248,16 +307,20 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
 /// `max(len_a, len_b)`; a length that is neither 1 nor the other's length is a
 /// mismatch — `debug_assert`ed loudly, then read leniently (element-wise, `0.0`
 /// past the end) so a release build degrades rather than panics.
-fn combine(a: &[f32], b: &[f32], op: Op, eps: f32) -> Vec<f32> {
+fn combine(a: &[f32], b: &[f32], c: &[f32], op: Op, eps: f32, dist: f32) -> Vec<f32> {
     debug_assert!(
         a.len() <= 1 || b.len() <= 1 || a.len() == b.len(),
         "value.math: field lengths {} and {} are neither broadcast (1) nor equal",
         a.len(),
         b.len()
     );
-    let n = a.len().max(b.len());
+    // ⚠️ O `c` entra no `max` do comprimento, e tem de entrar: um `Multiply Add`
+    // de dois escalares com um `c` de N elementos é um campo de N, e uma lei que
+    // só olhasse `a` e `b` renderizaria UMA coisa em vez de N — o modo de falha
+    // que o `math_count` já documenta do lado do device.
+    let n = a.len().max(b.len()).max(c.len());
     (0..n)
-        .map(|i| op.apply(field_at(a, i), field_at(b, i), eps))
+        .map(|i| op.apply(field_at(a, i), field_at(b, i), field_at(c, i), eps, dist))
         .collect()
 }
 
@@ -303,6 +366,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let vm_a = read_a_v(i);\n\
         let vm_b = read_b_v(i);\n\
+        let vm_c = read_c_v(i);\n\
         let vm_op = i32(vm_round(params.op));\n\
         var vm_r = vm_a + vm_b;\n\
         if (vm_op == 1) {\n\
@@ -331,12 +395,29 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   vm_r = select(0.0, 1.0, abs(vm_a - vm_b) <= params.epsilon);\n\
         } else if (vm_op == 13) {\n\
         \x20   vm_r = select(0.0, 1.0, abs(vm_a - vm_b) > params.epsilon);\n\
+        } else if (vm_op == 14) {\n\
+        \x20   // `a*b + c`, escrito assim de proposito: uma `fma()` teria\n\
+        \x20   // arredondamento unico e a paridade com a CPU deixaria de ser\n\
+        \x20   // bit-a-bit.\n\
+        \x20   vm_r = vm_a * vm_b + vm_c;\n\
+        } else if (vm_op == 15) {\n\
+        \x20   vm_r = vm_smin(vm_a, vm_b, params.distance);\n\
+        } else if (vm_op == 16) {\n\
+        \x20   vm_r = -vm_smin(-vm_a, -vm_b, params.distance);\n\
         }\n\
         write_v(i, vm_r);\n",
     wgsl_lib: "\
         fn vm_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        // O gemeo de `smooth_min` -- o polinomio do Blender, verbatim, e o mesmo\n\
+        // ramo degenerado (com `k = 0` e `a == b` a divisao seria `0/0 = NaN`, e\n\
+        // `0` e' o DEFAULT do param).\n\
+        fn vm_smin(a: f32, b: f32, k: f32) -> f32 {\n\
+            if (k == 0.0) { return min(a, b); }\n\
+            let h = max(k - abs(a - b), 0.0) / k;\n\
+            return min(a, b) - h * h * h * k * (1.0 / 6.0);\n\
         }\n",
     bindings: &[
         ColumnBinding {
@@ -353,6 +434,16 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [0.0; 4],
             port: 1,
         },
+        // A terceira porta. `identity: 0` é o que faz uma porta DESLIGADA ler o
+        // neutro da soma — a mesma resposta que `field_at` dá na CPU para um campo
+        // vazio, e é por isso que os dois lados concordam sobre "sem `c`".
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadBroadcast,
+            identity: [0.0; 4],
+            port: 2,
+        },
         ColumnBinding {
             column: VALUE_COL,
             dim: Dim::Scalar,
@@ -361,7 +452,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["op", "epsilon"],
+    // ⚠️ Esta lista não é derivada do manifesto: um param novo compila, coza na
+    // CPU, e o device recusa o shader (`invalid field accessor`).
+    params: &["op", "epsilon", "distance"],
     count_law: Some(math_count),
     variant_by_param: None,
     applicable: None,
@@ -386,7 +479,8 @@ impl NodeOp for ValueMath {
         let op = Op::from_param(ctx.param("op"));
         let a = scalar_col(ctx.input(0), VALUE_COL);
         let b = scalar_col(ctx.input(1), VALUE_COL);
-        let out = combine(&a, &b, op, ctx.param("epsilon"));
+        let c = scalar_col(ctx.input(2), VALUE_COL);
+        let out = combine(&a, &b, &c, op, ctx.param("epsilon"), ctx.param("distance"));
         ctx.emit(Stream::new(out.len()).with(VALUE_COL, Column::Scalar(out)));
     }
 }
@@ -421,7 +515,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "op",
         label: "Op",
         min: 0.0,
-        max: 13.0,
+        max: 16.0,
         step: 1.0,
         widget: ParamWidget::Enum {
             // ⚠️ The six comparisons are in **Blender's Compare order** (Less Than,
@@ -444,6 +538,11 @@ static PARAM_HINTS: &[ParamUiHint] = &[
                 "Greater or Eq",
                 "Equal",
                 "Not Equal",
+                // ⚠️ Apendados no FIM: os índices 0..13 ficam exactamente onde
+                // estavam, então todo documento já autorado lê a mesma op.
+                "Multiply Add",
+                "Smooth Min",
+                "Smooth Max",
             ],
         },
     },
@@ -468,23 +567,57 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.001,
         widget: ParamWidget::Slider,
     },
+    // A LARGURA da mistura do Smooth Min/Max, na unidade do próprio campo. `0` é o
+    // `Min`/`Max` duro (o default do Blender, e a razão de as duas ops novas não
+    // mudarem nada até alguém lhes tocar).
+    //
+    // ⚠️ O teto do slider é `1.0` e **não** é um limite de recurso: `distance` é
+    // uma distância na unidade de um campo que não tem escala fixa, então a caixa
+    // digitada vai tão longe quanto a do `epsilon` (`PARAM_HARD_MAX` abaixo). O
+    // que `1.0` é: a faixa onde a mão trabalha para um campo normalizado, que é a
+    // convenção deste domínio.
+    ParamUiHint {
+        param: "distance",
+        label: "Distance",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// `epsilon` exists only for the two ops that ask about EQUALITY (indices 12/13 —
 /// [`Op::is_comparison`]'s equality half). Under `Add` or `Greater` it would be a
 /// row the artist can drag that changes nothing.
-static PARAM_GATES: &[ParamGate] = &[ParamGate {
-    param: "epsilon",
-    when: "op",
-    values: &[12, 13],
-}];
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "epsilon",
+        when: "op",
+        values: &[12, 13],
+    },
+    // A largura da mistura só existe para as duas ops que a leem — a mesma lei do
+    // `epsilon` acima, e a mesma do `amount_y` do `motion.scale` (doc 88 B3).
+    ParamGate {
+        param: "distance",
+        when: "op",
+        values: &[15, 16],
+    },
+];
 
 /// The typed ceiling of the tolerance — see the hint above for why the slider stops
 /// at `0.1` (a derived number) and the box does not.
-static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
-    param: "epsilon",
-    max: 1_000_000.0,
-}];
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "epsilon",
+        max: 1_000_000.0,
+    },
+    // A mesma razão, a mesma grandeza: uma distância na unidade do campo, e um
+    // campo de valor não tem escala fixa.
+    ParamHardMax {
+        param: "distance",
+        max: 1_000_000.0,
+    },
+];
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;

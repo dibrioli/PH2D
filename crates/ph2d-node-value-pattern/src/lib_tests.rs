@@ -241,18 +241,144 @@ fn the_table_has_a_text_row_on_the_panel() {
 
 /// **O kernel LÊ o buffer, nunca o `_sample`** — a decisão que mantém um passo
 /// autorado exato (o acessor gerado LERPA entre vizinhos).
+///
+/// ⚠️ **A lei sobreviveu à chegada do `interp = Linear`, e a distinção é o ponto:**
+/// o `Linear` interpola entre dois **SLOTS**, porque o artista pediu; o
+/// `vp_table_sample` interpolaria entre duas **AMOSTRAS DA LUT**, que é uma
+/// reamostragem que ninguém pediu e que tornaria inexato até o modo `Step`. Os
+/// dois são lerps e não são a mesma coisa — é por isso que este gate continua a
+/// proibir só um deles.
+///
+/// ⚠️ E ele varre `wgsl` **e** `wgsl_lib`: a indexação mudou de lugar quando o
+/// `vp_at` nasceu, e um gate que só olhasse o corpo teria ficado verde sobre um
+/// kernel que passasse a lerpar a LUT dentro da biblioteca.
 #[test]
 fn the_kernel_reads_the_lut_buffer_and_never_lerps_it() {
+    let src = format!("{}\n{}", GPU_KERNEL.wgsl, GPU_KERNEL.wgsl_lib);
     assert!(
-        GPU_KERNEL.wgsl.contains("lut_vp_table[1u + (i % vp_n)]"),
+        src.contains("lut_vp_table[1u + u32(idx)]"),
         "indexa o buffer direto"
     );
     assert!(
-        !GPU_KERNEL.wgsl.contains("vp_table_sample"),
+        !src.contains("vp_table_sample"),
         "e nunca passa pelo acessor que interpola"
     );
     // O canal esta registrado com a chave e a resolucao que a lei declara.
     assert_eq!(LUTS.len(), 1);
     assert_eq!(LUTS[0].text_key, TABLE_KEY);
     assert_eq!(LUTS[0].resolution, table::LUT_LEN);
+}
+
+/// **`offset = 0` É O NÓ QUE SEMPRE SHIPOU — BIT-A-BIT, E NOS DOIS MODOS.**
+///
+/// ⚠️ A metade que importa é o `Linear`: `round(i)` ser `i` é óbvio, mas em
+/// `Linear` a resposta passa pelo ramo da fração, e é o `t == 0 ⇒ verbatim` que
+/// impede `a + 0·(b − a)` de arredondar o default do nó.
+#[test]
+fn a_zero_offset_is_the_node_that_shipped_in_both_modes() {
+    let vals = SLOT_VALS;
+    for &authored in &[&[][..], &[3.5, -1.0, 7.25][..]] {
+        for steps in 1..=SLOTS {
+            for i in 0..20 {
+                let want =
+                    table::value_at(i, authored).unwrap_or_else(|| pattern_value(i, steps, &vals));
+                for interp in [Interp::Step, Interp::Linear] {
+                    assert_eq!(
+                        phased_value(i, 0.0, interp, steps, &vals, authored),
+                        want,
+                        "i={i} steps={steps} {interp:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// **UM OFFSET INTEIRO ROLA O PADRÃO, e dá a volta nos DOIS sentidos.**
+///
+/// ⚠️ **A mutação que este gate mata é escrever `%` em vez de `rem_euclid`.** O
+/// `%` de Rust devolve negativo para um índice negativo, e um índice negativo é o
+/// caso *normal* deste knob (o artista arrasta o slider para a esquerda). O
+/// resultado seria um pânico de indexação ou — pior, com um `as usize` — uma
+/// leitura de lixo. O gate afirma o valor exato dos dois lados.
+#[test]
+fn an_integer_offset_rolls_the_pattern_both_ways() {
+    let vals = SLOT_VALS;
+    let steps = 3; // ciclo = [v0, v1, v2]
+    let at = |off: f32, i: usize| phased_value(i, off, Interp::Step, steps, &vals, &[]);
+    for i in 0..9 {
+        assert_eq!(at(1.0, i), at(0.0, i + 1), "i={i}: +1 rola uma posicao");
+        assert_eq!(
+            at(3.0, i),
+            at(0.0, i),
+            "i={i}: um ciclo inteiro e' identidade"
+        );
+    }
+    // Para trás: `i = 0` com offset −1 tem de ler o ÚLTIMO slot do ciclo.
+    assert_eq!(
+        at(-1.0, 0),
+        at(0.0, 2),
+        "-1 no elemento 0 le' o fim do ciclo"
+    );
+    assert_eq!(at(-4.0, 0), at(0.0, 2), "e da' a volta mais de uma vez");
+}
+
+/// **`Step` SALTA, `Linear` DESLIZA — e o gate mede onde as duas leis discordam.**
+///
+/// ⚠️ A fixture põe a fase em **meio slot**, que é o único sítio onde a diferença
+/// existe: numa fase inteira as duas coincidem (o gate acima), então um teste que
+/// só amostrasse offsets inteiros ficaria verde com o `interp` ignorado.
+#[test]
+fn step_jumps_and_linear_slides() {
+    let vals = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    let steps = 2; // ciclo = [0, 10]
+    let step_half = phased_value(0, 0.5, Interp::Step, steps, &vals, &[]);
+    let lin_half = phased_value(0, 0.5, Interp::Linear, steps, &vals, &[]);
+    assert_eq!(
+        step_half, 10.0,
+        "Step encosta no slot 1 (metade p/ longe do 0)"
+    );
+    assert_eq!(lin_half, 5.0, "Linear fica no meio");
+    // E o deslize é MONÓTONO ao longo de um slot inteiro — a propriedade que um
+    // salto não tem.
+    let mut prev = f32::NEG_INFINITY;
+    for k in 0..=10 {
+        let o = phased_value(0, k as f32 / 10.0, Interp::Linear, steps, &vals, &[]);
+        assert!(o >= prev, "offset={}: {o} < {prev}", k as f32 / 10.0);
+        prev = o;
+    }
+    assert_eq!(prev, 10.0, "chega inteiro no slot seguinte");
+}
+
+/// **O ENCAIXE DO CICLO MISTURA O ÚLTIMO COM O PRIMEIRO** — a leitura periódica,
+/// que é a única coerente com um padrão que já se repetia. Um `Linear` que
+/// saturasse na ponta faria o último degrau de cada volta comportar-se diferente
+/// dos outros, e o artista veria uma costura a cada `steps` elementos.
+#[test]
+fn linear_wraps_around_the_seam() {
+    let vals = [0.0, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    let steps = 2; // ciclo = [0, 10]
+    // Elemento 1 (slot 1 = 10) com meia fase: o vizinho é o slot 0 da volta
+    // seguinte, valor 0 ⇒ o meio é 5.
+    assert_eq!(phased_value(1, 0.5, Interp::Linear, steps, &vals, &[]), 5.0);
+}
+
+/// **A TABELA AUTORADA OBEDECE À MESMA FASE** — ela não é um segundo nó.
+#[test]
+fn the_authored_table_obeys_the_same_phase() {
+    let vals = SLOT_VALS;
+    let authored = [1.0, 2.0, 3.0, 4.0];
+    let at = |off: f32, i: usize| phased_value(i, off, Interp::Step, 3, &vals, &authored);
+    assert_eq!(at(0.0, 0), 1.0);
+    assert_eq!(at(1.0, 0), 2.0, "a fase rola a TABELA, nao os slots");
+    assert_eq!(
+        at(-1.0, 0),
+        4.0,
+        "e da' a volta no comprimento DELA (4, nao 3)"
+    );
+    // E o Linear mistura entradas da tabela, não dos slots.
+    assert_eq!(
+        phased_value(0, 0.5, Interp::Linear, 3, &vals, &authored),
+        1.5
+    );
 }

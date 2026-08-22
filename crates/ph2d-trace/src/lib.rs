@@ -138,20 +138,71 @@ pub fn trace_patches(mesh: &Mesh, dual: &Dual, field: &CrossField) -> PatchLayou
         if victims.is_empty() {
             break;
         }
-        if !patches::dissolve(&mut walls, &out, &victims) {
+        let before = health(&out);
+        // ⭐ **A ronda corre sobre uma CÓPIA e só é adoptada se passar.** Dissolver
+        // no original e desfazer depois deixaria uma janela em que `walls` está
+        // errado — e o `break` dessa janela é justamente o caminho do defeito.
+        // *Assim a recusa não tem nada para desfazer.*
+        let mut trial = walls.clone();
+        if !patches::dissolve(&mut trial, &out, &victims) {
             break;
         }
+        let mut next_report = base.clone();
+        next_report.dissolved = dissolved + victims.len();
+        next_report.rounds = rounds + 1;
+        let next = patches::decompose(mesh, &trial, next_report);
+        let after = health(&next);
+
+        // ⛔⛔ **UMA CURA QUE PIORA A TOPOLOGIA NÃO É UMA CURA.** Medido em
+        // 2026-08-22 no toro 48×24: a ronda 10 levava o complexo de `1` para `2`
+        // **e** deixava a lista de degenerados vazia — ou seja, ela *escondia* o
+        // defeito ao mesmo tempo que o agravava, e a cadeia devolvia uma malha de
+        // género errado com 100 % de quads e zero arestas de bordo.
+        if after.0 > before.0 {
+            break;
+        }
+        walls = trial;
         dissolved += victims.len();
         rounds += 1;
-        let mut next = base.clone();
-        next.dissolved = dissolved;
-        next.rounds = rounds;
-        out = patches::decompose(mesh, &walls, next);
+        out = next;
     }
     out.report.dissolved = dissolved;
     out.report.rounds = rounds;
     out
 }
+
+/// **A SAÚDE de uma decomposição** — `(distância topológica, degenerados)`.
+///
+/// ⭐ **A primeira componente é a que manda**, e é a única que a limpeza está
+/// proibida de piorar: `|complexo − χ(peça)|` é zero exactamente quando a
+/// decomposição ainda descreve a superfície que entrou. A segunda é o progresso
+/// visível, e serve para reconhecer uma ronda que não andou.
+fn health(layout: &PatchLayout) -> (i64, usize) {
+    (
+        (layout.complex_euler() - layout.mesh_chi).abs(),
+        layout.degenerate().len(),
+    )
+}
+
+/// ⛔⛔ **UM TETO DE RONDAS PARADAS foi construído, MEDIDO e REJEITADO** —
+/// 2026-08-22, e a razão é que ele não distingue o caso bom do mau.
+///
+/// A ideia era: *"nove dissoluções com o estado idêntico não são cura, corte-as"*.
+/// Ela reprovou porque a paciência é do FENÓMENO e não uma constante:
+///
+/// | fixtura | rondas com `(distância, degenerados)` idêntico | e depois |
+/// |---|---|---|
+/// | ⭐ **esfera 48×72** | `(1, 1)` da ronda 0 à 4 — **cinco** | a ronda 5 fecha em `(0, 0)` ✓ |
+/// | ⛔ toro 48×24 | `(1, 1)` da ronda 0 à 9 — **dez** | a ronda 10 vai para `(2, 0)` ⛔ |
+///
+/// ⇒ **As duas são indistinguíveis enquanto correm.** Um teto de `2` matava a
+/// esfera; um de `9` deixava o toro passar na mesma. *Uma paciência que decide
+/// certo num caso e errado no outro não é uma constante — é um palpite.*
+///
+/// ⚠️ **A guarda que FICA é a outra**, e essa é demonstrável sem paciência
+/// nenhuma: uma ronda que aumenta a distância topológica é recusada, sempre. Ela
+/// apanha exactamente a ronda 10 do toro e **não toca** nas cinco da esfera.
+const _MEASURED_AND_REJECTED_STALE_CAP: () = ();
 
 /// ⚠️ **O teto de rondas de limpeza.** Ele não escolhe qualidade nenhuma: a
 /// limpeza pára sozinha quando não há patch degenerado. Existe para o caso

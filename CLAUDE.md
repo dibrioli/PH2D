@@ -397,9 +397,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   com `χ = 2` **passando em TODAS as outras réguas**. ✅ **Já não sai:** a cerca é `V−E+F` do complexo contra o `χ` da
   peça (`LayoutError::GenusLost`), medida com **zero falsos positivos em 3 toros × 9 pesos** — hoje ele **recusa com
   nome**. ⛔ Falta CORTAR a asa (gate `#[ignore]` `the_genus_survives_on_every_torus`), e é o que trava o
-  `ALIGN_WEIGHT` — que **funciona** (relevo `25,7° → 13,7°`, o número do Instant Meshes) e ships a **zero**. ⛔ Outros buracos
+  `ALIGN_WEIGHT` — que **funciona** (relevo `25,7° → 13,7°`, o número do Instant Meshes) e ships a **zero**.
+  ⚠️ **O traçado está INOCENTE** (mesmas singularidades e separatrizes que os toros que passam, zero descartadas):
+  era a **limpeza** que trocava «anel sinalizado» por «asa NÃO sinalizada» — ⛔ e dissolver **não alcança** esta
+  classe (6 lados e 15 pares, **zero** curas). A guarda `the_cleanup_never_worsens_the_topology` já a impede; o
+  corte pede que o `boundary_loops` saiba percorrer uma parede **dos dois lados**. ⛔ Outros buracos
   medidos: o F1 devolve o cubo **não-manifold** · a esfera **embaralhada** não fecha · **sem feature lines**.
-  Tabelas por fase: `PLAN.md` §4-bis..§4-duovicies.
+  Tabelas por fase: `PLAN.md` §4-bis..§4-quatervicies.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que
   prova a inércia.
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·

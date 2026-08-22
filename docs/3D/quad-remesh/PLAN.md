@@ -2326,3 +2326,96 @@ novo, não uma linha. O gate `#[ignore]` `the_genus_survives_on_every_torus` exi
 **malha**, não uma recusa: ele é o endereço do bloqueio.
 
 ⇒ **E é isso que trava o `ALIGN_WEIGHT`**, que funciona (`25,7° → 13,7°`).
+
+---
+
+## 4-quatervicies — ⭐⭐ **A CURA AGRAVAVA E ESCONDIA**, e dissolver não alcança uma asa
+
+> O §4-tervicies pôs a cerca e deixou o passo nomeado: *"o F3 tem de saber cortar a
+> asa"*. Antes de construir o corte, três medições — e elas mudaram o culpado duas
+> vezes.
+
+### 1. ⛔ O traçado está INOCENTE
+
+Sonda `what_does_the_trace_say`, os três toros:
+
+| fixtura | singularidades | separatrizes | `dangling` | patches | **dissolvidas / rondas** |
+|---|---|---|---|---|---|
+| toro 32×16 ✓ | 10 | 36 | 0 | 27 | **1 / 1** |
+| ⛔ toro 48×24 | 10 | 30 | 0 | 9 | ⛔ **10 / 10** |
+| toro 64×32 ✓ | 8 | 30 | 0 | 23 | **0 / 0** |
+
+⭐ **A rede de paredes é tão densa no toro que falha como nos que passam**, e ele não
+descarta separatriz nenhuma. O que ele tem a mais é a **limpeza**.
+
+### 2. ⛔⛔ A limpeza agravava — e escondia ao mesmo tempo
+
+Sonda `where_does_the_cleanup_break_it`, ronda a ronda. Na **ronda 0**, os dois toros
+têm um patch com `χ = 0` — **um ANEL**, e ele *é* sinalizado (duas fronteiras).
+
+| | toro 32×16 | toro 48×24 |
+|---|---|---|
+| ronda 0 | 28 patches, distância `1`, degenerados `[12]` | 20 patches, distância `1`, degenerados `[0]` |
+| depois | ⭐ ronda 1 fecha em `0` ✓ | ⛔ rondas 1–9 **idênticas**; a ronda 10 vai para `2` e a lista fica **vazia** |
+
+⇒ ⛔⛔ **A última ronda trocava «um anel, sinalizado» por «uma asa dentro de um
+patch, não sinalizada»** — `χ = −1` com **uma** fronteira, que o `degenerate()` não
+apanha. *Ela agravava e apagava o aviso no mesmo passo*, e é assim que a malha de
+género errado escapava com 100 % de quads e zero arestas de bordo.
+
+### 3. ⛔ E dissolver NÃO ALCANÇA esta asa — 6 lados e 15 pares, zero curas
+
+O `dissolve` escolhe sempre o **lado mais curto**, ou seja, escolhe por sorte. Sondas
+`would_any_wall_cure_the_handle` e `would_a_pair_of_walls_cure_it`, a partir do mesmo
+estado da ronda 0:
+
+| fixtura | lados que curam | pares que curam |
+|---|---|---|
+| toro 32×16 | ⭐ **3 de 6** | — |
+| ⛔ toro 48×24 | **0 de 6** | ⛔ **0 de 15** |
+
+⇒ No toro que passa a cura existe e o *"mais curto"* acertou **por acaso**; no que
+falha **não existe cura por dissolução nenhuma**. *A operação está errada para esta
+classe: uma asa cura-se acrescentando parede, não apagando.*
+
+### ⭐ A guarda que ficou, e a que foi medida e rejeitada
+
+⭐⭐ **FICA:** *uma ronda que aumenta a distância topológica é recusada, sempre.* Ela
+corre sobre uma cópia das paredes e só é adoptada se passar — assim a recusa não tem
+nada para desfazer. Efeito medido:
+
+| fixtura | antes | depois |
+|---|---|---|
+| toro 48×24 | 10 rondas, 9 patches, distância **2**, aviso **apagado** | 9 rondas, 10 patches, distância **1**, `não-disco = 1` ⭐ |
+| esfera 24×36 · 48×72 · toro 32×16 · 64×32 | — | **byte-idêntico** |
+
+⛔ **REJEITADO: um teto de «rondas paradas».** A ideia era cortar as nove rondas
+inúteis. Ela reprova porque a paciência é do **fenómeno**:
+
+| fixtura | rondas com `(distância, degenerados)` idêntico | e depois |
+|---|---|---|
+| ⭐ esfera 48×72 | `(1, 1)` da ronda 0 à 4 — **cinco** | a ronda 5 fecha em `(0, 0)` ✓ |
+| ⛔ toro 48×24 | `(1, 1)` da ronda 0 à 9 — **dez** | a ronda 10 vai para `(2, 0)` ⛔ |
+
+⇒ **Indistinguíveis enquanto correm.** Um teto de `2` matava a esfera; um de `9`
+deixava o toro passar na mesma. *Uma paciência que decide certo num caso e errado no
+outro não é uma constante — é um palpite.* (Construído, medido, revertido: a esfera
+48×72 reprovou o gate `every_face_is_a_quad_and_the_mesh_is_watertight`.)
+
+### ⛔ O que fica ABERTO — e a precondição do corte está medida
+
+O corte de uma asa é **acrescentar** uma parede: para um **anel**, uma ponte de
+caminho mais curto entre as duas fronteiras, ligando **canto a canto** (a aritmética
+só fecha assim: `V += 0`, `E += 1`, `F += 0` ⇒ a distância cai `1`).
+
+⚠️⚠️ **E ele tem uma precondição medida:** o `boundary_loops` exige que a face do
+outro lado da parede **não** seja do mesmo patch —
+
+```rust
+walls.blocks(a, b) && half.get(&(b, a)).is_none_or(|&g| face_patch[g] != p)
+```
+
+⇒ **uma ponte interior a um patch é invisível para ele.** Cortar exige primeiro que o
+passeio da fronteira saiba percorrer uma parede **dos dois lados** — que é
+exactamente a representação «cortar e abrir», e mexe numa rotina com dez gates em
+cima. *É esse o trabalho, e agora ele tem tamanho.*

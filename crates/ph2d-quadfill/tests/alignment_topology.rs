@@ -366,3 +366,265 @@ fn is_every_patch_a_disk() {
         }
     }
 }
+
+/// ⭐⭐ **SONDA — O QUE O TRAÇADO DIZ DE SI PRÓPRIO nos três toros?**
+///
+/// ⛔ **A pergunta que escolhe a cura.** Sabe-se *onde* a asa se perde (um patch
+/// engole-a) e que `dissolve` é a direcção errada. Falta saber **por que é que a
+/// rede de paredes é frouxa ali** — e as hipóteses prescrevem trabalhos diferentes:
+///
+/// | se o relatório disser | então a cura é |
+/// |---|---|
+/// | poucas **singularidades** | o campo é liso demais ali; seria preciso semear paredes fora delas |
+/// | muitas **`dangling`** | as paredes foram traçadas e **descartadas** por não fecharem — recuperá-las densifica exactamente onde falta |
+/// | muitos **`promoted`** | a fronteira existe mas não tem cantos estruturais — outro problema |
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
+///     --test alignment_topology -- --ignored --nocapture what_does_the_trace_say
+/// ```
+#[test]
+#[ignore = "sonda -- o que o tracado diz de si proprio nos tres toros"]
+fn what_does_the_trace_say() {
+    for (name, mesh) in [
+        ("toro 32x16 (BOM)", shapes::torus(32, 16, 1.0, 0.35)),
+        ("toro 48x24 (MAU)", shapes::torus(48, 24, 1.0, 0.35)),
+        ("toro 64x32 (BOM)", shapes::torus(64, 32, 1.0, 0.35)),
+        ("esfera 24x36", shapes::uv_sphere(24, 36, 1.0)),
+    ] {
+        let mut work = mesh.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = Dual::build(&work);
+        let (field, _) = solve_miq_aligned(&dual, Rounding::default(), 0.0);
+        let layout = trace_patches(&work, &dual, &field);
+        let r = &layout.report;
+        println!(
+            "── {name} ({} tris) ──\n  \
+             singularidades {:<4} separatrizes {:<4} DANGLING {:<4} promovidos {:<4}\n  \
+             patches {:<4} arcos {:<4} nao-disco {:<3} COM GENERO {:<3} dissolvidas {:<3} \
+             rondas {:<3} aneis-abertos {}\n  \
+             complexo X {:>3} (a peca e' {})  |  valencias {:?}",
+            work.faces().len(),
+            r.singularities,
+            r.separatrices,
+            r.dangling,
+            r.promoted,
+            r.patches,
+            r.arcs,
+            r.non_disk,
+            r.with_genus,
+            r.dissolved,
+            r.rounds,
+            r.open_rings,
+            layout.complex_euler(),
+            layout.mesh_chi,
+            r.valence,
+        );
+    }
+}
+
+/// ⭐⭐ **SONDA — A LIMPEZA, RONDA A RONDA: em qual delas a asa nasce?**
+///
+/// ⛔ **O relatório mudou a suspeita de sítio.** No toro que falha, o traçado
+/// produz **10 singularidades e 30 separatrizes** — tanto quanto os que passam — e
+/// descarta **zero**. O que ele tem a mais é `dissolvidas 10, rondas 10`, contra
+/// `1` e `0` nos bons. ⇒ *A rede de paredes estava boa; foi a LIMPEZA que a comeu.*
+///
+/// Esta sonda repete o laço de [`ph2d_trace::trace_patches`] à mão e imprime o
+/// estado a cada ronda. A coluna que decide é `complexo`: a ronda em que ele deixa
+/// de bater com o `χ` da peça é a ronda que criou a asa.
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
+///     --test alignment_topology -- --ignored --nocapture where_does_the_cleanup_break_it
+/// ```
+#[test]
+#[ignore = "sonda -- em que ronda da limpeza a asa nasce"]
+fn where_does_the_cleanup_break_it() {
+    use ph2d_trace::patches::{decompose, dissolve};
+    use ph2d_trace::walk::Walker;
+
+    for (name, mesh) in [
+        ("toro 32x16 (BOM)", shapes::torus(32, 16, 1.0, 0.35)),
+        ("toro 48x24 (MAU)", shapes::torus(48, 24, 1.0, 0.35)),
+        ("esfera 48x72", shapes::uv_sphere(48, 72, 1.0)),
+        ("esfera 24x36", shapes::uv_sphere(24, 36, 1.0)),
+    ] {
+        let mut work = mesh.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = Dual::build(&work);
+        let (field, _) = solve_miq_aligned(&dual, Rounding::default(), 0.0);
+        let walker = Walker::new(&work, &dual, &field);
+        let (mut walls, base) = walker.trace_all();
+        let mut out = decompose(&work, &walls, base.clone());
+        println!("── {name} (a peca e' χ {}) ──", out.mesh_chi);
+        for round in 0..20 {
+            let victims = out.degenerate();
+            println!(
+                "  ronda {round:<2} | patches {:<3} arcos {:<3} complexo χ {:>3} {} \
+                 | com-genero {} | degenerados {:?}",
+                out.side_arcs.len(),
+                out.arc_chain.len(),
+                out.complex_euler(),
+                if out.complex_euler() == out.mesh_chi {
+                    "✓"
+                } else {
+                    "⛔"
+                },
+                out.report.with_genus,
+                victims,
+            );
+            if victims.is_empty() || !dissolve(&mut walls, &out, &victims) {
+                break;
+            }
+            out = decompose(&work, &walls, base.clone());
+        }
+    }
+}
+
+/// ⭐⭐ **SONDA — ALGUMA parede curaria a asa, ou nenhuma cura?**
+///
+/// ⛔ **A pergunta que resta depois de a limpeza ser inocentada.** O patch com
+/// género existe já na ronda 0, nos DOIS toros: no que passa, **uma** dissolução
+/// cura-o (χ 1 → 0); no que falha, dez não curam. O `dissolve` escolhe sempre o
+/// **lado mais curto** — então a hipótese é que a escolha é que está errada, não a
+/// operação.
+///
+/// Esta sonda tenta **cada lado** do patch com género, um de cada vez, a partir do
+/// mesmo estado, e mede o que cada escolha dá. As duas leituras possíveis:
+///
+/// | resultado | o que significa |
+/// |---|---|
+/// | ⭐ algum lado leva `com-género` a `0` | a cura é **escolher**, e é barata |
+/// | ⛔ nenhum leva | dissolver não alcança esta asa — é preciso **cortar**, e isso é trabalho novo |
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
+///     --test alignment_topology -- --ignored --nocapture would_any_wall_cure_the_handle
+/// ```
+#[test]
+#[ignore = "sonda -- alguma parede curaria a asa?"]
+fn would_any_wall_cure_the_handle() {
+    use ph2d_trace::patches::{decompose, dissolve};
+    use ph2d_trace::walk::Walker;
+
+    for (name, mesh) in [
+        ("toro 32x16 (BOM)", shapes::torus(32, 16, 1.0, 0.35)),
+        ("toro 48x24 (MAU)", shapes::torus(48, 24, 1.0, 0.35)),
+    ] {
+        let mut work = mesh.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = Dual::build(&work);
+        let (field, _) = solve_miq_aligned(&dual, Rounding::default(), 0.0);
+        let walker = Walker::new(&work, &dual, &field);
+        let (walls, base) = walker.trace_all();
+        let out = decompose(&work, &walls, base.clone());
+        let Some(guilty) = (0..out.chi.len()).find(|&p| out.chi[p] != 1) else {
+            println!("── {name}: nenhum patch com género na ronda 0");
+            continue;
+        };
+        println!(
+            "── {name} (a peca e' χ {}) | patch culpado {guilty}: χ {} com {} lados ──",
+            out.mesh_chi,
+            out.chi[guilty],
+            out.side_arcs[guilty].len()
+        );
+        // ⚠️ **Cada tentativa parte do MESMO estado**, e é por isso que as paredes
+        // são clonadas: sem isso a segunda escolha mediria o efeito das duas.
+        for s in 0..out.side_arcs[guilty].len() {
+            let mut trial = walls.clone();
+            // Dissolve UM lado — o `dissolve` público escolhe o mais curto, então
+            // aqui as arestas do lado `s` são removidas à mão.
+            for &(a, _) in &out.side_arcs[guilty][s] {
+                for e in &out.arc_edges[a as usize] {
+                    trial.edges.remove(e);
+                }
+            }
+            let next = decompose(&work, &trial, base.clone());
+            println!(
+                "    lado {s:<2} | patches {:<3} complexo χ {:>3} {} | com-genero {} \
+                 | degenerados {}",
+                next.side_arcs.len(),
+                next.complex_euler(),
+                if next.complex_euler() == next.mesh_chi {
+                    "✓"
+                } else {
+                    "⛔"
+                },
+                next.report.with_genus,
+                next.degenerate().len(),
+            );
+        }
+        let _ = dissolve;
+    }
+}
+
+/// ⭐⭐ **SONDA — e um PAR de paredes cura?**
+///
+/// ⛔ **A sonda irmã fechou meia pergunta:** no toro que passa, 3 dos 6 lados curam
+/// e 3 não; no que falha, **nenhum dos 6**. O `dissolve` escolhe o mais curto, ou
+/// seja, escolhe **por sorte**. Falta saber se a cura existe mais fundo:
+///
+/// | resultado | o que significa |
+/// |---|---|
+/// | ⭐ algum PAR cura | a cura é **procurar**, e o custo é uma busca pequena |
+/// | ⛔ nenhum par cura | dissolver não alcança esta asa — é preciso **cortar** |
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
+///     --test alignment_topology -- --ignored --nocapture would_a_pair_of_walls_cure_it
+/// ```
+#[test]
+#[ignore = "sonda -- um par de paredes cura a asa?"]
+fn would_a_pair_of_walls_cure_it() {
+    use ph2d_trace::patches::decompose;
+    use ph2d_trace::walk::Walker;
+
+    let mesh = shapes::torus(48, 24, 1.0, 0.35);
+    let mut work = mesh.clone();
+    ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+    work.triangulate();
+    let dual = Dual::build(&work);
+    let (field, _) = solve_miq_aligned(&dual, Rounding::default(), 0.0);
+    let walker = Walker::new(&work, &dual, &field);
+    let (walls, base) = walker.trace_all();
+    let out = decompose(&work, &walls, base.clone());
+    let guilty = (0..out.chi.len())
+        .find(|&p| out.chi[p] != 1)
+        .expect("ha' um patch com genero");
+    let n = out.side_arcs[guilty].len();
+    println!(
+        "── toro 48x24, patch {guilty}, {n} lados: os {} pares ──",
+        n * (n - 1) / 2
+    );
+    let mut cured = 0usize;
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let mut trial = walls.clone();
+            for s in [i, j] {
+                for &(a, _) in &out.side_arcs[guilty][s] {
+                    for e in &out.arc_edges[a as usize] {
+                        trial.edges.remove(e);
+                    }
+                }
+            }
+            let next = decompose(&work, &trial, base.clone());
+            let ok = next.complex_euler() == next.mesh_chi && next.report.with_genus == 0;
+            if ok {
+                cured += 1;
+            }
+            println!(
+                "    {i}+{j} | patches {:<3} complexo χ {:>3} {} | com-genero {} | degenerados {}",
+                next.side_arcs.len(),
+                next.complex_euler(),
+                if ok { "⭐" } else { "⛔" },
+                next.report.with_genus,
+                next.degenerate().len(),
+            );
+        }
+    }
+    println!("  ⇒ pares que curam: {cured} de {}", n * (n - 1) / 2);
+}

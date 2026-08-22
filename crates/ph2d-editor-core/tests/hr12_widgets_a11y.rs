@@ -42,6 +42,15 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "panel_chrome/menu.rs",
         "placement arithmetic only; paints nothing, registers nothing — the caller owns a11y",
     ),
+    // A DISPOSIÇÃO do diagrama da booleana viva: onde cada círculo fica, por onde passa cada arco,
+    // e o que está sob o dedo. Geometria pura — não pinta, não regista, não conhece um `NodeId`.
+    // Quem anuncia é o card que a desenha (`screens::hero::chrome::bool_graph_modal`), e a razão
+    // do corte é a MESMA que o torna testável: quem pinta e quem acerta o clique têm de ler o
+    // mesmo mapa, e um mapa que anunciasse por si seria um segundo dono da posição.
+    (
+        "bool_graph.rs",
+        "layout + hit-test arithmetic only; paints nothing, registers nothing — the chrome card owns a11y",
+    ),
     // The command palette's MEASURE half, split out for the widget LOC cap. It computes sizes and
     // placements and returns them — it never touches the scene nor the hit index, então não há o que
     // anunciar; quem pinta e registra é o pai (`command_palette.rs`), e é ele que constrói o nó.
@@ -416,11 +425,19 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-vector/src/paint_arrange.rs",
         "delegates to row2/action_button (paint_button-backed) in paint_sections",
     ),
-    // A seção FRAME (plano UI/UX W0) — o contêiner. Um `segmented` (Clip content) e um
-    // `button_grid` (os presets de dispositivo), os dois de `paint_sections`/`paint_rows`.
+    // A seção FRAME (plano UI/UX W0) — o contêiner. Um `button_grid` (os presets de dispositivo),
+    // de `paint_sections`/`paint_rows`.
+    // ⚠️ O `segmented` do *Clip content* MUDOU-SE daqui para a seção irmã em 2026-08-21, quando o
+    // recorte deixou de ser fato de moldura — a entrada abaixo é a outra metade desta.
     (
         "ph2d-panel-vector/src/paint_frame.rs",
         "delegates to segmented/button_grid (paint_segmented/paint_button-backed) in paint_sections",
+    ),
+    // A seção CLIP — o `segmented` Off/On que SAIU da FRAME acima. Mesma delegação, e o gate só o
+    // vê agora porque o corte deixou o arquivo com a chamada indireta e mais nada.
+    (
+        "ph2d-panel-vector/src/paint_clip.rs",
+        "delegates to segmented (paint_segmented-backed) in paint_sections — the half that left paint_frame.rs",
     ),
     // A seção LAYOUT (plano UI/UX W2, ADR-0153) — a moldura que EMPILHA. Irmã exacta da FRAME
     // acima: quatro `segmented` e cinco `number_cell`/`number_row`, todos de `paint_rows`.

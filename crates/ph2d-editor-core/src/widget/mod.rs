@@ -16,6 +16,7 @@
 mod avatar;
 mod bitmask_grid32;
 mod blender_color_picker;
+mod bool_graph;
 mod button;
 mod card;
 mod checkbox;
@@ -68,6 +69,16 @@ pub use blender_color_picker::{
     hsv_to_rgba8, oklch_norm_channels, oklch_set_channel, paint_blender_color_picker,
     paint_blender_color_picker_with_store, paint_blender_color_picker_with_store_compat, parse_hex,
     rgba_to_hsv, value_pick, wheel_pick,
+};
+// **O DIAGRAMA da booleana viva** — a metade PURA. O card que a desenha é
+// `screens::hero::chrome::bool_graph_modal`; o corte existe para quem PINTA e quem ACERTA lerem o
+// MESMO mapa (uma segunda conta de posição divergiria da primeira e o clique cairia ao lado).
+pub use bool_graph::{
+    BoolGraphIntent, BoolGraphLink, BoolGraphNode, BoolGraphView,
+    card_size as bool_graph_card_size, drop_intent as bool_graph_drop_intent,
+    link_at as bool_graph_link_at, link_points as bool_graph_link_points,
+    node_at as bool_graph_node_at, node_center as bool_graph_node_center,
+    node_radius as bool_graph_node_radius,
 };
 pub use button::{
     Button, ButtonKind, ButtonState, ICON_BUTTON_SIZE_PX, flat_button_surface, paint_button,

@@ -55,7 +55,8 @@ pub(super) fn build_slice_info(
             mixed.draw_mode |= o.draw_mode != s.draw_mode;
             mixed.borders |= o.borders != s.borders;
             mixed.size |= o.size != s.size;
-            mixed.tile_modes |= o.tile_modes != s.tile_modes;
+            mixed.tile_modes |=
+                o.tile_modes != s.tile_modes || o.centre_tile_mode != s.centre_tile_mode;
             mixed.tile_mode |= o.tile_mode != s.tile_mode;
             mixed.stretch_value |= o.stretch_value != s.stretch_value;
             mixed.fill_center |= o.fill_center != s.fill_center;
@@ -65,6 +66,7 @@ pub(super) fn build_slice_info(
     for (i, m) in s.tile_modes.iter().enumerate() {
         tile_modes[i] = m.tag();
     }
+    let centre_tile_mode = s.centre_tile_mode.tag();
     Some(InspectorSliceInfo {
         entity_bits,
         present,
@@ -72,6 +74,7 @@ pub(super) fn build_slice_info(
         borders: s.borders,
         size: s.size,
         tile_modes,
+        centre_tile_mode,
         tile_mode_tag: s.tile_mode.tag(),
         stretch_value: s.stretch_value,
         fill_center: s.fill_center,
@@ -128,6 +131,9 @@ pub(super) fn apply_slice_edit(
             }
         }
         SliceFieldEdit::TileMode(t) => s.tile_mode = ph2d_ecs::SliceTileMode::from_tag(t),
+        SliceFieldEdit::CentreMode(t) => {
+            s.centre_tile_mode = ph2d_ecs::TileRegionMode::from_tag(t);
+        }
         SliceFieldEdit::StretchValue(v) => s.stretch_value = v,
         SliceFieldEdit::FillCenter(b) => s.fill_center = b,
     }

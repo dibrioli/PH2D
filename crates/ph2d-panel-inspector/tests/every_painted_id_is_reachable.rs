@@ -154,6 +154,7 @@ fn publish_the_whole_sprite_scene() {
         borders: [8.0; 4],
         size: [0.0, 0.0],
         tile_modes: [0; 8],
+        centre_tile_mode: 0,
         tile_mode_tag: 1,
         stretch_value: 0.5,
         fill_center: true,

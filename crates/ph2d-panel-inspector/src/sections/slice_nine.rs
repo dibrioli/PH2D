@@ -58,9 +58,6 @@ const CELL: f32 = 26.0; // LITERAL-PX-OK: lado de uma célula da grelha 3x3
 const SIZE_STEP: f64 = 0.1; // LITERAL-PX-OK: passo de scrub em metros
 /// Lado da grelha, em células. Não é uma medida de desenho: é a aridade do 9-slice.
 const GRID: usize = 3;
-/// Meia-largura aproximada de um glifo, em frações do tamanho da fonte — o nudge que centra a
-/// letra do miolo na sua célula.
-const GLYPH_HALF_W: f32 = 0.3; // LITERAL-PX-OK: fração de avanço de glifo, não um token
 
 /// Uma linha «rótulo em cima, dois NumberInput lado a lado». Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -160,24 +157,34 @@ fn region_grid(
             .visual(store.button_visual(id));
         paint_button(&btn, rect, scene, text_system, theme);
     }
-    // O miolo: mostrado, nunca clicável — quem manda nele é o `Fill Center`.
+    // **O MIOLO é a nona célula, e é clicável desde 2026-08-22.** Ele era só um rótulo, e por
+    // isso espelhar era inalcançável **na maior área ladrilhada** — a que mais mostra a emenda
+    // entre dois ladrilhos (smoke do Enio). Com o miolo apagado ele mostra `-` e não age: quem
+    // manda nisso é o `Fill Center`, e duas portas para o mesmo estado divergem.
     let mid = Rect::new(x + CELL + gap, grid_y + CELL + gap, CELL, CELL);
-    paint_text(
-        text_system,
+    hit_index.register(ids::INSP_SLICE_CENTRE, mid);
+    let mid_letter = if !info.fill_center {
+        "-"
+    } else if info.mixed.tile_modes {
+        "?"
+    } else {
+        REGION_LETTERS[usize::from(info.centre_tile_mode).min(REGION_LETTERS.len() - 1)]
+    };
+    paint_button(
+        &Button::new(ids::INSP_SLICE_CENTRE, mid_letter)
+            .kind(ButtonKind::Default)
+            .visual(store.button_visual(ids::INSP_SLICE_CENTRE)),
+        mid,
         scene,
-        if info.fill_center { "C" } else { "-" },
-        mid.x + CELL * 0.5 - label_font * GLYPH_HALF_W,
-        mid.y + (CELL - label_font) * 0.5,
-        label_font,
-        CELL,
-        resolve(ColorToken::Text3, theme),
+        text_system,
+        theme,
     );
     let grid_h = CELL * GRID as f32 + gap * (GRID - 1) as f32;
     let legend_y = grid_y + grid_h + Spacing::Xs.px();
     paint_text(
         text_system,
         scene,
-        "S stretch   R repeat   M mirror   - blank",
+        "S stretch   R repeat   M mirror   - blank   (centre: S/R/M)",
         x,
         legend_y,
         label_font,
@@ -378,6 +385,24 @@ pub(crate) fn paint_slice_section(
         store,
         hit_index,
     ) + Spacing::Sm.px();
+
+    // ⚠️ **`Simple` DIZ que não faz nada.** Ele é o 9-slice desligado — o sprite de sempre —, e
+    // isso é deliberado: anexar o componente não pode mudar a cena. Mas um modo que visivelmente
+    // não faz nada e **não explica porquê** lê-se como avariado (smoke do Enio, 2026-08-22). Os
+    // campos ficam: é assim que se medem as bordas ANTES de ligar.
+    if info.draw_mode_tag == 0 {
+        paint_text(
+            text_system,
+            scene,
+            "Simple draws one quad - 9-slice is off. Set the borders, then pick Sliced or Tiled.",
+            x,
+            cur_y,
+            label_font,
+            w,
+            resolve(ColorToken::Text3, theme),
+        );
+        cur_y += label_font + Spacing::Sm.px();
+    }
 
     // Bordas, em pixels da fonte, na ordem do array: [L, T] e depois [R, B].
     cur_y = pair_row(

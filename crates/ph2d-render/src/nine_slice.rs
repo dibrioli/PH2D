@@ -254,10 +254,13 @@ fn region_mode_at(s: &SliceNine, col: usize, row: usize) -> Option<TileRegionMod
 
 /// O miolo não tem entrada por-região: em `Tiled` ele repete, em `Sliced` ele estica.
 fn centre_mode(s: &SliceNine) -> TileRegionMode {
-    match s.draw_mode {
-        SliceDrawMode::Tiled => TileRegionMode::Repeat,
-        _ => TileRegionMode::Stretch,
-    }
+    // ⚠️ **O miolo é AUTORADO como as outras oito** desde 2026-08-22. Antes o modo estava fixado
+    // aqui, e espelhar era inalcançável **na maior área ladrilhada** — a que mais mostra a
+    // emenda entre dois ladrilhos (smoke do Enio).
+    //
+    // A regra «Stretch, em Tiled, significa repetir» é a MESMA da moldura (ver `tile_count`), por
+    // isso o default continua a repetir o miolo em Tiled: ninguém perde o que já tinha.
+    s.centre_tile_mode
 }
 
 /// Quantas vezes o pedaço da fonte cabe na faixa alvo, neste eixo.

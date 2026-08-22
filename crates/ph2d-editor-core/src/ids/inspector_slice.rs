@@ -71,6 +71,12 @@ pub const INSP_SLICE_REGION: [NodeId; 8] = [
     hash_node_id("insp_slice_region_br"),
 ];
 
+/// **A célula do MIOLO na grelha 3×3** — a nona, que não é uma das oito da moldura.
+///
+/// ⚠️ Ela cicla só **Stretch → Repeat → Mirror**: apagar o miolo é o [`INSP_SLICE_FILL_CENTER`],
+/// e duas portas para o mesmo estado divergem.
+pub const INSP_SLICE_CENTRE: NodeId = hash_node_id("insp_slice_centre");
+
 /// `Fill Center` — o miolo desenha-se, ou a moldura fica oca.
 pub const INSP_SLICE_FILL_CENTER: NodeId = hash_node_id("insp_slice_fill_center");
 

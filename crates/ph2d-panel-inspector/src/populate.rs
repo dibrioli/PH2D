@@ -150,6 +150,8 @@ fn populate_slice(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_SLICE_TILE_MODE);
     // As oito células da grelha 3×3 são BOTÕES que ciclam — não segmentos.
     register_button_ids(store, &ids::INSP_SLICE_REGION);
+    // A nona célula: o miolo. Ele cicla o próprio modo desde 2026-08-22.
+    register_button_ids(store, &[ids::INSP_SLICE_CENTRE]);
     register_button_ids(store, &[ids::INSP_SLICE_ADD, ids::INSP_SLICE_REMOVE]);
     store.register(
         ids::INSP_SLICE_FILL_CENTER,

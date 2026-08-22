@@ -323,6 +323,63 @@ fn a_stretching_patch_does_not_touch_the_nodes_wrap_mode() {
     }
 }
 
+/// ⚠️ **O MIOLO pode ser ESPELHADO** — a lacuna que o smoke do Enio expôs (2026-08-22).
+///
+/// Ele era o único quad com o modo fixado em código, e é a **maior área ladrilhada**: a que
+/// mais mostra a emenda entre dois ladrilhos. Espelhar era inalcançável exatamente onde serve.
+#[test]
+fn the_centre_can_be_mirrored_which_is_where_the_seam_shows() {
+    let base = SliceNine {
+        draw_mode: SliceDrawMode::Tiled,
+        borders: [8.0; 4],
+        ..SliceNine::INERT
+    };
+    // Default: repete (o `Stretch` em Tiled significa repetir, como na moldura).
+    let p = nine_slice_patches(
+        [0.0, 0.0, 1.0, 1.0],
+        [64.0, 64.0],
+        &base,
+        [4.0, 4.0],
+        100.0,
+        [1.0, 1.0],
+    );
+    assert_eq!(
+        p[CENTRE_INDEX].unwrap().repeat_tag,
+        Some(2),
+        "o default do miolo em Tiled deixou de repetir — quem ja' tinha perdeu"
+    );
+
+    let mirrored = SliceNine {
+        centre_tile_mode: TileRegionMode::Mirror,
+        ..base
+    };
+    let m = nine_slice_patches(
+        [0.0, 0.0, 1.0, 1.0],
+        [64.0, 64.0],
+        &mirrored,
+        [4.0, 4.0],
+        100.0,
+        [1.0, 1.0],
+    );
+    assert_eq!(
+        m[CENTRE_INDEX].unwrap().repeat_tag,
+        Some(3),
+        "o miolo nao aceitou Mirror — a emenda continua sem cura de custo zero"
+    );
+}
+
+/// `Blank` no miolo é o que o `fill_center` já exprime — o saneamento devolve-o a `Stretch` em
+/// vez de deixar duas portas discordarem sobre o mesmo estado.
+#[test]
+fn a_blank_centre_mode_defers_to_fill_center() {
+    let s = SliceNine {
+        centre_tile_mode: TileRegionMode::Blank,
+        ..SliceNine::INERT
+    }
+    .sanitized();
+    assert_eq!(s.centre_tile_mode, TileRegionMode::Stretch);
+}
+
 /// Em `Tiled` o miolo repete nos dois eixos sem ninguém o marcar por-região.
 #[test]
 fn tiled_mode_repeats_the_centre_on_both_axes() {

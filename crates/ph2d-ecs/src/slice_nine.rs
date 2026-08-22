@@ -213,6 +213,17 @@ pub struct SliceNine {
     pub size: [f32; 2],
     /// Modo por-região, indexado por [`SliceRegion`].
     pub tile_modes: [TileRegionMode; 8],
+    /// **O modo do MIOLO** — a nona célula, que não é uma das oito.
+    ///
+    /// ⚠️ **Nasceu de um smoke (2026-08-22).** O miolo tinha o modo fixado em código, e ele é a
+    /// maior área ladrilhada — exatamente onde a emenda entre dois ladrilhos aparece. Espelhar
+    /// era inalcançável justamente onde mais serve. *Um modo que a maior área não alcança é um
+    /// modo que não existe.*
+    ///
+    /// `Blank` **não se usa aqui**: quem apaga o miolo é [`Self::fill_center`], e duas portas
+    /// para o mesmo estado divergem. A UI cicla só Stretch → Repeat → Mirror.
+    #[serde(default)]
+    pub centre_tile_mode: TileRegionMode,
     pub tile_mode: SliceTileMode,
     /// `0..1`, só lido em [`SliceTileMode::Adaptive`].
     pub stretch_value: f32,
@@ -231,6 +242,7 @@ impl SliceNine {
         borders: [0.0; 4],
         size: [0.0, 0.0],
         tile_modes: [TileRegionMode::Stretch; 8],
+        centre_tile_mode: TileRegionMode::Stretch,
         tile_mode: SliceTileMode::Continuous,
         stretch_value: 0.5,
         fill_center: true,
@@ -259,6 +271,13 @@ impl SliceNine {
             ],
             size: [f(self.size[0]), f(self.size[1])],
             tile_modes: self.tile_modes,
+            // `Blank` no miolo é o estado que `fill_center` já exprime; saneia para Stretch em
+            // vez de deixar duas portas discordarem sobre a mesma coisa.
+            centre_tile_mode: if self.centre_tile_mode == TileRegionMode::Blank {
+                TileRegionMode::Stretch
+            } else {
+                self.centre_tile_mode
+            },
             tile_mode: self.tile_mode,
             stretch_value: if self.stretch_value.is_finite() {
                 self.stretch_value.clamp(0.0, 1.0)

@@ -25,6 +25,9 @@ use crate::state;
 /// depende do `ph2d-ecs`.
 const REGION_MODE_COUNT: u8 = 4;
 
+/// Quantos modos o MIOLO cicla — três, sem o `Blank`: apagar o miolo é o `Fill Center`.
+const CENTRE_MODE_COUNT: u8 = 3;
+
 /// Despacha um evento da §5. `true` = consumido.
 pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // Anexar / retirar existem SEM snapshot de componente — são o que o cria.
@@ -58,6 +61,15 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                     .iter()
                     .position(|&o| o == id)
                     .map(|i| SliceFieldEdit::TileMode(i as u8))
+            })
+            .or_else(|| {
+                // ⚠️ **O MIOLO cicla só três** — Stretch → Repeat → Mirror. `Blank` é o que o
+                // `Fill Center` já exprime, e oferecê-lo aqui daria duas portas para o mesmo
+                // estado.
+                (id == ids::INSP_SLICE_CENTRE).then(|| {
+                    let next = (info.centre_tile_mode + 1) % CENTRE_MODE_COUNT;
+                    SliceFieldEdit::CentreMode(next)
+                })
             })
             .or_else(|| {
                 // A grelha 3×3: cicla o modo desta região a partir do que a ENTIDADE tem.

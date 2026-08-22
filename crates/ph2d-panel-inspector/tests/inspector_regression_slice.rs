@@ -36,6 +36,7 @@ fn slice() -> InspectorSliceInfo {
         borders: [1.0, 2.0, 3.0, 4.0],
         size: [0.0, 0.0],
         tile_modes: [0; 8],
+        centre_tile_mode: 0,
         tile_mode_tag: 1,
         stretch_value: 0.5,
         fill_center: true,
@@ -108,6 +109,14 @@ fn cases() -> Vec<Case> {
             id: ids::INSP_SLICE_REGION[4],
             stim: Stim::Click,
             expect: SliceFieldEdit::RegionMode(4, 1),
+        },
+        Case {
+            // O miolo cicla só três (sem Blank): de Stretch(0) vai para Repeat(1).
+            what: "Celula do MIOLO cicla 0 -> 1",
+            variant: "CentreMode",
+            id: ids::INSP_SLICE_CENTRE,
+            stim: Stim::Click,
+            expect: SliceFieldEdit::CentreMode(1),
         },
         Case {
             what: "Stretch",

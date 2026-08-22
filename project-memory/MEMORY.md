@@ -116,6 +116,7 @@
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md)
+- [Laço de reparo pode ESCONDER o que agrava](feedback_a_repair_loop_can_hide_the_defect_it_worsens.md) — parar por «não há sinalizados» é critério sobre o DETECTOR; dê-lhe um invariante que ele não pode piorar
 - [Guloso que explode com um termo novo pede SEMENTE](feedback_a_perturbation_that_breaks_a_greedy_needs_a_seed_not_a_smaller_perturbation.md) — não baixe o peso nem suavize o guia; olhe o estado sobre o qual ele toma a 1.ª decisão
 - [Gate vermelho ao ligar algo novo? corra-o DESLIGADO](feedback_a_new_features_gate_can_expose_a_pre_existing_bug_check_the_control_first.md) — a feature perturba e muda QUAL caso cai; o defeito pode ser antigo e nunca medido
 - [Tornar um nó elegível pode REGREDIR um claim parcial — RECUE, não refute inteiro](feedback_making_a_node_eligible_can_regress_a_partial_claim_retreat_dont_refuse_whole.md) — re-meça o doc REAL; regra tudo-ou-nada vira regressão; a cura é un-claim, não refutar o plano

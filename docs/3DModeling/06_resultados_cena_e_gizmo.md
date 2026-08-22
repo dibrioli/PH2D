@@ -2307,11 +2307,62 @@ não mede nada.*
 
 ---
 
+## §30 — W29: o cadeado trava a peça de modelagem (22/08)
+
+> A quarta wave seguida da mesma família — e a que menos precisou de decidir seja o que for: **a lei
+> já estava escrita, decidida pelo Enio, e o resto do app já a consultava.**
+
+### §30.1 — O predicado é o da CASA, e ele tem duas metades
+
+[`ph2d_ecs::is_locked_for_edit`](../../crates/ph2d-ecs/src/transform.rs) é consultado pelo gizmo 2D,
+pelo Flip, pelas juntas e pelo vetorial. O gizmo **3D** era o único que não perguntava, e por isso o
+cadeado era mudo **só aqui**.
+
+E ele **sobe a cadeia**: `Locked` no próprio nó, ou `GroupedChildren` num antepassado. É a decisão do
+Enio, escrita no doc do componente em 2026-05-26 — *"Cadeado trava apenas o objeto"*: os filhos de um
+nó trancado continuam editáveis, e quem tranca a descendência é o grupo.
+
+⚠️ **É por isso que a mutação «ler o cadeado à mão» tem gate próprio:** um `get::<Locked>` escrito
+aqui compilaria, passaria o caso óbvio, e nasceria **já sem a metade do grupo**.
+
+### §30.2 — ⚠️ Onde este módulo DIVERGE do gizmo 2D, e porquê
+
+| | gizmo 2D da casa | aqui |
+|---|---|---|
+| um objeto trancado | o desenho **fica**, o *Down* é recusado | **não tem alças** |
+
+Lá o gizmo é chrome permanente da seleção; aqui as alças são **o único sinal** de que o gesto existe,
+e alças que não agarram seriam a mesma coisa que o botão pintado e morto que as três waves anteriores
+foram fechar. O que se ganha lá — *«ele está ali»* — este módulo ganha na Hierarquia, que é onde o
+cadeado e o olho se veem.
+
+⭐ E as duas leis passaram a ser **uma pergunta**: `movable(world, e)` = não escondido **e** não
+trancado. Duas listas de condições em dois sítios divergiriam no primeiro gesto novo.
+
+### §30.3 — ⛔ O que o cadeado NÃO tranca, e quem o decidiu
+
+Os **números do painel**. O doc do componente diz *"this entity's `Transform` is locked against gizmo
+edits"* — o cadeado é sobre o **gesto**, e o painel é a outra porta. Não foi uma escolha desta wave:
+foi lida. *Uma decisão que já existe não se re-decide num módulo.*
+
+### §30.4 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| o módulo volta a ignorar o cadeado (**o defeito**) | `the_padlock_stops_the_gesture_and_the_group_locks_its_children` |
+| o cadeado passa a ser lido à mão (perde a metade do grupo) | o mesmo gate |
+| o gizmo volta a aparecer em cima do trancado | o mesmo gate |
+
+---
+
 ## §13 — Aberto
 
 - ✅ **o OLHO da Hierarquia passou a valer na W28** (§29) — esconder um nó tira-o da peça, e um
   grupo leva a subárvore consigo; um nó escondido não tem gizmo nem anda com a seleção.
   ⏸️ Fica **isolar** (mostrar só o escolhido), que é o gesto irmão
+- ✅ **o CADEADO passou a valer na W29** (§30) — pelo predicado da casa, com a metade do
+  `GroupedChildren`. ⛔ Ele **não** tranca os números do painel, e isso é lido do doc do componente,
+  não decidido aqui
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
 - ✅ **rotacionar e escalar FECHARAM** na W6 (§5)

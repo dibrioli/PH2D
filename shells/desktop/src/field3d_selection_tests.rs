@@ -333,6 +333,59 @@ fn a_hidden_node_has_no_gizmo_and_does_not_move_with_the_selection() {
     );
 }
 
+/// ⭐ **O CADEADO trava a peça de modelagem** (W29) — e a lei é a da casa, com a metade do grupo.
+///
+/// ⚠️ **O predicado já existia e já era consultado** pelo gizmo 2D, pelo Flip, pelas juntas e pelo
+/// vetorial ([`ph2d_ecs::is_locked_for_edit`]); o gizmo 3D era o único que não perguntava, e o
+/// cadeado era mudo **só aqui**. A decisão é do Enio e está escrita no doc do componente:
+/// *"Cadeado trava apenas o objeto"* — os filhos continuam editáveis, e quem tranca a descendência é
+/// o `GroupedChildren` do antepassado.
+///
+/// O gate mede **as duas metades do predicado**: o cadeado no próprio nó, e o grupo no pai.
+#[test]
+fn the_padlock_stops_the_gesture_and_the_group_locks_its_children() {
+    let (mut sim, leaves) = scene_of_three();
+    let (a, b) = (leaves[0], leaves[2]);
+    sim.world_mut().entity_mut(b).insert(ph2d_ecs::Locked);
+    let before = world_pos(sim.world(), b);
+
+    crate::field3d_scene::apply_motion_for_test(
+        &mut sim,
+        a.to_bits(),
+        &[a, b],
+        crate::field3d_gizmo::Motion::Translate([0.0, 0.4, 0.0]),
+    );
+    assert!(
+        (world_pos(sim.world(), b)[1] - before[1]).abs() < 1e-6,
+        "o trancado não anda com a seleção"
+    );
+    assert!(
+        super::anchor_for(&mut sim, Some(b.to_bits()), &[b]).is_none(),
+        "…e não tem setas: alças que não agarram são um botão pintado e morto"
+    );
+
+    // ⚠️ O CONTROLE: destrancado, ele volta. Sem isto o gate passaria com o gizmo apagado para
+    // toda a gente.
+    sim.world_mut().entity_mut(b).remove::<ph2d_ecs::Locked>();
+    assert!(
+        super::anchor_for(&mut sim, Some(b.to_bits()), &[b]).is_some(),
+        "destrancado, ele volta a ter gizmo"
+    );
+
+    // ⭐ **A segunda metade da lei**: `GroupedChildren` no PAI tranca os filhos — e é ela que se
+    // perde quando alguém escreve um `get::<Locked>` à mão em vez de usar o predicado da casa.
+    let world = sim.world_mut();
+    let group = world
+        .get::<bevy_ecs::hierarchy::ChildOf>(b)
+        .map(|c| c.0)
+        .expect("as folhas estão sob a união");
+    world.entity_mut(group).insert(ph2d_ecs::GroupedChildren);
+    assert!(
+        super::anchor_for(&mut sim, Some(b.to_bits()), &[b]).is_none(),
+        "com o grupo trancado, o filho também não se mexe"
+    );
+}
+
 /// **`top_level` guarda a ordem da entrada** — quem chama depende dela para saber quem é o principal.
 #[test]
 fn the_top_of_each_branch_keeps_the_order_it_came_in() {

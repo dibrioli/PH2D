@@ -104,12 +104,9 @@ fn apply_motion(
     let mut all: Vec<bevy_ecs::entity::Entity> = vec![primary];
     all.extend(chosen.iter().copied().filter(|e| *e != primary));
     // ⚠️ E um filho de outro escolhido **não anda duas vezes** — ver `top_level`.
-    //
-    // ⭐ **O que está ESCONDIDO não anda** (W28): mover um nó que a peça não mostra é um gesto sem
-    // resposta na tela — a mesma família de defeito que o olho mudo era.
     let targets: Vec<bevy_ecs::entity::Entity> = ph2d_field_ecs::top_level(world, &all)
         .into_iter()
-        .filter(|e| !ph2d_field_ecs::is_hidden(world, *e))
+        .filter(|e| movable(world, *e))
         .collect();
     let pivot = selection_pivot(world, &targets);
     for e in targets {
@@ -142,6 +139,21 @@ pub(crate) fn apply_motion_for_test(
 #[cfg(test)]
 #[path = "field3d_selection_tests.rs"]
 mod selection_tests;
+
+/// ⭐ **Este nó pode ser mexido por um gesto?** — a pergunta única, e ela junta duas leis da CASA.
+///
+/// | lei | de onde vem | o que significa aqui |
+/// |---|---|---|
+/// | **escondido** (W28) | o olho da Hierarquia ([`ph2d_ecs::Visibility`]) | mover o que a peça não mostra é um gesto sem resposta na tela |
+/// | **trancado** (W29) | o cadeado ([`ph2d_ecs::is_locked_for_edit`]) | *"Cadeado trava apenas o objeto"* — Enio, 2026-05-26, escrito no doc do componente |
+///
+/// ⚠️ **O predicado do cadeado é o da casa, não um novo**: ele já é consultado pelo gizmo 2D, pelo
+/// Flip, pelas juntas e pelo vetorial — e ele **sobe a cadeia** à procura de um antepassado com
+/// `GroupedChildren`, que é o que trancar um grupo significa. Escrever aqui um `get::<Locked>` seria
+/// a segunda resposta a *"isto pode mexer?"*, e ela nasceria já sem a metade do grupo.
+fn movable(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> bool {
+    !ph2d_field_ecs::is_hidden(world, e) && !ph2d_ecs::is_locked_for_edit(world, e)
+}
 
 /// **Onde o gizmo pousa numa seleção**: a média das origens de mundo dos escolhidos.
 ///
@@ -448,10 +460,15 @@ fn anchor_for(
     let entity = bevy_ecs::entity::Entity::from_bits(bits);
     let world = sim.world_mut();
     world.get::<FieldNode>(entity)?;
-    // ⭐ **Um nó ESCONDIDO não tem gizmo** (W28): setas em cima de uma coisa que a peça não mostra
-    // seriam um gesto sem resposta na tela. A linha da Hierarquia continua lá, e é por ela que se
-    // volta a acender o olho.
-    if ph2d_field_ecs::is_hidden(world, entity) {
+    // ⭐ **Um nó ESCONDIDO ou TRANCADO não tem gizmo** (W28/W29): setas que não mexem em nada são um
+    // gesto sem resposta na tela. A linha da Hierarquia continua lá, com o olho e o cadeado a
+    // dizerem porquê — e é por eles que se desfaz.
+    //
+    // ⚠️ **Aqui o módulo DIVERGE do gizmo 2D da casa, e é de propósito.** Lá o desenho fica e o
+    // *Down* é recusado; aqui as alças são o único sinal de que o gesto existe, e alças que não
+    // agarram seriam a mesma coisa que um botão pintado e morto. O que se ganha lá — *«ele está
+    // ali»* — este módulo ganha na Hierarquia, que é onde o cadeado se vê.
+    if !movable(world, entity) {
         return None;
     }
     let pose = ph2d_field_ecs::world_xform(world, entity);

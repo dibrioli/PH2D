@@ -109,7 +109,7 @@ fn w4_smoke_scene_loads_without_panic_and_matches_goldens() {
 }
 
 #[test]
-#[ignore = "W5 goldens NAO EXISTEM, e o gatilho AINDA E' VERDADE: `NamedAnchorList` nao existe em codigo nenhum, apesar de o ADR-0072 estar Accepted (a §12 nunca foi construida -- `docs/Sprite_projeto/20` §6)."]
+#[ignore = "W5 goldens NAO EXISTEM. ⚠️ O gatilho DISPAROU em 2026-08-21: o `NamedAnchorList` existe, esta' registado, sobrevive ao disco e ja' tem gizmo de canvas. O que falta e' o mesmo das W2/W3 -- smoke_w5_anchors.scene, os PNG e um arnes de render headless. *Uma nota de diferido que descreve um mundo que acabou manda procurar o trabalho no sitio errado.*"]
 fn w5_smoke_scene_loads_without_panic_and_matches_goldens() {
     unimplemented!(
         "W5.T5.X smoke fixture not yet wired. Replace this body with: \

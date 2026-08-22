@@ -311,6 +311,16 @@ fn announce(app: &mut crate::App) {
     eprintln!("     lenta. Em 0 ela e' instantanea — e passa pela MESMA porta de chegada.");
     eprintln!("  7. ⚠️ **UM Ctrl+Z desfaz um Show**, nao nove. A transicao inteira e' um passo:");
     eprintln!("     o undo espera a maquina chegar, e so' entao ve' um estado do mundo.");
+    eprintln!("  8. ⚠️ **O FILTRO ANIMA** (2026-08-21): com o **Play** selecionado, aperte");
+    eprintln!("     **Show** no Hover para a cena FICAR nele. Agora na secao **Filters** clique");
+    eprintln!("     **Add** e escolha **Blur**; suba o raio ate' desfocar bem. Aperte **Rec** no");
+    eprintln!("     Hover para gravar. Volte ao Default (**Show**) e va' de novo ao Hover: o");
+    eprintln!("     desfoque CRESCE ao longo da animacao, nao aparece de uma vez no fim.");
+    eprintln!("  9. ⚠️ **E o Default nunca soube do blur** — foi acrescentado depois de ele ja'");
+    eprintln!("     estar gravado. E' esse o ponto: o estado que nao conhece o filtro aplica-o");
+    eprintln!("     com valor ZERO, entao ha' de onde crescer. Se ele SALTASSE, era bug.");
+    eprintln!(" 10. O mesmo vale para a secao **Effects** (Zig Zag, Warp, Twist...): grave um");
+    eprintln!("     deformador so' no Hover e o caminho ondula progressivamente.");
     eprintln!(
         "  8. **O CARD** so' muda de COR, e a transicao dele custa **0 Plan** (linha acima)."
     );

@@ -320,6 +320,56 @@ thread_local! {
         const { std::cell::Cell::new(None) };
 }
 
+/// ⭐ **O pedido de IMPORTAR uma escultura**, pelo mesmo caminho e pelo mesmo motivo do de exportar:
+/// abrir um diálogo é assunto do app, e o intent do painel é drenado dentro da ponte com o mundo.
+pub(crate) fn take_import_request() -> bool {
+    IMPORT.with(std::cell::Cell::take)
+}
+
+pub(crate) fn ask_import() {
+    IMPORT.with(|c| c.set(true));
+}
+
+thread_local! {
+    static IMPORT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// ⭐ **A escultura carregada, à espera de virar nó** — a volta do pedido.
+///
+/// ⚠️ **São três saltos e não dois, e o motivo é o mundo**: quem tem o `&mut World` (a ponte com a
+/// cena) não pode abrir um diálogo, e quem abre o diálogo (o app) não tem o mundo. O arquivo é lido
+/// e o campo registado no meio; o que fica pendurado aqui é só o **nome**, que o próximo quadro
+/// transforma em nó. O atraso é de um quadro e ninguém o vê.
+pub(crate) fn take_pending_sculpt() -> Option<String> {
+    PENDING_SCULPT.with(|c| c.borrow_mut().take())
+}
+
+pub(crate) fn ask_spawn_sculpt(key: String) {
+    PENDING_SCULPT.with(|c| *c.borrow_mut() = Some(key));
+}
+
+thread_local! {
+    static PENDING_SCULPT: std::cell::RefCell<Option<String>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// A extensão do arquivo importado, para o nó nascer no tamanho do enquadramento.
+///
+/// ⚠️ Ela viaja separada do nome porque é **do arquivo**, não do campo: o campo é construído nas
+/// unidades do autor de propósito (é isso que faz a célula da grade ser a resolução real dele), e o
+/// tamanho de convivência mora na **pose**, onde um clique o desfaz.
+pub(crate) fn take_sculpt_extent() -> Option<f32> {
+    SCULPT_EXTENT.with(std::cell::Cell::take)
+}
+
+pub(crate) fn ask_sculpt_extent(extent: f32) {
+    SCULPT_EXTENT.with(|c| c.set(Some(extent)));
+}
+
+thread_local! {
+    static SCULPT_EXTENT: std::cell::Cell<Option<f32>> = const { std::cell::Cell::new(None) };
+}
+
 pub(crate) fn take_open_panel_request() -> bool {
     thread_local! {
         static PENDING: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };

@@ -173,6 +173,23 @@ pub(crate) fn sync_scene_and_birth(
     let mut cleared = false;
     // A câmera é o «onde estou a olhar»: uma forma nova nasce no centro do quadro e no tamanho dele.
     let cam = with_smoke(|s| s.cam).unwrap_or_default();
+
+    // ⭐ **A escultura que o diálogo carregou vira NÓ aqui** — o terceiro salto do pedido de
+    // importar (ADR-0161 W22). Ela chega pelo nome; o campo já está no registo.
+    //
+    // ⚠️ **A escala vem do ENQUADRAMENTO e não do arquivo**, e vai para a POSE: o campo foi
+    // construído nas unidades do autor de propósito — é isso que faz a célula da grade ser a
+    // resolução real dele —, e um clique desfaz a pose sem tocar na geometria.
+    if let Some(key) = crate::field3d_smoke::take_pending_sculpt() {
+        let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
+        if let Ok(e) = ph2d_field_ecs::add_sampled(world, parent, &key, cam.target) {
+            if let Some(extent) = crate::field3d_smoke::take_sculpt_extent() {
+                let s = crate::field3d_import::framing_scale(extent, cam.half_extent);
+                let _ = ph2d_field_ecs::set_param(world, e, ph2d_field::Param::Scale, s);
+            }
+            created = Some(e.to_bits());
+        }
+    }
     // As edições do painel escrevem no COMPONENTE do nó, que é a peça de verdade.
     for intent in ph2d_panel_model3d::drain_intents() {
         match intent {
@@ -188,6 +205,11 @@ pub(crate) fn sync_scene_and_birth(
                 }
             }
             // ⭐ **Criar** — perto do que está selecionado, no tamanho do enquadramento.
+            ph2d_panel_model3d::ModelIntent::AddShape { slot } if slot == panel::SCULPT_SLOT => {
+                // ⚠️ **Só ANOTA.** Escolher um arquivo é um diálogo, e esta função recebe o mundo —
+                // a mesma divisão que a exportação já faz, e pela mesma razão.
+                crate::field3d_smoke::ask_import();
+            }
             ph2d_panel_model3d::ModelIntent::AddShape { slot } => {
                 if let Some(prim) = shape_at(slot, new_shape_size(cam.half_extent)) {
                     let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));

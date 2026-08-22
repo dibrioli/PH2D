@@ -34,6 +34,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.sphere" => "+ Sphere",
         "panel.model3d.add.cylinder" => "+ Cylinder",
         "panel.model3d.add.torus" => "+ Torus",
+        // ⭐ A ESCULTURA. ⚠️ As reticências são a convenção de "isto abre um diálogo" — as outras
+        // quatro criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença
+        // antes do clique.
+        "panel.model3d.add.sculpt" => "+ Sculpt…",
         // As booleanas. ⚠️ "Subtract" e não "Difference": a palavra do documento descreve a
         // operação, e a do botão descreve o que o artista quer FAZER.
         "panel.model3d.op.union" => "Union",

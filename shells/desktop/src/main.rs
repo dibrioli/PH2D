@@ -113,6 +113,8 @@ mod falloff_smoke;
 mod field3d_export;
 mod field3d_gizmo;
 mod field3d_gizmo_paint;
+/// ADR-0161 W22 — a porta de ENTRADA: um arquivo de malha vira escultura dentro da peça.
+mod field3d_import;
 /// ADR-0161 — o smoke do módulo de modelagem 3D (`PH2D_FIELD_SMOKE=1..3`): o **campo traçado** na
 /// tela, que é o caminho pelo qual o artista vê a peça (a malha é só para exportar).
 mod field3d_input;

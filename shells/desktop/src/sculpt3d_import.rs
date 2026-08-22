@@ -99,7 +99,7 @@ pub(crate) fn is_mesh_file(path: &std::path::Path) -> bool {
 /// ⚠️ **Só o OBJ traz PEÇAS.** STL e PLY não têm o conceito, então um arquivo
 /// desses é sempre uma peça — o que é o fato do formato, não uma limitação
 /// nossa, e é a mesma coisa que o `MeshFormat::keeps_pieces` diz na saída.
-fn read_pieces(path: &std::path::Path) -> Result<Vec<ImportedPiece>, String> {
+pub(crate) fn read_pieces(path: &std::path::Path) -> Result<Vec<ImportedPiece>, String> {
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
     let fmt = path
         .extension()

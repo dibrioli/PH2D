@@ -149,12 +149,20 @@ pub(crate) fn param_rows(
 ///
 /// ⚠️ **É a fonte da contagem**, como o `Mode::ALL`: acrescentar uma primitiva aqui faz o painel
 /// seguir sem uma linha de mudança.
-pub(crate) const SHAPES: [&str; 4] = [
+pub(crate) const SHAPES: [&str; 5] = [
     "panel.model3d.add.box",
     "panel.model3d.add.sphere",
     "panel.model3d.add.cylinder",
     "panel.model3d.add.torus",
+    "panel.model3d.add.sculpt",
 ];
+
+/// ⭐ **A posição da escultura no seletor** — e ela é DERIVADA, nunca escrita.
+///
+/// ⚠️ O `shape_at` devolve `None` neste slot de propósito (uma escultura não é uma primitiva), e
+/// quem o trata é o braço do `AddShape`. Um literal `4` ali sobreviveria a acrescentar uma primitiva
+/// no meio da lista e passaria a abrir o diálogo no botão errado — **sem erro nenhum**.
+pub(crate) const SCULPT_SLOT: usize = SHAPES.len() - 1;
 
 /// As ações sobre o objeto escolhido, na ordem do seletor.
 /// ⭐ **Os modificadores oferecidos, e quais o nó já tem** — interruptores, não ações.

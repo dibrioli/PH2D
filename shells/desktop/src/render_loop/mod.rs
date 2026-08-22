@@ -8913,6 +8913,10 @@ impl crate::App {
             if let Some(level) = crate::field3d_smoke::take_export_request() {
                 crate::field3d_export::field3d_export(level, toasts);
             }
+            // ⭐ **E o de IMPORTAR**, pela mesma porta e pelo mesmo motivo (ADR-0161 W22).
+            if crate::field3d_smoke::take_import_request() {
+                crate::field3d_import::field3d_import(toasts);
+            }
             if crate::field3d_smoke::take_open_panel_request() {
                 // O ID vem do PAINEL, nunca de um literal: uma segunda cópia da chave de
                 // visibilidade é como se abre um painel que ninguém pinta.

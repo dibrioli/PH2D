@@ -1682,6 +1682,84 @@ consigo a pergunta de **autoria** — como o artista cria um destes —, que é 
 
 ---
 
+## §23 — W22: a AUTORIA — uma escultura entra pela porta (22/08)
+
+> O motor da W21 fechou com um aviso escrito: *"não há gesto que crie um `Sampled`"*. A cena 6 do
+> smoke fabricava a malha sozinha, e era o único sítio do app onde uma escultura existia como campo.
+> *Uma porta sem corredor é código morto com a suíte verde.*
+
+### §23.1 — O gesto, e onde ele coube sem plumbing
+
+⭐ **A escultura é uma forma que se acrescenta** — então ela entra na lista `SHAPES`, ao lado da
+caixa e da esfera, e o painel segue **sem uma linha de mudança** (a fileira é derivada da lista, a
+mesma lei do `Mode::ALL` e do `ExportLevel::ALL`). O rótulo leva reticências (`+ Sculpt…`), que é a
+convenção de *isto abre um diálogo*: as outras quatro criam na hora.
+
+⚠️ **São TRÊS saltos, e o motivo é o mundo**: quem tem o `&mut World` (a ponte com a cena) não pode
+abrir um diálogo, e quem abre o diálogo (o app) não tem o mundo.
+
+| salto | onde | o que faz |
+|---|---|---|
+| 1 | ponte com a cena | o intent do botão **anota** o pedido |
+| 2 | app | diálogo · lê o arquivo · constrói o campo · **regista** · anota o nome |
+| 3 | ponte com a cena | o nome vira **nó**, com a escala do enquadramento |
+
+É a mesma divisão que a exportação já fazia, pela mesma razão. O atraso é de um quadro.
+
+⚠️ **Nada de segundo leitor de malha**: os três formatos vêm do `sculpt3d::import::read_pieces`, que
+a escultura já tinha com os gates dela. Uma cópia local diria uma coisa e a original outra no dia em
+que qualquer um dos três parsers mudasse.
+
+### §23.2 — ⭐ A chave é o CAMINHO, e é isso que torna a persistência possível
+
+`NodeKind::Sampled { key }` guarda o caminho do arquivo. O documento continua a pesar bytes em vez de
+megabytes, e um projeto carregado sabe **de onde regenerar** cada escultura. ⏸️ Regenerar ao carregar
+continua por fazer — mas deixou de precisar de um desenho novo.
+
+### §23.3 — As duas metades da pose, e o que NÃO é reescrito
+
+| o quê | onde vive | porquê |
+|---|---|---|
+| o **centro** | reescrito na malha (`recenter`) | a caixa da grade nasce da caixa da malha: uma peça longe da origem paga uma grade quase toda vazia |
+| o **tamanho** | na **pose do nó** | o campo é construído nas unidades do autor — é isso que faz a célula da grade ser a resolução real do arquivo —, e um clique desfaz a pose |
+
+`FRAMING_FRACTION = 0,5`: a peça nasce com metade do enquadramento. ⚠️ Sem isso um arquivo de 300
+unidades ao lado de uma caixa de 1 não aparece grande — ele aparece **como nada**, porque a câmera
+enquadra a caixa, e o artista conclui que a importação falhou.
+
+### §23.4 — ⛔ Duas provas de mutação que passaram VERDE, e o que cada uma ensinou
+
+**(a) `SCULPT_SLOT` literal em vez de derivado.** Trocar `SHAPES.len() - 1` por `3` não punha nada a
+vermelho — porque o gate da costura **empurra o intent com a própria constante**, e mutá-la muda a
+produção e a entrada do teste ao mesmo tempo. *Um teste que lê a constante que testa não testa a
+constante.* O gate novo mede a **relação**: `SHAPES[SCULPT_SLOT]` é a chave da escultura, `shape_at`
+devolve `None` ali e `Some` em todos os outros.
+
+**(b) A fixture do tamanho estava no ponto neutro.** A esfera de raio 0,4 dá extensão 0,8, e o
+enquadramento por omissão também: a escala de convivência saía **exatamente 1**, e o gate passaria com
+o código de escala apagado. Quem o denunciou foi o **controlo** (`assert!(escala ≠ 1)`) que estava no
+próprio gate. *Uma peça que já cabe no quadro não prova que alguém a fez caber.*
+
+### §23.5 — ⚠️ E uma mutação SOBREVIVEU a um timeout, duas vezes
+
+O laço de mutação foi interrompido pelo teto de tempo do shell com a árvore **mutada**, e a
+verificação por `diff` contra o backup apanhou-o — as duas vezes no mesmo arquivo. É a segunda vez
+que esta linha paga o mesmo pedágio, e a lição não muda: **uma mutação que não é desfeita é uma
+mutação que shipa**. A cura que funcionou: filtro de teste **estreito** (o nome do gate, não `field3d`
+inteiro), `timeout=` no subprocesso, `finally` a restaurar, e um `diff` explícito no fim.
+
+### §23.6 — Provas de mutação
+
+| lei quebrada | gate vermelho |
+|---|---|
+| o botão da escultura cai no `shape_at` | `the_sculpt_button_asks_for_a_file_instead_of_making_a_shape` |
+| a escultura vira uma primitiva | `a_loaded_sculpture_becomes_a_node_the_evaluator_resolves` |
+| sem a escala de convivência | `the_imported_sculpture_arrives_at_the_framing_size` |
+| `SCULPT_SLOT` literal | `the_sculpt_slot_points_at_the_sculpt_button` |
+| escala fixa, sem enquadramento | `the_size_follows_the_camera_not_a_constant` |
+
+---
+
 ## §13 — Aberto
 
 - ✅ **orientação Global/Local FECHOU** na W7 (§6)
@@ -1698,10 +1776,10 @@ consigo a pergunta de **autoria** — como o artista cria um destes —, que é 
   falta é um alvo descentrado, ou um pivô de espelho autorado. Adiado por decisão dele
 - ✅ **draft/taper FECHOU** na W18 (§19), e a W4 do plano com ele — o primeiro operador não-exato do
   módulo, com as duas tabelas ao lado do número
-- ⭐ **a outra metade da W5 — o MOTOR — fechou** (§22): uma escultura vira campo amostrado e entra na
-  booleana, com o avaliador híbrido e o gate de paridade. ⏸️ **falta a AUTORIA**: não há gesto que
-  crie um destes (nem botão, nem importação, nem ligação à escultura viva), e o `key` não regenera a
-  grade ao carregar um projeto. A cena 6 do smoke é o único sítio onde um existe
+- ✅ **a W5 FECHOU**: o motor na W21 (§22) e a **autoria** na W22 (§23) — o botão `+ Sculpt…` traz um
+  arquivo de malha para dentro da peça, e a booleana corta-o. ⏸️ Fica: **regenerar a grade ao
+  carregar** um projeto (a chave já é o caminho do arquivo, então o desenho está feito), a ligação à
+  escultura **viva** do módulo 3D (hoje é pelo arquivo), e os modificadores sobre uma escultura
 - ⏸️ **digitar o número** durante o arrasto (o `G X 0.5` do Blender) — a ficha mostra, mas não aceita
 - ⏸️ o **pivô** é sempre o centro do nó. Um pivô escolhido (centro da seleção, cursor 3D) é produto,
   e entra com a UI que o escolhe

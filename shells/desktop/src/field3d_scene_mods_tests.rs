@@ -348,6 +348,10 @@ fn the_export_button_reaches_the_request_channel() {
     assert_eq!(crate::field3d_smoke::take_export_request(), None);
 }
 
+/// ⚠️ **A costura da porta de entrada** vive no irmão — ver [`field3d_import_seam_tests`](self::import_seam).
+#[path = "field3d_import_seam_tests.rs"]
+mod import_seam;
+
 /// ⚠️ **A sonda da qualidade da malha** vive no irmão — ver [`field3d_mesh_quality_tests`](self::quality).
 #[path = "field3d_mesh_quality_tests.rs"]
 mod quality;

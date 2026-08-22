@@ -561,10 +561,43 @@ pub fn add_leaf(
     primitive: Primitive,
     world_pos: [f32; 3],
 ) -> Result<Entity, FieldError> {
+    add_node(world, parent, NodeShape::Leaf(primitive), world_pos)
+}
+
+/// ⭐ **Acrescenta uma ESCULTURA** — o mesmo gesto, com a folha amostrada em vez de uma primitiva.
+///
+/// ⚠️ **O `key` é o CAMINHO do arquivo**, e isso não é conveniência: é o que torna a persistência
+/// possível sem guardar a grade. Um projeto carregado sabe de onde regenerar cada escultura, e o
+/// documento continua a pesar bytes em vez de megabytes.
+///
+/// # Errors
+/// [`FieldError::BadRoot`] se `parent` não for um nó do campo.
+pub fn add_sampled(
+    world: &mut World,
+    parent: Entity,
+    key: &str,
+    world_pos: [f32; 3],
+) -> Result<Entity, FieldError> {
+    add_node(
+        world,
+        parent,
+        NodeShape::Sampled {
+            key: key.to_string(),
+        },
+        world_pos,
+    )
+}
+
+/// O corpo partilhado: nasce o nó, entra na hierarquia, e a pose vai para o MUNDO pedido.
+fn add_node(
+    world: &mut World,
+    parent: Entity,
+    shape: NodeShape,
+    world_pos: [f32; 3],
+) -> Result<Entity, FieldError> {
     if world.get::<FieldNode>(parent).is_none() {
         return Err(FieldError::BadRoot);
     }
-    let shape = NodeShape::Leaf(primitive);
     let name = unique_sibling_name(world, parent, crate::shape_name(&shape));
     let child = world
         .spawn((

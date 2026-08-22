@@ -209,8 +209,13 @@ mod doc;
 
 /// **A PORTA DE ENTRADA** — um arquivo de malha vira peças. Filho pelo mesmo
 /// motivo: ele constrói `SceneObject`s e mexe na lista.
+///
+/// ⚠️ **`pub(crate)` desde a W22**: o módulo de modelagem implícita entra por aqui também
+/// (`field3d_import`), e ele **não** duplica o leitor — o `read_pieces` é a única resposta da casa a
+/// *"que malha há neste arquivo?"*, e uma segunda diria "cor preservada" sobre um STL no dia em que
+/// alguém trocasse o leitor.
 #[path = "sculpt3d_import.rs"]
-mod import;
+pub(crate) mod import;
 
 /// **A PORTA DE SAÍDA** — a cena vira um arquivo que outro programa abre. Irmão
 /// da entrada, e o par dela: sem isto a escultura entra, salva e não sai.

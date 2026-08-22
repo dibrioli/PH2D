@@ -227,9 +227,17 @@ pub(crate) fn paint_anchor_section(
     notes: &[Vec<(usize, NoteData)>],
 ) -> f32 {
     let Some(anch) = anchor else {
+        // Sem snapshot não há ficha aberta — e o gizmo do canvas tem de saber disso, senão ele
+        // continua a oferecer alças de uma âncora que a seção já não mostra.
+        crate::state::set_open_anchor_row(None);
         return y;
     };
     *selected = (*selected).min(anch.rows.len().saturating_sub(1));
+    // ⚠️ **A linha aberta viaja para a SHELL aqui** — é o que dá alças ao gizmo do canvas. Sai da
+    // PINTURA e não do despacho de propósito: a pintura corre todo o quadro e conhece o estado
+    // final (já corrigido contra o tamanho da lista, na linha acima), enquanto o despacho só
+    // corre quando alguém clica.
+    crate::state::set_open_anchor_row((!anch.rows.is_empty()).then_some(*selected));
     y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
     let y_before = y;
     begin_section(

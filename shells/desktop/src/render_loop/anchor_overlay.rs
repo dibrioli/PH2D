@@ -40,6 +40,19 @@ use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke, VectorScene};
 const MARK_PX: f64 = 1.5; // LITERAL-PX-OK: chrome de overlay, espessura de tela
 /// Meio-braço da cruz de um socket, em px de tela.
 const CROSS_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay, tamanho de tela
+/// Meio-lado de uma ALÇA arrastável, em px de tela.
+const HANDLE_PX: f64 = 4.0; // LITERAL-PX-OK: chrome de overlay, tamanho de tela
+/// ⚠️ **A opacidade das âncoras que NÃO estão abertas.**
+///
+/// Elas continuam visíveis — são o «onde» do sprite, e escondê-las faria o artista perder a
+/// noção do conjunto ao abrir uma. Mas ficam para trás: só a aberta tem alças, e uma marca com o
+/// mesmo peso de uma que se pode agarrar seria um alvo que não é alvo.
+const DIM_ALPHA: f32 = 0.4; // LITERAL-COLOR-OK: peso relativo do chrome, não uma cor
+/// Corpo do rótulo do nome, em px de tela.
+const LABEL_PX: f32 = 11.0; // LITERAL-PX-OK: chrome de overlay
+/// Caixa do rótulo — larga o bastante para os 64 bytes que um nome pode ter sem cortar cedo.
+const LABEL_BOX_W_PX: f32 = 160.0; // LITERAL-PX-OK: chrome de overlay
+const LABEL_BOX_H_PX: f32 = 14.0; // LITERAL-PX-OK: chrome de overlay
 
 /// Cor estável a partir do nome — FNV-1a sobre os bytes, depois um passeio pelo círculo de
 /// matiz. ⚠️ Determinística: a mesma âncora tem a mesma cor em todas as sessões e máquinas.
@@ -77,7 +90,7 @@ fn color_of(name: &str) -> [f32; 4] {
 /// e as âncoras ficavam **cravadas na origem do mundo**, sem seguir a sprite (smoke do Enio,
 /// 2026-08-22). Uma leitura de componente enterrada num laço de desenho não é observável por
 /// teste nenhum; com nome, ela responde.
-pub(super) fn anchor_world_point(
+pub(crate) fn anchor_world_point(
     sprite_world: Transform,
     anchor: &NamedAnchor,
     local_px: [f32; 2],
@@ -104,14 +117,21 @@ pub(super) fn anchor_world_point(
 /// `expanded` é a seção §12 estar aberta — a spec §7.6 pede exatamente isso: os handles aparecem
 /// **quando a seção está expandida**, senão todo sprite com âncoras ficaria coberto de cruzes.
 #[allow(clippy::too_many_arguments)]
+/// ⚠️ **`open_row` é a âncora ABERTA na lista do Inspector**, e é ela que ganha as alças.
+///
+/// As outras continuam desenhadas, esmaecidas: elas são o «onde» do sprite, e escondê-las faria
+/// perder a noção do conjunto. Mas dez alças em oito âncoras seriam oitenta alvos a disputar o
+/// mesmo pixel — e um alvo que não se acerta é pior que um alvo que não existe.
 pub(super) fn draw_anchor_marks(
     expanded: bool,
     sim: &World,
     selected: Option<u64>,
+    open_row: Option<usize>,
     pixels_per_meter: f32,
     camera: &Camera2d,
     window: WindowSize,
     vector_scene: &mut VectorScene,
+    text_system: &mut ph2d_text::TextSystem,
 ) {
     if !expanded {
         return;
@@ -135,9 +155,14 @@ pub(super) fn draw_anchor_marks(
     let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
     let to_screen = camera.world_to_screen_affine(window);
 
-    for a in list.iter() {
-        let rgba = color_of(&a.name);
+    for (row, a) in list.iter().enumerate() {
+        let open = open_row == Some(row);
+        let mut rgba = color_of(&a.name);
+        if !open {
+            rgba[3] *= DIM_ALPHA;
+        }
         let brush = Brush::Solid(Color::new(rgba));
+        let width = if open { MARK_PX * 1.6 } else { MARK_PX };
         // O centro da âncora, em MUNDO, depois em tela.
         let world = anchor_world_point(sprite_world, a, [0.0, 0.0], ppm);
         let c = to_screen * Point::new(f64::from(world.x), f64::from(world.y));
@@ -150,11 +175,28 @@ pub(super) fn draw_anchor_marks(
         cross.move_to(Point::new(c.x, c.y - CROSS_PX));
         cross.line_to(Point::new(c.x, c.y + CROSS_PX));
         vector_scene.inner_mut().stroke(
-            &Stroke::new(MARK_PX),
+            &Stroke::new(width),
             Affine::IDENTITY,
             &brush,
             None,
             &cross,
+        );
+
+        // **O NOME, ao lado da cruz.** Sem ele, cinco âncoras são cinco cruzes coloridas e o
+        // artista tem de contar linhas no painel para saber qual é qual — a cor sozinha diz que
+        // são diferentes, não QUAIS são.
+        ph2d_editor::paint::paint_text_centered(
+            text_system,
+            vector_scene,
+            &a.name,
+            ph2d_editor::zones::Rect::new(
+                c.x as f32 + CROSS_PX as f32,
+                c.y as f32 - CROSS_PX as f32 - LABEL_BOX_H_PX,
+                LABEL_BOX_W_PX,
+                LABEL_BOX_H_PX,
+            ),
+            LABEL_PX,
+            Color::new(rgba),
         );
 
         // A área e o miolo, em px da fonte relativos à âncora. ⚠️ **+Y para cima**: o `h` de um
@@ -184,12 +226,51 @@ pub(super) fn draw_anchor_marks(
             path.close_path();
             // O miolo desenha-se mais fino: ele é uma subdivisão da área, não outra área.
             let width = if dash { MARK_PX * 0.6 } else { MARK_PX };
+            let rect_width = if dash { width * 0.6 } else { width };
             vector_scene.inner_mut().stroke(
-                &Stroke::new(width),
+                &Stroke::new(rect_width),
                 Affine::IDENTITY,
                 &brush,
                 None,
                 &path,
+            );
+        }
+
+        // ⚠️ **AS ALÇAS — e só na âncora aberta.** Elas vêm do mesmo `handles` que o arrasto
+        // consulta, e não de uma segunda cópia da geometria: se o desenho e o teste de acerto
+        // divergissem, o artista veria uma alça onde não há e agarraria onde não vê. *A alça
+        // pintada É a alça que agarra.*
+        if !open {
+            continue;
+        }
+        let (hs, n) = super::anchor_gizmo::handles(sprite_world, a, ppm);
+        for h in hs.iter().take(n).flatten() {
+            let p = to_screen * Point::new(f64::from(h.world.x), f64::from(h.world.y));
+            // A de ROTAÇÃO leva uma haste até ao centro: é ela que faz o gesto ler-se como rodar.
+            if h.kind == super::anchor_gizmo::AnchorHandleKind::Rotate {
+                let mut arm = BezPath::new();
+                arm.move_to(c);
+                arm.line_to(p);
+                vector_scene.inner_mut().stroke(
+                    &Stroke::new(width * 0.7),
+                    Affine::IDENTITY,
+                    &brush,
+                    None,
+                    &arm,
+                );
+            }
+            let mut box_path = BezPath::new();
+            box_path.move_to(Point::new(p.x - HANDLE_PX, p.y - HANDLE_PX));
+            box_path.line_to(Point::new(p.x + HANDLE_PX, p.y - HANDLE_PX));
+            box_path.line_to(Point::new(p.x + HANDLE_PX, p.y + HANDLE_PX));
+            box_path.line_to(Point::new(p.x - HANDLE_PX, p.y + HANDLE_PX));
+            box_path.close_path();
+            vector_scene.inner_mut().fill(
+                ph2d_vector::Fill::NonZero,
+                Affine::IDENTITY,
+                &brush,
+                None,
+                &box_path,
             );
         }
     }

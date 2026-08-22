@@ -18,6 +18,22 @@
 //! | `panel_bg` | Região 9-slice | cruz + retângulo + retângulo interno |
 //!
 //! Cada uma com a **sua cor**, tirada do hash do nome.
+//!
+//! # ⚠️ Desde 2026-08-22 elas AGARRAM
+//!
+//! Até aqui a marca era decoração: o ADR §2.3 descrevia alças arrastáveis e o canvas não tinha
+//! **uma linha** de tratamento de ponteiro para âncoras. Agora a âncora **aberta na lista** ganha
+//! alças, e as outras ficam esmaecidas — dez alças em três âncoras seriam trinta alvos a disputar
+//! o mesmo pixel.
+//!
+//! O que se pode fazer, com a seção §12 aberta e uma linha escolhida na lista:
+//!
+//! - **arrastar o quadrado do centro** → move a âncora (escreve os campos `Pos`);
+//! - **arrastar o quadrado do braço** → roda-a (escreve `Rot`);
+//! - **arrastar um canto do retângulo** → redimensiona-o, com o canto oposto quieto.
+//!
+//! O gesto inteiro é **um** passo de `Ctrl+Z`, e os números do painel andam ao vivo — as duas
+//! metades escrevem pela mesma porta.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{NamedAnchor, NamedAnchorList};

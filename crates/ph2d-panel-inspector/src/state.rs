@@ -97,6 +97,20 @@ thread_local! {
     pub(crate) static CURRENT_INSPECTOR_SAMPLING:
         std::cell::Cell<Option<InspectorSamplingInfo>> = const { std::cell::Cell::new(None) };
 
+    /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
+    ///
+    /// ⚠️ **É o primeiro canal desta direção, e ele existe porque a premissa do outro mudou.**
+    /// O `event_anchor` dizia, com razão, que a seleção de linha **não** vai ao barramento:
+    /// «publicá-la como ação obrigaria a shell a saber qual ficha está aberta». Isso valia
+    /// enquanto **nada no canvas** precisava de saber. Quando o gizmo nasceu (2026-08-22), a
+    /// shell passou a precisar — e a cerca leu-se antes de se mover: o que a nota recusava era
+    /// pôr a seleção no BARRAMENTO (onde ela viraria um passo de undo por clique), não haver
+    /// canal nenhum. Este não é o barramento.
+    ///
+    /// `usize::MAX` = nenhuma linha aberta (a seção fechada, ou lista vazia).
+    pub(crate) static OPEN_ANCHOR_ROW: core::cell::Cell<usize> =
+        const { core::cell::Cell::new(usize::MAX) };
+
     /// §12 Sockets / Named Anchors (ADR-0072). ⚠️ `RefCell` e não `Cell`: uma âncora tem nome,
     /// e um nome é uma `String` — este é o primeiro snapshot do Inspector que não é `Copy`.
     pub(crate) static CURRENT_INSPECTOR_ANCHOR:
@@ -192,6 +206,22 @@ pub fn set_current_inspector_sampling(info: Option<InspectorSamplingInfo>) {
 
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {
     CURRENT_INSPECTOR_SAMPLING.with(|c| c.get())
+}
+
+/// **Qual linha da §12 está aberta** — lida pela SHELL, para o gizmo saber a quem obedecer.
+///
+/// ⚠️ Devolve `None` quando não há ficha aberta. O gizmo desenha **todas** as âncoras de qualquer
+/// forma (elas são o «onde» do sprite); o que esta linha decide é qual delas ganha **alças** —
+/// nove pontos arrastáveis por âncora, em oito âncoras, seriam 72 alvos a disputar o mesmo pixel.
+#[must_use]
+pub fn open_anchor_row() -> Option<usize> {
+    let v = OPEN_ANCHOR_ROW.with(core::cell::Cell::get);
+    (v != usize::MAX).then_some(v)
+}
+
+/// Escrito pelo PAINEL a cada pintura da §12 — e limpo quando ela não pinta.
+pub(crate) fn set_open_anchor_row(row: Option<usize>) {
+    OPEN_ANCHOR_ROW.with(|c| c.set(row.unwrap_or(usize::MAX)));
 }
 
 pub fn set_current_inspector_anchor(info: Option<InspectorAnchorInfo>) {

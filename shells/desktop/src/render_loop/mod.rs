@@ -247,6 +247,7 @@ mod wet_grid_look_probe;
 /// **§5 9-Slice** — snapshot e commit da seção. Irmão do `inspector_ordering`.
 /// **Os marcadores das âncoras no canvas** (spec Sprite 07 §7.6) — sem eles a §12 é um
 /// formulário que não mexe em nada na tela.
+pub(crate) mod anchor_gizmo;
 mod anchor_overlay;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
 mod inspector_anchor;
@@ -6943,10 +6944,16 @@ impl crate::App {
                         .is_collapsed(ph2d_editor::ids::INSP_LIVE_ANCHOR_SECTION),
                     sim.world(),
                     hero.gizmo.selection,
+                    // ⚠️ A linha ABERTA vem do PAINEL — é o canal que o gizmo estreou. Ela é o
+                    // que decide quem ganha alças; sem ela o canvas não sabe a quem obedecer.
+                    ph2d_panel_inspector::open_anchor_row(),
                     hero.project.pixels_per_meter,
                     camera,
                     surface.size(),
                     vector_scene,
+                    // Reborrow por `paint_ctx`, como o rótulo do overlay de física — o
+                    // `text_system` já está emprestado desde o começo do frame.
+                    paint_ctx.text,
                 );
 
                 // Tween v2 — a correção de pares: os dois desenhos-chave sobrepostos + as

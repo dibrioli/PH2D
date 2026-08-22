@@ -40,6 +40,7 @@
 mod adapter_smoke;
 mod align_live;
 mod align_smoke;
+mod anchor_gizmo_drag;
 mod anchor_smoke;
 mod app_state;
 mod atlas_loader;
@@ -877,6 +878,7 @@ impl App {
             wheel_body_pick: None,
             wheel_rope_pick: None,
             joint_anchor_drag: None,
+            anchor_gizmo_drag: None,
             joint_draw_armed: false,
             joint_draw: None,
             join_kind: 0, // Pin — the default joint kind for "Join Selected Bodies"

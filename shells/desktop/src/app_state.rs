@@ -1181,6 +1181,12 @@ pub(crate) struct App {
     /// through the bridge's anchor door; see `crate::joint_anchor_drag`. Runtime
     /// only: the drag is not the document, the anchor it writes is.
     pub(crate) joint_anchor_drag: Option<crate::joint_anchor_drag::JointAnchorDrag>,
+    /// **§12 — o arrasto de uma alça do gizmo de âncora** (ADR-0072 §2.3).
+    ///
+    /// ⚠️ Slot próprio e não o do joint: são dois gestos sobre dois modelos, e partilhar o slot
+    /// faria um `Up` de um limpar o outro. O undo fecha os dois num passo só pela MESMA porta —
+    /// o `post_frame_undo` suprime enquanto o botão está premido.
+    pub(crate) anchor_gizmo_drag: Option<crate::render_loop::anchor_gizmo::AnchorDrag>,
     /// **The canvas joint-drawing gesture is ARMED** (W-J4): the next press on a
     /// body starts a rubber band, and the release on another body creates the
     /// joint with the anchors AT the two points.

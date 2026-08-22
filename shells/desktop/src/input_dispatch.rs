@@ -3051,6 +3051,9 @@ impl App {
         // W-J2: and the joint-anchor drag, which is NOT a gizmo drag — it writes
         // a body-local anchor through the bridge's door, not a `Transform`.
         self.advance_joint_anchor_drag();
+        // **§12** — e a alça do gizmo de âncora, que também não é arrasto de gizmo: ela publica
+        // `InspectorAnchorEdit` no barramento, a MESMA porta por onde o painel escreve.
+        self.advance_anchor_gizmo_drag();
         // W-Grab: e a MÃO, que também não é arrasto de gizmo — ela move a âncora
         // de uma mola no solver, e o `Transform` chega pelo readback do dispatch.
         self.advance_body_grab();
@@ -3153,6 +3156,9 @@ impl App {
             self.release_body_grab();
             self.release_body_pose();
             self.release_body_fk();
+            // **§12** — e a alça do gizmo de âncora, pela MESMA razão escrita acima: este handler
+            // tem muitos early-returns, e uma alça que sobrevive ao release fica colada ao cursor.
+            self.end_anchor_gizmo_drag();
         }
         // ADR-0150 W1/M2: a cena 3D toma o botão para navegar. Inerte (e
         // portanto invisível) sem cena armada.
@@ -3165,6 +3171,19 @@ impl App {
             if taken {
                 return;
             }
+        }
+        // **§12 — a alça do gizmo de âncora toma o botão** (ADR-0072 §2.3).
+        //
+        // ⚠️ Antes do resto do `Down`, e com `return`: agarrar uma alça **não** é selecionar um
+        // sprite, não é começar um marquee e não é entregar o ponteiro à ferramenta. O
+        // `try_open_…` já recusou tudo o que não é canvas (painel por cima, seção fechada, nenhuma
+        // linha aberta), então chegar aqui e devolver `true` significa que o gesto é este.
+        if state == ElementState::Pressed
+            && button == MouseButton::Left
+            && let (px, py) = self.last_pointer
+            && self.try_open_anchor_gizmo_drag(px, py)
+        {
+            return;
         }
         let kind = match state {
             ElementState::Pressed => PointerKind::Down,

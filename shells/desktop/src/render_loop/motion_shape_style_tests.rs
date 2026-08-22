@@ -209,7 +209,7 @@ fn the_defaults_of_the_new_family_move_nothing() {
     let path = build_shape_path(&p);
     assert!(
         path.effects.is_empty(),
-        "pilha vazia ⇒ `cooked` e' Borrowed"
+        "pilha vazia => `cooked` e' Borrowed"
     );
     // E a chave do default é estável — a mesma f32 para os mesmos bits, pelos dois lados.
     assert_eq!(shape_key(dflt), shape_key(dflt));

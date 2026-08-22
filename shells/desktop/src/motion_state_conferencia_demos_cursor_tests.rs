@@ -129,7 +129,7 @@ fn even_at_the_peak_of_the_field_no_piece_hides_its_neighbour() {
         // morto).
         assert!(
             widest > PIECE * 1.5,
-            "o campo tem de inchar a peça: {PIECE} → {widest:.3}"
+            "o campo tem de inchar a peça: {PIECE} -> {widest:.3}"
         );
     }
 }

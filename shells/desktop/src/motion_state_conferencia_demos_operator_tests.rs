@@ -126,7 +126,7 @@ fn the_flash_actually_fires() {
         .fold(0.0f32, f32::max);
     assert!(
         moved > 0.25,
-        "o flash tem de MOVER o tint: repouso {ink:?} → pico {peak:?}"
+        "o flash tem de MOVER o tint: repouso {ink:?} -> pico {peak:?}"
     );
 }
 

@@ -61,7 +61,7 @@ fn the_stamp_pair_separates_on_the_point_scale() {
     );
     assert!(
         hi > lo + 1.0,
-        "a escala tem de CRESCER ao longo da fileira: {lo:.2} → {hi:.2}"
+        "a escala tem de CRESCER ao longo da fileira: {lo:.2} -> {hi:.2}"
     );
 }
 

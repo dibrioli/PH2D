@@ -60,6 +60,15 @@ pub(crate) fn bloom_params() -> ph2d_render::BloomParams {
         // Neutro: o halo herda a cor da arte. ⚠️ Um tint aqui seria um SEGUNDO sítio onde a cor da
         // luz se autora, e os dois divergiriam no dia em que alguém mexesse num só.
         tint: [1.0, 1.0, 1.0, 1.0],
+        // O halo REDONDO (`stretch = 1` é o círculo que sempre shipou; o ângulo não tem efeito
+        // nele) e SEM teto no bright-pass (`clamp = 0` é «desligado», o caminho literal). Os três
+        // são a anamorfose e o clamp do `fx.glow` (doc 89 folha 11) — autoria de nó, não carácter
+        // de emissor. ⚠️ Escritos por nome de propósito: um campo novo no `BloomParams` tem de
+        // ser erro de compilação AQUI, não um default herdado em silêncio (foi assim que a
+        // integração de 2026-08-22 apanhou estes três).
+        stretch: 1.0,
+        angle: 0.0,
+        clamp: 0.0,
     }
 }
 

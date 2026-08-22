@@ -47,6 +47,14 @@ significa). **Conte, nunca escolha um dos lados.**
 | o mesmo registo, visto da `ph2d-render` | **59 → 60** | [`ph2d-render/src/registry.rs`](../../crates/ph2d-render/src/registry.rs) |
 | o mesmo registo, visto da `ph2d-script` | **59 → 60** | [`ph2d-script/src/registry.rs`](../../crates/ph2d-script/src/registry.rs) |
 
+> ✅ **INTEGRADO EM 2026-08-22 — E RECONTADO.** A `line/Sprite` entrou antes (v85/v86, +6 componentes),
+> então os números acima eram os da linha contra o `main` do fork, não os do `main` combinado. O que
+> ficou no `main`: `PROJECT_SCHEMA` **89** (os três degraus desta linha viraram **v87/v88/v89**; os
+> dois do grafo revertido passaram por v89/v90 e saíram na mesma rebase) · `ph2d-ecs` **65** ·
+> `ph2d-render` **66** · `ph2d-script` **66**. Cada degrau da escada diz de que número nasceu.
+> ⚠️ **E houve uma colisão de MESMO SÍMBOLO que este handoff não previa** (§4, item 7): a
+> `line/motion-value` também tinha curado a emenda do tracejado.
+
 ⚠️ **Os três contadores de registo são grandezas DIFERENTES** (`ecs`, `ecs+1 Sprite`, `ecs+1 Luau`).
 Copiar o número do `ph2d-ecs` para os irmãos é **exactamente** o erro que os deixou vermelhos por um
 commit inteiro nesta linha (`4fd3aad7d`, 21/08 — quem somou no ECS não somou nos dois irmãos, e
@@ -102,6 +110,19 @@ grupo, e é isso que faz todo arquivo ≤ v86 desenhar igual.
    faria a barra de cima dizer `SUB` onde sempre disse `ENT`.
 5. **Um arquivo RENOMEADO:** `measure_live_boolean_graph.rs` → `measure_live_boolean_chain.rs`.
 6. ⛔ **Não integre `PROJECT_SCHEMA` escolhendo um lado** — §2.
+7. ⚠️ **ACHADO NA INTEGRAÇÃO (2026-08-22) — a MESMA lei escrita duas vezes.** O commit
+   `84d3b778d` (o tracejado que ENCAIXA no caminho) colidiu com a `line/motion-value`, que tinha
+   curado o **mesmo** report do Enio no mesmo dia: `ph2d-vec-scene` ganhou `dash_fit::{fit,
+   longest_contour, dash_lengths_for}` de um lado e `StrokeSpec::dash_lengths_fitted` +
+   `stroke_plan::dash_for` do outro — **fórmula idêntica** (fechado `n = round(L/p)`; aberto `n`
+   traços e `n−1` vãos), e as duas mudaram `kurbo_stroke` para a mesma assinatura. Ficou **UMA
+   lei** (`dash_fit`) com **duas portas que só diferem em quem cozeu**: `dash_lengths_for` mede um
+   caminho já cozido (o cache `tess.dash` do renderer, que a motion-value construiu) e `dash_for`
+   coze e delega (a peça que chega da fonte — o Outline Stroke e a linha `Owned` do renderer).
+   `dash_lengths_fitted` **saiu**. Prova: as **duas suítes** (`dash_fit_tests` + `stroke_plan_tests`,
+   18 gates) verdes contra a lei única. ⛔ É o caso «mesmo símbolo» da DIRETRIZ §1.5.5 — a
+   integração decidiu pelo critério mecânico (a sobrevivente passa os testes das duas) porque as
+   leis eram iguais; **se o Enio preferir a outra porta como canônica, é troca de nome, não de lei.**
 
 ---
 

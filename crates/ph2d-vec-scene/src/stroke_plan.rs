@@ -71,7 +71,7 @@ pub enum StrokePiece<'a> {
 /// [`crate::dash_fit`] (`fit` + `longest_contour`), e [`crate::dash_fit::dash_lengths_for`] é o
 /// núcleo que mede um caminho **já cozido** — é o que o cache de tesselação do renderer chama,
 /// porque ele já pagou o cozimento. Esta porta coze e delega; ela existe para a peça que chega
-/// da fonte (a linha encurtada pelos marcadores). Na integração de 2026-08-22 duas linhas
+/// da FONTE (o Outline Stroke, e a linha `Owned` do renderer). Na integração de 2026-08-22 duas linhas
 /// tinham escrito a mesma lei duas vezes (`dash_fit` na `line/motion-value`,
 /// `dash_lengths_fitted` na `line/Vector`), com a MESMA fórmula; ficou uma, e as duas suítes
 /// provam-na.

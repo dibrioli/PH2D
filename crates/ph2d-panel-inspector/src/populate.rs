@@ -152,6 +152,11 @@ fn populate_slice(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_SLICE_REGION);
     // A nona célula: o miolo. Ele cicla o próprio modo desde 2026-08-22.
     register_button_ids(store, &[ids::INSP_SLICE_CENTRE]);
+    // Os dois atalhos que substituíram o modo `Tiled`: eles ESCREVEM na grelha.
+    register_button_ids(
+        store,
+        &[ids::INSP_SLICE_ALL_TILE, ids::INSP_SLICE_ALL_STRETCH],
+    );
     register_button_ids(store, &[ids::INSP_SLICE_ADD, ids::INSP_SLICE_REMOVE]);
     store.register(
         ids::INSP_SLICE_FILL_CENTER,

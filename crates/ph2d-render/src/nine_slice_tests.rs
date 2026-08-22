@@ -5,6 +5,7 @@
 //! privado no módulo — nenhuma função teve de virar `pub` para caber aqui.
 
 use super::*;
+use ph2d_ecs::SliceDrawMode;
 
 fn sliced(borders: [f32; 4]) -> SliceNine {
     SliceNine {
@@ -330,11 +331,12 @@ fn a_stretching_patch_does_not_touch_the_nodes_wrap_mode() {
 #[test]
 fn the_centre_can_be_mirrored_which_is_where_the_seam_shows() {
     let base = SliceNine {
-        draw_mode: SliceDrawMode::Tiled,
+        draw_mode: SliceDrawMode::Sliced,
         borders: [8.0; 4],
+        centre_tile_mode: TileRegionMode::Repeat,
         ..SliceNine::INERT
     };
-    // Default: repete (o `Stretch` em Tiled significa repetir, como na moldura).
+    // O miolo autorado a repetir: e' o ponto de partida do estudo.
     let p = nine_slice_patches(
         [0.0, 0.0, 1.0, 1.0],
         [64.0, 64.0],
@@ -380,12 +382,16 @@ fn a_blank_centre_mode_defers_to_fill_center() {
     assert_eq!(s.centre_tile_mode, TileRegionMode::Stretch);
 }
 
-/// Em `Tiled` o miolo repete nos dois eixos sem ninguém o marcar por-região.
+/// A célula do MIOLO posta em `Repeat` repete nos dois eixos.
+///
+/// ⚠️ Até 2026-08-22 isto era o que o modo `Tiled` fazia sozinho. Ele foi retirado — era o
+/// `Sliced` menos a capacidade de esticar uma região — e a autoria passou a viver toda na grelha.
 #[test]
-fn tiled_mode_repeats_the_centre_on_both_axes() {
+fn a_centre_cell_set_to_repeat_tiles_on_both_axes() {
     let s = SliceNine {
-        draw_mode: SliceDrawMode::Tiled,
+        draw_mode: SliceDrawMode::Sliced,
         borders: [8.0; 4],
+        centre_tile_mode: TileRegionMode::Repeat,
         ..SliceNine::INERT
     };
     let p = nine_slice_patches(
@@ -411,8 +417,9 @@ fn continuous_keeps_the_partial_tile_and_whole_rounds_it_away() {
     // fixture que não continha o fenómeno que o teste dizia medir.
     let mk = |tile_mode: SliceTileMode| {
         let s = SliceNine {
-            draw_mode: SliceDrawMode::Tiled,
+            draw_mode: SliceDrawMode::Sliced,
             borders: [8.0; 4],
+            centre_tile_mode: TileRegionMode::Repeat,
             tile_mode,
             ..SliceNine::INERT
         };
@@ -591,19 +598,22 @@ fn an_edge_band_does_react_to_its_own_mode() {
     }
 }
 
-/// ⚠️ **`Sliced` e `Tiled` TÊM de desenhar diferente.** O Enio reportou «tanto faz» (2026-08-22),
-/// e a medição diz que o motor diferencia: o que não diferenciava era o **smoke**, cuja textura
-/// tinha as faixas de cor uniforme — esticar e repetir uma faixa lisa dão a mesma imagem.
+/// ⚠️ **A GRELHA é a única coisa que decide o que uma região faz** — e é isso que sobrou depois
+/// de o `Tiled` sair (observação do Enio, 2026-08-22: *«usando os botões Per-region tiling, é
+/// possível configurar todos os modos»*).
 ///
-/// O gate fica porque a afirmação é do produto: se um dia os dois modos colapsarem, um deles é um
-/// botão que não faz nada.
+/// O `Tiled` era `Sliced` mais `S ⇒ repeat`, o que tornava **esticar inexprimível** lá dentro. O
+/// gate afirma as duas metades do que ficou: a grelha muda o desenho, e o `draw_mode` só decide
+/// entre um quad e nove.
 #[test]
-fn sliced_and_tiled_are_not_the_same_drawing() {
+fn the_grid_is_the_only_thing_that_decides_what_a_region_does() {
     let target = [2.24, 0.64];
-    let mk = |draw: SliceDrawMode| {
+    let mk = |mode: TileRegionMode| {
         let s = SliceNine {
-            draw_mode: draw,
+            draw_mode: SliceDrawMode::Sliced,
             borders: [16.0; 4],
+            tile_modes: [mode; 8],
+            centre_tile_mode: mode,
             ..SliceNine::INERT
         };
         nine_slice_patches(
@@ -615,24 +625,42 @@ fn sliced_and_tiled_are_not_the_same_drawing() {
             [1.0, 1.0],
         )
     };
-    let a = mk(SliceDrawMode::Sliced);
-    let b = mk(SliceDrawMode::Tiled);
+    let a = mk(TileRegionMode::Stretch);
+    let b = mk(TileRegionMode::Repeat);
     let n = (0..PATCH_COUNT).filter(|i| a[*i] != b[*i]).count();
-    assert!(n >= 3, "so' {n} quads diferem entre Sliced e Tiled");
-    // E a diferença é exatamente a que a autoria default promete: as faixas que CRESCEM em X
-    // passam de esticar (1 ladrilho) a repetir. As colunas laterais e os cantos ficam iguais.
+    assert!(
+        n >= 3,
+        "so' {n} quads mudam entre esticar tudo e repetir tudo"
+    );
+    // As faixas que CRESCEM em X passam de um ladrilho a vários; as laterais e os cantos não.
     for idx in [1, CENTRE_INDEX, 7] {
-        assert_eq!(
-            a[idx].unwrap().uv_xform[0],
-            1.0,
-            "quad {idx} em Sliced devia esticar"
-        );
+        assert_eq!(a[idx].unwrap().uv_xform[0], 1.0, "quad {idx} devia esticar");
         assert!(
             b[idx].unwrap().uv_xform[0] > 1.0,
-            "quad {idx} em Tiled devia repetir"
+            "quad {idx} devia repetir"
         );
     }
-    for idx in [0, 2, 3, 5, 6, 8] {
-        assert_eq!(a[idx], b[idx], "quad {idx} nao devia mudar com o Draw Mode");
+    for idx in [0, 2, 6, 8] {
+        assert_eq!(
+            a[idx], b[idx],
+            "um CANTO nao pode mudar com o modo da regiao"
+        );
     }
+    // ⚠️ E o `draw_mode` decide UM QUAD OU NOVE, e mais nada: com a mesma grelha, `Simple` não
+    // produz grelha nenhuma. Se um dia ele voltar a reinterpretar a grelha, este gate cai.
+    let simple = SliceNine {
+        draw_mode: SliceDrawMode::Simple,
+        borders: [16.0; 4],
+        tile_modes: [TileRegionMode::Repeat; 8],
+        ..SliceNine::INERT
+    };
+    let p = nine_slice_patches(
+        [0.0, 0.0, 1.0, 1.0],
+        [64.0, 64.0],
+        &simple,
+        target,
+        100.0,
+        [1.0, 1.0],
+    );
+    assert_eq!(active(&p), Vec::<usize>::new());
 }

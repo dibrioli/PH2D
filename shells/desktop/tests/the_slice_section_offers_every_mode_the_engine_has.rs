@@ -106,7 +106,13 @@ fn the_labels_promise_what_the_model_delivers() {
         "«Simple» entrou no caminho de nove quads — anexar o componente deixaria de ser inerte"
     );
     assert!(SliceDrawMode::Sliced.is_nine(), "«Sliced» nao fatia nada");
-    assert!(SliceDrawMode::Tiled.is_nine(), "«Tiled» nao fatia nada");
+    // ⛔ A tag 2 era o `Tiled`, retirado em 2026-08-22. Ela tem de reabrir como NOVE QUADS: cair
+    // no default (`Simple`) desligaria o 9-slice em silencio num projeto ja' gravado.
+    assert_eq!(
+        SliceDrawMode::from_tag(2),
+        SliceDrawMode::Sliced,
+        "a tag do antigo Tiled caiu no default — um projeto gravado reabriria sem 9-slice"
+    );
     // E o componente recém-anexado nasce no modo que não muda nada.
     assert_eq!(ph2d_ecs::SliceNine::INERT.draw_mode, SliceDrawMode::Simple);
 }

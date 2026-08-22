@@ -161,7 +161,7 @@ fn spawn_parity(sim: &mut ph2d_ecs::SimWorld, cell: u32) -> Option<u64> {
     let whole = mk(sim, -0.6, "Bar (whole + mirror)");
     let borders = [PARITY_BORDER_PX as f32; 4];
     let base = ph2d_ecs::SliceNine {
-        draw_mode: ph2d_ecs::SliceDrawMode::Tiled,
+        draw_mode: ph2d_ecs::SliceDrawMode::Sliced,
         borders,
         ..ph2d_ecs::SliceNine::INERT
     };
@@ -233,13 +233,18 @@ fn modes_pixels() -> Vec<u8> {
     px
 }
 
-/// **Cena 3 — `Sliced` contra `Tiled`.** Duas barras empilhadas, do mesmo pixel e do mesmo
-/// tamanho, e a ÚNICA diferença entre elas é o `Draw Mode`:
+/// **Cena 3 — esticar contra repetir.** Duas barras empilhadas, do mesmo pixel e do mesmo
+/// tamanho, e a ÚNICA diferença entre elas é o que a **grelha por-região** diz:
 ///
-/// - **em cima, `Sliced`:** as barras do miolo ESTICAM — poucas e largas.
-/// - **em baixo, `Tiled`:** as barras REPETEM no tamanho original — muitas e finas.
+/// - **em cima:** as nove células em `S` — as barras do miolo ESTICAM, poucas e largas.
+/// - **em baixo:** as nove em `R` (o que o botão «Tile all» escreve) — as barras REPETEM no
+///   tamanho original, muitas e finas.
 ///
 /// Os cantos âmbar ficam idênticos nas duas, que é a metade que o 9-slice sempre garantiu.
+///
+/// ⚠️ **Até 2026-08-22 esta cena comparava dois `Draw Mode`s** (`Sliced` contra `Tiled`). O Enio
+/// notou que a grelha já exprimia os dois, o `Tiled` foi retirado — ele era o `Sliced` menos a
+/// capacidade de esticar uma região — e a cena passou a comparar o que de facto decide: a grelha.
 fn spawn_modes(sim: &mut ph2d_ecs::SimWorld, cell: u32) -> Option<u64> {
     let mk = |sim: &mut ph2d_ecs::SimWorld, y: f32, name: &str| -> u64 {
         crate::image_import::spawn_sprite(
@@ -251,19 +256,21 @@ fn spawn_modes(sim: &mut ph2d_ecs::SimWorld, cell: u32) -> Option<u64> {
         )
         .1
     };
-    let stretched = mk(sim, 0.6, "Bar (Sliced - stretches)");
-    let tiled = mk(sim, -0.6, "Bar (Tiled - repeats)");
-    for (bits, draw_mode) in [
-        (stretched, ph2d_ecs::SliceDrawMode::Sliced),
-        (tiled, ph2d_ecs::SliceDrawMode::Tiled),
+    let stretched = mk(sim, 0.6, "Bar (grid all S - stretches)");
+    let tiled = mk(sim, -0.6, "Bar (grid all R - repeats)");
+    for (bits, mode) in [
+        (stretched, ph2d_ecs::TileRegionMode::Stretch),
+        (tiled, ph2d_ecs::TileRegionMode::Repeat),
     ] {
         if let Ok(mut e) = sim
             .world_mut()
             .get_entity_mut(ph2d_ecs::Entity::from_bits(bits))
         {
             e.insert(ph2d_ecs::SliceNine {
-                draw_mode,
+                draw_mode: ph2d_ecs::SliceDrawMode::Sliced,
                 borders: [PARITY_BORDER_PX as f32; 4],
+                tile_modes: [mode; 8],
+                centre_tile_mode: mode,
                 ..ph2d_ecs::SliceNine::INERT
             });
         }

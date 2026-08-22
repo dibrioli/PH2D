@@ -29,9 +29,7 @@
 //! modelo*, e está afirmado em [`tests::zero_borders_collapse_to_the_plain_sprite`].
 
 use bevy_ecs::component::Component;
-use ph2d_ecs::{
-    PresentComponent, SliceDrawMode, SliceNine, SliceRegion, SliceTileMode, TileRegionMode,
-};
+use ph2d_ecs::{PresentComponent, SliceNine, SliceRegion, SliceTileMode, TileRegionMode};
 
 /// Marca uma instância que é um **quad EXTRA** de um 9-slice — os oito do anel, quando o
 /// primeiro já foi para o espelho principal da entidade.
@@ -193,7 +191,7 @@ pub fn nine_slice_patches(
         };
         ends_flipped(
             m,
-            tile_count(m, s.draw_mode, s.tile_mode, cols_m[1], cols_src_m[1], true),
+            tile_count(m, s.tile_mode, cols_m[1], cols_src_m[1], true),
         )
     };
     let band_y = |col: usize| -> bool {
@@ -202,7 +200,7 @@ pub fn nine_slice_patches(
         };
         ends_flipped(
             m,
-            tile_count(m, s.draw_mode, s.tile_mode, rows_m[1], rows_src_m[1], true),
+            tile_count(m, s.tile_mode, rows_m[1], rows_src_m[1], true),
         )
     };
     let flip_x_at_row = [band_x(0), band_x(1), band_x(2)];
@@ -224,22 +222,8 @@ pub fn nine_slice_patches(
             let cy = y_top - rows_m[..row].iter().sum::<f32>() - 0.5 * ph;
             // Repetição por eixo: só faz sentido no eixo em que a faixa de facto estica.
             // Um canto (col e row de borda) nunca repete — o seu tamanho é o intrínseco.
-            let tiles_x = tile_count(
-                mode,
-                s.draw_mode,
-                s.tile_mode,
-                pw,
-                cols_src_m[col],
-                col == 1,
-            );
-            let tiles_y = tile_count(
-                mode,
-                s.draw_mode,
-                s.tile_mode,
-                ph,
-                rows_src_m[row],
-                row == 1,
-            );
+            let tiles_x = tile_count(mode, s.tile_mode, pw, cols_src_m[col], col == 1);
+            let tiles_y = tile_count(mode, s.tile_mode, ph, rows_src_m[row], row == 1);
             let repeats = tiles_x > 1.0 || tiles_y > 1.0;
             // A coluna da direita e a linha de baixo trocam de fonte quando a faixa que lhes
             // encosta acaba invertida — e só elas: o começo da faixa nunca inverte.
@@ -337,14 +321,16 @@ fn centre_mode(s: &SliceNine) -> TileRegionMode {
 /// (o motivo, medido, está em [`SliceTileMode`]). Restam os dois resultados que existem.
 fn tile_count(
     mode: TileRegionMode,
-    draw: SliceDrawMode,
     tile_mode: SliceTileMode,
     target_m: f32,
     intrinsic_m: f32,
     axis_stretches: bool,
 ) -> f32 {
-    let repeats = matches!(mode, TileRegionMode::Repeat | TileRegionMode::Mirror)
-        || (draw == SliceDrawMode::Tiled && mode == TileRegionMode::Stretch);
+    // ⚠️ **Uma linha, e ela deixou de perguntar pelo `draw_mode`.** Até 2026-08-22 havia aqui um
+    // `|| (draw == Tiled && mode == Stretch)` — a reinterpretação que fazia `S` repetir dentro do
+    // `Tiled`, tornava «esticar» inexprimível nesse modo, e punha a letra da grelha a mentir. Com
+    // o `Tiled` retirado, **a grelha é a única verdade** e esta função só olha para a região.
+    let repeats = matches!(mode, TileRegionMode::Repeat | TileRegionMode::Mirror);
     if !repeats || !axis_stretches || intrinsic_m <= 0.0 || target_m <= 0.0 {
         return 1.0;
     }

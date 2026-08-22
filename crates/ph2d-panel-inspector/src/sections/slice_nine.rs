@@ -19,74 +19,26 @@ use ph2d_editor_core::screens::hero::InspectorSliceInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 
-/// **A grelha 3×3 que esta seção pinta: `(coluna, linha)` por região**, na ordem de
-/// `SliceRegion::ALL` (TL · T · TR · L · R · BL · B · BR), saltando o miolo.
-///
-/// ⚠️ **É `pub` para que o gate a possa LER.** A primeira versão deste ficheiro tinha a tabela
-/// privada e o gate da shell tinha uma cópia igual — e uma mutação que trocava duas células aqui
-/// passava **verde**, porque o gate comparava a sua cópia com o motor em vez de comparar ESTA.
-/// *Um gate que guarda a sua própria cópia mede-se a si mesmo.*
-pub const REGION_CELLS: [(usize, usize); 8] = [
-    (0, 0),
-    (1, 0),
-    (2, 0),
-    (0, 1),
-    (2, 1),
-    (0, 2),
-    (1, 2),
-    (2, 2),
-];
-
-/// Rótulos do Draw Mode, na ordem das tags `0..=2` de `SliceDrawMode`.
-pub const MODE_LABELS: [&str; 3] = ["Simple", "Sliced", "Tiled"];
+/// Rótulos do Draw Mode, na ordem das tags `0..=1` de `SliceDrawMode`.
+pub const MODE_LABELS: [&str; 2] = ["Simple", "9-Slice"];
 /// Rótulos do Tile Mode global, tags `0..=1` de `SliceTileMode`.
 pub const TILE_MODE_LABELS: [&str; 2] = ["Continuous", "Whole"];
-/// A inicial de cada `TileRegionMode`, tags `0..=3`. ASCII de propósito (sem tofu).
-pub const REGION_LETTERS: [&str; 4] = ["S", "R", "M", "-"];
-
-/// As letras de um CANTO — `[desenhado, apagado]`.
-///
-/// ⚠️ **`F` de FIXO, e não `S` de stretch, porque um canto não estica nem repete.** Ele fica no
-/// tamanho intrínseco: é essa a razão de existir do 9-slice. Reaproveitar o `S` ali fazia a
-/// legenda («S stretch») afirmar sobre o canto o contrário do que ele faz — e escondia que as
-/// suas únicas duas posições são desenhar e não desenhar (auditoria 2026-08-22).
-pub const CORNER_LETTERS: [&str; 2] = ["F", "-"];
-
-/// A célula `i` da grelha é um dos quatro cantos? Deriva de [`REGION_CELLS`], nunca de uma
-/// segunda cópia da tabela.
-pub fn is_corner_cell(i: usize) -> bool {
-    REGION_CELLS
-        .get(i)
-        .is_some_and(|&(col, row)| col != 1 && row != 1)
-}
 
 /// A dica do `Simple`. ⚠️ **Um modo que visivelmente não faz nada e não explica porquê lê-se como
 /// avariado** — foi a primeira coisa que o smoke do Enio devolveu sobre esta seção.
 const SIMPLE_HINT: &str = "Simple is 9-slice switched off - the sprite draws as one quad. \
-                           Pick Sliced or Tiled to set it up; your values are kept.";
+                           Pick 9-Slice to set it up; your values are kept.";
 /// A dica do Tile Mode: é aqui que mora a cura da emenda rente à borda.
 const WHOLE_HINT: &str = "Whole = entire tiles, so the last one meets the border. \
                           Mirror always uses whole tiles.";
-/// A legenda da grelha 3×3.
-///
-/// ⚠️ **Ela diz TRÊS coisas que a versão anterior escondia** (auditoria 2026-08-22): que os
-/// cantos são fixos e só ligam/desligam · que o miolo não tem `blank` (isso é o `Fill Center`) ·
-/// e que em `Tiled` uma célula em `S` **repete**, que é a reinterpretação que o motor faz e sobre
-/// a qual a legenda antiga afirmava «stretch».
-const REGION_LEGEND: &str = "Corners F fixed (on/off). Edges + centre: S stretch, R repeat, \
-                             M mirror, - blank. In Tiled, S repeats.";
-
 /// **Nenhum segmento aceso** — a afordância de divergência numa seleção múltipla.
 const NOTHING_LIT: usize = usize::MAX;
 
 const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: altura de campo do Inspector
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
-const CELL: f32 = 26.0; // LITERAL-PX-OK: lado de uma célula da grelha 3x3
 /// Passo de scrub do tamanho alvo, em metros. Uma medida do MUNDO, não do desenho: um passo de
 /// um token de espaçamento não teria significado num campo em metros.
 const SIZE_STEP: f64 = 0.1; // LITERAL-PX-OK: passo de scrub em metros
-/// Lado da grelha, em células. Não é uma medida de desenho: é a aridade do 9-slice.
-const GRID: usize = 3;
 
 /// Uma linha «rótulo em cima, dois NumberInput lado a lado». Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -137,84 +89,6 @@ fn pair_row(
         );
     }
     row_y + FIELD_H + Spacing::Sm.px()
-}
-
-/// A grelha 3×3 dos modos por-região. Devolve o `y` seguinte.
-#[allow(clippy::too_many_arguments)]
-fn region_grid(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    info: &InspectorSliceInfo,
-) -> f32 {
-    let label_font = TypeToken::Sm.px();
-    let label_h = label_font + Spacing::Xs.px();
-    paint_text(
-        text_system,
-        scene,
-        "Per-region tiling",
-        x,
-        y + (label_h - label_font) * 0.5,
-        label_font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
-    let grid_y = y + label_h;
-    let gap = Spacing::Xs.px();
-    for (i, &(col, row)) in REGION_CELLS.iter().enumerate() {
-        let id = ids::INSP_SLICE_REGION[i];
-        let rect = Rect::new(
-            x + (CELL + gap) * col as f32,
-            grid_y + (CELL + gap) * row as f32,
-            CELL,
-            CELL,
-        );
-        hit_index.register(id, rect);
-        // Divergente na seleção: a célula não afirma modo nenhum.
-        let tag = usize::from(info.tile_modes[i]);
-        let letter = if info.mixed.tile_modes {
-            "?"
-        } else if is_corner_cell(i) {
-            // Um canto só tem duas posições, e é `F` — fixo — não `S`.
-            CORNER_LETTERS[usize::from(tag == 3)]
-        } else {
-            REGION_LETTERS[tag.min(REGION_LETTERS.len() - 1)]
-        };
-        let btn = Button::new(id, letter)
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(id));
-        paint_button(&btn, rect, scene, text_system, theme);
-    }
-    // **O MIOLO é a nona célula, e é clicável desde 2026-08-22.** Ele era só um rótulo, e por
-    // isso espelhar era inalcançável **na maior área ladrilhada** — a que mais mostra a emenda
-    // entre dois ladrilhos (smoke do Enio). Com o miolo apagado ele mostra `-` e não age: quem
-    // manda nisso é o `Fill Center`, e duas portas para o mesmo estado divergem.
-    let mid = Rect::new(x + CELL + gap, grid_y + CELL + gap, CELL, CELL);
-    hit_index.register(ids::INSP_SLICE_CENTRE, mid);
-    let mid_letter = if !info.fill_center {
-        "-"
-    } else if info.mixed.tile_modes {
-        "?"
-    } else {
-        REGION_LETTERS[usize::from(info.centre_tile_mode).min(REGION_LETTERS.len() - 1)]
-    };
-    paint_button(
-        &Button::new(ids::INSP_SLICE_CENTRE, mid_letter)
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_SLICE_CENTRE)),
-        mid,
-        scene,
-        text_system,
-        theme,
-    );
-    let grid_h = CELL * GRID as f32 + gap * (GRID - 1) as f32;
-    let legend_y = grid_y + grid_h + Spacing::Xs.px();
-    legend_y + hint(scene, text_system, theme, x, w, legend_y, REGION_LEGEND)
 }
 
 /// A seção quando a entidade **não tem** autoria de 9-slice: um convite, e nada mais.
@@ -322,7 +196,7 @@ fn tiled_rows(
 /// física — *quem empilha texto de comprimento variável tem de PERGUNTAR ao pintor quanto ele
 /// gastou, nunca estimar*.
 #[allow(clippy::too_many_arguments)]
-fn hint(
+pub(super) fn hint(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -506,7 +380,7 @@ pub(crate) fn paint_slice_section(
     // também em `Sliced` (é a lei do `tile_count`: `Tiled` só acrescenta que o `S` passa a
     // repetir). Escondê-lo ali punha o artista a mexer numa célula cujo resultado ele não podia
     // afinar, que é a mesma classe de mentira do controlo pintado sobre um modo que o ignora.
-    cur_y = region_grid(
+    cur_y = super::slice_grid::region_grid(
         scene,
         text_system,
         theme,
@@ -586,7 +460,7 @@ mod tests {
     /// A grelha REAL cobre a moldura 3×3 menos o miolo, sem repetir célula.
     #[test]
     fn the_painted_grid_is_the_ring_around_the_centre() {
-        let mut seen = REGION_CELLS.to_vec();
+        let mut seen = super::super::slice_grid::REGION_CELLS.to_vec();
         seen.sort_unstable();
         seen.dedup();
         assert_eq!(seen.len(), 8, "duas celulas pintadas no mesmo sitio");

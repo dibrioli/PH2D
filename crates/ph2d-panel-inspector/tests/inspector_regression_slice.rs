@@ -33,7 +33,7 @@ fn slice() -> InspectorSliceInfo {
     InspectorSliceInfo {
         entity_bits: ENTITY,
         present: true,
-        draw_mode_tag: 2,
+        draw_mode_tag: 1,
         borders: [1.0, 2.0, 3.0, 4.0],
         size: [0.0, 0.0],
         tile_modes: [0; 8],
@@ -116,6 +116,22 @@ fn cases() -> Vec<Case> {
             id: ids::INSP_SLICE_CENTRE,
             stim: Stim::Click,
             expect: SliceFieldEdit::CentreMode(1),
+        },
+        Case {
+            // ⚠️ O atalho escreve UMA edição para as nove células — nove ações seriam nove passos
+            // de undo para um gesto só.
+            what: "Tile all",
+            variant: "AllRegions",
+            id: ids::INSP_SLICE_ALL_TILE,
+            stim: Stim::Click,
+            expect: SliceFieldEdit::AllRegions(1),
+        },
+        Case {
+            what: "Stretch all",
+            variant: "AllRegions",
+            id: ids::INSP_SLICE_ALL_STRETCH,
+            stim: Stim::Click,
+            expect: SliceFieldEdit::AllRegions(0),
         },
         Case {
             what: "Fill Center",

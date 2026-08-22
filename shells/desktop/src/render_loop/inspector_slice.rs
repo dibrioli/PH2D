@@ -99,22 +99,35 @@ pub(super) fn apply_slice_edit(
         return;
     }
     let entity = Entity::from_bits(entity_bits);
-    let mut s = sim
-        .world()
-        .get::<SliceNine>(entity)
-        .copied()
-        .unwrap_or(SliceNine::INERT);
+    let present = sim.world().get::<SliceNine>(entity);
+    let mut s = present.copied().unwrap_or(SliceNine::INERT);
+    // Anexar não é editar: se já existe, deixa como está em vez de repor o inerte.
+    if matches!(edit, SliceFieldEdit::Attach) && present.is_some() {
+        return;
+    }
+    if !write_field(&mut s, edit) {
+        return;
+    }
+    // ⚠️ Saneia na PORTA DE ESCRITA também, não só na leitura: um valor infinito guardado
+    // sobrevive ao save/load e reaparece como um sprite invisível três sessões depois.
+    queue_set(queue, registry, entity_bits, SLICE_NINE, &s.sanitized());
+}
+
+/// Escreve UM campo no componente. **`false` = a edição não é de campo** (`Detach` já foi
+/// tratada pelo chamador).
+///
+/// ⚠️ **É uma função à parte para poder ser CHAMADA por teste, e a razão é uma mutação que
+/// sobreviveu** (2026-08-22). Os testes deste ficheiro re-escreviam o corpo de cada braço à mão —
+/// «o que o braço faz, sem precisar de um `World`» — e por isso mediam a sua própria cópia:
+/// apagar `s.centre_tile_mode = m` da produção deixava o gate do «Tile all» **verde**. *Um gate
+/// que guarda a sua própria cópia mede-se a si mesmo*, e a cura é sempre a mesma: dar-lhe a coisa
+/// real para chamar.
+pub(super) fn write_field(s: &mut SliceNine, edit: SliceFieldEdit) -> bool {
     match edit {
-        // Já tratado acima; repetido para o `match` ficar exaustivo sem braço-curinga — um
-        // curinga aqui engoliria em silêncio a próxima variante que alguém acrescentasse.
-        SliceFieldEdit::Detach => return,
-        SliceFieldEdit::Attach => {
-            // Anexar não é editar: se já existe, deixa como está em vez de repor o inerte.
-            if sim.world().get::<SliceNine>(entity).is_some() {
-                return;
-            }
-            s = SliceNine::INERT;
-        }
+        // Já tratado pelo chamador; repetido para o `match` ficar exaustivo sem braço-curinga —
+        // um curinga aqui engoliria em silêncio a próxima variante que alguém acrescentasse.
+        SliceFieldEdit::Detach => return false,
+        SliceFieldEdit::Attach => *s = SliceNine::INERT,
         SliceFieldEdit::DrawMode(t) => s.draw_mode = ph2d_ecs::SliceDrawMode::from_tag(t),
         SliceFieldEdit::Border(i, v) => {
             if let Some(slot) = s.borders.get_mut(usize::from(i)) {
@@ -132,11 +145,17 @@ pub(super) fn apply_slice_edit(
         SliceFieldEdit::CentreMode(t) => {
             s.centre_tile_mode = ph2d_ecs::TileRegionMode::from_tag(t);
         }
+        SliceFieldEdit::AllRegions(t) => {
+            // ⚠️ **As NOVE, o miolo incluído** — «Tile all» que deixasse o miolo a esticar seria
+            // um atalho que falha exatamente na maior área. Os cantos entram na volta e o
+            // `sanitized()` normaliza-os de volta a fixo, que é o que um canto pode ser.
+            let m = ph2d_ecs::TileRegionMode::from_tag(t);
+            s.tile_modes = [m; 8];
+            s.centre_tile_mode = m;
+        }
         SliceFieldEdit::FillCenter(b) => s.fill_center = b,
     }
-    // ⚠️ Saneia na PORTA DE ESCRITA também, não só na leitura: um valor infinito guardado
-    // sobrevive ao save/load e reaparece como um sprite invisível três sessões depois.
-    queue_set(queue, registry, entity_bits, SLICE_NINE, &s.sanitized());
+    true
 }
 
 #[cfg(test)]
@@ -145,6 +164,9 @@ mod tests {
     use ph2d_ecs::{SliceDrawMode, TileRegionMode};
 
     /// Editar UMA borda preserva as outras três e o modo — a lei do ler-modificar-escrever.
+    ///
+    /// ⚠️ **Chama `write_field`, o braço REAL.** A versão anterior deste teste re-escrevia o
+    /// corpo do braço à mão e por isso media a sua própria cópia.
     #[test]
     fn editing_one_border_preserves_its_siblings() {
         let mut s = SliceNine {
@@ -152,20 +174,60 @@ mod tests {
             borders: [1.0, 2.0, 3.0, 4.0],
             ..SliceNine::INERT
         };
-        // O que o braço faz, sem precisar de um `World`.
-        if let Some(slot) = s.borders.get_mut(2) {
-            *slot = 9.0;
-        }
+        assert!(write_field(&mut s, SliceFieldEdit::Border(2, 9.0)));
         assert_eq!(s.borders, [1.0, 2.0, 9.0, 4.0]);
         assert_eq!(s.draw_mode, SliceDrawMode::Sliced, "o modo foi reposto");
     }
 
+    /// ⚠️ **«Tile all» escreve nas NOVE, o miolo incluído.**
+    ///
+    /// O miolo é a maior área ladrilhada: um atalho que o deixasse de fora falharia exatamente
+    /// onde mais se vê. E é a conveniência que o modo `Tiled` dava antes de ser retirado — só
+    /// que agora ela ESCREVE na grelha em vez de a reinterpretar por trás, o que a torna
+    /// visível, editável célula a célula depois, e desfazível num `Ctrl+Z`.
+    #[test]
+    fn tile_all_writes_the_ninth_cell_too() {
+        let mut s = SliceNine {
+            draw_mode: SliceDrawMode::Sliced,
+            borders: [8.0; 4],
+            ..SliceNine::INERT
+        };
+        assert!(write_field(&mut s, SliceFieldEdit::AllRegions(1)));
+        assert_eq!(
+            s.centre_tile_mode,
+            TileRegionMode::Repeat,
+            "o miolo ficou de fora do «all» — e' a maior area ladrilhada"
+        );
+        assert!(s.tile_modes.iter().all(|m| *m == TileRegionMode::Repeat));
+        // E o saneamento devolve os CANTOS a fixo: um canto nunca ladrilha.
+        let c = s.sanitized();
+        for r in ph2d_ecs::SliceRegion::ALL {
+            let (col, row) = r.cell();
+            let want = if col != 1 && row != 1 {
+                TileRegionMode::Stretch
+            } else {
+                TileRegionMode::Repeat
+            };
+            assert_eq!(c.region_mode(r), want, "{r:?} saiu errado do «Tile all»");
+        }
+        assert_eq!(c.centre_tile_mode, TileRegionMode::Repeat);
+        // «Stretch all» e' a volta atras -- a capacidade que o antigo `Tiled` NAO tinha.
+        assert!(write_field(&mut s, SliceFieldEdit::AllRegions(0)));
+        assert!(s.tile_modes.iter().all(|m| *m == TileRegionMode::Stretch));
+        assert_eq!(s.centre_tile_mode, TileRegionMode::Stretch);
+    }
+
     /// Um índice fora de alcance não escreve em lado nenhum — nem entra em pânico.
+    ///
+    /// ⚠️ Também pelo braço real: um `get_mut` que passasse a indexar cru entraria em pânico, e
+    /// um teste que só verificasse `get_mut(9).is_none()` nunca o veria.
     #[test]
     fn an_out_of_range_index_writes_nothing() {
         let mut s = SliceNine::INERT;
-        assert!(s.borders.get_mut(9).is_none());
-        assert!(s.tile_modes.get_mut(99).is_none());
+        let before = s;
+        assert!(write_field(&mut s, SliceFieldEdit::Border(9, 5.0)));
+        assert!(write_field(&mut s, SliceFieldEdit::RegionMode(99, 1)));
+        assert_eq!(s, before, "um indice fora de alcance escreveu algures");
     }
 
     /// A ordem `tile_modes` do snapshot é a ordem das regiões — tag a tag.

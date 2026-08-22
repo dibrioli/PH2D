@@ -22,6 +22,7 @@
 //! números exatos em `f32`: as comparações abaixo podem ser exatas de propósito.
 
 use super::*;
+use ph2d_ecs::SliceDrawMode;
 
 /// Bordas de 16 px em todos os lados, sobre uma fonte de 64×64.
 const BORDER_PX: f32 = 16.0;
@@ -34,7 +35,7 @@ const EDGE_M: f32 = 0.16;
 
 fn tiled(centre: TileRegionMode) -> SliceNine {
     SliceNine {
-        draw_mode: SliceDrawMode::Tiled,
+        draw_mode: SliceDrawMode::Sliced,
         borders: [BORDER_PX; 4],
         centre_tile_mode: centre,
         ..SliceNine::INERT

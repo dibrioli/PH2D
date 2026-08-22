@@ -30,6 +30,8 @@ const CENTRE_MODE_COUNT: u8 = 3;
 
 /// Tag de `TileRegionMode::Stretch`.
 const MODE_STRETCH: u8 = 0;
+/// Tag de `TileRegionMode::Repeat`.
+const MODE_REPEAT: u8 = 1;
 /// Tag de `TileRegionMode::Blank`.
 const MODE_BLANK: u8 = 3;
 
@@ -103,6 +105,14 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
                     let next = (info.centre_tile_mode + 1) % CENTRE_MODE_COUNT;
                     SliceFieldEdit::CentreMode(next)
                 })
+            })
+            // ⚠️ **Os dois atalhos escrevem UMA edição, não nove.** Nove ações no barramento
+            // seriam nove passos de undo para um gesto só, e o `Ctrl+Z` desfaria a grelha célula
+            // a célula — a lei «um gesto, um passo».
+            .or(match id {
+                ids::INSP_SLICE_ALL_TILE => Some(SliceFieldEdit::AllRegions(MODE_REPEAT)),
+                ids::INSP_SLICE_ALL_STRETCH => Some(SliceFieldEdit::AllRegions(MODE_STRETCH)),
+                _ => None,
             })
             .or_else(|| {
                 // A grelha 3×3: cicla o modo desta região a partir do que a ENTIDADE tem.

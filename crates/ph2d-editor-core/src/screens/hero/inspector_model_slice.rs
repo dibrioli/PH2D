@@ -81,6 +81,12 @@ pub enum SliceFieldEdit {
     TileMode(u8),
     /// O modo do MIOLO — tag de `TileRegionMode`, ciclada pela nona célula da grelha.
     CentreMode(u8),
+    /// **Escreve a mesma tag de `TileRegionMode` nas NOVE células** — os dois atalhos
+    /// «Tile all» / «Stretch all».
+    ///
+    /// ⚠️ Uma edição só, não nove: nove ações no barramento seriam nove passos de undo para um
+    /// gesto, e o `Ctrl+Z` desfaria a grelha célula a célula. *Um gesto, um passo.*
+    AllRegions(u8),
     FillCenter(bool),
 }
 

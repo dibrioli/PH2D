@@ -22,12 +22,27 @@ pub const INSP_LIVE_SLICE_SECTION: NodeId = hash_node_id("insp_live_slice_sectio
 /// §5 9-Slice — ponto de cor do cabeçalho.
 pub const INSP_LIVE_SLICE_COLOR: NodeId = hash_node_id("insp_live_slice_color");
 
-/// **Draw Mode** — um segmento por variante de `SliceDrawMode`, tags `0..=2`.
-pub const INSP_SLICE_MODE: [NodeId; 3] = [
+/// **Draw Mode** — um segmento por variante de `SliceDrawMode`, tags `0..=1`.
+///
+/// ⛔ Houve aqui um terceiro, `Tiled`, retirado em 2026-08-22: ele era o `Sliced` mais uma
+/// reinterpretação que tornava «esticar» INEXPRIMÍVEL por região, e a conveniência dele vive
+/// agora nos dois atalhos [`INSP_SLICE_ALL_TILE`]/[`INSP_SLICE_ALL_STRETCH`], que escrevem nas
+/// nove células de verdade. Motivo medido em `ph2d_ecs::SliceDrawMode`.
+pub const INSP_SLICE_MODE: [NodeId; 2] = [
     hash_node_id("insp_slice_mode_simple"),
     hash_node_id("insp_slice_mode_sliced"),
-    hash_node_id("insp_slice_mode_tiled"),
 ];
+
+/// **«Tile all»** — escreve `Repeat` nas nove células de uma vez.
+///
+/// ⚠️ É um ATALHO, não um modo: ele faz uma edição que a grelha depois mostra. A diferença com o
+/// antigo `Tiled` é toda: aquele reinterpretava o que a grelha dizia e não se via na grelha; este
+/// escreve lá, e desfazê-lo é um `Ctrl+Z`. Os cantos ficam fixos na mesma (o saneamento
+/// normaliza-os) — um canto nunca ladrilha.
+pub const INSP_SLICE_ALL_TILE: NodeId = hash_node_id("insp_slice_all_tile");
+/// **«Stretch all»** — o irmão: escreve `Stretch` nas nove. É a volta atrás do de cima, e é a
+/// capacidade que o antigo `Tiled` **não tinha** (lá dentro, esticar era inexprimível).
+pub const INSP_SLICE_ALL_STRETCH: NodeId = hash_node_id("insp_slice_all_stretch");
 
 /// **Tile Mode** global — `Continuous` / `Whole`, tags `0..=1`.
 ///

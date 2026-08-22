@@ -25,49 +25,72 @@
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
 
-/// Como o sprite se desenha.
+/// Como o sprite se desenha: um quad, ou nove.
 ///
 /// `Simple` é o default e é **exatamente o sprite de hoje** — a presença do componente em modo
 /// `Simple` não muda um pixel. Isso é deliberado: permite anexar o componente, mexer nas bordas
 /// e ver o efeito ligando o modo, sem que anexá-lo já altere a cena.
+///
+/// # ⛔ O `Tiled` do Unity foi RETIRADO — ele só conseguia TIRAR capacidade
+///
+/// Observação do Enio (2026-08-22): *«usando os botões Per-region tiling, é possível configurar
+/// todos os modos em Sliced e Tiled»*. Quase — e a metade que falha é o argumento inteiro.
+///
+/// O `Tiled` era `Sliced` mais uma reinterpretação: `repeats = R|M || (Tiled && S)`. Ou seja,
+/// dentro dele uma célula em `S` **repetia**. Consequências, as duas medidas:
+///
+/// - em `Sliced` as três leis são alcançáveis por célula — `S` estica, `R` repete, `M` espelha;
+/// - em `Tiled`, `S` e `R` são **a mesma coisa**, e portanto *esticar uma região era
+///   INEXPRIMÍVEL*.
+///
+/// Um modo que é o outro menos uma capacidade não é uma escolha: é uma armadilha — e ainda fazia
+/// a letra `S` da grelha afirmar «stretch» sobre uma região que repetia. A conveniência que ele
+/// dava (ladrilhar tudo sem clicar nove células) fica, e melhor servida: os dois botões-atalho
+/// **Tile all / Stretch all** escrevem nas nove células de verdade, e a grelha passa a ser a
+/// ÚNICA verdade sobre o que cada região faz. *A representação apaga o caso especial* — o
+/// `tile_count` deixou de precisar de saber qual é o `draw_mode`.
+///
+/// ⚠️ A tag `2` (o antigo `Tiled`) mapeia para [`Self::Sliced`] em [`Self::from_tag`], **não**
+/// para o default: cair em `Simple` desligaria o 9-slice em silêncio ao abrir um projeto.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SliceDrawMode {
     /// Um quad, como sempre.
     #[default]
     Simple,
-    /// Nove quads; bordas e centro **esticam**.
+    /// Nove quads. O que cada um dos nove faz é a **grelha por-região**, e mais nada.
     Sliced,
-    /// Nove quads; bordas e centro **repetem** em vez de esticar.
-    Tiled,
 }
 
 impl SliceDrawMode {
     /// A ordem canônica dos segmentos na UI — e a tag que viaja no barramento é a **posição**
     /// nesta lista. Ver a lei em `inspector_regression_sections.rs`.
-    pub const ALL: [SliceDrawMode; 3] = [Self::Simple, Self::Sliced, Self::Tiled];
+    pub const ALL: [SliceDrawMode; 2] = [Self::Simple, Self::Sliced];
 
     /// Tag estável para o barramento / persistência.
     pub const fn tag(self) -> u8 {
         match self {
             Self::Simple => 0,
             Self::Sliced => 1,
-            Self::Tiled => 2,
         }
     }
 
     /// Inverso de [`Self::tag`]. Uma tag que o motor não produz cai no default — nunca entra em
     /// pânico, porque o valor pode vir de um ficheiro de projeto mais novo.
+    ///
+    /// ⚠️ **A `2` é o antigo `Tiled` e vai para `Sliced`**, não para o default: um projeto
+    /// gravado com nove quads tem de reabrir com nove quads. O que se perde é a *reinterpretação*
+    /// (as células em `S` passam a esticar em vez de repetir), e isso é recuperável com um clique
+    /// em «Tile all» — ao contrário de o sprite reabrir sem 9-slice nenhum.
     pub const fn from_tag(tag: u8) -> Self {
         match tag {
-            1 => Self::Sliced,
-            2 => Self::Tiled,
+            1 | 2 => Self::Sliced,
             _ => Self::Simple,
         }
     }
 
     /// `true` quando o desenho é de nove quads. O extract usa isto como porta única.
     pub const fn is_nine(self) -> bool {
-        matches!(self, Self::Sliced | Self::Tiled)
+        matches!(self, Self::Sliced)
     }
 }
 

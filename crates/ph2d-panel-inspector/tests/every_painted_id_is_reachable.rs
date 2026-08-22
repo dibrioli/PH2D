@@ -140,14 +140,14 @@ fn publish_the_whole_sprite_scene() {
         selected_count: 1,
         mixed: InspectorSamplingMixed::default(),
     }));
-    // §5 9-Slice. ⚠️ `Tiled` de propósito: é o estado em que TODOS os controlos da seção são
-    // pintados. Um fixture em `Simple` deixaria onze ids fora da amostra — em `Simple` a seção
-    // está DESLIGADA e mostra só a dica e o «Remove» (o modo é a seção desligada). *Um fixture
-    // que não contém o fenómeno que o gate diz medir.*
+    // §5 9-Slice. ⚠️ `9-Slice` (tag 1) de propósito: é o estado em que TODOS os controlos da
+    // seção são pintados. Um fixture em `Simple` deixaria treze ids fora da amostra — em
+    // `Simple` a seção está DESLIGADA e mostra só a dica e o «Remove» (o modo É a seção
+    // desligada). *Um fixture que não contém o fenómeno que o gate diz medir.*
     set_current_inspector_slice(Some(InspectorSliceInfo {
         entity_bits: ENTITY,
         present: true,
-        draw_mode_tag: 2,
+        draw_mode_tag: 1,
         borders: [8.0; 4],
         size: [0.0, 0.0],
         tile_modes: [0; 8],

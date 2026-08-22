@@ -245,6 +245,11 @@ mod wet_grid_look_probe;
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.
 /// **§5 9-Slice** — snapshot e commit da seção. Irmão do `inspector_ordering`.
+/// **Os marcadores das âncoras no canvas** (spec Sprite 07 §7.6) — sem eles a §12 é um
+/// formulário que não mexe em nada na tela.
+mod anchor_overlay;
+/// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
+mod inspector_anchor;
 mod inspector_slice;
 /// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
 /// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
@@ -1452,6 +1457,33 @@ impl crate::App {
             toasts.push(Toast::success(
                 "9-Slice smoke: LEFT is plain (corners stretch), RIGHT is sliced — see the \
                  9-Slice section"
+                    .to_string(),
+            ));
+            self.title_dirty = true;
+        }
+
+        // **AS TRÊS FORMAS DE ÂNCORA** (`PH2D_SOCKET_SMOKE=1`, ADR-0072): socket, slice e região
+        // 9-slice numa sprite só. ⚠️ A §5 9-Slice e a §12 Sockets/Anchors partilham o vocabulário
+        // do «miolo dentro de uma área» — ver as duas juntas é o que o explica.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::socket_smoke::enabled()
+            && !std::mem::replace(&mut self.socket_smoke_done, true)
+            && let Some(bits) = crate::socket_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                next_import_cell,
+                hero.project.pixels_per_meter,
+                atlas_asset_map,
+            )
+        {
+            hero.gizmo.replace_selection(Some(bits));
+            hero.bus
+                .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                    kind: ph2d_editor::ViewFocusKind::Selected,
+                });
+            toasts.push(Toast::success(
+                "Anchors smoke: open the Sockets / Anchors section to see the three marks"
                     .to_string(),
             ));
             self.title_dirty = true;
@@ -2961,6 +2993,7 @@ impl crate::App {
             let mut sampling_edits: Vec<(u64, ph2d_editor::SamplingFieldEdit)> = Vec::new();
             let mut blend_edits: Vec<(u64, ph2d_editor::BlendFieldEdit)> = Vec::new();
             let mut slice_edits: Vec<(u64, ph2d_editor::SliceFieldEdit)> = Vec::new();
+            let mut anchor_edits: Vec<(u64, ph2d_editor::AnchorFieldEdit)> = Vec::new();
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
             // signature is already the length its own doc-comment warns about,
@@ -3943,6 +3976,14 @@ impl crate::App {
                                 slice_edits.push((t, edit));
                             }
                         }
+                    }
+                    // §12 Sockets / Anchors. ⚠️ **NÃO espalha sobre a BulkSelect**, e isso é
+                    // uma decisão: uma âncora é identificada pelo NOME, e o índice que a edição
+                    // carrega só significa alguma coisa na lista da entidade primária. Espalhar
+                    // por índice escreveria na âncora errada de todas as outras — pior que não
+                    // espalhar. Fan-out por nome é trabalho para quando houver quem o peça.
+                    EditorAction::InspectorAnchorEdit { entity_bits, edit } => {
+                        anchor_edits.push((entity_bits, edit));
                     }
                     // §11 Physics Body. Fans out over a BulkSelect like its
                     // siblings — "make all of these physical" is the gesture
@@ -6893,6 +6934,21 @@ impl crate::App {
                 // A caixa do marquee (W6.1) — em px de tela, como o realce.
                 flip_selection_overlay::draw_flip_marquee(self.flip_edit_gesture, vector_scene);
 
+                // **§12 Sockets / Named Anchors** (spec Sprite 07 §7.6) — os marcadores só
+                // aparecem com a seção EXPANDIDA, senão todo sprite com âncoras ficaria coberto
+                // de cruzes. Sem eles a §12 é um formulário que não mexe em nada na tela.
+                anchor_overlay::draw_anchor_marks(
+                    !hero
+                        .store
+                        .is_collapsed(ph2d_editor::ids::INSP_LIVE_ANCHOR_SECTION),
+                    sim.world(),
+                    hero.gizmo.selection,
+                    hero.project.pixels_per_meter,
+                    camera,
+                    surface.size(),
+                    vector_scene,
+                );
+
                 // Tween v2 — a correção de pares: os dois desenhos-chave sobrepostos + as
                 // linhas de par (pela confiança) + órfãos, no MESMO `l2w` do objeto. Só
                 // desenha com a sessão Pairs aberta.
@@ -8893,6 +8949,7 @@ impl crate::App {
                 &sampling_edits,
                 &blend_edits,
                 &slice_edits,
+                &anchor_edits,
                 &physics_edits,
                 &visibility_section_edits,
                 hero,

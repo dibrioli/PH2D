@@ -44,7 +44,8 @@
 
 use ph2d_editor_core::screens::hero::{
     InspectorBlendInfo, InspectorBlendMixed, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo,
+    InspectorAnchorInfo, InspectorAnchorRow, InspectorOrderingMixed, InspectorSamplingInfo,
+    InspectorSamplingMixed, InspectorSliceInfo,
     InspectorSliceMixed, InspectorSpriteInfo,
     InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
     InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
@@ -52,7 +53,8 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, set_current_inspector_blend, set_current_inspector_name,
-    set_current_inspector_ordering, set_current_inspector_sampling, set_current_inspector_slice,
+    set_current_inspector_anchor, set_current_inspector_ordering, set_current_inspector_sampling,
+    set_current_inspector_slice,
     set_current_inspector_sprite,
     set_current_inspector_transform, set_current_inspector_visibility,
     set_current_inspector_visibility_section,
@@ -157,6 +159,22 @@ fn publish_the_whole_sprite_scene() {
         fill_center: true,
         selected_count: 1,
         mixed: InspectorSliceMixed::default(),
+    }));
+    // §12 Sockets / Named Anchors. ⚠️ **Uma âncora do tipo `Region`** (bounds E center), porque
+    // é o único estado em que TODOS os campos do editor são pintados — um Socket esconde oito
+    // NumberInputs, e um fixture assim deixaria-os fora da amostra.
+    set_current_inspector_anchor(Some(InspectorAnchorInfo {
+        entity_bits: ENTITY,
+        rows: vec![InspectorAnchorRow {
+            name: "muzzle".into(),
+            pos: [28.0, -4.0],
+            rot_deg: 12.0,
+            bounds: Some([8.0, 4.0, 24.0, 24.0]),
+            center: Some([2.0, 2.0, 8.0, 8.0]),
+        }],
+        present: true,
+        selected_count: 1,
+        mixed: false,
     }));
     set_current_inspector_blend(Some(InspectorBlendInfo {
         entity_bits: ENTITY,

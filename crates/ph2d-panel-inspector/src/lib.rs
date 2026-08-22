@@ -16,12 +16,13 @@
 #![forbid(unsafe_code)]
 
 mod event;
+/// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `event`, que estava no tecto.
+mod event_anchor;
 mod event_joint;
 mod event_ordering;
 mod event_physics;
 mod event_player;
 mod event_precision;
-/// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `event`, que estava no tecto.
 mod event_slice;
 mod event_sprite_geometry;
 mod event_sprite_value;
@@ -35,6 +36,7 @@ mod sections;
 pub mod state;
 mod sync;
 mod sync_physics;
+mod sync_sections;
 /// Os dois sliders-com-chip da sprite (Opacidade + Emissive) — irmão do `sync`, que estava no tecto.
 mod sync_sprite_value;
 
@@ -103,11 +105,12 @@ pub fn player_row_labels() -> Vec<&'static str> {
 pub use sections::slice_nine::REGION_CELLS;
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, set_current_display_unit,
-    set_current_inspector_blend, set_current_inspector_joint, set_current_inspector_name,
-    set_current_inspector_ordering, set_current_inspector_physics, set_current_inspector_player,
-    set_current_inspector_sampling, set_current_inspector_slice, set_current_inspector_sprite,
-    set_current_inspector_transform, set_current_inspector_visibility,
-    set_current_inspector_visibility_section, set_current_inspector_wheel,
+    set_current_inspector_anchor, set_current_inspector_blend, set_current_inspector_joint,
+    set_current_inspector_name, set_current_inspector_ordering, set_current_inspector_physics,
+    set_current_inspector_player, set_current_inspector_sampling, set_current_inspector_slice,
+    set_current_inspector_sprite, set_current_inspector_transform,
+    set_current_inspector_visibility, set_current_inspector_visibility_section,
+    set_current_inspector_wheel,
 };
 
 use ph2d_a11y::NodeId;

@@ -202,3 +202,162 @@ pub(crate) fn paint_shared_sections(
     }
     y
 }
+
+/// **§12 Sockets / Named Anchors** (ADR-0072) — a última seção, e a única que precisa do
+/// **estado do painel**: qual linha da lista está aberta.
+///
+/// ⚠️ O índice é **saturado aqui** contra o tamanho da lista. Apagar a última âncora deixa-o a
+/// apontar para além do fim, e um editor aberto sobre uma linha que já não existe é a forma mais
+/// direta de escrever na âncora errada.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_anchor_section(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    anchor: Option<&ph2d_editor_core::screens::hero::InspectorAnchorInfo>,
+    selected: &mut usize,
+    notes: &[Vec<(usize, NoteData)>],
+) -> f32 {
+    let Some(anch) = anchor else {
+        return y;
+    };
+    *selected = (*selected).min(anch.rows.len().saturating_sub(1));
+    y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+    let y_before = y;
+    begin_section(
+        section_tops_y,
+        hit_index,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y_before,
+        ids::INSP_LIVE_ANCHOR_SECTION,
+        header_h,
+    );
+    let new_y = crate::sections::anchors::paint_anchors_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        y,
+        anch,
+        *selected,
+    );
+    finish_section(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        inner_x,
+        inner_w,
+        ids::INSP_LIVE_ANCHOR_SECTION,
+        y_before,
+        new_y,
+        notes.get(14).map_or(&[][..], |v| &v[..]),
+    )
+}
+
+/// **§3 Render Source + §6 Color & Tint + §4 Sprite Sheet** — as três que só existem quando há
+/// sprite. Moldura e tudo, como as irmãs deste ficheiro.
+///
+/// Saíram do `paint_inspector` pelo mesmo cap que levou lá as compartilhadas: a §12
+/// Sockets/Anchors empurrou-o para 403 contra uma catraca de 387. *A cura de um teto estourado
+/// é o corte.*
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_sprite_sections(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    sprite: Option<&ph2d_editor_core::screens::hero::InspectorSpriteInfo>,
+    notes: &[Vec<(usize, NoteData)>],
+) -> f32 {
+    let Some(info) = sprite else {
+        return y;
+    };
+    let slot = |i: usize| notes.get(i).map_or(&[][..], |v| &v[..]);
+    for (section_id, note_slot, which) in [
+        (ids::INSP_LIVE_RENDER_SECTION, 3usize, 0u8),
+        (ids::INSP_LIVE_COLOR_SECTION, 4, 1),
+        (ids::INSP_LIVE_SHEET_SECTION, 5, 2),
+    ] {
+        if which > 0 {
+            y = crate::paint::paint_section_separator_at(scene, theme, inner_x, inner_w, y);
+        }
+        let y_before = y;
+        begin_section(
+            section_tops_y,
+            hit_index,
+            inner_x,
+            inner_w,
+            body_top_y,
+            y_before,
+            section_id,
+            header_h,
+        );
+        let new_y = match which {
+            0 => crate::sections::paint_render_source_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+                info,
+            ),
+            1 => crate::sections::paint_color_tint_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+            ),
+            _ => crate::sections::paint_sprite_sheet_section(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                inner_x,
+                inner_w,
+                y,
+            ),
+        };
+        y = finish_section(
+            scene,
+            text_system,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            section_id,
+            y_before,
+            new_y,
+            slot(note_slot),
+        );
+    }
+    y
+}

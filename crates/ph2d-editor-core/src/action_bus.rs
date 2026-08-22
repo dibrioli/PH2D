@@ -467,6 +467,13 @@ pub enum EditorAction {
         entity_bits: u64,
         edit: crate::screens::hero::SliceFieldEdit,
     },
+    /// §12 Sockets / Named Anchors (ADR-0072) — uma edição da lista de âncoras, incluindo criar
+    /// e retirar. ⚠️ `Clone` e não `Copy`: o `Rename` carrega o nome, e um nome é o que
+    /// distingue um socket de outro (spec §7.14 anti-padrão 4).
+    InspectorAnchorEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::AnchorFieldEdit,
+    },
 
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]

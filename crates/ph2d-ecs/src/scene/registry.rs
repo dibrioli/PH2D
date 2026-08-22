@@ -407,6 +407,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // projeto devolveria, ao reabrir, um sprite esticado: as bordas nao sao re-derivaveis de
     // nada -- sao uma medida que o artista tirou da imagem.
     reg.register::<crate::SliceNine>("ph2d::ecs::SliceNine");
+    // AS ANCORAS NOMEADAS (ADR-0072, spec Sprite 07) -- socket, slice e regiao 9-slice num tipo
+    // so'. Sem o registro, um artista que marca a boca da arma e grava o projeto reabre-o sem
+    // ela: uma ancora nao e' re-derivavel de nada, e' uma medida que alguem tirou.
+    reg.register::<crate::NamedAnchorList>("ph2d::ecs::NamedAnchorList");
 }
 
 #[cfg(test)]
@@ -474,13 +478,16 @@ mod tests {
         // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
         // workspace vermelho com dois merges verdes.
         // + 1 autoria de 9-slice (SliceNine, spec Sprite 03 §3.5 -- a secao 5, declarada
-        //   em 2026-05 e construida em 2026-08-21).
-        assert_eq!(reg.len(), 62);
+        //   em 2026-05 e construida em 2026-08-21)
+        // + 1 lista de ancoras nomeadas (NamedAnchorList, ADR-0072 -- `Accepted` desde
+        //   2026-05-28 sobre codigo que nao existia).
+        assert_eq!(reg.len(), 63);
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetRef").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetFrame").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::NamedAnchorList").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());

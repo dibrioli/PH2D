@@ -897,6 +897,17 @@ pub(super) fn publish(
     let inspector_slice = hero.gizmo.selection.and_then(|b| {
         super::inspector_slice::build_slice_info(sim.world(), b, sel, selected_count)
     });
+    // §12 Sockets / Named Anchors (ADR-0072). Publicado para toda entidade digna de Inspector —
+    // é o snapshot que diz `present: false`, e é isso que faz a seção mostrar o «+ Add Anchor».
+    let inspector_anchor = hero.gizmo.selection.and_then(|b| {
+        super::inspector_anchor::build_anchor_info(
+            sim.world(),
+            b,
+            sel,
+            selected_count,
+            hero.project.pixels_per_meter,
+        )
+    });
     // W3: the Join gesture needs exactly TWO bodies, and only the shell can
     // see the selection — the panel is handed one entity at a time. Asked once
     // here, so the painter (which offers the button) and the event handler
@@ -1036,6 +1047,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
         ph2d_panel_inspector::set_current_inspector_blend(inspector_blend);
         ph2d_panel_inspector::set_current_inspector_slice(inspector_slice);
+        ph2d_panel_inspector::set_current_inspector_anchor(inspector_anchor);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);

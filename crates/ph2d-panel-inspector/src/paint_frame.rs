@@ -47,6 +47,36 @@ pub(crate) fn begin_section(
     hit_index.register(section_id, Rect::new(inner_x, y_before, inner_w, header_h));
 }
 
+/// As notas que não estão ancoradas a seção nenhuma — pintadas no fim do corpo.
+///
+/// ⚠️ Saiu do `paint_inspector` por CAP: ela estava exactamente na catraca (387) e a §12 não
+/// cabia. Este bloco é o candidato óbvio — *não olha para seção nenhuma*.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_trailing_notes(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    inner_x: f32,
+    inner_w: f32,
+    y: &mut f32,
+    trailing: &[(usize, NoteData)],
+) {
+    for (slot, note) in trailing {
+        paint_one_note(
+            scene,
+            text_system,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            y,
+            note,
+            *slot,
+        );
+    }
+}
+
 /// §11 Physics Body + §12 Physics Joint + §13 Pulley Wheel, frame and all.
 ///
 /// Lifted out of `paint_inspector` for the same reason the section frame and
@@ -320,14 +350,18 @@ pub(crate) fn any_live_section(flags: [bool; 11]) -> bool {
 /// ⚠️ **O tamanho do array é uma slot por seção viva.** Dimensionado errado, uma
 /// nota ancorada na ÚLTIMA seção cai em silêncio no `trailing` em vez de onde o
 /// autor a pôs — e o silêncio é o problema, não o deslocamento.
-pub(crate) type SectionNotes = ([Vec<(usize, NoteData)>; 14], Vec<(usize, NoteData)>);
+pub(crate) type SectionNotes = ([Vec<(usize, NoteData)>; 15], Vec<(usize, NoteData)>);
 
 pub(crate) fn split_notes(store: &WidgetStore) -> SectionNotes {
-    // ⚠️ **CATORZE desde 2026-08-21** — a §5 9-Slice entrou no slot 6 e empurrou todas as que
+    // ⚠️ **QUINZE desde 2026-08-21** — a §12 Sockets/Anchors entrou no slot 14, DEPOIS da
+    // família da física, que é onde ela é pintada. Pô-la no slot da spec (12) obrigaria a
+    // empurrar a família outra vez; pô-la no fim mantém **índice == ordem visual**, que é o que
+    // `before_section` significa.
+    // ⚠️ **CATORZE antes disso** — a §5 9-Slice entrou no slot 6 e empurrou todas as que
     // vêm depois. O array estava CHEIO (0..12): renumerar sem o crescer punha a §10 Blend no
     // slot 9, que é o do Physics Body, e as duas passavam a partilhar as mesmas notas em
     // silêncio. *Um índice que soma entre seções conta-se; não se escolhe um livre que não há.*
-    let mut per_section: [Vec<(usize, NoteData)>; 14] = Default::default();
+    let mut per_section: [Vec<(usize, NoteData)>; 15] = Default::default();
     let mut trailing: Vec<(usize, NoteData)> = Vec::new();
     for (idx, note) in store
         .notes_for_panel(ids::INSP_PANEL)

@@ -118,6 +118,7 @@ pub(super) fn dispatch(
     sampling_edits: &[(u64, SamplingFieldEdit)],
     blend_edits: &[(u64, BlendFieldEdit)],
     slice_edits: &[(u64, ph2d_editor::SliceFieldEdit)],
+    anchor_edits: &[(u64, ph2d_editor::AnchorFieldEdit)],
     physics_edits: &[(u64, PhysicsFieldEdit)],
     visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
@@ -325,6 +326,26 @@ pub(super) fn dispatch(
         );
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
             toasts.push(Toast::error(format!("Sampling commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+    // §12 Sockets / Named Anchors (ADR-0072). ⚠️ O commit pode RECUSAR (nome inválido,
+    // repetido, cap de 64) e devolve um aviso — recusar em silêncio faria o artista escrever um
+    // nome, ver a lista não mudar, e não saber porquê.
+    for (entity_bits, edit) in anchor_edits {
+        if let Some(t) = super::inspector_anchor::apply_anchor_edit(
+            sim,
+            *entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+            hero.project.pixels_per_meter,
+        ) {
+            toasts.push(t);
+            continue;
+        }
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("Anchor commit failed: {e}")));
             title_dirty = true;
         }
     }

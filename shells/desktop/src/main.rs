@@ -416,6 +416,8 @@ mod slice_smoke;
 mod smoke_layout;
 mod smoke_script;
 mod snap_label_smoke;
+/// **As três formas de âncora, numa sprite só** (`PH2D_SOCKET_SMOKE=1`, ADR-0072).
+mod socket_smoke;
 mod splice_smoke;
 mod stack_smoke;
 mod stagger_smoke;
@@ -740,6 +742,7 @@ impl App {
             mask_smoke_done: false,
             sheet_smoke_done: false,
             slice_smoke_done: false,
+            socket_smoke_done: false,
             dither_smoke_done: false,
             emissive_smoke_done: false,
             taper_smoke_done: false,

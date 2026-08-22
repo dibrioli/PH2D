@@ -29,9 +29,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use ph2d_editor_core::widget::showcase::LAST_BODY_TOP_SCREEN_Y;
-use ph2d_editor_core::widget::showcase::{
-    paint_one_note, paint_section_separator, take_pending_dropdown_chip,
-};
+use ph2d_editor_core::widget::showcase::{paint_section_separator, take_pending_dropdown_chip};
 use ph2d_editor_core::widget::{self, Dropdown, DropdownOption, SCROLLBAR_W};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -70,6 +68,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             theme,
             hit_index,
             store,
+            &mut inspector_state.anchor_selected,
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -96,6 +95,10 @@ fn paint_inspector(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    // §12: qual linha da lista de âncoras está aberta. **Estado do painel**, saturado dentro
+    // de `paint_anchor_section` contra o tamanho da lista — apagar a última âncora não o pode
+    // deixar a apontar para o vazio.
+    anchor_selected: &mut usize,
 ) {
     let rect = layout.inspector;
     paint_panel_surface(rect, scene, theme);
@@ -196,6 +199,7 @@ fn paint_inspector(
     let ordering_info = current_inspector_ordering();
     let sampling_info = current_inspector_sampling();
     let slice_info = crate::state::current_inspector_slice();
+    let anchor_info = crate::state::current_inspector_anchor();
     let blend_info = current_inspector_blend();
     let (physics_info, joint_info, wheel_info, player_info) =
         crate::paint_frame::physics_family_infos();
@@ -311,47 +315,24 @@ fn paint_inspector(
         });
         y = paint_section_separator(scene, theme, inner_x, inner_w, y);
     }
-    if let Some(info) = sprite_info.as_ref() {
-        y = live_section!(ids::INSP_LIVE_RENDER_SECTION, 3, SECTION_HEAD_H, {
-            sections::paint_render_source_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-                info,
-            )
-        });
-        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
-        y = live_section!(ids::INSP_LIVE_COLOR_SECTION, 4, SECTION_HEAD_H, {
-            sections::paint_color_tint_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            )
-        });
-        y = paint_section_separator(scene, theme, inner_x, inner_w, y);
-        y = live_section!(ids::INSP_LIVE_SHEET_SECTION, 5, SECTION_HEAD_H, {
-            sections::paint_sprite_sheet_section(
-                scene,
-                text_system,
-                theme,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                y,
-            )
-        });
-    }
+    // **As três seções da SPRITE** — §3 Render Source, §6 Color & Tint e §4 Sprite Sheet —
+    // moram em `paint_frame_shared` pelo mesmo cap que levou lá as compartilhadas. Elas andam
+    // juntas porque partilham a mesma porta: **só existem se houver sprite**.
+    y = crate::paint_frame_shared::paint_sprite_sections(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        &mut section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        SECTION_HEAD_H,
+        sprite_info.as_ref(),
+        &notes_per_section,
+    );
     // **As quatro seções COMPARTILHADAS** — §5 9-Slice, §7 Ordering, §9 Sampling e §10 Material
     // & Blend — moram em `paint_frame`, como a família da física e pela mesma razão: este
     // orquestrador está numa catraca que só desce, e a §5 (2026-08-21) empurrou-o para 436
@@ -394,20 +375,35 @@ fn paint_inspector(
         player_info.as_ref(),
         &notes_per_section,
     );
+    // **§12 Sockets / Named Anchors** (ADR-0072) — a última, e a única que precisa do ESTADO do
+    // painel (qual linha está aberta). Ver `paint_frame_shared::paint_anchor_section`.
+    y = crate::paint_frame_shared::paint_anchor_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        &mut section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        SECTION_HEAD_H,
+        anchor_info.as_ref(),
+        anchor_selected,
+        &notes_per_section,
+    );
     if any_section {
-        for (slot, note) in &trailing_notes {
-            paint_one_note(
-                scene,
-                text_system,
-                hit_index,
-                store,
-                inner_x,
-                inner_w,
-                &mut y,
-                note,
-                *slot,
-            );
-        }
+        crate::paint_frame::paint_trailing_notes(
+            scene,
+            text_system,
+            hit_index,
+            store,
+            inner_x,
+            inner_w,
+            &mut y,
+            &trailing_notes,
+        );
     }
     publish_and_finish(
         scene,

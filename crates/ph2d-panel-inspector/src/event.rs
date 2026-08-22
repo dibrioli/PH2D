@@ -33,10 +33,16 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::widget::{ButtonState, CheckboxValue};
 
 pub(crate) fn apply_event(
-    _state: &mut state::InspectorState,
+    state: &mut state::InspectorState,
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    // **§12 Sockets / Anchors** — a ÚNICA família que precisa do estado do painel (clicar numa
+    // linha muda a ficha aberta, e isso não é uma edição da cena). Por isso corre aqui, antes
+    // do `apply_event_impl`, que só vê o `host`.
+    if crate::event_anchor::apply_anchor_event(state, host, ev) {
+        return EventOutcome::Consumed;
+    }
     EventOutcome::from_bool(apply_event_impl(host, ev))
 }
 

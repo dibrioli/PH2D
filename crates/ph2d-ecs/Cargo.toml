@@ -11,6 +11,11 @@ authors.workspace = true
 
 [dependencies]
 bevy_ecs = "0.18"
+# ADR-0072 §2.1: o `NamedAnchor` guarda a lista inline (4 âncoras cobrem ~99% dos sprites) e o
+# `AnchorData::Dict` guarda os pares ordenados inline (8). ⚠️ NÃO é dependência nova no projeto —
+# a `ph2d-vector-doc`, a `-font` e a `ph2d-editor-core` já a usam, com a mesma versão e a mesma
+# feature `serde`, então o `deny`/`audit` já a viram.
+smallvec = { version = "1", features = ["serde", "union"] }
 # ph2d-core re-exports glam math types (Vec2, Vec3, Mat3) that the
 # Transform/GlobalTransform components store. Keeps ph2d-core math-only
 # and ph2d-ecs the single owner of the Component-shaped wrappers.

@@ -50,6 +50,10 @@ const BASELINE: &[(&str, usize)] = &[
     // The entity-name TextInput placeholder ("Name…"). Moved from
     // sections.rs to sections/identity.rs in the §T2.1 per-section split;
     // i18n migration tracked separately (replaced when Fluent ships).
+    // §12 Sockets / Named Anchors (ADR-0072, 2026-08-21): o `placeholder` da caixa do NOME.
+    // Mesma forma e mesma razão do `identity.rs` acima — um placeholder genérico, congelado
+    // aqui enquanto o runtime Fluent não existe.
+    ("ph2d-panel-inspector/src/sections/anchors.rs", 1),
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
     // ⚠️ **W-SignalLeave: a entrada da §11 saiu daqui, e a DÍVIDA NÃO.** O
     // scanner conta literais dentro de `.placeholder("…")`, e a §11 passou a ter

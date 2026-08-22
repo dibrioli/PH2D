@@ -26,7 +26,7 @@ mod tests {
         register_ecs_components(&mut reg);
         register_render_components(&mut reg);
         // O numero se CONTA, nao se escolhe: e o contador de `ph2d-ecs`
-        // (`register_ecs_components_populates_registry`, **hoje 62** — nao repita a lista dele
+        // (`register_ecs_components_populates_registry`, **hoje 63** — nao repita a lista dele
         // aqui, ela ja' envelheceu tres vezes neste comentario) + 1 render component (Sprite).
         //
         // SAO DOIS contadores, e este e' o que se esquece: quem regista um componente novo no ECS
@@ -44,9 +44,11 @@ mod tests {
         // 2026-08-21: +1 `SliceNine` (a autoria de 9-slice, spec Sprite 03 §3.5) — e este
         // comentario e' a prova de que o precedente acima funciona: o gate do ECS ficou verde
         // primeiro, e foi ESTE que cobrou a segunda metade.
-        assert_eq!(reg.len(), 63);
+        // 2026-08-21: +1 `NamedAnchorList` (ADR-0072).
+        assert_eq!(reg.len(), 64);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::NamedAnchorList").is_some());
     }
 }

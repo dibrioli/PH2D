@@ -12,9 +12,9 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorBlendInfo, InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo,
-    InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo, InspectorSliceInfo,
-    InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
+    InspectorAnchorInfo, InspectorBlendInfo, InspectorJointInfo, InspectorNameInfo,
+    InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo,
+    InspectorSliceInfo, InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
     InspectorVisibilitySectionInfo, InspectorWheelInfo,
 };
 
@@ -36,6 +36,14 @@ pub struct InspectorState {
     /// changes the count — so we reseed on a count change too, picking up
     /// the new Mixed state.
     pub last_selected_count: usize,
+    /// **§12 Sockets / Anchors — qual linha da lista está aberta.**
+    ///
+    /// ⚠️ **É estado do PAINEL, e de propósito.** Qual âncora se está a editar é um facto da UI:
+    /// publicá-lo pelo barramento obrigaria a shell a saber dele e faria toda troca de linha
+    /// atravessar o barramento e voltar — um quadro de atraso para abrir uma ficha. O índice é
+    /// **saturado** contra o tamanho da lista a cada pintura, por isso apagar a última âncora
+    /// não o deixa a apontar para o vazio.
+    pub anchor_selected: usize,
 }
 
 thread_local! {
@@ -88,6 +96,11 @@ thread_local! {
     /// W3 §9: live sampling snapshot for the Sampling section.
     pub(crate) static CURRENT_INSPECTOR_SAMPLING:
         std::cell::Cell<Option<InspectorSamplingInfo>> = const { std::cell::Cell::new(None) };
+
+    /// §12 Sockets / Named Anchors (ADR-0072). ⚠️ `RefCell` e não `Cell`: uma âncora tem nome,
+    /// e um nome é uma `String` — este é o primeiro snapshot do Inspector que não é `Copy`.
+    pub(crate) static CURRENT_INSPECTOR_ANCHOR:
+        std::cell::RefCell<Option<InspectorAnchorInfo>> = const { std::cell::RefCell::new(None) };
 
     /// §5 9-Slice: o snapshot vivo da autoria de 9-slice (spec Sprite 03 §3.5).
     pub(crate) static CURRENT_INSPECTOR_SLICE:
@@ -179,6 +192,14 @@ pub fn set_current_inspector_sampling(info: Option<InspectorSamplingInfo>) {
 
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {
     CURRENT_INSPECTOR_SAMPLING.with(|c| c.get())
+}
+
+pub fn set_current_inspector_anchor(info: Option<InspectorAnchorInfo>) {
+    CURRENT_INSPECTOR_ANCHOR.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_anchor() -> Option<InspectorAnchorInfo> {
+    CURRENT_INSPECTOR_ANCHOR.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_slice(info: Option<InspectorSliceInfo>) {

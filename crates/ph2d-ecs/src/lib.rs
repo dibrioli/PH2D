@@ -47,6 +47,8 @@ pub mod emissive;
 pub mod flip_object_ref;
 pub mod masking;
 pub mod name;
+/// **Named Anchors** (ADR-0072) — socket · slice · região 9-slice, num tipo só.
+pub mod named_anchor;
 pub mod painted_doc;
 pub mod present;
 pub mod root_order;
@@ -77,6 +79,10 @@ pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
 pub use flip_object_ref::FlipObjectRef;
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use name::{Name, stable_name_id};
+pub use named_anchor::{
+    ANCHOR_NAME_MAX_BYTES, ANCHORS_MAX, AnchorData, AnchorKind, AnchorNameError, DICT_MAX_DEPTH,
+    DICT_MAX_KEYS, NamedAnchor, NamedAnchorList, SortedSmallVec, validate_anchor_name,
+};
 pub use painted_doc::PaintedDoc;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::{RootOrder, assign_missing_root_order};

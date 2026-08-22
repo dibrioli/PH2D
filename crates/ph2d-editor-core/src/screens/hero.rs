@@ -49,6 +49,7 @@ mod inspector_model;
 /// separado dele no cap de 700 LOC (W-JointCopy).
 mod inspector_model_joint;
 mod inspector_model_ordering;
+mod inspector_model_anchor;
 mod inspector_model_slice;
 mod inspector_model_physics;
 /// §14 Platform Player — irmão dos dois acima: a §11 diz que CORPO é este, a
@@ -66,6 +67,7 @@ mod paint;
 pub use inspector_model::*;
 pub use inspector_model_joint::*;
 pub use inspector_model_ordering::*;
+pub use inspector_model_anchor::*;
 pub use inspector_model_slice::*;
 pub use inspector_model_physics::*;
 pub use inspector_model_player::*;

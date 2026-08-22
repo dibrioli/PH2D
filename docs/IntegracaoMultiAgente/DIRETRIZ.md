@@ -750,7 +750,8 @@ Faltou → **bounce pro Implementador antes de mergear.** Não "vou abrir exceç
 | CoW slots (`slot-seed.sh`) | **obrigatório** | opcional | opcional (com 128 GB, dispensável) |
 | nextest jobs | ~4 | ~cores/2 | full (= cores) |
 | linker | `ld64.lld` (Mach-O) | `rust-lld` | **`mold`** (global, nunca no repo) |
-| target/ em tmpfs | não | não | **sim** (`scripts/target-on-tmpfs.sh`) |
+| target/ em tmpfs | não | não | **não — RETIRADO 2026-08-22, medido:** 33 GB de target viraram 30 GB de zram (RAM) e swap a 100%. Disco + `chattr +C`, via `scripts/target-to-disk.sh` ([runbook](../DevOps/BTRFS_METADATA_E_SWAP.md) §2) |
+| saúde do disco (btrfs) | — | — | **`bash scripts/btrfs-health.sh`** antes da jornada e no fim de dia — «disco cheio» com 500 GB livres é metadata sem espaço para crescer, e `df` não a vê |
 | sccache | não | pilotar | **sim** (global, transparente — não fere paridade-CI) |
 
 - **`constrained`** → siga §6.6 **ao pé da letra** (é o seu tier).

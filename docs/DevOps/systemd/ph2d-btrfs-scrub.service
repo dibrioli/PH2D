@@ -1,0 +1,10 @@
+[Unit]
+Description=PH2D: scrub do btrfs — le TUDO e confere checksum; imprime no journal o caminho de cada arquivo corrompido
+Documentation=file:///home/enio/Documentos/Projetos/PH2D/docs/DevOps/BTRFS_METADATA_E_SWAP.md
+ConditionPathIsMountPoint=/
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/btrfs scrub start -B /
+Nice=19
+IOSchedulingClass=idle

@@ -1,0 +1,10 @@
+[Unit]
+Description=PH2D: balance semanal do btrfs (domingo 04:00; se a maquina estava desligada, roda no proximo boot)
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target

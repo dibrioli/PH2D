@@ -1,0 +1,10 @@
+[Unit]
+Description=PH2D: scrub mensal do btrfs (dia 1, 05:00; corre no proximo boot se perdeu a hora)
+
+[Timer]
+OnCalendar=*-*-01 05:00:00
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

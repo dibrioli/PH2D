@@ -139,5 +139,9 @@ echo   "────────────────────────
 case "$tier" in
   constrained) echo "  → Follow DIRETRIZ §6.6 verbatim (this is the baseline)." ;;
   standard)    echo "  → §6.6 baseline + measured overrides above. Pilot heavy levers before mandating." ;;
-  workstation) echo "  → §6.6 OVERRIDDEN: RA-as-oracle, high parallelism, slots optional." ;;
+  workstation) echo "  → §6.6 OVERRIDDEN: RA-as-oracle, high parallelism, slots optional. target/ on DISK + chattr +C (tmpfs retired 2026-08-22)." ;;
 esac
+# Disk health is a JOURNEY gate, not a CI gate — and a tool nobody names by a
+# written step dies (CLAUDE.md §2). This is the first command every agent runs,
+# so it names the probe: "disk full" with 500 GB free is btrfs METADATA starvation.
+[ "$fstype" = "btrfs" ] && echo "  → disk: bash scripts/btrfs-health.sh  (unallocated · metadata · swap · checksum corruption — run it before the journey)"

@@ -13,6 +13,22 @@
 
 ---
 
+## §0 — ANTES dos portões: o disco está doente? *(2026-08-22)*
+
+```bash
+bash scripts/btrfs-health.sh        # sem root, 1 s — exit 1 = vermelho
+```
+
+⚠️ **«Disco cheio» com 500 GB livres NÃO se cura apagando `target/`.** Medido em 2026-08-22: o btrfs
+tinha 937,85 GiB dos 950 alocados a blocos de **dados** (410 usados), **zero** não-alocado, e a
+**metadata** (6 GiB, 5,46 usados) sem ter de onde crescer — `ENOSPC` a meio do build, `.o` truncado,
+`mold` em SIGBUS, e o `df` a dizer 45%. Apagar targets liberta espaço *dentro* dos blocos; só um
+`btrfs balance` (root) devolve blocos ao não-alocado. O script mede isso, o swap (o target do
+primário em tmpfs **vive no zram**) e a corrupção de checksum, e imprime o comando de cada cura —
+runbook: [`docs/DevOps/BTRFS_METADATA_E_SWAP.md`](../DevOps/BTRFS_METADATA_E_SWAP.md). Se sair
+vermelho em «não-alocado»/«metadata», **reporte ao Enio antes de limpar**: a limpeza abaixo ajuda
+pouco e a cura é dele.
+
 ## §1 — Os 3 portões (TODOS passam, ou não apague)
 
 1. **Ninguém está usando a worktree** — e isso são **duas** perguntas, nunca uma:
@@ -220,8 +236,10 @@ terminou antes do build começar.
   (nodatacow) — no btrfs isso tira os builds futuros do caminho CoW+zstd (artefato descartável não
   deve ser comprimido nem versionado por CoW), e o dia seguinte escreve mais rápido.
 
-O `target/` do **primário** vive em tmpfs (RAM) e **evapora no reboot** — deixe-o. Só limpe se ele
-tiver crescido demais **e** o primário estiver ocioso (é o checkout de dev ativo).
+O `target/` do **primário** nunca entra nesta limpeza — é o checkout de dev ativo. ⚠️ Se ele ainda
+for um symlink para tmpfs (`/dev/shm`, o desenho **retirado** em 2026-08-22: 33 GB lá viravam 30 GB
+de zram e swap a 100%), a ação certa não é limpar, é migrá-lo para disco com
+`bash scripts/target-to-disk.sh` (preserva o build; portões próprios) — §0 e o runbook.
 
 
 ---

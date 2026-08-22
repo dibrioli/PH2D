@@ -1,0 +1,13 @@
+[Unit]
+Description=PH2D: devolve blocos de dados meio-vazios ao espaco nao-alocado do btrfs (metadata precisa dele para crescer)
+Documentation=file:///home/enio/Documentos/Projetos/PH2D/docs/DevOps/BTRFS_METADATA_E_SWAP.md
+ConditionPathIsMountPoint=/
+
+[Service]
+Type=oneshot
+# Progressivo e barato: so relocaliza blocos <=10% e depois <=25% cheios.
+# Um balance de metadata NAO entra aqui de proposito (ver runbook, Recusas).
+ExecStart=/usr/bin/btrfs balance start -dusage=10 /
+ExecStart=/usr/bin/btrfs balance start -dusage=25 /
+Nice=19
+IOSchedulingClass=idle

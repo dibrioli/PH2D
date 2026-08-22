@@ -93,16 +93,20 @@ EOF
 - ⚠️ **NUNCA** no `.cargo/config.toml` DO REPO — cerca de Chesterton: pinar linker/target-dir no repo
   já **quebrou o CI do Mac**. Linker/wrapper são per-usuário/global.
 
-**`target/` em tmpfs (RAM-disk) — grande ganho de link/IO:**
+**`target/` em DISCO com nodatacow — o tmpfs foi RETIRADO (2026-08-22, medido):**
 ```bash
-bash scripts/target-on-tmpfs.sh     # move target/ -> /dev/shm, imprime a regra de reboot-safety
-# reboot-safety (uma vez, o script imprime o comando exato):
-echo 'd /dev/shm/ph2d-target 0755 <user> <user> -' | sudo tee /etc/tmpfiles.d/ph2d-ramtarget.conf
-sudo systemd-tmpfiles --create /etc/tmpfiles.d/ph2d-ramtarget.conf
+bash scripts/btrfs-health.sh        # antes de tudo: não-alocado · metadata · swap · corrupção (sem root)
+mkdir -p target && chattr +C target # nodatacow: sem CoW nem zstd num artefato descartável
+# se esta máquina ainda tiver target/ -> /dev/shm (o desenho antigo):
+bash scripts/target-to-disk.sh      # preserva o build, troca o link, devolve o swap
 ```
-- **Por quê a regra tmpfiles.d:** o `/dev/shm` esvazia no boot → o symlink `target/` fica pendurado →
-  `cargo` (`create_dir_all`) **NÃO** cura symlink pendurado (`mkdir -p` retorna EEXIST). A regra
-  recria o dir no boot. O sccache (cache em disco, sobrevive reboot) repovoa o target pós-reboot.
+- **Por quê:** o `target/` em `/dev/shm` tinha 33 GB; 30 GB deles estavam **swapados para o zram**
+  (= RAM comprimida, 12 GiB), o swap ficou a 100% com 61 GiB de RAM livre, e é esse o modo de falha
+  que derruba a janela no pico (memória 14/08). O «ganho de link/IO» nunca foi medido; o preço foi.
+  Runbook completo: [`BTRFS_METADATA_E_SWAP.md`](BTRFS_METADATA_E_SWAP.md) (metadata faminta,
+  balance, timers, corrupção de checksum por kernel).
+- O btrfs desta máquina precisa de **balance semanal** (units em [`systemd/`](systemd/)) — sem isso
+  um dia de jornada deixa o disco «cheio» com 500 GB livres.
 
 **rust-analyzer como oráculo** (era RAM-blocked no Mac): instale a extensão + configure nas **User
 settings** do VS Code (não no `.vscode/` do repo, senão liga RA pesado no Mac de 8 GiB):
@@ -117,7 +121,7 @@ code --install-extension rust-lang.rust-analyzer
 ```
 
 - **Slots CoW = opcionais aqui.** `slot-seed.sh` usa clone APFS (macOS); no Linux depende de reflink
-  (Btrfs/XFS — este FS é Btrfs, tem). Com 128 GB + `target/` em tmpfs, um `target/` único já basta;
+  (Btrfs/XFS — este FS é Btrfs, tem). Com 128 GB, um `target/` único (em disco, `+C`) já basta;
   slots só se rodar builds de fato paralelos que briguem pelo lock.
 - **`target-cpu=native` fica OFF** mesmo aqui (diverge do cache do CI; zero ganho no check) — ADR-0104.
 

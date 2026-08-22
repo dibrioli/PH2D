@@ -24,6 +24,16 @@ if [ "$(uname -s)" != "Linux" ] || [ ! -d /dev/shm ]; then
   echo "[tmpfs] not Linux+/dev/shm — no-op (target/ stays on disk)."; exit 0
 fi
 
+# RETIRED on the workstation tier (2026-08-22, measured, ADR-0104 amendment): a
+# 33 GB target in /dev/shm ended up as 30 GB of zram (= RAM, 12 GiB compressed)
+# with swap at 100% and 61 GiB of RAM free. The replacement is target/ on disk
+# with chattr +C — `scripts/target-to-disk.sh` migrates back, keeping the build.
+if [ "${1:-}" != "--off" ] && [ "${1:-}" != "--force" ]; then
+  echo "[tmpfs] RETIRED (2026-08-22): target/ on tmpfs lives in zram under load — see docs/DevOps/BTRFS_METADATA_E_SWAP.md §2."
+  echo "[tmpfs] Use 'bash scripts/target-to-disk.sh' to go back to disk; pass --force to arm tmpfs anyway."
+  exit 1
+fi
+
 if [ "${1:-}" = "--off" ]; then
   if [ -L "$link" ]; then rm -f "$link"; mkdir -p "$link"
     echo "[tmpfs] reverted: $link is a real dir again (tmpfs copy left in $shm_dir)."

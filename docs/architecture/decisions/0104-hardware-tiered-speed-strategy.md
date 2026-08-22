@@ -71,3 +71,22 @@ hardcoded; each machine self-classifies.**
 If `standard`-tier (Windows) measurement shows the mid-box knobs are wrong (e.g. RA on-save is net-
 negative there), re-tier from measurement — do not copy the workstation profile. Re-open this ADR when
 a machine crosses a tier boundary (RAM upgrade) or when the CI build itself moves to a tiered runner.
+
+## Amendment 2026-08-22 — `target/` on tmpfs is RETIRED on `workstation` (measured)
+
+Decision item 2 listed *"`target/` on tmpfs — RAM-disk for link/IO"* with no measurement beside it.
+The price was measured on 2026-08-22: the primary's `target/` in `/dev/shm` held **33 GB**, of which
+**3 GB were resident and ~30 GB had been swapped into zram** — which is itself RAM (12.1 GiB
+compressed). Swap sat at **32/32 GiB with 61 GiB of RAM free**, i.e. zero headroom for the next peak,
+which is exactly the 2026-08-14 failure mode (swap exhausted with RAM to spare → kernel OOM inside the
+VS Code scope → `OOMPolicy=stop` kills the window). The build also evaporated on every reboot.
+
+**Replaced by:** `target/` as a real directory on the btrfs with `chattr +C` (nodatacow — no CoW, no
+zstd on throwaway artifacts), the same shape the worktree targets already had. Migration preserving
+the warm build: `scripts/target-to-disk.sh` (guarded: idle primary, enough unallocated btrfs space).
+`scripts/target-on-tmpfs.sh` now arms only with `--force`. Measured context and the two sibling
+findings (btrfs metadata starvation; checksum corruption correlated with kernel 7.2.0) live in
+[`docs/DevOps/BTRFS_METADATA_E_SWAP.md`](../../DevOps/BTRFS_METADATA_E_SWAP.md).
+
+**Kept:** sccache, mold, RA-as-oracle, high parallelism — untouched. **Revisit** only with an A/B
+table (re-link time tmpfs vs disk+nocow on the same tree) that shows a gain worth 12 GiB of RAM.

@@ -8,8 +8,30 @@
 //! de um arquivo só.
 
 use ph2d_node_registry::{
-    ParamGroup, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+    ParamGateAbove, ParamGroup, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
 };
+
+/// **O `avoid` é o interruptor da própria família** (doc 90 §2, caça aos knobs mortos).
+///
+/// ⚠️ `avoid > 0` é literalmente a porta de entrada da lei — abaixo dela a lista de obstáculos
+/// sai vazia e nem `avoid_radius` nem `lookahead` chegam a ser lidos. O default é `0`, logo os
+/// dois nascem inertes, com rótulos que prometem desvio de obstáculo.
+///
+/// ⚠️ **O mecanismo já estava escrito no doc-comment do [`crate::avoid`]** (*"`0` desliga — e
+/// desliga os três params da família"*) e o painel pintava os três na mesma. *Uma decisão
+/// documentada e não executada é indistinguível, para quem usa, de um bug.*
+pub(super) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
+    ParamGateAbove {
+        param: "avoid_radius",
+        when: "avoid",
+        above: 0.0,
+    },
+    ParamGateAbove {
+        param: "lookahead",
+        when: "avoid",
+        above: 0.0,
+    },
+];
 
 /// **O que os números deste nó SÃO** (doc 88 Wave A) — nunca como se mostram.
 ///

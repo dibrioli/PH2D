@@ -156,12 +156,27 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_channel_range(MANIFEST.id, PARAM_CHANNEL_RANGE);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
+
+/// **A direção do easing não existe numa reta** (doc 90 §2, caça aos knobs mortos).
+///
+/// ⚠️ `ease_curve` nasce em `Linear`, e o `Linear` devolve `t` **antes** de olhar para a
+/// direção — In, Out e In-Out dão a mesma saída, ao bit. Era o pior dos dezanove pela posição:
+/// um Stagger recém-largado, o artista gira o seletor de direção à procura do que ele promete,
+/// e nada se move. *É o primeiro gesto que qualquer pessoa faz neste nó.*
+///
+/// `0 = Linear` · `1..7 = Quad · Cubic · Quart · Quint · Circ · Back · Bounce`.
+static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: "ease_dir",
+    when: "ease_curve",
+    values: &[1, 2, 3, 4, 5, 6, 7],
+}];
 
 /// Param UI hints (M1.P1). `channel` / `ease_curve` / `ease_dir` are **named**
 /// selectors (segmented buttons), `reverse` a checkbox — never number sliders.

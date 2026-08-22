@@ -329,13 +329,34 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_gates_above(MANIFEST.id, PARAM_GATES_ABOVE);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
 use ph2d_node_registry::{
-    ParamGate, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+    ParamGate, ParamGateAbove, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
 };
+
+/// **A LEI DA SEGUNDA OITAVA** (doc 90 §1): `roughness` (o `gain`) e `lacunarity` descrevem a
+/// relação entre oitavas CONSECUTIVAS, e o `ph2d-fbm` aplica-os depois de somar a oitava
+/// corrente — a `octaves = 1` (o default) nenhum dos dois toca a saída. Os irmãos exactos são
+/// o `force.wind` e o `motion.wiggle`.
+///
+/// ⚠️ A tabela `PARAM_GATES` deste nó já escondia `feature`/`jitter` e **esquecia estes dois** —
+/// o defeito não era a ausência de mecanismo, era a lista incompleta.
+static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
+    ParamGateAbove {
+        param: "roughness",
+        when: "octaves",
+        above: 1.0,
+    },
+    ParamGateAbove {
+        param: "lacunarity",
+        when: "octaves",
+        above: 1.0,
+    },
+];
 
 /// **O que o `loop_period` É** (doc 88, Wave A): uma DURAÇÃO, em segundos.
 ///

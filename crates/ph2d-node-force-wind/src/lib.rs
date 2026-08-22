@@ -327,13 +327,41 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates_above(MANIFEST.id, PARAM_GATES_ABOVE);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     // ADR-0130: per-element force: accumulates accel, identity preserved.
     reg.register_dense_window(MANIFEST.id);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGateAbove, ParamUiHint, ParamWidget};
+
+/// **A LEI DA SEGUNDA OITAVA** (doc 90 §1 — a caça aos knobs mortos, 2026-08-22).
+///
+/// ⚠️ `lacunarity` e `roughness` são os dois números que descrevem **a relação entre oitavas
+/// consecutivas**, e o `ph2d-fbm` aplica-os (`px *= lacunarity`, `amp *= gain`) **depois** de
+/// somar a oitava corrente. Com `octaves = 1` — o **default deste nó** — não existe oitava
+/// seguinte, e os dois são provadamente inertes: mexê-los não muda um bit da saída.
+///
+/// O sintoma media-se no painel do nó recém-largado: **dois sliders de aspecto fractal, lado a
+/// lado, ambos mudos**. E é a pior forma do defeito — *dois knobs inertes vizinhos ensinam que
+/// o BLOCO de ruído não funciona, e não que falta subir um terceiro número primeiro.*
+///
+/// ⚠️ Um `ParamGate` não serviria: ele arredonda a inteiro e compara com uma lista de índices
+/// de enum, e `octaves` é uma grandeza. A pergunta *"apareça quando isto passar de 1"* é
+/// exactamente o [`ParamGateAbove`].
+static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
+    ParamGateAbove {
+        param: "lacunarity",
+        when: "octaves",
+        above: 1.0,
+    },
+    ParamGateAbove {
+        param: "roughness",
+        when: "octaves",
+        above: 1.0,
+    },
+];
 
 /// Param UI hints (M1.P1).
 static PARAM_HINTS: &[ParamUiHint] = &[

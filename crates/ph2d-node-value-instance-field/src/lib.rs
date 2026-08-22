@@ -395,10 +395,22 @@ static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
         values: &[0, 2],
     },
     // ⚠️ A semente e a decorrelação só existem no modo que as LÊ. Index e Ramp
-    // são funções puras do ordinal — um toggle ali seria controle morto, e o
-    // `Seed` ao lado dele já é gateado pelo mesmo motivo.
+    // são funções puras do ordinal — um toggle ali seria controle morto.
     ph2d_node_registry::ParamGate {
         param: "unique_per_node",
+        when: "mode",
+        values: &[2],
+    },
+    // ⚠️ **Esta linha faltava, e o comentário acima AFIRMAVA que ela existia** — *"o `Seed` ao
+    // lado dele já é gateado pelo mesmo motivo"*, e não estava (doc 90 §2, 2026-08-22). O nó
+    // nasce em `Ramp`, então o campo `Seed` aparecia com a roleta de re-roll ao lado, num modo
+    // que é função pura do ordinal e nunca o lê.
+    //
+    // ⚠️ É o mais traiçoeiro dos dezanove: um doc-comment que garante a cura torna a ausência
+    // dela **invisível a quem relê o arquivo**. *Uma nota sobre o que o código faz é uma
+    // afirmação, e ela envelhece com a mesma facilidade que qualquer outra.*
+    ph2d_node_registry::ParamGate {
+        param: "seed",
         when: "mode",
         values: &[2],
     },

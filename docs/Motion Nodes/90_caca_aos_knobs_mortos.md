@@ -184,3 +184,64 @@ Para os que dependem de um LIMIAR e não de um índice (o `avoid > 0` do `motion
 
 ⚠️ **A cura de cada um precisa da sua cena de smoke**, e a cena tem de mostrar as duas metades: o
 knob a aparecer quando age e a sumir quando não age. *Um gate que só prova a ausência prova metade.*
+
+---
+
+## §7 — A FILA DAS CURAS (o plano, com o gate exacto de cada uma)
+
+⚠️ **O índice errado é PIOR que o defeito.** Um `values` mal escrito esconde o knob exactamente
+quando ele age, e aí o artista não tem gesto nenhum para o alcançar. Por isso a tabela abaixo traz
+os rótulos **lidos do código**, e por isso a prova (§7.2) é **derivada por medição**, nunca escrita
+à mão.
+
+### §7.1 — As duas famílias de gate
+
+**A. `ParamGateAbove { param, when, above }`** — aparece quando `when > above` (estrito). É a
+família do limiar contínuo, onde arredondar a inteiro não diz nada.
+
+| nó | param(s) | `when` | `above` | faixa do `when` (lida) |
+|---|---|---|---|---|
+| `motion.wiggle` | `amp_mult` | `octaves` | `1.0` | `1..MAX_OCTAVES`, IntSlider |
+| `force.wind` | `lacunarity` · `roughness` | `octaves` | `1.0` | `1..4`, IntSlider |
+| `value.noise` | `roughness` · `lacunarity` | `octaves` | `1.0` | `1..8`, Slider |
+| `motion.boids` | `avoid_radius` · `lookahead` | `avoid` | `0.0` | `0..20`, Slider |
+
+**B. `ParamGate { param, when, values }`** — `values` são os índices do enum em que o param
+**APARECE**.
+
+| nó | param(s) | `when` | rótulos do `when` (lidos do código) | `values` |
+|---|---|---|---|---|
+| `motion.stagger` | `ease_dir` | `ease_curve` | `Linear·Quad·Cubic·Quart·Quint·Circ·Back·Bounce` | `[1,2,3,4,5,6,7]` |
+| `motion.tint` | `r2` (âncora do swatch `End`) | `mode` | `Solid·Gradient` | `[1]` |
+| `fx.rgb_split` | `strength` | `mode` | `Split·Aberration` | `[1]` |
+| `fx.rgb_split` | `x` · `y` | `mode` | idem | `[0]` |
+| `value.instance_field` | `seed` | `mode` | `Index·Ramp·Random` | `[2]` |
+| `value.map_range` | `clamp` | `interpolation` | `Linear·Stepped·Smooth·Smoother` | `[0,1]` |
+| `value.step` | `width` | `mode` | `Hard·Smooth·Smoother` | `[1,2]` |
+| `motion.emitter` | `shape_w` · `shape_h` | `shape_mode` | `Point·Disc·Ring·Rect` | `[1,2,3]` |
+
+⚠️ **O `motion.tint` gateia SÓ a âncora.** Os outros três canais (`g2`/`b2`/`a2`) já não pintam
+linha própria — o construtor do painel dobra-os no swatch (`consumed`), e é a âncora que emite a
+row. Gatear os quatro seria escrever três linhas que não decidem nada.
+
+### §7.2 — A PROVA, em duas metades (nenhuma delas basta sozinha)
+
+| metade | pergunta | onde vive |
+|---|---|---|
+| **A — o knob não AGE** | fora do gate, mudar o param não muda um bit da saída; dentro do gate, muda | `crates/ph2d-node-registry-init/tests/` — é onde o registry inteiro existe |
+| **B — o painel não PINTA** | fora do gate a row não é construída; dentro, é | `shells/desktop/` — é onde o construtor de rows vive |
+
+⚠️ **A metade A é DERIVADA: ela cozinha o nó em cada modo e mede.** Escrever o `values` no teste
+seria repetir o mesmo palpite duas vezes e chamar-lhe prova. Se um índice desta tabela estiver
+errado, é a metade A que reprova — e é para isso que ela existe.
+
+⚠️ **E a metade A tem de exigir os DOIS lados.** Um teste que só verifique *"é inerte fora do
+gate"* passa num gate que esconde o knob sempre (`values: &[]`) — o defeito oposto, e pior. A
+asserção é um par: **inerte fora, vivo dentro de pelo menos um**.
+
+### §7.3 — Ordem
+
+1. Os gates (11 crates, side-metadata — ⛔ nenhum toca o `NodeManifest` congelado, §6 do CLAUDE.md).
+2. A prova A, sobre os 19.
+3. A prova B, sobre os 11 nós.
+4. Uma cena de smoke em que o Enio veja o painel a mudar de tamanho ao girar o modo.

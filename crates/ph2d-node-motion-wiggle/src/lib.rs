@@ -226,6 +226,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // ⚠️ As duas réguas são a MESMA saída: mostrar as duas seria três números na
     // tela a discordar sobre a mesma grandeza (o precedente do `time_mode`/`bpm`).
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_gates_above(MANIFEST.id, PARAM_GATES_ABOVE);
     reg.register_param_channel_range(MANIFEST.id, PARAM_CHANNEL_RANGE);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
@@ -233,7 +234,19 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamGateAbove, ParamUiHint, ParamWidget};
+
+/// **A LEI DA SEGUNDA OITAVA** (doc 90 §1): o `amp_mult` é o `gain` do fBm, e o `ph2d-fbm`
+/// aplica-o **depois** de somar a oitava corrente — com `octaves = 1`, o default deste nó, ele
+/// não muda um bit. O irmão exacto vive no `force.wind` e no `value.noise`, com o mesmo `above`.
+///
+/// ⚠️ **O rótulo é o do After Effects**, o que faz o artista procurar aqui exactamente o efeito
+/// que, a uma oitava, não está aqui.
+static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[ParamGateAbove {
+    param: "amp_mult",
+    when: "octaves",
+    above: 1.0,
+}];
 
 /// Só a régua escolhida aparece — o gêmeo do gate do irmão `motion.noise`.
 static PARAM_GATES: &[ParamGate] = &[

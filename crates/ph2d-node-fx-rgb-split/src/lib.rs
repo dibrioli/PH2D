@@ -218,6 +218,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     // CPU-only: this node reads `falloff` only at eval runtime (no GPU kernel), so the
@@ -229,7 +230,37 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+use ph2d_node_registry::{
+    ParamGate, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+};
+
+/// **Os dois modos leem números DIFERENTES** (doc 90 §2, caça aos knobs mortos).
+///
+/// ⚠️ `offsets` devolve o deslocamento uniforme `(x, y)` **antes** de olhar para `strength`, que
+/// só existe no braço `Aberration`; e em `Aberration` é `(x, y)` que ele não olha. Com `mode`
+/// a nascer em `Split`, o painel de cinco linhas pintava **Strength** logo no estado inicial, e
+/// arrastá-la de `0` a `0,5` não movia um pixel.
+///
+/// ⚠️ **Os três têm de ser gateados JUNTOS.** Esconder só o `strength` trocaria um par de knobs
+/// mortos por outro — `x` e `y` são o espelho exacto dele do outro lado do seletor.
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "strength",
+        when: "mode",
+        // `0 = Split` · `1 = Aberration`.
+        values: &[1],
+    },
+    ParamGate {
+        param: "x",
+        when: "mode",
+        values: &[0],
+    },
+    ParamGate {
+        param: "y",
+        when: "mode",
+        values: &[0],
+    },
+];
 
 /// **O que cada número É** (doc 88, Wave A · doc 89 folha 11) — o irmão exacto da declaração
 /// do `fx.drop_shadow`, e pela mesma medição: a família `fx.*` não declarava nenhum dos quatro

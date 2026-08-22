@@ -126,8 +126,27 @@ fn stagger_params_are_named_enums_and_a_checkbox() {
         .expect("ease_curve is a named Enum row");
     // The rich curve family set (Penner minus the transcendental ones).
     assert!(ease.labels.contains(&"Bounce") && ease.labels.contains(&"Back"));
+    // ⚠️ **Com a curva em `Linear` — o estado em que o nó nasce — a DIREÇÃO não aparece**, e é
+    // a cura de 2026-08-22 (doc 90 §2): o `Linear` devolve `t` antes de olhar para a direção,
+    // logo In/Out/In-Out davam a mesma saída ao bit.
+    //
+    // ⚠️ O assunto deste teste é o WIDGET (*"um enum vira um seletor nomeado, não um slider de
+    // passos a decorar"*). Ele perguntava com a curva no default e, sem querer, fixava a
+    // visibilidade defeituosa — *um teste pode pinar um bug de desenho enquanto prova outra
+    // coisa, e continua verde a fazê-lo.*
     assert!(
-        snap.rows
+        !snap
+            .rows
+            .iter()
+            .any(|r| matches!(r, ParamRow::Enum(e) if e.name == "ease_dir")),
+        "em Linear a direcao nao e' pintada — ela nao muda nada ai'"
+    );
+    motion.doc.graph.set_param(st, "ease_curve", 1.0);
+    let eased =
+        build_params_snapshot(&motion, ProjectSettings::default()).expect("stagger resolvable");
+    assert!(
+        eased
+            .rows
             .iter()
             .any(|r| matches!(r, ParamRow::Enum(e) if e.name == "ease_dir")),
         "ease_dir (In/Out/In-Out) is its own named Enum row"

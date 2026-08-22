@@ -277,10 +277,28 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
+
+/// **A largura só existe se houver rampa** (doc 90 §2, caça aos knobs mortos).
+///
+/// ⚠️ O braço `Hard` — que é o **default** — decide por `v >= threshold` e **nunca lê a
+/// largura**; ela só molda a banda em `Smooth`/`Smoother`. O nó recém-largado pintava
+/// **Width** logo abaixo de **Threshold**, e arrastá-lo de ponta a ponta não mudava um pixel
+/// da máscara.
+///
+/// ⚠️ **E o inverso NÃO se gateia:** o `mode` também lê como inerte com `width = 0`, e é
+/// correcto que assim seja — um SELETOR não pode ser escondido pela magnitude que ele modula,
+/// senão ele desaparece exactamente quando o artista vai procurá-lo.
+static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: "width",
+    when: "mode",
+    // `0 = Hard` · `1 = Smooth` · `2 = Smoother` — só os dois últimos leem a largura.
+    values: &[1, 2],
+}];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     // Where the gate cuts, on the input's scale. The normalised-driver convention

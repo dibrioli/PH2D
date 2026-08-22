@@ -45,9 +45,26 @@ fn selected_tint_node_yields_mode_and_colour_swatch_rows() {
         })
         .expect("Start colour is a swatch, not four sliders");
     assert_eq!(start.srgb, [255, 255, 255, 255]);
-    // The gradient End is its own swatch over r2/g2/b2/a2.
+    // ⚠️ **Em Solid — o modo em que o nó nasce — a segunda cor NÃO aparece**, e é a cura de
+    // 2026-08-22 (doc 90 §2): o braço `Gradient` é o único que lê `r2..a2`, então pintar o
+    // swatch em Solid era um controle que não mudava a imagem.
+    //
+    // ⚠️ Este teste é sobre o WIDGET (*"uma cor é um swatch, nunca quatro sliders"*), não sobre
+    // a visibilidade — então ele passa a perguntar no modo em que a row existe. *Um teste cujo
+    // assunto declarado é outro não deve fixar, de passagem, o defeito que a wave cura.*
     assert!(
-        snap.rows
+        !snap
+            .rows
+            .iter()
+            .any(|r| matches!(r, ParamRow::Color(c) if c.channels == ["r2", "g2", "b2", "a2"])),
+        "em Solid o swatch End nao e' pintado — ele nao faz nada ai'"
+    );
+    // Em Gradient ele é o seu próprio swatch sobre r2/g2/b2/a2.
+    motion.doc.graph.set_param(tint, "mode", 1.0);
+    let grad = build_params_snapshot(&motion, ProjectSettings::default())
+        .expect("tint node is resolvable");
+    assert!(
+        grad.rows
             .iter()
             .any(|r| matches!(r, ParamRow::Color(c) if c.channels == ["r2", "g2", "b2", "a2"])),
         "End colour is its own swatch"

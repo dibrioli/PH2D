@@ -400,6 +400,24 @@ pub static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
         when: "shape_mode",
         values: &[1, 2, 3],
     },
+    // ⚠️ **As DUAS linhas abaixo faltavam, e a de cima já dizia a condição exacta** (doc 90 §2,
+    // 2026-08-22): `birth_offset` sai cedo com `Shape::Point`, o default, então a largura e a
+    // altura da forma de nascimento são inertes ali — e o `dir_mode` ao lado desaparecia
+    // correctamente pela MESMA condição.
+    //
+    // ⚠️ *Um gate que trata um dos params de uma família e esquece os outros dois é pior que
+    // nenhum*: ele ENSINA ao artista que este painel esconde o que não serve, e é exactamente
+    // por acreditar nisso que ele vai arrastar Shape W à procura de um efeito que não existe.
+    ph2d_node_registry::ParamGate {
+        param: "shape_w",
+        when: "shape_mode",
+        values: &[1, 2, 3],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "shape_h",
+        when: "shape_mode",
+        values: &[1, 2, 3],
+    },
     ph2d_node_registry::ParamGate {
         param: "rate",
         when: "emit_mode",

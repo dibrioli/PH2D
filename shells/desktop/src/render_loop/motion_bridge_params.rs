@@ -44,6 +44,11 @@ use params_range::{channel_range_override, contain};
 /// `params_range`, cortada pelo mesmo teto e pelo mesmo critério: por assunto).
 #[path = "motion_bridge_params_visible.rs"]
 mod params_visible;
+/// A metade de PAINEL da cura dos knobs mortos (doc 90 §7.2) — a irmã do gate de kernel
+/// `param_gates_are_exact`, que vive em `ph2d-node-registry-init`.
+#[cfg(test)]
+#[path = "motion_bridge_params_visible_tests.rs"]
+mod params_visible_tests;
 
 #[path = "motion_bridge_params_edit.rs"]
 mod params_edit;

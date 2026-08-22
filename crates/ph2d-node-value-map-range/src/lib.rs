@@ -327,11 +327,23 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 
 /// O `steps` só existe para a rampa em DEGRAUS — nos outros três ele é inerte, e
 /// *um controle que não faz nada não é pintado*.
-static PARAM_GATES: &[ParamGate] = &[ParamGate {
-    param: "steps",
-    when: "interpolation",
-    values: &[1],
-}];
+static PARAM_GATES: &[ParamGate] = &[
+    ParamGate {
+        param: "steps",
+        when: "interpolation",
+        values: &[1],
+    },
+    // ⚠️ **`Smooth` e `Smoother` clampam INCONDICIONALMENTE** — o `shape_t` deles fecha a
+    // faixa antes de olhar para o toggle, então ali o `Clamp` é um controle mudo (doc 90 §2).
+    // O próprio doc-comment do nó já notava que *"o Blender cinzenta a caixa Clamp para
+    // exactamente estes dois"*; faltava executá-lo.
+    // `0 = Linear` · `1 = Stepped` · `2 = Smooth` · `3 = Smoother`.
+    ParamGate {
+        param: "clamp",
+        when: "interpolation",
+        values: &[0, 1],
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

@@ -431,12 +431,34 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering (Solid mode), on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
+
+/// **A segunda cor só existe no gradiente** (doc 90 §2, caça aos knobs mortos).
+///
+/// ⚠️ A cor `End` é lida **só** no braço `Gradient`, e `mode` nasce em `Solid`: o artista abria
+/// o segundo swatch, escolhia uma cor no picker OKLCH e a imagem não mudava.
+///
+/// ⚠️ **Este defeito estava CONFESSADO por escrito no hint deste arquivo** — *"it paints
+/// regardless — v1 has no per-mode row hiding"* — e o mecanismo que o cura já existia no
+/// repositório, usado pelo irmão `motion.transform`. *Uma limitação anotada continua uma
+/// limitação; a nota não é a cura, e escrevê-la pode até adiar a cura por parecer uma.*
+///
+/// ⚠️ **Gateia só a ÂNCORA.** Os outros três canais (`g2`/`b2`/`a2`) não pintam linha própria —
+/// o construtor de rows dobra-os no swatch (`consumed`) e é `r2` que emite a row. Três linhas a
+/// mais aqui não decidiriam nada.
+///
+/// `0 = Solid` · `1 = Gradient`.
+static PARAM_GATES: &[ParamGate] = &[ParamGate {
+    param: "r2",
+    when: "mode",
+    values: &[1],
+}];
 
 /// The last valid `blend` value. Written as a literal because a `usize as f32`
 /// cast is not what a slider bound should cost — and pinned to the label list by

@@ -525,4 +525,19 @@
 /// ⚠️ **E ele bumpa UMA vez.** O blob carrega a própria versão (`SHEET_DOC_VERSION`), como o
 /// `TimelineDoc` e o `sculpt` — então as regiões do hand-packed, que entram neste MESMO
 /// documento, não voltarão a recusar projeto salvo nenhum.
-pub(crate) const PROJECT_SCHEMA: u32 = 85;
+/// v86 (`line/Sprite`, §5 9-Slice — A FORMA DO `SliceNine` MUDOU TRÊS VEZES NUM DIA): o
+/// componente `SliceNine`, registado em `register_ecs_components`, perdeu o campo
+/// **`stretch_value`** (o slider `Stretch` do `Adaptive`, retirado porque o mecanismo dele não
+/// podia funcionar) e o `SliceDrawMode` perdeu a variante **`Tiled`** (ela era o `Sliced` menos a
+/// capacidade de esticar uma região).
+/// ⚠️ **O componente é name-keyed, mas o BLOB dele é posicional.** Um projeto gravado hoje de
+/// manhã tem a mesma chave `"ph2d::ecs::SliceNine"` com o layout velho: sem este degrau o leitor
+/// novo lê o `bool` do `fill_center` onde estavam os quatro bytes do `stretch_value`. É a lei que
+/// os degraus v6/v7/v8 já escreveram — *não é campo novo no arquivo, é o MESMO campo com outro
+/// layout, e posicional é posicional*.
+/// ⚠️ **Um bump para as três mudanças, não três.** Elas caem no mesmo dia e no mesmo componente,
+/// e nenhuma chegou ao `main`: o que o número tem de separar é o formato de ontem do de hoje.
+/// ⚠️ Adicionar o `SliceNine` e o `NamedAnchorList` ao registo (2026-08-21) **não** pediu degrau —
+/// isso é aditivo numa tabela por NOME, e um arquivo velho apenas não os tem. O que pede degrau é
+/// **mudar a forma de uma chave que já existe**.
+pub(crate) const PROJECT_SCHEMA: u32 = 86;

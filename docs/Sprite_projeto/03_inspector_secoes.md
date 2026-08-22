@@ -83,24 +83,40 @@ Quando Strategy = Hand-packed: Region campos ficam ocultos (Hand-packed traz seu
 
 **Frame ↔ Frame Coords sync bidirecional:** mudar frame_coords atualiza frame (`frame = row * hframes + col`) e vice-versa. Visual no canvas mostra grid de hframes×vframes overlay quando seção expandida.
 
-## 3.5 Seção 5: 9-Slice (collapsible — só ativa quando `SliceNine` Component anexado)
+## 3.5 Seção 5: 9-Slice (collapsible)
 
-| Campo | Widget | Default | Hotkey | Origem |
-|---|---|---|---|---|
-| Draw Mode | `Segmented` (Simple / Sliced / Tiled) | Simple | — | Unity |
-| Slice Borders L | `NumberInput` (px) | 0 | — | Unity + Defold |
-| Slice Borders T | `NumberInput` (px) | 0 | — | idem |
-| Slice Borders R | `NumberInput` (px) | 0 | — | idem |
-| Slice Borders B | `NumberInput` (px) | 0 | — | idem |
-| Size X/Y (Sliced/Tiled) | 2 × `NumberInput` (m) | da textura | — | Unity SpriteRenderer.size |
-| **Per-region tile mode** | 8 × `Dropdown` (Stretch/Repeat/Mirror/BlankRepeat — **4 modos canônicos** GameMaker) — 4 cantos + 4 bordas | Stretch | — | GameMaker (verificado em docs oficiais) |
-| Tile Mode (global Tiled) | `Segmented` (Continuous / Adaptive) | Continuous | — | Unity |
-| Stretch Value (Adaptive) | `Slider 0..1` | 0.5 | — | Unity |
-| Fill Center | `bool toggle` | true | — | Unity |
+> ⚠️ **Esta tabela foi CORRIGIDA em 2026-08-22 contra o que a seção de facto ficou**, depois de
+> quatro smokes do Enio. A spec de 2026-05 descrevia cinco controlos que hoje não existem, e um
+> doc que descreve o que foi apagado mente com mais confiança do que um que não existe. As
+> **recusas medidas** estão no fim da seção, com o mecanismo de cada uma.
 
-**Razão per-region tile mode:** GameMaker é único em ter por-região; Unity/Godot só global. Diferença: pode ter cantos fixos + lateral repete + topo stretcha + bottom hide. UI completa de dialog box / button bar.
+| Campo | Widget | Default | Origem |
+|---|---|---|---|
+| **Enable 9-slice** | `Checkbox` | off | — (a única porta: ligar anexa o componente) |
+| Slice Borders L / T | 2 × `NumberInput` (px) | 0 | Unity + Defold |
+| Slice Borders R / B | 2 × `NumberInput` (px) | 0 | idem |
+| Size X/Y | 2 × `NumberInput` (m, `0` = herda) | 0 | Unity SpriteRenderer.size |
+| **Per-region tiling** | grelha 3×3 que **cicla ao clique** — 4 bordas + miolo em `S`/`R`/`M`/`-`, e os **4 cantos em `F`/`-`** | Stretch | GameMaker (por-região) |
+| **Tile all / Stretch all** | 2 × `Button` — escrevem nas nove células | — | (substituem o antigo modo `Tiled`) |
+| Tile Mode | `Segmented` (Continuous / **Whole**) | Continuous | Godot `TILE` / `TILE_FIT` |
+| Fill Center | `Checkbox` | true | Unity |
 
-**Adicionar SliceNine ao sprite:** botão "+ Add 9-Slice" no top da seção. Cria Component `SliceNine` com defaults. Botão "× Remove 9-Slice" remove.
+**Razão per-region tile mode:** GameMaker é único em ter por-região; Unity/Godot só global.
+Diferença: pode ter cantos fixos + lateral repete + topo estica + fundo escondido.
+
+**Ligar/desligar:** a caixa **Enable 9-slice** é a única porta. Ligá-la num sprite sem o
+componente anexa-o, e continua inerte (bordas nascem a zero, e bordas a zero são o sprite de
+sempre). Desligá-la guarda os valores.
+
+### ⛔ Recusas MEDIDAS — não reconstrua sem ler o mecanismo
+
+| O que a spec pedia | Porque não existe |
+|---|---|
+| `Draw Mode` = Segmented **Simple / Sliced / Tiled** | `Tiled` era o `Sliced` mais `S ⇒ repeat`, o que tornava **esticar uma região inexprimível** lá dentro, e punha a letra `S` da grelha a mentir. Saiu; a conveniência dele vive nos dois atalhos. Restaram dois estados — e dois estados são uma **caixa**, não um segmentado. |
+| Botão **«+ Add 9-Slice»** e **«× Remove 9-Slice»** | Duas portas para «o 9-slice está ligado?», ao lado da caixa. E medido: um sprite **sem** o componente e um **com ele desligado** desenham igual, gravam igual e mostram a mesma seção. O `Remove` não fazia nada observável. |
+| `Tile Mode` = **Adaptive** + slider **Stretch Value 0..1** | O resultado é **binário** (há emenda ou não há) e o resto é fixo para um dado tamanho: todo o curso do slider é morto menos **um** ponto, e esse ponto é invisível. Um controlo contínuo sobre um resultado de duas posições nunca «funciona bem». Substituído por `Whole`. |
+| 8 × `Dropdown` por região | 32 alvos e ~8 linhas num painel estreito. A grelha 3×3 que cicla ocupa três linhas, tem oito alvos e **parece a coisa que edita**. |
+| 4 modos em cada uma das 8 células | Um **canto nunca ladrilha** (por construção: o 9-slice repete no eixo que cresce, e num canto nenhum cresce). `S`/`R`/`M` davam geometria byte-idêntica ali — três das quatro posições eram inertes. Os cantos ciclam **`F` (fixo) ↔ `-`**. |
 
 ## 3.6 Seção 6: Color & Tint ⭐⭐⭐ (a seção crítica)
 

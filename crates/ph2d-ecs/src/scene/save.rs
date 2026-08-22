@@ -272,6 +272,74 @@ mod tests {
         assert_eq!(snap.entities.len(), 3);
     }
 
+    /// ⚠️ **A §5 e a §12 nasceram registadas e SEM prova de que sobrevivem ao disco** (achado da
+    /// auditoria de fecho do 9-slice, 2026-08-22).
+    ///
+    /// Estar no `ComponentRegistry` faz o componente ser **escrito**; nada disso prova que ele
+    /// volta igual. E a forma do `SliceNine` mudou três vezes num dia — cada uma dessas mudanças
+    /// atravessou este caminho sem um teste a olhar.
+    ///
+    /// ⚠️ **O fixture usa valores NÃO-DEFAULT em cada campo**, e é isso que o torna uma prova: um
+    /// `SliceNine::INERT` gravado e relido daria igual mesmo que o restore devolvesse o default,
+    /// e a mesma lei vale para a âncora (nome, pose, bounds e centro todos diferentes de zero).
+    #[test]
+    fn the_sprite_authoring_components_survive_the_disk() {
+        use crate::{
+            NamedAnchor, NamedAnchorList, SliceDrawMode, SliceNine, SliceTileMode, TileRegionMode,
+        };
+
+        let mut reg = ComponentRegistry::new();
+        register_ecs_components(&mut reg);
+
+        let slice = SliceNine {
+            draw_mode: SliceDrawMode::Sliced,
+            borders: [3.0, 5.0, 7.0, 11.0],
+            size: [1.5, 2.5],
+            tile_modes: [
+                TileRegionMode::Stretch,
+                TileRegionMode::Repeat,
+                TileRegionMode::Blank,
+                TileRegionMode::Mirror,
+                TileRegionMode::Repeat,
+                TileRegionMode::Stretch,
+                TileRegionMode::Mirror,
+                TileRegionMode::Blank,
+            ],
+            centre_tile_mode: TileRegionMode::Mirror,
+            tile_mode: SliceTileMode::Whole,
+            fill_center: false,
+        };
+        let mut anchors = NamedAnchorList::default();
+        let mut a = NamedAnchor::socket("muzzle");
+        a.transform.translation = ph2d_core::Vec2::new(0.25, -0.75);
+        a.set_bounds(Some([1.0, 2.0, 3.0, 4.0]));
+        a.set_center(Some([0.5, 0.5, 0.5, 0.5]));
+        anchors.insert(a).expect("cabe");
+
+        let mut sim_a = SimWorld::new();
+        sim_a
+            .world_mut()
+            .spawn((Transform::default(), slice, anchors.clone()));
+        let mut state = TransformPropagationState::new(sim_a.world_mut());
+        let mut worklist = WorklistBuf::new();
+        let mut snap = WorldSnapshot::new();
+        world_to_snapshot(sim_a.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
+
+        let mut sim_b = SimWorld::new();
+        let back = snapshot_to_world(sim_b.world_mut(), &snap, &reg).unwrap();
+        let e = *back.first().expect("uma entidade");
+        assert_eq!(
+            sim_b.world_mut().get::<SliceNine>(e).copied(),
+            Some(slice),
+            "o 9-slice nao voltou igual do disco"
+        );
+        assert_eq!(
+            sim_b.world_mut().get::<NamedAnchorList>(e),
+            Some(&anchors),
+            "a lista de ancoras nao voltou igual do disco"
+        );
+    }
+
     #[test]
     fn snapshot_restore_round_trip_preserves_names_and_hierarchy() {
         let (mut sim_a, reg) = populated_world();

@@ -349,7 +349,16 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ficam onde estao, e este degrau so' toca o primeiro. ⚠️ O blob carrega a
         // PROPRIA versao (`SHEET_DOC_VERSION`), como o `TimelineDoc` e o `sculpt`:
         // as regioes do hand-packed entram no MESMO documento sem outro bump.
-        (85, 13, 14),
+        // PROJECT 85→86: a FORMA do componente `SliceNine` mudou — perdeu o campo
+        // `stretch_value` e o `SliceDrawMode` perdeu a variante `Tiled`. ⚠️ Ele e'
+        // name-keyed na tabela de componentes, mas o BLOB dele e' posicional: um
+        // projeto de ontem tem a mesma chave com o layout velho, e sem o degrau o
+        // leitor novo le o `bool` do `fill_center` onde estavam os quatro bytes do
+        // `stretch_value`. ⚠️ E' UM bump para as tres mudancas do mesmo dia no mesmo
+        // componente — o que o numero separa e' o formato de ontem do de hoje.
+        // ⚠️ Registar um componente NOVO nao pede degrau (aditivo numa tabela por
+        // nome); mudar a forma de uma chave que ja' existe, pede.
+        (86, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

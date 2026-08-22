@@ -82,12 +82,39 @@ pub(super) fn apply_patch(base: &RenderInstance, p: &SlicePatch) -> RenderInstan
     let mut ri = *base;
     ri.atlas_uv = p.uv;
     ri.size = p.size;
+    // ⚠️ **O FLIP DO SPRITE espelha a GRELHA, não cada célula no seu lugar** (auditoria de fecho,
+    // 2026-08-22 — defeito que nenhum smoke reportou).
+    //
+    // O `flip_x` da sprite é um bit na instância, e o shader inverte o `quv` de **cada** quad.
+    // Com um quad só isso é o espelho certo; com nove, inverte o conteúdo de cada célula *dentro
+    // dela própria* e deixa-a onde estava — o canto de cima-esquerda fica em cima-à-esquerda com
+    // o arco virado ao contrário, e a moldura sai partida.
+    //
+    // A metade que faltava é geométrica: **negar o deslocamento**. O conteúdo já vem invertido
+    // pelo bit da sprite; pôr cada célula do outro lado completa o espelho do sprite inteiro.
+    //
+    // ⚠️ Lê-se o `base.flip_uv` **antes** do XOR do quad, mais abaixo: o que espelha a grelha é o
+    // flip da SPRITE, não a correção de paridade que a célula possa trazer.
+    let mirror = [
+        base.flip_uv & RenderInstance::FLIP_X_BIT != 0,
+        base.flip_uv & RenderInstance::FLIP_Y_BIT != 0,
+    ];
     // O `anchor` É o centro do quad em metros locais (`local = anchor + quad_pos * size` no
     // shader), por isso deslocar o quad é somar — e somar ao anchor do sprite preserva o pivô
     // autorado (centered/offset) por baixo do 9-slice.
     ri.anchor = [
-        base.anchor[0] + p.center_offset[0],
-        base.anchor[1] + p.center_offset[1],
+        base.anchor[0]
+            + if mirror[0] {
+                -p.center_offset[0]
+            } else {
+                p.center_offset[0]
+            },
+        base.anchor[1]
+            + if mirror[1] {
+                -p.center_offset[1]
+            } else {
+                p.center_offset[1]
+            },
     ];
     ri.uv_xform = p.uv_xform;
     // ⚠️ **XOR, nunca OR.** O sprite pode já estar espelhado, e o quad **troca** esse estado em
@@ -374,6 +401,87 @@ mod tests {
             ri.flip_uv & 1,
             1,
             "o flip_x do sprite foi apagado pelo quad"
+        );
+    }
+
+    /// ⚠️ **UM SPRITE ESPELHADO ESPELHA A GRELHA INTEIRA, não cada célula no seu lugar.**
+    ///
+    /// Defeito encontrado na auditoria de fecho (2026-08-22) e **não** reportado por smoke: o
+    /// `flip_x` do sprite põe um bit na instância, e o shader inverte o `quv` de **cada** quad —
+    /// o que espelha o conteúdo de cada célula *dentro dela própria* e deixa cada uma no seu
+    /// sítio. Num sprite normal isso é o espelho certo, porque há um quad só. Com nove, o canto
+    /// de cima-esquerda fica em cima-à-esquerda com o arco virado ao contrário: a moldura sai
+    /// partida.
+    ///
+    /// A cura é geométrica e cabe numa linha: **espelhar as POSIÇÕES**. O conteúdo já vem
+    /// invertido pelo bit do sprite; negar o deslocamento do centro põe cada célula do outro lado,
+    /// e o resultado é o sprite inteiro ao espelho — que é o que o utilizador pediu.
+    #[test]
+    fn a_flipped_sprite_mirrors_the_whole_grid_not_each_cell_in_place() {
+        let s = SliceNine {
+            draw_mode: SliceDrawMode::Sliced,
+            borders: [8.0; 4],
+            ..SliceNine::INERT
+        };
+        let patches = patches_for(
+            Some(&s),
+            &spr(),
+            [0.0, 0.0, 1.0, 1.0],
+            Some((64, 64)),
+            100.0,
+            IDENTITY_BASIS,
+        )
+        .expect("nove quads");
+        let plain = base();
+        let mut flipped = base();
+        flipped.flip_uv = RenderInstance::pack_flip_flags(true, false, false);
+
+        // O canto de CIMA-ESQUERDA da grelha (índice 0).
+        let tl = patches[0].expect("o canto TL existe");
+        let a = apply_patch(&plain, &tl);
+        let b = apply_patch(&flipped, &tl);
+        // Sem espelho ele está à esquerda do pivô; com espelho, à direita — mesma distância.
+        let da = a.anchor[0] - plain.anchor[0];
+        let db = b.anchor[0] - flipped.anchor[0];
+        assert!(da < 0.0, "o canto TL nao esta' a' esquerda: {da}");
+        assert!(
+            (db + da).abs() < 1e-6,
+            "o canto nao trocou de lado num sprite espelhado ({da} -> {db}): a grelha ficou no              sitio e so' o conteudo de cada celula inverteu — a moldura sai partida"
+        );
+        // Em Y nada se mexe: o espelho era só em X.
+        assert_eq!(a.anchor[1], b.anchor[1], "espelhou em Y sem ninguem pedir");
+        // E o tamanho do canto NÃO muda: espelhar move, não redimensiona.
+        assert_eq!(a.size, b.size);
+    }
+
+    /// O mesmo em Y, e os dois ao mesmo tempo — o canto vai para a diagonal oposta.
+    #[test]
+    fn flipping_both_axes_sends_the_corner_to_the_opposite_diagonal() {
+        let s = SliceNine {
+            draw_mode: SliceDrawMode::Sliced,
+            borders: [8.0; 4],
+            ..SliceNine::INERT
+        };
+        let patches = patches_for(
+            Some(&s),
+            &spr(),
+            [0.0, 0.0, 1.0, 1.0],
+            Some((64, 64)),
+            100.0,
+            IDENTITY_BASIS,
+        )
+        .unwrap();
+        let tl = patches[0].unwrap();
+        let plain = base();
+        let mut both = base();
+        both.flip_uv = RenderInstance::pack_flip_flags(true, true, false);
+        let a = apply_patch(&plain, &tl);
+        let b = apply_patch(&both, &tl);
+        let (dax, day) = (a.anchor[0] - plain.anchor[0], a.anchor[1] - plain.anchor[1]);
+        let (dbx, dby) = (b.anchor[0] - both.anchor[0], b.anchor[1] - both.anchor[1]);
+        assert!(
+            (dbx + dax).abs() < 1e-6 && (dby + day).abs() < 1e-6,
+            "{dax},{day} -> {dbx},{dby}"
         );
     }
 

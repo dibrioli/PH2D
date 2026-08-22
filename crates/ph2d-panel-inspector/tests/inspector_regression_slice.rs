@@ -150,13 +150,6 @@ fn cases() -> Vec<Case> {
             stim: Stim::Check(false),
             expect: SliceFieldEdit::FillCenter(false),
         },
-        Case {
-            what: "x Remove 9-Slice",
-            variant: "Detach",
-            id: ids::INSP_SLICE_REMOVE,
-            stim: Stim::Click,
-            expect: SliceFieldEdit::Detach,
-        },
     ]
 }
 
@@ -397,20 +390,16 @@ fn the_enable_checkbox_is_reachable_on_a_sprite_without_the_component() {
             "uma borda foi pintada sobre um sprite sem autoria de 9-slice — ausencia nao e' zero"
         );
     }
-    // Nem o «Remove»: não há nada guardado para remover.
-    assert!(
-        !rects.iter().any(|(pid, _)| *pid == ids::INSP_SLICE_REMOVE),
-        "o «Remove» apareceu sobre um sprite que nao tem 9-slice nenhum"
-    );
 }
 
-/// **(6) DESLIGADA, a seção mostra a caixa e o «Remove» — e mais nada.**
+/// **(6) DESLIGADA, a seção mostra a CAIXA e mais nada.**
 ///
-/// ⚠️ Este é o estado que a pergunta do Enio criou: *«se Simple é desligado, porquê mostrar toda
-/// a UI abaixo?»*. O «Remove» fica porque **há** autoria guardada (desmarcar preserva os
-/// valores); os controlos saem porque o desenho os ignora.
+/// ⚠️ Duas perguntas do Enio moram neste teste: *«se Simple é desligado, porquê mostrar toda a UI
+/// abaixo?»* (os controlos saem — o desenho ignora-os) e *«o botão ×Remove ainda faz sentido?»*
+/// (não — um sprite **sem** componente e um **com ele desligado** desenham igual e gravam igual;
+/// o botão era a segunda porta para o mesmo estado). O que sobra é uma caixa.
 #[test]
-fn switched_off_the_section_shows_only_the_box_and_remove() {
+fn switched_off_the_section_shows_only_the_box() {
     let mut info = slice();
     info.present = true;
     info.draw_mode_tag = 0;
@@ -421,10 +410,6 @@ fn switched_off_the_section_shows_only_the_box_and_remove() {
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     let painted = |id| rects.iter().any(|(pid, _)| *pid == id);
     assert!(painted(ids::INSP_SLICE_ENABLE), "a caixa sumiu");
-    assert!(
-        painted(ids::INSP_SLICE_REMOVE),
-        "ha' autoria guardada e nao ha' como a remover"
-    );
     for id in ids::INSP_SLICE_BORDER {
         assert!(
             !painted(id),

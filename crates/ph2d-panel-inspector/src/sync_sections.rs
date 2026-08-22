@@ -59,7 +59,7 @@ fn sync_slice_fields(
     if entity_changed {
         // ⚠️ **A caixa que LIGA o 9-slice** — ela lê `present` E o modo. Um sprite sem componente
         // e um com o modo desligado são o mesmo estado para quem olha: 9-slice desligado.
-        let enable = if sl.mixed.draw_mode || sl.mixed.present {
+        let enable = if sl.mixed.enabled {
             CheckboxValue::Indeterminate
         } else if sl.present && sl.draw_mode_tag == 1 {
             CheckboxValue::Checked

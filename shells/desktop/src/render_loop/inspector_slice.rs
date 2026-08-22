@@ -18,7 +18,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld, SliceNine, World};
 use ph2d_editor::{InspectorSliceInfo, InspectorSliceMixed, SliceFieldEdit};
 
-use super::inspector_ordering::{queue_remove, queue_set};
+use super::inspector_ordering::queue_set;
 
 /// Nome canónico do componente no `ComponentRegistry`. ⚠️ Uma string errada aqui não falha a
 /// compilação: o comando é descartado em silêncio e a edição não acontece. É o mesmo nome que
@@ -51,8 +51,9 @@ pub(super) fn build_slice_info(
     if selected.len() > 1 {
         for &bits in selected {
             let (p, o) = slice_of(world, Entity::from_bits(bits));
-            mixed.present |= p != present;
-            mixed.draw_mode |= o.draw_mode != s.draw_mode;
+            // ⚠️ O bit EFETIVO, não as duas metades: sem componente e com ele desligado são o
+            // mesmo estado, e compará-los em separado acende «divergente» sobre um acordo.
+            mixed.enabled |= (p && o.draw_mode.is_nine()) != (present && s.draw_mode.is_nine());
             mixed.borders |= o.borders != s.borders;
             mixed.size |= o.size != s.size;
             mixed.tile_modes |=
@@ -96,10 +97,6 @@ pub(super) fn apply_slice_edit(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) {
-    if matches!(edit, SliceFieldEdit::Detach) {
-        queue_remove(queue, registry, entity_bits, SLICE_NINE);
-        return;
-    }
     let entity = Entity::from_bits(entity_bits);
     let mut s = sim
         .world()
@@ -114,8 +111,9 @@ pub(super) fn apply_slice_edit(
     queue_set(queue, registry, entity_bits, SLICE_NINE, &s.sanitized());
 }
 
-/// Escreve UM campo no componente. **`false` = a edição não é de campo** (`Detach` já foi
-/// tratada pelo chamador).
+/// Escreve UM campo no componente. Devolve sempre `true` hoje — o `bool` fica porque a próxima
+/// edição que **não** seja de campo (uma que apague, uma que reponha) precisa dele, e porque é
+/// ele que impede um braço novo de escrever em silêncio sobre o inerte.
 ///
 /// ⚠️ **É uma função à parte para poder ser CHAMADA por teste, e a razão é uma mutação que
 /// sobreviveu** (2026-08-22). Os testes deste ficheiro re-escreviam o corpo de cada braço à mão —
@@ -125,9 +123,6 @@ pub(super) fn apply_slice_edit(
 /// real para chamar.
 pub(super) fn write_field(s: &mut SliceNine, edit: SliceFieldEdit) -> bool {
     match edit {
-        // Já tratado pelo chamador; repetido para o `match` ficar exaustivo sem braço-curinga —
-        // um curinga aqui engoliria em silêncio a próxima variante que alguém acrescentasse.
-        SliceFieldEdit::Detach => return false,
         SliceFieldEdit::DrawMode(t) => s.draw_mode = ph2d_ecs::SliceDrawMode::from_tag(t),
         SliceFieldEdit::Border(i, v) => {
             if let Some(slot) = s.borders.get_mut(usize::from(i)) {
@@ -228,6 +223,52 @@ mod tests {
         assert!(write_field(&mut s, SliceFieldEdit::Border(9, 5.0)));
         assert!(write_field(&mut s, SliceFieldEdit::RegionMode(99, 1)));
         assert_eq!(s, before, "um indice fora de alcance escreveu algures");
+    }
+
+    /// ⚠️ **«Divergente» mede-se no que o utilizador VÊ, não na representação.**
+    ///
+    /// Um sprite **sem** o componente e um **com ele desligado** estão no mesmo estado: 9-slice
+    /// desligado. O snapshot comparava as duas metades em separado (`present` e `draw_mode`), e
+    /// por isso uma seleção dos dois acendia o «divergente» da caixa sobre um **acordo** —
+    /// exatamente a mentira que a auditoria de 2026-08-22 procurava noutros sítios.
+    #[test]
+    fn absent_and_switched_off_do_not_count_as_a_disagreement() {
+        let mut sim = ph2d_ecs::SimWorld::default();
+        let off = sim
+            .world_mut()
+            .spawn((ph2d_ecs::Transform::default(), SliceNine::INERT))
+            .id()
+            .to_bits();
+        let absent = sim
+            .world_mut()
+            .spawn(ph2d_ecs::Transform::default())
+            .id()
+            .to_bits();
+        let both = [off, absent];
+        let info = build_slice_info(sim.world(), off, &both, 2).expect("snapshot");
+        assert!(
+            !info.mixed.enabled,
+            "sem componente e desligado sao o MESMO estado — a caixa nao pode dizer «divergente»"
+        );
+
+        // E o controlo positivo: um LIGADO ao lado de um desligado diverge de verdade.
+        let on = sim
+            .world_mut()
+            .spawn((
+                ph2d_ecs::Transform::default(),
+                SliceNine {
+                    draw_mode: SliceDrawMode::Sliced,
+                    ..SliceNine::INERT
+                },
+            ))
+            .id()
+            .to_bits();
+        let mixed = [off, on];
+        let info = build_slice_info(sim.world(), off, &mixed, 2).expect("snapshot");
+        assert!(
+            info.mixed.enabled,
+            "ligado e desligado TEM de divergir — senao o gate acima passa por estar sempre falso"
+        );
     }
 
     /// A ordem `tile_modes` do snapshot é a ordem das regiões — tag a tag.

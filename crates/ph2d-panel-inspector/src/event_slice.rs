@@ -86,19 +86,6 @@ pub(crate) fn apply_slice_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         return true;
     }
 
-    // Retirar existe SEM snapshot de componente — ele é o que o apaga.
-    if let WidgetEvent::Click(id) = ev
-        && let Some(info) = state::current_inspector_slice()
-        && id == ids::INSP_SLICE_REMOVE
-    {
-        host.bus_mut().push(EditorAction::InspectorSliceEdit {
-            entity_bits: info.entity_bits,
-            edit: SliceFieldEdit::Detach,
-        });
-        demote_button(host, id);
-        return true;
-    }
-
     // O segmentado do Tile Mode: a POSIÇÃO no array É a tag.
     if let WidgetEvent::Click(id) = ev
         && let Some(info) = state::current_inspector_slice()

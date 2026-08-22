@@ -17,9 +17,11 @@
 //! em mais linhas, portanto **tem de** empurrar para baixo tudo o que vem depois dela. Se a altura
 //! for estimada em vez de medida, os dois layouts saem à MESMA altura — e é isso que o gate vê.
 //!
-//! O intervalo medido é o que fica **entre o segmented do Tile Mode e o botão Remove**, que
-//! contém a dica do `Whole` e mais nada: qualquer outra âncora misturaria a adaptação do próprio
-//! segmented na conta.
+//! O intervalo medido é o que fica **entre a grelha 3×3 e o segmented do Tile Mode**, que contém
+//! a legenda da grelha e mais nada. ⚠️ Ele já ancorou no «Remove» — e esse botão foi retirado
+//! (ele era a segunda porta para «desligado»). *Um gate ancorado num controlo morre com ele*, por
+//! isso a âncora de baixo é agora o primeiro segmento do Tile Mode, que a seção não pode perder
+//! sem perder a feature.
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::screens::hero::{InspectorSliceInfo, InspectorSliceMixed};
@@ -53,7 +55,7 @@ fn simple_slice() -> InspectorSliceInfo {
     }
 }
 
-/// O vão entre o fim do segmented do Tile Mode e o topo do «Remove», a esta largura de painel.
+/// O vão entre o fundo da grelha 3×3 e o topo do segmented do Tile Mode, a esta largura.
 ///
 /// ⚠️ **A largura tem de entrar pelo `HeroLayout`, não pelo viewport.** O Inspector é uma doca de
 /// largura FIXA: alargar o viewport só afasta o canvas, e a primeira versão deste gate media
@@ -85,17 +87,21 @@ fn hint_gap(width: f32) -> f32 {
             .map(|(_, r)| *r)
             .unwrap_or_else(|| panic!("id nao foi pintado a largura {width}"))
     };
-    // O último segmento do Tile Mode é o que fica mais em baixo quando o segmented adapta e
-    // quebra em duas filas — por isso o fundo do vão é o MÁXIMO deles, nunca o primeiro. Entre
-    // ele e o «Remove» só existe a dica do `Whole`, que é o que este gate mede.
-    let seg_bottom = ids::INSP_SLICE_TILE_MODE
+    // A célula mais baixa da grelha (o canto BR) fecha o bloco de cima; o primeiro segmento do
+    // Tile Mode abre o de baixo. Entre os dois só existe a LEGENDA, que é o que este gate mede —
+    // e o topo é o MÍNIMO dos segmentos, porque o segmented adapta e pode quebrar em duas filas.
+    let grid_bottom = ids::INSP_SLICE_REGION
         .iter()
         .map(|&id| {
             let r = find(id);
             r.y + r.h
         })
         .fold(f32::MIN, f32::max);
-    find(ids::INSP_SLICE_REMOVE).y - seg_bottom
+    let seg_top = ids::INSP_SLICE_TILE_MODE
+        .iter()
+        .map(|&id| find(id).y)
+        .fold(f32::MAX, f32::min);
+    seg_top - grid_bottom
 }
 
 /// ⚠️ **A prova.** Estreitar o painel faz a dica quebrar em mais linhas; se a altura dela for
@@ -110,7 +116,7 @@ fn a_hint_that_wraps_pushes_what_comes_after_it_down() {
         "o vao da dica nao mudou com a largura ({narrow} vs {wide}): a altura dela esta a ser \
          ESTIMADA, e a linha seguinte vai ser escrita por cima"
     );
-    // E a diferença é de LINHAS, não de arredondamento: a dica tem ~100 caracteres e a 300 px
+    // E a diferença é de LINHAS, não de arredondamento: a legenda tem ~90 caracteres e a 300 px
     // ela ocupa pelo menos mais uma linha inteira do que a 1100 px.
     let one_line = ph2d_tokens::TypeToken::Sm.px();
     assert!(
@@ -124,9 +130,9 @@ fn a_hint_that_wraps_pushes_what_comes_after_it_down() {
 /// A dica **existe**: um vão de zero significaria que ela deixou de ser pintada — e o teste
 /// acima passaria na mesma se as duas larguras dessem zero.
 #[test]
-fn the_whole_hint_is_actually_painted() {
+fn the_grid_legend_is_actually_painted() {
     assert!(
         hint_gap(WIDE_W) > 0.0,
-        "nao ha' vao nenhum entre o Tile Mode e o Remove: a dica do Whole desapareceu"
+        "nao ha' vao nenhum entre a grelha e o Tile Mode: a legenda desapareceu"
     );
 }

@@ -101,5 +101,11 @@ pub const INSP_SLICE_CENTRE: NodeId = hash_node_id("insp_slice_centre");
 /// `Fill Center` — o miolo desenha-se, ou a moldura fica oca.
 pub const INSP_SLICE_FILL_CENTER: NodeId = hash_node_id("insp_slice_fill_center");
 
-/// **«× Remove 9-Slice»** — retira o componente.
-pub const INSP_SLICE_REMOVE: NodeId = hash_node_id("insp_slice_remove");
+// ⛔ Houve aqui um **«× Remove 9-Slice»**, retirado em 2026-08-22 pela pergunta do Enio: *«o
+// botao xRemove 9-slice ainda faz sentido?»*. Medido, não fazia — um sprite **sem** o componente
+// e um **com ele desligado** desenham igual, gravam igual e, depois de o botão sair, mostram a
+// mesma seção. Ele era a segunda porta para «desligado», e a caixa já é a primeira.
+//
+// ⚠️ O «estado inalcançável» que isto cria (voltar a não-ter o componente) **não custa nada
+// observável** — é a definição de equivalente. O que custava era o botão: uma ação sem efeito
+// visível, a terceira desta seção depois do slider e do `Simple`.

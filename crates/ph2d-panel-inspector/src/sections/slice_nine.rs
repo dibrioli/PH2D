@@ -29,7 +29,6 @@ const WHOLE_HINT: &str = "Whole = entire tiles, so the last one meets the border
 const NOTHING_LIT: usize = usize::MAX;
 
 const FIELD_H: f32 = 24.0; // LITERAL-PX-OK: altura de campo do Inspector
-const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 /// Passo de scrub do tamanho alvo, em metros. Uma medida do MUNDO, não do desenho: um passo de
 /// um token de espaçamento não teria significado num campo em metros.
 const SIZE_STEP: f64 = 0.1; // LITERAL-PX-OK: passo de scrub em metros
@@ -227,7 +226,7 @@ pub(crate) fn paint_slice_section(
     // dados ao desmarcar não seria uma caixa.
     let cb_h = 18.0_f32; // LITERAL-PX-OK: altura visual do Checkbox
     let on = info.present && info.draw_mode_tag == 1;
-    let en_value = if info.mixed.draw_mode || info.mixed.present {
+    let en_value = if info.mixed.enabled {
         CheckboxValue::Indeterminate
     } else if on {
         CheckboxValue::Checked
@@ -250,9 +249,6 @@ pub(crate) fn paint_slice_section(
     // Desligado: a seção não tem mais nada a mostrar. O «Remove» só aparece quando há de facto
     // autoria guardada para remover — sem componente, não há.
     if !on {
-        if info.present {
-            cur_y = remove_button(scene, text_system, theme, hit_index, store, x, w, cur_y);
-        }
         return fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX);
     }
 
@@ -343,31 +339,7 @@ pub(crate) fn paint_slice_section(
         cur_y,
         info,
     );
-    cur_y = remove_button(scene, text_system, theme, hit_index, store, x, w, cur_y);
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
-}
-
-/// O «× Remove 9-Slice». **Sai para uma função porque tem DOIS chamadores** desde que o `Simple`
-/// passou a fechar a seção cedo — e uma segunda cópia da mesma linha é uma segunda oportunidade
-/// de a registar num rect e pintar noutro.
-#[allow(clippy::too_many_arguments)]
-fn remove_button(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-) -> f32 {
-    let rect = Rect::new(x, y, w, BTN_H);
-    hit_index.register(ids::INSP_SLICE_REMOVE, rect);
-    let rm = Button::new(ids::INSP_SLICE_REMOVE, "x Remove 9-Slice")
-        .kind(ButtonKind::Default)
-        .visual(store.button_visual(ids::INSP_SLICE_REMOVE));
-    paint_button(&rm, rect, scene, text_system, theme);
-    y + BTN_H
 }
 
 #[cfg(test)]

@@ -48,8 +48,14 @@ pub struct InspectorSliceInfo {
 /// 2026-08-21 mediu em sete controlos desta família.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct InspectorSliceMixed {
-    pub present: bool,
-    pub draw_mode: bool,
+    /// ⚠️ **O bit EFETIVO** — «esta sprite desenha em nove quads?» —, nunca `present` e
+    /// `draw_mode` separados.
+    ///
+    /// Foi assim que a caixa mentia (auditoria 2026-08-22): o painel fazia
+    /// `mixed.draw_mode || mixed.present`, e uma seleção com um sprite **sem** componente e outro
+    /// **com o componente desligado** acendia o «divergente» — mas os dois estão desligados, o
+    /// que é o mesmo estado. *Divergência mede-se no que o utilizador vê, não na representação.*
+    pub enabled: bool,
     pub borders: bool,
     pub size: bool,
     pub tile_modes: bool,
@@ -65,8 +71,6 @@ pub struct InspectorSliceMixed {
 /// divergentes de todas as outras entidades. *Edita-se o que se tocou, nunca o vetor todo.*
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SliceFieldEdit {
-    /// Retira o componente.
-    Detach,
     /// Tag de `SliceDrawMode`.
     DrawMode(u8),
     /// `(índice em [l, t, r, b], valor em pixels da fonte)`.

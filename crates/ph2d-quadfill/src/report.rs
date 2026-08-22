@@ -125,6 +125,104 @@ pub struct FillReport {
     /// A aresta mediana. ⭐ É a que diz se a DENSIDADE saiu no alvo — a máxima diz
     /// se alguma coisa se partiu, esta diz se a grade tem o passo pedido.
     pub edge_median: f32,
+    /// ⭐⭐ **QUANTAS FACES DOBRARAM** — ver [`folded_against`], que é quem a mede.
+    ///
+    /// ⚠️ **É o defeito que o artista fotografa**, e é geométrico: as fendas
+    /// escuras de 2026-08-21 são faces cuja normal aponta para o lado oposto ao da
+    /// superfície por baixo delas. Nenhum outro campo deste relatório a vê — uma
+    /// malha com 100 % de quads, casca fechada e a contagem certa de irregulares
+    /// pode estar cheia delas.
+    pub folded: usize,
+}
+
+/// **QUANTAS FACES DA SAÍDA APONTAM CONTRA A SUPERFÍCIE POR BAIXO DELAS.**
+///
+/// Para cada face da saída, acha a face da `reference` cujo centróide está mais
+/// perto e pergunta se as duas normais concordam. ⭐ **A referência é o oráculo da
+/// orientação**: `out.face_normals()` sozinho não responde nada, porque uma malha
+/// inteiramente ao contrário é consistente consigo mesma.
+///
+/// ⛔⛔ **NÃO é o teste radial, e a diferença apanhou-me em 2026-08-21.** O teste
+/// radial — *"a normal concorda com o raio a partir do centro da caixa?"* — só é
+/// válido num sólido **estrelado**, e a fixtura do diagnóstico é justamente a que
+/// não é: uma esfera com um BICO longo tem a barriga do gancho a apontar para
+/// longe do centro **de forma legítima**. Medido lado a lado nessa peça, a mesma
+/// malha: o teste radial acusou **17 faces (6,5 %)** e o motor local — que a
+/// literatura e os nossos próprios gates dizem não dobrar — foi acusado de
+/// **1,6 %** pelo mesmo instrumento. *Um detector que acusa a testemunha de
+/// controlo está a medir a forma, não o defeito.*
+///
+/// ⚠️ **O raio de busca DOBRA até achar alguém**, com teto em `64×` a semente. Um
+/// raio fixo devolve `usize::MAX` num quad grande sobre uma zona rala da
+/// referência — e uma face sem vizinho não conta como dobrada, o que faria a
+/// contagem **descer** exactamente onde a malha está pior.
+#[must_use]
+pub fn folded_against(reference: &Mesh, out: &Mesh) -> usize {
+    let ref_normals = reference.face_normals();
+    let rb = reference.bounds();
+    let seed = norm(sub(rb.max, rb.min)) * 0.05;
+    let pos = out.positions();
+    let mut hits: Vec<u32> = Vec::new();
+    let mut folded = 0usize;
+    for f in out.faces() {
+        let v = f.verts();
+        let c = centroid(pos, v);
+        let mut best = (f32::INFINITY, usize::MAX);
+        let mut radius = seed;
+        while best.1 == usize::MAX && radius < seed * 64.0 {
+            reference.octree().faces_in_sphere(c, radius, &mut hits);
+            for &fi in &hits {
+                let rv = reference.faces()[fi as usize].verts();
+                let d = norm(sub(centroid(reference.positions(), rv), c));
+                if d < best.0 {
+                    best = (d, fi as usize);
+                }
+            }
+            radius *= 2.0;
+        }
+        if let Some(&rn) = ref_normals.get(best.1) {
+            let n = face_normal(pos, v);
+            if n[0].mul_add(rn[0], n[1].mul_add(rn[1], n[2] * rn[2])) < 0.0 {
+                folded += 1;
+            }
+        }
+    }
+    folded
+}
+
+fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn norm(a: [f32; 3]) -> f32 {
+    a[0].mul_add(a[0], a[1].mul_add(a[1], a[2] * a[2])).sqrt()
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn centroid(pos: &[[f32; 3]], v: &[u32]) -> [f32; 3] {
+    let mut c = [0.0f32; 3];
+    for &i in v {
+        let q = pos[i as usize];
+        for k in 0..3 {
+            c[k] += q[k] / v.len() as f32;
+        }
+    }
+    c
+}
+
+/// A normal de uma face, pelo primeiro triângulo dela.
+fn face_normal(pos: &[[f32; 3]], v: &[u32]) -> [f32; 3] {
+    let (p0, p1, p2) = (
+        pos[v[0] as usize],
+        pos[v[1] as usize],
+        pos[v[2 % v.len()] as usize],
+    );
+    let (u, w) = (sub(p1, p0), sub(p2, p0));
+    [
+        u[1].mul_add(w[2], -(u[2] * w[1])),
+        u[2].mul_add(w[0], -(u[0] * w[2])),
+        u[0].mul_add(w[1], -(u[1] * w[0])),
+    ]
 }
 
 /// **De onde um vértice da saída veio** — a chave para saber de quem é a dívida.

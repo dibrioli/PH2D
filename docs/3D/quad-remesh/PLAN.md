@@ -1527,6 +1527,204 @@ prestígio da peça.**
 
 ---
 
+## 4-septdecies — ⛔⛔ **NÃO HAVIA BURACO NENHUM**, e o custo do F4 é LINEAR onde a referência o faz QUADRÁTICO
+
+> ⚠️ **Esta secção corrige a anterior em dois pontos, e o segundo muda a ordem
+> de ataque inteira.**
+
+### 1. ⛔ A casca nunca esteve aberta — eu li a coluna errada
+
+A sonda do §4-sexdecies imprimia seis números sem rótulo por coluna:
+
+```text
+com BICO d=0.50 | GLOBAL 260 quads (100% quads) 19   irreg 0    bordo 17   dobradas (6.5 %)
+                                                ^^irreg          ^^bordo    ^^DOBRADAS
+```
+
+Eu reportei **«17 buracos»** onde a linha diz `0 bordo` e `17 dobradas`, e abri o
+plano com *«os buracos na hooked_sphere»* em primeiro lugar. Medido agora por uma
+porta que **não precisa de GPU** (`the_two_engines_on_the_same_piece_without_a_device`,
+[`sculpt3d_global_retopo_tests.rs`](../../../shells/desktop/src/sculpt3d_global_retopo_tests.rs)):
+
+| fixtura | arcos com uso ≠ 2 | `boundary_edges` | `open_edges` da saída |
+|---|---|---|---|
+| com BICO, as 4 densidades | **0 de 50** | **0** | **0** |
+| amassada, as 4 densidades | **0 de 67** | **0** | **0** |
+
+*Um arco é partilhado por exactamente dois patches; o censo diz `{2: 50}` em toda
+densidade, e é isso que prova a casca fechada — não a ausência de queixa.*
+
+⇒ **Item 1 do plano anterior SAI.** *Seis números lado a lado sem rótulo em cada
+um é uma sonda que se pode ler ao contrário — e eu li.*
+
+### ⚠️ E a régua RADIAL, que eu ia acusar, estava certa
+
+Trocá-la por [`ph2d_quadfill::folded_against`] (normal da face da referência mais
+próxima) não mudou nada de material — `11·17·19·22` contra `12·17·19·23`. **A troca
+fica** por outro motivo: o radial só é válido num sólido **estrelado**, e a
+`hooked_sphere` não é um; e agora os **dois backends** são medidos pela mesma régua,
+que vive na fase e entra no [`FillReport::folded`] e no `QuadRemeshReport`, não numa
+sonda. ⛔ *Não escrevi «a régua mentiu» porque a medição não o disse.*
+
+### 2. ⭐⭐ O defeito REAL, e o mecanismo, com o número
+
+Com a régua no relatório, o estado medido (`detail = 0,5`):
+
+| fixtura | motor | quads | **dobradas** | aresta med | **aresta MAX** |
+|---|---|---|---|---|---|
+| amassada | GLOBAL | 540 | **0 (0,0 %)** | 0,88× | 1,92× |
+| com CRISTAS | GLOBAL | 314 | **0 (0,0 %)** | 1,04× | 2,70× |
+| ⛔ **com BICO** | GLOBAL | 260 | ⛔ **17 (6,5 %)** | 0,93× | ⛔ **4,08×** |
+| com BICO | local (Instant Meshes) | 177 | 0 (0,0 %) | — | — |
+
+**Dois experimentos controlados** (`whose_fold_is_it_the_construction_or_the_projection`):
+
+| experimento | hipótese que ele mata | resultado |
+|---|---|---|
+| projetar na **remalhada** em vez de na ORIGINAL | *a projeção salta o pescoço fino do gancho* | ⛔ **REFUTADA**: 17 → 15 (alis=6), 18 → 18 (alis=24) |
+| varrer o alisamento `0 · 6 · 24` | *o alisamento causa* | ⛔ **REFUTADA**: 25 → 17 → 18. Ele **repara** e estagna |
+
+⭐ **O que sobra, e o que a terceira coluna mostra:** o alisamento leva a amassada
+de 11 dobras a **ZERO** e a com-bico de 25 a **17**. A diferença é a **fronteira**:
+o alisamento move o interior do patch e **não desfaz um lado errado**.
+
+E o lado errado tem nome. O défice de cada arco — o que o comprimento pedia contra
+o que o F4 lhe deu:
+
+| fixtura | arcos com alvo > 2× o dado | o pior |
+|---|---|---|
+| ⛔ **com BICO** | **6 de 50** | `#21` pedia **4,1** e recebeu **1** (len 1,105 numa peça de raio 1) |
+| amassada | 3 de 67 | `#58` pedia 6,4 e recebeu **2** |
+
+⭐⭐ **Um arco com UM segmento é uma corda recta de canto a canto.** Sobre o gancho
+ela atravessa a forma; a grade de Coons construída sobre ela nasce do lado errado, e
+nenhum alisamento a traz de volta porque a corda **é** a fronteira.
+
+### ⭐⭐ Por que o F4 faz isso — e é o custo, não o solver
+
+[`ArcSpec::cost`](../../../crates/ph2d-quantize/src/lib.rs) e
+[`BiEdge::cost`](../../../crates/ph2d-quantize/src/network.rs) são **`w·|x − t|`**.
+A derivada é **constante** de cada lado do alvo, então `segments()` fatia o arco em
+**três** degraus de custo plano — e mover uma unidade custa o mesmo quer seja a
+primeira ou a décima. ⇒ **esmagar um arco e espalhar o erro custam exactamente o
+mesmo**, e o ótimo escolhe livremente.
+
+⛔ **E a `ArcSpec::relative` piora isso, ao contrário do que o doc dela diz.** Com
+`weight = 1/alvo`:
+
+| escolha | custo com `w·|x−t|`, `w = 1/t` | custo com `w·(x−t)²`, `w` uniforme |
+|---|---|---|
+| esmagar o arco `t=4,1` até `1` | `3,1/4,1 =` **0,76** | `(1−4,1)² =` **9,6** |
+| espalhar: 3 arcos `t=1` esticados em 1 | `3 × 1,0 =` **3,0** | `3 × 1 =` **3,0** |
+| **quem o ótimo escolhe** | ⛔ **esmagar (4× mais barato)** | ✅ **espalhar (3× mais barato)** |
+
+*O raciocínio do doc — «a qualidade de uma grade é uma RAZÃO» — está certo; sobre um
+custo LINEAR a implementação fica com o sinal invertido no regime de deviação grande.*
+
+### ⭐ A referência, lida no clone (MIT, `libs/satsuma` + `libs/quadretopology`)
+
+| ficheiro | o que diz |
+|---|---|
+| `CostFunction.hh` | três custos convexos: `AbsDeviation` `w|x−t|` · **`QuadDeviation` `w(x−t)²`** · `ScaleFactor` `w·max((x+ε)/(t+ε),(t+ε)/(x+ε))` |
+| `qr_flow.cpp:178` | `add_subside_edge(..., ObjectiveKind obj = ObjectiveKind::QuadraticDeviation, int lower=1)` — ⭐ **o default de TODA aresta de sub-lado é o QUADRÁTICO** |
+| `qr_flow.cpp:477` | `iso_weight / n_subsides` — ⭐ o peso **não** depende do alvo. *A relatividade vem do quadrático, não do peso.* |
+| `BiMDF_to_BiMCF.cc:120` | a escada: `arc_cost = (energy(guess+dev) − energy(guess+dev−1))` — **marginais**, `max_deviation = 2`, mais **um arco sem teto** com a marginal média dos 10 seguintes |
+| `Highlevel.cc:69` | dupla cobertura → **refinamento por matching**, repetido até o custo parar de descer; `refinement_maxdev_max = 2`, com o comentário *«2 always suffices for an exact solution»* |
+
+⭐⭐ **A máquina para consumir um custo convexo JÁ ESTÁ NA NOSSA CRATE.**
+[`BiEdge::step_cost`](../../../crates/ph2d-quantize/src/network.rs) e
+[`segments()`](../../../crates/ph2d-quantize/src/solve.rs) fatiam a marginal em
+degraus de custo constante — que é exactamente o `consolidate` do `add_edge` da
+referência. *Só o custo ficou linear.* ⇒ **O primeiro passo do porte é uma função,
+não uma crate.**
+
+### O plano, reordenado por VALOR MEDIDO
+
+| # | passo | onde | o que fecha | como se mede |
+|---|---|---|---|---|
+| **1** | **custo QUADRÁTICO** (`QuadDeviation` da referência) + peso da referência | `ph2d-quantize`, `ph2d-trace::to_layout` | os arcos de 1 segmento ⇒ as dobras | `> 2×` cai de 6/50 · `folded` · `edge_max` |
+| **2** | a **escada limitada** como a referência (`max_deviation = 2` + arco de cauda sem teto) | `solve.rs::segments` | a rede não explodir com custo estritamente convexo | tamanho da rede · relógio |
+| **3** | **refinamento** dupla-cobertura → matching, iterado | `ph2d-quantize` | o `gap` sob o custo novo | `Report::gap` |
+| **4** | **Instant Meshes como backend de PRODUTO** (hoje só por `PH2D_RETOPO_LEGACY=1`) | shell | o artista poder escolher o rápido e robusto | ambos no mesmo gate |
+| **5** | **parametrização por patch** no lugar do Coons/leque | `ph2d-quadfill` | a dobra que sobrar do passo 1 | `folded` |
+| **6** | **campo** do Instant Meshes no lugar do MIQ | F2 | os 19-22 irregulares contra o chão de 8 | `irregular` |
+| ⛔ | traçado do QuadWild | — | — | **GPL, não entra** |
+
+⚠️ **O que muda em relação ao §4-sexdecies:** lá o porte do libSatsuma valia *«pela
+garantia e pelo relógio, não por corrigir um defeito medido»*. **Isso estava errado
+por uma razão que eu não tinha medido:** o nosso `gap = 0` é ótimo **do custo
+linear**, e é o custo que produz o arco de um segmento. *Uma resposta provadamente
+óptima para o objectivo errado.*
+
+### ✅ O passo 1 está FEITO — e o que ele comprou, medido
+
+A varredura das **cinco leis** (`which_arc_weight_law_protects_the_grid`, com
+orçamento de busca grande para separar *inviável* de *acabou o tempo*):
+
+| lei | dobras 48×72 | 96×144 | esculpida | **pior arco** | pior relógio |
+|---|---|---|---|---|---|
+| `abs · 1/t` (a anterior) | 30,4 % | 1,9 % | 0,2 % | 3,2 / **8,1** / 2,6 | 25 ms |
+| `abs · 1` | 33,3 % | 3,4 % | 0,1 % | 1,7 / 6,1 / 1,3 | 156 ms |
+| `quad · 1` — **o default da referência** | 37,5 % | 2,8 % | 0,1 % | 2,8 / 2,4 / 1,7 | ⛔ **2 744 ms** |
+| ⭐ **`quad · 1/t²` — ADOTADA** | **26,2 %** | **1,8 %** | 0,1 % | 2,9 / 6,1 / 2,6 | 76 ms |
+| ⏸️ `scale` — o `ScaleFactor` da referência | ⛔ 36,3 % | 2,2 % | **0,0 %** | ⭐ **1,8 / 3,0 / 1,7** | 20 ms |
+
+⭐ **`quad · 1/t²` é `((x−t)/t)²`, o quadrado do erro RELATIVO** — a forma da
+referência com o peso que torna o custo uma razão. Ela **domina a lei anterior em
+todas as colunas medidas**, então foi adoptada sem tocar em barra nenhuma:
+
+| gate `no_face_folds_back_on_itself` | antes | depois | barra |
+|---|---|---|---|
+| esfera 48×72 | 33,2 % | ✅ **25,9 %** | 33 |
+| esfera 24×36 | — | 12,2 % | 14 |
+| esfera esculpida | — | 0,1 % | 0,5 |
+
+⏸️ **A `Deviation::Scale` ganha na grandeza que nomeia o defeito** (o pior arco:
+melhor das cinco nas três malhas) e dá **zero** dobras na esculpida. Não foi
+escolhida porque reprova a 48×72 — ⛔ e **a barra não se afrouxa**. ⚠️ Mas nessa
+fixtura a aresta máxima é **33 a 40× o alvo em TODAS as leis**: ela está no regime
+do artefacto de grão (§4-quaterdecies), logo não arbitra entre custos. *Reabrir esta
+escolha depois de o grão estar curado é trabalho pendente, não uma recusa.*
+
+### ⛔ E o que o passo 1 NÃO comprou
+
+| fixtura | dobras antes | dobras depois |
+|---|---|---|
+| ⛔ **com BICO**, `d=0,5` | 17 (6,5 %) | **18 (6,9 %)** |
+| amassada, as 4 densidades | 0 | 0 |
+| com CRISTAS, as 4 densidades | 0 | 0 |
+
+**A esfera com bico não se mexeu.** O pior arco caiu (`#21 pedia 4,1 e recebeu 1`
+desapareceu; os `> 2×` foram de **6/50 para 2/50**) e as dobras ficaram. ⇒ *na peça
+que reproduz a foto, a dívida dominante não é a quantização* — são **19 patches**
+para uma forma com um gancho, e um leque/Coons sobre um patch grande e curvo. Passo
+5 (parametrização por patch) e passo 6 (o campo) são os que a atacam.
+
+### ⛔⛔ E um VERMELHO PRÉ-EXISTENTE que só apareceu porque alguém correu o gate
+
+`three_clicks_in_a_row_still_return_a_usable_piece`, aresta mediana do 3.º clique:
+
+| lei de custo | clique 1 | clique 2 | **clique 3** | barra |
+|---|---|---|---|---|
+| `abs · 1/t` (a de `5ec438e17`) | 1,05× | 0,76× | ⛔ **0,32×** | 0,5–2,0 |
+| `quad · 1/t²` (hoje) | 1,04× | 0,64× | ⛔ **0,43×** | 0,5–2,0 |
+
+⚠️ **O `assert` nasceu em `3d51cf18c` e o `5ec438e17` partiu-o em silêncio**, porque
+este gate é `#[ignore]` + GPU e o lote do `ship.sh` **nunca o corre**. *Um gate que
+só corre à mão fica verde na memória de quem o escreveu.*
+
+⭐ **A causa, medida:** o `edge_for_detail` deriva o alvo da malha de **entrada**, e
+ao 3.º clique ela é a saída grosseira do 2.º (275 vértices). O F1 remalha para
+`α × diagonal` e portanto **refina** essa peça ⇒ o layout fica **mais fino que a
+densidade pedida**, o piso `ArcSpec::min = 1` morde em quase todo arco, e quem
+escolhe o passo da grade passa a ser o piso, não o alvo.
+
+⇒ **passo 7: grosseirar o layout quando ele é mais fino do que o alvo pede** — o
+mesmo trabalho que a contagem de patches ~2× acima do necessário já pedia. ⛔ Não é
+a barra, e não é a lei de custo (a medição controlada acima prova as duas coisas).
+
+---
+
 ## 5 — Risco, por ordem de quanto pode custar
 
 | risco | por que é real | mitigação |

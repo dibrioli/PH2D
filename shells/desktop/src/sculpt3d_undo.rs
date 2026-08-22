@@ -416,3 +416,10 @@ mod tests;
 #[cfg(test)]
 #[path = "sculpt3d_global_retopo_tests.rs"]
 mod global_retopo;
+
+/// **As SONDAS da cadeia global, sem GPU** — ver [`global_retopo_probes`]. Irmãs
+/// do [`global_retopo`]: lá o que se AFIRMA sobre o gesto (e precisa de device),
+/// aqui o que se MEDE sobre a cadeia (e não precisa de nenhum).
+#[cfg(test)]
+#[path = "sculpt3d_global_retopo_probes.rs"]
+mod global_retopo_probes;

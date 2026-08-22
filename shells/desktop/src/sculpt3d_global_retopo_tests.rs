@@ -45,7 +45,11 @@ fn wrinkled(device: &wgpu::Device) -> Sculpt3dScene {
 }
 
 /// Quantas arestas da malha têm **uma** face só — a casca aberta.
-fn open_edges(mesh: &ph2d_mesh::Mesh) -> usize {
+///
+/// ⚠️ `pub(super)` porque as sondas irmãs ([`super::global_retopo_probes`]) a usam:
+/// duas cópias de *"o que é uma aresta de bordo"* divergiriam no dia em que uma
+/// delas passasse a ignorar faces degeneradas.
+pub(super) fn open_edges(mesh: &ph2d_mesh::Mesh) -> usize {
     use std::collections::BTreeMap;
     let mut e: BTreeMap<(u32, u32), usize> = BTreeMap::new();
     for f in mesh.faces() {
@@ -174,6 +178,29 @@ fn the_button_delivers_the_global_chain() {
 /// ⚠️ **O gate irmão do motor LOCAL existia** (`two_clicks_without_undo_still_
 /// return_a_piece`) e **não foi repontado** quando o botão mudou de motor. Este é
 /// o que faltava.
+///
+/// # ⛔⛔ VERMELHO ABERTO — a aresta mediana do CLIQUE 3, e ele é PRÉ-EXISTENTE
+///
+/// | lei de custo do F4 | clique 1 | clique 2 | **clique 3** |
+/// |---|---|---|---|
+/// | `abs · 1/t` (a de `5ec438e17`) | 1,05× | 0,76× | ⛔ **0,32×** |
+/// | `quad · 1/t²` (a de hoje) | 1,04× | 0,64× | ⛔ **0,43×** |
+///
+/// ⚠️ **Ele já estava vermelho quando o custo mudou hoje** — a medição acima é
+/// controlada, a mesma máquina, só a lei trocada. O `assert` nasceu em `3d51cf18c`
+/// e o `5ec438e17` (peso relativo) partiu-o **sem que ninguém soubesse**: este gate
+/// é `#[ignore]` + GPU, então o lote do `ship.sh` **nunca o corre**. *Um gate que
+/// só corre à mão fica verde na memória de quem o escreveu.*
+///
+/// ⭐ **A causa, medida:** o `edge_for_detail` deriva o alvo da malha de ENTRADA, e
+/// ao 3.º clique ela é a saída grosseira do 2.º (275 vértices). O F1, que remalha
+/// para `α × diagonal`, **refina** essa peça — então o layout fica **mais fino que
+/// a densidade pedida**, o piso `ArcSpec::min = 1` morde em quase todo arco, e quem
+/// escolhe o passo da grade passa a ser o piso e não o alvo.
+///
+/// ⛔ **A cura NÃO é afrouxar a barra**, e nem é a lei de custo: é grosseirar o
+/// layout quando ele é mais fino do que o alvo pede — o mesmo item que a contagem
+/// de patches ~2× acima do necessário já pedia. Ver `PLAN.md` §4-septdecies.
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn three_clicks_in_a_row_still_return_a_usable_piece() {
@@ -293,9 +320,24 @@ fn every_point_of_the_detail_slider_returns_a_piece_on_the_global_chain() {
 ///
 /// As duas colunas que importam são de espécies diferentes:
 /// * o LOCAL entrega ~70 % de quads e casca furada, mas a grade **segue a
-///   curvatura** e nunca dobra;
+///   curvatura**;
 /// * o GLOBAL entrega 100 % de quads e casca fechada, e **dobra** onde o patch é
 ///   grande.
+///
+/// ⚠️ **A contagem de dobras passou a vir do relatório da fase**
+/// ([`ph2d_quadfill::folded_against`]) e não de um teste RADIAL escrito aqui. O
+/// radial — *"a normal concorda com o raio a partir do centro da caixa?"* — só é
+/// válido num sólido **estrelado**, e a esfera com BICO não é um.
+///
+/// ⭐ **E MEDIDO: aqui ele acertava.** Radial `11 · 17 · 19 · 22` contra
+/// `12 · 17 · 19 · 23` da régua da referência, nas quatro densidades. *Trocar não
+/// foi para corrigir um número: foi para a régua continuar válida quando a fixtura
+/// deixar de ser estrelada — e para os DOIS backends serem medidos pela mesma.*
+///
+/// ⛔ **O que estava errado era a minha LEITURA da tabela.** Eu reportei
+/// *"17 buracos"* onde a linha dizia `0 bordo` e `17 dobradas`, e passei a
+/// diagnosticar uma casca aberta que nunca existiu. *Seis números lado a lado sem
+/// rótulo em cada um é uma sonda que se pode ler ao contrário.*
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn the_two_backends_measured_on_the_same_piece() {
@@ -323,67 +365,30 @@ fn the_two_backends_measured_on_the_same_piece() {
                 s
             };
             let l = b.quad_remesh(detail, 0.0);
-            let fold = |s: &Sculpt3dScene| {
-                let pos = s.mesh().positions();
-                let bb = s.mesh().bounds();
-                let c = [
-                    (bb.min[0] + bb.max[0]) * 0.5,
-                    (bb.min[1] + bb.max[1]) * 0.5,
-                    (bb.min[2] + bb.max[2]) * 0.5,
-                ];
-                #[allow(clippy::cast_precision_loss)]
-                s.mesh()
-                    .faces()
-                    .iter()
-                    .filter(|f| {
-                        let v = f.verts();
-                        let (p0, p1, p2) =
-                            (pos[v[0] as usize], pos[v[1] as usize], pos[v[2] as usize]);
-                        let u = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
-                        let w = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
-                        let n = [
-                            u[1].mul_add(w[2], -(u[2] * w[1])),
-                            u[2].mul_add(w[0], -(u[0] * w[2])),
-                            u[0].mul_add(w[1], -(u[1] * w[0])),
-                        ];
-                        let mut m = [0.0f32; 3];
-                        for &i in v {
-                            let q = pos[i as usize];
-                            for k in 0..3 {
-                                m[k] += q[k] / v.len() as f32;
-                            }
-                        }
-                        n[0].mul_add(m[0] - c[0], n[1].mul_add(m[1] - c[1], n[2] * (m[2] - c[2])))
-                            < 0.0
-                    })
-                    .count()
-            };
             match (g, l) {
                 (Ok(gr), Ok(lr)) => {
-                    let gf = fold(&a);
-                    let lf = fold(&b);
                     #[allow(clippy::cast_precision_loss)]
                     {
                         println!(
                             "{fixture:<12} d={detail:.2} | GLOBAL {:<5} quads ({:.0}% quads) {:<4} irreg \
-                         {:<4} bordo {:<4} dobradas ({:.1} %) {:.0} ms",
+                         {:<4} bordo {:<4} DOBRADAS ({:.1} %) {:.0} ms",
                             gr.quads,
                             100.0 * gr.quads as f64 / (gr.quads + gr.non_quads).max(1) as f64,
                             gr.irregular,
                             gr.holes,
-                            gf,
-                            100.0 * gf as f64 / gr.quads.max(1) as f64,
+                            gr.folded,
+                            100.0 * gr.folded as f64 / gr.quads.max(1) as f64,
                             gr.ms
                         );
                         println!(
                             "             | LOCAL  {:<5} quads ({:.0}% quads) {:<4} irreg \
-                         {:<4} bordo {:<4} dobradas ({:.1} %) {:.0} ms",
+                         {:<4} bordo {:<4} DOBRADAS ({:.1} %) {:.0} ms",
                             lr.quads,
                             100.0 * lr.quads as f64 / (lr.quads + lr.non_quads).max(1) as f64,
                             0,
                             lr.holes,
-                            lf,
-                            100.0 * lf as f64 / lr.quads.max(1) as f64,
+                            lr.folded,
+                            100.0 * lr.folded as f64 / lr.quads.max(1) as f64,
                             lr.ms
                         );
                     }

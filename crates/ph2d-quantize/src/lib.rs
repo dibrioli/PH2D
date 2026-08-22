@@ -95,7 +95,50 @@ pub struct ArcSpec {
     /// O mínimo admissível. ⚠️ **`1` no pipeline do QuadWild**: um arco em zero
     /// colapsaria o canto, e o estágio a jusante não sabe lidar com isso.
     pub min: u32,
+    /// ⭐⭐ **A FORMA do custo** — e é ela que decide entre esmagar e espalhar.
+    pub kind: Deviation,
 }
+
+/// **A FORMA DO CUSTO DE UM ARCO** — porte do `CostFunction` do libSatsuma (MIT).
+///
+/// ⭐⭐ **A escolha entre estas duas não é de afinação: ela troca o SINAL da
+/// preferência do ótimo.** O solver minimiza a soma; o que decide se ele esmaga um
+/// arco longo ou espalha o erro por vários é se a **marginal** cresce.
+///
+/// | escolher | `w·|x−t|`, `w = 1/t` | `w·(x−t)²`, `w` uniforme |
+/// |---|---|---|
+/// | esmagar o arco `t=4,1` até `1` | `3,1/4,1 =` **0,76** | `(1−4,1)² =` **9,6** |
+/// | espalhar por 3 arcos `t=1` | `3 × 1,0 =` **3,0** | `3 × 1 =` **3,0** |
+/// | ⇒ o ótimo escolhe | ⛔ **esmagar** | ✅ **espalhar** |
+///
+/// ⚠️ **O `Abs` fica**, e não por compatibilidade: o oráculo de força bruta dos
+/// gates precisa do custo mais simples que existe para as duas respostas serem
+/// comparáveis termo a termo.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Deviation {
+    /// `w·|x − t|` — o `AbsDeviation` da referência. ⚠️ A marginal é **constante**
+    /// de cada lado do alvo, então mover a primeira unidade custa o mesmo que mover
+    /// a décima: *esmagar e espalhar custam exactamente o mesmo.*
+    Abs,
+    /// `w·(x − t)²` — o `QuadDeviation` da referência, e ⭐ **o default de toda
+    /// aresta de sub-lado no `qr_flow.cpp` do QuadWild** (`add_subside_edge`, com
+    /// `ObjectiveKind obj = ObjectiveKind::QuadraticDeviation`).
+    #[default]
+    Quad,
+    /// `w·max((x+ε)/(t+ε), (t+ε)/(x+ε))` — o `ScaleFactor` da referência.
+    ///
+    /// ⭐ **É a única das três que é ASSIMÉTRICA, e a assimetria é o ponto:** para
+    /// `x > t` ela cresce **linear** (declive `w/(t+ε)`); para `x < t` ela é uma
+    /// **hipérbole**, que explode quando o arco se aproxima de zero. *Encolher um
+    /// arco à metade e dobrá-lo não são o mesmo estrago, e só esta lei sabe disso.*
+    ///
+    /// ⚠️ O `ε` existe para o ramo `t/x` não divergir em `x = 0`; o valor `0,1` é o
+    /// da referência (`CostFunction.hh`), não uma escolha nossa.
+    Scale,
+}
+
+/// O `eps` do [`Deviation::Scale`] — **o número da referência**, não nosso.
+const SCALE_EPS: f64 = 0.1;
 
 impl ArcSpec {
     /// Um arco de peso unitário que não pode colapsar.
@@ -110,40 +153,90 @@ impl ArcSpec {
             target,
             weight: 1.0,
             min: 1,
+            kind: Deviation::Abs,
         }
     }
 
-    /// **Um arco cujo custo é a deviação RELATIVA** — `|x − alvo| / alvo`.
+    /// **O ARCO ISOMÉTRICO** — `((x − alvo) / alvo)²`, o **quadrado do erro
+    /// RELATIVO**.
     ///
-    /// ⭐⭐ **É o que uma grade de quads de facto quer, e a diferença é visível a
-    /// olho.** Com peso uniforme, esmagar um arco que pedia **24 segmentos até 4**
-    /// custa `20`; esticar vinte arcos curtos em `1` cada custa `20` também. O
-    /// solver é **indiferente** entre as duas — e o ótimo escolhe livremente a
-    /// primeira, porque ela liberta a lei do patch de uma vez só.
+    /// ⭐⭐ **A forma é a `QuadDeviation` da referência; o peso `1/alvo²` é o que
+    /// torna o custo uma RAZÃO.** Juntos eles são exactamente o princípio que esta
+    /// crate já afirmava e não implementava: *a qualidade de uma grade é uma razão,
+    /// nunca uma contagem* — um arco que pedia 24 e recebeu 20 está a 17 % do alvo;
+    /// um que pedia 2 e recebeu 6 está a 200 %.
     ///
-    /// O resultado na malha é uma aresta de `0,30` onde o alvo era `0,05` — **6× o
-    /// pedido** — e a grade de Coons ao lado dela estica até dobrar sobre si mesma.
-    /// Medido na esfera lisa (2026-08-21): o arco `#17` pedia `24,3` e recebeu `4`.
+    /// ⛔ **A versão anterior — LINEAR com peso `1/alvo` — tinha o sinal invertido
+    /// no regime que importa.** Sobre um custo linear a marginal é constante, então
+    /// esmagar um arco e espalhar o erro custam o mesmo — e com `1/alvo` esmagar um
+    /// arco LONGO passa a ser **4× mais barato**. Medido na `hooked_sphere`
+    /// (2026-08-21): o arco `#21` pedia **4,1** segmentos e recebeu **1** — uma
+    /// corda recta de comprimento `1,105` numa peça de raio `1,0` —, e **6 de 50**
+    /// arcos pediam mais do dobro do que receberam. A grade de Coons construída
+    /// sobre uma corda dessas nasce do lado errado da forma, e ⚠️ **o alisamento
+    /// não a desfaz**: ele move o interior do patch, e a corda **é** a fronteira.
+    /// *Uma resposta provadamente óptima para o objectivo errado.*
     ///
-    /// ⚠️ **A qualidade de uma grade é uma RAZÃO, nunca uma contagem.** Um arco que
-    /// pedia 24 e recebeu 20 está a 17 % do alvo; um que pedia 2 e recebeu 6 está a
-    /// 200 %. Com peso absoluto os dois custam `4`.
+    /// ⭐ **A varredura que a escolheu** (`which_arc_weight_law_protects_the_grid`,
+    /// orçamento de busca grande para separar *inviável* de *acabou o tempo*):
+    ///
+    /// | lei | dobras 48×72 | 96×144 | esculpida | **pior arco** | pior relógio |
+    /// |---|---|---|---|---|---|
+    /// | `abs · 1/t` (a anterior) | 30,4 % | 1,9 % | 0,2 % | 3,2 / **8,1** / 2,6 | 25 ms |
+    /// | `abs · 1` | 33,3 % | 3,4 % | 0,1 % | 1,7 / 6,1 / 1,3 | 156 ms |
+    /// | `quad · 1` (o default da referência) | 37,5 % | 2,8 % | 0,1 % | 2,8 / 2,4 / 1,7 | ⛔ **2 744 ms** |
+    /// | ⭐ **`quad · 1/t²` (esta)** | **26,2 %** | **1,8 %** | 0,1 % | 2,9 / 6,1 / 2,6 | 76 ms |
+    /// | ⏸️ `scale` (o `ScaleFactor` da referência) | ⛔ 36,3 % | 2,2 % | **0,0 %** | ⭐ **1,8 / 3,0 / 1,7** | 20 ms |
+    ///
+    /// ⏸️ **A [`Deviation::Scale`] ganha na grandeza que nomeia o defeito** — o
+    /// pior arco, onde ela é a melhor das cinco nas três malhas — e dá **zero**
+    /// dobras na esculpida, que é a fixtura que se parece com o trabalho do
+    /// artista. Ela **não foi escolhida** porque reprova o gate da 48×72 (36,3 %
+    /// contra a barra de 33 %), e ⛔ **a barra não se afrouxa**. ⚠️ Mas essa
+    /// fixtura está num regime em que a aresta máxima é **33 a 40× o alvo em TODAS
+    /// as leis** — o artefacto de grão que a sonda
+    /// `how_fine_may_the_quad_be_against_the_reference_facet` mede —, então ela não
+    /// está a arbitrar entre custos. *Reabrir esta escolha depois de o grão estar
+    /// curado é trabalho pendente, não uma recusa.*
+    ///
+    /// ⚠️ **O piso de `1` no divisor** evita que um arco de alvo minúsculo ganhe
+    /// peso arbitrariamente grande e passe a mandar no layout inteiro.
     #[must_use]
-    pub fn relative(target: f64) -> Self {
+    pub fn isometric(target: f64) -> Self {
         Self {
             target,
-            // ⚠️ O piso de `1` no divisor evita que um arco de alvo minúsculo ganhe
-            // peso arbitrariamente grande e passe a mandar no layout inteiro.
-            weight: 1.0 / target.max(1.0),
+            weight: 1.0 / (target.max(1.0) * target.max(1.0)),
             min: 1,
+            kind: Deviation::Quad,
         }
     }
 
-    /// O custo de quantizar este arco em `x`: `peso · |x − alvo|`.
+    /// O custo de quantizar este arco em `x` — ver [`Deviation`].
     #[must_use]
     pub fn cost(&self, x: u32) -> f64 {
-        self.weight * (f64::from(x) - self.target).abs()
+        deviation(self.kind, self.weight, self.target, f64::from(x))
     }
+}
+
+/// **O CUSTO, numa fórmula só** — porte do `CostFunction::cost` do libSatsuma.
+///
+/// ⭐ **Ela vive aqui e é usada pelos DOIS lados** ([`ArcSpec::cost`] e
+/// [`crate::network::BiEdge::cost`]). Duas cópias divergiriam no dia em que uma
+/// quarta forma entrasse, e a que decide o resultado é a do `BiEdge` — a outra só
+/// aparece nos relatórios. *O sintoma seria um `gap` que não fecha sobre uma
+/// resposta correcta.*
+#[must_use]
+pub fn deviation(kind: Deviation, weight: f64, target: f64, x: f64) -> f64 {
+    let d = x - target;
+    weight
+        * match kind {
+            Deviation::Abs => d.abs(),
+            Deviation::Quad => d * d,
+            Deviation::Scale => {
+                let (a, b) = (x + SCALE_EPS, target + SCALE_EPS);
+                (a / b).max(b / a)
+            }
+        }
 }
 
 /// **UM PATCH** — a lista ordenada dos seus lados, cada lado uma lista de arcos.

@@ -68,6 +68,14 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// A aresta mediana em múltiplos do `edge` pedido — ⭐ esta diz se a DENSIDADE
     /// saiu no alvo. Medido: correcto ≈ **0,9×**; destruído **4,6×**.
     pub edge_median_ratio: f32,
+    /// ⭐⭐ **QUANTAS FACES DOBRARAM contra a peça original** — a medida da fenda
+    /// escura que o artista fotografa. Ver [`ph2d_quadfill::folded_against`].
+    ///
+    /// ⚠️ **Os DOIS backends a medem pela MESMA régua**, e é isso que os torna
+    /// comparáveis. Enquanto a única contagem foi o teste radial de uma sonda, a
+    /// esfera com bico — que não é um sólido estrelado — acusava os dois motores
+    /// de dobrar sem que nenhum dos dois tivesse dobrado.
+    pub folded: usize,
 }
 
 impl Sculpt3dScene {
@@ -169,6 +177,11 @@ impl Sculpt3dScene {
             // perfeita.
             edge_max_ratio: f32::NAN,
             edge_median_ratio: f32::NAN,
+            // ⭐ **A MESMA régua do outro backend, e é por isso que ela é medida
+            // aqui e não estimada.** Sem esta linha o motor local aparecia como
+            // *"não dobra"* por não ter quem contasse — que é o mesmo defeito do
+            // `irregular: MAX` acima, só que silencioso.
+            folded: ph2d_quadfill::folded_against(mesh, &q.mesh),
         };
         let previous =
             core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);

@@ -286,11 +286,18 @@ fn what_kind_of_artefact_survives_the_chain() {
 #[test]
 #[ignore = "sonda -- qual lei de peso protege a grade"]
 fn which_arc_weight_law_protects_the_grid() {
-    for (name, mesh) in [
-        ("esfera lisa", shapes::uv_sphere(96, 144, 1.0)),
-        ("esfera esculpida", shapes::sculpt_sphere(1.0)),
+    for (name, mesh, target) in [
+        // ⚠️ **A 48×72 entra porque é a fixtura do gate `no_face_folds_back_on_
+        // itself`**, e foi ela que reprovou quando o custo passou a quadrático. Uma
+        // varredura de leis que não contém a malha que reprovou não decide nada.
+        (
+            "esfera 48x72 (o GATE)",
+            shapes::uv_sphere(48, 72, 1.0),
+            0.05f32,
+        ),
+        ("esfera lisa 96x144", shapes::uv_sphere(96, 144, 1.0), 0.05),
+        ("esfera esculpida", shapes::sculpt_sphere(1.0), 0.06),
     ] {
-        let target = 0.05f32;
         let reference = mesh.clone();
         let mut work = mesh;
         ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
@@ -300,11 +307,23 @@ fn which_arc_weight_law_protects_the_grid() {
         let layout = trace_patches(&work, &dual, &field);
         let sides = layout.sides();
         println!("── {name} ──");
-        for (law, w) in [
-            ("uniforme  |x-t|", 0.0f32),
-            ("relativa  /t", -1.0),
-            ("proporcional *t", 1.0),
-            ("raiz  *sqrt(t)", 0.5),
+        // ⭐ **As duas FORMAS × os expoentes de peso.** A forma decide se a
+        // marginal cresce (⇒ espalhar) ou é constante (⇒ indiferente); o expoente
+        // decide quem paga. ⚠️ A referência (`qr_flow.cpp`) é **`Quad` com
+        // expoente 0** — peso que não olha o alvo.
+        for (law, kind, w) in [
+            ("abs   |x-t|", ph2d_quantize::Deviation::Abs, 0.0f32),
+            ("abs   /t", ph2d_quantize::Deviation::Abs, -1.0),
+            ("abs   *t", ph2d_quantize::Deviation::Abs, 1.0),
+            ("abs   *sqrt(t)", ph2d_quantize::Deviation::Abs, 0.5),
+            ("QUAD  (x-t)^2  ⭐ref", ph2d_quantize::Deviation::Quad, 0.0),
+            ("QUAD  /t", ph2d_quantize::Deviation::Quad, -1.0),
+            ("QUAD  /t^2  ⭐razao²", ph2d_quantize::Deviation::Quad, -2.0),
+            (
+                "SCALE max(x/t,t/x)ref",
+                ph2d_quantize::Deviation::Scale,
+                0.0,
+            ),
         ] {
             let arcs: Vec<ph2d_quantize::ArcSpec> = layout
                 .arc_length
@@ -312,6 +331,7 @@ fn which_arc_weight_law_protects_the_grid() {
                 .map(|&l| {
                     let t = f64::from(l / target);
                     let mut a = ph2d_quantize::ArcSpec::new(t);
+                    a.kind = kind;
                     a.weight = f64::from(t.max(1.0) as f32).powf(f64::from(w));
                     a
                 })
@@ -325,12 +345,21 @@ fn which_arc_weight_law_protects_the_grid() {
                 println!("  {law:<18} layout invalido");
                 continue;
             };
-            let Ok((quant, _)) = quantize_within(&spec, Budget::new(256, 512)) else {
-                println!("  {law:<18} nao quantiza");
-                continue;
+            // ⚠️ **O orçamento é GRANDE de propósito nesta sonda.** O do produto é
+            // `(256, 512)`, e a pergunta *"não fecha por ser inviável ou por a busca
+            // acabar?"* é diferente da pergunta *"cabe no orçamento do artista?"* —
+            // o `proved`/`expansions` abaixo respondem a segunda.
+            let t0 = std::time::Instant::now();
+            let (quant, qr) = match quantize_within(&spec, Budget::new(20_000, 40_000)) {
+                Ok(v) => v,
+                Err(e) => {
+                    println!("  {law:<21} nao quantiza: {e:?}");
+                    continue;
+                }
             };
-            let Ok((out, r)) = fill(&work, &reference, &layout, &quant, SMOOTHING_ROUNDS) else {
-                println!("  {law:<18} a montagem recusou");
+            let ms = t0.elapsed().as_secs_f64() * 1000.0;
+            let Ok((_out, r)) = fill(&work, &reference, &layout, &quant, SMOOTHING_ROUNDS) else {
+                println!("  {law:<21} a montagem recusou");
                 continue;
             };
             #[allow(clippy::cast_precision_loss)]
@@ -340,14 +369,28 @@ fn which_arc_weight_law_protects_the_grid() {
                 .enumerate()
                 .map(|(a, &l)| (l / target) / (quant.arc[a] as f32).max(1.0))
                 .fold(0.0f32, f32::max);
-            println!(
-                "  {law:<18} {:<5} quads | DOBRADAS {:<4} | pior arco {worst:>5.1}x | \
-                 med {:.3} max {:.3}",
-                r.quads,
-                inward_faces(&out),
-                r.edge_median,
-                r.edge_max
-            );
+            #[allow(clippy::cast_precision_loss)]
+            {
+                println!(
+                    "  {law:<21} {:<5} quads | DOBRADAS {:<5} ({:.1} %) | \
+                     pior arco {worst:>5.1}x | med {:.2}x max {:.2}x | \
+                     gap {:.3} {} exp {:<5} aum {:<7} arestas {:<6} {ms:>6.0} ms",
+                    r.quads,
+                    r.folded,
+                    100.0 * r.folded as f64 / r.quads.max(1) as f64,
+                    r.edge_median / target,
+                    r.edge_max / target,
+                    qr.gap,
+                    if qr.proved {
+                        "PROVADO"
+                    } else {
+                        "⚠️ teto  "
+                    },
+                    qr.expansions,
+                    qr.augmentations,
+                    qr.edges,
+                );
+            }
         }
     }
 }

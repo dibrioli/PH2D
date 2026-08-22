@@ -392,10 +392,15 @@ impl Sculpt3dScene {
                     // pivô existiu para derrubar e a que o artista vê. Uma esfera
                     // admite **oito**; o motor local não os conta e diz `?`, que é
                     // diferente de dizer zero.
+                    // ⭐⭐ **E o log nomeia as faces DOBRADAS**, que é a fenda
+                    // escura que o Enio fotografou em 2026-08-21. Ela é a única
+                    // grandeza de defeito **geométrico** desta linha: uma peça
+                    // pode sair com 100 % de quads, casca fechada e a contagem
+                    // certa de irregulares, e mesmo assim estar cheia delas.
                     Ok(r) => eprintln!(
                         "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
                          {} irregulares, aresta mediana {} e MAXIMA {} do alvo, com quad de {:.4} \
-                         em {:.0} ms{}",
+                         em {:.0} ms{}{}",
                         r.verts,
                         r.quads,
                         r.non_quads,
@@ -413,6 +418,15 @@ impl Sculpt3dScene {
                             String::from(" -- casca FECHADA")
                         } else {
                             format!(" -- ⚠️ {} BURACO(S) na casca", r.holes)
+                        },
+                        if r.folded == 0 {
+                            String::new()
+                        } else {
+                            format!(
+                                " -- ⚠️ {} face(s) DOBRADA(S) ({:.1}%)",
+                                r.folded,
+                                100.0 * r.folded as f64 / (r.quads + r.non_quads).max(1) as f64
+                            )
                         }
                     ),
                     // ⚠️ **UMA frase, e ela mora com o tipo.** Cinco braços

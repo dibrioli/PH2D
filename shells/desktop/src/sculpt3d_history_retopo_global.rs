@@ -130,6 +130,7 @@ impl Sculpt3dScene {
             irregular: r.irregular,
             edge_max_ratio: r.edge_max / target,
             edge_median_ratio: r.edge_median / target,
+            folded: r.folded,
         };
         let previous = core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, out);
         self.record(StrokeUndo::Remeshed(Box::new(previous)));

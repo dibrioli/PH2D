@@ -161,10 +161,12 @@ impl PatchLayout {
         let arcs = self
             .arc_length
             .iter()
-            // ⭐ **RELATIVA e não absoluta** — ver `ArcSpec::relative`. Com peso
-            // uniforme o solver esmagava um arco longo de uma vez em vez de
-            // distribuir o erro, e a malha saía com arestas de 6× o alvo.
-            .map(|&l| ArcSpec::relative(f64::from(l / scale)))
+            // ⭐⭐ **QUADRÁTICA, como a referência a escreve** — ver
+            // `ArcSpec::isometric`. Sobre um custo LINEAR o ótimo é indiferente
+            // entre esmagar um arco longo e espalhar o erro, e com peso `1/alvo`
+            // ele passava a *preferir* esmagar. É a marginal crescente do
+            // quadrático que faz o solver distribuir.
+            .map(|&l| ArcSpec::isometric(f64::from(l / scale)))
             .collect();
         let patches = self
             .sides()

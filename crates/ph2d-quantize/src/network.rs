@@ -48,6 +48,10 @@ pub struct BiEdge {
     pub target: f64,
     /// O peso no custo (`0` para uma aresta de leque).
     pub weight: f64,
+    /// ⭐⭐ **A FORMA do custo** — ver [`crate::Deviation`]. É ela que decide se o
+    /// ótimo esmaga um arco longo ou espalha o erro, e a máquina que a consome
+    /// (`step_cost` + `segments`) já existia: só o custo era linear.
+    pub kind: crate::Deviation,
     /// O arco do layout, quando esta aresta é um; `None` se é aresta de leque.
     pub arc: Option<u32>,
     /// **A PARTIDA A QUENTE** — o valor que esta aresta provavelmente terá, para
@@ -60,10 +64,11 @@ pub struct BiEdge {
 }
 
 impl BiEdge {
-    /// O custo de fazer esta aresta valer `x`.
+    /// O custo de fazer esta aresta valer `x` — ver [`crate::Deviation`].
+    #[allow(clippy::cast_precision_loss)]
     #[must_use]
     pub fn cost(&self, x: i64) -> f64 {
-        self.weight * (x as f64 - self.target).abs()
+        crate::deviation(self.kind, self.weight, self.target, x as f64)
     }
 
     /// O custo do `k`-ésimo passo (de `x = k−1` para `x = k`).
@@ -160,6 +165,7 @@ impl BiNetwork {
                 hi,
                 target: spec.target,
                 weight: spec.weight,
+                kind: spec.kind,
                 arc: Some(u32::try_from(a).unwrap_or(u32::MAX)),
                 warm: lo,
             });
@@ -228,6 +234,10 @@ impl BiNetwork {
                     hi,
                     target: 0.0,
                     weight: 0.0,
+                    // ⚠️ A aresta de leque é **livre** (peso zero), então a forma
+                    // do custo é irrelevante — mas ela tem de existir para o campo
+                    // não ter um default escondido.
+                    kind: crate::Deviation::Abs,
                     arc: None,
                     warm: warm.clamp(1, hi),
                 });

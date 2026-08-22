@@ -342,7 +342,7 @@ pub fn fill(
         smooth_once(&mut mesh, surface);
     }
 
-    let report = measure(&mesh, &pts.prov, smoothing, flipped);
+    let report = measure(&mesh, surface, &pts.prov, smoothing, flipped);
     Ok((mesh, report))
 }
 
@@ -476,7 +476,13 @@ fn signed_volume(pos: &[[f32; 3]], faces: &[Face]) -> f32 {
 }
 
 /// As grandezas que o relatório carrega.
-fn measure(mesh: &Mesh, prov: &[Provenance], smoothing: usize, flipped: usize) -> FillReport {
+fn measure(
+    mesh: &Mesh,
+    surface: &Mesh,
+    prov: &[Provenance],
+    smoothing: usize,
+    flipped: usize,
+) -> FillReport {
     let faces = mesh.faces();
     let quads = faces.iter().filter(|f| !f.is_tri()).count();
     let mut count: BTreeMap<(u32, u32), usize> = BTreeMap::new();
@@ -521,5 +527,9 @@ fn measure(mesh: &Mesh, prov: &[Provenance], smoothing: usize, flipped: usize) -
         boundary_edges,
         smoothing,
         flipped,
+        // ⭐⭐ **A CONTAGEM DE DOBRAS entra no relatório da fase**, e não numa
+        // sonda. Ela é o defeito que o artista fotografa e o único campo, com os
+        // dois de aresta, que uma malha de posições embaralhadas não reproduz.
+        folded: crate::report::folded_against(surface, mesh),
     }
 }

@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**43 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**61 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -57,6 +57,33 @@
 | 2026-08-04 | ◆ | [HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-04.md](HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-04.md) | integração | Handoff de integração — line/Vector (MESTRE, 2026-08-04) |
 | 2026-08-05 |  | [HANDOFF_INTEGRACAO_line_Vector_ui_states_2026-08-05.md](HANDOFF_INTEGRACAO_line_Vector_ui_states_2026-08-05.md) | integração | HANDOFF DE INTEGRAÇÃO — line/Vector, os ESTADOS DE UI (W7) |
 
+| 2026-08-06 |  | [HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md](HANDOFF_INTEGRACAO_line_Vector_W4c1_2026-08-06.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector`, a W4c.1 (a CAMADA NUMÉRICA) |
+| 2026-08-06 |  | [HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md](HANDOFF_INTEGRACAO_line_Vector_W4c2_2026-08-06.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector`, **a escala fica VIVA** (W4c.2, 2026-08-06) |
+| 2026-08-06 |  | [HANDOFF_INTEGRACAO_line_Vector_W4c3_2026-08-06.md](HANDOFF_INTEGRACAO_line_Vector_W4c3_2026-08-06.md) | integração | Handoff de integração — `line/Vector` · **W4c.3, a MATH dos tokens** (2026-08-06) |
+| 2026-08-06 |  | [HANDOFF_INTEGRACAO_line_Vector_W4c4_2026-08-06.md](HANDOFF_INTEGRACAO_line_Vector_W4c4_2026-08-06.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector`, W4c.4: os tokens de ESCALA chegam ao DOCUMENTO |
+| 2026-08-06 |  | [HANDOFF_line_Vector_tokens_2026-08-06.md](HANDOFF_line_Vector_tokens_2026-08-06.md) | sessão | HANDOFF — `line/Vector`, a reforma dos TOKENS (2026-08-06) |
+| 2026-08-07 |  | [HANDOFF_INTEGRACAO_line_Vector_W4c5_2026-08-07.md](HANDOFF_INTEGRACAO_line_Vector_W4c5_2026-08-07.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector`, **W4c.5: a tabela sai e entra em DTCG** (2026-08-07) |
+| 2026-08-07 |  | [HANDOFF_INTEGRACAO_line_Vector_W7r_2026-08-07.md](HANDOFF_INTEGRACAO_line_Vector_W7r_2026-08-07.md) | integração | Handoff de integração — `line/Vector` · **W7r: o modo de PREVIEW** |
+| 2026-08-08 |  | [HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-08.md](HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-08.md) | integração | Handoff de integração **MESTRE** — `line/Vector`, a jornada da UI/UX |
+| 2026-08-08 |  | [HANDOFF_INTEGRACAO_line_Vector_W7c_2026-08-08.md](HANDOFF_INTEGRACAO_line_Vector_W7c_2026-08-08.md) | integração | Handoff de integração — `line/Vector` · **W7c: o seletor de CURVA** |
+| 2026-08-08 |  | [HANDOFF_INTEGRACAO_line_Vector_hierarquia_2026-08-08.md](HANDOFF_INTEGRACAO_line_Vector_hierarquia_2026-08-08.md) | integração | Handoff de integração — `line/Vector` · W7h, **a HIERARQUIA** |
+| 2026-08-08 |  | [HANDOFF_INTEGRACAO_line_Vector_mola_2026-08-08.md](HANDOFF_INTEGRACAO_line_Vector_mola_2026-08-08.md) | integração | Handoff de integração — `line/Vector` · W7m, **a MOLA** |
+| 2026-08-08 |  | [HANDOFF_INTEGRACAO_line_Vector_text_wrap_2026-08-08.md](HANDOFF_INTEGRACAO_line_Vector_text_wrap_2026-08-08.md) | integração | Handoff de integração — `line/Vector` · W2a, **o texto REFLUI** |
+| 2026-08-09 |  | [HANDOFF_INTEGRACAO_line_Vector_painel_vivo_2026-08-09.md](HANDOFF_INTEGRACAO_line_Vector_painel_vivo_2026-08-09.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector`: o painel autorado fica VIVO, e o sistema de widgets é AUDITADO (2026-08-09) |
+| 2026-08-10 |  | [HANDOFF_INTEGRACAO_line_Vector_sizing_2026-08-10.md](HANDOFF_INTEGRACAO_line_Vector_sizing_2026-08-10.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · o SIZING (2026-08-10) |
+| 2026-08-10 |  | [HANDOFF_TROCA_line_Vector_2026-08-10.md](HANDOFF_TROCA_line_Vector_2026-08-10.md) | troca | HANDOFF DE TROCA — `line/Vector` (2026-08-10) |
+| 2026-08-15 |  | [HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-15.md](HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-15.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` **MESTRE** (2026-08-15) |
+| 2026-08-16 |  | [HANDOFF_INTEGRACAO_line_Vector_f4b_2026-08-16.md](HANDOFF_INTEGRACAO_line_Vector_f4b_2026-08-16.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector`, a DOBRA e as três medições (2026-08-16) |
+| 2026-08-22 |  | [HANDOFF_line_Vector_2026-08-22.md](HANDOFF_line_Vector_2026-08-22.md) | sessão | HANDOFF — linha `line/Vector` (2026-08-22) |
 ---
-*Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na
-raiz de `docs/`.*
+*Índice arrumado em 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na raiz de
+`docs/`.*
+
+> ⚠️ **Esta tabela é escrita à MÃO, e por isso apodrece.** Em 2026-08-22 ela estava **18
+> entradas atrasada** — parou de ser mantida no dia da arrumação, e 18 handoffs ficaram
+> inalcançáveis a partir daqui. As linhas em falta foram **derivadas dos próprios arquivos**
+> (data do nome, título da primeira linha `# `), nunca reescritas de memória.
+>
+> ⛔ **A cura durável não é arrumar outra vez:** é pôr este diretório sob o
+> `scripts/doc-index.sh`, como os outros 14. *Índice de diretório se GERA, não se escreve*
+> (`CLAUDE.md` §5.0) — e esta tabela é a prova viva disso.

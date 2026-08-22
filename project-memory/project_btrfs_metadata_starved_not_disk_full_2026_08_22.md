@@ -30,6 +30,18 @@ em laço. Eram **três** coisas, cada uma com instrumento próprio — `bash scr
    [[project_workstation_freeze_memory_reclaim]] (memtest86+ overnight). ⚠️ Nos targets com
    `+C` (nodatacow) a mesma corrupção é **muda** — não há checksum.
 
+**O que a noite de 22/08 acrescentou (com a senha do Enio):** o `balance -dusage=10` **abortou em
+EIO** no 1º extent corrompido (e `-dusage=30` no 2º) — balance não anda com corrupção no disco, e
+não se roda num kernel que corrompe escritas (reescreve dados bons). Scrub: **228** blocos ruins em
+342 GiB, journal lista só 10 caminhos (rate-limit 10/5 s) — todos nos 3 targets que eram CoW,
+inclusive **binários de teste**; a lista completa sai de `btrfs-health.sh --scan <dirs>` (cat ⇒
+EIO): **10 arquivos** (8 binários de teste + build-script do `ahash`), apagados; sccache e o resto
+do `/home` (fonte, git, configs) **limpos** — só artefatos escritos sob carga de build.
+`smartctl`: NVMe **saudável** (0 erros de mídia) — hipótese SSD eliminada. LTS virou boot
+padrão (`default_entry: CachyOS/linux-cachyos-lts` + `remember_last_entry: no`; binário do
+firmware conferido: pristine, sem hash de config). Timers instalados com `ExecCondition` que pula o
+balance em boot com `csum failed`. Ordem final: **reboot → health → balance → target-to-disk --cold**.
+
 **Why:** os três sintomas chegam como «a máquina está lenta/instável com vários agentes», e cada
 um pede uma cura diferente; a primeira leitura de outra sessão no mesmo dia foi «disco cheio trunca
 os .o» ([[project-disk-full-corrupts-objects-mold-sigbus]]) — o sintoma estava certo, a causa não:

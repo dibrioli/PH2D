@@ -41,7 +41,11 @@ fail() { echo "✗ $1"; echo "  ABORTADO — nada mudou."; exit 1; }
 [ -L "$link" ] || fail "$link não é symlink — nada a migrar (já está em disco?)."
 shm="$(readlink -f "$link")"
 case "$shm" in /dev/shm/*|/tmp/*) ;; *) fail "$link aponta para $shm, que não é tmpfs." ;; esac
-[ -d "$shm" ] || fail "$shm não existe (tmpfs evaporou?). Use --cold para recomeçar vazio."
+if [ ! -d "$shm" ]; then
+  # Depois de um reboot o tmpfs evaporou: sem a regra tmpfiles.d o dir nem existe.
+  # --cold não precisa dele (não há o que copiar); sem --cold, não há o que preservar.
+  [ "$opt" = "--cold" ] || fail "$shm não existe (tmpfs evaporou no reboot?). Não há build a preservar: use --cold."
+fi
 
 # ---- portão 2: ninguém constrói no primário nem executa de dentro do target --
 _self=$(basename "$(readlink -f /proc/$$/exe 2>/dev/null)" 2>/dev/null)
@@ -61,8 +65,11 @@ for pid in $(ls /proc 2>/dev/null | grep -E '^[0-9]+$'); do
 done
 
 # ---- portão 3: o disco aguenta a cópia? ------------------------------------
-size=$(du -sb "$shm" 2>/dev/null | cut -f1 || echo 0)
-nfiles=$(find "$shm" -type f 2>/dev/null | wc -l)
+size=0; nfiles=0
+if [ -d "$shm" ]; then
+  size=$(du -sb "$shm" 2>/dev/null | cut -f1 || echo 0)
+  nfiles=$(find "$shm" -type f 2>/dev/null | wc -l)
+fi
 eval "$(bash "$here/btrfs-health.sh" --env 2>/dev/null || true)"
 if [ "${PH2D_FSTYPE:-}" = "btrfs" ] && [ "$opt" != "--cold" ]; then
   need_gib=$(awk -v b="$size" 'BEGIN{printf "%d", b/1073741824 + 8}')
@@ -90,7 +97,7 @@ if [ "$opt" != "--cold" ]; then
 fi
 rm "$link"                                   # só o symlink — NUNCA rm -rf num symlink (DIRETIVA §1.3)
 mv "$disk" "$link"
-rm -rf "$shm"                                # a cópia foi verificada; isto devolve o swap
+[ -d "$shm" ] && rm -rf "$shm"               # a cópia foi verificada; isto devolve o swap
 swap_after=$(awk '/^SwapFree:/{print $2}' /proc/meminfo)
 
 echo "✓ $link é dir real no disco, nodatacow: $(lsattr -d "$link" | cut -d' ' -f1)"

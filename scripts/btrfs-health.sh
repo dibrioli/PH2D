@@ -21,12 +21,24 @@
 # USAGE
 #   bash scripts/btrfs-health.sh          # banner humano · exit 0 verde, 1 vermelho
 #   bash scripts/btrfs-health.sh --env    # KEY=VALUE para scripts (target-to-disk.sh usa)
+#   bash scripts/btrfs-health.sh --scan <dir>...   # lista os arquivos CORROMPIDOS sob <dir>
+#         (lê cada arquivo; checksum errado ⇒ EIO ⇒ o caminho sai no stdout). É a única
+#         lista COMPLETA: o scrub imprime ~10 caminhos a cada 5 s e suprime o resto
+#         (medido 22/08: 228 erros, 10 caminhos no journal). Arquivos +C (nodatacow)
+#         não têm checksum e nunca aparecem aqui. Apague os de target/ e sccache
+#         (regeneram); os de fonte restauram-se do git.
 #
 # Portável: num FS que não é btrfs imprime só swap/tmpfs e sai 0 (Mac/Windows não
 # têm o problema; o script existe para o tier workstation).
 set -euo pipefail
 
 mode="${1:-}"
+if [ "$mode" = "--scan" ]; then
+  shift; [ "$#" -gt 0 ] || { echo "uso: btrfs-health.sh --scan <dir>..." >&2; exit 2; }
+  find "$@" -type f -print0 2>/dev/null \
+    | nice -n 19 ionice -c3 xargs -0 -n 64 -P 8 sh -c 'for f; do cat "$f" >/dev/null 2>&1 || echo "$f"; done' _
+  exit 0
+fi
 root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 mnt="$(findmnt -no TARGET --target "$root" 2>/dev/null || echo /)"
 fstype="$(findmnt -no FSTYPE --target "$root" 2>/dev/null || echo unknown)"
@@ -157,6 +169,10 @@ if [ "$red" = 1 ]; then
     1. (root) devolver blocos meio-vazios ao «não-alocado» — progressivo, pode parar com Ctrl+C:
          sudo btrfs balance start -dusage=10 /   &&   sudo btrfs balance start -dusage=30 /
        confira:  sudo btrfs filesystem usage / | grep -E 'unallocated|Metadata'
+       ⛔ SÓ num boot SEM «csum failed» (o balance REESCREVE dados; num kernel que corrompe
+          escritas ele arrisca o que está bom — e aborta em EIO no 1º extent ruim). Se a linha
+          «checksum» acima está vermelha: reboot no kernel LTS → limpar os targets corrompidos
+          (fim-de-dia) → só então o balance. O timer ph2d-btrfs-balance já tem essa trava.
 EOF
   [ "$tmpfs_target" -gt 0 ] && [ "$swap_pct" -ge 60 ] && cat <<'EOF'
     2. tirar o target/ do primário da RAM (preserva o build; só depois do passo 1):

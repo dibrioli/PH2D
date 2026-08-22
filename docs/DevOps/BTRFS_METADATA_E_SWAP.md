@@ -14,7 +14,7 @@
 
 | # | Sintoma que se vê | O que é de facto | Instrumento | Cura |
 |---|---|---|---|---|
-| 1 | `ENOSPC`/«disco cheio» a meio do build, `df` a 45% | **metadata sem espaço para crescer**: 937,85 GiB dos 950 estavam alocados a blocos de DADOS (410 usados), **0 byte não-alocado**, metadata 6 GiB com 5,46 usados | `btrfs-health.sh` → «não-alocado», «metadata livre» | **`btrfs balance -dusage=N`** (root) + timer semanal |
+| 1 | `ENOSPC`/«disco cheio» a meio do build, `df` a 45% | **metadata sem espaço para crescer**: 937,85 GiB dos 950 estavam alocados a blocos de DADOS (410 usados), **0 byte não-alocado**, metadata 6 GiB com 5,46 usados | `btrfs-health.sh` → «não-alocado», «metadata livre» | **`btrfs balance -dusage=N`** (root) + timer semanal — ⛔ só num boot **sem** `csum failed`, e **depois** de apagar os arquivos corrompidos (senão aborta em EIO) |
 | 2 | Swap 32/32 GiB com 61 GiB de RAM livre; OOM derruba a janela no pico | o `target/` do primário vive em **tmpfs** (33 GB); 30 GB dele estavam **swapados para o zram**, que é RAM (12,1 GiB comprimidos) | `btrfs-health.sh` → «swap», «target em tmpfs» · `zramctl` | **`scripts/target-to-disk.sh`** (depois de 1) — tmpfs **retirado** do tier |
 | 3 | `mold` SIGBUS / `rustc` SIGSEGV em laço, ~10 min por tentativa; `cargo clean -p` «cura» | artefatos **recém-escritos voltam do disco com checksum errado** (`csum failed`, dezenas de inodes novos); **0 nos dois boots com kernel 7.1.8, 208+ nos dois com 7.2.0** | `btrfs-health.sh` → «corrupção» · `coredumpctl` · journal | **A/B de kernel** (LTS já instalado) · `btrfs scrub` · memtest86+ |
 
@@ -52,6 +52,15 @@ sudo btrfs filesystem usage / | grep -E 'unallocated|Metadata'   # alvo: unalloc
 `-dusage=N` toca **só** chunks de dados com ≤N% de uso; o custo é I/O (cada chunk relocado é 1 GiB
 lido e reescrito) e o ganho é o chunk inteiro a voltar ao não-alocado. Com 606 GiB de folga dentro
 dos chunks, o `-dusage=10` termina em minutos e já desbloqueia a metadata para semanas.
+
+⛔ **Medido 2026-08-22 18:55 — o balance NÃO anda com arquivos corrompidos no disco, e não se
+roda num boot que corrompe.** `-dusage=10` abortou em **EIO** no primeiro extent com checksum
+errado (um artefato de `line-Vector/target`); `-dusage=30` relocou **um** bloco e abortou no
+segundo. Dois motivos para a ordem ser *reboot → limpar corrompidos → balance*: (a) ele pára no
+primeiro extent ruim; (b) ele **reescreve** dados — num kernel suspeito de corromper escritas,
+relocar blocos meio-vazios (onde mora o que sobreviveu ao `rm -rf`: qualquer coisa) arrisca o que
+ainda está bom. O timer semanal tem esta trava embutida (`ExecCondition`: pula se o boot já viu
+`csum failed`).
 
 **Prevenir (root, uma vez):** o timer semanal em [`systemd/`](systemd/) — o pacote
 `btrfsmaintenance` **não está** nos repositórios configurados desta máquina (é AUR), e dois arquivos
@@ -92,7 +101,10 @@ bash scripts/target-to-disk.sh --dry-run   # portões: symlink? ninguém constr�
 bash scripts/target-to-disk.sh             # copia tmpfs → target/ real com +C, troca o link, apaga o tmpfs
 ```
 O último passo devolve os ~30 GB de swap na hora (apagar um arquivo de tmpfs liberta os slots dele).
-`--cold` pula a cópia (próximo build frio; o sccache serve os deps).
+`--cold` pula a cópia (próximo build frio; o sccache serve os deps) — e é o caminho **depois de um
+reboot**: o tmpfs evaporou, não há build a preservar, e o swap já nasceu vazio. Em 22/08 a migração
+quente ficou bloqueada pelo próprio portão 3 (não-alocado 0 < 40 GiB), e o reboot no LTS a torna
+desnecessária.
 
 **Política (ADR-0104, emenda 2026-08-22):** `target/` em tmpfs **retirado** do tier workstation.
 `scripts/target-on-tmpfs.sh` só arma com `--force`. A regra `/etc/tmpfiles.d/ph2d-ramtarget.conf`
@@ -118,6 +130,21 @@ faz `mmap` do `.o`; a página que falha checksum devolve EIO no page fault ⇒ S
 truncado** (essa é a outra causa possível do mesmo sintoma, pelo §1) — é o arquivo inteiro no disco
 com bytes diferentes dos que foram checksumados ao escrever.
 
+**Scrub de 22/08 19:00 (2 min 48 s, 342 GiB a 2,05 GiB/s): 228 blocos com checksum errado,
+0 corrigíveis** (perfil `single`: não há segunda cópia). O journal só listou **10 caminhos** — o
+kernel limita a 10 mensagens por 5 s e suprimiu o resto — e os 10 estão nos `target/` das **três
+worktrees que eram CoW até esse dia** (`line-3DModeling`, `line-Sprite`, `line-Vector`), inclusive
+**binários de teste** em `target/debug/deps/` (um teste que «falha sem motivo» nessas linhas pode
+ser isto). A lista completa sai do `btrfs-health.sh --scan <dirs>` (lê tudo; EIO ⇒ caminho). **Corrida em
+22/08 19:02 sobre os 3 targets + `~/.cache/sccache` (≈270 GB, 3 min 16 s): 10 arquivos corrompidos,
+os 228 blocos concentrados neles — 8 binários de teste em `target/debug/deps/` e o build-script do
+`ahash` (2 cópias); sccache limpo.** Os 10 foram apagados às 19:06 (o cargo os regenera; um deles,
+`ph2d_host_desktop-…`, era o binário de teste do app na `line-3DModeling`). **O resto do `/home`
+(fonte, `.git`, configurações, tudo fora de `target/` e caches; 36 s): 0 arquivos corrompidos.** A
+corrupção atingiu **só** artefatos escritos sob carga de build — coerente com a hipótese 1.
+`smartctl` do NVMe: **0 erros de mídia, 0 entradas de log, 7% de desgaste, saudável** — a hipótese 3
+(SSD) está **eliminada**; sobram kernel (1) e RAM (2).
+
 **As três hipóteses, e o que separa cada uma:**
 1. **Regressão do kernel 7.2.0** (o `.0` de uma série nova, com btrfs+zstd+zram sob carga de 32
    núcleos). A correlação acima é **perfeita** e o A/B é barato: o `linux-cachyos-lts` 6.18.42 **já
@@ -136,9 +163,19 @@ motivo, `rustc` que segfaulta, binário estranho — em vez de um `csum failed` 
 que sobram são o `~/.cache/sccache` (CoW), a fonte e o `.git`. É mais uma razão para resolver a
 causa (kernel/RAM), não para voltar ao CoW nos targets.
 
+**O LTS já é o boot padrão (feito em 22/08 19:02):** `/boot/limine.conf` passou a
+`default_entry: CachyOS/linux-cachyos-lts` (o Limine aceita o *caminho* da entrada — sem a
+ambiguidade do índice numérico) e `remember_last_entry: no` (senão ele re-escolhia o 7.2.0, o
+último que bootou). Backup em `/boot/limine.conf.bak-2026-08-22-lts`; reverter =
+`sudo cp /boot/limine.conf.bak-2026-08-22-lts /boot/limine.conf`. ⚠️ Conferido antes de editar: o
+binário que o firmware carrega (`\EFI\limine\limine_x64.efi`, `efibootmgr` Boot0002) é **idêntico
+ao original do pacote, sem hash de config gravado** — o `ENABLE_VERIFICATION=yes` do CachyOS é o hash
+dos **kernels** (`vmlinuz#…` nos `path:`), não do `limine.conf`; logo a edição não dispara
+verificação nenhuma. Para voltar ao 7.2.0 um dia: escolher no menu (5 s) ou trocar o `default_entry`.
+
 **Curar / diagnosticar (root):**
 ```bash
-# 1) reboot no kernel LTS: no menu de boot, a entrada "linux-cachyos-lts". Depois, ao fim do dia:
+# 1) reboot (o LTS já é o padrão). Depois, ao fim do dia:
 bash scripts/btrfs-health.sh                       # «checksum: 0 nesta boot» = hipótese 1 confirmada
 # 2) scrub: lê TUDO (≈330 GB, minutos num NVMe) e imprime no journal o CAMINHO de cada arquivo corrompido
 sudo btrfs scrub start -B /                         # -B = espera e mostra o sumário
@@ -151,20 +188,26 @@ um de `~/.config`/`.local` restaura-se do backup ou do pacote.
 
 ---
 
-## §4 — O bloco do Enio (colável, na ordem)
+## §4 — O bloco do Enio (colável, na ordem) — *revisto 22/08 19h, depois do que já foi feito*
+
+Já feito em 22/08 (com a senha): timers instalados e ligados (`systemctl list-timers 'ph2d-*'`),
+LTS como boot padrão, scrub corrido, os arquivos corrompidos dos 3 targets + sccache apagados
+(§3). O que **sobra** exige o reboot, e por isso é dele:
 
 ```bash
-# A) METADATA — primeiro; minutos; pode rodar com agentes vivos (só I/O a mais)
+# A) REBOOT — o LTS já é o padrão; basta reiniciar (o menu de 5 s passa sozinho)
+# B) depois do reboot: o boot está limpo?
+cd /home/enio/Documentos/Projetos/PH2D && bash scripts/btrfs-health.sh     # quer-se «checksum: 0 nesta boot»
+# C) METADATA — só com B sem «csum failed»; minutos; pode rodar com agentes vivos (só I/O a mais)
 sudo btrfs balance start -dusage=10 / && sudo btrfs balance start -dusage=30 / \
-  && sudo btrfs filesystem usage / | grep -E 'unallocated|Metadata'
-# B) PREVENÇÃO — uma vez
-cd /home/enio/Documentos/Projetos/PH2D && sudo cp docs/DevOps/systemd/ph2d-btrfs-*.{service,timer} /etc/systemd/system/ \
-  && sudo systemctl daemon-reload && sudo systemctl enable --now ph2d-btrfs-balance.timer ph2d-btrfs-scrub.timer
-# C) SWAP — com o primário ocioso (nenhum cargo na raiz); a linha pode rodar isto
-cd /home/enio/Documentos/Projetos/PH2D && bash scripts/target-to-disk.sh
-# D) CORRUPÇÃO — reboot na entrada "linux-cachyos-lts" do menu de boot; no fim do dia:
+  && sudo btrfs filesystem usage / | grep -E 'unallocated|Metadata'                 # alvo: unallocated ≥ 50 GiB
+# D) target do primário para DISCO (o tmpfs evaporou no reboot → --cold, sem cópia)
+cd /home/enio/Documentos/Projetos/PH2D && bash scripts/target-to-disk.sh --cold
+# E) no fim do dia de trabalho no LTS: o contador continua em zero?
 cd /home/enio/Documentos/Projetos/PH2D && bash scripts/btrfs-health.sh
 ```
+Se em **E** o checksum voltar a subir no LTS, a hipótese é **RAM** → `sudo pacman -S memtest86+` e
+uma noite de teste.
 
 ---
 

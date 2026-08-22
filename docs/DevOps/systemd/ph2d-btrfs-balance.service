@@ -5,6 +5,11 @@ ConditionPathIsMountPoint=/
 
 [Service]
 Type=oneshot
+# TRAVA (medido 2026-08-22): um balance REESCREVE dados. Num boot em que o kernel
+# ja devolveu arquivo com checksum errado, relocar blocos e arriscar corromper o
+# que ainda esta bom -- e o proprio balance aborta em EIO no primeiro extent ruim.
+# ExecCondition falhando = unidade PULADA (nao "failed"), e o journal diz por que.
+ExecCondition=/bin/sh -c '! journalctl -k -b --no-pager -q | grep -q "csum failed" || { echo "pulado: csum failed neste boot -- troque de kernel/scrub antes (docs/DevOps/BTRFS_METADATA_E_SWAP.md §3)"; exit 1; }'
 # Progressivo e barato: so relocaliza blocos <=10% e depois <=25% cheios.
 # Um balance de metadata NAO entra aqui de proposito (ver runbook, Recusas).
 ExecStart=/usr/bin/btrfs balance start -dusage=10 /

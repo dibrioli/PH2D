@@ -19,7 +19,7 @@ use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, NamedAnchor, NamedAnchorList, SimWorld, World};
 use ph2d_editor::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow, Toast};
 
-use super::inspector_ordering::{queue_remove, queue_set};
+use super::inspector_ordering::queue_set;
 
 const NAMED_ANCHOR_LIST: &str = "ph2d::ecs::NamedAnchorList";
 
@@ -100,10 +100,7 @@ pub(super) fn apply_anchor_edit(
         AnchorFieldEdit::Add => {
             let name = list.next_free_name();
             if let Err(e) = list.insert(NamedAnchor::socket(name)) {
-                return Some(Toast::error(format!(
-                    "Anchor not added: {}",
-                    describe(e, ph2d_ecs::ANCHORS_MAX)
-                )));
+                return Some(Toast::error(format!("Anchor not added: {}", describe(e))));
             }
         }
         AnchorFieldEdit::Remove(i) => {
@@ -119,7 +116,7 @@ pub(super) fn apply_anchor_edit(
             if let Err(e) = ph2d_ecs::validate_anchor_name(new_name) {
                 return Some(Toast::error(format!(
                     "Anchor name rejected: {}",
-                    describe(e, ph2d_ecs::ANCHOR_NAME_MAX_BYTES)
+                    describe(e)
                 )));
             }
             if list
@@ -197,24 +194,33 @@ fn apply_field(a: &mut NamedAnchor, edit: &AnchorFieldEdit, ppm: f32) {
 }
 
 /// A recusa, em palavras que o artista entende — nunca o nome da variante.
-fn describe(e: ph2d_ecs::AnchorNameError, cap: usize) -> String {
+/// ⚠️ **Cada braço nomeia o SEU teto — a função não recebe nenhum.**
+///
+/// Ela recebia um `cap: usize`, e cada chamador passava o número que achava certo: o `Add` passava
+/// `ANCHORS_MAX`, o `Rename` passava `ANCHOR_NAME_MAX_BYTES`. As duas mensagens liam igual
+/// («over the limit of 64») e só estavam certas **por coincidência** de os dois tetos serem 64 —
+/// mexer num deles tornava uma delas falsa, em silêncio (auditoria 2026-08-22). *Quem sabe de que
+/// teto uma falha é, é a falha.*
+fn describe(e: ph2d_ecs::AnchorNameError) -> String {
     match e {
         ph2d_ecs::AnchorNameError::Empty => "the name is empty".to_string(),
-        ph2d_ecs::AnchorNameError::TooLong => format!("over the limit of {cap}"),
+        ph2d_ecs::AnchorNameError::TooLong => {
+            format!("the name is over {} bytes", ph2d_ecs::ANCHOR_NAME_MAX_BYTES)
+        }
         ph2d_ecs::AnchorNameError::ControlChar => "the name has a control character".to_string(),
         ph2d_ecs::AnchorNameError::Duplicate => "that name is already used".to_string(),
+        ph2d_ecs::AnchorNameError::ListFull => {
+            format!("this sprite already has {} anchors", ph2d_ecs::ANCHORS_MAX)
+        }
     }
 }
 
-/// Retira o componente inteiro.
-#[allow(dead_code)]
-pub(super) fn detach_anchor_list(
-    entity_bits: u64,
-    queue: &EditorCommandQueue,
-    registry: &ComponentRegistry,
-) {
-    queue_remove(queue, registry, entity_bits, NAMED_ANCHOR_LIST);
-}
+// ⛔ Houve aqui um `detach_anchor_list`, atrás de um `#[allow(dead_code)]` e **sem chamador
+// nenhum** — retirado na auditoria de 2026-08-22. Ele contradizia, a seis linhas de distância, o
+// comentário do braço `Remove`: *«O "Remove" que retira o componente inteiro não existe de
+// propósito: ele não tem gesto»*. Uma das duas coisas mentia, e o `allow` era o que a deixava
+// mentir em silêncio. *Código morto e comentário velho mentem — e um `allow(dead_code)` é o
+// carimbo que autoriza a mentira a ficar.*
 
 #[cfg(test)]
 mod tests {

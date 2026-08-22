@@ -66,6 +66,14 @@ pub enum AnchorNameError {
     ControlChar,
     /// Já existe uma âncora com este nome no mesmo sprite.
     Duplicate,
+    /// A LISTA está cheia (`ANCHORS_MAX`) — nada a ver com o nome.
+    ///
+    /// ⚠️ **Ela existe porque `TooLong` significava duas coisas** (auditoria 2026-08-22): a
+    /// `insert` devolvia `TooLong` quando a lista enchia, e quem lia a mensagem via «over the
+    /// limit of 64» tanto para um nome de 65 bytes como para a 65ª âncora. Só não era uma
+    /// mentira **por coincidência** de os dois tetos serem 64: mexer num deles tornava uma das
+    /// duas mensagens falsa, em silêncio.
+    ListFull,
 }
 
 /// Valida um nome de âncora contra os caps da spec §7.12.
@@ -310,7 +318,7 @@ impl NamedAnchorList {
             return Err(AnchorNameError::Duplicate);
         }
         if self.0.len() >= ANCHORS_MAX {
-            return Err(AnchorNameError::TooLong);
+            return Err(AnchorNameError::ListFull);
         }
         self.0.push(anchor);
         Ok(())

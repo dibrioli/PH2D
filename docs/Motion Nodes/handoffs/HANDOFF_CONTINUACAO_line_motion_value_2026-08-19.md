@@ -241,7 +241,7 @@ uma, cada qual com o seu gate. ⛔ Não «corrija» ao passar: uma acusação se
 ---
 ---
 
-## §4 — As SETENTA E CINCO LEIS que esta linha pagou para aprender
+## §4 — As SETENTA E SEIS LEIS que esta linha pagou para aprender
 
 ⚠️ **Cada uma destas custou um gate vermelho, um smoke reprovado ou uma medição** — elas não
 são estilo.
@@ -797,6 +797,17 @@ são estilo.
     `generated_wgsl_validates` (exaustivo sobre o espaço de presença, e **derivado** do
     `register_all_nodes` — foi assim que o kernel mais novo do repo deixou de escapar).
 
+76. **⚠️ UM GATE QUE NENHUM PASSO ESCRITO INVOCA NÃO EXISTE — e desta vez foi um gate, não
+    uma ferramenta.** Em 22/08 corri o `architecture_workspace_file_loc_cap` só para conferir
+    dois arquivos que a wave dos knobs tinha empurrado acima de 700, e ele listou **ONZE**:
+    nove eram de janelas ANTERIORES desta mesma linha, todos ≤ 700 no `main`, um deles a
+    **951**. A suíte do shell passa com 3405 verdes e **não o inclui** — ele mora em
+    `ph2d-editor-core`, e nenhum passo do §5 o chamava pelo nome. É literalmente a lei que
+    esta casa já escreveu sobre FERRAMENTAS (*«5 usos contra 13.791 comandos crus»*),
+    aplicada a gates: **um vermelho que ninguém corre é indistinguível de verde**, e a
+    integração é onde ele aparece — com nove arquivos de dívida em vez de um. O §5 passou a
+    nomeá-lo no fecho de cada grupo.
+
 ---
 
 ## §5 — O ritual de cada célula (o que fazer, na ordem)
@@ -815,7 +826,14 @@ são estilo.
    `const` presos por um gate que lê o fonte da narração.
 7. **Reconcilie a `Contagem`** da folha rodando o placar (ele **imprime e sai vermelho**;
    `--write` não existe).
-8. **`CLAUDE.md §5` recebe UMA LINHA** — a narrativa vai no handoff.
+8. **⚠️ CORRA O GATE DE LOC**, pelo nome, ao fechar o grupo:
+   ```
+   cargo test -p ph2d-editor-core --test architecture_workspace_file_loc_cap
+   ```
+   Ele **não** está na suíte do shell (mora noutra crate), e foi por isso que ficou vermelho
+   nove arquivos seguidos — ver a lei 76. A cura de um teto é sempre um **split por
+   responsabilidade**, nunca uma entrada na allowlist (HR-18).
+9. **`CLAUDE.md §5` recebe UMA LINHA** — a narrativa vai no handoff.
 
 ---
 

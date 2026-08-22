@@ -398,15 +398,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   local só para bissecar) — 100% de quads e irregulares de **39,7% para 0,5%** (o oráculo fica em 0,2%).
   Cinco crates: `ph2d-remesh-iso` (F1) · `ph2d-crossfield` (F2) · `ph2d-trace` (F3) · `ph2d-quantize` (F4, Bi-MDF
   com ótimo demonstrado) · `ph2d-quadfill` (F5). ⛔⛔ **VERMELHO PRÉ-EXISTENTE, medido 22/08: o F3 PERDE ASAS** —
-  no toro 48×24 **um patch engole a asa** (`χ = −1` com UMA fronteira, logo a cerca antiga era cega) e a malha saía
-  com `χ = 2` **passando em TODAS as outras réguas**. ✅ **Já não sai:** a cerca é `V−E+F` do complexo contra o `χ` da
-  peça (`LayoutError::GenusLost`), medida com **zero falsos positivos em 3 toros × 9 pesos** — hoje ele **recusa com
-  nome**. ⛔ Falta CORTAR a asa (gate `#[ignore]` `the_genus_survives_on_every_torus`), e é o que trava o
-  `ALIGN_WEIGHT` — que **funciona** (relevo `25,7° → 13,7°`, o número do Instant Meshes) e ships a **zero**.
-  ⚠️ **O traçado está INOCENTE** (mesmas singularidades e separatrizes que os toros que passam, zero descartadas):
-  era a **limpeza** que trocava «anel sinalizado» por «asa NÃO sinalizada» — ⛔ e dissolver **não alcança** esta
-  classe (6 lados e 15 pares, **zero** curas). A guarda `the_cleanup_never_worsens_the_topology` já a impede; o
-  corte pede que o `boundary_loops` saiba percorrer uma parede **dos dois lados**. ⛔ Outros buracos
+  um toro saía com `χ = 2` **passando em TODAS as outras réguas** (100% quads, zero bordo, zero não-manifold).
+  ✅ **CURADO em 22/08, e a cura era olhar:** a ponte que abre o patch-anel em disco **já estava traçada** — o
+  `boundary_loops` é que exigia que a face do outro lado fosse de OUTRO patch, e ignorava uma parede interior.
+  Honrá-la (`decompose_with(cut_open)`), sob a guarda de que a melhoria seja **estrita**, dá 3 096 quads e `χ = 0`
+  com **zero** dissoluções. Duas cercas ficam: `LayoutError::GenusLost` (`V−E+F` do complexo contra o `χ` da peça)
+  e `the_cleanup_never_worsens_the_topology`. ⚠️ **O `ALIGN_WEIGHT` continua a ZERO, e agora por outra razão:**
+  não há mais malha de género errado em célula nenhuma, mas o alinhamento faz **algumas peças recusarem**.
+  ⛔ Outros buracos
   medidos: o F1 devolve o cubo **não-manifold** · a esfera **embaralhada** não fecha · **sem feature lines**.
   Tabelas por fase: `PLAN.md` §4-bis..§4-quatervicies.
   **Smokes:** `PH2D_SCULPT3D_SMOKE=<n>` (a W9 é a cena **`=34`**). ⚠️ **Rode uma vez SEM a env var** — é a metade que

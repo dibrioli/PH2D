@@ -41,6 +41,8 @@
 
 #![forbid(unsafe_code)]
 
+/// **A FRONTEIRA de um patch e os cantos dela** — ver [`boundary`].
+mod boundary;
 /// **A DECOMPOSIÇÃO** — do traçado para patches, lados e arcos — ver [`patches`].
 pub mod patches;
 /// **O ANEL de um vértice e as SEMENTES** — ver [`ring`].
@@ -144,6 +146,30 @@ pub fn trace_patches(mesh: &Mesh, dual: &Dual, field: &CrossField) -> PatchLayou
     let walker = Walker::new(mesh, dual, field);
     let (mut walls, base) = walker.trace_all();
     let mut out = patches::decompose(mesh, &walls, base.clone());
+
+    // ⭐⭐ **A PONTE DO ANEL — e ela é a PRIMEIRA cura tentada, antes de dissolver.**
+    //
+    // Medido em 2026-08-22: nas três fixturas do corpus com parede interior, ela vive
+    // **sempre** no patch anel e é um **caminho entre as duas fronteiras dele**. ⇒ *A
+    // ponte que abre o anel em disco já está traçada;* o passeio da fronteira é que
+    // se recusava a percorrê-la, porque exigia que a face do outro lado fosse de
+    // outro patch.
+    //
+    // ⚠️ **Ela é julgada pela MESMA guarda que as dissoluções** — só entra se a
+    // distância topológica melhorar. Ligá-la sempre foi medido e reprovado: no toro
+    // 32×16 levava o complexo de `0` para `−1`. *A ponte é uma cura, e uma cura que
+    // piora não é uma cura.*
+    //
+    // ⚠️⚠️ **A melhoria tem de ser ESTRITA e da DISTÂNCIA, não do par.** Comparar a
+    // saúde inteira deixava entrar um movimento lateral: no toro 32×16 a ponte
+    // empatava na distância (`1`) e ganhava nos degenerados (`0` contra `1`), era
+    // adoptada, e o laço parava contente num complexo de **`−1`** — pior do que os
+    // `0` a que uma dissolução chegava. *Um critério que aceita empates deixa a cura
+    // barata expulsar a cura certa.*
+    let bridged = patches::decompose_with(mesh, &walls, base.clone(), true);
+    if health(&bridged).0 < health(&out).0 {
+        out = bridged;
+    }
     // ⭐ **A limpeza é iterativa porque dissolver uma lasca pode fazer nascer
     // outra**: as faces dela passam para o vizinho, e o vizinho ganha cantos que
     // não tinha. Ela pára sozinha quando não há degenerado nenhum — e o teto
@@ -296,7 +322,7 @@ impl PatchLayout {
     /// # Errors
     /// Devolve [`ph2d_quantize::LayoutError`] quando a decomposição não fecha — um
     /// arco de bordo, um patch de menos de 3 lados, ou ⭐ **um patch que não é um
-    /// disco** ([`ph2d_quantize::LayoutError::NotADisk`]).
+    /// disco** ([`ph2d_quantize::LayoutError::GenusLost`]).
     ///
     /// ⛔ **A última cerca nasceu de um remesh que mudava o GÉNERO da peça em
     /// silêncio** (2026-08-22): num toro, um patch engolia a asa inteira, saía com

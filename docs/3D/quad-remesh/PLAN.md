@@ -2484,3 +2484,66 @@ conta `V += 1, E += 1` fecha em `0` em vez de descer.
 ⇒ ⭐⭐ **O próximo passo tem nome e é pequeno:** honrar as paredes interiores **e**
 promover um canto em cada laço de parede fechado que passe a ser fronteira. As três
 tentativas acima dizem exactamente por que as duas coisas têm de vir juntas.
+
+---
+
+## 4-sexvicies — ⭐⭐⭐ **A PONTE JÁ ESTAVA TRAÇADA** — o toro fechou o buraco
+
+> O §4-quinvicies deixou a pista (184 paredes mortas dentro dos patches) e três
+> tentativas rejeitadas. Este passo mede a **estrutura** dessas paredes, e a resposta
+> torna o conserto pequeno.
+
+### ⭐ O que elas são, medido
+
+Sonda `are_the_interior_walls_slits_or_loops` — componentes ligadas das paredes
+interiores, e a ramificação dos vértices delas:
+
+| fixtura | arestas interiores | componentes | pontas livres | **em que patch** |
+|---|---|---|---|---|
+| toro 32×16 | 8 | 1 | **0** | `χ = 0` · 2 fronteiras · 6 lados |
+| toro 48×24 | 18 | 1 | **0** | `χ = 0` · 2 fronteiras · 6 lados |
+| esfera 48×72 | 2 | 1 | **0** | `χ = 0` · 2 fronteiras · 6 lados |
+
+⭐⭐ **Nas três, sem excepção: um único caminho entre duas junções, dentro do patch
+ANEL.** Ou seja — *a ponte que abre o anel em disco já está traçada.* O passeio da
+fronteira é que se recusava a percorrê-la, porque exigia que a face do outro lado
+fosse de **outro** patch.
+
+⇒ Não era preciso construir um algoritmo de corte. Era preciso **olhar**.
+
+### A cura, e o critério que a governa
+
+`decompose_with(..., cut_open)` deixa cair a segunda condição do `outside` — a
+parede passa a ser percorrida **dos dois lados** (a representação *"cortar e
+abrir"*), e só em patches que não são disco. A adopção é decidida pela **mesma
+guarda** do §4-quatervicies.
+
+⛔ **E o critério errado foi construído e medido primeiro:** comparar a saúde inteira
+`(distância, degenerados)` deixava entrar um movimento **lateral** — no toro 32×16 a
+ponte empatava na distância (`1`) e ganhava nos degenerados (`0` contra `1`), era
+adoptada, e o laço parava num complexo de **`−1`**, pior que o `0` a que a dissolução
+chegava. *Um critério que aceita empates deixa a cura barata expulsar a cura certa.*
+⇒ A melhoria tem de ser **estrita e da distância**.
+
+### ⭐⭐⭐ O resultado
+
+| fixtura | antes | depois |
+|---|---|---|
+| ⛔ **toro 48×24** | recusava (`χ` do complexo `1`) | ⭐ **3 096 quads · χ = 0 · 0 bordo · 0 não-manifold · 23 irregulares**, e **zero** rondas de dissolução |
+| toro 32×16 | 27 patches, 1 ronda | **idêntico** (a ponte empata e é recusada) |
+| toro 64×32 · esfera 24×36 · 48×72 | ✓ | **idênticos** |
+
+⭐ **`the_genus_survives_on_every_torus` deixou de ser `#[ignore]`** — o vermelho
+pré-existente que abriu o §4-tervicies está **fechado**.
+
+### ⚠️ E o `ALIGN_WEIGHT` continua a zero — mas por outra razão
+
+Re-medida a varredura com a topologia curada (3 toros × 9 pesos + esfera): ⭐ **não
+há uma única malha de género errado em nenhuma célula** — cada uma é ✓ ou uma recusa
+honesta. ⛔ Mas o toro 32×16 passa a **recusar** em `0,005 · 0,01 · 0,02 · 0,03 · 0,1
+· 0,2`, onde a peso `0` ele entrega malha.
+
+⇒ **O bloqueio mudou de espécie**: era *"o alinhamento produz malha errada"*, é agora
+*"o alinhamento faz algumas peças recusarem"*. ⚠️ E há um segundo número a explicar:
+a esfera 24×36 a `0,03` entrega **357 quads** contra 1 997 a peso `0` — um colapso de
+densidade que nada nesta secção explica.

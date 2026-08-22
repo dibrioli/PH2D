@@ -1,7 +1,7 @@
 //! **A TOPOLOGIA DA DECOMPOSIÇÃO** — as três contas de `V − E + F` que dizem se o
 //! traçado decompôs a superfície ou outra coisa.
 //!
-//! ⭐⭐ **O corte contra o [`super::patches`] é de ASSUNTO, e foi forçado pela HR-18**
+//! ⭐⭐ **O corte contra o `patches` é de ASSUNTO, e foi forçado pela HR-18**
 //! (755 contra 700): lá mora **como** a malha se recorta nas paredes (o flood, as
 //! fronteiras, os cantos, os arcos); aqui **se o resultado ainda é a mesma peça**.
 //!
@@ -13,9 +13,9 @@
 //!
 //! | conta | o que responde | onde entra |
 //! |---|---|---|
-//! | [`mesh_euler`] | o `χ` da peça que chegou | a referência da comparação |
-//! | [`patch_chi`] | o `χ` da região de cada patch — um disco dá `1` | **diagnóstico**: diz QUAL patch engoliu a asa |
-//! | [`super::PatchLayout::complex_euler`] | o `χ` do complexo *cantos · arcos · patches* | ⭐ **a cerca**, e a única que prevê o `χ` da malha final |
+//! | `mesh_euler` | o `χ` da peça que chegou | a referência da comparação |
+//! | `patch_chi` | o `χ` da região de cada patch — um disco dá `1` | **diagnóstico**: diz QUAL patch engoliu a asa |
+//! | `PatchLayout::complex_euler` | o `χ` do complexo *cantos · arcos · patches* | ⭐ **a cerca**, e a única que prevê o `χ` da malha final |
 
 use std::collections::BTreeSet;
 

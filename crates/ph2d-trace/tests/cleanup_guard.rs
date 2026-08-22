@@ -34,11 +34,12 @@ fn gap(layout: &ph2d_trace::PatchLayout) -> i64 {
 /// verde sobre qualquer coisa: nos outros três a limpeza ou não corre, ou fecha na
 /// primeira ronda. *Medido antes da guarda: aquele toro ia de `1` para `2`.*
 ///
-/// ⚠️ **A barra é «não piora», e não «fica em zero»** — de propósito. O traçado
-/// ainda não sabe **cortar** uma asa, então há peças em que ele começa com a
-/// distância a `1` e não tem como a fechar; exigir zero aqui seria escrever nesta
-/// asserção um trabalho que mora noutro sítio (e o gate `#[ignore]`
-/// `the_genus_survives_on_every_torus`, na `ph2d-quadfill`, é o endereço dele).
+/// ⚠️ **A barra é «não piora», e não «fica em zero»** — de propósito, e a distinção
+/// sobreviveu à cura. Hoje as cinco fixturas fecham em zero (a ponte do anel curou o
+/// toro 48×24), mas *esta* asserção é sobre a **limpeza**, não sobre o resultado
+/// final: escrever «zero» aqui misturaria duas afirmações, e a de que a decomposição
+/// descreve a peça já tem dono — a cerca `LayoutError::GenusLost` e o gate
+/// `the_genus_survives_on_every_torus`, na `ph2d-quadfill`.
 #[test]
 fn the_cleanup_never_worsens_the_topology() {
     for (name, mesh) in [
@@ -117,6 +118,54 @@ fn the_cleanup_still_closes_what_it_can() {
         assert!(
             cleaned.report.rounds > 0,
             "{name}: a limpeza nao correu ronda nenhuma"
+        );
+    }
+}
+
+/// ⭐⭐ **A PONTE DO ANEL só entra quando melhora ESTRITAMENTE a topologia.**
+///
+/// ⛔ **O critério errado foi construído e medido no mesmo dia.** Comparar a saúde
+/// inteira — `(distância, degenerados)` — deixava entrar um movimento **lateral**:
+/// no toro 32×16 a ponte empatava na distância (`1`) e ganhava nos degenerados (`0`
+/// contra `1`), era adoptada, e o laço parava contente num complexo de **`−1`** —
+/// pior do que o `0` a que uma dissolução chegava. *Um critério que aceita empates
+/// deixa a cura barata expulsar a cura certa.*
+///
+/// As duas fixturas são os dois lados da decisão, e a tabela é o gate:
+///
+/// | fixtura | a ponte | porquê |
+/// |---|---|---|
+/// | toro 48×24 | ⭐ **adoptada** | distância `1 → 0`, e **nenhuma** dissolução é precisa |
+/// | toro 32×16 | ⛔ **recusada** | empata em `1`; quem fecha ali é a dissolução |
+#[test]
+fn the_bridge_is_only_adopted_when_it_strictly_helps() {
+    for (name, mesh, want_rounds, want_gap) in [
+        // ⭐ A ponte resolve sozinha: zero rondas de dissolução.
+        ("toro 48x24", tri(shapes::torus(48, 24, 1.0, 0.35)), 0, 0),
+        // ⛔ A ponte empata e é recusada; a dissolução fecha numa ronda.
+        ("toro 32x16", tri(shapes::torus(32, 16, 1.0, 0.35)), 1, 0),
+    ] {
+        let mut work = mesh.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = Dual::build(&work);
+        let (field, _) = ph2d_crossfield::solve_miq(&dual);
+        let out = ph2d_trace::trace_patches(&work, &dual, &field);
+        eprintln!(
+            "[f3] {name}: distancia {} · {} rondas de dissolucao · {} patches",
+            gap(&out),
+            out.report.rounds,
+            out.side_arcs.len(),
+        );
+        assert_eq!(
+            gap(&out),
+            want_gap,
+            "{name}: a decomposicao final nao descreve a peca"
+        );
+        assert_eq!(
+            out.report.rounds, want_rounds,
+            "{name}: esperava {want_rounds} ronda(s) de dissolucao -- \
+             se este numero mudou, o criterio de adopcao da ponte mudou com ele"
         );
     }
 }

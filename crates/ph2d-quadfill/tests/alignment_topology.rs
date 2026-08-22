@@ -103,22 +103,19 @@ fn the_genus_survives_the_shipped_weight() {
 /// patch não-disco. A malha de entrada tem `χ = 0`; a montagem realiza fielmente o
 /// que o layout manda. ⇒ **A asa perde-se no F3, o traçado.**
 ///
-/// ⭐⭐ **E desde 2026-08-22 a cadeia RECUSA em vez de mentir** — a cerca do
-/// complexo (`LayoutError::GenusLost`) apanha exactamente estes casos. ⚠️ **Por
-/// isso este gate exige uma MALHA**, não apenas uma que esteja certa: uma recusa
-/// continua a ser o traçado a não saber decompor um toro, e um gate que aceitasse
-/// a recusa ficaria verde sobre o bloqueio que ele existe para nomear.
+/// ⭐⭐ **VERDE desde 2026-08-22, e o que o curou foi a PONTE DO ANEL.** A parede
+/// que abre o anel em disco **já estava traçada** — o passeio da fronteira é que se
+/// recusava a percorrê-la, porque exigia que a face do outro lado fosse de outro
+/// patch. Ver `PLAN.md` §4-sexvicies.
 ///
-/// ⚠️ **`#[ignore]` porque é vermelho, não porque é lento** — e fica assim para o
-/// bloqueio ter endereço em vez de se dissolver numa nota. É o item nº 1 do
-/// `PLAN.md` §4-duovicies, e é o que trava o `ALIGN_WEIGHT`.
+/// ⚠️ **Este gate exige uma MALHA, não só uma que esteja certa.** Enquanto foi
+/// vermelho, a cadeia **recusava** (a cerca `LayoutError::GenusLost`) — e uma recusa
+/// continua a ser o traçado a não saber decompor um toro. *Um gate que aceitasse a
+/// recusa ficaria verde sobre o bloqueio que ele existia para nomear.*
 ///
-/// ```text
-/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
-///     --test alignment_topology -- --ignored the_genus_survives_on_every_torus
-/// ```
+/// ⚠️ **A fixtura que o tornou útil foi o toro 48×24**, e ela não estava no corpus:
+/// o único toro gateado era o 32×16, e nele o defeito não aparece.
 #[test]
-#[ignore = "VERMELHO PRE-EXISTENTE -- o tracado nao decompoe o toro 48x24, ver o doc"]
 fn the_genus_survives_on_every_torus() {
     for (name, mesh, edge) in [
         ("toro 32x16", shapes::torus(32, 16, 1.0, 0.35), 0.06),
@@ -689,6 +686,140 @@ fn are_there_interior_walls_today() {
             cleaned.report.interior_walls,
             cleaned.side_arcs.len(),
             cleaned.report.rounds,
+        );
+    }
+}
+
+/// ⭐⭐ **SONDA — as paredes interiores são FENDAS ou LAÇOS?**
+///
+/// ⛔ **A pergunta que as três tentativas rejeitadas deixaram aberta** (`PLAN.md`
+/// §4-quinvicies). Honrar as paredes interiores corrige o toro 48×24 e parte o
+/// 32×16 — no 32×16 a conta ganhou **2 arcos e 1 canto**, e as duas formas
+/// possíveis explicam números diferentes:
+///
+/// | forma | o que honrá-la acrescenta | de onde vem o canto |
+/// |---|---|---|
+/// | **fenda** (caminho com pontas livres) | 2 arcos (ida e volta) | a PONTA, ramificação `1` — e o `is_corner` exige `> 2` |
+/// | **laço fechado** | 1 arco | nenhum — e um laço sem canto é **descartado inteiro** (`cuts.is_empty()`) |
+///
+/// ⚠️ **A régua é a ramificação nas pontas de cada componente.** Uma fenda tem
+/// vértices de grau `1`; um laço não tem nenhum.
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
+///     --test alignment_topology -- --ignored --nocapture are_the_interior_walls_slits_or_loops
+/// ```
+#[test]
+#[ignore = "sonda -- as paredes interiores sao fendas ou lacos?"]
+fn are_the_interior_walls_slits_or_loops() {
+    use ph2d_trace::patches::decompose;
+    use ph2d_trace::walk::Walker;
+
+    for (name, mesh) in [
+        (
+            "toro 32x16 (parte ao honrar)",
+            shapes::torus(32, 16, 1.0, 0.35),
+        ),
+        (
+            "toro 48x24 (cura ao honrar)",
+            shapes::torus(48, 24, 1.0, 0.35),
+        ),
+        ("esfera 48x72", shapes::uv_sphere(48, 72, 1.0)),
+    ] {
+        let mut work = mesh.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = Dual::build(&work);
+        let (field, _) = solve_miq_aligned(&dual, Rounding::default(), 0.0);
+        let walker = Walker::new(&work, &dual, &field);
+        let (walls, base) = walker.trace_all();
+        let raw = decompose(&work, &walls, base);
+
+        let mut half: std::collections::BTreeMap<(u32, u32), u32> =
+            std::collections::BTreeMap::new();
+        for (fi, f) in work.faces().iter().enumerate() {
+            let v = f.verts();
+            for k in 0..v.len() {
+                half.insert(
+                    (v[k], v[(k + 1) % v.len()]),
+                    u32::try_from(fi).unwrap_or(u32::MAX),
+                );
+            }
+        }
+        let branching = walls.branching();
+        let interior: Vec<(u32, u32)> = walls
+            .edges
+            .iter()
+            .copied()
+            .filter(|&(a, b)| match (half.get(&(a, b)), half.get(&(b, a))) {
+                (Some(&f), Some(&g)) => raw.face_patch[f as usize] == raw.face_patch[g as usize],
+                _ => false,
+            })
+            .collect();
+
+        // As componentes ligadas das paredes INTERIORES, por união-e-busca simples.
+        let mut adj: std::collections::BTreeMap<u32, Vec<u32>> = std::collections::BTreeMap::new();
+        for &(a, b) in &interior {
+            adj.entry(a).or_default().push(b);
+            adj.entry(b).or_default().push(a);
+        }
+        let mut seen: std::collections::BTreeSet<u32> = std::collections::BTreeSet::new();
+        let mut comps = 0usize;
+        let mut slits = 0usize;
+        let mut cycles = 0usize;
+        for &v0 in adj.keys() {
+            if !seen.insert(v0) {
+                continue;
+            }
+            comps += 1;
+            let mut stack = vec![v0];
+            let mut verts = vec![v0];
+            while let Some(v) = stack.pop() {
+                for &w in adj.get(&v).map(Vec::as_slice).unwrap_or(&[]) {
+                    if seen.insert(w) {
+                        stack.push(w);
+                        verts.push(w);
+                    }
+                }
+            }
+            // ⭐ A ponta livre é a que tem grau `1` **no conjunto INTEIRO** de
+            // paredes — não só dentro da componente interior.
+            let tips = verts
+                .iter()
+                .filter(|v| branching.get(v).copied().unwrap_or(0) == 1)
+                .count();
+            if tips > 0 {
+                slits += 1;
+            } else {
+                cycles += 1;
+            }
+            let degs: std::collections::BTreeMap<usize, usize> =
+                verts.iter().fold(Default::default(), |mut m, v| {
+                    *m.entry(branching.get(v).copied().unwrap_or(0)).or_default() += 1;
+                    m
+                });
+            // ⭐⭐ **EM QUE PATCH ela vive, e esse patch é um disco?** É esta coluna
+            // que decide se honrar a parede é um corte legítimo (um anel que se abre
+            // em disco) ou um estrago (uma fenda dentro de um disco que já estava bem).
+            let owner = interior
+                .iter()
+                .find(|&&(a, _)| verts.contains(&a))
+                .and_then(|&(a, b)| half.get(&(a, b)).copied())
+                .map_or(u32::MAX, |f| raw.face_patch[f as usize]);
+            println!(
+                "    componente: {} vertices, pontas {tips}, graus {degs:?}                  | PATCH {owner}: χ {} · {} fronteiras · {} lados",
+                verts.len(),
+                raw.chi.get(owner as usize).copied().unwrap_or(99),
+                raw.loops_per_patch
+                    .get(owner as usize)
+                    .copied()
+                    .unwrap_or(99),
+                raw.side_arcs.get(owner as usize).map_or(99, Vec::len),
+            );
+        }
+        println!(
+            "── {name}: {} arestas interiores em {comps} componentes | FENDAS {slits}  LACOS {cycles}",
+            interior.len()
         );
     }
 }

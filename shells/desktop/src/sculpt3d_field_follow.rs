@@ -383,7 +383,7 @@ fn what_does_the_chain_do_to_a_plain_sphere() {
                      | ⭐enviesamento p50 {:>3.0}° p99 {:>3.0}° (>60°: {}) | dobras {} \
                      | ⭐rectangulo {:>3.0}° LEQUE {:>3.0}° \
                      | ⭐⭐DOMINIO rect {:>4.1}° (n={}) leque {:>4.1}° (n={}) \
-                     | ⭐⭐⭐deslizou {}/{} (quads {}) recusas {:?} | ⭐CONFORME {:.2}",
+                     | ⭐⭐⭐deslizou {}/{} (quads {}) recusas {:?} | ⭐CONFORME {:.2} | ⭐⭐⭐regraduou {} arcos",
                     out.faces().len(),
                     r.patches,
                     s.aspect_p50,
@@ -414,6 +414,7 @@ fn what_does_the_chain_do_to_a_plain_sphere() {
                     // perfeito. Sem ele, «o mapa novo não melhorou» não distingue *o
                     // mapa não é o constrangimento* de *o meu mapa tem um bug*.
                     r.conformal,
+                    r.regraduated,
                 );
             }
         }

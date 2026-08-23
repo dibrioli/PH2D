@@ -246,6 +246,14 @@ pub struct FillReport {
     /// tiver sido mais conforme que o velho. *Sem ela, um LSCM com bug e um LSCM
     /// correcto contam a mesma história.*
     pub conformal: f32,
+    /// ⭐⭐⭐ **QUANTOS ARCOS a re-graduação de facto mudou** — ver [`crate::regraduate`].
+    ///
+    /// ⛔ **Ela existe porque o recuo dela é SILENCIOSO**: a re-graduação devolve
+    /// `None` e o chamador segue com o `τ` de sempre — *byte-idêntico ao controlo, sem
+    /// uma palavra*. Aconteceu duas vezes no mesmo dia (uma por circularidade, outra por
+    /// um `?` a abortar a função inteira), e nas duas o número que eu ia ler era o do
+    /// controlo.
+    pub regraduated: usize,
     /// ⭐⭐⭐ **QUANTAS CÉLULAS DE DOMÍNIO cada coluna do [`Self::domain_skew`] mediu**
     /// — `(rectângulo, leque)`.
     ///

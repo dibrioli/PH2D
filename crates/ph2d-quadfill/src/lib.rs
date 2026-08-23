@@ -53,6 +53,8 @@ mod patch;
 pub mod quality;
 /// ⭐⭐⭐ **O MAPA DO RECTÂNGULO** — a fronteira DESLIZA — ver [`rectangle`].
 mod rectangle;
+/// ⭐⭐⭐ **A RE-GRADUAÇÃO DO ARCO** — o único suspeito que sobrou — ver [`regraduate`].
+mod regraduate;
 /// ⭐ **A RELAXAÇÃO QUE OLHA PARA O ÂNGULO** — o ajuste de quadrado — ver [`relax`].
 mod relax;
 /// **O QUE A MONTAGEM DIZ** — recusa, relatório e proveniência — ver [`report`].

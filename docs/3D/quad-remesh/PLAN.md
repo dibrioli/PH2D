@@ -4062,3 +4062,69 @@ qualidade, isto não shipava sem outro solver.
 | LSCM como achatamento (`LSCM_MAP`) | conforme `4,32 → 1,01` **e** enviesamento `18° → 28°`, dobras `0 → 68` | [`lscm.rs`](../../../crates/ph2d-quadfill/src/lscm.rs) |
 | a premissa «mais conforme ⇒ mais quadrado» | refutada com a régua da própria promessa ao lado | idem |
 | correr o LSCM com as rondas do Tutte | `1,0929` contra `1,0000` numa faixa plana | idem |
+
+## §4-novemetquadragies — ⚠️ A RE-GRADUAÇÃO DO ARCO: construída, e o gate de presença está VERMELHO (2026-08-23)
+
+### A obra, e por que é a única que sobrou
+
+Fechada a família dos mapas (§4-octoetquadragies), o culpado tem nome: **onde os pontos
+de subdivisão caem ao longo de um arco**. O ponto `k` do lado 0 e o ponto `k` do lado 2
+têm de estar na mesma **fracção conforme** para a linha de grade que os une nascer recta;
+hoje estão na mesma fracção de **comprimento de arco**, que não é a mesma coisa.
+
+⭐ [`ph2d-quadfill/src/regraduate.rs`](../../../crates/ph2d-quadfill/src/regraduate.rs):
+cada patch propõe, para cada arco, a distribuição que o **domínio** dele pede
+([`PatchParam::side_alpha`]); o arco fica com a **média das duas propostas**.
+
+⭐⭐ **E ela troca UMA régua.** O `arc_tau` é lido por três sítios — a reamostragem, o
+pino da fronteira no achatamento e o `uv` dos pontos de saída — logo re-graduá-lo
+re-gradua os três **por construção**. *Duas réguas aqui rasgariam a malha ao longo de
+toda fronteira de patch.* ⚠️ O **total** de cada arco não muda, de propósito: ele é o
+peso do arco perante o F4, e mexer nele seria outra experiência.
+
+### ⛔ Primeiro erro: a versão inicial era CIRCULAR
+
+Ela tirava a «fracção conforme» do achatamento de **Tutte**. ⚠️ Mas o Tutte prega cada
+vértice de fronteira na aresta do polígono **pela fracção de `τ` dele** ⇒ a distância no
+domínio ao longo do lado é proporcional a `τ` **por construção**. *A resposta era a
+entrada de volta*, e o resultado saiu **byte-idêntico ao controlo**.
+
+⇒ ⭐ **Só um achatamento de fronteira LIVRE tem opinião própria sobre onde fica meio
+caminho** — e é por isso que o LSCM, rejeitado como mapa, é **obrigatório** aqui
+(`force_lscm`).
+
+### ⛔⛔ Segundo erro: um `?` a abortar a função inteira, com recuo SILENCIOSO
+
+Com o LSCM forçado o resultado voltou a sair byte-idêntico. Causa: um
+`param.side_alpha.get(i)?` a falhar num patch devolvia `None` **para a cadeia inteira**,
+e o chamador caía no `τ` de sempre sem uma palavra. ⇒ **`FillReport::regraduated`** — a
+contagem de arcos que de facto mudaram. *Um recuo silencioso é indistinguível de uma cura
+que não funciona, e isto aconteceu **duas vezes no mesmo dia**.*
+
+### ⛔ Estado: VERMELHO com endereço — `5` de `42` arcos
+
+Com o contador a falar, o gate de presença
+(`the_regraduation_actually_changes_the_ruler`, `#[ignore]`) mede **`5/42`**: ela recua
+na maioria dos patches. Suspeitos por ordem de custo:
+
+1. `PatchParam::build` a devolver `None` com o `force_lscm` — o `locals(...)?` no fim de
+   dois caminhos de saída;
+2. `span <= 0` num arco;
+3. `bucket.len() != len` (`arc_tau` e `arc_chain` com contagens diferentes).
+
+⚠️ **A barra fica em «mais de metade dos arcos» e não é afrouxada**: é o mínimo para a
+média entre dois patches significar alguma coisa, e baixá-la para `5` tornaria o gate
+verde sobre exactamente o defeito que ele nomeia. *A barra é do fenómeno; o `#[ignore]` é
+da agenda.* Custo: `88 s` (LSCM a `100 000` rondas × 16 patches).
+
+### ⇒ O que fica para a próxima janela
+
+**Achar em que patch a re-graduação desiste** — é um `dbg!` numa das três linhas acima —,
+e só então medir se a média das duas propostas move o enviesamento. ⭐ *A cadeia inteira
+está montada e o interruptor é uma constante.*
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| tirar a fracção conforme do achatamento de **Tutte** | circular — o Tutte prega a fronteira por `τ`, logo devolve `τ` | [`regraduate.rs`](../../../crates/ph2d-quadfill/src/regraduate.rs) |

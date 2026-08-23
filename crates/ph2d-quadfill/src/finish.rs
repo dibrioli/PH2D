@@ -194,6 +194,7 @@ pub(crate) fn measure(
         quad_patches: 0,
         slid_refused: [0; 5],
         conformal: 0.0,
+        regraduated: 0,
         domain_cells: (0, 0),
         edge_long_prov,
         shape: crate::shape::quad_shape(mesh),

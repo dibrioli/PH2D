@@ -93,6 +93,17 @@ pub fn fill_with(
     // ⭐⭐ **A PRÉ-CONDIÇÃO, e ela é a mais barata que existe.** Ver
     // [`check_arcs_belong_to`].
     crate::report::check_arcs_belong_to(indexed, layout)?;
+    // ⭐⭐⭐ **A RE-GRADUAÇÃO DO ARCO, se ligada** — ver [`crate::regraduate`]. Ela troca
+    // **uma** régua e com isso os TRÊS sítios que a leem (a reamostragem abaixo, o pino
+    // da fronteira no achatamento e o `uv` dos pontos de saída) mudam por construção.
+    // ⚠️ *É por isso que ela é um `arc_tau` novo e não um parâmetro a mais.*
+    let regraduated = crate::regraduate::REGRADUATE
+        .then(|| crate::regraduate::conformal_arc_tau(indexed, layout, quant))
+        .flatten();
+    let regraduated_arcs = regraduated.as_ref().map_or(0, |(_, n)| *n);
+    let arc_tau: &[Vec<f32>] = regraduated
+        .as_ref()
+        .map_or(&layout.arc_tau, |(t, _)| t.as_slice());
     let src = indexed.positions();
     // ⭐⭐ **TODO ponto de INTERIOR nasce POUSADO na superfície.** Ver
     // [`Points::push_facing`].
@@ -110,7 +121,7 @@ pub fn fill_with(
         // decidiu quantos segmentos este arco leva — ver
         // [`ph2d_trace::PatchLayout::arc_tau`]. Sem graduação os dois coincidem;
         // com ela, os pontos adensam onde o campo de tamanho pede.
-        let sampled = resample_by(&curve, &layout.arc_tau[a], n);
+        let sampled = resample_by(&curve, &arc_tau[a], n);
         let mut ids = Vec::with_capacity(n + 1);
         for (k, p) in sampled.iter().enumerate() {
             // As pontas são cantos de malha, e um canto é de TODOS os arcos que
@@ -232,7 +243,7 @@ pub fn fill_with(
             let (mut chain, mut tau): (Vec<u32>, Vec<f32>) = (Vec::new(), Vec::new());
             for &(a, rev) in side {
                 let mut c = layout.arc_chain[a as usize].clone();
-                let src_tau = &layout.arc_tau[a as usize];
+                let src_tau = &arc_tau[a as usize];
                 let end = src_tau.last().copied().unwrap_or(0.0);
                 let mut t: Vec<f32> = if rev {
                     src_tau.iter().rev().map(|v| end - v).collect()
@@ -276,7 +287,15 @@ pub fn fill_with(
         let seg: Vec<u32> = (0..n)
             .map(|i| sides[i].iter().map(|&(a, _)| quant.arc[a as usize]).sum())
             .collect();
-        let param = PatchParam::build(indexed, &patch_faces[p], &mesh_sides, &mesh_tau, &seg, dir);
+        let param = PatchParam::build(
+            indexed,
+            &patch_faces[p],
+            &mesh_sides,
+            &mesh_tau,
+            &seg,
+            dir,
+            false,
+        );
         if param.is_some() {
             flattened += 1;
         }
@@ -294,7 +313,7 @@ pub fn fill_with(
         let dom = Domain {
             param: param.as_ref(),
             side_uv: (0..n)
-                .map(|i| side_uv(layout, quant, sides, i, &seg, param.as_ref()))
+                .map(|i| side_uv(arc_tau, quant, sides, i, &seg, param.as_ref()))
                 .collect(),
             tally: std::cell::Cell::new((0, 0)),
             dom_skew: std::cell::RefCell::new(Vec::new()),
@@ -493,6 +512,7 @@ pub fn fill_with(
     report.slid = slid;
     report.quad_patches = quads;
     report.slid_refused = slid_refused;
+    report.regraduated = regraduated_arcs;
     // ⭐⭐⭐ **O CONTROLO da troca de achatamento** — ver [`crate::lscm::conformal_error`].
     conformal.sort_by(f32::total_cmp);
     report.conformal = conformal.get(conformal.len() / 2).copied().unwrap_or(0.0);

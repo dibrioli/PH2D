@@ -11,7 +11,6 @@
 
 use ph2d_mesh::{Face, Mesh};
 use ph2d_quantize::Quantization;
-use ph2d_trace::PatchLayout;
 
 use crate::domain::corners_for_sides;
 use crate::fan::coons;
@@ -208,7 +207,7 @@ impl Domain<'_> {
 /// no triângulo** onde ele vive. *A opção resolve isto sozinha — quem deslizou entrega
 /// a régua, quem não deslizou devolve `None` e o lerp de sempre corre.*
 pub(crate) fn side_uv(
-    layout: &PatchLayout,
+    arc_tau: &[Vec<f32>],
     quant: &Quantization,
     sides: &[Vec<(u32, bool)>],
     i: usize,
@@ -234,8 +233,7 @@ pub(crate) fn side_uv(
             #[allow(clippy::cast_precision_loss)]
             return quant.arc.get(x as usize).copied().unwrap_or(1).max(1) as f32;
         }
-        layout
-            .arc_tau
+        arc_tau
             .get(x as usize)
             .and_then(|t| t.last().copied())
             .unwrap_or(0.0)

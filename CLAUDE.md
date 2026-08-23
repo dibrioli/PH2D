@@ -558,7 +558,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   caminho: a régua da conformalidade nasceu a devolver `0,00` (um script meu abortou no `assert` e
   eu fui atrás do erro do compilador), e o LSCM corria com as `4 000` rondas do Tutte —
   **sub-convergido** (`1,0929` contra `1,0000` numa faixa plana; ele precisa de `100 000`).
-  *Dois solvers diferentes não partilham um teto de espera.* ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  *Dois solvers diferentes não partilham um teto de espera.*
+  ⚠️ **E a obra que sobra — a RE-GRADUAÇÃO DO ARCO — está construída com o gate de presença
+  VERMELHO** (`regraduate.rs`, `PLAN.md` §4-novemetquadragies): cada patch propõe a distribuição
+  que o domínio dele pede e o arco fica com a **média das duas**; ela troca **uma** régua
+  (`arc_tau`) e com isso os três sítios que a leem, mantendo o total de cada arco para não mexer
+  na quantização. ⛔ **Dois erros meus a caminho, os dois com recuo SILENCIOSO:** a 1.ª versão era
+  **circular** (tirava a «fracção conforme» do Tutte, que prega a fronteira *por `τ`* ⇒ devolvia
+  `τ`), e a 2.ª tinha um `?` a abortar a função inteira. ⇒ `FillReport::regraduated` conta os arcos
+  que de facto mudaram, e diz **`5` de `42`**: ela recua na maioria dos patches. *A barra («mais de
+  metade») não é afrouxada; o `#[ignore]` é da agenda.* ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

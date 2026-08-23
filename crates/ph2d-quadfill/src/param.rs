@@ -93,6 +93,14 @@ const CONFORMAL_MAP: bool = false;
 /// se ver num render.
 pub(crate) const SEGMENT_SPACE_DOMAIN: bool = false;
 
+/// Os vértices de cada lado, em índices **locais**.
+fn locals(boundary: &[Vec<u32>], local: &BTreeMap<u32, u32>) -> Option<Vec<Vec<u32>>> {
+    boundary
+        .iter()
+        .map(|c| c.iter().map(|g| local.get(g).copied()).collect())
+        .collect()
+}
+
 /// **A RÉGUA DE UM LADO** — por vértice de malha daquele lado, a `(fracção de τ, uv)`.
 ///
 /// ⚠️ **A fracção de `τ` vem primeiro porque é a chave de busca**: quem tem um ponto
@@ -142,6 +150,14 @@ pub(crate) struct PatchParam {
     /// com um bug»* — e a primeira é uma conclusão sobre o algoritmo, a segunda sobre
     /// mim.
     pub(crate) conformal: f32,
+    /// ⭐⭐⭐ **A RÉGUA CONFORME DE CADA LADO** — por lado, a distância acumulada **no
+    /// domínio** de cada vértice de malha da fronteira, normalizada para acabar em `1`.
+    ///
+    /// ⭐ **É o que este patch acha que é «meio caminho» ao longo daquele lado**, e é a
+    /// única coisa que o achatamento sabe e o `τ` não: o `τ` é comprimento **na peça**,
+    /// isto é comprimento **no domínio**. ⇒ [`crate::regraduate`] compara as duas
+    /// propostas dos dois patches que partilham um arco.
+    pub(crate) side_alpha: Vec<Vec<f32>>,
 }
 
 /// O domínio vai de `-1` a `1` nos dois eixos (o polígono é inscrito no círculo
@@ -160,6 +176,18 @@ impl PatchParam {
     /// Devolve `None` quando o patch não é um disco triangulável — e ⚠️ **`None` é
     /// uma resposta e não uma falha**: o chamador volta à construção antiga, que
     /// dobra mas devolve malha.
+    ///
+    /// ⛔⛔ **`force_lscm` NÃO é um atalho — ele existe porque a alternativa é
+    /// CIRCULAR** (medido 2026-08-23). A [`crate::regraduate`] tira de cada patch a
+    /// «fracção conforme» ao longo de um lado, e com o achatamento de Tutte esse número
+    /// **é o `τ` de volta**: o Tutte prega cada vértice de fronteira na aresta do
+    /// polígono *pela fracção de `τ` dele*, logo a distância no domínio ao longo do
+    /// lado é proporcional a `τ` **por construção**. ⇒ a re-graduação saiu byte-idêntica
+    /// ao controlo na esfera lisa, e o que ela mediu foi a sua própria entrada.
+    ///
+    /// ⭐ *Só um achatamento de fronteira LIVRE tem uma opinião própria sobre onde fica
+    /// meio caminho* — e é por isso que o [`crate::lscm`], rejeitado como mapa, é
+    /// obrigatório aqui.
     pub(crate) fn build(
         mesh: &Mesh,
         faces: &[u32],
@@ -167,6 +195,7 @@ impl PatchParam {
         tau: &[Vec<f32>],
         seg: &[u32],
         field: Option<&[[f32; 3]]>,
+        force_lscm: bool,
     ) -> Option<Self> {
         let n = boundary.len();
         if n < 3 || faces.is_empty() {
@@ -248,7 +277,7 @@ impl PatchParam {
         // ⭐⭐⭐ **O ACHATAMENTO DE FRONTEIRA LIVRE, se ligado** — ver [`crate::lscm`].
         // ⚠️ Ele corre **antes** do mapa do rectângulo e serve **todo `n`**: é a única
         // das três construções sem condição de fronteira para errar.
-        if crate::lscm::LSCM_MAP {
+        if crate::lscm::LSCM_MAP || force_lscm {
             let mut chains: Vec<Vec<u32>> = Vec::with_capacity(n);
             for chain in boundary {
                 let mut c = Vec::with_capacity(chain.len());
@@ -314,6 +343,7 @@ impl PatchParam {
                     let mut me = Self::with(s.uv, pos, tris);
                     me.rounds = s.rounds;
                     me.residual = s.residual;
+                    me.side_alpha = me.alpha_of(&chains);
                     me.side_chain = Some(per_side);
                     return Some(me);
                 }
@@ -326,6 +356,7 @@ impl PatchParam {
             let mut me = Self::with(uv, pos, tris);
             me.rounds = 0;
             me.slid_refused = slid_refusal;
+            me.side_alpha = me.alpha_of(&locals(boundary, &local)?);
             return Some(me);
         }
 
@@ -431,6 +462,7 @@ impl PatchParam {
         me.holonomy = holonomy;
         me.fell_back = fell_back;
         me.slid_refused = slid_refusal;
+        me.side_alpha = me.alpha_of(&locals(boundary, &local)?);
         Some(me)
     }
 
@@ -473,6 +505,7 @@ impl PatchParam {
             side_chain: None,
             slid_refused: None,
             conformal,
+            side_alpha: Vec::new(),
         }
     }
 
@@ -484,6 +517,32 @@ impl PatchParam {
     /// aresta do polígono: com a fronteira a deslizar o lado deixa de ter os pontos
     /// a espaçamento igual, e é precisamente por isto que o `uv` de um ponto de saída
     /// continua a cair dentro do triângulo que o [`Self::sample`] vai encontrar.
+    /// **A distância acumulada NO DOMÍNIO ao longo de cada lado** — ver
+    /// [`Self::side_alpha`]. `chains` são os vértices **locais** de cada lado.
+    ///
+    /// ⚠️ **Normalizada para acabar em `1`**: o que interessa é *onde* dentro do lado,
+    /// e os dois patches que partilham um arco têm domínios de escalas diferentes.
+    fn alpha_of(&self, chains: &[Vec<u32>]) -> Vec<Vec<f32>> {
+        chains
+            .iter()
+            .map(|c| {
+                let mut acc = Vec::with_capacity(c.len());
+                let mut run = 0.0f32;
+                acc.push(0.0);
+                for w in c.windows(2) {
+                    let (a, b) = (self.uv[w[0] as usize], self.uv[w[1] as usize]);
+                    run += (a[0] - b[0]).hypot(a[1] - b[1]);
+                    acc.push(run);
+                }
+                let inv = if run > 0.0 { 1.0 / run } else { 0.0 };
+                for v in &mut acc {
+                    *v *= inv;
+                }
+                acc
+            })
+            .collect()
+    }
+
     /// ⭐ **Este patch achou o mapa do rectângulo** — ver [`crate::FillReport::slid`].
     pub(crate) fn slid(&self) -> bool {
         self.side_chain.is_some()

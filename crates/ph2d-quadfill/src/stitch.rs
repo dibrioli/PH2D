@@ -147,6 +147,7 @@ pub fn fill_with(
     // quantos patches de quatro lados existem; sem ele, `slid = 0` não distingue
     // *nenhum deslizou* de *não havia nenhum*.
     let (mut slid, mut quads) = (0usize, 0usize);
+    let mut slid_refused = [0usize; 5];
     let (mut dom_rect, mut dom_fan): (Vec<f32>, Vec<f32>) = (Vec::new(), Vec::new());
 
     // ── 2. Cada patch vira o seu leque.
@@ -283,6 +284,9 @@ pub fn fill_with(
             holonomy = holonomy.max(q.holonomy);
             fell_back += usize::from(q.fell_back);
             slid += usize::from(q.slid());
+            if let Some(c) = q.slid_refused {
+                slid_refused[c.min(4)] += 1;
+            }
         }
         let dom = Domain {
             param: param.as_ref(),
@@ -485,6 +489,7 @@ pub fn fill_with(
     report.fell_back = fell_back;
     report.slid = slid;
     report.quad_patches = quads;
+    report.slid_refused = slid_refused;
     Ok((mesh, report))
 }
 
@@ -668,6 +673,7 @@ fn measure(
         fell_back: 0,
         slid: 0,
         quad_patches: 0,
+        slid_refused: [0; 5],
         domain_cells: (0, 0),
         edge_long_prov,
         shape: crate::shape::quad_shape(mesh),

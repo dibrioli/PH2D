@@ -534,10 +534,15 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   morrem em vértice regular: esfera lisa **16 → 6 patches**, nós fora de singularidade **22 → 4**,
   irregulares **18 → 9** (piso 8); enrugada 14 → 9; ⭐⭐ **orelha 18 → 12, a EMPATAR com o oráculo**.
   *A cadeia causal fecha por intervenção, não por correlação.* ⛔⛔ **E a geometria colapsa na mesma
-  peça:** enviesamento `18° → 38°`, aspecto `1,26 → 2,10`, dobras `0 → 29`. ⛔ **Não é o mapa**
-  (`RECTANGLE_MAP` sobre a poda: `38° → 36°`) nem **a forma do domínio** (`PROPORTIONAL_DOMAIN`:
-  `38° → 38°`) — **é o TAMANHO do patch**: um Tutte de um terço de esfera sobre um polígono unitário
-  não se corrige com operador nenhum. ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  peça:** enviesamento `18° → 38°`, aspecto `1,26 → 2,10`, dobras `0 → 29`. ⛔ **Não é a forma do domínio**
+  (`PROPORTIONAL_DOMAIN` sobre a poda: `38° → 38°`). ⚠️⚠️ **E o teste do MAPA eu li mal, e corrigi:**
+  o `RECTANGLE_MAP` deu `38° → 36°` e escrevi «não é o mapa» — mas ele **só serve patches de 4 lados**
+  e a esfera podada é `{3:4, 4:2}`, logo candidatou-se a **2 de 6**; a contagem de recusas nova
+  (`FillReport::slid_refused`) diz `deslizou 1/2 · recusas [0,0,0,1,0]` — o outro recusou por
+  **fronteira livre não-monótona**. ⇒ *medi o mapa em UM patch de seis*. ⭐ O que sobra, verdadeiro e
+  mais fraco: um Tutte de um terço de esfera sobre um polígono unitário está distorcido, **e a
+  alternativa conforme por-patch recusa-se a correr nessa escala** — nenhuma das duas famílias
+  por-patch lá chegou. ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

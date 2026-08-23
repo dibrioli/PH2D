@@ -3928,12 +3928,23 @@ Mais: `the_layout_we_produce_is_quantized_with_proof` perde a prova de ótimo na
 
 ### ⭐⭐⭐ E a queda ENSINA — duas hipóteses medidas e mortas
 
-⛔ **Não é o mapa:** ligar o `RECTANGLE_MAP` sobre a poda dá `38° → 36°`.
 ⛔ **Não é a forma do domínio:** ligar o `PROPORTIONAL_DOMAIN` dá `38° → 38°`, idêntico.
 
-⇒ **É o TAMANHO do patch.** Um achatamento de Tutte de um terço de esfera sobre um
-polígono unitário está distorcido de forma que nenhum operador e nenhum polígono
-corrigem. ⚠️ **E o oráculo enche 8 patches numa esfera com `6°`** ⇒ *o nosso F5 não é
+⚠️⚠️ **E o teste do MAPA foi mal lido por mim — corrigido no mesmo dia.** Ligar o
+`RECTANGLE_MAP` sobre a poda dá `38° → 36°`, e eu escrevi *«não é o mapa»*. ⛔ **A esfera
+podada tem `{3:4, 4:2}`, e aquele mapa só serve patches de QUATRO lados**: candidatou-se
+a `2` de `6`. A contagem de recusas (`FillReport::slid_refused`, acrescentada a seguir)
+diz `deslizou 1/2 · recusas [0,0,0,1,0]` — o outro foi recusado por **fronteira livre
+não-monótona**. ⇒ *o «teste» mediu o mapa em UM patch de seis, e a conclusão que eu tirei
+dele não estava suportada.*
+
+⭐ **O que ele de facto diz:** num patch grande a fronteira livre do problema misto
+**recua** — a construção conforme, tal como está, **não se estende a esta escala**.
+
+⇒ **A afirmação que sobrevive é a mais fraca e a verdadeira:** um achatamento de Tutte
+de um terço de esfera sobre um polígono unitário está distorcido, e a única alternativa
+medida — o mapa conforme por patch — **recusa-se a correr aí**. *Nenhuma das duas
+famílias por-patch chegou a esta escala.* ⚠️ **E o oráculo enche 8 patches numa esfera com `6°`** ⇒ *o nosso F5 não é
 viável nessa escala*, pela mesma razão que o §4-tresetquadragies já nomeara por outro
 caminho: ele resolve **cada patch em separado** contra um domínio plano, enquanto a
 referência tem **uma parametrização global** de onde cada patch herda um `(u,v)`

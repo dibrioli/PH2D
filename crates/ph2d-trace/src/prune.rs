@@ -102,11 +102,26 @@ use crate::walk::Walls;
 ///
 /// # ⭐⭐⭐ O que a queda ENSINA, e é o valor da rejeição
 ///
-/// ⛔ **Não é o mapa** (ligar o [`ph2d_quadfill::rectangle`] em cima da poda dá
-/// `38° → 36°`) e ⛔ **não é a forma do domínio** (ligar o `PROPORTIONAL_DOMAIN` dá
-/// `38° → 38°`, idêntico). ⇒ **é o TAMANHO do patch.** Um achatamento de Tutte de um
-/// terço de esfera sobre um polígono unitário está distorcido de forma que nenhum
-/// operador e nenhum polígono corrigem.
+/// ⛔ **Não é a forma do domínio:** ligar o `PROPORTIONAL_DOMAIN` sobre a poda dá
+/// `38° → 38°`, idêntico.
+///
+/// ⚠️⚠️ **E o teste do MAPA foi mal lido por mim — a correcção importa mais que o
+/// número.** Ligar o [`ph2d_quadfill::rectangle`] sobre a poda dá `38° → 36°`, e eu
+/// escrevi *«não é o mapa»*. ⛔ **Mas a esfera podada tem `{3:4, 4:2}` — e aquele mapa
+/// só serve patches de QUATRO lados**: ele candidatou-se a `2` de `6` patches, e a
+/// contagem de recusas (acrescentada a seguir, [`ph2d_quadfill::FillReport::slid_refused`])
+/// mostra `deslizou 1/2, recusas [0,0,0,1,0]` — o outro foi recusado por **fronteira
+/// livre não-monótona**. ⇒ *o «teste» mediu o mapa em UM patch de seis.*
+///
+/// ⭐ **O que ele de facto diz, sendo honesto:** num patch grande a fronteira livre do
+/// problema misto **recua** — a construção conforme, tal como está, **não se estende a
+/// esta escala**. E o resto (`38°` de superfície contra `6,1°` de domínio, um fosso de
+/// `32°`) vem dos cinco patches que continuaram no achatamento pregado.
+///
+/// ⇒ **A afirmação que sobrevive é a mais fraca e a verdadeira:** um achatamento de
+/// Tutte de um terço de esfera sobre um polígono unitário está distorcido, e a única
+/// alternativa medida até agora — o mapa conforme por patch — **recusa-se a correr
+/// aí**. *Nenhuma das duas famílias por-patch chegou a esta escala.*
 ///
 /// ⚠️ **E o oráculo enche 8 patches numa esfera com `6°`.** ⇒ *o nosso F5 não é viável
 /// nessa escala*, e a razão é a mesma que o [`ph2d_quadfill::rectangle`] já tinha

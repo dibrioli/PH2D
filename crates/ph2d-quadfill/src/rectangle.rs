@@ -178,6 +178,36 @@ pub(crate) const EDGE: f32 = 1.0;
 /// opostas esconde as duas*.
 pub(crate) const RECTANGLE_MAP: bool = false;
 
+/// ⭐⭐⭐ **POR QUE UM PATCH NÃO DESLIZOU** — ver [`solve`].
+///
+/// ⚠️ **A ordem dos variants é a ordem das colunas** em
+/// [`crate::FillReport::slid_refused`]; a `Flipped` não nasce aqui — é a rede do
+/// [`crate::param`], que conta os triângulos virados **depois** de o mapa fechar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Refusal {
+    /// O patch não tem quatro lados, ou a fronteira não indexa a triangulação.
+    NotAQuad,
+    /// Um vértice reclamado pelos **dois** lados opostos: o patch está pinçado.
+    Pinched,
+    /// Algum vértice tem soma de pesos cotangentes `≤ 0` — Gauss–Seidel diverge.
+    NegativeWeights,
+    /// A coordenada livre recua ao longo de um lado; dois pontos de saída trocariam
+    /// de ordem e a malha rasgaria na fronteira do patch.
+    NotMonotone,
+}
+
+impl Refusal {
+    /// A coluna dela em [`crate::FillReport::slid_refused`].
+    pub(crate) fn slot(self) -> usize {
+        match self {
+            Self::NotAQuad => 0,
+            Self::Pinched => 1,
+            Self::NegativeWeights => 2,
+            Self::NotMonotone => 3,
+        }
+    }
+}
+
 /// **O QUE O MAPA DEVOLVE.**
 pub(crate) struct Slid {
     /// Por vértice local, o ponto no quadrado `[−1,1]²`.
@@ -192,16 +222,21 @@ pub(crate) struct Slid {
 /// **locais** do lado `i`, do canto de entrada ao de saída (o último de um lado é o
 /// primeiro do seguinte). `nb` são os pesos **cotangentes**.
 ///
-/// ⚠️ **`None` é uma resposta e não uma falha** — o chamador fica com o achatamento
+/// ⚠️ **A recusa é uma resposta e não uma falha** — o chamador fica com o achatamento
 /// de sempre. Ver as três redes no doc do módulo.
+///
+/// ⛔⛔ **E ela diz PORQUÊ**, desde 2026-08-23. Sem o motivo, `deslizou 1/2` não
+/// distingue *«o mapa não serve para este patch»* de *«uma das redes é severa demais»* —
+/// e foi sobre um `1/2` mudo que eu escrevi *«não é o mapa»*, tendo medido **um patch em
+/// seis**. *Um numerador sem motivo é a mesma omissão que um numerador sem denominador.*
 pub(crate) fn solve(
     nb: &[Vec<(u32, f32)>],
     sides: &[Vec<u32>],
     rounds_cap: usize,
     tol: f32,
-) -> Option<Slid> {
+) -> Result<Slid, Refusal> {
     if sides.len() != 4 {
-        return None;
+        return Err(Refusal::NotAQuad);
     }
     let nv = nb.len();
     let mut uv = vec![[0.0f32; 2]; nv];
@@ -216,13 +251,13 @@ pub(crate) fn solve(
         for &v in &sides[side] {
             let v = v as usize;
             if v >= nv {
-                return None;
+                return Err(Refusal::NotAQuad);
             }
             // ⛔ **Um vértice reclamado pelos DOIS lados opostos** é um patch
             // pinçado: o quadrado não o pode representar, e escrever por cima daria
             // um domínio que ninguém consegue ler.
             if fix[v][axis] && (uv[v][axis] - value).abs() > f32::EPSILON {
-                return None;
+                return Err(Refusal::Pinched);
             }
             uv[v][axis] = value;
             fix[v][axis] = true;
@@ -234,7 +269,7 @@ pub(crate) fn solve(
             continue;
         }
         if list.iter().map(|&(_, k)| k).sum::<f32>() <= 0.0 {
-            return None;
+            return Err(Refusal::NegativeWeights);
         }
     }
 
@@ -256,7 +291,7 @@ pub(crate) fn solve(
                 }
                 let next = s / sw;
                 if !next.is_finite() {
-                    return None;
+                    return Err(Refusal::NegativeWeights);
                 }
                 worst = worst.max((next - uv[v][c]).abs());
                 uv[v][c] = next;
@@ -285,12 +320,12 @@ pub(crate) fn solve(
         for &v in &sides[side] {
             let x = uv[v as usize][axis];
             if rising && x < last || !rising && x > last {
-                return None;
+                return Err(Refusal::NotMonotone);
             }
             last = x;
         }
     }
-    Some(Slid {
+    Ok(Slid {
         uv,
         rounds,
         residual,

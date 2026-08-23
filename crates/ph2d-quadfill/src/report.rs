@@ -223,6 +223,15 @@ pub struct FillReport {
     /// layout tinha. ⚠️ Sem ele, `slid: 0` não distingue *nenhum deslizou* de *não
     /// havia nenhum*, que é a mesma omissão que o [`Self::patches`] cura um nível acima.
     pub quad_patches: usize,
+    /// ⭐⭐⭐ **POR QUE os patches de quatro lados NÃO deslizaram** — ver
+    /// [`crate::rectangle`]. As colunas, por ordem: `0` não é quadrilátero · `1`
+    /// pinçado · `2` peso cotangente não-positivo · `3` coordenada livre não-monótona ·
+    /// `4` o mapa fechou e **virou triângulos** no domínio.
+    ///
+    /// ⛔ **Ela existe porque `deslizou 1/2` é mudo**, e eu escrevi uma conclusão em
+    /// cima dele: *«não é o mapa»* — tendo medido o mapa em **um patch de seis**.
+    /// *Um numerador sem MOTIVO é a mesma omissão que um numerador sem denominador.*
+    pub slid_refused: [usize; 5],
     /// ⭐⭐⭐ **QUANTAS CÉLULAS DE DOMÍNIO cada coluna do [`Self::domain_skew`] mediu**
     /// — `(rectângulo, leque)`.
     ///

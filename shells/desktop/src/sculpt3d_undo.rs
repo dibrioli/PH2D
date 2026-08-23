@@ -477,3 +477,9 @@ mod field_follow;
 #[cfg(test)]
 #[path = "sculpt3d_patch_valence.rs"]
 mod patch_valence;
+
+/// ⭐ **A HOLONOMIA dentro de um patch** — ver [`holonomy_probe`]. Irmã da
+/// [`field_follow`] pelo teto de LOC da shell e por assunto.
+#[cfg(test)]
+#[path = "sculpt3d_holonomy_probe.rs"]
+mod holonomy_probe;

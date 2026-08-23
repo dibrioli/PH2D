@@ -127,6 +127,10 @@ pub(crate) struct PatchParam {
     /// sempre. ⚠️ *É esta opção que impede os dois sítios de divergirem*: quem
     /// deslizou entrega a régua, quem não deslizou não a tem.
     side_chain: Option<Vec<SideChain>>,
+    /// ⭐ **Por que este patch NÃO deslizou** — a coluna de
+    /// [`crate::FillReport::slid_refused`], ou `None` quando ele deslizou (ou quando o
+    /// mapa nem foi tentado).
+    pub(crate) slid_refused: Option<usize>,
 }
 
 /// O domínio vai de `-1` a `1` nos dois eixos (o polígono é inscrito no círculo
@@ -229,6 +233,7 @@ impl PatchParam {
         // lados, natural nos outros dois) é outro problema, não outra iteração.
         // ⛔ Falhar aqui é a resposta normal — o patch segue para o achatamento
         // pregado de sempre, e nenhum outro sítio precisa de saber.
+        let mut slid_refusal: Option<usize> = None;
         if crate::rectangle::RECTANGLE_MAP && n == 4 {
             let mut chains: Vec<Vec<u32>> = Vec::with_capacity(n);
             for chain in boundary {
@@ -242,10 +247,18 @@ impl PatchParam {
             // Laplaciano discreto é a de Neumann **do operador que se usou**, e só o
             // cotangente é o Laplace–Beltrami da superfície.
             let cot = cotangent_weights(&tris, &pos);
-            if let Some(s) = crate::rectangle::solve(&cot, &chains, FLATTEN_ROUNDS, FLATTEN_TOL) {
+            let attempt = crate::rectangle::solve(&cot, &chains, FLATTEN_ROUNDS, FLATTEN_TOL);
+            // ⭐ **A recusa fica GUARDADA, não descartada** — ver
+            // [`crate::FillReport::slid_refused`].
+            slid_refusal = attempt.as_ref().err().map(|e| e.slot());
+            if let Ok(s) = attempt {
                 // ⛔ Rede 3: o teorema de Tutte não cobre nem fronteira livre nem
                 // peso negativo. *Conta-se.*
-                if crate::aligned::flipped(&tris, &s.uv) == 0 {
+                if crate::aligned::flipped(&tris, &s.uv) > 0 {
+                    // ⭐ A rede do achatamento é a 5.ª coluna: o mapa fechou e virou
+                    // triângulos no domínio.
+                    slid_refusal = Some(4);
+                } else {
                     let mut per_side: Vec<SideChain> = Vec::with_capacity(n);
                     for (i, c) in chains.iter().enumerate() {
                         let side_tau = tau.get(i)?;
@@ -274,6 +287,7 @@ impl PatchParam {
             // continua a servir para localizar pontos.
             let mut me = Self::with(uv, pos, tris);
             me.rounds = 0;
+            me.slid_refused = slid_refusal;
             return Some(me);
         }
 
@@ -378,6 +392,7 @@ impl PatchParam {
         me.residual = residual;
         me.holonomy = holonomy;
         me.fell_back = fell_back;
+        me.slid_refused = slid_refusal;
         Some(me)
     }
 
@@ -417,6 +432,7 @@ impl PatchParam {
             holonomy: 0.0,
             fell_back: false,
             side_chain: None,
+            slid_refused: None,
         }
     }
 

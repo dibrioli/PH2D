@@ -271,6 +271,82 @@ paint-behind, multiframe.
 
 ---
 
+# W-Saída — **o Flip sai do Flip**: pixels, camada do Painter e folha (ÚLTIMA DA FILA)
+
+> **Pedido do Enio, 2026-08-23:** *«temos o módulo FLIP com uma timeline específica para criação
+> desse tipo de animação. Contudo ele não é compatível com o módulo painter e nem com os formatos
+> de imagem e nem cria sprite sheets. Coloque no fim da fila de implementação a criação desses
+> features usando o que já está implementado.»*
+>
+> ⚠️ **Fim da fila por ordem dele.** Isto é o registo, não uma autorização de começar.
+
+## A medição mudou o tamanho do trabalho: são TRÊS features e **UM** buraco
+
+As três premissas do pedido foram conferidas no código em 2026-08-23 e **as três estão certas**.
+Mas elas não são três trabalhos — são **três portas que já existem** atrás do mesmo buraco.
+
+| Premissa | Medição |
+|---|---|
+| «não é compatível com o Painter» | ✅ certo — **mas o blend já é partilhado**: `ph2d-flip` re-exporta `ph2d_painter_effects::BlendMode` e o `FlipLayer::blend` **é** esse tipo. Falta a matéria, não a lei |
+| «nem com os formatos de imagem» | ✅ certo — os **16 exportadores** existem e têm porta (`Export Image…`), e ela pede `bridge.entity_for(row)` → uma entidade **com pixels** |
+| «nem cria sprite sheets» | ✅ certo — `Pack into Sheet` / `Auto-Arrange` / `Bake Sheet` / `Export Sheet` existem e empacotam **sprites** |
+
+⚠️ **O buraco é um só, e tem endereço:** a entidade de um objeto Flip é
+`Transform + Name + FlipObjectRef + RootOrder` ([`flip_entities.rs`](../../shells/desktop/src/flip_entities.rs)) —
+**sem `Sprite`, sem pixels**. É por isso que as três portas não o alcançam: nenhuma delas sabe o que
+é um traço, e todas sabem o que é um pixel.
+
+⭐ **E o primitivo de leitura JÁ EXISTE** — não é obra nova. O
+[`walk_gpu.rs`](../../crates/ph2d-flip-render/src/walk_gpu.rs) tem o caminho `run` com
+`copy_texture_to_buffer` + `map_async` (o harness de paridade lê 33 MB por ele). O produto usa o
+irmão `record`, que é *«sem submit, sem readback — é o que o produto quer»*: **a ausência é de um
+consumidor, não de um mecanismo.**
+
+⇒ **W-Saída.T1 é o único trabalho de motor. T2, T3 e T4 são costura.**
+
+## Tasks
+
+**T1 — `flip_bake`: um quadro composto vira PIXELS.** Compor as camadas do objeto
+([`composite.rs`](../../crates/ph2d-flip-render/src/composite.rs), que já respeita o `BlendMode`)
+num alvo offscreen e ler de volta em CPU. Entrada: objeto + chave + resolução. Saída: RGBA.
+- ⚠️ **A resolução e o ENQUADRAMENTO são perguntas de produto, não defaults.** Um traço vive num
+  campo infinito; o que se exporta é um retângulo. Precedente pronto: o **modal de resolução** do
+  `Pack into Sheet` (`CTX_MENU_SHEET_SIZES`, 128…8192, teto = `SHEET_MAX_SIDE` do dispositivo).
+- ⚠️ **Tem de sair do MESMO motor que o artista viu.** O `walk` tem referência em CPU e compute que
+  shipa, unidos por gate de paridade — assar pelo outro faria o PNG diferir do ecrã, e a diferença
+  só apareceria no ficheiro. O gate desta task compara o assado com o que o passe de tela produz.
+- ⚠️ `PH2D_FLIP_NEW_ENGINE=0` volta ao rasterizador antigo: o assado tem de seguir a mesma chave.
+
+**T2 — a folha.** `N chaves → N sprites → Pack into Sheet`. Zero código de empacotamento novo: o
+`sheet_frame::create_at` e o `Auto-Arrange` recebem sprites e já fazem o resto, e o `Export Sheet`
+já escreve o par `.png` + `.json` do Aseprite que o `sheet_import` relê.
+- ⭐ **E fecha o círculo com a §11 Animation do Sprite:** uma tira empacotada é uma grelha, e uma
+  grelha é o pool que uma `AnimationTag` percorre. *A animação desenhada no Flip vira uma animação
+  de sprite sem passar pelo disco.*
+- ⚠️ **Uma chave não é um quadro.** O `implicit_hold` e as sentinelas de fim significam que a linha
+  do tempo tem mais quadros do que desenhos; assar por CHAVE dá a tira sem repetição (que é o que a
+  folha quer), e o ritmo vai para o `frame_ms` da tag. ⛔ Assar por quadro duplicaria pixels — o
+  contrário da tese do §8.2 do Sprite.
+
+**T3 — os formatos.** Com T1, o `Export Image…` alcança um objeto Flip: uma chave é uma imagem, e os
+16 exportadores já estão registados. ⚠️ **A porta atual pede uma ENTIDADE com pixels** — a decisão
+é se o objeto Flip ganha um `Sprite` derivado ou se o `image_export` ganha uma segunda entrada.
+*A segunda é menor e não põe estado assado no documento.*
+
+**T4 — a camada do Painter.** Um quadro assado entra como camada raster. O blend já casa (é o mesmo
+enum). ⚠️ **É de mão única por natureza:** um traço percorrido tem largura, pressão e buracos que um
+retângulo de pixels não guarda. *Assar é uma exportação, não uma ponte* — e dizê-lo no gesto (o
+rótulo) é o que impede o artista de esperar a volta.
+
+## ⛔ O que esta wave NÃO é
+
+- **Não é «Flip vira Painter»**: os dois documentos ficam separados, e a lei que os une continua a
+  ser o `BlendMode`. Fundi-los é o *«dois motores, um estado»* que este repositório já recusou.
+- **Não é o *Export/render com acúmulo*** (Halton+gaussiana, 03 §7.3) que já está nos deferidos:
+  aquele é qualidade de amostragem do mesmo assado. Se as duas forem feitas, T1 é o hospedeiro.
+- **Não é import**: ler uma folha de volta como traços exigiria vetorizar pixels (`potrace`), que é
+  **não-objetivo declarado** desta lista.
+
 ## Deferidos explícitos (backlog qualificado — cada um com spec pronta nos docs)
 
 - **Traço:** flag *Self Overlap* · corner types por-ponto · ~~pincel dots/squares (Ciallo-style)~~

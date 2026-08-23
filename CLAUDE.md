@@ -565,7 +565,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   indústria. Dois motores, **uma lei**: referência em CPU e o compute que shipa, unidos por gate de paridade cuja barra é
   **derivada do formato** (`rgba16float` ⇒ `2⁻¹¹`).
   ⚠️ `PH2D_FLIP_NEW_ENGINE=0` volta ao rasterizador antigo (vivo e testado, útil para bissecar).
-  **Aberto:** cache em **tiles de MUNDO** (sobreviver ao pan) · o **resíduo de quina** que a lei de área expôs
+  **Aberto:** ⏳ **W-Saída — o Flip sai do Flip** (Enio, 2026-08-23, **fim da fila**): assar um
+  quadro em pixels destrava **três** features que já existem do outro lado — os 16 exportadores de
+  imagem, o `Pack into Sheet`, e a camada do Painter. ⚠️ **É UM buraco, não três:** a entidade de um
+  objeto Flip não tem `Sprite` nem pixels, e as três portas só sabem o que é um pixel; o primitivo
+  de leitura **já existe** no `walk_gpu` (o harness de paridade usa-o). ⭐ E o T2 fecha o círculo
+  com a §11 do Sprite — uma tira empacotada **é** o pool que uma `AnimationTag` percorre. Plano:
+  [`01_plano_waves.md` §W-Saída](docs/Flip/01_plano_waves.md) ·
+  cache em **tiles de MUNDO** (sobreviver ao pan) · o **resíduo de quina** que a lei de área expôs
   (**13 px de 1115** — *não é regressão*) · cache **incremental** do ajuste · e **três itens que são decisão do Enio, já
   devolvidos com os números**: o resíduo de quina, **joins & caps** (⛔ a premissa de correção foi **refutada**; sobra
   pergunta de produto) e a **terceira lei** (o `Soft` do Krita — funciona exato, muda a borda em **+69%**).

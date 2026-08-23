@@ -46,6 +46,19 @@ pub(super) fn apply(
             {
                 crate::field3d_smoke::ask_scene_sculpt();
             }
+            // ⭐⭐ **AS FORMAS DE PERFIL** (W53) — o desenho do editor vetorial vira peça.
+            //
+            // ⚠️ **Só ANOTA**, como as esculturas: cozer o contorno precisa da **cena vetorial**, e
+            // esta função recebe o **mundo**. Mesma divisão, mesma razão.
+            ph2d_panel_model3d::ModelIntent::AddShape { slot }
+                if slot == panel::EXTRUDE_SLOT || slot == panel::REVOLVE_SLOT =>
+            {
+                crate::field3d_smoke::ask_profile_shape(if slot == panel::EXTRUDE_SLOT {
+                    crate::field3d_smoke::ProfileShape::Extrude
+                } else {
+                    crate::field3d_smoke::ProfileShape::Revolve
+                });
+            }
             ph2d_panel_model3d::ModelIntent::AddShape { slot } if slot == panel::SCULPT_SLOT => {
                 // ⚠️ **Só ANOTA.** Escolher um arquivo é um diálogo, e esta função recebe o mundo —
                 // a mesma divisão que a exportação já faz, e pela mesma razão.

@@ -9067,6 +9067,22 @@ impl crate::App {
             if crate::field3d_smoke::take_import_request() {
                 crate::field3d_import::field3d_import(toasts);
             }
+            // ⭐⭐ **O PERFIL DESENHADO VIRA PEÇA** (W53) — o fluxo do MoI, que o motor tem medido e
+            // gateado desde a W3 e que **nenhum botão alcançava**.
+            //
+            // ⚠️ Servido **aqui** porque quem tem a cena vetorial é o `AppGfx`; a ponte com a cena
+            // recebe o mundo. É a mesma divisão dos pedidos acima.
+            //
+            // ⚠️ **E o shell publica se HÁ contorno**, todo quadro: é isso que faz os dois botões
+            // aparecerem só quando há o que extrudar (a lei da W34).
+            {
+                let closed = crate::blend_live::selected_closed_in_z(vec_scene, &self.vec_pen);
+                crate::field3d_smoke::note_profile(!closed.is_empty());
+                if let Some(which) = crate::field3d_smoke::take_profile_request() {
+                    let msg = crate::field3d_profile::from_selection(vec_scene, &closed, which);
+                    toasts.push(ph2d_editor::Toast::info(msg));
+                }
+            }
             // ⭐ **E a escultura da CENA** (W39) — o vínculo que não passa pelo disco.
             //
             // ⚠️ Ela é servida **aqui** e não na ponte com a cena porque quem tem a escultura viva é

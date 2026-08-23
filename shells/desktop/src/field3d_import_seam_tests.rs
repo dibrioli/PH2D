@@ -70,16 +70,22 @@ fn the_sculpt_button_asks_for_a_file_instead_of_making_a_shape() {
 /// acrescentar uma primitiva no meio da lista.
 #[test]
 fn the_sculpt_slot_points_at_the_sculpt_button() {
-    use crate::field3d_scene::panel::{SCULPT_SCENE_SLOT, SCULPT_SLOT, SHAPES, shape_at};
+    use crate::field3d_scene::panel::{
+        EXTRUDE_SLOT, REVOLVE_SLOT, SCULPT_SCENE_SLOT, SCULPT_SLOT, SHAPES, shape_at,
+    };
     assert_eq!(
         SHAPES[SCULPT_SLOT], "panel.model3d.add.sculpt",
         "o slot da escultura aponta para o botão errado"
     );
     // ⭐ **A escultura da CENA é a segunda não-primitiva** (W39), e este gate apanhou-a no minuto
     // em que ela entrou — que é exactamente o trabalho dele. ⚠️ A lista de exceções é **derivada**
-    // das duas constantes, nunca escrita: uma terceira porta de escultura entra aqui ou o gate
-    // reprova, que é a ordem certa.
-    let not_primitives = [SCULPT_SLOT, SCULPT_SCENE_SLOT];
+    // das constantes, nunca escrita: uma porta nova entra aqui ou o gate reprova, que é a ordem
+    // certa.
+    //
+    // ⭐ **E ele voltou a apanhar, na W53:** as duas formas de PERFIL também não são primitivas que
+    // um slot saiba construir — elas precisam do contorno desenhado, que vive na cena vetorial. O
+    // gate reprovou no minuto em que elas entraram, exatamente como o comentário acima previa.
+    let not_primitives = [SCULPT_SLOT, SCULPT_SCENE_SLOT, EXTRUDE_SLOT, REVOLVE_SLOT];
     assert_eq!(
         SHAPES[SCULPT_SCENE_SLOT], "panel.model3d.add.sculpt_scene",
         "o slot da escultura da cena aponta para o botão errado"

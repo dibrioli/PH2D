@@ -250,6 +250,47 @@ thread_local! {
     static ISOLATE_KEY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
+/// ⭐⭐ **QUAL forma de perfil foi pedida** (W53).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ProfileShape {
+    Extrude,
+    Revolve,
+}
+
+/// O pedido de fazer uma forma a partir do contorno desenhado, tirado uma vez.
+///
+/// ⚠️ Ele atravessa por aqui pela razão de sempre: cozer o contorno precisa da **cena vetorial**, e
+/// a ponte com a cena recebe o **mundo**. É a mesma divisão da escultura.
+pub(crate) fn take_profile_request() -> Option<ProfileShape> {
+    PROFILE_REQ.with(std::cell::Cell::take)
+}
+
+pub(crate) fn ask_profile_shape(which: ProfileShape) {
+    PROFILE_REQ.with(|c| c.set(Some(which)));
+}
+
+thread_local! {
+    static PROFILE_REQ: std::cell::Cell<Option<ProfileShape>> = const { std::cell::Cell::new(None) };
+}
+
+/// ⭐ **A forma cozida, à espera de virar nó** — a volta do pedido, com a **extensão** do contorno.
+///
+/// ⚠️ A extensão viaja ao lado pela mesma razão da escultura: o perfil é construído nas unidades em
+/// que foi **desenhado** (o editor vetorial), e o tamanho de convivência mora na **pose**, onde um
+/// clique o desfaz.
+pub(crate) fn take_pending_profile() -> Option<(ph2d_field::Primitive, f32)> {
+    PENDING_PROFILE.with(|c| c.borrow_mut().take())
+}
+
+pub(crate) fn ask_spawn_profile(prim: ph2d_field::Primitive, extent: f32) {
+    PENDING_PROFILE.with(|c| *c.borrow_mut() = Some((prim, extent)));
+}
+
+thread_local! {
+    static PENDING_PROFILE: std::cell::RefCell<Option<(ph2d_field::Primitive, f32)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
 /// ⭐ **O pedido de trazer a escultura DA CENA** (W39) — tirado uma vez, como os irmãos.
 ///
 /// ⚠️ Ele atravessa por aqui e não é servido na hora pela razão de sempre: quem tem a escultura

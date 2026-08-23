@@ -347,6 +347,20 @@ pub(crate) fn sync_scene_and_birth(
     // ⚠️ **A escala vem do ENQUADRAMENTO e não do arquivo**, e vai para a POSE: o campo foi
     // construído nas unidades do autor de propósito — é isso que faz a célula da grade ser a
     // resolução real dele —, e um clique desfaz a pose sem tocar na geometria.
+    // ⭐⭐ **A forma de PERFIL, cozida pelo shell, vira nó** (W53) — o terceiro salto, ao lado do
+    // da escultura e pela mesma razão: quem tem a cena vetorial não tem o mundo.
+    //
+    // ⚠️ **A escala vem do ENQUADRAMENTO e vai para a POSE**, como na escultura: o perfil é
+    // construído nas unidades em que foi **desenhado**, e um clique desfaz a pose sem tocar na
+    // geometria.
+    if let Some((prim, extent)) = crate::field3d_smoke::take_pending_profile() {
+        let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
+        if let Ok(e) = ph2d_field_ecs::add_leaf(world, parent, prim, cam.target) {
+            let s = crate::field3d_import::framing_scale(extent, cam.half_extent);
+            let _ = ph2d_field_ecs::set_param(world, e, ph2d_field::Param::Scale, s);
+            created = Some(e.to_bits());
+        }
+    }
     if let Some(key) = crate::field3d_smoke::take_pending_sculpt() {
         let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
         if let Ok(e) = ph2d_field_ecs::add_sampled(world, parent, &key, cam.target) {

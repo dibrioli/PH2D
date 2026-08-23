@@ -128,6 +128,8 @@ mod field3d_notice;
 mod field3d_pick;
 /// ADR-0161 W24 — a resolução do preview é DERIVADA do relógio: grossa ao mexer, nítida ao assentar.
 mod field3d_preview;
+/// ADR-0161 W53 — o perfil DESENHADO vira peça: o fluxo do MoI, com a caneta que a casa já tem.
+mod field3d_profile;
 /// ADR-0161 W23 — o REGRESSO: um projeto carregado regenera cada escultura do arquivo que a nomeia.
 mod field3d_reload;
 mod field3d_scene;

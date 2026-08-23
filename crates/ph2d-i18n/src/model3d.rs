@@ -113,6 +113,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.kind.box" => "Box",
         "panel.model3d.kind.cylinder" => "Cylinder",
         "panel.model3d.kind.extrude" => "Extrude",
+        // ⭐⭐ AS FORMAS DE PERFIL (W53) — o desenho do editor vetorial vira peça. É o fluxo do
+        // MoI, e o motor delas está construído e medido desde a W3; faltava o botão.
+        "panel.model3d.add.extrude" => "+ Extrude",
+        "panel.model3d.add.revolve" => "+ Revolve",
         // ⭐ As seis VISTAS NOMEADAS (W47). O atalho vai no rótulo: é a única forma de a tecla ser
         // descoberta por quem não sabe que ela existe.
         "panel.model3d.view.front" => "Front (1)",

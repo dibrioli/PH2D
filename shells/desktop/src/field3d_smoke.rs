@@ -216,6 +216,11 @@ pub(crate) struct Smoke {
     /// ⭐ **A bola em que o botão DESCEU**, se desceu numa. É ela que faz o `Up` sem movimento ser
     /// uma escolha de vista em vez de uma órbita de zero graus.
     pub(crate) nav_press: Option<crate::field3d_views::Standard>,
+    /// ⭐ **Há um contorno FECHADO escolhido no editor vetorial?** (W53) — publicado pelo shell,
+    /// como o irmão abaixo e pela mesma razão: quem tem a cena vetorial é o `AppGfx`.
+    ///
+    /// É ele que faz os botões `+ Extrude` / `+ Revolve` aparecerem só quando há o que extrudar.
+    pub(crate) has_profile: bool,
     /// ⭐ **Há uma escultura VIVA na cena?** — publicado pelo shell, que é quem tem o `AppGfx`.
     ///
     /// ⚠️ Atravessa o quadro em vez de ser perguntado aqui, pela razão do `gizmo`: este arquivo não
@@ -324,6 +329,7 @@ fn boot() -> Option<Smoke> {
         flight_gen: 0,
         flight_fresh: false,
         safe: None,
+        has_profile: false,
         nav_hot: None,
         nav_press: None,
         has_live_sculpt: false,
@@ -372,10 +378,11 @@ use requests::armed_scene;
 #[cfg(test)]
 pub(crate) use requests::forget_open_panel_request;
 pub(crate) use requests::{
-    ask_export, ask_frame_the_part, ask_import, ask_isolate_key, ask_open_panel,
-    ask_open_panel_if_part, ask_scene_sculpt, ask_sculpt_extent, ask_spawn_sculpt, served_frame,
-    set_armed_by_panel, take_export_request, take_import_request, take_isolate_key_request,
-    take_open_if_part_request, take_open_panel_request, take_pending_sculpt,
+    ProfileShape, ask_export, ask_frame_the_part, ask_import, ask_isolate_key, ask_open_panel,
+    ask_open_panel_if_part, ask_profile_shape, ask_scene_sculpt, ask_sculpt_extent,
+    ask_spawn_profile, ask_spawn_sculpt, served_frame, set_armed_by_panel, take_export_request,
+    take_import_request, take_isolate_key_request, take_open_if_part_request,
+    take_open_panel_request, take_pending_profile, take_pending_sculpt, take_profile_request,
     take_scene_sculpt_request, take_sculpt_extent, wants_frame,
 };
 thread_local! {
@@ -626,6 +633,11 @@ pub(crate) fn safe_of(s: &Smoke) -> EditorRect {
     s.safe
         .or(s.area)
         .unwrap_or(EditorRect::new(0.0, 0.0, 0.0, 0.0))
+}
+
+/// **O shell diz se há um contorno fechado escolhido** — todo quadro, como o irmão abaixo.
+pub(crate) fn note_profile(has: bool) {
+    with_smoke(|s| s.has_profile = has);
 }
 
 pub(crate) fn note_live_sculpt(has: bool) {

@@ -4230,8 +4230,102 @@ deste lado, o gate mede-o.
 
 ---
 
+## §54 — W53: o PERFIL DESENHADO vira peça — uma família de features completa e invisível (23/08)
+
+### §54.1 — ⛔ O achado, e o tamanho dele
+
+`Primitive::Extrude` e `Primitive::Revolve` existem no motor **desde a W3**, medidos contra oráculos
+independentes (um `n`-gono extrudado **é** o `Cylinder` analítico; um revolvido **é** o `Torus`,
+errando pela flecha exata que a geometria prevê), com o arredondamento das quinas verticais a vir do
+*corner widget* do editor vetorial. O plano do módulo chama-lhes a **razão de existir**:
+
+> *"É aqui que o fluxo do MoI renasce, com a caneta que a casa já tem."*
+
+⛔ **E nenhum botão os alcançava.** Só as cenas de smoke os construíam. A `SHAPES` do painel tinha
+seis entradas e **nenhuma** era o perfil.
+
+### §54.2 — ⚠️ Por que o gate da alcançabilidade não a apanhou
+
+A lei da W34 tem uma **exclusão escrita**, e ela é razoável:
+
+> *"Só as que dependem da seleção: operações, modificadores e ações. As formas (`adds`) […] são ações
+> sempre disponíveis."*
+
+⇒ a fileira das formas nunca foi medida, e a pergunta que faltava não é a daquela lei. A daquela é
+*«o painel oferece o que a seleção permite?»*; a que faltava é ***«o painel oferece tudo o que o
+MOTOR sabe fazer?»***. Uma exclusão correta numa lei escondeu a ausência de outra.
+
+⭐ Gate novo: `every_primitive_the_engine_can_make_has_a_button`, com **as duas metades** — cada
+primitiva tem botão, **e** o painel não promete formas que o motor não tem.
+
+### §54.3 — A ponte já existia inteira
+
+`ph2d_field_profile::cook_path_auto(&VecPath) -> Profile` faz a travessia toda, quinas vivas
+incluídas. **Esta wave não escreveu geometria nenhuma** — escreveu o **gesto**:
+
+| peça | de onde veio |
+|---|---|
+| cozer o contorno | `cook_path_auto`, já existia (W3) |
+| o contorno escolhido | `blend_live::selected_closed_in_z`, já existia |
+| os três saltos até ao mundo | o padrão da escultura importada (W22) |
+| a escala pelo enquadramento | `field3d_import::framing_scale`, já existia |
+
+### §54.4 — As decisões que foram tomadas, e não herdadas
+
+- **Os botões só aparecem com um contorno FECHADO escolhido** (a lei da W34): *Extrude* sem nada
+  para extrudar é a affordance que mente.
+- **A altura sai da extensão do CONTORNO**, não do enquadramento: a espessura de uma peça extrudada é
+  uma proporção da forma dela — uma cantoneira de 10 cm não tem 3 m de espessura. O tamanho de
+  **convivência** sai da pose, como na escultura.
+- **Aro vivo por omissão** (`round: 0`): o filete do aro é uma linha do painel, e o das quinas
+  **verticais** já veio do editor vetorial. *Uma quina, um dono.*
+- **O erro é traduzido**, não repassado: `Rejected(SelfIntersecting)` no ecrã é o mesmo que silêncio
+  para quem está a modelar — a lei que o `field3d_notice` já carrega.
+
+### §54.5 — ⭐ Dois gates existentes reprovaram, e os dois estavam a trabalhar
+
+- `the_scene_sculpture_button_appears_only_when_there_is_one` contava a lista. **Correção honesta:**
+  o novo sinalizador fica **constante e ligado** nos dois lados — um gate que mede a filtragem da
+  escultura não pode mudar de significado quando outra feature entra.
+- `the_sculpt_slot_points_at_the_sculpt_button` exige que todo slot que não é exceção produza uma
+  primitiva. ⭐ **E o comentário dele previa isto à letra:** *"uma porta nova entra aqui ou o gate
+  reprova, que é a ordem certa"*. As formas de perfil também não são construíveis a partir de um
+  raio — precisam do contorno —, e ele reprovou no minuto em que entraram.
+
+### §54.6 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | o motor volta a ter uma forma **sem botão** | `every_primitive_the_engine_can_make_has_a_button` |
+| 2 | os botões aparecem sem contorno escolhido | `the_profile_buttons_appear_only_with_a_closed_outline_selected` |
+| 3 | dois slots derivados colidem | `the_four_derived_slots_are_distinct_and_in_range` |
+
+⚠️ **A mutação 1 mentiu à primeira**: apagar uma entrada da `SHAPES` faz o array de tamanho fixo
+**não compilar**, e o vermelho vinha daí — `correu 1 teste: False`. O controle positivo apanhou-a. A
+mutação expressiva **troca a chave** e mantém o tamanho.
+
+### §54.7 — ⏸️ O que fica aberto
+
+- ⏸️ **Um contorno de cada vez**: com vários escolhidos, é o primeiro em z. Vários perfis numa peça
+  só (ou furos como contornos interiores) pede uma decisão de produto.
+- ⏸️ O nó **não se religa** ao desenho: editar o contorno depois não muda a peça (o perfil é cozido
+  uma vez). É a mesma escolha da escultura importada, e a mesma ⏸️.
+- ⏸️ O *Revolve* gira em torno de **Y** e um contorno com `x < 0` é recusado pelo documento — o aviso
+  di-lo, mas nada mostra o eixo **antes** do clique.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W53 (§54): o PERFIL DESENHADO vira peça** — ⛔ `Extrude` e `Revolve` existiam no motor **desde
+  a W3**, medidos contra oráculos, e **nenhum botão os alcançava**: uma família de features completa
+  e invisível, e o plano chama-lhes a razão de existir do módulo (*"é aqui que o fluxo do MoI
+  renasce"*). ⚠️ O gate da W34 não a apanhava por uma **exclusão correta**: ele pergunta *"o painel
+  oferece o que a seleção permite?"*, e o que faltava é *"o painel oferece tudo o que o MOTOR sabe
+  fazer?"*. ⭐ A ponte já existia inteira (`cook_path_auto`) — a wave escreveu o **gesto**, não
+  geometria. Dois gates existentes reprovaram e os dois estavam a trabalhar (um deles **previa** isto
+  no próprio comentário). ⏸️ Fica: um contorno de cada vez · o nó não se religa ao desenho · nada
+  mostra o eixo do *Revolve* antes do clique
 - ✅ **W52 (§53): a viagem NÃO é do *reduced motion*** — Enio: *"o lerp não deve estar vinculado ao
   Reduced Motion. Mas deve ser o único modo."* ⚠️ O smoke da W51 leu *"não funcionou, está como
   antes"* e **o código estava certo**: a preferência dele diz `reduced_motion=1`, e o papel de então

@@ -44,7 +44,9 @@ pub(crate) fn publish_snapshot(
             active: *f == frame,
         })
         .collect();
-    let adds = adds_for(with_smoke(|s| s.has_live_sculpt).unwrap_or(false));
+    let (live_sculpt, profile) =
+        with_smoke(|s| (s.has_live_sculpt, s.has_profile)).unwrap_or((false, false));
+    let adds = adds_for(live_sculpt, profile);
     let ops = ops_for(world, selection);
     let mods = mods_for(world, selection);
     // ⚠️ **Derivado de `ExportLevel::ALL`**, que é a fonte da contagem — a mesma lei do `Mode::ALL`
@@ -171,14 +173,25 @@ pub(crate) fn param_rows(
 ///
 /// ⚠️ **É a fonte da contagem**, como o `Mode::ALL`: acrescentar uma primitiva aqui faz o painel
 /// seguir sem uma linha de mudança.
-pub(crate) const SHAPES: [&str; 6] = [
+pub(crate) const SHAPES: [&str; 8] = [
     "panel.model3d.add.box",
     "panel.model3d.add.sphere",
     "panel.model3d.add.cylinder",
     "panel.model3d.add.torus",
+    // ⭐⭐ **AS FORMAS DE PERFIL** (W53) — o desenho do editor vetorial vira peça.
+    //
+    // ⚠️ Elas entram **antes** das esculturas de propósito: os slots delas são derivados do FIM da
+    // lista (`len()-2`, `len()-1`), e é essa derivação que faz acrescentar aqui não partir nada.
+    "panel.model3d.add.extrude",
+    "panel.model3d.add.revolve",
     "panel.model3d.add.sculpt",
     "panel.model3d.add.sculpt_scene",
 ];
+
+/// ⭐ **As duas formas que saem de um perfil DESENHADO**, e os slots delas — derivados, como os das
+/// esculturas.
+pub(crate) const EXTRUDE_SLOT: usize = SHAPES.len() - 4;
+pub(crate) const REVOLVE_SLOT: usize = SHAPES.len() - 3;
 
 /// ⭐ **A posição da escultura no seletor** — e ela é DERIVADA, nunca escrita.
 ///
@@ -354,6 +367,10 @@ pub(crate) fn shape_at(slot: usize, r: f32) -> Option<Primitive> {
             major: r,
             minor: r * 0.35,
         },
+        // ⚠️ **As formas de PERFIL e as ESCULTURAS não saem daqui** (W53/W22/W39): elas não são
+        // construíveis a partir de um raio — precisam do contorno desenhado ou de um arquivo, que
+        // vivem fora do mundo. Quem as trata é o braço próprio do `AddShape`, e o gate
+        // `the_sculpt_slot_points_at_the_sculpt_button` prende as quatro exceções.
         _ => return None,
     })
 }
@@ -376,10 +393,14 @@ pub(crate) fn op_at(slot: usize) -> Option<Op> {
 ///
 /// ⚠️ **Função pura**, pela razão do `next_isolation`: o facto vive no `Smoke`, que só nasce com o
 /// módulo armado e cujo estado é `thread_local` — armá-lo num gate contaminaria os vizinhos.
-pub(crate) fn adds_for(live_sculpt: bool) -> Vec<ph2d_panel_model3d::ModeChip> {
+pub(crate) fn adds_for(live_sculpt: bool, profile: bool) -> Vec<ph2d_panel_model3d::ModeChip> {
     SHAPES
         .iter()
         .enumerate()
+        // ⚠️ **As formas de perfil só aparecem com um contorno FECHADO escolhido** (a lei da W34):
+        // um botão *Extrude* sem nada para extrudar é a affordance que mente — e o gesto teria de
+        // falhar em silêncio ou com um aviso, que é pior do que não estar lá.
+        .filter(|(i, _)| (*i != EXTRUDE_SLOT && *i != REVOLVE_SLOT) || profile)
         .filter(|(i, _)| *i != SCULPT_SCENE_SLOT || live_sculpt)
         .map(|(_, key)| ph2d_panel_model3d::ModeChip { key, active: false })
         .collect()

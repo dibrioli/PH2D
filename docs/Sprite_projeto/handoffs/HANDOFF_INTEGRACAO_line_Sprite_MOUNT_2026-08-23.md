@@ -63,15 +63,15 @@ que toque `transform.rs` ou `transform_inverse.rs` tem de o correr.
 
 ```
 SUPERFÍCIE DE COLISÃO — line/Sprite contra main
-  merge-base 35f937cb2   ·   6 commit(s)   ·   34 arquivo(s)
+  merge-base 35f937cb2   ·   8 commit(s)   ·   42 arquivo(s)
 ▸ SCHEMAS
-  ⚠ PROJECT_SCHEMA                         90   (base: 89)
-  ⚠   └ tripla do gate               (90, 13, 14)   (base: (89, 13, 14))
+  ⚠ PROJECT_SCHEMA                         91   (base: 89)
+  ⚠   └ tripla do gate               (91, 13, 14)   (base: (89, 13, 14))
     VEC_SCENE_SCHEMA 14 · FLIP_SCHEMA 13 · DOC_VERSION 18   (todos = base)
 ▸ REGISTRO DE COMPONENTES — o contador é TRÊS
-  ⚠ ph2d-ecs                               66   (base: 65)
-  ⚠ ph2d-render (espelho)                  67   (base: 66)
-  ⚠ ph2d-script (espelho)                  67   (base: 66)
+  ⚠ ph2d-ecs                               67   (base: 65)
+  ⚠ ph2d-render (espelho)                  68   (base: 66)
+  ⚠ ph2d-script (espelho)                  68   (base: 66)
 ▸ CONTRATO CONGELADO (§6)   node.rs intocado · tool.rs intocado
 ▸ ADR   cria 0072-amendment-1 (não consome número novo: é emenda)
 ▸ Cargo.lock   nenhum '+name' novo
@@ -113,6 +113,15 @@ com gate na shell (`the_mount_option_ids_cover_the_model_cap`).
 | `ph2d-ecs/src/transform.rs` (ficheiro) | 768 | **removida** | `mod tests` cortado para `transform_tests.rs` (idioma do `children_order_tests.rs`); ficou em 621, abaixo do cap default |
 | `paint_inspector` (função) | 380 | **348** | os TRÊS popovers diferidos saíram para `paint_frame_shared::paint_deferred_popovers` |
 | `ph2d-panel-inspector/src/populate.rs` (ficheiro) | 605 medido | — | o bloco da §12 saiu para `populate_anchor.rs` (idioma do `populate_physics.rs`); **nenhuma entrada foi criada** |
+| `shells/desktop/src/render_loop/anchor_overlay.rs` | 696 | **427** | `mod tests` → `anchor_overlay_tests.rs` |
+| `shells/desktop/src/render_loop/inspector_anchor.rs` | 638 | **356** | `mod tests` → `inspector_anchor_tests.rs` |
+| `shells/desktop/src/project_schema.rs` | 608 | **343** | ⚠️ **589 das 608 linhas eram doc-comment**: a escada v2–v59 foi para [`docs/archive/project-schema-ladder-v2-v59.md`](../../archive/project-schema-ladder-v2-v59.md) |
+
+⚠️ **O corte da escada merece leitura pelo integrador.** O que saiu é a **cabeça** (v2–v59); os
+degraus vivos e o literal continuam **colados**, que é a lei que o próprio degrau v69 escreveu
+(*ele chegou ao `main` com a linha da escada AUSENTE*). Um merge que traga degraus novos toca a
+**cauda** do ficheiro, longe da região removida. ⛔ Nenhuma exceção `// ph2d-loc-cap:` foi
+declarada — nem aqui nem nos outros dois.
 
 ---
 
@@ -143,6 +152,18 @@ O que **é** foundational e foi tocado, com o desenho de isolamento a favor:
 **Ordem:** os 6 commits são lineares. O rebase sobre `main` foi *fast-forward* limpo no início da
 jornada; não há dependência de outra linha.
 
+### ⚠️ Um defeito da wave ANTERIOR, encontrado por sonda e curado aqui
+
+Trocar de linha na lista de âncoras **não re-semeava os campos do editor**. A semente era uma
+aresta só da **ENTIDADE** (`entity_changed`), então clicar noutra âncora da mesma sprite mudava a
+ficha aberta e deixava o nome e as caixas a mostrar a anterior. A sonda mediu nome `""` e `Bounds`
+**desmarcada** sobre `face_box`, que tem área.
+
+⚠️ **A cura tinha de ser uma ARESTA, não uma reescrita por quadro** — reescrever sempre faria a
+caixa que o artista acabou de clicar voltar atrás antes de o commit da shell chegar. O campo novo é
+`InspectorState::last_anchor_row`, e o gate mede **as duas metades**, com uma mutação para cada
+(`só a entidade re-semeia` / `re-semeia todo o quadro`).
+
 ### O smoke desta wave
 
 ```
@@ -161,9 +182,15 @@ O gesto: abrir **Sockets / Anchors** → escolher `hand_r` → arrastar a cruz. 
 vivo, num passo de `Ctrl+Z`; a mancha não se mexe. Selecionar a espada mostra
 **«Rides Parent Anchor: hand_r»**; pôr «—» larga-a em cima da mancha.
 
+Além do que já estava, a cena traz agora um **quarto** objeto — verde, montado na `head` e
+**deslocado** — porque «Reset to Anchor» só se pinta quando há deslocamento: sem uma peça já fora
+do sítio, o artista teria de arrastar alguma coisa antes de descobrir que o botão existe. Ele
+também põe **dois** passageiros na `head`, que é o que faz a lista mostrar `Socket · 2 riding`.
+
 ### ⛔ O que NÃO foi smokado pelo Enio ainda
 
-Toda esta wave. O gizmo, a §12 e a persistência das ondas anteriores já foram.
+Tudo o que esta wave acrescentou. A wave da manhã (o `AnchorMount`, o seletor, a persistência) foi
+smokada e é dela que vieram estes quatro pedidos.
 
 ---
 
@@ -213,20 +240,38 @@ com a lei das duas travessias, o bloqueio medido do Luau/MCP e `PH2D_MOUNT_SMOKE
 
 ```
 cargo nextest run --workspace --no-fail-fast --cargo-profile ci-test
-Summary [62,5 s] 17868 tests run: 17867 passed, 1 failed, 1818 skipped
-   FAIL  ph2d-tool-painter  a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs
+Summary [62,7 s] 17883 tests run: 17883 passed, 1818 skipped
 ```
 
-⚠️ **O único ✗ é a TERCEIRA flake de relógio já listada no `CLAUDE.md §5.0`**, registada desde
-2026-08-16 em [`39_auditoria_solid_e_tracos.md`](../../Painter/39_auditoria_solid_e_tracos.md).
-Re-corrida sozinha: **3 de 3 verde** (0,34 s cada). ⚠️ Esta wave **não toca uma linha** do Painter —
-o diff são `ph2d-ecs`, `ph2d-editor-core`, `ph2d-panel-inspector`, os dois espelhos de registro e a
-shell. *Re-rode sozinho antes de suspeitar da sua mudança.*
+**Verde limpo no fecho.** ⚠️ Duas corridas intermédias tiveram ✗, e as duas leituras ficam
+registadas porque a segunda quase enganou:
+
+1. `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs` e
+   `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger` (`ph2d-tool-painter`) —
+   **flakes de relógio sob fan-out**. Re-corridas sozinhas: **3 de 3 verde** cada. ⚠️ Esta linha
+   **não toca uma linha** do Painter. A primeira já está no `CLAUDE.md §5.0`; **a segunda não
+   estava**, e é irmã dela (mesma família de razão de tempo no mesmo módulo).
+2. `shell_files_respect_hr18_loc_cap` — **real, e curado por corte** (ver §3).
 
 Suítes das crates tocadas, isoladas: `ph2d-ecs` **202** · `ph2d-editor-core` **1216** ·
-`ph2d-panel-inspector` **180** · `ph2d-render` ✔ · `ph2d-script` ✔ · `ph2d-host-desktop` ✔.
+`ph2d-panel-inspector` **181** · `ph2d-render` ✔ · `ph2d-script` ✔ · `ph2d-host-desktop` ✔.
 
-### Provas de mutação desta wave (8, todas apanhadas)
+### Provas de mutação (16 no total, todas apanhadas)
+
+**Segunda vaga (2026-08-23):**
+
+| mutação | gate que a apanhou |
+|---|---|
+| escolher uma âncora deixa de pousar | `choosing_an_anchor_lands_the_object_..._leaves_it_alone` |
+| o snap zera **também** a rotação | idem |
+| **desmontar** também pousa (teleporta) | idem |
+| a caixa de visibilidade escreve do zero (apaga a irmã) | `the_two_visibility_boxes_do_not_erase_each_other` |
+| a passagem do filho montado desaparece | `the_ridden_anchor_shows_up_even_with_the_section_closed` (+2) |
+| a caixa `in_editor` deixa de acender | `the_always_visible_box_draws_without_selection` (+3) |
+| só a ENTIDADE re-semeia os campos | `switching_rows_reseeds_..._without_stomping_a_fresh_click` |
+| re-semeia todo o quadro | idem |
+
+**Primeira vaga:**
 
 | mutação | gate que a apanhou |
 |---|---|

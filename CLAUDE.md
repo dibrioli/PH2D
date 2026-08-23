@@ -172,6 +172,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **5 de 5** sozinha (0,1 s). Está registada desde 2026-08-16 em
   [`39_auditoria_solid_e_tracos.md`](docs/Painter/39_auditoria_solid_e_tracos.md) — mas **não estava aqui**, e é
   aqui que se olha quando o gate batched fica vermelho.
+  ⚠️ **A QUINTA é irmã da terceira, e apareceu em 2026-08-23:**
+  `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger`
+  ([`ph2d-tool-painter`](crates/ph2d-tool-painter/src/tool/paint/)) reprovou no fan-out de 17,9 mil testes e
+  passou **3 de 3** sozinha, num diff que **não tocava uma linha do Painter**. Mesma família de razão de tempo,
+  mesmo módulo — *se uma delas reprovar, olhe primeiro para a carga, não para o seu commit*.
   ⚠️ **A quarta, confirmada na integração de 2026-08-22:** `only_the_lower_row_breathes_and_it_moves_with_the_playhead`
   ([`motion_state_conferencia_demos_audio_tests.rs`](shells/desktop/src/motion_state_conferencia_demos_audio_tests.rs))
   reprovou com «max delta 0» no fan-out de 10,7 mil testes e passou **5 de 5** sozinha — já nomeada no
@@ -638,6 +643,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   que não existe) · ✅ **uma âncora já MOVE coisas** (2026-08-22): `ph2d_ecs::AnchorMount` faz dela um
   **QUADRO na hierarquia** ([ADR-0072-amendment-1](docs/architecture/decisions/0072-amendment-1.md)),
   autorado pela linha «Rides Parent Anchor» da §12 e demonstrado em `PH2D_MOUNT_SMOKE`.
+  **Escolher uma âncora POUSA o objeto nela** (só a posição — o ângulo é do filho; e **nunca** ao
+  escolher «—», porque desmontar é largar), com «Reset to Anchor» a refazê-lo; a âncora montada
+  fica **visível ao mexer no filho, mesmo com a §12 fechada**; e o dono tem duas caixas —
+  **«Always show anchors»** (viva) e **«Show anchors at runtime»** (⛔ grava e **não tem quem a
+  leia**: não há modo de jogo, o `shells/game`/R1 está adiado).
   ⚠️ **A lei entra nas DUAS travessias de mundo pela MESMA função** (`mount_state`) —
   `propagate_transforms` e `world_transform`: só numa, a espada **desenha** na mão e todo gesto
   agarra-a na origem do pai. ⛔ Das três superfícies do ADR-0072 §2.6 só a **Rust** tinha onde

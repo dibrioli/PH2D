@@ -4315,3 +4315,96 @@ uma.**
 | iterar a re-graduação até ao ponto fixo | contrai a `½`/ronda e o produto não muda (`24,4°` a 1 e a 8 rondas) | [`regraduate.rs`](../../../crates/ph2d-quadfill/src/regraduate.rs) |
 | «o ponto fixo nem sequer contrai» | afirmação sobre uma sequência tirada de **um** termo | idem |
 | medir isto no probe `96×144` a 3 níveis | horas de relógio para um número; a comparação interna a `24×36` responde igual | idem |
+
+## §4-duoetquinquagies — ⭐⭐⭐ G1: A MALHA CORTADA, e a primeira coisa que ela mediu foi uma dívida do F3 (2026-08-23)
+
+### A fase, e por que ela é crate nova
+
+A caça fechou em `§4-unetquinquagies`: seis curas locais construídas e medidas, nenhuma
+move o número, e o constrangimento é que **a marcação de cada arco é escolhida num sítio
+onde a informação necessária não está**. ⇒ a obra é a **parametrização global**, e ela é
+uma fase nova — `ph2d-gridmap`, drop-crate (`CLAUDE.md` §0.1).
+
+⛔ **Clean-room de Bommes 2009 (MIQ) e Kälberer 2007 (QuadCover)** — algoritmos
+publicados. Nenhuma linha de CoMISo, libQEx, vcglib ou do traçador do quadwild, que são
+GPL (ADR-0162).
+
+| passo | o que faz | estado |
+|---|---|---|
+| ⭐ **G1** | a **malha cortada**: cada patch fica um disco próprio, com a tabela de costuras | **feito** |
+| G2 | pentear o campo dentro de cada patch | — |
+| G3 | resolver `(u, v)` alinhado ao campo, com as costuras acopladas | — |
+| G4 | ler as marcações onde as isolinhas inteiras cruzam cada arco | — |
+
+### ⚠️⚠️ A construção óbvia NÃO corta
+
+Um `BTreeMap` de vértice global para índice local — que é o que o
+[`ph2d_quadfill::param`] usa — dá **um** índice local a cada vértice. ⛔ Mas o traçado
+abre um patch-anel com uma **ponte**: um arco que o **mesmo** patch percorre dos dois
+lados. Com um mapa por vértice o anel **continua anel**, e a fase seguinte resolveria
+um domínio que não fecha.
+
+⭐ **O corte certo é por SECTOR:** dois cantos no mesmo vértice global e no mesmo patch
+são a mesma cópia **se e só se** se chega de um ao outro por faces daquele patch **sem
+atravessar uma aresta de arco**. É uma união-busca sobre `3 × nº de faces` cantos.
+
+### ⭐⭐ A régua é `χ`, e ela apanha os DOIS erros opostos
+
+`χ = V − E + F` do patch cortado vale `1` exactamente quando ele é um disco.
+⛔ Sub-cortar deixa `χ ≤ 0` (anel); sobre-cortar dá `χ ≥ 2` (partido). *Uma contagem de
+vértices não distingue nenhum dos dois de «está bem».*
+
+### ⭐⭐⭐ E a primeira corrida encontrou uma dívida do F3
+
+| | patches | discos |
+|---|---|---|
+| esfera lisa `24×36` | 16 | ⭐ **16** |
+| toro `32×16` | 18 | ⛔ **17** |
+
+⚠️ **E a sonda diz de quem é**, em vez de deixar a dúvida: um `χ ≠ 1` pode ser da minha
+união-busca (não cortou) **ou** do traçado (nunca construiu a ponte), e as duas leem
+igual no gate. O que as separa é perguntar se **algum arco é percorrido duas vezes** por
+aquele patch:
+
+```
+⛔ patch 2: chi=0 · 666 faces · 9 lados · 16 arcos · arcos repetidos []
+   => NENHUM arco repetido: o F3 nunca construiu a ponte -- divida do TRACADO
+```
+
+⇒ ⭐ **A dívida é do F3**, e é a segunda que uma régua nova desta jornada torna visível
+(a primeira: as `2` singularidades dentro de patches do gancho, `§4-quinquagies`).
+
+### ⭐ E a fase abre o anel sozinha, porque o contrato dela diz disco
+
+⛔ **Não vale escrever um contrato e depois emendá-lo quando ele custa.** O G1 promete
+discos, então ele abre: acha as duas voltas de bordo, traça o caminho mais curto de uma
+à outra, acrescenta essas arestas às bloqueadas e reconstrói — ⚠️ **com a guarda de que
+o `χ` tem de melhorar ESTRITAMENTE**, senão um laço que aceita o empate corta a peça
+toda sem nunca fechar (a mesma guarda que a ponte do traçado já usa).
+
+⭐ **O corte interno entra na tabela de costuras com `arc: None`** — e a distinção é
+obrigatória: um corte inventado por esta fase **não tem quantização atrás dele**, logo a
+fase seguinte não lhe pode pedir um número inteiro de segmentos. *Um corte que a fase
+seguinte não veja deixa o patch **rasgado**, que é pior do que anel.*
+
+### Os gates, e o que cada um apanha
+
+| gate | o erro que ele apanha |
+|---|---|
+| `χ = 1` por patch | sub-cortar **e** sobre-cortar |
+| faces preservadas | um patch a menos, sem erro nenhum a acusar |
+| cortar duplica (`>` estrito) | um corte que não corta |
+| ⭐ os dois lados são cópias **distintas** | a construção `global → local`, que funde |
+| ⭐ o abridor dispara no toro e **nunca** na esfera | «18 de 18» que não distingue *veio disco* de *foi aberto* |
+| índices locais em alcance | um número errado em vez de um erro, no solver seguinte |
+
+⭐ **Provado por mutação:** com `OPEN_TRIES = 0` o toro volta a `1 de 18` anéis e a
+esfera fica verde — o gate mede o abridor e mais nada.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| mapa `global → local` por patch | não corta a ponte; o anel sai anel, sem nada a acusar | [`cut.rs`](../../../crates/ph2d-gridmap/src/cut.rs) |
+| contar vértices como régua do corte | não distingue sub-cortar de sobre-cortar de estar bem | idem |
+| aceitar empate no `χ` ao abrir | corta a peça toda sem nunca fechar | idem |

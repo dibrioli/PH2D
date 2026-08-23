@@ -593,7 +593,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   o rectângulo (`22,5 → 24,4`) e melhora o leque (`66,9 → 62,0`) — *move a discordância, não a remove*.
   ⇒ *convergir e acertar são coisas diferentes*, e a família local fecha por medição, não por argumento.
   **A caça está fechada: campo ilibado · mapa fechado · forma do
-  domínio fechada · menos patches é a ordem errada · subdivisão local fechada · ponto fixo fechado. Sobra a global.** ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  domínio fechada · menos patches é a ordem errada · subdivisão local fechada · ponto fixo fechado. Sobra a global.**
+  ⭐⭐⭐ **E ela COMEÇOU: `ph2d-gridmap` (a 6.ª crate da cadeia), clean-room de Bommes 2009 + QuadCover 2007**
+  (`PLAN.md` §4-duoetquinquagies). O **G1 — a malha cortada** está feito: cada patch fica um disco próprio com
+  tabela de costuras, e ⚠️ **o corte é por SECTOR e não por vértice** — um `BTreeMap` global→local (o que o
+  `quadfill::param` usa) **não corta a ponte** e o anel sai anel, sem nada a acusar. Régua: `χ = V−E+F` por patch,
+  que apanha sub-cortar (`≤0`) **e** sobre-cortar (`≥2`). ⛔⛔ **E a 1.ª corrida achou dívida do F3:** o toro
+  entrega um patch com `χ=0`, 666 faces, 16 arcos e **zero arcos repetidos** ⇒ o traçado nunca lhe construiu
+  ponte. O G1 **abre-o sozinho** (contrato dele é entregar discos), com a guarda de melhoria **estrita** e o corte
+  registado com `arc: None` — *um corte que a fase seguinte não veja deixa o patch RASGADO, pior que anel*.
+  Faltam G2 (pentear), G3 (resolver `(u,v)` com as costuras acopladas) e G4 (ler as marcações nas isolinhas). ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

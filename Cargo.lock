@@ -5662,6 +5662,16 @@ name = "ph2d-grid"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-gridmap"
+version = "0.0.0"
+dependencies = [
+ "ph2d-crossfield",
+ "ph2d-mesh",
+ "ph2d-remesh-iso",
+ "ph2d-trace",
+]
+
+[[package]]
 name = "ph2d-guides"
 version = "0.0.0"
 dependencies = [

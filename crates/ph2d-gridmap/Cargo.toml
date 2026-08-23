@@ -1,0 +1,34 @@
+[package]
+name = "ph2d-gridmap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O MAPA DE GRADE INTEIRA (ADR-0162, a fase que fecha a caca de 2026-08-23).
+#
+# Clean-room a partir de Bommes, Zimmer, Kobbelt, «Mixed-Integer Quadrangulation»
+# (SIGGRAPH 2009) e Kaelberer, Nieser, Polthier, «QuadCover» (Eurographics 2007) --
+# algoritmos PUBLICADOS. ⛔ Nenhuma linha traduzida de CoMISo, libQEx, vcglib ou do
+# tracador do quadwild, que sao GPL; o binario `quadwild-bimdf` e' oraculo de bancada,
+# processo externo, fora da arvore.
+#
+# ⭐ POR QUE ELA EXISTE, e a razao e' MEDIDA e nao citada: cada patch resolvido em
+# separado escolhe a marcacao dos seus arcos localmente, e as duas exigencias sobre um
+# arco -- servir o lado OPOSTO do proprio patch e servir o patch do outro lado da
+# costura -- nao se satisfazem ao mesmo tempo localmente. Seis curas foram construidas
+# e medidas em 2026-08-23 (quatro achatamentos, a poda, e o ponto fixo sobre o layout,
+# que contrai a 1/2 por ronda e nao move o numero). `PLAN.md` §4-octoetquadragies,
+# §4-novemetquadragies, §4-unetquinquagies.
+
+[dependencies]
+ph2d-mesh = { path = "../ph2d-mesh" }
+ph2d-crossfield = { path = "../ph2d-crossfield" }
+ph2d-trace = { path = "../ph2d-trace" }
+
+[dev-dependencies]
+ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }

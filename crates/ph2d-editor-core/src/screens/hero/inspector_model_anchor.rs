@@ -81,6 +81,16 @@ pub struct InspectorAnchorInfo {
     pub parent_anchors: Vec<String>,
     /// Em que âncora do pai este objeto anda hoje. `None` = não monta.
     pub mount: Option<String>,
+    /// **O quanto este objeto está DESLOCADO da âncora** que monta, em pixels da fonte.
+    ///
+    /// ⚠️ `[0, 0]` **exacto** = está em cima dela. A comparação é exacta de propósito e não por
+    /// epsilon: o único caminho que escreve zero é o snap, e ele escreve zero *exacto*; qualquer
+    /// arrasto deixa um resíduo. Um epsilon esconderia um deslocamento real de meio pixel.
+    pub mount_offset: [f32; 2],
+    /// A caixa «manter as âncoras visíveis» — do DONO das âncoras, não de quem monta.
+    pub vis_in_editor: bool,
+    /// A caixa «manter as âncoras visíveis em runtime».
+    pub vis_at_runtime: bool,
 }
 
 impl InspectorAnchorInfo {
@@ -109,6 +119,18 @@ impl InspectorAnchorInfo {
     /// afordância a mentir que o botão `Simple` do 9-slice era (Enio, 2026-08-22).
     pub fn mount_pick_is_useful(&self) -> bool {
         !self.parent_anchors.is_empty() || self.mount.is_some()
+    }
+
+    /// **Este objeto está fora da âncora que monta?**
+    ///
+    /// ⛔ É a condição EXACTA para pintar o botão «Reset to Anchor». Um botão que não tem nada que
+    /// fazer é a terceira ação sem efeito visível desta família — as duas primeiras (o slider
+    /// morto e o `× Remove 9-Slice`) foram apanhadas pelo Enio, não por um gate.
+    ///
+    /// `false` quando não monta, quando o vínculo está pendurado (não há âncora a que voltar), e
+    /// quando já está lá.
+    pub fn is_off_anchor(&self) -> bool {
+        self.mount_index().is_some() && self.mount_offset != [0.0, 0.0]
     }
 }
 
@@ -144,6 +166,15 @@ pub enum AnchorFieldEdit {
     /// que o componente o faz — apagar a âncora `0` do pai faria toda a gente descer uma casa em
     /// silêncio.
     Mount(Option<String>),
+    /// **Voltar a pousar na âncora** — zera o deslocamento local de quem monta.
+    ///
+    /// ⚠️ Zera a POSIÇÃO e mais nada. A rotação e a escala do filho continuam a ser dele: uma
+    /// espada tem um ângulo próprio dentro da mão, e repô-lo seria decidir no lugar do artista.
+    SnapToAnchor,
+    /// A caixa «manter as âncoras visíveis» (sem seleção) — do DONO das âncoras.
+    VisibilityInEditor(bool),
+    /// A caixa «manter as âncoras visíveis em runtime».
+    VisibilityAtRuntime(bool),
 }
 
 #[cfg(test)]
@@ -182,6 +213,9 @@ mod tests {
             mixed: false,
             parent_anchors: Vec::new(),
             mount: None,
+            mount_offset: [0.0, 0.0],
+            vis_in_editor: false,
+            vis_at_runtime: false,
         };
         let absent = InspectorAnchorInfo {
             present: false,
@@ -202,6 +236,9 @@ mod tests {
             mixed: false,
             parent_anchors: vec!["muzzle".into(), "hand_r".into()],
             mount: None,
+            mount_offset: [0.0, 0.0],
+            vis_in_editor: false,
+            vis_at_runtime: false,
         };
         assert_eq!(base.mount_index(), None);
         assert!(!base.mount_dangling());
@@ -235,6 +272,9 @@ mod tests {
             mixed: false,
             parent_anchors: Vec::new(),
             mount: None,
+            mount_offset: [0.0, 0.0],
+            vis_in_editor: false,
+            vis_at_runtime: false,
         };
         assert!(!nothing.mount_pick_is_useful());
         let trapped = InspectorAnchorInfo {

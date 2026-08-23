@@ -31,6 +31,7 @@ mod paint;
 mod paint_frame;
 mod paint_frame_shared;
 mod populate;
+mod populate_anchor;
 mod populate_physics;
 mod sections;
 pub mod state;

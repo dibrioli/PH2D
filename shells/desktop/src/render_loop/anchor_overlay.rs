@@ -116,51 +116,59 @@ pub(crate) fn anchor_world_point(
     Transform::compose(anchor_world, offset).translation
 }
 
-/// Desenha os marcadores das âncoras da entidade selecionada.
+/// **Como esta passagem desenha as âncoras de uma entidade.**
 ///
-/// `expanded` é a seção §12 estar aberta — a spec §7.6 pede exatamente isso: os handles aparecem
-/// **quando a seção está expandida**, senão todo sprite com âncoras ficaria coberto de cruzes.
+/// ⚠️ Os dois modos existem porque as marcas respondem a **três** perguntas diferentes no mesmo
+/// quadro, e só uma delas admite gesto: *o que estou a editar* (com alças), *de que ponto este
+/// objeto parte* (contexto do filho montado) e *onde estão os pontos desta cena* (a caixa «Always
+/// show anchors»). Um único modo faria as três parecerem a mesma coisa — e alças a mais são
+/// alvos a disputar o mesmo pixel.
+#[derive(Copy, Clone)]
+enum Marks<'a> {
+    /// A entidade **selecionada**: todas as âncoras, e alças na linha aberta.
+    Editing { open_row: Option<usize> },
+    /// Contexto: esmaecido, **sem alças**. `only` limita a UMA âncora, pelo nome.
+    Context { only: Option<&'a str> },
+}
+
+/// Desenha as marcas de UMA entidade. `true` = desenhou alguma coisa.
 #[allow(clippy::too_many_arguments)]
-/// ⚠️ **`open_row` é a âncora ABERTA na lista do Inspector**, e é ela que ganha as alças.
-///
-/// As outras continuam desenhadas, esmaecidas: elas são o «onde» do sprite, e escondê-las faria
-/// perder a noção do conjunto. Mas dez alças em oito âncoras seriam oitenta alvos a disputar o
-/// mesmo pixel — e um alvo que não se acerta é pior que um alvo que não existe.
-pub(super) fn draw_anchor_marks(
-    expanded: bool,
+fn draw_entity_marks(
     sim: &World,
-    selected: Option<u64>,
-    open_row: Option<usize>,
-    pixels_per_meter: f32,
-    camera: &Camera2d,
-    window: WindowSize,
+    entity: Entity,
+    marks: Marks<'_>,
+    ppm: f32,
+    to_screen: Affine,
     vector_scene: &mut VectorScene,
     text_system: &mut ph2d_text::TextSystem,
-) {
-    if !expanded {
-        return;
-    }
-    let Some(bits) = selected else {
-        return;
-    };
-    let entity = Entity::from_bits(bits);
+) -> bool {
     let Some(list) = sim.get::<NamedAnchorList>(entity) else {
-        return;
+        return false;
     };
     if list.is_empty() {
-        return;
+        return false;
     }
     // ⚠️ **`world_transform` do mundo da SIMULAÇÃO, não `GlobalTransform`.** O `GlobalTransform`
     // é `PresentComponent` — vive no mundo de apresentação, reconstruído a cada quadro. Lê-lo
     // daqui devolvia sempre `None`.
     let Some(sprite_world) = ph2d_ecs::world_transform(sim, entity) else {
-        return;
+        return false;
     };
-    let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
-    let to_screen = camera.world_to_screen_affine(window);
-
+    let mut drew = false;
     for (row, a) in list.iter().enumerate() {
-        let open = open_row == Some(row);
+        // **O modo decide as três coisas de uma vez**: se esta âncora entra, se leva alças, e com
+        // que peso. ⚠️ `Context { only: Some(n) }` é o filtro que a passagem do filho montado usa
+        // — desenhar a lista inteira do pai ali afogaria a única âncora que interessa.
+        let open = match marks {
+            Marks::Editing { open_row } => open_row == Some(row),
+            Marks::Context { only } => {
+                if only.is_some_and(|n| n != a.name) {
+                    continue;
+                }
+                false
+            }
+        };
+        drew = true;
         let mut rgba = color_of(&a.name);
         if !open {
             rgba[3] *= DIM_ALPHA;
@@ -278,11 +286,324 @@ pub(super) fn draw_anchor_marks(
             );
         }
     }
+
+    drew
+}
+
+/// **O PLANO de desenho deste quadro** — que entidade, em que modo, e por que ordem.
+///
+/// ⚠️ **Puro de propósito: sem cena, sem texto, sem câmara.** É a mesma escolha (e a mesma razão)
+/// do [`super::anchor_gizmo`]: as três passagens abaixo decidem *quem aparece*, e uma decisão
+/// enterrada num laço de desenho é inalcançável por teste — que é exatamente onde os erros de
+/// overlay moram (a marca que não aparece, a que aparece duas vezes, a que rouba o destaque).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum PlanMode {
+    /// Esmaecida, todas as âncoras — a caixa «Always show anchors» do dono.
+    AlwaysVisible,
+    /// Esmaecida, **uma só** âncora pelo nome — a que o objeto selecionado monta.
+    RiddenAnchor(String),
+    /// A selecionada: todas, com alças na linha aberta.
+    Editing(Option<usize>),
+}
+
+/// Constrói o plano. **A ORDEM da lista é a ordem de pintura**, e quem vem depois fica por cima.
+///
+/// # As TRÊS passagens, e por que a ordem é esta
+///
+/// 1. **«Always show anchors»** (`ph2d_ecs::AnchorVisibility::in_editor`) — toda entidade que o
+///    peça, esteja ou não selecionada, esteja a §12 aberta ou fechada. É o que permite montar uma
+///    cena com várias peças presas sem ter de selecionar cada dono para ver onde os pontos estão.
+/// 2. **A âncora que o objeto SELECIONADO monta** (Enio, 2026-08-23: *«ao mover/rot/escalonar o
+///    filho ancorado, a âncora a que está ligado deve ficar visível»*). Ela é do **pai**, e
+///    aparece **mesmo com a §12 fechada** — é a referência de que o deslocamento do filho é
+///    medido, e sem ela um arrasto é às cegas.
+/// 3. **A entidade selecionada**, com as alças na linha aberta — o que já existia. Vai por último
+///    porque é a única que aceita gesto, e o que se pode agarrar tem de estar por cima.
+///
+/// ⚠️ **A dedup importa e é assimétrica.** Um dono «always visible» que seja também o selecionado
+/// não se repete (duas passagens de alfa esmaecido somam num traço que se lê como destaque, e a
+/// marca mentiria sobre qual é a importante). Mas a passagem (2) desenha **uma** âncora e a (3)
+/// desenha **todas**: se o pai for o próprio selecionado, as duas têm de correr.
+#[must_use]
+pub(crate) fn marks_plan(
+    sim: &World,
+    expanded: bool,
+    selected: Option<u64>,
+    open_row: Option<usize>,
+) -> Vec<(Entity, PlanMode)> {
+    let mut plan: Vec<(Entity, PlanMode)> = Vec::new();
+
+    // (1) — quem pediu para ficar sempre visível.
+    //
+    // ⚠️ **`try_query` porque só há `&World` aqui**, e o `World::query` pede `&mut`. Ele também
+    // dá o atalho certo de graça: devolve `None` enquanto **nenhuma** entidade tiver tocado o
+    // componente, que é o caso da esmagadora maioria das cenas — e aí esta passagem custa uma
+    // comparação. Quando há, construir o estado é O(arquétipos), não O(entidades).
+    //
+    // ⚠️ Quem decide **é** `anchors_draw_in_editor`, e não um `vis.in_editor` solto: a consulta
+    // aqui só ENUMERA. O default «só quando selecionada» tem de viver num sítio só.
+    if let Some(q) = sim.try_query::<(Entity, &ph2d_ecs::AnchorVisibility)>() {
+        for (id, _) in q.iter_manual(sim) {
+            if ph2d_ecs::anchors_draw_in_editor(sim, id) {
+                plan.push((id, PlanMode::AlwaysVisible));
+            }
+        }
+        // ⚠️ A ordem de iteração de um arquétipo não é a da cena. Ordenar pelos bits torna o
+        // plano **determinístico** — sem isto, dois quadros iguais podiam pintar por ordens
+        // diferentes, e um gate de ordem seria uma flake à espera.
+        plan.sort_unstable_by_key(|(e, _)| e.to_bits());
+    }
+    let already = |plan: &[(Entity, PlanMode)], e: Entity| plan.iter().any(|(p, _)| *p == e);
+
+    // (2) — a âncora de que o selecionado parte.
+    if let Some(bits) = selected {
+        let child = Entity::from_bits(bits);
+        if let Some(mount) = sim
+            .get::<ph2d_ecs::AnchorMount>(child)
+            .filter(|m| m.is_bound())
+            && let Some(parent) = sim.get::<ph2d_ecs::ChildOf>(child).map(|c| c.parent())
+            && !already(&plan, parent)
+        {
+            plan.push((parent, PlanMode::RiddenAnchor(mount.anchor.clone())));
+        }
+    }
+
+    // (3) — a selecionada, com alças, por cima de tudo.
+    if expanded && let Some(bits) = selected {
+        let e = Entity::from_bits(bits);
+        // ⚠️ A comparação é contra a passagem (1) apenas: se a (2) apanhou esta entidade, foi
+        // como PAI de outra coisa, e desenhou-lhe **uma** âncora — as restantes faltam.
+        let in_pass_one = plan
+            .iter()
+            .any(|(p, m)| *p == e && *m == PlanMode::AlwaysVisible);
+        if !in_pass_one {
+            plan.push((e, PlanMode::Editing(open_row)));
+        }
+    }
+    plan
+}
+
+/// Desenha os marcadores das âncoras — a metade que o artista VÊ da §12.
+///
+/// `expanded` é a seção §12 estar aberta. ⚠️ Ela governa só a **terceira** passagem do
+/// [`marks_plan`]; as outras duas existem precisamente para responder a perguntas que não
+/// dependem de o painel estar aberto.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn draw_anchor_marks(
+    expanded: bool,
+    sim: &World,
+    selected: Option<u64>,
+    open_row: Option<usize>,
+    pixels_per_meter: f32,
+    camera: &Camera2d,
+    window: WindowSize,
+    vector_scene: &mut VectorScene,
+    text_system: &mut ph2d_text::TextSystem,
+) {
+    let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
+    let to_screen = camera.world_to_screen_affine(window);
+    for (entity, mode) in marks_plan(sim, expanded, selected, open_row) {
+        let marks = match &mode {
+            PlanMode::AlwaysVisible => Marks::Context { only: None },
+            PlanMode::RiddenAnchor(n) => Marks::Context {
+                only: Some(n.as_str()),
+            },
+            PlanMode::Editing(row) => Marks::Editing { open_row: *row },
+        };
+        draw_entity_marks(
+            sim,
+            entity,
+            marks,
+            ppm,
+            to_screen,
+            vector_scene,
+            text_system,
+        );
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use ph2d_ecs::{AnchorMount, AnchorVisibility, ChildOf, NamedAnchorList};
+
+    fn owner(w: &mut World, names: &[&str]) -> Entity {
+        let mut l = NamedAnchorList::new();
+        for n in names {
+            l.insert(NamedAnchor::socket(*n)).unwrap();
+        }
+        w.spawn((Transform::IDENTITY, l)).id()
+    }
+
+    /// **O default não mudou: sem seleção e sem caixa, o canvas fica limpo.**
+    ///
+    /// ⚠️ É o controlo positivo das três passagens. Sem ele, um plano que devolvesse tudo sempre
+    /// passaria em todos os testes abaixo — eles só verificam que o que devia lá estar está.
+    #[test]
+    fn nothing_is_drawn_by_default() {
+        let mut w = World::new();
+        owner(&mut w, &["muzzle"]);
+        assert!(marks_plan(&w, true, None, None).is_empty());
+        assert!(
+            marks_plan(&w, false, None, None).is_empty(),
+            "a seccao fechada nao pode acender nada"
+        );
+    }
+
+    /// **(pedido 2) A âncora que o filho MONTA aparece — e mesmo com a §12 FECHADA.**
+    ///
+    /// ⚠️ A seção fechada é metade do pedido: mover um filho ancorado é um gesto de CANVAS, e
+    /// exigir o painel aberto para ver a referência tornaria a marca inútil no momento em que
+    /// ela é precisa.
+    #[test]
+    fn the_ridden_anchor_shows_up_even_with_the_section_closed() {
+        let mut w = World::new();
+        let host = owner(&mut w, &["hand_r", "head"]);
+        let rider = w
+            .spawn((
+                Transform::IDENTITY,
+                ChildOf(host),
+                AnchorMount::new("hand_r"),
+            ))
+            .id();
+        let plan = marks_plan(&w, false, Some(rider.to_bits()), None);
+        assert_eq!(
+            plan,
+            vec![(host, PlanMode::RiddenAnchor("hand_r".into()))],
+            "a ancora de que o filho parte tem de aparecer, e SO' ela"
+        );
+    }
+
+    /// Um filho **sem** montagem não acende âncora nenhuma do pai.
+    #[test]
+    fn an_unmounted_child_shows_nothing_of_the_parent() {
+        let mut w = World::new();
+        let host = owner(&mut w, &["hand_r"]);
+        let plain = w.spawn((Transform::IDENTITY, ChildOf(host))).id();
+        assert!(marks_plan(&w, false, Some(plain.to_bits()), None).is_empty());
+    }
+
+    /// **(pedido 3) A caixa «Always show anchors» desenha sem seleção e com a seção fechada.**
+    #[test]
+    fn the_always_visible_box_draws_without_selection() {
+        let mut w = World::new();
+        let host = owner(&mut w, &["muzzle"]);
+        assert!(marks_plan(&w, false, None, None).is_empty());
+        w.entity_mut(host).insert(AnchorVisibility {
+            in_editor: true,
+            at_runtime: false,
+        });
+        assert_eq!(
+            marks_plan(&w, false, None, None),
+            vec![(host, PlanMode::AlwaysVisible)]
+        );
+    }
+
+    /// ⚠️ **`at_runtime` sozinho NÃO acende nada no editor.** As duas caixas são intenções
+    /// diferentes, e confundi-las faria marcar «em runtime» encher o editor de cruzes.
+    #[test]
+    fn the_runtime_box_alone_changes_nothing_in_the_editor() {
+        let mut w = World::new();
+        let host = owner(&mut w, &["muzzle"]);
+        w.entity_mut(host).insert(AnchorVisibility {
+            in_editor: false,
+            at_runtime: true,
+        });
+        assert!(marks_plan(&w, false, None, None).is_empty());
+    }
+
+    /// **A ORDEM é a de pintura, e a selecionada vai por ÚLTIMO.**
+    ///
+    /// ⚠️ O que se pode agarrar tem de estar por cima: alças desenhadas debaixo de uma marca
+    /// esmaecida ainda agarram, e um alvo que se agarra sem se ver é pior que um que não existe.
+    #[test]
+    fn the_selected_entity_paints_last() {
+        let mut w = World::new();
+        let other = owner(&mut w, &["a"]);
+        w.entity_mut(other).insert(AnchorVisibility {
+            in_editor: true,
+            at_runtime: false,
+        });
+        let host = owner(&mut w, &["hand_r"]);
+        let rider = w
+            .spawn((
+                Transform::IDENTITY,
+                ChildOf(host),
+                AnchorMount::new("hand_r"),
+                NamedAnchorList::new(),
+            ))
+            .id();
+        let plan = marks_plan(&w, true, Some(rider.to_bits()), Some(0));
+        assert_eq!(
+            plan,
+            vec![
+                (other, PlanMode::AlwaysVisible),
+                (host, PlanMode::RiddenAnchor("hand_r".into())),
+                (rider, PlanMode::Editing(Some(0))),
+            ]
+        );
+    }
+
+    /// **A dedup é assimétrica, e isso é a lei.**
+    ///
+    /// Um dono «always visible» que também está selecionado **não** se repete. Mas um pai que a
+    /// passagem (2) apanhou desenhou **uma** âncora — se ele for o selecionado, a (3) tem de
+    /// correr na mesma, senão as restantes âncoras dele desapareciam.
+    #[test]
+    fn the_dedup_drops_the_repeat_but_never_the_missing_half() {
+        // (a) always-visible E selecionado ⇒ uma entrada só.
+        let mut w = World::new();
+        let host = owner(&mut w, &["muzzle"]);
+        w.entity_mut(host).insert(AnchorVisibility {
+            in_editor: true,
+            at_runtime: false,
+        });
+        assert_eq!(
+            marks_plan(&w, true, Some(host.to_bits()), Some(0)),
+            vec![(host, PlanMode::AlwaysVisible)],
+            "a mesma entidade duas vezes soma o alfa e finge destaque"
+        );
+
+        // (b) um objeto que monta numa âncora do PRÓPRIO pai e está selecionado, tendo âncoras
+        // suas: as duas passagens correm — a (2) sobre o pai, a (3) sobre ele.
+        let mut w = World::new();
+        let parent = owner(&mut w, &["slot"]);
+        let child = w
+            .spawn((
+                Transform::IDENTITY,
+                ChildOf(parent),
+                AnchorMount::new("slot"),
+                NamedAnchorList::new(),
+            ))
+            .id();
+        let plan = marks_plan(&w, true, Some(child.to_bits()), None);
+        assert_eq!(plan.len(), 2, "faltou uma das duas metades: {plan:?}");
+        assert_eq!(plan[1].0, child);
+    }
+
+    /// O plano é **determinístico**: a ordem de iteração de um arquétipo não é a da cena.
+    #[test]
+    fn the_always_visible_sweep_is_ordered() {
+        let mut w = World::new();
+        let mut ids: Vec<Entity> = (0..4)
+            .map(|i| {
+                let e = owner(&mut w, &["a"]);
+                let _ = i;
+                w.entity_mut(e).insert(AnchorVisibility {
+                    in_editor: true,
+                    at_runtime: false,
+                });
+                e
+            })
+            .collect();
+        ids.sort_unstable_by_key(|e| e.to_bits());
+        let got: Vec<Entity> = marks_plan(&w, false, None, None)
+            .into_iter()
+            .map(|(e, _)| e)
+            .collect();
+        assert_eq!(got, ids);
+    }
 
     /// ⚠️ **O DEFEITO QUE O SMOKE DO ENIO APANHOU (2026-08-22): a âncora tem de SEGUIR a sprite.**
     ///

@@ -25,7 +25,17 @@ autoria sem consumidor»*. Esta wave fecha isso.
 | «quantos montam nesta âncora» na lista da §12 | `InspectorAnchorRow::riders` |
 | o smoke | `PH2D_MOUNT_SMOKE=1` (`shells/desktop/src/mount_smoke.rs`, novo) |
 
-**6 commits**, 34 ficheiros.
+**Segunda vaga do mesmo dia** — os quatro pedidos do primeiro smoke do Enio:
+
+| pedido | entregue |
+|---|---|
+| escolher uma âncora **pousa** o objeto nela | o snap no braço `Mount(Some(_))` |
+| a âncora que o filho monta fica **visível** ao mexer nele | passagem 2 do `marks_plan` — **mesmo com a §12 fechada** |
+| duas caixas no pai: **«Always show anchors»** e **«Show anchors at runtime»** | `ph2d_ecs::AnchorVisibility` (`PROJECT_SCHEMA` 90 → **91**) |
+| botão **«Reset to Anchor»** no filho | `AnchorFieldEdit::SnapToAnchor` — a MESMA operação do primeiro |
+
+⛔ **`at_runtime` grava e não tem quem a leia** — não há modo de jogo (`shells/game`, R1, adiado
+pelo Enio). Está marcada como tal no componente, no id, na spec e no smoke.
 
 ---
 
@@ -71,7 +81,7 @@ SUPERFÍCIE DE COLISÃO — line/Sprite contra main
 
 ### Leitura, símbolo a símbolo
 
-**`PROJECT_SCHEMA` 89 → 90.** ⚠️ **O número se CONTA contra o `main` do dia, nunca se copia daqui.**
+**`PROJECT_SCHEMA` 89 → 91** (dois degraus: v90 `AnchorMount`, v91 `AnchorVisibility`). ⚠️ **O número se CONTA contra o `main` do dia, nunca se copia daqui.**
 Quem obriga o bump é o **REGISTRO**, não um campo: um componente fora do `ComponentRegistry` é
 descartado **em silêncio** pelo snapshot. São **três** sítios (a escada em `project_schema.rs`, a
 tripla em `project_schema_tests.rs`, e o degrau que **não** pode ir para `project.rs`).
@@ -82,17 +92,18 @@ visto pela suíte da **sua** crate:
 
 | crate | valor | quem o vê |
 |---|---|---|
-| `ph2d-ecs` | 66 | `cargo test -p ph2d-ecs` |
-| `ph2d-render` (espelho) | 67 = ecs + 1 (`Sprite`) | `cargo test -p ph2d-render` |
-| `ph2d-script` (espelho) | 67 = ecs + 1 (`LuauScript`) | `cargo test -p ph2d-script` |
+| `ph2d-ecs` | 67 | `cargo test -p ph2d-ecs` |
+| `ph2d-render` (espelho) | 68 = ecs + 1 (`Sprite`) | `cargo test -p ph2d-render` |
+| `ph2d-script` (espelho) | 68 = ecs + 1 (`LuauScript`) | `cargo test -p ph2d-script` |
 
 ⛔ **São grandezas DIFERENTES — não copie o número de um para o outro.**
 
-**Componente ECS novo** (o nome canónico, é por ele que o save indexa):
-`ph2d::ecs::AnchorMount`.
+**Componentes ECS novos** (os nomes canónicos, é por eles que o save indexa):
+`ph2d::ecs::AnchorMount` · `ph2d::ecs::AnchorVisibility`.
 
 **Ids novos** (família própria, em `ids/inspector_anchor.rs`): `INSP_MOUNT_PICK` ·
-`INSP_MOUNT_NONE_OPT` · `INSP_MOUNT_OPT[64]`. ⚠️ O comprimento do array **é** `ph2d_ecs::ANCHORS_MAX`,
+`INSP_MOUNT_NONE_OPT` · `INSP_MOUNT_OPT[64]` · `INSP_MOUNT_SNAP` · `INSP_ANCHOR_VIS_EDITOR` ·
+`INSP_ANCHOR_VIS_RUNTIME`. ⚠️ O comprimento do array **é** `ph2d_ecs::ANCHORS_MAX`,
 com gate na shell (`the_mount_option_ids_cover_the_model_cap`).
 
 **Ratchets de LOC que esta wave MOVEU** (só descem; um merge que os suba é erro):
@@ -101,6 +112,7 @@ com gate na shell (`the_mount_option_ids_cover_the_model_cap`).
 |---|---|---|---|
 | `ph2d-ecs/src/transform.rs` (ficheiro) | 768 | **removida** | `mod tests` cortado para `transform_tests.rs` (idioma do `children_order_tests.rs`); ficou em 621, abaixo do cap default |
 | `paint_inspector` (função) | 380 | **348** | os TRÊS popovers diferidos saíram para `paint_frame_shared::paint_deferred_popovers` |
+| `ph2d-panel-inspector/src/populate.rs` (ficheiro) | 605 medido | — | o bloco da §12 saiu para `populate_anchor.rs` (idioma do `populate_physics.rs`); **nenhuma entrada foi criada** |
 
 ---
 

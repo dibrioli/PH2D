@@ -233,6 +233,43 @@ que escolher (sem pai, ou pai sem âncoras) — mas **aparece sempre** sobre um 
 senão o estado fica preso. A lista de âncoras deste objeto mostra, em cada linha, **quantos montam
 nela** (`Socket · 2 riding`).
 
+### 7.6-bis.1 Pousar na âncora (Enio, 2026-08-23)
+
+**Escolher uma âncora POUSA o objeto nela.** A pose local dele vai a zero no mesmo gesto — «o
+objeto deve ser colocado na mesma posição da âncora no momento da atribuição».
+
+⚠️ **Zera a POSIÇÃO e mais nada.** A rotação e a escala continuam a ser do filho: uma espada tem um
+ângulo próprio dentro da mão, e repô-lo seria decidir no lugar do artista.
+⚠️ **Só ao escolher uma âncora, nunca ao escolher «—».** Desmontar é *largar*, e largar deixa as
+coisas onde estão; um snap ali seria uma teleportação que ninguém pediu.
+
+Depois de o artista o deslocar, a §12 mostra **«Off anchor by X, Y px»** e o botão **«Reset to
+Anchor»**, que refaz o mesmo pouso. ⛔ Os dois **só existem quando há deslocamento** — a comparação
+é **exacta** contra `[0, 0]`, porque o único caminho que escreve zero é o próprio snap.
+
+### 7.6-bis.2 Quando as âncoras se desenham
+
+Por omissão, as marcas aparecem com a entidade **selecionada** e a §12 **expandida**. Três coisas
+alargam isso, e são passagens distintas (`anchor_overlay::marks_plan`, pura e testada):
+
+| passagem | quem desenha | quando |
+|---|---|---|
+| 1 | toda entidade com `AnchorVisibility::in_editor` | caixa **«Always show anchors»** do dono |
+| 2 | **a âncora que o objeto selecionado monta**, no pai | sempre — **mesmo com a §12 fechada** |
+| 3 | a entidade selecionada, com alças | §12 expandida |
+
+⚠️ A passagem 2 é o pedido *«ao mover/rot/escalonar o filho ancorado, a âncora a que está ligado
+deve ficar visível»*: mover um filho ancorado é um gesto de **canvas**, e exigir o painel aberto
+tornaria a referência indisponível no momento em que ela é precisa.
+⚠️ **A ordem é a de pintura** e a selecionada vai por último — o que se pode agarrar tem de estar
+por cima. A dedup é **assimétrica**: um dono repetido não se pinta duas vezes (dois alfas somam e
+fingem destaque), mas a passagem 2 desenha *uma* âncora e a 3 desenha *todas*.
+
+⛔ **`AnchorVisibility::at_runtime` grava e ainda não tem quem a leia.** Não há modo de jogo neste
+app — o `shells/game` (Runtime R1) está adiado por decisão do Enio, e nenhum caminho de desenho
+corre fora do editor. A caixa existe porque foi pedida, e está marcada porque *um knob que não faz
+nada e não o diz* é a dívida que este módulo acabou de pagar.
+
 **Smoke:** `PH2D_MOUNT_SMOKE=1`.
 
 ## 7.7 Use cases concretos

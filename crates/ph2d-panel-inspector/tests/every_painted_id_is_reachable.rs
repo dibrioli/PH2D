@@ -179,6 +179,12 @@ fn publish_the_whole_sprite_scene() {
         // não contém o fenómeno mede silêncio.*
         parent_anchors: vec!["hand_r".into(), "hand_l".into()],
         mount: Some("hand_r".into()),
+        // ⚠️ DESLOCADO e as duas caixas LIGADAS: e' o estado em que o botao de reset e as duas
+        // linhas de visibilidade sao pintados. Um fixture no estado neutro deixaria tres ids
+        // fora da amostra — a mesma cicatriz do fixture em `Simple` da §5.
+        mount_offset: [12.0, -4.0],
+        vis_in_editor: true,
+        vis_at_runtime: true,
     }));
     set_current_inspector_blend(Some(InspectorBlendInfo {
         entity_bits: ENTITY,

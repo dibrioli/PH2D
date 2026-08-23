@@ -194,6 +194,20 @@ const fn build_mount_opts() -> [NodeId; 64] {
     ]
 }
 
+/// **«Reset to Anchor»** — repõe quem monta em cima da âncora (Enio, 2026-08-23).
+///
+/// ⛔ **Só se pinta quando o objeto está DESLOCADO** (`InspectorAnchorInfo::is_off_anchor`). Um
+/// botão sem nada que fazer seria a terceira ação sem efeito visível desta família.
+pub const INSP_MOUNT_SNAP: NodeId = hash_node_id("insp_mount_snap");
+
+/// **«Always show anchors»** — desenhar as âncoras deste objeto sem ele estar selecionado.
+pub const INSP_ANCHOR_VIS_EDITOR: NodeId = hash_node_id("insp_anchor_vis_editor");
+/// **«Show anchors at runtime»** — mantê-las visíveis fora do editor.
+///
+/// ⚠️ Intenção autorada cujo consumidor **ainda não existe** — não há modo de jogo neste app
+/// (`shells/game`, Runtime R1, adiado pelo Enio). Ver `ph2d_ecs::AnchorVisibility::at_runtime`.
+pub const INSP_ANCHOR_VIS_RUNTIME: NodeId = hash_node_id("insp_anchor_vis_runtime");
+
 /// **«+ Add Anchor»** — cria uma âncora nova com o próximo nome livre (`anchor_N`).
 pub const INSP_ANCHOR_ADD: NodeId = hash_node_id("insp_anchor_add");
 /// **«× Remove»** — retira a âncora selecionada.

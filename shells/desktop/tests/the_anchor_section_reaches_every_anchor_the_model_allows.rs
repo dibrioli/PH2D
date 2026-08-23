@@ -192,6 +192,9 @@ fn the_panel_reads_the_same_mount_state_the_engine_does() {
             mixed: false,
             parent_anchors: parent_names.iter().map(|s| (*s).to_string()).collect(),
             mount: mount.map(str::to_string),
+            mount_offset: [0.0, 0.0],
+            vis_in_editor: false,
+            vis_at_runtime: false,
         };
 
         assert_eq!(

@@ -10,9 +10,10 @@
 //!
 //! | objeto | monta em | o que prova |
 //! |---|---|---|
-//! | espada (vermelha, alta) | `hand_r` | segue a mão |
-//! | chapéu (amarelo, largo) | `head` | segue a cabeça |
+//! | espada (vermelha) | `hand_r` | segue a mão |
+//! | chapéu (amarelo) | `head` | segue a cabeça |
 //! | **mancha cinzenta** | *nada* | **o controlo** — fica na origem do boneco |
+//! | quadrado verde | `head`, **deslocado** | «Reset to Anchor» tem o que fazer, e a `head` mostra `2 riding` |
 //!
 //! # ⚠️ A mancha cinzenta é metade da cena, e é a metade que se esquece
 //!
@@ -30,6 +31,15 @@
 //! 3. **Arrastar o braço** (roda a âncora) → a espada gira em torno da mão.
 //! 4. Selecionar a espada: a §12 mostra **«Rides Parent Anchor: hand_r»**. Pôr «—» larga-a na
 //!    origem do boneco, em cima da mancha cinzenta — que é a prova de que era a âncora a movê-la.
+//!    Voltar a escolher `hand_r` **pousa-a na mão outra vez**, e não onde ela tinha ficado.
+//! 5. Selecionar o **verde**: ele monta na `head` e está fora dela. A §12 diz *«Off anchor by
+//!    35, 30 px»* e oferece **«Reset to Anchor»** — que o põe em cima do chapéu, e desaparece.
+//! 6. Selecionar o **boneco** e marcar **«Always show anchors»**: as cruzes ficam mesmo depois de
+//!    selecionar outra coisa, ou de fechar a seção.
+//!
+//! ⚠️ **A segunda caixa, «Show anchors at runtime», grava e ainda não tem quem a leia** — não há
+//! modo de jogo neste app (`shells/game`, Runtime R1, adiado). Ver
+//! `ph2d_ecs::AnchorVisibility::at_runtime`.
 //!
 //! [ADR-0072]: ../../../docs/architecture/decisions/0072-named-anchor-unification.md
 
@@ -56,6 +66,15 @@ const HEAD: Vec2 = Vec2::new(0.0, 0.80);
 const SWORD_TINT: [f32; 4] = [0.90, 0.20, 0.20, 1.0]; // LITERAL-COLOR-OK: conteúdo da cena
 const HAT_TINT: [f32; 4] = [0.95, 0.80, 0.15, 1.0]; // LITERAL-COLOR-OK: conteúdo da cena
 const CONTROL_TINT: [f32; 4] = [0.45, 0.45, 0.48, 1.0]; // LITERAL-COLOR-OK: conteúdo da cena
+const LOOSE_TINT: [f32; 4] = [0.30, 0.80, 0.40, 1.0]; // LITERAL-COLOR-OK: conteúdo da cena
+
+/// **O quarto objeto nasce FORA da âncora**, de propósito (Enio, 2026-08-23).
+///
+/// ⚠️ Ele é o que torna «Reset to Anchor» **visível ao abrir**: o botão só se pinta quando há
+/// deslocamento, e sem uma peça já deslocada o artista teria de arrastar alguma coisa antes de
+/// descobrir que o botão existe. Ele também põe **dois** passageiros na `head`, que é o que faz
+/// a lista mostrar `Socket · 2 riding`.
+const LOOSE_OFFSET: Vec2 = Vec2::new(0.35, 0.30);
 
 pub(crate) fn enabled() -> bool {
     std::env::var_os("PH2D_MOUNT_SMOKE").is_some()
@@ -107,13 +126,18 @@ pub(crate) fn spawn_if_enabled(
     list.insert(head).ok()?;
     sim.world_mut().get_entity_mut(body).ok()?.insert(list);
 
-    // Os três filhos. ⚠️ Todos nascem com `Transform::IDENTITY`: o que os separa é **só** a
-    // montagem, e é isso que torna a comparação legível. Se um deles trouxesse um deslocamento
-    // próprio, ver a espada longe da mancha não provaria nada.
-    for (tint, mount) in [
-        (SWORD_TINT, Some("hand_r")),
-        (HAT_TINT, Some("head")),
-        (CONTROL_TINT, None),
+    // Os quatro filhos. ⚠️ **Os TRÊS primeiros nascem com pose local zero**: o que os separa é
+    // **só** a montagem, e é isso que torna a comparação legível. Se a espada trouxesse um
+    // deslocamento próprio, vê-la longe da mancha não provaria nada.
+    //
+    // ⚠️ O quarto é a exceção, e é deliberada — ele nasce FORA da âncora para que «Reset to
+    // Anchor» exista ao abrir a cena (ver `LOOSE_OFFSET`).
+    for (tint, mount, local) in [
+        (SWORD_TINT, Some("hand_r"), Vec2::ZERO),
+        (HAT_TINT, Some("head"), Vec2::ZERO),
+        (CONTROL_TINT, None, Vec2::ZERO),
+        // O quarto: montado na cabeça e **deslocado** — ver `LOOSE_OFFSET`.
+        (LOOSE_TINT, Some("head"), LOOSE_OFFSET),
     ] {
         let Some(bits) = white(RIDER_PX, Vec2::ZERO, sim, renderer) else {
             continue;
@@ -123,7 +147,13 @@ pub(crate) fn spawn_if_enabled(
             s.tint = tint;
         }
         if let Ok(mut ent) = sim.world_mut().get_entity_mut(e) {
-            ent.insert((Transform::IDENTITY, ChildOf(body)));
+            ent.insert((
+                Transform {
+                    translation: local,
+                    ..Transform::default()
+                },
+                ChildOf(body),
+            ));
             if let Some(name) = mount {
                 ent.insert(AnchorMount::new(name));
             }
@@ -138,7 +168,7 @@ mod tests {
     use ph2d_ecs::{MountState, World, mount_state_of, world_transform};
 
     /// Reconstrói a cena **sem** o renderer — só a parte que a montagem lê.
-    fn scene() -> (World, [ph2d_ecs::Entity; 3]) {
+    fn scene() -> (World, [ph2d_ecs::Entity; 4]) {
         let mut w = World::new();
         let mut list = NamedAnchorList::new();
         let mut hand = NamedAnchor::socket("hand_r");
@@ -158,7 +188,12 @@ mod tests {
         let sword = mk(&mut w, Some("hand_r"));
         let hat = mk(&mut w, Some("head"));
         let control = mk(&mut w, None);
-        (w, [sword, hat, control])
+        let loose = mk(&mut w, Some("head"));
+        w.entity_mut(loose).insert(Transform {
+            translation: LOOSE_OFFSET,
+            ..Transform::default()
+        });
+        (w, [sword, hat, control, loose])
     }
 
     /// **A cena prova o que diz que prova:** os dois montados estão NA âncora, o controlo na
@@ -169,7 +204,7 @@ mod tests {
     /// sítio, e nada no ecrã diria que isso está errado.
     #[test]
     fn the_riders_sit_on_their_anchors_and_the_control_does_not() {
-        let (w, [sword, hat, control]) = scene();
+        let (w, [sword, hat, control, loose]) = scene();
         assert_eq!(world_transform(&w, sword).unwrap().translation, HAND_R);
         assert_eq!(world_transform(&w, hat).unwrap().translation, HEAD);
         assert_eq!(
@@ -179,6 +214,13 @@ mod tests {
         );
         assert!(matches!(mount_state_of(&w, sword), MountState::Mounted(_)));
         assert_eq!(mount_state_of(&w, control), MountState::Free);
+        // ⚠️ **O quarto tem de estar FORA da âncora** — é isso que faz «Reset to Anchor» existir
+        // ao abrir a cena. Um deslocamento a zero aqui devolveria o smoke a um botão invisível.
+        assert_eq!(
+            world_transform(&w, loose).unwrap().translation,
+            HEAD + LOOSE_OFFSET,
+            "o quarto objeto tem de nascer deslocado da ancora"
+        );
     }
 
     /// **As duas âncoras estão longe uma da outra e do centro.** Uma cena em que a mão e a cabeça

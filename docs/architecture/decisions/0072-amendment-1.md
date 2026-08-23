@@ -87,6 +87,33 @@ descartado **em silêncio** pelo snapshot, e reabrir o projeto devolveria a espa
 do personagem — no sítio certo, parada. Ausência do componente é «não montar», que é o que toda
 entidade fazia até v89, por isso todo arquivo ≤ v89 desenha byte-idêntico.
 
+### 2.7 Pousar na âncora, e quando as marcas se desenham (Enio, 2026-08-23)
+
+Quatro pedidos do primeiro smoke, e dois deles são a **mesma operação**:
+
+1. **Escolher uma âncora pousa o objeto nela** — a pose local vai a zero no mesmo gesto.
+2. **«Reset to Anchor»** — a mesma operação, com um botão.
+3. **A âncora que o objeto selecionado monta fica visível**, mesmo com a §12 fechada.
+4. **Duas caixas no dono:** «Always show anchors» e «Show anchors at runtime».
+
+⚠️ **O snap zera a POSIÇÃO e mais nada.** A rotação e a escala continuam a ser do filho: uma
+espada tem um ângulo próprio dentro da mão. E **só ao escolher uma âncora, nunca ao escolher «—»**
+— desmontar é *largar*, e largar deixa as coisas onde estão.
+
+⚠️ **A comparação «está fora da âncora?» é EXACTA contra `[0, 0]`**, e não por epsilon: o único
+caminho que escreve zero é o próprio snap, e ele escreve zero exacto. Um epsilon esconderia um
+deslocamento real de meio pixel — e o botão que o desfaz.
+
+⚠️ **A decisão de desenho saiu do laço para uma função pura** (`anchor_overlay::marks_plan`), pela
+mesma razão do gizmo: as três passagens decidem *quem aparece*, e uma decisão enterrada num laço de
+desenho é inalcançável por teste — que é exatamente onde os erros de overlay moram (a marca que não
+aparece, a que aparece duas vezes, a que rouba o destaque).
+
+⛔ **`AnchorVisibility::at_runtime` é a terceira coisa desta wave sem consumidor**, e está marcada
+como tal: não há modo de jogo neste app (`shells/game`, Runtime R1, adiado pelo Enio). A caixa
+grava, sobrevive ao undo e ao ficheiro, e o único sítio que decide o desenho tem o irmão dela por
+escrever. *Um knob que não faz nada e não o diz é a dívida que este amendment cura.*
+
 ---
 
 ## 3. ⛔ As outras duas superfícies do §2.6 estão BLOQUEADAS, e não é escopo desta linha

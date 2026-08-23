@@ -51,6 +51,9 @@ fn info() -> InspectorAnchorInfo {
         // seletor. Os gates da montagem, abaixo, variam estes dois campos.
         parent_anchors: vec!["hand_r".into(), "hand_l".into()],
         mount: None,
+        mount_offset: [0.0, 0.0],
+        vis_in_editor: false,
+        vis_at_runtime: false,
     }
 }
 
@@ -430,4 +433,176 @@ fn the_mount_picker_appears_exactly_when_it_is_useful() {
         }),
         "um vinculo pendurado sem a linha e' um estado preso"
     );
+}
+
+/// **(14) Trocar de linha na lista RE-SEMEIA os campos do editor.**
+///
+/// ⚠️ **Este gate nasceu de um defeito medido, não de uma hipótese.** Os campos semeavam-se só
+/// quando a **ENTIDADE** mudava (`entity_changed`), então clicar noutra âncora da mesma sprite
+/// mudava a ficha aberta e deixava o nome e as caixas a mostrar a anterior. A sonda de 2026-08-23
+/// mediu nome `""` e `Bounds` **desmarcada** sobre `face_box`, que tem área.
+///
+/// ⚠️ E a cura tinha de ser uma **ARESTA**, não uma reescrita por quadro: reescrever sempre faria
+/// a caixa que o artista acabou de clicar voltar atrás antes de o commit da shell chegar. Por isso
+/// o teste abaixo verifica as duas metades — semeia ao trocar, **e** não pisa o que o artista
+/// mexeu sem trocar de linha.
+#[test]
+fn switching_rows_reseeds_the_editor_without_stomping_a_fresh_click() {
+    set_current_inspector_anchor(Some(info()));
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut state = InspectorState::default();
+    host.settle_section_folds();
+    host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    // Linha 0 = `muzzle`, um Socket sem área.
+    assert_eq!(host.store().text(ids::INSP_ANCHOR_NAME), Some("muzzle"));
+    assert_eq!(
+        host.store()
+            .checkbox(ids::INSP_ANCHOR_BOUNDS_ON)
+            .map(|(_, v)| v),
+        Some(CheckboxValue::Unchecked)
+    );
+
+    // Linha 1 = `face_box`, uma Region — nome e caixas TÊM de acompanhar.
+    host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Click(ids::INSP_ANCHOR_ROW[1]),
+    );
+    host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    assert_eq!(
+        host.store().text(ids::INSP_ANCHOR_NAME),
+        Some("face_box"),
+        "o nome ficou na ancora anterior"
+    );
+    assert_eq!(
+        host.store()
+            .checkbox(ids::INSP_ANCHOR_BOUNDS_ON)
+            .map(|(_, v)| v),
+        Some(CheckboxValue::Checked),
+        "a caixa de area ficou na ancora anterior"
+    );
+
+    // ⚠️ A OUTRA metade: sem trocar de linha, o que o artista acabou de clicar **fica**. O commit
+    // da shell demora um quadro, e uma reescrita por quadro desfá-lo-ia antes de ele chegar.
+    host.set_checkbox_value(ids::INSP_ANCHOR_BOUNDS_ON, CheckboxValue::Unchecked);
+    host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    assert_eq!(
+        host.store()
+            .checkbox(ids::INSP_ANCHOR_BOUNDS_ON)
+            .map(|(_, v)| v),
+        Some(CheckboxValue::Unchecked),
+        "o sync pisou o clique antes de o commit chegar"
+    );
+}
+
+/// **(15) O botão «Reset to Anchor» chega ao barramento — e só quando tem o que fazer.**
+///
+/// ⚠️ A segunda metade não é zelo: os 64+ ids da seção são registados no ARRANQUE, e um clique
+/// sintético alcança um botão que não foi pintado. Sem a guarda no despacho, ele escreveria uma
+/// pose zerada sobre um objeto que não monta em nada.
+#[test]
+fn the_reset_button_only_fires_when_the_object_is_off_anchor() {
+    let off = InspectorAnchorInfo {
+        mount: Some("hand_r".into()),
+        mount_offset: [12.0, -4.0],
+        ..info()
+    };
+    set_current_inspector_anchor(Some(off));
+    let (mut host, mut state) = fresh(0);
+    host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(ids::INSP_MOUNT_SNAP));
+    assert_eq!(edits(&mut host), vec![AnchorFieldEdit::SnapToAnchor]);
+
+    // Já em cima da âncora: o botão não é pintado, e o clique sintético não escreve nada.
+    let on = InspectorAnchorInfo {
+        mount: Some("hand_r".into()),
+        mount_offset: [0.0, 0.0],
+        ..info()
+    };
+    set_current_inspector_anchor(Some(on));
+    let (mut host, mut state) = fresh(0);
+    host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Click(ids::INSP_MOUNT_SNAP));
+    assert!(
+        edits(&mut host).is_empty(),
+        "o botao disparou sobre um objeto que ja' esta' na ancora"
+    );
+}
+
+/// **(16) As duas caixas de visibilidade chegam ao barramento, cada uma na sua variante.**
+///
+/// ⚠️ Trocá-las compila. É o mesmo risco do par `Bounds`/`Center`, e é por isso que o teste mede
+/// as duas — uma só provaria que *alguma* chegou.
+#[test]
+fn the_two_visibility_boxes_reach_the_bus_as_themselves() {
+    for (id, on, expect) in [
+        (
+            ids::INSP_ANCHOR_VIS_EDITOR,
+            true,
+            AnchorFieldEdit::VisibilityInEditor(true),
+        ),
+        (
+            ids::INSP_ANCHOR_VIS_RUNTIME,
+            true,
+            AnchorFieldEdit::VisibilityAtRuntime(true),
+        ),
+        (
+            ids::INSP_ANCHOR_VIS_EDITOR,
+            false,
+            AnchorFieldEdit::VisibilityInEditor(false),
+        ),
+    ] {
+        set_current_inspector_anchor(Some(info()));
+        let (mut host, mut state) = fresh(0);
+        host.set_checkbox_value(
+            id,
+            if on {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            },
+        );
+        host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Toggled(id));
+        assert_eq!(edits(&mut host), vec![expect]);
+    }
+}
+
+/// **(17) O botão de reset e as duas caixas pintam-se exatamente quando devem.**
+#[test]
+fn the_new_controls_appear_only_where_they_belong() {
+    let painted = |info: InspectorAnchorInfo, id: NodeId| {
+        set_current_inspector_anchor(Some(info));
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        host.settle_section_folds();
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        rects.iter().any(|(pid, _)| *pid == id)
+    };
+    let off = InspectorAnchorInfo {
+        mount: Some("hand_r".into()),
+        mount_offset: [12.0, -4.0],
+        ..info()
+    };
+    assert!(painted(off.clone(), ids::INSP_MOUNT_SNAP), "deslocado");
+    assert!(
+        !painted(info(), ids::INSP_MOUNT_SNAP),
+        "sem montagem nao ha' o que repor"
+    );
+    assert!(
+        !painted(
+            InspectorAnchorInfo {
+                mount_offset: [0.0, 0.0],
+                ..off
+            },
+            ids::INSP_MOUNT_SNAP
+        ),
+        "em cima da ancora o botao nao tem o que fazer"
+    );
+    // ⛔ As caixas são do DONO das âncoras: sem âncoras, não há o que manter visível.
+    assert!(painted(info(), ids::INSP_ANCHOR_VIS_EDITOR));
+    assert!(painted(info(), ids::INSP_ANCHOR_VIS_RUNTIME));
+    assert!(!painted(
+        InspectorAnchorInfo {
+            rows: Vec::new(),
+            ..info()
+        },
+        ids::INSP_ANCHOR_VIS_EDITOR
+    ));
 }

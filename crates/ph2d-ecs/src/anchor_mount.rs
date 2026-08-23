@@ -99,6 +99,49 @@ impl AnchorMount {
 
 impl SimComponent for AnchorMount {}
 
+/// **Quando as âncoras DESTA entidade se desenham** (Enio, 2026-08-23).
+///
+/// Por omissão — sem este componente — uma âncora só aparece com a entidade **selecionada** e a
+/// §12 **expandida**. É o default certo: senão toda sprite com âncoras ficaria coberta de cruzes.
+/// Mas há dois casos em que isso não chega, e os dois são do artista:
+///
+/// - montar uma cena com várias peças presas exige **ver os pontos sem selecionar cada dono**;
+/// - um ponto que serve de referência ao jogo pode ter de continuar visível **fora do editor**.
+///
+/// ⚠️ **Componente SEPARADO, e não dois campos no [`NamedAnchorList`].** Aquele é um newtype
+/// (`NamedAnchorList(pub SmallVec<…>)`) e o postcard é **posicional**: acrescentar-lhe campos
+/// mudaria a forma de um blob que já está gravado em disco, e todo projeto anterior seria lido
+/// torto **em silêncio**. Um irmão opcional custa zero a quem não o tem.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AnchorVisibility {
+    /// Desenhar no editor mesmo **sem** a entidade estar selecionada (e com a §12 fechada).
+    pub in_editor: bool,
+    /// Desenhar **em runtime** — fora do editor.
+    ///
+    /// ⚠️ **Isto é intenção autorada, e o consumidor dela ainda não existe** (medido 2026-08-23):
+    /// não há modo de jogo neste app — o `shells/game` (Runtime R1) está **adiado por decisão do
+    /// Enio**, e nenhum caminho de desenho corre fora do editor. O campo grava, sobrevive ao undo
+    /// e ao ficheiro, e é lido pelo único sítio que decide o desenho ([`anchors_draw_in_editor`]
+    /// tem o irmão por escrever).
+    ///
+    /// *Está aqui porque o Enio o pediu, e está marcado porque um knob que não faz nada e não o
+    /// diz é a mesma dívida que este módulo acabou de pagar.*
+    pub at_runtime: bool,
+}
+
+impl SimComponent for AnchorVisibility {}
+
+/// **As âncoras desta entidade desenham-se no editor sem ela estar selecionada?**
+///
+/// A porta única da pergunta — o overlay chama isto, e não `world.get::<AnchorVisibility>` solto,
+/// para que «o default é só-quando-selecionada» viva num sítio só.
+#[must_use]
+pub fn anchors_draw_in_editor(world: &World, entity: Entity) -> bool {
+    world
+        .get::<AnchorVisibility>(entity)
+        .is_some_and(|v| v.in_editor)
+}
+
 /// O que a montagem desta entidade É — os três estados, nomeados.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MountState {

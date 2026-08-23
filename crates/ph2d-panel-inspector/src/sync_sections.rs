@@ -19,14 +19,25 @@ use crate::state::InspectorState;
 /// A porta única: reflete as duas seções novas.
 pub(crate) fn sync_new_sections(
     host: &mut dyn PanelHostInternal,
-    inspector_state: &InspectorState,
+    inspector_state: &mut InspectorState,
     entity_changed: bool,
 ) {
     if let Some(sl) = crate::state::current_inspector_slice() {
         sync_slice_fields(host, &sl, entity_changed);
     }
     if let Some(an) = crate::state::current_inspector_anchor() {
-        sync_anchor_fields(host, &an, inspector_state.anchor_selected, entity_changed);
+        // ⚠️ **A semente é uma ARESTA, e ela tem DUAS causas** — a entidade mudou, ou a linha
+        // aberta mudou. Só a primeira estava aqui, e o defeito que isso produzia foi medido em
+        // 2026-08-23: clicar noutra âncora da mesma sprite deixava o nome e as caixas a mostrar
+        // a âncora anterior (sonda: nome `""`, `Bounds` desmarcada sobre uma que tem área).
+        let row = if an.rows.is_empty() {
+            0
+        } else {
+            inspector_state.anchor_selected.min(an.rows.len() - 1)
+        };
+        let row_changed = inspector_state.last_anchor_row != Some(row);
+        inspector_state.last_anchor_row = Some(row);
+        sync_anchor_fields(host, &an, row, entity_changed || row_changed);
     }
 }
 

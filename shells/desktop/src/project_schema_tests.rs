@@ -381,7 +381,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // caminho), entao os dois numeros ao lado ficam onde estavam.
         // ⚠️ Nasceu como 86→87 na `line/Vector`; RECONTADO para 88→89 na integracao de
         // 2026-08-22 (a `line/Sprite` ocupou 85 e 86 antes).
-        (90, 13, 14),
+        (91, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

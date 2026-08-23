@@ -77,8 +77,8 @@ pub mod visibility;
 pub mod visibility_layer;
 
 pub use anchor_mount::{
-    AnchorMount, MountState, anchor_names, anchor_pose_under, anchor_world_pose, mount_frame,
-    mount_state, mount_state_of,
+    AnchorMount, AnchorVisibility, MountState, anchor_names, anchor_pose_under, anchor_world_pose,
+    anchors_draw_in_editor, mount_frame, mount_state, mount_state_of,
 };
 pub use baked_form::BakedForm;
 pub use blend::BlendMode;

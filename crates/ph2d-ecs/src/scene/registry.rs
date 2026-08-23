@@ -416,6 +416,11 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // continua la', no mesmo sitio, e deixou de andar com a mao. E' o modo de falha caro --
     // nada some, nada avisa, e o defeito so' aparece quando o braco se mexe.
     reg.register::<crate::AnchorMount>("ph2d::ecs::AnchorMount");
+    // QUANDO as ancoras de uma entidade se desenham (Enio, 2026-08-23): sem selecao, e em
+    // runtime. Sem o registro, marcar «manter visiveis» e gravar o projeto devolve, ao reabrir,
+    // uma cena onde os pontos voltaram a aparecer so' com o dono selecionado -- e o artista
+    // remarcaria a caixa todos os dias sem perceber que ela nunca guardou.
+    reg.register::<crate::AnchorVisibility>("ph2d::ecs::AnchorVisibility");
     // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA
     // (2026-08-21). Sem o registro, o modo de falha é o mesmo da moldura e igualmente enganoso:
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte
@@ -504,7 +509,8 @@ mod tests {
         //   ⚠️ SAO TRES contadores desta familia (ecs · render · script), cada um so' visivel
         //   na suite da SUA crate — e esta linha ja' os deixou 2 e 4 atras, com a nota escrita.
         //   Ao mexer aqui, mexa nos tres NO MESMO commit: `ph2d-render` e `ph2d-script`.
-        assert_eq!(reg.len(), 66);
+        // + 1 VISIBILIDADE das ancoras (AnchorVisibility, Enio 2026-08-23).
+        assert_eq!(reg.len(), 67);
         assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
@@ -514,6 +520,7 @@ mod tests {
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());
         assert!(reg.get_by_name("ph2d::ecs::NamedAnchorList").is_some());
         assert!(reg.get_by_name("ph2d::ecs::AnchorMount").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::AnchorVisibility").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());

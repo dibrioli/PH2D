@@ -61,11 +61,42 @@ pub(crate) fn apply_anchor_event(
             demote_button(host, id);
             return true;
         }
+        // ⚠️ **A guarda `is_off_anchor` está aqui também, e não só na pintura.** O botão é
+        // registado no arranque e um clique sintético alcança-o mesmo quando não é pintado;
+        // sem esta linha, o gesto escreveria uma pose zerada sobre um objeto que não monta.
+        if id == ids::INSP_MOUNT_SNAP && info.is_off_anchor() {
+            push(host, info.entity_bits, AnchorFieldEdit::SnapToAnchor);
+            demote_button(host, id);
+            return true;
+        }
     }
 
     // Sem âncoras não há nada que os campos abaixo possam editar.
+    //
+    // ⚠️ O braço do **snap** fica ACIMA desta guarda de propósito: quem monta numa âncora do pai
+    // pode não ter âncora nenhuma sua, e o botão dele não pode depender disso.
     if info.rows.is_empty() {
         return false;
+    }
+
+    // As duas caixas de VISIBILIDADE — do dono das âncoras.
+    if let WidgetEvent::Toggled(id) = ev
+        && matches!(
+            id,
+            ids::INSP_ANCHOR_VIS_EDITOR | ids::INSP_ANCHOR_VIS_RUNTIME
+        )
+    {
+        let on = matches!(
+            host.store().checkbox(id).map(|(_, v)| v),
+            Some(CheckboxValue::Checked)
+        );
+        let edit = if id == ids::INSP_ANCHOR_VIS_EDITOR {
+            AnchorFieldEdit::VisibilityInEditor(on)
+        } else {
+            AnchorFieldEdit::VisibilityAtRuntime(on)
+        };
+        push(host, info.entity_bits, edit);
+        return true;
     }
 
     if let WidgetEvent::TextChanged(id) = ev

@@ -593,4 +593,16 @@
 /// ⚠️ O componente guarda o NOME, nunca o índice na lista nem os bits da entidade — apagar a
 /// âncora `0` faria toda a gente descer uma casa em silêncio, e *o undo respawna tudo com bits
 /// novos*.
-pub(crate) const PROJECT_SCHEMA: u32 = 90;
+/// v91 (`line/Sprite` — QUANDO as âncoras se desenham): o componente novo
+/// `ph2d_ecs::AnchorVisibility` guarda, no DONO das âncoras, duas intenções do artista (Enio,
+/// 2026-08-23): mantê-las visíveis **sem a entidade estar selecionada**, e mantê-las visíveis
+/// **em runtime**.
+/// ⚠️ **Irmão do v90, e pela mesma razão: quem obriga o bump é o REGISTRO.** O modo de falha aqui é
+/// dos que ninguém reporta como bug — marcar a caixa, gravar, reabrir, e ver os pontos voltarem a
+/// aparecer só com o dono selecionado. O artista remarcaria a caixa todos os dias sem perceber que
+/// ela nunca guardou.
+/// ⚠️ **Componente SEPARADO do `NamedAnchorList`** de propósito: aquele é um newtype sobre um
+/// `SmallVec` e o postcard é posicional — acrescentar-lhe campos faria todo projeto anterior ser
+/// lido torto em silêncio.
+/// ⚠️ Ausência do componente é «só quando selecionada», que é o que toda entidade fazia até v90.
+pub(crate) const PROJECT_SCHEMA: u32 = 91;

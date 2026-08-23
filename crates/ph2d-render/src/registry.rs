@@ -50,11 +50,13 @@ mod tests {
         // grandezas DIFERENTES, e copiar foi o erro que trouxe este gate ao vermelho na linha.
         // +1 `VecBoolOp` (um verbo por forma, 2026-08-22): ECS 65 ⇒ aqui 66.
         // +1 `AnchorMount` (o consumidor de uma ancora, ADR-0072 §2.6, 2026-08-22): ECS 66 ⇒ 67.
-        assert_eq!(reg.len(), 67);
+        // +1 `AnchorVisibility` (quando as ancoras se desenham, 2026-08-23): ECS 67 ⇒ 68.
+        assert_eq!(reg.len(), 68);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());
         assert!(reg.get_by_name("ph2d::ecs::NamedAnchorList").is_some());
         assert!(reg.get_by_name("ph2d::ecs::AnchorMount").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::AnchorVisibility").is_some());
     }
 }

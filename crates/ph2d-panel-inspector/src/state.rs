@@ -44,6 +44,20 @@ pub struct InspectorState {
     /// **saturado** contra o tamanho da lista a cada pintura, por isso apagar a última âncora
     /// não o deixa a apontar para o vazio.
     pub anchor_selected: usize,
+    /// **Qual linha o `sync` semeou da última vez** — o que torna a troca de linha observável.
+    ///
+    /// ⚠️ **Isto existe por um DEFEITO MEDIDO (2026-08-23).** Os campos do editor da §12 (o nome,
+    /// e as caixas `Bounds`/`Center`) semeavam-se só quando a **ENTIDADE** mudava. Clicar noutra
+    /// âncora da MESMA sprite mudava a ficha aberta e deixava os campos a mostrar a anterior — a
+    /// sonda mediu nome `""` e `Bounds` desmarcada sobre uma âncora que **tem** área. Editar
+    /// qualquer campo então escrevia o valor certo na âncora certa, mas partindo do número
+    /// **errado** no ecrã.
+    ///
+    /// ⚠️ **Não se pode reescrever todo o quadro** (era essa a razão de o guardar em
+    /// `entity_changed`): a caixa que o artista acabou de clicar voltaria atrás antes de o commit
+    /// da shell chegar. A cura tem de ser uma ARESTA — mudou de linha, semeia uma vez — e é isso
+    /// que este campo é.
+    pub last_anchor_row: Option<usize>,
 }
 
 thread_local! {

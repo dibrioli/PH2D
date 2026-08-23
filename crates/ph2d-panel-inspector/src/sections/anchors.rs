@@ -426,6 +426,19 @@ pub(crate) fn paint_anchors_section(
         );
     }
 
+    // As duas caixas de visibilidade — do DONO das âncoras, logo abaixo da lista dele.
+    cur_y = super::anchor_mount_row::paint_visibility_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        info,
+    );
+
     let add = Rect::new(x, cur_y, w, BTN_H);
     hit_index.register(ids::INSP_ANCHOR_ADD, add);
     paint_button(

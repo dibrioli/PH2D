@@ -37,6 +37,10 @@ pub(crate) const MOUNT_NONE_LABEL: &str = "\u{2014}";
 /// A largura da coluna do rótulo, igual à da §7 Ordering — as duas linhas de rótulo-mais-chip do
 /// Inspector alinham entre si.
 const LABEL_COL_W: f32 = 96.0; // LITERAL-PX-OK: coluna de rótulo, igual à da §7
+/// Altura de botão do Inspector, igual à de [`super::anchors`].
+const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
+/// Altura visual de uma checkbox, igual à de [`super::anchors`].
+const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox
 
 /// **As opções do seletor**: «—» mais uma por âncora do pai.
 ///
@@ -140,5 +144,98 @@ pub(crate) fn paint_mount_row(
         );
         cur_y += font;
     }
+
+    // **O deslocamento, e a saída dele** (Enio, 2026-08-23).
+    //
+    // ⛔ Os dois só existem quando o objeto está FORA da âncora. Montar já o pousa em cima dela,
+    // então o estado normal é não haver nada aqui — e um botão permanentemente sem efeito seria a
+    // terceira ação morta desta família.
+    //
+    // ⚠️ **O número vem antes do botão de propósito.** «Reset» sozinho não diz de quanto se está a
+    // falar; com o deslocamento ao lado, o artista vê se vale a pena carregar.
+    if info.is_off_anchor() {
+        cur_y += Spacing::Xs.px();
+        let [ox, oy] = info.mount_offset;
+        let label = format!("Off anchor by {ox:.0}, {oy:.0} px");
+        paint_text(
+            text_system,
+            scene,
+            &label,
+            x,
+            cur_y,
+            font,
+            w,
+            resolve(ColorToken::Text3, theme),
+        );
+        cur_y += font + Spacing::Xs.px();
+        let btn = Rect::new(x, cur_y, w, BTN_H);
+        hit_index.register(ids::INSP_MOUNT_SNAP, btn);
+        paint_button(
+            &Button::new(ids::INSP_MOUNT_SNAP, "Reset to Anchor")
+                .kind(ButtonKind::Default)
+                .visual(store.button_visual(ids::INSP_MOUNT_SNAP)),
+            btn,
+            scene,
+            text_system,
+            theme,
+        );
+        cur_y += BTN_H;
+    }
     cur_y + Spacing::Sm.px()
+}
+
+/// **As duas caixas de VISIBILIDADE**, do dono das âncoras (Enio, 2026-08-23). Devolve o `y`.
+///
+/// ⚠️ **Elas são do PAI, e por isso ficam ao pé da lista dele** — não da linha «Rides Parent
+/// Anchor», que fala do avô. As duas metades desta seção já têm donos diferentes; misturar as
+/// caixas na metade errada faria três.
+///
+/// ⛔ Não se pintam quando não há âncoras nenhumas: não há o que manter visível.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_visibility_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorAnchorInfo,
+) -> f32 {
+    if info.rows.is_empty() {
+        return y;
+    }
+    let mut cur_y = y;
+    for (id, label, on) in [
+        (
+            ids::INSP_ANCHOR_VIS_EDITOR,
+            "Always show anchors",
+            info.vis_in_editor,
+        ),
+        (
+            ids::INSP_ANCHOR_VIS_RUNTIME,
+            "Show anchors at runtime",
+            info.vis_at_runtime,
+        ),
+    ] {
+        let cb_h = CHECK_H;
+        let rect = Rect::new(x, cur_y, w, cb_h);
+        hit_index.register(id, rect);
+        paint_checkbox(
+            &Checkbox::new(id, label)
+                .visual(store.checkbox_visual(id))
+                .value(if on {
+                    CheckboxValue::Checked
+                } else {
+                    CheckboxValue::Unchecked
+                }),
+            rect,
+            scene,
+            text_system,
+            theme,
+        );
+        cur_y += cb_h + Spacing::Xs.px();
+    }
+    cur_y + Spacing::Xs.px()
 }

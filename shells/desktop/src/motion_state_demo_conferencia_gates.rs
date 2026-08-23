@@ -24,28 +24,33 @@ use super::*;
 pub(crate) fn gate_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
     let sinks =
         conferencia_demos_gates::build_gates_demo_document(doc, registry).unwrap_or_default();
+    // As fichas no canvas — uma por metade, em cima da figura que ela nomeia.
+    crate::motion_demo_legend::publish(conferencia_demos_gates::captions());
     let (n, count) = conferencia_demos_gates::authored();
     eprintln!(
-        "[cena 82] {n} linhas, {c} pecas por figura. Esta cena julga-se PARADA -- nao carregue
-  Play. (A linha 6, do TREMOR, e' a unica que anda se o relogio andar; parada ela le^-se
-  como as outras.)
+        "[cena 82] {n} linhas, {c} peças por figura. Esta cena julga-se PARADA — não carregue
+  Play. (A linha 6, do TREMOR, é a única que anda se o relógio andar; parada, ela lê-se
+  como as outras.) Cada figura tem uma ficha em cima a dizer o que ela é.
 
-  O QUE CONTAR: cada metade desenha o MESMO controle DUAS vezes -- no minimo e no maximo.
-  A` ESQUERDA o controle esta' num modo onde ele NAO FAZ NADA, entao as duas copias caem
-  uma em cima da outra e ve^-se UMA linha. A` DIREITA ele AGE, e ve^em-se DUAS.",
+  O QUE CONTAR: cada metade desenha o MESMO controle DUAS vezes — no mínimo e no máximo.
+  À ESQUERDA o controle está num modo onde ele NÃO FAZ NADA, então as duas cópias caem uma
+  em cima da outra e vê-se UMA linha. À DIREITA ele AGE, e vêem-se DUAS.",
         c = count as u32,
     );
     for (i, label) in conferencia_demos_gates::row_labels() {
         eprintln!("  {}. {label}", i + 1);
     }
     eprintln!(
-        "  (!) A OUTRA METADE NAO SE DESENHA, e e' a cura: clique no no' de cada linha e
-  olhe o painel. Do lado ESQUERDO a linha daquele controle tem de estar AUSENTE -- e' isso
-  que foi consertado. Do lado DIREITO ela tem de estar la'.
+        "
+  E HÁ UMA METADE QUE NÃO SE DESENHA, que é a cura: clique no nó de cada linha e olhe o
+  painel. Do lado ESQUERDO a linha daquele controle tem de estar AUSENTE — foi isso que se
+  consertou. Do lado DIREITO ela tem de estar lá.
 
-  DEU ERRADO se alguma metade ESQUERDA mostrar duas linhas (o controle age e foi
-  escondido -- e' o pior caso), se alguma DIREITA mostrar uma so' (o controle continua
-  mudo), ou se o painel do lado direito NAO tiver a linha do controle."
+  DEU ERRADO se:
+    · alguma metade ESQUERDA mostrar duas linhas (o controle age e foi escondido — é o
+      pior caso de todos);
+    · alguma DIREITA mostrar uma só (o controle continua mudo);
+    · o painel do lado direito não tiver a linha do controle."
     );
     sinks
 }

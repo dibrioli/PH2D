@@ -15,31 +15,28 @@ use super::*;
 pub(crate) fn field_port_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<NodeId> {
     let sinks =
         conferencia_demos_campo::build_campo_demo_document(doc, registry).unwrap_or_default();
+    // As fichas no canvas — cada uma pousa sobre a metade que explica (Enio 2026-08-23).
+    crate::motion_demo_legend::publish(conferencia_demos_campo::captions());
     let (n, count) = conferencia_demos_campo::authored();
     eprintln!(
-        "[cena 83] {n} linhas, {c} pecas nas duas primeiras. Esta cena julga-se PARADA -- nao
-  carregue Play.
+        "[cena 83] {n} linhas, {c} peças nas duas primeiras. Esta cena julga-se PARADA — não
+  carregue Play. Cada figura tem uma ficha em cima a dizer o que ela é.
 
-  ESQUERDA = o que o no' fazia com o fio LIGADO (um numero so' para todos).
-  DIREITA  = o campo a valer PECA A PECA.",
+  ESQUERDA = o que o nó fazia com o fio LIGADO (um número só, para todos).
+  DIREITA  = o campo a valer PEÇA A PEÇA.",
         c = count as u32,
     );
     for (i, label) in conferencia_demos_campo::row_labels() {
         eprintln!("  {}. {label}", i + 1);
     }
     eprintln!(
-        "  (!) LINHA 1, EMBRULHO: a` esquerda a fileira fica RETA -- o degrade' estava ligado e o
-  no' leu `0` dele, entao a curva inteira nao aconteceu. A` direita a fileira ENTRA na curva
-  progressivamente: reta de um lado, embrulhada do outro.
-  (!) LINHA 2, TRELICA: a` esquerda o favo esta' PERFEITO (jitter zero, com o fio ligado). A`
-  direita ele esta' arrumado de um lado e DERRETIDO do outro -- o degrade' a valer.
-  (!) LINHA 3, ONDA: a` esquerda as pecas so' ENGORDAM -- crista e vale desenham a mesma
-  bolha, e metade da onda e' invisivel. A` direita a altura vai para o Y: a onda SOBE e
-  DESCE, e da' para ver onde ela e' negativa.
-
-  DEU ERRADO se alguma metade da direita sair IGUAL a` da esquerda (o campo nao chegou), se a
-  linha 1 da direita estiver reta, ou se a linha 3 da direita nao tiver peca nenhuma abaixo
-  da linha do meio."
+        "
+  DEU ERRADO se:
+    · alguma metade da DIREITA sair igual à da esquerda (o campo não chegou lá);
+    · a linha 1 da direita estiver reta (devia entrar na curva aos poucos);
+    · a linha 3 da direita não tiver peça nenhuma abaixo da linha do meio (a onda
+      tem de descer, e não só engordar).
+  E se as fichas não aparecerem sobre as figuras, o defeito é da legenda, não da cena."
     );
     sinks
 }

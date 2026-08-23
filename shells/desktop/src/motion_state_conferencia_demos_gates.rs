@@ -65,6 +65,9 @@ enum Knob {
 
 struct Row {
     label: &'static str,
+    /// A ficha que pousa sobre a metade ESQUERDA (a muda) e sobre a DIREITA (a viva).
+    left: &'static str,
+    right: &'static str,
     knob: Knob,
     /// O valor do SELETOR na metade esquerda (onde o controle é mudo) e na direita.
     mute: f32,
@@ -73,43 +76,57 @@ struct Row {
 
 static ROWS_TABLE: &[Row] = &[
     Row {
-        label: "STAGGER   a DIRECAO do easing -- muda em Linear? (nao) -- em Bounce? (sim)",
+        label: "STAGGER — a DIREÇÃO do easing: muda em Linear? (não) · em Bounce? (sim)",
+        left: "1 STAGGER · Linear: mudo",
+        right: "1 STAGGER · Bounce: age",
         knob: Knob::StaggerDir,
         mute: 0.0, // ease_curve = Linear
         live: 7.0, // ease_curve = Bounce
     },
     Row {
-        label: "STEP      a LARGURA da banda -- muda no corte Hard? (nao) -- em Smooth? (sim)",
+        label: "STEP    — a LARGURA da banda: muda no corte Hard? (não) · em Smooth? (sim)",
+        left: "2 DEGRAU · corte Hard: mudo",
+        right: "2 DEGRAU · Smooth: age",
         knob: Knob::StepWidth,
         mute: 0.0, // mode = Hard
         live: 1.0, // mode = Smooth
     },
     Row {
-        label: "MAP RANGE o CLAMP -- muda em Smooth? (nao, ele ja' clampa) -- em Linear? (sim)",
+        label: "FAIXA   — o CLAMP: muda em Smooth? (não, ele já prende) · em Linear? (sim)",
+        left: "3 FAIXA · Smooth: mudo",
+        right: "3 FAIXA · Linear: age",
         knob: Knob::MapClamp,
         mute: 2.0, // interpolation = Smooth
         live: 0.0, // interpolation = Linear
     },
     Row {
-        label: "CAMPO     a SEMENTE -- muda numa rampa? (nao) -- no modo Random? (sim)",
+        label: "CAMPO   — a SEMENTE: muda numa rampa? (não) · no modo Random? (sim)",
+        left: "4 CAMPO · em rampa: mudo",
+        right: "4 CAMPO · em Random: age",
         knob: Knob::FieldSeed,
         mute: 1.0, // mode = Ramp
         live: 2.0, // mode = Random
     },
     Row {
-        label: "RUIDO     a ASPEREZA -- muda com UMA oitava? (nao) -- com seis? (sim)",
+        label: "RUÍDO   — a ASPEREZA: muda com UMA oitava? (não) · com seis? (sim)",
+        left: "5 RUÍDO · 1 oitava: mudo",
+        right: "5 RUÍDO · 6 oitavas: age",
         knob: Knob::NoiseRoughness,
         mute: 1.0,
         live: 6.0,
     },
     Row {
-        label: "TREMOR    o MULTIPLICADOR -- muda com UMA oitava? (nao) -- com quatro? (sim)",
+        label: "TREMOR  — o MULTIPLICADOR: muda com UMA oitava? (não) · com quatro? (sim)",
+        left: "6 TREMOR · 1 oitava: mudo",
+        right: "6 TREMOR · 4 oitavas: age",
         knob: Knob::WiggleAmpMult,
         mute: 1.0,
         live: 4.0,
     },
     Row {
-        label: "TINTA     a SEGUNDA COR -- muda em Solid? (nao) -- em Gradient? (sim)",
+        label: "TINTA   — a SEGUNDA COR: muda em Solid? (não) · em Gradient? (sim)",
+        left: "7 TINTA · em Solid: mudo",
+        right: "7 TINTA · em Gradient: age",
         knob: Knob::TintEnd,
         mute: 0.0, // mode = Solid
         live: 1.0, // mode = Gradient
@@ -124,6 +141,28 @@ pub(crate) fn authored() -> (usize, f32) {
 /// Os rótulos, para a mensagem numerada.
 pub(crate) fn row_labels() -> impl Iterator<Item = (usize, &'static str)> {
     ROWS_TABLE.iter().enumerate().map(|(i, r)| (i, r.label))
+}
+
+/// **As fichas desta cena, no canvas** — função PURA, medida pelo gate
+/// ([`crate::motion_demo_legend`]).
+///
+/// ⚠️ **Acima da figura, e com `H` de folga, porque aqui as linhas são APERTADAS** (`ROW_GAP`
+/// é 1,55 contra os 3,0 da cena irmã): uma ficha centrada na linha taparia as duas cópias que a
+/// cena existe para contar, que é o oposto de uma legenda.
+pub(crate) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
+    let mut out = Vec::with_capacity(ROWS_TABLE.len() * 2);
+    for (k, row) in ROWS_TABLE.iter().enumerate() {
+        let y = (ROWS_TABLE.len() as f32 - 1.0) * 0.5 * ROW_GAP - k as f32 * ROW_GAP + H * 0.62;
+        out.push(crate::motion_demo_legend::Caption::new(
+            [-COL_X, y],
+            row.left,
+        ));
+        out.push(crate::motion_demo_legend::Caption::new(
+            [COL_X, y],
+            row.right,
+        ));
+    }
+    out
 }
 
 fn wire(

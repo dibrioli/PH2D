@@ -24,6 +24,9 @@ pub(crate) mod autokey_pass;
 pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
 mod cooked_texture_bridge;
+/// **A decoração da folha** — a faixa hachurada e o nome, em pixels de TELA. Chrome, nunca estilo
+/// do documento: ela diz o que a folha É, e o que se assa são os filhos.
+mod demo_legend;
 mod equalize_sizes_bridge;
 pub(crate) mod flip_bridge;
 /// O anel do cursor do pincel do FLIP (ADR-0114 W5, smoke do Enio): o Size é absoluto
@@ -101,8 +104,6 @@ mod inspector_player_leave_tests;
 /// **A conversão entre estratégias de origem** (Render Source → Strategy) — irmão do
 /// `inspector_commits`, e o corte que o marcador de exceção de LOC daquele arquivo pedia.
 mod inspector_strategy;
-/// **A decoração da folha** — a faixa hachurada e o nome, em pixels de TELA. Chrome, nunca estilo
-/// do documento: ela diz o que a folha É, e o que se assa são os filhos.
 mod sheet_overlay;
 
 #[cfg(test)]
@@ -8633,6 +8634,16 @@ impl crate::App {
                     sim,
                     cam_affine,
                     px_per_world,
+                    hero.theme,
+                    paint_ctx.text,
+                    vector_scene,
+                );
+                // **A LEGENDA DA CENA DE SMOKE** (Enio 2026-08-23: *"melhore as explicações do
+                // smoke"*) — o rótulo pousa em cima do caso que ele explica. No-op quando
+                // nenhuma cena publicou, que é todo arranque normal do editor.
+                super::render_loop::demo_legend::draw(
+                    &crate::motion_demo_legend::captions(),
+                    cam_affine,
                     hero.theme,
                     paint_ctx.text,
                     vector_scene,

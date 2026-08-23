@@ -255,6 +255,9 @@ mod motion_autofix_smoke;
 mod motion_autofix_smoke_appropriate;
 mod motion_autofix_smoke_dead_branch;
 mod motion_delay_smoke;
+/// **A legenda de uma cena de smoke, no canvas** (Enio 2026-08-23) — o rótulo pousa
+/// em cima do caso que ele explica, em vez de num terminal atrás da janela.
+mod motion_demo_legend;
 mod motion_flip_bake;
 mod motion_fx_smoke;
 mod motion_node_path_smoke;

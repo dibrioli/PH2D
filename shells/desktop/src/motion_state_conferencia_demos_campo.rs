@@ -49,23 +49,56 @@ pub(crate) enum Case {
 
 pub(crate) struct Row {
     pub(crate) label: &'static str,
+    /// A ficha que pousa sobre a metade ESQUERDA, no canvas.
+    pub(crate) left: &'static str,
+    /// E a que pousa sobre a DIREITA.
+    pub(crate) right: &'static str,
     pub(crate) case: Case,
 }
 
 pub(crate) static ROWS_TABLE: &[Row] = &[
     Row {
-        label: "EMBRULHO  o degrade' ligado dava ZERO a todos -- agora cada peca embrulha o seu",
+        label: "EMBRULHO — o degradê ligado dava ZERO a todos; agora cada peça embrulha o seu",
+        left: "1 EMBRULHO · antes: reta",
+        right: "1 EMBRULHO · agora: curva de um lado",
         case: Case::Wrap,
     },
     Row {
-        label: "TRELICA   idem: jitter zero em todo lado -- agora ela derrete DE UM LADO SO'",
+        label: "TRELIÇA  — idem: sem tremor em lado nenhum; agora ela derrete DE UM LADO SÓ",
+        left: "2 TRELIÇA · antes: favo perfeito",
+        right: "2 TRELIÇA · agora: derrete à direita",
         case: Case::Jitter,
     },
     Row {
-        label: "ONDA      a altura ia sempre para o TAMANHO (crista = vale) -- agora escolhe o canal",
+        label: "ONDA     — a altura ia sempre para o TAMANHO (crista = vale); agora escolhe o canal",
+        left: "3 ONDA · antes: só engorda",
+        right: "3 ONDA · agora: sobe e desce",
         case: Case::Wave,
     },
 ];
+
+/// **As fichas desta cena, no canvas** — função PURA, e é ela que o gate mede
+/// ([`crate::motion_demo_legend`]).
+///
+/// Uma por metade, pousada **acima** da figura que ela explica: é ali que o olho já está quando
+/// compara as duas. Nada de rótulo por baixo — a linha de baixo é onde a onda desce, e uma ficha
+/// ali taparia metade do que a cena existe para mostrar.
+pub(crate) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
+    let mut out = Vec::with_capacity(ROWS_TABLE.len() * 2);
+    for (k, row) in ROWS_TABLE.iter().enumerate() {
+        let y =
+            (ROWS_TABLE.len() as f32 - 1.0) * 0.5 * ROW_GAP - k as f32 * ROW_GAP + ROW_GAP * 0.34;
+        out.push(crate::motion_demo_legend::Caption::new(
+            [-COL_X, y],
+            row.left,
+        ));
+        out.push(crate::motion_demo_legend::Caption::new(
+            [COL_X, y],
+            row.right,
+        ));
+    }
+    out
+}
 
 /// Os números que a cena AUTORA e que a mensagem do smoke cita.
 pub(crate) fn authored() -> (usize, f32) {

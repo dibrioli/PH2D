@@ -183,6 +183,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **E a primeira corrida daquele gate parou em 11.240 com `1.007` testes por correr** — o
   `nextest` cancela no primeiro ✗. *Um vermelho de flake esconde o resto da suíte:* re-corra com
   `--no-fail-fast` **antes** de concluir o que quer que seja sobre o seu diff.
+  ⚠️ **A SÉTIMA, confirmada DUAS vezes em 2026-08-23** (duas corridas independentes de
+  **17.923** testes, o mesmo único ✗ nas duas):
+  `the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh`
+  ([`ph2d-mesh/tests/measure_normals.rs`](crates/ph2d-mesh/tests/measure_normals.rs)) —
+  **verde 3 de 3 sozinha, a 0,65 s contra 1,53 s no fan-out**, numa crate que o diff da
+  linha não tocava. Ela divide **dois relógios de parede** (`costs[1] / costs[0]`, barra
+  `3,0`): sob 17,9 mil testes em paralelo as duas medições são escalonadas de forma
+  diferente e a razão estoura. ⚠️ **Espécie NOVA nesta lista por uma razão que interessa:
+  o doc-comment dela declara-se imune** (*"o gate é a FORMA, não o relógio"*) — e a forma é
+  medida DIVIDINDO dois relógios, que é precisamente o que o fan-out quebra. *Um gate que
+  se diz independente do relógio ainda o é, se o numerador e o denominador forem tempos.*
   ⚠️ **A quarta, confirmada na integração de 2026-08-22:** `only_the_lower_row_breathes_and_it_moves_with_the_playhead`
   ([`motion_state_conferencia_demos_audio_tests.rs`](shells/desktop/src/motion_state_conferencia_demos_audio_tests.rs))
   reprovou com «max delta 0» no fan-out de 10,7 mil testes e passou **5 de 5** sozinha — já nomeada no

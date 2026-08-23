@@ -205,6 +205,53 @@ não o item 1 de uma lista — *uma lista não corre*.
 
 ---
 
+## §0-quinquies — O gate de fecho da jornada (batched, 1×)
+
+| passo | resultado |
+|---|---|
+| `cargo fmt --all -- --check` | limpo |
+| `clippy --all-targets` sobre as **34** crates que o diff nomeia (alvo DERIVADO do diff, nunca escrito à mão) | **0** |
+| `typos` project-wide | **0** |
+| `nextest-impacted.sh` | 11.423 ✓ |
+| **workspace inteira**, `--no-fail-fast`, perfil `ci-test`, **duas corridas independentes** | **17.923 testes · 17.922 ✓ · 1 ✗** nas duas |
+| gates de GPU novos (`--ignored`, device real) | paridade da curva 8/8 · paridade XY 2 nós × 2 eixos · sonda da LUT |
+
+**A workspace corrida de propósito, e não só o seletor de impacto:** o diff toca
+`ph2d-render` e `ph2d-gpu-cook`, que são foundational — o `nextest-impacted.sh` é o passo
+do protocolo, mas um seletor cego sobre uma mudança de renderer era risco que esta jornada
+não podia correr. Foi essa corrida que expôs a flake.
+
+⚠️ **O único ✗ é uma FLAKE NOVA e pré-existente, registada no `CLAUDE.md` §5.0 como a
+sétima:** `the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh`
+([`ph2d-mesh`](../../../crates/ph2d-mesh/tests/measure_normals.rs)) — **verde 3 de 3
+sozinha**, a `0,65 s` contra `1,53 s` no fan-out, numa crate que este diff **não toca**.
+Ela divide dois relógios de parede (`costs[1] / costs[0]`, barra `3,0`).
+
+⚠️ **O que a torna digna de nota é o doc-comment dela**, que se declara imune: *"o gate é
+a FORMA, não o relógio"*. E a forma é medida **dividindo dois relógios** — que é
+exactamente o que uma corrida de 17,9 mil testes em paralelo quebra. *Um gate que se diz
+independente do relógio ainda o é, se o numerador e o denominador forem tempos.*
+
+### ⚠️ E um alarme FALSO que eu mesmo disparei, porque a busca não tinha controle
+
+Depois da primeira corrida, a cwd do Bash escorregou para a árvore primária (a armadilha
+nº 1 do Modo L) e um commit de docs caiu no `main` — revertido cirurgicamente por
+`reset --soft` + `restore`, **nunca `--hard`**, porque a árvore primária tinha trabalho
+alheio não-commitado (`project-memory/`).
+
+Ao investigar, procurei os testes NOVOS na saída da corrida e achei **zero** — e concluí
+que o gate inteiro tinha medido o `main`. ⚠️ **Estava errado:** o comando terminava em
+`| tail -20`, então o arquivo tinha vinte linhas e a busca era vazia **por construção**.
+É o [[feedback_a_negative_search_needs_a_positive_control]] outra vez, agora contra um LOG
+truncado em vez de uma árvore errada. O desempate custou um comando (`nextest list`
+mostra os 5 testes novos no conjunto da workspace) e as duas corridas darem o **mesmo**
+`17.923 / 1 ✗` já o dizia — se uma delas fosse o `main`, faltariam os ~30 testes da linha.
+
+⇒ **Um gate longo deve IMPRIMIR a árvore que mediu.** A segunda corrida foi lançada com
+`pwd && git branch --show-current` na frente, e é por isso que ela se auto-verifica.
+
+---
+
 ## §1 — O que entrou, em uma frase
 
 **Todo teto deste catálogo passa a dizer de que RECURSO ele é** (`CLAUDE.md` §0.0) — 27 params

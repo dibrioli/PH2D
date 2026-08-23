@@ -26,3 +26,19 @@ O sintoma que denuncia: `cargo` reclama de `failed to create directory .../PH2D/
 
 ⚠️ **Refinamento (2026-08-23, 4ª escorregada registada): o `cat >> <path relativo>` é o irmão do `sed -i` e ele APENDE na árvore errada.** A sessão corria há dezenas de comandos com a cwd certa; a slip aconteceu no meio, e um `cat >> crates/.../lib_tests.rs <<'EOF'` escreveu 48 linhas de um gate novo no **`main`**. ⭐ **O tell foi o compilador**, e ele foi honesto: `no function or associated item named 'from_directions' found` — para uma função que a ferramenta `Edit` (path absoluto ⇒ árvore certa) tinha acabado de criar. *Um símbolo que você acabou de escrever e que o compilador não vê é sinal de CWD, exactamente como a busca vazia.*
 ⭐ **A reversão foi limpa e vale como receita:** `git -C <primário> diff --stat <ficheiro>` confirmou que o único delta era o meu (48 inserções, 1 linha de contexto removida), `tail -48` extraiu o bloco para `/tmp`, `git checkout -- <ficheiro>` no primário (⚠️ só porque o diff provou que **nada mais alheio** estava naquele ficheiro — a regra do [[feedback_mutation_undo_with_cp_never_git_checkout]] continua a valer para ficheiros com trabalho alheio), e o bloco foi apendido na worktree. **Confira o `git status` do primário no fim de todo turno que tenha usado path relativo em escrita.**
+
+⚠️ **Refinamento (2026-08-23): a escorregada é barata de reverter; o ALARME FALSO que ela
+provoca é que custa.** Depois de um commit de docs cair no `main` (revertido por
+`reset --soft` + `restore --staged` + `checkout --`, **nunca `--hard`** — a primária tinha
+`project-memory/` alheia não-commitada), fui verificar se o gate de fecho tinha medido a
+árvore certa: procurei os testes NOVOS na saída da corrida, achei **zero**, e concluí que
+17.923 testes tinham corrido contra o `main`. **Errado** — o comando terminava em
+`| tail -20`, então o arquivo tinha vinte linhas e a busca era vazia **por construção**.
+
+**Why:** a suspeita de CWD é a hipótese CERTA e por isso ela chega com força total — e nesse
+estado uma busca vazia lê-se como confirmação em vez de como o que é. *O [[feedback_a_negative_search_needs_a_positive_control]] vale contra um LOG truncado exactamente como vale contra uma árvore errada*, e o pipe que trunca é meu.
+
+**How to apply:**
+1. ⚠️ **Todo comando longo lançado em background começa por `cd <worktree> && pwd && git branch --show-current &&`** — o gate passa a AUTO-VERIFICAR a árvore que mediu, e nenhuma arqueologia posterior é precisa. Custa três palavras.
+2. ⛔ **Nunca conclua «rodou na árvore errada» a partir de um `grep` sobre saída PIPADA.** Ou se guarda a saída inteira, ou a evidência é outra: aqui, duas corridas darem o **mesmo** `17.923 / 1 ✗` já provava que mediram a mesma árvore (se uma fosse o `main`, faltariam os ~30 testes da linha), e um `cargo nextest list` resolveu em um comando.
+3. A reversão na primária é **cirúrgica e nesta ordem**: `reset --soft HEAD~1` → `restore --staged <arquivo>` → `checkout -- <arquivo>`. O `--hard` apagaria o trabalho alheio que a primária quase sempre tem.

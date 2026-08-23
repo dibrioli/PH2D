@@ -106,6 +106,21 @@ fn populate_anchors(store: &mut WidgetStore) {
     // registo acontece uma vez, no arranque, e a lista cresce depois.
     register_button_ids(store, &ids::INSP_ANCHOR_ROW);
     register_button_ids(store, &[ids::INSP_ANCHOR_ADD, ids::INSP_ANCHOR_REMOVE]);
+    // §12 «Rides Parent Anchor» (ADR-0072 §2.6) — o chip mais as opções do popover.
+    // ⚠️ `selected_index: None` de propósito: **quem sabe o que está montado é o snapshot**, e o
+    // store só guarda se o popover está aberto. Semear um índice aqui faria o chip mostrar a
+    // montagem do objeto anterior até o primeiro sync — *o seed é dono do VALOR, o dispatch do
+    // ESTADO*, e aqui o valor não é do seed.
+    register_button_ids(store, &ids::INSP_MOUNT_OPT);
+    register_button_ids(store, &[ids::INSP_MOUNT_NONE_OPT]);
+    store.register(
+        ids::INSP_MOUNT_PICK,
+        InteractiveState::Dropdown {
+            state: DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     store.register(
         ids::INSP_ANCHOR_NAME,
         InteractiveState::TextInput {

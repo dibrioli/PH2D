@@ -51,6 +51,16 @@ pub(crate) fn apply_anchor_event(
             demote_button(host, id);
             return true;
         }
+        // **Uma opção do seletor «Rides Parent Anchor».**
+        //
+        // ⚠️ O que viaja é o NOME, nunca o índice: o índice é do widget e vale só neste quadro,
+        // enquanto o vínculo tem de sobreviver a reordenar e a reabrir o projeto.
+        if let Some(name) = mount_choice(&info, id) {
+            close_mount_popover(host);
+            push(host, info.entity_bits, AnchorFieldEdit::Mount(name));
+            demote_button(host, id);
+            return true;
+        }
     }
 
     // Sem âncoras não há nada que os campos abaixo possam editar.
@@ -117,6 +127,39 @@ pub(crate) fn apply_anchor_event(
 fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: AnchorFieldEdit) {
     host.bus_mut()
         .push(EditorAction::InspectorAnchorEdit { entity_bits, edit });
+}
+
+/// **Que montagem este id escolhe.**
+///
+/// `None` = o id não é uma opção do seletor. `Some(None)` = a opção «—» (não montar).
+/// `Some(Some(nome))` = montar nessa âncora do pai.
+///
+/// ⚠️ **A opção «—» é reconhecida SEMPRE**, mesmo com a lista do pai vazia — é ela que desfaz um
+/// vínculo pendurado, e um vínculo que não se pode desfazer é um estado preso.
+fn mount_choice(
+    info: &ph2d_editor_core::screens::hero::InspectorAnchorInfo,
+    id: ph2d_a11y::NodeId,
+) -> Option<Option<String>> {
+    if id == ids::INSP_MOUNT_NONE_OPT {
+        return Some(None);
+    }
+    let i = ids::INSP_MOUNT_OPT.iter().position(|&o| o == id)?;
+    // ⚠️ O array tem 64 ids sempre pintados-ou-não; só os que a lista do pai alcança valem.
+    // Sem esta guarda, um id registado e nunca pintado escolheria uma âncora inexistente.
+    info.parent_anchors.get(i).cloned().map(Some)
+}
+
+/// Fecha o popover do seletor depois de uma escolha.
+///
+/// ⚠️ **E NÃO escreve o `selected_index`.** Quem é dono do que está montado é o snapshot: o
+/// próximo quadro relê-o da cena. Escrever aqui criaria a segunda porta para o mesmo estado — e
+/// ela mentiria exatamente quando a shell recusasse a edição.
+fn close_mount_popover(host: &mut dyn PanelHostInternal) {
+    if let Some(InteractiveState::Dropdown { open, .. }) =
+        host.store_mut().get_mut(ids::INSP_MOUNT_PICK)
+    {
+        *open = false;
+    }
 }
 
 /// Repõe o visual de um botão momentâneo — senão ele fica `Pressed` depois do clique.

@@ -464,6 +464,29 @@ fn paint_inspector(
         }
     }
 
+    // §12 «Rides Parent Anchor» — mesmo passe diferido, slot próprio.
+    //
+    // ⚠️ **As opções rederivam-se do snapshot aqui**, e não vêm no slot: guardá-las seria uma
+    // segunda cópia da mesma verdade, e as duas divergiriam no quadro em que a seleção muda.
+    if let Some(chip) = state::take_pending_mount_dd()
+        && let Some(info) = state::current_inspector_anchor()
+    {
+        let mut dd = Dropdown::new(
+            ids::INSP_MOUNT_PICK,
+            "",
+            sections::anchor_mount_row::mount_options(&info),
+        )
+        .open(true)
+        .placeholder(sections::anchor_mount_row::mount_placeholder(&info));
+        if let Some(i) = info.mount_index() {
+            dd.select(Some(i));
+        }
+        widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
+        for (i, opt) in dd.options.iter().enumerate() {
+            hit_index.register(opt.id, dd.option_rect(chip, i));
+        }
+    }
+
     scene.pop_layer();
 
     paint_panel_corner_dot(rect, scene, theme);

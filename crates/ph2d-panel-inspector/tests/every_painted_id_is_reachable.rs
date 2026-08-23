@@ -172,6 +172,11 @@ fn publish_the_whole_sprite_scene() {
         present: true,
         selected_count: 1,
         mixed: false,
+        // ⚠️ **O pai TEM âncoras**, senão o seletor «Rides Parent Anchor» não se pinta e os ids
+        // dele ficam fora da amostra — que é o oposto do que este gate mede. *Uma fixtura que
+        // não contém o fenómeno mede silêncio.*
+        parent_anchors: vec!["hand_r".into(), "hand_l".into()],
+        mount: Some("hand_r".into()),
     }));
     set_current_inspector_blend(Some(InspectorBlendInfo {
         entity_bits: ENTITY,

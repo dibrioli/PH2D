@@ -46,6 +46,10 @@ fn info() -> InspectorAnchorInfo {
         present: true,
         selected_count: 1,
         mixed: false,
+        // O pai oferece duas âncoras e este objeto não monta em nenhuma — o estado de partida do
+        // seletor. Os gates da montagem, abaixo, variam estes dois campos.
+        parent_anchors: vec!["hand_r".into(), "hand_l".into()],
+        mount: None,
     }
 }
 
@@ -329,4 +333,100 @@ fn the_open_card_is_clamped_when_the_list_shrinks() {
     set_current_inspector_anchor(Some(one));
     host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     assert_eq!(state.anchor_selected, 0, "o indice nao foi saturado");
+}
+
+// ── «Rides Parent Anchor» — o consumidor de uma âncora (ADR-0072 §2.6) ────────────────────────
+
+/// **(10) Escolher uma âncora do pai publica o NOME, nunca o índice.**
+///
+/// ⚠️ O índice é do widget e vale só neste quadro; o vínculo tem de sobreviver a reordenar a
+/// lista do pai e a reabrir o projeto. Este gate falha se alguém trocar a edição por um `u8`.
+#[test]
+fn picking_a_parent_anchor_publishes_the_name() {
+    set_current_inspector_anchor(Some(info()));
+    let (mut host, mut state) = fresh(0);
+    host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Click(ids::INSP_MOUNT_OPT[1]),
+    );
+    assert_eq!(
+        edits(&mut host),
+        vec![AnchorFieldEdit::Mount(Some("hand_l".into()))],
+        "a opcao 1 do pai e' `hand_l`"
+    );
+}
+
+/// **(11) A opção «—» desfaz o vínculo — e funciona mesmo sobre um pai SEM âncoras.**
+///
+/// ⚠️ É este o caso que impede um estado preso: renomeada a âncora, a lista do pai pode nem
+/// conter o nome montado, e sem esta saída o artista não teria gesto nenhum para o largar.
+#[test]
+fn the_dash_option_always_clears_the_mount_even_with_no_parent_anchors() {
+    let trapped = InspectorAnchorInfo {
+        parent_anchors: Vec::new(),
+        mount: Some("gone".into()),
+        ..info()
+    };
+    set_current_inspector_anchor(Some(trapped));
+    let (mut host, mut state) = fresh(0);
+    host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Click(ids::INSP_MOUNT_NONE_OPT),
+    );
+    assert_eq!(edits(&mut host), vec![AnchorFieldEdit::Mount(None)]);
+}
+
+/// **(12) Uma opção ALÉM do que o pai oferece não escolhe nada.**
+///
+/// Os 64 ids estão sempre registados; só os que a lista do pai alcança são pintados. Um clique
+/// sintético nos outros escolheria uma âncora inexistente — e o vínculo nasceria pendurado.
+#[test]
+fn a_mount_option_past_the_parents_list_picks_nothing() {
+    set_current_inspector_anchor(Some(info()));
+    let (mut host, mut state) = fresh(0);
+    host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Click(ids::INSP_MOUNT_OPT[40]),
+    );
+    assert!(
+        edits(&mut host).is_empty(),
+        "escolheu uma ancora que o pai nao tem"
+    );
+}
+
+/// **(13) O seletor só se pinta quando há o que escolher — e um vínculo pendurado aparece sempre.**
+///
+/// ⛔ Um controlo com uma opção só é a afordância a mentir que o botão `Simple` do 9-slice era
+/// (Enio, 2026-08-22). Mas escondê-lo sobre um vínculo pendurado prenderia o estado.
+#[test]
+fn the_mount_picker_appears_exactly_when_it_is_useful() {
+    let painted_pick = |info: InspectorAnchorInfo| {
+        set_current_inspector_anchor(Some(info));
+        let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+        let mut state = InspectorState::default();
+        host.settle_section_folds();
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        rects.iter().any(|(id, _)| *id == ids::INSP_MOUNT_PICK)
+    };
+
+    assert!(
+        painted_pick(info()),
+        "o pai tem ancoras — o seletor tem de existir"
+    );
+    assert!(
+        !painted_pick(InspectorAnchorInfo {
+            parent_anchors: Vec::new(),
+            mount: None,
+            ..info()
+        }),
+        "sem pai e sem vinculo, o seletor nao tem o que oferecer"
+    );
+    assert!(
+        painted_pick(InspectorAnchorInfo {
+            parent_anchors: Vec::new(),
+            mount: Some("gone".into()),
+            ..info()
+        }),
+        "um vinculo pendurado sem a linha e' um estado preso"
+    );
 }

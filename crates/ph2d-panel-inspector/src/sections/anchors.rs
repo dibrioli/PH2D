@@ -361,6 +361,28 @@ pub(crate) fn paint_anchors_section(
     let mut cur_y = y + header_h;
     let font = TypeToken::Sm.px();
 
+    // ⚠️ **A montagem vem PRIMEIRO, e é de outro dono.** Ela diz de que âncora do PAI este objeto
+    // parte; a lista abaixo são as âncoras DESTE objeto. Os rótulos dizem qual é qual — a seção
+    // sem eles teria duas listas de âncoras e nenhuma pista de quem as possui.
+    cur_y = super::anchor_mount_row::paint_mount_row(
+        scene, text_system, theme, hit_index, store, x, w, cur_y, info,
+    );
+    if info.mount_pick_is_useful() {
+        // O rótulo só existe quando há a OUTRA metade de que se distinguir. Sozinho, ele seria
+        // ruído: uma seção com uma lista só não precisa de dizer de quem ela é.
+        paint_text(
+            text_system,
+            scene,
+            "This object's anchors",
+            x,
+            cur_y,
+            font,
+            w,
+            resolve(ColorToken::Text3, theme),
+        );
+        cur_y += font + Spacing::Xs.px();
+    }
+
     if info.rows.is_empty() {
         paint_text(
             text_system,

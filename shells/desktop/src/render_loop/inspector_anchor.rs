@@ -22,6 +22,7 @@ use ph2d_editor::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow, Toas
 use super::inspector_ordering::queue_set;
 
 const NAMED_ANCHOR_LIST: &str = "ph2d::ecs::NamedAnchorList";
+const ANCHOR_MOUNT: &str = "ph2d::ecs::AnchorMount";
 
 /// Constrói o snapshot da §12, ou `None` quando a entidade não é digna de Inspector.
 pub(super) fn build_anchor_info(
@@ -63,12 +64,29 @@ pub(super) fn build_anchor_info(
             mixed |= other != mine;
         }
     }
+    // **A outra metade da seção, e o dono dela é o PAI** (ADR-0072 §2.6).
+    //
+    // ⚠️ As âncoras oferecidas saem de `ph2d_ecs::anchor_names` — a MESMA função que a API de
+    // runtime e o MCP usam. Reimplementar aqui um `iter().map(name)` daria uma segunda resposta
+    // a «que âncoras tem esta entidade», e é essa a família de defeito que esta linha paga.
+    let parent_anchors = world
+        .get::<ph2d_ecs::ChildOf>(entity)
+        .map(|c| ph2d_ecs::anchor_names(world, c.parent()))
+        .unwrap_or_default();
+    // ⚠️ Um vínculo com nome VAZIO é «não monta», e não um vínculo — senão o painel acenderia o
+    // aviso de pendurado sobre o estado que o artista acabou de escolher.
+    let mount = world
+        .get::<ph2d_ecs::AnchorMount>(entity)
+        .filter(|m| m.is_bound())
+        .map(|m| m.anchor.clone());
     Some(InspectorAnchorInfo {
         entity_bits,
         rows,
         present: list.is_some(),
         selected_count,
         mixed,
+        parent_anchors,
+        mount,
     })
 }
 
@@ -132,6 +150,23 @@ pub(super) fn apply_anchor_edit(
                 a.name = new_name.clone();
             }
         }
+        AnchorFieldEdit::Mount(name) => {
+            // ⚠️ **Esta edição escreve OUTRO componente**, na entidade que monta — e sai por
+            // aqui sem tocar na lista de âncoras. Gravar a lista também faria toda escolha de
+            // montagem contar como uma edição das âncoras deste objeto: o undo teria dois passos
+            // onde houve um gesto, e um sprite sem âncoras nenhumas ganharia um componente vazio
+            // só por ter sido preso a uma mão.
+            //
+            // ⚠️ Escolher «—» escreve um vínculo VAZIO em vez de retirar o componente. É a mesma
+            // decisão que o `Remove` de uma âncora toma (anexado-e-vazio é um estado que o
+            // artista criou), e um sprite com `AnchorMount { anchor: "" }` desenha byte-idêntico
+            // a um que nunca o teve.
+            let mount = ph2d_ecs::AnchorMount {
+                anchor: name.clone().unwrap_or_default(),
+            };
+            queue_set(queue, registry, entity_bits, ANCHOR_MOUNT, &mount);
+            return None;
+        }
         other => {
             let idx = match other {
                 AnchorFieldEdit::Pos(i, ..)
@@ -142,7 +177,10 @@ pub(super) fn apply_anchor_edit(
                 | AnchorFieldEdit::Center(i, ..) => usize::from(*i),
                 // Tratados acima; o braço existe para o `match` não precisar de curinga, que
                 // engoliria em silêncio a próxima variante.
-                AnchorFieldEdit::Add | AnchorFieldEdit::Remove(_) | AnchorFieldEdit::Rename(..) => {
+                AnchorFieldEdit::Add
+                | AnchorFieldEdit::Remove(_)
+                | AnchorFieldEdit::Rename(..)
+                | AnchorFieldEdit::Mount(_) => {
                     return None;
                 }
             };
@@ -189,7 +227,13 @@ fn apply_field(a: &mut NamedAnchor, edit: &AnchorFieldEdit, ppm: f32) {
             }
             a.set_center(Some(c));
         }
-        AnchorFieldEdit::Add | AnchorFieldEdit::Remove(_) | AnchorFieldEdit::Rename(..) => {}
+        // ⚠️ Nenhuma destas escreve um campo de UMA âncora, e por isso não têm o que fazer aqui.
+        // O braço é explícito para o `match` não precisar de curinga — um curinga engoliria a
+        // próxima variante **em silêncio**, que é como um controlo novo nasce mudo.
+        AnchorFieldEdit::Add
+        | AnchorFieldEdit::Remove(_)
+        | AnchorFieldEdit::Rename(..)
+        | AnchorFieldEdit::Mount(_) => {}
     }
 }
 

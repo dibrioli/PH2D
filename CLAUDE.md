@@ -602,7 +602,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   entrega um patch com `χ=0`, 666 faces, 16 arcos e **zero arcos repetidos** ⇒ o traçado nunca lhe construiu
   ponte. O G1 **abre-o sozinho** (contrato dele é entregar discos), com a guarda de melhoria **estrita** e o corte
   registado com `arc: None` — *um corte que a fase seguinte não veja deixa o patch RASGADO, pior que anel*.
-  Faltam G2 (pentear), G3 (resolver `(u,v)` com as costuras acopladas) e G4 (ler as marcações nas isolinhas). ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  ⭐⭐ **O G2 também está feito** (§4-tresetquinquagies): penteia cada patch e lê o **salto de período** de cada
+  costura — sem ele o G3 pediria `(u,v)` igual dos dois lados, quando o que é igual é um lado e o outro **rodado**
+  de `k` quartos de volta. ⚠️ Duas armadilhas mudas apanhadas antes de medir: a saída do `comb` **não está alinhada
+  com a entrada** (ele filtra faces degeneradas ⇒ recusa-se e conta-se), e escolher os lados de uma aresta pela
+  ordem de armazenamento dá **sinal arbitrário** por aresta. ⛔⛔ **E o gate da consistência disparou no toro (4
+  costuras) — mas a dívida é do F3:** as 4 tocam um dos **3 patches sujos** dele (um com **10** voltas), e a esfera
+  lisa dá `0` de `42`. ⇒ a barra é `inconsistent_clean == 0` — *sobre a população certa, nem mais alta nem mais
+  baixa*. Faltam G3 (resolver `(u,v)` com as costuras acopladas) e G4 (ler as marcações nas isolinhas). ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

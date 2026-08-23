@@ -51,6 +51,8 @@
 //! é uma fase grande sem nenhum ponto onde a medição possa entrar* — foi assim que
 //! quatro «byte-idêntico ao controlo» custaram meia jornada nesta linha.
 
+pub mod comb;
 pub mod cut;
 
+pub use comb::{CombReport, Combed, comb_patches, jumps_only};
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};

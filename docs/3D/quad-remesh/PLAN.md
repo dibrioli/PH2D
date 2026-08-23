@@ -4408,3 +4408,77 @@ esfera fica verde — o gate mede o abridor e mais nada.
 | mapa `global → local` por patch | não corta a ponte; o anel sai anel, sem nada a acusar | [`cut.rs`](../../../crates/ph2d-gridmap/src/cut.rs) |
 | contar vértices como régua do corte | não distingue sub-cortar de sobre-cortar de estar bem | idem |
 | aceitar empate no `χ` ao abrir | corta a peça toda sem nunca fechar | idem |
+
+## §4-tresetquinquagies — ⭐⭐⭐ G2: pentear cada patch, e o SALTO DE PERÍODO de cada costura (2026-08-23)
+
+### O que esta fase entrega, e por que são duas coisas
+
+**Dentro** de um patch, «a direcção do campo nesta face» escolhe-se uma vez e propaga-se
+— é o pentear, e o `ph2d_crossfield::comb` já o fazia. ⭐ **Mas dois patches vizinhos
+penteiam-se independentemente**, e as molduras deles ficam desencontradas por um
+múltiplo de `90°`: o **salto de período** da costura.
+
+⚠️ **Sem o salto, o G3 não consegue acoplar as costuras.** Ele pediria que `(u, v)`
+fosse igual dos dois lados, quando o que é igual é `(u, v)` de um lado e **o do outro
+rodado** de `k` quartos de volta. *Pedir a igualdade crua torce a grade em cada
+fronteira, e o defeito lê-se como geometria.*
+
+### ⛔⛔ Duas armadilhas silenciosas, as duas apanhadas antes de medir seja o que for
+
+**1. O alinhamento.** O `comb` **deixa de fora** faces degeneradas e devolve a lista já
+sem elas ⇒ *a saída nem sempre está alinhada com a entrada*. Usar o índice `i` das duas
+como se fosse o mesmo daria a direcção do triângulo errado — **sem erro nenhum a
+acusar**, só números pouco piores. ⭐ A rede é a coluna que ele já traz (`skipped`): se
+não for `0`, o patch é **recusado e contado**.
+
+**2. O sinal.** A primeira versão escolhia as duas faces de uma aresta **pela ordem de
+armazenamento**, e o sinal do salto depende de qual delas é o lado `0`. As arestas de uma
+mesma costura saíam com sinais trocados ao acaso — e a votação **escondia-o**. ⭐ A
+atribuição certa lê-se do próprio corte: a cópia local daquele vértice naquela face tem
+de ser a que a costura registou para aquele lado.
+
+### ⭐⭐⭐ E o gate da consistência disparou — mas a dívida não é desta fase
+
+O salto é uma propriedade da **costura inteira**; lê-se em **todas** as arestas dela e
+elas têm de concordar. O toro deu `4` costuras a discordar. ⚠️ **Antes de mexer no
+código, medi quais:**
+
+| costura | patches | ⭐ **defeitos (singularidades dentro)** | votos |
+|---|---|---|---|
+| 5 | 0/4 | `0` / **`2`** | `[0, 3]` |
+| 12 | 1/9 | `0` / **`1`** | `[2, 3]` |
+| 22 | 2/6 | **`10`** / `0` | `[0, 1]` |
+| 23 | 2/4 | **`10`** / `2` | `[0, 3]` |
+
+⭐⭐⭐ **Todas tocam um patch sujo, e a esfera lisa — com `0` sujos — dá `0` de `42`.**
+Um patch com singularidade dentro **não é penteável**: a moldura dele depende do
+caminho, logo a costura dele *tem* de discordar. ⇒ a inconsistência é um **relato fiel**
+de uma dívida do F3, não um defeito do G2.
+
+⛔⛔ **A barra certa não é mais alta nem mais baixa — é sobre a POPULAÇÃO CERTA:**
+`inconsistent_clean == 0`, as costuras cujos **dois** lados estão limpos. *Uma barra
+sobre o total reprovaria sobre dívida do F3; baixada para o número do toro, deixaria
+passar um defeito real na esfera.*
+
+⚠️ **E o toro tem `3` patches sujos, um deles com `10` voltas** — a terceira dívida do
+F3 que uma régua desta jornada torna visível.
+
+### Os gates
+
+| gate | o que apanha |
+|---|---|
+| todo patch penteia, toda costura tem salto | as três recusas, cada uma pelo seu nome |
+| ⭐ as arestas de uma costura **limpa** concordam | o defeito de sinal, e só ele |
+| o penteado é ainda **o campo** | unitário · tangente · um dos quatro braços |
+| ⭐⭐⭐ **rodar um patch move os saltos DELE e mais nenhum** | um salto sempre `0`, que passaria em tudo o resto |
+
+⭐ **O controlo positivo separa:** rodar a moldura do patch `0` move **4** costuras e
+deixa **38** quietas. *Um número que nunca muda não é um número medido.*
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| assumir a saída do `comb` alinhada com a entrada | ele filtra faces degeneradas; o desalinhamento é mudo | [`comb.rs`](../../../crates/ph2d-gridmap/src/comb.rs) |
+| escolher os lados de uma aresta pela ordem de armazenamento | o sinal do salto fica arbitrário por aresta | idem |
+| barra sobre o total de costuras inconsistentes | frouxa nos dois sentidos — a população certa é a das limpas | idem |

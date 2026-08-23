@@ -318,9 +318,11 @@ fn path_between(
 /// pequeno» de se ler como geometria.*
 #[must_use]
 pub fn cut_along_patches(mesh: &Mesh, layout: &PatchLayout) -> (CutMesh, CutReport) {
-    let mut rep = CutReport::default();
     let patches = layout.side_arcs.len();
-    rep.patches = patches;
+    let mut rep = CutReport {
+        patches,
+        ..CutReport::default()
+    };
 
     // ── As arestas que são de ARCO. É atravessá-las que se proíbe.
     let mut seam_edges: BTreeSet<(u32, u32)> = BTreeSet::new();

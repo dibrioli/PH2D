@@ -253,6 +253,7 @@ mod anchor_overlay;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
 mod inspector_anchor;
 mod inspector_anim;
+mod inspector_commits_sprite;
 mod inspector_slice;
 /// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
 /// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
@@ -1532,6 +1533,34 @@ impl crate::App {
             toasts.push(Toast::success(
                 "Mount smoke: open Sockets / Anchors, pick hand_r and drag it — the red square \
                  follows, the grey one does not"
+                    .to_string(),
+            ));
+            self.title_dirty = true;
+        }
+
+        // **A §11 ANIMATION A ANDAR** (`PH2D_ANIM_SMOKE=1`, spec Sprite 08): uma tira de 8 células
+        // e TRÊS animações que se sobrepõem sobre ela — a tese do modelo do Aseprite (um pool,
+        // intervalos nomeados), que N arrays separados não conseguem exprimir sem duplicar pixels.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::anim_smoke::enabled()
+            && !std::mem::replace(&mut self.anim_smoke_done, true)
+            && let Some(bits) = crate::anim_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                next_import_cell,
+                hero.project.pixels_per_meter,
+                atlas_asset_map,
+            )
+        {
+            hero.gizmo.replace_selection(Some(bits));
+            hero.bus
+                .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                    kind: ph2d_editor::ViewFocusKind::Selected,
+                });
+            toasts.push(Toast::success(
+                "Animation smoke: open the Animation section — it is playing walk. Click attack: \
+                 it plays once and stays on the last cell"
                     .to_string(),
             ));
             self.title_dirty = true;

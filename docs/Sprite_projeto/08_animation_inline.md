@@ -325,3 +325,95 @@ Aseprite → PH2D mapping completo:
 3. **Frame events com single-param** ❌ — Unity AnimationEvent. PH2D tipos payload via struct (módulo Timeline futuro, não Inspector).
 4. **Onion skin no Inspector** ❌ — Inspector mostra estado; timeline editor mostra contexto temporal.
 5. **AnimatedSprite2D ⇄ AnimationTree desconectados** ❌ — Godot proposal #567 aberto há anos. PH2D unifica via `SpriteAnimator` + `AnimationStateMachine` Component (módulo Animation futuro) compartilhando schema.
+
+---
+
+# ⭐ CONSTRUÍDO em 2026-08-23 — e o que MUDOU em relação a esta spec
+
+> Esta seção é **normativa** e sobrepõe-se ao que está acima onde os dois discordarem. O que está
+> acima é o desenho de 2026-05; o que está aqui é o que existe, com a medição que moveu cada peça.
+
+## ⛔ O `SpriteFrames` asset NÃO foi construído — o pool já existia
+
+A §8.3 desenha um asset com um `Vec<SpriteFrame>` próprio. Medido antes de o construir, ele
+**duplicaria duas coisas que o app já tem**:
+
+- a **grelha** (`Sprite::hframes × vframes`, índice `Sprite::frame`) — o pool que a §4 Sprite Sheet
+  autora hoje, e **o único que o renderer amostra por quadro**;
+- a **folha autorada** (`ph2d_sprite_sheet::AuthoredSheet`) — regiões nomeadas e ordenadas.
+
+⚠️ E a segunda **não é um sink vivo**: o `SpriteSheetRef` é *proveniência de autoria* («os meus
+pixels são a região R da folha F»), e mudá-lo não muda o que se desenha sem reatar a textura.
+
+⇒ **UM pool, UM sink: a grelha e o `Sprite::frame`** — que é o que a própria §8.9 escreve para o
+caso sem animador. Uma animação é um **intervalo nomeado sobre as células que a sprite já tem**.
+Zero asset novo, zero pixels duplicados, e a persistência vem do registro de componentes.
+
+| a spec dizia | o que existe |
+|---|---|
+| `SpriteFrames` asset + `AssetHandle` | ⛔ não construído — ver acima |
+| `SpriteFrame { texture_ref, duration_ms, … }` | ⛔ o frame é uma **célula da grelha** |
+| `AnimationTag` | ✅ `ph2d_ecs::AnimationTag`, com `frame_ms` por TAG |
+| `SpriteAnimator` | ✅ `ph2d_ecs::SpriteAnimator` |
+| `elapsed_ticks: u64` fixed-point | ✅ e a lei pura **nunca vê um float** |
+| `speed_scale_q16_16` | ✅ `SPEED_ONE_Q16 = 65 536`, teto `±100×` |
+| `in_hold_phase: bool` | ⛔ **dobrado na duração** do último frame — mesmo resultado observável, menos um estado a dessincronizar |
+| tags ≤ **256** | ⚠️ **64** — ver abaixo |
+| duração por-FRAME | ⛔ ver abaixo |
+| signals no ActionBus (§8.10) | ⚠️ `AnimOutcome` existe e é devolvido pela lei; **ninguém o publica ainda** |
+| Aseprite import (§8.12) | ⛔ não há importador de `.ase` |
+
+## ⛔ Duração por-FRAME arbitrária ficou de fora, e o motivo
+
+Ela existe na spec por paridade com o Aseprite — e **não há importador de `.ase`**, por isso
+ninguém a produziria. A própria §8.8 diz que editá-la é do editor de timeline futuro, não do
+Inspector. O caso de uso que ela nomeia (*anticipation hold*: o último frame parado mais tempo) é
+servido pelo `hold_ms` que a §8.6 já especifica.
+
+*Um campo sem quem o escreva é autoria sem consumidor* — a dívida que este módulo passou o dia a
+pagar com o ADR-0072 §2.6.
+
+## ⚠️ O cap de tags desceu de 256 para 64, e a razão é a da própria spec
+
+A §8.11 justifica o 256 com *«a contagem típica de animações é < 50»*. O que ela não pesa é que o
+painel tem de **alcançar** cada uma: um modelo que aceita o que o painel não mostra produz estado
+**inalcançável por gesto nenhum**, e este módulo já pagou essa classe duas vezes (os quatro modos
+mudos da §9 Sampling; o cap de âncoras que o gate
+`the_model_stops_exactly_where_the_panel_runs_out_of_rows` passou a prender).
+
+64 é o que a lista da §11 mostra, é o mesmo teto das âncoras, e está acima do «típico < 50».
+
+## As leis que a implementação fixou (cada uma com gate e mutação)
+
+1. ⭐ **Tocar UMA vez pára no ÚLTIMO frame**, não volta ao primeiro. A pose final de um *attack*
+   **é** o resultado do gesto; voltar deixaria a sprite em repouso. É o que o Godot e o Phaser
+   fazem, e a spec não o diz.
+2. **Ping-pong não repete as pontas** — `0 1 2 1 0`, e não `0 1 2 2 1 0`.
+3. **`hold_ms` alonga só o último frame do ciclo; `repeat_delay_ms` só conta quando ainda vem
+   outro ciclo.** Cobrá-lo na última volta prenderia a animação depois de ela já ter acabado.
+4. **Velocidade negativa toca ao contrário — ela não faz o tempo andar para trás.** Somar um delta
+   negativo ao acumulador obrigaria a «desavançar» frames com o resto do frame anterior, que é um
+   segundo modelo de tempo dentro do mesmo estado.
+5. **Um intervalo de uma célula não avança e não conta ciclos** — senão um `repeat` finito
+   terminaria à velocidade do relógio.
+6. **O intervalo é DERIVADO contra a grelha de hoje.** Encolher `hframes` não deixa uma tag
+   gravada a apontar para fora; ela lê-se como «out of grid» na lista e o tocador di-lo.
+7. **O tique corre no PASSO FIXO** e escreve `Sprite::frame` **só quando ele muda** — o `Sprite` é
+   `SimComponent` e o undo regista por diff.
+8. ⚠️ **Recuperar um engasgo numa chamada é igual a recuperá-lo passo a passo**, porque a lei tem
+   o seu próprio laço interno. A primeira versão corria N chamadas com uma justificação **falsa**,
+   e foi uma mutação que a derrubou; hoje há gate a prender a equivalência.
+
+## O Inspector §11, e onde ele difere da §12
+
+**Clicar numa linha da lista ESCOLHE a animação que toca** — e isso vai ao barramento. Na §12,
+clicar numa linha muda só a ficha aberta e é um facto da UI. A diferença é do domínio: numa
+biblioteca de animações, *a que se vê* e *a que toca* serem a mesma é o que o artista espera (o
+`AnimationPlayer` do Godot faz assim), e separá-las pediria um seletor com as mesmas entradas da
+lista logo abaixo dele.
+
+⛔ **Sem tocador, a seção mostra um botão** (`+ Add Animator`) e mais nada.
+
+**Smoke:** `PH2D_ANIM_SMOKE=1` — uma tira de 8 células e três animações que **se sobrepõem** sobre
+ela, que é a tese do modelo do Aseprite (§8.2) e o que N arrays separados não exprimem sem
+duplicar pixels.

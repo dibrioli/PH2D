@@ -639,13 +639,25 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ([ADR-0054](docs/architecture/decisions/0054-imageio-pipeline.md)).
 
 - **Sprite Inspector** ([ADR-0069..0074](docs/architecture/decisions/)) — ⚠️ **esta linha dizia
-  «fechado sem pendência» e a spec pede 12 seções: existem 9** (a 10ª é meia — o slot Material é
-  placeholder). ✅ **9-Slice e Sockets/Âncoras foram construídas em 2026-08-22** (`line/Sprite`, com o
-  gizmo de canvas — o ADR-0072 deixou de estar `Accepted` sobre código que não existia); ⛔ a
-  **Animation** continua por construir. Estava escrito desde 2026-05-31 num handoff
-  **arquivado**, e o roteador dizia o contrário — *a informação existia; o roteador é o que se lê*.
-  **Aberto:** ⛔ a **§11 Animation** continua a única das três por construir (pede um `SpriteFrames`
-  que não existe) · ✅ **uma âncora já MOVE coisas** (2026-08-22): `ph2d_ecs::AnchorMount` faz dela um
+  «fechado sem pendência» e a spec pede 12 seções: existiam 9.** ✅ **As três que faltavam nasceram
+  em 2026-08-22/23** (`line/Sprite`): 9-Slice, Sockets/Âncoras (com o gizmo de canvas) e Animation.
+  ⚠️ *A informação existia desde 2026-05-31 num handoff **arquivado**, e o roteador dizia o
+  contrário — o roteador é o que se lê.*
+  **Aberto:** ✅ **a §11 Animation NASCEU (2026-08-23) — as DOZE seções existem.**
+  ⛔ **O `SpriteFrames` da spec §8.3 NÃO foi construído, e é uma recusa medida:** o pool de frames
+  já existe (a **grelha** `hframes × vframes`, cujo índice `Sprite::frame` é o **único sink vivo** —
+  o `SpriteSheetRef` é proveniência de autoria, não índice). Uma animação é um **intervalo nomeado
+  sobre as células que a sprite já tem** — o modelo do Aseprite aplicado ao pool que existe.
+  ⚠️ **O tique corre no PASSO FIXO** (`SimComponent`, o replay tem de o reproduzir) e a lei pura
+  **nunca vê um float**; escreve `Sprite::frame` **só quando ele muda** (o undo regista por diff).
+  ⚠️ **Tocar uma vez pára no ÚLTIMO frame** · ping-pong não repete as pontas · `repeat_delay` só
+  conta se vier outro ciclo · velocidade negativa toca ao contrário, não faz o tempo recuar.
+  ⚠️ **`ANIM_TAGS_MAX` é 64 e não os 256 da spec** — o motivo é o dela («típico < 50»): *um modelo
+  que aceita o que o painel não mostra produz estado inalcançável*.
+  ⛔ Fora: duração por-FRAME (não há importador `.ase` que a produza) · os sinais do §8.10
+  (`AnimOutcome` existe, ninguém o publica) · o import do Aseprite. Detalhe:
+  [spec 08, secção final](docs/Sprite_projeto/08_animation_inline.md) ·
+  ✅ **uma âncora já MOVE coisas** (2026-08-22): `ph2d_ecs::AnchorMount` faz dela um
   **QUADRO na hierarquia** ([ADR-0072-amendment-1](docs/architecture/decisions/0072-amendment-1.md)),
   autorado pela linha «Rides Parent Anchor» da §12 e demonstrado em `PH2D_MOUNT_SMOKE`.
   **Escolher uma âncora POUSA o objeto nela** (só a posição — o ângulo é do filho; e **nunca** ao
@@ -667,8 +679,8 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   acima, o defeito que esta wave curou · o `AnchorData::user_data` não tem UI, com o `variant_editor`
   órfão a apontar-lhe · os 4 goldens seguem `unimplemented!()` (falta o arnês headless) · UI real
   de Save/Open (o `io_menu` é stub).
-  **Smokes:** `PH2D_SLICE_SMOKE=1..3` · `PH2D_SOCKET_SMOKE` · `PH2D_MOUNT_SMOKE` · `PH2D_SHEET_SMOKE` ·
-  `PH2D_EMISSIVE_SMOKE` · `PH2D_DITHER_SMOKE`.
+  **Smokes:** `PH2D_SLICE_SMOKE=1..3` · `PH2D_SOCKET_SMOKE` · `PH2D_MOUNT_SMOKE` · `PH2D_ANIM_SMOKE` ·
+  `PH2D_SHEET_SMOKE` · `PH2D_EMISSIVE_SMOKE` · `PH2D_DITHER_SMOKE`.
   **Ler:** ⚠️ [auditoria de 7 lentes](docs/Sprite_projeto/20_auditoria_do_inspector_2026-08-21.md)
   (o que estava morto/incompleto, **com o que já foi curado marcado**) · [spec](docs/Sprite_projeto/README.md) ·
   [handoffs](docs/Sprite_projeto/handoffs/README.md) (⚠️ índice **à mão**: esta pasta não entra no

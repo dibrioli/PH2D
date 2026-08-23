@@ -3,7 +3,7 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::render_loop::inspector_commits::apply_sprite_field;
+    use crate::render_loop::inspector_commits_sprite::apply_sprite_field;
     use ph2d_editor::SpriteFieldEdit;
     use ph2d_render::Sprite;
 

@@ -34,9 +34,15 @@ pub(crate) fn step_ticks(fixed_dt: f64) -> u64 {
 
 /// Avança toda sprite animada em `ticks` passos fixos.
 ///
-/// ⚠️ **`ticks` passos de `dt`, e não um passo de `ticks × dt`.** Eles não são a mesma coisa: um
-/// passo grande atravessaria o fim de um ciclo sem o fechar, e um `repeat` finito contaria menos
-/// voltas do que tocou. A recuperação de um engasgo tem de passar por cada frame.
+/// ⚠️ **`ticks × dt` numa chamada só, e a razão é uma MEDIÇÃO.** A primeira versão disto corria um
+/// laço de `ticks` chamadas, com a justificação de que «um passo grande atravessaria o fim de um
+/// ciclo sem o fechar». **Era falso**, e foi uma mutação que o disse: a própria
+/// [`ph2d_ecs::advance`] tem um laço de recuperação que avança **um frame de cada vez** até gastar
+/// o acumulado, por isso os dois caminhos fecham exatamente os mesmos ciclos. O gate
+/// `catching_up_in_one_call_is_the_same_as_catching_up_step_by_step` prende a equivalência.
+///
+/// ⇒ Fica a forma simples. *Um laço a mais que a mutação não distingue é uma justificação que
+/// ninguém voltou a verificar.*
 pub(crate) fn tick_sprite_animations(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) {
     if ticks == 0 {
         return;
@@ -58,12 +64,7 @@ pub(crate) fn tick_sprite_animations(sim: &mut SimWorld, ticks: u32, fixed_dt: f
         // animação encolhe o intervalo no mesmo quadro, sem estado intermédio a envelhecer.
         let cells = sprite.hframes.saturating_mul(sprite.vframes).max(1);
         let mut frame = sprite.frame;
-        for _ in 0..ticks {
-            ph2d_ecs::advance(&mut animator, tag, &mut frame, cells, dt);
-            if !animator.playing {
-                break;
-            }
-        }
+        ph2d_ecs::advance(&mut animator, tag, &mut frame, cells, dt * u64::from(ticks));
         // ⚠️ **Escreve só quando MUDA.** O `Sprite` é `SimComponent` e o undo regista por DIFF:
         // tocar-lhe todo o quadro faria uma sprite pausada num frame só produzir um passo de
         // undo por quadro. `bevy` marca a mudança no `deref_mut`, não na atribuição.

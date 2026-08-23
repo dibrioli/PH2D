@@ -34,6 +34,24 @@ autoria sem consumidor»*. Esta wave fecha isso.
 | duas caixas no pai: **«Always show anchors»** e **«Show anchors at runtime»** | `ph2d_ecs::AnchorVisibility` (`PROJECT_SCHEMA` 90 → **91**) |
 | botão **«Reset to Anchor»** no filho | `AnchorFieldEdit::SnapToAnchor` — a MESMA operação do primeiro |
 
+**Terceira vaga: a §11 ANIMATION — a DOZE de doze.**
+
+| entregue | onde |
+|---|---|
+| a LEI (`advance`, pura, tudo inteiro) + `SpriteAnimations` + `SpriteAnimator` | `ph2d-ecs/src/sprite_anim.rs` (novo) |
+| o tique no **passo fixo** + o `autoplay` no load | `render_loop/sprite_anim_tick.rs` (novo) |
+| a §11 do Inspector (tocador + biblioteca) | `sections/anim.rs` + `anim_rows.rs` (novos) |
+| snapshot + commit | `render_loop/inspector_anim.rs` (novo) |
+| o smoke | `PH2D_ANIM_SMOKE=1` (`anim_smoke.rs`, novo) |
+
+⛔ **O `SpriteFrames` da spec §8.3 NÃO foi construído, e é uma recusa MEDIDA:** o pool de frames já
+existe (a grelha `hframes × vframes`, cujo `Sprite::frame` é o **único sink vivo** — o
+`SpriteSheetRef` é proveniência de autoria, e mudá-lo não muda o que se desenha sem reatar a
+textura). Detalhe e tabela «a spec dizia / o que existe»: [spec 08, secção
+final](../08_animation_inline.md).
+
+⛔ **`ANIM_TAGS_MAX` desce de 256 (o número da spec) para 64**, com o motivo da própria spec.
+
 ⛔ **`at_runtime` grava e não tem quem a leia** — não há modo de jogo (`shells/game`, R1, adiado
 pelo Enio). Está marcada como tal no componente, no id, na spec e no smoke.
 
@@ -63,15 +81,15 @@ que toque `transform.rs` ou `transform_inverse.rs` tem de o correr.
 
 ```
 SUPERFÍCIE DE COLISÃO — line/Sprite contra main
-  merge-base 35f937cb2   ·   8 commit(s)   ·   42 arquivo(s)
+  merge-base 35f937cb2   ·   13 commit(s)   ·   66 arquivo(s)
 ▸ SCHEMAS
-  ⚠ PROJECT_SCHEMA                         91   (base: 89)
-  ⚠   └ tripla do gate               (91, 13, 14)   (base: (89, 13, 14))
+  ⚠ PROJECT_SCHEMA                         92   (base: 89)
+  ⚠   └ tripla do gate               (92, 13, 14)   (base: (89, 13, 14))
     VEC_SCENE_SCHEMA 14 · FLIP_SCHEMA 13 · DOC_VERSION 18   (todos = base)
 ▸ REGISTRO DE COMPONENTES — o contador é TRÊS
-  ⚠ ph2d-ecs                               67   (base: 65)
-  ⚠ ph2d-render (espelho)                  68   (base: 66)
-  ⚠ ph2d-script (espelho)                  68   (base: 66)
+  ⚠ ph2d-ecs                               69   (base: 65)
+  ⚠ ph2d-render (espelho)                  70   (base: 66)
+  ⚠ ph2d-script (espelho)                  70   (base: 66)
 ▸ CONTRATO CONGELADO (§6)   node.rs intocado · tool.rs intocado
 ▸ ADR   cria 0072-amendment-1 (não consome número novo: é emenda)
 ▸ Cargo.lock   nenhum '+name' novo
@@ -81,7 +99,7 @@ SUPERFÍCIE DE COLISÃO — line/Sprite contra main
 
 ### Leitura, símbolo a símbolo
 
-**`PROJECT_SCHEMA` 89 → 91** (dois degraus: v90 `AnchorMount`, v91 `AnchorVisibility`). ⚠️ **O número se CONTA contra o `main` do dia, nunca se copia daqui.**
+**`PROJECT_SCHEMA` 89 → 92** (três degraus: v90 `AnchorMount`, v91 `AnchorVisibility`, v92 `SpriteAnimations` + `SpriteAnimator`). ⚠️ **O número se CONTA contra o `main` do dia, nunca se copia daqui.**
 Quem obriga o bump é o **REGISTRO**, não um campo: um componente fora do `ComponentRegistry` é
 descartado **em silêncio** pelo snapshot. São **três** sítios (a escada em `project_schema.rs`, a
 tripla em `project_schema_tests.rs`, e o degrau que **não** pode ir para `project.rs`).
@@ -92,14 +110,15 @@ visto pela suíte da **sua** crate:
 
 | crate | valor | quem o vê |
 |---|---|---|
-| `ph2d-ecs` | 67 | `cargo test -p ph2d-ecs` |
-| `ph2d-render` (espelho) | 68 = ecs + 1 (`Sprite`) | `cargo test -p ph2d-render` |
-| `ph2d-script` (espelho) | 68 = ecs + 1 (`LuauScript`) | `cargo test -p ph2d-script` |
+| `ph2d-ecs` | 69 | `cargo test -p ph2d-ecs` |
+| `ph2d-render` (espelho) | 70 = ecs + 1 (`Sprite`) | `cargo test -p ph2d-render` |
+| `ph2d-script` (espelho) | 70 = ecs + 1 (`LuauScript`) | `cargo test -p ph2d-script` |
 
 ⛔ **São grandezas DIFERENTES — não copie o número de um para o outro.**
 
 **Componentes ECS novos** (os nomes canónicos, é por eles que o save indexa):
-`ph2d::ecs::AnchorMount` · `ph2d::ecs::AnchorVisibility`.
+`ph2d::ecs::AnchorMount` · `ph2d::ecs::AnchorVisibility` · `ph2d::ecs::SpriteAnimations` ·
+`ph2d::ecs::SpriteAnimator`.
 
 **Ids novos** (família própria, em `ids/inspector_anchor.rs`): `INSP_MOUNT_PICK` ·
 `INSP_MOUNT_NONE_OPT` · `INSP_MOUNT_OPT[64]` · `INSP_MOUNT_SNAP` · `INSP_ANCHOR_VIS_EDITOR` ·
@@ -115,6 +134,8 @@ com gate na shell (`the_mount_option_ids_cover_the_model_cap`).
 | `ph2d-panel-inspector/src/populate.rs` (ficheiro) | 605 medido | — | o bloco da §12 saiu para `populate_anchor.rs` (idioma do `populate_physics.rs`); **nenhuma entrada foi criada** |
 | `shells/desktop/src/render_loop/anchor_overlay.rs` | 696 | **427** | `mod tests` → `anchor_overlay_tests.rs` |
 | `shells/desktop/src/render_loop/inspector_anchor.rs` | 638 | **356** | `mod tests` → `inspector_anchor_tests.rs` |
+| `shells/desktop/src/render_loop/inspector_commits.rs` | 611 | **539** | o commit da §2 Sprite → `inspector_commits_sprite.rs` |
+| `crates/ph2d-panel-inspector/src/populate.rs` (2.ª vez) | 605 | — | o bloco da §11 nasceu já em `populate_anim.rs` |
 | `shells/desktop/src/project_schema.rs` | 608 | **343** | ⚠️ **589 das 608 linhas eram doc-comment**: a escada v2–v59 foi para [`docs/archive/project-schema-ladder-v2-v59.md`](../../archive/project-schema-ladder-v2-v59.md) |
 
 ⚠️ **O corte da escada merece leitura pelo integrador.** O que saiu é a **cabeça** (v2–v59); os

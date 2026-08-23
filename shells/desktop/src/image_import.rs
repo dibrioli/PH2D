@@ -231,7 +231,43 @@ pub fn spawn_blank_canvas(
     for px in pixels.chunks_exact_mut(4) {
         px.copy_from_slice(&fill);
     }
-    let asset_id = asset_db.insert_image_rgba8(size_px, size_px, pixels.clone());
+    spawn_rgba(
+        sim,
+        renderer,
+        asset_db,
+        cell_idx,
+        size_px,
+        size_px,
+        pixels,
+        world_center,
+        pixels_per_meter,
+        atlas_asset_map,
+        "Canvas",
+    )
+}
+
+/// **Empacota `pixels` numa célula do atlas e spawna a sprite** — a porta única desse par.
+///
+/// ⚠️ **Extraída de [`spawn_blank_canvas`] em 2026-08-23**, quando a cena de smoke da §11 precisou
+/// de uma tira RETANGULAR com conteúdo. Duplicar o corpo teria duplicado a **ordem** que ele
+/// impõe e que é load-bearing: os pixels entram no `AssetDb` e o vínculo `key → AssetId` no
+/// `atlas_asset_map` **ANTES** do insert no atlas, para que um regrow disparado por ele consiga
+/// recuperar os bytes. *Duas cópias de uma ordem convergem enquanto ninguém mexe numa delas.*
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn spawn_rgba(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    w_px: u32,
+    h_px: u32,
+    pixels: Vec<u8>,
+    world_center: Vec2,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+    label: &str,
+) -> Result<(String, u64), String> {
+    let asset_id = asset_db.insert_image_rgba8(w_px, h_px, pixels.clone());
     atlas_asset_map.insert(cell_idx, asset_id);
     let fetch_pixels = |key: u32| -> Option<Vec<u8>> {
         let aid = atlas_asset_map.get(&key)?;
@@ -241,21 +277,20 @@ pub fn spawn_blank_canvas(
         asset.image_rgba8().map(|(_, _, px)| px.into_owned())
     };
     if let Err(e) =
-        renderer.insert_atlas_sprite_with_regrow(cell_idx, size_px, size_px, &pixels, fetch_pixels)
+        renderer.insert_atlas_sprite_with_regrow(cell_idx, w_px, h_px, &pixels, fetch_pixels)
     {
         atlas_asset_map.remove(&cell_idx);
-        return Err(format!("atlas insert blank canvas: {e}"));
+        return Err(format!("atlas insert {label}: {e}"));
     }
     let safe_px_per_m = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
-    let world = (size_px as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
-    // Uma tela em branco nasce sempre no atlas, e de 8 bits: ela é opaca e chapada, e não há nada
-    // de alta precisão a preservar num branco.
+    let ww = (w_px as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
+    let wh = (h_px as f32 / safe_px_per_m).max(crate::MIN_SPRITE_SIZE);
     Ok(spawn_sprite(
         sim,
         PackedSource::Atlas { cell_idx },
         world_center,
-        [world, world],
-        "Canvas",
+        [ww, wh],
+        label,
     ))
 }
 

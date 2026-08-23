@@ -42,6 +42,8 @@ mod align_live;
 mod align_smoke;
 mod anchor_gizmo_drag;
 mod anchor_smoke;
+/// **As três formas de âncora, numa sprite só** (`PH2D_SOCKET_SMOKE=1`, ADR-0072).
+mod anim_smoke;
 mod app_state;
 mod atlas_loader;
 mod attribute_demo_smoke;
@@ -280,7 +282,6 @@ mod motion_shape_bake;
 mod motion_shape_smoke;
 mod motion_shape_smoke_knobs;
 mod motion_state;
-/// **As três formas de âncora, numa sprite só** (`PH2D_SOCKET_SMOKE=1`, ADR-0072).
 mod mount_smoke;
 mod multi_node_smoke;
 mod name_unique;
@@ -786,6 +787,7 @@ impl App {
             slice_smoke_done: false,
             socket_smoke_done: false,
             mount_smoke_done: false,
+            anim_smoke_done: false,
             dither_smoke_done: false,
             emissive_smoke_done: false,
             taper_smoke_done: false,

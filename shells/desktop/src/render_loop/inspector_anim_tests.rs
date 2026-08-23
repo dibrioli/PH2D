@@ -337,3 +337,63 @@ fn the_fixed_step_conversion_rounds_instead_of_truncating() {
     );
     assert_eq!(crate::render_loop::sprite_anim_tick::step_ticks(0.0), 0);
 }
+
+/// **Recuperar um engasgo numa chamada dá o MESMO que recuperar passo a passo.**
+///
+/// ⚠️ **Este gate existe porque uma mutação derrubou uma afirmação minha.** O tique corria um laço
+/// de `ticks` chamadas, com a justificação de que um passo grande «atravessaria o fim de um ciclo
+/// sem o fechar» — e a mutação que trocou o laço por uma chamada única **passou**. A lei tem o seu
+/// próprio laço de recuperação, e é ele que fecha cada ciclo.
+///
+/// A equivalência é o que autoriza a forma simples; sem gate, ela seria uma suposição.
+#[test]
+fn catching_up_in_one_call_is_the_same_as_catching_up_step_by_step() {
+    use ph2d_ecs::{AnimationTag, SpriteAnimator, advance};
+
+    // Uma tag com repetição FINITA e ping-pong: os dois casos onde um passo grande poderia
+    // atropelar o fecho de um ciclo.
+    for tag in [
+        AnimationTag {
+            repeat: Some(3),
+            frame_ms: 20,
+            ..AnimationTag::new("x", 0, 3)
+        },
+        AnimationTag {
+            direction: AnimDirection::PingPong,
+            repeat: Some(2),
+            frame_ms: 20,
+            hold_ms: 30,
+            repeat_delay_ms: 50,
+            ..AnimationTag::new("y", 0, 4)
+        },
+    ] {
+        let dt = 16_667_u64;
+        let ticks = 8_u32; // o teto de sub-passos do passo fixo
+
+        let mut a1 = SpriteAnimator::new(&tag.name);
+        a1.playing = true;
+        a1.speed_q16 = ph2d_ecs::SPEED_ONE_Q16;
+        a1.rewind(Some(&tag));
+        let mut f1 = u32::MAX;
+        for _ in 0..ticks {
+            advance(&mut a1, &tag, &mut f1, 8, dt);
+            if !a1.playing {
+                break;
+            }
+        }
+
+        let mut a2 = a1.clone();
+        a2.playing = true;
+        a2.speed_q16 = ph2d_ecs::SPEED_ONE_Q16;
+        a2.rewind(Some(&tag));
+        let mut f2 = u32::MAX;
+        advance(&mut a2, &tag, &mut f2, 8, dt * u64::from(ticks));
+
+        assert_eq!(
+            (f1, a1.repeat_count, a1.playing),
+            (f2, a2.repeat_count, a2.playing),
+            "'{}' divergiu entre as duas formas de recuperar",
+            tag.name
+        );
+    }
+}

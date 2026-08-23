@@ -100,10 +100,10 @@ pub fn fill_with(
     let regraduated = crate::regraduate::REGRADUATE
         .then(|| crate::regraduate::conformal_arc_tau(indexed, layout, quant))
         .flatten();
-    let regraduated_arcs = regraduated.as_ref().map_or(0, |(_, n)| *n);
+    let regraduated_arcs = regraduated.as_ref().map_or(0, |r| r.changed);
     let arc_tau: &[Vec<f32>] = regraduated
         .as_ref()
-        .map_or(&layout.arc_tau, |(t, _)| t.as_slice());
+        .map_or(&layout.arc_tau, |r| r.tau.as_slice());
     let src = indexed.positions();
     // ⭐⭐ **TODO ponto de INTERIOR nasce POUSADO na superfície.** Ver
     // [`Points::push_facing`].

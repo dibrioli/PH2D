@@ -565,9 +565,21 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   (`arc_tau`) e com isso os três sítios que a leem, mantendo o total de cada arco para não mexer
   na quantização. ⛔ **Dois erros meus a caminho, os dois com recuo SILENCIOSO:** a 1.ª versão era
   **circular** (tirava a «fracção conforme» do Tutte, que prega a fronteira *por `τ`* ⇒ devolvia
-  `τ`), e a 2.ª tinha um `?` a abortar a função inteira. ⇒ `FillReport::regraduated` conta os arcos
-  que de facto mudaram, e diz **`5` de `42`**: ela recua na maioria dos patches. *A barra («mais de
-  metade») não é afrouxada; o `#[ignore]` é da agenda.* ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  `τ`), e a 2.ª tinha um `?` a abortar a função inteira. ⇒ duas colunas novas (`FillReport::regraduated`, o
+  numerador, e `Regraduation::gave_up`, o **motivo**) levaram-na de `5/42` a **`42/42`** — a 3.ª
+  causa era um `return` que não preenchia o `side_alpha`, e só a coluna do motivo a apanhou
+  (`sem alfa 57`). ⚠️ **Quarta variante da mesma lei esta semana**: mediana sem contagem · numerador
+  sem denominador · numerador sem motivo · **recuo sem voz**.
+  ⛔ **E a correr ela NÃO move o número** — nem sozinha (`18° → 19°`) nem com o domínio conforme
+  (`28°`), e o que decide é a linha do domínio: **`21,4° → 21,3°`, zero**. ⭐⭐⭐ **Porque ela
+  emparelha o lado ERRADO:** o enviesamento nasce do desacordo entre os **lados OPOSTOS do mesmo
+  patch**, e ela alinha cada arco com o **vizinho do outro lado da costura** — outro par. ⚠️ E os
+  dois pedidos não se satisfazem ao mesmo tempo localmente: a distribuição de um lado tem de servir
+  *o lado oposto do meu patch* **e** *o patch do outro lado do arco*, e a cadeia atravessa a peça.
+  ⇒ ⭐⭐⭐ **é isso que a parametrização GLOBAL resolve, e a razão deixou de ser citação da
+  referência** — ela impõe o acordo desde o início pela função de transição, em vez de fazer a média
+  de duas propostas em desacordo. **A caça está fechada: campo ilibado · mapa fechado · forma do
+  domínio fechada · menos patches é a ordem errada · subdivisão local fechada. Sobra a global.** ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

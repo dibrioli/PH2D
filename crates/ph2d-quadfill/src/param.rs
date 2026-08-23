@@ -297,6 +297,13 @@ impl PatchParam {
                 let mut me = Self::with(flat, pos, tris);
                 me.rounds = r;
                 me.residual = res;
+                // ⛔⛔ **ESTA LINHA FALTAVA, e o sintoma foi «byte-idêntico ao
+                // controlo» pela TERCEIRA vez** (2026-08-23). Sem ela o caminho do
+                // LSCM devolvia um patch com o [`Self::side_alpha`] **vazio**, e a
+                // [`crate::regraduate`] — que é a única consumidora dele — desistia de
+                // 57 lados em silêncio. *Quem acrescenta um campo tem de o preencher em
+                // TODOS os `return`, e são quatro neste método.*
+                me.side_alpha = me.alpha_of(&chains);
                 me.side_chain = Some(per_side);
                 return Some(me);
             }

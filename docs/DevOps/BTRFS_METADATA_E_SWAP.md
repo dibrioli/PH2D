@@ -145,6 +145,12 @@ corrupção atingiu **só** artefatos escritos sob carga de build — coerente c
 `smartctl` do NVMe: **0 erros de mídia, 0 entradas de log, 7% de desgaste, saudável** — a hipótese 3
 (SSD) está **eliminada**; sobram kernel (1) e RAM (2).
 
+⚠️ **Quem vê «checksum» vermelho no fim do dia AGE, não escala** *(Enio, 2026-08-22)*: o protocolo
+do agente — achar todos os arquivos com `--scan`, apagar os de `target/`/sccache, restaurar fonte
+do git, registar o A/B, e devolver ao Enio só o passo que exige reboot/senha — está na
+[DIRETIVA_FIM_DE_DIA §6](../IntegracaoMultiAgente/DIRETIVA_FIM_DE_DIA.md). Esta secção é o *porquê*;
+aquela é o *faça*.
+
 **As três hipóteses, e o que separa cada uma:**
 1. **Regressão do kernel 7.2.0** (o `.0` de uma série nova, com btrfs+zstd+zram sob carga de 32
    núcleos). A correlação acima é **perfeita** e o A/B é barato: o `linux-cachyos-lts` 6.18.42 **já

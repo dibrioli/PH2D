@@ -19,6 +19,7 @@
 
 ## Comunicação & decisão
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) — padrão-ouro, execute, reporte
+- [«checksum» vermelho: o agente AGE, não escala (22/08)](feedback_a_red_checksum_is_acted_on_by_the_agent_not_escalated.md) — DIRETIVA_FIM_DE_DIA §6; ao Enio só o que exige reboot/senha, com o comando
 - [Estilo](feedback_communication_style.md) + [simplicidade](feedback_communication_simplicity.md) — ⚠️ **corrigidas 18/08**: ao Enio, curto e sem jargão (§0.8); denso só para a próxima LLM
 - ["Difícil de ajustar" = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md) — questione o modelo
 - [Knob por-passo é ALVO, não taxa](feedback_a_knob_consumed_as_a_per_step_rate_is_a_target_not_a_rate.md) — resposta exponencial e composta por OUTRO knob; meça a fração ÚTIL do curso

@@ -438,7 +438,7 @@ df -h / | awk 'NR==2{printf "disco depois: %s de %s (%s)\n",$3,$2,$5}'
 # recriou. VERDE fecha o dia. Qualquer ✗ é para o Enio, não para consertar aqui.
 echo
 bash scripts/btrfs-health.sh; disco_rc=$?
-echo "— saúde do disco: $( [ "$disco_rc" = 0 ] && echo VERDE || echo 'VERMELHO — cole as linhas ✗ no relatório e sinalize ao Enio' )"
+echo "— saúde do disco: $( [ "$disco_rc" = 0 ] && echo VERDE || echo 'VERMELHO — cole as linhas ✗ no relatório; «checksum» ✗ = o agente AGE (§6), não escala' )"
 
 # Reporte, NÃO aja: commits locais não-pushados.
 echo "— não-pushado em HEAD: $(git rev-list --count @{u}..HEAD 2>/dev/null || echo '?') commit(s)"
@@ -474,14 +474,87 @@ O `~/.cache/sccache` **não aparece** no script — de propósito. Ele fica.
    - **VERDE** → o dia fechou.
    - ✗ em **«não-alocado»/«metadata»** → o `df` está a mentir e a limpeza acima não cura; a cura
      é `balance` (root) — diga-lhe isso em uma linha, com o comando que o próprio script imprime.
-   - ✗ em **«checksum»** → **destaque no topo do relatório.** É o A/B do kernel: um `csum failed`
-     no `linux-cachyos-lts` reaponta a suspeita para a RAM (memtest86+), e **nenhum balance pode
-     correr nesse boot** (o timer já se recusa sozinho). Mecanismo e números:
-     [`docs/DevOps/BTRFS_METADATA_E_SWAP.md`](../DevOps/BTRFS_METADATA_E_SWAP.md) §3.
+   - ✗ em **«checksum»** → **o agente AGE, não escala** *(pedido do Enio, 2026-08-22)*: corre o
+     protocolo do **§6** inteiro — achar os arquivos, apagar/restaurar, registar o A/B do kernel —
+     e o relatório diz **o que fez** e o **único** passo que ficou para o Enio (reboot ou memtest),
+     já com o comando. ⛔ «Destaque no topo e espere» **não** é resposta aceitável.
    - ✗ em **«swap»/«target em tmpfs»** → alguém religou o `target/` em RAM (retirado em 22/08);
      `bash scripts/target-to-disk.sh` desfaz, com os portões dele.
 
 ---
+
+## §6 — «checksum» VERMELHO: o agente AGE *(pedido do Enio, 2026-08-22)*
+
+> Um `csum failed` no journal desta boot é um arquivo que **voltou do disco diferente do que foi
+> escrito**. Cada um vira `mold` em SIGBUS, `rustc` em SIGSEGV ou um teste que «falha sem motivo»
+> — e fica no disco até alguém o apagar. **Quem está a correr esta diretiva resolve**, na ordem
+> abaixo, e o relatório diz o que fez. Só o que exige **reboot** ou **senha** volta para o Enio, e
+> mesmo isso sai do relatório já com o comando. Mecanismo, números e o A/B de kernel:
+> [`docs/DevOps/BTRFS_METADATA_E_SWAP.md`](../DevOps/BTRFS_METADATA_E_SWAP.md) §3.
+
+**1. Qual kernel?** É o que decide a hipótese — e o que o agente escreve primeiro no relatório.
+- `*-cachyos` **7.2.x (não-LTS)** → é o kernel que **já se mediu corromper** (0 erros em dois boots
+  com 7.1.8; 100 e 108+ em dois boots com 7.2.0). O padrão de boot é o LTS desde 22/08; se a máquina
+  está no 7.2, foi escolha no menu. Passo do Enio: **reiniciar** (o menu volta ao LTS sozinho).
+- `*-cachyos-lts` → a hipótese «kernel» **caiu**; sobra a **RAM** (4 DIMMs AM5 sem ECC; histórico de
+  `mold` SIGBUS / `rustc` SIGSEGV não-determinísticos **antes** do 7.2.0 —
+  [`project_workstation_freeze_memory_reclaim`](../../project-memory/project_workstation_freeze_memory_reclaim.md)).
+  Passo do Enio: `sudo pacman -S memtest86+` e **uma noite** de teste, escolhendo-o no menu de boot.
+
+**2. Achar TODOS os arquivos** (sem root; o journal só mostra 10 a cada 5 s e suprime o resto):
+o `--scan` lê cada arquivo e imprime o caminho dos que devolvem erro. Targets e sccache primeiro
+(é onde a corrupção de 22/08 estava, os 10 de 10), depois fonte e `.git`.
+
+**3. Apagar o que regenera, restaurar o que tem dono, listar o resto.** `target/` e
+`~/.cache/sccache` → apagar (o cargo/sccache refazem). Fonte dentro de um repo e **limpa no índice**
+→ `git checkout -- <arquivo>` (o objeto vem do `.git`, que o passo 2 também varreu). Qualquer outro
+caminho (config, dados, `.git` em si) → **não tocar**; vai listado no relatório com o caminho.
+
+**4. Não correr balance nesse boot.** O timer já se recusa sozinho (`ExecCondition`); não force
+`systemctl start`. Balance reescreve dados, e num boot que corrompe isso espalha o defeito.
+
+**5. Registar o A/B.** Uma linha na tabela de
+[`BTRFS_METADATA_E_SWAP.md` §3](../DevOps/BTRFS_METADATA_E_SWAP.md) (data · kernel · nº de `csum
+failed` · nº de arquivos · onde estavam) e, se a hipótese mudou de lado, a memória
+[`project_btrfs_metadata_starved_not_disk_full_2026_08_22`](../../project-memory/project_btrfs_metadata_starved_not_disk_full_2026_08_22.md).
+*Um dia não fecha a hipótese; uma semana a zero fecha.*
+
+**6. Relatório** (§5, item 5): kernel · contagem · arquivos apagados / restaurados / listados · e o
+**único** passo do Enio com o comando. Nada de «aguardo instruções».
+
+O bloco (roda da raiz do repo; não apaga nada fora de `target/` e `sccache`):
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+echo "kernel: $(uname -r)   csum failed nesta boot: $(journalctl -k -b --no-pager -q | grep -c 'csum failed')"
+
+# 2. achar — targets e sccache primeiro, depois fonte e .git (o .git é o que restaura a fonte)
+#    (barra no fim de propósito: se algum target/ ainda for symlink, o find sem ela não entra)
+bash scripts/btrfs-health.sh --scan target/ Worktrees/*/target/ "$HOME/.cache/sccache/" > /tmp/ph2d-corrupt.txt
+bash scripts/btrfs-health.sh --scan crates/ shells/ docs/ scripts/ .git/                >> /tmp/ph2d-corrupt.txt
+echo "arquivos corrompidos: $(wc -l < /tmp/ph2d-corrupt.txt)"
+
+# 3. apagar / restaurar / listar — o filtro de caminho é a segurança; não o alargue
+apagados=0; restaurados=0
+while IFS= read -r f; do
+  case "$f" in
+    target/*|Worktrees/*/target/*|"$HOME"/.cache/sccache/*)
+      rm -f -- "$f" && apagados=$((apagados+1)) ;;
+    crates/*|shells/*|docs/*|scripts/*)
+      if [ -z "$(git status --porcelain -- "$f")" ]; then
+        git checkout -- "$f" && restaurados=$((restaurados+1))
+      else echo "! fonte SUJA, não restaurada (há edição local): $f"; fi ;;
+    *) echo "! fora do filtro — listar no relatório, NÃO tocar: $f" ;;
+  esac
+done < /tmp/ph2d-corrupt.txt
+echo "apagados=$apagados restaurados=$restaurados"
+```
+
+⚠️ O `--scan` só vê arquivos **com** checksum: os `target/` têm `+C` (nodatacow) desde 22/08 e
+**não** têm checksum — ali a mesma corrupção é muda (teste que falha, binário estranho). Se o
+journal desta boot acusa `csum failed` mas o scan devolve zero, os arquivos ruins **já foram
+apagados** (alguém correu `cargo clean -p`, ou a limpeza acima) — registe na mesma: a contagem do
+journal é o dado do A/B, e ela fica.
 
 ## Notas
 

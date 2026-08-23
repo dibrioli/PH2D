@@ -1858,6 +1858,19 @@ impl crate::App {
         // like the clip's — it only advances while ITS transport plays.
         self.container_playhead.advance_ticks(report.ticks);
 
+        // **QUEM ESTÁ SOB PRÉ-VISUALIZAÇÃO DE FERRAMENTA**, calculado UMA vez e lido por três
+        // sítios deste quadro: o tique da §11 (uma folha em pintura toca), o `preview_overrides`
+        // do extract, e o overlay da grelha (as linhas seguem o quad desdobrado).
+        //
+        // ⚠️ **Um `let`, e não três leituras dos mesmos campos.** Os três respondem à mesma
+        // pergunta, e com uma cópia em cada um deles a próxima fonte de pré-visualização entraria
+        // só em dois — dando linhas sobre um quad que não desdobrou, ou uma folha parada a pintar.
+        let tool_preview_bits: [Option<u64>; 3] = [
+            self.painter_preview_gpu.map(|g| g.entity_bits),
+            self.bgremoval_preview_gpu.map(|g| g.entity_bits),
+            self.painter_shape_source_preview_gpu.map(|g| g.entity_bits),
+        ];
+
         // **A §11 ANIMATION anda AQUI**, ao lado dos outros relógios e pela mesma razão: um
         // `SpriteAnimator` é `SimComponent` e o replay tem de reproduzir o frame avançado, o que
         // só um passo fixo e contado dá.
@@ -1867,7 +1880,12 @@ impl crate::App {
         // fechar»). Era falso, e foi uma mutação que o disse: a `ph2d_ecs::advance` tem laço de
         // recuperação próprio e fecha exatamente os mesmos ciclos. Gate:
         // `catching_up_in_one_call_is_the_same_as_catching_up_step_by_step`.
-        sprite_anim_tick::tick_sprite_animations(sim, report.ticks, self.fixed_step.fixed_dt());
+        sprite_anim_tick::tick_sprite_animations(
+            sim,
+            report.ticks,
+            self.fixed_step.fixed_dt(),
+            &tool_preview_bits,
+        );
 
         // Sim tick + extract — extracted to sibling `sim_extract.rs`
         // (Wave 3.2 stage A). Runs the bouncing-motion sim tick and
@@ -8827,6 +8845,15 @@ impl crate::App {
                     super::render_loop::sheet_grid_overlay::draw(
                         sim,
                         e,
+                        // ⚠️ **As linhas seguem o quad que foi de facto DESENHADO.** Sob pintura o
+                        // quad desdobra-se e centra-se no pivô; fora dela ele é uma célula e a
+                        // folha dispõe-se à volta dela. Desenhar sempre a segunda disposição
+                        // deslocava as linhas **meia célula** sobre a arte pintada (report do
+                        // Enio, 2026-08-23, com foto).
+                        super::render_loop::sim_extract_sheet::is_tool_previewed(
+                            &tool_preview_bits,
+                            e,
+                        ),
                         hero.project.pixels_per_meter,
                         cam_affine,
                         px_per_world,

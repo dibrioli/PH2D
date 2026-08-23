@@ -40,9 +40,12 @@ const LIVE_PX: f64 = 2.0;
 ///
 /// `px_per_world` é a escala do afim da câmara — é ela que traz as constantes de TELA acima para o
 /// espaço em que a cena é montada, como no [`super::sheet_overlay`].
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn draw(
     sim: &ph2d_ecs::SimWorld,
     entity: ph2d_ecs::Entity,
+    // A folha deste sprite está **desdobrada** (uma ferramenta pré-visualiza-o)? Ver [`lattice`].
+    unfolded: bool,
     pixels_per_meter: f32,
     cam: Affine,
     px_per_world: f64,
@@ -55,7 +58,7 @@ pub(crate) fn draw(
     let Some(spr) = sim.world().get::<Sprite>(entity) else {
         return;
     };
-    let Some(l) = lattice(spr, pixels_per_meter) else {
+    let Some(l) = lattice(spr, pixels_per_meter, unfolded) else {
         return;
     };
     let (hf, vf) = (spr.hframes.max(1), spr.vframes.max(1));
@@ -139,7 +142,21 @@ pub(crate) struct Lattice {
 }
 
 /// `None` quando não há grelha para desenhar.
-pub(crate) fn lattice(spr: &Sprite, pixels_per_meter: f32) -> Option<Lattice> {
+///
+/// # ⚠️ DUAS disposições, e a diferença é quem desenha a célula viva
+///
+/// - **Dobrada** (`unfolded == false`, a pré-visualização `Show sheet on canvas`): o quad real do
+///   sprite **É** a célula viva, então a folha dispõe-se à volta dela.
+/// - **Desdobrada** (`unfolded == true`, uma ferramenta pinta o sprite): há UM quad a cobrir a
+///   folha inteira, centrado no pivô — e a célula viva está no *slot* dela, como as outras.
+///
+/// ⚠️ **Desenhar sempre a primeira desloca as linhas sobre a arte pintada** (report do Enio,
+/// 2026-08-23, com foto): `pivô − (lcol + ½)·cw` só coincide com `pivô − hf·cw/2` quando
+/// `lcol = hf/2 − ½`, que não é inteiro — logo elas **nunca** coincidem. O desvio é
+/// `(lcol + ½ − hf/2)·cw`, e vale meia célula no caso fotografado (8 células, viva na 4);
+/// noutro frame é maior. ⚠️ *A 1.ª versão do gate escreveu «meia célula sempre» e sangrou na hora.* *Duas disposições existem porque dois modos existem; o que
+/// não pode existir é uma delas a descrever o outro.*
+pub(crate) fn lattice(spr: &Sprite, pixels_per_meter: f32, unfolded: bool) -> Option<Lattice> {
     let cells = super::sim_extract_sheet::cell_count(spr)?;
     let (hf, vf) = (spr.hframes.max(1), spr.vframes.max(1));
     let (cell_w, cell_h) = (f64::from(spr.size[0]), f64::from(spr.size[1]));
@@ -163,17 +180,37 @@ pub(crate) fn lattice(spr: &Sprite, pixels_per_meter: f32) -> Option<Lattice> {
     if spr.flip_y {
         lrow = vf - 1 - lrow;
     }
-    Some(Lattice {
-        x0: live_cx - (f64::from(lcol) + 0.5) * cell_w,
+    let (w, h) = (f64::from(hf) * cell_w, f64::from(vf) * cell_h);
+    let (x0, y0, cx, cy) = if unfolded {
+        // A folha centra-se no PIVÔ (é onde o quad desdobrado está), e a célula viva ocupa o slot
+        // dela — como as outras.
+        let x0 = live_cx - w * 0.5;
+        let y0 = live_cy + h * 0.5;
+        (
+            x0,
+            y0,
+            x0 + (f64::from(lcol) + 0.5) * cell_w,
+            y0 - (f64::from(lrow) + 0.5) * cell_h,
+        )
+    } else {
         // ⚠️ `+`: a linha 0 está ACIMA da viva quando `lrow > 0`, porque o `V` cresce para baixo e
         // o `Y` do mundo para cima.
-        y0: live_cy + (f64::from(lrow) + 0.5) * cell_h,
-        w: f64::from(hf) * cell_w,
-        h: f64::from(vf) * cell_h,
+        (
+            live_cx - (f64::from(lcol) + 0.5) * cell_w,
+            live_cy + (f64::from(lrow) + 0.5) * cell_h,
+            live_cx,
+            live_cy,
+        )
+    };
+    Some(Lattice {
+        x0,
+        y0,
+        w,
+        h,
         cell_w,
         cell_h,
-        live_cx,
-        live_cy,
+        live_cx: cx,
+        live_cy: cy,
     })
 }
 

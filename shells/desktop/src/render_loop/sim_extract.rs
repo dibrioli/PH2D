@@ -622,9 +622,16 @@ pub(super) fn run(
                                 override_for_entity.is_some(),
                                 spr,
                             );
+                            // ⚠️ **A base é `[0,0,1,1]`, e NÃO o `sheet_uv`.** Sob override a
+                            // textura é a transitória da ferramenta — o bake da imagem inteira —,
+                            // e o `sheet_uv` é um rect do ATLAS. Fatiar um pelo outro amostraria
+                            // uma lasca arbitrária: um sprite de atlas mostraria lixo na
+                            // pré-visualização, e o de textura própria acertava por os dois serem
+                            // o rect unitário. *Um acerto que depende da fonte não é um acerto.*
                             let anim_preview = override_for_entity.and_then(|_| {
                                 crate::render_loop::sim_extract_sheet::anim_preview_quad(
-                                    spr, sheet_uv,
+                                    spr,
+                                    [0.0, 0.0, 1.0, 1.0],
                                 )
                             });
                             if ghosts.is_some() || anim_preview.is_some() {

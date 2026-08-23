@@ -43,7 +43,12 @@ pub(crate) fn step_ticks(fixed_dt: f64) -> u64 {
 ///
 /// ⇒ Fica a forma simples. *Um laço a mais que a mutação não distingue é uma justificação que
 /// ninguém voltou a verificar.*
-pub(crate) fn tick_sprite_animations(sim: &mut SimWorld, ticks: u32, fixed_dt: f64) {
+pub(crate) fn tick_sprite_animations(
+    sim: &mut SimWorld,
+    ticks: u32,
+    fixed_dt: f64,
+    tool_preview_bits: &[Option<u64>],
+) {
     if ticks == 0 {
         return;
     }
@@ -52,19 +57,63 @@ pub(crate) fn tick_sprite_animations(sim: &mut SimWorld, ticks: u32, fixed_dt: f
         return;
     }
     let world = sim.world_mut();
-    let mut q = world.query::<(&mut SpriteAnimator, &SpriteAnimations, &mut Sprite)>();
-    for (mut animator, tags, mut sprite) in q.iter_mut(world) {
-        if !animator.playing {
+    let mut q = world.query::<(
+        ph2d_ecs::Entity,
+        &mut SpriteAnimator,
+        &SpriteAnimations,
+        &mut Sprite,
+    )>();
+    for (entity, mut animator, tags, mut sprite) in q.iter_mut(world) {
+        // ⚠️ **UMA FOLHA EM PINTURA TOCA, mesmo com o transporte parado** (Enio, 2026-08-23:
+        // *«o preview não está animado»*).
+        //
+        // Enquanto uma ferramenta pré-visualiza um sprite com grelha, o quad dele **desdobra-se** e
+        // passa a mostrar a imagem inteira — o `Sprite::frame` deixa de ter efeito no que se pinta,
+        // e o único sítio onde ele ainda se vê é a célula de pré-visualização ao lado. Se ela
+        // dependesse do `playing`, bastaria o artista ter pausado uma vez (arrastar a barra de
+        // frames pausa, por desenho) para a pré-visualização nascer **parada** — e ela existe
+        // exactamente para mostrar o movimento.
+        //
+        // ⚠️ Isto **não** liga o transporte: o `playing` fica como estava, e ao sair da ferramenta
+        // a sprite volta a obedecer-lhe. O que corre aqui é a pré-visualização.
+        let painted =
+            crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, entity);
+        if !animator.playing && !painted {
             continue;
         }
         let Some(tag) = tags.get(&animator.current) else {
             continue;
         };
+        // ⚠️ **A pré-visualização corre sobre uma CÓPIA, e a lei pura é a razão:** a
+        // [`ph2d_ecs::advance`] também desiste quando `playing` é falso (é ela que define o que
+        // «tocar» quer dizer), então bastava-me abrir o guarda acima e o frame continuava parado.
+        //
+        // ⚠️ **A cópia leva `loop_override = Some(true)`**: uma animação de uma volta já esgotada
+        // congelaria a pré-visualização na última célula — e uma pré-visualização que existe para
+        // mostrar o movimento não pode acabar. *Ela repete porque é uma pré-visualização, não
+        // porque a cena o pede.*
+        //
+        // ⇒ Do que a cópia produz volta o **relógio** (é ele que faz o tempo passar entre tiques)
+        // e o frame; o `playing` e os overrides do documento ficam intactos, e sair da ferramenta
+        // devolve a cena exactamente como ela estava.
+        let preview_only = painted && !animator.playing;
+        let mut run = animator.clone();
+        if preview_only {
+            run.playing = true;
+            run.loop_override = Some(true);
+        }
         // O pool é a grelha desta sprite, lida **agora** — mexer em `hframes` a meio de uma
         // animação encolhe o intervalo no mesmo quadro, sem estado intermédio a envelhecer.
         let cells = sprite.hframes.saturating_mul(sprite.vframes).max(1);
         let mut frame = sprite.frame;
-        ph2d_ecs::advance(&mut animator, tag, &mut frame, cells, dt * u64::from(ticks));
+        ph2d_ecs::advance(&mut run, tag, &mut frame, cells, dt * u64::from(ticks));
+        if preview_only {
+            animator.elapsed_ticks = run.elapsed_ticks;
+            animator.pingpong_reverse = run.pingpong_reverse;
+            animator.repeat_count = run.repeat_count;
+        } else {
+            *animator = run;
+        }
         // ⚠️ **Escreve só quando MUDA.** O `Sprite` é `SimComponent` e o undo regista por DIFF:
         // tocar-lhe todo o quadro faria uma sprite pausada num frame só produzir um passo de
         // undo por quadro. `bevy` marca a mudança no `deref_mut`, não na atribuição.

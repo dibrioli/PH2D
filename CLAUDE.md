@@ -697,7 +697,12 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   versão) fá-la-ia **deslizar debaixo do pincel**, porque o tique continua a andar. ⛔ A
   pré-visualização da grelha faz o **contrário** e também está certa: ali a célula viva **é** o quad
   real. ⭐ E como a folha aberta mostra tudo, o `frame` deixa de ter efeito visível — daí a
-  **célula extra acima dela, a tocar a animação enquanto se pinta**.
+  **célula extra acima dela, a tocar a animação enquanto se pinta**, ⚠️ **mesmo com o transporte
+  pausado**: ela corre sobre uma **cópia** do animador (a lei pura também desiste com
+  `playing == false`), e do que a cópia produz volta só o relógio — o `playing` do documento fica
+  intacto. ⚠️ **As LINHAS da grelha seguem o MODO** (`lattice(.., unfolded)`): a folha pintada
+  centra-se no pivô e a pré-visualizada dispõe-se à volta da célula viva, e as duas disposições
+  **nunca** coincidem (o desvio é `(lcol + ½ − hf/2)·cw`) — foi o 2.º report com foto.
   ⭐ **A GRELHA VÊ-SE** (Enio, 2026-08-23): a caixa **«Show sheet on canvas»** (§4 Sprite Sheet, só
   aparece com grelha) abre a folha no canvas — as outras células esmaecidas no lugar delas, com as
   linhas dos cortes e a viva contornada. ⚠️ **Fantasmas de PRESENTE, nunca documento** (o molde é o

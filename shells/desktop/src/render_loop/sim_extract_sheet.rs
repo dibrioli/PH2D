@@ -49,6 +49,26 @@ pub(crate) fn previewed(hero: &ph2d_editor::screens::hero::HeroScreen) -> Option
     .map(ph2d_ecs::Entity::from_bits)
 }
 
+/// **UMA FERRAMENTA PRÉ-VISUALIZA esta entidade?** — a pergunta, respondida num sítio só.
+///
+/// ⚠️ **Ela é lida por TRÊS sítios do quadro** e chegou a estar escrita nos três: o tique da §11
+/// (uma folha em pintura toca), o extract (o quad desdobra-se) e o overlay da grelha (as linhas
+/// seguem o quad desdobrado). Com uma cópia em cada, uma discordância dá **linhas sobre um quad
+/// que não desdobrou** — que é, de novo, o defeito que o Enio fotografou.
+///
+/// ⛔ A lista de fontes de pré-visualização vive no `render_loop` (`tool_preview_bits`), calculada
+/// uma vez por quadro; aqui só se pergunta se ela cobre esta entidade.
+#[must_use]
+pub(crate) fn is_tool_previewed(
+    tool_preview_bits: &[Option<u64>],
+    entity: ph2d_ecs::Entity,
+) -> bool {
+    tool_preview_bits
+        .iter()
+        .flatten()
+        .any(|b| *b == entity.to_bits())
+}
+
 /// Quanto uma célula fantasma pesa contra a viva.
 ///
 /// ⚠️ **Baixo o suficiente para a célula VIVA continuar a ser a resposta à pergunta «qual está no

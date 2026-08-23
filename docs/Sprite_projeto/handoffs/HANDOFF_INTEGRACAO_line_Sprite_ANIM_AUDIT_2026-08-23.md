@@ -265,3 +265,54 @@ duas gestos já resolvem, um deles com as setas visíveis ao lado do campo.
 
 ⇒ **Se o Enio insistir, o caminho está descrito acima e é ~30 linhas.** A recusa é de preço, não de
 desenho.
+
+## §10 — Adenda: os dois defeitos do 2.º smoke da folha (report com foto)
+
+*«as imagens ficaram deslocadas da grade ao ativar o painter e o preview não está animado»*
+
+### D1 · As linhas desalinhadas — e o defeito era MEU, da adenda anterior
+
+A §8 deu à folha pintada uma âncora nova (o **pivô**, para ela não deslizar sob o pincel) e
+**esqueceu o overlay**, que continuou a dispor a grelha à volta da **célula viva**. As duas contas
+— `pivô − (lcol + ½)·cw` e `pivô − hf·cw/2` — só coincidem quando `lcol = hf/2 − ½`, que não é
+inteiro: elas **nunca** coincidem. O desvio é `(lcol + ½ − hf/2)·cw`, e vale meia célula no caso
+fotografado (8 células, viva na 4).
+
+⇒ O `lattice` passa a ter **duas disposições**, e a diferença é *qual dos dois modos desenha a
+célula viva*: dobrada, o quad real **é** a célula viva; desdobrada, há um quad só e a viva ocupa o
+slot dela. ⚠️ **A 1.ª versão do gate escreveu «meia célula sempre» e sangrou na hora** — a fórmula
+é a acima, e meia célula é o valor de UM caso.
+
+### D2 · A pré-visualização parada — e a lei pura era a razão
+
+Bastava o artista ter pausado uma vez (**arrastar a barra de frames pausa**, por desenho) para a
+célula de pré-visualização nascer estática. ⚠️ E abrir o guarda do tique **não chegava**: a
+[`ph2d_ecs::advance`] também desiste com `playing == false` — é ela que define o que «tocar»
+significa.
+
+⇒ A pré-visualização corre sobre uma **cópia** do animador (`playing = true`,
+`loop_override = Some(true)` — uma de uma volta congelaria na última célula), e do que ela produz
+volta só o **relógio** e o frame. O `playing` do documento fica intacto: sair da ferramenta devolve
+a cena como estava, e o gate afirma-o.
+
+⚠️ **Terceiro defeito, encontrado ao arrumar:** a sub-UV da célula de pré-visualização usava o
+`sheet_uv` (um rect do **atlas**) sobre a textura transitória (a imagem **inteira**). Acertava por
+acidente num sprite de textura própria, onde os dois são o rect unitário, e mostraria lixo num de
+atlas. *Um acerto que depende da fonte não é um acerto.*
+
+### ⭐ E um gate que estava verde por acidente
+
+O `a_sheet_under_a_tool_preview…` comparava o frame final com o inicial. Depois de 20 tiques a
+`walk` tinha dado a volta e **voltado ao 0** — a asserção media o ponto final de um ciclo. Hoje ela
+conta **quantos frames distintos** passaram.
+
+### O predicado que estava em três sítios
+
+«Uma ferramenta pré-visualiza esta entidade?» era lido pelo tique, pelo extract e pelo overlay,
+escrito nos três. A mutação que o tirava do overlay **compilava e passava** — o `draw` não é
+alcançável de um teste. ⇒ `is_tool_previewed`, uma função com gate, e a lista de fontes
+(`tool_preview_bits`) calculada **uma vez por quadro** no `render_loop`.
+
+**Gates novos (3), mutações (3):** o retículo desdobrado casa com o quad pintado (e difere do
+dobrado pela fórmula) · a folha em pintura toca com o transporte parado **e não o liga** · uma
+resposta só a quem está sob pré-visualização.

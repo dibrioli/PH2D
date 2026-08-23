@@ -38,8 +38,13 @@
 //!
 //! 10. Com a sprite selecionada, entre no **Painter**: a folha **abre-se inteira**, cada quadro no
 //!     lugar dele e no tamanho certo — e uma **célula extra, acima dela, toca a animação** enquanto
-//!     se pinta. ⚠️ Antes disto a tira saía esmagada 8:1 dentro de uma célula (report do Enio, com
-//!     foto), e o ponteiro tinha o mesmo esmagamento: as duas contas eram a mesma, e ambas erradas.
+//!     se pinta, **mesmo com o transporte pausado**. ⚠️ Antes disto a tira saía esmagada 8:1 dentro
+//!     de uma célula (report do Enio, com foto), e o ponteiro tinha o mesmo esmagamento: as duas
+//!     contas eram a mesma, e ambas erradas.
+//! 11. Com **Show sheet on canvas** marcado **e** o Painter aberto, as **linhas caem em cima dos
+//!     cortes** da arte. ⚠️ Elas caíam desalinhadas (2.º report, com foto): a folha pintada
+//!     centra-se no pivô e a grelha dispunha-se à volta da célula viva — duas âncoras, e as linhas
+//!     seguiam a errada.
 //!
 //! ⚠️ **Os passos 2, 6 e 7 são a auditoria de 2026-08-23** ([doc 21](../../../docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md)):
 //! até ela, o passo 2 deixava a sprite muda (escolher outra não retomava a que se esgotara), o

@@ -115,7 +115,7 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
 
     // Corre ate' ela se parar sozinha, na ULTIMA celula.
     for _ in 0..40 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016);
+        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016, &[]);
     }
     assert!(!info(&sim, e).playing, "a de uma volta para-se sozinha");
     assert_eq!(info(&sim, e).frame, 7, "e para na ULTIMA celula");
@@ -128,7 +128,7 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
         4,
         "ligar de novo devolve a imagem ao inicio"
     );
-    crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016);
+    crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016, &[]);
     let after = info(&sim, e);
     assert!(
         after.playing,
@@ -195,7 +195,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
     );
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
     for _ in 0..40 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016);
+        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016, &[]);
     }
     assert!(!info(&sim, e).playing, "a de uma volta esgotou-se");
 
@@ -207,7 +207,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
     );
     let start = info(&sim, e).frame;
     for _ in 0..3 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016);
+        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016, &[]);
     }
     assert!(
         info(&sim, e).frame != start,
@@ -271,7 +271,7 @@ fn dragging_the_frame_bar_sets_the_cell_pauses_and_stays_inside_the_range() {
 
     // ⚠️ E o relogio tem de deixar a celula quieta. Sem a pausa, isto anda.
     for _ in 0..20 {
-        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016);
+        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016, &[]);
     }
     assert_eq!(
         info(&sim, e).frame,
@@ -284,4 +284,87 @@ fn dragging_the_frame_bar_sets_the_cell_pauses_and_stays_inside_the_range() {
     assert_eq!(info(&sim, e).frame, 2, "abaixo do intervalo fixa no `from`");
     edit(&mut sim, e, &reg, AnimFieldEdit::SetFrame(99));
     assert_eq!(info(&sim, e).frame, 5, "acima do intervalo fixa no `to`");
+}
+
+/// **UMA FOLHA EM PINTURA TOCA, mesmo com o transporte parado** (Enio, 2026-08-23: *«o preview não
+/// está animado»*).
+///
+/// ⚠️ Enquanto uma ferramenta pré-visualiza um sprite com grelha, o quad dele **desdobra-se** e o
+/// `Sprite::frame` deixa de ter efeito no que se pinta — o único sítio onde ele ainda se vê é a
+/// célula de pré-visualização ao lado. Se ela dependesse do `playing`, bastaria o artista ter
+/// pausado uma vez (arrastar a barra de frames **pausa**, por desenho) para ela nascer parada. *Uma
+/// pré-visualização que existe para mostrar o movimento não pode depender de um interruptor de
+/// cena.*
+///
+/// ⚠️ **E ela NÃO liga o transporte** — a terceira asserção. Ligar `playing` faria a pintura deixar
+/// a cena a tocar depois de sair da ferramenta, que é uma edição que ninguém pediu.
+///
+/// **Mutação que deve sangrar:** tirar o `|| painted` do guarda do tique, **ou** trocá-lo por
+/// `animator.playing = true`.
+#[test]
+fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sprite(&mut sim, 8);
+    let mut lib = SpriteAnimations::new();
+    lib.insert(AnimationTag {
+        frame_ms: 10,
+        ..AnimationTag::new("walk", 0, 7)
+    })
+    .unwrap();
+    sim.world_mut().entity_mut(e).insert(lib);
+    edit(&mut sim, e, &reg, AnimFieldEdit::AddPlayer);
+    edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("walk".into()));
+    // ⚠️ PARADO de propósito -- é o estado em que o report caiu.
+    assert!(!info(&sim, e).playing, "a fixtura tem de estar PAUSADA");
+
+    // 1. Sem ferramenta a pintar, uma cena pausada não anda.
+    let before = info(&sim, e).frame;
+    for _ in 0..20 {
+        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016, &[]);
+    }
+    assert_eq!(
+        info(&sim, e).frame,
+        before,
+        "pausada e sem pintura, o tique nao pode mexer no frame"
+    );
+
+    // 2. Sob pré-visualização de ferramenta, ela ANDA.
+    //
+    // ⚠️ **A afirmação é «passou por VÁRIOS quadros», e não «acabou noutro»** — e a diferença
+    // custou uma corrida: a 1.ª versão comparava o frame final com o inicial, e depois de 20
+    // tiques a `walk` tinha dado a volta e **voltado ao 0**. *Um gate que mede o ponto final de um
+    // ciclo é verde ou vermelho por acidente.*
+    let painted = [Some(e.to_bits())];
+    let mut seen = std::collections::BTreeSet::new();
+    for _ in 0..20 {
+        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016, &painted);
+        seen.insert(info(&sim, e).frame);
+    }
+    let after = info(&sim, e);
+    assert!(
+        seen.len() > 3,
+        "a folha em pintura tem de tocar -- a pre-visualizacao existe para mostrar o movimento \
+         (passou por {:?})",
+        seen
+    );
+
+    // 3. ⚠️ E o TRANSPORTE continua parado: sair da ferramenta devolve a cena como ela estava.
+    assert!(
+        !after.playing,
+        "a pintura nao pode LIGAR o transporte -- isso e' uma edicao que ninguem pediu"
+    );
+
+    // 4. E a pré-visualização de OUTRA entidade não põe esta a tocar.
+    let other = [Some(e.to_bits() ^ 0xFFFF)];
+    let held = info(&sim, e).frame;
+    for _ in 0..20 {
+        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016, &other);
+        assert_eq!(
+            info(&sim, e).frame,
+            held,
+            "a pintura do vizinho nao toca esta -- e a asserção é DENTRO do laço, senão ela \
+             mediria outra vez o fim de um ciclo"
+        );
+    }
 }

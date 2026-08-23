@@ -291,3 +291,26 @@ fn the_animated_preview_follows_the_live_frame_and_sits_outside_the_sheet() {
         "os oito frames dao oito imagens diferentes -- ele ANDA"
     );
 }
+
+/// **A pergunta «uma ferramenta pré-visualiza esta entidade?» tem UMA resposta.**
+///
+/// ⚠️ Ela é lida pelo tique (uma folha em pintura toca), pelo extract (o quad desdobra-se) e pelo
+/// overlay (as linhas seguem o quad desdobrado) — e chegou a estar escrita nos três. Uma
+/// discordância dá **linhas sobre um quad que não desdobrou**, que é o defeito fotografado.
+#[test]
+fn one_function_answers_who_a_tool_is_previewing() {
+    let a = ph2d_ecs::Entity::from_bits(0x1_0000_0001);
+    let b = ph2d_ecs::Entity::from_bits(0x1_0000_0002);
+    assert!(!is_tool_previewed(&[], a), "sem pre-visualizacao nenhuma");
+    assert!(!is_tool_previewed(&[None, None], a), "com todas vazias");
+    assert!(is_tool_previewed(&[None, Some(a.to_bits()), None], a));
+    assert!(
+        !is_tool_previewed(&[Some(b.to_bits())], a),
+        "a pre-visualizacao do VIZINHO nao e' a desta"
+    );
+    // ⚠️ Várias ao mesmo tempo é o caso real (o sprite activo E o usado como Shape do pincel).
+    assert!(is_tool_previewed(
+        &[Some(b.to_bits()), Some(a.to_bits())],
+        a
+    ));
+}

@@ -53,14 +53,25 @@ fn the_hover_pick_happens_exactly_once() {
 #[test]
 fn both_consumers_read_the_one_field() {
     let frame = shell("src/render_loop/mod.rs");
+    // ⚠️ **A âncora é a PORTA, não a forma da atribuição.** A 1.ª versão casava com
+    // `self.hovered_object = hovered` — a linha exacta que existia — e expirou no mesmo dia, ao
+    // estender o realce a todos os objectos. *Uma âncora que copia a implementação de uma lei
+    // expira sempre que a lei se muda de casa; a que nomeia a porta sobrevive.*
     assert!(
-        frame.contains("self.hovered_object = hovered"),
-        "o campo do quadro deixou de ser escrito — sem ele não há fonte única a ler"
+        frame.contains("self.hovered_object = self.pick_hovered_object("),
+        "o campo do quadro deixou de ser escrito pela porta — sem ele não há fonte única a ler"
+    );
+    // ⭐ E a GEOMETRIA é resolvida com o objecto, no mesmo sítio: resolvê-la no sítio de desenho
+    // seria escolher o objecto duas vezes.
+    assert!(
+        frame.contains("self.hover_outline = match self.hovered_object"),
+        "o contorno deixou de ser resolvido junto com o objecto que ele desenha"
     );
     // O contorno do canvas.
     assert!(
-        frame.contains("let Some(bits) = self.hovered_object"),
-        "o contorno do canvas deixou de ler o campo do quadro"
+        frame.contains("let Some(bits) = self.hovered_object")
+            && frame.contains("!self.hover_outline.is_empty()"),
+        "o contorno do canvas deixou de ler os campos do quadro"
     );
     // A Hierarquia, pela mesma resposta passada ao `publish`.
     assert!(
@@ -85,5 +96,66 @@ fn the_hierarchy_does_not_pick_the_canvas() {
         !snap.contains("pick_all_at_world"),
         "o publicador da Hierarquia ganhou um pick próprio — ele não tem o mapa vivo FUNDIDO à \
          mão, então a linha acesa deixaria de ser a forma que o clique pega"
+    );
+}
+
+/// ⛔ **O COMPOSTO DE PICK EXISTE UMA VEZ.**
+///
+/// ⚠️ *"O que este ponto pega"* é vetor + Flip + sprites, nessa ordem de z — e a lista estava
+/// **copiada duas vezes** dentro do `input_dispatch` (o clique com modificador e o clique simples)
+/// quando o realce de proveniência chegou. Três cópias é como o realce acende uma coisa e o clique
+/// pega outra: cada cópia está certa sozinha, e nenhuma fica vermelha.
+///
+/// ⚠️ **A agulha é `hits.extend(…pick_sprites_at_world(`, e a precisão é a lei.** Um pick de
+/// sprites SOZINHO é legítimo e existe: o conta-gotas de corpo de um joint quer um corpo físico, e
+/// um corpo físico é uma sprite — perguntar pelo vetor ali seria oferecer o que não serve. O que
+/// **não** pode nascer outra vez é o ACRÉSCIMO de sprites a uma lista de hits, que é a forma de um
+/// composto. *Uma agulha que acusa o inocente é pior que não haver agulha.*
+#[test]
+fn the_object_pick_composite_exists_once() {
+    let offenders: Vec<String> = ["src/input_dispatch.rs", "src/render_loop/mod.rs"]
+        .iter()
+        .filter(|rel| shell(rel).contains("hits.extend(ph2d_render::pick_sprites_at_world("))
+        .map(|rel| (*rel).to_string())
+        .collect();
+    assert!(
+        offenders.is_empty(),
+        "estes sítios montam um segundo composto de pick — a porta é \
+         `hover_highlight::pick_objects_at`, e ela existe porque o realce e o clique têm de \
+         concordar sobre o que está sob o dedo:\n  {}",
+        offenders.join("\n  ")
+    );
+    // ⚠️ **O CONTROLE:** a porta tem de existir e usar as três fontes — sem isto o gate ficaria
+    // verde no dia em que alguém apagasse o pick de sprites por completo.
+    let door = shell("src/hover_highlight.rs");
+    for source in [
+        "vec_gizmo_view::pick_all_at_world",
+        "flip_gizmo_view::pick_all_at_world",
+        "pick_sprites_at_world",
+    ] {
+        assert!(
+            door.contains(source),
+            "a porta do pick perdeu a fonte `{source}` — um objecto dessa família deixaria de ser \
+             apontável, e o realce ficaria mudo sobre ele"
+        );
+    }
+}
+
+/// ⛔ **O REALCE NÃO TEM PORTÃO DE MODO** (Enio, 2026-08-23).
+///
+/// ⚠️ Ele nasceu guardado por `vector_active`, e a pergunta que ele responde — *"qual destes
+/// objectos é este?"* — não é de modo nenhum: o clique pega objecto em qualquer um. Um portão aqui
+/// dava resposta só onde ela já era mais fácil.
+#[test]
+fn the_highlight_has_no_mode_gate() {
+    let frame = shell("src/render_loop/mod.rs");
+    let at = frame
+        .find("if let Some(bits) = self.hovered_object")
+        .expect("o sítio que desenha o contorno desapareceu");
+    let head = &frame[at.saturating_sub(400)..at];
+    assert!(
+        !head.contains("if vector_active"),
+        "o contorno voltou a ser guardado por um modo — ele segue o CLIQUE, e o clique pega \
+         objecto em qualquer modo"
     );
 }

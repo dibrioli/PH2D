@@ -466,11 +466,14 @@ impl crate::App {
         // contorno do canvas desenha tarde: dois picks separados dariam duas respostas assim que o
         // mapa vivo mudasse entre eles, e a linha acesa deixaria de ser a forma contornada.
         let pointer = self.last_pointer;
-        let hovered = match self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) {
-            Some(hero) => self.pick_hovered_object(hero, pointer),
-            None => None,
+        self.hovered_object = self.pick_hovered_object(pointer);
+        // ⭐ **A geometria do contorno é resolvida AQUI, com o objecto.** Ela precisa da
+        // `PresentWorld` mutável (a caixa de uma sprite sai de uma query), que o sítio de desenho
+        // já não tem — e resolvê-la aqui garante que o que se desenha é o objecto que se escolheu.
+        self.hover_outline = match self.hovered_object {
+            Some(bits) => self.resolve_hover_outline(bits),
+            None => Vec::new(),
         };
-        self.hovered_object = hovered;
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
         let _paint_frame_timer = PaintFrameTimer(paint_perf::on().then(std::time::Instant::now));
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
@@ -8799,18 +8802,16 @@ impl crate::App {
             //
             // ⚠️ E **não** quando ela já está selecionada: o gizmo já a nomeia, e um segundo
             // realce por cima do primeiro diz duas vezes a mesma coisa com tintas diferentes.
-            if vector_active
-                && let Some(bits) = self.hovered_object
+            //
+            // ⚠️ **SEM portão de modo** (Enio, 2026-08-23: *"pode estender isso para todos os
+            // objetos mesmo fora do modo vector?"*): o realce segue o CLIQUE, e o clique pega
+            // objecto em qualquer modo. Um portão de modo aqui faria a pergunta *"qual destes é
+            // este?"* só ter resposta onde ela já era mais fácil.
+            if let Some(bits) = self.hovered_object
+                && !self.hover_outline.is_empty()
                 && !hero.gizmo.iter_selected().any(|s| s == bits)
             {
-                let world = crate::vec_hover::hover_outline_world(
-                    sim,
-                    vec_scene,
-                    &self.vec_entities,
-                    &self.vec_live_drawn,
-                    bits,
-                );
-                ph2d_vec_render::draw_hover_outline(&world, cam_affine, vector_scene);
+                ph2d_vec_render::draw_hover_outline(&self.hover_outline, cam_affine, vector_scene);
             }
             if overlay.edit {
                 // ⚠️ A gaiola do Envelope SUBSTITUI a edição de nós. Quando a seleção é um envelope,

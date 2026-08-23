@@ -230,6 +230,7 @@ mod guide_smoke;
 mod harmony_smoke;
 mod hero_bridge;
 mod hero_intents;
+mod hover_highlight;
 /// `Export Image…` — a porta dos 16 exportadores (plano `docs/Sprite_projeto/18` W9).
 mod image_export;
 mod image_import;
@@ -588,7 +589,6 @@ mod vec_glyph;
 mod vec_glyph_build;
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 mod vec_guide;
-mod vec_hover;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
 mod vec_instance_follow;
 mod vec_layout_edit;
@@ -805,6 +805,7 @@ impl App {
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
             hovered_object: None,
+            hover_outline: Vec::new(),
             dragging: None,
             title_dirty: true,
             impasto_smoke_done: false,

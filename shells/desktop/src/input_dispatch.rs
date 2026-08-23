@@ -4839,37 +4839,25 @@ impl App {
                         && hero.store.panel_at(evt.x, evt.y).is_none()
                         && !menu_open_before
                     {
-                        let window_size = gfx.surface.size();
-                        let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                        // ADR-0111: as formas vetoriais desenham POR CIMA dos sprites,
-                        // então entram na frente da lista do clique-cíclico.
-                        let vec_view = crate::vec_entities::view_state_for_pick(
-                            &gfx.sim,
+                        // ⭐ **A porta ÚNICA do pick de objecto** — vetor, depois Flip, depois
+                        // sprites, na ordem de z que o artista vê. Esta lista existia copiada
+                        // aqui e no clique simples, e o realce de proveniência ia ser a terceira.
+                        let mut pw = crate::hover_highlight::PickWorld {
+                            window_size: gfx.surface.size(),
+                            sim: &gfx.sim,
+                            vec_scene: &gfx.vec_scene,
+                            flip: &gfx.flip,
+                            present: &mut gfx.present,
+                            camera: &gfx.camera,
+                        };
+                        let hits = crate::hover_highlight::pick_objects_at(
+                            &mut pw,
                             &self.vec_entities,
                             &self.vec_view_derived,
-                        );
-                        let mut hits = crate::vec_gizmo_view::pick_all_at_world(
-                            &gfx.sim,
-                            &gfx.vec_scene,
                             &self.vec_live_drawn,
-                            &vec_view,
-                            &self.vec_entities,
-                            world_pos,
-                            crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
-                        );
-                        // ADR-0114/ADR-0111: a arte Flip também compõe por cima dos
-                        // sprites — entra na lista do clique-cíclico, sob o vetor.
-                        hits.extend(crate::flip_gizmo_view::pick_all_at_world(
-                            &gfx.sim,
-                            &gfx.flip,
                             &self.flip_entities,
-                            world_pos,
-                            crate::flip_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
-                        ));
-                        hits.extend(ph2d_render::pick_sprites_at_world(
-                            gfx.present.world_mut(),
-                            world_pos,
-                        ));
+                            (evt.x, evt.y),
+                        );
                         if let Some(bits) = hits.first().copied() {
                             hero.gizmo.toggle_in_selection(bits);
                             let primary = hero.gizmo.selection;
@@ -5297,35 +5285,23 @@ impl App {
                         // for the four conditions enumerated.
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
-                        // ADR-0111: as formas vetoriais desenham POR CIMA dos sprites,
-                        // então entram na frente da lista do clique-cíclico.
-                        let vec_view = crate::vec_entities::view_state_for_pick(
-                            &gfx.sim,
+                        // ⭐ **A porta ÚNICA do pick de objecto** (ver o irmão acima).
+                        let mut pw = crate::hover_highlight::PickWorld {
+                            window_size,
+                            sim: &gfx.sim,
+                            vec_scene: &gfx.vec_scene,
+                            flip: &gfx.flip,
+                            present: &mut gfx.present,
+                            camera: &gfx.camera,
+                        };
+                        let mut hits = crate::hover_highlight::pick_objects_at(
+                            &mut pw,
                             &self.vec_entities,
                             &self.vec_view_derived,
-                        );
-                        let mut hits = crate::vec_gizmo_view::pick_all_at_world(
-                            &gfx.sim,
-                            &gfx.vec_scene,
                             &self.vec_live_drawn,
-                            &vec_view,
-                            &self.vec_entities,
-                            world_pos,
-                            crate::vec_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
-                        );
-                        // ADR-0114/ADR-0111: a arte Flip também compõe por cima dos
-                        // sprites — entra na lista do clique-cíclico, sob o vetor.
-                        hits.extend(crate::flip_gizmo_view::pick_all_at_world(
-                            &gfx.sim,
-                            &gfx.flip,
                             &self.flip_entities,
-                            world_pos,
-                            crate::flip_gizmo_view::stroke_hit_r(&gfx.camera, window_size),
-                        ));
-                        hits.extend(ph2d_render::pick_sprites_at_world(
-                            gfx.present.world_mut(),
-                            world_pos,
-                        ));
+                            (evt.x, evt.y),
+                        );
                         // O SPINE de um Blend Object NÃO é selecionável no modo Select (ADR-0128,
                         // Enio 2026-07-15): a linha é editável só no modo Node. Tirá-la dos hits faz
                         // o clique nela não selecionar nada — o que se move no Select são as

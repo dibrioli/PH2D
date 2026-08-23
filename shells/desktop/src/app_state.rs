@@ -565,6 +565,13 @@ pub(crate) struct App {
     /// FUNDIDO (`vec_live_drawn`), que só fica pronto no fim do quadro. O atraso é de ~16 ms —
     /// abaixo do perceptível — e é a mesma escolha que os selos do papel booleano já fazem.
     pub(crate) hovered_object: Option<u64>,
+    /// **O que o contorno de proveniência desenha neste quadro**, em MUNDO — resolvido no mesmo
+    /// instante que o [`Self::hovered_object`], e vazio quando nada é apontado.
+    ///
+    /// ⚠️ **Ele é um campo porque a resolução precisa da `PresentWorld` MUTÁVEL** (a caixa de uma
+    /// sprite sai de uma query) e o sítio de desenho já não a tem. Resolver os dois juntos é
+    /// também o que garante que o que se desenha é o objecto que se escolheu.
+    pub(crate) hover_outline: Vec<ph2d_vec_scene::VecPath>,
     /// Set to `Some(node_id)` when the user pressed inside a draggable
     /// widget (Slider) — subsequent pointer-move events continue to
     /// fire SetValue until pointer-up clears this. None for click-only

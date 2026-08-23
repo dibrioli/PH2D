@@ -243,6 +243,23 @@ com a lei das duas travessias, o bloqueio medido do Luau/MCP e `PH2D_MOUNT_SMOKE
 
 ---
 
+## 8-bis. ⚠️ TRÊS memórias pendentes na árvore PRIMÁRIA, não nesta
+
+O symlink da memória do Claude Code aponta para o **primário** (`main`), nunca para a worktree —
+lei já registada. `git status` no primário mostra, por commitar:
+
+```
+ M project-memory/MEMORY.md
+?? project-memory/feedback_a_house_param_name_carries_a_contract_pick_another_word.md
+?? project-memory/feedback_a_superset_mode_must_win_the_dedup_never_lose_it.md      ← desta jornada
+?? project-memory/feedback_the_closing_clippy_must_cover_every_crate_the_line_touched.md
+```
+
+⛔ **Esta linha não lhes tocou**, porque commitar ali seria commitar no `main`. Duas já estavam
+pendentes de uma sessão anterior; a do meio é de hoje (a lei da dedup entre modos de desenho, que
+saiu do defeito do §6). *Quem integrar leva-as no mesmo commit ou elas ficam a apodrecer no
+primário* — foi assim que as outras duas lá chegaram.
+
 ## 9. Higiene
 
 - `cargo fmt --all` ✔ · `clippy --all-targets` sobre as **6** crates do diff, zero avisos ✔
@@ -256,17 +273,20 @@ com a lei das duas travessias, o bloqueio medido do Luau/MCP e `PH2D_MOUNT_SMOKE
 
 ```
 cargo nextest run --workspace --no-fail-fast --cargo-profile ci-test
-Summary [62,7 s] 17883 tests run: 17883 passed, 1818 skipped
+Summary [68,4 s] 17884 tests run: 17884 passed, 1818 skipped
 ```
 
-**Verde limpo no fecho.** ⚠️ Duas corridas intermédias tiveram ✗, e as duas leituras ficam
-registadas porque a segunda quase enganou:
+**Verde limpo no fecho.** ⚠️ Corridas intermédias tiveram ✗, e as leituras ficam registadas porque
+a família quase enganou duas vezes:
 
-1. `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs` e
-   `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger` (`ph2d-tool-painter`) —
-   **flakes de relógio sob fan-out**. Re-corridas sozinhas: **3 de 3 verde** cada. ⚠️ Esta linha
-   **não toca uma linha** do Painter. A primeira já está no `CLAUDE.md §5.0`; **a segunda não
-   estava**, e é irmã dela (mesma família de razão de tempo no mesmo módulo).
+1. **Flakes de RELÓGIO sob fan-out**, todas re-corridas **3 de 3 verde** sozinhas, num diff que não
+   toca uma linha dos módulos delas: `a_wet_move_costs_…` e
+   `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger` (`ph2d-tool-painter`) ·
+   `the_cost_of_depth_is_linear_not_explosive` e
+   `the_cost_of_sampling_a_path_is_flat_in_its_anchors` (`ph2d-timeline`).
+   ⚠️ **Duas corridas seguidas da MESMA árvore deram `17.883/17.883` e depois `17.881/17.884`.**
+   ⇒ O `CLAUDE.md §5.0` deixou de as contar uma a uma e passa a nomear a **forma**: todo gate que
+   compara duas medianas de tempo é candidato, e a lista nunca estará completa.
 2. `shell_files_respect_hr18_loc_cap` — **real, e curado por corte** (ver §3).
 
 Suítes das crates tocadas, isoladas: `ph2d-ecs` **202** · `ph2d-editor-core` **1216** ·

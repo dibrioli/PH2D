@@ -393,6 +393,7 @@ pub(crate) fn build_level(
         Some("83") => conferencia::field_port_family(doc, registry),
         Some("84") => conferencia::fx_modes_family(doc, registry),
         Some("85") => conferencia::drawn_family(doc, registry),
+        Some("86") => conferencia::bezier_family(doc, registry),
         _ => Vec::new(),
     }
 }

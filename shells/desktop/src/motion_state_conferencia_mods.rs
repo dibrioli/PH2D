@@ -97,6 +97,12 @@ pub(crate) mod conferencia_demos_fx_modes;
 #[path = "motion_state_conferencia_demos_drawn.rs"]
 pub(crate) mod conferencia_demos_drawn;
 
+/// A cena da FRONTEIRA CURVA (`=86`) — o `motion.bezier_warp` contra o irmão Corner Pin,
+/// com os MESMOS quatro cantos. ⚠️ A fixture é um BLOCO e não uma fileira: a diferença
+/// entre os dois mapas vive no INTERIOR, e uma fileira só tem borda.
+#[path = "motion_state_conferencia_demos_bezier.rs"]
+pub(crate) mod conferencia_demos_bezier;
+
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.
 #[path = "motion_state_conferencia_demos_campo.rs"]

@@ -102,6 +102,11 @@ const PRECISION_BOUND: &[(&str, &str, Bound)] = &[
     ("value.lfo", "offset", Bound::Both),
     // Velocidade de nascimento — a fonte da `=5` sai a `22` num campo que para em `20`.
     ("motion.emitter", "speed", Bound::Up),
+    // A LENTE do `fx.rgb_split` (doc 89 folha 11) — params NOVOS, que nascem com o teto
+    // derivado em vez de o herdarem numa varredura futura.
+    ("fx.rgb_split", "start", Bound::Up),
+    ("fx.rgb_split", "center_x", Bound::Both),
+    ("fx.rgb_split", "center_y", Bound::Both),
     // Deslocamentos com sinal.
     ("motion.move", "dx", Bound::Both),
     ("motion.move", "dy", Bound::Both),

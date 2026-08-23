@@ -147,9 +147,63 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "a",
             default: 0.35,
         },
+        // Apendado (doc 89 folha 11). `0` = `Sink`, e é o mundo de antes deste param **ao
+        // bit**: a coluna nem chega a ser escrita. Ver [`SHADOW_BLEND_LABELS`].
+        ParamSpec {
+            name: SHADOW_BLEND,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// O param que escolhe **com que modo a SOMBRA se mistura** (doc 89 folha 11).
+///
+/// ⚠️ **A célula precificava isto como *"uma coluna de convenção de stream"*, e a fundação já
+/// tinha shipado por outra wave.** A coluna por-linha existe (`ph2d_eval_motion::lower`), o
+/// `motion.trail` e o `motion.strobe` já a escrevem, e o que faltava aqui era **um param**.
+/// *Um item cujo custo era a fundação muda de preço no dia em que a fundação chega.*
+pub const SHADOW_BLEND: &str = "shadow_blend";
+
+/// A coluna de convenção que o `ph2d-eval-motion` lê por LINHA — o mesmo nome do param do
+/// sink, porque é a mesma grandeza.
+pub const BLEND_COLUMN: &str = "blend";
+
+/// Os modos que esta sombra oferece, na ordem das tags.
+///
+/// ⚠️ **Copiados, e não importados, porque um nó é uma FOLHA** — este crate não pode depender
+/// do `motion.output` nem do `motion.trail`, e é a mesma razão por que aqueles também os
+/// escrevem à mão. Quem impede as três listas de divergir é o gate
+/// `the_row_operators_speak_the_sinks_vocabulary` (na shell, o único sítio que vê os quatro
+/// lados) — e este nó entra nele como **uma linha**.
+///
+/// ⚠️ **O `Multiply` é o default do Photoshop para uma sombra**, e é por isso que ele é o
+/// motivo desta célula existir: uma sombra que MULTIPLICA escurece o que está por baixo em vez
+/// de a cobrir, que é o que uma sombra faz no mundo. O default aqui continua `Sink` porque o
+/// default de um param apendado **reduz** ao mundo de antes; a escolha é do artista.
+pub const SHADOW_BLEND_LABELS: [&str; 7] = [
+    // ⚠️ O primeiro NÃO é um modo: é a ausência de escolha.
+    "Sink",
+    "Normal",
+    "Add",
+    "Subtract",
+    "Multiply",
+    "Screen",
+    "Premultiplied",
+];
+
+/// O valor de coluna de um `shadow_blend` autorado — `None` quando ele é *o do sink*.
+///
+/// ⚠️ A coluna guarda o índice do dropdown tal e qual (o rótulo `Sink` é o `0`, e daí em
+/// diante o índice JÁ é `modo + 1`): uma segunda aritmética entre o dropdown e a coluna seria
+/// a segunda porta que diverge da primeira.
+fn shadow_blend_tag(v: f32) -> Option<f32> {
+    if !v.is_finite() || v < 0.5 {
+        return None;
+    }
+    let top = (SHADOW_BLEND_LABELS.len() - 1) as f32;
+    Some(v.round().clamp(1.0, top))
+}
 
 /// The world-space offset of every shadow: `distance` along `direction`.
 fn offset(direction_deg: f32, distance: f32) -> [f32; 2] {
@@ -180,6 +234,7 @@ fn cast(
     distance: f32,
     color: [f32; 4],
     softness: f32,
+    shadow_blend: f32,
 ) -> Stream {
     let n = input.count();
     let off = offset(direction_deg, distance);
@@ -228,7 +283,44 @@ fn cast(
     }
     out.set("P", Column::Vec2(pos));
     out.set("tint", Column::Vec4(tint));
+    // **O MODO DA SOMBRA** (doc 89 folha 11) — só as linhas do FANTASMA o levam.
+    //
+    // ⚠️ **No `Sink` a coluna nem é tocada**, e é isso que faz o default ser byte-idêntico em
+    // vez de meramente equivalente: o `tile` acima já copiou o `blend` que o artista tivesse
+    // posto a montante, e escrever `0` por cima seria apagá-lo.
+    //
+    // ⚠️ **E os ELEMENTOS mantêm o que traziam.** Uma sombra que impusesse o próprio modo às
+    // peças que a projectam seria o nó a decidir sobre linhas que não são dele — e o rastro a
+    // montante já pode ter escolhido ali.
+    if let Some(tag) = shadow_blend_tag(shadow_blend) {
+        let own = input.get(BLEND_COLUMN);
+        let mut blend = vec![tag; n * copies];
+        for (i, slot) in blend.iter_mut().skip(n * pts.len()).enumerate() {
+            *slot = match own {
+                Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(0.0),
+                _ => 0.0,
+            };
+        }
+        out.set(BLEND_COLUMN, Column::Scalar(blend));
+    }
     out
+}
+
+/// **A sombra que herda o modo do SINK** — o que este nó era antes do [`SHADOW_BLEND`].
+///
+/// ⚠️ **Nomeado em vez de herdado por um default**, do mesmo jeito que o `unlimited` do
+/// `sim.step`: uma premissa herdada em silêncio **inverte de sentido** no dia em que o default
+/// se move, e o gate continua verde a testar o oposto do que diz. Os gates que de facto medem
+/// o modo chamam a [`cast`] direto.
+#[cfg(test)]
+fn sink_blend(
+    input: &Stream,
+    direction_deg: f32,
+    distance: f32,
+    color: [f32; 4],
+    softness: f32,
+) -> Stream {
+    cast(input, direction_deg, distance, color, softness, 0.0)
 }
 
 struct FxDropShadow;
@@ -252,6 +344,7 @@ impl NodeOp for FxDropShadow {
             distance,
             color,
             ctx.param("softness"),
+            ctx.param(SHADOW_BLEND),
         );
         ctx.emit(out);
     }
@@ -334,6 +427,19 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 ];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⚠️ **PRIMEIRO na lista, e não no fim onde foi apendado ao manifesto**: o modo é a
+    // pergunta que decide o que as outras significam (uma sombra que MULTIPLICA não se lê como
+    // uma que cobre), e a ordem do painel é a das perguntas, não a da história do arquivo.
+    ParamUiHint {
+        param: SHADOW_BLEND,
+        label: "Shadow Blend",
+        min: 0.0,
+        max: (SHADOW_BLEND_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &SHADOW_BLEND_LABELS,
+        },
+    },
     ParamUiHint {
         param: "direction",
         label: "Direction",
@@ -401,7 +507,7 @@ mod tests {
     /// puts the shadows on top, and by any implementation that moves the element.
     #[test]
     fn the_shadows_are_one_block_behind_the_untouched_elements() {
-        let out = cast(&pair([1.0, 1.0, 1.0, 1.0]), 0.0, 0.5, BLACK_35, 0.0);
+        let out = sink_blend(&pair([1.0, 1.0, 1.0, 1.0]), 0.0, 0.5, BLACK_35, 0.0);
         assert_eq!(out.count(), 4, "a shadow + an element, per element");
 
         let p = ps(&out);
@@ -426,7 +532,7 @@ mod tests {
     /// element would cast a solid shadow).
     #[test]
     fn the_shadow_is_a_colour_and_inherits_only_the_transparency() {
-        let out = cast(&pair([1.0, 0.0, 0.0, 0.5]), 0.0, 0.5, BLACK_35, 0.0);
+        let out = sink_blend(&pair([1.0, 0.0, 0.0, 0.5]), 0.0, 0.5, BLACK_35, 0.0);
         let t = ts(&out);
         assert_eq!(
             t[0][0..3],
@@ -461,7 +567,7 @@ mod tests {
     #[test]
     fn falloff_picks_the_casters() {
         let src = pair([1.0, 1.0, 1.0, 1.0]).with("falloff", Column::Scalar(vec![0.0, 1.0]));
-        let t = ts(&cast(&src, 0.0, 0.5, BLACK_35, 0.0));
+        let t = ts(&sink_blend(&src, 0.0, 0.5, BLACK_35, 0.0));
         assert_eq!(t[0][3], 0.0, "element 0 casts nothing");
         assert_eq!(t[1][3], 0.35, "element 1 casts at full opacity");
         assert_eq!(t[2], [1.0; 4], "the non-caster is itself untouched");
@@ -472,16 +578,27 @@ mod tests {
     #[test]
     fn a_transparent_swatch_or_an_over_budget_stream_forwards_the_input() {
         let src = pair([1.0, 1.0, 1.0, 1.0]);
-        let off = cast(&src, 0.0, 0.5, [0.0, 0.0, 0.0, 0.0], 0.0);
+        let off = sink_blend(&src, 0.0, 0.5, [0.0, 0.0, 0.0, 0.0], 0.0);
         assert_eq!(off.count(), 2);
         assert_eq!(ps(&off), ps(&src), "verbatim");
 
         let huge = Stream::new(MAX_INSTANCES); // 2 × over the ceiling
-        assert_eq!(cast(&huge, 0.0, 0.5, BLACK_35, 0.0).count(), MAX_INSTANCES);
-        assert_eq!(cast(&Stream::new(0), 0.0, 0.5, BLACK_35, 0.0).count(), 0);
+        assert_eq!(
+            sink_blend(&huge, 0.0, 0.5, BLACK_35, 0.0).count(),
+            MAX_INSTANCES
+        );
+        assert_eq!(
+            sink_blend(&Stream::new(0), 0.0, 0.5, BLACK_35, 0.0).count(),
+            0
+        );
     }
 }
 
 #[cfg(test)]
 #[path = "softness_tests.rs"]
 mod softness_tests;
+
+/// O modo da sombra — assunto próprio, arquivo próprio (o corte do irmão acima).
+#[cfg(test)]
+#[path = "blend_tests.rs"]
+mod blend_tests;

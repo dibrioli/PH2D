@@ -113,6 +113,9 @@ fn the_row_operators_speak_the_sinks_vocabulary() {
     for (who, labels) in [
         ("trail", ph2d_node_motion_trail::ECHO_BLEND_LABELS),
         ("strobe", ph2d_node_motion_strobe::FLASH_BLEND_LABELS),
+        // ⚠️ A SOMBRA entra aqui como UMA LINHA (doc 89 folha 11): ela é o terceiro nó a
+        // escrever a coluna, e o vocabulário dela é copiado à mão como o dos outros dois.
+        ("drop_shadow", ph2d_node_fx_drop_shadow::SHADOW_BLEND_LABELS),
     ] {
         assert_eq!(
             labels[0], "Sink",
@@ -134,6 +137,13 @@ fn both_nodes_write_the_column_the_lowering_reads() {
     assert_eq!(
         ph2d_node_motion_trail::BLEND_COLUMN,
         ph2d_node_motion_strobe::BLEND_COLUMN
+    );
+    // ⚠️ E a TERCEIRA, que é o `fx.drop_shadow` (doc 89 folha 11): um nome diferente aqui
+    // faria o modo da sombra ser escrito numa coluna que o lowering não lê — o fantasma
+    // pintaria no modo do sink e o dropdown pareceria morto.
+    assert_eq!(
+        ph2d_node_motion_trail::BLEND_COLUMN,
+        ph2d_node_fx_drop_shadow::BLEND_COLUMN
     );
     // E ela é o mesmo nome do param do sink, de propósito: é a mesma grandeza, e um
     // `value.attribute` a jusante lê o que o rastro escolheu.
@@ -159,6 +169,10 @@ fn no_node_offers_a_mode_the_renderer_cannot_draw() {
     for (who, labels) in [
         ("trail", ph2d_node_motion_trail::ECHO_BLEND_LABELS.len()),
         ("strobe", ph2d_node_motion_strobe::FLASH_BLEND_LABELS.len()),
+        (
+            "drop_shadow",
+            ph2d_node_fx_drop_shadow::SHADOW_BLEND_LABELS.len(),
+        ),
     ] {
         assert_eq!(
             labels - 1,

@@ -451,6 +451,8 @@ rfd = "0.15"
 # um nó é uma folha e não importa do irmão, então a shell é o único sítio que vê os três.
 ph2d-node-motion-trail = { path = "../../crates/ph2d-node-motion-trail" }
 ph2d-node-motion-strobe = { path = "../../crates/ph2d-node-motion-strobe" }
+# …e o TERCEIRO escritor da coluna (doc 89 folha 11): o `shadow_blend` do `fx.drop_shadow`.
+ph2d-node-fx-drop-shadow = { path = "../../crates/ph2d-node-fx-drop-shadow" }
 
 [dev-dependencies]
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a

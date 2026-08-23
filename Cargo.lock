@@ -5743,6 +5743,7 @@ dependencies = [
  "ph2d-motion-diagnose",
  "ph2d-motion-doc",
  "ph2d-node-audio-bands",
+ "ph2d-node-fx-drop-shadow",
  "ph2d-node-fx-glow",
  "ph2d-node-motion-output",
  "ph2d-node-motion-shape",

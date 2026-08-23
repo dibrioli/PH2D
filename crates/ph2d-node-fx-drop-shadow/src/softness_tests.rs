@@ -35,10 +35,10 @@ fn alphas(s: &Stream) -> Vec<f32> {
 #[test]
 fn a_zero_or_junk_softness_is_the_hard_shadow_bit_for_bit() {
     let src = row(3);
-    let hard = cast(&src, 315.0, 0.2, BLACK_35, 0.0);
+    let hard = sink_blend(&src, 315.0, 0.2, BLACK_35, 0.0);
     assert_eq!(hard.count(), 3 * COPIES, "um fantasma por elemento");
     for junk in [f32::NAN, f32::INFINITY, -1.0, -0.0] {
-        let out = cast(&src, 315.0, 0.2, BLACK_35, junk);
+        let out = sink_blend(&src, 315.0, 0.2, BLACK_35, junk);
         assert_eq!(ps(&out), ps(&hard), "softness {junk} tinha de estar off");
         assert_eq!(alphas(&out), alphas(&hard));
     }
@@ -48,7 +48,7 @@ fn a_zero_or_junk_softness_is_the_hard_shadow_bit_for_bit() {
 /// último, que é o que os mantém à frente das próprias sombras.
 #[test]
 fn softness_emits_one_row_per_tap_plus_the_element() {
-    let out = cast(&row(3), 315.0, 0.2, BLACK_35, 0.3);
+    let out = sink_blend(&row(3), 315.0, 0.2, BLACK_35, 0.3);
     assert_eq!(out.count(), 3 * (soft::TAPS + 1));
     let a = alphas(&out);
     // As últimas `n` linhas são os elementos verbatim (a fixture não tem `tint`,
@@ -75,7 +75,7 @@ fn softness_emits_one_row_per_tap_plus_the_element() {
 fn the_ceiling_counts_the_rows_the_soft_shadow_actually_emits() {
     let per = soft::TAPS + 1;
     let just_under = MAX_INSTANCES / per;
-    let out = cast(&row(just_under), 315.0, 0.2, BLACK_35, 0.3);
+    let out = sink_blend(&row(just_under), 315.0, 0.2, BLACK_35, 0.3);
     assert_eq!(
         out.count(),
         just_under * per,
@@ -83,14 +83,14 @@ fn the_ceiling_counts_the_rows_the_soft_shadow_actually_emits() {
     );
 
     let over = just_under + 1;
-    let off = cast(&row(over), 315.0, 0.2, BLACK_35, 0.3);
+    let off = sink_blend(&row(over), 315.0, 0.2, BLACK_35, 0.3);
     assert_eq!(
         off.count(),
         over,
         "acima, o FX desliga-se e devolve a entrada"
     );
     // E o MESMO layout com a sombra DURA continua a passar — a maciez é que custa.
-    let hard = cast(&row(over), 315.0, 0.2, BLACK_35, 0.0);
+    let hard = sink_blend(&row(over), 315.0, 0.2, BLACK_35, 0.0);
     assert_eq!(hard.count(), over * COPIES);
 }
 
@@ -101,8 +101,8 @@ fn the_ceiling_counts_the_rows_the_soft_shadow_actually_emits() {
 #[test]
 fn the_disc_is_centred_on_the_offset_so_the_shadow_does_not_jump() {
     let src = row(1);
-    let hard = ps(&cast(&src, 0.0, 1.0, BLACK_35, 0.0))[0];
-    let soft_rows = ps(&cast(&src, 0.0, 1.0, BLACK_35, 0.4));
+    let hard = ps(&sink_blend(&src, 0.0, 1.0, BLACK_35, 0.0))[0];
+    let soft_rows = ps(&sink_blend(&src, 0.0, 1.0, BLACK_35, 0.4));
     let taps = &soft_rows[..soft::TAPS];
     #[expect(clippy::cast_precision_loss, reason = "TAPS = 16")]
     let n = soft::TAPS as f32;

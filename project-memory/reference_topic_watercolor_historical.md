@@ -26,3 +26,5 @@ supersedidas — mantidas como arquivos, fora do índice principal:
 - [[project_ktx2_phase1_done_phase2_aborted_2026_05_26]] — decisão registrada em CLAUDE.md §5
 - [[project_imageio_avif_pathc_2026_05_28]] — registrada em CLAUDE.md §5 (precisa meson/nasm/cmake)
 - [[project_panel_loc_gate_parser_masked_debt]] — resolvido; resto absorvido pelo gate atual
+- [[project_brush_audit_2026_06_18]] — auditoria multiagente do brush engine (2026-06-18): 2 HIGH corrigidos; os claims de paridade CPU↔GPU MENTIAM (latentes não-gateados)
+- [[project_painting_removed_layers_effects_kept]] — toda a pintura/brush engine foi DELETADA (ADR-0099, 2026-06-20); sobra o host de Layers+Efeitos

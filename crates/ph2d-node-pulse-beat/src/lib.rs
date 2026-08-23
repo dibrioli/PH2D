@@ -521,8 +521,9 @@ mod tests {
     fn the_per_row_phase_staggers_the_beats() {
         let stagger = 0.1_f32;
         let rows = beats_rows(240, 4, 1.0, stagger, 0.0);
-        for r in 0..4 {
-            assert!(!rows[r].is_empty(), "a linha {r} nao bateu");
+        assert_eq!(rows.len(), 4, "quatro linhas pedidas, quatro devolvidas");
+        for (r, row) in rows.iter().enumerate() {
+            assert!(!row.is_empty(), "a linha {r} nao bateu");
         }
         // ⚠️ **O oráculo é a GRELHA de cada linha, não a n-ésima batida dela.** A
         // primeira versão deste gate comparou `rows[r][1]` com `rows[r−1][1]` e

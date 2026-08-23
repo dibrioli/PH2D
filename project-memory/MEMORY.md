@@ -1,7 +1,7 @@
 # Memory index — PH2D (versionada em `project-memory/`, multi-máquina)
 
 > Estado por-módulo: **CLAUDE.md §5**; contratos: **§6**; histórico: git/`docs/HANDOFF_*`.
-> Aqui só lições duráveis, perfil, facts não-deriváveis. 1 linha/memória; famílias → `reference_topic_*`.
+> Aqui só lições duráveis, perfil, facts não-deriváveis. 1 linha/memória; famílias → `reference_topic_*` (2 saltos).
 
 ## Perfil & referência
 - [User: Enio (dibrioli)](user_role.md) — dono/decisor; o único dev é a LLM
@@ -29,7 +29,7 @@
 - [Affordance herdada por analogia](feedback_inherited_affordance_must_be_rederived.md) — gate verde pode pinar bug de design
 - [Alvo não-idempotente não exclui autoria](feedback_a_nonidempotent_target_excludes_nothing_split_authoring_from_deposit.md) — separe autoria de depósito; funil no commit
 - [Comando de rodar inclui o `cd`](feedback_run_command_include_cd.md)
-- [A cwd do Bash VOLTA ao primário](feedback_bash_cwd_resets_and_slips_to_the_primary.md) — Modo L: prefixe todo comando com o `cd` da worktree
+- [A cwd do Bash VOLTA ao primário](feedback_bash_cwd_resets_and_slips_to_the_primary.md) — Modo L: prefixe todo comando com o `cd` da worktree (22/08: diagnostiquei no repo errado)
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = auto-play
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão
 - [O teto é do HARDWARE](feedback_the_ceiling_is_the_hardwares_never_the_fallbacks.md) — meça antes de limitar
@@ -54,69 +54,31 @@
 
 ## Git & colisão multi-agente
 > Modo C (Mac): colisão real. Modo L (workstation): worktree próprio → só merge (§1.5.5).
-- [Commit collision](feedback_parallel_agent_collision.md) — `git status` antes de stage
-- [Scoped commit](feedback_scoped_commit_shared_index.md) — `git commit -m msg -- <meus paths>`
-- [Desfaça mutação com `cp`](feedback_mutation_undo_with_cp_never_git_checkout.md) — nunca `git checkout`
-- [`cargo fmt -p` reformata WIP alheio](feedback_cargo_fmt_p_reformats_foreign_wip.md) — `rustfmt <arquivos>`
-- [`str.replace()` sem casar é no-op](feedback_python_replace_silent_noop_after_fmt.md) — `assert old in s`
-- [`sed -i` relativo erra de repo](feedback_sed_relative_path_hits_primary_cwd.md) — caminho absoluto
-- [Rewrite de token = só arquivos MUDADOS](feedback_a_token_rewrite_scopes_to_changed_files_not_the_whole_tree.md) — `git grep` corrompeu .ttf
-- [Mover doc = RESOLVER link, não casar string](feedback_moving_a_doc_means_resolving_links_not_matching_strings.md) — gate antes/depois por path resolvido; `ls-files` pós-`mv` mente
-- [Mais perigos de git (6)](reference_topic_git_hazards.md) — stash · reset alheio · fence · worktree-base · mojibake
+- [Commit collision](feedback_parallel_agent_collision.md) + [scoped commit](feedback_scoped_commit_shared_index.md) — `git status` antes de stage; `git commit -m msg -- <meus paths>`
+- [Perigos e armadilhas de git/edição (12)](reference_topic_git_hazards.md) — stash · reset alheio · fence · worktree-base · mojibake · `fmt -p` · `str.replace` no-op · `sed -i` relativo · rewrite de token · mover doc · mutação desfeita com `cp`
 - [O symlink da MEMÓRIA aponta para o primário](feedback_the_memory_symlink_points_at_the_primary_tree_not_your_worktree.md) — Modo L: salvar pelo caminho do Claude Code escreve no `main`
 
-## Ship / CI / cadência
+## Ship / CI / integração
 - [Multi-máquina](project_multi_machine_setup.md) — GitHub fonte única; memória via symlink
 - [Fast mode / ship](feedback_fast_mode_ship.md) — dia: commit sem push; fim: ship + babysit
-- [Ship = Enio-only](feedback_ship_only_enio_end_of_all_lines.md)
-- [Integração = Enio-only](feedback_integration_only_enio_command_end_of_all_lines.md) — feche → handoff → PARE
-- [Ship do integrador drena latentes](project_integrator_ship_catches_latents_budget_iterations.md) — 2-4 iterações
-- [Ordem de integração se MEDE](feedback_integration_order_comes_from_measured_overlap.md) — sobreposição par-a-par
+- [Ship = Enio-only](feedback_ship_only_enio_end_of_all_lines.md) · [Integração = Enio-only](feedback_integration_only_enio_command_end_of_all_lines.md) — feche → handoff → PARE
+- [Integração multi-linha (12)](reference_topic_integration_discipline.md) — ordem se MEDE · estágios `:1/:2/:3` · ⚠️ `checkout --ours` DESCARTA o que o git já fundiu · mesmo report = mesmo símbolo · números que SOMAM se contam · marcadores em CADA commit · o ship do integrador drena latentes (2-4 iterações)
 - [✗ do ship pode ser AMBIENTE](feedback_a_ship_x_can_be_the_environment_not_the_code.md) — tmpfs evapora · disco cheio vira "linking failed"
 - ["Está em uso?" → config GLOBAL](feedback_in_use_is_answered_by_the_global_config_and_a_probe_can_start_what_it_measures.md) — apaguei 101 GB de sccache ATIVO; e `sccache -s` SOBE o servidor que ele mede
 - [Pipe mascara exit code](feedback_pipe_masks_script_exit_code.md) — verifique o ESTADO
 - [Laço colável em idioma bash NÃO itera em zsh](feedback_a_pastable_bash_loop_never_iterates_under_zsh.md) — `for p in $VAR` roda 1× com a string inteira; portão que ENUMERA exige array citado + controle positivo
 - [Crase em msg de commit executa](feedback_backticks_in_commit_message_are_command_substitution.md) — `git commit -F`
-- [Merge limpo pode estar quebrado](feedback_clean_text_merge_can_be_semantically_broken.md) — `check --workspace`
-- [Resolva pelos ESTÁGIOS do índice](feedback_resolve_conflicts_from_index_stages_not_markers.md) — `:1`base `:2`ours `:3`theirs
-- [`checkout --ours` DESCARTA o que o git já fundiu](feedback_checkout_ours_discards_the_hunks_git_already_merged.md) — os hunks limpos de theirs evaporam sem erro; resolva só a região marcada, ou reaplique todos
-- [Duas linhas curando o MESMO report = mesmo símbolo](feedback_two_lines_curing_the_same_report_is_a_same_symbol_collision.md) — compare as fórmulas; iguais ⇒ uma lei que passa as DUAS suítes; diferentes ⇒ Enio
-- [Lista compartilhada funde contra a main de HOJE](feedback_a_shared_list_is_merged_against_todays_main.md) — só ADICIONE; remover é integração
-- [Varra marcadores em CADA commit](feedback_sweep_conflict_markers_every_commit.md)
-- [Foundational editável = crie isolado](feedback_foundational_editable_design_for_isolation.md) — anote ids
-- [CI direto + fmt-skew](feedback_ci_direct_lint_gates_and_fmt_skew.md) — `rustup run <pin> cargo fmt`
-- [Ship committed vs WIP](feedback_ship_committed_vs_worktree_wip.md) — `git worktree --detach HEAD`
-- [LOC cap = split](feedback_loc_cap_split_not_allowlist_and_fmt_reexpands.md) — fmt ANTES de medir
-- [Cap de FN e cap de ARQUIVO são grandezas diferentes](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md) — extrair no mesmo arquivo cura um e estoura o outro; corte para o IRMÃO
-- [CI cold-build drift](project_ci_rustcache_stable_drift_pin.md) — pin `@1.95`
-- [ship.sh ≠ paridade CI](feedback_ship_parity_gaps_ci_only.md) — bindgen/advisory-db escapam
-- [O seletor de impacto é CEGO fora de `crates/`](feedback_an_impacted_test_selector_that_maps_paths_by_prefix_is_blind_outside_it.md) — diff só em `shells/` roda 4 testes e sai verde
-- [`rustup default` PERDE para o `rust-toolchain.toml`](feedback_rustup_default_loses_to_the_toolchain_file.md) — o job de MSRV testava o PIN; meça com `RUSTUP_TOOLCHAIN`
-- [Números que SOMAM: conte](feedback_numbers_that_sum_across_lines_count_dont_pick.md)
-- [Allowlist duplicada mata o gate](feedback_duplicate_allowlist_key_kills_the_gate_at_parse.md) — TOML morre no parse
-- [Integrar pré-cutover = drift](project_integration_prefork_lines_ship_drift.md)
-- [Cadência de processo (10)](reference_topic_process_cadence.md) — gist em CLAUDE.md §2-§3. ⚠️ o babysit do CI É polling de 15 min (§3)
+- [LOC cap = split](feedback_loc_cap_split_not_allowlist_and_fmt_reexpands.md) · [cap de FN ≠ cap de ARQUIVO](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md) — fmt ANTES de medir; corte para o IRMÃO
+- [Cadência de processo + armadilhas de CI (17)](reference_topic_process_cadence.md) — gist em CLAUDE.md §2-§3 · fmt-skew · ship committed vs WIP · cold-build drift · paridade CI · `rustup default` · allowlist duplicada · seletor de impacto cego. ⚠️ o babysit do CI É polling de 15 min (§3)
 
 ## Auditoria (famílias — 2 saltos)
 - [Reprodução/diagnóstico (18)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
-- [⛔ Suíte TOPOLÓGICA é cega a geometria](feedback_a_suite_of_topological_assertions_is_blind_to_geometry.md) — 10.515 verdes sobre o produto destruído; use DUAS réguas de aresta
-- [⛔ Extremo GLOBAL não é régua por-face](feedback_a_global_extreme_is_not_a_per_face_ruler.md) — `edge_max` caiu de 57% para 5,5% e o artista disse «péssimo»; a barra sai de um oráculo
-- [Cura que FALHA delimita a causa](feedback_if_relaxation_cannot_move_the_median_the_defect_is_in_the_connectivity.md) — 16 rondas não moveram a mediana ⇒ o defeito é da conectividade, não das posições
-- [Gate TAUTOLÓGICO](feedback_a_gate_that_asserts_what_construction_guarantees_is_a_tautology.md) — afirma o que a construção garante; rodar a fixtura não salva, a cura é um oráculo independente
-- [Um parâmetro, dois papéis = erro DEFENSÁVEL](feedback_one_parameter_two_roles_makes_the_wrong_call_defensible.md) — o comentário que justifica o argumento é o alarme
-- [Régua que DEDUPLICA não vê duplicação](feedback_a_ruler_that_deduplicates_cannot_report_duplication.md) — χ verde sobre malha não-variedade; conte por ocorrência
-- [`round` sem resíduo é mentira silenciosa](feedback_a_round_that_never_reports_its_residual_is_a_silent_lie.md) — resíduo 0,4999 = empate; e a ordem de grandeza dele NOMEIA a parcela que falta
-- [Invariante CONSERVADA não mede qualidade](feedback_a_conserved_invariant_cannot_grade_quality.md) — Σ índice = 4·χ é verde por construção; a régua é a CONTAGEM
-- [Polilinha sobre malha vira onde a estrutura não vira](feedback_a_polyline_on_a_mesh_turns_where_the_structure_does_not.md) — decida pelo GRAU do grafo; a geometria é desempate
-- [Contagem de defeito sem PROVENIÊNCIA culpa a fase errada](feedback_a_defect_count_without_provenance_names_the_wrong_phase.md) — 47 irregulares: 100% do layout, zero da montagem
-- [Curva que achata pode precisar de mais pontos](feedback_a_flattening_curve_may_need_more_points.md) — 4 pontos diziam "2º mecanismo"; 2 pontos a mais diziam "é a causa"
+- [Réguas do quad remesh (13)](reference_topic_quad_remesh_rulers.md) — ⛔ suíte topológica cega a geometria · extremo global ≠ régua por-face · cura que falha delimita a causa · gate tautológico · régua que deduplica · `round` sem resíduo · invariante conservada · proveniência do defeito · provas de ótimo
 - [Ofício de gate (32)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
 - [Provas de mutação (6)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
-- [Duas provas do mesmo ótimo não podem discordar](feedback_two_proofs_of_the_same_optimum_cannot_disagree.md) — gate a INVARIANTE (a partição), não o resultado; instância pequena acerta por acaso
-- [«Ótimo provado» é afirmação sobre o OBJETIVO](feedback_proven_optimal_is_a_claim_about_the_objective_not_the_answer.md) — custo linear não separa «esmagar» de «espalhar»; a razão vai DENTRO do quadrado
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
@@ -131,22 +93,10 @@
 ## Padrões de código (gotchas silenciosos)
 - [UI = gallery + inspector](feedback_ui_source_of_truth_gallery_inspector.md) — espelhe
 - [UI em inglês](feedback_app_ui_english_only.md)
-- [Nada de `→` em string literal](feedback_no_tofu_arrows_in_string_literals.md)
-- [Tool nova exige IconId](feedback_new_tool_icon_needs_iconid.md)
-- [Fan-out registry-init](feedback_fanout_registry_init_friction.md) — 2 testes à mão
-- [node-sync glob prefix](feedback_node_sync_glob_prefix_gotcha.md) — crate de nó ≠ `ph2d-node-`
-- [Hier companion allowlist](feedback_hier_companion_dispatch_allowlist.md) — 2 sites em `pointer.rs`
+- [Nada de `→` em string literal](feedback_no_tofu_arrows_in_string_literals.md) — vale em mensagem de `assert!` de teste também (gate `no_tofu_glyphs`, mordeu 22/08)
 - [Registro de painel (5 sites)](reference_topic_panel_registration.md)
-- [Inject, don't cap](feedback_pipeline_inject_dont_cap.md)
-- [Pixel center vs edge](feedback_pixel_center_vs_edge_coord.md) — subtraia 0.5
-- [Exact-pin exige gate substring](feedback_exact_pin_needs_substring_gate.md)
-- [ISPC cross-process](feedback_ispc_cross_process_concurrency.md) — crasha com cargo concorrente
-- [Zero-alloc gate = capacidade](feedback_zero_alloc_gate_capacity_not_global_counter.md)
-- [`Arc::from(Vec)` SEMPRE copia](reference_arc_from_vec_always_copies.md) — `collect` TrustedLen não
 - [Clone segurado + detecção por ponteiro = copy-on-write por op](feedback_a_held_clone_plus_pointer_identity_change_detection_forces_copy_on_write.md) — versão, não `as_ptr` (ADR-0124 reincide: Painter 10ms/move @4K)
-- [Áudio: meter vivo, sem som](project_audio_multichannel_silence.md) — mute do WirePlumber
-- [Claimed-green ≠ seu-OS-green](project_painter_t19_latent_red_macos_2026_05_28.md)
-- [Painter "low-res" = canvas 64px](project_painter_canvas_res_64_not_sim_scale.md)
+- [Gotchas de código (13)](reference_topic_code_gotchas.md) — IconId · registry-init · node-sync glob · companion allowlist · inject don't cap · pixel center · exact-pin · ISPC · zero-alloc · `Arc::from` copia · áudio mudo · OS-green · low-res
 
 ## Arquitetura / norte / perf
 - [Dois motores, um estado](feedback_two_engines_one_state_is_worse_than_a_slow_engine.md) — assume o LAÇO inteiro ou nada

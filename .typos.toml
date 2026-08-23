@@ -116,6 +116,36 @@ extend-ignore-identifiers-re = [
     # já existe acima não a alcança: o identificador é `sc_pn`, e a âncora é o que
     # torna a isenção estreita.
     "^sc_pn$",
+    # ── Integração de 2026-08-22 (5 linhas: motion-value · sculpt3d · Sprite ·
+    # Vector · 3DModeling). Todos FALSOS POSITIVOS, conferidos linha a linha no
+    # `ship.sh` do integrador; nenhuma das linhas corria o `typos` project-wide.
+    # PORTUGUÊS correcto em doc-comment/assert (sem acento de propósito, como o
+    # resto do ficheiro): `Registe` (imperativo, CAIXA ALTA — o `^registe$` acima
+    # é sensível a maiúsculas e não a cobre), `colapse`/`fixe` (subjuntivos),
+    # `contextos` · `demandas` · `periodos` · `ambiguos` · `experimentos` ·
+    # `interactivo` · `operativos` · `intercepto`/`INTERCEPTO` (o ponto de
+    # intercepto da atração).
+    "^Registe$",
+    "^colapse$",
+    "^fixe$",
+    "^contextos$",
+    "^demandas$",
+    "^periodos$",
+    "^ambiguos$",
+    "^experimentos$",
+    "^interactivo$",
+    "^operativos$",
+    "^intercepto$",
+    "^INTERCEPTO$",
+    # IDENTIFICADORES deliberados: `BSE` é o selo de 3 letras da BASE da booleana
+    # viva (`BoolRole::Base.badge()`, ao lado de `UNI`/`SUB`); `alis` é o cabeçalho
+    # da coluna de rondas de ALISAMENTO nas sondas do quad remesh; `thi` é o par
+    # de `tlo` (tint-hi/tint-lo) numa sonda de luminância; `quater` é o latim das
+    # secções do plano (`§4-quater`, depois de `bis`/`ter`).
+    "^BSE$",
+    "^alis$",
+    "^thi$",
+    "^quater$",
 ]
 
 [default.extend-identifiers]

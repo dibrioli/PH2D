@@ -28,7 +28,7 @@ fn cooked(op: u8) -> (SimWorld, VecEntityMap, BoolLive, [VecPathId; 3]) {
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
     let mut live = LiveGeometry::new();
     let mut bl = BoolLive::default();
-    bl.recook(&scene, &sim, &map, &VecXforms::default(), &mut live);
+    bl.recook(&scene, &sim, &map, &VecXforms::default(), &[], &mut live);
     // Pré-condição: o grupo cozinhou. Sem isto todos os gates leriam `None` e seriam verdes por
     // AUSÊNCIA — o modo de falha mais barato de um gate de triagem.
     assert!(
@@ -221,10 +221,7 @@ fn a_primary_that_is_not_an_operand_offers_nothing() {
         None
     );
     // E sem primário não há de quem falar.
-    assert_eq!(
-        shape_row_of_selection(&sim, &map, &bl, &ids, None),
-        None
-    );
+    assert_eq!(shape_row_of_selection(&sim, &map, &bl, &ids, None), None);
 }
 
 /// **A COSTURA DO CLIQUE: id do chip → código do verbo.**

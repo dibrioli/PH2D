@@ -46,6 +46,23 @@ use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_
 
 use crate::vec_entities::VecEntityMap;
 
+/// Os gates do VERBO POR FORMA — irmão por LOC (HR-18), cortado por ASSUNTO, com fixture própria.
+#[cfg(test)]
+#[path = "bool_live_verb_tests.rs"]
+mod verb_tests;
+
+/// As SONDAS DE CUSTO — irmã dos gates por LOC (HR-18), e por natureza: uma sonda mede e imprime,
+/// um gate afirma e falha.
+#[cfg(test)]
+#[path = "bool_live_measure.rs"]
+mod measure;
+
+/// O que a TROCA DE VERBO acrescenta — o irmão por LOC (HR-18).
+#[path = "bool_live_morph.rs"]
+mod morph;
+
+use morph::{arriving_side, cook_side, morph_results, verbs_of};
+
 /// Uma entrada do memo: o que ENTROU (a operação + a lista de mundo) e o que SAIU.
 struct Memo {
     op: u8,
@@ -82,22 +99,36 @@ pub(crate) struct BoolLive {
     /// O que cada grupo desenhou NESTE frame, por bits de entidade. Reconstruído a cada
     /// `recook` — é uma fotografia, não estado.
     plans: Vec<(u64, Cooked)>,
+    /// **Quantos grupos cozinharam AS DUAS PONTAS neste frame** — o instrumento da lei de custo.
+    ///
+    /// ⚠️ Ele existe porque a igualdade não sabe medir custo: um morph entre duas pontas IGUAIS
+    /// devolve a mesma forma ao bit, então um gate de resultado fica verde sobre um cozimento
+    /// duplo ligado para sempre. *Quem declara um custo possui um gate que o MEDE* (a emenda do
+    /// HR-13, ADR-0117).
+    morphed: usize,
 }
 
 impl BoolLive {
     /// **Aplica a booleana viva sobre o mapa do frame.** Chamado DEPOIS dos cinco produtores que
     /// estendem e ANTES do alinhamento (que é um campo do `StrokeSpec` do RESULTADO) e do
     /// `fx_silhouette` (a silhueta é do que se desenha, e o que se desenha já é isto).
+    ///
+    /// `morphs` são as formas que os ESTADOS de UI dizem estar a meio de uma troca de verbo
+    /// ([`ph2d_ui_state::Transition::bool_morphs`]) — vazio no caso comum. Um grupo tocado por
+    /// alguma delas cozinha **as duas pontas** e entrega o par ao morph; os outros correm
+    /// byte-idênticos ao que sempre correram.
     pub(crate) fn recook(
         &mut self,
         scene: &VecScene,
         sim: &SimWorld,
         map: &VecEntityMap,
         xforms: &VecXforms,
+        morphs: &[ph2d_ui_state::BoolMorph],
         live: &mut LiveGeometry,
     ) {
         let mut touched: Vec<VecPathId> = Vec::new();
         self.plans.clear();
+        self.morphed = 0;
         for (group, op) in groups_deepest_first(scene, sim, map) {
             let ids = crate::vec_entities::subtree_paths(sim, scene, group);
             // Os operandos são as regiões FECHADAS, e só elas — a mesma triagem que a booleana
@@ -121,82 +152,92 @@ impl BoolLive {
                 // degradação que não perde arte (o doc do componente a declara).
                 continue;
             };
-            // **O VERBO DE CADA PATH DA ENTRADA.** Um operando pode contribuir com VÁRIOS paths
-            // (um offset vivo, um composto), e o verbo é da FORMA — então ele repete-se por
-            // quantos paths aquela forma trouxe. Uma lista por operando não serviria: quem dobra
-            // é cada path, um de cada vez.
-            let verbs: Vec<ph2d_vec_boolean::BoolOp> = pf.as_bool().map_or_else(Vec::new, |g| {
-                operands
-                    .iter()
-                    .flat_map(|(id, v)| {
-                        std::iter::repeat_n(operand_verb(sim, map, *id, g), v.len())
-                    })
-                    .collect()
-            });
-            let hit = self
-                .memo
-                .get(&base)
-                .is_some_and(|m| m.op == op && m.verbs == verbs && m.input == input);
-            if !hit {
-                let out = match (pf.as_bool(), input.split_first()) {
-                    // **As quatro de CONJUNTO: a cadeia com um verbo por passo.** Sem nenhum
-                    // override isto é byte-idêntico à porta N-ária de sempre — todos os verbos
-                    // são o do grupo, e a cadeia uniforme *é* o `apply_many_checked` (há gate no
-                    // motor).
-                    (Some(_), Some((first, rest))) => {
-                        let folds: Vec<(&VecPath, ph2d_vec_boolean::BoolOp)> = rest
-                            .iter()
-                            .zip(verbs.iter().skip(1))
-                            .map(|(p, &v)| (p, v))
-                            .collect();
-                        let Ok(out) = ph2d_vec_boolean::apply_chain_checked(first, &folds) else {
+            let verbs = verbs_of(sim, map, &operands, pf, None);
+            // **A PONTA DE CHEGADA**, quando os estados dizem que alguma forma deste grupo está a
+            // meio de uma troca de verbo. `None` é o caso comum, e nele nada abaixo muda.
+            let arriving = arriving_side(sim, map, morphs, group, &operands, op, &verbs);
+            let out: Vec<VecPath> = match arriving {
+                // ⭐ **O VERBO É DISCRETO, MAS O RESULTADO DELE MORFA.** Cozinha-se com o verbo de
+                // partida e com o de chegada, sobre as MESMAS formas onde elas estão agora — é
+                // isso que faz a peça continuar a seguir a animação de posição/escala/rotação
+                // enquanto a operação troca (medido: o desenho acompanha o movimento a 0,6 de
+                // tinta do controlo, contra 793 de um perseguidor que parte do vivo).
+                //
+                // ⛔ **O memo é DESVIADO de propósito aqui.** A chave dele é *(op, verbos,
+                // entrada)*, e nenhuma das três contém o `t` — guardar um resultado morfado sob
+                // ela envenenaria o quadro seguinte com a forma de um instante que já passou.
+                // Durante uma transição a entrada muda a cada quadro de qualquer maneira, então
+                // não há acerto nenhum a perder.
+                Some((pf_to, verbs_to, t)) => {
+                    let Some(from) = cook_side(pf, &verbs, &input) else {
+                        continue;
+                    };
+                    // ⚠️ Contado DEPOIS de a partida cozinhar: um grupo que não desenhou nada não
+                    // pagou dois cozimentos, e um contador de custo que o inclua mente para cima.
+                    self.morphed += 1;
+                    // A chegada recusada não apaga o desenho: fica-se na PARTIDA até ela trocar —
+                    // a mesma lei que o par degenerado do `Transition::at` já segue.
+                    let to = cook_side(pf_to, &verbs_to, &input).unwrap_or_else(|| from.clone());
+                    morph_results(&from, &to, t)
+                }
+                None => {
+                    let hit = self
+                        .memo
+                        .get(&base)
+                        .is_some_and(|m| m.op == op && m.verbs == verbs && m.input == input);
+                    if !hit {
+                        let Some(out) = cook_side(pf, &verbs, &input) else {
                             // O motor recusou. O mapa fica INTOCADO — a arte continua como estava.
                             continue;
                         };
-                        out
+                        self.memo.insert(
+                            base,
+                            Memo {
+                                op,
+                                verbs,
+                                input,
+                                out,
+                            },
+                        );
                     }
-                    // ⛔ **As quatro RECEITAS são verbos da PILHA INTEIRA**, e por isso o verbo
-                    // por forma não se aplica a elas: *"cada forma menos a união do que está
-                    // acima dela"* não é uma relação entre duas. Elas correm exatamente como
-                    // sempre correram — e é a UI que tem de não oferecer o seletor por forma
-                    // quando o grupo está numa receita, senão ele é um controlo inerte.
-                    _ => {
-                        let refs: Vec<&VecPath> = input.iter().collect();
-                        let Ok(out) = ph2d_vec_boolean::pathfinder(&refs, pf) else {
-                            continue;
-                        };
-                        out
-                    }
-                };
-                self.memo.insert(
-                    base,
-                    Memo {
-                        op,
-                        verbs,
-                        input,
-                        out,
-                    },
-                );
-            }
-            if let Some(m) = self.memo.get(&base) {
-                touched.push(base);
-                live.insert(base, m.out.clone());
-                for (id, _) in operands.iter().skip(1) {
-                    live.insert(*id, Vec::new());
+                    let Some(m) = self.memo.get(&base) else {
+                        continue;
+                    };
+                    m.out.clone()
                 }
-                self.plans.push((
-                    group.to_bits(),
-                    Cooked {
-                        base,
-                        operands: operands.iter().map(|(id, _)| *id).collect(),
-                        out: m.out.clone(),
-                    },
-                ));
+            };
+            touched.push(base);
+            live.insert(base, out.clone());
+            for (id, _) in operands.iter().skip(1) {
+                live.insert(*id, Vec::new());
             }
+            self.plans.push((
+                group.to_bits(),
+                Cooked {
+                    base,
+                    operands: operands.iter().map(|(id, _)| *id).collect(),
+                    out,
+                },
+            ));
         }
         // O memo não sobrevive ao componente: um grupo desfeito (Ungroup, Apply, Ctrl+Z) manteria
         // a resposta velha e a re-serviria se ele voltasse com outra geometria.
         self.memo.retain(|id, _| touched.contains(id));
+    }
+
+    /// **Quantos grupos pagaram DOIS cozimentos neste frame** — zero fora de uma transição.
+    ///
+    /// ⚠️ Ela é a única resposta observável à pergunta de CUSTO, e é por isso que existe: quando as
+    /// duas pontas desenham o mesmo, o resultado é byte-idêntico ao de um cozimento só — o dobro do
+    /// trabalho fica invisível em qualquer gate que olhe para a forma.
+    ///
+    /// ⚠️ **Só o LEITOR é `cfg(test)`; a contagem corre no build de produção.** Pôr o `+= 1` atrás
+    /// do `cfg` faria o gate medir um código que não é o que shipa — a forma exacta de uma barra
+    /// verde sobre outra coisa.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn morphed(&self) -> usize {
+        self.morphed
     }
 
     /// **O que este grupo desenhou neste frame.** `None` = ele não cozinhou (menos de dois
@@ -324,6 +365,34 @@ fn input_of(
     }
 }
 
+/// **O GRUPO booleano mais próximo ACIMA de `id`**, e a operação dele. `None` = esta forma não
+/// está metida em booleana viva nenhuma.
+///
+/// ⚠️ **É a porta única de *"em que operação esta forma está metida?"***, e ela existe separada do
+/// [`groups_deepest_first`] porque as duas perguntas são diferentes: aquele responde *"que grupos
+/// há na cena, e em que ordem eles cozinham"*, esta responde *"a quem ESTA forma pertence"*. O que
+/// as impede de divergir é partilharem a caminhada e o [`MAX_DEPTH`].
+///
+/// ⚠️ **O mais PRÓXIMO vence**, e é a mesma lei do `plan_containing`: com grupos aninhados, uma
+/// forma pertence ao grupo dela — quem consome o resultado desse grupo é outra pergunta.
+#[must_use]
+pub(crate) fn group_above(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    id: VecPathId,
+) -> Option<(Entity, u8)> {
+    let w = sim.world();
+    let mut cur = Entity::from_bits(*map.get(&id)?);
+    for _ in 0..MAX_DEPTH {
+        let parent = w.get::<ph2d_ecs::ChildOf>(cur)?.parent();
+        if let Some(g) = w.get::<VecBoolGroup>(parent) {
+            return Some((parent, g.op));
+        }
+        cur = parent;
+    }
+    None
+}
+
 /// Os grupos booleanos da cena, **do mais fundo para o mais raso**.
 ///
 /// Descobertos subindo a partir de cada caminho — a shell não tem uma query de mundo à mão aqui, e
@@ -427,3 +496,9 @@ pub(crate) fn code_of_op(op: ph2d_vec_boolean::PathfinderOp) -> u8 {
 #[cfg(test)]
 #[path = "bool_live_tests.rs"]
 mod tests;
+
+/// Os gates da booleana viva **dentro de uma transição de estados** — irmão por LOC (HR-18), com
+/// fixture própria (a DONUT, que é a única que contém a mudança de topologia).
+#[cfg(test)]
+#[path = "bool_live_morph_tests.rs"]
+mod morph_tests;

@@ -29,7 +29,15 @@ const SRC: &str = include_str!("../src/render_loop/mod.rs");
 /// ⛔ A lição não é *"o gate estava errado"*. Um arch-gate ancorado no NOME DO CAMPO afirma
 /// *"ninguém mais toca neste campo"* — bem mais forte que a ordem que ele quer provar, e uma
 /// afirmação que envelhece sozinha. A âncora certa é a chamada que ele mede.
-const COOK: &str = ".recook(vec_scene, sim, &self.vec_entities, &vec_xf, &mut vec_live)";
+/// ⚠️ E ela deixou de ser a LISTA DE ARGUMENTOS inteira em 2026-08-23, no dia em que o cozimento
+/// ganhou um parâmetro (os recados da troca de verbo) e o `rustfmt` partiu a chamada em sete
+/// linhas: a âncora sumiu, os dois gates ficaram vermelhos, e **nenhuma das três afirmações que
+/// eles fazem tinha mudado**. Uma âncora que contém os argumentos afirma *"esta chamada nunca
+/// ganha um parâmetro"* — outra afirmação a mais, e do mesmo tipo da anterior.
+///
+/// ⇒ A âncora é o **nome da chamada e o parêntese**: o mínimo que identifica *este* cozimento e
+/// sobrevive a formatação e a assinatura.
+const COOK: &str = "self.bool_live.recook(";
 
 /// Onde a chamada `needle` aparece — falha nomeando quem sumiu.
 fn at(needle: &str) -> usize {

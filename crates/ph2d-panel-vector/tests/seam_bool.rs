@@ -153,8 +153,14 @@ fn the_four_per_shape_verb_chips_are_reachable_and_reach_the_bus() {
     // A fileira só existe quando a shell publica um sujeito — é a mesma regra do Apply.
     state::set_bool_shape_row(Some((0, "Ellipse 2".to_string())));
     click_reaches_bus(ids::VECTOR_BOOL_SHAPE_UNION, "o chip Union desta forma");
-    click_reaches_bus(ids::VECTOR_BOOL_SHAPE_SUBTRACT, "o chip Subtract desta forma");
-    click_reaches_bus(ids::VECTOR_BOOL_SHAPE_INTERSECT, "o chip Intersect desta forma");
+    click_reaches_bus(
+        ids::VECTOR_BOOL_SHAPE_SUBTRACT,
+        "o chip Subtract desta forma",
+    );
+    click_reaches_bus(
+        ids::VECTOR_BOOL_SHAPE_INTERSECT,
+        "o chip Intersect desta forma",
+    );
     click_reaches_bus(ids::VECTOR_BOOL_SHAPE_EXCLUDE, "o chip Exclude desta forma");
     state::set_bool_shape_row(None);
 }

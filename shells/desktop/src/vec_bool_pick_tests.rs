@@ -49,7 +49,7 @@ fn boolean_group(op: u8) -> Fixture {
     sim.world_mut().entity_mut(g).insert(VecBoolGroup { op });
     let mut live = LiveGeometry::new();
     let mut bl = crate::bool_live::BoolLive::default();
-    bl.recook(&scene, &sim, &map, &VecXforms::default(), &mut live);
+    bl.recook(&scene, &sim, &map, &VecXforms::default(), &[], &mut live);
     // Pré-condição da fixture inteira: `b` foi mesmo ABSORVIDO. Sem isto todos os gates abaixo
     // mediriam uma forma normal e seriam verdes por acidente.
     assert_eq!(
@@ -292,7 +292,7 @@ fn a_nested_operand_is_reached_through_the_ink_that_is_actually_drawn() {
 
     let mut live = LiveGeometry::new();
     let mut bl = crate::bool_live::BoolLive::default();
-    bl.recook(&scene, &sim, &map, &VecXforms::default(), &mut live);
+    bl.recook(&scene, &sim, &map, &VecXforms::default(), &[], &mut live);
     // Pré-condições: `c` é quem desenha, e as outras duas estão vazias — uma a um salto da
     // tinta, a outra a dois.
     assert_eq!(live.get(&a).map(Vec::len), Some(0), "`a` devia estar vazio");

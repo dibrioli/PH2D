@@ -25,25 +25,16 @@ export CARGO_INCREMENTAL=0
 
 BASE="${BASE:-origin/main}"
 
-# ⛔⛔ **UMA ÁRVORE SUJA FAZ ESTE GATE SAIR VERDE SEM MEDIR NADA.**
+# ⚠️ **O `nextest` CANCELA na primeira falha, e o CLAUDE.md §5.0 manda usar `--no-fail-fast`** —
+# mas quem executa a regra é ESTE script, e ele não a oferecia: uma corrida que tropeça numa das
+# flakes de relógio conhecidas deixa **7 mil** testes por correr, e quem lê o resultado não fica a
+# saber se o resto está verde. *Uma regra fora do caminho de quem a executa é uma regra que não
+# existe* — a mesma lição que pôs o `CARGO_INCREMENTAL=0` aqui dentro.
 #
-# `git diff --name-only "$BASE..."` compara **commits**: trabalho por commitar é
-# invisível para ele. Numa worktree com o módulo inteiro ainda no working tree,
-# `CHANGED` sai vazio, o script cai no ramo "no crate changes" e roda **4 testes** —
-# saindo VERDE.
-#
-# ⚠️ **Medido em 2026-08-23**, ao fechar uma jornada: `Summary [0.003s] 4 tests run`
-# sobre um diff de 13 ficheiros e 959 linhas. Depois de commitar, o mesmo comando
-# correu **3.842**. É a MESMA doença que a cura de 2026-08-19 atacou (o `sed` do
-# prefixo de caminho) noutra roupa, e partilha com ela o modo de falha caro:
-# *não avisa, não falha, fica verde.*
-#
-# ⚠️ E o `BASE` por omissão é `origin/main`, que numa jornada Modo L pode estar
-# ATRÁS do `main` local. Se o gate parecer medir de menos, é o primeiro sítio a olhar.
-if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-    echo "⚠️  [nextest-impacted] A ÁRVORE ESTÁ SUJA, e este gate compara COMMITS."
-    echo "    O que não está commitado NÃO entra na conta — commite antes de fechar"
-    echo "    a linha, ou passe BASE=<ref> conscientemente."
+#   NO_FAIL_FAST=1 ./scripts/nextest-impacted.sh   # corre tudo e lista TODAS as falhas
+FAIL_MODE=()
+if [ -n "${NO_FAIL_FAST:-}" ]; then
+    FAIL_MODE=(--no-fail-fast)
 fi
 
 # ⚠️ **O PACOTE SE DERIVA DO `cargo metadata`, NUNCA DO PREFIXO DO CAMINHO.**
@@ -58,7 +49,17 @@ fi
 # ⚠️ E o dir NÃO é o nome do pacote fora de `crates/` (`shells/desktop` é o
 # `ph2d-host-desktop`), então a convenção antiga não podia simplesmente ser
 # estendida a mais um prefixo: a fonte tem de ser o manifesto.
-CHANGED=$(git diff --name-only "${BASE}"... 2>/dev/null | python3 -c '
+# ⚠️ **O TRABALHO NÃO COMMITADO TAMBÉM CONTA, e ele era INVISÍVEL aqui.**
+#
+# `git diff A...` compara COMMITS: um arquivo editado e ainda por commitar não aparece. Medido em
+# 2026-08-23: um fecho com quatro arquivos da `ph2d-ui-state` por commitar correu 10 418 testes
+# **sem correr um único** dos daquela crate — ela não estava no conjunto, e nada disse. É a mesma
+# família do defeito que o bloco abaixo narra (o `sed` do prefixo), noutra roupa: o gate saía VERDE
+# por não medir.
+#
+# ⇒ o conjunto é a UNIÃO do diff commitado com o que o `git status` mostra (modificado,
+# adicionado, por rastrear).
+CHANGED=$( { git diff --name-only "${BASE}"... 2>/dev/null; git status --porcelain 2>/dev/null | cut -c4-; } | sed 's/^"//;s/"$//' | sort -u | python3 -c '
 import json, os, subprocess, sys
 
 changed = [l.strip() for l in sys.stdin if l.strip()]
@@ -103,7 +104,7 @@ if [ -z "$CHANGED" ]; then
     # `binary(...)` matches the TEST BINARY name (tests/transform_determinism.rs);
     # `test(...)` matches individual fn NAMES (cross_os_golden_hash_pinned, …) which
     # do NOT contain "transform_determinism" → it silently matched 0 (false-green).
-    exec cargo nextest run -E 'binary(transform_determinism)' --cargo-profile ci-test
+    exec cargo nextest run "${FAIL_MODE[@]}" -E 'binary(transform_determinism)' --cargo-profile ci-test "$@"
 fi
 
 # rdeps(set) = the crate AND everything that depends on it (the real "impacted"
@@ -138,14 +139,7 @@ echo "[nextest-impacted] -E '$EXPR'"
 # — that surfaces the dir→package mismatch rather than silently under-testing.
 #
 # ⛔⛔ **`"$@"` NÃO É COSMÉTICO — sem ele os argumentos eram ENGOLIDOS EM SILÊNCIO.**
-#
-# ⚠️ **Medido em 2026-08-23:** o `CLAUDE.md` §5.0 manda usar `--no-fail-fast` («senão
-# suítes inteiras nunca chegam a correr»), e este script era invocado com ele **dezenas
-# de vezes por jornada** sem nunca o repassar. As corridas verdes escondiam-no — só
-# quando um teste falha é que a diferença aparece —, e a corrida que a expôs parou em
-# `1 689 de 3 853` com **2 164 testes por correr**, exactamente o cenário que a regra do
-# roteador existe para evitar.
-#
-# *Um script que aceita argumentos e os deita fora falha do mesmo modo que o
-# `str.replace` que não casa: sem erro, sem aviso, com ar de sucesso.*
-exec cargo nextest run -E "$EXPR" --cargo-profile ci-test "$@"
+# Medido em 2026-08-23: o script era invocado com `--no-fail-fast` dezenas de vezes por
+# jornada sem nunca o repassar; a corrida que o expôs parou em 1 689 de 3 853. O
+# `NO_FAIL_FAST=1` acima e o repasse de argumentos são COMPLEMENTARES, não redundantes.
+exec cargo nextest run "${FAIL_MODE[@]}" -E "$EXPR" --cargo-profile ci-test "$@"

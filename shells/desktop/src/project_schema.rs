@@ -17,188 +17,10 @@
 //! git não sabe o que ele significa.
 
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
-/// ⚠️ **A escada só tem aqui os degraus VIVOS (v60 →).** Os de **v2 a v59** foram para
-/// [`docs/archive/project-schema-ladder-v2-v59.md`](../../../docs/archive/project-schema-ladder-v2-v59.md)
-/// em 2026-08-23, quando este ficheiro bateu o teto de 600 LOC com **589 das 608 linhas em
-/// doc-comment**. ⛔ Cortar para o arquivo, nunca declarar exceção — e o que se lê para contar
-/// o próximo degrau é a **cauda** da escada, não o começo dela.
-/// v60 (plano UI/UX W4c.4 — os tokens de ESCALA no DOCUMENTO): o `ph2d_ecs::BoundProp` ganha
-/// **`StrokeWidth`(2)**, **`LayoutGapMain`(3)** e **`LayoutGapCross`(4)** — a espessura de um traço
-/// e o vão de um auto layout passam a poder SEGUIR um token numérico, como a cor já seguia.
-/// ⚠️ **Apendar variantes NÃO move `Fill`(0) nem `StrokeColor`(1)**, então todo binding já salvo
-/// continua a ler; o bump é pelo caminho INVERSO, o mesmo raciocínio do v58/v59 acima.
-/// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
-/// v61 (plano UI/UX **W2a** — o texto sabe medir-se): o `ph2d_ecs::VecTextParams` ganha
-/// **`wrap_width: Option<f64>`**, a largura da caixa a que o texto REFLUI.
-/// ⚠️ **Este é o único bump que o plano UI/UX previu e NOMEOU o preço** (§6.3): campo apendado
-/// a componente EXISTENTE, e o blob de um componente é postcard **posicional** ⇒ um arquivo já
-/// salvo lido pelo build novo bate no fim dos bytes. Um componente NOVO teria custado zero (o
-/// precedente do `VecStrokeProfile`/ADR-0148 e dos overrides da física) — e foi recusado com
-/// motivo: `wrap_width` é um número de layout ao lado do `align`/`tracking`/`line_height`, e
-/// pô-lo noutro componente partiria a porta única `layout_of_params` em duas, com todo
-/// consumidor que esquecesse a segunda a desenhar um texto sem refluxo **em silêncio**.
-/// ⚠️ A dívida que este bump paga é a que a **F1.W1 da `line/runtime`** (*uma versão por
-/// `ComponentBlob`*) apagaria — ela não existe, então o preço é este, escrito.
-/// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
-/// v62 (plano UI/UX **W7m** — a MOLA como opção): o `ph2d_ui_state::HostStates` ganha
-/// **`spring: Option<Spring>`**, a alternativa ao par *duração + curva*.
-/// ⚠️ **Campo apendado a um struct SERIALIZADO** ⇒ postcard posicional ⇒ quebra dura, a mesma
-/// classe do v61. Um `#[serde(default)]` **não salva**: o postcard não sinaliza ausência, então
-/// um arquivo antigo bate no fim dos bytes de qualquer maneira.
-/// ⚠️ **O sistema de easing fica INTACTO** — `duration_s` e `easing` continuam onde estavam e um
-/// hospedeiro sem mola percorre o MESMO caminho de antes, byte a byte. A mola é uma `Option`
-/// porque *ter mola* e *que mola* são a mesma decisão (o desenho do `wrap_width` do v61), e
-/// desligá-la **não apaga** o que o artista afinou nas outras duas.
-/// ⚠️ **PROVISÓRIO** pelo mesmo motivo que o v56.
-/// v63 (3D, W10.7 — a oclusão que a doação carrega): o `BakedFormDocument` ganhou
-/// **`form_occ`**, a oclusão de forma de um objeto assado (cavidade × os dois AOs),
-/// um byte por texel. Bump obrigatório pela razão de sempre — postcard é POSICIONAL.
-/// ⚠️ **E ela viaja em vez de ser assada no `base`**, o que seria de graça em disco: um
-/// re-bake REUSA o `base` (`sculpt3d_bake::bake_one`), então pré-multiplicar a oclusão
-/// ali a comporia a cada gesto e o objeto escureceria sozinho — o defeito exato que o
-/// `base` existe para impedir. ⚠️ **VAZIO num documento anterior**, e é a leitura
-/// honesta: o neutro da oclusão é `1.0`, e um plano de zeros pintaria de preto toda arte
-/// já assada.
-/// ⚠️ **A linha escreveu 56; o valor CONTADO contra o `main` da integração é 63** — a
-/// `line/Vector` trouxe os SETE degraus v56..v62 na mesma janela, e o número se CONTA,
-/// não se escolhe ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-/// v64 (physics, W13 — AS PAREDES): o `PlatformPlayer` ganhou **`wall_slide_speed`**,
-/// **`wall_jump_height`**, **`wall_jump_push`** e **`wall_reach`** — a capacidade de
-/// escorregar por uma parede e pular dela. Quatro campos apendados ao componente,
-/// mesmo raciocínio posicional dos v32/v33/v34/v54/v55: um save v63 lido por v64
-/// chega ao fim dos bytes no primeiro campo novo, e é o número que transforma isso
-/// num erro de VERSÃO em vez de num postcard a falhar longe da causa.
-/// ⚠️ **A linha escreveu 56; o valor CONTADO contra o `main` da integração é 64** — a
-/// `line/Vector` (v56..v62) e a `line/sculpt3d` (v63) pousaram antes na mesma janela.
-/// O número se CONTA, nunca se escolhe; três linhas já colidiram nele por o terem
-/// escolhido ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-/// v65 (physics, W14 — O ARRANQUE): o `PlatformPlayer` ganhou **`dash_speed`**,
-/// **`dash_time`** e **`dash_cooldown`**. Três campos apendados ao componente, pelo
-/// mesmo raciocínio posicional de todos os degraus acima.
-/// v66 (physics, W15 — O AGACHAR): o `PlatformPlayer` ganhou **`crouch_height`** e
-/// **`crouch_speed`**. Dois campos apendados, e o motivo do bump é o de sempre —
-/// postcard é posicional. ⚠️ Note o que este degrau **não** traz: nenhuma forma de
-/// collider muda, porque agachar aqui é uma perna mais CURTA e não um corpo menor.
-/// v67 (physics, W17 — A CORRIDA SOBREVIVE AO ARQUIVO): campo de ARQUIVO novo,
-/// `player_tape`, com o que o dedo do jogador fez tique a tique. ⚠️ Ele fecha o
-/// último item aberto do §4 do plano 06, e é o **bake da W16** que o torna útil:
-/// a fita é a entrada que o bake replaya, então reabrir um projeto e apertar Bake
-/// devolve a corrida de ontem. Medido: 60 s de corrida pesam **28,1 kB**.
-/// v68 (physics, W23 — O AGARRAR-SE): o `PlatformPlayer` ganhou
-/// **`wall_grab_stamina`**. Um campo apendado ao componente, pelo mesmo
-/// raciocínio posicional de todos os degraus acima.
-/// ⚠️ **Note o que este degrau NÃO traz:** o botão novo (`PlayerInput::grab`)
-/// **não** move o formato da fita — ela guarda os botões num BITMASK (`(f32,
-/// u8)`), e um bit livre não muda um byte do postcard. Uma corrida gravada antes
-/// desta wave volta com o agarrar em zero, que é o que ela de facto tinha; um
-/// campo novo na tupla teria custado o bump por si só e recusado todo arquivo já
-/// salvo.
-/// v69 (`line/motion-value`, doc 88 D3 — AS SETTINGS DO PROJETO viajam no arquivo):
-/// campo de ARQUIVO novo, `settings` (`SavedSettings`) — a escala do mundo
-/// (`pixels_per_meter`), a unidade que o artista LÊ, os dois snaps do gizmo e o modo
-/// de filtragem. Fora do `ProjectState` pela razão dos irmãos `physics`/`motion`/
-/// `timeline`: o `ProjectState` é a unidade do undo GLOBAL, e um Ctrl+Z do canvas
-/// não deve rebobinar a escala do mundo.
-/// ⚠️ **A linha escreveu 56 e o valor CONTADO é 69** — a `line/Vector` (v56..v62), a
-/// `line/sculpt3d` (v63) e a `line/physics` (v64..v68) pousaram antes na mesma janela
-/// ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-/// ⚠️ **E esta linha do degrau nasceu AUSENTE:** a integração renumerou o literal de
-/// 56 para 69 e não escreveu a entrada, então a escada ficou documentando até v68 sob
-/// uma const que dizia 69 — o buraco que faz o próximo bump nascer mal-numerado, pois
-/// quem conta o próximo degrau lê a escada e não o literal. Escrita na varredura da
-/// §5 do CLAUDE.md, no fim da mesma jornada.
-/// v70 (physics, W-KinPush — O EMPURRÃO): o `PlatformPlayer` ganhou
-/// **`reaction_push`**, o terceiro escalar da 3ª lei — quanto de um bloqueio
-/// LATERAL volta para o corpo que o causou. Um campo do componente, pelo mesmo
-/// raciocínio posicional de todos os degraus acima: o postcard grava na ordem de
-/// declaração, então um leitor velho leria os campos seguintes deslocados.
-/// ⚠️ **PROVISÓRIO até a integração** — o valor se CONTA contra o `main` do dia,
-/// e nesta janela há outras linhas vivas
-/// ([[feedback_numbers_that_sum_across_lines_count_dont_pick]]).
-/// v71 (physics, W-Swim — NADAR): o `PlatformPlayer` ganhou **três** campos
-/// apendados — `swim_speed` (a capacidade; `0` desliga, e é assim que ela
-/// nasce), `swim_acceleration` (a autoridade do servo contra o empuxo) e
-/// `swim_enter` (**quantos PESOS o fluido tem de carregar** para o regime
-/// armar). Os três num degrau só porque são uma capacidade só: quem escreve o
-/// primeiro recebe um nado que funciona.
-/// ⚠️ **O limiar não é uma altura, e não podia ser** — a mesma altura significa
-/// coisas diferentes em cada poça; `1.0` é *a água sozinha me sustenta*, que é
-/// por construção a linha de flutuação em qualquer densidade (a tabela está em
-/// `measure_the_swim_threshold`).
-/// ⚠️ **A FITA não se move**: o eixo vertical do nado sai dos botões `jump`/
-/// `down`, que já viajam no BITMASK — um eixo novo teria mudado a forma de
-/// `(f32, u8)` e recusado toda corrida já salva.
-/// ⚠️ **PROVISÓRIO, como o degrau acima** — contado contra o `main` de hoje (70).
 ///
-/// v72 (physics, W-Probes2 — OS SENSORES FICAM EDITÁVEIS): o `PlatformPlayer`
-/// ganhou **quatro** campos apendados — `corner_samples` e `corner_lookahead`
-/// (quantas amostras o perfil da quina varre, e quantos tiques de antecedência
-/// ele olha), `wall_samples` e `wall_spread` (quantos raios o flanco casta, e
-/// onde os de fora se sentam).
-/// ⚠️ **Eram `const` e passam a ser AUTORADOS, com os defaults iguais às consts**
-/// — todo player já salvo fica byte-idêntico, e o que muda é só quem pode mexer
-/// neles. O report do Enio: *"não temos inputs para ajustes dos tamanhos e
-/// posições dos sensores nem a quantidade de sensores"*.
-/// ⚠️ **Um degrau só porque é um assunto só**: a `W-Probes` fechou a metade (b)
-/// da §4.55 medindo que *cada NÚMERO tem row* — e não fez a pergunta que
-/// faltava, que é sobre a GEOMETRIA das amostras.
-/// ⚠️ **PROVISÓRIO** — contado contra o `main` do dia na integração.
-///
-/// v73 (physics, W-Probes2 — A PERNA VIRA UM LEQUE): o `PlatformPlayer` ganhou
-/// `foot_samples` + `foot_spread`. ⚠️ **Este degrau MOVE FÍSICA**, ao contrário
-/// do v72: o default de `foot_samples` é **3, não 1**, porque uma perna de um
-/// raio só afunda **0,411 m — 46% do `float_height`** parada sobre uma fenda de
-/// 10 cm num corpo de 40 cm que as bordas suportam
-/// (`measure_what_a_single_ground_ray_costs_over_a_gap`). Um projeto salvo em
-/// v72 reabre com a perna em leque, que é a correção.
-///
-/// v74 (physics, W-MultiJump — O PULO MÚLTIPLO): o `PlatformPlayer` ganhou
-/// `air_jumps` + `air_jump_height`, no MEIO do struct (logo depois do
-/// `jump_height`, que é onde eles se leem), e o postcard é posicional ⇒ quebra
-/// dura. ⚠️ **Este degrau NÃO move física:** a contagem nasce em `0`, que é a
-/// capacidade DESLIGADA — o precedente do wall slide e do wall jump —, então um
-/// projeto salvo em v73 reabre com o pulo exatamente como estava.
-///
-/// v75 (physics, W-Ledge — A BEIRADA): o `PlatformPlayer` ganhou `ledge_grab` +
-/// `ledge_speed`, apendados ao FIM, e o postcard é posicional ⇒ quebra dura.
-/// ⚠️ **Este degrau NÃO move física:** o alcance nasce em `0`, que é a
-/// capacidade DESLIGADA (o idioma de `coyote_time`/`corner_reach`/`air_jumps`),
-/// então um projeto salvo em v74 reabre exatamente como estava — e o sensor
-/// novo nem sequer é castado.
-///
-/// v76 (physics, W-Glide — PLANAR): o `PlatformPlayer` ganhou
-/// `glide_fall_speed`, apendado ao FIM, e o postcard é posicional ⇒ quebra
-/// dura. ⚠️ **Este degrau também NÃO move física:** o teto nasce em `0`, que é
-/// a capacidade DESLIGADA, então um projeto salvo em v75 reabre a cair
-/// exatamente como caía — e o `physics_ecs_c9` sai byte-idêntico, que é a prova
-/// executável.
-///
-/// v77 (physics, W-LedgeSensor — O SENSOR DA BEIRADA): o `PlatformPlayer` ganhou
-/// `ledge_reach_y` + `ledge_span`, apendados ao FIM, e o postcard é posicional ⇒
-/// quebra dura. ⚠️ **Este degrau NÃO move física, e a razão é a redução
-/// literal:** o `span` nasce em `0`, onde o leque tem **uma** amostra na posição
-/// exacta do raio de antes, e o `reach_y` reproduz a janela `2·grab` de antes
-/// quando vale o mesmo que o `grab` — as cenas de smoke autoram os dois em 0,60,
-/// então elas reabrem idênticas e o `physics_ecs_c9` sai byte-idêntico.
-///
-/// ⚠️ **E o degrau é o único preço da wave**: os dois campos existem porque a
-/// varredura da referência (GDevelop `Grab tolerance` + `Grab offset`, Corgi
-/// *origem e comprimento*, os 5 traços do Unreal) refutou a frase *"o alcance é
-/// uma grandeza só"* que o `grab` carregava.
-/// v78 (physics, W-LedgeSensor — O OFFSET VERTICAL): o `PlatformPlayer` ganhou
-/// `ledge_offset_y`, apendado ao FIM ⇒ quebra dura. ⚠️ **Ele existe porque o
-/// `reach_y` é TAMANHO e não POSIÇÃO**, e o degrau v77 tinha mapeado os dois no
-/// mesmo número (report do Enio: *"não temos como mover os sensores na
-/// vertical"*). ⚠️ **Também NÃO move física:** nasce em `0`, onde a janela fica
-/// centrada no topo do corpo como antes, e o `physics_ecs_c9` sai byte-idêntico.
-/// v79 (physics, W-Brake — FREAR NÃO É ACELERAR): o `PlatformPlayer` ganhou
-/// `brake_scale`, apendado ao FIM ⇒ quebra dura. ⚠️ **Ele existe porque a lei
-/// gastava `acceleration` nos DOIS sentidos** — o fator de viragem cobre
-/// *inverter* e não cobre *largar o direcional*, então um personagem que arranca
-/// rápido era obrigado a parar rápido. ⚠️ **E o degrau é o ÚNICO preço da wave:**
-/// o campo nasce em `1`, onde a lei reduz LITERALMENTE (`x * 1.0` é `x` em
-/// IEEE-754) ⇒ todo projeto salvo em v78 reabre a andar e a parar exactamente
-/// como estava, e o `physics_ecs_c9` sai byte-idêntico.
+/// ⚠️ **Os degraus de v2 a v79 estão em [`super::project_schema_history`]**, verbatim — o corte é
+/// por IDADE, e o teto de 600 LOC do HR-18 foi quem o pediu. O que se lê para contar o próximo
+/// degrau é a ponta, e a ponta é o que ficou aqui.
 /// v80 (physics, W-Fall — O TETO DE QUEDA): o `PlatformPlayer` ganhou
 /// `max_fall_speed`, apendado ao FIM ⇒ quebra dura. ⚠️ **Ele existe porque NÃO
 /// havia velocidade terminal, e o número é desta wave:** largando de mil metros
@@ -367,4 +189,25 @@
 /// ⚠️ Campo apendado, postcard posicional — e um `Vec` **vazio** é o comportamento de sempre, então
 /// um projeto de v93 lido com o modelo novo comporta-se igual **depois** de migrar; antes disso,
 /// falha alto no schema, que é o que este número existe para fazer.
-pub(crate) const PROJECT_SCHEMA: u32 = 94;
+/// v95 (`line/Vector` — A BOOLEANA VIVA NOS ESTADOS DE UI; ⚠️ nasceu como v90 na linha e foi
+/// RECONTADO para v95 na integração de 2026-08-23 — a `line/Sprite` ocupou 90..94 antes): o `ph2d_ui_state::ObjectPose` ganhou
+/// **DOIS** campos apendados ao fim — `bool_op` (o verbo próprio daquela forma naquele estado) e
+/// `bool_group_op` (a operação do grupo booleano acima dela). Enio, 2026-08-23: *"Sistema Live
+/// Boolean compatível plenamente com o sistema de animação States, inclusive com a possibilidade
+/// de mudar o tipo do boolean no meio da animação"*.
+/// ⚠️ **Dois campos e não um, porque são dois FATOS.** O primeiro é *"que verbo esta forma manda"*;
+/// o segundo é *"em que operação ela está metida"* — e é o segundo que faz a receita INTEIRA do
+/// grupo mudar entre dois estados, inclusive as quatro receitas (`Trim`/`Crop`/`Merge`/
+/// `MinusBack`), que não têm decomposição por forma nenhuma. Um campo só teria de escolher qual
+/// dos dois carregar, e a escolha calada é como um `Trim` autorado no Hover não anima nada.
+/// ⚠️ **O `bool_group_op` repete-se em cada operando do mesmo grupo**, e a redundância é
+/// deliberada: o grupo é uma entidade **sem `VecPathId`** e a pose é chaveada por caminho, então
+/// ele não tem slot próprio. Quem o governa é a única chave que já existe.
+/// ⚠️ **Nenhum registro novo no `ComponentRegistry`** — os dois componentes que estes campos
+/// espelham (`VecBoolOp` em v89, `VecBoolGroup` antes dele) já lá estavam. Aqui quem obriga o bump
+/// é o LAYOUT: postcard é posicional, e um leitor velho leria os bytes de `bool_op` como o começo
+/// do `ObjectPose` seguinte.
+/// ⚠️ **`None` nos dois é a identidade byte-a-byte de todo arquivo ≤ v89**: nenhuma pose antiga
+/// nomeia verbo nenhum, e `None` no primeiro é *herda* (a lei do componente) enquanto no segundo é
+/// *não sei de grupo nenhum* — que **nunca** desfaz um grupo.
+pub(crate) const PROJECT_SCHEMA: u32 = 95;

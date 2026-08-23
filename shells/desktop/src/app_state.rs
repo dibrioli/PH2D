@@ -953,6 +953,16 @@ pub(crate) struct App {
     /// transição de 150 ms viraria nove passos de undo. Quando a máquina chega, a cena está numa
     /// pose autorada e o diff registra **um** — o preço certo de *"eu mostrei o hover"*.
     pub(crate) ui_state_live: bool,
+    /// ⭐ **As formas a meio de uma troca de VERBO BOOLEANO**, neste quadro (Enio, 2026-08-23).
+    ///
+    /// Escrito pela ponte dos estados (que sabe *de que verbo para que verbo, e a que altura*) e
+    /// lido pela booleana viva (que sabe cozinhar) — as duas metades de uma resposta que nenhuma
+    /// das duas tem sozinha.
+    ///
+    /// ⚠️ **Ele é uma FOTOGRAFIA do quadro, não estado:** a ponte limpa-o em toda entrada, então
+    /// um recado nunca sobrevive à transição que o produziu. É a mesma disciplina do `plans` do
+    /// `BoolLive`.
+    pub(crate) ui_bool_morphs: Vec<ph2d_ui_state::BoolMorph>,
     /// **O MODO DE PREVIEW** (plano UI/UX W7r) — a UI desenhada a responder ao rato.
     ///
     /// ⚠️ **Ele não é serializado e não pode ser:** guarda *onde a cena estava quando a preview

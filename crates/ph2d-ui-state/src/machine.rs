@@ -10,7 +10,7 @@
 
 use crate::pose::{ObjectPose, UiState};
 use crate::role::StateRole;
-use crate::transition::Transition;
+use crate::transition::{BoolMorph, Transition};
 use ph2d_anim::Easing;
 use ph2d_spring::{Spring, SpringState};
 
@@ -51,6 +51,14 @@ pub struct Machine {
     /// interrompida no meio continuar de onde está em vez de saltar.
     live: Vec<ObjectPose>,
     flight: Option<Flight>,
+    /// **As formas a meio de uma troca de verbo booleano**, neste instante — vazio fora de uma
+    /// transição, e vazio dentro dela quando nenhum verbo mudou.
+    ///
+    /// ⚠️ **Ela vive ao lado da pose viva, e não dentro dela**, pela mesma razão que a
+    /// [`Transition::bool_morphs`] é uma pergunta separada do `at`: uma pose descreve um objeto, e
+    /// o que muda quando o verbo troca é o que um GRUPO desenha. Guardá-la aqui é o que faz o
+    /// recado ter o mesmo tempo de vida que a transição que o produziu.
+    bool_morphs: Vec<BoolMorph>,
 }
 
 impl Machine {
@@ -66,6 +74,7 @@ impl Machine {
             current: 0,
             live,
             flight: None,
+            bool_morphs: Vec::new(),
         })
     }
 
@@ -160,12 +169,25 @@ impl Machine {
         self.states = states;
         self.current = self.current.min(self.states.len() - 1);
         self.flight = None;
+        // O voo abortado leva o recado dele: um morph publicado sobre uma transição que já não
+        // existe faria a booleana continuar a cozinhar duas pontas para sempre.
+        self.bool_morphs.clear();
     }
 
     /// **A pose que a cena tem AGORA.** É o que o shell escreve de volta no mundo.
     #[must_use]
     pub fn pose(&self) -> &[ObjectPose] {
         &self.live
+    }
+
+    /// ⭐ **As formas a meio de uma troca de verbo booleano, AGORA** — o recado que a shell entrega
+    /// a quem cozinha a booleana viva. Vazio é o caso comum.
+    ///
+    /// ⚠️ Ela é o irmão exacto do [`Self::pose`]: as duas descrevem *onde a cena está*, e nenhuma
+    /// das duas vai para o arquivo.
+    #[must_use]
+    pub fn bool_morphs(&self) -> &[BoolMorph] {
+        &self.bool_morphs
     }
 
     /// **Vai para `target`.** O caminho começa na pose **VIVA**, nunca na autorada.
@@ -328,6 +350,10 @@ impl Machine {
             }
         };
         let moved = f.tr.at(t);
+        // ⚠️ **Colhido do MESMO `t` que produziu a pose**, e no mesmo fôlego: pedi-lo noutro sítio
+        // (ou noutro quadro) daria um `t` que não é o do desenho, e a booleana morfaria para um
+        // ponto do caminho onde a cena não está.
+        self.bool_morphs = f.tr.bool_morphs(t);
         Self::overlay(&mut self.live, moved);
     }
 
@@ -341,6 +367,9 @@ impl Machine {
         self.current = target;
         self.live = self.states[target].objects.clone();
         self.flight = None;
+        // ⚠️ **A chegada apaga o recado**, e é o que faz o quadro de chegada custar UM cozimento:
+        // a pose instalada já traz o verbo de destino, então não há duas pontas a morfar.
+        self.bool_morphs.clear();
     }
 
     /// Escreve as poses em movimento por cima das vivas, casando **por id**; quem entra é

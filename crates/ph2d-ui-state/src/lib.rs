@@ -137,7 +137,7 @@ pub use ph2d_spring::{
     DEFAULT_DAMPING, DEFAULT_STIFFNESS, MAX_DAMPING, MAX_STIFFNESS, MIN_DAMPING, MIN_STIFFNESS,
     Spring, SpringState,
 };
-pub use transition::Transition;
+pub use transition::{BoolMorph, Transition};
 
 #[cfg(test)]
 #[path = "tests.rs"]
@@ -146,6 +146,11 @@ mod tests;
 #[cfg(test)]
 #[path = "machine_tests.rs"]
 mod machine_tests;
+
+/// Os gates do canal de VERBO BOOLEANO — irmão por LOC (HR-18), com fixture própria.
+#[cfg(test)]
+#[path = "bool_morph_tests.rs"]
+mod bool_morph_tests;
 
 #[cfg(test)]
 #[path = "binding_tests.rs"]

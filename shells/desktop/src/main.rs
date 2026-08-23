@@ -429,6 +429,8 @@ mod project_baked_form;
 mod project_io;
 mod project_painter;
 mod project_schema;
+/// A metade ARQUIVADA da escada do `PROJECT_SCHEMA` (v2..v79) — irmã por LOC (HR-18).
+mod project_schema_history;
 /// **As settings do PROJETO viajam no arquivo** (doc 88, D3) — a escala do mundo e a
 /// unidade que o artista lê; irmão de `project` pelo teto de LOC.
 mod project_settings;
@@ -515,6 +517,9 @@ mod ui_preview_gesture;
 /// A cena de smoke da **MOLA** (`PH2D_BUILD_SMOKE=65`) — irmã de `build_smoke`.
 mod ui_spring_smoke;
 /// A cena de smoke dos **ESTADOS DE UI** (`PH2D_BUILD_SMOKE=61`) — irmã de `build_smoke`.
+/// ⭐ A cena da BOOLEANA VIVA dentro de um ESTADO de UI (`PH2D_BUILD_SMOKE=74`) — a troca de
+/// operação que MORFA em vez de saltar, com os operandos a mover-se ao mesmo tempo.
+mod ui_states_bool_smoke;
 mod ui_states_smoke;
 mod undo;
 mod undo_route;
@@ -892,6 +897,7 @@ impl App {
             flip_active: false,
             flip_style: None,
             ui_state_live: false,
+            ui_bool_morphs: Vec::new(),
             ui_preview: crate::render_loop::ui_preview::UiPreview::default(),
             ui_states_move_all: false,
             ui_states_anchor: None,

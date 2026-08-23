@@ -386,7 +386,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // NAO mudaram — a tag e' do `ph2d-ecs`, entao os dois numeros ao lado ficam onde estavam.
         // PROJECT 93→94: a `AnimationTag` ganhou `per_frame_ms` (§8.12 — a duracao por-quadro
         // que o importador de `.ase` passou a produzir). Campo apendado, layout posicional muda.
-        (94, 13, 14),
+        // PROJECT 94→95: o `ObjectPose` (estados de UI) ganhou DOIS campos — `bool_op` (o verbo
+        // proprio daquela forma) e `bool_group_op` (a operacao do grupo booleano acima dela).
+        // Postcard e' posicional: um leitor velho leria os bytes de `bool_op` como o comeco do
+        // `ObjectPose` seguinte. ⚠️ Nasceu como 89→90 na `line/Vector`; RECONTADO para 94→95 na
+        // integracao de 2026-08-23 (a `line/Sprite` ocupou 90..94 antes — o mesmo precedente do
+        // 86→87 acima). A `VecScene` NAO mudou (verbo e grupo sao fatos de ENTIDADE).
+        (95, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

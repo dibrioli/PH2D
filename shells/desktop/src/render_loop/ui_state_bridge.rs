@@ -87,6 +87,11 @@ fn empty_machine() -> Machine {
 /// pediria *"desfazer o Show"* e teria de apertar Ctrl+Z nove vezes. Quando a máquina CHEGA, a
 /// cena está numa pose autorada e o diff registra **um** passo — que é exactamente o que *"eu
 /// mostrei o hover"* deve custar.
+///
+/// ⭐ `morphs` sai daqui **cheio das formas a meio de uma troca de verbo booleano**, e a booleana
+/// viva lê-o mais tarde no mesmo quadro. Ele é **limpo em toda entrada**, e é isso que garante que
+/// um recado não sobrevive à transição que o produziu: sem a limpeza, um grupo continuaria a
+/// cozinhar duas pontas para sempre depois de a cena chegar.
 pub(crate) fn dispatch(
     machines: &mut UiMachines,
     states: &mut StateSets,
@@ -94,7 +99,9 @@ pub(crate) fn dispatch(
     scene: &mut VecScene,
     map: &VecEntityMap,
     dt: f64,
+    morphs: &mut Vec<ph2d_ui_state::BoolMorph>,
 ) -> bool {
+    morphs.clear();
     // **Uma forma apagada leva os estados dela.** Sem isto o documento acumularia poses de
     // objetos que ninguém vê, e elas viajariam no arquivo para sempre.
     //
@@ -119,6 +126,10 @@ pub(crate) fn dispatch(
             for p in m.pose() {
                 crate::vec_ui_state_edit::install(sim, scene, map, p);
             }
+            // ⚠️ **Colhido dentro do mesmo `if was` que instala a pose**, e não ao lado: o recado
+            // descreve o quadro que ACABOU de ser escrito. Colhê-lo de uma máquina que não andou
+            // publicaria o `t` do quadro anterior sobre uma cena que já não está lá.
+            morphs.extend_from_slice(m.bool_morphs());
         }
         animating |= m.is_animating();
     }

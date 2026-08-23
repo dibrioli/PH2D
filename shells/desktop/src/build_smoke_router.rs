@@ -193,6 +193,14 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::bool_smoke::frame(app, f);
         return true;
     }
+    // ⭐ A cena da BOOLEANA VIVA DENTRO DE UM ESTADO (=74) — irmã `ui_states_bool_smoke`. Ao
+    // contrário da `=48`, ela nasce **PRONTA**: o que ela prova é a ANIMAÇÃO da troca de operação,
+    // e uma animação que exige quinze cliques antes de aparecer não é smokável (*feature nova =
+    // auto-play*). O rig 2 é o CONTROLE, com o material idêntico e sem pose nenhuma.
+    if level == 74 {
+        crate::ui_states_bool_smoke::frame(app, f);
+        return true;
+    }
     // A cena da MOLDURA (=49) — irmã `frame_smoke`. Duas molduras idênticas, só uma recortando: o
     // par CONTROLE, para a resposta ser visível sem tocar num controle.
     if level == 49 {

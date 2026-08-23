@@ -89,6 +89,7 @@ fn baking_puts_the_result_where_the_base_sat_and_kills_the_group() {
         &sim,
         &map,
         &ph2d_vec_scene::VecXforms::default(),
+        &[],
         &mut live,
     );
     let plan = bl.plan(g).expect("o grupo cozinhou");
@@ -135,6 +136,7 @@ fn the_bake_writes_the_geometry_that_was_on_screen() {
         &sim,
         &map,
         &ph2d_vec_scene::VecXforms::default(),
+        &[],
         &mut live,
     );
     let drawn = live.get(&ids[0]).expect("a base carrega o desenho").clone();

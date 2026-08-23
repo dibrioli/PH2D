@@ -5853,6 +5853,7 @@ impl crate::App {
                     vec_scene,
                     &self.vec_entities,
                     ui_state_dt,
+                    &mut self.ui_bool_morphs,
                 );
             if pending_ui_move_all_toggle {
                 self.ui_states_move_all = !self.ui_states_move_all;
@@ -8140,8 +8141,14 @@ impl crate::App {
             //   pergunta;
             // - e ela TRANSFORMA o mapa (não o estende) pela mesma razão do alinhamento: é um
             //   componente do PAI, então convive com o offset de cada filho.
-            self.bool_live
-                .recook(vec_scene, sim, &self.vec_entities, &vec_xf, &mut vec_live);
+            self.bool_live.recook(
+                vec_scene,
+                sim,
+                &self.vec_entities,
+                &vec_xf,
+                &self.ui_bool_morphs,
+                &mut vec_live,
+            );
             // **QUEM FOI ABSORVIDO**, publicado no mesmo fôlego em que a absorção acontece. Sem
             // isto o operando consumido — que recebe uma lista VAZIA logo acima — fica
             // indistinguível de uma forma ANIQUILADA por um offset, e a lei *nada desenhado, nada

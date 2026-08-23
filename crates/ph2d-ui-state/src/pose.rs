@@ -68,6 +68,37 @@ pub struct ObjectPose {
     /// lados não conhece um degrau que o outro tem, quem resolve é o alinhamento
     /// (`ph2d_fx_op::mix_stacks`), que o faz crescer do neutro em vez de o omitir.
     pub filters: Vec<FxOp>,
+    /// **O verbo PRÓPRIO desta forma dentro da booleana viva que a consome** — o código de
+    /// `PathfinderOp` com que ela dobra sobre o resultado das anteriores. `None` = ela não se
+    /// pronuncia, e **herda o do grupo**.
+    ///
+    /// ⚠️ **`None` significa aqui exatamente o que significa no componente** (`ph2d_ecs::VecBoolOp`),
+    /// e essa coincidência é o desenho: um vocabulário próprio nesta ponta obrigaria alguém a
+    /// manter duas leis de herança em dia. É o oposto do [`Self::fill`], cujo `None` teve de ganhar
+    /// um doc a dizer que *não* é "herda".
+    ///
+    /// ⚠️ **Terceiro membro da família do [`Self::width`] e do [`Self::filters`]**, e pela mesma
+    /// razão que os dois existem: é um canal que NÃO vive no `VecPath` — é um componente ECS —,
+    /// então a pose tem de o carregar por si.
+    pub bool_op: Option<u8>,
+    /// **O verbo do GRUPO booleano acima desta forma**, se houver algum. `None` = ela não é
+    /// operando de booleana viva nenhuma neste estado, e então nada há a escrever.
+    ///
+    /// ⚠️ **São dois fatos diferentes, e por isso dois campos.** O de cima é *"que verbo ESTA
+    /// forma manda"*; este é *"em que operação ela está metida"* — e o segundo é o que faz a
+    /// receita inteira do grupo (as quatro de conjunto **e** as quatro receitas) mudar entre dois
+    /// estados. Um campo só teria de escolher qual dos dois carregar, e a escolha calada é como
+    /// um `Trim` autorado no Hover não anima nada.
+    ///
+    /// ⚠️ **Ele repete-se em cada operando do mesmo grupo, e a redundância é deliberada:** o grupo
+    /// é uma entidade **sem `VecPathId`** e a pose é chaveada por caminho, então ele não tem slot
+    /// próprio. Gravá-lo em quem o grupo governa é a única chave que já existe — e como a captura
+    /// lê os operandos todos do mesmo sítio, os valores não podem divergir.
+    ///
+    /// ⚠️ **Ausência NUNCA desfaz o grupo.** `None` é *"não sei de grupo nenhum"*, e a escrita
+    /// simplesmente não acontece; interpretá-lo como *"remova o `VecBoolGroup`"* faria uma pose
+    /// gravada antes da booleana **destruir** a booleana no primeiro Show.
+    pub bool_group_op: Option<u8>,
 }
 
 impl ObjectPose {
@@ -85,6 +116,8 @@ impl ObjectPose {
             geometry: None,
             width: None,
             filters: Vec::new(),
+            bool_op: None,
+            bool_group_op: None,
         }
     }
 

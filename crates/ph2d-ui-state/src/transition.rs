@@ -2,6 +2,7 @@
 
 use crate::pose::ObjectPose;
 use ph2d_vec_blend::Plan;
+use ph2d_vec_scene::VecPathId;
 
 /// Meia volta, em radianos — a fronteira do arco mais curto.
 const HALF_TURN: f64 = std::f64::consts::PI;
@@ -27,6 +28,26 @@ enum Step {
     Leaving(ObjectPose),
     /// Só no estado de destino: **entra**.
     Entering(ObjectPose),
+}
+
+/// **Uma forma a meio de uma troca de verbo booleano** — o recado que esta crate manda a quem
+/// cozinha a booleana viva.
+///
+/// ⚠️ **Ela NÃO é serializada e não pode ser:** é *onde a cena está agora*, e o documento guarda
+/// *onde as poses são*. É a mesma fronteira que mantém a [`super::Machine`] fora do arquivo.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BoolMorph {
+    /// A forma. É por ela que quem cozinha descobre **qual grupo** está a mudar.
+    pub id: VecPathId,
+    /// O verbo próprio dela na CHEGADA. `None` = lá ela herda o do grupo. O de PARTIDA não viaja
+    /// aqui: ele é o que o componente instalado já diz, e uma segunda cópia dele seria a que
+    /// diverge.
+    pub op: Option<u8>,
+    /// O verbo do GRUPO na chegada. `None` = a pose de chegada não conhece grupo nenhum, e aí a
+    /// operação do grupo fica onde está.
+    pub group_op: Option<u8>,
+    /// Onde no caminho, já clampado a `]0, 1[`.
+    pub t: f64,
 }
 
 /// O casamento entre dois estados, computado UMA vez.
@@ -99,6 +120,48 @@ impl Transition {
         }
 
         Self { steps, plans_built }
+    }
+
+    /// ⭐ **OS OPERANDOS A MEIO DE UMA TROCA DE VERBO**, no ponto `t` do caminho — vazio no caso
+    /// comum, que é o de nada mudar.
+    ///
+    /// # Por que ela é uma pergunta SEPARADA de [`Self::at`]
+    ///
+    /// Uma pose descreve *um objeto*. O que muda quando o verbo troca não é um objeto: é **o que o
+    /// GRUPO desenha**, e o grupo não tem pose (ele não tem `VecPathId`). Enfiar as duas pontas
+    /// dentro da pose obrigaria o campo serializado a carregar um transitório — um valor que só
+    /// tem sentido enquanto uma transição está no ar, dentro de um tipo que vai para o arquivo.
+    ///
+    /// ⚠️ **E esta crate não pode cozinhar a booleana:** ela não vê ECS, não sabe o que é um grupo
+    /// e não conhece o motor. Ela sabe a única coisa que ninguém mais sabe — *de que verbo para
+    /// que verbo, e a que altura do caminho* — e entrega isso a quem cozinha.
+    ///
+    /// ⚠️ **As pontas `t = 0` e `t = 1` devolvem VAZIO**, e não é economia: nelas o desenho é
+    /// exatamente uma das duas pontas, que é o que o cozimento normal já produz a partir do
+    /// componente instalado. Publicar um morph ali faria o quadro de chegada pagar dois
+    /// cozimentos e um casamento para desenhar o que já estava na tela.
+    #[must_use]
+    pub fn bool_morphs(&self, t: f64) -> Vec<BoolMorph> {
+        let tc = t.clamp(0.0, 1.0);
+        if tc <= 0.0 || tc >= 1.0 {
+            return Vec::new();
+        }
+        self.steps
+            .iter()
+            .filter_map(|s| match s {
+                Step::Moving { from, to, .. }
+                    if from.bool_op != to.bool_op || from.bool_group_op != to.bool_group_op =>
+                {
+                    Some(BoolMorph {
+                        id: from.id,
+                        op: to.bool_op,
+                        group_op: to.bool_group_op,
+                        t: tc,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
     }
 
     /// **Quantos casamentos de forma este par custou.** Existe para o gate de custo: um par
@@ -184,6 +247,22 @@ impl Transition {
                         // um overshoot daria raio e intensidade NEGATIVOS, que é lixo e não
                         // exagero — a mesma razão da opacidade e da escala aqui em cima.
                         filters: ph2d_fx_op::mix_stacks(&from.filters, &to.filters, tc),
+                        // ⚠️ **O VERBO é DISCRETO e ele SEGURA na ponta de PARTIDA.** Não há meio
+                        // caminho entre `Union` e `Subtract`, e um número interpolado entre dois
+                        // códigos daria a operação ERRADA — o `2` entre `Union` (0) e `Exclude`
+                        // (3) é `Intersect`, que não está em nenhuma das duas pontas.
+                        //
+                        // ⭐ Quem desenha o meio é o COZIMENTO, e não este lerp: ele recebe as
+                        // duas pontas por [`Transition::bool_morphs`], cozinha **as duas** com as
+                        // formas onde elas estão AGORA, e morfa os dois RESULTADOS. É por isso
+                        // que segurar aqui não é um degrau: é a metade honesta de uma resposta
+                        // cuja outra metade mora onde a booleana de facto acontece.
+                        bool_op: if tc >= 1.0 { to.bool_op } else { from.bool_op },
+                        bool_group_op: if tc >= 1.0 {
+                            to.bool_group_op
+                        } else {
+                            from.bool_group_op
+                        },
                     };
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`
                     // interpolou por conta: se o objeto sai auto-consistente daqui, ninguém a

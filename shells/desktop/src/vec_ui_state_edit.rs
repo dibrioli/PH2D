@@ -170,7 +170,20 @@ pub(crate) fn capture(
             .get::<VecFilter>(e)
             .map(|f| f.ops.clone())
             .unwrap_or_default();
+        // **O VERBO PRÓPRIO** desta forma dentro da booleana viva. ⚠️ A ausência do componente
+        // grava-se como `None`, que é o mesmo *"herda o do grupo"* que ele significa no mundo —
+        // traduzi-la aqui para o verbo efetivo seria congelar, no arquivo, uma herança que o
+        // artista ainda pode mudar no grupo.
+        pose.bool_op = sim.world().get::<ph2d_ecs::VecBoolOp>(e).map(|v| v.op);
     }
+    // **E A OPERAÇÃO DO GRUPO acima dela** — o outro canal, e o que faz a receita inteira mudar
+    // entre dois estados (as quatro de conjunto **e** as quatro receitas, que não têm decomposição
+    // por forma nenhuma).
+    //
+    // ⚠️ **Ela é lida pela porta única** (`bool_live::group_above`) e não por uma segunda subida da
+    // árvore: uma caminhada própria aqui daria uma segunda resposta a *"a quem esta forma
+    // pertence"*, e as duas divergiriam no primeiro documento aninhado.
+    pose.bool_group_op = crate::bool_live::group_above(sim, map, id).map(|(_, op)| op);
     if let Some(p) = scene.paths().iter().find(|p| p.id == id) {
         pose.fill.clone_from(&p.fill);
         pose.stroke = p.stroke;
@@ -250,7 +263,38 @@ pub(crate) fn install(
                     ops: pose.filters.clone(),
                 });
             }
+            // **O VERBO PRÓPRIO.** ⚠️ `None` REMOVE o componente, e é a mesma lei do filtro e do
+            // `VecOffset`: um documento não acumula relações inertes. Aqui ela tem um segundo
+            // efeito que é o importante — sem a remoção, um estado que devolve a forma à herança
+            // deixaria o override do outro estado colado nela, e o grupo passaria a ter uma forma
+            // que não obedece a ninguém.
+            match pose.bool_op {
+                Some(op) => {
+                    em.insert(ph2d_ecs::VecBoolOp { op });
+                }
+                None => {
+                    em.remove::<ph2d_ecs::VecBoolOp>();
+                }
+            }
         }
+    }
+    // **A OPERAÇÃO DO GRUPO.**
+    //
+    // ⚠️ **`None` NÃO desfaz o grupo** — ele é *"esta pose não sabe de grupo nenhum"*, e a escrita
+    // simplesmente não acontece. Lê-lo como *"remova o `VecBoolGroup`"* faria uma pose gravada
+    // ANTES de o artista criar a booleana **destruir** a booleana no primeiro Show.
+    //
+    // ⚠️ **E a escrita é condicional ao valor DIFERIR**, o que não é economia: `install` corre uma
+    // vez por objeto POR QUADRO durante uma transição, e cada operando do grupo escreve o mesmo
+    // número — um `insert` incondicional marcaria o grupo como mudado sessenta vezes por segundo,
+    // vezes o número de operandos, para não mudar nada.
+    if let Some(op) = pose.bool_group_op
+        && let Some((group, current)) = crate::bool_live::group_above(sim, map, pose.id)
+        && current != op
+    {
+        sim.world_mut()
+            .entity_mut(group)
+            .insert(ph2d_ecs::VecBoolGroup { op });
     }
     if let Some(p) = scene.paths_mut().iter_mut().find(|p| p.id == pose.id) {
         p.fill.clone_from(&pose.fill);
@@ -509,3 +553,9 @@ mod filter_tests;
 #[cfg(test)]
 #[path = "vec_ui_state_signal_tests.rs"]
 mod signal_tests;
+
+/// Os gates dos dois canais da BOOLEANA VIVA na pose — irmão por LOC (HR-18), com fixture própria
+/// (uma cena SEM grupo booleano não teria como afirmar nada sobre eles).
+#[cfg(test)]
+#[path = "vec_ui_state_edit_bool_tests.rs"]
+mod bool_tests;

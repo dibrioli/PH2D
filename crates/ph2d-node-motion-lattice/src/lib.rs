@@ -77,9 +77,26 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// O `jitter` **do ponto `i`** — desligado (vazio) → `0.0`; um valor → todos; N → o dele.
+///
+/// ⚠️ **Era `v.first()`, a mesma forma que desligava o `motion.spline_wrap` em silêncio**
+/// (doc 90 §5). A porta é um CAMPO, e o elemento 0 de uma rampa é `0.0` ⇒ ligar-lhe o gesto
+/// óbvio dava jitter **zero à treliça inteira**. Aqui o índice já existia: o gerador computa
+/// `i = r * cols + c` para semear o hash, e é o mesmo `i`.
+///
+/// ⚠️ A lei é a do irmão (`0 → neutro · 1 → broadcast · N → por-elemento`), e o `1 → broadcast`
+/// mantém byte-idêntica toda cena que já existe.
+fn jitter_at(vals: &[f32], i: usize) -> f32 {
+    match vals.len() {
+        0 => 0.0,
+        1 => vals[0],
+        _ => vals.get(i).copied().unwrap_or(0.0),
+    }
+}
+
 /// Lay out the hexagonal lattice (centred on the origin), each point displaced by a
 /// hashed offset scaled by `jitter`.
-fn lattice(rows: usize, cols: usize, spacing: f32, seed: u32, jitter: f32) -> Vec<[f32; 2]> {
+fn lattice(rows: usize, cols: usize, spacing: f32, seed: u32, jitter: &[f32]) -> Vec<[f32; 2]> {
     let mut out = Vec::with_capacity(rows * cols);
     // Half-extents for centring: odd rows reach half a cell further in x.
     let half_w = ((cols as f32 - 1.0) * spacing + spacing * 0.5) * 0.5;
@@ -88,8 +105,9 @@ fn lattice(rows: usize, cols: usize, spacing: f32, seed: u32, jitter: f32) -> Ve
         let row_shift = if r % 2 == 1 { spacing * 0.5 } else { 0.0 };
         for c in 0..cols {
             let i = (r * cols + c) as u32;
-            let jx = (hash3(seed, i, 0) - 0.5) * 2.0 * jitter;
-            let jy = (hash3(seed, i, 1) - 0.5) * 2.0 * jitter;
+            let j = jitter_at(jitter, i as usize);
+            let jx = (hash3(seed, i, 0) - 0.5) * 2.0 * j;
+            let jy = (hash3(seed, i, 1) - 0.5) * 2.0 * j;
             out.push([
                 c as f32 * spacing + row_shift - half_w + jx,
                 r as f32 * spacing * ROW_PITCH - half_h + jy,
@@ -113,10 +131,10 @@ impl NodeOp for MotionLattice {
         let spacing = ctx.param("spacing").max(1e-3);
         let seed = ctx.param("seed").max(0.0).round() as u32;
         let jitter = match ctx.input(0).get(VALUE_COL) {
-            Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.0),
-            _ => 0.0,
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => Vec::new(),
         };
-        let positions = lattice(rows, cols, spacing, seed, jitter);
+        let positions = lattice(rows, cols, spacing, seed, &jitter);
         ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
     }
 }
@@ -232,7 +250,7 @@ mod tests {
     /// the offset rows exactly `spacing` away.
     #[test]
     fn it_is_a_hexagonal_packing() {
-        let pts = lattice(5, 6, 0.7, 1, 0.0);
+        let pts = lattice(5, 6, 0.7, 1, &[]);
         assert_eq!(pts.len(), 30);
         let nn = nearest_neighbour(&pts);
         assert!(
@@ -246,7 +264,7 @@ mod tests {
     #[test]
     fn odd_rows_are_half_shifted() {
         let cols = 6;
-        let pts = lattice(2, cols, 1.0, 1, 0.0);
+        let pts = lattice(2, cols, 1.0, 1, &[]);
         let dx = pts[cols][0] - pts[0][0]; // (row1,col0) − (row0,col0)
         assert!((dx - 0.5).abs() < 1e-5, "odd row shifted half a cell: {dx}");
     }
@@ -254,7 +272,7 @@ mod tests {
     /// The lattice is centred on the origin (mean position ≈ 0).
     #[test]
     fn it_is_centred_on_the_origin() {
-        let pts = lattice(7, 7, 0.6, 1, 0.0);
+        let pts = lattice(7, 7, 0.6, 1, &[]);
         let mean = pts
             .iter()
             .fold([0.0f32; 2], |a, p| [a[0] + p[0], a[1] + p[1]]);
@@ -266,18 +284,49 @@ mod tests {
     /// nearest-neighbour distance drops below `spacing`), and it is deterministic.
     #[test]
     fn jitter_melts_the_lattice_deterministically() {
-        let ordered = lattice(6, 6, 0.7, 3, 0.0);
-        let melted = lattice(6, 6, 0.7, 3, 0.3);
+        let ordered = lattice(6, 6, 0.7, 3, &[]);
+        let melted = lattice(6, 6, 0.7, 3, &[0.3]);
         assert!(
             nearest_neighbour(&melted) < nearest_neighbour(&ordered),
             "jitter clumps some points closer than the perfect packing"
         );
-        assert_eq!(melted, lattice(6, 6, 0.7, 3, 0.3), "reproducible");
+        assert_eq!(melted, lattice(6, 6, 0.7, 3, &[0.3]), "reproducible");
         assert_ne!(
             melted,
-            lattice(6, 6, 0.7, 4, 0.3),
+            lattice(6, 6, 0.7, 4, &[0.3]),
             "seed re-rolls the jitter"
         );
+    }
+
+    /// **O `jitter` É UM CAMPO** — cada ponto derrete pelo SEU valor, não pelo do ponto 0.
+    ///
+    /// ⚠️ O defeito que este gate tranca não dava erro nenhum (doc 90 §5): a porta é do domínio
+    /// `Instances`, e ligar-lhe o gesto óbvio (uma rampa) entregava à treliça inteira o elemento
+    /// `0`, que numa rampa é `0.0` ⇒ **jitter zero em todo lado**, com a porta ligada.
+    ///
+    /// O oráculo é a comparação PONTO A PONTO contra as duas corridas uniformes: os pontos com
+    /// `0` têm de estar onde a treliça perfeita os põe, e os com `0,3` onde a derretida os põe.
+    #[test]
+    fn the_jitter_is_a_field_not_the_first_element() {
+        let (rows, cols) = (4usize, 4usize);
+        let n = rows * cols;
+        let ordered = lattice(rows, cols, 0.7, 3, &[]);
+        let melted = lattice(rows, cols, 0.7, 3, &[0.3]);
+        // CONTROLE: a fixture tem de conter o fenómeno — as duas corridas discordam.
+        assert_ne!(ordered, melted, "controle: 0,3 tem de derreter a treliça");
+
+        // Metade quieta, metade derretida — pelo ÍNDICE do ponto.
+        let half: Vec<f32> = (0..n).map(|i| if i < n / 2 { 0.0 } else { 0.3 }).collect();
+        let mixed = lattice(rows, cols, 0.7, 3, &half);
+        for i in 0..n / 2 {
+            assert_eq!(
+                mixed[i], ordered[i],
+                "ponto {i}: jitter 0 ⇒ treliça perfeita"
+            );
+        }
+        for i in n / 2..n {
+            assert_eq!(mixed[i], melted[i], "ponto {i}: jitter 0,3 ⇒ derretido");
+        }
     }
 
     /// Cooks through the registry and emits the `P` column, with the `jitter` input

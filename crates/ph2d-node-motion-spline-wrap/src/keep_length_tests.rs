@@ -22,7 +22,7 @@ fn row(n: usize, w: f32) -> Vec<P2> {
 
 /// O `x` de cada ponto depois de embrulhado.
 fn xs(p: &[P2], keep: bool) -> Vec<f32> {
-    wrap(p, &Curve::cubic(&RULER), 0.0, WHOLE, keep, 1.0, &[])
+    wrap(p, &Curve::cubic(&RULER), 0.0, WHOLE, keep, &[1.0], &[])
         .iter()
         .map(|q| q[0])
         .collect()

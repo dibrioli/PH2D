@@ -155,9 +155,27 @@ fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
     }
 }
 
-/// The `amount`: unconnected (empty) → 1.0; else the first element.
-fn amount_of(vals: &[f32]) -> f32 {
-    vals.first().copied().unwrap_or(1.0)
+/// O `amount` **do elemento `i`** — desligado (vazio) → `1.0`; um valor → todos; N → o dele.
+///
+/// ⚠️ **Era `vals.first()`, e isso fazia o gesto óbvio DESLIGAR o nó em silêncio** (doc 90 §5,
+/// caça aos knobs mortos, 2026-08-22). A porta é do domínio `Instances` — um CAMPO —, e ligar-lhe
+/// um `value.instance_field(Ramp)` para *"o embrulho crescer ao longo do layout"* é exactamente o
+/// que um artista tenta primeiro. O elemento 0 de uma rampa é **`0.0`**, e `amount = 0` faz a
+/// mistura de [`wrap_with_frame`] devolver o ponto original: **a curva inteira deixa de existir**,
+/// e os catorze knobs de geometria do nó ficam mudos ao mesmo tempo. Não havia erro, nem log —
+/// só o nó a não fazer nada.
+///
+/// ⚠️ **A lei é a MESMA do [`falloff_at`], deliberadamente** (`0 → neutro · 1 → broadcast ·
+/// N → por-elemento`). Uma segunda lei para a mesma pergunta é como duas colunas discordarem
+/// sobre o que é «um valor para todos» — e o `1 → broadcast` é o que torna esta mudança
+/// **byte-idêntica** para toda cena que já existe: o que antes era lido por `first()` continua a
+/// ser lido, porque uma porta com um elemento só é o caso que o `first()` acertava.
+fn amount_at(vals: &[f32], i: usize) -> f32 {
+    match vals.len() {
+        0 => 1.0,
+        1 => vals[0],
+        _ => vals.get(i).copied().unwrap_or(1.0),
+    }
 }
 
 /// **Onde na curva pousa a posição `u` do layout** — a pergunta é feita UMA vez.
@@ -305,7 +323,7 @@ fn wrap(
     height_scale: f32,
     map: ArcMap,
     keep_length: bool,
-    amount: f32,
+    amount: &[f32],
     falloff: &[f32],
 ) -> Vec<P2> {
     wrap_with_frame(p, curve, height_scale, map, keep_length, amount, falloff).0
@@ -328,7 +346,7 @@ fn wrap_with_frame(
     height_scale: f32,
     map: ArcMap,
     keep_length: bool,
-    amount: f32,
+    amount: &[f32],
     falloff: &[f32],
 ) -> (Vec<P2>, Vec<f32>) {
     let n = p.len();
@@ -359,7 +377,7 @@ fn wrap_with_frame(
                 b[0] + un[0] * p[i][1] * height_scale,
                 b[1] + un[1] * p[i][1] * height_scale,
             ];
-            let a = (amount * falloff_at(falloff, i)).clamp(0.0, 1.0);
+            let a = (amount_at(amount, i) * falloff_at(falloff, i)).clamp(0.0, 1.0);
             (
                 [
                     p[i][0] + (wrapped[0] - p[i][0]) * a,
@@ -393,7 +411,7 @@ impl NodeOp for MotionSplineWrap {
             [ctx.param("p2x"), ctx.param("p2y")],
             [ctx.param("p3x"), ctx.param("p3y")],
         ];
-        let amount = amount_of(&scalar_col(ctx.input(1), VALUE_COL));
+        let amount = scalar_col(ctx.input(1), VALUE_COL);
         // **A forma que o artista DESENHOU**, se ele nomeou uma. O shell publica
         // toda forma vetorial nomeada como uma polilinha sob o nome que ela
         // carrega na Hierarquia (`motion_bridge_shapes`) — o mesmo canal, o mesmo
@@ -420,8 +438,15 @@ impl NodeOp for MotionSplineWrap {
         };
         let falloff = scalar_col(input, "falloff");
         let curve = Curve::drawn(&drawn).unwrap_or_else(|| Curve::cubic(&cp));
-        let (out_p, turn) =
-            wrap_with_frame(&p, &curve, height_scale, map, keep_length, amount, &falloff);
+        let (out_p, turn) = wrap_with_frame(
+            &p,
+            &curve,
+            height_scale,
+            map,
+            keep_length,
+            &amount,
+            &falloff,
+        );
         // The element's OWN rotation composes with the curve's frame — this is a
         // modifier on a layout that may already be oriented, not a source that
         // mints one (its sibling `motion.distribute_curve` SETS `rot` because

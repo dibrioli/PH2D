@@ -7,8 +7,7 @@ volta. Espelha o [`docs/Painter/BUGS_painter.md`](../Painter/BUGS_painter.md).
 Regra deste arquivo: um bug só é considerado fechado quando existe um teste que **falha**
 se a correção for revertida. "Não reproduzi mais" não fecha nada.
 
-> **O que está VIVO aqui:** o **#27 está ABERTO** (a caneta elíptica sob Scale não-uniforme, logo
-> abaixo das recusas); os **26 anteriores estão TODOS fechados**, então o que vale hoje não é
+> **O que está VIVO aqui:** os **27 bugs estão TODOS fechados**, então o que vale hoje não é
 > nenhum deles — é o que eles ensinaram. Ficaram, nesta ordem: as **recusas com medição atrás**
 > (⛔ — não as reconstrua), os **padrões que se repetem** (leia ANTES de caçar o próximo) e o
 > **índice de uma linha por bug, com o MECANISMO**.
@@ -146,59 +145,50 @@ mutação que tira o teto da rota do painel derruba **três** gates.
 
 ---
 
-## 🔴 ABERTO
+## Índice dos 27 FECHADOS — o mecanismo de cada um, em uma linha
 
-### #27 — o traço vira uma CANETA ELÍPTICA sob Scale não-uniforme
+### #27 — o traço virava uma CANETA ELÍPTICA sob Scale não-uniforme ✅ 2026-08-23
 
-**Sintoma** (Enio, 2026-08-23, com as duas fotos): *"para formas vetoriais, no modo select, o
-stroke não mantém sua espessura e sua sanidade ao usar Scale não simétrico"*. Um quadrado
-arredondado com contorno branco, esticado num eixo só: o contorno deixa de ter espessura constante
-à volta da forma.
+**Sintoma** (Enio, com as duas fotos): *"o stroke não mantém sua espessura e sua sanidade ao usar
+Scale não simétrico"*.
 
-**MECANISMO — confirmado por leitura, e é uma lei que este repo já aprendeu DUAS vezes.**
-O traço é emitido em [`ph2d-vec-render/src/lib.rs:466`](../../crates/ph2d-vec-render/src/lib.rs)
-como `target.stroke(&kurbo_stroke(&s, …), transform, …)`, e o `transform` é
-`path_to_screen = camera * afim_do_path` — ou seja **inclui a escala do objeto**.
+**Causa.** O traço é emitido sob `camera * afim_do_path`, e **no Vello o transform de um `stroke`
+multiplica a CANETA**, não só a geometria. Com `sx ≠ sy` a caneta redonda de raio `w/2` vira uma
+**elipse** de semi-eixos `w·sx/2` e `w·sy/2`. Não era perda de espessura — era perda de
+**circularidade**.
 
-⚠️ **No Vello o transform de um `stroke` multiplica a CANETA, não só a geometria.** Com
-`scale = (sx, sy)` e `sx ≠ sy`, a caneta redonda de raio `w/2` vira uma **elipse** de semi-eixos
-`w·sx/2` e `w·sy/2`: a borda fica grossa num eixo e fina no outro. Não é perda de espessura — é
-perda de **circularidade da caneta**.
+⚠️ **A mesma lei já estava escrita DUAS vezes nesta crate** (o `marquee.rs`, que a nomeia por ela
+ter transformado um realce do Flip num borrão, e o `hover_outline.rs`). Ela mordeu uma terceira
+porque o caminho do **documento** nunca a tinha encontrado. *Uma lei escrita em dois sítios ainda
+não é uma lei — só uma porta é.*
 
-⚠️ **A mesma lei está escrita duas vezes nesta árvore**, as duas em contextos onde ela já mordeu:
-[`marquee.rs`](../../crates/ph2d-vec-render/src/marquee.rs) (*"no Vello o transform do `stroke`
-MULTIPLICA a largura, e é o que já transformou o realce do Flip num borrão"*) e o
-[`hover_outline.rs`](../../crates/ph2d-vec-render/src/hover_outline.rs) de 2026-08-23, que a evita
-transformando a GEOMETRIA e traçando sob `IDENTITY`.
+**Decisão de produto** (Enio, 2026-08-23): *"quando engrossa, engrossa por igual nos dois eixos"*.
+⇒ o traço escala com o objecto, por um fator **único**: `√|det|`, a média geométrica dos
+semi-eixos. Para escala uniforme `s` ela é `s` (o caminho comum não muda um pixel); para `(2, ½)`
+é `1` (a área não mudou, o traço não muda); e é **invariante à rotação**.
 
-**⚠️ E a cura óbvia colide com uma decisão de perf MEDIDA.** Pré-transformar a geometria por
-instância é exactamente o que o comentário do `draw_path_with` recusa: *"clonar o `BezPath` por
-instância era um custo por-instância que o cache de tesselação não remove — e a 160k estrelas era
-metade do que sobrava"*. ⇒ a cura tem de **preservar o caminho rápido**: só o caso partido
-(escala não-uniforme) paga.
+**Correção.** [`stroke_uniform.rs`](../../crates/ph2d-vec-render/src/stroke_uniform.rs) — porta
+única para os **três** sítios que emitiam traço no `draw_path_with`. Afim **conforme** ⇒ a chamada
+de sempre, byte a byte; senão a geometria atravessa o afim e a caneta fica redonda sob `IDENTITY`.
 
-**⛔ E há uma BIFURCAÇÃO DE PRODUTO que é do Enio, não minha** — *o traço escala com o objeto?*
+⚠️ **O caminho rápido é intocado de propósito:** pré-transformar geometria por instância é o que o
+`draw_path_with` recusa por escrito (*"o cache de tesselação não remove — a 160k estrelas era
+metade do que sobrava"*). **Só o caso partido paga.**
 
-| referência | ao redimensionar não-uniformemente |
-|---|---|
-| **Illustrator** | opção *Scale Strokes & Effects*, **desligada** por omissão ⇒ a espessura NÃO muda |
-| **Figma** | o traço **não** escala; redimensionar muda a geometria, não um afim |
-| **Affinity** | opção, como o Illustrator |
+**Gates** (5, todos com mutante morto): a caneta que chega ao Vello é REDONDA e tem raio `w·√|det|`
+— nem o maior eixo nem o menor · rotação e escala uniforme tomam o caminho rápido · cisalhamento
+**não** (com a fixture difícil: colunas de comprimentos IGUAIS, não perpendiculares) · o tracejado
+escala com a caneta.
 
-**Nenhuma das três produz uma caneta elíptica** — quando o traço escala, ele escala
-**uniformemente**. As duas saídas honestas:
-1. **o traço não escala** — a caneta fica em px, e só a CÂMARA a escala (o zoom continua a
-   engrossar, que é o certo);
-2. **escala uniforme** por um fator só (o `sqrt(|det|)` do afim, que é o que preserva área).
-
-⇒ **por decidir**, e o número não é meu. A #1 é o default de duas das três referências.
-
-**Gate que faltava:** nenhum. A suíte mede o que o traço DESENHA em escala uniforme; a caneta
-elíptica não move régua nenhuma porque nenhuma pergunta *"a espessura é a mesma nos dois eixos?"*.
+⚠️ **O gate que faltava, e por que nenhum o via:** a suíte media o que o traço DESENHA em escala
+uniforme, e uma caneta elíptica não move régua nenhuma porque nenhuma perguntava *"a espessura é a
+mesma nos dois eixos?"*. E um gate sobre o `is_conformal` **também não bastaria** — ele não prova o
+desenho. O que decide o pixel é o par *(caneta, afim)* que chega ao Vello, e é ele que o `pen_for`
+devolve para poder ser medido.
 
 ---
 
-## Índice dos 26 FECHADOS — o mecanismo de cada um, em uma linha
+### Os 26 anteriores
 
 > Post-mortem completo (sintoma · causa · gates · lição) no
 > [arquivo](../archive/docs-2026-08-18/Vector%20Module/BUGS_vector.md), na seção `## Bug #N`.

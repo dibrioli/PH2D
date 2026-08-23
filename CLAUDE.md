@@ -362,11 +362,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `PH2D_UI_MOTION_SMOKE=1..3`. Diagnóstico: `PH2D_BUILD_LOG=1`.
   ⚠️ **Preferência de utilizador fora do repo:** `~/.ph2d/prefs.txt` (`motion_character`, `reduced_motion`) — um
   `reduced_motion=1` esquecido **reprova smokes sobre produto correto**.
-  ⚠️ **BUG ABERTO #27** — o traço vira **caneta ELÍPTICA** sob Scale não-uniforme (o `stroke` do
-  Vello multiplica a caneta pelo afim do objecto). ⛔ A cura tem **bifurcação de produto** (o traço
-  escala com o objecto? Illustrator/Affinity oferecem a opção DESLIGADA; o Figma não escala) e
-  **colide com uma decisão de perf medida** — o mecanismo inteiro está em
-  [`BUGS_vector.md` #27](docs/Vector%20Module/BUGS_vector.md).
+  ✅ **O traço já não vira CANETA ELÍPTICA sob Scale não-uniforme** (bug #27): no Vello o transform
+  de um `stroke` multiplica a **caneta**, e com `sx ≠ sy` ela virava elipse. Decisão do Enio —
+  *"quando engrossa, engrossa por igual nos dois eixos"* — ⇒ o fator é **`√|det|`** (a média
+  geométrica: para escala uniforme é a própria escala, e é invariante à rotação).
+  ⚠️ **A mesma lei já estava escrita DUAS vezes** nessa crate (o marquee, o hover outline) e mordeu
+  na terceira: *uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é*
+  ([`stroke_uniform.rs`](crates/ph2d-vec-render/src/stroke_uniform.rs)). ⚠️ O **caminho rápido é
+  intocado**: afim conforme desenha byte a byte, e só o caso partido paga o clone por instância.
   **Ler:** [`docs/Vector Module/`](docs/Vector%20Module/) · [`BUGS_vector.md`](docs/Vector%20Module/BUGS_vector.md) ·
   [handoffs](docs/Vector%20Module/handoffs/README.md) · [história](docs/archive/estado-2026-08-18/vector.md)
 

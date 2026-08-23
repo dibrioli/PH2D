@@ -46,10 +46,12 @@ mod cut_line;
 mod hover_outline;
 mod marquee;
 mod standalone;
+mod stroke_uniform;
 pub use cut_line::draw_cut_line;
 pub use hover_outline::draw_hover_outline;
 pub use marquee::{draw_lasso, draw_marquee};
 pub use standalone::{draw_path_isolated, draw_path_standalone};
+pub use stroke_uniform::{is_conformal, stroke_uniform, uniform_scale};
 mod guides;
 pub use guides::{
     Guide, GuideKind, GuideLabel, draw_document_guides, draw_snap_guides, draw_text_caret,
@@ -463,11 +465,11 @@ pub(crate) fn draw_stroke_with(
                     // tesselação não remove — e a 160k estrelas era metade do que sobrava (byte-
                     // idêntico: um clone e o original encodam os mesmos bytes no Vello).
                     Cow::Borrowed(_) => {
-                        target.inner_mut().stroke(
+                        stroke_uniform::stroke_uniform(
+                            target,
                             &kurbo_stroke(&s, tess.dash),
                             transform,
                             &brush,
-                            None,
                             bp,
                         );
                     }
@@ -479,21 +481,21 @@ pub(crate) fn draw_stroke_with(
                         // o caso comum segue sem medir nada por quadro.
                         let dash = ph2d_vec_scene::dash_for(&p, &s);
                         let line_bp = build_bezpath(&p);
-                        target.inner_mut().stroke(
+                        stroke_uniform::stroke_uniform(
+                            target,
                             &kurbo_stroke(&s, dash),
                             transform,
                             &brush,
-                            None,
                             &line_bp,
                         );
                     }
                 },
                 StrokePiece::Symbol { path: geo } => {
-                    target.inner_mut().stroke(
+                    stroke_uniform::stroke_uniform(
+                        target,
                         &Stroke::new(s.width),
                         transform,
                         &brush,
-                        None,
                         &build_bezpath(&geo),
                     );
                 }

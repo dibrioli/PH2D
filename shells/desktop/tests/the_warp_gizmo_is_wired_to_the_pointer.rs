@@ -93,3 +93,31 @@ fn the_drag_writes_through_the_same_port_the_panel_uses() {
         "o gizmo de um nó não pode escrever num Transform de entidade"
     );
 }
+
+/// **AS DUAS SUPERFÍCIES PROJECTAM PELA MESMA PORTA.**
+///
+/// ⚠️ **O defeito de 2026-08-23**, e a razão de esta linha existir: a tinta projectava com
+/// a janela CHEIA e o hit-test com a da CENA, então a alça que se via não era a alça que
+/// existia — desenho deslocado *e* clique a errar, dois sintomas de uma causa. A cura
+/// principal é ESTRUTURAL (o overlay recebe o split e resolve a janela por dentro, então
+/// o chamador não tem como errar); esta linha é a segunda cerca, para o dia em que alguém
+/// reintroduzir um parâmetro de janela.
+#[test]
+fn paint_and_grab_project_through_the_same_door() {
+    let overlay = src("render_loop/warp_overlay.rs");
+    let drag = src("warp_gizmo_drag.rs");
+    for (name, s) in [("overlay", &overlay), ("drag", &drag)] {
+        assert!(
+            s.contains("warp_gizmo::scene_window("),
+            "o {name} tem de projectar pela porta única (`scene_window`)"
+        );
+    }
+    // ⚠️ E nenhum dos dois pode voltar a chamar a derivação CRUA: ela devolve dimensões
+    // soltas, e foi assim que a janela errada entrou.
+    for (name, s) in [("overlay", &overlay), ("drag", &drag)] {
+        assert!(
+            !s.contains("scene_window_wh("),
+            "o {name} não pode usar a derivação crua — a porta única existe para isso"
+        );
+    }
+}

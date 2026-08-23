@@ -7014,6 +7014,7 @@ impl crate::App {
                         v.warp,
                         &port,
                         camera,
+                        hero.view.center_split,
                         surface.size(),
                         vector_scene,
                     );

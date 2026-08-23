@@ -252,3 +252,90 @@ fn the_outline_is_the_nodes_own_curve() {
     // E o CONTROLE: a barriga existe (senão a comparação seria sobre uma recta).
     assert!(ring[k][1] > 2.5, "a aresta de cima arqueia: {:?}", ring[k]);
 }
+
+// ─── A projecção: o que se PINTA e o que se AGARRA têm de ser a mesma coisa ───
+
+/// **A ALÇA DESENHADA É A ALÇA QUE PEGA** — o gate que teria apanhado o defeito de
+/// 2026-08-23.
+///
+/// ⚠️ **Relato do Enio:** *"grade fora do lugar. drift. Não consegui manipular pontos e
+/// alças no canvas"* — dois sintomas, **uma** causa: a tinta projectava com a janela
+/// CHEIA e o hit-test com a da CENA. A alça que se via não era a alça que existia, então
+/// o desenho saía deslocado *e* o clique errava. A lei estava escrita no `field_gizmo`
+/// (*"a vector shape projected with the FULL window drifts off them"*), eu li-a, e mesmo
+/// assim passei a janela errada ao overlay. **Uma lei sem gate é uma nota.**
+///
+/// O gate fecha o ciclo: projecta cada alça para a tela com a MESMA porta que a tinta
+/// usa, volta ao mundo pela porta do ponteiro, e exige que o agarre encontre aquela alça.
+/// Ele reprova para qualquer par de janelas que discorde — que é exactamente o defeito.
+#[test]
+fn the_handle_you_see_is_the_handle_you_grab() {
+    use ph2d_host::WindowSize;
+    use ph2d_render::Camera2d;
+
+    let spec = spec_for(NodeTypeId::of("motion.bezier_warp")).expect("spec");
+    let b = unit_box();
+    let port = params(&[("tr_dx", 0.8), ("top_a_dy", 0.6)]);
+    let (hs, n) = handles(spec, b, 1.0, &port);
+    let camera = Camera2d::new([2.0, 1.0], 6.0);
+
+    // ⚠️ A janela da CENA — a mesma dos dois lados. Uma janela "cheia" mais alta é
+    // exactamente o que o defeito passava à tinta.
+    let scene = WindowSize::new(800, 450);
+    let to_screen = camera.world_to_screen_affine(scene);
+
+    for (i, h) in hs[..n].iter().enumerate() {
+        // Onde a TINTA põe esta alça.
+        let p = to_screen * ph2d_vector::Point::new(f64::from(h.world[0]), f64::from(h.world[1]));
+        // O PONTEIRO clica exactamente ali, e volta ao mundo pela porta dele.
+        #[expect(clippy::cast_possible_truncation, reason = "px de tela cabem num f32")]
+        let world = camera.screen_to_world((p.x as f32, p.y as f32), scene);
+        // Um pixel de tela em unidades de mundo, como a costura calcula.
+        let a = camera.screen_to_world((0.0, 0.0), scene);
+        let c = camera.screen_to_world((1.0, 0.0), scene);
+        let wpp = (c[0] - a[0]).hypot(c[1] - a[1]);
+        assert_eq!(
+            hit(&hs[..n], world, wpp),
+            Some(i),
+            "a alça {i} desenhada em {p:?} tem de ser a que o clique ali agarra"
+        );
+    }
+}
+
+/// **E O CONTROLE: com as janelas DIFERENTES, o ciclo QUEBRA.**
+///
+/// ⚠️ Sem esta metade o gate acima passaria por vacuidade num dia em que a projecção
+/// deixasse de importar. Ela reproduz o defeito de propósito — pinta com uma janela e
+/// agarra com outra — e exige que ele seja detectável.
+#[test]
+fn painting_with_one_window_and_grabbing_with_another_breaks_the_cycle() {
+    use ph2d_host::WindowSize;
+    use ph2d_render::Camera2d;
+
+    let spec = spec_for(NodeTypeId::of("motion.bezier_warp")).expect("spec");
+    let b = unit_box();
+    let (hs, n) = handles(spec, b, 1.0, &params(&[]));
+    let camera = Camera2d::new([2.0, 1.0], 6.0);
+    let scene = WindowSize::new(800, 450);
+    // A janela CHEIA, mais alta que a da cena — o que o defeito passava à tinta.
+    let full = WindowSize::new(800, 900);
+
+    let painted = camera.world_to_screen_affine(full);
+    let mut missed = 0;
+    for h in &hs[..n] {
+        let p = painted * ph2d_vector::Point::new(f64::from(h.world[0]), f64::from(h.world[1]));
+        #[expect(clippy::cast_possible_truncation, reason = "px de tela cabem num f32")]
+        let world = camera.screen_to_world((p.x as f32, p.y as f32), scene);
+        let a = camera.screen_to_world((0.0, 0.0), scene);
+        let c = camera.screen_to_world((1.0, 0.0), scene);
+        let wpp = (c[0] - a[0]).hypot(c[1] - a[1]);
+        if hit(&hs[..n], world, wpp).is_none() {
+            missed += 1;
+        }
+    }
+    assert!(
+        missed >= n / 2,
+        "com janelas diferentes o clique tem de ERRAR a maioria das alças ({missed} de {n}) \
+         — se não errasse, o gate irmão não estaria a medir a projecção"
+    );
+}

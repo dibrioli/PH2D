@@ -43,14 +43,12 @@ impl crate::App {
     fn warp_scene_window(&self) -> Option<ph2d_host::WindowSize> {
         let gfx = self.gfx.as_ref()?;
         let hero = gfx.hero_screen.as_ref()?;
-        let (w, h) =
-            crate::field_gizmo::scene_window_wh(hero.view.center_split, gfx.surface.size());
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "dimensões de janela, já positivas e inteiras na origem"
-        )]
-        Some(ph2d_host::WindowSize::new(w as u32, h as u32))
+        // ⚠️ **A MESMA porta que a tinta usa** — ver `warp_gizmo::scene_window`, que
+        // carrega o relato do defeito em que as duas discordaram.
+        Some(crate::render_loop::warp_gizmo::scene_window(
+            hero.view.center_split,
+            gfx.surface.size(),
+        ))
     }
 
     /// Quantas unidades de MUNDO vale um pixel de tela, na câmara da cena.

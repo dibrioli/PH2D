@@ -439,6 +439,28 @@ pub(crate) fn warp_amount(graph: &Graph, node: NodeId) -> Option<f32> {
     if wired { None } else { Some(1.0) }
 }
 
+/// **A JANELA em que este gizmo vive** — a da CENA, nunca a janela cheia.
+///
+/// ⚠️ **É a porta ÚNICA, e ela existe porque eu errei exactamente isto** (Enio,
+/// 2026-08-23: *"grade fora do lugar. drift. Não consegui manipular pontos e alças no
+/// canvas"*). Sob o split a cena renderiza num sub-retângulo, e o `field_gizmo` já tinha
+/// a lei escrita: *"a vector shape projected with the FULL window drifts off them —
+/// shifted and shrunk"*, com o precedente nomeado (os caminhantes de um `motion.path`
+/// sobre uma cópia deslocada da curva). Eu li aquele comentário e mesmo assim passei
+/// `surface.size()` ao overlay.
+///
+/// ⚠️ **E o erro deu DOIS sintomas de uma causa só**: o desenho saiu deslocado *e* o
+/// arrasto deixou de pegar — porque o hit-test usava a janela certa e a tinta a errada,
+/// então a alça que se via não era a alça que existia. *Quando duas superfícies projectam
+/// o mesmo mundo, elas têm de dividir a MESMA porta* — e é por isso que esta função
+/// existe em vez de o chamador escolher.
+pub(crate) fn scene_window(
+    center_split: ph2d_editor::screens::layout::CenterSplit,
+    full: ph2d_host::WindowSize,
+) -> ph2d_host::WindowSize {
+    crate::field_gizmo::scene_camera_window(center_split, full)
+}
+
 /// **O retrato do gizmo deste quadro** — tudo o que o pintor precisa, já resolvido.
 ///
 /// ⚠️ Ele existe porque quem SABE (a tool activa, o nó seleccionado, a tomada) e quem

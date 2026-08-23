@@ -58,13 +58,19 @@ pub(super) fn draw_warp_gizmo(
     warp: f32,
     param: &dyn Fn(&str) -> f32,
     camera: &Camera2d,
-    window: WindowSize,
+    center_split: ph2d_editor::screens::layout::CenterSplit,
+    full_window: WindowSize,
     vector_scene: &mut VectorScene,
 ) {
     if !active {
         return;
     }
-    let to_screen = camera.world_to_screen_affine(window);
+    // ⚠️ **A janela da CENA, resolvida AQUI e não pelo chamador.** Passar a janela cheia
+    // desloca e encolhe tudo o que é desenhado em coordenadas de mundo — e, pior, faz a
+    // tinta discordar do hit-test, que usa a janela certa. Ver
+    // [`super::warp_gizmo::scene_window`], que carrega o relato do defeito.
+    let to_screen =
+        camera.world_to_screen_affine(warp_gizmo::scene_window(center_split, full_window));
     let pt = |w: [f32; 2]| to_screen * Point::new(f64::from(w[0]), f64::from(w[1]));
 
     // ── o CONTORNO ──

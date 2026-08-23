@@ -113,6 +113,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.kind.box" => "Box",
         "panel.model3d.kind.cylinder" => "Cylinder",
         "panel.model3d.kind.extrude" => "Extrude",
+        // ⭐ As seis VISTAS NOMEADAS (W47). O atalho vai no rótulo: é a única forma de a tecla ser
+        // descoberta por quem não sabe que ela existe.
+        "panel.model3d.view.front" => "Front (1)",
+        "panel.model3d.view.back" => "Back (^1)",
+        "panel.model3d.view.right" => "Right (3)",
+        "panel.model3d.view.left" => "Left (^3)",
+        "panel.model3d.view.top" => "Top (7)",
+        "panel.model3d.view.bottom" => "Bottom (^7)",
+        // Os dois gestos de câmera que não são uma vista.
+        "panel.model3d.camera.ortho" => "Ortho (5)",
+        "panel.model3d.camera.frame" => "Frame (Home)",
         // ⭐ O estado de VISTA que precisa de se anunciar: só um nó está à vista, e qual.
         // ⚠️ A frase traz o **nome** ao lado — "estás a ver só uma parte" sem dizer qual deixa o
         // artista à procura.

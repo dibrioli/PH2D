@@ -121,6 +121,22 @@ pub struct ModelSnapshot {
     /// ⭐ As ações sobre o objeto escolhido (duplicar, apagar). Vazio quando não há nenhum — e aí a
     /// fileira não é pintada, pela mesma razão da de operações.
     pub acts: Vec<ModeChip>,
+    /// ⭐⭐ **AS SEIS VISTAS NOMEADAS** (W47) — frente, trás, direita, esquerda, topo, base.
+    ///
+    /// ⚠️ O `active` é **derivado da orientação da câmera**, não de um modo guardado: um arrasto de
+    /// um pixel já solta a vista, e o chip tem de apagar com ele. Um espelho de estado ficaria aceso
+    /// sobre uma vista que já não é aquela.
+    ///
+    /// ⚠️ **Sempre pintadas**, ao contrário das fileiras que dependem da seleção: olhar a peça de
+    /// frente não precisa de nada escolhido.
+    pub views: Vec<ModeChip>,
+    /// ⭐ **Os gestos de câmera que não são uma vista** (W47): a **lente** (convergente/paralela) e o
+    /// **enquadrar**.
+    ///
+    /// ⚠️ Eles existiam só como TECLAS (`Numpad5`, `Home`) — isto é, para quem já sabia que existem.
+    /// A lei da casa (W34) diz que o painel oferece exatamente o que o gesto faz, e a **câmera**
+    /// nunca tinha passado por ela.
+    pub camera: Vec<ModeChip>,
     /// ⭐ **As dimensões do objeto selecionado.** Vazio quando não há nada selecionado — e aí o
     /// painel diz-lo, em vez de mostrar uma lista de tudo que ninguém pediu.
     ///
@@ -178,6 +194,10 @@ pub enum ModelIntent {
     Export { slot: usize },
     /// Uma ação sobre o objeto escolhido, pela **posição** no seletor.
     Act { slot: usize },
+    /// ⭐ **Pôr a câmera numa vista nomeada** (W47), pela **posição** no seletor.
+    SetView { slot: usize },
+    /// ⭐ **Um gesto de CÂMERA que não é uma vista** (W47) — a lente, e o enquadrar.
+    Camera { slot: usize },
 }
 
 /// O shell publica o retrato antes de pintar.

@@ -356,6 +356,37 @@ impl App {
         .unwrap_or(false)
     }
 
+    /// ⭐⭐ **`Numpad1/3/7` põem a câmera numa VISTA NOMEADA**, e `Ctrl` dá a oposta (W47).
+    ///
+    /// ⚠️ As teclas são as do Blender — **as teclas, não os eixos**: ele é Z para cima e este módulo
+    /// é Y para cima, e copiar os eixos dele daria uma «frente» a olhar para o chão
+    /// ([`crate::field3d_views`]).
+    ///
+    /// ⚠️ Ela **enquadra** junto (W46): uma vista de frente que deixasse a peça fora do quadro seria
+    /// a mesma tela vazia que as duas waves anteriores fecharam.
+    ///
+    /// Mesma guarda de ponteiro das irmãs.
+    pub(crate) fn field3d_view_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        if self.modifiers.alt_key() || self.modifiers.super_key() {
+            return false;
+        }
+        let Some(view) = crate::field3d_views::view_for_key(code, self.modifiers.control_key())
+        else {
+            return false;
+        };
+        let pos = self.last_pointer;
+        with_smoke(|s| {
+            if !over_window(s, pos) {
+                return false;
+            }
+            s.cam.rotation = view.rotation();
+            frame_the_part(s);
+            s.manual = true;
+            true
+        })
+        .unwrap_or(false)
+    }
+
     /// ⭐ **`Shift+I` isola o escolhido — ou devolve a peça inteira** (W44).
     ///
     /// ⚠️ **A tecla é a do módulo irmão**, lida e não escolhida (`sculpt3d_keys`: `Shift+I` no bloco

@@ -78,6 +78,18 @@ pub fn model3d_act_button(slot: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.act.{slot}"))
 }
 
+/// ⭐ **O botão de uma VISTA NOMEADA** (frente, topo, …), pela posição no seletor.
+#[must_use]
+pub fn model3d_view_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.view.{slot}"))
+}
+
+/// ⭐ **O botão de um gesto de CÂMERA** que não é uma vista — a lente, o enquadrar.
+#[must_use]
+pub fn model3d_camera_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.camera.{slot}"))
+}
+
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]
 pub fn model3d_radius_slider(node: u32) -> NodeId {

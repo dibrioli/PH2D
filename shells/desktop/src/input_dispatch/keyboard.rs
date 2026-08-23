@@ -121,6 +121,16 @@ impl App {
             return;
         }
 
+        // ADR-0161 W47: `Numpad1/3/7` (+ `Ctrl` para a oposta) põem a câmera numa VISTA NOMEADA —
+        // frente, trás, direita, esquerda, topo, base. As TECLAS são as do Blender; os EIXOS são os
+        // nossos (Y para cima). Mesma guarda de ponteiro das outras.
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+            && self.field3d_view_key(code)
+        {
+            return;
+        }
+
         // ADR-0161 W44: `Shift+I` isola o escolhido — ou devolve a peça inteira. A tecla é a do
         // módulo de escultura, lida e não escolhida. ⭐ É ela a **porta de saída** do isolamento: o
         // chip da fileira desaparece com a raiz escolhida, e sem esta tecla a peça isolada não

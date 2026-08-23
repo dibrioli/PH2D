@@ -136,6 +136,20 @@ pub(crate) fn apply_event(
                 true
             }
         }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_view_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_view_button).unwrap_or(0);
+            slot < state::current().views.len() && {
+                state::push_intent(ModelIntent::SetView { slot });
+                true
+            }
+        }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_camera_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_camera_button).unwrap_or(0);
+            slot < state::current().camera.len() && {
+                state::push_intent(ModelIntent::Camera { slot });
+                true
+            }
+        }
         WidgetEvent::Click(id) if id == ids::MODEL3D_CLOSE => {
             host.set_panel_visible(Model3dPanel::ID, false);
             true

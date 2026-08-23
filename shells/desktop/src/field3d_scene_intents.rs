@@ -83,6 +83,31 @@ pub(super) fn apply(
                     }
                 }
             }
+            // ⭐⭐ **UMA VISTA NOMEADA** (W47) — estado de VISTA: não muda o mundo, não entra no
+            // undo. ⚠️ Ela põe a orientação **e enquadra** (W46): uma vista de frente que deixasse a
+            // peça fora do quadro seria a mesma tela vazia que a W45/W46 acabaram de fechar.
+            ph2d_panel_model3d::ModelIntent::SetView { slot } => {
+                if let Some(v) = crate::field3d_views::Standard::ALL.get(slot).copied() {
+                    crate::field3d_smoke::with_smoke(|s| {
+                        s.cam.rotation = v.rotation();
+                        crate::field3d_input::frame_the_part(s);
+                        // A mão mandou: o prato não recomeça a girar por cima da vista escolhida.
+                        s.manual = true;
+                    });
+                }
+            }
+            // ⭐ **A LENTE e o ENQUADRAR** — as duas portas que só existiam como tecla.
+            ph2d_panel_model3d::ModelIntent::Camera { slot } => {
+                crate::field3d_smoke::with_smoke(|s| {
+                    if slot == super::panel::ORTHO_SLOT {
+                        s.cam.lens = crate::field3d_input::law::other_lens(s.cam.lens);
+                    } else if slot == super::panel::FRAME_SLOT {
+                        crate::field3d_input::law::home(&mut s.cam);
+                        crate::field3d_input::frame_the_part(s);
+                    }
+                    s.manual = true;
+                });
+            }
             // ⭐ **Sair para um arquivo.** ⚠️ O pedido só é ANOTADO aqui: escrever um arquivo é
             // assunto do app (diálogo, toast) e esta função recebe o **mundo**. Ele atravessa pelo
             // mesmo caminho que o pedido de abrir o painel já usava.

@@ -3729,8 +3729,127 @@ barra de cobertura, um `FRAME_MARGIN` de 5 passa com a peça a ocupar 2 % do qua
 
 ---
 
+## §48 — W47: as SEIS VISTAS existem, e a câmera passou a ser alcançável (23/08)
+
+> Enio, 23/08: *"siga implementando blocos maiores de features"*. E o item que o plano nomeia como
+> **⭐ «É o produto»** desde 19/08: o canvas 3D de primeira classe.
+
+### §48.1 — ⭐ A medição mudou o entregável, e para melhor
+
+O que se ia construir era um **cabeçalho pintado dentro do canvas**, à Blender. Medido antes de
+escrever: o módulo **já pinta no viewport inteiro** (`viewport.x/y/w/h`, antes da chrome) — a área
+nunca foi o problema. O que falta é ser um **modo com controles**, e:
+
+⛔ **Um cabeçalho dentro do canvas seria uma SEGUNDA superfície de UI do mesmo módulo** — com o seu
+hit-test, os seus ids, a sua lei de alcançabilidade, e uma classe de defeito nova (o clique que
+orbita em vez de premir). O painel **já é o dono** de *"o que o módulo oferece"*, e a lei da W34 está
+escrita sobre ele.
+
+⇒ Os controles de câmera vão para o **painel**. *É a decisão que o próprio plano já tinha tomado* —
+a tabela da W2 diz que o canvas *"é trabalho de UI… pertence à wave do painel (W4), junto do resto da
+chrome do módulo"*.
+
+### §48.2 — ⛔ O buraco real: a câmera nunca passou pela lei da alcançabilidade
+
+| gesto | como se alcançava, antes desta wave |
+|---|---|
+| vistas de frente/topo/lado | ⛔ **não existiam** |
+| trocar a lente | `Numpad5` — tecla, e só |
+| enquadrar | `Home` — tecla, e só |
+| isolar | `Shift+I` (W44) — tecla + chip |
+
+A W34 escreveu *"o painel oferece EXATAMENTE o que o gesto faz"* e aplicou-a às fileiras que dependem
+da **seleção**. A **câmera** nunca foi auditada por ela: três gestos alcançáveis só por quem já sabia
+que existem, e seis que não existiam.
+
+### §48.3 — ⚠️ Lemos as TECLAS do Blender, não os EIXOS
+
+O Blender é **Z para cima**; este módulo é **Y para cima**. Copiar os eixos dele daria uma «frente» a
+olhar para o chão. O que se herda é a **memória de dedo**: `Numpad1` frente · `Numpad3` direita ·
+`Numpad7` topo, com **`Ctrl`** a dar a oposta de cada uma (`Numpad5` já era a lente desde a W15,
+como lá).
+
+⚠️ **A orientação é escrita em `yaw`/`pitch`** — a porta que a casa já tinha, e cujo doc **já previa
+esta wave à letra**: *"é como se escreve um enquadramento nomeado (o inicial, a vista de frente, a de
+topo)"*. A função existia e ninguém a tinha chamado para isso.
+
+⭐ E o gate não confere a aritmética: confere o **eixo do olho** (`Orbit::basis`). Um sinal trocado dá
+uma vista chamada *Frente* que mostra as **costas**, e nenhum teste de forma notaria — a peça
+aparece, inteira e enquadrada, do lado errado.
+
+### §48.4 — ⭐ A vista é um FATO DERIVADO, nunca um modo guardado
+
+`named_view(cam)` responde olhando para a **orientação**. Guardar *"estou em Frente"* daria um chip
+aceso sobre uma vista que o artista já torceu — o espelho de estado a mentir, que este módulo já
+pagou no cache do traçado.
+
+### §48.5 — ⛔ A tolerância que eu escrevi contradizia-se, e o gate apanhou-a à primeira
+
+Primeira escrita: `RECOGNISE = 1e-4`, com a justificação *"~1,6° de desvio; um arrasto de utilizador é
+sempre maior do que isso (0,57° por pixel)"*. ⚠️ **0,57° é MENOR que 1,6°** — a frase carregava os
+dois números e eu não os comparei. O gate reprovou na primeira corrida.
+
+O número medido, com o que ele tem de separar:
+
+| | `1 − \|q·q′\|` | em graus |
+|---|---:|---:|
+| re-normalizar (o ruído de `f32`) | ~1e-7 | ~0,05° |
+| **a barra** | **1e-6** | **0,16°** |
+| **um pixel** de arrasto | 1,25e-5 | 0,57° |
+
+⇒ uma ordem de grandeza acima do ruído, **12×** abaixo do menor gesto que existe. E o gate prende as
+**duas** margens: re-normalizar não solta a vista, um pixel solta.
+
+*Uma justificação com dois números só vale depois de os comparar.*
+
+### §48.6 — ⚠️ Uma lei de alcançabilidade tem uma RÉGUA POR ESPÉCIE DE GESTO
+
+A lei da W34 mede *"a intenção muda o **documento**"*. As fileiras de câmera **não podem** mudar o
+documento: olhar a peça de frente não é uma edição, não entra no undo, não viaja no arquivo. Medi-las
+por aquela régua daria **todas mudas** — e a conclusão errada seria *remover os botões*.
+
+⇒ o gate novo mede a **câmera**: cada chip de vista põe a orientação prometida **e enquadra**; o da
+lente troca a lente **e o retrato di-lo**; o de enquadrar traz o alvo à peça.
+
+### §48.7 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | a *Frente* põe o olho no eixo errado | `every_named_view_puts_the_eye_on_the_axis_its_name_promises` |
+| 2 | o produto interno perde o módulo (`q` ≠ `−q`) | `the_negated_quaternion_is_the_same_view` |
+| 3 | a tolerância volta a `1e-4` | `a_named_view_is_recognised_and_the_smallest_drag_lets_it_go` |
+| 4 | o `Ctrl` deixa de dar a vista oposta | `the_keys_are_the_reference_ones_and_ctrl_gives_the_opposite` |
+| 5 | o chip aceso vira modo guardado | `the_lit_view_chip_goes_out_when_the_camera_leaves_it` |
+| 6 | o chip da vista **não enquadra** | `every_camera_chip_moves_the_camera` |
+
+⚠️ **A 6 SOBREVIVEU à primeira corrida**, e apanhou um buraco real: o gate conferia a orientação
+depois do `SetView` e **nunca o enquadramento** — e a fixtura, centrada na origem, nunca o
+denunciaria sozinha. A cura foi levar o alvo para `[9,9,9]` antes de cada chip. *Terceira vez nesta
+linha em que uma fixtura que concorda escondeu metade da lei.*
+
+### §48.8 — ⏸️ O que fica aberto
+
+- ⏸️ **O canvas continua sem cabeçalho próprio** — a decisão foi deliberada (§48.1), mas o nome da
+  vista atual só se lê no painel. Um rótulo no canto do canvas seria uma **segunda voz** para o mesmo
+  fato; se um dia entrar, o chip tem de sair.
+- ⏸️ Não há vista **oposta rápida** (o `Numpad9` do Blender) nem *"enquadrar a seleção"* (o `.`).
+- ⏸️ As vistas **não forçam a lente paralela**. É a lei da referência (ela mantém a lente), mas para
+  um modelador que use as vistas para medir, ortográfica seria o esperado — decisão de produto.
+- ⏸️ Dividir a janela em várias vistas (o quad-view) continua fora: é docking, não modelagem.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W47 (§48): as SEIS VISTAS existem, e a câmera passou a ser alcançável** — o item que o plano
+  chama **⭐ «É o produto»** desde 19/08. ⭐ A medição mudou o entregável: o módulo **já pinta no
+  viewport inteiro**, então um cabeçalho dentro do canvas seria uma **segunda superfície de UI** do
+  mesmo módulo (hit-test, ids e lei de alcançabilidade próprios) — os controles vão para o **painel**,
+  que é a decisão que o plano já tinha tomado. ⛔ O buraco real: **a câmera nunca passou pela lei da
+  W34** — as vistas não existiam, e a lente e o enquadrar eram alcançáveis só por tecla. ⚠️ Lemos as
+  **teclas** do Blender, não os **eixos** (ele é Z-up, nós Y-up), e o gate confere o **eixo do olho**,
+  não a aritmética. ⭐ A vista é **derivada** da orientação, nunca guardada. ⏸️ Fica: sem vista oposta
+  rápida nem *enquadrar a seleção* · as vistas não forçam a lente paralela (produto) · quad-view fora
 - ✅ **W46 (§47): a peça nasce ENQUADRADA, e o `Home` passou a encontrá-la** — o ⏸️ que a W45 deixou
   uma hora antes. ⚠️ Uma peça longe da origem abria **fora do quadro**, e a tela voltava a ficar
   vazia: *o mesmo sintoma que a W45 existiu para curar, por outro caminho*. ⛔ E o `Home` **não** era

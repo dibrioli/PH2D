@@ -314,3 +314,139 @@ fn the_rows_stay_silent_where_the_gesture_is_refused() {
         "com a peça inteira escolhida, Duplicar e Apagar recusam os dois — a fileira não é pintada"
     );
 }
+
+// ───────── W47: a lei da alcançabilidade estendida à CÂMERA ─────────
+
+/// Arma o módulo e devolve-o ao repouso — só possível desde a W42 (ver `field3d_view_tests`).
+fn armed<R>(f: impl FnOnce() -> R) -> R {
+    crate::field3d_smoke::set_armed_by_panel(true);
+    let out = f();
+    crate::field3d_smoke::set_armed_by_panel(false);
+    let _ = crate::field3d_smoke::with_smoke(|_| ());
+    out
+}
+
+/// ⭐⭐ **TODO CHIP DE CÂMERA MEXE NA CÂMERA** — a lei da W34, com a régua que estas fileiras pedem.
+///
+/// # ⚠️ Por que a régua NÃO pode ser a mesma
+///
+/// A lei da W34 mede *"a intenção muda o DOCUMENTO"*, e as fileiras de câmera **não podem** mudar o
+/// documento: olhar a peça de frente não é uma edição, não entra no undo e não viaja no arquivo.
+/// Medi-las por aquela régua daria **todas** mudas — e a conclusão errada seria remover os botões.
+///
+/// ⇒ *Uma lei de alcançabilidade tem uma régua por espécie de gesto.* Aqui a régua é a **câmera**.
+///
+/// ⚠️ E as fileiras também não entram na tabela `ROWS` por uma segunda razão: elas **não dependem da
+/// seleção** — olhar de frente não precisa de nada escolhido —, e o `offered == acts` daquela tabela
+/// é uma afirmação sobre a seleção.
+#[test]
+fn every_camera_chip_moves_the_camera() {
+    armed(|| {
+        let (mut sim, _root) = scene(&flat());
+        let _ = ph2d_panel_model3d::drain_intents();
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+
+        let snap = ph2d_panel_model3d::state::current();
+        assert_eq!(
+            snap.views.len(),
+            crate::field3d_views::Standard::ALL.len(),
+            "a fileira das vistas é DERIVADA de `Standard::ALL` — se divergir, um botão fica sem lei \
+             ou uma lei fica sem botão"
+        );
+        assert_eq!(snap.camera.len(), 2, "a lente e o enquadrar");
+
+        // ⭐ Cada VISTA põe a câmera exatamente na orientação que o nome dela promete — **e
+        // enquadra**.
+        //
+        // ⚠️ **A segunda metade veio de uma mutação sobrevivente:** tirar o `frame_the_part` do
+        // `SetView` passava, porque o gate só olhava a **orientação**. Uma vista de frente que
+        // deixasse a peça fora do quadro é a mesma tela vazia que a W45 e a W46 fecharam — e a
+        // fixtura, centrada na origem, nunca o denunciaria sozinha. *Por isso o alvo é levado para
+        // longe antes de cada chip.*
+        for (slot, v) in crate::field3d_views::Standard::ALL.into_iter().enumerate() {
+            // Longe dela, de propósito: sem isto o gate passaria com um `SetView` que não faz nada.
+            crate::field3d_smoke::with_smoke(|s| {
+                s.cam.rotation = ph2d_field_render::Orbit::default().rotation;
+                s.cam.target = [9.0, 9.0, 9.0];
+            });
+            ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::SetView { slot });
+            crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+            assert_eq!(
+                crate::field3d_smoke::with_smoke(|s| crate::field3d_views::named_view(&s.cam))
+                    .flatten(),
+                Some(v),
+                "o chip {slot} ({v:?}) não pôs a câmera na vista dele"
+            );
+            let t = crate::field3d_smoke::with_smoke(|s| s.cam.target).expect("armado");
+            assert!(
+                t.iter().all(|c| c.abs() < 1.0),
+                "o chip {slot} ({v:?}) virou a câmera e deixou o alvo em {t:?} — a vista está certa \
+                 e a peça está fora do quadro"
+            );
+        }
+
+        // ⭐ A LENTE alterna, e volta.
+        let lens_of = || {
+            crate::field3d_smoke::with_smoke(|s| {
+                matches!(s.cam.lens, ph2d_field_render::Lens::Ortho)
+            })
+            .unwrap_or(false)
+        };
+        let before = lens_of();
+        ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
+            slot: crate::field3d_scene::panel::ORTHO_SLOT,
+        });
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        assert_ne!(lens_of(), before, "o chip da lente não trocou a lente");
+        // …e o retrato DIZ o estado novo: um interruptor que não acende mente sobre o que fez.
+        assert_eq!(
+            ph2d_panel_model3d::state::current().camera[crate::field3d_scene::panel::ORTHO_SLOT]
+                .active,
+            lens_of(),
+            "o chip da lente não reflete a lente que está posta"
+        );
+
+        // ⭐ O ENQUADRAR mexe a câmera para a peça.
+        crate::field3d_smoke::with_smoke(|s| {
+            s.cam.target = [9.0, 9.0, 9.0];
+        });
+        ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
+            slot: crate::field3d_scene::panel::FRAME_SLOT,
+        });
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        let t = crate::field3d_smoke::with_smoke(|s| s.cam.target).expect("armado");
+        assert!(
+            t.iter().all(|c| c.abs() < 1.0),
+            "o chip de enquadrar deixou o alvo em {t:?} — ele não foi buscar a peça"
+        );
+    });
+}
+
+/// ⚠️ **O chip aceso diz a VERDADE depois de um arrasto** — o realce é derivado da orientação, e não
+/// de um modo guardado. Sem isto, o painel afirmaria *"estás em Frente"* sobre uma vista que o
+/// artista já torceu.
+#[test]
+fn the_lit_view_chip_goes_out_when_the_camera_leaves_it() {
+    armed(|| {
+        let (mut sim, _root) = scene(&flat());
+        let _ = ph2d_panel_model3d::drain_intents();
+        ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::SetView { slot: 0 });
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        assert!(
+            ph2d_panel_model3d::state::current().views[0].active,
+            "o controle: a vista escolhida tem de acender"
+        );
+
+        crate::field3d_smoke::with_smoke(|s| {
+            crate::field3d_input::law::orbit(&mut s.cam, 4.0, 0.0);
+        });
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        assert!(
+            ph2d_panel_model3d::state::current()
+                .views
+                .iter()
+                .all(|c| !c.active),
+            "depois de arrastar, nenhum chip de vista pode continuar aceso"
+        );
+    });
+}

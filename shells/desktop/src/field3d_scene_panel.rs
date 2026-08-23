@@ -90,6 +90,10 @@ pub(crate) fn publish_snapshot(
         mods,
         exports,
         acts,
+        // ⭐⭐ **AS VISTAS** (W47) — derivadas de `Standard::ALL`, e o `active` derivado da
+        // ORIENTAÇÃO da câmera, nunca de um modo guardado (ver `field3d_views::named_view`).
+        views: views_now(),
+        camera: camera_now(),
         rows,
         // ⭐ **O isolamento diz-se sozinho** (W44), e a pergunta é feita ao MUNDO, não à seleção:
         // um estado da vista anunciado através de um controle da seleção some quando se escolhe
@@ -228,6 +232,52 @@ pub(crate) fn mods_for(
         })
         .collect()
 }
+
+/// ⭐ **As seis vistas nomeadas**, com a atual acesa (W47).
+///
+/// ⚠️ Sempre oferecidas: olhar a peça de frente não depende de nada estar escolhido. E a lista é
+/// **derivada de `Standard::ALL`** — a fonte da contagem —, como a dos verbos do gizmo.
+fn views_now() -> Vec<ph2d_panel_model3d::ModeChip> {
+    let here = with_smoke(|s| crate::field3d_views::named_view(&s.cam)).flatten();
+    crate::field3d_views::Standard::ALL
+        .iter()
+        .map(|v| ph2d_panel_model3d::ModeChip {
+            key: v.key(),
+            active: here == Some(*v),
+        })
+        .collect()
+}
+
+/// ⭐ **A lente e o enquadrar** (W47) — os dois gestos de câmera que não são uma vista.
+///
+/// ⚠️ **A lente é um ESTADO** (o `active` diz que está na paralela) e o enquadrar é uma **ação**
+/// (nunca acende). Misturá-los na mesma fileira é deliberado: a pergunta que ela responde é *"como
+/// estou a olhar?"*, e as duas são resposta a ela — a mesma decisão que a fileira de ações já tomou
+/// com o *Isolate*.
+fn camera_now() -> Vec<ph2d_panel_model3d::ModeChip> {
+    let ortho =
+        with_smoke(|s| matches!(s.cam.lens, ph2d_field_render::Lens::Ortho)).unwrap_or(false);
+    vec![
+        ph2d_panel_model3d::ModeChip {
+            key: CAMERA_ACTS[ORTHO_SLOT],
+            active: ortho,
+        },
+        ph2d_panel_model3d::ModeChip {
+            key: CAMERA_ACTS[FRAME_SLOT],
+            active: false,
+        },
+    ]
+}
+
+/// Os gestos de câmera, na ordem do seletor.
+pub(crate) const CAMERA_ACTS: [&str; 2] =
+    ["panel.model3d.camera.ortho", "panel.model3d.camera.frame"];
+
+/// A **lente** — interruptor. ⚠️ Derivados, nunca números à mão: um gesto novo no meio da lista
+/// mudaria o índice e o botão passaria a fazer outra coisa, sem erro nenhum.
+pub(crate) const ORTHO_SLOT: usize = 0;
+/// O **enquadrar** — ação.
+pub(crate) const FRAME_SLOT: usize = 1;
 
 /// ⭐ **O NOME do nó isolado** (W44) — `None` quando se vê a peça inteira.
 ///

@@ -4,6 +4,7 @@
 //! escreve têm de ser inversos exactos. Um round-trip que não fecha é o gizmo a
 //! escorregar do cursor, e é o defeito que esta casa já pagou em três gizmos.
 
+use super::doc::fit_downstream;
 use super::*;
 
 fn unit_box() -> WarpBox {
@@ -124,7 +125,8 @@ fn dragging_a_handle_writes_the_param_that_puts_it_under_the_finger() {
         let h = hs[1]; // TR
         let delta = [0.7f32, -0.3];
         let target = [h.world[0] + delta[0], h.world[1] + delta[1]];
-        let e = edits(&h, [0.0, 0.0], delta, warp).expect("warp não-nulo tem inverso");
+        let e = edits(&h, [0.0, 0.0], delta, warp, Downstream::IDENTITY)
+            .expect("warp não-nulo tem inverso");
         // Reconstrói a porta de param com o que o arrasto escreveu.
         let written: Vec<(String, f32)> = e.iter().map(|(k, v)| ((*k).to_string(), *v)).collect();
         let port = move |n: &str| {
@@ -152,10 +154,19 @@ fn dragging_a_handle_writes_the_param_that_puts_it_under_the_finger() {
 fn a_zero_warp_has_no_inverse_and_the_drag_declines() {
     let spec = spec_for(NodeTypeId::of("motion.bezier_warp")).expect("spec");
     let (hs, _) = handles(spec, unit_box(), 1.0, &params(&[]));
-    assert!(edits(&hs[0], [0.0, 0.0], [1.0, 1.0], 0.0).is_none());
-    assert!(edits(&hs[0], [0.0, 0.0], [1.0, 1.0], f32::NAN).is_none());
+    assert!(edits(&hs[0], [0.0, 0.0], [1.0, 1.0], 0.0, Downstream::IDENTITY).is_none());
+    assert!(
+        edits(
+            &hs[0],
+            [0.0, 0.0],
+            [1.0, 1.0],
+            f32::NAN,
+            Downstream::IDENTITY
+        )
+        .is_none()
+    );
     // O controle: um `warp` normal responde.
-    assert!(edits(&hs[0], [0.0, 0.0], [1.0, 1.0], 1.0).is_some());
+    assert!(edits(&hs[0], [0.0, 0.0], [1.0, 1.0], 1.0, Downstream::IDENTITY).is_some());
 }
 
 /// **O AGARRE ESCOLHE A MAIS PRÓXIMA, NÃO A PRIMEIRA.**
@@ -337,5 +348,125 @@ fn painting_with_one_window_and_grabbing_with_another_breaks_the_cycle() {
         missed >= n / 2,
         "com janelas diferentes o clique tem de ERRAR a maioria das alças ({missed} de {n}) \
          — se não errasse, o gate irmão não estaria a medir a projecção"
+    );
+}
+
+// ─── A cadeia de JUSANTE: o gizmo no espaço do que se VÊ ───
+
+/// **UM AFIM A JUSANTE É RECUPERADO EXACTAMENTE, E VERIFICADO.**
+///
+/// ⚠️ **Relato do Enio (2026-08-23):** *"se o nó Bezier Warp é colocado antes de
+/// Transform, a grade é desenhada na posição (0,0)"*. E o gizmo estava certo e inútil ao
+/// mesmo tempo: os params dele são offsets sobre a caixa do que ENTRA, e com o transform a
+/// jusante o que entra é a grelha crua na origem. *Um gizmo correcto no frame errado é um
+/// gizmo errado.*
+///
+/// A cura mede a cadeia por **correspondência de elemento** em vez de a presumir. Este
+/// gate prova a recuperação num afim genérico (roda, escala e translada de uma vez).
+#[test]
+fn a_downstream_affine_is_recovered_exactly() {
+    // Um afim que mistura tudo — nada de só-translação, que passaria com metade da conta.
+    let truth = Downstream {
+        lin: [[0.8, -0.6], [0.5, 1.3]],
+        tr: [4.0, -2.5],
+    };
+    let from: Vec<[f32; 2]> = (0..30)
+        .map(|i| {
+            let t = i as f32;
+            [t * 0.31 - 2.0, (t * 0.17).sin() * 3.0]
+        })
+        .collect();
+    let to: Vec<[f32; 2]> = from.iter().map(|p| truth.apply(*p)).collect();
+    let got = fit_downstream(&from, &to).expect("um afim exacto tem de ser recuperado");
+    for p in &from {
+        let (a, b) = (got.apply(*p), truth.apply(*p));
+        assert!(
+            (a[0] - b[0]).abs() < 1e-3 && (a[1] - b[1]).abs() < 1e-3,
+            "{a:?} vs {b:?}"
+        );
+    }
+}
+
+/// **E UMA CADEIA NÃO-AFIM É RECUSADA** — a metade que impede o ajuste de virar palpite.
+///
+/// ⚠️ Sem a verificação, uma cadeia não-afim receberia o afim "menos errado" e o gizmo
+/// cairia num sítio plausível e falso — pior que cair na origem, porque ninguém repara.
+#[test]
+fn a_non_affine_downstream_is_refused_rather_than_approximated() {
+    let from: Vec<[f32; 2]> = (0..40)
+        .map(|i| [i as f32 * 0.25 - 5.0, (i % 7) as f32 * 0.4])
+        .collect();
+    // Um mapa QUADRÁTICO: nenhum afim o reproduz.
+    let to: Vec<[f32; 2]> = from.iter().map(|p| [p[0] * p[0], p[1]]).collect();
+    assert!(
+        fit_downstream(&from, &to).is_none(),
+        "um mapa quadrático não é afim, e o ajuste tem de RECUSAR"
+    );
+    // E o CONTROLE: os mesmos pontos sob um afim de verdade passam.
+    let ok: Vec<[f32; 2]> = from
+        .iter()
+        .map(|p| [p[0] * 2.0 + 1.0, p[1] - 3.0])
+        .collect();
+    assert!(
+        fit_downstream(&from, &ok).is_some(),
+        "controle: um afim passa"
+    );
+    // E pontos COLINEARES não determinam um afim — recusa, e não uma divisão por zero.
+    let line: Vec<[f32; 2]> = (0..10).map(|i| [i as f32, 0.0]).collect();
+    let line_to: Vec<[f32; 2]> = line.iter().map(|p| [p[0] + 1.0, 0.0]).collect();
+    assert!(fit_downstream(&line, &line_to).is_none(), "colineares");
+}
+
+/// **AS ALÇAS SEGUEM O TRANSFORM DE JUSANTE, E O ARRASTO CONTINUA A FECHAR.**
+///
+/// ⚠️ **O gate do defeito, e ele mede as DUAS pontas.** Com um transform a jusante, a alça
+/// tem de ser desenhada onde o artista vê a figura (deslocada) **e** um arrasto ali tem de
+/// escrever o param que a repõe sob o dedo — o que exige desfazer a jusante ANTES de
+/// dividir pelo `warp`. Uma cura que só movesse o desenho poria a alça no sítio certo e
+/// faria o arrasto saltar.
+#[test]
+fn the_handles_follow_the_downstream_transform_and_the_drag_still_closes() {
+    let spec = spec_for(NodeTypeId::of("motion.bezier_warp")).expect("spec");
+    let down = Downstream {
+        lin: [[1.5, 0.0], [0.0, 1.5]],
+        tr: [10.0, -4.0],
+    };
+    let v = WarpGizmoView {
+        node: ph2d_nodegraph::graph::NodeId(0),
+        spec,
+        bbox: unit_box(),
+        warp: 1.0,
+        down,
+    };
+    let port = params(&[]);
+    let (plain, _) = handles(spec, v.bbox, v.warp, &port);
+    let (moved, n) = view_handles(&v, &port);
+    for i in 0..n {
+        let want = down.apply(plain[i].world);
+        assert!(
+            (moved[i].world[0] - want[0]).abs() < 1e-4
+                && (moved[i].world[1] - want[1]).abs() < 1e-4,
+            "alça {i}: {:?} vs {want:?}",
+            moved[i].world
+        );
+    }
+    // E o arrasto fecha: mover a alça por um delta NO ESPAÇO DO QUE SE VÊ tem de a pôr ali.
+    let h = moved[1]; // TR
+    let delta = [0.9f32, 0.6];
+    let target = [h.world[0] + delta[0], h.world[1] + delta[1]];
+    let e = edits(&h, [0.0, 0.0], delta, v.warp, down).expect("um afim invertível");
+    let written: Vec<(String, f32)> = e.iter().map(|(k, val)| ((*k).to_string(), *val)).collect();
+    let after_port = move |name: &str| {
+        written
+            .iter()
+            .find(|(k, _)| k == name)
+            .map_or(0.0, |(_, val)| *val)
+    };
+    let (after, _) = view_handles(&v, &after_port);
+    assert!(
+        (after[1].world[0] - target[0]).abs() < 1e-3
+            && (after[1].world[1] - target[1]).abs() < 1e-3,
+        "com transform a jusante o arrasto tem de fechar: {:?} vs {target:?}",
+        after[1].world
     );
 }

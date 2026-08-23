@@ -21,7 +21,7 @@
 //! como transform faria a linha engordar com o zoom. É a lei que o `anchor_overlay`
 //! escreveu no cabeçalho dele, e ela vale igual aqui.
 
-use super::warp_gizmo::{self, MAX_HANDLES, WarpBox, WarpGizmoSpec, WarpHandle, WarpHandleKind};
+use super::warp_gizmo::{self, MAX_HANDLES, WarpHandle, WarpHandleKind};
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, BezPath, Brush, Color, Point, Stroke, VectorScene};
@@ -47,15 +47,9 @@ const TANGENT_RGBA: [f32; 4] = [0.35, 0.78, 1.0, 0.55];
 /// ⚠️ **O `active` é a tool Motion**, e ele é gateado pelo chamador como no
 /// `field_gizmo`: fora dela o canvas é dos sprites, e alças de nó ali seriam alvos que
 /// roubam o clique de outra ferramenta.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "as sete são o mínimo: o que desenhar, onde, e em que câmara"
-)]
 pub(super) fn draw_warp_gizmo(
     active: bool,
-    spec: WarpGizmoSpec,
-    bbox: WarpBox,
-    warp: f32,
+    v: &warp_gizmo::WarpGizmoView,
     param: &dyn Fn(&str) -> f32,
     camera: &Camera2d,
     center_split: ph2d_editor::screens::layout::CenterSplit,
@@ -73,9 +67,8 @@ pub(super) fn draw_warp_gizmo(
         camera.world_to_screen_affine(warp_gizmo::scene_window(center_split, full_window));
     let pt = |w: [f32; 2]| to_screen * Point::new(f64::from(w[0]), f64::from(w[1]));
 
-    // ── o CONTORNO ──
-    let b = warp_gizmo::boundary(spec, bbox, warp, param);
-    let ring = warp_gizmo::outline(&b);
+    // ── o CONTORNO, já no espaço do que se VÊ (a cadeia de jusante aplicada) ──
+    let (ring, corners) = warp_gizmo::view_outline(v, param);
     let mut path = BezPath::new();
     for (i, w) in ring.iter().enumerate() {
         let p = pt(*w);
@@ -94,7 +87,7 @@ pub(super) fn draw_warp_gizmo(
         &path,
     );
 
-    let (hs, n) = warp_gizmo::handles(spec, bbox, warp, param);
+    let (hs, n) = warp_gizmo::view_handles(v, param);
     let live: &[WarpHandle] = &hs[..n.min(MAX_HANDLES)];
 
     // ── os BRAÇOS, antes das alças (elas pousam por cima) ──
@@ -103,7 +96,7 @@ pub(super) fn draw_warp_gizmo(
     let mut any_arm = false;
     for h in live {
         if let Some(c) = warp_gizmo::tangent_arm(h.kind) {
-            arms.move_to(pt(b.corner[c]));
+            arms.move_to(pt(corners[c]));
             arms.line_to(pt(h.world));
             any_arm = true;
         }

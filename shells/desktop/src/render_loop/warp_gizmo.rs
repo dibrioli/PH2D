@@ -347,172 +347,31 @@ pub(crate) fn edits(
     start: [f32; 2],
     delta: [f32; 2],
     warp: f32,
+    down: Downstream,
 ) -> Option<[(&'static str, f32); 2]> {
     const MIN_WARP: f32 = 1e-3;
     if !warp.is_finite() || warp.abs() < MIN_WARP {
         return None;
     }
+    // ⚠️ **De volta ao espaço do NÓ antes de dividir pelo warp**, e nesta ordem: o dedo
+    // move-se no espaço do que se vê, e os params vivem no do nó. Trocar a ordem daria o
+    // mesmo número só quando a cadeia de jusante fosse uma escala uniforme.
+    let d = down.unapply_delta(delta)?;
     Some([
-        (h.param[0], start[0] + delta[0] / warp),
-        (h.param[1], start[1] + delta[1] / warp),
+        (h.param[0], start[0] + d[0] / warp),
+        (h.param[1], start[1] + d[1] / warp),
     ])
 }
 
-// ─── A ligação ao DOCUMENTO ───────────────────────────────────────────────────────
-//
-// Daqui para baixo o módulo deixa de ser puro: ele pergunta ao grafo e ao pump. A
-// fronteira é de propósito — tudo o que decide GEOMETRIA está acima e é testável sem
-// mundo nenhum.
-
-use crate::motion_state::MotionState;
-use ph2d_nodegraph::graph::{Graph, NodeId};
-
-/// **Quem alimenta a porta 0 deste nó** — o layout a cuja caixa os offsets se referem.
-///
-/// ⚠️ **É o nó de CIMA, e não o próprio.** A saída do deformador já está deformada; a
-/// caixa que os params usam é a da ENTRADA. Ler a caixa errada faria as alças nascerem
-/// fora do sítio assim que o artista mexesse na primeira — e o erro cresceria com o
-/// arrasto, que é o modo de falha que se lê como *"o gizmo está a fugir"*.
-pub(crate) fn upstream_of(graph: &Graph, node: NodeId) -> Option<NodeId> {
-    graph
-        .edges()
-        .iter()
-        .find(|e| e.to == (node, 0))
-        .map(|e| e.from.0)
-}
-
-/// O nó de warp seleccionado e o que ele oferece, ou `None`.
-pub(crate) fn selected_warp(motion: &MotionState) -> Option<(NodeId, WarpGizmoSpec)> {
-    let nid = super::motion_bridge::params::selected_motion_node().map(NodeId)?;
-    let ty = motion.doc.graph.node(nid)?.type_id();
-    Some((nid, spec_for(ty)?))
-}
-
-/// **A TOMADA que este gizmo precisa**, para o `motion_bridge` a armar junto das dos
-/// sinais.
-///
-/// ⚠️ **Uma tomada e não um segundo cozimento.** A shell tem grafo e registry e poderia
-/// cozinhar o nó de cima por conta própria — e aí haveria DOIS cozimentos do mesmo
-/// estado, que é a lei que esta casa já pagou. A bomba já retém streams por nó; o gizmo
-/// entra na lista que existe.
-pub(crate) fn tap_for(motion: &MotionState) -> Option<NodeId> {
-    let (nid, _) = selected_warp(motion)?;
-    upstream_of(&motion.doc.graph, nid)
-}
-
-/// A caixa envolvente do layout que entra no nó, lida da tomada. `None` quando a tomada
-/// não disparou este quadro ou quando a caixa é degenerada.
-pub(crate) fn box_from_tap(motion: &MotionState, upstream: NodeId) -> Option<WarpBox> {
-    let stream = motion
-        .pump
-        .tap_streams()
-        .iter()
-        .find(|(n, _)| *n == upstream)
-        .map(|(_, s)| s)?;
-    match stream.get("P") {
-        Some(ph2d_nodegraph::attr::Column::Vec2(p)) => WarpBox::of(p),
-        _ => None,
-    }
-}
-
-/// **A porta de leitura de param — a MESMA do painel.**
-///
-/// Seed = sample: a alça é desenhada a partir do número que o slider mostra, então as
-/// duas superfícies não podem discordar. É a lei que o `field_gizmo` já pratica, e o
-/// pedido do Enio (*"deixar os inputs como sliders tb"*) torna-a obrigatória aqui: as
-/// duas existem ao mesmo tempo, na mesma tela.
-pub(crate) fn param_port<'a>(
-    motion: &'a MotionState,
-    node: NodeId,
-) -> impl Fn(&str) -> f32 + use<'a> {
-    move |name: &str| super::motion_bridge::params::param_value(motion, node, name)
-}
-
-/// O valor da porta `warp` deste nó — desligada lê `1`, como o `eval`.
-///
-/// ⚠️ Ela é uma PORTA e não um param, então `param_value` não a alcança: um fio ligado
-/// ali entrega um número por tique que só o cook conhece. O gizmo lê o caso comum
-/// (desligada) e, com fio, o arrasto recusa em vez de escrever um offset que a escala
-/// desconhecida tornaria errado — ver [`edits`].
-pub(crate) fn warp_amount(graph: &Graph, node: NodeId) -> Option<f32> {
-    let wired = graph.edges().iter().any(|e| e.to == (node, 1));
-    if wired { None } else { Some(1.0) }
-}
-
-/// **A JANELA em que este gizmo vive** — a da CENA, nunca a janela cheia.
-///
-/// ⚠️ **É a porta ÚNICA, e ela existe porque eu errei exactamente isto** (Enio,
-/// 2026-08-23: *"grade fora do lugar. drift. Não consegui manipular pontos e alças no
-/// canvas"*). Sob o split a cena renderiza num sub-retângulo, e o `field_gizmo` já tinha
-/// a lei escrita: *"a vector shape projected with the FULL window drifts off them —
-/// shifted and shrunk"*, com o precedente nomeado (os caminhantes de um `motion.path`
-/// sobre uma cópia deslocada da curva). Eu li aquele comentário e mesmo assim passei
-/// `surface.size()` ao overlay.
-///
-/// ⚠️ **E o erro deu DOIS sintomas de uma causa só**: o desenho saiu deslocado *e* o
-/// arrasto deixou de pegar — porque o hit-test usava a janela certa e a tinta a errada,
-/// então a alça que se via não era a alça que existia. *Quando duas superfícies projectam
-/// o mesmo mundo, elas têm de dividir a MESMA porta* — e é por isso que esta função
-/// existe em vez de o chamador escolher.
-pub(crate) fn scene_window(
-    center_split: ph2d_editor::screens::layout::CenterSplit,
-    full: ph2d_host::WindowSize,
-) -> ph2d_host::WindowSize {
-    crate::field_gizmo::scene_camera_window(center_split, full)
-}
-
-/// **O retrato do gizmo deste quadro** — tudo o que o pintor precisa, já resolvido.
-///
-/// ⚠️ Ele existe porque quem SABE (a tool activa, o nó seleccionado, a tomada) e quem
-/// PINTA vivem em escopos diferentes do laço de render, e passar seis argumentos por
-/// dez chamadas seria pior. É o mesmo idioma da legenda das cenas de conferência:
-/// publica-se uma vez, lê-se onde a tinta sai.
-///
-/// ⚠️ **E publicar de novo SUBSTITUI.** Se ele acumulasse, largar a selecção deixaria as
-/// alças do nó anterior a pairar sobre uma figura que já não é dele.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct WarpGizmoView {
-    pub(crate) node: NodeId,
-    pub(crate) spec: WarpGizmoSpec,
-    pub(crate) bbox: WarpBox,
-    pub(crate) warp: f32,
-}
-
-static VIEW: std::sync::Mutex<Option<WarpGizmoView>> = std::sync::Mutex::new(None);
-
-/// Publica (ou limpa) o retrato deste quadro.
-pub(crate) fn publish(v: Option<WarpGizmoView>) {
-    if let Ok(mut slot) = VIEW.lock() {
-        *slot = v;
-    }
-}
-
-/// O retrato deste quadro, se houver.
-pub(crate) fn view() -> Option<WarpGizmoView> {
-    VIEW.lock().ok().and_then(|s| *s)
-}
-
-/// **Resolve o retrato a partir do estado** — a porta única, para o laço de render e o
-/// gate lerem a MESMA resposta.
-///
-/// `None` quando: a tool não é a Motion · nenhum nó de warp está seleccionado · não há
-/// nó a montante · a tomada ainda não trouxe o stream · a caixa é degenerada · a porta
-/// `warp` está ligada por fio (ali o gizmo não sabe a escala e recusa em vez de mentir).
-pub(crate) fn resolve(motion: &MotionState, tool_is_motion: bool) -> Option<WarpGizmoView> {
-    if !tool_is_motion {
-        return None;
-    }
-    let (node, spec) = selected_warp(motion)?;
-    let warp = warp_amount(&motion.doc.graph, node)?;
-    let upstream = upstream_of(&motion.doc.graph, node)?;
-    let bbox = box_from_tap(motion, upstream)?;
-    Some(WarpGizmoView {
-        node,
-        spec,
-        bbox,
-        warp,
-    })
-}
+/// A metade que fala com o DOCUMENTO — cortada daqui no teto de LOC (HR-18), pela costura
+/// que este arquivo já anunciava: acima é geometria pura e testável sem mundo nenhum,
+/// abaixo é o que pergunta ao grafo, à bomba e à tela.
+#[path = "warp_gizmo_doc.rs"]
+mod doc;
+pub(crate) use doc::{
+    Downstream, WarpGizmoView, param_port, publish, resolve, scene_window, taps_for, view,
+    view_handles, view_outline,
+};
 
 #[cfg(test)]
 #[path = "warp_gizmo_tests.rs"]

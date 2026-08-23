@@ -7009,9 +7009,7 @@ impl crate::App {
                     let port = warp_gizmo::param_port(motion, v.node);
                     warp_overlay::draw_warp_gizmo(
                         true,
-                        v.spec,
-                        v.bbox,
-                        v.warp,
+                        &v,
                         &port,
                         camera,
                         hero.view.center_split,

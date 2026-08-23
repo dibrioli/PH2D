@@ -441,10 +441,10 @@ pub(super) fn dispatch(
     // Juntar aqui, e não alargar o `signal_taps`, é o que impede o dreno de sinais de um
     // dia ver um nó que não é um `pulse.signal` — *o canal é partilhado, o significado não*.
     let mut taps = motion.signal_taps.clone();
-    if let Some(n) = super::warp_gizmo::tap_for(motion)
-        && !taps.contains(&n)
-    {
-        taps.push(n);
+    for n in super::warp_gizmo::taps_for(motion) {
+        if !taps.contains(&n) {
+            taps.push(n);
+        }
     }
     motion.pump.set_taps(&taps);
     // O que este quadro gritou, e o livro-razão de onde isso sai. Limpos aqui, não no dreno:

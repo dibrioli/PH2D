@@ -84,7 +84,7 @@ impl crate::App {
             return false;
         };
         let port = warp_gizmo::param_port(&gfx.motion, view.node);
-        let (hs, n) = warp_gizmo::handles(view.spec, view.bbox, view.warp, &port);
+        let (hs, n) = warp_gizmo::view_handles(&view, &port);
         let Some(i) = warp_gizmo::hit(&hs[..n], world, wpp) else {
             return false;
         };
@@ -107,7 +107,13 @@ impl crate::App {
             return true; // agarrado, mas sem câmara: consome e não escreve lixo
         };
         let delta = [world[0] - drag.anchor[0], world[1] - drag.anchor[1]];
-        let Some(edits) = warp_gizmo::edits(&drag.handle, drag.start, delta, drag.view.warp) else {
+        let Some(edits) = warp_gizmo::edits(
+            &drag.handle,
+            drag.start,
+            delta,
+            drag.view.warp,
+            drag.view.down,
+        ) else {
             return true;
         };
         if let Some(gfx) = self.gfx.as_mut() {

@@ -173,8 +173,21 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 0.0,
         },
         // ⚠️ **PARA ONDE a altura vai** — ver [`Channel`]. Apendado; `0` (Size) ⇒ o que shipou.
+        //
+        // ⚠️ **Chama-se `height_channel` e NÃO `channel`, e a palavra tem dono.** No vocabulário
+        // da casa `channel` significa *"o canal em que as MINHAS magnitudes se exprimem"* — é
+        // isso que o `motion.stagger` e o `motion.wiggle` dizem —, e há um gate de arquitectura
+        // a exigir que um nó com `channel` não declare `ParamUnit::Length` fixo em param nenhum
+        // (`no_param_of_a_channel_driven_node_is_declared_a_fixed_length`): em Rotation, um
+        // Length escalaria GRAUS por `pixels_per_meter`.
+        //
+        // O `spacing` deste nó é uma distância de mundo **em qualquer canal** — o que este param
+        // escolhe é o DESTINO da altura, não a unidade de nada. Usar a palavra da casa fazia o
+        // gate reprovar sobre produto correcto, e a cura é o nome, nunca afrouxar o gate.
+        // *É a lição do `substeps` outra vez: um sub-passo local que usava a palavra do relógio
+        // do grafo fazia o app correr as duas leis.*
         ParamSpec {
-            name: "channel",
+            name: "height_channel",
             default: 0.0,
         },
     ],
@@ -354,7 +367,7 @@ impl NodeOp for MotionWave {
             speed: ctx.param("speed"),
             damping: ctx.param("damping").clamp(0.0, 0.99),
             center: [ctx.param("center_x"), ctx.param("center_y")],
-            channel: Channel::from_param(ctx.param("channel")),
+            channel: Channel::from_param(ctx.param("height_channel")),
         };
         let playhead = ctx.playhead() as f32;
         let drive = drive_value(&scalar_col(ctx.input(0), VALUE_COL));
@@ -428,7 +441,7 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     // (doc 89 folha 06). O vocabulário é o da casa (`motion.drive`), e por isso o artista que
     // aprendeu «Size» num nó não o re-aprende aqui.
     ParamUiHint {
-        param: "channel",
+        param: "height_channel",
         label: "Height Drives",
         min: 0.0,
         max: 2.0,

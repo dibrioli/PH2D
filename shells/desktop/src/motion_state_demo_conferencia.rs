@@ -470,3 +470,8 @@ pub(super) use utilidade::{
 #[path = "motion_state_demo_conferencia_gates.rs"]
 mod gates;
 pub(super) use gates::gate_family;
+
+/// A cena do Grupo Y (`=83`) — as portas de campo lidas no elemento 0, e a altura da onda.
+#[path = "motion_state_demo_conferencia_campo.rs"]
+mod campo;
+pub(super) use campo::field_port_family;

@@ -82,6 +82,10 @@ pub(crate) mod conferencia_demos_taper;
 #[path = "motion_state_conferencia_demos_cursor.rs"]
 pub(crate) mod conferencia_demos_cursor;
 
+/// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
+/// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.
+#[path = "motion_state_conferencia_demos_campo.rs"]
+pub(crate) mod conferencia_demos_campo;
 #[path = "motion_state_conferencia_demos_color.rs"]
 pub(crate) mod conferencia_demos_color;
 /// A cena da FAIXA (`=79`) — onde a saída de um animador cai, e a armadilha da

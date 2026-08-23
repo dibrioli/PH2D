@@ -97,8 +97,19 @@ thread_local! {
 /// de fechar: reabri-lo todo quadro faria o X não funcionar, que é a forma mais irritante de duas
 /// portas discordarem.
 pub(crate) fn take_open_panel_request() -> bool {
-    thread_local! {
-        static PENDING: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+    // ⭐⭐ **O PEDIDO EXPLÍCITO NÃO PASSA PELA PORTA DO ARMADO** (W45), e é essa a correção.
+    //
+    // ⛔ **A porta estava trancada por dentro.** A guarda abaixo (*"só pede se o smoke está
+    // armado"*) é correta para o auto-play do smoke — e o **único** caminho que arma o módulo é a
+    // visibilidade do painel (`set_armed_by_panel`). ⇒ um projeto que traz uma peça de modelagem
+    // nunca conseguia abrir o próprio painel: para pedir a abertura era preciso já estar aberto.
+    //
+    // *A obra estava lá, salva e restaurada, e a tela ficava vazia.*
+    if ASKED.with(std::cell::Cell::take) {
+        // Consome também o auto-play: o painel já foi aberto uma vez, e reabri-lo quando a env var
+        // do smoke armasse o módulo seria uma segunda abertura que ninguém pediu.
+        PENDING.with(|p| p.set(false));
+        return true;
     }
     // Só pede se o smoke está de facto armado — senão o painel de modelagem abriria em toda sessão
     // do app, ocupando o encaixe da direita para não mostrar nada.
@@ -106,6 +117,53 @@ pub(crate) fn take_open_panel_request() -> bool {
         return false;
     }
     PENDING.with(|p| p.replace(false))
+}
+
+/// ⭐ **Abre o painel de modelagem** — o pedido de quem tem uma razão para o fazer.
+///
+/// ⚠️ **A lei é a do módulo irmão, lida e não decidida:** *"um projeto com escultura ARMA o módulo,
+/// mesmo sem a env var do smoke — a alternativa seria abrir o arquivo, descartar a obra em silêncio
+/// e gravá-la fora no save seguinte"* (`sculpt3d_doc::sculpt3d_install_pending`). Aqui a obra não se
+/// perde (ela é uma árvore de entidades, e o save leva o mundo inteiro), mas o **silêncio** é o
+/// mesmo: um arquivo que abre sem mostrar o que tem dentro.
+pub(crate) fn ask_open_panel() {
+    ASKED.with(|c| c.set(true));
+}
+
+thread_local! {
+    /// O auto-play do smoke: o painel abre sozinho na **primeira** vez que ele desenha.
+    static PENDING: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+    /// Alguém pediu a abertura por uma razão própria — hoje, um projeto que traz uma peça.
+    static ASKED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// ⭐ **Um load PERGUNTA: «o mundo trouxe uma peça?»** (W45) — e quem responde é o quadro.
+///
+/// ⚠️ **O load não pode olhar para o mundo.** Ele é dirigível **sem janela** (o `App` nasce com
+/// `gfx` em `None`, e o `apply_project` **volta cedo** nesse caso — o mundo vive dentro do `gfx`),
+/// então perguntar ali daria *"não há peça"* em todo load headless. É exactamente a razão escrita ao
+/// lado do `sculpt3d_install_pending` do módulo irmão, e a forma é a mesma: **o load deixa a
+/// pergunta, o quadro responde-a** — uma vez, quando já há mundo.
+pub(crate) fn ask_open_panel_if_part() {
+    PART_QUESTION.with(|c| c.set(true));
+}
+
+/// A pergunta pendente, tirada uma vez. Ver [`ask_open_panel_if_part`].
+pub(crate) fn take_open_if_part_request() -> bool {
+    PART_QUESTION.with(std::cell::Cell::take)
+}
+
+thread_local! {
+    static PART_QUESTION: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// ⚠️ Só para gates: repõe as portas de abertura, para que dois gates no mesmo processo não se
+/// contaminem pela ordem em que correram.
+#[cfg(test)]
+pub(crate) fn forget_open_panel_request() {
+    PENDING.with(|p| p.set(true));
+    ASKED.with(|c| c.set(false));
+    PART_QUESTION.with(|c| c.set(false));
 }
 
 thread_local! {

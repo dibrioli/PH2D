@@ -3542,8 +3542,117 @@ essa suíte que apanhou o campo, e um `..` teria feito exactamente o oposto.
 
 ---
 
+## §46 — W45: a porta estava trancada por dentro — um projeto que traz uma peça abre o painel dela (23/08)
+
+> O ⏸️ da W35: *"o módulo **não se abre sozinho** quando o projeto carregado traz uma peça"*.
+
+A W35 mediu que a peça **atravessa o arquivo sem uma linha de código de persistência** — ela é uma
+árvore de entidades e o `ProjectState` é o mundo inteiro. O que faltava não era guardar: era
+**mostrar**. Reabrir o projeto trazia a obra de volta ao mundo, com o painel fechado, e a tela ficava
+**vazia**. ⚠️ *Indistinguível de ter perdido o trabalho.*
+
+### §46.1 — ⛔ O mecanismo: a única porta exigia estar do lado de dentro
+
+```rust
+pub(crate) fn take_open_panel_request() -> bool {
+    if with_smoke(|_| ()).is_none() { return false; }   // ⇐ só pede se o módulo está ARMADO
+    PENDING.with(|p| p.replace(false))
+}
+```
+
+A guarda é **correta** para o que ela protege (o auto-play do smoke não pode abrir o painel em toda
+sessão do app, para não mostrar nada). ⛔ Mas o **único** caminho que arma o módulo é a visibilidade
+do painel (`set_armed_by_panel`, W42). ⇒ *para pedir a abertura era preciso já estar aberto.*
+
+⭐ A cura é uma **segunda razão** para abrir, que não passa por aquela guarda — e não relaxá-la: o
+caso que ela protege continua verdadeiro, e há gate a exigi-lo
+(`a_project_without_a_part_opens_nothing`).
+
+### §46.2 — A lei foi LIDA no módulo irmão
+
+> ⚠️ *"Um projeto com escultura **ARMA o módulo**, mesmo sem a env var do smoke — a alternativa seria
+> abrir o arquivo, descartar a obra em silêncio e gravá-la fora no save seguinte."*
+> — `sculpt3d_doc::sculpt3d_install_pending`
+
+Aqui a obra **não** se perde (o save leva o mundo inteiro). Mas o **silêncio** é o mesmo, e é o
+silêncio que o artista lê como perda.
+
+### §46.3 — ⚠️ O load não pode olhar para o mundo, e a forma vem do mesmo sítio
+
+`apply_project` **volta cedo quando não há `gfx`** — e o mundo vive lá dentro. O load é dirigível
+sem janela (o `App` nasce com `gfx` em `None`; o winit só a cria no `resumed`), então perguntar
+*"há peça?"* no load daria **não** em todo load headless. É a razão que o irmão já tinha escrita, e
+a forma é a mesma: **o load deixa a PERGUNTA, o quadro responde-a** — uma vez, quando já há mundo.
+
+### §46.4 — ⚠️ Dois defeitos meus, e os dois eram de POSICIONAMENTO
+
+1. **A condição olhava para o arquivo anterior.** A primeira escrita perguntava `sculpt3d_pending
+   .is_none()` **antes** da linha que o atribui a partir deste load — ou seja, sobre o **documento
+   anterior**. ⚠️ *Uma condição sobre estado mutável tem um instante, e o instante faz parte da lei*
+   — e este erro é **verde em todo gate que abra um projeto de cada vez**.
+2. **A função nasceu `#[cfg(test)]` sem eu a marcar.** Ela foi inserida **entre um `#[cfg(test)]` e o
+   item dele**, e herdou o atributo — o `sync_scene` de teste ficou sem ele. O compilador disse
+   *"cannot find function"* a partir do caminho de produção, que é o sintoma certo e não parece o
+   que é. *Um atributo não pertence ao que está por cima dele: pertence ao próximo item.*
+
+### §46.5 — ⚠️ E cede a um projeto que também traz escultura
+
+Os dois querem o canvas, e a lei do dono único (W40) diz que ele é de um só. Quem chegou pelo mesmo
+arquivo não se disputa: se o load traz escultura, ela arma o módulo dela e o **MODEL fica a um
+clique**. ⏸️ Um projeto que traga os dois continua a exigir uma escolha do artista — e isso está
+certo enquanto não houver um sinal que diga *"este arquivo tem as duas coisas"*.
+
+### §46.6 — ⭐⭐ A pergunta certa foi escrita pela MUTAÇÃO, não por mim
+
+A função nasceu a perguntar *"há uma raiz?"*. Corrigi-a a meio para *"há um **nó**?"*, com uma nota
+ao lado a explicar a diferença (*"apagar o último filho deixa a raiz de pé"*). ⛔ **A mutação 3
+sobreviveu**, e a razão é que as duas perguntas **são a mesma**: o `spawn_doc` dá `FieldNode` à raiz
+**sempre** (ela nasce nó e recebe o `FieldObject` depois). *A minha nota descrevia uma diferença
+inalcançável.*
+
+⭐ O que separa de facto os dois casos é o **cozimento**: a peça esvaziada coze para `None`. A
+pergunta passou a ser ***"há alguma coisa PARA VER?"*** — e a fixtura que a mutação exigiu (apagar as
+duas folhas e reperguntar) é a que dá sentido à função.
+
+⚠️ E `Some(Err)` **conta como peça**, de propósito: uma peça que não cozinha é exactamente quando o
+artista mais precisa do painel — é lá que o módulo diz **porquê** (W25).
+
+*Uma fixtura que concorda não prova nada; e uma condição cujo caso distintivo é inalcançável é peso
+morto com uma nota a mentir ao lado.*
+
+### §46.7 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | o pedido explícito volta a passar pela guarda do armado | `a_loaded_project_asks_to_open_the_panel_even_with_the_module_disarmed` |
+| 2 | o load não deixa a pergunta | *(o mesmo)* |
+| 3 | *«há alguma coisa para ver»* passa a ser *«há uma raiz»* | `a_world_has_a_part_only_when_there_is_something_to_see` |
+
+⚠️ **E o controle positivo apanhou o arnês outra vez, à primeira corrida:** o caminho dos testes é
+`project::tests::field::…` e eu escrevi `project::tests::field_tests::…` — zero testes correram, e
+sem a linha `running 1 test` as três teriam sido lidas como sobreviventes. *O caminho de um teste
+deriva-se (`cargo test -- --list`), não se escreve de memória.*
+
+### §46.8 — ⏸️ O que fica aberto
+
+- ⏸️ Um projeto com **peça e escultura** abre a escultura; nada diz que também há uma peça.
+- ⏸️ O painel abre, mas **não enquadra** a peça: a vista é a lembrada da sessão (W43) ou a padrão, e
+  uma peça longe da origem pode nascer fora do quadro. `Home` repõe.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W45 (§46): um projeto que traz uma PEÇA abre o painel dela** — o ⏸️ da W35. ⛔ **A porta estava
+  trancada por dentro:** o pedido de abrir só era aceite com o módulo **armado**, e o único caminho
+  que o arma é a visibilidade do painel — *para pedir a abertura era preciso já estar aberto*. A obra
+  atravessava o arquivo (W35) e a tela ficava vazia, indistinguível de a ter perdido. ⚠️ O load
+  deixa a **pergunta** e o quadro responde-a (o mundo vive no `gfx`, e o load corre sem janela — a
+  forma é a do `sculpt3d_install_pending`). ⭐ E a pergunta certa foi escrita por uma **mutação
+  sobrevivente**: *"há raiz"* e *"há nó"* são a mesma coisa (o `spawn_doc` dá `FieldNode` à raiz
+  sempre), e o que separa é o **cozimento** — *«há alguma coisa PARA VER?»*. ⏸️ Fica: um projeto com
+  peça **e** escultura abre a escultura e nada diz que também há peça · o painel abre mas não
+  **enquadra** a peça
 - ✅ **W44 (§45): o isolamento DIZ-SE e SAI-SE de qualquer sítio** — os dois ⏸️ da W38, e a medição
   encontrou um terceiro item que era o defeito: ⛔ **o único sinal estava preso à SELEÇÃO**
   (`isolated == selection.first()`), então isolar `A` e escolher `B` apagava-o, e com a **raiz**

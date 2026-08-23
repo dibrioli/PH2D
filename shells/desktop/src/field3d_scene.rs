@@ -246,6 +246,35 @@ fn resolve_pick(sim: &mut SimWorld, doc: Option<&FieldDoc>, px: [f32; 2]) -> Opt
 
 /// O que a ponte **faz**, separado de **se** ela corre.
 ///
+/// ⭐ **O mundo traz uma peça de modelagem — há alguma coisa PARA VER?** (W45)
+///
+/// ⚠️ Ela não abre nada: devolve um **fato**. Quem a consome é o quadro, porque o mundo vive no
+/// `gfx` e o load corre sem janela (ver `field3d_smoke::ask_open_panel_if_part`).
+///
+/// # ⚠️ A pergunta não é «há uma raiz», e também não é «há um nó»
+///
+/// As duas primeiras versões desta função perguntaram isso, e uma **prova de mutação** mostrou que
+/// eram a mesma pergunta: o [`ph2d_field_ecs::spawn_doc`] dá `FieldNode` à raiz **sempre** (ela nasce
+/// nó e recebe o `FieldObject` depois), então *"há nó"* nunca difere de *"há raiz"* — e o comentário
+/// que eu tinha escrito ao lado afirmava que difere. *Uma condição cujo caso distintivo é
+/// inalcançável é peso morto com uma nota a mentir.*
+///
+/// ⭐ O que separa de facto os dois casos é o **cozimento**: apagar os filhos deixa a raiz de pé, e
+/// ela coze para `None` — geometria nenhuma. Abrir um painel para isso é ocupar o encaixe da direita
+/// para não mostrar coisa alguma.
+///
+/// ⚠️ **`Some(Err)` conta como peça**, de propósito: uma peça que não cozinha é exactamente quando o
+/// artista mais precisa do painel — é lá que o módulo diz **porquê** (W25).
+///
+/// ⚠️ `&mut World` para uma leitura porque `World::query` o exige — não porque ela escreva.
+pub(crate) fn world_has_a_part(world: &mut bevy_ecs::world::World) -> bool {
+    let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
+    let roots: Vec<bevy_ecs::entity::Entity> = q.iter(world).map(|(e, _)| e).collect();
+    roots
+        .into_iter()
+        .any(|r| ph2d_field_ecs::cook(world, r).is_some())
+}
+
 /// ⚠️ A separação existe para o gate: `ecs_bridge` pergunta pelo estado do smoke, e um teste não
 /// consegue (nem deve) encená-lo. Aqui a peça inicial entra por parâmetro, e o resto é o caminho de
 /// produção inteiro — mundo, entidades, intents, retrato, cozimento.

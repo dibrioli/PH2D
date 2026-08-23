@@ -187,6 +187,27 @@ impl crate::App {
         // realoca. Ver [`crate::field3d_smoke::forget_isolation_across_documents`]: a câmera fica,
         // este campo não.
         crate::field3d_smoke::forget_isolation_across_documents();
+        // ⭐⭐ **E o projeto que traz uma PEÇA de modelagem abre o painel dela** (W45).
+        //
+        // ⚠️ A lei é a do módulo irmão, **lida e não decidida**: *"um projeto com escultura ARMA o
+        // módulo… a alternativa seria abrir o arquivo, descartar a obra em silêncio"*. Aqui a obra
+        // não se perde — ela é uma árvore de entidades e o save leva o mundo inteiro (W35) — mas o
+        // **silêncio** era o mesmo: o arquivo abria e a tela ficava vazia.
+        //
+        // ⛔ **E a porta estava trancada por dentro:** o pedido de abrir o painel só era aceite com
+        // o módulo já **armado**, e o único caminho que o arma é a visibilidade do painel.
+        //
+        // ⚠️ Só uma **PERGUNTA**, respondida no quadro: o mundo vive no `gfx`, e este caminho corre
+        // sem janela (`apply_project` volta cedo). Ver `field3d_smoke::ask_open_panel_if_part`.
+        //
+        // ⚠️ **E cede a um projeto que também traz ESCULTURA**: os dois querem o canvas, e a lei do
+        // dono único (W40) diz que ele é de um só. Quem chegou pelo mesmo arquivo não se disputa —
+        // a escultura já arma o módulo dela, e o MODEL fica a um clique.
+        //
+        // ⚠️⚠️ **A pergunta é feita DEPOIS de a escultura deste load ser instalada**, e a primeira
+        // escrita fazia-a antes: ali o `sculpt3d_pending` ainda é o do **documento anterior**, e a
+        // condição respondia sobre o arquivo errado — verde em todo gate que abrisse um projeto de
+        // cada vez. *Uma condição sobre estado mutável tem um instante, e ele faz parte da lei.*
         // **A ESCULTURA do documento anterior morre aqui.** Os bytes ficam para o save
         // (o passa-adiante), e a cena viva é substituída — ou APAGADA, quando o projeto
         // novo não tem escultura nenhuma: a lista nunca-vazia é o invariante que torna
@@ -201,6 +222,14 @@ impl crate::App {
             {
                 gfx.sculpt3d = None;
             }
+        }
+        // Agora sim — ver o bloco acima sobre o **instante** em que esta pergunta é feita.
+        #[cfg(feature = "sculpt3d")]
+        let solo = self.sculpt3d_pending.is_none();
+        #[cfg(not(feature = "sculpt3d"))]
+        let solo = true;
+        if solo {
+            crate::field3d_smoke::ask_open_panel_if_part();
         }
         self.timeline_insert_key = false;
         self.timeline_reveal_after_apply = false;

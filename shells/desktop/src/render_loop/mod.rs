@@ -6740,6 +6740,15 @@ impl crate::App {
                     eprintln!("[field3d] o MODEL abriu; a escultura cedeu -> {label}");
                 }
             }
+            // ⭐⭐ **UM PROJETO QUE TRAZ UMA PEÇA ABRE O PAINEL** (W45) — a resposta à pergunta que o
+            // load deixou. ⚠️ É aqui e não no load porque **o mundo vive no `gfx`**, e o load corre
+            // sem janela: perguntar lá daria *"não há peça"* sempre. Mesma forma (e mesma razão
+            // escrita) do `sculpt3d_install_pending` do módulo irmão.
+            if crate::field3d_smoke::take_open_if_part_request()
+                && crate::field3d_scene::world_has_a_part(sim.world_mut())
+            {
+                crate::field3d_smoke::ask_open_panel();
+            }
             crate::field3d_smoke::set_armed_by_panel(
                 hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID),
             );

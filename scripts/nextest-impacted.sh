@@ -25,6 +25,27 @@ export CARGO_INCREMENTAL=0
 
 BASE="${BASE:-origin/main}"
 
+# ⛔⛔ **UMA ÁRVORE SUJA FAZ ESTE GATE SAIR VERDE SEM MEDIR NADA.**
+#
+# `git diff --name-only "$BASE..."` compara **commits**: trabalho por commitar é
+# invisível para ele. Numa worktree com o módulo inteiro ainda no working tree,
+# `CHANGED` sai vazio, o script cai no ramo "no crate changes" e roda **4 testes** —
+# saindo VERDE.
+#
+# ⚠️ **Medido em 2026-08-23**, ao fechar uma jornada: `Summary [0.003s] 4 tests run`
+# sobre um diff de 13 ficheiros e 959 linhas. Depois de commitar, o mesmo comando
+# correu **3.842**. É a MESMA doença que a cura de 2026-08-19 atacou (o `sed` do
+# prefixo de caminho) noutra roupa, e partilha com ela o modo de falha caro:
+# *não avisa, não falha, fica verde.*
+#
+# ⚠️ E o `BASE` por omissão é `origin/main`, que numa jornada Modo L pode estar
+# ATRÁS do `main` local. Se o gate parecer medir de menos, é o primeiro sítio a olhar.
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    echo "⚠️  [nextest-impacted] A ÁRVORE ESTÁ SUJA, e este gate compara COMMITS."
+    echo "    O que não está commitado NÃO entra na conta — commite antes de fechar"
+    echo "    a linha, ou passe BASE=<ref> conscientemente."
+fi
+
 # ⚠️ **O PACOTE SE DERIVA DO `cargo metadata`, NUNCA DO PREFIXO DO CAMINHO.**
 #
 # Isto era `sed -n 's#^crates/\([^/]*\)/.*#\1#p'`, e a consequência foi medida em

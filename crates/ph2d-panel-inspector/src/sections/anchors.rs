@@ -30,8 +30,11 @@ const PX_STEP: f64 = 1.0; // LITERAL-PX-OK: passo em pixels da FONTE, não um to
 const DEG_STEP: f64 = 1.0; // LITERAL-PX-OK: passo em graus
 
 /// Uma linha «rótulo em cima, N NumberInput lado a lado». Devolve o `y` seguinte.
+///
+/// ⚠️ **`pub(super)` para a §11 a reusar** — duas cópias de um layout de linha divergem no dia em
+/// que uma delas ganha um espaçamento novo, e o painel passa a ter duas gramáticas.
 #[allow(clippy::too_many_arguments)]
-fn field_row(
+pub(super) fn field_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -83,7 +86,7 @@ fn field_row(
 
 /// Uma checkbox simples. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-fn check_row(
+pub(super) fn check_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,

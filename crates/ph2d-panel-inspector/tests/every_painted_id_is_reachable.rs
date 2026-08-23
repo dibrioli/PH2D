@@ -43,18 +43,20 @@
 //! [`is_focusable`]: ph2d_editor_core::interaction
 
 use ph2d_editor_core::screens::hero::{
-    InspectorAnchorInfo, InspectorAnchorRow, InspectorBlendInfo, InspectorBlendMixed,
-    InspectorNameInfo, InspectorOrderingInfo, InspectorOrderingMixed, InspectorSamplingInfo,
-    InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed, InspectorSpriteInfo,
-    InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
-    InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
+    InspectorAnchorInfo, InspectorAnchorRow, InspectorAnimInfo, InspectorAnimRow,
+    InspectorBlendInfo, InspectorBlendMixed, InspectorNameInfo, InspectorOrderingInfo,
+    InspectorOrderingMixed, InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo,
+    InspectorSliceMixed, InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource,
+    InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilityMixed,
+    InspectorVisibilitySectionInfo,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
-    InspectorPanel, InspectorState, set_current_inspector_anchor, set_current_inspector_blend,
-    set_current_inspector_name, set_current_inspector_ordering, set_current_inspector_sampling,
-    set_current_inspector_slice, set_current_inspector_sprite, set_current_inspector_transform,
-    set_current_inspector_visibility, set_current_inspector_visibility_section,
+    InspectorPanel, InspectorState, set_current_inspector_anchor, set_current_inspector_anim,
+    set_current_inspector_blend, set_current_inspector_name, set_current_inspector_ordering,
+    set_current_inspector_sampling, set_current_inspector_slice, set_current_inspector_sprite,
+    set_current_inspector_transform, set_current_inspector_visibility,
+    set_current_inspector_visibility_section,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -185,6 +187,34 @@ fn publish_the_whole_sprite_scene() {
         mount_offset: [12.0, -4.0],
         vis_in_editor: true,
         vis_at_runtime: true,
+    }));
+    // §11 Animation. ⚠️ **Com TOCADOR e com uma animação**, porque é o estado em que TODOS os
+    // controlos da seção são pintados: sem tocador ela mostra um botão só, e sem animação o
+    // editor da linha não existe. *Um fixture que não contém o fenómeno mede silêncio.*
+    set_current_inspector_anim(Some(InspectorAnimInfo {
+        entity_bits: ENTITY,
+        rows: vec![InspectorAnimRow {
+            name: "walk".into(),
+            from: 0,
+            to: 3,
+            frame_ms: 100,
+            direction_tag: 2,
+            repeat: 0,
+            hold_ms: 40,
+            repeat_delay_ms: 250,
+        }],
+        library_present: true,
+        player_present: true,
+        cells: 8,
+        current: "walk".into(),
+        playing: true,
+        autoplay: false,
+        speed: 1.0,
+        direction_override_tag: 0,
+        loop_override_tag: 0,
+        frame: 1,
+        selected_count: 1,
+        mixed: false,
     }));
     set_current_inspector_blend(Some(InspectorBlendInfo {
         entity_bits: ENTITY,

@@ -119,6 +119,7 @@ pub(super) fn dispatch(
     blend_edits: &[(u64, BlendFieldEdit)],
     slice_edits: &[(u64, ph2d_editor::SliceFieldEdit)],
     anchor_edits: &[(u64, ph2d_editor::AnchorFieldEdit)],
+    anim_edits: &[(u64, ph2d_editor::AnimFieldEdit)],
     physics_edits: &[(u64, PhysicsFieldEdit)],
     visibility_section_edits: &[(u64, VisibilityFieldEdit)],
     hero: &mut HeroScreen,
@@ -346,6 +347,24 @@ pub(super) fn dispatch(
         }
         if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
             toasts.push(Toast::error(format!("Anchor commit failed: {e}")));
+            title_dirty = true;
+        }
+    }
+    // §11 Animation (spec Sprite 08). ⚠️ Recusa com aviso, como a §12 — um nome repetido tem de
+    // dizer porquê, senão o artista escreve e vê a lista não mudar.
+    for (entity_bits, edit) in anim_edits {
+        if let Some(t) = super::inspector_anim::apply_anim_edit(
+            sim,
+            *entity_bits,
+            edit,
+            editor_queue,
+            component_registry,
+        ) {
+            toasts.push(t);
+            continue;
+        }
+        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
+            toasts.push(Toast::error(format!("Animation commit failed: {e}")));
             title_dirty = true;
         }
     }

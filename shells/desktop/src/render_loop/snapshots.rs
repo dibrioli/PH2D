@@ -1046,6 +1046,10 @@ pub(super) fn publish(
             player_law,
         )
     });
+    let inspector_anim = hero
+        .gizmo
+        .selection
+        .and_then(|b| super::inspector_anim::build_anim_info(sim.world(), b, sel, selected_count));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),
@@ -1066,6 +1070,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_blend(inspector_blend);
         ph2d_panel_inspector::set_current_inspector_slice(inspector_slice);
         ph2d_panel_inspector::set_current_inspector_anchor(inspector_anchor);
+        ph2d_panel_inspector::set_current_inspector_anim(inspector_anim);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);
         ph2d_panel_inspector::set_current_inspector_wheel(inspector_wheel);

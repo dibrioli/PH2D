@@ -12,10 +12,10 @@
 //! larger churn than the move warrants.
 
 use ph2d_editor_core::screens::hero::{
-    InspectorAnchorInfo, InspectorBlendInfo, InspectorJointInfo, InspectorNameInfo,
-    InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo,
-    InspectorSliceInfo, InspectorSpriteInfo, InspectorTransformInfo, InspectorVisibilityInfo,
-    InspectorVisibilitySectionInfo, InspectorWheelInfo,
+    InspectorAnchorInfo, InspectorAnimInfo, InspectorBlendInfo, InspectorJointInfo,
+    InspectorNameInfo, InspectorOrderingInfo, InspectorPhysicsInfo, InspectorPlayerInfo,
+    InspectorSamplingInfo, InspectorSliceInfo, InspectorSpriteInfo, InspectorTransformInfo,
+    InspectorVisibilityInfo, InspectorVisibilitySectionInfo, InspectorWheelInfo,
 };
 
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
@@ -58,6 +58,12 @@ pub struct InspectorState {
     /// da shell chegar. A cura tem de ser uma ARESTA — mudou de linha, semeia uma vez — e é isso
     /// que este campo é.
     pub last_anchor_row: Option<usize>,
+    /// §11 — qual animação da lista está aberta no editor. **Estado do painel**, saturado
+    /// contra o tamanho da biblioteca a cada pintura.
+    pub anim_selected: usize,
+    /// Irmão do [`Self::last_anchor_row`], e pela MESMA razão medida: os campos do editor
+    /// semeiam-se numa ARESTA (entidade ou linha), nunca por quadro.
+    pub last_anim_row: Option<usize>,
 }
 
 thread_local! {
@@ -110,6 +116,11 @@ thread_local! {
     /// W3 §9: live sampling snapshot for the Sampling section.
     pub(crate) static CURRENT_INSPECTOR_SAMPLING:
         std::cell::Cell<Option<InspectorSamplingInfo>> = const { std::cell::Cell::new(None) };
+
+    /// §11 Animation — o snapshot da entidade selecionada. `RefCell` como o da §12: ele tem
+    /// `String`s, e uma `String` não é `Copy`.
+    pub(crate) static CURRENT_INSPECTOR_ANIM:
+        std::cell::RefCell<Option<InspectorAnimInfo>> = const { std::cell::RefCell::new(None) };
 
     /// **§12 — a linha ABERTA da lista, no sentido PAINEL → SHELL.**
     ///
@@ -225,6 +236,14 @@ pub(crate) fn current_inspector_ordering() -> Option<InspectorOrderingInfo> {
 
 pub fn set_current_inspector_sampling(info: Option<InspectorSamplingInfo>) {
     CURRENT_INSPECTOR_SAMPLING.with(|c| c.set(info));
+}
+
+pub fn set_current_inspector_anim(info: Option<InspectorAnimInfo>) {
+    CURRENT_INSPECTOR_ANIM.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_anim() -> Option<InspectorAnimInfo> {
+    CURRENT_INSPECTOR_ANIM.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn current_inspector_sampling() -> Option<InspectorSamplingInfo> {

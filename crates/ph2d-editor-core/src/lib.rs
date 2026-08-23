@@ -144,16 +144,16 @@ pub use project::{
     MIN_PIXELS_PER_METER, ProjectSettings, image_quality_for,
 };
 pub use screens::{
-    AnchorFieldEdit, BlendFieldEdit, BottomHudStats, EMISSIVE_MAX_UI, HeroScreen, HeroSelection,
-    InspectorAnchorInfo, InspectorAnchorRow, InspectorBlendInfo, InspectorBlendMixed,
-    InspectorJointInfo, InspectorNameInfo, InspectorOrderingInfo, InspectorOrderingMixed,
-    InspectorPhysicsInfo, InspectorPlayerInfo, InspectorSamplingInfo, InspectorSamplingMixed,
-    InspectorSliceInfo, InspectorSliceMixed, InspectorSpriteInfo, InspectorSpriteMixed,
-    InspectorSpriteSource, InspectorTransformInfo, InspectorVisibilityInfo,
-    InspectorVisibilityMixed, InspectorVisibilitySectionInfo, InspectorWheelInfo, JointFieldEdit,
-    OrderingFieldEdit, PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy,
-    SamplingFieldEdit, SliceFieldEdit, SpriteFieldEdit, ViewFocusKind, VisibilityFieldEdit,
-    WheelFieldEdit, paint_hero_screen,
+    AnchorFieldEdit, AnimFieldEdit, BlendFieldEdit, BottomHudStats, EMISSIVE_MAX_UI, HeroScreen,
+    HeroSelection, InspectorAnchorInfo, InspectorAnchorRow, InspectorAnimInfo, InspectorAnimRow,
+    InspectorBlendInfo, InspectorBlendMixed, InspectorJointInfo, InspectorNameInfo,
+    InspectorOrderingInfo, InspectorOrderingMixed, InspectorPhysicsInfo, InspectorPlayerInfo,
+    InspectorSamplingInfo, InspectorSamplingMixed, InspectorSliceInfo, InspectorSliceMixed,
+    InspectorSpriteInfo, InspectorSpriteMixed, InspectorSpriteSource, InspectorTransformInfo,
+    InspectorVisibilityInfo, InspectorVisibilityMixed, InspectorVisibilitySectionInfo,
+    InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit, PhysicsFieldEdit, PlayerFieldEdit,
+    RequestedSpriteStrategy, SamplingFieldEdit, SliceFieldEdit, SpriteFieldEdit, ViewFocusKind,
+    VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen,
 };
 pub use toast::{Toast, ToastQueue, ToastSeverity};
 pub use tool::{PanelEvent, Tool, ToolRegistry};

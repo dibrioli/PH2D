@@ -69,6 +69,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             hit_index,
             store,
             &mut inspector_state.anchor_selected,
+            &mut inspector_state.anim_selected,
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
@@ -99,6 +100,8 @@ fn paint_inspector(
     // de `paint_anchor_section` contra o tamanho da lista — apagar a última âncora não o pode
     // deixar a apontar para o vazio.
     anchor_selected: &mut usize,
+    // §11: qual animação está aberta no editor. Mesmo contrato do `anchor_selected`.
+    anim_selected: &mut usize,
 ) {
     let rect = layout.inspector;
     paint_panel_surface(rect, scene, theme);
@@ -200,6 +203,7 @@ fn paint_inspector(
     let sampling_info = current_inspector_sampling();
     let slice_info = crate::state::current_inspector_slice();
     let anchor_info = crate::state::current_inspector_anchor();
+    let anim_info = crate::state::current_inspector_anim();
     let blend_info = current_inspector_blend();
     let (physics_info, joint_info, wheel_info, player_info) =
         crate::paint_frame::physics_family_infos();
@@ -374,6 +378,22 @@ fn paint_inspector(
         wheel_info.as_ref(),
         player_info.as_ref(),
         &notes_per_section,
+    );
+    // **§11 Animation** (spec Sprite 08) — a última das doze a nascer, 2026-08-23.
+    y = crate::paint_frame_shared::paint_anim_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        &mut section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        SECTION_HEAD_H,
+        anim_info.as_ref(),
+        anim_selected,
     );
     // **§12 Sockets / Named Anchors** (ADR-0072) — a última, e a única que precisa do ESTADO do
     // painel (qual linha está aberta). Ver `paint_frame_shared::paint_anchor_section`.

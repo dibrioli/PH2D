@@ -252,6 +252,7 @@ pub(crate) mod anchor_gizmo;
 mod anchor_overlay;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
 mod inspector_anchor;
+mod inspector_anim;
 mod inspector_slice;
 /// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
 /// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
@@ -283,6 +284,8 @@ pub(crate) mod painter_stamp_device;
 /// "which entity gets a point handle" is gated headless.
 pub(crate) mod point_gizmo;
 mod present;
+mod sprite_anim_tick;
+pub(crate) use sprite_anim_tick::start_autoplay_animations;
 mod sim_extract;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
 mod sim_extract_slice;
@@ -1824,6 +1827,12 @@ impl crate::App {
         // like the clip's — it only advances while ITS transport plays.
         self.container_playhead.advance_ticks(report.ticks);
 
+        // **A §11 ANIMATION anda AQUI**, ao lado dos outros relógios e pela mesma razão: um
+        // `SpriteAnimator` é `SimComponent` e o replay tem de reproduzir o frame avançado, o que
+        // só um passo fixo e contado dá. ⚠️ `report.ticks` passos de `fixed_dt`, nunca um passo
+        // grande — um salto atravessaria o fim de um ciclo sem o fechar.
+        sprite_anim_tick::tick_sprite_animations(sim, report.ticks, self.fixed_step.fixed_dt());
+
         // Sim tick + extract — extracted to sibling `sim_extract.rs`
         // (Wave 3.2 stage A). Runs the bouncing-motion sim tick and
         // the ADR-0021 / ADR-0025 propagate-transforms + sprite
@@ -3055,6 +3064,7 @@ impl crate::App {
             let mut blend_edits: Vec<(u64, ph2d_editor::BlendFieldEdit)> = Vec::new();
             let mut slice_edits: Vec<(u64, ph2d_editor::SliceFieldEdit)> = Vec::new();
             let mut anchor_edits: Vec<(u64, ph2d_editor::AnchorFieldEdit)> = Vec::new();
+            let mut anim_edits: Vec<(u64, ph2d_editor::AnimFieldEdit)> = Vec::new();
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
             // signature is already the length its own doc-comment warns about,
@@ -4060,6 +4070,12 @@ impl crate::App {
                     // espalhar. Fan-out por nome é trabalho para quando houver quem o peça.
                     EditorAction::InspectorAnchorEdit { entity_bits, edit } => {
                         anchor_edits.push((entity_bits, edit));
+                    }
+                    // §11 Animation. ⚠️ **NÃO espalha sobre a BulkSelect**, e pela MESMA razão da
+                    // §12 acima: uma animação é identificada pelo NOME, e o índice que a edição
+                    // carrega só significa alguma coisa na biblioteca da entidade primária.
+                    EditorAction::InspectorAnimEdit { entity_bits, edit } => {
+                        anim_edits.push((entity_bits, edit));
                     }
                     // §11 Physics Body. Fans out over a BulkSelect like its
                     // siblings — "make all of these physical" is the gesture
@@ -9319,6 +9335,7 @@ impl crate::App {
                 &blend_edits,
                 &slice_edits,
                 &anchor_edits,
+                &anim_edits,
                 &physics_edits,
                 &visibility_section_edits,
                 hero,

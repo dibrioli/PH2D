@@ -30,7 +30,7 @@ use super::*;
 /// ⚠️ `finish_section` lê `store.section_outline_color(<id da seção>)` para TODA seção viva, por
 /// isso uma seção ausente daqui tem um contorno que o passe de pintura está pronto a desenhar e
 /// gesto nenhum que o possa definir.
-pub const LIVE_SECTIONS: [(NodeId, NodeId); 15] = [
+pub const LIVE_SECTIONS: [(NodeId, NodeId); 16] = [
     (INSP_LIVE_NAME_SECTION, INSP_LIVE_NAME_COLOR),
     (INSP_LIVE_VISIBILITY_SECTION, INSP_LIVE_VISIBILITY_COLOR),
     (INSP_LIVE_TRANSFORM_SECTION, INSP_LIVE_TRANSFORM_COLOR),
@@ -41,6 +41,7 @@ pub const LIVE_SECTIONS: [(NodeId, NodeId); 15] = [
     (INSP_LIVE_SAMPLING_SECTION, INSP_LIVE_SAMPLING_COLOR),
     (INSP_LIVE_SLICE_SECTION, INSP_LIVE_SLICE_COLOR),
     (INSP_LIVE_ANCHOR_SECTION, INSP_LIVE_ANCHOR_COLOR),
+    (INSP_LIVE_ANIM_SECTION, INSP_LIVE_ANIM_COLOR),
     (INSP_LIVE_BLEND_SECTION, INSP_LIVE_BLEND_COLOR),
     (INSP_LIVE_PHYSICS_SECTION, INSP_LIVE_PHYSICS_COLOR),
     (INSP_LIVE_JOINT_SECTION, INSP_LIVE_JOINT_COLOR),

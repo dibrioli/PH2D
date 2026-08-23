@@ -421,6 +421,13 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // uma cena onde os pontos voltaram a aparecer so' com o dono selecionado -- e o artista
     // remarcaria a caixa todos os dias sem perceber que ela nunca guardou.
     reg.register::<crate::AnchorVisibility>("ph2d::ecs::AnchorVisibility");
+    // A §11 ANIMATION (spec Sprite 08) -- a biblioteca de tags e o estado de reproducao. Sem
+    // o registro, o artista autora `idle`/`walk`/`attack`, grava, reabre, e a sprite volta a
+    // ser uma grelha parada: as tags nao sao re-derivaveis de nada, sao intervalos que alguem
+    // escolheu. ⚠️ O `SpriteAnimator` grava TAMBEM o estado (frame, ciclo, acumulador), e e
+    // isso que faz o replay reproduzir a mesma animacao -- a razao de ele ser SimComponent.
+    reg.register::<crate::SpriteAnimations>("ph2d::ecs::SpriteAnimations");
+    reg.register::<crate::SpriteAnimator>("ph2d::ecs::SpriteAnimator");
     // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA
     // (2026-08-21). Sem o registro, o modo de falha é o mesmo da moldura e igualmente enganoso:
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte
@@ -510,7 +517,8 @@ mod tests {
         //   na suite da SUA crate — e esta linha ja' os deixou 2 e 4 atras, com a nota escrita.
         //   Ao mexer aqui, mexa nos tres NO MESMO commit: `ph2d-render` e `ph2d-script`.
         // + 1 VISIBILIDADE das ancoras (AnchorVisibility, Enio 2026-08-23).
-        assert_eq!(reg.len(), 67);
+        // + 2 da §11 ANIMATION (SpriteAnimations + SpriteAnimator, spec Sprite 08).
+        assert_eq!(reg.len(), 69);
         assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
@@ -521,6 +529,8 @@ mod tests {
         assert!(reg.get_by_name("ph2d::ecs::NamedAnchorList").is_some());
         assert!(reg.get_by_name("ph2d::ecs::AnchorMount").is_some());
         assert!(reg.get_by_name("ph2d::ecs::AnchorVisibility").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::SpriteAnimations").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::SpriteAnimator").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());

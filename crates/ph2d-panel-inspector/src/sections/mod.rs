@@ -37,6 +37,8 @@ pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
 /// **§12 Sockets / Named Anchors** (ADR-0072) — a seção nascida em 2026-08-21.
 pub(crate) mod anchor_mount_row;
 pub(crate) mod anchors;
+pub(crate) mod anim;
+pub(crate) mod anim_rows;
 mod color_tint;
 /// A linha `Emissive` (plano `docs/Sprite_projeto/18` W8) — irmã do `render_source`, que está no
 /// tecto de LOC.

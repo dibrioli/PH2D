@@ -46,6 +46,7 @@ pub mod topbar;
 
 mod inspector_model;
 mod inspector_model_anchor;
+mod inspector_model_anim;
 /// §12 Physics Joint + §13 Pulley Wheel — irmão do `inspector_model_physics`,
 /// separado dele no cap de 700 LOC (W-JointCopy).
 mod inspector_model_joint;
@@ -70,6 +71,7 @@ pub use paint::PANEL_Z_ORDER_FALLBACK;
 
 pub use inspector_model::*;
 pub use inspector_model_anchor::*;
+pub use inspector_model_anim::*;
 pub use inspector_model_joint::*;
 pub use inspector_model_ordering::*;
 pub use inspector_model_physics::*;

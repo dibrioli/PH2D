@@ -307,6 +307,16 @@ impl crate::App {
         // `None` significa "ainda não sei", e o `post_frame_undo` já sabe o que fazer com isso:
         // arma o baseline com o mundo assentado e NÃO registra passo. A fila nova nasce vazia de
         // verdade. [[feedback_tool_unit_green_integration_dead]]
+        // **O `autoplay` faz o que promete AQUI** (spec Sprite 08 §8.4): o projeto acabou de
+        // abrir, e é este o único momento em que «começar a tocar» é uma aresta observável.
+        //
+        // ⚠️ Ele não pode viver no tique — lá só há estados, e detetar a aresta pediria um bit
+        // «já comecei» que o primeiro `Ctrl+Z` dessincronizaria.
+        // ⚠️ E fica ACIMA do `undo_baseline = None` de propósito: o baseline é armado pelo
+        // `post_frame_undo` com o mundo já assente, e este passo é parte de o assentar.
+        if let Some(gfx) = self.gfx.as_mut() {
+            crate::render_loop::start_autoplay_animations(&mut gfx.sim);
+        }
         self.undo_baseline = None;
         eprintln!("[proj] carregado: {path} ({tracks} track(s) de animacao)");
         self.toast(if tracks == 0 {

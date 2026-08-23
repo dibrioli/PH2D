@@ -39,6 +39,82 @@ pub(crate) fn sync_new_sections(
         inspector_state.last_anchor_row = Some(row);
         sync_anchor_fields(host, &an, row, entity_changed || row_changed);
     }
+    if let Some(an) = crate::state::current_inspector_anim() {
+        // ⚠️ **A mesma ARESTA da §12**, e pelo mesmo defeito medido: os campos do editor
+        // semeiam-se quando a ENTIDADE **ou** a linha aberta muda, nunca por quadro. Reescrever
+        // sempre desfaria o número que o artista acabou de digitar antes de o commit chegar.
+        let row = if an.rows.is_empty() {
+            0
+        } else {
+            inspector_state.anim_selected.min(an.rows.len() - 1)
+        };
+        let row_changed = inspector_state.last_anim_row != Some(row);
+        inspector_state.last_anim_row = Some(row);
+        sync_anim_fields(host, &an, row, entity_changed || row_changed);
+    }
+}
+
+/// Semeia os campos da §11 a partir do snapshot.
+///
+/// ⚠️ **A VELOCIDADE e as duas caixas do tocador semeiam-se em TODA aresta de entidade** — elas
+/// são do animador, e não da linha aberta. Os campos da biblioteca (nome, intervalo, ritmo) são
+/// da linha, e por isso re-semeiam-se também ao trocar de linha.
+fn sync_anim_fields(
+    host: &mut dyn PanelHostInternal,
+    an: &ph2d_editor_core::screens::hero::InspectorAnimInfo,
+    selected: usize,
+    seed: bool,
+) {
+    let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
+    let put = |host: &mut dyn PanelHostInternal, id, v: f64| {
+        if focus != Some(id) && drag != Some(id) {
+            host.store_mut().set_number_value(id, v);
+        }
+    };
+    put(host, ids::INSP_ANIM_SPEED, f64::from(an.speed));
+    if let Some(row) = an.rows.get(selected) {
+        put(host, ids::INSP_ANIM_FROM, f64::from(row.from));
+        put(host, ids::INSP_ANIM_TO, f64::from(row.to));
+        put(host, ids::INSP_ANIM_FRAME_MS, f64::from(row.frame_ms));
+        put(host, ids::INSP_ANIM_HOLD_MS, f64::from(row.hold_ms));
+        put(
+            host,
+            ids::INSP_ANIM_DELAY_MS,
+            f64::from(row.repeat_delay_ms),
+        );
+        put(host, ids::INSP_ANIM_REPEAT, f64::from(row.repeat));
+    }
+    if !seed {
+        return;
+    }
+    if focus != Some(ids::INSP_ANIM_NAME)
+        && let Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) = host.store_mut().get_mut(ids::INSP_ANIM_NAME)
+    {
+        text.clear();
+        if let Some(row) = an.rows.get(selected) {
+            text.push_str(&row.name);
+        }
+        *caret = text.len();
+        *selection_anchor = None;
+    }
+    for (id, on) in [
+        (ids::INSP_ANIM_PLAYING, an.playing),
+        (ids::INSP_ANIM_AUTOPLAY, an.autoplay),
+    ] {
+        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
+            *value = if on {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            };
+        }
+    }
 }
 
 /// Reflete o snapshot da §5 9-Slice nos widgets.

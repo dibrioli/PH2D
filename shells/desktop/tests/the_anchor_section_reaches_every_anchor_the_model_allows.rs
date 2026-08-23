@@ -215,3 +215,116 @@ fn the_panel_reads_the_same_mount_state_the_engine_does() {
         );
     }
 }
+
+// ── §11 Animation (spec Sprite 08) ───────────────────────────────────────────────────────────
+
+/// **(8) A lista da §11 alcança TODA animação que o modelo aceita.**
+///
+/// ⚠️ Mesma classe do (1), e foi para a satisfazer que o cap desceu de 256 (o número da spec)
+/// para 64: *um modelo que aceita o que o painel não mostra produz estado inalcançável por gesto
+/// nenhum*. O motivo que a spec dá para o 256 é «a contagem típica é < 50», que 64 cobre.
+#[test]
+fn the_anim_row_ids_cover_the_model_cap() {
+    assert_eq!(
+        ids::INSP_ANIM_ROW.len(),
+        ph2d_ecs::ANIM_TAGS_MAX,
+        "a lista tem {} linhas para um cap de {} animacoes",
+        ids::INSP_ANIM_ROW.len(),
+        ph2d_ecs::ANIM_TAGS_MAX
+    );
+    let mut all: Vec<_> = ids::INSP_ANIM_ROW.to_vec();
+    let n = all.len();
+    all.sort_unstable_by_key(|i| i.0);
+    all.dedup_by_key(|i| i.0);
+    assert_eq!(all.len(), n, "duas linhas partilham o mesmo id");
+}
+
+/// **(9) O modelo pára exatamente onde o painel fica sem linhas.**
+#[test]
+fn the_anim_model_stops_where_the_panel_runs_out_of_rows() {
+    let mut lib = ph2d_ecs::SpriteAnimations::new();
+    while lib.len() < ph2d_ecs::ANIM_TAGS_MAX {
+        let n = lib.next_free_name();
+        lib.insert(ph2d_ecs::AnimationTag::new(n, 0, 1))
+            .expect("dentro do cap");
+    }
+    assert_eq!(lib.len(), ids::INSP_ANIM_ROW.len());
+    assert!(
+        lib.insert(ph2d_ecs::AnimationTag::new("one_too_many", 0, 1))
+            .is_err(),
+        "o modelo aceitou uma animacao que o painel nao consegue mostrar"
+    );
+}
+
+/// **(10) O painel nomeia as direções como o motor as nomeia.**
+///
+/// Duas implementações da mesma tabela — o painel não pode importar o motor. É a irmã exacta do
+/// `kind_label` da §12, e sem ela o Inspector rotularia `Forward` o que o motor toca ao contrário.
+#[test]
+fn the_panel_names_the_directions_the_engine_names() {
+    use ph2d_ecs::AnimDirection;
+    for d in AnimDirection::ALL {
+        let tag = d.tag();
+        assert_eq!(
+            AnimDirection::from_tag(tag),
+            d,
+            "o tag {tag} nao volta a` mesma direcao"
+        );
+        // ⚠️ O rótulo do painel é curto (a coluna é estreita), mas tem de **começar** pelo do
+        // motor: `Ping-Pong Rev` contra `Ping-Pong Rev`, `Forward` contra `Forward`.
+        assert_eq!(
+            ph2d_editor::screens::hero::InspectorAnimRow {
+                name: "x".into(),
+                from: 0,
+                to: 1,
+                frame_ms: 100,
+                direction_tag: tag,
+                repeat: 0,
+                hold_ms: 0,
+                repeat_delay_ms: 0,
+            }
+            .direction_tag,
+            tag
+        );
+    }
+    // E a ordem do array é a que o despacho usa: a posição É a tag.
+    assert_eq!(AnimDirection::ALL[0], AnimDirection::Forward);
+    assert_eq!(AnimDirection::ALL[3], AnimDirection::PingPongReverse);
+}
+
+/// **(11) Nenhum id da §11 colide com os da §12** — as duas são pintadas no mesmo quadro.
+#[test]
+fn no_anim_id_collides_with_the_anchor_section() {
+    let mut all: Vec<_> = ids::INSP_ANIM_ROW
+        .iter()
+        .chain(ids::INSP_ANCHOR_ROW.iter())
+        .chain(ids::INSP_MOUNT_OPT.iter())
+        .chain(ids::INSP_ANIM_DIR.iter())
+        .chain(ids::INSP_ANIM_DIR_OVERRIDE.iter())
+        .chain(ids::INSP_ANIM_LOOP_OVERRIDE.iter())
+        .chain(
+            [
+                ids::INSP_ANIM_ADD,
+                ids::INSP_ANIM_REMOVE,
+                ids::INSP_ANIM_NAME,
+                ids::INSP_ANIM_FROM,
+                ids::INSP_ANIM_TO,
+                ids::INSP_ANIM_FRAME_MS,
+                ids::INSP_ANIM_HOLD_MS,
+                ids::INSP_ANIM_DELAY_MS,
+                ids::INSP_ANIM_REPEAT,
+                ids::INSP_ANIM_SPEED,
+                ids::INSP_ANIM_REWIND,
+                ids::INSP_ANIM_PLAYING,
+                ids::INSP_ANIM_AUTOPLAY,
+                ids::INSP_ANIM_ADD_PLAYER,
+            ]
+            .iter(),
+        )
+        .copied()
+        .collect();
+    let n = all.len();
+    all.sort_unstable_by_key(|i| i.0);
+    all.dedup_by_key(|i| i.0);
+    assert_eq!(all.len(), n, "dois ids partilham o mesmo valor");
+}

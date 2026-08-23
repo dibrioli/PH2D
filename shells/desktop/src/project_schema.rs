@@ -340,4 +340,13 @@
 /// `SmallVec` e o postcard é posicional — acrescentar-lhe campos faria todo projeto anterior ser
 /// lido torto em silêncio.
 /// ⚠️ Ausência do componente é «só quando selecionada», que é o que toda entidade fazia até v90.
-pub(crate) const PROJECT_SCHEMA: u32 = 91;
+/// v92 (`line/Sprite` — §11 ANIMATION): dois componentes novos, `ph2d_ecs::SpriteAnimations` (a
+/// biblioteca de tags: intervalos nomeados sobre a grelha da sprite) e `ph2d_ecs::SpriteAnimator`
+/// (o estado de reprodução).
+/// ⚠️ **Terceiro degrau seguido em que quem obriga o bump é o REGISTRO**, e o modo de falha é o
+/// mesmo: sem ele, o artista autora `idle`/`walk`/`attack`, grava, reabre — e a sprite volta a ser
+/// uma grelha parada, **sem nada em falta no ecrã a denunciá-lo**.
+/// ⚠️ O `SpriteAnimator` grava também o ESTADO (frame, ciclo, acumulador de tempo), e é isso que
+/// faz o replay reproduzir a mesma animação — a razão de ele ser `SimComponent`.
+/// ⚠️ Ausência dos dois é «sprite parada na `frame` atual», que é o que toda sprite fazia até v91.
+pub(crate) const PROJECT_SCHEMA: u32 = 92;

@@ -474,6 +474,13 @@ pub enum EditorAction {
         entity_bits: u64,
         edit: crate::screens::hero::AnchorFieldEdit,
     },
+    /// §11 Animation (spec Sprite 08) — uma edição da biblioteca de animações **ou** do estado
+    /// de reprodução. ⚠️ `Clone` e não `Copy`, como a irmã acima: o `Rename` e o `SetCurrent`
+    /// carregam o nome, e é o nome que distingue uma animação de outra.
+    InspectorAnimEdit {
+        entity_bits: u64,
+        edit: crate::screens::hero::AnimFieldEdit,
+    },
 
     /// Inspector → shell channel for a §10 Material & Blend field (Blend
     /// Mode). Optional-component edit like [`Self::InspectorSamplingEdit`]

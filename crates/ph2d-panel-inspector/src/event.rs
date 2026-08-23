@@ -43,6 +43,12 @@ pub(crate) fn apply_event(
     if crate::event_anchor::apply_anchor_event(state, host, ev) {
         return EventOutcome::Consumed;
     }
+    // **§11 Animation** — irmã da acima, e pela mesma razão: clicar numa linha mexe no estado do
+    // painel (qual ficha está aberta). ⚠️ Aqui o clique **também** vai ao barramento, porque a
+    // linha aberta é a animação que toca — ver `sections::anim`.
+    if crate::event_anim::apply_anim_event(state, host, ev) {
+        return EventOutcome::Consumed;
+    }
     EventOutcome::from_bool(apply_event_impl(host, ev))
 }
 

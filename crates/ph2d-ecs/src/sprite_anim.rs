@@ -47,8 +47,18 @@ use smallvec::SmallVec;
 
 use crate::SimComponent;
 
-/// Máximo de tags por sprite (spec §8.11).
-pub const ANIM_TAGS_MAX: usize = 256;
+/// Máximo de tags por sprite.
+///
+/// ⚠️ **A spec §8.11 escreve 256, e este é 64 — de propósito, e a razão é a dela.** O motivo que
+/// ela dá para o 256 é *«a contagem típica de animações é < 50»*; o que ela não pesa é que o
+/// painel tem de **alcançar** cada uma, e um modelo que aceita o que o painel não mostra produz
+/// estado inalcançável por gesto nenhum. Este módulo já pagou essa classe duas vezes (os quatro
+/// modos mudos da §9 Sampling, e o cap de âncoras que o gate
+/// `the_model_stops_exactly_where_the_panel_runs_out_of_rows` passou a prender).
+///
+/// 64 é o que a lista da §11 mostra, é o mesmo teto das âncoras, e está acima do «típico < 50»
+/// que a própria spec usa para justificar o número maior.
+pub const ANIM_TAGS_MAX: usize = 64;
 /// Comprimento máximo do nome de uma tag, **em bytes UTF-8** — mesma lei (e mesma razão) do
 /// [`crate::ANCHOR_NAME_MAX_BYTES`]: contar o que o postcard conta é o que mantém o hash estável.
 pub const ANIM_NAME_MAX_BYTES: usize = 64;

@@ -214,6 +214,43 @@ pub(crate) fn lattice(spr: &Sprite, pixels_per_meter: f32, unfolded: bool) -> Op
     })
 }
 
+/// **A CAIXA DO GIZMO em metros LOCAIS** — `(centro, meia-extensão)`.
+///
+/// Enio, 2026-08-23: *«o gizmo da sprite deve englobar todas as células»*. Com a folha aberta ela é
+/// o [`Lattice`]; sem ela, o quad de uma célula de sempre.
+///
+/// ⚠️ **A ESCOLHA vive aqui, e não no fio.** Ela estava em `snapshots::build_view` — um closure que
+/// precisa de `HeroScreen` + `PresentWorld` + câmara, e **não é alcançável de um teste**: a mutação
+/// que a desligava compilava e passava a suíte inteira. Aqui ela tem gate, e o que fica lá são duas
+/// linhas que se conferem a olho. *Encolher o resíduo é o que se pode fazer quando o arnês não
+/// existe; fingir que ele existe, não.*
+///
+/// `sheet_open` = a caixa «Show sheet on canvas» está marcada **para este sprite**;
+/// `unfolded` = uma ferramenta pré-visualiza-o (a folha centra-se no pivô). Ver [`lattice`].
+#[must_use]
+pub(crate) fn gizmo_box(
+    spr: &Sprite,
+    pixels_per_meter: f32,
+    sheet_open: bool,
+    unfolded: bool,
+) -> ([f32; 2], [f32; 2]) {
+    let folded = (
+        spr.resolve_anchor(pixels_per_meter),
+        [spr.size[0] * 0.5, spr.size[1] * 0.5],
+    );
+    if !sheet_open {
+        return folded;
+    }
+    match lattice(spr, pixels_per_meter, unfolded) {
+        Some(l) => (
+            [(l.x0 + l.w * 0.5) as f32, (l.y0 - l.h * 0.5) as f32],
+            [(l.w * 0.5) as f32, (l.h * 0.5) as f32],
+        ),
+        // Sem grelha não há folha para envolver — e a caixa é a de sempre.
+        None => folded,
+    }
+}
+
 /// Traço, pela mesma porta do irmão [`super::sheet_overlay`].
 fn stroke(scene: &mut VectorScene, path: &BezPath, xf: Affine, color: Color, width: f64) {
     scene.inner_mut().stroke(

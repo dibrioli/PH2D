@@ -2583,6 +2583,8 @@ impl crate::App {
                 // Deform Transform live ⇒ the sprite gizmo is suppressed for the frame (its corner
                 // handles share the deform gizmo's screen corners on a whole-image transform).
                 painter_bridge_queries::deform_transform_gizmo_active(tools),
+                // Em que disposição a folha aberta está — a caixa do gizmo envolve-a inteira.
+                &tool_preview_bits,
                 vec_scene,
                 // O gizmo da forma só existe fora da ferramenta vetorial, ou no modo
                 // Select dela (ADR-0112).

@@ -316,3 +316,28 @@ alcançável de um teste. ⇒ `is_tool_previewed`, uma função com gate, e a li
 **Gates novos (3), mutações (3):** o retículo desdobrado casa com o quad pintado (e difere do
 dobrado pela fórmula) · a folha em pintura toca com o transporte parado **e não o liga** · uma
 resposta só a quem está sob pré-visualização.
+
+## §11 — Adenda: a caixa do gizmo envolve a folha
+
+*«quando Show sheet on canvas estiver checado o gizmo da sprite deve englobar todas as células. Veja
+que agora ele fica com o tamanho de uma célula no centro.»*
+
+O `snapshots::build_view` derivava a caixa de `sprite.size` + `resolve_anchor` — a célula. Agora ela
+sai do **mesmo `Lattice`** que desenha as linhas, pelos dois modos (dobrada/desdobrada).
+
+⚠️ **Escalar a caixa escala a folha toda, e isso sai de graça:** as células fantasma derivam de
+`Sprite::size`, então mover/girar/escalar o sprite move a folha inteira. A caixa passa a cercar o
+que o gesto de facto move — que é o que ela devia sempre dizer.
+
+### ⭐ A mutação que SOBREVIVEU, e o que ela mudou
+
+Desligar a caixa nova em `build_view` **compilava e passava a suíte inteira**: aquele closure precisa
+de `HeroScreen` + `PresentWorld` + câmara e **não é alcançável de um teste**. ⇒ a **escolha** saiu
+para `sheet_grid_overlay::gizmo_box` (com gate nas duas metades: cresce com a folha aberta, e **não**
+cresce numa sprite sem grelha ou com a caixa desmarcada), e no fio ficaram duas linhas.
+
+*É a terceira vez nesta linha que um sobrevivente aponta o mesmo remédio: quando o arnês não existe,
+encolhe-se o resíduo e diz-se qual metade ficou de fora. Fingir que ele existe, não.*
+
+**Gates novos (2), mutações (2):** o retículo é a caixa que o gizmo envolve · a caixa cresce só com
+a folha aberta (M27: nunca cresce · M28: cresce sempre, e mata a sprite normal).

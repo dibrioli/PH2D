@@ -110,6 +110,10 @@ pub(super) fn publish(
     paint_stamps: u32,
     paint_ms: f32,
     suppress_sprite_gizmo: bool,
+    // **QUEM ESTÁ SOB PRÉ-VISUALIZAÇÃO DE FERRAMENTA** — a mesma lista de `run_render_frame` que o
+    // tique da §11, o extract e o overlay da grelha leem. Aqui ela decide **em que disposição** a
+    // folha está, para a caixa do gizmo a envolver inteira.
+    tool_preview_bits: &[Option<u64>],
     // ADR-0111: uma forma vetorial também publica `GizmoView` — ela é um objeto com
     // `Transform`, e o gizmo que a manipula é o de sprite.
     vec_scene: &ph2d_vec_scene::VecScene,
@@ -369,125 +373,138 @@ pub(super) fn publish(
     // path tweak only touches this closure.
     // ADR-0111: sem `Sprite`, tenta a forma vetorial — mesma caixa, mesmo pivô,
     // mesma rotação, derivados da bbox local da curva e do `Transform` da entidade.
-    let build_view =
-        |bits: u64, sim: &SimWorld, present: &mut PresentWorld| -> Option<ph2d_editor::GizmoView> {
-            let sim_entity = ph2d_ecs::Entity::from_bits(bits);
-            if sim.world().get::<Sprite>(sim_entity).is_none() {
-                // Não é sprite: uma forma vetorial ou um objeto Flip — cada um lê o
-                // gizmo de sprite da sua bbox local + `Transform`.
-                if sim
-                    .world()
-                    .get::<ph2d_ecs::VecPathRef>(sim_entity)
-                    .is_some()
-                {
-                    if !vec_gizmo_on {
-                        return None;
-                    }
-                    // (O SPINE de um Blend não publica gizmo — o `vec_gizmo_view::view` o pula, como
-                    // faz com o conector. ADR-0128.)
-                    return crate::vec_gizmo_view::view(
-                        sim,
-                        vec_scene,
-                        vec_view,
-                        sim_entity,
-                        camera,
-                        window_size,
-                        last_pointer,
-                        pivot_tool_active,
-                    );
+    // ⚠️ Lido ANTES do closure: ele captura um `u64` simples, e não `&hero` — que seria emprestado
+    // outra vez, mutavelmente, quando a view é escrita logo abaixo.
+    let sheet_gizmo_bits: Option<u64> =
+        crate::render_loop::sim_extract_sheet::previewed(hero).map(|e| e.to_bits());
+    let build_view = |bits: u64,
+                      sim: &SimWorld,
+                      present: &mut PresentWorld|
+     -> Option<ph2d_editor::GizmoView> {
+        let sim_entity = ph2d_ecs::Entity::from_bits(bits);
+        if sim.world().get::<Sprite>(sim_entity).is_none() {
+            // Não é sprite: uma forma vetorial ou um objeto Flip — cada um lê o
+            // gizmo de sprite da sua bbox local + `Transform`.
+            if sim
+                .world()
+                .get::<ph2d_ecs::VecPathRef>(sim_entity)
+                .is_some()
+            {
+                if !vec_gizmo_on {
+                    return None;
                 }
-                if sim
-                    .world()
-                    .get::<ph2d_ecs::FlipObjectRef>(sim_entity)
-                    .is_some()
-                {
-                    if !flip_gizmo_on {
-                        return None;
-                    }
-                    return crate::flip_gizmo_view::view(
-                        sim,
-                        flip,
-                        sim_entity,
-                        camera,
-                        window_size,
-                        last_pointer,
-                        pivot_tool_active,
-                    );
-                }
-                // ADR-0129 Fatia 3: o container de um Envelope é um grupo SEM path próprio, mas TEM
-                // gizmo — a caixa-união dos filhos, para o gizmo de sprite mover/girar/escalar o
-                // envelope inteiro (Fatia 2). Gate no mesmo `vec_gizmo_on` (Select; no Node aparece a
-                // gaiola, não a caixa).
-                if sim
-                    .world()
-                    .get::<ph2d_ecs::VecEnvelope>(sim_entity)
-                    .is_some()
-                {
-                    if !vec_gizmo_on {
-                        return None;
-                    }
-                    return crate::vec_gizmo_view::container_view(
-                        sim,
-                        vec_scene,
-                        sim_entity,
-                        camera,
-                        window_size,
-                        last_pointer,
-                        pivot_tool_active,
-                    );
-                }
-                return None; // grupo/outro: sem gizmo próprio
+                // (O SPINE de um Blend não publica gizmo — o `vec_gizmo_view::view` o pula, como
+                // faz com o conector. ADR-0128.)
+                return crate::vec_gizmo_view::view(
+                    sim,
+                    vec_scene,
+                    vec_view,
+                    sim_entity,
+                    camera,
+                    window_size,
+                    last_pointer,
+                    pivot_tool_active,
+                );
             }
-            let sprite = sim.world().get::<Sprite>(sim_entity)?;
-            let mut q = present
-                .world_mut()
-                .query::<(&SimRef, &ph2d_ecs::GlobalTransform)>();
-            let gt = q.iter(present.world()).find_map(|(sref, gt)| {
-                if sref.0 == sim_entity {
-                    Some(*gt)
-                } else {
-                    None
+            if sim
+                .world()
+                .get::<ph2d_ecs::FlipObjectRef>(sim_entity)
+                .is_some()
+            {
+                if !flip_gizmo_on {
+                    return None;
                 }
-            })?;
-            let affine = gt.affine();
-            let col0_x = affine[0];
-            let col0_y = affine[1];
-            let col1_x = affine[2];
-            let col1_y = affine[3];
-            let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
-            let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
-            let rotation = col0_y.atan2(col0_x);
-            let p = gt.translation();
-            let half_w = sprite.size[0] * scale_x * 0.5;
-            let half_h = sprite.size[1] * scale_y * 0.5;
-            // Effective anchor (folds centered/offset) so the box tracks
-            // the rendered quad, not just the raw tool pivot.
-            let eff_anchor = sprite.resolve_anchor(gizmo_ppm);
-            let ax = eff_anchor[0] * scale_x;
-            let ay = eff_anchor[1] * scale_y;
-            // T1.3.5 cross-OS bit-identical.
-            let (sin_r, cos_r) = libm::sincosf(rotation);
-            let cx = p.x + ax * cos_r - ay * sin_r;
-            let cy = p.y + ax * sin_r + ay * cos_r;
-            Some(ph2d_editor::GizmoView {
-                bbox_min_world: [cx - half_w, cy - half_h],
-                bbox_max_world: [cx + half_w, cy + half_h],
-                pivot_world: [p.x, p.y],
-                pivot_tool_active,
-                rotation,
-                camera_center: camera.center,
-                camera_height_world: camera.height_world,
-                window_w: window_size.width as f32,
-                window_h: window_size.height as f32,
-                canvas: ph2d_editor::zones::Rect::new(
-                    0.0,
-                    0.0,
-                    window_size.width as f32,
-                    window_size.height as f32,
-                ),
-                cursor_screen: Some(last_pointer),
-            })
-        };
+                return crate::flip_gizmo_view::view(
+                    sim,
+                    flip,
+                    sim_entity,
+                    camera,
+                    window_size,
+                    last_pointer,
+                    pivot_tool_active,
+                );
+            }
+            // ADR-0129 Fatia 3: o container de um Envelope é um grupo SEM path próprio, mas TEM
+            // gizmo — a caixa-união dos filhos, para o gizmo de sprite mover/girar/escalar o
+            // envelope inteiro (Fatia 2). Gate no mesmo `vec_gizmo_on` (Select; no Node aparece a
+            // gaiola, não a caixa).
+            if sim
+                .world()
+                .get::<ph2d_ecs::VecEnvelope>(sim_entity)
+                .is_some()
+            {
+                if !vec_gizmo_on {
+                    return None;
+                }
+                return crate::vec_gizmo_view::container_view(
+                    sim,
+                    vec_scene,
+                    sim_entity,
+                    camera,
+                    window_size,
+                    last_pointer,
+                    pivot_tool_active,
+                );
+            }
+            return None; // grupo/outro: sem gizmo próprio
+        }
+        let sprite = sim.world().get::<Sprite>(sim_entity)?;
+        let mut q = present
+            .world_mut()
+            .query::<(&SimRef, &ph2d_ecs::GlobalTransform)>();
+        let gt = q.iter(present.world()).find_map(|(sref, gt)| {
+            if sref.0 == sim_entity {
+                Some(*gt)
+            } else {
+                None
+            }
+        })?;
+        let affine = gt.affine();
+        let col0_x = affine[0];
+        let col0_y = affine[1];
+        let col1_x = affine[2];
+        let col1_y = affine[3];
+        let scale_x = (col0_x * col0_x + col0_y * col0_y).sqrt();
+        let scale_y = (col1_x * col1_x + col1_y * col1_y).sqrt();
+        let rotation = col0_y.atan2(col0_x);
+        let p = gt.translation();
+        // **COM A FOLHA ABERTA, A CAIXA ENVOLVE A FOLHA** (Enio, 2026-08-23: *«o gizmo da
+        // sprite deve englobar todas as células»*). A escolha e os números vivem em
+        // `sheet_grid_overlay::gizmo_box`, que é onde eles têm gate — aqui só se aplica a
+        // escala e a rotação, como sempre.
+        let (eff_anchor, half) = crate::render_loop::sheet_grid_overlay::gizmo_box(
+            sprite,
+            gizmo_ppm,
+            sheet_gizmo_bits == Some(bits),
+            crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, sim_entity),
+        );
+        let half_w = half[0] * scale_x;
+        let half_h = half[1] * scale_y;
+        let ax = eff_anchor[0] * scale_x;
+        let ay = eff_anchor[1] * scale_y;
+        // T1.3.5 cross-OS bit-identical.
+        let (sin_r, cos_r) = libm::sincosf(rotation);
+        let cx = p.x + ax * cos_r - ay * sin_r;
+        let cy = p.y + ax * sin_r + ay * cos_r;
+        Some(ph2d_editor::GizmoView {
+            bbox_min_world: [cx - half_w, cy - half_h],
+            bbox_max_world: [cx + half_w, cy + half_h],
+            pivot_world: [p.x, p.y],
+            pivot_tool_active,
+            rotation,
+            camera_center: camera.center,
+            camera_height_world: camera.height_world,
+            window_w: window_size.width as f32,
+            window_h: window_size.height as f32,
+            canvas: ph2d_editor::zones::Rect::new(
+                0.0,
+                0.0,
+                window_size.width as f32,
+                window_size.height as f32,
+            ),
+            cursor_screen: Some(last_pointer),
+        })
+    };
     // Poda ANTES de construir as views: só a morte de uma entidade tira alguém da
     // seleção (ver `gizmo_prune` — o atalho "sem view = morreu" expulsava as
     // entidades vetoriais, que não têm `Sprite`).

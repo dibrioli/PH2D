@@ -203,3 +203,82 @@ fn the_unfolded_lattice_is_centred_on_the_pivot_and_matches_the_painted_quad() {
         "e' o deslocamento de meia celula que a foto mostra"
     );
 }
+
+/// **O RETÍCULO É O QUE A CAIXA DO GIZMO ENVOLVE** (Enio, 2026-08-23: *«o gizmo da sprite deve
+/// englobar todas as células»*).
+///
+/// ⚠️ A caixa do gizmo lê o **mesmo** [`Lattice`] que desenha as linhas — este gate afirma que ele
+/// dá tudo o que ela precisa e que os números fecham: o rectângulo contém as `hf × vf` células, e o
+/// centro dele é o que a caixa usa como âncora efetiva. Sem isto, a caixa ficaria do tamanho de UMA
+/// célula no meio de oito, e o artista agarraria uma alça que não cerca o que ele vê.
+#[test]
+fn the_lattice_is_the_box_the_gizmo_wraps() {
+    for unfolded in [false, true] {
+        for (hf, vf, live) in [(8u32, 1u32, 4u32), (4, 2, 5), (3, 3, 0)] {
+            let s = spr(hf, vf, live);
+            let l = lattice(&s, PPM, unfolded).unwrap();
+            // A caixa mede a folha inteira, e não uma célula.
+            assert_eq!(l.w, f64::from(hf) * l.cell_w);
+            assert_eq!(l.h, f64::from(vf) * l.cell_h);
+            assert!(
+                l.w > l.cell_w || l.h > l.cell_h,
+                "uma folha e' maior que uma celula"
+            );
+            // O centro (o que a caixa usa como âncora efetiva) cai dentro dela, e a caixa
+            // contém TODAS as células — inclusive as das pontas.
+            let (cx, cy) = (l.x0 + l.w * 0.5, l.y0 - l.h * 0.5);
+            for i in 0..hf * vf {
+                let (col, row) = (f64::from(i % hf), f64::from(i / hf));
+                let ccx = l.x0 + (col + 0.5) * l.cell_w;
+                let ccy = l.y0 - (row + 0.5) * l.cell_h;
+                assert!(
+                    (ccx - cx).abs() <= l.w * 0.5 + 1.0e-9
+                        && (ccy - cy).abs() <= l.h * 0.5 + 1.0e-9,
+                    "a celula {i} cai fora da caixa (unfolded={unfolded})"
+                );
+            }
+            // ⚠️ E a célula VIVA está DENTRO dela nos dois modos — é a asserção que apanharia uma
+            // caixa desdobrada desenhada com a âncora dobrada, e vice-versa.
+            assert!(
+                (l.live_cx - cx).abs() <= l.w * 0.5 + 1.0e-9
+                    && (l.live_cy - cy).abs() <= l.h * 0.5 + 1.0e-9,
+                "a celula viva cai fora da caixa (unfolded={unfolded})"
+            );
+        }
+    }
+}
+
+/// **A CAIXA DO GIZMO: com a folha aberta ela envolve a folha; sem ela, a célula.**
+///
+/// ⚠️ **As duas metades**, e a de AUSÊNCIA é a que impede a cura de virar *«a caixa cresce
+/// sempre»*: numa sprite sem grelha, ou com a caixa desmarcada, o gizmo tem de continuar a cercar
+/// exactamente o quad — senão toda sprite normal passaria a ter alças fora dela.
+///
+/// **Mutação que deve sangrar:** devolver sempre o `folded`.
+#[test]
+fn the_gizmo_box_wraps_the_sheet_only_when_the_sheet_is_open() {
+    let s = spr(8, 1, 4);
+    let cell = spr(1, 1, 0);
+
+    // Fechada: a caixa é o quad de uma célula, no pivô.
+    let (c, h) = gizmo_box(&s, PPM, false, false);
+    assert_eq!(c, s.resolve_anchor(PPM), "o centro e' o pivo");
+    assert_eq!(h, [s.size[0] * 0.5, s.size[1] * 0.5], "meia celula");
+
+    // Aberta: a caixa é a folha inteira, nos DOIS modos.
+    for unfolded in [false, true] {
+        let (c, h) = gizmo_box(&s, PPM, true, unfolded);
+        let l = lattice(&s, PPM, unfolded).unwrap();
+        assert_eq!(h, [(l.w * 0.5) as f32, (l.h * 0.5) as f32]);
+        assert_eq!(c, [(l.x0 + l.w * 0.5) as f32, (l.y0 - l.h * 0.5) as f32]);
+        assert!(
+            f64::from(h[0]) > f64::from(s.size[0]) * 0.5,
+            "a caixa tem de CRESCER (unfolded={unfolded})"
+        );
+    }
+
+    // ⚠️ E uma sprite SEM grelha não cresce, nem com a caixa marcada — não há folha.
+    let (c, h) = gizmo_box(&cell, PPM, true, false);
+    assert_eq!(c, cell.resolve_anchor(PPM));
+    assert_eq!(h, [cell.size[0] * 0.5, cell.size[1] * 0.5]);
+}

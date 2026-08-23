@@ -178,6 +178,12 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger` (Painter) ·
   `the_cost_of_sampling_a_path_is_flat_in_its_anchors` (Timeline) — mais as três já nomeadas acima.
   Duas corridas seguidas da MESMA árvore deram `17.883/17.883` e depois `17.881/17.884`.
+  ⚠️⚠️ **E ela NÃO é só de relógio — 2026-08-23 acrescentou uma de ALOCAÇÃO:**
+  `the_trusted_len_collect_allocates_once` (`ph2d-audio-edit::measure_arc_build`) foi o único ✗ de
+  17.966 testes e passou **3 de 3** sozinho, sobre um diff que não tocava uma linha de áudio. Um
+  contador de alocações parece imune a carga e não é: sob 17,9 mil testes em paralelo o alocador
+  global reutiliza arenas de outra maneira. ⇒ *a forma que se lê é «o gate mede um RECURSO», e não
+  «o gate mede tempo»* — relógio, alocações, e o que vier a seguir.
   ⇒ **Todo gate que compara duas medianas de tempo é candidato**, e a lista nunca estará completa:
   o que se lê não é o nome, é a *forma* — se um ✗ do gate batched for uma razão de relógio, **re-rode
   sozinho ANTES de olhar para o seu commit**. O sinal de que é carga: o mesmo teste verde isolado, e
@@ -703,6 +709,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   intacto. ⚠️ **As LINHAS da grelha seguem o MODO** (`lattice(.., unfolded)`): a folha pintada
   centra-se no pivô e a pré-visualizada dispõe-se à volta da célula viva, e as duas disposições
   **nunca** coincidem (o desvio é `(lcol + ½ − hf/2)·cw`) — foi o 2.º report com foto.
+  ⚠️ **E a CAIXA DO GIZMO envolve a folha aberta** (`sheet_grid_overlay::gizmo_box`) — ela ficava do
+  tamanho de UMA célula no meio de oito. ⛔ A escolha vive numa função com gate, e **não no fio**: em
+  `snapshots::build_view` ela não é alcançável de um teste, e a mutação que a desligava compilava e
+  passava a suíte inteira.
   ⭐ **A GRELHA VÊ-SE** (Enio, 2026-08-23): a caixa **«Show sheet on canvas»** (§4 Sprite Sheet, só
   aparece com grelha) abre a folha no canvas — as outras células esmaecidas no lugar delas, com as
   linhas dos cortes e a viva contornada. ⚠️ **Fantasmas de PRESENTE, nunca documento** (o molde é o

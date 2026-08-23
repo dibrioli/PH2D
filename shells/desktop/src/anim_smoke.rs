@@ -41,7 +41,10 @@
 //!     se pinta, **mesmo com o transporte pausado**. ⚠️ Antes disto a tira saía esmagada 8:1 dentro
 //!     de uma célula (report do Enio, com foto), e o ponteiro tinha o mesmo esmagamento: as duas
 //!     contas eram a mesma, e ambas erradas.
-//! 11. Com **Show sheet on canvas** marcado **e** o Painter aberto, as **linhas caem em cima dos
+//! 11. Com **Show sheet on canvas** marcado, a **caixa de seleção envolve a folha inteira** — não
+//!     uma célula no meio de oito. Arrastar uma alça escala a folha toda, porque as células saem do
+//!     tamanho do sprite.
+//! 12. Com **Show sheet on canvas** marcado **e** o Painter aberto, as **linhas caem em cima dos
 //!     cortes** da arte. ⚠️ Elas caíam desalinhadas (2.º report, com foto): a folha pintada
 //!     centra-se no pivô e a grelha dispunha-se à volta da célula viva — duas âncoras, e as linhas
 //!     seguiam a errada.

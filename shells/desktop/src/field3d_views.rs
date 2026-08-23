@@ -68,7 +68,6 @@ impl Standard {
     /// ⚠️ Ela existe para o gate: a orientação é escrita em `yaw`/`pitch` (a porta da casa para um
     /// enquadramento nomeado), e um sinal trocado ali dá uma vista que se chama *Frente* e mostra as
     /// costas. *O nome tem de ser conferido contra o EIXO, não contra a aritmética que o produziu.*
-    #[cfg(test)]
     pub(crate) fn eye_axis(self) -> [f32; 3] {
         match self {
             Self::Front => [0.0, 0.0, 1.0],

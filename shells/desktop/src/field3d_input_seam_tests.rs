@@ -211,3 +211,116 @@ fn the_grabbed_handle_stays_lit_while_the_cursor_walks_away() {
         assert_eq!(hot_handle(s), Some(Handle::Axis(2)));
     });
 }
+
+// ───────── W49: o gizmo de NAVEGAÇÃO, pela costura inteira ─────────
+
+/// Onde uma bola está, em coordenadas de **janela** (a área tem canto em `AREA.x/y`).
+fn ball_at(s: &crate::field3d_smoke::Smoke, v: crate::field3d_views::Standard) -> (f32, f32) {
+    let b = crate::field3d_navball::balls(&s.cam, AREA)
+        .into_iter()
+        .find(|b| b.view == v)
+        .expect("as seis estão sempre lá");
+    (AREA.x + b.at[0], AREA.y + b.at[1])
+}
+
+/// ⭐⭐ **CLICAR NUMA BOLA LEVA A CÂMERA ÀQUELA VISTA** — a costura inteira: `begin` → `finish`.
+///
+/// ⚠️ **É o gate que a W48 me ensinou a escrever primeiro.** Lá eu provei o tratador e entreguei
+/// botões mortos; aqui o caminho é o do ponteiro, de ponta a ponta, e nenhuma intenção é empurrada
+/// à mão.
+#[test]
+fn clicking_a_navball_takes_the_camera_to_that_view() {
+    for v in crate::field3d_views::Standard::ALL {
+        armed(|s| {
+            // Longe da vista, de propósito: sem isto o gate passaria com um clique que não faz nada.
+            s.cam.rotation = ph2d_field_render::Orbit::default().rotation;
+            s.nav_press = None;
+            let at = ball_at(s, v);
+            assert!(
+                begin(s, winit::event::MouseButton::Left, Drag::Orbit, at),
+                "{v:?}: o gizmo de navegação não pegou o botão"
+            );
+            assert_eq!(
+                s.nav_press,
+                Some(v),
+                "{v:?}: a pegada não guardou a bola sob o cursor"
+            );
+            crate::field3d_input::finish_for_test(s);
+            assert_eq!(
+                crate::field3d_views::named_view(&s.cam),
+                Some(v),
+                "{v:?}: soltar em cima da bola não levou a câmera à vista dela"
+            );
+        });
+    }
+}
+
+/// ⭐⭐ **ARRASTAR A PARTIR DO GIZMO ORBITA, E NÃO ESCOLHE VISTA.**
+///
+/// ⚠️ É o gesto que a pesquisa da referência mede como o **rápido** (quase 2× o clique), e ele tem
+/// de ganhar do clique quando a mão se mexe: sem isto, um arrasto começado por acidente em cima do
+/// widget teleportaria a câmera ao soltar — e essa é a forma mais assustadora de um gizmo falhar.
+#[test]
+fn dragging_from_the_navball_orbits_instead_of_snapping() {
+    armed(|s| {
+        s.cam.rotation = ph2d_field_render::Orbit::default().rotation;
+        let start = s.cam.rotation;
+        let at = ball_at(s, crate::field3d_views::Standard::Front);
+        assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, at));
+        s.pending_pick = None;
+        advance(s, at.0 + 60.0, at.1 + 12.0);
+        assert_ne!(s.cam.rotation, start, "o arrasto tinha de orbitar");
+        crate::field3d_input::finish_for_test(s);
+        // ⚠️ **E não pede seleção na peça.** Achado por uma mutação sobrevivente: a guarda que o
+        // impede só é load-bearing neste caso — o do arrasto que COMEÇOU no widget — e nenhum gate
+        // o media. Um arrasto de câmera que selecionasse o que está por baixo do gizmo ao soltar é
+        // um gesto a fazer duas coisas, e a segunda invisível.
+        assert_eq!(
+            s.pending_pick, None,
+            "o arrasto começado no gizmo pediu uma seleção na peça ao soltar"
+        );
+        assert_eq!(
+            crate::field3d_views::named_view(&s.cam),
+            None,
+            "o arrasto acabou numa vista NOMEADA — ele saltou para a bola em vez de orbitar"
+        );
+    });
+}
+
+/// ⚠️ **Um clique no gizmo não é um clique na PEÇA.** O widget fica por cima dela; sem esta
+/// precedência, escolher uma vista selecionaria também o que estivesse por baixo.
+#[test]
+fn a_click_on_the_navball_never_reaches_the_part() {
+    armed(|s| {
+        s.pending_pick = None;
+        let at = ball_at(s, crate::field3d_views::Standard::Top);
+        assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, at));
+        crate::field3d_input::finish_for_test(s);
+        assert_eq!(
+            s.pending_pick, None,
+            "o clique no gizmo pediu também uma seleção na peça"
+        );
+    });
+}
+
+/// ⚠️ **E fora do widget o gesto continua a ser da peça** — o controle que separa *"o gizmo ganha"*
+/// de *"o gizmo come tudo"*.
+#[test]
+fn a_click_away_from_the_navball_still_belongs_to_the_part() {
+    armed(|s| {
+        s.pending_pick = None;
+        s.nav_press = None;
+        // O canto oposto ao widget, bem longe dele.
+        let at = (AREA.x + 20.0, AREA.y + AREA.h - 20.0);
+        assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, at));
+        assert_eq!(
+            s.nav_press, None,
+            "o gizmo pegou um clique que não era dele"
+        );
+        crate::field3d_input::finish_for_test(s);
+        assert!(
+            s.pending_pick.is_some(),
+            "um clique fora do gizmo tem de continuar a pedir a seleção da peça"
+        );
+    });
+}

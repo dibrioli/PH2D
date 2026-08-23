@@ -3911,8 +3911,103 @@ Agora é um `CHIP_FAMILIES` sobre o qual o `populate` itera: **acrescentar a fam
 
 ---
 
+## §50 — W49: o GIZMO DE NAVEGAÇÃO — e a pesquisa que o Enio mandou fazer antes (23/08)
+
+> Enio, 23/08: *"não seria melhor criar um gizmo moderno como o do Fusion para isso? […] Antes de
+> construir, melhor fazer uma pesquisa de qual é o melhor entre os app e usar como ref."*
+
+### §50.1 — A pesquisa, e os dois factos que decidiram
+
+| | quem usa | gesto |
+|---|---|---|
+| **ViewCube** (cubo) | Fusion 360, AutoCAD, Inventor, Maya, Onshape, SolidWorks | clica face/aresta/canto; arrasta orbita |
+| **bolas de eixo** | Blender, Unity, Godot, Cinema 4D, Plasticity | clica a bola; arrasta orbita |
+
+⛔ **1. O ViewCube está sob patente VIVA.** [US 7.782.319](https://patents.google.com/patent/US7782319B2/en)
+— *"Three-dimensional orientation indicator and controller"*, Autodesk, depositada **2007-03-28**,
+estado **«Active — expires 2029-03-06»**, com família à volta
+([US 8.314.789](https://patents.google.com/patent/US8314789B2/en),
+[US 9.021.400](https://patents.google.com/patent/US9021400)). ⚠️ Uma patente cobre o que a
+reivindicação diz, não «cubos em geral» — mas isto é um facto que se apura **antes** de construir, e
+a decisão é do dono do produto.
+
+⭐⭐ **2. O que faz o widget funcionar não é o formato — é o ARRASTO.** A própria pesquisa da Autodesk
+que criou o ViewCube mediu os utilizadores *"quase 2× mais rápidos"* a arrastar do que a clicar,
+**«independentemente das várias representações examinadas»**
+([paper](https://www.research.autodesk.com/publications/viewcube-a-3d-orientation-indicator-and-controller/)).
+⇒ o ganho medido **não vem do cubo**; vem de o widget ser uma alça que se puxa.
+
+**Decisão do Enio, com os dois factos na mão: bolas de eixo** — e por isso aqui *arrastar orbita* é o
+caminho principal e o clique é o secundário, não o contrário.
+
+### §50.2 — ⚠️ Os eixos são os NOSSOS
+
+Este módulo é **Y para cima**; o Fusion e o Blender são Z para cima. Cada bola **é** uma `Standard`
+da W47 — a mesma lista, a mesma lei de reconhecimento —, então não há uma segunda ideia de *"o que é
+a vista de frente"*.
+
+### §50.3 — Os números são DERIVADOS, não escolhidos
+
+| | de onde vem |
+|---|---|
+| raio da bola | `field3d_gizmo::GRAB_PX` — *"a que distância do traço um clique ainda é daquela alça"* |
+| braço do gizmo | `4 × raio da bola` — dois eixos perpendiculares ficam a `5,7×` o raio |
+| espessura do anel e do talo | `field3d_gizmo::SHAFT_HALF_W_PX` |
+| cores | tokens `axis-x/y/z`, os mesmos das setas do gizmo 3D |
+
+⭐ *O widget fala a mesma língua que as setas que o artista já usa* — se as duas discordassem, a cor
+deixaria de ser legenda.
+
+### §50.4 — ⭐⭐ As duas mutações que sobreviveram encontraram buracos REAIS nos gates
+
+**1. Espelhar o widget na vertical passava em tudo.** Trocar o sinal do `y` da projeção e **nenhum**
+gate reprovava: a bola do meio fica no meio de qualquer forma, e a lei do «cabe na área» é simétrica.
+⚠️ Um gizmo espelhado é a pior falha possível dele — *ele diz uma orientação e a tela mostra outra,
+com toda a confiança*. Gate novo: `up_on_screen_is_up_in_the_world`, com a vista de frente como régua.
+
+**2. A guarda `nav.is_none()` era CÓDIGO MORTO**, e a mutação foi quem o disse. Para chegar àquele
+ramo é preciso `nav.filter(still)` ser `None` — isto é `nav.is_none() || !still` — e o `still`
+exigido lá dentro colapsa isso em `nav.is_none()`. ⇒ a cura foi **apagá-la**, não inventar um gate
+para ela. *Uma condição que não pode mudar o resultado é uma afirmação falsa sobre o código para quem
+o ler a seguir* — e ela sobrevive a toda mutação, por construção.
+
+### §50.5 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | o `pick` olha de trás para a frente (responde pelo eixo escondido) | `a_click_where_two_balls_overlap_takes_the_front_one` |
+| 2 | as bolas deixam de ser ordenadas por profundidade | `the_view_we_are_in_is_the_ball_at_the_centre_and_the_frontmost` |
+| 3 | o `y` da tela deixa de ser invertido | `up_on_screen_is_up_in_the_world` |
+| 4 | o gesto deixa de lembrar a bola | `clicking_a_navball_takes_the_camera_to_that_view` |
+| 5 | o clique ganha do arrasto | `dragging_from_the_navball_orbits_instead_of_snapping` |
+
+⭐ **E os gates são de COSTURA, não de tratador** — a lição que a W48 cobrou: o caminho é
+`begin` → `advance` → `finish`, pelo ponteiro, sem uma intenção empurrada à mão.
+
+### §50.6 — ⏸️ O que fica aberto
+
+- ⏸️ **Sem letras nas bolas.** O Blender escreve X/Y/Z nas positivas; aqui a cor é a única legenda.
+  Escrevê-las é uma linha de i18n por eixo — ficou de fora para não decidir sozinho se um símbolo
+  matemático passa pelo i18n.
+- ⏸️ **Sem cantos nem arestas**: as bolas dão as seis vistas retas; a de três-quartos volta com o
+  `Home`. O cubo dá 26 direções, e é a única coisa em que ele ganha.
+- ⏸️ O salto para a vista **não é animado** (o mesmo ⏸️ da W46).
+- ⏸️ O widget não tem gate de **pintura** — a lei mede posição, ordem e clique; que a bola positiva
+  saia cheia e a negativa vazada é lido por olho.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W49 (§50): o GIZMO DE NAVEGAÇÃO (bolas de eixo)** — pedido do Enio, e ele mandou **pesquisar
+  antes de construir**. ⛔ O ViewCube do Fusion está sob patente **viva até 2029-03-06** (Autodesk,
+  US 7.782.319). ⭐ E a própria pesquisa da Autodesk mede que o ganho vem do **arrasto**, não do
+  cubo (*"quase 2× mais rápidos, independentemente das representações examinadas"*) — por isso
+  arrastar orbita é o gesto principal. Decisão dele: bolas de eixo. Números **derivados** do gizmo
+  3D (raio de agarre, espessura, cores dos eixos). ⚠️ Duas mutações sobreviventes acharam buracos
+  reais: **espelhar o widget na vertical passava em tudo**, e a guarda `nav.is_none()` era **código
+  morto** (apagada, não gateada). ⏸️ Fica: sem letras nas bolas · sem cantos/arestas (as 26 direções
+  do cubo) · o salto não é animado · sem gate de pintura
 - ✅ **W47 (§48): as SEIS VISTAS existem, e a câmera passou a ser alcançável** — o item que o plano
   chama **⭐ «É o produto»** desde 19/08. ⭐ A medição mudou o entregável: o módulo **já pinta no
   viewport inteiro**, então um cabeçalho dentro do canvas seria uma **segunda superfície de UI** do

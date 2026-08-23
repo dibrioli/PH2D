@@ -189,6 +189,22 @@ pub(crate) fn draw(
             );
         }
 
+        // ⭐⭐ **O GIZMO DE NAVEGAÇÃO** (W49), na quina superior direita — como no Blender e no Unity.
+        //
+        // ⚠️ Ele é pintado **sempre**, e não dentro da guarda de seleção que vem a seguir: ele diz de
+        // que lado do modelo se está a olhar, e essa pergunta não depende de haver algo escolhido.
+        {
+            let balls = crate::field3d_navball::balls(&smoke.cam, area);
+            crate::field3d_navball_paint::paint(
+                scene_out,
+                &balls,
+                smoke.nav_hot,
+                theme,
+                [area.x, area.y],
+                crate::field3d_navball::centre(area),
+            );
+        }
+
         // ⭐ **O gizmo por cima da peça**, e no referencial da área.
         //
         // ⚠️ Ele é desenhado **depois** do quadro traçado e **sem teste de profundidade**: uma alça

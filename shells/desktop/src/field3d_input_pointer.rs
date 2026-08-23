@@ -35,6 +35,28 @@ pub(crate) fn begin(
     if pos.0 < area.x || pos.1 < area.y || pos.0 >= area.x + area.w || pos.1 >= area.y + area.h {
         return false;
     }
+    // ⭐⭐ **O GIZMO DE NAVEGAÇÃO ganha de tudo** (W49), e só com o botão esquerdo.
+    //
+    // ⚠️ Ele fica na quina, por cima da peça: sem esta pergunta, um clique numa bola seria um
+    // arrasto na peça — e o widget inteiro nasceria pintado e morto.
+    //
+    // ⭐ **Arrastar a partir dele ORBITA**, e é o gesto principal, não um efeito colateral: a
+    // pesquisa da referência mede os utilizadores *quase 2× mais rápidos* a arrastar do que a
+    // clicar, «independentemente das representações examinadas» (ver `field3d_navball`). Por isso o
+    // `drag` fica em `Orbit` e a bola é só **lembrada** — o `Up` sem movimento é que a usa.
+    if button == winit::event::MouseButton::Left
+        && let Some(p) = local(s, pos)
+        && crate::field3d_navball::hits_widget(area, p)
+    {
+        s.nav_press = crate::field3d_navball::pick(&crate::field3d_navball::balls(&s.cam, area), p);
+        s.drag = Some(Drag::Orbit);
+        s.drag_grip = None;
+        s.gizmo_hot = None;
+        s.last_pointer = pos;
+        s.press_at = Some(pos);
+        s.manual = true;
+        return true;
+    }
     // ⭐ **A alça ganha do gesto de câmera**, e só com o botão ESQUERDO: o direito continua a
     // orbitar mesmo por cima do gizmo, que é a saída para quem quer girar a vista sem primeiro
     // tirar o rato de cima da peça.
@@ -163,7 +185,21 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         // duas metades importam: sem a primeira a alça nunca acende e o artista não sabe o
         // que vai agarrar; com a segunda invertida, a janela 3D engoliria todo movimento de
         // rato do app 2D.
-        s.gizmo_hot = local(s, (x, y)).and_then(|p| field3d_gizmo::pick(&handles(s), p));
+        // ⭐ **O realce do gizmo de NAVEGAÇÃO** (W49), pela mesma lei e no mesmo sítio: sem ele o
+        // artista não sabe que bola vai pegar — e o widget lê como decoração.
+        s.nav_hot = match (s.area, local(s, (x, y))) {
+            (Some(area), Some(p)) if crate::field3d_navball::hits_widget(area, p) => {
+                crate::field3d_navball::pick(&crate::field3d_navball::balls(&s.cam, area), p)
+            }
+            _ => None,
+        };
+        // ⚠️ **Com o cursor no gizmo de navegação, a alça do gizmo 3D não acende.** Os dois
+        // realces ao mesmo tempo diriam que um clique faz duas coisas.
+        s.gizmo_hot = if s.nav_hot.is_some() {
+            None
+        } else {
+            local(s, (x, y)).and_then(|p| field3d_gizmo::pick(&handles(s), p))
+        };
         return false;
     };
     let (dx, dy) = (x - s.last_pointer.0, y - s.last_pointer.1);
@@ -291,11 +327,26 @@ pub(crate) fn finish(s: &mut Smoke) -> (bool, bool) {
     // A entrada numérica é do GESTO: ela morre com ele, senão o gesto seguinte abriria já a meio de
     // um número que ninguém digitou.
     s.typed = None;
-    if was == Some(Drag::Orbit)
+    // ⭐⭐ **UM CLIQUE NUMA BOLA É UMA ESCOLHA DE VISTA** (W49) — e ganha do `pending_pick`, que
+    // seria um clique na PEÇA por baixo do widget.
+    let nav = s.nav_press.take();
+    let still = s.press_at.is_some_and(|from| {
+        (s.last_pointer.0 - from.0).abs() <= CLICK_SLOP_PX
+            && (s.last_pointer.1 - from.1).abs() <= CLICK_SLOP_PX
+    });
+    if let Some(view) = nav.filter(|_| still) {
+        s.cam.rotation = view.rotation();
+        crate::field3d_input::frame_the_part(s);
+    } else if was == Some(Drag::Orbit)
         && let (Some(from), Some(area)) = (s.press_at, s.area)
-        && (s.last_pointer.0 - from.0).abs() <= CLICK_SLOP_PX
-        && (s.last_pointer.1 - from.1).abs() <= CLICK_SLOP_PX
+        && still
     {
+        // ⚠️ **Não há aqui um `nav.is_none()`, e havia** — ele era **código morto**, e uma prova de
+        // mutação foi quem o disse: para chegar a este ramo é preciso `nav.filter(still)` ser
+        // `None`, isto é `nav.is_none() || !still`; e o `still` exigido aqui colapsa isso em
+        // `nav.is_none()`. *Uma condição que não pode mudar o resultado é uma afirmação falsa sobre
+        // o código para quem o ler a seguir* — e ela sobrevive a toda mutação, de propósito.
+
         s.pending_pick = Some([from.0 - area.x, from.1 - area.y]);
     }
     s.press_at = None;

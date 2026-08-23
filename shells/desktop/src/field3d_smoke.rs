@@ -192,6 +192,14 @@ pub(crate) struct Smoke {
     /// que o nó ainda existe antes de o usar (ver `field3d_scene::cook_root`). Um isolamento
     /// pendurado numa entidade morta apagaria a peça da tela sem nada a explicar.
     pub(crate) isolated: Option<u64>,
+    /// ⭐ **A bola do gizmo de navegação sob o cursor** (W49) — só realce e a decisão do clique.
+    ///
+    /// ⚠️ **Cache do gesto, não vista:** ela é reposta a cada movimento do ponteiro, e um valor
+    /// atravessando um fecho de painel reacenderia uma bola que ninguém está a apontar.
+    pub(crate) nav_hot: Option<crate::field3d_views::Standard>,
+    /// ⭐ **A bola em que o botão DESCEU**, se desceu numa. É ela que faz o `Up` sem movimento ser
+    /// uma escolha de vista em vez de uma órbita de zero graus.
+    pub(crate) nav_press: Option<crate::field3d_views::Standard>,
     /// ⭐ **Há uma escultura VIVA na cena?** — publicado pelo shell, que é quem tem o `AppGfx`.
     ///
     /// ⚠️ Atravessa o quadro em vez de ser perguntado aqui, pela razão do `gizmo`: este arquivo não
@@ -296,6 +304,8 @@ fn boot() -> Option<Smoke> {
         doc: Some(doc.clone()),
         seed: Some(doc),
         isolated: v.isolated,
+        nav_hot: None,
+        nav_press: None,
         has_live_sculpt: false,
         matcap: Arc::new(load_matcap()),
         cam: v.cam,

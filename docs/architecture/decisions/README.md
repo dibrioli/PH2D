@@ -172,10 +172,11 @@
 | [0160](0160-quad-remesh-is-a-native-cross-field-port-quadriflow-referenced.md) | aceito (ordem do Enio, 2026-08-19: *"investigue o melhor algoritmo | O quad remesh é um porte NATIVO de campo cruzado, QuadriFlow referenciado |
 | [0161](0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) | proposto — o **caráter** já foi aprovado pelo Enio no smoke de 2026-08-19 | A modelagem 3D é uma ÁRVORE DE CAMPO IMPLÍCITO, e o que o artista vê é o campo TRAÇADO |
 | [0162](0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md) | — | O quad remesh PIVOTA para a família GLOBAL: clean-room a partir dos papers, oráculo GPL fora da árvore |
+| [0163](0163-a-node-may-cook-its-own-input-at-n-instants-a-time-fan.md) | Accepted | Um nó pode cozinhar a PRÓPRIA entrada em N instantes (o *leque de tempo*) |
 
 ---
 
-**163 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**164 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

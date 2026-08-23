@@ -386,6 +386,110 @@ typos **0** project-wide · **3 917** testes verdes (`ph2d-node-motion-soft-body
 
 ---
 
+## §0-septies — OITAVO BLOCO: **o eco deixa de lembrar** (folha 07, o P1 — e é FOUNDATIONAL)
+
+⚠️⚠️ **LEIA ESTA SECÇÃO ANTES DE INTEGRAR: é a única wave desta linha que toca o
+`ph2d-nodegraph`.** [ADR-0163](../../architecture/decisions/0163-a-node-may-cook-its-own-input-at-n-instants-a-time-fan.md).
+
+A folha 07 fecha o P1 dela. Placar: **71 P2 + 2 P1 → 71 P2 + 1 P1**; ✅ 235 →
+**236**. O único P1 que sobra é da folha **01** (`motion.emitter` *inherit
+velocity*) e é **decisão de produto do Enio**, com as duas saídas já medidas.
+
+### A superfície foundational, e por que ela não colide
+
+| o que entrou | onde | colide? |
+|---|---|---|
+| `pub type TimeFans = BTreeMap<NodeId, Vec<TimeMap>>` | `cook.rs` | **símbolo NOVO** |
+| `Cook::cook_scoped_fanned` · `Cook::advance_tick_fanned` | `cook.rs` | **métodos NOVOS**; os irmãos delegam com leque vazio |
+| `EvalCtx::fan(k)` · `EvalCtx::fan_len()` + o campo `fan` | `cook_eval_ctx.rs` | **campo e métodos NOVOS** |
+| `cook_node` ganha o 8.º argumento | `cook.rs` (privado) | não sai da crate |
+| `MotionCookPump::set_time_fans` / `time_fans` | `ph2d-eval-motion/fans.rs` | **ficheiro NOVO** |
+
+⚠️ **NENHUMA assinatura existente mexeu**, e isso foi desenho e não sorte: a
+alternativa (pendurar um argumento no `advance_or_scrub_scoped`) tocaria **29
+sítios de chamada** espalhados por duas crates e o shell — um ímã de conflito para
+toda linha viva. CLAUDE.md §0.2 pede exactamente isto ao criar foundational novo:
+*ponto de extensão append-only*.
+
+⚠️ **O contrato congelado do §6 NÃO se moveu:** `NodeOp` continua com 2 métodos,
+`OpResolver` com 1, `NodeManifest` com 8 campos. O `EvalCtx` nunca esteve
+congelado, e é onde a capacidade nova mora.
+
+### O que o rastro ganhou
+
+`motion.trail` + `Source` (`Remembered` = o ring, **o default, byte-idêntico** ·
+`Resampled` = a entrada re-cozida) + `Forward Steps`.
+
+- ⭐ **eco para a FRENTE** — o que a AE faz por re-renderizar.
+- ⭐ **scrub EXACTO** sem `CheckpointRing` (gate: saltar para o quadro 90 é o mesmo
+  que andar até lá).
+- ⭐ **`length` sem tecto de memória** e **espaçamento não-uniforme** (a lei aceita
+  deslocamentos arbitrários; falta-lhe UI, e isso é autoria, não mecanismo).
+- ⭐⭐ **A cauda re-cozida é a mais CERTA das duas**, medido: o ring promove a
+  cabeça a fantasma **periodicamente**, então as idades dos ecos dele passeiam por
+  `1..=spacing` conforme a fase do quadro — até `spacing−1` tiques de erro de
+  fase, o tempo todo.
+
+### As três leis que a wave escreve
+
+1. **A lei das gerações vive numa função só** (`echo_offsets`), com **dois
+   leitores** — o construtor dos mapas e o `eval`, que dela tira a IDADE para
+   desbotar. A escada escrita duas vezes poria o desenho num instante e a cor
+   noutro.
+2. **`at_age(span, 1)` é `per_tick(span)`**, expressão por expressão — a
+   generalização contém o caso antigo, e é por isso que há **uma** lei.
+3. **`forward = 0` devolve exactamente a cauda do ring** — a redução que faz o
+   modo nascer no neutro.
+
+### ⚠️ Uma afirmação minha ENCOLHEU por mutação
+
+O doc do `TimeFans` dizia que fatias no mesmo instante *«partilham a faixa e o
+custo»* graças ao `push_scope`. Trocá-lo por `in_key` deixou **seis gates
+verdes** — dentro do laço cada leitura segue a própria cozedura, então os valores
+saem certos de qualquer maneira. E o **primeiro** gate que escrevi a perseguir a
+mutação (a fotografia do `pre` a ser pisada) **também não a matou**.
+
+A cura foi **encolher a afirmação até ao que a máquina faz**: o que a faixa
+própria compra é o instante repetido **fora de ordem**, que é o caso do
+espaçamento não-uniforme. Memória:
+`feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing`.
+
+### Prova de mutação
+
+| mutação | gates que morrem |
+|---|---|
+| o modo `Resampled` cai no ring | 2 (`the_forward_echo_leads_…`, `the_resampled_tail_is_the_same_whether_you_walk_or_jump_…`) |
+| o leque sai da impressão digital | 2 (`a_fan_cooks_the_same_input_at_every_instant_it_names`, `changing_the_fan_recomputes_the_node`) |
+| todas as fatias na mesma faixa | 1 (`repeating_an_instant_out_of_order_still_hits_the_memo`) |
+
+### Cena `=88` e o que ela custou de régua
+
+Três bolinhas no MESMO caminho: **LEMBRADO** (o controle) · **RE-COZIDO** (tem de
+ficar igual) · **PARA A FRENTE**.
+
+- ⚠️ **A figura é uma Lissajous que se CRUZA**, de propósito: num círculo as duas
+  caudas pousariam no mesmo arco e as linhas de baixo seriam indistinguíveis.
+- ⚠️ **A régua da direção mede o eco VIZINHO, não o mais velho** — este está a
+  meio quinto de volta daqui e projecta **−0,31** numa cauda que vai à frente.
+  *Uma régua de direção mede um passo, não uma viagem.*
+- ⚠️ **O gate da redução compara a CABEÇA ao bit e os ECOS dentro de um ciclo de
+  promoção.** Uma barra apertada mediria o erro de fase do modo ANTIGO e
+  reprovaria conforme o quadro calhasse no ciclo.
+
+### Ficheiros e splits
+
+Três ficheiros passaram o tecto de LOC por causa desta wave, e os três foram
+cortados (HR-18): `ph2d-node-motion-trail/resample.rs` (a lei e o construtor de
+mapas) · a sonda `test.fan` mudou-se do `cook_tests.rs` para junto dos seus gates
+· `ph2d-eval-motion/fans.rs`.
+
+`MAX_DEMO_LEVEL` vai a **88**.
+
+**Gate deste bloco:** fmt limpo · clippy **0** sobre as 4 crates derivadas do diff
+· typos **0** project-wide · **4 104** testes verdes.
+
+---
+
 ## §1 — O que entrou, em uma frase
 
 **Todo teto deste catálogo passa a dizer de que RECURSO ele é** (`CLAUDE.md` §0.0) — 27 params

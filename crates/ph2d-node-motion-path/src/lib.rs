@@ -115,7 +115,8 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "offset",
             default: 0.0,
         },
-        // 1 = turn each instance to face the way the curve is going (the `rot` column, in degrees).
+        // `0` nada · `1` TANGENTE (a peça encara o sentido da curva) · `2` NORMAL
+        // (ela encara para FORA da curva) — o `rot` sai em graus. Ver [`ALIGN_NORMAL`].
         ParamSpec {
             name: "align",
             default: 1.0,
@@ -210,7 +211,7 @@ impl NodeOp for MotionPath {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let align = ctx.param("align") >= 0.5;
+        let align = ctx.param("align").round() as i32;
         // The offset is the param PLUS whatever a wire is putting on the `offset` input — one
         // number, so an LFO makes the set flow. (A stream with no value reads as 0.)
         let wired = match ctx.input(0).get(ph2d_nodegraph::attr::VALUE_COLUMN) {
@@ -265,18 +266,40 @@ impl NodeOp for MotionPath {
             let s = i as f32 / count as f32 + offset;
             let (p, tangent) = ph2d_arc_length::at(&pts, &lut, s - s.floor());
             pos.push(p);
-            if align {
-                rot.push(trig::deg(trig::atan2_approx(tangent[1], tangent[0])));
+            if align != 0 {
+                // ⚠️ A NORMAL é a tangente rodada um quarto de volta — `(-ty, tx)`, o
+                // mesmo `un` que o irmão `motion.spline_wrap` já computa. Ela entra
+                // pelos COMPONENTES e não somando 90° ao ângulo, para as duas rotas
+                // atravessarem a MESMA aproximação de `atan2`: somar depois daria um
+                // ângulo com dois erros diferentes conforme o modo.
+                let (ax, ay) = if align == ALIGN_NORMAL {
+                    (-tangent[1], tangent[0])
+                } else {
+                    (tangent[0], tangent[1])
+                };
+                rot.push(trig::deg(trig::atan2_approx(ay, ax)));
             }
         }
 
         let mut out = Stream::new(count).with("P", Column::Vec2(pos));
-        if align {
+        if align != 0 {
             out = out.with("rot", Column::Scalar(rot));
         }
         ctx.emit(out);
     }
 }
+
+/// **O terceiro modo de `align`: encarar para FORA da curva** (doc 89, folha 06 ·
+/// Blender GN *Curve to Points ▸ Normal*).
+///
+/// ⚠️ **A célula dizia «NÃO» e a razão escrita era *"a normal, que nada publica"* — e ela
+/// já estava publicada:** o irmão `motion.spline_wrap` computa `un = [-ut.y, ut.x]` da
+/// MESMA curva desenhada, e o doc deste nó já lhe chamava *"o segundo consumidor"*. A
+/// nona célula desta folha a envelhecer sobre um facto que o código do lado já tinha.
+///
+/// ⚠️ **Apendado**: `0` e `1` continuam a ser *nada* e *tangente*, então o
+/// `align >= 0.5` de ontem e este `!= 0` concordam em todo documento que existe.
+pub const ALIGN_NORMAL: i32 = 2;
 
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
@@ -362,13 +385,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.005,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ **Era um `Toggle`, e virou um seletor de TRÊS** — apendado: `0` e `1` guardam o
+    // que sempre guardaram (nada · tangente), e um documento de ontem abre igual.
     ParamUiHint {
         param: "align",
         label: "Align To Path",
         min: 0.0,
-        max: 1.0,
+        max: 2.0,
         step: 1.0,
-        widget: ParamWidget::Toggle,
+        widget: ParamWidget::Enum {
+            labels: &["Off", "Tangent", "Normal"],
+        },
     },
 ];
 

@@ -35,7 +35,7 @@ mod trig;
 use kernel::GPU_KERNEL;
 use params_ui::{PARAM_CHANNEL_RANGE, PARAM_GATES, PARAM_GROUPS, PARAM_HINTS, PARAM_UNITS};
 mod noise;
-use channel::{apply_channel_delta, clock_at, falloff_at, scalar_values};
+use channel::{apply_channel_delta, apply_channel_delta_xy, clock_at, falloff_at, scalar_values};
 use noise::{NoiseType, fbm};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
@@ -48,6 +48,32 @@ const VALUE_COL: &str = "v";
 /// Hard ceiling on octaves — an untrusted `f32` param drives the fBm loop count.
 /// 8 is past the point of visible return (each octave halves the feature size).
 const MAX_OCTAVES: u32 = 8;
+
+/// **O canal que escreve os DOIS eixos** (`Separate Channels` — doc 89, folha 06;
+/// Cavalry Noise *Separate Channels*).
+///
+/// ⚠️ **Apendado**, e por isso o mundo de antes fica ao bit: o `channel` nasce em
+/// `Y` e os índices `0..3` não se movem. ⚠️ E ele **não passa** pelo
+/// `channel_column` — ver [`channel::apply_channel_delta_xy`].
+pub const CH_XY: i32 = 4;
+
+/// **O deslocamento de seed do SEGUNDO eixo** — o que torna os dois eixos campos
+/// diferentes em vez de um só lido duas vezes.
+///
+/// ⚠️ **Sem ele o canal seria inútil e pareceria funcionar:** o mesmo campo nos dois
+/// eixos põe todo elemento a andar numa **diagonal a 45°**, que é uma peça a
+/// oscilar num segmento, não a vaguear. É exactamente o defeito que a referência
+/// resolve, e ele passa despercebido a qualquer régua que meça só "houve
+/// deslocamento".
+///
+/// O número não é decorativo. As oitavas deste nó já deslocam o seed por
+/// `o · 1013`, com `o < `[`MAX_OCTAVES`] — ou seja a pilha do eixo X ocupa
+/// `seed + [0 .. 7091]`. `7919` é **maior que esse topo** (as duas pilhas nem se
+/// tocam) e **não é múltiplo de 1013** (`7919 = 7·1013 + 828`), então nenhuma
+/// oitava de um eixo pode partilhar seed com nenhuma oitava do outro — nem por
+/// colisão exacta, nem por vizinhança. A decorrelação de facto é MEDIDA pela sonda
+/// `measure_axis_decorrelation`, com o controle em `0`.
+pub const AXIS_SEED_OFFSET: i32 = 7919;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -251,36 +277,46 @@ impl NodeOp for MotionNoise {
             // is spatially coherent; the playhead scrolls it along Y (the field
             // "flows" through the elements).
             let pos = positions(input, n);
-            let deltas: Vec<f32> = (0..n)
-                .map(|i| {
-                    let (px, py) = pos[i];
-                    let (t_a, t_b, w) =
-                        ph2d_fbm::loop_times(clock_at(&times, i, playhead), loop_len);
-                    // ⚠️ O espaço é transformado ANTES de o tempo entrar: o `speed`
-                    // rola o campo pelo eixo Y **do próprio campo**, e rodá-lo junto
-                    // com o espaço faria o `rotation` mudar a DIREÇÃO da rolagem — um
-                    // knob a mexer no que o outro promete.
-                    let (sx, sy) = space.at(px, py);
-                    let sample = |tt: f32| fbm(sx, sy + tt * speed, seed, spec);
-                    // `w == 0` é o caminho de sempre: a segunda amostra nem é avaliada.
-                    let s = if w == 0.0 {
-                        sample(t_a)
-                    } else {
-                        let a = sample(t_a);
-                        a + (sample(t_b) - a) * w
-                    };
-                    // ⚠️ O DC entra ANTES da máscara, como tudo nesta família: um
-                    // piso que sobrevivesse a `falloff = 0` seria o nó a mexer num
-                    // elemento que o campo mandou não tocar.
-                    let raw = if by_range {
-                        s * gain + dc
-                    } else {
-                        s * amplitude
-                    };
-                    raw * falloff_at(input, i)
-                })
-                .collect();
-            apply_channel_delta(input, channel, &deltas)
+            // ⚠️ **Parametrizada pelo SEED**, e é a única mudança que o canal dos dois
+            // eixos exige no cálculo: o segundo eixo é este mesmo campo lido com outro
+            // seed. Com `channel != XY` ela é chamada uma vez com o seed do artista ⇒
+            // o nó de sempre, byte a byte.
+            let field = |seed: i32| -> Vec<f32> {
+                (0..n)
+                    .map(|i| {
+                        let (px, py) = pos[i];
+                        let (t_a, t_b, w) =
+                            ph2d_fbm::loop_times(clock_at(&times, i, playhead), loop_len);
+                        // ⚠️ O espaço é transformado ANTES de o tempo entrar: o `speed`
+                        // rola o campo pelo eixo Y **do próprio campo**, e rodá-lo junto
+                        // com o espaço faria o `rotation` mudar a DIREÇÃO da rolagem — um
+                        // knob a mexer no que o outro promete.
+                        let (sx, sy) = space.at(px, py);
+                        let sample = |tt: f32| fbm(sx, sy + tt * speed, seed, spec);
+                        // `w == 0` é o caminho de sempre: a segunda amostra nem é avaliada.
+                        let s = if w == 0.0 {
+                            sample(t_a)
+                        } else {
+                            let a = sample(t_a);
+                            a + (sample(t_b) - a) * w
+                        };
+                        // ⚠️ O DC entra ANTES da máscara, como tudo nesta família: um
+                        // piso que sobrevivesse a `falloff = 0` seria o nó a mexer num
+                        // elemento que o campo mandou não tocar.
+                        let raw = if by_range {
+                            s * gain + dc
+                        } else {
+                            s * amplitude
+                        };
+                        raw * falloff_at(input, i)
+                    })
+                    .collect()
+            };
+            if channel == CH_XY {
+                apply_channel_delta_xy(input, &field(seed), &field(seed + AXIS_SEED_OFFSET))
+            } else {
+                apply_channel_delta(input, channel, &field(seed))
+            }
         };
         ctx.emit(out);
     }
@@ -388,3 +424,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "xy_tests.rs"]
+mod xy_tests;

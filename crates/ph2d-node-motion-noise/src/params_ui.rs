@@ -97,10 +97,12 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "channel",
         label: "Channel",
         min: 0.0,
-        max: 3.0,
+        // ⚠️ **Apendado**: o `Position XY` é o índice 4, e os quatro de sempre ficam
+        // onde estavam — um documento autorado guarda o NÚMERO, não o nome.
+        max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
+            labels: &["X", "Y", "Rotation", "Size", "Position XY"],
         },
     },
     ParamUiHint {

@@ -300,3 +300,61 @@ fn the_spacing_floor_keeps_a_zero_from_asking_for_everything() {
         "o piso responde, e a resposta é finita e nomeada"
     );
 }
+
+/// **A NORMAL É A TANGENTE A UM QUARTO DE VOLTA** — o terceiro modo do `align`.
+///
+/// ⚠️ O gate mede a RELAÇÃO entre os dois modos, e não dois ângulos escritos à mão.
+/// Uma tabela de números daria verde sobre a curva desta fixture e nada diria sobre
+/// outra; a relação `normal = tangente + 90°` é a lei, e ela vale em toda curva.
+///
+/// ⚠️ E a segunda metade é a que impede o modo de ser um alias: `Normal` tem de
+/// DIFERIR de `Tangent`. Sem ela, um `align` que ignorasse o `2` e caísse no ramo da
+/// tangente passaria na primeira.
+#[test]
+fn the_normal_mode_turns_the_instances_a_quarter_turn_off_the_tangent() {
+    let corner = [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]];
+    let tangent = walk(&corner, "L", &[("count", 4.0), ("align", 1.0)]).1;
+    let normal = walk(&corner, "L", &[("count", 4.0), ("align", 2.0)]).1;
+    assert_eq!(tangent.len(), normal.len(), "os dois modos escrevem `rot`");
+    assert_eq!(normal.len(), 4);
+    for (i, (t, n)) in tangent.iter().zip(&normal).enumerate() {
+        // A diferença é 90°, lida com a volta (o `atan2` devolve `(-180, 180]`).
+        let mut d = n - t;
+        while d <= -180.0 {
+            d += 360.0;
+        }
+        while d > 180.0 {
+            d -= 360.0;
+        }
+        assert!(
+            (d - 90.0).abs() < 1.0,
+            "elemento {i}: normal {n} contra tangente {t}, diferenca {d}"
+        );
+    }
+    // E o CONTROLE: os dois modos não são o mesmo número.
+    assert!(
+        tangent
+            .iter()
+            .zip(&normal)
+            .any(|(t, n)| (t - n).abs() > 1.0),
+        "o modo Normal tem de DIFERIR do Tangent"
+    );
+}
+
+/// **O PAINEL OFERECE OS TRÊS, E O SELETOR DEIXOU DE SER UM INTERRUPTOR.**
+///
+/// ⚠️ Um terceiro valor que a `eval` entende e o painel oferece como *ligado/desligado*
+/// é um modo inalcançável — o defeito que o doc 90 caçou dezanove vezes.
+#[test]
+fn the_align_row_offers_three_modes_and_is_no_longer_a_toggle() {
+    let row = PARAM_HINTS
+        .iter()
+        .find(|h| h.param == "align")
+        .expect("a linha do align");
+    let ParamWidget::Enum { labels } = row.widget else {
+        panic!("o align passou a ser um seletor NOMEADO, nunca um toggle")
+    };
+    assert_eq!(labels, &["Off", "Tangent", "Normal"]);
+    assert_eq!(labels.len() as i32 - 1, ALIGN_NORMAL);
+    assert!((row.max - ALIGN_NORMAL as f32).abs() < f32::EPSILON);
+}

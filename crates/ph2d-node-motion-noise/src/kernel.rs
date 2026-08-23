@@ -48,9 +48,6 @@ const NS_TIME: ColumnBinding = ColumnBinding {
     port: 1,
 };
 
-/// **X / Y** — adds the delta to one component of `P`. The channel test is
-/// `< 0.5`, which agrees with the CPU's `round()` for both values this variant
-/// is selected for.
 /// **A biblioteca WGSL que os TRÊS variants compartilham.**
 ///
 /// Ela era literal em cada um deles — três blocos byte-idênticos de 3711 caracteres, o que
@@ -90,8 +87,13 @@ const NS_LIB: &str = "\
             return vec2<f32>(x * params.scale, y * sy);\n\
         }\n\
         fn ns_delta(i: u32) -> f32 {\n\
+            return ns_delta_seeded(i, 0);\n\
+        }\n\
+        // O campo com o seed DESLOCADO -- o segundo eixo do canal `Position XY`.\n\
+        // Com `seed_off = 0` ele e' o `ns_delta` de sempre, linha a linha.\n\
+        fn ns_delta_seeded(i: u32, seed_off: i32) -> f32 {\n\
             let p = ns_space(read_in_P(i));\n\
-            let seed = i32(ns_round(params.seed));\n\
+            let seed = i32(ns_round(params.seed)) + seed_off;\n\
             let oct = min(max(i32(ns_round(params.octaves)), 1), 8);\n\
             let ty = i32(ns_round(params.type_));\n\
             // O tempo WRAPA antes de entrar no campo -- ver `loop_times` no lib.rs.\n\
@@ -204,6 +206,9 @@ const NS_LIB: &str = "\
             return sum / total;\n\
         }\n";
 
+/// **X / Y** — adds the delta to one component of `P`. The channel test is
+/// `< 0.5`, which agrees with the CPU's `round()` for both values this variant
+/// is selected for.
 const NS_P: GpuKernel = GpuKernel {
     wgsl: "\
         let d = ns_delta(i);\n\
@@ -235,6 +240,34 @@ const NS_P: GpuKernel = GpuKernel {
     variant_by_param: None,
     applicable: None,
 };
+
+/// **Position XY** — os DOIS eixos, cada um o seu campo (doc 89, folha 06).
+///
+/// ⚠️ O `7919` aqui é o gémeo literal de [`super::AXIS_SEED_OFFSET`], e a razão de ele
+/// ser um literal é a mesma do guarda do `Divide` no `motion.drive`: o WGSL é uma
+/// string e não vê consts do Rust. Quem os mantém iguais é o gate
+/// `the_wgsl_carries_the_same_axis_offset_as_the_rust` (que compara os dois pela
+/// própria string do kernel) **e** a paridade CPU×GPU no device — nunca a memória de
+/// quem edita.
+const NS_PXY: GpuKernel = GpuKernel {
+    wgsl: "\
+        var p = read_in_P(i);\n\
+        p.x = p.x + ns_delta_seeded(i, 0);\n\
+        p.y = p.y + ns_delta_seeded(i, 7919);\n\
+        write_P(i, p);\n",
+    wgsl_lib: NS_LIB,
+    bindings: NS_P.bindings,
+    params: NS_PARAMS,
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
+
+/// O corpo WGSL do variant `Position XY`, para o gate do gémeo literal o poder ler.
+#[cfg(test)]
+pub(crate) fn pxy_wgsl() -> &'static str {
+    NS_PXY.wgsl
+}
 
 /// **Rotation** — adds the delta to `rot`.
 const NS_ROT: GpuKernel = GpuKernel {
@@ -332,6 +365,10 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
     variant_by_param: Some(|param| match param("channel").round() as i32 {
         2 => &NS_ROT,
         0 | 1 => &NS_P,
+        // ⚠️ O `4` entra ANTES do catch-all, e é o único índice fora do
+        // `channel_column`: no lado da CPU quem despacha é o `eval`, não aquela
+        // função — ver `channel::apply_channel_delta_xy`.
+        super::CH_XY => &NS_PXY,
         _ => &NS_SIZE,
     }),
     applicable: None,

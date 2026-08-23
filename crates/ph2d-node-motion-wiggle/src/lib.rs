@@ -29,7 +29,7 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod channel;
 mod gpu;
 mod noise;
-use channel::{apply_channel_delta, clock_at, falloff_at, scalar_values};
+use channel::{apply_channel_delta, apply_channel_delta_xy, clock_at, falloff_at, scalar_values};
 use gpu::GPU_KERNEL;
 use noise::fbm;
 
@@ -131,6 +131,30 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// `f32` não confiável não pode dirigir um laço).
 const MAX_OCTAVES: u32 = 8;
 
+/// **O canal que escreve os DOIS eixos** (`Separate Channels` — doc 89, folha 06).
+///
+/// ⚠️ **Apendado**: o `channel` nasce em `Y` e os índices `0..3` não se movem — um
+/// documento autorado guarda o NÚMERO. E ele **não passa** pelo `channel_column`;
+/// quem despacha é o `eval` (ver [`channel::apply_channel_delta_xy`]).
+pub const CH_XY: i32 = 4;
+
+/// **O deslocamento de LINHA do segundo eixo** — o que torna os dois eixos campos
+/// diferentes em vez de um só lido duas vezes.
+///
+/// ⚠️ **Sem ele o canal seria inútil e pareceria funcionar:** o mesmo campo nos dois
+/// eixos põe cada peça a oscilar numa **diagonal a 45°** — um segmento, não um
+/// vaguear. Nenhuma régua de *"houve deslocamento"* apanha isso.
+///
+/// ⚠️ **Ele é FRACIONÁRIO de propósito, e o irmão `motion.noise` não pode sê-lo.**
+/// Aqui a instância `i` lê a linha `i + seed`, uma coordenada CONTÍNUA: um
+/// deslocamento inteiro `K` faria o eixo Y da peça `i` ser exactamente o eixo X da
+/// peça `i + K` — invisível hoje, mas uma coincidência real assim que a fileira
+/// passasse de `K` elementos. Com `,5` a igualdade `i + K = j` não tem solução
+/// inteira **para nenhuma contagem**. (No `motion.noise` o seed é um `i32` que
+/// alimenta um hash, então lá o número é inteiro e a separação é outra: as duas
+/// pilhas de oitavas nem se tocam.)
+pub const AXIS_ROW_OFFSET: f32 = 7919.5;
+
 struct MotionWiggle;
 
 impl NodeOp for MotionWiggle {
@@ -178,31 +202,40 @@ impl NodeOp for MotionWiggle {
                 "a porta `time` tem {} valores para {n} instancias",
                 times.len()
             );
-            let deltas: Vec<f32> = (0..n)
-                .map(|i| {
-                    let (t_a, t_b, w) =
-                        ph2d_fbm::loop_times(clock_at(&times, i, playhead), loop_len);
-                    // Each instance = a distinct noise row (`i + seed`), scrolled
-                    // by time on the x-axis → independent organic wiggle.
-                    let ny = i as f32 + seed;
-                    let sample = |tt: f32| fbm(tt * frequency, ny, spec);
-                    // `w == 0` é o caminho de sempre: a 2ª amostra nem é avaliada.
-                    let s = if w == 0.0 {
-                        sample(t_a)
-                    } else {
-                        let a = sample(t_a);
-                        a + (sample(t_b) - a) * w
-                    };
-                    // O DC entra ANTES da máscara, como tudo nesta família.
-                    let raw = if by_range {
-                        s * gain + dc
-                    } else {
-                        s * amplitude
-                    };
-                    raw * falloff_at(input, i)
-                })
-                .collect();
-            apply_channel_delta(input, channel, &deltas)
+            // ⚠️ **Parametrizada pelo deslocamento de LINHA**, e é a única mudança que
+            // o canal dos dois eixos exige: o segundo eixo é este mesmo campo lido
+            // noutra linha. Com `0.0` ela é o nó de sempre, byte a byte.
+            let field = |row_off: f32| -> Vec<f32> {
+                (0..n)
+                    .map(|i| {
+                        let (t_a, t_b, w) =
+                            ph2d_fbm::loop_times(clock_at(&times, i, playhead), loop_len);
+                        // Each instance = a distinct noise row (`i + seed`), scrolled
+                        // by time on the x-axis → independent organic wiggle.
+                        let ny = i as f32 + seed + row_off;
+                        let sample = |tt: f32| fbm(tt * frequency, ny, spec);
+                        // `w == 0` é o caminho de sempre: a 2ª amostra nem é avaliada.
+                        let s = if w == 0.0 {
+                            sample(t_a)
+                        } else {
+                            let a = sample(t_a);
+                            a + (sample(t_b) - a) * w
+                        };
+                        // O DC entra ANTES da máscara, como tudo nesta família.
+                        let raw = if by_range {
+                            s * gain + dc
+                        } else {
+                            s * amplitude
+                        };
+                        raw * falloff_at(input, i)
+                    })
+                    .collect()
+            };
+            if channel == CH_XY {
+                apply_channel_delta_xy(input, &field(0.0), &field(AXIS_ROW_OFFSET))
+            } else {
+                apply_channel_delta(input, channel, &field(0.0))
+            }
         };
         ctx.emit(out);
     }
@@ -273,10 +306,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "channel",
         label: "Channel",
         min: 0.0,
-        max: 3.0,
+        // ⚠️ **Apendado**: o `Position XY` é o índice 4, e os quatro de sempre ficam
+        // onde estavam — um documento autorado guarda o NÚMERO, não o nome.
+        max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
+            labels: &["X", "Y", "Rotation", "Size", "Position XY"],
         },
     },
     ParamUiHint {
@@ -392,6 +427,10 @@ static PARAM_CHANNEL_RANGE: &[ParamChannelRange] = &[ParamChannelRange {
     max: TURN,
     step: 1.0,
 }];
+
+#[cfg(test)]
+#[path = "xy_tests.rs"]
+mod xy_tests;
 
 #[cfg(test)]
 #[path = "octave_tests.rs"]

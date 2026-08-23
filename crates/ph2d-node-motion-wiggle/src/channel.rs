@@ -84,6 +84,32 @@ fn base_scalar(input: &Stream, name: &str, n: usize) -> Vec<f32> {
     v
 }
 
+/// **O canal que escreve os DOIS eixos** (`Separate Channels` — doc 89, folha 06).
+///
+/// ⚠️ Ele é um sítio SEPARADO de propósito, e não um braço a mais do
+/// [`apply_channel_delta`]: aquela função é uma **cópia deliberada** que vive
+/// idêntica em cinco crates-folha (é a lei do drop-crate, como o `falloff_at`), e
+/// as três cópias do WGSL de um irmão **já divergiram uma vez**, com um grafo a
+/// correr uma taxa no device e outra na CPU. *Uma cópia que só duas das cinco
+/// recebem deixa de ser uma cópia.* O `channel_column` fica intocado; quem sabe do
+/// canal novo é o `eval`, que despacha para aqui.
+pub(crate) fn apply_channel_delta_xy(input: &Stream, dx: &[f32], dy: &[f32]) -> Stream {
+    let n = input.count();
+    let mut out = Stream::new(n);
+    for (name, col) in input.columns() {
+        if name != "P" {
+            out.set(name.clone(), col.clone());
+        }
+    }
+    let mut p = base_vec2(input, "P", n, [0.0, 0.0]);
+    for (i, pi) in p.iter_mut().enumerate() {
+        pi[0] += dx.get(i).copied().unwrap_or(0.0);
+        pi[1] += dy.get(i).copied().unwrap_or(0.0);
+    }
+    out.set("P", Column::Vec2(p));
+    out
+}
+
 /// Add `deltas[i]` to instance `i`'s value on the selected `channel`, returning a
 /// new stream with that column rewritten and all others copied through. Size adds
 /// the delta to **both** components (uniform).

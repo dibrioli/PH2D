@@ -55,7 +55,12 @@ const WG_LIB: &str = "\
             return params.playhead;\n\
         }\n\
         fn wg_delta(i: u32) -> f32 {\n\
-            let ny = f32(i) + params.seed;\n\
+            return wg_delta_row(i, 0.0);\n\
+        }\n\
+        // O campo lido noutra LINHA -- o segundo eixo do canal `Position XY`.\n\
+        // Com `row_off = 0.0` ele e' o `wg_delta` de sempre, linha a linha.\n\
+        fn wg_delta_row(i: u32, row_off: f32) -> f32 {\n\
+            let ny = f32(i) + params.seed + row_off;\n\
             let oct = min(max(i32(wg_round(params.octaves)), 1), 8);\n\
             // O tempo WRAPA antes de entrar no campo -- ver `loop_times`. Por\n\
             // ELEMENTO: com a porta ligada cada peca fecha o PROPRIO ciclo.\n\
@@ -138,6 +143,32 @@ const WG_LIB: &str = "\
             }\n\
             return sum / total;\n\
         }\n";
+
+/// O corpo WGSL do variant `Position XY`, para o gate do gémeo literal o poder ler.
+#[cfg(test)]
+pub(crate) fn pxy_wgsl() -> &'static str {
+    WG_PXY.wgsl
+}
+
+/// **Position XY** — os DOIS eixos, cada um a sua linha do campo (doc 89, folha 06).
+///
+/// ⚠️ O `7919.5` aqui é o gémeo literal de [`super::AXIS_ROW_OFFSET`]: o WGSL é uma
+/// string e não vê consts do Rust. Quem os mantém iguais é o gate
+/// `the_wgsl_carries_the_same_axis_offset_as_the_rust` — que os compara pela própria
+/// string do kernel — e a paridade CPU×GPU no device. Nunca a memória de quem edita.
+const WG_PXY: GpuKernel = GpuKernel {
+    wgsl: "\
+        var p = read_in_P(i);\n\
+        p.x = p.x + wg_delta_row(i, 0.0);\n\
+        p.y = p.y + wg_delta_row(i, 7919.5);\n\
+        write_P(i, p);\n",
+    wgsl_lib: WG_LIB,
+    bindings: WG_P.bindings,
+    params: WG_PARAMS,
+    count_law: None,
+    variant_by_param: None,
+    applicable: None,
+};
 
 /// **X / Y** — adds the delta to one component of `P`. The channel test is
 /// `< 0.5`, which agrees with the CPU's `round()` for both values this variant
@@ -256,6 +287,9 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
     variant_by_param: Some(|param| match param("channel").round() as i32 {
         2 => &WG_ROT,
         0 | 1 => &WG_P,
+        // ⚠️ O `4` entra ANTES do catch-all, e é o único índice fora do
+        // `channel_column`: no lado da CPU quem despacha é o `eval`.
+        super::CH_XY => &WG_PXY,
         _ => &WG_SIZE,
     }),
     applicable: None,

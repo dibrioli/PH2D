@@ -311,11 +311,11 @@ use ph2d_node_registry::{ParamHardMax, ParamHardMin, ParamUiHint, ParamWidget};
 static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "dx",
-        max: 2_097_151.875,
+        max: 2_097_152.0 - 0.125,
     },
     ParamHardMax {
         param: "dy",
-        max: 2_097_151.875,
+        max: 2_097_152.0 - 0.125,
     },
 ];
 
@@ -327,11 +327,11 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 static PARAM_HARD_MIN: &[ParamHardMin] = &[
     ParamHardMin {
         param: "dx",
-        min: -2_097_151.875,
+        min: -(2_097_152.0 - 0.125),
     },
     ParamHardMin {
         param: "dy",
-        min: -2_097_151.875,
+        min: -(2_097_152.0 - 0.125),
     },
 ];
 

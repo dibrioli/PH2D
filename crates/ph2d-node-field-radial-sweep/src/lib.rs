@@ -477,11 +477,11 @@ use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
 static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "radius",
-        max: 2_097_151.875,
+        max: 2_097_152.0 - 0.125,
     },
     ParamHardMax {
         param: INNER_RADIUS,
-        max: 2_097_151.875,
+        max: 2_097_152.0 - 0.125,
     },
 ];
 

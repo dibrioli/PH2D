@@ -172,6 +172,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **5 de 5** sozinha (0,1 s). Está registada desde 2026-08-16 em
   [`39_auditoria_solid_e_tracos.md`](docs/Painter/39_auditoria_solid_e_tracos.md) — mas **não estava aqui**, e é
   aqui que se olha quando o gate batched fica vermelho.
+  ⚠️ **A QUINTA e a SEXTA, confirmadas em 2026-08-23** numa corrida `--no-fail-fast` de **17.865**
+  testes (2 ✗, as duas verdes **3 de 3** sozinhas, as duas em crates que a linha que as viu **não
+  tocava**): `the_mask_stroke_cost_does_not_follow_the_canvas`
+  ([`ph2d-tool-painter`](crates/ph2d-tool-painter/src/tool/paint/mask_tests.rs)) — irmã exacta da
+  terceira, e o doc-comment dela diz-se *"imune à deriva da máquina"* por medir uma RAZÃO, que é
+  precisamente o que o fan-out quebra — e `apply_from_doc_is_zero_alloc_steady_state`
+  ([`ph2d-timeline`](crates/ph2d-timeline/tests/no_alloc_bridge.rs)), um gate de **zero-alloc**,
+  espécie nova nesta lista.
+  ⚠️ **E a primeira corrida daquele gate parou em 11.240 com `1.007` testes por correr** — o
+  `nextest` cancela no primeiro ✗. *Um vermelho de flake esconde o resto da suíte:* re-corra com
+  `--no-fail-fast` **antes** de concluir o que quer que seja sobre o seu diff.
   ⚠️ **A quarta, confirmada na integração de 2026-08-22:** `only_the_lower_row_breathes_and_it_moves_with_the_playhead`
   ([`motion_state_conferencia_demos_audio_tests.rs`](shells/desktop/src/motion_state_conferencia_demos_audio_tests.rs))
   reprovou com «max delta 0» no fan-out de 10,7 mil testes e passou **5 de 5** sozinha — já nomeada no
@@ -207,7 +218,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `only_the_declared_clock_owners_offer_the_substeps_param`, teto **64** nos dois porque o ritmo é partilhado). Um
   sub-passo LOCAL de um solver folha usa outra chave — a `motion.verlet_rope` usa `solver_substeps` (rótulo "Substeps"),
   e enquanto usava a mesma o app corria as duas leis e a corda caía **4,8× menos** que os gates dela medem.
-  **Aberto:** **91 P2 + 4 P1** na conferência (placar DERIVADO; ~20 dos P2 são *obras*, não knobs) · ⚠️ **os KNOBS MORTOS foram caçados e os 19 curados** — [doc 90](docs/Motion%20Nodes/90_caca_aos_knobs_mortos.md) tem a tabela verificada, os 8 pontos cegos da sonda e o que ficou de fora (a porta por-elemento lida no elemento 0, o `falloff` que o `motion.kaleidoscope` ignora, os knobs vivos e inalcançáveis pela UI); ⛔ **consulte-o antes de acusar um param de morto** · os P1 restantes da folha 03 (simulação) · ⚠️ **o `blend` é uma COLUNA por LINHA**
+  **Aberto:** **82 P2 + 4 P1** na conferência (placar DERIVADO; ~20 dos P2 são *obras*, não knobs) · ⚠️ **os KNOBS MORTOS foram caçados e os 19 curados** — [doc 90](docs/Motion%20Nodes/90_caca_aos_knobs_mortos.md) tem a tabela verificada, os 8 pontos cegos da sonda e o que ficou de fora (a porta por-elemento lida no elemento 0, o `falloff` que o `motion.kaleidoscope` ignora, os knobs vivos e inalcançáveis pela UI); ⛔ **consulte-o antes de acusar um param de morto** · ⚠️ **os TETOS foram medidos e o bloco Z fechou 7 células** — [doc 91](docs/Motion%20Nodes/91_os_tetos_que_ninguem_mediu.md): 25 params passam a ter teto digitável DERIVADO do `step` do slider (o `f32` é o recurso), o `sim.spawn::rate` sobe de 60 para **15 360/s** (a lei, medida pela porta do produto), e o `MAX_DT` dos DOIS integradores desce de `0,1`/`0,05` para **`0,03`** — a `0,1` o laço fechado atirava uma grelha a **127×** o raio em que nascia. ⛔ O `motion.spring` fica fora (ele deriva 3 tetos do dele); ⏳ `motion.boids` e `motion.wave` seguem por medir · os P1 restantes da folha 03 (simulação) · ⚠️ **o `blend` é uma COLUNA por LINHA**
   (o *Echo Operator* do `motion.trail` e o *Flash Operator* do `motion.strobe`), com a escada
   `0 = o modo do sink` · `m+1 = o modo m` — ⛔ guardar o modo CRU faria a identidade de junção
   rebaixar linha alheia em silêncio; e **as DUAS rotas de lowering** a leem (a do device assava o

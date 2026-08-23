@@ -368,7 +368,7 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// `every_precision_bound_param_types_to_the_measured_ceiling`.
 static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
     param: "radius",
-    max: 1_048_575.938,
+    max: 1_048_576.0 - 0.0625,
 }];
 
 /// ⚠️ The offset range mirrors the `pivot_x`/`pivot_y` of `motion.bend` and

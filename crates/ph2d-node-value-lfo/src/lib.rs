@@ -345,15 +345,15 @@ use ph2d_node_registry::{ParamGate, ParamHardMax, ParamHardMin, ParamUiHint, Par
 static PARAM_HARD_MAX: &[ParamHardMax] = &[
     ParamHardMax {
         param: "period",
-        max: 1_048_575.938,
+        max: 1_048_576.0 - 0.0625,
     },
     ParamHardMax {
         param: "amplitude",
-        max: 1_048_575.938,
+        max: 1_048_576.0 - 0.0625,
     },
     ParamHardMax {
         param: "offset",
-        max: 1_048_575.938,
+        max: 1_048_576.0 - 0.0625,
     },
 ];
 
@@ -364,7 +364,7 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 /// piso deles é do DESENHO (um período `≤ 0` não é uma onda), não da representação.
 static PARAM_HARD_MIN: &[ParamHardMin] = &[ParamHardMin {
     param: "offset",
-    min: -1_048_575.938,
+    min: -(1_048_576.0 - 0.0625),
 }];
 
 /// **Só a régua escolhida aparece.**

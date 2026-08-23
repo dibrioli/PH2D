@@ -266,7 +266,7 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// `every_precision_bound_param_types_to_the_measured_ceiling` (`ph2d-node-registry-init`).
 static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
     param: "radius",
-    max: 2_097_151.875,
+    max: 2_097_152.0 - 0.125,
 }];
 
 /// Param UI hints (M1.P1).

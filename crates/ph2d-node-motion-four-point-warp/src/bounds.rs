@@ -30,7 +30,7 @@
 use ph2d_node_registry::{ParamHardMax, ParamHardMin};
 
 /// O maior deslocamento de canto que o `step` de 0,05 ainda distingue: `2²⁰ − 1 ulp`.
-const REACH: f32 = 1_048_575.938;
+const REACH: f32 = 1_048_576.0 - 0.0625;
 
 const fn up(param: &'static str) -> ParamHardMax {
     ParamHardMax { param, max: REACH }

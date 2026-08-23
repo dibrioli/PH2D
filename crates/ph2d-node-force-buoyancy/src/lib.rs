@@ -361,7 +361,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 /// corrida pelo gate `every_precision_bound_param_types_to_the_measured_ceiling`.
 static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
     param: "depth",
-    max: 262_143.984,
+    max: 262_144.0 - 0.015625,
 }];
 
 /// Param UI hints (M1.P1).

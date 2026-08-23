@@ -110,7 +110,7 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
     // `every_precision_bound_param_types_to_the_measured_ceiling`.
     ParamHardMax {
         param: "speed",
-        max: 2_097_151.875,
+        max: 2_097_152.0 - 0.125,
     },
     // ⚠️ **DERIVED, never re-typed** — this entry and `MAX_ALIVE` answer the same
     // question ("how many particles may be alive?"), and when the constant went

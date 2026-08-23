@@ -320,11 +320,11 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
     // escrito à mão ele envelheceria no dia em que alguém afinasse o `step` do arrasto.
     ParamHardMax {
         param: "width",
-        max: 2_097_151.875,
+        max: 2_097_152.0 - 0.125,
     },
     ParamHardMax {
         param: "height",
-        max: 2_097_151.875,
+        max: 2_097_152.0 - 0.125,
     },
 ];
 

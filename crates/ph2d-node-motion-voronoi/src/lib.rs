@@ -305,11 +305,11 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
     // `every_precision_bound_param_types_to_the_measured_ceiling`.
     ParamHardMax {
         param: "width",
-        max: 1_048_575.938,
+        max: 1_048_576.0 - 0.0625,
     },
     ParamHardMax {
         param: "height",
-        max: 1_048_575.938,
+        max: 1_048_576.0 - 0.0625,
     },
 ];
 

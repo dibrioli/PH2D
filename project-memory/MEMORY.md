@@ -62,6 +62,7 @@
 > Modo C (Mac): colisão real. Modo L (workstation): worktree próprio → só merge (§1.5.5).
 - [Commit collision](feedback_parallel_agent_collision.md) + [scoped commit](feedback_scoped_commit_shared_index.md) — `git status` antes de stage; `git commit -m msg -- <meus paths>`
 - [Perigos e armadilhas de git/edição (12)](reference_topic_git_hazards.md) — stash · reset alheio · fence · worktree-base · mojibake · `fmt -p` · `str.replace` no-op · `sed -i` relativo · rewrite de token · mover doc · mutação desfeita com `cp`
+- [`Write` num caminho que já existe diz «updated», não «created»](feedback_write_on_an_existing_path_says_updated_not_created.md) — um nome BOM para o arquivo novo é o que o velho do mesmo assunto já tem; leia o verbo
 - [O symlink da MEMÓRIA aponta para o primário](feedback_the_memory_symlink_points_at_the_primary_tree_not_your_worktree.md) — Modo L: salvar pelo caminho do Claude Code escreve no `main`
 
 ## Ship / CI / integração
@@ -82,6 +83,7 @@
 ## Auditoria (famílias — 2 saltos)
 - [Reprodução/diagnóstico (18)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
 - [O 1º cruzamento de uma resposta RESSONANTE não é a fronteira](feedback_the_first_crossing_of_a_resonant_response_is_not_the_boundary.md) — prefixo-máximo; e imprima a varredura INTEIRA (o platô prova o instrumento)
+- [Uma grelha uniforme não representa uma ESQUINA](feedback_a_uniform_grid_cannot_represent_a_corner.md) — leia a TAXA de convergência antes de aumentar o número; num degrau o que encolhe é a largura da banda
 - [Réguas do quad remesh (13)](reference_topic_quad_remesh_rulers.md) — ⛔ suíte topológica cega a geometria · extremo global ≠ régua por-face · cura que falha delimita a causa · gate tautológico · régua que deduplica · `round` sem resíduo · invariante conservada · proveniência do defeito · provas de ótimo
 - [Balde que ninguém enche lê-se como PERFEITO](feedback_a_bucket_nobody_fills_reads_as_perfect.md) — mediana de vector vazio = 0; ponha a CONTAGEM ao lado, e `else` em vez de `continue` quando a escrituração vive no fim do laço
 - [Cura que MOVE o defeito nomeia-o](feedback_a_cure_that_moves_the_defect_names_it.md) — meça as duas pontas da fase; total igual + folga fechada = a fase foi isolada, não é fracasso

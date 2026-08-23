@@ -312,7 +312,9 @@ fn the_pins_survive_an_undo() {
         let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
         let mut wl = ph2d_ecs::WorklistBuf::new();
         crate::undo::ProjectState::capture(
-            &sim,
+            // Nada sob condução nesta cena: o ledger vazio é a captura de sempre.
+            &crate::preview_drive::PreviewDrive::default(),
+            &mut sim,
             &scene,
             &ph2d_flip::FlipDoc::new(),
             &ph2d_guides::GuideSet::default(),

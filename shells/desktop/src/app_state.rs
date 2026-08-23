@@ -1365,6 +1365,12 @@ pub(crate) struct App {
     /// em andamento — barato (frames de input são esparsos), e cobre toda ação
     /// (gesto, tecla, botão) por um só ponto.
     pub(crate) any_input_this_frame: bool,
+    /// **O que um motor está a escrever AGORA** — o ledger que separa pré-visualização de
+    /// documento (`crate::preview_drive`). Declarado pelos motores (o tique da §11, o solver) e
+    /// consumido por um sítio só: a captura do projeto, que é a unidade do undo e do save.
+    ///
+    /// Vazio = zero custo, e é o estado normal.
+    pub(crate) preview_drive: crate::preview_drive::PreviewDrive,
     /// Gradient group: the gradient handle currently being DRAGGED on-canvas —
     /// a multi-point point OR a linear/radial endpoint (`None` = not dragging).
     /// **O Shape Builder em curso** (modo `DrawMode::Build`). Guarda o arranjo das formas

@@ -85,8 +85,10 @@ impl Frame {
     }
 
     /// O que o `post_frame_undo` fotografa no fim do frame.
-    fn capture(&mut self, sim: &SimWorld, scene: &VecScene) -> ProjectState {
+    fn capture(&mut self, sim: &mut SimWorld, scene: &VecScene) -> ProjectState {
         ProjectState::capture(
+            // Nada sob condução: estes gates são do ponto FIXO dos sistemas de vetor.
+            &crate::preview_drive::PreviewDrive::default(),
             sim,
             scene,
             &FlipDoc::new(),
@@ -233,10 +235,10 @@ fn the_capture_is_a_fixed_point_of_the_systems() {
 
     three_fresh_shapes(&mut scene);
     frame.run(&mut sim, &mut scene, &mut map); // o frame da AÇÃO
-    let shot = frame.capture(&sim, &scene); // ← é aqui que o undo fotografa
+    let shot = frame.capture(&mut sim, &scene); // ← é aqui que o undo fotografa
 
     frame.run(&mut sim, &mut scene, &mut map); // o frame seguinte, sem input nenhum
-    let again = frame.capture(&sim, &scene);
+    let again = frame.capture(&mut sim, &scene);
 
     assert_eq!(
         shot, again,
@@ -262,13 +264,13 @@ fn undo_restores_a_state_that_the_next_frame_does_not_rewrite() {
     // Frame 1: a cena base.
     three_fresh_shapes(&mut scene);
     frame.run(&mut sim, &mut scene, &mut map);
-    let baseline = frame.capture(&sim, &scene);
+    let baseline = frame.capture(&mut sim, &scene);
 
     // Frame 2: a AÇÃO (o Shape Builder produz formas novas).
     scene.push_path(rectangle([6.0, 0.0], [7.0, 1.0]));
     scene.push_path(rectangle([8.0, 0.0], [9.0, 1.0]));
     frame.run(&mut sim, &mut scene, &mut map);
-    let after = frame.capture(&sim, &scene);
+    let after = frame.capture(&mut sim, &scene);
     assert_ne!(
         baseline, after,
         "a ação tem de mudar o estado (senão o gate é vazio)"
@@ -279,7 +281,7 @@ fn undo_restores_a_state_that_the_next_frame_does_not_rewrite() {
     scene = restored_scene;
     map = restored_map;
     frame.run(&mut sim, &mut scene, &mut map);
-    let settled = frame.capture(&sim, &scene);
+    let settled = frame.capture(&mut sim, &scene);
 
     assert_eq!(
         settled, baseline,
@@ -320,7 +322,7 @@ fn a_shape_parented_to_a_sprite_survives_the_respawn_in_the_same_z_order() {
     frame.run(&mut sim, &mut scene, &mut map);
 
     let before = z(&scene);
-    let shot = frame.capture(&sim, &scene);
+    let shot = frame.capture(&mut sim, &scene);
 
     // Ctrl+Z sobre si mesmo: restaura a MESMA foto (respawn ⇒ bits novos) e roda um frame.
     let (restored_scene, restored_map, _flip, _flip_map) = shot.restore(&mut sim, &frame.reg);
@@ -335,7 +337,7 @@ fn a_shape_parented_to_a_sprite_survives_the_respawn_in_the_same_z_order() {
          ancorada no id de ALOCAÇÃO, não no conteúdo"
     );
     assert_eq!(
-        frame.capture(&sim, &scene),
+        frame.capture(&mut sim, &scene),
         shot,
         "e a captura deixou de ser ponto fixo"
     );

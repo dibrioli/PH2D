@@ -401,6 +401,9 @@ mod precision_convert;
 /// **As ferramentas que só movem pixels preservam a precisão** — veja os docs do módulo.
 mod precision_geometry;
 mod prefs;
+/// **Estado de PRÉ-VISUALIZAÇÃO contra estado de DOCUMENTO** — o conceito que faltava ao undo
+/// (Enio, 2026-08-23: *«precisamos corrigir o CtrlZ para ambas»*).
+mod preview_drive;
 /// **A sonda da §4.3 do plano da UI viva** — o cursor pode ser PRESO nesta máquina? Só de teste:
 /// ela abre janela e precisa de uma mão mexendo o rato, então nunca entra num build de produto.
 #[cfg(test)]
@@ -959,6 +962,7 @@ impl App {
             undo_request: None,
             undo_button: None,
             any_input_this_frame: false,
+            preview_drive: crate::preview_drive::PreviewDrive::default(),
             vec_build: None,
             vec_grad_drag: None,
             vec_grad_selected: None,

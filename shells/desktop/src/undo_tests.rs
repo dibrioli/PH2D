@@ -32,6 +32,9 @@ fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> Proje
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut wl = WorklistBuf::new();
     ProjectState::capture(
+        // Nada sob condução: estes gates são do diff e do restore, não do ledger
+        // (`crate::preview_drive` tem os dele).
+        &crate::preview_drive::PreviewDrive::default(),
         sim,
         vec,
         &FlipDoc::new(),
@@ -191,7 +194,8 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         let mut prop = TransformPropagationState::new(sim.world_mut());
         let mut wl = WorklistBuf::new();
         ProjectState::capture(
-            &sim,
+            &crate::preview_drive::PreviewDrive::default(),
+            &mut sim,
             &vec,
             &flip,
             &ph2d_guides::GuideSet::default(),
@@ -215,7 +219,8 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut wl = WorklistBuf::new();
     let a = ProjectState::capture(
-        &sim,
+        &crate::preview_drive::PreviewDrive::default(),
+        &mut sim,
         &vec,
         &rflip,
         &ph2d_guides::GuideSet::default(),
@@ -225,7 +230,8 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &mut wl,
     );
     let b = ProjectState::capture(
-        &sim,
+        &crate::preview_drive::PreviewDrive::default(),
+        &mut sim,
         &vec,
         &rflip,
         &ph2d_guides::GuideSet::default(),

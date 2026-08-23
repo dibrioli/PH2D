@@ -56,13 +56,22 @@ impl ProjectState {
     /// Captura o estado atual. `prop`/`worklist` são scratch reusado (o
     /// `world_to_snapshot` é zero-alloc além do crescimento do próprio snapshot).
     ///
-    /// ⚠️ Oito argumentos, e eles são **oito fatos independentes do documento** — o mundo, as três
+    /// ⚠️ **O `drive` é o PRIMEIRO argumento de propósito: ele é a pergunta *«o que aqui está a
+    /// ser escrito por um motor?»*, e ela tem de ser respondida para haver captura nenhuma.** Foi
+    /// posto na assinatura — e não numa função-irmã «com ledger» — porque uma segunda porta é
+    /// exactamente como o defeito voltaria: quem capturasse pela porta antiga fotografava o
+    /// instante em vez do documento, e o Ctrl+Z voltava a gastar-se a desfazer relógio
+    /// ([`crate::preview_drive`]). Sem condução nenhuma (`PreviewDrive::default()`, o caso normal)
+    /// o custo é zero e o resultado é byte-a-byte o de antes.
+    ///
+    /// ⚠️ Nove argumentos, e eles são **nove fatos independentes** — o ledger, o mundo, as três
     /// geometrias, o registro e o scratch. Agrupá-los num struct só para agradar ao lint criaria
     /// um tipo cuja única razão de existir é a contagem, e todo chamador passaria a montá-lo.
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub(crate) fn capture(
-        sim: &SimWorld,
+        drive: &crate::preview_drive::PreviewDrive,
+        sim: &mut SimWorld,
         vec: &VecScene,
         flip: &FlipDoc,
         guides: &ph2d_guides::GuideSet,
@@ -71,11 +80,14 @@ impl ProjectState {
         prop: &mut TransformPropagationState,
         worklist: &mut WorklistBuf,
     ) -> Self {
+        // O mundo passa ao estado AUTORADO só durante a fotografia, e volta ao vivo a seguir.
+        let live = drive.substitute_authored(sim);
         let mut world = WorldSnapshot::new();
         // O snapshot só falha se um componente registrado não (de)serializa — um bug
         // de registro, não estado do usuário. Um estado vazio é o degradado seguro.
         let _ = world_to_snapshot(sim.world(), prop, worklist, registry, &mut world);
         canonicalize(&mut world);
+        crate::preview_drive::PreviewDrive::restore_live(sim, &live);
         Self {
             world,
             vec: vec.clone(),
@@ -230,11 +242,25 @@ impl ProjectUndo {
 
 impl crate::App {
     /// Captura o estado do projeto AGORA. `None` se o gfx ainda não inicializou.
+    ///
+    /// ⚠️ **Ela fotografa o DOCUMENTO, não o instante.** Enquanto um motor conduz uma entidade —
+    /// uma animação a tocar, o solver a simular —, o valor autorado é reposto no mundo durante a
+    /// fotografia e o vivo é devolvido logo a seguir ([`crate::preview_drive`]). Sem isto, cada
+    /// clique dado enquanto algo se move sozinho empilhava um passo de undo cujo conteúdo era só o
+    /// relógio (ou só a pose), e o Ctrl+Z do artista gastava-se a desfazer nada.
+    ///
+    /// ⚠️ **E vale para o SAVE pela mesma porta**, que é a lei deste módulo (undo e save gravam a
+    /// MESMA captura): gravar a meio de uma reprodução guarda a célula que o artista escolheu, não
+    /// onde o ciclo calhou estar.
     #[must_use]
     pub(crate) fn capture_project(&mut self) -> Option<ProjectState> {
+        // ⚠️ Empréstimos DISJUNTOS de `self` — o ledger e o `gfx` são campos diferentes, e é por
+        // isso que os dois podem estar vivos ao mesmo tempo.
+        let drive = &self.preview_drive;
         let gfx = self.gfx.as_mut()?;
         Some(ProjectState::capture(
-            &gfx.sim,
+            drive,
+            &mut gfx.sim,
             &gfx.vec_scene,
             &gfx.flip,
             &gfx.guides,
@@ -361,6 +387,10 @@ impl crate::App {
     ///    que torna "tudo que o usuário fizer" desfazível, por diff — sem instrumentar
     ///    cada ação.
     pub(crate) fn post_frame_undo(&mut self) {
+        // ⚠️ **PRIMEIRO, e antes de qualquer captura:** o ledger da condução esquece quem os
+        // motores não declararam neste quadro. Quem parou volta a ser documento **já nesta
+        // fotografia** — é isso que faz uma corrida inteira colapsar em UM passo, em vez de zero.
+        self.preview_drive.settle();
         let had_input = std::mem::take(&mut self.any_input_this_frame);
         // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
         // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o

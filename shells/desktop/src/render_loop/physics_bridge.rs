@@ -45,6 +45,7 @@ pub(crate) fn dispatch(
     simulate: bool,
     input: ph2d_physics_ecs::PlayerInput,
     tape: &mut InputTape,
+    drive: &mut crate::preview_drive::PreviewDrive,
 ) {
     let target = physics_tick(playhead, fixed_dt);
     let players = hand_input_to_players(bridge, sim, input);
@@ -86,10 +87,56 @@ pub(crate) fn dispatch(
     // the same instant. Passing `FrozenScene` here would compile and would be
     // that bug (see `bake_and_scrub_agree_with_play`).
     let mut scene = super::physics_bake::TimelineScene { doc, fixed_dt };
+    // **A POSE DE ANTES**, para o ledger de pré-visualização saber o que foi o solver que escreveu.
+    let before = body_poses(sim);
     // ⚠️ **A FITA entra aqui, e é ela que torna o replay reproduzível** (W7): o
     // laço de replay do rewind dirige os players com a entrada do TIQUE que ele
     // está refazendo, não com o dedo de agora.
     bridge.dispatch_with_scene_and_tape(sim, playhead.is_playing(), target, &mut scene, tape);
+    declare_solver_writes(sim, &before, drive);
+}
+
+/// A pose de todo corpo rígido, agora — a fotografia contra a qual se lê **o que o solver
+/// escreveu** neste quadro.
+///
+/// ⚠️ Uma varredura por quadro, e só com a simulação armada. É o preço de saber com EXACTIDÃO
+/// quais poses são do solver: perguntá-lo à ponte exigiria abrir o dentro da crate, e alargar a
+/// declaração a «todo corpo» engoliria uma pose que o artista tivesse acabado de escrever num
+/// corpo estático — que o solver nunca toca.
+fn body_poses(sim: &SimWorld) -> Vec<(Entity, ph2d_ecs::Transform)> {
+    let Some(mut q) = sim
+        .world()
+        .try_query::<(Entity, &ph2d_ecs::Transform, &ph2d_physics_ecs::RigidBody)>()
+    else {
+        return Vec::new();
+    };
+    q.iter(sim.world()).map(|(e, t, _)| (e, *t)).collect()
+}
+
+/// **O que o solver mexeu é pré-visualização, não autoria** (`crate::preview_drive`).
+///
+/// Sem isto, um clique dado enquanto o mundo corre empilhava um passo de undo cujo conteúdo era só
+/// a pose de uma bola a cair — e o Ctrl+Z do artista gastava-se a desfazer nada. Com isto a corrida
+/// inteira colapsa em **UM** passo, registado quando ela pára: *«desfaz a corrida»*, que é o passo
+/// que faz sentido pedir.
+///
+/// ⚠️ **Declara só quem de facto MUDOU.** Um corpo parado (ou um estático) não está a ser
+/// conduzido, e mantê-lo no ledger deixaria o `settle` sem nada para esquecer — a corrida nunca
+/// acabaria aos olhos do undo.
+fn declare_solver_writes(
+    sim: &SimWorld,
+    before: &[(Entity, ph2d_ecs::Transform)],
+    drive: &mut crate::preview_drive::PreviewDrive,
+) {
+    use crate::preview_drive::Driven;
+    for &(entity, was) in before {
+        let Some(now) = sim.world().get::<ph2d_ecs::Transform>(entity) else {
+            continue; // o corpo saiu da cena neste quadro
+        };
+        if *now != was {
+            drive.driven(entity, Driven::SolverPose(was), Driven::SolverPose(*now));
+        }
+    }
 }
 
 /// **Entrega o dedo do jogador a todo player da cena** (W3).

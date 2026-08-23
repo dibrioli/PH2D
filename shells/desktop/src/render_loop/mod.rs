@@ -285,7 +285,10 @@ pub(crate) mod painter_stamp_device;
 /// "which entity gets a point handle" is gated headless.
 pub(crate) mod point_gizmo;
 mod present;
-mod sprite_anim_tick;
+/// ⚠️ `pub(crate)`: os gates do [`crate::preview_drive`] correm o tique de fora do `render_loop` —
+/// é ele o motor que declara a §11 como pré-visualização, e um gate que o encenasse à mão mediria
+/// a encenação.
+pub(crate) mod sprite_anim_tick;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
 mod sheet_grid_overlay;
@@ -1885,6 +1888,9 @@ impl crate::App {
             report.ticks,
             self.fixed_step.fixed_dt(),
             &tool_preview_bits,
+            // ⚠️ **O relógio e a célula que ele produz são pré-visualização**, e é esta declaração
+            // que impede que cada clique dado durante a reprodução vire um Ctrl+Z vazio.
+            &mut self.preview_drive,
         );
 
         // Sim tick + extract — extracted to sibling `sim_extract.rs`
@@ -2368,6 +2374,9 @@ impl crate::App {
             // e entregue INTEIRO por uma porta só.
             self.player_keys.input(),
             &mut self.player_tape,
+            // ⚠️ **A pose que o solver escreve é pré-visualização** — o ledger que a separa do
+            // documento (`crate::preview_drive`, Enio 2026-08-23: *«corrigir o CtrlZ para ambas»*).
+            &mut self.preview_drive,
         );
         // O flash do estouro envelhece uma vez por frame, aqui: ao lado do
         // dispatch da física, que é a fase em que o tempo do mundo anda. Um canal

@@ -43,11 +43,16 @@ pub(crate) fn step_ticks(fixed_dt: f64) -> u64 {
 ///
 /// ⇒ Fica a forma simples. *Um laço a mais que a mutação não distingue é uma justificação que
 /// ninguém voltou a verificar.*
+/// ⚠️ **O `drive` é a metade que o undo lê.** Tudo o que este tique escreve — os três campos do
+/// relógio e o `Sprite::frame` — é **pré-visualização**, nunca autoria: declará-lo aqui é o que
+/// impede que cada clique dado enquanto a animação toca empilhe um passo de Ctrl+Z vazio
+/// ([`crate::preview_drive`], e a auditoria 21 §4).
 pub(crate) fn tick_sprite_animations(
     sim: &mut SimWorld,
     ticks: u32,
     fixed_dt: f64,
     tool_preview_bits: &[Option<u64>],
+    drive: &mut crate::preview_drive::PreviewDrive,
 ) {
     if ticks == 0 {
         return;
@@ -106,6 +111,13 @@ pub(crate) fn tick_sprite_animations(
         // animação encolhe o intervalo no mesmo quadro, sem estado intermédio a envelhecer.
         let cells = sprite.hframes.saturating_mul(sprite.vframes).max(1);
         let mut frame = sprite.frame;
+        // O que o artista tem no documento, ANTES de este tique lhe tocar (`crate::preview_drive`).
+        let before = crate::preview_drive::Driven::SpriteAnim {
+            elapsed_ticks: animator.elapsed_ticks,
+            pingpong_reverse: animator.pingpong_reverse,
+            repeat_count: animator.repeat_count,
+            frame,
+        };
         ph2d_ecs::advance(&mut run, tag, &mut frame, cells, dt * u64::from(ticks));
         if preview_only {
             animator.elapsed_ticks = run.elapsed_ticks;
@@ -119,6 +131,20 @@ pub(crate) fn tick_sprite_animations(
         // undo por quadro. `bevy` marca a mudança no `deref_mut`, não na atribuição.
         if sprite.frame != frame {
             sprite.frame = frame;
+        }
+        // **A DECLARAÇÃO**, com o depois lido do que ficou de facto escrito (o `preview_only`
+        // devolve só o relógio, então `run` sozinho mentiria sobre o animador).
+        let after = crate::preview_drive::Driven::SpriteAnim {
+            elapsed_ticks: animator.elapsed_ticks,
+            pingpong_reverse: animator.pingpong_reverse,
+            repeat_count: animator.repeat_count,
+            frame,
+        };
+        // ⚠️ **Só quando este tique de facto escreveu.** Um animador que está a tocar e não andou
+        // nada (`dt·ticks` engolido por uma velocidade zero) não está a conduzir ninguém, e
+        // declará-lo manteria viva uma condução que a `settle` precisa de ver morrer.
+        if before != after {
+            drive.driven(entity, before, after);
         }
     }
 }

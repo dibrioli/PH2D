@@ -75,6 +75,7 @@ fn run(sim: &mut SimWorld, simulate: bool, frames: u64, held: PlayerInput) -> In
             simulate,
             held,
             &mut tape,
+            &mut crate::preview_drive::PreviewDrive::default(),
         );
     }
     tape

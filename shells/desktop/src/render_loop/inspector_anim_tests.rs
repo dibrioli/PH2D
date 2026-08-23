@@ -293,14 +293,32 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
 
     // 60 Hz: seis tiques ≈ 100 ms ⇒ um frame.
     let dt = 1.0 / 60.0;
-    crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 6, dt, &[]);
+    crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        &mut sim,
+        6,
+        dt,
+        &[],
+        &mut crate::preview_drive::PreviewDrive::default(),
+    );
     assert_eq!(info(&sim, e).frame, 1);
-    crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 6, dt, &[]);
+    crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        &mut sim,
+        6,
+        dt,
+        &[],
+        &mut crate::preview_drive::PreviewDrive::default(),
+    );
     assert_eq!(info(&sim, e).frame, 2);
 
     // Pausado: o frame fica.
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(false));
-    crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 600, dt, &[]);
+    crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        &mut sim,
+        600,
+        dt,
+        &[],
+        &mut crate::preview_drive::PreviewDrive::default(),
+    );
     assert_eq!(info(&sim, e).frame, 2, "pausado nao anda");
 }
 

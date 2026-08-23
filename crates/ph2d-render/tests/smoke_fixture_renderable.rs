@@ -97,7 +97,7 @@ fn w3_smoke_scene_loads_without_panic_and_matches_goldens() {
 }
 
 #[test]
-#[ignore = "W4 goldens NAO EXISTEM, e o gatilho AINDA E' VERDADE: `SpriteAnimator` e `InstanceShaderParams` nao tem implementacao nenhuma (a §11 Animation nunca foi construida -- `docs/Sprite_projeto/20` §6)."]
+#[ignore = "W4 goldens NAO EXISTEM, e o gatilho DISPAROU PELA METADE em 2026-08-23: o `SpriteAnimator` EXISTE (a §11 Animation nasceu, `docs/Sprite_projeto/21`), esta' registado e tem tique de passo fixo -- esta nota dizia o contrario e envelheceu num dia. O que continua a faltar: `Material`/`InstanceShaderParams` (o slot e' placeholder a` espera de um runtime de shader) e, como nas irmas, o arnes de render headless + os 3 PNG."]
 fn w4_smoke_scene_loads_without_panic_and_matches_goldens() {
     unimplemented!(
         "W4.T4.X smoke fixture not yet wired. Replace this body with: \

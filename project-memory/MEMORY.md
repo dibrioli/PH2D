@@ -98,6 +98,7 @@
 - [Ofício de gate (32)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
 - [Modo SUPERSET ganha a dedup, nunca perde](feedback_a_superset_mode_must_win_the_dedup_never_lose_it.md) — desistir do modo rico apaga o que só ele desenha; a pergunta é qual CONTÉM o outro, não quem chegou primeiro
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
+- [As TRÊS perguntas de seam ficam verdes e a feature é inalcançável](feedback_the_three_ui_seam_questions_miss_the_fourth_the_sequence.md) — a quarta é a SEQUÊNCIA; e a cura de "não há rota" é a FACE VAZIA, nunca o desaparecimento
 - [Pintar e agarrar projectam por UMA porta](feedback_paint_and_hit_test_must_project_through_one_door.md) — janela cheia na tinta e janela da cena no hit-test dá DOIS sintomas de uma causa (deslocado + não clica); a lei estava no módulo irmão, que eu li
 - [Hit-test próprio herda a pergunta da REGIÃO](feedback_a_consumer_that_bypasses_the_hit_index_inherits_the_region_question.md) — sem o `on_canvas` o gizmo engolia cliques do painel do grafo, e o sintoma era «não consigo ligar um fio»
 - [Blindar o hit-index MUDA o que as sondas medem](feedback_shielding_the_hit_index_changes_what_every_probe_measures.md) — o fundo do último hit-rect passa a saturar na janela: quem o usava como tamanho media a janela, não a coisa
@@ -106,6 +107,7 @@
 - [Lista escrita à mão ao lado de um predicado = duas respostas](feedback_a_hand_written_list_beside_a_predicate_is_two_answers.md) — quem ENUMERA copia a lista de quem DECIDE; o diálogo oferecia 4 de 11 formatos há meses, e só uma extensão nova gerou report
 - [«Acabou» lê-se igual a «foi pausado»](feedback_stopped_because_it_ended_reads_the_same_as_stopped_by_hand.md) — religar um transporte esgotado é gesto MORTO sem o predicado; e rebobinar tem de mover a IMAGEM
 - [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
+- [Desigualdade ≠ oráculo, e área somada ≠ REGIÃO](feedback_an_inequality_accepts_a_whole_interval_only_an_oracle_accepts_an_answer.md) — "o meio está entre as pontas" deixa passar produto errado; `Σ|área|` lê 400 e 272 para a MESMA região
 - [Afirmação que mutação nenhuma mata é afirmação sobre NADA](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) — encolha a afirmação até ao que a máquina faz; perseguir o gate antes de a reler custa duas voltas
 - [Contar o trabalho FEITO não é contar o ENTREGUE](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) — o gate contava cozeduras e o consumidor recebia zero; ponha a sonda dentro de quem consome
 - [Duas hipóteses boas que falham refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md) — ao 2.º falhanço pare de propor curas e construa a régua que LOCALIZA; ilibe também o suspeito improvável

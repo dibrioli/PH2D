@@ -74,6 +74,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.states.show" => "Show",
         "panel.vector.states.clear" => "Clear",
         "panel.vector.states.showing" => "Showing",
+        // ⭐ O hospedeiro DERIVADO da seleção, e a face VAZIA de quando ela não tem nenhum.
+        "panel.vector.states.host" => "States of",
+        "panel.vector.states.host.unnamed" => "the selected shape",
+        "panel.vector.states.nohost" => "No shape governs this selection.",
+        "panel.vector.states.nohost.hint" => "Put it inside a shape, or select one.",
         "panel.vector.states.duration" => "Duration",
         "panel.vector.states.spring" => "Spring",
         "panel.vector.states.stiffness" => "Stiffness",

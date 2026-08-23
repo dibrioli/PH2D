@@ -5756,48 +5756,65 @@ impl crate::App {
             // e é indiferente — a tabela lida por ele é a deste frame, e uma ligação criada agora
             // responde ao próximo sinal. O que NÃO seria indiferente é o inverso do consumidor
             // com o `dispatch`, e essa ordem está fixada mais abaixo.
+            // ⭐ **O HOSPEDEIRO DO QUADRO, calculado UMA vez** (auditoria de 2026-08-23).
+            //
+            // ⚠️ Cada gesto desta seção respondia por si a *"quem é o hospedeiro?"*, com um
+            // `if let [host] = selected_paths()` próprio — **cinco portas** para o mesmo fato, e
+            // nenhuma delas era a que o `publish` usa para PINTAR a seção. Desde que o hospedeiro
+            // passou a ser derivado da seleção, isso é uma discordância garantida: o painel
+            // mostraria as poses da forma que governa a seleção e o knob escreveria noutro sítio
+            // (ou em sítio nenhum). Uma pergunta, uma resposta.
+            let ui_host = crate::vec_ui_state_edit::host_of_selection(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                self.vec_pen.selected_paths(),
+            );
             if let Some(edit) = pending_ui_signal_edit {
                 crate::vec_ui_state_edit::apply_signal_edit(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
                     ui_states,
                     self.vec_pen.selected_paths(),
                     edit,
                 );
             }
             if let Some((row, name)) = pending_ui_signal_name
-                && let [host] = self.vec_pen.selected_paths()
+                && let Some(host) = ui_host
             {
-                ui_states.set_binding_name(*host, row, name);
+                ui_states.set_binding_name(host, row, name);
             }
             if let Some(secs) = pending_ui_state_duration
-                && let [host] = self.vec_pen.selected_paths()
+                && let Some(host) = ui_host
             {
-                ui_states.set_duration(*host, secs);
+                ui_states.set_duration(host, secs);
             }
             // **A MOLA** (W7m) — a mesma guarda de hospedeiro único da duração e da curva.
             //
             // ⚠️ Ligar SEMEIA com o default; desligar guarda `None` e **não apaga** a duração nem
             // a curva, que o artista recupera com o mesmo clique.
-            if pending_ui_spring_toggle && let [host] = self.vec_pen.selected_paths() {
+            if pending_ui_spring_toggle && let Some(host) = ui_host {
                 let next = ui_states
-                    .spring(*host)
+                    .spring(host)
                     .is_none()
                     .then(ph2d_ui_state::Spring::default);
-                ui_states.set_spring(*host, next);
+                ui_states.set_spring(host, next);
             }
             if let Some((stiff, v)) = pending_ui_spring_knob
-                && let [host] = self.vec_pen.selected_paths()
+                && let Some(host) = ui_host
             {
                 // ⚠️ Arrastar um knob de mola num hospedeiro que ainda não a tem **liga-a**: o
                 // slider só é pintado no modo mola, então este caminho só corre com ela ligada —
                 // e o `unwrap_or_default` é o que impede um `None` de engolir o gesto em silêncio
                 // se um dia ele passar a ser alcançável.
-                let mut sp = ui_states.spring(*host).unwrap_or_default();
+                let mut sp = ui_states.spring(host).unwrap_or_default();
                 if stiff {
                     sp.stiffness = v;
                 } else {
                     sp.damping = v;
                 }
-                ui_states.set_spring(*host, Some(sp));
+                ui_states.set_spring(host, Some(sp));
             }
             // **A CURVA** (W7) — a outra metade do *como este hospedeiro transita*, e por isso
             // honrada ao lado da duracao e pela mesma guarda de hospedeiro unico.
@@ -5806,10 +5823,10 @@ impl crate::App {
             // documento tem: `set_easing` recebe sempre um `Easing` completo, e quem o compoe e' a
             // porta unica `easing_with`.
             if let Some(pick) = pending_ui_easing
-                && let [host] = self.vec_pen.selected_paths()
+                && let Some(host) = ui_host
             {
-                let cur = ui_states.timing(*host).1;
-                ui_states.set_easing(*host, crate::vec_ui_state_edit::easing_with(cur, pick));
+                let cur = ui_states.timing(host).1;
+                ui_states.set_easing(host, crate::vec_ui_state_edit::easing_with(cur, pick));
             }
             // **O MODO DE PREVIEW** (W7r) — o interruptor e a saída por Esc, na MESMA porta: um
             // `leave` escrito num segundo sítio seria a segunda resposta a *"como se devolve o
@@ -8323,11 +8340,24 @@ impl crate::App {
                 // cena mostra AGORA. O `live` sai da MESMA máquina que escreve o mundo: um
                 // readout derivado noutro lugar diria um papel e a cena mostraria outro.
                 ph2d_panel_vector::state::set_ui_states_state(crate::vec_ui_state_edit::publish(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
                     &sel,
                     ui_states,
+                    // ⚠️ **Pelo HOSPEDEIRO, não pelo primeiro da seleção.** O readout diz *que
+                    // papel a cena mostra*, e a máquina está pendurada no hospedeiro — com uma
+                    // seleção múltipla, `sel.first()` é um operando qualquer e a busca falha em
+                    // silêncio: a seção mostraria as poses de um objeto e o readout o estado de
+                    // outro (ou de nenhum).
                     crate::render_loop::ui_state_bridge::live_role(
                         ui_machines,
-                        sel.first().copied(),
+                        crate::vec_ui_state_edit::host_of_selection(
+                            sim,
+                            vec_scene,
+                            &self.vec_entities,
+                            &sel,
+                        ),
                     ),
                     self.ui_preview.is_on(),
                     self.ui_states_move_all,

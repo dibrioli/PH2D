@@ -52,6 +52,29 @@ impl BodyCtx<'_> {
             return y;
         }
 
+        // ⭐ **A FACE VAZIA: a seleção não tem forma que a governe.**
+        //
+        // ⚠️ Antes disto a seção inteira **desaparecia** — nem cabeçalho, nem interruptor de
+        // preview, nem uma palavra. E ela desaparecia exactamente onde a feature mais precisava
+        // de existir: tocar uma booleana viva seleciona o GRUPO, que é sempre seleção múltipla, e
+        // o artista via um painel que não mencionava estados. *Uma seção que só existe onde a
+        // feature já foi usada é uma seção que não existe.*
+        let Some(host) = s.host.as_ref() else {
+            y = self.label_line(tr("panel.vector.states.nohost"), y);
+            return self.label_line(tr("panel.vector.states.nohost.hint"), y);
+        };
+
+        // ⭐ **De QUEM são estas poses.** O hospedeiro é DERIVADO da seleção (a forma-ancestral que
+        // a governa), então nomeá-lo não é enfeite: sem o nome, o artista grava as poses de um
+        // objeto julgando gravar as de outro. Sem `Name` no documento cai num rótulo genérico — o
+        // nome é dado do documento, não copy de UI.
+        let named = if host.is_empty() {
+            tr("panel.vector.states.host.unnamed").to_string()
+        } else {
+            host.clone()
+        };
+        y = self.label_line(&format!("{} {named}", tr("panel.vector.states.host")), y);
+
         // **O interruptor da PREVIEW** vem PRIMEIRO, porque ele muda o que a seção inteira
         // significa: ligado, o rato dirige os papéis e a autoria fecha.
         let preview_on = s.preview == Some(true);

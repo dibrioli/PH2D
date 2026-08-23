@@ -36,6 +36,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// A seção UI States com um hospedeiro autorado — e a mola ligada ou não.
 fn arm(spring: Option<(f32, f32)>) {
     ph2d_panel_vector::state::set_ui_states_state(Some(UiStatesState {
+        host: Some("Host".into()),
         recorded: [true, true, false, false],
         role_labels: [
             "Default".into(),

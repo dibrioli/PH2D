@@ -511,14 +511,18 @@ mod ui_panel_smoke;
 /// **Que painel esta árvore descreve** (plano UI/UX W8b) — a porta única que lê a moldura
 /// autorada e devolve o `PanelSpec` que o gerador escreve.
 mod ui_panel_spec;
+/// A cena de smoke dos **ESTADOS DE UI** (`PH2D_BUILD_SMOKE=61`) — irmã de `build_smoke`.
+/// ⭐ A cena da BOOLEANA VIVA dentro de um ESTADO de UI (`PH2D_BUILD_SMOKE=74`) — a troca de
+/// operação que MORFA em vez de saltar, com os operandos a mover-se ao mesmo tempo.
+/// A BOOLEANA dentro do modo de PREVIEW — irmão dos gates do preview por LOC (HR-18).
+#[cfg(test)]
+#[path = "ui_preview_bool_tests.rs"]
+mod ui_preview_bool_tests;
 /// **O RATO dentro do modo de preview** (plano UI/UX W7r) — a metade da shell do
 /// `render_loop::ui_preview`: quem aponta, e o gesto modal que precede tudo.
 mod ui_preview_gesture;
 /// A cena de smoke da **MOLA** (`PH2D_BUILD_SMOKE=65`) — irmã de `build_smoke`.
 mod ui_spring_smoke;
-/// A cena de smoke dos **ESTADOS DE UI** (`PH2D_BUILD_SMOKE=61`) — irmã de `build_smoke`.
-/// ⭐ A cena da BOOLEANA VIVA dentro de um ESTADO de UI (`PH2D_BUILD_SMOKE=74`) — a troca de
-/// operação que MORFA em vez de saltar, com os operandos a mover-se ao mesmo tempo.
 mod ui_states_bool_smoke;
 mod ui_states_smoke;
 mod undo;
@@ -546,6 +550,12 @@ mod variant_smoke;
 mod vec_anchor_edit;
 mod vec_bindings;
 mod vec_blend;
+/// ⭐ Os gates de ROTA da booleana viva até os ESTADOS (auditoria de 2026-08-23): *com uma
+/// booleana em mãos, o artista chega às poses dela?* — a pergunta que "o widget existe e o clique
+/// chega ao barramento" não faz.
+#[cfg(test)]
+#[path = "vec_bool_reach_tests.rs"]
+mod vec_bool_reach_tests;
 /// **O papel de cada forma dentro de uma booleana viva** — a porta única de *"que verbo é o
 /// dela?"*, que o painel e a linha da hierarquia partilham.
 mod vec_bool_shape;

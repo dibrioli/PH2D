@@ -75,12 +75,18 @@ fn the_pick_reaches_the_document_composed_over_what_is_there() {
     );
 }
 
-/// **A curva é escrita no hospedeiro ÚNICO**, pela mesma guarda da duração ao lado.
+/// **A curva é escrita no HOSPEDEIRO**, pela mesma guarda da duração ao lado.
 ///
-/// Sem ela, uma seleção múltipla escreveria a curva em… qual? Escolher em silêncio é como um
-/// ajuste acaba pendurado no objeto errado — a razão escrita no `host()`.
+/// Sem ela, uma seleção escreveria a curva em… qual forma? Escolher em silêncio é como um ajuste
+/// acaba pendurado no objeto errado.
+///
+/// ⚠️ **A âncora era `[host] = self.vec_pen.selected_paths()`**, e ela expirou em 2026-08-23,
+/// quando o hospedeiro deixou de ser *"a forma única selecionada"* e passou a ser DERIVADO da
+/// seleção. O que o gate afirma não mudou; o que mudou foi por onde a resposta vem — e uma âncora
+/// que copia a IMPLEMENTAÇÃO de uma lei em vez de a nomear expira sempre que a lei se muda de
+/// casa. A âncora nova é a **porta**.
 #[test]
-fn the_curve_is_written_to_the_single_host() {
+fn the_curve_is_written_to_the_host() {
     let src = render_loop();
     let honour = src
         .split_once("if let Some(pick) = pending_ui_easing")
@@ -88,7 +94,33 @@ fn the_curve_is_written_to_the_single_host() {
         .1;
     let head: String = honour.chars().take_while(|c| *c != '{').collect();
     assert!(
-        head.contains("[host] = self.vec_pen.selected_paths()"),
-        "o bloco do pick nao e' guardado pelo hospedeiro unico: {head:?}"
+        head.contains("Some(host) = ui_host"),
+        "o bloco do pick nao e' guardado pelo hospedeiro do quadro: {head:?}"
+    );
+}
+
+/// ⛔ **NENHUM GESTO DA SEÇÃO RE-DERIVA O HOSPEDEIRO À MÃO** (auditoria de 2026-08-23).
+///
+/// ⚠️ Havia **cinco** `if let [host] = self.vec_pen.selected_paths()` espalhados pelo bloco dos
+/// estados — cinco portas para o mesmo fato —, e **nenhuma** delas era a que o `publish` usa para
+/// PINTAR a seção. Enquanto o hospedeiro foi *"a forma única selecionada"* as seis respostas
+/// coincidiam por acidente; no instante em que ele passou a ser derivado, o painel mostraria as
+/// poses de uma forma e o knob escreveria noutra — **sem nada vermelho em lado nenhum**, porque
+/// cada metade continua correta sozinha.
+///
+/// Este gate é o que impede a sexta porta de nascer.
+#[test]
+fn no_state_gesture_re_derives_the_host_by_hand() {
+    let src = render_loop();
+    let n = src
+        .matches("[host] = self.vec_pen.selected_paths()")
+        .count();
+    assert_eq!(
+        n, 0,
+        "{n} gesto(s) ainda decidem o hospedeiro por conta propria — a porta e'          `vec_ui_state_edit::host_of_selection`, e o `ui_host` do quadro e' a resposta dela"
+    );
+    assert!(
+        src.contains("let ui_host = crate::vec_ui_state_edit::host_of_selection("),
+        "o hospedeiro do quadro sumiu: sem ele cada gesto volta a responder por si"
     );
 }

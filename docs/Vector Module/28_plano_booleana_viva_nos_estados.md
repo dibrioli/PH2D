@@ -168,11 +168,20 @@ só `ph2d-vector-doc`+`-traits`"*.
 
 ⇒ **Nenhum widget novo.** O trabalho foi a **captura** e a **aplicação**.
 
-⚠️ **Como o artista alcança isto, e é uma restrição real:** a seção *States* exige um hospedeiro
-**ÚNICO**, e clicar num operando acende o **grupo inteiro**. O hospedeiro tem de ser uma FORMA cuja
-sub-árvore contenha o grupo booleano — um chip/fundo com a booleana pendurada nele. A lei que o
-permite já existia (`selection_root` **para** quando o pai é uma forma), e a cena `=74` monta
-exactamente essa disposição.
+⚠️ **Como o artista alcança isto — e a primeira versão NÃO o alcançava.** A seção *States* exigia
+um hospedeiro **ÚNICO**, e clicar num operando acende o **grupo inteiro**: a seção — com o
+interruptor *Preview* dentro dela — não era sequer pintada. A auditoria de 2026-08-23 curou-o:
+
+- o **hospedeiro é DERIVADO** da seleção (`host_of_selection`) — uma forma só é hospedeira de si
+  própria, várias são hospedadas pela **forma-ancestral que as governa**;
+- o painel **NOMEIA** o hospedeiro, porque derivar em silêncio é como um estado nasce pendurado no
+  objeto errado;
+- sem forma que governe a seleção, a seção pinta a **face vazia com a dica** em vez de sumir;
+- os **cinco** gestos da seção que re-derivavam o hospedeiro à mão passaram a ler o `ui_host` do
+  quadro, e há arch-gate a proibir o sexto.
+
+⇒ a fileira *This Shape* e a seção *States* passam a estar na tela **ao mesmo tempo**, que é o que
+autorar *"no Hover esta forma subtrai"* exige.
 
 ## 6. Os gates, e a prova de mutação
 
@@ -194,6 +203,49 @@ fixture **DONUT**: o meio não é nenhuma das pontas (buraco `16` de `64`) · �
 operandos** (a peça viaja 30 e o desenho viaja 30; o de dentro encolhe e o buraco encolhe) · o grupo
 troca de operação a meio, inclusive para uma receita · inércia · uma chegada que desenha o mesmo não
 paga segundo cozimento · ⭐⭐⭐ **a composição do quadro** (a ponte publica, a booleana consome).
+
+## 6-bis. A AUDITORIA de 2 lentes (2026-08-23) — 7 achados, todos curados
+
+O smoke passou e o Enio pediu auditoria. Ela achou **sete**, e os dois graves eram invisíveis a
+toda a suíte.
+
+| # | achado | mecanismo | como estava verde |
+|---|---|---|---|
+| **A1** ⛔ | o schema subiu por um fato que **nada media** | `the_ui_states_travel_in_the_file` construía a pose com `..ObjectPose::new(42)`: cada canal novo entrava no gate com o **default do serde**. Medido: `#[serde(skip)]` nos dois deixava **10 503/10 503** verdes, e o verbo autorado sumia de todo projeto salvo | *fixture sem o fenômeno* |
+| **A2** | o doc do gate dizia RECEITA e a fixture usava `Intersect` | o ramo `pathfinder` do `cook_side` nunca corria num morph | o gate media outra coisa |
+| **A3** | *"o conjunto capturado é EXACTAMENTE o que a preview escreve"* deixou de ser verdade | `install` escreve `VecBoolGroup` numa entidade **sem `VecPathId`** | o gate **itera ids**, e a escrita não é endereçada por id |
+| **A4** | quem ENTRA numa transição falava pelo GRUPO | duas poses escrevem no mesmo quadro ⇒ a receita era decidida pela **ordem de iteração de um `Vec`** | ninguém media |
+| **A5** | a `fill_rule` do meio não é a da partida | `Plan::at` decide por `fill_rule_for(links.len())` | risco **não reproduzido**; hoje medido em TINTA e verde |
+| **B1** ⛔ | com uma booleana selecionada a seção **STATES desaparecia** | `host()` exigia forma ÚNICA e clicar num operando acende o **grupo** | "o widget existe · é pintado · o clique chega ao barramento" estavam **verdes** |
+| **B4** | nada dizia de quem eram as poses | o hospedeiro passou a ser derivado | — |
+
+**As curas.** `host_of_selection` **deriva** o hospedeiro (uma forma é hospedeira de si própria;
+várias, a forma-ancestral que as governa) · o painel **NOMEIA** o hospedeiro · sem forma que a
+governe, a seção pinta a **face vazia com a dica** em vez de sumir · os **cinco** gestos que
+re-derivavam o hospedeiro à mão passaram a ler o `ui_host` do quadro, com arch-gate a proibir o
+sexto · `Entering`/`Leaving` deixaram de falar pelo grupo · a captura e o `install` ganharam gates
+que carregam valores **não-default**.
+
+⇒ **+12 gates, 8 mutantes mortos.** A fileira *This Shape* e a seção *States* passam a estar na
+tela ao mesmo tempo, que é o que autorar *"no Hover esta forma subtrai"* exige.
+
+### ⚠️ Duas réguas minhas estavam erradas, e a mutação apanhou-as
+
+- **`area_of` (soma de áreas absolutas) não é uma régua de REGIÃO.** Ela lê `400` e `272` para dois
+  desenhos que cobrem **exactamente a mesma região** — um vem em duas peças, o outro num composto.
+  O gate da receita usava-a como oráculo, e um mutante que devolvia a **entrada crua** sobreviveu.
+- **A diferença simétrica encadeando os dois lados num `Exclude` só** é errada assim que um lado
+  tem mais de uma peça (`a ⊕ b ⊕ c` não é `(a∪b) ⊖ c`), e devolve `0` com um lado vazio. Hoje cada
+  lado é colapsado primeiro (`ink_between`).
+- **`.is_some()` sobre o `publish` não distingue a seção CHEIA da face VAZIA** — um mutante que
+  devolvia `None` no braço da seleção múltipla sobreviveu ao gate da coexistência.
+
+### ⚠️ E o que a fixture DONUT não separa
+
+Medido: `Trim` e `Merge` desenham **a mesma região** que a união nela (`0,000` de tinta), e
+`MinusBack` desenha **nada**. Só o `Crop` separa — é por isso que o gate da receita é sobre ele, e
+o `MinusBack` ganhou gate PRÓPRIO: *uma chegada que desenha nada não se morfa; o desenho fica na
+partida e troca na chegada* (o preço é **um** salto, nomeado em vez de descoberto).
 
 ## 7. A cena de smoke — `PH2D_BUILD_SMOKE=74`
 
@@ -228,3 +280,7 @@ PARE.
 | **Medir a continuidade pela ÁREA** | é um escalar global e é **cego** a um salto de correspondência | §2.2 |
 | **Medir o custo pela igualdade do desenho** | morfar duas pontas iguais devolve a mesma forma **ao bit**: o dobro do trabalho fica invisível | §3.3 |
 | **Medir *"segue o operando"* pelo centro do BURACO** | a meio caminho o buraco está entre o ponto em que nasce e o buraco real, então mover o operando 4 move o centro 2 — *foi a régua, não o motor* | §6 |
+| **`area_of` como oráculo de REGIÃO** | soma áreas absolutas: lê 400 e 272 para dois desenhos que cobrem a mesma região | §6-bis |
+| **Diferença simétrica com os dois lados num `Exclude` só** | `a ⊕ b ⊕ c` não é `(a∪b) ⊖ c`, e um lado vazio devolve `0` | §6-bis |
+| **`.is_some()` no `publish` como prova de que a seção existe** | a **face vazia** também é um `Some` | §6-bis |
+| **Gate de receita sobre `Trim`/`Merge`/`MinusBack` na DONUT** | os dois primeiros desenham a mesma região que a união; o terceiro desenha nada | §6-bis |

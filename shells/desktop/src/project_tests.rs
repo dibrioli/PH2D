@@ -313,6 +313,18 @@ fn a_loaded_project_brings_its_animation_back_pending_the_name_heal() {
 /// APENDADO ao `ProjectState` não move constante nenhuma, então a suíte inteira fica verde com o
 /// arquivo já incompatível — o postcard é posicional e devolveria lixo bem-formado. O que se
 /// afirma aqui é a outra metade: que o dado de facto ATRAVESSA.
+///
+/// # ⚠️ TODO CANAL NOVO ENTRA AQUI COM VALOR NÃO-DEFAULT, e isto custou uma auditoria
+///
+/// A pose viajava com `..ObjectPose::new(42)`, ou seja **cada campo novo entrava neste gate com o
+/// próprio default do serde** — indistinguível de ausente. Medido em 2026-08-23: pôr
+/// `#[serde(skip)]` nos dois canais da booleana (`bool_op` / `bool_group_op`) deixava
+/// **10 503 de 10 503** testes verdes, e o verbo autorado pelo artista sumiria de todo projeto
+/// salvo com o degrau da escada a afirmar o contrário.
+///
+/// ⇒ a pose desta fixture é escrita **campo a campo, com valores que não são o default**. Um campo
+/// novo no `ObjectPose` faz este `..Default` deixar de compilar? Não — mas a lista abaixo é curta
+/// de propósito, e a linha que se acrescenta a ela é a que torna o degrau verdadeiro.
 #[test]
 fn the_ui_states_travel_in_the_file() {
     let mut states = ph2d_ui_state::StateSets::default();
@@ -320,6 +332,9 @@ fn the_ui_states_travel_in_the_file() {
     hover.objects = vec![ph2d_ui_state::ObjectPose {
         translation: [3.0, -1.0],
         opacity: 0.5,
+        // ⭐ Os dois canais da BOOLEANA, com valores que o default não produz.
+        bool_op: Some(1),
+        bool_group_op: Some(5),
         ..ph2d_ui_state::ObjectPose::new(42)
     }];
     states.set(
@@ -346,9 +361,20 @@ fn the_ui_states_travel_in_the_file() {
         back.ui_states.get(42)[1].role,
         ph2d_ui_state::StateRole::Hover
     );
+    let pose = &back.ui_states.get(42)[1].objects[0];
+    assert_eq!(pose.translation, [3.0, -1.0]);
+    // ⭐ **Os dois canais da booleana, um a um.** O `assert_eq` do `StateSets` inteiro acima não
+    // basta: ele compara o que voltou com o que foi, e um campo que NÃO viaja volta no default
+    // dos dois lados — a igualdade fica verde sobre um arquivo que perdeu o dado.
     assert_eq!(
-        back.ui_states.get(42)[1].objects[0].translation,
-        [3.0, -1.0]
+        pose.bool_op,
+        Some(1),
+        "o verbo PROPRIO da forma nao atravessou o arquivo"
+    );
+    assert_eq!(
+        pose.bool_group_op,
+        Some(5),
+        "a operacao do GRUPO nao atravessou o arquivo"
     );
 }
 

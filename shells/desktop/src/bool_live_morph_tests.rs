@@ -58,6 +58,30 @@ fn morph(id: VecPathId, op: Option<u8>, group_op: u8, t: f64) -> BoolMorph {
     }
 }
 
+/// ⭐ **QUANTA TINTA difere entre dois desenhos** — a área da diferença simétrica.
+///
+/// ⚠️ **A primeira versão encadeava os dois lados num `Exclude` só** (`a.chain(b)`), e isso é
+/// **errado assim que um lado tem mais de uma peça**: `Exclude` sobre três caminhos é `a ⊕ b ⊕ c`,
+/// não a diferença entre `(a ∪ b)` e `c`. Medido: com o `Trim` (que devolve 2 peças) ela dizia
+/// `0,000` de diferença entre desenhos cujas áreas eram 400 e 272 — e com um lado VAZIO dizia
+/// `0,000` também, porque o motor recusa uma booleana de um só operando.
+///
+/// ⇒ cada lado é primeiro colapsado numa forma composta (as peças de um resultado booleano são
+/// disjuntas, então juntá-las é exato), e só então os DOIS entram. Um lado vazio é o caso que a
+/// booleana não sabe responder, e a resposta é a área do outro.
+fn ink_between(a: &[VecPath], b: &[VecPath]) -> f64 {
+    match (super::morph::as_one(a), super::morph::as_one(b)) {
+        (None, None) => 0.0,
+        (Some(x), None) | (None, Some(x)) => ph2d_vec_boolean::area(&x).abs(),
+        (Some(x), Some(y)) => {
+            ph2d_vec_boolean::pathfinder(&[&x, &y], ph2d_vec_boolean::PathfinderOp::Exclude)
+                .map_or(f64::INFINITY, |o| {
+                    o.iter().map(|p| ph2d_vec_boolean::area(p).abs()).sum()
+                })
+        }
+    }
+}
+
 /// O quanto de buraco o desenho tem.
 fn hole_of(items: &[VecPath]) -> f64 {
     400.0 - area_of(items)
@@ -201,12 +225,13 @@ fn the_drawing_follows_the_operands_while_the_verb_changes() {
     );
 }
 
-/// ⭐ **TROCAR A OPERAÇÃO DO GRUPO anima, inclusive para uma RECEITA.**
+/// ⭐ **TROCAR A OPERAÇÃO DO GRUPO anima** — aqui entre duas operações de CONJUNTO.
 ///
-/// ⚠️ As quatro receitas (`Trim`/`Crop`/`Merge`/`MinusBack`) são verbos da PILHA INTEIRA e não têm
-/// decomposição por forma nenhuma — é por isso que a pose carrega o canal do grupo, e é este o
-/// gate que o justifica. Sem ele, o gesto mais natural do artista (selecionar a booleana e clicar
-/// noutra operação) não animaria coisa nenhuma.
+/// ⚠️ **O doc deste gate afirmava «inclusive para uma RECEITA» e a fixture passava `2` =
+/// `Intersect`** (auditoria de 2026-08-23): o ramo de receita do `cook_side` — o que chama o
+/// `pathfinder` em vez da cadeia — **nunca corria num morph**, e o argumento que justificava o
+/// canal do grupo estava escrito por cima de uma fixture que não o exercitava. A receita tem
+/// agora gate PRÓPRIO, o irmão logo abaixo.
 #[test]
 fn the_group_can_change_operation_mid_flight() {
     let (sim, scene, map, ids, _g) = donut(0); // Union
@@ -458,4 +483,118 @@ fn a_morph_from_the_inner_group_does_not_command_the_outer_one() {
         "morfaram {} grupos: o recado do grupo de dentro foi lido também pelo de fora",
         bl.morphed()
     );
+}
+
+/// ⭐ **E TROCAR PARA UMA RECEITA TAMBÉM ANIMA** — o ramo do cozimento que o irmão acima não toca.
+///
+/// ⚠️ As quatro receitas (`MinusBack`/`Trim`/`Crop`/`Merge`) são verbos da PILHA INTEIRA e não têm
+/// decomposição por forma nenhuma: `verbs_of` devolve **vazio** para elas e o `cook_side` cai no
+/// ramo do `pathfinder`. É este o ramo que justifica a pose carregar o canal do GRUPO — e ele
+/// esteve por medir enquanto o doc do irmão afirmava tê-lo medido.
+///
+/// ⚠️ **`Crop`, e só ele.** Medido nesta fixture: `Trim` e `Merge` desenham **a MESMA REGIÃO** que
+/// a união (`0,000` de tinta de diferença — as peças do `Trim` recobrem a peça inteira), e
+/// `MinusBack` desenha **nada**. Um gate sobre qualquer um dos três seria tautológico ou mediria a
+/// recusa em vez do cozimento. *Um par que não separa não é fixture.*
+///
+/// ⚠️ **E o oráculo é o COZIMENTO DIRETO**, medido em TINTA. Duas armadilhas caíram aqui: uma
+/// desigualdade (*"o meio está entre as pontas"*) deixou passar um mutante que devolvia a entrada
+/// crua; e o `area_of` — soma de áreas absolutas — lê `400` e `272` para dois desenhos que cobrem
+/// **exactamente a mesma região**, porque um vem em duas peças e o outro num composto.
+#[test]
+fn the_group_can_change_to_a_recipe_mid_flight() {
+    const CROP: u8 = 6;
+    let (sim, scene, map, ids, _g) = donut(0); // Union
+    let xf = VecXforms::new();
+    let union = frame(&sim, &scene, &map, &xf, &[]);
+
+    let (osim, oscene, omap, _oids, _og) = donut(CROP);
+    let oracle = frame(&osim, &oscene, &omap, &xf, &[]);
+    assert!(
+        ink_between(&oracle, &union) > TOL,
+        "a fixture não separa a receita da união — um gate assim passaria com o morph desligado"
+    );
+
+    let end = frame(&sim, &scene, &map, &xf, &[morph(ids[1], None, CROP, 1.0)]);
+    assert!(
+        ink_between(&end, &oracle) < TOL,
+        "a chegada do morph difere do cozimento direto da receita em {:.2} de tinta — o ramo de \
+         RECEITA não cozinhou o que devia",
+        ink_between(&end, &oracle)
+    );
+
+    let mid = frame(&sim, &scene, &map, &xf, &[morph(ids[1], None, CROP, 0.5)]);
+    assert!(
+        ink_between(&mid, &union) > TOL && ink_between(&mid, &end) > TOL,
+        "o meio coincide com uma das pontas — o morph não desenhou meio nenhum"
+    );
+}
+
+/// ⛔ **UMA CHEGADA QUE DESENHA NADA NÃO SE MORFA: o desenho FICA na partida e troca na chegada.**
+///
+/// ⚠️ `Ok(vazio)` é uma RESPOSTA do motor, não uma recusa (a interseção de duas formas disjuntas é
+/// o vazio). Mas não há forma para onde interpolar: o `Plan` casa dois desenhos, e um deles não
+/// existe. A lei é a mesma do par degenerado do `Transition::at` — *sem plano, fica-se na partida*
+/// —, e o preço é **um** salto no quadro da chegada.
+///
+/// Medido: `MinusBack` na DONUT desenha **nada** (0 peças), e a transição para ele segura os 400
+/// da união até o fim. É a única das quatro receitas com esse comportamento nesta fixture, e está
+/// aqui **nomeada** em vez de descoberta.
+#[test]
+fn an_arrival_that_draws_nothing_holds_the_start() {
+    const MINUS_BACK: u8 = 4;
+    let (sim, scene, map, ids, _g) = donut(0);
+    let xf = VecXforms::new();
+    let union = frame(&sim, &scene, &map, &xf, &[]);
+
+    let (osim, oscene, omap, _oids, _og) = donut(MINUS_BACK);
+    assert!(
+        frame(&osim, &oscene, &omap, &xf, &[]).is_empty(),
+        "a fixture não contém o fenômeno: esta receita desenha alguma coisa"
+    );
+
+    for t in [0.5, 0.999] {
+        let drawn = frame(
+            &sim,
+            &scene,
+            &map,
+            &xf,
+            &[morph(ids[1], None, MINUS_BACK, t)],
+        );
+        assert!(
+            ink_between(&drawn, &union) < TOL,
+            "em t={t} o desenho afastou-se da partida em {:.2} de tinta — sem chegada para onde \
+             ir, ele tem de FICAR",
+            ink_between(&drawn, &union)
+        );
+    }
+}
+
+/// ⭐ **O PRIMEIRO QUADRO DE UM MORPH DESENHA O QUE A PARTIDA DESENHA.**
+///
+/// ⚠️ Ele existe por um risco que a auditoria de 2026-08-23 nomeou e **não conseguiu reproduzir**:
+/// o `Plan::at` decide a `fill_rule` pelo número de contornos PAREADOS (`fill_rule_for`), então um
+/// resultado de contorno único (que a booleana coze `NonZero`) sai do morph como `EvenOdd` assim
+/// que a chegada tiver mais contornos — medido, `Union -> Trim` em `t≈0` desenha **3** contornos
+/// onde a união desenha 1, com os dois extras degenerados.
+///
+/// ⇒ em vez de remendar às cegas um caso que ninguém sabe produzir, a diferença fica **medida**: a
+/// régua é a TINTA (a área da diferença simétrica), que é cega a contornos degenerados e a
+/// `fill_rule` — e é a única coisa que o artista vê. Se um dia mudar, este gate diz onde.
+#[test]
+fn the_first_frame_of_a_morph_draws_what_the_start_draws() {
+    let (sim, scene, map, ids, _g) = donut(0); // Union
+    let xf = VecXforms::new();
+    let start = frame(&sim, &scene, &map, &xf, &[]);
+
+    // As duas chegadas com mais contornos que a partida: a que abre buraco e a receita.
+    for (name, code) in [("Subtract", 1u8), ("Trim", 5)] {
+        let first = frame(&sim, &scene, &map, &xf, &[morph(ids[1], None, code, 1e-6)]);
+        let moved = ink_between(&start, &first);
+        assert!(
+            moved < TOL,
+            "{name}: o primeiro quadro da transição moveu {moved:.3} de tinta — a transição \
+             começa com um SALTO, que é exactamente o que ela existe para não ter"
+        );
+    }
 }

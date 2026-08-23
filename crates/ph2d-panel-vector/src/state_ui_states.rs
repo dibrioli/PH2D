@@ -10,6 +10,18 @@ use std::cell::RefCell;
 /// O que a seleção tem, do ponto de vista dos estados.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiStatesState {
+    /// **O NOME do hospedeiro** — de quem são as poses desta seção. `None` = a seleção não tem
+    /// forma que a governe, e a seção pinta só o cabeçalho + a dica.
+    ///
+    /// ⚠️ **Ele existe porque o hospedeiro passou a ser DERIVADO** (auditoria de 2026-08-23): com
+    /// várias formas em mãos, a seção fala da forma-ancestral que as governa, e sem o nome o
+    /// artista gravaria as poses de um objeto julgando gravar as de outro. `Some("")` é o caso
+    /// honesto de uma forma sem `Name` — o painel cai num rótulo genérico, porque o nome é dado do
+    /// DOCUMENTO e não copy de UI.
+    ///
+    /// ⚠️ E o `None` **não** é *"não há estados"*: é *"esta seleção não tem hospedeiro"*. As duas
+    /// coisas pintam faces diferentes.
+    pub host: Option<String>,
     /// Que papéis já foram gravados, na ordem de `StateRole::ALL`.
     ///
     /// ⚠️ Um array e não um mapa: os papéis são um catálogo FIXO, e a única coisa que varia é

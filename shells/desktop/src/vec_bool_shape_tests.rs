@@ -262,3 +262,52 @@ fn the_click_seam_maps_each_chip_to_its_verb() {
         );
     }
 }
+
+/// ⛔ **O SELO DESCREVE O DOCUMENTO, e não o que a tela mostra** (auditoria de 2026-08-23).
+///
+/// Durante uma transição de estados a booleana desenha um MEIO entre duas operações, e o selo
+/// continua a dizer o verbo de PARTIDA até a chegada — porque é esse que o componente guarda.
+///
+/// ⚠️ **É uma lei, não um resto**, e este gate existe para a manter escrita: ligar o selo ao morph
+/// dá-lhe um terceiro estado (*"a caminho de"*) que nenhum gesto pode editar, e um rótulo que muda
+/// sozinho num controlo imóvel é ruído. A pergunta *"o que a tela mostra agora?"* responde-se
+/// olhando para a tela.
+#[test]
+fn the_badge_names_the_document_not_the_frame() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let a = scene.push_path(rectangle([0.0, 0.0], [20.0, 20.0]));
+    let b = scene.push_path(rectangle([10.0, 0.0], [30.0, 20.0]));
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+    let g = Entity::from_bits(
+        crate::vec_entities::group_entities(&mut sim, &[map[&a], map[&b]], "B".into()).unwrap(),
+    );
+    sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 0 }); // Union
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(map[&b]))
+        .insert(ph2d_ecs::VecBoolOp { op: 1 }); // ...e esta forma subtrai
+
+    let mut live = LiveGeometry::new();
+    let mut bl = BoolLive::default();
+    bl.recook(
+        &scene,
+        &sim,
+        &map,
+        &VecXforms::default(),
+        // Um morph EM VOO, a caminho de `Intersect`: o desenho está no MEIO.
+        &[ph2d_ui_state::BoolMorph {
+            id: b,
+            op: Some(2),
+            group_op: Some(0),
+            t: 0.5,
+        }],
+        &mut live,
+    );
+    assert_eq!(bl.morphed(), 1, "a fixture nao pos morph nenhum em voo");
+    assert_eq!(
+        role_of(&sim, &map, &bl, b),
+        Some(BoolRole::Verb(1)),
+        "o selo passou a descrever o desenho do quadro em vez do verbo que o documento guarda"
+    );
+}

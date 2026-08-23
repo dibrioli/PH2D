@@ -108,6 +108,14 @@ fn effective_code(sim: &SimWorld, map: &VecEntityMap, id: VecPathId, group_op: u
 /// (*"confuso de usar"*). A hierarquia já mostra a ORDEM; o selo acrescenta o VERBO, e a ordem
 /// mais o verbo **são** a receita.
 ///
+/// ⚠️ **E ele descreve o DOCUMENTO, nunca o quadro** (auditoria de 2026-08-23). Durante uma
+/// transição de estados a booleana desenha um MEIO entre duas operações, e o selo continua a dizer
+/// o verbo de PARTIDA até a chegada — porque é esse que o componente guarda. As duas coisas são
+/// perguntas diferentes: *que receita este documento tem?* responde-se aqui, *o que a tela mostra
+/// agora?* responde-se olhando para a tela. ⛔ Ligar o selo ao morph dá-lhe um terceiro estado
+/// (*"a caminho de"*) que nenhum gesto pode editar — e um rótulo que muda sozinho num controlo que
+/// não se pode mexer é ruído, não informação.
+///
 /// ⚠️ **Ele lê o plano do quadro ANTERIOR, e isso é deliberado.** A hierarquia publica cedo no
 /// frame e a booleana cozinha tarde (`run_render_frame`), então o plano em mãos aqui é o do
 /// cozimento passado. O atraso é de um quadro — ~16 ms, abaixo do perceptível — e a alternativa

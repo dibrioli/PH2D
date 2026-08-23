@@ -145,3 +145,75 @@ fn the_machine_publishes_while_it_walks_and_clears_on_arrival() {
         "a chegada tem de trazer o verbo de destino"
     );
 }
+
+/// ⛔ **QUEM SÓ EXISTE DE UM DOS LADOS NÃO FALA PELO GRUPO** (auditoria de 2026-08-23).
+///
+/// ⚠️ A operação de uma booleana é um fato do GRUPO, e a pose carrega-o por REDUNDÂNCIA — cada
+/// operando repete o mesmo número. Quem entra (ou sai) não tem com que concordar: deixá-lo falar
+/// faz o `install`, que escreve pose a pose no MESMO quadro, decidir a receita pela **ordem de
+/// iteração de um `Vec`**. O que se vê é uma booleana que muda de operação no primeiro quadro da
+/// transição, e o culpado é a posição de um elemento numa lista.
+///
+/// ⚠️ **O verbo PRÓPRIO fica**, e a assimetria é a afirmação: ele é fato de UMA forma, e quem
+/// entra já chega na pose de destino — como já chega na posição e na tinta de destino.
+#[test]
+fn whoever_exists_on_only_one_side_does_not_speak_for_the_group() {
+    const ARRIVING: VecPathId = 9;
+    let staying = pose(Some(0), Some(0));
+    let newcomer = ObjectPose {
+        bool_op: Some(1),
+        bool_group_op: Some(1), // ...e o estado de chegada põe o grupo em Subtract
+        ..ObjectPose::new(ARRIVING)
+    };
+    // ⚠️ Quem fica tem de MUDAR alguma coisa, senão ele não entra na transição de todo (objetos
+    // idênticos nos dois lados não são interpolados — lei do `Transition::new`) e o CONTROLE
+    // abaixo mediria a ausência dele em vez do canal.
+    let stayed = ObjectPose {
+        translation: [4.0, 0.0],
+        ..pose(Some(0), Some(0))
+    };
+    let tr = Transition::new(
+        std::slice::from_ref(&staying),
+        &[stayed.clone(), newcomer.clone()],
+    );
+
+    let mid = tr.at(0.5);
+    let entering = mid
+        .iter()
+        .find(|p| p.id == ARRIVING)
+        .expect("quem entra tem de aparecer na pose do meio");
+    assert_eq!(
+        entering.bool_group_op, None,
+        "quem entra falou pelo GRUPO: a receita passa a ser decidida pela ordem da lista"
+    );
+    assert_eq!(
+        entering.bool_op,
+        Some(1),
+        "o verbo PROPRIO de quem entra tem de chegar com ele, como a posicao dele chega"
+    );
+
+    // ⚠️ **O CONTROLE, e ele é a outra metade:** quem fica nos dois lados continua a falar pelo
+    // grupo — sem isto o gate ficaria verde sobre um canal que ninguém escreve mais.
+    let stays = mid
+        .iter()
+        .find(|p| p.id == OPERAND)
+        .expect("quem fica tem de aparecer");
+    assert_eq!(
+        stays.bool_group_op,
+        Some(0),
+        "quem existe nos DOIS lados tem de continuar a falar pelo grupo"
+    );
+
+    // E quem SAI também não fala: a transição inversa.
+    let back = Transition::new(&[stayed, newcomer], &[staying]);
+    let leaving = back.at(0.5);
+    assert_eq!(
+        leaving
+            .iter()
+            .find(|p| p.id == ARRIVING)
+            .expect("quem sai tem de aparecer")
+            .bool_group_op,
+        None,
+        "quem sai falou pelo GRUPO"
+    );
+}

@@ -37,6 +37,7 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
 /// Uma seleção com `bindings` ligações autoradas.
 fn arm(bindings: Vec<(String, usize)>) {
     ph2d_panel_vector::state::set_ui_states_state(Some(UiStatesState {
+        host: Some("Host".into()),
         recorded: [true, true, false, false],
         role_labels: [
             "Default".into(),
@@ -164,6 +165,7 @@ fn the_add_button_is_offered_below_the_pool_and_gone_at_it() {
 #[test]
 fn the_table_closes_while_the_preview_runs() {
     ph2d_panel_vector::state::set_ui_states_state(Some(UiStatesState {
+        host: Some("Host".into()),
         recorded: [true, true, false, false],
         role_labels: [
             "Default".into(),

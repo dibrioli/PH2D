@@ -24,12 +24,23 @@
 //! capturada pela MESMA porta que o botão *Rec* usa ([`crate::vec_ui_state_edit::capture`]): uma
 //! segunda leitura ao lado seria a que esquece um canal no dia em que a pose ganhar um.
 //!
-//! # O conjunto capturado é EXACTAMENTE o que a preview pode escrever
+//! # O conjunto capturado cobre tudo o que a preview pode escrever — mas ele NÃO é uma lista de ids
 //!
 //! A [`ph2d_ui_state::Machine`] só emite poses cujos ids aparecem nos estados autorados (o
 //! `overlay` dela escreve o que a `Transition` produziu, e a `Transition` casa as duas listas
 //! autoradas). ⇒ capturar todo id mencionado por qualquer estado de qualquer hospedeiro é
 //! **completo por construção**, e não uma lista que envelhece. Há gate a medi-lo.
+//!
+//! ⚠️ **E desde 2026-08-23 uma pose escreve fora do próprio id**: o canal `bool_group_op` faz o
+//! `install` escrever o `VecBoolGroup` da entidade de **GRUPO** acima da forma — e um grupo não
+//! tem `VecPathId`, logo **não pode estar no conjunto capturado**. A auditoria apanhou a frase
+//! antiga (*"EXACTAMENTE o que a preview pode escrever"*) a afirmar mais do que ela mede: o gate
+//! itera IDS, e essa escrita não é endereçada por id nenhum.
+//!
+//! ⭐ **O restauro continua correto, e é por REDUNDÂNCIA:** a pose capturada de cada operando
+//! carrega a operação do grupo, então reinstalá-la devolve o grupo. Ou seja o conjunto **cobre** a
+//! escrita sem a **conter** — e as duas coisas não são a mesma, então há gate PRÓPRIO a medir a
+//! volta (`the_group_operation_comes_back_when_the_preview_leaves`).
 //!
 //! # O rato diz *o que aconteceu*; o papel é DERIVADO
 //!

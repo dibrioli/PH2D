@@ -63,10 +63,13 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
 
 /// Cada rig: o CHIP (o fundo, que é o hospedeiro), o de FORA e o de DENTRO.
 ///
-/// ⚠️ **O chip é maior que o de fora de propósito.** Ele é o hospedeiro dos estados, e um
-/// hospedeiro é *"a forma ÚNICA selecionada"* — clicar num operando seleciona o grupo booleano
-/// inteiro, e a seção States não é oferecida. A borda do chip que sobra é onde o artista clica
-/// para o pegar sozinho.
+/// ⚠️ **O chip é o HOSPEDEIRO dos estados**, e a booleana pendura-se nele: é isso que põe os
+/// operandos dentro do que um estado dele grava (o estado é da SUB-ÁRVORE).
+///
+/// ⚠️ Ele é maior que o de fora **por legibilidade**, e já não por necessidade: até a auditoria de
+/// 2026-08-23 o hospedeiro era *"a forma ÚNICA selecionada"*, e a borda que sobra era a única
+/// superfície onde o artista o pegava sozinho — clicar no azul acendia o grupo e a seção States
+/// desaparecia. Hoje o hospedeiro é DERIVADO, e clicar em qualquer sítio do chip chega lá.
 fn build(app: &mut crate::App) {
     let Some(gfx) = app.gfx.as_mut() else {
         return;
@@ -272,9 +275,9 @@ fn announce(app: &mut crate::App) {
         return;
     }
     eprintln!("[bool-states] o roteiro (pegue a ferramenta VECTOR primeiro):");
-    eprintln!("  1. Clique na BORDA do chip da esquerda (o fundo escuro, fora do azul). ⚠️ Tem de");
-    eprintln!("     acender so' ELE — clicar no azul pega o grupo inteiro, e a' seccao States");
-    eprintln!("     precisa de uma forma so'.");
+    eprintln!("  1. Clique no chip da ESQUERDA, em qualquer sitio dele. ⚠️ Tocar o azul acende o");
+    eprintln!("     GRUPO inteiro, e esta' certo: a seccao States fala da forma que CONTEM a");
+    eprintln!("     booleana, e diz o nome dela ('States of Ready').");
     eprintln!("  2. Na seccao **States**: Default e Hover ja' tem pose. Aperte **Show** no Hover.");
     eprintln!("     ⭐ **A PROVA**: o buraco NAO pisca. Ele nasce de um ponto no meio da peca e");
     eprintln!("     cresce — e ao mesmo tempo a forma que o abre desliza e aumenta. Aperte Show");
@@ -283,11 +286,12 @@ fn announce(app: &mut crate::App) {
     eprintln!("     clicar em nada. Saia com o rato e ele volta.");
     eprintln!("  4. ⚠️ O chip da DIREITA e' o CONTROLE: material identico, sem pose nenhuma.");
     eprintln!("     Ele NAO se pode mexer, com preview ligada ou desligada.");
-    eprintln!("  5. Agora faca voce: com a preview DESLIGADA, clique na borda do chip da direita,");
-    eprintln!("     **Rec** no Default. Depois clique no azul dele (o grupo acende), va' a'");
-    eprintln!("     seccao Boolean e clique **Subtract**. Volte a clicar na borda do chip e");
-    eprintln!("     **Rec** no Hover. Ligue a Preview e passe o rato: o da direita passa a fazer");
-    eprintln!("     o mesmo que o da esquerda.");
+    eprintln!("  5. Agora faca voce: com a preview DESLIGADA, clique no chip da DIREITA e");
+    eprintln!("     **Rec** no Default. Sem trocar de seleccao, va' a' seccao Boolean, clique");
+    eprintln!("     **Subtract**, e volte a' seccao States: **Rec** no Hover. Ligue a Preview e");
+    eprintln!("     passe o rato — o da direita passa a fazer o mesmo que o da esquerda.");
+    eprintln!("     ⚠️ As duas seccoes tem de estar na tela AO MESMO TEMPO. Se para escolher o");
+    eprintln!("     modo voce tiver de trocar de seleccao, pare e diga.");
     eprintln!("  6. ⚠️ Se em vez de crescer o buraco APARECER de uma vez, pare e diga: e' isso");
     eprintln!("     que as outras ferramentas fazem, e e' o que esta wave existe para nao fazer.");
 }

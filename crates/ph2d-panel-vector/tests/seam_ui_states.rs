@@ -52,6 +52,7 @@ fn with_preview(recorded: [bool; 4], preview: Option<bool>) -> UiStatesState {
 /// A mesma, dizendo também o que a shell publica sobre o *mover carregando os estados*.
 fn with_all(recorded: [bool; 4], preview: Option<bool>, move_all: Option<bool>) -> UiStatesState {
     UiStatesState {
+        host: Some("Host".into()),
         recorded,
         role_labels: [
             "Default".into(),

@@ -98,18 +98,6 @@ pub(crate) fn easing_with(cur: ph2d_anim::Easing, pick: EasingPick) -> ph2d_anim
     }
 }
 
-/// O hospedeiro: a forma ÚNICA selecionada.
-///
-/// ⚠️ Seleção múltipla não tem hospedeiro — *"gravar o estado destas três formas"* teria de
-/// escolher qual delas é o assunto, e escolher em silêncio é como um estado nasce pendurado no
-/// objeto errado.
-fn host(selected: &[VecPathId]) -> Option<VecPathId> {
-    match selected {
-        [only] => Some(*only),
-        _ => None,
-    }
-}
-
 fn entity_of(map: &VecEntityMap, id: VecPathId) -> Option<Entity> {
     map.get(&id).map(|&bits| Entity::from_bits(bits))
 }
@@ -325,7 +313,7 @@ pub(crate) fn apply(
     states: &mut StateSets,
     verb: UiStateEdit,
 ) -> Option<(VecPathId, StateRole)> {
-    let h = host(selected)?;
+    let h = host_of_selection(sim, scene, map, selected)?;
     match verb {
         UiStateEdit::Record(role) => {
             let mut s = UiState::new(role);
@@ -401,75 +389,6 @@ pub(crate) fn shift_host_in_all_states(
     moved
 }
 
-#[must_use]
-pub(crate) fn publish(
-    selected: &[VecPathId],
-    states: &StateSets,
-    live: Option<usize>,
-    preview_on: bool,
-    move_all: bool,
-) -> Option<ph2d_panel_vector::state::UiStatesState> {
-    let h = host(selected)?;
-    let (duration, easing) = states.timing(h);
-    Some(ph2d_panel_vector::state::UiStatesState {
-        recorded: StateRole::ALL.map(|r| states.role(h, r).is_some()),
-        // ⚠️ Os rótulos saem do CATÁLOGO, não de uma lista no painel: um papel novo aparece
-        // nomeado sem ninguém tocar na UI, e nenhuma segunda lista pode envelhecer ao lado
-        // desta.
-        role_labels: StateRole::ALL.map(|r| ph2d_i18n::tr(r.i18n_key()).to_string()),
-        live,
-        #[allow(clippy::cast_possible_truncation)]
-        duration_s: duration as f32,
-        // **A MOLA** — pela MESMA porta que o motor pergunta (`StateSets::spring`), e não por uma
-        // leitura ao lado: se o painel derivasse a resposta noutro lugar, ele pintaria as linhas
-        // de mola sobre uma cena a andar por curva.
-        #[allow(clippy::cast_possible_truncation)]
-        spring: states
-            .spring(h)
-            .map(|s| (s.stiffness as f32, s.damping as f32)),
-        // **O interruptor da PREVIEW** só é oferecido quando existe pose autorada em ALGUM
-        // hospedeiro — que é exatamente a condição em que [`UiPreview::enter`] liga.
-        //
-        // ⚠️ **A pergunta é a MESMA que o modelo faz**, e não uma segunda cópia da regra: um
-        // botão pintado sobre uma cena sem poses seria um clique que não faz nada, e o artista
-        // não teria como saber que o que falta é gravar um estado.
-        preview: (!states.is_empty()).then_some(preview_on),
-        // **Mover carregando todos os estados** só faz sentido onde ESTE hospedeiro tem pose
-        // gravada — a pergunta é sobre o widget que se vai arrastar, não sobre a cena (é o
-        // oposto do `preview`, que entrega o rato a todos).
-        move_all: StateRole::ALL
-            .iter()
-            .any(|&r| states.role(h, r).is_some())
-            .then_some(move_all),
-        // **A CURVA** — publicada SEMPRE, e não só onde há pose gravada.
-        //
-        // ⚠️ É a mesma regra da duração, que está uma linha acima: as duas descrevem *como este
-        // hospedeiro transita*, e afiná-las antes de gravar o primeiro estado é a ordem natural
-        // (escolho o feel, depois poso). Escondê-las até haver pose seria uma seção que muda de
-        // tamanho enquanto o artista trabalha, pelo motivo que ele não vê.
-        easing,
-        // ⭐ **AS LIGAÇÕES** — o que faz este hospedeiro mudar de pose sozinho.
-        //
-        // ⚠️ **O papel viaja como ÍNDICE em `StateRole::ALL`**, a mesma régua dos `role_labels`
-        // acima: o painel não alcança a `ph2d-ui-state`, então ele não pode nomear um papel nem
-        // reconhecer um enum — e uma segunda tabela de nomes ali envelheceria no dia em que um
-        // papel nascesse.
-        bindings: states
-            .bindings(h)
-            .iter()
-            .map(|b| {
-                (
-                    b.name.clone(),
-                    StateRole::ALL
-                        .iter()
-                        .position(|&r| r == b.role)
-                        .unwrap_or(0),
-                )
-            })
-            .collect(),
-    })
-}
-
 /// **O gesto de tabela que um id de painel endereça**, se ele endereçar algum.
 ///
 /// ⚠️ **Uma porta só para os quatro gestos**, e não quatro varreduras espalhadas pelo roteador da
@@ -510,11 +429,14 @@ pub(crate) enum SignalEdit {
 /// ⚠️ **Ele exige hospedeiro ÚNICO**, a mesma guarda da duração e da curva: a tabela é por
 /// hospedeiro, e carimbar a mesma ligação em vários seria um gesto cujo alcance o artista não vê.
 pub(crate) fn apply_signal_edit(
+    sim: &SimWorld,
+    scene: &VecScene,
+    map: &VecEntityMap,
     states: &mut StateSets,
     selected: &[VecPathId],
     edit: SignalEdit,
 ) -> bool {
-    let Some(h) = host(selected) else {
+    let Some(h) = host_of_selection(sim, scene, map, selected) else {
         return false;
     };
     match edit {
@@ -540,6 +462,11 @@ pub(crate) fn signal_name_row(id: ph2d_editor::NodeId) -> Option<usize> {
     (0..ph2d_editor::ids::MAX_SIGNAL_BINDINGS)
         .find(|&i| ph2d_editor::ids::vector_state_signal_name_id(i) == id)
 }
+
+/// **O HOSPEDEIRO e a PROJEÇÃO** — irmão por LOC (HR-18), cortado por responsabilidade.
+#[path = "vec_ui_state_host.rs"]
+mod host;
+pub(crate) use host::{host_of_selection, publish};
 
 #[cfg(test)]
 #[path = "vec_ui_state_edit_tests.rs"]

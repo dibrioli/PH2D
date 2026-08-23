@@ -5,6 +5,12 @@
 
 use super::*;
 
+/// Um mundo VAZIO: estes gates falam da PORTA, não da árvore. Uma seleção de uma forma é
+/// hospedeira de si própria — o caso degenerado da lei do hospedeiro.
+fn bare() -> (SimWorld, VecScene, VecEntityMap) {
+    (SimWorld::new(), VecScene::default(), VecEntityMap::new())
+}
+
 /// **Cada id da tabela endereça o gesto certo** — e nada mais endereça gesto nenhum.
 #[test]
 fn every_table_id_addresses_its_own_gesture() {
@@ -52,15 +58,30 @@ fn every_table_id_addresses_its_own_gesture() {
 /// no documento.
 #[test]
 fn the_three_gestures_write_the_table_and_add_stops_at_the_pool() {
+    let (sim, scene, map) = bare();
     use crate::vec_ui_state_edit::{SignalEdit, apply_signal_edit};
 
     let host: VecPathId = 1;
     let sel = [host];
     let mut states = StateSets::default();
 
-    assert!(apply_signal_edit(&mut states, &sel, SignalEdit::Add));
+    assert!(apply_signal_edit(
+        &sim,
+        &scene,
+        &map,
+        &mut states,
+        &sel,
+        SignalEdit::Add
+    ));
     assert_eq!(states.bindings(host).len(), 1);
-    apply_signal_edit(&mut states, &sel, SignalEdit::Role(0, StateRole::Pressed));
+    apply_signal_edit(
+        &sim,
+        &scene,
+        &map,
+        &mut states,
+        &sel,
+        SignalEdit::Role(0, StateRole::Pressed),
+    );
     states.set_binding_name(host, 0, "open".into());
     assert_eq!(
         states.targets("open").collect::<Vec<_>>(),
@@ -68,10 +89,17 @@ fn the_three_gestures_write_the_table_and_add_stops_at_the_pool() {
     );
 
     while states.bindings(host).len() < ph2d_editor::ids::MAX_SIGNAL_BINDINGS {
-        assert!(apply_signal_edit(&mut states, &sel, SignalEdit::Add));
+        assert!(apply_signal_edit(
+            &sim,
+            &scene,
+            &map,
+            &mut states,
+            &sel,
+            SignalEdit::Add
+        ));
     }
     assert!(
-        !apply_signal_edit(&mut states, &sel, SignalEdit::Add),
+        !apply_signal_edit(&sim, &scene, &map, &mut states, &sel, SignalEdit::Add),
         "o Add passou do pool que o painel sabe mostrar — as linhas extra ficariam invisiveis"
     );
     assert_eq!(
@@ -79,18 +107,37 @@ fn the_three_gestures_write_the_table_and_add_stops_at_the_pool() {
         ph2d_editor::ids::MAX_SIGNAL_BINDINGS
     );
 
-    apply_signal_edit(&mut states, &sel, SignalEdit::Remove(0));
+    apply_signal_edit(&sim, &scene, &map, &mut states, &sel, SignalEdit::Remove(0));
     assert_eq!(states.targets("open").count(), 0);
 }
 
-/// **Sem hospedeiro ÚNICO a porta recusa** — a mesma guarda da duração e da curva: a tabela é por
-/// hospedeiro, e carimbar a mesma ligação em vários seria um gesto cujo alcance o artista não vê.
+/// **Sem HOSPEDEIRO a porta recusa** — a tabela é por hospedeiro, e carimbar a mesma ligação em
+/// vários seria um gesto cujo alcance o artista não vê.
+///
+/// ⚠️ **O que ela recusa deixou de ser *"mais de uma forma"*** (auditoria de 2026-08-23): uma
+/// seleção múltipla governada por uma forma TEM hospedeiro, e é ela. O que continua sem resposta é
+/// uma seleção que **nenhuma** forma governa — aqui, dois ids que o mundo vazio não relaciona.
 #[test]
-fn the_table_refuses_a_multi_selection() {
+fn the_table_refuses_a_selection_with_no_host() {
+    let (sim, scene, map) = bare();
     use crate::vec_ui_state_edit::{SignalEdit, apply_signal_edit};
 
     let mut states = StateSets::default();
-    assert!(!apply_signal_edit(&mut states, &[1, 2], SignalEdit::Add));
-    assert!(!apply_signal_edit(&mut states, &[], SignalEdit::Add));
+    assert!(!apply_signal_edit(
+        &sim,
+        &scene,
+        &map,
+        &mut states,
+        &[1, 2],
+        SignalEdit::Add
+    ));
+    assert!(!apply_signal_edit(
+        &sim,
+        &scene,
+        &map,
+        &mut states,
+        &[],
+        SignalEdit::Add
+    ));
     assert!(states.is_empty());
 }

@@ -168,7 +168,7 @@ pub(super) fn morph_results(from: &[VecPath], to: &[VecPath], t: f64) -> Vec<Vec
 /// [`ph2d_vec_blend::Plan`] casa DUAS formas. Juntar os contornos todos numa forma composta é o que
 /// deixa o casamento decidir contorno a contorno — escolher por ÍNDICE qual grupo vira qual seria
 /// uma segunda regra de correspondência ao lado da que o `Plan` já tem, e a pior das duas.
-fn as_one(items: &[VecPath]) -> Option<VecPath> {
+pub(super) fn as_one(items: &[VecPath]) -> Option<VecPath> {
     let mut it = items.iter();
     let mut out = it.next()?.clone();
     for extra in it {

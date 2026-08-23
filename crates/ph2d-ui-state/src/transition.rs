@@ -292,12 +292,27 @@ impl Transition {
                 // `Back Out` (pico 1,100) daria alfa **−0,4** a quem sai; uma mola a carregar o
                 // momento (`t < 0`) daria alfa negativo a quem entra. É exatamente o caso que o
                 // doc acima nomeia: *não é overshoot, é lixo*.
+                //
+                // ⭐ **E NENHUM DOS DOIS FALA PELO GRUPO** (`bool_group_op: None`, auditoria de
+                // 2026-08-23). A operação de uma booleana é um fato do GRUPO, e a pose carrega-o
+                // por REDUNDÂNCIA — cada operando repete o mesmo número. Quem só existe de um dos
+                // lados não tem com que concordar: deixá-lo falar faria o `install`, que escreve
+                // pose a pose no MESMO quadro, decidir a receita pela **ordem de iteração** de um
+                // `Vec` — o de fora escreve `Union`, o que entra escreve `Subtract`, e o último
+                // ganha. `None` aqui é *"não sei de grupo nenhum"* e o `install` não escreve, que
+                // é exatamente o que se quer.
+                //
+                // ⚠️ O verbo PRÓPRIO (`bool_op`) fica verbatim, e a assimetria é a lei destes dois
+                // passos: ele é fato de UMA forma, e quem entra já chega na pose de destino — como
+                // já chega na posição, na forma e na tinta de destino.
                 Step::Leaving(p) => ObjectPose {
                     opacity: lerp_f32(p.opacity, 0.0, tc),
+                    bool_group_op: None,
                     ..p.clone()
                 },
                 Step::Entering(p) => ObjectPose {
                     opacity: lerp_f32(0.0, p.opacity, tc),
+                    bool_group_op: None,
                     ..p.clone()
                 },
             })

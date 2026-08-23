@@ -191,7 +191,7 @@ pub(crate) fn view_state(sim: &SimWorld, map: &VecEntityMap) -> VecViewState {
 
 /// Teto de profundidade das caminhadas de ancestral (defesa, não limite de produto).
 /// Partilhado com o irmão [`selection`] — uma árvore corrompida tem UMA profundidade máxima.
-pub(super) const MAX_DEPTH: usize = 64;
+pub(crate) const MAX_DEPTH: usize = 64;
 
 /// `Visibility` do próprio E de cada ancestral.
 fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {

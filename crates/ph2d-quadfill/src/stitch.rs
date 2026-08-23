@@ -192,7 +192,7 @@ pub fn fill_with(
     let mut flattened = 0usize;
     let (mut sampled, mut misses) = (0usize, 0usize);
     let (mut flatten_rounds, mut flatten_residual) = (0usize, 0.0f32);
-    let (mut holonomy, mut fell_back) = (0.0f32, 0usize);
+    let (mut holonomy, mut fell_back, mut from_fan) = (0.0f32, 0usize, Vec::<bool>::new());
 
     // ── 2. Cada patch vira o seu leque.
     for (p, sides) in layout.side_arcs.iter().enumerate() {
@@ -299,13 +299,11 @@ pub fn fill_with(
             mesh_sides.push(chain);
             mesh_tau.push(tau);
         }
-        // ⭐ **O CAMPO, se o layout o trouxe** — ver [`crate::aligned`]. Um layout
-        // sem campo (gates que chamam `decompose` direto) dá `None`, e o achatamento
-        // volta ao harmónico de sempre.
+        // ⭐ **O CAMPO, se o layout o trouxe** — [`crate::aligned`]. Sem ele (gates que
+        // chamam `decompose` direto) o achatamento volta ao harmónico de sempre.
         let dir = (interior == Interior::AlignedToField && !layout.face_dir.is_empty())
             .then_some(layout.face_dir.as_slice());
-        // ⭐⭐⭐ **QUANTOS SEGMENTOS cada lado carrega** — a proporção que o domínio
-        // tem de respeitar. Ver [`crate::param::corners_for_sides`].
+        // ⭐ **QUANTOS SEGMENTOS cada lado carrega** — [`crate::param::corners_for_sides`].
         let seg: Vec<u32> = (0..n)
             .map(|i| sides[i].iter().map(|&(a, _)| quant.arc[a as usize]).sum())
             .collect();
@@ -448,6 +446,9 @@ pub fn fill_with(
         let (o, m) = dom.tally.get();
         sampled += o;
         misses += m;
+        // ⭐ Valência de origem — [`crate::shape::skew_by_fan`]. ⚠️ A inversão de
+        // orientação abaixo troca vértices e **não reordena** faces.
+        from_fan.resize(faces.len(), n != 4);
     }
 
     // ── 3. A malha, com a orientação conferida.
@@ -486,6 +487,7 @@ pub fn fill_with(
     report.sample_misses = misses;
     report.flatten_rounds = flatten_rounds;
     report.flatten_residual = flatten_residual;
+    report.skew_by_fan = crate::shape::skew_by_fan(&mesh, &from_fan);
     report.holonomy = holonomy;
     report.fell_back = fell_back;
     Ok((mesh, report))
@@ -672,6 +674,7 @@ fn measure(
         edge_long_prov,
         shape: crate::shape::quad_shape(mesh),
         skew_prov: crate::shape::skew_by_provenance(mesh, prov),
+        skew_by_fan: (0.0, 0.0),
         // ⭐⭐ **A CONTAGEM DE DOBRAS entra no relatório da fase**, e não numa
         // sonda. Ela é o defeito que o artista fotografa e o único campo, com os
         // dois de aresta, que uma malha de posições embaralhadas não reproduz.

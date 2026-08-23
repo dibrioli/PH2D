@@ -58,5 +58,5 @@ pub use report::{
     FillError, FillReport, Provenance, detail_lost, folded_against, folded_by_neighbours,
     follows_relief,
 };
-pub use shape::{QuadShape, quad_shape, skew_by_provenance};
+pub use shape::{QuadShape, quad_shape, skew_by_fan, skew_by_provenance};
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};

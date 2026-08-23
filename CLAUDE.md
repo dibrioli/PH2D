@@ -466,7 +466,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   MAPA DE POTÊNCIA (`z^(n/4)`, conforme) foi medida no arnês e rejeitada em dez minutos:** ela
   **piora** o `n=3` (14,4° → 18,6°), que é o caso dominante — os dois bordos não-radiais do sector
   são rectas do polígono e deixam de o ser sob a potência. *O arnês de isolamento paga-se na
-  primeira hipótese que mata.* ⚠️ *A primeira versão
+  primeira hipótese que mata.* ⭐⭐⭐ **E o leque explica só UM TERÇO do buraco** (`skew_by_fan`, régua
+  nova no `FillReport`): na esfera lisa as faces de **rectângulo** medem `12°` e as de **leque** `18°`,
+  contra `6°` do oráculo ⇒ ⛔ **reescrever o F3 para emitir só quadriláteros levaria a `12°`, não a
+  `6°` — a obra NÃO se justifica sozinha**, e o número que a cancelou custou vinte linhas. ⚠️ E ele
+  nomeia o que sobra: numa face de rectângulo a grade é **exactamente rectangular no domínio**
+  (o arnês mede `0,0°` para `n=4`) ⇒ os `12°` nascem no **mapa**, e como trocar o mapa não moveu
+  nada, o suspeito é a **FRONTEIRA PRESA** que os dois mapas partilham. ⚠️ *A primeira versão
   do isolamento passou um bordo ao contrário e deu `45°` no `n=4`; o controlo do quadrilátero — um
   valor conhecido de antemão — foi o que a apanhou.*
   ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede

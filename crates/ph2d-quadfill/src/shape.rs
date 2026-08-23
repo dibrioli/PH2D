@@ -213,3 +213,54 @@ pub fn skew_by_provenance(
     }
     out
 }
+
+/// ⭐⭐⭐ **O ENVIESAMENTO, separado por QUEM CONSTRUIU a face** — a grade de um
+/// rectângulo (`n = 4`) contra a de um sector de LEQUE (`n ≠ 4`).
+///
+/// Devolve `(rectângulo, leque)`, as duas medianas em graus.
+///
+/// ⛔ **É o número que decide se vale a pena reescrever o F3.** O arnês 2D provou que
+/// um sector de leque **obriga** `|360/n − 90|` de enviesamento máximo e metade disso
+/// de mediana, num domínio ideal (`tests/fan_sector.rs`); ⚠️ *o que ele não pode dizer
+/// é quanto disso sobrevive à malha real, à curvatura e ao alisamento.* Esta régua
+/// diz.
+///
+/// | se der | então |
+/// |---|---|
+/// | ⭐ rectângulo `~6°`, leque `~20°` | a previsão confirma-se, e **fazer o F3 entregar só quadriláteros** é a obra certa |
+/// | os dois `~18°` | ⛔ o leque é inocente e o defeito é de outra coisa — **não construa** |
+///
+/// ⚠️ **Uma malha sem patches de quatro lados devolve `0,0` na primeira coluna**, e
+/// `0` não é «perfeito», é «não medido». Quem a lê tem de olhar a contagem ao lado.
+#[must_use]
+pub fn skew_by_fan(mesh: &Mesh, from_fan: &[bool]) -> (f32, f32) {
+    let pos = mesh.positions();
+    let mut rect: Vec<f32> = Vec::new();
+    let mut fan: Vec<f32> = Vec::new();
+    for (i, f) in mesh.faces().iter().enumerate() {
+        let v = f.verts();
+        let n = v.len();
+        if n < 3 {
+            continue;
+        }
+        let mut worst = 0.0f32;
+        for k in 0..n {
+            let p0 = pos[v[k] as usize];
+            let a = sub(pos[v[(k + n - 1) % n] as usize], p0);
+            let b = sub(pos[v[(k + 1) % n] as usize], p0);
+            let (la, lb) = (norm(a).max(1.0e-12), norm(b).max(1.0e-12));
+            let c = a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2])) / (la * lb);
+            worst = worst.max((c.clamp(-1.0, 1.0).acos().to_degrees() - 90.0).abs());
+        }
+        if from_fan.get(i).copied().unwrap_or(false) {
+            fan.push(worst);
+        } else {
+            rect.push(worst);
+        }
+    }
+    let med = |v: &mut Vec<f32>| {
+        v.sort_by(f32::total_cmp);
+        v.get(v.len() / 2).copied().unwrap_or(0.0)
+    };
+    (med(&mut rect), med(&mut fan))
+}

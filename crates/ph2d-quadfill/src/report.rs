@@ -218,6 +218,10 @@ pub struct FillReport {
     /// e a resposta honesta é parar de supor e perguntar à malha *onde* ele mora. A
     /// face é classificada pela proveniência **dominante** dos quatro cantos dela.
     pub skew_prov: [f32; Provenance::COUNT],
+    /// ⭐⭐⭐ **O enviesamento mediano de um RECTÂNGULO contra o de um LEQUE** — ver
+    /// [`crate::shape::skew_by_fan`]. É o número que decide se o F3 tem de passar a
+    /// entregar só patches de quatro lados.
+    pub skew_by_fan: (f32, f32),
 }
 
 /// **QUANTAS FACES DA SAÍDA APONTAM CONTRA A SUPERFÍCIE POR BAIXO DELAS.**

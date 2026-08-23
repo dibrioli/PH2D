@@ -54,6 +54,10 @@ const BASELINE: &[(&str, usize)] = &[
     // Mesma forma e mesma razão do `identity.rs` acima — um placeholder genérico, congelado
     // aqui enquanto o runtime Fluent não existe.
     ("ph2d-panel-inspector/src/sections/anchors.rs", 1),
+    // ⚠️ A §11 tem o MESMO `placeholder` da §12 (o nome que o campo sugere), e a mesma dívida:
+    // as duas caem quando o `t!(…)` shipar. Uma entrada, não uma exceção — o gate continua a
+    // cobrar a SEGUNDA string que alguém acrescentar a este ficheiro.
+    ("ph2d-panel-inspector/src/sections/anim_rows.rs", 1),
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
     // ⚠️ **W-SignalLeave: a entrada da §11 saiu daqui, e a DÍVIDA NÃO.** O
     // scanner conta literais dentro de `.placeholder("…")`, e a §11 passou a ter

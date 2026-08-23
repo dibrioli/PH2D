@@ -7,33 +7,24 @@
 //! runs the snapshot sync, paints the live Inspector body, and
 //! publishes scroll bounds back to the store.
 
-use crate::paint_frame::{
-    PanelFinish, any_live_section, begin_section, finish_section, publish_and_finish,
-};
+use crate::paint_frame::{PanelFinish, begin_section, finish_section, publish_and_finish};
 use crate::state::{
-    self, current_display_unit, current_inspector_blend, current_inspector_name_is_some,
-    current_inspector_ordering, current_inspector_sampling, current_inspector_sprite,
-    current_inspector_transform, current_inspector_visibility,
-    current_inspector_visibility_section, current_pixels_per_meter, last_inspector_content_h,
-    last_inspector_visible_h,
+    self, current_inspector_visibility_section, last_inspector_content_h, last_inspector_visible_h,
 };
 use crate::sync::sync_inspector_from_snapshots;
 use crate::{InspectorPanel, sections};
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
 use ph2d_editor_core::widget::SCROLLBAR_W;
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
-    paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
+    paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use ph2d_editor_core::widget::showcase::LAST_BODY_TOP_SCREEN_Y;
 use ph2d_editor_core::widget::showcase::paint_section_separator;
-use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
 const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset
@@ -120,66 +111,10 @@ fn paint_inspector(
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
 
-    // Canonical panel title — reserve right slot for the X close
-    // button (UI canon post-2026-05-24: every panel except Hierarchy
-    // carries close X; vide `docs/UI_Padrao/components/panel_chrome.md`).
-    let title_y = rect.y + PANEL_TITLE_BASELINE;
-    let title_size = paint_panel_title(
-        rect,
-        "Inspector",
-        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
-        scene,
-        text_system,
-        theme,
-    );
-    // X close → toggles inspector visibility (apply_event handler).
-    ph2d_editor_core::widget::panel_chrome::paint_panel_close_button(
-        rect,
-        ids::INSP_CLOSE,
-        hit_index,
-        scene,
-        theme,
-    );
-    let sprite_for_header = current_inspector_sprite();
-    let subtitle_owned;
-    let subtitle: &str = match sprite_for_header.as_ref() {
-        Some(info) => {
-            let unit = current_display_unit();
-            let ppm = current_pixels_per_meter();
-            let w = unit.from_meters(info.world_size[0], ppm);
-            let h = unit.from_meters(info.world_size[1], ppm);
-            subtitle_owned = match unit {
-                ph2d_editor_core::project::DisplayUnit::Meters => {
-                    format!("{:.3} × {:.3} {}", w, h, unit.suffix())
-                }
-                ph2d_editor_core::project::DisplayUnit::Pixels => {
-                    format!("{:.0} × {:.0} {}", w, h, unit.suffix())
-                }
-            };
-            subtitle_owned.as_str()
-        }
-        None => "",
-    };
-    paint_text(
-        text_system,
-        scene,
-        subtitle,
-        rect.x + PANEL_HEAD_PAD,
-        title_y + title_size + Spacing::Xs.px(),
-        TypeToken::Sm.px(),
-        rect.w - PANEL_HEAD_PAD * 2.0,
-        resolve(ColorToken::Text3, theme),
-    );
-    let div_y = title_y + TypeToken::Md.px() + TypeToken::Sm.px() + Spacing::Xl.px();
-    let div = Rect::new(
-        rect.x + PANEL_HEAD_PAD,
-        div_y,
-        rect.w - PANEL_HEAD_PAD * 2.0,
-        1.0,
-    );
-    scene.fill_rect(rect_to_vello(div), resolve(ColorToken::Border, theme));
+    // O cabeçalho — título, subtítulo, fechar e o divisor. Ver `paint_head`.
+    let content_top =
+        crate::paint_head::paint_panel_head(rect, scene, text_system, theme, hit_index);
 
-    let content_top = div_y + Spacing::Sm.px();
     let content_bottom = rect.y + rect.h - Spacing::Xs.px();
     let scroll_y = store.panel_scroll(ids::INSP_PANEL).max(0.0);
     let clip = ph2d_vector::Rect::new(
@@ -196,31 +131,24 @@ fn paint_inspector(
     let body_top_y = content_top - scroll_y + Spacing::Xs.px();
     let mut section_tops_y: Vec<f32> = Vec::with_capacity(4);
     LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + Spacing::Xs.px()));
-    let transform_info = current_inspector_transform();
-    let sprite_info = current_inspector_sprite();
-    let visibility_info = current_inspector_visibility();
-    let ordering_info = current_inspector_ordering();
-    let sampling_info = current_inspector_sampling();
-    let slice_info = crate::state::current_inspector_slice();
-    let anchor_info = crate::state::current_inspector_anchor();
-    let anim_info = crate::state::current_inspector_anim();
-    let blend_info = current_inspector_blend();
-    let (physics_info, joint_info, wheel_info, player_info) =
-        crate::paint_frame::physics_family_infos();
-    let name_present = current_inspector_name_is_some();
-    let any_section = any_live_section([
-        transform_info.is_some(),
-        sprite_info.is_some(),
-        visibility_info.is_some(),
-        ordering_info.is_some(),
-        sampling_info.is_some(),
-        blend_info.is_some(),
-        physics_info.is_some(),
-        joint_info.is_some(),
-        wheel_info.is_some(),
-        player_info.is_some(),
+    // Os treze snapshots e o `any_section`, numa pergunta só. Ver `paint_frame::LiveSnapshots`.
+    let crate::paint_frame::LiveSnapshots {
+        transform_info,
+        sprite_info,
+        visibility_info,
+        ordering_info,
+        sampling_info,
+        slice_info,
+        anchor_info,
+        anim_info,
+        blend_info,
+        physics_info,
+        joint_info,
+        wheel_info,
+        player_info,
         name_present,
-    ]);
+        any_section,
+    } = crate::paint_frame::LiveSnapshots::fetch();
     let mut y = body_top_y + Spacing::Xs.px();
 
     let (notes_per_section, trailing_notes) = crate::paint_frame::split_notes(store);
@@ -379,8 +307,13 @@ fn paint_inspector(
         player_info.as_ref(),
         &notes_per_section,
     );
-    // **§11 Animation** (spec Sprite 08) — a última das doze a nascer, 2026-08-23.
-    y = crate::paint_frame_shared::paint_anim_section(
+    // **AS DUAS SEÇÕES COM ESTADO DE PAINEL** — a §11 Animation e a §12 Sockets/Anchors são as
+    // únicas cuja pintura depende de qual LINHA está aberta, e por isso saíram juntas para
+    // `paint_frame_shared::paint_stateful_sections`.
+    //
+    // ⚠️ Saíram porque a §11 levou este orquestrador de 348 a 365 contra uma tolerância que **só
+    // desce** — e levar só a nova devolveria o número a 348 exactos, que é ficar no mesmo sítio.
+    y = crate::paint_frame_shared::paint_stateful_sections(
         scene,
         text_system,
         theme,
@@ -394,21 +327,6 @@ fn paint_inspector(
         SECTION_HEAD_H,
         anim_info.as_ref(),
         anim_selected,
-    );
-    // **§12 Sockets / Named Anchors** (ADR-0072) — a última, e a única que precisa do ESTADO do
-    // painel (qual linha está aberta). Ver `paint_frame_shared::paint_anchor_section`.
-    y = crate::paint_frame_shared::paint_anchor_section(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        &mut section_tops_y,
-        inner_x,
-        inner_w,
-        body_top_y,
-        y,
-        SECTION_HEAD_H,
         anchor_info.as_ref(),
         anchor_selected,
         &notes_per_section,

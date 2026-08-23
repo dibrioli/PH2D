@@ -517,3 +517,61 @@ pub(crate) fn paint_anim_section(
         &[],
     )
 }
+
+/// **As duas seções que precisam do ESTADO do painel** — a §11 Animation e a §12
+/// Sockets/Anchors, na ordem em que se pintam.
+///
+/// ⚠️ **Elas andam juntas por uma PROPRIEDADE, não por vizinhança:** são as únicas do Inspector
+/// cuja pintura depende de qual LINHA está aberta — um facto que vive no `InspectorState` e que
+/// nenhuma outra seção conhece. As dez restantes leem só o snapshot.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_stateful_sections(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    section_tops_y: &mut Vec<f32>,
+    inner_x: f32,
+    inner_w: f32,
+    body_top_y: f32,
+    mut y: f32,
+    header_h: f32,
+    anim: Option<&ph2d_editor_core::screens::hero::InspectorAnimInfo>,
+    anim_selected: &mut usize,
+    anchor: Option<&ph2d_editor_core::screens::hero::InspectorAnchorInfo>,
+    anchor_selected: &mut usize,
+    notes: &[Vec<(usize, NoteData)>],
+) -> f32 {
+    y = paint_anim_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        anim,
+        anim_selected,
+    );
+    paint_anchor_section(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        section_tops_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+        y,
+        header_h,
+        anchor,
+        anchor_selected,
+        notes,
+    )
+}

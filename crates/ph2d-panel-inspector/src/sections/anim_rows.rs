@@ -254,7 +254,7 @@ fn editor(
         cur_y,
         "Hold ms / Repeat delay ms",
         &[ids::INSP_ANIM_HOLD_MS, ids::INSP_ANIM_DELAY_MS],
-        10.0,
+        10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
     );
 
     // A direção, como quatro botões. ⚠️ A seleção vem do SNAPSHOT, e não do store.

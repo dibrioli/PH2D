@@ -31,6 +31,7 @@ mod event_wheel;
 mod paint;
 mod paint_frame;
 mod paint_frame_shared;
+mod paint_head;
 mod populate;
 mod populate_anchor;
 mod populate_anim;

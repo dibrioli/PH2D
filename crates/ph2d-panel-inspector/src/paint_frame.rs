@@ -473,3 +473,77 @@ pub(crate) fn publish_and_finish(
         hit_index.register(INSPECTOR_SCROLLBAR_ID, thumb);
     }
 }
+
+/// **Todos os snapshots vivos deste quadro, lidos de uma vez.**
+///
+/// ⚠️ **Extraído do `paint_inspector` em 2026-08-23**, quando a §11 o levou acima da tolerância.
+/// Mas o corte não é só de LOC: ler os treze snapshots e decidir se **alguma** seção está viva é
+/// uma pergunta só, e ela vivia espalhada por vinte e cinco linhas no meio do orquestrador.
+///
+/// ⚠️ **O `any_section` é DERIVADO aqui**, junto de quem o alimenta. Enquanto ele estava longe,
+/// acrescentar um snapshot novo e esquecer a linha dele naquela lista não dava erro nenhum — dava
+/// um painel que se declarava vazio com uma seção pintada dentro.
+pub(crate) struct LiveSnapshots {
+    pub transform_info: Option<ph2d_editor_core::screens::hero::InspectorTransformInfo>,
+    pub sprite_info: Option<ph2d_editor_core::screens::hero::InspectorSpriteInfo>,
+    pub visibility_info: Option<ph2d_editor_core::screens::hero::InspectorVisibilityInfo>,
+    pub ordering_info: Option<ph2d_editor_core::screens::hero::InspectorOrderingInfo>,
+    pub sampling_info: Option<ph2d_editor_core::screens::hero::InspectorSamplingInfo>,
+    pub slice_info: Option<ph2d_editor_core::screens::hero::InspectorSliceInfo>,
+    pub anchor_info: Option<ph2d_editor_core::screens::hero::InspectorAnchorInfo>,
+    pub anim_info: Option<ph2d_editor_core::screens::hero::InspectorAnimInfo>,
+    pub blend_info: Option<ph2d_editor_core::screens::hero::InspectorBlendInfo>,
+    pub physics_info: Option<ph2d_editor_core::screens::hero::InspectorPhysicsInfo>,
+    pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
+    pub wheel_info: Option<ph2d_editor_core::screens::hero::InspectorWheelInfo>,
+    pub player_info: Option<ph2d_editor_core::screens::hero::InspectorPlayerInfo>,
+    pub name_present: bool,
+    /// Alguma seção viva? ⚠️ A §5 9-Slice, a §11 Animation e a §12 Sockets **não** entram nesta
+    /// conta, e é deliberado: as três só existem sobre uma sprite, que já está representada pelo
+    /// `sprite_info`. Contá-las outra vez não mudaria a resposta.
+    pub any_section: bool,
+}
+
+impl LiveSnapshots {
+    /// Lê os treze do estado do painel e decide o `any_section`.
+    pub(crate) fn fetch() -> Self {
+        let transform_info = crate::state::current_inspector_transform();
+        let sprite_info = crate::state::current_inspector_sprite();
+        let visibility_info = crate::state::current_inspector_visibility();
+        let ordering_info = crate::state::current_inspector_ordering();
+        let sampling_info = crate::state::current_inspector_sampling();
+        let blend_info = crate::state::current_inspector_blend();
+        let (physics_info, joint_info, wheel_info, player_info) = physics_family_infos();
+        let name_present = crate::state::current_inspector_name_is_some();
+        let any_section = any_live_section([
+            transform_info.is_some(),
+            sprite_info.is_some(),
+            visibility_info.is_some(),
+            ordering_info.is_some(),
+            sampling_info.is_some(),
+            blend_info.is_some(),
+            physics_info.is_some(),
+            joint_info.is_some(),
+            wheel_info.is_some(),
+            player_info.is_some(),
+            name_present,
+        ]);
+        Self {
+            transform_info,
+            sprite_info,
+            visibility_info,
+            ordering_info,
+            sampling_info,
+            slice_info: crate::state::current_inspector_slice(),
+            anchor_info: crate::state::current_inspector_anchor(),
+            anim_info: crate::state::current_inspector_anim(),
+            blend_info,
+            physics_info,
+            joint_info,
+            wheel_info,
+            player_info,
+            name_present,
+            any_section,
+        }
+    }
+}

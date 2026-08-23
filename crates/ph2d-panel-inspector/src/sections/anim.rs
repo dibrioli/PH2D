@@ -142,7 +142,7 @@ fn player_block(
         cur_y,
         "Speed (x)",
         &[ids::INSP_ANIM_SPEED],
-        0.1,
+        0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS de velocidade, não em pixels
     );
 
     cur_y = segmented_row(

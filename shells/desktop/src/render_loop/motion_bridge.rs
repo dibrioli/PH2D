@@ -460,6 +460,20 @@ pub(super) fn dispatch(
     // empty for a graph with no remapper (the common case), so the cook takes
     // its unscoped path unchanged.
     let scopes = ph2d_node_motion_time_remap::time_scopes(&motion.doc.graph, &motion.registry);
+    // Os LEQUES de tempo: um `motion.trail` em `Resampled` tem a própria entrada
+    // cozida em N instantes, em vez de lembrada num ring. Vazio para todo grafo
+    // sem um (o caso comum), e então o cook toma o caminho de sempre.
+    //
+    // ⚠️ **Fica ao lado dos escopos de propósito** — os dois são a mesma pergunta
+    // (*em que instante a sub-árvore de cima é lida?*) e um deles construído sem
+    // o outro é um quadro a cozinhar com metade da resposta. O `fixed_dt` entra
+    // aqui porque o `spacing` do rastro conta TIQUES, e a duração de um tique é
+    // do shell, não do documento.
+    motion.pump.set_time_fans(ph2d_node_motion_trail::time_fans(
+        &motion.doc.graph,
+        &motion.registry,
+        fixed_dt,
+    ));
     let target = motion_tick(playhead, fixed_dt);
 
     // ── GPU-resident cook (GPU/M5 Fase 1 + F1.2, ADR-0126) — opt-in preview ──

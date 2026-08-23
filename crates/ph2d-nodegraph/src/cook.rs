@@ -59,6 +59,32 @@ pub const SCOPE_ROOT: ScopeKey = 0;
 /// substrate stays type-agnostic.
 pub type TimeScopes = BTreeMap<NodeId, TimeMap>;
 
+/// **Leques de tempo**: `node -> [map]`. A **porta 0** do nó é cozida uma vez por
+/// mapa, e as N saídas chegam ao `eval` como um LEQUE
+/// ([`crate::cook_eval_ctx::EvalCtx::fan`]) — a mesma sub-árvore, em N instantes.
+///
+/// É a capacidade que separa *lembrar* de *re-cozinhar*: um rastro que guarda um
+/// ring só pode desenhar o PASSADO, porque é isso que um ring contém. Um rastro
+/// que re-cozinha a entrada em `t ± k·s` desenha os dois lados, e é exato sob
+/// scrub porque nada nele é estado.
+///
+/// ⚠️ **É um LEQUE, não um escopo.** Um [`TimeScopes`] reescreve o relógio da
+/// sub-árvore de um nó **uma vez**; aqui a mesma sub-árvore é cozida **N vezes**,
+/// cada uma na sua faixa de memo.
+///
+/// ⚠️ **E o que a faixa própria compra é MENOS do que parece, medido por
+/// mutação:** os valores sairiam certos mesmo com todas as fatias na mesma faixa
+/// (dentro do laço cada leitura segue a própria cozedura). O que ela compra é o
+/// instante repetido **fora de ordem** — pedir `t−1` depois de `t−2` responde do
+/// memo em vez de recomputar —, que é o caso do espaçamento NÃO-UNIFORME. Ver
+/// `repeating_an_instant_out_of_order_still_hits_the_memo`.
+///
+/// ⚠️ **Só a porta 0.** Um leque sobre uma porta de estado não teria significado
+/// (um `pre` é o tique anterior, não um instante pedido), e um leque sobre TODAS
+/// as portas multiplicaria o custo por uma coisa que nenhum nó pediu. A porta 0
+/// é a convenção do módulo para *a entrada*.
+pub type TimeFans = BTreeMap<NodeId, Vec<TimeMap>>;
+
 /// Push `map` (applied at `node`) onto a scope chain. FNV-1a over the node id
 /// and the map's bits, so distinct chains key distinct memo lanes.
 fn push_scope(key: ScopeKey, node: NodeId, map: &TimeMap) -> ScopeKey {
@@ -239,6 +265,21 @@ impl Cook {
         self.advance_tick_scoped(graph, ops, playhead, &TimeScopes::new())
     }
 
+    /// [`Self::advance_tick_scoped`] com leques — o gémeo do
+    /// [`Self::cook_scoped_fanned`]. Uma fonte de `pre` cuja entrada é um leque
+    /// tem de tirar a fotografia com o leque montado, senão o tique seguinte lê
+    /// uma sub-árvore que ninguém abanou.
+    pub fn advance_tick_fanned(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        playhead: f64,
+        scopes: &TimeScopes,
+        fans: &TimeFans,
+    ) -> Result<(), CookError> {
+        self.advance_tick_inner(graph, ops, playhead, scopes, fans)
+    }
+
     /// [`Self::advance_tick`] under time scopes: a `pre` source whose upstream
     /// crosses a remapper must snapshot the remapped subtree, not the raw one.
     /// The sources themselves are on the outer clock ([`SCOPE_ROOT`]) — a
@@ -250,6 +291,17 @@ impl Cook {
         playhead: f64,
         scopes: &TimeScopes,
     ) -> Result<(), CookError> {
+        self.advance_tick_inner(graph, ops, playhead, scopes, &TimeFans::new())
+    }
+
+    fn advance_tick_inner(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        playhead: f64,
+        scopes: &TimeScopes,
+        fans: &TimeFans,
+    ) -> Result<(), CookError> {
         let pre_sources: std::collections::BTreeSet<NodeId> = graph
             .edges()
             .iter()
@@ -257,7 +309,7 @@ impl Cook {
             .map(|e| e.from.0)
             .collect();
         for &src in &pre_sources {
-            self.cook_node(graph, ops, src, playhead, SCOPE_ROOT, scopes)?;
+            self.cook_node(graph, ops, src, playhead, SCOPE_ROOT, scopes, fans)?;
         }
         self.prev_playhead = Some(playhead);
         self.prev_outputs = self
@@ -356,7 +408,27 @@ impl Cook {
         playhead: f64,
         scopes: &TimeScopes,
     ) -> Result<&[CookValue], CookError> {
-        self.cook_node(graph, ops, target, playhead, SCOPE_ROOT, scopes)?;
+        self.cook_scoped_fanned(graph, ops, target, playhead, scopes, &TimeFans::new())
+    }
+
+    /// [`Self::cook_scoped`] com **leques de tempo** ([`TimeFans`]): um nó listado
+    /// em `fans` tem a própria porta 0 cozida uma vez por mapa, e o `eval` recebe
+    /// as N saídas.
+    ///
+    /// ⚠️ **Um leque vazio é EXACTAMENTE [`Self::cook_scoped`]** — mesma travessia,
+    /// mesma faixa de memo, mesmos bits. É por isso que este método é um ponto de
+    /// extensão e não uma segunda máquina: o caminho comum não sabe que ele
+    /// existe.
+    pub fn cook_scoped_fanned(
+        &mut self,
+        graph: &Graph,
+        ops: &dyn OpResolver,
+        target: NodeId,
+        playhead: f64,
+        scopes: &TimeScopes,
+        fans: &TimeFans,
+    ) -> Result<&[CookValue], CookError> {
+        self.cook_node(graph, ops, target, playhead, SCOPE_ROOT, scopes, fans)?;
         Ok(&self
             .cache
             .get(&(target, SCOPE_ROOT))
@@ -368,6 +440,12 @@ impl Cook {
     ///
     /// `playhead`/`key` are the clock and scope chain **this node** cooks under;
     /// its inputs may cook under a different pair when it is itself a remapper.
+    // ⚠️ **Oito argumentos, e o oitavo é o LEQUE.** Agrupá-los num struct seria a
+    // cura habitual — e aqui ela custaria mexer nas cinco chamadas recursivas e
+    // nos dois pontos de entrada por uma arrumação que nenhum leitor pediu. Os
+    // dois últimos (`scopes`, `fans`) são a MESMA pergunta em duas formas (*em que
+    // instante a sub-árvore de cima é lida?*) e viajam sempre juntos.
+    #[allow(clippy::too_many_arguments)]
     fn cook_node(
         &mut self,
         graph: &Graph,
@@ -376,6 +454,7 @@ impl Cook {
         playhead: f64,
         key: ScopeKey,
         scopes: &TimeScopes,
+        fans: &TimeFans,
     ) -> Result<u64, CookError> {
         let inst = graph.node(node).ok_or(CookError::UnknownNode)?;
         let op = ops.resolve(inst.type_id()).ok_or(CookError::UnknownType)?;
@@ -400,7 +479,7 @@ impl Cook {
         for port in 0..manifest.inputs.len() {
             match graph.input_edge(node, port) {
                 Some((src, src_port, false)) => {
-                    let rev = self.cook_node(graph, ops, src, in_playhead, in_key, scopes)?;
+                    let rev = self.cook_node(graph, ops, src, in_playhead, in_key, scopes, fans)?;
                     input_revs.push(rev);
                     input_values.push(self.cur_output(src, in_key, src_port));
                 }
@@ -419,7 +498,7 @@ impl Cook {
         let mut driven: BTreeMap<&str, f32> = BTreeMap::new();
         if let Some(sources) = sources {
             for (name, (src, src_port)) in sources {
-                let rev = self.cook_node(graph, ops, *src, in_playhead, in_key, scopes)?;
+                let rev = self.cook_node(graph, ops, *src, in_playhead, in_key, scopes, fans)?;
                 input_revs.push(rev);
                 if let Some(v) = crate::param_source::driven_value(&self.cur_output(
                     *src,
@@ -432,6 +511,35 @@ impl Cook {
                 // rather than to 0.0: a wire that has not produced a number yet has not
                 // said the number is zero, and a scene that goes to zero on a frame where
                 // an emitter has not spawned yet is a scene that flickers.
+            }
+        }
+
+        // 1c. **O LEQUE** (`TimeFans`): a porta 0 deste nó cozida uma vez por mapa.
+        //
+        // ⚠️ **As revisões entram no `input_revs`**, ao lado das das portas — é
+        // isso que faz o leque pertencer à impressão digital deste nó: mudar o
+        // `length` de um rastro re-cozido muda quantos mapas há, e sem isto o
+        // memo devolveria a cauda antiga.
+        //
+        // ⚠️ **E cada mapa tem a sua faixa de memo** (`push_scope`), então dois
+        // ecos que pedem o mesmo instante — dois rastros irmãos, ou o mesmo sob
+        // um `Loop` — partilham a faixa e o custo, em vez de recomputarem.
+        let mut fan_values: Vec<CookValue> = Vec::new();
+        if let Some(maps) = fans.get(&node)
+            && let Some((src, src_port, false)) = graph.input_edge(node, 0)
+        {
+            for map in maps {
+                let (fan_playhead, fan_key) = if map.is_identity() {
+                    (in_playhead, in_key)
+                } else {
+                    (map.apply(in_playhead), push_scope(in_key, node, map))
+                };
+                if fan_key != SCOPE_ROOT {
+                    self.live_keys.insert(fan_key);
+                }
+                let rev = self.cook_node(graph, ops, src, fan_playhead, fan_key, scopes, fans)?;
+                input_revs.push(rev);
+                fan_values.push(self.cur_output(src, fan_key, src_port));
             }
         }
 
@@ -472,6 +580,7 @@ impl Cook {
         // 3. Recompute.
         let mut ctx = EvalCtx {
             inputs: &input_values,
+            fan: &fan_values,
             externals: &self.externals,
             read_externals: Vec::new(),
             playhead,

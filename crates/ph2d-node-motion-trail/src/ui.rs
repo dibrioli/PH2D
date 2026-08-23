@@ -5,7 +5,7 @@
 //! e este responde *como ele se APRESENTA*. É o mesmo corte que os irmãos
 //! `motion.boids` (`ui.rs`) e `motion.emitter` (`params_ui.rs`) já fizeram.
 
-use super::{ECHO_BLEND, ECHO_BLEND_LABELS, MAX_LENGTH, MAX_SPACING};
+use super::{ECHO_BLEND, ECHO_BLEND_LABELS, FORWARD, MAX_LENGTH, MAX_SPACING, SOURCE};
 
 use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
 
@@ -96,6 +96,30 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &ECHO_BLEND_LABELS,
         },
     },
+    ParamUiHint {
+        param: SOURCE,
+        label: "Source",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            // *Remembered* = o ring (o que sempre houve). *Resampled* = a entrada
+            // RE-COZIDA nos instantes de cada eco.
+            labels: &["Remembered", "Resampled"],
+        },
+    },
+    ParamUiHint {
+        param: FORWARD,
+        label: "Forward Steps",
+        min: 0.0,
+        // O curso é o dos ecos que podem existir: `length` conta a cabeça, então
+        // um a menos. O clamp real vive no `forward_of`, contra o `length` DESTE
+        // nó — o slider não pode saber qual é.
+        #[expect(clippy::cast_precision_loss, reason = "um teto de contagem")]
+        max: (MAX_LENGTH - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
 ];
 
 /// O espaçamento é uma contagem de TICKS, os dois ângulos são GRAUS, e os três alvos
@@ -145,4 +169,9 @@ pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("saturation", "Colour"),
     // O operador é sobre a COR na tela, tanto quanto o matiz e a saturação.
     ParamGroup::new(ECHO_BLEND, "Colour"),
+    // **De onde o eco vem**, e o que só a re-cozedura permite. Ficam juntos
+    // porque o `Forward Steps` é INERTE no modo do ring — pô-lo em `Decay` faria
+    // dele um knob que às vezes não faz nada, num sítio onde nada mais é assim.
+    ParamGroup::new(SOURCE, "Source"),
+    ParamGroup::new(FORWARD, "Source"),
 ];

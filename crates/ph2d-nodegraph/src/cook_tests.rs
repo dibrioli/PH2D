@@ -185,6 +185,7 @@ struct Ops {
     bad: Bad,
     delay: Delay,
     clock: ClockNode,
+    fan: cook_fan_tests::FanNode,
 }
 impl OpResolver for Ops {
     fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
@@ -195,6 +196,7 @@ impl OpResolver for Ops {
             t if t == BAD_MAN.id => Some(&self.bad),
             t if t == DELAY_MAN.id => Some(&self.delay),
             t if t == CLOCK_MAN.id => Some(&self.clock),
+            t if t == cook_fan_tests::FAN_MAN.id => Some(&self.fan),
             _ => None,
         }
     }
@@ -214,6 +216,7 @@ fn ops() -> Ops {
         clock: ClockNode {
             calls: AtomicU64::new(0),
         },
+        fan: cook_fan_tests::FanNode,
     }
 }
 
@@ -681,6 +684,10 @@ fn the_initial_checkpoint_is_the_tick_zero_seed() {
 
 #[path = "cook_scope_tests.rs"]
 mod scope;
+
+/// Os gates dos LEQUES de tempo — a porta 0 cozida em N instantes.
+#[path = "cook_fan_tests.rs"]
+mod cook_fan_tests;
 
 #[path = "cook_bypass_tests.rs"]
 mod bypass;

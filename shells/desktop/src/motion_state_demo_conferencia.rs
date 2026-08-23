@@ -483,6 +483,9 @@ mod campo;
 /// O anuncio da cena `=85` — as curas novas da folha 06 (animadores).
 #[path = "motion_state_demo_conferencia_drawn.rs"]
 mod drawn;
+/// O anuncio da cena `=88` — o eco que ve^ o futuro (folha 07, o P1).
+#[path = "motion_state_demo_conferencia_echo.rs"]
+mod echo;
 /// O anuncio da cena `=84` — as curas novas da folha 11 (fx raster).
 #[path = "motion_state_demo_conferencia_fx_modes.rs"]
 mod fx_modes;
@@ -490,4 +493,5 @@ pub(super) use bezier::bezier_family;
 pub(super) use body::body_family;
 pub(super) use campo::field_port_family;
 pub(super) use drawn::drawn_family;
+pub(super) use echo::echo_family;
 pub(super) use fx_modes::fx_modes_family;

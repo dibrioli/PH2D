@@ -77,6 +77,9 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod carry;
+mod resample;
+pub use resample::{FORWARD, SOURCE, SOURCE_RESAMPLED, echo_offsets, time_fans};
+use resample::{authored_span, forward_of, step_resampled};
 mod colour;
 use carry::{add_scalar, ages, concat, fade_alpha, gather, scale_vec2, tint_op};
 
@@ -233,6 +236,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // alpha-over de sempre, byte-idêntico. Ver [`ECHO_BLEND`].
         ParamSpec {
             name: ECHO_BLEND,
+            default: 0.0,
+        },
+        // **DE ONDE O ECO VEM** — `0` = Remembered (o ring que sempre existiu, o
+        // default, byte-idêntico), `1` = Resampled (a entrada RE-COZIDA em
+        // `t ± k·spacing`). Ver `SOURCE_RESAMPLED`.
+        ParamSpec {
+            name: SOURCE,
+            default: 0.0,
+        },
+        // **Quantos dos ecos vêm da FRENTE** (AE *CC Wide Time · Forward Steps*).
+        // `0` = todos atrás, o rastro de sempre. Só tem efeito em `Resampled`:
+        // um ring não contém o futuro, por construção.
+        ParamSpec {
+            name: FORWARD,
             default: 0.0,
         },
     ],
@@ -476,6 +493,32 @@ impl Decay {
         }
     }
 
+    /// **O estado ABSOLUTO de um eco de idade `age`**, em vez do passo de um tick.
+    ///
+    /// O ring aplica [`Self::per_tick`] uma vez por tick, então uma linha com `n`
+    /// ticks levou-a `n` vezes; o rastro RE-COZIDO não tem passado nenhum a que
+    /// somar, e tem de chegar ao mesmo sítio de uma vez.
+    ///
+    /// ⚠️ **`at_age(span, 1)` é `per_tick(span)`, expressão por expressão** — a
+    /// generalização contém o caso antigo, e é por isso que existe uma lei e não
+    /// duas. (Não ao BIT ao longo da cauda, de propósito: `rate^n` por `n`
+    /// multiplicações e `rate_for(alvo, n/span)` são a mesma matemática por dois
+    /// caminhos de arredondamento, e o modo do ring continua a ser o primeiro.)
+    #[must_use]
+    fn at_age(self, span: u32, age: u32) -> Self {
+        if span == 0 {
+            return Self::NEUTRAL;
+        }
+        let f = age as f32 / span as f32;
+        Self {
+            fade: rate_for(self.fade, f),
+            shrink: rate_for(self.shrink, f),
+            saturation: rate_for(self.saturation, f),
+            hue_shift: step_for(self.hue_shift, span) * age as f32,
+            spin: step_for(self.spin, span) * age as f32,
+        }
+    }
+
     /// Envelhece um conjunto de linhas carregadas em UM tick. **Recebe as taxas já
     /// derivadas** — chamá-la com os alvos autorados é o defeito que o smoke de
     /// 2026-08-08 reportou.
@@ -569,13 +612,23 @@ impl NodeOp for MotionTrail {
             saturation: ctx.param("saturation"),
             spin: ctx.param("spin"),
         };
-        let mut out = step(
-            ctx.input(0),
-            ctx.input(1),
-            ctx.param("length"),
-            decay,
-            ctx.param("spacing"),
-        );
+        let length = ctx.param("length");
+        let spacing = ctx.param("spacing");
+        // ⚠️ **O leque manda, e a AUSÊNCIA dele manda de volta.** `Resampled` sem
+        // leque montado não é uma cena vazia — é uma janela em que a camada que
+        // conhece os tipos ainda não o construiu (ou um harness que cozinha o nó
+        // sozinho). Cair no ring é o que impede um rastro de PISCAR enquanto o
+        // shell não pousa os mapas.
+        let resampled = ctx.param(SOURCE) >= 0.5 && ctx.fan_len() > 0;
+        let mut out = if resampled {
+            let k = generations(length, ctx.fan(0).count().max(1));
+            let s = spacing_of(spacing);
+            let offsets = echo_offsets(k, s, forward_of(ctx.param(FORWARD), k));
+            let fan: Vec<&Stream> = (0..ctx.fan_len()).map(|i| ctx.fan(i)).collect();
+            step_resampled(&fan, &offsets, decay, authored_span(k, s))
+        } else {
+            step(ctx.input(0), ctx.input(1), length, decay, spacing)
+        };
         // ⚠️ **Só escreve a coluna quando o artista escolheu**: `0` é *o modo do sink*, e
         // não escrever é o que mantém o default byte-idêntico (uma coluna a mais muda a
         // impressão digital do stream e o custo de toda junção a jusante).
@@ -625,3 +678,8 @@ mod tail_target_tests;
 #[cfg(test)]
 #[path = "mask_tests.rs"]
 mod mask_tests;
+
+/// Os gates do rastro RE-COZIDO — o leque de tempo no lugar do ring.
+#[cfg(test)]
+#[path = "resample_tests.rs"]
+mod resample_tests;

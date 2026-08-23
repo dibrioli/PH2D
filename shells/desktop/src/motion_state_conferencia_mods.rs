@@ -109,6 +109,12 @@ pub(crate) mod conferencia_demos_bezier;
 #[path = "motion_state_conferencia_demos_body.rs"]
 pub(crate) mod conferencia_demos_body;
 
+/// A cena do ECO QUE VE^ O FUTURO (`=88`) — o `Source: Resampled` do `motion.trail`.
+/// ⚠️ O caminho e' PURO de proposito (params dirigidos por `value.lfo`): um leque sobre
+/// um simulador e' RECUSADO pelo cook, e a cena existe para mostrar o que ele autoriza.
+#[path = "motion_state_conferencia_demos_echo.rs"]
+pub(crate) mod conferencia_demos_echo;
+
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.
 #[path = "motion_state_conferencia_demos_campo.rs"]

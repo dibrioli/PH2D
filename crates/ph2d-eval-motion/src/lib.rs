@@ -37,6 +37,9 @@
 //! lowering already reads them.
 
 use ph2d_nodegraph::attr::{Column, PAR_THRESHOLD, Stream};
+/// Os LEQUES de tempo desta marcha (ADR-0163) — o acessor e o porquê da assimetria.
+#[path = "fans.rs"]
+mod fans;
 /// O achador de substeps — a convenção de manifesto que o pump lê antes de cada cook.
 #[path = "substep_zones.rs"]
 mod substep_zones;
@@ -69,6 +72,8 @@ pub struct MotionCookPump {
     /// Persistent cook — its memo + `pre`-edge feedback are carried across
     /// frames, so it must NOT be re-created each frame.
     pub cook: Cook,
+    /// **Os LEQUES DE TEMPO desta marcha** — ver o módulo `fans`. Vazio por omissão.
+    fans: ph2d_nodegraph::cook::TimeFans,
     /// Reused per-frame lowering buffer — zero-alloc in steady state.
     pub instances: Vec<RenderInstance>,
     /// The cooked VECTOR shape instances this frame (ADR-0154) — the other side
@@ -138,6 +143,7 @@ impl MotionCookPump {
     pub fn new() -> Self {
         Self {
             cook: Cook::new(),
+            fans: ph2d_nodegraph::cook::TimeFans::new(),
             instances: Vec::new(),
             vector_instances: Vec::new(),
             last_cooked_tick: None,
@@ -271,7 +277,9 @@ impl MotionCookPump {
             // Advance the 1-tick `pre` feedback once per cooked frame — ONCE for
             // the whole graph, not per sink (each sink's `pre` sources are
             // snapshotted by the same call).
-            let _ = self.cook.advance_tick_scoped(graph, ops, playhead, scopes);
+            let _ = self
+                .cook
+                .advance_tick_fanned(graph, ops, playhead, scopes, &self.fans);
         }
         self.record_tap_fires(tick);
         self.last_cooked_tick = Some(tick);
@@ -307,7 +315,10 @@ impl MotionCookPump {
                     // sequential node caught inside a remapped time scope)
                     // contributes nothing; the others still draw. The error is
                     // kept for the shell.
-                    match self.cook.cook_scoped(graph, ops, sink, playhead, scopes) {
+                    match self
+                        .cook
+                        .cook_scoped_fanned(graph, ops, sink, playhead, scopes, &self.fans)
+                    {
                         Ok(outputs) => {
                             if let Some(v) = outputs.first() {
                                 let stream = v.as_stream();
@@ -365,7 +376,10 @@ impl MotionCookPump {
                     // all of them would turn one bad node into a black frame. The
                     // caller sees a short set, disagrees with `plan.boundaries`, and
                     // falls back cleanly.
-                    match self.cook.cook_scoped(graph, ops, node, playhead, scopes) {
+                    match self
+                        .cook
+                        .cook_scoped_fanned(graph, ops, node, playhead, scopes, &self.fans)
+                    {
                         Ok(outputs) => {
                             if let Some(v) = outputs.first() {
                                 self.boundary_streams.push((node, v.as_stream().clone()));
@@ -394,7 +408,9 @@ impl MotionCookPump {
             }
             // Uma tomada que falha ao cozinhar simplesmente NÃO APARECE — o chamador lê uma
             // lista mais curta, nunca um stream errado (a política do `boundary_streams`).
-            if let Ok(outputs) = self.cook.cook_scoped(graph, ops, node, playhead, scopes)
+            if let Ok(outputs) = self
+                .cook
+                .cook_scoped_fanned(graph, ops, node, playhead, scopes, &self.fans)
                 && let Some(v) = outputs.first()
             {
                 self.tap_streams.push((node, v.as_stream().clone()));
@@ -480,7 +496,9 @@ impl MotionCookPump {
             // Advance the `pre` feedback exactly as the forward pump does — so
             // after rendering the target the cook is left ready for `target+1`,
             // and resumed playback continues bit-exact (no off-by-one).
-            let _ = self.cook.advance_tick_scoped(graph, ops, playhead, scopes);
+            let _ = self
+                .cook
+                .advance_tick_fanned(graph, ops, playhead, scopes, &self.fans);
             if t == target_tick {
                 break;
             }

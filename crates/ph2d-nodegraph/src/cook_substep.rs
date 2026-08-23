@@ -3,7 +3,7 @@
 //! Filho de [`super`] (o `#[path]` esta no `cook.rs`): o bracket mexe em `tick`,
 //! `prev_playhead`, `prev_outputs` e `cache`, todos privados do modulo pai.
 
-use super::{Cook, CookError, OpResolver, SCOPE_ROOT, TimeScopes};
+use super::{Cook, CookError, OpResolver, SCOPE_ROOT, TimeFans, TimeScopes};
 use crate::graph::{Graph, NodeId};
 
 impl Cook {
@@ -89,9 +89,17 @@ impl Cook {
                 self.tick += 1;
             }
             let t_k = frame_start + span * (f64::from(k) / f64::from(n));
-            self.cook_node(graph, ops, target, t_k, SCOPE_ROOT, &scopes)?;
+            self.cook_node(
+                graph,
+                ops,
+                target,
+                t_k,
+                SCOPE_ROOT,
+                &scopes,
+                &TimeFans::new(),
+            )?;
             for &src in &mine {
-                self.cook_node(graph, ops, src, t_k, SCOPE_ROOT, &scopes)?;
+                self.cook_node(graph, ops, src, t_k, SCOPE_ROOT, &scopes, &TimeFans::new())?;
                 if let Some(c) = self.cache.get(&(src, SCOPE_ROOT)) {
                     self.prev_outputs.insert(src, c.outputs.clone());
                 }

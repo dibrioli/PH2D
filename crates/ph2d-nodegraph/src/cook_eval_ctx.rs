@@ -20,6 +20,10 @@ use std::sync::Arc;
 /// FBP black box (ADR-0031).
 pub struct EvalCtx<'a> {
     pub(super) inputs: &'a [CookValue],
+    /// **O LEQUE** ([`crate::cook::TimeFans`]) — a porta 0 deste nó cozida em N
+    /// instantes, em vez de uma vez. Vazio para todo nó que não pediu um, que é
+    /// todo nó menos um.
+    pub(super) fan: &'a [CookValue],
     pub(super) playhead: f64,
     pub(super) manifest: &'static NodeManifest,
     pub(super) overrides: Option<&'a BTreeMap<String, f32>>,
@@ -85,6 +89,26 @@ impl<'a> EvalCtx<'a> {
 
     pub fn input_count(&self) -> usize {
         self.inputs.len()
+    }
+
+    /// **Quantas fatias o leque trouxe** ([`crate::cook::TimeFans`]) — `0` quando
+    /// este nó não pediu um.
+    ///
+    /// ⚠️ **`0` não é «a porta está desligada»**: é *"ninguém montou um leque
+    /// para mim"*. Um nó com modo de re-cozedura ligado e leque vazio tem de
+    /// cair no comportamento sem leque, nunca emitir vazio — o leque é montado
+    /// pela camada que conhece os tipos, e uma janela que ainda não o montou
+    /// não é uma cena sem conteúdo.
+    pub fn fan_len(&self) -> usize {
+        self.fan.len()
+    }
+
+    /// A fatia `k` do leque, do instante mais próximo do agora para o mais
+    /// distante — a ordem em que a camada de domínio montou os mapas. Vazia fora
+    /// de alcance, como uma porta desligada.
+    pub fn fan(&self, k: usize) -> &Stream {
+        static EMPTY: Stream = Stream::empty();
+        self.fan.get(k).map_or(&EMPTY, CookValue::as_stream)
     }
 
     /// **Did this node emit anything on the previous tick?** — the node's own memory of the

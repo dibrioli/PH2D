@@ -462,7 +462,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   sem malha nem campo). Na esfera lisa **8 dos 16 patches são triângulos e 3 pentágonos** ⇒ é daí que
   vem a maior parte dos `18°`. ⛔ **E não é afinável:** `n` cantos rectos à volta de um ponto pedem
   `n × 90°` e o plano só dá `360°` — a cura é **dar a cada sector o SEU domínio** (uma unidade
-  quadrada por sector, cosidos nos raios), o que muda o `ph2d_quadfill::param`. ⚠️ *A primeira versão
+  quadrada por sector, cosidos nos raios), o que muda o `ph2d_quadfill::param`. ⛔ **A cura por
+  MAPA DE POTÊNCIA (`z^(n/4)`, conforme) foi medida no arnês e rejeitada em dez minutos:** ela
+  **piora** o `n=3` (14,4° → 18,6°), que é o caso dominante — os dois bordos não-radiais do sector
+  são rectas do polígono e deixam de o ser sob a potência. *O arnês de isolamento paga-se na
+  primeira hipótese que mata.* ⚠️ *A primeira versão
   do isolamento passou um bordo ao contrário e deu `45°` no `n=4`; o controlo do quadrilátero — um
   valor conhecido de antemão — foi o que a apanhou.*
   ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede

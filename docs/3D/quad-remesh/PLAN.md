@@ -3477,3 +3477,30 @@ um sintoma.
 | o quê | porquê não | onde |
 |---|---|---|
 | afinar o leque dentro de um domínio plano partilhado | `n × 90° > 360°` para `n ≠ 4` — é geometria, não implementação | esta secção |
+
+### ⛔ A primeira cura do mecanismo, medida NO ARNÊS e rejeitada em dez minutos
+
+O sector abre `2π/n` no centro e um quadrado abre `π/2`; a potência complexa
+`w = z^(n/4)` leva um ao outro e é **conforme** fora da origem — ela endireita o
+ângulo e concentra o defeito no centro, que é onde ele pode ficar (o centro do leque é
+irregular por construção). ⭐ **Parecia a cura exacta do mecanismo.**
+
+| `n` | leque de hoje | ⭐ com potência |
+|---|---|---|
+| **3** | `14,4°` | ⛔ **`18,6°`** — **PIOR** |
+| 4 | `0,0°` | `0,0°` |
+| 5 | `7,6°` | `6,4°` |
+| 6 | `14,4°` | `11,6°` |
+
+⛔ **Ela piora justamente o caso dominante** — na esfera lisa, **8 dos 16** patches são
+triângulos. ⚠️ **E o motivo é geométrico:** dos quatro bordos do sector, dois são
+**rectas do polígono**; sob uma potência elas deixam de ser rectas, e a grade de Coons
+herda a curvatura delas. *A cura de um defeito angular introduz um defeito de bordo.*
+
+⭐⭐⭐ **O que isto custou:** dez minutos no arnês 2D, contra a obra que teria sido
+implementá-la no produto e medi-la na esfera. *O arnês de isolamento paga-se na primeira
+hipótese que ele mata.* A recusa está **gateada** — se um dia o `n = 3` deixar de piorar,
+o gate reprova e manda refazer a tabela.
+
+⇒ **Confirma-se o que a geometria já dizia:** a saída **não** é uma mudança de
+coordenada no domínio partilhado. É dar a cada sector o **seu** domínio.

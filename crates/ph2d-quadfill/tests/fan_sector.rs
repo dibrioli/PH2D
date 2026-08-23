@@ -32,6 +32,33 @@
 
 use ph2d_quadfill::fan::coons;
 
+/// ⭐⭐⭐ **O MAPA DE POTÊNCIA que ENDIREITA o sector.**
+///
+/// O sector de um `n`-gono abre `2π/n` no centro; um quadrado abre `π/2`. A potência
+/// complexa `w = z^(n/4)` leva um ao outro — `θ ↦ θ·n/4` e `r ↦ r^(n/4)` —, e é
+/// **holomorfa fora da origem**, logo **conforme**: ela preserva ângulos em toda a
+/// parte menos no centro.
+///
+/// ⭐ *É exactamente onde o defeito angular pode ficar*: o centro de um leque é um
+/// vértice irregular por construção, e tem de o ser. A construção de hoje espalha
+/// esse defeito pelo sector inteiro; esta concentra-o num ponto.
+fn to_w(z: [f32; 2], n: usize) -> [f32; 2] {
+    #[allow(clippy::cast_precision_loss)]
+    let k = n as f32 / 4.0;
+    let (r, a) = (z[0].hypot(z[1]), z[1].atan2(z[0]));
+    let rk = r.powf(k);
+    [rk * (a * k).cos(), rk * (a * k).sin()]
+}
+
+/// A inversa de [`to_w`].
+fn to_z(w: [f32; 2], n: usize) -> [f32; 2] {
+    #[allow(clippy::cast_precision_loss)]
+    let k = 4.0 / n as f32;
+    let (r, a) = (w[0].hypot(w[1]), w[1].atan2(w[0]));
+    let rk = r.powf(k);
+    [rk * (a * k).cos(), rk * (a * k).sin()]
+}
+
 /// O canto de um `n`-gono regular inscrito no círculo unitário — a mesma lei do
 /// `param::corners_for`.
 fn corner(n: usize, i: usize) -> [f32; 2] {
@@ -109,6 +136,43 @@ fn how_much_skew_does_a_fan_sector_force() {
         assert_eq!(right[k], top[k], "n={n}: os bordos nao emendam no canto");
         let g = coons(&bottom, &top, &left, &right);
 
+        // ⭐⭐⭐ **A CURA, medida AQUI antes de tocar no produto.** O mesmo sector,
+        // com os quatro bordos levados ao espaço `w` — onde ele abre `π/2` —, a
+        // grade construída lá, e cada ponto trazido de volta. ⚠️ *A medição é feita
+        // em `z`*, que é o domínio onde o achatamento vive: medir em `w` diria que um
+        // quadrado é um quadrado, o que é tautologia
+        // ([[feedback_a_gate_that_asserts_what_construction_guarantees_is_a_tautology]]).
+        let cured = {
+            let m = |c: &[[f32; 2]]| -> Vec<[f32; 2]> { c.iter().map(|&q| to_w(q, n)).collect() };
+            let gw = coons(&m(&bottom), &m(&top), &m(&left), &m(&right));
+            gw.iter()
+                .map(|row| row.iter().map(|&q| to_z(q, n)).collect::<Vec<_>>())
+                .collect::<Vec<_>>()
+        };
+        let cured_p50 = {
+            let mut cs: Vec<f32> = Vec::new();
+            for a in 0..cured.len() - 1 {
+                for b in 0..cured[a].len() - 1 {
+                    cs.push(skew([
+                        cured[a][b],
+                        cured[a + 1][b],
+                        cured[a + 1][b + 1],
+                        cured[a][b + 1],
+                    ]));
+                }
+            }
+            cs.sort_by(f32::total_cmp);
+            #[allow(clippy::cast_precision_loss, clippy::cast_sign_loss)]
+            let q = |t: f32| cs[(((cs.len() - 1) as f32 * t).round() as usize).min(cs.len() - 1)];
+            eprintln!(
+                "        ⭐ com o mapa de POTENCIA: p50 {:>5.1}° p95 {:>5.1}° max {:>5.1}°",
+                q(0.50),
+                q(0.95),
+                cs.last().copied().unwrap_or(0.0),
+            );
+            q(0.50)
+        };
+
         let mut all: Vec<f32> = Vec::new();
         let mut centre_cell = 0.0f32;
         for a in 0..g.len() - 1 {
@@ -143,6 +207,30 @@ fn how_much_skew_does_a_fan_sector_force() {
             (max - esperado).abs() <= 0.5,
             "n={n}: a grade do sector traz {max:.1}° e o canto do centro pede {esperado:.1}° \
              -- a lei mudou, ou os bordos foram passados trocados"
+        );
+        // ⛔⛔ **O MAPA DE POTÊNCIA foi MEDIDO E REJEITADO** (2026-08-23), e o custo
+        // de o saber foram dez minutos neste arnês em vez de uma obra no produto.
+        //
+        // | `n` | leque | ⭐ potência |
+        // |---|---|---|
+        // | **3** | `14,4°` | ⛔ **`18,6°`** — PIOR |
+        // | 4 | `0,0°` | `0,0°` |
+        // | 5 | `7,6°` | `6,4°` |
+        // | 6 | `14,4°` | `11,6°` |
+        //
+        // ⛔ **Ele piora justamente o caso dominante:** na esfera lisa, **8 dos 16**
+        // patches são triângulos. ⚠️ **E o motivo é geométrico:** `z^(n/4)` é conforme
+        // e endireita o ângulo do centro, mas os dois bordos NÃO-radiais do sector são
+        // **rectas** do polígono — sob uma potência elas deixam de o ser, e a grade de
+        // Coons herda a curvatura delas. *A cura de um defeito angular introduz um
+        // defeito de bordo.*
+        //
+        // ⇒ **A saída não é uma mudança de coordenada no domínio partilhado.** Ela é
+        // dar a cada sector o SEU domínio — ver o `PLAN.md` §4-undequadragies.
+        assert!(
+            (n != 3) || cured_p50 > p(0.50),
+            "n=3: o mapa de potencia devia PIORAR (medido 14,4° -> 18,6°) e deu {cured_p50:.1}° \
+             -- se ele passou a ajudar, a tabela da recusa envelheceu e tem de ser refeita"
         );
         // ⭐⭐ **O CONTROLO, e ele é o que separa medir de imaginar.** Um patch de
         // QUATRO lados tem o canto do centro recto, e a grade do sector dele tem de

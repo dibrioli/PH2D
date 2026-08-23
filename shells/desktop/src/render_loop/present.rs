@@ -341,6 +341,8 @@ impl crate::App {
                             stretch: glow.stretch,
                             angle: glow.angle,
                             clamp: glow.clamp,
+                            operation: glow.operation,
+                            source: glow.source,
                         },
                     );
                 }

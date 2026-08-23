@@ -50,10 +50,19 @@ struct Params {
 // ramo. O clamp e' POR CANAL de proposito: limitar a luminancia e reescalar
 // mudaria o MATIZ do pixel que estourou, e o antidoto do firefly nao pode
 // recolorir a cena.
+// `P.v2.y` escolhe DE QUE o bright-pass se alimenta (doc 89 folha 11, o *Glow Based
+// On* do AE): `0` = luminancia (o de sempre, `max(r,g,b)` premultiplicado), `1` = o
+// ALFA. A diferenca e' o que a referencia oferece: com luma uma silhueta PRETA opaca
+// nao tem nada acima do limiar e nunca acende; com alfa ela acende pela COBERTURA,
+// que e' o que se quer quando o halo e' uma aura e nao uma emissao. O `select` esta'
+// escrito com a condicao no formato do WGSL (`f, t, cond`), e o ramo falso e' o
+// literal de sempre -- em `source = 0` o numero e' o mesmo, bit a bit.
 @fragment
 fn fs_prefilter(in: VsOut) -> @location(0) vec4<f32> {
-    let c = min(textureSample(src, samp, in.uv).rgb, vec3<f32>(P.v2.x));
-    let brightness = max(c.r, max(c.g, c.b));
+    let texel = textureSample(src, samp, in.uv);
+    let c = min(texel.rgb, vec3<f32>(P.v2.x));
+    let luma = max(c.r, max(c.g, c.b));
+    let brightness = select(luma, min(texel.a, P.v2.x), P.v2.y >= 0.5);
     var soft = brightness - P.v.y;
     soft = clamp(soft, 0.0, P.v.z);
     soft = soft * soft * P.v.w;

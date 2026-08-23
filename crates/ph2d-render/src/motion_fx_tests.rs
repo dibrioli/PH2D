@@ -7,6 +7,50 @@
 
 use super::*;
 
+/// **A TAG DA OPERAÇÃO CABE NO ARRAY DE PIPELINES** — e um valor lixo cai no neutro.
+///
+/// ⚠️ Sem o grampo, um `operation` vindo de um documento carregado ou de uma edição por MCP
+/// indexaria um pipeline que não existe, e isso é um `panic` **no meio do quadro** — a pior
+/// classe de defeito que este passe pode ter.
+#[test]
+fn the_operation_tag_is_always_a_pipeline_that_exists() {
+    let with = |operation: f32| BloomParams {
+        operation,
+        ..BloomParams::default()
+    };
+    assert_eq!(with(0.0).operation_tag(), 0, "o default e' o aditivo");
+    assert_eq!(with(1.0).operation_tag(), 1, "e o `1` e' o Screen");
+    for junk in [f32::NAN, f32::INFINITY, -5.0, 99.0] {
+        assert!(
+            with(junk).operation_tag() < COMPOSITE_OPERATIONS,
+            "um valor lixo ({junk}) tem de cair num pipeline que existe"
+        );
+    }
+    assert_eq!(with(f32::NAN).operation_tag(), 0, "e o lixo cai no NEUTRO");
+}
+
+/// **A FONTE DO BRIGHT-PASS VIAJA COMO `0`/`1`, e o lixo é a luminância.**
+///
+/// ⚠️ O shader compara com `0,5`; mandar o valor cru deixaria um `NaN` decidir o ramo — e a
+/// comparação com `NaN` é falsa nos dois sentidos, ou seja o resultado dependeria de como o
+/// compilador de shader escreveu o `select`.
+#[test]
+fn the_bright_pass_source_is_a_flag_and_junk_reads_as_luminance() {
+    let with = |source: f32| BloomParams {
+        source,
+        ..BloomParams::default()
+    };
+    assert_eq!(with(0.0).source_flag(), 0.0);
+    assert_eq!(with(1.0).source_flag(), 1.0);
+    for junk in [f32::NAN, f32::INFINITY, -1.0, 0.4] {
+        assert_eq!(
+            with(junk).source_flag(),
+            0.0,
+            "um valor lixo ({junk}) le^ a luminancia, o caminho de sempre"
+        );
+    }
+}
+
 #[test]
 fn default_bloom_is_threshold_one() {
     // The neutral authored bloom only lights genuinely-HDR (emissive) pixels:

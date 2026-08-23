@@ -116,9 +116,52 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "clamp",
             default: 0.0,
         },
+        // Apendados (doc 89 folha 11). Os dois em `0` = o passe de sempre, ao bit.
+        ParamSpec {
+            name: OPERATION,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: SOURCE,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **A OPERAÇÃO do halo** — o *Glow Operation* do AE (doc 89 folha 11).
+///
+/// ⚠️ **A célula ofereceu TRÊS modos e só um passou pela navalha do §0.** O `Multiply` do AE
+/// escurece, e um passe aditivo que escurecesse **quebraria o z**: o halo compõe-se sobre a cena
+/// já desenhada, sem profundidade, então subtrair luz ali pintaria por cima do que estivesse à
+/// frente. O `Screen` não tem esse problema — `a + b − ab` é monótono e **nunca escurece** —, e
+/// é por isso que ele entra e o outro não. *Uma célula que pede três modos pode ser uma que pede
+/// um; o que decide é o mecanismo, não a contagem.*
+///
+/// ⚠️ **Ele mora no BLEND STATE do pipeline, não no shader**, e é essa a razão de a célula dizer
+/// *"nenhum nó o alcança"*: `Screen` é exactamente `src·(1−dst) + dst·1`, ou seja um par de
+/// factores que a máquina de mistura já sabe fazer. Fazê-lo no shader exigiria LER o alvo, que
+/// um passe de fullscreen não pode.
+pub const OPERATION: &str = "operation";
+
+/// Os modos que este halo oferece, na ordem das tags.
+///
+/// ⚠️ **A lista TEM de ter o mesmo tamanho que o array de pipelines do renderer** — um nó é uma
+/// folha e não alcança o `ph2d-render`, então quem liga as duas pontas é um gate na shell
+/// (`the_glow_operations_are_the_pipelines_the_renderer_built`). Sem ele, um modo a mais aqui
+/// seria escolhível no dropdown e silenciosamente rebaixado para `Add`.
+pub const OPERATION_LABELS: [&str; 2] = ["Add", "Screen"];
+
+/// **DE QUE O BRIGHT-PASS SE ALIMENTA** — o *Glow Based On* do AE (doc 89 folha 11).
+///
+/// `Luminance` (o de sempre) lê `max(r, g, b)` do pixel premultiplicado; `Alpha` lê o alfa, e a
+/// diferença é o que a referência oferece: **uma silhueta escura passa a brilhar**. Com luma,
+/// uma peça preta opaca não tem nada acima do limiar e nunca acende; com alfa, ela acende pela
+/// COBERTURA, que é o que se quer quando o halo é uma aura e não uma emissão.
+pub const SOURCE: &str = "source";
+
+/// As fontes do bright-pass, na ordem das tags.
+pub const SOURCE_LABELS: [&str; 2] = ["Luminance", "Alpha"];
 
 /// The bloom settings the shell reads to drive the Motion glow pass. Mirrors
 /// `ph2d_render::BloomParams` (this crate has no render dep — the shell converts
@@ -141,6 +184,11 @@ pub struct Glow {
     pub angle: f32,
     /// **O TETO do bright-pass** — `0` desliga. O antídoto dos *fireflies*.
     pub clamp: f32,
+    /// **A OPERAÇÃO do halo** — `0` = `Add` (o de sempre), `1` = `Screen`. Ver [`OPERATION`].
+    pub operation: f32,
+    /// **De que o bright-pass se alimenta** — `0` = `Luminance` (o de sempre), `1` = `Alpha`.
+    /// Ver [`SOURCE`].
+    pub source: f32,
 }
 
 /// The manifest default for a param name (the single source of a knob's neutral
@@ -184,6 +232,8 @@ pub fn from_graph(graph: &Graph) -> Option<Glow> {
         stretch: read(ov, "stretch"),
         angle: read(ov, "angle"),
         clamp: read(ov, "clamp"),
+        operation: read(ov, OPERATION),
+        source: read(ov, SOURCE),
     })
 }
 
@@ -223,6 +273,29 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 }
 
 static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⚠️ **Os dois modos PRIMEIRO** (doc 89 folha 11): eles decidem o que os números abaixo
+    // significam — um limiar sobre luma e um sobre alfa são perguntas diferentes —, e a ordem do
+    // painel é a das perguntas.
+    ParamUiHint {
+        param: OPERATION,
+        label: "Operation",
+        min: 0.0,
+        max: (OPERATION_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &OPERATION_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: SOURCE,
+        label: "Glow Based On",
+        min: 0.0,
+        max: (SOURCE_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &SOURCE_LABELS,
+        },
+    },
     ParamUiHint {
         param: "threshold",
         label: "Threshold",

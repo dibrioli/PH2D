@@ -68,6 +68,15 @@ pub(crate) fn bloom_params() -> ph2d_render::BloomParams {
         // integração de 2026-08-22 apanhou estes três).
         stretch: 1.0,
         angle: 0.0,
+        // E a OPERAÇÃO/FONTE do `fx.glow` (doc 89 folha 11) — ambas no neutro, pela mesma razão
+        // que os três acima: elas são autoria de NÓ, não carácter de emissor.
+        //
+        // ⚠️ **O `source` importa aqui mais do que parece.** «Emitir» é ter cor acima do branco,
+        // e é isso que o `threshold = 1.0` pergunta; ler o ALFA faria toda sprite opaca acender,
+        // ou seja transformaria o componente `SpriteEmissive` num efeito global — exactamente o
+        // que o comentário do `threshold` acima recusa.
+        operation: 0.0,
+        source: 0.0,
         clamp: 0.0,
     }
 }

@@ -93,7 +93,28 @@ pub struct BloomParams {
     /// `inf`, que envenena a soma de toda a cadeia. Este param é o teto AUTORADO,
     /// que é o que a referência expõe.
     pub clamp: f32,
+    /// **A OPERAÇÃO do halo** (doc 89 folha 11, o *Glow Operation* do AE): `0` = `Add`, o passe
+    /// aditivo que sempre shipou; `1` = `Screen`.
+    ///
+    /// ⚠️ **`Multiply` não existe aqui, e é uma decisão medida pela navalha do §0**: o halo
+    /// compõe-se sobre a cena já desenhada, sem profundidade, então um modo que ESCUREÇA
+    /// pintaria por cima do que estivesse à frente. `Screen` (`a + b − ab`) é monótono e nunca
+    /// escurece — é o único dos três do AE que sobrevive a essa navalha.
+    pub operation: f32,
+    /// **De que o bright-pass se alimenta** (o *Glow Based On* do AE): `0` = a luminância
+    /// premultiplicada (o de sempre), `1` = o **alfa**.
+    ///
+    /// ⚠️ Com luma, uma silhueta **preta e opaca** não tem nada acima do limiar e nunca acende;
+    /// com alfa ela acende pela COBERTURA. É a diferença entre um halo de EMISSÃO e uma AURA.
+    pub source: f32,
 }
+
+/// Quantas operações de composição existem — o tamanho do array de pipelines.
+///
+/// ⚠️ **É esta contagem que a lista de rótulos do nó tem de ter** (`OPERATION_LABELS`), e quem
+/// liga as duas pontas é um gate na shell: um nó é uma folha e não alcança o `ph2d-render`,
+/// então sem ele um modo a mais no dropdown seria escolhível e silenciosamente rebaixado.
+pub const COMPOSITE_OPERATIONS: usize = 2;
 
 impl Default for BloomParams {
     fn default() -> Self {
@@ -107,11 +128,38 @@ impl Default for BloomParams {
             stretch: 1.0,
             angle: 0.0,
             clamp: 0.0,
+            operation: 0.0,
+            source: 0.0,
         }
     }
 }
 
 impl BloomParams {
+    /// O índice do pipeline de composição — grampeado à lista que de facto existe.
+    ///
+    /// ⚠️ **Grampeado, e não `unwrap`**: o número vem de um param que um documento carregado ou
+    /// uma edição por MCP pode ter posto fora da faixa, e escolher um pipeline que não existe
+    /// seria um `panic` no meio do quadro. Fora da faixa cai no `Add`, que é o neutro.
+    #[must_use]
+    fn operation_tag(&self) -> usize {
+        if self.operation.is_finite() && self.operation >= 0.5 {
+            1
+        } else {
+            0
+        }
+    }
+
+    /// `1` quando o bright-pass lê o ALFA, `0` quando lê a luminância — o número que o shader
+    /// compara com `0,5`. Um valor lixo conta como a luminância, o caminho de sempre.
+    #[must_use]
+    fn source_flag(&self) -> f32 {
+        if self.source.is_finite() && self.source >= 0.5 {
+            1.0
+        } else {
+            0.0
+        }
+    }
+
     /// Pack the soft-knee curve the prefilter shader expects:
     /// `(threshold, threshold-knee, 2·knee, 0.25/knee)` (COD/Karis).
     fn prefilter_curve(&self) -> [f32; 4] {
@@ -229,7 +277,8 @@ pub struct MotionFx {
     prefilter_pipeline: wgpu::RenderPipeline,
     downsample_pipeline: wgpu::RenderPipeline,
     upsample_pipeline: wgpu::RenderPipeline,
-    composite_pipeline: wgpu::RenderPipeline,
+    /// Um por OPERAÇÃO do halo, na ordem das tags — ver [`BloomParams::operation`].
+    composite_pipelines: [wgpu::RenderPipeline; COMPOSITE_OPERATIONS],
     u_prefilter: wgpu::Buffer,
     u_up: wgpu::Buffer,
     u_composite: wgpu::Buffer,
@@ -362,11 +411,40 @@ impl MotionFx {
             "fs_upsample",
             Some(additive),
         );
-        let composite_pipeline = pipeline(
-            "ph2d-render motion-fx composite",
-            "fs_composite",
-            Some(additive),
-        );
+        // **SCREEN** — `a + b − ab` (doc 89 folha 11, o *Glow Operation* do AE).
+        //
+        // ⚠️ **Ele é um par de FACTORES, não um shader**: `src·(1−dst) + dst·1` é exactamente
+        // a fórmula, e a máquina de mistura já sabe fazê-la. Escrevê-la no fragmento exigiria
+        // LER o alvo, que um passe de fullscreen não pode — é essa a razão de a célula dizer
+        // *"o `BlendState` é do pipeline, nenhum nó o alcança"*.
+        //
+        // ⚠️ **E é o único dos três modos que a navalha do §0 deixa passar**: `Screen` é
+        // monótono e **nunca escurece**, enquanto o `Multiply` do AE tiraria luz de uma
+        // composição sem profundidade — ele pintaria por cima do que estivesse à frente.
+        let screen = wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::OneMinusDst,
+                dst_factor: wgpu::BlendFactor::One,
+                operation: wgpu::BlendOperation::Add,
+            },
+            // O alfa é o do aditivo, verbatim: a cena opaca continua opaca para o compositor.
+            alpha: additive.alpha,
+        };
+        // ⚠️ **A ORDEM É A DAS TAGS** (`0 = Add`, `1 = Screen`) e o gate da shell liga esta
+        // contagem à lista de rótulos do nó — um pipeline a menos aqui faria o último modo do
+        // dropdown ser silenciosamente rebaixado.
+        let composite_pipelines = [
+            pipeline(
+                "ph2d-render motion-fx composite (add)",
+                "fs_composite",
+                Some(additive),
+            ),
+            pipeline(
+                "ph2d-render motion-fx composite (screen)",
+                "fs_composite",
+                Some(screen),
+            ),
+        ];
 
         let sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ph2d-render motion-fx sampler"),
@@ -399,7 +477,7 @@ impl MotionFx {
             prefilter_pipeline,
             downsample_pipeline,
             upsample_pipeline,
-            composite_pipeline,
+            composite_pipelines,
             u_prefilter,
             u_up,
             u_composite,
@@ -460,7 +538,7 @@ impl MotionFx {
             curve[2],
             curve[3],
             params.clamp_limit(),
-            0.0,
+            params.source_flag(),
             0.0,
             0.0,
         ];
@@ -533,7 +611,7 @@ impl MotionFx {
         // Composite: the accumulated glow (mip0) added over the scene.
         fullscreen(
             &mut encoder,
-            &self.composite_pipeline,
+            &self.composite_pipelines[params.operation_tag()],
             &self.bg_composite,
             target,
             wgpu::LoadOp::Load,

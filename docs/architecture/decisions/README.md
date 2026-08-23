@@ -78,6 +78,7 @@
 | [0070](0070-amendment-7.md) | Accepted (W3 Phase 6, 2026-05-30) — ratificado pelo Enio (smoke ClipChildren + Mask I… | amendment-7 — `RenderInstance` CPU-tail `clip_group` + `clip_meta` (ClipChildren + Mask2D stencil grouping) |
 | [0070](0070-sprite-schema-v4.md) | Accepted (2026-05-28) — ratificado pelo Enio pós 5 lentes adversariais. | Sprite schema v4 (`Sprite::VERSION` 3→4) + RenderInstance ABI bump |
 | [0071](0071-tint-channels-multiplicative.md) | Accepted (2026-05-28) — ratificado pelo Enio pós 5 lentes adversariais. | Tint channels — matemática multiplicativa canônica (4 canais) |
+| [0072](0072-amendment-1.md) | Accepted (2026-08-22, `line/Sprite`) — implementado, com gate de paridade entre as du… | amendment-1 — Montar numa âncora é um QUADRO na hierarquia (o consumidor do §2.6) |
 | [0072](0072-named-anchor-unification.md) | Accepted (2026-05-28) — ratificado pelo Enio pós 5 lentes adversariais. | Named Anchor unification (socket + slice + image_point num único tipo) |
 | [0073](0073-amendment-1.md) | Accepted (W3.T3.8/T3.20, 2026-05-30) — pipeline canônico shipado + golden-hash deter… | amendment-1 — Z bucketiza ANTES do YSort (reconcilia spec §5.1 lista vs §5.2 passo-4) |
 | [0073](0073-amendment-2.md) | Accepted (sorting audit 2026-05-31) — fix implementado, golden intacto, repro test verde. | amendment-2 — Y-Sort self-inclusive (o próprio sprite participa, não só via ancestral) |

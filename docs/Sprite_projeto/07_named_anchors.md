@@ -197,7 +197,48 @@ Cor por anchor (hash do nome → cor estável). Label do nome aparece próximo a
 
 Per-frame mode (toggle): canvas mostra anchor do frame atual (vai mudando com scrubber); fora desse mode, mostra fallback do entity.
 
+## 7.6-bis MONTAR numa âncora — o consumidor (CONSTRUÍDO 2026-08-22)
+
+> ⚠️ **Esta seção é normativa e sobrepõe-se ao §7.7 abaixo**, que é a spec original de 2026-05 e
+> escreve um pseudo-código (`entity.named_anchor(...)`) que nunca existiu com essa forma.
+> Decisão e alternativas medidas: [ADR-0072-amendment-1](../architecture/decisions/0072-amendment-1.md).
+
+**Uma âncora é um QUADRO na hierarquia.** Uma entidade que monta numa âncora já é **filha** de quem
+a possui; o componente diz apenas *qual* quadro do pai serve de origem:
+
+```rust
+pub struct AnchorMount { pub anchor: String }   // ph2d_ecs
+```
+
+⇒ a pose de partida do filho passa de `pose_do_pai` para `compose(pose_do_pai, pose_da_âncora)`.
+O `Transform` local dele continua a ser dele, relativo a esse quadro.
+
+| estado | significado | geometria |
+|---|---|---|
+| `MountState::Free` | não monta (sem componente, ou nome vazio) | parte do pai |
+| `MountState::Mounted(t)` | monta, e a âncora existe | parte da âncora |
+| `MountState::Dangling` | monta num nome que o pai não tem | **parte do pai** — e a UI diz-lo |
+
+⚠️ **`Dangling` é um estado, não uma ausência.** Renomear uma âncora deixa quem a montava a apontar
+para um nome que já não está lá; cair em silêncio no pai é a geometria certa e a comunicação errada.
+A §12 mostra o nome perdido no chip e oferece a linha que o desfaz.
+
+⚠️ **A lei entra nas DUAS travessias de mundo, pela mesma função** (`ph2d_ecs::mount_state`):
+`propagate_transforms` (renderer) e `world_transform` (gizmo · pick · física). Só numa, a espada
+**desenha** na mão e todo gesto agarra-a na origem do pai — a família de
+`docs/Physics/BUGS_physics.md` #2. Gate: `the_two_walks_agree_about_a_mounted_child`.
+
+**Autoria:** §12 do Inspector, linha **«Rides Parent Anchor»**. ⛔ Ela não se pinta quando não há o
+que escolher (sem pai, ou pai sem âncoras) — mas **aparece sempre** sobre um vínculo pendurado,
+senão o estado fica preso. A lista de âncoras deste objeto mostra, em cada linha, **quantos montam
+nela** (`Socket · 2 riding`).
+
+**Smoke:** `PH2D_MOUNT_SMOKE=1`.
+
 ## 7.7 Use cases concretos
+
+> ⚠️ **Pseudo-código de 2026-05.** A forma real é `ph2d_ecs::anchor_world_pose(world, entity, name)`
+> (§7.8-bis). As intenções abaixo continuam válidas; as assinaturas não.
 
 ### 7.7.1 Anexar projétil ao muzzle de uma arma
 ```rust
@@ -267,6 +308,30 @@ MCP toolset `sprite_anchor_*`:
 - `sprite_anchor_list(entity)` → [Name]
 
 (HR-10; HR-11 não aplica — não há ação destrutiva implícita.)
+
+## 7.8-bis O que a API de runtime É hoje — e o que está BLOQUEADO (medido 2026-08-22)
+
+**Rust — construída.** É a forma real, e é a que o painel, o gizmo e a montagem usam:
+
+```rust
+ph2d_ecs::anchor_world_pose(world, entity, "muzzle") -> Option<Transform>  // pose de MUNDO
+ph2d_ecs::anchor_names(world, entity)                -> Vec<String>        // = sprite_anchor_list
+ph2d_ecs::anchor_pose_under(owner_world, &anchor)    -> Transform          // a lei PURA
+```
+
+⚠️ A rotação e a escala vêm **juntas** com a posição, e é isso que faz a bala sair na direção certa
+quando o personagem está virado. Uma API só de posição obrigaria cada consumidor a recompor a
+orientação — e cada um recomporia à sua maneira.
+
+⛔ **Luau e MCP estão bloqueados por outro subsistema, e construí-los hoje seria repetir o defeito
+que esta wave curou** (autoria sem consumidor):
+
+| superfície | o que se mediu | acorda quando |
+|---|---|---|
+| **Luau** | o `ScriptHost` do desktop arranca com um script *placeholder*, `provide_read` **nunca é chamado** na shell, e não há UI para anexar um script a uma entidade | o `ScriptHost` estiver ligado à cena real |
+| **MCP** | o `McpHost` é um `MemoryHost` de referência (`HashMap<u64, HashMap<String, Value>>`), com *«Real backends (S2/S3) implementarão sobre bevy_ecs World direto»* escrito no próprio doc | existir um backend MCP sobre o `World` |
+
+⇒ O critério de fecho da W5 (ADR-0072 §5) lê-se, para estes dois, como **bloqueado**, não como feito.
 
 ## 7.9 Aseprite import flow
 

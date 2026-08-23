@@ -108,3 +108,106 @@ fn the_model_stops_exactly_where_the_panel_runs_out_of_rows() {
         "o modelo aceitou uma ancora que o painel nao consegue mostrar"
     );
 }
+
+/// **(5) O seletor de MONTAGEM alcança toda âncora que o PAI pode ter.**
+///
+/// ⚠️ Mesma classe do (1), do outro lado da relação: um array mais curto que `ANCHORS_MAX`
+/// tornaria as últimas âncoras do pai **inescolhíveis** — elas apareceriam na lista dele, o
+/// artista veria-as, e não conseguiria prender nada nelas.
+#[test]
+fn the_mount_option_ids_cover_the_model_cap() {
+    assert_eq!(
+        ids::INSP_MOUNT_OPT.len(),
+        ANCHORS_MAX,
+        "o seletor oferece {} opcoes para um pai que pode ter {ANCHORS_MAX} ancoras",
+        ids::INSP_MOUNT_OPT.len()
+    );
+}
+
+/// **(6) Nenhum id do seletor colide — nem entre si, nem com as linhas da lista, nem com o «—».**
+///
+/// ⚠️ A colisão com as LINHAS é a que mais assusta: as duas famílias vivem na mesma seção e são
+/// pintadas no mesmo quadro, então um id repetido faria escolher uma montagem ao clicar numa
+/// linha da lista. E `hash_node_id` é FNV-1a sobre a string: um erro de copiar-colar na tabela
+/// produz exatamente isso, **em silêncio**.
+#[test]
+fn no_mount_option_id_collides_with_anything_in_the_section() {
+    let mut all: Vec<_> = ids::INSP_MOUNT_OPT
+        .iter()
+        .chain(ids::INSP_ANCHOR_ROW.iter())
+        .chain(std::iter::once(&ids::INSP_MOUNT_NONE_OPT))
+        .chain(std::iter::once(&ids::INSP_MOUNT_PICK))
+        .copied()
+        .collect();
+    let n = all.len();
+    all.sort_unstable_by_key(|i| i.0);
+    all.dedup_by_key(|i| i.0);
+    assert_eq!(
+        all.len(),
+        n,
+        "dois ids da §12 partilham o mesmo valor — um gesto dispararia o outro"
+    );
+}
+
+/// **(7) A montagem lê a mesma verdade nos dois lados.**
+///
+/// O motor decide `Mounted`/`Dangling`/`Free` a partir da cena; o painel decide o mesmo a partir
+/// do snapshot, sem poder importar o motor. ⚠️ São **duas** implementações da mesma tabela —
+/// irmãs exactas do `kind()` no teste (3) —, e é este gate que impede o Inspector oferecer «—»
+/// sobre um objeto que o motor está a mover pela âncora.
+#[test]
+fn the_panel_reads_the_same_mount_state_the_engine_does() {
+    use ph2d_ecs::{AnchorMount, ChildOf, MountState, Transform, World, mount_state_of};
+
+    // (parent tem estas âncoras, o filho monta neste nome) → o estado esperado dos dois lados.
+    let cases: [(&[&str], Option<&str>, bool, bool); 4] = [
+        (&["muzzle"], None, false, false),          // livre
+        (&["muzzle"], Some("muzzle"), true, false), // montado
+        (&["muzzle"], Some("gone"), false, true),   // pendurado: o nome saiu
+        (&[], Some("muzzle"), false, true),         // pendurado: o pai perdeu a lista
+    ];
+
+    for (parent_names, mount, want_mounted, want_dangling) in cases {
+        // — o motor —
+        let mut w = World::new();
+        let mut list = NamedAnchorList::new();
+        for n in parent_names {
+            list.insert(NamedAnchor::socket(*n)).unwrap();
+        }
+        let parent = w.spawn((Transform::IDENTITY, list)).id();
+        let mut child = w.spawn((Transform::IDENTITY, ChildOf(parent)));
+        if let Some(m) = mount {
+            child.insert(AnchorMount::new(m));
+        }
+        let child = child.id();
+        let engine = mount_state_of(&w, child);
+
+        // — o painel —
+        let info = ph2d_editor::InspectorAnchorInfo {
+            entity_bits: 1,
+            rows: Vec::new(),
+            present: false,
+            selected_count: 1,
+            mixed: false,
+            parent_anchors: parent_names.iter().map(|s| (*s).to_string()).collect(),
+            mount: mount.map(str::to_string),
+        };
+
+        assert_eq!(
+            matches!(engine, MountState::Mounted(_)),
+            want_mounted,
+            "o motor discordou sobre {parent_names:?} / {mount:?}"
+        );
+        assert_eq!(
+            info.mount_index().is_some(),
+            want_mounted,
+            "o painel discordou do motor sobre {parent_names:?} / {mount:?}"
+        );
+        assert_eq!(engine == MountState::Dangling, want_dangling);
+        assert_eq!(
+            info.mount_dangling(),
+            want_dangling,
+            "o painel leu o pendurado ao contrario em {parent_names:?} / {mount:?}"
+        );
+    }
+}

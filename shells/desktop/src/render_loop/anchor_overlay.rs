@@ -101,10 +101,14 @@ pub(crate) fn anchor_world_point(
     } else {
         1.0
     };
-    // A âncora sob a pose da sprite; depois o ponto sob a pose da âncora. `compose` é a MESMA
-    // porta que a propagação de hierarquia usa — rotação e escala vêm de graça, e por isso a
-    // caixa de dano roda e escala com o objeto.
-    let anchor_world = Transform::compose(sprite_world, anchor.transform);
+    // A âncora sob a pose da sprite; depois o ponto sob a pose da âncora.
+    //
+    // ⚠️ **`anchor_pose_under` é a lei ÚNICA de «onde está esta âncora»**, e desde 2026-08-22 é
+    // a mesma função que a montagem (`ph2d_ecs::mount_state`) e a API de runtime
+    // (`anchor_world_pose`) usam. Ela é uma linha de álgebra — e é exatamente por ser uma linha
+    // que se reimplementa sem ninguém reparar; aí a alça agarra num sítio e a espada monta
+    // noutro. Rotação e escala vêm de graça, e por isso a caixa de dano roda com o objeto.
+    let anchor_world = ph2d_ecs::anchor_pose_under(sprite_world, anchor);
     let offset = Transform {
         translation: Vec2::new(local_px[0] / ppm, local_px[1] / ppm),
         ..Transform::default()

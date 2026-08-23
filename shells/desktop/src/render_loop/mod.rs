@@ -1506,6 +1506,34 @@ impl crate::App {
             self.title_dirty = true;
         }
 
+        // **O QUE UMA ÂNCORA MOVE** (`PH2D_MOUNT_SMOKE=1`, ADR-0072 §2.6): um boneco com duas
+        // âncoras e três filhos — dois montados e **um controlo que não monta em nada**. Sem o
+        // controlo, uma cena com a montagem ignorada por completo pareceria igual.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::mount_smoke::enabled()
+            && !std::mem::replace(&mut self.mount_smoke_done, true)
+            && let Some(bits) = crate::mount_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                next_import_cell,
+                hero.project.pixels_per_meter,
+                atlas_asset_map,
+            )
+        {
+            hero.gizmo.replace_selection(Some(bits));
+            hero.bus
+                .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                    kind: ph2d_editor::ViewFocusKind::Selected,
+                });
+            toasts.push(Toast::success(
+                "Mount smoke: open Sockets / Anchors, pick hand_r and drag it — the red square \
+                 follows, the grey one does not"
+                    .to_string(),
+            ));
+            self.title_dirty = true;
+        }
+
         // **AS FAIXAS, E A CURA** (`PH2D_DITHER_SMOKE=1`, plano `docs/Sprite_projeto/18` W6.1):
         // UMA sprite partida ao meio — cima a descida fiel (faixas duras), baixo a descida com
         // dither (liso). As duas metades partem do mesmo degradê de 16 bits, coluna a coluna, e as

@@ -89,6 +89,16 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_BOOL_SUBTRACT);
     button(store, ids::VECTOR_BOOL_INTERSECT);
     button(store, ids::VECTOR_BOOL_EXCLUDE);
+    // O VERBO DE UMA FORMA (2026-08-22). ⚠️ Estas quatro linhas faltaram no dia em que a feature
+    // shipou, e o resultado foi o Enio a reportar "os botoes nao funcionam" DUAS vezes: eles
+    // estavam pintados, hit-registrados e MORTOS sob o ponteiro, porque sem o registro no store o
+    // Down/Up nunca vira Click. E' a falha exata que esta lista existe para prevenir -- e a razao
+    // de os gates de allowlist e de mapeamento nao a verem e' que ambos usam Click SINTETICO, que
+    // pula a checagem de focabilidade. So' o gesto real a mede (`tests/seam_bool.rs`).
+    button(store, ids::VECTOR_BOOL_SHAPE_UNION);
+    button(store, ids::VECTOR_BOOL_SHAPE_SUBTRACT);
+    button(store, ids::VECTOR_BOOL_SHAPE_INTERSECT);
+    button(store, ids::VECTOR_BOOL_SHAPE_EXCLUDE);
     button(store, ids::VECTOR_COMPOUND_MAKE);
     button(store, ids::VECTOR_COMPOUND_RELEASE);
     // Expand — Outline Stroke + Offset Path (a seção irmã da Boolean).

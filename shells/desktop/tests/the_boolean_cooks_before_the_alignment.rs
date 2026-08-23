@@ -102,3 +102,24 @@ fn the_shell_publishes_whether_a_live_boolean_is_selected() {
         "a shell parou de publicar o fato que decide se o Apply é oferecido"
     );
 }
+
+/// **A shell publica a FILEIRA do verbo por forma, e passa-lhe o PRIMÁRIO.**
+///
+/// ⚠️ O último elo da corrente, e o único que nenhum teste de unidade alcança: se esta chamada
+/// sumisse, a fileira nunca seria oferecida no app real — e a suíte inteira continuaria verde,
+/// porque os gates do painel publicam o estado eles próprios.
+///
+/// A segunda metade é a que prende a cura de 2026-08-22: o sujeito é `vec_pen.selected()` (o
+/// primário), e **não** a contagem da seleção. Tocar um filho seleciona o GRUPO inteiro, então uma
+/// regra de contagem torna a fileira inalcançável por clique.
+#[test]
+fn the_shell_publishes_the_per_shape_verb_row_with_the_primary() {
+    assert!(
+        SRC.contains("ph2d_panel_vector::state::set_bool_shape_row("),
+        "a shell parou de publicar a fileira do verbo por forma — ela nunca apareceria no app"
+    );
+    assert!(
+        SRC.contains("let primary = self.vec_pen.selected();"),
+        "o sujeito da fileira deixou de ser o PRIMÁRIO — com a contagem, nenhum clique a alcança"
+    );
+}

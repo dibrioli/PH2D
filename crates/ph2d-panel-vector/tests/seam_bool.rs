@@ -136,3 +136,50 @@ fn the_eight_ops_survive_the_live_mode() {
     }
     state::set_bool_live_on(false);
 }
+
+/// **OS QUATRO CHIPS DO VERBO POR FORMA ESTÃO VIVOS SOB O PONTEIRO.**
+///
+/// ⚠️ Este gate nasceu VERMELHO em 2026-08-23, depois de o Enio reportar *"os botões não
+/// funcionam"* pela **segunda** vez. A primeira cura fez a fileira APARECER (o sujeito passou a ser
+/// o primário); os chips continuavam **pintados, hit-registrados e mortos** — porque faltavam no
+/// `populate_ops`, e sem o registro no store o ponteiro **nunca vira Click**.
+///
+/// É exactamente a falha que o doc deste arquivo já nomeia (as 36 células da física, os dez chips
+/// do Painter), e a razão de os meus gates anteriores não a verem: eles provavam a allowlist e o
+/// mapeamento com um `Click` **sintético**, que pula a checagem de focabilidade. *Só o gesto real
+/// mede esta costura.*
+#[test]
+fn the_four_per_shape_verb_chips_are_reachable_and_reach_the_bus() {
+    // A fileira só existe quando a shell publica um sujeito — é a mesma regra do Apply.
+    state::set_bool_shape_row(Some((0, "Ellipse 2".to_string())));
+    click_reaches_bus(ids::VECTOR_BOOL_SHAPE_UNION, "o chip Union desta forma");
+    click_reaches_bus(ids::VECTOR_BOOL_SHAPE_SUBTRACT, "o chip Subtract desta forma");
+    click_reaches_bus(ids::VECTOR_BOOL_SHAPE_INTERSECT, "o chip Intersect desta forma");
+    click_reaches_bus(ids::VECTOR_BOOL_SHAPE_EXCLUDE, "o chip Exclude desta forma");
+    state::set_bool_shape_row(None);
+}
+
+/// **A fileira só existe quando há sujeito** — presença E ausência, como o Apply.
+///
+/// ⚠️ A metade da AUSÊNCIA é a que impede quatro controlos mortos numa seleção que não tem forma
+/// nenhuma a que eles se apliquem.
+#[test]
+fn the_per_shape_row_appears_only_with_a_subject() {
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut panel_state = VectorPanelState;
+
+    state::set_bool_shape_row(None);
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_BOOL_SHAPE_UNION)
+            .is_none(),
+        "a fileira foi pintada SEM sujeito — quatro controlos que nao mudam nada"
+    );
+
+    state::set_bool_shape_row(Some((1, "Rect 1".to_string())));
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut panel_state, VIEWPORT, ids::VECTOR_BOOL_SHAPE_UNION)
+            .is_some(),
+        "a fileira nao foi pintada COM sujeito — era o defeito de 22/08"
+    );
+    state::set_bool_shape_row(None);
+}

@@ -154,7 +154,32 @@ E como o grupo inteiro fica aceso no canvas, a fileira **nomeia o próprio sujei
 forma) em vez de dizer um genérico: sem isso o artista escolheria o verbo sem saber de qual das
 formas o painel fala.
 
-### 8.3 A lição, que é maior que o bug
+### 8.3 ⚠️ E havia um SEGUNDO defeito, independente — o report veio duas vezes
+
+A cura de 8.2 fez a fileira **aparecer**. O Enio voltou: *"os botões não funcionam!"*
+
+Os quatro chips estavam **pintados, hit-indexados e MORTOS sob o ponteiro** — faltavam no
+[`populate_ops.rs`](../../crates/ph2d-panel-vector/src/populate_ops.rs). Sem `InteractiveState` no
+store, `is_focusable()` é `false`: o Down nunca torna o chip ativo, o Up nunca emite `Click`, e
+nada mais na suíte afirma essa paridade.
+
+⚠️ **É por isso que os meus dois gates anteriores não o viram:** ambos usam `Click` **sintético** —
+um prova a allowlist, o outro o mapeamento `id ⟶ código`, e os dois **pulam a checagem de
+focabilidade**. *Só o gesto real (Down+Up sobre o retângulo que o painel pintou) mede esta
+costura*, e o arnês para isso já existia (`ph2d-ui-testkit` + `tests/seam_bool.rs`) — eu é que não
+o usei.
+
+⛔ **Do lado de fora, os dois defeitos são o mesmo sintoma.** Um controlo nunca pintado e um
+controlo morto sob o dedo produzem exactamente o mesmo report — e é por isso que *"não funciona"*
+não localiza causa nenhuma, por mais vezes que se repita.
+
+**A conta desta classe neste repo:** as 36 células da matriz de física · os 10 chips do Painter ·
+as 4 pills PENCIL/SHAPE/SELECT/DIRECT (CI-verde-e-mortas por sessões) · e agora estes 4. O gate
+novo [`bool_registration_parity.rs`](../../crates/ph2d-panel-vector/tests/bool_registration_parity.rs)
+apanha **o quinto**, no dia em que alguém o acrescentar — que é a diferença entre consertar e
+prevenir.
+
+### 8.4 A lição, que é maior que o bug
 
 ⚠️ **Eu gatei o modelo, o cozimento e a triagem — e ZERO gates no caminho que o clique percorre.**
 É a primeira das quatro causas da `DIRETIVA_IMPLEMENTACAO` (*costura não-testada*), e a razão de ela
@@ -196,4 +221,6 @@ passou a **trio**.
 | `shutil.copy2` para restaurar mutação | Repõe o mtime e a mutação sobrevive à corrida seguinte | §7.1 |
 | Exigir *"exactamente uma forma selecionada"* | Nenhum clique a satisfaz — tocar um filho seleciona o GRUPO; a fileira nunca aparecia | §8.1 |
 | Rótulo genérico na fileira | Com o grupo todo aceso, não diz de QUAL forma fala | §8.2 |
+| Chip pintado sem `button(store, id)` no `populate_ops` | Morto sob o ponteiro, com a suíte verde — a 4.ª vez desta classe no repo | §8.3 |
+| Provar a costura do clique com `Click` SINTÉTICO | Pula a checagem de focabilidade: passa com o chip morto | §8.3 |
 | O mapeamento `id -> código` dentro do `render_loop` | Não é alcançável por teste (exige janela e GPU) — foi a causa-raiz de o defeito shipar | §8.3 |

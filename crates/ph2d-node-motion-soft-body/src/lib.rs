@@ -32,12 +32,26 @@
 //! **seeds** the rest mesh at the anchor; from tick 1 it steps. `dt` derives from
 //! the state's own `sim_t`, clamped to `[0, MAX_DT]` (a loop-wrap freezes one tick).
 //!
-//! ## The anchor pins the top row (value inputs)
+//! ## The anchor pins the top edge (value inputs)
 //!
-//! `anchor_x`/`anchor_y` are **value** inputs: with `pin` on, the top row is held
+//! `anchor_x`/`anchor_y` are **value** inputs: with `pin` on, the top edge is held
 //! rigid at the anchor (a hanging jelly flag), and sliding the anchor with a
 //! `value.lfo` wobbles the whole body. Unconnected → the origin. `pin` off lets the
 //! body fall freely.
+//!
+//! ## O corpo não é obrigado a ser um rectângulo (a porta `shape`)
+//!
+//! A malha `rows × cols` é o corpo **por omissão**, não a definição dele: ligar
+//! um stream à porta `shape` faz a nuvem que chega ali ser a forma de repouso —
+//! um disco, uma letra, um caminho vectorial amostrado, a saída de um
+//! `field.shape`. É o que a referência faz (Cavalry põe um Forge Soft Body em
+//! qualquer forma; o Vellum em qualquer geometria).
+//!
+//! O que a grelha respondia — *quem é pino*, *qual é o contorno*, *como o corpo
+//! se divide em regiões* — passou a ser um facto da forma de repouso, e vive no
+//! [`layout`]. ⚠️ **A malha autorada continua a dar os MESMOS bits**: ela é o seu
+//! próprio fornecedor daquelas três respostas, e cada uma devolve a sequência de
+//! índices que este ficheiro percorria à mão.
 //!
 //! Transcendental-free (HR-5): prediction, the 2×2 polar decomposition (`sqrt` only)
 //! and the goal pull are arithmetic. Deterministic → `Effect::Temporal`, replays
@@ -51,13 +65,17 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod params_ui;
-use params_ui::{PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
+use params_ui::{PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 mod cluster;
+mod columns;
+mod layout;
 mod shape;
 use cluster::cluster_goals_weighted;
-use shape::{
-    boundary_area, pressure_scale, rest_shape, shape_goals_weighted, weighted_rest_centroid,
-};
+use columns::{accel_col, falloff_col, inv_mass_col, scalar_col, value_head, vec2_col};
+use layout::BodyLayout;
+#[cfg(test)]
+use shape::{boundary_area, rest_shape};
+use shape::{pressure_scale, ring_area, shape_goals_weighted, weighted_rest_centroid};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `anchor_*` inputs (mirror of `motion.look_at::VALUE`).
@@ -124,6 +142,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // The feedback port — auto-wired `out --pre--> state` on add.
         PortSpec {
             name: "state",
+            ty: INST_VEC2,
+        },
+        // ⚠️ **A FORMA de repouso, quando o artista tem uma.** Ligada, o corpo
+        // deixa de ser o rectângulo `rows × cols` e passa a ser a nuvem que
+        // chega aqui — Cavalry põe um Forge Soft Body em qualquer forma, o
+        // Vellum em qualquer geometria. Desligada, `rows`/`cols`/`spacing`
+        // respondem como sempre responderam, ao bit.
+        //
+        // ⚠️ **É a ÚLTIMA porta de propósito.** Acrescentar no fim mantém
+        // `anchor_x`/`anchor_y`/`state` nos índices 0/1/2, que é o que faz os
+        // grafos já autorados (e o auto-fio `out --pre--> state`) continuarem a
+        // apontar para onde apontavam.
+        PortSpec {
+            name: "shape",
             ty: INST_VEC2,
         },
     ],
@@ -234,94 +266,16 @@ struct Params {
 }
 
 impl Params {
-    /// Whether particle `i` is pinned (the top row, indices `0..cols`, when `pin`).
-    fn is_pinned(&self, i: usize) -> bool {
-        self.pin && i < self.cols
-    }
-}
-
-fn scalar_col(s: &Stream, name: &str) -> Vec<f32> {
-    match s.get(name) {
-        Some(Column::Scalar(v)) => v.clone(),
-        _ => Vec::new(),
-    }
-}
-
-fn vec2_col(s: &Stream, name: &str) -> Vec<[f32; 2]> {
-    match s.get(name) {
-        Some(Column::Vec2(v)) => v.clone(),
-        _ => Vec::new(),
-    }
-}
-
-fn value_head(vals: &[f32]) -> f32 {
-    vals.first().copied().unwrap_or(0.0)
-}
-
-/// The transient `accel` the state carries, at exactly `n` — **absent is zeros**.
-///
-/// A `force.*` wired into this body's `state` chain (`soft_body.out --pre-->
-/// force.vortex --> soft_body.state`) accumulates world-units/s² here, and this
-/// one read hands the gelatin the whole force family: gravity with a DIRECTION,
-/// wind, curl, an attractor, drag (doc 89 §2.1). It enters the PREDICTION, which
-/// is where an acceleration belongs in a position-based step — the shape match
-/// then answers it, which is exactly how a soft body should respond to being
-/// blown on.
-///
-/// ⚠️ **Consumed, never emitted** (the stream carries `P`/`sb_vel`/`sim_t`), so
-/// every tick starts from zero acceleration; and zeros are the IDENTITY, so a
-/// body no force reaches is byte-identical to the one that shipped.
-/// A massa inversa por partícula, alargada a `n` e tornada segura — o espelho
-/// exacto do leitor do `motion.collide`: **ausente lê como livre (`1`)**, e um
-/// peso negativo ou não-finito lê como **pinado (`0`)** em vez de inverter o puxão.
-///
-/// ⚠️ **Consumida, nunca emitida**, a mesma disciplina do `accel` — o
-/// `motion.pin_constraint` MULTIPLICA no que já está no stream, então um corpo que
-/// a reemitisse faria um pino parcial decair a cada tique.
-fn inv_mass_col(s: &Stream, n: usize) -> Vec<f32> {
-    match s.get(INV_MASS_COL) {
-        Some(Column::Scalar(v)) if v.len() == n => v
-            .iter()
-            .map(|w| if w.is_finite() { w.max(0.0) } else { 0.0 })
-            .collect(),
-        _ => vec![1.0; n],
-    }
-}
-
-/// **O PESO DE UMA PARTÍCULA NO CORPO** — o `wᵢ = mᵢ` de Müller 2005, que este
-/// arquivo declara ter fixado em `1` desde que nasceu (*"masses are uniform here
-/// — exact for this even grid, so the paper's mass-weighted centroid/`A_pq`
-/// reduce to the plain sums"*). O `falloff` é esse peso, e a folha 03 pedia-o
-/// como *goal/peso por partícula* (o **Goal** por vertex group do Blender
-/// Softbody · a espinha MOPs *todo modificador é modulado por `mops_falloff`*).
-///
-/// ⚠️ **Devolve `None` quando a coluna está AUSENTE, e não um vetor de uns** — e
-/// a distinção é byte-identidade, não gosto: com pesos o centroide de repouso
-/// deixa de ser zero e passa a ser subtraído, e medido (a sonda
-/// `is_the_rest_centroid_exactly_zero`) o centroide de uma malha real vale
-/// `−1,192e-7`, não `0`. `None` deixa a lei correr com `c₀ = [0,0]` literal, que
-/// é a identidade em IEEE-754 e é exactamente o corpo que sempre shipou.
-///
-/// ⚠️ **Consumida, nunca emitida**, a disciplina do `accel` e do `inv_mass`: o
-/// stream emitido carrega `P`/`sb_vel`/`sim_t`, então um corpo que a reemitisse
-/// faria um `field.*` no laço compor o peso consigo mesmo a cada tique — o
-/// *produto sobre a lista* que esta casa já curou quatro vezes.
-///
-/// Fora de faixa é clampado: um documento editado à mão não pode dar peso
-/// NEGATIVO a uma partícula e virar o ajuste do avesso.
-fn falloff_col(s: &Stream, n: usize) -> Option<Vec<f32>> {
-    match s.get(FALLOFF_COL) {
-        Some(Column::Scalar(v)) if v.len() == n => {
-            Some(v.iter().map(|f| f.clamp(0.0, 1.0)).collect())
-        }
-        _ => None,
-    }
-}
-
-fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
-    match s.get("accel") {
-        Some(Column::Vec2(v)) if v.len() == n => v.clone(),
-        _ => vec![[0.0, 0.0]; n],
+    /// Whether particle `i` is pinned — the TOP EDGE of the rest shape, when
+    /// `pin`.
+    ///
+    /// ⚠️ **Deixou de ser `i < cols` e isso é a mesma resposta com outra
+    /// pergunta:** a linha de topo de uma grelha É o conjunto de `y` máximo, e a
+    /// [`BodyLayout`] devolve exactamente `0..cols` para toda malha autorada. O
+    /// índice era um atalho que só a grelha podia percorrer; o facto — *a
+    /// aresta de cima* — é o que uma nuvem qualquer também tem.
+    fn is_pinned(&self, layout: &BodyLayout, i: usize) -> bool {
+        self.pin && layout.is_pinned(i)
     }
 }
 
@@ -342,10 +296,11 @@ fn step(
     inv_mass: &[f32],
     falloff: Option<&[f32]>,
     anchor: [f32; 2],
-    rest: &[[f32; 2]],
+    layout: &BodyLayout,
     dt: f32,
     p: &Params,
 ) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
+    let rest = &layout.rest;
     let n = pos.len();
     let dt2 = dt * dt;
     // Predict under inertia + gravity; pinned particles jump to their pin target.
@@ -376,7 +331,7 @@ fn step(
         // clampa ao repouso em vez de a congelar onde ela está. É exactamente o que
         // o pino intrínseco sempre cobrou, e quem quer uma partícula meramente mais
         // pesada tem o `strength < 1` (que não entra neste ramo).
-        if p.is_pinned(i) || w <= 0.0 {
+        if p.is_pinned(layout, i) || w <= 0.0 {
             pred[i] = pin_target(anchor, rest, i);
         } else {
             // The external `accel` lands beside the built-in gravity: both are
@@ -413,9 +368,8 @@ fn step(
     let scale = if p.pressure > 0.0 {
         pressure_scale(
             &pred,
-            p.rows,
-            p.cols,
-            boundary_area(rest, p.rows, p.cols),
+            layout.ring(),
+            ring_area(rest, layout.ring()),
             p.pressure,
             p.stiffness,
         )
@@ -430,7 +384,12 @@ fn step(
     // a arrastar o ajuste do corpo inteiro atrás dela.
     let goals = if p.clusters > 1 {
         cluster_goals_weighted(
-            &pred, rest, p.rows, p.cols, p.beta, scale, p.clusters, falloff,
+            &pred,
+            rest,
+            &layout.buckets(p.clusters),
+            p.beta,
+            scale,
+            falloff,
         )
     } else {
         let c0 = weighted_rest_centroid(rest, falloff);
@@ -453,7 +412,7 @@ fn step(
         let pull = p.stiffness
             * inv_mass.get(i).copied().unwrap_or(1.0)
             * falloff.map_or(1.0, |f| f.get(i).copied().unwrap_or(1.0));
-        let mut np = if p.is_pinned(i) || pull <= 0.0 {
+        let mut np = if p.is_pinned(layout, i) || pull <= 0.0 {
             pred[i] // pinned particles stay exactly on the pin
         } else {
             [
@@ -478,9 +437,24 @@ fn step(
 
 /// The whole node as a pure function: seed on the first tick / a shape change,
 /// else step. Emits `P` + the `sb_vel`/`sim_t` state.
-fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stream {
-    let rest = rest_shape(p.rows, p.cols, p.spacing);
-    let n = rest.len();
+fn simulate(
+    anchor: [f32; 2],
+    state: &Stream,
+    shape_in: &[[f32; 2]],
+    playhead: f32,
+    p: &Params,
+) -> Stream {
+    // ⚠️ **A porta GANHA quando tem alguma coisa.** Vazia (desligada, ou um
+    // montante que ainda não cozinhou) cai na malha autorada — e cair para o
+    // rectângulo é a resposta certa: um corpo que desaparecesse porque o fio de
+    // cima ainda não produziu nada seria um corpo que pisca.
+    let layout = if shape_in.len() >= 3 {
+        BodyLayout::from_cloud(shape_in)
+    } else {
+        BodyLayout::from_grid(p.rows, p.cols, p.spacing)
+    };
+    let rest = &layout.rest;
+    let n = layout.len();
     let s_pos = vec2_col(state, "P");
     let s_vel = vec2_col(state, "sb_vel");
 
@@ -503,7 +477,7 @@ fn simulate(anchor: [f32; 2], state: &Stream, playhead: f32, p: &Params) -> Stre
                 &w,
                 fall.as_deref(),
                 anchor,
-                &rest,
+                &layout,
                 dt,
                 p,
             )
@@ -550,7 +524,8 @@ impl NodeOp for MotionSoftBody {
             value_head(&scalar_col(ctx.input(1), VALUE_COL)),
         ];
         let state = ctx.input(2);
-        let out = simulate(anchor, state, playhead, &p);
+        let shape_in = vec2_col(ctx.input(3), "P");
+        let out = simulate(anchor, state, &shape_in, playhead, &p);
         ctx.emit(out);
     }
 }
@@ -570,6 +545,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     // ADR-0155: this body CONSUMES `accel`, so a `force.*` in its state chain is
     // live instead of inert — and the diagnose stops offering to splice a
     // `motion.integrate`, which is `Temporal` and would stamp `sim_t = playhead`
@@ -588,6 +564,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+/// Os gates da porta `shape` — separados do `tests.rs` pelo tecto de LOC.
+#[cfg(test)]
+#[path = "port_tests.rs"]
+mod port_tests;
 
 #[cfg(test)]
 mod cap_gates {

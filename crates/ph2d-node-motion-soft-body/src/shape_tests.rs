@@ -188,12 +188,13 @@ fn a_pressure_of_one_restores_the_volume_in_a_single_step() {
     let (rows, cols) = (6usize, 6usize);
     let rest = rest_shape(rows, cols, 0.7);
     let a0 = boundary_area(&rest, rows, cols);
+    let ring = crate::layout::grid_ring(rows, cols);
     let (lo, hi) = (1.0 / MAX_PRESSURE_SCALE, MAX_PRESSURE_SCALE);
     let mut exact = 0usize;
     for k in [0.15f32, 0.4, 0.7, 0.95] {
         for u in [0.80f32, 0.93, 1.06, 1.25] {
             let pred: Vec<[f32; 2]> = rest.iter().map(|q| [q[0] * u, q[1] * u]).collect();
-            let s = pressure_scale(&pred, rows, cols, a0, 1.0, k);
+            let s = pressure_scale(&pred, &ring, a0, 1.0, k);
             let goals = shape_goals(&pred, &rest, 0.0, s);
             let landed: Vec<[f32; 2]> = pred
                 .iter()
@@ -244,30 +245,31 @@ fn the_term_asks_for_nothing_where_it_has_nothing_to_say() {
     let (rows, cols) = (5usize, 5usize);
     let rest = rest_shape(rows, cols, 0.7);
     let a0 = boundary_area(&rest, rows, cols);
+    let ring = crate::layout::grid_ring(rows, cols);
 
     assert_eq!(
-        pressure_scale(&rest, rows, cols, a0, 1.0, 0.4),
+        pressure_scale(&rest, &ring, a0, 1.0, 0.4),
         1.0,
         "corpo na area de repouso"
     );
     assert_eq!(
-        pressure_scale(&rest, rows, cols, a0, 0.0, 0.4),
+        pressure_scale(&rest, &ring, a0, 0.0, 0.4),
         1.0,
         "ganho zero"
     );
 
     let squashed: Vec<[f32; 2]> = rest.iter().map(|q| [q[0] * 0.8, q[1] * 0.8]).collect();
     assert_eq!(
-        pressure_scale(&squashed, rows, cols, a0, 1.0, 0.0),
+        pressure_scale(&squashed, &ring, a0, 1.0, 0.0),
         1.0,
         "travel zero: o goal nunca e consultado, entao a pressao nao pode agir"
     );
-    let s = pressure_scale(&squashed, rows, cols, a0, 1.0, 1e-9);
+    let s = pressure_scale(&squashed, &ring, a0, 1.0, 1e-9);
     assert!(s.is_finite(), "travel ~0 nunca produz NaN/inf: {s}");
 
     let inside_out: Vec<[f32; 2]> = rest.iter().map(|q| [-q[0] * 0.8, q[1] * 0.8]).collect();
     assert_eq!(
-        pressure_scale(&inside_out, rows, cols, a0, 1.0, 0.4),
+        pressure_scale(&inside_out, &ring, a0, 1.0, 0.4),
         1.0,
         "corpo do avesso: recuar, nunca empurrar mais fundo"
     );

@@ -474,6 +474,9 @@ pub(super) use gates::gate_family;
 /// O anuncio da cena `=86` — a fronteira curva (folha 04, o P1).
 #[path = "motion_state_demo_conferencia_bezier.rs"]
 mod bezier;
+/// O anuncio da cena `=87` — o corpo que nao e' um retangulo (folha 03, o P1).
+#[path = "motion_state_demo_conferencia_body.rs"]
+mod body;
 /// A cena do Grupo Y (`=83`) — as portas de campo lidas no elemento 0, e a altura da onda.
 #[path = "motion_state_demo_conferencia_campo.rs"]
 mod campo;
@@ -484,6 +487,7 @@ mod drawn;
 #[path = "motion_state_demo_conferencia_fx_modes.rs"]
 mod fx_modes;
 pub(super) use bezier::bezier_family;
+pub(super) use body::body_family;
 pub(super) use campo::field_port_family;
 pub(super) use drawn::drawn_family;
 pub(super) use fx_modes::fx_modes_family;

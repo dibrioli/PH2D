@@ -33,7 +33,7 @@ fn what_does_the_area_do_under_load() {
         let mut out = String::new();
         for k in 0..=240usize {
             let t = k as f32 / 60.0;
-            let mut s = simulate(anchor(t), &state, t, p);
+            let mut s = simulate(anchor(t), &state, &[], t, p);
             if squeeze != 0.0 {
                 // An inward accel field: every particle pulled toward the
                 // centroid, which is what a `force.attractor` in the state
@@ -149,7 +149,7 @@ fn what_each_pressure_settles_at() {
             } else {
                 [0.0, 0.0]
             };
-            let mut s = simulate(anchor, &state, t, &p);
+            let mut s = simulate(anchor, &state, &[], t, &p);
             if squeeze != 0.0 {
                 let pos = vec2_col(&s, "P");
                 let n = pos.len() as f32;
@@ -214,7 +214,7 @@ fn is_the_useful_pressure_coupled_to_stiffness() {
         let mut worst = 1.0f32;
         for k in 0..=300usize {
             let t = k as f32 / 60.0;
-            let s = simulate([0.0, 0.0], &state, t, &p);
+            let s = simulate([0.0, 0.0], &state, &[], t, &p);
             let pos = vec2_col(&s, "P");
             let n = pos.len() as f32;
             let c = pos
@@ -241,6 +241,7 @@ fn is_the_useful_pressure_coupled_to_stiffness() {
     {
         let rest = rest_shape(8, 8, 0.7);
         let a0 = boundary_area(&rest, 8, 8);
+        let ring = crate::layout::grid_ring(8, 8);
         let squashed: Vec<[f32; 2]> = rest.iter().map(|q| [q[0] * 0.92, q[1] * 0.92]).collect();
         eprint!("  escala pedida (corpo 8% menor)  ");
         for (k, g) in [
@@ -251,7 +252,7 @@ fn is_the_useful_pressure_coupled_to_stiffness() {
             (0.1, 2.0),
             (0.1, 4.0),
         ] {
-            let sc = pressure_scale(&squashed, 8, 8, a0, g, k);
+            let sc = pressure_scale(&squashed, &ring, a0, g, k);
             eprint!(" k={k:.1}/p={g:.0}:{sc:.2}");
         }
         eprintln!();
@@ -287,11 +288,12 @@ fn what_does_the_shape_match_cost_per_tick() {
     const REPS: u32 = 20;
     for &side in &[40usize, 100, 316, 512, 724, 1000] {
         let n = side * side;
-        let rest = rest_shape(side, side, 1.0);
+        let layout = crate::layout::BodyLayout::from_grid(side, side, 1.0);
+        let rest = &layout.rest;
         let pred: Vec<[f32; 2]> = rest.iter().map(|p| [p[0] * 1.1, p[1] * 0.9]).collect();
         let t0 = std::time::Instant::now();
         for _ in 0..REPS {
-            std::hint::black_box(shape_goals(&pred, &rest, 0.3, 1.0));
+            std::hint::black_box(shape_goals(&pred, rest, 0.3, 1.0));
         }
         let core = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
 
@@ -321,7 +323,7 @@ fn what_does_the_shape_match_cost_per_tick() {
                 &[],
                 None,
                 [0.0, 0.0],
-                &rest,
+                &layout,
                 1.0 / 60.0,
                 &p,
             ));
@@ -364,7 +366,7 @@ fn how_much_can_a_long_body_bend_today() {
         let mut worst = 0.0f32;
         for k in 0..=300usize {
             let t = k as f32 / 60.0;
-            state = simulate([(t * 7.0).sin() * shake, 0.0], &state, t, &p);
+            state = simulate([(t * 7.0).sin() * shake, 0.0], &state, &[], t, &p);
             if k > 60 {
                 worst = worst.max(spine_bend(&vec2_col(&state, "P"), rows, cols));
             }
@@ -448,7 +450,7 @@ fn what_clusters_buy_and_what_they_cost() {
             // reason to curve: every cluster sees the same rotation and the spine
             // is straight whatever the model can express. It reported 0,0000 for
             // every cluster count and would have read as the feature being inert.
-            state = simulate([(t * 7.0).sin() * 2.5, 0.0], &state, t, &p);
+            state = simulate([(t * 7.0).sin() * 2.5, 0.0], &state, &[], t, &p);
             if k > 60 {
                 worst = worst.max(spine_bend(&vec2_col(&state, "P"), rows, cols));
             }
@@ -484,7 +486,8 @@ fn what_clusters_buy_and_what_they_cost() {
                 clusters: n,
                 pin: true,
             };
-            let rest = rest_shape(side, side, 1.0);
+            let layout = crate::layout::BodyLayout::from_grid(side, side, 1.0);
+            let rest = &layout.rest;
             let pred: Vec<[f32; 2]> = rest.iter().map(|q| [q[0] * 1.1, q[1] * 0.9]).collect();
             let vel = vec![[0.0f32; 2]; side * side];
             let accel = vec![[0.0f32; 2]; side * side];
@@ -498,7 +501,7 @@ fn what_clusters_buy_and_what_they_cost() {
                     &[],
                     None,
                     [0.0, 0.0],
-                    &rest,
+                    &layout,
                     1.0 / 60.0,
                     &p,
                 ));
@@ -535,7 +538,13 @@ fn can_a_clustered_match_follow_an_arc() {
     eprintln!("  distancia RMS entre o GOAL e o arco real (unidades de mundo)");
     for n in [1usize, 2, 3, 4, 6, 8, 12, 16] {
         let goals = if n > 1 {
-            crate::cluster::cluster_goals(&bent, &rest, rows, cols, 0.0, 1.0, n)
+            crate::cluster::cluster_goals(
+                &bent,
+                &rest,
+                &crate::layout::BodyLayout::from_grid(rows, cols, 0.7).buckets(n),
+                0.0,
+                1.0,
+            )
         } else {
             shape_goals(&bent, &rest, 0.0, 1.0)
         };

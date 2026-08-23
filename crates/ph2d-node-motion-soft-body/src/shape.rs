@@ -17,21 +17,22 @@
 /// Below this a magnitude / determinant is treated as zero (skip the divide).
 const EPS: f32 = 1e-6;
 
-/// The rest shape: a `rows×cols` grid centred on the origin (so its centroid is 0,
-/// which the shape match assumes). Row 0 is the TOP (max y). Row-major, so
-/// `0..cols` is the top row.
-pub(crate) fn rest_shape(rows: usize, cols: usize, spacing: f32) -> Vec<[f32; 2]> {
-    let (w, h) = ((cols as f32 - 1.0) * spacing, (rows as f32 - 1.0) * spacing);
-    let mut q = Vec::with_capacity(rows * cols);
-    for r in 0..rows {
-        for c in 0..cols {
-            q.push([c as f32 * spacing - w * 0.5, h * 0.5 - r as f32 * spacing]);
-        }
-    }
-    q
+/// A malha de repouso autorada — vive no [`crate::layout`], que é quem sabe a
+/// forma do corpo desde que ela deixou de ser sempre uma grelha.
+#[cfg(test)]
+pub(crate) use crate::layout::grid_rest as rest_shape;
+
+/// A área do anel de uma malha AUTORADA — o atalho dos gates e das sondas,
+/// cujas fixturas SÃO grelhas. ⚠️ `#[cfg(test)]` de propósito: o caminho de
+/// produção recebe o anel do [`crate::layout::BodyLayout`], que é quem sabe se
+/// o corpo é uma malha ou uma nuvem — um atalho alcançável dali seria a
+/// segunda resposta à espera de alguém a chamar.
+#[cfg(test)]
+pub(crate) fn boundary_area(pos: &[[f32; 2]], rows: usize, cols: usize) -> f32 {
+    ring_area(pos, &crate::layout::grid_ring(rows, cols))
 }
 
-/// The SIGNED area enclosed by the mesh's boundary ring, by the shoelace formula.
+/// The SIGNED area enclosed by the body's boundary ring, by the shoelace formula.
 ///
 /// This is the grandeza a pressure term defends, and it is deliberately the
 /// **boundary**, not the sum of cell areas: a soft body's volume is what its
@@ -40,38 +41,33 @@ pub(crate) fn rest_shape(rows: usize, cols: usize, spacing: f32) -> Vec<[f32; 2]
 /// allowed to have (see `MAX_SIDE`, whose 512² cap was measured against exactly
 /// one of them).
 ///
-/// SIGNED on purpose. The traversal is top row left→right, right column down,
+/// SIGNED on purpose. The ring winds top row left→right, right column down,
 /// bottom row right→left, left column up — clockwise in this y-up frame, so a
 /// healthy body reports a NEGATIVE number and the caller compares the sign
 /// against the rest shape's. Taking `abs()` here would report a body turned
 /// inside-out as perfectly healthy, which is precisely the state where an
 /// area-restoring term would push in the wrong direction.
-pub(crate) fn boundary_area(pos: &[[f32; 2]], rows: usize, cols: usize) -> f32 {
-    if rows < 2 || cols < 2 || pos.len() < rows * cols {
+///
+/// ⚠️ **O anel entra por argumento, e é isso que separa a LEI do FORNECEDOR.**
+/// Quem o produz — o passeio da grelha ou o casco de uma nuvem — vive no
+/// [`crate::layout`]; aqui só se soma. A ordem dos índices é load-bearing: a
+/// soma é `f32`, e o mesmo anel noutra ordem dá outro número.
+pub(crate) fn ring_area(pos: &[[f32; 2]], ring: &[usize]) -> f32 {
+    if ring.len() < 3 || ring.iter().any(|&k| k >= pos.len()) {
         return 0.0;
     }
-    let at = |r: usize, c: usize| pos[r * cols + c];
     let mut sum = 0.0f32;
-    let mut prev = at(0, 0);
-    // The ring, once around; `fold` accumulates the cross product of consecutive
+    let mut prev = pos[ring[0]];
+    // Once around; each step accumulates the cross product of consecutive
     // vertices (the shoelace), and the final edge closes back onto the start.
     let mut edge = |p: [f32; 2], prev: &mut [f32; 2]| {
         sum += prev[0] * p[1] - p[0] * prev[1];
         *prev = p;
     };
-    for c in 1..cols {
-        edge(at(0, c), &mut prev);
+    for &k in &ring[1..] {
+        edge(pos[k], &mut prev);
     }
-    for r in 1..rows {
-        edge(at(r, cols - 1), &mut prev);
-    }
-    for c in (0..cols - 1).rev() {
-        edge(at(rows - 1, c), &mut prev);
-    }
-    for r in (1..rows - 1).rev() {
-        edge(at(r, 0), &mut prev);
-    }
-    edge(at(0, 0), &mut prev); // close the ring
+    edge(pos[ring[0]], &mut prev); // close the ring
     sum * 0.5
 }
 
@@ -204,8 +200,7 @@ const MAX_PRESSURE_SCALE: f32 = 4.0;
 /// zero travel is that the goal is never consulted, so pressure cannot act.
 pub(crate) fn pressure_scale(
     pred: &[[f32; 2]],
-    rows: usize,
-    cols: usize,
+    ring: &[usize],
     rest_area: f32,
     gain: f32,
     travel: f32,
@@ -213,7 +208,7 @@ pub(crate) fn pressure_scale(
     if travel < EPS {
         return 1.0;
     }
-    let area = boundary_area(pred, rows, cols);
+    let area = ring_area(pred, ring);
     // Same sign = the ring still winds the way the rest shape winds; both
     // magnitudes non-degenerate.
     if area.abs() < EPS || rest_area.abs() < EPS || (area > 0.0) != (rest_area > 0.0) {

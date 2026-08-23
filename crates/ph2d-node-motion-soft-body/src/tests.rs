@@ -5,7 +5,10 @@
 
 use super::*;
 
-fn params(rows: usize, cols: usize, gravity: f32, stiffness: f32, pin: bool) -> Params {
+/// ⚠️ `pub(super)` porque o `port_tests` — a metade que o tecto de LOC cortou
+/// daqui — usa a MESMA fixtura. Dois `params` divergiriam em silêncio, e o
+/// primeiro a mudar de default levaria metade dos gates com ele.
+pub(super) fn params(rows: usize, cols: usize, gravity: f32, stiffness: f32, pin: bool) -> Params {
     Params {
         rows,
         cols,
@@ -28,7 +31,7 @@ fn run(anchor: impl Fn(f32) -> [f32; 2], p: &Params, ticks: usize, dt: f32) -> V
     let mut frames = Vec::new();
     for k in 0..ticks {
         let t = k as f32 * dt;
-        let out = simulate(anchor(t), &state, t, p);
+        let out = simulate(anchor(t), &state, &[], t, p);
         state = out.clone();
         frames.push(vec2_col(&out, "P"));
     }
@@ -40,7 +43,7 @@ fn run(anchor: impl Fn(f32) -> [f32; 2], p: &Params, ticks: usize, dt: f32) -> V
 #[test]
 fn seeds_the_rest_mesh_at_the_anchor() {
     let p = params(3, 4, 9.0, 0.5, true);
-    let out = simulate([2.0, 1.0], &Stream::new(0), 0.0, &p);
+    let out = simulate([2.0, 1.0], &Stream::new(0), &[], 0.0, &p);
     let pos = vec2_col(&out, "P");
     assert_eq!(pos.len(), 12, "3×4 mesh");
     // Top row is at the top (max y); rows descend. Centre column near anchor x.
@@ -110,7 +113,7 @@ fn without_the_state_loop_it_holds_the_rest_mesh() {
     let p = params(3, 3, 12.0, 0.5, true);
     let rest = rest_shape(p.rows, p.cols, p.spacing);
     for k in 0..20 {
-        let out = simulate([1.0, 0.0], &Stream::new(0), k as f32 / 60.0, &p);
+        let out = simulate([1.0, 0.0], &Stream::new(0), &[], k as f32 / 60.0, &p);
         let pos = vec2_col(&out, "P");
         for (q, r) in pos.iter().zip(&rest) {
             assert!((q[0] - (r[0] + 1.0)).abs() < 1e-5 && (q[1] - r[1]).abs() < 1e-5);
@@ -135,7 +138,7 @@ fn non_finite_state_recovers() {
         )
         .with("sb_vel", Column::Vec2(vec![[0.0, 0.0]; 4]))
         .with("sim_t", Column::Scalar(vec![0.0; 4]));
-    let out = simulate([0.0, 0.0], &state, 1.0 / 60.0, &p);
+    let out = simulate([0.0, 0.0], &state, &[], 1.0 / 60.0, &p);
     let _ = rest;
     assert!(
         vec2_col(&out, "P")
@@ -207,7 +210,7 @@ fn worst_area_under_squeeze(p: &Params, ticks: usize, squeeze: f32) -> f32 {
     let mut worst = 1.0f32;
     for k in 0..=ticks {
         let t = k as f32 / 60.0;
-        let s = simulate([0.0, 0.0], &state, t, p);
+        let s = simulate([0.0, 0.0], &state, &[], t, p);
         let pos = vec2_col(&s, "P");
         let n = pos.len() as f32;
         let c = pos
@@ -317,7 +320,7 @@ fn pressure_at_zero_stiffness_leaves_the_body_alone() {
     let p = pressured(0.0, 1.5);
     let mut state = Stream::new(0);
     for k in 0..30 {
-        state = simulate([0.0, 0.0], &state, k as f32 / 60.0, &p);
+        state = simulate([0.0, 0.0], &state, &[], k as f32 / 60.0, &p);
     }
     let pos = vec2_col(&state, "P");
     assert!(
@@ -344,7 +347,7 @@ fn worst_spine_bend(p: &Params, ticks: usize, shake: f32) -> f32 {
     let mut worst = 0.0f32;
     for k in 0..=ticks {
         let t = k as f32 / 60.0;
-        state = simulate([(t * 7.0).sin() * shake, 0.0], &state, t, p);
+        state = simulate([(t * 7.0).sin() * shake, 0.0], &state, &[], t, p);
         if k > 60 {
             let pos = vec2_col(&state, "P");
             let centre = |r: usize| {
@@ -417,6 +420,7 @@ fn one_cluster_replays_the_body_that_shipped_to_the_bit() {
             state = simulate(
                 [(k as f32 / 60.0 * 3.0).sin(), 0.0],
                 &state,
+                &[],
                 k as f32 / 60.0,
                 p,
             );
@@ -442,7 +446,7 @@ fn run_with_falloff(p: &Params, w: &[f32], ticks: usize, dt: f32) -> Vec<[f32; 2
     let mut last = Vec::new();
     for k in 0..ticks {
         let t = k as f32 * dt;
-        let mut out = simulate([0.0, 0.0], &state, t, p);
+        let mut out = simulate([0.0, 0.0], &state, &[], t, p);
         last = vec2_col(&out, "P");
         if out.count() == w.len() {
             out.set(FALLOFF_COL, Column::Scalar(w.to_vec()));

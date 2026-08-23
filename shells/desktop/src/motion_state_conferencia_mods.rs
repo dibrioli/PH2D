@@ -103,6 +103,12 @@ pub(crate) mod conferencia_demos_drawn;
 #[path = "motion_state_conferencia_demos_bezier.rs"]
 pub(crate) mod conferencia_demos_bezier;
 
+/// A cena do CORPO QUE NAO E' UM RETANGULO (`=87`) — tres gelatinas do mesmo mastro, uma
+/// por forma de repouso. ⚠️ A primeira e' o CONTROLE (a porta `shape` vazia); o oraculo das
+/// outras duas e' TOPOLOGIA (o buraco do anel, os cantos vazios da cruz), nunca o tamanho.
+#[path = "motion_state_conferencia_demos_body.rs"]
+pub(crate) mod conferencia_demos_body;
+
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.
 #[path = "motion_state_conferencia_demos_campo.rs"]

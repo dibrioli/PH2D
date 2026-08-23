@@ -84,17 +84,14 @@ pub(crate) fn span(j: usize, n: usize, len: usize) -> (usize, usize) {
 /// A porta UNIFORME (ver `shape::shape_goals`): a lei com o peso neutro, falada
 /// pelos oráculos e por nenhum caminho de produção.
 #[cfg(test)]
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn cluster_goals(
     pred: &[[f32; 2]],
     rest: &[[f32; 2]],
-    rows: usize,
-    cols: usize,
+    buckets: &[Vec<usize>],
     beta: f32,
     scale: f32,
-    clusters: usize,
 ) -> Vec<[f32; 2]> {
-    cluster_goals_weighted(pred, rest, rows, cols, beta, scale, clusters, None)
+    cluster_goals_weighted(pred, rest, buckets, beta, scale, None)
 }
 
 /// A mesma partição, com o **peso por partícula** atravessando para cada região.
@@ -103,68 +100,65 @@ pub(crate) fn cluster_goals(
 /// MÉDIA que junta as regiões também.** Uma partícula que não pertence ao corpo
 /// aparece em até quatro regiões vizinhas, e sem o peso na costura ela voltaria a
 /// arrastar o goal dos vizinhos pela porta de trás.
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn cluster_goals_weighted(
     pred: &[[f32; 2]],
     rest: &[[f32; 2]],
-    rows: usize,
-    cols: usize,
+    buckets: &[Vec<usize>],
     beta: f32,
     scale: f32,
-    clusters: usize,
     w: Option<&[f32]>,
 ) -> Vec<[f32; 2]> {
-    let n = rows * cols;
-    let (nr, nc) = counts(rows, cols, clusters);
+    let n = rest.len();
     let mut sum = vec![[0.0f32; 2]; n];
     let mut hits = vec![0u32; n];
 
     // Scratch reused across clusters: a 512² body at four clusters a side would
     // otherwise churn sixteen allocations per tick, per particle plane.
-    let (mut sub_pred, mut sub_rest, mut idx) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut sub_pred, mut sub_rest) = (Vec::new(), Vec::new());
     let mut sub_w: Vec<f32> = Vec::new();
 
-    for cj in 0..nc {
-        let (c0, c1) = span(cj, nc, cols);
-        for rj in 0..nr {
-            let (r0, r1) = span(rj, nr, rows);
-            sub_pred.clear();
-            sub_rest.clear();
-            sub_w.clear();
-            idx.clear();
-            let mut centre = [0.0f32; 2];
-            let mut total = 0.0f32;
-            for r in r0..r1 {
-                for c in c0..c1 {
-                    let i = r * cols + c;
-                    idx.push(i);
-                    sub_pred.push(pred[i]);
-                    sub_rest.push(rest[i]);
-                    let k = w.map_or(1.0, |w| w[i]);
-                    sub_w.push(k);
-                    centre[0] += k * rest[i][0];
-                    centre[1] += k * rest[i][1];
-                    total += k;
-                }
-            }
-            // ⚠️ **O centro sai da MESMA divisão de sempre quando não há pesos** —
-            // `Σ 1.0` sobre `m` partículas é exactamente `m as f32` —, e o
-            // `shape_goals_weighted` passa a fazer a subtração que este laço fazia
-            // à mão. Mesma expressão, mesma ordem, mesmos bits.
-            if total <= 1e-6 {
-                continue; // região sem membro nenhum: nada a ajustar
-            }
-            centre = [centre[0] / total, centre[1] / total];
-            let ws = w.map(|_| sub_w.as_slice());
-            for (k, g) in shape_goals_weighted(&sub_pred, &sub_rest, beta, scale, ws, centre)
-                .into_iter()
-                .enumerate()
-            {
-                let i = idx[k];
-                sum[i][0] += g[0];
-                sum[i][1] += g[1];
-                hits[i] += 1;
-            }
+    for idx in buckets {
+        // ⚠️ **Uma região com menos de `MIN_SPAN` membros não se ajusta — ela
+        // DILUI.** O ajuste sobre uma partícula é a identidade, que a projecta
+        // sobre si mesma; média-la com as regiões reais enfraquece a única
+        // restrição que aquela partícula tinha. Sobre a grelha autorada isto
+        // nunca dispara (cada banda cobre `MIN_SPAN` índices por eixo, logo
+        // quatro membros), e há gate a dizê-lo — a guarda existe para a nuvem,
+        // onde uma banda pode calhar quase vazia.
+        if idx.len() < MIN_SPAN {
+            continue;
+        }
+        sub_pred.clear();
+        sub_rest.clear();
+        sub_w.clear();
+        let mut centre = [0.0f32; 2];
+        let mut total = 0.0f32;
+        for &i in idx {
+            sub_pred.push(pred[i]);
+            sub_rest.push(rest[i]);
+            let k = w.map_or(1.0, |w| w[i]);
+            sub_w.push(k);
+            centre[0] += k * rest[i][0];
+            centre[1] += k * rest[i][1];
+            total += k;
+        }
+        // ⚠️ **O centro sai da MESMA divisão de sempre quando não há pesos** —
+        // `Σ 1.0` sobre `m` partículas é exactamente `m as f32` —, e o
+        // `shape_goals_weighted` passa a fazer a subtração que este laço fazia
+        // à mão. Mesma expressão, mesma ordem, mesmos bits.
+        if total <= 1e-6 {
+            continue; // região sem membro nenhum: nada a ajustar
+        }
+        centre = [centre[0] / total, centre[1] / total];
+        let ws = w.map(|_| sub_w.as_slice());
+        for (k, g) in shape_goals_weighted(&sub_pred, &sub_rest, beta, scale, ws, centre)
+            .into_iter()
+            .enumerate()
+        {
+            let i = idx[k];
+            sum[i][0] += g[0];
+            sum[i][1] += g[1];
+            hits[i] += 1;
         }
     }
 
@@ -186,6 +180,7 @@ pub(crate) fn cluster_goals_weighted(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::layout::BodyLayout;
     use crate::shape::rest_shape;
     use crate::shape::shape_goals;
 
@@ -238,7 +233,16 @@ mod tests {
 
         let mut prev = single;
         for n in [2usize, 4, 8, 16] {
-            let r = rms_to(&cluster_goals(&bent, &rest, rows, cols, 0.0, 1.0, n), &bent);
+            let r = rms_to(
+                &cluster_goals(
+                    &bent,
+                    &rest,
+                    &BodyLayout::from_grid(rows, cols, 0.7).buckets(n),
+                    0.0,
+                    1.0,
+                ),
+                &bent,
+            );
             assert!(
                 r < prev,
                 "{n} clusters tem de seguir melhor que o anterior: {prev} -> {r}"
@@ -335,7 +339,13 @@ mod tests {
         let (rows, cols) = (9usize, 6usize);
         let rest = rest_shape(rows, cols, 0.7);
         let bent = arc(&rest, (rows as f32 - 1.0) * 0.7 / 0.8);
-        let one = cluster_goals(&bent, &rest, rows, cols, 0.0, 1.0, 1);
+        let one = cluster_goals(
+            &bent,
+            &rest,
+            &BodyLayout::from_grid(rows, cols, 0.7).buckets(1),
+            0.0,
+            1.0,
+        );
         let plain = shape_goals(&bent, &rest, 0.0, 1.0);
         for (a, b) in one.iter().zip(&plain) {
             assert!(
@@ -364,7 +374,14 @@ mod tests {
         let goal_of = |runaway: [f32; 2]| {
             let mut pred = base.clone();
             pred[n - 1] = runaway;
-            cluster_goals_weighted(&pred, &rest, rows, cols, 0.0, 1.0, 4, Some(&w))
+            cluster_goals_weighted(
+                &pred,
+                &rest,
+                &BodyLayout::from_grid(rows, cols, 0.7).buckets(4),
+                0.0,
+                1.0,
+                Some(&w),
+            )
         };
         let near = goal_of(base[n - 1]);
         let far = goal_of([120.0, 90.0]);
@@ -383,7 +400,13 @@ mod tests {
         let uniform = |runaway: [f32; 2]| {
             let mut pred = base.clone();
             pred[n - 1] = runaway;
-            cluster_goals(&pred, &rest, rows, cols, 0.0, 1.0, 4)
+            cluster_goals(
+                &pred,
+                &rest,
+                &BodyLayout::from_grid(rows, cols, 0.7).buckets(4),
+                0.0,
+                1.0,
+            )
         };
         let moved = uniform(base[n - 1])
             .iter()

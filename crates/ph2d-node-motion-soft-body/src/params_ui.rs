@@ -3,7 +3,9 @@
 //! (`ph2d-node-motion-emitter/src/params_ui.rs`): none of this is behaviour, so the
 //! node computes exactly the same result whatever a slider looks like.
 
-use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget};
+use ph2d_node_registry::{
+    ParamGroup, ParamHardMax, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+};
 
 /// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
 /// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
@@ -149,3 +151,28 @@ pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
     param: "spacing",
     unit: ParamUnit::Length,
 }];
+
+/// **As três perguntas deste nó** (doc 88 B3) — oito sliders numa lista plana
+/// obrigavam o artista a lê-los todos para achar o que queria.
+///
+/// - **Mesh** — *que forma o corpo tem quando ninguém lhe dá uma*. Estes três só
+///   respondem com a porta `shape` VAZIA; ligada, a forma vem de lá e eles ficam
+///   sem efeito (o painel não os esconde de propósito: desligar o fio devolve o
+///   corpo que eles descrevem, e um knob que desaparece leva a forma com ele).
+/// - **Physics** — como ele se move e quanto defende a própria forma.
+/// - **Pin** — se o topo fica preso à âncora.
+///
+/// ⚠️ **Nada fica solto**, e isso é uma escolha: um param solto aparece ANTES de
+/// toda seção, e aqui os dez pertencem, cada um, a exactamente uma das três.
+pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
+    ParamGroup::new("rows", "Mesh"),
+    ParamGroup::new("cols", "Mesh"),
+    ParamGroup::new("spacing", "Mesh"),
+    ParamGroup::new("gravity", "Physics"),
+    ParamGroup::new("stiffness", "Physics"),
+    ParamGroup::new("stretch", "Physics"),
+    ParamGroup::new("damping", "Physics"),
+    ParamGroup::new("pressure", "Physics"),
+    ParamGroup::new("clusters", "Physics"),
+    ParamGroup::new("pin", "Pin"),
+];

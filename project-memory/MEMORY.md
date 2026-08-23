@@ -81,6 +81,7 @@
 - [Réguas do quad remesh (13)](reference_topic_quad_remesh_rulers.md) — ⛔ suíte topológica cega a geometria · extremo global ≠ régua por-face · cura que falha delimita a causa · gate tautológico · régua que deduplica · `round` sem resíduo · invariante conservada · proveniência do defeito · provas de ótimo
 - [Balde que ninguém enche lê-se como PERFEITO](feedback_a_bucket_nobody_fills_reads_as_perfect.md) — mediana de vector vazio = 0; ponha a CONTAGEM ao lado, e `else` em vez de `continue` quando a escrituração vive no fim do laço
 - [Cura que MOVE o defeito nomeia-o](feedback_a_cure_that_moves_the_defect_names_it.md) — meça as duas pontas da fase; total igual + folga fechada = a fase foi isolada, não é fracasso
+- [N fontes pedem a comparação CRUZADA](feedback_n_sources_need_the_cross_check_not_n_self_checks.md) — conferir cada fonte consigo própria passa sobre malhas diferentes; e um comentário que nomeia o risco não é o portão
 - [Ofício de gate (32)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
 - [Modo SUPERSET ganha a dedup, nunca perde](feedback_a_superset_mode_must_win_the_dedup_never_lose_it.md) — desistir do modo rico apaga o que só ele desenha; a pergunta é qual CONTÉM o outro, não quem chegou primeiro
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas

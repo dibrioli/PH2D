@@ -211,9 +211,13 @@ fn the_mesh_import_chord_is_reachable_and_does_not_eat_the_project_open() {
     let guarded = body
         .find("KeyCode::KeyO if self.modifiers.shift_key()")
         .expect("o import de malha e' Ctrl+SHIFT+O — a guarda faz parte do atalho");
+    // ⚠️ O NOME mudou em 2026-08-23 e a claim NÃO: o `project_load()` (que abria o caminho da
+    // sessão em silêncio) deu lugar ao `project_open_gesture()`, que **pergunta** — abrir é o
+    // gesto que deita fora o trabalho não gravado (`crate::project_io`). A propriedade que este
+    // gate afirma continua a ser a ORDEM dos braços.
     let plain = body
-        .find("self.project_load()")
-        .expect("Ctrl+O continua carregando projeto");
+        .find("self.project_open_gesture()")
+        .expect("Ctrl+O continua abrindo projeto");
     assert!(
         guarded < plain,
         "o braço com `shift` esta' DEPOIS do generico: ele nasce inalcancavel, e \

@@ -631,7 +631,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   lado do shell a alternativa é um censo de todas as poses por quadro, cujo custo ninguém mediu
   ([auditoria 21 §4](docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md)) ·
   **Aberto:**
-  UI real de Save/Save As/Open (o `io_menu` é stub — hoje é path fixo, sem diálogo) ·
+  ✅ **O FICHEIRO DO PROJETO TEM NOME** (2026-08-23, [`project_io.rs`](shells/desktop/src/project_io.rs)):
+  `Save` · `Save As…` · `Open Project…` com diálogo, e os três itens do menu deixaram de ser
+  **mudos** (eles consumiam o clique e não faziam nada — *pior que um botão ausente: o artista
+  conclui que gravou*). A sessão passa a ter um ficheiro (`App::project_path`), a env só o
+  **semeia**, e a barra de título diz qual é. ⚠️ **Abrir pergunta SEMPRE** — *o gesto que destrói o
+  trabalho não gravado pergunta; o que grava é que pode ser silencioso.* ⚠️ A extensão é
+  **`.ph2dproj`** e **não** `.ph2d`, que já é uma **imagem** neste app (há gate a ligar as duas
+  listas). ⚠️ O teclado e o menu chamam as **mesmas** funções, e o `project_save()`/`project_load()`
+  sem caminho **morreram** — uma decisão de *onde* escondida dentro de quem executa não é alcançável
+  nem por um gate nem por um diálogo ·
   ✅ **`SpriteSource::Individual` PERSISTE — esta nota envelheceu** e mandava reconstruir trabalho
   pago: [`project_sprite_pixels.rs`](shells/desktop/src/project_sprite_pixels.rs) fecha as **oito**
   ferramentas de imagem de uma vez pelo funil `commit_edited_texture`, com a identidade a ser o
@@ -782,8 +791,8 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   «backends reais em S2/S3» escrito nele) — o gatilho de cada uma está na
   [spec §7.8-bis](docs/Sprite_projeto/07_named_anchors.md), e construí-las hoje repetiria, um nível
   acima, o defeito que esta wave curou · o `AnchorData::user_data` não tem UI, com o `variant_editor`
-  órfão a apontar-lhe · os 4 goldens seguem `unimplemented!()` (falta o arnês headless) · UI real
-  de Save/Open (o `io_menu` é stub).
+  órfão a apontar-lhe · os 4 goldens seguem `unimplemented!()` (falta o arnês headless).
+  ✅ A UI de Save/Open **existe** desde 2026-08-23 (ver *Editor / shell*).
   **Smokes:** `PH2D_SLICE_SMOKE=1..3` · `PH2D_SOCKET_SMOKE` · `PH2D_MOUNT_SMOKE` · `PH2D_ANIM_SMOKE` ·
   `PH2D_ASE_SMOKE` ·
   `PH2D_SHEET_SMOKE` · `PH2D_EMISSIVE_SMOKE` · `PH2D_DITHER_SMOKE`.

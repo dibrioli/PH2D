@@ -526,3 +526,56 @@ number)»*, que é a mensagem certa.
 ⚠️ O gate principal afirma as **duas** metades — *«tudo o que o diálogo oferece o roteador aceita»*
 sozinho fica verde num diálogo vazio, e o inverso sozinho fica verde num diálogo que oferece o disco
 inteiro.
+
+## §15 — Adenda: **o ficheiro do projeto tem NOME** (`Save` · `Save As…` · `Open Project…`)
+
+⚠️ Até hoje este app tinha **um** projeto. O `Ctrl+S` escrevia sempre em
+`ph2d_project.postcard` no diretório corrente (ou no que a env `PH2D_PROJECT_PATH` dissesse), e os
+**três itens do menu Ficheiro fechavam o menu e não faziam nada** — eram *placeholders* que
+**consumiam o clique** e devolviam `true`. *Um botão que consome o clique e não age é pior que um
+botão ausente: o artista conclui que gravou.*
+
+### A política, e ela é uma função pura
+
+| gesto | com ficheiro na sessão | sem ficheiro |
+|---|---|---|
+| `Ctrl+S` / **Save** | grava, sem perguntar | **pergunta** (é o primeiro save) |
+| `Ctrl+Shift+S` / **Save As…** | pergunta sempre | pergunta sempre |
+| `Ctrl+O` / **Open Project…** | **pergunta sempre** | pergunta sempre |
+
+⚠️ **Abrir pergunta SEMPRE, e não é simetria decorativa:** um `Ctrl+O` que reabrisse o caminho da
+sessão em silêncio deitaria fora o trabalho não gravado com **uma tecla e nenhuma pergunta**. *O
+gesto que destrói pergunta; o que grava é que pode ser silencioso.*
+
+### As decisões
+
+1. **`App::project_path: Option<String>`** — o ficheiro **desta** sessão. Nasce da env quando ela
+   existe (é o que mantém os smokes e os scripts a funcionar como sempre), do que um `Open` abriu,
+   ou de um `Save As`.
+2. ⚠️ **A extensão é `.ph2dproj`, e NÃO `.ph2d`** — essa já é uma **imagem** neste app
+   (`ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS`). Oferecer a mesma extensão para duas coisas é a
+   ambiguidade que o `import_router` curou noutro sítio no mesmo dia, e há gate a ligar as duas
+   listas. O `.postcard` continua a abrir-se.
+3. **O teclado e o menu chamam as MESMAS funções** (`project_save_gesture` /
+   `project_open_gesture`) — duas portas para o mesmo gesto é o defeito que o `.ase` acabou de
+   mostrar, e aqui seria pior: um `Save` do menu a gravar noutro sítio que o `Ctrl+S`.
+4. **O `project_save()` e o `project_load()` sem caminho MORRERAM.** Ficam
+   `project_save_to(path)` / `project_load_from(path)`: uma decisão de *onde* escondida dentro de
+   quem executa não é alcançável nem por um gate nem por um diálogo.
+5. **A barra de título passa a dizer que projeto está aberto** — ela dizia
+   `M5+M6+M7+M11+M12 demo`, que é verdade sobre o binário e sobre nada que o artista tenha aberto.
+6. ⚠️ **Um `Save As` sem extensão ganha a do projeto**: o portal XDG devolve o que foi escrito, e um
+   ficheiro `hero` sem sufixo **não volta a aparecer no próprio diálogo que o gravou**.
+
+### O que a wave obrigou a arrumar
+
+⚠️ O `hero.rs` estava a **7 LOC do teto** (HR-18, 700) e três campos com o doc que merecem levavam-no
+por cima. As bandeiras viraram um struct num irmão (`screens/hero/file_menu.rs`) — o corte é a cura
+da casa, nunca uma isenção. E dois arch-gates de FONTE reprovaram e foram corrigidos **na agulha, não
+na claim** (o `project_save` mudou de nome; o literal da mensagem de salto mudou) — cada um com o
+motivo escrito ao lado.
+
+**11 gates novos** (7 na política + 3 no painel + 2 de alcance, um em cada lado da costura),
+**6 mutações**, todas sangraram. ⚠️ **Resíduo por gatear, declarado:** o seletor nativo (`rfd`) abre
+uma janela modal do sistema e as três linhas que o chamam — foi por isso que a política saiu para
+funções puras, que é onde um erro custa **trabalho perdido**.

@@ -6,9 +6,12 @@
 //!
 //! ## A porta é o drag & drop porque é a única que existe
 //!
-//! ⚠️ **Este app não tem diálogo de arquivo** — o `io_menu` é stub e o `Ctrl+S`/`Ctrl+O` usam um
-//! caminho fixo. Pendurar o import num botão "Importar folha…" seria construir um botão que não
-//! consegue abrir nada. O `handle_dropped_files` já é como toda imagem entra, e até hoje ele
+//! ⚠️ **A nota que morava aqui — *«este app não tem diálogo de arquivo»* — ERA FALSA, e desde
+//! 2026-08-23 é falsa duas vezes:** o `rfd` é dependência da shell desde o M14.4c (o irmão
+//! [`crate::sheet_export`] já tinha pago essa lição), e agora o `io_menu` também abre diálogos
+//! (`crate::project_io`). ⛔ *Uma ausência afirmada sem grep é um palpite com cara de medição.*
+//! O drag & drop continua a ser a porta desta folha por **escolha** (é como toda imagem entra),
+//! e não por falta de alternativa. O `handle_dropped_files` já era isso, e até hoje ele
 //! filtrava por `is_supported_image_extension` — então um `.json` largado era **ignorado em
 //! silêncio**, com um toast a dizer que fora saltado.
 //!

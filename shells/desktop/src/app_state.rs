@@ -1374,6 +1374,9 @@ pub(crate) struct App {
     ///
     /// Vazio = zero custo, e é o estado normal.
     pub(crate) preview_drive: crate::preview_drive::PreviewDrive,
+    /// **O ficheiro que este projeto tem AGORA** (`crate::project_io`). `None` = ainda sem nome, e
+    /// o primeiro `Ctrl+S` pergunta. Semeado pela env `PH2D_PROJECT_PATH` quando ela existe.
+    pub(crate) project_path: Option<String>,
     /// Gradient group: the gradient handle currently being DRAGGED on-canvas —
     /// a multi-point point OR a linear/radial endpoint (`None` = not dragging).
     /// **O Shape Builder em curso** (modo `DrawMode::Build`). Guarda o arranjo das formas

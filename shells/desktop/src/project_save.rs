@@ -12,11 +12,6 @@
 use super::{PROJECT_SCHEMA, ProjectFile};
 
 impl crate::App {
-    /// Caminho do arquivo de projeto (env `PH2D_PROJECT_PATH`, default no CWD).
-    pub(super) fn project_path() -> String {
-        std::env::var("PH2D_PROJECT_PATH").unwrap_or_else(|_| "ph2d_project.postcard".to_string())
-    }
-
     /// **Os bytes da escultura que este save vai gravar.**
     ///
     /// A cena VIVA é a verdade sempre que ela existe; quando não existe, a verdade são
@@ -33,8 +28,15 @@ impl crate::App {
         self.sculpt_doc.clone()
     }
 
-    /// Ctrl+S: serializa o projeto inteiro (mundo + geometria + pixels) para o disco.
-    pub(crate) fn project_save(&mut self) {
+    /// Serializa o projeto inteiro (mundo + geometria + pixels) para `path`.
+    ///
+    /// ⚠️ **O caminho é PARÂMETRO, e é a única porta.** Até 2026-08-23 havia um `project_save()`
+    /// que resolvia o destino aqui dentro — uma env var lida a cada gravação, com
+    /// `ph2d_project.postcard` no diretório corrente como default silencioso. Quem decide *onde*
+    /// é hoje o [`crate::App::project_save_gesture`], que **pergunta** quando ainda não há
+    /// ficheiro; esta função só sabe escrever. É a mesma razão do `project_load_from`: uma decisão
+    /// escondida dentro de quem executa não é alcançável nem por um gate nem por um diálogo.
+    pub(crate) fn project_save_to(&mut self, path: &str) {
         let assets = self.collect_assets();
         // Os documentos pintados carimbam a identidade estável no mundo, então isto tem de rodar ANTES
         // da captura — senão o `PaintedDoc` recém-inserido ficaria de fora do snapshot e o load não
@@ -104,8 +106,7 @@ impl crate::App {
                 return;
             }
         };
-        let path = Self::project_path();
-        match std::fs::write(&path, &bytes) {
+        match std::fs::write(path, &bytes) {
             Ok(()) => {
                 eprintln!("[proj] salvo: {path} ({} bytes)", bytes.len());
                 let n = self.timeline.doc.bindings().len();

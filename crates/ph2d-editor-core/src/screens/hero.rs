@@ -30,6 +30,7 @@ pub mod chrome;
 pub mod color_picker_demo;
 mod context_menu_dialogs;
 pub mod context_menu_overlay;
+pub mod file_menu;
 pub mod fixture;
 pub mod global_palette;
 // Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
@@ -183,6 +184,8 @@ pub struct HeroScreen {
     /// native file picker, and processes any selected images
     /// (PNG/WEBP/JPEG). Cleared by the shell after handling.
     pub import_requested: bool,
+    /// O que o menu Ficheiro pediu — ver [`file_menu::FileMenuRequests`].
+    pub file_menu: file_menu::FileMenuRequests,
     /// Project-level configuration (px/meter, future global toggles).
     /// Edited via the TopBar Settings cluster; read by the shell
     /// during image import to convert source-pixel dimensions to
@@ -315,6 +318,7 @@ impl HeroScreen {
             grid: GridState::default(),
             camera_reset_pending: false,
             import_requested: false,
+            file_menu: file_menu::FileMenuRequests::default(),
             project: crate::project::ProjectSettings::default(),
             dragging_files: None,
             stats: BottomHudStats::default(),

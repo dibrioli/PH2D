@@ -14,11 +14,6 @@
 use super::*;
 
 impl crate::App {
-    /// Ctrl+O: carrega o projeto do caminho da sessão (env `PH2D_PROJECT_PATH`).
-    pub(crate) fn project_load(&mut self) {
-        self.project_load_from(&Self::project_path());
-    }
-
     /// O load de verdade, com o caminho **injetado** — substitui a cena atual e assenta a
     /// sessão (relógio + histórico).
     ///

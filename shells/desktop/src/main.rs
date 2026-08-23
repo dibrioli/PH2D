@@ -424,6 +424,9 @@ mod profile_smoke;
 mod project;
 /// **Os canais assados dentro do arquivo** (ADR-0150 W8.7) — gemeo do `project_painter`.
 mod project_baked_form;
+/// **O ficheiro do projeto tem NOME** — `Save`, `Save As…` e `Open Project…` com diálogo
+/// (Enio, 2026-08-23). Até aqui o `Ctrl+S` escrevia sempre no mesmo caminho.
+mod project_io;
 mod project_painter;
 mod project_schema;
 /// **As settings do PROJETO viajam no arquivo** (doc 88, D3) — a escala do mundo e a
@@ -973,6 +976,7 @@ impl App {
             undo_button: None,
             any_input_this_frame: false,
             preview_drive: crate::preview_drive::PreviewDrive::default(),
+            project_path: crate::App::initial_project_path(),
             vec_build: None,
             vec_grad_drag: None,
             vec_grad_selected: None,
@@ -1104,6 +1108,9 @@ impl App {
         // do render loop): drena um Ctrl+Z/Y pendente e registra a ação do frame na
         // fila de undo global, por diff de estado (ver `undo::post_frame_undo`).
         self.post_frame_undo();
+        // **O menu Ficheiro**, no mesmo sítio e pela mesma razão: `self` está livre do borrow do
+        // render loop, e um diálogo nativo é modal — abri-lo a meio do frame prenderia o `gfx`.
+        self.drain_project_io();
     }
 }
 

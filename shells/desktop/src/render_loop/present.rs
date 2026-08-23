@@ -427,8 +427,13 @@ impl crate::App {
         if self.title_dirty {
             let tool_label = tools.active().map(|t| t.label()).unwrap_or("none");
             let title = format!(
-                "PH2D — M5+M6+M7+M11+M12 demo | sprites={SPRITE_COUNT} | atlas={} ({} assets) \
+                "PH2D — {} | sprites={SPRITE_COUNT} | atlas={} ({} assets) \
                  | script={} | theme={:?} | zen={} | toasts={} | tool={}",
+                // **O NOME DO FICHEIRO**, e não a lista de milestones que morava aqui: a barra de
+                // título é o único sítio do app que responde *«que projeto é este?»*, e a resposta
+                // dela era «M5+M6+M7+M11+M12 demo» — verdade sobre o binário, e sobre nada que o
+                // artista tenha aberto.
+                crate::project_io::title_name(self.project_path.as_deref()),
                 if *atlas_is_real { "PNG" } else { "dummy" },
                 asset_db.len_assets(),
                 if script.is_some() { "ok" } else { "off" },

@@ -81,8 +81,11 @@ fn the_module_that_holds_the_channels_is_unconditional() {
         source("project.rs").contains("baked_forms: Vec<crate::project_baked_form::"),
         "o `ProjectFile` precisa carregar os canais"
     );
+    // ⚠️ O NOME mudou em 2026-08-23 e a claim não: o `project_save()` — que resolvia o destino
+    // aqui dentro — deu lugar ao `project_save_to(path)`, com quem decide *onde* a viver no
+    // `project_io`. O que este gate afirma é que o SAVE não é `cfg`-gated.
     assert!(
-        !project_family_fn("project_save").contains("cfg(feature"),
+        !project_family_fn("project_save_to").contains("cfg(feature"),
         "o save nao pode gravar formas de arquivo diferentes por build"
     );
 }

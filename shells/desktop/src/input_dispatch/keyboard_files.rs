@@ -40,8 +40,15 @@ impl App {
             && let PhysicalKey::Code(code) = physical_key
         {
             match code {
+                // ⚠️ **Ctrl+Shift+S é o `Save As…`**, e o par é o mesmo do `Ctrl+Shift+O` (import
+                // de malha) e do `Ctrl+Shift+Z` — o `shift` é PERGUNTADO, senão os dois gestos
+                // ficam indistinguíveis, que é acidente e não desenho.
+                //
+                // ⚠️ E os dois chamam a MESMA função do menu Ficheiro (`crate::project_io`): duas
+                // portas para o mesmo gesto é como um `Save` do menu acabaria a gravar noutro
+                // sítio que o `Ctrl+S`.
                 KeyCode::KeyS => {
-                    self.project_save();
+                    self.project_save_gesture(self.modifiers.shift_key());
                     return true;
                 }
                 // ⚠️ **Ctrl+Shift+O importa uma MALHA** (ADR-0150 W8.4). Ele mora
@@ -69,8 +76,10 @@ impl App {
                     self.sculpt3d_export();
                     return true;
                 }
+                // ⚠️ **Abrir PERGUNTA sempre** — é o gesto que deita fora o trabalho não
+                // gravado, e fazê-lo com uma tecla e sem pergunta é o modo de falha caro.
                 KeyCode::KeyO => {
-                    self.project_load();
+                    self.project_open_gesture();
                     return true;
                 }
                 _ => {}

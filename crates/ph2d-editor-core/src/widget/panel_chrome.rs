@@ -446,7 +446,7 @@ pub fn clamp_panel_rect(
     resize: (f32, f32),
     viewport: Rect,
 ) -> (Rect, (f32, f32), (f32, f32)) {
-    const MIN_W: f32 = 220.0; // LITERAL-PX-OK: panel min width (chrome-specific min)
+    const MIN_W: f32 = ph2d_tokens::PANEL_MIN_W_PX;
     const MIN_H: f32 = 120.0; // LITERAL-PX-OK: panel min height (chrome-specific min)
     let raw_w = (base.w + resize.0).max(MIN_W);
     let raw_h = (base.h + resize.1).max(MIN_H);

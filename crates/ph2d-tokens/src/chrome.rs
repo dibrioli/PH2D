@@ -47,6 +47,15 @@ pub const PANEL_RADIUS_PX: f32 = crate::generated::CHROME_PANEL_RADIUS;
 /// Floating-panel header inset. Per tokens.json `chrome.panel-head-pad`.
 pub const PANEL_HEAD_PAD_PX: f32 = crate::generated::CHROME_PANEL_HEAD_PAD;
 
+/// **A largura mais ESTREITA a que um painel pode ser arrastado.** Per tokens.json
+/// `chrome.panel-min-w`.
+///
+/// ⚠️ **Ele é o PIOR CASO de quem desenha dentro de um painel** — um conteúdo que só cabe na
+/// largura confortável parte-se quando o artista aperta a janela. Quem conta quantas coisas
+/// cabem numa linha conta contra ESTE número, e não contra a largura de hoje. Primeiro leitor:
+/// o teto de paradas do editor de gradiente (bloco Z, doc 91), que era um `8` sem derivação.
+pub const PANEL_MIN_W_PX: f32 = crate::generated::CHROME_PANEL_MIN_W;
+
 /// Hierarchy row height. Per tokens.json `chrome.hier-row-h`.
 pub const HIER_ROW_H_PX: f32 = crate::generated::CHROME_HIER_ROW_H;
 

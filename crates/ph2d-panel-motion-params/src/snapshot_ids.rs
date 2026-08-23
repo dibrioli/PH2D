@@ -93,10 +93,38 @@ pub(crate) const CHANNELS_EXTRA_BASE: usize = MAX_ENUM_OPTIONS;
 /// per-point `CurvePoint` widgets are pooled positionally like the enum options.
 pub(crate) const MAX_CURVE_POINTS: usize = 8;
 
-/// Max stops a single Gradient row's editor offers (doc 85). The model
-/// (`ph2d_color::MAX_RAMP_STOPS`) allows 32, but the panel is narrow and the swatch
-/// strip must stay legible — `+` refuses beyond this, the display ceiling. The
-/// per-stop `CurvePoint` markers are registered per-paint like the Curve handles.
+/// **Máximo de paradas que o editor de gradiente oferece — MEDIDO** (doc 85; bloco Z, doc 91).
+///
+/// O modelo (`ph2d_color::MAX_RAMP_STOPS`) admite **32**; o `+` recusa acima daqui.
+///
+/// ⚠️ **O número estava certo e a RAZÃO não existia**, que é o defeito que a folha 09 da
+/// conferência acusou: dizia-se *"o painel é estreito e a faixa tem de ficar legível"* — uma
+/// frase, não um recurso (`CLAUDE.md` §0.0). A derivação é esta, e o gate
+/// `the_gradient_stop_ceiling_is_the_narrowest_panel_divided_by_a_pointer_target` refá-la a cada
+/// corrida:
+///
+/// | grandeza | de onde vem | px |
+/// |---|---|---|
+/// | painel mais estreito | `ph2d_tokens::PANEL_MIN_W_PX` (o piso do arrasto de redimensionar) | 220 |
+/// | recuo, dos dois lados | `ph2d_tokens::PANEL_HEAD_PAD_PX` × 2 | 36 |
+/// | **faixa útil** | | **184** |
+/// | alvo de ponteiro | `GRAB_R × 2` — a caixa de agarrar que este mesmo editor declara | 18 |
+/// | folga da célula | `pad × 2` do strip de amostras | 4 |
+/// | **por parada** | | **22** |
+///
+/// `184 / 22 = 8,36` ⇒ **8**.
+///
+/// ⚠️ **O recurso não é a legibilidade, é o ALVO DE PONTEIRO** — e a distinção decide o número.
+/// Uma amostra de 14 px lê-se perfeitamente; o que ela deixa de ser é *clicável*, e cada amostra
+/// abre o seletor de cor. A régua é a própria caixa de agarrar que este editor já declara para
+/// os marcadores: uma amostra mais estreita que o alvo dos marcadores ao lado dela é um alvo
+/// que a lei da casa já chama de pequeno demais.
+///
+/// ⚠️ **Contra o painel MAIS ESTREITO, não contra o de hoje**: um teto que só vale na largura
+/// confortável parte-se quando o artista aperta a janela — a lei do pior caso que o
+/// `motion.spring` já aplica ao relógio.
+///
+/// Os marcadores por-parada são registados a cada pintura, como as alças do Curve.
 pub(crate) const MAX_GRADIENT_STOPS: usize = 8;
 
 /// Stable widget id for the `slot`-th param row's slider (pooled, positional —

@@ -39,13 +39,20 @@ const BAR_H: f32 = 24.0; // LITERAL-PX-OK: gradient-bar height
 const SWATCH_H: f32 = 18.0; // LITERAL-PX-OK: per-stop swatch strip height
 const PRESET_H: f32 = 14.0; // LITERAL-PX-OK: preset seed-chip strip height
 const MARKER_R: f32 = 5.0; // LITERAL-PX-OK: position-marker dot radius
-const GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a marker's pointer grab box
+pub(crate) const GRAB_R: f32 = 9.0; // LITERAL-PX-OK: half-size of a marker's pointer grab box
 const GRID_W: f32 = 1.0; // LITERAL-PX-OK: border / ring stroke width
 const RING_W: f32 = 1.5; // LITERAL-PX-OK: selected-stop ring width
 const BTN_W: f32 = 22.0; // LITERAL-PX-OK: +/− button width
 const INTERP_W: f32 = 64.0; // LITERAL-PX-OK: interp cycle-button width
 const MODE_W: f32 = 40.0; // LITERAL-PX-OK: space / hue cycle-button width ("HSV", "Near")
 const MIN_DPOS: f32 = 0.001; // LITERAL-PX-OK: min position gap between stops (NORMALIZED 0..1)
+/// Recuo de uma amostra dentro da célula dela — os dois lados.
+///
+/// ⚠️ **Estava escrito DUAS vezes como literal local** (na tira de amostras e na de presets), e
+/// desde o bloco Z (doc 91) ele é lido por uma terceira: a derivação do
+/// [`MAX_GRADIENT_STOPS`]. Três cópias de um número que
+/// tem de concordar são duas oportunidades de ele deixar de concordar.
+pub(crate) const SWATCH_PAD: f32 = 2.0; // LITERAL-PX-OK: swatch inner padding within its cell
 
 thread_local! {
     /// `(slot, stop index)` of the last-grabbed marker — the target of `−` and the
@@ -247,7 +254,7 @@ pub(crate) fn paint_gradient_row(
     for (i, stop) in ramp.stops().iter().take(n).enumerate() {
         let sid = param_grad_swatch_id(row.name, i);
         let srgb = stop_srgb(stop);
-        let pad = 2.0; // LITERAL-PX-OK: swatch inner padding within its cell
+        let pad = SWATCH_PAD;
         let srect = Rect::new(
             x + i as f32 * cell + pad,
             sy0,
@@ -283,7 +290,7 @@ pub(crate) fn paint_gradient_row(
     let pcell = (w / GradientPreset::ALL.len() as f32).max(1.0);
     for (i, preset) in GradientPreset::ALL.into_iter().enumerate() {
         let id = param_grad_preset_id(slot, i);
-        let pad = 2.0; // LITERAL-PX-OK: chip inner padding within its cell
+        let pad = SWATCH_PAD;
         let prect = Rect::new(
             x + i as f32 * pcell + pad,
             py0,
@@ -433,6 +440,41 @@ fn interp_name(interp: RampInterp) -> &'static str {
 mod tests {
     use super::*;
     use ph2d_editor_core::interaction::WidgetStore;
+
+    /// **O TETO DE PARADAS É O PAINEL MAIS ESTREITO A DIVIDIR POR UM ALVO DE PONTEIRO.**
+    ///
+    /// Bloco Z (doc 91), célula da folha 09 da conferência. A tabela inteira está no
+    /// doc-comment de [`MAX_GRADIENT_STOPS`]; aqui ela
+    /// é **refeita** a partir dos números vivos, para que mexer no recuo do painel, no raio de
+    /// agarrar ou no piso do arrasto de redimensionar reprove em vez de mentir.
+    ///
+    /// ⚠️ **A medição CONFIRMOU o `8` que já lá estava, e é esse o achado**: o número nunca
+    /// esteve errado — o que não existia era a razão. *Um teto certo sem derivação e um teto
+    /// errado leem exactamente igual no dia em que alguém precisa de o mover.*
+    #[test]
+    fn the_gradient_stop_ceiling_is_the_narrowest_panel_divided_by_a_pointer_target() {
+        let strip = ph2d_tokens::PANEL_MIN_W_PX - ph2d_tokens::PANEL_HEAD_PAD_PX * 2.0;
+        // Por parada: o alvo de ponteiro que este editor declara para um marcador, mais a folga
+        // que a célula da amostra come dos dois lados.
+        let per_stop = GRAB_R * 2.0 + SWATCH_PAD * 2.0;
+        let derived = (strip / per_stop).floor() as usize;
+        assert_eq!(
+            MAX_GRADIENT_STOPS, derived,
+            "faixa util {strip} px / {per_stop} px por parada = {derived}"
+        );
+        // O controle: a régua não é vacuamente pequena — o modelo admite MUITO mais que isto, e
+        // é essa distância que torna o teto uma decisão de PAINEL e não do formato.
+        assert!(
+            derived < ph2d_color::MAX_RAMP_STOPS,
+            "o teto do painel e' mais apertado que o do modelo ({} paradas)",
+            ph2d_color::MAX_RAMP_STOPS
+        );
+        // E o outro controle: uma parada a mais já não caberia.
+        assert!(
+            (derived + 1) as f32 * per_stop > strip,
+            "e a parada seguinte nao cabe"
+        );
+    }
 
     #[test]
     fn working_falls_back_to_the_default_ramp() {

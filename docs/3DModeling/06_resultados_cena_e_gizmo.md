@@ -2964,6 +2964,87 @@ prosa sobre a lei em vez do código que a obedece reprova quem a documenta.* Com
 
 ---
 
+## §39 — W38: isolar não precisou de lei nenhuma — e as duas vozes que faltavam (22/08)
+
+> Dois itens abertos de uma vez: **isolar** (mostrar só o escolhido) e **ninguém diz que um grupo
+> nasceu**. O primeiro parecia a obra da wave; acabou por ser uma **generalização de uma função que
+> já existia**.
+
+### §39.1 — ⭐ A lei foi LIDA, não decidida
+
+O módulo irmão já tinha um isolar (`sculpt3d_objects::toggle_isolate`), e ele responde às três
+perguntas de desenho antes de alguém as fazer:
+
+| pergunta | a resposta do irmão, verbatim |
+|---|---|
+| toggle ou modo com saída? | *"um «sair do isolamento» separado seria uma segunda porta para o mesmo fato, e a que o artista não acha quando a cena some"* |
+| entra no undo? | *"nada aqui entra na história — isolar não move um vértice"* |
+| e isolar «nada»? | recusado: *"apagaria a cena da tela sem nada para devolver"* |
+
+⇒ Estado de **vista**, ao lado do verbo do gizmo. Não é componente do mundo, não viaja no arquivo,
+não é passo de desfazer. *Quinta vez que este módulo lê uma lei da casa em vez de inventar uma.*
+
+### §39.2 — ⭐ E o mecanismo era zero
+
+O `cook` diz, desde a W5: *"coze a **subárvore** de `root`"*. **Isolar é cozer a partir daquele
+nó** — os irmãos ficam de fora porque a travessia nunca chega a eles, e a operação que os juntava
+fica de fora porque está acima. Nenhum filtro novo, nenhuma segunda lei sobre *"o que está na peça"*.
+
+Faltava **uma linha**: a pose da cadeia **acima** do nó. Sem ela, isolar um nó dentro de um grupo
+deslocado atirava a peça para a origem — e da cadeira isso lê como *"isolar mexeu no meu modelo"*.
+
+⚠️ **A linha é inerte na raiz verdadeira** (não há nada acima dela), e há gate a exigi-lo
+byte-a-byte: `cooking_from_the_real_root_is_unchanged_by_the_chain`. *Uma generalização que muda o
+caso que já funcionava não é uma generalização, é uma regressão.*
+
+### §39.3 — ⚠️ O isolamento é CONFERIDO, não obedecido
+
+Ele guarda **bits de entidade**, e os bits morrem num undo (o restore respawna tudo com ids novos).
+Obedecer a um alvo que já não existe apagaria a peça da tela **sem nada a explicar** — o modo de
+falha exacto que este módulo já pagou cinco vezes com outro nome. Um alvo morto é **largado**, com
+aviso, e a peça inteira volta.
+
+### §39.4 — A outra voz: o grupo que nascia mudo
+
+A W31 fez o gesto e não o disse. A Hierarquia ganha uma linha, o objeto escolhido passa a estar um
+nível abaixo, e nada explica porquê. O aviso diz **quantos** entraram — o que distingue *"criei um
+grupo com esta forma"* de *"embrulhei as três"*.
+
+### §39.5 — Provas de mutação, e a que passou VERDE
+
+| mutação | gate que ficou vermelho |
+|---|---|
+| o `cook` perde a **pose da cadeia** | `the_isolated_piece_stays_where_it_was` |
+| o `cook_root` **obedece** a um alvo morto | `an_isolation_pinned_to_a_dead_object_is_dropped` |
+| o `cook_root` **ignora** o isolamento | `isolating_shows_only_that_subtree_and_the_whole_part_comes_back` |
+| isolar «nada» passa a **sair** | `the_isolation_law_toggles_swaps_and_refuses_nothing` |
+| isolar outro passa a **sair** em vez de trocar | o mesmo |
+| o grupo que nasce volta a ser **mudo** | `a_born_group_says_so` |
+
+⛔ **A primeira passou VERDE na primeira corrida**, e a causa é a que esta mesma linha escreveu
+**duas vezes hoje**: a fixture do gate tinha a **raiz na identidade**, então a pose local do grupo
+interno e a de mundo coincidiam — apagar a composição da cadeia era indistinguível de não a haver.
+A raiz saiu da identidade e o gate ganhou um **controle explícito** (`local ≠ mundo`), que é o que
+impede a fixture de voltar a concordar por acidente. *A fixture que concorda é a que não prova nada.*
+
+### §39.6 — ⚠️ Por que a lei do toggle é uma função PURA
+
+O `Smoke` só nasce com o módulo **armado** (env var ou pill), e o estado dele é `thread_local` —
+que com `--test-threads=1` é **partilhado**. Armar o módulo para exercer uma regra de três linhas
+contaminaria todos os gates que corressem depois. Então a lei vive em `next_isolation(atual,
+pedido)`, sem estado nenhum, e o smoke apenas a consome.
+
+### §39.7 — ⏸️ O que fica aberto
+
+- ⏸️ **A costura painel↔smoke do isolar não tem gate comportamental** — pela razão do §39.6. O que
+  está preso é a lei (pura), o cozimento (`cook_root`) e a fileira do painel (a lei da W34, com o
+  `slots` agora **derivado** do `ACTS` — um literal `2` teria deixado o botão novo fora da varredura).
+- ⏸️ Isolar **não tem tecla**. O irmão tem; aqui só o botão.
+- ⏸️ **Nada mostra, na Hierarquia, que há um isolamento em curso** — o botão aceso está no painel, e
+  quem olha para a lista de objetos não vê porque metade deles não está na tela.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
@@ -2979,6 +3060,13 @@ prosa sobre a lei em vez do código que a obedece reprova quem a documenta.* Com
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W38 (§39): ISOLAR (mostrar só o escolhido) e o grupo que nascia MUDO** — os dois itens da
+  fila. ⭐ A lei do isolar foi **lida** no módulo irmão (toggle · não entra na história · isolar
+  «nada» é recusado), e o mecanismo era **zero**: o `cook` já cozia *"a subárvore de `root`"*, então
+  isolar é cozer a partir daquele nó. Faltava **uma linha** — a pose da cadeia acima, senão a peça
+  isolada salta para a origem. ⏸️ Fica: sem tecla · sem gate comportamental da costura painel↔smoke
+  (o estado do smoke é `thread_local` e armá-lo contaminaria os vizinhos) · nada mostra na
+  **Hierarquia** que há um isolamento em curso
 - ✅ **W37 (§38): a mensagem deixou de viver UM quadro** — o diálogo de arquivo congela o loop, e o
   `wall_dt` do quadro seguinte cobrava esse congelamento ao relógio do chrome, matando o toast antes
   de alguém o ver. ⛔ **É defeito da CASA:** 25 chamadas de diálogo em 12 arquivos, e esta wave liga

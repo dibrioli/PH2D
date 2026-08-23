@@ -63,6 +63,16 @@ pub(super) fn apply(
                         // ⚠️ O que foi apagado não pode continuar selecionado: o gizmo ficaria
                         // aceso sobre uma entidade que já não existe.
                         1 if ph2d_field_ecs::remove(world, one) => cleared = true,
+                        // ⭐ **ISOLAR** (W38) — estado de VISTA, não do documento: não muda o
+                        // mundo, não entra no undo, e por isso não mexe em `created`/`cleared`.
+                        s if s == super::panel::ISOLATE_SLOT => {
+                            let on = crate::field3d_smoke::toggle_isolate(Some(one.to_bits()));
+                            crate::field3d_notice::say(if on {
+                                "Isolated: showing only this object".into()
+                            } else {
+                                "Isolation off: the whole part is back".into()
+                            });
+                        }
                         _ => {}
                     }
                 }
@@ -117,6 +127,15 @@ pub(super) fn apply(
                         many => {
                             if let Some(group) = ph2d_field_ecs::wrap_in_op(world, many, op) {
                                 created = Some(group.to_bits());
+                                // ⭐ **E ALGUÉM DIZ QUE ELE NASCEU** (W38). A W31 fez o gesto e
+                                // deixou-o mudo: a Hierarquia ganha uma linha nova, o objeto
+                                // escolhido passa a estar um nível abaixo, e nada na tela explica
+                                // porquê. ⚠️ Diz **quantos** entraram, que é o que distingue
+                                // *"criei um grupo com esta forma"* de *"embrulhei as três"*.
+                                crate::field3d_notice::say(format!(
+                                    "Group created with {} object(s) inside",
+                                    many.len()
+                                ));
                             }
                         }
                     }

@@ -241,3 +241,101 @@ fn the_canonical_name_is_pinned_because_the_saved_id_derives_from_it() {
         );
     }
 }
+
+/// ⚠️ **A generalização da W38 é INERTE na raiz de verdade.**
+///
+/// O `cook` passou a compor no nó de topo a pose da cadeia **acima** dele — a metade que faz
+/// *isolar* um nó dentro de um grupo movido não atirar a peça para a origem. A raiz da peça não tem
+/// nada acima, então o documento tem de sair **byte-a-byte** o mesmo de antes.
+///
+/// *Uma generalização que muda o caso que já funcionava não é uma generalização, é uma regressão.*
+#[test]
+fn cooking_from_the_real_root_is_unchanged_by_the_chain() {
+    let mut world = bevy_ecs::world::World::new();
+    // Uma peça com pose NÃO-identidade no topo e nos filhos: com identidades em todo o lado, uma
+    // composição errada sairia igual e o gate não provaria nada.
+    let doc = FieldDoc::new(
+        vec![
+            Node {
+                xform: Xform::at(0.3, -0.2, 0.1),
+                kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+                mods: Vec::new(),
+            },
+            Node {
+                xform: Xform::at(-0.4, 0.5, 0.0),
+                kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.15 }),
+                mods: Vec::new(),
+            },
+            Node {
+                xform: Xform::at(1.0, 2.0, -3.0),
+                kind: NodeKind::Combine {
+                    op: ph2d_field::Op::Union(Blend::Sharp),
+                    children: vec![NodeId(0), NodeId(1)],
+                },
+                mods: Vec::new(),
+            },
+        ],
+        NodeId(2),
+    )
+    .expect("a peça");
+    let root = crate::spawn_doc(&mut world, &doc, "peça");
+    let cooked = cook(&world, root).expect("não vazia").expect("válida");
+    assert_eq!(
+        cooked, doc,
+        "cozer a raiz verdadeira tem de devolver exactamente o documento que a semeou"
+    );
+}
+
+/// ⭐ **ISOLAR É COZER A PARTIR DO NÓ — e a peça NÃO salta.**
+///
+/// ⚠️ Este gate é o que dá sentido à linha nova do `cook`. O nó isolado vive debaixo de um grupo
+/// com pose própria; cozer a subárvore dele **sem** a cadeia acima daria a forma no sítio errado, e
+/// da cadeira isso lê como *"isolar mexeu no meu modelo"*.
+#[test]
+fn isolating_a_node_keeps_it_where_it_was_in_the_world() {
+    let mut world = bevy_ecs::world::World::new();
+    let doc = FieldDoc::new(
+        vec![
+            Node {
+                xform: Xform::at(0.25, 0.0, 0.0),
+                kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+                mods: Vec::new(),
+            },
+            Node {
+                // ⭐ O GRUPO está deslocado: é o que a cadeia tem de trazer.
+                xform: Xform::at(1.5, -0.5, 0.75),
+                kind: NodeKind::Combine {
+                    op: ph2d_field::Op::Union(Blend::Sharp),
+                    children: vec![NodeId(0)],
+                },
+                mods: Vec::new(),
+            },
+        ],
+        NodeId(1),
+    )
+    .expect("a peça");
+    let root = crate::spawn_doc(&mut world, &doc, "peça");
+    let leaf = *world
+        .get::<bevy_ecs::hierarchy::Children>(root)
+        .expect("o grupo tem um filho")
+        .iter()
+        .next()
+        .expect("a folha");
+
+    let isolated = cook(&world, leaf).expect("não vazia").expect("válida");
+    let top = &isolated.nodes()[isolated.root().0 as usize];
+    let expected = crate::world_xform(&world, leaf);
+    for k in 0..3 {
+        assert!(
+            (top.xform.translation[k] - expected.translation[k]).abs() < 1e-6,
+            "o eixo {k} saiu em {} e o nó está em {} no mundo — isolar teleportou a peça",
+            top.xform.translation[k],
+            expected.translation[k]
+        );
+    }
+    // E o controle: sem a cadeia, o topo sairia na pose LOCAL — que aqui é outra.
+    assert!(
+        (expected.translation[0] - 0.25).abs() > 1e-3,
+        "a fixture só prova alguma coisa se a pose local e a de mundo DIFERIREM"
+    );
+}

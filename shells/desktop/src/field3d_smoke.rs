@@ -179,6 +179,19 @@ pub(crate) struct Smoke {
     /// ⭐ **Em que referencial os eixos do gizmo apontam** — do mundo, ou do próprio objeto.
     /// Estado de **vista**, como o verbo.
     pub(crate) gizmo_frame: crate::field3d_gizmo::Frame,
+    /// ⭐ **O nó ISOLADO** — mostrar só ele, ou `None` para a peça inteira (W38).
+    ///
+    /// ⚠️ **Estado de VISTA, e a lei é a do módulo irmão, lida e não re-decidida**
+    /// (`sculpt3d_objects::toggle_isolate`): é um **toggle** — *"um «sair do isolamento» separado
+    /// seria uma segunda porta para o mesmo fato, e a que o artista não acha quando a cena some"* —
+    /// e **nada aqui entra na história**: isolar não move um vértice, então não é um passo de
+    /// desfazer nem viaja no arquivo. Por isso vive aqui, ao lado do verbo do gizmo, e **não** num
+    /// componente do mundo.
+    ///
+    /// ⚠️ Guarda os **bits** da entidade, que morrem num undo — e é por isso que quem o lê confirma
+    /// que o nó ainda existe antes de o usar (ver `field3d_scene::cook_root`). Um isolamento
+    /// pendurado numa entidade morta apagaria a peça da tela sem nada a explicar.
+    pub(crate) isolated: Option<u64>,
 }
 
 /// **O que um arrasto de gizmo guarda** desde a pegada até soltar.
@@ -273,6 +286,7 @@ fn boot() -> Option<Smoke> {
     Some(Smoke {
         doc: Some(doc.clone()),
         seed: Some(doc),
+        isolated: None,
         matcap: Arc::new(load_matcap()),
         cam: Orbit::default(),
         frame: None,
@@ -372,6 +386,59 @@ pub(crate) fn with_smoke<R>(f: impl FnOnce(&mut Smoke) -> R) -> Option<R> {
 /// lei («um gesto em andamento espera o fim»), e ela lê o `held_button` do shell — que **este
 /// módulo nunca chega a pôr**, porque o gancho do ponteiro consome o `Down` e volta antes da linha
 /// que o escreve. A lei estava certa e não alcançava este gesto.
+/// ⭐ **ISOLA o nó dado — ou devolve a peça inteira à vista.** Devolve o estado NOVO
+/// (`true` = isolado).
+///
+/// ⚠️ **A lei é a do módulo irmão, LIDA e não re-decidida** (`sculpt3d_objects::toggle_isolate`):
+///
+/// - **Toggle**, não um modo com saída própria — *"um «sair do isolamento» separado seria uma
+///   segunda porta para o mesmo fato, e a que o artista não acha quando a cena some"*.
+/// - **Nada entra na história**: isolar não move um vértice.
+/// - **Isolar «nada» é recusado** — apagaria a cena da tela sem nada para devolver.
+///
+/// ⚠️ Isolar OUTRO nó com um já isolado **troca**, não sai: o gesto é *"mostra-me este"*, e obrigar
+/// a sair primeiro seria dois gestos para uma intenção.
+pub(crate) fn toggle_isolate(node: Option<u64>) -> bool {
+    with_smoke(|s| {
+        s.isolated = next_isolation(s.isolated, node);
+        s.isolated.is_some()
+    })
+    .unwrap_or(false)
+}
+
+/// ⭐ **A LEI do isolamento, sem estado nenhum** — e é ela que os gates dirigem.
+///
+/// ⚠️ Separada de propósito: o [`Smoke`] só nasce com o módulo **armado** (env var ou pill), então um
+/// gate que quisesse exercer o toggle teria de o armar — e o estado do smoke é `thread_local`, que
+/// com `--test-threads=1` é partilhado. *Armar o módulo para provar uma regra de três linhas
+/// contaminaria todos os gates que correm depois.*
+///
+/// | atual | pedido | fica | porquê |
+/// |---|---|---|---|
+/// | qualquer | `None` | como estava | isolar «nada» apagaria a cena sem nada para devolver |
+/// | `Some(x)` | `Some(x)` | `None` | **toggle**: a mesma porta sai |
+/// | `Some(x)` | `Some(y)` | `Some(y)` | **troca**: o gesto é *"mostra-me este"* |
+/// | `None` | `Some(y)` | `Some(y)` | entra |
+pub(crate) fn next_isolation(current: Option<u64>, asked: Option<u64>) -> Option<u64> {
+    match asked {
+        None => current,
+        Some(a) if current == Some(a) => None,
+        Some(a) => Some(a),
+    }
+}
+
+/// **Larga o isolamento** — o alvo deixou de existir. Explícito, e não um `toggle(alvo)`: *sair* e
+/// *o alvo morreu* são fatos diferentes, e escrever o segundo com a porta do primeiro faria o
+/// próximo leitor pensar que houve um gesto.
+pub(crate) fn forget_isolation() {
+    with_smoke(|s| s.isolated = None);
+}
+
+/// Que nó está isolado agora, se algum.
+pub(crate) fn isolated() -> Option<u64> {
+    with_smoke(|s| s.isolated).flatten()
+}
+
 pub(crate) fn gesture_in_progress() -> bool {
     with_smoke(|s| matches!(s.drag, Some(Drag::Gizmo(_)))).unwrap_or(false)
 }

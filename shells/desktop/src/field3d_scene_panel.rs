@@ -71,8 +71,16 @@ pub(crate) fn publish_snapshot(
         .first()
         .is_some_and(|&e| ph2d_field_ecs::can_detach(world, e))
     {
+        // ⭐ O `active` do isolamento diz o ESTADO: aceso quer dizer *"é este que estás a ver"*.
+        let isolated = crate::field3d_smoke::isolated();
         ACTS.iter()
-            .map(|key| ph2d_panel_model3d::ModeChip { key, active: false })
+            .enumerate()
+            .map(|(i, key)| ph2d_panel_model3d::ModeChip {
+                key,
+                active: i == ISOLATE_SLOT
+                    && isolated.is_some()
+                    && isolated == selection.first().map(|e| e.to_bits()),
+            })
             .collect()
     } else {
         Vec::new()
@@ -212,7 +220,21 @@ pub(crate) fn mods_for(
         .collect()
 }
 
-pub(crate) const ACTS: [&str; 2] = ["panel.model3d.act.duplicate", "panel.model3d.act.delete"];
+/// As ações sobre o objeto escolhido, na ordem do seletor.
+///
+/// ⚠️ **O terceiro é um INTERRUPTOR, os dois primeiros são ações** — e a diferença aparece no
+/// `active`: *Isolate* acende quando aquele nó é o que está isolado. Misturar os dois tipos numa
+/// fileira só é deliberado: a pergunta que ela responde é *"o que faço com o que está escolhido?"*,
+/// e isolar é uma resposta a ela.
+pub(crate) const ACTS: [&str; 3] = [
+    "panel.model3d.act.duplicate",
+    "panel.model3d.act.delete",
+    "panel.model3d.act.isolate",
+];
+
+/// O slot do interruptor de isolamento — derivado, nunca um `2` escrito à mão (um verbo novo no
+/// meio da lista mudaria o número e o botão passaria a fazer outra coisa, sem erro nenhum).
+pub(crate) const ISOLATE_SLOT: usize = ACTS.len() - 1;
 
 /// As três booleanas, na ordem do seletor.
 pub(crate) const OPS: [&str; 3] = [

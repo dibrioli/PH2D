@@ -77,6 +77,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // Ações sobre o objeto escolhido.
         "panel.model3d.act.duplicate" => "Duplicate",
         "panel.model3d.act.delete" => "Delete",
+        // ⚠️ "Isolate" e não "Solo": no idioma da casa o SOLO é do mixer de áudio (uma pista a
+        // tocar entre várias), e a palavra do 3D — a que o Blender e o módulo irmão usam — é esta.
+        "panel.model3d.act.isolate" => "Isolate",
         // ⭐ Os NOMES das dimensões. ⚠️ Eles vivem aqui e não numa tabela do documento: a
         // `ph2d-field` devolve **chaves**, e quem traduz é a UI (HR-15).
         "field.dim.width" => "Width",

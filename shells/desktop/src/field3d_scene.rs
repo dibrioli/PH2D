@@ -148,6 +148,45 @@ mod group_tests;
 #[path = "field3d_reach_tests.rs"]
 mod reach_tests;
 
+#[cfg(test)]
+#[path = "field3d_isolate_tests.rs"]
+mod isolate_tests;
+
+/// ⭐ **DE ONDE se coze** — a peça inteira, ou só o nó isolado (W38).
+///
+/// # Isolar não precisou de lei nenhuma
+///
+/// O [`ph2d_field_ecs::cook`] já dizia, desde a W5, *"coze a **subárvore** de `root`"*. Isolar **é**
+/// cozer a partir daquele nó: os irmãos ficam de fora porque a travessia nunca chega a eles, e a
+/// operação que os juntava fica de fora porque ela está acima. *A feature era uma generalização de
+/// uma função que já existia, não maquinaria nova.*
+///
+/// ⚠️ **A pose da cadeia acima entra no nó de topo** (a linha que a W38 acrescentou ao `cook`) —
+/// senão isolar um nó dentro de um grupo deslocado atirava a peça para a origem, e da cadeira isso
+/// lê como *"isolar mexeu no meu modelo"*.
+///
+/// ⚠️ **O isolamento é CONFERIDO, não obedecido.** Ele guarda bits de entidade, e os bits morrem num
+/// undo (o restore respawna tudo com ids novos). Um isolamento pendurado numa entidade morta
+/// apagaria a peça da tela sem nada a explicar — então um alvo que já não é um nó de campo é
+/// **largado**, e a peça inteira volta.
+pub(crate) fn cook_root(
+    world: &bevy_ecs::world::World,
+    root: bevy_ecs::entity::Entity,
+    isolated: Option<u64>,
+) -> bevy_ecs::entity::Entity {
+    let Some(bits) = isolated else {
+        return root;
+    };
+    let node = bevy_ecs::entity::Entity::from_bits(bits);
+    if world.get::<FieldNode>(node).is_some() {
+        node
+    } else {
+        crate::field3d_smoke::forget_isolation();
+        crate::field3d_notice::say("Isolation dropped: that object is gone".into());
+        root
+    }
+}
+
 /// ⭐ **Este nó pode ser mexido por um gesto?** — a pergunta única, e ela junta duas leis da CASA.
 ///
 /// | lei | de onde vem | o que significa aqui |
@@ -308,7 +347,10 @@ pub(crate) fn sync_scene_and_birth(
     //
     // ⚠️ **`None` e `Err` são coisas diferentes e só uma é um problema**: apagar o último filho de
     // uma peça devolve `None` e é um gesto normal, cujo resultado normal é a tela ficar vazia.
-    let cooked = match ph2d_field_ecs::cook(world, root) {
+    let cooked = match ph2d_field_ecs::cook(
+        world,
+        cook_root(world, root, crate::field3d_smoke::isolated()),
+    ) {
         Some(Ok(doc)) => {
             // Voltou a estar bem: o próximo problema — mesmo que seja o mesmo — volta a ser dito.
             crate::field3d_notice::clear();

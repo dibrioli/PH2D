@@ -38,7 +38,29 @@ use crate::{FieldMods, FieldNode, FieldPose};
 pub fn cook(world: &World, root: Entity) -> Option<Result<FieldDoc, FieldError>> {
     let mut nodes: Vec<Node> = Vec::new();
     let root_id = emit(world, root, &mut nodes)?;
+    // ⭐ **A POSE DA CADEIA ACIMA entra no nó de topo** (W38).
+    //
+    // A pose que cada nó guarda é **local ao pai** (regra-mãe do módulo), e o `emit` compõe a
+    // cadeia de dentro do que ele percorre — mas não o que está **acima** de `root`. Para a raiz
+    // verdadeira da peça não há nada acima, então esta linha é **inerte** e o documento sai
+    // byte-a-byte igual (gate `cooking_from_the_real_root_is_unchanged_by_the_chain`).
+    //
+    // ⚠️ Ela existe para o **isolar** (W38), que é exactamente *"coze a subárvore deste nó como se
+    // ela fosse a peça"*. Sem ela, isolar um nó dentro de um grupo movido faria a peça **saltar
+    // para a origem** — e o artista leria isso como o gesto ter mexido no modelo.
+    if let Some(node) = nodes.get_mut(root_id.0 as usize) {
+        node.xform = above(world, root).compose(node.xform);
+    }
     Some(FieldDoc::new(nodes, root_id))
+}
+
+/// A pose de mundo do **pai** de `e` — a parte da cadeia que o [`emit`] não percorre.
+///
+/// [`Xform::IDENTITY`] quando `e` não tem pai, que é o caso da raiz da peça.
+fn above(world: &World, e: Entity) -> Xform {
+    world
+        .get::<ChildOf>(e)
+        .map_or(Xform::IDENTITY, |c| world_xform(world, c.0))
 }
 
 /// Onde a travessia está: a descer (ainda vai empilhar filhos) ou a subir (já pode emitir).

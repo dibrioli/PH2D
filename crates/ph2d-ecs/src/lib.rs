@@ -61,6 +61,8 @@ pub mod sim;
 pub mod slice_nine;
 pub mod sort_key;
 pub mod sorting;
+/// **§11 Animation** — tags sobre a grelha que a sprite já tem, e o tocador. Módulo irmão.
+pub mod sprite_anim;
 pub mod sprite_pixels;
 pub mod sprite_sheet_frame;
 pub mod sprite_sheet_ref;
@@ -103,6 +105,11 @@ pub use sort_key::{SortInput, SortKey, compute_sort_ranks, effective_z_index};
 pub use sorting::{
     LayerId, OrderInLayer, ShowBehindParent, SortPoint, SortingGroup, SortingLayer, SortingLayers,
     TopLevel, YSort, ZAsRelative, ZIndexOverride,
+};
+pub use sprite_anim::{
+    ANIM_NAME_MAX_BYTES, ANIM_TAGS_MAX, AnimDirection, AnimOutcome, AnimTagError, AnimationTag,
+    AnimatorState, FRAME_MS_MAX, FRAME_MS_MIN, SPEED_MAX_Q16, SPEED_ONE_Q16, SpriteAnimations,
+    SpriteAnimator, advance, animator_state, validate_tag_name,
 };
 pub use sprite_pixels::SpritePixels;
 pub use sprite_sheet_frame::SpriteSheetFrame;

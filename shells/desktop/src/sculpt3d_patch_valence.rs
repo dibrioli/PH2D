@@ -226,5 +226,108 @@ fn how_many_sides_do_the_patches_have() {
                 None => "⛔ Σlados IMPAR".to_string(),
             }
         );
+
+        // ⭐⭐⭐ **E DE ONDE VÊM OS CANTOS: as SINGULARIDADES do campo.** Ver
+        // [`sings`]. ⚠️ Ela é a fase ANTERIOR — se os dois campos tiverem a mesma
+        // contagem, a fragmentação é do **traçado**; se o nosso tiver muito mais, a
+        // dívida é do **campo**, e mexer no traçado seria tratar o sintoma.
+        //
+        // ⛔⛔ **O CAMPO DELE É DE OUTRA MALHA QUE NÃO A DA DECOMPOSIÇÃO, e isso
+        // custou uma sonda** (medido 2026-08-23): o `*_rem.rosy` tem uma direção por
+        // face do **`_rem.obj`** (9 534 na enrugada) e o `*_rem_p0.patch` um dono por
+        // face do **`_rem_p0.obj`** (9 638) — o segundo é o primeiro já **cortado nas
+        // feature lines**. ⚠️ *Cruzá-los mede o campo de uma face nos patches de outra*,
+        // e o número sai plausível. ⇒ o campo carrega-se da malha DELE.
+        let (Ok(fobj), Ok(rosy)) = (
+            std::fs::read_to_string(dir.join(format!("{piece}_rem.obj"))),
+            std::fs::read_to_string(dir.join(format!("{piece}_rem.rosy"))),
+        ) else {
+            continue;
+        };
+        let Some(fm) = ph2d_mesh::import_obj(&fobj).ok().and_then(|mut v| v.pop()) else {
+            continue;
+        };
+        let mut fmesh = fm.mesh;
+        // ⚠️ **Triangular NÃO pode mudar a contagem**, senão a `n`-ésima direção do
+        // ficheiro deixa de ser a da `n`-ésima face.
+        let before = fmesh.faces().len();
+        fmesh.triangulate();
+        if fmesh.faces().len() != before {
+            eprintln!("  ⚠️ a malha do campo dele nao e' de triangulos — sem comparacao");
+            continue;
+        }
+        let mut rit = rosy.lines();
+        let Some(Ok(count)) = rit.next().map(|l| l.trim().parse::<usize>()) else {
+            continue;
+        };
+        let _ = rit.next();
+        let dirs: Vec<[f32; 3]> = rit
+            .filter_map(|l| {
+                let v: Vec<f32> = l
+                    .split_whitespace()
+                    .filter_map(|t| t.parse().ok())
+                    .collect();
+                (v.len() >= 3).then(|| [v[0], v[1], v[2]])
+            })
+            .collect();
+        if dirs.len() != count || count != fmesh.faces().len() {
+            eprintln!(
+                "  ⚠️ o campo dele nao alinha com a malha dele ({count} direcoes · {} faces) — sem comparacao",
+                fmesh.faces().len()
+            );
+            continue;
+        }
+        let his_dual = ph2d_crossfield::Dual::build(&fmesh);
+        let Some(his_field) = ph2d_crossfield::CrossField::from_directions(&his_dual, &dirs) else {
+            continue;
+        };
+        eprintln!(
+            "          ⭐SINGULARIDADES: nos {} · ele {}",
+            sings(&work, &dual, &field),
+            sings(&fmesh, &his_dual, &his_field),
+        );
+
+        // ⭐⭐⭐ **E O PARTIDOR FINAL: quantos dos NOSSOS cantos estão numa
+        // singularidade?**
+        //
+        // Um canto é uma esquina onde a grade muda de direcção, e **a única razão
+        // legítima para ele existir é uma singularidade do campo** — é lá que a grade
+        // não pode continuar recta. ⇒ um canto num vértice **regular** é uma esquina
+        // que o traçado INVENTOU: nada no campo a pedia, e ela paga-se em irregulares
+        // na saída e numa fronteira a mais onde a subdivisão por comprimento de arco
+        // impõe a discordância conforme.
+        //
+        // ⚠️ *Sem esta linha, «fragmentamos o dobro» não diz se o excesso é legítimo.*
+        let idx = ph2d_crossfield::vertex_index(&work, &dual, &field);
+        let mut corner_verts: BTreeSet<u32> = BTreeSet::new();
+        for chain in &layout.arc_chain {
+            if let (Some(&a), Some(&b)) = (chain.first(), chain.last()) {
+                corner_verts.insert(a);
+                corner_verts.insert(b);
+            }
+        }
+        let on_sing = corner_verts
+            .iter()
+            .filter(|&&v| idx.get(v as usize).copied().unwrap_or(0) != 0)
+            .count();
+        let sing_verts = idx.iter().filter(|k| **k != 0).count();
+        let uncovered = sing_verts.saturating_sub(on_sing);
+        eprintln!(
+            "          ⛔CANTOS NOSSOS: {} · em singularidade {on_sing} · \
+             INVENTADOS {} · singularidades sem canto {uncovered}",
+            corner_verts.len(),
+            corner_verts.len() - on_sing,
+        );
     }
+}
+
+/// **A CONTAGEM E A SOMA DOS ÍNDICES, com Poincaré–Hopf ao lado.**
+///
+/// ⚠️ **A soma é a invariante e a contagem é o produto.** Duas malhas do mesmo género
+/// têm forçosamente a mesma soma, e uma pode ter **oito** singularidades e a outra
+/// **duzentas**, em pares `+1/−1` que se cancelam. ⭐ *Imprimir a soma ao lado é o que
+/// impede citar uma contagem sobre um campo cuja conta nem fecha.*
+fn sings(mesh: &Mesh, dual: &ph2d_crossfield::Dual, field: &ph2d_crossfield::CrossField) -> String {
+    let (n, sum) = ph2d_crossfield::singularities(mesh, dual, field);
+    format!("{n:>3} (Σ = {sum})")
 }

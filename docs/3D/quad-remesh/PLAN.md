@@ -3750,3 +3750,82 @@ pelo campo. É a operação que a referência faz e nós não.
 |---|---|---|
 | reescrever o F3 para emitir só patches de 4 lados | o oráculo emite `0 %` de quads na esfera e mede `6°` | [`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs) |
 | derivar a valência e conferi-la contra o nosso `side_arcs` | são duas definições (lado ≠ arco); a validação é `χ = 2` | idem |
+
+## §4-quinquietquadragies — ⭐⭐⭐ O CAMPO ESTÁ ILIBADO: ~76% dos nossos cantos são INVENTADOS (2026-08-23)
+
+### O instrumento novo, e ele é validado antes de ser citado
+
+[`CrossField::from_directions`](../../../crates/ph2d-crossfield/src/lib.rs) reconstrói um
+campo a partir de **direções cruas**, uma por face — a inversa da `direction`. ⇒ o campo
+do oráculo (`*_rem.rosy`) passa a atravessar as **mesmas** réguas que o nosso, e a
+comparação deixa de depender de duas implementações concordarem.
+
+⚠️ **`theta` não é recuperável** (uma direção grava um dos quatro braços da cruz), mas o
+múltiplo de 90° que se perde é **absorvido pelo `period` da aresta ao lado** — e toda
+grandeza que interessa lê `κ + 90°·p` em volta de um ciclo. Gate
+`a_field_survives_the_round_trip_through_raw_directions`: o índice de **todo** vértice
+sobrevive à ida e volta em esfera, toro e cubo; provado por mutação (tirar o sinal do
+`period` deixa-o vermelho), com controlo negativo (uma contagem errada é **recusada**).
+
+### ⭐⭐⭐ A medição
+
+| peça | singularidades NOSSAS | DELE | patches nossos | dele | cantos nossos | dele |
+|---|---|---|---|---|---|---|
+| esfera **lisa** | **8** (Σ = 8) | **8** (Σ = 8) | 16 | **8** | 26 | **6** |
+| enrugada | **8** | **8** | 14 | **8** | 22 | **6** |
+| orelha | **8** | 12 | 17 | **12** | 28 | 13 |
+| gancho | 13 | 14 | 26 | **15** | 39 | 17 |
+
+⛔⛔⛔ **O F2 ESTÁ ILIBADO, com número.** Na esfera lisa e na enrugada os dois campos têm
+**exactamente 8** singularidades — o mínimo de Poincaré–Hopf para uma esfera — e `Σ = 8`
+nos dois. Na **orelha temos 8 e ele 12**: o nosso campo é *mais limpo* que o dele, e
+mesmo assim produzimos **17 patches contra 12** e **28 cantos contra 13**.
+⇒ *a fragmentação não vem de singularidades a mais.* **A dívida é toda do F3.**
+
+### ⭐⭐⭐ E o partidor: um canto num vértice REGULAR é uma esquina inventada
+
+A única razão legítima para um canto existir é uma **singularidade** — é lá que a grade
+não pode continuar recta.
+
+| peça | cantos nossos | em singularidade | ⛔ **INVENTADOS** | singularidades **sem canto** |
+|---|---|---|---|---|
+| esfera **lisa** | 29 | 7 | ⛔ **22** | 1 |
+| enrugada | 24 | 5 | ⛔ **19** | 3 |
+| orelha | 28 | 6 | ⛔ **22** | 2 |
+| gancho | 41 | 9 | ⛔ **32** | 4 |
+
+⇒ ⭐⭐⭐ **~76 % dos nossos cantos estão em vértices regulares: nada no campo os pediu.**
+Cada um é um vértice irregular a mais na saída **e** uma fronteira a mais onde a
+subdivisão por comprimento de arco impõe a discordância conforme do §4-tresetquadragies.
+*Os dois defeitos desta investigação têm a mesma origem.*
+
+⚠️ **E a coluna da direita é um segundo defeito, pequeno e específico:** `1` a `4`
+singularidades **não têm canto nenhum** ⇒ elas ficam **dentro** de um patch, e um patch
+com singularidade dentro **não é combável**. ⭐ É a acusação da holonomia — que tinha
+sido descartada — de volta, agora com a extensão medida em vez de um `max` sobre
+milhares de arestas.
+
+### ⛔⛔ E o «controlo» que a descartou estava CRUZADO entre duas malhas
+
+A linha «⭐ORACULO: `18,6°` / `38,4°`» do `how_many_patches_are_uncombable` cruzava o
+**campo do `_rem.obj`** (9 534 faces na enrugada) com os **patches do `_rem_p0.obj`**
+(9 638 — o primeiro já cortado nas *feature lines*). ⚠️ A conferência do probe já
+nomeava o risco no comentário e **nunca comparava as duas contagens entre si**: exigia
+que o campo batesse consigo próprio e a decomposição consigo própria.
+
+⛔ **Os dois ficheiros não são cruzáveis** e não há terceiro que os ligue ⇒ a linha do
+oráculo daquela sonda está **retirada**, e a conferência passou a exigir `count == pn`.
+⭐ O fenómeno tem hoje instrumento próprio e sem controlo emprestado: *singularidades sem
+canto*.
+
+### ⇒ A obra, agora com endereço
+
+**Fazer o traçado emitir arcos de singularidade a singularidade.** Um arco que começa ou
+acaba num vértice regular é uma junção em T que o campo não pediu — e são 76 % deles.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| culpar o F2 pela fragmentação | 8 singularidades contra 8 dele (e 8 contra 12 na orelha) | [`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs) |
+| a linha «ORACULO» do `how_many_patches_are_uncombable` | cruzava campo e patches de **malhas diferentes** | [`sculpt3d_field_follow.rs`](../../../shells/desktop/src/sculpt3d_field_follow.rs) |

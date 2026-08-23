@@ -101,6 +101,58 @@ impl CrossField {
         self.theta.is_empty()
     }
 
+    /// ⭐⭐⭐ **RECONSTRÓI UM CAMPO A PARTIR DE DIREÇÕES CRUAS** — uma por face, na
+    /// ordem das faces. É a inversa da [`Self::direction`].
+    ///
+    /// # ⭐ Para que ela existe
+    ///
+    /// O oráculo GPL da bancada **grava o campo dele** (`*_rem.rosy`: uma direção por
+    /// face). Ler a saída de um binário não é obra derivada — e sem esta porta o campo
+    /// dele só se podia comparar por olho, porque toda régua deste crate pede um
+    /// [`CrossField`] e não um vetor de direções. ⇒ *com ela, o campo dele passa pelas
+    /// MESMAS funções que o nosso*, e a comparação deixa de depender de duas
+    /// implementações concordarem.
+    ///
+    /// # ⚠️ Por que uma direção basta, apesar de `theta` não ser recuperável
+    ///
+    /// Uma cruz tem **quatro braços**: a direção grava só um representante, e o `theta`
+    /// que sai daqui difere do original por um múltiplo de 90°. ⭐ **Isso não perde
+    /// nada**, porque o múltiplo é absorvido pelo [`Self::period`] da aresta ao lado —
+    /// e toda grandeza que interessa (índice, singularidades, energia) lê
+    /// `κ + 90°·p` em volta de um ciclo, onde os dois se recompõem. *A informação que
+    /// se perderia é a que nenhuma régua olha.*
+    ///
+    /// ⚠️ **`None` quando a contagem não bate com a do dual** — um campo de outra
+    /// malha lido nesta produziria índices plausíveis e errados, que é a assinatura do
+    /// defeito de 2026-08-21.
+    #[must_use]
+    pub fn from_directions(dual: &Dual, dirs: &[[f32; 3]]) -> Option<Self> {
+        if dirs.len() != dual.frames().len() {
+            return None;
+        }
+        let theta: Vec<f32> = dual
+            .frames()
+            .iter()
+            .zip(dirs)
+            .map(|(fr, d)| {
+                let t = cross(fr.n, fr.e);
+                dot(*d, t).atan2(dot(*d, fr.e))
+            })
+            .collect();
+        // A MESMA lei do arredondamento do `solve_alternating`: o resíduo que o campo
+        // minimiza é `θ_f − θ_g + κ + 90°·p`.
+        #[allow(clippy::cast_possible_truncation)]
+        let period: Vec<i32> = dual
+            .edges()
+            .iter()
+            .map(|de| {
+                let r = theta[de.f as usize] - theta[de.g as usize] + de.kappa;
+                -((r / QUARTER).round() as i32)
+            })
+            .collect();
+        Some(Self { theta, period })
+    }
+
     /// **A DIREÇÃO 3D da cruz na face `f`** — o representante.
     #[must_use]
     pub fn direction(&self, dual: &Dual, f: usize) -> [f32; 3] {

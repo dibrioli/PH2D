@@ -265,3 +265,51 @@ fn the_naive_alternation_is_measurably_worse() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O CAMPO SOBREVIVE À IDA E VOLTA POR DIREÇÕES CRUAS.**
+///
+/// ⛔ **Sem este gate, o [`CrossField::from_directions`] é uma régua por validar** — e
+/// ela existe precisamente para medir um campo que **não é nosso** (o `*_rem.rosy` do
+/// oráculo GPL, fora da árvore), onde não há segunda opinião nenhuma. *Uma régua que
+/// só se usa onde não há controlo tem de ser validada onde há.*
+///
+/// ⚠️ **O `theta` NÃO é comparado, de propósito.** Uma direção grava um dos quatro
+/// braços da cruz, logo o `theta` reconstruído difere do original por um múltiplo de
+/// 90° — e é o `period` da aresta ao lado que absorve a diferença. *O que tem de
+/// sobreviver é o que as réguas lêem*: o índice de cada vértice, e com ele a contagem
+/// e a soma das singularidades.
+#[test]
+fn a_field_survives_the_round_trip_through_raw_directions() {
+    for (name, mesh) in [
+        ("esfera", tri(shapes::uv_sphere(16, 24, 1.0))),
+        ("toro", tri(shapes::torus(24, 12, 1.0, 0.35))),
+        ("cubo", tri(shapes::cube(1.0))),
+    ] {
+        let dual = Dual::build(&mesh);
+        let (field, _) = solve_miq(&dual);
+        let dirs: Vec<[f32; 3]> = (0..field.len()).map(|f| field.direction(&dual, f)).collect();
+        let back = super::CrossField::from_directions(&dual, &dirs)
+            .unwrap_or_else(|| panic!("{name}: a reconstrucao recusou o proprio campo"));
+
+        let a = vertex_index(&mesh, &dual, &field);
+        let b = vertex_index(&mesh, &dual, &back);
+        assert_eq!(
+            a, b,
+            "{name}: o indice de algum vertice mudou na ida e volta -- a reconstrucao nao \
+             preserva o que as reguas leem, e o numero do oraculo medido com ela nao vale"
+        );
+        assert_eq!(
+            singularities(&mesh, &dual, &field),
+            singularities(&mesh, &dual, &back),
+            "{name}: a contagem/soma de singularidades mudou na ida e volta"
+        );
+        // ⚠️ **O controlo NEGATIVO**: um campo de outra malha tem de ser RECUSADO, e
+        // não medido. *Sem ele, `from_directions` aceitaria qualquer vector e daria
+        // índices plausíveis e errados* — que é exactamente a assinatura do defeito de
+        // 2026-08-21.
+        assert!(
+            super::CrossField::from_directions(&dual, &dirs[..dirs.len() - 1]).is_none(),
+            "{name}: uma contagem de direcoes ERRADA foi aceite"
+        );
+    }
+}

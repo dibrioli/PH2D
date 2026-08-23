@@ -503,6 +503,21 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   irregular na saída, e cada fronteira é um sítio onde a discordância conforme nasce. ⚠️ E o primeiro
   controlo da régua — conferi-la contra o nosso `side_arcs` — **reprovou com razão**: um *lado* nosso
   é feito de vários **arcos**, logo são duas definições e não duas medições; quem valida é o `χ`.
+  ⭐⭐⭐ **E O CAMPO (F2) ESTÁ ILIBADO COM NÚMERO — ~76% dos nossos cantos são INVENTADOS** (23/08,
+  `PLAN.md` §4-quinquietquadragies). Com o `CrossField::from_directions` (o campo dele passa pelas
+  **nossas** réguas; gate de ida-e-volta provado por mutação, com controlo negativo): esfera lisa e
+  enrugada têm **8 singularidades nossas contra 8 dele** (o mínimo de Poincaré–Hopf, `Σ = 8` nos dois);
+  na **orelha temos 8 e ele 12** — o nosso campo é *mais limpo* — e ainda assim damos 17 patches contra
+  12. ⇒ **a fragmentação não vem do campo; é toda do F3.** ⛔⛔ O partidor: *a única razão legítima
+  para um canto existir é uma singularidade*, e na esfera lisa **29 cantos, 7 em singularidade, 22
+  INVENTADOS** (enrugada 19, orelha 22, gancho 32). Cada canto inventado é um irregular a mais **e**
+  uma fronteira a mais onde a discordância conforme nasce — *os dois defeitos desta investigação têm a
+  mesma origem*. ⇒ a obra é **emitir arcos de singularidade a singularidade**. ⚠️ E há um 2.º defeito
+  pequeno e específico: **1 a 4 singularidades ficam SEM canto**, ou seja **dentro** de um patch, que
+  então não é combável — a acusação da holonomia volta, agora com extensão medida. ⛔⛔ E o «controlo»
+  que a tinha descartado (a linha «ORACULO 18,6°/38,4°») cruzava o **campo do `_rem.obj`** com os
+  **patches do `_rem_p0.obj`** — malhas diferentes, 9.534 contra 9.638 faces; a conferência nomeava o
+  risco e nunca comparava as duas contagens. **Linha retirada**, guarda apertada.
   ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede
   **`18°` de enviesamento contra `6°` do oráculo**, com o aspecto quase igual (`1,26` vs `1,22`):
   *as células têm as proporções certas e os ângulos errados*, e o defeito é do **NÚCLEO**. Gate

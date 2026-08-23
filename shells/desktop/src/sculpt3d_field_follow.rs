@@ -353,11 +353,22 @@ fn how_many_patches_are_uncombable() {
             continue;
         };
         let owner: Vec<u32> = pit.filter_map(|t| t.parse().ok()).collect();
-        // ⚠️ **As três fontes têm de falar da MESMA malha, e isso CONFERE-SE.** O
-        // campo vem do `_rem.obj` e a decomposição do `_rem_p0.obj`; se as contagens
-        // divergirem, cruzá-las mediria o campo de uma face nos patches de outra —
-        // e o número sairia plausível e errado.
-        if dirs.len() != count || owner.len() != pn || pn != om.mesh.faces().len() {
+        // ⛔⛔⛔ **A CONFERÊNCIA ESTAVA INCOMPLETA, e ela mediu o que dizia não
+        // medir** (achado 2026-08-23). O comentário abaixo já nomeava o risco —
+        // *«o campo vem do `_rem.obj` e a decomposição do `_rem_p0.obj`»* — e as três
+        // condições **nunca comparavam `count` com `pn`**: elas só exigiam que o campo
+        // batesse consigo próprio e a decomposição consigo própria.
+        //
+        // ⚠️ **Medido: `_rem.obj` tem `9 534` faces e `_rem_p0.obj` tem `9 638`** (a
+        // enrugada) — o segundo é o primeiro já **cortado nas feature lines**. ⇒ a
+        // linha «⭐ORACULO» desta sonda cruzava o campo de uma malha com os patches de
+        // outra, e o número saía plausível.
+        //
+        // ⛔ **Os dois ficheiros não são cruzáveis**, e não há terceiro que os ligue.
+        // ⭐ O fenómeno tem hoje um instrumento melhor e sem controlo emprestado:
+        // «singularidades sem canto» em `sculpt3d_patch_valence.rs`, que conta
+        // directamente quantos patches NOSSOS contêm uma singularidade dentro.
+        if dirs.len() != count || owner.len() != pn || pn != om.mesh.faces().len() || count != pn {
             eprintln!(
                 "  ⚠️ o gabarito nao alinha: {} faces · {} do campo · {} da decomposicao",
                 om.mesh.faces().len(),

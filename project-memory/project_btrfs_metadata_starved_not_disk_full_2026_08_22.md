@@ -41,6 +41,10 @@ do `/home` (fonte, git, configs) **limpos** — só artefatos escritos sob carga
 padrão (`default_entry: CachyOS/linux-cachyos-lts` + `remember_last_entry: no`; binário do
 firmware conferido: pristine, sem hash de config). Timers instalados com `ExecCondition` que pula o
 balance em boot com `csum failed`. Ordem final: **reboot → health → balance → target-to-disk --cold**.
+**Pós-reboot no LTS (22/08 22:55):** 3 h 22 de uso, **0 `csum failed`** (hipótese kernel 7.2.0
+reforçada; fecha com uma semana a zero); swap 0 %; target do primário já em disco `+C`; regra
+tmpfiles removida; contador do device zerado a partir de 3140. Balance no boot limpo: 792 chunks
+relocados em 3 min, **não-alocado 6 → 792,83 GiB**, health VERDE — a referência de «saudável».
 
 **Why:** os três sintomas chegam como «a máquina está lenta/instável com vários agentes», e cada
 um pede uma cura diferente; a primeira leitura de outra sessão no mesmo dia foi «disco cheio trunca

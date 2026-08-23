@@ -121,6 +121,9 @@ if [ "$fstype" = "btrfs" ]; then
   last_corrupt=$(cat "$state_dir/btrfs-health.corrupt" 2>/dev/null || echo "$corrupt")
   printf '%s\n' "$corrupt" > "$state_dir/btrfs-health.corrupt" 2>/dev/null || true
   delta=$(( corrupt - last_corrupt ))
+  # `btrfs device stats -z` zera o contador (feito em 22/08 com 3140 anotados): um valor MENOR
+  # que o guardado é reset, não cura — delta 0, e o journal desta boot continua a mandar.
+  [ "$delta" -lt 0 ] && delta=0
   if [ "$csum_boot" -gt 0 ] || [ "$delta" -gt 0 ]; then red=1
     say "✗ corrupção de checksum: $csum_boot linha(s) NESTA boot, contador do device $corrupt (+$delta desde a última medição) — cada uma é um artefato que volta errado do disco → mold SIGBUS / rustc SIGSEGV"
   else say "✓ checksum: 0 nesta boot (contador do device: $corrupt, estável)"; fi

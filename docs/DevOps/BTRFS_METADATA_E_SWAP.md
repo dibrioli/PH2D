@@ -188,6 +188,25 @@ um de `~/.config`/`.local` restaura-se do backup ou do pacote.
 
 ---
 
+## §3-bis — Depois do reboot no LTS (22/08, 19:30 → 22:55): a hipótese 1 ganhou
+
+Primeira medição no `6.18.42-1-cachyos-lts`, **3 h 22 min** de uso com build do app a correr:
+**`csum failed` = 0** (contra 100+ por boot nos dois boots com 7.2.0, e 112 em 10 h naquele dia).
+Swap **0 %** (o tmpfs evaporou e ninguém o recriou: o `target/` do primário já era dir real `+C`
+com 11 GB, e os 7 `target/` de worktree estavam a zero — a limpeza de fim de dia correu). A regra
+`/etc/tmpfiles.d/ph2d-ramtarget.conf` foi **removida** (recriava a pasta em RAM a cada boot). O
+contador do device foi **zerado** (`btrfs device stats -z`), com o valor anotado: **3140** (2804 ao
+meio-dia + 228 do scrub + 108 do read-test que leu os 10 arquivos ruins). ⚠️ Um dia não fecha a
+hipótese; fecha-a **uma semana** de `btrfs-health.sh` a zero — e um `csum failed` no LTS reabre a
+RAM (memtest86+).
+
+**O balance, no boot limpo (22:54 → 22:57, 3 min 10 s):** `-dusage=10` relocou **593 de 941**
+chunks, `-dusage=30` mais **199 de 348** — sem um único EIO (os 10 arquivos ruins já tinham ido).
+Resultado: **não-alocado 6 GiB → 792,83 GiB**; dados 145 GiB alocados para 127 usados (87,6 %);
+metadata 1,86 de 6,01 GiB. `btrfs-health.sh` **VERDE** nas quatro linhas. É a referência do que
+«saudável» significa nesta máquina: não-alocado na casa das centenas de GiB e dados ≥80 % cheios
+dentro dos chunks — o timer semanal mantém isto.
+
 ## §4 — O bloco do Enio (colável, na ordem) — *revisto 22/08 19h, depois do que já foi feito*
 
 Já feito em 22/08 (com a senha): timers instalados e ligados (`systemctl list-timers 'ph2d-*'`),

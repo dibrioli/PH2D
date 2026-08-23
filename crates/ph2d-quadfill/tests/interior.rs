@@ -6,11 +6,17 @@
 //! sobre uma que já estivesse a mexer no produto sem ninguém ter decidido.
 //!
 //! ⛔ **O contexto (2026-08-23):** o alinhamento do interior ao campo foi
-//! construído, medido e **desligado** — ele não move o enviesamento, e o mecanismo
-//! da não-melhoria está medido (a holonomia dentro dos patches vale `29°–44°`: *o
-//! campo lá dentro não é combável*). A canalização fica porque é o que faltava — o
-//! campo agora **chega** ao F5 —, e código que nenhum teste exercita apodrece antes
-//! de o bloqueio do F3 sair da frente.
+//! construído, medido e **desligado** — ele não move o enviesamento. A canalização
+//! fica porque é o que faltava (o campo agora **chega** ao F5), e código que nenhum
+//! teste exercita apodrece antes de o bloqueio a montante sair da frente.
+//!
+//! ⚠️⚠️ **A explicação que estava escrita aqui foi REFUTADA no mesmo dia, pelo
+//! controlo.** Ela dizia: *«a holonomia dentro dos patches vale `29°–44°` ⇒ o campo
+//! lá dentro não é combável ⇒ a dívida é do F3».* Medindo a decomposição do
+//! **oráculo** com o mesmo código, ele dá `18,6°`/`38,4°` e uma distribuição
+//! indistinguível da nossa (p50 `0,470°` dele contra `0,479°` nossa). *Um predicado
+//! que reprova a testemunha de controlo mede a discretização, não o defeito.*
+//! A holonomia fica como régua; a acusação saiu.
 
 use ph2d_crossfield::{Dual, solve_miq};
 use ph2d_mesh::{Mesh, shapes};

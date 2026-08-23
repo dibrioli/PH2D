@@ -45,6 +45,10 @@ pub mod fan;
 mod param;
 /// **UM PATCH VIRA QUADS** — o domínio, os bordos e a grade — ver [`patch`].
 mod patch;
+/// ⭐⭐ **A QUALIDADE CONTRA A SUPERFÍCIE** — dobras, relevo, detalhe — ver [`quality`].
+pub mod quality;
+/// ⭐⭐⭐ **O MAPA DO RECTÂNGULO** — a fronteira DESLIZA — ver [`rectangle`].
+mod rectangle;
 /// ⭐ **A RELAXAÇÃO QUE OLHA PARA O ÂNGULO** — o ajuste de quadrado — ver [`relax`].
 mod relax;
 /// **O QUE A MONTAGEM DIZ** — recusa, relatório e proveniência — ver [`report`].
@@ -55,10 +59,8 @@ pub mod shape;
 pub mod stitch;
 
 pub use aligned::{INTERIOR, Interior};
+pub use quality::{detail_lost, folded_against, folded_by_neighbours, follows_relief};
 pub use relax::SQUARE_ROUNDS;
-pub use report::{
-    FillError, FillReport, Provenance, detail_lost, folded_against, folded_by_neighbours,
-    follows_relief,
-};
+pub use report::{FillError, FillReport, Provenance};
 pub use shape::{QuadShape, quad_shape, skew_by_fan, skew_by_provenance};
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};

@@ -234,6 +234,22 @@ pub fn skew_by_provenance(
 /// `0` não é «perfeito», é «não medido». Quem a lê tem de olhar a contagem ao lado.
 #[must_use]
 pub fn skew_by_fan(mesh: &Mesh, from_fan: &[bool]) -> (f32, f32) {
+    // ⛔⛔⛔ **UMA ETIQUETAGEM CURTA DEVOLVE `NaN`, e não silêncio** (2026-08-23).
+    //
+    // Esta função lia `from_fan.get(i)` com `unwrap_or(false)`, e uma face sem
+    // etiqueta caía **na coluna do rectângulo**. ⚠️ Isso não é hipotético: o
+    // [`crate::stitch`] estendia o vector no fim do laço do patch, e o caminho do
+    // rectângulo saía por `continue` **antes** — então as faces dos rectângulos eram
+    // rotuladas *leque* pelo primeiro leque a seguir, e a coluna do rectângulo media
+    // só a cauda que vinha depois do último leque. *As duas colunas mediam a
+    // população errada, e nada no número dizia isso.*
+    //
+    // ⇒ `NaN` porque ele **atravessa qualquer aritmética e imprime-se sozinho**: uma
+    // média silenciosa sobre a população errada é a falha cara; um `NaN` no log é
+    // uma pergunta.
+    if from_fan.len() != mesh.faces().len() {
+        return (f32::NAN, f32::NAN);
+    }
     let pos = mesh.positions();
     let mut rect: Vec<f32> = Vec::new();
     let mut fan: Vec<f32> = Vec::new();

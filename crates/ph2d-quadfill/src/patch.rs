@@ -110,16 +110,23 @@ pub(crate) struct Domain<'a> {
     /// ⭐⭐⭐ **O ENVIESAMENTO DE CADA CÉLULA NO DOMÍNIO**, antes de ela tocar na
     /// superfície — o partidor final desta investigação.
     ///
-    /// ⛔ **Ele decide entre os dois últimos suspeitos**, e são mutuamente
-    /// exclusivos: as faces de um patch de quatro lados saem com `12°` de
-    /// enviesamento na esfera lisa, e o arnês 2D diz que a grade de um sector `n = 4`
-    /// **ideal** mede `0,0°`. Ou o domínio real já vem torto — e a culpa é da
-    /// **fronteira presa**, que é o que decide a posição de cada ponto de bordo — ou
-    /// ele vem recto e os `12°` nascem no **mapa** que o leva à superfície.
+    /// ⭐⭐⭐ **A leitura que ele permite é a COMPARAÇÃO com a superfície**, e ela é o
+    /// instrumento decisivo desta investigação: *um mapa conforme entrega na
+    /// superfície o ângulo que o domínio encomendou.* Esfera lisa, `d = 0,55`:
     ///
-    /// ⚠️ **Trocar o mapa já foi medido e não moveu nada** (valor médio contra
-    /// cotangente, `18° → 18°`, com `0/16` recuos). *Se o domínio vier recto, sobra
-    /// um suspeito que os dois mapas partilham; se vier torto, o suspeito é outro.*
+    /// | rectângulos | domínio | superfície | folga |
+    /// |---|---|---|---|
+    /// | fronteira **presa** | `1,0°` | `16°` | ⛔ **`15°` sem nome** |
+    /// | fronteira a **deslizar** ([`crate::rectangle`]) | `12,4°` | `14°` | ⭐ `1,6°` |
+    ///
+    /// ⇒ a conformalidade **muda o enviesamento de sítio** em vez de o reduzir.
+    ///
+    /// ⛔⛔ **E este campo mediu NADA durante um dia.** O balde dos patches de quatro
+    /// lados nunca era preenchido — o caminho do rectângulo saía do laço por
+    /// `continue` antes da escrituração — e a mediana de um vector vazio é `0,0`, que
+    /// se lê como *«a grade nasce perfeita»*. A cura é [`crate::FillReport::domain_cells`]:
+    /// **uma contagem ao lado da mediana**, porque *um zero de «não medido» e um zero
+    /// de «perfeito» são o mesmo byte*. Gates em `tests/rulers.rs`.
     pub(crate) dom_skew: std::cell::RefCell<Vec<f32>>,
 }
 
@@ -194,12 +201,19 @@ impl Domain<'_> {
 /// ⚠️ **O ponto de junção entre dois arcos aparece uma vez só** — é a mesma regra
 /// da concatenação dos `side_pts`, e sem ela o lado teria um ponto a mais que a lei
 /// do F4 conta.
+/// ⭐⭐⭐ **E se a fronteira DESLIZOU, a régua é a do achatamento** — ver
+/// [`crate::rectangle`] e [`PatchParam::uv_on_side`]. ⚠️ **O `param` não é um extra:**
+/// com a fronteira a deslizar o polígono já não descreve onde os vértices de malha
+/// estão, e usar a aresta dele aqui daria a um ponto de saída um `uv` que **não cai
+/// no triângulo** onde ele vive. *A opção resolve isto sozinha — quem deslizou entrega
+/// a régua, quem não deslizou devolve `None` e o lerp de sempre corre.*
 pub(crate) fn side_uv(
     layout: &PatchLayout,
     quant: &Quantization,
     sides: &[Vec<(u32, bool)>],
     i: usize,
     seg: &[u32],
+    param: Option<&PatchParam>,
 ) -> Vec<[f32; 2]> {
     let n = sides.len();
     // ⭐⭐ **A MESMA fonte de cantos que o achatamento** — ver
@@ -239,7 +253,11 @@ pub(crate) fn side_uv(
             #[allow(clippy::cast_precision_loss)]
             let along = run + len * (k as f32) / (steps as f32);
             let f = if total > 0.0 { along / total } else { 0.0 };
-            out.push([f.mul_add(b[0] - a[0], a[0]), f.mul_add(b[1] - a[1], a[1])]);
+            out.push(
+                param
+                    .and_then(|p| p.uv_on_side(i, f))
+                    .unwrap_or([f.mul_add(b[0] - a[0], a[0]), f.mul_add(b[1] - a[1], a[1])]),
+            );
         }
         run += len;
     }

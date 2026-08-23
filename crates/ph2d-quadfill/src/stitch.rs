@@ -143,6 +143,10 @@ pub fn fill_with(
     let (mut sampled, mut misses) = (0usize, 0usize);
     let (mut flatten_rounds, mut flatten_residual) = (0usize, 0.0f32);
     let (mut holonomy, mut fell_back, mut from_fan) = (0.0f32, 0usize, Vec::<bool>::new());
+    // ⭐⭐⭐ **O denominador vem junto** — ver [`crate::FillReport::slid`]. `quads` é
+    // quantos patches de quatro lados existem; sem ele, `slid = 0` não distingue
+    // *nenhum deslizou* de *não havia nenhum*.
+    let (mut slid, mut quads) = (0usize, 0usize);
     let (mut dom_rect, mut dom_fan): (Vec<f32>, Vec<f32>) = (Vec::new(), Vec::new());
 
     // ── 2. Cada patch vira o seu leque.
@@ -278,11 +282,12 @@ pub fn fill_with(
             flatten_residual = flatten_residual.max(q.residual);
             holonomy = holonomy.max(q.holonomy);
             fell_back += usize::from(q.fell_back);
+            slid += usize::from(q.slid());
         }
         let dom = Domain {
             param: param.as_ref(),
             side_uv: (0..n)
-                .map(|i| side_uv(layout, quant, sides, i, &seg))
+                .map(|i| side_uv(layout, quant, sides, i, &seg, param.as_ref()))
                 .collect(),
             tally: std::cell::Cell::new((0, 0)),
             dom_skew: std::cell::RefCell::new(Vec::new()),
@@ -290,119 +295,129 @@ pub fn fill_with(
 
         // ⭐⭐ **UM PATCH DE QUATRO LADOS É UM RETÂNGULO, e um retângulo não
         // precisa de leque.** Ver [`fill_rectangle`].
-        if n == 4 {
-            fill_rectangle(&mut pts, &mut faces, surface, seed, &side_pts, &dom);
-            let (o, m) = dom.tally.get();
-            sampled += o;
-            misses += m;
-            continue;
-        }
-
-        // O centro: o do polígono no domínio, e a média de fronteira como recurso.
         //
-        // ⚠️ **No domínio o centro é `(0,0)` e não uma média** — o polígono é
-        // regular e convexo, então o seu centro está lá por construção. A média dos
-        // pontos de fronteira em `ℝ³` é o que sobra quando o patch não achata, e é
-        // exactamente ela que, num patch dobrado sobre um gancho, cai **dentro** da
-        // peça.
-        let mut c = [0.0f32; 3];
-        let mut count = 0usize;
-        for side in &side_pts {
-            for &v in &side[..side.len() - 1] {
-                let q = pts.pos[v as usize];
-                for k in 0..3 {
-                    c[k] += q[k];
+        // ⛔⛔⛔ **O `else` É LOAD-BEARING, e o `continue` que ele substituiu custou
+        // um dia inteiro de conclusões erradas** (2026-08-23). A escrituração do fim
+        // deste laço — o `dom_skew` por valência e o `from_fan` de cada face — foi
+        // escrita para o caminho do leque; o rectângulo saía por `continue` **antes
+        // dela**. ⇒ `dom_rect` ficou SEMPRE vazio e a mediana de um vector vazio é
+        // `0,0`, que se lê como *«a grade do rectângulo nasce perfeita»* — e foi essa
+        // leitura que partiu a investigação em duas metades, uma delas inexistente.
+        // ⚠️ E o `from_fan` ficava por estender, então as faces do rectângulo eram
+        // **rotuladas como leque** pelo primeiro patch de leque a seguir.
+        //
+        // ⇒ *Um `continue` a meio de um laço com contabilidade no fim é uma armadilha
+        // que se arma sozinha na próxima ramificação; um `else` não a pode armar.*
+        if n == 4 {
+            quads += 1;
+            fill_rectangle(&mut pts, &mut faces, surface, seed, &side_pts, &dom);
+        } else {
+            // O centro: o do polígono no domínio, e a média de fronteira como recurso.
+            //
+            // ⚠️ **No domínio o centro é `(0,0)` e não uma média** — o polígono é
+            // regular e convexo, então o seu centro está lá por construção. A média dos
+            // pontos de fronteira em `ℝ³` é o que sobra quando o patch não achata, e é
+            // exactamente ela que, num patch dobrado sobre um gancho, cai **dentro** da
+            // peça.
+            let mut c = [0.0f32; 3];
+            let mut count = 0usize;
+            for side in &side_pts {
+                for &v in &side[..side.len() - 1] {
+                    let q = pts.pos[v as usize];
+                    for k in 0..3 {
+                        c[k] += q[k];
+                    }
+                    count += 1;
                 }
-                count += 1;
-            }
-        }
-        #[allow(clippy::cast_precision_loss)]
-        let inv = if count == 0 { 0.0 } else { 1.0 / count as f32 };
-        // ⭐ **O centro é o CENTRÓIDE DOS CORTES no domínio, não a origem.** Os `n`
-        // cortes são as pontas dos raios; o ponto que os equilibra é o que faz as
-        // `n` sub-grades saírem parecidas. A origem só coincide com ele quando os
-        // cortes estão simétricos, que é o caso raro.
-        let center_uv = {
-            let mut c = [0.0f32; 2];
-            for i in 0..n {
-                let cut = e[(i + n - 1) % n] as usize;
-                let q = dom.side_uv[i][cut];
-                c[0] += q[0];
-                c[1] += q[1];
             }
             #[allow(clippy::cast_precision_loss)]
-            let inv = 1.0 / n as f32;
-            [c[0] * inv, c[1] * inv]
-        };
-        let center_vid = dom.place(
-            &mut pts,
-            surface,
-            seed,
-            center_uv,
-            [c[0] * inv, c[1] * inv, c[2] * inv],
-            Provenance::Center,
-        );
-
-        // Os raios: do centro ao corte de cada lado, rectos NO DOMÍNIO.
-        let mut spoke: Vec<Vec<u32>> = Vec::with_capacity(n);
-        let mut spoke_uv: Vec<Vec<[f32; 2]>> = Vec::with_capacity(n);
-        for i in 0..n {
-            let cut = e[(i + n - 1) % n] as usize;
-            let tip = side_pts[i][cut];
-            let steps = e[i] as usize;
-            let tip_uv = dom.side_uv[i][cut];
-            let line = segment(pts.pos[center_vid as usize], pts.pos[tip as usize], steps);
-            let line_uv = segment(center_uv, tip_uv, steps);
-            let mut ids = Vec::with_capacity(steps + 1);
-            ids.push(center_vid);
-            for (k, q) in line.iter().enumerate().take(steps).skip(1) {
-                ids.push(dom.place(&mut pts, surface, seed, line_uv[k], *q, Provenance::Spoke));
-            }
-            ids.push(tip);
-            spoke.push(ids);
-            spoke_uv.push(line_uv);
-        }
-
-        // As `n` grades.
-        for i in 0..n {
-            let j = (i + 1) % n;
-            let (s, t) = (e[j] as usize, e[i] as usize);
-            let cut_i = e[(i + n - 1) % n] as usize;
-            let cut_j = e[i] as usize;
-            let bottom = &side_pts[i][cut_i..];
-            let right = &side_pts[j][..=cut_j];
-            let top = &spoke[j];
-            let left: Vec<u32> = spoke[i].iter().rev().copied().collect();
-            let bottom_uv = &dom.side_uv[i][cut_i..];
-            let right_uv = &dom.side_uv[j][..=cut_j];
-            let left_uv: Vec<[f32; 2]> = spoke_uv[i].iter().rev().copied().collect();
-            let grid = build_grid(
+            let inv = if count == 0 { 0.0 } else { 1.0 / count as f32 };
+            // ⭐ **O centro é o CENTRÓIDE DOS CORTES no domínio, não a origem.** Os `n`
+            // cortes são as pontas dos raios; o ponto que os equilibra é o que faz as
+            // `n` sub-grades saírem parecidas. A origem só coincide com ele quando os
+            // cortes estão simétricos, que é o caso raro.
+            let center_uv = {
+                let mut c = [0.0f32; 2];
+                for i in 0..n {
+                    let cut = e[(i + n - 1) % n] as usize;
+                    let q = dom.side_uv[i][cut];
+                    c[0] += q[0];
+                    c[1] += q[1];
+                }
+                #[allow(clippy::cast_precision_loss)]
+                let inv = 1.0 / n as f32;
+                [c[0] * inv, c[1] * inv]
+            };
+            let center_vid = dom.place(
                 &mut pts,
                 surface,
                 seed,
-                Chains {
-                    bottom,
-                    top,
-                    left: &left,
-                    right,
-                },
-                Chains2 {
-                    bottom: bottom_uv,
-                    top: &spoke_uv[j],
-                    left: &left_uv,
-                    right: right_uv,
-                },
-                (s, t),
-                &dom,
+                center_uv,
+                [c[0] * inv, c[1] * inv, c[2] * inv],
+                Provenance::Center,
             );
-            for k in 0..s {
-                for l in 0..t {
-                    faces.push(Face::quad(
-                        grid[k][l],
-                        grid[k + 1][l],
-                        grid[k + 1][l + 1],
-                        grid[k][l + 1],
-                    ));
+
+            // Os raios: do centro ao corte de cada lado, rectos NO DOMÍNIO.
+            let mut spoke: Vec<Vec<u32>> = Vec::with_capacity(n);
+            let mut spoke_uv: Vec<Vec<[f32; 2]>> = Vec::with_capacity(n);
+            for i in 0..n {
+                let cut = e[(i + n - 1) % n] as usize;
+                let tip = side_pts[i][cut];
+                let steps = e[i] as usize;
+                let tip_uv = dom.side_uv[i][cut];
+                let line = segment(pts.pos[center_vid as usize], pts.pos[tip as usize], steps);
+                let line_uv = segment(center_uv, tip_uv, steps);
+                let mut ids = Vec::with_capacity(steps + 1);
+                ids.push(center_vid);
+                for (k, q) in line.iter().enumerate().take(steps).skip(1) {
+                    ids.push(dom.place(&mut pts, surface, seed, line_uv[k], *q, Provenance::Spoke));
+                }
+                ids.push(tip);
+                spoke.push(ids);
+                spoke_uv.push(line_uv);
+            }
+
+            // As `n` grades.
+            for i in 0..n {
+                let j = (i + 1) % n;
+                let (s, t) = (e[j] as usize, e[i] as usize);
+                let cut_i = e[(i + n - 1) % n] as usize;
+                let cut_j = e[i] as usize;
+                let bottom = &side_pts[i][cut_i..];
+                let right = &side_pts[j][..=cut_j];
+                let top = &spoke[j];
+                let left: Vec<u32> = spoke[i].iter().rev().copied().collect();
+                let bottom_uv = &dom.side_uv[i][cut_i..];
+                let right_uv = &dom.side_uv[j][..=cut_j];
+                let left_uv: Vec<[f32; 2]> = spoke_uv[i].iter().rev().copied().collect();
+                let grid = build_grid(
+                    &mut pts,
+                    surface,
+                    seed,
+                    Chains {
+                        bottom,
+                        top,
+                        left: &left,
+                        right,
+                    },
+                    Chains2 {
+                        bottom: bottom_uv,
+                        top: &spoke_uv[j],
+                        left: &left_uv,
+                        right: right_uv,
+                    },
+                    (s, t),
+                    &dom,
+                );
+                for k in 0..s {
+                    for l in 0..t {
+                        faces.push(Face::quad(
+                            grid[k][l],
+                            grid[k + 1][l],
+                            grid[k + 1][l + 1],
+                            grid[k][l + 1],
+                        ));
+                    }
                 }
             }
         }
@@ -452,14 +467,24 @@ pub fn fill_with(
     report.sample_misses = misses;
     report.flatten_rounds = flatten_rounds;
     report.flatten_residual = flatten_residual;
+    // ⚠️ **Toda face leva a valência do patch que a fez.** O `else` do laço acima é
+    // quem o garante; isto é a cerca que morde se alguém lá voltar a pôr um `continue`.
+    debug_assert_eq!(
+        from_fan.len(),
+        mesh.faces().len(),
+        "a etiquetagem por valência tem de cobrir a malha inteira"
+    );
     report.skew_by_fan = crate::shape::skew_by_fan(&mesh, &from_fan);
     let med = |v: &mut Vec<f32>| {
         v.sort_by(f32::total_cmp);
         v.get(v.len() / 2).copied().unwrap_or(0.0)
     };
+    report.domain_cells = (dom_rect.len(), dom_fan.len());
     report.domain_skew = (med(&mut dom_rect), med(&mut dom_fan));
     report.holonomy = holonomy;
     report.fell_back = fell_back;
+    report.slid = slid;
+    report.quad_patches = quads;
     Ok((mesh, report))
 }
 
@@ -641,6 +666,9 @@ fn measure(
         flatten_rounds: 0,
         holonomy: 0.0,
         fell_back: 0,
+        slid: 0,
+        quad_patches: 0,
+        domain_cells: (0, 0),
         edge_long_prov,
         shape: crate::shape::quad_shape(mesh),
         skew_prov: crate::shape::skew_by_provenance(mesh, prov),
@@ -649,16 +677,16 @@ fn measure(
         // ⭐⭐ **A CONTAGEM DE DOBRAS entra no relatório da fase**, e não numa
         // sonda. Ela é o defeito que o artista fotografa e o único campo, com os
         // dois de aresta, que uma malha de posições embaralhadas não reproduz.
-        folded: crate::report::folded_against(surface, mesh),
+        folded: crate::quality::folded_against(surface, mesh),
         // ⭐ **A SEGUNDA régua, e ela não consulta a referência.** Ver
-        // [`crate::report::folded_by_neighbours`] — a primeira tem piso de ruído
+        // [`crate::quality::folded_by_neighbours`] — a primeira tem piso de ruído
         // numa peça com bico fino, e uma sozinha não decide.
-        folded_local: crate::report::folded_by_neighbours(mesh),
+        folded_local: crate::quality::folded_by_neighbours(mesh),
         // ⭐⭐ **A PROVENIÊNCIA das faces dobradas — quem nomeia a FASE.** Ver
         // [`FillReport::folded_prov`].
         folded_prov: {
             let mut tally = [0usize; Provenance::COUNT];
-            for f in crate::report::folded_faces_by_neighbours(mesh) {
+            for f in crate::quality::folded_faces_by_neighbours(mesh) {
                 for &v in mesh.faces()[f as usize].verts() {
                     if let Some(p) = prov.get(v as usize) {
                         tally[*p as usize] += 1;

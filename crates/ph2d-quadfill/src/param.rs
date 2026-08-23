@@ -91,6 +91,12 @@ const CONFORMAL_MAP: bool = false;
 /// se ver num render.
 pub(crate) const SEGMENT_SPACE_DOMAIN: bool = false;
 
+/// **A RÉGUA DE UM LADO** — por vértice de malha daquele lado, a `(fracção de τ, uv)`.
+///
+/// ⚠️ **A fracção de `τ` vem primeiro porque é a chave de busca**: quem tem um ponto
+/// de saída tem a fracção dele e quer o `uv`, nunca o contrário.
+type SideChain = Vec<(f32, [f32; 2])>;
+
 /// **UM PATCH ACHATADO** — a triangulação dele com uma coordenada 2D por vértice.
 pub(crate) struct PatchParam {
     /// Por vértice local, o ponto no domínio.
@@ -113,6 +119,14 @@ pub(crate) struct PatchParam {
     /// ⭐ **Este patch RECUOU para o achatamento harmónico** porque o alinhado
     /// virou triângulos no domínio. É a contagem que diz se a rede é teórica.
     pub(crate) fell_back: bool,
+    /// ⭐⭐⭐ **A FRONTEIRA DESLIZOU** — ver [`crate::rectangle`]. Por lado, a
+    /// cadeia de `(fracção de τ, uv)` dos vértices de malha daquele lado.
+    ///
+    /// ⛔ **`None` quando a fronteira foi PREGADA** (todo `n ≠ 4`, e o `n = 4` que
+    /// recuou), e aí o `uv` de um ponto de saída sai da aresta do polígono como
+    /// sempre. ⚠️ *É esta opção que impede os dois sítios de divergirem*: quem
+    /// deslizou entrega a régua, quem não deslizou não a tem.
+    side_chain: Option<Vec<SideChain>>,
 }
 
 /// O domínio vai de `-1` a `1` nos dois eixos (o polígono é inscrito no círculo
@@ -209,6 +223,52 @@ impl PatchParam {
                 fixed[l] = true;
             }
         }
+        // ⭐⭐⭐ **A FRONTEIRA DESLIZA, se o patch for de quatro lados** — ver
+        // [`crate::rectangle`]. ⚠️ Ela corre **antes** do Tutte porque *substitui* o
+        // achatamento inteiro em vez de o afinar: o problema misto (Dirichlet em dois
+        // lados, natural nos outros dois) é outro problema, não outra iteração.
+        // ⛔ Falhar aqui é a resposta normal — o patch segue para o achatamento
+        // pregado de sempre, e nenhum outro sítio precisa de saber.
+        if crate::rectangle::RECTANGLE_MAP && n == 4 {
+            let mut chains: Vec<Vec<u32>> = Vec::with_capacity(n);
+            for chain in boundary {
+                let mut c = Vec::with_capacity(chain.len());
+                for g in chain {
+                    c.push(*local.get(g)?);
+                }
+                chains.push(c);
+            }
+            // ⚠️ **Cotangente, obrigatoriamente** — a condição natural de um
+            // Laplaciano discreto é a de Neumann **do operador que se usou**, e só o
+            // cotangente é o Laplace–Beltrami da superfície.
+            let cot = cotangent_weights(&tris, &pos);
+            if let Some(s) = crate::rectangle::solve(&cot, &chains, FLATTEN_ROUNDS, FLATTEN_TOL) {
+                // ⛔ Rede 3: o teorema de Tutte não cobre nem fronteira livre nem
+                // peso negativo. *Conta-se.*
+                if crate::aligned::flipped(&tris, &s.uv) == 0 {
+                    let mut per_side: Vec<SideChain> = Vec::with_capacity(n);
+                    for (i, c) in chains.iter().enumerate() {
+                        let side_tau = tau.get(i)?;
+                        let total = side_tau.last().copied().unwrap_or(0.0);
+                        per_side.push(
+                            c.iter()
+                                .zip(side_tau)
+                                .map(|(&v, &t)| {
+                                    let f = if total > 0.0 { t / total } else { 0.0 };
+                                    (f, s.uv[v as usize])
+                                })
+                                .collect(),
+                        );
+                    }
+                    let mut me = Self::with(s.uv, pos, tris);
+                    me.rounds = s.rounds;
+                    me.residual = s.residual;
+                    me.side_chain = Some(per_side);
+                    return Some(me);
+                }
+            }
+        }
+
         if fixed.iter().all(|&f| f) {
             // Um patch sem interior nenhum: o achatamento é a fronteira, e ele
             // continua a servir para localizar pontos.
@@ -356,7 +416,38 @@ impl PatchParam {
             residual: 0.0,
             holonomy: 0.0,
             fell_back: false,
+            side_chain: None,
         }
+    }
+
+    /// ⭐⭐ **O `uv` DE UM PONTO DE SAÍDA quando a fronteira DESLIZOU.** `f` é a
+    /// fracção de `τ` ao longo do lado — a **mesma** régua que o
+    /// [`crate::patch::side_uv`] já usava.
+    ///
+    /// ⚠️ **Interpola entre os dois vértices de MALHA à volta dele**, e não sobre a
+    /// aresta do polígono: com a fronteira a deslizar o lado deixa de ter os pontos
+    /// a espaçamento igual, e é precisamente por isto que o `uv` de um ponto de saída
+    /// continua a cair dentro do triângulo que o [`Self::sample`] vai encontrar.
+    /// ⭐ **Este patch achou o mapa do rectângulo** — ver [`crate::FillReport::slid`].
+    pub(crate) fn slid(&self) -> bool {
+        self.side_chain.is_some()
+    }
+
+    pub(crate) fn uv_on_side(&self, i: usize, f: f32) -> Option<[f32; 2]> {
+        let chain = self.side_chain.as_ref()?.get(i)?;
+        if chain.len() < 2 {
+            return None;
+        }
+        let (last, _) = *chain.last()?;
+        let f = f.clamp(0.0, last.max(0.0));
+        let k = chain
+            .partition_point(|&(t, _)| t < f)
+            .max(1)
+            .min(chain.len() - 1);
+        let (t0, a) = chain[k - 1];
+        let (t1, b) = chain[k];
+        let w = if t1 > t0 { (f - t0) / (t1 - t0) } else { 0.0 };
+        Some([w.mul_add(b[0] - a[0], a[0]), w.mul_add(b[1] - a[1], a[1])])
     }
 
     /// **DE VOLTA À SUPERFÍCIE** — o ponto 3D sobre o triângulo que contém `q`.
@@ -524,11 +615,19 @@ fn edge(a: [f32; 2], b: [f32; 2], c: [f32; 2]) -> f32 {
 /// certas de tamanho e tortas de ângulo*, que é exactamente a assinatura de um mapa
 /// não-conforme.
 ///
-/// ⭐⭐ **E a dedução aponta para cá sem ambiguidade:** num patch de quatro lados a
-/// grade é construída **no domínio**, onde ela é um rectângulo por construção — a
-/// desigualdade de espaçamento dos pontos de fronteira dá células de tamanhos
-/// diferentes, nunca células **tortas**. ⇒ o enviesamento só pode nascer no MAPA que
-/// leva o domínio à superfície, e o mapa é este peso.
+/// ⛔⛔ **A DEDUÇÃO QUE ESTAVA AQUI FOI REFUTADA, e ela era boa:** *«num patch de
+/// quatro lados a grade é um rectângulo no domínio por construção, então o
+/// enviesamento só pode nascer no MAPA — e o mapa é este peso.»* ⚠️ **O passo errado
+/// é o «por construção»:** a grade do domínio é uma interpolação de Coons sobre os
+/// pontos de bordo, e ela só sai rectangular se os lados **opostos** puserem o ponto
+/// `k` na mesma fracção. Com a fronteira pregada por `τ` isso quase acontece
+/// (`1,0°`); com ela a deslizar, não acontece de todo (`12,4°`) — e é o segundo
+/// número que é honesto. ⇒ **o enviesamento pode nascer na fronteira**, e nasce.
+///
+/// ⭐ **E a medição confirma-o:** trocar SÓ o operador (este ficheiro) dá `12° → 12°`
+/// porque os dois operadores obedecem à mesma fronteira pregada. Trocar a **condição
+/// de fronteira** — o [`crate::rectangle`] — dá `16° → 14°` e move `15°` de «sem
+/// nome» para `1,6°` de folga. *O operador é inocente; a fronteira não.*
 ///
 /// # A lei
 ///

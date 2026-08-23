@@ -540,7 +540,9 @@ fn what_does_the_chain_do_to_a_plain_sphere() {
                 eprintln!(
                     "  d={detail:.2} {rotulo} {:>6} quads · {} patches | aspecto p50 {:.2} p99 {:>5.1} \
                      | ⭐enviesamento p50 {:>3.0}° p99 {:>3.0}° (>60°: {}) | dobras {} \
-                     | ⭐rectangulo {:>3.0}° LEQUE {:>3.0}° | ⭐⭐DOMINIO rect {:>4.1}° leque {:>4.1}°",
+                     | ⭐rectangulo {:>3.0}° LEQUE {:>3.0}° \
+                     | ⭐⭐DOMINIO rect {:>4.1}° (n={}) leque {:>4.1}° (n={}) \
+                     | ⭐⭐⭐deslizou {}/{}",
                     out.faces().len(),
                     r.patches,
                     s.aspect_p50,
@@ -552,7 +554,14 @@ fn what_does_the_chain_do_to_a_plain_sphere() {
                     r.skew_by_fan.0,
                     r.skew_by_fan.1,
                     r.domain_skew.0,
+                    // ⭐⭐⭐ **A CONTAGEM ao lado da mediana, e ela não é decoração:**
+                    // esta coluna imprimiu `0,0°` durante um dia com o balde VAZIO, e
+                    // esse zero leu-se como «perfeito». Ver `ph2d_quadfill::FillReport::domain_cells`.
+                    r.domain_cells.0,
                     r.domain_skew.1,
+                    r.domain_cells.1,
+                    r.slid,
+                    r.quad_patches,
                 );
             }
         }

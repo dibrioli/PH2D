@@ -3570,3 +3570,126 @@ já foi medido (ele repara).
 | fronteira em espaço de segmento | `18,7° → 18,8°` | [`param.rs`](../../../crates/ph2d-quadfill/src/param.rs) |
 | domínio ∝ segmentos, restrito ao `n = 4` | `12° → 12°` | [`domain.rs`](../../../crates/ph2d-quadfill/src/domain.rs) |
 | mapa conforme, re-julgado no número isolado | `12° → 12°` | [`param.rs`](../../../crates/ph2d-quadfill/src/param.rs) |
+
+## §4-duetquadragies — ⛔⛔⛔ A RÉGUA MEDIA NADA, e a conclusão anterior assentava nisso (2026-08-23)
+
+### O que estava errado
+
+Duas réguas desta fase separavam o enviesamento por **valência do patch**, e as duas
+mediam a população errada. A causa é **uma só**: a escrituração vivia no fim do laço dos
+patches em [`stitch.rs`](../../../crates/ph2d-quadfill/src/stitch.rs), e o caminho do
+rectângulo saía por `continue` **antes dela**.
+
+| régua | o que devia medir | o que media |
+|---|---|---|
+| `domain_skew.0` | células de domínio dos patches `n = 4` | ⛔ **nada** — balde sempre vazio |
+| `skew_by_fan.0` | faces dos patches `n = 4` | ⛔ só a cauda depois do último leque |
+| `skew_by_fan.1` | faces dos patches `n ≠ 4` | ⛔ leques **e** rectângulos |
+
+⚠️ **A mediana de um vector vazio é `0,0`.** Isso imprimiu-se como
+`DOMINIO rect 0,0°` e leu-se como *«a grade do rectângulo nasce PERFEITA»* — e sobre
+essa leitura montou-se a conclusão do §4-unetquadragies (*o defeito parte-se em dois,
+um em cada fase*). ⛔ **Um zero de «não medido» e um zero de «perfeito» são o mesmo byte.**
+
+### A tabela corrigida (esfera lisa, `d = 0,55`, fronteira presa)
+
+| | régua partida | ⭐ régua corrigida |
+|---|---|---|
+| domínio dos **rectângulos** | `0,0°` (nada medido) | **`1,0°`** |
+| superfície dos **rectângulos** | `12°` | **`16°`** |
+| superfície dos **leques** | `18°` | **`19°`** |
+
+⭐ **A conclusão qualitativa SOBREVIVE** — a grade do rectângulo nasce quase recta e
+chega a `16°` —, mas o leque deixa de ser o termo dominante que a régua partida
+sugeria, e o «um terço» do §4-quadragies estava errado por essa via.
+
+### ⭐ A cura é estrutural, não uma linha
+
+O `continue` virou `else`, e a escrituração passou a ser inalcançável por engano.
+Mais três instrumentos, porque a linha corrigida não impede a próxima:
+
+- **`FillReport::domain_cells`** — a **contagem** ao lado de cada mediana.
+- **`skew_by_fan` devolve `NaN`** quando a etiquetagem não cobre a malha, em vez de
+  contar as faces sem etiqueta como rectângulos.
+- **`FillReport::slid` / `quad_patches`** — numerador e denominador, pela mesma razão
+  que o `fell_back` existe: *«idêntico» lê igual quando a cura não funciona e quando a
+  cura nunca correu*.
+- **Gates** em [`tests/rulers.rs`](../../../crates/ph2d-quadfill/tests/rulers.rs), os
+  três provados por mutação (repor os dois bugs originais deixa os três vermelhos).
+
+## §4-tresetquadragies — ⭐⭐⭐ O MAPA CONFORME: rejeitado, e ele deu NOME ao defeito
+
+### A construção
+
+[`ph2d-quadfill/src/rectangle.rs`](../../../crates/ph2d-quadfill/src/rectangle.rs): num
+patch de quatro lados a fronteira deixa de ser **pregada** por `τ` e passa a
+**deslizar**, por dois problemas mistos (Dirichlet em dois lados opostos, natural nos
+outros dois) sobre o Laplaciano **cotangente**. É o *quadrilátero extremal* clássico;
+`(u, v)` sai conforme a menos de uma escala num eixo, e uma escala de eixo preserva a
+ortogonalidade da grade. Clean-room (Winslow 1966; Pinkall–Polthier 1993).
+
+⚠️ **Só faz sentido COM o cotangente**, porque a condição natural de um Laplaciano
+discreto é a de Neumann *do operador que se usou*. ⇒ é por isso que medir o cotangente
+sozinho — com a fronteira pregada — tinha dito «não move nada».
+
+### ⭐⭐⭐ O que ele mediu (esfera lisa, `d = 0,55`)
+
+| | fronteira PRESA | ⭐ fronteira DESLIZA |
+|---|---|---|
+| domínio dos **rectângulos** | `1,0°` | ⛔ **`12,4°`** |
+| superfície dos **rectângulos** | **`16°`** | `14°` |
+| superfície dos **leques** | `19°` | `19°` |
+| patches que deslizaram | `0/5` | `5/5` |
+
+⭐⭐⭐ **As duas primeiras linhas lêem-se JUNTAS.** Presa: superfície `16°` sobre
+domínio `1,0°` — **`15°` que apareciam do nada e não tinham nome**. A deslizar:
+superfície `14°` sobre domínio `12,4°` — **`1,6°` de folga**. *A quase-igualdade é a
+prova de que o mapa é de facto conforme.*
+
+⇒ ⛔⛔ **A conformalidade não REDUZ o enviesamento; MUDA-O DE SÍTIO.** Presa, o mapa
+carrega-o; a deslizar, a fronteira carrega-o. O total fica em `14°–16°` nos dois casos.
+
+### ⛔ E as esculturas recusam-no (orelha, `d = 1,0`)
+
+| | presa | desliza |
+|---|---|---|
+| aspecto p50 | **`1,98`** | ⛔ `2,15` |
+| faces `> 4×` | **3 558** | ⛔ **7 646** |
+| faces `> 60°` | **9 159** | ⛔ **14 794** |
+| dobras | **171** | ⛔ **267** |
+| aresta máxima | **`5,5 %`** | ⛔ `9,9 %` |
+| detalhe perdido p95 | **`0,222 %`** | ⛔ `0,410 %` |
+
+Gancho: `> 4×` 581 → 747, dobras 18 → 26. Enrugada: não se move.
+
+⚠️ **O mecanismo da perda é o irmão do ganho.** Um mapa conforme é fiel ao **ângulo** e
+não à **área**; com a fronteira a deslizar os pontos de bordo deixam de estar a
+espaçamento regular no domínio, e num patch distorcido isso paga-se em tamanho de
+célula. *Numa esfera lisa não há distorção para pagar; numa orelha há.*
+
+### ⭐⭐⭐ ⇒ O defeito tem nome, e é a CLASSE outra vez
+
+Os `12,4°` são a **discordância conforme entre lados opostos**: o ponto `k` do lado 0 e
+o ponto `k` do lado 2 são postos por **comprimento de arco**, e a correspondência que a
+conformalidade pede entre esses dois lados **não é «fracções iguais»**. A linha de grade
+que os une nasce inclinada, e nenhuma construção do interior a endireita.
+
+⚠️ **O oráculo não tem este problema, e não é por afinação:** ele tem **UMA**
+parametrização global, e os pontos de subdivisão de um arco são onde as isolinhas
+inteiras o cruzam ⇒ os dois patches que partilham o arco concordam **por construção**.
+Nós subdividimos por `τ` e resolvemos cada patch **em separado**. *É a mesma diferença
+de classe — local contra global — que motivou o pivô do ADR-0162, um nível abaixo.*
+
+⇒ **A cura não é outro mapa por patch.** É uma das duas:
+
+1. **Ponto fixo sobre o layout** — a subdivisão de cada arco sai de um acordo entre os
+   dois patches vizinhos, iterado 3–5 vezes. ⚠️ Um patch `n ≠ 4` não tem mapa de
+   rectângulo, logo não propõe: metade dos arcos da esfera toca um leque.
+2. **Parametrização global quantizada** — os inteiros já vêm do F4, então o que resta
+   dela é **linear** (sem variáveis inteiras). É o caminho da referência.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| mapa do rectângulo (fronteira a deslizar) | esfera `16° → 14°`; orelha `> 60°` **9 159 → 14 794**, dobras `171 → 267` | [`rectangle.rs`](../../../crates/ph2d-quadfill/src/rectangle.rs) |

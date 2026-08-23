@@ -50,7 +50,6 @@ pub(crate) fn corners_for(n: usize) -> Vec<[f32; 2]> {
 ///
 /// | | regular | ∝ a todo `n` | ⭐ ∝ só no `n = 4` |
 /// |---|---|---|---|
-/// | domínio dos **rectângulos** | `0,0°` | `0,0°` | `0,0°` |
 /// | superfície dos **rectângulos** | `12°` | `10°` | ⛔ **`12°`** |
 /// | domínio dos **leques** | `18,7°` | ⛔ **`28,6°`** | `18,7°` |
 ///
@@ -59,10 +58,19 @@ pub(crate) fn corners_for(n: usize) -> Vec<[f32; 2]> {
 /// rectângulo fecha sem resíduo — devolve os rectângulos a `12°`. ⇒ *os `10°` não
 /// vinham de os rectângulos melhorarem; vinham do lado que piorava os leques.*
 ///
-/// ⚠️⚠️ **A grade de um rectângulo já sai PERFEITA do domínio (`0,0°`) nas três
-/// colunas** — mudar a forma do domínio não lhe podia tocar. *O que a entorta está
-/// DEPOIS do domínio, e não é o mapa* (cotangente, medida na mesma coluna isolada:
-/// `12° → 12°`).
+/// ⛔⛔⛔ **A LINHA DO DOMÍNIO DOS RECTÂNGULOS SAIU DESTA TABELA, e o porquê importa
+/// mais que a linha:** as três colunas mediam `0,0°`, e esse zero era a mediana de um
+/// **balde vazio** — o caminho do rectângulo saía do laço dos patches por `continue`
+/// antes da escrituração. Com a régua corrigida (ver [`crate::FillReport::domain_cells`]
+/// e `tests/rulers.rs`) o número é **`1,0°`**, não `0,0°`, e a superfície é **`16°`**,
+/// não `12°`.
+///
+/// ⚠️ **A conclusão desta tabela sobrevive à correcção** — a grade do rectângulo nasce
+/// quase recta no domínio, logo mudar a FORMA do domínio não lhe podia tocar —, mas
+/// ela passou a ser uma conclusão medida em vez de uma leitura de um zero mudo.
+/// *O que a entorta está depois do domínio, e não é o mapa*: trocar o operador dá
+/// `12° → 12°`, e o mapa **conforme** — que muda a condição de fronteira e não só o
+/// operador — dá `16° → 14°` pagando as esculturas ([`crate::rectangle`]).
 const PROPORTIONAL_DOMAIN: bool = false;
 
 /// ⭐ **O POLÍGONO DO DOMÍNIO com os lados na PROPORÇÃO DOS SEGMENTOS.**

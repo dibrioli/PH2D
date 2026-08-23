@@ -3413,3 +3413,67 @@ rectângulo — uma grade construída dentro dele nasce enviesada. ⛔ **Não me
 | «é a densidade» | à contagem dele, `22°` contra `6°` | esta secção |
 | `CONFORMAL_MAP` (cotangente) | `18° → 18°` com **`0/16`** recuos | [`param.rs`](../../../crates/ph2d-quadfill/src/param.rs) |
 | medir curas na ORELHA | sete hipóteses morreram lá; a esfera lisa dá o mesmo sinal limpo | esta secção |
+
+---
+
+## 4-undequadragies — ⭐⭐⭐ **O MECANISMO: o LEQUE obriga o enviesamento, e o número é `|360/n − 90|`**
+
+> **2026-08-23.** Sete hipóteses mortas, a reprodução reduzida a uma **esfera lisa**
+> (`18°` contra `6°` do oráculo) e uma pista por medir: *dos 16 patches dessa esfera, 8
+> são triângulos e 3 são pentágonos — onze passam pelo LEQUE.* Esta secção mede-a.
+
+### ⭐ A isolação: 2D puro, sem malha, sem campo, sem cadeia
+
+[`tests/fan_sector.rs`](../../../crates/ph2d-quadfill/tests/fan_sector.rs) monta **um**
+sector do leque no domínio — o caso **ideal**: `n`-gono regular, cortes a meio de cada
+lado, centro na origem — e corre a **mesma** [`fan::coons`](../../../crates/ph2d-quadfill/src/fan.rs)
+que o produto corre. Depois mede o enviesamento das células.
+
+| `n` | canto no centro | ⭐ **p50 do sector** | p95 | max |
+|---|---|---|---|---|
+| 3 | `120°` | **`14,4°`** | `27,8°` | `30,0°` |
+| ⭐ **4** | `90°` | **`0,0°`** | `0,0°` | **`0,0°`** |
+| 5 | `72°` | **`7,6°`** | `16,3°` | `18,0°` |
+| 6 | `60°` | `14,4°` | `27,8°` | `30,0°` |
+
+⭐⭐⭐ **O pior enviesamento de cada sector é EXACTAMENTE `|360/n − 90|`** — o defeito
+angular do centro, a chegar intacto à célula. E a mediana é metade dele.
+
+⇒ **Um patch de 3 lados nasce com `14,4°` de enviesamento mediano e um de 5 com `7,6°`,
+num domínio ideal, simétrico e plano.** Nada a jusante o desfaz — nem o alisamento, nem
+a relaxação, nem o mapa, nem a densidade. *Isso é o que as sete hipóteses estavam a
+tentar remover.*
+
+### ⚠️ E o controlo apanhou a primeira versão deste ficheiro
+
+A primeira montagem passou o bordo `left` do **centro para o corte**; o produto passa-o
+ao contrário (`spoke[i].rev()`). O [`coons`] exige `bottom[0] == left[0]` e o doc dele
+avisa: *«quem os passa trocados recebe uma grade que parece plausível e tem os bordos
+torcidos»*. Resultado: `n = 4` deu **`45°`** onde tem de dar `0°`.
+
+⭐ **A linha do `n = 4` era um controlo positivo acidental** — um valor conhecido de
+antemão. Sem ela, a tabela errada teria «confirmado» que o leque enviesa **muito mais**
+do que enviesa. *Hoje o gate afirma as duas coisas: a lei `|360/n − 90|` e o `0°` do
+quadrilátero.*
+
+### ⇒ A cura, nomeada — e por que ela não é «afinar o leque»
+
+⛔ **Não existe polígono plano cujos `n` sectores sejam todos quadrados**, para `n ≠ 4`:
+`n` cantos rectos à volta de um ponto somam `n × 90°`, e o plano só oferece `360°`. *O
+enviesamento do leque não é um defeito de implementação — é a consequência de forçar
+`n` sectores num domínio plano partilhado.*
+
+⭐ **A saída é dar a cada sector o SEU domínio** — cada um a sua unidade quadrada,
+cosidos ao longo dos raios. Aí toda célula é quadrada no domínio dela, e o defeito
+angular fica confinado a **um vértice** (o centro, que é irregular por construção e tem
+de ser) em vez de contaminar o sector inteiro.
+
+⚠️ **Isso muda a [`crate::param`]**, que hoje achata o patch inteiro sobre um polígono
+só. É a próxima obra, e é a primeira desta investigação que ataca o mecanismo em vez de
+um sintoma.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| afinar o leque dentro de um domínio plano partilhado | `n × 90° > 360°` para `n ≠ 4` — é geometria, não implementação | esta secção |

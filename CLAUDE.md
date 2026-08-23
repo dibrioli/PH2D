@@ -456,7 +456,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `0,470°` dele, p95 `2,52°` contra `3,19°` **dele**. ⇒ *um predicado que reprova a testemunha de controlo
   mede a discretização, não o defeito*, e a dívida **NÃO** é do F3 por esta via. ⭐ Fica a régua
   (`ph2d_crossfield::comb`, com a distribuição) e a recusa da barra registada no tipo.
-  ⭐⭐⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede
+  ⭐⭐⭐⭐ **O MECANISMO FOI ACHADO E ISOLADO EM 2D PURO (23/08): é o LEQUE.** Um sector de leque
+  num domínio plano partilhado traz enviesamento **`|360/n − 90|`** de máximo e metade disso de
+  mediana — `n=3 → 14,4°`, `n=5 → 7,6°`, ⭐ **`n=4 → 0,0°`** (gate `how_much_skew_does_a_fan_sector_force`,
+  sem malha nem campo). Na esfera lisa **8 dos 16 patches são triângulos e 3 pentágonos** ⇒ é daí que
+  vem a maior parte dos `18°`. ⛔ **E não é afinável:** `n` cantos rectos à volta de um ponto pedem
+  `n × 90°` e o plano só dá `360°` — a cura é **dar a cada sector o SEU domínio** (uma unidade
+  quadrada por sector, cosidos nos raios), o que muda o `ph2d_quadfill::param`. ⚠️ *A primeira versão
+  do isolamento passou um bordo ao contrário e deu `45°` no `n=4`; o controlo do quadrilátero — um
+  valor conhecido de antemão — foi o que a apanhou.*
+  ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede
   **`18°` de enviesamento contra `6°` do oráculo**, com o aspecto quase igual (`1,26` vs `1,22`):
   *as células têm as proporções certas e os ângulos errados*, e o defeito é do **NÚCLEO**. Gate
   vermelho `a_plain_sphere_is_as_square_as_the_oracles`, com a barra do oráculo **na mesma peça**.

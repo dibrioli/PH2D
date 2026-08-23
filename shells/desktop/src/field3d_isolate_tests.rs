@@ -225,3 +225,89 @@ fn a_born_group_says_so() {
         "criar um grupo tem de DIZER que ele nasceu; o módulo disse {said:?}"
     );
 }
+
+// ─────────────────────── W39: a escultura da CENA (sem disco) ───────────────────────
+
+/// ⭐ **O botão da escultura da cena só é OFERECIDO quando há cena esculpida** — a lei da W34
+/// aplicada à única forma cuja disponibilidade não é constante.
+#[test]
+fn the_scene_sculpture_button_appears_only_when_there_is_one() {
+    use crate::field3d_scene::panel::{SCULPT_SCENE_SLOT, SHAPES, adds_for};
+
+    let without = adds_for(false);
+    assert_eq!(
+        without.len(),
+        SHAPES.len() - 1,
+        "sem escultura na cena, a lista perde exactamente uma forma"
+    );
+    assert!(
+        !without.iter().any(|c| c.key == SHAPES[SCULPT_SCENE_SLOT]),
+        "…e a que falta é a da cena"
+    );
+
+    let with = adds_for(true);
+    assert_eq!(with.len(), SHAPES.len(), "com escultura, estão todas");
+    assert!(
+        with.iter().any(|c| c.key == SHAPES[SCULPT_SCENE_SLOT]),
+        "…incluindo a da cena"
+    );
+}
+
+/// ⚠️ **As duas posições derivadas não podem colidir.** As duas saem de `SHAPES.len()`, e um `-2`
+/// trocado por um `-1` faria o botão do arquivo e o da cena serem o mesmo slot — o diálogo abriria
+/// no botão errado, **sem erro nenhum**. É a razão de o `SCULPT_SLOT` já ser derivado, uma wave
+/// depois e com um irmão ao lado.
+#[test]
+fn the_two_sculpture_slots_are_distinct_and_in_range() {
+    use crate::field3d_scene::panel::{SCULPT_SCENE_SLOT, SCULPT_SLOT, SHAPES};
+    assert_ne!(SCULPT_SLOT, SCULPT_SCENE_SLOT);
+    assert!(SCULPT_SLOT < SHAPES.len() && SCULPT_SCENE_SLOT < SHAPES.len());
+    assert_eq!(SHAPES[SCULPT_SLOT], "panel.model3d.add.sculpt");
+    assert_eq!(SHAPES[SCULPT_SCENE_SLOT], "panel.model3d.add.sculpt_scene");
+}
+
+/// ⚠️ **A chave da cena e o prefixo que o resolvedor procura têm de casar.** São dois literais, e
+/// dois literais divergem: o dia em que a chave virasse `live:sculpt` o resolvedor voltaria a
+/// tentar lê-la **do disco** e o aviso mandaria o artista procurar um arquivo que nunca existiu.
+#[test]
+fn the_scene_key_is_the_one_the_resolver_recognises() {
+    assert!(
+        crate::field3d_import::SCENE_KEY.starts_with(crate::field3d_import::SCENE_PREFIX),
+        "a chave `{}` tem de começar pelo prefixo `{}`",
+        crate::field3d_import::SCENE_KEY,
+        crate::field3d_import::SCENE_PREFIX
+    );
+}
+
+/// ⭐ **UMA CHAVE `scene:` NÃO É LIDA DO DISCO** — ela é **pedida** ao shell.
+///
+/// ⚠️ Sem esta metade, reabrir um projeto cuja peça usa a escultura da cena dava *"Sculpture
+/// scene:sculpt is missing"* — um aviso a mandar o artista procurar um arquivo que **nunca
+/// existiu**. O caminho certo é a caixa de correio: quem tem a escultura viva é o shell.
+#[test]
+fn a_scene_key_is_asked_for_instead_of_being_read_from_disk() {
+    crate::field3d_reload::forget_tried();
+    let _ = crate::field3d_smoke::take_scene_sculpt_request();
+
+    let doc = FieldDoc::new(
+        vec![Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Sampled {
+                key: crate::field3d_import::SCENE_KEY.to_string(),
+            },
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("uma escultura da cena");
+
+    let failed = crate::field3d_reload::resolve_missing(&doc);
+    assert!(
+        failed.is_empty(),
+        "uma chave da cena não pode ser reportada como arquivo em falta; disse {failed:?}"
+    );
+    assert!(
+        crate::field3d_smoke::take_scene_sculpt_request(),
+        "…ela tem de PEDIR a escultura ao shell"
+    );
+}

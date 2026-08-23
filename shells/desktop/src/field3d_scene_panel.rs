@@ -44,10 +44,7 @@ pub(crate) fn publish_snapshot(
             active: *f == frame,
         })
         .collect();
-    let adds = SHAPES
-        .iter()
-        .map(|key| ph2d_panel_model3d::ModeChip { key, active: false })
-        .collect();
+    let adds = adds_for(with_smoke(|s| s.has_live_sculpt).unwrap_or(false));
     let ops = ops_for(world, selection);
     let mods = mods_for(world, selection);
     // ⚠️ **Derivado de `ExportLevel::ALL`**, que é a fonte da contagem — a mesma lei do `Mode::ALL`
@@ -166,12 +163,13 @@ pub(crate) fn param_rows(
 ///
 /// ⚠️ **É a fonte da contagem**, como o `Mode::ALL`: acrescentar uma primitiva aqui faz o painel
 /// seguir sem uma linha de mudança.
-pub(crate) const SHAPES: [&str; 5] = [
+pub(crate) const SHAPES: [&str; 6] = [
     "panel.model3d.add.box",
     "panel.model3d.add.sphere",
     "panel.model3d.add.cylinder",
     "panel.model3d.add.torus",
     "panel.model3d.add.sculpt",
+    "panel.model3d.add.sculpt_scene",
 ];
 
 /// ⭐ **A posição da escultura no seletor** — e ela é DERIVADA, nunca escrita.
@@ -179,7 +177,14 @@ pub(crate) const SHAPES: [&str; 5] = [
 /// ⚠️ O `shape_at` devolve `None` neste slot de propósito (uma escultura não é uma primitiva), e
 /// quem o trata é o braço do `AddShape`. Um literal `4` ali sobreviveria a acrescentar uma primitiva
 /// no meio da lista e passaria a abrir o diálogo no botão errado — **sem erro nenhum**.
-pub(crate) const SCULPT_SLOT: usize = SHAPES.len() - 1;
+pub(crate) const SCULPT_SLOT: usize = SHAPES.len() - 2;
+
+/// ⭐ **A posição da escultura VIVA da cena** (W39) — a que não passa pelo disco. Derivada pela
+/// mesma razão da irmã acima.
+///
+/// ⚠️ **Ela só é OFERECIDA quando há uma escultura na cena** (a lei da W34): um botão que diz
+/// *"trazer a escultura"* sem escultura nenhuma é a affordance que mente.
+pub(crate) const SCULPT_SCENE_SLOT: usize = SHAPES.len() - 1;
 
 /// As ações sobre o objeto escolhido, na ordem do seletor.
 /// ⭐ **Os modificadores oferecidos, e quais o nó já tem** — interruptores, não ações.
@@ -286,6 +291,24 @@ pub(crate) fn op_at(slot: usize) -> Option<Op> {
         2 => Op::Intersection(Blend::Sharp),
         _ => return None,
     })
+}
+
+/// ⭐ **As formas que se podem acrescentar AGORA** — e uma delas não está sempre disponível.
+///
+/// ⚠️ **A escultura da CENA sai da lista quando não há cena esculpida** (W39): é a lei da W34
+/// aplicada à única forma cuja disponibilidade não é constante — *um botão que diz «trazer a
+/// escultura» sem escultura nenhuma é a affordance que mente*. As outras cinco são sempre
+/// possíveis: uma caixa não depende de nada.
+///
+/// ⚠️ **Função pura**, pela razão do `next_isolation`: o facto vive no `Smoke`, que só nasce com o
+/// módulo armado e cujo estado é `thread_local` — armá-lo num gate contaminaria os vizinhos.
+pub(crate) fn adds_for(live_sculpt: bool) -> Vec<ph2d_panel_model3d::ModeChip> {
+    SHAPES
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i != SCULPT_SCENE_SLOT || live_sculpt)
+        .map(|(_, key)| ph2d_panel_model3d::ModeChip { key, active: false })
+        .collect()
 }
 
 /// ⭐ **Quais operações fazem sentido AGORA** — e vazio quando nenhuma faz.

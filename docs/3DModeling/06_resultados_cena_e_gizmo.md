@@ -3045,6 +3045,75 @@ pedido)`, sem estado nenhum, e o smoke apenas a consome.
 
 ---
 
+## §40 — W39: a escultura da cena entra sem passar pelo disco — e o «vivo» era impossível (22/08)
+
+> O item dizia: *"o vínculo à escultura **viva** do módulo 3D (hoje passa pelo disco)"*. **A medição
+> mudou o que a palavra «vivo» podia significar**, e é ela que desenhou a wave.
+
+### §40.1 — ⛔ O que o número proibiu
+
+Sonda `measure_sculpt_to_field_bridge` (`--ignored --nocapture`), voxelizar uma malha em campo:
+
+| triângulos | res | células | MB | ms |
+|---|---|---|---|---|
+| 1 024 | 128 | 2 352 637 | 15,7 | **228,6** |
+| 10 000 | 128 | 2 352 637 | 15,7 | **258,7** |
+| 50 176 | 128 | 2 352 637 | 15,7 | **388,5** |
+| 50 176 | 256 | 17 779 581 | 118,7 | **1 504,8** |
+
+Um quadro tem **16,7 ms**. ⛔ **Um vínculo contínuo — editar a escultura e o modelo acompanhar — são
+14 a 23 quadros de congelamento por pincelada.** Não é afinação: é a classe da operação.
+
+⚠️ E a decisão **já estava escrita**, no doc da `DEFAULT_RESOLUTION`: *"o custo é pago **uma vez**,
+na importação, não por quadro"*. Esta wave é essa decisão a valer também para a cena. ⇒ «vivo» aqui
+significa **um gesto que traz a escultura como ela está agora**, não um espelho.
+
+### §40.2 — O que passou a existir
+
+Um segundo botão, **`+ Sculpt from scene`**, ao lado do `+ Sculpt…`. ⚠️ **Sem reticências, e a
+convenção é o que diz a diferença antes do clique**: aquele abre um diálogo, este não pergunta nada.
+
+⚠️ **Ele só é oferecido quando há uma escultura na cena** — a lei da W34 aplicada à única forma cuja
+disponibilidade não é constante. As outras cinco são sempre possíveis: uma caixa não depende de nada.
+
+⭐ **E as duas portas partilham UMA voxelização** (`field_from_mesh`). Não é arrumação: o documento
+guarda uma **chave**, não a grade, e duas voxelizações diferentes dariam uma peça que muda de forma
+conforme por onde entrou — **sem nada na tela a dizê-lo**.
+
+### §40.3 — ⚠️ A chave `scene:` não é um arquivo, e o resolvedor precisava de o saber
+
+Reabrir um projeto cuja peça usa a escultura da cena daria *"Sculpture scene:sculpt is missing"* — um
+aviso a mandar o artista **procurar um arquivo que nunca existiu**.
+
+Quem a pode reconstruir é o **shell** (a escultura viva está no `AppGfx`; a ponte com a cena recebe o
+mundo). Então o resolvedor **pede**, pela mesma caixa de correio que o botão usa — e o `first_try` da
+W23 garante **um pedido por documento**, não um por quadro.
+
+### §40.4 — Provas de mutação
+
+| mutação | gate que ficou vermelho |
+|---|---|
+| o botão da cena é oferecido **sempre** | `the_scene_sculpture_button_appears_only_when_there_is_one` |
+| as duas posições da escultura **colidem** | `the_two_sculpture_slots_are_distinct_and_in_range` |
+| a chave da cena deixa de casar o **prefixo** | `the_scene_key_is_the_one_the_resolver_recognises` |
+| a chave `scene:` volta a ser lida do **disco** | `a_scene_key_is_asked_for_instead_of_being_read_from_disk` |
+
+4 mutações, 4 vermelhas. ⚠️ A segunda existe porque `SCULPT_SLOT` passou de `len()-1` a `len()-2`
+com um irmão ao lado: um `-1` esquecido faria os dois botões serem **o mesmo slot**, e o diálogo
+abriria no botão errado **sem erro nenhum**.
+
+### §40.5 — ⏸️ O que fica aberto
+
+- ⏸️ **A escultura entra como estava, e não se atualiza sozinha** — trazê-la outra vez atualiza. É o
+  que os 229–389 ms permitem, e o botão não diz isso: um artista que esculpa mais depois de a trazer
+  não tem nada na tela a lembrá-lo de a re-trazer.
+- ⏸️ **Uma escultura por peça**: a chave é fixa (`scene:sculpt`). Duas cópias da mesma escultura
+  partilham o campo — o que é certo — mas duas esculturas **diferentes** na cena não são exprimíveis.
+- ⏸️ O caminho `scene:` **não foi smokado com um projeto reaberto** — o pedido está gateado, o
+  reencontro depende do shell servir com a escultura já instalada.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
@@ -3060,6 +3129,12 @@ pedido)`, sem estado nenhum, e o smoke apenas a consome.
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W39 (§40): a escultura da cena entra SEM passar pelo disco** — botão `+ Sculpt from scene`,
+  oferecido só quando há uma. ⛔ **E a medição proibiu o «vivo» contínuo**: voxelizar custa
+  **229–389 ms** a 128³ (1,5 s a 256), contra um quadro de 16,7 — são 14 a 23 quadros por pincelada.
+  A decisão já estava escrita no doc da `DEFAULT_RESOLUTION` (*"o custo é pago uma vez, na
+  importação"*). ⏸️ Fica: a escultura **não se atualiza sozinha** e nada o diz · **uma** escultura
+  por peça (a chave é fixa) · o reencontro ao reabrir o projeto **não foi smokado**
 - ✅ **W38 (§39): ISOLAR (mostrar só o escolhido) e o grupo que nascia MUDO** — os dois itens da
   fila. ⭐ A lei do isolar foi **lida** no módulo irmão (toggle · não entra na história · isolar
   «nada» é recusado), e o mecanismo era **zero**: o `cook` já cozia *"a subárvore de `root`"*, então

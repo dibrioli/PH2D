@@ -192,6 +192,12 @@ pub(crate) struct Smoke {
     /// que o nó ainda existe antes de o usar (ver `field3d_scene::cook_root`). Um isolamento
     /// pendurado numa entidade morta apagaria a peça da tela sem nada a explicar.
     pub(crate) isolated: Option<u64>,
+    /// ⭐ **Há uma escultura VIVA na cena?** — publicado pelo shell, que é quem tem o `AppGfx`.
+    ///
+    /// ⚠️ Atravessa o quadro em vez de ser perguntado aqui, pela razão do `gizmo`: este arquivo não
+    /// tem `AppGfx` nenhum, e dar-lhe um faria o traçado passar a depender do módulo de escultura.
+    /// Sem a feature `sculpt3d` ele fica **sempre falso**, e o botão nunca é oferecido.
+    pub(crate) has_live_sculpt: bool,
 }
 
 /// **O que um arrasto de gizmo guarda** desde a pegada até soltar.
@@ -287,6 +293,7 @@ fn boot() -> Option<Smoke> {
         doc: Some(doc.clone()),
         seed: Some(doc),
         isolated: None,
+        has_live_sculpt: false,
         matcap: Arc::new(load_matcap()),
         cam: Orbit::default(),
         frame: None,
@@ -324,9 +331,9 @@ fn boot() -> Option<Smoke> {
 mod requests;
 use requests::armed_scene;
 pub(crate) use requests::{
-    ask_export, ask_import, ask_sculpt_extent, ask_spawn_sculpt, set_armed_by_panel,
-    take_export_request, take_import_request, take_open_panel_request, take_pending_sculpt,
-    take_sculpt_extent,
+    ask_export, ask_import, ask_scene_sculpt, ask_sculpt_extent, ask_spawn_sculpt,
+    set_armed_by_panel, take_export_request, take_import_request, take_open_panel_request,
+    take_pending_sculpt, take_scene_sculpt_request, take_sculpt_extent,
 };
 thread_local! {
     /// ⭐ **O registo de esculturas: nome → campo amostrado.**
@@ -425,6 +432,12 @@ pub(crate) fn next_isolation(current: Option<u64>, asked: Option<u64>) -> Option
         Some(a) if current == Some(a) => None,
         Some(a) => Some(a),
     }
+}
+
+/// **O shell diz se há uma escultura viva na cena** — publicado todo quadro, como a âncora do
+/// gizmo. Ver [`Smoke::has_live_sculpt`].
+pub(crate) fn note_live_sculpt(has: bool) {
+    with_smoke(|s| s.has_live_sculpt = has);
 }
 
 /// **Larga o isolamento** — o alvo deixou de existir. Explícito, e não um `toggle(alvo)`: *sair* e

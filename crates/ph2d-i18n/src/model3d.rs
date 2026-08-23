@@ -38,6 +38,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // quatro criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença
         // antes do clique.
         "panel.model3d.add.sculpt" => "+ Sculpt…",
+        // ⚠️ **Sem reticências**, ao contrário da irmã acima: aquela abre um diálogo, esta não
+        // pergunta nada — traz a escultura que já está na cena. A convenção do "…" é o que diz a
+        // diferença antes do clique, e é a mesma lição que o rótulo do `+ Sculpt…` registou.
+        "panel.model3d.add.sculpt_scene" => "+ Sculpt from scene",
         // As booleanas. ⚠️ "Subtract" e não "Difference": a palavra do documento descreve a
         // operação, e a do botão descreve o que o artista quer FAZER.
         "panel.model3d.op.union" => "Union",

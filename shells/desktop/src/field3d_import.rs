@@ -69,8 +69,30 @@ pub(crate) fn field_from_file(path: &std::path::Path) -> Result<Loaded, String> 
     // arquivo é a escultura.
     let refs: Vec<(&ph2d_mesh::Mesh, Pose)> =
         pieces.iter().map(|p| (&p.mesh, Pose::IDENTITY)).collect();
-    let mut mesh =
+    let mesh =
         ph2d_mesh::merge(&refs).map_err(|e| format!("could not merge its pieces ({e:?})"))?;
+    field_from_mesh(mesh)
+}
+
+/// ⭐ **UMA resposta a "que campo esta MALHA dá"** — e ela serve as duas portas.
+///
+/// ⚠️ **Factorizada na W39**, quando a escultura passou a poder vir da **cena** em vez do disco. As
+/// duas portas têm de produzir o **mesmo** campo: o documento guarda uma **chave**, não a grade, e
+/// duas voxelizações diferentes dariam uma peça que muda de forma conforme por onde entrou — sem
+/// nada na tela a dizê-lo.
+///
+/// ⚠️ **O `recenter` é load-bearing** (e não arrumação): a caixa da grade nasce da caixa da malha,
+/// então uma peça longe da origem paga uma grade que é quase toda vazio. O tamanho de convivência
+/// vai para a **pose** do nó, não para a geometria.
+///
+/// ⚠️ **Custa 229–389 ms a 128³** (medido, `measure_sculpt_to_field_bridge`), e é por isso que este
+/// caminho é um **gesto** e não um vínculo contínuo: uma re-voxelização por edição de escultura são
+/// 14 a 23 quadros de congelamento. O doc da `DEFAULT_RESOLUTION` já dizia *"o custo é pago uma
+/// vez, na importação, não por quadro"* — esta linha é essa decisão a valer também para a cena.
+///
+/// # Errors
+/// A mensagem é a que o artista vê no aviso; ela nomeia o que falhou, nunca o mecanismo.
+pub(crate) fn field_from_mesh(mut mesh: ph2d_mesh::Mesh) -> Result<Loaded, String> {
     let tris = mesh.faces().len();
     mesh.recenter();
     let extent = {
@@ -91,6 +113,31 @@ pub(crate) fn field_from_file(path: &std::path::Path) -> Result<Loaded, String> 
         tris,
         millis: t0.elapsed().as_secs_f64() * 1000.0,
     })
+}
+
+/// ⭐ **A CHAVE da escultura da cena** (W39).
+///
+/// ⚠️ **Não é um caminho de arquivo, e o resolvedor tem de o saber**: um `scene:` não se lê do
+/// disco. Quem o re-registra ao reabrir o projeto é o shell, a partir da escultura que o
+/// `ProjectFile` já guarda — ver `field3d_reload::missing_keys`.
+pub(crate) const SCENE_PREFIX: &str = "scene:";
+
+/// A chave da escultura viva, derivada do prefixo — nunca dois literais que possam divergir.
+pub(crate) const SCENE_KEY: &str = "scene:sculpt";
+
+/// ⭐ **Traz a escultura VIVA da cena para dentro da peça** — sem disco no meio.
+///
+/// Devolve a mensagem que o artista lê.
+pub(crate) fn field3d_scene_sculpt(mesh: ph2d_mesh::Mesh) -> String {
+    let loaded = match field_from_mesh(mesh) {
+        Ok(l) => l,
+        Err(e) => return format!("Could not use the scene sculpture: {e}"),
+    };
+    let (tris, ms, cell) = (loaded.tris, loaded.millis, loaded.field.cell());
+    crate::field3d_smoke::register_sampled(SCENE_KEY, std::sync::Arc::new(loaded.field));
+    crate::field3d_smoke::ask_spawn_sculpt(SCENE_KEY.to_string());
+    crate::field3d_smoke::ask_sculpt_extent(loaded.extent);
+    format!("Scene sculpture in: {tris} tris -> field in {ms:.0} ms (detail {cell:.4})")
 }
 
 /// Abre o diálogo, lê o arquivo, constrói o campo e **anota** a escultura para o próximo quadro.

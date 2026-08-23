@@ -8963,6 +8963,25 @@ impl crate::App {
             if crate::field3d_smoke::take_import_request() {
                 crate::field3d_import::field3d_import(toasts);
             }
+            // ⭐ **E a escultura da CENA** (W39) — o vínculo que não passa pelo disco.
+            //
+            // ⚠️ Ela é servida **aqui** e não na ponte com a cena porque quem tem a escultura viva é
+            // o `AppGfx`; a ponte recebe o mundo. É a mesma divisão dos dois pedidos acima.
+            //
+            // ⚠️ **E o shell publica se ela EXISTE**, todo quadro: é isso que faz o botão aparecer
+            // só quando há o que trazer (a lei da W34). Sem a feature, fica sempre falso.
+            #[cfg(feature = "sculpt3d")]
+            {
+                let live = sculpt3d.as_ref().map(crate::sculpt3d::Sculpt3dScene::mesh);
+                crate::field3d_smoke::note_live_sculpt(live.is_some());
+                if crate::field3d_smoke::take_scene_sculpt_request() {
+                    let msg = live.map_or_else(
+                        || "There is no sculpture in the scene to bring in".to_string(),
+                        |m| crate::field3d_import::field3d_scene_sculpt(m.clone()),
+                    );
+                    toasts.push(ph2d_editor::Toast::info(msg));
+                }
+            }
             // ⭐ **E o que o módulo tem a DIZER** (W23 + W25): a escultura que não voltou do
             // arquivo, e a peça que não cozinha. A ponte com a cena descobre as duas ao cozer o
             // documento, e a fila de avisos é daqui. Sem esta linha as duas falham em silêncio — a

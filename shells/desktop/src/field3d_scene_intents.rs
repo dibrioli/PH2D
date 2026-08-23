@@ -40,6 +40,12 @@ pub(super) fn apply(
                 }
             }
             // ⭐ **Criar** — perto do que está selecionado, no tamanho do enquadramento.
+            // ⭐ **A escultura da CENA** (W39) — o mesmo salto do irmão abaixo, sem o disco no meio.
+            ph2d_panel_model3d::ModelIntent::AddShape { slot }
+                if slot == panel::SCULPT_SCENE_SLOT =>
+            {
+                crate::field3d_smoke::ask_scene_sculpt();
+            }
             ph2d_panel_model3d::ModelIntent::AddShape { slot } if slot == panel::SCULPT_SLOT => {
                 // ⚠️ **Só ANOTA.** Escolher um arquivo é um diálogo, e esta função recebe o mundo —
                 // a mesma divisão que a exportação já faz, e pela mesma razão.

@@ -70,17 +70,28 @@ fn the_sculpt_button_asks_for_a_file_instead_of_making_a_shape() {
 /// acrescentar uma primitiva no meio da lista.
 #[test]
 fn the_sculpt_slot_points_at_the_sculpt_button() {
-    use crate::field3d_scene::panel::{SCULPT_SLOT, SHAPES, shape_at};
+    use crate::field3d_scene::panel::{SCULPT_SCENE_SLOT, SCULPT_SLOT, SHAPES, shape_at};
     assert_eq!(
         SHAPES[SCULPT_SLOT], "panel.model3d.add.sculpt",
         "o slot da escultura aponta para o botão errado"
     );
-    assert!(
-        shape_at(SCULPT_SLOT, 0.5).is_none(),
-        "a escultura não é uma primitiva — o `shape_at` tem de recusá-la"
+    // ⭐ **A escultura da CENA é a segunda não-primitiva** (W39), e este gate apanhou-a no minuto
+    // em que ela entrou — que é exactamente o trabalho dele. ⚠️ A lista de exceções é **derivada**
+    // das duas constantes, nunca escrita: uma terceira porta de escultura entra aqui ou o gate
+    // reprova, que é a ordem certa.
+    let not_primitives = [SCULPT_SLOT, SCULPT_SCENE_SLOT];
+    assert_eq!(
+        SHAPES[SCULPT_SCENE_SLOT], "panel.model3d.add.sculpt_scene",
+        "o slot da escultura da cena aponta para o botão errado"
     );
+    for slot in not_primitives {
+        assert!(
+            shape_at(slot, 0.5).is_none(),
+            "uma escultura não é uma primitiva — o `shape_at` tem de recusar o slot {slot}"
+        );
+    }
     for (i, key) in SHAPES.iter().enumerate() {
-        if i == SCULPT_SLOT {
+        if not_primitives.contains(&i) {
             continue;
         }
         assert!(

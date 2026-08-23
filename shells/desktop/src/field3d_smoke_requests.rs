@@ -134,6 +134,22 @@ pub(crate) fn set_armed_by_panel(open: bool) {
     }
 }
 
+/// ⭐ **O pedido de trazer a escultura DA CENA** (W39) — tirado uma vez, como os irmãos.
+///
+/// ⚠️ Ele atravessa por aqui e não é servido na hora pela razão de sempre: quem tem a escultura
+/// viva é o `AppGfx`, e a ponte com a cena recebe o **mundo**.
+pub(crate) fn take_scene_sculpt_request() -> bool {
+    SCENE_SCULPT.with(std::cell::Cell::take)
+}
+
+pub(crate) fn ask_scene_sculpt() {
+    SCENE_SCULPT.with(|c| c.set(true));
+}
+
+thread_local! {
+    static SCENE_SCULPT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 pub(super) fn armed_scene() -> Option<u32> {
     if let Ok(v) = std::env::var("PH2D_FIELD_SMOKE") {
         return Some(v.parse().unwrap_or(1));

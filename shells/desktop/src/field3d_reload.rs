@@ -73,6 +73,18 @@ pub(crate) fn resolve_missing(doc: &FieldDoc) -> Vec<String> {
         if !first_try(&key) {
             continue;
         }
+        // ⭐ **UMA CHAVE `scene:` NÃO É UM ARQUIVO** (W39): ela nomeia a escultura **viva** da cena,
+        // que entrou na peça sem passar pelo disco. Tentar lê-la como caminho daria *"Sculpture
+        // scene:sculpt is missing"* — um aviso a mandar o artista procurar um arquivo que nunca
+        // existiu.
+        //
+        // ⚠️ Quem a pode reconstruir é o **shell** (a escultura viva está no `AppGfx`), então o que
+        // se faz aqui é **pedir** — pela mesma caixa de correio que o botão usa. O `first_try`
+        // acima garante que o pedido sai **uma vez por documento**, e não um por quadro.
+        if key.starts_with(crate::field3d_import::SCENE_PREFIX) {
+            crate::field3d_smoke::ask_scene_sculpt();
+            continue;
+        }
         let path = std::path::Path::new(&key);
         let name = path
             .file_name()

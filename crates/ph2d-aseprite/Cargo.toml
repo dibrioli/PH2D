@@ -1,0 +1,16 @@
+[package]
+name = "ph2d-aseprite"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ZLIB. ⚠️ `miniz_oxide` e nao `flate2`: os dois JA' estao na arvore (o `png` puxa ambos), e este
+# e' Rust puro — a crate inteira e' `#![forbid(unsafe_code)]`, e um decodificador de ficheiro do
+# utilizador e' exactamente a superficie onde isso importa. A API que se usa e' UMA funcao.
+miniz_oxide = "0.8"

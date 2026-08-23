@@ -721,10 +721,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   nunca em cada gesto. ⚠️ **O painel oferece EXATAMENTE o que o gesto faz** (W34) — a lei está em
   [`field3d_reach_tests.rs`](shells/desktop/src/field3d_reach_tests.rs), e ela apanha os dois
   lados (botão mudo · gesto inalcançável).
-  **Aberto:** o `FieldDoc` **não persiste** no `ProjectFile` (fechá-lo move o `PROJECT_SCHEMA`) ·
-  religar uma escultura que mudou de sítio (pede UI) · o vínculo à escultura **viva** do módulo 3D
-  (hoje passa pelo disco) · ⏸️ o `Mirror` não se consegue demonstrar (adiado pelo Enio) ·
-  a exportação não diz o **tamanho** da peça.
+  ⚠️ **A peça ATRAVESSA o arquivo** (W35) — ela é uma árvore de entidades e o `ProjectState` é o
+  mundo inteiro, então o `PROJECT_SCHEMA` **não se mexe**; a nota que dizia o contrário era velha.
+  ⚠️ **Tomar o canvas LIBERTA quem o tinha** (W40+W42): pegar noutra ferramenta fecha o MODEL **e
+  desarma o módulo** — e a **vista** (câmera · prato parado · verbo e referencial do gizmo ·
+  isolamento) sobrevive ao fecho (W43), enquanto o cache do quadro não. ⛔ Um campo novo no `Smoke`
+  é **erro de compilação** em `field3d_view::View::of` até alguém dizer se é vista ou cache.
+  **Aberto:** religar uma escultura que mudou de sítio (pede UI) · ⛔ o vínculo à escultura **viva**
+  do módulo 3D foi **medido e recusado** (voxelizar custa 229–389 ms a 128³ contra um quadro de
+  16,7) — a escultura entra da cena **sem disco** e não se atualiza sozinha · ⏸️ o `Mirror` não se
+  consegue demonstrar (adiado pelo Enio) · a exportação não diz **onde** a peça está (o tamanho já
+  diz, W36) · nada mostra na Hierarquia que há um **isolamento** em curso.
   **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (o roteador é
   [`field3d_smoke_scenes.rs`](shells/desktop/src/field3d_smoke_scenes.rs)).
   **Ler:** [`docs/3DModeling/`](docs/3DModeling/) ·

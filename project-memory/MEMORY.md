@@ -108,7 +108,7 @@
 - [Afirmação que mutação nenhuma mata é afirmação sobre NADA](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) — encolha a afirmação até ao que a máquina faz; perseguir o gate antes de a reler custa duas voltas
 - [Contar o trabalho FEITO não é contar o ENTREGUE](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) — o gate contava cozeduras e o consumidor recebia zero; ponha a sonda dentro de quem consome
 - [Duas hipóteses boas que falham refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md) — ao 2.º falhanço pare de propor curas e construa a régua que LOCALIZA; ilibe também o suspeito improvável
-- [Provas de mutação (6)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
+- [Provas de mutação (7)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando · ⚠️ exija `running 1 test`: filtro que não casa corre ZERO e sai 0
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep

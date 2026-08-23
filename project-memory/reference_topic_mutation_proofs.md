@@ -1,6 +1,6 @@
 ---
 name: reference-topic-mutation-proofs
-description: "Provas de mutação — as 5 regras do placar"
+description: "Provas de mutação — as regras do placar"
 metadata:
   node_type: memory
   type: reference
@@ -12,3 +12,4 @@ metadata:
 - [[feedback_an_optimization_needs_a_gate_that_proves_it_fires]] — o fallback silencia o bug
 - [[feedback_a_mutation_that_survives_may_mean_a_missing_gate]] — explique por que é inofensiva ALI
 - [[feedback_a_restored_file_keeps_its_old_mtime_and_cargo_reuses_the_mutant]] — `touch` depois de todo restore
+- [[feedback_a_mutation_harness_needs_a_positive_control_that_a_test_ran]] — exija `running 1 test`; filtro que não casa corre ZERO e sai 0

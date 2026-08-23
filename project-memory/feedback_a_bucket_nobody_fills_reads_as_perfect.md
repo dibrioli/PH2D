@@ -40,3 +40,18 @@ Irmãs: [[feedback_an_unlabelled_probe_column_gets_read_backwards]] ·
 [[feedback_a_cure_measured_on_a_fixture_that_lacks_the_phenomenon_reads_as_useless]] ·
 [[feedback_a_new_features_gate_can_expose_a_pre_existing_bug_check_the_control_first]] ·
 [[reference_topic_gate_discipline]]
+
+⚠️ **Refinamento (2026-08-23) — a TERCEIRA variante da mesma lei, na mesma semana: um
+numerador sem MOTIVO.** Depois de «mediana sem contagem» e «numerador sem denominador»
+veio `deslizou 1/2` — e eu escrevi por cima dele *«não é o mapa»*, tendo o mapa corrido
+em **um patch de seis** (ele só se aplica a patches de quatro lados, e a peça tinha
+`{3:4, 4:2}`). ⭐ **A cura foi a mesma três vezes: acrescentar a coluna que falta.** Com
+`slid_refused` a linha passou a dizer `1/2 · recusas [0,0,0,1,0]`, e a coluna `3` —
+*fronteira livre não-monótona* — mudou a conclusão de *«a cura é insuficiente»* para
+*«a cura RECUSOU-SE a correr»*. **São afirmações diferentes e mandam construir coisas
+diferentes.**
+
+⇒ ⭐ **A regra completa, nas três formas:** ao lado de todo número derivado ponha
+*quantos* (a amostra), *de quantos* (o denominador) e, quando ele é o resultado de um
+predicado, *porquê não* (o motivo da recusa). **Um número que passou por um filtro e não
+diz qual filtro é uma conclusão à espera de dono.**

@@ -43,7 +43,21 @@ use ph2d_a11y::NodeId;
 /// honesta: `20 ≤ 34`. **O preço são 4 slots × 21 registros = 84 registros a mais por
 /// `populate`** — e ⚠️ ele MULTIPLICA com o [`MAX_ENUM_OPTIONS`] (48) nos slots que pintam um
 /// selector, que é o que impede este número de ser «só mais um pouco».
-pub const MAX_PARAM_ROWS: usize = 20;
+///
+/// ⚠️ **`20 → 24` em 2026-08-23, a TERCEIRA vez por medição.** O `motion.bezier_warp` (doc 89
+/// folha 04, P1) declara **24** params — 4 cantos + 8 tangentes, cada um `(x, y)`, que é a
+/// superfície do *Bezier Warp* da referência e não inchaço: um lado sem as duas tangentes
+/// deixa de ser uma cúbica. O gate reprovou nomeando o nó e a contagem, antes de o defeito
+/// chegar ao ecrã. Censo do dia: `motion.bezier_warp` **24** · `motion.spline_wrap` /
+/// `motion.emitter` 15 · `motion.boids` 14 · `motion.noise` 13.
+///
+/// ⚠️ **E a FOLGA foi retirada de propósito** — os movimentos anteriores davam *pior + 3*, e
+/// este dá **exactamente o pior**. A razão é o parágrafo acima: cada slot custa 21 registros
+/// **e multiplica com o [`MAX_ENUM_OPTIONS`]** (48) nos slots que pintam selector, ou seja
+/// `2 × 48` botões a mais por slot de folga. Com o pior caso a saltar de 17 para 24, três
+/// slots de folga deixaram de ser arredondamento. *Um teto colado no pior caso faz o gate
+/// avisar no dia seguinte ao nó crescer — que é para isso que ele existe.*
+pub const MAX_PARAM_ROWS: usize = 24;
 
 /// Max named options a single segmented selector paints — an `Enum` row's `labels`, a
 /// `Channels` row's channels **plus its trailing "Custom…"**, and the live-column chips.

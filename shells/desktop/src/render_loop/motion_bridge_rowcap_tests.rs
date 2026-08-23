@@ -485,24 +485,64 @@ fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
     );
 }
 
-/// **E o dock ainda é medido** — a sonda do gate acima, agora que caber deixou de ser lei.
+/// **Quem passa do dock é NOMEADO aqui** — a sonda do gate acima, agora que caber deixou de
+/// ser lei.
 ///
 /// Um nó mais alto que o dock não é um defeito (ele rola), mas é um FATO de produto: abrir o
 /// inspector e já precisar da roda é pior UX que caber. O número fica escrito aqui, e a
 /// mutação que o prova é esconder um param — a altura desce.
+///
+/// ⚠️ **Ele deixou de exigir a lista VAZIA em 2026-08-23, e a mudança é sobre o que ele
+/// sempre disse ser:** o doc acima chama-se *"o número fica escrito aqui"*, e a asserção
+/// `is_empty()` fazia dele *"ninguém pode passar"*. O `motion.bezier_warp` passa — 24 params
+/// são a superfície do *Bezier Warp* da referência (4 cantos + 8 tangentes × `(x, y)`), e um
+/// lado sem as duas tangentes deixa de ser uma cúbica: cortar a superfície para caber num
+/// dock seria deixar o dock desenhar o produto. ⇒ a exceção é **NOMEADA, com a altura
+/// medida**, e qualquer nó que ela não nomeie continua a deixar a suíte vermelha.
+///
+/// ⛔ E ela não é um allowlist a crescer: um segundo nome aqui é sinal de que a resposta certa
+/// passou a ser **secções recolhíveis** no painel (que hoje não existem — os `ParamGroup` são
+/// cabeçalhos, sem estado de aberto/fechado), e não mais uma linha nesta tabela.
 #[test]
 fn the_dock_overflow_is_named_not_discovered() {
+    /// Os nós que passam do dock **de propósito**, com a altura medida em 2026-08-23.
+    ///
+    /// ⚠️ **A primeira leitura deste número foi `920`, e ela estava ERRADA por um motivo que
+    /// vale registar:** ela foi tirada enquanto o `MAX_PARAM_ROWS` ainda era `20`, ou seja
+    /// com o painel a **cortar quatro das 24 linhas**. `920` era a altura do TETO, não a do
+    /// nó. Com o teto no lugar certo ele mede `1083`. *Uma altura medida sob um limite que
+    /// está a cortar é a altura do limite.*
+    const NAMED_OVERFLOW: &[(&str, f32)] = &[("motion.bezier_warp", 1083.0)];
     let census = height_census();
     let (worst_ty, worst_h) = census.first().copied().expect("o registry não é vazio");
     let over: Vec<String> = census
         .iter()
-        .filter(|(_, h)| *h > INSPECTOR_MAX_H)
+        .filter(|(ty, h)| *h > INSPECTOR_MAX_H && !NAMED_OVERFLOW.iter().any(|(n, _)| n == ty))
         .map(|(ty, h)| format!("{ty} ({h:.0} px)"))
         .collect();
     assert!(
         over.is_empty(),
         "estes nós desenham além da altura do dock ({INSPECTOR_MAX_H} px) no estado de \
-         DEFAULT — alcançáveis pela roda, mas o inspector abre já a precisar dela: \
-         {over:?}. O pior é {worst_ty} com {worst_h:.0} px."
+         DEFAULT e NÃO estão nomeados — alcançáveis pela roda, mas o inspector abre já a \
+         precisar dela: {over:?}. O pior é {worst_ty} com {worst_h:.0} px."
     );
+    // ⚠️ E o nomeado tem de continuar a ser o que se mediu: uma altura que ANDE (para cima
+    // ou para baixo) é um param que entrou ou saiu sem ninguém reparar. Ela não é uma barra,
+    // é um retrato.
+    for (ty, px) in NAMED_OVERFLOW {
+        let got = census
+            .iter()
+            .find(|(t, _)| t == ty)
+            .unwrap_or_else(|| panic!("o nó nomeado `{ty}` sumiu do registry"))
+            .1;
+        assert!(
+            (got - px).abs() < 1.0,
+            "`{ty}` media {px:.0} px quando foi nomeado e mede {got:.0} agora — um param \
+             entrou ou saiu; re-meça e mova o número, ou desfaça"
+        );
+        assert!(
+            got > INSPECTOR_MAX_H,
+            "`{ty}` já CABE no dock ({got:.0} ≤ {INSPECTOR_MAX_H}) — tire-o da lista"
+        );
+    }
 }

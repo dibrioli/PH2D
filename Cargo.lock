@@ -6278,6 +6278,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-bezier-warp"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-boids"
 version = "0.0.0"
 dependencies = [
@@ -6871,6 +6879,7 @@ dependencies = [
  "ph2d-node-fx-glow",
  "ph2d-node-fx-rgb-split",
  "ph2d-node-motion-bend",
+ "ph2d-node-motion-bezier-warp",
  "ph2d-node-motion-boids",
  "ph2d-node-motion-clone",
  "ph2d-node-motion-collide",

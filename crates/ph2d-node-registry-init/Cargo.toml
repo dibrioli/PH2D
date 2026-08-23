@@ -34,6 +34,7 @@ ph2d-node-fx-drop-shadow = { path = "../ph2d-node-fx-drop-shadow" }
 ph2d-node-fx-glow = { path = "../ph2d-node-fx-glow" }
 ph2d-node-fx-rgb-split = { path = "../ph2d-node-fx-rgb-split" }
 ph2d-node-motion-bend = { path = "../ph2d-node-motion-bend" }
+ph2d-node-motion-bezier-warp = { path = "../ph2d-node-motion-bezier-warp" }
 ph2d-node-motion-boids = { path = "../ph2d-node-motion-boids" }
 ph2d-node-motion-clone = { path = "../ph2d-node-motion-clone" }
 ph2d-node-motion-collide = { path = "../ph2d-node-motion-collide" }

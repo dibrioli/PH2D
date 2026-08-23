@@ -73,7 +73,12 @@ impl App {
 impl Sculpt3dScene {
     /// Entra no barro, ou sai dele. Devolve o rótulo do papel novo (o mesmo vocabulário que o `D`
     /// imprime — um nome, uma fonte).
-    pub(super) fn toggle_clay(&mut self) -> &'static str {
+    /// ⚠️ `pub(crate)` desde a W40 do módulo de modelagem, e pela mesma razão que a
+    /// [`Self::clay_on_screen`] ao lado já o era: **quem toma o canvas liberta quem o tinha**, e
+    /// abrir o pill MODEL tem de tirar o barro da tela. A alternativa era o modelador escrever a
+    /// própria saída do modo escultura — uma segunda resposta a *"como se sai do barro"*, e a que
+    /// não conhece a ordem do ciclo que o cabeçalho deste arquivo defende.
+    pub(crate) fn toggle_clay(&mut self) -> &'static str {
         self.role = if self.role.draws_clay() {
             // Ver o cabeçalho: a saída é a próxima posição do ciclo, não um destino escolhido aqui.
             self.role.next()

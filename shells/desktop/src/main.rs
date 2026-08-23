@@ -119,6 +119,7 @@ mod field3d_import;
 /// tela, que é o caminho pelo qual o artista vê a peça (a malha é só para exportar).
 mod field3d_input;
 /// ADR-0161 W25 — a VOZ do módulo: uma peça que não cozinha diz porquê, e diz uma vez.
+mod field3d_mode;
 mod field3d_notice;
 mod field3d_pick;
 /// ADR-0161 W24 — a resolução do preview é DERIVADA do relógio: grossa ao mexer, nítida ao assentar.

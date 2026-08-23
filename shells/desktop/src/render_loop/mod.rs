@@ -6695,6 +6695,51 @@ impl crate::App {
             // ⭐ **O pill é a porta de armar.** A visibilidade do painel É o interruptor do
             // módulo: enquanto a única entrada era `PH2D_FIELD_SMOKE`, ele não existia
             // para quem abre o app.
+            // ⭐ **QUEM TOMA O CANVAS LIBERTA QUEM O TINHA** (W40). Enio, 2026-08-22: *"o modo
+            // Modelagem nunca é desativado e não consigo usar nenhum outro modo do app… Não consigo
+            // esculpir nada pois o modo de modelagem permanece interferindo."*
+            //
+            // ⚠️ Fecha-se o **painel**, e não se desarma em silêncio: o pill *é* o interruptor do
+            // módulo (a linha abaixo), então um desarme invisível deixaria o botão aceso a mentir.
+            // A lei (borda, não estado contínuo) e o porquê estão em `crate::field3d_mode`.
+            {
+                let owner = crate::field3d_mode::Owner {
+                    tool: tools.active().map(ph2d_editor::Tool::id),
+                    #[cfg(feature = "sculpt3d")]
+                    clay: sculpt3d
+                        .as_ref()
+                        .is_some_and(crate::sculpt3d::Sculpt3dScene::clay_on_screen),
+                    #[cfg(not(feature = "sculpt3d"))]
+                    clay: false,
+                };
+                if crate::field3d_mode::note_owner(owner)
+                    && hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID)
+                {
+                    hero.panel_visibility
+                        .insert(ph2d_panel_model3d::PANEL_ID, false);
+                    toasts.push(ph2d_editor::Toast::info(
+                        "Modelling stepped aside for the other tool",
+                    ));
+                }
+            }
+            // ⭐ **E a metade SIMÉTRICA**: abrir o MODEL tira o barro da tela. Sem ela, o artista
+            // que entrou na escultura (e viu o MODEL ceder) e voltou ao MODEL teria os DOIS a
+            // desenhar — a mesma interferência, ao contrário.
+            //
+            // ⚠️ A saída é a **porta do próprio módulo de escultura** (`toggle_clay`), nunca uma
+            // escrita aqui: ela conhece a ordem do ciclo (sair do barro vai para a LUZ, não para o
+            // desligado), e essa ordem é uma decisão de produto com um dono.
+            #[cfg(feature = "sculpt3d")]
+            {
+                let model_open = hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID);
+                if crate::field3d_mode::model_just_opened(model_open)
+                    && let Some(scene) = sculpt3d.as_mut()
+                    && scene.clay_on_screen()
+                {
+                    let label = scene.toggle_clay();
+                    eprintln!("[field3d] o MODEL abriu; a escultura cedeu -> {label}");
+                }
+            }
             crate::field3d_smoke::set_armed_by_panel(
                 hero.is_panel_visible(ph2d_panel_model3d::PANEL_ID),
             );

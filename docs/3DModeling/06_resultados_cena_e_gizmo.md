@@ -3114,6 +3114,87 @@ abriria no botão errado **sem erro nenhum**.
 
 ---
 
+## §41 — W40: o modelador não cedia o canvas a ninguém (22/08)
+
+> Enio, 2026-08-22: *"o modo Modelagem nunca é desativado e não consigo usar nenhum outro modo do
+> app. Se eu entro no modo sculpt ou vector ou qualquer outro, o Modelagem deve ceder. **Não consigo
+> esculpir nada** pois o modo de modelagem permanece interferindo."*
+>
+> ⛔ Não é um incómodo: com o modelador aberto, **o resto do app fica inutilizável**.
+
+### §41.1 — ⚠️ É o MESMO report de duas waves da escultura, um nível acima
+
+O módulo irmão já pagou este defeito **duas vezes**, e as duas frases estão escritas no
+`input_dispatch`:
+
+| data | o report | a lição |
+|---|---|---|
+| 09/08 | *"não consigo configurar a textura da sprite já que não posso sair do modo escultura"* | um modo de canvas precisa de **saída** |
+| 17/08 | *"depois de abrir outros módulos como Sculpt, o Motion não consegue usar os atalhos"* | *"o **ponteiro** já cedia, o **teclado** não — uma assimetria entre duas portas que respondem à MESMA pergunta"* |
+
+⭐ **Aqui a assimetria é maior: nenhuma das duas cedia.** O modelador é armado pela **visibilidade do
+painel** (`set_armed_by_panel`), e **nada no app fechava esse painel**. Enquanto ele estivesse
+aberto, o traçado desenhava por cima do canvas e o ponteiro era dele — para sempre.
+
+*Uma lei que o módulo vizinho já pagou duas vezes não é uma descoberta: é uma leitura que não foi
+feita.*
+
+### §41.2 — ⭐ A lei: tomar o canvas LIBERTA quem o tinha
+
+Não é *"o modelador desliga-se sozinho"*. É que o canvas tem **um** dono, e pegar nele é um gesto
+que solta os outros — **duas metades simétricas**:
+
+| quem entra | quem cede |
+|---|---|
+| uma **ferramenta** é pegada no rail, ou o **barro** aparece na tela | o painel MODEL **fecha** |
+| o pill **MODEL** é aberto | o **barro** sai da tela |
+
+⚠️ **Fecha-se o painel, não se desarma em silêncio:** o pill *é* o interruptor do módulo, então um
+desarme invisível deixaria o botão aceso a mentir sobre o estado. O artista vê por que o modelador
+saiu — e há um aviso a dizê-lo.
+
+⚠️ **A saída do barro é a porta do PRÓPRIO módulo de escultura** (`toggle_clay`), nunca uma escrita
+aqui: ela conhece a ordem do ciclo (sair do barro vai para a **luz**, não para o desligado), e essa
+ordem é uma decisão de produto com um dono.
+
+### §41.3 — ⚠️ Por que a lei é de BORDA, e não contínua
+
+A regra contínua — *"MODEL cede enquanto houver ferramenta em mãos"* — é mais simples e **cria um
+impasse**: uma ferramenta pegada **fica** em mãos (`set_active` no mesmo id é no-op, e não há gesto
+de largar), então o modelador **nunca mais abriria**. A borda diz o que foi pedido (*"se eu entro
+noutro modo"*) sem tirar o caminho de volta.
+
+E as duas bordas são **independentes**: no quadro em que se pega uma ferramenta *e* o MODEL abre,
+juntá-las num estado só faria uma mascarar a outra — e um dos dois modos ficaria de pé sem ninguém
+ter decidido qual.
+
+### §41.4 — Provas de mutação
+
+| mutação | gate que ficou vermelho |
+|---|---|
+| a lei deixa de ver a **ferramenta** (o caso do Vector) | `entering_another_mode_takes_the_canvas` |
+| a lei deixa de ver o **barro** (o caso do Sculpt) | o mesmo |
+| a lei vira **contínua** (o painel fecha a cada quadro) | `nothing_changing_is_not_taking` |
+| **largar** a ferramenta passa a fechar o painel | `dropping_a_tool_is_not_taking_the_canvas` |
+| a borda do MODEL **deixa de ser borda** | `opening_the_model_panel_is_its_own_edge` |
+| o **loop** deixa de fechar o painel (desarma em silêncio) | `the_render_loop_actually_makes_the_modes_cede` |
+
+6 mutações, 6 vermelhas. ⚠️ A última é a lei da W34 outra vez: *provar o cálculo não prova a
+alcançabilidade dele* — sem ela as funções podiam estar perfeitas e não ser chamadas por ninguém.
+
+### §41.5 — ⏸️ O que fica aberto
+
+- ⏸️ **Reabrir o MODEL com uma ferramenta ainda em mãos** deixa as duas de pé: o modelador desenha e
+  a ferramenta continua registada. Ele não *interfere* (o artista está a modelar), mas ninguém
+  largou nada — e não há gesto de largar uma ferramenta neste app.
+- ⏸️ **O modelador não tem um pill próprio**: ele é armado pela visibilidade do painel. Isso funciona
+  e é o que torna esta cura barata, mas mistura *"o painel está aberto"* com *"estou a modelar"* —
+  duas perguntas que o módulo de escultura já separou (o pill é binário, o `D` percorre o ciclo).
+- ⏸️ A `line/sculpt3d` ganhou **uma palavra** (`pub(super)` → `pub(crate)` no `toggle_clay`), pela
+  mesma razão que a irmã `clay_on_screen` já era `pub(crate)`.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
@@ -3129,6 +3210,12 @@ abriria no botão errado **sem erro nenhum**.
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W40 (§41): o modelador CEDE o canvas** — Enio, 22/08: *"não consigo esculpir nada pois o modo
+  de modelagem permanece interferindo"*. ⚠️ **É o mesmo report que a escultura já pagou duas vezes**
+  (09/08 e 17/08), um nível acima: lá *"o ponteiro cedia e o teclado não"*; aqui **nenhum dos dois**.
+  A lei é *tomar o canvas liberta quem o tinha*, em duas metades simétricas e **de borda** (contínua
+  criaria impasse: não há gesto de largar uma ferramenta). ⏸️ Fica: reabrir o MODEL com ferramenta em
+  mãos deixa as duas de pé · o modelador não tem pill próprio (o painel É o interruptor)
 - ✅ **W39 (§40): a escultura da cena entra SEM passar pelo disco** — botão `+ Sculpt from scene`,
   oferecido só quando há uma. ⛔ **E a medição proibiu o «vivo» contínuo**: voxelizar custa
   **229–389 ms** a 128³ (1,5 s a 256), contra um quadro de 16,7 — são 14 a 23 quadros por pincelada.

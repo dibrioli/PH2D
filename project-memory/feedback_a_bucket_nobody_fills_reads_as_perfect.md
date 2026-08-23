@@ -55,3 +55,21 @@ diferentes.**
 *quantos* (a amostra), *de quantos* (o denominador) e, quando ele é o resultado de um
 predicado, *porquê não* (o motivo da recusa). **Um número que passou por um filtro e não
 diz qual filtro é uma conclusão à espera de dono.**
+
+⚠️ **Refinamento (2026-08-23) — a QUARTA variante, no mesmo dia: um RECUO sem voz.** Um
+caminho de cura devolvia `None` num patch e o chamador caía no comportamento de sempre —
+**byte-idêntico ao controlo, sem uma palavra**. ⛔ E aconteceu **três vezes seguidas no
+mesmo ficheiro, com três causas diferentes** (uma circularidade · um `?` a abortar a
+função inteira · um `return` que não preenchia um campo novo). ⭐⭐ **O que as separou não
+foi raciocínio — foi acrescentar colunas, uma de cada vez:** o **numerador** (quantos
+arcos mudaram) apanhou a segunda; o **motivo** da desistência, por passo (`gave_up:
+[usize; 5]`), apanhou a terceira **numa corrida** — a coluna dizia `sem alfa 57`.
+
+⇒ ⭐ **A lei, completa em quatro formas.** Ao lado de todo número derivado ponha:
+*quantos* (a amostra) · *de quantos* (o denominador) · *porquê não* (o motivo da recusa)
+· e, se há um caminho de recuo, **que ele CONTE**. ⛔ *«Byte-idêntico ao controlo» nunca é
+um resultado — é uma pergunta*, e sem essas colunas ela não tem resposta.
+
+⚠️ **E há um corolário sobre campos novos:** quem acrescenta um campo tem de o preencher
+em **todos** os `return` do construtor (eram quatro), e o compilador não ajuda quando o
+tipo tem `Default`. *O gate de presença é o que apanha o que faltou.*

@@ -145,3 +145,55 @@ fn the_render_loop_actually_makes_the_modes_cede() {
         );
     }
 }
+
+/// ⛔ **A CENA DE ESCULTURA VAZIA NÃO PODE RECEBER UM GESTO** — sem esta guarda o app **crasha**.
+///
+/// Enio, 2026-08-22, no smoke desta wave (a lei de ceder levou-o à escultura, e lá ele apagou a
+/// única peça e clicou):
+///
+/// ```text
+/// [sculpt3d] APAGOU: sobram 0 pecas -- Ctrl+Z a devolve INTEIRA
+/// PH2D PANIC ... sculpt3d_input.rs:173 "index out of bounds: the len is 0 but the index is 0"
+/// ```
+///
+/// ⭐ **A cena vazia é um estado LEGÍTIMO** — o `delete_active` produ-lo e promete o Ctrl+Z de
+/// volta. O que faltava era a outra metade: os caminhos de gesto indexam `objects[active]` direto.
+/// *Um estado que o módulo declara legal e um caminho que o supõe impossível é um pânico à espera
+/// do primeiro clique.*
+///
+/// ⚠️ **Por que um gate de FONTE e não comportamental:** a `Sculpt3dScene` precisa de um `Device`
+/// de GPU para existir (`Sculpt3dScene::new(&device, …)`), então nenhum gate deste repositório a
+/// constrói — a suíte inteira do módulo irmão testa as funções **puras** à volta dela, e diz isso
+/// no cabeçalho. Medir o fonte é o que sobra, e é honesto sobre o que mede.
+///
+/// ⚠️ **E ele vive AQUI, no módulo de modelagem**, porque a guarda é desta linha: a cura completa
+/// são **42** indexações sem guarda em 9 arquivos da `line/sculpt3d`, e reescrevê-las não é nossa.
+/// Este gate defende a porta que o artista bateu; o resto está nomeado no handoff.
+#[test]
+fn the_sculpt_pointer_refuses_an_empty_scene_before_it_indexes_one() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/sculpt3d_input.rs"),
+    )
+    .expect("o irmão da escultura existe");
+    let code: Vec<&str> = src
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect();
+
+    let guard = code
+        .iter()
+        .position(|l| l.contains("scene.objects.is_empty()"))
+        .expect(
+            "o `sculpt3d_pointer_down` tem de RECUSAR uma cena vazia — sem isso, apagar a última \
+             peça e clicar derruba o app",
+        );
+    let first_index = code
+        .iter()
+        .position(|l| l.contains("scene.objects[scene.active]"))
+        .expect("…e o gate só prova alguma coisa se a indexação que ele defende existir");
+    assert!(
+        guard < first_index,
+        "a guarda (linha {guard} do código sem comentários) tem de vir ANTES da primeira \
+         indexação (linha {first_index}) — depois dela é tarde"
+    );
+}

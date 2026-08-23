@@ -3195,6 +3195,58 @@ alcançabilidade dele* — sem ela as funções podiam estar perfeitas e não se
 
 ---
 
+## §42 — W41: o crash que o smoke da W40 encontrou na escultura (22/08)
+
+> ⚠️ **Não é um defeito deste módulo** — mas foi a lei de ceder (§41) que levou o Enio até ele, e ele
+> derruba o app. O registro fica aqui porque é aqui que a linha o mediu e o fechou pela porta.
+
+```text
+[sculpt3d] APAGOU: sobram 0 pecas -- Ctrl+Z a devolve INTEIRA
+PH2D PANIC frame=2523 ... sculpt3d_input.rs:173
+message="index out of bounds: the len is 0 but the index is 0"
+```
+
+### §42.1 — ⭐ A causa: um estado LEGÍTIMO que um caminho supõe impossível
+
+O `delete_active` **produz** a cena vazia e promete o Ctrl+Z de volta — é uma escolha, escrita na
+mensagem que ele imprime. O que faltava era a outra metade: os caminhos de **gesto** indexam
+`objects[active]` **direto**, e com a lista vazia o `active` (que o delete prende em 0) aponta para
+nada.
+
+*Um estado que o módulo declara legal e um caminho que o supõe impossível é um pânico à espera do
+primeiro clique.*
+
+### §42.2 — ⛔ A extensão MEDIDA, e por que a cura completa não é desta linha
+
+| medida | valor |
+|---|---|
+| indexações `objects[…]` **sem guarda** | **42** |
+| arquivos do módulo irmão | **9** (`filter` · `dyntopo` · `pull` · `transform` · `input` · `space` · `objects` · `import`) |
+| portas de gesto que lá chegam | 5 (`pointer_down` · `pointer_move` · `wheel` · `key` · `apply_panel_intent`) |
+| a porta segura que elas deviam usar | **já existe** (`obj()` / `obj_mut()`) |
+
+⇒ A `line/3DModeling` fecha **a porta que o artista bateu** (`sculpt3d_pointer_down`, uma guarda que
+recusa **e reporta** — a lei que o próprio módulo já segue no `Delete`) e **nomeia o resto**.
+Reescrever 42 sítios de um módulo alheio, com a linha dele viva, não é uma decisão desta.
+
+### §42.3 — ⚠️ O gate é de FONTE, e ele diz porquê
+
+A `Sculpt3dScene` precisa de um `Device` de GPU para existir, então **nenhum gate deste repositório
+a constrói** — a suíte inteira do módulo irmão testa as funções *puras* à volta dela, e diz isso no
+cabeçalho. O que sobra é medir o fonte: a guarda existe **e vem antes** da primeira indexação. O
+gate exige as duas coisas — sem a segunda metade ele passaria com a guarda escrita depois do
+pânico. Mutação: tirar a guarda → vermelho.
+
+### §42.4 — ⏸️ O que fica aberto
+
+- ⏸️ **As outras 4 portas** (`pointer_move`, `wheel`, `key`, `apply_panel_intent`) e as 41
+  indexações restantes — trabalho da `line/sculpt3d`, com o endereço acima.
+- ⏸️ ⚠️ **O pânico terminou em `SIGSEGV`**: o processo não morreu pelo `panic!`, morreu a desenrolar
+  a pilha (provavelmente a superfície `wgpu` a ser largada durante o unwind). *Um app que crasha ao
+  crashar perde o relatório que explicaria o primeiro crash* — e isso é da casa, não de um módulo.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
@@ -3210,6 +3262,12 @@ alcançabilidade dele* — sem ela as funções podiam estar perfeitas e não se
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W41 (§42): o CRASH que o smoke da W40 encontrou na escultura** — apagar a última peça e
+  clicar derrubava o app (`index out of bounds`, `sculpt3d_input.rs:173`). A cena vazia é um estado
+  **legítimo** (o `delete` promete o Ctrl+Z) e os caminhos de gesto supunham-na impossível. ⛔ A cura
+  completa são **42** indexações sem guarda em 9 arquivos da `line/sculpt3d`; esta linha fecha **a
+  porta que o artista bateu** e nomeia o resto. ⏸️ Fica: as outras 4 portas · e o pânico terminou em
+  **SIGSEGV** (o app crasha ao crashar, e perde o relatório)
 - ✅ **W40 (§41): o modelador CEDE o canvas** — Enio, 22/08: *"não consigo esculpir nada pois o modo
   de modelagem permanece interferindo"*. ⚠️ **É o mesmo report que a escultura já pagou duas vezes**
   (09/08 e 17/08), um nível acima: lá *"o ponteiro cedia e o teclado não"*; aqui **nenhum dos dois**.

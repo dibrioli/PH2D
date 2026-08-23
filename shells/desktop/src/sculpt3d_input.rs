@@ -90,6 +90,33 @@ impl App {
         if !scene.shows_clay() {
             return false;
         }
+        // ⚠️⚠️ **UMA CENA VAZIA NÃO RECEBE GESTO** — e sem esta pergunta o app CRASHA.
+        //
+        // Enio, 2026-08-22, a esculpir depois de apagar a única peça:
+        // ```text
+        // [sculpt3d] APAGOU: sobram 0 pecas -- Ctrl+Z a devolve INTEIRA
+        // PH2D PANIC ... sculpt3d_input.rs:173 "index out of bounds: the len is 0 but the index is 0"
+        // ```
+        //
+        // ⭐ **A cena vazia é um estado LEGÍTIMO** — o próprio `delete_active` a produz e promete o
+        // Ctrl+Z de volta. O que faltava era a outra metade: os caminhos de gesto indexam
+        // `objects[active]` **direto**, e com a lista vazia o `active` (que o delete prende em 0)
+        // aponta para nada. *Um estado que o módulo declara legal e um caminho que o supõe
+        // impossível é um pânico à espera do primeiro clique.*
+        //
+        // ⛔ **A cura completa é MAIOR do que este sítio, e é da `line/sculpt3d`:** medido
+        // 2026-08-22, há **42** indexações `objects[…]` sem guarda em 9 arquivos deste módulo
+        // (`filter`, `dyntopo`, `pull`, `transform`, `input`, `space`, `objects`, `import`), e a
+        // porta segura que elas deviam usar (`obj()` / `obj_mut()`) **já existe**. A `line/3DModeling`
+        // fecha aqui a porta que o artista bateu e nomeia o resto no handoff — reescrever 42 sítios
+        // de um módulo alheio não é dela.
+        //
+        // ⚠️ E a recusa é **reportada**, que é a lei que este módulo já segue no `Delete`: um gesto
+        // que não faz nada e não diz nada é indistinguível de um app partido.
+        if scene.objects.is_empty() {
+            eprintln!("[sculpt3d] a cena esta' VAZIA -- nao ha' o que esculpir (Ctrl+Z devolve)");
+            return false;
+        }
         match button {
             winit::event::MouseButton::Left => {
                 // ⚠️ **Com o transform ARMADO o esquerdo transforma.** Não há

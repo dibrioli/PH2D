@@ -466,23 +466,32 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   MAPA DE POTÊNCIA (`z^(n/4)`, conforme) foi medida no arnês e rejeitada em dez minutos:** ela
   **piora** o `n=3` (14,4° → 18,6°), que é o caso dominante — os dois bordos não-radiais do sector
   são rectas do polígono e deixam de o ser sob a potência. *O arnês de isolamento paga-se na
-  primeira hipótese que mata.* ⭐⭐⭐ **E o leque explica só UM TERÇO do buraco** (`skew_by_fan`, régua
-  nova no `FillReport`): na esfera lisa as faces de **rectângulo** medem `12°` e as de **leque** `18°`,
-  contra `6°` do oráculo ⇒ ⛔ **reescrever o F3 para emitir só quadriláteros levaria a `12°`, não a
-  `6°` — a obra NÃO se justifica sozinha**, e o número que a cancelou custou vinte linhas. ⭐⭐⭐ **E o defeito PARTE-SE EM DOIS,
-  medindo a grade no DOMÍNIO e separando por valência** (esfera lisa, `d=0,55`): faces de
-  **rectângulo** medem **`0,0°` no domínio e `12°` na superfície** ⇒ o defeito delas nasce DEPOIS do
-  domínio; faces de **leque** medem **`18,7°` já no domínio** ⇒ nascem tortas, e o mecanismo já está
-  provado. **São dois defeitos independentes, cada um numa fase diferente.** ⚠️ Isto obrigou a
-  RE-JULGAR duas recusas medidas no agregado — *um número que soma duas populações opostas esconde as
-  duas* —, e as duas mantêm-se: o mapa conforme dá `12° → 12°` no número isolado, e o domínio ∝
-  segmentos parecia `12° → 10°` mas restrito ao `n=4` (onde é exacto) dá `12° → 12°` — os `10°` vinham
-  do lado que **piorava** o leque (`18,7° → 28,6°`). ⛔ Nona hipótese morta: a fronteira em espaço de
-  SEGMENTO (`18,7° → 18,8°`). ⇒ **o alvo agora é a metade do RECTÂNGULO**, e o que resta entre o
-  domínio perfeito e a superfície torta é a **amostragem**, o **alisamento** (já ilibado) e a
-  **reprojecção**. ⚠️ *A primeira versão
-  do isolamento passou um bordo ao contrário e deu `45°` no `n=4`; o controlo do quadrilátero — um
-  valor conhecido de antemão — foi o que a apanhou.*
+  primeira hipótese que mata.* ⚠️ *A primeira versão do isolamento passou um bordo ao contrário e deu
+  `45°` no `n=4`; o controlo do quadrilátero — um valor conhecido de antemão — foi o que a apanhou.*
+  ⛔⛔⛔ **AS DUAS RÉGUAS DE VALÊNCIA MEDIAM A POPULAÇÃO ERRADA, e um dia de conclusões assentou
+  nisso** (23/08): a escrituração vivia no fim do laço dos patches e o caminho do rectângulo saía por
+  `continue` **antes dela** ⇒ o balde do domínio dos rectângulos ficava **sempre vazio**, e a mediana
+  de um vector vazio é `0,0` — que se leu como *«a grade do rectângulo nasce PERFEITA»*. ⚠️ **Um zero
+  de «não medido» e um zero de «perfeito» são o mesmo byte.** Corrigido: domínio dos rectângulos
+  **`1,0°`** (não `0,0°`), superfície **`16°`** (não `12°`), leque **`19°`** — ⇒ *o leque nunca
+  explicou «um terço»*. A cura é estrutural (`else`, não `continue`) mais **contagens** ao lado das
+  medianas (`domain_cells`, `slid`/`quad_patches`, `NaN` numa etiquetagem curta) e três gates provados
+  por mutação (`ph2d-quadfill/tests/rulers.rs`).
+  ⭐⭐⭐ **E o MAPA CONFORME deu NOME ao defeito, ao ser rejeitado** (`src/rectangle.rs`, `PLAN.md`
+  §4-tresetquadragies): com a fronteira **a deslizar** (dois problemas mistos sobre o cotangente — o
+  quadrilátero extremal), a esfera lisa vai de `16° → 14°` na superfície **e o domínio sobe de `1,0°`
+  para `12,4°`**. ⭐ *Leia as duas juntas:* presa, `15°` apareciam do nada; a deslizar, sobram `1,6°`
+  de folga — **e essa quase-igualdade é a prova de que o mapa é conforme**. ⇒ ⛔ *a conformalidade não
+  REDUZ o enviesamento, MUDA-O DE SÍTIO*. ⛔ E as esculturas recusam-no (orelha `d=1,0`: faces `>60°`
+  **9 159 → 14 794**, dobras `171 → 267`) — um mapa conforme é fiel ao ângulo e **não à área**.
+  ⇒ ⭐⭐⭐ **o defeito É a subdivisão do arco:** os `12,4°` são a *discordância conforme entre lados
+  OPOSTOS* — o ponto `k` de cada lado é posto por comprimento de arco, e a correspondência que a
+  conformalidade pede não é «fracções iguais». **Nenhuma construção do interior a endireita.** O
+  oráculo não tem o problema porque tem **UMA parametrização global** (os pontos de subdivisão são
+  onde as isolinhas inteiras cruzam o arco ⇒ os dois patches concordam por construção) — *é a mesma
+  diferença de classe, local contra global, que motivou o pivô, um nível abaixo*. As duas saídas:
+  ponto fixo sobre o layout, ou a parametrização global **quantizada** (os inteiros já vêm do F4, logo
+  o que resta dela é **linear**).
   ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede
   **`18°` de enviesamento contra `6°` do oráculo**, com o aspecto quase igual (`1,26` vs `1,22`):
   *as células têm as proporções certas e os ângulos errados*, e o defeito é do **NÚCLEO**. Gate

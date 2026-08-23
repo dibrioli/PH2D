@@ -68,6 +68,42 @@ pub struct InspectorAnchorInfo {
     pub selected_count: usize,
     /// A seleção múltipla tem listas divergentes.
     pub mixed: bool,
+    /// **As âncoras do PAI** — o que este objeto pode montar (ADR-0072 §2.6).
+    ///
+    /// ⚠️ Dono diferente do de [`Self::rows`], e é por isso que é um campo à parte em vez de uma
+    /// flag: sem pai, ou com um pai sem âncoras, isto é vazio e o seletor **não se pinta**.
+    pub parent_anchors: Vec<String>,
+    /// Em que âncora do pai este objeto anda hoje. `None` = não monta.
+    pub mount: Option<String>,
+}
+
+impl InspectorAnchorInfo {
+    /// O índice, na lista do pai, da âncora que este objeto monta.
+    ///
+    /// ⚠️ **Derivado, nunca guardado** — a mesma lei do `kind()` de uma âncora. Um índice
+    /// guardado podia discordar do nome depois de o pai reordenar ou apagar a lista, e discordar
+    /// em silêncio é o modo de falha que nada denuncia.
+    pub fn mount_index(&self) -> Option<usize> {
+        let name = self.mount.as_deref()?;
+        self.parent_anchors.iter().position(|a| a == name)
+    }
+
+    /// **O vínculo aponta para um nome que o pai não tem.** Renomearam a âncora, apagaram-na, ou
+    /// o objeto mudou de pai.
+    ///
+    /// Geometricamente comporta-se como não montar (`ph2d_ecs::MountState::Dangling`); o que isto
+    /// existe para permitir é **mostrá-lo** — e, sobretudo, oferecer a linha que o desfaz.
+    pub fn mount_dangling(&self) -> bool {
+        self.mount.is_some() && self.mount_index().is_none()
+    }
+
+    /// O seletor de montagem tem o que oferecer?
+    ///
+    /// ⛔ `false` ⇒ **não pinte a linha**. Um controlo com uma opção só («—») é a mesma
+    /// afordância a mentir que o botão `Simple` do 9-slice era (Enio, 2026-08-22).
+    pub fn mount_pick_is_useful(&self) -> bool {
+        !self.parent_anchors.is_empty() || self.mount.is_some()
+    }
 }
 
 /// Uma edição da §12.
@@ -95,6 +131,13 @@ pub enum AnchorFieldEdit {
     CenterOn(u8, bool),
     /// `(âncora, campo 0..3, valor)`.
     Center(u8, u8, f32),
+    /// **Montar numa âncora do PAI**, ou em nenhuma (`None`).
+    ///
+    /// ⚠️ **A única variante que NÃO carrega o índice de uma âncora deste objeto**, porque não
+    /// fala de uma: ela fala da relação com o pai. Carrega o NOME e não o índice pela mesma razão
+    /// que o componente o faz — apagar a âncora `0` do pai faria toda a gente descer uma casa em
+    /// silêncio.
+    Mount(Option<String>),
 }
 
 #[cfg(test)]
@@ -130,12 +173,71 @@ mod tests {
             present: true,
             selected_count: 1,
             mixed: false,
+            parent_anchors: Vec::new(),
+            mount: None,
         };
         let absent = InspectorAnchorInfo {
             present: false,
             ..empty_attached.clone()
         };
         assert_ne!(empty_attached, absent);
+    }
+
+    /// **A montagem lê-se por DERIVAÇÃO** — o índice e o «pendurado» saem do nome contra a lista
+    /// do pai, e nunca de um campo guardado que pudesse discordar dela.
+    #[test]
+    fn the_mount_index_and_the_dangling_state_are_derived_from_the_parents_list() {
+        let base = InspectorAnchorInfo {
+            entity_bits: 1,
+            rows: Vec::new(),
+            present: false,
+            selected_count: 1,
+            mixed: false,
+            parent_anchors: vec!["muzzle".into(), "hand_r".into()],
+            mount: None,
+        };
+        assert_eq!(base.mount_index(), None);
+        assert!(!base.mount_dangling());
+        assert!(base.mount_pick_is_useful(), "o pai tem ancoras");
+
+        let bound = InspectorAnchorInfo {
+            mount: Some("hand_r".into()),
+            ..base.clone()
+        };
+        assert_eq!(bound.mount_index(), Some(1));
+        assert!(!bound.mount_dangling());
+
+        let lost = InspectorAnchorInfo {
+            mount: Some("gone".into()),
+            ..base.clone()
+        };
+        assert_eq!(lost.mount_index(), None);
+        assert!(lost.mount_dangling(), "o nome nao esta' na lista do pai");
+    }
+
+    /// ⛔ Sem pai e sem vínculo **não se pinta o seletor** — um controlo com uma opção só é a
+    /// afordância a mentir que o `Simple` do 9-slice era. Mas um vínculo PENDURADO sobre um pai
+    /// sem âncoras **tem** de aparecer, senão fica preso.
+    #[test]
+    fn the_picker_hides_when_it_has_nothing_to_offer_but_never_traps_a_dangling_mount() {
+        let nothing = InspectorAnchorInfo {
+            entity_bits: 1,
+            rows: Vec::new(),
+            present: false,
+            selected_count: 1,
+            mixed: false,
+            parent_anchors: Vec::new(),
+            mount: None,
+        };
+        assert!(!nothing.mount_pick_is_useful());
+        let trapped = InspectorAnchorInfo {
+            mount: Some("gone".into()),
+            ..nothing.clone()
+        };
+        assert!(
+            trapped.mount_pick_is_useful(),
+            "sem a linha, o artista nao tem como desfazer um vinculo pendurado"
+        );
     }
 
     /// As edições indexadas conseguem endereçar cada âncora e cada eixo — senão a última é

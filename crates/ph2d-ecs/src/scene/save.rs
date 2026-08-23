@@ -340,6 +340,63 @@ mod tests {
         );
     }
 
+    /// **A montagem tem de sobreviver ao disco COM o pai** (ADR-0072 §2.6).
+    ///
+    /// ⚠️ Guardar o componente e perder a hierarquia — ou o contrário — deixa o vínculo
+    /// pendurado sem que nada avise: a espada reabre no sítio certo, parada, e só se descobre
+    /// quando o braço se mexe. Por isso este gate reabre a árvore e **volta a perguntar o estado
+    /// da montagem**, em vez de comparar dois blobs.
+    #[test]
+    fn a_mount_survives_the_disk_together_with_the_parent_that_gives_it_meaning() {
+        use crate::{AnchorMount, MountState, NamedAnchor, NamedAnchorList, mount_state_of};
+
+        let mut reg = ComponentRegistry::new();
+        register_ecs_components(&mut reg);
+
+        let mut anchors = NamedAnchorList::default();
+        let mut a = NamedAnchor::socket("hand_r");
+        a.transform.translation = ph2d_core::Vec2::new(0.5, 1.25);
+        anchors.insert(a).expect("cabe");
+
+        let mut sim_a = SimWorld::new();
+        let host = sim_a
+            .world_mut()
+            .spawn((Transform::default(), anchors, crate::Name::new("hero")))
+            .id();
+        sim_a.world_mut().spawn((
+            Transform::default(),
+            crate::ChildOf(host),
+            AnchorMount::new("hand_r"),
+            crate::Name::new("sword"),
+        ));
+
+        let mut state = TransformPropagationState::new(sim_a.world_mut());
+        let mut worklist = WorklistBuf::new();
+        let mut snap = WorldSnapshot::new();
+        world_to_snapshot(sim_a.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
+
+        let mut sim_b = SimWorld::new();
+        let back = snapshot_to_world(sim_b.world_mut(), &snap, &reg).unwrap();
+        let sword = back
+            .iter()
+            .copied()
+            .find(|&e| {
+                sim_b
+                    .world_mut()
+                    .get::<crate::Name>(e)
+                    .is_some_and(|n| n.as_str() == "sword")
+            })
+            .expect("a espada voltou");
+        assert!(
+            matches!(mount_state_of(sim_b.world(), sword), MountState::Mounted(_)),
+            "a montagem nao resolveu depois de reabrir — o componente ou o pai perdeu-se"
+        );
+        assert_eq!(
+            sim_b.world_mut().get::<AnchorMount>(sword),
+            Some(&AnchorMount::new("hand_r"))
+        );
+    }
+
     #[test]
     fn snapshot_restore_round_trip_preserves_names_and_hierarchy() {
         let (mut sim_a, reg) = populated_world();

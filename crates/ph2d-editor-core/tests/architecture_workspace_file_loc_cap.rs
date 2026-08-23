@@ -47,7 +47,10 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // 784 → 768 (ADR-0131 W5): the ancestor walk + the inverse of `compose`
     // moved to the sibling `transform_inverse.rs`. Ratcheted DOWN on the way
     // past, which is the only direction this table is supposed to move.
-    ("ph2d-ecs/src/transform.rs", 768),
+    // ⛔ `ph2d-ecs/src/transform.rs` SAIU desta lista em 2026-08-22 (era 768): a injeção do
+    // quadro de âncora levou-o a 777, e a cura foi cortar o `mod tests` para o irmão
+    // `transform_tests.rs` (o idioma do `children_order_tests.rs`). Ficou em 621 — abaixo do cap
+    // default, sem entrada nenhuma. *Os números desta lista só descem.*
     ("ph2d-editor-core/src/grid_snap/state.rs", 796),
     // Aposentada 2026-07-27 (W-FK): `paint.rs` tinha 884 LOC de primitivas de
     // GEOMETRIA + a família do TEXTO inteira; a segunda saiu para o irmão

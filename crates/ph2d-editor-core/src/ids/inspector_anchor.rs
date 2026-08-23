@@ -102,6 +102,98 @@ const fn build_anchor_rows() -> [NodeId; 64] {
     ]
 }
 
+/// **O seletor de MONTAGEM** — em que âncora **do pai** esta entidade anda (ADR-0072 §2.6).
+///
+/// ⚠️ **É o único controlo desta seção cujo dono é OUTRA entidade.** A lista abaixo dele são as
+/// âncoras *deste* objeto; este diz de que quadro do *pai* ele parte. Os dois estão na mesma
+/// seção de propósito — «socket» é a palavra que o artista procura quando quer prender uma
+/// espada a uma mão —, e por isso cada bloco leva o seu próprio rótulo a dizer de quem é.
+///
+/// ⛔ **Não aparece quando não há o que escolher**: sem pai, ou com um pai sem âncoras, a linha
+/// não é pintada. A exceção é um vínculo PENDURADO (o pai perdeu a âncora que este objeto
+/// montava) — aí ela aparece **precisamente para se poder desfazer**, que é a diferença entre um
+/// estado mau e um estado preso.
+pub const INSP_MOUNT_PICK: NodeId = hash_node_id("insp_mount_pick");
+
+/// A opção **«—»**: não montar em âncora nenhuma. É o default e a saída.
+pub const INSP_MOUNT_NONE_OPT: NodeId = hash_node_id("insp_mount_opt_none");
+
+/// As opções do seletor, **uma por âncora do pai** — a posição no array É o índice da âncora na
+/// lista dele, e é assim que o despacho a resolve.
+///
+/// ⚠️ Mesmo cap e mesma razão de [`INSP_ANCHOR_ROW`]: um array mais curto tornaria as âncoras do
+/// fim do pai inalcançáveis por gesto nenhum, e há gate a prendê-lo ao `ph2d_ecs::ANCHORS_MAX`.
+pub const INSP_MOUNT_OPT: [NodeId; 64] = build_mount_opts();
+
+const fn build_mount_opts() -> [NodeId; 64] {
+    [
+        hash_node_id("insp_mount_opt_00"),
+        hash_node_id("insp_mount_opt_01"),
+        hash_node_id("insp_mount_opt_02"),
+        hash_node_id("insp_mount_opt_03"),
+        hash_node_id("insp_mount_opt_04"),
+        hash_node_id("insp_mount_opt_05"),
+        hash_node_id("insp_mount_opt_06"),
+        hash_node_id("insp_mount_opt_07"),
+        hash_node_id("insp_mount_opt_08"),
+        hash_node_id("insp_mount_opt_09"),
+        hash_node_id("insp_mount_opt_10"),
+        hash_node_id("insp_mount_opt_11"),
+        hash_node_id("insp_mount_opt_12"),
+        hash_node_id("insp_mount_opt_13"),
+        hash_node_id("insp_mount_opt_14"),
+        hash_node_id("insp_mount_opt_15"),
+        hash_node_id("insp_mount_opt_16"),
+        hash_node_id("insp_mount_opt_17"),
+        hash_node_id("insp_mount_opt_18"),
+        hash_node_id("insp_mount_opt_19"),
+        hash_node_id("insp_mount_opt_20"),
+        hash_node_id("insp_mount_opt_21"),
+        hash_node_id("insp_mount_opt_22"),
+        hash_node_id("insp_mount_opt_23"),
+        hash_node_id("insp_mount_opt_24"),
+        hash_node_id("insp_mount_opt_25"),
+        hash_node_id("insp_mount_opt_26"),
+        hash_node_id("insp_mount_opt_27"),
+        hash_node_id("insp_mount_opt_28"),
+        hash_node_id("insp_mount_opt_29"),
+        hash_node_id("insp_mount_opt_30"),
+        hash_node_id("insp_mount_opt_31"),
+        hash_node_id("insp_mount_opt_32"),
+        hash_node_id("insp_mount_opt_33"),
+        hash_node_id("insp_mount_opt_34"),
+        hash_node_id("insp_mount_opt_35"),
+        hash_node_id("insp_mount_opt_36"),
+        hash_node_id("insp_mount_opt_37"),
+        hash_node_id("insp_mount_opt_38"),
+        hash_node_id("insp_mount_opt_39"),
+        hash_node_id("insp_mount_opt_40"),
+        hash_node_id("insp_mount_opt_41"),
+        hash_node_id("insp_mount_opt_42"),
+        hash_node_id("insp_mount_opt_43"),
+        hash_node_id("insp_mount_opt_44"),
+        hash_node_id("insp_mount_opt_45"),
+        hash_node_id("insp_mount_opt_46"),
+        hash_node_id("insp_mount_opt_47"),
+        hash_node_id("insp_mount_opt_48"),
+        hash_node_id("insp_mount_opt_49"),
+        hash_node_id("insp_mount_opt_50"),
+        hash_node_id("insp_mount_opt_51"),
+        hash_node_id("insp_mount_opt_52"),
+        hash_node_id("insp_mount_opt_53"),
+        hash_node_id("insp_mount_opt_54"),
+        hash_node_id("insp_mount_opt_55"),
+        hash_node_id("insp_mount_opt_56"),
+        hash_node_id("insp_mount_opt_57"),
+        hash_node_id("insp_mount_opt_58"),
+        hash_node_id("insp_mount_opt_59"),
+        hash_node_id("insp_mount_opt_60"),
+        hash_node_id("insp_mount_opt_61"),
+        hash_node_id("insp_mount_opt_62"),
+        hash_node_id("insp_mount_opt_63"),
+    ]
+}
+
 /// **«+ Add Anchor»** — cria uma âncora nova com o próximo nome livre (`anchor_N`).
 pub const INSP_ANCHOR_ADD: NodeId = hash_node_id("insp_anchor_add");
 /// **«× Remove»** — retira a âncora selecionada.

@@ -581,4 +581,16 @@
 /// grupo já fazia.
 /// ⚠️ Nasceu como v87 na `line/Vector` (o handoff dela diz «86 → 87»); RECONTADO para v89 na
 /// integração de 2026-08-22 — a `line/Sprite` entrou antes com v85/v86 (ver v87).
-pub(crate) const PROJECT_SCHEMA: u32 = 89;
+/// v90 (`line/Sprite` — QUEM MONTA numa âncora): o componente novo `ph2d_ecs::AnchorMount`
+/// guarda, na entidade FILHA, o **nome** da âncora do pai de que ela parte (ADR-0072 §2.6 — o
+/// consumidor que o ADR declarou em 2026-05 e que nunca existiu).
+/// ⚠️ **Quem obriga o bump é o REGISTRO, não um campo** — irmão exacto do v89, e com o mesmo modo
+/// de falha enganoso: um componente fora do `ComponentRegistry` é **descartado em silêncio** pelo
+/// snapshot, e então reabrir o projeto devolveria a espada como filha comum do personagem —
+/// no sítio certo, parada. Nada some, nada avisa, e o defeito só aparece quando o braço se mexe.
+/// ⚠️ Ausência do componente é **não montar**, que é o que toda entidade fazia até v89: por isso
+/// todo arquivo ≤ v89 desenha byte-idêntico.
+/// ⚠️ O componente guarda o NOME, nunca o índice na lista nem os bits da entidade — apagar a
+/// âncora `0` faria toda a gente descer uma casa em silêncio, e *o undo respawna tudo com bits
+/// novos*.
+pub(crate) const PROJECT_SCHEMA: u32 = 90;

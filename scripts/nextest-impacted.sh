@@ -119,6 +119,19 @@ done
 # string, so `test(/transform_determinism/)` matched 0 and gave a false-green gate.
 EXPR="$EXPR + binary(transform_determinism)"
 
+# ⭐⭐⭐ REDE OBRIGATÓRIA nº 2: os gates de ARQUITETURA que varrem a WORKSPACE INTEIRA.
+#
+# ⛔ MEDIDO 2026-08-23: o `workspace_src_files_under_loc_cap` vive em
+# `ph2d-editor-core` e lê TODOS os `crates/*/src/**`. Um diff em `ph2d-quadfill` não
+# toca aquele crate, logo o `rdeps()` não o inclui — e o ficheiro passou dos 700 LOC
+# com o gate batched a devolver "3 861 verdes". A regressão só apareceu quando eu
+# corri o `wc -l` à mão.
+#
+# ⚠️ É um ponto cego ESTRUTURAL, não um esquecimento: um gate cujo domínio é a
+# workspace inteira nunca pertence ao fecho de dependências de quem o viola. *Um
+# selector de impacto por dependências é cego a toda regra global.*
+EXPR="$EXPR + binary(architecture_workspace_file_loc_cap) + binary(file_loc_caps)"
+
 echo "[nextest-impacted] changed: $(echo "$CHANGED" | tr '\n' ' ')"
 echo "[nextest-impacted] -E '$EXPR'"
 # If a changed dir name is not a real package, the filterset errors out (non-zero)

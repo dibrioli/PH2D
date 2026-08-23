@@ -383,7 +383,7 @@ fn what_does_the_chain_do_to_a_plain_sphere() {
                      | ⭐enviesamento p50 {:>3.0}° p99 {:>3.0}° (>60°: {}) | dobras {} \
                      | ⭐rectangulo {:>3.0}° LEQUE {:>3.0}° \
                      | ⭐⭐DOMINIO rect {:>4.1}° (n={}) leque {:>4.1}° (n={}) \
-                     | ⭐⭐⭐deslizou {}/{} recusas {:?}",
+                     | ⭐⭐⭐deslizou {}/{} (quads {}) recusas {:?} | ⭐CONFORME {:.2}",
                     out.faces().len(),
                     r.patches,
                     s.aspect_p50,
@@ -402,11 +402,18 @@ fn what_does_the_chain_do_to_a_plain_sphere() {
                     r.domain_skew.1,
                     r.domain_cells.1,
                     r.slid,
+                    // ⚠️ O denominador é o total de patches: o `quad_patches` só serve
+                    // o mapa do rectângulo, e com o LSCM a fracção saía `16/5`.
+                    r.patches,
                     r.quad_patches,
                     // ⭐⭐⭐ **O MOTIVO ao lado do numerador** — ver
                     // `ph2d_quadfill::FillReport::slid_refused`. Sem ele, `1/2` não
                     // distingue «o mapa não serve» de «uma rede é severa demais».
                     r.slid_refused,
+                    // ⭐⭐⭐ **O CONTROLO da troca de achatamento** — `1,00` é conforme
+                    // perfeito. Sem ele, «o mapa novo não melhorou» não distingue *o
+                    // mapa não é o constrangimento* de *o meu mapa tem um bug*.
+                    r.conformal,
                 );
             }
         }

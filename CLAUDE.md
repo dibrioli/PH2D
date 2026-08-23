@@ -542,7 +542,23 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **fronteira livre não-monótona**. ⇒ *medi o mapa em UM patch de seis*. ⭐ O que sobra, verdadeiro e
   mais fraco: um Tutte de um terço de esfera sobre um polígono unitário está distorcido, **e a
   alternativa conforme por-patch recusa-se a correr nessa escala** — nenhuma das duas famílias
-  por-patch lá chegou. ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  por-patch lá chegou.
+  ⭐⭐⭐ **E A PREMISSA DA SEMANA FOI REFUTADA: um mapa CONFORME dá o PIOR resultado** (`PLAN.md`
+  §4-octoetquadragies). O **LSCM** (mínimos quadrados conformes, clean-room Lévy 2002 — o único
+  achatamento **sem condição de fronteira** e que serve **todo `n`**) leva o erro conforme de
+  **`4,32` a `1,01`** na esfera lisa — quase perfeito — e o enviesamento **piora de `18°` para
+  `28°`**, com as dobras a ir de `0` para `68`. ⛔⛔ *«Mais conforme ⇒ mais quadrado» é falso*, e
+  isso derruba a premissa que sustentou o `CONFORMAL_MAP`, o `rectangle.rs` e o próprio LSCM.
+  ⭐⭐⭐ **O mecanismo está na coluna do DOMÍNIO:** com o mapa conforme ele salta de `1,0°` para
+  **`21,4°`** (rectângulos) e de `18,7°` para **`50,8°`** (leques) — *num domínio conforme os pontos
+  de bordo, postos por comprimento de arco, caem em posições muito desiguais*. ⇒ **o Tutte pregado
+  não é defeito: ele MASCARA a discordância da subdivisão**, e o líquido é melhor. ⇒ o
+  constrangimento é a **SUBDIVISÃO DO ARCO** e é maior do que estava medido (`21,4°`/`50,8°`, não
+  `12,4°`); **quatro achatamentos medidos, família fechada**. ⚠️ Duas armadilhas apanhadas a
+  caminho: a régua da conformalidade nasceu a devolver `0,00` (um script meu abortou no `assert` e
+  eu fui atrás do erro do compilador), e o LSCM corria com as `4 000` rondas do Tutte —
+  **sub-convergido** (`1,0929` contra `1,0000` numa faixa plana; ele precisa de `100 000`).
+  *Dois solvers diferentes não partilham um teto de espera.* ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

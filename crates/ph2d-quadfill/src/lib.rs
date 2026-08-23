@@ -41,6 +41,10 @@ pub mod aligned;
 mod domain;
 /// **O PREENCHIMENTO de um patch** — o leque e a grade — ver [`fan`].
 pub mod fan;
+/// ⭐⭐ **O ACABAMENTO** — alisar, orientar, medir — ver [`finish`].
+mod finish;
+/// ⭐⭐⭐ **O ACHATAMENTO DE FRONTEIRA LIVRE** — LSCM — ver [`lscm`].
+mod lscm;
 /// **O PATCH ACHATADO** — a grade nasce na superfície, não no espaço — ver [`param`].
 mod param;
 /// **UM PATCH VIRA QUADS** — o domínio, os bordos e a grade — ver [`patch`].
@@ -57,6 +61,8 @@ pub mod report;
 pub mod shape;
 /// **A COSTURA** — amostragem partilhada e montagem — ver [`stitch`].
 pub mod stitch;
+/// ⭐⭐ **OS PESOS DO ACHATAMENTO** — valor médio e cotangente — ver [`weights`].
+mod weights;
 
 pub use aligned::{INTERIOR, Interior};
 pub use quality::{detail_lost, folded_against, folded_by_neighbours, follows_relief};

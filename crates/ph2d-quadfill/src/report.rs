@@ -219,9 +219,15 @@ pub struct FillReport {
     /// [`crate::rectangle`] recusam em silêncio de propósito — é esta contagem que
     /// torna o silêncio legível.
     pub slid: usize,
-    /// **O DENOMINADOR do [`Self::slid`]** — quantos patches de **quatro lados** o
-    /// layout tinha. ⚠️ Sem ele, `slid: 0` não distingue *nenhum deslizou* de *não
-    /// havia nenhum*, que é a mesma omissão que o [`Self::patches`] cura um nível acima.
+    /// **Quantos patches de QUATRO LADOS o layout tinha** — o denominador do
+    /// [`Self::slid`] **quando quem desliza é o [`crate::rectangle`]**, que só serve
+    /// `n = 4`.
+    ///
+    /// ⚠️⚠️ **NÃO é o denominador universal, e a fracção pode passar de `1`.** O
+    /// [`crate::lscm`] desliza **todo `n`** — com ele ligado a esfera lisa imprimiu
+    /// `deslizou 16/5`, que se lê como um bug e não é: são 16 patches deslizados de
+    /// **16**, com `5` a ser a contagem de quadriláteros. *Um denominador que serve uma
+    /// construção não serve a irmã dela.* Quem imprime a fracção lê [`Self::patches`].
     pub quad_patches: usize,
     /// ⭐⭐⭐ **POR QUE os patches de quatro lados NÃO deslizaram** — ver
     /// [`crate::rectangle`]. As colunas, por ordem: `0` não é quadrilátero · `1`
@@ -232,6 +238,14 @@ pub struct FillReport {
     /// cima dele: *«não é o mapa»* — tendo medido o mapa em **um patch de seis**.
     /// *Um numerador sem MOTIVO é a mesma omissão que um numerador sem denominador.*
     pub slid_refused: [usize; 5],
+    /// ⭐⭐⭐ **A MEDIANA do erro conforme dos achatamentos** — `1,0` é conforme
+    /// perfeito. Ver [`crate::lscm::conformal_error`].
+    ///
+    /// ⛔ **Ela é o CONTROLO de toda troca de achatamento**, e existe porque a
+    /// conclusão *«o mapa não é o constrangimento»* só vale se o mapa novo de facto
+    /// tiver sido mais conforme que o velho. *Sem ela, um LSCM com bug e um LSCM
+    /// correcto contam a mesma história.*
+    pub conformal: f32,
     /// ⭐⭐⭐ **QUANTAS CÉLULAS DE DOMÍNIO cada coluna do [`Self::domain_skew`] mediu**
     /// — `(rectângulo, leque)`.
     ///

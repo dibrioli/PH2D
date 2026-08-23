@@ -3981,3 +3981,84 @@ seguinte*.
 | `RECTANGLE_MAP` sobre a poda | `38° → 36°` | idem |
 | `PROPORTIONAL_DOMAIN` sobre a poda | `38° → 38°` | idem |
 | a auto-adjacência como guarda de viabilidade | a orelha continuou `Infeasible`; a paridade era coincidência | idem |
+
+## §4-octoetquadragies — ⭐⭐⭐ A PREMISSA DA SEMANA REFUTADA: um mapa CONFORME dá o PIOR resultado (2026-08-23)
+
+### A construção
+
+[`ph2d-quadfill/src/lscm.rs`](../../../crates/ph2d-quadfill/src/lscm.rs) — **mínimos
+quadrados conformes** (Lévy et al. 2002, clean-room). ⭐ A diferença de espécie: ele
+**não tem condição de fronteira para errar**. O Tutte prega o bordo no polígono; o
+quadrilátero extremal impõe Dirichlet em dois lados; este minimiza a
+não-conformalidade sobre o patch inteiro com **dois pinos** e mais nada — e serve
+**todo `n`**, ao contrário do [`rectangle`](../../../crates/ph2d-quadfill/src/rectangle.rs).
+
+⭐ O passo de Gauss–Seidel sai em **forma fechada e com os eixos desacoplados** (os
+termos cruzados cancelam-se), logo nenhum solver esparso entra.
+
+### ⚠️ Primeiro, duas armadilhas que a medição apanhou
+
+1. ⛔ **A régua da conformalidade nasceu a devolver `0,00`** — um valor que não existe
+   (o mínimo é `1,0`). Causa: um script meu abortou no último `assert` e **nenhuma** das
+   três edições em `stitch.rs` foi escrita; eu vi o traceback e fui atrás do erro do
+   compilador. *O `assert` disparou e eu não confirmei o resultado.*
+2. ⛔⛔ **O LSCM corria com as `4 000` rondas do Tutte e estava SUB-CONVERGIDO.** Medido
+   numa faixa `6 × 1` plana, onde o alvo é exactamente `1,0000`:
+
+   | rondas | erro conforme | resíduo |
+   |---|---|---|
+   | `4 000` (as do Tutte) | ⛔ `1,0929` | `3,4e−4` |
+   | `20 000` | `1,0033` | `1,5e−5` |
+   | ⭐ **`100 000`** | **`1,0000`** | `1,2e−7` |
+   | `400 000` | `1,0000` | `1,2e−7` |
+
+   ⚠️ **Sem esta tabela eu teria concluído do número errado.** Gauss–Seidel numa faixa
+   alongada converge devagar (o condicionamento cresce com o quadrado do alongamento) e
+   o Tutte não tem esse problema — *dois solvers diferentes não partilham um teto de espera.*
+
+### ⭐⭐⭐ A tabela, e a terceira coluna é a que conta
+
+Esfera lisa, `d = 0,55`:
+
+| | Tutte (shipa) | LSCM a `4 000` | ⭐ LSCM **convergido** |
+|---|---|---|---|
+| **erro conforme** | ⛔ `4,32` | `1,82` | ⭐ **`1,01`** |
+| enviesamento p50 | **`18°`** | `18°` | ⛔ **`28°`** |
+| domínio dos rectângulos | `1,0°` | `1,9°` | ⛔ **`21,4°`** |
+| domínio dos leques | `18,7°` | `18,9°` | ⛔ **`50,8°`** |
+| dobras | **`0`** | `5` | ⛔ **`68`** |
+| aspecto p50 | **`1,26`** | `1,29` | ⛔ `1,43` |
+
+⭐⭐⭐ **Um mapa praticamente conforme (`1,01`) dá o PIOR resultado dos três.**
+
+⛔⛔ ⇒ **A premissa que motivou meia semana está refutada por medição direta.** Ela era:
+*«um mapa mais conforme dá quads mais quadrados»*, e sustentou o `CONFORMAL_MAP`, o
+[`rectangle`] e este ficheiro. **É falsa**, e a régua que a refuta mede exactamente a
+promessa do mapa.
+
+### ⭐⭐⭐ E o mecanismo está à vista, na coluna do DOMÍNIO
+
+Com o mapa conforme o enviesamento **do domínio** salta de `1,0°` para `21,4°`
+(rectângulos) e de `18,7°` para `50,8°` (leques). ⇒ *num domínio conforme, os pontos de
+bordo — que continuam postos por **comprimento de arco** — caem em posições muito
+desiguais, e a grade de Coons entre eles nasce torta.*
+
+⭐ **O Tutte pregado não é um defeito: ele MASCARA a discordância.** Redistribui os
+pontos de bordo uniformemente no domínio e paga isso em não-conformalidade — e o líquido
+é melhor. *A conformalidade não remove a discordância da subdivisão; ela deixa de a esconder.*
+
+⇒ ⭐⭐⭐ **O constrangimento é a SUBDIVISÃO DO ARCO, e é maior do que estava medido:** não
+os `12,4°` que o `rectangle` viu num mapa parcial, mas `21,4°` e `50,8°`. **Nenhum mapa o
+cura, e um mapa melhor expõe-no mais.** *Quatro achatamentos medidos — valor médio,
+cotangente, quadrilátero extremal, LSCM — e a família está fechada.*
+
+⚠️ Preço secundário: a sonda foi de `~15 s` para **`7 min 22 s`**. Mesmo com ganho de
+qualidade, isto não shipava sem outro solver.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| LSCM como achatamento (`LSCM_MAP`) | conforme `4,32 → 1,01` **e** enviesamento `18° → 28°`, dobras `0 → 68` | [`lscm.rs`](../../../crates/ph2d-quadfill/src/lscm.rs) |
+| a premissa «mais conforme ⇒ mais quadrado» | refutada com a régua da própria promessa ao lado | idem |
+| correr o LSCM com as rondas do Tutte | `1,0929` contra `1,0000` numa faixa plana | idem |

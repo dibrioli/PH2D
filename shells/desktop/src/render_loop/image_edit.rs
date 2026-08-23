@@ -18,7 +18,7 @@
 
 use crate::{
     ImageEditSnapshot, ImageEditTransaction, commit_image_edit_transaction, hero_intents,
-    image_import::{ImportItemResult, import_images_grid},
+    image_import::ImportItemResult,
 };
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
@@ -465,12 +465,22 @@ pub(super) fn dispatch(
     // instead of stacking every sprite on one point.
     if hero.import_requested {
         hero.import_requested = false;
-        let picked = rfd::FileDialog::new()
-            .add_filter("Image (PNG / WEBP / JPEG)", &["png", "webp", "jpg", "jpeg"])
-            .pick_files();
+        // ⚠️ **O filtro é DERIVADO, nunca escrito à mão** (`crate::import_router`, Enio
+        // 2026-08-23: *«.ase não aparece no dialog de import»*). A lista que morava aqui tinha
+        // quatro extensões e o roteamento do drop aceitava **onze** — o `.gif`, o `.psd` e o
+        // `.ora` estavam invisíveis neste diálogo há meses, pelo mesmo mecanismo que escondeu o
+        // `.ase`. *Uma lista escrita à mão ao lado de um predicado é duas respostas à mesma
+        // pergunta, e a que o artista vê é a que envelhece.*
+        let mut dialog = rfd::FileDialog::new();
+        for (label, exts) in crate::import_router::dialog_filters() {
+            dialog = dialog.add_filter(label, &exts);
+        }
+        let picked = dialog.pick_files();
         let pixels_per_meter = hero.project.pixels_per_meter;
         if let Some(paths) = picked {
-            let results = import_images_grid(
+            // A MESMA função que o drag & drop chama: a única diferença entre as duas portas é de
+            // onde vêm os caminhos.
+            let batch = crate::import_router::import_paths_grid(
                 sim,
                 &mut *renderer,
                 asset_db,
@@ -480,6 +490,13 @@ pub(super) fn dispatch(
                 pixels_per_meter,
                 atlas_asset_map,
             );
+            for name in &batch.skipped {
+                toasts.push(Toast::warning(format!(
+                    "Skipped {name}: not an image or an Aseprite file"
+                )));
+                title_dirty = true;
+            }
+            let results = batch.items;
             // First imported sprite replaces the selection; the rest
             // join it as extras so a multi-pick import ends up fully
             // selected (mirrors the drag-drop path). The per-frame
@@ -504,6 +521,11 @@ pub(super) fn dispatch(
                         title_dirty = true;
                     }
                 }
+            }
+            // ⚠️ As notas do `.ase` falam por ÚLTIMO — elas dizem o que ficou por trás, e uma
+            // linha dessas escondida entre dez «Imported» não é lida.
+            for note in batch.notes {
+                toasts.push(Toast::warning(note));
             }
         }
     }

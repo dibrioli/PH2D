@@ -41,7 +41,7 @@ pub use db::AssetDb;
 pub use error::AssetError;
 pub use hand_packed::{AtlasMeta, AtlasMetaError, AtlasRegion, parse_atlas_meta};
 pub use id::AssetId;
-pub use loader::is_supported_image_extension;
+pub use loader::{SUPPORTED_IMAGE_EXTENSIONS, is_supported_image_extension};
 pub use logical_texture::{LogicalTextureId, LogicalTextureMap};
 pub use prefab::{ComponentBlob, ComponentTypeId, PrefabDoc, PrefabRef};
 pub use scene::{ChildOfPair, PrefabInstance, SceneDoc};

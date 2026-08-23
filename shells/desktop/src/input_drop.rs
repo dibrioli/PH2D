@@ -8,7 +8,7 @@
 
 use crate::App;
 use crate::cursor_pos::live_cursor_in_window;
-use crate::image_import::{ImportItemResult, import_images_grid};
+use crate::image_import::ImportItemResult;
 use ph2d_editor::Toast;
 
 impl App {
@@ -20,7 +20,7 @@ impl App {
     /// tidy grid.
     pub(crate) fn handle_dropped_files(&mut self, paths: &[std::path::PathBuf]) {
         // ⚠️ **As malhas saem da fila ANTES do filtro de imagem**, e não é ordem
-        // arbitrária: o filtro abaixo emite um toast *"Skipped non-image"* por
+        // arbitrária: o roteador abaixo emite um toast *"Skipped …"* por
         // arquivo que não reconhece, então sem este desvio soltar um `.obj`
         // produziria um aviso de que ele foi ignorado — a resposta errada, com
         // a certeza da resposta certa.
@@ -75,60 +75,12 @@ impl App {
             drop_world_raw
         };
         // **AS FOLHAS hand-packed saem da fila antes do filtro de imagem**, pela MESMA razão que
-        // as malhas 3D acima: o filtro emite *"Skipped non-image"* por arquivo que não reconhece,
+        // as malhas 3D acima: o roteador emite *"Skipped …"* por arquivo que não reconhece,
         // e um `.json` de folha largado com a folha produziria um aviso de que foi ignorado.
         //
         // ⚠️ E a imagem que a folha referencia é retirada da leva também — senão largar
         // `folha.png` + `folha.json` daria a folha **e** um sprite avulso com a folha inteira
         // desenhada nele, os dois no mesmo sítio, um por cima do outro.
-        // **E OS `.ase` saem antes de TODOS**, pela mesma razão das malhas e das folhas: o filtro
-        // de imagem lá em baixo diria *"Skipped non-image"* de um ficheiro que este app sabe ler
-        // melhor que um `.png` — ele traz as camadas, as tags e a duração de cada quadro.
-        let (ase_files, paths): (Vec<_>, Vec<_>) = paths
-            .iter()
-            .cloned()
-            .partition(|p| crate::ase_import::is_ase_file(p));
-        let mut ase_bits: Vec<u64> = Vec::new();
-        for (i, file) in ase_files.iter().enumerate() {
-            // Cada `.ase` é uma sprite; largar três põe-nas lado a lado, como o import de imagens.
-            let at = [
-                drop_world[0] + i as f32 * crate::image_import::IMPORT_GRID_GAP_FRAC,
-                drop_world[1],
-            ];
-            match crate::ase_import::import_ase(
-                &mut gfx.sim,
-                &mut gfx.renderer,
-                &gfx.asset_db,
-                &mut gfx.next_import_cell,
-                &mut gfx.atlas_asset_map,
-                file,
-                at,
-                pixels_per_meter,
-            ) {
-                crate::ase_import::AseImportResult::Ok {
-                    name,
-                    frames,
-                    animations,
-                    bits,
-                    notes,
-                } => {
-                    gfx.toasts.push(Toast::success(format!(
-                        "{name}: {frames} frames, {animations} animations"
-                    )));
-                    // ⚠️ Uma nota por assunto, e cada uma NOMEIA o que ficou por trás. Um import
-                    // que aproxima em silêncio é a resposta errada com a certeza da certa.
-                    for note in notes {
-                        gfx.toasts.push(Toast::warning(note));
-                    }
-                    ase_bits.push(bits);
-                }
-                crate::ase_import::AseImportResult::Err { name, error } => {
-                    gfx.toasts.push(Toast::error(format!("{name}: {error}")));
-                }
-            }
-            self.title_dirty = true;
-        }
-        let paths: &[std::path::PathBuf] = &paths;
         let (sheet_metas, rest) = crate::sheet_import::partition_sheet_metadata(paths);
         let mut sheet_bits: Vec<u64> = Vec::new();
         let paths: Vec<std::path::PathBuf> = if sheet_metas.is_empty() {
@@ -171,77 +123,56 @@ impl App {
                 .collect()
         };
         let paths: &[std::path::PathBuf] = &paths;
-        // Filter to image files up front (warning toast per skip), then
-        // hand the survivors to the batch importer, which lays them out
-        // in a near-square grid anchored at the drop point (`drop_world`
-        // = first cell's center; the grid grows right + down). This
-        // replaces the old per-file `camera.center` shuffle — the
-        // importer takes the world anchor directly.
-        let mut valid_paths: Vec<std::path::PathBuf> = Vec::new();
-        for path in paths {
-            if ph2d_asset::is_supported_image_extension(path) {
-                valid_paths.push(path.clone());
-            } else {
-                let name = path
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("(unnamed)");
-                gfx.toasts
-                    .push(Toast::warning(format!("Skipped non-image: {name}")));
-                self.title_dirty = true;
-            }
-        }
-        // ⚠️ A seleção nasce com os sprites da FOLHA (quando houve uma) — e é por isso que o
-        // retorno antecipado abaixo só acontece depois: largar só `folha.png` + `folha.json`
-        // deixa `valid_paths` vazio, e voltar antes daqui devolveria N sprites novos sem nenhum
-        // selecionado, ao contrário de todo outro import.
-        // ⚠️ E os `.ase` entram na MESMA lista, pela mesma razão: largar um ficheiro de animação e
-        // não ver nada selecionado lê-se como um import que falhou.
-        let mut selected_any = false;
-        for bits in std::mem::take(&mut ase_bits)
-            .into_iter()
-            .chain(std::mem::take(&mut sheet_bits))
-        {
-            if let Some(hero) = gfx.hero_screen.as_mut() {
-                if selected_any {
-                    hero.gizmo.add_to_selection(bits);
-                } else {
-                    hero.gizmo.replace_selection(Some(bits));
-                    selected_any = true;
-                }
-            }
-        }
-        if valid_paths.is_empty() {
-            return;
-        }
-        let results = import_images_grid(
+        // ⚠️ **UMA porta para o que este app importa** (`crate::import_router`, Enio 2026-08-23:
+        // *«.ase não aparece no dialog de import»*). Este sítio filtrava por
+        // `is_supported_image_extension` e o botão «Import…» oferecia uma lista escrita à mão —
+        // duas respostas à mesma pergunta, e a que o artista via era a que envelhecia. Hoje as
+        // duas portas chamam esta função, e a única diferença entre elas é de onde vêm os
+        // caminhos.
+        let batch = crate::import_router::import_paths_grid(
             &mut gfx.sim,
             &mut gfx.renderer,
             &gfx.asset_db,
             drop_world,
             &mut gfx.next_import_cell,
-            &valid_paths,
+            paths,
             pixels_per_meter,
             &mut gfx.atlas_asset_map,
         );
-        // Seat the selection: the first imported sprite replaces the
-        // selection, the rest join it as extras so a multi-file drop
-        // ends up fully selected (same shape as Shift-clicking each on
-        // the canvas). The per-frame snapshot sync
-        // (render_loop/snapshots.rs) derives both the canvas gizmo view
-        // and the Hierarchy row highlight from `hero.gizmo`, so this one
-        // write covers both surfaces.
-        for r in results {
+        for name in &batch.skipped {
+            // ⚠️ A mensagem diz o que o app SABE ler. Ela dizia «Skipped non-image», e isso
+            // virou mentira no dia em que um `.ase` — que não é uma imagem — passou a entrar.
+            gfx.toasts.push(Toast::warning(format!(
+                "Skipped {name}: not an image or an Aseprite file"
+            )));
+            self.title_dirty = true;
+        }
+        // ⚠️ A seleção nasce com os sprites da FOLHA (quando houve uma), e é por isso que ela é
+        // semeada ANTES: largar só `folha.png` + `folha.json` não produz item nenhum aqui, e sem
+        // isto devolveria N sprites novos sem nenhum selecionado, ao contrário de todo outro
+        // import.
+        let mut selected_any = false;
+        let seat = |gfx: &mut crate::AppGfx, bits: u64, selected_any: &mut bool| {
+            if let Some(hero) = gfx.hero_screen.as_mut() {
+                if *selected_any {
+                    hero.gizmo.add_to_selection(bits);
+                } else {
+                    hero.gizmo.replace_selection(Some(bits));
+                    *selected_any = true;
+                }
+            }
+        };
+        for bits in std::mem::take(&mut sheet_bits) {
+            seat(gfx, bits, &mut selected_any);
+        }
+        // Seat the selection: the first imported sprite replaces the selection, the rest join it
+        // as extras so a multi-file drop ends up fully selected (same shape as Shift-clicking each
+        // on the canvas). The per-frame snapshot sync (render_loop/snapshots.rs) derives both the
+        // canvas gizmo view and the Hierarchy row highlight from `hero.gizmo`.
+        for r in batch.items {
             match r {
                 ImportItemResult::Ok { label, bits } => {
-                    if let Some(hero) = gfx.hero_screen.as_mut() {
-                        if selected_any {
-                            hero.gizmo.add_to_selection(bits);
-                        } else {
-                            hero.gizmo.replace_selection(Some(bits));
-                            selected_any = true;
-                        }
-                    }
+                    seat(gfx, bits, &mut selected_any);
                     gfx.toasts.push(Toast::success(format!("Imported {label}")));
                     self.title_dirty = true;
                 }
@@ -252,6 +183,11 @@ impl App {
                     self.title_dirty = true;
                 }
             }
+        }
+        // ⚠️ **As notas do `.ase` são o ÚLTIMO a falar** — elas dizem o que ficou por trás, e uma
+        // linha dessas escondida entre dez «Imported» não é lida.
+        for note in batch.notes {
+            gfx.toasts.push(Toast::warning(note));
         }
     }
 }

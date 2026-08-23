@@ -482,3 +482,47 @@ vazios.
 ⛔ Os ficheiros **não entram no repositório**: são binários de terceiros, com licenças que vão de
 MIT a nenhuma. Eles vivem em `~/Downloads/ase-para-testar/` na máquina do Enio, e o que fica
 versionado é o **instrumento** que os lê.
+
+## §14 — Adenda: **duas portas para a mesma pergunta** (report do Enio: *«.ase não aparece no dialog de import»*)
+
+O defeito **não era o `.ase`**. Era haver duas respostas a *«o que este app sabe importar?»*:
+
+| porta | como decidia | quantas extensões |
+|---|---|---|
+| drag & drop | `ph2d_asset::is_supported_image_extension` (predicado) | **11** |
+| botão **Import…** | uma lista **escrita à mão** no `rfd::FileDialog` | **4** |
+
+⚠️ **O `.gif`, o `.psd`, o `.ora`, o `.tiff` e o `.apng` estavam invisíveis naquele diálogo há
+meses** — entravam por drag & drop e não apareciam no seletor. O `.ase` só tornou o buraco visível
+porque era novo. *Uma lista escrita à mão ao lado de um predicado é duas respostas à mesma pergunta,
+e a que o artista vê é a que envelhece.*
+
+### A cura: **a lista é a fonte, o predicado é derivado, e as duas portas chamam a mesma função**
+
+1. **`ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS`** passa a existir, e o `is_supported_image_extension`
+   é derivado dela. ⚠️ Ela é **pública** porque quem constrói um diálogo precisa de **enumerar**, e
+   um predicado não se enumera — era essa a razão de a lista ter sido copiada à mão.
+2. **`ase_import::ASE_EXTENSIONS`**, pela mesma razão.
+3. **`crate::import_router`** — `dialog_filters()` (derivado das duas listas), `partition_importables()`
+   e `import_paths_grid()`. **As duas portas chamam a última**, e a única diferença entre elas passa
+   a ser *de onde vêm os caminhos*.
+4. O `.ase` deixa de ter um bloco próprio no `input_drop`: o roteador é que sabe o que ele é.
+
+### A lei de colocação, que a unificação obrigou a escrever
+
+Um `.ase` vira **uma** sprite com grelha; N imagens formam uma grelha. Misturá-los num arranjo só
+daria uma grelha em que **uma célula é uma tira de doze quadros**. ⇒ os `.ase` ocupam a primeira
+linha (cada um à direita do anterior, com o passo tirado do tamanho que a sprite **de facto** ficou)
+e a grelha de imagens começa abaixo dela (`images_anchor`). ⚠️ Sem `.ase` na leva ela não se mexe um
+milímetro — quem larga só imagens não pode notar que o roteador existe, e há gate.
+
+⚠️ **`.ase` é um nome DISPUTADO**, e vale a pena saber: a Adobe usa-o para *Swatch Exchange*, uma
+paleta — e este app já lê esse formato noutro sítio (`forwarding.rs`, o import de paletas). São dois
+ficheiros com a mesma extensão, e o que os separa é a **porta**: uma paleta entra pelo botão de
+paletas, um sprite pelo canvas. Quem largar uma paleta aqui recebe *«not an Aseprite file (bad magic
+number)»*, que é a mensagem certa.
+
+**6 gates novos** (5 no roteador + 1 na lista do `ph2d-asset`), **6 mutações**, todas sangraram.
+⚠️ O gate principal afirma as **duas** metades — *«tudo o que o diálogo oferece o roteador aceita»*
+sozinho fica verde num diálogo vazio, e o inverso sozinho fica verde num diálogo que oferece o disco
+inteiro.

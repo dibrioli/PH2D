@@ -132,9 +132,12 @@ fn a_dropped_mesh_leaves_the_queue_before_the_image_filter() {
     let claim = body
         .find("is_mesh_file")
         .expect("o drop precisa reconhecer um arquivo de malha");
+    // ⚠️ O literal MUDOU em 2026-08-23 e a claim NÃO: a mensagem dizia «Skipped non-image», e
+    // isso virou mentira quando o `.ase` — que não é uma imagem — passou a ser importável
+    // (`crate::import_router`). O que este gate afirma é a ORDEM, não a redacção.
     let skip = body
-        .find("Skipped non-image")
-        .expect("o filtro de imagem continua avisando o que ele pula");
+        .find("Skipped {name}")
+        .expect("o roteador continua avisando o que ele pula");
     assert!(
         claim < skip,
         "as malhas saem DEPOIS do filtro de imagem: soltar um .obj avisaria \

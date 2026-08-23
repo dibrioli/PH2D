@@ -234,6 +234,9 @@ mod hero_intents;
 mod image_export;
 mod image_import;
 mod impasto_smoke;
+/// **UMA lei sobre o que este app importa** — o filtro do diálogo e o roteamento do drop leem
+/// daqui (Enio, 2026-08-23: *«.ase não aparece no dialog de import»*).
+mod import_router;
 mod init;
 mod input_dispatch;
 mod input_drop;

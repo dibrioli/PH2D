@@ -110,26 +110,23 @@ pub(crate) fn is_png_extension(path: &Path) -> bool {
 /// `decode_via_imageio_registry`); the extension filter is a UX-
 /// only gate (file-dialog filter doesn't pre-decode).
 pub fn is_supported_image_extension(path: &Path) -> bool {
-    matches!(
-        path.extension()
-            .and_then(|s| s.to_str())
-            .map(|s| s.to_ascii_lowercase())
-            .as_deref(),
-        Some(
-            "png"
-                | "webp"
-                | "jpg"
-                | "jpeg"
-                | "gif"
-                | "tiff"
-                | "tif"
-                | "ora"
-                | "apng"
-                | "psd"
-                | "ph2d"
-        )
-    )
+    path.extension().and_then(|s| s.to_str()).is_some_and(|s| {
+        SUPPORTED_IMAGE_EXTENSIONS
+            .iter()
+            .any(|e| s.eq_ignore_ascii_case(e))
+    })
 }
+
+/// **A LISTA, e o predicado acima é derivado dela.**
+///
+/// ⚠️ Ela é pública porque quem constrói um **diálogo de ficheiro** precisa de a ENUMERAR, e um
+/// predicado não se enumera. Medido em 2026-08-23: o botão «Import…» do shell oferecia quatro
+/// extensões escritas à mão (`png/webp/jpg/jpeg`) enquanto o predicado aceitava **onze** — um
+/// `.gif` entrava por drag & drop e era **invisível** no diálogo. *Uma lista escrita à mão ao lado
+/// de um predicado é duas respostas à mesma pergunta, e a que o artista vê é a que envelhece.*
+pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
+    "png", "webp", "jpg", "jpeg", "gif", "tiff", "tif", "ora", "apng", "psd", "ph2d",
+];
 
 /// Decode an in-memory image buffer (PNG / WEBP / JPEG) to
 /// [`Asset::ImageRgba8`]. Format is auto-detected by `image::guess_format`.
@@ -327,6 +324,43 @@ fn decode_via_imageio_registry(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **A LISTA e o PREDICADO são a mesma coisa** — o predicado é derivado dela, e este gate
+    /// prende os dois sentidos.
+    ///
+    /// ⚠️ Nasceu de um defeito medido em 2026-08-23: o diálogo «Import…» do shell tinha a lista
+    /// escrita à mão com **quatro** extensões enquanto isto aceitava **onze** — um `.gif` entrava
+    /// por drag & drop e era invisível no diálogo. Enumerar deixou de ser um privilégio de quem
+    /// copia a lista.
+    #[test]
+    fn the_list_and_the_predicate_are_the_same_thing() {
+        assert!(!SUPPORTED_IMAGE_EXTENSIONS.is_empty());
+        for e in SUPPORTED_IMAGE_EXTENSIONS {
+            assert!(
+                is_supported_image_extension(Path::new(&format!("a.{e}"))),
+                "a lista tem .{e} e o predicado recusa-o"
+            );
+            assert!(
+                is_supported_image_extension(Path::new(&format!("a.{}", e.to_uppercase()))),
+                ".{e} em MAIUSCULAS tem de passar — a extensao vem do sistema de ficheiros"
+            );
+            assert_eq!(
+                e.to_ascii_lowercase(),
+                **e,
+                "a lista tem de vir em minusculas, senao a comparacao le-se ao contrario"
+            );
+        }
+        // Sem duplicados: uma entrada repetida encheria o diálogo de linhas iguais.
+        let mut sorted = SUPPORTED_IMAGE_EXTENSIONS.to_vec();
+        sorted.sort_unstable();
+        let n = sorted.len();
+        sorted.dedup();
+        assert_eq!(sorted.len(), n, "a lista tem extensoes repetidas");
+        // E o que não está na lista continua fora.
+        for e in ["ase", "aseprite", "txt", "mp3", "blend"] {
+            assert!(!is_supported_image_extension(Path::new(&format!("a.{e}"))));
+        }
+    }
 
     #[test]
     fn case_insensitive_png_filter() {

@@ -746,6 +746,19 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   de cel, modo de mistura de grupo) — *um importador que ignora em silêncio é pior que um que
   recusa*. ⭐ **O smoke ESCREVE o `.ase`** (`PH2D_ASE_SMOKE=1`), então testá-lo não precisa do
   Aseprite instalado — e há gate a correr o escritor do smoke pelo leitor real.
+  ⭐ **E 18 ficheiros escritos pelo Aseprite REAL lêem-se, 0 recusados** (as 12 fixturas de teste do
+  repositório oficial + 2 exemplos MIT + 4 personagens): o instrumento é
+  `cargo run -p ph2d-aseprite --example ase_info -- <ficheiro|pasta>`, que corre o **mesmo** parse
+  do produto. ⚠️ Dois achados que só ficheiros reais dão: a duração **varia por quadro** em
+  ficheiros comuns, e personagens reais chegam **sem tags** — o que torna a regra «sem tags recebe
+  uma» o caminho normal, não a excepção.
+  ⚠️ **E o `.ase` não aparecia no diálogo «Import…»** (Enio, no mesmo dia) — o defeito **não era o
+  `.ase`**: o drop roteava por um predicado (11 extensões) e o diálogo oferecia uma lista **escrita
+  à mão** com 4, então o `.gif`/`.psd`/`.ora` estavam invisíveis lá **há meses**. ⇒
+  [`import_router.rs`](shells/desktop/src/import_router.rs): a **lista** é a fonte
+  (`ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS` + `ase_import::ASE_EXTENSIONS`), o predicado é derivado
+  dela, e **as duas portas chamam a mesma função**. *Uma lista escrita à mão ao lado de um
+  predicado é duas respostas à mesma pergunta, e a que o artista vê é a que envelhece.*
   ⛔ Fora: os sinais do §8.10
   (`AnimOutcome` existe, ninguém o publica). Detalhe:
   [spec 08, secção final](docs/Sprite_projeto/08_animation_inline.md) ·

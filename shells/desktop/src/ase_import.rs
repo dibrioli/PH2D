@@ -42,12 +42,23 @@ use std::path::Path;
 /// a subida falharia com uma mensagem que não fala de animação nenhuma.
 const MAX_SHEET_EDGE_PX: u32 = 8192;
 
-/// Este caminho reconhece o ficheiro? As duas extensões que o Aseprite escreve.
+/// As duas extensões que o Aseprite escreve. ⚠️ **Uma LISTA, e o predicado abaixo é derivado dela**
+/// — quem constrói o diálogo de ficheiro precisa de as ENUMERAR, e um predicado não se enumera.
+/// Foi exactamente essa duplicação que deixou o `.ase` invisível no «Import…» (Enio, 2026-08-23).
+///
+/// ⚠️ **`.ase` é um nome DISPUTADO:** a Adobe usa-o para *Swatch Exchange*, uma paleta — e este app
+/// já lê esse formato noutro sítio ([`crate::forwarding`], o import de paletas). São dois ficheiros
+/// diferentes com a mesma extensão, e o que os separa é a **porta**: uma paleta entra pelo botão de
+/// paletas, um sprite entra pelo canvas. Quem largar uma paleta aqui recebe *«not an Aseprite file
+/// (bad magic number)»*, que é a mensagem certa.
+pub(crate) const ASE_EXTENSIONS: &[&str] = &["ase", "aseprite"];
+
+/// Este caminho reconhece o ficheiro?
 #[must_use]
 pub(crate) fn is_ase_file(path: &Path) -> bool {
     path.extension()
         .and_then(|s| s.to_str())
-        .is_some_and(|e| e.eq_ignore_ascii_case("ase") || e.eq_ignore_ascii_case("aseprite"))
+        .is_some_and(|e| ASE_EXTENSIONS.iter().any(|x| e.eq_ignore_ascii_case(x)))
 }
 
 /// **Como os N quadros se arrumam.** Devolve `(colunas, linhas)`.

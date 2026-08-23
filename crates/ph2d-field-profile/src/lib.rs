@@ -37,27 +37,53 @@ use ph2d_vec_scene::{VecPath, VecVertex};
 /// Tolerância de achatamento como **fração da maior dimensão do perfil**, usada por
 /// [`cook_path_auto`].
 ///
-/// ⚠️ **Este número é MEDIDO, não escolhido** (`CLAUDE.md §0`). O que ele controla é o número de
-/// arestas, e o número de arestas é literalmente o custo do traçado — cada aresta são ~26 nós de
-/// árvore avaliados **por pixel**. A tabela, a 640×480 com 32 threads
-/// (`ph2d-field-render::measure_profile_trace_cost`):
+/// # ⭐⭐ A régua certa é a NORMAL, não a silhueta (medido 2026-08-23, ADR-0161 W54)
 ///
-/// | arestas | traçado paralelo |
-/// |---|---|
-/// | 32 | 16,0 ms |
-/// | 64 | 24,1 ms |
-/// | 128 | 43,6 ms |
-/// | 256 | 80,6 ms |
+/// Enio, no smoke da W53, com duas fotos: *"contudo sem ajustes de resolução"* — a silhueta lisa e a
+/// **luz em degraus**. O primeiro número deste `const` foi escolhido pela **flecha** (o erro de
+/// posição), e a flecha é a grandeza que o olho **menos** vê aqui:
 ///
-/// O baseline do módulo (a junção de três cilindros da W0) custa 25 ms no mesmo quadro, então **~64
-/// arestas é o orçamento** que mantém um perfil no mesmo preço de uma peça de primitivas. Para um
-/// contorno redondo, o número de arestas que uma tolerância `ε` produz é `≈ 2,22·√(R/ε)`; com
-/// `ε = 10⁻³·D` (D = a maior dimensão, R ≈ D/2) isso dá **≈ 50 arestas**. É daí que sai o `1e-3`.
+/// | fração | arestas | flecha (% de D) | salto de NORMAL | extrusão | torno | px com degrau |
+/// |---:|---:|---:|---:|---:|---:|---:|
+/// | `1e-3` (o primeiro) | 56 | **0,079 %** | **6,43°** | 53,3 ms | 65,5 ms | **4 417** |
+/// | `3e-4` | 96 | 0,027 % | 3,75° | 92,5 ms | 104,7 ms | 6 765 |
+/// | **`1e-4`** (shipa) | **168** | 0,009 % | **2,14°** | **139,3 ms** | **178,8 ms** | **79** |
+/// | `3e-5` | 305 | 0,003 % | 1,18° | 237,3 ms | 286,0 ms | 86 |
+/// | `1e-5` | 528 | 0,0009 % | 0,68° | 409,3 ms | 511,1 ms | 70 |
+///
+/// (círculo de raio 0,5 num torno e numa extrusão, 640×480, mediana de 7, `load < 3`.)
+///
+/// ⭐ **A silhueta erra 0,079 % da peça — invisível. A normal salta 6,43° — e é isso que a luz
+/// mostra.** O `1e-4` é o **joelho**: os degraus caem **56×** (4 417 → 79 pixels), e o passo
+/// seguinte custa **+70 %** para não melhorar nada (79 → 86, ruído).
+///
+/// ⚠️ **A coluna dos degraus é acoplada ao limiar** com que é contada (3° entre pixels vizinhos), e
+/// ela diz isso alto ao **não ser monótona**: em `3e-4` há mais facetas e cada uma ainda passa dos
+/// 3°, então o número **sobe** antes de colapsar. O que decide é o **salto de normal**; a contagem
+/// é a ilustração de o limiar ter sido cruzado, não a prova.
+///
+/// ⚠️ **O limiar de 3° veio das duas fotos do Enio** — é onde o nosso sombreamento mostra o degrau.
+/// É um oráculo de aparência, e está declarado como tal.
+///
+/// # ⛔ A tabela ANTERIOR está desmentida, e não era o perfil
+///
+/// Ela dizia *"64 arestas → 24,1 ms"* (2026-08-19) e justificava o `1e-3` com *"o baseline do módulo
+/// custa 25 ms, então ~64 arestas é o orçamento"*. Medido hoje, a **mesma** extrusão com 56 arestas
+/// custa **53,3 ms** — o traçado ficou **~2,4× mais caro** desde então, e ninguém o reconferiu.
+/// ⚠️ Isso é um achado por explicar (o anti-serrilhado adaptativo re-amostra cada pixel de borda
+/// **quatro** vezes, e entrou depois), **não** uma consequência desta wave. Ver `docs/3DModeling/06`
+/// §55.
+///
+/// ⚠️ E o **preço interativo** que aquele orçamento protegia deixou de ser este número: desde a W24 a
+/// resolução do preview sai do **relógio** (grosso enquanto a mão mexe, nítido ao assentar) e desde a
+/// W32 o traçado **cede à mão**. O que a tabela acima mede é o traçado **assente**, que se paga uma
+/// vez. *Quem move o número que tornava algo inalcançável tem de reconferir a nota* — e foram a W24 e
+/// a W32 que o moveram.
 ///
 /// ⚠️ **É uma FRAÇÃO e não um absoluto** porque a mesma peça desenhada em milímetros ou em metros
 /// tem de sair com a mesma qualidade — uma tolerância absoluta faria a unidade do documento decidir
 /// a suavidade da forma.
-pub const TOLERANCE_RATIO: f64 = 1e-3;
+pub const TOLERANCE_RATIO: f64 = 1e-4;
 
 /// Por que um path não pôde virar perfil.
 #[derive(Clone, Debug, PartialEq)]

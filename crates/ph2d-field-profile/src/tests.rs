@@ -246,12 +246,41 @@ fn the_automatic_tolerance_follows_the_size_of_the_drawing() {
         small.segment_count(),
         big.segment_count()
     );
-    // E o número está no orçamento medido (~64 arestas por perfil a 640×480).
-    assert!(
-        (24..=80).contains(&small.segment_count()),
-        "um círculo na tolerância automática tem de cair no orçamento medido; deu {}",
-        small.segment_count()
-    );
+}
+
+/// ⭐⭐ **A SUAVIDADE É MEDIDA PELA NORMAL, NÃO PELA SILHUETA** (W54).
+///
+/// # O smoke que reescreveu a régua
+///
+/// Enio, 2026-08-23, com duas fotos de peças de perfil: *"contudo sem ajustes de resolução"* — a
+/// **silhueta lisa** e a **luz em degraus**. A tolerância que shipava (`1e-3`) errava a silhueta em
+/// **0,079 % da peça** (invisível) e partia a normal em **6,43°** (muito visível).
+///
+/// ⚠️ **O gate que estava aqui prendia a régua errada:** ele exigia que o círculo caísse num
+/// *orçamento de arestas* (24..=80), que é a grandeza do **custo**, e nada dizia sobre o que se vê.
+/// Um gate assim defende o número velho contra a medição que o desmente.
+///
+/// ⭐ A lei é o **ângulo entre facetas**: num círculo de `N` arestas ele é `360/N`, e é ele que a luz
+/// mostra. A barra são **2,5°** — entre o `2,14°` que shipa e o `3°` em que o nosso sombreamento
+/// começa a mostrar o degrau (o limiar veio das fotos, e está declarado como oráculo de aparência no
+/// doc do [`super::TOLERANCE_RATIO`], com a tabela inteira).
+#[test]
+fn the_automatic_tolerance_keeps_the_normal_smooth() {
+    for r in [0.01_f64, 1.0, 100.0] {
+        let n = cook_path_auto(&circle(r)).expect("círculo").segment_count();
+        let jump = 360.0 / n as f64;
+        assert!(
+            jump <= 2.5,
+            "um círculo de raio {r} saiu com {n} arestas, isto é {jump:.2}° entre facetas — acima \
+             de ~3° o sombreamento mostra o degrau, e foi esse o report do smoke"
+        );
+        // ⚠️ **E o outro lado**: uma tolerância absurdamente fina não é «melhor», é um traçado que
+        // ninguém espera — o custo é LINEAR nas arestas (~1 ms cada a 640×480, medido).
+        assert!(
+            n <= 400,
+            "um círculo saiu com {n} arestas — a ~1 ms cada, é meio segundo de traçado assente"
+        );
+    }
 }
 
 /// A regra de preenchimento atravessa a costura — um compound path com buraco continua com buraco.

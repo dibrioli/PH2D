@@ -4315,8 +4315,107 @@ mutação expressiva **troca a chave** e mantém o tamanho.
 
 ---
 
+## §55 — W54: a régua da suavidade é a NORMAL, não a silhueta — e a tabela velha estava desmentida por 2,4× (23/08)
+
+> Enio, no smoke da W53, com duas fotos: *"contudo sem ajustes de resolução"* — silhueta lisa, **luz
+> em degraus**.
+
+### §55.1 — ⭐ A minha primeira hipótese estava errada, e a aritmética disse-o antes do código
+
+Suspeitei da polilinha do perfil, e a conta refutou na hora: a tolerância que shipava erra a silhueta
+em **0,079 % da peça**. Isso é invisível — não podia ser o que ele estava a ver.
+
+⭐ Olhando as fotos outra vez: **a silhueta está lisa e as bandas estão na LUZ.** O campo de um
+contorno poligonal tem **gradiente constante por segmento**, então a normal salta de faceta em
+faceta — e o olho lê um salto de normal muito antes de ler um erro de posição.
+
+### §55.2 — A tabela (círculo r=0,5; 640×480; mediana de 7; `load < 3`)
+
+| fração | arestas | flecha (% de D) | **salto de NORMAL** | extrusão | torno | px com degrau |
+|---:|---:|---:|---:|---:|---:|---:|
+| `1e-3` **(o que shipava)** | 56 | **0,079 %** | **6,43°** | 53,3 ms | 65,5 ms | **4 417** |
+| `3e-4` | 96 | 0,027 % | 3,75° | 92,5 ms | 104,7 ms | 6 765 |
+| **`1e-4` (shipa)** | **168** | 0,009 % | **2,14°** | **139,3 ms** | **178,8 ms** | **79** |
+| `3e-5` | 305 | 0,003 % | 1,18° | 237,3 ms | 286,0 ms | 86 |
+| `1e-5` | 528 | 0,0009 % | 0,68° | 409,3 ms | 511,1 ms | 70 |
+
+⭐ **`1e-4` é o joelho:** os degraus caem **56×** (4 417 → 79 pixels) e o passo seguinte custa
+**+70 %** para não melhorar nada (79 → 86, ruído). O custo é **linear**: ~1 ms por aresta.
+
+⚠️ **A coluna dos degraus é acoplada ao limiar** com que é contada (3° entre vizinhos), e **diz isso
+alto ao não ser monótona**: em `3e-4` há mais facetas e cada uma ainda passa dos 3°, então o número
+**sobe** antes de colapsar. Quem decide é o **salto de normal**; a contagem ilustra o cruzamento, não
+o prova. E o limiar de 3° veio **das duas fotos do Enio** — um oráculo de aparência, declarado como tal.
+
+### §55.3 — ⛔⛔ A tabela de 2026-08-19 estava desmentida por **2,4×**, e não era o perfil
+
+O doc do `TOLERANCE_RATIO` dizia *"64 arestas → 24,1 ms"* e justificava o `1e-3` com *"o baseline do
+módulo custa 25 ms, então ~64 arestas é o orçamento"*. Medida hoje, **a mesma extrusão com 56 arestas
+custa 53,3 ms**.
+
+⇒ ⚠️ **o traçado ficou ~2,4× mais caro desde a W3 e ninguém o reconferiu.** Medi as duas primitivas
+lado a lado exatamente para separar *"o torno é mais caro"* de *"o traçado engordou"* — e é a
+segunda. O suspeito nomeado é o **anti-serrilhado adaptativo**, que re-amostra cada pixel de borda
+**quatro** vezes e entrou depois daquela medição. ⏸️ **Fica como achado por explicar**, não como
+consequência desta wave.
+
+⭐ E o **preço interativo** que aquele orçamento protegia deixou de ser este número: desde a **W24** a
+resolução do preview sai do relógio (grosso a mexer, nítido ao assentar) e desde a **W32** o traçado
+cede à mão. A tabela mede o traçado **assente**, que se paga uma vez. *Quem move o número que tornava
+algo inalcançável tem de reconferir a nota* — e foram a W24 e a W32 que o moveram.
+
+### §55.4 — ⛔ O gate que estava lá defendia o número velho
+
+`the_automatic_tolerance_follows_the_size_of_the_drawing` exigia que o círculo caísse num **orçamento
+de arestas** (`24..=80`) — que é a grandeza do **custo**, e não diz nada sobre o que se vê. *Um gate
+assim defende o número antigo contra a medição que o desmente*, e foi ele que reprovou primeiro
+quando o número mudou.
+
+⭐ O gate novo mede o **ângulo entre facetas** (`≤ 2,5°`, entre o `2,14°` que shipa e o `3°` das
+fotos) **e** o outro lado (`≤ 400` arestas — a ~1 ms cada, meio segundo de traçado assente não é
+«melhor», é uma espera que ninguém pediu). A metade da invariância de escala fica onde estava.
+
+### §55.5 — ⚠️ A sonda ficou, e é por isso que a tabela não volta a envelhecer
+
+`field3d_profile::tests::the_table_that_chose_the_tolerance`, `#[ignore]` (mede relógio; ~8 s), com o
+comando no doc-comment. *Uma tabela num doc sem a sonda ao lado envelhece em silêncio* — foi
+exactamente o que aconteceu com a de 19/08.
+
+### §55.6 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | a tolerância volta ao número da régua errada | `the_automatic_tolerance_keeps_the_normal_smooth` |
+| 2 | a tolerância foge para o fino (meio segundo por traçado) | *(o mesmo)* |
+| 3 | a tolerância deixa de ser fração | `the_automatic_tolerance_follows_the_size_of_the_drawing` |
+
+⚠️ **A 3 mentiu à primeira** (`correu 1 teste: False`): a mutação deixava dois `let` por usar e a
+crate não compilava. Terceira vez hoje que o controle positivo apanha uma mutação inexpressiva.
+
+### §55.7 — ⏸️ O que fica aberto
+
+- ⏸️ **Não há knob de resolução**, e o pedido do Enio era literalmente esse. O impedimento é
+  concreto: o nó guarda o perfil **cozido**, e mudar a tolerância exige **re-cozer a partir do
+  desenho** — que é o mesmo ⏸️ de *"o nó não se religa ao contorno"* (W53). Com o default certo o
+  defeito relatado desaparece; o knob pede aquela ligação.
+- ⏸️ **O traçado 2,4× mais caro** desde a W3 (§55.3) — achado por explicar.
+- ⏸️ Uma normal **suavizada** entre facetas curaria o sintoma com 56 arestas em vez de 168. ⛔ Seria
+  sombrear uma superfície diferente da que se marcha — uma segunda verdade sobre a forma —, e por
+  isso não foi feito. Fica nomeado.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W54 (§55): a régua da suavidade é a NORMAL** — Enio, com duas fotos: *"sem ajustes de
+  resolução"*. ⭐ A minha primeira hipótese (a polilinha na silhueta) foi **refutada pela aritmética**:
+  ela erra **0,079 % da peça**, invisível. As bandas estão na **LUZ** — o campo de um polígono tem
+  gradiente constante por segmento, e a normal salta **6,43°**. A tolerância passa a `1e-4` pelo
+  **joelho medido** (degraus **56×** menores; o passo seguinte custa +70 % para nada). ⛔⛔ E a tabela
+  de 19/08 estava **desmentida por 2,4×** — o traçado engordou desde a W3 e ninguém reconferiu
+  (suspeito nomeado: o anti-serrilhado, que re-amostra a borda 4×). ⛔ O gate que lá estava media
+  **arestas** (o custo) e defendia o número velho. ⏸️ Fica: **sem knob** (ele exige religar ao
+  desenho) · o traçado 2,4× mais caro por explicar · a normal suavizada, nomeada e recusada
 - ✅ **W53 (§54): o PERFIL DESENHADO vira peça** — ⛔ `Extrude` e `Revolve` existiam no motor **desde
   a W3**, medidos contra oráculos, e **nenhum botão os alcançava**: uma família de features completa
   e invisível, e o plano chama-lhes a razão de existir do módulo (*"é aqui que o fluxo do MoI

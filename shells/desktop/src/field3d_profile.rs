@@ -109,3 +109,7 @@ fn segments_of(p: &Primitive) -> usize {
         _ => 0,
     }
 }
+
+#[cfg(test)]
+#[path = "field3d_profile_tests.rs"]
+mod tests;

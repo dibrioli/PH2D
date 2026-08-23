@@ -33,6 +33,21 @@ pub(crate) const FLAT_QUARTERS: i32 = 2;
 pub struct PatchLayout {
     /// Por face, o patch a que ela pertence.
     pub face_patch: Vec<u32>,
+    /// ⭐⭐⭐ **A DIREÇÃO DA CRUZ em cada face da malha** — o campo que produziu
+    /// este layout, a viajar com ele.
+    ///
+    /// ⛔ **Ele está aqui, e não num parâmetro do F5, por uma razão medida**
+    /// (2026-08-22): a montagem enviesava o interior dos patches porque
+    /// interpolava a fronteira, e a causa apurada foi que ela **nem sequer recebia
+    /// o campo**. Um parâmetro novo pode ser esquecido em qualquer um dos dezoito
+    /// sítios que chamam o F5; um campo do layout **não pode** — quem tem o layout
+    /// tem, por construção, o campo que o gerou.
+    ///
+    /// ⚠️ **Vazio é uma resposta legítima**: [`decompose`] é chamada directamente
+    /// por gates que não têm campo nenhum, e ali o F5 volta ao achatamento
+    /// harmónico. *O que não pode existir é o caminho do produto sem ele*, e é o
+    /// [`crate::trace_patches`] quem o preenche.
+    pub face_dir: Vec<[f32; 3]>,
     /// Por patch, por lado, os arcos que o compõem: o id e **se o lado o
     /// percorre ao contrário** da ordem canónica do arco.
     ///
@@ -332,6 +347,11 @@ pub fn decompose_with(
 
     PatchLayout {
         face_patch,
+        // ⚠️ **VAZIO aqui de propósito** — esta função não recebe o campo. Quem o
+        // preenche é o [`crate::trace_patches`], que o tem. Um `decompose` chamado
+        // de um gate sem campo continua a devolver um layout válido, e o F5 volta
+        // ao achatamento harmónico.
+        face_dir: Vec::new(),
         side_arcs,
         arc_chain,
         corners,

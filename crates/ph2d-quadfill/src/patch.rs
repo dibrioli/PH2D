@@ -14,7 +14,7 @@ use ph2d_quantize::Quantization;
 use ph2d_trace::PatchLayout;
 
 use crate::fan::coons;
-use crate::param::{PatchParam, corners_for};
+use crate::param::{PatchParam, corners_for_sides};
 use crate::report::{Points, Provenance};
 
 /// **PREENCHE UM PATCH DE QUATRO LADOS COM UMA GRADE PLANA.**
@@ -184,10 +184,14 @@ pub(crate) fn side_uv(
     quant: &Quantization,
     sides: &[Vec<(u32, bool)>],
     i: usize,
+    seg: &[u32],
 ) -> Vec<[f32; 2]> {
     let n = sides.len();
-    // ⭐ **A MESMA fonte de cantos que o achatamento** — ver [`corners_for`].
-    let poly = corners_for(n);
+    // ⭐⭐ **A MESMA fonte de cantos que o achatamento** — ver
+    // [`corners_for_sides`]. ⛔ Se as duas divergirem, os pontos de SAÍDA deixam de
+    // cair entre os vértices de malha à volta deles e a malha sai rasgada ao longo
+    // de toda fronteira de patch, com um erro pequeno demais para se ver.
+    let poly = corners_for_sides(seg);
     let (a, b) = (poly[i], poly[(i + 1) % n]);
     let side = &sides[i];
     // ⚠️ **Pelo `τ` e não pelo comprimento**, e não é detalhe: o `uv` de um ponto

@@ -442,6 +442,19 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Cinco saídas já foram MEDIDAS e fechadas** (mais segmentos na lasca · `dissolve` · desligar a ponte ·
   recuo do `uv` · faixa em vez de leque): ⇒ o problema **não é como o patch é preenchido, é o patch** — o traçado
   tem de o CORTAR, que é o mesmo trabalho da asa que a ponte só adiou.
+  ⛔⛔ **DUAS CURAS CERTAS, ZERO MOVIMENTO (23/08)** — o interior do patch alinhado ao campo e o domínio
+  com os lados ∝ segmentos: as duas deixam o enviesamento mediano da orelha em **27°**, e a segunda **piora**
+  a cauda do gancho (aspecto max 22,5 → 49,0). As duas ficam no código **desligadas com a tabela**
+  (`Interior::FromBoundary`, `PROPORTIONAL_DOMAIN = false`). ⭐⭐ **O que a falha comprou foi a régua que
+  localiza:** `skew_by_provenance` diz onde o enviesamento mora — orelha `canto 0° · arco 26° · centro 0° ·
+  raio 56° · grade 26°`, ou seja **em TODA a parte, com a grade interior igual ao resto** ⇒ *toda a família
+  «uma construção local está errada» está excluída de uma vez*. ⭐ E o alisamento foi **ilibado com número**
+  (a 0 rondas a grade mede 27° e o raio 75°; a 20, 25° e 37° — ele REPARA). ⭐⭐⭐ **O achado que aponta a
+  próxima fase é a HOLONOMIA**: pentear o campo dentro de um patch deixa **29° (orelha) · 44° (gancho) ·
+  16° (enrugada)** de desacordo ⇒ **o campo dentro dos nossos patches não é combável**, há singularidade
+  DENTRO em vez de nos cantos, e a dívida é do **F3** — o mesmo F3 do patch de perímetro 520%. ⚠️ É um MAX
+  sobre arestas: a próxima medição tem de dar a distribuição. ⭐ **A canalização FICA e é o ganho durável:**
+  o campo agora **chega** ao F5 (`PatchLayout::face_dir`), que era a primeira coisa que faltava.
   ⭐⭐ **O ORÁCULO GRAVA AS FASES INTERMÉDIAS** (achado 22/08, `PLAN.md` §4-duotricies): em
   `ph2d-quadbench/ref/<peça>/` estão o **campo** dele (`*_rem.rosy`, uma direção por face) e a **decomposição**
   dele (`*_rem_p0.patch`, o dono de cada face) — as duas fases cujo código é GPL. ⇒ Comparar fase a fase **na

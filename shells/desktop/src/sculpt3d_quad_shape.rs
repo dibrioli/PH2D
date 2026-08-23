@@ -48,18 +48,11 @@ fn measure(mesh: &Mesh) -> Shown {
 /// A forma, mais a contagem de faces, formatadas numa linha.
 struct Shown(QuadShape, usize);
 
-fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
-}
-
-fn len(d: [f32; 3]) -> f32 {
-    d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
-}
-
 fn pct(sorted: &[f32], p: f32) -> f32 {
     if sorted.is_empty() {
         return 0.0;
     }
+    #[allow(clippy::cast_precision_loss, clippy::cast_sign_loss)]
     let i = ((sorted.len() - 1) as f32 * p).round() as usize;
     sorted[i.min(sorted.len() - 1)]
 }
@@ -185,31 +178,62 @@ fn what_shape_are_our_quads() {
             // qualquer das outras: `dobras` (a face virada ao contrário), `aresta`
             // (alguma coisa esticou), `detalhe` (a forma escorreu para longe da
             // escultura) e o tempo. *Uma cura sem a coluna do preço é meia medição.*
-            for square in [0usize, 2, 4, 8, 16] {
+            // ⭐⭐⭐ **AS DUAS ORIGENS DO INTERIOR, lado a lado** — ver
+            // [`ph2d_quadfill::Interior`]. ⛔ O caminho antigo fica na tabela como
+            // TESTEMUNHA DE CONTROLO: sem ele, «o alinhamento melhorou» é uma
+            // afirmação sem denominador.
+            for (rotulo, smooth, interior) in [
+                (
+                    "fronteira",
+                    ph2d_quadfill::SMOOTHING_ROUNDS,
+                    ph2d_quadfill::Interior::FromBoundary,
+                ),
+                (
+                    "⭐CAMPO  ",
+                    ph2d_quadfill::SMOOTHING_ROUNDS,
+                    ph2d_quadfill::Interior::AlignedToField,
+                ),
+                // ⭐ **O alisamento REPARA e não causa** — medido 2026-08-23: a
+                // `0` rondas a grade mede `27°` e o raio `75°`; a `20`, `25°` e
+                // `37°`. ⛔ Ele fica na tabela porque a hipótese «é o alisador que
+                // enviesa» é natural e está refutada.
+                ("liso=20 ", 20, ph2d_quadfill::Interior::FromBoundary),
+            ] {
                 let t0 = std::time::Instant::now();
                 let Ok((out, r)) = ph2d_quadfill::fill_with(
                     &work,
                     &reference,
                     &layout,
                     &quant,
-                    ph2d_quadfill::SMOOTHING_ROUNDS,
-                    square,
+                    smooth,
+                    ph2d_quadfill::SQUARE_ROUNDS,
+                    interior,
                 ) else {
-                    eprintln!("  d={detail:.2} q={square:<2} | a montagem RECUSOU");
+                    eprintln!("  d={detail:.2} {rotulo} | a montagem RECUSOU");
                     continue;
                 };
                 let ms = t0.elapsed().as_secs_f32() * 1000.0;
                 let (_, p95) = ph2d_quadfill::detail_lost(&reference, &out);
                 eprintln!(
-                    "  d={detail:.2} q={square:<2} {} | dobras {:>5} aresta {:>5.1}% detalhe {:>6.3}% {ms:>7.0}ms",
+                    "  d={detail:.2} {rotulo} {} | dobras {:>5} aresta {:>5.1}% detalhe {:>6.3}% \
+                     | holonomia {:>4.0}° recuos {}/{} {ms:>7.0}ms",
                     measure(&out),
                     r.folded_local,
                     100.0 * r.edge_max / diag,
                     100.0 * p95,
+                    r.holonomy,
+                    r.fell_back,
+                    r.patches,
                 );
-                if square == 0 && detail > 0.9 {
-                    worst_faces(&out, &layout, &quant);
-                }
+                // ⭐⭐⭐ **ONDE mora o enviesamento**, por fase de origem.
+                eprintln!(
+                    "        enviesamento p50 por fase: {:?}",
+                    ph2d_quadfill::Provenance::NAMES
+                        .iter()
+                        .zip(r.skew_prov)
+                        .map(|(n, v)| format!("{n} {v:.0}°"))
+                        .collect::<Vec<_>>()
+                );
             }
         }
     }
@@ -288,53 +312,6 @@ fn designed_step(
         pct(&ratios, 0.50),
         pct(&ratios, 0.95),
         ratios.last().copied().unwrap_or(0.0),
-    );
-}
-
-/// Os dez piores quads: onde estão, e a que patch pertencem.
-fn worst_faces(out: &Mesh, layout: &ph2d_trace::PatchLayout, quant: &ph2d_quantize::Quantization) {
-    let pos = out.positions();
-    let mut rank: Vec<(f32, usize, [f32; 3])> = Vec::new();
-    for (fi, f) in out.faces().iter().enumerate() {
-        let v = f.verts();
-        let n = v.len();
-        if n < 3 {
-            continue;
-        }
-        let p: Vec<[f32; 3]> = v.iter().map(|&i| pos[i as usize]).collect();
-        let (mut lo, mut hi) = (f32::MAX, 0.0f32);
-        for k in 0..n {
-            let e = len(sub(p[(k + 1) % n], p[k]));
-            lo = lo.min(e);
-            hi = hi.max(e);
-        }
-        let mut c = [0.0f32; 3];
-        for q in &p {
-            for k in 0..3 {
-                c[k] += q[k] / n as f32;
-            }
-        }
-        rank.push((hi / lo.max(1.0e-12), fi, c));
-    }
-    rank.sort_by(|a, b| b.0.total_cmp(&a.0));
-    for (a, fi, c) in rank.iter().take(10) {
-        eprintln!(
-            "      aspecto {a:>8.1}  face {fi:<7} em ({:.2}, {:.2}, {:.2})",
-            c[0], c[1], c[2]
-        );
-    }
-    // ⭐ Quantos patches e como o orçamento de segmentos ficou distribuído — o
-    // número que diz se a doença é do TRAÇADO (patches maus) ou da QUANTIZAÇÃO.
-    let mut thin = 0usize;
-    for (pp, e) in quant.corners.iter().enumerate() {
-        let _ = pp;
-        if e.iter().copied().min().unwrap_or(9) <= 1 {
-            thin += 1;
-        }
-    }
-    eprintln!(
-        "      {thin} de {} patches com um raio de leque a 1 (o sector de UMA celula)",
-        layout.side_arcs.len()
     );
 }
 

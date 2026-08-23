@@ -211,6 +211,16 @@ pub fn trace_patches(mesh: &Mesh, dual: &Dual, field: &CrossField) -> PatchLayou
     }
     out.report.dissolved = dissolved;
     out.report.rounds = rounds;
+    // ⭐⭐⭐ **O CAMPO VIAJA COM O LAYOUT** — ver [`PatchLayout::face_dir`].
+    //
+    // ⚠️ **É aqui e não num parâmetro do F5**, e a razão é medida: a montagem
+    // enviesava o interior dos patches por interpolar a fronteira, e o motivo
+    // apurado em 2026-08-22 foi que ela **não recebia o campo**. Um parâmetro novo
+    // pode ser esquecido em qualquer um dos dezoito sítios que chamam o F5; *quem
+    // tem o layout tem, por construção, o campo que o gerou.*
+    out.face_dir = (0..mesh.faces().len())
+        .map(|f| field.direction(dual, f))
+        .collect();
     out
 }
 

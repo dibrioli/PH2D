@@ -35,6 +35,8 @@
 
 #![forbid(unsafe_code)]
 
+/// ⭐⭐ **O INTERIOR DE UM PATCH SEGUE O CAMPO** — ver [`aligned`].
+pub mod aligned;
 /// **O PREENCHIMENTO de um patch** — o leque e a grade — ver [`fan`].
 pub mod fan;
 /// **O PATCH ACHATADO** — a grade nasce na superfície, não no espaço — ver [`param`].
@@ -50,10 +52,11 @@ pub mod shape;
 /// **A COSTURA** — amostragem partilhada e montagem — ver [`stitch`].
 pub mod stitch;
 
+pub use aligned::{INTERIOR, Interior};
 pub use relax::SQUARE_ROUNDS;
 pub use report::{
     FillError, FillReport, Provenance, detail_lost, folded_against, folded_by_neighbours,
     follows_relief,
 };
-pub use shape::{QuadShape, quad_shape};
+pub use shape::{QuadShape, quad_shape, skew_by_provenance};
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};

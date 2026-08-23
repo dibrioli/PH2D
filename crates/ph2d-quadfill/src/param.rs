@@ -67,6 +67,12 @@ pub(crate) struct PatchParam {
     pub(crate) rounds: usize,
     /// O resíduo com que ele parou.
     pub(crate) residual: f32,
+    /// ⚠️ **O desacordo do campo penteado**, em graus — ver
+    /// [`crate::aligned::Aligned::holonomy_deg`]. `0` quando o campo não veio.
+    pub(crate) holonomy: f32,
+    /// ⭐ **Este patch RECUOU para o achatamento harmónico** porque o alinhado
+    /// virou triângulos no domínio. É a contagem que diz se a rede é teórica.
+    pub(crate) fell_back: bool,
 }
 
 /// O domínio vai de `-1` a `1` nos dois eixos (o polígono é inscrito no círculo
@@ -90,6 +96,8 @@ impl PatchParam {
         faces: &[u32],
         boundary: &[Vec<u32>],
         tau: &[Vec<f32>],
+        seg: &[u32],
+        field: Option<&[[f32; 3]]>,
     ) -> Option<Self> {
         let n = boundary.len();
         if n < 3 || faces.is_empty() {
@@ -98,6 +106,10 @@ impl PatchParam {
         // ── Índices locais, em ordem determinística.
         let mut local: BTreeMap<u32, u32> = BTreeMap::new();
         let mut tris: Vec<[u32; 3]> = Vec::with_capacity(faces.len());
+        // ⭐ **De que face de MALHA cada triângulo veio.** O campo cruzado é dado
+        // por face da malha, e um leque parte uma face em vários triângulos — sem
+        // esta correspondência o [`crate::aligned`] teria de a redescobrir.
+        let mut tri_face: Vec<u32> = Vec::with_capacity(faces.len());
         let mesh_faces = mesh.faces();
         for &f in faces {
             let v = mesh_faces.get(f as usize)?.verts();
@@ -111,6 +123,7 @@ impl PatchParam {
                 }
                 if t[0] != t[1] && t[1] != t[2] && t[2] != t[0] {
                     tris.push(t);
+                    tri_face.push(f);
                 }
             }
         }
@@ -130,7 +143,10 @@ impl PatchParam {
         // vértices de malha à volta dele.*
         let mut uv = vec![[0.0f32; 2]; local.len()];
         let mut fixed = vec![false; local.len()];
-        let poly = corners_for(n);
+        // ⭐⭐⭐ **O domínio tem os lados na proporção dos SEGMENTOS** — ver
+        // [`corners_for_sides`]. Um polígono regular fazia toda célula nascer
+        // torta antes de tocar na superfície.
+        let poly = corners_for_sides(seg);
         for (i, chain) in boundary.iter().enumerate() {
             let (a, b) = (poly[i], poly[(i + 1) % n]);
             // ⭐⭐ **Pelo `τ` do layout, a MESMA régua que o [`crate::patch::side_uv`]
@@ -181,36 +197,70 @@ impl PatchParam {
         if (0..local.len()).any(|v| !fixed[v] && nb[v].is_empty()) {
             return None;
         }
-        let (mut rounds, mut residual) = (0usize, f32::INFINITY);
-        for r in 0..FLATTEN_ROUNDS {
-            let mut worst = 0.0f32;
-            for v in 0..local.len() {
-                if fixed[v] {
-                    continue;
+        // ⭐⭐⭐ **O CAMPO, se o layout o trouxe** — ver [`crate::aligned`]. Ele não
+        // muda o operador da esquerda (os pesos continuam os de valor médio, sempre
+        // positivos); ele acrescenta um alvo a cada passo. ⚠️ **Com `None` o laço
+        // abaixo é a lei antiga termo a termo**, e é isso que torna a inércia
+        // demonstrável em vez de prometida.
+        let pinned = uv.clone();
+        let aligned = field.and_then(|dir| {
+            crate::aligned::build(&tris, &tri_face, &pos, dir, &nb, &pinned, &fixed)
+        });
+        let holonomy = aligned.as_ref().map_or(0.0, |a| a.holonomy_deg);
+        let solve = |uv: &mut Vec<[f32; 2]>, step: Option<&Vec<Vec<[f32; 2]>>>| {
+            let (mut rounds, mut residual) = (0usize, f32::INFINITY);
+            for r in 0..FLATTEN_ROUNDS {
+                let mut worst = 0.0f32;
+                for v in 0..local.len() {
+                    if fixed[v] {
+                        continue;
+                    }
+                    let (mut sx, mut sy, mut sw) = (0.0f32, 0.0f32, 0.0f32);
+                    for (slot, &(w, k)) in nb[v].iter().enumerate() {
+                        // ⭐ `uv_j − c·d_ij` — o vizinho, recuado do passo que o
+                        // campo pede. Sem campo, `g = 0` e isto é `uv_j`.
+                        let g = step.map_or([0.0f32; 2], |s| s[v][slot]);
+                        sx += k * (uv[w as usize][0] - g[0]);
+                        sy += k * (uv[w as usize][1] - g[1]);
+                        sw += k;
+                    }
+                    if sw <= 0.0 {
+                        continue;
+                    }
+                    let inv = 1.0 / sw;
+                    let next = [sx * inv, sy * inv];
+                    worst = worst.max((next[0] - uv[v][0]).abs().max((next[1] - uv[v][1]).abs()));
+                    uv[v] = next;
                 }
-                let (mut sx, mut sy, mut sw) = (0.0f32, 0.0f32, 0.0f32);
-                for &(w, k) in &nb[v] {
-                    sx += k * uv[w as usize][0];
-                    sy += k * uv[w as usize][1];
-                    sw += k;
+                rounds = r + 1;
+                residual = worst;
+                if worst < FLATTEN_TOL {
+                    break;
                 }
-                if sw <= 0.0 {
-                    continue;
-                }
-                let inv = 1.0 / sw;
-                let next = [sx * inv, sy * inv];
-                worst = worst.max((next[0] - uv[v][0]).abs().max((next[1] - uv[v][1]).abs()));
-                uv[v] = next;
             }
-            rounds = r + 1;
-            residual = worst;
-            if worst < FLATTEN_TOL {
-                break;
-            }
+            (rounds, residual)
+        };
+        let (mut rounds, mut residual) = solve(&mut uv, aligned.as_ref().map(|a| &a.step));
+
+        // ⭐⭐ **A REDE, e ela é uma CONTAGEM e não uma esperança.** O teorema de
+        // Tutte garante um embutimento sem dobras para o problema **harmónico**;
+        // com um alvo no lado direito a garantia deixa de se aplicar, e a única
+        // resposta honesta é medir. ⛔ Um patch que vire triângulos no domínio faz
+        // dois pontos de grade vizinhos aterrarem em lados opostos da superfície —
+        // é o defeito que esta fase inteira existiu para matar.
+        let mut fell_back = false;
+        if aligned.is_some() && crate::aligned::flipped(&tris, &uv) > 0 {
+            uv = pinned;
+            let (r, res) = solve(&mut uv, None);
+            rounds = r;
+            residual = res;
+            fell_back = true;
         }
         let mut me = Self::with(uv, pos, tris);
         me.rounds = rounds;
         me.residual = residual;
+        me.holonomy = holonomy;
+        me.fell_back = fell_back;
         Some(me)
     }
 
@@ -247,6 +297,8 @@ impl PatchParam {
             side,
             rounds: 0,
             residual: 0.0,
+            holonomy: 0.0,
+            fell_back: false,
         }
     }
 
@@ -420,6 +472,93 @@ pub(crate) fn corners_for(n: usize) -> Vec<[f32; 2]> {
             [a.cos(), a.sin()]
         })
         .collect()
+}
+
+/// ⛔⛔ **DESLIGADO — MEDIDO E REJEITADO** (2026-08-23). A construção fica, e o
+/// interruptor está aqui em vez de num `if` no chamador **porque os DOIS sítios que
+/// leem o polígono têm de concordar**: se o achatamento e o [`crate::patch::side_uv`]
+/// discordarem, a malha sai rasgada ao longo de toda fronteira de patch, com um erro
+/// pequeno demais para se ver num render. *Um interruptor num sítio não pode divergir.*
+///
+/// | orelha `d = 1,0` | regular | proporcional |
+/// |---|---|---|
+/// | enviesamento p50 | `27°` | `27°` |
+/// | faces `> 60°` | 9 159 | 9 146 |
+/// | ⛔ gancho, aspecto max | `22,5` | **`49,0`** |
+/// | ⛔ gancho, `> 4×` | 581 | **658** |
+///
+/// ⇒ **Não move o alvo e piora a cauda do gancho.** A hipótese continua correcta
+/// *em teoria* — ver abaixo —, mas a medição diz que ela não é o que dói.
+const PROPORTIONAL_DOMAIN: bool = false;
+
+/// ⭐ **O POLÍGONO DO DOMÍNIO com os lados na PROPORÇÃO DOS SEGMENTOS.**
+///
+/// # ⛔ O que estava errado, e é a causa dominante do enviesamento
+///
+/// O [`corners_for`] devolve um polígono **regular**: todo lado tem o mesmo
+/// comprimento no domínio, **independentemente de quantos quads ele carrega**. ⚠️ A
+/// grade é construída no domínio, então um patch de 4 lados com `13 × 6` segmentos
+/// recebe `13` divisões numa direcção e `6` na outra sobre um quadrado `1 × 1` — e
+/// **toda célula nasce com aspecto `2,17` antes de tocar na superfície.**
+///
+/// ⇒ *Nenhuma regra sobre o INTERIOR pode consertar isso*, e foi por isso que ligar
+/// o campo alinhado (2026-08-22) moveu o enviesamento mediano da orelha de `27°`
+/// para… `27°`. **A distorção era imposta pela FRONTEIRA.**
+///
+/// # ⭐ A lei
+///
+/// O lado `i` mede, no domínio, o que ele carrega em segmentos. Assim uma célula da
+/// grade é um **quadrado unitário no domínio**, e se o achatamento for próximo de
+/// uma similaridade a célula sai quadrada na superfície também. *É a construção da
+/// referência, e a razão de ela produzir `1,08` de aspecto.*
+///
+/// | `n` | construção | porquê |
+/// |---|---|---|
+/// | **4** | ⭐ **rectângulo EXACTO** `a × b` | a quantização garante lados opostos iguais, então ele fecha sem resíduo |
+/// | outro | vértices no círculo em ângulo ∝ ao segmento acumulado | fecha sempre e é convexo — o que o teorema de Tutte exige |
+///
+/// ⚠️ **Com todos os lados iguais isto devolve o polígono regular de sempre**, e é
+/// isso que torna a inércia demonstrável: um patch cujos lados carregam a mesma
+/// contagem tem o domínio byte-idêntico ao de antes.
+///
+/// ⛔ **O `n`-gono não-rectângulo é APROXIMADO de propósito.** A corda de um sector
+/// é `2·sin(π·sᵢ/S)`, não `sᵢ` — para `13 × 6` num quadrilátero isso daria razão
+/// `1,83` em vez de `2,17`. Só o caso `n = 4` tem solução exacta com convexidade
+/// garantida, e é o caso que domina a malha; construir um polígono convexo com
+/// comprimentos de lado exactos para `n` qualquer é um problema com escolhas, e
+/// nenhuma delas está medida.
+pub(crate) fn corners_for_sides(seg: &[u32]) -> Vec<[f32; 2]> {
+    let n = seg.len();
+    if !PROPORTIONAL_DOMAIN || n < 3 {
+        return corners_for(n.max(3));
+    }
+    let first = seg[0];
+    if seg.iter().all(|&s| s == first) {
+        return corners_for(n);
+    }
+    if n == 4 {
+        // ⭐ Rectângulo exacto, normalizado para a diagonal do círculo unitário —
+        // o mesmo alcance que o polígono regular usa, para o balde de [`cell`] não
+        // mudar de escala.
+        #[allow(clippy::cast_precision_loss)]
+        let (a, b) = (seg[0].max(1) as f32, seg[1].max(1) as f32);
+        let k = 1.0 / a.hypot(b);
+        let (x, y) = (a * k, b * k);
+        return vec![[x, y], [-x, y], [-x, -y], [x, -y]];
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let total: f32 = seg.iter().map(|&s| s.max(1) as f32).sum();
+    let mut out = Vec::with_capacity(n);
+    let mut run = 0.0f32;
+    for &s in seg {
+        let a = std::f32::consts::TAU * run / total;
+        out.push([a.cos(), a.sin()]);
+        #[allow(clippy::cast_precision_loss)]
+        {
+            run += s.max(1) as f32;
+        }
+    }
+    out
 }
 
 fn cell(p: [f32; 2], side: usize) -> [usize; 2] {

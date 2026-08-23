@@ -145,3 +145,71 @@ pub fn quad_shape(mesh: &Mesh) -> QuadShape {
         area_spread: pct(&area, 0.99) / pct(&area, 0.50).max(1.0e-12),
     }
 }
+
+/// ⭐⭐⭐ **ONDE MORA O ENVIESAMENTO** — a mediana por **fase de origem** dos cantos
+/// da face. Ver [`crate::report::FillReport::skew_prov`].
+///
+/// ⛔ **Ela nasceu porque duas curas teoricamente correctas não moveram o número**
+/// (2026-08-23): pôr o campo cruzado no interior do achatamento, e pôr os lados do
+/// domínio na proporção dos segmentos. As duas deixaram o enviesamento mediano da
+/// orelha em `27°`.
+///
+/// ⚠️ **Quando duas hipóteses boas falham, o modelo do defeito está errado** — e a
+/// resposta é parar de supor e perguntar à malha *onde* ele mora. O que esta régua
+/// respondeu, na orelha a `d = 1,0`:
+///
+/// ```text
+///     canto (F3) 0°   arco 26°   centro (F3) 0°   raio 56°   grade 26°
+/// ```
+///
+/// ⇒ **está em TODA a parte, e a grade interior mede o mesmo que o resto.** Não é
+/// o leque, não é a costura, não é um caso raro. *Isso exclui de uma vez toda a
+/// família de hipóteses «uma construção local está errada».*
+///
+/// ⚠️ **A face é classificada pela proveniência DOMINANTE dos cantos dela** — um
+/// quad com dois cantos de arco e dois de grade conta para o lado que tiver mais, e
+/// o empate vai para o menor índice. *É uma atribuição, não uma medição exacta;
+/// serve para localizar, não para julgar uma face.*
+#[must_use]
+pub fn skew_by_provenance(
+    mesh: &Mesh,
+    prov: &[crate::report::Provenance],
+) -> [f32; crate::report::Provenance::COUNT] {
+    use crate::report::Provenance;
+    let mut per: [Vec<f32>; Provenance::COUNT] = Default::default();
+    let pos = mesh.positions();
+    for f in mesh.faces() {
+        let v = f.verts();
+        let n = v.len();
+        if n < 3 {
+            continue;
+        }
+        let mut tally = [0usize; Provenance::COUNT];
+        for &i in v {
+            if let Some(p) = prov.get(i as usize) {
+                tally[*p as usize] += 1;
+            }
+        }
+        let Some(win) = (0..Provenance::COUNT).max_by_key(|&k| tally[k]) else {
+            continue;
+        };
+        let mut worst = 0.0f32;
+        for k in 0..n {
+            let p0 = pos[v[k] as usize];
+            let a = sub(pos[v[(k + n - 1) % n] as usize], p0);
+            let b = sub(pos[v[(k + 1) % n] as usize], p0);
+            let (la, lb) = (norm(a).max(1.0e-12), norm(b).max(1.0e-12));
+            let c = a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2])) / (la * lb);
+            worst = worst.max((c.clamp(-1.0, 1.0).acos().to_degrees() - 90.0).abs());
+        }
+        per[win].push(worst);
+    }
+    let mut out = [0.0f32; Provenance::COUNT];
+    for (k, list) in per.iter_mut().enumerate() {
+        list.sort_by(f32::total_cmp);
+        if !list.is_empty() {
+            out[k] = list[list.len() / 2];
+        }
+    }
+    out
+}

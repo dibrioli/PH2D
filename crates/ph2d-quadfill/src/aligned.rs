@@ -1,0 +1,352 @@
+//! ⭐⭐⭐ **O INTERIOR DE UM PATCH SEGUE O CAMPO** — a cura do defeito que o artista
+//! chamou «péssimo» (2026-08-22), atacada onde a medição a pôs.
+//!
+//! # ⛔ O que estava errado, medido
+//!
+//! O [`crate::param`] achata o patch por **Tutte**: a fronteira vai para o polígono
+//! e cada vértice interior fica na média ponderada dos vizinhos. ⚠️ **Isso é um mapa
+//! harmónico — ele conhece a FRONTEIRA e mais nada.** As linhas da grade no interior
+//! saem de interpolar as curvas de bordo, e é isso que enviesa:
+//!
+//! | | só a família `u` | ⭐ **as duas famílias** |
+//! |---|---|---|
+//! | oráculo, gancho | `5,1°` | **`7,6°`** — mal se move |
+//! | ⛔ nós, gancho | `9,9°` | ⛔ **`19,2°`** — mais do dobro |
+//!
+//! *A nossa 1.ª família de linhas segue o campo; a 2.ª não fica ortogonal a ela.* É a
+//! assinatura da interpolação transfinita: ela casa com a fronteira e **enviesa no
+//! meio**. ⛔ E uma relaxação não cura isto — dezasseis rondas de ajuste de quadrado
+//! levaram o enviesamento mediano de `27°` para `26°` (ver [`crate::relax`]).
+//!
+//! # ⭐ A lei: o campo entra pelo LADO DIREITO da mesma iteração
+//!
+//! Em vez de pedir que `uv` seja a média dos vizinhos, pede-se que **cada passo até
+//! um vizinho valha o que o campo diz que ele vale**:
+//!
+//! ```text
+//!     minimizar   Σ  w_ij · | (uv_j − uv_i) − c·d_ij |²
+//!                i~j
+//! ```
+//!
+//! com `d_ij` = o deslocamento `p_j − p_i` **lido na moldura da cruz** e `c` uma
+//! similaridade global. A equação normal dá:
+//!
+//! ```text
+//!     uv_i = Σ w_ij (uv_j − c·d_ij) / Σ w_ij
+//! ```
+//!
+//! ⭐⭐ **Com `d = 0` isto é EXACTAMENTE a lei de hoje**, termo a termo — é por isso
+//! que ligar o campo não pode partir a garantia de Tutte por acidente, e é por isso
+//! que o gate de inércia é trivial de escrever.
+//!
+//! ⭐ **Os pesos continuam os de VALOR MÉDIO**, que são sempre positivos. ⛔ A
+//! formulação de manual usaria o Laplaciano cotangente (é o gradiente exacto da
+//! energia de Dirichlet), e ele **admite peso negativo num triângulo obtuso** — é
+//! aí que o teorema de Tutte deixa de valer. *Preferimos o operador que preserva a
+//! garantia e uma direita aproximada a um gradiente exacto sem garantia nenhuma;
+//! a rede que apanha a diferença é a contagem de triângulos virados.*
+//!
+//! # ⚠️ A escala e a rotação NÃO são escolhidas — saem da fronteira
+//!
+//! O campo diz a **forma** do gradiente; ele não sabe quantas unidades de domínio
+//! vale um metro, nem como o eixo `u` do polígono está rodado em relação à cruz.
+//! Esses dois números lêem-se de graça: sobre as arestas da **fronteira** (onde o
+//! `uv` já está preso) conhecem-se as duas pontas, e a similaridade `c` que melhor
+//! as liga sai em forma fechada — a mesma projecção complexa do
+//! [`crate::relax::nearest_square`]:
+//!
+//! ```text
+//!     c = Σ conj(d)·Δuv / Σ |d|²
+//! ```
+//!
+//! ⭐ *Nenhuma constante mágica entra neste ficheiro.*
+//!
+//! # ⚠️ A holonomia, e por que ela é MEDIDA e não assumida
+//!
+//! Uma cruz tem quatro braços; para somar deslocamentos ao longo de um patch é
+//! preciso **pentear** o campo — escolher, face a face, o braço que continua o do
+//! vizinho. Isso só é consistente se o patch não contiver singularidade no
+//! interior, que é o que o traçado promete (elas ficam nos CANTOS). ⛔ **Promessa
+//! não é medição**: [`Aligned::holonomy_deg`] conta o desacordo que sobra através
+//! das arestas interiores, e a sonda imprime-o. *Um patch com singularidade dentro
+//! aparece como um número grande, não como uma malha estranha sem explicação.*
+
+/// ⭐⭐ **DE ONDE NASCE O INTERIOR DE UM PATCH.**
+///
+/// ⚠️ **Um `bool` diria «alinhado: sim/não» e o caminho antigo ficaria sem nome.**
+/// Aqui os dois têm nome, e o antigo diz o que ele de facto faz — *interpola a
+/// fronteira* —, que é exactamente a frase que o diagnóstico de 2026-08-22 pôs em
+/// causa. ⛔ Ele fica porque é a testemunha de controlo de toda tabela desta cura,
+/// não porque alguém possa querer usá-lo.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Interior {
+    /// ⛔ **O caminho antigo:** o interior sai de interpolar as curvas de bordo
+    /// (Tutte harmónico). Enviesa no meio — ver o doc deste módulo.
+    FromBoundary,
+    /// ⭐ **O interior segue o campo cruzado** que o layout trouxe.
+    AlignedToField,
+}
+
+/// ⛔⛔ **O QUE SHIPA — e é o caminho ANTIGO, por MEDIÇÃO** (2026-08-23).
+///
+/// | orelha `d = 1,0` | fronteira | ⭐ campo |
+/// |---|---|---|
+/// | enviesamento p50 | `27°` | `27°` |
+/// | faces `> 60°` | 9 146 | 9 062 |
+/// | dobras | 170 | 161 |
+/// | detalhe perdido p95 | `0,219 %` | `0,189 %` |
+///
+/// ⇒ **Melhora três colunas por margens de ruído e não move o alvo.** ⛔ Ligar
+/// complexidade por isso seria pagar sem comprar.
+///
+/// ⚠️ **O MECANISMO da não-melhoria está medido, e ele aponta para OUTRA FASE:** a
+/// [`Aligned::holonomy_deg`] mede **29° a 44°** nas três fixturas. *O campo dentro de
+/// um patch não é combável* — há singularidade no interior dele, que é justamente o
+/// que o traçado promete não deixar. ⇒ pedir ao interior que siga um campo
+/// inconsistente não podia funcionar, e a dívida é do **F3**.
+///
+/// ⭐ **A canalização FICA e é o valor desta jornada:** o campo agora **chega** ao
+/// F5 (`PatchLayout::face_dir`), que era a primeira coisa que faltava. Quando o F3
+/// entregar patches combáveis, ligar isto é trocar uma constante.
+pub const INTERIOR: Interior = Interior::FromBoundary;
+
+/// Uma cruz tem quatro braços a 90°.
+const QUARTER: f32 = std::f32::consts::FRAC_PI_2;
+
+fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+}
+
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
+}
+
+fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1].mul_add(b[2], -(a[2] * b[1])),
+        a[2].mul_add(b[0], -(a[0] * b[2])),
+        a[0].mul_add(b[1], -(a[1] * b[0])),
+    ]
+}
+
+fn norm(a: [f32; 3]) -> f32 {
+    dot(a, a).sqrt()
+}
+
+fn unit(a: [f32; 3]) -> Option<[f32; 3]> {
+    let l = norm(a);
+    (l > 1.0e-12).then(|| [a[0] / l, a[1] / l, a[2] / l])
+}
+
+/// A componente de `v` no plano de `n`, normalizada.
+fn tangent(v: [f32; 3], n: [f32; 3]) -> Option<[f32; 3]> {
+    let d = dot(v, n);
+    unit([
+        d.mul_add(-n[0], v[0]),
+        d.mul_add(-n[1], v[1]),
+        d.mul_add(-n[2], v[2]),
+    ])
+}
+
+/// **O ALVO DE CADA PASSO, no domínio** — ver o doc do módulo.
+pub(crate) struct Aligned {
+    /// Por vértice local e por **posição em `nb[v]`**, o passo que o campo pede de
+    /// `v` até aquele vizinho, já em unidades de domínio.
+    ///
+    /// ⚠️ **Alinhado com `nb`, não indexado por vértice** — é o que permite ao laço
+    /// de Gauss–Seidel ler os dois em paralelo sem uma segunda busca.
+    pub(crate) step: Vec<Vec<[f32; 2]>>,
+    /// ⚠️ **O desacordo do campo penteado através das arestas interiores**, em graus
+    /// (o pior). Perto de zero = o patch é combável; grande = há singularidade
+    /// dentro dele, e a culpa do resultado é do **traçado**, não desta fase.
+    pub(crate) holonomy_deg: f32,
+}
+
+/// Constrói os alvos. `None` quando o patch não dá para pentear ou a fronteira não
+/// determina a similaridade — e ⚠️ **`None` é uma resposta**: o chamador fica com o
+/// achatamento harmónico de sempre.
+pub(crate) fn build(
+    tris: &[[u32; 3]],
+    tri_face: &[u32],
+    pos: &[[f32; 3]],
+    face_dir: &[[f32; 3]],
+    nb: &[Vec<(u32, f32)>],
+    uv: &[[f32; 2]],
+    fixed: &[bool],
+) -> Option<Aligned> {
+    if tris.is_empty() || tris.len() != tri_face.len() {
+        return None;
+    }
+    // ── A moldura crua de cada triângulo: a normal e a cruz projectada nela.
+    let mut normal: Vec<[f32; 3]> = Vec::with_capacity(tris.len());
+    let mut raw: Vec<[f32; 3]> = Vec::with_capacity(tris.len());
+    for (t, &f) in tris.iter().zip(tri_face) {
+        let (a, b, c) = (pos[t[0] as usize], pos[t[1] as usize], pos[t[2] as usize]);
+        let n = unit(cross(sub(b, a), sub(c, a)))?;
+        let d = tangent(*face_dir.get(f as usize)?, n)?;
+        normal.push(n);
+        raw.push(d);
+    }
+
+    // ── Vizinhança entre TRIÂNGULOS, pela aresta partilhada.
+    let mut share: std::collections::BTreeMap<(u32, u32), Vec<usize>> =
+        std::collections::BTreeMap::new();
+    for (i, t) in tris.iter().enumerate() {
+        for k in 0..3 {
+            let (a, b) = (t[k], t[(k + 1) % 3]);
+            share.entry((a.min(b), a.max(b))).or_default().push(i);
+        }
+    }
+    let mut adj: Vec<Vec<usize>> = vec![Vec::new(); tris.len()];
+    for owners in share.values() {
+        if owners.len() == 2 {
+            adj[owners[0]].push(owners[1]);
+            adj[owners[1]].push(owners[0]);
+        }
+    }
+
+    // ── ⭐ PENTEAR: cada triângulo escolhe o braço da cruz que continua o do pai.
+    //
+    // ⚠️ **Largura primeiro a partir do triângulo 0**, e a ordem é determinística
+    // porque `adj` foi construída a partir de um `BTreeMap`. *Uma travessia
+    // dependente de `HashMap` daria campos diferentes em corridas diferentes, e a
+    // malha do produto deixaria de ser reproduzível.*
+    let mut combed: Vec<Option<[f32; 3]>> = vec![None; tris.len()];
+    combed[0] = Some(raw[0]);
+    let mut queue = std::collections::VecDeque::from([0usize]);
+    let mut holonomy = 0.0f32;
+    while let Some(t) = queue.pop_front() {
+        let x = combed[t]?;
+        for &u in &adj[t] {
+            // A referência: o braço do pai trazido para o plano do vizinho.
+            let Some(r) = tangent(x, normal[u]) else {
+                continue;
+            };
+            let d = raw[u];
+            let (c, s) = (dot(d, r), dot(cross(normal[u], d), r));
+            // O múltiplo de 90° que leva `d` para junto de `r`.
+            let k = (s.atan2(c) / QUARTER).round();
+            let turned = turn(d, normal[u], k as i32);
+            // ⚠️ **O que SOBRA depois de virar é a holonomia.** Se o campo é
+            // combável, `turned` e `r` coincidem; o resto é a singularidade que o
+            // traçado deixou dentro do patch.
+            let left = dot(turned, r).clamp(-1.0, 1.0).acos().to_degrees();
+            holonomy = holonomy.max(left);
+            if combed[u].is_none() {
+                combed[u] = Some(turned);
+                queue.push_back(u);
+            }
+        }
+    }
+
+    // ── O passo alvo de cada aresta, lido na moldura da cruz e MEDIADO entre as
+    // duas faces que a partilham.
+    let mut acc: std::collections::BTreeMap<(u32, u32), ([f32; 2], f32)> =
+        std::collections::BTreeMap::new();
+    for (i, t) in tris.iter().enumerate() {
+        let Some(x) = combed[i] else {
+            continue;
+        };
+        let y = cross(normal[i], x);
+        for k in 0..3 {
+            let (a, b) = (t[k], t[(k + 1) % 3]);
+            let e = sub(pos[b as usize], pos[a as usize]);
+            let d = [dot(x, e), dot(y, e)];
+            let slot = acc.entry((a, b)).or_insert(([0.0; 2], 0.0));
+            slot.0[0] += d[0];
+            slot.0[1] += d[1];
+            slot.1 += 1.0;
+            let back = acc.entry((b, a)).or_insert(([0.0; 2], 0.0));
+            back.0[0] -= d[0];
+            back.0[1] -= d[1];
+            back.1 += 1.0;
+        }
+    }
+    let target = |a: u32, b: u32| -> [f32; 2] {
+        acc.get(&(a, b)).map_or([0.0; 2], |(v, n)| {
+            let inv = 1.0 / n.max(1.0);
+            [v[0] * inv, v[1] * inv]
+        })
+    };
+
+    // ── ⭐⭐ A SIMILARIDADE, lida da FRONTEIRA. Ver o doc do módulo.
+    let (mut num, mut den) = ([0.0f64; 2], 0.0f64);
+    for (v, list) in nb.iter().enumerate() {
+        if !fixed[v] {
+            continue;
+        }
+        for &(w, _) in list {
+            if !fixed[w as usize] {
+                continue;
+            }
+            let d = target(u32::try_from(v).ok()?, w);
+            let delta = [uv[w as usize][0] - uv[v][0], uv[w as usize][1] - uv[v][1]];
+            // `conj(d) · Δ`, em complexos.
+            num[0] += f64::from(d[0].mul_add(delta[0], d[1] * delta[1]));
+            num[1] += f64::from(d[0].mul_add(delta[1], -(d[1] * delta[0])));
+            den += f64::from(d[0].mul_add(d[0], d[1] * d[1]));
+        }
+    }
+    if den <= 1.0e-20 {
+        return None;
+    }
+    let c = [(num[0] / den) as f32, (num[1] / den) as f32];
+    if !c[0].is_finite() || !c[1].is_finite() || c[0].hypot(c[1]) <= 1.0e-12 {
+        return None;
+    }
+
+    // ── O passo de cada vizinhança, já multiplicado pela similaridade.
+    let mut step: Vec<Vec<[f32; 2]>> = Vec::with_capacity(nb.len());
+    for (v, list) in nb.iter().enumerate() {
+        let mut row = Vec::with_capacity(list.len());
+        for &(w, _) in list {
+            let d = target(u32::try_from(v).ok()?, w);
+            // `c · d`, em complexos.
+            row.push([
+                c[0].mul_add(d[0], -(c[1] * d[1])),
+                c[0].mul_add(d[1], c[1] * d[0]),
+            ]);
+        }
+        step.push(row);
+    }
+    Some(Aligned {
+        step,
+        holonomy_deg: holonomy,
+    })
+}
+
+/// `d` rodado de `k` quartos de volta em torno de `n`.
+fn turn(d: [f32; 3], n: [f32; 3], k: i32) -> [f32; 3] {
+    let p = cross(n, d);
+    match k.rem_euclid(4) {
+        1 => p,
+        2 => [-d[0], -d[1], -d[2]],
+        3 => [-p[0], -p[1], -p[2]],
+        _ => d,
+    }
+}
+
+/// **QUANTOS TRIÂNGULOS VIRARAM no domínio** — a rede desta cura.
+///
+/// ⛔ **Ela existe porque a direita nova pode empurrar um vértice para fora do
+/// fecho dos vizinhos**, e aí o embutimento deixa de ser o de Tutte: a garantia
+/// «sem dobras» é do problema harmónico puro, não deste. ⚠️ *Não se assume que a
+/// garantia sobrevive — conta-se.*
+///
+/// A comparação é com o sinal da MAIORIA, não com um sinal escolhido: o polígono
+/// pode ser percorrido nos dois sentidos, e fixar um deles daria «todos virados»
+/// numa metade dos casos.
+pub(crate) fn flipped(tris: &[[u32; 3]], uv: &[[f32; 2]]) -> usize {
+    let mut pos = 0usize;
+    let mut neg = 0usize;
+    for t in tris {
+        let (a, b, c) = (uv[t[0] as usize], uv[t[1] as usize], uv[t[2] as usize]);
+        let area = (b[0] - a[0]).mul_add(c[1] - a[1], -((b[1] - a[1]) * (c[0] - a[0])));
+        if area > 0.0 {
+            pos += 1;
+        } else if area < 0.0 {
+            neg += 1;
+        }
+    }
+    pos.min(neg)
+}

@@ -13,6 +13,7 @@ use ph2d_mesh::{Face, Mesh};
 use ph2d_quantize::Quantization;
 use ph2d_trace::PatchLayout;
 
+use crate::aligned::Interior;
 use crate::fan::{resample_by, segment};
 use crate::param::PatchParam;
 use crate::patch::{Chains, Chains2, Domain, build_grid, fill_rectangle, side_uv};
@@ -113,6 +114,7 @@ pub fn fill(
         quant,
         smoothing,
         crate::relax::SQUARE_ROUNDS,
+        crate::aligned::INTERIOR,
     )
 }
 
@@ -135,6 +137,7 @@ pub fn fill_with(
     quant: &Quantization,
     smoothing: usize,
     square: usize,
+    interior: crate::aligned::Interior,
 ) -> Result<(Mesh, FillReport), FillError> {
     // ⭐⭐ **A PRÉ-CONDIÇÃO, e ela é a mais barata que existe.** Ver
     // [`check_arcs_belong_to`].
@@ -189,6 +192,7 @@ pub fn fill_with(
     let mut flattened = 0usize;
     let (mut sampled, mut misses) = (0usize, 0usize);
     let (mut flatten_rounds, mut flatten_residual) = (0usize, 0.0f32);
+    let (mut holonomy, mut fell_back) = (0.0f32, 0usize);
 
     // ── 2. Cada patch vira o seu leque.
     for (p, sides) in layout.side_arcs.iter().enumerate() {
@@ -295,17 +299,31 @@ pub fn fill_with(
             mesh_sides.push(chain);
             mesh_tau.push(tau);
         }
-        let param = PatchParam::build(indexed, &patch_faces[p], &mesh_sides, &mesh_tau);
+        // ⭐ **O CAMPO, se o layout o trouxe** — ver [`crate::aligned`]. Um layout
+        // sem campo (gates que chamam `decompose` direto) dá `None`, e o achatamento
+        // volta ao harmónico de sempre.
+        let dir = (interior == Interior::AlignedToField && !layout.face_dir.is_empty())
+            .then_some(layout.face_dir.as_slice());
+        // ⭐⭐⭐ **QUANTOS SEGMENTOS cada lado carrega** — a proporção que o domínio
+        // tem de respeitar. Ver [`crate::param::corners_for_sides`].
+        let seg: Vec<u32> = (0..n)
+            .map(|i| sides[i].iter().map(|&(a, _)| quant.arc[a as usize]).sum())
+            .collect();
+        let param = PatchParam::build(indexed, &patch_faces[p], &mesh_sides, &mesh_tau, &seg, dir);
         if param.is_some() {
             flattened += 1;
         }
         if let Some(q) = param.as_ref() {
             flatten_rounds = flatten_rounds.max(q.rounds);
             flatten_residual = flatten_residual.max(q.residual);
+            holonomy = holonomy.max(q.holonomy);
+            fell_back += usize::from(q.fell_back);
         }
         let dom = Domain {
             param: param.as_ref(),
-            side_uv: (0..n).map(|i| side_uv(layout, quant, sides, i)).collect(),
+            side_uv: (0..n)
+                .map(|i| side_uv(layout, quant, sides, i, &seg))
+                .collect(),
             tally: std::cell::Cell::new((0, 0)),
         };
 
@@ -468,6 +486,8 @@ pub fn fill_with(
     report.sample_misses = misses;
     report.flatten_rounds = flatten_rounds;
     report.flatten_residual = flatten_residual;
+    report.holonomy = holonomy;
+    report.fell_back = fell_back;
     Ok((mesh, report))
 }
 
@@ -647,8 +667,11 @@ fn measure(
         sample_misses: 0,
         flatten_residual: 0.0,
         flatten_rounds: 0,
+        holonomy: 0.0,
+        fell_back: 0,
         edge_long_prov,
         shape: crate::shape::quad_shape(mesh),
+        skew_prov: crate::shape::skew_by_provenance(mesh, prov),
         // ⭐⭐ **A CONTAGEM DE DOBRAS entra no relatório da fase**, e não numa
         // sonda. Ela é o defeito que o artista fotografa e o único campo, com os
         // dois de aresta, que uma malha de posições embaralhadas não reproduz.

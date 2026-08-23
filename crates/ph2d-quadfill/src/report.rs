@@ -194,6 +194,30 @@ pub struct FillReport {
     /// afunda-se na mediana de dezenas de milhares. E o defeito da foto é exactamente
     /// esse: faces esmagadas em faixas, numa malha cujos extremos estão bem.
     pub shape: crate::shape::QuadShape,
+    /// ⚠️ **O pior desacordo do campo PENTEADO dentro de um patch**, em graus — ver
+    /// [`crate::aligned`]. Perto de zero = os patches são combáveis; grande = há
+    /// singularidade **dentro** de um deles, e a dívida é do **traçado**.
+    ///
+    /// ⭐ *É a régua que impede culpar esta fase por um patch que o F3 entregou mal.*
+    pub holonomy: f32,
+    /// ⭐ **Quantos patches RECUARAM para o achatamento harmónico** porque o
+    /// alinhado virou triângulos no domínio — ver [`crate::aligned::flipped`].
+    ///
+    /// ⛔ **Sem esta contagem, «o alinhamento não mudou nada» não distingue *a cura
+    /// não funciona* de *a cura não correu*.** É a mesma lição do
+    /// [`Self::flattened`], um nível abaixo.
+    pub fell_back: usize,
+    /// ⭐⭐⭐ **O ENVIESAMENTO MEDIANO por FASE de origem** — ver [`Provenance`].
+    ///
+    /// ⛔ **Ela existe porque duas curas teoricamente correctas não moveram o
+    /// número** (2026-08-22): pôr o campo no interior do achatamento, e pôr os lados
+    /// do domínio na proporção dos segmentos. As duas mudaram o enviesamento mediano
+    /// da orelha de `27°` para `27°`.
+    ///
+    /// ⚠️ **Quando duas hipóteses boas falham, o defeito não está onde se pensa** —
+    /// e a resposta honesta é parar de supor e perguntar à malha *onde* ele mora. A
+    /// face é classificada pela proveniência **dominante** dos quatro cantos dela.
+    pub skew_prov: [f32; Provenance::COUNT],
 }
 
 /// **QUANTAS FACES DA SAÍDA APONTAM CONTRA A SUPERFÍCIE POR BAIXO DELAS.**

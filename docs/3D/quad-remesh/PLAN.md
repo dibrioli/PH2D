@@ -3134,3 +3134,119 @@ artista lê **diz o enviesamento**. Dois gates verdes guardam isso —
 | culpar a forma dos nossos patches | os dele são 10 triângulos com espalhamento `18×` | esta secção |
 | sonda de campo com **uma** família | um quad esmagado **passa** nela | [`sculpt3d_field_follow.rs`](../../../shells/desktop/src/sculpt3d_field_follow.rs) |
 | `a_rhombus_becomes_a_square` como prova da lei | é **tautologia**: `h·iᵏ` é quadrado para qualquer `h` | [`relax_tests.rs`](../../../crates/ph2d-quadfill/src/relax_tests.rs) |
+
+---
+
+## 4-sexiestricies — ⛔⛔ **DUAS CURAS CERTAS, ZERO MOVIMENTO — e a régua que finalmente localizou o defeito**
+
+> **2026-08-23.** A secção anterior nomeou a causa do enviesamento: *o interior de um
+> patch nasce de interpolar a fronteira, e a 2.ª família de linhas não fica ortogonal
+> à 1.ª.* Esta secção implementa a cura que essa frase pede — e regista que ela **não
+> funcionou**, com o mecanismo.
+
+### ⭐ O que foi construído
+
+**1. O interior segue o campo** ([`aligned.rs`](../../../crates/ph2d-quadfill/src/aligned.rs)).
+O achatamento de Tutte pede que cada `uv` interior seja a média ponderada dos
+vizinhos — um mapa **harmónico**, que conhece a fronteira e mais nada. A lei nova
+pede que **cada passo até um vizinho valha o que o campo diz que ele vale**:
+
+```text
+    minimizar  Σ w_ij · | (uv_j − uv_i) − c·d_ij |²   ⇒   uv_i = Σ w_ij (uv_j − c·d_ij) / Σ w_ij
+```
+
+⭐ Com `d = 0` isto é a lei antiga **termo a termo** — a inércia é demonstrável, não
+prometida. Os pesos continuam os de valor médio (sempre positivos, garantia de Tutte
+intacta), e a rede é a **contagem de triângulos virados** no domínio.
+
+⚠️ **Nenhuma constante mágica:** a escala e a rotação entre a cruz e os eixos do
+domínio saem em forma fechada da **fronteira já presa** (`c = Σ conj(d)·Δuv / Σ |d|²`).
+
+⭐⭐ **E o campo passou a CHEGAR ao F5** — [`PatchLayout::face_dir`](../../../crates/ph2d-trace/src/patches.rs).
+Ele viaja no layout e não num parâmetro novo, porque *um parâmetro pode ser esquecido
+em qualquer um dos dezoito sítios que chamam o F5; quem tem o layout tem, por
+construção, o campo que o gerou.*
+
+**2. O domínio na proporção dos segmentos** ([`corners_for_sides`](../../../crates/ph2d-quadfill/src/param.rs)).
+O polígono era **regular**: todo lado com o mesmo comprimento, independentemente de
+quantos quads carrega. Um patch de 4 lados com `13 × 6` segmentos recebia `13`
+divisões numa direcção e `6` na outra sobre um quadrado `1 × 1` — **toda célula
+nascia com aspecto `2,17` antes de tocar na superfície.**
+
+### ⛔ A tabela — orelha, `d = 1,0`, 78 403 quads
+
+| | enviesamento p50 | `> 60°` | dobras | detalhe p95 |
+|---|---|---|---|---|
+| fronteira (o que shipa) | **`27°`** | 9 146 | 170 | `0,219 %` |
+| ⭐ interior pelo campo | **`27°`** | 9 062 | 161 | `0,189 %` |
+| domínio proporcional | **`27°`** | 9 146 | 170 | `0,219 %` |
+
+⛔ **Nem uma nem outra move o alvo.** E a proporcional **piora a cauda do gancho**
+(aspecto máximo `22,5 → 49,0`; `> 4×` de `581 → 658`). ⇒ as duas ficam no código,
+**desligadas, com a tabela ao lado**.
+
+### ⭐⭐⭐ A régua que faltava: **onde** mora o enviesamento
+
+Duas hipóteses boas falharam ⇒ o modelo estava errado. A resposta é parar de supor e
+perguntar à malha. [`skew_by_provenance`](../../../crates/ph2d-quadfill/src/shape.rs)
+dá a mediana por **fase de origem** dos cantos de cada face — orelha, `d = 1,0`:
+
+```text
+    canto (F3) 0°    arco 26°    centro (F3) 0°    raio 56°    grade 26°
+```
+
+⭐⭐ **Está em TODA a parte, e a grade interior mede o mesmo que o resto.** Não é o
+leque, não é a costura, não é um caso raro. ⇒ *isso exclui de uma vez toda a família
+de hipóteses «uma construção local está errada»* — que é a família a que as duas
+curas acima pertenciam.
+
+### ⭐ E o alisamento foi ILIBADO, com número
+
+A hipótese «é o Laplaciano que enviesa» é natural (ele move vértices para o centróide
+e podia cisalhar). Medido na orelha:
+
+| rondas | grade | raio | dobras | aspecto p99 |
+|---|---|---|---|---|
+| 0 | `27°` | `75°` | 118 | `13,9` |
+| 6 (o que shipa) | `26°` | `56°` | 161 | `7,5` |
+| 20 | `25°` | `37°` | 57 | **`4,7`** |
+
+⇒ **ele REPARA e não causa** — a mesma conclusão que o `param.rs` já registava para
+as dobras, agora também para o ângulo. ⚠️ E `20` rondas são interessantes por si
+(dobras `161 → 57`, `> 4×` de `3 665 → 2 299`) ao preço de `14 s` contra `5 s`.
+**Não ligado: o alvo continua parado, e o relógio é do artista.**
+
+### ⭐⭐⭐ O achado que aponta a próxima fase: **a HOLONOMIA**
+
+[`Aligned::holonomy_deg`](../../../crates/ph2d-quadfill/src/aligned.rs) mede o
+desacordo que sobra ao **pentear** o campo dentro de um patch. Se o patch não contém
+singularidade — que é o que o traçado promete —, ele é ~`0°`. Medido:
+
+| fixtura | holonomia |
+|---|---|
+| orelha | **`29°`** |
+| gancho | **`44°`** |
+| enrugada | **`16°`** |
+
+⛔ **O campo dentro dos nossos patches NÃO é combável.** ⇒ pedir ao interior que siga
+um campo inconsistente não podia funcionar, e a dívida é do **F3** — o traçado está a
+deixar singularidades **dentro** dos patches em vez de as pôr nos cantos.
+
+⚠️ **É um MAX sobre arestas, não uma mediana** — um único ponto mau dá `29°`. A
+próxima medição tem de dar a distribuição e dizer **quantos** patches estão sujos.
+
+### ⇒ O próximo passo, com endereço
+
+**Os patches têm de conter as singularidades nos CANTOS.** Enquanto isso não for
+verdade, nenhuma lei sobre o interior de um patch pode ser aplicada — o campo que ela
+seguiria não existe lá dentro de forma consistente. É o mesmo F3 que a §4-quinquiestricies
+já tinha na fila pelo patch de perímetro 520 %.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| interior alinhado ao campo | não move o alvo; holonomia explica porquê | [`aligned.rs`](../../../crates/ph2d-quadfill/src/aligned.rs) |
+| domínio ∝ segmentos | não move o alvo e piora a cauda do gancho | [`param.rs`](../../../crates/ph2d-quadfill/src/param.rs) |
+| «é o alisamento que enviesa» | a `0` rondas é **pior** | esta secção |
+| `SMOOTHING_ROUNDS = 20` | compra cauda e dobras, paga `2,8×` o relógio, alvo parado | esta secção |

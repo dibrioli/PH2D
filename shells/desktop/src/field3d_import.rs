@@ -107,7 +107,9 @@ pub(crate) fn field3d_import(toasts: &mut ph2d_editor::ToastQueue) {
     for f in MeshFormat::ALL {
         dialog = dialog.add_filter(f.extension().to_uppercase(), &[f.extension()]);
     }
-    let Some(path) = dialog.pick_file() else {
+    // ⚠️ **Pela PORTA** (`crate::modal`), pela razão escrita no irmão do export: o diálogo congela
+    // o loop, e sem declarar isso a mensagem escrita a seguir vive um quadro só.
+    let Some(path) = crate::modal::pick_file(dialog) else {
         return;
     };
 

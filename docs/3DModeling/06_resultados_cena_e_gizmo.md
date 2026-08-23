@@ -2880,6 +2880,90 @@ vai mostrar, que é o que se queria.
 
 ---
 
+## §38 — W37: a mensagem vivia UM quadro — o diálogo que a precede congela o relógio (22/08)
+
+> Enio, no smoke da W36: *"não vejo em nenhum lugar a mensagem"*. Ela **estava** a ser escrita e
+> **estava** a ser pintada. Vivia 16 ms. ⛔ E o defeito não é do módulo de modelagem: é da casa, e
+> atinge **toda** mensagem escrita depois de um diálogo de arquivo.
+
+### §38.1 — O mecanismo
+
+```text
+quadro N:   wall_dt = agora − início do quadro anterior     (render_loop, linha 1088)
+            toasts.tick(wall_dt)                             ← envelhece o que já existia
+            …
+            [ DIÁLOGO MODAL ABERTO — o loop CONGELA 20 s ]
+            toast criado, idade 0                            ← pintado 1× no fim deste quadro
+quadro N+1: wall_dt ≈ 20 s  →  toasts.tick(20 s)            ⛔ idade > TTL 3 s → MORRE
+```
+
+⚠️ **O `wall_dt` mede o quadro INTEIRO, e o diálogo acontece dentro dele.** A mensagem que devia
+durar 3 segundos aparece num quadro e desaparece. Da cadeira, isso é *não aparecer* — e é por isso
+que o sintoma do Enio é literalmente exato.
+
+### §38.2 — ⭐ Um número a responder DUAS perguntas
+
+| pergunta | quem lê | o congelamento conta? |
+|---|---|---|
+| *quanto durou o último quadro?* | medidor de fps · acumulador da sim | **sim** — foi mesmo esse tempo |
+| *quanto a UI ANIMOU?* | os toasts · `hero.tick_motion` | ⛔ **não** — nada se moveu, a tela estava parada |
+
+⚠️ **A nota do `render_loop` (linha 1082) está certa sobre o caso que ela curou** — o `ToastQueue`
+contava **quadros**, e um toast de "3 s" durava 6 s a 30 fps — e foi ela que unificou o relógio. O
+que ela não previu foi o **congelamento**: aí as duas perguntas divergem.
+
+⭐ A cura **não é um segundo relógio nem um teto mágico**: é a mesma medição com a parte parada
+**nomeada por quem a causou**. `crate::modal::note_stall` declara; `chrome_dt(wall_dt, stall)`
+desconta; o medidor de fps e o `fixed_step.advance` continuam a ler o `wall_dt` inteiro (e a sim já
+se protegia sozinha — ela limita os sub-passos e larga o excesso).
+
+### §38.3 — ⚠️ A porta, e o que ela ainda não cobre
+
+Um `rfd::FileDialog` aberto à mão volta a congelar **sem declarar**. Por isso ele passa por
+`modal::save_file` / `modal::pick_file`, com gate (`every_field3d_modal_goes_through_the_door`).
+
+⛔⛔ **MEDIDO: há 25 chamadas de `rfd::FileDialog` em 12 arquivos deste shell.** Esta wave liga as
+**duas** do módulo. As outras **23** continuam a perder a mensagem que escrevem a seguir:
+
+| arquivo | chamadas |
+|---|---|
+| `render_loop/mod.rs` | 12 |
+| `forwarding.rs` · `render_loop/tokens_bridge_dtcg.rs` | 2 cada |
+| `image_export.rs` · `render_loop/image_edit.rs` · `render_loop/painter_bridge_assets.rs` · `sculpt3d_export.rs` · `sculpt3d_import.rs` · `sheet_export.rs` · `vec_text.rs` | 1 cada |
+
+⚠️ **O gate NÃO foi alargado a elas de propósito:** seria entregar ao integrador um vermelho sobre
+código de outras linhas. *O defeito tem endereço, a porta existe, e a próxima linha que tocar num
+desses arquivos tem uma linha para escrever.*
+
+### §38.4 — Provas de mutação, e a que SOBREVIVEU primeiro
+
+| mutação | gate que ficou vermelho |
+|---|---|
+| o relógio do chrome volta a cobrar o congelamento | `a_frozen_loop_does_not_age_the_message_it_was_about_to_show` |
+| a porta deixa de **declarar** o congelamento | `the_door_times_what_goes_through_it` |
+| o congelamento fica **pousado** (o `take` não zera) | `the_stall_is_taken_once_and_then_it_is_gone` |
+| o **loop** volta a andar com o `wall_dt` inteiro | `the_chrome_clock_reads_the_discounted_dt` |
+| o export volta a abrir o diálogo **fora** da porta | `every_field3d_modal_goes_through_the_door` |
+
+⭐ **A segunda sobreviveu na primeira corrida**, e o achado é o de sempre um nível abaixo: com o
+cronómetro **dentro** do `save_file`, tirá-lo de lá deixava tudo verde — os gates chamavam
+`note_stall` à mão, e a **porta**, que é a única coisa que liga o diálogo ao relógio, não era
+exercida por nenhum. Um `rfd::FileDialog` não abre num teste, mas *"o que passa por aqui é
+cronometrado"* abre: o cronómetro saiu para um `timed(f)` e ganhou gate. **O que sobra sem gate é
+uma linha por porta, e ela não tem lógica nenhuma.**
+
+⚠️ E o gate da porta reprovou primeiro sobre o **próprio comentário** que explica a regra — o texto
+que diz *"nunca chame isto direto"* contém, por construção, exactamente a agulha. *Um gate que lê a
+prosa sobre a lei em vez do código que a obedece reprova quem a documenta.* Comentários fora.
+
+### §38.5 — ⏸️ O que fica aberto
+
+- ⏸️ As **23** chamadas das outras linhas (tabela acima).
+- ⏸️ O `ph2d_editor::Toast` não sabe distinguir *"mensagem de resultado"* de *"aviso passageiro"*: um
+  resultado de exportação talvez devesse durar mais do que 3 s, ou ficar até ser lido. É produto.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
@@ -2895,6 +2979,11 @@ vai mostrar, que é o que se queria.
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W37 (§38): a mensagem deixou de viver UM quadro** — o diálogo de arquivo congela o loop, e o
+  `wall_dt` do quadro seguinte cobrava esse congelamento ao relógio do chrome, matando o toast antes
+  de alguém o ver. ⛔ **É defeito da CASA:** 25 chamadas de diálogo em 12 arquivos, e esta wave liga
+  as 2 do módulo. ⏸️ Fica: as outras **23** (tabela no §38.3), e se um resultado de exportação devia
+  durar mais do que os 3 s de um aviso passageiro (produto)
 - ✅ **W36 (§37): a exportação diz o TAMANHO da peça** — e havia **dois** números disponíveis, não
   um: o bordo é **andaime** (cúbico e conservador; até **28×** o eixo curto de uma peça fina), e o
   que se diz é a caixa da **malha que saiu**. ⛔ Numa esfera os dois coincidem, então uma conferência

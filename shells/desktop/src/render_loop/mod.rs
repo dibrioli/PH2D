@@ -1092,13 +1092,24 @@ impl crate::App {
         let now = Instant::now();
         let wall_dt = now.duration_since(self.last_frame).as_secs_f64();
         self.last_frame = now;
+        // ⭐ **O tempo em que um DIÁLOGO MODAL congelou o loop não é tempo de animação.** O
+        // `wall_dt` acima mede o quadro INTEIRO, e um `rfd::FileDialog` acontece *dentro* dele — de
+        // modo que o quadro seguinte cobrava ao chrome os 20 s em que a tela esteve parada. O
+        // sintoma, com as palavras do Enio (2026-08-22): *"não vejo em nenhum lugar a mensagem"* —
+        // o toast escrito logo depois do diálogo era pintado UM quadro e morria no `tick` seguinte.
+        //
+        // ⚠️ **Não é um segundo relógio nem um teto mágico:** é a MESMA medição com a parte parada
+        // nomeada por quem a causou (`crate::modal`). O medidor de fps e o acumulador da sim
+        // continuam a ler o `wall_dt` inteiro, porque para eles o tempo passou mesmo.
+        let ui_dt = crate::modal::chrome_dt(wall_dt, crate::modal::take_stall());
 
         zen.tick();
-        // ⚠️ **A UI VIVA anda aqui, com o MESMO `wall_dt`** — um segundo relógio para o chrome seria
-        // a segunda resposta a *"quanto durou o último quadro?"*, e a que o artista vê seria a
-        // errada. Sem consumidor de `hover_t` a chamada é neutra: o mapa fica vazio.
+        // ⚠️ **A UI VIVA anda aqui, com o MESMO relógio dos toasts** — um segundo `Instant::now()`
+        // para o chrome seria a segunda resposta a *"quanto durou o último quadro?"*, e a que o
+        // artista vê seria a errada. O `ui_dt` **não** é esse segundo relógio: é o `wall_dt` com a
+        // parte CONGELADA descontada, e as duas leis (animar · medir) leem a mesma medição. Sem consumidor de `hover_t` a chamada é neutra: o mapa fica vazio.
         if let Some(hero) = hero_screen.as_mut() {
-            hero.tick_motion(wall_dt);
+            hero.tick_motion(ui_dt);
             // ⚠️ **O zoom do canvas é publicado AQUI, e a posição é load-bearing:** depois do
             // `tick_motion` (que é quem anda o relógio deste quadro) e **antes** de qualquer
             // extract, pintura, gizmo ou picking. A câmera é lida por ~90 sítios; publicá-la no
@@ -1109,7 +1120,7 @@ impl crate::App {
         }
         let prev_toasts = toasts.len();
         #[allow(clippy::cast_possible_truncation)]
-        toasts.tick(wall_dt as f32);
+        toasts.tick(ui_dt as f32);
         if toasts.len() != prev_toasts {
             self.title_dirty = true;
         }

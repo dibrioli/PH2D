@@ -144,10 +144,12 @@ pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::Toast
         for f in MeshFormat::ALL {
             dialog = dialog.add_filter(f.extension().to_uppercase(), &[f.extension()]);
         }
-        let Some(path) = dialog
-            .set_file_name(format!("model.{}", MeshFormat::Obj.extension()))
-            .save_file()
-        else {
+        // ⚠️ **Pela PORTA** (`crate::modal`), nunca `dialog.save_file()` direto: o diálogo congela o
+        // loop, e o quadro seguinte cobrava esse congelamento ao relógio do chrome — matando este
+        // mesmo toast antes de ele ser visto. Gate: `every_field3d_modal_goes_through_the_door`.
+        let Some(path) = crate::modal::save_file(
+            dialog.set_file_name(format!("model.{}", MeshFormat::Obj.extension())),
+        ) else {
             return;
         };
         // ⚠️ Uma extensão desconhecida **não vira OBJ em silêncio**: o arquivo abriria como

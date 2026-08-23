@@ -249,6 +249,7 @@ mod live_memo_probe;
 mod mask_smoke;
 /// `Merge to Layers` — instala no Painter o documento que a fusão produziu (plano Sprite 18 W10).
 mod merge_layers;
+mod modal;
 mod morph_fade_smoke;
 mod morph_live;
 mod motion_autofix_smoke;

@@ -78,6 +78,13 @@ pub(crate) fn ecs_bridge(
         if s.doc != cooked {
             s.doc = cooked;
         }
+        // ⭐⭐ **A peça de um documento novo nasce ENQUADRADA** (W46) — e é AQUI, depois de o
+        // documento estar cozido, porque enquadrar precisa do bordo dele. O pedido fica de pé até
+        // ser servido: no quadro do load o módulo pode nem estar armado.
+        if crate::field3d_smoke::wants_frame() && crate::field3d_input::frame_the_part(s) {
+            crate::field3d_smoke::served_frame();
+            s.manual = true;
+        }
     });
     picked.or(born)
 }

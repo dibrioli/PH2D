@@ -231,6 +231,10 @@ impl crate::App {
         if solo {
             crate::field3d_smoke::ask_open_panel_if_part();
         }
+        // ⭐ **E a peça nasce ENQUADRADA** (W46), abra o painel agora ou daqui a uma hora: o pedido
+        // fica de pé até a ponte o servir, e ela só corre com o módulo armado. ⚠️ Sem `solo`, de
+        // propósito — enquadrar não disputa o canvas com ninguém.
+        crate::field3d_smoke::ask_frame_the_part();
         self.timeline_insert_key = false;
         self.timeline_reveal_after_apply = false;
         self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos

@@ -157,6 +157,33 @@ thread_local! {
     static PART_QUESTION: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
+/// ⭐ **A peça de um documento novo nasce ENQUADRADA** (W46).
+///
+/// ⚠️ **Este pedido NÃO se tira até ser servido**, ao contrário dos irmãos, e a diferença é o
+/// instante: enquadrar precisa do documento **cozido**, e no quadro do load ele ainda não existe (o
+/// módulo pode nem estar armado). Um `take` normal deitaria o pedido fora no primeiro quadro e a
+/// peça nasceria onde a câmera anterior calhasse — que é o defeito que a wave existe para fechar.
+///
+/// ⚠️ E ele **sobrepõe-se à vista lembrada** da W43, de propósito: a câmera lembrada é do documento
+/// anterior, e um documento novo merece o próprio enquadramento.
+pub(crate) fn ask_frame_the_part() {
+    FRAME.with(|c| c.set(true));
+}
+
+/// `true` enquanto houver um pedido por servir. **Quem serve chama [`served_frame`]**.
+pub(crate) fn wants_frame() -> bool {
+    FRAME.with(std::cell::Cell::get)
+}
+
+/// O pedido foi servido — a peça foi de facto enquadrada.
+pub(crate) fn served_frame() {
+    FRAME.with(|c| c.set(false));
+}
+
+thread_local! {
+    static FRAME: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// ⚠️ Só para gates: repõe as portas de abertura, para que dois gates no mesmo processo não se
 /// contaminem pela ordem em que correram.
 #[cfg(test)]
@@ -164,6 +191,7 @@ pub(crate) fn forget_open_panel_request() {
     PENDING.with(|p| p.set(true));
     ASKED.with(|c| c.set(false));
     PART_QUESTION.with(|c| c.set(false));
+    FRAME.with(|c| c.set(false));
 }
 
 thread_local! {

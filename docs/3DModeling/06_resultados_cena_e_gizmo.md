@@ -3641,8 +3641,106 @@ deriva-se (`cargo test -- --list`), não se escreve de memória.*
 
 ---
 
+## §47 — W46: a peça nasce ENQUADRADA — e o `Home` não sabia onde ela estava (23/08)
+
+> O ⏸️ que a W45 deixou uma hora antes: *"o painel abre, mas **não enquadra** a peça"*.
+
+A W45 fez o painel abrir com o projeto. ⚠️ **Mas uma peça longe da origem abre fora do quadro** — e
+aí a tela volta a ficar vazia, que é **exactamente o defeito que a W45 existiu para curar**, com
+outra roupa. *Uma cura que deixa o mesmo sintoma alcançável por outro caminho está meia feita.*
+
+### §47.1 — ⛔ E o `Home` não era a saída — eu disse ao Enio que era
+
+No relatório de smoke da W45 escrevi *"aperte Home para centrar"*. **Está errado**, e a medição
+mostrou-o:
+
+```rust
+pub(crate) fn home(cam: &mut Orbit) {
+    …
+    cam.target = [0.0; 3];   // ⇐ a ORIGEM, não a peça
+}
+```
+
+⇒ uma peça a `x = 3` continua fora do quadro **depois** da tecla. *A tecla que existe para desfazer
+«estou perdido» era a única que não sabia onde a peça estava.*
+
+⭐ **A lei é a da referência, e nós tínhamos herdado a tecla e metade do significado:** no Blender,
+`Home` é *View All* — enquadrar tudo, não repor um ângulo fixo. Agora o `Home` faz as duas coisas, em
+ordem: repõe a orientação **e** enquadra.
+
+### §47.2 — ⭐ O bordo não é calculado aqui
+
+`ph2d_field_eval::bounds::bounding_ball` — **o mesmo** que o exportador usa desde a W33. *Duas
+réguas para a mesma grandeza é a doença que este módulo já nomeou três vezes*, e a esfera é a moeda
+certa porque a composição não a estraga (§34.2).
+
+### §47.3 — A FOLGA foi MEDIDA, e `1,00` não chega
+
+Critério: *nenhum pixel da peça toca a moldura*. Varredura sobre o **pior caso** — uma esfera
+sozinha, onde o bordo **é** a silhueta:
+
+| folga | pixels na moldura | fração do quadro |
+|---:|---:|---:|
+| 0,90 | 252 | 79,3 % |
+| 1,00 | **144** | 66,4 % |
+| 1,05 | 72 | 60,5 % |
+| **1,10** | **0** | **54,6 %** |
+| 1,40 | 0 | 32,3 % |
+| 1,80 | 0 | 19,0 % |
+
+⭐ **`1,00` não chega, e a razão é a lente:** ela é convergente, e o lado da esfera virado para a
+câmera projeta maior do que o raio. Um bordo conservador não compensa isso — ele é conservador no
+**mundo**, e o corte acontece na **projeção**.
+
+⚠️ **A varredura só disse isto depois de a fixtura mudar.** A primeira usava a união de duas esferas
+e deu **zero pixels na moldura em TODAS as folgas, `0,90` incluída** — porque a união de duas bolas
+é muito menor do que a bola que a contém. *Uma fixtura que concorda não prova nada* — a terceira vez
+nesta linha, e a segunda hoje.
+
+### §47.4 — ⚠️ O pedido de enquadrar NÃO se tira até ser servido
+
+Os irmãos em `field3d_smoke_requests` são eventos (`Cell::take`). Este não: enquadrar precisa do
+documento **cozido**, e no quadro do load ele ainda não existe — o módulo pode nem estar armado. Um
+`take` deitaria o pedido fora no primeiro quadro e a peça nasceria onde a câmera anterior calhasse.
+*O instante em que um pedido pode ser servido faz parte da forma dele.*
+
+⚠️ E ele **sobrepõe-se à vista lembrada** da W43, de propósito: a câmera lembrada é do documento
+anterior, e um documento novo merece o próprio enquadramento.
+
+### §47.5 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | a folga volta a `1,00` (a peça fica cortada) | `the_chosen_margin_cuts_nothing_and_the_one_below_it_does` |
+| 2 | a folga foge para `5,00` (não corta, mas a peça vira um ponto) | *(o mesmo)* |
+| 3 | enquadrar passa a mexer na orientação | `framing_never_touches_the_orientation` |
+| 4 | enquadrar deixa o alvo onde estava | `home_finds_a_part_that_is_far_from_the_origin` |
+
+⚠️ A mutação 2 é a metade que separa *"o número funciona"* de *"qualquer número funcionaria"*: sem a
+barra de cobertura, um `FRAME_MARGIN` de 5 passa com a peça a ocupar 2 % do quadro.
+
+### §47.6 — ⏸️ O que fica aberto
+
+- ⏸️ Enquadrar a **seleção** (o `.` do Blender), e não sempre a peça inteira.
+- ⏸️ O enquadramento não é **animado**: ele salta. O app tem motor de animação de UI; usá-lo aqui é
+  uma decisão de produto, não uma ausência.
+- ⏸️ `MAX_HALF_EXTENT = 4,0` (o alcance da marcha) **trunca** o enquadramento de uma peça enorme: ela
+  abre cortada e nada o diz. O limite nomeia o seu recurso e está certo; o que falta é a voz.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W46 (§47): a peça nasce ENQUADRADA, e o `Home` passou a encontrá-la** — o ⏸️ que a W45 deixou
+  uma hora antes. ⚠️ Uma peça longe da origem abria **fora do quadro**, e a tela voltava a ficar
+  vazia: *o mesmo sintoma que a W45 existiu para curar, por outro caminho*. ⛔ E o `Home` **não** era
+  a saída (eu disse ao Enio que era): ele punha o alvo na **origem**. A lei é a da referência — no
+  Blender `Home` é *View All*; tínhamos herdado a tecla e metade do significado. ⭐ O bordo é o
+  **mesmo** do exportador (W33). ⭐ A folga saiu de uma varredura: `1,00` deixa **144 pixels** da
+  peça na moldura (a lente é convergente e o lado virado à câmera projeta maior que o raio), e
+  **1,10** zera. ⚠️ A varredura só o disse depois de a fixtura mudar para uma esfera **sozinha** —
+  com a união de duas, todas as folgas davam zero. ⏸️ Fica: enquadrar a **seleção** · o salto não é
+  animado · o teto de `half_extent` trunca uma peça enorme **em silêncio**
 - ✅ **W45 (§46): um projeto que traz uma PEÇA abre o painel dela** — o ⏸️ da W35. ⛔ **A porta estava
   trancada por dentro:** o pedido de abrir só era aceite com o módulo **armado**, e o único caminho
   que o arma é a visibilidade do painel — *para pedir a abertura era preciso já estar aberto*. A obra

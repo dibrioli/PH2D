@@ -342,10 +342,11 @@ use requests::armed_scene;
 #[cfg(test)]
 pub(crate) use requests::forget_open_panel_request;
 pub(crate) use requests::{
-    ask_export, ask_import, ask_isolate_key, ask_open_panel, ask_open_panel_if_part,
-    ask_scene_sculpt, ask_sculpt_extent, ask_spawn_sculpt, set_armed_by_panel, take_export_request,
-    take_import_request, take_isolate_key_request, take_open_if_part_request,
-    take_open_panel_request, take_pending_sculpt, take_scene_sculpt_request, take_sculpt_extent,
+    ask_export, ask_frame_the_part, ask_import, ask_isolate_key, ask_open_panel,
+    ask_open_panel_if_part, ask_scene_sculpt, ask_sculpt_extent, ask_spawn_sculpt, served_frame,
+    set_armed_by_panel, take_export_request, take_import_request, take_isolate_key_request,
+    take_open_if_part_request, take_open_panel_request, take_pending_sculpt,
+    take_scene_sculpt_request, take_sculpt_extent, wants_frame,
 };
 thread_local! {
     /// ⭐ **O registo de esculturas: nome → campo amostrado.**

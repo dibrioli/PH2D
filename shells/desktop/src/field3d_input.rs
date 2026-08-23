@@ -101,6 +101,28 @@ const MAX_HALF_EXTENT: f32 = 4.0;
 /// entregue.
 const HOME_YAW_PITCH: (f32, f32) = (0.72, 0.52);
 
+/// ⭐ **A folga do enquadramento** (W46): quantos raios da peça cabem no meio-quadro.
+///
+/// ⚠️ **MEDIDO, não escolhido.** O critério não é estético: é *"nenhum pixel da peça toca a
+/// moldura"*. Varredura sobre o **pior caso** — uma esfera sozinha, onde o bordo **é** a silhueta:
+///
+/// | folga | pixels na moldura | fração do quadro |
+/// |---:|---:|---:|
+/// | 0,90 | 252 | 79,3 % |
+/// | 1,00 | **144** | 66,4 % |
+/// | 1,05 | 72 | 60,5 % |
+/// | **1,10** | **0** | 54,6 % |
+/// | 1,40 | 0 | 32,3 % |
+///
+/// ⭐ **`1,00` NÃO chega**, e a razão é a lente: ela é convergente, e o lado da esfera virado para a
+/// câmera projeta maior do que o raio. Um bordo conservador não compensa isso — ele é conservador no
+/// **mundo**, e o corte acontece na **projeção**.
+///
+/// ⚠️ A varredura só disse isto depois de a fixtura mudar: com uma **união de duas** esferas o bordo
+/// é muito maior do que a silhueta e **todas** as folgas davam zero, `0,90` incluída. *Uma fixtura
+/// que concorda não prova nada.* Gate: `the_frame_margin_is_the_smallest_one_that_cuts_nothing`.
+const FRAME_MARGIN: f32 = 1.10;
+
 /// **As três leis da câmera, puras** — sem `App`, sem ponteiro, sem estado do smoke.
 ///
 /// ⭐ A separação não é estética: é o que torna as leis **testáveis pela porta do produto**. Um gate
@@ -111,7 +133,8 @@ pub(crate) mod law {
     use ph2d_field_render::{Lens, Orbit};
 
     use super::{
-        HOME_YAW_PITCH, MAX_HALF_EXTENT, MIN_HALF_EXTENT, ORBIT_RAD_PER_PX, ZOOM_PER_STEP,
+        FRAME_MARGIN, HOME_YAW_PITCH, MAX_HALF_EXTENT, MIN_HALF_EXTENT, ORBIT_RAD_PER_PX,
+        ZOOM_PER_STEP,
     };
 
     /// ⭐ **Rotação LIVRE** por um arrasto de `(dx, dy)` pixels.
@@ -140,6 +163,20 @@ pub(crate) mod law {
         cam.rotation = fresh.rotation;
         cam.half_extent = fresh.half_extent;
         cam.target = [0.0; 3];
+    }
+
+    /// ⭐⭐ **ENQUADRA A PEÇA** (W46) — o alvo é o centro dela, e o meio-alcance é o raio com folga.
+    ///
+    /// ⚠️ **O bordo NÃO é calculado aqui**: é o [`ph2d_field_eval::bounds::bounding_ball`], o mesmo
+    /// que o exportador usa desde a W33. *Duas réguas para a mesma grandeza é a doença que este
+    /// módulo já nomeou três vezes* — e a esfera é a moeda certa porque a composição não a estraga
+    /// (a nota do §34.2).
+    ///
+    /// ⚠️ A orientação **não se toca**: enquadrar responde *"onde e quão longe"*, não *"de que
+    /// lado"*. Quem repõe o ângulo é o [`home`], e é ele que chama os dois.
+    pub(crate) fn frame(cam: &mut Orbit, ball: ph2d_field_eval::bounds::Ball) {
+        cam.target = ball.center;
+        cam.half_extent = (ball.radius * FRAME_MARGIN).clamp(MIN_HALF_EXTENT, MAX_HALF_EXTENT);
     }
 
     /// Pan por um arrasto de `(dx, dy)` pixels, num quadro cujo lado menor mede `half_px` de meia
@@ -172,6 +209,23 @@ pub(crate) mod law {
         cam.half_extent =
             (cam.half_extent / ZOOM_PER_STEP.powf(steps)).clamp(MIN_HALF_EXTENT, MAX_HALF_EXTENT);
     }
+}
+
+/// ⭐ **Enquadra a peça que o smoke tem em mãos** — o elo entre a lei pura e o documento.
+///
+/// ⚠️ **`false` quando não há peça**, e quem chama decide o que fazer com isso: o `Home` já repôs a
+/// orientação e fica assim (não há o que enquadrar); o pedido de um load simplesmente não tem efeito
+/// e volta a ser feito no quadro seguinte, quando o documento já estiver cozido.
+pub(crate) fn frame_the_part(s: &mut Smoke) -> bool {
+    let Some(doc) = s.doc.as_ref() else {
+        return false;
+    };
+    let reg = crate::field3d_smoke::sampled_registry();
+    let Some(ball) = ph2d_field_eval::bounds::bounding_ball(doc, &reg) else {
+        return false;
+    };
+    law::frame(&mut s.cam, ball);
+    true
 }
 
 impl App {
@@ -248,6 +302,16 @@ impl App {
                 return false;
             }
             law::home(&mut s.cam);
+            // ⭐⭐ **E ENQUADRA A PEÇA** (W46). ⚠️ Até aqui o `Home` punha o alvo na **origem** — e
+            // uma peça longe dela continuava fora do quadro **depois** de a tecla correr. A tecla
+            // que existe para desfazer «estou perdido» não encontrava a peça.
+            //
+            // ⚠️ É a lei da referência: no Blender, `Home` é *View All* — enquadrar tudo, não repor
+            // um ângulo fixo. Nós tínhamos herdado a tecla e metade do significado.
+            //
+            // Sem peça (documento vazio) fica só o repor, que é a resposta certa: não há o que
+            // enquadrar.
+            frame_the_part(s);
             // Repor não é "voltar ao prato giratório": a mão continua no comando.
             s.manual = true;
             true
@@ -404,3 +468,7 @@ use pointer::{mode_for_key, over_window};
 #[cfg(test)]
 #[path = "field3d_input_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "field3d_frame_tests.rs"]
+mod frame_tests;

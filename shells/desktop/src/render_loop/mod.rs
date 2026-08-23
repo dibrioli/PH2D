@@ -9034,20 +9034,18 @@ impl crate::App {
             // mentir"*. Uma vista nomeada é um destino, e com `Role::Travel` a peça passaria da
             // frente e voltava, com a janela inteira a balançar.
             //
-            // ⚠️ E o *reduced motion* sai de graça: ali a lei é `None`, o progresso chega a 1 no
-            // primeiro quadro, e a viagem vira o salto que existia antes.
+            // ⚠️ **E ela NÃO morre no *reduced motion*** (W52, decisão do Enio): o papel é o
+            // `Viewpoint`, e o critério dele é que *o que substitui esta animação é um CORTE que
+            // desorienta mais do que ela*. Ver `crate::field3d_flight::ROLE`.
             if let Some((generation, fresh)) = crate::field3d_smoke::flight_track() {
                 let id = ph2d_editor::screens::hero::ids::model3d_view_travel(generation);
                 if fresh {
                     // Semear em 0: a primeira vez que um id é visto, o `animate` **chega** ao alvo
                     // (um widget que acaba de aparecer não tem de onde vir). Sem esta linha a
                     // viagem estaria terminada antes de começar.
-                    hero.motion
-                        .animate(id, 0.0, ph2d_editor::motion::Role::Surface);
+                    hero.motion.animate(id, 0.0, crate::field3d_flight::ROLE);
                 }
-                let t = hero
-                    .motion
-                    .animate(id, 1.0, ph2d_editor::motion::Role::Surface);
+                let t = hero.motion.animate(id, 1.0, crate::field3d_flight::ROLE);
                 crate::field3d_smoke::note_flight_progress(t);
             }
             crate::field3d_smoke::draw(

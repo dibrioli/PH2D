@@ -128,6 +128,27 @@ pub enum Role {
     Number,
     /// Enfeite (rasto, partícula, corda). **Ausente em Discreto** — ausente, não atenuado.
     Decoration,
+    /// ⭐⭐ **Uma mudança de PONTO DE VISTA** — a câmera a ir de um enquadramento nomeado a outro.
+    ///
+    /// Não ultrapassa (é um **destino**, como a [`Role::Surface`]) e ⚠️ **SOBREVIVE ao reduced
+    /// motion** — a única que sobrevive por esta razão:
+    ///
+    /// ⭐ **aqui o CORTE é pior do que o movimento.** O gatilho vestibular que o *reduced motion*
+    /// existe para apagar é uma área grande a **deslocar-se**; mas o que fica no lugar desta
+    /// animação não é sossego, é um **salto**: a cena inteira troca de orientação entre dois
+    /// quadros, sem uma pista de continuidade. É exactamente o momento em que alguém se perde, e é
+    /// isso que a transição existe para impedir. *Tirá-la não devolve a calma — devolve o corte.*
+    ///
+    /// ⚠️ **Decisão do Enio (2026-08-23), com a alternativa na mão:** *"o lerp não deve estar
+    /// vinculado ao Reduced Motion. Mas deve ser o único modo."* Ele viu os dois comportamentos
+    /// antes de decidir — a preferência dele estava ligada, e foi ela que fez a wave da viagem ler
+    /// como *"não funcionou, está como antes"*.
+    ///
+    /// ⛔ **Isto não é uma porta para «a minha animação é especial».** O critério é estreito e
+    /// verificável: *o que substitui esta animação é um corte que desorienta mais do que ela*.
+    /// Uma decoração, um realce ou um painel a deslizar não passam nesse teste — o que os
+    /// substitui é a coisa **já no sítio**, que é sossego a sério.
+    Viewpoint,
 }
 
 /// Rigidez do Expressivo. `ζ < 1` ⇒ ultrapassa e volta: é o carácter inteiro num número.
@@ -466,6 +487,11 @@ impl UiMotion {
     fn law_of(role: Role, character: UiCharacter, reduced: bool) -> Option<Spring> {
         match role {
             Role::Number => None,
+            // ⚠️ **ANTES do braço do `reduced`**, e a ordem é a lei: ver o doc do
+            // [`Role::Viewpoint`] — aqui o corte é pior do que o movimento. Critica­mente
+            // amortecida nos dois carácteres, como a `Surface`: um ponto de vista é um **destino**,
+            // e passar dele e voltar seria a cena inteira a balançar.
+            Role::Viewpoint => Some(DISCRETE),
             Role::Travel | Role::Surface if reduced => None,
             Role::Decoration if reduced || character == UiCharacter::Discrete => None,
             // ⚠️ **Criticamente amortecida nos DOIS carácteres** — ver [`Role::Surface`]. E reusa a

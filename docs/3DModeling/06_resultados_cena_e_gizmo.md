@@ -4169,8 +4169,78 @@ ao terminar ela pousa exatamente na vista. A alegação visível ao artista fica
 
 ---
 
+## §53 — W52: a viagem NÃO é do *reduced motion* — e o papel dela nasceu disso (23/08)
+
+> Enio, no smoke da W51: *"funciona. Mas o lerp não deve estar vinculado ao Reduced Motion. Mas deve
+> ser o único modo."*
+
+### §53.1 — O smoke anterior leu «não funcionou», e o código estava certo
+
+A W51 shipou com `Role::Surface` — que **morre** no *reduced motion* —, e a preferência do Enio
+(`~/.ph2d/prefs.txt`) diz `reduced_motion=1`. Com ela ligada a lei é `None`, o progresso chega a `1`
+no primeiro quadro, e a viagem **é** o salto de antes. O report dele foi *"não funcionou. está como
+antes"*, e era a descrição exata do comportamento correto.
+
+⚠️ **A armadilha estava anotada** no `CLAUDE.md` §5, com estas palavras: *"um `reduced_motion=1`
+esquecido **reprova smokes sobre produto correto**"*. Eu tinha a nota, ia pedir um juízo **sobre
+movimento**, e não li o arquivo antes de escrever o relatório. *Uma condição que decide se o smoke
+faz sentido não é um rodapé — é o passo 1, e é verificável com um comando.*
+
+### §53.2 — ⭐ A cura é um PAPEL novo, não uma excepção
+
+O `motion.rs` prega que *"o `Role` diz o que a coisa É"*, e a própria `Role::Surface` nasceu assim
+(*"este é o terceiro membro dessa família, não uma excepção nova"*). Então a decisão do Enio vira
+`Role::Viewpoint`, com o critério escrito ao lado:
+
+> ⭐ **Aqui o CORTE é pior do que o movimento.** O gatilho vestibular que o *reduced motion* existe
+> para apagar é uma área grande a **deslocar-se** — mas o que fica no lugar desta animação não é
+> sossego, é um **salto**: a cena inteira troca de orientação entre dois quadros, sem uma pista de
+> continuidade. É exactamente o momento em que alguém se perde. *Tirá-la não devolve a calma —
+> devolve o corte.*
+
+⛔ **E o critério é estreito de propósito**, para não virar uma porta de *«a minha animação é
+especial»*: só passa o que, ao ser removido, deixa **um corte que desorienta mais do que o
+movimento**. Uma decoração, um realce ou um painel a deslizar não passam — o que os substitui é a
+coisa **já no sítio**, que é sossego a sério. Há gate a exigir que um percurso **comum** continue a
+morrer.
+
+⚠️ Ele **não ultrapassa** nos dois carácteres (reusa a rigidez da `Surface`): um ponto de vista é um
+**destino**, e passar dele e voltar seria a janela inteira a balançar.
+
+### §53.3 — ⚠️ O papel é NOMEADO do lado do módulo
+
+`field3d_flight::ROLE`. Enquanto ele vivesse só na linha do laço de quadro, a alegação que interessa
+ao artista — *"a viagem acontece mesmo com o movimento reduzido ligado"* — não teria gate nenhum:
+aquela linha é do tipo que um teste headless não alcança (o mesmo ⏸️ da W50). Com o papel nomeado
+deste lado, o gate mede-o.
+
+### §53.4 — Provas de mutação (com **verde antes**)
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | a viagem volta ao papel que o *reduced* mata (o smoke da W51) | `the_trip_survives_reduced_motion` |
+| 2 | o `Viewpoint` passa a morrer no *reduced* | *(o mesmo)* |
+| 3 | a excepção vira uma **porta** (o *reduced* deixa de matar um percurso comum) | *(o mesmo)* |
+| 4 | o ponto de vista passa a ultrapassar | `the_trip_never_overshoots_its_destination` |
+
+### §53.5 — ⏸️ O que fica aberto
+
+- ⏸️ O `Viewpoint` é hoje usado **só** por este módulo. A janela 3D da escultura tem o mesmo
+  problema e a mesma resposta — mas ligá-la é decisão da linha dela.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W52 (§53): a viagem NÃO é do *reduced motion*** — Enio: *"o lerp não deve estar vinculado ao
+  Reduced Motion. Mas deve ser o único modo."* ⚠️ O smoke da W51 leu *"não funcionou, está como
+  antes"* e **o código estava certo**: a preferência dele diz `reduced_motion=1`, e o papel de então
+  (`Surface`) morre ali. ⛔ A armadilha estava anotada no `CLAUDE.md` §5 — *"um `reduced_motion=1`
+  esquecido reprova smokes sobre produto correto"* — e eu não li o arquivo antes de pedir um juízo
+  **sobre movimento**. ⭐ A cura é um **papel novo** (`Role::Viewpoint`), não uma excepção, com o
+  critério escrito: *aqui o CORTE é pior do que o movimento*; e ele é estreito, com gate a exigir que
+  um percurso comum continue a morrer. ⏸️ Fica: a janela 3D da escultura tem o mesmo problema, e
+  ligá-la é decisão da linha dela
 - ✅ **W51 (§52): a VIAGEM entre vistas** — pedido do Enio (*"falta um Lerp() rápido […] como no
   blender"*). ⭐ **A curva e a duração são as da CASA**, não minhas: `Role::Surface`, cujo doc
   descreve este caso à letra (*"viaja… e **nunca ultrapassa**; uma roda nomeia um destino, e passar

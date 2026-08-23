@@ -28,6 +28,21 @@
 
 use ph2d_field_render::Orbit;
 
+/// ⭐⭐ **O PAPEL desta viagem** — e é ele que decide a curva, a duração e o *reduced motion*.
+///
+/// ⚠️ **Nomeado aqui, e não no laço de quadro**, para um gate o poder alcançar: a alegação que
+/// interessa ao artista é *"a viagem acontece mesmo com o movimento reduzido ligado"*, e ela só é
+/// gateável se o papel tiver um nome deste lado.
+///
+/// ⚠️ **Mudou na W52.** Ele era [`Role::Surface`] — que morre no *reduced motion* —, e o smoke da
+/// W51 leu como *"não funcionou, está como antes"*: a preferência do Enio estava ligada, e o código
+/// fazia exatamente o que ela manda. Decisão dele, com os dois comportamentos vistos: *"o lerp não
+/// deve estar vinculado ao Reduced Motion. Mas deve ser o único modo."*
+///
+/// ⭐ O [`Role::Viewpoint`] existe por causa disto, e o critério dele é estreito: *o que substitui
+/// esta animação é um CORTE que desorienta mais do que ela*. Ver o doc do papel.
+pub(crate) const ROLE: ph2d_editor::motion::Role = ph2d_editor::motion::Role::Viewpoint;
+
 /// **Uma viagem em curso**: de onde, para onde.
 ///
 /// ⚠️ O `from` é **congelado na partida**. Interpolar a partir da câmera de agora faria cada quadro

@@ -145,3 +145,74 @@ fn the_target_walks_in_a_straight_line() {
 fn angle(a: [f32; 4], b: [f32; 4]) -> f32 {
     2.0 * dot(a, b).abs().clamp(0.0, 1.0).acos()
 }
+
+/// ⭐⭐ **A VIAGEM ACONTECE MESMO COM O MOVIMENTO REDUZIDO LIGADO** (W52).
+///
+/// # O smoke que a pediu
+///
+/// A W51 shipou com [`Role::Surface`], que **morre** no *reduced motion* — e o smoke leu como *"não
+/// funcionou, está como antes"* (Enio, 2026-08-23). O código fazia exatamente o que a preferência
+/// dele manda; o que estava errado era o papel.
+///
+/// ⭐ Decisão dele, com os dois comportamentos vistos: *"o lerp não deve estar vinculado ao Reduced
+/// Motion. Mas deve ser o único modo."* E há uma razão por trás dela: **aqui o corte é pior do que o
+/// movimento** — o que fica no lugar da animação não é sossego, é a cena inteira a trocar de
+/// orientação entre dois quadros.
+///
+/// ⚠️ **Este gate mede o PAPEL que esta viagem usa**, não o `Viewpoint` em geral: trocá-lo de
+/// volta para `Surface` (ou para qualquer papel que o *reduced* mate) reprova aqui.
+#[test]
+fn the_trip_survives_reduced_motion() {
+    use ph2d_editor::motion::UiMotion;
+    for character in [
+        ph2d_editor::motion::UiCharacter::Discrete,
+        ph2d_editor::motion::UiCharacter::Expressive,
+    ] {
+        let mut motion = UiMotion::default();
+        motion.set_character(character);
+        motion.set_reduced_motion(true);
+        assert!(
+            motion.law(super::ROLE).is_some(),
+            "{character:?}: com o movimento reduzido ligado a viagem entre vistas VIROU UM SALTO — \
+             é o smoke da W51 outra vez"
+        );
+
+        // …e o controle: um percurso comum continua a morrer, que é para o que a preferência serve.
+        assert!(
+            motion.law(ph2d_editor::motion::Role::Travel).is_none(),
+            "{character:?}: o reduced motion deixou de matar um percurso comum — a excepção do \
+             ponto de vista virou uma porta para tudo"
+        );
+    }
+}
+
+/// ⚠️ **E ela NUNCA ULTRAPASSA, nos dois carácteres** — um ponto de vista é um **destino**.
+///
+/// Com uma mola sub-amortecida a peça passaria da frente e voltava: a janela inteira a balançar. É a
+/// mesma razão que a `Role::Surface` já carrega escrita, e é por isso que o `Viewpoint` reusa a
+/// rigidez dela em vez de cunhar uma.
+#[test]
+fn the_trip_never_overshoots_its_destination() {
+    use ph2d_editor::motion::{UiCharacter, UiMotion};
+    for character in [UiCharacter::Discrete, UiCharacter::Expressive] {
+        for reduced in [false, true] {
+            let mut motion = UiMotion::default();
+            motion.set_character(character);
+            motion.set_reduced_motion(reduced);
+            let spring = motion.law(super::ROLE).expect("a viagem tem lei sempre");
+            let id = ph2d_editor::screens::hero::ids::model3d_view_travel(0);
+            motion.animate(id, 0.0, super::ROLE);
+            motion.animate(id, 1.0, super::ROLE);
+            let mut worst = 0.0_f32;
+            for _ in 0..600 {
+                motion.advance(1.0 / 120.0);
+                worst = worst.max(motion.get(id).unwrap_or(0.0));
+            }
+            assert!(
+                worst <= 1.0 + 1.0e-4,
+                "{character:?} (reduced={reduced}): a viagem ultrapassou o destino ({worst}) com \
+                 {spring:?} — a peça passa da frente e volta"
+            );
+        }
+    }
+}

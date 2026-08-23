@@ -609,7 +609,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Referência durável entre objetos é o NOME** (`stable_name_id`, hash do `Name`), nunca os bits — o undo respawna
   tudo com bits novos, e bits **dentro dos bytes de um componente** envenenam o próprio undo.
   ⚠️ O undo de **PAINÉIS** é sistema separado e **não existe** (decisão do Enio).
-  **Aberto:** UI real de Save/Save As/Open (o `io_menu` é stub — hoje é path fixo, sem diálogo) ·
+  **Aberto:** ⏳ **O UNDO NÃO SEPARA PREVIEW DE DOCUMENTO** (autorizado pelo Enio, 2026-08-23:
+  *«precisamos corrigir o CtrlZ para ambas»*) — enquanto alguma coisa se move sozinha (uma animação
+  de sprite a tocar · a física a simular), **um quadro com input regista um passo** cujo conteúdo é
+  só o relógio ou a pose do solver. ⚠️ **Não é defeito de nenhum dos dois módulos: é do modelo do
+  undo**, e a cura é o conceito que falta. As três saídas medidas e por que duas não servem:
+  [auditoria 21 §4](docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md) ·
+  UI real de Save/Save As/Open (o `io_menu` é stub — hoje é path fixo, sem diálogo) ·
   ✅ **`SpriteSource::Individual` PERSISTE — esta nota envelheceu** e mandava reconstruir trabalho
   pago: [`project_sprite_pixels.rs`](shells/desktop/src/project_sprite_pixels.rs) fecha as **oito**
   ferramentas de imagem de uma vez pelo funil `commit_edited_texture`, com a identidade a ser o
@@ -682,7 +688,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   regista um passo de undo (o relógio vive num `SimComponent` registado) — **família
   pré-existente**, a física faz o mesmo com o `Transform`; as três saídas estão na auditoria §4 e a
   escolha é do Enio.
-  ⛔ Fora: duração por-FRAME (não há importador `.ase` que a produza) · os sinais do §8.10
+  ⏳ **IMPORTAR ASEPRITE (`.ase`) — autorizado pelo Enio, 2026-08-23**, e ele **muda o que está
+  «fora»**: a duração por-FRAME foi recusada por *não haver quem a produza* — o importador é
+  exactamente quem a produziria, então quem pegar no `.ase` **reabre essa recusa com o número na
+  mão** (spec §8.12; o formato traz tags, direções e duração por frame). ⚠️ O par `.png`+`.json` do
+  Aseprite **já entra** por drag & drop ([`sheet_import.rs`](shells/desktop/src/sheet_import.rs));
+  o que falta é o `.ase` binário, que é outro formato e traz as tags.
+  ⛔ Fora: os sinais do §8.10
   (`AnimOutcome` existe, ninguém o publica) · o import do Aseprite. Detalhe:
   [spec 08, secção final](docs/Sprite_projeto/08_animation_inline.md) ·
   ✅ **uma âncora já MOVE coisas** (2026-08-22): `ph2d_ecs::AnchorMount` faz dela um

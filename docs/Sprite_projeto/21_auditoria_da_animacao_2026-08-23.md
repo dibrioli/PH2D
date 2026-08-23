@@ -191,7 +191,13 @@ família é *«enquanto alguma coisa se move sozinha, um quadro com input regist
 | tirar o relógio do componente registado (a lei da linha de física: *config, nunca estado vivo de solver*) | remove o passo por-quadro mas **não** o passo por-avanço-de-frame (o `Sprite::frame` é documento e tem de ficar registado), e move o `PROJECT_SCHEMA` |
 | ensinar o undo a ignorar componentes de «preview» | é um conceito que o app não tem, e vale para a física antes de valer para aqui |
 
-⇒ **Decisão do Enio** (§0.7). A linha regista o mecanismo e não escolhe por ele.
+⇒ ✅ **AUTORIZADO pelo Enio em 2026-08-23:** *«precisamos corrigir o CtrlZ para ambas»* — **ambas**
+= a animação **e** a física, que é a outra metade da família. ⚠️ Isso põe a cura na terceira saída
+da tabela (o conceito que o app não tem: *estado de PREVIEW contra estado de DOCUMENTO*), e não
+numa correção local à §11 — a §11 sozinha não pode legislar para o undo do app inteiro.
+⏳ **Na fila, não iniciado.** Quem pegar começa por medir se `Transform` sob física e
+`SpriteAnimator` sob reprodução são o mesmo caso ou dois: o primeiro é pose de documento com um
+escritor a mais, o segundo é relógio que nunca foi documento.
 
 ## §5 — ⛔ Recusas MEDIDAS
 

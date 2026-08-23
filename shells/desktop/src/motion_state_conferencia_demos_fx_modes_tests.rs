@@ -26,7 +26,7 @@ fn cell(doc: &MotionDoc, reg: &NodeRegistry, sink: NodeId) -> Stream {
     }
 }
 
-/// **A CENA CONSTRÓI AS QUATRO CÉLULAS.**
+/// **A CENA CONSTRÓI TODAS AS CÉLULAS** — duas por linha da [`ROWS_TABLE`].
 #[test]
 fn the_fx_scene_builds_every_cell() {
     let reg = registry();
@@ -125,6 +125,57 @@ fn the_lens_moves_the_clean_spot_and_widens_it() {
         "e o raio limpo tem de deixar MAIS pecas sem franja ({} vs {})",
         untouched(&plain),
         untouched(&cured)
+    );
+}
+
+/// **A LINHA DA ALFA VARIA A ALFA E MAIS NADA.**
+///
+/// ⚠️ Ela existe para tornar julgável a resposta do `Multiply` à alfa, então o que ela tem de
+/// provar é precisamente que as duas metades **são iguais em tudo o resto**: mesmo modo nos
+/// fantasmas, mesma contagem de linhas, e só a alfa do fantasma diferente. Uma régua que só
+/// medisse "as alfas diferem" passaria numa cena em que uma metade também tivesse mudado de
+/// modo — e aí o par deixaria de dizer o que anuncia.
+#[test]
+fn the_alpha_row_varies_the_alpha_and_nothing_else() {
+    let reg = registry();
+    let mut doc = MotionDoc::default();
+    let sinks = build_fx_demo_document(&mut doc, &reg).expect("constroi");
+    let k = ROWS_TABLE
+        .iter()
+        .position(|r| r.case == Case::ShadowAlpha)
+        .expect("a linha da alfa existe");
+    let halves = [
+        cell(&doc, &reg, sinks[k * 2]),
+        cell(&doc, &reg, sinks[k * 2 + 1]),
+    ];
+    assert_eq!(
+        halves[0].count(),
+        halves[1].count(),
+        "as duas metades desenham o mesmo numero de linhas"
+    );
+    // O modo, por linha: as duas metades TÊM de pedir o mesmo.
+    let modes = |s: &Stream| match s.get("blend") {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => panic!("a linha da alfa escreve sempre a coluna blend"),
+    };
+    assert_eq!(
+        modes(&halves[0]),
+        modes(&halves[1]),
+        "so' a alfa muda -- o modo e' o mesmo nas duas metades"
+    );
+    assert!(
+        modes(&halves[0]).contains(&MULTIPLY),
+        "e o modo pedido e' o Multiply"
+    );
+    // A alfa do FANTASMA: a barra é a linha 0, os fantasmas vêm a seguir.
+    let ghost_alpha = |s: &Stream| match s.get("tint") {
+        Some(Column::Vec4(t)) => t[1][3],
+        _ => panic!("tint"),
+    };
+    let (faint, strong) = (ghost_alpha(&halves[0]), ghost_alpha(&halves[1]));
+    assert!(
+        strong > faint + 0.3,
+        "a metade forte tem de ser MUITO mais opaca ({faint} vs {strong})"
     );
 }
 

@@ -1,7 +1,7 @@
 //! **O QUE O EFEITO NÃO SABIA FAZER** (`PH2D_GPU_COOK_DEMO=84`) — a cena da folha 11
 //! ([conferência 89](../../../docs/Motion%20Nodes/89_conferencia/11_fx_raster.md)).
 //!
-//! ## Duas linhas que se julgam PARADAS, e um halo que se experimenta
+//! ## Três linhas que se julgam PARADAS, e um halo que se experimenta
 //!
 //! - **SOMBRA** — o `fx.drop_shadow` ganhou o MODO com que a sombra se mistura. A diferença só
 //!   existe **sobre alguma coisa**, então cada célula desenha uma barra clara e a fileira por
@@ -10,6 +10,12 @@
 //! - **LENTE** — o `fx.rgb_split` ganhou o EIXO e o RAIO LIMPO. À esquerda a franja nasce no
 //!   centro da fileira (o de sempre); à direita o eixo está deslocado e há um miolo limpo, então
 //!   o ponto sem franja mudou de sítio **e** ficou maior.
+//! - **ALFA** — a linha que o Enio pediu em 23/08 (*"o multiply não obedece o alpha"*). As duas
+//!   metades MULTIPLICAM e só a alfa da sombra muda (15% × 85%): a fraca tem de sair mais
+//!   CLARA. ⚠️ **A resposta estava INVERTIDA no renderer**, e o defeito não era do nó: uma
+//!   fonte pré-multiplicada codifica *"não contribuo"* como **zero**, que é o neutro de todo
+//!   modo menos o `Multiply` — cujo neutro é `1`. Cura e tabela medida em
+//!   [`ph2d_render::pipeline::blend_state_for`].
 //!
 //! ⚠️ **O HALO não cabe nesta comparação, e é uma propriedade dele, não um esquecimento:** o
 //! `fx.glow` é um passe de TELA e o documento só honra **um** — as duas metades partilhariam o
@@ -32,6 +38,9 @@ pub(crate) const COL_X: f32 = 2.9;
 const R: f32 = 1.25;
 /// O modo `Multiply` na escada do `shadow_blend` (`0 = Sink`, e daí os seis do sink).
 const MULTIPLY: f32 = 4.0;
+/// As duas alfas da linha 3 — o par que denuncia uma resposta INVERTIDA.
+const ALPHA_FAINT: f32 = 0.15;
+const ALPHA_STRONG: f32 = 0.85;
 
 /// Qual das duas curas esta linha encena.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -40,6 +49,13 @@ pub(crate) enum Case {
     Shadow,
     /// `fx.rgb_split::center_x` + `::start`.
     Lens,
+    /// **A ALFA DA SOMBRA que MULTIPLICA** — as duas metades no mesmo modo, e só `a` muda.
+    ///
+    /// ⚠️ Esta linha não é *antes × agora*: é **fraca × forte**, e existe porque o defeito que
+    /// o Enio viu em 23/08 (*"o multiply não obedece o alpha"*) só é visível num PAR. A
+    /// resposta era invertida — `a = 0,15` pintava mais escuro que `a = 0,85`, e `a = 0`
+    /// pintava PRETO em vez de nada. Ver `ph2d_render::pipeline::blend_state_for`.
+    ShadowAlpha,
 }
 
 pub(crate) struct Row {
@@ -61,6 +77,12 @@ pub(crate) static ROWS_TABLE: &[Row] = &[
         left: "2 LENTE · antes: centro fixo",
         right: "2 LENTE · agora: eixo movido",
         case: Case::Lens,
+    },
+    Row {
+        label: "ALFA   — as duas MULTIPLICAM e só a alfa muda: a fraca tem de ser mais CLARA",
+        left: "3 ALFA · sombra fraca (15%)",
+        right: "3 ALFA · sombra forte (85%)",
+        case: Case::ShadowAlpha,
     },
 ];
 
@@ -186,6 +208,32 @@ fn backdrop(g: &mut ph2d_nodegraph::graph::Graph, lane: f32) -> Option<NodeId> {
     Some(tint)
 }
 
+/// Uma fileira com a barra por baixo e uma sombra por cima, com o modo e a alfa pedidos.
+///
+/// ⚠️ **A BARRA PRIMEIRO**: a ordem do stream é a ordem de desenho, e o fundo tem de ficar por
+/// baixo do bloco de sombras que o `fx.drop_shadow` emite à frente.
+fn shadow_cell(
+    g: &mut ph2d_nodegraph::graph::Graph,
+    lane: f32,
+    blend: f32,
+    alpha: f32,
+) -> Option<NodeId> {
+    let back = backdrop(g, lane)?;
+    let row = dots(g, lane)?;
+    let sh = g.add_node("fx.drop_shadow");
+    g.set_param(sh, "direction", 300.0);
+    g.set_param(sh, "distance", 0.34);
+    g.set_param(sh, "a", alpha);
+    g.set_param(sh, "shadow_blend", blend);
+    wire(g, row, 0, sh, 0)?;
+    let join = g.add_node("motion.combine");
+    wire(g, back, 0, join, 0)?;
+    wire(g, sh, 0, join, 1)?;
+    g.set_pos(sh, Pos { x: 700.0, y: lane });
+    g.set_pos(join, Pos { x: 1000.0, y: lane });
+    Some(join)
+}
+
 fn build_cell(
     g: &mut ph2d_nodegraph::graph::Graph,
     case: Case,
@@ -193,25 +241,15 @@ fn build_cell(
     lane: f32,
 ) -> Option<NodeId> {
     match case {
-        Case::Shadow => {
-            let back = backdrop(g, lane)?;
-            let row = dots(g, lane)?;
-            let sh = g.add_node("fx.drop_shadow");
-            g.set_param(sh, "direction", 300.0);
-            g.set_param(sh, "distance", 0.34);
-            g.set_param(sh, "a", 0.55);
-            // A cura: à direita a sombra MULTIPLICA em vez de cobrir.
-            g.set_param(sh, "shadow_blend", if cured { MULTIPLY } else { 0.0 });
-            wire(g, row, 0, sh, 0)?;
-            // ⚠️ **A BARRA PRIMEIRO**: a ordem do stream é a ordem de desenho, e o fundo tem de
-            // ficar por baixo do bloco de sombras que o `fx.drop_shadow` emite à frente.
-            let join = g.add_node("motion.combine");
-            wire(g, back, 0, join, 0)?;
-            wire(g, sh, 0, join, 1)?;
-            g.set_pos(sh, Pos { x: 700.0, y: lane });
-            g.set_pos(join, Pos { x: 1000.0, y: lane });
-            Some(join)
-        }
+        Case::Shadow => shadow_cell(g, lane, if cured { MULTIPLY } else { 0.0 }, 0.55),
+        // As duas MULTIPLICAM: o que varia é só a alfa. É esse par que torna a resposta da
+        // alfa julgável a olho — uma metade só diria "está escuro".
+        Case::ShadowAlpha => shadow_cell(
+            g,
+            lane,
+            MULTIPLY,
+            if cured { ALPHA_STRONG } else { ALPHA_FAINT },
+        ),
         Case::Lens => {
             let row = dots(g, lane)?;
             let split = g.add_node("fx.rgb_split");

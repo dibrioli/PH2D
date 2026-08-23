@@ -43,6 +43,17 @@ pub const BLEND_PIPELINE_COUNT: usize = 6;
 pub fn blend_state_for(tag: u8) -> wgpu::BlendState {
     use wgpu::{BlendComponent, BlendFactor as F, BlendOperation as Op, BlendState};
     // Alpha that leaves the destination coverage untouched (FX modes).
+    //
+    // ⚠️ **Toda esta família pressupõe um fundo OPACO**, e a pressuposição é do
+    // hardware, não uma escolha: um par de factores fixos não exprime o
+    // `Cs' = (1−αb)·Cs + αb·B(Cb,Cs)` da W3C, que precisa da alfa do DESTINO como
+    // termo. Onde o fundo é translúcido de propósito — a pilha de camadas do
+    // Painter — a fórmula inteira existe e é essa que corre
+    // ([`shaders/layer_composite.wgsl`]). Aqui a alfa do destino nem se move, então
+    // sobre um pixel `αb = 0` o resultado fica invisível de qualquer maneira; a
+    // divergência vive só na faixa parcial, e é a mesma para os quatro modos de FX.
+    // *Quem vier "consertar" isto com outro par de factores não vai conseguir — o
+    // caminho é o passe programável.*
     let keep_dst_alpha = BlendComponent {
         src_factor: F::Zero,
         dst_factor: F::One,
@@ -72,11 +83,35 @@ pub fn blend_state_for(tag: u8) -> wgpu::BlendState {
             },
             alpha: keep_dst_alpha,
         },
-        // Multiply — src · dst (darken).
+        // Multiply — `dst · lerp(1, src, α)`: escurece o destino na medida da alfa.
+        //
+        // ⚠️ **É O ÚNICO MODO CUJO ELEMENTO NEUTRO É `1` E NÃO `0`**, e é essa a razão
+        // de ele ser o único que precisa do `OneMinusSrcAlpha` aqui. A fonte que o
+        // shader emite é PRÉ-MULTIPLICADA (`rgb·α`), ou seja codifica *"não
+        // contribuo"* como **zero** — o que dá a alfa de graça a todo modo que
+        // acumula a partir do zero (`Add`, `Subtract`, `Screen`, o `over`), e leva o
+        // produto para **preto** em vez de para *nada*.
+        //
+        // Com `dst_factor: Zero` (o que este pipeline shipou até 2026-08-23) a
+        // resposta era **invertida** — medido a fundo 55, frente 128:
+        //
+        // | α | 0,00 | 0,25 | 0,50 | 0,75 | 1,00 |
+        // |---|---|---|---|---|---|
+        // | antes | **0** | 3 | 6 | 9 | 12 |
+        // | agora | **55** | 44 | 33 | 22 | 12 |
+        //
+        // Ou seja: baixar a alfa ESCURECIA, e não havia valor nenhum em que a sombra
+        // desaparecesse. ⚠️ **As duas colunas coincidem em `α = 1`**, que é o único
+        // ponto que a suíte media — é por isso que o defeito viveu num gate verde, e
+        // por isso que esta cura não pode regredir nada opaco.
+        //
+        // `src·dst + dst·(1−α)` = `dst·(α·src + 1 − α)`, a lei de opacidade de camada
+        // do Photoshop. Gates: `zero_alpha_is_absence_in_every_mode` e
+        // `the_multiply_alpha_slider_runs_from_the_backdrop_to_the_full_product`.
         3 => BlendState {
             color: BlendComponent {
                 src_factor: F::Dst,
-                dst_factor: F::Zero,
+                dst_factor: F::OneMinusSrcAlpha,
                 operation: Op::Add,
             },
             alpha: keep_dst_alpha,

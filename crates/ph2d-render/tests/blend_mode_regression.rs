@@ -219,6 +219,172 @@ fn blend_modes_composite_as_advertised() {
     );
 }
 
+/// A mesma instância, com a alfa autorada (`tint.a`) que o shader dobra em
+/// `extra_alpha` — a via por onde o `fx.drop_shadow` faz a sua sombra ser translúcida.
+fn instance_alpha(texture_id: u32, z: u32, blend_tag: u8, alpha: f32) -> RenderInstance {
+    let mut i = instance(texture_id, z, blend_tag);
+    i.tint[3] = alpha;
+    i
+}
+
+/// Um banco de ensaio reutilizável: fundo opaco em `Mix`, frente opcional com modo e alfa.
+struct Rig {
+    gpu: GpuContext,
+    renderer: SpriteRenderer,
+    view: wgpu::TextureView,
+    _target: wgpu::Texture,
+    camera: Camera2d,
+    window: WindowSize,
+    bg: u32,
+    fg: u32,
+}
+
+impl Rig {
+    fn new(gpu: GpuContext, bg_rgba: [u8; 4], fg_rgba: [u8; 4]) -> Self {
+        let atlas = TextureAtlas::new(&gpu, 256);
+        let mut renderer =
+            SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
+        let bg = renderer
+            .acquire_individual(8, 8, &solid_rgba(8, 8, bg_rgba))
+            .expect("bg tex");
+        let fg = renderer
+            .acquire_individual(8, 8, &solid_rgba(8, 8, fg_rgba))
+            .expect("fg tex");
+        let target = make_target(&gpu);
+        let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+        Self {
+            gpu,
+            renderer,
+            view,
+            _target: target,
+            camera: Camera2d::new([0.0, 0.0], 4.0),
+            window: WindowSize::new(W, H),
+            bg,
+            fg,
+        }
+    }
+
+    /// O byte do centro depois de compor. `fg = None` é o **controle**: o fundo sozinho.
+    fn centre(&mut self, fg: Option<(u8, f32)>) -> u8 {
+        let mut present = PresentWorld::new();
+        present.world_mut().spawn(instance(self.bg, 0, 0));
+        if let Some((mode, alpha)) = fg {
+            present
+                .world_mut()
+                .spawn(instance_alpha(self.fg, 1, mode, alpha));
+        }
+        self.renderer
+            .render(&self.view, &mut present, &self.camera, self.window, BLACK);
+        let px = readback(&self.gpu, &self._target);
+        channel(&px, 32, 32)
+    }
+}
+
+/// Os seis modos, pelo nome, na ordem das tags.
+const MODES: [(&str, u8); 6] = [
+    ("Mix", 0),
+    ("Add", 1),
+    ("Subtract", 2),
+    ("Multiply", 3),
+    ("Screen", 4),
+    ("Premult", 5),
+];
+
+/// **A SONDA DA ALFA** — a segunda dimensão que esta suíte não tinha.
+///
+/// ⚠️ Tudo acima mede a `alpha = 1`, que é **o único valor em que os seis modos concordam
+/// sobre o que a alfa quer dizer**. Ela imprime a resposta de cada modo ao longo do curso e
+/// não afirma nada: o veredito é do gate seguinte.
+#[test]
+fn measure_alpha_response_of_every_mode() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("skipping measure_alpha_response_of_every_mode: no headless GPU");
+        return;
+    };
+    let mut rig = Rig::new(gpu, [128, 128, 128, 255], [128, 128, 128, 255]);
+    let backdrop = rig.centre(None);
+    println!("fundo sozinho = {backdrop}");
+    println!("modo      a=0,00  a=0,25  a=0,50  a=0,75  a=1,00");
+    for (name, tag) in MODES {
+        let row: Vec<String> = [0.0, 0.25, 0.5, 0.75, 1.0]
+            .iter()
+            .map(|a| format!("{:>6}", rig.centre(Some((tag, *a)))))
+            .collect();
+        println!("{name:<9} {}", row.join("  "));
+    }
+}
+
+/// **ALFA ZERO É AUSÊNCIA, EM TODO MODO** — a lei que o `Multiply` não cumpria.
+///
+/// Uma fonte pré-multiplicada codifica *"não contribuo"* como **zero**, e todo modo cujo
+/// elemento neutro é `0` (`Add`, `Subtract`, `Screen`, o `over`) obedece à alfa de graça. O
+/// neutro do `Multiply` é **`1`**: com `dst_factor: Zero` a pré-multiplicação levava-o para
+/// PRETO em vez de para nada, e o cursor da alfa deixava de dizer *"quão presente"* para
+/// dizer *"quão escuro"* — ao contrário.
+///
+/// ⚠️ **A barra é o FUNDO medido no mesmo passe** (`fg = None`), nunca um número escrito à
+/// mão: o alvo é `Rgba8Unorm` linear e o byte exacto depende do sRGB do atlas.
+#[test]
+fn zero_alpha_is_absence_in_every_mode() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("skipping zero_alpha_is_absence_in_every_mode: no headless GPU");
+        return;
+    };
+    let mut rig = Rig::new(gpu, [128, 128, 128, 255], [128, 128, 128, 255]);
+    let backdrop = rig.centre(None);
+    // Controle positivo: a alfa cheia MOVE o pixel em pelo menos um modo — senão o
+    // banco estaria a medir um fundo que a frente nunca alcança, e o zero passaria
+    // por vacuidade.
+    assert!(
+        MODES
+            .iter()
+            .any(|&(_, t)| rig.centre(Some((t, 1.0))).abs_diff(backdrop) > 8),
+        "controle: a alfa cheia tem de mudar o pixel"
+    );
+    for (name, tag) in MODES {
+        let got = rig.centre(Some((tag, 0.0)));
+        assert!(
+            got.abs_diff(backdrop) <= 2,
+            "{name} a alfa 0 tem de deixar o fundo intacto ({backdrop}), deu {got}"
+        );
+    }
+}
+
+/// **E O CURSO INTEIRO É MONÓTONO, DO FUNDO ATÉ AO MODO** (só o `Multiply`).
+///
+/// A alfa de uma sombra é *quanta sombra*, então subi-la só pode escurecer. ⚠️ Com o
+/// `dst_factor: Zero` a resposta era **invertida** — `a = 0,25` dava um pixel mais escuro
+/// que `a = 1,00`, e é exactamente isso que se vê no smoke como *"a alfa não faz nada"*
+/// (ou faz o contrário).
+#[test]
+fn the_multiply_alpha_slider_runs_from_the_backdrop_to_the_full_product() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("skipping the_multiply_alpha_slider_runs_...: no headless GPU");
+        return;
+    };
+    let mut rig = Rig::new(gpu, [200, 200, 200, 255], [90, 90, 90, 255]);
+    let backdrop = rig.centre(None);
+    let steps: Vec<u8> = [0.0, 0.25, 0.5, 0.75, 1.0]
+        .iter()
+        .map(|a| rig.centre(Some((3, *a))))
+        .collect();
+    assert!(
+        steps[0].abs_diff(backdrop) <= 2,
+        "a 0 é o fundo ({backdrop}), deu {}",
+        steps[0]
+    );
+    for w in steps.windows(2) {
+        assert!(
+            w[1] <= w[0] + 1,
+            "subir a alfa do Multiply só pode escurecer: {steps:?}"
+        );
+    }
+    assert!(
+        steps[0] > steps[4] + 20,
+        "e o curso tem excursão de facto: {steps:?}"
+    );
+}
+
 #[test]
 fn absent_blend_is_zero_regression_over() {
     // tag 0 (Mix, the absent-component default) composites an opaque

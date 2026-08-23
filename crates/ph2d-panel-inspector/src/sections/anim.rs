@@ -280,6 +280,28 @@ pub(crate) fn paint_anim_section(
     let mut cur_y = y + header_h;
     let font = TypeToken::Sm.px();
 
+    // ⚠️ **A SELEÇÃO MÚLTIPLA tem de se dizer**, e esta é a única seção do Inspector cujo silêncio
+    // custa trabalho perdido: as edições da §11 **não** se espalham (o índice que elas carregam só
+    // significa alguma coisa na biblioteca da primária — espalhá-lo escreveria na animação errada
+    // de todas as outras). Sem esta linha, marcar cinco goblins e renomear uma animação muda
+    // **um**, em silêncio.
+    //
+    // ⚠️ Ela vem ANTES de tudo, inclusive da face vazia: a pergunta *«em quem é que isto pega?»* é
+    // anterior a qualquer controlo.
+    if info.selected_count > 1 {
+        paint_text(
+            text_system,
+            scene,
+            "Multiple selected \u{b7} animation edits apply to the active object only.",
+            x,
+            cur_y,
+            font,
+            w,
+            resolve(ColorToken::Warn, theme),
+        );
+        cur_y += font + Spacing::Sm.px();
+    }
+
     // ⛔ Sem tocador, UM botão — e mais nada. Ver o doc do módulo.
     if !info.player_present {
         paint_text(

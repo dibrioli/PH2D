@@ -47,7 +47,7 @@ fn edit(
 }
 
 fn info(sim: &SimWorld, e: Entity) -> InspectorAnimInfo {
-    build_anim_info(sim.world(), e.to_bits(), &[e.to_bits()], 1).expect("e' uma sprite")
+    build_anim_info(sim.world(), e.to_bits(), 1).expect("e' uma sprite")
 }
 
 /// **⛔ Uma entidade sem `Sprite` não tem §11** — o pool é a grelha dela.
@@ -55,7 +55,7 @@ fn info(sim: &SimWorld, e: Entity) -> InspectorAnimInfo {
 fn only_a_sprite_gets_the_animation_section() {
     let mut sim = SimWorld::new();
     let plain = sim.world_mut().spawn(Transform::default()).id();
-    assert!(build_anim_info(sim.world(), plain.to_bits(), &[], 1).is_none());
+    assert!(build_anim_info(sim.world(), plain.to_bits(), 1).is_none());
 }
 
 /// **O caminho inteiro: anexar o tocador, criar uma animação, escolhê-la, tocá-la.**
@@ -394,6 +394,69 @@ fn catching_up_in_one_call_is_the_same_as_catching_up_step_by_step() {
             (f2, a2.repeat_count, a2.playing),
             "'{}' divergiu entre as duas formas de recuperar",
             tag.name
+        );
+    }
+}
+
+/// **Os gates do TRANSPORTE da §11** — irmão deste ficheiro pelo teto de LOC do shell (HR-18).
+///
+/// ⚠️ **O corte é por LEI, e não por tamanho:** aqui mora o que responde *«o que está a tocar, e
+/// a partir de onde»* — rebobinar, escolher, ligar, retomar. O que fica no ficheiro-pai é a
+/// AUTORIA (a biblioteca, os nomes, os intervalos) e o snapshot. São as duas metades que a própria
+/// seção separa com dois rótulos.
+///
+/// As ferramentas (`registry`, `sprite`, `edit`, `info`) vêm do pai por `use super::*`.
+#[path = "inspector_anim_transport_tests.rs"]
+mod transport;
+
+/// **O MOTOR e o PAINEL dão a mesma resposta a «esta reprodução está pendurada?»**
+///
+/// ⚠️ A lei existe **duas vezes**, e de propósito: o painel é chrome e não vê o motor
+/// ([`ph2d_ecs::animator_state`] vive no `ph2d-ecs`; [`InspectorAnimInfo::current_dangling`] no
+/// modelo do editor). É o mesmo padrão do `ph2d_ecs_dir_label` a espelhar
+/// `AnimDirection::label` — e, como ali, quem impede as duas de divergirem é um gate da SHELL, o
+/// único sítio que vê os dois lados.
+///
+/// ⚠️ **E foi a auditoria que o encontrou** (2026-08-23): a `animator_state` estava exportada,
+/// tinha gate próprio no `ph2d-ecs` e **nenhum consumidor** — enquanto o painel reimplementava a
+/// lei sem nada a prendê-los. *Uma segunda resposta sem oráculo é uma divergência com data
+/// marcada.*
+///
+/// **Mutação que deve sangrar:** tirar o `fits` de uma das duas.
+#[test]
+fn the_panel_and_the_engine_agree_on_a_dangling_playback() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sprite(&mut sim, 8);
+    let mut lib = SpriteAnimations::new();
+    lib.insert(AnimationTag::new("walk", 0, 3)).unwrap();
+    lib.insert(AnimationTag::new("far", 6, 7)).unwrap();
+    sim.world_mut().entity_mut(e).insert(lib);
+    edit(&mut sim, e, &reg, AnimFieldEdit::AddPlayer);
+
+    // ⚠️ Os QUATRO casos, e o terceiro e o quarto sao os que se leem igual no ecra'.
+    for (name, cells, what) in [
+        ("", 8, "sem escolha"),
+        ("walk", 8, "a tocar uma que cabe"),
+        ("ghost", 8, "o nome nao esta' na biblioteca"),
+        ("far", 4, "a grelha encolheu debaixo dela"),
+    ] {
+        edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent(name.into()));
+        if let Some(mut s) = sim.world_mut().get_mut::<ph2d_render::Sprite>(e) {
+            s.hframes = cells;
+        }
+        let animator = sim
+            .world()
+            .get::<ph2d_ecs::SpriteAnimator>(e)
+            .cloned()
+            .expect("o tocador foi anexado");
+        let tags = sim.world().get::<SpriteAnimations>(e);
+        let engine = ph2d_ecs::animator_state(&animator, tags, cells);
+        let panel = info(&sim, e).current_dangling();
+        assert_eq!(
+            matches!(engine, ph2d_ecs::AnimatorState::Dangling),
+            panel,
+            "o motor diz {engine:?} e o painel diz dangling={panel} para «{what}»"
         );
     }
 }

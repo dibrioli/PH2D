@@ -404,6 +404,34 @@ mudos da §9 Sampling; o cap de âncoras que o gate
    o seu próprio laço interno. A primeira versão corria N chamadas com uma justificação **falsa**,
    e foi uma mutação que a derrubou; hoje há gate a prender a equivalência.
 
+### As leis do TRANSPORTE (auditoria de 2026-08-23 — [doc 21](21_auditoria_da_animacao_2026-08-23.md))
+
+9. ⭐ **«Pausado» e «terminado» leem-se igual no `playing == false` e NÃO são a mesma coisa.**
+   [`SpriteAnimator::is_finished`] distingue-os, e é o que faz o interruptor ser um gesto vivo:
+   sem ele, ligar uma tag de uma volta já gasta deixa a imagem na ponta com o contador cheio e o
+   primeiro passo de `advance` volta a fechar o ciclo — **no mesmo tique**.
+10. ⭐ **REBOBINAR é repor o ciclo E pôr a IMAGEM no princípio**, e a ponta certa segue a direção
+    efetiva ([`entry_frame`]). Repor só os contadores é um botão que não faz nada — e, com um
+    `repeat` finito, um botão que não faz nada **duas** vezes.
+11. ⭐ **Escolher outra animação começa-a do PRINCÍPIO dela**, mesmo quando os intervalos se
+    sobrepõem. O `advance` só reposiciona um frame que caia **fora** do intervalo, e a tese do
+    modelo (§8.2) é justamente que as animações **partilham** o pool — *a propriedade que faz o
+    modelo valer a pena era a que partia esta lei*.
+12. ⭐ **A reprodução que se ESGOTOU volta a tocar quando alguém lhe toca — e escolher outra
+    animação é tocar-lhe.** Uma **pausa explícita** não é tocada por isto, então folhear a lista em
+    silêncio continua possível. Uma lei, duas portas (a caixa e a lista); o gate afirma as duas
+    metades.
+13. ⚠️ **A caixa «Playing» pergunta à CENA, nunca à própria memória.** A §11 pinta *e decide* a
+    partir do snapshot; o `WidgetStore` só publica o estado para a acessibilidade. O contrário era
+    uma dupla fonte de verdade que divergia no instante em que o **motor** mudava o facto — e foi
+    exatamente o que o Enio reportou como *«às vezes preciso clicar mais de uma vez»*.
+14. **A seleção múltipla DIZ-SE.** As edições da §11 não se espalham (o índice que carregam só
+    significa alguma coisa na biblioteca da entidade ativa), e a seção avisa-o **antes** de
+    oferecer controlo nenhum.
+
+[`SpriteAnimator::is_finished`]: ../../crates/ph2d-ecs/src/sprite_anim.rs
+[`entry_frame`]: ../../crates/ph2d-ecs/src/sprite_anim.rs
+
 ## O Inspector §11, e onde ele difere da §12
 
 **Clicar numa linha da lista ESCOLHE a animação que toca** — e isso vai ao barramento. Na §12,

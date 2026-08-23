@@ -1049,7 +1049,7 @@ pub(super) fn publish(
     let inspector_anim = hero
         .gizmo
         .selection
-        .and_then(|b| super::inspector_anim::build_anim_info(sim.world(), b, sel, selected_count));
+        .and_then(|b| super::inspector_anim::build_anim_info(sim.world(), b, selected_count));
     let inspector_visibility_section = hero.gizmo.selection.and_then(|b| {
         super::inspector_visibility::build_visibility_section_info(
             sim.world(),

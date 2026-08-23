@@ -59,8 +59,6 @@ pub struct InspectorAnimInfo {
     pub entity_bits: u64,
     /// A biblioteca inteira, na ordem em que o componente a guarda.
     pub rows: Vec<InspectorAnimRow>,
-    /// O componente da biblioteca está anexado? ⚠️ Distinto de `rows.is_empty()`.
-    pub library_present: bool,
     /// O TOCADOR está anexado? Sem ele a seção mostra só o botão que o anexa.
     pub player_present: bool,
     /// **Quantas células a grelha desta sprite tem** (`hframes × vframes`) — o pool.
@@ -77,8 +75,13 @@ pub struct InspectorAnimInfo {
     pub loop_override_tag: u8,
     /// O frame que está no ecrã agora (`Sprite::frame`).
     pub frame: u32,
+    /// Quantas entidades estão selecionadas.
+    ///
+    /// ⚠️ **A §11 NÃO se espalha sobre a seleção** (uma animação identifica-se pelo nome, e o
+    /// índice que a edição carrega só significa alguma coisa na biblioteca da primária), e por
+    /// isso este número é o que a seção usa para o **dizer**. Sem ele, marcar cinco goblins e
+    /// renomear uma animação muda **um** e cala-se — o artista descobre semanas depois.
     pub selected_count: usize,
-    pub mixed: bool,
 }
 
 impl InspectorAnimInfo {
@@ -191,7 +194,6 @@ mod tests {
         InspectorAnimInfo {
             entity_bits: 1,
             rows: vec![row("idle", 0, 1), row("walk", 2, 5)],
-            library_present: true,
             player_present: true,
             cells,
             current: current.into(),
@@ -202,7 +204,6 @@ mod tests {
             loop_override_tag: 0,
             frame: 0,
             selected_count: 1,
-            mixed: false,
         }
     }
 

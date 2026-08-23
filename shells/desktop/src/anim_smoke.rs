@@ -29,6 +29,12 @@
 //! 3. **Speed** a `-1` toca ao contrário; a `0` pausa sem perder o sítio.
 //! 4. Clicar em **`idle`** → vai e volta entre as quatro primeiras, com uma pausa no fim da volta.
 //! 5. **Direction override** força uma direção sobre a que a animação declara; **Inherit** devolve.
+//! 6. **Rewind** devolve a imagem à primeira célula da animação escolhida.
+//! 7. Depois de o `attack` acabar, **Playing** volta a tocá-lo do princípio — num clique só.
+//!
+//! ⚠️ **Os passos 2, 6 e 7 são a auditoria de 2026-08-23** ([doc 21](../../../docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md)):
+//! até ela, o passo 2 deixava a sprite muda (escolher outra não retomava a que se esgotara), o
+//! *Rewind* repunha contadores sem mexer na imagem, e a caixa precisava de dois cliques.
 //!
 //! ⚠️ **Como saber que está errado:** a barra parada com `Playing` marcado, ou o `attack` a voltar
 //! à primeira célula em vez de ficar na última.

@@ -654,6 +654,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   conta se vier outro ciclo · velocidade negativa toca ao contrário, não faz o tempo recuar.
   ⚠️ **`ANIM_TAGS_MAX` é 64 e não os 256 da spec** — o motivo é o dela («típico < 50»): *um modelo
   que aceita o que o painel não mostra produz estado inalcançável*.
+  ⚠️ **O TRANSPORTE foi auditado em 23/08 e tinha quatro defeitos numa família só**
+  ([doc 21](docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md), e a wave está aplicada):
+  *«pausado» e «terminado» leem-se igual no `playing == false` e não são a mesma coisa* — a
+  reprodução que se **ESGOTOU** volta ao princípio quando alguém lhe toca (a caixa **ou** a lista),
+  e uma pausa explícita não é tocada; **rebobinar move a IMAGEM**, não só contadores; e a caixa
+  «Playing» **pergunta à cena**, nunca ao `WidgetStore` (era dupla fonte de verdade, e o motor
+  escreve aquele campo sozinho). ⛔ A §11 tinha 33 gates e **nenhum que carregasse num pixel** —
+  hoje tem `seam_anim.rs`. ⚠️ **MEDIDO e não curado:** com a animação a tocar, um quadro com input
+  regista um passo de undo (o relógio vive num `SimComponent` registado) — **família
+  pré-existente**, a física faz o mesmo com o `Transform`; as três saídas estão na auditoria §4 e a
+  escolha é do Enio.
   ⛔ Fora: duração por-FRAME (não há importador `.ase` que a produza) · os sinais do §8.10
   (`AnimOutcome` existe, ninguém o publica) · o import do Aseprite. Detalhe:
   [spec 08, secção final](docs/Sprite_projeto/08_animation_inline.md) ·
@@ -682,7 +693,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **Smokes:** `PH2D_SLICE_SMOKE=1..3` · `PH2D_SOCKET_SMOKE` · `PH2D_MOUNT_SMOKE` · `PH2D_ANIM_SMOKE` ·
   `PH2D_SHEET_SMOKE` · `PH2D_EMISSIVE_SMOKE` · `PH2D_DITHER_SMOKE`.
   **Ler:** ⚠️ [auditoria de 7 lentes](docs/Sprite_projeto/20_auditoria_do_inspector_2026-08-21.md)
-  (o que estava morto/incompleto, **com o que já foi curado marcado**) · [spec](docs/Sprite_projeto/README.md) ·
+  (o que estava morto/incompleto, **com o que já foi curado marcado**) ·
+  ⚠️ [auditoria da §11 Animation](docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md)
+  (aplicada; 11 achados, 11 mutações, e **5 recusas medidas** — leia-as antes de propor um alcance
+  de campo ou de mexer no que a lista faz ao clique) · [spec](docs/Sprite_projeto/README.md) ·
   [handoffs](docs/Sprite_projeto/handoffs/README.md) (⚠️ índice **à mão**: esta pasta não entra no
   `doc-index.sh` porque o `README.md` acima dela é a spec — e até 2026-08-23 os handoffs eram
   **órfãos**, citados por nada)

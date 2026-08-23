@@ -1858,8 +1858,13 @@ impl crate::App {
 
         // **A §11 ANIMATION anda AQUI**, ao lado dos outros relógios e pela mesma razão: um
         // `SpriteAnimator` é `SimComponent` e o replay tem de reproduzir o frame avançado, o que
-        // só um passo fixo e contado dá. ⚠️ `report.ticks` passos de `fixed_dt`, nunca um passo
-        // grande — um salto atravessaria o fim de um ciclo sem o fechar.
+        // só um passo fixo e contado dá.
+        //
+        // ⚠️ **`report.ticks × fixed_dt` numa chamada só** — e este comentário já disse o
+        // contrário («nunca um passo grande, um salto atravessaria o fim de um ciclo sem o
+        // fechar»). Era falso, e foi uma mutação que o disse: a `ph2d_ecs::advance` tem laço de
+        // recuperação próprio e fecha exatamente os mesmos ciclos. Gate:
+        // `catching_up_in_one_call_is_the_same_as_catching_up_step_by_step`.
         sprite_anim_tick::tick_sprite_animations(sim, report.ticks, self.fixed_step.fixed_dt());
 
         // Sim tick + extract — extracted to sibling `sim_extract.rs`

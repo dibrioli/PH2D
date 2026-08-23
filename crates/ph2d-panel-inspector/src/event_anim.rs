@@ -14,7 +14,7 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::AnimFieldEdit;
-use ph2d_editor_core::widget::{ButtonState, CheckboxValue};
+use ph2d_editor_core::widget::ButtonState;
 
 use crate::state::{self, InspectorState};
 
@@ -93,17 +93,27 @@ pub(crate) fn apply_anim_event(
         }
     }
 
+    // ⚠️ **AS DUAS CAIXAS DECIDEM PELO QUE ESTÁ DESENHADO, e não pelo que o store lembra.**
+    //
+    // O pintor da §11 já tira o valor do SNAPSHOT (`sections::anim`, `.value(info.playing)`) —
+    // ler aqui o `host.store().checkbox(id)` dava **duas fontes de verdade para uma caixa**, e
+    // elas divergem no instante em que alguém que não é o painel escreve o facto. O `playing` é
+    // exatamente esse campo: uma animação que não repete põe-se a `false` sozinha ao chegar ao
+    // fim, sem que a entidade nem a linha aberta mudem, por isso a semente do sync não volta a
+    // correr e o valor guardado fica a dizer «marcada» sobre uma caixa desenhada vazia.
+    //
+    // Sintoma medido (Enio, 2026-08-23): *«às vezes preciso clicar mais de uma vez para checar
+    // Playing»* — o primeiro clique mandava `Playing(false)` a uma cena já parada.
+    //
+    // ⇒ O clique afirma **o contrário do que estava no ecrã**, que é o que um toggle promete.
+    // Gate: `seam_anim::the_playing_box_asks_the_scene_not_its_own_memory`.
     if let WidgetEvent::Toggled(id) = ev
         && matches!(id, ids::INSP_ANIM_PLAYING | ids::INSP_ANIM_AUTOPLAY)
     {
-        let on = matches!(
-            host.store().checkbox(id).map(|(_, v)| v),
-            Some(CheckboxValue::Checked)
-        );
         let edit = if id == ids::INSP_ANIM_PLAYING {
-            AnimFieldEdit::Playing(on)
+            AnimFieldEdit::Playing(!info.playing)
         } else {
-            AnimFieldEdit::Autoplay(on)
+            AnimFieldEdit::Autoplay(!info.autoplay)
         };
         push(host, info.entity_bits, edit);
         return true;

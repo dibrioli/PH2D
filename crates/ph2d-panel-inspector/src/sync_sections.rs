@@ -8,6 +8,12 @@
 //! é reescrito** (o artista está a escrever nele), e **as caixas semeiam só na troca de
 //! entidade** (reescrevê-las todo o quadro faria um clique voltar atrás antes de o commit
 //! chegar).
+//!
+//! ⚠️ **A §11 Animation é a EXCEÇÃO, e ela é do domínio, não da preguiça.** A regra acima só vale
+//! onde o store é a fonte do que se pinta; a §11 pinta **e decide** a partir do snapshot, então
+//! as duas caixas do tocador são espelho por quadro. O que a torna diferente é que o `playing` é
+//! escrito pelo **motor** (uma animação de uma volta pára-se sozinha) — e uma caixa presa a uma
+//! aresta de seleção não tem como saber disso. Detalhe no [`sync_anim_fields`].
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -56,9 +62,10 @@ pub(crate) fn sync_new_sections(
 
 /// Semeia os campos da §11 a partir do snapshot.
 ///
-/// ⚠️ **A VELOCIDADE e as duas caixas do tocador semeiam-se em TODA aresta de entidade** — elas
-/// são do animador, e não da linha aberta. Os campos da biblioteca (nome, intervalo, ritmo) são
-/// da linha, e por isso re-semeiam-se também ao trocar de linha.
+/// ⚠️ **A VELOCIDADE semeia-se em toda aresta de entidade** — ela é do animador, e não da linha
+/// aberta. Os campos da biblioteca (nome, intervalo, ritmo) são da linha, e por isso re-semeiam-se
+/// também ao trocar de linha. **As duas CAIXAS não são semente nenhuma: são espelho por quadro**,
+/// pela razão escrita ao lado delas.
 fn sync_anim_fields(
     host: &mut dyn PanelHostInternal,
     an: &ph2d_editor_core::screens::hero::InspectorAnimInfo,
@@ -73,6 +80,28 @@ fn sync_anim_fields(
         }
     };
     put(host, ids::INSP_ANIM_SPEED, f64::from(an.speed));
+    // ⚠️ **AS DUAS CAIXAS ESPELHAM O MUNDO TODO O QUADRO, e é o oposto do que as irmãs fazem.**
+    //
+    // Nas §5 e §12 o store é a fonte do que se pinta, e por isso reescrevê-lo todo o quadro faria
+    // um clique voltar atrás antes de o commit chegar. Aqui não: a §11 **pinta a partir do
+    // snapshot** e, desde 2026-08-23, **decide a partir dele também** (`event_anim`) — o store não
+    // é lido por ninguém que resolva alguma coisa, só publica o estado para a árvore de a11y.
+    //
+    // ⇒ Deixá-lo numa aresta punha-o a mentir a quem o lê pela acessibilidade no instante em que o
+    // MOTOR muda o facto (uma animação de uma volta pára-se sozinha). *Um valor que ninguém usa
+    // para decidir tem de acompanhar quem decide, senão é só um segundo estado a envelhecer.*
+    for (id, on) in [
+        (ids::INSP_ANIM_PLAYING, an.playing),
+        (ids::INSP_ANIM_AUTOPLAY, an.autoplay),
+    ] {
+        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
+            *value = if on {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            };
+        }
+    }
     if let Some(row) = an.rows.get(selected) {
         put(host, ids::INSP_ANIM_FROM, f64::from(row.from));
         put(host, ids::INSP_ANIM_TO, f64::from(row.to));
@@ -102,18 +131,6 @@ fn sync_anim_fields(
         }
         *caret = text.len();
         *selection_anchor = None;
-    }
-    for (id, on) in [
-        (ids::INSP_ANIM_PLAYING, an.playing),
-        (ids::INSP_ANIM_AUTOPLAY, an.autoplay),
-    ] {
-        if let Some(InteractiveState::Checkbox { value, .. }) = host.store_mut().get_mut(id) {
-            *value = if on {
-                CheckboxValue::Checked
-            } else {
-                CheckboxValue::Unchecked
-            };
-        }
     }
 }
 

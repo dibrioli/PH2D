@@ -203,7 +203,6 @@ fn publish_the_whole_sprite_scene() {
             hold_ms: 40,
             repeat_delay_ms: 250,
         }],
-        library_present: true,
         player_present: true,
         cells: 8,
         current: "walk".into(),
@@ -214,7 +213,6 @@ fn publish_the_whole_sprite_scene() {
         loop_override_tag: 0,
         frame: 1,
         selected_count: 1,
-        mixed: false,
     }));
     set_current_inspector_blend(Some(InspectorBlendInfo {
         entity_bits: ENTITY,

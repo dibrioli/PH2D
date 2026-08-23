@@ -335,6 +335,20 @@ impl SpriteAnimator {
         }
     }
 
+    /// **A reprodução gastou os ciclos que lhe eram permitidos?**
+    ///
+    /// ⚠️ **É isto que distingue *o artista pausou* de *a animação acabou*, e os dois leem-se
+    /// igual no `playing == false`.** Sem a distinção, ligar de novo uma animação de uma volta é
+    /// um gesto morto: [`advance`] volta a fechar o ciclo no primeiro passo e põe-se a `false`
+    /// outra vez, no mesmo tique. Quem liga uma que acabou está a pedir para a **rever**.
+    ///
+    /// `false` para uma tag que repete para sempre — ela nunca acaba.
+    #[must_use]
+    pub fn is_finished(&self, tag: &AnimationTag) -> bool {
+        self.cycles_allowed(tag)
+            .is_some_and(|n| self.repeat_count >= n)
+    }
+
     /// **Repõe o estado interno** — o que se faz ao trocar de tag ou ao rebobinar.
     ///
     /// ⚠️ Trocar de tag **tem** de o chamar: o `repeat_count` e o `pingpong_reverse` são do ciclo
@@ -362,6 +376,25 @@ pub enum AnimatorState {
     Ready,
     /// O nome não está na lista, ou a tag não alcança célula nenhuma na grelha de hoje.
     Dangling,
+}
+
+/// **A célula por onde um ciclo desta tag COMEÇA**, dada a direção efetiva e a grelha de hoje.
+///
+/// ⚠️ **Rebobinar não é só zerar contadores — é pôr a IMAGEM no princípio.** Enquanto o
+/// [`SpriteAnimator::rewind`] era a operação inteira, o botão *Rewind* repunha o ciclo e deixava a
+/// sprite a mostrar a célula onde tinha parado: o artista carregava em «rebobinar» e nada se
+/// mexia. Pior, com um `repeat` finito o gesto ficava **inerte** — a imagem estava na ponta, então
+/// o primeiro passo de [`advance`] fechava logo o ciclo e parava outra vez.
+///
+/// `None` quando a tag não alcança célula nenhuma na grelha de hoje.
+#[must_use]
+pub fn entry_frame(animator: &SpriteAnimator, tag: &AnimationTag, cells: u32) -> Option<u32> {
+    let (lo, hi) = tag.resolve(cells)?;
+    Some(if animator.direction(tag).starts_reversed() {
+        hi
+    } else {
+        lo
+    })
 }
 
 /// Que estado a reprodução desta sprite tem, dada a biblioteca e o tamanho do pool.

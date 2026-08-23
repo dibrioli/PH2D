@@ -109,7 +109,7 @@ pub use sorting::{
 pub use sprite_anim::{
     ANIM_NAME_MAX_BYTES, ANIM_TAGS_MAX, AnimDirection, AnimOutcome, AnimTagError, AnimationTag,
     AnimatorState, FRAME_MS_MAX, FRAME_MS_MIN, SPEED_MAX_Q16, SPEED_ONE_Q16, SpriteAnimations,
-    SpriteAnimator, advance, animator_state, validate_tag_name,
+    SpriteAnimator, advance, animator_state, entry_frame, validate_tag_name,
 };
 pub use sprite_pixels::SpritePixels;
 pub use sprite_sheet_frame::SpriteSheetFrame;

@@ -438,3 +438,99 @@ fn both_components_round_trip_through_postcard() {
     let bytes = postcard::to_allocvec(&a).unwrap();
     assert_eq!(postcard::from_bytes::<SpriteAnimator>(&bytes).unwrap(), a);
 }
+
+/// **«Acabou» e «foi pausada» leem-se igual no `playing`, e não são a mesma coisa.**
+///
+/// ⚠️ É esta distinção que faz o interruptor *Playing* ser um gesto vivo: sem ela, voltar a ligar
+/// uma animação de uma volta é pedir a [`advance`] que feche o ciclo outra vez no primeiro passo.
+#[test]
+fn a_finished_animation_is_told_apart_from_a_paused_one() {
+    let once = AnimationTag {
+        repeat: Some(1),
+        ..AnimationTag::new("attack", 0, 3)
+    };
+    let forever = AnimationTag::new("walk", 0, 3);
+
+    // Recem-rebobinada: nenhuma das duas acabou.
+    let a = playing(&once);
+    assert!(!a.is_finished(&once));
+    assert!(!playing(&forever).is_finished(&forever));
+
+    // Corrida ate' parar: a de uma volta ACABOU.
+    let mut a = playing(&once);
+    let _ = walk(&once, &mut a, 4, 20);
+    assert!(!a.playing, "a de uma volta tem de parar");
+    assert!(
+        a.is_finished(&once),
+        "e o motivo de ela ter parado e' o FIM"
+    );
+
+    // A que repete para sempre corre o mesmo tanto e NUNCA acaba.
+    let mut b = playing(&forever);
+    let _ = walk(&forever, &mut b, 4, 20);
+    assert!(b.playing);
+    assert!(
+        !b.is_finished(&forever),
+        "uma tag sem teto de ciclos nunca acaba, por mais que corra"
+    );
+
+    // ⚠️ O `loop_override` MANDA nos dois sentidos — a pergunta e' sobre a lei efetiva.
+    let mut c = playing(&forever);
+    c.loop_override = Some(false);
+    let _ = walk(&forever, &mut c, 4, 20);
+    assert!(
+        c.is_finished(&forever),
+        "com o loop forcado a UMA volta, a tag infinita acaba"
+    );
+    let mut d = playing(&once);
+    d.loop_override = Some(true);
+    let _ = walk(&once, &mut d, 4, 20);
+    assert!(
+        !d.is_finished(&once),
+        "com o loop forcado a SEMPRE, a de uma volta nao acaba"
+    );
+}
+
+/// **A célula de entrada é a ponta por onde a direção efetiva começa** — e é da grelha de hoje.
+///
+/// ⚠️ **Ela é o que faltava ao rebobinar.** Repor os contadores e deixar a imagem onde estava dá
+/// um botão que não faz nada — e, com um `repeat` finito, um botão que não faz nada **duas** vezes
+/// (o primeiro passo volta a fechar o ciclo a partir da ponta).
+#[test]
+fn the_entry_cell_is_the_end_the_effective_direction_starts_from() {
+    let fwd = tag_dir("a", 2, 5, AnimDirection::Forward);
+    let rev = tag_dir("b", 2, 5, AnimDirection::Reverse);
+    let pp = tag_dir("c", 2, 5, AnimDirection::PingPong);
+    let ppr = tag_dir("d", 2, 5, AnimDirection::PingPongReverse);
+    let a = SpriteAnimator::new("a");
+    assert_eq!(entry_frame(&a, &fwd, 8), Some(2));
+    assert_eq!(entry_frame(&a, &rev, 8), Some(5));
+    assert_eq!(entry_frame(&a, &pp, 8), Some(2), "o ping-pong parte do lo");
+    assert_eq!(entry_frame(&a, &ppr, 8), Some(5), "e o reverso do hi");
+
+    // ⚠️ A DIREÇÃO EFETIVA, e nao a da tag: o override manda aqui como manda em `advance`.
+    let mut o = SpriteAnimator::new("a");
+    o.direction_override = Some(AnimDirection::Reverse);
+    assert_eq!(entry_frame(&o, &fwd, 8), Some(5));
+
+    // ⚠️ A grelha de HOJE: se ela encolheu, o `hi` recua com ela.
+    assert_eq!(entry_frame(&a, &rev, 4), Some(3));
+    assert_eq!(
+        entry_frame(&a, &rev, 2),
+        None,
+        "a tag nao alcanca celula nenhuma"
+    );
+
+    // E e' EXATAMENTE por onde `advance` faz uma reproducao rebobinada entrar.
+    for t in [&fwd, &rev, &pp, &ppr] {
+        let mut anim = playing(t);
+        let mut frame = u32::MAX;
+        advance(&mut anim, t, &mut frame, 8, 0);
+        assert_eq!(
+            Some(frame),
+            entry_frame(&anim, t, 8),
+            "a entrada de `advance` e a celula de rebobinar tem de ser a MESMA para {}",
+            t.name
+        );
+    }
+}

@@ -196,7 +196,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | ~~F1~~ ✅ | a **mola** serve o chrome — **FEITA pelo F0** (o `motion.rs` resolve com `ph2d_spring::SpringState`). ⚠️ Esta linha ficou a mentir uma jornada inteira | 1 | F0 | **P** |
 | ~~⭐ F2~~ ✅ | **hover/press/focus interpolam** — **FEITA**. ⚠️ A medição de 13/08 (*"2 sítios leem, 161 pintam"*) **expirou**: hoje são **128** a passar o par e **9** famílias no relógio. O que sobrava era uma **quarta rota** — o mapa duro `flat_button_surface`, sem `t` na assinatura, resolvido em 5 pintores —, curada tornando-o **privado** para o COMPILADOR enumerar os sítios. ✅ E o chip de CHROME fechou a seguir: eram **4** pintores do mesmo quadrado e **1** amaciava (§6.2-bis) | 1 | F0+F1 | ~~P~~ **G** |
 | ~~F3~~ ✅ | **interruptibilidade** — **FEITA pelo F0** (`SpringState::resuming` + a re-normalizacao `v / span`), com gate proprio. ⚠️ Tambem mentia | 1 | F1 | **P** |
-| F4 | **secções e painéis** abrem/fecham com movimento e **direcção coerente** | 1 | F1 | **M** |
+| ~~F4~~ ✅ | **secções** abrem/fecham com movimento — **FEITA** (a wave *F4b*: `SectionFold::begin` + `fold_live`/`section_open_live` no store, em **24** ficheiros). ⚠️ A linha mentiu até 2026-08-23, e o aviso de custo dela (*«36 `is_collapsed` em 32 arquivos … mais cara que a contagem sugere»*) descrevia um trabalho **já pago**. ⚠️ E o `bool` devolvido pelo helper deixou de ser o `is_collapsed`: é *fechada **E PARADA***, senão o corpo sumia de repente por baixo de um chevron a rodar. ⏸️ A metade dos **PAINÉIS** é outra coisa (§5 do `CLAUDE.md`: *ausência, não regressão; e não é o gêmeo da dobra*) e é do Enio | 1 | F1 | **M** |
 | ~~F5~~ ✅ | **cascata** — **FEITA na PALETA** (`ε = 0,020 s`, MEDIDO; ver a §6.3). ⚠️ E ela é o **primeiro consumidor de `Role::Travel` do produto** — até aqui o eixo que o *reduced motion* existe para matar não era usado por ninguém. Hierarquia e rows do inspector ficam para quando a F2 abrir a porta | 1 | F0 | **P** |
 | ~~⭐ E1~~ ✅ | **SCRUB numerico** — **FEITO** (`interaction/state/number_scrub.rs` + a familia `number_drag_*`), e afinado depois (*a taxa do scrub e o clamp dele leem o MESMO intervalo* — 43 campos sairam de 20 px para 250). ⚠️ A linha mentia | 3 | — | **M** |
 | ~~E2~~ ✅ | **rolagem SUAVE** nas listas — **FEITA**, e a forma é o que a fez caber: `panel_scroll` passa a devolver o **VIVO** e ganha o irmão `panel_scroll_target`, então os **~130 leitores** e os **36 escritores** herdaram sem uma linha. ⚠️ A roda acumula no ALVO — no vivo, cinco voltas de 100 px somam **230,56** em vez de 500. O **pan de canvas** fica de fora (outro gesto, outro dono). ⚠️ **Reprovada no 1º smoke e curada pelo `Role::Surface`** — §6.4 | 3 | F0 | **P** |
@@ -334,6 +334,27 @@ decisão de produto — não a tomei.
 ⚠️ A matriz destes quatro **não é a mesma** que a plana (o repouso deles é `BgElev`, não `Bg2`):
 são duas perguntas, não duas respostas — há gate a afirmá-lo
 (`the_flat_surface_reads_the_clock`).
+
+### 6.6 — ⛔ ESTE ESTUDO MENTE SOBRE SI PRÓPRIO, e já são CINCO linhas
+
+Medido ao longo de 2026-08-23, uma por uma, ao ir buscar o item seguinte:
+
+| linha | o que ela dizia | o que estava medido |
+|---|---|---|
+| **F1** | aberta | já feita pelo F0 (a própria linha admite: *"ficou a mentir uma jornada inteira"*) |
+| **F3** | aberta | idem |
+| **F5** | aberta | **feita** na paleta |
+| **F2** | *"2 sítios leem o `t`, 161 pintam"* | **128** passam o par, **9** famílias no relógio |
+| **F4** | aberta, com aviso de custo | **feita** (a wave F4b, 24 ficheiros) |
+| **E1 · E2 · R1** | abertas | as três feitas, e as três com *"a linha mentia"* escrito ao lado |
+
+⚠️ **Oito de vinte e uma linhas.** O padrão não é descuido de quem fecha: é que **fechar uma wave
+escreve no commit e no doc do módulo, e não aqui** — este estudo é um PLANO, e um plano que
+ninguém reconcilia envelhece à velocidade a que o produto anda.
+
+⇒ **A regra que isto pede é a do `CLAUDE.md` §0:** *quem move o número reconfere a nota*. Antes de
+pegar um item desta tabela, **meça-o**. Foi assim que a F2 rendeu uma wave real (a superfície
+plana) em vez da wave inteira que a linha anunciava — e foi assim que o F4 não custou nada.
 
 ### 6.5 — ⚠️ O GESTO do radial foi MEDIDO, e o teclado deste app está saturado
 

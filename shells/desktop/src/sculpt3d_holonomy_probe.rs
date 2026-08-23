@@ -38,6 +38,18 @@ fn how_many_patches_are_uncombable() {
 
     // ── O nosso lado.
     for (name, piece, reference) in [
+        // ⛔⛔ **A ESFERA LISA VEM PRIMEIRO, e faltava aqui** (acrescentada 2026-08-23).
+        //
+        // O `CLAUDE.md` §5 manda medir toda hipótese nova nela antes das esculturas —
+        // ela é a reprodução mais barata do defeito (`18°` contra `6°` do oráculo) e
+        // é onde a contagem de singularidades é conhecida de antemão (`Σ = 8`,
+        // Poincaré–Hopf). ⚠️ *Sem ela, «zero patches sujos» era uma afirmação sobre
+        // três peças esculpidas e nenhuma sobre o caso do núcleo.*
+        (
+            "ESFERA LISA",
+            "sphere_uv_96x144",
+            ph2d_mesh::shapes::uv_sphere(96, 144, 1.0),
+        ),
         (
             "ORELHA",
             "sculpt_eared",
@@ -139,23 +151,30 @@ fn how_many_patches_are_uncombable() {
         for (&p, faces) in &by {
             match ph2d_crossfield::holonomy(mesh, faces, dirs) {
                 Some(h) => {
-                    // ⛔ **A contagem de «sujos» FICA sem barra própria**: ver
-                    // `Holonomy::_MEASURED_AND_REJECTED_CLEAN_BAR`. O que se lê é a
-                    // distribuição, e o número aqui é só para a comparação de
-                    // ordens de grandeza com a linha do oráculo abaixo.
-                    if h.max > 1.0 {
+                    // ⭐⭐⭐ **«SUJO» PASSOU A SER UM INTEIRO, e não uma barra.**
+                    //
+                    // ⛔ Até 2026-08-23 esta linha era `h.max > 1.0` — uma barra sobre
+                    // um ângulo que, medido, dá o mesmo no oráculo e nunca passa de
+                    // 45°. Ver `Holonomy::_A_ROUGHNESS_RULER_CANNOT_SEE_A_SINGULARITY`.
+                    // *Um patch está sujo quando uma volta fechada devolve o braço
+                    // rodado; isso conta-se, não se compara com nada.*
+                    if h.defects > 0 {
                         sujos += 1;
                     }
                     fora += h.skipped;
                     todos.push(h);
-                    worst.push((h.max, p, faces.len()));
+                    worst.push((h.rough_max, p, faces.len()));
                 }
                 None => sem_resposta += 1,
             }
         }
         worst.sort_by(|a, b| b.0.total_cmp(&a.0));
+        let voltas: usize = todos.iter().map(|h| h.defects).sum();
+        let ciclos: usize = todos.iter().map(|h| h.cycles).sum();
+        let pior_volta = todos.iter().map(|h| h.turn_max).max().unwrap_or(0);
         eprintln!(
-            "{rotulo}: {} patches · {sujos} com max > 1° · \
+            "{rotulo}: {} patches · ⭐⭐⭐{sujos} com SINGULARIDADE dentro \
+             ({voltas} voltas em {ciclos} ciclos, pior {pior_volta}/4) · \
              {sem_resposta} sem resposta · ⚠️{fora} faces FORA da conta",
             by.len(),
         );
@@ -165,8 +184,8 @@ fn how_many_patches_are_uncombable() {
         // uma barra sobre o máximo classifica a REFERÊNCIA como suja e não
         // discrimina nada. *É a mesma lição do extremo global contra a régua
         // por-face, um nível acima.*
-        let mut p50: Vec<f32> = todos.iter().map(|h| h.p50).collect();
-        let mut p95: Vec<f32> = todos.iter().map(|h| h.p95).collect();
+        let mut p50: Vec<f32> = todos.iter().map(|h| h.rough_p50).collect();
+        let mut p95: Vec<f32> = todos.iter().map(|h| h.rough_p95).collect();
         p50.sort_by(f32::total_cmp);
         p95.sort_by(f32::total_cmp);
         let med = |v: &[f32]| v.get(v.len() / 2).copied().unwrap_or(0.0);

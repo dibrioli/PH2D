@@ -12,15 +12,28 @@
 //! de 90°, e não há escolha face-a-face que o evite — é topologia, não numérica.
 //!
 //! ⛔ **É por isso que a decomposição em patches promete pôr as singularidades nos
-//! CANTOS.** [`holonomy`] mede se essa promessa se cumpre, e devolve o resíduo em
-//! graus: perto de `0°` a região é penteável; grande, há singularidade **dentro** e
-//! nenhuma lei sobre o interior daquele patch pode funcionar — o campo que ela
-//! seguiria não existe lá de forma consistente.
+//! CANTOS.** [`holonomy`] mede se essa promessa se cumpre — e a resposta é
+//! [`Holonomy::defects`], um **inteiro**: quantas voltas fechadas devolvem o braço
+//! rodado. `0` = a região é penteável; `> 0` = há singularidade **dentro** dela, e
+//! nenhuma lei sobre o seu interior pode seguir um campo que lá não existe.
 //!
-//! ⚠️ **A medição de 2026-08-23 que motivou este módulo era um MÁXIMO** sobre todas
-//! as arestas de todos os patches (`29°` na orelha, `44°` no gancho), e um máximo não
-//! diz **quantos** patches estão sujos. É por isso que [`Holonomy`] traz a
-//! distribuição, e não um número.
+//! # ⛔⛔⛔ A régua que este módulo teve primeiro, e por que ela não podia responder
+//!
+//! ⚠️ **Isto é o segundo instrumento com este nome, e o primeiro media outra coisa.**
+//! Ele devolvia um ângulo — o resto depois de virar cada braço para o quarto de volta
+//! mais próximo — e leu-se `29°` na orelha e `44°` no gancho como *«há singularidade
+//! dentro dos nossos patches, a dívida é do F3»*.
+//!
+//! ⛔ **Esse ângulo não pode passar de 45°, por construção.** Uma singularidade dá
+//! `90°`, que aquela linha nunca teve como escrever; e `29°`–`44°` é o *tecto* da
+//! grandeza, não um defeito grande. ⛔⛔ Pior: no único ramo onde a holonomia se lê —
+//! a aresta que **fecha ciclo** — ela comparava o braço cru do vizinho em vez do que
+//! já lhe fora atribuído. *O teste de fecho não estava saturado; não existia.*
+//!
+//! ⇒ Aquela grandeza sobrevive aqui com o nome certo ([`Holonomy::rough_max`], a
+//! **rugosidade** do campo) e sem barra, porque o oráculo mede o mesmo. A holonomia
+//! a sério é inteira e dispensa barra. Controlo positivo e negativo em
+//! `comb_tests.rs` — *uma régua nova sem os dois controlos é a mesma aposta outra vez.*
 
 use ph2d_mesh::Mesh;
 
@@ -66,30 +79,57 @@ fn turn(d: [f32; 3], n: [f32; 3], k: i32) -> [f32; 3] {
     }
 }
 
-/// **O QUE SOBRA depois de pentear uma região** — a distribuição, não um número.
+/// **O QUE SOBRA depois de pentear uma região — e são DUAS coisas, não uma.**
+///
+/// ⛔⛔ **A primeira versão deste tipo trazia só a primeira, com o nome da segunda**
+/// — ver [`Self::_A_ROUGHNESS_RULER_CANNOT_SEE_A_SINGULARITY`]. As duas colunas
+/// vivem aqui separadas de propósito:
+///
+/// | | o que é | alcance |
+/// |---|---|---|
+/// | `rough_*` | a **rugosidade** do campo: o resto depois de virar cada braço para o quarto de volta mais próximo | ⛔ **`[0°, 45°]` por construção** |
+/// | ⭐ `cycles`/`defects`/`turn_max` | a **holonomia**: o campo volta rodado ao dar a volta a um ciclo? | `{0, 1, 2}` quartos de volta |
+///
+/// *Só a segunda linha responde «há singularidade dentro da região».*
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Holonomy {
-    /// Quantas arestas interiores entraram na conta.
+    /// Quantas arestas duais interiores entraram na conta — ⚠️ **cada uma UMA vez**
+    /// (a versão que media dentro da travessia contava as duas direcções).
     pub edges: usize,
     /// ⚠️ **Quantas faces ficaram de FORA** (degeneradas, ou com a direcção do campo
     /// sem componente no plano delas). ⛔ *Uma região medida a meio não é uma região
-    /// limpa* — quem lê [`Self::is_clean`] tem de olhar esta coluna ao lado.
+    /// limpa* — quem lê `defects` tem de olhar esta coluna ao lado.
     pub skipped: usize,
-    /// O desacordo mediano, em graus.
-    pub p50: f32,
-    /// O percentil 95.
-    pub p95: f32,
-    /// O pior.
-    pub max: f32,
+    /// A **rugosidade** mediana, em graus. ⛔ Não é holonomia — ver o doc do tipo.
+    pub rough_p50: f32,
+    /// O percentil 95 da rugosidade.
+    pub rough_p95: f32,
+    /// A pior rugosidade. ⛔ **Nunca pode passar de 45°.**
+    pub rough_max: f32,
+    /// ⭐⭐⭐ **Quantas arestas duais FECHAM CICLO** — as que não entraram na árvore
+    /// da travessia. É sobre elas, e só sobre elas, que a holonomia se lê: numa
+    /// aresta de árvore o braço foi *definido* como o mais próximo do pai, e o
+    /// desacordo é zero por construção.
+    pub cycles: usize,
+    /// ⭐⭐⭐ **De quantas dessas o campo volta RODADO** de um quarto de volta ou
+    /// mais. `0` = a região é penteável; `> 0` = há singularidade **dentro**, e
+    /// nenhuma lei sobre o interior dela pode seguir um campo que lá não existe.
+    pub defects: usize,
+    /// O maior desacordo em **quartos de volta** (`0`, `1` ou `2`), medido como
+    /// distância à identidade — `3` quartos num sentido é `1` no outro.
+    pub turn_max: i32,
 }
 
 impl Holonomy {
-    /// ⛔⛔ **NÃO EXISTE BARRA AQUI, e a ausência é o resultado** (2026-08-23).
+    /// ⛔⛔⛔ **UMA RÉGUA DE RUGOSIDADE NÃO CONSEGUE VER UMA SINGULARIDADE** — e foi
+    /// preciso pedir-lhe isso duas vezes para reparar (2026-08-23).
     ///
-    /// A primeira versão deste tipo trazia um `CLEAN_DEG = 1.0` sobre [`Self::max`],
-    /// escrito do raciocínio *«um campo penteável dá resíduo de arredondamento; a
-    /// alternativa topológica mais próxima é 90°, logo qualquer barra entre 1° e 10°
-    /// separa as duas classes»*. ⚠️ **O raciocínio é limpo e a medição desmente-o.**
+    /// # O que aconteceu, na ordem em que aconteceu
+    ///
+    /// A primeira versão deste tipo trazia um `CLEAN_DEG = 1.0`, escrito do
+    /// raciocínio *«um campo penteável dá resíduo de arredondamento; a alternativa
+    /// topológica mais próxima é 90°, logo qualquer barra entre 1° e 10° separa as
+    /// duas classes»*. A medição pareceu desmenti-lo:
     ///
     /// | `max` por patch | p50 mediano | p95 mediano |
     /// |---|---|---|
@@ -98,19 +138,39 @@ impl Holonomy {
     /// | ⛔ nós, gancho `44,1°` | `0,892°` | `3,70°` |
     /// | ⭐ **oráculo, gancho `38,4°`** | **`0,726°`** | **`3,63°`** |
     ///
-    /// ⇒ **A referência tem exactamente a mesma coisa.** Uma barra de `1°` sobre o
-    /// máximo classifica **12 de 12** patches do oráculo como sujos — *um predicado
-    /// que reprova a testemunha de controlo não mede o defeito, mede a discretização*.
+    /// ⇒ a leitura foi *«a referência tem o mesmo, logo a barra não separa nada»*, e
+    /// a barra caiu. **A conclusão sobre a BARRA está certa e fica de pé.**
     ///
-    /// ⭐⭐ **E é por isso que este tipo devolve a DISTRIBUIÇÃO.** O `max` é um
-    /// extremo sobre milhares de arestas e apanha o arredondamento do braço da cruz
-    /// perto dos 45°; o `p50` e o `p95` é que dizem o estado da região. *É a mesma
-    /// lição do extremo global contra a régua por-face
-    /// ([[feedback_a_global_extreme_is_not_a_per_face_ruler]]), um nível acima.*
+    /// # ⭐⭐⭐ O que estava errado é mais fundo: a GRANDEZA
     ///
-    /// ⛔ **Quem quiser voltar a pôr uma barra aqui tem de a derivar do oráculo com
-    /// este mesmo código** — e a tabela acima diz que ela não separa nada.
-    const _MEASURED_AND_REJECTED_CLEAN_BAR: () = ();
+    /// ⛔ **O raciocínio nunca foi refutado — ele foi testado sobre um número que não
+    /// consegue exprimir aquilo que ele procurava.** O que a coluna `max` mede é o
+    /// resto depois de virar cada braço para o quarto de volta **mais próximo**, e
+    /// esse resto é **`≤ 45°` por construção**. *A «alternativa topológica a 90°» que
+    /// o raciocínio invocava não é um valor grande desta coluna — ela não é um valor
+    /// desta coluna de todo.*
+    ///
+    /// ⚠️ E a assinatura estava à vista: **`29°` e `44°` são o TECTO da grandeza**.
+    /// Um número encostado ao máximo que ele pode imprimir é um instrumento saturado,
+    /// não um defeito medido — irmão de
+    /// [[feedback_an_unlabelled_probe_column_gets_read_backwards]].
+    ///
+    /// ⛔⛔ **E o pior não era o tecto, era o ramo que faltava:** na aresta que fecha
+    /// ciclo — a única onde a holonomia se pode ler — a versão antiga comparava o
+    /// braço **cru** do vizinho, nunca o que já lhe tinha sido atribuído. *O teste de
+    /// fecho não estava lá para ser saturado; ele não existia.*
+    ///
+    /// ⇒ Esta grandeza mudou de nome para [`Self::rough_max`], e a holonomia a sério
+    /// vive em [`Self::defects`], com controlo positivo e negativo em `comb_tests.rs`.
+    ///
+    /// # ⛔ O que continua sem barra
+    ///
+    /// A rugosidade **continua sem barra**, e agora pela razão certa: a tabela acima
+    /// mostra a referência com os mesmos números, logo ela mede a discretização e não
+    /// o estado da região. *Quem quiser voltar a pôr uma barra aqui tem de a derivar
+    /// do oráculo com este mesmo código.* A holonomia, essa, **não precisa de barra
+    /// nenhuma** — ela é inteira.
+    const _A_ROUGHNESS_RULER_CANNOT_SEE_A_SINGULARITY: () = ();
 }
 
 /// ⭐ **PENTEIA `faces` e devolve o resíduo.** `dirs` é uma direcção da cruz por face
@@ -200,7 +260,13 @@ pub fn comb(mesh: &Mesh, faces: &[u32], dirs: &[[f32; 3]]) -> Option<(Vec<[f32; 
     }
 
     let mut combed: Vec<Option<[f32; 3]>> = vec![None; faces.len()];
-    let mut left: Vec<f32> = Vec::new();
+    // ⭐⭐⭐ **AS ARESTAS DA ÁRVORE, guardadas — é o que separa as duas grandezas.**
+    //
+    // ⛔ Numa aresta de árvore o braço do filho foi *definido* como o quarto de volta
+    // mais próximo do pai: o desacordo é zero por construção, e medir holonomia lá é
+    // medir a própria definição. A holonomia só tem sentido nas arestas que a árvore
+    // **não** usou — as que fecham ciclo.
+    let mut tree: std::collections::BTreeSet<(usize, usize)> = std::collections::BTreeSet::new();
     // ⚠️ **Semente por COMPONENTE**, não uma só: uma região desligada deixaria
     // metade das faces sem direcção penteada, e o `unwrap` a jusante leria isso
     // como «o campo é mau» em vez de «a região está partida».
@@ -213,6 +279,9 @@ pub fn comb(mesh: &Mesh, faces: &[u32], dirs: &[[f32; 3]]) -> Option<(Vec<[f32; 
         while let Some(t) = queue.pop_front() {
             let x = combed[t]?;
             for &u in &adj[t] {
+                if combed[u].is_some() {
+                    continue;
+                }
                 let Some(r) = tangent(x, normal[u]) else {
                     continue;
                 };
@@ -221,18 +290,54 @@ pub fn comb(mesh: &Mesh, faces: &[u32], dirs: &[[f32; 3]]) -> Option<(Vec<[f32; 
                 let k = (s.atan2(c) / std::f32::consts::FRAC_PI_2).round();
                 #[allow(clippy::cast_possible_truncation)]
                 let turned = turn(d, normal[u], k as i32);
-                // ⭐ **O que sobra depois de virar é a HOLONOMIA.** Num campo
-                // penteável `turned` e `r` coincidem; o resto é a singularidade que
-                // ficou dentro da região.
-                left.push(dot(turned, r).clamp(-1.0, 1.0).acos().to_degrees());
-                if combed[u].is_none() {
-                    combed[u] = Some(turned);
-                    queue.push_back(u);
-                }
+                combed[u] = Some(turned);
+                tree.insert((t.min(u), t.max(u)));
+                queue.push_back(u);
             }
         }
     }
     let out: Vec<[f32; 3]> = combed.into_iter().collect::<Option<_>>()?;
+
+    // ── ⭐⭐⭐ A MEDIÇÃO, sobre cada aresta dual UMA vez, com o campo já penteado.
+    //
+    // ⚠️ **Separada da travessia de propósito.** Medir lá dentro obriga a comparar o
+    // braço CRU do vizinho (o penteado ainda não existe quando a aresta é de árvore,
+    // e quando ela fecha ciclo o laço já não passa por lá) — foi assim que a versão
+    // antiga ficou sem o único ramo que interessa.
+    let mut left: Vec<f32> = Vec::with_capacity(adj.iter().map(Vec::len).sum::<usize>() / 2);
+    let (mut cycles, mut defects, mut turn_max) = (0usize, 0usize, 0i32);
+    let mut seen: std::collections::BTreeSet<(usize, usize)> = std::collections::BTreeSet::new();
+    for (t, ns) in adj.iter().enumerate() {
+        for &u in ns {
+            let key = (t.min(u), t.max(u));
+            if !seen.insert(key) {
+                continue;
+            }
+            let Some(r) = tangent(out[t], normal[u]) else {
+                continue;
+            };
+            let d = out[u];
+            let (c, s) = (dot(d, r), dot(cross(normal[u], d), r));
+            let ang = s.atan2(c);
+            let k = (ang / std::f32::consts::FRAC_PI_2).round();
+            #[allow(clippy::cast_possible_truncation)]
+            let k = k as i32;
+            let turned = turn(d, normal[u], k);
+            left.push(dot(turned, r).clamp(-1.0, 1.0).acos().to_degrees());
+            if !tree.contains(&key) {
+                cycles += 1;
+                // ⭐ A distância à identidade em quartos de volta: `3` num sentido é
+                // `1` no outro, e o que interessa é *quanto* o campo voltou rodado.
+                let q = k.rem_euclid(4);
+                let q = q.min(4 - q);
+                if q != 0 {
+                    defects += 1;
+                    turn_max = turn_max.max(q);
+                }
+            }
+        }
+    }
+
     left.sort_by(f32::total_cmp);
     let pct = |p: f32| -> f32 {
         if left.is_empty() {
@@ -247,9 +352,12 @@ pub fn comb(mesh: &Mesh, faces: &[u32], dirs: &[[f32; 3]]) -> Option<(Vec<[f32; 
         Holonomy {
             edges: left.len(),
             skipped,
-            p50: pct(0.50),
-            p95: pct(0.95),
-            max: left.last().copied().unwrap_or(0.0),
+            rough_p50: pct(0.50),
+            rough_p95: pct(0.95),
+            rough_max: left.last().copied().unwrap_or(0.0),
+            cycles,
+            defects,
+            turn_max,
         },
     ))
 }
@@ -260,3 +368,7 @@ pub fn comb(mesh: &Mesh, faces: &[u32], dirs: &[[f32; 3]]) -> Option<(Vec<[f32; 
 pub fn holonomy(mesh: &Mesh, faces: &[u32], dirs: &[[f32; 3]]) -> Option<Holonomy> {
     comb(mesh, faces, dirs).map(|(_, h)| h)
 }
+
+#[cfg(test)]
+#[path = "comb_tests.rs"]
+mod tests;

@@ -112,12 +112,32 @@ fn the_field_changes_the_interior_and_nothing_else() {
         "ligar o campo nao mudou um unico ponto -- ou e' um `if` morto, ou o layout \
          chegou sem `face_dir` (o `trace_patches` e' quem o preenche)"
     );
-    // ⚠️ **A holonomia é o número que EXPLICA a tabela da rejeição.** Ela mede o
-    // desacordo do campo penteado dentro de um patch; grande = há singularidade lá
-    // dentro, e pedir ao interior que siga um campo inconsistente não podia
-    // funcionar. *Sem esta asserção, o mecanismo vira folclore no doc.*
+    // ⛔⛔ **ESTA ASSERÇÃO ERA UMA TAUTOLOGIA.** Ela dizia `holonomy >= 0.0` sobre uma
+    // grandeza que é um ângulo — não-negativa por construção — logo passava para
+    // qualquer valor, **incluindo o zero que significa «não mediu nada»**. Era a
+    // rede que devia ter apanhado a régua errada de 2026-08-23, e não podia.
+    //
+    // ⭐ A rugosidade de um campo real sobre uma malha curva **nunca** é exactamente
+    // zero: exigi-la positiva é a prova de PRESENÇA que aquela linha prometia.
     assert!(
-        out[1].1.holonomy >= 0.0,
-        "a holonomia nao foi medida no caminho alinhado"
+        out[1].1.rough > 0.0,
+        "a rugosidade saiu ZERO no caminho alinhado -- ou a medicao nao correu, ou o \
+         layout chegou sem `face_dir`; num campo real ela e' sempre positiva"
+    );
+    // ⭐⭐⭐ **O DENOMINADOR, e ele é o que dá sentido ao `dirty_patches`.**
+    //
+    // ⛔ No caminho de fronteira o campo nem entra, logo `dirty_patches = 0` ali
+    // significa *não medido*. Este par de asserções pina os dois lados: o caminho
+    // alinhada penteia patches, o de fronteira não penteia nenhum. *Sem o segundo, um
+    // dia alguém lê `0 sujos` do caminho que shipa e conclui que está tudo limpo.*
+    assert!(
+        out[1].1.combed_patches > 0,
+        "o caminho alinhado nao penteou patch nenhum -- `dirty_patches` fica sem \
+         denominador e o zero dele passa a nao querer dizer nada"
+    );
+    assert_eq!(
+        out[0].1.combed_patches, 0,
+        "o caminho de FRONTEIRA nao recebe campo, logo nao pode ter penteado nada -- \
+         se isto mudou, o zero de `dirty_patches` deixou de significar «nao medido»"
     );
 }

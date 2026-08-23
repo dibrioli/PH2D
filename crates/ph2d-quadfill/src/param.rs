@@ -123,9 +123,17 @@ pub(crate) struct PatchParam {
     pub(crate) rounds: usize,
     /// O resíduo com que ele parou.
     pub(crate) residual: f32,
-    /// ⚠️ **O desacordo do campo penteado**, em graus — ver
-    /// [`crate::aligned::Aligned::holonomy_deg`]. `0` quando o campo não veio.
-    pub(crate) holonomy: f32,
+    /// ⛔ **A RUGOSIDADE do campo penteado**, em graus — ver
+    /// [`crate::aligned::Aligned::rough_deg`]. `0` quando o campo não veio.
+    pub(crate) rough: f32,
+    /// ⭐⭐⭐ **Quantas voltas fechadas devolvem o braço RODADO** dentro deste patch —
+    /// ver [`crate::aligned::Aligned::defects`]. `> 0` = singularidade lá dentro.
+    ///
+    /// ⚠️ **Só tem sentido quando [`Self::combed`] é `true`.**
+    pub(crate) defects: usize,
+    /// ⭐ **O campo chegou a este patch e ele foi penteado?** É o denominador de
+    /// [`Self::defects`]: `false` ⇒ aquele zero significa *não medido*, não *limpo*.
+    pub(crate) combed: bool,
     /// ⭐ **Este patch RECUOU para o achatamento harmónico** porque o alinhado
     /// virou triângulos no domínio. É a contagem que diz se a rede é teórica.
     pub(crate) fell_back: bool,
@@ -401,7 +409,12 @@ impl PatchParam {
         let aligned = field.and_then(|dir| {
             crate::aligned::build(&tris, &tri_face, &pos, dir, &nb, &pinned, &fixed)
         });
-        let holonomy = aligned.as_ref().map_or(0.0, |a| a.holonomy_deg);
+        let rough = aligned.as_ref().map_or(0.0, |a| a.rough_deg);
+        let defects = aligned.as_ref().map_or(0, |a| a.defects);
+        // ⭐⭐⭐ **O DENOMINADOR DA HOLONOMIA.** ⛔ Sem ele, `0 defeitos` num patch onde
+        // o campo nem chegou lê-se igual a `0 defeitos` medido-e-limpo. *É a mesma
+        // lição do balde que ninguém enche, e esta linha nasceu já com ela.*
+        let combed = aligned.is_some();
         let solve_with = |nb: &Vec<Vec<(u32, f32)>>,
                           uv: &mut Vec<[f32; 2]>,
                           step: Option<&Vec<Vec<[f32; 2]>>>| {
@@ -466,7 +479,9 @@ impl PatchParam {
         let mut me = Self::with(uv, pos, tris);
         me.rounds = rounds;
         me.residual = residual;
-        me.holonomy = holonomy;
+        me.rough = rough;
+        me.defects = defects;
+        me.combed = combed;
         me.fell_back = fell_back;
         me.slid_refused = slid_refusal;
         me.side_alpha = me.alpha_of(&locals(boundary, &local)?);
@@ -507,7 +522,9 @@ impl PatchParam {
             side,
             rounds: 0,
             residual: 0.0,
-            holonomy: 0.0,
+            rough: 0.0,
+            defects: 0,
+            combed: false,
             fell_back: false,
             side_chain: None,
             slid_refused: None,

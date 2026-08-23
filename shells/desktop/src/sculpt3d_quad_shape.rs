@@ -219,12 +219,14 @@ fn what_shape_are_our_quads() {
                 let (_, p95) = ph2d_quadfill::detail_lost(&reference, &out);
                 eprintln!(
                     "  d={detail:.2} {rotulo} {} | dobras {:>5} aresta {:>5.1}% detalhe {:>6.3}% \
-                     | holonomia {:>4.0}° recuos {}/{} {ms:>7.0}ms",
+                     | ⭐⭐⭐singular dentro {}/{} penteados (rugosidade {:>4.0}°) recuos {}/{} {ms:>7.0}ms",
                     measure(&out),
                     r.folded_local,
                     100.0 * r.edge_max / diag,
                     100.0 * p95,
-                    r.holonomy,
+                    r.dirty_patches,
+                    r.combed_patches,
+                    r.rough,
                     r.fell_back,
                     r.patches,
                 );

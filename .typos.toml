@@ -160,6 +160,14 @@ FleX = "FleX"
 # e o nome da feature seguem "container" (ingles correto) no codigo.
 resolvemos = "resolvemos"  # pt-BR (citacao VERBATIM do Enio: "ainda nao resolvemos o primeiro traco")
 instale = "instale"  # pt-BR imperativo ("instale este plano", donated_form.rs) — lido como "install" mal escrito
+# ORDINAIS LATINOS: o `docs/3D/quad-remesh/PLAN.md` numera as secoes por ordinal
+# latino (`§4-bis`, `§4-decies`, `§4-tricies`, `§4-quinquagies`) porque sao dezenas
+# de secoes acrescentadas em ordem estrita e um numero arabe colidiria com os
+# numeros de fase (F1..F5). ⚠️ `quater` ja estava na lista de cima; `decies` (10x)
+# faltava e o `typos` le-o como `decides`. Nao ha risco de esconder typo real: a
+# palavra so aparece como sufixo de `§4-`.
+decies = "decies"
+comercial = "comercial"  # pt-PT ("valor comercial") — o ingles seria `commercial`, mas o texto e' portugues
 # pt-BR de comentario, drenadas no ship de 2026-07-31 (a jornada de SETE linhas
 # acumulou 33 ocorrencias / 16 palavras -- este gate nao roda no fechamento de
 # linha, so' no `ship.sh`, entao a divida chega toda junta ao integrador).

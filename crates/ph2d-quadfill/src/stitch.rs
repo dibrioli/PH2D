@@ -154,7 +154,11 @@ pub fn fill_with(
     let mut flattened = 0usize;
     let (mut sampled, mut misses) = (0usize, 0usize);
     let (mut flatten_rounds, mut flatten_residual) = (0usize, 0.0f32);
-    let (mut holonomy, mut fell_back, mut from_fan) = (0.0f32, 0usize, Vec::<bool>::new());
+    let (mut rough, mut fell_back, mut from_fan) = (0.0f32, 0usize, Vec::<bool>::new());
+    // ⭐⭐⭐ **Quantos patches trazem singularidade DENTRO** — a régua que decide se a
+    // dívida é desta fase ou do traçado. ⛔ Contam-se *patches*, não voltas: dois
+    // defeitos no mesmo patch são um patch impossível, não dois.
+    let (mut dirty_patches, mut combed_patches) = (0usize, 0usize);
     // ⭐⭐⭐ **O denominador vem junto** — ver [`crate::FillReport::slid`]. `quads` é
     // quantos patches de quatro lados existem; sem ele, `slid = 0` não distingue
     // *nenhum deslizou* de *não havia nenhum*.
@@ -302,7 +306,9 @@ pub fn fill_with(
         if let Some(q) = param.as_ref() {
             flatten_rounds = flatten_rounds.max(q.rounds);
             flatten_residual = flatten_residual.max(q.residual);
-            holonomy = holonomy.max(q.holonomy);
+            rough = rough.max(q.rough);
+            dirty_patches += usize::from(q.defects > 0);
+            combed_patches += usize::from(q.combed);
             fell_back += usize::from(q.fell_back);
             slid += usize::from(q.slid());
             conformal.push(q.conformal);
@@ -507,7 +513,9 @@ pub fn fill_with(
     };
     report.domain_cells = (dom_rect.len(), dom_fan.len());
     report.domain_skew = (med(&mut dom_rect), med(&mut dom_fan));
-    report.holonomy = holonomy;
+    report.rough = rough;
+    report.dirty_patches = dirty_patches;
+    report.combed_patches = combed_patches;
     report.fell_back = fell_back;
     report.slid = slid;
     report.quad_patches = quads;

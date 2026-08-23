@@ -195,12 +195,36 @@ pub struct FillReport {
     /// afunda-se na mediana de dezenas de milhares. E o defeito da foto é exactamente
     /// esse: faces esmagadas em faixas, numa malha cujos extremos estão bem.
     pub shape: crate::shape::QuadShape,
-    /// ⚠️ **O pior desacordo do campo PENTEADO dentro de um patch**, em graus — ver
-    /// [`crate::aligned`]. Perto de zero = os patches são combáveis; grande = há
-    /// singularidade **dentro** de um deles, e a dívida é do **traçado**.
+    /// ⛔ **A pior RUGOSIDADE do campo penteado dentro de um patch**, em graus — ver
+    /// [`crate::aligned::Aligned::rough_deg`]. **Limitada a `45°` por construção.**
     ///
-    /// ⭐ *É a régua que impede culpar esta fase por um patch que o F3 entregou mal.*
-    pub holonomy: f32,
+    /// ⛔⛔ **Esta coluna já se chamou `holonomy` e prescreveu uma obra a partir
+    /// disso** (2026-08-23). Ela não sabe dizer se um patch tem singularidade dentro:
+    /// medido, uma singularidade de índice `+¼` fabricada de propósito imprime aqui
+    /// `11,25°`, **menos** do que campo limpo mas irregular imprime. *Quem quiser a
+    /// resposta lê [`Self::dirty_patches`].*
+    pub rough: f32,
+    /// ⭐⭐⭐ **QUANTOS PATCHES TÊM SINGULARIDADE DENTRO** — a régua que decide de quem
+    /// é a obra.
+    ///
+    /// `0` = o traçado cumpriu a promessa de pôr as singularidades nos cantos, e uma
+    /// lei alinhada ao campo tem sentido no interior; `> 0` = há patch onde o campo
+    /// que essa lei seguiria **não existe de forma consistente**, e a dívida é do
+    /// **F3**.
+    ///
+    /// ⚠️ **É um inteiro e não tem barra**, de propósito: a holonomia é topológica.
+    /// *Uma barra sobre um ângulo foi exactamente o erro que esta coluna substitui.*
+    ///
+    /// ⛔ **Leia-a SEMPRE contra [`Self::combed_patches`]** — ver ali porquê.
+    pub dirty_patches: usize,
+    /// ⭐⭐⭐ **O DENOMINADOR de [`Self::dirty_patches`]:** em quantos patches o campo
+    /// chegou e foi penteado.
+    ///
+    /// ⛔⛔ **Sem esta coluna, `0 sujos` num caminho onde o campo nem entrou lê-se
+    /// exactamente como `0 sujos` medido-e-limpo** — e o caminho de fronteira, que é
+    /// o que shipa, é precisamente um desses. *É a lei do balde que ninguém enche, e
+    /// esta coluna nasceu já com ela porque a irmã ao lado custou meia jornada.*
+    pub combed_patches: usize,
     /// ⭐ **Quantos patches RECUARAM para o achatamento harmónico** porque o
     /// alinhado virou triângulos no domínio — ver [`crate::aligned::flipped`].
     ///

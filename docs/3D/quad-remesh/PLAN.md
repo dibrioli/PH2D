@@ -4135,3 +4135,118 @@ dela nem sequer contrai.*
 |---|---|---|
 | re-graduar o arco pela média dos dois vizinhos | domínio `21,4° → 21,3°`; emparelha o lado errado | [`regraduate.rs`](../../../crates/ph2d-quadfill/src/regraduate.rs) |
 | tirar a fracção conforme do achatamento de **Tutte** | circular — ele prega a fronteira por `τ`, logo devolve `τ` | idem |
+
+## §4-quinquagies — ⛔⛔⛔ A RÉGUA DA HOLONOMIA NÃO PODIA DAR A RESPOSTA QUE LHE FOI ATRIBUÍDA (2026-08-23)
+
+### A pergunta, e por que ela vinha a seguir
+
+O [`ph2d_quadfill::aligned`] shipou **desligado** com a nota: *«a holonomia mede 29° a 44° nas
+três fixturas, logo o campo dentro de um patch não é combável, e a dívida é do **F3**»*. Essa
+frase estava em **dois** doc-comments e no §5 do `CLAUDE.md`, e prescrevia a obra seguinte.
+
+⚠️ Ela é a única saída que ainda desculpava o alinhamento ao campo de não ter movido nada.
+Confirmá-la ou derrubá-la decide entre *reescrever o traçado* e *aceitar que a família local
+está fechada*.
+
+### ⛔⛔⛔ Primeiro, a régua — e ela estava errada de duas maneiras
+
+| | o que a versão antiga fazia |
+|---|---|
+| a **grandeza** | o resto depois de virar o braço para o quarto de volta mais próximo |
+| ⛔ o **alcance** | **`[0°, 45°]` por construção** — uma singularidade dá `90°`, que ela nunca podia escrever |
+| ⛔⛔ o **ramo que fecha ciclo** | comparava o braço **cru** do vizinho, nunca o já penteado |
+
+⭐ **A assinatura estava à vista e ninguém a leu: `29°` e `44°` são o TECTO da grandeza.** Um
+número encostado ao máximo que ele consegue imprimir é um instrumento saturado.
+
+⛔⛔ E o segundo defeito é pior que o primeiro: a holonomia **só existe** na aresta que fecha
+ciclo — nas outras o braço do filho foi *definido* como o mais próximo do pai, logo o desacordo é
+zero por definição. *O teste de fecho não estava saturado; ele não existia.*
+
+⚠️ **A rede que devia ter apanhado isto era uma tautologia:** o gate dizia
+`assert!(holonomy >= 0.0)` sobre um **ângulo**, não-negativo por construção — passava para
+qualquer valor, **incluindo o zero de «não mediu nada»**.
+
+### ⭐⭐⭐ E ela era ANTI-CORRELACIONADA — provado por mutação
+
+Controlo positivo novo: um **leque plano** de 8 triângulos (plano de propósito, para o defeito
+angular de Gauss não se somar ao do campo) com o campo a dar exactamente **um quarto de volta**
+ao longo do anel — uma singularidade de índice `+¼` no vértice interior, por construção.
+
+| | régua antiga | ⭐ régua nova |
+|---|---|---|
+| singularidade **de verdade** | `rough_max 11,25°` · **`0` defeitos** | **`1` defeito, `1/4` de volta** |
+| patches reais, campo limpo | `29°`–`44°` | `0` defeitos |
+
+⇒ ⛔ *ela dava à singularidade a sério um número **menor** do que dava a campo sem singularidade
+nenhuma.* Repor o `raw[u]` da versão antiga põe os dois controlos positivos a vermelho e deixa o
+negativo e o tecto verdes — **a régua nova apanha exactamente o defeito antigo, nem mais nem menos**.
+
+### ⭐⭐⭐ A RESPOSTA, com a esfera lisa à cabeça
+
+⚠️ **A esfera lisa faltava na sonda** e o `CLAUDE.md` §5 manda medi-la primeiro; foi acrescentada.
+
+| fixtura | patches | ⭐ **com singularidade DENTRO** | ciclos testados | a régua antiga dizia |
+|---|---|---|---|---|
+| ⭐ **esfera lisa** | 16 | **0** | 2 152 | `14,1°` |
+| **orelha** | 17 | **0** | 2 154 | `29,3°` |
+| gancho | 26 | ⛔ **2** (6 voltas, pior `2/4`) | 1 312 | `44,1°` |
+| enrugada | 14 | **0** | 2 207 | `15,6°` |
+
+⛔ **Três das quatro estão limpas — incluindo a esfera lisa (o caso do núcleo) e a orelha (a
+fixtura da tabela que desligou o alinhamento).** ⇒ *o alinhamento ao campo correu sobre um campo
+perfeitamente combável e ainda assim deixou o enviesamento em `27°`.* **A não-melhoria é real; a
+desculpa não era.**
+
+⚠️ E nenhuma barra podia salvar a régua antiga: a enrugada (`15,6°`, limpa) e a orelha (`29,3°`,
+limpa) ficam **dos dois lados** de qualquer corte que também acuse o gancho.
+
+### ⭐⭐ E isto corrige uma inferência do §5, por dedução de duas medições
+
+O §5 dizia: *«**1 a 4 singularidades ficam SEM canto**, ou seja **dentro** de um patch, que então
+não é combável»*. ⛔ **O «ou seja» é uma inferência, e ela cai.** Na esfera lisa há `8`
+singularidades e `7` em canto; com **`0` patches incombáveis**, a oitava não pode estar dentro de
+nenhum ⇒ ela está **sobre um arco**.
+
+⭐ *Uma singularidade a meio de um arco não torna o patch incombável* — ela fica na costura, e os
+dois interiores continuam sãos. É um defeito do traçado **diferente e mais fraco** do que o que
+estava escrito, e a cura não é a mesma.
+
+⛔⛔ **As `2` do gancho são um defeito REAL do F3 e nunca tinham sido vistas**, uma delas com
+**meia volta**. Não são a causa desta investigação, mas são obra, e agora têm número.
+
+### ⇒ O estado da caça, com a última desculpa removida
+
+| família | veredicto |
+|---|---|
+| o **campo** (F2) | ⭐ ilibado — `8` singularidades contra `8` dele |
+| o **mapa** por patch | ⛔ fechada: quatro achatamentos, e o mais conforme é o pior |
+| a **forma do domínio** | ⛔ fechada |
+| **menos patches** (poda) | ⛔ cura a topologia, colapsa a geometria — ordem errada |
+| a **subdivisão do arco**, local | ⛔ fechada: emparelha o lado errado |
+| ⭐ **interior alinhado ao campo** | ⛔ **fechada HOJE, e sem escapatória**: o campo estava limpo |
+| ⭐⭐⭐ **parametrização global quantizada** | *a única que sobra* |
+
+⭐ **A fronteira chega ao F5 já pregada por comprimento de arco, e as quatro curas bateram todas
+nisso.** Religar o alinhamento **já não espera pelo F3** — espera por uma marcação de fronteira
+que não seja escolhida localmente.
+
+### ⭐ O que ficou construído
+
+- `ph2d_crossfield::Holonomy` com **duas** colunas separadas: `rough_*` (a rugosidade, sem barra
+  porque o oráculo mede o mesmo) e `cycles`/`defects`/`turn_max` (a holonomia, **inteira**).
+- **Cinco gates** em [`comb_tests.rs`](../../../crates/ph2d-crossfield/src/comb_tests.rs): controlo
+  negativo · controlo positivo · **o tecto, executável** · meia volta lê-se como dois quartos ·
+  cada aresta dual conta uma vez.
+- `FillReport::dirty_patches` **com o denominador ao lado** (`combed_patches`) — *a coluna nasceu
+  já com a lei do balde que ninguém enche, porque a irmã custou meia jornada.*
+- Dois caminhos de código independentes (`ph2d_crossfield::comb` sobre a `Mesh` e
+  `quadfill::aligned` sobre a lista local) dão **o mesmo número** nas quatro fixturas.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| «o campo dentro dos nossos patches não é combável, a dívida é do F3» | `0` patches sujos em 3 das 4 fixturas, esfera lisa incluída | [`aligned.rs`](../../../crates/ph2d-quadfill/src/aligned.rs) |
+| uma **barra em graus** sobre a holonomia | a grandeza não chega a `90°`; a resposta é um **inteiro** | [`comb.rs`](../../../crates/ph2d-crossfield/src/comb.rs) |
+| `assert!(holonomia >= 0.0)` como rede | tautologia sobre um ângulo — passa com `0` de «não medido» | [`interior.rs`](../../../crates/ph2d-quadfill/tests/interior.rs) |

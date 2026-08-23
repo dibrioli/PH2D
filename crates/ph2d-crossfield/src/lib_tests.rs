@@ -287,7 +287,9 @@ fn a_field_survives_the_round_trip_through_raw_directions() {
     ] {
         let dual = Dual::build(&mesh);
         let (field, _) = solve_miq(&dual);
-        let dirs: Vec<[f32; 3]> = (0..field.len()).map(|f| field.direction(&dual, f)).collect();
+        let dirs: Vec<[f32; 3]> = (0..field.len())
+            .map(|f| field.direction(&dual, f))
+            .collect();
         let back = super::CrossField::from_directions(&dual, &dirs)
             .unwrap_or_else(|| panic!("{name}: a reconstrucao recusou o proprio campo"));
 

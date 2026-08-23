@@ -67,9 +67,15 @@
 //! preciso **pentear** o campo — escolher, face a face, o braço que continua o do
 //! vizinho. Isso só é consistente se o patch não contiver singularidade no
 //! interior, que é o que o traçado promete (elas ficam nos CANTOS). ⛔ **Promessa
-//! não é medição**: [`Aligned::holonomy_deg`] conta o desacordo que sobra através
-//! das arestas interiores, e a sonda imprime-o. *Um patch com singularidade dentro
-//! aparece como um número grande, não como uma malha estranha sem explicação.*
+//! não é medição**: [`Aligned::defects`] conta quantas voltas fechadas devolvem o
+//! braço rodado, e a sonda imprime-o. *Um patch com singularidade dentro aparece
+//! como um inteiro `> 0`, não como uma malha estranha sem explicação.*
+//!
+//! ⛔⛔ **A primeira versão desta medição estava errada e prescreveu uma obra.** Ela
+//! media a **rugosidade** ([`Aligned::rough_deg`]) — limitada a `45°` por construção —
+//! e comparava, na aresta que fecha ciclo, o braço **cru** do vizinho em vez do já
+//! penteado. Ver `ph2d_crossfield::comb`, onde a mesma falha está datada e provada
+//! por mutação.
 
 /// ⭐⭐ **DE ONDE NASCE O INTERIOR DE UM PATCH.**
 ///
@@ -99,15 +105,51 @@ pub enum Interior {
 /// ⇒ **Melhora três colunas por margens de ruído e não move o alvo.** ⛔ Ligar
 /// complexidade por isso seria pagar sem comprar.
 ///
-/// ⚠️ **O MECANISMO da não-melhoria está medido, e ele aponta para OUTRA FASE:** a
-/// [`Aligned::holonomy_deg`] mede **29° a 44°** nas três fixturas. *O campo dentro de
-/// um patch não é combável* — há singularidade no interior dele, que é justamente o
-/// que o traçado promete não deixar. ⇒ pedir ao interior que siga um campo
-/// inconsistente não podia funcionar, e a dívida é do **F3**.
+/// # ⛔⛔⛔ O MECANISMO que esta nota atribuía está REFUTADO (2026-08-23, mesmo dia)
 ///
-/// ⭐ **A canalização FICA e é o valor desta jornada:** o campo agora **chega** ao
-/// F5 (`PatchLayout::face_dir`), que era a primeira coisa que faltava. Quando o F3
-/// entregar patches combáveis, ligar isto é trocar uma constante.
+/// Durante algumas horas esta linha dizia: *«a holonomia mede 29° a 44° nas três
+/// fixturas, logo o campo dentro de um patch não é combável, e a dívida é do **F3**»*.
+/// ⛔ **A grandeza que dizia isso não conseguia dizer isso** — era a rugosidade,
+/// limitada a `45°`, e no ramo que fecha ciclo comparava o braço cru. Ver o doc deste
+/// módulo e `ph2d_crossfield::comb`.
+///
+/// ⭐⭐⭐ **Com a régua a sério, a resposta inverte-se em duas das três fixturas:**
+///
+/// | fixtura | patches | ⭐ **com singularidade DENTRO** | ciclos testados | a régua antiga |
+/// |---|---|---|---|---|
+/// | **orelha** | 17 | ⭐ **0** | 2 154 | `29,3°` |
+/// | gancho | 26 | ⛔ **2** (6 voltas, pior `2/4`) | 1 312 | `44,1°` |
+/// | enrugada | 14 | ⭐ **0** | 2 207 | `15,6°` |
+///
+/// ⚠️ **A orelha é a fixtura da tabela de rejeição acima, e ela está LIMPA.** ⇒ o
+/// alinhamento correu sobre um campo perfeitamente combável e ainda assim deixou o
+/// enviesamento em `27°`. *A não-melhoria é real; a desculpa não era.*
+///
+/// ⚠️ E repare porque nenhuma barra podia salvar a régua antiga: a enrugada
+/// (`15,6°`, limpa) e a orelha (`29,3°`, limpa) ficam **dos dois lados** de qualquer
+/// corte que também acuse o gancho.
+///
+/// # ⇒ O que sobra, e é a quarta vez que a mesma coisa aparece
+///
+/// A fronteira do patch chega a esta fase **já pregada por comprimento de arco**, e
+/// o interior só pode obedecer ao campo *na medida em que a fronteira o deixe*.
+/// Quatro curas independentes bateram no mesmo sítio:
+///
+/// | cura | onde parou |
+/// |---|---|
+/// | mapa conforme (LSCM) | domínio `1,0° → 21,4°` — a marcação por arco desalinha |
+/// | quadrilátero extremal | idem |
+/// | re-graduação do arco | emparelha o lado errado; o par certo atravessa a peça |
+/// | ⭐ **interior alinhado ao campo** | **campo limpo (medido hoje) e mesmo assim nada** |
+///
+/// ⭐ **A canalização FICA e é o valor desta jornada:** o campo **chega** ao F5
+/// (`PatchLayout::face_dir`) e a holonomia passou a ser mensurável por patch. ⛔ Mas
+/// religar isto **já não espera pelo F3** — espera por uma marcação de fronteira que
+/// não seja escolhida localmente.
+///
+/// ⛔⛔ **As 2 do gancho são um defeito REAL do F3 e nunca tinham sido vistas** — uma
+/// delas com **meia volta**. Não são a causa desta tabela, mas são obra, e agora têm
+/// número.
 pub const INTERIOR: Interior = Interior::FromBoundary;
 
 /// Uma cruz tem quatro braços a 90°.
@@ -156,10 +198,15 @@ pub(crate) struct Aligned {
     /// ⚠️ **Alinhado com `nb`, não indexado por vértice** — é o que permite ao laço
     /// de Gauss–Seidel ler os dois em paralelo sem uma segunda busca.
     pub(crate) step: Vec<Vec<[f32; 2]>>,
-    /// ⚠️ **O desacordo do campo penteado através das arestas interiores**, em graus
-    /// (o pior). Perto de zero = o patch é combável; grande = há singularidade
-    /// dentro dele, e a culpa do resultado é do **traçado**, não desta fase.
-    pub(crate) holonomy_deg: f32,
+    /// ⛔ **A RUGOSIDADE do campo**, em graus (a pior aresta): o resto depois de virar
+    /// cada braço para o quarto de volta mais próximo. **Limitada a 45° por
+    /// construção** — ⛔ *não* diz se há singularidade dentro do patch, e foi lida
+    /// como se dissesse. Ver `ph2d_crossfield::comb`.
+    pub(crate) rough_deg: f32,
+    /// ⭐⭐⭐ **A HOLONOMIA: quantas voltas fechadas devolvem o braço RODADO.** `0` = o
+    /// patch é combável e uma lei alinhada ao campo tem sentido nele; `> 0` = há
+    /// singularidade **dentro** dele, e a dívida é do traçado, não desta fase.
+    pub(crate) defects: usize,
 }
 
 /// Constrói os alvos. `None` quando o patch não dá para pentear ou a fronteira não
@@ -211,30 +258,70 @@ pub(crate) fn build(
     // porque `adj` foi construída a partir de um `BTreeMap`. *Uma travessia
     // dependente de `HashMap` daria campos diferentes em corridas diferentes, e a
     // malha do produto deixaria de ser reproduzível.*
+    // ⚠️ **Semente por COMPONENTE.** Um patch cuja adjacência esteja partida (uma
+    // ponte de um vértice só) deixaria o resto sem direcção penteada, e a fase
+    // seguinte lê `None` como «sem alvo» em vez de «região partida».
     let mut combed: Vec<Option<[f32; 3]>> = vec![None; tris.len()];
-    combed[0] = Some(raw[0]);
-    let mut queue = std::collections::VecDeque::from([0usize]);
-    let mut holonomy = 0.0f32;
-    while let Some(t) = queue.pop_front() {
-        let x = combed[t]?;
-        for &u in &adj[t] {
-            // A referência: o braço do pai trazido para o plano do vizinho.
-            let Some(r) = tangent(x, normal[u]) else {
+    let mut tree: std::collections::BTreeSet<(usize, usize)> = std::collections::BTreeSet::new();
+    for seed in 0..tris.len() {
+        if combed[seed].is_some() {
+            continue;
+        }
+        combed[seed] = Some(raw[seed]);
+        let mut queue = std::collections::VecDeque::from([seed]);
+        while let Some(t) = queue.pop_front() {
+            let x = combed[t]?;
+            for &u in &adj[t] {
+                if combed[u].is_some() {
+                    continue;
+                }
+                // A referência: o braço do pai trazido para o plano do vizinho.
+                let Some(r) = tangent(x, normal[u]) else {
+                    continue;
+                };
+                let d = raw[u];
+                let (c, s) = (dot(d, r), dot(cross(normal[u], d), r));
+                // O múltiplo de 90° que leva `d` para junto de `r`.
+                let k = (s.atan2(c) / QUARTER).round();
+                combed[u] = Some(turn(d, normal[u], k as i32));
+                tree.insert((t.min(u), t.max(u)));
+                queue.push_back(u);
+            }
+        }
+    }
+
+    // ── ⭐⭐⭐ AS DUAS GRANDEZAS, medidas depois de pentear (ver `ph2d_crossfield::comb`).
+    //
+    // ⛔⛔ **Até 2026-08-23 isto era UM número com o nome da outra grandeza.** Media-se
+    // dentro da travessia, contra o braço **cru** do vizinho, e o resultado — limitado
+    // a 45° por construção — leu-se como «há singularidade dentro do patch, a dívida é
+    // do F3». *Provado por mutação: com aquela lei, uma singularidade de índice `+¼`
+    // fabricada de propósito imprime `11,25°` e `0` defeitos.*
+    let (mut rough, mut defects) = (0.0f32, 0usize);
+    let mut seen: std::collections::BTreeSet<(usize, usize)> = std::collections::BTreeSet::new();
+    for (t, ns) in adj.iter().enumerate() {
+        let Some(x) = combed[t] else {
+            continue;
+        };
+        for &u in ns {
+            let key = (t.min(u), t.max(u));
+            if !seen.insert(key) {
+                continue;
+            }
+            let (Some(r), Some(d)) = (tangent(x, normal[u]), combed[u]) else {
                 continue;
             };
-            let d = raw[u];
             let (c, s) = (dot(d, r), dot(cross(normal[u], d), r));
-            // O múltiplo de 90° que leva `d` para junto de `r`.
-            let k = (s.atan2(c) / QUARTER).round();
-            let turned = turn(d, normal[u], k as i32);
-            // ⚠️ **O que SOBRA depois de virar é a holonomia.** Se o campo é
-            // combável, `turned` e `r` coincidem; o resto é a singularidade que o
-            // traçado deixou dentro do patch.
-            let left = dot(turned, r).clamp(-1.0, 1.0).acos().to_degrees();
-            holonomy = holonomy.max(left);
-            if combed[u].is_none() {
-                combed[u] = Some(turned);
-                queue.push_back(u);
+            let k = (s.atan2(c) / QUARTER).round() as i32;
+            let turned = turn(d, normal[u], k);
+            rough = rough.max(dot(turned, r).clamp(-1.0, 1.0).acos().to_degrees());
+            // ⭐ **A holonomia só se lê onde o ciclo fecha** — numa aresta de árvore o
+            // braço do filho foi *definido* como o mais próximo do pai.
+            if !tree.contains(&key) {
+                let q = k.rem_euclid(4);
+                if q.min(4 - q) != 0 {
+                    defects += 1;
+                }
             }
         }
     }
@@ -311,7 +398,8 @@ pub(crate) fn build(
     }
     Some(Aligned {
         step,
-        holonomy_deg: holonomy,
+        rough_deg: rough,
+        defects,
     })
 }
 

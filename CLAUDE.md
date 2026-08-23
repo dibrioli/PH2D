@@ -449,13 +449,18 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   localiza:** `skew_by_provenance` diz onde o enviesamento mora — orelha `canto 0° · arco 26° · centro 0° ·
   raio 56° · grade 26°`, ou seja **em TODA a parte, com a grade interior igual ao resto** ⇒ *toda a família
   «uma construção local está errada» está excluída de uma vez*. ⭐ E o alisamento foi **ilibado com número**
-  (a 0 rondas a grade mede 27° e o raio 75°; a 20, 25° e 37° — ele REPARA). ⛔⛔ **A HOLONOMIA foi acusada e ILIBADA no mesmo dia — pelo controlo.**
-  A leitura de `29° (orelha) · 44° (gancho)` era um **MAX sobre milhares de arestas** e foi escrita aqui como
-  *«o campo dentro dos nossos patches não é combável»*. ⚠️ **Medindo a decomposição do ORÁCULO com o mesmo
-  código, ele dá `18,6°` e `38,4°`** — e a distribuição é indistinguível: p50 mediano `0,479°` contra
-  `0,470°` dele, p95 `2,52°` contra `3,19°` **dele**. ⇒ *um predicado que reprova a testemunha de controlo
-  mede a discretização, não o defeito*, e a dívida **NÃO** é do F3 por esta via. ⭐ Fica a régua
-  (`ph2d_crossfield::comb`, com a distribuição) e a recusa da barra registada no tipo.
+  (a 0 rondas a grade mede 27° e o raio 75°; a 20, 25° e 37° — ele REPARA). ⛔⛔⛔ **A HOLONOMIA: a RÉGUA estava errada, e a resposta certa fecha a caça** (`PLAN.md` §4-quinquagies).
+  A leitura de `29°/44°` que aqui se escreveu como *«o campo dentro dos nossos patches não é combável, a
+  dívida é do F3»* saía de uma grandeza **limitada a 45° por construção** (o resto do arredondamento ao
+  quarto de volta), e que **nunca testava o fecho de ciclo** — comparava o braço cru do vizinho. ⚠️ *`29°` e
+  `44°` eram o TECTO do número, não um defeito grande*, e a rede que devia apanhá-lo era
+  `assert!(holonomia >= 0.0)` — tautologia sobre um ângulo. ⭐⭐⭐ Com a régua a sério (inteira: quantas
+  voltas fechadas devolvem o braço rodado), **esfera lisa `0/16` · orelha `0/17` · enrugada `0/14` ·
+  gancho `2/26`** — e o controlo positivo mostra a régua antiga a dar `11,25°` a uma singularidade
+  fabricada, **menos** do que dava a campo limpo. ⇒ **o alinhamento ao campo correu sobre campo LIMPO na
+  orelha e mesmo assim não moveu nada: a última desculpa da família local caiu.** Fica
+  `ph2d_crossfield::comb` com as duas colunas separadas (`rough_*` sem barra · `defects` inteira), cinco
+  gates com controlo positivo/negativo, e `FillReport::dirty_patches` **com denominador**.
   ⭐⭐⭐⭐ **O MECANISMO FOI ACHADO E ISOLADO EM 2D PURO (23/08): é o LEQUE.** Um sector de leque
   num domínio plano partilhado traz enviesamento **`|360/n − 90|`** de máximo e metade disso de
   mediana — `n=3 → 14,4°`, `n=5 → 7,6°`, ⭐ **`n=4 → 0,0°`** (gate `how_much_skew_does_a_fan_sector_force`,
@@ -513,8 +518,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   INVENTADOS** (enrugada 19, orelha 22, gancho 32). Cada canto inventado é um irregular a mais **e**
   uma fronteira a mais onde a discordância conforme nasce — *os dois defeitos desta investigação têm a
   mesma origem*. ⇒ a obra é **emitir arcos de singularidade a singularidade**. ⚠️ E há um 2.º defeito
-  pequeno e específico: **1 a 4 singularidades ficam SEM canto**, ou seja **dentro** de um patch, que
-  então não é combável — a acusação da holonomia volta, agora com extensão medida. ⛔⛔ E o «controlo»
+  pequeno e específico: **1 a 4 singularidades ficam SEM canto** — ⛔ mas **«sem canto» NÃO é «dentro»**, e
+  a inferência que aqui estava caiu: a holonomia a sério dá `0` patches incombáveis na esfera lisa, que tem
+  `8` singularidades e `7` em canto ⇒ a oitava está **sobre um arco**. *Uma singularidade na costura não
+  torna nenhum dos dois interiores incombável* — é defeito de traçado mais fraco, e outra cura. ⛔⛔ E o «controlo»
   que a tinha descartado (a linha «ORACULO 18,6°/38,4°») cruzava o **campo do `_rem.obj`** com os
   **patches do `_rem_p0.obj`** — malhas diferentes, 9.534 contra 9.638 faces; a conferência nomeava o
   risco e nunca comparava as duas contagens. **Linha retirada**, guarda apertada.

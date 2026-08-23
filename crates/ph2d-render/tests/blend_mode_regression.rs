@@ -316,7 +316,7 @@ fn measure_alpha_response_of_every_mode() {
 
 /// **ALFA ZERO É AUSÊNCIA, EM TODO MODO** — a lei que o `Multiply` não cumpria.
 ///
-/// Uma fonte pré-multiplicada codifica *"não contribuo"* como **zero**, e todo modo cujo
+/// Uma fonte pré-multiplicada codifica *"não contribui"* como **zero**, e todo modo cujo
 /// elemento neutro é `0` (`Add`, `Subtract`, `Screen`, o `over`) obedece à alfa de graça. O
 /// neutro do `Multiply` é **`1`**: com `dst_factor: Zero` a pré-multiplicação levava-o para
 /// PRETO em vez de para nada, e o cursor da alfa deixava de dizer *"quão presente"* para

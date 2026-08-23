@@ -1,7 +1,9 @@
 # HANDOFF DE INTEGRAÇÃO · `line/motion-value` · **bloco Z** — 2026-08-23
 
-> **A linha NÃO integrou e NÃO pushou** (`CLAUDE.md` §0.7). **Catorze** commits locais, à espera de
-> ordem explícita do Enio. **Dois blocos** no mesmo dia: os TETOS (§1) e a folha 11 (§0-bis, §9).
+> **A linha NÃO integrou e NÃO pushou** (`CLAUDE.md` §0.7). **Dezoito** commits locais, à espera de
+> ordem explícita do Enio. **Três blocos** no mesmo dia: os TETOS (§1), a folha 11 (§0-bis, §9) e o
+> defeito que o smoke da folha 11 devolveu (**§0-ter — leia-o primeiro se você integra**: ele é o
+> único item deste handoff que muda o pixel de **toda sprite do app**).
 
 **Worktree:** `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` · **branch:**
 `line/motion-value` · **base:** `main` em `35f937cb2`.
@@ -25,6 +27,78 @@ densas de propósito (é a forma da conferência), e o §9 abaixo.
 | ⏳ *dirt texture* | **fica**, com o preço corrigido por medição | — |
 
 **Cena de smoke: `=84`.**
+
+---
+
+## §0-ter — O smoke devolveu um DEFEITO, e ele é do renderer, não do nó
+
+**Enio, 2026-08-23, sobre a `=84`:** *"shadow multiply parece não obedecer o alpha da cor"*.
+
+⚠️ **Este é o item de MAIOR alcance do handoff inteiro** — ele muda como **toda sprite do
+app** com `BlendMode::Multiply` compõe em alfa parcial (`ph2d-render`, caminho partilhado).
+Registo completo, com hipóteses e lições:
+[`BUGS_motion_nodes.md` Bug #4](../BUGS_motion_nodes.md).
+
+**O nó estava inocente.** O `fx.drop_shadow` escreve a alfa do fantasma correctamente. O
+defeito era o par de fatores do `Multiply` em
+[`ph2d_render::pipeline::blend_state_for`](../../../crates/ph2d-render/src/pipeline.rs).
+
+**Medido antes de tocar** (fundo 55, frente 128, byte do centro):
+
+| modo | α=0,00 | α=0,25 | α=0,50 | α=0,75 | α=1,00 |
+|---|---|---|---|---|---|
+| `Add` · `Subtract` · `Screen` · `Mix` | **55** | … | … | … | … |
+| **`Multiply` (antes)** | **0** | 3 | 6 | 9 | 12 |
+| **`Multiply` (depois)** | **55** | 44 | 34 | 23 | 12 |
+
+Não era *"não obedece"*: era **invertido**. `α = 0` pintava **preto**, subir a alfa
+**clareava**, e não havia valor em que a sombra sumisse.
+
+**Mecanismo.** O `sprite.wgsl` emite `vec4(rgb·α, α)` — fonte **pré-multiplicada**, que
+codifica *"não contribui"* como **zero**. Isso dá a resposta à alfa **de graça** a todo modo
+cujo elemento neutro é `0` (`Add`, `Subtract`, `Screen`, o `over`). O neutro do `Multiply` é
+**`1`**: com `dst_factor: Zero` a pré-multiplicação levava o produto para preto em vez de
+para nada. Cura: `src: Dst`, `dst: OneMinusSrcAlpha` ⇒ `dst·(α·src + 1 − α)`.
+
+⚠️ **As duas colunas coincidem em `α = 1`** — é isso que garante que nada opaco mudou, e é
+exactamente o ponto que o gate antigo media.
+
+**Para quem integra:**
+
+1. ⚠️ **Um golden/regressão de imagem de OUTRA linha que contenha uma sprite `Multiply` com
+   alfa parcial vai mudar de valor, e a mudança é a CURA.** Nenhum caso opaco se move.
+2. O gate `blend_modes_composite_as_advertised` **fica como está e continua verde** — ele
+   não estava errado, estava incompleto.
+3. Nada de contrato congelado foi tocado: `BLEND_PIPELINE_COUNT` continua `6`, a assinatura
+   de `blend_state_for` é a mesma, e `ph2d_ecs::BlendMode` não se moveu. Só o par de
+   fatores de **uma** tag mudou.
+
+**Gates novos** ([`blend_mode_regression.rs`](../../../crates/ph2d-render/tests/blend_mode_regression.rs)):
+
+| gate | o que prende |
+|---|---|
+| `zero_alpha_is_absence_in_every_mode` | `α = 0` devolve o fundo **medido no mesmo passe** (`fg = None`), nos seis modos, com controle positivo |
+| `the_multiply_alpha_slider_runs_from_the_backdrop_to_the_full_product` | monotonia do curso + excursão real |
+| `measure_alpha_response_of_every_mode` | a sonda que imprime a tabela (não afirma nada) |
+| `the_alpha_row_varies_the_alpha_and_nothing_else` (shell) | a linha 3 da `=84` varia **só** a alfa |
+
+**Prova de mutação.** Os dois primeiros foram vistos **VERMELHOS sobre o defeito real**,
+antes da cura — a espécie mais forte, porque a mutação não foi sintética. O gate da cena foi
+mutado duas vezes (alfas iguais ⇒ `0.85 vs 0.85`; modos diferentes ⇒ `so' a alfa muda`),
+vermelho nas duas, restaurado por `git checkout` sobre commit limpo.
+
+**E a fronteira fica registada** no `keep_dst_alpha`: um par de fatores fixos **não exprime**
+o `Cs' = (1−αb)·Cs + αb·B` da W3C (precisa da alfa do DESTINO como termo). A fórmula inteira
+já existe e está **correcta** onde o fundo é translúcido de propósito
+([`layer_composite.wgsl`](../../../crates/ph2d-render/src/shaders/layer_composite.wgsl)).
+⛔ *Quem tentar "consertar" a divergência de faixa parcial com outro par de fatores não vai
+conseguir — o caminho é o passe programável.*
+
+**A cena `=84` ganhou a terceira linha (ALFA)**, porque o defeito só é julgável a olho num
+PAR: as duas metades MULTIPLICAM e só a alfa muda (15% × 85%). Uma metade só diria *"está
+escuro"*.
+
+---
 
 ## §1 — O que entrou, em uma frase
 

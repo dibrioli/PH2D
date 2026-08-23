@@ -14,6 +14,7 @@
 | [1](#bug-1--o-nó-acusado-estava-inocente-o-campo-gateia-o-pulso-e-não-gateia-a-memória) | **"Box inconsistente"** — marcar Invert e desmarcar não devolve o quadro inicial | `field.box` (acusado, **inocente**) + `pulse.counter`/`pulse.sample_hold` (a memória) | ✅ **Fechado — smoke aprovado** (porta `reset`) | 2026-08-10 |
 | [2](#bug-2--o-glow-e-a-forma-vivem-nos-dois-lados-do-tonemap-e-o-lod-troca-o-lado) | **"Glow não funciona com shape"** | `fx.glow` (acusado, **inocente**) + a partição de render sprite ⁄ vetor | ✅ **CURADO** (aguarda smoke) — o passe passou a ler a CAMADA | 2026-08-20 |
 | [3](#bug-3--o-diagnoser-sabia-e-ninguem-perguntava) | **"Todas as peças paradas"** (cena `=71`, banda 6) | uma cena com um fio a menos — e o INSTRUMENTO que ninguém invocava | ✅ **CURADO** (aguarda smoke) — mais um falso positivo pré-existente do diagnoser | 2026-08-20 |
+| [4](#bug-4--o-multiply-não-desobedecia-à-alfa-ele-a-invertia-e-o-gate-media-o-único-ponto-em-que-os-modos-concordam) | **"Shadow multiply não obedece o alpha"** (cena `=84`) | `fx.drop_shadow` (acusado, **inocente**) + o par de fatores do `Multiply` em `ph2d-render` | ✅ **CURADO** (aguarda smoke) — resposta invertida, num gate verde há anos | 2026-08-23 |
 
 ---
 
@@ -397,3 +398,94 @@ muda — ou o defeito não é de SETUP, ou o gate ganha o nível **nomeado** com
    registry não, o aviso não protege ninguém.*
 5. ⚠️ **Uma fixture de força tem de LER `P`.** `force.wind` é global e nunca é
    reportado: um gate sobre ele fica verde nos dois mundos.
+
+---
+
+## Bug #4 — O `Multiply` não desobedecia à alfa: ele a INVERTIA, e o gate media o único ponto em que os modos concordam
+
+**Sintoma (Enio, 2026-08-23):** *"shadow multiply parece não obedecer o alpha da cor"*.
+
+**O nó acusado está INOCENTE.** O `fx.drop_shadow` calcula a alfa do fantasma como
+`color[3] × base[i][3] × falloff` e escreve-a no `tint` — correcto, e com gate. O que
+estava errado era o **par de fatores de mistura** com que o renderer compõe o `Multiply`,
+duas crates abaixo, num caminho partilhado por **toda a sprite do app**.
+
+### A medição, antes de tocar em nada
+
+Sonda `measure_alpha_response_of_every_mode`
+([`blend_mode_regression.rs`](../../crates/ph2d-render/tests/blend_mode_regression.rs)) —
+fundo opaco cinza (byte 55 no alvo linear), frente cinza 128, byte do centro:
+
+| modo | α=0,00 | α=0,25 | α=0,50 | α=0,75 | α=1,00 |
+|---|---|---|---|---|---|
+| `Mix` | 55 | 55 | 56 | 55 | 55 |
+| `Add` | **55** | 69 | 83 | 96 | 110 |
+| `Subtract` | **55** | 41 | 27 | 14 | 0 |
+| **`Multiply` (antes)** | **0** | 3 | 6 | 9 | 12 |
+| `Screen` | **55** | 66 | 77 | 87 | 98 |
+| **`Multiply` (depois)** | **55** | 44 | 34 | 23 | 12 |
+
+⚠️ Não era *"não obedece"*: era **invertido**. Alfa `0` pintava **preto** onde estava o
+fundo, e **subir** a alfa **clareava**. Não havia valor nenhum em que a sombra sumisse — o
+cursor tinha deixado de dizer *"quanta sombra"* e dizia *"quão escuro"*, ao contrário.
+
+### A causa-raiz
+
+O `sprite.wgsl` emite `vec4(rgb·α, α)`: uma fonte **pré-multiplicada**. Ela codifica
+*"não contribui"* como **zero** — e é por isso que **todo modo cujo elemento neutro é `0`
+ganha a resposta à alfa de graça**: `Add` (`dst + 0`), `Subtract` (`dst − 0`), `Screen`
+(`0·(1−dst) + dst`), o `over`. Todos eles aparecem correctos na tabela sem nunca terem
+sido pensados para isso.
+
+O elemento neutro do `Multiply` é **`1`**. Com `dst_factor: Zero` o resultado era
+`src_premult · dst = dst·rgb·α`, que a pré-multiplicação leva para **preto** em vez de
+para *nada*.
+
+**Cura** — `src: Dst`, `dst: OneMinusSrcAlpha` ⇒
+`src_premult·dst + dst·(1−α)` = `dst·(α·src + 1 − α)`: a lei de opacidade de camada do
+Photoshop. ⚠️ **As duas colunas coincidem em `α = 1`** (12 = 12), que é o que garante que
+nada opaco no app mudou.
+
+### Por que ele viveu anos dentro de um gate VERDE
+
+O `blend_modes_composite_as_advertised` é um gate **honesto e rico**: tabela por modo,
+barra por modo, e a ordenação `Multiply < Mix < Screen < Add` como prova de que cada
+pipeline compõe como anuncia. E media **tudo a `alpha = 1`** — o **único ponto em que os
+seis modos concordam sobre o que a alfa quer dizer**.
+
+⚠️ *Uma suíte que varia só o MODO não tem eixo nenhum para expor uma lei sobre a ALFA.*
+A dimensão que faltava não era um caso a mais dentro do eixo existente: era um **segundo
+eixo**.
+
+### A fronteira que fica (registada, não escondida)
+
+Um par de fatores fixos **não exprime** o `Cs' = (1−αb)·Cs + αb·B(Cb,Cs)` da W3C, que
+precisa da alfa do **destino** como termo. A família inteira de FX aqui (`keep_dst_alpha`)
+pressupõe um fundo **opaco**. Onde o fundo é translúcido de propósito — a pilha de camadas
+do Painter — a fórmula completa já existe e **está correcta**
+([`layer_composite.wgsl`](../../crates/ph2d-render/src/shaders/layer_composite.wgsl):
+em `αs = 0` ela devolve `cb`). Como a alfa do destino nem se move aqui, sobre um pixel
+`αb = 0` o resultado é invisível de qualquer maneira; a divergência vive só na faixa
+parcial. *Quem tentar "consertar" isso com outro par de fatores não vai conseguir — o
+caminho é o passe programável.*
+
+### Lições generalizáveis
+
+1. ⚠️ **Ao escrever um modo de mistura em função fixa, pergunte qual é o ELEMENTO NEUTRO
+   dele.** Se for `1` (multiply, e os primos color-burn/darken), a pré-multiplicação
+   trabalha contra si e o par de fatores tem de trazer o `OneMinusSrcAlpha` de volta.
+   Se for `0`, a alfa sai de graça — e é essa gratuidade que faz o modo excepcional passar
+   despercebido no meio dos irmãos correctos.
+2. **A régua de um modo é «α = 0 devolve o destino, exactamente»**, e a barra é o fundo
+   **medido no mesmo passe**, nunca um número escrito à mão (o alvo é linear e o byte
+   depende do sRGB do atlas). Uma linha por modo, e um controle positivo de que a alfa
+   cheia move o pixel — senão o zero passa por vacuidade.
+3. ⚠️ **Um gate rico numa dimensão pode ser cego noutra, e a riqueza disfarça.** Antes de
+   confiar numa suíte, liste os parâmetros que o produto oferece e pergunte quais são
+   **eixos** dela. O que não é eixo não está medido.
+4. **O report do Enio é sobre APARÊNCIA e chega antes de qualquer instrumento.** *"Parece
+   não obedecer"* estava certo no sítio e errado na direcção — o defeito era pior do que
+   o relato. Meça a resposta INTEIRA do curso antes de aceitar a descrição do sintoma.
+5. ⚠️ **O sintoma apareceu num nó e a causa estava numa crate que o nó não conhece.** O
+   `fx.drop_shadow` só escreve um número numa coluna; quem escolhe o pipeline é o lowering,
+   e quem compõe é o `wgpu`. *Três camadas entre a queixa e o defeito.*

@@ -116,6 +116,7 @@
 - [UI em inglês](feedback_app_ui_english_only.md)
 - [Nada de `→` em string literal](feedback_no_tofu_arrows_in_string_literals.md) — vale em mensagem de `assert!` de teste também (gate `no_tofu_glyphs`, mordeu 22/08)
 - [Registro de painel (5 sites)](reference_topic_panel_registration.md)
+- [Fonte pré-multiplicada INVERTE o único modo cujo neutro é 1](feedback_a_premultiplied_source_breaks_the_blend_whose_identity_is_one.md) — `Multiply` a α=0 pintava PRETO e subir a alfa clareava; e o gate media só α=1, o único ponto em que os seis modos concordam
 - [Clone segurado + detecção por ponteiro = copy-on-write por op](feedback_a_held_clone_plus_pointer_identity_change_detection_forces_copy_on_write.md) — versão, não `as_ptr` (ADR-0124 reincide: Painter 10ms/move @4K)
 - [Gotchas de código (13)](reference_topic_code_gotchas.md) — IconId · registry-init · node-sync glob · companion allowlist · inject don't cap · pixel center · exact-pin · ISPC · zero-alloc · `Arc::from` copia · áudio mudo · OS-green · low-res
 

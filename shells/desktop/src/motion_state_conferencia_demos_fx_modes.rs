@@ -13,7 +13,7 @@
 //! - **ALFA** — a linha que o Enio pediu em 23/08 (*"o multiply não obedece o alpha"*). As duas
 //!   metades MULTIPLICAM e só a alfa da sombra muda (15% × 85%): a fraca tem de sair mais
 //!   CLARA. ⚠️ **A resposta estava INVERTIDA no renderer**, e o defeito não era do nó: uma
-//!   fonte pré-multiplicada codifica *"não contribuo"* como **zero**, que é o neutro de todo
+//!   fonte pré-multiplicada codifica *"não contribui"* como **zero**, que é o neutro de todo
 //!   modo menos o `Multiply` — cujo neutro é `1`. Cura e tabela medida em
 //!   [`ph2d_render::pipeline::blend_state_for`].
 //!

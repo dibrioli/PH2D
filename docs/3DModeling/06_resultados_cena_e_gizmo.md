@@ -3997,8 +3997,96 @@ o ler a seguir* — e ela sobrevive a toda mutação, por construção.
 
 ---
 
+## §51 — W50: a moldura do app EMPURRA o gizmo — e o arnês de mutação mentiu com um vermelho (23/08)
+
+> Enio, no smoke da W49: *"funcionou bem mas veja que fica escondido entre botões. Quando houver
+> painel à direita melhor deslocar o gizmo para esquerda e abaixar um pouco para não sobrepor os
+> botões superiores."*
+
+### §51.1 — A causa
+
+A área que o módulo recebe é o **viewport inteiro** — e a moldura do app (a faixa de botões do topo,
+os painéis da direita) é pintada **por cima** dele. Pôr o gizmo na quina daquela área é pô-lo
+**debaixo** da moldura.
+
+⇒ o gizmo passa a viver na **parte livre**: a área menos o que a moldura de facto cobre, calculada de
+retângulos que o shell publica (`hero.store.panel_rects()` e o índice de acerto da faixa) e por uma
+lei **pura** no módulo (`field3d_navball::safe_corner`).
+
+### §51.2 — ⭐ A FUGA MAIS BARATA, e por que a primeira lei estava errada
+
+A primeira escrita classificava por *«toca a aresta»*: quem toca a direita empurra para a esquerda,
+quem toca o topo empurra para baixo. ⛔ **Um painel da altura toda toca as DUAS** — ele contava como
+faixa do topo e empurrava o gizmo 600 px para baixo. O gate reprovou à primeira corrida.
+
+⭐ A lei certa não precisa de saber o que o obstáculo **é**: para cada um, sair pela direita ou pelo
+topo tem um preço, e toma-se o menor. Um painel encostado à direita é **estreito e alto** — sair por
+ela custa 300 px e pelo topo custa a janela; numa faixa do topo é ao contrário. *A forma do
+obstáculo diz por onde se sai dele.*
+
+⚠️ E é **iterativo**: escapar de um obstáculo põe a caixa do widget noutro sítio, onde pode haver
+outro. Há gate a exigir que **a ordem dos obstáculos não mude o resultado** — uma lei iterativa
+dependente da ordem daria um gizmo que salta conforme o painel que abriu primeiro.
+
+⚠️ **Localidade:** só conta quem se sobrepõe à caixa onde o widget **está**. Sem isso, a tira de
+quadros do Flip (larga, encostada à direita, lá em baixo) empurraria o gizmo pela largura inteira da
+janela. Gate: `a_bottom_strip_does_not_move_the_gizmo`.
+
+### §51.3 — ⚠️ Um acessor novo em vez de uma segunda lista
+
+`WidgetStore::panel_rects()` — todos os retângulos publicados neste quadro, sem lista de ids. A
+alternativa era copiar a lista de ~25 painéis que o `cursor_over_hero_panel` já carrega, e **uma
+lista que é preciso lembrar é uma lista que se esquece** (a lição da W48, no mesmo módulo e no mesmo
+dia). Um painel flutuante no meio do canvas não move o gizmo — a lei da localidade trata dele.
+
+### §51.4 — ⛔⛔ O ARNÊS DE MUTAÇÃO DEU POR APANHADA UMA MUTAÇÃO QUE NÃO APANHOU
+
+O gate de costura que eu escrevi chamava `note_safe(...)` **de dentro** de um `with_smoke` — e
+`note_safe` entra pelo mesmo `with_smoke`. `RefCell` re-entrante: o teste **entrava em pânico
+sempre**, mutado ou não.
+
+⚠️ E o arnês declarou `RED (recompilou: True · correu 1 teste: True)`. **Os dois controles positivos
+que a W43 e a W45 pagaram passaram os dois** — houve compilação, houve um teste, e ele ficou
+vermelho. *Só que ficaria vermelho de qualquer maneira.*
+
+⭐ A regra que faltava já existia na memória do projeto — *"RED só conta sobre algo visto VERDE
+antes"* — e o que faltava era ela estar **no arnês**, não na cabeça de quem o corre. Agora ele corre
+o teste **antes** de mutar e exige verde; a linha de saída diz `verde antes: True`.
+
+⇒ E com o verde exigido, a verdade apareceu: **a mutação 4 sobrevive mesmo**. A linha que publica a
+parte livre vive no laço de quadro e **não é alcançável de um gate** (precisa de janela e da moldura
+pintada). Ela sai da tabela e entra nos ⏸️ — *declarada, não coberta*.
+
+### §51.5 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | a fuga mais barata vira a mais cara | `the_chrome_pushes_the_gizmo_left_and_down` |
+| 2 | a lei deixa de iterar | *(o mesmo)* |
+| 3 | a lei perde a localidade | `a_bottom_strip_does_not_move_the_gizmo` |
+
+### §51.6 — ⏸️ O que fica aberto
+
+- ⏸️ **A chamada que publica a parte livre não tem gate** (§51.4) — o gate alcança da porta do
+  módulo (`note_safe`) para a frente; a linha no laço de quadro é do mesmo tipo do «Ctrl+S de
+  verdade» da W35.
+- ⏸️ O gizmo **não se move quando o painel é arrastado**… move-se, e a cada quadro: um painel a ser
+  arrastado leva o gizmo com ele. É o comportamento certo, mas **não é animado**.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W50 (§51): a MOLDURA do app empurra o gizmo** — Enio, no smoke da W49: *"fica escondido entre
+  botões"*. A área é o viewport inteiro e a moldura pinta por cima; o gizmo passa a viver na **parte
+  livre**. ⭐ A lei é a **fuga mais barata** (um painel alto sai pela direita, uma faixa larga sai
+  pelo topo) — a primeira, por *«toca a aresta»*, contava um painel da altura toda como faixa do topo
+  e baixava o gizmo 600 px. Iterativa, com gate de ordem, e **local** (a tira do Flip não o move).
+  ⚠️ Acessor novo `WidgetStore::panel_rects()` em vez de uma segunda lista de ids. ⛔⛔ **E o arnês de
+  mutação deu por apanhada uma mutação que não apanhou**: o gate rebentava sozinho (`RefCell`
+  re-entrante) e os dois controles positivos passaram — faltava o **verde antes do vermelho**, que a
+  memória do projeto já exigia e o arnês não. ⏸️ Fica: a chamada que publica a parte livre não é
+  alcançável de um gate
 - ✅ **W49 (§50): o GIZMO DE NAVEGAÇÃO (bolas de eixo)** — pedido do Enio, e ele mandou **pesquisar
   antes de construir**. ⛔ O ViewCube do Fusion está sob patente **viva até 2029-03-06** (Autodesk,
   US 7.782.319). ⭐ E a própria pesquisa da Autodesk mede que o ganho vem do **arrasto**, não do

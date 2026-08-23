@@ -6,8 +6,13 @@ fn area() -> EditorRect {
     EditorRect::new(0.0, 0.0, 800.0, 600.0)
 }
 
+/// Sem moldura nenhuma, a parte livre **é** a área — o caso base de todos os gates abaixo.
+fn free() -> EditorRect {
+    safe_corner(area(), &[])
+}
+
 fn at(cam: &Orbit, v: Standard) -> [f32; 2] {
-    balls(cam, area())
+    balls(cam, area(), free())
         .into_iter()
         .find(|b| b.view == v)
         .expect("as seis estão sempre lá")
@@ -27,8 +32,8 @@ fn the_view_we_are_in_is_the_ball_at_the_centre_and_the_frontmost() {
             rotation: v.rotation(),
             ..Orbit::default()
         };
-        let bs = balls(&cam, area());
-        let c = centre(area());
+        let bs = balls(&cam, area(), free());
+        let c = centre_in(area(), free());
         let me = bs.iter().find(|b| b.view == v).expect("ela existe");
         assert!(
             (me.at[0] - c[0]).abs() < 0.01 && (me.at[1] - c[1]).abs() < 0.01,
@@ -67,9 +72,9 @@ fn a_click_where_two_balls_overlap_takes_the_front_one() {
             rotation: v.rotation(),
             ..Orbit::default()
         };
-        let bs = balls(&cam, area());
+        let bs = balls(&cam, area(), free());
         assert_eq!(
-            pick(&bs, centre(area())),
+            pick(&bs, centre_in(area(), free())),
             Some(v),
             "{v:?}: o clique no centro deu a vista escondida, não a da frente"
         );
@@ -92,7 +97,7 @@ fn up_on_screen_is_up_in_the_world() {
         rotation: Standard::Front.rotation(),
         ..Orbit::default()
     };
-    let c = centre(area());
+    let c = centre_in(area(), free());
     let top = at(&cam, Standard::Top);
     let bottom = at(&cam, Standard::Bottom);
     let right = at(&cam, Standard::Right);
@@ -119,7 +124,7 @@ fn up_on_screen_is_up_in_the_world() {
 #[test]
 fn each_ball_is_pickable_at_its_own_place_and_the_gap_is_nobodys() {
     let cam = Orbit::default();
-    let bs = balls(&cam, area());
+    let bs = balls(&cam, area(), free());
     for b in &bs {
         assert_eq!(
             pick(&bs, b.at),
@@ -130,8 +135,8 @@ fn each_ball_is_pickable_at_its_own_place_and_the_gap_is_nobodys() {
     }
     // Fora do widget inteiro: um ponto bem longe.
     assert_eq!(pick(&bs, [10.0, 10.0]), None);
-    assert!(!hits_widget(area(), [10.0, 10.0]));
-    assert!(hits_widget(area(), centre(area())));
+    assert!(!hits_widget(area(), free(), [10.0, 10.0]));
+    assert!(hits_widget(area(), free(), centre_in(area(), free())));
 }
 
 /// ⭐ **O widget SEGUE a câmera** — girar move as bolas.
@@ -157,7 +162,7 @@ fn the_whole_widget_fits_inside_the_area() {
     let a = area();
     for yaw in [0.0_f32, 0.7, 1.9, 3.4, 5.1] {
         let cam = Orbit::from_yaw_pitch(yaw, 0.3);
-        for b in balls(&cam, a) {
+        for b in balls(&cam, a, safe_corner(a, &[])) {
             assert!(
                 b.at[0] - BALL_R_PX >= 0.0
                     && b.at[1] - BALL_R_PX >= 0.0
@@ -169,4 +174,122 @@ fn the_whole_widget_fits_inside_the_area() {
             );
         }
     }
+}
+
+// ───────── W50: a moldura do app empurra o gizmo ─────────
+
+/// ⭐⭐ **UM PAINEL À DIREITA EMPURRA O GIZMO PARA A ESQUERDA; A FAIXA DO TOPO BAIXA-O.**
+///
+/// ⚠️ É a frase do Enio, à letra (smoke da W49): *"fica escondido entre botões. Quando houver painel
+/// à direita melhor deslocar o gizmo para esquerda e abaixar um pouco para não sobrepor os botões
+/// superiores."* A área que o módulo recebe é o **viewport inteiro**, e a moldura é pintada por cima
+/// dele — pôr o gizmo na quina daquela área é pô-lo **debaixo** da moldura.
+#[test]
+fn the_chrome_pushes_the_gizmo_left_and_down() {
+    let a = area();
+    let bare = centre_in(a, safe_corner(a, &[]));
+
+    // Um painel encostado à direita, da altura toda.
+    let panel = EditorRect::new(a.w - 300.0, 0.0, 300.0, a.h);
+    let with_panel = centre_in(a, safe_corner(a, &[panel]));
+    assert!(
+        (bare[0] - with_panel[0] - 300.0).abs() < 0.01,
+        "o painel de 300 px devia mover o gizmo 300 px para a esquerda: {} → {}",
+        bare[0],
+        with_panel[0]
+    );
+    assert!(
+        (with_panel[1] - bare[1]).abs() < 0.01,
+        "um painel à direita não pode mexer na ALTURA do gizmo"
+    );
+
+    // A faixa do topo, da largura toda.
+    let bar = EditorRect::new(0.0, 0.0, a.w, 60.0);
+    let with_bar = centre_in(a, safe_corner(a, &[bar]));
+    assert!(
+        (with_bar[1] - bare[1] - 60.0).abs() < 0.01,
+        "a faixa de 60 px devia baixar o gizmo 60 px: {} → {}",
+        bare[1],
+        with_bar[1]
+    );
+    assert!(
+        (with_bar[0] - bare[0]).abs() < 0.01,
+        "a faixa do topo não pode mexer na horizontal"
+    );
+
+    // As duas juntas — o caso da foto.
+    let both = centre_in(a, safe_corner(a, &[panel, bar]));
+    assert!(
+        (both[0] - with_panel[0]).abs() < 0.01 && (both[1] - with_bar[1]).abs() < 0.01,
+        "com os dois obstáculos o gizmo tem de acumular as duas folgas"
+    );
+}
+
+/// ⚠️ **Um painel FLUTUANTE no meio do canvas não move o gizmo.**
+///
+/// Ele mudaria de sítio a cada vez que alguém arrastasse uma janela, o que é pior do que ficar
+/// quieto atrás dela. A lei só conta quem toca a **aresta** da área — e é este gate que separa as
+/// duas coisas.
+#[test]
+fn a_floating_panel_in_the_middle_does_not_move_the_gizmo() {
+    let a = area();
+    let bare = centre_in(a, safe_corner(a, &[]));
+    let floating = EditorRect::new(200.0, 200.0, 250.0, 200.0);
+    let after = centre_in(a, safe_corner(a, &[floating]));
+    assert_eq!(bare, after, "um painel flutuante moveu o gizmo");
+}
+
+/// ⚠️ **E com a moldura o widget continua DENTRO da área** — a lei da W49, sob as folgas novas.
+#[test]
+fn the_widget_still_fits_with_the_chrome_in_the_way() {
+    let a = area();
+    let safe = safe_corner(
+        a,
+        &[
+            EditorRect::new(a.w - 300.0, 0.0, 300.0, a.h),
+            EditorRect::new(0.0, 0.0, a.w, 60.0),
+        ],
+    );
+    for yaw in [0.0_f32, 0.9, 2.4, 4.6] {
+        let cam = Orbit::from_yaw_pitch(yaw, 0.3);
+        for b in balls(&cam, a, safe) {
+            assert!(
+                b.at[0] - BALL_R_PX >= 0.0
+                    && b.at[1] - BALL_R_PX >= 0.0
+                    && b.at[0] + BALL_R_PX <= a.w
+                    && b.at[1] + BALL_R_PX <= a.h,
+                "{:?} saiu da área em yaw={yaw}: {:?}",
+                b.view,
+                b.at
+            );
+        }
+    }
+}
+
+/// ⚠️ **Uma faixa em BAIXO não move o gizmo** — ele vive em cima, e a tira de quadros do Flip é
+/// larga e encostada à direita. *Uma lei que só olhasse «toca a aresta direita» empurraria o gizmo
+/// pela largura inteira da janela por causa dela.*
+#[test]
+fn a_bottom_strip_does_not_move_the_gizmo() {
+    let a = area();
+    let bare = centre_in(a, safe_corner(a, &[]));
+    let strip = EditorRect::new(0.0, a.h - 120.0, a.w, 120.0);
+    assert_eq!(
+        centre_in(a, safe_corner(a, &[strip])),
+        bare,
+        "a tira de baixo moveu o gizmo, que vive em cima"
+    );
+}
+
+/// ⚠️ **A ordem dos obstáculos não muda o resultado** — a lei é iterativa, e uma lei iterativa que
+/// dependesse da ordem daria um gizmo que salta de sítio conforme o painel que abriu primeiro.
+#[test]
+fn the_order_of_the_obstacles_does_not_matter() {
+    let a = area();
+    let panel = EditorRect::new(a.w - 300.0, 0.0, 300.0, a.h);
+    let bar = EditorRect::new(0.0, 0.0, a.w, 60.0);
+    assert_eq!(
+        centre_in(a, safe_corner(a, &[panel, bar])),
+        centre_in(a, safe_corner(a, &[bar, panel])),
+    );
 }

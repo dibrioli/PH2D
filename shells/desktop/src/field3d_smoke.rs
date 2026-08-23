@@ -192,6 +192,12 @@ pub(crate) struct Smoke {
     /// que o nó ainda existe antes de o usar (ver `field3d_scene::cook_root`). Um isolamento
     /// pendurado numa entidade morta apagaria a peça da tela sem nada a explicar.
     pub(crate) isolated: Option<u64>,
+    /// ⭐ **A parte da área que a moldura do app NÃO tapa** (W50), publicada pelo shell todo quadro.
+    ///
+    /// ⚠️ **Cache do quadro, como a `area`:** ela depende de que painéis estão abertos e de onde a
+    /// faixa do topo foi pintada NESTE quadro. `None` até o shell a publicar, e aí a área inteira é
+    /// a resposta — que é o que era antes desta wave.
+    pub(crate) safe: Option<EditorRect>,
     /// ⭐ **A bola do gizmo de navegação sob o cursor** (W49) — só realce e a decisão do clique.
     ///
     /// ⚠️ **Cache do gesto, não vista:** ela é reposta a cada movimento do ponteiro, e um valor
@@ -304,6 +310,7 @@ fn boot() -> Option<Smoke> {
         doc: Some(doc.clone()),
         seed: Some(doc),
         isolated: v.isolated,
+        safe: None,
         nav_hot: None,
         nav_press: None,
         has_live_sculpt: false,
@@ -528,6 +535,19 @@ pub(crate) fn toggle_isolate_by_key(selected: Option<u64>) -> Option<u64> {
 
 /// **O shell diz se há uma escultura viva na cena** — publicado todo quadro, como a âncora do
 /// gizmo. Ver [`Smoke::has_live_sculpt`].
+/// **O shell diz qual é a parte livre da área** — todo quadro, como a âncora do gizmo. Ver
+/// [`Smoke::safe`] e [`crate::field3d_navball::safe_corner`].
+pub(crate) fn note_safe(safe: EditorRect) {
+    with_smoke(|s| s.safe = Some(safe));
+}
+
+/// A parte livre, ou a área inteira quando ninguém a publicou.
+pub(crate) fn safe_of(s: &Smoke) -> EditorRect {
+    s.safe
+        .or(s.area)
+        .unwrap_or(EditorRect::new(0.0, 0.0, 0.0, 0.0))
+}
+
 pub(crate) fn note_live_sculpt(has: bool) {
     with_smoke(|s| s.has_live_sculpt = has);
 }

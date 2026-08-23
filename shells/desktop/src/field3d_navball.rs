@@ -73,10 +73,77 @@ pub(crate) struct Ball {
     pub(crate) depth: f32,
 }
 
-/// O centro do gizmo, na quina **superior direita** da área — onde o Blender e o Unity o põem.
-pub(crate) fn centre(area: EditorRect) -> [f32; 2] {
+/// ⭐⭐ **A PARTE DA ÁREA QUE A MOLDURA DO APP NÃO TAPA** (W50).
+///
+/// # O defeito, com as palavras do Enio (smoke da W49)
+///
+/// > *"funcionou bem mas veja que fica escondido entre botões. Quando houver painel à direita melhor
+/// > deslocar o gizmo para esquerda e abaixar um pouco para não sobrepor os botões superiores."*
+///
+/// ⚠️ A área que este módulo recebe é o **viewport inteiro** — e por cima dele o app pinta a faixa
+/// de botões do topo e os painéis da direita. Pôr o gizmo na quina daquela área é pô-lo **debaixo**
+/// da moldura: ele fica meio tapado e a metade que sobra encosta no painel.
+///
+/// # A lei: duas folgas independentes, e é o que a frase dele pede
+///
+/// | obstáculo | como se reconhece | o que ele empurra |
+/// |---|---|---|
+/// | um painel à **direita** | cobre a aresta direita da área | o gizmo vai para a **esquerda** |
+/// | a faixa do **topo** | cobre a aresta de cima | o gizmo **desce** |
+///
+/// ⚠️ **Só contam os obstáculos que tocam a ARESTA**, e não qualquer coisa que se sobreponha: um
+/// painel flutuante no meio do canvas não tem de mover o gizmo — ele mudaria de sítio a cada vez que
+/// alguém arrastasse uma janela, o que é pior do que ficar quieto atrás dela.
+///
+/// ⚠️ Os retângulos chegam do shell (`hero.store.panel_rect` e o índice de acerto da moldura), que é
+/// quem os conhece; aqui é lei pura, que um gate dirige sem janela nenhuma.
+pub(crate) fn safe_corner(area: EditorRect, obstacles: &[EditorRect]) -> EditorRect {
+    // A caixa que o widget ocupa, com a folga dele — é ela que tem de ficar livre.
+    let side = 2.0f32.mul_add(NAV_R_PX + BALL_R_PX, 2.0 * NAV_MARGIN_PX);
+    let (mut right, mut top) = (0.0_f32, 0.0_f32);
+    // ⚠️ **Iterativo**, e tem de ser: escapar de um obstáculo põe a caixa noutro sítio, onde pode
+    // haver outro. Cada passo resolve pelo menos um, então `n + 1` passos chegam sempre — e o teto
+    // é o que garante que isto termina mesmo com retângulos degenerados.
+    for _ in 0..=obstacles.len() {
+        let box_ = EditorRect::new(area.x + area.w - right - side, area.y + top, side, side);
+        let Some(o) = obstacles.iter().find(|o| overlaps(o, &box_)) else {
+            break;
+        };
+        // ⭐ **A FUGA MAIS BARATA**, e é ela que distingue um painel de uma faixa sem precisar de
+        // saber o que eles são: um painel encostado à direita é estreito e alto, então sair dele
+        // pela **direita** custa pouco e pelo **topo** custa a janela inteira; numa faixa do topo é
+        // ao contrário. *A forma do obstáculo diz por onde se sai dele.*
+        //
+        // ⚠️ A primeira escrita desta função classificava por «toca a aresta», e um painel da
+        // **altura toda** toca as duas — ele contava como topo e empurrava o gizmo 600 px para
+        // baixo. O gate `the_chrome_pushes_the_gizmo_left_and_down` reprovou à primeira corrida.
+        let by_right = area.x + area.w - o.x;
+        let by_top = o.y + o.h - area.y;
+        if by_right <= by_top {
+            right = right.max(by_right);
+        } else {
+            top = top.max(by_top);
+        }
+    }
+    // ⚠️ Nunca menos do que o widget: com uma moldura que cobrisse quase tudo, encolher até ao nada
+    // poria o gizmo fora da área — e a lei do «cabe dentro» deixaria de valer.
+    let w = (area.w - right).max(side.min(area.w));
+    let h = (area.h - top).max(side.min(area.h));
+    EditorRect::new(area.x, area.y + (area.h - h), w, h)
+}
+
+fn overlaps(a: &EditorRect, b: &EditorRect) -> bool {
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+/// O centro do gizmo, na quina **superior direita da parte livre** — onde o Blender e o Unity o
+/// põem, descontada a moldura ([`safe_corner`]).
+///
+/// ⚠️ Devolve coordenadas **da área**, que é o referencial em que as bolas vivem: o `safe` chega em
+/// coordenadas de janela, como o `area`.
+pub(crate) fn centre_in(area: EditorRect, safe: EditorRect) -> [f32; 2] {
     let inset = NAV_R_PX + NAV_MARGIN_PX;
-    [area.w - inset, inset]
+    [safe.x + safe.w - inset - area.x, safe.y + inset - area.y]
 }
 
 /// ⭐ **As seis bolas, ORDENADAS DE TRÁS PARA A FRENTE.**
@@ -87,9 +154,9 @@ pub(crate) fn centre(area: EditorRect) -> [f32; 2] {
 ///
 /// A projeção é a da câmera: um eixo do mundo `d` cai em `(d·direita, −d·cima)`, e a profundidade é
 /// `d·frente`. ⚠️ O `y` da tela cresce **para baixo**, e é daí que vem o sinal do meio.
-pub(crate) fn balls(cam: &Orbit, area: EditorRect) -> Vec<Ball> {
+pub(crate) fn balls(cam: &Orbit, area: EditorRect, safe: EditorRect) -> Vec<Ball> {
     let (right, up, fwd) = cam.basis();
-    let c = centre(area);
+    let c = centre_in(area, safe);
     let mut out: Vec<Ball> = Standard::ALL
         .into_iter()
         .map(|view| {
@@ -131,8 +198,8 @@ pub(crate) fn pick(balls: &[Ball], at: [f32; 2]) -> Option<Standard> {
 /// ⚠️ Ela é do **widget inteiro**, não de uma bola: arrastar a partir de qualquer sítio dele orbita
 /// (é o gesto que a medição da referência diz ser o rápido), e sem esta pergunta um arrasto começado
 /// no vazio entre duas bolas seria um arrasto na **peça**.
-pub(crate) fn hits_widget(area: EditorRect, at: [f32; 2]) -> bool {
-    let c = centre(area);
+pub(crate) fn hits_widget(area: EditorRect, safe: EditorRect, at: [f32; 2]) -> bool {
+    let c = centre_in(area, safe);
     let (dx, dy) = (at[0] - c[0], at[1] - c[1]);
     dx.hypot(dy) <= NAV_R_PX + BALL_R_PX
 }

@@ -46,9 +46,11 @@ pub(crate) fn begin(
     // `drag` fica em `Orbit` e a bola é só **lembrada** — o `Up` sem movimento é que a usa.
     if button == winit::event::MouseButton::Left
         && let Some(p) = local(s, pos)
-        && crate::field3d_navball::hits_widget(area, p)
+        && crate::field3d_navball::hits_widget(area, crate::field3d_smoke::safe_of(s), p)
     {
-        s.nav_press = crate::field3d_navball::pick(&crate::field3d_navball::balls(&s.cam, area), p);
+        let safe = crate::field3d_smoke::safe_of(s);
+        s.nav_press =
+            crate::field3d_navball::pick(&crate::field3d_navball::balls(&s.cam, area, safe), p);
         s.drag = Some(Drag::Orbit);
         s.drag_grip = None;
         s.gizmo_hot = None;
@@ -188,8 +190,15 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         // ⭐ **O realce do gizmo de NAVEGAÇÃO** (W49), pela mesma lei e no mesmo sítio: sem ele o
         // artista não sabe que bola vai pegar — e o widget lê como decoração.
         s.nav_hot = match (s.area, local(s, (x, y))) {
-            (Some(area), Some(p)) if crate::field3d_navball::hits_widget(area, p) => {
-                crate::field3d_navball::pick(&crate::field3d_navball::balls(&s.cam, area), p)
+            (Some(area), Some(p))
+                if crate::field3d_navball::hits_widget(
+                    area,
+                    crate::field3d_smoke::safe_of(s),
+                    p,
+                ) =>
+            {
+                let safe = crate::field3d_smoke::safe_of(s);
+                crate::field3d_navball::pick(&crate::field3d_navball::balls(&s.cam, area, safe), p)
             }
             _ => None,
         };

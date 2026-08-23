@@ -117,6 +117,7 @@ impl View {
             typed: _,
             press_at: _,
             pending_pick: _,
+            safe: _,
             nav_hot: _,
             nav_press: _,
             has_live_sculpt: _,

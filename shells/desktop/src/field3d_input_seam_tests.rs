@@ -216,7 +216,7 @@ fn the_grabbed_handle_stays_lit_while_the_cursor_walks_away() {
 
 /// Onde uma bola está, em coordenadas de **janela** (a área tem canto em `AREA.x/y`).
 fn ball_at(s: &crate::field3d_smoke::Smoke, v: crate::field3d_views::Standard) -> (f32, f32) {
-    let b = crate::field3d_navball::balls(&s.cam, AREA)
+    let b = crate::field3d_navball::balls(&s.cam, AREA, crate::field3d_smoke::safe_of(s))
         .into_iter()
         .find(|b| b.view == v)
         .expect("as seis estão sempre lá");
@@ -322,5 +322,45 @@ fn a_click_away_from_the_navball_still_belongs_to_the_part() {
             s.pending_pick.is_some(),
             "um clique fora do gizmo tem de continuar a pedir a seleção da peça"
         );
+    });
+}
+
+/// ⭐⭐ **A PARTE LIVRE PUBLICADA PELO SHELL MOVE O GIZMO DE VERDADE** (W50).
+///
+/// ⚠️ A lei do `safe_corner` é pura e tem os gates dela; este mede a **costura**: que o valor
+/// publicado chega ao gesto. Sem ele, o shell podia deixar de publicar e a lei continuaria verde no
+/// canto dela — que é exatamente a forma como a W48 me apanhou.
+#[test]
+fn the_published_safe_rect_moves_the_gizmo() {
+    // ⚠️ **O `note_safe` corre FORA do `armed`**, e tem de correr: ele próprio entra por
+    // `with_smoke`, e chamá-lo de dentro de outro `with_smoke` é um `RefCell` re-entrante — o teste
+    // rebenta antes de afirmar seja o que for. *A primeira escrita fazia-o de dentro, e o arnês de
+    // mutação deu-a por «apanhada» porque só exigia VERMELHO, nunca o verde antes dele.*
+    let bare = armed(|s| {
+        s.safe = None;
+        crate::field3d_navball::centre_in(AREA, crate::field3d_smoke::safe_of(s))
+    });
+
+    // Um painel de 300 px encostado à direita, como o MODEL aberto — pela **porta do módulo**.
+    let panel = ph2d_editor::zones::Rect::new(AREA.x + AREA.w - 300.0, AREA.y, 300.0, AREA.h);
+    crate::field3d_smoke::note_safe(crate::field3d_navball::safe_corner(AREA, &[panel]));
+
+    armed(|s| {
+        let moved = crate::field3d_navball::centre_in(AREA, crate::field3d_smoke::safe_of(s));
+        assert!(
+            (bare[0] - moved[0] - 300.0).abs() < 0.01,
+            "a parte livre publicada não moveu o gizmo: {bare:?} → {moved:?}"
+        );
+        // …e o gesto segue-o: o clique tem de cair no sítio NOVO, não no antigo.
+        let safe = crate::field3d_smoke::safe_of(s);
+        assert!(
+            crate::field3d_navball::hits_widget(AREA, safe, moved),
+            "o gizmo desenhou-se num sítio e o clique ficou noutro"
+        );
+        assert!(
+            !crate::field3d_navball::hits_widget(AREA, safe, bare),
+            "o gizmo ainda apanha cliques no sítio ANTIGO — pintado num sítio, apontável noutro"
+        );
+        s.safe = None;
     });
 }

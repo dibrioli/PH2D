@@ -194,14 +194,15 @@ pub(crate) fn draw(
         // ⚠️ Ele é pintado **sempre**, e não dentro da guarda de seleção que vem a seguir: ele diz de
         // que lado do modelo se está a olhar, e essa pergunta não depende de haver algo escolhido.
         {
-            let balls = crate::field3d_navball::balls(&smoke.cam, area);
+            let safe = crate::field3d_smoke::safe_of(smoke);
+            let balls = crate::field3d_navball::balls(&smoke.cam, area, safe);
             crate::field3d_navball_paint::paint(
                 scene_out,
                 &balls,
                 smoke.nav_hot,
                 theme,
                 [area.x, area.y],
-                crate::field3d_navball::centre(area),
+                crate::field3d_navball::centre_in(area, safe),
             );
         }
 

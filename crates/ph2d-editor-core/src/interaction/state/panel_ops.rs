@@ -131,6 +131,19 @@ impl WidgetStore {
         self.panel_rects.get(&panel).copied()
     }
 
+    /// ⭐ **Every panel rect published this frame** — no id list to keep in sync.
+    ///
+    /// ⚠️ Added for the 3D modelling nav gizmo (ADR-0161 W50), which has to place itself in the
+    /// part of the viewport the chrome does NOT cover. The alternative was a second copy of the
+    /// "which ids are panels" list that `cursor_over_hero_panel` already carries — and a list that
+    /// must be remembered is a list that gets forgotten (the W48 lesson, same module, same day).
+    ///
+    /// A rect is only in here while its painter registered it **this frame**, so a closed panel is
+    /// simply absent.
+    pub fn panel_rects(&self) -> impl Iterator<Item = Rect> + '_ {
+        self.panel_rects.values().copied()
+    }
+
     /// Drop the published rect for a panel. Used by transient
     /// panels (e.g. the floating BlenderColorPicker) when they're
     /// not currently visible — so dispatch's "is the click inside

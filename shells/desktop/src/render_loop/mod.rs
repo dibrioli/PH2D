@@ -8998,6 +8998,33 @@ impl crate::App {
             //
             // No-op silencioso sem a variável; todo o estado vive no próprio módulo, de propósito
             // (`field3d_smoke`, §"Estado contido").
+            // ⭐⭐ **A PARTE LIVRE DA ÁREA** (W50) — Enio, no smoke da W49: *"fica escondido entre
+            // botões […] quando houver painel à direita melhor deslocar o gizmo para esquerda e
+            // abaixar um pouco"*.
+            //
+            // ⚠️ A área que o módulo recebe é o **viewport inteiro**, e a moldura do app é pintada
+            // por cima dele. Os retângulos vêm de quem os conhece — o `panel_rect` do store (só
+            // publicado enquanto o painel está aberto) e o índice de acerto da faixa do topo (só
+            // escrito no quadro em que ela de facto pintou). A **lei** de como eles empurram o
+            // gizmo é pura e vive no módulo (`field3d_navball::safe_corner`).
+            {
+                let mut obstacles: Vec<ph2d_editor::zones::Rect> = Vec::new();
+                for id in crate::forwarding::CHROME_BACKDROPS {
+                    if let Some(r) = hero.hit_index.rect_for(id) {
+                        obstacles.push(r);
+                    }
+                }
+                // ⚠️ **Todos** os painéis publicados neste quadro, sem lista de ids: uma segunda
+                // cópia da lista que o `cursor_over_hero_panel` já carrega seria uma lista a mais
+                // para alguém esquecer. Um painel flutuante no meio do canvas não move o gizmo — a
+                // lei só conta quem toca a **aresta** da área.
+                obstacles.extend(hero.store.panel_rects());
+                let area =
+                    ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
+                crate::field3d_smoke::note_safe(crate::field3d_navball::safe_corner(
+                    area, &obstacles,
+                ));
+            }
             crate::field3d_smoke::draw(
                 ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                 hero.theme,

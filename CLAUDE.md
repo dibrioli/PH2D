@@ -609,8 +609,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Referência durável entre objetos é o NOME** (`stable_name_id`, hash do `Name`), nunca os bits — o undo respawna
   tudo com bits novos, e bits **dentro dos bytes de um componente** envenenam o próprio undo.
   ⚠️ O undo de **PAINÉIS** é sistema separado e **não existe** (decisão do Enio).
-  **Aberto:** UI real de Save/Save As/Open (o `io_menu` é stub — hoje é path fixo, sem diálogo) · persistir
-  `SpriteSource::Individual` e `CookedTexture` · limpar o `vec_history` morto (subsumido pela captura).
+  **Aberto:** UI real de Save/Save As/Open (o `io_menu` é stub — hoje é path fixo, sem diálogo) ·
+  ✅ **`SpriteSource::Individual` PERSISTE — esta nota envelheceu** e mandava reconstruir trabalho
+  pago: [`project_sprite_pixels.rs`](shells/desktop/src/project_sprite_pixels.rs) fecha as **oito**
+  ferramentas de imagem de uma vez pelo funil `commit_edited_texture`, com a identidade a ser o
+  CONTEÚDO (`AssetId` blake3) e precedência por ORDEM sobre o Painter/bake. ⚠️ O
+  `CookedTexture` fica de fora **por gate explícito** (`should_collect`) — a pergunta aberta é se
+  alguém o re-deriva no load, não se ele devia ser embutido · limpar o `vec_history` morto
+  (subsumido pela captura).
   **Ler:** [`project.rs`](shells/desktop/src/project.rs) · [`undo.rs`](shells/desktop/src/undo.rs) ·
   [história](docs/archive/estado-2026-08-18/editor-shell.md)
 

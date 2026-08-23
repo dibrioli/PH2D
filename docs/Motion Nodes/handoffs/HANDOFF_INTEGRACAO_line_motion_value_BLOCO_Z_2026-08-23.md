@@ -1,12 +1,30 @@
 # HANDOFF DE INTEGRAÇÃO · `line/motion-value` · **bloco Z** — 2026-08-23
 
-> **A linha NÃO integrou e NÃO pushou** (`CLAUDE.md` §0.7). Oito commits locais, à espera de ordem
-> explícita do Enio.
+> **A linha NÃO integrou e NÃO pushou** (`CLAUDE.md` §0.7). **Catorze** commits locais, à espera de
+> ordem explícita do Enio. **Dois blocos** no mesmo dia: os TETOS (§1) e a folha 11 (§0-bis, §9).
 
 **Worktree:** `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` · **branch:**
 `line/motion-value` · **base:** `main` em `35f937cb2`.
 
 ---
+
+## §0-bis — SEGUNDO BLOCO no mesmo dia: **a folha 11 (fx raster)**
+
+Depois do bloco Z, a mesma linha fechou **seis das sete** células da folha 11 —
+7 P2 → **1**, e a conferência de 82 para **76**. Registo: as próprias células, que ficaram
+densas de propósito (é a forma da conferência), e o §9 abaixo.
+
+| célula | cura | onde |
+|---|---|---|
+| modo da sombra | `fx.drop_shadow::shadow_blend` | STREAM |
+| eixo da lente | `fx.rgb_split::center_x`/`center_y` | STREAM |
+| raio limpo | `fx.rgb_split::start` | STREAM |
+| operação do halo | `fx.glow::operation` (`Add`/`Screen`) | TELA |
+| fonte do bright-pass | `fx.glow::source` (`Luminance`/`Alpha`) | TELA |
+| cor do halo por rampa | `fx.glow` + LUT de 512 texels | TELA |
+| ⏳ *dirt texture* | **fica**, com o preço corrigido por medição | — |
+
+**Cena de smoke: `=84`.**
 
 ## §1 — O que entrou, em uma frase
 
@@ -30,6 +48,11 @@ Registro completo: [`docs/Motion Nodes/91_os_tetos_que_ninguem_mediu.md`](../91_
 | `ef97264af` | a legenda das cenas de smoke vai para o CANVAS |
 | `e947b6c98` | o teto de paradas do gradiente ganha derivação (e a medição confirmou o 8) |
 | `e04f092b5` | o doc 91 + as 7 células fechadas + as contagens reconciliadas |
+| `7538b0d3d` | o handoff do bloco Z + duas flakes novas no §5.0 |
+| `32d813b84` | **folha 11**: o modo da sombra e a lente do `rgb_split` (STREAM) |
+| `ea8818872` | **folha 11**: a operação e a fonte do halo + o gate de WGSL que faltava |
+| `57e3174ec` | **folha 11**: a cor do halo por RAMPA (LUT de 512 texels, medida) |
+| `+2` | a cena `=84`, a folha 11 fechada e o split do `motion_fx.rs` por HR-18; e duas memórias |
 
 ---
 
@@ -108,14 +131,20 @@ nenhuma cena publicou (todo arranque normal do editor).
 
 | | |
 |---|---|
-| `cargo nextest run --workspace --cargo-profile ci-test --no-fail-fast` | **17.865 testes · 17.863 ✓ · 2 ✗** |
-| clippy `--all-targets --all-features`, alvo DERIVADO do diff (25 crates) | **0** |
+| `cargo nextest run --workspace --cargo-profile ci-test --no-fail-fast` | **17.893 testes · 17.892 ✓ · 1 ✗** |
+| clippy `--all-targets --all-features`, alvo DERIVADO do diff (**29 crates**) | **0** |
 | `cargo fmt --all` | limpo |
-| `typos crates/ shells/ docs/Motion Nodes/` | **0** |
-| `file_loc_caps` (shell) · `architecture_widget_loc_cap` · `architecture_panel_loc_cap` | ✓ |
-| `placar_conferencia.py` | verde · **82 P2 · 4 P1 · ✅ 222** |
+| `typos crates/ shells/ docs/Motion Nodes/ CLAUDE.md` | **0** |
+| `file_loc_caps` · `architecture_widget_loc_cap` · `architecture_panel_loc_cap` · `architecture_workspace_file_loc_cap` | ✓ |
+| `placar_conferencia.py` | verde · **76 P2 · 4 P1 · ✅ 228** |
 | paridade CPU/GPU de sim (`--ignored`, RTX) | **29/29 ✓** |
-| `doc-index.sh` | regenerado |
+| pipelines do halo num **device real** (as 2 operações, as 2 fontes, com e sem LUT) | ✓ |
+| `doc-index.sh` · `architecture_docs_paths_and_smokes_resolve` | ✓ |
+
+⚠️ **O `1 ✗` da corrida final é a flake nº 2 do §5.0** (`a_round_live_offset_costs_like_the_other_joins`,
+`ph2d-vec-boolean`) — verde **3 de 3** sozinha, em crate que esta linha não toca. As duas do bloco Z
+(a máscara do Painter e o zero-alloc da timeline) não reapareceram nesta corrida, o que é o
+comportamento de uma flake e não de uma regressão.
 
 ### ⚠️ Os 2 ✗ são FLAKES pré-existentes, em crates que esta linha não toca
 
@@ -162,7 +191,13 @@ literal é um sinal à espera de se perder;* a forma segura é a do `bounds.rs`,
    MESMO `GRAB_R = 9,0`, então a conta é a mesma — só não foi feita.
 4. **A legenda no canvas cobre 2 cenas** (`=82`, `=83`). Cena nova = uma `captions()` pura + uma
    linha no `publish`. A lista está em `motion_demo_legend_tests.rs::scenes()`.
-5. ⚠️ **Sinal pré-existente:** `conferencia_vs_manifesto.py` sai vermelho na metade *"já existe no
+5. ⏳ **A *dirt texture* do `fx.glow`** — a única célula da folha 11 que fica, e a estimativa dela
+   foi **corrigida por medição**: ela não é «um asset». Uma máscara de sujidade é um overlay de
+   TELA no passe do halo e precisa de uma textura que o composite consiga LIGAR — e a textura de
+   uma sprite é uma de **três** coisas (`Atlas{key}` · `Individual{texture_id}` · `CookedTexture`,
+   ver `sprite_appearance`), das quais só a primeira é um rectângulo no atlas partilhado. Cobrir só
+   essa daria uma feature que funciona com umas imagens e falha em silêncio com outras.
+6. ⚠️ **Sinal pré-existente:** `conferencia_vs_manifesto.py` sai vermelho na metade *"já existe no
    manifesto"* com 4 células. Lidas uma a uma, são **falsos positivos**: a ferramenta casa o nome
    do param mencionado na CURA proposta (*"um 9º `ease_curve = Custom`"*), não um param que já
    fecharia a célula. A metade das CONTAGENS está verde (127 nós).
@@ -193,3 +228,22 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_G
 
 Cada figura tem agora **uma ficha em cima dela** dizendo o que é. **Deu errado se** as fichas não
 aparecerem, ou se aparecerem sobre a figura errada.
+
+
+---
+
+## §9 — O que a folha 11 custou, em erros meus
+
+1. ⚠️⚠️ **Escrevi por cima de um arquivo que já existia.** A cena nova foi para
+   `motion_state_conferencia_demos_fx.rs`, que **é** a cena `=70` (a família `fx.*`, 140 linhas de
+   gates). O `Write` respondeu *«updated»* e não *«created»*, e eu li a resposta como sucesso sem
+   reparar no verbo — só o compilador acusou, três passos depois. Restaurado do git antes de
+   continuar; a cena nova chama-se `_fx_modes`. ⚠️ **O gatilho é estrutural:** um nome BOM para uma
+   cena de FX é exactamente o nome que a cena de FX antiga já escolheu, pela mesma boa razão.
+   Memória: `feedback_write_on_an_existing_path_says_updated_not_created`.
+2. **A régua da rampa corrigiu-se DUAS vezes** (§0-bis): a representação (uma grelha uniforme não
+   representa a esquina de uma parada) e depois o critério (num degrau o que encolhe com a
+   densidade é a LARGURA da banda, não a altura do erro). Memória:
+   `feedback_a_uniform_grid_cannot_represent_a_corner`.
+3. **Dois nós ganharam um argumento a mais** e nenhum dos 21 gates antigos o herdou por default: o
+   caso neutro tem NOME (`sink_blend`, `Lens::CENTRED`), a lei do `unlimited` do `sim.step`.

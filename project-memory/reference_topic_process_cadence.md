@@ -24,5 +24,5 @@ metadata:
 - [[feedback_ship_parity_gaps_ci_only]] — ship.sh ≠ paridade CI: bindgen/advisory-db escapam
 - [[feedback_rustup_default_loses_to_the_toolchain_file]] — `rustup default` PERDE para o `rust-toolchain.toml`; meça com `RUSTUP_TOOLCHAIN`
 - [[feedback_duplicate_allowlist_key_kills_the_gate_at_parse]] — allowlist duplicada mata o gate: o TOML morre no parse
-- [[feedback_an_impacted_test_selector_that_maps_paths_by_prefix_is_blind_outside_it]] — seletor de impacto por prefixo é CEGO fora de `crates/` (curado 22/08: deriva de `cargo metadata`)
+- [[feedback_an_impacted_test_selector_that_maps_paths_by_prefix_is_blind_outside_it]] — o seletor de impacto já saiu VERDE **sem medir** DUAS vezes: prefixo `crates/` (curado 22/08) e `git diff A...` cego ao trabalho **NÃO COMMITADO** (curado 23/08). ⚠️ leia a linha `changed:` contra o seu `git status`
 - [[project_diretriz_v68_2026_05_22]] — HISTÓRICO: o modelo de 2 papéis/Coordenador (DIRETRIZ v68) foi superseded no workstation pelo Modo L (ADR-0106/0107)

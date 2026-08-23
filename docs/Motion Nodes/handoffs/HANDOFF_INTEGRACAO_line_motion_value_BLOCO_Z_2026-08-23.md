@@ -1,9 +1,9 @@
 # HANDOFF DE INTEGRAÇÃO · `line/motion-value` · **bloco Z** — 2026-08-23
 
-> **A linha NÃO integrou e NÃO pushou** (`CLAUDE.md` §0.7). **Dezoito** commits locais, à espera de
-> ordem explícita do Enio. **Três blocos** no mesmo dia: os TETOS (§1), a folha 11 (§0-bis, §9) e o
-> defeito que o smoke da folha 11 devolveu (**§0-ter — leia-o primeiro se você integra**: ele é o
-> único item deste handoff que muda o pixel de **toda sprite do app**).
+> **A linha NÃO integrou e NÃO pushou** (`CLAUDE.md` §0.7). **Vinte e um** commits locais, à espera
+> de ordem explícita do Enio. **Quatro blocos** no mesmo dia: os TETOS (§1), a folha 11 (§0-bis, §9),
+> o defeito que o smoke da folha 11 devolveu (**§0-ter — leia-o primeiro se você integra**: ele é o
+> único item deste handoff que muda o pixel de **toda sprite do app**) e a folha 06 (§0-quater).
 
 **Worktree:** `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` · **branch:**
 `line/motion-value` · **base:** `main` em `35f937cb2`.
@@ -97,6 +97,111 @@ conseguir — o caminho é o passe programável.*
 **A cena `=84` ganhou a terceira linha (ALFA)**, porque o defeito só é julgável a olho num
 PAR: as duas metades MULTIPLICAM e só a alfa muda (15% × 85%). Uma metade só diria *"está
 escuro"*.
+
+---
+
+## §0-quater — QUARTO BLOCO: **a folha 06 (animadores)**
+
+Uma pergunta só, e cinco células: *o animador não sabia a FORMA que o artista desenha,
+nem escrever os DOIS eixos.* A folha 06 vai de **11 P2 para 7** (e o placar de 76 para
+**72**); ✅ 228 → **232**.
+
+| célula | cura | onde |
+|---|---|---|
+| onda `Custom` | `motion.oscillator::wave = 5` + text param `curve` | CPU + **device (LUT)** |
+| ease `Custom` | `motion.stagger::ease_curve = 8` + text param `curve` | CPU + **device (LUT)** |
+| `Separate Channels` | `motion.wiggle::channel = 4` — **FECHA a célula** | CPU + device |
+| `Separate Channels` | `motion.noise::channel = 4` — metade (falta *Use Layer as Seed*) | CPU + device |
+| alinhar pela NORMAL | `motion.path::align = 2` | CPU |
+
+**Cena de smoke: `=85`** · **`PH2D_MOTION_NODE_PATH_SMOKE=3`** (a normal precisa da curva
+desenhada, que só o smoke próprio do `motion.path` encena).
+
+### O que o integrador tem de saber
+
+1. ⚠️ **Nada é breaking.** Os três enums são **apendados** (`wave` 0..4 · `ease_curve`
+   0..7 · `channel` 0..3 continuam a valer o que valiam) e o `align` era um `Toggle` cujos
+   `0`/`1` continuam a ser *nada*/*tangente* — o `align >= 0.5` de ontem e o `!= 0` de hoje
+   concordam em todo documento que existe.
+2. ⚠️ **`ph2d-curve` é dependência NOVA de `ph2d-node-motion-oscillator` e
+   `-stagger`**, e `ph2d-gpu-cook` ganhou-a como dev-dep. O `Cargo.lock` mexeu.
+3. ⚠️ **O `apply_channel_delta` continua BYTE-IDÊNTICO nas cinco crates-folha.** O canal
+   novo não passa por ele: quem despacha é o `eval`, para uma `apply_channel_delta_xy`
+   irmã. *Uma cópia deliberada que só duas das cinco recebem deixa de ser uma cópia* — e
+   as três cópias do WGSL de um destes nós **já divergiram uma vez**, com um grafo a
+   correr uma taxa no device e outra na CPU.
+4. ⚠️ **Dois números vivem escritos DUAS vezes** (const de Rust + literal na string WGSL):
+   `AXIS_SEED_OFFSET = 7919` e `AXIS_ROW_OFFSET = 7919,5`. Quem os prende são os gates
+   `the_wgsl_carries_the_same_axis_offset_as_the_rust` (que derivam a agulha da const) **e**
+   a paridade no device — nunca a memória de quem edita.
+
+### As decisões que custaram medição
+
+**A curva vai ao DEVICE, não derruba o nó para a CPU.** A saída fácil era o kernel
+declarar-se `applicable: false` na forma `Custom`; está **rejeitada** — o `field.remap` já
+mostra que um `LutSpec` resolve sem tirar o nó do caminho rápido, e um animador é
+precisamente o nó que não se quer perder dali. ⚠️ **E o preço foi medido, porque a LUT é
+assada em TODO cozimento** (o `build_luts` não pergunta o modo): **0,0029 ms por cozimento
+por nó = 0,018% de um quadro**. Fica sem predicado. Sonda `measure_lut_build_cost_per_cook`.
+
+**A resolução da LUT é 512, o dobro do `field.remap`.** Uma tabela uniforme converge com
+`1/n` numa esquina e não converge de todo num degrau — o que a densidade encolhe é a
+LARGURA da banda errada. Aqui a tabela é lida como MOVIMENTO ao longo de um ciclo (não como
+a cor de um pixel), então essa banda vira um solavanco visível.
+
+**A `natural_range` teve de responder pela forma nova.** A `Custom` é unipolar `[0,1]` (o
+quadrado do editor) e as quatro clássicas são bipolares: sem declarar a polaridade, a conta
+que toda a gente faz de cabeça entregaria `Min/Max = [−2,3]` como `[0,5, 3,0]` — metade da
+excursão com o piso ao CENTRO, em silêncio. É a armadilha do `Spike` que esta folha já
+pagou, reaberta por uma forma nova.
+
+**A ease `Custom` ignora o `ease_dir`**, como o `Linear`, e por razão de PRODUTO: a curva
+desenhada é a declaração de intenção do artista. ⭐ **E isso não custou uma linha de UI** —
+o `PARAM_GATES` enumera as famílias que *usam* a direção (`1..7`), então a nona nasce com o
+`ease_dir` escondido: *o gate estava escrito na forma certa antes de existir o nono caso.*
+
+**A célula do `motion.path` dizia «NÃO» sobre um facto que o código do lado já tinha.** A
+justificativa era *"a normal, que nada publica"* — e o `motion.spline_wrap` computa
+`un = [-ut.y, ut.x]` da MESMA curva desenhada, com o doc deste nó a chamar-lhe *"o segundo
+consumidor"*. **A nona célula desta folha a envelhecer assim.**
+
+### ⚠️ Duas RÉGUAS corrigiram-se antes do algoritmo, e as duas por RESOLUÇÃO
+
+1. **A barra da decorrelação estava colada em ZERO.** Primeira versão: `0,25`, e o device
+   mediu `−0,222` — 12% de folga. A sonda `probe_r_vs_scale` disse porquê: o resíduo cai
+   de `0,120` para `0,009` só ao AFINAR o campo. Um acoplamento real não se dissolve assim;
+   **ruído de amostragem sim** — um campo COERENTE tem tantas amostras independentes
+   quantas FEIÇÕES, não quantos elementos. ⇒ a barra passou a medir a distância a **`1`**
+   (o valor exacto do defeito), não a proximidade de `0`; uma barra em `0,15` mediria o
+   tamanho da grelha e reprovaria numa fixture legítima mais grosseira.
+2. **A régua da cena exigia mais precisão do que a fixture tem.** Ela media a POSIÇÃO DO
+   PICO com margem `0,1`; com 15 peças o índice anda de `1/14 = 0,071`, e os dois picos
+   ficam a **um passo** um do outro. A régua nova é a que o olho usa (a curva autorada é
+   unipolar e fica toda ACIMA da linha de repouso; a senoide atravessa-a), com a assimetria
+   como segunda metade e margem de **meio passo**.
+
+### Prova de mutação (as cinco células)
+
+| mutação | o que morre |
+|---|---|
+| a `Custom` deixa de declarar a polaridade | o piso vira **`0,5`** — o número exacto que o gate nomeia como a conta errada |
+| a `Custom` do stagger cai no caminho da direção | `the_custom_ease_is_the_authored_shape` |
+| a onda `Custom` ignora a curva autorada | `a onda desenhada É a curva autorada` |
+| o stagger nunca lê o text param | `an_unset_custom_ease…` + a forma |
+| os dois eixos com o MESMO seed | `r = 0,9999999` — o defeito, exacto |
+| o deslocamento de linha deixa de ser fracionário | **dois** gates (a propriedade **e** o gémeo do WGSL) |
+| o modo `Normal` cai no ramo da tangente | `diferenca 0` onde tem de ser 90° |
+
+### ⚠️ E um erro meu que REPETIU
+
+Escrevi a cena nova em `motion_state_conferencia_demos_shape.rs` — e aquele nome já era a
+cena **`=55`** (Pulse Width / Offset), **da mesma folha 06**. Dois arquivos por cima, o
+`Write` a responder *"updated"* nos dois. É exactamente o que a memória escrita **ontem**
+manda conferir, e o gatilho é o mesmo: *quanto melhor o nome, maior a chance de ele estar
+ocupado*. O compilador acusou (`defined multiple times`), restaurei por `git checkout --`
+com o meu copiado ao lado, e o módulo passou a chamar-se `drawn`. ⇒ **a memória ganhou o
+passo que faltava**: um `ls` do diretório é GATILHO de todo `Write` num caminho não lido,
+não o item 1 de uma lista — *uma lista não corre*.
 
 ---
 

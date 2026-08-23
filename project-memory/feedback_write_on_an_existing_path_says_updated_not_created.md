@@ -22,9 +22,21 @@ cena nova (`..._demos_fx.rs` para uma cena de FX) é exactamente o nome que a ce
 velha do mesmo assunto já escolheu, pela mesma boa razão. *Quanto melhor o nome, maior
 a chance de ele estar ocupado.*
 
+⚠️⚠️ **ACONTECEU OUTRA VEZ NO DIA SEGUINTE, com esta memória já escrita** (2026-08-23,
+cena `=85`): escrevi `motion_state_conferencia_demos_shape.rs` para a cena da FORMA
+desenhada, e aquele nome já era a cena `=55` (Pulse Width / Offset) — **da mesma folha
+06**. Dois arquivos por cima, o `Write` a responder *"updated"* nos dois. ⇒ *a regra
+existia e não estava no CAMINHO de quem executa*: eu tinha-a escrito como o passo 1 de
+uma lista, e uma lista não corre. **Ela vale como GATILHO, não como conselho:** todo
+`Write` para um caminho que eu não li nesta sessão é um `ls` primeiro, sem exceção e
+sem julgar se "este nome parece livre" — foi precisamente o julgamento que falhou as
+duas vezes.
+
 **How to apply:**
-1. Antes de um `Write` num caminho **novo**, confirme que ele é novo: um `ls` do
-   diretório ou um `Read` que falhe. Um único comando, e ele responde de uma vez.
+1. ⚠️ **GATILHO, não conselho:** *`Write` num caminho que não foi lido nesta sessão ⇒
+   `ls` do diretório PRIMEIRO.* Um comando, resposta imediata, e ele custa menos que os
+   três passos do item 3. Vale igual para um **nome de módulo** (`mod x;`) e para um
+   símbolo público: o colisor não é sempre um arquivo.
 2. **Leia o verbo da resposta.** `created` é o que se esperava; `updated` num caminho
    que devia ser novo é um alerta, não um sucesso.
 3. Se aconteceu: `git checkout -- <arquivo>` **primeiro**, com o que você escreveu

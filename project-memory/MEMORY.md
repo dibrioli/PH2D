@@ -44,7 +44,7 @@
 - ["O design rejeita X"? grepe o gate](feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate.md)
 - [Nota de diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) — confira e corrija a nota
 - [Coluna de sonda sem rótulo é lida ao contrário](feedback_an_unlabelled_probe_column_gets_read_backwards.md) — reportei «17 buracos» onde a linha dizia `0 bordo · 17 dobradas`; e quase culpei o instrumento certo
-- [Pergunte que número a resposta CONTRÁRIA imprimiria](feedback_ask_what_number_the_opposite_answer_would_print.md) — se `90` não cabe na grandeza, a sonda nunca testou a pergunta; `29°`–`44°` era o TECTO, e a régua dava à singularidade a sério um número MENOR
+- [Pergunte que número a resposta CONTRÁRIA imprimiria](feedback_ask_what_number_the_opposite_answer_would_print.md) — se `90` não cabe na grandeza, a sonda nunca testou a pergunta; `29°`–`44°` era o TECTO, e a régua dava à singularidade a sério um número MENOR. ⭐ E o irmão: **conclusão sobre SEQUÊNCIA precisa de mais de um termo** («não contrai» dito de uma varredura — ela contrai a ½/ronda)
 - [Cura medida numa fixtura que NÃO contém o fenômeno lê como inútil](feedback_a_cure_measured_on_a_fixture_that_lacks_the_phenomenon_reads_as_useless.md) — meça a fração alcançável ANTES do resultado; um zero pode ser implementação meio-feita
 - ["NÃO toque neste arquivo" é uma AFIRMAÇÃO](feedback_a_handoff_can_be_wrong_about_its_own_dirty_file.md) — o handoff errou sobre a própria crate; meça antes de honrar
 - [A regra tem de estar no CAMINHO de quem a executa](feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it.md) — doc órfão do roteador = regra inexistente

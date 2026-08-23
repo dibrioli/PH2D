@@ -65,6 +65,13 @@ exprimir dos dois lados.**
 5. ⚠️ **Quando corrigir a grandeza, corrija o NOME.** A antiga sobrevive com valor —
    como `rough_*`, a rugosidade do campo — mas com o nome dela. *Duas grandezas com um
    nome só foi a doença; guardar o nome errado no sobrevivente seria mantê-la.*
+6. ⭐⭐⭐ **Se a conclusão é sobre uma SEQUÊNCIA, uma amostra de um termo não a pode
+   exibir.** *«O ponto fixo nem sequer contrai»* foi escrito a partir de `21,4 → 21,3`
+   — **uma** varredura, num laço que corria uma vez. Medida a sequência a sério, ela
+   contrai **por exactamente ½ por ronda** (`0,185 · 0,060 · 0,030 · 0,015 · 0,0075 ·
+   0,0038`). ⚠️ E a armadilha por baixo era outra: cada varredura calculava a proposta
+   a partir do estado que estava a substituir, ⇒ *a segunda varredura vê outra coisa, e
+   nunca chegou a correr.* **Antes de dizer «não converge», corra duas.**
 
 Irmãs: [[feedback_an_unlabelled_probe_column_gets_read_backwards]] ·
 [[feedback_a_correct_mechanism_can_prescribe_the_wrong_cure]] ·

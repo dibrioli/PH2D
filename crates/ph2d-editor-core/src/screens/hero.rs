@@ -33,6 +33,8 @@ pub mod context_menu_overlay;
 pub mod file_menu;
 pub mod fixture;
 pub mod global_palette;
+/// O MODELO do menu radial (E4) — a vista de OITO direcções da mesma lista da paleta.
+pub mod radial;
 // Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
 // and panel crates can reach them without depending back on hero. The
 // `screens::hero::ids` path continues to resolve via this re-export.

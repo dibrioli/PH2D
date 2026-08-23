@@ -549,5 +549,17 @@ impl App {
         {
             self.handle_editor_key(code);
         }
+        // ⭐ **SOLTAR `P` ESCOLHE** (estudo de UI viva, E4) — e é a única tecla deste app cuja
+        // SOLTURA significa alguma coisa.
+        //
+        // ⚠️ **Fechar e escolher são a MESMA operação** (`close_radial` devolve o sector aceso), e
+        // separá-las daria a este sítio a chance de fechar sem ler — que é como um menu perde a
+        // escolha do artista em silêncio.
+        if matches!(
+            (state, PhysicalKey::Code(KeyCode::KeyP) == physical_key),
+            (ElementState::Released, true)
+        ) {
+            self.radial_commit();
+        }
     }
 }

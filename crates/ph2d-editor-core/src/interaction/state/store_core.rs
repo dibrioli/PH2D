@@ -66,6 +66,7 @@ impl WidgetStore {
             fill_modal: None,
             onion_modal: None,
             command_palette: None,
+            radial: None,
             command_pick: None,
             command_palette_query: String::new(),
             section_outline_color: BTreeMap::new(),

@@ -201,7 +201,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | ~~⭐ E1~~ ✅ | **SCRUB numerico** — **FEITO** (`interaction/state/number_scrub.rs` + a familia `number_drag_*`), e afinado depois (*a taxa do scrub e o clamp dele leem o MESMO intervalo* — 43 campos sairam de 20 px para 250). ⚠️ A linha mentia | 3 | — | **M** |
 | ~~E2~~ ✅ | **rolagem SUAVE** nas listas — **FEITA**, e a forma é o que a fez caber: `panel_scroll` passa a devolver o **VIVO** e ganha o irmão `panel_scroll_target`, então os **~130 leitores** e os **36 escritores** herdaram sem uma linha. ⚠️ A roda acumula no ALVO — no vivo, cinco voltas de 100 px somam **230,56** em vez de 500. O **pan de canvas** fica de fora (outro gesto, outro dono). ⚠️ **Reprovada no 1º smoke e curada pelo `Role::Surface`** — §6.4 | 3 | F0 | **P** |
 | ~~E3~~ ✅ | **paleta de comandos GLOBAL** (o widget já existe) — **FEITA** (`Ctrl+K`, **62 comandos**: 10 do rail + 19 painéis + **33 rows de menu**). ⚠️ Ela é uma **projecção** das listas que o app já mantém, nunca uma tabela. ⚠️ **E a 1ª conclusão desta linha era LARGA DEMAIS** — ela mediu que o **PILL** não é servível (abre um menu ancorado a um rectângulo, e uma paleta não tem rectângulo) e escreveu *"a barra de topo fica de fora"*; a **ROW de dentro dele** é tipo 1, e entrou na wave seguinte (ver a §6.1 abaixo) | 3 | — | **M** |
-| E4 | **menu radial** sob a caneta / botão do meio | 3 | — | **M** |
+| ~~E4~~ ✅ | **menu radial** — **FEITO** (`P` segurado abre o *pie menu* das FERRAMENTAS sob o cursor; soltar escolhe; a zona morta cancela). ⚠️ Ele é uma **VISTA** da lista da paleta, com o mesmo router — um item morto é estruturalmente impossível. ⚠️ **«As ferramentas» é DERIVADO**: a secção do rail entre os dois divisores (4 no modo normal, 13 no Painter). ⛔ Acima de OITO o último sector é a porta para a paleta — **nunca** um `truncate` mudo. ⚠️ O gesto foi MEDIDO, não escolhido (§6.5) | 3 | — | **M** |
 | ~~C1~~ ✅ | **TETHER** (§5) — **FEITO** (`tether.rs`, o card de Fill; o `simulate` PERGUNTA o caracter, nunca o crava). As tres irmas da familia seguem por fazer | 2 | F0 | **M** |
 | ~~C2~~ ✅ | **realce de proveniência** — **FEITO nos dois sentidos ENTRE OBJECTOS** (`vec_hover.rs`): o objecto sob o ponteiro acende a linha da Hierarquia **e** ganha contorno no canvas, resolvido por uma porta ÚNICA, uma vez por quadro. ⚠️ Um operando ABSORVIDO por booleana viva contorna a **pegada própria** — o mapa vivo dele está vazio, e é justamente esse o caso que a feature serve. ⛔ A metade **valor ↔ objecto** (passar sobre um param do inspector) fica por fazer | 2 | — | **M** |
 | ~~C3~~ ✅ | o **readout que segue a mão** vira REGRA — **FEITA**. ⚠️ E a medição corrigiu a linha: eram **três** superfícies (o rótulo do smart guide · a carga de um joint · as dimensões do Line), cada uma com o próprio corpo e caixa, e **nenhuma segue a mão** — as três ancoram em GEOMETRIA. O buraco real era o gesto mais usado do app (arrastar o gizmo), que **não tinha número nenhum** sobre a tela | 2 | — | **M** |
@@ -334,6 +334,25 @@ decisão de produto — não a tomei.
 ⚠️ A matriz destes quatro **não é a mesma** que a plana (o repouso deles é `BgElev`, não `Bg2`):
 são duas perguntas, não duas respostas — há gate a afirmá-lo
 (`the_flat_surface_reads_the_clock`).
+
+### 6.5 — ⚠️ O GESTO do radial foi MEDIDO, e o teclado deste app está saturado
+
+O estudo escreveu *"sob a caneta / botão do meio"*. As duas metades caíram na medição de
+2026-08-23:
+
+- **O botão do meio é o PAN da câmara** (`input_dispatch`: *"middle button = camera pan anchor"*),
+  o idioma do Blender que o app segue de propósito. Tomá-lo trocaria uma feature por outra.
+- **A caneta não chega**: o X1 já mediu que o `winit` crava `force: None` nos três backends, e o
+  Wayland não expõe `zwp_tablet_v2` — não há botão de corpo a ler.
+- **Das 26 letras, só NOVE estão livres sem modificador**: `H I J M N P U V Y`. O `Q` do Blender
+  (quick favourites) está tomado.
+
+⇒ **`P`**, de *pie menu* — o nome real do widget, e a única mnemónica que sobrevive à lista acima.
+⚠️ Sobre o grafo do Motion o `P` continua a ser dele: aquele router devolve antes do `match` da
+shell, e esta lei não o alcança.
+
+⚠️ **E a SOLTURA de uma tecla é um evento que este app nunca tinha usado** — todas as outras agem
+no `Down`. É ela que faz o gesto ser um só: chamar, apontar e escolher sem largar nada.
 
 ### 6.3 — A CASCATA (F5), e o `ε` que foi reprovado uma vez
 

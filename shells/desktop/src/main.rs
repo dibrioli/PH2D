@@ -442,6 +442,7 @@ mod project_sprite_pixels;
 /// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
 /// pelo teto de LOC, cortado por assunto.
 mod project_tokens;
+mod radial_input;
 mod render_loop;
 mod scroll_smoke;
 #[cfg(feature = "sculpt3d")]

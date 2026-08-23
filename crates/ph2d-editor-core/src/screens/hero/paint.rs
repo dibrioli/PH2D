@@ -620,6 +620,15 @@ pub fn paint_hero_screen(
         viewport,
         &hero.motion,
     );
+    // ⭐ **O PIE MENU** (estudo de UI viva, E4) — acima da paleta porque ele é o gesto EM CURSO: o
+    // artista está com a tecla em baixo, e nada pode ficar por cima do que a mão está a fazer.
+    //
+    // ⚠️ Ele **não regista hit-rect nenhum**, e a ausência é o desenho: quem escolhe é a DIRECÇÃO,
+    // não um clique num rectângulo. Registar caixas daria um segundo caminho para a escolha — o que
+    // fica sob o dedo — e os dois divergiriam na borda de cada sector.
+    if let Some(radial) = hero.store.radial() {
+        crate::widget::paint_radial_menu(radial, scene, text_system, hero.theme);
+    }
     // M14.4e: file-drop overlay sits above EVERY layer (chrome,
     // tooltips, context menus) so the user always sees the "Drop to
     // import" hint while the OS drag is active.

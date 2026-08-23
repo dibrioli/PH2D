@@ -21,6 +21,8 @@ mod blender_ops;
 mod chrome_ops;
 /// **O que um estado de widget É** (o `InteractiveState` + a paleta nomeada).
 mod kinds;
+/// O PIE MENU (E4) — irmão do `chrome_ops` por assunto e pelo teto de LOC.
+mod radial_ops;
 pub use kinds::{InteractiveState, NamedPalette};
 
 mod graph_ops;
@@ -332,6 +334,11 @@ pub struct WidgetStore {
     /// set ONCE on open by the shell — never rebuilt per frame — mirroring `open_onion_modal`'s
     /// value-seeding. The picked item id lands in `command_pick` for the shell to read back and route.
     pub(super) command_palette: Option<crate::widget::command_palette::PaletteModel>,
+    /// **O PIE MENU aberto** (estudo de UI viva, E4) — centro, itens e o sector aceso.
+    ///
+    /// ⚠️ Ele mora aqui, ao lado da paleta, porque é a **outra vista da mesma lista**: as duas são
+    /// chrome de tela cheia que o pintor lê do store e que o teclado abre.
+    pub(super) radial: Option<crate::widget::RadialOpen>,
     /// The item id the user picked in the command palette, awaiting the shell's read-back (`take_command_pick`).
     /// `None` = nothing picked since the last take. This is the generic-widget/shell-routes seam (mirrors the
     /// colour picker's `picker_target` read-back), so editor-core never learns what an item *means*.

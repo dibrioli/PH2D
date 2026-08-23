@@ -2790,6 +2790,10 @@ impl App {
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.
         self.last_cursor = self.last_pointer;
+        // ⭐ **O PIE MENU acende pela DIRECÇÃO** (estudo de UI viva, E4) — aqui, no movimento, e não
+        // no frame: o menu tem de responder ao gesto em curso, e um acender que espera o quadro
+        // seguinte é um menu que a mão sente como pesado. No-op sem menu aberto.
+        self.radial_point();
         // Reflect the colour-picker eyedropper in the OS cursor (a crosshair "target" while armed).
         self.update_eyedropper_cursor();
         // **AS GUIAS** (plano 25 §9, a W6.2): um arrasto de guia em curso é DONO do ponteiro,

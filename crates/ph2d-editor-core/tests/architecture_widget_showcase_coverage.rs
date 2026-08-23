@@ -25,6 +25,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "radial_menu",
+        "chrome-internal: a full-screen pie summoned by a HELD key and dismissed on release, with no idle visual — same reason as command_palette/modal/context_menu; a gallery section would show a menu nobody is holding",
+    ),
+    (
         "button_surface",
         "not a widget: it is the SURFACE TONE a flat button paints, for painters that never build a Button — the gallery already shows every widget that consumes it, and a section for a colour function would show a rectangle",
     ),

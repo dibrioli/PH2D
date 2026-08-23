@@ -38,6 +38,7 @@ pub mod panel_chrome;
 mod pill_group;
 mod popover;
 mod progress_bar;
+mod radial_menu;
 mod radio_group;
 mod rect2_editor;
 mod scrollbar;
@@ -103,6 +104,10 @@ pub use numeric_input_with_unit::{
 pub use pill_group::{PILL_PADDING_PX, PillGroup, paint_pill_group};
 pub use popover::{Popover, anchor_below, paint_popover, pop_popover_clip, push_popover_clip};
 pub use progress_bar::{ProgressBar, ProgressMode, paint_progress_bar};
+pub use radial_menu::{
+    MAX_SECTORS as RADIAL_MAX_SECTORS, RadialItem, RadialOpen, dead_zone_px as radial_dead_zone_px,
+    item_offset as radial_item_offset, paint_radial_menu, sector_at as radial_sector_at,
+};
 pub use radio_group::{
     RadioGroup, RadioOption, RadioOrientation, paint_radio_group, paint_radio_group_with_labels,
 };

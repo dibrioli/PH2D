@@ -125,6 +125,25 @@ impl App {
             // para os modificadores, então hoje `Ctrl+K` insere um keyframe por acidente — nada o
             // documenta, e a tecla documentada é o `K` nu. Um arm guardado colocado ACIMA vence
             // (o `match` do Rust é ordenado), e o `K` nu fica exactamente como estava.
+            // ⭐ **O PIE MENU** (estudo de UI viva, E4): segurar `P` abre as ferramentas em OITO
+            // direcções sob o cursor; soltar escolhe.
+            //
+            // ⚠️ **`P` foi MEDIDO, não escolhido.** O botão do meio é o pan da câmara (o idioma do
+            // Blender, deliberado) e das 26 letras só **nove** estão livres sem modificador
+            // (H I J M N P U V Y) — o `Q` do Blender está tomado. `P` é *pie menu*, o nome real do
+            // widget, e sobrevive como mnemónica.
+            //
+            // ⚠️ Sobre o grafo do Motion o `P` é dele: aquele router já devolveu antes deste
+            // `match`, e esta lei não o alcança.
+            KeyCode::KeyP if !cmd_chord => {
+                if let Some(hero) = gfx.hero_screen.as_mut() {
+                    let items = ph2d_editor::screens::hero::radial::build_radial_model(hero);
+                    let center = [self.last_pointer.0, self.last_pointer.1];
+                    if !hero.store.open_radial(center, items) {
+                        gfx.toasts.push(Toast::info("No tools to show here (P)"));
+                    }
+                }
+            }
             KeyCode::KeyK if cmd_chord => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     crate::global_palette_input::open_global_palette(hero);

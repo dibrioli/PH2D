@@ -135,8 +135,19 @@ fn a_publicacao_e_gateada_pela_lei() {
 fn a_ponte_arma_as_tomadas_e_zera_o_livro() {
     let (_, motion, _) = sources();
     assert!(
-        motion.contains("motion.pump.set_taps(&motion.signal_taps)"),
+        motion.contains("motion.pump.set_taps("),
         "a tomada é ARMADA na bomba — é isso que a faz cavalgar qualquer rota de marcha"
+    );
+    // ⚠️ **E o que é armado tem de PARTIR das tomadas de sinal.** A lista deixou de ser
+    // `signal_taps` directamente em 2026-08-23 (o gizmo de canvas dos deformadores de
+    // quadrilátero precisa do stream que entra no nó seleccionado, e entra na mesma
+    // lista), então a agulha literal antiga deixaria de casar sobre código correcto. O que
+    // este gate protege continua a ser o mesmo: *as tomadas dos SINAIS estão lá dentro*.
+    // Sem esta metade, alguém que substituísse a lista por outra coisa passaria.
+    assert!(
+        motion.contains("motion.signal_taps.clone()"),
+        "e a lista armada PARTE das tomadas de sinal — um segundo pedido junta-se a elas, \
+         nunca as substitui"
     );
     assert!(
         motion.contains("motion.pump.clear_tap_fires()"),

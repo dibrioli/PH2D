@@ -5746,6 +5746,7 @@ dependencies = [
  "ph2d-node-audio-bands",
  "ph2d-node-fx-drop-shadow",
  "ph2d-node-fx-glow",
+ "ph2d-node-motion-bezier-warp",
  "ph2d-node-motion-output",
  "ph2d-node-motion-shape",
  "ph2d-node-motion-strobe",

@@ -291,6 +291,10 @@ mod snapshots;
 /// devolve as instâncias que emitem. ⚠️ Irmão do `sim_extract` de propósito: ele está no tecto de LOC.
 pub(crate) mod sprite_emissive;
 mod upscale_bridge;
+/// O gizmo de canvas dos deformadores de quadrilátero (Corner Pin + Bezier Warp).
+pub(crate) mod warp_gizmo;
+/// O DESENHO desse gizmo — o contorno, os braços e as alças.
+mod warp_overlay;
 // ADR-0108 cutover: the single Vector-tool bridge (style sync + recolour).
 // Rendering of `AppGfx.vec_scene` stays inline below (ph2d_vec_render).
 // pub(crate): `set_mode` é chamado do `vec_text` (o `T` troca o modo pela allowlist
@@ -2687,6 +2691,11 @@ impl crate::App {
                     )
                 })
                 .flatten();
+            // **O gizmo dos DEFORMADORES DE QUADRILÁTERO** (Corner Pin + Bezier Warp) —
+            // publicado no mesmo sítio e pela mesma modalidade do field: só com a tool
+            // Motion activa. ⚠️ Publicar de novo SUBSTITUI, então largar a selecção limpa
+            // as alças em vez de as deixar a pairar.
+            warp_gizmo::publish(warp_gizmo::resolve(motion, motion_tool_active));
             // ─────────────────────────────────────────────────────────
             // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
             // ─────────────────────────────────────────────────────────
@@ -6993,6 +7002,22 @@ impl crate::App {
                 // **§12 Sockets / Named Anchors** (spec Sprite 07 §7.6) — os marcadores só
                 // aparecem com a seção EXPANDIDA, senão todo sprite com âncoras ficaria coberto
                 // de cruzes. Sem eles a §12 é um formulário que não mexe em nada na tela.
+                // **O gizmo dos deformadores de quadrilátero** — o contorno, os braços e
+                // as alças. Lê o retrato publicado no prólogo (a tool e a selecção já
+                // foram decididas lá), então aqui não há regra nenhuma, só tinta.
+                if let Some(v) = warp_gizmo::view() {
+                    let port = warp_gizmo::param_port(motion, v.node);
+                    warp_overlay::draw_warp_gizmo(
+                        true,
+                        v.spec,
+                        v.bbox,
+                        v.warp,
+                        &port,
+                        camera,
+                        surface.size(),
+                        vector_scene,
+                    );
+                }
                 anchor_overlay::draw_anchor_marks(
                     !hero
                         .store

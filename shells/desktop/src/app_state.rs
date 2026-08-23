@@ -1050,6 +1050,11 @@ pub(crate) struct App {
     /// [`crate::field_gizmo`]). `None` = nenhum. Espelho do `flip_selection_drag`, mas o
     /// apply escreve os params do NÓ (via `Graph::set_param`), nunca um `Transform`.
     pub(crate) field_gizmo_drag: Option<crate::field_gizmo::FieldGizmoDrag>,
+    /// O arrasto de uma alça do gizmo dos DEFORMADORES DE QUADRILÁTERO (Corner Pin +
+    /// Bezier Warp), se houver. ⚠️ Slot próprio, e não o do field: os dois nós são de
+    /// famílias diferentes e nunca coexistem numa selecção — partilhar o slot faria um
+    /// arrasto largar-se sozinho ao trocar de nó.
+    pub(crate) warp_drag: Option<crate::warp_gizmo_drag::WarpGizmoDrag>,
     /// ADR-0114 W8: o DOMÍNIO da seleção do frame ANTERIOR — a memória que deixa a
     /// troca do toggle (Stroke↔Point) converter a seleção no documento UMA vez
     /// (broadcast/promoção, `flip_select::flip_edit_domain_refresh`). `None` = tool

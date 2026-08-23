@@ -36,7 +36,7 @@
 //! Sem transcendentais (HR-5): só somas e produtos.
 
 /// Um ponto de controle da fronteira, em coordenadas do **quadrado unitário**.
-pub(crate) type P2 = [f32; 2];
+pub type P2 = [f32; 2];
 
 /// Os **doze** pontos de controle da fronteira, na ordem canónica.
 ///
@@ -44,25 +44,25 @@ pub(crate) type P2 = [f32; 2];
 /// A ordem é a do relógio começando no canto superior-esquerdo — a mesma do
 /// `motion.four_point_warp`, para os dois nós se lerem igual num painel.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Boundary {
+pub struct Boundary {
     /// Os cantos: TL, TR, BR, BL.
-    pub(crate) corner: [P2; 4],
+    pub corner: [P2; 4],
     /// As tangentes, duas por lado, na ordem TOP, RIGHT, BOTTOM, LEFT — e dentro de
     /// cada lado, na direcção em que aquele lado é percorrido.
-    pub(crate) tangent: [[P2; 2]; 4],
+    pub tangent: [[P2; 2]; 4],
 }
 
 /// Índices dos lados em [`Boundary::tangent`].
-pub(crate) const TOP: usize = 0;
-pub(crate) const RIGHT: usize = 1;
-pub(crate) const BOTTOM: usize = 2;
-pub(crate) const LEFT: usize = 3;
+pub const TOP: usize = 0;
+pub const RIGHT: usize = 1;
+pub const BOTTOM: usize = 2;
+pub const LEFT: usize = 3;
 
 /// Índices dos cantos em [`Boundary::corner`].
-pub(crate) const TL: usize = 0;
-pub(crate) const TR: usize = 1;
-pub(crate) const BR: usize = 2;
-pub(crate) const BL: usize = 3;
+pub const TL: usize = 0;
+pub const TR: usize = 1;
+pub const BR: usize = 2;
+pub const BL: usize = 3;
 
 impl Boundary {
     /// **A fronteira NEUTRA: o quadrado unitário com as tangentes nos terços.**
@@ -72,7 +72,7 @@ impl Boundary {
     /// quando `P₁ = P₀ + (P₃−P₀)/3` e `P₂ = P₀ + 2(P₃−P₀)/3`, por identidade
     /// polinomial e não por aproximação). É isto que faz o offset zero ser a
     /// identidade **ao bit**, e não *"quase"*.
-    pub(crate) fn unit() -> Self {
+    pub fn unit() -> Self {
         let (tl, tr, br, bl) = ([0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]);
         Self {
             corner: [tl, tr, br, bl],
@@ -97,7 +97,7 @@ fn thirds(a: P2, b: P2) -> [P2; 2] {
 /// ⚠️ Escrita com os quatro pesos explícitos e não por de Casteljau: os dois dão o
 /// mesmo número, e esta forma é a que o WGSL porta linha a linha (uma `fma` por
 /// termo, sem laço), que é o que mantém a paridade barata de ler.
-pub(crate) fn bezier(p0: P2, p1: P2, p2: P2, p3: P2, t: f32) -> P2 {
+pub fn bezier(p0: P2, p1: P2, p2: P2, p3: P2, t: f32) -> P2 {
     let s = 1.0 - t;
     let (w0, w1) = (s * s * s, 3.0 * s * s * t);
     let (w2, w3) = (3.0 * s * t * t, t * t * t);
@@ -114,7 +114,7 @@ pub(crate) fn bezier(p0: P2, p1: P2, p2: P2, p3: P2, t: f32) -> P2 {
 /// `bottom(u)` é ele em `1 − u`. Errar um destes sentidos dá um patch que ainda
 /// interpola os quatro cantos e cruza-se no meio — o modo de falha que parece
 /// *"o warp está a torcer"* e não *"um índice está trocado"*.
-pub(crate) fn coons(b: &Boundary, u: f32, v: f32) -> P2 {
+pub fn coons(b: &Boundary, u: f32, v: f32) -> P2 {
     // As quatro bordas, já orientadas no sentido do patch.
     let top = bezier(
         b.corner[TL],

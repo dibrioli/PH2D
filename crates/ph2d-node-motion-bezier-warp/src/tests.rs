@@ -194,10 +194,7 @@ fn the_falloff_mask_gates_the_deformation() {
     let moved = |i: usize, base: [f32; 2]| (out[i][0] - base[0]).hypot(out[i][1] - base[1]);
     let d0 = moved(0, [0.0, 0.0]);
     let dn = moved(SIDE * SIDE - 1, [(SIDE - 1) as f32; 2]);
-    assert!(
-        dn > d0 + 1.0,
-        "peso 0 andou {d0:.3}, peso 1 andou {dn:.3}"
-    );
+    assert!(dn > d0 + 1.0, "peso 0 andou {d0:.3}, peso 1 andou {dn:.3}");
 }
 
 /// **UM LAYOUT DEGENERADO PASSA VERBATIM** — uma linha não tem caixa 2D para

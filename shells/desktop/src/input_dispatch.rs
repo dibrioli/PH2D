@@ -2922,6 +2922,9 @@ impl App {
         }
         // Motion Nodes: arrasto do gizmo de FIELD em curso — cada movimento recomputa o TRS
         // (do snapshot do Down) e escreve os params do NÓ. No-op sem gesto.
+        if self.warp_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
+            return;
+        }
         if self.field_gizmo_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
@@ -3463,7 +3466,7 @@ impl App {
         // undo (um arrasto = um passo, como um drag de nó).
         if kind == PointerKind::Up
             && mapped_button == ph2d_host::PointerButton::Primary
-            && self.field_gizmo_up()
+            && (self.warp_gizmo_up() || self.field_gizmo_up())
         {
             return;
         }
@@ -3572,6 +3575,19 @@ impl App {
         // genérico de gizmo — um handle no hit-index o alcançaria e escreveria um
         // `Transform`. O método só consome quando o hit é `GizmoTarget::MotionField`, que
         // só existe com a tool Motion ativa + um field espacial selecionado no grafo.
+        // Motion Nodes: uma ALÇA do gizmo dos deformadores de quadrilátero (Corner Pin +
+        // Bezier Warp) sob o cursor abre o arrasto, que escreve os params do NÓ. Vem antes
+        // do gizmo de field e do genérico pela mesma razão que aquele: uma alça alcançada
+        // pelo caminho genérico escreveria um `Transform` de entidade. O método só consome
+        // quando há retrato publicado — ou seja com a tool Motion activa e um dos dois nós
+        // seleccionado.
+        if kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && !menu_open_before
+            && self.warp_gizmo_down(self.last_pointer.0, self.last_pointer.1)
+        {
+            return;
+        }
         if kind == PointerKind::Down
             && mapped_button == ph2d_host::PointerButton::Primary
             && !menu_open_before

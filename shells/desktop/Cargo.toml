@@ -453,6 +453,10 @@ ph2d-node-motion-trail = { path = "../../crates/ph2d-node-motion-trail" }
 ph2d-node-motion-strobe = { path = "../../crates/ph2d-node-motion-strobe" }
 # …e o TERCEIRO escritor da coluna (doc 89 folha 11): o `shadow_blend` do `fx.drop_shadow`.
 ph2d-node-fx-drop-shadow = { path = "../../crates/ph2d-node-fx-drop-shadow" }
+# O gizmo de canvas dos deformadores de quadrilátero DESENHA a fronteira chamando a
+# mesma função que o `eval` do nó chama — um overlay com a sua própria Bézier seria um
+# segundo motor sobre o mesmo estado.
+ph2d-node-motion-bezier-warp = { path = "../../crates/ph2d-node-motion-bezier-warp" }
 
 [dev-dependencies]
 # O harness headless de painel (`MockPanelHost`) — a shell precisa dele para medir a

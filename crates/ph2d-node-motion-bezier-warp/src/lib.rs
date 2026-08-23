@@ -34,7 +34,11 @@ use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
-mod coons;
+/// **A geometria, PÚBLICA de propósito** — o gizmo de canvas da shell desenha a
+/// fronteira chamando ESTA função, nunca uma segunda cópia dela. *Dois motores para o
+/// mesmo estado é pior que um motor lento*, e um overlay que desenhasse a sua própria
+/// Bézier divergiria do que o nó computa no dia em que um dos dois mudasse.
+pub mod coons;
 mod params_ui;
 use coons::Boundary;
 use params_ui::{PARAM_GROUPS, PARAM_HINTS};

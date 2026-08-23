@@ -435,7 +435,18 @@ pub(super) fn dispatch(
     // rota da GPU híbrida marcha por `advance_or_scrub_to_nodes_scoped`), e enquanto a tomada
     // era argumento da porta de sinks um documento híbrido cozinhava, desenhava e **não
     // gritava nada**, com a suíte verde. Medido: a cena `=26` planeja HÍBRIDA.
-    motion.pump.set_taps(&motion.signal_taps);
+    // ⚠️ **As tomadas são a UNIÃO de dois pedidos, e cada um mantém o seu nome.** Os
+    // sinais precisam das suas; o gizmo de canvas dos deformadores de quadrilátero precisa
+    // do stream que ENTRA no nó seleccionado (a caixa a que os offsets dele se referem).
+    // Juntar aqui, e não alargar o `signal_taps`, é o que impede o dreno de sinais de um
+    // dia ver um nó que não é um `pulse.signal` — *o canal é partilhado, o significado não*.
+    let mut taps = motion.signal_taps.clone();
+    if let Some(n) = super::warp_gizmo::tap_for(motion)
+        && !taps.contains(&n)
+    {
+        taps.push(n);
+    }
+    motion.pump.set_taps(&taps);
     // O que este quadro gritou, e o livro-razão de onde isso sai. Limpos aqui, não no dreno:
     // um quadro em que o shell não drena (a ferramenta saiu de foco) não pode deixar o grito
     // de ontem para amanhã.

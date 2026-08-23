@@ -572,6 +572,8 @@ mod vec_variants;
 mod vec_widget_drive;
 mod vec_widget_edit;
 mod vec_widget_value;
+/// A costura do gizmo dos deformadores de quadrilátero com o ponteiro.
+mod warp_gizmo_drag;
 mod warp_smoke;
 mod wetpaint_smoke;
 /// **O DESENHO É O GLIFO** — a porta única que normaliza a forma de um `IconButton` na caixa de
@@ -882,6 +884,7 @@ impl App {
             flip_pose_drag: None,
             flip_selection_drag: None,
             field_gizmo_drag: None,
+            warp_drag: None,
             flip_edit_domain: None,
             vec_marquee: None,
             vec_connect: None,

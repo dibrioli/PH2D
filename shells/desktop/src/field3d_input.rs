@@ -292,6 +292,39 @@ impl App {
         .unwrap_or(false)
     }
 
+    /// ⭐ **`Shift+I` isola o escolhido — ou devolve a peça inteira** (W44).
+    ///
+    /// ⚠️ **A tecla é a do módulo irmão**, lida e não escolhida (`sculpt3d_keys`: `Shift+I` no bloco
+    /// do shift). Duas janelas 3D no mesmo app com teclas diferentes para o mesmo gesto seria o
+    /// artista a aprender duas vezes o que é uma coisa só.
+    ///
+    /// ⭐ **E ela é a PORTA DE SAÍDA que faltava.** O chip da fileira só é pintado quando o escolhido
+    /// se destaca da peça; com a **raiz** escolhida — ou com nada — não havia gesto nenhum que
+    /// devolvesse a peça isolada. A lei está em [`crate::field3d_smoke::key_isolation`], e o pedido
+    /// atravessa por caixa de correio porque precisa da **seleção**, que vive na ponte com a cena.
+    ///
+    /// ⚠️ Mesma guarda de ponteiro das irmãs: sem ela, um `Shift+I` num campo de texto viraria um
+    /// gesto de vista.
+    pub(crate) fn field3d_isolate_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        if code != winit::keyboard::KeyCode::KeyI
+            || !self.modifiers.shift_key()
+            || self.modifiers.control_key()
+            || self.modifiers.alt_key()
+            || self.modifiers.super_key()
+        {
+            return false;
+        }
+        let pos = self.last_pointer;
+        with_smoke(|s| {
+            if !over_window(s, pos) {
+                return false;
+            }
+            crate::field3d_smoke::ask_isolate_key();
+            true
+        })
+        .unwrap_or(false)
+    }
+
     /// ⭐ **O número digitado no meio do gesto** (W26) — o `G X 0,5` do Blender.
     ///
     /// ⚠️ **Ela vem ANTES da tecla de verbo** no roteador, e a ordem é a lei: com uma entrada aberta,

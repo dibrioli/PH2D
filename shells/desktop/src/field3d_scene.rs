@@ -321,6 +321,18 @@ pub(crate) fn sync_scene_and_birth(
             created = Some(e.to_bits());
         }
     }
+    // ⭐ **A TECLA do isolamento** (W44). ⚠️ Drenada aqui, e não no `intents`, porque **não é um
+    // pedido do painel**: a lei dela é global (`key_isolation`) e o que ela precisa é da seleção,
+    // que esta função tem. A voz é a mesma do chip — um só canal, como sempre.
+    if crate::field3d_smoke::take_isolate_key_request() {
+        let on =
+            crate::field3d_smoke::toggle_isolate_by_key(selection.first().map(|e| e.to_bits()));
+        crate::field3d_notice::say(if on.is_some() {
+            "Isolated: showing only this object (Shift+I brings the part back)".into()
+        } else {
+            "Isolation off: the whole part is back".into()
+        });
+    }
     // ⭐ **O que o painel PEDE** vive no irmão — ver [`field3d_scene_intents`](self::intents).
     let (created, cleared) = intents::apply(world, root, selection, cam, created);
     // ⭐ **SÓ UMA OPERAÇÃO PODE TER FILHOS** (W31), e a lei impõe-se aqui — na derivação, não em

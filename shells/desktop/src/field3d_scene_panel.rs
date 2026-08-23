@@ -91,6 +91,10 @@ pub(crate) fn publish_snapshot(
         exports,
         acts,
         rows,
+        // ⭐ **O isolamento diz-se sozinho** (W44), e a pergunta é feita ao MUNDO, não à seleção:
+        // um estado da vista anunciado através de um controle da seleção some quando se escolhe
+        // outra coisa — que é exactamente quando o artista precisa de o ler.
+        isolated: isolated_name(world, &all),
         node_count: all.len(),
         last_trace_ms: ms,
     });
@@ -223,6 +227,26 @@ pub(crate) fn mods_for(
             active: have.iter().any(|u| u.kind() == *k),
         })
         .collect()
+}
+
+/// ⭐ **O NOME do nó isolado** (W44) — `None` quando se vê a peça inteira.
+///
+/// ⚠️ **Ela confirma que o nó ainda existe**, e é por isso que recebe a lista da caminhada em vez de
+/// perguntar ao mundo pelos bits: o isolamento guarda `Entity::to_bits()`, e um undo respawna tudo
+/// com bits novos. Um isolamento pendurado numa entidade morta anunciaria um nome que já não está
+/// na Hierarquia — ou, pior, o de outro nó que herdou os bits. O cozimento já larga o alvo morto
+/// (`cook_root`); esta metade garante que a **voz** larga com ele.
+fn isolated_name(
+    world: &bevy_ecs::world::World,
+    all: &[(bevy_ecs::entity::Entity, u8)],
+) -> Option<String> {
+    let bits = crate::field3d_smoke::isolated()?;
+    let e = all.iter().map(|(e, _)| *e).find(|e| e.to_bits() == bits)?;
+    Some(
+        world
+            .get::<ph2d_ecs::Name>(e)
+            .map_or_else(|| String::from("?"), |n| n.0.to_string()),
+    )
 }
 
 /// As ações sobre o objeto escolhido, na ordem do seletor.

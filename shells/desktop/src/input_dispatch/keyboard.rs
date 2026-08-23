@@ -121,6 +121,17 @@ impl App {
             return;
         }
 
+        // ADR-0161 W44: `Shift+I` isola o escolhido — ou devolve a peça inteira. A tecla é a do
+        // módulo de escultura, lida e não escolhida. ⭐ É ela a **porta de saída** do isolamento: o
+        // chip da fileira desaparece com a raiz escolhida, e sem esta tecla a peça isolada não
+        // tinha volta. Mesma guarda de ponteiro das outras.
+        if state == ElementState::Pressed
+            && let PhysicalKey::Code(code) = physical_key
+            && self.field3d_isolate_key(code)
+        {
+            return;
+        }
+
         self.handler.on_key(KeyEvent {
             keycode,
             modifiers: Self::convert_modifiers(self.modifiers),

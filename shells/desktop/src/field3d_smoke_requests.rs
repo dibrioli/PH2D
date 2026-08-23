@@ -148,6 +148,22 @@ pub(crate) fn set_armed_by_panel(open: bool) {
     PILL_ARMED.with(|c| c.set(open));
 }
 
+/// ⭐ **A TECLA pediu o toggle do isolamento** (W44) — tirado uma vez, como os irmãos.
+///
+/// ⚠️ Ele atravessa por aqui pela razão de sempre: a lei da tecla precisa da **seleção**, e quem a
+/// tem é a ponte com a cena (que recebe o mundo). O gancho de teclado corre fora do quadro.
+pub(crate) fn take_isolate_key_request() -> bool {
+    ISOLATE_KEY.with(std::cell::Cell::take)
+}
+
+pub(crate) fn ask_isolate_key() {
+    ISOLATE_KEY.with(|c| c.set(true));
+}
+
+thread_local! {
+    static ISOLATE_KEY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// ⭐ **O pedido de trazer a escultura DA CENA** (W39) — tirado uma vez, como os irmãos.
 ///
 /// ⚠️ Ele atravessa por aqui e não é servido na hora pela razão de sempre: quem tem a escultura

@@ -3445,8 +3445,114 @@ falsa**, silenciosa.
 
 ---
 
+## §45 — W44: «isolado» é um ESTADO — ele diz-se, e sai-se dele de qualquer sítio (23/08)
+
+> Os dois ⏸️ que a W38 deixou: *"sem tecla"* e *"nada mostra na Hierarquia que há um isolamento em
+> curso"*. ⚠️ A W43 tornou o segundo **mais caro**, ao fazer o isolamento sobreviver a um fecho.
+
+### §45.1 — ⛔ A medição encontrou um terceiro item, e é ele o defeito
+
+O que estava na fila era *«um indicador»*. A leitura do código encontrou uma coisa pior: **o único
+sinal de isolamento estava preso à SELEÇÃO.**
+
+```rust
+active: i == ISOLATE_SLOT && isolated.is_some()
+     && isolated == selection.first().map(|e| e.to_bits())
+```
+
+| o artista faz | o que a tela dizia |
+|---|---|
+| isola `A`, olha para `A` | o chip aceso — ✅ correto |
+| isola `A`, **escolhe `B`** | o chip **apaga**. Metade da peça fora de vista, e nada o diz |
+| isola `A`, **escolhe a raiz** (ou nada) | ⛔ **a fileira inteira desaparece** — nem indicador, nem porta |
+
+⭐ *Um estado da **vista** não se pode anunciar por um controle da **seleção**.* É a mesma família
+das cinco costuras mudas que este módulo já pagou, com a variação de estar do lado da **leitura**.
+
+### §45.2 — ⛔⛔ E a porta de saída não cumpria a razão pela qual foi escolhida
+
+A W38 escolheu o *toggle* com a razão escrita ao lado, lida do módulo irmão:
+
+> *"um «sair do isolamento» separado seria uma segunda porta para o mesmo fato, e a que o artista
+> não acha quando a cena some."*
+
+⚠️ **O chip não é essa porta.** Ele só é pintado quando o escolhido *se destaca da peça*
+(`can_detach`), então com a **raiz** escolhida — o estado em que a peça inteira está selecionada, e
+que é justamente para onde alguém vai quando *"sumiu tudo"* — não existe gesto nenhum que devolva a
+peça. *A porta escondia-se exactamente no caso em que a cena some.* A cura é a tecla, e ela é a
+metade que faltava para a razão de 2026-08-22 ser verdadeira.
+
+### §45.3 — ⭐ Duas leis, porque são duas perguntas
+
+| quem chama | pergunta | `Some(A)` isolado, `B` escolhido |
+|---|---|---|
+| o **chip numa linha** (`next_isolation`) | *"mostra-me ESTE"* | **troca** para `B` |
+| a **tecla** (`key_isolation`) | *"dentro ou fora"* | **sai** |
+
+⛔ Unificá-las com uma bandeira faria uma das duas mentir sobre o gesto que a chamou. É a mesma
+disciplina que já separa `toggle_isolate` de `forget_isolation` (*sair* e *o alvo morreu* são fatos
+diferentes) — e o gate `the_key_law_is_a_global_in_or_out_never_a_swap` tem um `assert_ne!` a
+prender a divergência, para que uma «simplificação» futura reprove em vez de convergir em silêncio.
+
+⚠️ A tecla é **`Shift+I`**, e ela foi **lida** do módulo irmão (`sculpt3d_keys`), não escolhida:
+duas janelas 3D no mesmo app com teclas diferentes para o mesmo gesto seria o artista a aprender
+duas vezes o que é uma coisa só.
+
+### §45.4 — A voz traz o NOME, e larga o nó morto
+
+O painel publica `isolated: Option<String>` — o **nome**, não um `bool`: *"estás a ver só uma
+parte"* deixa o artista à procura de qual. ⚠️ E ela **confirma que o nó ainda existe** antes de o
+nomear: o isolamento guarda `Entity::to_bits()`, e um undo respawna tudo com bits novos. O
+cozimento já largava o alvo morto (`cook_root`); esta wave faz a **voz** largar com ele — senão ela
+anunciaria um nome que já não está na Hierarquia, ou o de outro nó que herdou os bits.
+
+### §45.5 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | a tecla **reaproveita** a lei do chip (troca em vez de sair) | `the_key_law_is_a_global_in_or_out_never_a_swap` |
+| 2 | a ponte não drena o pedido da tecla (a porta de saída some) | `an_isolated_part_always_has_a_way_back` |
+| 3 | a voz volta a depender da **seleção** | `the_isolation_announces_itself_whatever_is_selected` |
+| 4 | a voz não confirma que o nó ainda existe | `a_dead_isolation_is_not_announced` |
+
+⚠️ **A ordem foi cura→gate→mutação, e não red-first**, e isso fica dito: a evidência de que cada
+gate *sabe* reprovar veio das quatro mutações, que é a mesma prova feita ao contrário. O arnês
+carrega os dois controles positivos que a W43 pagou (`Compiling` **e** `running 1 test`).
+
+### §45.6 — ⚠️ E o clippy do fecho cobrou o preço da regra que o diz
+
+`cargo-check-narrow.sh ph2d-host-desktop --all-targets` ficou **verde** com o campo novo no
+`ModelSnapshot`. O clippy do fecho — **derivado do diff**, três crates — encontrou
+**sete erros** em `ph2d-panel-model3d/tests/seam.rs`: a crate do painel tem suíte própria, e nela o
+retrato é construído **por nome**, nove vezes.
+
+⭐ *Um `-p` escrito à mão mede a minha memória do que toquei.* A regra («o alvo sai do diff, nunca da
+cabeça») estava na memória do projeto por causa de um integrador que pagou isto — e aqui ela pagou-se
+sozinha, na mesma sessão. ⚠️ E os nove sítios ficam **explícitos**, sem `..Default::default()`: foi
+essa suíte que apanhou o campo, e um `..` teria feito exactamente o oposto.
+
+### §45.7 — ⏸️ O que fica aberto
+
+- ⏸️ A **Hierarquia** continua sem marca própria: quem anuncia é o painel do módulo. Uma linha
+  esmaecida por nó fora do isolamento seria o sinal no sítio onde a estrutura se lê.
+- ⏸️ Isolar **vários** nós de uma vez (o campo guarda um `Option<u64>`).
+- ⏸️ As duas frases do aviso são literais em inglês, como as irmãs do canal
+  ([`field3d_notice`](../../shells/desktop/src/field3d_notice.rs) é texto livre por desenho — ele
+  carrega `explain(&FieldError)`); ⚠️ o **rótulo do painel** passa por i18n, que é onde a HR-15 pega.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W44 (§45): o isolamento DIZ-SE e SAI-SE de qualquer sítio** — os dois ⏸️ da W38, e a medição
+  encontrou um terceiro item que era o defeito: ⛔ **o único sinal estava preso à SELEÇÃO**
+  (`isolated == selection.first()`), então isolar `A` e escolher `B` apagava-o, e com a **raiz**
+  escolhida a fileira inteira desaparece — nem indicador, nem porta. ⚠️ E o *toggle* fora escolhido
+  com a razão *"a porta que o artista não acha quando a cena some"*: **o chip não a cumpria**, e é
+  justamente para a raiz que se vai quando sumiu tudo. ⭐ `Shift+I` (a tecla do módulo irmão, lida)
+  responde de qualquer sítio, com lei **própria** — a tecla é global (*dentro ou fora*), o chip é de
+  uma linha (*mostra-me ESTE*), e há `assert_ne!` a prender a divergência. ⏸️ Fica: a **Hierarquia**
+  não tem marca própria (quem anuncia é o painel) · isolar **vários** nós
 - ✅ **W43 (§44): a VISTA sobrevive ao fechar o painel** — o ⏸️ que a W42 deixou. ⭐ E não era «a
   câmera»: o próprio `Smoke` já classificava **cinco** campos como *estado de vista*, em três
   doc-comments distintos (*"é estado de **vista**, e não do documento"*) — *um doc-comment repetido

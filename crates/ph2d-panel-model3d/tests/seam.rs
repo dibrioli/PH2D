@@ -42,6 +42,7 @@ fn scene_with_one_union() {
             // uma escala fixa.
             bound: Bound::Soft(0.4),
         }],
+        isolated: None,
         node_count: 4,
         last_trace_ms: 9.0,
     });
@@ -215,6 +216,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
         exports: Vec::new(),
         acts: Vec::new(),
         rows: nodes,
+        isolated: None,
         node_count: 4,
         last_trace_ms: 0.0,
     });
@@ -294,6 +296,7 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
         exports: Vec::new(),
         acts: Vec::new(),
         rows: Vec::new(),
+        isolated: None,
         node_count: 0,
         last_trace_ms: 0.0,
     });
@@ -332,6 +335,7 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
         exports: Vec::new(),
         acts: Vec::new(),
         rows: Vec::new(),
+        isolated: None,
         node_count: 0,
         last_trace_ms: 0.0,
     });
@@ -381,6 +385,7 @@ fn the_axis_selector_is_its_own_family() {
         exports: Vec::new(),
         acts: Vec::new(),
         rows: Vec::new(),
+        isolated: None,
         node_count: 0,
         last_trace_ms: 0.0,
     });
@@ -438,6 +443,7 @@ fn the_selectors_never_answer_for_each_other() {
             chip("panel.model3d.act.delete"),
         ],
         rows: Vec::new(),
+        isolated: None,
         node_count: 0,
         last_trace_ms: 0.0,
     });
@@ -514,6 +520,7 @@ fn scene_with_one_position_row() {
             integral: false,
             bound: Bound::Soft(CEILING),
         }],
+        isolated: None,
         node_count: 1,
         last_trace_ms: 0.0,
     });
@@ -646,6 +653,7 @@ fn an_inert_row_registers_nothing_to_click() {
     let painted = |host: &mut MockPanelHost, state: &mut Model3dPanelState, live: bool| -> bool {
         publish(ModelSnapshot {
             rows: vec![row(live)],
+            isolated: None,
             node_count: 1,
             ..ModelSnapshot::default()
         });
@@ -685,6 +693,7 @@ fn an_inert_row_does_not_dispatch_even_if_an_event_arrives() {
             integral: false,
             bound: Bound::Wrap(180.0),
         }],
+        isolated: None,
         node_count: 1,
         ..ModelSnapshot::default()
     });

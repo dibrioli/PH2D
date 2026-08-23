@@ -129,6 +129,20 @@ pub struct ModelSnapshot {
     /// do que está escolhido. Uma lista de todos os nós competia com a Hierarquia e não tinha onde
     /// pôr as outras dimensões.
     pub rows: Vec<ParamRow>,
+    /// ⭐ **O nome do nó ISOLADO, se houver** (W44) — `None` quando se vê a peça inteira.
+    ///
+    /// ⚠️ **Ele é publicado independentemente da SELEÇÃO, e essa é a correção.** Até aqui o único
+    /// sinal de isolamento era o `active` do chip da fileira de ações, e ele comparava o nó isolado
+    /// com o **escolhido**: isolar `A` e depois escolher `B` apagava o chip, e nada na tela dizia
+    /// que metade da peça estava fora de vista por decisão de alguém. Pior, a fileira inteira
+    /// desaparece quando o escolhido não se destaca da peça (a **raiz**, ou nada) — e aí não havia
+    /// indicador nenhum.
+    ///
+    /// *Um estado da VISTA não se pode anunciar através de um controle da SELEÇÃO.*
+    ///
+    /// ⚠️ É o **nome** e não um `bool`: *"estás a ver só uma parte"* deixa o artista à procura de
+    /// qual; o nome é o que ele reconhece na Hierarquia.
+    pub isolated: Option<String>,
     /// Quantos nós o documento tem **ao todo** — inclusive os sem raio.
     ///
     /// ⚠️ Ele existe para o rodapé poder dizer *"8 nós, 3 com raio"* em vez de deixar o artista

@@ -340,9 +340,9 @@ pub(crate) use view::forget_isolation_across_documents;
 mod requests;
 use requests::armed_scene;
 pub(crate) use requests::{
-    ask_export, ask_import, ask_scene_sculpt, ask_sculpt_extent, ask_spawn_sculpt,
-    set_armed_by_panel, take_export_request, take_import_request, take_open_panel_request,
-    take_pending_sculpt, take_scene_sculpt_request, take_sculpt_extent,
+    ask_export, ask_import, ask_isolate_key, ask_scene_sculpt, ask_sculpt_extent, ask_spawn_sculpt,
+    set_armed_by_panel, take_export_request, take_import_request, take_isolate_key_request,
+    take_open_panel_request, take_pending_sculpt, take_scene_sculpt_request, take_sculpt_extent,
 };
 thread_local! {
     /// ⭐ **O registo de esculturas: nome → campo amostrado.**
@@ -467,6 +467,49 @@ pub(crate) fn next_isolation(current: Option<u64>, asked: Option<u64>) -> Option
         Some(a) if current == Some(a) => None,
         Some(a) => Some(a),
     }
+}
+
+/// ⭐⭐ **A LEI DA TECLA** (W44) — e ela é **outra pergunta**, não um caso da de cima.
+///
+/// | atual | seleção | fica | porquê |
+/// |---|---|---|---|
+/// | `Some(_)` | qualquer | **`None`** | há isolamento ⇒ a tecla SAI, seja o que for que esteja escolhido |
+/// | `None` | `Some(s)` | `Some(s)` | entra no escolhido |
+/// | `None` | `None` | `None` | não há o que isolar |
+///
+/// # ⚠️ Por que não é a [`next_isolation`]
+///
+/// As duas mexem no mesmo campo e respondem a perguntas diferentes:
+///
+/// - o **chip numa linha** diz *"mostra-me ESTE"* — com `A` isolado e `B` escolhido, ele **troca**,
+///   porque foi no `B` que se clicou;
+/// - a **tecla** é global e diz *"dentro ou fora"* — com `A` isolado e `B` escolhido, ela **sai**.
+///
+/// ⛔ Unificá-las com uma bandeira faria uma das duas mentir sobre o gesto que a chamou. É a mesma
+/// disciplina que separa [`toggle_isolate`] de [`forget_isolation`] (*sair* e *o alvo morreu* são
+/// fatos diferentes) — e a lei da tecla é a que o módulo irmão já tem escrita
+/// (`sculpt3d_objects::toggle_isolate`: se está isolado, larga; senão isola o que está em mãos).
+///
+/// # ⭐ E é ela que garante que a PORTA DE SAÍDA existe sempre
+///
+/// A razão escrita para o isolamento ser um toggle era *"um «sair» separado seria a porta que o
+/// artista não acha quando a cena some"*. ⚠️ **O chip não a cumpria:** ele só é pintado quando o
+/// escolhido se destaca da peça, então com a **raiz** escolhida — ou com nada — a fileira inteira
+/// desaparece e não há gesto nenhum que devolva a peça. A tecla responde de qualquer sítio.
+pub(crate) fn key_isolation(current: Option<u64>, selected: Option<u64>) -> Option<u64> {
+    if current.is_some() {
+        return None;
+    }
+    selected
+}
+
+/// **A tecla pediu o toggle** — aplicado pela ponte, que é quem tem a seleção.
+pub(crate) fn toggle_isolate_by_key(selected: Option<u64>) -> Option<u64> {
+    with_smoke(|s| {
+        s.isolated = key_isolation(s.isolated, selected);
+        s.isolated
+    })
+    .flatten()
 }
 
 /// **O shell diz se há uma escultura viva na cena** — publicado todo quadro, como a âncora do

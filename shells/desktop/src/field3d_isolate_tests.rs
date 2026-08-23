@@ -311,3 +311,142 @@ fn a_scene_key_is_asked_for_instead_of_being_read_from_disk() {
         "…ela tem de PEDIR a escultura ao shell"
     );
 }
+
+// ─────────────── W44: «isolado» é um ESTADO — ele diz-se, e sai-se de qualquer sítio ───────────────
+
+/// Arma o módulo e devolve-o ao repouso no fim — ver [`crate::field3d_view`].
+///
+/// ⚠️ Só possível desde a W42: enquanto a bandeira do pill travava ligada, armar num gate
+/// contaminava todos os que corressem depois.
+fn armed<R>(f: impl FnOnce() -> R) -> R {
+    crate::field3d_smoke::set_armed_by_panel(true);
+    let out = f();
+    crate::field3d_smoke::forget_isolation();
+    crate::field3d_smoke::set_armed_by_panel(false);
+    let _ = crate::field3d_smoke::with_smoke(|_| ());
+    out
+}
+
+/// ⭐⭐ **A LEI DA TECLA** — e ela não é a do chip.
+///
+/// ⚠️ As duas mexem no mesmo campo e respondem a perguntas diferentes: o chip está **numa linha**
+/// (*"mostra-me ESTE"* ⇒ troca) e a tecla é **global** (*"dentro ou fora"* ⇒ sai). A linha que as
+/// separa é a terceira deste gate, e é a que um `next_isolation` reaproveitado leria ao contrário.
+#[test]
+fn the_key_law_is_a_global_in_or_out_never_a_swap() {
+    use crate::field3d_smoke::{key_isolation, next_isolation};
+    assert_eq!(key_isolation(None, Some(7)), Some(7), "entra no escolhido");
+    assert_eq!(key_isolation(Some(7), Some(7)), None, "e a mesma tecla sai");
+    assert_eq!(
+        key_isolation(Some(7), Some(9)),
+        None,
+        "com OUTRO escolhido a tecla SAI — ela é global; trocar é o que o chip da linha faz"
+    );
+    assert_ne!(
+        key_isolation(Some(7), Some(9)),
+        next_isolation(Some(7), Some(9)),
+        "as duas leis TÊM de divergir aqui: se convergissem, uma delas estaria a mentir sobre o \
+         gesto que a chamou"
+    );
+    assert_eq!(
+        key_isolation(Some(7), None),
+        None,
+        "⭐ A PORTA DE SAÍDA: sem nada escolhido a tecla ainda devolve a peça — é este caso que o \
+         chip da fileira não consegue exprimir"
+    );
+    assert_eq!(key_isolation(None, None), None, "e não há o que isolar");
+}
+
+/// ⭐⭐ **A PEÇA ISOLADA TEM SEMPRE VOLTA** — a lei que o chip prometia e não cumpria.
+///
+/// ⚠️ A razão escrita para o isolamento ser um *toggle* era *"um «sair» separado seria a porta que o
+/// artista não acha quando a cena some"*. Mas o único gesto de sair vivia num **chip da fileira de
+/// ações**, e essa fileira só é pintada quando o escolhido se destaca da peça: com a **raiz**
+/// escolhida ela desaparece inteira. *A porta existia e escondia-se exactamente no caso em que a
+/// cena some.*
+#[test]
+fn an_isolated_part_always_has_a_way_back() {
+    armed(|| {
+        let (mut sim, root) = scene();
+        let group = inner_group(&sim, root);
+        assert!(
+            crate::field3d_smoke::toggle_isolate(Some(group.to_bits())),
+            "isolou"
+        );
+
+        // O artista escolhe a RAIZ — e a fileira que tinha o chip desaparece.
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[root], 0.0);
+        assert!(
+            ph2d_panel_model3d::state::current().acts.is_empty(),
+            "o controle do gate: com a raiz escolhida a fileira de ações não é pintada"
+        );
+
+        // A tecla responde na mesma.
+        crate::field3d_smoke::ask_isolate_key();
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[root], 0.0);
+        assert_eq!(
+            crate::field3d_smoke::isolated(),
+            None,
+            "sem a tecla, uma peça isolada com a raiz escolhida NÃO tem gesto nenhum que a devolva"
+        );
+    });
+}
+
+/// ⭐⭐ **O ISOLAMENTO DIZ-SE, E NÃO PELA SELEÇÃO.**
+///
+/// ⚠️ O único sinal anterior era o `active` do chip *Isolate*, e ele compara o nó isolado com o
+/// **escolhido**: isolar `A` e escolher `B` apagava-o. Metade da peça fora de vista, por decisão de
+/// alguém, e nada na tela a dizê-lo. *Um estado da VISTA não se anuncia por um controle da SELEÇÃO.*
+#[test]
+fn the_isolation_announces_itself_whatever_is_selected() {
+    armed(|| {
+        let (mut sim, root) = scene();
+        let group = inner_group(&sim, root);
+        let other = ph2d_field_ecs::walk(sim.world(), root)
+            .into_iter()
+            .map(|(e, _)| e)
+            .find(|e| *e != group && *e != root)
+            .expect("a fixture tem mais nós");
+        assert!(crate::field3d_smoke::toggle_isolate(Some(group.to_bits())));
+
+        for (what, sel) in [("outro nó", vec![other]), ("a raiz", vec![root])] {
+            crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0);
+            let snap = ph2d_panel_model3d::state::current();
+            assert!(
+                snap.isolated.is_some(),
+                "com {what} escolhido o painel deixou de dizer que há um isolamento em curso — e é \
+                 aí que o artista precisa de o ler"
+            );
+        }
+
+        // …e cala-se quando a peça inteira volta.
+        crate::field3d_smoke::forget_isolation();
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[root], 0.0);
+        assert_eq!(
+            ph2d_panel_model3d::state::current().isolated,
+            None,
+            "sem isolamento o painel não pode anunciar um — a metade da AUSÊNCIA"
+        );
+    });
+}
+
+/// ⚠️ **Um isolamento pendurado numa entidade MORTA não se anuncia** — a irmã da lei do cozimento.
+///
+/// Os bits morrem num undo, e o mundo novo realoca-os. Anunciar o nome resolvido por bits mortos
+/// diria ou um nome que já não está na Hierarquia, ou — pior — o de outro nó que os herdou.
+#[test]
+fn a_dead_isolation_is_not_announced() {
+    armed(|| {
+        let (mut sim, root) = scene();
+        let group = inner_group(&sim, root);
+        assert!(crate::field3d_smoke::toggle_isolate(Some(group.to_bits())));
+        assert!(ph2d_field_ecs::remove(sim.world_mut(), group), "o nó some");
+
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[root], 0.0);
+        assert_eq!(
+            ph2d_panel_model3d::state::current().isolated,
+            None,
+            "o cozimento já larga o alvo morto; a VOZ tem de largar com ele"
+        );
+    });
+}

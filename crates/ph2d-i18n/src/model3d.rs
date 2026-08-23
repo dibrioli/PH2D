@@ -113,6 +113,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.kind.box" => "Box",
         "panel.model3d.kind.cylinder" => "Cylinder",
         "panel.model3d.kind.extrude" => "Extrude",
+        // ⭐ O estado de VISTA que precisa de se anunciar: só um nó está à vista, e qual.
+        // ⚠️ A frase traz o **nome** ao lado — "estás a ver só uma parte" sem dizer qual deixa o
+        // artista à procura.
+        "panel.model3d.isolated" => "Isolated (Shift+I)",
         // O rodapé: o custo do último quadro, que é o que diz se a peça ainda é interativa.
         "panel.model3d.trace_cost" => "Trace",
         "panel.model3d.nodes" => "Nodes",

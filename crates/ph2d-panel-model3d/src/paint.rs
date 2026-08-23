@@ -126,6 +126,22 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // ⭐ **A porta de SAÍDA**, no fim: é o último gesto de uma peça, e é a primeira vez que o módulo
     // troca resolução infinita por um número de triângulos (ver `crate::field3d_export` no shell).
     y = paint_chips(ctx, &snapshot.exports, ids::model3d_export_button, x, w, y);
+    // ⭐ **ESTÁ ISOLADO, e quem o diz é a VISTA** (W44) — logo abaixo dos controles e acima dos
+    // números, porque é uma afirmação sobre *o que se está a ver*, não sobre o que está escolhido.
+    //
+    // ⚠️ **Independente da seleção**, e é essa a correção: o único sinal anterior era o `active` do
+    // chip *Isolate*, que compara o nó isolado com o **escolhido** — escolher outra coisa apagava-o,
+    // e com a raiz escolhida a fileira inteira desaparece. *Um estado da vista não se anuncia por um
+    // controle da seleção.*
+    if let Some(name) = &snapshot.isolated {
+        y = paint_note(
+            ctx,
+            &format!("{}: {name}", tr("panel.model3d.isolated")),
+            x,
+            w,
+            y,
+        );
+    }
     if snapshot.rows.is_empty() {
         y = paint_note(ctx, tr("panel.model3d.empty"), x, w, y);
     }

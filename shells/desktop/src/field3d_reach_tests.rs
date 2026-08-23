@@ -371,6 +371,12 @@ fn every_camera_chip_moves_the_camera() {
             });
             ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::SetView { slot });
             crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+            // ⭐ A câmera **viaja** (W51) — o chip pede a viagem; quem a serve é a mola da casa.
+            assert!(
+                crate::field3d_smoke::with_smoke(|s| s.flight.is_some()).unwrap_or(false),
+                "o chip {slot} ({v:?}) não pediu viagem nenhuma"
+            );
+            crate::field3d_smoke::note_flight_progress(1.0);
             assert_eq!(
                 crate::field3d_smoke::with_smoke(|s| crate::field3d_views::named_view(&s.cam))
                     .flatten(),
@@ -414,6 +420,7 @@ fn every_camera_chip_moves_the_camera() {
             slot: crate::field3d_scene::panel::FRAME_SLOT,
         });
         crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        crate::field3d_smoke::note_flight_progress(1.0);
         let t = crate::field3d_smoke::with_smoke(|s| s.cam.target).expect("armado");
         assert!(
             t.iter().all(|c| c.abs() < 1.0),
@@ -431,6 +438,8 @@ fn the_lit_view_chip_goes_out_when_the_camera_leaves_it() {
         let (mut sim, _root) = scene(&flat());
         let _ = ph2d_panel_model3d::drain_intents();
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::SetView { slot: 0 });
+        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        crate::field3d_smoke::note_flight_progress(1.0);
         crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
         assert!(
             ph2d_panel_model3d::state::current().views[0].active,

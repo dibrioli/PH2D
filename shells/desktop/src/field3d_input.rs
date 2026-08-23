@@ -217,6 +217,17 @@ pub(crate) mod law {
 /// orientação e fica assim (não há o que enquadrar); o pedido de um load simplesmente não tem efeito
 /// e volta a ser feito no quadro seguinte, quando o documento já estiver cozido.
 pub(crate) fn frame_the_part(s: &mut Smoke) -> bool {
+    let mut to = s.cam;
+    if !frame_into(s, &mut to) {
+        return false;
+    }
+    crate::field3d_smoke::fly_to(s, to);
+    true
+}
+
+/// A mesma conta, escrita num destino em vez de na câmera — é ela que faz o `Home` **compor** o
+/// repor com o enquadrar numa viagem só, em vez de duas.
+pub(crate) fn frame_into(s: &Smoke, to: &mut ph2d_field_render::Orbit) -> bool {
     let Some(doc) = s.doc.as_ref() else {
         return false;
     };
@@ -224,8 +235,16 @@ pub(crate) fn frame_the_part(s: &mut Smoke) -> bool {
     let Some(ball) = ph2d_field_eval::bounds::bounding_ball(doc, &reg) else {
         return false;
     };
-    law::frame(&mut s.cam, ball);
+    law::frame(to, ball);
     true
+}
+
+/// ⭐ **Partir para uma vista nomeada**: a orientação dela **e** o enquadramento, numa viagem só.
+pub(crate) fn fly_to_view(s: &mut Smoke, view: crate::field3d_views::Standard) {
+    let mut to = s.cam;
+    to.rotation = view.rotation();
+    frame_into(s, &mut to);
+    crate::field3d_smoke::fly_to(s, to);
 }
 
 impl App {
@@ -301,7 +320,8 @@ impl App {
             if !over_window(s, pos) {
                 return false;
             }
-            law::home(&mut s.cam);
+            let mut to = s.cam;
+            law::home(&mut to);
             // ⭐⭐ **E ENQUADRA A PEÇA** (W46). ⚠️ Até aqui o `Home` punha o alvo na **origem** — e
             // uma peça longe dela continuava fora do quadro **depois** de a tecla correr. A tecla
             // que existe para desfazer «estou perdido» não encontrava a peça.
@@ -311,7 +331,8 @@ impl App {
             //
             // Sem peça (documento vazio) fica só o repor, que é a resposta certa: não há o que
             // enquadrar.
-            frame_the_part(s);
+            frame_into(s, &mut to);
+            crate::field3d_smoke::fly_to(s, to);
             // Repor não é "voltar ao prato giratório": a mão continua no comando.
             s.manual = true;
             true
@@ -379,8 +400,7 @@ impl App {
             if !over_window(s, pos) {
                 return false;
             }
-            s.cam.rotation = view.rotation();
-            frame_the_part(s);
+            fly_to_view(s, view);
             s.manual = true;
             true
         })
@@ -481,6 +501,8 @@ impl App {
             {
                 return false;
             }
+            // A roda é mão: cancela a viagem (W51), como o arrasto.
+            crate::field3d_smoke::cancel_flight(s);
             law::zoom(&mut s.cam, steps);
             s.manual = true;
             true

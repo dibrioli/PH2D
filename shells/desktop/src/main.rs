@@ -111,6 +111,8 @@ mod expr_blend_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
 mod field3d_export;
+/// ADR-0161 W51 — a VIAGEM entre vistas: a câmera vai suavemente, com a lei de motion da casa.
+mod field3d_flight;
 mod field3d_gizmo;
 mod field3d_gizmo_paint;
 /// ADR-0161 W22 — a porta de ENTRADA: um arquivo de malha vira escultura dentro da peça.

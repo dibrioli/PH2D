@@ -89,8 +89,7 @@ pub(super) fn apply(
             ph2d_panel_model3d::ModelIntent::SetView { slot } => {
                 if let Some(v) = crate::field3d_views::Standard::ALL.get(slot).copied() {
                     crate::field3d_smoke::with_smoke(|s| {
-                        s.cam.rotation = v.rotation();
-                        crate::field3d_input::frame_the_part(s);
+                        crate::field3d_input::fly_to_view(s, v);
                         // A mão mandou: o prato não recomeça a girar por cima da vista escolhida.
                         s.manual = true;
                     });
@@ -102,8 +101,10 @@ pub(super) fn apply(
                     if slot == super::panel::ORTHO_SLOT {
                         s.cam.lens = crate::field3d_input::law::other_lens(s.cam.lens);
                     } else if slot == super::panel::FRAME_SLOT {
-                        crate::field3d_input::law::home(&mut s.cam);
-                        crate::field3d_input::frame_the_part(s);
+                        let mut to = s.cam;
+                        crate::field3d_input::law::home(&mut to);
+                        crate::field3d_input::frame_into(s, &mut to);
+                        crate::field3d_smoke::fly_to(s, to);
                     }
                     s.manual = true;
                 });

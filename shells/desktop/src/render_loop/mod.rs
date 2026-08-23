@@ -9025,6 +9025,31 @@ impl crate::App {
                     area, &obstacles,
                 ));
             }
+            // ⭐⭐ **A VIAGEM ENTRE VISTAS** (W51) — Enio: *"falta um Lerp() rápido para mudança
+            // suave das views como no blender"*.
+            //
+            // ⚠️ **A curva e a duração são as da CASA**, não minhas: `Role::Surface` é o papel cujo
+            // doc descreve este caso à letra — *"viaja (o reduced motion mata-a) e **nunca
+            // ultrapassa**… uma roda nomeia um DESTINO, e passar dele e voltar lê como a régua a
+            // mentir"*. Uma vista nomeada é um destino, e com `Role::Travel` a peça passaria da
+            // frente e voltava, com a janela inteira a balançar.
+            //
+            // ⚠️ E o *reduced motion* sai de graça: ali a lei é `None`, o progresso chega a 1 no
+            // primeiro quadro, e a viagem vira o salto que existia antes.
+            if let Some((generation, fresh)) = crate::field3d_smoke::flight_track() {
+                let id = ph2d_editor::screens::hero::ids::model3d_view_travel(generation);
+                if fresh {
+                    // Semear em 0: a primeira vez que um id é visto, o `animate` **chega** ao alvo
+                    // (um widget que acaba de aparecer não tem de onde vir). Sem esta linha a
+                    // viagem estaria terminada antes de começar.
+                    hero.motion
+                        .animate(id, 0.0, ph2d_editor::motion::Role::Surface);
+                }
+                let t = hero
+                    .motion
+                    .animate(id, 1.0, ph2d_editor::motion::Role::Surface);
+                crate::field3d_smoke::note_flight_progress(t);
+            }
             crate::field3d_smoke::draw(
                 ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
                 hero.theme,

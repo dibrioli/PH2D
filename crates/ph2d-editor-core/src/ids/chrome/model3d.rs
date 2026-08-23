@@ -90,6 +90,16 @@ pub fn model3d_camera_button(slot: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.camera.{slot}"))
 }
 
+/// ⭐ **A track de motion de uma VIAGEM entre vistas** (ADR-0161 W51), pela geração.
+///
+/// ⚠️ Um id **por viagem**: a mola lembra-se por id, e reusar um faria a segunda viagem continuar de
+/// onde a primeira parou. Ids transientes são podados pelo `UiMotion` (`PRUNE_AFTER_S`), que é
+/// exactamente o ciclo de vida para que ele foi feito.
+#[must_use]
+pub fn model3d_view_travel(generation: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.view.travel.{generation}"))
+}
+
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]
 pub fn model3d_radius_slider(node: u32) -> NodeId {

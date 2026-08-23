@@ -246,10 +246,30 @@ fn clicking_a_navball_takes_the_camera_to_that_view() {
                 "{v:?}: a pegada não guardou a bola sob o cursor"
             );
             crate::field3d_input::finish_for_test(s);
+            // ⭐ **A câmera VIAJA** (W51): soltar pede a viagem, não salta. As duas metades no
+            // mesmo gate, de propósito — sem a primeira, um salto voltaria a passar; sem a
+            // segunda, uma viagem que nunca chegasse ao destino também.
+            assert!(
+                s.flight.is_some(),
+                "{v:?}: soltar em cima da bola tinha de PEDIR uma viagem, não saltar"
+            );
+            assert_eq!(
+                crate::field3d_views::named_view(&s.cam),
+                None,
+                "{v:?}: a câmera saltou para a vista em vez de partir para ela"
+            );
+        });
+        // A mola da casa serve o progresso; aqui empurra-se até ao fim, que é o que ela faz.
+        crate::field3d_smoke::note_flight_progress(1.0);
+        armed(|s| {
             assert_eq!(
                 crate::field3d_views::named_view(&s.cam),
                 Some(v),
-                "{v:?}: soltar em cima da bola não levou a câmera à vista dela"
+                "{v:?}: a viagem terminou fora da vista dela"
+            );
+            assert!(
+                s.flight.is_none(),
+                "{v:?}: a viagem não largou o voo ao chegar"
             );
         });
     }
@@ -362,5 +382,63 @@ fn the_published_safe_rect_moves_the_gizmo() {
             "o gizmo ainda apanha cliques no sítio ANTIGO — pintado num sítio, apontável noutro"
         );
         s.safe = None;
+    });
+}
+
+/// ⭐⭐ **A MÃO CANCELA A VIAGEM** (W51).
+///
+/// ⚠️ É a lei que o módulo já aplica ao refinamento do preview (*"um refinamento cede à mão"*) e ao
+/// prato giratório. Uma câmera a viajar por baixo de um arrasto é o app a disputar o rato com o
+/// artista — e o sintoma seria a peça a fugir do cursor durante 200 ms, uma vez a cada tantas.
+#[test]
+fn the_hand_cancels_a_trip_in_flight() {
+    armed(|s| {
+        s.cam = ph2d_field_render::Orbit::default();
+        crate::field3d_input::fly_to_view(s, crate::field3d_views::Standard::Top);
+        assert!(s.flight.is_some(), "o controle: a viagem partiu");
+
+        // Um arrasto: começa e move.
+        let at = (AREA.x + 100.0, AREA.y + 100.0);
+        crate::field3d_input::begin(s, winit::event::MouseButton::Left, Drag::Orbit, at);
+        crate::field3d_input::advance(s, at.0 + 30.0, at.1);
+        assert!(
+            s.flight.is_none(),
+            "a viagem continuou por baixo do arrasto — o app está a disputar o rato"
+        );
+    });
+}
+
+/// ⚠️ **Uma viagem para onde já se está NÃO parte** — senão a mola acende por nada, e um segundo
+/// clique no mesmo chip daria 200 ms de imobilidade que lêem como o botão não ter funcionado.
+#[test]
+fn asking_for_the_view_we_are_already_in_starts_no_trip() {
+    armed(|s| {
+        s.flight = None;
+        crate::field3d_input::fly_to_view(s, crate::field3d_views::Standard::Front);
+        crate::field3d_smoke::advance_flight(s, 1.0);
+        assert!(s.flight.is_none());
+        crate::field3d_input::fly_to_view(s, crate::field3d_views::Standard::Front);
+        assert!(
+            s.flight.is_none(),
+            "pedir a vista em que já se está fez partir uma viagem de zero graus"
+        );
+    });
+}
+
+/// ⭐ **Cada viagem tem um id NOVO** — a mola da casa lembra-se por id, e reusar um faria a segunda
+/// continuar de onde a primeira parou (isto é: chegar instantaneamente).
+#[test]
+fn each_trip_gets_a_fresh_track_id() {
+    armed(|s| {
+        s.flight = None;
+        s.cam = ph2d_field_render::Orbit::default();
+        crate::field3d_input::fly_to_view(s, crate::field3d_views::Standard::Top);
+        let first = s.flight_gen;
+        crate::field3d_smoke::advance_flight(s, 1.0);
+        crate::field3d_input::fly_to_view(s, crate::field3d_views::Standard::Left);
+        assert_ne!(
+            s.flight_gen, first,
+            "a segunda viagem reusou a track da primeira"
+        );
     });
 }

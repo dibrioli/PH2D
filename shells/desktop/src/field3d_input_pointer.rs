@@ -181,6 +181,12 @@ fn publish(s: &mut Smoke, entity: u64, delta: field3d_gizmo::Motion) {
     ));
 }
 
+/// Houve movimento a valer? — a guarda do cancelamento, para um `Move` de zero pixels não matar
+/// uma viagem que acabou de partir.
+fn dx_dy_moved(x: f32, y: f32, s: &Smoke) -> bool {
+    (x - s.last_pointer.0).abs() + (y - s.last_pointer.1).abs() > f32::EPSILON
+}
+
 pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
     let Some(drag) = s.drag else {
         // ⚠️ **Sem arrasto, o hover ainda é atualizado — e o evento NÃO é consumido.** As
@@ -211,6 +217,11 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         };
         return false;
     };
+    // ⭐ **A mão CANCELA a viagem** (W51) — a mesma lei do refinamento do preview e do prato
+    // giratório: uma câmera a viajar por baixo de um arrasto é o app a disputar o rato.
+    if dx_dy_moved(x, y, s) {
+        crate::field3d_smoke::cancel_flight(s);
+    }
     let (dx, dy) = (x - s.last_pointer.0, y - s.last_pointer.1);
     s.last_pointer = (x, y);
     match drag {
@@ -344,8 +355,7 @@ pub(crate) fn finish(s: &mut Smoke) -> (bool, bool) {
             && (s.last_pointer.1 - from.1).abs() <= CLICK_SLOP_PX
     });
     if let Some(view) = nav.filter(|_| still) {
-        s.cam.rotation = view.rotation();
-        crate::field3d_input::frame_the_part(s);
+        crate::field3d_input::fly_to_view(s, view);
     } else if was == Some(Drag::Orbit)
         && let (Some(from), Some(area)) = (s.press_at, s.area)
         && still

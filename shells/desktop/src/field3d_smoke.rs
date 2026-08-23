@@ -192,6 +192,16 @@ pub(crate) struct Smoke {
     /// que o nó ainda existe antes de o usar (ver `field3d_scene::cook_root`). Um isolamento
     /// pendurado numa entidade morta apagaria a peça da tela sem nada a explicar.
     pub(crate) isolated: Option<u64>,
+    /// ⭐⭐ **A VIAGEM entre vistas em curso** (W51) — `None` quando a câmera está parada.
+    ///
+    /// ⚠️ **Cache do gesto:** um voo a atravessar um fecho de painel reabriria o módulo a meio de um
+    /// movimento que ninguém pediu. Ver [`crate::field3d_flight`].
+    pub(crate) flight: Option<crate::field3d_flight::Flight>,
+    /// Quantas viagens já houve — é ela que dá um **id novo** a cada uma, para a mola da casa
+    /// começar do zero em vez de continuar a anterior.
+    pub(crate) flight_gen: u32,
+    /// A viagem acabou de partir? O shell precisa de saber para **semear** a track em `0`.
+    pub(crate) flight_fresh: bool,
     /// ⭐ **A parte da área que a moldura do app NÃO tapa** (W50), publicada pelo shell todo quadro.
     ///
     /// ⚠️ **Cache do quadro, como a `area`:** ela depende de que painéis estão abertos e de onde a
@@ -310,6 +320,9 @@ fn boot() -> Option<Smoke> {
         doc: Some(doc.clone()),
         seed: Some(doc),
         isolated: v.isolated,
+        flight: None,
+        flight_gen: 0,
+        flight_fresh: false,
         safe: None,
         nav_hot: None,
         nav_press: None,
@@ -535,6 +548,73 @@ pub(crate) fn toggle_isolate_by_key(selected: Option<u64>) -> Option<u64> {
 
 /// **O shell diz se há uma escultura viva na cena** — publicado todo quadro, como a âncora do
 /// gizmo. Ver [`Smoke::has_live_sculpt`].
+/// ⭐⭐ **PARTE PARA UMA VISTA** — em vez de saltar para ela (W51).
+///
+/// ⚠️ **É a ÚNICA porta**: todos os caminhos que escolhiam uma vista escreviam `s.cam.rotation` à
+/// mão (a tecla, o chip do painel, a bola do gizmo, o `Home`). Enquanto fossem quatro escritas, uma
+/// delas ia ficar a saltar — e o defeito leria como *"às vezes é suave, às vezes não"*, que é o mais
+/// difícil de acreditar.
+///
+/// ⚠️ Sem `Smoke` armado não há para onde partir; sem mudança nenhuma não se parte (uma viagem de
+/// zero graus acenderia a mola por nada).
+pub(crate) fn fly_to(s: &mut Smoke, to: Orbit) {
+    if to == s.cam {
+        return;
+    }
+    s.flight = Some(crate::field3d_flight::Flight { from: s.cam, to });
+    s.flight_gen = s.flight_gen.wrapping_add(1);
+    s.flight_fresh = true;
+}
+
+/// ⭐ **A mão CANCELA a viagem** — orbitar, deslocar, aproximar, agarrar uma alça.
+///
+/// ⚠️ É a lei que o módulo já aplica ao refinamento do preview (*"um refinamento cede à mão"*) e ao
+/// prato giratório (`manual`). Uma câmera que continuasse a viajar por baixo de um arrasto seria o
+/// app a disputar o rato com o artista.
+pub(crate) fn cancel_flight(s: &mut Smoke) {
+    s.flight = None;
+}
+
+/// ⭐ **A track que o shell tem de animar** — `(id, é nova?)`, ou `None` sem viagem.
+///
+/// ⚠️ **Um id NOVO por viagem**: a mola da casa lembra-se por id, e reusar um faria a segunda
+/// viagem continuar de onde a primeira parou. O `flight_gen` é a única razão de ele existir.
+pub(crate) fn flight_track() -> Option<(u32, bool)> {
+    with_smoke(|s| {
+        s.flight.is_some().then(|| {
+            let fresh = std::mem::take(&mut s.flight_fresh);
+            (s.flight_gen, fresh)
+        })
+    })
+    .flatten()
+}
+
+/// ⭐⭐ **O progresso da viagem, vindo da mola da casa** — e é aqui que a câmera anda.
+///
+/// ⚠️ Em `t >= 1` a câmera é **escrita** com o destino e o voo larga-se: a lei do `arrive` da casa
+/// (*"assentar põe o valor EXACTO"*), sem a qual o chip da vista nunca acenderia — ele reconhece a
+/// orientação com uma barra de 0,16°.
+pub(crate) fn note_flight_progress(t: f32) {
+    with_smoke(|s| advance_flight(s, t));
+}
+
+/// O **corpo** da porta acima, sobre um `&mut Smoke` que o chamador já tem.
+///
+/// ⚠️ **Ela existe por uma razão que custou duas vezes no mesmo dia:** `with_smoke` pega o
+/// `RefCell` do estado, e chamá-lo de dentro de outro `with_smoke` é um `borrow_mut` re-entrante —
+/// pânico, não erro de compilação. A W50 pagou-o num gate de costura, e este arquivo voltou a
+/// pagá-lo na hora seguinte. *Quando uma porta de módulo tem de ser chamada de dentro dele, a cura
+/// é o corpo separado — não lembrar-se.*
+pub(crate) fn advance_flight(s: &mut Smoke, t: f32) {
+    let Some(f) = s.flight else {
+        return;
+    };
+    s.cam = f.at(t);
+    if t >= 1.0 {
+        s.flight = None;
+    }
+}
+
 /// **O shell diz qual é a parte livre da área** — todo quadro, como a âncora do gizmo. Ver
 /// [`Smoke::safe`] e [`crate::field3d_navball::safe_corner`].
 pub(crate) fn note_safe(safe: EditorRect) {

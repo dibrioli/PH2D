@@ -4075,8 +4075,111 @@ pintada). Ela sai da tabela e entra nos ⏸️ — *declarada, não coberta*.
 
 ---
 
+## §52 — W51: a VIAGEM entre vistas — e a curva não é minha (23/08)
+
+> Enio, 23/08: *"falta um Lerp() rápido para mudança suave das views como no blender."*
+
+### §52.1 — ⭐ A curva e a duração são as da CASA
+
+A casa tem um sistema de movimento por **mola**, com carácter (`Discrete`/`Expressive`), com
+*reduced motion*, e com **papéis** que dizem o que uma coisa **é** (`ph2d_editor::motion::Role`).
+Inventar aqui uma duração e uma curva seria uma segunda ideia de *como as coisas se mexem neste app*.
+
+⭐⭐ **O papel é `Role::Surface`**, e o doc dele descreve este caso à letra:
+
+> *"Viaja (o reduced motion mata-a) e **nunca ultrapassa**, nos DOIS carácteres. […] Uma roda nomeia
+> um **destino**, e passar dele e voltar não lê como peso — lê como a régua a mentir."*
+
+**Uma vista nomeada é um destino.** Com `Role::Travel` (que ultrapassa 15,5% no Expressivo) a peça
+passaria da frente e voltava — a janela inteira a balançar.
+
+⚠️ E o **reduced motion sai de graça**: ali a lei é `None`, o progresso chega a `1` no primeiro
+quadro, e a viagem vira o salto que existia antes desta wave. *Uma animação que ignora essa
+preferência é um defeito de acessibilidade, e a casa já tem a preferência.*
+
+### §52.2 — As três grandezas viajam de maneiras DIFERENTES
+
+| grandeza | interpolação | porquê |
+|---|---|---|
+| orientação | **slerp**, caminho curto | é uma rotação |
+| alvo | linear | é um ponto |
+| enquadramento | **geométrico** | o zoom deste módulo é multiplicativo (`ZOOM_PER_STEP`, *"para que cada passo aproxime a mesma fração"*) — linear dispara longe e rasteja perto |
+| lente | **do destino, já** | não há meia-lente |
+
+⚠️ **O caminho curto tem gate próprio**, medido pelo **comprimento do percurso**: sem o `dot < 0`,
+metade das viagens dá a volta pelo lado comprido — 300° para chegar a um sítio a 60°.
+
+### §52.3 — ⭐ Chegar EXATAMENTE ao destino é exigência, não detalhe
+
+O chip da vista acende por `named_view`, que reconhece a orientação com uma barra de **0,16°**. Uma
+viagem assintótica pousaria *perto* e o botão **nunca acenderia** — com a peça no sítio certo à
+frente do artista. O sistema da casa já resolve isto (*"assentar põe o valor EXACTO e larga o voo"*)
+e esta metade honra-o: em `t ≥ 1` a câmera é o destino, **escrito**, não interpolado.
+
+### §52.4 — ⭐ UMA porta, e não cinco
+
+Os cinco caminhos que escolhiam uma vista escreviam `s.cam.rotation` **cada um por si** (a tecla, o
+chip do painel, a bola do gizmo, o `Home`, o chip *Frame*). Enquanto fossem cinco escritas, uma delas
+ia ficar a saltar — e o defeito leria como *"às vezes é suave, às vezes não"*, que é dos mais
+difíceis de acreditar. Todas passam agora por `fly_to`.
+
+⚠️ **E a mão CANCELA**: orbitar, deslocar, aproximar ou agarrar uma alça larga o voo. É a lei que o
+módulo já aplica ao refinamento do preview (*"um refinamento cede à mão"*) — uma câmera a viajar por
+baixo de um arrasto é o app a disputar o rato.
+
+### §52.5 — ⚠️ O `RefCell` re-entrante, DUAS vezes no mesmo dia
+
+`with_smoke` pega o `RefCell` do estado, e chamá-lo de dentro de outro `with_smoke` é um
+`borrow_mut` re-entrante: **pânico**, não erro de compilação. A W50 pagou-o num gate de costura (e
+lá o arnês de mutação chegou a dar isso por «mutação apanhada»); esta wave voltou a pagá-lo **na
+hora seguinte**, nos gates da viagem.
+
+⭐ A cura desta vez é **estrutural, não memória**: o corpo (`advance_flight(&mut Smoke, t)`) separado
+da porta (`note_flight_progress(t)`), que é o padrão que o módulo já usa no `finish`/`finish_for_test`.
+*Quando uma porta de módulo tem de ser chamada de dentro dele, a cura é o corpo separado — não
+lembrar-se.*
+
+### §52.6 — ⚠️ Três gates existentes mudaram, e passaram a exigir MAIS
+
+`clicking_a_navball_takes_the_camera_to_that_view`, `every_camera_chip_moves_the_camera` e
+`the_lit_view_chip_goes_out_when_the_camera_leaves_it` afirmavam que a câmera estava **já** na vista.
+Com a viagem, isso deixou de ser verdade no mesmo quadro.
+
+⛔ *Atualizar um gate para caber no comportamento novo é como uma regressão se encobre.* Por isso eles
+passaram a exigir **as duas** metades: que a viagem foi **pedida** (a câmera **não** salta) **e** que
+ao terminar ela pousa exatamente na vista. A alegação visível ao artista fica intacta, e a nova junta-se.
+
+### §52.7 — Provas de mutação (todas com **verde antes**, a lição da W50)
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | o slerp perde o caminho curto | `the_trip_takes_the_short_way_round` |
+| 2 | a viagem não aterra exatamente | `the_trip_lands_exactly_on_the_destination` |
+| 3 | o enquadramento viaja linear | `the_framing_travels_in_fractions_not_in_units` |
+| 4 | a viagem não larga o voo ao chegar | `clicking_a_navball_takes_the_camera_to_that_view` |
+| 5 | a mão deixa de cancelar | `the_hand_cancels_a_trip_in_flight` |
+| 6 | cada viagem reusa a track anterior | `each_trip_gets_a_fresh_track_id` |
+
+### §52.8 — ⏸️ O que fica aberto
+
+- ⏸️ A linha do laço de quadro que serve o progresso **não é alcançável de um gate** (o mesmo ⏸️ da
+  W50, e o mesmo tipo do «Ctrl+S de verdade» da W35).
+- ⏸️ **O traçado corre a cada quadro da viagem** — é o mesmo custo de orbitar à mão (a resolução do
+  preview já cede ao movimento, W24), mas ninguém o mediu especificamente para a viagem.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W51 (§52): a VIAGEM entre vistas** — pedido do Enio (*"falta um Lerp() rápido […] como no
+  blender"*). ⭐ **A curva e a duração são as da CASA**, não minhas: `Role::Surface`, cujo doc
+  descreve este caso à letra (*"viaja… e **nunca ultrapassa**; uma roda nomeia um destino, e passar
+  dele e voltar lê como a régua a mentir"*) — uma vista nomeada é um destino. O *reduced motion* sai
+  de graça. Slerp pelo **caminho curto** (com gate a medir o comprimento do percurso), alvo linear,
+  enquadramento **geométrico**. ⭐ **UMA porta** (`fly_to`) em vez das cinco escritas de câmera, e a
+  **mão cancela**. ⚠️ O `RefCell` re-entrante mordeu **duas vezes no mesmo dia** — a cura agora é
+  estrutural (corpo separado da porta), não memória. ⏸️ Fica: a linha do laço que serve o progresso
+  não é alcançável de um gate · o custo do traçado durante a viagem não foi medido
 - ✅ **W50 (§51): a MOLDURA do app empurra o gizmo** — Enio, no smoke da W49: *"fica escondido entre
   botões"*. A área é o viewport inteiro e a moldura pinta por cima; o gizmo passa a viver na **parte
   livre**. ⭐ A lei é a **fuga mais barata** (um painel alto sai pela direita, uma faixa larga sai

@@ -94,7 +94,10 @@ impl BlendMode {
     }
 
     fn is_separable(self) -> bool {
-        !matches!(self, Self::Hue | Self::Saturation | Self::Color | Self::Luminosity)
+        !matches!(
+            self,
+            Self::Hue | Self::Saturation | Self::Color | Self::Luminosity
+        )
     }
 }
 
@@ -230,7 +233,13 @@ fn set_sat(c: [f64; 3], s: f64) -> [f64; 3] {
 }
 
 fn non_separable(mode: BlendMode, b: [u8; 3], s: [u8; 3]) -> [u8; 3] {
-    let f = |v: [u8; 3]| [f64::from(v[0]) / 255.0, f64::from(v[1]) / 255.0, f64::from(v[2]) / 255.0];
+    let f = |v: [u8; 3]| {
+        [
+            f64::from(v[0]) / 255.0,
+            f64::from(v[1]) / 255.0,
+            f64::from(v[2]) / 255.0,
+        ]
+    };
     let (bf, sf) = (f(b), f(s));
     let r = match mode {
         BlendMode::Hue => set_lum(set_sat(sf, sat(bf)), lum(bf)),

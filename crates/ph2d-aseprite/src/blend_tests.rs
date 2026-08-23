@@ -46,23 +46,63 @@ fn every_separable_mode_honours_its_neutral() {
     let b = [40_u8, 130, 210];
     let white = [255_u8; 3];
     let black = [0_u8; 3];
-    assert_eq!(on_opaque(BlendMode::Normal, b, white), white, "Normal e' a fonte");
-    assert_eq!(on_opaque(BlendMode::Multiply, b, white), b, "x branco = base");
-    assert_eq!(on_opaque(BlendMode::Multiply, b, black), black, "x preto = preto");
-    assert_eq!(on_opaque(BlendMode::Screen, b, black), b, "screen com preto = base");
+    assert_eq!(
+        on_opaque(BlendMode::Normal, b, white),
+        white,
+        "Normal e' a fonte"
+    );
+    assert_eq!(
+        on_opaque(BlendMode::Multiply, b, white),
+        b,
+        "x branco = base"
+    );
+    assert_eq!(
+        on_opaque(BlendMode::Multiply, b, black),
+        black,
+        "x preto = preto"
+    );
+    assert_eq!(
+        on_opaque(BlendMode::Screen, b, black),
+        b,
+        "screen com preto = base"
+    );
     assert_eq!(on_opaque(BlendMode::Screen, b, white), white);
     assert_eq!(on_opaque(BlendMode::Darken, b, white), b);
     assert_eq!(on_opaque(BlendMode::Lighten, b, black), b);
     assert_eq!(on_opaque(BlendMode::Difference, b, black), b);
-    assert_eq!(on_opaque(BlendMode::Difference, b, b), black, "consigo mesmo = preto");
+    assert_eq!(
+        on_opaque(BlendMode::Difference, b, b),
+        black,
+        "consigo mesmo = preto"
+    );
     assert_eq!(on_opaque(BlendMode::Exclusion, b, black), b);
     assert_eq!(on_opaque(BlendMode::Addition, b, black), b);
-    assert_eq!(on_opaque(BlendMode::Addition, b, white), white, "satura, nao roda");
+    assert_eq!(
+        on_opaque(BlendMode::Addition, b, white),
+        white,
+        "satura, nao roda"
+    );
     assert_eq!(on_opaque(BlendMode::Subtract, b, black), b);
-    assert_eq!(on_opaque(BlendMode::Subtract, white, white), black, "nao vai abaixo de zero");
-    assert_eq!(on_opaque(BlendMode::ColorDodge, black, b), black, "base preta fica preta");
-    assert_eq!(on_opaque(BlendMode::ColorBurn, white, b), white, "base branca fica branca");
-    assert_eq!(on_opaque(BlendMode::Divide, b, white), b, "dividir por branco = base");
+    assert_eq!(
+        on_opaque(BlendMode::Subtract, white, white),
+        black,
+        "nao vai abaixo de zero"
+    );
+    assert_eq!(
+        on_opaque(BlendMode::ColorDodge, black, b),
+        black,
+        "base preta fica preta"
+    );
+    assert_eq!(
+        on_opaque(BlendMode::ColorBurn, white, b),
+        white,
+        "base branca fica branca"
+    );
+    assert_eq!(
+        on_opaque(BlendMode::Divide, b, white),
+        b,
+        "dividir por branco = base"
+    );
 }
 
 /// **`Overlay(b, s) = HardLight(s, b)`** — a única diferença entre os dois é a troca de
@@ -104,9 +144,7 @@ fn soft_light_is_neutral_at_mid_grey_and_never_leaves_the_range() {
 /// provável: quatro braços quase iguais num `match`).
 #[test]
 fn the_four_non_separable_modes_do_what_their_names_say() {
-    let lum8 = |c: [u8; 3]| {
-        0.3 * f64::from(c[0]) + 0.59 * f64::from(c[1]) + 0.11 * f64::from(c[2])
-    };
+    let lum8 = |c: [u8; 3]| 0.3 * f64::from(c[0]) + 0.59 * f64::from(c[1]) + 0.11 * f64::from(c[2]);
     let base = [200_u8, 60, 30];
     let src = [20_u8, 90, 240];
 

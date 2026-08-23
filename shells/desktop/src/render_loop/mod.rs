@@ -1571,6 +1571,39 @@ impl crate::App {
             self.title_dirty = true;
         }
 
+        // **O IMPORT DO `.ase` A ACONTECER** (`PH2D_ASE_SMOKE=1`): ele ESCREVE um `.ase` numa pasta
+        // temporária e larga-o pela porta do produto — o mesmo `import_ase` que o drag & drop
+        // chama. ⚠️ Não há caminho paralelo: se este smoke funciona, largar um ficheiro do artista
+        // funciona. E o que a conversão perdeu sai numa linha por assunto, nomeada.
+        if let Some(hero) = hero_screen.as_mut()
+            && crate::ase_smoke::enabled()
+            && !std::mem::replace(&mut self.ase_smoke_done, true)
+            && let Some((bits, lines)) = crate::ase_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                next_import_cell,
+                atlas_asset_map,
+                hero.project.pixels_per_meter,
+            )
+        {
+            if bits != 0 {
+                hero.gizmo.replace_selection(Some(bits));
+                hero.bus
+                    .push(ph2d_editor::action_bus::EditorAction::SetViewFocus {
+                        kind: ph2d_editor::ViewFocusKind::Selected,
+                    });
+            }
+            for (i, line) in lines.into_iter().enumerate() {
+                toasts.push(if i == 0 && bits != 0 {
+                    Toast::success(line)
+                } else {
+                    Toast::warning(line)
+                });
+            }
+            self.title_dirty = true;
+        }
+
         // **AS FAIXAS, E A CURA** (`PH2D_DITHER_SMOKE=1`, plano `docs/Sprite_projeto/18` W6.1):
         // UMA sprite partida ao meio — cima a descida fiel (faixas duras), baixo a descida com
         // dither (liso). As duas metades partem do mesmo degradê de 16 bits, coluna a coluna, e as

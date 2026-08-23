@@ -240,6 +240,11 @@ impl PreviewDrive {
     }
 
     /// Nada sob condução? Então a captura não paga nada — nem uma varredura.
+    ///
+    /// ⚠️ `cfg(test)`: no produto quem responde a esta pergunta é a própria
+    /// [`Self::substitute_authored`], que sai cedo. Deixá-la `pub(crate)` sem chamador daria um
+    /// aviso do clippy — e um método que só os gates usam é exactamente o que o aviso nomeia.
+    #[cfg(test)]
     #[must_use]
     pub(crate) fn is_empty(&self) -> bool {
         self.memo.is_empty()
@@ -260,6 +265,9 @@ impl PreviewDrive {
     /// temos.
     #[must_use]
     pub(crate) fn substitute_authored(&self, sim: &mut SimWorld) -> Vec<((u64, Driver), Driven)> {
+        if self.memo.is_empty() {
+            return Vec::new(); // o caso normal: nem uma varredura
+        }
         let mut live = Vec::with_capacity(self.memo.len());
         for (&(bits, driver), entry) in &self.memo {
             let entity = Entity::from_bits(bits);

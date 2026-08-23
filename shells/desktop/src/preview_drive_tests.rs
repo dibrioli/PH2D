@@ -48,8 +48,7 @@ fn playing_sprite(sim: &mut SimWorld) -> Entity {
     lib.insert(AnimationTag::new("walk", 0, 7)).unwrap();
     let mut animator = SpriteAnimator::new("walk");
     animator.playing = true;
-    let e = sim
-        .world_mut()
+    sim.world_mut()
         .spawn((
             Transform::default(),
             Name::new("Hero"),
@@ -61,8 +60,7 @@ fn playing_sprite(sim: &mut SimWorld) -> Entity {
             animator,
             lib,
         ))
-        .id();
-    e
+        .id()
 }
 
 /// Um quadro do app, na ordem em que ele corre: o tique declara, e o `post_frame_undo` faz a
@@ -378,7 +376,7 @@ fn with_nothing_running_the_capture_is_untouched() {
     let a = capture(&drive, &mut sim, &reg);
     let b = capture(&drive, &mut sim, &reg);
     assert_eq!(a, b, "capturar duas vezes o mesmo estado tem de dar igual");
-    assert!(drive.is_empty() && drive.len() == 0);
+    assert!(drive.is_empty());
 }
 
 /// **UMA ENTIDADE PODE ESTAR SOB DOIS MOTORES**, e as duas entradas não se pisam — um corpo rígido

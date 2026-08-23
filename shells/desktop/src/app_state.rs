@@ -576,6 +576,9 @@ pub(crate) struct App {
     pub(crate) socket_smoke_done: bool,
     pub(crate) mount_smoke_done: bool,
     pub(crate) anim_smoke_done: bool,
+    /// O `PH2D_ASE_SMOKE` já correu? Ele escreve um ficheiro e importa-o — repeti-lo por quadro
+    /// encheria a cena de sprites iguais.
+    pub(crate) ase_smoke_done: bool,
     /// Latch one-shot de `PH2D_DITHER_SMOKE` — as duas descidas para 8 bits (plano Sprite 18 W6.1).
     pub(crate) dither_smoke_done: bool,
     /// Latch one-shot de `PH2D_EMISSIVE_SMOKE` — a sprite como fonte de luz (plano Sprite 18 W8).

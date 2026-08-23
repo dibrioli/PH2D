@@ -442,8 +442,12 @@ impl crate::App {
         if Self::undo_log_on() {
             let base = self.undo_baseline.as_ref();
             eprintln!(
-                "[undo] passo registrado (fila undo={}) — diff: world={} vec={} flip={}",
+                "[undo] passo registrado (fila undo={}, {} sob conducao) — diff: world={} vec={} flip={}",
                 self.undo.depth() + 1,
+                // ⚠️ Quantas entidades um motor está a escrever AGORA. Um passo registado com este
+                // número **alto** é a pergunta certa a fazer: ou a condução não foi declarada, ou o
+                // artista de facto editou (`crate::preview_drive`).
+                self.preview_drive.len(),
                 base.is_some_and(|b| b.world != current.world),
                 base.is_some_and(|b| b.vec != current.vec),
                 base.is_some_and(|b| b.flip != current.flip),

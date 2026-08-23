@@ -81,6 +81,54 @@ impl App {
         // ⚠️ E a imagem que a folha referencia é retirada da leva também — senão largar
         // `folha.png` + `folha.json` daria a folha **e** um sprite avulso com a folha inteira
         // desenhada nele, os dois no mesmo sítio, um por cima do outro.
+        // **E OS `.ase` saem antes de TODOS**, pela mesma razão das malhas e das folhas: o filtro
+        // de imagem lá em baixo diria *"Skipped non-image"* de um ficheiro que este app sabe ler
+        // melhor que um `.png` — ele traz as camadas, as tags e a duração de cada quadro.
+        let (ase_files, paths): (Vec<_>, Vec<_>) = paths
+            .iter()
+            .cloned()
+            .partition(|p| crate::ase_import::is_ase_file(p));
+        let mut ase_bits: Vec<u64> = Vec::new();
+        for (i, file) in ase_files.iter().enumerate() {
+            // Cada `.ase` é uma sprite; largar três põe-nas lado a lado, como o import de imagens.
+            let at = [
+                drop_world[0] + i as f32 * crate::image_import::IMPORT_GRID_GAP_FRAC,
+                drop_world[1],
+            ];
+            match crate::ase_import::import_ase(
+                &mut gfx.sim,
+                &mut gfx.renderer,
+                &gfx.asset_db,
+                &mut gfx.next_import_cell,
+                &mut gfx.atlas_asset_map,
+                file,
+                at,
+                pixels_per_meter,
+            ) {
+                crate::ase_import::AseImportResult::Ok {
+                    name,
+                    frames,
+                    animations,
+                    bits,
+                    notes,
+                } => {
+                    gfx.toasts.push(Toast::success(format!(
+                        "{name}: {frames} frames, {animations} animations"
+                    )));
+                    // ⚠️ Uma nota por assunto, e cada uma NOMEIA o que ficou por trás. Um import
+                    // que aproxima em silêncio é a resposta errada com a certeza da certa.
+                    for note in notes {
+                        gfx.toasts.push(Toast::warning(note));
+                    }
+                    ase_bits.push(bits);
+                }
+                crate::ase_import::AseImportResult::Err { name, error } => {
+                    gfx.toasts.push(Toast::error(format!("{name}: {error}")));
+                }
+            }
+            self.title_dirty = true;
+        }
+        let paths: &[std::path::PathBuf] = &paths;
         let (sheet_metas, rest) = crate::sheet_import::partition_sheet_metadata(paths);
         let mut sheet_bits: Vec<u64> = Vec::new();
         let paths: Vec<std::path::PathBuf> = if sheet_metas.is_empty() {
@@ -147,8 +195,13 @@ impl App {
         // retorno antecipado abaixo só acontece depois: largar só `folha.png` + `folha.json`
         // deixa `valid_paths` vazio, e voltar antes daqui devolveria N sprites novos sem nenhum
         // selecionado, ao contrário de todo outro import.
+        // ⚠️ E os `.ase` entram na MESMA lista, pela mesma razão: largar um ficheiro de animação e
+        // não ver nada selecionado lê-se como um import que falhou.
         let mut selected_any = false;
-        for bits in std::mem::take(&mut sheet_bits) {
+        for bits in std::mem::take(&mut ase_bits)
+            .into_iter()
+            .chain(std::mem::take(&mut sheet_bits))
+        {
             if let Some(hero) = gfx.hero_screen.as_mut() {
                 if selected_any {
                     hero.gizmo.add_to_selection(bits);

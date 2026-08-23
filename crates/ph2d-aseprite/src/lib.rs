@@ -111,7 +111,10 @@ impl AseTag {
         };
         let mut best = (0_usize, u16::MAX);
         for f in span {
-            let n = span.iter().filter(|g| g.duration_ms == f.duration_ms).count();
+            let n = span
+                .iter()
+                .filter(|g| g.duration_ms == f.duration_ms)
+                .count();
             if n > best.0 || (n == best.0 && f.duration_ms < best.1) {
                 best = (n, f.duration_ms);
             }

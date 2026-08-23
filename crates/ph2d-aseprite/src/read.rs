@@ -27,10 +27,6 @@ impl<'a> Reader<'a> {
         self.seek(to)
     }
 
-    pub(crate) fn remaining(&self) -> usize {
-        self.bytes.len() - self.pos
-    }
-
     fn take(&mut self, n: usize) -> Option<&'a [u8]> {
         let end = self.pos.checked_add(n)?;
         let s = self.bytes.get(self.pos..end)?;

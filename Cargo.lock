@@ -5189,6 +5189,13 @@ name = "ph2d-arclen"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-aseprite"
+version = "0.0.0"
+dependencies = [
+ "miniz_oxide",
+]
+
+[[package]]
 name = "ph2d-asset"
 version = "0.0.0"
 dependencies = [
@@ -5702,7 +5709,9 @@ dependencies = [
  "half",
  "image",
  "libm",
+ "miniz_oxide",
  "ph2d-anim",
+ "ph2d-aseprite",
  "ph2d-asset",
  "ph2d-asset-ktx2",
  "ph2d-audio",

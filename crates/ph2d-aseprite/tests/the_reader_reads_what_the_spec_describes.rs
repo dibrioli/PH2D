@@ -96,7 +96,14 @@ fn layer(name: &str) -> Chunk {
     layer_full(name, true, 0, 0, 255, 0)
 }
 
-fn layer_full(name: &str, visible: bool, kind: u16, child_level: u16, opacity: u8, blend: u16) -> Chunk {
+fn layer_full(
+    name: &str,
+    visible: bool,
+    kind: u16,
+    child_level: u16,
+    opacity: u8,
+    blend: u16,
+) -> Chunk {
     let mut b = Vec::new();
     w16(&mut b, u16::from(visible)); // flags: bit 0 = visivel
     w16(&mut b, kind); // 0 imagem · 1 grupo · 2 tilemap
@@ -107,7 +114,10 @@ fn layer_full(name: &str, visible: bool, kind: u16, child_level: u16, opacity: u
     b.push(opacity);
     b.extend_from_slice(&[0; 3]);
     wstr(&mut b, name);
-    Chunk { kind: 0x2004, body: b }
+    Chunk {
+        kind: 0x2004,
+        body: b,
+    }
 }
 
 /// Um cel de imagem crua (tipo 0) com `w × h` pixels RGBA8.
@@ -121,6 +131,7 @@ fn cel_zlib(layer_index: u16, x: i16, y: i16, w: u16, h: u16, rgba: &[u8]) -> Ch
     cel_kind(layer_index, x, y, 255, 2, w, h, z)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn cel_kind(
     layer_index: u16,
     x: i16,
@@ -141,7 +152,10 @@ fn cel_kind(
     w16(&mut b, w);
     w16(&mut b, h);
     b.extend_from_slice(&payload);
-    Chunk { kind: 0x2005, body: b }
+    Chunk {
+        kind: 0x2005,
+        body: b,
+    }
 }
 
 /// Um cel LIGADO (tipo 1): «repete o que esta camada tem no quadro N».
@@ -154,7 +168,10 @@ fn cel_link(layer_index: u16, src_frame: u16) -> Chunk {
     w16(&mut b, 1);
     b.extend_from_slice(&[0; 7]);
     w16(&mut b, src_frame);
-    Chunk { kind: 0x2005, body: b }
+    Chunk {
+        kind: 0x2005,
+        body: b,
+    }
 }
 
 fn tags(list: &[(&str, u16, u16, u8, u16)]) -> Chunk {
@@ -171,7 +188,10 @@ fn tags(list: &[(&str, u16, u16, u8, u16)]) -> Chunk {
         b.push(0);
         wstr(&mut b, name);
     }
-    Chunk { kind: 0x2018, body: b }
+    Chunk {
+        kind: 0x2018,
+        body: b,
+    }
 }
 
 fn palette(colors: &[[u8; 4]]) -> Chunk {
@@ -184,7 +204,10 @@ fn palette(colors: &[[u8; 4]]) -> Chunk {
         w16(&mut b, 0);
         b.extend_from_slice(c);
     }
-    Chunk { kind: 0x2019, body: b }
+    Chunk {
+        kind: 0x2019,
+        body: b,
+    }
 }
 
 const RED: [u8; 4] = [255, 0, 0, 255];
@@ -258,7 +281,11 @@ fn a_linked_cel_repeats_the_frame_it_points_at() {
     });
     let doc = parse(&a.bytes()).unwrap();
     assert_eq!(doc.frames.len(), 2);
-    assert_eq!(px(&doc, 1, 0, 0), RED, "o 2o quadro piscou em vez de repetir");
+    assert_eq!(
+        px(&doc, 1, 0, 0),
+        RED,
+        "o 2o quadro piscou em vez de repetir"
+    );
 }
 
 /// **Uma camada escondida não desenha — e um GRUPO escondido esconde os filhos.** A segunda metade
@@ -348,7 +375,12 @@ fn a_cel_partly_outside_the_canvas_is_clipped() {
         duration_ms: 100,
         chunks: vec![layer("L"), cel(0, 90, 90, 2, 2, &solid(4, RED))],
     });
-    assert!(parse(&out.bytes()).unwrap().frames[0].rgba.iter().all(|&b| b == 0));
+    assert!(
+        parse(&out.bytes()).unwrap().frames[0]
+            .rgba
+            .iter()
+            .all(|&b| b == 0)
+    );
 }
 
 /// **As tags voltam inteiras** — nome, intervalo, direcção e repetições. É por isto que o `.ase`
@@ -391,7 +423,11 @@ fn an_indexed_file_reads_through_its_palette() {
         ],
     });
     let doc = parse(&a.bytes()).unwrap();
-    assert_eq!(px(&doc, 0, 0, 0), [0, 0, 0, 0], "o indice transparente e' buraco");
+    assert_eq!(
+        px(&doc, 0, 0, 0),
+        [0, 0, 0, 0],
+        "o indice transparente e' buraco"
+    );
     assert_eq!(px(&doc, 0, 1, 0), BLUE, "e o resto sai da paleta");
 }
 
@@ -404,7 +440,10 @@ fn a_greyscale_file_reads_grey_plus_alpha() {
         duration_ms: 100,
         chunks: vec![layer("L"), cel(0, 0, 0, 1, 1, &[120, 200])],
     });
-    assert_eq!(px(&parse(&a.bytes()).unwrap(), 0, 0, 0), [120, 120, 120, 200]);
+    assert_eq!(
+        px(&parse(&a.bytes()).unwrap(), 0, 0, 0),
+        [120, 120, 120, 200]
+    );
 }
 
 /// **Um tilemap sai numa NOTA, não em silêncio.** ⛔ Um importador que ignora sem dizer é pior que
@@ -421,7 +460,10 @@ fn a_tilemap_layer_says_so_instead_of_vanishing_quietly() {
     });
     let doc = parse(&a.bytes()).unwrap();
     assert_eq!(doc.notes.len(), 1, "esperava UMA nota: {:?}", doc.notes);
-    assert!(doc.notes[0].contains("tiles"), "a nota tem de NOMEAR a camada");
+    assert!(
+        doc.notes[0].contains("tiles"),
+        "a nota tem de NOMEAR a camada"
+    );
 }
 
 /// **Um chunk desconhecido é saltado, não fatal.** O formato cresce a cada versão do Aseprite, e
@@ -432,7 +474,10 @@ fn an_unknown_chunk_is_skipped() {
     a.frames.push(Frame {
         duration_ms: 100,
         chunks: vec![
-            Chunk { kind: 0x7777, body: vec![1, 2, 3, 4, 5] },
+            Chunk {
+                kind: 0x7777,
+                body: vec![1, 2, 3, 4, 5],
+            },
             layer("L"),
             cel(0, 0, 0, 1, 1, &solid(1, RED)),
         ],
@@ -463,12 +508,18 @@ fn broken_input_is_a_named_error_never_a_panic() {
     assert_eq!(parse(&empty.bytes()), Err(AseError::NoFrames));
 
     let mut zero = Ase::new(0, 5);
-    zero.frames.push(Frame { duration_ms: 1, chunks: vec![] });
+    zero.frames.push(Frame {
+        duration_ms: 1,
+        chunks: vec![],
+    });
     assert_eq!(parse(&zero.bytes()), Err(AseError::EmptyCanvas));
 
     let mut deep = Ase::new(1, 1);
     deep.depth = 24;
-    deep.frames.push(Frame { duration_ms: 1, chunks: vec![] });
+    deep.frames.push(Frame {
+        duration_ms: 1,
+        chunks: vec![],
+    });
     assert_eq!(parse(&deep.bytes()), Err(AseError::UnknownColorDepth(24)));
 }
 
@@ -487,10 +538,9 @@ fn per_frame_durations_survive_and_the_tag_can_tell() {
         });
     }
     a.frames[0].chunks.push(layer("L"));
-    a.frames[0].chunks.push(tags(&[
-        ("flat", 0, 1, 0, 0),
-        ("bumpy", 0, 3, 0, 0),
-    ]));
+    a.frames[0]
+        .chunks
+        .push(tags(&[("flat", 0, 1, 0, 0), ("bumpy", 0, 3, 0, 0)]));
     let doc = parse(&a.bytes()).unwrap();
     let ms: Vec<u16> = doc.frames.iter().map(|f| f.duration_ms).collect();
     assert_eq!(ms, vec![50, 50, 200, 50]);

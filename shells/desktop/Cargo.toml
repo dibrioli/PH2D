@@ -51,6 +51,15 @@ ph2d-render = { path = "../../crates/ph2d-render" }
 # é dona do `SpriteSource`, esta é dona dos bytes que o `Individual` deixava morrer com o
 # processo. Consumida por `project_sprite_pixels`.
 ph2d-sprite-sheet = { path = "../../crates/ph2d-sprite-sheet" }
+# O leitor do `.ase`/`.aseprite` (Enio, 2026-08-23). Crate-folha PURA: bytes -> quadros RGBA8 +
+# tags, sem ECS e sem GPU. A costura — empacotar a folha, subir a textura, traduzir as tags para
+# `AnimationTag` — vive no `crate::ase_import`, que é o consumidor dela.
+ph2d-aseprite = { path = "../../crates/ph2d-aseprite" }
+# ZLIB, e só para o `ase_smoke` ESCREVER o ficheiro de demonstração — o smoke larga um `.ase` de
+# verdade pela porta do produto, para não precisar do Aseprite instalado. ⚠️ Mesma crate (e mesma
+# major) que o leitor usa: duas bibliotecas de zlib na árvore seriam duas respostas a *"o que é um
+# fluxo comprimido"*.
+miniz_oxide = "0.8"
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers
 # (SrgbRgba) at the IO boundary. The shell casts between the existing
 # Vec<u8> pixel buffers and the tools' typed signatures via

@@ -45,6 +45,12 @@ mod anchor_smoke;
 /// **As três formas de âncora, numa sprite só** (`PH2D_SOCKET_SMOKE=1`, ADR-0072).
 mod anim_smoke;
 mod app_state;
+/// **O IMPORT do `.ase`** (Enio, 2026-08-23) — o ficheiro NATIVO do Aseprite vira uma sprite com
+/// grelha e a biblioteca de animações dele. Irmão do `sheet_import` (o par `.png`+`.json`).
+mod ase_import;
+/// A cena de smoke do import do `.ase` (`PH2D_ASE_SMOKE=1`) — ela ESCREVE o ficheiro e larga-o
+/// pela porta do produto, para o smoke não precisar do Aseprite instalado.
+mod ase_smoke;
 mod atlas_loader;
 mod attribute_demo_smoke;
 mod audio;
@@ -791,6 +797,7 @@ impl App {
             socket_smoke_done: false,
             mount_smoke_done: false,
             anim_smoke_done: false,
+            ase_smoke_done: false,
             dither_smoke_done: false,
             emissive_smoke_done: false,
             taper_smoke_done: false,

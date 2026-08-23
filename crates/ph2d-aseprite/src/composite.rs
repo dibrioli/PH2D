@@ -350,12 +350,7 @@ impl Build {
                     };
                     let di = (dy as usize * w + dx as usize) * 4;
                     let back = [out[di], out[di + 1], out[di + 2], out[di + 3]];
-                    let px = blend(
-                        layer.blend,
-                        back,
-                        [src[0], src[1], src[2], src[3]],
-                        opacity,
-                    );
+                    let px = blend(layer.blend, back, [src[0], src[1], src[2], src[3]], opacity);
                     out[di..di + 4].copy_from_slice(&px);
                 }
             }

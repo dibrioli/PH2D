@@ -492,6 +492,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   diferença de classe, local contra global, que motivou o pivô, um nível abaixo*. As duas saídas:
   ponto fixo sobre o layout, ou a parametrização global **quantizada** (os inteiros já vêm do F4, logo
   o que resta dela é **linear**).
+  ⭐⭐⭐ **E A OBRA MUDOU DE FASE: nós FRAGMENTAMOS O DOBRO** (23/08, `PLAN.md`
+  §4-quatuoretquadragies). Derivando a valência dos patches do **dono de cada face** — a nossa e a
+  **dele** —, com `χ = V − E + F` a fechar em `2` nos dois lados e nas quatro fixturas: esfera lisa
+  **16 patches / 26 cantos** contra **8 / 6** dele; enrugada 14/22 contra 8/6; orelha 17/28 contra
+  12/13; gancho 26/39 contra 15/17. ⛔⛔ **Isto MATA «reescrever o F3 para emitir só quadriláteros»:**
+  na esfera lisa e na enrugada o oráculo entrega `{3: 8}` — **oito patches TRIANGULARES, 0% de quads**
+  — e mede `6°`. *A referência usa mais leques do que nós e sai mais quadrada.* ⇒ a obra é **emitir
+  MENOS patches** (juntar vizinhos cuja fronteira comum o campo não exige): cada canto é um
+  irregular na saída, e cada fronteira é um sítio onde a discordância conforme nasce. ⚠️ E o primeiro
+  controlo da régua — conferi-la contra o nosso `side_arcs` — **reprovou com razão**: um *lado* nosso
+  é feito de vários **arcos**, logo são duas definições e não duas medições; quem valida é o `χ`.
   ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede
   **`18°` de enviesamento contra `6°` do oráculo**, com o aspecto quase igual (`1,26` vs `1,22`):
   *as células têm as proporções certas e os ângulos errados*, e o defeito é do **NÚCLEO**. Gate

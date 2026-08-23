@@ -470,3 +470,10 @@ mod simplest_case;
 #[cfg(test)]
 #[path = "sculpt3d_field_follow.rs"]
 mod field_follow;
+
+/// ⭐⭐⭐ **DE QUANTOS LADOS SÃO OS PATCHES, os nossos e os DELE** — ver
+/// [`patch_valence`]. A sonda que separa a dívida do **F3** (emite leques a mais) da
+/// do **F5** (preenche um leque mal).
+#[cfg(test)]
+#[path = "sculpt3d_patch_valence.rs"]
+mod patch_valence;

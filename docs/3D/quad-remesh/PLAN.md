@@ -3693,3 +3693,60 @@ de classe — local contra global — que motivou o pivô do ADR-0162, um nível
 | o quê | porquê não | onde |
 |---|---|---|
 | mapa do rectângulo (fronteira a deslizar) | esfera `16° → 14°`; orelha `> 60°` **9 159 → 14 794**, dobras `171 → 267` | [`rectangle.rs`](../../../crates/ph2d-quadfill/src/rectangle.rs) |
+
+## §4-quatuoretquadragies — ⭐⭐⭐ NÓS FRAGMENTAMOS O DOBRO, e o leque está ILIBADO (2026-08-23)
+
+### A pergunta
+
+Com as réguas de valência corrigidas, as faces de patch `n = 4` medem `16°` e as de
+leque `19°` — próximas. ⇒ *o leque é sintoma de um F3 que emite `n ≠ 4` a mais, ou é
+o preenchimento?* Sonda:
+[`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs).
+
+### ⚠️ A régua, e as DUAS validações
+
+O oráculo publica **o dono de cada face** (`*_rem_p0.patch`), não a valência. Um
+**canto** é um vértice onde ≥3 patches se encontram; a valência de um patch é quantos
+cantos ele toca.
+
+⛔ **O primeiro controlo — comparar com o nosso `side_arcs` — REPROVOU**, e estava certo
+em reprovar: um *lado* nosso pode ser feito de vários **arcos** que confinam com patches
+diferentes. *São duas definições, não duas medições da mesma coisa.*
+
+⭐⭐ **A validação que vale não precisa de acreditar em nenhuma das duas: `χ = V − E + F`
+sobre o complexo dos patches** (cantos = vértices, lados = arestas com `E = Σlados/2`,
+patches = faces). Ela fecha em **`2` nas quatro fixturas e nos dois lados**.
+
+### ⭐⭐⭐ A resposta
+
+| peça | NOSSOS patches | cantos | ⭐ DELE patches | cantos |
+|---|---|---|---|---|
+| esfera **lisa** | **16** | **26** | **8** | **6** |
+| enrugada | 14 | 22 | **8** | **6** |
+| orelha | 17 | 28 | **12** | 13 |
+| gancho | 26 | 39 | **15** | 17 |
+
+⛔⛔ **A família «reescrever o F3 para emitir só quadriláteros» MORRE.** Na esfera lisa
+e na enrugada o oráculo entrega `{3: 8}` — **oito patches TRIANGULARES, `0 %` de
+quadriláteros** — e mede `6°`. *A referência usa mais leques do que nós e sai mais
+quadrada.*
+
+⭐⭐⭐ **E o que aparece no lugar é maior: fragmentamos o DOBRO.** Esfera lisa, `16`
+patches e `26` cantos contra `8` e `6`. Cada canto é uma esquina onde a grade muda de
+direcção **e um vértice irregular na saída**; cada fronteira de patch é um sítio onde a
+subdivisão por comprimento de arco impõe a discordância conforme do
+§4-tresetquadragies. ⇒ *menos patches não é elegância — é menos fronteiras onde o
+defeito nomeado pode nascer, e menos irregulares na malha final.*
+
+### ⇒ Onde isto deixa a investigação
+
+⭐ **A obra passou do F5 para o F3, e mudou de forma:** não «emitir quadriláteros», mas
+**emitir menos patches** — juntar patches vizinhos cuja fronteira comum não é exigida
+pelo campo. É a operação que a referência faz e nós não.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| reescrever o F3 para emitir só patches de 4 lados | o oráculo emite `0 %` de quads na esfera e mede `6°` | [`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs) |
+| derivar a valência e conferi-la contra o nosso `side_arcs` | são duas definições (lado ≠ arco); a validação é `χ = 2` | idem |

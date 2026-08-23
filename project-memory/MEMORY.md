@@ -93,6 +93,8 @@
 - [Ofício de gate (32)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
 - [Modo SUPERSET ganha a dedup, nunca perde](feedback_a_superset_mode_must_win_the_dedup_never_lose_it.md) — desistir do modo rico apaga o que só ele desenha; a pergunta é qual CONTÉM o outro, não quem chegou primeiro
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
+- [Pintar e agarrar projectam por UMA porta](feedback_paint_and_hit_test_must_project_through_one_door.md) — janela cheia na tinta e janela da cena no hit-test dá DOIS sintomas de uma causa (deslocado + não clica); a lei estava no módulo irmão, que eu li
+- [Hit-test próprio herda a pergunta da REGIÃO](feedback_a_consumer_that_bypasses_the_hit_index_inherits_the_region_question.md) — sem o `on_canvas` o gizmo engolia cliques do painel do grafo, e o sintoma era «não consigo ligar um fio»
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Pintar e despachar têm de ler a MESMA fonte](feedback_paint_and_dispatch_must_read_the_same_source.md) — caixa que pinta do mundo e decide do store só diverge quando o MOTOR escreve o facto; sintoma é «às vezes, ao 2º clique»
 - [Lista escrita à mão ao lado de um predicado = duas respostas](feedback_a_hand_written_list_beside_a_predicate_is_two_answers.md) — quem ENUMERA copia a lista de quem DECIDE; o diálogo oferecia 4 de 11 formatos há meses, e só uma extensão nova gerou report

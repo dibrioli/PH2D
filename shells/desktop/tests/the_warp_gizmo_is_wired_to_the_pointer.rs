@@ -121,3 +121,28 @@ fn paint_and_grab_project_through_the_same_door() {
         );
     }
 }
+
+/// **O AGARRE SÓ VALE SOBRE O CANVAS.**
+///
+/// ⚠️ **O defeito (Enio, 2026-08-23):** *"se colocar transform antes, não é possível
+/// conectar transform em Bezier Warp"*. Os gizmos irmãos consomem pelo HIT-INDEX
+/// (`GizmoTarget::…`), que já sabe das regiões; este faz o seu PRÓPRIO hit-test em
+/// coordenadas de mundo. Sem guarda, um clique **no painel do grafo** era convertido para
+/// o mundo, calhava de cair sobre uma alça, e o `Down` era consumido — o gesto de ligar um
+/// fio nunca começava. *Um consumidor que decide sozinho tem de saber sozinho onde ele
+/// vale.*
+///
+/// A guarda é o `on_canvas` que o próprio arquivo já computa (nenhum painel e nenhum
+/// widget sob o cursor), e não uma nova.
+#[test]
+fn the_grab_only_applies_over_the_canvas() {
+    let s = src("input_dispatch.rs");
+    let at = s.find("self.warp_gizmo_down(").expect("o warp está lá");
+    // A condição do `if` que precede a chamada — 400 chars para trás cobrem-na de sobra.
+    let window = &s[at.saturating_sub(400)..at];
+    assert!(
+        window.contains("&& on_canvas"),
+        "o `down` do warp tem de exigir `on_canvas` — sem isso ele engole cliques do \
+         painel do grafo e o artista não consegue ligar um fio"
+    );
+}

@@ -3581,9 +3581,18 @@ impl App {
         // pelo caminho genérico escreveria um `Transform` de entidade. O método só consome
         // quando há retrato publicado — ou seja com a tool Motion activa e um dos dois nós
         // seleccionado.
+        //
+        // ⚠️ **E ele exige `on_canvas`, ao contrário dos irmãos** — Enio, 2026-08-23:
+        // *"se colocar transform antes, não é possível conectar transform em Bezier
+        // Warp"*. Os gizmos acima consomem pelo HIT-INDEX (`GizmoTarget::…`), que já
+        // sabe das regiões; este faz o seu próprio hit-test em coordenadas de MUNDO, e
+        // sem guarda ele convertia um clique **no painel do grafo** para o mundo, calhava
+        // de cair sobre uma alça, e ENGOLIA o gesto de ligar um fio. *Um consumidor que
+        // decide sozinho tem de saber sozinho onde ele vale.*
         if kind == PointerKind::Down
             && mapped_button == ph2d_host::PointerButton::Primary
             && !menu_open_before
+            && on_canvas
             && self.warp_gizmo_down(self.last_pointer.0, self.last_pointer.1)
         {
             return;

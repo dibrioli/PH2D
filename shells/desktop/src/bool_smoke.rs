@@ -115,9 +115,15 @@ fn announce(app: &mut crate::App) {
     eprintln!("     que foi COMIDO por um Subtract e não desenha nada. ⚠️ E o contrário tem de");
     eprintln!("     valer: clicar DENTRO do buraco não pega nada, porque ali não há tinta.");
     eprintln!("  3c. UM VERBO POR FORMA. Com o grupo em Union, clique UMA das formas do trio (na");
-    eprintln!("     Hierarquia ou no canvas). A seção Boolean mostra a row 'This Shape' com os");
-    eprintln!("     quatro modos. Escolha Subtract: ⚠️ só AQUELA forma passa a furar, e as outras");
-    eprintln!("     continuam a somar. É a frase do pedido: somo com esta, subtraio aquela.");
+    eprintln!(
+        "     Hierarquia ou no canvas). ⚠️ O grupo INTEIRO acende — é a lei do editor, tocar"
+    );
+    eprintln!("     um filho seleciona o grupo. Na seção Boolean aparece uma row com o NOME da");
+    eprintln!(
+        "     forma que você apontou, e os quatro modos. Escolha Subtract: só AQUELA passa a"
+    );
+    eprintln!("     furar, e as outras continuam a somar. É a frase do pedido.");
+    eprintln!("     ⚠️ Se a row não aparecer com um NOME, pare: era esse o defeito de 22/08.");
     eprintln!(
         "  3d. Olhe a HIERARQUIA: cada linha do grupo ganhou um selo — UNI/SUB/INT/EXC — e a"
     );

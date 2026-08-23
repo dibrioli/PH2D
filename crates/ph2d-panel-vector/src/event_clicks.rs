@@ -368,3 +368,33 @@ fn is_prefab_click(id: ph2d_a11y::NodeId) -> bool {
             || (0..ids::MAX_STATE_ROLES).any(|r| ids::vector_state_signal_role_id(i, r) == id)
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// **OS QUATRO CHIPS DO VERBO POR FORMA ATRAVESSAM O BARRAMENTO.**
+    ///
+    /// ⚠️ Um id que este predicado não encaminha **pinta, acende sob o mouse, e o Click morre
+    /// aqui** — o artista clica e nada acontece, com o log a dizer `[hero] unhandled event`. O
+    /// comentário da SIMETRIA acima conta que foi exactamente assim que ela falhou o primeiro
+    /// smoke dela.
+    ///
+    /// Este gate nasceu da caça de 2026-08-22: os quatro chips shiparam com o modelo, o cozimento
+    /// e a triagem gateados, e **zero** gates no caminho do clique. A causa acabou por ser outra
+    /// (o sujeito tinha de ser o primário), mas a metade que faltava era esta — e ela é barata.
+    #[test]
+    fn the_per_shape_boolean_chips_cross_the_bus() {
+        for id in [
+            ids::VECTOR_BOOL_SHAPE_UNION,
+            ids::VECTOR_BOOL_SHAPE_SUBTRACT,
+            ids::VECTOR_BOOL_SHAPE_INTERSECT,
+            ids::VECTOR_BOOL_SHAPE_EXCLUDE,
+        ] {
+            assert!(
+                forwards_plain_click(id),
+                "um chip do verbo por forma nao atravessa: o Click morreria no painel"
+            );
+        }
+    }
+}

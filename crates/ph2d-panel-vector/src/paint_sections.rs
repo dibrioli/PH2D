@@ -379,9 +379,18 @@ impl BodyCtx<'_> {
         // ⚠️ `None` faz a fileira **não existir**, e a regra inteira mora do lado da shell
         // (`vec_bool_shape`) — inclusive as duas recusas que ela carrega: a BASE não tem verbo, e
         // um grupo numa RECEITA não deixa forma nenhuma escolher.
-        if let Some(code) = crate::state::bool_shape_op() {
+        if let Some((code, name)) = crate::state::bool_shape_row() {
+            // ⚠️ **O rótulo NOMEIA a forma de que fala.** Com o grupo inteiro aceso no canvas
+            // (tocar um filho seleciona o grupo — lei do editor), um rótulo genérico não diria de
+            // QUAL das formas ele fala, e o artista escolheria o verbo no escuro. Sem `Name` no
+            // documento cai-se no genérico, que é o melhor que há a dizer.
+            let label = if name.is_empty() {
+                tr("panel.vector.bool.shape").to_string()
+            } else {
+                name
+            };
             y = self.segmented(
-                tr("panel.vector.bool.shape"),
+                &label,
                 &[
                     (
                         ids::VECTOR_BOOL_SHAPE_UNION,

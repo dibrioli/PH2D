@@ -13,15 +13,15 @@
 //! que a shell publica por frame. O painel não alcança o mundo — e não deve: se alcançasse,
 //! haveria duas respostas para *"esta seleção é uma booleana viva?"*.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 
 thread_local! {
     /// O modo dos oito botões. `false` = destrutivo, o comportamento de sempre.
     static LIVE_ON: Cell<bool> = const { Cell::new(false) };
     /// Há um grupo booleano vivo na seleção deste frame?
     static GROUP_SELECTED: Cell<bool> = const { Cell::new(false) };
-    /// O verbo da forma selecionada, quando a pergunta se pode fazer.
-    static SHAPE_OP: Cell<Option<u8>> = const { Cell::new(None) };
+    /// A fileira do verbo por forma: *(verbo aceso, nome da forma)*.
+    static SHAPE_ROW: RefCell<Option<(u8, String)>> = const { RefCell::new(None) };
 }
 
 /// O modo escolhido pelo artista. **`false` por default, de propósito:** ligar a booleana viva
@@ -56,18 +56,20 @@ pub(crate) fn bool_group_selected() -> bool {
 ///
 /// A shell devolve `None` em quatro casos, e cada um é uma decisão:
 ///
-/// - a seleção não é **exactamente uma** forma — o verbo é de uma forma, não de um conjunto;
+/// - não há **primário** na seleção — o verbo é de UMA forma, e o primário é a que o dedo
+///   apontou (tocar um filho seleciona o grupo inteiro, e é por isso que a contagem não serve:
+///   ⚠️ exigi-la tornava a fileira **inalcançável por clique**, que foi o defeito de 22/08);
 /// - a forma não está numa booleana viva;
 /// - ela é a **BASE** — o verbo dela é inerte, e um controlo inerte pintado como vivo é pior que
 ///   controlo nenhum;
 /// - o grupo está numa **RECEITA** (`Trim`/`Crop`/`Merge`/`MinusBack`), que é verbo da pilha
 ///   inteira e ignora os das formas.
-pub fn set_bool_shape_op(op: Option<u8>) {
-    SHAPE_OP.with(|c| c.set(op));
+pub fn set_bool_shape_row(row: Option<(u8, String)>) {
+    SHAPE_ROW.with(|c| *c.borrow_mut() = row);
 }
 
 /// O verbo da forma selecionada — `None` = a fileira não é oferecida.
 #[must_use]
-pub(crate) fn bool_shape_op() -> Option<u8> {
-    SHAPE_OP.with(Cell::get)
+pub(crate) fn bool_shape_row() -> Option<(u8, String)> {
+    SHAPE_ROW.with(|c| c.borrow().clone())
 }

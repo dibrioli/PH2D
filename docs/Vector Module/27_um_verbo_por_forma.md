@@ -127,7 +127,50 @@ Vale mais que os gates, porque se repete:
 que exige um mínimo de testes de facto executados · um **handler de sinal** que restaura. Um
 harness que não prova que rodou gates não mede mutação — mede a própria linha de comando.
 
-## 8. O que mudou, em código
+## 8. ⚠️ O DEFEITO QUE ESCAPOU — e o gate que não existia
+
+**Report (Enio, 2026-08-22):** *"Os botões não funcionaram."*
+
+### 8.1 A causa
+
+Eu escrevi a regra de elegibilidade como ***"exactamente UMA forma selecionada"*** — e **nenhum
+clique deste editor pode satisfazê-la**. Tocar um filho **seleciona o grupo inteiro**; é lei
+deliberada, e está escrita no `input_dispatch`:
+
+> *"Tocar um filho seleciona o GRUPO (a árvore é a Hierarquia)."*
+
+⇒ a fileira **nunca aparecia**. Os quatro chips não "deixaram de responder": eles não estavam na
+tela. ⚠️ *Um controlo que nunca é pintado e um controlo que ignora o clique são indistinguíveis do
+lado de fora* — e foi por isso que o report não bastou para localizar a causa.
+
+### 8.2 A cura, e por que ela já estava lá
+
+O sujeito é o **PRIMÁRIO**, não "a seleção". `set_object_selection` **preserva o primário** quando
+ele está na lista (`ph2d-vec-edit/selection.rs`), então depois do clique `selected()` continua a
+ser *a forma que o dedo apontou*, com os irmãos todos acesos à volta. A porta existia desde sempre;
+eu é que perguntei outra coisa.
+
+E como o grupo inteiro fica aceso no canvas, a fileira **nomeia o próprio sujeito** (o `Name` da
+forma) em vez de dizer um genérico: sem isso o artista escolheria o verbo sem saber de qual das
+formas o painel fala.
+
+### 8.3 A lição, que é maior que o bug
+
+⚠️ **Eu gatei o modelo, o cozimento e a triagem — e ZERO gates no caminho que o clique percorre.**
+É a primeira das quatro causas da `DIRETIVA_IMPLEMENTACAO` (*costura não-testada*), e a razão de ela
+ter passado é estrutural: o mapeamento `id ⟶ código` vivia **dentro do `render_loop`**, que exige
+janela e GPU e portanto não é alcançável por teste nenhum.
+
+A cura da causa (não do sintoma) foi **mudar o código de sítio**: `vec_bool_shape::shape_op_for_id`
+é agora uma porta pura, irmã do `layout_edit_for_id` e do `classify_click`, com gate — e o outro
+lado da costura (o id atravessar o barramento do painel) ganhou o gate dele **dentro da crate onde
+o predicado vive**, e não num teste que precisasse de tornar o predicado público.
+
+⛔ *Uma triagem cuja pré-condição nenhum gesto do produto consegue produzir passa em todos os
+testes de unidade e falha em 100% dos smokes.* O gate que a apanha tem de encenar a seleção que o
+CANVAS de facto produz — não a que o autor da regra imaginou.
+
+## 9. O que mudou, em código
 
 `ph2d_vec_boolean::apply_chain_checked` (e a porta N-ária a delegar nela) · o componente
 `ph2d_ecs::VecBoolOp` (registo 58 → 59, `PROJECT_SCHEMA` 86 → **87**) · o cozimento e o memo do
@@ -151,3 +194,6 @@ passou a **trio**.
 | Apagar o verbo no Ungroup | O selo já o torna legível no instante em que volta a valer; apagar destruiria a escolha do artista | §4.1 |
 | Dois folds separados (uniforme e por-passo) | Divergiriam na regra de preenchimento | §2 |
 | `shutil.copy2` para restaurar mutação | Repõe o mtime e a mutação sobrevive à corrida seguinte | §7.1 |
+| Exigir *"exactamente uma forma selecionada"* | Nenhum clique a satisfaz — tocar um filho seleciona o GRUPO; a fileira nunca aparecia | §8.1 |
+| Rótulo genérico na fileira | Com o grupo todo aceso, não diz de QUAL forma fala | §8.2 |
+| O mapeamento `id -> código` dentro do `render_loop` | Não é alcançável por teste (exige janela e GPU) — foi a causa-raiz de o defeito shipar | §8.3 |

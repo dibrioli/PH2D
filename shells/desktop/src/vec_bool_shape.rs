@@ -124,31 +124,79 @@ pub(crate) fn badges(
         .collect()
 }
 
-/// **O verbo que o painel deve mostrar aceso** — `None` faz a fileira não existir.
+/// **A FILEIRA que o painel deve mostrar** — *(verbo aceso, nome da forma)*. `None` faz a fileira
+/// não existir.
 ///
-/// A regra inteira mora aqui, e é o que o `state::set_bool_shape_op` documenta do outro lado:
-/// exactamente **uma** forma selecionada, operando de uma booleana viva, que **não** é a base e
-/// cujo grupo **não** está numa receita.
+/// # ⚠️ O sujeito é o PRIMÁRIO, nunca "a seleção inteira"
+///
+/// A primeira versão exigia *"exactamente UMA forma selecionada"*, e **nenhum clique deste editor
+/// pode satisfazer isso**: tocar um filho **seleciona o grupo inteiro** — é lei deliberada
+/// (`input_dispatch`: *"Tocar um filho seleciona o GRUPO (a árvore é a Hierarquia)"*). A fileira
+/// nunca aparecia, e foi por isso que os quatro chips «não responderam ao clique»: eles não
+/// estavam na tela.
+///
+/// A porta certa já existia: `set_object_selection` **preserva o primário** quando ele está na
+/// lista (`ph2d-vec-edit/selection.rs`), então depois do clique `selected()` continua a ser *a
+/// forma que o dedo apontou*, com os irmãos todos selecionados à volta.
+///
+/// # E por que ela devolve o NOME
+///
+/// Com o grupo inteiro aceso no canvas, um rótulo genérico não diz de QUAL das formas ele fala — e
+/// o artista escolheria o verbo no escuro. A fileira **nomeia o próprio sujeito**; o selo na linha
+/// da hierarquia confirma. ⚠️ Sem `Name` o nome vem vazio, e o painel cai no rótulo genérico: o
+/// nome é dado do documento, não copy de UI.
 #[must_use]
-pub(crate) fn shape_op_of_selection(
+pub(crate) fn shape_row_of_selection(
     sim: &SimWorld,
     map: &VecEntityMap,
     bool_live: &BoolLive,
     sel: &[VecPathId],
-) -> Option<u8> {
-    // ⚠️ **Exactamente uma.** O verbo é propriedade de UMA forma; oferecido sobre um conjunto, o
-    // chip aceso teria de responder por várias respostas diferentes — e o clique escreveria em
-    // todas sem o artista ter pedido.
-    let [id] = sel else {
+    primary: Option<VecPathId>,
+) -> Option<(u8, String)> {
+    let id = primary?;
+    // ⚠️ O primário tem de estar **na seleção**: ele é pegajoso e sobrevive a uma seleção nova que
+    // não o contenha, e sem esta conferência a fileira falaria de uma forma que já não está em mãos.
+    if !sel.contains(&id) {
         return None;
-    };
-    match role_of(sim, map, bool_live, *id)? {
-        BoolRole::Verb(code) => Some(code),
-        BoolRole::Base | BoolRole::Recipe => None,
     }
+    let BoolRole::Verb(code) = role_of(sim, map, bool_live, id)? else {
+        return None; // a BASE não tem verbo; uma RECEITA é do grupo inteiro
+    };
+    let name = map
+        .get(&id)
+        .and_then(|&bits| sim.world().get::<ph2d_ecs::Name>(Entity::from_bits(bits)))
+        .map_or_else(String::new, |n| n.as_str().to_owned());
+    Some((code, name))
 }
 
-/// Escreve o verbo `code` na forma selecionada. Devolve `true` se alguma coisa mudou.
+/// **O CHIP CLICADO → o código do verbo.** `None` = o id não é um dos quatro.
+///
+/// Irmão do `vec_layout_edit::layout_edit_for_id` e do `contour_live::join_code_of_id`: a shell
+/// tem uma dúzia destas portas, e todas existem pela mesma razão — **um `match` de id enterrado
+/// dentro do `render_loop` não é alcançável por teste nenhum**, e o `render_loop` exige janela e
+/// GPU para correr.
+///
+/// ⚠️ Esta porta nasceu de um defeito: os quatro chips shiparam sem um único gate no caminho
+/// *id ⟶ componente escrito*, e o que faltava (o sujeito ser o primário) só apareceu no smoke do
+/// Enio. O mapeamento estava certo; o que não existia era o sítio onde perguntá-lo.
+///
+/// ⚠️ **A posição no array É o código** (`PathfinderOp` 0..=3), e não uma segunda tabela: a ordem
+/// dos quatro chips é a dos quatro primeiros discriminantes, e uma tabela paralela divergiria dela
+/// no dia em que alguém reordenasse a fileira do painel.
+#[must_use]
+pub(crate) fn shape_op_for_id(id: ph2d_editor::ids::NodeId) -> Option<u8> {
+    [
+        ph2d_editor::ids::VECTOR_BOOL_SHAPE_UNION,
+        ph2d_editor::ids::VECTOR_BOOL_SHAPE_SUBTRACT,
+        ph2d_editor::ids::VECTOR_BOOL_SHAPE_INTERSECT,
+        ph2d_editor::ids::VECTOR_BOOL_SHAPE_EXCLUDE,
+    ]
+    .iter()
+    .position(|chip| *chip == id)
+    .and_then(|i| u8::try_from(i).ok())
+}
+
+/// Escreve o verbo `code` na forma **primária**. Devolve `true` se alguma coisa mudou.
 ///
 /// ⚠️ Ele **repete a triagem** em vez de confiar no que o painel mostrou: entre pintar a fileira e
 /// o clique chegar passa um frame, e nele a seleção pode ter mudado. Escrever sem reconferir é
@@ -158,15 +206,13 @@ pub(crate) fn set_selected_shape_op(
     map: &VecEntityMap,
     bool_live: &BoolLive,
     sel: &[VecPathId],
+    primary: Option<VecPathId>,
     code: u8,
 ) -> bool {
-    if shape_op_of_selection(sim, map, bool_live, sel).is_none() {
+    if shape_row_of_selection(sim, map, bool_live, sel, primary).is_none() {
         return false;
     }
-    let [id] = sel else {
-        return false;
-    };
-    let Some(&bits) = map.get(id) else {
+    let Some(&bits) = primary.and_then(|id| map.get(&id)) else {
         return false;
     };
     sim.world_mut()

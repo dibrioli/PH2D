@@ -330,9 +330,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ([ADR-0128](docs/architecture/decisions/0128-vector-blend-object-live-virtual-steps-editable-spine.md)); largura viva ([ADR-0148](docs/architecture/decisions/0148-vector-live-width-profile-is-an-ecs-component-and-one-baker-serves-preview-and-apply.md)); **auto layout**
   via `taffy` atrás de uma crate-folha ([ADR-0153](docs/architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md)).
   Mais guias/régua, simetria como modo, **booleana viva com UM VERBO POR FORMA** (a receita lê-se na
-  hierarquia — [27](docs/Vector%20Module/27_um_verbo_por_forma.md); ⚠️ **os quatro chips não respondem ao
-  clique**, defeito ABERTO e por diagnosticar, com os suspeitos já reduzidos no
-  [handoff §6](docs/Vector%20Module/handoffs/HANDOFF_line_Vector_2026-08-22.md)), moldura, **tokens no documento**, **estados de UI + Smart
+  hierarquia — [27](docs/Vector%20Module/27_um_verbo_por_forma.md); ✅ **os quatro chips «não
+  respondiam» porque a fileira NUNCA era pintada** — a regra pedia *"exactamente uma forma
+  selecionada"* e tocar um filho seleciona o GRUPO: o sujeito é o **primário**, e a fileira agora
+  NOMEIA a forma de que fala. ⚠️ A causa-raiz de escapar foi **zero gates na costura do clique**
+  ([27 §8](docs/Vector%20Module/27_um_verbo_por_forma.md))), moldura, **tokens no documento**, **estados de UI + Smart
   Animate**, e a **árvore autorada como painel vivo** (o app escreve o código do painel).
   ⚠️ **A lei do ADR-0153:** *o passe publica **onde** as coisas ficam; ele não escreve **onde** elas estão* — nada no auto
   layout toca `Transform`, senão cada quadro de um resize vira um passo de undo.

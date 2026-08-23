@@ -39,8 +39,8 @@ pub use cut::set_cut_line_exists;
 /// seleção (fato da cena). Irmão dos dois acima, e as duas metades têm donos diferentes.
 #[path = "state_bool.rs"]
 mod bool_state;
-pub(crate) use bool_state::{bool_group_selected, bool_shape_op};
-pub use bool_state::{bool_live_on, set_bool_group_selected, set_bool_live_on, set_bool_shape_op};
+pub(crate) use bool_state::{bool_group_selected, bool_shape_row};
+pub use bool_state::{bool_live_on, set_bool_group_selected, set_bool_live_on, set_bool_shape_row};
 
 /// **O RECORTE e a MOLDURA da seleção** (plano UI/UX W0; separados em 2026-08-21) — o
 /// `Option<bool>` responde *"a seleção oferece o recorte, e ele está ligado?"* para qualquer forma

@@ -3373,21 +3373,13 @@ impl crate::App {
                                 ph2d_panel_vector::state::set_bool_live_on(
                                     *id == ph2d_editor::ids::VECTOR_BOOL_LIVE_ON,
                                 );
-                            } else if let Some(code) = [
-                                ph2d_editor::ids::VECTOR_BOOL_SHAPE_UNION,
-                                ph2d_editor::ids::VECTOR_BOOL_SHAPE_SUBTRACT,
-                                ph2d_editor::ids::VECTOR_BOOL_SHAPE_INTERSECT,
-                                ph2d_editor::ids::VECTOR_BOOL_SHAPE_EXCLUDE,
-                            ]
-                            .iter()
-                            .position(|chip| chip == id)
-                            {
-                                // **O VERBO DESTA FORMA.** ⚠️ A posicao no array E' o codigo do
-                                // `PathfinderOp` (0..=3), e nao um segundo mapa: a ordem dos
-                                // quatro chips e' a mesma dos quatro primeiros discriminantes, e
-                                // uma tabela paralela divergiria dela no dia em que alguem
-                                // reordenasse a fileira do painel.
-                                pending_bool_shape_op = u8::try_from(code).ok();
+                            } else if let Some(code) = crate::vec_bool_shape::shape_op_for_id(*id) {
+                                // **O VERBO DESTA FORMA.** ⚠️ O mapeamento saiu daqui para uma
+                                // porta testavel (`vec_bool_shape::shape_op_for_id`): um `match`
+                                // de id enterrado neste arquivo nao e' alcancavel por teste
+                                // nenhum, e foi essa a causa-raiz de os quatro chips shiparem
+                                // sem um unico gate no caminho `id -> componente escrito`.
+                                pending_bool_shape_op = Some(code);
                             } else if *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_OFF
                                 || *id == ph2d_editor::ids::VECTOR_FRAME_PANEL_ON
                             {
@@ -8413,21 +8405,28 @@ impl crate::App {
                 // ⚠️ O escritor **reconfere** a triagem em vez de confiar no que o painel pintou:
                 // entre pintar a fileira e o clique chegar passa um frame, e nele a seleção pode
                 // ter mudado.
+                // ⚠️ O sujeito é o **PRIMÁRIO**, e não «a seleção». Tocar um filho seleciona o
+                // GRUPO inteiro (`input_dispatch`), então uma regra de contagem tornava esta
+                // fileira inalcançável por clique — foi o defeito de 22/08. O primário sobrevive
+                // à expansão (`set_object_selection` preserva-o) e é a forma que o dedo apontou.
+                let primary = self.vec_pen.selected();
                 if let Some(code) = pending_bool_shape_op {
                     crate::vec_bool_shape::set_selected_shape_op(
                         sim,
                         &self.vec_entities,
                         &self.bool_live,
                         &sel,
+                        primary,
                         code,
                     );
                 }
-                ph2d_panel_vector::state::set_bool_shape_op(
-                    crate::vec_bool_shape::shape_op_of_selection(
+                ph2d_panel_vector::state::set_bool_shape_row(
+                    crate::vec_bool_shape::shape_row_of_selection(
                         sim,
                         &self.vec_entities,
                         &self.bool_live,
                         &sel,
+                        primary,
                     ),
                 );
                 if pending_bool_apply

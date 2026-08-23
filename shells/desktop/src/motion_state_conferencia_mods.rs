@@ -82,6 +82,12 @@ pub(crate) mod conferencia_demos_taper;
 #[path = "motion_state_conferencia_demos_cursor.rs"]
 pub(crate) mod conferencia_demos_cursor;
 
+/// A cena do QUE O EFEITO NAO SABIA FAZER (`=84`) — as curas NOVAS da folha 11: o modo da
+/// sombra e a lente do rgb_split. ⚠️ Irmã da `=70` e não a mesma cena: aquela mostra a família
+/// `fx.*` inteira, esta mostra o par ANTES/DEPOIS de dois controles que não existiam.
+#[path = "motion_state_conferencia_demos_fx_modes.rs"]
+pub(crate) mod conferencia_demos_fx_modes;
+
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.
 #[path = "motion_state_conferencia_demos_campo.rs"]

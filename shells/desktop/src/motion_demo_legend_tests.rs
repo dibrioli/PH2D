@@ -38,6 +38,10 @@ fn scenes() -> Vec<(&'static str, Vec<Caption>)> {
             "=83 o campo que era um número",
             crate::motion_state::conferencia_demos_campo::captions(),
         ),
+        (
+            "=84 o que o efeito não sabia fazer",
+            crate::motion_state::conferencia_demos_fx_modes::captions(),
+        ),
     ]
 }
 
@@ -45,7 +49,7 @@ fn scenes() -> Vec<(&'static str, Vec<Caption>)> {
 #[test]
 fn the_legend_list_is_not_empty_and_names_real_scenes() {
     let all = scenes();
-    assert!(all.len() >= 2, "duas cenas ja' publicam legenda");
+    assert!(all.len() >= 3, "tres cenas ja' publicam legenda");
     for (name, caps) in &all {
         assert!(!caps.is_empty(), "{name} publica pelo menos uma ficha");
     }

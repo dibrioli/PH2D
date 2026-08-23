@@ -141,7 +141,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 ///
 /// ⚠️ **Ele mora no BLEND STATE do pipeline, não no shader**, e é essa a razão de a célula dizer
 /// *"nenhum nó o alcança"*: `Screen` é exactamente `src·(1−dst) + dst·1`, ou seja um par de
-/// factores que a máquina de mistura já sabe fazer. Fazê-lo no shader exigiria LER o alvo, que
+/// fatores que a máquina de mistura já sabe fazer. Fazê-lo no shader exigiria LER o alvo, que
 /// um passe de fullscreen não pode.
 pub const OPERATION: &str = "operation";
 

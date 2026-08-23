@@ -579,3 +579,57 @@ motivo escrito ao lado.
 **6 mutações**, todas sangraram. ⚠️ **Resíduo por gatear, declarado:** o seletor nativo (`rfd`) abre
 uma janela modal do sistema e as três linhas que o chamam — foi por isso que a política saiu para
 funções puras, que é onde um erro custa **trabalho perdido**.
+
+## §16 — Adenda: **os SINAIS da §11** (spec §8.10) — o último buraco funcional da seção
+
+⚠️ O `AnimOutcome` existia desde que a lei pura nasceu, e **ninguém o publicava** — *autoria sem
+consumidor*, a dívida que este módulo passou o dia a nomear. Hoje a §11 é o **terceiro produtor** do
+outbox do `ph2d-runtime`, ao lado da timeline e da física.
+
+### ⚠️ Pelo OUTBOX, e não pelo ActionBus que a spec desenha
+
+A §8.10 pede quatro `EditorAction`. **Ela é anterior ao ADR-0143**, que é onde este app resolveu a
+mesma pergunta: o produtor **publica** e cada consumidor lê com o próprio cursor. Um sinal no bus
+faria o motor de animação **chamar** o editor — o oposto do ADR-0075.
+
+### O que shipa, e as duas recusas MEDIDAS
+
+| a spec pede | o que existe |
+|---|---|
+| `SpriteAnimationFinished` | ✅ `AnimationTag::signal_on_finish` — nome **autorado**, vazio = calada |
+| `SpriteAnimationLooped { repeat_count }` | ✅ `signal_on_loop`, com a contagem em `SignalOrigin::Animation::cycles` |
+| `SpriteFrameChanged` | ⛔ **fora por FREQUÊNCIA** — ~12×/s **por sprite**, e quem consome um frame já lê o `Sprite::frame` direto. A própria §8.10 põe os eventos por-frame no editor de timeline futuro |
+| `SpriteAnimationChanged` | ⛔ **fora por NATUREZA** — trocar a animação é um clique no Inspector, não um facto da cena. Publicá-lo faria um gesto de painel parecer gameplay |
+
+### As quatro leis, cada uma com gate e mutação
+
+1. ⚠️ **Dois nomes AUTORADOS, e não um mais uma fase** — a lei que a física já escreveu para os
+   contatos: *acabar* e *dar a volta* distinguem-se por serem **nomes diferentes, autorados em dois
+   sítios**. Um consumidor casa numa string e nunca pergunta a origem.
+2. ⚠️ **Vazio = calada, e é o default.** A maioria das animações não tem nada a dizer; uma que grita
+   por omissão enche o canal de eventos que ninguém pediu.
+3. ⚠️ **Um tique atrasado colapsa num sinal SÓ, com a contagem dentro** — a lei que o
+   `SignalOrigin::Motion` já escreveu (*o colapso é lossy e o número é o que ele descarta*). Uma
+   janela parada fecha dez ciclos de uma vez, e dez passos que ninguém deu é ruído.
+4. ⚠️ **A pré-visualização é MUDA.** Uma folha em pintura toca sobre uma **cópia** do animador —
+   ela existe para mostrar o movimento, não para fazer acontecer coisas. Sem isto, **pegar no
+   pincel tocaria um som**.
+
+### O que a wave obrigou a arrumar
+
+* **`PROJECT_SCHEMA` 92 → 93** (a tripla junto): dois campos apendados na `AnimationTag`, e o
+  postcard é posicional.
+* ⭐ **O gate do HR-15 apanhou uma isenção silenciosa que eu ia deixar passar.** A 1.ª versão
+  pintava os três campos de texto por uma função só que recebia o *placeholder* num argumento — e a
+  contagem do scanner caiu de **1 para 0**, porque ele procura `.placeholder("literal")`. Era a rota
+  que a `physics_rows.rs` já tinha tomado (a nota dela na baseline di-lo). Aqui o `TextInput` chega
+  **pronto do chamador**, os três literais ficam à vista, e a entrada subiu para 3. *Um helper que
+  esconde literais do scanner é uma isenção silenciosa da regra que ele scanneia.*
+* O gate de alcance da §11 (`every_edit_the_model_declares_is_reachable_by_a_gesture`) forçou a
+  provar que os dois campos novos são alcançáveis **por um `TextChanged` real** — e foi ele que
+  tornou óbvio que os três campos de texto têm de partilhar **uma** porta: um `if` por campo é como
+  o terceiro acaba a chamar o `Rename` do primeiro.
+
+**6 gates novos + 2 alargados**, **4 mutações**, todas sangraram.
+**Smoke:** `PH2D_ANIM_SMOKE=1` — a `walk` (que toca por omissão) é **calada**, a `idle` grita a cada
+volta, e a `attack` anuncia o fim uma vez. `PH2D_SIGNAL_LOG=1` imprime a origem e a contagem.

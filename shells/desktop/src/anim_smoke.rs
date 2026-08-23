@@ -154,10 +154,13 @@ pub(crate) fn spawn_if_enabled(
 
     // As três animações, pela porta que impõe os caps — nunca `lib.0.push`.
     let mut lib = SpriteAnimations::new();
+    // ⚠️ **A `idle` GRITA a cada volta** (spec §8.10): é o que mostra a contagem — um tique que
+    // apanha atraso fecha vários ciclos e sai **um** sinal, com quantos.
     lib.insert(AnimationTag {
         frame_ms: 140,
         direction: AnimDirection::PingPong,
         hold_ms: 300,
+        signal_on_loop: "idle_cycle".into(),
         ..AnimationTag::new("idle", 0, 3)
     })
     .ok()?;
@@ -166,9 +169,13 @@ pub(crate) fn spawn_if_enabled(
         ..AnimationTag::new("walk", 0, CELLS - 1)
     })
     .ok()?;
+    // ⚠️ **A `attack` grita ao ACABAR, e a `walk` é CALADA** — as três juntas são a demonstração:
+    // a que toca por omissão não diz nada (o default é o silêncio), a de uma volta anuncia o fim
+    // uma vez, e a em ciclo anuncia cada volta.
     lib.insert(AnimationTag {
         frame_ms: 110,
         repeat: Some(1),
+        signal_on_finish: "attack_done".into(),
         ..AnimationTag::new("attack", 4, CELLS - 1)
     })
     .ok()?;

@@ -1564,8 +1564,9 @@ impl crate::App {
                     kind: ph2d_editor::ViewFocusKind::Selected,
                 });
             toasts.push(Toast::success(
-                "Animation smoke: open the Animation section — it is playing walk. Click attack: \
-                 it plays once and stays on the last cell"
+                "Animation smoke: open the Animation section — it is playing walk (silent). \
+                 Click idle: a signal per lap. Click attack: it plays once, stays on the last \
+                 cell, and announces the end"
                     .to_string(),
             ));
             self.title_dirty = true;
@@ -1916,7 +1917,12 @@ impl crate::App {
         // fechar»). Era falso, e foi uma mutação que o disse: a `ph2d_ecs::advance` tem laço de
         // recuperação próprio e fecha exatamente os mesmos ciclos. Gate:
         // `catching_up_in_one_call_is_the_same_as_catching_up_step_by_step`.
-        sprite_anim_tick::tick_sprite_animations(
+        // **OS SINAIS DA §11** (spec §8.10) saem daqui e são publicados ao lado dos da física, no
+        // MESMO outbox — ver o produtor 2, abaixo. ⚠️ Não se publica aqui: o tique corre **antes**
+        // do dreno da timeline, e um sinal publicado antes de o quadro virar chegaria ao consumidor
+        // um quadro atrasado. Um atraso de um quadro é invisível num toast e deixa de o ser no dia
+        // em que o consumidor for SOM.
+        let anim_signals = sprite_anim_tick::tick_sprite_animations(
             sim,
             report.ticks,
             self.fixed_step.fixed_dt(),
@@ -2466,6 +2472,16 @@ impl crate::App {
         // da física, então ler os sinais de física ali entregaria os do quadro
         // ANTERIOR. Um atraso de um quadro é invisível num toast e deixa de ser
         // invisível no dia em que o consumidor for som.
+        // **E A §11 ANIMATION publica no MESMO outbox** (spec §8.10). O tique produziu os fatos
+        // lá em cima; aqui eles viram eventos, na janela certa — depois do virar do quadro e antes
+        // do dreno.
+        for sig in anim_signals {
+            self.signals.publish(ph2d_runtime::Signal::from_animation(
+                &sig.name,
+                sig.entity.to_bits(),
+                sig.cycles,
+            ));
+        }
         for sig in physics.signal_events(sim) {
             self.signals.publish(ph2d_runtime::Signal::from_contact(
                 &sig.name,
@@ -2525,6 +2541,12 @@ impl crate::App {
                         eprintln!(
                             "[signal] {} <- grafo motion, tique {tick}, {rows} linha(s)",
                             sig.name
+                        );
+                    }
+                    ph2d_runtime::SignalOrigin::Animation { source, cycles } => {
+                        eprintln!(
+                            "[signal] {} <- animacao da sprite {}, {cycles} ciclo(s)",
+                            sig.name, source.0
                         );
                     }
                 }

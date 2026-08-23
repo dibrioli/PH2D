@@ -38,6 +38,9 @@ impl Host {
                 SignalOrigin::Motion { tick, rows } => {
                     format!("{} @tick {tick} x{rows}", sig.name)
                 }
+                SignalOrigin::Animation { source, cycles } => {
+                    format!("{} anim {} x{cycles}", sig.name, source.0)
+                }
             });
         }
     }

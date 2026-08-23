@@ -123,6 +123,14 @@ pub const INSP_ANIM_DELAY_MS: NodeId = hash_node_id("insp_anim_delay_ms");
 /// Quantos ciclos tocar. `0` = para sempre — ver o rótulo do campo.
 pub const INSP_ANIM_REPEAT: NodeId = hash_node_id("insp_anim_repeat");
 
+/// **O nome do sinal que esta animação grita ao ACABAR** (spec §8.10). Vazio = calada.
+pub const INSP_ANIM_SIGNAL_FINISH: NodeId = hash_node_id("insp_anim_signal_finish");
+/// **O nome do sinal que ela grita ao fechar um CICLO.** Vazio = calada.
+///
+/// ⚠️ Dois campos e não um mais uma fase: acabar e dar a volta distinguem-se por serem **nomes
+/// diferentes** — é a lei que a física já escreveu para os contatos.
+pub const INSP_ANIM_SIGNAL_LOOP: NodeId = hash_node_id("insp_anim_signal_loop");
+
 /// A direção da animação selecionada — a ordem é a de `ph2d_ecs::AnimDirection::ALL`.
 pub const INSP_ANIM_DIR: [NodeId; 4] = [
     hash_node_id("insp_anim_dir_fwd"),

@@ -120,11 +120,22 @@ pub(crate) fn apply_anim_event(
     }
 
     if let WidgetEvent::TextChanged(id) = ev
-        && id == ids::INSP_ANIM_NAME
         && !info.rows.is_empty()
     {
         let text = host.store().text(id).unwrap_or("").to_string();
-        push(host, info.entity_bits, AnimFieldEdit::Rename(sel_u8, text));
+        // ⚠️ **Os três campos de texto por uma porta só.** Um `if` por campo é como o terceiro
+        // acaba a chamar o `Rename` do primeiro — e renomear uma animação por escrever um nome de
+        // sinal é o defeito que não se vê até o projeto reabrir.
+        let edit = if id == ids::INSP_ANIM_NAME {
+            AnimFieldEdit::Rename(sel_u8, text)
+        } else if id == ids::INSP_ANIM_SIGNAL_FINISH {
+            AnimFieldEdit::SignalOnFinish(sel_u8, text)
+        } else if id == ids::INSP_ANIM_SIGNAL_LOOP {
+            AnimFieldEdit::SignalOnLoop(sel_u8, text)
+        } else {
+            return false;
+        };
+        push(host, info.entity_bits, edit);
         return true;
     }
 

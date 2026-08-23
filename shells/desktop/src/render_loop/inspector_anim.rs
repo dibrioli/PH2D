@@ -140,6 +140,8 @@ pub(super) fn build_anim_info(
                     repeat: t.repeat.unwrap_or(0),
                     hold_ms: t.hold_ms,
                     repeat_delay_ms: t.repeat_delay_ms,
+                    signal_on_finish: t.signal_on_finish.clone(),
+                    signal_on_loop: t.signal_on_loop.clone(),
                 })
                 .collect()
         })
@@ -338,7 +340,9 @@ pub(super) fn apply_anim_edit(
                 | AnimFieldEdit::HoldMs(i, _)
                 | AnimFieldEdit::DelayMs(i, _)
                 | AnimFieldEdit::Repeat(i, _)
-                | AnimFieldEdit::Direction(i, _) => usize::from(*i),
+                | AnimFieldEdit::Direction(i, _)
+                | AnimFieldEdit::SignalOnFinish(i, _)
+                | AnimFieldEdit::SignalOnLoop(i, _) => usize::from(*i),
                 // Tratados acima; o braço existe para o `match` não precisar de curinga, que
                 // engoliria em silêncio a próxima variante.
                 _ => return None,
@@ -365,6 +369,11 @@ fn write_tag(t: &mut AnimationTag, edit: &AnimFieldEdit) {
         // `0` no campo = repetir para sempre. O rótulo do campo di-lo.
         AnimFieldEdit::Repeat(_, v) => t.repeat = (*v > 0).then_some(*v),
         AnimFieldEdit::Direction(_, tag) => t.direction = AnimDirection::from_tag(*tag),
+        // ⚠️ **APARADO e CAPADO na porta**, e o cap é o mesmo do nome de uma tag: um nome de sinal
+        // vem do teclado, viaja num componente registado e entra no ficheiro do projeto. Espaço à
+        // volta é invisível no campo e faz o contrato **não casar** do outro lado.
+        AnimFieldEdit::SignalOnFinish(_, v) => t.signal_on_finish = clean_signal_name(v),
+        AnimFieldEdit::SignalOnLoop(_, v) => t.signal_on_loop = clean_signal_name(v),
         _ => {}
     }
 }
@@ -419,3 +428,26 @@ fn describe(e: ph2d_ecs::AnimTagError) -> String {
 #[cfg(test)]
 #[path = "inspector_anim_tests.rs"]
 mod tests;
+
+/// **O nome de um sinal, como ele fica guardado.** Aparado e capado no mesmo teto do nome de uma
+/// tag (`ph2d_ecs::ANIM_NAME_MAX_BYTES`).
+///
+/// ⚠️ **Aparar não é higiene:** o contrato de um sinal é a **igualdade de string** (ADR-0143), e
+/// um espaço à direita é invisível no campo e faz o consumidor não casar — o pior tipo de defeito,
+/// porque tudo parece certo dos dois lados.
+///
+/// ⚠️ **O corte é por BYTES e respeita o caractere**: `String::truncate` entra em pânico a meio de
+/// um multibyte, e um nome com acento é normal.
+fn clean_signal_name(raw: &str) -> String {
+    let t = raw.trim();
+    match t.char_indices().nth_back(0) {
+        _ if t.len() <= ph2d_ecs::ANIM_NAME_MAX_BYTES => t.to_owned(),
+        _ => {
+            let mut end = ph2d_ecs::ANIM_NAME_MAX_BYTES;
+            while end > 0 && !t.is_char_boundary(end) {
+                end -= 1;
+            }
+            t[..end].to_owned()
+        }
+    }
+}

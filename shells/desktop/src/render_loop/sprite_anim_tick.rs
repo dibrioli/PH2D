@@ -20,6 +20,19 @@
 //! [`ph2d_ecs::sprite_anim`].
 
 use ph2d_ecs::{SimWorld, SpriteAnimations, SpriteAnimator};
+
+/// **Um sinal que uma animação produziu neste quadro** — o que a shell publica no outbox.
+///
+/// ⚠️ Um tipo do SHELL e não do `ph2d-ecs`: a lei pura não conhece o `ph2d-runtime`, e não pode —
+/// ela é o que o replay reproduz, e o outbox é o que o app faz com isso. O tique devolve fatos; o
+/// chamador é que os transforma em eventos.
+pub(crate) struct AnimSignal {
+    pub(crate) entity: ph2d_ecs::Entity,
+    /// O nome AUTORADO na tag. Vazio nunca chega aqui — uma animação calada não produz sinal.
+    pub(crate) name: String,
+    /// Quantos ciclos fecharam neste tique (≥ 1).
+    pub(crate) cycles: u32,
+}
 use ph2d_render::Sprite;
 
 /// Quantos microssegundos vale um passo fixo. Convertido **uma vez**, a partir de uma constante.
@@ -53,13 +66,14 @@ pub(crate) fn tick_sprite_animations(
     fixed_dt: f64,
     tool_preview_bits: &[Option<u64>],
     drive: &mut crate::preview_drive::PreviewDrive,
-) {
+) -> Vec<AnimSignal> {
+    let mut out = Vec::new();
     if ticks == 0 {
-        return;
+        return out;
     }
     let dt = step_ticks(fixed_dt);
     if dt == 0 {
-        return;
+        return out;
     }
     let world = sim.world_mut();
     let mut q = world.query::<(
@@ -118,7 +132,7 @@ pub(crate) fn tick_sprite_animations(
             repeat_count: animator.repeat_count,
             frame,
         };
-        ph2d_ecs::advance(&mut run, tag, &mut frame, cells, dt * u64::from(ticks));
+        let outcome = ph2d_ecs::advance(&mut run, tag, &mut frame, cells, dt * u64::from(ticks));
         if preview_only {
             animator.elapsed_ticks = run.elapsed_ticks;
             animator.pingpong_reverse = run.pingpong_reverse;
@@ -146,7 +160,28 @@ pub(crate) fn tick_sprite_animations(
         if before != after {
             drive.driven(entity, before, after);
         }
+        // **OS SINAIS** (spec §8.10). ⚠️ **A pré-visualização é MUDA**: uma folha em pintura corre
+        // sobre uma cópia do animador, e ela existe para mostrar o movimento — não para fazer
+        // acontecer coisas na cena. Publicar dali faria um som tocar porque alguém pegou no
+        // pincel.
+        if !preview_only {
+            if outcome.looped > 0 && !tag.signal_on_loop.is_empty() {
+                out.push(AnimSignal {
+                    entity,
+                    name: tag.signal_on_loop.clone(),
+                    cycles: outcome.looped,
+                });
+            }
+            if outcome.finished && !tag.signal_on_finish.is_empty() {
+                out.push(AnimSignal {
+                    entity,
+                    name: tag.signal_on_finish.clone(),
+                    cycles: outcome.looped.max(1),
+                });
+            }
+        }
     }
+    out
 }
 
 /// **O `autoplay` a fazer o que promete**, no único momento em que ele tem significado no editor:
@@ -167,3 +202,7 @@ pub(crate) fn start_autoplay_animations(sim: &mut SimWorld) {
         animator.rewind(tag.as_ref());
     }
 }
+
+#[cfg(test)]
+#[path = "sprite_anim_signal_tests.rs"]
+mod signal_tests;

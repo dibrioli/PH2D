@@ -30,6 +30,10 @@ pub struct InspectorAnimRow {
     pub repeat: u32,
     pub hold_ms: u32,
     pub repeat_delay_ms: u32,
+    /// O nome do sinal ao ACABAR (spec §8.10). Vazio = calada.
+    pub signal_on_finish: String,
+    /// O nome do sinal ao fechar um CICLO. Vazio = calada.
+    pub signal_on_loop: String,
 }
 
 impl InspectorAnimRow {
@@ -190,6 +194,10 @@ pub enum AnimFieldEdit {
     Repeat(u8, u32),
     /// `(animação, posição em `AnimDirection::ALL`)`.
     Direction(u8, u8),
+    /// `(animação, nome do sinal ao ACABAR)` — vazio cala a animação.
+    SignalOnFinish(u8, String),
+    /// `(animação, nome do sinal ao fechar um CICLO)` — vazio cala a animação.
+    SignalOnLoop(u8, String),
 
     /// Anexa o TOCADOR a esta sprite.
     AddPlayer,
@@ -235,6 +243,8 @@ mod tests {
             repeat: 0,
             hold_ms: 0,
             repeat_delay_ms: 0,
+            signal_on_finish: String::new(),
+            signal_on_loop: String::new(),
         }
     }
 

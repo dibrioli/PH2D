@@ -360,8 +360,42 @@ Zero asset novo, zero pixels duplicados, e a persistência vem do registro de co
 | `in_hold_phase: bool` | ⛔ **dobrado na duração** do último frame — mesmo resultado observável, menos um estado a dessincronizar |
 | tags ≤ **256** | ⚠️ **64** — ver abaixo |
 | duração por-FRAME | ⛔ ver abaixo |
-| signals no ActionBus (§8.10) | ⚠️ `AnimOutcome` existe e é devolvido pela lei; **ninguém o publica ainda** |
+| signals no ActionBus (§8.10) | ✅ **existem** desde 2026-08-23 — mas no **outbox** (`ph2d-runtime`), não no ActionBus; ver abaixo |
 | Aseprite import (§8.12) | ✅ **existe** desde 2026-08-23 — `ph2d-aseprite` + `ase_import.rs` |
+
+## ✅ Os SINAIS (§8.10) existem — e saem pelo OUTBOX, não pelo ActionBus
+
+A spec desenha quatro `EditorAction`. ⚠️ **Ela é anterior ao `ph2d-runtime`**, que é onde este app
+resolveu a mesma pergunta desde então: o produtor **publica** e cada consumidor lê com o próprio
+cursor ([ADR-0143](../architecture/decisions/0143-timeline-signals-a-marker-emits-a-decoupled-event-not-a-call.md)
++ ADR-0075). Um sinal no ActionBus faria o motor de animação **chamar** o editor, que é o oposto do
+norte. A timeline e a física já publicam ali; a §11 passou a ser o terceiro produtor.
+
+**O que shipa, e o que ficou de fora:**
+
+| a spec pede | o que existe |
+|---|---|
+| `SpriteAnimationFinished` | ✅ `AnimationTag::signal_on_finish` — um nome **autorado**, vazio = calada |
+| `SpriteAnimationLooped { repeat_count }` | ✅ `signal_on_loop`, e a contagem viaja em `SignalOrigin::Animation::cycles` |
+| `SpriteFrameChanged { old, new }` | ⛔ **fora, por FREQUÊNCIA**: ele dispara ~12×/s **por sprite**, e o que consome um frame já lê o `Sprite::frame` direto. A própria §8.10 põe os eventos por-frame no editor de timeline futuro |
+| `SpriteAnimationChanged { old, new }` | ⛔ **fora, por NATUREZA**: trocar a animação é um gesto do artista no Inspector, não um facto da cena. Publicá-lo faria um clique no painel parecer gameplay |
+
+⚠️ **Dois nomes AUTORADOS e não um mais uma fase** — é a lei que a física já escreveu para os
+contatos (`SignalOrigin::Contact`): *acabar* e *dar a volta* distinguem-se por serem **nomes
+diferentes, autorados em dois sítios**. Um consumidor casa numa string e nunca precisa perguntar a
+origem.
+
+⚠️ **Vazio = calada, e é o default.** A maioria das animações não tem nada a dizer; uma que grita
+por omissão enche o canal de eventos que ninguém pediu — e o consumidor não teria como distinguir
+os que importam.
+
+⚠️ **Um tique atrasado colapsa num sinal só, com a contagem dentro** (a lei que o
+`SignalOrigin::Motion` já escreveu: *o colapso é lossy e o número é o que ele descarta*). Uma janela
+que esteve parada fecharia dez ciclos de uma vez, e dez passos que ninguém deu é ruído.
+
+⚠️ **A pré-visualização é MUDA:** uma folha em pintura toca sobre uma cópia do animador, e ela
+existe para mostrar o movimento — não para fazer acontecer coisas na cena. Sem esta metade, pegar
+no pincel tocaria um som.
 
 ## ⏳ Duração por-FRAME: a recusa foi REABERTA no mesmo dia, e agora tem quem a produza
 

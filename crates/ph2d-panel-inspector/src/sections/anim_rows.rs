@@ -190,32 +190,18 @@ fn editor(
     row: &ph2d_editor_core::screens::hero::InspectorAnimRow,
 ) -> f32 {
     let mut cur_y = y;
-    // Nome.
-    let host = Rect::new(x, cur_y, w, ROW_H_PX);
-    hit_index.register(ids::INSP_ANIM_NAME, host);
-    let (state, text, caret, sel_anchor) = match store.get(ids::INSP_ANIM_NAME) {
-        Some(InteractiveState::TextInput {
-            state,
-            text,
-            caret,
-            selection_anchor,
-        }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
-        _ => (TextInputState::Normal, None, 0, None),
-    };
-    let input = TextInput::new(ids::INSP_ANIM_NAME, "")
-        .placeholder("animation_name\u{2026}")
-        .visual((state, store.hover_live(ids::INSP_ANIM_NAME)));
-    paint_text_input_with_buffer(
-        &input,
-        text,
-        Some(caret),
-        sel_anchor,
-        host,
+    cur_y = text_row(
         scene,
         text_system,
         theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        ids::INSP_ANIM_NAME,
+        TextInput::new(ids::INSP_ANIM_NAME, "").placeholder("animation_name\u{2026}"),
     );
-    cur_y += ROW_H_PX + Spacing::Sm.px();
 
     cur_y = super::anchors::field_row(
         scene,
@@ -295,5 +281,95 @@ fn editor(
             theme,
         );
     }
-    cur_y + ROW_H_PX + Spacing::Sm.px()
+    cur_y += ROW_H_PX + Spacing::Sm.px();
+
+    // **OS SINAIS** (spec §8.10) — no FIM, e depois da direção, porque eles são o que a animação
+    // diz para FORA. Tudo acima descreve o que ela faz; isto descreve o que ela anuncia.
+    //
+    // ⚠️ **Dois campos e não um mais uma fase**: acabar e dar a volta distinguem-se por serem
+    // nomes diferentes — a lei que a física já escreveu para os contatos. Vazio = calada.
+    paint_text(
+        text_system,
+        scene,
+        "Signals (empty = silent)",
+        x,
+        cur_y,
+        font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    cur_y += font + Spacing::Xs.px();
+    cur_y = text_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        ids::INSP_ANIM_SIGNAL_FINISH,
+        TextInput::new(ids::INSP_ANIM_SIGNAL_FINISH, "").placeholder("on finish\u{2026}"),
+    );
+    text_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        ids::INSP_ANIM_SIGNAL_LOOP,
+        TextInput::new(ids::INSP_ANIM_SIGNAL_LOOP, "").placeholder("on loop\u{2026}"),
+    )
+}
+
+/// **Uma linha de texto da §11**, pintada do `WidgetStore` — o nome da animação e os dois nomes de
+/// sinal são a MESMA coisa vista de três sítios.
+///
+/// ⚠️ Um helper e não três blocos iguais: o nome já vivia inline aqui, e copiá-lo duas vezes era a
+/// forma de o *placeholder*, o `hover_live` ou o caret divergirem entre campos que o artista lê
+/// como irmãos.
+///
+/// ⚠️ **O `TextInput` chega PRONTO do chamador, e o `placeholder` não é um parâmetro `&str`.** A
+/// primeira versão recebia a string — e o gate do HR-15 reprovou: ele conta `.placeholder("…")` no
+/// código de widget, e passar a string por um argumento tira **três** strings de UI da vista dele.
+/// *Um helper que esconde literais do scanner é uma isenção silenciosa da regra que ele scanneia.*
+#[allow(clippy::too_many_arguments)]
+fn text_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    id: ph2d_a11y::NodeId,
+    input: TextInput,
+) -> f32 {
+    let host = Rect::new(x, y, w, ROW_H_PX);
+    hit_index.register(id, host);
+    let (state, text, caret, sel_anchor) = match store.get(id) {
+        Some(InteractiveState::TextInput {
+            state,
+            text,
+            caret,
+            selection_anchor,
+        }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
+        _ => (TextInputState::Normal, None, 0, None),
+    };
+    let input = input.visual((state, store.hover_live(id)));
+    paint_text_input_with_buffer(
+        &input,
+        text,
+        Some(caret),
+        sel_anchor,
+        host,
+        scene,
+        text_system,
+        theme,
+    );
+    y + ROW_H_PX + Spacing::Sm.px()
 }

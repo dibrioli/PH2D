@@ -768,8 +768,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   (`ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS` + `ase_import::ASE_EXTENSIONS`), o predicado é derivado
   dela, e **as duas portas chamam a mesma função**. *Uma lista escrita à mão ao lado de um
   predicado é duas respostas à mesma pergunta, e a que o artista vê é a que envelhece.*
-  ⛔ Fora: os sinais do §8.10
-  (`AnimOutcome` existe, ninguém o publica). Detalhe:
+  ✅ **OS SINAIS (§8.10) EXISTEM** (2026-08-23) — e saem pelo **outbox** do `ph2d-runtime`, não
+  pelo ActionBus que a spec desenha: ela é anterior ao ADR-0143, e um sinal no bus faria o motor de
+  animação **chamar** o editor. ⚠️ **Dois nomes AUTORADOS na tag** (`signal_on_finish` /
+  `signal_on_loop`), vazio = **calada** — é a lei dos contatos da física: acabar e dar a volta
+  distinguem-se por serem nomes diferentes, não por um campo de fase. ⚠️ Um tique atrasado colapsa
+  num sinal só, **com a contagem dentro** (`SignalOrigin::Animation::cycles`) — dez passos que
+  ninguém deu é ruído. ⚠️ **A pré-visualização é MUDA**: pegar no pincel não pode tocar um som.
+  ⛔ Dos quatro eventos da spec, dois ficam fora **com motivo medido**: o `FrameChanged` por
+  FREQUÊNCIA (~12×/s por sprite, e quem o consome já lê o `Sprite::frame`) e o `AnimationChanged`
+  por NATUREZA (é um clique no Inspector, não um facto da cena). Detalhe:
   [spec 08, secção final](docs/Sprite_projeto/08_animation_inline.md) ·
   ✅ **uma âncora já MOVE coisas** (2026-08-22): `ph2d_ecs::AnchorMount` faz dela um
   **QUADRO na hierarquia** ([ADR-0072-amendment-1](docs/architecture/decisions/0072-amendment-1.md)),

@@ -53,15 +53,22 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
             },
         );
     }
-    store.register(
+    // ⚠️ Os três campos de TEXTO da §11: o nome da animação e os dois nomes de sinal (§8.10).
+    for id in [
         ids::INSP_ANIM_NAME,
-        InteractiveState::TextInput {
-            state: TextInputState::Normal,
-            text: String::new(),
-            caret: 0,
-            selection_anchor: None,
-        },
-    );
+        ids::INSP_ANIM_SIGNAL_FINISH,
+        ids::INSP_ANIM_SIGNAL_LOOP,
+    ] {
+        store.register(
+            id,
+            InteractiveState::TextInput {
+                state: TextInputState::Normal,
+                text: String::new(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+    }
     for (id, value) in [
         (ids::INSP_ANIM_FROM, 0.0_f64),
         (ids::INSP_ANIM_TO, 0.0),

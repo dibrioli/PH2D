@@ -134,20 +134,38 @@ fn sync_anim_fields(
     if !seed {
         return;
     }
-    if focus != Some(ids::INSP_ANIM_NAME)
-        && let Some(InteractiveState::TextInput {
+    // ⚠️ **Os TRÊS campos de texto pelo mesmo laço** — o nome e os dois nomes de sinal (§8.10).
+    // Um deles espelhado à mão ao lado dos outros é como o terceiro nasce sem `sync` e mostra o
+    // valor da animação ANTERIOR ao trocar de linha.
+    for (id, value) in [
+        (ids::INSP_ANIM_NAME, an.rows.get(selected).map(|r| &r.name)),
+        (
+            ids::INSP_ANIM_SIGNAL_FINISH,
+            an.rows.get(selected).map(|r| &r.signal_on_finish),
+        ),
+        (
+            ids::INSP_ANIM_SIGNAL_LOOP,
+            an.rows.get(selected).map(|r| &r.signal_on_loop),
+        ),
+    ] {
+        // O campo em FOCO é do dedo: reescrevê-lo enquanto se digita apagaria a letra.
+        if focus == Some(id) {
+            continue;
+        }
+        if let Some(InteractiveState::TextInput {
             text,
             caret,
             selection_anchor,
             ..
-        }) = host.store_mut().get_mut(ids::INSP_ANIM_NAME)
-    {
-        text.clear();
-        if let Some(row) = an.rows.get(selected) {
-            text.push_str(&row.name);
+        }) = host.store_mut().get_mut(id)
+        {
+            text.clear();
+            if let Some(v) = value {
+                text.push_str(v);
+            }
+            *caret = text.len();
+            *selection_anchor = None;
         }
-        *caret = text.len();
-        *selection_anchor = None;
     }
 }
 

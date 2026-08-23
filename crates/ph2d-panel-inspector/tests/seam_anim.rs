@@ -55,6 +55,8 @@ fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 repeat: 0,
                 hold_ms: 40,
                 repeat_delay_ms: 250,
+                signal_on_finish: String::new(),
+                signal_on_loop: String::new(),
             },
             InspectorAnimRow {
                 name: "attack".into(),
@@ -65,6 +67,8 @@ fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 repeat: 1,
                 hold_ms: 0,
                 repeat_delay_ms: 0,
+                signal_on_finish: String::new(),
+                signal_on_loop: String::new(),
             },
         ],
         player_present: true,
@@ -412,6 +416,8 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         E::DelayMs(0, 0),
         E::Repeat(0, 0),
         E::Direction(0, 0),
+        E::SignalOnFinish(0, String::new()),
+        E::SignalOnLoop(0, String::new()),
         E::AddPlayer,
         E::SetCurrent(String::new()),
         E::Playing(false),
@@ -434,6 +440,8 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
             E::DelayMs(..) => 7,
             E::Repeat(..) => 8,
             E::Direction(..) => 9,
+            E::SignalOnFinish(..) => 19,
+            E::SignalOnLoop(..) => 20,
             E::AddPlayer => 10,
             E::SetCurrent(..) => 11,
             E::Playing(..) => 12,
@@ -487,7 +495,21 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
     ] {
         note(commit(anim(true, false), id, v));
     }
-    // O NOME, pela porta de texto.
+    // O NOME e os DOIS NOMES DE SINAL (§8.10), pela porta de texto.
+    //
+    // ⚠️ Os três pelo mesmo laço porque eles partilham o `TextChanged` — e foi por partilharem que
+    // um `if` por campo faria o terceiro chamar o `Rename` do primeiro. O gate percorre-os para que
+    // essa troca não possa passar.
+    for (id, text) in [
+        (ids::INSP_ANIM_NAME, "sprint"),
+        (ids::INSP_ANIM_SIGNAL_FINISH, "attack_done"),
+        (ids::INSP_ANIM_SIGNAL_LOOP, "footstep"),
+    ] {
+        let (mut h, mut s) = host_with(anim(true, false));
+        h.set_text(id, text);
+        let _ = h.apply_panel_event::<InspectorPanel>(&mut s, WidgetEvent::TextChanged(id));
+        note(h.drained_actions());
+    }
     let (mut host, mut state) = host_with(anim(true, false));
     host.set_text(ids::INSP_ANIM_NAME, "sprint");
     let _ = host.apply_panel_event::<InspectorPanel>(

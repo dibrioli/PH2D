@@ -57,7 +57,17 @@ const BASELINE: &[(&str, usize)] = &[
     // ⚠️ A §11 tem o MESMO `placeholder` da §12 (o nome que o campo sugere), e a mesma dívida:
     // as duas caem quando o `t!(…)` shipar. Uma entrada, não uma exceção — o gate continua a
     // cobrar a SEGUNDA string que alguém acrescentar a este ficheiro.
-    ("ph2d-panel-inspector/src/sections/anim_rows.rs", 1),
+    //
+    // ⚠️ **1 → 3 em 2026-08-23** (os SINAIS da §11, spec §8.10): os dois campos novos são
+    // `placeholder`s como o primeiro, e a dívida deles é a mesma.
+    //
+    // ⭐ **E eles ficaram VISÍVEIS de propósito.** A 1.ª versão pintava os três por uma função só
+    // que recebia a string num argumento — e a contagem caiu de 1 para **0**, porque o scanner
+    // procura `.placeholder("literal")`. Era a rota que a `physics_rows.rs` tomou (ver a nota
+    // abaixo): a entrada saiu da lista e as strings ficaram. Aqui o `TextInput` chega **pronto do
+    // chamador**, então os três literais continuam onde este gate os vê. *Um helper que esconde
+    // literais do scanner é uma isenção silenciosa da regra que ele scanneia.*
+    ("ph2d-panel-inspector/src/sections/anim_rows.rs", 3),
     ("ph2d-panel-inspector/src/sections/identity.rs", 1),
     // ⚠️ **W-SignalLeave: a entrada da §11 saiu daqui, e a DÍVIDA NÃO.** O
     // scanner conta literais dentro de `.placeholder("…")`, e a §11 passou a ter

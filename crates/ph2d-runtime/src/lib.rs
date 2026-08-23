@@ -100,6 +100,23 @@ pub enum SignalOrigin {
         /// Quantas LINHAS dispararam nesse tique (sempre ≥ 1 — zero não publica).
         rows: usize,
     },
+    /// Uma **animação de sprite** (§11) fechou um ciclo ou chegou ao fim.
+    ///
+    /// ⚠️ **`cycles` existe pela MESMA razão que o `rows` do `Motion`: o colapso é lossy e o
+    /// número é o que ele descarta.** Um tique que apanha atraso (a janela esteve parada, a
+    /// máquina engasgou) fecha vários ciclos de uma vez, e publicar um sinal por ciclo daria uma
+    /// rajada de passos que ninguém deu. Sai **um** evento, com quantos ciclos ele representa.
+    ///
+    /// ⚠️ **Não carrega o nome da animação, e é deliberado** — o nome do SINAL é autorado na tag
+    /// (`AnimationTag::signal_on_loop` / `_on_finish`), então ele já é o contrato. É a mesma lei do
+    /// `Contact`: fim e volta não se distinguem por um campo, distinguem-se por serem nomes
+    /// diferentes, autorados em dois sítios.
+    Animation {
+        /// A entidade cuja animação falou.
+        source: EntityBits,
+        /// Quantos ciclos fecharam neste tique (sempre ≥ 1 — zero não publica).
+        cycles: u32,
+    },
 }
 
 /// Um sinal publicado neste quadro.
@@ -161,6 +178,18 @@ impl Signal {
         Self {
             name: Arc::from(name),
             origin: SignalOrigin::Motion { tick, rows },
+        }
+    }
+
+    /// Um sinal que a §11 Animation emitiu ao fechar um ciclo (ou ao acabar).
+    #[must_use]
+    pub fn from_animation(name: &str, source: u64, cycles: u32) -> Self {
+        Self {
+            name: Arc::from(name),
+            origin: SignalOrigin::Animation {
+                source: EntityBits(source),
+                cycles,
+            },
         }
     }
 

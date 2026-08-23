@@ -381,7 +381,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // caminho), entao os dois numeros ao lado ficam onde estavam.
         // ⚠️ Nasceu como 86→87 na `line/Vector`; RECONTADO para 88→89 na integracao de
         // 2026-08-22 (a `line/Sprite` ocupou 85 e 86 antes).
-        (92, 13, 14),
+        // PROJECT 92→93: a `AnimationTag` ganhou `signal_on_finish`+`signal_on_loop` (§8.10 — os
+        // sinais da §11). Campos apendados, layout posicional muda. ⚠️ O `FlipDoc` e a `VecScene`
+        // NAO mudaram — a tag e' do `ph2d-ecs`, entao os dois numeros ao lado ficam onde estavam.
+        (93, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

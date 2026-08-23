@@ -349,4 +349,13 @@
 /// ⚠️ O `SpriteAnimator` grava também o ESTADO (frame, ciclo, acumulador de tempo), e é isso que
 /// faz o replay reproduzir a mesma animação — a razão de ele ser `SimComponent`.
 /// ⚠️ Ausência dos dois é «sprite parada na `frame` atual», que é o que toda sprite fazia até v91.
-pub(crate) const PROJECT_SCHEMA: u32 = 92;
+/// v93 (`line/Sprite` — os SINAIS da §11, spec §8.10): a `AnimationTag` ganhou
+/// `signal_on_finish` e `signal_on_loop` — os nomes que uma animação grita ao acabar e ao fechar
+/// um ciclo.
+/// ⚠️ **Campos APENDADOS no fim do struct, e o postcard é posicional**: um projeto de v92 lido
+/// como v93 tentaria ler as duas strings dos bytes da tag seguinte. Falha alto na maioria dos
+/// casos e **calada** quando o resto do buffer calhar a decodificar — que é o modo caro.
+/// ⚠️ **Dois campos e não um mais uma fase**: é a lei que a física já escreveu para os contatos —
+/// acabar e dar a volta distinguem-se por serem NOMES diferentes, autorados em dois sítios.
+/// ⚠️ Ausência dos dois é «a animação é calada», que é o que toda animação fazia até v92.
+pub(crate) const PROJECT_SCHEMA: u32 = 93;

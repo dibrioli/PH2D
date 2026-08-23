@@ -173,6 +173,22 @@ pub struct AnimationTag {
     pub hold_ms: u32,
     /// Pausa adicional **entre ciclos**, em ms. Só existe quando ainda vem outro ciclo.
     pub repeat_delay_ms: u32,
+    /// **O nome do sinal que esta animação grita ao ACABAR** (spec §8.10). Vazio = calada.
+    ///
+    /// ⚠️ **Dois campos, e não um mais uma fase** — é a lei que a física já escreveu para os
+    /// contatos (`SignalOrigin::Contact`): *acabar* e *dar a volta* não se distinguem por um
+    /// campo, distinguem-se por serem **nomes diferentes, autorados em dois sítios**. Um
+    /// consumidor casa numa string e nunca precisa perguntar a origem.
+    ///
+    /// ⚠️ **Vazio = calada, e é o default** — a maioria das animações não tem nada a dizer, e uma
+    /// que grita por omissão enche o canal de eventos que ninguém pediu.
+    pub signal_on_finish: String,
+    /// O nome do sinal que esta animação grita ao **fechar um ciclo**. Vazio = calada.
+    ///
+    /// ⚠️ Um tique atrasado fecha vários ciclos de uma vez e sai **um** sinal, com a contagem
+    /// dentro (`SignalOrigin::Animation::cycles`) — uma rajada de passos que ninguém deu é ruído,
+    /// não um efeito.
+    pub signal_on_loop: String,
 }
 
 impl AnimationTag {
@@ -187,6 +203,8 @@ impl AnimationTag {
             repeat: None,
             hold_ms: 0,
             repeat_delay_ms: 0,
+            signal_on_finish: String::new(),
+            signal_on_loop: String::new(),
         }
     }
 

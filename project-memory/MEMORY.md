@@ -79,6 +79,8 @@
 - [Crase em msg de commit executa](feedback_backticks_in_commit_message_are_command_substitution.md) — `git commit -F`
 - [Merge limpo pode estar quebrado](feedback_clean_text_merge_can_be_semantically_broken.md) — `check --workspace`
 - [Resolva pelos ESTÁGIOS do índice](feedback_resolve_conflicts_from_index_stages_not_markers.md) — `:1`base `:2`ours `:3`theirs
+- [`checkout --ours` DESCARTA o que o git já fundiu](feedback_checkout_ours_discards_the_hunks_git_already_merged.md) — os hunks limpos de theirs evaporam sem erro; resolva só a região marcada, ou reaplique todos
+- [Duas linhas curando o MESMO report = mesmo símbolo](feedback_two_lines_curing_the_same_report_is_a_same_symbol_collision.md) — compare as fórmulas; iguais ⇒ uma lei que passa as DUAS suítes; diferentes ⇒ Enio
 - [Lista compartilhada funde contra a main de HOJE](feedback_a_shared_list_is_merged_against_todays_main.md) — só ADICIONE; remover é integração
 - [Varra marcadores em CADA commit](feedback_sweep_conflict_markers_every_commit.md)
 - [Foundational editável = crie isolado](feedback_foundational_editable_design_for_isolation.md) — anote ids

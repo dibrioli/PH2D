@@ -172,6 +172,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **5 de 5** sozinha (0,1 s). Está registada desde 2026-08-16 em
   [`39_auditoria_solid_e_tracos.md`](docs/Painter/39_auditoria_solid_e_tracos.md) — mas **não estava aqui**, e é
   aqui que se olha quando o gate batched fica vermelho.
+  ⚠️ **A quarta, confirmada na integração de 2026-08-22:** `only_the_lower_row_breathes_and_it_moves_with_the_playhead`
+  ([`motion_state_conferencia_demos_audio_tests.rs`](shells/desktop/src/motion_state_conferencia_demos_audio_tests.rs))
+  reprovou com «max delta 0» no fan-out de 10,7 mil testes e passou **5 de 5** sozinha — já nomeada no
+  handoff da `sculpt3d` de 16/08. O `nextest` cancelou a corrida inteira nela; a re-corrida foi verde.
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na
   primeira falha**: use `--no-fail-fast`, senão suítes inteiras nunca chegam a correr.
 
@@ -450,6 +454,26 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **Ler:** [porta do cofre](docs/3D/README.md) · [00-INDEX](docs/3D/00-INDEX.md) · [handoffs](docs/3D/handoffs/README.md) ·
   [história](docs/archive/estado-2026-08-18/sculpt3d.md)
 
+- **3D Modeling (campo implícito)** — modelador **SDF** editável para sempre
+  ([ADR-0161](docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md)):
+  `ph2d-field` (documento + primitivas + modificadores) · `-field-eval` (avaliador híbrido, bordo
+  da peça) · `-field-ecs` (a árvore de modelagem **é** a hierarquia da cena) · `-field-mesh`
+  (Surface Nets) · `-field-render` (traçado) · `ph2d-panel-model3d`. Abre pelo pill **MODEL**.
+  ⚠️ **A hierarquia da cena É o documento** — o `FieldDoc` é **cozido** dela a cada quadro, e é por
+  isso que o undo, o olho, o cadeado e o reparentar da casa valem aqui sem código próprio.
+  ⚠️ **Só uma OPERAÇÃO pode ter filhos**, e a lei impõe-se na **derivação** (`promote_leaf_hosts`),
+  nunca em cada gesto. ⚠️ **O painel oferece EXATAMENTE o que o gesto faz** (W34) — a lei está em
+  [`field3d_reach_tests.rs`](shells/desktop/src/field3d_reach_tests.rs), e ela apanha os dois
+  lados (botão mudo · gesto inalcançável).
+  **Aberto:** o `FieldDoc` **não persiste** no `ProjectFile` (fechá-lo move o `PROJECT_SCHEMA`) ·
+  religar uma escultura que mudou de sítio (pede UI) · o vínculo à escultura **viva** do módulo 3D
+  (hoje passa pelo disco) · ⏸️ o `Mirror` não se consegue demonstrar (adiado pelo Enio) ·
+  a exportação não diz o **tamanho** da peça.
+  **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (o roteador é
+  [`field3d_smoke_scenes.rs`](shells/desktop/src/field3d_smoke_scenes.rs)).
+  **Ler:** [`docs/3DModeling/`](docs/3DModeling/) ·
+  [handoffs](docs/3DModeling/handoffs/README.md)
+
 - **Flip** — animação 2D no idioma do Grease Pencil: tira de quadros, onion, tween v2 (correspondência por atribuição
   ótima + espiral logarítmica), **colorize LazyBrush**, multiplano 2.5D, airbrush, pressão, e o
   **motor novo de traço**, em que o traço deixa de ser rasterizado e passa a ser **PERCORRIDO**
@@ -532,15 +556,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
 
 - **Sprite Inspector** ([ADR-0069..0074](docs/architecture/decisions/)) — ⚠️ **esta linha dizia
   «fechado sem pendência» e a spec pede 12 seções: existem 9** (a 10ª é meia — o slot Material é
-  placeholder). ⛔ **9-Slice · Animation · Sockets/Âncoras nunca foram construídas**, e o ADR-0072
-  (âncoras) está `Accepted` sobre código que não existe. Estava escrito desde 2026-05-31 num handoff
+  placeholder). ✅ **9-Slice e Sockets/Âncoras foram construídas em 2026-08-22** (`line/Sprite`, com o
+  gizmo de canvas — o ADR-0072 deixou de estar `Accepted` sobre código que não existia); ⛔ a
+  **Animation** continua por construir. Estava escrito desde 2026-05-31 num handoff
   **arquivado**, e o roteador dizia o contrário — *a informação existia; o roteador é o que se lê*.
-  **Aberto:** a suíte de regressão que **30 testes `#[cfg(any())]` esperam há dois meses**
-  (`inspector_regression.rs`, nunca criado) — hoje ~132 controlos têm **7** gates · os 4 goldens são
-  `unimplemented!()` e as pastas têm só README · três gates declarados na spec e nunca escritos
-  (`inspector_section_count_canonical` · `sprite_inspector_i18n_keys_present` ·
-  `bulk_edit_confirmation_required_fields`, este último é o que destrava o fan-out dos 3 verbos
-  destrutivos).
+  **Aberto:** ⛔ a **§11 Animation** continua a única das três por construir (pede um `SpriteFrames`
+  que não existe) · ⛔ **nada consome uma âncora** — o ADR-0072 §2.6 (API de runtime: Rust, Luau,
+  MCP) é autoria sem consumidor · o `AnchorData::user_data` não tem UI, com o `variant_editor`
+  órfão a apontar-lhe · os 4 goldens seguem `unimplemented!()` (falta o arnês headless) · UI real
+  de Save/Open (o `io_menu` é stub).
+  **Smokes:** `PH2D_SLICE_SMOKE=1..3` · `PH2D_SOCKET_SMOKE` · `PH2D_SHEET_SMOKE` · `PH2D_EMISSIVE_SMOKE` ·
+  `PH2D_DITHER_SMOKE`.
   **Ler:** ⚠️ [auditoria de 7 lentes](docs/Sprite_projeto/20_auditoria_do_inspector_2026-08-21.md)
   (o que estava morto/incompleto, **com o que já foi curado marcado**) · [spec](docs/Sprite_projeto/README.md)
 

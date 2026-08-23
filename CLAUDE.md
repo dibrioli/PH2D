@@ -469,10 +469,18 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   primeira hipótese que mata.* ⭐⭐⭐ **E o leque explica só UM TERÇO do buraco** (`skew_by_fan`, régua
   nova no `FillReport`): na esfera lisa as faces de **rectângulo** medem `12°` e as de **leque** `18°`,
   contra `6°` do oráculo ⇒ ⛔ **reescrever o F3 para emitir só quadriláteros levaria a `12°`, não a
-  `6°` — a obra NÃO se justifica sozinha**, e o número que a cancelou custou vinte linhas. ⚠️ E ele
-  nomeia o que sobra: numa face de rectângulo a grade é **exactamente rectangular no domínio**
-  (o arnês mede `0,0°` para `n=4`) ⇒ os `12°` nascem no **mapa**, e como trocar o mapa não moveu
-  nada, o suspeito é a **FRONTEIRA PRESA** que os dois mapas partilham. ⚠️ *A primeira versão
+  `6°` — a obra NÃO se justifica sozinha**, e o número que a cancelou custou vinte linhas. ⭐⭐⭐ **E o defeito PARTE-SE EM DOIS,
+  medindo a grade no DOMÍNIO e separando por valência** (esfera lisa, `d=0,55`): faces de
+  **rectângulo** medem **`0,0°` no domínio e `12°` na superfície** ⇒ o defeito delas nasce DEPOIS do
+  domínio; faces de **leque** medem **`18,7°` já no domínio** ⇒ nascem tortas, e o mecanismo já está
+  provado. **São dois defeitos independentes, cada um numa fase diferente.** ⚠️ Isto obrigou a
+  RE-JULGAR duas recusas medidas no agregado — *um número que soma duas populações opostas esconde as
+  duas* —, e as duas mantêm-se: o mapa conforme dá `12° → 12°` no número isolado, e o domínio ∝
+  segmentos parecia `12° → 10°` mas restrito ao `n=4` (onde é exacto) dá `12° → 12°` — os `10°` vinham
+  do lado que **piorava** o leque (`18,7° → 28,6°`). ⛔ Nona hipótese morta: a fronteira em espaço de
+  SEGMENTO (`18,7° → 18,8°`). ⇒ **o alvo agora é a metade do RECTÂNGULO**, e o que resta entre o
+  domínio perfeito e a superfície torta é a **amostragem**, o **alisamento** (já ilibado) e a
+  **reprojecção**. ⚠️ *A primeira versão
   do isolamento passou um bordo ao contrário e deu `45°` no `n=4`; o controlo do quadrilátero — um
   valor conhecido de antemão — foi o que a apanhou.*
   ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede

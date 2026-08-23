@@ -37,6 +37,8 @@
 
 /// ⭐⭐ **O INTERIOR DE UM PATCH SEGUE O CAMPO** — ver [`aligned`].
 pub mod aligned;
+/// ⭐ **A FORMA DO DOMÍNIO** — o polígono da fronteira — ver [`domain`].
+mod domain;
 /// **O PREENCHIMENTO de um patch** — o leque e a grade — ver [`fan`].
 pub mod fan;
 /// **O PATCH ACHATADO** — a grade nasce na superfície, não no espaço — ver [`param`].

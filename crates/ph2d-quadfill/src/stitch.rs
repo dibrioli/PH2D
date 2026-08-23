@@ -25,56 +25,6 @@ use crate::report::{FillError, FillReport, Points, Provenance};
 /// ver a tabela do `PLAN.md` §4-sexies.
 pub const SMOOTHING_ROUNDS: usize = 6;
 
-/// **A TOLERÂNCIA da pré-condição**, em fração do comprimento declarado.
-///
-/// ⚠️ **Ela é folga de ARREDONDAMENTO e nada mais.** No caminho correto os dois
-/// números são a **mesma soma dos mesmos `f32`**, então a razão é `1,000` exacto;
-/// `1e-3` cobre uma reordenação de soma e ainda deixa **três ordens de grandeza**
-/// até o `5,40×` que o defeito produziu. ⛔ Alargá-la não compra robustez nenhuma:
-/// compra o direito de voltar a montar uma malha sobre índices de outra.
-const ARC_LENGTH_TOLERANCE: f32 = 1.0e-3;
-
-/// **O LAYOUT É DESTA MALHA?** — a pré-condição do [`fill`].
-///
-/// ⭐ **Ela responde à única pergunta que a montagem não pode responder sozinha**,
-/// e responde-a com aritmética que já está paga: o F3 mediu o comprimento de cada
-/// arco quando o traçou, e o F4 usou esse número para decidir a quantização. Se a
-/// malha que chega aqui medir outra coisa, o `arc_chain` **não é dela**.
-///
-/// ⚠️ **E ela absorve de graça o segundo defeito da mesma família:** quando o F1
-/// REFINA em vez de grosseirar (toda entrada mais grossa que ~2.500 vértices), o
-/// índice sai do alcance e o `src[v]` **panica** — a janela morre com a peça por
-/// gravar. Aqui o mesmo `get` devolve uma recusa nomeada. *Reproduzido: o SEGUNDO
-/// clique do botão era panic certo.*
-fn check_arcs_belong_to(mesh: &Mesh, layout: &PatchLayout) -> Result<(), FillError> {
-    let pos = mesh.positions();
-    for (a, chain) in layout.arc_chain.iter().enumerate() {
-        let declared = layout.arc_length.get(a).copied().unwrap_or(0.0);
-        let mut measured = 0.0f32;
-        for w in chain.windows(2) {
-            // ⚠️ `get` e não `[]`: um índice fora do alcance é a MESMA doença, e
-            // um panic no meio de um gesto do artista é a pior forma de a dizer.
-            let (Some(a0), Some(a1)) = (pos.get(w[0] as usize), pos.get(w[1] as usize)) else {
-                return Err(FillError::ArcNotOfThisMesh {
-                    arc: a,
-                    declared,
-                    measured: None,
-                });
-            };
-            let d = [a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2]];
-            measured += d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
-        }
-        if (measured - declared).abs() > ARC_LENGTH_TOLERANCE * declared.max(1.0e-6) {
-            return Err(FillError::ArcNotOfThisMesh {
-                arc: a,
-                declared,
-                measured: Some(measured),
-            });
-        }
-    }
-    Ok(())
-}
-
 /// **MONTA A MALHA DE QUADS.**
 ///
 /// # Os DOIS mesh, e por que eles são dois parâmetros
@@ -141,7 +91,7 @@ pub fn fill_with(
 ) -> Result<(Mesh, FillReport), FillError> {
     // ⭐⭐ **A PRÉ-CONDIÇÃO, e ela é a mais barata que existe.** Ver
     // [`check_arcs_belong_to`].
-    check_arcs_belong_to(indexed, layout)?;
+    crate::report::check_arcs_belong_to(indexed, layout)?;
     let src = indexed.positions();
     // ⭐⭐ **TODO ponto de INTERIOR nasce POUSADO na superfície.** Ver
     // [`Points::push_facing`].
@@ -193,6 +143,7 @@ pub fn fill_with(
     let (mut sampled, mut misses) = (0usize, 0usize);
     let (mut flatten_rounds, mut flatten_residual) = (0usize, 0.0f32);
     let (mut holonomy, mut fell_back, mut from_fan) = (0.0f32, 0usize, Vec::<bool>::new());
+    let (mut dom_rect, mut dom_fan): (Vec<f32>, Vec<f32>) = (Vec::new(), Vec::new());
 
     // ── 2. Cada patch vira o seu leque.
     for (p, sides) in layout.side_arcs.iter().enumerate() {
@@ -284,6 +235,17 @@ pub fn fill_with(
                 if rev {
                     c.reverse();
                 }
+                // ⭐⭐⭐ **EM ESPAÇO DE SEGMENTO, se ligado** — ver
+                // [`crate::param::SEGMENT_SPACE_DOMAIN`]. Dentro de um arco os dois
+                // espaços são proporcionais (a reamostragem é por `τ` igual), então
+                // basta escalar; o que muda é a soma **entre** arcos.
+                if crate::param::SEGMENT_SPACE_DOMAIN && end > 0.0 {
+                    #[allow(clippy::cast_precision_loss)]
+                    let segs = quant.arc[a as usize].max(1) as f32;
+                    for v in &mut t {
+                        *v = *v / end * segs;
+                    }
+                }
                 let base = tau.last().copied().unwrap_or(0.0);
                 for v in &mut t {
                     *v += base;
@@ -323,6 +285,7 @@ pub fn fill_with(
                 .map(|i| side_uv(layout, quant, sides, i, &seg))
                 .collect(),
             tally: std::cell::Cell::new((0, 0)),
+            dom_skew: std::cell::RefCell::new(Vec::new()),
         };
 
         // ⭐⭐ **UM PATCH DE QUATRO LADOS É UM RETÂNGULO, e um retângulo não
@@ -446,6 +409,8 @@ pub fn fill_with(
         let (o, m) = dom.tally.get();
         sampled += o;
         misses += m;
+        let bucket = if n == 4 { &mut dom_rect } else { &mut dom_fan };
+        bucket.append(&mut dom.dom_skew.borrow_mut());
         // ⭐ Valência de origem — [`crate::shape::skew_by_fan`]. ⚠️ A inversão de
         // orientação abaixo troca vértices e **não reordena** faces.
         from_fan.resize(faces.len(), n != 4);
@@ -488,6 +453,11 @@ pub fn fill_with(
     report.flatten_rounds = flatten_rounds;
     report.flatten_residual = flatten_residual;
     report.skew_by_fan = crate::shape::skew_by_fan(&mesh, &from_fan);
+    let med = |v: &mut Vec<f32>| {
+        v.sort_by(f32::total_cmp);
+        v.get(v.len() / 2).copied().unwrap_or(0.0)
+    };
+    report.domain_skew = (med(&mut dom_rect), med(&mut dom_fan));
     report.holonomy = holonomy;
     report.fell_back = fell_back;
     Ok((mesh, report))
@@ -675,6 +645,7 @@ fn measure(
         shape: crate::shape::quad_shape(mesh),
         skew_prov: crate::shape::skew_by_provenance(mesh, prov),
         skew_by_fan: (0.0, 0.0),
+        domain_skew: (0.0, 0.0),
         // ⭐⭐ **A CONTAGEM DE DOBRAS entra no relatório da fase**, e não numa
         // sonda. Ela é o defeito que o artista fotografa e o único campo, com os
         // dois de aresta, que uma malha de posições embaralhadas não reproduz.

@@ -3504,3 +3504,69 @@ o gate reprova e manda refazer a tabela.
 
 ⇒ **Confirma-se o que a geometria já dizia:** a saída **não** é uma mudança de
 coordenada no domínio partilhado. É dar a cada sector o **seu** domínio.
+
+---
+
+## 4-unetquadragies — ⭐⭐⭐ **O DEFEITO PARTE-SE EM DOIS, e cada metade tem um dono diferente**
+
+> **2026-08-23.** A régua que faltava não era outra hipótese: era **medir a grade NO
+> DOMÍNIO**, antes de ela tocar na superfície — e depois **separá-la por valência**.
+
+### A tabela que resolve
+
+| esfera lisa, `d = 0,55` | ⭐ **no DOMÍNIO** | na SUPERFÍCIE |
+|---|---|---|
+| faces de **rectângulo** (`n = 4`) | ⭐ **`0,0°`** | ⛔ **`12°`** |
+| faces de **leque** (`n ≠ 4`) | ⛔ **`18,7°`** | `18°` |
+
+⭐⭐⭐ **São dois defeitos independentes, e cada um nasce numa fase diferente:**
+
+| metade | onde nasce | estado |
+|---|---|---|
+| **leque** | ⛔ **já no domínio** — a grade é encomendada torta | ⭐ **mecanismo PROVADO** (`\|360/n − 90\|`, §4-undequadragies) |
+| **rectângulo** | ⭐ o domínio é **perfeito**; a superfície não | ⛔ **por explicar** — e não é o mapa |
+
+### ⚠️ E isto obrigou a RE-JULGAR duas recusas — porque elas foram medidas no agregado
+
+⛔ **Um número que soma duas populações opostas esconde as duas.** Com a coluna
+separada, as duas hipóteses já «mortas» foram medidas outra vez:
+
+| | rectângulo, superfície | leque, domínio |
+|---|---|---|
+| hoje (regular + valor médio) | `12°` | `18,7°` |
+| **mapa conforme** (cotangente) | ⛔ `12°` — **nada** | `18,7°` |
+| **domínio ∝ segmentos, a todo `n`** | `10°` | ⛔ **`28,6°`** |
+| **domínio ∝ segmentos, só `n = 4`** | ⛔ `12°` — **nada** | `18,7°` |
+
+⭐ **A linha do meio parecia uma cura.** Restringi-la ao caso onde ela é **exacta**
+devolve os rectângulos a `12°` ⇒ *os `10°` não vinham de os rectângulos melhorarem;
+vinham do lado que piorava os leques.* **As duas recusas mantêm-se, agora bem
+fundamentadas.**
+
+### ⛔ E uma nona hipótese, morta no mesmo dia
+
+**A fronteira em espaço de SEGMENTO** em vez de comprimento de arco. O raciocínio era
+sólido: o Coons liga o ponto `k` de um bordo ao ponto `k` do oposto, e se os dois
+estiverem em fracções diferentes a linha sai inclinada — o que acontece quando um lado
+tem vários arcos com densidades diferentes. Medido: domínio dos leques `18,7° → 18,8°`.
+**Nada.**
+
+### ⇒ Onde isto deixa a investigação
+
+⭐ **A metade do leque tem cura conhecida e preço conhecido** (`18° → 12°` se os
+patches fossem todos quadriláteros — §4-quadragies), e a obra foi adiada porque sozinha
+não chega.
+
+⛔ **A metade do rectângulo é o alvo agora**, e ela é a mais estranha das duas: *uma
+grade perfeita no domínio sai a `12°` na superfície, e trocar o mapa não muda nada.* O
+que resta entre os dois é a **amostragem** (`PatchParam::sample`, baricêntrica sobre a
+triangulação achatada), o **alisamento** e a **reprojecção** — e destes só o alisamento
+já foi medido (ele repara).
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| fronteira em espaço de segmento | `18,7° → 18,8°` | [`param.rs`](../../../crates/ph2d-quadfill/src/param.rs) |
+| domínio ∝ segmentos, restrito ao `n = 4` | `12° → 12°` | [`domain.rs`](../../../crates/ph2d-quadfill/src/domain.rs) |
+| mapa conforme, re-julgado no número isolado | `12° → 12°` | [`param.rs`](../../../crates/ph2d-quadfill/src/param.rs) |

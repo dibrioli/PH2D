@@ -13,8 +13,9 @@ use ph2d_mesh::{Face, Mesh};
 use ph2d_quantize::Quantization;
 use ph2d_trace::PatchLayout;
 
+use crate::domain::corners_for_sides;
 use crate::fan::coons;
-use crate::param::{PatchParam, corners_for_sides};
+use crate::param::PatchParam;
 use crate::report::{Points, Provenance};
 
 /// **PREENCHE UM PATCH DE QUATRO LADOS COM UMA GRADE PLANA.**
@@ -106,6 +107,20 @@ pub(crate) struct Domain<'a> {
     pub(crate) side_uv: Vec<Vec<[f32; 2]>>,
     /// Quantos pontos o domínio colocou, e quantos caíram fora dele.
     pub(crate) tally: std::cell::Cell<(usize, usize)>,
+    /// ⭐⭐⭐ **O ENVIESAMENTO DE CADA CÉLULA NO DOMÍNIO**, antes de ela tocar na
+    /// superfície — o partidor final desta investigação.
+    ///
+    /// ⛔ **Ele decide entre os dois últimos suspeitos**, e são mutuamente
+    /// exclusivos: as faces de um patch de quatro lados saem com `12°` de
+    /// enviesamento na esfera lisa, e o arnês 2D diz que a grade de um sector `n = 4`
+    /// **ideal** mede `0,0°`. Ou o domínio real já vem torto — e a culpa é da
+    /// **fronteira presa**, que é o que decide a posição de cada ponto de bordo — ou
+    /// ele vem recto e os `12°` nascem no **mapa** que o leva à superfície.
+    ///
+    /// ⚠️ **Trocar o mapa já foi medido e não moveu nada** (valor médio contra
+    /// cotangente, `18° → 18°`, com `0/16` recuos). *Se o domínio vier recto, sobra
+    /// um suspeito que os dois mapas partilham; se vier torto, o suspeito é outro.*
+    pub(crate) dom_skew: std::cell::RefCell<Vec<f32>>,
 }
 
 impl Domain<'_> {
@@ -197,7 +212,14 @@ pub(crate) fn side_uv(
     // ⚠️ **Pelo `τ` e não pelo comprimento**, e não é detalhe: o `uv` de um ponto
     // de saída tem de cair entre os `uv` dos vértices de malha à volta dele, e o
     // achatamento distribui a fronteira por... comprimento. Ver o aviso abaixo.
+    // ⭐⭐⭐ **A MEDIDA DE UM ARCO: o `τ` dele, ou o número de SEGMENTOS?** Ver
+    // [`crate::param::SEGMENT_SPACE_DOMAIN`] — e ⚠️ **este `if` e o do pino dos
+    // vértices de malha leem a MESMA constante**, porque divergir rasga a malha.
     let tau_of = |x: u32| {
+        if crate::param::SEGMENT_SPACE_DOMAIN {
+            #[allow(clippy::cast_precision_loss)]
+            return quant.arc.get(x as usize).copied().unwrap_or(1).max(1) as f32;
+        }
         layout
             .arc_tau
             .get(x as usize)
@@ -261,6 +283,32 @@ pub(crate) fn build_grid(
     // ponto que o achatamento aceita nunca usa a segunda.
     let inner = coons(&b, &tp, &l, &r);
     let inner_uv = coons(uv.bottom, uv.top, uv.left, uv.right);
+    // ⭐⭐⭐ **A GRADE MEDIDA NO DOMÍNIO** — ver [`Domain::dom_skew`]. ⚠️ O [`coons`]
+    // reproduz os quatro bordos **exactamente**, então esta grade inclui a fronteira:
+    // é a célula tal como ela é encomendada, antes de qualquer mapa.
+    {
+        let mut acc = dom.dom_skew.borrow_mut();
+        for k in 0..inner_uv.len().saturating_sub(1) {
+            for j in 0..inner_uv[k].len().saturating_sub(1) {
+                let q = [
+                    inner_uv[k][j],
+                    inner_uv[k + 1][j],
+                    inner_uv[k + 1][j + 1],
+                    inner_uv[k][j + 1],
+                ];
+                let mut worst = 0.0f32;
+                for c in 0..4 {
+                    let p = q[c];
+                    let (a, b) = (q[(c + 3) % 4], q[(c + 1) % 4]);
+                    let (u, v) = ([a[0] - p[0], a[1] - p[1]], [b[0] - p[0], b[1] - p[1]]);
+                    let (lu, lv) = (u[0].hypot(u[1]).max(1.0e-12), v[0].hypot(v[1]).max(1.0e-12));
+                    let cs = (u[0].mul_add(v[0], u[1] * v[1]) / (lu * lv)).clamp(-1.0, 1.0);
+                    worst = worst.max((cs.acos().to_degrees() - 90.0).abs());
+                }
+                acc.push(worst);
+            }
+        }
+    }
     let mut grid = vec![vec![0u32; t + 1]; s + 1];
     for (k, row) in grid.iter_mut().enumerate() {
         for (l_i, cell) in row.iter_mut().enumerate() {

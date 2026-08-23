@@ -540,7 +540,7 @@ fn what_does_the_chain_do_to_a_plain_sphere() {
                 eprintln!(
                     "  d={detail:.2} {rotulo} {:>6} quads · {} patches | aspecto p50 {:.2} p99 {:>5.1} \
                      | ⭐enviesamento p50 {:>3.0}° p99 {:>3.0}° (>60°: {}) | dobras {} \
-                     | ⭐rectangulo {:>3.0}° LEQUE {:>3.0}°",
+                     | ⭐rectangulo {:>3.0}° LEQUE {:>3.0}° | ⭐⭐DOMINIO rect {:>4.1}° leque {:>4.1}°",
                     out.faces().len(),
                     r.patches,
                     s.aspect_p50,
@@ -551,6 +551,8 @@ fn what_does_the_chain_do_to_a_plain_sphere() {
                     r.folded_local,
                     r.skew_by_fan.0,
                     r.skew_by_fan.1,
+                    r.domain_skew.0,
+                    r.domain_skew.1,
                 );
             }
         }

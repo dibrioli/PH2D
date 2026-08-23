@@ -11,6 +11,7 @@
 //! verdes sobre um produto destruído.
 
 use ph2d_mesh::Mesh;
+use ph2d_trace::PatchLayout;
 
 /// Por que a malha não pôde ser montada.
 // ⚠️ Deixou de ser `Eq` quando a `ArcNotOfThisMesh` passou a carregar os dois
@@ -222,6 +223,14 @@ pub struct FillReport {
     /// [`crate::shape::skew_by_fan`]. É o número que decide se o F3 tem de passar a
     /// entregar só patches de quatro lados.
     pub skew_by_fan: (f32, f32),
+    /// ⭐⭐⭐ **O enviesamento mediano da grade NO DOMÍNIO** — antes de ela tocar na
+    /// superfície. Ver [`crate::patch::Domain::dom_skew`].
+    ///
+    /// ⛔ **É o partidor final:** as faces de patch de quatro lados saem com `12°` na
+    /// esfera lisa, e o arnês 2D diz que um sector `n = 4` ideal mede `0,0°`. Se este
+    /// número for grande, a culpa é do DOMÍNIO; se for ~zero, é do
+    /// **mapa** — e trocar o mapa já foi medido sem efeito.
+    pub domain_skew: (f32, f32),
 }
 
 /// **QUANTAS FACES DA SAÍDA APONTAM CONTRA A SUPERFÍCIE POR BAIXO DELAS.**
@@ -621,4 +630,54 @@ impl Points {
     ) -> u32 {
         self.push(ph2d_remesh_iso::project_facing(mesh, p, seed, facing), from)
     }
+}
+
+/// **A TOLERÂNCIA da pré-condição**, em fração do comprimento declarado.
+///
+/// ⚠️ **Ela é folga de ARREDONDAMENTO e nada mais.** No caminho correto os dois
+/// números são a **mesma soma dos mesmos `f32`**, então a razão é `1,000` exacto;
+/// `1e-3` cobre uma reordenação de soma e ainda deixa **três ordens de grandeza**
+/// até o `5,40×` que o defeito produziu. ⛔ Alargá-la não compra robustez nenhuma:
+/// compra o direito de voltar a montar uma malha sobre índices de outra.
+pub(crate) const ARC_LENGTH_TOLERANCE: f32 = 1.0e-3;
+
+/// **O LAYOUT É DESTA MALHA?** — a pré-condição do [`fill`].
+///
+/// ⭐ **Ela responde à única pergunta que a montagem não pode responder sozinha**,
+/// e responde-a com aritmética que já está paga: o F3 mediu o comprimento de cada
+/// arco quando o traçou, e o F4 usou esse número para decidir a quantização. Se a
+/// malha que chega aqui medir outra coisa, o `arc_chain` **não é dela**.
+///
+/// ⚠️ **E ela absorve de graça o segundo defeito da mesma família:** quando o F1
+/// REFINA em vez de grosseirar (toda entrada mais grossa que ~2.500 vértices), o
+/// índice sai do alcance e o `src[v]` **panica** — a janela morre com a peça por
+/// gravar. Aqui o mesmo `get` devolve uma recusa nomeada. *Reproduzido: o SEGUNDO
+/// clique do botão era panic certo.*
+pub(crate) fn check_arcs_belong_to(mesh: &Mesh, layout: &PatchLayout) -> Result<(), FillError> {
+    let pos = mesh.positions();
+    for (a, chain) in layout.arc_chain.iter().enumerate() {
+        let declared = layout.arc_length.get(a).copied().unwrap_or(0.0);
+        let mut measured = 0.0f32;
+        for w in chain.windows(2) {
+            // ⚠️ `get` e não `[]`: um índice fora do alcance é a MESMA doença, e
+            // um panic no meio de um gesto do artista é a pior forma de a dizer.
+            let (Some(a0), Some(a1)) = (pos.get(w[0] as usize), pos.get(w[1] as usize)) else {
+                return Err(FillError::ArcNotOfThisMesh {
+                    arc: a,
+                    declared,
+                    measured: None,
+                });
+            };
+            let d = [a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2]];
+            measured += d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+        }
+        if (measured - declared).abs() > ARC_LENGTH_TOLERANCE * declared.max(1.0e-6) {
+            return Err(FillError::ArcNotOfThisMesh {
+                arc: a,
+                declared,
+                measured: Some(measured),
+            });
+        }
+    }
+    Ok(())
 }

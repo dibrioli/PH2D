@@ -107,9 +107,24 @@ thread_local! {
         const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
 }
 
-/// ⚠️ **Só para gates**: esquece o que já foi tentado, para que dois gates no mesmo processo não se
-/// contaminem pela ordem em que correram.
-#[cfg(test)]
+/// ⭐ **Esquece o que já foi tentado** — o começo de um DOCUMENTO novo.
+///
+/// # Por que ela deixou de ser só de teste
+///
+/// O conjunto [`TRIED`] existe para o aviso não repetir em todo quadro, e o limite dele é o
+/// **documento**, não o processo. Enquanto foi o processo, um Ctrl+O herdava a memória do projeto
+/// anterior — e o modo de falha é o pior possível: o artista abre um projeto, a escultura falha
+/// (arquivo movido), ele **conserta o arquivo no disco**, abre outra vez, e a leitura **nunca
+/// acontece**. A peça abre sem a escultura e desta vez **sem uma palavra**, porque o aviso também
+/// só sai na primeira tentativa. *Um silêncio idêntico ao de quando estava tudo certo.*
+///
+/// ⚠️ Ela é a terceira da mesma família em `project_load`, ao lado de
+/// [`ph2d_timeline::expr_owed::forget_owed_poses`] e de `forget_live_producers` — todas respondem
+/// *"o que o documento ANTERIOR possuía e não pode atravessar"*. Gate:
+/// `a_load_starts_the_sculpture_reads_over`.
+///
+/// Também usada pelos gates, para que dois no mesmo processo não se contaminem pela ordem em que
+/// correram.
 pub(crate) fn forget_tried() {
     TRIED.with(|t| t.borrow_mut().clear());
 }

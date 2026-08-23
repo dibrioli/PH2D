@@ -489,3 +489,8 @@ mod sculpt;
 /// as portas dele.
 #[path = "project_tape_tests.rs"]
 mod tape;
+
+/// **O que um load faz com a PEÇA DE MODELAGEM 3D** (ADR-0161) — filho (`#[path]`)
+/// pela razão exata dos dois acima: as fixtures desta suíte são as portas dele.
+#[path = "project_field_tests.rs"]
+mod field;

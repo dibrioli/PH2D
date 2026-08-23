@@ -2727,6 +2727,94 @@ Estado depois da cura, sobre duas fixtures (`A ∪ B` plana e `A ∪ (B − C)` 
 
 ---
 
+## §36 — W35: a peça JÁ atravessava o arquivo — o que não atravessava era a memória (22/08)
+
+> O primeiro item da fila dizia *"o `FieldDoc` não persiste no `ProjectFile` — fechá-lo move o
+> `PROJECT_SCHEMA`"*. **Medido antes de construir: a peça persiste, e o `PROJECT_SCHEMA` não se
+> mexe.** A nota estava velha. O que de facto faltava era outra coisa, mais estreita e mais
+> silenciosa — e foi ela que esta wave curou.
+
+### §36.1 — ⭐ Por que a peça já persistia sem uma linha de persistência
+
+Porque ela **não é um documento**: é uma **árvore de entidades ECS**, e o `ProjectState` é o mundo
+inteiro. A cadeia toda já existia, cada elo posto por uma wave anterior por outra razão:
+
+| elo | onde | posto por |
+|---|---|---|
+| os componentes do campo entram no registro | `init.rs` → `register_field_components` | W1 |
+| o registro é o que o `ProjectState::capture` usa | `undo.rs` | a casa |
+| `ProjectFile.state` **é** o `ProjectState` | `project.rs` | a casa |
+| a peça sobrevive ao snapshot | gate `the_whole_part_survives_the_world_snapshot_round_trip` | W5 |
+
+⚠️ **`project_load.rs` não menciona o módulo uma única vez** — e isso é o desenho a funcionar, não
+um buraco. *A pergunta certa não era «como faço a peça persistir», era «ela já persiste?».*
+
+### §36.2 — ⚠️ A dependência que ninguém tinha escrito, e que quase se partia sozinha
+
+O `ProjectState::restore` **apaga a cena antes de re-spawnar**, e a consulta que ele usa para apagar
+é `With<Transform>`. Os nós deste módulo **não carregam `Transform`** — a pose deles é `FieldPose`,
+porque o `Transform` da casa é uma afim **2D** (decisão medida na W5).
+
+O que salva é que a **raiz** da peça leva `Transform` (para a Hierarquia a enumerar) e o despawn
+**cascateia por `ChildOf`**. ⛔ São dois arquivos e duas razões diferentes, e **nada obrigava a
+segunda a continuar verdadeira**. Se um dia um nó de campo nascer sem raiz com `Transform`, ele
+sobrevive à limpeza e o load passa a **empilhar** a peça velha com a nova — em silêncio.
+
+⭐ O gate novo `the_part_crosses_the_project_file_and_the_load_replaces_it_instead_of_stacking`
+prende exatamente isso: ele **carrega sobre uma cena que já tem uma peça** (o caso real do Ctrl+O,
+não o load sobre o vazio) e exige que sobre **uma**. A mutação que tira o `Transform` da raiz
+deixa-o vermelho.
+
+### §36.3 — ⭐ O defeito REAL: a memória de tentativas era do PROCESSO, e o limite é o DOCUMENTO
+
+Quando o documento nomeia uma escultura que o registo não conhece, o módulo lê o arquivo e diz o que
+não voltou (W23, §24). Para o aviso não repetir em todo quadro, ele guarda o que já tentou — num
+conjunto **do processo**.
+
+| passo | antes | agora |
+|---|---|---|
+| abro o projeto, a escultura falhou (arquivo movido) | o aviso sai ✅ | igual |
+| **conserto o arquivo no disco** e abro outra vez | ⛔ **nunca relê** — e **não diz nada** | relê ✅ |
+
+⛔ **O segundo silêncio é idêntico ao de quando estava tudo certo.** O artista consertou o que lhe
+foi pedido e a peça continua a abrir sem a escultura, sem uma palavra.
+
+A cura é **uma linha**, e ela entra numa família que já existia em `project_load` — a de *"o que o
+documento anterior possuía e não pode atravessar"*:
+
+```rust
+ph2d_timeline::expr_owed::forget_owed_poses();   // as poses que uma expressão devia
+self.forget_live_producers();                    // os produtores vivos
+crate::field3d_reload::forget_tried();           // ⭐ as esculturas já tentadas (esta wave)
+```
+
+*Um Ctrl+O é o começo de um documento novo.* O `forget_tried` deixou de ser `#[cfg(test)]`.
+
+### §36.4 — Provas de mutação
+
+| mutação | gate que ficou vermelho |
+|---|---|
+| o load deixa de **esquecer** as tentativas | `a_load_starts_the_sculpture_reads_over` |
+| o esquecimento vira **no-op** | o mesmo |
+| a **raiz** da peça perde o `Transform` | `the_part_crosses_the_project_file_and_the_load_replaces_it_instead_of_stacking` |
+
+3 mutações, 3 vermelhas. A terceira é a que prova que o gate do arquivo não é tautológico: ele mede
+a lei do empilhamento, não a viagem dos bytes.
+
+### §36.5 — ⏸️ O que fica aberto
+
+- ⚠️ **O caminho de app não é alcançável de um gate:** `App::project_save` exige `self.gfx`
+  (`capture_project` devolve `None` sem ele), então um save headless retorna cedo. O que se mede
+  aqui é a **captura** e o **restore** reais, com os bytes pelo meio; o Ctrl+S de verdade é smoke.
+  *Um arnês headless para o save fecharia isto, e o preço é do lado do `AppGfx`.*
+- ⏸️ O módulo **não se abre sozinho** quando o projeto carregado tem uma peça: ela está no mundo e na
+  Hierarquia, e o traçado só aparece depois de o artista carregar no pill **MODEL**.
+- ⛔ **A nota do `PROJECT_SCHEMA` estava errada e foi corrigida** — persistir a peça **não** move
+  degrau nenhum, porque ela nunca foi um campo do arquivo. *Uma nota que prescreve o preço errado
+  faz a fila inteira ser ordenada errado.*
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
@@ -2742,6 +2830,12 @@ Estado depois da cura, sobre duas fixtures (`A ∪ B` plana e `A ∪ (B − C)` 
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W35 (§36): a peça ATRAVESSA o arquivo — e a nota que dizia o contrário era velha.** Ela é uma
+  árvore de entidades, o `ProjectState` é o mundo inteiro, e o `PROJECT_SCHEMA` **não se mexe**. O
+  que faltava era estreito: a memória de *"já tentei ler esta escultura"* era do **processo**, então
+  um arquivo consertado no disco nunca era relido — e o segundo silêncio era idêntico ao de quando
+  estava certo. ⏸️ Fica: o Ctrl+S de verdade **não é alcançável de um gate** (o save exige `gfx`), e
+  o módulo **não se abre sozinho** quando o projeto carregado traz uma peça
 - ✅ **W34 (§35): o painel passou a oferecer EXATAMENTE o que o gesto faz** — a fileira de operações
   aparece com **uma** forma escolhida (o gesto de criar grupo, que a W31 escreveu e ninguém
   alcançava), e a de *Duplicar/Apagar* deixa de ser pintada sobre a **raiz**, que as recusa. A lei

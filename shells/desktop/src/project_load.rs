@@ -173,6 +173,15 @@ impl crate::App {
         // herdou o número. É a MESMA razão da linha acima, um nível abaixo.
         ph2d_timeline::expr_owed::forget_owed_poses();
         self.forget_live_producers();
+        // E as ESCULTURAS que o módulo de modelagem 3D já tentou ler (ADR-0161 W23). A **peça**
+        // atravessa o arquivo sozinha — ela é uma árvore de entidades, e o `ProjectState` é o mundo
+        // inteiro. O que não atravessava era a memória de *"já tentei este arquivo"*: ela existe
+        // para o aviso não repetir em todo quadro, e o limite dela é o **documento**.
+        //
+        // ⚠️ Sem esta linha, um arquivo de escultura CONSERTADO no disco nunca era relido — e o
+        // segundo silêncio era idêntico ao de quando estava tudo certo. Mesma família das duas
+        // linhas acima: *o que o documento anterior possuía e não pode atravessar*.
+        crate::field3d_reload::forget_tried();
         // **A ESCULTURA do documento anterior morre aqui.** Os bytes ficam para o save
         // (o passa-adiante), e a cena viva é substituída — ou APAGADA, quando o projeto
         // novo não tem escultura nenhuma: a lista nunca-vazia é o invariante que torna

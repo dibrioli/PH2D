@@ -178,3 +178,103 @@ fn without_the_registration_the_snapshot_drops_it_silently() {
          está a passar por outro motivo e não prova nada"
     );
 }
+
+/// Uma peça com **hierarquia e ordem**: `A ∪ (B − C)`. Ela existe porque o que se parte num
+/// arquivo não é um número — é a árvore. Um filho que volta sem pai, ou dois irmãos trocados
+/// (a subtração é `children[0]` menos os seguintes), dá uma peça diferente com os mesmos nós.
+fn a_nested_doc() -> FieldDoc {
+    let ball = |x: f32| ph2d_field::Node {
+        xform: Xform::at(x, 0.0, 0.0),
+        kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
+        mods: Vec::new(),
+    };
+    let combine = |op, children| ph2d_field::Node {
+        xform: Xform::IDENTITY,
+        kind: ph2d_field::NodeKind::Combine { op, children },
+        mods: Vec::new(),
+    };
+    FieldDoc::new(
+        vec![
+            ball(0.0),
+            ball(0.6),
+            ball(0.9),
+            combine(
+                ph2d_field::Op::Difference(ph2d_field::Blend::Sharp),
+                vec![NodeId(1), NodeId(2)],
+            ),
+            combine(
+                ph2d_field::Op::Union(ph2d_field::Blend::Sharp),
+                vec![NodeId(0), NodeId(3)],
+            ),
+        ],
+        NodeId(4),
+    )
+    .expect("o aninhado")
+}
+
+/// ⭐ **A PEÇA ATRAVESSA O ARQUIVO**, e não só o snapshot em memória.
+///
+/// # O que este gate mede que o irmão não mede
+///
+/// O `the_whole_part_survives_the_world_snapshot_round_trip` prova a viagem
+/// `world → WorldSnapshot → world`, **dentro do processo**. Um Ctrl+S/Ctrl+O acrescenta dois
+/// passos que aquele nunca toca: o `ProjectState` inteiro passa por **postcard** (bytes em disco) e
+/// volta pelo `ProjectState::restore` — que **apaga a cena antes de re-spawnar**.
+///
+/// ⚠️ **A limpeza é o passo que quase não apanhava esta peça, e a razão é medida:** ela consulta
+/// `With<Transform>`, e os nós deste módulo **não** carregam `Transform` — a pose deles é
+/// [`ph2d_field_ecs::FieldPose`], porque o `Transform` da casa é uma afim **2D**. O que salva é a
+/// **raiz** levar `Transform` e o despawn cascatear por `ChildOf`. *É uma dependência entre dois
+/// arquivos que nada obrigava a continuar verdadeira*, e é isso que este gate prende: um nó de campo
+/// que um dia nasça sem raiz com `Transform` sobrevive à limpeza, e o load passa a **empilhar** a
+/// peça velha com a nova em vez de a substituir.
+#[test]
+fn the_part_crosses_the_project_file_and_the_load_replaces_it_instead_of_stacking() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let mut prop = TransformPropagationState::new(sim.world_mut());
+    let mut worklist = WorklistBuf::default();
+    let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &a_nested_doc(), "peça");
+    let before = ph2d_field_ecs::cook(sim.world(), root)
+        .expect("não vazia")
+        .expect("válida");
+
+    // A captura REAL — a mesma função que o `App::capture_project` chama.
+    let state = crate::undo::ProjectState::capture(
+        &sim,
+        &ph2d_vec_scene::VecScene::new(),
+        &ph2d_flip::FlipDoc::new(),
+        &ph2d_guides::GuideSet::default(),
+        &ph2d_ui_state::StateSets::default(),
+        &reg,
+        &mut prop,
+        &mut worklist,
+    );
+
+    // ⭐ **Os BYTES**: é aqui que um componente que não serializa, ou um `String` de caminho
+    // truncado, se perde — e o `ProjectFile` não é mais do que isto com anexos.
+    let bytes = postcard::to_allocvec(&state).expect("o estado serializa");
+    let back: crate::undo::ProjectState = postcard::from_bytes(&bytes).expect("e desserializa");
+
+    // ⚠️ O destino **já tem uma peça**, e é de propósito: é a cena que o artista tinha aberta
+    // quando carregou em Ctrl+O. Sem isto o gate mediria um load sobre o vazio, que é o caso fácil.
+    let mut target = SimWorld::new();
+    ph2d_field_ecs::spawn_doc(target.world_mut(), &a_doc(), "a peça anterior");
+    let _ = back.restore(&mut target, &reg);
+
+    let mut q = target.world_mut().query::<(Entity, &FieldObject)>();
+    let roots: Vec<Entity> = q.iter(target.world()).map(|(e, _)| e).collect();
+    assert_eq!(
+        roots.len(),
+        1,
+        "o load tem de SUBSTITUIR a cena, não empilhar — sobraram {} peças",
+        roots.len()
+    );
+    let after = ph2d_field_ecs::cook(target.world(), roots[0])
+        .expect("não vazia")
+        .expect("válida");
+    assert_eq!(
+        after, before,
+        "a peça voltou diferente do arquivo — hierarquia, ordem de irmãos ou pose"
+    );
+}

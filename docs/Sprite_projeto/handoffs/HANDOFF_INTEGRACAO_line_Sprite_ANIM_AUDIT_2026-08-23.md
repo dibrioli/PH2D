@@ -447,3 +447,38 @@ smoke pelo **leitor real** — é o que impede o escritor dos gates e o do smoke
 **37 gates novos** (27 na crate + 10 na costura), **17 mutações**; uma sobreviveu (a opacidade de
 camada fixa a 255 passava a suíte inteira, porque todos os outros gates usavam camadas opacas) e
 gerou o gate que faltava.
+
+### §13-bis — ⭐ O oráculo que faltava: **18 ficheiros do Aseprite REAL, 18 lidos**
+
+Os gates da crate afirmam *«sabemos ler o que descrevemos»* — o escritor deles é nosso. A pergunta
+que sobrava era a fidelidade ao programa real, e ela foi respondida no mesmo dia com ficheiros
+escritos pelo **próprio Aseprite**:
+
+* as **12 fixturas de teste do repositório oficial** (`aseprite/aseprite`, `tests/sprites/`), que
+  existem justamente para cobrir os cantos: `tags3` (as três direcções), `tags3x123reps`
+  (repetições), `link` (cel ligado), `groups3abc` (grupos), `z-order`, `2f-index-3x3` (indexado),
+  `3x2tilemap-grayscale` (escala de cinza + tilemap), `bg-index-3`, `1empty3`, `abcd`,
+  `file-tests-props`, `point4frames`;
+* **2 exemplos MIT** de um gerador de terceiros (`neomura-c-tool-aseprite`), um deles com **4 370
+  quadros numa tag só** — que é o caminho em que a folha deixa de caber numa tira e passa a
+  quase-quadrada;
+* **4 personagens animados** (`player.ase` 12 quadros · `Samurai` 10 · `RainCoat` 8 · `Mage` 7).
+
+**Resultado: 18 lidos, 0 recusados.** ⚠️ E o instrumento é permanente:
+`cargo run -p ph2d-aseprite --example ase_info -- <ficheiro|pasta>` corre o **mesmo** `parse` do
+produto e imprime tamanho, quadros, tags (com direcção, repetições e a duração — dizendo quando ela
+varia dentro da tag) e as notas. ⚠️ Ele conta também os **pixels pintados no 1.º quadro**: é a
+diferença entre *«leu»* e *«leu alguma coisa»* — um leitor partido devolve quadros do tamanho certo,
+vazios.
+
+**Dois achados que só ficheiros reais dão:**
+
+1. **A duração varia por quadro em ficheiros reais e comuns** — o `example.ase` tem `50..500 ms`, e
+   as **três** tags dele variam por dentro. A recusa reaberta (§13) não é teórica: ela dispara no
+   primeiro ficheiro de terceiros que se largue.
+2. **Personagens reais chegam SEM tags** (os quatro, todos) — o que torna a regra *«um ficheiro sem
+   tags recebe uma, com o nome do ficheiro»* o caminho **normal**, e não a excepção que ela parecia.
+
+⛔ Os ficheiros **não entram no repositório**: são binários de terceiros, com licenças que vão de
+MIT a nenhuma. Eles vivem em `~/Downloads/ase-para-testar/` na máquina do Enio, e o que fica
+versionado é o **instrumento** que os lê.

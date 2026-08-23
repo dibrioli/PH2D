@@ -182,6 +182,11 @@ impl crate::App {
         // segundo silêncio era idêntico ao de quando estava tudo certo. Mesma família das duas
         // linhas acima: *o que o documento anterior possuía e não pode atravessar*.
         crate::field3d_reload::forget_tried();
+        // E o ISOLAMENTO da vista (W43): desde que a vista sobrevive a fechar o painel, ela pode
+        // atravessar um Ctrl+O — e o `isolated` guarda **bits de entidade**, que o mundo novo
+        // realoca. Ver [`crate::field3d_smoke::forget_isolation_across_documents`]: a câmera fica,
+        // este campo não.
+        crate::field3d_smoke::forget_isolation_across_documents();
         // **A ESCULTURA do documento anterior morre aqui.** Os bytes ficam para o save
         // (o passa-adiante), e a cena viva é substituída — ou APAGADA, quando o projeto
         // novo não tem escultura nenhuma: a lista nunca-vazia é o invariante que torna

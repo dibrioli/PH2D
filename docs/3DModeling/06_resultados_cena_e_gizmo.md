@@ -3324,8 +3324,138 @@ prova nada, e a agulha certa era duas funções ao lado.*
 
 ---
 
+## §44 — W43: a VISTA sobrevive ao fecho — e a categoria já estava escrita em três sítios (23/08)
+
+> O ⏸️ que a W42 deixou, à letra: *"fica: fechar o painel larga a **câmera** (a peça não)"*.
+
+A W42 fez o pill desarmar de verdade, e cobrou o preço na hora. O artista pousa a peça num ângulo,
+pega no Vector (o painel fecha, W40), volta ao MODEL — e encontra a peça certa **vista de outro
+sítio, a girar sozinha**. A peça atravessa porque é uma árvore de entidades; a vista não atravessa
+porque vivia no cache do quadro, que é precisamente o que a W42 passou a deitar fora.
+
+### §44.1 — ⭐ Não era «a câmera»: eram cinco campos, e o `Smoke` já os classificava
+
+O que se ia construir era *"guardar a `Orbit`"*. A medição mudou o entregável: os doc-comments do
+próprio `Smoke` **já diziam a que categoria cada campo pertence**, e diziam-no três vezes.
+
+| campo | o que o doc dele já dizia, antes desta wave |
+|---|---|
+| `gizmo_mode` | *"É estado de **vista**, e não do documento: por isso vive aqui e não num componente"* |
+| `gizmo_frame` | *"Estado de **vista**, como o verbo"* |
+| `isolated` | *"Estado de VISTA, e a lei é a do módulo irmão"* |
+| `cam` | **é** a vista |
+| `manual` | *"o prato para de girar assim que o artista toca nele"* |
+
+⚠️ **Um doc-comment repetido em N campos é uma estrutura por nascer.** A categoria existia, com
+nome, escrita à mão em cada membro — e sem nenhum sítio onde a lei dela (o *tempo de vida*) pudesse
+ser dita uma vez. Guardar só a `Orbit` teria deixado quatro campos a morrer no mesmo fecho, cada um
+com o próprio doc a afirmar que era da mesma família.
+
+### §44.2 — ⚠️ O `manual` viaja com a câmera, ou nenhum dos dois vale
+
+Restaurar a câmera **sem** o `manual` não restaura nada: o prato volta a girar e afasta-se do ângulo
+restaurado a partir do quadro seguinte. O número certo estaria na tela durante 16 ms, e o defeito
+leria como *"restaurar a câmera não funciona"* — com a cura já lá dentro. Há gate separado
+(`the_turntable_stays_stopped_across_a_close`), porque *provar só uma metade de um fato engana*.
+
+### §44.3 — ⭐⭐ Como um campo NOVO não se perde: destructuring sem `..`
+
+O modo de falha desta wave, daqui a três meses, é alguém acrescentar um campo de vista ao `Smoke` e
+ele morrer em silêncio no fecho. A cura é estrutural e custa zero em tempo de execução:
+
+```rust
+fn of(s: &Smoke) -> Self {
+    let Smoke { cam, manual, gizmo_mode, gizmo_frame, isolated,
+                doc: _, seed: _, matcap: _, /* … os 22 restantes, um a um … */ } = s;
+    …
+}
+```
+
+**Sem `..`.** Um campo novo no `Smoke` passa a ser **erro de compilação** exatamente no sítio onde a
+pergunta tem de ser respondida: *isto é vista, ou é cache do quadro?*
+
+⚠️ É a lição do `Shade::default()` da `line/sculpt3d` (CLAUDE.md §5: *"a vista agora é escrita por
+nome, os 7 campos, então um termo novo é erro de compilação ali"*), com uma diferença que importa:
+lá a escrita por nome está na **saída** (quem lê), aqui está na **entrada** (quem desmonta). *O lado
+da entrada apanha quem acrescenta o campo; o da saída só apanha quem o consome.*
+
+### §44.4 — ⭐ E o gate comportamental que a W38 declarou impossível passou a ser escrevível
+
+A W38 deixou este buraco escrito: *"sem gate comportamental da costura painel↔smoke — o estado do
+smoke é `thread_local` e armá-lo contaminaria os vizinhos"*, e foi por isso que a `next_isolation`
+nasceu como lei pura. **A W42 dissolveu essa restrição sem o saber:** desde que desarmar desarma de
+verdade, um gate pode armar o módulo, exercer o caminho do artista e **desarmar no fim** — o estado
+limpa-se a si mesmo. Os quatro gates desta wave percorrem o gesto inteiro (abrir · pousar · fechar ·
+reabrir), e não uma função pura.
+
+⚠️ *Uma restrição escrita numa nota tem uma data.* Aquela era verdadeira quando foi escrita, e
+deixou de ser quatro waves depois — pela mesma mecânica da cerca que a W42 encontrou.
+
+### §44.5 — ⛔ O buraco que ESTA wave abriu, e a cura preguiçosa que um gate mau aceitaria
+
+Fazer a vista atravessar o fecho fá-la atravessar também um **Ctrl+O**. E o `isolated` guarda **bits
+de entidade**: o mundo novo realoca-os, então um isolamento herdado ou aponta para nada (o
+`cook_root` já o larga) ou — pior — **acerta noutro nó**, e a peça nova abre quase toda escondida
+sem uma palavra. É a lei da casa sobre bits dentro de bytes, outra vez.
+
+`forget_isolation_across_documents` entra em `project_load` como a **quarta** da família, ao lado de
+`forget_owed_poses`, `forget_live_producers` e `field3d_reload::forget_tried` — todas respondem *"o
+que o documento anterior possuía e não pode atravessar"*.
+
+⚠️ **A câmera NÃO se esquece aqui**, e o gate diz as duas metades no mesmo teste de propósito: um
+gate que só exigisse *ausência do isolamento* passaria com `LAST.set(None)` — a cura preguiçosa, que
+deita fora a câmera que a wave inteira existe para guardar. *Uma cura que apaga tudo passa em
+qualquer gate que só peça ausência.* A mutação 3 é exatamente essa cura, e o gate apanha-a.
+
+### §44.6 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | desarmar deixa de **lembrar** a vista | `closing_the_panel_keeps_the_view_it_had` |
+| 2 | o `boot` ignora o `manual` lembrado (o prato volta a girar) | `the_turntable_stays_stopped_across_a_close` |
+| 3 | ⭐ a **cura preguiçosa**: o documento novo larga a vista inteira | `a_new_document_forgets_the_isolation_and_keeps_the_camera` |
+
+Red-first: os três gates de comportamento reprovaram antes da costura existir, e o controle
+(`the_first_open_gets_the_default_view`) ficou **verde** — a primeira abertura do app não herda nada,
+e é isso que separa *"a memória funciona"* de *"o `boot` mudou de padrão"*.
+
+⚠️ **E o arnês de mutação mentiu na primeira corrida, nas três linhas.** Ele invocava
+`cargo test -- --exact <nome_curto>`, e o caminho completo destes gates é
+`field3d_smoke::view::tests::<nome>`: com `--exact`, um filtro que não casa corre **zero** testes e o
+cargo sai **0**. As três mutações foram declaradas **SOBREVIVENTES** sem que um único teste tivesse
+corrido. É a armadilha do filtro escrito à mão que o `CLAUDE.md` §2 já mede (*"797 corridas
+devolveram literalmente NADA"*), aqui dentro de uma prova de mutação — o sítio onde ela é mais cara,
+porque a saída **parece um resultado**.
+
+⭐ A cura é um **controle positivo** no próprio arnês: além de exigir `Compiling ph2d-host-desktop`
+(o binário é novo), exigir `running 1 test` (o teste existiu). *Um veredito de mutação tem de provar
+que houve um teste, e não só que houve uma corrida.* ⚠️ A polaridade salvou-nos desta vez — o erro
+gritou «sobreviveu» em vez de «RED» —, e a versão simétrica deste mesmo defeito seria **confiança
+falsa**, silenciosa.
+
+### §44.7 — ⏸️ O que fica aberto
+
+- ⏸️ Nada mostra na Hierarquia que há um **isolamento em curso** (⏸️ herdado da W38, e agora ele
+  também sobrevive a um fecho — o mesmo buraco, com mais alcance).
+- ⏸️ A vista é de **processo**, não do projeto: ela não é salva no arquivo. Um Ctrl+O mantém a
+  câmera do projeto anterior, o que é o comportamento certo por omissão — mas reabrir o app começa
+  sempre do padrão.
+- ⏸️ O `snapping` fica deliberadamente de fora (é relido do `Ctrl` a cada movimento) e o gesto em
+  curso também: reabrir com um arrasto pendurado aplicaria à peça um movimento que ninguém fez.
+
+---
+
 ## §13 — Aberto
 
+- ✅ **W43 (§44): a VISTA sobrevive ao fechar o painel** — o ⏸️ que a W42 deixou. ⭐ E não era «a
+  câmera»: o próprio `Smoke` já classificava **cinco** campos como *estado de vista*, em três
+  doc-comments distintos (*"é estado de **vista**, e não do documento"*) — *um doc-comment repetido
+  em N campos é uma estrutura por nascer*. A `cam` viaja com o `manual`, ou o prato desfaz o ângulo
+  restaurado no quadro seguinte. Um campo novo no `Smoke` é **erro de compilação** no sítio onde a
+  pergunta *"vista ou cache?"* tem de ser respondida (destructuring sem `..`). ⭐ E a W42 tornou
+  escrevível o gate comportamental que a W38 declarara impossível: desarmar limpa-se a si mesmo.
+  ⏸️ Fica: a vista é de **processo** (não é salva no arquivo), e a Hierarquia continua sem mostrar
+  que há um isolamento em curso — agora com mais alcance, porque ele também atravessa um fecho
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
   `[-1,1]` era cortada em silêncio, e uma peça pequena gastava resolução em vazio (**>3×** de
   ganho medido). ⏸️ Fica: a exportação **não diz o tamanho** da peça, e agora que o bordo existe

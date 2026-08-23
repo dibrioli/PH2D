@@ -285,6 +285,9 @@ fn load_matcap() -> MatcapTexels {
 fn boot() -> Option<Smoke> {
     let n = armed_scene()?;
     let doc = scene(n);
+    // ⭐ **A vista com que este smoke nasce**: a de quando o painel fechou, ou a padrão na primeira
+    // abertura da sessão (W43 — [`view::recall`]).
+    let v = view::recall();
     println!(
         "[field-smoke] traçado no tamanho REAL da área, com anti-serrilhado — prato giratório, \
          feche a janela para sair"
@@ -292,10 +295,10 @@ fn boot() -> Option<Smoke> {
     Some(Smoke {
         doc: Some(doc.clone()),
         seed: Some(doc),
-        isolated: None,
+        isolated: v.isolated,
         has_live_sculpt: false,
         matcap: Arc::new(load_matcap()),
-        cam: Orbit::default(),
+        cam: v.cam,
         frame: None,
         inflight: None,
         since: std::time::Instant::now(),
@@ -306,7 +309,7 @@ fn boot() -> Option<Smoke> {
         area: None,
         drag: None,
         last_pointer: (0.0, 0.0),
-        manual: false,
+        manual: v.manual,
         gizmo: None,
         gizmo_hot: None,
         pending_move: None,
@@ -315,8 +318,8 @@ fn boot() -> Option<Smoke> {
         typed: None,
         press_at: None,
         pending_pick: None,
-        gizmo_mode: crate::field3d_gizmo::Mode::default(),
-        gizmo_frame: crate::field3d_gizmo::Frame::default(),
+        gizmo_mode: v.gizmo_mode,
+        gizmo_frame: v.gizmo_frame,
     })
 }
 
@@ -325,6 +328,12 @@ fn boot() -> Option<Smoke> {
 // tamanho?"*, e as duas na mesma função é a única forma de não haver duas ideias de *o que mudou*.
 // A lei que ela defendia — o **documento** faz parte da chave, o smoke do *"slider disfuncional"* —
 // continua gateada, agora em `field3d_preview_tests`.
+
+/// ⭐ **O estado de VISTA e a memória que o faz sobreviver a fechar o painel** vive no irmão — ver
+/// [`field3d_view`](self::view).
+#[path = "field3d_view.rs"]
+mod view;
+pub(crate) use view::forget_isolation_across_documents;
 
 /// ⭐ **Os pedidos que atravessam para o app** vivem no irmão — ver [`field3d_smoke_requests`](self::requests).
 #[path = "field3d_smoke_requests.rs"]
@@ -390,6 +399,12 @@ pub(crate) fn with_smoke<R>(f: impl FnOnce(&mut Smoke) -> R) -> Option<R> {
         // O que morre é o cache do quadro e a câmera, e ao rearmar a semente é ignorada porque a
         // ponte encontra a raiz que já existe (ver `sync_scene_and_birth`).
         if armed_scene().is_none() {
+            // ⭐ **A VISTA sobrevive ao fecho** (W43) — o ⏸️ que a W42 deixou escrito: *"fica: fechar
+            // o painel larga a câmera (a peça não)"*. Largar o cache do quadro é o que se quer;
+            // largar o ângulo em que o artista pousou a peça não é. Ver [`view`].
+            if let Some(Some(s)) = slot.as_ref() {
+                view::remember(s);
+            }
             *slot = Some(None);
             return None;
         }

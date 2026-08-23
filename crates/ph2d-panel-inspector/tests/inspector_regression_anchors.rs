@@ -31,6 +31,7 @@ fn row(name: &str, bounds: Option<[f32; 4]>, center: Option<[f32; 4]>) -> Inspec
         rot_deg: 0.0,
         bounds,
         center,
+        riders: 0,
     }
 }
 

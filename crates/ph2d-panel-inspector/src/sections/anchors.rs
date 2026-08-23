@@ -164,10 +164,19 @@ fn anchor_list(
             color,
         );
         // O tipo derivado, à direita — é o que a ficha empilhada da spec mostrava de relance.
+        //
+        // ⚠️ **Mais quem monta nesta âncora**, desde 2026-08-22. Fecha o laço do outro lado: quem
+        // monta vê em que âncora anda, e sem isto o dono da âncora não via ninguém — saber se
+        // `hand_r` está em uso obrigava a selecionar cada filho, e apagá-la não avisava de nada.
+        let kind = if row.riders == 0 {
+            row.kind_label().to_string()
+        } else {
+            format!("{} \u{b7} {} riding", row.kind_label(), row.riders)
+        };
         paint_text(
             text_system,
             scene,
-            row.kind_label(),
+            &kind,
             x + w * KIND_COL_FRAC,
             cur_y + (ROW_H - font) * 0.5,
             font,

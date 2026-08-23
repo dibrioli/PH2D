@@ -31,6 +31,12 @@ pub struct InspectorAnchorRow {
     pub bounds: Option<[f32; 4]>,
     /// `[x, y, w, h]` dentro de `bounds`.
     pub center: Option<[f32; 4]>,
+    /// **Quantos filhos montam nesta âncora** (ADR-0072 §2.6).
+    ///
+    /// ⚠️ Fecha o laço do outro lado: o objeto que MONTA vê em que âncora anda, mas o dono da
+    /// âncora não via ninguém. Sem isto, saber se `hand_r` está em uso obriga a selecionar cada
+    /// filho um a um — e apagar uma âncora em uso não avisa de nada.
+    pub riders: usize,
 }
 
 impl InspectorAnchorRow {
@@ -151,6 +157,7 @@ mod tests {
             rot_deg: 0.0,
             bounds,
             center,
+            riders: 0,
         }
     }
 

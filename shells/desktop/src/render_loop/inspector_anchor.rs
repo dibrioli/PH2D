@@ -36,10 +36,23 @@ pub(super) fn build_anchor_info(
     world.get::<ph2d_ecs::Transform>(entity)?;
     let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
     let list = world.get::<NamedAnchorList>(entity);
+    // **Quem monta nas âncoras DESTA entidade** — uma passagem pelos filhos, e depois a contagem
+    // por nome. ⚠️ Uma passagem por âncora seria `anchors × filhos` e este snapshot é por-quadro.
+    let mounted: Vec<&str> = world
+        .get::<ph2d_ecs::Children>(entity)
+        .map(|ch| {
+            ch.iter()
+                .filter_map(|c| world.get::<ph2d_ecs::AnchorMount>(*c))
+                .filter(|m| m.is_bound())
+                .map(|m| m.anchor.as_str())
+                .collect()
+        })
+        .unwrap_or_default();
     let rows: Vec<InspectorAnchorRow> = list
         .map(|l| {
             l.iter()
                 .map(|a| InspectorAnchorRow {
+                    riders: mounted.iter().filter(|n| **n == a.name).count(),
                     name: a.name.clone(),
                     pos: [
                         a.transform.translation.x * ppm,
@@ -278,6 +291,60 @@ mod tests {
         assert!((a.transform.translation.x - 0.28).abs() < 1e-6);
         // O caminho de volta é o do snapshot.
         assert!((a.transform.translation.x * 100.0 - 28.0).abs() < 1e-4);
+    }
+
+    /// **O snapshot conta quem monta em cada âncora, e o pai que o objeto tem.**
+    ///
+    /// ⚠️ As duas metades da §12 saem do mesmo `build_anchor_info`, e este gate mede-as juntas
+    /// porque é assim que elas se contradizem: um snapshot que contasse os passageiros de todos os
+    /// filhos (em vez dos que montam NAQUELA âncora) passaria num teste com uma âncora só.
+    #[test]
+    fn the_snapshot_counts_the_riders_of_each_anchor_and_finds_the_parent() {
+        use ph2d_ecs::{AnchorMount, ChildOf, Transform};
+
+        let mut w = ph2d_ecs::World::new();
+        // O AVÔ, com uma âncora — é o que o `parent_anchors` do boneco tem de encontrar.
+        let mut gl = NamedAnchorList::new();
+        gl.insert(NamedAnchor::socket("world_slot")).unwrap();
+        let grandparent = w.spawn((Transform::IDENTITY, gl)).id();
+
+        // O BONECO, com duas âncoras, montado no avô.
+        let mut list = NamedAnchorList::new();
+        list.insert(NamedAnchor::socket("hand_r")).unwrap();
+        list.insert(NamedAnchor::socket("head")).unwrap();
+        let body = w
+            .spawn((
+                Transform::IDENTITY,
+                list,
+                ChildOf(grandparent),
+                AnchorMount::new("world_slot"),
+            ))
+            .id();
+
+        // Dois na mão, nenhum na cabeça, e um filho que não monta em nada.
+        for m in ["hand_r", "hand_r"] {
+            w.spawn((Transform::IDENTITY, ChildOf(body), AnchorMount::new(m)));
+        }
+        w.spawn((Transform::IDENTITY, ChildOf(body)));
+        // E um que monta num nome que este boneco não tem — não pode contar para ninguém.
+        w.spawn((
+            Transform::IDENTITY,
+            ChildOf(body),
+            AnchorMount::new("ghost"),
+        ));
+
+        let info = build_anchor_info(&w, body.to_bits(), &[body.to_bits()], 1, 100.0)
+            .expect("o boneco e' inspecionavel");
+        assert_eq!(info.rows[0].name, "hand_r");
+        assert_eq!(info.rows[0].riders, 2, "os dois na mao");
+        assert_eq!(info.rows[1].riders, 0, "ninguem na cabeca");
+        assert_eq!(
+            info.parent_anchors,
+            vec!["world_slot".to_string()],
+            "o seletor tem de oferecer as ancoras do AVO, que e' o pai deste boneco"
+        );
+        assert_eq!(info.mount.as_deref(), Some("world_slot"));
+        assert!(!info.mount_dangling());
     }
 
     /// A rotação viaja em radianos e é autorada em graus.

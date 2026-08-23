@@ -168,6 +168,8 @@ fn publish_the_whole_sprite_scene() {
             rot_deg: 12.0,
             bounds: Some([8.0, 4.0, 24.0, 24.0]),
             center: Some([2.0, 2.0, 8.0, 8.0]),
+            // Com passageiro: e' o estado em que a contagem se pinta.
+            riders: 2,
         }],
         present: true,
         selected_count: 1,

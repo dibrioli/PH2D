@@ -80,6 +80,7 @@ fn the_panel_reads_the_same_shape_the_engine_does() {
             rot_deg: 0.0,
             bounds,
             center,
+            riders: 0,
         };
         assert_eq!(
             row.kind_tag(),

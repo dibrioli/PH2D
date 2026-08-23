@@ -3250,3 +3250,78 @@ já tinha na fila pelo patch de perímetro 520 %.
 | domínio ∝ segmentos | não move o alvo e piora a cauda do gancho | [`param.rs`](../../../crates/ph2d-quadfill/src/param.rs) |
 | «é o alisamento que enviesa» | a `0` rondas é **pior** | esta secção |
 | `SMOOTHING_ROUNDS = 20` | compra cauda e dobras, paga `2,8×` o relógio, alvo parado | esta secção |
+
+---
+
+## 4-septiestricies — ⛔⛔ **A HOLONOMIA foi ACUSADA E ILIBADA no mesmo dia, pelo CONTROLO**
+
+> **2026-08-23, poucas horas depois da §4-sexiestricies.** Aquela secção fechou com um
+> achado: *«pentear o campo dentro de um patch deixa 29° (orelha) e 44° (gancho) de
+> desacordo ⇒ há singularidade DENTRO dos nossos patches, e a dívida é do F3».* Ele foi
+> escrito no `CLAUDE.md`, no `PLAN.md` e numa mensagem de commit. **Estava errado.**
+
+### ⭐ O que o levantou
+
+A própria nota dizia o que faltava: *«é um MAX sobre arestas — a próxima medição tem de
+dar a distribuição e dizer QUANTOS patches estão sujos»*. Foi o que se fez, e com a
+peça que decide: **a decomposição do ORÁCULO, medida com o mesmo código**
+(`*_rem_p0.patch`, o dono de cada face, que a bancada já tinha em disco).
+
+### ⛔ A tabela
+
+| | patches | `max` do pior | ⭐ **p50 mediano** | ⭐ **p95 mediano** |
+|---|---|---|---|---|
+| nós, orelha | 17 | `29,3°` | `0,479°` | `2,52°` |
+| ⭐ **oráculo, orelha** | 12 | **`18,6°`** | **`0,470°`** | **`3,19°`** |
+| nós, gancho | 26 | `44,1°` | `0,892°` | `3,70°` |
+| ⭐ **oráculo, gancho** | 15 | **`38,4°`** | **`0,726°`** | **`3,63°`** |
+| nós, enrugada | 14 | `15,6°` | `0,525°` | `2,62°` |
+| ⭐ **oráculo, enrugada** | 8 | **`16,6°`** | **`0,437°`** | **`2,16°`** |
+
+⇒ **A referência tem exactamente a mesma coisa**, e no `p95` chega a ter **mais**. Os
+nossos patches são tão penteáveis quanto os dele. ⛔ *A hipótese está morta, e com ela a
+barra `CLEAN_DEG = 1,0` que eu tinha escrito — ela classificava **12 de 12** patches do
+oráculo como sujos.*
+
+### ⚠️ E o controlo quase não correu — a armadilha dentro da armadilha
+
+A primeira versão de `comb` devolvia `None` ao primeiro triângulo degenerado. Sobre a
+malha do oráculo isso deu `None` nos **12 patches de 12**, e a sonda imprimiu:
+
+```text
+    ⭐ORACULO: 12 patches · ⭐0 SUJOS (resíduo > 1°) · 12 sem resposta
+```
+
+⛔ **«0 sujos» sobre ZERO patches medidos**, e «0 sujos» lê-se como *limpo* — teria
+«confirmado» a acusação com o oposto exacto do que os dados diziam. ⭐ **O que salvou foi
+a coluna `sem resposta`**, que estava lá porque *skip gracioso não é verde* (`CLAUDE.md`
+§5.0). A cura: a face impossível fica **de fora e CONTADA** (`Holonomy::skipped`), e a
+região continua a ser medida pelo resto.
+
+### ⇒ O que fica excluído, e o que sobra
+
+Cinco hipóteses medidas e mortas para o enviesamento:
+
+| # | hipótese | como morreu |
+|---|---|---|
+| 1 | a relaxação por ajuste de quadrado | 16 rondas: `27° → 26°` (§4-quinquiestricies) |
+| 2 | o interior alinhado ao campo | `27° → 27°` (§4-sexiestricies) |
+| 3 | o domínio ∝ segmentos | `27° → 27°`, e piora o gancho (§4-sexiestricies) |
+| 4 | «é o alisamento que enviesa» | a `0` rondas é **pior** (§4-sexiestricies) |
+| 5 | ⭐ **«o campo não é combável dentro dos patches»** | **o oráculo tem o mesmo** (esta secção) |
+
+⭐ **E o `skew_by_provenance` já tinha dito onde ele mora:** `arco 26° · grade 26° ·
+raio 56°` — *em toda a parte, com a grade interior igual ao resto*. Com a hipótese 5
+morta, o F3 fica **ilibado por esta via** (os patches dele são tão penteáveis quanto os
+do oráculo), e o que sobra por testar é a **densidade**: na orelha o oráculo entrega
+`4 658` quads e nós `78 403` a `d = 1,0`; a `d = 0,5` entregamos `2 868` e o
+enviesamento ainda é `21°` contra `6°` dele. *A próxima medição compara as duas saídas
+à MESMA contagem de quads, e isso ainda não foi feito.*
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| `Holonomy::CLEAN_DEG = 1,0` | reprova 12 de 12 patches do **oráculo** | [`comb.rs`](../../../crates/ph2d-crossfield/src/comb.rs) |
+| «a dívida do enviesamento é do F3, por combabilidade» | a distribuição dele é igual à nossa | esta secção |
+| `comb` devolver `None` à primeira face má | dá «0 sujos» sobre zero medidos | [`comb.rs`](../../../crates/ph2d-crossfield/src/comb.rs) |

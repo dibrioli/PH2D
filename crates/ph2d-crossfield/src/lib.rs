@@ -46,10 +46,13 @@ use std::collections::BTreeMap;
 
 use ph2d_mesh::Mesh;
 
+/// ⭐⭐ **PENTEAR uma região e MEDIR o que sobra** — ver [`comb`].
+pub mod comb;
 mod continuation;
 mod index;
 mod solve;
 
+pub use comb::{Holonomy, holonomy};
 pub use continuation::{ALIGN_WEIGHT, Continuation, solve_miq_aligned, solve_miq_continued};
 pub use index::{IndexReport, ring_totals, singularities, vertex_index, vertex_index_with_report};
 pub use solve::{

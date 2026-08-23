@@ -449,11 +449,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   localiza:** `skew_by_provenance` diz onde o enviesamento mora — orelha `canto 0° · arco 26° · centro 0° ·
   raio 56° · grade 26°`, ou seja **em TODA a parte, com a grade interior igual ao resto** ⇒ *toda a família
   «uma construção local está errada» está excluída de uma vez*. ⭐ E o alisamento foi **ilibado com número**
-  (a 0 rondas a grade mede 27° e o raio 75°; a 20, 25° e 37° — ele REPARA). ⭐⭐⭐ **O achado que aponta a
-  próxima fase é a HOLONOMIA**: pentear o campo dentro de um patch deixa **29° (orelha) · 44° (gancho) ·
-  16° (enrugada)** de desacordo ⇒ **o campo dentro dos nossos patches não é combável**, há singularidade
-  DENTRO em vez de nos cantos, e a dívida é do **F3** — o mesmo F3 do patch de perímetro 520%. ⚠️ É um MAX
-  sobre arestas: a próxima medição tem de dar a distribuição. ⭐ **A canalização FICA e é o ganho durável:**
+  (a 0 rondas a grade mede 27° e o raio 75°; a 20, 25° e 37° — ele REPARA). ⛔⛔ **A HOLONOMIA foi acusada e ILIBADA no mesmo dia — pelo controlo.**
+  A leitura de `29° (orelha) · 44° (gancho)` era um **MAX sobre milhares de arestas** e foi escrita aqui como
+  *«o campo dentro dos nossos patches não é combável»*. ⚠️ **Medindo a decomposição do ORÁCULO com o mesmo
+  código, ele dá `18,6°` e `38,4°`** — e a distribuição é indistinguível: p50 mediano `0,479°` contra
+  `0,470°` dele, p95 `2,52°` contra `3,19°` **dele**. ⇒ *um predicado que reprova a testemunha de controlo
+  mede a discretização, não o defeito*, e a dívida **NÃO** é do F3 por esta via. ⭐ Fica a régua
+  (`ph2d_crossfield::comb`, com a distribuição) e a recusa da barra registada no tipo. ⭐ **A canalização FICA e é o ganho durável:**
   o campo agora **chega** ao F5 (`PatchLayout::face_dir`), que era a primeira coisa que faltava.
   ⭐⭐ **O ORÁCULO GRAVA AS FASES INTERMÉDIAS** (achado 22/08, `PLAN.md` §4-duotricies): em
   `ph2d-quadbench/ref/<peça>/` estão o **campo** dele (`*_rem.rosy`, uma direção por face) e a **decomposição**

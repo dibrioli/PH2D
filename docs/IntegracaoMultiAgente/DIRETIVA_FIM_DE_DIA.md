@@ -26,8 +26,10 @@ tinha 937,85 GiB dos 950 alocados a blocos de **dados** (410 usados), **zero** n
 `btrfs balance` (root) devolve blocos ao não-alocado. O script mede isso, o swap (o target do
 primário em tmpfs **vive no zram**) e a corrupção de checksum, e imprime o comando de cada cura —
 runbook: [`docs/DevOps/BTRFS_METADATA_E_SWAP.md`](../DevOps/BTRFS_METADATA_E_SWAP.md). Se sair
-vermelho em «não-alocado»/«metadata», **reporte ao Enio antes de limpar**: a limpeza abaixo ajuda
-pouco e a cura é dele.
+vermelho em «não-alocado»/«metadata», **limpe na mesma** (os portões do §1 continuam a mandar), mas
+o relatório do §5 leva as linhas ✗ **e diz ao Enio que a cura é o balance dele** — a limpeza sozinha
+não devolve espaço à metadata. O bloco do §4 já corre o script **duas vezes**: antes de apagar e no
+fim, e a segunda saída vai inteira no relatório (§5, item 5).
 
 ## §1 — Os 3 portões (TODOS passam, ou não apague)
 
@@ -392,6 +394,11 @@ done
 
 df -h / | awk 'NR==2{printf "disco antes: %s de %s (%s)\n",$3,$2,$5}'
 
+# §0 — a saúde do disco ANTES de apagar (não-alocado · metadata · swap · checksum). Não
+# aborta: limpar continua certo; mas «não-alocado»/«metadata» vermelhos dizem que o df
+# MENTE e que a cura é o balance (Enio, root), não este rm -rf — o relatório §5 leva isto.
+bash scripts/btrfs-health.sh || echo "! disco VERMELHO antes da limpeza — leia as linhas ✗ acima e o §0"
+
 # Percorre SÓ as worktrees (pula o primário). --porcelain é a fonte da verdade.
 git worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt; do
   [ "$wt" = "$primary" ] && continue                              # pula primário (target em tmpfs)
@@ -424,6 +431,15 @@ done
 
 df -h / | awk 'NR==2{printf "disco depois: %s de %s (%s)\n",$3,$2,$5}'
 
+# ══ A SAÚDE DO DISCO NO FIM DO DIA — obrigatória, e a saída vai INTEIRA no relatório ═══
+# É a medição diária que o Enio pediu (2026-08-22): «não-alocado» e «metadata» dizem se
+# o balance semanal está a dar conta; «checksum» é o A/B do kernel (0 no LTS = a hipótese
+# kernel 7.2.0 aguenta; >0 reabre a RAM → memtest86+); «swap» apanha um tmpfs que alguém
+# recriou. VERDE fecha o dia. Qualquer ✗ é para o Enio, não para consertar aqui.
+echo
+bash scripts/btrfs-health.sh; disco_rc=$?
+echo "— saúde do disco: $( [ "$disco_rc" = 0 ] && echo VERDE || echo 'VERMELHO — cole as linhas ✗ no relatório e sinalize ao Enio' )"
+
 # Reporte, NÃO aja: commits locais não-pushados.
 echo "— não-pushado em HEAD: $(git rev-list --count @{u}..HEAD 2>/dev/null || echo '?') commit(s)"
 ```
@@ -453,6 +469,17 @@ O `~/.cache/sccache` **não aparece** no script — de propósito. Ele fica.
    toda fonte e todo git.
 4. **Sinalize, sem agir**: commits locais não-pushados, branches à frente do main. É informação pro
    Enio decidir — o fim-de-dia não pusha.
+5. **A saída INTEIRA de `bash scripts/btrfs-health.sh`** (as 4 linhas + o veredito, não um resumo).
+   É o único item que o Enio lê **todo dia** *(pedido dele, 2026-08-22)*:
+   - **VERDE** → o dia fechou.
+   - ✗ em **«não-alocado»/«metadata»** → o `df` está a mentir e a limpeza acima não cura; a cura
+     é `balance` (root) — diga-lhe isso em uma linha, com o comando que o próprio script imprime.
+   - ✗ em **«checksum»** → **destaque no topo do relatório.** É o A/B do kernel: um `csum failed`
+     no `linux-cachyos-lts` reaponta a suspeita para a RAM (memtest86+), e **nenhum balance pode
+     correr nesse boot** (o timer já se recusa sozinho). Mecanismo e números:
+     [`docs/DevOps/BTRFS_METADATA_E_SWAP.md`](../DevOps/BTRFS_METADATA_E_SWAP.md) §3.
+   - ✗ em **«swap»/«target em tmpfs»** → alguém religou o `target/` em RAM (retirado em 22/08);
+     `bash scripts/target-to-disk.sh` desfaz, com os portões dele.
 
 ---
 

@@ -15,6 +15,7 @@ fn params(rows: usize, cols: usize, speed: f32, damping: f32) -> Params {
         speed,
         damping,
         center: [0.0, 0.0],
+        channel: Channel::Size,
     }
 }
 
@@ -297,4 +298,76 @@ impl BoundedOsc for f32 {
         let f = self - self.floor();
         (2.0 * (2.0 * f - 1.0).abs() - 1.0).clamp(-1.0, 1.0)
     }
+}
+
+/// **A ALTURA VAI PARA O CANAL ESCOLHIDO, E O SINAL SOBREVIVE FORA DO TAMANHO.**
+///
+/// ⚠️ **É o defeito que o doc 90 §5 nomeou e ninguém tinha curado.** O nó publicava `wave_h`
+/// ASSINADO e escrevia `size = BASE + GAIN·|z|` como ÚNICO destino: uma crista e um vale
+/// desenhavam a mesma bolha, e nada no painel dizia porquê. *O `abs()` nunca foi o erro — um
+/// tamanho negativo não quer dizer nada; o erro era não haver para onde mais mandar a altura.*
+///
+/// O oráculo é a ASSIMETRIA: com o campo a ter alturas de sinais opostos, o canal `Y` tem de
+/// separá-las e o `Size` tem de as confundir. Um `abs()` deixado no `Y` mata a primeira metade.
+#[test]
+fn the_height_reaches_the_chosen_channel_and_keeps_its_sign() {
+    // Um campo com uma crista e um vale, montado à mão — a fixture CONTÉM o fenómeno.
+    let p = params(1, 3, 0.35, 0.0);
+    let h = vec![0.5f32, 0.0, -0.5];
+    let state = Stream::new(3)
+        .with("wave_h", Column::Scalar(h.clone()))
+        .with("wave_prev", Column::Scalar(h.clone()))
+        .with("sim_t", Column::Scalar(vec![0.0; 3]));
+
+    let y_of = |s: &Stream| match s.get("P") {
+        Some(Column::Vec2(v)) => v.iter().map(|q| q[1]).collect::<Vec<_>>(),
+        _ => panic!("P"),
+    };
+    let size_of = |s: &Stream| match s.get("size") {
+        Some(Column::Vec2(v)) => v.iter().map(|q| q[0]).collect::<Vec<_>>(),
+        _ => panic!("size"),
+    };
+
+    // CANAL `Size` — o de sempre: a crista e o vale ENGORDAM igual (o `abs()` é correcto aqui).
+    let mut ps = params(1, 3, 0.35, 0.0);
+    ps.channel = Channel::Size;
+    let out_s = simulate(None, &state, 0.0, &ps);
+    let sz = size_of(&out_s);
+    assert!(
+        (sz[0] - sz[2]).abs() < 1e-6,
+        "em Size a crista e o vale engordam igual: {sz:?}"
+    );
+    let ys = y_of(&out_s);
+    assert!((ys[0] - ys[2]).abs() < 1e-6, "em Size o Y nao se mexe");
+
+    // CANAL `Y` — a crista SOBE e o vale DESCE: o sinal sobrevive.
+    let mut py = params(1, 3, 0.35, 0.0);
+    py.channel = Channel::Y;
+    let out_y = simulate(None, &state, 0.0, &py);
+    let yy = y_of(&out_y);
+    assert!(
+        yy[0] - yy[2] > 0.5,
+        "em Y a crista tem de ficar ACIMA do vale: {yy:?}"
+    );
+    // …e o tamanho fica no neutro, senão a altura responderia duas vezes.
+    for v in size_of(&out_y) {
+        assert!((v - SIZE_BASE).abs() < 1e-6, "em Y o tamanho fica neutro");
+    }
+
+    // CONTROLE: o campo tem de ter alturas de sinais opostos, senão o gate passa por vácuo.
+    assert!(
+        h[0] > 0.0 && h[2] < 0.0,
+        "controle: a fixture tem crista E vale"
+    );
+    let _ = p;
+}
+
+/// **O DEFAULT É BYTE-IDÊNTICO AO QUE SHIPOU** — o canal novo não move uma cena que existe.
+#[test]
+fn the_default_channel_is_the_size_that_always_shipped() {
+    assert_eq!(Channel::from_param(0.0), Channel::Size);
+    // Um valor fora da escada cai no de sempre, nunca num canal por acidente.
+    assert_eq!(Channel::from_param(9.0), Channel::Size);
+    assert_eq!(Channel::from_param(1.0), Channel::Y);
+    assert_eq!(Channel::from_param(2.0), Channel::Rotation);
 }

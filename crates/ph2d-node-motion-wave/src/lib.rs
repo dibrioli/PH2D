@@ -78,6 +78,43 @@ const MAX_SIDE: i64 = 60;
 const SIZE_BASE: f32 = 0.22;
 const SIZE_GAIN: f32 = 1.4;
 
+/// Quanto uma unidade de altura levanta a peça, em unidades de MUNDO (canal `Y`).
+///
+/// ⚠️ Escolhido para casar com a excursão que o `SIZE_GAIN` já entrega: um `z` que engorda a
+/// peça de `0,22` para `1,62` levanta-a `1,4` — *a mesma amplitude, noutro canal*, para que
+/// trocar o canal não obrigue a re-afinar a onda.
+const Y_GAIN: f32 = 1.4;
+/// Quanto uma unidade de altura inclina a peça, em GRAUS (canal `Rotation`).
+const ROT_GAIN_DEG: f32 = 45.0;
+
+/// **PARA ONDE a altura vai** (doc 89 folha 06 — *"o height map é escolhível na referência,
+/// aqui é `size`"*).
+///
+/// ⚠️ **E é aqui que o SINAL da onda deixa de se perder.** O nó publicava `wave_h` assinado e
+/// escrevia `size = BASE + GAIN·|z|` — o `abs()` é **correcto num tamanho** (uma peça de tamanho
+/// negativo não quer dizer nada), mas como `size` era o ÚNICO destino, a metade negativa da onda
+/// era indistinguível da positiva em tudo o que se via: uma crista e um vale desenhavam a mesma
+/// bolha. *O defeito não era o `abs()`; era não haver para onde mais mandar a altura.*
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Channel {
+    /// O de sempre: a peça ENGORDA com |altura|. `0` — byte-idêntico ao que shipou.
+    Size,
+    /// A peça SOBE e DESCE — o canal em que a onda de facto se lê como onda.
+    Y,
+    /// A peça INCLINA com a altura (uma bandeira, um cardume a virar).
+    Rotation,
+}
+
+impl Channel {
+    fn from_param(v: f32) -> Self {
+        match v.round() as i32 {
+            1 => Self::Y,
+            2 => Self::Rotation,
+            _ => Self::Size,
+        }
+    }
+}
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.wave"),
@@ -135,6 +172,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "center_y",
             default: 0.0,
         },
+        // ⚠️ **PARA ONDE a altura vai** — ver [`Channel`]. Apendado; `0` (Size) ⇒ o que shipou.
+        ParamSpec {
+            name: "channel",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -147,6 +189,7 @@ struct Params {
     speed: f32,
     damping: f32,
     center: [f32; 2],
+    channel: Channel,
 }
 
 impl Params {
@@ -261,16 +304,35 @@ fn simulate(drive: Option<f32>, state: &Stream, playhead: f32, p: &Params) -> St
         (vec![0.0; n], vec![0.0; n]) // seed a flat field
     };
 
-    let size: Vec<[f32; 2]> = h
-        .iter()
-        .map(|&z| {
-            let s = SIZE_BASE + SIZE_GAIN * z.abs();
-            [s, s]
-        })
-        .collect();
+    // ⚠️ **A altura vai para UM canal, e os outros ficam no neutro.** Espalhá-la por dois
+    // faria a mesma grandeza responder duas vezes, e o artista não teria como pedir só uma.
+    let mut pos = grid_positions(p);
+    let mut size = vec![[SIZE_BASE, SIZE_BASE]; n];
+    let mut rot = vec![0.0f32; n];
+    match p.channel {
+        // ⚠️ O `abs()` fica SÓ aqui, e agora com a razão ao lado: uma peça de tamanho
+        // negativo não quer dizer nada. Nos outros canais o sinal é a metade da onda.
+        Channel::Size => {
+            for (s, &z) in size.iter_mut().zip(&h) {
+                let v = SIZE_BASE + SIZE_GAIN * z.abs();
+                *s = [v, v];
+            }
+        }
+        Channel::Y => {
+            for (q, &z) in pos.iter_mut().zip(&h) {
+                q[1] += z * Y_GAIN;
+            }
+        }
+        Channel::Rotation => {
+            for (r, &z) in rot.iter_mut().zip(&h) {
+                *r = z * ROT_GAIN_DEG;
+            }
+        }
+    }
     Stream::new(n)
-        .with("P", Column::Vec2(grid_positions(p)))
+        .with("P", Column::Vec2(pos))
         .with("size", Column::Vec2(size))
+        .with("rot", Column::Scalar(rot))
         .with("wave_h", Column::Scalar(h))
         .with("wave_prev", Column::Scalar(prev))
         .with("sim_t", Column::Scalar(vec![playhead; n]))
@@ -292,6 +354,7 @@ impl NodeOp for MotionWave {
             speed: ctx.param("speed"),
             damping: ctx.param("damping").clamp(0.0, 0.99),
             center: [ctx.param("center_x"), ctx.param("center_y")],
+            channel: Channel::from_param(ctx.param("channel")),
         };
         let playhead = ctx.playhead() as f32;
         let drive = drive_value(&scalar_col(ctx.input(0), VALUE_COL));
@@ -360,6 +423,19 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 0.3,
         step: 0.005,
         widget: ParamWidget::Slider,
+    },
+    // ⚠️ **PARA ONDE a altura vai** — um seletor NOMEADO, nunca um slider de passos a decorar
+    // (doc 89 folha 06). O vocabulário é o da casa (`motion.drive`), e por isso o artista que
+    // aprendeu «Size» num nó não o re-aprende aqui.
+    ParamUiHint {
+        param: "channel",
+        label: "Height Drives",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Size", "Y", "Rotation"],
+        },
     },
     ParamUiHint {
         param: "center_x",

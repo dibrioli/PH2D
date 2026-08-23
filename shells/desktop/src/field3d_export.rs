@@ -94,6 +94,37 @@ impl ExportLevel {
 /// ⚠️ **Sem peça não há o que exportar, e o toast diz** — o silêncio seria indistinguível de um
 /// diálogo que falhou.
 ///
+/// ⭐ **O TAMANHO DA PEÇA que saiu** — a caixa da malha escrita, por eixo.
+///
+/// # ⚠️ Por que NÃO é o bordo da grade
+///
+/// Há dois números disponíveis e eles não são o mesmo. O bordo
+/// ([`ph2d_field_eval::bounds::bounding_ball`], W33) é o cubo que envolve a **esfera** que contém a
+/// peça, mais 5 % de folga: ele é **andaime**, conservador por construção, e **cúbico** — numa peça
+/// fina o eixo curto sai mais de uma ordem de grandeza maior do que a peça. Dizê-lo seria responder
+/// *"que tamanho tem a caixa em que eu desenhei"* a quem perguntou *"que tamanho tem a peça"*.
+///
+/// O que se diz é a caixa da **malha que de facto foi escrita no arquivo** — o mesmo número que o
+/// outro programa vai mostrar. Sonda: `measure_the_grid_box_against_the_real_piece`.
+///
+/// ⚠️ Uma malha **vazia** devolve zeros: o [`ph2d_mesh::Aabb::EMPTY`] é invertido de propósito, e
+/// subtrair as pontas dele daria negativos — que num toast leem como um defeito da peça.
+fn piece_size(mesh: &ph2d_mesh::Mesh) -> [f32; 3] {
+    if mesh.positions().is_empty() {
+        return [0.0; 3];
+    }
+    let b = mesh.bounds();
+    [
+        b.max[0] - b.min[0],
+        b.max[1] - b.min[1],
+        b.max[2] - b.min[2],
+    ]
+}
+
+#[cfg(test)]
+#[path = "field3d_export_tests.rs"]
+mod tests;
+
 /// ⚠️ **Recebe os TOASTS, e não o `App`.** Ela é chamada de dentro do quadro, onde o `gfx` já está
 /// emprestado — e pedir `&mut self` ali é um empréstimo duplo. Pedir só o que se usa é o que a
 /// deixa chamável de onde ela precisa de ser chamada.
@@ -167,10 +198,15 @@ pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::Toast
             Ok(()) => {
                 let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
                 // ⭐ O que saiu de FACTO — triângulos e KB —, não o que o nível prometia.
+                // ⭐ **E o TAMANHO** — a primeira pergunta de quem leva o arquivo para outro
+                // programa, e a única que o toast não respondia. É a caixa da MALHA, não a do
+                // andaime: ver [`piece_size`].
+                let [sx, sy, sz] = piece_size(&mesh);
                 say(
                     toasts,
                     format!(
-                        "Exported {quads} quads = {tris} tris, {} KB in {ms:.0} ms -- {name} ({})",
+                        "Exported {quads} quads = {tris} tris, {sx:.2} x {sy:.2} x {sz:.2}, \
+                         {} KB in {ms:.0} ms -- {name} ({})",
                         size / 1024,
                         crate::sculpt3d::lost_by(fmt)
                     ),

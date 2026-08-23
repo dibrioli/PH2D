@@ -2815,6 +2815,71 @@ a lei do empilhamento, não a viagem dos bytes.
 
 ---
 
+## §37 — W36: a exportação diz o TAMANHO — e havia dois números, não um (22/08)
+
+> O toast da exportação já dizia quads, triângulos, KB e milissegundos. Não dizia **que tamanho a
+> peça tem** — a primeira pergunta de quem leva o arquivo para outro programa. A W33 (§34) deixou a
+> nota *"agora que o bordo existe, dizê-lo é uma linha"*. ⚠️ **Era uma linha, mas não a que a nota
+> supunha:** o bordo é o número errado.
+
+### §37.1 — ⭐ Os dois candidatos, e por que o óbvio mente
+
+| candidato | o que é | veredito |
+|---|---|---|
+| a caixa do **bordo** (`bounds::bounding_ball().aabb()`) | o cubo que envolve a **esfera** que contém a peça — e a grade ainda lhe soma 5 % (`PAD_FRACTION`) | ⛔ é **andaime**: conservador por construção, e **cúbico** |
+| a caixa da **malha** (`Mesh::bounds()`) | o que de facto foi escrito no arquivo | ⭐ é a resposta à pergunta que foi feita |
+
+Dizer o do bordo seria responder *"que tamanho tem a caixa em que eu desenhei"* a quem perguntou
+*"que tamanho tem a peça"*.
+
+### §37.2 — A medição, e a fixture que quase escondeu tudo
+
+Sonda `measure_the_grid_box_against_the_real_piece` (`--ignored --nocapture`):
+
+| peça | bordo (x,y,z) | malha (x,y,z) | razão |
+|---|---|---|---|
+| esfera r=0,40 | 0,800 · 0,800 · 0,800 | 0,800 · 0,800 · 0,800 | **1,00× 1,00× 1,00×** |
+| caixa fina 0,80 × 0,80 × 0,04 | 1,132 · 1,132 · 1,132 | 0,800 · 0,800 · **0,040** | 1,42× 1,42× **28,30×** |
+| duas esferas afastadas | 1,500 · 1,500 · 1,500 | 1,500 · **0,300** · **0,300** | 1,00× **5,00×** 5,00× |
+
+⛔⛔ **A esfera dá 1,00× nos três eixos** — porque numa esfera o bordo **é** a peça. Uma verificação
+feita só nela teria confirmado o número errado com folga. *A fixture que concorda é a que não prova
+nada*, e é por isso que a peça **fina** e a peça **afastada** estão na sonda: uma separa o eixo curto,
+a outra separa a peça do espaço que ela ocupa.
+
+⚠️ O gate `the_reported_size_is_the_mesh_that_shipped_not_the_grid_that_built_it` **exige que os dois
+números divirjam** na fixture dele (`bordo > 5 × malha` no eixo curto). Sem essa metade ele passaria
+numa fixture onde as duas leis coincidem, que é a mesma armadilha um nível acima.
+
+### §37.3 — O que o artista lê
+
+```
+Exported 5 128 quads = 5 128 tris, 0.80 x 0.80 x 0.04, 412 KB in 38 ms -- model.obj (…)
+```
+
+⚠️ **Sem unidade, de propósito.** O documento deste módulo é adimensional — a única px→m do projeto é
+a `ProjectSettings.pixels_per_meter`, que é da **física 2D** e não descreve esta peça. Carimbar "mm"
+ou "m" aqui seria inventar uma escala que ninguém autorou. O número é o mesmo que o outro programa
+vai mostrar, que é o que se queria.
+
+### §37.4 — Provas de mutação
+
+| mutação | gate que ficou vermelho |
+|---|---|
+| o tamanho passa a ser o do **andaime** | `the_reported_size_is_the_mesh_that_shipped_not_the_grid_that_built_it` |
+| a malha **vazia** deixa de ser tratada (a caixa invertida vaza) | `an_empty_mesh_reports_zero_instead_of_a_negative_size` |
+
+2 mutações, 2 vermelhas.
+
+### §37.5 — ⏸️ O que fica aberto
+
+- O `field3d_export` abre um diálogo nativo (`rfd`) e **não é alcançável de um gate**. O que se
+  prende é a metade pura (`piece_size`); a linha do toast em si é smoke.
+- ⏸️ **Nada diz onde a peça ESTÁ**, só que tamanho ela tem. Para quem monta várias peças no mesmo
+  arquivo, o canto mínimo importa tanto quanto a extensão — e o número já está na mesma `Aabb`.
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
@@ -2830,6 +2895,11 @@ a lei do empilhamento, não a viagem dos bytes.
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W36 (§37): a exportação diz o TAMANHO da peça** — e havia **dois** números disponíveis, não
+  um: o bordo é **andaime** (cúbico e conservador; até **28×** o eixo curto de uma peça fina), e o
+  que se diz é a caixa da **malha que saiu**. ⛔ Numa esfera os dois coincidem, então uma conferência
+  feita só nela teria confirmado o número errado. ⏸️ Fica: nada diz **onde** a peça está (o canto
+  mínimo), que importa a quem monta várias peças no mesmo arquivo
 - ✅ **W35 (§36): a peça ATRAVESSA o arquivo — e a nota que dizia o contrário era velha.** Ela é uma
   árvore de entidades, o `ProjectState` é o mundo inteiro, e o `PROJECT_SCHEMA` **não se mexe**. O
   que faltava era estreito: a memória de *"já tentei ler esta escultura"* era do **processo**, então

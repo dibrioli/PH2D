@@ -36,6 +36,7 @@
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) — feature nova = auto-play
 - [Perfeição sem adiamentos](feedback_perfection_no_deferrals.md) — gaps in-scope fecham na sessão
 - [O teto é do HARDWARE](feedback_the_ceiling_is_the_hardwares_never_the_fallbacks.md) — meça antes de limitar
+- [Medir um teto pode CONFIRMÁ-LO, e isso é o resultado](feedback_measuring_a_ceiling_can_confirm_it_and_that_is_the_result.md) — o entregável é a DERIVAÇÃO executável; e o recurso certo decide (alvo de ponteiro, não legibilidade)
 - [Barra de RAZÃO aperta sozinha se o denominador é um knob](feedback_a_ratio_bar_tightens_itself_when_the_denominator_is_a_knob.md) — «atravessa a peça» é fração da peça; a razão triplicou sem defeito nenhum
 - [Produto final, não MVP: params PRO por nó](feedback_final_product_every_node_ships_the_full_pro_param_set.md) — o superset do catálogo, conferido por nó (o miss da rotação)
 - [Wave de pesquisa RECURSA](feedback_a_research_fanout_recurses_bound_it.md) — limite; verifique você o fato decisivo
@@ -75,10 +76,12 @@
 - [Crase em msg de commit executa](feedback_backticks_in_commit_message_are_command_substitution.md) — `git commit -F`
 - [LOC cap = split](feedback_loc_cap_split_not_allowlist_and_fmt_reexpands.md) · [cap de FN ≠ cap de ARQUIVO](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md) — fmt ANTES de medir; corte para o IRMÃO
 - [O clippy do fecho cobre TODA crate que a linha tocou](feedback_the_closing_clippy_must_cover_every_crate_the_line_touched.md) — alvo derivado do DIFF, nunca escrito à mão; um `-p` a dedo mede a minha memória e o integrador paga
+- [Um vermelho de FLAKE esconde o resto da suíte](feedback_a_flake_red_hides_the_rest_of_the_suite.md) — o nextest cancela no 1º ✗ e deixou 1.007 por correr; leia o `X/Y tests run` antes de riscar o ✗
 - [Cadência de processo + armadilhas de CI (17)](reference_topic_process_cadence.md) — gist em CLAUDE.md §2-§3 · fmt-skew · ship committed vs WIP · cold-build drift · paridade CI · `rustup default` · allowlist duplicada · seletor de impacto cego. ⚠️ o babysit do CI É polling de 15 min (§3)
 
 ## Auditoria (famílias — 2 saltos)
 - [Reprodução/diagnóstico (18)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
+- [O 1º cruzamento de uma resposta RESSONANTE não é a fronteira](feedback_the_first_crossing_of_a_resonant_response_is_not_the_boundary.md) — prefixo-máximo; e imprima a varredura INTEIRA (o platô prova o instrumento)
 - [Réguas do quad remesh (13)](reference_topic_quad_remesh_rulers.md) — ⛔ suíte topológica cega a geometria · extremo global ≠ régua por-face · cura que falha delimita a causa · gate tautológico · régua que deduplica · `round` sem resíduo · invariante conservada · proveniência do defeito · provas de ótimo
 - [Balde que ninguém enche lê-se como PERFEITO](feedback_a_bucket_nobody_fills_reads_as_perfect.md) — mediana de vector vazio = 0; ponha a CONTAGEM ao lado, e `else` em vez de `continue` quando a escrituração vive no fim do laço
 - [Cura que MOVE o defeito nomeia-o](feedback_a_cure_that_moves_the_defect_names_it.md) — meça as duas pontas da fase; total igual + folga fechada = a fase foi isolada, não é fracasso

@@ -41,6 +41,21 @@ fn no_darkening_operation_is_offered_over_a_depthless_composite() {
     );
 }
 
+/// **A RESOLUÇÃO DA LUT É A MESMA DOS DOIS LADOS.**
+///
+/// ⚠️ O nó assa a tabela e o renderer cria a textura; nenhum dos dois vê o outro (o
+/// `ph2d-render` não depende de nó nenhum — é a fronteira que o mantém utilizável fora do
+/// Motion). Se as duas contagens divergissem, o passe recusaria a tabela **em silêncio** e o
+/// halo voltaria ao `tint` constante: o artista desenharia uma rampa e não veria nada.
+#[test]
+fn the_halo_lut_is_the_same_length_on_both_sides() {
+    assert_eq!(
+        ph2d_node_fx_glow::HALO_LUT_TEXELS,
+        ph2d_render::motion_fx::HALO_LUT_TEXELS,
+        "a tabela que o no' assa e a textura que o renderer cria tem de ter o mesmo tamanho"
+    );
+}
+
 /// **A FONTE DO BRIGHT-PASS TEM DUAS, E O DEFAULT É A DE SEMPRE.**
 ///
 /// ⚠️ O default de um param apendado **reduz** ao mundo de antes; se o `Alpha` nascesse

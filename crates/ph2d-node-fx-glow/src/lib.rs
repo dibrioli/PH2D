@@ -31,6 +31,7 @@
 //! Transcendental-free (HR-5): the node itself does no math — it forwards its
 //! input and carries four numbers the render pass reads.
 
+use ph2d_color::parse_gradient;
 use ph2d_node_registry::{
     NodeRegistry, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamHardMax, ParamUiHint,
     ParamUnit, ParamUnitDecl, ParamWidget, RegistryError,
@@ -163,6 +164,34 @@ pub const SOURCE: &str = "source";
 /// As fontes do bright-pass, na ordem das tags.
 pub const SOURCE_LABELS: [&str; 2] = ["Luminance", "Alpha"];
 
+/// **A RAMPA DO HALO** — a chave do param de TEXTO em que ela viaja (doc 32/85).
+///
+/// ⚠️ **Nós temos a peça que a referência não tem, e é isso que torna esta célula barata.** O AE
+/// oferece *Glow Colors A & B* — DUAS cores e um *Color Looping* —, e o Unreal cinco tintas por
+/// tamanho de bloom. Aqui já existe o editor de gradiente ([`ParamWidget::Gradient`], doc 85)
+/// com paradas arrastáveis e selector OKLCH por parada: a rampa inteira é **um param de texto**
+/// e o painel desenha-a sem uma linha de UI nova.
+///
+/// **A rampa é indexada pela LUMINÂNCIA do halo**, que é o que a referência faz: o valor do
+/// brilho escolhe a cor. Sem texto autorado o passe usa o `tint` constante de sempre, **ao
+/// bit** — a LUT nem chega a ser assada.
+pub const RAMP_KEY: &str = "ramp";
+
+/// Quantos texels a LUT do halo carrega — **MEDIDO**, não escolhido.
+///
+/// A rampa é assada aqui, na CPU, em amostras **uniformes**: a biblioteca de cor fica com a
+/// semântica (interpolação, espaço, caminho do matiz) e o shader faz apenas um `mix` entre
+/// vizinhas. Uma grelha uniforme também dispensa a busca — o índice é `t · (n−1)`.
+///
+/// ⚠️ **O recurso tem nome: o PASSO DO ECRÃ.** A saída do halo é tonemapeada para 8 bits, então
+/// um erro de reconstrução abaixo de `1/255` não tem como aparecer. A sonda
+/// `measure_ramp_lut_resolution` varre os quatro presets da casa com
+/// 2 049 pontos por rampa (o erro de uma reconstrução linear é máximo **no meio** de um
+/// intervalo, então amostrar nos nós daria zero em toda parte) e imprime a tabela; o gate irmão
+/// exige as **duas** metades — que esta contagem seja invisível **e** que METADE dela seja
+/// visível, senão estaríamos a pagar memória de uniforme por nada.
+pub const HALO_LUT_TEXELS: usize = 512;
+
 /// The bloom settings the shell reads to drive the Motion glow pass. Mirrors
 /// `ph2d_render::BloomParams` (this crate has no render dep — the shell converts
 /// at the boundary).
@@ -191,6 +220,28 @@ pub struct Glow {
     pub source: f32,
 }
 
+/// **A LUT DO HALO, ASSADA** — `None` quando não há rampa autorada (e aí o passe usa o `tint`
+/// constante de sempre, **ao bit**).
+///
+/// ⚠️ **A semântica fica com a biblioteca de cor**: `eval` honra as CINCO interpolações e os
+/// TRÊS espaços que o editor oferece. Reimplementá-los em WGSL seria a segunda porta que
+/// diverge da primeira, e divergiria exactamente nas rampas em HSV — as que o painel oferece por
+/// botão. O shader recebe uma tabela e interpola entre texels vizinhos; mais nada.
+///
+/// ⚠️ **Um texto que não parse conta como SEM RAMPA**, e não como uma rampa vazia: um documento
+/// de uma versão futura, ou uma edição por MCP, não pode espalhar `NaN` por seis níveis de mip.
+#[must_use]
+pub fn bake_halo_lut(graph: &Graph) -> Option<Vec<[f32; 4]>> {
+    let node = graph.nodes().iter().find(|n| n.type_name == TYPE_NAME)?.id;
+    let ramp = graph
+        .node_text_param_overrides(node)
+        .and_then(|m| m.get(RAMP_KEY))
+        .and_then(|s| parse_gradient(s))?;
+    #[expect(clippy::cast_precision_loss, reason = "HALO_LUT_TEXELS <= 4096")]
+    let at = |k: usize| ramp.eval(k as f32 / (HALO_LUT_TEXELS - 1) as f32);
+    Some((0..HALO_LUT_TEXELS).map(at).collect())
+}
+
 /// The manifest default for a param name (the single source of a knob's neutral
 /// value — the reader never hard-codes a second copy).
 fn default_of(name: &str) -> f32 {
@@ -217,6 +268,7 @@ fn read(overrides: Option<&BTreeMap<String, f32>>, name: &str) -> f32 {
 pub fn from_graph(graph: &Graph) -> Option<Glow> {
     let node = graph.nodes().iter().find(|n| n.type_name == TYPE_NAME)?.id;
     let ov = graph.node_param_overrides(node);
+
     Some(Glow {
         threshold: read(ov, "threshold"),
         knee: read(ov, "knee"),
@@ -285,6 +337,21 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Enum {
             labels: &OPERATION_LABELS,
         },
+    },
+    // **A RAMPA**, logo depois dos modos: ela substitui o `tint`, então tem de aparecer antes
+    // dele — senão o artista arrasta a cor constante e não entende porque nada muda.
+    //
+    // ⚠️ **Um param de TEXTO precisa de hint para EXISTIR na UI.** Sem esta linha o editor de
+    // gradiente nunca é pintado, e a rampa seria um controle que o kernel lê e que gesto nenhum
+    // alcança — exactamente o defeito que o doc 90 curou dezanove vezes. `min/max/step` são
+    // inertes num widget de gradiente.
+    ParamUiHint {
+        param: RAMP_KEY,
+        label: "Halo Ramp",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Gradient,
     },
     ParamUiHint {
         param: SOURCE,
@@ -535,6 +602,10 @@ mod tests {
                 stretch: 1.0,
                 angle: 0.0,
                 clamp: 0.0,
+                // …e os três da wave dos modos + rampa, idem: `ramp_len = 0` é *sem rampa*,
+                // e o passe usa o `tint` constante de sempre.
+                operation: 0.0,
+                source: 0.0,
             })
         );
         // A dragged slider overrides just that knob; the rest stay at default.
@@ -586,3 +657,8 @@ mod tests {
         assert_eq!(default_of("stretch"), 1.0, "o halo redondo é o neutro");
     }
 }
+
+/// A RAMPA do halo — assunto próprio, arquivo próprio.
+#[cfg(test)]
+#[path = "ramp_tests.rs"]
+mod ramp_tests;

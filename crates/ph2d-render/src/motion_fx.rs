@@ -255,6 +255,44 @@ fn make_tex(gpu: &GpuContext, size: (u32, u32), label: &str) -> Tex {
     }
 }
 
+/// **A LUT DA RAMPA DO HALO** — `HALO_LUT_TEXELS × 1`, `Rgba16Float`.
+///
+/// ⚠️ **`Rgba16Float` e não `Rgba32Float`**, e a razão é a filtragem: o `rgba32float` **não é
+/// filtrável** sem uma feature opcional do WebGPU, e sem filtragem linear a LUT devolveria
+/// degraus — exactamente o artefacto que a resolução medida existe para não ter. E não
+/// `Rgba8Unorm`, cuja quantização é `1/255`: ela **é** o passo do ecrã, ou seja gastaria o
+/// orçamento inteiro do erro antes de a interpolação começar.
+fn make_lut(gpu: &GpuContext) -> Tex {
+    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("ph2d-render motion-fx halo LUT"),
+        size: wgpu::Extent3d {
+            width: HALO_LUT_TEXELS as u32,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: crate::GameRt::FORMAT,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    Tex {
+        texture,
+        view,
+        size: (HALO_LUT_TEXELS as u32, 1),
+    }
+}
+
+/// Quantos texels a LUT do halo carrega — **espelho local** de
+/// `ph2d_node_fx_glow::HALO_LUT_TEXELS`.
+///
+/// ⚠️ **Dito aqui e não importado**: o renderer não depende de nó nenhum (é a fronteira que
+/// mantém o `ph2d-render` utilizável fora do Motion). O preço do espelho é poder divergir, e é
+/// por isso que ele tem gate na shell — o único sítio que vê os dois lados.
+pub const HALO_LUT_TEXELS: usize = 512;
+
 /// The mip resolutions: mip0 = half the RT, then halve while both dims stay ≥ 2,
 /// capped at [`MAX_MIPS`]. Always at least one level.
 fn mip_sizes(size: (u32, u32)) -> Vec<(u32, u32)> {
@@ -282,6 +320,10 @@ pub struct MotionFx {
     u_prefilter: wgpu::Buffer,
     u_up: wgpu::Buffer,
     u_composite: wgpu::Buffer,
+    /// A tabela da rampa do halo. Construída uma vez; reescrita só quando a rampa muda.
+    lut: Tex,
+    /// A última LUT enviada — o que impede um `write_texture` por quadro sobre bytes iguais.
+    lut_uploaded: Vec<[f32; 4]>,
 
     // Size-dependent (rebuilt on resize):
     rt: Tex,
@@ -327,6 +369,23 @@ impl MotionFx {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
                             min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // **A LUT DA RAMPA DO HALO** (doc 89 folha 11).
+                    //
+                    // ⚠️ **Ela está no layout PARTILHADO, e por isso viaja em todos os quatro
+                    // passes** — só o composite a lê. A alternativa seria um segundo layout e um
+                    // segundo pipeline layout só para aquele passe, o que duplicaria a
+                    // construção inteira por causa de uma textura de **4 KB**. O preço de a
+                    // deixar amarrada nos outros três é um descritor por bind group.
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
                         },
                         count: None,
                     },
@@ -469,7 +528,17 @@ impl MotionFx {
         let u_up = uniform("ph2d-render motion-fx u_up");
         let u_composite = uniform("ph2d-render motion-fx u_composite");
 
-        let t = build_targets(gpu, &bgl, &sampler, &u_prefilter, &u_up, &u_composite, size);
+        let lut = make_lut(gpu);
+        let t = build_targets(
+            gpu,
+            &bgl,
+            &sampler,
+            &u_prefilter,
+            &u_up,
+            &u_composite,
+            &lut,
+            size,
+        );
 
         Self {
             bgl,
@@ -481,6 +550,8 @@ impl MotionFx {
             u_prefilter,
             u_up,
             u_composite,
+            lut,
+            lut_uploaded: Vec::new(),
             rt: t.rt,
             mips: t.mips,
             u_down: t.u_down,
@@ -512,6 +583,7 @@ impl MotionFx {
             &self.u_prefilter,
             &self.u_up,
             &self.u_composite,
+            &self.lut,
             size,
         );
         self.rt = t.rt;
@@ -527,7 +599,37 @@ impl MotionFx {
     /// Bright-pass, downsample, upsample and add the glow over `target` (the game
     /// RT). Assumes the shell already rendered the Motion instances into
     /// [`rt_view`](Self::rt_view) this frame, at the SAME sub-rect the scene used.
-    pub fn bloom_over(&self, gpu: &GpuContext, target: &wgpu::TextureView, params: &BloomParams) {
+    /// `halo_lut` é a **rampa de cor do halo já assada** (`ph2d_node_fx_glow::bake_halo_lut`) —
+    /// `None` quando o artista não autorou nenhuma, e aí o passe usa o `tint` constante de
+    /// sempre, **ao bit**.
+    ///
+    /// ⚠️ **A tabela vem PRONTA de fora e não é calculada aqui**, e é a fronteira que importa: as
+    /// cinco interpolações e os três espaços de cor que o editor oferece são semântica da
+    /// biblioteca de cor, e reimplementá-los num shader seria a segunda porta que diverge da
+    /// primeira. O renderer só sabe amostrar uma tabela.
+    pub fn bloom_over(
+        &mut self,
+        gpu: &GpuContext,
+        target: &wgpu::TextureView,
+        params: &BloomParams,
+        halo_lut: Option<&[[f32; 4]]>,
+    ) {
+        // ⚠️ **A LUT só sobe quando MUDA.** Um `write_texture` por quadro sobre bytes iguais é
+        // 4 KB de banda e uma barreira de recurso por cada quadro em que nada aconteceu — e a
+        // rampa muda quando o artista arrasta uma parada, não a 60 Hz.
+        let live = match halo_lut {
+            Some(lut) if lut.len() == HALO_LUT_TEXELS => {
+                if self.lut_uploaded != lut {
+                    self.upload_lut(gpu, lut);
+                    self.lut_uploaded = lut.to_vec();
+                }
+                true
+            }
+            // ⚠️ Uma tabela de tamanho errado conta como AUSENTE, nunca como meia-tabela: ela só
+            // pode vir de um espelho que divergiu, e desenhar metade dela seria o defeito a
+            // aparecer como cor errada em vez de como nada.
+            _ => false,
+        };
         // Per-pass uniforms (distinct buffers → all queue writes land before the
         // single submit; no pass mutates another's value mid-encoder).
         // v = a curva do joelho; v2.x = o teto do bright-pass (ver `clamp_limit`).
@@ -561,7 +663,8 @@ impl MotionFx {
         let comp: [f32; 8] = [
             params.intensity,
             params.saturation.clamp(0.0, 1.0),
-            0.0,
+            // `v.z` diz ao shader se há LUT. `0` = o `tint` constante, o caminho literal.
+            if live { 1.0 } else { 0.0 },
             0.0,
             params.tint[0],
             params.tint[1],
@@ -621,6 +724,38 @@ impl MotionFx {
     }
 }
 
+impl MotionFx {
+    /// Escreve a tabela na textura, convertendo para meio-float — o formato que a torna
+    /// **filtrável** (ver [`make_lut`]).
+    fn upload_lut(&self, gpu: &GpuContext, lut: &[[f32; 4]]) {
+        let mut bytes = Vec::with_capacity(HALO_LUT_TEXELS * 8);
+        for texel in lut {
+            for c in texel {
+                bytes.extend_from_slice(&ph2d_color::f32_to_half(*c).to_le_bytes());
+            }
+        }
+        gpu.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.lut.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &bytes,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some((HALO_LUT_TEXELS * 8) as u32),
+                rows_per_image: Some(1),
+            },
+            wgpu::Extent3d {
+                width: HALO_LUT_TEXELS as u32,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+}
+
 /// One fullscreen-triangle pass into `view`.
 fn fullscreen(
     encoder: &mut wgpu::CommandEncoder,
@@ -670,6 +805,7 @@ fn build_targets(
     u_prefilter: &wgpu::Buffer,
     u_up: &wgpu::Buffer,
     u_composite: &wgpu::Buffer,
+    lut: &Tex,
     size: (u32, u32),
 ) -> Targets {
     let rt = make_tex(gpu, size, "ph2d-render motion-fx RT (Rgba16Float HDR)");
@@ -706,6 +842,11 @@ fn build_targets(
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: u.as_entire_binding(),
+                },
+                // A LUT do halo — presente em todos os quatro, lida só pelo composite.
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&lut.view),
                 },
             ],
         })

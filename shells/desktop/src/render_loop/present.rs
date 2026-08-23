@@ -276,6 +276,9 @@ impl crate::App {
                         surface.gpu(),
                         game_rt.view(),
                         &crate::render_loop::sprite_emissive::bloom_params(),
+                        // ⚠️ **Sem rampa, e é a mesma razão dos outros campos deste sítio**: a
+                        // rampa é autoria de um NÓ, e um emissor de sprite não tem nó nenhum.
+                        None,
                     );
                 }
                 // Pass 1c: Motion glow (doc 67, Option B) — the Motion module's
@@ -290,6 +293,11 @@ impl crate::App {
                 //   else). Additive = emitted light, so it bleeds over whatever is
                 //   in front — the sparks look lit, not pasted.
                 let glow = ph2d_node_fx_glow::from_graph(&motion.doc.graph);
+                // ⚠️ **Assada FORA do `if` de propósito**: dentro dele o `glow` já foi movido, e
+                // pô-la lá obrigaria a reordenar o bloco. O custo de a assar sem a usar é uma
+                // varredura de 512 avaliações num quadro em que existe um `fx.glow` com rampa —
+                // e o passe só corre nesse quadro de qualquer forma.
+                let halo_lut = ph2d_node_fx_glow::bake_halo_lut(&motion.doc.graph);
                 // ⚠️ **A LISTA DO GLOW É A CAMADA MOTION, e não o passe de sprites**
                 // (bug do Enio, 2026-08-20: *"Glow não funciona com shape"*, e a
                 // ordem dele depois: *"tudo deve brilhar"*). Ver
@@ -344,6 +352,10 @@ impl crate::App {
                             operation: glow.operation,
                             source: glow.source,
                         },
+                        // **A RAMPA DO HALO** (doc 89 folha 11) — assada pelo nó, que é quem
+                        // possui a semântica do gradiente; aqui ela só atravessa. `None` quando
+                        // o artista não desenhou nenhuma, e aí o `tint` constante manda.
+                        halo_lut.as_deref(),
                     );
                 }
                 // Pass 2: AgX tonemap

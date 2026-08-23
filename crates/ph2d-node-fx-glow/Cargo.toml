@@ -12,3 +12,7 @@ authors.workspace = true
 [dependencies]
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
+# A RAMPA do halo (doc 89 folha 11): o no' parse o `ColorRamp` autorado e assa a LUT que o passe
+# de tela consome. A semantica da rampa (interp, espaco de cor, caminho do matiz) fica com a
+# biblioteca; o shader so' interpola entre amostras vizinhas.
+ph2d-color = { path = "../ph2d-color" }

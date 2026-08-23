@@ -34,11 +34,15 @@ struct Params {
     //  prefilter  → v = (threshold, threshold-knee, 2·knee, 0.25/knee), v2.x = teto
     //  downsample → v = (srcTexel.x, srcTexel.y, _, _)
     //  upsample   → v = (du.x, du.y, dv.x, dv.y)  (a base 2x2 da tenda, em UV)
-    //  composite  → v = (intensity, saturation, _, _), v2 = tint rgba
+    //  composite  → v = (intensity, saturation, tem_rampa, _), v2 = tint rgba
     v: vec4<f32>,
     v2: vec4<f32>,
 };
 @group(0) @binding(2) var<uniform> P: Params;
+// A LUT da RAMPA do halo (doc 89 folha 11): uma tira de `HALO_LUT_TEXELS x 1` em
+// Rgba16Float, assada na CPU a partir da rampa que o artista desenhou. Ela esta' no
+// layout partilhado, entao viaja nos quatro passes -- so' o composite a le^.
+@group(0) @binding(3) var halo_lut: texture_2d<f32>;
 
 // Bright-pass with a soft knee (COD/Karis): below `threshold-knee` nothing
 // contributes, above `threshold` full, quadratic ramp between — no hard edge.
@@ -134,6 +138,14 @@ fn fs_upsample(in: VsOut) -> @location(0) vec4<f32> {
 // (color One/One) — emitted light only brightens, so it bleeds over whatever is
 // in front. Alpha 0 + the pipeline keeps the destination alpha, so the opaque
 // scene stays opaque for the compositor.
+// A RAMPA DO HALO (doc 89 folha 11, o *Glow Colors A & B* do AE): a cor do halo deixa
+// de ser uma constante e passa a ser escolhida pelo BRILHO dele. `P.v.z` diz se ha'
+// rampa; sem ela o caminho e' o `tint` literal de sempre, ao bit.
+//
+// ⚠️ O indice e' a LUMINANCIA do halo, saturada em [0,1] -- e' o valor do brilho a
+// escolher a cor, que e' o que a referencia faz. A LUT tem um texel por celula e o
+// sampler interpola entre vizinhas; a tabela ja' vem com a interpolacao e o espaco de
+// cor que o artista escolheu, resolvidos na CPU.
 @fragment
 fn fs_composite(in: VsOut) -> @location(0) vec4<f32> {
     let intensity = P.v.x;
@@ -143,6 +155,10 @@ fn fs_composite(in: VsOut) -> @location(0) vec4<f32> {
     // Rec.709 luminance; mix toward grey for a white bloom at saturation 0.
     let lum = dot(glow, vec3<f32>(0.2126, 0.7152, 0.0722));
     glow = mix(vec3<f32>(lum), glow, saturation);
-    glow = glow * tint.rgb * (intensity * tint.a);
+    var colour = tint.rgb;
+    if (P.v.z >= 0.5) {
+        colour = textureSample(halo_lut, samp, vec2<f32>(clamp(lum, 0.0, 1.0), 0.5)).rgb;
+    }
+    glow = glow * colour * (intensity * tint.a);
     return vec4<f32>(glow, 0.0);
 }

@@ -229,6 +229,58 @@ fn the_bloom_chain_is_a_valid_pipeline_on_a_real_device() {
     let mut fx = MotionFx::new(&gpu, (256, 256));
     fx.ensure_size(&gpu, (320, 200));
     let target = crate::GameRt::new(&gpu, (320, 200));
-    fx.bloom_over(&gpu, target.view(), &BloomParams::default());
+    fx.bloom_over(&gpu, target.view(), &BloomParams::default(), None);
+    gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
+}
+
+/// **CADA OPERAÇÃO É UM PIPELINE QUE O DEVICE ACEITA, E A LUT É UM BINDING QUE ELE LÊ.**
+///
+/// ⚠️ **Isto é o gate que um teste de CPU não pode ser.** Um `BlendFactor` que o backend recuse,
+/// um binding declarado no layout e ausente do bind group, um formato não-filtrável — nada disso
+/// aparece em `cargo test` sem um device: aparece como **tela preta no arranque**, com uma
+/// mensagem de validação no terminal. O irmão acima já provava o caminho de sempre; esta metade
+/// prova o que a folha 11 acrescentou.
+#[test]
+fn every_glow_operation_and_the_ramp_lut_survive_a_real_device() {
+    // ⚠️ **Um skip TEM de se ver.** Sem adapter este gate devolve verde sem ter feito nada, e um
+    // verde por ausência é a pior leitura que um gate de device pode dar (`CLAUDE.md` §5.0:
+    // *skip gracioso não é verde*). A linha diz qual dos dois aconteceu.
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[motion_fx] SEM ADAPTER -- este gate NAO correu");
+        return;
+    };
+    eprintln!("[motion_fx] adapter presente: as {COMPOSITE_OPERATIONS} operacoes vao ao device");
+    let mut fx = MotionFx::new(&gpu, (128, 128));
+    let target = crate::GameRt::new(&gpu, (128, 128));
+    // Uma LUT plausível: uma rampa de preto a branco, do tamanho que o nó assa.
+    #[expect(clippy::cast_precision_loss, reason = "HALO_LUT_TEXELS <= 4096")]
+    let lut: Vec<[f32; 4]> = (0..HALO_LUT_TEXELS)
+        .map(|k| {
+            let t = k as f32 / (HALO_LUT_TEXELS - 1) as f32;
+            [t, t * 0.5, 1.0 - t, 1.0]
+        })
+        .collect();
+    for operation in 0..COMPOSITE_OPERATIONS {
+        #[expect(clippy::cast_precision_loss, reason = "COMPOSITE_OPERATIONS = 2")]
+        let params = BloomParams {
+            operation: operation as f32,
+            // E as duas fontes do bright-pass, no mesmo laço: elas são um ramo de shader, e um
+            // ramo que nunca corre num device é um ramo que nunca foi compilado com dados.
+            source: (operation % 2) as f32,
+            ..BloomParams::default()
+        };
+        fx.bloom_over(&gpu, target.view(), &params, Some(&lut));
+        // E de novo SEM a tabela: o caminho literal tem de continuar válido depois de a textura
+        // ter sido escrita uma vez.
+        fx.bloom_over(&gpu, target.view(), &params, None);
+    }
+    // ⚠️ E uma tabela de TAMANHO ERRADO — o espelho que divergiu. Ela conta como ausente, e o
+    // que este gate afirma é que ela não é meia-desenhada nem um `panic`.
+    fx.bloom_over(
+        &gpu,
+        target.view(),
+        &BloomParams::default(),
+        Some(&lut[..8]),
+    );
     gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
 }

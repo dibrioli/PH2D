@@ -194,7 +194,7 @@ descartável por construção; um corpo do mundo nunca é.*
 |---|---|---|---|---|
 | **F0** | **`wall_dt` chega ao chrome + estado contínuo por widget** (`UiMotion`: um mapa `id → (valor, velocidade)`) — e o toast passa a contar **segundos** | 1 | — | **M** |
 | ~~F1~~ ✅ | a **mola** serve o chrome — **FEITA pelo F0** (o `motion.rs` resolve com `ph2d_spring::SpringState`). ⚠️ Esta linha ficou a mentir uma jornada inteira | 1 | F0 | **P** |
-| ~~⭐ F2~~ ✅ | **hover/press/focus interpolam** — **FEITA**. ⚠️ A medição de 13/08 (*"2 sítios leem, 161 pintam"*) **expirou**: hoje são **128** a passar o par e **9** famílias no relógio. O que sobrava era uma **quarta rota** — o mapa duro `flat_button_surface`, sem `t` na assinatura, resolvido em 5 pintores —, curada tornando-o **privado** para o COMPILADOR enumerar os sítios. ⛔ Fica a borda do chip da barra de topo (§6.2-bis) | 1 | F0+F1 | ~~P~~ **G** |
+| ~~⭐ F2~~ ✅ | **hover/press/focus interpolam** — **FEITA**. ⚠️ A medição de 13/08 (*"2 sítios leem, 161 pintam"*) **expirou**: hoje são **128** a passar o par e **9** famílias no relógio. O que sobrava era uma **quarta rota** — o mapa duro `flat_button_surface`, sem `t` na assinatura, resolvido em 5 pintores —, curada tornando-o **privado** para o COMPILADOR enumerar os sítios. ✅ E o chip de CHROME fechou a seguir: eram **4** pintores do mesmo quadrado e **1** amaciava (§6.2-bis) | 1 | F0+F1 | ~~P~~ **G** |
 | ~~F3~~ ✅ | **interruptibilidade** — **FEITA pelo F0** (`SpringState::resuming` + a re-normalizacao `v / span`), com gate proprio. ⚠️ Tambem mentia | 1 | F1 | **P** |
 | F4 | **secções e painéis** abrem/fecham com movimento e **direcção coerente** | 1 | F1 | **M** |
 | ~~F5~~ ✅ | **cascata** — **FEITA na PALETA** (`ε = 0,020 s`, MEDIDO; ver a §6.3). ⚠️ E ela é o **primeiro consumidor de `Role::Travel` do produto** — até aqui o eixo que o *reduced motion* existe para matar não era usado por ninguém. Hierarquia e rows do inspector ficam para quando a F2 abrir a porta | 1 | F0 | **P** |
@@ -312,12 +312,28 @@ ficou tão curta de escrever quanto a errada era.
 superfície `if matches!(state, Hovered|Pressed|Focused)`. No quadro em que o rato sai o estado já é
 `Normal`, então a saída seria **instantânea** — a guarda passa a incluir o VOO (`t < SETTLED`).
 
-⛔ **O que fica ABERTO, e é o item seguinte:** o chip da **barra de topo** (`cluster_painter`) tem
-o `t` em mãos e passa-o ao **glifo** (`paint_icon_button((state, hover_t), …)`) — mas escolhe a
-**borda** pelo estado DURO (`Border → BorderEmph`). O ícone amacia e a moldura salta, dentro do
-mesmo chip. O rail (`tool_rail/paint.rs`) é o irmão a conferir.
-⚠️ E a matriz dos dois **não é a mesma** que a plana (o repouso deles é `BgElev`, não `Bg2`): são
-duas perguntas, não duas respostas — há gate a afirmá-lo (`the_flat_surface_reads_the_clock`).
+✅ **E o chip de CHROME fechou logo a seguir, e o buraco era MAIOR do que a nota dizia.** A nota
+acusava o `cluster_painter` (o `t` em mãos, passado ao **glifo**, com a **borda** resolvida pelo
+estado DURO). Ao conferir o irmão, medido: o rail tem **TRÊS** variantes de chip e **só a `Tool`**
+misturava — a `Compound` e a `Swatch` resolviam a borda dura e nunca chegavam a calcular um `t`.
+
+⇒ **quatro pintores desenham o mesmo quadrado, e UM amaciava.**
+
+⚠️ **A causa é a mesma da F2, uma camada acima: o par que implementa o eixo era PRIVADO** do
+`tool_rail/paint.rs` (`rail_hover_t` + `blend_or`). O `cluster_painter` diz por escrito que copia
+*"a matriz EXATA do rail"* — e copiou os **tokens** fielmente, sem o **eixo**, porque o eixo não
+era alcançável. *Uma lei trancada num ficheiro é uma lei que a cópia não herda.*
+
+**A cura:** o par foi **promovido** para o `widget/button_surface.rs` (`chip_axis_t` +
+`chip_axis_color`) e os quatro pintores passam por ele. Os **gates viajaram com a lei** — deixá-los
+no rail faria a casa nova nascer sem prova.
+
+⚠️ **E o que continua fora do eixo, de propósito:** o *lift* (o chip que CRESCE) só existe na
+`Tool` e no chip da barra de topo. Crescer é geometria, não cor, e alargá-lo às outras duas é
+decisão de produto — não a tomei.
+⚠️ A matriz destes quatro **não é a mesma** que a plana (o repouso deles é `BgElev`, não `Bg2`):
+são duas perguntas, não duas respostas — há gate a afirmá-lo
+(`the_flat_surface_reads_the_clock`).
 
 ### 6.3 — A CASCATA (F5), e o `ε` que foi reprovado uma vez
 

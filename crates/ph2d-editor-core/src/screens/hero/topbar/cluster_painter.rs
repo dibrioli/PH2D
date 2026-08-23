@@ -130,7 +130,22 @@ pub(super) fn paint_topbar_rail_chip(
         _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
         _ => (ColorToken::Border, 1.0),
     };
-    stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+    // ⚠️ **A MOLDURA SALTAVA ENQUANTO O GLIFO AMACIAVA, no mesmo chip** (auditoria de
+    // 2026-08-23). Este pintor declara copiar a *"matriz EXATA do rail"* — e copiou os TOKENS
+    // fielmente, sem o eixo: o `hover_t` já estava em mãos e ia inteiro para o
+    // `paint_icon_button`, enquanto a borda se resolvia pelo estado DURO.
+    //
+    // ⚠️ *Copiar a matriz e não copiar o eixo é invisível a toda a suíte*: os dois pintores ficam
+    // verdes sozinhos e os tokens batem certo num screenshot parado — a divergência só existe em
+    // MOVIMENTO. Há gate (`the_chip_axis_has_one_door`).
+    let border_c = crate::widget::chip_axis_color(
+        crate::widget::chip_axis_t(state, is_active, motion.get(chip_id)),
+        ColorToken::Border,
+        ColorToken::BorderEmph,
+        border,
+        theme,
+    );
+    stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
     // Route through the canonical icon-button painter (Plain style: no
     // extra fill/border, only the glyph), so the `paint_icon_path` arch
     // gate doesn't fire here. `icon_tint(state)` inside `paint_icon_button`

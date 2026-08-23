@@ -9,40 +9,7 @@
 //! caminho de chamada muda**.
 
 use super::*;
-
-/// **Quanto do hover este chip pode mostrar** — `1.0` (o neutro) sempre que o estado NÃO é uma
-/// quantidade.
-///
-/// ⚠️ Um chip **activo** ou **premido** sai do eixo por decisão, não por omissão: *activo* responde
-/// *"esta é a ferramenta na tua mão"*, e uma resposta que desvanece é uma resposta que se lê mal.
-pub(super) fn rail_hover_t(state: ButtonState, is_active: bool, t: Option<f32>) -> Option<f32> {
-    if is_active || !matches!(state, ButtonState::Normal | ButtonState::Hovered) {
-        return None;
-    }
-    t
-}
-
-/// A mistura `repouso → hover` em espaço de TOKEN, ou a cor dura quando `t` já é o neutro.
-///
-/// ⚠️ Mistura-se o token e converte-se depois porque [`crate::motion::blend_token_color`] é o motor
-/// ÚNICO deste eixo (o mesmo do `Button` e do `IconButton`) — uma segunda aritmética de cor aqui
-/// divergiria da dele no dia em que um dos dois ganhasse gama.
-pub(super) fn blend_or(
-    t: Option<f32>,
-    rest: ColorToken,
-    hot: ColorToken,
-    hard: ColorToken,
-    theme: Theme,
-) -> ph2d_vector::Color {
-    if let Some(t) = t
-        && let Some(c) =
-            crate::motion::blend_token_color(Some(rest.resolve(theme)), Some(hot.resolve(theme)), t)
-    {
-        return crate::paint::token_to_vello(c);
-    }
-    resolve(hard, theme)
-}
-
+use crate::widget::{chip_axis_color, chip_axis_t};
 /// ⚠️ **Delega com o NEUTRO.** O eixo do hover vive em [`paint_tool_rail_t`]; esta assinatura é a
 /// de sempre e pinta **exactamente** o que pintava antes da wave da UI viva — o molde do
 /// `denoise_ml` / `denoise_ml_with_progress`.
@@ -124,7 +91,7 @@ pub fn paint_tool_rail_t(
                 let radius = Radius::Sm.px();
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let is_active = *active || state == ButtonState::Pressed;
-                let t = rail_hover_t(state, is_active, hover_t(*id));
+                let t = chip_axis_t(state, is_active, hover_t(*id));
                 // ⚠️ O chip CRESCE com o hover, e o hit fica no retangulo de repouso (quem o
                 // regista e' o `left_rail`, com o `chip_rect` de antes deste `hover_lift`).
                 let chip_rect = crate::motion::hover_lift(chip_rect, t.unwrap_or(0.0), travels);
@@ -142,7 +109,7 @@ pub fn paint_tool_rail_t(
                     _ => (ColorToken::Border, 1.0),
                 };
                 let border_c =
-                    blend_or(t, ColorToken::Border, ColorToken::BorderEmph, border, theme);
+                    chip_axis_color(t, ColorToken::Border, ColorToken::BorderEmph, border, theme);
                 stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
                 let fg = match state {
                     ButtonState::Hovered | ButtonState::Focused => ColorToken::Text1,
@@ -150,7 +117,7 @@ pub fn paint_tool_rail_t(
                     _ if is_active => ColorToken::Accent,
                     _ => ColorToken::Text2,
                 };
-                let fg = blend_or(t, ColorToken::Text2, ColorToken::Text1, fg, theme);
+                let fg = chip_axis_color(t, ColorToken::Text2, ColorToken::Text1, fg, theme);
                 paint_icon(scene, *icon, chip_rect, fg, StrokeToken::Default.px());
                 // ⚠️ **O rótulo é medido contra o chip em REPOUSO, não contra o crescido.** O 6º
                 // argumento é o `max_width` do LAYOUT (ver `paint_text::paint_text_rotated_ccw`),
@@ -184,6 +151,10 @@ pub fn paint_tool_rail_t(
                 // feedback that rail buttons looked too bubbly.
                 let radius = Radius::Sm.px();
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+                // ⚠️ **Esta variante estava FORA do eixo** (auditoria de 2026-08-23): das três
+                // do rail, só a `Tool` misturava — as outras duas resolviam a borda pelo estado
+                // DURO e saltavam ao lado da irmã, na mesma coluna.
+                let t = chip_axis_t(state, false, hover_t(*id));
                 let bg = match state {
                     ButtonState::Hovered | ButtonState::Focused => ColorToken::BgElev,
                     ButtonState::Pressed => ColorToken::AccentSoft,
@@ -195,7 +166,9 @@ pub fn paint_tool_rail_t(
                     ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
                     _ => (ColorToken::Border, 1.0),
                 };
-                stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+                let border_c =
+                    chip_axis_color(t, ColorToken::Border, ColorToken::BorderEmph, border, theme);
+                stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
                 let face_color = match state {
                     ButtonState::Pressed => ColorToken::Accent,
                     _ => ColorToken::Text1,
@@ -256,7 +229,17 @@ pub fn paint_tool_rail_t(
                     _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
                     _ => (ColorToken::Border, 1.0),
                 };
-                stroke_rounded_rect(scene, chip_rect, radius, border_w, resolve(border, theme));
+                // ⚠️ **A amostra é a 3ª variante, e estava fora do eixo pela mesma razão.** O
+                // FUNDO dela é a tinta do artista (não um token), então o eixo só tem a moldura a
+                // que agarrar — e é justamente ela que diz *"o dedo está aqui"*.
+                let border_c = chip_axis_color(
+                    chip_axis_t(state, is_active, hover_t(*id)),
+                    ColorToken::Border,
+                    ColorToken::BorderEmph,
+                    border,
+                    theme,
+                );
+                stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
                 paint_sub_label_vertical(
                     text_system,
                     scene,

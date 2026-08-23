@@ -76,6 +76,47 @@ pub fn flat_button_surface_color(v: (ButtonState, f32), theme: Theme) -> ph2d_ve
     )
 }
 
+/// **O `t` DE UM CHIP DE CHROME**, ou `None` quando este chip não está no eixo.
+///
+/// ⚠️ **Um chip ACTIVO fica fora do eixo, e não é rigor.** *Activo* não é uma quantidade — é o
+/// estado que diz *"esta é a ferramenta na tua mão"* —, e desvanecê-lo entre dois valores faria o
+/// rail piscar a resposta a uma pergunta que o artista lê de relance. Mesma lei do `Pressed` no
+/// [`super::Button::bg_color`].
+///
+/// ⚠️ **Ela nasceu PRIVADA dentro do `tool_rail/paint.rs`, e foi essa privacidade que deixou três
+/// cópias nascer sem ela** (as duas outras variantes de chip do rail, e o chip da barra de topo):
+/// quatro pintores desenham o mesmo quadrado e **um** amaciava. Aqui ela é a porta dos quatro.
+#[must_use]
+pub fn chip_axis_t(state: ButtonState, active: bool, t: Option<f32>) -> Option<f32> {
+    if active || !matches!(state, ButtonState::Normal | ButtonState::Hovered) {
+        return None;
+    }
+    t
+}
+
+/// **A COR DE UM CHIP DE CHROME no eixo do hover** — a mistura `rest → hot` por `t`, ou o token
+/// DURO quando este chip não está no eixo (ou já assentou).
+///
+/// ⚠️ Mistura-se o TOKEN e converte-se depois porque [`crate::motion::blend_token_color`] é o motor
+/// único deste eixo (o mesmo do `Button` e do `IconButton`) — uma segunda aritmética de cor
+/// divergiria da dele no dia em que uma das duas ganhasse gama.
+#[must_use]
+pub fn chip_axis_color(
+    t: Option<f32>,
+    rest: ColorToken,
+    hot: ColorToken,
+    hard: ColorToken,
+    theme: Theme,
+) -> ph2d_vector::Color {
+    if let Some(t) = t
+        && let Some(c) =
+            crate::motion::blend_token_color(Some(rest.resolve(theme)), Some(hot.resolve(theme)), t)
+    {
+        return crate::paint::token_to_vello(c);
+    }
+    crate::paint::resolve(hard, theme)
+}
+
 #[cfg(test)]
 mod flat_surface_tests {
     use super::*;
@@ -156,5 +197,89 @@ mod flat_surface_tests {
                 );
             }
         }
+    }
+}
+
+/// Os gates do EIXO de um chip de chrome.
+///
+/// ⚠️ **Eles vieram do `tool_rail/tests.rs` com a lei** (auditoria de 2026-08-23): enquanto o par
+/// era privado do rail, três outros pintores do mesmo quadrado nasceram sem ele. A lei mudou de
+/// casa, e os gates dela mudaram junto — deixá-los para trás faria a casa nova nascer sem prova.
+#[cfg(test)]
+mod chip_axis_tests {
+    use super::*;
+    use crate::widget::ButtonState;
+
+    /// **Um chip ACTIVO fica fora do eixo, e é decisão — não omissão.**
+    ///
+    /// *Activo* responde *«esta é a ferramenta na tua mão»*, e uma resposta que desvanece entre dois
+    /// valores é uma resposta que se lê mal de relance. Mesma lei do `Pressed` no `Button::bg_color`.
+    ///
+    /// **Mutação que deve sangrar:** tirar o `is_active ||` da guarda — um chip seleccionado passaria
+    /// a piscar de Accent para Text2 e de volta enquanto o rato passa por cima.
+    #[test]
+    fn only_a_resting_or_hovered_chip_lives_on_the_hover_axis() {
+        assert_eq!(
+            chip_axis_t(ButtonState::Normal, false, Some(0.4)),
+            Some(0.4)
+        );
+        assert_eq!(
+            chip_axis_t(ButtonState::Hovered, false, Some(0.4)),
+            Some(0.4)
+        );
+        // Activo, premido e desactivado NÃO são quantidades: saem do eixo.
+        assert_eq!(chip_axis_t(ButtonState::Normal, true, Some(0.4)), None);
+        assert_eq!(chip_axis_t(ButtonState::Pressed, false, Some(0.4)), None);
+        assert_eq!(chip_axis_t(ButtonState::Disabled, false, Some(0.4)), None);
+        // E um pintor SEM relógio não tem eixo nenhum.
+        assert_eq!(chip_axis_t(ButtonState::Hovered, false, None), None);
+    }
+
+    /// **Meio caminho é uma cor NOVA, não uma das duas pontas.**
+    ///
+    /// ⚠️ O oráculo não é *«é diferente de uma delas»*: um `blend` partido que devolvesse sempre a
+    /// ponta HOT passaria nesse teste. Tem de estar **entre** as duas em cada canal, e diferir das
+    /// duas — é isso que distingue misturar de escolher.
+    #[test]
+    fn half_a_hover_is_a_colour_between_the_two_ends() {
+        use crate::paint::resolve;
+        let theme = Theme::Forge;
+        let rest = resolve(ColorToken::Text2, theme);
+        let hot = resolve(ColorToken::Text1, theme);
+        let mid = chip_axis_color(
+            Some(0.5),
+            ColorToken::Text2,
+            ColorToken::Text1,
+            ColorToken::Text2,
+            theme,
+        );
+        assert_ne!(mid.to_rgba8().to_u8_array(), rest.to_rgba8().to_u8_array());
+        assert_ne!(mid.to_rgba8().to_u8_array(), hot.to_rgba8().to_u8_array());
+        let (a, b, m) = (
+            rest.to_rgba8().to_u8_array(),
+            hot.to_rgba8().to_u8_array(),
+            mid.to_rgba8().to_u8_array(),
+        );
+        for i in 0..3 {
+            let (lo, hi) = (a[i].min(b[i]), a[i].max(b[i]));
+            assert!(
+                m[i] >= lo && m[i] <= hi,
+                "canal {i}: {} não está entre {lo} e {hi}",
+                m[i]
+            );
+        }
+        // E o NEUTRO devolve a cor dura, exactamente — é o que mantém byte-idêntico todo chamador
+        // que não passa relógio nenhum.
+        let neutral = chip_axis_color(
+            None,
+            ColorToken::Text2,
+            ColorToken::Text1,
+            ColorToken::Accent,
+            theme,
+        );
+        assert_eq!(
+            neutral.to_rgba8().to_u8_array(),
+            resolve(ColorToken::Accent, theme).to_rgba8().to_u8_array()
+        );
     }
 }

@@ -727,3 +727,172 @@ fn an_inert_row_does_not_dispatch_even_if_an_event_arrives() {
         "uma linha inerte não pode emitir uma edição"
     );
 }
+
+/// ⭐⭐⭐ **TODO BOTÃO PINTADO RESPONDE A UM CLIQUE DE VERDADE** (W48).
+///
+/// # O defeito que este gate existe para nunca mais deixar passar
+///
+/// A W47 acrescentou duas fileiras (as vistas nomeadas, a lente e o enquadrar) e tocou **quatro**
+/// dos cinco sítios que um controle de painel precisa: o campo no retrato, a linha no `paint`, o
+/// braço no `event.rs`, a família de ids. Faltou o quinto — o **`populate`**, que regista o widget
+/// no `WidgetStore`.
+///
+/// ⛔ Consequência: os chips pintavam, o índice de acerto tinha-os, o clique caía em cima deles — e
+/// `apply_click` faz `match store.get_mut(id)`, que devolve `None` para um id não registado. **O
+/// evento nunca nascia.** Enio, 2026-08-23: *"nenhum botão funcionou"*.
+///
+/// # ⚠️ E os gates da W47 estavam todos verdes
+///
+/// Eles empurravam a intenção por `push_intent_for_test`. *Isso prova o TRATADOR, nunca a
+/// ALCANÇABILIDADE* — a frase está escrita, à letra, no topo do `field3d_reach_tests.rs`, que é o
+/// arquivo onde eu os acrescentei. **O cabeçalho DESTE arquivo também já o dizia**, e nomeava as
+/// três causas exatas: *"um braço em falta em `event.rs`, um id fora da família ou uma leitura
+/// errada do store deixariam o controle pintado, arrastável e silenciosamente morto"*.
+///
+/// # A lei, e por que ela não tem lista
+///
+/// ⭐ Ela não enumera famílias: percorre **o que o painel de facto registou ao pintar** e exige que
+/// cada um responda. Uma fileira nova entra na varredura **sozinha**, no dia em que for pintada — e
+/// é isso que a separa de um caso, que teria de ser lembrado.
+#[test]
+fn every_painted_button_answers_a_real_click() {
+    let chip = |k: &'static str| ph2d_panel_model3d::ModeChip {
+        key: k,
+        active: false,
+    };
+    // Um retrato com **todas** as fileiras cheias: o que não é pintado não é varrido.
+    publish(ModelSnapshot {
+        modes: vec![
+            chip("panel.model3d.mode.move"),
+            chip("panel.model3d.mode.rotate"),
+        ],
+        frames: vec![chip("panel.model3d.frame.global")],
+        adds: vec![chip("panel.model3d.add.sphere")],
+        ops: vec![chip("panel.model3d.op.union")],
+        mods: vec![chip("panel.model3d.mod.shell")],
+        exports: vec![chip("panel.model3d.export.draft")],
+        acts: vec![chip("panel.model3d.act.duplicate")],
+        views: vec![
+            chip("panel.model3d.view.front"),
+            chip("panel.model3d.view.top"),
+        ],
+        camera: vec![
+            chip("panel.model3d.camera.ortho"),
+            chip("panel.model3d.camera.frame"),
+        ],
+        rows: Vec::new(),
+        isolated: None,
+        node_count: 1,
+        last_trace_ms: 0.0,
+    });
+
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let rects = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    assert!(
+        rects.len() > 8,
+        "o controle: o painel tem de ter registado as fileiras todas, e registou {}",
+        rects.len()
+    );
+
+    let mut mute = Vec::new();
+    for (id, r) in rects {
+        let _ = drain_intents();
+        let evs = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        // ⚠️ **A identidade importa, e não só «saiu alguma coisa»**: um clique pode cair num
+        // registo VIZINHO que se sobrepõe e devolver o evento dele. Foi assim que, na corrida
+        // red-first, um dos quatro chips mudos passou por vivo — três apareceram e o quarto
+        // escondeu-se atrás do evento de outro. *Um gate que só conta eventos aceita o do vizinho.*
+        let answered = evs.iter().any(|e| {
+            matches!(
+                e,
+                WidgetEvent::Click(i) | WidgetEvent::DoubleClick(i) | WidgetEvent::Toggled(i)
+                    if *i == id
+            )
+        });
+        if !answered {
+            mute.push((id, r, evs));
+        }
+    }
+    assert!(
+        mute.is_empty(),
+        "⛔ {} controle(s) PINTADO(S) e MUDO(S) — o clique cai em cima e não sai evento nenhum. É \
+         quase sempre o `populate`: um id que não está no `WidgetStore` faz `apply_click` devolver \
+         `None` e o evento nunca nasce. Mudos: {mute:?}",
+        mute.len()
+    );
+}
+
+/// ⭐⭐ **E O EVENTO VIRA A INTENÇÃO CERTA** — a outra metade da costura (W48).
+///
+/// ⚠️ A lei acima (`every_painted_button_answers_a_real_click`) prova *pintado ⇒ evento*, e para
+/// nesse ponto: o `Click(id)` nasce do **store**, não do braço em `event.rs`. Um braço em falta —
+/// ou um que despache o slot errado — passaria nela intacto.
+///
+/// ⇒ *A costura de um controle tem dois vãos, e um gate por vão.* Este mede o segundo, pelo caminho
+/// real (`apply_panel_event`), e confere o **slot** que saiu: um `unwrap_or(0)` no lugar errado faz
+/// os seis botões de vista fazerem todos a mesma coisa.
+#[test]
+fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
+    let chip = |k: &'static str| ph2d_panel_model3d::ModeChip {
+        key: k,
+        active: false,
+    };
+    publish(ModelSnapshot {
+        modes: Vec::new(),
+        frames: Vec::new(),
+        adds: Vec::new(),
+        ops: Vec::new(),
+        mods: Vec::new(),
+        exports: Vec::new(),
+        acts: Vec::new(),
+        views: (0..6).map(|_| chip("panel.model3d.view.front")).collect(),
+        camera: (0..2).map(|_| chip("panel.model3d.camera.ortho")).collect(),
+        rows: Vec::new(),
+        isolated: None,
+        node_count: 1,
+        last_trace_ms: 0.0,
+    });
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+
+    for slot in 0..6usize {
+        let _ = drain_intents();
+        host.apply_panel_event::<Model3dPanel>(
+            &mut panel_state,
+            WidgetEvent::Click(ids::model3d_view_button(slot as u32)),
+        );
+        assert_eq!(
+            drain_intents(),
+            vec![ModelIntent::SetView { slot }],
+            "o chip de vista {slot} não despachou o slot dele"
+        );
+    }
+    for slot in 0..2usize {
+        let _ = drain_intents();
+        host.apply_panel_event::<Model3dPanel>(
+            &mut panel_state,
+            WidgetEvent::Click(ids::model3d_camera_button(slot as u32)),
+        );
+        assert_eq!(
+            drain_intents(),
+            vec![ModelIntent::Camera { slot }],
+            "o chip de câmera {slot} não despachou o slot dele"
+        );
+    }
+
+    // ⚠️ E um slot **além** da fileira publicada não despacha nada: o `populate` cunha
+    // `MAX_MODES` ids às cegas, e sem esta guarda um clique num botão que não existe na tela
+    // mandaria uma intenção que ninguém pediu.
+    let _ = drain_intents();
+    host.apply_panel_event::<Model3dPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::model3d_view_button(7)),
+    );
+    assert!(
+        drain_intents().is_empty(),
+        "um slot fora da fileira publicada despachou uma intenção"
+    );
+}

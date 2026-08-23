@@ -3839,6 +3839,78 @@ linha em que uma fixtura que concorda escondeu metade da lei.*
 
 ---
 
+## §49 — W48: «nenhum botão funcionou» — o quinto sítio, e o gate que eu escrevi a cometer o pecado que ele condena (23/08)
+
+> Enio, 23/08, no smoke da W47: *"nenhum botão funcionou."*
+
+### §49.1 — O mecanismo, em uma linha
+
+`populate()` regista cada família de botões no `WidgetStore`. A W48 acrescentou duas fileiras e eu
+toquei **quatro** dos cinco sítios que um controle de painel precisa:
+
+| sítio | toquei? |
+|---|---|
+| o campo no retrato (`state.rs`) | ✅ |
+| a linha no `paint.rs` | ✅ |
+| o braço no `event.rs` | ✅ |
+| a família de ids | ✅ |
+| **o `populate.rs`** | ⛔ **não** |
+
+⇒ os chips pintavam, o índice de acerto tinha-os, o clique caía em cima deles — e `apply_click` faz
+`match store.get_mut(id)`, que devolve `None` para um id não registado. **O evento nunca nascia.**
+
+⚠️ *«Registro de painel (5 sites)»* é uma memória do projeto, com o número no título.
+
+### §49.2 — ⛔⛔ E os meus gates estavam todos verdes, pelo motivo que o arquivo deles condena
+
+Os gates da W47 empurram a intenção por `push_intent_for_test`. A frase que os invalida está escrita,
+**à letra**, no topo do `field3d_reach_tests.rs` — o arquivo onde eu os acrescentei:
+
+> ⛔ **Isso prova o TRATADOR, nunca a ALCANÇABILIDADE.** Empurrar a intenção é encenar um clique que
+> o artista não tem como dar — e um clique impossível passa em qualquer teste que o simule.
+
+E o cabeçalho do `tests/seam.rs` já nomeava as **três** causas exatas, incluindo esta:
+
+> *"um braço em falta em `event.rs`, um id fora da família ou **uma leitura errada do store**
+> deixariam o controle pintado, arrastável e silenciosamente morto, com todos aqueles testes
+> verdes."*
+
+*O arnês certo existia, apontado a este defeito, e eu escrevi o gate errado ao lado dele.*
+
+### §49.3 — ⭐ Duas leis, uma por vão da costura
+
+A costura de um controle tem **dois** vãos, e um gate só cobre um:
+
+| vão | lei | o que ela apanha |
+|---|---|---|
+| pintado ⇒ **evento** | `every_painted_button_answers_a_real_click` | o `populate` esquecido |
+| evento ⇒ **intenção** | `a_click_on_a_camera_chip_dispatches_that_exact_slot` | o braço em falta, ou o slot errado |
+
+⭐ **A primeira não tem lista de famílias**: ela varre *o que o painel de facto registou ao pintar*
+(`host.paint` devolve os retângulos) e exige que cada um responda a um **clique de verdade**
+(`host.click_at`). Uma fileira nova entra na varredura **sozinha**, no dia em que for pintada.
+
+⚠️ **E ela confere a IDENTIDADE do evento, não só que saiu algum.** Na corrida red-first apareceram
+**3** mudos, não 4: um dos chips estava a ser dado por vivo pelo evento de um registo **vizinho** que
+se sobrepõe. *Um gate que só conta eventos aceita o do vizinho.*
+
+### §49.4 — A cura estrutural: a lista num sítio só
+
+Enquanto o `populate` eram sete `store.register` copiados, esquecer o oitavo era a coisa mais natural
+do mundo — sem erro de compilação, sem teste a notar, e com um sintoma que é um botão bonito e morto.
+Agora é um `CHIP_FAMILIES` sobre o qual o `populate` itera: **acrescentar a família é registá-la**.
+
+### §49.5 — Provas de mutação
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | o `populate` volta a esquecer as **vistas** (o defeito do Enio) | `every_painted_button_answers_a_real_click` |
+| 2 | …e a **câmera** | *(o mesmo)* |
+| 3 | o braço despacha sempre o slot `0` | `a_click_on_a_camera_chip_dispatches_that_exact_slot` |
+| 4 | o braço deixa de existir | *(o mesmo)* |
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W47 (§48): as SEIS VISTAS existem, e a câmera passou a ser alcançável** — o item que o plano

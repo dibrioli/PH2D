@@ -32,50 +32,46 @@ pub const MAX_ROWS: usize = 64;
 /// no store), e a contagem de verdade continua a ser a do shell.
 pub const MAX_MODES: u32 = 8;
 
+/// ⭐⭐ **AS FAMÍLIAS DE BOTÕES DO PAINEL, NUMA LISTA SÓ** (W48).
+///
+/// # Por que ela existe
+///
+/// A W47 acrescentou duas fileiras e tocou **quatro** dos cinco sítios que um controle precisa (o
+/// campo no retrato, a linha no `paint`, o braço no `event.rs`, a família de ids) — e esqueceu este.
+/// Os chips pintavam, o índice de acerto tinha-os, e `apply_click` faz `match store.get_mut(id)`:
+/// um id não registado devolve `None` e **o evento nunca nasce**. Enio, 2026-08-23: *"nenhum botão
+/// funcionou"*.
+///
+/// ⚠️ Enquanto isto eram sete `store.register` copiados, esquecer o oitavo era a coisa **mais
+/// natural do mundo** — não há erro de compilação, não há teste que note, e o sintoma é um botão
+/// bonito e morto. Com uma lista, acrescentar a família **é** registá-la.
+///
+/// ⛔ Isto não substitui o gate: a lei
+/// `every_painted_button_answers_a_real_click` (`tests/seam.rs`) varre **o que o painel registou ao
+/// pintar** e exige que cada um responda a um clique de verdade — ela apanha esta falha e as outras
+/// duas que o cabeçalho daquele arquivo já nomeava.
+const CHIP_FAMILIES: &[fn(u32) -> ph2d_a11y::NodeId] = &[
+    ids::model3d_mode_button,
+    ids::model3d_frame_button,
+    ids::model3d_add_button,
+    ids::model3d_op_button,
+    ids::model3d_mod_button,
+    ids::model3d_export_button,
+    ids::model3d_act_button,
+    ids::model3d_view_button,
+    ids::model3d_camera_button,
+];
+
 pub fn populate(store: &mut WidgetStore) {
     for slot in 0..MAX_MODES {
-        store.register(
-            ids::model3d_mode_button(slot),
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-        store.register(
-            ids::model3d_frame_button(slot),
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-        store.register(
-            ids::model3d_add_button(slot),
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-        store.register(
-            ids::model3d_op_button(slot),
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-        store.register(
-            ids::model3d_mod_button(slot),
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-        store.register(
-            ids::model3d_export_button(slot),
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-        store.register(
-            ids::model3d_act_button(slot),
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
+        for family in CHIP_FAMILIES {
+            store.register(
+                family(slot),
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
     }
     for node in 0..MAX_ROWS as u32 {
         let slider = ids::model3d_radius_slider(node);

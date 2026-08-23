@@ -42,6 +42,10 @@ fn scenes() -> Vec<(&'static str, Vec<Caption>)> {
             "=84 o que o efeito não sabia fazer",
             crate::motion_state::conferencia_demos_fx_modes::captions(),
         ),
+        (
+            "=85 a forma que o artista desenha",
+            crate::motion_state::conferencia_demos_drawn::captions(),
+        ),
     ]
 }
 

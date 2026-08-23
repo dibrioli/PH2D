@@ -179,6 +179,82 @@ pub(crate) fn push_spacing_shapes(scene: &mut ph2d_vec_scene::VecScene) {
 /// As duas de cima contam por NÚMERO (o mundo que sempre shipou) e as duas de baixo por
 /// ESPAÇAMENTO. As quatro carregam a mesma peça, então a única coisa que difere entre as linhas é
 /// o que a wave acrescenta.
+/// **A NORMAL, lado a lado com a TANGENTE** (`=3`, doc 89 folha 06).
+///
+/// Duas cadeias sobre a **mesma** curva desenhada, uma alinhada à tangente (o modo que
+/// sempre shipou) e outra à normal, separadas por um `motion.transform` para o par se
+/// julgar num olhar. ⚠️ As peças são **compridas e finas** de propósito: um quadrado
+/// não tem como mostrar para onde aponta, e um gate de rotação verde sobre uma peça
+/// redonda seria o gate certo sobre a cena errada.
+fn name_and_wire_normal(
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
+    graph: &mut Graph,
+) -> Vec<NodeId> {
+    let Some((_, &bits)) = map.iter().next() else {
+        return Vec::new();
+    };
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    let Ok(mut w) = sim.world_mut().get_entity_mut(e) else {
+        return Vec::new();
+    };
+    w.insert(Name(TRACK.to_string()));
+    let mut outs = Vec::new();
+    for (k, (align, dy)) in [(1.0_f32, 1.1_f32), (2.0, -1.1)].iter().enumerate() {
+        let path = graph.add_node("motion.path");
+        let scale = graph.add_node("motion.scale");
+        let place = graph.add_node("motion.transform");
+        let out = graph.add_node("motion.output");
+        for (i, n) in [path, scale, place, out].iter().enumerate() {
+            graph.set_pos(
+                *n,
+                Pos {
+                    x: i as f32 * 190.0,
+                    y: -220.0 + k as f32 * 200.0,
+                },
+            );
+        }
+        let wired = [(path, scale), (scale, place), (place, out)]
+            .iter()
+            .all(|(a, b)| {
+                graph
+                    .connect(Edge {
+                        from: (*a, 0),
+                        to: (*b, 0),
+                        delayed: false,
+                    })
+                    .is_ok()
+            });
+        if !wired {
+            return outs;
+        }
+        graph.set_text_param(path, "path", TRACK);
+        graph.set_param(path, "count", 20.0);
+        graph.set_param(path, "align", *align);
+        // Comprida e fina: a peça TEM de mostrar para onde aponta.
+        graph.set_param(scale, "uniform", 0.0);
+        graph.set_param(scale, "amount", 0.34);
+        graph.set_param(scale, "amount_y", 0.07);
+        graph.set_param(place, "offset_y", *dy);
+        graph.set_label(
+            path,
+            if *align >= 1.5 {
+                "Normal (agora)"
+            } else {
+                "Tangente (antes)"
+            },
+        );
+        outs.push(out);
+    }
+    eprintln!(
+        "[motion.path smoke =3] Duas fileiras sobre a MESMA curva. Em cima as pecas deitam-se \
+         ao longo do caminho (Tangente, o de sempre); em baixo elas ficam de TRAVESSA, a apontar \
+         para fora da curva (Normal, o modo novo). Se as duas fileiras estiverem iguais, o modo \
+         nao entrou."
+    );
+    outs
+}
+
 fn name_and_wire_spacing(
     sim: &mut ph2d_ecs::SimWorld,
     map: &crate::vec_entities::VecEntityMap,
@@ -260,7 +336,8 @@ fn name_and_wire_spacing(
 /// O frame corrente do roteiro (o hook não pode acrescentar campo em `App`).
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-/// Qual cena? `0`/ausente = nenhuma · `2` = o ESPAÇAMENTO · qualquer outra = a original.
+/// Qual cena? `0`/ausente = nenhuma · `2` = o ESPAÇAMENTO · `3` = a NORMAL (folha 06) ·
+/// qualquer outra = a original.
 ///
 /// Lido UMA vez (o prólogo do frame não paga um `getenv` por quadro). ⚠️ **O braço `_` mantém
 /// `=1` — e todo valor que não seja `0` nem `2` — na cena que o Enio já smokou:** um modo novo
@@ -270,6 +347,7 @@ fn mode() -> u8 {
     *MODE.get_or_init(|| match std::env::var("PH2D_MOTION_NODE_PATH_SMOKE") {
         Ok(v) if v == "0" => 0,
         Ok(v) if v == "2" => 2,
+        Ok(v) if v == "3" => 3,
         Ok(_) => 1,
         Err(_) => 0,
     })
@@ -303,6 +381,9 @@ impl crate::App {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 if mode == 2 {
                     let outs = name_and_wire_spacing(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
+                    gfx.motion.sinks.extend(outs);
+                } else if mode == 3 {
+                    let outs = name_and_wire_normal(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
                     gfx.motion.sinks.extend(outs);
                 } else if let Some(out) =
                     name_and_wire(&mut gfx.sim, &map, &mut gfx.motion.doc.graph)

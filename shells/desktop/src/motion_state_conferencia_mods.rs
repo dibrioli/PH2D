@@ -88,6 +88,15 @@ pub(crate) mod conferencia_demos_cursor;
 #[path = "motion_state_conferencia_demos_fx_modes.rs"]
 pub(crate) mod conferencia_demos_fx_modes;
 
+/// A cena da FORMA QUE O ARTISTA DESENHA (`=85`) — as curas novas da folha 06: a onda e a
+/// ease `Custom`, e o canal dos DOIS eixos. ⚠️ As três julgam-se PARADAS, e a primeira só
+/// porque a `frequency` vai a zero (a fase de cada peça passa a ser o `phase_stagger` dela).
+///
+/// ⚠️ **`drawn`, e não `shape`:** a `=55` (Pulse Width / Offset) já se chama
+/// `conferencia_demos_shape` — *quanto melhor o nome, maior a chance de ele estar ocupado*.
+#[path = "motion_state_conferencia_demos_drawn.rs"]
+pub(crate) mod conferencia_demos_drawn;
+
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.
 #[path = "motion_state_conferencia_demos_campo.rs"]

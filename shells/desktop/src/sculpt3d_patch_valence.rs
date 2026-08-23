@@ -364,25 +364,39 @@ fn how_many_sides_do_the_patches_have() {
             0.55,
             ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
         );
-        if let Ok(spec) = layout.to_layout(target)
-            && let Ok((quant, _)) =
-                ph2d_quantize::quantize_within(&spec, ph2d_quantize::Budget::new(256, 512))
-            && let Ok((_, r)) = ph2d_quadfill::fill(
-                &work,
-                &reference,
-                &layout,
-                &quant,
-                ph2d_quadfill::SMOOTHING_ROUNDS,
-            )
-        {
-            #[allow(clippy::cast_precision_loss)]
-            let ours = 100.0 * r.irregular as f32 / r.verts.max(1) as f32;
-            eprintln!(
-                "          ⭐IRREGULARES na saida: nos {} de {} ({ours:.2}%) · ele {}",
-                r.irregular,
-                r.verts,
-                irregular_of(&dir, piece),
-            );
+        // ⚠️ **A RECUSA IMPRIME-SE, e não se salta.** Uma cura a montante pode deixar
+        // um layout que o F4 ou o F5 recusam — e um `if let` silencioso faria isso
+        // ler-se como *«esta fixtura não foi medida»* em vez de *«a cura partiu a
+        // cadeia»*. ⛔ *Um caminho de erro sem voz é um resultado a menos e um defeito
+        // escondido.*
+        match layout.to_layout(target) {
+            Err(e) => eprintln!("          ⛔ o LAYOUT recusou: {e:?}"),
+            Ok(spec) => {
+                match ph2d_quantize::quantize_within(&spec, ph2d_quantize::Budget::new(256, 512)) {
+                    Err(e) => eprintln!("          ⛔ a QUANTIZACAO recusou: {e:?}"),
+                    Ok((quant, _)) => {
+                        match ph2d_quadfill::fill(
+                            &work,
+                            &reference,
+                            &layout,
+                            &quant,
+                            ph2d_quadfill::SMOOTHING_ROUNDS,
+                        ) {
+                            Err(e) => eprintln!("          ⛔ a MONTAGEM recusou: {e:?}"),
+                            Ok((_, r)) => {
+                                #[allow(clippy::cast_precision_loss)]
+                                let ours = 100.0 * r.irregular as f32 / r.verts.max(1) as f32;
+                                eprintln!(
+                                    "          ⭐IRREGULARES na saida: nos {} de {} ({ours:.2}%) · ele {}",
+                                    r.irregular,
+                                    r.verts,
+                                    irregular_of(&dir, piece),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -529,6 +529,22 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   esfera lisa (pior: **6** arcos num lado, na orelha) —, e *dentro de um arco a reamostragem por `τ`
   é proporcional; a discordância entre lados opostos nasce quando um lado tem vários*. ⇒ **uma causa,
   dois sintomas**, e a obra é uma: **arcos de singularidade a singularidade**.
+  ⭐⭐⭐ **A PODA foi construída, CONFIRMOU o diagnóstico e é REJEITADA — e é a rejeição que fixa a
+  ORDEM da obra** (`ph2d-trace/src/prune.rs`, `PLAN.md` §4-septemetquadragies). Removendo os arcos que
+  morrem em vértice regular: esfera lisa **16 → 6 patches**, nós fora de singularidade **22 → 4**,
+  irregulares **18 → 9** (piso 8); enrugada 14 → 9; ⭐⭐ **orelha 18 → 12, a EMPATAR com o oráculo**.
+  *A cadeia causal fecha por intervenção, não por correlação.* ⛔⛔ **E a geometria colapsa na mesma
+  peça:** enviesamento `18° → 38°`, aspecto `1,26 → 2,10`, dobras `0 → 29`. ⛔ **Não é o mapa**
+  (`RECTANGLE_MAP` sobre a poda: `38° → 36°`) nem **a forma do domínio** (`PROPORTIONAL_DOMAIN`:
+  `38° → 38°`) — **é o TAMANHO do patch**: um Tutte de um terço de esfera sobre um polígono unitário
+  não se corrige com operador nenhum. ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
+  (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
+  **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch
+  grande ANTES de o traçado poder emitir poucos.** ⚠️ A poda tem **seis** guardas, três delas
+  acrescentadas por medição — sem a 4.ª as fixturas iam a **2 patches** com 6 das 8 singularidades
+  enterradas; e a 6.ª («o F4 ainda resolve») teve uma tentativa errada antes, deduzida de uma paridade
+  que era **coincidência de quatro amostras**.
   ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede
   **`18°` de enviesamento contra `6°` do oráculo**, com o aspecto quase igual (`1,26` vs `1,22`):
   *as células têm as proporções certas e os ângulos errados*, e o defeito é do **NÚCLEO**. Gate

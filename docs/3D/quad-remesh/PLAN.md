@@ -3889,3 +3889,84 @@ partido em arcos onde a subdivisão por comprimento impõe ângulo torto.
 | o quê | porquê não | onde |
 |---|---|---|
 | usar a UNIÃO de `corners` para testar a regra do ângulo | ela contém todo nó em T por construção — não discrimina | [`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs) |
+
+## §4-septemetquadragies — ⭐⭐⭐ A PODA CONFIRMA O DIAGNÓSTICO E É REJEITADA — a ordem da obra ficou medida (2026-08-23)
+
+### A construção
+
+[`ph2d-trace/src/prune.rs`](../../../crates/ph2d-trace/src/prune.rs): remover arcos que
+**morrem num vértice regular**, fundindo os dois patches que separavam. Corre depois da
+limpeza (que cura *degenerados*, outra doença). Clean-room — simplificação de grafo de
+separatrizes, QuadWild §6 e a literatura do *motorcycle graph*.
+
+### ⭐⭐⭐ Ela faz EXACTAMENTE o que o diagnóstico previa
+
+| | sem poda | ⭐ com poda | o oráculo | o piso |
+|---|---|---|---|---|
+| patches (esfera lisa) | 16 | **6** | 8 | — |
+| nós fora de singularidade | 22 | **4** | — | 0 |
+| **irregulares** esfera lisa | 18 | ⭐ **9** | 8 | **8** |
+| **irregulares** enrugada | 14 | ⭐ **9** | 8 | 8 |
+| **irregulares** orelha | 18 | ⭐⭐ **12** | **12** | 8 |
+| **irregulares** gancho | 26 | ⭐ **19** | 14 | 8 |
+
+⭐⭐ **A orelha passa a EMPATAR com o oráculo.** ⇒ *a cadeia causal fecha: os nós
+inventados eram, de facto, os irregulares a mais. O diagnóstico do §4-sexetquadragies
+está confirmado por intervenção, não por correlação.*
+
+### ⛔⛔⛔ E a GEOMETRIA colapsa na mesma peça
+
+| esfera lisa, `d = 0,55` | sem poda | ⛔ com poda |
+|---|---|---|
+| aspecto p50 | `1,26` | ⛔ **`2,10`** |
+| enviesamento p50 | `18°` | ⛔ **`38°`** |
+| faces `> 60°` | 141 | ⛔ **1 442** |
+| dobras | **0** | ⛔ **29** |
+
+Mais: `the_layout_we_produce_is_quantized_with_proof` perde a prova de ótimo na esfera
+48×72, e `no_face_folds_back_on_itself` sobe para `1,6 %` / `7,4 %`.
+
+### ⭐⭐⭐ E a queda ENSINA — duas hipóteses medidas e mortas
+
+⛔ **Não é o mapa:** ligar o `RECTANGLE_MAP` sobre a poda dá `38° → 36°`.
+⛔ **Não é a forma do domínio:** ligar o `PROPORTIONAL_DOMAIN` dá `38° → 38°`, idêntico.
+
+⇒ **É o TAMANHO do patch.** Um achatamento de Tutte de um terço de esfera sobre um
+polígono unitário está distorcido de forma que nenhum operador e nenhum polígono
+corrigem. ⚠️ **E o oráculo enche 8 patches numa esfera com `6°`** ⇒ *o nosso F5 não é
+viável nessa escala*, pela mesma razão que o §4-tresetquadragies já nomeara por outro
+caminho: ele resolve **cada patch em separado** contra um domínio plano, enquanto a
+referência tem **uma parametrização global** de onde cada patch herda um `(u,v)`
+consistente. **Duas rotas independentes, a mesma conclusão.**
+
+⇒ ⭐⭐⭐ **A ORDEM DA OBRA está medida:** o preenchimento tem de aguentar um patch grande
+**antes** de o traçado poder emitir poucos. Ligar a poda antes disso troca um defeito
+por outro maior.
+
+### As seis guardas, e cada uma entrou por uma medição
+
+| # | a guarda | ⛔ o que aconteceu sem ela |
+|---|---|---|
+| 1 | a topologia não piora | (herdada da limpeza) |
+| 2 | nenhum degenerado nasce | (idem) |
+| 3 | o nº de nós desce **estritamente** | termina sem teto de rondas inventado |
+| 4 | nenhuma singularidade perde **grau** | ⛔ as 4 fixturas foram a **2 patches**, com **6 das 8** singularidades enterradas |
+| 5 | uma singularidade que era **nó** continua nó | ⛔ a poda **agravava** o 2.º defeito enquanto curava o 1.º |
+| 6 | o **F4 ainda resolve** | ⛔ a orelha saía `Infeasible` |
+
+⚠️ **A guarda 6 teve uma tentativa ERRADA antes.** Deduzi da tabela que `Σ lados` ímpar
+⇒ auto-adjacência, e construí a guarda sobre isso: a orelha continuou `Infeasible` com
+`Σ = 19`. *O argumento «cada lado é partilhado por dois patches» não se aplica* — um
+**lado** é um agrupamento **por-patch** de arcos, e os dois vizinhos podem agrupar a
+mesma fronteira em números diferentes. ⇒ **a correlação perfeita em quatro fixturas era
+coincidência de quatro amostras**, e a única guarda honesta foi *perguntar à fase
+seguinte*.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| a poda dos tocos (`PRUNE_STEMS`) | irregulares `18 → 9` **mas** enviesamento `18° → 38°` e dobras `0 → 29` | [`prune.rs`](../../../crates/ph2d-trace/src/prune.rs) |
+| `RECTANGLE_MAP` sobre a poda | `38° → 36°` | idem |
+| `PROPORTIONAL_DOMAIN` sobre a poda | `38° → 38°` | idem |
+| a auto-adjacência como guarda de viabilidade | a orelha continuou `Infeasible`; a paridade era coincidência | idem |

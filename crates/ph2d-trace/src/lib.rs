@@ -45,6 +45,8 @@
 mod boundary;
 /// **A DECOMPOSIÇÃO** — do traçado para patches, lados e arcos — ver [`patches`].
 pub mod patches;
+/// ⭐⭐⭐ **A PODA DOS TOCOS** — arcos que morrem em vértice regular — ver [`prune`].
+pub mod prune;
 /// **O ANEL de um vértice e as SEMENTES** — ver [`ring`].
 pub mod ring;
 /// **A TOPOLOGIA da decomposição** — as contas de `V − E + F` — ver [`topology`].
@@ -119,6 +121,12 @@ pub struct TraceReport {
     /// ⚠️ Cada uma é uma separatriz que o traçado não devia ter posto ali — o
     /// número é o custo da limpeza, e lê-se junto com o das valências.
     pub dissolved: usize,
+    /// ⭐⭐⭐ **Quantos TOCOS a poda removeu** — ver [`prune`]. Um toco é um arco que
+    /// morre num vértice **regular**, que nada no campo pediu.
+    ///
+    /// ⛔ **Sem esta contagem, «a poda não mudou nada» não distingue *não funciona* de
+    /// *não correu***, que é a mesma lição do `fell_back` e do `slid` do F5.
+    pub pruned: usize,
     /// Quantas rondas de limpeza correram.
     pub rounds: usize,
     /// ⚠️ **Quantos vértices têm o anel ABERTO** — não-manifold ou de borda.
@@ -143,6 +151,27 @@ pub struct TraceReport {
 /// [`ph2d_crossfield::Dual`] já exige.
 #[must_use]
 pub fn trace_patches(mesh: &Mesh, dual: &Dual, field: &CrossField) -> PatchLayout {
+    trace_patches_with(mesh, dual, field, prune::PRUNE_STEMS)
+}
+
+/// **A MESMA porta, com a PODA à vista** — ver [`prune`].
+///
+/// ⭐⭐ **Ela existe porque a poda precisa das paredes DEPOIS da limpeza**, e essas só
+/// existem aqui dentro. ⛔ *Um gate que chamasse o [`prune::prune_stems`] sobre as
+/// paredes cruas do passeio mediria outra coisa* — mediu, e devolveu `0` remoções,
+/// porque o layout cru ainda tem lascas e as guardas julgam contra um estado que a
+/// limpeza ainda ia mudar.
+///
+/// ⚠️ **O [`trace_patches`] lê a constante; esta lê o argumento.** É o que permite ao
+/// gate correr os dois lados sobre o caminho REAL, em vez de sobre uma reconstrução
+/// dele.
+#[must_use]
+pub fn trace_patches_with(
+    mesh: &Mesh,
+    dual: &Dual,
+    field: &CrossField,
+    prune_stems: bool,
+) -> PatchLayout {
     let walker = Walker::new(mesh, dual, field);
     let (mut walls, base) = walker.trace_all();
     let mut out = patches::decompose(mesh, &walls, base.clone());
@@ -211,6 +240,21 @@ pub fn trace_patches(mesh: &Mesh, dual: &Dual, field: &CrossField) -> PatchLayou
     }
     out.report.dissolved = dissolved;
     out.report.rounds = rounds;
+
+    // ⭐⭐⭐ **A PODA DOS TOCOS** — ver [`prune`]. Ela corre **depois** da limpeza de
+    // propósito: a limpeza cura patches **degenerados** (uma lasca é uma parede a
+    // mais) e a poda ataca outra coisa — arcos que morrem num vértice **regular**,
+    // que o campo nunca pediu. ⚠️ *Podar antes daria à poda um layout com lascas
+    // dentro, e as guardas dela julgariam contra um estado que a limpeza ainda ia
+    // mudar.*
+    if prune_stems {
+        let index = ph2d_crossfield::vertex_index(mesh, dual, field);
+        let (_, next, n) = prune::prune_stems(mesh, walls, &out.report, &index);
+        if n > 0 {
+            out = next;
+        }
+        out.report.pruned = n;
+    }
     // ⭐⭐⭐ **O CAMPO VIAJA COM O LAYOUT** — ver [`PatchLayout::face_dir`].
     //
     // ⚠️ **É aqui e não num parâmetro do F5**, e a razão é medida: a montagem

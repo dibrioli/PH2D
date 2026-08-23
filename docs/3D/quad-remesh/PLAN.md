@@ -3325,3 +3325,91 @@ enviesamento ainda é `21°` contra `6°` dele. *A próxima medição compara as
 | `Holonomy::CLEAN_DEG = 1,0` | reprova 12 de 12 patches do **oráculo** | [`comb.rs`](../../../crates/ph2d-crossfield/src/comb.rs) |
 | «a dívida do enviesamento é do F3, por combabilidade» | a distribuição dele é igual à nossa | esta secção |
 | `comb` devolver `None` à primeira face má | dá «0 sujos» sobre zero medidos | [`comb.rs`](../../../crates/ph2d-crossfield/src/comb.rs) |
+
+---
+
+## 4-duodequadragies — ⭐⭐⭐ **A ESFERA LISA — a reprodução mais barata, e sete hipóteses mortas**
+
+> **2026-08-23.** Sete curas e explicações foram construídas e medidas em duas
+> jornadas, **todas sobre esculturas**. Esta secção regista as duas últimas a morrer e
+> a pergunta que ninguém tinha feito.
+
+### ⛔ As duas que morreram aqui
+
+**1. A densidade.** Todas as tabelas comparavam a nossa saída a `d = 1,0` (`78 403`
+quads na orelha) com a do oráculo (`4 658`). ⚠️ *Duas malhas 17× diferentes não são
+comparáveis.* Varrendo o `detail` até à contagem dele:
+
+| orelha | quads | aspecto p50 | ⭐ **enviesamento p50** |
+|---|---|---|---|
+| nós, `d = 0,30` | 942 | `1,60` | `18°` |
+| nós, `d = 0,55` | 4 162 | `1,76` | `22°` |
+| nós, `d = 1,00` | 78 403 | `1,98` | `27°` |
+| ⭐ **oráculo** | **4 658** | **`1,08`** | **`6°`** |
+
+⇒ **À contagem dele continuamos em `22°` contra `6°`.** A densidade move o número de
+`18°` a `27°` — nunca para perto de `6°`. **Morta.**
+
+**2. O mapa conforme.** O achatamento usa pesos de **valor médio**, e a nota ao lado
+deles dizia: *«cotangente seria harmónico e admite peso negativo num triângulo obtuso —
+é aí que a garantia de Tutte se perde»*. ⚠️ **Verdadeiro, e responde à pergunta
+errada**: troca conformalidade por validade, e o preço em **enviesamento** nunca foi
+medido. Construído ([`cotangent_weights`](../../../crates/ph2d-quadfill/src/param.rs))
+com a rede de triângulos virados:
+
+| esfera lisa, `d = 0,55` | valor médio | cotangente |
+|---|---|---|
+| enviesamento p50 | `18°` | `18°` |
+| faces `> 60°` | 141 | 142 |
+| ⭐ **recuos** | — | **`0/16`** |
+
+⚠️ **`0/16` recuos é o que torna a medição honesta:** o mapa conforme **sobreviveu em
+todos os patches** e mesmo assim não mudou nada. ⛔ *Dois operadores de Laplace
+fundamentalmente diferentes dão o mesmo número* ⇒ **o interior do achatamento não é o
+que decide o enviesamento**; o que os dois partilham é a **fronteira presa**. **Morta**,
+e fica desligada com esta tabela (`CONFORMAL_MAP = false`).
+
+### ⭐⭐⭐ A pergunta que ninguém tinha feito
+
+**O que a cadeia faz com uma esfera LISA?** Sem relevo, sem vinco, sem bico.
+
+| esfera lisa, `d = 0,55` | nós | ⭐ oráculo |
+|---|---|---|
+| quads | 2 006 | 3 352 |
+| aspecto p50 | `1,26` | **`1,22`** |
+| ⛔ **enviesamento p50** | **`18°`** | **`6°`** |
+| ⛔ faces `> 60°` | **141** | **0** |
+
+⭐⭐ **As células têm as PROPORÇÕES certas e os ÂNGULOS errados**, numa peça que não
+tem defeito nenhum para expor. ⇒ **o defeito é do NÚCLEO**, e esta é a reprodução mais
+barata que esta linha alguma vez teve. **Gate vermelho:**
+`a_plain_sphere_is_as_square_as_the_oracles`, com a barra do oráculo **na mesma peça**
+(ela está no corpus da bancada).
+
+⛔ **Toda hipótese nova mede-se AQUI primeiro** — sete morreram sobre esculturas, onde
+o sinal chega misturado com dez patologias.
+
+### ⛔⛔ E dois DEFEITOS NOVOS que só apareceram nos casos triviais
+
+| peça | o quê |
+|---|---|
+| ⛔ **toro `64×32`** | a **quantização RECUSA** nos três níveis de detalhe. O oráculo entrega `5 538` quads a `2°` de enviesamento |
+| ⛔ **esfera `24×36`** (grossa ⇒ o F1 **refina**) | aspecto p50 **`4,38`**, enviesamento **`52°`**, **50 dobras** — e a densidade é **não-monótona**: `d = 0,55` dá `823` quads e `d = 0,80` dá `643` |
+
+⚠️ **A rota em que o F1 REFINA nunca tinha sido medida**, e ela está muito pior que a
+que grosseiraria. *Uma peça mais grossa que ~2 500 vértices entra por aí.*
+
+### ⭐ A pista por perseguir — hipótese, NÃO medição
+
+Dos 16 patches da esfera lisa: **8 triângulos, 5 quadriláteros, 3 pentágonos.** Onze
+passam pelo **leque**, e um sector de leque é um *papagaio* no domínio, não um
+rectângulo — uma grade construída dentro dele nasce enviesada. ⛔ **Não medido**, e o
+`skew_prov` complica-a: ele diz que a `grade` está tão torta quanto o `raio`.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| «é a densidade» | à contagem dele, `22°` contra `6°` | esta secção |
+| `CONFORMAL_MAP` (cotangente) | `18° → 18°` com **`0/16`** recuos | [`param.rs`](../../../crates/ph2d-quadfill/src/param.rs) |
+| medir curas na ORELHA | sete hipóteses morreram lá; a esfera lisa dá o mesmo sinal limpo | esta secção |

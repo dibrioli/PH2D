@@ -51,6 +51,15 @@ const FLATTEN_ROUNDS: usize = 4_000;
 /// já não muda a face em que um ponto de grade cai.
 const FLATTEN_TOL: f32 = 1.0e-5;
 
+/// ⭐⭐⭐ **O MAPA é o CONFORME (cotangente) ou o de valor médio?** — ver
+/// [`cotangent_weights`], que traz a dedução que levou aqui.
+///
+/// ⚠️ **Com `false` o achatamento é byte-idêntico ao de sempre.** A rede que torna
+/// esta escolha segura é a contagem de triângulos virados no domínio
+/// ([`crate::aligned::flipped`]): quem virar recua para o de valor médio, e o
+/// [`crate::FillReport::fell_back`] conta quantos.
+const CONFORMAL_MAP: bool = false;
+
 /// **UM PATCH ACHATADO** — a triangulação dele com uma coordenada 2D por vértice.
 pub(crate) struct PatchParam {
     /// Por vértice local, o ponto no domínio.
@@ -191,7 +200,12 @@ impl PatchParam {
         // **sempre positivo** num triângulo, e o teorema de Tutte só exige pesos
         // positivos com fronteira convexa. *Cotangente seria harmónico e admite peso
         // negativo num triângulo obtuso — e é aí que a garantia se perde.*
-        let nb = mean_value_weights(&tris, &pos);
+        // ⭐⭐⭐ **QUAL MAPA** — ver [`CONFORMAL_MAP`] e [`cotangent_weights`].
+        let mut nb = if CONFORMAL_MAP {
+            cotangent_weights(&tris, &pos)
+        } else {
+            mean_value_weights(&tris, &pos)
+        };
         // ⚠️ Um interior sem vizinho nenhum não tem média: ele não pertence a
         // triângulo nenhum deste patch, e o achatamento não o pode colocar.
         if (0..local.len()).any(|v| !fixed[v] && nb[v].is_empty()) {
@@ -207,7 +221,9 @@ impl PatchParam {
             crate::aligned::build(&tris, &tri_face, &pos, dir, &nb, &pinned, &fixed)
         });
         let holonomy = aligned.as_ref().map_or(0.0, |a| a.holonomy_deg);
-        let solve = |uv: &mut Vec<[f32; 2]>, step: Option<&Vec<Vec<[f32; 2]>>>| {
+        let solve_with = |nb: &Vec<Vec<(u32, f32)>>,
+                          uv: &mut Vec<[f32; 2]>,
+                          step: Option<&Vec<Vec<[f32; 2]>>>| {
             let (mut rounds, mut residual) = (0usize, f32::INFINITY);
             for r in 0..FLATTEN_ROUNDS {
                 let mut worst = 0.0f32;
@@ -240,7 +256,8 @@ impl PatchParam {
             }
             (rounds, residual)
         };
-        let (mut rounds, mut residual) = solve(&mut uv, aligned.as_ref().map(|a| &a.step));
+        let (mut rounds, mut residual) =
+            solve_with(&nb, &mut uv, aligned.as_ref().map(|a| &a.step));
 
         // ⭐⭐ **A REDE, e ela é uma CONTAGEM e não uma esperança.** O teorema de
         // Tutte garante um embutimento sem dobras para o problema **harmónico**;
@@ -249,12 +266,21 @@ impl PatchParam {
         // dois pontos de grade vizinhos aterrarem em lados opostos da superfície —
         // é o defeito que esta fase inteira existiu para matar.
         let mut fell_back = false;
-        if aligned.is_some() && crate::aligned::flipped(&tris, &uv) > 0 {
-            uv = pinned;
-            let (r, res) = solve(&mut uv, None);
-            rounds = r;
-            residual = res;
-            fell_back = true;
+        if crate::aligned::flipped(&tris, &uv) > 0 {
+            // ⭐⭐ **A REDE, e ela cobre as DUAS escolhas.** O teorema de Tutte
+            // garante um embutimento sem dobras para o problema harmónico **com
+            // pesos positivos**; nem o alvo do campo no lado direito nem os pesos
+            // cotangentes preservam essa hipótese. ⛔ *Não se assume que a garantia
+            // sobrevive — conta-se, e recua-se para a lei que a tem.*
+            let mv = mean_value_weights(&tris, &pos);
+            if (0..local.len()).all(|v| fixed[v] || !mv[v].is_empty()) {
+                nb = mv;
+                uv = pinned;
+                let (r, res) = solve_with(&nb, &mut uv, None);
+                rounds = r;
+                residual = res;
+                fell_back = true;
+            }
         }
         let mut me = Self::with(uv, pos, tris);
         me.rounds = rounds;
@@ -570,4 +596,76 @@ fn cell(p: [f32; 2], side: usize) -> [usize; 2] {
 
 fn edge(a: [f32; 2], b: [f32; 2], c: [f32; 2]) -> f32 {
     (b[0] - a[0]).mul_add(c[1] - a[1], -((c[0] - a[0]) * (b[1] - a[1])))
+}
+
+/// ⭐⭐⭐ **OS PESOS COTANGENTES — o mapa que preserva ÂNGULO.**
+///
+/// # ⛔ A cerca que esta função reexamina, com um número
+///
+/// O [`mean_value_weights`] foi escolhido, e a nota ao lado dele diz porquê:
+/// *«cotangente seria harmónico e admite peso NEGATIVO num triângulo obtuso — e é aí
+/// que a garantia de Tutte se perde»*. ⚠️ **A afirmação é verdadeira e responde à
+/// pergunta errada.** Ela troca **conformalidade** por **validade garantida**, e o
+/// preço dessa troca — em quanto a malha final fica ENVIESADA — nunca foi medido.
+///
+/// ⭐ **O que a medição de 2026-08-23 mostrou:** numa esfera **lisa**, sem relevo
+/// nenhum, a nossa saída tem aspecto `1,26` contra `1,22` do oráculo — as células têm
+/// as **proporções certas** — e enviesamento `18°` contra `6°`. *As células estão
+/// certas de tamanho e tortas de ângulo*, que é exactamente a assinatura de um mapa
+/// não-conforme.
+///
+/// ⭐⭐ **E a dedução aponta para cá sem ambiguidade:** num patch de quatro lados a
+/// grade é construída **no domínio**, onde ela é um rectângulo por construção — a
+/// desigualdade de espaçamento dos pontos de fronteira dá células de tamanhos
+/// diferentes, nunca células **tortas**. ⇒ o enviesamento só pode nascer no MAPA que
+/// leva o domínio à superfície, e o mapa é este peso.
+///
+/// # A lei
+///
+/// `w_ij = ½ (cot α + cot β)`, com `α` e `β` os ângulos opostos à aresta `ij` nos dois
+/// triângulos que a partilham. É o gradiente exacto da energia de Dirichlet — o mapa
+/// que ele produz é o **harmónico**, e num domínio convexo ele é a melhor
+/// aproximação linear de um mapa conforme.
+///
+/// ⚠️ **O peso é NEGATIVO quando o ângulo oposto é obtuso**, e é isso que revoga a
+/// garantia de Tutte. ⛔ *Não se finge que o risco não existe:* quem chama esta
+/// função tem de contar os triângulos virados no domínio
+/// ([`crate::aligned::flipped`]) e recuar quando eles aparecem — a mesma rede que o
+/// interior alinhado já usa.
+fn cotangent_weights(tris: &[[u32; 3]], pos: &[[f32; 3]]) -> Vec<Vec<(u32, f32)>> {
+    let mut acc: Vec<BTreeMap<u32, f32>> = vec![BTreeMap::new(); pos.len()];
+    for t in tris {
+        for k in 0..3 {
+            // O ângulo em `t[k]`; ele é OPOSTO à aresta `(t[k+1], t[k+2])`.
+            let (o, a, b) = (
+                t[k] as usize,
+                t[(k + 1) % 3] as usize,
+                t[(k + 2) % 3] as usize,
+            );
+            let (p, q, r) = (pos[o], pos[a], pos[b]);
+            let (u, v) = (sub(q, p), sub(r, p));
+            let c = dot3(u, v);
+            // `cot θ = cos/sin`, e `|u×v|` é `|u||v| sin θ` — a forma estável.
+            let s = norm3(cross3(u, v));
+            if s <= 1.0e-20 {
+                continue;
+            }
+            let w = 0.5 * c / s;
+            *acc[a].entry(t[(k + 2) % 3]).or_insert(0.0) += w;
+            *acc[b].entry(t[(k + 1) % 3]).or_insert(0.0) += w;
+        }
+    }
+    // ⚠️ **Os pesos negativos FICAM.** Filtrá-los daria um operador que não é o
+    // Laplaciano de ninguém — nem harmónico, nem de valor médio — e a malha sairia
+    // de uma lei que não está escrita em lado nenhum. *A rede é a contagem de
+    // virados, não uma censura ao sinal.*
+    acc.into_iter().map(|m| m.into_iter().collect()).collect()
+}
+
+fn cross3(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1].mul_add(b[2], -(a[2] * b[1])),
+        a[2].mul_add(b[0], -(a[0] * b[2])),
+        a[0].mul_add(b[1], -(a[1] * b[0])),
+    ]
 }

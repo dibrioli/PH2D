@@ -427,3 +427,152 @@ fn how_many_patches_are_uncombable() {
         }
     }
 }
+
+/// ⭐⭐⭐ **O CASO MAIS SIMPLES QUE EXISTE** — uma esfera lisa, sem relevo nenhum.
+///
+/// ⛔ **Seis hipóteses morreram em duas jornadas** (relaxação · interior alinhado ao
+/// campo · domínio ∝ segmentos · «é o alisamento» · «o campo não é combável» ·
+/// densidade), e todas foram medidas sobre **esculturas**. ⚠️ *Nunca se perguntou o
+/// que a cadeia faz com uma peça que não tem defeito nenhum para expor.*
+///
+/// ⭐ **É a pergunta que particiona melhor do que qualquer uma das seis:**
+///
+/// | se a esfera lisa der | então |
+/// |---|---|
+/// | `~6°`, como o oráculo | o defeito é **acordado pela FEIÇÃO**, e a fixtura certa é o vinco |
+/// | `~20°`, como as esculturas | ⭐ o defeito é do **NÚCLEO**, reproduzível sem relevo nenhum — e é aí que ele é mais barato de perseguir |
+///
+/// ⚠️ **E a esfera lisa está no corpus da bancada** (`sphere_uv_96x144`), então o
+/// oráculo já a resolveu: `aspecto p50 1,22 · enviesamento p50 6°`. *A comparação é
+/// contra um número que já existe, não contra uma expectativa.*
+///
+/// ```text
+/// \
+///   cargo test -p ph2d-host-desktop --release --bins \
+///   what_does_the_chain_do_to_a_plain_sphere -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda -- o caso mais simples, contra o mesmo caso no oraculo"]
+fn what_does_the_chain_do_to_a_plain_sphere() {
+    for (name, piece, reference) in [
+        (
+            "ESFERA LISA",
+            Some("sphere_uv_96x144"),
+            ph2d_mesh::shapes::uv_sphere(96, 144, 1.0),
+        ),
+        (
+            "TORO",
+            Some("torus_64x32"),
+            ph2d_mesh::shapes::torus(64, 32, 1.0, 0.35),
+        ),
+        // ⚠️ Uma esfera GROSSA: o F1 REFINA em vez de grosseirar, e o caminho é
+        // outro. Sem ela, «a esfera lisa está bem» é uma afirmação sobre uma só
+        // rota do F1.
+        (
+            "ESFERA 24x36",
+            None,
+            ph2d_mesh::shapes::uv_sphere(24, 36, 1.0),
+        ),
+    ] {
+        eprintln!("── {name} ──");
+        let mut work = reference.clone();
+        work.triangulate();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        let dual = ph2d_crossfield::Dual::build(&work);
+        let (field, _) = ph2d_crossfield::solve_miq(&dual);
+        let layout = ph2d_trace::trace_patches(&work, &dual, &field);
+        // ⭐⭐⭐ **DE QUANTOS LADOS SÃO OS PATCHES.** ⚠️ A dedução «num patch de 4
+        // lados a grade é um rectângulo no domínio, logo o enviesamento tem de
+        // nascer no mapa» só vale se os patches FOREM de 4 lados — e isso nunca foi
+        // contado. *Um raciocínio sobre `n = 4` não descreve uma malha de leques.*
+        {
+            let mut hist: std::collections::BTreeMap<usize, usize> =
+                std::collections::BTreeMap::new();
+            for sides in &layout.side_arcs {
+                *hist.entry(sides.len()).or_default() += 1;
+            }
+            eprintln!("  lados por patch: {hist:?}");
+        }
+        for detail in [0.35f32, 0.55, 0.8] {
+            let target = ph2d_quadflow::edge_for_detail_with(
+                &reference,
+                detail,
+                ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
+            );
+            let Ok(spec) = layout.to_layout(target) else {
+                eprintln!("  d={detail:.2} | o layout RECUSOU");
+                continue;
+            };
+            let Ok((quant, _)) =
+                ph2d_quantize::quantize_within(&spec, ph2d_quantize::Budget::new(256, 512))
+            else {
+                eprintln!("  d={detail:.2} | a quantizacao RECUSOU");
+                continue;
+            };
+            // ⭐⭐⭐ **AS DUAS ORIGENS DO INTERIOR, na fixtura LIMPA.** ⚠️ As duas
+            // curas de 2026-08-23 foram medidas sobre a orelha a `d = 1,0` — 78 mil
+            // quads com todas as patologias ao mesmo tempo. *Uma cura medida numa
+            // fixtura que não isola o fenómeno lê-se como inútil*
+            // ([[feedback_a_cure_measured_on_a_fixture_that_lacks_the_phenomenon_reads_as_useless]]),
+            // e aqui o sinal é um número só.
+            for interior in [
+                ph2d_quadfill::Interior::FromBoundary,
+                ph2d_quadfill::Interior::AlignedToField,
+            ] {
+                let Ok((out, r)) = ph2d_quadfill::fill_with(
+                    &work,
+                    &reference,
+                    &layout,
+                    &quant,
+                    ph2d_quadfill::SMOOTHING_ROUNDS,
+                    ph2d_quadfill::SQUARE_ROUNDS,
+                    interior,
+                ) else {
+                    eprintln!("  d={detail:.2} | a montagem RECUSOU");
+                    continue;
+                };
+                let s = ph2d_quadfill::quad_shape(&out);
+                let rotulo = match interior {
+                    ph2d_quadfill::Interior::FromBoundary => "fronteira",
+                    ph2d_quadfill::Interior::AlignedToField => "⭐CAMPO  ",
+                };
+                eprintln!(
+                    "  d={detail:.2} {rotulo} {:>6} quads · {} patches | aspecto p50 {:.2} p99 {:>5.1} \
+                     | ⭐enviesamento p50 {:>3.0}° p99 {:>3.0}° (>60°: {}) | dobras {} \
+                     | ⚠️RECUOS {}/{}",
+                    out.faces().len(),
+                    r.patches,
+                    s.aspect_p50,
+                    s.aspect_p99,
+                    s.skew_p50,
+                    s.skew_p99,
+                    s.skew_over_60,
+                    r.folded_local,
+                    r.fell_back,
+                    r.patches,
+                );
+            }
+        }
+        let Some(piece) = piece else { continue };
+        let path = std::path::Path::new(BENCH)
+            .join(piece)
+            .join(format!("{piece}_rem_p0_123_quadrangulation_smooth.obj"));
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        if let Some(o) = ph2d_mesh::import_obj(&text).ok().and_then(|mut v| v.pop()) {
+            let s = ph2d_quadfill::quad_shape(&o.mesh);
+            eprintln!(
+                "  ⭐ORACULO {:>6} quads              | aspecto p50 {:.2} p99 {:>5.1} \
+                 | ⭐enviesamento p50 {:>3.0}° p99 {:>3.0}° (>60°: {})",
+                o.mesh.faces().len(),
+                s.aspect_p50,
+                s.aspect_p99,
+                s.skew_p50,
+                s.skew_p99,
+                s.skew_over_60,
+            );
+        }
+    }
+}

@@ -455,7 +455,20 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   código, ele dá `18,6°` e `38,4°`** — e a distribuição é indistinguível: p50 mediano `0,479°` contra
   `0,470°` dele, p95 `2,52°` contra `3,19°` **dele**. ⇒ *um predicado que reprova a testemunha de controlo
   mede a discretização, não o defeito*, e a dívida **NÃO** é do F3 por esta via. ⭐ Fica a régua
-  (`ph2d_crossfield::comb`, com a distribuição) e a recusa da barra registada no tipo. ⭐ **A canalização FICA e é o ganho durável:**
+  (`ph2d_crossfield::comb`, com a distribuição) e a recusa da barra registada no tipo.
+  ⭐⭐⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede
+  **`18°` de enviesamento contra `6°` do oráculo**, com o aspecto quase igual (`1,26` vs `1,22`):
+  *as células têm as proporções certas e os ângulos errados*, e o defeito é do **NÚCLEO**. Gate
+  vermelho `a_plain_sphere_is_as_square_as_the_oracles`, com a barra do oráculo **na mesma peça**.
+  ⛔ **Sete hipóteses morreram sobre ESCULTURAS** — as duas últimas: a **densidade** (à contagem
+  dele, `4 162` contra `4 658`, ainda `22°` vs `6°`) e o **mapa conforme** (cotangente: `18° → 18°`
+  com **`0/16` recuos** — dois Laplacianos diferentes dão o mesmo número ⇒ *o interior do
+  achatamento não decide o enviesamento*). ⛔ **Meça toda hipótese nova NA ESFERA LISA primeiro.**
+  ⛔⛔ **E dois defeitos NOVOS só aparecem nos casos triviais:** o **toro 64×32** faz a quantização
+  **RECUSAR** nos três níveis (o oráculo dá 5 538 quads a `2°`), e a **esfera 24×36** — grossa, logo
+  o F1 **REFINA** — sai com aspecto `4,38`, enviesamento `52°`, **50 dobras** e densidade
+  **não-monótona** (`d=0,55` dá 823 quads, `d=0,80` dá 643). *A rota em que o F1 refina nunca tinha
+  sido medida.* ⭐ **A canalização FICA e é o ganho durável:**
   o campo agora **chega** ao F5 (`PatchLayout::face_dir`), que era a primeira coisa que faltava.
   ⭐⭐ **O ORÁCULO GRAVA AS FASES INTERMÉDIAS** (achado 22/08, `PLAN.md` §4-duotricies): em
   `ph2d-quadbench/ref/<peça>/` estão o **campo** dele (`*_rem.rosy`, uma direção por face) e a **decomposição**

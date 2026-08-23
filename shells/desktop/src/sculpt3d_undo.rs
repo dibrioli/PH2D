@@ -459,6 +459,12 @@ mod oracle_probes;
 #[path = "sculpt3d_quad_shape.rs"]
 mod quad_shape;
 
+/// ⭐ **O CASO MAIS SIMPLES e a densidade** — ver [`simplest_case`]. Irmã da
+/// [`quad_shape`] pelo teto de LOC da shell.
+#[cfg(test)]
+#[path = "sculpt3d_simplest_case.rs"]
+mod simplest_case;
+
 /// ⭐⭐⭐ **A SAÍDA SEGUE O CAMPO?** — ver [`field_follow`]. A sonda que separa a
 /// dívida do **F2** (o campo está torto) da do **F5** (a montagem ignora-o).
 #[cfg(test)]

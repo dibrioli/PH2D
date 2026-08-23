@@ -46,7 +46,10 @@ fn measure(mesh: &Mesh) -> Shown {
 }
 
 /// A forma, mais a contagem de faces, formatadas numa linha.
-struct Shown(QuadShape, usize);
+///
+/// ⚠️ `pub(super)` para a irmã [`super::simplest_case`] a reusar — *duas cópias da
+/// mesma linha de saída divergiriam no primeiro campo novo.*
+pub(super) struct Shown(pub(super) QuadShape, pub(super) usize);
 
 fn pct(sorted: &[f32], p: f32) -> f32 {
     if sorted.is_empty() {

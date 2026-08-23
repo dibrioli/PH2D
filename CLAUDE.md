@@ -518,6 +518,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   que a tinha descartado (a linha «ORACULO 18,6°/38,4°») cruzava o **campo do `_rem.obj`** com os
   **patches do `_rem_p0.obj`** — malhas diferentes, 9.534 contra 9.638 faces; a conferência nomeava o
   risco e nunca comparava as duas contagens. **Linha retirada**, guarda apertada.
+  ⭐⭐⭐ **E a afirmação «canto inventado = irregular a mais» foi VERIFICADA na saída** (`PLAN.md`
+  §4-sexetquadragies): irregulares **18 (nós) contra 8 (ele)** na esfera lisa e **14 contra 8** na
+  enrugada — e **`8` é o piso de Poincaré–Hopf, onde ele aterra exactamente**. Como o nosso campo tem
+  `8` singularidades nas duas, **dez dos nossos irregulares são fabricados entre o traçado e o
+  preenchimento**. ⚠️ Antes de a citar, a régua foi conferida: *cantos* (ângulo interno) e *nós*
+  (pontas de arco) são conjuntos **idênticos** nas 4 fixturas — a união sobre patches contém sempre o
+  nó em T, logo ⛔ **ela não serve para testar a regra do ângulo**, embora o número coincidisse.
+  ⭐⭐ **O mecanismo é medido:** um nó a mais parte um LADO em vários ARCOS — **37%** dos lados da
+  esfera lisa (pior: **6** arcos num lado, na orelha) —, e *dentro de um arco a reamostragem por `τ`
+  é proporcional; a discordância entre lados opostos nasce quando um lado tem vários*. ⇒ **uma causa,
+  dois sintomas**, e a obra é uma: **arcos de singularidade a singularidade**.
   ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede
   **`18°` de enviesamento contra `6°` do oráculo**, com o aspecto quase igual (`1,26` vs `1,22`):
   *as células têm as proporções certas e os ângulos errados*, e o defeito é do **NÚCLEO**. Gate

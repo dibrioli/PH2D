@@ -298,27 +298,117 @@ fn how_many_sides_do_the_patches_have() {
         // impõe a discordância conforme.
         //
         // ⚠️ *Sem esta linha, «fragmentamos o dobro» não diz se o excesso é legítimo.*
+        // ⚠️⚠️ **DUAS COISAS DIFERENTES, e confundi-las custou uma afirmação errada**
+        // (2026-08-23). O [`ph2d_trace::PatchLayout`] tem **cantos** próprios
+        // (`corners`), decididos pelo **ângulo interno daquele patch naquele vértice**;
+        // e tem **nós** — as pontas dos arcos —, que incluem toda junção em T. *Um nó
+        // em T é canto para os patches do lado da haste e MEIO DE LADO para o do outro
+        // lado.* ⇒ contar pontas de arco e chamar-lhes cantos **sobrestima**, e foi o
+        // que eu fiz. As duas linhas saem juntas de propósito.
         let idx = ph2d_crossfield::vertex_index(&work, &dual, &field);
-        let mut corner_verts: BTreeSet<u32> = BTreeSet::new();
-        for chain in &layout.arc_chain {
-            if let (Some(&a), Some(&b)) = (chain.first(), chain.last()) {
-                corner_verts.insert(a);
-                corner_verts.insert(b);
+        let is_sing = |v: &u32| idx.get(*v as usize).copied().unwrap_or(0) != 0;
+        let sing_verts = idx.iter().filter(|k| **k != 0).count();
+
+        let corner_verts: BTreeSet<u32> = layout.corners.iter().flatten().copied().collect();
+        let c_sing = corner_verts.iter().filter(|v| is_sing(v)).count();
+        let nodes: BTreeSet<u32> = layout
+            .arc_chain
+            .iter()
+            .filter_map(|c| Some((*c.first()?, *c.last()?)))
+            .flat_map(|(a, b)| [a, b])
+            .collect();
+        let n_sing = nodes.iter().filter(|v| is_sing(v)).count();
+        eprintln!(
+            "          ⛔CANTOS (angulo) {} · em singularidade {c_sing} · fora dela {} \
+             || NOS de arco {} · em singularidade {n_sing} · fora dela {} \
+             || singularidades SEM no {}",
+            corner_verts.len(),
+            corner_verts.len() - c_sing,
+            nodes.len(),
+            nodes.len() - n_sing,
+            sing_verts.saturating_sub(n_sing),
+        );
+
+        // ⭐⭐ **O CUSTO CONCRETO de um nó a mais: um LADO partido em vários ARCOS.**
+        //
+        // ⚠️ É a ligação — testável — com o defeito que o [`ph2d_quadfill::rectangle`]
+        // nomeou: *dentro de UM arco a reamostragem por `τ` é proporcional, então não há
+        // desvio; a divergência entre lados opostos aparece quando um lado tem VÁRIOS
+        // arcos com densidades diferentes.* ⇒ quantos lados nossos são feitos de mais
+        // de um arco é a medida directa de quanta discordância o traçado impõe ao F5.
+        let (mut sides_total, mut sides_multi, mut worst) = (0usize, 0usize, 0usize);
+        for sides in &layout.side_arcs {
+            for s in sides {
+                sides_total += 1;
+                if s.len() > 1 {
+                    sides_multi += 1;
+                }
+                worst = worst.max(s.len());
             }
         }
-        let on_sing = corner_verts
-            .iter()
-            .filter(|&&v| idx.get(v as usize).copied().unwrap_or(0) != 0)
-            .count();
-        let sing_verts = idx.iter().filter(|k| **k != 0).count();
-        let uncovered = sing_verts.saturating_sub(on_sing);
+        #[allow(clippy::cast_precision_loss)]
+        let pct = 100.0 * sides_multi as f32 / sides_total.max(1) as f32;
         eprintln!(
-            "          ⛔CANTOS NOSSOS: {} · em singularidade {on_sing} · \
-             INVENTADOS {} · singularidades sem canto {uncovered}",
-            corner_verts.len(),
-            corner_verts.len() - on_sing,
+            "          ⭐LADOS: {sides_total} · com MAIS de um arco {sides_multi} ({pct:.0}%) · pior {worst} arcos"
         );
+
+        // ⛔⛔ **A AFIRMAÇÃO QUE FALTAVA VERIFICAR: um canto a mais custa um IRREGULAR
+        // a mais na saída?**
+        //
+        // ⚠️ Ela foi escrita como se fosse óbvia (2026-08-23) e **não é**: o `corners`
+        // do layout é per-patch, e um nó em T é canto para os patches do lado da haste e
+        // **meio de lado** para o do outro. *Um vértice onde três patches se encontram
+        // pode sair com valência 4 na malha final.* ⇒ pergunta-se à SAÍDA.
+        let target = ph2d_quadflow::edge_for_detail_with(
+            &reference,
+            0.55,
+            ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
+        );
+        if let Ok(spec) = layout.to_layout(target)
+            && let Ok((quant, _)) =
+                ph2d_quantize::quantize_within(&spec, ph2d_quantize::Budget::new(256, 512))
+            && let Ok((_, r)) = ph2d_quadfill::fill(
+                &work,
+                &reference,
+                &layout,
+                &quant,
+                ph2d_quadfill::SMOOTHING_ROUNDS,
+            )
+        {
+            #[allow(clippy::cast_precision_loss)]
+            let ours = 100.0 * r.irregular as f32 / r.verts.max(1) as f32;
+            eprintln!(
+                "          ⭐IRREGULARES na saida: nos {} de {} ({ours:.2}%) · ele {}",
+                r.irregular,
+                r.verts,
+                irregular_of(&dir, piece),
+            );
+        }
     }
+}
+
+/// **QUANTOS IRREGULARES A MALHA DE QUADS DELE TEM** — lidos da saída final.
+///
+/// ⚠️ **A mesma definição da nossa** (`valência ≠ 4`, ignorando bordo), para a linha
+/// ficar comparável. *Duas definições de irregular dariam uma diferença que não existe.*
+fn irregular_of(dir: &std::path::Path, piece: &str) -> String {
+    let path = dir.join(format!("{piece}_rem_p0_123_quadrangulation_smooth.obj"));
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return "(sem ficheiro)".to_string();
+    };
+    let Some(o) = ph2d_mesh::import_obj(&text).ok().and_then(|mut v| v.pop()) else {
+        return "(nao le)".to_string();
+    };
+    let mut deg: BTreeMap<u32, usize> = BTreeMap::new();
+    for f in o.mesh.faces() {
+        for &v in f.verts() {
+            *deg.entry(v).or_default() += 1;
+        }
+    }
+    let n = deg.values().filter(|d| **d != 4).count();
+    #[allow(clippy::cast_precision_loss)]
+    let pct = 100.0 * n as f32 / deg.len().max(1) as f32;
+    format!("{n} de {} ({pct:.2}%)", deg.len())
 }
 
 /// **A CONTAGEM E A SOMA DOS ÍNDICES, com Poincaré–Hopf ao lado.**

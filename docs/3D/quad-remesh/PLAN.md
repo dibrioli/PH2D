@@ -3829,3 +3829,63 @@ acaba num vértice regular é uma junção em T que o campo não pediu — e sã
 |---|---|---|
 | culpar o F2 pela fragmentação | 8 singularidades contra 8 dele (e 8 contra 12 na orelha) | [`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs) |
 | a linha «ORACULO» do `how_many_patches_are_uncombable` | cruzava campo e patches de **malhas diferentes** | [`sculpt3d_field_follow.rs`](../../../shells/desktop/src/sculpt3d_field_follow.rs) |
+
+## §4-sexetquadragies — ⭐⭐⭐ A AFIRMAÇÃO VERIFICADA: 18 irregulares contra o piso de 8 (2026-08-23)
+
+### ⚠️ Primeiro, a conferência da régua anterior
+
+A §4-quinquietquadragies escreveu *«cada canto inventado é um irregular a mais na
+saída»* como se fosse óbvio. ⛔ **Não é**, e havia duas coisas por separar:
+
+- **cantos** (`PatchLayout::corners`) — decididos pelo **ângulo interno daquele patch
+  naquele vértice**;
+- **nós** — as pontas dos arcos, que incluem toda junção em T.
+
+*Um nó em T é canto para os patches do lado da haste e **meio de lado** para o do outro*
+⇒ um vértice onde três patches se encontram **pode** sair com valência 4.
+
+⭐ **Medido: os dois conjuntos são IDÊNTICOS** nas quatro fixturas (28/28, 41/41, 24/24,
+29/29) — a união sobre patches contém sempre o nó, porque ele é canto para pelo menos
+dois deles. *A união é a agregação errada para testar a regra do ângulo; o número, por
+acaso, era o mesmo.*
+
+### ⭐⭐⭐ E a pergunta certa foi feita à SAÍDA
+
+| peça | irregulares NOSSOS | ⭐ DELE | piso de Poincaré–Hopf |
+|---|---|---|---|
+| esfera **lisa** | **18** (`0,90 %`) | **8** (`0,24 %`) | **8** |
+| enrugada | 14 (`0,57 %`) | **8** (`0,17 %`) | 8 |
+| orelha | 18 (`0,43 %`) | 12 (`0,26 %`) | 8 |
+| gancho | 26 (`2,00 %`) | 14 (`0,33 %`) | 8 |
+
+⭐⭐⭐ **Na esfera lisa e na enrugada o oráculo aterra EXACTAMENTE no piso.** Nós damos
+**18** e **14**. ⚠️ E o nosso campo tem `8` singularidades nas duas ⇒ **dez dos nossos
+irregulares não vêm do campo: são fabricados entre o traçado e o preenchimento.**
+⇒ *a afirmação estava certa, e agora tem número em vez de plausibilidade.*
+
+### ⭐⭐ O mecanismo, medido: um nó a mais parte um LADO em vários ARCOS
+
+| peça | lados | com **mais de um arco** | pior |
+|---|---|---|---|
+| esfera **lisa** | 59 | **22 (37 %)** | 4 arcos |
+| enrugada | 50 | 16 (32 %) | 4 |
+| orelha | 59 | 16 (27 %) | **6** |
+| gancho | 98 | 23 (23 %) | 5 |
+
+⚠️ **É a ligação com o §4-tresetquadragies, e ela é testável:** dentro de **um** arco a
+reamostragem por `τ` é proporcional, logo não há desvio; a discordância entre lados
+opostos aparece **quando um lado tem vários arcos com densidades diferentes**. ⇒ os
+`37 %` são a medida directa de quanta discordância o traçado impõe ao F5.
+
+### ⇒ Um cause, dois sintomas
+
+**O traçado emite arcos que começam ou acabam em vértices REGULARES** (22 de 29 na
+esfera lisa). Cada um paga-se duas vezes: um irregular a mais na saída, e um lado
+partido em arcos onde a subdivisão por comprimento impõe ângulo torto.
+⇒ **a obra é uma: arcos de singularidade a singularidade.**
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| usar a UNIÃO de `corners` para testar a regra do ângulo | ela contém todo nó em T por construção — não discrimina | [`sculpt3d_patch_valence.rs`](../../../shells/desktop/src/sculpt3d_patch_valence.rs) |

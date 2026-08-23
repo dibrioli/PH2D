@@ -34,6 +34,13 @@ use std::path::{Path, PathBuf};
 //    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    // A tinta de FUNDO de um botão plano, misturada no eixo do hover. Aritmética de COR pura — não
+    // pinta, não regista, não conhece um `NodeId`. Quem anuncia é o pintor que a chama, e cada um
+    // deles já constrói o próprio nó (é precisamente por pintarem à mão que eles precisam dela).
+    (
+        "button_surface.rs",
+        "colour arithmetic only; paints nothing, registers nothing — the calling painter owns a11y",
+    ),
     // A lei de COLOCAÇÃO de um menu: dado um âncora, um tamanho e o viewport, onde é que o rect
     // pousa. Aritmética pura — não pinta, não regista, não conhece um `NodeId`. Quem anuncia é
     // quem desenha as linhas DENTRO do rect que ela devolve (os menus de contexto, e a lista do

@@ -15,7 +15,7 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    ButtonState, Slider, SliderOrientation, SliderState, flat_button_surface, paint_slider,
+    ButtonState, Slider, SliderOrientation, SliderState, flat_button_surface_color, paint_slider,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -496,22 +496,22 @@ pub(crate) fn paint_reorder_btn(
     // pointer is over it (BgElev) or pressing it (AccentSoft) — the same `flat_button_surface` every
     // flat button uses, so these one-click reorder arrows now match the rest of the app. Idle stays
     // transparent (bare arrow), so the row doesn't grow a permanent box.
-    let state = ctx
-        .host
-        .store()
-        .button_state(id)
-        .unwrap_or(ButtonState::Normal);
-    if enabled
-        && matches!(
-            state,
-            ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused
-        )
-    {
+    let visual = ctx.host.store().button_visual(id);
+    let (state, t) = visual;
+    // ⚠️ **A guarda inclui o VOO, e sem isso a saída seria instantânea.** No quadro em que o rato
+    // sai, o `state` já é `Normal` — se só o estado decidisse, a superfície desapareceria de um
+    // golpe enquanto a mola ainda está a correr. É a mesma lei que o `Button::bg_color` escreve:
+    // *quem escolhe a cor neste eixo é o ESCALAR, não o estado*.
+    let hot = matches!(
+        state,
+        ButtonState::Hovered | ButtonState::Pressed | ButtonState::Focused
+    );
+    if enabled && (hot || t < ph2d_editor_core::motion::SETTLED) {
         fill_rounded_rect(
             ctx.scene,
             rect,
             Radius::Sm.px(),
-            resolve(flat_button_surface(state), theme),
+            flat_button_surface_color(visual, theme),
         );
     }
     paint_icon(ctx.scene, icon, rect, color, StrokeToken::Default.px());

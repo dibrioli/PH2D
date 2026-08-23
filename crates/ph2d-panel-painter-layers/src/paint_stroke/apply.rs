@@ -7,12 +7,11 @@
 use crate::paint::register_button;
 use crate::paint_brush_top::{paint_checkbox_row, paint_slider_chip_row};
 use ph2d_editor_core::ids as core_ids;
-use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{ButtonState, flat_button_surface};
+use ph2d_editor_core::widget::flat_button_surface_color;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_tool_painter::BrushSettings;
@@ -227,17 +226,13 @@ fn button(
         paint_icon_button(ctx, theme, r, ph2d_editor_core::IconId::Close, id);
         return;
     };
-    // Fill follows the button's ButtonState (idle / hover / press) via the central `flat_button_surface`,
-    // so the click is visible — same source every flat button uses.
-    let state = match ctx.host.store().get(id) {
-        Some(InteractiveState::Button { state }) => *state,
-        _ => ButtonState::Normal,
-    };
+    // O fundo segue o estado do botão **e o relógio**: a porta recebe o PAR, então este sítio não
+    // pode esquecer o `t` e voltar a saltar enquanto o resto do app amacia.
     fill_rounded_rect(
         ctx.scene,
         r,
         Radius::Sm.px(),
-        resolve(flat_button_surface(state), theme),
+        flat_button_surface_color(ctx.host.store().button_visual(id), theme),
     );
     stroke_rounded_rect(
         ctx.scene,
@@ -267,15 +262,11 @@ pub(super) fn paint_icon_button(
     icon: ph2d_editor_core::IconId,
     id: ph2d_a11y::NodeId,
 ) {
-    let state = match ctx.host.store().get(id) {
-        Some(InteractiveState::Button { state }) => *state,
-        _ => ButtonState::Normal,
-    };
     fill_rounded_rect(
         ctx.scene,
         r,
         Radius::Sm.px(),
-        resolve(flat_button_surface(state), theme),
+        flat_button_surface_color(ctx.host.store().button_visual(id), theme),
     );
     stroke_rounded_rect(
         ctx.scene,

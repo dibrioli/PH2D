@@ -17,8 +17,8 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{
-    Button, ButtonState, ColorSwatch, SectionHeader, SwatchSize, SwatchState, flat_button_surface,
-    paint_button, paint_color_swatch, paint_section_header,
+    Button, ButtonState, ColorSwatch, SectionHeader, SwatchSize, SwatchState,
+    flat_button_surface_color, paint_button, paint_color_swatch, paint_section_header,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, TypeToken};
@@ -296,17 +296,17 @@ fn paint_button_cell(
     id: ph2d_a11y::NodeId,
     selected: bool,
 ) {
+    // ⚠️ **O fundo sai RESOLVIDO e o texto continua um token**, e a assimetria é o eixo: o fundo
+    // é a única metade que se MISTURA (repouso -> hover), então ele não cabe num `ColorToken`.
     let (bg, fg) = if selected {
-        (ColorToken::Accent, ColorToken::Bg0)
+        (resolve(ColorToken::Accent, theme), ColorToken::Bg0)
     } else {
-        let state = ctx
-            .host
-            .store()
-            .button_state(id)
-            .unwrap_or(ButtonState::Normal);
-        (flat_button_surface(state), ColorToken::Text1)
+        (
+            flat_button_surface_color(ctx.host.store().button_visual(id), theme),
+            ColorToken::Text1,
+        )
     };
-    fill_rounded_rect(ctx.scene, rect, Radius::Sm.px(), resolve(bg, theme));
+    fill_rounded_rect(ctx.scene, rect, Radius::Sm.px(), bg);
     stroke_rounded_rect(
         ctx.scene,
         rect,

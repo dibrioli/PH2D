@@ -12,7 +12,7 @@ use crate::paint::register_button;
 use ph2d_editor_core::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{ButtonState, Slider, flat_button_surface, paint_slider};
+use ph2d_editor_core::widget::{Slider, paint_slider};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, StrokeToken};
 use ph2d_tool_painter::{Layer, ReliefComposite};
@@ -88,7 +88,10 @@ pub(crate) fn paint_relief_line(
         ctx.scene,
         chip,
         Radius::Sm.px(),
-        resolve(flat_button_surface(ButtonState::Normal), theme),
+        // ⚠️ **O tom de REPOUSO por si.** Este chip não é um botão registado (o clique dele
+        // corre noutro sítio), então pedi-lo por `flat_button_surface(Normal)` era fingir um
+        // estado para chegar a `Bg2`. Nomear o token diz o que ele quer.
+        resolve(ColorToken::Bg2, theme),
     );
     if leveling {
         stroke_rounded_rect(

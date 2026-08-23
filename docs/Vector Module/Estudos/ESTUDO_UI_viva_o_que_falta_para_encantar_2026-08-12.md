@@ -194,7 +194,7 @@ descartável por construção; um corpo do mundo nunca é.*
 |---|---|---|---|---|
 | **F0** | **`wall_dt` chega ao chrome + estado contínuo por widget** (`UiMotion`: um mapa `id → (valor, velocidade)`) — e o toast passa a contar **segundos** | 1 | — | **M** |
 | ~~F1~~ ✅ | a **mola** serve o chrome — **FEITA pelo F0** (o `motion.rs` resolve com `ph2d_spring::SpringState`). ⚠️ Esta linha ficou a mentir uma jornada inteira | 1 | F0 | **P** |
-| ⭐ **F2** | **hover/press/focus interpolam** — ⚠️ **MEDIDA em 2026-08-13, e ela NÃO está feita: o `.hover_t()` é passado em DOIS sítios do app inteiro contra 161 que pintam um Button/Toggle/Checkbox/IconButton.** O `hover_targets` publica alvos para todos eles e o `tick` integra as molas; a **pintura deita o resultado fora** (o default `hover_t = 1.0` cai no estado duro). Ver a §6.2 | 1 | F0+F1 | ~~P~~ **G** |
+| ~~⭐ F2~~ ✅ | **hover/press/focus interpolam** — **FEITA**. ⚠️ A medição de 13/08 (*"2 sítios leem, 161 pintam"*) **expirou**: hoje são **128** a passar o par e **9** famílias no relógio. O que sobrava era uma **quarta rota** — o mapa duro `flat_button_surface`, sem `t` na assinatura, resolvido em 5 pintores —, curada tornando-o **privado** para o COMPILADOR enumerar os sítios. ⛔ Fica a borda do chip da barra de topo (§6.2-bis) | 1 | F0+F1 | ~~P~~ **G** |
 | ~~F3~~ ✅ | **interruptibilidade** — **FEITA pelo F0** (`SpringState::resuming` + a re-normalizacao `v / span`), com gate proprio. ⚠️ Tambem mentia | 1 | F1 | **P** |
 | F4 | **secções e painéis** abrem/fecham com movimento e **direcção coerente** | 1 | F1 | **M** |
 | ~~F5~~ ✅ | **cascata** — **FEITA na PALETA** (`ε = 0,020 s`, MEDIDO; ver a §6.3). ⚠️ E ela é o **primeiro consumidor de `Role::Travel` do produto** — até aqui o eixo que o *reduced motion* existe para matar não era usado por ninguém. Hierarquia e rows do inspector ficam para quando a F2 abrir a porta | 1 | F0 | **P** |
@@ -279,6 +279,45 @@ na lista — `ListItem` (`Bg2` no fundo — é a **Hierarquia**), `TextInput` e 
 de desenho** que não é mecânica — ou cada sítio passa a pedir (`.hover_t(…)`, e o sítio 125 nasce
 sem), ou a leitura passa a ser **estrutural** (o `button_state` devolve o par, e é o compilador que
 enumera os sítios). ⇒ **não é «por gosto», e não se começa pela metade.**
+
+#### 6.2-bis — ⚠️ A medição de 13/08 EXPIROU: o corpo da F2 foi feito, e o que sobrava era outra rota
+
+Re-medido em **2026-08-23** (a regra do §0: *quem move o número reconfere a nota*):
+
+| quem | 2026-08-13 | 2026-08-23 |
+|---|---|---|
+| sítios que passam o par (`button_visual`) | **2** | **128** |
+| famílias no `hover_targets` | 4 | **9** + o censo das scrollbars |
+| `.button_state(` fora dos testes | — | **27**, e **nenhum** deles pinta hover |
+
+⇒ **os "161 pintam, 2 leem" já não descrevem nada.** O `button_visual` nasceu, a `skin_live`
+nasceu, e as quatro famílias do texto/chip entraram no relógio.
+
+⭐ **O que SOBRAVA era uma quarta rota, e ela não é um widget:** o
+`widget::flat_button_surface(state) -> ColorToken`, um mapa DURO **sem `t` na assinatura**. Cinco
+sítios de pintura resolviam-no directamente ⇒ as **setas de reordenar camada**, os **botões da
+máscara**, as **amostras do ramp** e os **chips do stroke apply** saltavam ao lado de todo o resto
+do app.
+
+⚠️ **Nenhum gate podia vê-la:** os gates do eixo passam o par à mão a um *widget*, e esta rota é
+uma função livre resolvida **dentro do pintor**.
+
+**A cura foi ESTRUTURAL, e é a bifurcação que o §6.2 nomeou — resolvida do lado certo:** o mapa
+duro passou a **privado** (`widget/button_surface.rs`) e a única porta é
+`flat_button_surface_color((state, t), theme)`, que recebe o **PAR**. Fechá-lo fez o **compilador**
+enumerar os cinco sítios, um a um. *É a diferença entre uma convenção e uma lei* — e a rota certa
+ficou tão curta de escrever quanto a errada era.
+
+⚠️ **A guarda de um sítio teve de mudar junto**, e é a lei do eixo: as setas só pintavam a
+superfície `if matches!(state, Hovered|Pressed|Focused)`. No quadro em que o rato sai o estado já é
+`Normal`, então a saída seria **instantânea** — a guarda passa a incluir o VOO (`t < SETTLED`).
+
+⛔ **O que fica ABERTO, e é o item seguinte:** o chip da **barra de topo** (`cluster_painter`) tem
+o `t` em mãos e passa-o ao **glifo** (`paint_icon_button((state, hover_t), …)`) — mas escolhe a
+**borda** pelo estado DURO (`Border → BorderEmph`). O ícone amacia e a moldura salta, dentro do
+mesmo chip. O rail (`tool_rail/paint.rs`) é o irmão a conferir.
+⚠️ E a matriz dos dois **não é a mesma** que a plana (o repouso deles é `BgElev`, não `Bg2`): são
+duas perguntas, não duas respostas — há gate a afirmá-lo (`the_flat_surface_reads_the_clock`).
 
 ### 6.3 — A CASCATA (F5), e o `ε` que foi reprovado uma vez
 

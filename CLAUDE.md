@@ -635,14 +635,26 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **Animation** continua por construir. Estava escrito desde 2026-05-31 num handoff
   **arquivado**, e o roteador dizia o contrário — *a informação existia; o roteador é o que se lê*.
   **Aberto:** ⛔ a **§11 Animation** continua a única das três por construir (pede um `SpriteFrames`
-  que não existe) · ⛔ **nada consome uma âncora** — o ADR-0072 §2.6 (API de runtime: Rust, Luau,
-  MCP) é autoria sem consumidor · o `AnchorData::user_data` não tem UI, com o `variant_editor`
+  que não existe) · ✅ **uma âncora já MOVE coisas** (2026-08-22): `ph2d_ecs::AnchorMount` faz dela um
+  **QUADRO na hierarquia** ([ADR-0072-amendment-1](docs/architecture/decisions/0072-amendment-1.md)),
+  autorado pela linha «Rides Parent Anchor» da §12 e demonstrado em `PH2D_MOUNT_SMOKE`.
+  ⚠️ **A lei entra nas DUAS travessias de mundo pela MESMA função** (`mount_state`) —
+  `propagate_transforms` e `world_transform`: só numa, a espada **desenha** na mão e todo gesto
+  agarra-a na origem do pai. ⛔ Das três superfícies do ADR-0072 §2.6 só a **Rust** tinha onde
+  existir; **Luau e MCP estão BLOQUEADOS por outro subsistema** (o `ScriptHost` do desktop corre um
+  script placeholder e **nunca** recebe `provide_read`; o `McpHost` é um `MemoryHost` de JSON, com
+  «backends reais em S2/S3» escrito nele) — o gatilho de cada uma está na
+  [spec §7.8-bis](docs/Sprite_projeto/07_named_anchors.md), e construí-las hoje repetiria, um nível
+  acima, o defeito que esta wave curou · o `AnchorData::user_data` não tem UI, com o `variant_editor`
   órfão a apontar-lhe · os 4 goldens seguem `unimplemented!()` (falta o arnês headless) · UI real
   de Save/Open (o `io_menu` é stub).
-  **Smokes:** `PH2D_SLICE_SMOKE=1..3` · `PH2D_SOCKET_SMOKE` · `PH2D_SHEET_SMOKE` · `PH2D_EMISSIVE_SMOKE` ·
-  `PH2D_DITHER_SMOKE`.
+  **Smokes:** `PH2D_SLICE_SMOKE=1..3` · `PH2D_SOCKET_SMOKE` · `PH2D_MOUNT_SMOKE` · `PH2D_SHEET_SMOKE` ·
+  `PH2D_EMISSIVE_SMOKE` · `PH2D_DITHER_SMOKE`.
   **Ler:** ⚠️ [auditoria de 7 lentes](docs/Sprite_projeto/20_auditoria_do_inspector_2026-08-21.md)
-  (o que estava morto/incompleto, **com o que já foi curado marcado**) · [spec](docs/Sprite_projeto/README.md)
+  (o que estava morto/incompleto, **com o que já foi curado marcado**) · [spec](docs/Sprite_projeto/README.md) ·
+  [handoffs](docs/Sprite_projeto/handoffs/README.md) (⚠️ índice **à mão**: esta pasta não entra no
+  `doc-index.sh` porque o `README.md` acima dela é a spec — e até 2026-08-23 os handoffs eram
+  **órfãos**, citados por nada)
 
 ## §6 — Contratos congelados (mexer = Coord-only + ADR; DIRETRIZ §4)
 

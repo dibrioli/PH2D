@@ -338,7 +338,11 @@ mod tests {
         let pose = anchor_world_pose(&w, sprite, "muzzle").expect("a ancora existe");
         assert_eq!(pose.translation, Vec2::new(10.0, 8.0));
         assert_eq!(anchor_world_pose(&w, sprite, "nope"), None);
-        assert_eq!(anchor_world_pose(&w, root, "muzzle"), None, "o pai nao a tem");
+        assert_eq!(
+            anchor_world_pose(&w, root, "muzzle"),
+            None,
+            "o pai nao a tem"
+        );
         assert_eq!(anchor_names(&w, sprite), vec!["muzzle".to_string()]);
         assert!(anchor_names(&w, root).is_empty());
     }

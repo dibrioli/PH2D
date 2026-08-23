@@ -8,7 +8,6 @@
 
 use super::*;
 
-
 #[test]
 fn identity_is_neutral() {
     let t = Transform::IDENTITY;

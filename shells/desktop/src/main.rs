@@ -280,6 +280,8 @@ mod motion_shape_bake;
 mod motion_shape_smoke;
 mod motion_shape_smoke_knobs;
 mod motion_state;
+/// **As três formas de âncora, numa sprite só** (`PH2D_SOCKET_SMOKE=1`, ADR-0072).
+mod mount_smoke;
 mod multi_node_smoke;
 mod name_unique;
 mod nest_smoke;
@@ -449,8 +451,6 @@ mod slice_smoke;
 mod smoke_layout;
 mod smoke_script;
 mod snap_label_smoke;
-/// **As três formas de âncora, numa sprite só** (`PH2D_SOCKET_SMOKE=1`, ADR-0072).
-mod mount_smoke;
 mod socket_smoke;
 mod splice_smoke;
 mod stack_smoke;

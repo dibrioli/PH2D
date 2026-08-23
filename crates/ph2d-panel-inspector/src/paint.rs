@@ -24,13 +24,13 @@ use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
+use ph2d_editor_core::widget::SCROLLBAR_W;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
     paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use ph2d_editor_core::widget::showcase::LAST_BODY_TOP_SCREEN_Y;
-use ph2d_editor_core::widget::showcase::{paint_section_separator, take_pending_dropdown_chip};
-use ph2d_editor_core::widget::{self, Dropdown, DropdownOption, SCROLLBAR_W};
+use ph2d_editor_core::widget::showcase::paint_section_separator;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
@@ -425,67 +425,12 @@ fn paint_inspector(
         },
         section_tops_y,
     );
-    if let Some((sel_idx, chip)) = take_pending_dropdown_chip() {
-        let labels = ["Front", "Side", "Top"];
-        let selected_label = labels.get(sel_idx).copied().unwrap_or("Front");
-        let dd = Dropdown::new(
-            ids::INSP_SAMPLE_DROPDOWN,
-            "View",
-            vec![
-                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_A, "front", "Front"),
-                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_B, "side", "Side"),
-                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_C, "top", "Top"),
-            ],
-        )
-        .selected(selected_label)
-        .open(true);
-        widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
-        for (i, opt) in dd.options.iter().enumerate() {
-            hit_index.register(opt.id, dd.option_rect(chip, i));
-        }
-    }
-    // W3 §7 Sorting Layer dropdown popover — same deferred-paint pass,
-    // panel-local pending slot so it never collides with the sample dd.
-    if let Some((sel_idx, chip)) = state::take_pending_ordering_dd() {
-        let label = sections::ordering::LAYER_LABELS
-            .get(sel_idx)
-            .copied()
-            .unwrap_or("Default");
-        let dd = Dropdown::new(
-            ids::INSP_ORDER_SORTING_LAYER,
-            "",
-            sections::ordering::layer_options(),
-        )
-        .selected(label)
-        .open(true);
-        widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
-        for (i, opt) in dd.options.iter().enumerate() {
-            hit_index.register(opt.id, dd.option_rect(chip, i));
-        }
-    }
-
-    // §12 «Rides Parent Anchor» — mesmo passe diferido, slot próprio.
-    //
-    // ⚠️ **As opções rederivam-se do snapshot aqui**, e não vêm no slot: guardá-las seria uma
-    // segunda cópia da mesma verdade, e as duas divergiriam no quadro em que a seleção muda.
-    if let Some(chip) = state::take_pending_mount_dd()
-        && let Some(info) = state::current_inspector_anchor()
-    {
-        let mut dd = Dropdown::new(
-            ids::INSP_MOUNT_PICK,
-            "",
-            sections::anchor_mount_row::mount_options(&info),
-        )
-        .open(true)
-        .placeholder(sections::anchor_mount_row::mount_placeholder(&info));
-        if let Some(i) = info.mount_index() {
-            dd.select(Some(i));
-        }
-        widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
-        for (i, opt) in dd.options.iter().enumerate() {
-            hit_index.register(opt.id, dd.option_rect(chip, i));
-        }
-    }
+    // **OS TRÊS POPOVERS DIFERIDOS**, pintados por último para ficarem acima de tudo.
+    // ⚠️ Saíram daqui em 2026-08-23 para `paint_frame_shared`: o «Rides Parent Anchor» da §12
+    // levou este orquestrador de 380 a 403 contra uma tolerância que **só desce**. Os três
+    // andam juntos porque partilham UMA lei — o popover pinta-se fora da ordem das seções —
+    // e levar só o novo deixaria o número onde estava, que não é encolher.
+    crate::paint_frame_shared::paint_deferred_popovers(scene, text_system, theme, hit_index);
 
     scene.pop_layer();
 

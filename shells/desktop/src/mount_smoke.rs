@@ -177,10 +177,7 @@ mod tests {
             Vec2::ZERO,
             "o controlo tem de ficar na origem — e' ele que torna a diferenca visivel"
         );
-        assert!(matches!(
-            mount_state_of(&w, sword),
-            MountState::Mounted(_)
-        ));
+        assert!(matches!(mount_state_of(&w, sword), MountState::Mounted(_)));
         assert_eq!(mount_state_of(&w, control), MountState::Free);
     }
 

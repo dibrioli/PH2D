@@ -11,6 +11,10 @@
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, NoteData, WidgetStore};
+use ph2d_editor_core::widget::showcase::take_pending_dropdown_chip;
+use ph2d_editor_core::widget::{self, Dropdown, DropdownOption};
+
+use crate::{sections, state};
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
 
@@ -368,4 +372,84 @@ pub(crate) fn paint_sprite_sections(
         );
     }
     y
+}
+
+/// **OS TRÊS POPOVERS DIFERIDOS** — a §9 Sampling, a §7 Sorting Layer e a §12 «Rides Parent
+/// Anchor». Pintam-se DEPOIS de todas as seções, para ficarem acima de tudo.
+///
+/// ⚠️ **Irmãos por uma LEI, não por vizinhança:** um popover aberto tem de sair da ordem em que a
+/// sua seção foi pintada, senão a seção seguinte desenha-lhe por cima. Cada um guarda o seu rect
+/// num slot próprio durante o passe normal e é resgatado aqui.
+///
+/// Saíram do `paint_inspector` em 2026-08-23, quando o seletor da §12 o levou de 380 a 403 contra
+/// uma tolerância que **só desce**. ⚠️ Levar só o novo devolveria o número a 380 exactos, e *ficar
+/// no mesmo sítio não é encolher* — a mesma lição que o par de PRECISÃO e o par de sliders da
+/// sprite já pagaram nesta família.
+pub(crate) fn paint_deferred_popovers(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+) {
+    if let Some((sel_idx, chip)) = take_pending_dropdown_chip() {
+        let labels = ["Front", "Side", "Top"];
+        let selected_label = labels.get(sel_idx).copied().unwrap_or("Front");
+        let dd = Dropdown::new(
+            ids::INSP_SAMPLE_DROPDOWN,
+            "View",
+            vec![
+                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_A, "front", "Front"),
+                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_B, "side", "Side"),
+                DropdownOption::new(ids::INSP_SAMPLE_DD_OPT_C, "top", "Top"),
+            ],
+        )
+        .selected(selected_label)
+        .open(true);
+        widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
+        for (i, opt) in dd.options.iter().enumerate() {
+            hit_index.register(opt.id, dd.option_rect(chip, i));
+        }
+    }
+    // W3 §7 Sorting Layer dropdown popover — same deferred-paint pass,
+    // panel-local pending slot so it never collides with the sample dd.
+    if let Some((sel_idx, chip)) = state::take_pending_ordering_dd() {
+        let label = sections::ordering::LAYER_LABELS
+            .get(sel_idx)
+            .copied()
+            .unwrap_or("Default");
+        let dd = Dropdown::new(
+            ids::INSP_ORDER_SORTING_LAYER,
+            "",
+            sections::ordering::layer_options(),
+        )
+        .selected(label)
+        .open(true);
+        widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
+        for (i, opt) in dd.options.iter().enumerate() {
+            hit_index.register(opt.id, dd.option_rect(chip, i));
+        }
+    }
+
+    // §12 «Rides Parent Anchor» — mesmo passe diferido, slot próprio.
+    //
+    // ⚠️ **As opções rederivam-se do snapshot aqui**, e não vêm no slot: guardá-las seria uma
+    // segunda cópia da mesma verdade, e as duas divergiriam no quadro em que a seleção muda.
+    if let Some(chip) = state::take_pending_mount_dd()
+        && let Some(info) = state::current_inspector_anchor()
+    {
+        let mut dd = Dropdown::new(
+            ids::INSP_MOUNT_PICK,
+            "",
+            sections::anchor_mount_row::mount_options(&info),
+        )
+        .open(true)
+        .placeholder(sections::anchor_mount_row::mount_placeholder(&info));
+        if let Some(i) = info.mount_index() {
+            dd.select(Some(i));
+        }
+        widget::paint_dropdown_popover(&dd, chip, scene, text_system, theme);
+        for (i, opt) in dd.options.iter().enumerate() {
+            hit_index.register(opt.id, dd.option_rect(chip, i));
+        }
+    }
 }

@@ -100,10 +100,7 @@ fn the_two_walks_agree_about_a_mounted_child() {
             AnchorMount::new("muzzle"),
         ))
         .id();
-    let grandchild = sim
-        .world_mut()
-        .spawn((t(0.4, 0.4), ChildOf(rider)))
-        .id();
+    let grandchild = sim.world_mut().spawn((t(0.4, 0.4), ChildOf(rider))).id();
 
     for (label, e) in [("rider", rider), ("grandchild", grandchild)] {
         let a = propagated(&mut sim, e);

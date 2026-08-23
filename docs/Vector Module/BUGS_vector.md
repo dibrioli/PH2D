@@ -7,7 +7,8 @@ volta. Espelha o [`docs/Painter/BUGS_painter.md`](../Painter/BUGS_painter.md).
 Regra deste arquivo: um bug só é considerado fechado quando existe um teste que **falha**
 se a correção for revertida. "Não reproduzi mais" não fecha nada.
 
-> **O que está VIVO aqui:** os **26 bugs estão TODOS fechados**, então o que vale hoje não é
+> **O que está VIVO aqui:** o **#27 está ABERTO** (a caneta elíptica sob Scale não-uniforme, logo
+> abaixo das recusas); os **26 anteriores estão TODOS fechados**, então o que vale hoje não é
 > nenhum deles — é o que eles ensinaram. Ficaram, nesta ordem: as **recusas com medição atrás**
 > (⛔ — não as reconstrua), os **padrões que se repetem** (leia ANTES de caçar o próximo) e o
 > **índice de uma linha por bug, com o MECANISMO**.
@@ -142,6 +143,58 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     smoke tinha dezasseis estrelas, uma traçada e uma biselada — **nenhuma as duas**. Cada wave
     acrescentou o seu caso e ninguém perguntou pelas COMBINAÇÕES; o bug reportado não podia aparecer
     ali. Ao fechar um bug, o passo final não é o gate: é pôr o caso na cena que alguém olha.
+
+---
+
+## 🔴 ABERTO
+
+### #27 — o traço vira uma CANETA ELÍPTICA sob Scale não-uniforme
+
+**Sintoma** (Enio, 2026-08-23, com as duas fotos): *"para formas vetoriais, no modo select, o
+stroke não mantém sua espessura e sua sanidade ao usar Scale não simétrico"*. Um quadrado
+arredondado com contorno branco, esticado num eixo só: o contorno deixa de ter espessura constante
+à volta da forma.
+
+**MECANISMO — confirmado por leitura, e é uma lei que este repo já aprendeu DUAS vezes.**
+O traço é emitido em [`ph2d-vec-render/src/lib.rs:466`](../../crates/ph2d-vec-render/src/lib.rs)
+como `target.stroke(&kurbo_stroke(&s, …), transform, …)`, e o `transform` é
+`path_to_screen = camera * afim_do_path` — ou seja **inclui a escala do objeto**.
+
+⚠️ **No Vello o transform de um `stroke` multiplica a CANETA, não só a geometria.** Com
+`scale = (sx, sy)` e `sx ≠ sy`, a caneta redonda de raio `w/2` vira uma **elipse** de semi-eixos
+`w·sx/2` e `w·sy/2`: a borda fica grossa num eixo e fina no outro. Não é perda de espessura — é
+perda de **circularidade da caneta**.
+
+⚠️ **A mesma lei está escrita duas vezes nesta árvore**, as duas em contextos onde ela já mordeu:
+[`marquee.rs`](../../crates/ph2d-vec-render/src/marquee.rs) (*"no Vello o transform do `stroke`
+MULTIPLICA a largura, e é o que já transformou o realce do Flip num borrão"*) e o
+[`hover_outline.rs`](../../crates/ph2d-vec-render/src/hover_outline.rs) de 2026-08-23, que a evita
+transformando a GEOMETRIA e traçando sob `IDENTITY`.
+
+**⚠️ E a cura óbvia colide com uma decisão de perf MEDIDA.** Pré-transformar a geometria por
+instância é exactamente o que o comentário do `draw_path_with` recusa: *"clonar o `BezPath` por
+instância era um custo por-instância que o cache de tesselação não remove — e a 160k estrelas era
+metade do que sobrava"*. ⇒ a cura tem de **preservar o caminho rápido**: só o caso partido
+(escala não-uniforme) paga.
+
+**⛔ E há uma BIFURCAÇÃO DE PRODUTO que é do Enio, não minha** — *o traço escala com o objeto?*
+
+| referência | ao redimensionar não-uniformemente |
+|---|---|
+| **Illustrator** | opção *Scale Strokes & Effects*, **desligada** por omissão ⇒ a espessura NÃO muda |
+| **Figma** | o traço **não** escala; redimensionar muda a geometria, não um afim |
+| **Affinity** | opção, como o Illustrator |
+
+**Nenhuma das três produz uma caneta elíptica** — quando o traço escala, ele escala
+**uniformemente**. As duas saídas honestas:
+1. **o traço não escala** — a caneta fica em px, e só a CÂMARA a escala (o zoom continua a
+   engrossar, que é o certo);
+2. **escala uniforme** por um fator só (o `sqrt(|det|)` do afim, que é o que preserva área).
+
+⇒ **por decidir**, e o número não é meu. A #1 é o default de duas das três referências.
+
+**Gate que faltava:** nenhum. A suíte mede o que o traço DESENHA em escala uniforme; a caneta
+elíptica não move régua nenhuma porque nenhuma pergunta *"a espessura é a mesma nos dois eixos?"*.
 
 ---
 

@@ -4250,3 +4250,68 @@ que não seja escolhida localmente.
 | «o campo dentro dos nossos patches não é combável, a dívida é do F3» | `0` patches sujos em 3 das 4 fixturas, esfera lisa incluída | [`aligned.rs`](../../../crates/ph2d-quadfill/src/aligned.rs) |
 | uma **barra em graus** sobre a holonomia | a grandeza não chega a `90°`; a resposta é um **inteiro** | [`comb.rs`](../../../crates/ph2d-crossfield/src/comb.rs) |
 | `assert!(holonomia >= 0.0)` como rede | tautologia sobre um ângulo — passa com `0` de «não medido» | [`interior.rs`](../../../crates/ph2d-quadfill/tests/interior.rs) |
+
+## §4-unetquinquagies — ⭐⭐⭐ O PONTO FIXO SOBRE O LAYOUT: contrai a `½`, é alcançado, e não endireita nada (2026-08-23)
+
+### A obra, e por que ela vinha antes da global
+
+O §4-tresetquadragies nomeou **duas** saídas para a discordância da subdivisão: *«ponto
+fixo sobre o layout, ou a parametrização global quantizada»*. A segunda foi construída
+como argumento; **a primeira nunca foi construída**.
+
+⛔⛔ **E a nota que a descartou fê-lo sobre um termo.** Ela dizia *«a média local não
+converge para isso porque o ponto fixo dela nem sequer contrai (`21,4 → 21,3`)»* —
+mas o laço da re-graduação **corria uma vez**. ⚠️ Pior: a proposta de cada patch sai do
+achatamento dele, e o achatamento prega a fronteira **pelo `τ` que se está a
+substituir** ⇒ *a segunda varredura vê outro achatamento e propõe outra coisa, e nunca
+chegou a correr.*
+
+### ⭐⭐⭐ Medida a sequência, ela contrai — e por exactamente `½`
+
+Esfera `24×36`, passo mediano entre pontos de subdivisão `0,077`:
+
+| ronda | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| moveu (unidades de `τ`) | `0,18506` | `0,06038` | `0,03019` | `0,01509` | `0,00755` | `0,00377` |
+| **% do passo** | `240%` | `78%` | `39%` | `20%` | `10%` | `5%` |
+| razão | — | `0,326` | ⭐ **`0,500`** | **`0,500`** | **`0,500`** | **`0,499`** |
+
+⭐ **Contracção de manual**, `42/42` arcos em todas as rondas, zero desistências. E a
+primeira ronda sozinha desloca **240% de um passo** — não é um ajuste fino.
+
+### ⛔⛔⛔ E o ponto fixo NÃO endireita a grade
+
+⚠️ Fixtura `24×36` com o LSCM ligado — **não** comparável com os `21,4°` das tabelas
+anteriores, que são de uma `96×144`. O que vale aqui é a **comparação interna**.
+
+| | domínio rect | domínio leque | enviesamento p50 | dobras |
+|---|---|---|---|---|
+| sem re-graduação | **`22,5°`** | `66,9°` | `54°` | **`41`** |
+| 1 ronda | `24,4°` | `62,0°` | `55°` | `51` |
+| ⭐ **8 rondas (o ponto fixo)** | ⛔ **`24,4°`** | ⛔ **`62,0°`** | `54°` | `47` |
+
+⭐⭐⭐ **`1` ronda e `8` dão o MESMO número.** O ponto fixo é alcançado à primeira e as
+sete seguintes não movem o produto — apesar de o `τ` continuar a mexer-se durante seis
+rondas. *Convergir e acertar são coisas diferentes, e só a segunda coluna as separa.*
+
+⛔ E contra o controlo ele **piora** o rectângulo (`22,5 → 24,4`) e **melhora** o leque
+(`66,9 → 62,0`): move a discordância de sítio em vez de a remover — a assinatura de uma
+cura que não é a cura ([[feedback_a_cure_that_moves_the_defect_names_it]]).
+
+### ⇒ A conclusão de antes fica de pé, com prova muito mais forte
+
+⭐ Antes: *«os dois pedidos não se satisfazem localmente»*, derivado. Agora: **o esquema
+local tem ponto fixo, é atingido em uma ronda, e o ponto para onde ele converge não é o
+que se quer.** ⇒ a família local está fechada por **construção e medição**, não por
+argumento.
+
+⚠️ **A segunda das duas saídas de §4-tresetquadragies está agora medida e fechada. Sobra
+uma.**
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| iterar a re-graduação até ao ponto fixo | contrai a `½`/ronda e o produto não muda (`24,4°` a 1 e a 8 rondas) | [`regraduate.rs`](../../../crates/ph2d-quadfill/src/regraduate.rs) |
+| «o ponto fixo nem sequer contrai» | afirmação sobre uma sequência tirada de **um** termo | idem |
+| medir isto no probe `96×144` a 3 níveis | horas de relógio para um número; a comparação interna a `24×36` responde igual | idem |

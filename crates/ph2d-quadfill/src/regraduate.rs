@@ -90,8 +90,39 @@ use crate::param::PatchParam;
 /// ⇒ ⭐⭐⭐ **É exactamente isso que uma parametrização GLOBAL resolve, e a razão deixou
 /// de ser uma citação da referência:** ela não faz a média de duas propostas em
 /// desacordo — ela **impõe o acordo desde o início**, pela função de transição através
-/// da costura, e resolve todos os patches de uma vez. *A média local não converge para
-/// isso porque o ponto fixo dela nem sequer contrai (`21,4 → 21,3`).*
+/// da costura, e resolve todos os patches de uma vez.
+///
+/// # ⛔⛔⛔ E o PONTO FIXO foi construído e medido — a afirmação anterior estava errada
+///
+/// Esta nota dizia *«a média local não converge para isso porque o ponto fixo dela nem
+/// sequer contrai (`21,4 → 21,3`)»*. ⚠️ **`21,4 → 21,3` é UM TERMO**, e o laço corria
+/// uma vez só — *uma afirmação sobre convergência tirada de uma amostra que não a pode
+/// exibir.* Ver [`conformal_arc_tau`] e a sonda `does_the_fixed_point_contract`.
+///
+/// ⭐ **Medido: ele contrai, e por exactamente `½` por ronda.**
+///
+/// | ronda | 1 | 2 | 3 | 4 | 5 | 6 |
+/// |---|---|---|---|---|---|---|
+/// | moveu (unidades de `τ`) | `0,185` | `0,060` | `0,030` | `0,015` | `0,0075` | `0,0038` |
+/// | razão | — | `0,33` | **`0,500`** | **`0,500`** | **`0,500`** | **`0,499`** |
+///
+/// ⛔⛔ **E o ponto fixo NÃO endireita a grade** (esfera `24×36`, LSCM ligado — ⚠️ *não*
+/// comparável com os `21,4°` das tabelas acima, que são de uma `96×144`):
+///
+/// | | domínio rect | domínio leque | enviesamento p50 | dobras |
+/// |---|---|---|---|---|
+/// | sem re-graduação | **`22,5°`** | `66,9°` | `54°` | **`41`** |
+/// | 1 ronda | `24,4°` | `62,0°` | `55°` | `51` |
+/// | ⭐ **8 rondas (o ponto fixo)** | ⛔ **`24,4°`** | ⛔ **`62,0°`** | `54°` | `47` |
+///
+/// ⭐⭐⭐ **`1` ronda e `8` dão o MESMO número** — o ponto fixo é alcançado à primeira e
+/// as sete seguintes não movem nada. E contra o controlo ele **piora** o rectângulo
+/// (`22,5 → 24,4`) e **melhora** o leque (`66,9 → 62,0`): *move a discordância de sítio
+/// em vez de a remover*, que é a assinatura de uma cura que não é a cura.
+///
+/// ⇒ **A conclusão de cima fica de pé com prova muito mais forte:** os dois pedidos não
+/// se satisfazem localmente — não porque o esquema não convirja, mas porque **o ponto
+/// para onde ele converge não é o que se quer**.
 ///
 /// ⚠️ **Com `false` a cadeia é byte-idêntica à de sempre**, e é assim que a tabela tem
 /// um controlo.
@@ -104,6 +135,21 @@ use crate::param::PatchParam;
 /// aqui.
 pub(crate) const REGRADUATE: bool = false;
 
+/// ⭐⭐⭐ **QUANTAS RONDAS DO PONTO FIXO** — ver [`conformal_arc_tau`].
+///
+/// ⭐ **`8` porque é onde o ponto fixo já está** — medido: a contracção é `½` por ronda
+/// e o número do produto é idêntico a `1` ronda. ⇒ *se alguém voltar a ligar o
+/// [`REGRADUATE`], recebe a resposta CONVERGIDA e não uma varredura arbitrária.*
+///
+/// ⚠️ **Com [`REGRADUATE`] a `false` esta constante é inerte** — não custa nada shipar
+/// a semântica certa.
+///
+/// ⛔ A versão que foi medida e rejeitada corria **uma** varredura, e a nota da
+/// rejeição concluía daí que o ponto fixo «não contrai». *Uma afirmação sobre
+/// convergência tirada de um termo.* A sonda `does_the_fixed_point_contract` imprime a
+/// sequência inteira e o número do produto ao lado.
+pub(crate) const ROUNDS: usize = 8;
+
 /// ⭐⭐⭐ **O QUE A RE-GRADUAÇÃO DEVOLVE, com o motivo de cada desistência.**
 ///
 /// ⛔ **A terceira vez que o mesmo sintoma mordeu neste ficheiro** — «byte-idêntico ao
@@ -115,6 +161,10 @@ pub(crate) struct Regraduation {
     pub(crate) tau: Vec<Vec<f32>>,
     /// Quantos arcos de facto mudaram.
     pub(crate) changed: usize,
+    /// ⭐⭐⭐ **O maior deslocamento de um ponto entre a penúltima ronda e a última**,
+    /// em unidades de `τ` — ver [`conformal_arc_tau`]. É a coluna que distingue
+    /// *contrai* de *empata* de *diverge*, e ela não existia.
+    pub(crate) moved: f32,
     /// **Por que desistiu**, por ordem: `0` patch sem achatamento · `1` lado sem alfa ·
     /// `2` comprimentos discordam · `3` `span` nulo · `4` balde discorda do arco.
     ///
@@ -142,18 +192,18 @@ pub(crate) struct Regraduation {
 /// aproximação declarada: a re-graduação é um ponto fixo, e isto é a primeira iteração
 /// dele. *Correr uma segunda seria barato; medir se a primeira vale é mais barato ainda,
 /// e é a ordem certa.*
-pub(crate) fn conformal_arc_tau(
+fn one_sweep(
     indexed: &Mesh,
     layout: &PatchLayout,
     quant: &Quantization,
+    // ⚠️ **`from`, e não `tau`:** existe um `tau` LOCAL dentro do laço dos lados, e um
+    // parâmetro com o mesmo nome fica ensombrado lá dentro **sem erro de tipo óbvio** —
+    // ele compila até tocar num método que só o outro tem.
+    from: &[Vec<f32>],
 ) -> Option<Regraduation> {
     let arcs = layout.arc_chain.len();
     // Por arco, as propostas acumuladas e quantas foram.
-    let mut acc: Vec<Vec<f32>> = layout
-        .arc_tau
-        .iter()
-        .map(|t| vec![0.0f32; t.len()])
-        .collect();
+    let mut acc: Vec<Vec<f32>> = from.iter().map(|t| vec![0.0f32; t.len()]).collect();
     let mut votes: Vec<usize> = vec![0; arcs];
     let mut gave_up = [0usize; 5];
 
@@ -174,10 +224,9 @@ pub(crate) fn conformal_arc_tau(
         for side in sides {
             let (mut chain, mut tau): (Vec<u32>, Vec<f32>) = (Vec::new(), Vec::new());
             for &(a, rev) in side {
-                let (Some(cc), Some(src)) = (
-                    layout.arc_chain.get(a as usize),
-                    layout.arc_tau.get(a as usize),
-                ) else {
+                let (Some(cc), Some(src)) =
+                    (layout.arc_chain.get(a as usize), from.get(a as usize))
+                else {
                     continue;
                 };
                 let mut c = cc.clone();
@@ -281,7 +330,7 @@ pub(crate) fn conformal_arc_tau(
     // ── A média, e o total de cada arco é o de sempre.
     let mut out = Vec::with_capacity(arcs);
     let mut changed = 0usize;
-    for (a, old) in layout.arc_tau.iter().enumerate() {
+    for (a, old) in from.iter().enumerate() {
         let total = old.last().copied().unwrap_or(0.0);
         if votes[a] == 0 || total <= 0.0 {
             out.push(old.clone());
@@ -306,7 +355,78 @@ pub(crate) fn conformal_arc_tau(
         tau: out,
         changed,
         gave_up,
+        moved: 0.0,
     })
+}
+
+/// ⭐⭐⭐ **O PONTO FIXO SOBRE O LAYOUT** — a segunda das duas saídas que o `PLAN.md`
+/// §4-tresetquadragies nomeou, e a que nunca tinha sido construída.
+///
+/// # ⛔⛔ Porque uma varredura só não respondia
+///
+/// A proposta de cada patch sai do **achatamento** dele, e o achatamento prega a
+/// fronteira **pelo `τ`**. ⇒ *uma varredura calcula as propostas a partir do `τ` que
+/// está a tentar substituir.* A segunda varredura já vê um achatamento diferente, e
+/// propõe outra coisa.
+///
+/// ⛔⛔⛔ **E a nota que aqui estava afirmava o contrário sem medir a sequência:**
+/// *«o ponto fixo dela nem sequer contrai (`21,4 → 21,3`)»*. ⚠️ **`21,4 → 21,3` é UM
+/// TERMO.** Uma afirmação sobre convergência precisa de vários, e nenhum tinha sido
+/// calculado — a varredura corria uma vez e parava. *É a mesma família do tecto lido
+/// como defeito: uma conclusão sobre um comportamento, tirada de uma amostra que não o
+/// pode exibir.*
+///
+/// # A régua da contracção
+///
+/// [`Regraduation::moved`] é o maior deslocamento de um ponto de subdivisão entre a
+/// ronda anterior e esta, **em unidades de `τ`**. Contrair = essa coluna a cair
+/// geometricamente; empatar = ela a estabilizar num valor > 0; divergir = a subir.
+/// ⭐ *É a coluna que distingue as três, e ela não existia.*
+pub(crate) fn conformal_arc_tau(
+    indexed: &Mesh,
+    layout: &PatchLayout,
+    quant: &Quantization,
+) -> Option<Regraduation> {
+    let mut cur: Vec<Vec<f32>> = layout.arc_tau.clone();
+    let mut last = one_sweep(indexed, layout, quant, &cur)?;
+    for _ in 1..ROUNDS.max(1) {
+        let moved = spread(&cur, &last.tau);
+        cur = std::mem::take(&mut last.tau);
+        let Some(next) = one_sweep(indexed, layout, quant, &cur) else {
+            // ⚠️ **Uma ronda que recusa não apaga as anteriores.** Devolve-se o que já
+            // se tem, com o deslocamento da última que correu.
+            return Some(Regraduation {
+                tau: cur,
+                changed: last.changed,
+                gave_up: last.gave_up,
+                moved,
+            });
+        };
+        last = next;
+    }
+    last.moved = spread(&cur, &last.tau);
+    Some(last)
+}
+
+/// O maior deslocamento de um ponto de subdivisão entre duas graduações.
+///
+/// ⚠️ **Comprimentos diferentes contam como deslocamento INFINITO**, não como zero: se
+/// a contagem de pontos mudou, o par nem sequer é comparável, e um zero ali leria-se
+/// como «convergiu».
+fn spread(a: &[Vec<f32>], b: &[Vec<f32>]) -> f32 {
+    if a.len() != b.len() {
+        return f32::INFINITY;
+    }
+    let mut worst = 0.0f32;
+    for (x, y) in a.iter().zip(b) {
+        if x.len() != y.len() {
+            return f32::INFINITY;
+        }
+        for (p, q) in x.iter().zip(y) {
+            worst = worst.max((p - q).abs());
+        }
+    }
+    worst
 }
 
 #[cfg(test)]
@@ -380,6 +500,98 @@ mod tests {
                 "o arco {a} saiu com `tau` a RECUAR -- a reamostragem devolveria pontos fora \
                  de ordem"
             );
+        }
+    }
+
+    /// ⭐⭐⭐ **SONDA — O PONTO FIXO CONTRAI?**
+    ///
+    /// ```text
+    /// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-quadfill --release \
+    ///     does_the_fixed_point_contract -- --ignored --nocapture
+    /// ```
+    ///
+    /// ⛔⛔ **A rejeição da re-graduação concluiu «o ponto fixo nem sequer contrai» a
+    /// partir de UMA ronda.** A proposta de cada patch sai do achatamento dele, e o
+    /// achatamento prega a fronteira pelo `τ` que se está a substituir — logo a segunda
+    /// ronda vê outro achatamento e propõe outra coisa. *A sequência nunca foi
+    /// calculada.*
+    ///
+    /// Esta sonda calcula-a: o maior deslocamento de um ponto de subdivisão de uma ronda
+    /// para a seguinte. **Contrai** = a cair geometricamente · **empata** = estabiliza
+    /// acima de zero · **diverge** = sobe.
+    ///
+    /// ⚠️ Não tem barra e **não é um gate**: ela imprime a sequência e quem lê decide.
+    /// *A barra viria da sequência, e a sequência é o que falta.*
+    #[test]
+    #[ignore = "sonda lenta: uma cadeia de LSCM por ronda"]
+    fn does_the_fixed_point_contract() {
+        let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 36, 1.0);
+        mesh.triangulate();
+        ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
+        mesh.triangulate();
+        let dual = ph2d_crossfield::Dual::build(&mesh);
+        let (field, _) = ph2d_crossfield::solve_miq(&dual);
+        let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+        let spec = layout.to_layout(0.25).expect("o layout fecha");
+        let (quant, _) =
+            ph2d_quantize::quantize_within(&spec, ph2d_quantize::Budget::new(256, 512))
+                .expect("a quantizacao fecha");
+
+        // ⭐ **A escala com que comparar o deslocamento.** Um `τ` é comprimento de arco,
+        // logo `moved` está nas unidades da peça; sozinho ele não diz se é grande. O
+        // passo MEDIANO entre pontos de subdivisão é o que ele tem de bater para
+        // significar alguma coisa.
+        let mut steps: Vec<f32> = layout
+            .arc_tau
+            .iter()
+            .flat_map(|t| t.windows(2).map(|w| w[1] - w[0]))
+            .collect();
+        steps.sort_by(f32::total_cmp);
+        let step = steps.get(steps.len() / 2).copied().unwrap_or(1.0);
+        eprintln!("  passo mediano entre pontos de subdivisao: {step:.5}");
+
+        let mut cur: Vec<Vec<f32>> = layout.arc_tau.clone();
+        for round in 1..=6usize {
+            let Some(r) = super::one_sweep(&mesh, &layout, &quant, &cur) else {
+                eprintln!("  ronda {round}: RECUSOU");
+                break;
+            };
+            let moved = super::spread(&cur, &r.tau);
+            eprintln!(
+                "  ronda {round}: moveu {moved:.5} ({:>6.2}% do passo) · {} arcos · desistiu {:?}",
+                100.0 * moved / step,
+                r.changed,
+                r.gave_up
+            );
+            cur = r.tau;
+        }
+
+        // ⭐⭐⭐ **E O NÚMERO QUE INTERESSA, na mesma sonda.**
+        //
+        // ⚠️ Contrair não é o mesmo que **acertar**: o ponto fixo converge para
+        // *alguma* graduação, e a pergunta é se essa graduação endireita o domínio.
+        // *Uma sonda que só imprimisse a contracção deixaria isso por medir e a
+        // primeira leitura seria «convergiu, logo resolveu».*
+        //
+        // ⛔ A cadeia lê `REGRADUATE`/`ROUNDS` das constantes, então o A/B faz-se
+        // trocando-as e correndo isto duas vezes. A comparação é interna a esta
+        // fixtura — ⚠️ os `21,4°` das tabelas publicadas são de uma esfera `96×144`,
+        // e **não** se comparam com o número desta.
+        match crate::fill(&mesh, &mesh, &layout, &quant, crate::SMOOTHING_ROUNDS) {
+            Ok((_, rep)) => eprintln!(
+                "  ⭐⭐⭐ REGRADUATE={} ROUNDS={} | DOMINIO rect {:.1}° (n={}) leque {:.1}° (n={}) \
+                 | enviesamento p50 {:.0}° | dobras {} | regraduou {}",
+                super::REGRADUATE,
+                super::ROUNDS,
+                rep.domain_skew.0,
+                rep.domain_cells.0,
+                rep.domain_skew.1,
+                rep.domain_cells.1,
+                rep.shape.skew_p50,
+                rep.folded_local,
+                rep.regraduated,
+            ),
+            Err(e) => eprintln!("  ⛔ a montagem RECUSOU: {e:?}"),
         }
     }
 }

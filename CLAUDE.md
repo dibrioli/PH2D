@@ -585,8 +585,15 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   *o lado oposto do meu patch* **e** *o patch do outro lado do arco*, e a cadeia atravessa a peça.
   ⇒ ⭐⭐⭐ **é isso que a parametrização GLOBAL resolve, e a razão deixou de ser citação da
   referência** — ela impõe o acordo desde o início pela função de transição, em vez de fazer a média
-  de duas propostas em desacordo. **A caça está fechada: campo ilibado · mapa fechado · forma do
-  domínio fechada · menos patches é a ordem errada · subdivisão local fechada. Sobra a global.** ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  de duas propostas em desacordo. ⭐⭐⭐ **E o PONTO FIXO — a outra das duas saídas — foi construído e
+  medido** (`PLAN.md` §4-unetquinquagies): ⛔ a nota que o descartava (*«nem sequer contrai»*) saía de
+  **um** termo, com o laço a correr uma vez; medida a sequência ele **contrai por exactamente `½` por
+  ronda** (`0,185 · 0,060 · 0,030 · 0,015 · 0,0075 · 0,0038`, 42/42 arcos). ⛔⛔ **E o ponto fixo não
+  endireita nada:** `1` ronda e `8` dão o MESMO número (domínio `24,4°`), e contra o controlo ele piora
+  o rectângulo (`22,5 → 24,4`) e melhora o leque (`66,9 → 62,0`) — *move a discordância, não a remove*.
+  ⇒ *convergir e acertar são coisas diferentes*, e a família local fecha por medição, não por argumento.
+  **A caça está fechada: campo ilibado · mapa fechado · forma do
+  domínio fechada · menos patches é a ordem errada · subdivisão local fechada · ponto fixo fechado. Sobra a global.** ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

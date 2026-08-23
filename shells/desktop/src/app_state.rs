@@ -553,6 +553,18 @@ pub(crate) struct App {
     pub(crate) resize_settle_frames: u32,
     pub(crate) modifiers: ModifiersState,
     pub(crate) last_pointer: (f32, f32),
+    /// **O OBJECTO SOB O PONTEIRO neste quadro** (estudo de UI viva, C2), em bits de `Entity` —
+    /// a resposta da porta única [`crate::App::hovered_object`], computada UMA vez por quadro.
+    ///
+    /// ⚠️ **Ela é um campo e não um cálculo em cada consumidor** porque os consumidores estão em
+    /// pontos DIFERENTES do quadro (a Hierarquia publica cedo, o contorno do canvas desenha
+    /// tarde) — e dois picks separados dariam duas respostas assim que o mapa vivo mudasse entre
+    /// eles: a linha acesa e a forma contornada seriam objectos diferentes.
+    ///
+    /// ⚠️ **Ela é do quadro ANTERIOR para quem lê cedo**, e é deliberado: o pick lê o mapa vivo
+    /// FUNDIDO (`vec_live_drawn`), que só fica pronto no fim do quadro. O atraso é de ~16 ms —
+    /// abaixo do perceptível — e é a mesma escolha que os selos do papel booleano já fazem.
+    pub(crate) hovered_object: Option<u64>,
     /// Set to `Some(node_id)` when the user pressed inside a draggable
     /// widget (Slider) — subsequent pointer-move events continue to
     /// fire SetValue until pointer-up clears this. None for click-only

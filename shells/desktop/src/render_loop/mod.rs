@@ -460,6 +460,17 @@ const _: () = assert!(ph2d_audio::SUB_BUS_COUNT == ph2d_panel_audio_mixer::SUB_B
 
 impl crate::App {
     pub(super) fn run_render_frame(&mut self) {
+        // ⭐ **O REALCE DE PROVENIÊNCIA, resolvido UMA vez por quadro** (estudo de UI viva, C2).
+        //
+        // ⚠️ **Aqui em cima, e não em cada consumidor.** A Hierarquia publica cedo no quadro e o
+        // contorno do canvas desenha tarde: dois picks separados dariam duas respostas assim que o
+        // mapa vivo mudasse entre eles, e a linha acesa deixaria de ser a forma contornada.
+        let pointer = self.last_pointer;
+        let hovered = match self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) {
+            Some(hero) => self.pick_hovered_object(hero, pointer),
+            None => None,
+        };
+        self.hovered_object = hovered;
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
         let _paint_frame_timer = PaintFrameTimer(paint_perf::on().then(std::time::Instant::now));
         // Phase 2.1: drop finished-sample Arcs on the main thread (HR-3).
@@ -2636,6 +2647,8 @@ impl crate::App {
             snapshots::publish(
                 hero,
                 hero_live,
+                // A resposta da porta única, computada no início deste quadro.
+                self.hovered_object,
                 sim,
                 present,
                 camera,
@@ -8777,6 +8790,28 @@ impl crate::App {
             // num ponto testável (P1).
             let overlay =
                 crate::vec_overlay::vec_overlay_plan(vector_active, self.vec_draw_config.mode);
+            // ⭐ **O CONTORNO DE PROVENIÊNCIA** (estudo de UI viva, C2) — a forma que o ponteiro
+            // aponta, venha ele do canvas ou de uma linha da Hierarquia.
+            //
+            // ⚠️ **FORA do `overlay.edit`, e é a metade do desenho:** aquele portão só abre no
+            // modo Node, e é justamente no modo **Select** — onde o artista escolhe qual das cinco
+            // formas de uma booleana quer — que a pergunta *"qual delas é esta?"* se faz.
+            //
+            // ⚠️ E **não** quando ela já está selecionada: o gizmo já a nomeia, e um segundo
+            // realce por cima do primeiro diz duas vezes a mesma coisa com tintas diferentes.
+            if vector_active
+                && let Some(bits) = self.hovered_object
+                && !hero.gizmo.iter_selected().any(|s| s == bits)
+            {
+                let world = crate::vec_hover::hover_outline_world(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &self.vec_live_drawn,
+                    bits,
+                );
+                ph2d_vec_render::draw_hover_outline(&world, cam_affine, vector_scene);
+            }
             if overlay.edit {
                 // ⚠️ A gaiola do Envelope SUBSTITUI a edição de nós. Quando a seleção é um envelope,
                 // a forma sob a gaiola é DERIVADA (os nós dela são a SAÍDA do warp, não estado

@@ -588,6 +588,7 @@ mod vec_glyph;
 mod vec_glyph_build;
 /// A porta única de "onde está o caminho-guia, e como se percorre por arco?" (texto E pattern).
 mod vec_guide;
+mod vec_hover;
 /// A CÓPIA segue a âncora do mestre — o corolário da âncora viva, do lado do componente.
 mod vec_instance_follow;
 mod vec_layout_edit;
@@ -803,6 +804,7 @@ impl App {
             resize_settle_frames: 0,
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
+            hovered_object: None,
             dragging: None,
             title_dirty: true,
             impasto_smoke_done: false,

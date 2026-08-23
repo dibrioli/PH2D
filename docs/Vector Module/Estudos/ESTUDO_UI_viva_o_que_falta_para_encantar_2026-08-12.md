@@ -203,7 +203,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | ~~E3~~ ✅ | **paleta de comandos GLOBAL** (o widget já existe) — **FEITA** (`Ctrl+K`, **62 comandos**: 10 do rail + 19 painéis + **33 rows de menu**). ⚠️ Ela é uma **projecção** das listas que o app já mantém, nunca uma tabela. ⚠️ **E a 1ª conclusão desta linha era LARGA DEMAIS** — ela mediu que o **PILL** não é servível (abre um menu ancorado a um rectângulo, e uma paleta não tem rectângulo) e escreveu *"a barra de topo fica de fora"*; a **ROW de dentro dele** é tipo 1, e entrou na wave seguinte (ver a §6.1 abaixo) | 3 | — | **M** |
 | E4 | **menu radial** sob a caneta / botão do meio | 3 | — | **M** |
 | ~~C1~~ ✅ | **TETHER** (§5) — **FEITO** (`tether.rs`, o card de Fill; o `simulate` PERGUNTA o caracter, nunca o crava). As tres irmas da familia seguem por fazer | 2 | F0 | **M** |
-| C2 | **realce de proveniência** nos dois sentidos (valor ↔ objecto) | 2 | — | **M** |
+| ~~C2~~ ✅ | **realce de proveniência** — **FEITO nos dois sentidos ENTRE OBJECTOS** (`vec_hover.rs`): o objecto sob o ponteiro acende a linha da Hierarquia **e** ganha contorno no canvas, resolvido por uma porta ÚNICA, uma vez por quadro. ⚠️ Um operando ABSORVIDO por booleana viva contorna a **pegada própria** — o mapa vivo dele está vazio, e é justamente esse o caso que a feature serve. ⛔ A metade **valor ↔ objecto** (passar sobre um param do inspector) fica por fazer | 2 | — | **M** |
 | ~~C3~~ ✅ | o **readout que segue a mão** vira REGRA — **FEITA**. ⚠️ E a medição corrigiu a linha: eram **três** superfícies (o rótulo do smart guide · a carga de um joint · as dimensões do Line), cada uma com o próprio corpo e caixa, e **nenhuma segue a mão** — as três ancoram em GEOMETRIA. O buraco real era o gesto mais usado do app (arrastar o gizmo), que **não tinha número nenhum** sobre a tela | 2 | — | **M** |
 | ~~R1~~ ✅ | **reduced motion** — **FEITO e persistido** (`~/.ph2d/prefs.txt`), eixo INDEPENDENTE do caracter (§10.2). ⚠️ Nao esperou a F2, e a linha mentia | 4 | ~~F2~~ | **P** |
 | ~~⭐~~ **X1** | **a pressão da caneta chega à shell** (afecta Flip **e** Painter) — ⚠️ o ⭐ e o **P** foram **REFUTADOS por medição**: winit 0.30.13 crava `force: None` nos três backends de desktop, então não há função a escrever. Ver a §8 | 3 | **winit** | **M/G** |
@@ -648,7 +648,7 @@ resposta, não uma falha.
 | C4 | **Morph de FORMA** | o botão **vira** o painel; a silhueta transita | ⚠️ temos motor de blend de formas (`ph2d-vec-blend`) | ausente |
 | C5 | **Voo / portal** | o item voa da origem para o destino, com arco | shape nova → linha da hierarquia; cor → swatch | ausente |
 | C6 | **Fio de dependência** | *hover* num socket **apaga** o que não é a jusante | grafo de Motion, pilha de LPE | ⚠️ **fica** — é legibilidade |
-| C7 | **Realce de proveniência** | passar sobre o valor acende o objecto — **e o inverso** | inspector de ~1.600 ids | ⚠️ **fica** |
+| C7 | **Realce de proveniência** | passar sobre o valor acende o objecto — **e o inverso** | inspector de ~1.600 ids | ✅ objecto↔objecto (2026-08-23); ⛔ valor↔objecto fica |
 
 ### D — PARTÍCULAS (o gesto deixa rasto)
 

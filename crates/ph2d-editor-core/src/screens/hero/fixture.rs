@@ -213,6 +213,16 @@ pub struct HierarchyEntity {
     pub swatch: Option<[u8; 4]>,
     pub visible: bool,
     pub selected: bool,
+    /// **O ponteiro está a apontar para este objecto** — venha ele do canvas ou desta mesma linha
+    /// (estudo de UI viva, C2: *o realce de proveniência nos dois sentidos*).
+    ///
+    /// ⚠️ **É um `bool` e não um `t`, e a diferença é a cerca do estudo §6.2:** *o realce de uma
+    /// lista OBEDECE ao cursor*. Oito linhas meio-acesas ao mesmo tempo é rasto, não vida — e é
+    /// por isso que as rows da Hierarquia ficam fora do eixo do hover, de propósito.
+    ///
+    /// ⚠️ E **uma de cada vez**: quem o carimba é a porta única `App::hovered_object`, que devolve
+    /// **um** objecto. Duas linhas acesas seriam a assinatura de um segundo produtor.
+    pub hovered: bool,
     pub muted: bool,
     /// Mirrors `ph2d_ecs::Locked` — entity's own transform is locked
     /// against gizmo edits. Renders a lock icon next to the eye.
@@ -235,6 +245,7 @@ pub fn hierarchy() -> Vec<HierarchyEntity> {
         swatch: None,
         visible: true,
         selected: false,
+        hovered: false,
         muted: false,
         locked: false,
         group_locked: false,

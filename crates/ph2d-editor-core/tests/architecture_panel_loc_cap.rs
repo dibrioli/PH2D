@@ -91,8 +91,8 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-hierarchy/src/row.rs",
         "paint_hierarchy_row",
-        281,
-        "row painter (icons + twirl + rename + companions); 291 -> 281 em 2026-08-22, quando a tabela de TOM dos selos saiu para `badge_tone` (split, nunca allowlist)",
+        267,
+        "row painter (icons + twirl + rename + companions); 291 -> 281 em 2026-08-22 (a tabela de TOM dos selos saiu para `badge_tone`), 281 -> 267 em 2026-08-23 quando o realce de proveniencia lhe acrescentou linhas e o tecto foi pago por EXTRACCAO: o fundo da linha saiu para `paint_row_background`. As tolerancias encolhem, nunca crescem — e uma feature nova paga-as com um corte, nao com um numero maior.",
     ),
     // ⚠️ `ph2d-panel-hierarchy/src/event.rs::apply_event` ESTEVE aqui, tolerado a 216 — e a
     // entrada foi REMOVIDA em 2026-08-19, não subida para 219. O "Pack into Sheet" ia

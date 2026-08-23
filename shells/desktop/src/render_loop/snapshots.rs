@@ -93,6 +93,13 @@ fn compute_emissive_mixed(world: &ph2d_ecs::World, selected: &[u64], primary: f3
 pub(super) fn publish(
     hero: &mut HeroScreen,
     hero_live: &mut Option<HeroLive>,
+    // **O objecto sob o ponteiro**, já resolvido pela porta única (`App::hovered_object`).
+    //
+    // ⚠️ Ele chega RESOLVIDO e não como um ponteiro a picar aqui: o pick precisa do `App` (o mapa
+    // vivo fundido, a câmara, o `view_state`), e esta função só tem os pedaços destruturados do
+    // `AppGfx`. Passar a resposta em vez dos ingredientes é o que impede um segundo pick — com
+    // outras entradas — de nascer neste ficheiro.
+    hovered: Option<u64>,
     sim: &mut SimWorld,
     present: &mut PresentWorld,
     camera: &Camera2d,
@@ -217,6 +224,17 @@ pub(super) fn publish(
             {
                 entry.selected = true;
             }
+        }
+        // ⭐ **O REALCE DE PROVENIÊNCIA** (estudo de UI viva, C2) — carimbado pela porta ÚNICA
+        // (`App::hovered_object`), que responde ao ponteiro venha ele do canvas ou desta lista.
+        //
+        // ⚠️ **UM objecto, uma linha.** A porta devolve `Option`, então duas linhas acesas ao mesmo
+        // tempo não é exprimível daqui — e seria a assinatura de um segundo produtor a nascer.
+        if let Some(bits) = hovered
+            && let Some(node_id) = live.bridge.node_for(bits)
+            && let Some(entry) = entries.get_mut(&node_id)
+        {
+            entry.hovered = true;
         }
         // Onda 1 hotfix: centralise the header label sync to the
         // multi-selection primary. Input handlers (canvas pick,

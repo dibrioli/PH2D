@@ -77,6 +77,7 @@ mod tests {
             swatch: None,
             visible: true,
             selected: false,
+            hovered: false,
             muted: false,
             locked: false,
             group_locked: false,

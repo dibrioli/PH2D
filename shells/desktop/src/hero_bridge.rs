@@ -158,6 +158,7 @@ impl EntityNodeMap {
                     swatch: None,
                     visible: entry.visible,
                     selected: false,
+                    hovered: false,
                     muted: false,
                     locked: entry.locked,
                     group_locked: entry.group_locked,

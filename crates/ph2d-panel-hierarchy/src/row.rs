@@ -42,19 +42,36 @@ fn badge_tone(badge: &str) -> TagTone {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_hierarchy_row(
+/// **O FUNDO DE UMA LINHA** — o que ela diz sobre si antes de qualquer conteúdo.
+///
+/// ⚠️ Ela saiu de dentro do `paint_hierarchy_row` em 2026-08-23, quando o realce de proveniência
+/// empurrou aquela função para fora do teto de 200 LOC. ⛔ **Split, nunca allowlist** — e o número
+/// do allowlist desce junto, que é a única direção em que ele pode andar (a mesma decisão que o
+/// `badge_tone` pagou em 22/08).
+fn paint_row_background(
     entity: &fixture::HierarchyEntity,
     rect: Rect,
     scene: &mut VectorScene,
-    text_system: &mut TextSystem,
     theme: Theme,
-    row_id: Option<ph2d_a11y::NodeId>,
-    mut hit_index: Option<&mut HitIndex>,
-    has_children: bool,
-    is_collapsed: bool,
-    direct_match: bool,
 ) {
+    // ⭐ **O REALCE DE PROVENIÊNCIA** (estudo de UI viva, C2): o objecto sob o ponteiro acende a
+    // linha dele, venha o ponteiro do canvas ou desta mesma lista.
+    //
+    // ⚠️ **A seleção VENCE, e não é ordem de desenho — é significado.** Selecionado é um facto do
+    // documento (*estas são as formas em mãos*); apontado é um facto do ponteiro, que dura o que a
+    // mão durar. Pintar o hover por cima faria a linha selecionada mudar de cor por alguém passar
+    // o rato, e o artista perderia de vista o que tem em mãos.
+    //
+    // ⚠️ **E é um tom SÓ, sem eixo** — a cerca do estudo §6.2: *o realce de uma lista OBEDECE ao
+    // cursor*. Oito linhas meio-acesas ao mesmo tempo é rasto, não vida.
+    if !entity.selected && entity.hovered {
+        fill_rounded_rect(
+            scene,
+            rect,
+            Radius::Sm.px(),
+            resolve(ColorToken::Bg2, theme),
+        );
+    }
     if entity.selected {
         fill_rounded_rect(
             scene,
@@ -70,6 +87,22 @@ pub(crate) fn paint_hierarchy_row(
             resolve(ColorToken::Accent, theme),
         );
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_hierarchy_row(
+    entity: &fixture::HierarchyEntity,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    row_id: Option<ph2d_a11y::NodeId>,
+    mut hit_index: Option<&mut HitIndex>,
+    has_children: bool,
+    is_collapsed: bool,
+    direct_match: bool,
+) {
+    paint_row_background(entity, rect, scene, theme);
     // Internal row inset. MUST match `paint.rs::row_inner_pad` — the
     // parentesco tree lines in `paint.rs` are drawn at
     // `col_chev_x + half_chev` using row_inner_pad as the inner offset.

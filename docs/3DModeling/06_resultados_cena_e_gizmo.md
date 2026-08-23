@@ -3247,6 +3247,83 @@ pânico. Mutação: tirar a guarda → vermelho.
 
 ---
 
+## §43 — W42: desarmar não desarmava — a cerca cuja razão dissolveu (22/08)
+
+> Enio, depois do smoke da W40: *"ainda não consigo usar outros modos como vector."*
+>
+> A W41 (§41) fechou o painel quando outro modo entra — e **não bastou**. O painel fechava e o
+> módulo continuava a comer o ponteiro. ⚠️ **A frase certa era a primeira que ele escreveu:** *"o
+> modo Modelagem nunca é desativado"*, à letra.
+
+### §43.1 — ⛔ Duas causas empilhadas, e as duas eram notas a mentir
+
+**1. O `with_smoke` prometia no doc o que não fazia no código.**
+
+> *"Devolve `None` quando o smoke não está armado — e é isso que faz cada gancho de entrada ser
+> **inerte** (e portanto invisível) fora dele."*
+
+O `armed_scene()` era consultado **só dentro do `boot()`** — isto é, **só enquanto o smoke ainda não
+existia**. Nascido uma vez, ele vivia para sempre.
+
+**2. A bandeira TRAVAVA LIGADA, e havia uma razão escrita ao lado:**
+
+> *"Fechar o painel fecha o PAINEL; a peça continua na cena… Fazer o X do painel apagar o modelo da
+> tela seria um segundo significado para o mesmo gesto, e o artista perderia a peça sem a ter
+> apagado."*
+
+⭐ **A metade protegida estava certa; a conclusão não.** O medo era perder a **peça** — e a peça não
+vive ali: **desde a W5** ela é uma **árvore de entidades ECS** (Hierarquia, save, undo), e o `Smoke`
+é só o cache do quadro para a thread do traçado. Largá-lo perde o cache e a câmera, nada mais.
+
+⚠️ **A razão da cerca dissolveu na W5 e ninguém reconferiu a nota** — e a cerca continuou a cobrar o
+preço dela: o app inteiro.
+
+### §43.2 — ⭐ Por que esculpir funcionava e o Vector não
+
+```text
+input_dispatch.rs:3174   sculpt3d_pointer_down   ← a escultura vê o clique
+input_dispatch.rs:3186   field3d_pointer_down    ← a modelagem come-o aqui
+        …                o Vector, o gizmo, a seleção  ← nunca vêem nada
+```
+
+*A ordem do despacho transformou um bug em dois sintomas diferentes, e o segundo parecia outra
+coisa.* Foi por isso que a W40 «passou» no smoke da escultura e reprovou no do Vector.
+
+### §43.3 — A cura, e o gate que a nota devia ter sido
+
+| o que mudou | porquê |
+|---|---|
+| `with_smoke` consulta `armed_scene()` **sempre**, e larga a cena quando desarmado | o doc dele já o prometia |
+| `set_armed_by_panel` segue o painel **nos dois sentidos** | a razão da trava dissolveu na W5 |
+| gate `rearming_does_not_replant_the_demo_over_the_artists_piece` | ⭐ **o gate que a nota devia ter sido** |
+
+⚠️ **O terceiro é o mais importante desta wave.** A nota afirmava um risco *sem prova*, e a
+afirmação bastou para prender a bandeira. Um gate no lugar dela teria mostrado, **no dia**, que já
+não havia o que proteger. *Uma nota é uma afirmação; só um gate a mantém verdadeira.*
+
+### §43.4 — Provas de mutação
+
+| mutação | gate que ficou vermelho |
+|---|---|
+| a bandeira volta a **travar ligada** | `disarming_the_module_actually_disarms_it` |
+| o `with_smoke` volta a **não reler** o estado (a W40 sozinha) | o mesmo |
+| rearmar passa a **replantar** a semente por cima da peça | `rearming_does_not_replant_the_demo_over_the_artists_piece` |
+
+3 mutações, 3 vermelhas. ⚠️ A terceira **sobreviveu à primeira tentativa**: eu mutei a linha errada
+(`seed.take()` → `clone()`), e ela não exprime o replantio — quem o impede é a raiz **ser
+encontrada**, não a semente ser consumida. *Uma mutação que não exprime o defeito é um verde que não
+prova nada, e a agulha certa era duas funções ao lado.*
+
+### §43.5 — ⏸️ O que fica aberto
+
+- ⏸️ Fechar o painel larga a **câmera** do módulo: reabrir volta ao enquadramento inicial. A peça é
+  preservada (há gate), o ponto de vista não. É o preço da lei, e é barato — mas não é zero.
+- ⏸️ **A W40 sozinha não era suficiente e o gate dela passava**: ele mede que o *loop fecha o
+  painel*, e fechar o painel não desarmava. *Um gate de costura prova a costura que nomeia, não a
+  consequência que se espera dela.*
+
+---
+
 ## §13 — Aberto
 
 - ✅ **W33 (§34): a caixa da grade do EXPORTADOR passou a ser a da peça** — uma peça fora de
@@ -3262,6 +3339,12 @@ pânico. Mutação: tirar a guarda → vermelho.
 - ✅ **arrastar uma linha na Hierarquia deixou de TELEPORTAR a peça na W30** (§31) — a lei do
   mundo-preservado da casa não alcançava o tipo da pose deste módulo. ⏸️ Fica: re-parentar muda
   a **peça** (um cilindro dentro de uma subtração passa a cortar) e ninguém o diz
+- ✅ **W42 (§43): DESARMAR não desarmava** — a W40 fechava o painel e o módulo continuava a comer o
+  ponteiro. Duas notas a mentir: o doc do `with_smoke` prometia inércia que o código não fazia (o
+  estado de armado só era lido **antes** de o smoke nascer), e a bandeira **travava ligada** por uma
+  razão que **dissolveu na W5** (o medo era perder a peça; ela é uma árvore de entidades desde
+  então). ⭐ E a ordem do despacho explicava a assimetria: a escultura vê o clique **antes** da
+  modelagem, o Vector **depois**. ⏸️ Fica: fechar o painel larga a **câmera** (a peça não)
 - ✅ **W41 (§42): o CRASH que o smoke da W40 encontrou na escultura** — apagar a última peça e
   clicar derrubava o app (`index out of bounds`, `sculpt3d_input.rs:173`). A cena vazia é um estado
   **legítimo** (o `delete` promete o Ctrl+Z) e os caminhos de gesto supunham-na impossível. ⛔ A cura

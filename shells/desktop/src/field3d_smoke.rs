@@ -373,6 +373,26 @@ pub(crate) fn register_sampled(
 pub(crate) fn with_smoke<R>(f: impl FnOnce(&mut Smoke) -> R) -> Option<R> {
     STATE.with(|cell| {
         let mut slot = cell.borrow_mut();
+        // ⭐⭐ **DESARMAR TEM DE DESARMAR** (W42). Enio, 2026-08-22: *"ainda não consigo usar outros
+        // modos como vector"* — e, antes disso, *"o modo Modelagem nunca é desativado"*.
+        //
+        // ⚠️ **O doc desta função já prometia isto e o código não o fazia.** O `armed_scene()` era
+        // consultado **só dentro do `boot()`**, isto é, **só enquanto o smoke ainda não existia**:
+        // nascido uma vez, ele vivia para sempre. Fechar o painel punha a bandeira a `false` e
+        // ninguém a voltava a ler, então todo gancho de entrada continuava a consumir o gesto.
+        //
+        // ⭐ **E é por isso que esculpir funcionava e o Vector não:** no `input_dispatch` a
+        // escultura toma o ponteiro **antes** (3174) e a modelagem **depois** (3186) — quem vem
+        // depois da modelagem nunca via o clique. *A ordem do despacho transformou um bug em dois
+        // sintomas, e o segundo parecia outra coisa.*
+        //
+        // ⚠️ **Largar a cena não perde trabalho:** a peça vive no MUNDO (entidades ECS), não aqui.
+        // O que morre é o cache do quadro e a câmera, e ao rearmar a semente é ignorada porque a
+        // ponte encontra a raiz que já existe (ver `sync_scene_and_birth`).
+        if armed_scene().is_none() {
+            *slot = Some(None);
+            return None;
+        }
         // ⚠️ **Re-tenta enquanto não nasceu**, e não uma vez só: com o pill, o módulo pode ser
         // armado a meio da sessão. Um `get_or_insert_with` puro guardaria o `None` da primeira
         // pergunta e o pill nunca acenderia nada — o mesmo defeito de "a porta existe e não abre"

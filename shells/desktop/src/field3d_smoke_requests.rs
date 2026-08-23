@@ -122,16 +122,30 @@ thread_local! {
 /// ⚠️ Uma porta que só quem já sabe consegue abrir é o mesmo que não existir — a lição que o pill do
 /// SCULPT já tinha registado ao lado, e que este módulo repetiu.
 pub(crate) fn set_armed_by_panel(open: bool) {
-    // ⚠️ **Trava ligado, e não segue o painel.** Fechar o painel fecha o PAINEL; a peça continua na
-    // cena, porque ela é um objeto do documento — está na Hierarquia, é salva e é desfeita. Fazer o
-    // X do painel apagar o modelo da tela seria um segundo significado para o mesmo gesto, e o
-    // artista perderia a peça sem a ter apagado.
+    // ⭐⭐ **SEGUE O PAINEL NOS DOIS SENTIDOS** (W42) — e até 2026-08-22 ele **travava ligado**, com
+    // uma razão escrita ao lado:
     //
-    // Desligar o módulo é apagar a entidade, que é trabalho da Hierarquia — e é a única porta que
-    // pode fazê-lo sem ambiguidade.
-    if open {
-        PILL_ARMED.with(|c| c.set(true));
-    }
+    // > *"Fechar o painel fecha o PAINEL; a peça continua na cena… Fazer o X do painel apagar o
+    // > modelo da tela seria um segundo significado para o mesmo gesto, e o artista perderia a peça
+    // > sem a ter apagado."*
+    //
+    // ⚠️ **A metade protegida estava certa; a conclusão não.** O medo era perder a **peça**, e a
+    // peça não vive aqui: desde a W5 ela é uma **árvore de entidades ECS** — está na Hierarquia, é
+    // salva, é desfeita, e o `Smoke` é só o cache do quadro para a thread do traçado. Largá-lo
+    // perde o **cache e a câmera**, nada mais; ao rearmar, o cozimento reencontra a raiz e a
+    // semente é ignorada (é a lei que o gate `deleting_the_part_does_not_replant_it_next_frame`
+    // já prende, e o gate `rearming_does_not_replant_the_demo_over_the_artists_piece` prova
+    // para este caminho).
+    //
+    // ⛔ **O preço da trava era o app inteiro.** Enio, 2026-08-22: *"o modo Modelagem nunca é
+    // desativado e não consigo usar nenhum outro modo do app"* e, depois da W40, *"ainda não
+    // consigo usar outros modos como vector"*. Com a bandeira presa, fechar o painel deixava
+    // **todo gancho de entrada** a consumir o gesto — e, pela ordem do `input_dispatch`, quem vem
+    // depois da modelagem (o Vector, o gizmo, a seleção) nunca via o clique.
+    //
+    // *Uma cerca de Chesterton cuja razão dissolveu continua a cobrar o preço dela.* A razão
+    // dissolveu na W5, quando a hierarquia passou a ser o documento — e ninguém reconferiu a nota.
+    PILL_ARMED.with(|c| c.set(open));
 }
 
 /// ⭐ **O pedido de trazer a escultura DA CENA** (W39) — tirado uma vez, como os irmãos.

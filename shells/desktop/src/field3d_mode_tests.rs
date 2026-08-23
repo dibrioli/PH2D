@@ -197,3 +197,98 @@ fn the_sculpt_pointer_refuses_an_empty_scene_before_it_indexes_one() {
          indexação (linha {first_index}) — depois dela é tarde"
     );
 }
+
+/// ⭐⭐ **DESARMAR TEM DE DESARMAR** — o defeito que a W40 não alcançou.
+///
+/// Enio, depois do smoke da W40: *"ainda não consigo usar outros modos como vector"*.
+///
+/// # ⚠️ O doc do `with_smoke` prometia isto e o código não o fazia
+///
+/// > *"Devolve `None` quando o smoke não está armado — e é isso que faz cada gancho de entrada ser
+/// > **inerte** (e portanto invisível) fora dele."*
+///
+/// Só que o `armed_scene()` era consultado **apenas dentro do `boot()`**, isto é, **só enquanto o
+/// smoke ainda não existia**. Nascido uma vez, ele vivia para sempre: fechar o painel punha a
+/// bandeira a `false` e **ninguém a voltava a ler**. É, à letra, a frase original do report — *"o
+/// modo Modelagem nunca é desativado"*.
+///
+/// ⭐ **E é por isso que esculpir funcionava e o Vector não:** no `input_dispatch` a escultura toma
+/// o ponteiro na linha 3174 e a modelagem na 3186 — quem vem depois do 3186 (o Vector, o gizmo, a
+/// seleção) nunca via o clique. *A ordem do despacho transformou um bug em dois sintomas
+/// diferentes, e o segundo parecia outra coisa.*
+///
+/// *Um comentário que descreve uma lei que o código deixou de cumprir é pior do que nenhum: ele
+/// responde a pergunta e impede que alguém a verifique.*
+#[test]
+fn disarming_the_module_actually_disarms_it() {
+    use crate::field3d_smoke::{set_armed_by_panel, with_smoke};
+
+    set_armed_by_panel(true);
+    assert!(
+        with_smoke(|_| ()).is_some(),
+        "armado, o módulo existe — senão o gate abaixo passaria por não haver nada"
+    );
+
+    set_armed_by_panel(false);
+    assert!(
+        with_smoke(|_| ()).is_none(),
+        "DESARMADO, todo gancho de entrada tem de ser inerte — é o que o doc do `with_smoke` \
+         promete, e era o que ele não fazia: o ponteiro continuava a ser da modelagem e o Vector \
+         nunca via o clique"
+    );
+
+    // ⭐ E rearmar volta a acender: o pill é uma porta de ida E volta.
+    set_armed_by_panel(true);
+    assert!(
+        with_smoke(|_| ()).is_some(),
+        "reabrir o painel traz o módulo de volta"
+    );
+    set_armed_by_panel(false);
+}
+
+/// ⭐ **REARMAR NÃO REPLANTA O DEMO POR CIMA DA PEÇA DO ARTISTA.**
+///
+/// ⚠️ **Este gate existe porque uma NOTA o afirmava sem prova**, e a afirmação custou o app: o
+/// `set_armed_by_panel` travava ligado *"para o artista não perder a peça"*. A peça não estava em
+/// risco — desde a W5 ela é uma **árvore de entidades ECS** —, mas o medo, sem gate, bastou para
+/// prender a bandeira, e a bandeira presa deixou o módulo a comer o ponteiro do app inteiro.
+///
+/// *Uma cerca cuja razão dissolveu continua a cobrar o preço dela. Um gate no lugar da nota teria
+/// mostrado, no dia, que já não havia o que proteger.*
+#[test]
+fn rearming_does_not_replant_the_demo_over_the_artists_piece() {
+    use crate::field3d_smoke::set_armed_by_panel;
+
+    set_armed_by_panel(true);
+    let mut sim = ph2d_ecs::SimWorld::new();
+    // Quadro 1: a semente planta a peça.
+    crate::field3d_scene::ecs_bridge(&mut sim, None, &[]);
+    let before = {
+        let world = sim.world_mut();
+        let mut q = world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+        q.iter(world).count()
+    };
+    assert_eq!(before, 1, "a peça nasceu");
+
+    // O artista fecha o painel (agora isto DESARMA) e volta a abri-lo.
+    set_armed_by_panel(false);
+    assert!(
+        crate::field3d_scene::ecs_bridge(&mut sim, None, &[]).is_none(),
+        "desarmado, a ponte é inerte — não coze, não semeia, não pede seleção"
+    );
+    set_armed_by_panel(true);
+    crate::field3d_scene::ecs_bridge(&mut sim, None, &[]);
+
+    let after = {
+        let world = sim.world_mut();
+        let mut q = world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+        q.iter(world).count()
+    };
+    assert_eq!(
+        after, 1,
+        "reabrir o painel NÃO pode plantar uma segunda peça por cima da que o artista tem — \
+         era exactamente este o medo que travava a bandeira, e ele não se sustenta: a ponte \
+         encontra a raiz que já existe e ignora a semente"
+    );
+    set_armed_by_panel(false);
+}

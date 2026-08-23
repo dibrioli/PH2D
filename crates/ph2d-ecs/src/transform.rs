@@ -586,7 +586,16 @@ pub fn propagate_transforms<F>(
             worklist.children_scratch.extend(children.iter());
             // Reverse so DFS visits the first child first.
             for &child in worklist.children_scratch.iter().rev() {
-                worklist.stack.push((child, world_local));
+                // ⚠️ **A âncora entra AQUI, e não noutro passe.** Um filho que monta numa
+                // âncora do pai recebe, como quadro de partida, a pose do pai **composta com
+                // a da âncora** — e como o DFS já visitou o pai, ela está resolvida. É o que
+                // torna a montagem correta para netos sem uma linha a mais, e o que dispensa
+                // ordenação topológica e deteção de ciclos (`crate::anchor_mount`).
+                let frame = match crate::anchor_mount::mount_frame(sim_w, entity, child) {
+                    Some(anchor) => Transform::compose(world_local, anchor),
+                    None => world_local,
+                };
+                worklist.stack.push((child, frame));
             }
         }
     }

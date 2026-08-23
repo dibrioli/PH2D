@@ -42,6 +42,9 @@
 
 pub mod baked_form;
 pub mod blend;
+/// **O consumidor de uma âncora** (ADR-0072 §2.6) — montar numa âncora do pai, e a API de
+/// runtime. Módulo irmão de [`named_anchor`], append-only.
+pub mod anchor_mount;
 /// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — módulo irmão, append-only.
 pub mod emissive;
 pub mod flip_object_ref;
@@ -75,6 +78,10 @@ pub mod visibility_layer;
 
 pub use baked_form::BakedForm;
 pub use blend::BlendMode;
+pub use anchor_mount::{
+    AnchorMount, MountState, anchor_names, anchor_pose_under, anchor_world_pose, mount_frame,
+    mount_state, mount_state_of,
+};
 pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
 pub use flip_object_ref::FlipObjectRef;
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};

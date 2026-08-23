@@ -47,11 +47,26 @@ pub fn parent_world_transform_into(
     scratch: &mut Vec<Transform>,
 ) -> Transform {
     scratch.clear();
+    let mut child = entity;
     let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());
     while let Some(p) = cur {
         if let Some(t) = world.get::<Transform>(p) {
+            // ⚠️ **A MESMA lei que a propagação usa** (`crate::anchor_mount::mount_frame`), e a
+            // razão de ser a mesma está escrita neste ficheiro: *duas respostas para «onde está
+            // esta entidade» é precisamente o bug que esta família não para de produzir*. Um
+            // quadro de âncora só numa das travessias faria a espada DESENHAR na mão e todo
+            // gesto lê-la na origem do pai.
+            //
+            // ⚠️ **A ORDEM aqui é ao contrário de propósito.** Empilha-se filho→raiz e a dobra
+            // abaixo percorre em `rev()`, por isso o quadro da âncora entra ANTES da pose do
+            // pai para sair DEPOIS dela — `… ∘ pai ∘ âncora ∘ filho`. Trocar as duas linhas
+            // compila e põe a âncora no espaço errado.
+            if let Some(anchor) = crate::anchor_mount::mount_frame(world, p, child) {
+                scratch.push(anchor);
+            }
             scratch.push(*t);
         }
+        child = p;
         cur = world.get::<ChildOf>(p).map(|c| c.parent());
     }
     let mut acc = Transform::IDENTITY;

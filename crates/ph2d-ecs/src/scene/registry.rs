@@ -411,6 +411,11 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // so'. Sem o registro, um artista que marca a boca da arma e grava o projeto reabre-o sem
     // ela: uma ancora nao e' re-derivavel de nada, e' uma medida que alguem tirou.
     reg.register::<crate::NamedAnchorList>("ph2d::ecs::NamedAnchorList");
+    // QUEM MONTA numa dessas ancoras (ADR-0072 §2.6, 2026-08-22) -- o CONSUMIDOR que faltava.
+    // Sem o registro, reabrir o projeto devolve a espada como filha COMUM do personagem: ela
+    // continua la', no mesmo sitio, e deixou de andar com a mao. E' o modo de falha caro --
+    // nada some, nada avisa, e o defeito so' aparece quando o braco se mexe.
+    reg.register::<crate::AnchorMount>("ph2d::ecs::AnchorMount");
     // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA
     // (2026-08-21). Sem o registro, o modo de falha é o mesmo da moldura e igualmente enganoso:
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte
@@ -495,7 +500,11 @@ mod tests {
         //   forma fechada, 2026-08-21). ⚠️ CONTADO na integracao de 2026-08-22: a `line/Sprite`
         //   (+6) entrou antes da `line/Vector` (+2) — o valor e' a SOMA, nao o de nenhum lado.
         // + 1 verbo POR FORMA dentro dela (VecBoolOp, 2026-08-22)
-        assert_eq!(reg.len(), 65);
+        // + 1 MONTAGEM numa ancora (AnchorMount, ADR-0072 §2.6, 2026-08-22 — o consumidor).
+        //   ⚠️ SAO TRES contadores desta familia (ecs · render · script), cada um so' visivel
+        //   na suite da SUA crate — e esta linha ja' os deixou 2 e 4 atras, com a nota escrita.
+        //   Ao mexer aqui, mexa nos tres NO MESMO commit: `ph2d-render` e `ph2d-script`.
+        assert_eq!(reg.len(), 66);
         assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
@@ -504,6 +513,7 @@ mod tests {
         assert!(reg.get_by_name("ph2d::ecs::SpriteSheetFrame").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());
         assert!(reg.get_by_name("ph2d::ecs::NamedAnchorList").is_some());
+        assert!(reg.get_by_name("ph2d::ecs::AnchorMount").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
         assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());

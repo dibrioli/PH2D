@@ -54,7 +54,10 @@ mod tests {
         // 2026-08-22 (integracao): +1 `VecClipContent` da `line/Vector` — o ECS esta' em 64,
         // e este e' `ecs + 1` (LuauScript). ⛔ Grandezas DIFERENTES do `ph2d-ecs`; nao copie.
         // +1 `VecBoolOp` (um verbo por forma, 2026-08-22): ECS 65 ⇒ aqui 66.
-        assert_eq!(reg.len(), 66);
+        // +1 `AnchorMount` (o consumidor de uma ancora, ADR-0072 §2.6, 2026-08-22): ECS 66 ⇒ 67.
+        // ⚠️ Desta vez os TRES foram somados no MESMO commit — que e' o que as duas notas
+        // acima pediam depois de este contador ficar 4 atras e depois 2 atras na mesma linha.
+        assert_eq!(reg.len(), 67);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

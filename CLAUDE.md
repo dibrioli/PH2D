@@ -343,8 +343,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Regra-mãe do pen:** *o que se vê/aponta/encaixa é MUNDO; o que o documento guarda é LOCAL.*
   **Aberto:** ⏸️ o `n`/folga do *tether* e o `DRAG_RATE_X = 50` são números de **FEEL sem medição atrás** (a lei irmã diz
   `rate = step`, **50× menos**, em **141 campos**) — do Enio, com o número na mão · ⏸️ abrir/fechar painel **nunca** foi
-  animado (ausência, não regressão; e **não** é o gêmeo da dobra) · a cascata da **F5**, o menu radial (**E4**), o realce
-  de proveniência (**C2**), som de UI (**D1**, ⛔ nunca ligado por omissão) e partículas (**D2**) ·
+  animado (ausência, não regressão; e **não** é o gêmeo da dobra) ·
+  ✅ **a cascata (F5), o menu radial (E4) e o realce de proveniência (C2) FECHARAM** — o radial é
+  **`P` segurado** (o gesto foi MEDIDO: o botão do meio é o pan, a caneta não entrega botão, e só
+  9 letras estão livres sem modificador), e o realce vale para **todo objecto em todo modo**.
+  ⛔ **Sobram só o som de UI (D1, nunca ligado por omissão) e as partículas (D2)** — os dois de
+  eixo 4. ⚠️ E o estudo que os lista **mentiu sobre OITO das próprias linhas**: meça um item
+  daquela tabela antes de o pegar ([§6.6](docs/Vector%20Module/Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)) ·
   ✅ **o hit-test já lê o mapa fundido — este item FECHOU** e a nota envelheceu aqui por semanas:
   `App::vec_live_drawn` é a `LiveGeometry` fundida e **6 sítios de pick** a consomem
   ([`input_dispatch.rs`](shells/desktop/src/input_dispatch.rs)). *Confira o código antes de abrir a
@@ -357,6 +362,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `PH2D_UI_MOTION_SMOKE=1..3`. Diagnóstico: `PH2D_BUILD_LOG=1`.
   ⚠️ **Preferência de utilizador fora do repo:** `~/.ph2d/prefs.txt` (`motion_character`, `reduced_motion`) — um
   `reduced_motion=1` esquecido **reprova smokes sobre produto correto**.
+  ⚠️ **BUG ABERTO #27** — o traço vira **caneta ELÍPTICA** sob Scale não-uniforme (o `stroke` do
+  Vello multiplica a caneta pelo afim do objecto). ⛔ A cura tem **bifurcação de produto** (o traço
+  escala com o objecto? Illustrator/Affinity oferecem a opção DESLIGADA; o Figma não escala) e
+  **colide com uma decisão de perf medida** — o mecanismo inteiro está em
+  [`BUGS_vector.md` #27](docs/Vector%20Module/BUGS_vector.md).
   **Ler:** [`docs/Vector Module/`](docs/Vector%20Module/) · [`BUGS_vector.md`](docs/Vector%20Module/BUGS_vector.md) ·
   [handoffs](docs/Vector%20Module/handoffs/README.md) · [história](docs/archive/estado-2026-08-18/vector.md)
 

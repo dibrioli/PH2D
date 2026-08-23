@@ -109,6 +109,13 @@ mesma razão do gizmo: as três passagens decidem *quem aparece*, e uma decisão
 desenho é inalcançável por teste — que é exatamente onde os erros de overlay moram (a marca que não
 aparece, a que aparece duas vezes, a que rouba o destaque).
 
+⚠️ **A precedência entre as passagens foi um DEFEITO, e o gate afirmava-o.** A primeira versão
+deixava «Always show anchors» reclamar a entidade selecionada e desistia do modo `Editing`, com a
+justificação de que desenhar duas vezes soma o alfa e finge destaque. A observação estava certa; a
+cura estava ao contrário — `Editing` é **superset** (as mesmas âncoras, mais o realce, mais as
+alças), então quem sai é a outra. Efeito prático: a caixa **roubava o destaque à selecionada**
+(Enio, 2026-08-23). *Um gate verde pode pinar um defeito de produto*, e quem o apanhou foi um smoke.
+
 ⛔ **`AnchorVisibility::at_runtime` é a terceira coisa desta wave sem consumidor**, e está marcada
 como tal: não há modo de jogo neste app (`shells/game`, Runtime R1, adiado pelo Enio). A caixa
 grava, sobrevive ao undo e ao ficheiro, e o único sítio que decide o desenho tem o irmão dela por

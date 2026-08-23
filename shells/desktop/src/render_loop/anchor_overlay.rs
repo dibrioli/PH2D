@@ -333,6 +333,28 @@ pub(crate) fn marks_plan(
 ) -> Vec<(Entity, PlanMode)> {
     let mut plan: Vec<(Entity, PlanMode)> = Vec::new();
 
+    // **Quem vai em modo `Editing`, decidido ANTES de tudo — porque ele GANHA.**
+    //
+    // ⚠️ **Isto foi um DEFEITO, e o gate afirmava-o** (Enio, 2026-08-23: *«Always show anchors
+    // retira o destaque da âncora/slot selecionado»*). A primeira versão deixava a passagem (1)
+    // reclamar a entidade selecionada e **desistia** da (3), com a justificação de que desenhar
+    // duas vezes soma o alfa e finge destaque. A observação sobre o alfa estava certa; a cura
+    // estava ao contrário.
+    //
+    // `Editing` é **superset** de `AlwaysVisible`: desenha as MESMAS âncoras, mais o realce da
+    // linha aberta, mais as alças. Quem tem de sair é a (1) — e o efeito da caixa passa a ser
+    // exatamente o que o nome dela promete: *manter visível quando NÃO está selecionada*.
+    // Desselecionar devolve a entidade à passagem (1), e o destaque some, que é a outra metade
+    // do pedido.
+    //
+    // ⚠️ **Com a §12 FECHADA não há `Editing`**, e aí a caixa volta a mandar mesmo na
+    // selecionada: sem seção aberta não há linha aberta nem alças para destacar.
+    let editing = if expanded {
+        selected.map(Entity::from_bits)
+    } else {
+        None
+    };
+
     // (1) — quem pediu para ficar sempre visível.
     //
     // ⚠️ **`try_query` porque só há `&World` aqui**, e o `World::query` pede `&mut`. Ele também
@@ -344,7 +366,8 @@ pub(crate) fn marks_plan(
     // aqui só ENUMERA. O default «só quando selecionada» tem de viver num sítio só.
     if let Some(q) = sim.try_query::<(Entity, &ph2d_ecs::AnchorVisibility)>() {
         for (id, _) in q.iter_manual(sim) {
-            if ph2d_ecs::anchors_draw_in_editor(sim, id) {
+            // ⛔ **A entidade que vai em modo `Editing` NÃO entra aqui** — ver `editing` acima.
+            if Some(id) != editing && ph2d_ecs::anchors_draw_in_editor(sim, id) {
                 plan.push((id, PlanMode::AlwaysVisible));
             }
         }
@@ -368,17 +391,11 @@ pub(crate) fn marks_plan(
         }
     }
 
-    // (3) — a selecionada, com alças, por cima de tudo.
-    if expanded && let Some(bits) = selected {
-        let e = Entity::from_bits(bits);
-        // ⚠️ A comparação é contra a passagem (1) apenas: se a (2) apanhou esta entidade, foi
-        // como PAI de outra coisa, e desenhou-lhe **uma** âncora — as restantes faltam.
-        let in_pass_one = plan
-            .iter()
-            .any(|(p, m)| *p == e && *m == PlanMode::AlwaysVisible);
-        if !in_pass_one {
-            plan.push((e, PlanMode::Editing(open_row)));
-        }
+    // (3) — a selecionada, com alças, por cima de tudo. Ela entra **sempre** que existe: a
+    // passagem (1) já lhe cedeu o lugar, e a (2) nunca a pode ter apanhado (uma entidade não é
+    // pai de si própria).
+    if let Some(e) = editing {
+        plan.push((e, PlanMode::Editing(open_row)));
     }
     plan
 }

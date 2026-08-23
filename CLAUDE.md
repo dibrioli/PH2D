@@ -172,11 +172,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **5 de 5** sozinha (0,1 s). Está registada desde 2026-08-16 em
   [`39_auditoria_solid_e_tracos.md`](docs/Painter/39_auditoria_solid_e_tracos.md) — mas **não estava aqui**, e é
   aqui que se olha quando o gate batched fica vermelho.
-  ⚠️ **A QUINTA é irmã da terceira, e apareceu em 2026-08-23:**
-  `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger`
-  ([`ph2d-tool-painter`](crates/ph2d-tool-painter/src/tool/paint/)) reprovou no fan-out de 17,9 mil testes e
-  passou **3 de 3** sozinha, num diff que **não tocava uma linha do Painter**. Mesma família de razão de tempo,
-  mesmo módulo — *se uma delas reprovar, olhe primeiro para a carga, não para o seu commit*.
+  ⚠️⚠️ **PARE DE AS CONTAR UMA A UMA — é uma FAMÍLIA, e ela tem seis membros conhecidos.** Em
+  2026-08-23, num único dia e num diff que não tocava **uma linha** do Painter nem da Timeline,
+  reprovaram no fan-out de 17,9 mil testes e passaram **3 de 3 sozinhas**:
+  `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger` (Painter) ·
+  `the_cost_of_sampling_a_path_is_flat_in_its_anchors` (Timeline) — mais as três já nomeadas acima.
+  Duas corridas seguidas da MESMA árvore deram `17.883/17.883` e depois `17.881/17.884`.
+  ⇒ **Todo gate que compara duas medianas de tempo é candidato**, e a lista nunca estará completa:
+  o que se lê não é o nome, é a *forma* — se um ✗ do gate batched for uma razão de relógio, **re-rode
+  sozinho ANTES de olhar para o seu commit**. O sinal de que é carga: o mesmo teste verde isolado, e
+  o seu diff sem uma linha no módulo dele.
   ⚠️ **A quarta, confirmada na integração de 2026-08-22:** `only_the_lower_row_breathes_and_it_moves_with_the_playhead`
   ([`motion_state_conferencia_demos_audio_tests.rs`](shells/desktop/src/motion_state_conferencia_demos_audio_tests.rs))
   reprovou com «max delta 0» no fan-out de 10,7 mil testes e passou **5 de 5** sozinha — já nomeada no
@@ -648,6 +653,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   fica **visível ao mexer no filho, mesmo com a §12 fechada**; e o dono tem duas caixas —
   **«Always show anchors»** (viva) e **«Show anchors at runtime»** (⛔ grava e **não tem quem a
   leia**: não há modo de jogo, o `shells/game`/R1 está adiado).
+  ⚠️ **A precedência do overlay é `Editing` > `AlwaysVisible` sobre a MESMA entidade** — o modo de
+  edição é *superset* (as mesmas âncoras, mais o realce e as alças). ⛔ Ao contrário, a caixa
+  **rouba o destaque à selecionada**, e o gate afirmava-o: *um gate verde pode pinar um defeito de
+  produto*, e os três desta linha foram apanhados por smoke.
   ⚠️ **A lei entra nas DUAS travessias de mundo pela MESMA função** (`mount_state`) —
   `propagate_transforms` e `world_transform`: só numa, a espada **desenha** na mão e todo gesto
   agarra-a na origem do pai. ⛔ Das três superfícies do ADR-0072 §2.6 só a **Rust** tinha onde

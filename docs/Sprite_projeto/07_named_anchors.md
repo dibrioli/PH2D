@@ -262,8 +262,19 @@ alargam isso, e são passagens distintas (`anchor_overlay::marks_plan`, pura e t
 deve ficar visível»*: mover um filho ancorado é um gesto de **canvas**, e exigir o painel aberto
 tornaria a referência indisponível no momento em que ela é precisa.
 ⚠️ **A ordem é a de pintura** e a selecionada vai por último — o que se pode agarrar tem de estar
-por cima. A dedup é **assimétrica**: um dono repetido não se pinta duas vezes (dois alfas somam e
-fingem destaque), mas a passagem 2 desenha *uma* âncora e a 3 desenha *todas*.
+por cima.
+
+⚠️ **A passagem 3 GANHA da 1 sobre a mesma entidade**, e não o contrário. `Editing` é *superset* de
+`AlwaysVisible` — as mesmas âncoras, mais o realce da linha aberta, mais as alças —, por isso quem
+sai é a 1. ⛔ A primeira versão fazia ao contrário e **a caixa roubava o destaque à selecionada**
+(Enio, 2026-08-23); o gate afirmava-o, com a justificação certa (dois desenhos somam o alfa) e a
+cura ao contrário. O efeito da caixa passa a ser exatamente o que o nome promete: *manter visível
+quando NÃO está selecionada* — desselecionar devolve a entidade à passagem 1, e o destaque some.
+⚠️ Com a §12 **fechada** não há `Editing` (não há linha aberta nem alças), e aí a caixa manda mesmo
+na selecionada.
+
+⚠️ A dedup entre 2 e 3 é **assimétrica**: a passagem 2 desenha *uma* âncora do PAI e a 3 desenha
+*todas* as do FILHO — as duas correm.
 
 ⛔ **`AnchorVisibility::at_runtime` grava e ainda não tem quem a leia.** Não há modo de jogo neste
 app — o `shells/game` (Runtime R1) está adiado por decisão do Enio, e nenhum caminho de desenho

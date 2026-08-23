@@ -125,27 +125,53 @@ fn the_selected_entity_paints_last() {
     );
 }
 
-/// **A dedup é assimétrica, e isso é a lei.**
+/// **⭐ «Always show anchors» NÃO pode tirar o destaque da selecionada** (Enio, 2026-08-23).
 ///
-/// Um dono «always visible» que também está selecionado **não** se repete. Mas um pai que a
-/// passagem (2) apanhou desenhou **uma** âncora — se ele for o selecionado, a (3) tem de
-/// correr na mesma, senão as restantes âncoras dele desapareciam.
+/// ⚠️ **Este gate existe porque a versão anterior dele afirmava o CONTRÁRIO.** Ela pinava
+/// `AlwaysVisible` sobre a entidade selecionada, com a justificação de que desenhar duas vezes
+/// soma o alfa e finge destaque — a observação estava certa e a **cura estava ao contrário**.
+/// `Editing` é **superset** de `AlwaysVisible`: as mesmas âncoras, mais o realce da linha aberta,
+/// mais as alças. Quem tem de sair é a outra.
+///
+/// *Um gate verde pode pinar um defeito de produto* — e quem o apanhou foi um smoke.
 #[test]
-fn the_dedup_drops_the_repeat_but_never_the_missing_half() {
-    // (a) always-visible E selecionado ⇒ uma entrada só.
+fn the_always_visible_box_never_steals_the_highlight_from_the_selection() {
     let mut w = World::new();
-    let host = owner(&mut w, &["muzzle"]);
+    let host = owner(&mut w, &["muzzle", "head"]);
     w.entity_mut(host).insert(AnchorVisibility {
         in_editor: true,
         at_runtime: false,
     });
+
+    // Selecionada ⇒ **Editing**, com a linha aberta. Uma entrada só: nada se repete.
     assert_eq!(
-        marks_plan(&w, true, Some(host.to_bits()), Some(0)),
-        vec![(host, PlanMode::AlwaysVisible)],
-        "a mesma entidade duas vezes soma o alfa e finge destaque"
+        marks_plan(&w, true, Some(host.to_bits()), Some(1)),
+        vec![(host, PlanMode::Editing(Some(1)))],
+        "a caixa roubou o destaque a` selecionada"
     );
 
-    // (b) um objeto que monta numa âncora do PRÓPRIO pai e está selecionado, tendo âncoras
+    // ⭐ A outra metade do pedido: **desselecionar faz o destaque sumir**, e a caixa assume.
+    assert_eq!(
+        marks_plan(&w, true, None, None),
+        vec![(host, PlanMode::AlwaysVisible)],
+        "sem seleccao a caixa tem de manter as marcas — esmaecidas"
+    );
+
+    // ⚠️ Com a §12 FECHADA não há linha aberta nem alças: não há destaque que se possa roubar,
+    // e a caixa manda mesmo na selecionada.
+    assert_eq!(
+        marks_plan(&w, false, Some(host.to_bits()), Some(1)),
+        vec![(host, PlanMode::AlwaysVisible)]
+    );
+}
+
+/// **A dedup nunca deixa cair a metade que falta.**
+///
+/// Um pai que a passagem (2) apanhou desenhou **uma** âncora; se o filho selecionado tiver
+/// âncoras suas, a (3) tem de correr na mesma sobre ele.
+#[test]
+fn the_dedup_drops_the_repeat_but_never_the_missing_half() {
+    // Um objeto que monta numa âncora do PRÓPRIO pai e está selecionado, tendo âncoras
     // suas: as duas passagens correm — a (2) sobre o pai, a (3) sobre ele.
     let mut w = World::new();
     let parent = owner(&mut w, &["slot"]);

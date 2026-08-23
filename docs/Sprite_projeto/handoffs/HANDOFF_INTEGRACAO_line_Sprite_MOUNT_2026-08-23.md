@@ -152,6 +152,22 @@ O que **é** foundational e foi tocado, com o desenho de isolamento a favor:
 **Ordem:** os 6 commits são lineares. O rebase sobre `main` foi *fast-forward* limpo no início da
 jornada; não há dependência de outra linha.
 
+### ⚠️ Um gate meu pinava um defeito de PRODUTO (smoke do Enio, 2026-08-23)
+
+**«Always show anchors» tirava o destaque da âncora selecionada.** A passagem (1) reclamava a
+entidade selecionada e a (3) desistia — com a justificação, escrita no gate, de que desenhar duas
+vezes soma o alfa e finge destaque. **A observação estava certa e a cura estava ao contrário:**
+`Editing` é *superset* de `AlwaysVisible` (as mesmas âncoras, mais o realce da linha aberta, mais as
+alças), por isso quem tem de sair é a (1).
+
+Hoje o modo `Editing` é decidido **antes** de tudo e a varredura salta essa entidade. O efeito da
+caixa passa a ser o que o nome promete — *manter visível quando NÃO está selecionada* —, e
+desselecionar devolve-a à passagem (1), com o destaque a sumir, que é a outra metade do pedido.
+⚠️ Com a §12 **fechada** não há `Editing`, e aí a caixa manda mesmo na selecionada.
+
+*Um gate verde pode pinar um defeito de produto.* Este era o terceiro caso desta linha em dois
+dias, e os três foram apanhados por smoke, não por suíte.
+
 ### ⚠️ Um defeito da wave ANTERIOR, encontrado por sonda e curado aqui
 
 Trocar de linha na lista de âncoras **não re-semeava os campos do editor**. A semente era uma
@@ -268,6 +284,8 @@ Suítes das crates tocadas, isoladas: `ph2d-ecs` **202** · `ph2d-editor-core` *
 | a caixa de visibilidade escreve do zero (apaga a irmã) | `the_two_visibility_boxes_do_not_erase_each_other` |
 | a passagem do filho montado desaparece | `the_ridden_anchor_shows_up_even_with_the_section_closed` (+2) |
 | a caixa `in_editor` deixa de acender | `the_always_visible_box_draws_without_selection` (+3) |
+| a caixa volta a **reclamar** a entidade selecionada | `the_always_visible_box_never_steals_the_highlight_from_the_selection` |
+| `Editing` ignora a §12 fechada | idem (+2) |
 | só a ENTIDADE re-semeia os campos | `switching_rows_reseeds_..._without_stomping_a_fresh_click` |
 | re-semeia todo o quadro | idem |
 

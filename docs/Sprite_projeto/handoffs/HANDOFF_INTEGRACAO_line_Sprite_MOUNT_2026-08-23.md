@@ -135,8 +135,17 @@ com gate na shell (`the_mount_option_ids_cover_the_model_cap`).
 | `shells/desktop/src/render_loop/anchor_overlay.rs` | 696 | **427** | `mod tests` → `anchor_overlay_tests.rs` |
 | `shells/desktop/src/render_loop/inspector_anchor.rs` | 638 | **356** | `mod tests` → `inspector_anchor_tests.rs` |
 | `shells/desktop/src/render_loop/inspector_commits.rs` | 611 | **539** | o commit da §2 Sprite → `inspector_commits_sprite.rs` |
+| `paint_inspector` (função, 2.ª vez no dia) | 348 | **292** | ⚠️ **em TRÊS passos** — ver abaixo |
 | `crates/ph2d-panel-inspector/src/populate.rs` (2.ª vez) | 605 | — | o bloco da §11 nasceu já em `populate_anim.rs` |
 | `shells/desktop/src/project_schema.rs` | 608 | **343** | ⚠️ **589 das 608 linhas eram doc-comment**: a escada v2–v59 foi para [`docs/archive/project-schema-ladder-v2-v59.md`](../../archive/project-schema-ladder-v2-v59.md) |
+
+⚠️ **O corte do `paint_inspector` merece leitura**, porque ele mostra a armadilha da catraca a
+funcionar. Duas extracções legítimas — o par de seções com **estado de painel** (§11 e §12, as
+únicas cuja pintura depende de que LINHA está aberta) e a leitura dos treze snapshots +
+`any_section` para `paint_frame::LiveSnapshots::fetch` — devolveram o número a **348 exactos**, que
+é onde ele já estava. *Ficar no mesmo sítio não é encolher*, e isso **só se vê medindo**: o gate
+estava verde. Saiu então um terceiro cluster, o cabeçalho do painel (título, subtítulo, fechar,
+divisor) para `paint_head.rs`, que não é orquestração nenhuma. **292.**
 
 ⚠️ **O corte da escada merece leitura pelo integrador.** O que saiu é a **cabeça** (v2–v59); os
 degraus vivos e o literal continuam **colados**, que é a lei que o próprio degrau v69 escreveu
@@ -327,6 +336,32 @@ Suítes das crates tocadas, isoladas: `ph2d-ecs` **202** · `ph2d-editor-core` *
 | a caixa `in_editor` deixa de acender | `the_always_visible_box_draws_without_selection` (+3) |
 | a caixa volta a **reclamar** a entidade selecionada | `the_always_visible_box_never_steals_the_highlight_from_the_selection` |
 | `Editing` ignora a §12 fechada | idem (+2) |
+
+**Terceira vaga — a §11 Animation (2026-08-23):**
+
+| mutação | gate que a apanhou |
+|---|---|
+| ping-pong repete a ponta | `ping_pong_does_not_repeat_the_endpoints` (+1) |
+| tocar uma vez volta ao início | `a_play_once_animation_stops_on_the_last_frame` (+2) |
+| o atraso entre ciclos cobra-se na última volta | `the_repeat_delay_only_counts_when_another_cycle_follows` |
+| velocidade negativa ignorada | `a_negative_speed_plays_backwards_…` |
+| sem a guarda do intervalo de uma célula | `a_single_cell_range_never_advances_and_never_loops` |
+| sem o clamp do `frame_ms` | `a_zero_frame_ms_from_disk_runs_at_the_one_millisecond_floor` ⚠️ **sobreviveu na 1.ª volta** |
+| a conversão do passo fixo trunca | `the_fixed_step_conversion_rounds_instead_of_truncating` (+1) |
+| animador novo nasce parado | `a_freshly_attached_player_actually_moves` (+1) |
+| renomear larga o tocador | `renaming_the_current_animation_carries_the_player_with_it` |
+| o `0` do Repeat vira `Some(0)` | `zero_repeat_means_forever_in_both_directions` |
+| o override de direção deslocado de um | `the_two_overrides_travel_by_the_tags_the_panel_paints` |
+| um passo grande em vez de N passos | ⚠️ **SOBREVIVEU — e tinha razão** |
+
+⚠️ **Duas mutações sobreviveram, e as duas ensinaram:**
+
+1. O teste do `frame_ms` zero provava só que o laço **termina**, e quem o termina é a rede de 1024
+   passos, não o clamp. Reescrito para medir o que o clamp **faz** (1 ms avança 1 frame, 0 ciclos).
+2. O tique corria `ticks` chamadas de `advance` com a justificação de que um passo grande
+   «atravessaria o fim de um ciclo sem o fechar». **Era falso** — a lei tem o seu próprio laço de
+   recuperação. Trocado pela forma simples, com gate a prender a **equivalência**. *Um laço a mais
+   que a mutação não distingue é uma justificação que ninguém voltou a verificar.*
 | só a ENTIDADE re-semeia os campos | `switching_rows_reseeds_..._without_stomping_a_fresh_click` |
 | re-semeia todo o quadro | idem |
 

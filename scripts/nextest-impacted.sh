@@ -123,4 +123,16 @@ echo "[nextest-impacted] changed: $(echo "$CHANGED" | tr '\n' ' ')"
 echo "[nextest-impacted] -E '$EXPR'"
 # If a changed dir name is not a real package, the filterset errors out (non-zero)
 # — that surfaces the dir→package mismatch rather than silently under-testing.
-exec cargo nextest run -E "$EXPR" --cargo-profile ci-test
+#
+# ⛔⛔ **`"$@"` NÃO É COSMÉTICO — sem ele os argumentos eram ENGOLIDOS EM SILÊNCIO.**
+#
+# ⚠️ **Medido em 2026-08-23:** o `CLAUDE.md` §5.0 manda usar `--no-fail-fast` («senão
+# suítes inteiras nunca chegam a correr»), e este script era invocado com ele **dezenas
+# de vezes por jornada** sem nunca o repassar. As corridas verdes escondiam-no — só
+# quando um teste falha é que a diferença aparece —, e a corrida que a expôs parou em
+# `1 689 de 3 853` com **2 164 testes por correr**, exactamente o cenário que a regra do
+# roteador existe para evitar.
+#
+# *Um script que aceita argumentos e os deita fora falha do mesmo modo que o
+# `str.replace` que não casa: sem erro, sem aviso, com ar de sucesso.*
+exec cargo nextest run -E "$EXPR" --cargo-profile ci-test "$@"

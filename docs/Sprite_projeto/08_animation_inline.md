@@ -361,17 +361,28 @@ Zero asset novo, zero pixels duplicados, e a persistência vem do registro de co
 | tags ≤ **256** | ⚠️ **64** — ver abaixo |
 | duração por-FRAME | ⛔ ver abaixo |
 | signals no ActionBus (§8.10) | ⚠️ `AnimOutcome` existe e é devolvido pela lei; **ninguém o publica ainda** |
-| Aseprite import (§8.12) | ⛔ não há importador de `.ase` |
+| Aseprite import (§8.12) | ✅ **existe** desde 2026-08-23 — `ph2d-aseprite` + `ase_import.rs` |
 
-## ⛔ Duração por-FRAME arbitrária ficou de fora, e o motivo
+## ⏳ Duração por-FRAME: a recusa foi REABERTA no mesmo dia, e agora tem quem a produza
 
-Ela existe na spec por paridade com o Aseprite — e **não há importador de `.ase`**, por isso
-ninguém a produziria. A própria §8.8 diz que editá-la é do editor de timeline futuro, não do
-Inspector. O caso de uso que ela nomeia (*anticipation hold*: o último frame parado mais tempo) é
-servido pelo `hold_ms` que a §8.6 já especifica.
+**A recusa original, verbatim:** *ela existe na spec por paridade com o Aseprite — e não há
+importador de `.ase`, por isso ninguém a produziria. A própria §8.8 diz que editá-la é do editor de
+timeline futuro, não do Inspector. O caso de uso que ela nomeia (*anticipation hold*) é servido pelo
+`hold_ms` que a §8.6 já especifica. «Um campo sem quem o escreva é autoria sem consumidor».*
 
-*Um campo sem quem o escreva é autoria sem consumidor* — a dívida que este módulo passou o dia a
-pagar com o ADR-0072 §2.6.
+⚠️ **A premissa dissolveu-se em 2026-08-23:** o importador de `.ase` foi construído, e ele **produz
+exactamente esse dado** — um `.ase` traz `duration_ms` por quadro, e um artista que ponha um *hold*
+no meio de uma tag tem uma tag que o nosso `frame_ms` único não sabe exprimir. *Quem move o número
+que tornava algo inalcançável tem de reconferir a nota.*
+
+**O que shipa hoje:** o importador **aproxima pela duração mais comum da tag e DIZ**, nomeando a tag
+e o número (`AseTag::uniform_duration_ms` devolver `None` **é** a informação). ⛔ Aproximar em
+silêncio seria a resposta errada com a certeza da certa.
+
+**O que a decisão de produto custa, para quem a tomar:** um `Vec<u32>` por tag (ou um override
+esparso), o `PROJECT_SCHEMA` a mover, e a UI — que a §8.8 já diz não ser do Inspector. O `hold_ms`
+continua a servir o caso do último frame; o que ele **não** serve é um *hold* no MEIO da tag, que é
+o que um `.ase` real traz.
 
 ## ⚠️ O cap de tags desceu de 256 para 64, e a razão é a da própria spec
 

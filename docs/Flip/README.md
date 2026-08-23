@@ -9,12 +9,12 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**14 arquivos** · **3** citados pelo `CLAUDE.md` (marcados **◆**).
+**14 arquivos** · **4** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
 | 00 | ◆ | [00_README.md](00_README.md) | porta de entrada | Flip — animação desenhada quadro-a-quadro (o meio "Grease Pencil" do PH2D) |
-| 01 |   | [01_plano_waves.md](01_plano_waves.md) | plano | Flip — Plano de implementação (waves + tasks) |
+| 01 | ◆ | [01_plano_waves.md](01_plano_waves.md) | plano | Flip — Plano de implementação (waves + tasks) |
 | 02 |   | [02_referencia_algoritmos_blender_5.2.md](02_referencia_algoritmos_blender_5.2.md) | referência | Flip — Referência de algoritmos (Grease Pencil, Blender 5.2) |
 | 03 |   | [03_traco_rasterizacao.md](03_traco_rasterizacao.md) | — | Flip §03 — O traço: rasterização, o tripé, a mordida e o fix |
 | 04 |   | [04_alem_do_blender.md](04_alem_do_blender.md) | — | Flip §04 — Além do Blender: estado da arte, paisagem de apps e lições do GPv3 |

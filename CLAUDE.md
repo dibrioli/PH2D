@@ -615,12 +615,22 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Referência durável entre objetos é o NOME** (`stable_name_id`, hash do `Name`), nunca os bits — o undo respawna
   tudo com bits novos, e bits **dentro dos bytes de um componente** envenenam o próprio undo.
   ⚠️ O undo de **PAINÉIS** é sistema separado e **não existe** (decisão do Enio).
-  **Aberto:** ⏳ **O UNDO NÃO SEPARA PREVIEW DE DOCUMENTO** (autorizado pelo Enio, 2026-08-23:
-  *«precisamos corrigir o CtrlZ para ambas»*) — enquanto alguma coisa se move sozinha (uma animação
-  de sprite a tocar · a física a simular), **um quadro com input regista um passo** cujo conteúdo é
-  só o relógio ou a pose do solver. ⚠️ **Não é defeito de nenhum dos dois módulos: é do modelo do
-  undo**, e a cura é o conceito que falta. As três saídas medidas e por que duas não servem:
-  [auditoria 21 §4](docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md) ·
+  ✅ **O UNDO SEPARA PREVIEW DE DOCUMENTO** (Enio, 2026-08-23: *«corrigir o CtrlZ para ambas»* —
+  feito no mesmo dia, [`preview_drive.rs`](shells/desktop/src/preview_drive.rs)): *o documento é o
+  valor **AUTORADO**; o que um motor escreve agora é pré-visualização — vê-se, não se guarda nem se
+  desfaz.* O motor continua a escrever no mundo (um só sink); a **captura** é que repõe o autorado
+  durante a fotografia. ⚠️ **O ledger entra na ASSINATURA da `ProjectState::capture`** — uma
+  função-irmã «com ledger» seria a segunda porta pela qual o defeito voltava. ⚠️ **A granularidade
+  é o CAMPO**: repor o `SpriteAnimator` inteiro engoliria uma mexida na velocidade a meio da
+  reprodução. ⚠️ **O passo nascia por CLIQUE, não por quadro** (mover o cursor não conta como
+  input) — e é por isso que tirar só o relógio do componente registado **não** curava. ⭐ A `settle`
+  faz a corrida virar **um** passo (*«desfaz a corrida»*), e a lei da **outra mão** impede que uma
+  edição feita a meio dela fique por baixo do memo. Vale para o **save** pela mesma porta.
+  ⛔ **O TERCEIRO MEMBRO DA FAMÍLIA está MEDIDO e por curar:** a timeline escreve `Transform` a
+  partir das curvas enquanto o playhead toca — a escrita mora *dentro* da crate da timeline, e do
+  lado do shell a alternativa é um censo de todas as poses por quadro, cujo custo ninguém mediu
+  ([auditoria 21 §4](docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md)) ·
+  **Aberto:**
   UI real de Save/Save As/Open (o `io_menu` é stub — hoje é path fixo, sem diálogo) ·
   ✅ **`SpriteSource::Individual` PERSISTE — esta nota envelheceu** e mandava reconstruir trabalho
   pago: [`project_sprite_pixels.rs`](shells/desktop/src/project_sprite_pixels.rs) fecha as **oito**
@@ -719,14 +729,25 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   fan-out do 9-slice) e o interruptor é **vista**: vive só no `WidgetStore`, sem barramento, sem
   undo, sem save. ⛔ Um clique numa célula **não** escolhe o frame — pede hit-test de canvas a
   competir com a seleção; a barra de frames e o campo já o fazem.
-  ⏳ **IMPORTAR ASEPRITE (`.ase`) — autorizado pelo Enio, 2026-08-23**, e ele **muda o que está
-  «fora»**: a duração por-FRAME foi recusada por *não haver quem a produza* — o importador é
-  exactamente quem a produziria, então quem pegar no `.ase` **reabre essa recusa com o número na
-  mão** (spec §8.12; o formato traz tags, direções e duração por frame). ⚠️ O par `.png`+`.json` do
-  Aseprite **já entra** por drag & drop ([`sheet_import.rs`](shells/desktop/src/sheet_import.rs));
-  o que falta é o `.ase` binário, que é outro formato e traz as tags.
+  ✅ **IMPORTAR ASEPRITE (`.ase`) — FEITO em 2026-08-23** (crate-folha
+  [`ph2d-aseprite`](crates/ph2d-aseprite/) + [`ase_import.rs`](shells/desktop/src/ase_import.rs)):
+  largar o ficheiro nativo dá **UMA** sprite com grelha + a biblioteca de animações dele.
+  ⚠️ **Clean-room da spec pública** (o Aseprite é GPLv2; a especificação do formato é documentação).
+  ⚠️ **O corte entre as duas portas é o que cada uma SABE**: o par `.png`+`.json` traz rectângulos
+  com nome ⇒ N sprites soltas; o `.ase` traz a **autoria** ⇒ uma sprite com grelha, que é o modelo
+  da §11. ⚠️ **A ordem dos quadros é o CONTRATO** — uma tag indexa **células**, então a folha é
+  empacotada em linha; por colunas dá uma folha bonita e todas as animações trocadas.
+  ⚠️ **UMA TIRA sempre que couber** (o `hframes` do inspector fica legível); o teto é
+  `MAX_SHEET_EDGE_PX = 8192`, que é **memória de GPU** (`max_texture_dimension_2d`).
+  ⛔ **E ele REABRIU a recusa medida da duração por-FRAME** (spec §8.12: *«não há quem a produza»* —
+  há, é este importador): o que shipa aproxima pela duração mais comum **e diz**, nomeando a tag e o
+  número; pôr a duração por-quadro no **modelo** é decisão de produto e move o `PROJECT_SCHEMA`.
+  ⚠️ O que o ficheiro traz e não honramos sai numa **nota que nomeia a camada** (tilemaps, z-index
+  de cel, modo de mistura de grupo) — *um importador que ignora em silêncio é pior que um que
+  recusa*. ⭐ **O smoke ESCREVE o `.ase`** (`PH2D_ASE_SMOKE=1`), então testá-lo não precisa do
+  Aseprite instalado — e há gate a correr o escritor do smoke pelo leitor real.
   ⛔ Fora: os sinais do §8.10
-  (`AnimOutcome` existe, ninguém o publica) · o import do Aseprite. Detalhe:
+  (`AnimOutcome` existe, ninguém o publica). Detalhe:
   [spec 08, secção final](docs/Sprite_projeto/08_animation_inline.md) ·
   ✅ **uma âncora já MOVE coisas** (2026-08-22): `ph2d_ecs::AnchorMount` faz dela um
   **QUADRO na hierarquia** ([ADR-0072-amendment-1](docs/architecture/decisions/0072-amendment-1.md)),
@@ -751,6 +772,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   órfão a apontar-lhe · os 4 goldens seguem `unimplemented!()` (falta o arnês headless) · UI real
   de Save/Open (o `io_menu` é stub).
   **Smokes:** `PH2D_SLICE_SMOKE=1..3` · `PH2D_SOCKET_SMOKE` · `PH2D_MOUNT_SMOKE` · `PH2D_ANIM_SMOKE` ·
+  `PH2D_ASE_SMOKE` ·
   `PH2D_SHEET_SMOKE` · `PH2D_EMISSIVE_SMOKE` · `PH2D_DITHER_SMOKE`.
   **Ler:** ⚠️ [auditoria de 7 lentes](docs/Sprite_projeto/20_auditoria_do_inspector_2026-08-21.md)
   (o que estava morto/incompleto, **com o que já foi curado marcado**) ·

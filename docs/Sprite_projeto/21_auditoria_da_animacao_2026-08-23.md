@@ -191,13 +191,43 @@ família é *«enquanto alguma coisa se move sozinha, um quadro com input regist
 | tirar o relógio do componente registado (a lei da linha de física: *config, nunca estado vivo de solver*) | remove o passo por-quadro mas **não** o passo por-avanço-de-frame (o `Sprite::frame` é documento e tem de ficar registado), e move o `PROJECT_SCHEMA` |
 | ensinar o undo a ignorar componentes de «preview» | é um conceito que o app não tem, e vale para a física antes de valer para aqui |
 
-⇒ ✅ **AUTORIZADO pelo Enio em 2026-08-23:** *«precisamos corrigir o CtrlZ para ambas»* — **ambas**
-= a animação **e** a física, que é a outra metade da família. ⚠️ Isso põe a cura na terceira saída
-da tabela (o conceito que o app não tem: *estado de PREVIEW contra estado de DOCUMENTO*), e não
-numa correção local à §11 — a §11 sozinha não pode legislar para o undo do app inteiro.
-⏳ **Na fila, não iniciado.** Quem pegar começa por medir se `Transform` sob física e
-`SpriteAnimator` sob reprodução são o mesmo caso ou dois: o primeiro é pose de documento com um
-escritor a mais, o segundo é relógio que nunca foi documento.
+⇒ ✅ **AUTORIZADO pelo Enio em 2026-08-23** (*«precisamos corrigir o CtrlZ para ambas»*) **e
+APLICADO no mesmo dia** pela terceira saída da tabela — o conceito que o app não tinha, que hoje é
+[`preview_drive.rs`](../../shells/desktop/src/preview_drive.rs):
+
+> **O documento é o valor AUTORADO. O que um motor está a escrever agora é pré-visualização:
+> vê-se, não se guarda nem se desfaz.**
+
+O motor continua a escrever no mundo (um só sink, e o render lê o campo de sempre); o que mudou é a
+**captura** — ela repõe o autorado durante a fotografia e devolve o vivo a seguir. O ledger entra na
+**assinatura** da `ProjectState::capture`, e não numa função-irmã «com ledger»: *uma segunda porta é
+exactamente como o defeito voltaria*.
+
+**Cinco coisas que a construção mediu, e que a tabela acima não sabia:**
+
+| # | o que se mediu | consequência |
+|---|---|---|
+| 1 | O passo nasce **por CLIQUE**, não por quadro — o `any_input_this_frame` **não** é levantado por mover o cursor (só clique, tecla e roda) | ⇒ nada acontece enquanto o artista olha, e vinte cliques dão vinte Ctrl+Z mudos. É assim que o defeito se sente |
+| 2 | Por isso a saída 2 é **necessária e não suficiente**: no instante do clique o `Sprite::frame` quase de certeza já avançou desde o último baseline | ⇒ tirar o relógio e deixar o índice deixa o defeito **inteiro** de pé, e ainda move o `PROJECT_SCHEMA` |
+| 3 | O tique da §11 anda no **passo fixo do relógio de parede**, não no `playhead` | ⇒ «enquanto toca» não tem fim, e a saída 1 é pior do que a tabela dizia |
+| 4 | São mesmo **dois casos** (a pergunta que esta tabela mandava responder): o relógio nunca foi documento; a pose do solver é documento com um escritor a mais | ⇒ um mecanismo só serve os dois porque a granularidade é o **CAMPO** — repor o `SpriteAnimator` inteiro engoliria uma mexida na velocidade a meio da reprodução (há gate) |
+| 5 | Sem a lei da **outra mão** (se o que o motor encontra não é o que ele deixou, alguém autorou por cima) uma edição feita a meio de uma corrida ficava **para sempre** por baixo do memo do início dela | ⇒ a cura teria sido pior que o defeito |
+
+⭐ E a `settle` é o que faz a corrida virar **um** passo: enquanto o motor conduz não há passo
+nenhum; quando ele larga, a captura seguinte vê o vivo e regista um — *«desfaz a corrida»*.
+⚠️ Vale para o **save** pela mesma porta (undo e save gravam a MESMA captura): gravar a meio de uma
+reprodução guarda a célula que o artista escolheu. Para a física é a frase que o
+[ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) já lhe
+dá — *runtime-truth + **bake opcional***.
+
+⛔ **O TERCEIRO MEMBRO DA FAMÍLIA FICA MEDIDO E POR CURAR:** a **timeline** escreve `Transform` a
+partir das curvas enquanto o playhead toca ([`apply.rs`](../../crates/ph2d-timeline/src/apply.rs) ·
+`apply_prop.rs`), e é o mesmo defeito. Não entrou por **duas razões medidas**: (1) a escrita mora
+*dentro* da crate da timeline — declarar de lá inverteria a dependência, ou exigiria que o `apply`
+devolvesse a lista de entidades escritas (API de outro módulo); (2) do lado do shell a alternativa é
+um **censo de todas as poses por quadro de reprodução**, e esse custo é um número que ninguém mediu.
+⚠️ E o `timeline_bridge::run` **não tem arnês headless nenhum** (zero chamadores fora do laço de
+quadro), então a wave começa por construir um.
 
 ## §5 — ⛔ Recusas MEDIDAS
 

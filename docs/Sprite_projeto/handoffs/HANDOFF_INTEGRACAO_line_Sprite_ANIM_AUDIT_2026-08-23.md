@@ -341,3 +341,109 @@ encolhe-se o resíduo e diz-se qual metade ficou de fora. Fingir que ele existe,
 
 **Gates novos (2), mutações (2):** o retículo é a caixa que o gizmo envolve · a caixa cresce só com
 a folha aberta (M27: nunca cresce · M28: cresce sempre, e mata a sprite normal).
+
+## §12 — Adenda: **o Ctrl+Z passa a distinguir PRÉ-VISUALIZAÇÃO de DOCUMENTO**
+
+Enio, 2026-08-23: *«precisamos corrigir o CtrlZ para ambas»* — **ambas** = a §11 e a física. É a
+§4 deste handoff, e a auditoria [21 §4](../21_auditoria_da_animacao_2026-08-23.md) já dizia que a
+cura estava na terceira saída da tabela: *o conceito que o app não tinha*.
+
+**A lei**, e ela vive em [`preview_drive.rs`](../../../shells/desktop/src/preview_drive.rs):
+
+> O documento é o valor **AUTORADO**. O que um motor está a escrever agora é pré-visualização:
+> vê-se, não se guarda nem se desfaz.
+
+O motor continua a escrever no mundo — **um só sink**, e o render lê o campo de sempre. O que muda é
+a **captura**: ela repõe o autorado durante a fotografia e devolve o vivo a seguir.
+
+### O que a construção MEDIU e a tabela da auditoria não sabia
+
+| # | medição | consequência |
+|---|---|---|
+| 1 | O passo nasce **por CLIQUE**, não por quadro: o `any_input_this_frame` não é levantado por mover o cursor | vinte cliques com algo a correr = vinte Ctrl+Z mudos. É assim que o defeito se sente |
+| 2 | Logo a saída 2 (tirar o relógio do componente registado) é **necessária e não suficiente** | no instante do clique o `Sprite::frame` já avançou desde o último baseline ⇒ o defeito fica inteiro, e ainda move o `PROJECT_SCHEMA` |
+| 3 | O tique da §11 anda no **passo fixo do relógio de parede**, não no `playhead` | «enquanto toca» **não tem fim** ⇒ a saída 1 é pior do que a tabela dizia |
+| 4 | São mesmo **dois casos**: o relógio nunca foi documento; a pose do solver é documento com um escritor a mais | um mecanismo só serve os dois porque a granularidade é o **CAMPO** |
+
+### As três decisões de desenho
+
+1. **O ledger entra na ASSINATURA da `ProjectState::capture`**, e não numa função-irmã «com ledger».
+   *Uma segunda porta é exactamente como o defeito voltaria* — quem capturasse pela antiga
+   fotografava o instante. Com ledger vazio (o caso normal) o custo é zero e o resultado é
+   byte-a-byte o de antes, e há gate.
+2. **A lei da OUTRA MÃO:** se o que o motor encontra não é o que ele deixou, alguém autorou por
+   cima ⇒ o autorado passa a ser essa mão. Sem ela, uma edição feita a meio de uma corrida ficava
+   **para sempre** por baixo do memo do início dela.
+3. **A `settle` faz a corrida virar UM passo:** enquanto o motor conduz não há passo nenhum; quando
+   ele larga, a captura seguinte vê o vivo e regista um — *«desfaz a corrida»*.
+
+⚠️ **Vale para o SAVE pela mesma porta** (a lei do módulo: undo e save gravam a MESMA captura).
+Gravar a meio de uma reprodução guarda a célula que o artista escolheu. Para a física é a frase que
+o ADR-0131 já lhe dá: *runtime-truth + **bake opcional*** — e **depois** de a corrida parar a pose
+caída é documento outra vez.
+
+### ⛔ O terceiro membro da família, medido e por curar
+
+A **timeline** escreve `Transform` a partir das curvas enquanto o playhead toca
+(`ph2d-timeline`: `apply.rs`, `apply_prop.rs`) — o mesmo defeito. Fora desta wave por duas razões
+medidas: (1) a escrita mora **dentro** da crate da timeline, então declarar de lá inverteria a
+dependência ou exigiria que o `apply` devolvesse a lista de entidades escritas — API de outro
+módulo; (2) do lado do shell a alternativa é um **censo de todas as poses por quadro de
+reprodução**, e esse custo é um número que ninguém mediu. ⚠️ E o `timeline_bridge::run` **não tem
+arnês headless nenhum** (zero chamadores fora do laço de quadro): a wave começa por construir um.
+
+**12 gates** (11 no ledger + 1 na porta REAL da física, com `PhysicsBridge` vivo), **9 mutações**,
+todas sangraram.
+
+## §13 — Adenda: **importar Aseprite (`.ase`)**
+
+Enio, 2026-08-23: *«Precisamos Importar Aseprite (.ase)»*. Duas peças: a crate-folha
+[`ph2d-aseprite`](../../../crates/ph2d-aseprite/) (pura: bytes → quadros RGBA8 + tags) e a costura
+[`ase_import.rs`](../../../shells/desktop/src/ase_import.rs).
+
+⚠️ **Clean-room a partir da spec pública.** O Aseprite é GPLv2; a especificação do formato é
+documentação que o próprio projeto publica. Ler um formato descrito não é obra derivada do programa
+que o escreve, e nada foi traduzido de fonte dele.
+
+### As leis
+
+* **O corte entre as duas portas é o que cada uma SABE.** O par `.png`+`.json` (que já existia) traz
+  **rectângulos com nome** ⇒ N sprites soltas. O `.ase` traz a **autoria** ⇒ **UMA** sprite com
+  grelha + a biblioteca de animações, que é o modelo da §11. Não é o mesmo import com outra extensão.
+* ⚠️ **A ORDEM DOS QUADROS É O CONTRATO.** Uma `AnimationTag` indexa **células**; uma tag do Aseprite
+  indexa **quadros**. Os dois só coincidem enquanto a folha for empacotada em linha, da esquerda
+  para a direita e de cima para baixo. Por colunas dá uma folha bonita e todas as animações trocadas.
+* **Uma TIRA sempre que ela couber** — é o que o Aseprite exporta por omissão e faz o `hframes` do
+  inspector ser legível. O teto é `MAX_SHEET_EDGE_PX = 8192`, e o recurso é **memória de GPU**
+  (`max_texture_dimension_2d`); quando estoura, a mensagem traz **os dois** números.
+* **`repeat: 0` do ficheiro é `None` na §11** — as duas dizem *para sempre* com valores diferentes, e
+  trocá-los faria toda animação importada tocar **uma vez** e parar.
+* **Um ficheiro sem tags recebe uma**, com o nome do ficheiro, a cobrir todos os quadros (é o que o
+  próprio Aseprite faz ao exportar) — senão a sprite nasce com grelha e nada para tocar.
+* **Cel LIGADO** (tipo 1) é o modo de falha nº 1 do formato: o Aseprite guarda um quadro
+  não-redesenhado como referência, e tratá-la como ausente faz a animação **piscar** exactamente nos
+  quadros que o artista deixou como estavam.
+
+### ⛔ A recusa medida que ele REABRIU
+
+A **duração por-FRAME** (spec §8.12) foi recusada por *«não haver quem a produza»*. Há: é este
+importador. O que shipa **aproxima pela duração mais comum da tag e DIZ**, nomeando a tag e o número
+— aproximar em silêncio faria o *hold* de antecipação do artista desaparecer sem uma linha a
+explicar. ⏳ **Pôr a duração por-quadro no modelo é decisão de produto** e move o `PROJECT_SCHEMA`;
+a crate já devolve o dado (`AseTag::uniform_duration_ms` ⇒ `None` **é** a informação).
+
+### O resíduo por gatear, declarado
+
+O `import_ase` pede um `SpriteRenderer` vivo ⇒ a função inteira não é alcançável de um teste. Foi
+por isso que as três decisões saíram para funções **puras** (`grid_for`, `pack`,
+`library`/`tag_from_ase`), que é onde um erro faria a animação sair trocada. Ficam por gatear: a
+subida da textura, o `hframes`/`vframes` escritos na sprite, e o `size` dividido pela grelha —
+**três linhas**, cobertas pelo smoke.
+
+⭐ **O smoke ESCREVE o ficheiro** (`PH2D_ASE_SMOKE=1`), então testá-lo não precisa do Aseprite
+instalado, e larga-o pelo **mesmo** `import_ase` do drag & drop. Há gate a correr o escritor do
+smoke pelo **leitor real** — é o que impede o escritor dos gates e o do smoke de divergirem.
+
+**37 gates novos** (27 na crate + 10 na costura), **17 mutações**; uma sobreviveu (a opacidade de
+camada fixa a 255 passava a suíte inteira, porque todos os outros gates usavam camadas opacas) e
+gerou o gate que faltava.

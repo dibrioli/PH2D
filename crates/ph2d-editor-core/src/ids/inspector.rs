@@ -533,6 +533,18 @@ pub const INSP_SPRITE_VFRAMES: NodeId = hash_node_id("insp_sprite_vframes");
 /// Active sheet frame index NumberInput.
 pub const INSP_SPRITE_FRAME: NodeId = hash_node_id("insp_sprite_frame");
 
+/// **«Show sheet on canvas»** — a grelha desdobra-se em células fantasma à volta da viva
+/// (Enio, 2026-08-23: *«você digita 8 quadros e não vê onde eles começam ou terminam»*).
+///
+/// ⚠️ **É VISTA, não documento**, e por isso o valor vive só no [`crate::interaction::WidgetStore`]
+/// e a shell lê-o direto — sem `EditorAction`, sem commit, sem undo, sem save. Um sprite com grelha
+/// desenha UMA célula, então nada no canvas diz onde os cortes caem; a folha aberta é a resposta, e
+/// ela é tão transitória quanto o olhar do artista.
+///
+/// ⛔ Nunca a promova a componente: ela reabriria com o projeto, e o artista veria uma cena que
+/// não montou.
+pub const INSP_SHEET_PREVIEW: NodeId = hash_node_id("insp_sheet_preview");
+
 /// Title-bar color dot for the Grid Snap panel. Kept (Grid Snap is a
 /// settings panel, not an image tool). The original broadcast added
 /// PAD/BGR/CEQ/UPS/EQS dots too, but those were removed 2026-05-24

@@ -356,6 +356,7 @@ pub(crate) fn paint_sprite_sections(
                 inner_x,
                 inner_w,
                 y,
+                info,
             ),
         };
         y = finish_section(

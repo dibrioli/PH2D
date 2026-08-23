@@ -287,8 +287,10 @@ pub(crate) mod point_gizmo;
 mod present;
 mod sprite_anim_tick;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
-mod sim_extract;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
+mod sheet_grid_overlay;
+mod sim_extract;
+mod sim_extract_sheet;
 mod sim_extract_slice;
 mod snapshots;
 /// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — lê o espelho pelo `SimRef` e
@@ -1893,6 +1895,16 @@ impl crate::App {
         // frame, so reading `self.bgremoval_preview_gpu` here picks
         // up last frame's upload (1-frame lag is invisible — the
         // preview is a continuous animation).
+        // **A FOLHA ABERTA** (Enio, 2026-08-23: *«você digita 8 quadros e não vê onde eles começam
+        // ou terminam»*): com a caixa marcada, a sprite selecionada desdobra a grelha dela em
+        // células fantasma no canvas.
+        //
+        // ⚠️ **Lido direto do `WidgetStore`, sem passar pelo barramento**, e a razão é o que isto
+        // É: uma VISTA. Uma `EditorAction` levá-lo-ia ao commit, ao undo e ao save — e o artista
+        // reabriria o projeto com a folha aberta sem se lembrar de a ter aberto. O store já é a
+        // porta de outros pedidos de vista deste mesmo painel (`take_sheet_size_request`).
+        let sheet_preview: Option<ph2d_ecs::Entity> =
+            hero_screen.as_ref().and_then(sim_extract_sheet::previewed);
         let bgremoval_preview_override: Option<sim_extract::PreviewOverride> = self
             .bgremoval_preview_gpu
             .map(|gpu| sim_extract::PreviewOverride {
@@ -2472,6 +2484,7 @@ impl crate::App {
             camera.cull_mask,
             default_filter,
             ph2d_ecs::RepeatMode::Disabled,
+            sheet_preview,
         );
 
         // Sprite-layer clear color = backdrop visible in the canvas
@@ -8806,6 +8819,21 @@ impl crate::App {
                     paint_ctx.text,
                     vector_scene,
                 );
+                // **AS LINHAS DA GRELHA** sobre a folha aberta de uma sprite (Enio, 2026-08-23).
+                // ⚠️ Vizinha da decoração da folha-OBJETO de propósito: as duas dizem *«isto está
+                // cortado assim»*, uma para a folha empacotada e outra para a grelha de um sprite,
+                // e ler as duas seguidas é o que impede a próxima de nascer num terceiro sítio.
+                if let Some(e) = super::render_loop::sim_extract_sheet::previewed(hero) {
+                    super::render_loop::sheet_grid_overlay::draw(
+                        sim,
+                        e,
+                        hero.project.pixels_per_meter,
+                        cam_affine,
+                        px_per_world,
+                        hero.theme,
+                        vector_scene,
+                    );
+                }
                 // **A LEGENDA DA CENA DE SMOKE** (Enio 2026-08-23: *"melhore as explicações do
                 // smoke"*) — o rótulo pousa em cima do caso que ele explica. No-op quando
                 // nenhuma cena publicou, que é todo arranque normal do editor.

@@ -149,3 +149,59 @@ e as duas metades do commit (sem `playing = false`, sem `clamp`).
 gesto. *O gate de alcance fez exactamente o trabalho para que foi escrito, no dia seguinte.*
 
 **Suíte:** 17.945/17.945.
+
+## §7 — Adenda: a grelha vê-se no canvas (item 1 do inventário, pedido do Enio)
+
+*«você digita 8 quadros e não vê onde eles começam ou terminam»* — um sprite com grelha desenha
+**uma célula**, então nada no canvas dizia onde os cortes caem. Arrastar a barra de frames mostra
+*que* algo está errado; não mostra *onde*.
+
+**A caixa «Show sheet on canvas»** (§4 Sprite Sheet) abre a folha: as outras células, esmaecidas,
+no lugar delas, com as linhas dos cortes por cima e a célula viva contornada.
+
+| Peça | Ficheiro | Natureza |
+|---|---|---|
+| o fan-out puro | `render_loop/sim_extract_sheet.rs` | **molde do 9-slice**: função pura + chamador que só coloca |
+| as linhas | `render_loop/sheet_grid_overlay.rs` | irmão do `sheet_overlay` (que decora a folha-OBJETO) |
+| o interruptor | `sections/sprite_sheet.rs::sheet_preview_row` | irmã por CAP de função (209/200) |
+| o id | `ids::INSP_SHEET_PREVIEW` | **vista**, não documento |
+
+### As três decisões
+
+1. **Fantasmas de PRESENTE.** As células extra não existem no `SimWorld`, não entram no undo, não
+   são salvas e somem com o interruptor — a natureza do `override_for_entity`, e o oposto do
+   9-slice, cujos nove quads **são** o que o sprite é. Partilham o `SimRef` e levam
+   `SlicePatchMirror` pela razão que o irmão documenta.
+2. **O interruptor não passa pelo barramento.** A shell lê `hero.store.checkbox(…)` no quadro. Uma
+   `EditorAction` levá-lo-ia ao commit, ao undo e ao save — e o artista reabriria o projeto com a
+   folha aberta sem se lembrar de a ter aberto. ⚠️ É a única caixa do Inspector que ninguém
+   despacha, e o gate afirma-o pelo **estado que ela deixa**, não por um evento.
+3. **Quem decide lê o que o canvas lê.** A caixa aparece a partir do `hframes` do **snapshot**, e
+   não do campo do store — a lei que a caixa «Playing» pagou no mesmo dia. Pelo campo, ela
+   existiria a meio de uma edição, antes de o mundo ter grelha, e ligá-la não mostraria nada.
+
+### Gates (14 novos) e o buraco que fica declarado
+
+`sim_extract_sheet` (7): sem grelha não há folha · a viva nunca ganha fantasma · a grelha abre
+`+X`/`−Y` · a sub-UV é a **mesma** que o extract dá àquele frame · o fantasma soma ao pivô e
+esmaece · o flip espelha a grelha · a decisão de abrir.
+`sheet_grid_overlay` (5): sem grelha não há retículo · abre à volta da viva e para baixo · segue o
+pivô autorado · o flip abre para o outro lado **e a viva não se move** · ⭐ **as linhas caem sobre
+as células que os fantasmas desenham** (o gate que liga os dois módulos, que derivam a posição por
+caminhos diferentes — sem ele cada um passa sozinho e as linhas caem no meio dos desenhos).
+`the_sheet_grid_switch_…` (2): só existe onde há grelha · o clique muda o valor que a shell lê.
+
+⚠️ **O que NÃO tem gate, e está escrito no código:** o laço que de facto emite as células. O
+`sim_extract::run` pede um `SpriteRenderer` vivo, então ele **não é alcançável de um teste** — o
+mesmo buraco que deixa o fan-out do 9-slice sem gate de emissão e os quatro goldens da spec por
+escrever (falta o arnês headless). O que se fez foi **encolher o resíduo**: a decisão saiu para
+`should_open` (gateada), e o que fica é um `for` sobre duas funções já gateadas.
+
+**Mutações (5):** a viva ganha fantasma · o `Y` da grelha inverte (sangra nos **dois** módulos, que
+é a prova de que o gate cruzado morde) · o retículo ignora o pivô · o retículo não espelha · o
+interruptor aparece sempre.
+
+⛔ **Fora, com motivo:** clicar numa célula para escolher o frame — pede hit-test de canvas a
+competir com a seleção, e a barra de frames e o campo `Frame` já respondem a isso.
+
+**Smoke:** `PH2D_ANIM_SMOKE=1`, passo 9.

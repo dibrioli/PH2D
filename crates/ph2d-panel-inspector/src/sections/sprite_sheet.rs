@@ -18,6 +18,7 @@ pub(crate) fn paint_sprite_sheet_section(
     x: f32,
     w: f32,
     y: f32,
+    info: &ph2d_editor_core::screens::hero::InspectorSpriteInfo,
 ) -> f32 {
     let label_font = TypeToken::Sm.px();
     let field_h = ROW_H_PX;
@@ -190,7 +191,69 @@ pub(crate) fn paint_sprite_sheet_section(
         "Frame",
         ids::INSP_SPRITE_FRAME,
     );
-    cur_y += field_h + SECTION_BOTTOM_PAD_PX;
+    cur_y += field_h + row_gap;
+
+    cur_y = sheet_preview_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        cb_h,
+        info,
+    );
+    cur_y += SECTION_BOTTOM_PAD_PX;
 
     fold.finish(store, scene, hit_index, cur_y)
+}
+
+/// **«Show sheet on canvas»** — a grelha desdobra-se em células fantasma à volta da viva
+/// (Enio, 2026-08-23: *«você digita 8 quadros e não vê onde eles começam ou terminam»*).
+///
+/// ⚠️ **Função irmã por CAP** (200): com este bloco inline a `paint_sprite_sheet_section` media
+/// **209**. *A cura de um teto estourado é o corte, nunca uma isenção.*
+///
+/// ⚠️ **Só quando HÁ grelha.** Numa sprite `1×1` a caixa não teria o que desdobrar, e um
+/// interruptor que não faz nada ensina a desconfiar dos outros — a mesma lei do `+ Add Animator`
+/// da §11: a face sem estado mostra o que se **pode** fazer.
+///
+/// ⚠️ **A contagem vem do SNAPSHOT, e não dos campos do store** — a lei que este módulo pagou no
+/// mesmo dia na caixa «Playing»: quem *decide* lê a mesma fonte que quem *consome*. O canvas abre
+/// a folha a partir do `Sprite` do MUNDO; decidir pelo número que está no campo faria a caixa
+/// existir a meio de uma edição — antes de o mundo ter grelha — e ligá-la não mostraria nada.
+#[allow(clippy::too_many_arguments)]
+fn sheet_preview_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    cb_h: f32,
+    info: &ph2d_editor_core::screens::hero::InspectorSpriteInfo,
+) -> f32 {
+    let cells = u64::from(info.hframes.max(1)) * u64::from(info.vframes.max(1));
+    if cells <= 1 {
+        return y;
+    }
+    let (_, value) = store
+        .checkbox(ids::INSP_SHEET_PREVIEW)
+        .unwrap_or((CheckboxState::Normal, CheckboxValue::Unchecked));
+    let rect = Rect::new(x, y, w, cb_h);
+    hit_index.register(ids::INSP_SHEET_PREVIEW, rect);
+    paint_checkbox(
+        &Checkbox::new(ids::INSP_SHEET_PREVIEW, "Show sheet on canvas")
+            .visual(store.checkbox_visual(ids::INSP_SHEET_PREVIEW))
+            .value(value),
+        rect,
+        scene,
+        text_system,
+        theme,
+    );
+    y + cb_h
 }

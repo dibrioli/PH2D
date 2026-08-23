@@ -157,7 +157,12 @@ fn resolve_mask_meta(sim: &World, entity: Entity, clip_group: u32, clip_meta: u3
 /// `hframes`/`vframes` floor at 1 and `frame` is clamped into the grid,
 /// so the default 1×1 sheet returns the input rect unchanged (no-op for
 /// every legacy sprite). Render-only (PresentWorld), HR-5 exempt.
-fn sprite_sheet_subrect(uv: [f32; 4], hframes: u32, vframes: u32, frame: u32) -> [f32; 4] {
+pub(super) fn sprite_sheet_subrect(
+    uv: [f32; 4],
+    hframes: u32,
+    vframes: u32,
+    frame: u32,
+) -> [f32; 4] {
     let hf = hframes.max(1);
     let vf = vframes.max(1);
     if hf == 1 && vf == 1 {
@@ -276,6 +281,13 @@ pub(super) fn run(
     // all-`Inherit` sprite resolves to (from the project image filter).
     default_filter: FilterMode,
     default_repeat: RepeatMode,
+    // **A FOLHA ABERTA** (Enio, 2026-08-23): a entidade cuja grelha se desdobra em células
+    // fantasma no canvas. `None` = ninguém, e o frame é byte-idêntico ao de antes desta feature.
+    //
+    // ⚠️ **Um parâmetro, e não um componente**, pela razão do `preview_overrides` ao lado: isto é
+    // uma vista, não conteúdo. Um componente entraria no undo, no save e no snapshot — e o artista
+    // reabriria o projeto com a folha aberta, sem se lembrar de a ter aberto.
+    sheet_preview: Option<ph2d_ecs::Entity>,
 ) {
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
@@ -519,6 +531,10 @@ pub(super) fn run(
                     // (audit E-3): the transient preview texture is a
                     // full-frame bake, not a sheet, so slicing it would
                     // show only one cell.
+                    // ⚠️ **A UV da GRELHA INTEIRA**, guardada antes de a célula ser escolhida —
+                    // é ela que a folha aberta percorre. Derivá-la de volta a partir da célula
+                    // seria multiplicar por `hframes` uma conta que este sítio já tem exacta.
+                    let sheet_uv = atlas_uv;
                     let atlas_uv = if override_for_entity.is_some() {
                         atlas_uv
                     } else {
@@ -574,6 +590,43 @@ pub(super) fn run(
                     ) {
                         None => {
                             builder.insert(base);
+                            // **A FOLHA ABERTA** (Enio, 2026-08-23): as outras células da grelha,
+                            // esmaecidas e no lugar delas, para o artista VER onde os cortes caem.
+                            //
+                            // ⚠️ **Só no braço normal.** Um 9-slice já abre UMA célula em nove
+                            // quads; abrir também as outras multiplicaria os dois fan-outs
+                            // (`9 × cells`) para responder a uma pergunta que o 9-slice não faz —
+                            // ali a grelha é a fonte das bordas, não uma tira de frames.
+                            //
+                            // ⚠️ E não sob `override_for_entity`: a textura de pré-visualização de
+                            // uma ferramenta é um bake de quadro inteiro, não uma folha — é a
+                            // mesma razão pela qual a sub-UV da célula é saltada acima.
+                            if let Some(cells) =
+                                crate::render_loop::sim_extract_sheet::should_open(
+                                    sheet_preview,
+                                    sim_entity,
+                                    override_for_entity.is_some(),
+                                    spr,
+                                )
+                            {
+                                // O `drop` é pelo EMPRÉSTIMO, como no braço do 9-slice ao lado.
+                                #[allow(clippy::drop_non_drop)]
+                                drop(builder);
+                                for i in 0..cells {
+                                    if let Some((uv, off)) =
+                                        crate::render_loop::sim_extract_sheet::cell(spr, sheet_uv, i)
+                                    {
+                                        present.spawn((
+                                            SimRef(sim_entity),
+                                            gt,
+                                            crate::render_loop::sim_extract_sheet::ghost(
+                                                &base, uv, off,
+                                            ),
+                                            ph2d_render::nine_slice::SlicePatchMirror,
+                                        ));
+                                    }
+                                }
+                            }
                         }
                         Some(patches) => {
                             // O fan-out em si é uma função PURA (e testada); aqui só resta

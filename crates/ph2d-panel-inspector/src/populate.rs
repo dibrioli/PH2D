@@ -269,6 +269,19 @@ fn populate_sprite_sheet(store: &mut WidgetStore) {
             },
         );
     }
+    // **«Show sheet on canvas»** — ⚠️ **a única caixa deste painel que NINGUÉM despacha**, e é de
+    // propósito: ela é uma VISTA, e o valor dela vive aqui, no store. A shell lê-o direto no
+    // quadro (`sheet_preview`, em `render_loop`), sem `EditorAction` — uma edição levá-la-ia ao
+    // undo e ao save, e o artista reabriria o projeto com a folha aberta sem se lembrar disso.
+    //
+    // ⚠️ Por isso ela também **não** aparece em nenhum `sync`: não há mundo de onde a semear.
+    store.register(
+        ids::INSP_SHEET_PREVIEW,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Normal,
+            value: CheckboxValue::Unchecked,
+        },
+    );
 }
 
 /// W2 Sprite Inspector v2 Color & Tint controls: Opacity Slider (0..1

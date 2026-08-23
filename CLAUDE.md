@@ -688,6 +688,12 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   regista um passo de undo (o relógio vive num `SimComponent` registado) — **família
   pré-existente**, a física faz o mesmo com o `Transform`; as três saídas estão na auditoria §4 e a
   escolha é do Enio.
+  ⭐ **A GRELHA VÊ-SE** (Enio, 2026-08-23): a caixa **«Show sheet on canvas»** (§4 Sprite Sheet, só
+  aparece com grelha) abre a folha no canvas — as outras células esmaecidas no lugar delas, com as
+  linhas dos cortes e a viva contornada. ⚠️ **Fantasmas de PRESENTE, nunca documento** (o molde é o
+  fan-out do 9-slice) e o interruptor é **vista**: vive só no `WidgetStore`, sem barramento, sem
+  undo, sem save. ⛔ Um clique numa célula **não** escolhe o frame — pede hit-test de canvas a
+  competir com a seleção; a barra de frames e o campo já o fazem.
   ⏳ **IMPORTAR ASEPRITE (`.ase`) — autorizado pelo Enio, 2026-08-23**, e ele **muda o que está
   «fora»**: a duração por-FRAME foi recusada por *não haver quem a produza* — o importador é
   exactamente quem a produziria, então quem pegar no `.ase` **reabre essa recusa com o número na

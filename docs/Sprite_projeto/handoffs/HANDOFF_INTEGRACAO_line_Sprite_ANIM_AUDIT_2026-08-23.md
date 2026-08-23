@@ -113,3 +113,39 @@ que nenhuma se aplicou daqui estão na [auditoria §4](../21_auditoria_da_animac
 - Recusas medidas desta wave (⛔ não reconstruir sem ler): alcance nos campos da biblioteca ·
   alcance em `from`/`to` · clicar na lista tocar sempre · limpar o `current` ao apagar uma
   animação · dicas de hover. Todas na [auditoria §5](../21_auditoria_da_animacao_2026-08-23.md).
+
+## §6 — Adenda: a barra de frames arrasta (pedido do Enio, mesmo dia)
+
+*«permita arrastar manualmente o slider de frames»* — e ela **não era um slider**: dois retângulos
+pintados à mão, sem id e sem entrada no store. Bonita, informativa, morta sob o rato.
+
+**Cura:** `ids::INSP_ANIM_FRAME_SCRUB` registado como `InteractiveState::Slider`. O despachante dá
+o salto-ao-clique e o arrasto **sem máquina nova** (a mesma porta da Opacidade). A trilha subiu de
+6 para 10 px — o retângulo de acerto **é** a trilha, então a altura dela é o alvo do dedo.
+
+- **A régua mudou de progresso para POSIÇÃO** (`passo/(total-1)`): uma barra que se agarra mede
+  «onde está», não «quanto passou».
+- **Agarrar PAUSA** (`AnimFieldEdit::SetFrame` põe `playing = false` e zera o `elapsed_ticks`), e o
+  clamp ao intervalo é do **commit**, não do painel — o snapshot é de um quadro atrás.
+
+### ⭐ A mutação que SOBREVIVEU, e o que ela mudou no desenho
+
+O gate do seam afirmava apanhar a troca posição↔progresso pela ponta esquerda. **Não apanhava** —
+o caminho do clique (`x → 0..1 → célula`) não passa pelo pintor. A causa era mais funda: **a régua
+existia em TRÊS cópias** (pintor · `sync` · despacho). Hoje é uma lei em dois sentidos no modelo,
+`InspectorAnimInfo::scrub_position` ↔ `scrub_cell`, com gate de ida-e-volta sobre cada célula do
+intervalo. *Um sobrevivente não é um gate que falta: é o desenho a dizer onde está a duplicação.*
+
+**Gates novos (3):** `seam_anim::the_frame_bar_is_dragged_not_just_looked_at` ·
+`inspector_anim_transport_tests::dragging_the_frame_bar_sets_the_cell_pauses_and_stays_inside_the_range` ·
+`inspector_model_anim::the_scrub_position_and_the_cell_are_inverses`.
+
+**Mutações (4):** M12 «a régua volta a progresso» (sobreviveu na 1ª forma; sangra na lei unificada)
+· M13 «a barra sai do `populate`» → *«MORTA sob o rato»* · M14 «`scrub_cell` trunca» ·
+e as duas metades do commit (sem `playing = false`, sem `clamp`).
+
+⚠️ **`AnimFieldEdit` ganhou a variante `SetFrame(u32)`** — e o
+`every_edit_the_model_declares_is_reachable_by_a_gesture` **reprovou a compilação** até ela ter
+gesto. *O gate de alcance fez exactamente o trabalho para que foi escrito, no dia seguinte.*
+
+**Suíte:** 17.945/17.945.

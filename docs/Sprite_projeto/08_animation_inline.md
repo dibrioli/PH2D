@@ -425,7 +425,14 @@ mudos da §9 Sampling; o cap de âncoras que o gate
     partir do snapshot; o `WidgetStore` só publica o estado para a acessibilidade. O contrário era
     uma dupla fonte de verdade que divergia no instante em que o **motor** mudava o facto — e foi
     exatamente o que o Enio reportou como *«às vezes preciso clicar mais de uma vez»*.
-14. **A seleção múltipla DIZ-SE.** As edições da §11 não se espalham (o índice que carregam só
+14. ⭐ **A BARRA DE FRAMES É UM SLIDER, e ela mede POSIÇÃO** (`passo / (total-1)`), não progresso
+    (`(passo+1) / total`). Uma barra que só informa pode medir «quanto já passou»; uma que se
+    agarra tem de medir «onde está», senão o polegar não pousa em cima da célula. ⚠️ **Agarrá-la
+    PAUSA** — enquanto a reprodução corre, o tique também escreve o `Sprite::frame`, e o dedo e o
+    relógio disputariam o mesmo campo. ⚠️ A posição e a célula são **uma lei em dois sentidos**
+    (`scrub_position` ↔ `scrub_cell`), depois de uma mutação sobrevivente ter mostrado que ela
+    vivia em três cópias.
+15. **A seleção múltipla DIZ-SE.** As edições da §11 não se espalham (o índice que carregam só
     significa alguma coisa na biblioteca da entidade ativa), e a seção avisa-o **antes** de
     oferecer controlo nenhum.
 

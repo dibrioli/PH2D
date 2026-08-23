@@ -227,3 +227,61 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
         "quem PAUSOU a meio de um ciclo continua a poder folhear a lista em silencio"
     );
 }
+
+/// **ARRASTAR A BARRA PÕE A CÉLULA, PAUSA, e nunca sai do intervalo.**
+///
+/// ⚠️ **A pausa é o gesto e não um efeito colateral:** enquanto a reprodução corre, o tique também
+/// escreve o `Sprite::frame`, e o dedo e o relógio disputariam o mesmo campo — a imagem piscaria
+/// entre a célula arrastada e a que o relógio acabou de pôr. O gate corre o relógio DEPOIS do
+/// arrasto, que é a única forma de essa disputa aparecer.
+///
+/// ⚠️ **E o clamp é do COMMIT.** O painel deriva a célula do snapshot, que é de um quadro atrás;
+/// uma célula fora do intervalo ficaria inalcançável pelo `advance` (que só reposiciona o que já
+/// está fora, e à ponta de ENTRADA — desfazendo o arrasto no tique seguinte).
+///
+/// **Mutação que deve sangrar:** tirar o `p.playing = false`, **ou** trocar o `clamp` por uma
+/// escrita direta.
+#[test]
+fn dragging_the_frame_bar_sets_the_cell_pauses_and_stays_inside_the_range() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sprite(&mut sim, 8);
+    let mut lib = SpriteAnimations::new();
+    lib.insert(AnimationTag {
+        frame_ms: 10,
+        ..AnimationTag::new("walk", 2, 5)
+    })
+    .unwrap();
+    sim.world_mut().entity_mut(e).insert(lib);
+    edit(&mut sim, e, &reg, AnimFieldEdit::AddPlayer);
+    edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("walk".into()));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
+    assert!(
+        info(&sim, e).playing,
+        "a cena estava a TOCAR antes do arrasto"
+    );
+
+    edit(&mut sim, e, &reg, AnimFieldEdit::SetFrame(4));
+    let after = info(&sim, e);
+    assert_eq!(after.frame, 4, "a celula arrastada e' a que fica");
+    assert!(
+        !after.playing,
+        "quem pega no volante conduz -- arrastar a barra tem de PAUSAR"
+    );
+
+    // ⚠️ E o relogio tem de deixar a celula quieta. Sem a pausa, isto anda.
+    for _ in 0..20 {
+        crate::render_loop::sprite_anim_tick::tick_sprite_animations(&mut sim, 1, 0.016);
+    }
+    assert_eq!(
+        info(&sim, e).frame,
+        4,
+        "com a reproducao pausada o tique nao pode mexer na celula arrastada"
+    );
+
+    // O CLAMP, nas duas pontas: fora do intervalo da tag, o commit fixa.
+    edit(&mut sim, e, &reg, AnimFieldEdit::SetFrame(0));
+    assert_eq!(info(&sim, e).frame, 2, "abaixo do intervalo fixa no `from`");
+    edit(&mut sim, e, &reg, AnimFieldEdit::SetFrame(99));
+    assert_eq!(info(&sim, e).frame, 5, "acima do intervalo fixa no `to`");
+}

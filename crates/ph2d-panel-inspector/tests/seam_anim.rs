@@ -420,6 +420,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         E::DirectionOverride(0),
         E::LoopOverride(0),
         E::Rewind,
+        E::SetFrame(0),
     ];
     fn sample(e: &AnimFieldEdit) -> u8 {
         match e {
@@ -441,6 +442,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
             E::DirectionOverride(..) => 15,
             E::LoopOverride(..) => 16,
             E::Rewind => 17,
+            E::SetFrame(..) => 18,
         }
     }
     let want: std::collections::BTreeSet<u8> = declared.iter().map(sample).collect();
@@ -473,6 +475,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         note(click_fresh(anim(true, false), id));
     }
     note(click_fresh(no_player(), ids::INSP_ANIM_ADD_PLAYER));
+    note(drag_frame_bar(anim(true, false), 0.9));
     for (id, v) in [
         (ids::INSP_ANIM_FROM, 1.0),
         (ids::INSP_ANIM_TO, 2.0),
@@ -541,5 +544,68 @@ fn a_multiple_selection_says_so_before_offering_any_control() {
     assert!(
         (many - one) > 4.0,
         "o deslocamento tem de ser o de uma linha de texto, e não ruído de layout"
+    );
+}
+
+/// Arrasta a barra de frames até `frac` do curso e devolve o barramento.
+///
+/// ⚠️ **Pelo `click_at` REAL**, e não por um `ValueChanged` sintético: é o `pointer_down` do
+/// despachante que faz o salto-ao-clique de um `Slider`, e ele só o faz para um id que o store
+/// tenha registado **como slider**. Um evento fabricado passaria verde sobre uma barra que continua
+/// a ser dois retângulos pintados.
+fn drag_frame_bar(info: InspectorAnimInfo, frac: f32) -> Vec<EditorAction> {
+    let (mut host, mut state) = host_with(info);
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let rect = rects
+        .iter()
+        .find(|(n, _)| *n == ids::INSP_ANIM_FRAME_SCRUB)
+        .map(|(_, r)| *r)
+        .expect("a §11 nunca pintou a barra de frames");
+    let events = host.click_at(rect.x + rect.w * frac, rect.y + rect.h * 0.5);
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::ValueChanged(v) if *v == ids::INSP_ANIM_FRAME_SCRUB)),
+        "carregar na barra produziu {events:?} — ela é pintada e hit-registada, mas o store não a \
+         tem como Slider: está MORTA sob o rato"
+    );
+    for ev in events {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+    }
+    let out = host.drained_actions();
+    clear();
+    out
+}
+
+/// **A BARRA DE FRAMES ARRASTA** (pedido do Enio, 2026-08-23) — e alcança as DUAS pontas.
+///
+/// ⚠️ **O que este gate mede é a COSTURA, e não a régua** — e a distinção foi paga: a primeira
+/// versão dizia que a ponta esquerda apanhava a troca posição↔progresso, e **uma mutação provou o
+/// contrário**. O caminho do clique (`x → 0..1 → célula`) não passa pelo pintor, então mudar só o
+/// desenho não move nenhuma destas asserções. Quem prende a régua é o
+/// `the_scrub_position_and_the_cell_are_inverses`, no modelo; **aqui prende-se que o clique nasce**.
+///
+/// A fixtura tem `walk` = células 0-3 sobre uma grelha de 8, e o snapshot está no frame 1.
+///
+/// **Mutação que deve sangrar:** tirar o `register` do `populate_anim` (a barra volta a ser dois
+/// retângulos mortos), **ou** trocar o `round` de `scrub_cell` por truncagem.
+#[test]
+fn the_frame_bar_is_dragged_not_just_looked_at() {
+    expect(
+        &drag_frame_bar(anim(true, false), 0.0),
+        AnimFieldEdit::SetFrame(0),
+        "arrastar até ao começo",
+    );
+    expect(
+        &drag_frame_bar(anim(true, false), 1.0),
+        AnimFieldEdit::SetFrame(3),
+        "arrastar até ao fim",
+    );
+    // ⚠️ **O ponto do MEIO, e ele não é decorativo:** com `round` a célula muda a meio caminho
+    // entre duas, e com `as u32` (truncar) a última só apareceria no pixel final da trilha.
+    expect(
+        &drag_frame_bar(anim(true, false), 0.5),
+        AnimFieldEdit::SetFrame(2),
+        "arrastar até ao meio",
     );
 }

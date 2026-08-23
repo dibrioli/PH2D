@@ -9,7 +9,9 @@
 
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore, format_number};
-use ph2d_editor_core::widget::{CheckboxState, CheckboxValue, TextInputState};
+use ph2d_editor_core::widget::{
+    CheckboxState, CheckboxValue, SliderOrientation, SliderState, TextInputState,
+};
 
 use super::populate::register_button_ids;
 
@@ -29,6 +31,18 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_ANIM_DIR);
     register_button_ids(store, &ids::INSP_ANIM_DIR_OVERRIDE);
     register_button_ids(store, &ids::INSP_ANIM_LOOP_OVERRIDE);
+
+    // ⚠️ **A barra de frames é um `Slider` REGISTADO, e é isso que a torna arrastável.** Sem
+    // entrada no store ela é pintada, hit-registada e **morta sob o rato** — o despachante decide
+    // pelo `is_focusable`, e o ramo `None => false` engole o clique em silêncio.
+    store.register(
+        ids::INSP_ANIM_FRAME_SCRUB,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.0,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
 
     for id in [ids::INSP_ANIM_PLAYING, ids::INSP_ANIM_AUTOPLAY] {
         store.register(

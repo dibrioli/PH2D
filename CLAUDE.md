@@ -660,7 +660,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   reprodução que se **ESGOTOU** volta ao princípio quando alguém lhe toca (a caixa **ou** a lista),
   e uma pausa explícita não é tocada; **rebobinar move a IMAGEM**, não só contadores; e a caixa
   «Playing» **pergunta à cena**, nunca ao `WidgetStore` (era dupla fonte de verdade, e o motor
-  escreve aquele campo sozinho). ⛔ A §11 tinha 33 gates e **nenhum que carregasse num pixel** —
+  escreve aquele campo sozinho). ⚠️ **A barra de frames ARRASTA** (pedido do Enio) — ela era
+  desenho, hoje é um `Slider` registado que mede **posição** e não progresso, e **agarrá-la pausa**
+  (o dedo e o tique escreviam o mesmo campo). ⭐ A régua vivia em **três cópias** e uma mutação
+  sobreviveu a mudar só a do pintor: hoje é `scrub_position` ↔ `scrub_cell`, uma lei em dois
+  sentidos com gate de ida-e-volta. ⛔ A §11 tinha 33 gates e **nenhum que carregasse num pixel** —
   hoje tem `seam_anim.rs`. ⚠️ **MEDIDO e não curado:** com a animação a tocar, um quadro com input
   regista um passo de undo (o relógio vive num `SimComponent` registado) — **família
   pré-existente**, a física faz o mesmo com o `Transform`; as três saídas estão na auditoria §4 e a

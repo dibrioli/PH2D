@@ -128,6 +128,22 @@ pub(crate) fn apply_anim_event(
         return true;
     }
 
+    // ⚠️ **A BARRA DE FRAMES** — o `0..1` do slider vira célula pela INVERSA da mesma lei que a
+    // pinta (`InspectorAnimInfo::scrub_cell` ↔ `scrub_position`).
+    //
+    // ⚠️ **A régua vivia aqui, no pintor e no `sync`, em três cópias** — e uma mutação que mudou só
+    // a do pintor **sobreviveu** à suíte inteira, porque nenhum gate ligava o que se desenha ao que
+    // o clique produz. Hoje é uma função só, com gate de ida-e-volta no modelo.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && id == ids::INSP_ANIM_FRAME_SCRUB
+    {
+        let v = host.store().slider(id).map_or(0.0, |(_, v)| v);
+        if let Some(cell) = info.scrub_cell(v) {
+            push(host, info.entity_bits, AnimFieldEdit::SetFrame(cell));
+        }
+        return true;
+    }
+
     if let WidgetEvent::ValueChanged(id) = ev {
         let v = host.store().number_value(id).unwrap_or(0.0);
         // A velocidade é do TOCADOR e não da linha — ela não precisa da biblioteca.

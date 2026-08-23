@@ -25,6 +25,7 @@
 | F9 | `ph2d_ecs::animator_state` **exportada sem consumidor**, com o painel a reimplementar a lei sem oráculo | ✅ curado (gate de paridade) |
 | F10 | Um comentário no `render_loop/mod.rs` **afirmava o contrário do código** | ✅ curado |
 | F11 | **Um quadro de reprodução mexe num `SimComponent` registado** ⇒ com a animação a tocar, um quadro com input regista um passo de undo | ⚠️ **medido e RECORDADO** — família pré-existente, decisão do Enio (§4) |
+| F12 | **A barra de frames era só DESENHO** — dois retângulos sem id, sem entrada no store: bonita, informativa e morta sob o rato | ✅ curado (pedido do Enio) — §2-bis |
 
 ## §1 — O defeito reportado, e por que ele era «às vezes»
 
@@ -98,6 +99,39 @@ escolher outra animação é tocar-lhe.* Uma **pausa explícita** não é tocada
 choosing_an_overlapping_animation_still_starts_it_at_its_own_beginning,
 turning_playing_back_on_replays_an_animation_that_had_finished,
 choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_pause}`.
+
+## §2-bis — F12: a barra de frames arrasta (pedido do Enio)
+
+*«permita arrastar manualmente o slider de frames»* — e ela não era um slider: eram **dois
+retângulos pintados à mão**, sem id, sem entrada no store. Bonita, informativa, e morta sob o rato.
+
+**Cura:** um `Slider` registado. O despachante dá-lhe o salto-ao-clique (`pointer_down`) e o
+arrasto (`pointer_move`) **sem uma linha de máquina nova** — é a mesma porta da Opacidade e do
+Emissive. A trilha subiu de 6 para 10 px, e o número não é gosto: o retângulo de acerto **é** a
+trilha (o despachante deriva o valor de `rect.x`/`rect.w`), então a altura dela é o alvo do dedo.
+
+⚠️ **A régua teve de mudar de PROGRESSO para POSIÇÃO.** A barra media `(passo+1) / total` — com
+essa régua o primeiro frame já se desenha com uma fatia preenchida e o polegar não pousa sobre a
+célula. *Uma barra que só informa pode medir «quanto já passou»; uma que se agarra tem de medir
+«onde está».*
+
+⚠️ **Agarrar a barra PAUSA a reprodução**, e a pausa é o verbo: enquanto a reprodução corre o tique
+também escreve o `Sprite::frame`, e o dedo e o relógio disputariam o mesmo campo — a imagem
+piscaria entre a célula arrastada e a que o relógio acabou de pôr. *Quem pega no volante conduz*, e
+a caixa `Playing` di-lo.
+
+### ⭐ A mutação que SOBREVIVEU, e o que ela encontrou
+
+A primeira versão do gate afirmava que arrastar até à ponta esquerda apanhava a troca
+posição↔progresso. **Não apanhava**: trocar a régua **do pintor** passou a suíte inteira. O caminho
+do clique (`x → 0..1 → célula`) não passa pelo pintor, então mudar só o desenho não move asserção
+nenhuma — o polegar deixaria de pousar em cima do frame e nada diria nada.
+
+⇒ A causa era mais funda: **a régua existia em TRÊS cópias** — o pintor, o `sync` e o despacho.
+Hoje é uma lei em dois sentidos no modelo (`InspectorAnimInfo::scrub_position` ↔ `scrub_cell`), com
+gate de ida-e-volta sobre **cada** célula do intervalo (`the_scrub_position_and_the_cell_are_inverses`).
+
+*Um sobrevivente não é um gate a mais que falta: é o desenho a dizer onde está a duplicação.*
 
 ## §3 — O que deixou isto shipar, e o que passou a impedi-lo
 

@@ -69,6 +69,38 @@ fn rewind_to_start(
     queue_set(queue, registry, entity_bits, SPRITE, &sprite);
 }
 
+/// **Põe a cabeça de leitura numa célula**, fixando-a ao intervalo da animação em curso.
+///
+/// ⚠️ **O clamp é do COMMIT, e não do painel.** O painel deriva a célula do curso do slider contra
+/// o `progress()` do snapshot — que é de um quadro atrás. Entre o gesto e o commit alguém pode ter
+/// encolhido a grelha ou estreitado o intervalo, e uma célula fora dele fica **inalcançável** pelo
+/// `advance` (que só reposiciona o que já está fora, e à ponta de entrada — desfazendo o arrasto).
+fn set_frame(
+    world: &World,
+    entity_bits: u64,
+    player: &SpriteAnimator,
+    cell: u32,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) {
+    let entity = Entity::from_bits(entity_bits);
+    let Some(mut sprite) = world.get::<ph2d_render::Sprite>(entity).cloned() else {
+        return;
+    };
+    let cells = cells_of(world, entity);
+    // Sem tag que resolva, o pool inteiro é o alcance — é o que a spec §8.9 descreve para uma
+    // sprite sem animação escolhida.
+    let (lo, hi) = current_tag(world, entity, &player.current)
+        .and_then(|t| t.resolve(cells))
+        .unwrap_or((0, cells.saturating_sub(1)));
+    let frame = cell.clamp(lo, hi);
+    if sprite.frame == frame {
+        return;
+    }
+    sprite.frame = frame;
+    queue_set(queue, registry, entity_bits, SPRITE, &sprite);
+}
+
 /// Quantas células a grelha desta sprite tem — **o pool**, lido do `Sprite` e de mais nada.
 fn cells_of(world: &World, entity: Entity) -> u32 {
     world
@@ -223,6 +255,21 @@ pub(super) fn apply_anim_edit(
                 let tag = current_tag(world, entity, &p.current);
                 rewind_to_start(world, entity_bits, &mut p, tag.as_ref(), queue, registry);
             }
+            // ⚠️ **AGARRAR A BARRA PAUSA**, e a pausa é o gesto, não um efeito colateral: enquanto
+            // a reprodução corre, o tique também escreve o `Sprite::frame`, e o dedo e o relógio
+            // disputariam o mesmo campo — a imagem piscaria entre a célula arrastada e a que o
+            // relógio acabou de pôr. *Quem pega no volante conduz*, e a caixa `Playing` di-lo.
+            //
+            // ⚠️ **Não rebobina o ciclo.** O `repeat_count` e o ping-pong são de onde a reprodução
+            // ia; largar a barra e voltar a `Playing` continua a volta em curso a partir da célula
+            // escolhida, que é o que «arrastar até ali e seguir» quer dizer.
+            PlayerEdit::SetFrame(cell) => {
+                p.playing = false;
+                // O acumulador do frame anterior não pertence a este; deixá-lo faria a primeira
+                // célula depois do arrasto durar menos do que as outras.
+                p.elapsed_ticks = 0;
+                set_frame(world, entity_bits, &p, *cell, queue, registry);
+            }
         }
         queue_set(queue, registry, entity_bits, ANIMATOR, &p);
         return None;
@@ -332,6 +379,7 @@ enum PlayerEdit<'a> {
     DirectionOverride(&'a u8),
     LoopOverride(&'a u8),
     Rewind,
+    SetFrame(&'a u32),
 }
 
 fn as_player_edit(edit: &AnimFieldEdit) -> Option<PlayerEdit<'_>> {
@@ -344,6 +392,7 @@ fn as_player_edit(edit: &AnimFieldEdit) -> Option<PlayerEdit<'_>> {
         AnimFieldEdit::DirectionOverride(v) => PlayerEdit::DirectionOverride(v),
         AnimFieldEdit::LoopOverride(v) => PlayerEdit::LoopOverride(v),
         AnimFieldEdit::Rewind => PlayerEdit::Rewind,
+        AnimFieldEdit::SetFrame(v) => PlayerEdit::SetFrame(v),
         _ => return None,
     })
 }

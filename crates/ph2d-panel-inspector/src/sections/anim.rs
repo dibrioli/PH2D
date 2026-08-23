@@ -27,7 +27,13 @@ use ph2d_editor_core::widget::SectionFold;
 
 const BTN_H: f32 = 30.0; // LITERAL-PX-OK: altura de botão do Inspector
 const CHECK_H: f32 = 18.0; // LITERAL-PX-OK: altura visual do Checkbox
-const BAR_H: f32 = 6.0; // LITERAL-PX-OK: espessura da barra de progresso
+/// Espessura da barra de frames.
+///
+/// ⚠️ **Subiu de 6 para 10 px quando ela passou a arrastar-se**, e o número não é gosto: o
+/// retângulo de acerto **é** a trilha (o despachante deriva o valor de `rect.x`/`rect.w`), então a
+/// altura da trilha é o alvo do dedo. Seis pixels é uma linha de leitura, não um alvo — e uma
+/// barra que se agarra tem de **parecer** que se agarra.
+const BAR_H: f32 = 10.0; // LITERAL-PX-OK: altura de trilha de slider, é o alvo do ponteiro
 
 /// Um segmentado de N botões numa linha, com o índice `sel` aceso. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -174,10 +180,20 @@ fn player_block(
         usize::from(info.loop_override_tag),
     );
 
-    // **O frame, e onde ele está dentro da animação.**
+    // **O frame, e onde ele está dentro da animação — e a barra ARRASTA** (Enio, 2026-08-23).
     //
     // ⚠️ O número é `frame + 1 / total` — o artista conta a partir de um, e a barra é o mesmo
     // facto desenhado. *Uma fonte, duas leituras*: os dois saem do `progress()` do snapshot.
+    //
+    // ⚠️ **A fração é POSIÇÃO (`step / (span-1)`), e já foi PROGRESSO (`(step+1) / span`).** A
+    // troca não é estética: um `Slider` mapeia o curso inteiro, então com a régua antiga arrastar
+    // até à esquerda pararia no segundo frame e o primeiro seria **inalcançável pelo gesto**. Uma
+    // barra que só informa pode medir «quanto já passou»; uma que se agarra tem de medir «onde
+    // está».
+    //
+    // ⚠️ **O valor pintado vem do SNAPSHOT, nunca do store** — a lei que a caixa «Playing» pagou
+    // no mesmo dia: o `Sprite::frame` é escrito pelo TIQUE a cada avanço, e um widget que se
+    // lembra do que mostrou mente assim que outra pessoa mexe no facto.
     if let Some((step, span)) = info.progress() {
         let text = format!("Frame {} / {span}", step + 1);
         paint_text(
@@ -191,18 +207,18 @@ fn player_block(
             resolve(ColorToken::Text2, theme),
         );
         cur_y += font + Spacing::Xs.px();
-        ph2d_editor_core::paint::fill_rounded_rect(
+        let track = Rect::new(x, cur_y, w, BAR_H);
+        hit_index.register(ids::INSP_ANIM_FRAME_SCRUB, track);
+        // ⚠️ O retângulo de acerto **é** o da trilha, e tem de o ser: o despachante deriva o valor
+        // de `(px - rect.x) / rect.w`, então um hit mais largo que o desenho poria o polegar noutro
+        // sítio que não debaixo do dedo.
+        ph2d_editor_core::widget::paint_slider_track(
+            track,
+            info.scrub_position().unwrap_or(0.0),
+            ph2d_editor_core::widget::SliderOrientation::Horizontal,
+            store.slider_visual(ids::INSP_ANIM_FRAME_SCRUB),
             scene,
-            Rect::new(x, cur_y, w, BAR_H),
-            Radius::Sm.px(),
-            resolve(ColorToken::Bg2, theme),
-        );
-        let frac = (step + 1) as f32 / span as f32;
-        ph2d_editor_core::paint::fill_rounded_rect(
-            scene,
-            Rect::new(x, cur_y, w * frac, BAR_H),
-            Radius::Sm.px(),
-            resolve(ColorToken::Accent, theme),
+            theme,
         );
         cur_y += BAR_H + Spacing::Sm.px();
     }

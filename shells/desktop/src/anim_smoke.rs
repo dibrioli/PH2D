@@ -31,6 +31,7 @@
 //! 5. **Direction override** força uma direção sobre a que a animação declara; **Inherit** devolve.
 //! 6. **Rewind** devolve a imagem à primeira célula da animação escolhida.
 //! 7. Depois de o `attack` acabar, **Playing** volta a tocá-lo do princípio — num clique só.
+//! 8. **Arrastar a barra `Frame N / 8`** move a célula debaixo do dedo — e **pausa** a reprodução.
 //!
 //! ⚠️ **Os passos 2, 6 e 7 são a auditoria de 2026-08-23** ([doc 21](../../../docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md)):
 //! até ela, o passo 2 deixava a sprite muda (escolher outra não retomava a que se esgotara), o

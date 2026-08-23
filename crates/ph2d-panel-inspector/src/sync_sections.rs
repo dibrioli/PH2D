@@ -18,7 +18,7 @@
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::widget::CheckboxValue;
+use ph2d_editor_core::widget::{CheckboxValue, SliderState};
 
 use crate::state::InspectorState;
 
@@ -80,6 +80,23 @@ fn sync_anim_fields(
         }
     };
     put(host, ids::INSP_ANIM_SPEED, f64::from(an.speed));
+    // ⚠️ **A barra de frames espelha o mundo — MENOS enquanto o dedo a segura.** Ela pinta-se do
+    // snapshot, então o valor guardado no store só serve ao despachante (que compara com ele para
+    // decidir se houve mudança) e à a11y. Deixá-lo parado faria um segundo clique no MESMO sítio
+    // ser engolido em silêncio, porque `update_drag_value` não veria diferença.
+    //
+    // ⚠️ E reescrevê-lo **durante** o arrasto seria o painel a lutar com o ponteiro: o commit é de
+    // um quadro atrás, e o polegar recuaria sob o dedo a cada quadro.
+    if let Some(pos) = an.scrub_position()
+        && !matches!(
+            host.store().slider(ids::INSP_ANIM_FRAME_SCRUB),
+            Some((SliderState::Dragging, _))
+        )
+        && let Some(InteractiveState::Slider { value, .. }) =
+            host.store_mut().get_mut(ids::INSP_ANIM_FRAME_SCRUB)
+    {
+        *value = pos;
+    }
     // ⚠️ **AS DUAS CAIXAS ESPELHAM O MUNDO TODO O QUADRO, e é o oposto do que as irmãs fazem.**
     //
     // Nas §5 e §12 o store é a fonte do que se pinta, e por isso reescrevê-lo todo o quadro faria

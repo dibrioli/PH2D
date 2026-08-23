@@ -144,6 +144,18 @@ pub const INSP_ANIM_SPEED: NodeId = hash_node_id("insp_anim_speed");
 /// **«Rewind»** — repõe o ciclo no princípio da animação atual.
 pub const INSP_ANIM_REWIND: NodeId = hash_node_id("insp_anim_rewind");
 
+/// **A barra de frames — e ela é ARRASTÁVEL** (pedido do Enio, 2026-08-23).
+///
+/// ⚠️ **Um `Slider`, e não um desenho.** Ela nasceu como duas barras pintadas à mão, sem id e sem
+/// entrada no store: *bonita, informativa e morta sob o rato*. Ser um `Slider` registado é o que
+/// faz o despachante dar-lhe o salto-ao-clique (`pointer_down`) e o arrasto (`pointer_move`) sem
+/// uma linha de máquina nova — a mesma porta da Opacidade e do Emissive.
+///
+/// ⚠️ **O valor é `0..1` NORMALIZADO** (é o que um `Slider` guarda); quem o converte em célula é o
+/// despacho da §11, que tem o intervalo da animação aberta. ⛔ Não guarde a célula aqui: o
+/// intervalo muda com a grelha, e um `0..1` sobrevive a isso.
+pub const INSP_ANIM_FRAME_SCRUB: NodeId = hash_node_id("insp_anim_frame_scrub");
+
 /// A direção que SUBSTITUI a da animação. `0` = herdar; `1..=4` = as quatro de
 /// `ph2d_ecs::AnimDirection::ALL`.
 pub const INSP_ANIM_DIR_OVERRIDE: [NodeId; 5] = [

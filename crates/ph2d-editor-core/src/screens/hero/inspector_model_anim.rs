@@ -108,6 +108,44 @@ impl InspectorAnimInfo {
         }
     }
 
+    /// **A POSIÇÃO da cabeça de leitura no curso da barra, `0..1`.**
+    ///
+    /// ⚠️ **É posição, e não progresso.** A barra media `(passo+1) / total` enquanto só informava;
+    /// desde que ela se arrasta (2026-08-23) tem de medir `passo / (total-1)`, senão o polegar não
+    /// pousa em cima do frame — o primeiro frame desenhar-se-ia já com uma fatia preenchida.
+    ///
+    /// ⚠️ **Esta função e a [`scrub_cell`](Self::scrub_cell) são UMA lei em dois sentidos, e viviam
+    /// em TRÊS sítios** (o pintor, o `sync` e o despacho, cada um com a sua cópia). Uma mutação que
+    /// mudou só a do pintor **sobreviveu** a toda a suíte — foi isso que as trouxe para aqui. O
+    /// gate que as prende é `the_scrub_position_and_the_cell_are_inverses`.
+    ///
+    /// `None` quando não há animação a tocar ou ela não cabe na grelha — não há barra que mostrar.
+    #[must_use]
+    pub fn scrub_position(&self) -> Option<f32> {
+        let (step, span) = self.progress()?;
+        Some(if span > 1 {
+            step as f32 / (span - 1) as f32
+        } else {
+            0.0
+        })
+    }
+
+    /// **A INVERSA**: que célula (absoluta) corresponde a `v` no curso da barra.
+    ///
+    /// ⚠️ `round`, e não truncar: com truncagem a última célula só apareceria no pixel final da
+    /// trilha, e cada uma das outras ocuparia uma fatia deslocada de meia célula.
+    #[must_use]
+    pub fn scrub_cell(&self, v: f32) -> Option<u32> {
+        let row = self.rows.get(self.current_index()?)?;
+        let span = row.span(self.cells);
+        if span == 0 {
+            return None;
+        }
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+        let step = (v.clamp(0.0, 1.0) * (span - 1) as f32).round() as u32;
+        Some(row.from.min(row.to) + step)
+    }
+
     /// A posição do frame atual dentro da animação a tocar, para a barra: `(passo, total)`.
     ///
     /// `None` quando não há animação a tocar, ou quando ela não cabe — não há barra que mostrar.
@@ -171,6 +209,16 @@ pub enum AnimFieldEdit {
     LoopOverride(u8),
     /// Repõe o ciclo no princípio.
     Rewind,
+    /// **Põe a cabeça de leitura nesta CÉLULA** — o arrasto da barra de frames.
+    ///
+    /// ⚠️ **Célula absoluta, e não um passo dentro do intervalo.** O `Sprite::frame` é absoluto, e
+    /// um passo relativo obrigaria o commit a re-derivar o `lo` de uma tag que pode ter mudado
+    /// entre o gesto e o commit.
+    ///
+    /// ⚠️ **Agarrar a barra PAUSA a reprodução**, e isso é do verbo: enquanto o tique também
+    /// escreve o `Sprite::frame`, o dedo e o relógio disputam o mesmo campo e a imagem pisca entre
+    /// os dois. *Quem pega no volante conduz.*
+    SetFrame(u32),
 }
 
 #[cfg(test)]
@@ -234,6 +282,52 @@ mod tests {
             info(2, "walk").current_dangling(),
             "a tag existe e a grelha encolheu debaixo dela"
         );
+    }
+
+    /// **A POSIÇÃO e a CÉLULA são inversas uma da outra, em toda célula do intervalo.**
+    ///
+    /// ⚠️ **Este gate nasceu de uma mutação SOBREVIVENTE** (2026-08-23): a régua da barra vivia em
+    /// três sítios — o pintor, o `sync` e o despacho — e trocar a do PINTOR de posição para
+    /// progresso passava a suíte inteira, porque nada ligava o que se desenha ao que o clique
+    /// produz. O polegar deixaria de pousar em cima do frame e nenhum teste diria nada.
+    ///
+    /// ⇒ Uma lei, dois sentidos, e a ida-e-volta é a afirmação.
+    #[test]
+    fn the_scrub_position_and_the_cell_are_inverses() {
+        let mut i = info(8, "walk"); // walk = 2..=5 sobre 8 celulas
+        for cell in 2..=5u32 {
+            i.frame = cell;
+            let pos = i.scrub_position().expect("ha' barra");
+            assert!(
+                (0.0..=1.0).contains(&pos),
+                "a posicao tem de caber no curso: {pos}"
+            );
+            assert_eq!(
+                i.scrub_cell(pos),
+                Some(cell),
+                "ida-e-volta partida na celula {cell} (posicao {pos})"
+            );
+        }
+        // ⚠️ As DUAS PONTAS do curso alcancam as duas pontas do intervalo — e e' a metade que a
+        // regua de PROGRESSO nao dava: com ela o minimo do widget ja' valia uma celula.
+        i.frame = 2;
+        assert_eq!(
+            i.scrub_position(),
+            Some(0.0),
+            "a primeira celula fica no ZERO do curso"
+        );
+        i.frame = 5;
+        assert_eq!(i.scrub_position(), Some(1.0), "e a ultima no fim");
+        assert_eq!(i.scrub_cell(0.0), Some(2));
+        assert_eq!(i.scrub_cell(1.0), Some(5));
+        // Fora do curso: fixa, nunca extrapola.
+        assert_eq!(i.scrub_cell(-3.0), Some(2));
+        assert_eq!(i.scrub_cell(9.0), Some(5));
+        // Sem animacao a tocar (ou fora da grelha) nao ha' barra nem celula.
+        assert_eq!(info(8, "").scrub_position(), None);
+        assert_eq!(info(8, "").scrub_cell(0.5), None);
+        assert_eq!(info(2, "walk").scrub_position(), None);
+        assert_eq!(info(2, "walk").scrub_cell(0.5), None);
     }
 
     /// A barra de progresso conta **passos dentro do intervalo**, e satura em vez de mentir.

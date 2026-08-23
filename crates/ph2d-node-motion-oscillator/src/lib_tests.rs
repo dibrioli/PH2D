@@ -7,6 +7,7 @@
 
 use super::*;
 use crate::params_ui::PARAM_HINTS;
+use ph2d_node_registry::ParamWidget;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::{Cook, OpResolver};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
@@ -208,21 +209,21 @@ fn waveforms_stay_in_range_and_are_periodic() {
     for kind in 0..=4 {
         for step in 0..40 {
             let p = step as f32 * 0.1;
-            let v = waveform(kind, p, 0.5);
+            let v = waveform(kind, p, 0.5, None);
             assert!((-1.0..=1.0).contains(&v), "wave {kind} at {p} = {v}");
             assert!(
-                (waveform(kind, p, 0.5) - waveform(kind, p + 1.0, 0.5)).abs() < 1e-5,
+                (waveform(kind, p, 0.5, None) - waveform(kind, p + 1.0, 0.5, None)).abs() < 1e-5,
                 "wave {kind} periodic at {p}"
             );
         }
     }
     // Anchor points of the corrected sine approximation (preserved).
-    assert_eq!(waveform(0, 0.0, 0.5), 0.0);
-    assert_eq!(waveform(0, 0.25, 0.5), 1.0);
-    assert_eq!(waveform(0, 0.75, 0.5), -1.0);
+    assert_eq!(waveform(0, 0.0, 0.5, None), 0.0);
+    assert_eq!(waveform(0, 0.25, 0.5, None), 1.0);
+    assert_eq!(waveform(0, 0.75, 0.5, None), -1.0);
     // Spike: a narrow unipolar pulse — 1 at the cycle start, 0 through most.
-    assert_eq!(waveform(4, 0.0, 0.5), 1.0);
-    assert_eq!(waveform(4, 0.5, 0.5), 0.0);
+    assert_eq!(waveform(4, 0.0, 0.5, None), 1.0);
+    assert_eq!(waveform(4, 0.5, 0.5, None), 0.0);
 }
 
 #[test]
@@ -264,7 +265,7 @@ fn corrected_sine_beats_the_bare_parabola() {
     for k in 0..64 {
         let f = k as f32 / 64.0;
         let truth = (f * TAU).sin();
-        worst_corrected = worst_corrected.max((waveform(0, f, 0.5) - truth).abs());
+        worst_corrected = worst_corrected.max((waveform(0, f, 0.5, None) - truth).abs());
         worst_bare = worst_bare.max((bare(f) - truth).abs());
     }
     assert!(
@@ -411,4 +412,152 @@ fn the_head_arithmetic_halves_the_spike_and_the_knob_restores_it() {
         (lo_fixed - min).abs() < tol && (hi_fixed - max).abs() < tol,
         "com o knob: [{lo_fixed}, {hi_fixed}]"
     );
+}
+
+// ─── A SEXTA FORMA: a que o artista DESENHA (doc 89, folha 06) ───
+
+/// A curva das provas — um V invertido: sobe até ao meio e desce. `V(f) = 2f` até
+/// `½` e `2(1−f)` depois, então ela vale `0,5` em `f = 0,25` e `1,0` em `f = 0,5`.
+const CURVE_V: &str = "c1 0:0:L 0.5:1:L 1:0:L";
+
+/// **A ONDA CUSTOM É A CURVA AUTORADA, E SEM CURVA É A SERRA.**
+///
+/// ⚠️ As duas metades são precisas, e uma só passaria com o ramo meio-feito: sem a
+/// primeira, um `Custom` que ignorasse o text param leria a identidade e ninguém
+/// notava; sem a segunda, um `Custom` que devolvesse `0` numa curva ausente seria um
+/// **controle morto** — a forma escolhida no dropdown e nada a mexer-se —, que é
+/// exactamente o que o `fade` deste nó custou uma vez.
+#[test]
+fn the_custom_wave_is_the_authored_shape_and_an_unset_curve_is_the_saw() {
+    // t = 0,25 com frequency 1 e pulse_width neutro ⇒ a fase é `f = 0,25`.
+    let bare = osc_y_at(0.25, |g, osc| {
+        g.set_param(osc, "wave", WAVE_CUSTOM as f32);
+        g.set_param(osc, "amplitude", 4.0);
+        g.set_param(osc, "phase_stagger", 0.0);
+    });
+    // A identidade: `y = f = 0,25` ⇒ 0,25 × 4 = 1,0.
+    assert_eq!(
+        bare[0][1], 1.0,
+        "curva ausente = a serra, nunca um zero morto"
+    );
+
+    let drawn = osc_y_at(0.25, |g, osc| {
+        g.set_param(osc, "wave", WAVE_CUSTOM as f32);
+        g.set_param(osc, "amplitude", 4.0);
+        g.set_param(osc, "phase_stagger", 0.0);
+        g.set_text_param(osc, CURVE_KEY, CURVE_V);
+    });
+    // `V(0,25) = 0,5` ⇒ 0,5 × 4 = 2,0.
+    assert_eq!(drawn[0][1], 2.0, "a onda desenhada É a curva autorada");
+
+    // ⚠️ E o CONTROLE: a curva só morde a forma `Custom`. Autorada sobre a `Sine`,
+    // ela não pode mover um número — senão o text param seria um segundo canal
+    // secreto a agir sobre as cinco formas de sempre.
+    let sine_plain = osc_y_at(0.25, |g, osc| {
+        g.set_param(osc, "amplitude", 4.0);
+        g.set_param(osc, "phase_stagger", 0.0);
+    });
+    let sine_with_curve = osc_y_at(0.25, |g, osc| {
+        g.set_param(osc, "amplitude", 4.0);
+        g.set_param(osc, "phase_stagger", 0.0);
+        g.set_text_param(osc, CURVE_KEY, CURVE_V);
+    });
+    assert_eq!(
+        sine_plain, sine_with_curve,
+        "uma curva autorada nao toca nas formas enumeradas"
+    );
+}
+
+/// **A CUSTOM DECLARA A PRÓPRIA POLARIDADE, SENÃO O `Min`/`Max` ENTREGA METADE.**
+///
+/// ⚠️ Este gate é o herdeiro directo da armadilha do `Spike` (folha 06, 22/08): a
+/// aritmética que toda a gente faz de cabeça — `amp = (max−min)/2`, `off = (min+max)/2` —
+/// assume a onda BIPOLAR. A `Custom` é unipolar `[0,1]` (o quadrado do editor), e com a
+/// conta bipolar a faixa pedida `[−2, 3]` sairia como **`[0,5, 3,0]`**: metade da
+/// excursão, com o piso levantado ao CENTRO, sem que um número do painel mudasse.
+///
+/// Ele varre um ciclo inteiro e mede os extremos que o nó de facto entrega.
+#[test]
+fn the_custom_wave_declares_its_own_polarity_so_min_max_delivers_the_asked_range() {
+    const ASKED_MIN: f32 = -2.0;
+    const ASKED_MAX: f32 = 3.0;
+    let sample = |t: f64| {
+        osc_y_at(t, |g, osc| {
+            g.set_param(osc, "wave", WAVE_CUSTOM as f32);
+            g.set_param(osc, "phase_stagger", 0.0);
+            g.set_param(osc, "range_mode", 1.0);
+            g.set_param(osc, "min", ASKED_MIN);
+            g.set_param(osc, "max", ASKED_MAX);
+        })[0][1]
+    };
+    // A serra percorre `[0,1]` ao longo do ciclo, então os extremos da faixa
+    // aparecem dentro de uma varredura de um período (frequency = 1).
+    const STEPS: u32 = 1000;
+    let mut lo = f32::INFINITY;
+    let mut hi = f32::NEG_INFINITY;
+    for k in 0..=STEPS {
+        let v = sample(f64::from(k) / f64::from(STEPS));
+        lo = lo.min(v);
+        hi = hi.max(v);
+    }
+    // ⚠️ **A tolerância sai da RESOLUÇÃO DA VARREDURA, não do gosto** — e é uma
+    // propriedade da serra, não um defeito: `frac(1,0) = 0,0`, então `f = 1` NUNCA é
+    // amostrado dentro de um período e o tecto é aproximado por baixo, no máximo um
+    // passo. Um passo de fase vale `(max − min)/STEPS` na saída.
+    let step = (ASKED_MAX - ASKED_MIN) / STEPS as f32;
+    let tol = step * 1.5; // um passo + folga de ULP
+    assert!(
+        (lo - ASKED_MIN).abs() < tol,
+        "o piso tem de ser o pedido ({ASKED_MIN}), deu {lo} — a conta bipolar daria 0,5"
+    );
+    assert!(
+        (hi - ASKED_MAX).abs() < tol,
+        "e o tecto o pedido ({ASKED_MAX}), deu {hi} (tolerancia {tol}, um passo da varredura)"
+    );
+    // ⚠️ E o que este gate de facto REJEITA: a conta bipolar poria o piso em `+0,5`.
+    // Sem esta linha, uma tolerância generosa deixaria de distinguir as duas contas.
+    // A conta bipolar: `amp = (max−min)/2`, `off = (min+max)/2`. Sobre uma onda que
+    // só produz `[0,1]`, o piso dela é o próprio `off` — o CENTRO da faixa pedida.
+    let bipolar_floor = (ASKED_MIN + ASKED_MAX) * 0.5;
+    assert!(
+        (lo - bipolar_floor).abs() > 1.0,
+        "o piso medido ({lo}) tem de estar LONGE do que a conta bipolar daria ({bipolar_floor})"
+    );
+    // O controle POSITIVO: a `natural_range` de facto responde diferente para esta
+    // forma. Sem ele, o gate passaria numa implementação que devolvesse `[-1,1]`
+    // para tudo e por acaso acertasse a excursão desta fixture.
+    assert_eq!(natural_range(WAVE_CUSTOM), (0.0, 1.0));
+    assert_eq!(natural_range(0), (-1.0, 1.0));
+}
+
+/// **O DROPDOWN OFERECE A FORMA NOVA** — a costura entre a lei e o painel.
+///
+/// ⚠️ Um `WAVE_CUSTOM` que a `eval` entende e o painel não oferece é um gesto
+/// inalcançável; um rótulo a mais é um botão que escolhe uma forma que não existe.
+/// O gate mede os DOIS lados contra a mesma fonte.
+#[test]
+fn the_wave_dropdown_offers_exactly_the_shapes_the_law_knows() {
+    let row = PARAM_HINTS
+        .iter()
+        .find(|h| h.param == "wave")
+        .expect("a linha da onda");
+    let ParamWidget::Enum { labels } = row.widget else {
+        panic!("a onda é um seletor nomeado, nunca um slider")
+    };
+    assert_eq!(
+        labels.len() as i32 - 1,
+        WAVE_CUSTOM,
+        "a ultima etiqueta é a Custom"
+    );
+    assert_eq!(labels[WAVE_CUSTOM as usize], "Custom");
+    assert!(
+        (row.max - WAVE_CUSTOM as f32).abs() < f32::EPSILON,
+        "o teto do seletor é o indice da ultima forma"
+    );
+    // E a linha da CURVA existe, senão a forma nova nasce sem como ser desenhada.
+    let curve_row = PARAM_HINTS
+        .iter()
+        .find(|h| h.param == CURVE_KEY)
+        .expect("a linha da curva");
+    assert!(matches!(curve_row.widget, ParamWidget::Curve));
 }

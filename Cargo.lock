@@ -5575,6 +5575,7 @@ dependencies = [
  "bytemuck",
  "naga",
  "ph2d-color",
+ "ph2d-curve",
  "ph2d-eval-motion",
  "ph2d-gpu",
  "ph2d-node-field-box",
@@ -6536,6 +6537,7 @@ dependencies = [
 name = "ph2d-node-motion-oscillator"
 version = "0.0.0"
 dependencies = [
+ "ph2d-curve",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6658,6 +6660,7 @@ dependencies = [
 name = "ph2d-node-motion-stagger"
 version = "0.0.0"
 dependencies = [
+ "ph2d-curve",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]

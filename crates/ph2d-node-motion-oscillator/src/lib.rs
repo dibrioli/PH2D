@@ -25,6 +25,7 @@
 //!
 //! `delta_i = (wave(t·frequency + i·phase_stagger + phase)·amplitude + offset)·falloff_i`.
 
+use ph2d_curve::Curve;
 use ph2d_node_registry::{NodeRegistry, ParamChannelRange, RegistryError};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -169,8 +170,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// nó é uma drop-crate folha e não depende do ruído — o mesmo motivo pelo qual
 /// `VALUE` e `field_at` são espelhados por toda a família.
 fn natural_range(wave: i32) -> (f32, f32) {
-    // 4 = Spike, o pulso unipolar. As outras quatro são `[-1, 1]`.
-    if wave == 4 { (0.0, 1.0) } else { (-1.0, 1.0) }
+    // 4 = Spike, o pulso unipolar; 5 = Custom, que o editor autora no QUADRADO
+    // UNITÁRIO (`Curve::eval` grampeia o domínio a `[0,1]` e a curva da casa nasce
+    // na diagonal). As outras quatro são `[-1, 1]`.
+    //
+    // ⚠️ **A `Custom` tinha de responder aqui, e a resposta não é «igual às outras».**
+    // A folha 06 registou a armadilha do `Spike` — a conta bipolar `amp=(max−min)/2`
+    // entrega metade da faixa com o piso ao centro, em silêncio — e uma forma NOVA
+    // que não declarasse a polaridade dela reabriria exactamente esse defeito. Ver
+    // [`waveform`].
+    if wave == 4 || wave == WAVE_CUSTOM {
+        (0.0, 1.0)
+    } else {
+        (-1.0, 1.0)
+    }
 }
 
 /// `amplitude`/`offset` derivados da faixa pedida — o gêmeo de
@@ -230,9 +243,32 @@ fn skew(f: f32, pulse_width: f32) -> f32 {
     }
 }
 
-fn waveform(kind: i32, phase: f32, pulse_width: f32) -> f32 {
+/// **A SEXTA FORMA: a que o artista DESENHA** (doc 89, folha 06 · Cavalry *Wave
+/// Style ▸ Custom (Graph)*).
+///
+/// Ela é o índice `5` do `wave`, e a forma vive num **text param** ([`CURVE_KEY`]) —
+/// uma curva não é um número, e é o mesmo canal do `value.curve` / `field.remap` /
+/// `motion.strobe`. ⚠️ **Curva não-setada = a IDENTIDADE**, ou seja `y = f`: uma serra
+/// unipolar `0 → 1`. Isso é uma onda de facto (não um controle morto), e é a lei que o
+/// `value.curve` já pratica.
+///
+/// ⚠️ **O `pulse_width` continua a valer**, porque ele é um warp da FASE e não da forma:
+/// a `Custom` entra como a sexta consumidora de [`skew`] sem uma linha de código a mais,
+/// e o artista ganha *bias* sobre o desenho dele de graça.
+pub const WAVE_CUSTOM: i32 = 5;
+
+/// A chave do text param que carrega a forma da onda [`WAVE_CUSTOM`] (uma string
+/// `ph2d-curve`, autorada pelo editor `ParamWidget::Curve`). **NÃO** é um `ParamSpec` —
+/// uma curva não é um número.
+pub const CURVE_KEY: &str = "curve";
+
+fn waveform(kind: i32, phase: f32, pulse_width: f32, curve: Option<&Curve>) -> f32 {
     let f = skew(frac(phase), pulse_width);
     match kind {
+        // A forma DESENHADA — ver [`WAVE_CUSTOM`]. Sem curva, `eval` de uma `Curve`
+        // vazia devolve o próprio `f`, então este ramo é a serra unipolar e nunca
+        // um valor morto.
+        WAVE_CUSTOM => curve.map_or(f, |c| c.eval(f)),
         1 => {
             // Triangle: 0 at 0, +1 at ¼, 0 at ½, −1 at ¾.
             if f < 0.25 {
@@ -334,6 +370,10 @@ impl NodeOp for MotionOscillator {
         };
         // ⚠️ Lido AQUI e não dentro do laço: ele é uniforme no dispatch inteiro.
         let pulse_width = ctx.param("pulse_width");
+        // A forma DESENHADA (`wave = Custom`). Parseada UMA vez, fora do laço — ela é
+        // uniforme no dispatch, como o `pulse_width`, e um parse por elemento seria o
+        // custo de uma string por instância.
+        let curve = ctx.text_param(CURVE_KEY).and_then(ph2d_curve::parse);
         // A porta de TEMPO (opcional): vazia ⇒ `t` para toda instância.
         let times = scalar_values(ctx.input(1), VALUE_COL);
         let out = {
@@ -350,7 +390,8 @@ impl NodeOp for MotionOscillator {
                 let phase = clock_at(&times, i, t) * cps + i as f32 * phase_stagger + phase0;
                 // DC `offset` shifts the oscillation centre; the whole
                 // contribution is falloff-masked (like every behaviour).
-                (waveform(wave, phase, pulse_width) * amplitude + offset) * falloff_at(input, i)
+                (waveform(wave, phase, pulse_width, curve.as_ref()) * amplitude + offset)
+                    * falloff_at(input, i)
             });
             apply_channel_delta(input, channel, &deltas)
         };
@@ -380,6 +421,9 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    // A1-gpu: a tabela da onda `Custom`, para o `osc_wave` a ler no device em vez de
+    // o nó inteiro cair para a CPU (o precedente é o contorno Curve do `field.remap`).
+    reg.register_luts(MANIFEST.id, gpu::LUTS);
     Ok(())
 }
 

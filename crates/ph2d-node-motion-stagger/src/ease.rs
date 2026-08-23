@@ -46,11 +46,33 @@ fn bounce_out(t: f32) -> f32 {
     }
 }
 
+/// **A NONA FAMÍLIA: a que o artista DESENHA** (doc 89, folha 06 · Cavalry
+/// *Stagger ▸ Graph*).
+///
+/// A forma vive num **text param** ([`super::CURVE_KEY`]) — o mesmo canal do
+/// `value.curve` / `field.remap` / `motion.strobe`, porque uma curva não é um número.
+/// ⚠️ **Curva não-setada = `t`**, ou seja **exactamente o `Linear`** — a família
+/// enumerada de hoje, e nunca um controle morto.
+pub(crate) const EASE_CUSTOM: i32 = 8;
+
 /// A full easing: the `curve` family shaped by `dir` (In / Out / In-Out) on
 /// `t ∈ [0,1]`. Endpoint-exact for every family/direction; Linear ignores `dir`.
-pub(crate) fn ease(curve: i32, dir: i32, t: f32) -> f32 {
+///
+/// ⚠️ **A [`EASE_CUSTOM`] ignora o `dir` pela MESMA razão que o `Linear`**, e a razão é
+/// de produto, não de aritmética: a curva desenhada **é** a declaração de intenção do
+/// artista, e um segundo controle a espelhá-la em silêncio faria o que está na tela
+/// deixar de ser o que ele desenhou. É a *affordance herdada por analogia* que esta casa
+/// já pagou uma vez.
+///
+/// ⚠️ E ela não custa uma linha de UI: o `PARAM_GATES` enumera as famílias que **usam**
+/// a direção (`1..7`), então uma família nova que a ignore nasce com o `ease_dir`
+/// escondido — *o gate estava escrito na forma certa antes de existir o nono caso*.
+pub(crate) fn ease(curve: i32, dir: i32, t: f32, custom: Option<&ph2d_curve::Curve>) -> f32 {
     if curve == 0 {
         return t; // Linear
+    }
+    if curve == EASE_CUSTOM {
+        return custom.map_or(t, |c| c.eval(t));
     }
     match dir {
         1 => 1.0 - ease_in(curve, 1.0 - t), // Out = reflect the In base
@@ -74,8 +96,8 @@ mod tests {
     fn every_family_and_direction_is_endpoint_exact() {
         for curve in 0..=7 {
             for dir in 0..=2 {
-                assert_eq!(ease(curve, dir, 0.0), 0.0, "ease({curve},{dir},0)");
-                assert_eq!(ease(curve, dir, 1.0), 1.0, "ease({curve},{dir},1)");
+                assert_eq!(ease(curve, dir, 0.0, None), 0.0, "ease({curve},{dir},0)");
+                assert_eq!(ease(curve, dir, 1.0, None), 1.0, "ease({curve},{dir},1)");
             }
         }
     }
@@ -85,7 +107,7 @@ mod tests {
         // Every In-Out family crosses 0.5 exactly at t = 0.5.
         for curve in 1..=7 {
             assert!(
-                (ease(curve, 2, 0.5) - 0.5).abs() < 1e-6,
+                (ease(curve, 2, 0.5, None) - 0.5).abs() < 1e-6,
                 "midpoint curve {curve}"
             );
         }
@@ -94,13 +116,13 @@ mod tests {
     #[test]
     fn back_overshoots_below_zero_on_ease_in() {
         // Back's signature: it dips below 0 early (anticipation) before rising.
-        assert!(ease(6, 0, 0.2) < 0.0, "Back In anticipates below 0");
+        assert!(ease(6, 0, 0.2, None) < 0.0, "Back In anticipates below 0");
     }
 
     #[test]
     fn quad_in_matches_the_reference_t_squared() {
         // Numerically identical to the reference's easeIn (t²) — a fidelity pin.
-        assert!((ease(1, 0, 0.5) - 0.25).abs() < 1e-6);
-        assert!((ease(1, 1, 0.5) - 0.75).abs() < 1e-6); // Out = t(2-t) at 0.5
+        assert!((ease(1, 0, 0.5, None) - 0.25).abs() < 1e-6);
+        assert!((ease(1, 1, 0.5, None) - 0.75).abs() < 1e-6); // Out = t(2-t) at 0.5
     }
 }

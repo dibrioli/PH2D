@@ -34,6 +34,12 @@ mod ease;
 mod kernel;
 use channel::{apply_channel_delta, falloff_at};
 use ease::ease;
+use ph2d_curve::Curve;
+
+/// A chave do text param que carrega a forma da ease `Custom` (uma string `ph2d-curve`,
+/// autorada pelo editor `ParamWidget::Curve`). **NÃO** é um `ParamSpec` — uma curva não é
+/// um número. Ver [`ease::EASE_CUSTOM`].
+pub const CURVE_KEY: &str = "curve";
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -90,8 +96,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// The per-instance stagger delta before it's added to the channel: the eased
 /// ramp `min→max` at position `raw ∈ [0,1]`, scaled by `falloff`. Easing is the
 /// `curve` family shaped by `dir` (In / Out / In-Out) — see [`ease`].
-fn stagger_delta(min: f32, max: f32, curve: i32, dir: i32, raw: f32, falloff: f32) -> f32 {
-    (min + ease(curve, dir, raw) * (max - min)) * falloff
+fn stagger_delta(
+    min: f32,
+    max: f32,
+    curve: i32,
+    dir: i32,
+    raw: f32,
+    falloff: f32,
+    custom: Option<&Curve>,
+) -> f32 {
+    (min + ease(curve, dir, raw, custom) * (max - min)) * falloff
 }
 
 struct MotionStagger;
@@ -109,6 +123,10 @@ impl NodeOp for MotionStagger {
         let dir = ctx.param("ease_dir").round() as i32;
         let reverse = ctx.param("reverse") >= 0.5;
         let offset = ctx.param("offset");
+        // A forma DESENHADA (`ease_curve = Custom`). Parseada UMA vez, fora do laço: ela
+        // é uniforme na fileira inteira, e um parse por elemento seria uma string por
+        // instância.
+        let custom = ctx.text_param(CURVE_KEY).and_then(ph2d_curve::parse);
         let out = {
             let input = ctx.input(0);
             let n = input.count();
@@ -131,7 +149,15 @@ impl NodeOp for MotionStagger {
                     } else {
                         raw
                     };
-                    stagger_delta(min, max, curve, dir, raw, falloff_at(input, i))
+                    stagger_delta(
+                        min,
+                        max,
+                        curve,
+                        dir,
+                        raw,
+                        falloff_at(input, i),
+                        custom.as_ref(),
+                    )
                 })
                 .collect();
             apply_channel_delta(input, channel, &deltas)
@@ -145,6 +171,8 @@ impl NodeOp for MotionStagger {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(MotionStagger))?;
     reg.register_gpu_kernel(MANIFEST.id, kernel::GPU_KERNEL);
+    // A1-gpu: a tabela da ease `Custom`, para o `sg_ease` a ler no device.
+    reg.register_luts(MANIFEST.id, kernel::LUTS);
     // M1.R1 — UI metadata. Behaviours modify transform channels → Transform
     // (blue) for now; a dedicated Behaviour category (cyan) is a follow-up.
     reg.register_ui(
@@ -213,13 +241,25 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "ease_curve",
         label: "Ease",
         min: 0.0,
-        max: 7.0,
+        // ⚠️ **Apendada**: a `Custom` é o índice 8, e as oito de sempre ficam onde
+        // estavam — um documento autorado guarda o NÚMERO, não o nome.
+        max: 8.0,
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &[
-                "Linear", "Quad", "Cubic", "Quart", "Quint", "Circ", "Back", "Bounce",
+                "Linear", "Quad", "Cubic", "Quart", "Quint", "Circ", "Back", "Bounce", "Custom",
             ],
         },
+    },
+    // A FORMA da ease `Custom` — um TEXT param (`CURVE_KEY`), não um `ParamSpec`.
+    // Não-setada = `t`, ou seja o `Linear`. Ver `ease::EASE_CUSTOM`.
+    ParamUiHint {
+        param: CURVE_KEY,
+        label: "Custom Ease",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Curve,
     },
     ParamUiHint {
         param: "ease_dir",
@@ -393,7 +433,7 @@ mod tests {
     #[test]
     fn single_instance_takes_min() {
         // n == 1 → raw = 0 → delta = min (no divide-by-zero on `n-1`).
-        assert_eq!(stagger_delta(3.0, 9.0, 0, 0, 0.0, 1.0), 3.0);
+        assert_eq!(stagger_delta(3.0, 9.0, 0, 0, 0.0, 1.0, None), 3.0);
     }
 
     /// The focus field gates the ramp (audit 2026-07-10: untested until now):
@@ -491,7 +531,7 @@ mod tests {
     fn swapping_the_endpoints_inverts_and_reverse_is_a_different_thing() {
         let ramp = |lo: f32, hi: f32, curve: i32| -> Vec<f32> {
             (0..5)
-                .map(|i| stagger_delta(lo, hi, curve, 0, i as f32 / 4.0, 1.0))
+                .map(|i| stagger_delta(lo, hi, curve, 0, i as f32 / 4.0, 1.0, None))
                 .collect()
         };
         for curve in 0..=7 {
@@ -516,7 +556,7 @@ mod tests {
             }
             // (2) O `reverse` ESPELHA a rampa ascendente.
             let mirrored: Vec<f32> = (0..5)
-                .map(|i| stagger_delta(0.0, 1.0, curve, 0, 1.0 - i as f32 / 4.0, 1.0))
+                .map(|i| stagger_delta(0.0, 1.0, curve, 0, 1.0 - i as f32 / 4.0, 1.0, None))
                 .collect();
             let up_rev: Vec<f32> = up.iter().rev().copied().collect();
             for (a, b) in mirrored.iter().zip(&up_rev) {
@@ -555,10 +595,10 @@ mod tests {
     fn measure_reversed_endpoints() {
         for curve in 0..=7 {
             let up: Vec<f32> = (0..5)
-                .map(|i| stagger_delta(0.0, 1.0, curve, 0, i as f32 / 4.0, 1.0))
+                .map(|i| stagger_delta(0.0, 1.0, curve, 0, i as f32 / 4.0, 1.0, None))
                 .collect();
             let down: Vec<f32> = (0..5)
-                .map(|i| stagger_delta(1.0, 0.0, curve, 0, i as f32 / 4.0, 1.0))
+                .map(|i| stagger_delta(1.0, 0.0, curve, 0, i as f32 / 4.0, 1.0, None))
                 .collect();
             // O que um "swap + reverse" daria: a mesma rampa lida ao contrário.
             let mirror: Vec<f32> = up.iter().rev().copied().collect();
@@ -573,3 +613,7 @@ mod tests {
 #[cfg(test)]
 #[path = "offset_tests.rs"]
 mod offset_tests;
+
+#[cfg(test)]
+#[path = "custom_ease_tests.rs"]
+mod custom_ease_tests;

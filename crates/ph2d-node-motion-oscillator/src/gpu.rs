@@ -7,8 +7,51 @@
 //! módulo pai — e quem prova que os dois lados concordam é o gate de paridade CPU×GPU, não
 //! esta divisão de arquivos.
 
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_curve::Curve;
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, LutSpec};
 use ph2d_nodegraph::port::Dim;
+
+/// A resolução da LUT da onda [`super::WAVE_CUSTOM`] — amostras da curva autorada sobre
+/// `f ∈ [0,1]`, o ciclo inteiro.
+///
+/// ⚠️ **Ela é o DOBRO da do `field.remap` (256), e o número tem motivo medido:** a lei da
+/// tabela uniforme é que a esquina de uma parada converge com `1/n` e um DEGRAU não
+/// converge de todo — o que a densidade encolhe ali é a LARGURA da banda errada
+/// ([`project-memory/feedback_a_uniform_grid_cannot_represent_a_corner.md`]). Uma onda
+/// autorada é lida como MOVIMENTO ao longo de um ciclo inteiro (não como a cor de um
+/// pixel), então a banda errada vira um solavanco visível, e 512 põe a célula abaixo de
+/// 0,2% do ciclo. Custo: 2 KiB por cozimento.
+const LUT_RESOLUTION: u32 = 512;
+
+/// O canal de LUT deste nó (A1-gpu): o sequenciador amostra a curva autorada
+/// ([`super::CURVE_KEY`]) e liga a tabela, de modo que o ramo `kind == 5` do `osc_wave`
+/// leia `osc_curve_sample(f)` **no device**. O nome `osc_curve` é o que faz o acessor
+/// chamar-se `osc_curve_sample`, casando com a chamada no WGSL.
+pub(crate) static LUTS: &[LutSpec] = &[LutSpec {
+    name: "osc_curve",
+    text_key: super::CURVE_KEY,
+    resolution: LUT_RESOLUTION,
+    fill: fill_curve_lut,
+}];
+
+/// Amostra a curva autorada em `f = k/(n−1)` — a metade deste crate do canal de LUT
+/// (o `ph2d-nodegraph` não conhece biblioteca de curva nenhuma).
+///
+/// ⚠️ Uma string ausente ou malformada enche a **identidade** (`out[k] = f`), que é
+/// exactamente o `curve.map_or(f, …)` que a CPU faz num `None` — os dois lados
+/// concordam em *"nada autorado = a serra"*, e é isso que o gate de paridade mede.
+fn fill_curve_lut(text: &str, out: &mut [f32]) {
+    let curve = ph2d_curve::parse(text).unwrap_or_else(Curve::identity);
+    let n = out.len();
+    for (k, slot) in out.iter_mut().enumerate() {
+        let f = if n <= 1 {
+            0.0
+        } else {
+            k as f32 / (n - 1) as f32
+        };
+        *slot = curve.eval(f);
+    }
+}
 
 /// GPU compute kernel (GPU/M5 Fase 1, ADR-0126). The waveform library is a
 /// straight WGSL port of [`waveform`] — same piecewise polynomials, same
@@ -104,7 +147,11 @@ const OSC_LIB: &str = "\
             var off = params.offset;\n\
             if (params.range_mode >= 0.5) {\n\
                 var lo = -1.0;\n\
-                if (i32(osc_round(params.wave)) == 4) { lo = 0.0; }\n\
+                let k = i32(osc_round(params.wave));\n\
+                // O Spike (4) e a Custom (5) sao unipolares [0,1] -- o gemeo do\n\
+                // `natural_range`, e a Custom TEM de estar aqui: uma forma nova que\n\
+                // nao declarasse a polaridade dela reabre a armadilha do Spike.\n\
+                if (k == 4 || k == 5) { lo = 0.0; }\n\
                 amp = (params.max - params.min) / (1.0 - lo);\n\
                 off = params.min - lo * amp;\n\
             }\n\
@@ -142,6 +189,12 @@ const OSC_LIB: &str = "\
                 if (f < 0.08) { return 1.0; }\n\
                 return 0.0;\n\
             }\n\
+            // A forma DESENHADA (`WAVE_CUSTOM`), lida da LUT que o sequenciador\n\
+            // assa do text param -- e' por isso que a onda custom cozinha no\n\
+            // DEVICE em vez de derrubar o no' inteiro para a CPU. Uma curva\n\
+            // ausente enche a tabela com a identidade (`out[k] = t`), que e'\n\
+            // exactamente o `curve.map_or(f, ...)` do lado da CPU.\n\
+            if (kind == 5) { return osc_curve_sample(f); }\n\
             // Parabolic sine-approximation + Capens correction (~0.09% off a\n\
             // true sine, transcendental-free) — the port of `waveform`'s default.\n\
             var p: f32;\n\

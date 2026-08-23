@@ -26,8 +26,43 @@
 //! `ease_dir` all pick BRANCHES: WGSL's builtin `round` is half-to-EVEN, and a
 //! disagreement there would select a different curve, not shift a value by an ε.
 
-use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel};
+use ph2d_nodegraph::gpu::{ColumnAccess, ColumnBinding, GpuKernel, LutSpec};
 use ph2d_nodegraph::port::Dim;
+
+/// A resolução da LUT da ease [`super::ease::EASE_CUSTOM`] — amostras da curva autorada
+/// sobre `t ∈ [0,1]`.
+///
+/// ⚠️ **512, o mesmo do irmão `motion.oscillator` e o dobro do `field.remap`**, e pela
+/// mesma razão medida: uma tabela uniforme converge com `1/n` numa esquina e não converge
+/// de todo num degrau — o que a densidade encolhe é a LARGURA da banda errada. Aqui a
+/// tabela é lida como POSIÇÃO de peças ao longo de uma fileira, então essa banda é um
+/// salto visível entre dois vizinhos. Custo: 2 KiB por cozimento.
+const LUT_RESOLUTION: u32 = 512;
+
+/// O canal de LUT deste nó (A1-gpu) — ver o gémeo em `motion.oscillator`. O nome
+/// `sg_curve` faz o acessor chamar-se `sg_curve_sample`, casando com a chamada no WGSL.
+pub(crate) static LUTS: &[LutSpec] = &[LutSpec {
+    name: "sg_curve",
+    text_key: super::CURVE_KEY,
+    resolution: LUT_RESOLUTION,
+    fill: fill_curve_lut,
+}];
+
+/// Amostra a curva autorada em `t = k/(n−1)`. Uma string ausente ou malformada enche a
+/// **identidade** (`out[k] = t`), que é o `custom.map_or(t, …)` da CPU — os dois lados
+/// concordam em *"nada autorado = o Linear"*.
+fn fill_curve_lut(text: &str, out: &mut [f32]) {
+    let curve = ph2d_curve::parse(text).unwrap_or_else(ph2d_curve::Curve::identity);
+    let n = out.len();
+    for (k, slot) in out.iter_mut().enumerate() {
+        let t = if n <= 1 {
+            0.0
+        } else {
+            k as f32 / (n - 1) as f32
+        };
+        *slot = curve.eval(t);
+    }
+}
 
 const SG_PARAMS: &[&str] = &[
     "channel",
@@ -89,6 +124,11 @@ const SG_LIB: &str = "\
     }\n\
     fn sg_ease(curve: i32, dir: i32, t: f32) -> f32 {\n\
         if (curve == 0) { return t; }\n\
+        // A NONA familia: a DESENHADA, lida da LUT que o sequenciador assa do\n\
+        // text param. Ela ignora o `dir` pela mesma razao que o Linear -- a\n\
+        // curva e' a declaracao de intencao do artista. Curva ausente => a\n\
+        // tabela e' a identidade, que e' o proprio Linear.\n\
+        if (curve == 8) { return sg_curve_sample(t); }\n\
         if (dir == 1) { return 1.0 - sg_ease_in(curve, 1.0 - t); }\n\
         if (dir == 2) {\n\
             if (t < 0.5) { return sg_ease_in(curve, 2.0 * t) * 0.5; }\n\

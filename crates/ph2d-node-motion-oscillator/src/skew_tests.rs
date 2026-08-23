@@ -26,7 +26,7 @@ fn the_neutral_pulse_width_is_the_identity_to_the_bit() {
 fn on_the_square_it_is_the_duty_cycle() {
     for (pw, want) in [(0.25_f32, 0.25_f32), (0.5, 0.5), (0.75, 0.75)] {
         let up = (0..1000)
-            .filter(|k| waveform(2, *k as f32 / 1000.0, pw) > 0.0)
+            .filter(|k| waveform(2, *k as f32 / 1000.0, pw, None) > 0.0)
             .count() as f32
             / 1000.0;
         assert!(
@@ -44,7 +44,7 @@ fn on_the_square_it_is_the_duty_cycle() {
 fn on_the_triangle_it_is_the_bias_and_the_peak_moves() {
     let peak = |pw: f32| {
         (0..1000)
-            .map(|k| (k as f32 / 1000.0, waveform(1, k as f32 / 1000.0, pw)))
+            .map(|k| (k as f32 / 1000.0, waveform(1, k as f32 / 1000.0, pw, None)))
             .fold(
                 (0.0_f32, f32::NEG_INFINITY),
                 |a, b| if b.1 > a.1 { b } else { a },
@@ -82,7 +82,7 @@ fn an_out_of_range_pulse_width_still_swings_the_full_range() {
     let span = |pw: f32| {
         let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
         for k in 0..1000 {
-            let v = waveform(0, k as f32 / 1000.0, pw);
+            let v = waveform(0, k as f32 / 1000.0, pw, None);
             assert!(v.is_finite(), "pw {pw} produziu {v}");
             lo = lo.min(v);
             hi = hi.max(v);

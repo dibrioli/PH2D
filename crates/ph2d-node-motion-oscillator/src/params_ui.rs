@@ -35,11 +35,24 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "wave",
         label: "Wave",
         min: 0.0,
-        max: 4.0,
+        // ⚠️ **Apendada**: a `Custom` é o índice 5, e as cinco de sempre ficam onde
+        // estavam — um documento autorado guarda o NÚMERO, não o nome.
+        max: 5.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Sine", "Tri", "Square", "Saw", "Spike"],
+            labels: &["Sine", "Tri", "Square", "Saw", "Spike", "Custom"],
         },
+    },
+    // A FORMA da onda `Custom` — um TEXT param (`CURVE_KEY`), não um `ParamSpec`: uma
+    // curva não é um número. Não-setada = identidade, ou seja a serra `0 → 1` (a lei do
+    // `value.curve`). Ver `super::WAVE_CUSTOM`.
+    ParamUiHint {
+        param: super::CURVE_KEY,
+        label: "Custom Wave",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Curve,
     },
     ParamUiHint {
         param: "amplitude",

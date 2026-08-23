@@ -39,3 +39,16 @@ Irmãs: [[feedback_a_bucket_nobody_fills_reads_as_perfect]] ·
 [[feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two]] ·
 [[feedback_a_correct_mechanism_can_prescribe_the_wrong_cure]] ·
 [[feedback_a_cure_measured_on_a_fixture_that_lacks_the_phenomenon_reads_as_useless]]
+
+⚠️ **Refinamento (2026-08-23) — o irmão: uma cura REJEITADA que confirma o diagnóstico
+por INTERVENÇÃO fixa a ORDEM da obra.** A poda de arcos do quad remesh curou exactamente
+o que o diagnóstico previa (irregulares `18 → 9`, e a orelha passou a **empatar com o
+oráculo**) e **colapsou** outro eixo na mesma peça (enviesamento `18° → 38°`, dobras
+`0 → 29`). ⇒ ela não é um fracasso nem um sucesso: ⭐ **é a prova de que o diagnóstico
+estava certo — por intervenção e não por correlação — e a medição de que a fase a
+JUSANTE não aguenta o que a cura a montante produz.** *Duas coisas certas na ordem
+errada dão uma regressão.* Registe a cura desligada com as DUAS tabelas e escreva a
+ordem: quem tem de mudar primeiro. E ⚠️ quando a queda tiver duas explicações plausíveis
+(aqui: «é o mapa» e «é a forma do domínio»), **meça as duas antes de escrever a
+conclusão** — as duas deram `38° → 36°` e `38° → 38°`, e o que sobrou (o *tamanho* do
+patch) só ficou nomeado porque as outras morreram.

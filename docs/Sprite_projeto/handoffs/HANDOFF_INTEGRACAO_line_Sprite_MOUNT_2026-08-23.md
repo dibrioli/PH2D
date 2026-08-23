@@ -303,7 +303,7 @@ primário* — foi assim que as outras duas lá chegaram.
 
 ```
 cargo nextest run --workspace --no-fail-fast --cargo-profile ci-test
-Summary [68,4 s] 17884 tests run: 17884 passed, 1818 skipped
+Summary [62,2 s] 17926 tests run: 17926 passed, 1818 skipped
 ```
 
 **Verde limpo no fecho.** ⚠️ Corridas intermédias tiveram ✗, e as leituras ficam registadas porque
@@ -318,9 +318,13 @@ a família quase enganou duas vezes:
    ⇒ O `CLAUDE.md §5.0` deixou de as contar uma a uma e passa a nomear a **forma**: todo gate que
    compara duas medianas de tempo é candidato, e a lista nunca estará completa.
 2. `shell_files_respect_hr18_loc_cap` — **real, e curado por corte** (ver §3).
+3. ⚠️ **TRÊS gates de arquitetura que a §11 quebrou, todos reais e todos curados sem exceção:**
+   `no_magic_numeric` (três passos de scrub — valores de domínio, marcados com a razão) ·
+   HR-15 (o `placeholder` do campo de nome, a mesma dívida do vizinho `anchors.rs`, entrada de
+   baseline com valor 1) · `panel_functions_under_loc_cap` (ver a nota do `paint_inspector` no §3).
 
-Suítes das crates tocadas, isoladas: `ph2d-ecs` **202** · `ph2d-editor-core` **1216** ·
-`ph2d-panel-inspector` **181** · `ph2d-render` ✔ · `ph2d-script` ✔ · `ph2d-host-desktop` ✔.
+Suítes das crates tocadas, isoladas: `ph2d-ecs` **222** · `ph2d-editor-core` **1219** ·
+`ph2d-panel-inspector` **184** · `ph2d-render` ✔ · `ph2d-script` ✔ · `ph2d-host-desktop` ✔.
 
 ### Provas de mutação (16 no total, todas apanhadas)
 

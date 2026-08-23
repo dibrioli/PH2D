@@ -42,9 +42,9 @@
 //!
 //! | passo | o que faz | onde |
 //! |---|---|---|
-//! | **G1** | a **malha cortada**: cada patch fica um disco próprio, com a tabela de costuras | [`cut`] |
-//! | G2 | pentear o campo dentro de cada patch (`ph2d_crossfield::comb`) | — |
-//! | G3 | resolver `(u, v)` alinhado ao campo, com as costuras acopladas | — |
+//! | ⭐ **G1** | a **malha cortada**: cada patch fica um disco próprio, com a tabela de costuras | **feito** |
+//! | ⭐ **G2** | pentear cada patch e ler o **salto de período** de cada costura | **feito** |
+//! | ⭐ **G3** | resolver `(u, v)` alinhado ao campo, com as costuras acopladas | **feito** |
 //! | G4 | ler as marcações onde as isolinhas inteiras cruzam cada arco | — |
 //!
 //! ⚠️ **Cada passo entra com o seu controlo.** *Uma fase grande construída de uma vez
@@ -53,6 +53,8 @@
 
 pub mod comb;
 pub mod cut;
+pub mod solve;
 
 pub use comb::{CombReport, Combed, comb_patches, jumps_only};
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};
+pub use solve::{GridMap, SolveReport, solve, solve_with};

@@ -609,7 +609,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ordem de armazenamento dá **sinal arbitrário** por aresta. ⛔⛔ **E o gate da consistência disparou no toro (4
   costuras) — mas a dívida é do F3:** as 4 tocam um dos **3 patches sujos** dele (um com **10** voltas), e a esfera
   lisa dá `0` de `42`. ⇒ a barra é `inconsistent_clean == 0` — *sobre a população certa, nem mais alta nem mais
-  baixa*. Faltam G3 (resolver `(u,v)` com as costuras acopladas) e G4 (ler as marcações nas isolinhas). ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  baixa*. ⭐⭐⭐ **E o G3 — o SOLVER — está feito** (§4-quatuoretquinquagies): energia
+  `Σ A·(|∇u − X/h|² + |∇v − Y/h|²)`, **sem condição de fronteira nenhuma** (é a diferença de espécie contra os
+  quatro achatamentos do F5), com as costuras acopladas por `z_b = R^k z_a + t`. ⭐ O controlo é uma **tira plana
+  montada à mão**, onde a resposta é exacta — e com o salto certo dá **`0,00000` nas duas réguas**. ⛔⛔ **Duas
+  leituras minhas inverteram-se por medição:** (1) o controlo negativo exigia que a costura ABRISSE com salto
+  errado, e ela **não abre** (`0,016`) — o solver paga no gradiente, ⇒ *«as costuras fecharam» não é sinal de saúde*;
+  (2) na esfera a coluna combinada dava `0,33` e eu ia ler «o solver não presta» — separada em **ângulo** e
+  **escala**, o ângulo é **`4,1°`** e o resto era escala. ⭐ **Compromisso real, medido:** fechar as costuras custa
+  o ângulo (`4,1° → 13,0°` de `w=1` a `w=512`), e `40 k → 640 k` rondas não o move ⇒ não é solver lento. Shipa
+  `SEAM_WEIGHT = 512` (o G4 lê isolinhas: a costura manda) e `ROUNDS = 160 000`. **Falta o G4** — ler as marcações
+  onde as isolinhas inteiras cruzam cada arco, e então medir o **produto**. ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

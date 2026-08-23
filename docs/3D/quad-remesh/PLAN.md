@@ -4482,3 +4482,97 @@ deixa **38** quietas. *Um número que nunca muda não é um número medido.*
 | assumir a saída do `comb` alinhada com a entrada | ele filtra faces degeneradas; o desalinhamento é mudo | [`comb.rs`](../../../crates/ph2d-gridmap/src/comb.rs) |
 | escolher os lados de uma aresta pela ordem de armazenamento | o sinal do salto fica arbitrário por aresta | idem |
 | barra sobre o total de costuras inconsistentes | frouxa nos dois sentidos — a população certa é a das limpas | idem |
+
+## §4-quatuoretquinquagies — ⭐⭐⭐ G3: o SOLVER global, e a coluna que quase o condenou (2026-08-23)
+
+### A energia, deduzida
+
+Andar `h` na direcção `X` da cruz tem de fazer `u` subir **exactamente 1**, e `v` não
+mexer. Isso é uma condição sobre os **gradientes**, e a energia é o desvio dela, pesada
+pela área:
+
+```text
+    E = Σ_t A_t · [ |grad u_t − X_t/h|² + |grad v_t − Y_t/h|² ]      (Y = n × X)
+```
+
+⭐ **Não há condição de fronteira nenhuma** — é a diferença de espécie contra os quatro
+achatamentos do F5, que impõem onde o bordo cai e pagam-no no interior. Aqui o bordo vai
+para onde o campo o mandar; o que prende os patches são as **costuras**.
+
+⭐⭐ **E o passo de Gauss–Seidel fica DIAGONAL**, o que não é sorte: a penalização é
+`w·|z_b − R^k z_a − t|²`, e derivando em ordem ao **meu** `z` a rotação cai sobre o valor
+do **outro** ⇒ a forma quadrática em `(u_k, v_k)` é `w·I`. *Se a rotação caísse do meu
+lado, o sistema local seria `2×2` cheio.*
+
+### ⭐ O controlo é uma TIRA PLANA, montada à mão — e a resposta é exacta
+
+⛔ Correr a cadeia inteira até aqui mede seis fases ao mesmo tempo; se o número sair mau
+não há como saber de quem é. A fixtura desta folha é uma tira plana de duas metades com
+o campo escrito à mão, onde a resposta certa se sabe ao ponto flutuante (`u = x/h`).
+
+⭐⭐⭐ **E o sinal do salto é uma dedução com medição por trás.** `R^k X_b = X_a` dá
+`z_b = R^k z_a + t`; com a metade direita rodada de um quarto de volta, o `k` certo é
+`3`. Medido:
+
+| salto | ângulo | escala | costura max |
+|---|---|---|---|
+| ⭐ **`3` (o CERTO)** | **`0,00000`** | — | **`0,00000`** |
+| `0` | `0,22349` | — | `0,01156` |
+| `1` | `0,31606` | — | `0,01635` |
+| `2` | `0,22349` | — | `0,01156` |
+
+⛔⛔ **E o controlo negativo mudou de coluna por causa desta tabela.** A primeira versão
+exigia que a costura *abrisse* com um salto errado — e ela **não abre**: fica em `0,016`,
+uma centésima de célula. *A penalização é forte, então o solver paga o erro onde ela não
+o impede: no gradiente.* ⇒ **«as costuras fecharam» não é sinal de saúde nenhum.**
+
+### ⛔⛔⛔ E na esfera a primeira leitura foi «o solver não presta» — e estava errada
+
+A coluna combinada dava `0,33` a `0,98` de desvio. ⚠️ **Ela mistura duas coisas com
+consequências opostas:** a grade apontar para o lado errado (fatal) e a grade ter o
+tamanho errado (não fatal — a quantização já decide as contagens). Separadas:
+
+| peso | ⭐ **ângulo `grad u` vs `X`** | escala | costura p50 | costura max |
+|---|---|---|---|---|
+| `1` | ⭐ **`4,1°`** | `0,89` | `0,141` | ⛔ **`2,98`** |
+| `8` | `8,2°` | `0,76` | `0,029` | `0,90` |
+| `64` | `12,3°` | `0,71` | `0,004` | `0,146` |
+| ⭐ **`512`** | `13,0°` | `0,61` | `0,0006` | ⭐ **`0,017`** |
+
+⭐ **A `w = 1` a grade segue o campo a `4,1°`.** O `0,33` que eu ia ler como fracasso era
+quase todo **escala** — *terceira vez esta semana que uma coluna sem rótulo quase deu a
+conclusão contrária.*
+
+### ⭐⭐⭐ Compromisso REAL, e não solver lento — medido
+
+A assinatura era ambígua: a `w = 64` o ângulo caía de `38°` para `11,9°` entre `2 000` e
+`40 000` rondas. *Um compromisso não melhora com rondas; um solver lento melhora.*
+
+| peso | `40 k` | `160 k` | `640 k` |
+|---|---|---|---|
+| `64` | `11,9°` | `12,1°` | `12,3°` |
+| `512` | `25,0°` | `13,2°` | `13,0°` |
+
+⇒ **os dois assentam**. Fechar as costuras custa o alinhamento, e isso é uma propriedade
+da formulação, não do solver. *É a mesma lei do ponto fixo do `regraduate`: uma
+afirmação sobre convergência precisa de mais de um termo.*
+
+### As constantes, e de onde saem
+
+⭐ **`SEAM_WEIGHT = 512`** porque o **G4 lê onde as isolinhas inteiras cruzam cada
+arco**, e aí quem manda é o resíduo da costura: `0,15` de célula seria `15 %` de
+desacordo sobre onde a marca cai. *O ângulo paga `9°`; a marca ganha uma ordem de
+grandeza.* ⭐ **`ROUNDS = 160 000`** é onde a tabela deixa de mudar.
+
+⚠️ **A escala baixa (`0,61`) não bloqueia, e é por desenho:** o G4 usa o mapa só para
+decidir *onde ao longo de cada arco* as marcas caem, mantendo as **contagens do F4** — a
+mesma disciplina do `regraduate`. ⇒ um factor de escala global sai na normalização.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| ler o alinhamento numa coluna só | mistura direcção (fatal) com escala (não fatal); a leitura inverte-se | [`solve.rs`](../../../crates/ph2d-gridmap/src/solve.rs) |
+| controlo negativo sobre o resíduo da costura | um salto errado **não** abre a costura — paga-se no gradiente | [`solve_tests.rs`](../../../crates/ph2d-gridmap/src/solve_tests.rs) |
+| `SEAM_WEIGHT` baixo (`1`) pelo ângulo de `4,1°` | costura a `2,98` células destrói a leitura das marcas | [`solve.rs`](../../../crates/ph2d-gridmap/src/solve.rs) |
+| mais rondas para desempatar o compromisso | `40 k → 640 k` move `12,1° → 12,3°`: assentou | idem |

@@ -126,6 +126,62 @@ pub(super) fn cell(spr: &Sprite, base_uv: [f32; 4], index: u32) -> Option<([f32;
     Some((uv, [dx, dy]))
 }
 
+/// **O QUAD DESDOBRADO** — o tamanho que faz a folha INTEIRA caber no sítio do sprite.
+///
+/// # ⚠️ O defeito que ele cura (Enio, 2026-08-23, com foto)
+///
+/// Enquanto uma ferramenta pré-visualiza um sprite, o extract troca o `atlas_uv` pelo rect
+/// **inteiro** da textura transitória — e essa textura é o bake da imagem TODA. Num sprite com
+/// grelha isso põe as oito células dentro do quad de **uma**: a tira sai esmagada 8:1, e é o que a
+/// segunda foto do report mostra.
+///
+/// ⚠️ **E o caminho do PONTEIRO fazia a mesma conta**, o que os deixava consistentes um com o outro
+/// e errados com o artista: o `sprite_image_to_screen_affine` mapeia a imagem inteira sobre o
+/// `Sprite::size`, que é uma célula. Por isso os dois chamam **esta** função — pintar-se-ia num
+/// sítio e ver-se-ia noutro.
+///
+/// # ⚠️ Ele NÃO se ancora na célula viva, e a razão é o relógio
+///
+/// A primeira versão punha a folha à volta da célula viva, para a arte não saltar ao pegar no
+/// pincel. **Media errado o preço:** o `Sprite::frame` continua a andar enquanto se pinta (o tique
+/// é independente), então o desvio mudaria a cada quadro e a folha **deslizaria debaixo do
+/// pincel** — inutilizável. Aqui a folha fica **centrada no pivô do sprite**, sem depender do
+/// frame; o que salta é uma vez, ao abrir, e lê-se como *«a folha abriu»*.
+///
+/// ⚠️ A pré-visualização da grelha (`Show sheet on canvas`) faz o **contrário**, e também está
+/// certa: ali a célula viva **é** o quad real do sprite, então a folha tem de se dispor à volta
+/// dela. *Dois modos, duas âncoras — e a diferença é qual dos dois desenha a célula viva.*
+///
+/// `None` quando não há grelha — e aí o quad é o de sempre, byte-idêntico.
+pub(crate) fn unfolded_quad(spr: &Sprite) -> Option<[f32; 2]> {
+    cell_count(spr)?;
+    let (hf, vf) = (spr.hframes.max(1), spr.vframes.max(1));
+    Some([spr.size[0] * hf as f32, spr.size[1] * vf as f32])
+}
+
+/// **A PRÉ-VISUALIZAÇÃO ANIMADA que acompanha a pintura** (Enio, 2026-08-23) — a sub-UV da célula
+/// que está a tocar e onde pôr o quad dela, em metros locais relativos ao pivô.
+///
+/// ⚠️ **Ela existe porque a folha desdobrada mostra TUDO e por isso não mostra o movimento.** Com o
+/// quad a cobrir a imagem inteira, o `Sprite::frame` deixa de ter efeito visível: o artista pinta
+/// oito desenhos e não vê a animação que eles formam. Este quad é a resposta — uma célula, ao lado
+/// da folha, a andar ao ritmo do tocador.
+///
+/// ⚠️ **Fora da folha, e ACIMA dela**: sobreposto, ele taparia o que se está a pintar; abaixo,
+/// disputaria com a barra de ferramentas que mora no fundo do canvas na maioria dos ecrãs.
+///
+/// `None` sem grelha. ⛔ Não pergunta se há animação a tocar: o frame é o do `Sprite`, e uma sprite
+/// parada mostra a célula parada — que é a leitura honesta de *«é isto que está no ecrã»*.
+pub(crate) fn anim_preview_quad(spr: &Sprite, base_uv: [f32; 4]) -> Option<([f32; 4], [f32; 2])> {
+    let cells = cell_count(spr)?;
+    let live = spr.frame.min(cells - 1);
+    let uv = super::sim_extract::sprite_sheet_subrect(base_uv, spr.hframes, spr.vframes, live);
+    let vf = spr.vframes.max(1);
+    // Meia folha para cima, mais meia célula e uma folga de uma célula — encostado por fora.
+    let dy = (f64::from(vf) * 0.5 + 1.0) * f64::from(spr.size[1]);
+    Some((uv, [0.0, dy as f32]))
+}
+
 /// A instância fantasma: a base, com a sub-UV da célula, deslocada e esmaecida.
 ///
 /// ⚠️ **O flip do sprite espelha a GRELHA, não cada célula no seu lugar** — a lição que o 9-slice

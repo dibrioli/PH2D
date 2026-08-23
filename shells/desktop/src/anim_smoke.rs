@@ -36,6 +36,11 @@
 //!    da célula viva, esmaecida, com as **linhas dos cortes** por cima e a célula que está no ecrã
 //!    contornada. É como se vê se o `H Frames` corta onde a arte espera.
 //!
+//! 10. Com a sprite selecionada, entre no **Painter**: a folha **abre-se inteira**, cada quadro no
+//!     lugar dele e no tamanho certo — e uma **célula extra, acima dela, toca a animação** enquanto
+//!     se pinta. ⚠️ Antes disto a tira saía esmagada 8:1 dentro de uma célula (report do Enio, com
+//!     foto), e o ponteiro tinha o mesmo esmagamento: as duas contas eram a mesma, e ambas erradas.
+//!
 //! ⚠️ **Os passos 2, 6 e 7 são a auditoria de 2026-08-23** ([doc 21](../../../docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md)):
 //! até ela, o passo 2 deixava a sprite muda (escolher outra não retomava a que se esgotara), o
 //! *Rewind* repunha contadores sem mexer na imagem, e a caixa precisava de dois cliques.

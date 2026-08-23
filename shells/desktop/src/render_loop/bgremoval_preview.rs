@@ -442,8 +442,17 @@ pub(crate) fn sprite_image_to_screen_affine(
     let tr = &world_tr;
     let image_w = image_w as f64;
     let image_h = image_h as f64;
-    let size_w = sprite.size[0] as f64;
-    let size_h = sprite.size[1] as f64;
+    // ⚠️ **NUMA FOLHA, O QUAD DESDOBRA-SE** (Enio, 2026-08-23). O contrato desta função é *«mapeia
+    // esta imagem INTEIRA sobre o quad deste sprite»*, e num sprite com grelha a imagem inteira é a
+    // folha toda — pô-la sobre uma célula esmaga-a, que é o que o report mostra.
+    //
+    // ⚠️ **A MESMA função que o extract usa** (`sim_extract_sheet::unfolded_quad`), e não uma cópia:
+    // o render e o ponteiro leem daqui, e uma segunda conta faria pintar num sítio e ver noutro.
+    // *É a lei que a caixa «Playing» pagou neste mesmo dia, noutra superfície.*
+    let unfolded_size =
+        crate::render_loop::sim_extract_sheet::unfolded_quad(sprite).unwrap_or(sprite.size);
+    let size_w = unfolded_size[0] as f64;
+    let size_h = unfolded_size[1] as f64;
     // image-px → centered, with Y flipped (image-Y is down, world-Y up):
     //   (px, py) ↦ ((px/w - 0.5) * size_w, (0.5 - py/h) * size_h)
     let img_to_local = Affine::scale_non_uniform(size_w / image_w, -size_h / image_h)

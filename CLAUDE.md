@@ -688,6 +688,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   regista um passo de undo (o relógio vive num `SimComponent` registado) — **família
   pré-existente**, a física faz o mesmo com o `Transform`; as três saídas estão na auditoria §4 e a
   escolha é do Enio.
+  ⭐ **PINTAR UMA FOLHA DESDOBRA-A** (Enio, 2026-08-23, com foto): sob pré-visualização de
+  ferramenta o extract troca a UV pelo rect INTEIRO da textura transitória, mas o quad continuava a
+  ser o de UMA célula — a tira saía **esmagada 8:1**. ⚠️ **E o caminho do PONTEIRO fazia a mesma
+  conta** (`sprite_image_to_screen_affine`), o que os deixava consistentes um com o outro e errados
+  com o artista; por isso os dois chamam a MESMA função (`sim_extract_sheet::unfolded_quad`).
+  ⚠️ **O desdobrado centra-se no PIVÔ e ignora o frame vivo** — ancorá-lo na célula viva (a 1.ª
+  versão) fá-la-ia **deslizar debaixo do pincel**, porque o tique continua a andar. ⛔ A
+  pré-visualização da grelha faz o **contrário** e também está certa: ali a célula viva **é** o quad
+  real. ⭐ E como a folha aberta mostra tudo, o `frame` deixa de ter efeito visível — daí a
+  **célula extra acima dela, a tocar a animação enquanto se pinta**.
   ⭐ **A GRELHA VÊ-SE** (Enio, 2026-08-23): a caixa **«Show sheet on canvas»** (§4 Sprite Sheet, só
   aparece com grelha) abre a folha no canvas — as outras células esmaecidas no lugar delas, com as
   linhas dos cortes e a viva contornada. ⚠️ **Fantasmas de PRESENTE, nunca documento** (o molde é o

@@ -205,3 +205,63 @@ interruptor aparece sempre.
 competir com a seleção, e a barra de frames e o campo `Frame` já respondem a isso.
 
 **Smoke:** `PH2D_ANIM_SMOKE=1`, passo 9.
+
+## §8 — Adenda: pintar uma folha (report com foto do Enio, 2026-08-23)
+
+*«ao tentar usar o canvas para editar veja como fica… Vc criou a imagem quadrada mesmo? ou está
+sendo achatada? Para editar com o painter precisamos de cada quadro no seu lugar. e precisamos de
+um preview animado enquanto editamos com o painter.»*
+
+**A imagem não estava achatada — o QUAD estava.** Sob pré-visualização de ferramenta o extract
+troca o `atlas_uv` pelo rect **inteiro** da textura transitória (que é o bake da imagem toda), e o
+quad continuava a ser o de **uma** célula: oito células dentro de uma ⇒ tira esmagada 8:1.
+
+⚠️ **E o caminho do PONTEIRO fazia a mesma conta.** O `sprite_image_to_screen_affine` mapeia a
+imagem inteira sobre o `Sprite::size` — o que deixava o render e o ponteiro **consistentes um com o
+outro e errados com o artista**. É por isso que a cura não podia viver só no render: os dois
+passaram a chamar `sim_extract_sheet::unfolded_quad`, e o `affine` é o seam de **todos** os
+overlays do Painter (pincel, gizmos de seleção, curva, fill) — os dez chamadores seguem juntos.
+
+### ⭐ A versão que foi medida e substituída, no mesmo dia
+
+A 1.ª forma ancorava a folha desdobrada **na célula viva**, para a arte não saltar ao pegar no
+pincel. **Media errado o preço:** o `Sprite::frame` continua a andar durante a pintura (o tique é
+independente), então o desvio mudaria a cada quadro e a folha **deslizaria debaixo do pincel**.
+
+⇒ A folha desdobrada centra-se no **pivô** e não depende do frame. O que salta é uma vez, ao abrir,
+e lê-se como *«a folha abriu»*. ⚠️ A pré-visualização da grelha (`Show sheet on canvas`) faz o
+**contrário** e também está certa — ali a célula viva **é** o quad real do sprite, então a folha
+tem de se dispor à volta dela. *Dois modos, duas âncoras, e a diferença é qual dos dois desenha a
+célula viva.* ⛔ O gate que afirmava a igualdade das duas disposições **saiu**, com o motivo escrito
+no topo do ficheiro de testes.
+
+### O preview animado, e por que ele é consequência e não enfeite
+
+Com o quad a cobrir a imagem inteira, o `Sprite::frame` **deixa de ter efeito visível**: o artista
+pinta oito desenhos e não vê a animação que eles formam. O `anim_preview_quad` é a resposta — uma
+célula, por fora da folha (acima: sobreposta taparia o que se pinta), com a sub-UV do frame vivo,
+que anda porque o tique anda.
+
+**Gates novos (2) + 3 mutações:** o quad cobre a folha e **ignora o frame vivo** (M20: não desdobra
+⇒ volta o esmagamento) · o preview segue o frame vivo e fica **fora** da folha (M21: congela no
+frame 0 · M22: fica em cima da folha).
+
+## §9 — ⛔ Recusa medida: «H Frames não atualiza em tempo real»
+
+*«Com show sheet on canvas checado, se mudo H frames, a imagem não atualiza em tempo real.»*
+
+**Medido: as setas e o arrasto JÁ atualizam ao vivo.** O `apply_number_stepper_if_hit` levanta
+`ValueChanged` no clique (`pointer_down`), e o arrasto levanta-o **a cada `Move`**
+(`pointer_move`). O que não atualiza é **digitar**: teclar levanta `TextChanged`, e o commit (com o
+`ValueChanged`) só sai no Enter ou ao sair do campo.
+
+⛔ **Isso é o comportamento de TODOS os ~141 campos numéricos do app**, e mudá-lo para um deles
+faria a §4 responder ao teclado de forma diferente de todos os vizinhos.
+
+⛔ **A alternativa medida — a pré-visualização seguir o BUFFER digitado — foi recusada pelo preço:**
+exige um «grelha pendente» atravessando o extract **e** a célula viva a re-fatiar com ele (senão os
+fantasmas mostrariam 7 e o quad real 8), o que ripplaria por nove gates para cobrir um caso que
+duas gestos já resolvem, um deles com as setas visíveis ao lado do campo.
+
+⇒ **Se o Enio insistir, o caminho está descrito acima e é ~30 linhas.** A recusa é de preço, não de
+desenho.

@@ -1,4 +1,16 @@
 //! Gates da folha aberta — irmão de [`super`] pelo teto de LOC do shell.
+//!
+//! # ⛔ Um gate que existiu e SAIU, com o motivo
+//!
+//! Houve aqui um `painting_lays_the_cells_out_where_the_ghosts_put_them`, a afirmar que a folha
+//! desdobrada (pintura) e os fantasmas (`Show sheet on canvas`) punham cada célula no mesmo sítio.
+//! **Ele deixou de ser verdade de propósito**: as duas âncoras divergiram quando se mediu que o
+//! `Sprite::frame` continua a andar durante a pintura — ancorar a folha desdobrada na célula viva
+//! fá-la-ia deslizar debaixo do pincel. Hoje a pintura centra a folha no pivô e a
+//! pré-visualização dispõe-na à volta da célula viva, e **a diferença é qual dos dois desenha essa
+//! célula**. Ver o doc de [`super::unfolded_quad`].
+//!
+//! *Um gate apagado sem o motivo escrito lê-se como um gate inconveniente.*
 
 use super::*;
 use ph2d_render::Sprite;
@@ -211,5 +223,71 @@ fn the_sheet_opens_only_for_the_previewed_sprite_that_has_a_grid() {
         should_open(Some(e), e, false, &plain),
         None,
         "1x1 nao e' folha"
+    );
+}
+
+/// **O QUAD DESDOBRADO cobre a folha inteira, e NÃO depende do frame vivo.**
+///
+/// ⚠️ A segunda metade é a que carrega o desenho, e ela custou uma versão: a primeira ancorava a
+/// folha na célula viva, para a arte não saltar ao pegar no pincel. **O `Sprite::frame` continua a
+/// andar enquanto se pinta**, então o desvio mudaria a cada quadro e a folha **deslizaria debaixo
+/// do pincel**. Hoje ela fica centrada no pivô, e o mesmo sprite em frames diferentes dá o mesmo
+/// quad.
+#[test]
+fn the_unfolded_quad_covers_the_sheet_and_ignores_the_live_frame() {
+    assert_eq!(
+        unfolded_quad(&spr(1, 1, 0)),
+        None,
+        "sem grelha nao ha' o que desdobrar"
+    );
+    let first = unfolded_quad(&spr(4, 2, 0)).unwrap();
+    assert_eq!(first, [8.0, 4.0], "4x2 celulas de 2 m sao 8x4 m");
+    for live in 1..8u32 {
+        assert_eq!(
+            unfolded_quad(&spr(4, 2, live)).unwrap(),
+            first,
+            "o frame {live} nao pode mover o quad -- a folha deslizaria sob o pincel"
+        );
+    }
+    // E uma coluna também desdobra.
+    assert_eq!(unfolded_quad(&spr(1, 4, 0)).unwrap(), [2.0, 8.0]);
+}
+
+/// **A PRÉ-VISUALIZAÇÃO ANIMADA mostra a célula VIVA, fora da folha, e ela ANDA.**
+///
+/// ⚠️ A razão de existir: com o quad desdobrado a mostrar tudo, o `Sprite::frame` deixa de ter
+/// efeito visível. Se a sub-UV deste quad não seguisse o frame, ele seria mais um retrato parado —
+/// e o artista pintaria oito desenhos sem nunca ver a animação que eles formam.
+#[test]
+fn the_animated_preview_follows_the_live_frame_and_sits_outside_the_sheet() {
+    assert_eq!(
+        anim_preview_quad(&spr(1, 1, 0), FULL),
+        None,
+        "sem grelha nao ha' preview"
+    );
+
+    let mut seen = std::collections::BTreeSet::new();
+    for live in 0..8u32 {
+        let s = spr(4, 2, live);
+        let (uv, off) = anim_preview_quad(&s, FULL).unwrap();
+        // A sub-UV é a do frame vivo — a MESMA que o extract daria.
+        assert_eq!(
+            uv,
+            super::super::sim_extract::sprite_sheet_subrect(FULL, 4, 2, live),
+            "o preview do frame {live} tem de mostrar o frame {live}"
+        );
+        seen.insert(uv.map(f32::to_bits));
+        // Fica ACIMA, e fora da folha: meia folha (2 m) + meia célula + folga.
+        assert_eq!(off[0], 0.0, "alinhado com o centro da folha");
+        assert!(
+            f64::from(off[1]) >= f64::from(s.vframes) * 0.5 * f64::from(s.size[1]),
+            "tem de ficar FORA da folha, senao tapa o que se esta' a pintar (viu {})",
+            off[1]
+        );
+    }
+    assert_eq!(
+        seen.len(),
+        8,
+        "os oito frames dao oito imagens diferentes -- ele ANDA"
     );
 }

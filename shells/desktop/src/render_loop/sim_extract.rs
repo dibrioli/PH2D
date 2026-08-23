@@ -421,6 +421,18 @@ pub(super) fn run(
                         } else {
                             (atlas_uv, texture_id, spr.premultiplied)
                         };
+                    // ⚠️ **E NUMA FOLHA, O QUAD DESDOBRA-SE** (Enio, 2026-08-23, com foto). A UV
+                    // acima passou a ser o rect INTEIRO da textura de pré-visualização — que é o
+                    // bake da imagem toda —, mas o quad continuava a ser o de UMA célula: as oito
+                    // saíam esmagadas 8:1 dentro dela.
+                    //
+                    // ⚠️ O caminho do PONTEIRO faz a mesma conta
+                    // (`bgremoval_preview::sprite_image_to_screen_affine`), e é por isso que ele
+                    // chama a MESMA função: pintar-se-ia num sítio e ver-se-ia noutro.
+                    let quad_size = override_for_entity
+                        .and_then(|_| crate::render_loop::sim_extract_sheet::unfolded_quad(spr))
+                        .unwrap_or(spr.size);
+                    let quad_anchor = spr.resolve_anchor(pixels_per_meter);
                     // Record this sprite for the sort pipeline; `z_order`
                     // is patched to the computed rank after the walk.
                     sort_inputs.push(SortInput {
@@ -542,8 +554,9 @@ pub(super) fn run(
                     };
                     let base = RenderInstance {
                         world_pos: [p.x, p.y],
-                        // LOCAL size — the basis applies world scale.
-                        size: spr.size,
+                        // LOCAL size — the basis applies world scale. ⚠️ Numa folha sob
+                        // pré-visualização isto é o quad DESDOBRADO (ver acima).
+                        size: quad_size,
                         atlas_uv,
                         tint: cascade_tint,
                         basis,
@@ -558,7 +571,7 @@ pub(super) fn run(
                         // to world with the quad corners, so the quad orbits
                         // `world_pos` (the pivot) under skew too. Default
                         // (centered, offset 0, anchor 0) = [0,0] (legacy).
-                        anchor: spr.resolve_anchor(pixels_per_meter),
+                        anchor: quad_anchor,
                         per_corner_tint: spr.per_corner_tint,
                         opacity: spr.opacity,
                         flip_uv,
@@ -590,29 +603,35 @@ pub(super) fn run(
                     ) {
                         None => {
                             builder.insert(base);
-                            // **A FOLHA ABERTA** (Enio, 2026-08-23): as outras células da grelha,
-                            // esmaecidas e no lugar delas, para o artista VER onde os cortes caem.
+                            // **OS EXTRAS DE PRÉ-VISUALIZAÇÃO** (Enio, 2026-08-23), os dois de uma
+                            // vez porque partilham o `drop` do empréstimo:
                             //
-                            // ⚠️ **Só no braço normal.** Um 9-slice já abre UMA célula em nove
-                            // quads; abrir também as outras multiplicaria os dois fan-outs
-                            // (`9 × cells`) para responder a uma pergunta que o 9-slice não faz —
-                            // ali a grelha é a fonte das bordas, não uma tira de frames.
+                            // 1. **A FOLHA ABERTA** — as outras células da grelha, esmaecidas e no
+                            //    lugar delas, para o artista VER onde os cortes caem.
+                            // 2. **A PRÉ-VISUALIZAÇÃO ANIMADA** — com o quad desdobrado a mostrar
+                            //    a folha inteira enquanto se pinta, o `Sprite::frame` deixa de ter
+                            //    efeito visível: o artista pinta oito desenhos e não vê a animação
+                            //    que eles formam. Uma célula, por fora da folha, ao ritmo do tocador.
                             //
-                            // ⚠️ E não sob `override_for_entity`: a textura de pré-visualização de
-                            // uma ferramenta é um bake de quadro inteiro, não uma folha — é a
-                            // mesma razão pela qual a sub-UV da célula é saltada acima.
-                            if let Some(cells) =
-                                crate::render_loop::sim_extract_sheet::should_open(
-                                    sheet_preview,
-                                    sim_entity,
-                                    override_for_entity.is_some(),
-                                    spr,
+                            // ⚠️ A 1 não corre sob pré-visualização de ferramenta e a 2 corre **só**
+                            // sob ela: são os dois lados do mesmo momento — ou se está a inspecionar
+                            // a grelha, ou se está a pintá-la.
+                            let ghosts = crate::render_loop::sim_extract_sheet::should_open(
+                                sheet_preview,
+                                sim_entity,
+                                override_for_entity.is_some(),
+                                spr,
+                            );
+                            let anim_preview = override_for_entity.and_then(|_| {
+                                crate::render_loop::sim_extract_sheet::anim_preview_quad(
+                                    spr, sheet_uv,
                                 )
-                            {
+                            });
+                            if ghosts.is_some() || anim_preview.is_some() {
                                 // O `drop` é pelo EMPRÉSTIMO, como no braço do 9-slice ao lado.
                                 #[allow(clippy::drop_non_drop)]
                                 drop(builder);
-                                for i in 0..cells {
+                                for i in 0..ghosts.unwrap_or(0) {
                                     if let Some((uv, off)) =
                                         crate::render_loop::sim_extract_sheet::cell(spr, sheet_uv, i)
                                     {
@@ -625,6 +644,21 @@ pub(super) fn run(
                                             ph2d_render::nine_slice::SlicePatchMirror,
                                         ));
                                     }
+                                }
+                                if let Some((uv, off)) = anim_preview {
+                                    let mut ri = base;
+                                    ri.atlas_uv = uv;
+                                    // ⚠️ UMA célula, e não o quad desdobrado: é a imagem que a
+                                    // sprite mostra quando a folha volta a fechar.
+                                    ri.size = spr.size;
+                                    ri.anchor =
+                                        [quad_anchor[0] + off[0], quad_anchor[1] + off[1]];
+                                    present.spawn((
+                                        SimRef(sim_entity),
+                                        gt,
+                                        ri,
+                                        ph2d_render::nine_slice::SlicePatchMirror,
+                                    ));
                                 }
                             }
                         }

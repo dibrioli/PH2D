@@ -149,3 +149,7 @@ ph2d-node-sync = { path = "../../tools/ph2d-node-sync" }
 # `[dev-dependencies]` é o que impede o registro de crescer uma opinião sobre
 # cook (o mesmo cerco que a `ph2d-gpu-cook` põe nas crates-nó dela).
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+# Só o gate dos TETOS (`param_ceilings`): ele mede a cadência de cozedura à qual o `sim.spawn`
+# honra o `rate`, e essa cadência é `ph2d_core::DEFAULT_HZ`. Escrevê-la à mão aqui faria a
+# medição correr num relógio que o app pode não ter — o defeito que ela existe para apanhar.
+ph2d-core = { path = "../ph2d-core" }

@@ -450,13 +450,40 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamGroup, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGroup, ParamHardMax, ParamUiHint, ParamWidget};
+
+/// **O teto DIGITÁVEL dos dois raios, MEDIDO** — o irmão exacto do `field.box`.
+///
+/// ⚠️ **O neutro que o doc-comment deste módulo promete era inalcançável:** ele diz
+/// *"`radius` larger than the scene"* ⇒ máscara `1` em toda a parte, e sem entrada aqui o
+/// digitado parava em **40** (o fim do arrasto — `ui.rs:206`).
+///
+/// **O recurso é a PRECISÃO** (`CLAUDE.md` §0.0): nada nesta lei satura — um raio maior que a
+/// cena É o neutro, e o nó honra-o. O que acaba é o `f32`: acima de `2²¹` somar o `step` do
+/// slider (0,1) **não move o número**, então dois raios autoráveis vizinhos são o mesmo campo.
+/// O valor é `2²¹ − 1 ulp`, derivado a cada corrida pelo gate
+/// `every_precision_bound_param_types_to_the_measured_ceiling` (`ph2d-node-registry-init`).
+///
+/// ⚠️ **Os dois raios levam o MESMO teto, pela mesma razão que já governa a faixa do arrasto:**
+/// o anel só existe enquanto `inner < radius`, e um teto menor no interno esconderia metade dos
+/// anéis que o externo alcança.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "radius",
+        max: 2_097_151.875,
+    },
+    ParamHardMax {
+        param: INNER_RADIUS,
+        max: 2_097_151.875,
+    },
+];
 
 /// As SEÇÕES deste nó (doc 88 B3).
 ///

@@ -432,6 +432,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, bounds::PARAM_HARD_MAX);
+    reg.register_param_hard_min(MANIFEST.id, bounds::PARAM_HARD_MIN);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5: the kernel and the FOUR whole-stream reductions it reads (the
     // bounding box). Side metadata on the registry (ADR-0126) — the frozen node
@@ -440,6 +442,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_reduces(MANIFEST.id, REDUCES);
     Ok(())
 }
+
+mod bounds;
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 

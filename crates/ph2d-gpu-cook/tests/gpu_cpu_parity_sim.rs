@@ -141,8 +141,15 @@ const EPS_POS: f32 = 2e-3;
 const MUST_MOVE: f32 = 50.0 * EPS_POS;
 /// Deliberately NOT 1/60: `dt` is squared into the displacement, so the
 /// product's timestep would put one step's motion down at the ε floor and the
-/// gate could not see the integrator at all. `MAX_DT` (0.1) is the clamp — stay
-/// off the boundary.
+/// gate could not see the integrator at all.
+///
+/// ⚠️ **Está ACIMA do grampo de propósito, e desde 2026-08-23 isso é o que ele exercita.** O
+/// `MAX_DT` dos dois integradores foi medido e desceu a `0,03` (bloco Z, doc 91: a `0,1` o laço
+/// fechado atirava a grelha a 127× o raio em que nascia), então `0,05` **é grampeado** — nos
+/// DOIS caminhos, com o mesmo número, e é exactamente essa igualdade que este gate existe para
+/// afirmar. Um `dt` abaixo do grampo mediria o integrador sem nunca tocar no grampo; assim ele
+/// mede os dois. *O literal antigo dizia "stay off the boundary" e passou a estar sobre ela —
+/// o comentário é que envelheceu, não o número.*
 const FIXED_DT: f64 = 0.05;
 
 fn edge(g: &mut Graph, from: NodeId, to: NodeId, port: u16, delayed: bool) {
@@ -1264,7 +1271,7 @@ fn a_sea_of_no_wavelength_matches_the_cpu() {
             "force.buoyancy",
             &[
                 ("level", 0.0),
-                ("density", 40.0),
+                ("density", 90.0),
                 ("depth", 0.3),
                 ("drag", 2.75),
                 // Keeps the clamped `λ = 1e-3` sea out of the sign-flip regime.
@@ -1275,6 +1282,20 @@ fn a_sea_of_no_wavelength_matches_the_cpu() {
             ],
         )],
     );
+    // ⚠️ **A DENSIDADE subiu (40 → 90); os TIQUES continuam dois, e a ordem em que isto se
+    // descobriu é a lição.** O deslocamento de um passo semi-implícito vai com `dt²`, e o
+    // `MAX_DT` dos integradores desceu de `0,1`/`0,05` para `0,03` MEDIDO (bloco Z, doc 91: a
+    // `0,1` o laço fechado atirava a grelha a 127× o raio em que nascia). Com o mesmo
+    // `FIXED_DT = 0,05` agora grampeado, dois tiques moviam `0,0923` contra o piso de `0,1` — e
+    // esse piso é a guarda de VACUIDADE deste gate (*"um campo congelado casaria com um
+    // congelado por NaN e não provaria nada"*), ou seja exactamente o que não se afrouxa.
+    //
+    // ⛔ **Alargar o PERCURSO foi tentado primeiro e está REFUTADO por medição:** 4 tiques
+    // passam a vacuidade e reprovam a paridade (`0,00526 > ε`), 3 idem (`0,00266`). É o próprio
+    // comentário acima a explicar porquê — *esta fixtura é caótica em NÚMERO DE PASSOS*, e dois
+    // é a condição dela. ⇒ *Quando a régua encolhe, alargue a FORÇA, nunca o número de passos de
+    // um sistema condicionado no número de passos.* A 90 a paridade fica em `2,3e-4` (8× de
+    // folga sob o ε) e o campo move-se bem acima do piso.
     let cpu = cpu_ticks(&g, &reg, out, 2);
     let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 3);
     let moved = max_move(&cpu[0], &cpu[2]);

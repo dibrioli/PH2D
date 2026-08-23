@@ -289,10 +289,29 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// trabalha (Blender soft/hard). **Derivado de `MAX_POINTS`, nunca re-digitado:** é o
 /// mesmo número que o `eval` usa para capar o `param_as_count`, e as duas respostas à
 /// pergunta *"quantas células cabem?"* têm de sair da mesma constante.
-static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
-    param: "count",
-    max: MAX_POINTS as f32,
-}];
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "count",
+        max: MAX_POINTS as f32,
+    },
+    // ⚠️ **E os dois LADOS da caixa não tinham teto nenhum** (bloco Z, doc 91): a cena `=11`
+    // autora `width = 24` e o campo digitava até `20` — sem entrada aqui o digitado para no fim
+    // do ARRASTO (`ui.rs:206`). Acusação da sonda `what_the_corpus_authors_and_no_one_can_type`.
+    //
+    // ⚠️ **O recurso é OUTRO do que o do `count` acima, e é isso que os separa:** o `count` tem
+    // LEI (`MAX_POINTS` — mais pontos do que o kernel aloca não nascem), enquanto um lado da
+    // caixa não satura, e o que acaba nele é o `f32` — acima daqui somar o `step` do slider
+    // (0,05) **não move o número**. Derivado a cada corrida pelo gate
+    // `every_precision_bound_param_types_to_the_measured_ceiling`.
+    ParamHardMax {
+        param: "width",
+        max: 1_048_575.938,
+    },
+    ParamHardMax {
+        param: "height",
+        max: 1_048_575.938,
+    },
+];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {

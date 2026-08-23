@@ -343,6 +343,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5: the kernel and the TWO whole-stream reductions it reads (the
     // centroid). Side metadata on the registry (ADR-0126) — the frozen node
@@ -352,7 +353,23 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
+
+/// **O teto DIGITÁVEL do raio, MEDIDO** — bloco Z, doc 91.
+///
+/// ⚠️ **É o pior caso do repo inteiro: a cena `=13` autora `radius = 320` e o campo digitava até
+/// `20`** — **dezasseis vezes** o alcance do artista, num param que é a razão de existir do nó.
+/// Sem entrada aqui o digitado para no fim do ARRASTO (`ui.rs:206`). Acusação da sonda
+/// `what_the_corpus_authors_and_no_one_can_type`.
+///
+/// **O recurso é a PRECISÃO** (`CLAUDE.md` §0.0): a lente não satura — um raio maior que a cena
+/// abaúla tudo, que é uma resposta —, então o que acaba é o `f32`: acima daqui somar o `step` do
+/// slider (0,05) **não move o número**. Derivado a cada corrida pelo gate
+/// `every_precision_bound_param_types_to_the_measured_ceiling`.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
+    param: "radius",
+    max: 1_048_575.938,
+}];
 
 /// ⚠️ The offset range mirrors the `pivot_x`/`pivot_y` of `motion.bend` and
 /// `motion.twist` (`-10..10`, step `0.05`) — the same question ("where in the world

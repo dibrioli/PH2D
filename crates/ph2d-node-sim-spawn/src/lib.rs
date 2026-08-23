@@ -108,6 +108,23 @@ const PULSE_COL: &str = "pulse";
 /// place it can bite.)
 const MAX_PER_TICK: u32 = 256;
 
+/// A cadência do relógio a que este nó é cozido, em hertz — o espelho local de
+/// `ph2d_core::DEFAULT_HZ`.
+///
+/// ⚠️ **Dito aqui e não importado, pela MESMA razão que o [`PULSE_COL`] acima**: esta crate é
+/// uma folha e o vocabulário partilhado é a PORTA, nunca um símbolo. O preço do espelho é
+/// poder divergir, e é por isso que ele tem gate (`the_locally_spelled_cook_rate_is_the_houses`,
+/// que importa o `ph2d-core` só como dev-dependency).
+const COOK_HZ: f32 = 60.0;
+
+/// **O maior `rate` que este nó HONRA, em nascimentos por segundo.**
+///
+/// [`born_in`] emite no máximo [`MAX_PER_TICK`] por cozedura, e o app cozinha uma vez por
+/// tique de [`COOK_HZ`] ⇒ `256 × 60 = 15 360/s`. Acima disto os nascimentos devidos não são
+/// adiados: são **saltados**. É este o número que o campo digitável aceita, e não o fim do
+/// arrasto.
+const MAX_RATE: f32 = MAX_PER_TICK as f32 * COOK_HZ;
+
 /// The jitter lanes (independent draws off the same id).
 const LANE_SLOT: u32 = 7;
 
@@ -586,6 +603,20 @@ static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[
     ph2d_node_registry::ParamHardMax {
         param: "burst",
         max: MAX_PER_TICK as f32,
+    },
+    // ⚠️ **O `rate` não tinha teto nenhum, e o irmão ao lado tinha.** Sem entrada aqui o campo
+    // digita até ao fim do ARRASTO (`ui.rs:206`) — **60/s** —, enquanto a lei honra
+    // [`MAX_PER_TICK`] por tique. Duzentos e cinquenta e seis vezes mais era inalcançável, e a
+    // faixa que o artista via descrevia a comodidade do dedo, não o nó.
+    //
+    // **De que recurso é este teto: da LEI, não da precisão** (`CLAUDE.md` §0.0) — e é por isso
+    // que ele não entra na lista `PRECISION_BOUND` do gate irmão. [`born_in`] grampeia a janela
+    // em `first + MAX_PER_TICK`, então acima de [`MAX_RATE`] os nascimentos **são saltados**
+    // (o único ponto lossy do modelo, dito em voz alta no doc-comment de [`MAX_PER_TICK`]) e um
+    // campo que aceitasse mais aceitaria e mentiria — a mesma lei do `burst` uma linha acima.
+    ph2d_node_registry::ParamHardMax {
+        param: "rate",
+        max: MAX_RATE,
     },
     // ⚠️ **Este teto não é de recurso, é de SIGNIFICADO** — e é por isso que ele existe: acima de
     // 1 a [`survives`] devolve `true` para tudo, então uma caixa que aceitasse `5` **aceitaria e

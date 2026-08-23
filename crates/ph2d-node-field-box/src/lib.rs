@@ -301,10 +301,32 @@ use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// O teto que a MÁQUINA (ou o bom senso) impõe, alcançável por DIGITAÇÃO — o slider fica
 /// onde a MÃO trabalha (soft/hard do Blender; doc 88 §11). O curso de antes é este número:
 /// nada ficou inalcançável, só deixou de ser o que o dedo percorre.
-static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
-    param: "soft",
-    max: 20.0,
-}];
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "soft",
+        max: 20.0,
+    },
+    // ⚠️ **O NEUTRO DESTE NÓ ERA INALCANÇÁVEL POR GESTO NENHUM.** O doc-comment do módulo
+    // promete *"a box larger than the scene with `soft = 0`"* e o teste dele usa `width = 100`
+    // — mas sem entrada aqui o digitado para no fim do ARRASTO (`ui.rs:206`: *"a param with no
+    // entry here types to its soft `max`"*), que são **40**. Uma promessa que a UI não executa.
+    //
+    // **De que recurso é este teto: da PRECISÃO** (`CLAUDE.md` §0.0). Nada nesta lei satura —
+    // uma caixa maior que a cena É o neutro, e o nó honra-a. O que acaba é o `f32`: acima de
+    // `2²¹` somar o `step` do slider (0,1) já **não move o número**, então dois valores
+    // autoráveis vizinhos passam a ser o mesmo campo, e aceitá-los seria aceitar e mentir (a
+    // lei do `sim.spawn::burst`, doc 88 §B2). O número é `2²¹ − 1 ulp`, MEDIDO e re-derivado a
+    // cada corrida pelo gate `every_precision_bound_param_types_to_the_measured_ceiling` —
+    // escrito à mão ele envelheceria no dia em que alguém afinasse o `step` do arrasto.
+    ParamHardMax {
+        param: "width",
+        max: 2_097_151.875,
+    },
+    ParamHardMax {
+        param: "height",
+        max: 2_097_151.875,
+    },
+];
 
 /// Param UI hints (M1.P1): full Width/Height/Softness in world-units, signed
 /// centre, a named Curve selector, an Invert checkbox.

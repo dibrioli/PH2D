@@ -50,9 +50,33 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
-/// The largest step the integrator will take, in seconds. A pause, a scrub or a dropped frame
-/// otherwise arrives as one enormous `dt` and the sim explodes on the frame it resumes.
-const MAX_DT: f32 = 1.0 / 20.0;
+/// **The largest step the integrator will take, in seconds — MEDIDO** (bloco Z, doc 91).
+///
+/// Uma pausa, um scrub ou um quadro perdido chegariam como um `dt` enorme, e o sim explodiria no
+/// quadro em que retoma.
+///
+/// ⚠️ **Era `1/20`, e este era o número MAIS CERTO dos dois do catálogo.** A sonda
+/// `measure_the_step_that_a_closed_loop_survives` (`ph2d-node-registry-init`) corre a MESMA
+/// malha fechada nos dois integradores — `grid → zona`, com o `pre` de volta por uma
+/// `force.attractor` — e mede a excursão de uma grelha nascida dentro de raio `1,0`:
+///
+/// | `strength` = 40 | dt=1/60 | dt=1/30 | dt=0,05 | dt=0,075 | dt=0,1 |
+/// |---|---|---|---|---|---|
+/// | `sim.zone`/`sim.step` (grampo 0,05) | 0,83 | 0,89 | 2,49 | 2,48 | 2,48 |
+/// | `motion.integrate` (grampo 0,1) | 0,83 | 0,89 | 4,43 | 33,48 | **127,19** |
+///
+/// As duas linhas são **idênticas até 1/30** — é o mesmo Euler semi-implícito —, e o que as
+/// separa dali para a frente é só o grampo. O de `0,05` segurava a cena em `2,49`; o de `0,1`
+/// deixava-a chegar a `127`.
+///
+/// **O número novo é o JOELHO medido**, e o critério está escrito: *um passo legítimo não muda a
+/// RESPOSTA, só a resolução*. A barra é o dobro da excursão em regime, e o maior `dt` em que
+/// **todo** passo até ele fica dentro dela é `0,0300`. A `0,05` esta malha já mede `2,49` contra
+/// uma barra de `1,66`.
+///
+/// ⚠️ **Em regime isto é byte-idêntico** (o tique fixo é `1/60`); o que muda é só quanto de um
+/// scrub a zona absorve.
+const MAX_DT: f32 = 0.03;
 
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("sim.step"),
@@ -203,7 +227,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         write_age(i, read_age(i) + st_dt);\n\
         write_sim_t(i, params.playhead);\n",
     wgsl_lib: "\
-        const STEP_MAX_DT: f32 = 0.05;\n\
+        // ⚠️ O gémeo do `MAX_DT` do Rust, MEDIDO — a tabela está no doc-comment dele.\n\
+        // Os dois literais movem-se juntos ou o gate de paridade CPU/GPU acusa.\n\
+        const STEP_MAX_DT: f32 = 0.03;\n\
         // `f32::EPSILON`, o mesmo guarda de direcao que o `sim.collide` usa no\n\
         // centro exato de um disco: sem direcao nao ha' o que reescalar.\n\
         const STEP_EPS: f32 = 1.1920929e-7;\n\

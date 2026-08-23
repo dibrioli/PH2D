@@ -98,6 +98,20 @@ pub(crate) static PARAM_HARD_MAX: &[ParamHardMax] = &[
         param: "rate",
         max: 4_000_000.0,
     },
+    // ⚠️ **E a VELOCIDADE não tinha teto, na fonte cuja demo a excede** (bloco Z, doc 91): a
+    // cena `=5` — a FONTE, o demo deste nó — autora `speed = 22` e o campo digitava até `20`.
+    // Sem entrada aqui o digitado para no fim do ARRASTO (`ui.rs:206`). Acusação da sonda
+    // `what_the_corpus_authors_and_no_one_can_type`.
+    //
+    // ⚠️ **O recurso é OUTRO do que o do `rate` e do `max` acima**: aqueles têm LEI (quantas
+    // partículas o nó aloca), enquanto uma velocidade não satura — mais rápido é mais longe, e
+    // isso é uma resposta. O que acaba nela é o `f32`: acima daqui somar o `step` do slider
+    // (0,1) **não move o número**. Derivado a cada corrida pelo gate
+    // `every_precision_bound_param_types_to_the_measured_ceiling`.
+    ParamHardMax {
+        param: "speed",
+        max: 2_097_151.875,
+    },
     // ⚠️ **DERIVED, never re-typed** — this entry and `MAX_ALIVE` answer the same
     // question ("how many particles may be alive?"), and when the constant went
     // 4096 → 16384 the literal that used to live in the *slider* stayed behind and

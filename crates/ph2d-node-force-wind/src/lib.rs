@@ -327,6 +327,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
     reg.register_param_gates_above(MANIFEST.id, PARAM_GATES_ABOVE);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     // ADR-0130: per-element force: accumulates accel, identity preserved.
@@ -350,6 +352,29 @@ use ph2d_node_registry::{ParamGateAbove, ParamUiHint, ParamWidget};
 /// ⚠️ Um `ParamGate` não serviria: ele arredonda a inteiro e compara com uma lista de índices
 /// de enum, e `octaves` é uma grandeza. A pergunta *"apareça quando isto passar de 1"* é
 /// exactamente o [`ParamGateAbove`].
+/// **O ângulo é CÍCLICO, e é por isso que o piso é negativo** — bloco Z, doc 91.
+///
+/// ⚠️ **A cena `=24` autora `angle = −90` e o campo digitava `[0, 360]`.** O nó honra o valor
+/// perfeitamente (`frac(p) = p − p.floor()` leva `−0,25` a `0,75`, então `−90° ≡ 270°`), mas o
+/// artista não conseguia escrevê-lo — e escrever `−90` para *"para baixo"* é o gesto natural de
+/// quem vem de qualquer outra ferramenta. Acusação da sonda
+/// `what_the_corpus_authors_and_no_one_can_type`.
+///
+/// **De que recurso é este teto: do SIGNIFICADO** (`CLAUDE.md` §0.0), não da precisão. Uma volta
+/// inteira esgota as direções: `450°` desenha o mesmo vento que `90°`, então um campo que
+/// aceitasse mais estaria a oferecer uma escolha que não existe — a mesma lei do
+/// `sim.spawn::probability`, que para em `1` porque acima dali todo nascimento acontece.
+static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
+    param: "angle",
+    max: 360.0,
+}];
+
+/// A volta NEGATIVA — a metade que faltava.
+static PARAM_HARD_MIN: &[ph2d_node_registry::ParamHardMin] = &[ph2d_node_registry::ParamHardMin {
+    param: "angle",
+    min: -360.0,
+}];
+
 static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
     ParamGateAbove {
         param: "lacunarity",
@@ -415,6 +440,8 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Angle,
     },
+    // ⚠️ O curso do arrasto é **uma volta**, de propósito, e o teto digitável abre a volta
+    // NEGATIVA — ver [`PARAM_HARD_MIN`].
     ParamUiHint {
         param: "strength",
         label: "Strength",

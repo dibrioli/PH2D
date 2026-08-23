@@ -66,10 +66,52 @@ use std::collections::BTreeMap;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
-/// Ceiling on a single integration step, in seconds. In steady state `dt` is
-/// the fixed timestep (~1/60); this only guards a pathological playhead jump
-/// (a scrub / loop-wrap) from becoming one giant unstable step.
-const MAX_DT: f32 = 0.1;
+/// **Ceiling on a single integration step, in seconds — MEDIDO** (bloco Z, doc 91).
+///
+/// Em regime `dt` é o tique fixo (1/60); este grampo só existe para um salto patológico da
+/// régua (um scrub, um loop-wrap) não virar um passo gigante.
+///
+/// ⚠️ **Era `0,1`, e a medição diz que a `0,1` ele não guardava NADA.** A sonda
+/// `measure_the_step_that_a_closed_loop_survives` (`ph2d-node-registry-init`) corre o laço real
+/// — `motion.grid → motion.integrate`, com o `pre` de volta por uma `force.attractor` — e mede a
+/// maior excursão de uma grelha que nasce dentro de raio `1,0`:
+///
+/// | `strength` | dt=1/60 | dt=1/30 | dt=0,05 | dt=0,075 | **dt=0,1** |
+/// |---|---|---|---|---|---|
+/// | 5 | 0,71 | 0,73 | 0,91 | 0,96 | 2,48 |
+/// | 10 | 0,80 | 0,83 | 1,52 | 1,89 | 3,52 |
+/// | 20 | 0,73 | 0,78 | 2,43 | 33,10 | 32,75 |
+/// | **40** (fim do arrasto) | 0,83 | 0,89 | 4,43 | 33,48 | **127,19** |
+///
+/// No valor do próprio grampo, com uma força que o artista alcança **arrastando**, a grelha era
+/// atirada a **127 vezes** o raio em que nasceu. *Um teto que só diz "por segurança" é um
+/// palpite à espera de um smoke* (`CLAUDE.md` §0.0) — e este dizia-o em prosa, a afirmar
+/// estabilidade que não tinha.
+///
+/// **O número é o JOELHO, e o critério está escrito:** *um passo legítimo não muda a RESPOSTA,
+/// só a resolução*. A régua é a excursão em regime e a barra o dobro dela; o maior `dt` em que
+/// **todo** passo até ele fica dentro da barra é **0,0300** (1/33,3). Acima disso, `0,0325` já
+/// mede `3,57`.
+///
+/// ⚠️ **A busca tem de ser por PREFIXO-máximo, e a 1.ª versão da sonda leu isto ao contrário:**
+/// a excursão **não é monótona em `dt`** (um laço fechado com força central tem ressonâncias —
+/// `0,0325` mede 3,57 e `0,0333` mede 0,89). Procurar o primeiro cruzamento acha uma
+/// ressonância, não a fronteira. A pergunta é *"todos os passos até este sobrevivem?"*.
+///
+/// ⚠️ **Em regime isto é byte-idêntico**: o tique fixo é `1/60 = 0,0167`, muito abaixo do
+/// grampo, e o `FixedStep` da casa já entrega um tique por cozedura mesmo num ecrã lento. O que
+/// muda é só quanto de um SCRUB o sim absorve — e absorver é a resposta certa ali.
+///
+/// ⚠️ **O `sim.step` chega ao mesmo número pela mesma medição, e não por simetria decorativa:**
+/// as duas malhas medem **igual** até 1/30 (é o mesmo Euler semi-implícito). O grampo dele era
+/// `0,05` — *o dissidente era o número mais certo dos dois*, e segurava a mesma cena em `2,49`
+/// onde este a deixava chegar a `127`.
+///
+/// ⛔ **Este número NÃO governa o `motion.spring`, o `motion.boids` nem o `motion.wave`,** que
+/// têm `MAX_DT` próprio: um grampo é do SOLVER, e o `motion.spring` já deriva do dele três
+/// tetos medidos (`friction = 2/MAX_DT`, a saturação do sub-passo, o teto do `tension`). Mexer
+/// no dele move aquela tabela inteira, e é wave própria — está registado no doc 91.
+const MAX_DT: f32 = 0.03;
 
 /// The inverse-mass column (PBD's `w = 1/m`) that `motion.pin_constraint`
 /// writes: `1` = free (the default when absent — every pre-pin graph integrates
@@ -237,7 +279,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         write_sim_d(i, ig_d);\n\
         write_sim_t(i, params.playhead);\n",
     wgsl_lib: "\
-        const INTEGRATE_MAX_DT: f32 = 0.1;\n\
+        // ⚠️ O gémeo do `MAX_DT` do Rust, MEDIDO — a tabela está no doc-comment dele.\n\
+        // Os dois literais movem-se juntos ou o gate de paridade CPU/GPU acusa.\n\
+        const INTEGRATE_MAX_DT: f32 = 0.03;\n\
         // `f32::MAX`. WGSL has no `isFinite`, but Rust's `is_finite()` is exactly\n\
         // \"not NaN and not ±inf\", and `abs(x) <= F32_MAX` answers both: every\n\
         // comparison against NaN is false, and ±inf exceeds the max. Written per\n\

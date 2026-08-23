@@ -321,12 +321,51 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamGate, ParamHardMax, ParamHardMin, ParamUiHint, ParamWidget};
+
+/// **Os tetos DIGITÁVEIS deste oscilador, MEDIDOS** — bloco Z, doc 91.
+///
+/// ⚠️ **Este nó é o mais acusado do repo: QUATRO valores em três cenas.** A `=12` autora
+/// `period = 9` e `14`, a `=15` autora `amplitude = 180` e `offset = 180`, a `=9` e a `=15`
+/// autoram `period = 12` — sobre arrastos que param em `8` e `10`. Sem entrada aqui o digitado
+/// para no fim do ARRASTO (`ui.rs:206`), então o app publicava ondas que o artista não conseguia
+/// escrever. Acusação da sonda `what_the_corpus_authors_and_no_one_can_type`.
+///
+/// **O recurso é a PRECISÃO** (`CLAUDE.md` §0.0): nenhum dos três satura — um período longo é
+/// uma onda lenta, uma amplitude grande é uma onda alta, e as duas são respostas —, então o que
+/// acaba é o `f32`: acima daqui somar o `step` do slider (0,05) **não move o número**. Derivado
+/// a cada corrida pelo gate `every_precision_bound_param_types_to_the_measured_ceiling`.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "period",
+        max: 1_048_575.938,
+    },
+    ParamHardMax {
+        param: "amplitude",
+        max: 1_048_575.938,
+    },
+    ParamHardMax {
+        param: "offset",
+        max: 1_048_575.938,
+    },
+];
+
+/// O piso do `offset`, e ele existe porque o `offset` **tem sinal**.
+///
+/// ⚠️ Um teto generoso com o piso de ontem deixaria metade do gesto inalcançável, e uma onda que
+/// só se consegue levantar lê-se como bug do nó. O `period` e o `amplitude` ficam de fora: o
+/// piso deles é do DESENHO (um período `≤ 0` não é uma onda), não da representação.
+static PARAM_HARD_MIN: &[ParamHardMin] = &[ParamHardMin {
+    param: "offset",
+    min: -1_048_575.938,
+}];
 
 /// **Só a régua escolhida aparece.**
 ///

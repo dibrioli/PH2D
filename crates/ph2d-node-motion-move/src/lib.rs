@@ -287,13 +287,53 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 1 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
+use ph2d_node_registry::{ParamHardMax, ParamHardMin, ParamUiHint, ParamWidget};
+
+/// **O teto DIGITÁVEL do deslocamento, MEDIDO** — bloco Z, doc 91.
+///
+/// ⚠️ **A cena `=15` (o caleidoscópio) autora `dx = 260` e o campo digitava até `10`** — vinte e
+/// seis vezes o alcance do artista, no nó mais simples do catálogo. Sem entrada aqui o digitado
+/// para no fim do ARRASTO (`ui.rs:206`). Acusação da sonda
+/// `what_the_corpus_authors_and_no_one_can_type`.
+///
+/// **O recurso é a PRECISÃO** (`CLAUDE.md` §0.0): mover não satura — mais longe é mais longe —,
+/// então o que acaba é o `f32`: acima daqui somar o `step` do slider (0,1) **não move o
+/// número**. Derivado a cada corrida pelo gate
+/// `every_precision_bound_param_types_to_the_measured_ceiling`.
+static PARAM_HARD_MAX: &[ParamHardMax] = &[
+    ParamHardMax {
+        param: "dx",
+        max: 2_097_151.875,
+    },
+    ParamHardMax {
+        param: "dy",
+        max: 2_097_151.875,
+    },
+];
+
+/// O piso, e ele é o SIMÉTRICO do teto porque um deslocamento tem sinal.
+///
+/// ⚠️ **As duas pontas ou nenhuma.** Um teto generoso com o piso de ontem faria o nó andar
+/// duzentos metros para a direita e dez para a esquerda — e um gesto que só funciona para um
+/// lado lê-se como bug do nó, não como faixa de slider.
+static PARAM_HARD_MIN: &[ParamHardMin] = &[
+    ParamHardMin {
+        param: "dx",
+        min: -2_097_151.875,
+    },
+    ParamHardMin {
+        param: "dy",
+        min: -2_097_151.875,
+    },
+];
 
 /// Param UI hints (M1.P1): signed X/Y offsets in metres.
 static PARAM_HINTS: &[ParamUiHint] = &[

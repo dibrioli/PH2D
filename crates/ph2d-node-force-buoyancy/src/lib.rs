@@ -344,9 +344,25 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
+
+/// **O teto DIGITÁVEL da profundidade, MEDIDO** — bloco Z, doc 91.
+///
+/// ⚠️ **A cena `=4` (o MAR) autora `depth = 4` e o campo digitava até `3`.** Sem entrada aqui o
+/// digitado para no fim do ARRASTO (`ui.rs:206`), então o próprio demo do nó publicava uma
+/// profundidade que o artista não conseguia escrever — acusação da sonda
+/// `what_the_corpus_authors_and_no_one_can_type`.
+///
+/// **O recurso é a PRECISÃO** (`CLAUDE.md` §0.0): a profundidade não satura, então o que acaba é
+/// o `f32` — acima daqui somar o `step` do slider (0,01) **não move o número**. Derivado a cada
+/// corrida pelo gate `every_precision_bound_param_types_to_the_measured_ceiling`.
+static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
+    param: "depth",
+    max: 262_143.984,
+}];
 
 /// Param UI hints (M1.P1).
 static PARAM_HINTS: &[ParamUiHint] = &[

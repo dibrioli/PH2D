@@ -177,12 +177,18 @@ fn seeds_at_tick_zero_then_integrates_semi_implicit_euler() {
     // vel_k = a·dt·k, d_k = a·dt²·(1+2+…+k) = a·dt²·k(k+1)/2. The upstream
     // src also slides +t in X (liveness), so P.x = t + d_k. dt stays at the
     // MAX_DT boundary — the largest legible step the clamp admits.
-    let dt = 0.1_f64;
+    //
+    // ⚠️ **DERIVADO do `MAX_DT`, e não o literal que aqui esteve.** Enquanto era `0.1_f64`
+    // escrito à mão, mover o grampo (bloco Z, doc 91: `0,1 → 0,03`, medido) reprovava este
+    // gate **sobre produto correcto** — o `dt` pedido passava a ser clampado e a forma fechada
+    // deixava de bater. Um teste que fixa o valor de uma constante que ele não possui é um
+    // teste que envelhece com ela.
+    let dt = f64::from(MAX_DT);
     let frames = run(4, dt);
     // tick 0: seeded — no displacement, P = rest exactly.
     assert_eq!(frames[0][0], [0.0, 0.0]);
     assert_eq!(frames[0][1], [10.0, 0.0]);
-    let d = |k: f64| (0.01 * k * (k + 1.0) / 2.0) as f32; // a=1, dt²=0.01
+    let d = |k: f64| (dt * dt * k * (k + 1.0) / 2.0) as f32; // a = 1
     for (k, frame) in frames.iter().enumerate().skip(1) {
         let t = (k as f64 * dt) as f32;
         let expect = t + d(k as f64);
@@ -199,10 +205,14 @@ fn upstream_stays_live_after_seeding() {
     // The falsification of the "frozen seed" design bug: rest.P keeps
     // sliding after tick 0 and the emitted P follows it (plus physics).
     // If integrate froze the seed, P.x at tick 1 would be d_1 alone.
-    let dt = 0.05_f64;
+    // ⚠️ **METADE do grampo, derivada.** O assunto deste gate é a LIVENESS do `rest`, então o
+    // passo tem de caber folgadamente dentro do `MAX_DT`: um `dt` acima dele seria clampado e
+    // este teste passaria a medir o grampo, não o que ele diz medir. Era `0.05` à mão, e o
+    // bloco Z (doc 91) baixou o grampo para `0,03` — reprovava sobre produto correcto.
+    let dt = f64::from(MAX_DT) * 0.5;
     let frames = run(2, dt);
     let t1 = dt as f32;
-    let d1 = 0.0025_f32; // a·dt² with a=1, dt=0.05
+    let d1 = (dt * dt) as f32; // a·dt² com a = 1
     assert!(
         (frames[1][1][0] - (10.0 + t1 + d1)).abs() < 1e-4,
         "instance 1 follows the live rest (10 + t) plus its displacement"
@@ -384,7 +394,10 @@ fn an_id_survives_the_churn_and_keeps_its_state() {
     // Tick 1: particle 5 died, 7 survived (now at row 0), 8 was born.
     let rest = with_ids(&[7.0, 8.0], &[[0.0, 0.0], [0.0, 0.0]])
         .with("vel", Column::Vec2(vec![[0.0, 0.0], [-3.0, 0.0]]));
-    let out = step(&rest, &state, 0.1);
+    // ⚠️ A régua avança **um passo cheio do grampo**, derivado e não escrito: enquanto era
+    // `0.1` à mão, mover o `MAX_DT` (bloco Z, doc 91) reprovava este gate sobre produto
+    // correcto. O assunto dele é a IDENTIDADE, não o tamanho do passo.
+    let out = step(&rest, &state, MAX_DT);
 
     let vel = match out.get("vel").unwrap() {
         Column::Vec2(v) => v.clone(),
@@ -395,9 +408,10 @@ fn an_id_survives_the_churn_and_keeps_its_state() {
         _ => panic!("sim_d"),
     };
     // 7 kept ITS velocity (2,0) and integrated from ITS displacement (1,0):
-    // no accel, so d = 1 + 2·0.1 = 1.2. Not particle 5's (9,9) garbage.
+    // no accel, so d = 1 + 2·dt. Not particle 5's (9,9) garbage.
     assert_eq!(vel[0], [2.0, 0.0], "the survivor keeps its velocity");
-    assert!((d[0][0] - 1.2).abs() < 1e-5, "and its displacement");
+    let want = 1.0 + 2.0 * MAX_DT;
+    assert!((d[0][0] - want).abs() < 1e-5, "and its displacement");
     // 8 is newborn: seeded from rest's muzzle velocity, zero displacement.
     assert_eq!(
         vel[1],

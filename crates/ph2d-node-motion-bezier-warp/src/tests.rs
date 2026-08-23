@@ -161,11 +161,22 @@ fn the_box_corners_land_on_the_authored_corners() {
 }
 
 /// **A MÁSCARA `falloff` VALE, E A PEÇA DE PESO ZERO NÃO SE MOVE.**
+///
+/// ⚠️ **A primeira versão deste gate SOBREVIVEU a uma mutação que apagava a máscara**, e a
+/// causa era a fixture e não a asserção: a peça de peso zero é o elemento `0`, que vive no
+/// canto **BL**, e os offsets que ele movia eram `tl`/`tr` — o patch mandava aquele canto
+/// para ele próprio de qualquer maneira, com máscara ou sem. *Uma fixture só prova o que ela
+/// contém*: para a máscara ser medível, a peça mascarada tem de estar num sítio que a
+/// deformação MOVERIA.
+///
+/// A cura tem duas metades: mover o canto **dela** (`bl`), e medir que o deslocamento CRESCE
+/// com o peso — que é a lei, e não *"a peça zero ficou parada"*.
 #[test]
 fn the_falloff_mask_gates_the_deformation() {
     let out = warped(|g, bw| {
+        g.set_param(bw, "bl_dx", -5.0);
+        g.set_param(bw, "bl_dy", -5.0);
         g.set_param(bw, "tr_dx", 5.0);
-        g.set_param(bw, "tl_dx", -5.0);
     });
     // A primeira peça tem `falloff = 0`.
     assert!(
@@ -178,6 +189,14 @@ fn the_falloff_mask_gates_the_deformation() {
     assert!(
         (last[0] - (SIDE - 1) as f32).abs() > 1.0,
         "controle: a peça de peso cheio move-se ({last:?})"
+    );
+    // ⚠️ O deslocamento tem de CRESCER com o peso — a lei, não um par de pontos.
+    let moved = |i: usize, base: [f32; 2]| (out[i][0] - base[0]).hypot(out[i][1] - base[1]);
+    let d0 = moved(0, [0.0, 0.0]);
+    let dn = moved(SIDE * SIDE - 1, [(SIDE - 1) as f32; 2]);
+    assert!(
+        dn > d0 + 1.0,
+        "peso 0 andou {d0:.3}, peso 1 andou {dn:.3}"
     );
 }
 

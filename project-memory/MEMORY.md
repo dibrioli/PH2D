@@ -78,6 +78,7 @@
 - [Laço colável em idioma bash NÃO itera em zsh](feedback_a_pastable_bash_loop_never_iterates_under_zsh.md) — `for p in $VAR` roda 1× com a string inteira; portão que ENUMERA exige array citado + controle positivo
 - [Crase em msg de commit executa](feedback_backticks_in_commit_message_are_command_substitution.md) — `git commit -F`
 - [LOC cap = split](feedback_loc_cap_split_not_allowlist_and_fmt_reexpands.md) · [cap de FN ≠ cap de ARQUIVO](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md) — fmt ANTES de medir; corte para o IRMÃO
+- [Gate que VARRE uma árvore não é alcançado por filtro de nome](feedback_a_tree_scanning_gate_is_never_reached_by_a_name_filter.md) — ele vive onde a REGRA mora (LOC no shell, tofu no editor-core), não onde o arquivo mora; a suíte SEM filtro é o que o apanha
 - [O clippy do fecho cobre TODA crate que a linha tocou](feedback_the_closing_clippy_must_cover_every_crate_the_line_touched.md) — alvo derivado do DIFF, nunca escrito à mão; um `-p` a dedo mede a minha memória e o integrador paga
 - [Um vermelho de FLAKE esconde o resto da suíte](feedback_a_flake_red_hides_the_rest_of_the_suite.md) — o nextest cancela no 1º ✗ e deixou 1.007 por correr; leia o `X/Y tests run` antes de riscar o ✗
 - [Cadência de processo + armadilhas de CI (17)](reference_topic_process_cadence.md) — gist em CLAUDE.md §2-§3 · fmt-skew · ship committed vs WIP · cold-build drift · paridade CI · `rustup default` · allowlist duplicada · seletor de impacto cego. ⚠️ o babysit do CI É polling de 15 min (§3)

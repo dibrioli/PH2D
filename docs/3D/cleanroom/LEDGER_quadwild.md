@@ -201,9 +201,46 @@ leitura a subagentes. Esta nasceu como E e leu. *SOLO é para a próxima janela,
 
 ## Papel I — Implementador
 
-_(a preencher quando a janela I abrir; declaração do §6 exigida)_
-⇒ o canal de ida é [`INBOX_quadwild.md`](INBOX_quadwild.md) (append **cego**).
-⇒ o bloco dele será produzido pelo **R-pré**, em `NEXT_I.md` (corrente do §10).
+| campo | valor |
+|---|---|
+| session-id | `186ce13e-479b-467a-904c-0ff087ab76c9` |
+| declarado em | `INBOX_quadwild.md`, por **append cego** no Passo 0, 2026-08-24 |
+| árvore | `Worktrees/line-quadextract`, branch `line/quadextract` (fork de `line/sculpt3d`) |
+| entrega | 5 commits; HEAD `4ddf2abaa` |
+
+### Declaração do §6 (transcrita pelo R-pós do canal de ida)
+
+> *"Nenhum conteúdo do fonte do alvo entrou no CONTEXTO desta janela (incluindo reports de
+> subagentes e compactação); exposição via pesos do modelo não é atestável por construção —
+> mitigada §7.3."*
+
+### ⭐⭐ E ela foi **VERIFICADA**, não acreditada (R-pós, 2026-08-24)
+
+⚠️ **Uma declaração de I é auto-relato; o transcript é o instrumento.** Medido sobre
+`~/.claude/projects/…/186ce13e-….jsonl` (2,3 MB):
+
+| pergunta | resposta medida |
+|---|---|
+| ferramentas usadas | ⭐ **`Bash` × 177, e MAIS NENHUMA** — zero `Read`, zero `WebSearch`/`WebFetch`, zero `Agent` (subagente), zero `SendMessage` |
+| caminhos absolutos fora da árvore do PH2D em **qualquer** chamada | ⭐ **três ocorrências, e as três são as próprias entradas da denylist**, escritas (não lidas): duas no `cat > .claude/settings.local.json` do Passo 0, uma no texto do `NEXT_R-POS.md` |
+| leitura de `~/Referencias/**` ou do clone GPL | ⛔ **nenhuma** |
+| leitura do `LEDGER_*` / `VASSOURA_*` / `TRIAGEM_*` / `ACHADO_*` | ⛔ **nenhuma.** Os quatro nomes aparecem **uma vez**, num `ls` da pasta — *nomes de ficheiro, sem uma linha de conteúdo* |
+| sweep da vassoura sobre o transcript inteiro | ✓ **limpo, exit 0** |
+
+⇒ ⭐ **A parede aguentou, e é auditável de fora.**
+
+### ⛔⛔ ACHADO DE PROTOCOLO (não é violação desta janela — é do MOLDE)
+
+O Passo 0 do BLOCO-I promete que *«a parede vira permissão do harness, e não lembrança do
+agente»*. **Ela não vira.** Os quatro `deny` são matchers de **`Read(…)`** — e esta janela
+fez **177 chamadas `Bash` e ZERO `Read`**. Um `cat`/`sed -n` sobre um caminho proibido
+**não é alcançado** por um matcher de `Read`, e o modo de operação desta casa manda
+explicitamente preferir o `Bash` onde ele resolve.
+
+⇒ *A parede desta janela foi de DISCIPLINA, não de mecanismo* — e o mecanismo só existe se
+o `deny` cobrir também a ferramenta que a janela de facto usa. **Emenda devida à
+SKILL_Cleanroom §3.I** (Passo 0), não a esta linha. ⚠️ E a verificação por transcript acima
+é o que faz a diferença entre *«a regra existia»* e *«a regra funcionou»*.
 
 ---
 
@@ -216,8 +253,13 @@ _(a preencher quando a janela I abrir; declaração do §6 exigida)_
 | janela | ⭐ **≠ a janela E** (`edbb014f-…`) — a exigência do §3.R para o modo PRÉ está cumprida |
 | árvore auditada | `Worktrees/line-sculpt3d` (⚠️ **não** o primário — a pasta `cleanroom/` não existe no `main`) |
 
+| session-id (modo PÓS) | `49c94a84-e903-48a9-bd7f-b14685d71061` |
+| data | 2026-08-24 |
+| janela | ⭐ **≠ a janela I** (`186ce13e-…`) e ≠ a janela E (`edbb014f-…`) |
+
 - **Modo PRÉ:** ✅ **VERDE em 2026-08-24.** Veredito, método e achados abaixo.
-- **Modo PÓS:** ⏳ pendente (após paridade verde).
+- **Modo PÓS:** ✅ **fechado em 2026-08-24** — paridade, sweeps, revisão estrutural e o
+  achado que ela devolveu vivem no [**Fechamento R**](#fechamento-r), no fim deste ficheiro.
 
 ### §R-pré.1 — O veredito do §4.2, item a item
 
@@ -240,6 +282,15 @@ citados no mapa de leitura, com `grep` sobre o texto extraído deles. É o que a
 
 O ledger pediu ao R que decidisse (§6.2: *«na dúvida, R decide — nunca a própria janela
 interessada»*). **Decidido, e o eixo da pergunta estava errado.**
+
+> ⛔⛔ **EMENDA DO R-PÓS (2026-08-24): a frase seguinte é VERDADEIRA para tudo o que ela
+> ENUMERA, e FALSA como afirmação sobre o §5 inteiro.** Duas linhas daquele parágrafo — as
+> *«duas modalidades»* e o caso de canto do género > 0 — **não estão no *paper***, e a sua
+> proveniência está provada no transcript da janela E. Régua §6.2: **relance**; cura:
+> documental, já aplicada na espec. Mecanismo e veredito: [§R-pós.4](#r-pós4).
+> ⚠️ Fica aqui, e não corrigida em silêncio, pela razão que o próprio [§R-pré.7](#r-pré7)
+> deu: *uma afirmação falsa dentro do ledger custa mais do que o que ela esconde* — e esta
+> era, outra vez, **a favor de quem a escreveu**.
 
 **O achado que resolve:** ⭐ **tudo o que a espec §5/§5.1 diz está PUBLICADO no *paper* de
 2009**, conferido linha a linha contra o texto extraído — a escolha gulosa da variável de menor
@@ -373,6 +424,11 @@ precisamente o padrão que uma auditoria independente existe para apanhar:
 | versão | caminho | `sha256` (16) |
 |---|---|---|
 | 1 (2026-08-24) | [`SPEC_extracao_de_malha_quad.md`](SPEC_extracao_de_malha_quad.md) | `4455ee56e1ae6ae5` |
+| 2 (2026-08-24, **pós-implementação**) | idem — a correcção do [§R-pós.4](#r-pós4) no §5 + a linha de atestado no cabeçalho | `9086a1dd766e53d6` |
+
+⛔ **A versão 2 é POSTERIOR à obra e não a alimentou** — ela **retira** expressão emprestada
+e põe no lugar a derivação que a `ph2d-gridmap` já tinha escrito. ⚠️ *Nenhum algoritmo foi
+acrescentado por um R*, nas duas passagens (§3.R).
 
 ⚠️ **A espec foi corrigida três vezes no dia da entrega**, sempre por medição — as correcções
 estão no corpo dela e na [`TRIAGEM §5-bis`](TRIAGEM_quad_remesh.md). A auditoria R-pré incide
@@ -414,7 +470,231 @@ commitar espec+ledger+vassoura+README **no `main` do primário antes de a linha 
 
 ## Fechamento R
 
-_(pendente — modo PÓS)_
+> Modo **PÓS**, 2026-08-24, janela `49c94a84-e903-48a9-bd7f-b14685d71061`.
+> Roteiro: [SKILL_Cleanroom §7.2](../../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md).
+> ⛔ **Regra que governa TODO este bloco (§6.1): descreve, nunca reproduz.** Onde a
+> identificação exacta importa, o registo traz o `sha256` do trecho — nunca o trecho.
+
+### §R-pós.1 — Paridade
+
+| gate | corrida | resultado |
+|---|---|---|
+| `ph2d-quadextract` (15) | `cargo test -p ph2d-quadextract --all-targets` | ⭐ **15/15 ✓** (`gates_exact` 6 · `gates_fixtures` 4 · `gates_precision` 4 · `measure_quad_shape` 1) |
+| `ph2d-gridmap` (3 + 2 sondas) | idem, `-p ph2d-gridmap` | ⭐ **19/19 ✓**, 13 `#[ignore]` — as 2 sondas desta linha entre elas, rotuladas `"sonda — …"` |
+| shell (2) | `cargo test -p ph2d-host-desktop --bins` | ⭐ **2/2 ✓** |
+
+- **Barra derivada, conferida:** o gate nº5 (`o_predicado_e_exacto_onde_o_f64_ja_nao_e`)
+  ⭐ **traz um controlo positivo SOBRE O PRÓPRIO CONTROLO** — ele exige que a rota `f64`
+  **erre na maioria** dos casos, e regista que a 1ª redacção usava quase-colinearidade
+  diagonal, onde o `f64` acertava nos 36 casos. *Um controlo que nunca falha não é um
+  controlo*, e este gate mede a si próprio antes de medir o predicado. É a forma mais
+  forte de barra derivada que este ledger viu.
+- **Fase a fase (§9 da espec):** ⭐ **feita, e é ela que produz o achado da linha.** Os
+  dumps existem (`fixtures/`, mapas de referência verificados), e a comparação por fase
+  está no [§8 do handoff](../handoffs/HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md):
+  sobre os mapas de referência a extracção fecha (`100 %` quads, `χ` preservado nas duas
+  peças); sobre a cadeia da casa a **forma** entra na barra e a **topologia** não, e a
+  causa está medida **a montante** (o G3). ⇒ *a obra desta linha não é o bloqueador.*
+- ⚠️ **Nota de ambiente:** a máquina esteve a `load ≈ 13` durante a corrida. Nenhum dos 20
+  gates novos mede relógio ou razão de relógios, então a leitura é válida — mas o **gate
+  batched** do handoff (§6) foi corrido pela janela I sob fan-out, e os 2 ✗ que ele reporta
+  são da família de flakes de recurso do `CLAUDE.md` §5.0, verdes sozinhos, sem uma linha
+  do diff a tocá-los.
+
+### §R-pós.2 — Sweep total (§7.2.2), com CONTROLE POSITIVO
+
+⚠️ Invocado pelo **caminho absoluto do primário** — o script continua a não existir nesta
+worktree (§R-pré.6.2 segue **aberto**, ver §R-pós.6).
+
+| alvo | resultado |
+|---|---|
+| ⭐ **controle positivo** (ficheiro semeado com a 1ª entrada decodificada; `sha256(16) = d535c85cc0eac159`) | ✅ **✗ exit 1** — o instrumento funciona, provado **antes** de se acreditar num verde |
+| **árvore rastreada**: `crates` `shells` `docs` `scripts` `tests` `tools` `runtime` `metrics` `spikes` `project-memory` `assets` `CLAUDE.md` `Cargo.lock` `Cargo.toml` `deny.toml` `clippy.toml` `.claude` `.github` | ✓ **limpo, exit 0** |
+| `--git-history -- docs/3D/cleanroom` | ✓ limpo |
+| `--git-history -- project-memory` | ✓ limpo |
+| ⭐ `--git-history` **restrito aos 5 commits desta linha** (`line/sculpt3d..line/quadextract`, mensagens **e** patches) | ✓ **limpo — esta linha não traz um único hit** |
+| **transcript da janela I** (§7.2.2, opcional e recomendado) | ✓ **limpo, exit 0** |
+| ⛔ `--git-history` **do repositório inteiro** (`--all`) | ⛔ **✗ exit 1** — ver abaixo |
+
+#### ⛔ O único vermelho, atribuído até ao commit
+
+O sweep de histórico `--all` acha **um nome de ficheiro interno** da vassoura (uma
+assinatura de função e dois números de linha ao lado dele), em mensagens de commit **e**
+em patches. ⛔ Descrito, não reproduzido. **Dois commits, e nenhum é desta linha:**
+
+| commit | data | onde vive | o que é |
+|---|---|---|---|
+| `fe61596fc` | 2026-08-21 | ⛔ **já em `main`** e em 7 branches | quem **introduziu** as notas — anterior a esta linha, a este alvo e ao uso da skill aqui |
+| `6d00c7e10` | 2026-08-24 | `line/sculpt3d` | ⭐ o commit da **CURA**, que as retira da árvore |
+
+⇒ **É o incidente já registado** em
+[`ACHADO_proveniencia_por_nome_interno.md`](ACHADO_proveniencia_por_nome_interno.md), cuja
+régua do §6.2 é **relance** (assinatura/nome isolado) ⇒ **nenhuma janela é queimada**.
+
+⚠️⚠️ **E ele traz um mecanismo que vale a pena escrever, porque não é óbvio:** *a
+proveniência apagada da ÁRVORE fica GRAVADA no HISTÓRICO pelo próprio commit que a apagou*
+— um `git log -p` reimprime a linha removida. ⇒ **um sweep de árvore verde não implica um
+sweep de histórico verde**, e a única cura seria reescrever o histórico de `main`, que
+⛔ **não é decisão do R nem desta linha**. Fica **NOMEADO e ABERTO** aqui, como facto do
+repositório.
+
+### §R-pós.3 — Revisão estrutural (§7.2.3): convergência de EXPRESSÃO
+
+⚠️ **Comportamento igual não é achado — é o objectivo.** O que se procura é decomposição
+arbitrária igual, ordem não-forçada igual, nomes traduzidos, truques de escrita.
+
+#### O que está e o que **não** está neste disco (medido antes de comparar)
+
+| a obra | há implementação local para comparar? |
+|---|---|
+| **§2–§6, a extracção** | ⛔ **NÃO.** A família do *paper* não existe em árvore nenhuma desta máquina: `grep` do vocabulário dela sobre o clone GPL inteiro devolve **0** ocorrências, e a biblioteca MPL resolve o mesmo problema por **outra família** (arranjo de segmentos por triângulo + DCEL + unificação de vértices + emparelhamento de meias-arestas), que não tem nós/saídas/traço/células |
+| **§5, o arredondamento** | ⭐ **SIM** — o laço da biblioteca MPL, que é o trecho que queimou o E |
+
+⇒ Para a obra 2 **não há com o que convergir localmente**; sobra o risco de **convergência
+de treino** (§7.3), que se avalia pelo idioma e pelos detalhes-além-da-espec (abaixo).
+
+#### A comparação do §5, lado a lado — **DIVERGENTE**
+
+| eixo | a implementação de referência | ⭐ o nosso `round.rs` |
+|---|---|---|
+| a actualização após cada arredondamento | **re-solve completo** do sistema KKT (fatoração esparsa) a cada variável pregada | ⭐ **a escada do *paper* de 2009**: Gauss–Seidel local ⇒ varreduras globais orçamentadas. ⛔ *Nunca* re-resolve |
+| decomposição | **um laço só**, que reconstrói matrizes, resolve, escolhe e prega | **quatro fases sequenciais** nomeadas: calibre ⇒ singularidades ⇒ costuras ⇒ propagação |
+| o passo do **calibre** | ⛔ **não existe lá** | ⭐ **nosso, e é a resposta a *quais* variáveis são inteiras**: as de árvore vão a zero de graça, sobram `E − V + c` |
+| o caso de canto das costuras | um `if` **dentro** do laço, que muta a máscara | uma **fase 3 própria**, com `switched_to_seams` a contá-la |
+| a escolha gulosa `min │x − round(x)│` | igual | igual — ⚠️ **e é a LEI**, publicada como `Algorithm 1` do *paper* de 2009. Comportamento igual é o objectivo |
+
+⇒ ⭐ **Nenhuma convergência de expressão no §5.**
+
+#### A obra 2 — os sinais que se podem medir sem um alvo local
+
+- ⭐⭐⭐ **A divergência nº1 é o sinal mais forte que este ledger podia colher.** A espec
+  **sugeria** a rota de precisão múltipla com filtro em vírgula flutuante — que é
+  exactamente a rota da biblioteca de referência (ela carrega números exactos apoiados numa
+  biblioteca de inteiros grandes). A implementação foi por **outro lado**: truncagem numa
+  grade **global**, domínio em `i64`, orientação num determinante `i128` — e a crate shipa
+  com **UMA dependência, interna** (`ph2d-mesh`), zero externas. *Um implementador a
+  convergir com o que existe teria chegado ao que a espec já lhe oferecia.*
+- **Idioma:** ficheiros e tipos são desta casa (`nodes`/`ports`/`walk`/`cells`/`fan`/
+  `sanitize`/`ingest`/`exact`/`mapa`), com `*Stats`/`*Report` **auto-medidos** em cada fase
+  (`ring_len`, `port_step`, `contested`, `collapsed_fans`) — uma forma que nenhuma
+  implementação em C++ desta área tem, porque ela existe para alimentar gates.
+- **Detalhes além da espec, conferidos um a um** — todos com origem declarada e verificável
+  no próprio código: `MAX_SIDES = 64` (⭐ medido, com a distribuição ao lado e o relato do
+  tecto anterior que **apagava** células), `MAX_STEPS = 256` (tecto de sanidade, com o
+  raciocínio), `COORD_MAX`/`Q_HEADROOM` (**identidades**, não medições), `contested`
+  (defeito próprio, apanhado por medição, com o mecanismo escrito). ⇒ **nenhum tripwire de
+  recall por tratar.**
+- ⚠️ **Conferido e LIMPO, para o próximo leitor não o reabrir:** o módulo chama-se `ports` e
+  o tipo `Port`, que é o termo **público do *paper*** e não o termo de casa do glossário
+  ("saída", usado na prosa). §4.1.13 admite nome público ⇒ **não é achado**.
+
+### §R-pós.4 — ⛔⛔ O ACHADO: duas linhas do §5 da espec **não** descendem do *paper*
+
+⚠️ **Este é o achado que o modo PÓS existe para produzir, e ele corrige o próprio R-pré.**
+
+O §R-pré.2 afirma: *«tudo o que a espec §5/§5.1 diz está PUBLICADO no paper de 2009,
+conferido linha a linha»*. ⭐ **Reconferi, e para tudo o que ele ENUMERA a afirmação
+sustenta-se** — a escolha gulosa, a premissa do impacto pequeno, a fila dos não-zeros da
+linha, o resíduo, a actualização `x_k ← x_k − r_k/A_kk`, a escada de três degraus e a
+eliminação de uma variável por restrição estão no `Algorithm 1` e na §2.1 publicados; e a
+espec é de facto **menos específica** (o *paper* dá a tolerância concreta, a espec manda
+**medir**).
+
+⛔ **Mas duas linhas do §5 não estão na lista dele, e não estão no *paper*:**
+
+| a linha da espec | onde ela está **mesmo** |
+|---|---|
+| *«Duas modalidades … arredondar as COSTURAS **ou** as SINGULARIDADES»* | ⛔ o *paper* de 2009 arredonda as variáveis inteiras da transição (`j_e, k_e`) e **não tem** modalidade de singularidades. É um **campo booleano de opções** da biblioteca MPL, com o seu doc-comment — `sha256(16) = 00fc1b34114bbdf0` |
+| *«Caso de canto medido: quando todas as singularidades já foram pregadas mas ainda restam costuras por arredondar (acontece em peças com alça…)»* | ⛔ **um comentário de bloco** daquela biblioteca — `sha256(16) = 372f54e21780afaf`. ⚠️ A frase da espec segue-lhe os **três elementos na mesma ordem**, parêntese incluído |
+
+⭐ **A proveniência está PROVADA, não suposta:** o transcript da janela E regista o `curl`
+que trouxe aquele ficheiro e o `grep` que imprimiu **as duas linhas** no contexto dela,
+antes de a espec ser escrita. ⚠️ E a [`TRIAGEM §…`](TRIAGEM_quad_remesh.md) já registava
+honestamente o campo de opções e o que ele faz — *o E viu, e anotou onde viu*. **O que
+falhou foi a espec ter atravessado a parede sem o rótulo**, e o §4.2 do R-pré não ter
+coberto estas duas linhas.
+
+#### ⚖️ Veredito do R (§6.2 — *na dúvida, R decide, nunca a janela interessada*)
+
+| pergunta | veredito |
+|---|---|
+| é «substancial» (⇒ queima)? | ⛔ **NÃO — é relance.** O que atravessou foi **uma ideia** (há duas famílias de variável para arredondar) e **um facto de topologia** (num género > 0 as costuras que fecham ciclo são independentes das singularidades), que o §1.2 põe no piso do que **nunca** é protegível. Da *expressão*, atravessou o esqueleto de **uma frase** |
+| a janela I ficou exposta? | ⛔ **não.** Ela nunca viu o comentário — recebeu uma frase em português com uma justificação **diferente** |
+| há quarentena a comparar? | ⛔ **não é preciso**, e eu comparei na mesma: a região correspondente (`RoundOptions::pin_singularities` + a fase 3) **diverge** do original em decomposição (fase sequencial × `if` dentro do laço) e traz uma justificação **medida por nós** que o original não tem (*sem pregar a singularidade, o ponto fixo da holonomia cai num meio-inteiro e a malha rasga-se ali; na esfera fina saíam 4 nós onde eram precisos 8*) |
+| ⇒ re-derivação do código (§7.3.d)? | ⛔ **não prescrita** |
+
+#### ⏳ O que fica DEVIDO (documentação, e é do E — não do I, não desta linha)
+
+1. **A espec §5 tem de perder o esqueleto emprestado.** ⭐ A cura não exige inventar nada:
+   a casa **já escreveu a mesma verdade melhor e sozinha**, no doc-comment do
+   [`round.rs`](../../../crates/ph2d-gridmap/src/round.rs) — *a translação de uma costura é
+   grandeza de calibre; numa árvore de expansão vão todas a zero de graça, e os inteiros a
+   escolher são as `E − V + componentes` costuras que **fecham ciclo***. Numa peça de género
+   0 esse número é zero; num toro não é. ⇒ **substituir a frase pela derivação de calibre,
+   que é nossa, e nomear a proveniência da observação.**
+2. **O §R-pré.2 do ledger tem de ser emendado**, pela razão que o próprio §R-pré.7 deu:
+   *uma afirmação falsa dentro do ledger custa mais do que o que ela esconde*. ⚠️ E ela é,
+   outra vez, **a favor de quem a escreveu**.
+
+### §R-pós.5 — Incidentes (§7.2, item 4)
+
+| origem | estado |
+|---|---|
+| `INBOX_quadwild.md` | ⭐ **uma única linha, e é a declaração de sessão do Passo 0.** Transcrita para o [Papel I](#papel-i--implementador). ⛔ **ZERO relances, ZERO tripwires de recall, ZERO dúvidas de espec** — e a auditoria de transcript do §R-pós.1 confirma que não havia nada a declarar |
+| histórico do repositório | ⛔ o vermelho de `--git-history` (§R-pós.2), **pré-existente e já registado**, régua = relance |
+| ⛔ **novo, aberto por este R** | a proveniência das duas linhas do §5 (§R-pós.4), régua = **relance**, cura = documental |
+| ⚠️ **de MOLDE, não desta linha** | o `deny` do Passo 0 não alcança a ferramenta que a janela usa ([Papel I](#papel-i--implementador)) |
+
+### §R-pós.6 — Session-ids (§7.2, item 4)
+
+| papel | session-id | fora de {E, queimadas}? |
+|---|---|---|
+| E | `edbb014f-4ffb-40ff-bd89-2200158288ca` | — (queimada por decisão registada) |
+| R-pré | `23c68c7a-90db-4316-9d14-a4efcda6af7f` | — |
+| ⭐ **I** | `186ce13e-479b-467a-904c-0ff087ab76c9` | ✅ **SIM** — distinta das duas, e o transcript dela prova-o por comportamento |
+| R-pós | `49c94a84-e903-48a9-bd7f-b14685d71061` | ✅ ≠ I |
+
+### §R-pós.7 — ⏳ O que continua ABERTO (nenhum é do R resolver)
+
+1. ⛔ **`scripts/cleanroom-sweep.sh` continua NÃO RASTREADO** — só existe como ficheiro
+   solto no primário, e **não existe nesta worktree**. O §R-pré.6.2 pediu-o e ele não veio.
+   ⇒ *a prova deste ledger não é reproduzível noutra máquina, nem por outra janela.* Tem de
+   ser commitado junto com a pasta `cleanroom/`.
+2. ⛔ **A pasta `cleanroom/` continua ausente do `main`** (§R-pré.6.1). Não bloqueou esta
+   linha, porque ela nasceu de `line/sculpt3d`.
+3. ⚠️ **Colisão de número de ADR `0164`**, escrita por duas linhas com títulos diferentes
+   (a desta corrente, versionada; e uma **não versionada** na árvore primária, mais uma
+   `0165` idem). ⛔ **Não é desta linha** e ela **passa muda** — quem integrar conta,
+   escolhe, e regenera o índice (`bash scripts/adr-index.sh`).
+4. ⚠️ **A emenda de espec que a janela I devolveu** (o G3 penaliza a costura em vez de
+   **eliminar** a variável, e a espec §5.1 já nomeia a cura): é pergunta para o **E**, via
+   Enio. ⛔ A janela I não foi olhar, e fez bem.
+
+---
+
+### ⭐ FECHAMENTO (§6)
+
+| item do §6 | estado |
+|---|---|
+| **Paridade** | ✅ **20/20 gates novos verdes** (15 + 3 + 2), barra derivada conferida, comparação **fase a fase** feita sobre os dumps de referência — §R-pós.1 |
+| **Sweep de árvore** | ✅ **verde**, com controlo positivo vermelho provado antes |
+| **Sweep de histórico** | ✅ verde nos **5 commits desta linha**, em `docs/3D/cleanroom` e em `project-memory`; ⛔ **vermelho no repositório inteiro**, atribuído a **dois commits pré-existentes** (um deles já em `main`), régua §6.2 = **relance** — §R-pós.2 |
+| **Sweep de memória** | ✅ verde (`project-memory`, árvore e histórico) |
+| **Sweep do transcript de I** | ✅ verde |
+| **Similaridade** | ✅ **sem convergência de expressão no código.** O §5 diverge do único alvo local em decomposição e em método de actualização; a obra 2 **não tem alvo local** com que convergir, e o idioma e a rota escolhida (⭐ zero dependências, `i64`/`i128` em vez da precisão múltipla que a própria espec oferecia) apontam para o contrário de convergência — §R-pós.3 |
+| **Incidentes** | ✅ todos transcritos e tratados; **um novo**, aberto por este R, classificado **relance**, cura **documental** e devida pelo E — §R-pós.4/5 |
+| **Session-id de I** | ✅ fora de {janelas E, queimadas}, e **verificado por transcript**, não por auto-relato — §R-pós.6 |
+
+⇒ ⭐⭐⭐ **LEDGER FECHADO. O MÓDULO ESTÁ APTO A INTEGRAR.**
+
+⚠️ **Com duas coisas ditas com todas as letras, porque um fechamento que as calasse valeria
+menos que nenhum:**
+
+- ⛔ **Nada do que fica devido é bloqueador de integração** — as duas dívidas do §R-pós.4
+  são **de documentação** (a espec e o §R-pré.2 deste ledger), não de código, e o código foi
+  comparado contra o alvo e diverge. O que fica no `main` é obra da casa.
+- ⛔ **O ship é do Enio, e o smoke também** (`CLAUDE.md` §0.7). O caminho novo shipa
+  **desligado**, com gate a contar a bifurcação única.
 
 ---
 

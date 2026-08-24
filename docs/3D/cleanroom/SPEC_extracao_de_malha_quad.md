@@ -17,6 +17,10 @@ Auditoria §4.2 (R-pré): ✅ VERDE — auditada contra §4.2 por R em 2026-08-2
   a um contra os *papers* citados; veredito e método no LEDGER §"Papel R". ⚠️ A auditoria
   devolveu DUAS correcções de parede (não de §4.2), já aplicadas pelo R nesta espec e no
   README dos fixtures — procure "correcção do R-pré".
+Auditoria §7.2.3 (R-pós): ✅ fechada em 2026-08-24, janela
+  `49c94a84-e903-48a9-bd7f-b14685d71061`. ⛔ Ela achou UM item de §4.2 que o R-pré não
+  cobriu — no §5, duas linhas que não descendem do *paper* — e o bloco foi **substituído
+  pela derivação desta casa**; procure "CORREÇÃO DO R-PÓS". Veredito §6.2: relance.
 Mapa de leitura da literatura:
   · Ebke, Bommes, Campen, Kobbelt — "QEx: Robust Quad Mesh Extraction", SIGGRAPH Asia 2013.
     ⭐ A fonte principal desta espec (§2-§6).
@@ -337,14 +341,31 @@ não como equações extra no sistema.
 que fica no degrau 1**. Se ela for baixa, o tecto de iterações ou a tolerância estão mal
 escolhidos — e o custo vai para o degrau 3, que é o que se queria evitar.
 
-⚠️ **Duas modalidades, e a escolha é de produto:**
-- **arredondar as COSTURAS** — as variáveis de translação. Mais rápido.
-- **arredondar as SINGULARIDADES** — as imagens dos vértices singulares. Dá mapas melhores
-  em peças com asas/alças, e é a modalidade que a medição de 2026-08-24 usou.
-- ⚠️ **Caso de canto medido:** quando todas as singularidades já foram pregadas mas ainda
-  restam costuras por arredondar (acontece em **peças com alça**, e o nosso corpus tem um
-  toro), é preciso **passar à modalidade das costuras** em vez de terminar. ⛔ Sem isso, o
-  mapa fica *quase* inteiro e a extração produz lixo.
+### ⚠️ QUAIS variáveis são as inteiras — e a resposta deriva-se, não se escolhe
+
+⛔⛔ **CORREÇÃO DO R-PÓS (2026-08-24).** A 1ª redação deste bloco apresentava a resposta
+como *duas modalidades à escolha*, e descrevia o caso de canto do género > 0 seguindo a
+estrutura de frase de um **comentário do fonte da biblioteca de referência** — cuja leitura
+está registrada no ledger, mas cuja *expressão* o §4.2 mantém fora da espec.
+⇒ O bloco foi **substituído pela derivação desta casa**, que responde melhor à mesma
+pergunta e é nossa. Mecanismo, proveniência e veredito (**relance**, §6.2):
+[`LEDGER §R-pós.4`](LEDGER_quadwild.md).
+
+**A derivação (é de calibre, e já está escrita em [`ph2d-gridmap`](../../../crates/ph2d-gridmap/src/round.rs)):**
+
+- A translação de uma costura é grandeza de **calibre**: somar uma constante ao `(u, v)` de
+  um retalho muda todas as translações que lhe tocam **sem mudar nada na peça**. ⇒ numa
+  **árvore de expansão** do grafo de retalhos elas podem ser todas levadas a `0` — de graça,
+  porque a energia só vê gradientes e diferenças de costura.
+- ⇒ **as translações que restam por arredondar são as que FECHAM CICLO**, e são
+  `E − V + componentes` delas.
+- ⭐⭐ **E é daí que sai o caso de canto, como consequência e não como aviso:** esse número
+  é `0` numa peça de género 0 e **não é zero** num toro. Pregar as imagens dos vértices
+  singulares **não** toca nessas translações — logo, numa peça com alça, esgotar as
+  singularidades **deixa inteiros por pregar**. ⛔ Terminar aí deixa o mapa *quase* inteiro,
+  que é pior que contínuo.
+- ⇒ **as duas famílias são uma sequência, não um menu:** pregue as singularidades (é o que
+  faz a grade fechar à volta delas) e **continue** pelas translações de ciclo que sobrarem.
 
 ⚠️ **Injectividade local:** o solver não a garante (a restrição é não-linear). ⭐ **E a §7
 explica por que isso é aceitável:** a extração é **tolerante a dobras** por construção.

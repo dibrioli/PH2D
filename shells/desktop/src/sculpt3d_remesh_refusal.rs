@@ -65,6 +65,14 @@ pub(in crate::sculpt3d) enum RemeshRefusal {
     /// que satisfazem a lei por construção. Recusar em vez de remendar é o que
     /// impede uma malha torcida chegar à tela.
     Fill(ph2d_quadfill::FillError),
+    /// **A EXTRACÇÃO recusou** — o caminho do mapa de grade inteira
+    /// (`PH2D_RETOPO_EXTRACT=1`).
+    ///
+    /// ⚠️ **Caso próprio e não um [`Self::Fill`] reaproveitado:** aquele fala de uma
+    /// montagem por patch, este de um domínio que não cabe na grade exacta ou de um
+    /// mapa com uma coordenada não finita. *Uma variante partilhada faria o artista
+    /// ler a cura da outra fase.*
+    Extract(ph2d_quadextract::ExtractError),
 }
 
 impl RemeshRefusal {
@@ -122,6 +130,10 @@ impl RemeshRefusal {
             Self::Fill(e) => {
                 format!("a montagem recusou (bug a montante), e a escultura fica como esta': {e:?}")
             }
+            Self::Extract(e) => format!(
+                "a extraccao do mapa de grade inteira recusou, e a escultura fica como esta': \
+                 {e} -- tire o PH2D_RETOPO_EXTRACT para voltar ao caminho de sempre"
+            ),
         }
     }
 
@@ -141,7 +153,8 @@ impl RemeshRefusal {
             | Self::TooCoarseToResolve
             | Self::Layout(_)
             | Self::Quantize(_)
-            | Self::Fill(_) => false,
+            | Self::Fill(_)
+            | Self::Extract(_) => false,
         }
     }
 }

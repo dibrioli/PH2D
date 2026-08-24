@@ -68,6 +68,13 @@ impl Sculpt3dScene {
         detail: f32,
         adaptive: f32,
     ) -> Result<QuadRemeshReport, RemeshRefusal> {
+        // ⛔⛔ **O ÚNICO SÍTIO em que o caminho novo entra**, e é o que torna o
+        // «byte-idêntico com o interruptor em baixo» uma afirmação verificável em vez
+        // de uma promessa: sem a env, esta linha é um `false` e tudo abaixo dela é o
+        // que sempre foi. Ver `super::retopo_extract`.
+        if super::retopo_extract::extract_requested() {
+            return self.quad_remesh_extract(detail, adaptive);
+        }
         if self.level_count() != 1 {
             return Err(RemeshRefusal::MultiresStack);
         }

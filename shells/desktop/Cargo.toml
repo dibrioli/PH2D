@@ -373,6 +373,11 @@ ph2d-crossfield = { path = "../../crates/ph2d-crossfield" }
 ph2d-trace = { path = "../../crates/ph2d-trace" }
 ph2d-quantize = { path = "../../crates/ph2d-quantize" }
 ph2d-quadfill = { path = "../../crates/ph2d-quadfill" }
+# ⭐⭐ O MAPA DE GRADE INTEIRA (G1-G5) e a EXTRACCAO que o consome -- o caminho novo do
+# botao `Quad Retopology`, atras de `PH2D_RETOPO_EXTRACT=1`. ⛔ Ele shipa DESLIGADO:
+# com o interruptor em baixo o caminho antigo e' byte-identico, e ha' gate a prova'-lo.
+ph2d-gridmap = { path = "../../crates/ph2d-gridmap" }
+ph2d-quadextract = { path = "../../crates/ph2d-quadextract" }
 
 # A ponte da escultura para o campo implicito (ADR-0161 W5): uma malha vira campo
 # amostrado e entra na booleana. NAO e' opcional porque o smoke do campo (cena 6)

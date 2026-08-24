@@ -5750,6 +5750,7 @@ dependencies = [
  "ph2d-flip-reshape",
  "ph2d-gpu",
  "ph2d-gpu-cook",
+ "ph2d-gridmap",
  "ph2d-guides",
  "ph2d-host",
  "ph2d-i18n",
@@ -5814,6 +5815,7 @@ dependencies = [
  "ph2d-panel-vector",
  "ph2d-panel-wet-tuning",
  "ph2d-physics-ecs",
+ "ph2d-quadextract",
  "ph2d-quadfill",
  "ph2d-quadflow",
  "ph2d-quantize",
@@ -7795,6 +7797,19 @@ name = "ph2d-platformer"
 version = "0.0.0"
 dependencies = [
  "libm",
+]
+
+[[package]]
+name = "ph2d-quadextract"
+version = "0.0.0"
+dependencies = [
+ "miniz_oxide",
+ "ph2d-crossfield",
+ "ph2d-gridmap",
+ "ph2d-mesh",
+ "ph2d-quadfill",
+ "ph2d-remesh-iso",
+ "ph2d-trace",
 ]
 
 [[package]]

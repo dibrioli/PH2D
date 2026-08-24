@@ -223,6 +223,42 @@ falha para nós pela mesma porta. ⇒ **medição barata e decisiva, antes de qu
 DELA com os insumos DELA — e só então troque **um** insumo de cada vez.* Eu troquei malha,
 campo e formato ao mesmo tempo, e passei horas a acusar a ferramenta.
 
+### §5-bis.5 — ⭐⭐ O passo seguinte, ENDEREÇADO (e não é meu: exige escrever produto)
+
+⛔ **Meça o curl do NOSSO campo antes de qualquer porte.** É a única medição barata que
+pode **matar ou confirmar** a rota inteira, e hoje ela **não existe**: `ph2d-crossfield`
+não tem nenhuma noção de curl (conferido — zero ocorrências na crate).
+
+**A lei, e ela é aritmética de aresta dual:** um campo é livre de curl (localmente
+integrável) sse, para **toda** aresta interior, as duas faces concordam sobre quanto a
+direção **avança ao longo daquela aresta**:
+
+```
+curl(e) = ⟨d_f , v_e⟩ − ⟨d_g , v_e⟩
+```
+
+com `v_e` o vetor da aresta partilhada, e `d_f`/`d_g` os ramos **emparelhados** do campo
+nas duas faces (o emparelhamento é o `period` que a `CrossField` já guarda — ⚠️ usar o
+ramo cru dá desacordo por construção, que foi exactamente o defeito da régua de holonomia
+em §4-septemetquinquagies do [`PLAN.md`](../quad-remesh/PLAN.md)).
+
+**As peças já existem todas:** `Dual::edges()` dá `f`, `g` por aresta ·
+`CrossField::direction(dual, f)` dá o vetor · `CrossField::period(e)` dá o salto.
+
+| o que reportar | por quê |
+|---|---|
+| `curl` p50 · p99 · **max**, por peça do corpus | ⚠️ **percentis, nunca média** — o defeito é uma faixa |
+| **a contagem de arestas medidas**, ao lado | ⛔ senão um balde vazio lê-se como perfeito (§5-bis.4.3) |
+| normalizado pelo comprimento da aresta | senão a grandeza mede o tamanho da malha |
+
+⭐ **A barra sai de graça:** o campo que faz a extração alheia terminar e o que a faz cair
+foram **os dois medidos** por este arnês — `0,70` e `5724` na mesma unidade da biblioteca.
+⚠️ Não são a nossa unidade; ⇒ **o controlo positivo é correr a régua nova sobre um campo
+que sabemos ruim** (um campo liso sem restrições) e ver o número subir.
+
+⇒ Se o nosso campo já for de baixo curl, a Rota A fica com **um** problema (a extração).
+Se não for, ela fica com **dois**, e o segundo vem primeiro.
+
 ---
 
 ## §6 — ⛔ Recusas MEDIDAS

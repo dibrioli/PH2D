@@ -50,6 +50,11 @@ impl Key {
             0xF713 => "Right Ctrl",
             0xF714 => "Left Alt",
             0xF715 => "Right Alt",
+            0xF729 => "Home",
+            0x5B => "[",
+            0x5D => "]",
+            0x2C => ",",
+            0x2E => ".",
             // Letras e dígitos vivem no ASCII, então o próprio código É o nome.
             c @ (0x30..=0x39 | 0x41..=0x5A) => {
                 return char::from_u32(c).map_or_else(|| format!("Key {c:#X}"), String::from);

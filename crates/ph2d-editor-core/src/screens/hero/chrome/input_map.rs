@@ -26,9 +26,8 @@
 //! ordem, ligar `S` a uma acção **salva o projecto** e a ligação nunca acontece.
 
 use crate::ids;
-use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
+use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
-use crate::screens::hero::HeroScreen;
 use crate::icons::IconId;
 use crate::widget::{
     Button, IconButtonStyle, IconGlyph, ListItem, ListItemState, paint_button, paint_icon_button,
@@ -104,17 +103,25 @@ pub fn sync_input_map_rows(store: &mut WidgetStore, map: &InputMap) {
         // ⚠️ Os dois números da zona, **semeados do valor autorado** a cada sincronia: o
         // `set_zone` COAGE (`press_point >= dead_zone`), então arrastar um pode mover o outro — e
         // o slider tem de mostrar o valor que ficou, não o que o dedo pediu.
-        // ⚠️ **O CHIP também se regista.** Ele mostra o número e aceita ser digitado; sem
-        // registro, ele é pintado e **morto sob o dedo** — o mesmo defeito do campo de nome, que
-        // esta janela já pagou uma vez.
-        for id in [
-            ids::input_map_deadzone_chip_id(row),
-            ids::input_map_press_point_chip_id(row),
+        // ⚠️ **O CHIP é um `NumberInput`, e não um `Button`.** Auditoria 2026-08-24: registá-lo
+        // como botão fazia-o **pintar as setinhas e não aceitar dígito nenhum** — o número era
+        // decoração. É a irmã exacta da cicatriz da swatch do painel de tokens (*"registá-la como
+        // botão faria o clique acender o widget e nunca abrir o picker"*).
+        for (id, v) in [
+            (ids::input_map_deadzone_chip_id(row), a.dead_zone),
+            (ids::input_map_press_point_chip_id(row), a.press_point),
         ] {
             store.register(
                 id,
-                crate::interaction::InteractiveState::Button {
-                    state: crate::widget::ButtonState::Normal,
+                crate::interaction::InteractiveState::NumberInput {
+                    state: crate::widget::TextInputState::Normal,
+                    value: f64::from(v),
+                    // ⚠️ O buffer é o valor JÁ FORMATADO: o dispatch nunca faz crescer a `String`
+                    // em construção, e é por isso que ele nasce preenchido aqui.
+                    buffer: format!("{v:.3}"),
+                    caret: 0,
+                    last_committed: f64::from(v),
+                    selection_anchor: None,
                 },
             );
         }
@@ -207,16 +214,28 @@ fn body_rows(map: &InputMap) -> usize {
 /// rectângulo para saber se a roda é dela, e duas contas da mesma coisa divergem — com o sintoma a
 /// ser *"a roda funciona no meio da janela e não na ponta"*.
 ///
-/// ⚠️ A altura é **clampada à viewport** quando ela é conhecida; sem viewport (a shell a perguntar
-/// antes do primeiro quadro) devolve o tamanho pedido, que é o pior caso e nunca subestima.
+/// ⚠️ **A altura é a CLAMPADA — a mesma que o pintor desenha.** A primeira versão devolvia a
+/// pedida e o doc dela afirmava o contrário; a auditoria de 2026-08-24 mostrou que a roda e o
+/// arrasto passavam a testar um rectângulo que **não está na tela** assim que a lista transborda.
+/// *Um doc que afirma o que a função não faz é pior que nenhum doc.*
 #[must_use]
-pub fn input_map_window_size(map: &InputMap) -> (f32, f32, f32) {
+pub fn input_map_window_size(map: &InputMap, viewport_h: f32) -> (f32, f32, f32) {
     let row_h = ROW_H_PX;
     let gap = Spacing::Xs.px();
     let chrome_h = Spacing::Sm.px() * 2.0 + (row_h + gap) * 2.0;
     #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: contagem de linhas
     let want_body = (row_h + gap) * body_rows(map) as f32;
-    (window_w(), chrome_h + want_body, 0.0_f32.max(want_body))
+    // ⛔⛔ **O TETO É O TRANSBORDO, não o conteúdo inteiro** — auditoria 2026-08-24, apanhado por
+    // QUATRO lentes independentes. Com o conteúdo inteiro, a roda levava a lista `body_h` px para
+    // ALÉM do fim: o cartão ficava **vazio** e nada na tela dizia como voltar.
+    //
+    // ⚠️ E a altura devolvida é a **CLAMPADA**, a mesma que o pintor desenha. A versão anterior
+    // devolvia a pedida, e o doc dela afirmava que clampava — então a roda e o arrasto testavam um
+    // rectângulo que **não é o que está na tela** assim que a lista passa da viewport.
+    let want_h = chrome_h + want_body;
+    let h = want_h.min(viewport_h.max(chrome_h + row_h));
+    let body_h = (h - chrome_h).max(row_h);
+    (window_w(), h, (want_body - body_h).max(0.0))
 }
 
 /// **Desenha a janela** (no-op quando fechada).
@@ -264,6 +283,16 @@ pub fn paint_input_map_window(
     let radius = Radius::Md.px();
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::BgElev, theme));
     stroke_rounded_rect(scene, rect, radius, 1.0, resolve(ColorToken::Border, theme));
+    // ⛔⛔ **O FUNDO DO CARTÃO ABSORVE O CLIQUE** — auditoria de 2026-08-24, o achado mais grave.
+    //
+    // Sem ele, clicar no espaço vazio ENTRE dois controlos da janela caía no canvas por baixo: com
+    // o pincel na mão, o artista **pintava** enquanto arrumava os controlos. Um cartão flutuante
+    // que deixa passar o que não consome não é uma janela — é um desenho.
+    //
+    // ⚠️ É registado ANTES de tudo o resto de propósito: o `HitIndex` responde com o ÚLTIMO
+    // rectângulo que cobre o ponto, então o fundo tem de entrar primeiro para os controlos ficarem
+    // por cima dele.
+    hit_index.register(ids::INPUT_MAP_SURFACE, rect);
 
     let inner_x = rect.x + Spacing::Md.px();
     let inner_w = rect.w - Spacing::Md.px() * 2.0;
@@ -283,7 +312,7 @@ pub fn paint_input_map_window(
         inner_w,
         resolve(ColorToken::Text1, theme),
     );
-    let close_rect = Rect::new(rect.x + rect.w - Spacing::Xl2.px(), cy, row_h, row_h);
+    let close_rect = Rect::new(rect.x + rect.w - Spacing::Sm.px() - row_h, cy, row_h, row_h);
     hit_index.register(ids::INPUT_MAP_CLOSE, close_rect);
     paint_icon_button(
         close_rect,
@@ -295,13 +324,20 @@ pub fn paint_input_map_window(
     );
     cy += row_h + gap;
 
-    // ── O CORPO, recortado: o que passar do fundo não pinta e não é clicável. ──
+    // ── O CORPO: recortado no CLIQUE **e** na PINTURA. ──
     //
-    // ⚠️ **O `push_clip` é o que separa "não desenha" de "não responde".** Sem ele, uma linha
-    // fora do cartão continuaria a receber cliques — a família de defeito que esta linha já pinou
-    // no painel do Motion.
+    // ⚠️ **São duas coisas diferentes, e o comentário anterior confundia-as.** O `push_clip` do
+    // `HitIndex` só decide quem RESPONDE; a auditoria de 2026-08-24 mostrou que o conteúdo rolado
+    // continuava a **DESENHAR** por cima do título e para fora do cartão. Quem recorta pixels é a
+    // cena — [`VectorScene::push_layer`].
     let body = Rect::new(rect.x, cy, rect.w, body_h);
     hit_index.push_clip(body);
+    scene.push_clip(&ph2d_vector::Rect::new(
+        f64::from(body.x),
+        f64::from(body.y),
+        f64::from(body.x + body.w),
+        f64::from(body.y + body.h),
+    ));
     let scroll = store.input_map_scroll();
     let mut by = cy - scroll;
 
@@ -320,13 +356,19 @@ pub fn paint_input_map_window(
 
     let listening = store.input_map_listening();
     let icon_w = Spacing::Xl2.px();
+    // A coluna do NOME da acção — e o indicador de escuta começa logo a seguir a ela.
+    let name_w = Spacing::Xl4.px() * 2.5; // LITERAL-PX-OK: multiplicador do token
     for (row, action) in map.actions().iter().enumerate() {
         // ═══ A LINHA DA ACÇÃO: nome · Dead · Press · `+` · lixo ═══
         let armed = listening == Some(action.id);
         let del = ids::input_map_delete_action_id(row);
         let listen = ids::input_map_listen_id(row);
-        let del_rect = Rect::new(rect.x + rect.w - icon_w, by, row_h, row_h);
-        let listen_rect = Rect::new(del_rect.x - icon_w, by, row_h, row_h);
+        // ⚠️ **A largura da coluna é a do BOTÃO** (`row_h`), e não um `Spacing` parecido: com
+        // `icon_w = Xl2 = 24` e o botão a medir `row_h = 28`, os dois rectângulos sobrepunham-se
+        // **4 px** — e como o lixo é registado DEPOIS, ele ganhava o ponto: 14% do botão de armar
+        // a escuta **apagava a acção**, sem volta. (Auditoria 2026-08-24.)
+        let del_rect = Rect::new(rect.x + rect.w - Spacing::Sm.px() - row_h, by, row_h, row_h);
+        let listen_rect = Rect::new(del_rect.x - row_h - Spacing::Xs.px(), by, row_h, row_h);
 
         paint_text(
             text_system,
@@ -412,16 +454,34 @@ pub fn paint_input_map_window(
         );
         by += row_h + gap;
 
+        // ═══ O INDICADOR DA ESCUTA — ⛔ auditoria 2026-08-24, e é o «não tem indicadores do que
+        // fazer em seguida» na letra. ═══
+        //
+        // A primeira versão só o pintava dentro de `if bindings.is_empty()` — e o caso canónico do
+        // smoke é o OPOSTO (`jump` nasce com DUAS ligações). Armar a escuta numa acção já ligada
+        // não escrevia uma palavra: o único sinal era o fundo de um glifo de 24 px a mudar.
+        //
+        // ⇒ o texto vive AO LADO DO NOME da acção, sempre que ela está armada. É a linha que o
+        // artista já está a olhar, e ela cabe sem custar linha nenhuma.
+        if armed {
+            paint_text(
+                text_system,
+                scene,
+                tr("input_map.listening"),
+                inner_x + name_w,
+                by + (row_h - font) * 0.5,
+                font,
+                inner_w,
+                resolve(ColorToken::Accent, theme),
+            );
+        }
+
         // ═══ As LIGAÇÕES, indentadas ═══
         if action.bindings.is_empty() {
             paint_text(
                 text_system,
                 scene,
-                if armed {
-                    tr("input_map.listening")
-                } else {
-                    tr("input_map.no_binding")
-                },
+                tr("input_map.no_binding"),
                 inner_x + Spacing::Xl.px(),
                 by + (row_h - font) * 0.5,
                 font,
@@ -448,7 +508,7 @@ pub fn paint_input_map_window(
                 text_system,
                 theme,
             );
-            let db_rect = Rect::new(rect.x + rect.w - icon_w, by, row_h, row_h);
+            let db_rect = Rect::new(rect.x + rect.w - Spacing::Sm.px() - row_h, by, row_h, row_h);
             hit_index.register(db, db_rect);
             paint_icon_button(
                 db_rect,
@@ -462,17 +522,25 @@ pub fn paint_input_map_window(
         }
     }
     hit_index.pop_clip();
+    scene.pop_layer();
 
-    // ── A BARRA DE ROLAGEM, quando a lista não cabe. ──
-    paint_scrollbar(
-        body,
-        scroll,
-        want_body,
-        body_h,
-        (crate::widget::ScrollbarState::Normal, 0.0),
-        scene,
-        theme,
-    );
+    // ── A BARRA DE ROLAGEM, quando a lista não cabe — e ela é REGISTADA. ──
+    //
+    // ⛔ Auditoria 2026-08-24: ela era pintada e **nunca registada** — não arrastava, não fazia
+    // hover, e não tinha id nenhum. *Uma barra que não se pode agarrar é um enfeite que promete um
+    // gesto.* O `visual` também passa a vir do store, senão ela nasce inerte sob o rato.
+    if want_body > body_h {
+        hit_index.register(crate::widget::INPUT_MAP_SCROLLBAR_ID, crate::widget::scrollbar_track_rect(body));
+        paint_scrollbar(
+            body,
+            scroll,
+            want_body,
+            body_h,
+            store.scrollbar_visual(crate::widget::INPUT_MAP_SCROLLBAR_ID),
+            scene,
+            theme,
+        );
+    }
 
     // ── O RODAPÉ: nome novo + Add. ⭐ **Em BAIXO, como no Godot** — criar é o gesto raro, e no
     // topo ele empurrava a lista para longe do olho a cada abertura. ──
@@ -536,155 +604,6 @@ fn list_state(store: &WidgetStore, id: ph2d_a11y::NodeId) -> ListItemState {
     }
 }
 
-/// A metade de DESPACHO — ligada ao `dispatch_all` pelo `ph2d-chrome-sync`.
-pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
-    // ⭐ **OS DOIS NÚMEROS DA ZONA** — e eles chegam por `ValueChanged`, não por `Click`.
-    if let WidgetEvent::ValueChanged(id) = event {
-        let v = hero.store.slider(id).map_or(0.0, |(_, x)| x);
-        let ids_of: Vec<_> = hero.input_map.actions().iter().map(|a| a.id).collect();
-        for (row, aid) in ids_of.into_iter().enumerate() {
-            let is_dz = id == ids::input_map_deadzone_id(row);
-            let is_pp = id == ids::input_map_press_point_id(row);
-            if !is_dz && !is_pp {
-                continue;
-            }
-            if let Some(a) = hero.input_map.get_mut(aid) {
-                // ⚠️ **A porta da acção COAGE** (`press_point >= dead_zone`), então o outro número
-                // pode mover-se — e é por isso que a sincronia logo abaixo re-semeia os DOIS
-                // sliders: sem ela, o slider mostraria o valor que o dedo pediu em vez do que
-                // ficou, e o artista veria a janela discordar do produto.
-                let (dz, pp) = if is_dz {
-                    (v, a.press_point)
-                } else {
-                    (a.dead_zone, v)
-                };
-                a.set_zone(dz, pp);
-            }
-            let map = hero.input_map.clone();
-            sync_input_map_rows(&mut hero.store, &map);
-            return true;
-        }
-        return false;
-    }
-    let WidgetEvent::Click(id) = event else {
-        return false;
-    };
-    // ⭐ **O ABRIDOR, e ele é o PRIMEIRO ramo de propósito** — antes da guarda de "janela aberta".
-    // Um abridor atrás dessa guarda seria a piada de precisar da janela aberta para a abrir, e é a
-    // forma exacta de uma feature ficar inalcançável com todos os gates verdes.
-    if id == ids::CTX_MENU_SETTINGS_INPUT_MAP {
-        // ⚠️ A janela nasce no canto útil da viewport, não sob o cursor: ela é grande e o cursor
-        // está no menu, no topo — abrir ali poria metade dela fora do ecrã antes do clamp.
-        let v = hero.last_viewport;
-        hero.store
-            .open_input_map(v.x + Spacing::Xl4.px(), v.y + Spacing::Xl4.px());
-        // ⚠️ E as linhas do mapa que veio do FICHEIRO registam-se aqui: elas existiam antes de a
-        // janela existir, e nenhum gesto as criou nesta sessão.
-        let map = hero.input_map.clone();
-        sync_input_map_rows(&mut hero.store, &map);
-        return true;
-    }
-    // ⭐ **A TECLA APANHADA** — o `Click` sintético que o despacho de teclado emitiu. Ele vem antes
-    // da guarda da janela pelo mesmo motivo do abridor: se a janela fechasse entre a tecla e este
-    // ramo, a captura ficaria pendurada para sempre.
-    // O `Esc` durante a escuta: consumido, sem ligar nada. A lei já desarmou; aqui só se
-    // reconhece o evento para ele não vazar para outro chrome.
-    if id == ids::INPUT_MAP_LISTEN_CANCELLED {
-        return true;
-    }
-    if id == ids::INPUT_MAP_BIND_CAPTURED {
-        let key = hero.store.take_captured_key();
-        let armed = hero.store.input_map_listening();
-        hero.store.stop_listening();
-        if let (Some(k), Some(aid)) = (key, armed)
-            && let Some(a) = hero.input_map.get_mut(aid)
-        {
-            let b = Binding::Key(k);
-            // ⚠️ **Ligar duas vezes a mesma tecla não a duplica.** A lista é um conjunto de
-            // caminhos até a acção, e dois caminhos idênticos não são dois caminhos — seriam duas
-            // linhas iguais no painel, uma delas impossível de distinguir da outra ao apagar.
-            if !a.bindings.contains(&b) {
-                a.bindings.push(b);
-            }
-        }
-        let map = hero.input_map.clone();
-        sync_input_map_rows(&mut hero.store, &map);
-        return true;
-    }
-    if hero.store.input_map_pos().is_none() {
-        return false;
-    }
-    if id == ids::INPUT_MAP_CLOSE {
-        hero.store.close_input_map();
-        return true;
-    }
-    // Um clique nu na faixa do título (sem arrasto) — consome, para nunca vazar para outro chrome.
-    if id == ids::INPUT_MAP_HANDLE {
-        return true;
-    }
-    if id == ids::INPUT_MAP_ADD {
-        let name = hero
-            .store
-            .text(ids::INPUT_MAP_NEW_NAME)
-            .unwrap_or_default()
-            .trim()
-            .to_string();
-        // ⚠️ **Nome vazio não cria nada**, e não é validação defensiva: uma acção sem nome é
-        // inalcançável por código (a leitura é `pressed("...")`), então criá-la produziria uma
-        // linha no painel que nada pode usar.
-        if !name.is_empty() {
-            hero.input_map.create(&name);
-            let map = hero.input_map.clone();
-            sync_input_map_rows(&mut hero.store, &map);
-            // ⚠️ Limpar o campo pela MESMA porta que o lê — `InteractiveState::TextInput`. Um
-            // `set_text` proprio seria uma segunda escrita do mesmo facto.
-            if let Some(crate::interaction::InteractiveState::TextInput { text, caret, .. }) =
-                hero.store.get_mut(ids::INPUT_MAP_NEW_NAME)
-            {
-                text.clear();
-                *caret = 0;
-            }
-        }
-        return true;
-    }
-    // As linhas: o índice vem da POSIÇÃO na lista, e o id é derivado dela — então a resolução é
-    // percorrer a lista a comparar, que é o que o pintor fez para a registar.
-    let ids_of: Vec<_> = hero.input_map.actions().iter().map(|a| a.id).collect();
-    for (row, aid) in ids_of.into_iter().enumerate() {
-        if id == ids::input_map_delete_action_id(row) {
-            hero.input_map.remove(aid);
-            let map = hero.input_map.clone();
-            sync_input_map_rows(&mut hero.store, &map);
-            // ⚠️ Apagar a acção à escuta **desarma** a escuta: senão a próxima tecla iria para um
-            // id que já não existe, e sumiria sem que nada na tela dissesse porquê.
-            if hero.store.input_map_listening() == Some(aid) {
-                hero.store.stop_listening();
-            }
-            return true;
-        }
-        if id == ids::input_map_listen_id(row) {
-            // Carregar de novo no botão já armado **desarma** — o gesto tem de ter volta.
-            if hero.store.input_map_listening() == Some(aid) {
-                hero.store.stop_listening();
-            } else {
-                hero.store.listen_for_binding(aid);
-            }
-            return true;
-        }
-        let n = hero
-            .input_map
-            .get(aid)
-            .map_or(0, |a| a.bindings.len());
-        for bi in 0..n {
-            if id == ids::input_map_delete_binding_id(row, bi) {
-                if let Some(a) = hero.input_map.get_mut(aid) {
-                    a.bindings.remove(bi);
-                }
-                let map = hero.input_map.clone();
-                sync_input_map_rows(&mut hero.store, &map);
-                return true;
-            }
-        }
-    }
-    false
-}
+/// **A metade de DESPACHO** — irmã por teto de LOC; ver [`apply`].
+mod apply;
+pub use apply::apply;

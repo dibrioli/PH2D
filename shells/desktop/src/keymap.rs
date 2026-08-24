@@ -143,6 +143,16 @@ pub fn winit_to_input_keycode(code: KeyCode) -> Option<u32> {
         KeyCode::ControlRight => 0xF713,
         KeyCode::AltLeft => 0xF714,
         KeyCode::AltRight => 0xF715,
+        // ⛔ **As cinco que a auditoria de 2026-08-24 achou INLIGÁVEIS.** Elas têm atalho de editor
+        // e não estavam em normalizador nenhum: o artista carregava e a acção nunca aparecia, sem
+        // um aviso. *Uma tecla que o mapa não sabe soletrar é uma tecla que o artista não pode
+        // usar* — a irmã exacta do `KeyG` que faltava e fazia o `Ctrl+G` do grafo cair no atalho
+        // errado (Enio, 2026-07-13).
+        KeyCode::BracketLeft => 0x5B,
+        KeyCode::BracketRight => 0x5D,
+        KeyCode::Comma => 0x2C,
+        KeyCode::Period => 0x2E,
+        KeyCode::Home => 0xF729,
         _ => return None,
     };
     Some(v)

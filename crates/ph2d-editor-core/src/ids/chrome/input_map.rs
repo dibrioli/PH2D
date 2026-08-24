@@ -19,6 +19,15 @@ pub const INPUT_MAP_CLOSE: NodeId = hash_node_id("input_map.close");
 pub const INPUT_MAP_NEW_NAME: NodeId = hash_node_id("input_map.new_name");
 /// **+ Add** — cria a acção com o nome do campo acima.
 pub const INPUT_MAP_ADD: NodeId = hash_node_id("input_map.add");
+/// **O FUNDO DO CARTÃO** — ele existe para **absorver** o clique, não para fazer nada.
+///
+/// ⛔ Auditoria 2026-08-24, o achado mais grave: sem ele, clicar no espaço vazio ENTRE dois
+/// controlos caía no canvas por baixo — com o pincel na mão, o artista **pintava** enquanto
+/// arrumava a janela. *Um cartão flutuante que deixa passar o que não consome não é uma janela.*
+pub const INPUT_MAP_SURFACE: NodeId = hash_node_id("input_map.surface");
+// ⚠️ **O id da BARRA DE ROLAGEM não mora aqui** — ele é `widget::INPUT_MAP_SCROLLBAR_ID`, ao lado
+// dos dezassete irmãos, num ficheiro que tem um gate de COLISÃO a compará-los todos. Um id de
+// scrollbar fora dessa lista é um que ninguém confere.
 /// **A TECLA FOI CAPTURADA** — o `Click` sintético que o despacho de teclado emite quando a escuta
 /// estava armada.
 ///

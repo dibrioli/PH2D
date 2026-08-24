@@ -351,6 +351,19 @@ impl crate::App {
         // (o schema recusa antes), então o vazio que isto instala é sempre um vazio autorado.
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.input_map = file.input_map.clone();
+            // ⛔⛔ **AS LINHAS TÊM DE SER RE-REGISTADAS** — auditoria 2026-08-24, apanhado por duas
+            // lentes. Com a janela aberta, abrir um projecto trocava o mapa e deixava o
+            // `WidgetStore` com os widgets das linhas do documento ANTERIOR: as linhas novas eram
+            // pintadas e ficavam **mortas sob o ponteiro**.
+            let map = hero.input_map.clone();
+            ph2d_editor::screens::hero::chrome::sync_input_map_rows(&mut hero.store, &map);
+            // ⛔ **E a ESCUTA morre com o documento.** O `ActionId` é um contador POR-MAPA: uma
+            // escuta armada em `jump` do projecto anterior re-aponta, no mapa novo, para **outra
+            // acção** com o mesmo número — e a próxima tecla ligar-se-ia a ela, em silêncio.
+            hero.store.stop_listening();
+            // A rolagem também: a lista nova tem outro tamanho, e uma rolagem herdada abre a
+            // janela num vazio.
+            hero.store.scroll_input_map(f32::NEG_INFINITY, 0.0);
         }
         // ⚠️ E o estado RESOLVIDO zera junto: ele guarda um tique atrás, e o tique atrás de um
         // documento que acabou de fechar é de outro jogo — uma borda `just_pressed` fantasma no

@@ -360,7 +360,7 @@ fn dragging_the_dead_zone_past_the_press_point_shows_the_coerced_value() {
 #[test]
 fn the_zone_numbers_never_stack_at_the_windows_width() {
     use ph2d_editor_core::widget::slider_with_chip_is_stacked;
-    let (w, _, _) = chrome::input_map_window_size(&ph2d_input::InputMap::with_player_defaults());
+    let (w, _, _) = chrome::input_map_window_size(&ph2d_input::InputMap::with_player_defaults(), 1080.0);
     // A conta do pintor: dois números repartem o espaço à esquerda dos dois ícones.
     let icon_w = ph2d_tokens::Spacing::Xl2.px();
     let lw = ph2d_tokens::Spacing::Xl4.px() * 0.75;
@@ -392,14 +392,25 @@ fn the_window_never_grows_past_the_viewport() {
     for i in 0..40 {
         map.create(format!("extra_{i}"));
     }
-    let (_, h, max_scroll) = chrome::input_map_window_size(&map);
+    let vh = 720.0;
+    let (_, h, max_scroll) = chrome::input_map_window_size(&map, vh);
+    // ⛔ **A altura devolvida e a CLAMPADA** (auditoria 2026-08-24): a versao anterior devolvia a
+    // PEDIDA e o doc dela afirmava o contrario, entao a roda e o arrasto testavam um rectangulo
+    // que nao esta' na tela.
     assert!(
-        h > 800.0,
-        "a fixtura tem de conter o fenomeno: com 46 accoes a janela PEDIDA tem de ser alta (foi {h})"
+        h <= vh,
+        "a janela ({h}) passou da viewport ({vh}) -- a ultima accao fica inalcancavel"
     );
     assert!(
         max_scroll > 0.0,
-        "com a lista a transbordar, o teto de rolagem tem de ser positivo -- senao a roda nao leva \
-         a lado nenhum"
+        "com a lista a transbordar, o teto de rolagem tem de ser positivo"
+    );
+    // ⛔⛔ **E o teto e o TRANSBORDO, nao o conteudo inteiro.** Com o conteudo inteiro, a roda
+    // levava a lista `body_h` px para ALEM do fim: o cartao ficava VAZIO e nada dizia como voltar.
+    // Foi o achado que QUATRO lentes independentes encontraram.
+    let (_, small_h, small_max) = chrome::input_map_window_size(&map, 10_000.0);
+    assert_eq!(
+        small_max, 0.0,
+        "com a janela a caber inteira (altura {small_h}), nao pode haver rolagem nenhuma"
     );
 }

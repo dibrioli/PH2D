@@ -50,14 +50,20 @@ pub fn tr(key: &str) -> &'static str {
         "input_map.title" => "Input Map",
         "input_map.add" => "Add",
         "input_map.new_name.placeholder" => "New action name",
-        "input_map.listen" => "Bind…",
-        "input_map.listening" => "Press a key…",
-        "input_map.empty" => "No actions yet. Name one above and press Add.",
+        // ⛔ As duas frases-guia abaixo NOMEAVAM controlos que nao existem — auditoria 2026-08-24.
+        // «above» quando o campo esta em baixo, e «Bind» quando o botao virou um `+` na W6. Um
+        // indicador ERRADO e pior que a ausencia dele: o artista procura, nao encontra, e conclui
+        // que a feature esta partida.
+        // ⚠️ A chave `input_map.listen` (o rótulo «Bind…») MORREU com o botão dela na W6, e sai
+        // daqui: uma string órfã é onde alguém escreve, um dia, uma frase sobre um controlo que já
+        // não existe — que é exactamente o defeito que esta linha acabou de pagar.
+        "input_map.listening" => "· press a key or a gamepad button…",
+        "input_map.empty" => "No actions yet. Type a name at the bottom and press Add.",
         "input_map.binding.key" => "Key",
         "input_map.binding.pad" => "Pad",
         "input_map.binding.axis" => "Axis",
         // ⭐ Os DOIS números que substituem a `deadzone` de duplo propósito do Godot.
-        "input_map.no_binding" => "No key yet. Press Bind to assign one.",
+        "input_map.no_binding" => "No key yet. Press + on this row, then press a key.",
         "input_map.dead_zone" => "Dead",
         "input_map.press_point" => "Press",
         "tool.trim_transparency.label" => "TRIM",

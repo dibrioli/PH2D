@@ -142,11 +142,23 @@ impl crate::App {
         let Some((wx, wy)) = hero.store.input_map_pos() else {
             return false;
         };
-        let w = ph2d_editor::screens::hero::chrome::input_map_window_size(&hero.input_map);
-        if px < wx || px > wx + w.0 || py < wy || py > wy + w.1 {
+        // ⚠️ **A ALTURA DA VIEWPORT É PARTE DA PERGUNTA** — auditoria 2026-08-24. A janela é
+        // clampada ao ecrã pelo pintor; perguntar o tamanho sem a viewport devolvia o tamanho
+        // PEDIDO, e a roda passava a testar um rectângulo que **não está na tela** assim que a
+        // lista transborda. O `last_viewport` é o mesmo que o pintor recebeu no quadro anterior.
+        let vh = hero.last_viewport.h;
+        let (ww, wh, max_scroll) =
+            ph2d_editor::screens::hero::chrome::input_map_window_size(&hero.input_map, vh);
+        // ⚠️ E a POSIÇÃO também é clampada, pelo mesmo motivo: o pintor prende o canto à viewport,
+        // e um cartão encostado à borda de baixo desenha acima de onde o store diz que ele está.
+        let vx = hero.last_viewport.x;
+        let vy = hero.last_viewport.y;
+        let wx = wx.clamp(vx, (vx + hero.last_viewport.w - ww).max(vx));
+        let wy = wy.clamp(vy, (vy + vh - wh).max(vy));
+        if px < wx || px > wx + ww || py < wy || py > wy + wh {
             return false;
         }
-        hero.store.scroll_input_map(-dy, w.2);
+        hero.store.scroll_input_map(-dy, max_scroll);
         true
     }
 }

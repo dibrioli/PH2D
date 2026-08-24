@@ -698,6 +698,30 @@ menos que nenhum:**
 
 ---
 
+## ⚠️ ADENDO PÓS-FECHAMENTO — mudança de papel por ordem do dono (§6.5)
+
+**2026-08-24, mesma janela `49c94a84-…`, depois de o fechamento acima estar assinado.**
+
+O Enio ordenou *«implemente até o smoke ser possível»*. O custo foi explicado numa frase
+antes de qualquer edição, como o §6.5 manda, e a ordem manteve-se. ⇒ **esta janela deixou
+de ser só R e escreveu produto.** Fica registado o que ela escreveu **e o que recusou
+escrever**, porque é a fronteira que dá valor ao resto do ledger.
+
+| | |
+|---|---|
+| ⛔ **NÃO escrito, e a recusa é o ponto** | a eliminação da variável de costura no G3 / qualquer linha de `solve.rs` ou `round.rs`. ⚠️ **Esta janela leu o laço de arredondamento da referência** para a revisão estrutural do [§R-pós.3](#r-pós3) — escrevê-lo aqui converteria em silêncio a rota do ADR-0164 na que ele rejeitou. ⇒ **janela I nova** ([handoff §8-bis](../handoffs/HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md)) |
+| ⭐ **escrito** | [`sculpt3d_scenes_quad.rs`](../../../shells/desktop/src/sculpt3d_scenes_quad.rs) — o **roteiro de smoke** da cena `=35` para o caminho novo, mais dois gates. ⛔ **Zero linhas de algoritmo**, em crate nenhuma da cadeia; é texto de terminal e a bifurcação que o escolhe |
+| a razão de ser produto e não doc | o roteiro **existente** manda *"PARE"* diante de uma casca esburacada — correcto no caminho de sempre, **falso** no novo, onde o buraco está medido. *Um smoke que manda reportar como regressão o que já está medido gasta o dono do produto duas vezes.* |
+
+⚠️ **A parede não foi atravessada:** o ficheiro tocado não pertence ao alvo funcional da
+espec (§2–§6, §5) nem a qualquer crate da cadeia — o sweep continua verde sobre a árvore, e
+o §R-pós.3 (similaridade) não é afectado por ele.
+
+⛔ **O que esta janela NÃO pode voltar a ser:** a janela I de qualquer obra do §5 ou da
+extracção. Ela entra no conjunto **{janelas queimadas}** para este módulo, ao lado da E.
+
+---
+
 ## Veredito da triagem (§2) — 2026-08-24 · ⚠️ **SUPERADO no mesmo dia (nota do R-pré)**
 
 > ⛔ **Leia o parágrafo seguinte antes deste bloco.** Este veredito é o estado **anterior** à

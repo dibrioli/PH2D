@@ -240,8 +240,14 @@ mod retopo_global;
 /// **O CAMINHO DO MAPA DE GRADE INTEIRA** — ver [`retopo_extract`]. Irmão do
 /// [`retopo_global`], e o corte é de **fase**: lá a decomposição em patches, aqui um
 /// mapa para a peça inteira. ⛔ Shipa **desligado** (`PH2D_RETOPO_EXTRACT=1`).
+///
+/// ⚠️ **`pub(in crate::sculpt3d)` e não privado**, porque o roteiro de smoke da cena
+/// `=35` ([`crate::sculpt3d::scenes::quad`]) tem de perguntar **à mesma função** se o
+/// caminho novo está ligado. ⛔ A alternativa — o roteiro ler a env var por si — seria
+/// a **segunda** resposta à pergunta que a [`retopo_extract::extract_from`] já decide,
+/// e a que o artista lê é sempre a que envelhece.
 #[path = "sculpt3d_history_retopo_extract.rs"]
-mod retopo_extract;
+pub(in crate::sculpt3d) mod retopo_extract;
 
 /// **POR QUE UM REMESH RECUSOU** — ver [`refusal`]. Irmão do [`remesh`], e o corte
 /// é o que a HR-18 forçou: o tipo mais a explicação dele em prosa saíam a 616 LOC

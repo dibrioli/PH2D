@@ -183,6 +183,100 @@ uma variável por restrição independente, não como equações extra no sistem
 nosso G3 penaliza a costura em vez de a eliminar (`SEAM_WEIGHT`). **Isto é uma
 pergunta para o E emendar a espec, não uma coisa que eu tenha ido corrigir.**
 
+### ⛔⛔ §8-bis — CORREÇÃO DO R-PÓS (2026-08-24): a CURA acima está certa, a CAUSA não
+
+⚠️ **A conclusão de que é preciso ELIMINAR a costura mantém-se — e passa de melhoria a
+NECESSIDADE.** O que está errado é a razão que o §8 dá para ela, e a diferença decide se
+alguém vai perder tempo a afinar o que está a montante.
+
+**O instrumento** (a mesma cadeia do botão, sem GPU), corrido em 2026-08-24:
+
+```
+cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-quadextract
+cargo run --release -p ph2d-quadextract --example chain_info -- esfera-fina
+```
+
+| peça | ⭐ dobras do mapa | translação a inteiro | ⛔ **resíduo de COSTURA** (antes → depois) | passo pior do guloso | órfãs | bordo | `χ` |
+|---|---|---|---|---|---|---|---|
+| ⭐ **esfera fina** | ⭐ **`0,0 %`** | `0` (exacto) | `0,2348` → ⛔ **`1,0000`** | `0,4955` | `5` | `32` | `−5` |
+| toro | `3,3 %` | `0` (exacto) | `0,7615` → ⛔ **`1,4142`** | `0,4994` | `75` | `152` | `−20` |
+| esfera lisa | `11,1 %` | `0` (exacto) | `0,9054` → ⛔ **`1,0849`** | `0,4913` | `101` | `133` | `−12` |
+
+⛔⛔ **A esfera fina refuta a atribuição do §8.** Ela é a peça cuja FORMA já entra na barra
+do oráculo (`6,8°`), o mapa dela **não tem uma única dobra** e as translações dela são
+**exactamente** inteiras — e a extracção ainda assim deixa `32` arestas de bordo numa
+esfera. ⇒ *«a causa é o G3 entregar até 11 % de dobras» é verdade no toro e na esfera
+lisa, e FALSA exactamente onde o resto já está bom.* Nenhuma redução de dobras a montante
+fecha esta peça, porque ela já tem zero.
+
+#### ⭐⭐⭐ As DUAS grandezas que estavam a ser lidas como uma
+
+| grandeza | o que mede | depois do G5 |
+|---|---|---|
+| `RoundReport::shift_frac_max` | quão longe de um inteiro está a **translação** de cada costura | ⭐ **`0`, nas três peças** |
+| `SolveReport::seam_max` | quão longe a transição `R(k)·x + t` está de **fazer os dois lados coincidirem**, em células (`1` = uma célula inteira de desacordo) | ⛔ **`1,00` a `1,41`, nas três peças** |
+
+⇒ ⭐⭐ **O G5 torna a costura INTEIRA; ele não a torna FECHADA.** São propriedades
+diferentes, e só a segunda é a que a extracção precisa — a primeira é necessária e **não é
+suficiente**. Os mapas de referência de `fixtures/` fecham as duas (resíduo `3,5e-15`), e é
+por isso que a extracção fecha sobre eles e não sobre a cadeia da casa.
+
+⛔ **E o gate mede a necessária.** `as_translacoes_ficam_todas_inteiras` cobra
+`shift_frac_max == 0` — está **verde e correcto** —, e **não existe gate nenhum sobre
+`seam_max`**. *Um gate que mede a condição necessária, num sítio onde se lê a suficiente,
+fica verde sobre um mapa que não serve.*
+
+#### O mecanismo, e é ele que torna a eliminação obrigatória
+
+O guloso é forçado a pregar variáveis a **`0,49` de célula** (a coluna «passo pior», nas
+três peças). Meia célula tem de ir para algum lado. ⛔ Com a costura a ser uma
+**penalização** (`SEAM_WEIGHT = 8`), o sistema paga um pouco de energia e **abre a
+costura** em vez de o interior absorver o deslocamento — e é literalmente isso que se vê na
+esfera fina: `0,2348 → 1,0000`, ⚠️ **o arredondamento TRANSFORMOU um desacordo de um quarto
+de célula num desacordo de uma célula inteira.**
+
+⭐ Com a variável **eliminada** (a linha do §5.1), a costura não tem como abrir: ela deixa
+de ser um termo do sistema, e o deslocamento só pode ser absorvido pelo interior.
+
+⚠️ **A tabela do [`SEAM_WEIGHT`](../../../crates/ph2d-gridmap/src/solve.rs) já dizia que a
+penalização não pode ganhar as duas:** `8` dá `2,9°` de ângulo com costura `0,23`; `512`
+fecha a costura para `0,01` e paga **`16,8°`** de enviesamento. *Não há peso que feche a
+costura e mantenha o quad — que é a assinatura de uma restrição a fingir-se de termo de
+energia.*
+
+#### ⭐⭐⭐ E o rasgo é INVARIANTE aos dois botões da escada — logo não é afinação
+
+A sonda que já existia (`the_rounding_ladder_sweeps_its_two_constants`, `--ignored`) varre
+tolerância × tecto. ⚠️ **Ela foi escrita para medir a fracção que fica no degrau barato — e
+a coluna que interessa aqui é a do lado**, que ninguém tinha lido:
+
+| tolerância × tecto | degrau 1 | visitas | ⛔ **costura max** |
+|---|---|---|---|
+| `1e-2` × `2 000` … `200 000` | `98,6 %` … `100 %` | `18 282` … `18 588` | `1,0834` · `1,0849` · `1,0849` |
+| `1e-3` × `2 000` … `200 000` | `42,9 %` … `100 %` | `112 585` … `481 365` | `1,0369` · `1,0371` · `1,0369` |
+| `1e-4` × `2 000` … `200 000` | ⛔ `1,4 %` … `91,4 %` | `139 908` … ⛔ `6 464 031` | `1,0897` · `1,0370` · `1,0369` |
+
+⇒ ⭐ **A fracção do degrau barato varia de `1,4 %` a `100 %`, as visitas variam 350×, e a
+costura fica onde estava: uma célula inteira.** *Um defeito que não se move quando os dois
+botões do subsistema varrem toda a gama não é afinação daquele subsistema* — e é a
+demonstração de que a cura tem de mudar a FORMA do sistema, não os seus números.
+
+#### ⇒ O que fica prescrito (em termos funcionais — [SKILL_Cleanroom §7.3.d](../../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md))
+
+1. **O G3 tem de eliminar a variável de costura**, não pesá-la — espec §5.1, e agora com o
+   número que o torna obrigatório em vez de preferível.
+2. ⭐ **A barra do G5 tem de passar a ser a condição SUFICIENTE:** um gate sobre
+   `SolveReport::seam_max` ao lado do que já existe sobre `shift_frac_max`, com a barra
+   tirada dos mapas de referência (`3,5e-15`), não do que a cadeia dá hoje.
+3. ⛔ **NÃO afinar o `SEAM_WEIGHT`** — está medido que não fecha (a tabela acima), e a
+   recusa fica registada aqui para não ser repetida.
+
+⛔⛔ **Quem escreve isto NÃO pode ser a janela R-pós** (`49c94a84-…`): ela leu o laço de
+arredondamento da implementação de referência para fazer a revisão estrutural do
+[`LEDGER §R-pós.3`](../cleanroom/LEDGER_quadwild.md), e o §5 é exactamente a região que
+ela viu. *Escrever a eliminação com aquele laço em contexto converteria em silêncio a rota
+do ADR-0164 na rota que ele rejeitou.* ⇒ **janela I nova, que retoma da espec.**
+
 ## 9 — Divergências deliberadas da espec (para o R-pós)
 
 1. ⭐ **Sem `num-bigint`/`num-rational`.** O §1 exige um *predicado de orientação

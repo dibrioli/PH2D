@@ -125,6 +125,10 @@ mod isolate_tests;
 #[path = "field3d_profile_reach_tests.rs"]
 mod profile_reach_tests;
 
+#[cfg(test)]
+#[path = "field3d_link_reach_tests.rs"]
+mod link_reach_tests;
+
 /// ⭐ **DE ONDE se coze** — a peça inteira, ou só o nó isolado (W38).
 ///
 /// # Isolar não precisou de lei nenhuma
@@ -407,7 +411,7 @@ mod intents;
 
 #[path = "field3d_scene_panel.rs"]
 mod panel;
-pub(crate) use panel::{new_shape_size, op_at, publish_snapshot, shape_at};
+pub(crate) use panel::{link_badges, new_shape_size, op_at, publish_snapshot, shape_at};
 
 /// **Onde uma forma nova entra** — perto do que está selecionado.
 ///

@@ -1,0 +1,238 @@
+//! ⭐⭐ **O VÍNCULO AO DESENHO VÊ-SE E SOLTA-SE?** (W57) — os gates da terceira família cuja
+//! disponibilidade não é constante.
+//!
+//! ⚠️ Irmão do [`crate::field3d_profile_reach_tests`] pela mesma fronteira: aquele pergunta *o
+//! painel oferece o que o motor sabe fazer?*, este pergunta *o vínculo que a W55 criou é
+//! **alcançável** — vê-se sem abrir painel, e há gesto para o largar e para o refazer?*
+
+use bevy_ecs::entity::Entity;
+use ph2d_ecs::SimWorld;
+use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+use ph2d_field_ecs::FieldProfileSource;
+
+use crate::field3d_scene::panel::{ACT_LINK, ACT_UNLINK, LINK_BADGE, acts_for, link_badges};
+
+fn a_square() -> Profile {
+    Profile::new(
+        vec![vec![[-0.1, -0.1], [0.1, -0.1], [0.1, 0.1], [-0.1, 0.1]]],
+        FillRule::NonZero,
+        1.0e-3,
+    )
+    .expect("um quadrado é um perfil")
+}
+
+/// A cena nascida do documento, e a **folha** dela — a mesma porta do irmão
+/// [`crate::field3d_reach_tests`]: quem faz nascer é o `sync_scene`, nunca um `spawn` à mão.
+fn leaf_of(doc: &FieldDoc) -> (SimWorld, Vec<Entity>) {
+    let mut sim = SimWorld::new();
+    crate::field3d_scene::sync_scene(&mut sim, Some(doc), 0.0);
+    let world = sim.world_mut();
+    let mut q = world.query::<(Entity, &ph2d_field_ecs::FieldObject)>();
+    let root = q.iter(world).next().map(|(e, _)| e).expect("a peça");
+    let leaf = ph2d_field_ecs::walk(sim.world(), root)
+        .into_iter()
+        .map(|(e, _)| e)
+        .find(|&e| {
+            matches!(
+                sim.world()
+                    .get::<ph2d_field_ecs::FieldNode>(e)
+                    .map(|n| &n.shape),
+                Some(ph2d_field::NodeShape::Leaf(_))
+            )
+        })
+        .expect("a folha");
+    (sim, vec![leaf])
+}
+
+/// Uma peça de **uma forma pendurada numa união** — e a união é load-bearing: o `can_detach` exige
+/// um **pai** (a raiz *é* a peça e não se apaga), então uma folha solta receberia a fileira vazia e
+/// o gate mediria dois nadas.
+fn under_a_union(p: Primitive) -> (SimWorld, Vec<Entity>) {
+    use ph2d_field::{Blend, Node, NodeKind, Op};
+    leaf_of(
+        &FieldDoc::new(
+            vec![
+                ph2d_field_eval::leaf(p, Xform::IDENTITY),
+                Node::new(
+                    Xform::IDENTITY,
+                    NodeKind::Combine {
+                        op: Op::Union(Blend::Sharp),
+                        children: vec![NodeId(0)],
+                    },
+                ),
+            ],
+            NodeId(1),
+        )
+        .expect("a peça"),
+    )
+}
+
+/// Uma peça com **uma extrusão** — o caso normal do artista.
+fn a_drawn_shape() -> (SimWorld, Vec<Entity>) {
+    under_a_union(Primitive::Extrude {
+        profile: a_square(),
+        half_height: 0.1,
+        round: 0.0,
+    })
+}
+
+/// Uma peça com uma **esfera** — a forma que não tem onde pôr um perfil.
+fn a_plain_shape() -> (SimWorld, Vec<Entity>) {
+    under_a_union(Primitive::Sphere { radius: 0.2 })
+}
+
+fn link(world: &mut bevy_ecs::world::World, e: Entity, path: u64) {
+    world.entity_mut(e).insert(FieldProfileSource {
+        path,
+        level: ph2d_field::DEFAULT_PROFILE_RESOLUTION,
+    });
+}
+
+/// Corre um corpo com o estado do módulo **armado e reposto** — o `profile_pick` é global ao
+/// processo, e um teste que o deixasse sujo mudaria o vizinho.
+fn with_pick<R>(pick: Option<u64>, f: impl FnOnce() -> R) -> R {
+    crate::field3d_smoke::set_armed_by_panel(true);
+    crate::field3d_smoke::note_profile(pick);
+    let out = f();
+    crate::field3d_smoke::note_profile(None);
+    crate::field3d_smoke::set_armed_by_panel(false);
+    let _ = crate::field3d_smoke::with_smoke(|_| ());
+    out
+}
+
+/// ⭐⭐ **LARGAR só é oferecido a quem TEM vínculo** — e a pergunta é feita ao componente.
+#[test]
+fn unlink_is_offered_only_to_a_shape_that_follows_a_drawing() {
+    let (mut sim, sel) = a_drawn_shape();
+    with_pick(None, || {
+        assert!(
+            !acts_for(sim.world(), &sel).contains(&ACT_UNLINK),
+            "uma extrusão SOLTA recebeu «Unlink» — um botão que não tem o que largar"
+        );
+        link(sim.world_mut(), sel[0], 7);
+        assert!(
+            acts_for(sim.world(), &sel).contains(&ACT_UNLINK),
+            "uma extrusão LIGADA não recebeu «Unlink» — o vínculo existe e não há como o desfazer"
+        );
+    });
+}
+
+/// ⭐⭐ **LIGAR precisa das DUAS pontas**: um contorno escolhido, e uma forma que saiba o que fazer
+/// com ele. ⛔ Um `Sphere` ligado a um desenho é estado inalcançável — o recozimento escreveria um
+/// perfil onde a forma não tem onde o pôr.
+#[test]
+fn link_is_offered_only_with_an_outline_picked_and_a_shape_that_takes_one() {
+    let (sim, sel) = a_drawn_shape();
+    with_pick(None, || {
+        assert!(
+            !acts_for(sim.world(), &sel).contains(&ACT_LINK),
+            "sem contorno escolhido, «Link Drawing» não tem a que ligar"
+        );
+    });
+    with_pick(Some(7), || {
+        assert!(
+            acts_for(sim.world(), &sel).contains(&ACT_LINK),
+            "com um contorno escolhido, uma extrusão tem de poder ligar-se a ele"
+        );
+    });
+    let (sim, sel) = a_plain_shape();
+    with_pick(Some(7), || {
+        assert!(
+            !acts_for(sim.world(), &sel).contains(&ACT_LINK),
+            "uma ESFERA recebeu «Link Drawing» — ela não tem onde pôr um perfil"
+        );
+    });
+}
+
+/// ⭐⭐⭐ **O SLOT RESOLVE-SE EM CHAVE, NUNCA EM NÚMERO** — a lei que a fileira variável exige.
+///
+/// ⛔ Com `Unlink` presente, o slot `3` é *largar*; sem ele, o slot `3` **não existe**. Um despacho
+/// que casasse `0`/`1`/`2` por número faria o botão executar o verbo do vizinho no dia em que a
+/// fileira mudasse de tamanho — **sem erro de compilação e sem teste vermelho**. Este gate mede a
+/// única coisa que o impede: a lista publicada e a lista despachada são **a mesma função**.
+#[test]
+fn the_act_slot_resolves_to_a_key_not_to_a_number() {
+    let (mut sim, sel) = a_drawn_shape();
+    with_pick(Some(7), || {
+        let plain = acts_for(sim.world(), &sel);
+        link(sim.world_mut(), sel[0], 7);
+        let linked = acts_for(sim.world(), &sel);
+        assert!(
+            linked.len() > plain.len(),
+            "a fileira não cresceu com o vínculo — o gate mediria duas listas iguais"
+        );
+        let slot = linked
+            .iter()
+            .position(|k| *k == ACT_UNLINK)
+            .expect("«Unlink» está na lista");
+        // ⭐⭐ **O MESMO NÚMERO, DOIS VERBOS.** Sem vínculo o slot `3` é *ligar*; com vínculo é
+        // *largar*. É esta a colisão exacta — e a 1.ª versão deste gate exigia o contrário
+        // (`slot >= plain.len()`, "o verbo novo vai para o fim"), que é uma afirmação sobre a
+        // ORDEM da lista e não sobre o perigo. *Um gate escrito contra o sintoma que eu imaginei,
+        // e não contra o que a lista de facto faz, mede a minha suposição.*
+        assert_eq!(
+            plain.get(slot).copied(),
+            Some(ACT_LINK),
+            "a fileira curta não tem outro verbo no slot {slot} — sem isso o despacho por número \
+             seria inofensivo e este gate não mediria nada"
+        );
+        assert_eq!(
+            linked.get(slot).copied(),
+            Some(ACT_UNLINK),
+            "o slot {slot} deixou de ser «Unlink»"
+        );
+        // ⭐⭐⭐ **E O DESPACHO TEM DE OBEDECER À MESMA LISTA.** ⛔ Sem esta metade o gate mede a
+        // lista publicada e não o botão: uma mutação que devolvia o despacho ao `ACTS` fixo
+        // **SOBREVIVEU** — a fileira continuava certa e o clique no slot `3` caía fora do array e
+        // não fazia nada. *Um gate que lê a lista não prova o botão; a mesma família da W56f
+        // («uma lei que o caminho do produto não chama não é uma lei»).*
+        let _ = ph2d_panel_model3d::drain_intents();
+        ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::Act {
+            slot,
+        });
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &sel,
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
+        assert!(
+            sim.world().get::<FieldProfileSource>(sel[0]).is_none(),
+            "o clique no slot {slot} não largou o desenho — o despacho está a resolver o slot por \
+             outra lista que não a publicada"
+        );
+    });
+}
+
+/// ⭐⭐ **O SELO diz-se na Hierarquia** — o vínculo vê-se sem abrir painel.
+#[test]
+fn a_linked_shape_wears_the_badge_and_a_loose_one_does_not() {
+    let (mut sim, sel) = a_drawn_shape();
+    crate::field3d_smoke::set_armed_by_panel(true);
+    crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &sel,
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    );
+    assert!(
+        link_badges().is_empty(),
+        "uma extrusão SOLTA está a usar o selo do vínculo"
+    );
+    link(sim.world_mut(), sel[0], 7);
+    crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &sel,
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    );
+    assert_eq!(
+        link_badges().get(&sel[0].to_bits()).copied(),
+        Some(LINK_BADGE),
+        "a forma que segue o desenho não recebeu selo — quem olha a árvore não vê diferença \
+         nenhuma entre uma extrusão viva e uma fotografia dela"
+    );
+}

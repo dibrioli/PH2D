@@ -310,3 +310,75 @@ fn the_profile_remembers_the_tolerance_it_was_cooked_at() {
     let p = cook_path(&circle(1.0), 5e-4).expect("círculo");
     assert!((f64::from(p.tolerance()) - 5e-4).abs() < 1e-9);
 }
+
+/// ⭐⭐⭐ **UM DESENHO COM FURO JÁ VIRA UMA PEÇA COM FURO** (W57) — a composição que já existia.
+///
+/// ⚠️ **Este gate nasceu de uma pergunta que ia virar wave.** O `§54.7` deixou aberto *"um contorno
+/// de cada vez: vários perfis numa peça só (ou **furos como contornos interiores**) pede uma decisão
+/// de produto"*, e eu ia construir uma fonte de perfil com N desenhos. ⛔ **A `CLAUDE.md` §5.0 manda
+/// medir antes:** *"antes de construir um item de lista aberta, MEÇA se a composição já o exprime"*.
+///
+/// Ela exprime. O [`ph2d_vec_scene::VecPath`] tem `subpaths` + `fill_rule` desde a v6 do formato
+/// (compound paths), e a [`cook_path`] percorre `contour_count()` — logo **um contorno interior já
+/// é um furo**, e a regra de preenchimento do desenho é que decide. *O que faltava não era código:
+/// era um gate a dizer que isto funciona.*
+///
+/// ⚠️ **E a regra IMPORTA**: com `NonZero` e os dois contornos no **mesmo sentido**, o interior soma
+/// e o furo **não aparece** — o que sai é um disco cheio. É a regra do desenho a mandar, e é o que
+/// o artista já espera do editor vetorial.
+#[test]
+fn a_drawing_with_an_inner_contour_becomes_a_piece_with_a_hole() {
+    use ph2d_vec_scene::{Contour, FillRule as VecFill};
+    // Um anel: círculo de raio 1 por fora, círculo de raio 0,4 por dentro.
+    let mut ring = circle(1.0);
+    let inner = circle(0.4);
+    ring.subpaths.push(Contour::new_closed(inner.verts.clone()));
+    ring.fill_rule = VecFill::EvenOdd;
+    let profile = cook_path_auto(&ring).expect("o anel");
+    assert_eq!(
+        profile.contours().len(),
+        2,
+        "o contorno interior não chegou ao perfil — a peça sairia sem furo"
+    );
+    let f = ph2d_field_eval::Field::from_tree(&ph2d_field_eval::profile::sd_profile(
+        &profile,
+        &fidget::context::Tree::x(),
+        &fidget::context::Tree::y(),
+    ));
+    // ⚠️ Os três pontos que separam «anel» de «disco»: o centro é FORA (é o furo), a meia-parede é
+    // DENTRO, e o exterior é fora. Um disco cheio falharia só no primeiro.
+    assert!(
+        f.at(0.0, 0.0, 0.0) > 0.0,
+        "o centro do anel está DENTRO da matéria ({:.4}) — o furo não abriu",
+        f.at(0.0, 0.0, 0.0)
+    );
+    assert!(
+        f.at(0.7, 0.0, 0.0) < 0.0,
+        "a parede do anel está FORA da matéria ({:.4})",
+        f.at(0.7, 0.0, 0.0)
+    );
+    assert!(f.at(1.5, 0.0, 0.0) > 0.0, "o exterior está dentro");
+    // …e a distância do centro à parede é o raio do furo: o furo tem o TAMANHO desenhado.
+    let d = f.at(0.0, 0.0, 0.0);
+    assert!(
+        (d - 0.4).abs() < 0.02,
+        "o furo mede {d:.4} em vez de 0,4 — ele abriu no sítio errado"
+    );
+
+    // ⚠️ **E o controle da REGRA**: com `NonZero` e os dois contornos no mesmo sentido, o furo
+    // fecha. Sem isto, o gate acima passaria mesmo que a regra fosse ignorada.
+    let mut solid = ring.clone();
+    solid.fill_rule = VecFill::NonZero;
+    let profile = cook_path_auto(&solid).expect("o disco");
+    let g = ph2d_field_eval::Field::from_tree(&ph2d_field_eval::profile::sd_profile(
+        &profile,
+        &fidget::context::Tree::x(),
+        &fidget::context::Tree::y(),
+    ));
+    assert!(
+        g.at(0.0, 0.0, 0.0) < 0.0,
+        "com `NonZero` e o mesmo sentido o centro devia ser MATÉRIA ({:.4}) — a regra de \
+         preenchimento do desenho não está a chegar ao perfil",
+        g.at(0.0, 0.0, 0.0)
+    );
+}

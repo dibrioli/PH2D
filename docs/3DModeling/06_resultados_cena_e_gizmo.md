@@ -5158,6 +5158,80 @@ com que a W56 começou.
 - ⏸️ **A `Difference Exact` podia andar `1/1,143` em vez de `1/√2`** — mas o limite dela depende da
   geometria, não só do raio, e um número por-fixtura não é um limite.
 
+## §60 — W57: o vínculo ao desenho VÊ-SE e SOLTA-SE — e o item que não precisava de wave (24/08)
+
+> A W55 fez a peça seguir o desenho e o `§56.5` fechou com três ⏸️: *um contorno de cada vez* · *nada
+> na Hierarquia mostra que uma forma está ligada* · *não há gesto para largar nem para religar*.
+> ⭐ **Um dos três já estava construído**, e medi-lo antes foi o que impediu a wave errada.
+
+### §60.1 — ⛔ «Um contorno de cada vez» — a composição JÁ o exprimia
+
+A nota pedia *"vários perfis numa peça só (ou **furos como contornos interiores**) pede uma decisão
+de produto"*, e eu ia construir uma fonte de perfil com N desenhos.
+
+⚠️ **A `CLAUDE.md` §5.0 manda medir antes:** *"antes de construir um item de lista aberta, MEÇA se a
+composição já o exprime"*. Ela exprime. O `ph2d_vec_scene::VecPath` tem `subpaths` + `fill_rule`
+desde a **v6** do formato (compound paths), e a `cook_path` percorre `contour_count()` ⇒ **um
+contorno interior já é um furo**, e a regra de preenchimento do desenho é que decide.
+
+⭐ **O que faltava não era código: era um gate a dizer que isto funciona** —
+`a_drawing_with_an_inner_contour_becomes_a_piece_with_a_hole` mede o campo em três pontos (o centro
+é FORA, a parede é DENTRO, o exterior é fora) e afirma que o furo tem o **tamanho desenhado**. ⚠️ Com
+o controle da regra ao lado: em `NonZero` e os dois contornos no mesmo sentido o furo **fecha** — é
+o desenho a mandar, e é o que o artista já espera do editor vetorial. Duas mutações, duas vermelhas.
+
+⇒ **Sobra a metade que a nota não separava**: vários `VecPath` *separados* escolhidos. Essa continua
+⏸️ — e a composição também a cobre pelo outro lado (o `Union` do modelador, ou uma booleana viva do
+editor vetorial, que produz **um** path com os dois contornos).
+
+### §60.2 — O selo: o vínculo vê-se sem abrir painel
+
+A linha «Resolution» do painel dizia-o, **e ninguém abre um painel para perguntar**. Quem olhava a
+árvore não via diferença nenhuma entre uma extrusão **viva** (que muda quando a curva muda) e uma
+**solta** (uma fotografia dela) — duas coisas que se comportam de forma oposta e liam-se igual.
+*Um estado que só o inspector conta é um estado que se descobre por acidente.*
+
+⇒ selo **`LNK`** na Hierarquia, tom `Success` (uma capacidade a mais, nunca um aviso). ⚠️ Ele é
+**publicado** pela travessia que o módulo já faz por quadro, não perguntado: uma consulta da
+`bevy_ecs` pede o mundo **mutável**, e quem pinta a Hierarquia tem-no emprestado no meio do quadro.
+*Um empréstimo mutável pedido só para ler é onde um `RefCell` de shell nasce.*
+
+### §60.3 — Os dois gestos, e a fileira que deixou de ser fixa
+
+- **`Unlink`** — a forma deixa de seguir o desenho e **fica com a última que teve**. ⚠️ Tirar o
+  componente é tudo o que é preciso, e é o que o torna desfazível **de graça**: o
+  `FieldProfileSource` viaja no retrato do mundo e o undo regista por DIFF. Uma cópia da geometria
+  «para não perder» seria um segundo dono da forma.
+- **`Link Drawing`** — liga ao contorno escolhido agora. ⚠️ **A resolução recomeça no default**:
+  herdar o nível do vínculo antigo faria um desenho novo nascer com a finura de outro.
+
+⚠️ **E o `has_profile` teve de virar `profile_pick`.** Até aqui o shell publicava um `bool` — bastava
+para os dois botões `+ Extrude`/`+ Revolve` aparecerem. Religar precisa do **id**, e ele não é
+redescobrível do lado de lá (quem drena as intenções recebe o mundo, nunca a cena vetorial).
+*Publicar um `bool` onde a fonte tinha um id é deitar fora a metade que a próxima feature ia pedir.*
+
+### §60.4 — ⭐⭐⭐ O slot passa a resolver-se em CHAVE
+
+A fileira de ações era **três, sempre as mesmas**, e quem drenava a intenção casava o `slot` por
+**número** (`0`, `1`, `ISOLATE_SLOT`). Com verbos que só aparecem às vezes, o índice de um verbo
+passa a depender do que foi publicado.
+
+⛔ **E a colisão é concreta:** sem vínculo o slot `3` é *ligar*; com vínculo é *largar*. Um despacho
+por número faria o botão executar **o verbo do vizinho**, sem erro de compilação e sem teste
+vermelho. ⇒ a lista publicada e a lista despachada são **a mesma função** (`panel::acts_for`).
+
+⚠️ **E o gate disso quase mediu a coisa errada, duas vezes:**
+
+1. A 1.ª asserção exigia *"o verbo novo vai para o FIM"* (`slot >= plain.len()`) — uma afirmação
+   sobre a **ordem** da lista, não sobre o perigo. Ela reprovou, e o número que ela imprimiu era a
+   colisão real. *Um gate escrito contra o sintoma que eu imaginei mede a minha suposição.*
+2. Mesmo corrigido, ele lia **a lista** e não **o botão**: a mutação que devolvia o despacho ao
+   `ACTS` fixo **SOBREVIVEU**. A metade que faltava é empurrar a intenção pelo dreno de verdade e
+   ver o componente sair. *A mesma família da W56f — uma lei que o caminho do produto não chama não
+   é uma lei.*
+
+8 mutações, **8 vermelhas** com os três controles.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

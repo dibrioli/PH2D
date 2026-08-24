@@ -180,7 +180,14 @@ pub(crate) struct Smoke {
     /// como o irmão abaixo e pela mesma razão: quem tem a cena vetorial é o `AppGfx`.
     ///
     /// É ele que faz os botões `+ Extrude` / `+ Revolve` aparecerem só quando há o que extrudar.
-    pub(crate) has_profile: bool,
+    /// ⭐⭐ **QUAL contorno fechado está escolhido** (W57), não só se há um.
+    ///
+    /// ⚠️ **A identidade era deitada fora e voltou a ser precisa.** Até a W56 o shell publicava um
+    /// `bool` — bastava para os dois botões `+ Extrude`/`+ Revolve` aparecerem. O gesto de
+    /// **religar** uma forma a outro desenho precisa do **id**, e ele não é redescobrível do lado
+    /// de lá: quem drena as intenções recebe o mundo, nunca a cena vetorial. *Publicar um `bool`
+    /// onde a fonte tinha um id é deitar fora a metade que a próxima feature ia pedir.*
+    pub(crate) profile_pick: Option<u64>,
     /// ⭐ **Há uma escultura VIVA na cena?** — publicado pelo shell, que é quem tem o `AppGfx`.
     ///
     /// ⚠️ Atravessa o quadro em vez de ser perguntado aqui, pela razão do `gizmo`: este arquivo não

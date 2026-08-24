@@ -118,7 +118,7 @@ fn boot() -> Option<Smoke> {
         flight_gen: 0,
         flight_fresh: false,
         safe: None,
-        has_profile: false,
+        profile_pick: None,
         nav_hot: None,
         nav_press: None,
         has_live_sculpt: false,
@@ -424,9 +424,17 @@ pub(crate) fn safe_of(s: &Smoke) -> EditorRect {
         .unwrap_or(EditorRect::new(0.0, 0.0, 0.0, 0.0))
 }
 
-/// **O shell diz se há um contorno fechado escolhido** — todo quadro, como o irmão abaixo.
-pub(crate) fn note_profile(has: bool) {
-    with_smoke(|s| s.has_profile = has);
+/// **O shell diz QUAL contorno fechado está escolhido** — todo quadro, como o irmão abaixo.
+///
+/// ⚠️ `None` = nenhum. Ver [`crate::field3d_smoke_state::Smoke::profile_pick`] para porque é o id e
+/// não um `bool`.
+pub(crate) fn note_profile(pick: Option<u64>) {
+    with_smoke(|s| s.profile_pick = pick);
+}
+
+/// O contorno escolhido agora, se houver — a porta que o religar consome.
+pub(crate) fn profile_pick() -> Option<u64> {
+    with_smoke(|s| s.profile_pick).flatten()
 }
 
 pub(crate) fn note_live_sculpt(has: bool) {

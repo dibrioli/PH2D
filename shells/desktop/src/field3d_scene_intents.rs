@@ -74,23 +74,63 @@ pub(super) fn apply(
                     }
                 }
             }
-            // ⭐ **Duplicar e apagar** — as duas ações sobre o objeto escolhido.
+            // ⭐ **As ações sobre o objeto escolhido** — e o `slot` resolve-se em **chave**.
+            //
+            // ⚠️ **Nunca por número.** A fileira deixou de ser fixa na W57 (largar e ligar só
+            // aparecem às vezes), então o índice de um verbo passou a depender do que foi
+            // publicado. Casar `0`/`1` aqui faria um botão executar o verbo do vizinho **sem erro
+            // nenhum** — a mesma lista, uma porta só (`panel::acts_for`).
             ph2d_panel_model3d::ModelIntent::Act { slot } => {
                 if let Some(&one) = selection.first() {
-                    match slot {
-                        0 => created = duplicate_node(world, one),
+                    match super::panel::acts_for(world, selection).get(slot).copied() {
+                        Some(super::panel::ACT_DUPLICATE) => created = duplicate_node(world, one),
                         // ⚠️ O que foi apagado não pode continuar selecionado: o gizmo ficaria
                         // aceso sobre uma entidade que já não existe.
-                        1 if ph2d_field_ecs::remove(world, one) => cleared = true,
+                        Some(super::panel::ACT_DELETE) if ph2d_field_ecs::remove(world, one) => {
+                            cleared = true;
+                        }
                         // ⭐ **ISOLAR** (W38) — estado de VISTA, não do documento: não muda o
                         // mundo, não entra no undo, e por isso não mexe em `created`/`cleared`.
-                        s if s == super::panel::ISOLATE_SLOT => {
+                        Some(super::panel::ACT_ISOLATE) => {
                             let on = crate::field3d_smoke::toggle_isolate(Some(one.to_bits()));
                             crate::field3d_notice::say(if on {
                                 "Isolated: showing only this object".into()
                             } else {
                                 "Isolation off: the whole part is back".into()
                             });
+                        }
+                        // ⭐⭐ **LARGAR o desenho** (W57) — a forma FICA com a última que teve.
+                        //
+                        // ⚠️ **Tirar o componente é tudo o que é preciso**, e é o que o torna
+                        // desfazível de graça: o `FieldProfileSource` viaja no retrato do mundo, e
+                        // o undo regista por DIFF. Uma cópia da geometria «para não perder» seria
+                        // um segundo dono da forma.
+                        Some(super::panel::ACT_UNLINK) => {
+                            world
+                                .entity_mut(one)
+                                .remove::<ph2d_field_ecs::FieldProfileSource>();
+                            crate::field3d_notice::say(
+                                "Unlinked: this shape no longer follows the drawing".into(),
+                            );
+                        }
+                        // ⭐⭐ **LIGAR ao contorno escolhido** (W57).
+                        //
+                        // ⚠️ **A resolução recomeça no default de propósito.** Herdar o nível do
+                        // vínculo antigo faria um desenho novo nascer com a finura de outro, e o
+                        // número que o artista vê no painel deixaria de dizer o que ele escolheu
+                        // para aquele desenho.
+                        Some(super::panel::ACT_LINK) => {
+                            if let Some(path) = crate::field3d_smoke::profile_pick() {
+                                world
+                                    .entity_mut(one)
+                                    .insert(ph2d_field_ecs::FieldProfileSource {
+                                        path,
+                                        level: ph2d_field::DEFAULT_PROFILE_RESOLUTION,
+                                    });
+                                crate::field3d_notice::say(
+                                    "Linked: this shape now follows the selected drawing".into(),
+                                );
+                            }
                         }
                         _ => {}
                     }

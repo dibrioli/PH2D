@@ -33,3 +33,10 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # `docs/3DModeling/01_resultados_spike.md`). Mesma versão que a
 # `ph2d-vec-boolean` já usa.
 kurbo = "0.13"
+
+[dev-dependencies]
+# ⚠️ **Só de teste, e a direcção continua a mesma.** Um gate que afirma *"um contorno interior vira
+# um FURO"* tem de perguntar ao campo, não ao número de contornos — e quem avalia o campo é o
+# `-eval`. Ele depende do `ph2d-field`, nunca desta crate, então não há ciclo.
+ph2d-field-eval = { path = "../ph2d-field-eval" }
+fidget = { version = "0.5", default-features = false, features = ["jit"] }

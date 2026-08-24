@@ -121,7 +121,7 @@ impl View {
             flight_gen: _,
             flight_fresh: _,
             safe: _,
-            has_profile: _,
+            profile_pick: _,
             nav_hot: _,
             nav_press: _,
             has_live_sculpt: _,

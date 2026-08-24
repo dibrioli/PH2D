@@ -84,6 +84,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ "Isolate" e não "Solo": no idioma da casa o SOLO é do mixer de áudio (uma pista a
         // tocar entre várias), e a palavra do 3D — a que o Blender e o módulo irmão usam — é esta.
         "panel.model3d.act.isolate" => "Isolate",
+        // ⭐⭐ **O vínculo ao desenho** (W57). ⚠️ "Unlink"/"Link Drawing" e não "Detach"/"Attach":
+        // *detach* neste módulo já é o gesto de **tirar um nó da peça** (`can_detach`), e dois
+        // sentidos para a mesma palavra no mesmo painel é onde o artista aprende errado.
+        "panel.model3d.act.unlink" => "Unlink",
+        "panel.model3d.act.link" => "Link Drawing",
         // ⭐ Os NOMES das dimensões. ⚠️ Eles vivem aqui e não numa tabela do documento: a
         // `ph2d-field` devolve **chaves**, e quem traduz é a UI (HR-15).
         "field.dim.width" => "Width",

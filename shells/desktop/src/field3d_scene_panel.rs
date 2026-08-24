@@ -45,7 +45,7 @@ pub(crate) fn publish_snapshot(
         })
         .collect();
     let (live_sculpt, profile) =
-        with_smoke(|s| (s.has_live_sculpt, s.has_profile)).unwrap_or((false, false));
+        with_smoke(|s| (s.has_live_sculpt, s.profile_pick.is_some())).unwrap_or((false, false));
     let adds = adds_for(live_sculpt, profile);
     let ops = ops_for(world, selection);
     let mods = mods_for(world, selection);
@@ -66,24 +66,29 @@ pub(crate) fn publish_snapshot(
     // decisão escrita, não por acaso (a raiz *é* a peça). Dois botões pintados e mudos na linha de
     // topo da Hierarquia. ⚠️ Quem responde é [`ph2d_field_ecs::can_detach`], a mesma função que os
     // dois gestos consomem: *a recusa era uma decisão; a affordance que a ignorava era um defeito.*
-    let acts = if selection
-        .first()
-        .is_some_and(|&e| ph2d_field_ecs::can_detach(world, e))
-    {
-        // ⭐ O `active` do isolamento diz o ESTADO: aceso quer dizer *"é este que estás a ver"*.
-        let isolated = crate::field3d_smoke::isolated();
-        ACTS.iter()
-            .enumerate()
-            .map(|(i, key)| ph2d_panel_model3d::ModeChip {
-                key,
-                active: i == ISOLATE_SLOT
-                    && isolated.is_some()
-                    && isolated == selection.first().map(|e| e.to_bits()),
+    // ⭐ O `active` do isolamento diz o ESTADO: aceso quer dizer *"é este que estás a ver"*.
+    let isolated = crate::field3d_smoke::isolated();
+    let acts: Vec<_> = acts_for(world, selection)
+        .into_iter()
+        .map(|key| ph2d_panel_model3d::ModeChip {
+            key,
+            active: key == ACT_ISOLATE
+                && isolated.is_some()
+                && isolated == selection.first().map(|e| e.to_bits()),
+        })
+        .collect();
+    // ⭐⭐ **O selo do vínculo sai desta MESMA travessia** (W57) — ver [`link_badges`].
+    LINK_BADGES.with(|c| {
+        *c.borrow_mut() = all
+            .iter()
+            .filter(|(e, _)| {
+                world
+                    .get::<ph2d_field_ecs::FieldProfileSource>(*e)
+                    .is_some()
             })
-            .collect()
-    } else {
-        Vec::new()
-    };
+            .map(|(e, _)| (e.to_bits(), LINK_BADGE))
+            .collect();
+    });
     ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
         modes,
         frames,
@@ -312,21 +317,103 @@ fn isolated_name(
     )
 }
 
-/// As ações sobre o objeto escolhido, na ordem do seletor.
+/// As ações que valem para **qualquer** objeto destacável, na ordem do seletor.
 ///
 /// ⚠️ **O terceiro é um INTERRUPTOR, os dois primeiros são ações** — e a diferença aparece no
 /// `active`: *Isolate* acende quando aquele nó é o que está isolado. Misturar os dois tipos numa
 /// fileira só é deliberado: a pergunta que ela responde é *"o que faço com o que está escolhido?"*,
 /// e isolar é uma resposta a ela.
-pub(crate) const ACTS: [&str; 3] = [
-    "panel.model3d.act.duplicate",
-    "panel.model3d.act.delete",
-    "panel.model3d.act.isolate",
-];
+pub(crate) const ACTS: [&str; 3] = [ACT_DUPLICATE, ACT_DELETE, ACT_ISOLATE];
 
-/// O slot do interruptor de isolamento — derivado, nunca um `2` escrito à mão (um verbo novo no
-/// meio da lista mudaria o número e o botão passaria a fazer outra coisa, sem erro nenhum).
-pub(crate) const ISOLATE_SLOT: usize = ACTS.len() - 1;
+pub(crate) const ACT_DUPLICATE: &str = "panel.model3d.act.duplicate";
+pub(crate) const ACT_DELETE: &str = "panel.model3d.act.delete";
+pub(crate) const ACT_ISOLATE: &str = "panel.model3d.act.isolate";
+/// ⭐⭐ **LARGAR o desenho** (W57) — a forma deixa de o seguir e fica com a última que teve.
+pub(crate) const ACT_UNLINK: &str = "panel.model3d.act.unlink";
+/// ⭐⭐ **LIGAR ao contorno escolhido** (W57) — a metade que faltava do vínculo.
+pub(crate) const ACT_LINK: &str = "panel.model3d.act.link";
+
+/// ⭐⭐⭐ **AS AÇÕES QUE ESTE OBJETO DE FACTO OFERECE** (W57) — uma porta, dois consumidores.
+///
+/// ⚠️ **Ela existe porque a fileira deixou de ser fixa.** Até a W56 as ações eram três, sempre as
+/// mesmas, e quem drenava a intenção casava o `slot` por **número** (`0`, `1`, `ISOLATE_SLOT`). Com
+/// verbos que só aparecem às vezes, o número de um slot passa a depender do que foi publicado — e
+/// duas listas escritas em sítios diferentes fariam um botão executar o verbo do vizinho **sem erro
+/// nenhum**. ⇒ o painel e o despacho chamam **esta** função, e o slot resolve-se em **chave**.
+///
+/// ⚠️ Vazia quando o escolhido **não se destaca da peça**, pela mesma razão da fileira de operações:
+/// um controle que aparece e não faz nada é pior do que um que não aparece. ⭐ **A RAIZ era o caso
+/// que a lia errado** (W34): `selection.is_empty()` deixava a fileira aparecer com a peça inteira
+/// escolhida, e ali `duplicate` e `remove` recusam os dois — por decisão escrita, não por acaso.
+/// Quem responde é [`ph2d_field_ecs::can_detach`], a mesma função que os dois gestos consomem: *a
+/// recusa era uma decisão; a affordance que a ignorava era um defeito.*
+pub(crate) fn acts_for(
+    world: &bevy_ecs::world::World,
+    selection: &[bevy_ecs::entity::Entity],
+) -> Vec<&'static str> {
+    let Some(&one) = selection.first() else {
+        return Vec::new();
+    };
+    if !ph2d_field_ecs::can_detach(world, one) {
+        return Vec::new();
+    }
+    let mut out = ACTS.to_vec();
+    // ⚠️ **Largar é oferecido a quem TEM vínculo**, e a pergunta é feita ao componente — a mesma
+    // porta que faz a linha «Resolution» aparecer. Perguntar pela FORMA ofereceria o verbo a uma
+    // extrusão solta, que não tem o que largar.
+    if world
+        .get::<ph2d_field_ecs::FieldProfileSource>(one)
+        .is_some()
+    {
+        out.push(ACT_UNLINK);
+    }
+    // ⚠️ **Ligar precisa das DUAS pontas**: um contorno fechado escolhido no editor vetorial, e uma
+    // forma que saiba o que fazer com um perfil. Um `Box` ligado a um desenho é estado inalcançável
+    // — o recozimento escreveria um perfil onde a forma não tem onde o pôr.
+    if crate::field3d_smoke::profile_pick().is_some() && takes_a_profile(world, one) {
+        out.push(ACT_LINK);
+    }
+    out
+}
+
+/// ⭐⭐ **O SELO DE QUEM SEGUE UM DESENHO** (W57) — o vínculo passa a ver-se na Hierarquia.
+///
+/// ⚠️ **A linha «Resolution» do painel dizia-o, e ninguém abre um painel para perguntar.** Quem
+/// olha a árvore não via diferença nenhuma entre uma extrusão **viva** (que muda quando a curva
+/// muda) e uma **solta** (uma fotografia dela) — duas coisas que se comportam de forma oposta e
+/// liam-se igual. *Um estado que só o inspector conta é um estado que se descobre por acidente.*
+///
+/// ⚠️ **Três letras, não uma frase** — é a convenção da fileira de selos (`SUB`, `INT`, `EXC`), e
+/// um selo é um **código**, nunca um rótulo traduzido: quem o pinta dá-lhe o tom, e o olho lê o tom
+/// antes de decifrar as letras.
+/// ⚠️ **Ele é PUBLICADO, não perguntado** — a mesma ponte do retrato do painel, e pela mesma razão.
+/// Quem pinta a Hierarquia tem o mundo emprestado no meio do quadro, e uma consulta da `bevy_ecs`
+/// pede-o **mutável** (ela guarda o estado dela lá dentro). O módulo já percorre a árvore uma vez
+/// por quadro para publicar o retrato; o selo sai dessa mesma travessia. *Um empréstimo mutável
+/// pedido só para ler é onde um `RefCell` de shell nasce.*
+pub(crate) fn link_badges() -> std::collections::BTreeMap<u64, &'static str> {
+    LINK_BADGES.with(|c| c.borrow().clone())
+}
+
+thread_local! {
+    static LINK_BADGES: std::cell::RefCell<std::collections::BTreeMap<u64, &'static str>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
+}
+
+/// O código do selo do vínculo. ⚠️ **Novo, e não um dos que a tabela de tons já tinha**: reusar
+/// `PRF` (que existe lá com outro dono) faria duas famílias partilharem um tom, e mudar o tom de uma
+/// para acomodar a outra é repintar um selo alheio.
+pub(crate) const LINK_BADGE: &str = "LNK";
+
+/// Esta forma sabe o que fazer com um contorno? — as duas de perfil, e só elas.
+fn takes_a_profile(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Entity) -> bool {
+    matches!(
+        world.get::<ph2d_field_ecs::FieldNode>(e).map(|n| &n.shape),
+        Some(ph2d_field::NodeShape::Leaf(
+            ph2d_field::Primitive::Extrude { .. } | ph2d_field::Primitive::Revolve { .. }
+        ))
+    )
+}
 
 /// As três booleanas, na ordem do seletor.
 pub(crate) const OPS: [&str; 3] = [

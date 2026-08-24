@@ -2833,7 +2833,17 @@ impl crate::App {
                 // no mesmo `run_render_frame`. O atraso é de um quadro e o `vec_bool_shape` o
                 // documenta — mover qualquer das duas metades na ordem do frame é mudança com
                 // gates próprios e sem nada a ganhar.
-                &crate::vec_bool_shape::badges(sim, &self.vec_entities, &self.bool_live),
+                // ⭐⭐ **E o selo de quem SEGUE UM DESENHO** (W57), fundido no mesmo mapa: o
+                // campo é um selo por linha, e as duas famílias nunca caem na mesma entidade (uma
+                // é forma vetorial, a outra é nó do modelador). ⚠️ Fundir aqui, e não somar dois
+                // mapas lá dentro, é o que mantém *um produtor, um campo* — a lei que o comentário
+                // do `hovered` já escreve dez linhas acima.
+                &{
+                    let mut b =
+                        crate::vec_bool_shape::badges(sim, &self.vec_entities, &self.bool_live);
+                    b.extend(crate::field3d_scene::link_badges());
+                    b
+                },
             );
             // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
             // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE
@@ -9396,7 +9406,7 @@ impl crate::App {
             // aparecerem só quando há o que extrudar (a lei da W34).
             {
                 let closed = crate::blend_live::selected_closed_in_z(vec_scene, &self.vec_pen);
-                crate::field3d_smoke::note_profile(!closed.is_empty());
+                crate::field3d_smoke::note_profile(closed.first().copied());
                 if let Some(which) = crate::field3d_smoke::take_profile_request() {
                     let msg = crate::field3d_profile::from_selection(vec_scene, &closed, which);
                     toasts.push(ph2d_editor::Toast::info(msg));

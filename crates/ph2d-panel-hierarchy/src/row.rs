@@ -35,6 +35,9 @@ fn badge_tone(badge: &str) -> TagTone {
         // ⚠️ `UNI` cai no Neutral por já existir acima com outro significado, e ⛔ **não se muda o
         // tom daquele** para acomodar este: seria repintar um selo de outra família.
         "SUB" => TagTone::Warn,
+        // ⭐ **O vínculo ao desenho** (W57): a forma muda quando a curva muda. `Success` porque é
+        // uma capacidade a mais, nunca um aviso — o oposto de uma forma que perdeu a fonte.
+        "LNK" => TagTone::Success,
         "INT" | "EXC" => TagTone::Accent,
         // A BASE não tem verbo e a RECEITA é do grupo inteiro: nenhum dos dois é escolha daquela
         // linha, e o neutro é o que os separa dos que são.

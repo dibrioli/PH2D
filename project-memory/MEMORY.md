@@ -53,6 +53,7 @@
 - [Ferramenta só é adotada se um PASSO a chama pelo nome](feedback_a_tool_is_adopted_only_when_a_written_step_names_it.md) — medido: 5 usos contra 13.791 do comando cru; ponteiro ≠ adoção
 - [Arquivar sem indexar as RECUSAS é apagá-las](feedback_archiving_without_indexing_the_refusals_deletes_them.md) — e a cura de um doc inchado pode REALOCAR a doença; o teto se mede (80-110 KB)
 - [Mecanismo certo, cura errada](feedback_a_correct_mechanism_can_prescribe_the_wrong_cure.md) — meça o mecanismo antes de construir o que a nota prescreve
+- [Mecanismo certo, PREÇO errado por 4×](feedback_a_note_can_name_the_right_mechanism_and_miss_the_price_by_4x.md) — meça as DUAS contas que puxam para lados opostos; e a régua tem de correr no mesmo regime do que mede
 - [Uma cerca DECLARADA escolhe a forma da própria cura](feedback_a_declared_fence_chooses_the_shape_of_its_own_cure.md) — a célula acerta no sintoma e não na forma; leia o doc-comment do knob de que ela se queixa
 - [Recusa medida responde UMA pergunta](feedback_a_measured_refusal_answers_one_question_recheck_it_when_yours_is_another.md) — reconfira se a sua é outra (velocidade≠escrita) ou se o substrato mudou (`noswap`); e churn≠escrita
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — "intentionally NOT X" = decisão
@@ -80,6 +81,7 @@
 - [Crase em msg de commit executa](feedback_backticks_in_commit_message_are_command_substitution.md) — `git commit -F`
 - [LOC cap = split](feedback_loc_cap_split_not_allowlist_and_fmt_reexpands.md) · [cap de FN ≠ cap de ARQUIVO](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md) — fmt ANTES de medir; corte para o IRMÃO
 - [Gate que VARRE uma árvore não é alcançado por filtro de nome](feedback_a_tree_scanning_gate_is_never_reached_by_a_name_filter.md) — ele vive onde a REGRA mora (LOC no shell, tofu no editor-core), não onde o arquivo mora; a suíte SEM filtro é o que o apanha
+- [O fecho com filtro de nome NUNCA alcança esse gate — medido 2 waves seguidas](feedback_a_closing_run_with_a_name_filter_never_reaches_a_tree_scanning_gate.md) — corra os gates de árvore pelo NOME antes do handoff
 - [O clippy do fecho cobre TODA crate que a linha tocou](feedback_the_closing_clippy_must_cover_every_crate_the_line_touched.md) — alvo derivado do DIFF, nunca escrito à mão; um `-p` a dedo mede a minha memória e o integrador paga
 - [Um vermelho de FLAKE esconde o resto da suíte](feedback_a_flake_red_hides_the_rest_of_the_suite.md) — o nextest cancela no 1º ✗ e deixou 1.007 por correr; leia o `X/Y tests run` antes de riscar o ✗
 - [Cadência de processo + armadilhas de CI (17)](reference_topic_process_cadence.md) — gist em CLAUDE.md §2-§3 · fmt-skew · ship committed vs WIP · cold-build drift · paridade CI · `rustup default` · allowlist duplicada · seletor de impacto cego **duas vezes** (prefixo, e `A...` cego ao não-commitado). ⚠️ o babysit do CI É polling de 15 min (§3)
@@ -97,6 +99,7 @@
 - [Correlação perfeita sobre TODO o corpus ainda é N amostras](feedback_a_perfect_correlation_across_the_whole_corpus_is_still_n_samples.md) — derive o mecanismo; e se o efeito é «a fase seguinte recusa», a guarda É a fase seguinte
 - [N fontes pedem a comparação CRUZADA](feedback_n_sources_need_the_cross_check_not_n_self_checks.md) — conferir cada fonte consigo própria passa sobre malhas diferentes; e um comentário que nomeia o risco não é o portão
 - [Ofício de gate (32)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
+- [Invariante avaliado DENTRO do domínio que ele define é cego à fronteira](feedback_an_invariant_evaluated_inside_its_own_domain_says_nothing_about_the_boundary.md) — falta a metade da COBERTURA; e 3 mutações da mesma família a sobreviver = o gate tem CÓPIA da lei
 - [Modo SUPERSET ganha a dedup, nunca perde](feedback_a_superset_mode_must_win_the_dedup_never_lose_it.md) — desistir do modo rico apaga o que só ele desenha; a pergunta é qual CONTÉM o outro, não quem chegou primeiro
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [As TRÊS perguntas de seam ficam verdes e a feature é inalcançável](feedback_the_three_ui_seam_questions_miss_the_fourth_the_sequence.md) — a quarta é a SEQUÊNCIA; e a cura de "não há rota" é a FACE VAZIA, nunca o desaparecimento

@@ -339,8 +339,13 @@ Manter o modelo derivado (1 entidade) **e** o materializado seria *"duas respost
 
 ---
 
-> ⏸️ **PARADA PARA REVISÃO.**
-> ADR (Fase E) e plano vivo (Fase F) **não foram escritos**. Escrevo-os quando o Enio aprovar ou ajustar
-> esta v2 — em particular os dois pontos de produto: **(1)** o mestre vive na biblioteca e o que está no
-> canvas é sempre instância (muda a UX atual do vetor); **(2)** a ordem de irmãos passa a ser dado
-> overridável por instância.
+> ✅ **APROVADA (Enio, 2026-08-24 — "levantar um agente para implementação").**
+> Os entregáveis das Fases E e F existem:
+> **[ADR-0164](../architecture/decisions/0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md)**
+> (objeto/instância/undo, governa F0–F5) ·
+> **[ADR-0165](../architecture/decisions/0165-assets-are-born-inside-the-app-three-level-identity-index-before-browser.md)**
+> (identidade de asset + browser, governa F6–F7) ·
+> **[plano vivo 05](05_plano_de_implementacao.md)** (fases, critérios de pronto, gates).
+> Executor: linha `line/components` (Modo L). As duas decisões de produto (mestre na biblioteca;
+> ordem de irmãos como dado overridável) estão embutidas — o smoke da F4 é onde o Enio as sente, e o
+> plano §9 nomeia a alternativa de cada uma.

@@ -174,10 +174,12 @@
 | [0161](0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) | proposto — o **caráter** já foi aprovado pelo Enio no smoke de 2026-08-19 | A modelagem 3D é uma ÁRVORE DE CAMPO IMPLÍCITO, e o que o artista vê é o campo TRAÇADO |
 | [0162](0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md) | — | O quad remesh PIVOTA para a família GLOBAL: clean-room a partir dos papers, oráculo GPL fora da árvore |
 | [0163](0163-a-node-may-cook-its-own-input-at-n-instants-a-time-fan.md) | Accepted | Um nó pode cozinhar a PRÓPRIA entrada em N instantes (o *leque de tempo*) |
+| [0164](0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) | Accepted (aprovado pelo Enio em 2026-08-24 ao ordenar a implementação) | Instância = objetos REAIS ligados por id ao mestre, sync vivo no mesmo mundo, e o undo vira INCREMENTAL |
+| [0165](0165-assets-are-born-inside-the-app-three-level-identity-index-before-browser.md) | Accepted (aprovado pelo Enio em 2026-08-24, junto com o ADR-0164) | O asset nasce DENTRO do app: identidade em 3 níveis, o ÍNDICE antes do navegador, catálogos por UUID — e o mestre É um asset |
 
 ---
 
-**165 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**167 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

@@ -11,6 +11,13 @@
 
 ## §1 — O achado em uma linha
 
+> ⭐⭐⭐ **ATUALIZADO 2026-08-24, depois da medição:** a decisão final está no
+> **[ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)**
+> — *a extração é clean-room dos papers; a biblioteca MPL-2.0 fica FORA, como oráculo.*
+> A espec funcional completa está em
+> [`SPEC_extracao_de_malha_quad.md`](SPEC_extracao_de_malha_quad.md).
+> A triagem abaixo é o que **levou** lá, e continua válida como mapa de licenças.
+
 ⭐⭐⭐ **A família GPL não é uma coisa só, e as DUAS fases que nos bloqueiam hoje —
 o arredondamento inteiro e a extração — existem sob MPL-2.0**, que é a licença
 **já permitida** pelo [`deny.toml`](../../../deny.toml) desta casa.
@@ -207,6 +214,39 @@ extração é **um campo de baixo curl**, e satisfazê-lo é sub-problema própr
 ⚠️⚠️ **E ele apanha-nos:** o nosso F2 foi **ilibado** por contagem de singularidades
 (8 = mínimo de Poincaré–Hopf), e **ninguém mediu o curl dele**. Se for alto, a extração
 falha para nós pela mesma porta. ⇒ **medição barata e decisiva, antes de qualquer porte.**
+
+### §5-bis.3-bis — ⭐⭐⭐ E ENTÃO O EXPERIMENTO CERTO CORREU: o NOSSO campo, na extração DELES
+
+⚠️ **O que faltava não era afinar o meu campo — era não usar campo meu nenhum.** A biblioteca
+lê o campo **por arquivo**, e formato não é expressão protegida (§4.1.4). ⇒ escrevi um
+exportador em Rust (`~/Referencias/directional-bench/rustfield/`, harness fora da árvore) que
+publica o campo do `ph2d-crossfield` no formato de intercâmbio dela.
+
+**Mesma malha, mesma extração, só o campo muda:**
+
+| grandeza | campo **deles** | ⭐ campo **NOSSO** |
+|---|---|---|
+| **enviesamento p50** | `5,0°` | ⭐⭐ **`3,0°`** |
+| enviesamento p99 | `30,3°` | **`24,6°`** |
+| **enviesamento máx** | `43,3°` | **`29,6°`** |
+| faces com canto pior que 60° | `0` | **`0`** |
+| aspecto p50 | `1,13` | **`1,06`** |
+| ⚠️ aspecto máx | `187` | ⚠️ `3 639` (uma lasca) |
+| quads | `97,9%` | `92,0%` |
+
+⭐⭐⭐ **Duas coisas ficam provadas de uma vez:**
+
+1. **A rota da extração ultrapassa o oráculo de produção** na grandeza que perseguimos —
+   `3,0°` contra `6°` — e é **9× melhor** que os `27°` do nosso preenchimento por patch.
+2. ⭐ **O nosso campo é MELHOR que o da biblioteca de referência.** O F2 estava ilibado por
+   *contagem de singularidades*; agora está ilibado por **resultado**.
+   ⇒ ⛔ **a medição de curl proposta na §5-bis.5 deixa de ser um portão** — ela vira
+   diagnóstico útil, não pré-condição. *A pergunta que ela ia responder foi respondida por
+   uma via mais forte.*
+
+⚠️ **O que fica em aberto, medido:** a extração dela é **lenta na nossa escala** — segundos
+numa peça de `2 404` triângulos, **minutos sem terminar** numa de `6 768`. ⛔ Isso não
+invalida a qualidade; **é razão para não portar** (ADR-0164, razão 5).
 
 ### §5-bis.4 — ⛔ Os QUATRO erros desta medição (a parte reutilizável)
 

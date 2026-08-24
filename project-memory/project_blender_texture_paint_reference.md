@@ -16,12 +16,15 @@ comportamento**, nunca a escrita. O que existe hoje em `ph2d-painter-brush` +
 ⚠️ **Política escrita na mesma decisão:** material de referência **GPL/CC-BY-SA fica
 `untracked`** no git.
 
-⛔ **E ela foi quebrada por acidente — medido 2026-08-24:** as **17 capturas do manual do
-Blender** (**CC-BY-SA 4.0**) em `docs/Painter/blender_ui_reference/` **estão rastreadas**,
-apanhadas de carona por um commit de feature. O README delas ainda diz, em letra própria,
-que a pasta é untracked *"até o Enio decidir versioná-la"* — ⇒ *a decisão foi tomada por um
-`git add`, não por ele.* Sem impacto hoje (repositório privado; CC-BY-SA dispara na
-**distribuição**), mas é escolha dele, não do índice do git.
+⚠️ **Ela foi quebrada por acidente e a decisão foi RETOMADA de propósito — 2026-08-24.**
+As **17 capturas do manual do Blender** (**CC-BY-SA 4.0**) em
+`docs/Painter/blender_ui_reference/` estavam rastreadas por engano (carona num commit de
+feature) contra o que o README delas dizia. ⭐ **Decidido: FICAM.** CC-BY-SA permite
+redistribuir com atribuição, a proveniência completa já está no README, e remover quebraria
+referências vivas e tiraria as imagens das outras máquinas — ⚠️ *esta casa já mediu o que
+acontece à referência «que se rebusca depois»: o recorte de FONTE evaporou ao mudar de
+máquina.* ⛔ **Duas cercas:** nenhuma delas alcança a UI do produto ou um artefato público, e
+se o repositório for publicado a pasta viaja com o README de atribuição.
 
 ⭐ **O recorte de FONTE do Blender não existe nesta máquina** (ficou no Mac), e a árvore
 tem **zero** arquivos C/C++ não-rastreados. *A parede que importa segurou.*

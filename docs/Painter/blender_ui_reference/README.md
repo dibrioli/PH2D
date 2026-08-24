@@ -15,8 +15,33 @@ funcional**: que controles existem e como se agrupam.
 | Licença | **CC-BY-SA 4.0** (Blender Manual) — atribuição: Blender Documentation team |
 
 CC-BY-SA é **copyleft de documentação**, não de código — não contamina o código do PH2D.
-Mantenha a atribuição se reproduzir as imagens. Pasta **untracked** no git (igual à referência
-de código GPL) até o Enio decidir versioná-la.
+Mantenha a atribuição se reproduzir as imagens.
+
+## ⭐ DECISÃO TOMADA — 2026-08-24: esta pasta FICA versionada
+
+⚠️ **A linha acima dizia «untracked até o Enio decidir», e as imagens estavam rastreadas
+desde sempre** — entraram de carona num commit de feature. ⇒ *a decisão tinha sido tomada
+por um `git add`.* Foi tomada de novo, de propósito, e é **manter**:
+
+1. ⭐ **CC-BY-SA 4.0 PERMITE a redistribuição** com atribuição e partilha-igual — ao
+   contrário de fonte GPL, não há risco de contaminação de **código** nenhum.
+2. A obrigação dispara na **distribuição**; este repositório é privado.
+3. ⭐ A proveniência completa já está na tabela acima (repositório, *commit*, data, licença,
+   atribuição) — é exactamente o que a licença pede.
+4. ⛔ **Remover custa mais do que guarda:** quebra referências vivas em três documentos e
+   tira as imagens das outras máquinas. ⚠️ **Esta casa já mediu o que acontece ao material de
+   referência «que se rebusca depois»** — o recorte de FONTE do Blender era untracked e
+   **evaporou** quando a máquina de desenvolvimento mudou.
+5. A cerca da [`SKILL_Cleanroom §8.3`](../../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md)
+   (*assets nunca entram*) é sobre o **produto** e sobre **fixtures** — não sobre referência
+   de desenho em `docs/`.
+
+### ⛔ As duas cercas que vêm com a decisão
+
+- ⛔ **Nenhuma destas imagens alcança a UI do produto, um artefato público ou um material de
+  divulgação.** Elas são referência interna de desenho, e só.
+- ⛔ **Se o repositório for algum dia publicado**, esta pasta viaja com este README — a
+  atribuição e a partilha-igual são a condição da licença, não um detalhe.
 
 ## Manifesto (nome → o que mostra → uso no plano)
 

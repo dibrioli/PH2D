@@ -19,13 +19,14 @@ em que é criado.
 > o `CLAUDE.md §5` dizia «fechado sem pendência» enquanto **três seções da spec nunca tinham
 > nascido**, e a informação existia desde 2026-05-31 num handoff arquivado.
 
-**3 handoffs** · **2** citados pelo `CLAUDE.md §5` (marcados **◆**).
+**4 handoffs** · **2** citados pelo `CLAUDE.md §5` (marcados **◆**).
 
 | Data | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
 | 2026-08-22 | | [HANDOFF_INTEGRACAO_line_Sprite_2026-08-22.md](HANDOFF_INTEGRACAO_line_Sprite_2026-08-22.md) | integração | §5 9-Slice + §12 Sockets/Âncoras + o gizmo de canvas |
 | 2026-08-23 | ◆ | [HANDOFF_INTEGRACAO_line_Sprite_MOUNT_2026-08-23.md](HANDOFF_INTEGRACAO_line_Sprite_MOUNT_2026-08-23.md) | integração | **o consumidor de uma âncora** — `AnchorMount`, a lei das duas travessias, e o bloqueio medido de Luau/MCP |
 | 2026-08-23 | ◆ | [HANDOFF_INTEGRACAO_line_Sprite_ANIM_AUDIT_2026-08-23.md](HANDOFF_INTEGRACAO_line_Sprite_ANIM_AUDIT_2026-08-23.md) | integração | **o transporte da §11** — a caixa com duas fontes de verdade, o rebobinar que não movia a imagem, e os 10 gates de costura que faltavam |
+| 2026-08-23 | | [HANDOFF_INTEGRACAO_line_Sprite_2026-08-23_FECHO.md](HANDOFF_INTEGRACAO_line_Sprite_2026-08-23_FECHO.md) | **FECHO da linha** | ⚠️ **o documento do INTEGRADOR** — identidade, os 9 ficheiros que os dois lados tocaram, os cinco degraus de `PROJECT_SCHEMA`, e o que só o `ship.sh` apanha. O MECANISMO das waves fica no `ANIM_AUDIT` acima |
 
 ---
 *Handoff novo entra nesta tabela, não só na pasta.*

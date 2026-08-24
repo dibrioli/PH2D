@@ -177,11 +177,6 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         &[],
     ),
-    // ⚠️ **Máquina, e das mais duras.** A identidade durável de um objeto (F1) é posta pela
-    // varredura e nunca pelo artista — um `StableId` escolhido à mão é uma referência que
-    // aponta para outra coisa. Não deriva `Default`, logo não teria `insert_default` nem se
-    // alguém a marcasse `Authored`: o censo da shell recusaria antes.
-    D::machinery("ph2d::ecs::StableId", "Stable Id", C::Identity),
     D::authored(
         "ph2d::ecs::TextureFilter",
         "Texture Filter",

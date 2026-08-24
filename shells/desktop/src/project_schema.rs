@@ -210,4 +210,26 @@
 /// ⚠️ **`None` nos dois é a identidade byte-a-byte de todo arquivo ≤ v94**: nenhuma pose antiga
 /// nomeia verbo nenhum, e `None` no primeiro é *herda* (a lei do componente) enquanto no segundo é
 /// *não sei de grupo nenhum* — que **nunca** desfaz um grupo.
-pub(crate) const PROJECT_SCHEMA: u32 = 95;
+/// ## v96 — ⭐ **A IDENTIDADE DO OBJETO, e a PRIMEIRA migração da história do repo**
+/// ([ADR-0164](../../../docs/architecture/decisions/0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) F1).
+///
+/// Dois fatos ao mesmo tempo, e é por isso que este degrau **tem migração** em vez de só
+/// recusar (`crate::project_migrate`):
+///
+/// 1. **`WorldSnapshot` v1 → v2** — a linha passa a ser chaveada e ordenada por `StableId`, e
+///    o `parent` deixa de ser um índice para ser um id. ⚠️ *Um índice desloca-se*: inserir uma
+///    entidade mudava os bytes de todas as linhas seguintes, o que a captura incremental da F2
+///    não pode pagar. E a ordem por id **apaga o `canonicalize`** do undo (18,7 ms → 0,088 ms
+///    a 10 k entidades, medido).
+/// 2. **`ProjectFile.stable_id_counter`** — o próximo id livre. ⚠️ Fora do `ProjectState`, e
+///    não pela razão dos outros campos (o escopo do undo): um undo que o rebobinasse faria um
+///    **redo** entregar um id ainda vivo.
+///
+/// ⚠️ **Nenhum dos dois é aditivo no wire.** O postcard é posicional e não auto-descritivo:
+/// um leitor v96 sobre bytes v95 **não erra — lê errado**. Daí o tipo congelado
+/// `ProjectFileV95` e o gate que guarda os BYTES de um ficheiro v95, não o tipo.
+///
+/// ⚠️ **Este degrau é o primeiro que não recusa o passado.** Até aqui a política de facto era
+/// *"versão diferente = recusado"* (a auditoria de 21/08 registou-a como ambiguidade §8 item
+/// 7: HR-14 exige `migrate_vN_to_vN+1` e o repo tinha **zero**). Um v95 agora abre.
+pub(crate) const PROJECT_SCHEMA: u32 = 96;

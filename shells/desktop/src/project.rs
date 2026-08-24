@@ -15,15 +15,15 @@ use crate::undo::{ProjectState, ProjectUndo};
 
 /// O conteúdo de um arquivo de projeto.
 #[derive(serde::Serialize, serde::Deserialize)]
-struct ProjectFile {
+pub(crate) struct ProjectFile {
     /// Mundo (ECS) + geometria vetorial — a unidade do undo.
-    state: ProjectState,
+    pub(crate) state: ProjectState,
     /// Pixels dos sprites, para re-materializar o atlas noutra sessão (Fase 2b).
     /// Vazio na Fase 2a.
-    assets: Vec<SavedAsset>,
+    pub(crate) assets: Vec<SavedAsset>,
     /// Os **documentos do Painter** (camadas + pixels + relevo), por identidade estável
     /// (`ph2d_ecs::PaintedDoc`). Vazio quando nada foi pintado. Ver [`crate::project_painter`].
-    painted: Vec<ph2d_tool_painter::PaintedDocument>,
+    pub(crate) painted: Vec<ph2d_tool_painter::PaintedDocument>,
     /// O documento de **Motion Nodes**, na forma textual canônica do `ph2d-motion-doc`
     /// (linha-a-linha, com `[layout]` e `[backdrop]` — ADR-0032 §6).
     ///
@@ -35,7 +35,7 @@ struct ProjectFile {
     /// É **texto**, não postcard, porque esse já é o formato canônico do documento: é
     /// diffável e mergeável por linha (o requisito multiagente que descartou JSON/RON).
     /// Um projeto sem grafo carrega `""`.
-    motion: String,
+    pub(crate) motion: String,
     /// O **`TimelineDoc`** (clips, faixas, tracks, keys) em postcard — a animação inteira.
     ///
     /// Fora do `ProjectState` pelo mesmo motivo do `motion`: o `ProjectState` é a unidade do
@@ -46,7 +46,7 @@ struct ProjectFile {
     /// NÃO com os bits de entidade — que o load recicla. Quem as recola é o `upkeep` do frame,
     /// a mesma função que cura delete+undo (ver [`crate::timeline_persist`]). Um projeto sem
     /// animação carrega `vec![]`.
-    timeline: Vec<u8>,
+    pub(crate) timeline: Vec<u8>,
     /// As **settings de MUNDO** da física (ADR-0131 D8 / W2b).
     ///
     /// Fora do `ProjectState` de propósito: o `ProjectState` é a unidade do undo
@@ -55,7 +55,7 @@ struct ProjectFile {
     ///
     /// O mundo rapier em si **não** viaja (D2: ele é derivado); o que viaja é o
     /// que o artista autorou.
-    physics: ph2d_physics_ecs::PhysicsSettings,
+    pub(crate) physics: ph2d_physics_ecs::PhysicsSettings,
     /// **A tabela de COR autorada pelo artista** (plano UI/UX W6, degrau 1).
     ///
     /// ⚠️ **Esparsa e FORA do `ProjectState`**, pelas duas razões de sempre: só o que difere da
@@ -66,7 +66,7 @@ struct ProjectFile {
     /// ⚠️ O que viaja é o par `(modo, chave-do-token)` e a cor. A **CHAVE**, nunca o índice do
     /// variant: guardar o índice amarraria todo projeto salvo à ORDEM da lista, e acrescentar um
     /// token no meio da tabela re-pintaria o app com as cores trocadas. É a mesma lei do `W4a`.
-    tokens: Vec<crate::project_tokens::SavedToken>,
+    pub(crate) tokens: Vec<crate::project_tokens::SavedToken>,
     /// **AS SETTINGS DO PROJETO** (doc 88, D3) — a escala do mundo
     /// (`pixels_per_meter`), a unidade que o artista LÊ (`display_unit`), os dois
     /// snaps do gizmo e o modo de filtragem.
@@ -79,7 +79,7 @@ struct ProjectFile {
     /// razão do `tokens` logo acima (a `ph2d-editor-core` não fala serde, e herdar o
     /// layout de um tipo de runtime torna um refactor interno numa quebra de save).
     /// Ver [`crate::project_settings`].
-    settings: crate::project_settings::SavedSettings,
+    pub(crate) settings: crate::project_settings::SavedSettings,
     /// **A ESCULTURA** (ADR-0150 W8.3) — a lista de peças, cada uma com a pilha de
     /// níveis e a pose, em postcard. Ver [`crate::sculpt3d`] (`sculpt3d_doc.rs`).
     ///
@@ -92,7 +92,7 @@ struct ProjectFile {
     /// postcard é posicional — um campo condicional daria DUAS formas de arquivo com o
     /// mesmo número de schema), e um binário sem escultura **carrega os bytes adiante**
     /// em vez de os triturar. Ele carrega a própria versão lá dentro.
-    sculpt: Vec<u8>,
+    pub(crate) sculpt: Vec<u8>,
     /// **OS CANAIS ASSADOS** (ADR-0150 W8.7) — por objeto: os pixels antes da luz, o G-buffer que
     /// uma malha doou, e o rig com que aquilo foi aceso. Ver [`crate::project_baked_form`].
     ///
@@ -103,7 +103,7 @@ struct ProjectFile {
     /// `painted`, que resolve o mesmo problema para o outro produtor de `SpriteSource::Individual`.
     ///
     /// Vazio quando nada foi assado.
-    baked_forms: Vec<crate::project_baked_form::BakedFormDocument>,
+    pub(crate) baked_forms: Vec<crate::project_baked_form::BakedFormDocument>,
     /// **A CORRIDA GRAVADA** (ADR-0131 W17) — o que o dedo do jogador fez, tique
     /// a tique, na forma de arquivo da fita (`ph2d_physics_ecs::TapeWire`).
     ///
@@ -120,7 +120,7 @@ struct ProjectFile {
     /// torna essa frase verdadeira**: antes dela a fita gravava todo tique que o
     /// relógio andasse, então TODO projeto do app carregaria uma corrida de
     /// ninguém. Ver `render_loop::physics_bridge::dispatch`.
-    player_tape: ph2d_physics_ecs::TapeWire,
+    pub(crate) player_tape: ph2d_physics_ecs::TapeWire,
     /// **OS PIXELS PRÓPRIOS** (plano [`docs/Sprite_projeto/17`] §3) — os bytes de todo sprite
     /// `SpriteSource::Individual`, nomeados pelo `ph2d_ecs::SpritePixels` que ele carrega.
     /// Ver [`crate::project_sprite_pixels`].
@@ -137,13 +137,22 @@ struct ProjectFile {
     /// que entram neste mesmo documento, não voltarem a bumpar o `PROJECT_SCHEMA`.
     ///
     /// Vazio num projeto sem sprites individuais.
-    sprite_pixels: Vec<u8>,
+    pub(crate) sprite_pixels: Vec<u8>,
+    /// **O contador de [`ph2d_ecs::StableId`]** — o próximo id livre do documento
+    /// (ADR-0164 F1).
+    ///
+    /// ⚠️ **Campo do ARQUIVO, deliberadamente FORA do `ProjectState`** — e não pela razão
+    /// dos irmãos acima (o escopo do undo), mas por uma mais dura: um undo que o
+    /// rebobinasse faria um **redo** entregar um id que ainda está vivo na pilha, e duas
+    /// entidades com o mesmo `StableId` corrompem tudo o que aponta para um objeto (uma
+    /// junta, um binding, um override). Ele só sobe.
+    pub(crate) stable_id_counter: u64,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
 /// o `Sprite.source` referencia. (Fase 2b.)
 #[derive(serde::Serialize, serde::Deserialize)]
-struct SavedAsset {
+pub(crate) struct SavedAsset {
     /// A célula de atlas (`SpriteSource::Atlas { key }`) que estes pixels ocupam.
     key: u32,
     width: u32,

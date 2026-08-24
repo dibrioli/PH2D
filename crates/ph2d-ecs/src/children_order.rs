@@ -41,6 +41,18 @@ pub fn reinsert_children_in_order(world: &mut World, parent: Entity, desired: &[
             entry.insert(ChildOf(parent));
         }
     }
+    // ⭐ **E a ordem vira DADO** (ADR-0164 F1), na MESMA porta que a reescreve.
+    //
+    // A lista `Children` que o laço acima reordena é **memória de runtime**: ela não entra no
+    // `WorldSnapshot`, então até esta wave reordenar não era desfazível, não sobrevivia a um
+    // restore e não sobrevivia ao save (classe BUGS #15). O `SiblingOrder` é a metade que o
+    // ficheiro guarda.
+    //
+    // ⚠️ **Aqui e não em cada chamador.** Havia dois — o drop da Hierarquia e o arrasto no
+    // canvas dentro de um fluxo — e o doc-comment desta função já diz porque ela existe:
+    // *"cada um sabe a ORDEM que quer; nenhum precisa saber como o `bevy` a guarda"*. Onde o
+    // bevy guarda passou a ser dois sítios; a porta continua uma.
+    crate::set_sibling_order(world, parent, desired);
     true
 }
 

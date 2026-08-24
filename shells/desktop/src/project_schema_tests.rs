@@ -392,7 +392,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `ObjectPose` seguinte. ⚠️ Nasceu como 89→90 na `line/Vector`; RECONTADO para 94→95 na
         // integracao de 2026-08-23 (a `line/Sprite` ocupou 90..94 antes — o mesmo precedente do
         // 86→87 acima). A `VecScene` NAO mudou (verbo e grupo sao fatos de ENTIDADE).
-        (95, 13, 14),
+        // PROJECT 95→96: a IDENTIDADE do objeto (ADR-0164 F1). O `WorldSnapshot` passou de
+        // v1 a v2 (linha chaveada e ordenada por `StableId`; o `parent` deixou de ser indice)
+        // e o `ProjectFile` ganhou o `stable_id_counter`. ⚠️ O `FlipDoc` e a `VecScene` NAO
+        // mudaram — a identidade e' fato de ENTIDADE, entao os dois numeros ao lado ficam
+        // onde estavam. ⭐ E' o PRIMEIRO degrau que nao recusa o passado: um v95 migra
+        // (`crate::project_migrate`), e a auditoria de 21/08 registava zero migracoes no repo.
+        (96, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

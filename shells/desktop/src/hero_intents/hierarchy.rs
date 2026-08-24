@@ -176,6 +176,21 @@ pub(crate) fn drain_reparent(
                 entry.insert(ph2d_ecs::ChildOf(parent));
             }
         }
+        // ⭐ **E a ordem vira DADO** (ADR-0164 F1). O bloco acima reescreve a lista `Children`
+        // do bevy, que é **memória de runtime**: ela não entra no snapshot, então até esta
+        // wave reordenar irmãos não era desfazível, não sobrevivia a um Ctrl+Z de outra ação e
+        // não sobrevivia ao save (classe BUGS #15, medida na auditoria de 21/08).
+        //
+        // ⚠️ **As duas escritas são precisas.** O `ChildOf` acima é o que o bevy usa AGORA (o
+        // pai e a relação); o `SiblingOrder` aqui é o que o FICHEIRO guarda, e é dele que o
+        // `world_to_snapshot` e a árvore do painel leem a ordem. Tirar uma das duas dá metade
+        // do gesto: sem a de cima o objeto não muda de pai; sem esta ele volta ao lugar antigo
+        // no próximo Ctrl+Z.
+        //
+        // ⚠️ Escreve com comparação (o `set_sibling_order` só toca no que difere): reescrever
+        // o mesmo número em todo irmão marcaria o arquétipo de cada um como mudado, e o diff
+        // do undo registaria um passo espúrio por quadro em que o gesto corresse.
+        ph2d_ecs::set_sibling_order(sim_w, parent, &desired);
     }
     // Re-solve the dragged entity's LOCAL transform so its captured world
     // transform survives the parent change. The new parent chain is now in

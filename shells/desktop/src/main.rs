@@ -428,6 +428,7 @@ mod project_baked_form;
 /// **O ficheiro do projeto tem NOME** — `Save`, `Save As…` e `Open Project…` com diálogo
 /// (Enio, 2026-08-23). Até aqui o `Ctrl+S` escrevia sempre no mesmo caminho.
 mod project_io;
+mod project_migrate;
 mod project_painter;
 mod project_schema;
 /// A metade ARQUIVADA da escada do `PROJECT_SCHEMA` (v2..v79) — irmã por LOC (HR-18).

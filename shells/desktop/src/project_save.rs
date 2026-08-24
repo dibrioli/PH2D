@@ -98,6 +98,15 @@ impl crate::App {
             // — o `PlayerInput` da crate da LEI não conhece serde de propósito.
             player_tape: self.player_tape.to_wire(),
             sprite_pixels,
+            // ⚠️ **O contador de identidade** (ADR-0164 F1). Ele vive no MUNDO como recurso e
+            // sobe sozinho; aqui ele é só fotografado. Gravar um valor atrasado faria a
+            // sessão seguinte entregar um id que já está vivo no ficheiro — por isso o load
+            // reconcilia contra os ids que de facto lá estão, e não confia só neste número.
+            stable_id_counter: self
+                .gfx
+                .as_ref()
+                .and_then(|g| g.sim.world().get_resource::<ph2d_ecs::StableIdCounter>())
+                .map_or(ph2d_ecs::StableId::FIRST, |c| c.next_free()),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,

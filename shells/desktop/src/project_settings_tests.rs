@@ -52,6 +52,7 @@ fn the_world_settings_survive_the_project_file() {
         baked_forms: Vec::new(),
         player_tape: ph2d_physics_ecs::TapeWire::default(),
         sprite_pixels: Vec::new(),
+        stable_id_counter: ph2d_ecs::StableId::FIRST,
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");
@@ -116,6 +117,7 @@ fn the_project_scale_and_unit_survive_the_project_file() {
         baked_forms: Vec::new(),
         player_tape: ph2d_physics_ecs::TapeWire::default(),
         sprite_pixels: Vec::new(),
+        stable_id_counter: ph2d_ecs::StableId::FIRST,
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa");
     std::fs::write(&path, bytes).expect("grava");

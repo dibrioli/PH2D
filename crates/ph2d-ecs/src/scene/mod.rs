@@ -7,6 +7,7 @@
 pub mod commands;
 pub mod registry;
 pub mod save;
+pub mod save_v1;
 pub mod snapshot;
 pub mod spawn;
 
@@ -18,6 +19,9 @@ pub use registry::{
     stable_type_id,
 };
 pub use save::{EntitySnapshotRow, SaveError, WorldSnapshot, snapshot_to_world, world_to_snapshot};
+pub use save_v1::{
+    EntitySnapshotRowV1, WorldSnapshotV1, migrate_v1_to_v2, next_free_after_migration,
+};
 pub use snapshot::{
     ComponentEntry, ComponentSnapshot, HierarchyEntry, HierarchySnapshot, HierarchyWalkState,
     build_hierarchy_snapshot, extract_component_snapshot,

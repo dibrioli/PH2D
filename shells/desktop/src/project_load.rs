@@ -31,20 +31,65 @@ impl crate::App {
                 return;
             }
         };
-        let (ver, mut file): (u32, ProjectFile) = match postcard::from_bytes(&bytes) {
-            Ok(v) => v,
+        // ⭐ **A PRIMEIRA migração da história do repo** (ADR-0164 F1). Até esta wave a
+        // política de facto era *"versão diferente = recusado"* — a auditoria de 21/08
+        // registou-a como ambiguidade em aberto (§8 item 7: HR-14 exige `migrate_vN_to_vN+1`
+        // e havia **zero**).
+        //
+        // ⚠️ A versão tem de ser lida **antes** do resto: o postcard é posicional, então
+        // desserializar bytes v95 com o tipo v96 não dá erro — dá lixo. Por isso o `ver` sai
+        // sozinho primeiro, e só depois se escolhe o tipo com que ler o corpo.
+        let ver: u32 = match postcard::take_from_bytes::<u32>(&bytes) {
+            Ok((v, _)) => v,
             Err(e) => {
-                eprintln!("[proj] erro ao ler {path}: {e}");
+                eprintln!("[proj] erro ao ler a versao de {path}: {e}");
                 return;
             }
         };
-        if ver != PROJECT_SCHEMA {
-            eprintln!("[proj] schema {ver} != {PROJECT_SCHEMA} — recusado");
-            self.toast(format!(
-                "Project refused: file format {ver}, this build reads {PROJECT_SCHEMA}"
-            ));
-            return;
-        }
+        let (mut file, migrated_counter) = match ver {
+            PROJECT_SCHEMA => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
+                Ok((_, f)) => (f, None),
+                Err(e) => {
+                    eprintln!("[proj] erro ao ler {path}: {e}");
+                    return;
+                }
+            },
+            95 => {
+                match postcard::from_bytes::<(u32, crate::project_migrate::ProjectFileV95)>(&bytes)
+                {
+                    Ok((_, old)) => {
+                        let m = crate::project_migrate::migrate_v95_to_v96(old);
+                        eprintln!(
+                            "[proj] migrado v95 -> v{PROJECT_SCHEMA} ({} objetos receberam identidade)",
+                            m.file.state.world.entities.len()
+                        );
+                        self.toast(format!(
+                            "Project migrated from format 95 to {PROJECT_SCHEMA}"
+                        ));
+                        (m.file, Some(m.stable_id_counter))
+                    }
+                    Err(e) => {
+                        eprintln!("[proj] v95 ilegivel: {e}");
+                        self.toast(format!(
+                            "Project refused: format 95 file is unreadable ({e})"
+                        ));
+                        return;
+                    }
+                }
+            }
+            _ => {
+                eprintln!("[proj] schema {ver} != {PROJECT_SCHEMA} — recusado");
+                self.toast(format!(
+                    "Project refused: file format {ver}, this build reads {PROJECT_SCHEMA}"
+                ));
+                return;
+            }
+        };
+        // ⚠️ **A semente do contador.** Num ficheiro v96 ela vem do campo; num migrado, da
+        // contagem de linhas. Sem ela a primeira entidade criada depois do load reusaria um id
+        // que já está vivo — e o `reconcile_at_least` do próprio contador é a segunda rede,
+        // porque ele também se compara com os ids que o mundo de facto tem.
+        let stable_id_seed = migrated_counter.unwrap_or(file.stable_id_counter);
         // A ANIMAÇÃO É PARTE DO ARQUIVO, e um documento que este binário não sabe ler faz o
         // load inteiro ser RECUSADO — não "abre sem a animação".
         //
@@ -235,6 +280,24 @@ impl crate::App {
         self.autokey = Default::default(); // pins/baselines de pose keyados por bits mortos
         self.materialize_assets(&file.assets);
         self.apply_project(&file.state);
+        // ⚠️ **A semente do contador entra AQUI, logo depois de o mundo existir** (ADR-0164
+        // F1). Antes do `apply_project` não haveria mundo onde a pôr; muito depois, uma
+        // entidade criada no meio já teria consumido um id vivo.
+        //
+        // `reconcile_at_least` e não uma escrita crua: ele **sobe, nunca desce**. Um ficheiro
+        // com o contador atrasado (editado à mão, vindo de um branch antigo, ou migrado de um
+        // v95 cujo mundo tinha mais linhas do que a conta diz) é corrigido contra os ids que o
+        // mundo de facto tem — que é a segunda rede da mesma invariante.
+        if let Some(gfx) = self.gfx.as_mut() {
+            let mut counter = gfx
+                .sim
+                .world()
+                .get_resource::<ph2d_ecs::StableIdCounter>()
+                .copied()
+                .unwrap_or_default();
+            counter.reconcile_at_least(stable_id_seed);
+            gfx.sim.world_mut().insert_resource(counter);
+        }
         // **OS PIXELS PRÓPRIOS** (plano `docs/Sprite_projeto/17` §3) — depois do mundo, porque é
         // pelo `SpritePixels` (que viaja no snapshot) que cada sprite reencontra os bytes que
         // eram dele. Fecha a perda que atingia TODA ferramenta de imagem: o `texture_id` do save

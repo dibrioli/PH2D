@@ -61,6 +61,7 @@ fn write_project_full(path: &std::path::Path, schema: u32, timeline: Vec<u8>, sc
         baked_forms: Vec::new(),
         player_tape: ph2d_physics_ecs::TapeWire::default(),
         sprite_pixels: Vec::new(),
+        stable_id_counter: ph2d_ecs::StableId::FIRST,
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");
@@ -417,6 +418,7 @@ fn project_file_round_trips_through_postcard() {
         baked_forms: Vec::new(),
         player_tape: ph2d_physics_ecs::TapeWire::default(),
         sprite_pixels: Vec::new(),
+        stable_id_counter: ph2d_ecs::StableId::FIRST,
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();

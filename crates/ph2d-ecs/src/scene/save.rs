@@ -42,12 +42,19 @@ use serde::{Deserialize, Serialize};
 ///    custa 0,088 ms e é a mesma resposta.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EntitySnapshotRow {
-    /// A identidade durável desta entidade — **a chave da linha**.
+    /// A identidade durável desta entidade — **a chave da linha, e a ÚNICA fonte dela
+    /// no formato**.
     ///
-    /// ⚠️ Ela também viaja dentro de `components` (o `StableId` é um componente
-    /// registado, e é de lá que o restore o instala). Este campo é a cópia **derivada**
-    /// que a ordenação e o `parent` usam sem ter de desserializar um blob por linha;
-    /// há gate a exigir que os dois concordem.
+    /// ⚠️ **O `StableId` NÃO é um componente registado, e a ausência é deliberada.**
+    /// Se fosse, ele viajaria duas vezes (aqui e num `ComponentBlob`) e as duas cópias
+    /// poderiam discordar. Mas a razão dura é outra, e é a F4: a cópia profunda de uma
+    /// sub-árvore nasce sobre `extract_component_snapshot` + `insert_from_bytes`, que
+    /// copiam blobs **verbatim** — um `StableId` registado seria copiado com o mesmo
+    /// valor, e a cópia nasceria com a identidade do original. O ADR-0164 §2.7 exige
+    /// *"remapeado em toda cópia de blobs"*; mantê-lo FORA do registo torna esse erro
+    /// impossível de cometer em vez de o deixar por lembrar.
+    ///
+    /// Quem o instala no restore é o [`snapshot_to_world`], explicitamente.
     pub id: StableId,
     /// Registered components on this entity, in `ComponentRegistry`
     /// id-sorted order (HR-5 determinism).
@@ -278,6 +285,11 @@ pub fn snapshot_to_world(
     // Pass 1: spawn + install components.
     for row in &snapshot.entities {
         let entity = world.spawn_empty().id();
+        // ⚠️ **A identidade entra AQUI, do campo da linha** — ela não é um componente
+        // registado, então não vem num blob (ver [`EntitySnapshotRow::id`]). É esta linha que
+        // faz o objeto voltar do undo **sendo o mesmo objeto**: sem ela, o respawn daria
+        // identidade nova a tudo e o binding da timeline e a junta da física perderiam o alvo.
+        world.entity_mut(entity).insert(row.id);
         for blob in &row.components {
             let entry = registry.get_by_id(blob.type_id).ok_or(SaveError::Registry(
                 RegistryError::UnknownTypeId(blob.type_id),

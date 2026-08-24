@@ -144,7 +144,7 @@ fn register_ecs_components_populates_registry() {
     //   Ao mexer aqui, mexa nos tres NO MESMO commit: `ph2d-render` e `ph2d-script`.
     // + 1 VISIBILIDADE das ancoras (AnchorVisibility, Enio 2026-08-23).
     // + 2 da §11 ANIMATION (SpriteAnimations + SpriteAnimator, spec Sprite 08).
-    assert_eq!(reg.len(), 71);
+    assert_eq!(reg.len(), 70);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

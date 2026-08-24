@@ -300,13 +300,12 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::Name>("ph2d::ecs::Name");
     reg.register_default::<crate::Visibility>("ph2d::ecs::Visibility");
     reg.register_default::<crate::RootOrder>("ph2d::ecs::RootOrder");
-    // ⚠️ **`register`, NÃO `register_default`** — o `StableId` não deriva `Default` de
-    // propósito (o default seria `StableId(0)`, o id reservado para «nenhum», e a varredura
-    // nunca o corrigiria por a entidade já ter o componente). Registá-lo é o que faz a
-    // identidade **sobreviver ao respawn do undo**: sem esta linha o snapshot descartá-lo-ia
-    // em silêncio e cada Ctrl+Z daria uma identidade nova a todo objeto — que é o oposto
-    // exato do que ADR-0164 compra.
-    reg.register::<crate::StableId>("ph2d::ecs::StableId");
+    // ⛔ **O `StableId` NÃO é registado, e a ausência é a decisão.** Ele viaja no campo
+    // `EntitySnapshotRow::id` — uma fonte só. Registá-lo poria a identidade também num
+    // `ComponentBlob`, e a cópia profunda da F4 (`extract_component_snapshot` +
+    // `insert_from_bytes`, que copiam blobs VERBATIM) daria à cópia a identidade do
+    // original. O ADR-0164 §2.7 exige *"remapeado em toda cópia de blobs"*; mantê-lo fora
+    // do registo torna esse erro impossível em vez de o deixar por lembrar.
     // A ordem entre irmãos como DADO (F1) — o gémeo do `RootOrder`. Sem registo ela não
     // entra no snapshot, e reordenar continuaria a não ser desfazível (classe BUGS #15).
     reg.register_default::<crate::SiblingOrder>("ph2d::ecs::SiblingOrder");

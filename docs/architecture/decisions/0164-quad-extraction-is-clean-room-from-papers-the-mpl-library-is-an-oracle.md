@@ -32,9 +32,27 @@ intercâmbio da biblioteca e corre a extração dela. Com a régua **por-face** 
 | aspecto p50 | `1,13` | **`1,06`** | `1,08` | `1,98` |
 | ⚠️ aspecto máx | `187` | ⚠️ `3 639` | — | `122,7` |
 
-⇒ **Duas coisas ficaram provadas de uma vez:** a rota da extração **ultrapassa** o oráculo de
-produção na grandeza que perseguimos, e **o nosso campo é melhor que o deles** — o F2 estava
-ilibado por contagem de singularidades e agora está ilibado por **resultado**.
+⚠️⚠️ **CORRIGIDO no mesmo dia, e a correcção é contra a leitura acima.** Aquela tabela é de
+**uma** peça — **a deles**. A varredura sobre o **nosso corpus** terminou depois e diz outra
+coisa, medida com a mesma régua contra o oráculo **na mesma peça**:
+
+| peça nossa | ⭐ oráculo de produção | ⛔ a cadeia montada aqui | ⛔ o nosso F5 hoje |
+|---|---|---|---|
+| enrugada | **`4,8°`** · `0` faces `>60°` | `11,1°` · `5` | `27°` · `9 159` |
+| estriada | **`7,1°`** · `0` | `12,4°` · `5` | — |
+| esfera uv | **`5,9°`** · `0` | `9,1°` · `6` | — |
+
+⛔ **RETRACTADO:** *«ultrapassa o oráculo»*. No nosso corpus a cadeia é **1,6×–2,3×** o
+enviesamento dele e produz faces péssimas onde ele produz zero.
+
+⭐ **O que sobrevive e decide:** contra o nosso preenchimento por patch ela é **2–3× melhor**
+(`9–12°` contra `27°`) e as faces péssimas caem de **`9 159` para `5–6`**. ⇒ *a direcção
+mantém-se; a margem é que era fantasia.*
+
+⭐⭐ **E o nosso campo continua a ganhar ao da biblioteca** (`3,0°` contra `5,0°`, na peça
+deles): o F2 está ilibado por **resultado**.
+⚠️ **Mas o curl dele volta a ser pré-condição** — a diferença entre `9–12°` e `5–7°` é a
+classe de defeito que um campo **não integrável** produz, e o nosso nunca teve o curl reduzido.
 
 ## Decisão
 
@@ -59,10 +77,13 @@ ilibado por contagem de singularidades e agora está ilibado por **resultado**.
    **arquivo**, e o formato não é expressão protegida ⇒ **corre sobre a NOSSA malha com o
    NOSSO campo**, e escreve a malha resultante. *Comparar fase a fase, na mesma peça, é mais
    forte que comparar o fim* — e com o oráculo GPL isso nunca esteve disponível.
-5. ⚠️ **Medido: a extração dela é lenta na nossa escala.** Segundos numa peça de 2 404
-   triângulos; **minutos sem terminar** numa de 6 768. ⇒ portar seria herdar um custo que
-   ainda não entendemos, numa implementação que não conseguimos correr sobre os nossos dados.
-   *Escrever do *paper* deixa o desenho de desempenho na nossa mão.*
+5. ⛔⛔ **Medido: ela FALHA em 3 de 7 peças nossas** — uma recusa, um estouro de `900 s` e uma
+   **falha de segmentação** (o toro, género 1, ⭐ cujo *mapa* saiu perfeito ⇒ o defeito é da
+   extração). As outras quatro correm em `8–15 s`.
+   ⚠️ **Correcção da 1ª redacção deste ADR:** ela dizia *«é lenta na nossa escala»*, e isso
+   está **errado** — em peças de 27 360 triângulos leva **8–10 segundos**. ⛔ **O problema é
+   ROBUSTEZ, não velocidade** — e robustez é precisamente o que o método promete resolver.
+   ⇒ portar **esta** implementação seria herdar falhas que o *paper* diz não deverem existir.
 6. ⚠️ **O degrau T0½ continua disponível** se a obra 2 (§6 da espec) se revelar mais cara do
    que a espec prevê. ⛔ **Esta decisão não o queima** — só não o toma primeiro.
 
@@ -84,7 +105,7 @@ ilibado por contagem de singularidades e agora está ilibado por **resultado**.
 
 | alternativa | por que não |
 |---|---|
-| **Porte fiel T0½ da biblioteca MPL-2.0** | arquivos permanentemente públicos no subsistema mais valioso; descarta a cadeia que já temos; herda um custo de desempenho não compreendido (razão 5) |
+| **Porte fiel T0½ da biblioteca MPL-2.0** | arquivos permanentemente públicos no subsistema mais valioso; descarta a cadeia que já temos; ⛔ **herda falhas em 3 de 7 peças nossas** (razão 5) |
 | **Clean-room T2 do remalhador GPL de produção** | ⛔ semanas, 4 janelas, parede, vassoura e ledger de contaminação — **para chegar a uma qualidade que a rota escolhida já mede como melhor** (`3,0°` contra `6°`) |
 | **Continuar a melhorar o preenchimento por patch** | ⛔ **recusado por medição em 2026-08-23**: quatro achatamentos, forma do domínio, poda de patches, subdivisão local e ponto fixo — todos medidos, todos fechados. `16` rondas de relaxação movem a mediana de `27°` para `26°` e pagam `3,4×` as dobras |
 | **Perseguir o campo (as linhas neurais de 2024-2026)** | ⛔ melhoram a fase que **já está certa**: o nosso campo mede `3,0°` contra os `5,0°` do campo de referência |
@@ -95,6 +116,7 @@ ilibado por contagem de singularidades e agora está ilibado por **resultado**.
 | recusa | mecanismo | onde |
 |---|---|---|
 | ⛔ **Não portar a biblioteca MPL-2.0** | obrigação de publicar arquivos no subsistema mais valioso, + descarte da cadeia própria, + custo de desempenho não compreendido | acima, razões 1-2-5 |
-| ⛔ **Não abrir clean-room T2 do alvo GPL** | a rota escolhida mede **melhor** que ele, sem parede nenhuma | alternativas |
+| ⛔ **Não abrir clean-room T2 do alvo GPL** | ⚠️ **razão corrigida:** a rota escolhida **não** mede melhor que ele (`9–12°` contra `5–7°`); ela é a **única** que resta depois da caça por eliminação, e custa semanas a menos | alternativas · TRIAGEM §5-bis.3-ter |
+| ⛔⛔ **Não anunciar resultado medido em peça DELES como se fosse do nosso corpus** | a jarra deu `3,0°`, o nosso corpus deu `9–12°` — a conclusão inverteu-se | contexto |
 | ⛔ **Não voltar ao preenchimento por patch** | família fechada por medição em 2026-08-23 | [`PLAN.md`](../../3D/quad-remesh/PLAN.md) §4-tricies..§4-septemetquinquagies |
 | ⛔ **Não trocar o nosso campo** | ele mede **melhor** que o da biblioteca de referência | contexto |

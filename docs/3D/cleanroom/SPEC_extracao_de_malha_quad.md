@@ -385,7 +385,7 @@ mapa antes considerado defeituoso passa a ser utilizável.
 | 5 | o predicado de orientação **concorda com o exacto** em casos adversariais | gere pontos quase-colineares em escala de `f64`; o filtro rápido tem de **desistir**, não errar |
 | 6 | **toda** face da saída é um quad | é o teorema do §6.3 — se falhar, a fusão está incompleta |
 | 7 | a característica de Euler da saída **iguala** a da entrada | ⚠️ a família de defeitos que a `line/sculpt3d` já pagou: `χ` do toro tem de dar `0`, não `2` |
-| 8 | ⭐ **a forma por-face** bate a barra do oráculo | `QuadShape`: enviesamento p50 ≤ `6°` · faces com canto pior que 60° = **0** · aspecto p50 ≤ `1,2`. ⚠️ **Medido alcançável: `3,0°`** |
+| 8 | ⭐ **a forma por-face** bate a barra do oráculo | `QuadShape`, medido pelo **mesmo código** sobre a saída dele, **nas nossas peças**: enviesamento p50 **`4,8°`–`7,1°`** · faces com canto pior que 60° = **`0`** · aspecto p50 `1,08`–`1,22`. ⚠️⚠️ **A cadeia de referência montada em 24/08 NÃO atinge esta barra no nosso corpus** — ela dá `9,1°`–`12,4°` e `5`–`6` faces péssimas. ⛔ **A barra é o oráculo, não a cadeia de referência**: bater `12°` seria copiar um resultado pior |
 | 9 | uma malha com **bordo** produz saída | a peça com 38 arestas de bordo do corpus |
 | 10 | uma malha de **género 1** produz saída com `χ = 0` | o toro do corpus |
 | 11 | ⛔ **o caminho antigo continua byte-idêntico** enquanto o interruptor estiver desligado | a lei desta linha: tudo o que é novo shipa **desligado** com a tabela ao lado |
@@ -427,9 +427,19 @@ transição legítima).
    nossa extração tem de resolver o bordo **sem gabarito**, e a §4 já diz como (a condição de
    aceitação relaxa quando o triângulo não tem vizinho do lado anti-horário).
 
-⚠️ **E um número para calibrar a ambição:** a extração da implementação de referência leva
-**segundos** numa peça de 2 404 triângulos e **não terminou em 900 s** numa de 6 768. ⇒ *o
-desempenho não vem de graça com o algoritmo; ele é obra nossa.*
+⚠️⚠️ **E dois números para calibrar a ambição, medidos no nosso corpus:**
+
+- **Robustez:** de **7** peças, a implementação de referência extraiu **4** (em `8–15 s`),
+  **recusou 1**, **estourou `900 s` em 1**, e **caiu com falha de segmentação** no toro
+  (género 1) — ⭐ **cujo mapa saiu perfeito**, logo o defeito é da extração.
+  ⛔ *Robustez é precisamente o que o método promete; a implementação de referência não a
+  entrega no nosso corpus.*
+- **Qualidade:** nas três que passaram ela dá `9,1°`–`12,4°` de enviesamento mediano, contra
+  `4,8°`–`7,1°` do oráculo de produção **nas mesmas peças**. ⇒ ⛔ **não copie o comportamento
+  dela; a barra é o oráculo** (gate nº8).
+- ⚠️ **A hipótese nomeada para essa diferença** é o **curl** do campo: o nosso é liso mas
+  nunca foi tornado integrável. ⇒ **medir e reduzir o curl é pré-condição**, não diagnóstico
+  opcional (§5-bis.5 da triagem).
 
 ---
 

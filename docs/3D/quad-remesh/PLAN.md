@@ -1621,15 +1621,23 @@ mesmo**, e o ótimo escolhe livremente.
 *O raciocínio do doc — «a qualidade de uma grade é uma RAZÃO» — está certo; sobre um
 custo LINEAR a implementação fica com o sinal invertido no regime de deviação grande.*
 
-### ⭐ A referência, lida no clone (MIT, `libs/satsuma` + `libs/quadretopology`)
+### ⭐ A referência, OBSERVADA no clone — comportamento, por fase
 
-| ficheiro | o que diz |
+⚠️ **Reescrito em 2026-08-24 (papel E do clean-room).** A versão anterior citava **cinco
+arquivos de fonte pelo nome e pela linha** e transcrevia uma assinatura com argumentos por
+omissão e duas expressões — o **fato** é lícito e fica ([SKILL_Cleanroom §4.1.2/§4.1.3](../../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md)),
+o **endereço interno e a transcrição** não (§4.2).
+⛔ **E a atribuição de licença estava ERRADA:** a fase de quantização por retalhos **não é
+MIT** — ela não traz licença própria e herda a **GPL-3.0** do projecto; só o solver de fluxo
+é que é MIT ([`TRIAGEM §2.1`](../cleanroom/TRIAGEM_quad_remesh.md)).
+
+| fase observada | o que ela FAZ |
 |---|---|
-| `CostFunction.hh` | três custos convexos: `AbsDeviation` `w|x−t|` · **`QuadDeviation` `w(x−t)²`** · `ScaleFactor` `w·max((x+ε)/(t+ε),(t+ε)/(x+ε))` |
-| `qr_flow.cpp:178` | `add_subside_edge(..., ObjectiveKind obj = ObjectiveKind::QuadraticDeviation, int lower=1)` — ⭐ **o default de TODA aresta de sub-lado é o QUADRÁTICO** |
-| `qr_flow.cpp:477` | `iso_weight / n_subsides` — ⭐ o peso **não** depende do alvo. *A relatividade vem do quadrático, não do peso.* |
-| `BiMDF_to_BiMCF.cc:120` | a escada: `arc_cost = (energy(guess+dev) − energy(guess+dev−1))` — **marginais**, `max_deviation = 2`, mais **um arco sem teto** com a marginal média dos 10 seguintes |
-| `Highlevel.cc:69` | dupla cobertura → **refinamento por matching**, repetido até o custo parar de descer; `refinement_maxdev_max = 2`, com o comentário *«2 always suffices for an exact solution»* |
+| catálogo de custos | três formas convexas: desvio **absoluto** `w·|x−t|` · **quadrático** `w·(x−t)²` · **fator de escala** `w·max((x+ε)/(t+ε), (t+ε)/(x+ε))` |
+| escolha por omissão | ⭐ **toda** aresta de sub-lado usa o **quadrático**, e o piso do intervalo é `1` |
+| o peso de isometria | ⭐ é o peso do arco **repartido pelo número de sub-lados**, e **não olha o alvo**. *A relatividade vem do quadrático, não do peso.* |
+| a escada de arcos | os custos são **marginais** — a diferença da energia entre um passo e o anterior — com desvio máximo `2`, mais **um arco sem tecto** que carrega a marginal **média dos dez seguintes** |
+| o refinamento | a relaxação por dupla cobertura alimenta um **refinamento por emparelhamento**, repetido até o custo parar de descer; o desvio máximo do refinamento é `2`, e os autores registam que `2` **basta sempre** para uma solução exacta |
 
 ⭐⭐ **A máquina para consumir um custo convexo JÁ ESTÁ NA NOSSA CRATE.**
 [`BiEdge::step_cost`](../../../crates/ph2d-quantize/src/network.rs) e

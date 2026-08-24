@@ -248,6 +248,42 @@ publica o campo do `ph2d-crossfield` no formato de intercâmbio dela.
 numa peça de `2 404` triângulos, **minutos sem terminar** numa de `6 768`. ⛔ Isso não
 invalida a qualidade; **é razão para não portar** (ADR-0164, razão 5).
 
+### §5-bis.3-ter — ⛔⛔⛔ E O CORPUS INTEIRO INVERTEU A CONCLUSÃO (mesma tarde)
+
+⚠️ **A varredura sobre o nosso corpus terminou DEPOIS de eu ter escrito o §5-bis.3-bis, e
+desmente-o no ponto que decidia.** Três peças nossas extraíram — e em **segundos**, não em
+minutos. Medidas com a **mesma** régua, contra a saída do **oráculo de produção na MESMA
+peça**:
+
+| peça | | ⭐ oráculo de produção | ⛔ a cadeia que montei | ⛔ o nosso F5 hoje |
+|---|---|---|---|---|
+| **enrugada** | enviesamento p50 · máx · `>60°` | **`4,8°`** · `34,6°` · **`0`** | `11,1°` · `82,1°` · `5` | `27°` · — · `9 159` |
+| **estriada** | idem | **`7,1°`** · `41,1°` · **`0`** | `12,4°` · `83,6°` · `5` | — |
+| **esfera uv** | idem | **`5,9°`** · `38,4°` · **`0`** | `9,1°` · `86,8°` · `6` | — |
+| | faces · quads | `3 352`–`4 696` · **`100%`** | `2 178`–`2 225` · `99,7–99,9%` | — |
+
+⛔⛔ **RETRACTADO:** a frase *«a rota da extracção ULTRAPASSA o oráculo de produção»* estava
+errada. Ela saiu de **uma** peça — **a deles** — e o corpus **nosso** diz o contrário: a
+cadeia que montei é **1,6× a 2,3×** o enviesamento mediano do oráculo, e produz faces com
+canto acima de `60°` onde ele produz **zero**.
+
+⭐ **O que SOBREVIVE, e continua a decidir:** contra o **nosso** preenchimento por patch a
+cadeia é **2–3× melhor** (`9–12°` contra `27°`), e as faces péssimas caem de **`9 159` para
+`5–6`**. ⇒ *a direcção continua certa; o que caiu foi a margem.*
+
+⚠️ **E a correcção reabre um portão que eu tinha fechado cedo demais.** O §5-bis.3-bis
+dizia que a medição de curl *«deixa de ser um portão»*, com base na jarra. ⛔ **Errado.** A
+diferença entre os nossos `9–12°` e os `5–7°` do oráculo é exactamente a classe de defeito
+que um campo **não integrável** produz — e o nosso campo é liso, mas **nunca teve o curl
+reduzido**. ⇒ **a §5-bis.5 volta a ser pré-condição.**
+
+⚠️ **A robustez também tem número agora:** de **7** peças nossas, **4** extraíram
+(`8–15 s`), **1** recusou, **1** estourou o tecto de `900 s` e **1** caiu com falha de
+segmentação (o toro, género 1 — ⭐ **cujo MAPA saiu bem**, logo o defeito é da extração, não
+da integração). ⛔ *Isto refuta a minha própria frase «é lenta na nossa escala»: em peças de
+27 360 triângulos ela leva 8–10 segundos.* **O problema não é velocidade, é robustez** — e
+robustez é precisamente o que o método promete resolver.
+
 ### §5-bis.4 — ⛔ Os QUATRO erros desta medição (a parte reutilizável)
 
 1. ⛔ **Alimentei uma biblioteca de triângulos com malhas de quadriláteros** — o corpus
@@ -314,6 +350,8 @@ Se não for, ela fica com **dois**, e o segundo vem primeiro.
 | ⛔ **Não portar a implementação de referência do emparelhamento (Blossom)** | ela **não é livre** — redistribuição proibida, licença comercial. É **T4**: reimplementar do *paper* é a única rota | §7.1 |
 | ⛔ **Não concluir «a extração é frágil»** | todas as quedas medidas estão **confundidas com um campo em que não se pode confiar** (o meu deu `5724` de curl onde o deles funciona) | §5-bis.3 |
 | ⛔ **Não usar a leitura de `curl` de uma peça sem restrições como prova** | balde vazio lê-se como perfeito (`1,47e-15`) | §5-bis.4 |
+| ⛔⛔ **Não anunciar um resultado medido numa peça DELES como se fosse do nosso corpus** | a jarra deu `3,0°` e o nosso corpus deu `9–12°`; a conclusão inverteu-se | §5-bis.3-ter |
+| ⛔ **Não dizer que a extração é «lenta na nossa escala»** | 8–10 s em peças de 27 360 triângulos; o defeito é **robustez** (3 de 7 falham), não velocidade | §5-bis.3-ter |
 
 ---
 

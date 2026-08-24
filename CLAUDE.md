@@ -512,10 +512,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   acertar são coisas diferentes*). ⇒ **A distorção nasce entre o DOMÍNIO e a SUPERFÍCIE**: mesmo com F3,
   marcação e domínio perfeitos, o preenchimento por patch fica em `15°` (o oráculo faz `6°`) — a mesma
   diferença de classe, local contra global, que motivou o pivô, um nível abaixo. **A obra seguinte é a
-  EXTRACÇÃO, e em 2026-08-24 ela deixou de ser aposta: MEDIDA.** ⭐⭐⭐ O **nosso** campo, numa cadeia
-  por extracção, dá enviesamento mediano **`3,0°`** — contra `6°` do oráculo de produção e **`27°`** do
-  nosso preenchimento por patch; e o nosso campo bate o da biblioteca de referência (`3,0°` vs `5,0°`),
-  ⇒ o F2 está ilibado por **resultado**, não só por contagem de singularidades. Decisão em
+  EXTRACÇÃO, e em 2026-08-24 ela deixou de ser aposta: MEDIDA.** ⭐⭐ Uma cadeia por extracção, com o **nosso**
+  campo, dá **`9°`–`12°`** de enviesamento mediano no nosso corpus — **2–3× melhor** que os **`27°`** do
+  nosso preenchimento por patch, e as faces péssimas caem de **`9 159` para `5–6`**. ⚠️⚠️ **Ela ainda NÃO
+  bate o oráculo de produção** (`4,8°`–`7,1°` nas mesmas peças, com **zero** faces péssimas) — ⛔ *a barra é
+  ele.* ⚠️ **A hipótese nomeada para a diferença é o CURL do nosso campo** (liso, nunca tornado
+  integrável) ⇒ medi-lo e reduzi-lo é **pré-condição**. ⭐ O campo em si ganha ao da biblioteca de
+  referência (`3,0°` vs `5,0°`) ⇒ o F2 está ilibado por **resultado**. Decisão em
   [ADR-0164](docs/architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md):
   **clean-room dos papers; a biblioteca MPL-2.0 fica FORA, como oráculo** (⛔ não se porta — obrigaria a
   publicar arquivos no subsistema mais valioso, e a extração dela não termina na nossa escala). Espec

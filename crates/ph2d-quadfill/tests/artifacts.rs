@@ -309,8 +309,8 @@ fn which_arc_weight_law_protects_the_grid() {
         println!("── {name} ──");
         // ⭐ **As duas FORMAS × os expoentes de peso.** A forma decide se a
         // marginal cresce (⇒ espalhar) ou é constante (⇒ indiferente); o expoente
-        // decide quem paga. ⚠️ A referência (`qr_flow.cpp`) é **`Quad` com
-        // expoente 0** — peso que não olha o alvo.
+        // decide quem paga. ⚠️ A referência usa a forma **`Quad` com expoente 0**
+        // (observado) — peso que **não olha o alvo**.
         for (law, kind, w) in [
             ("abs   |x-t|", ph2d_quantize::Deviation::Abs, 0.0f32),
             ("abs   /t", ph2d_quantize::Deviation::Abs, -1.0),

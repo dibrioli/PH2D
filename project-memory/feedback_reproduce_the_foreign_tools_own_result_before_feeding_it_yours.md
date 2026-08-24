@@ -47,9 +47,22 @@ o nosso campo foi ilibado por **contagem de singularidades**, nunca por curl. *U
 propriedade que ninguém mediu não está ilibada* —
 [[feedback_ask_what_number_the_opposite_answer_would_print]].
 
+⛔⛔ **E a lição que custou uma RETRACTAÇÃO no mesmo dia:** depois de a fazer correr, medi-a
+na peça **DELA** — `3,0°` de enviesamento, melhor que o oráculo de produção — e **anunciei-o**.
+A varredura sobre o **nosso corpus** terminou depois e disse `9°`–`12°`: a cadeia é **1,6×–2,3×
+pior** que o oráculo, não melhor. ⇒ *uma medição na peça deles não prevê a peça nossa, e a
+manchete tem de esperar pelo corpus.*
+⚠️ **E a retractação arrastou outra:** eu escrevera *«é lenta na nossa escala»* a partir de
+uma peça que travou; no corpus ela leva **8–10 s** em malhas de 27 mil triângulos e **falha em
+3 de 7**. *O defeito não era velocidade, era robustez — e eu tinha nomeado o eixo errado.*
+
 **How to apply:**
 1. **Corra o exemplo dela, com os dados dela, primeiro.** Se não reproduzir, pare: o
    problema é o ambiente, e nada a jusante vale.
 2. **Troque um insumo de cada vez**, e nomeie qual.
 3. **Leia os pré-requisitos de entrada de cada fase** antes de acusar a fase.
 4. **Toda coluna de diagnóstico precisa da contagem da amostra ao lado.**
+5. ⭐⭐ **Não anuncie antes do CORPUS.** Uma peça é uma amostra; a conclusão que ela sustenta é
+   *«funciona»*, nunca *«é melhor que X»*.
+6. ⭐ **Nomeie o EIXO do defeito só depois de o corpus o separar.** «Lento» e «frágil» leem-se
+   iguais numa peça que trava, e prescrevem obras diferentes.

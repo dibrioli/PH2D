@@ -86,6 +86,23 @@ alvo conta a mais.*
 
 ---
 
+## §2-bis — ⭐ ESTADO em 2026-08-24 (fim da jornada): a família do quad remesh está a ZERO
+
+| família do alvo | antes | ⭐ agora | como |
+|---|---|---|---|
+| **quad remesh** (GPL-3.0) | 13 citações, **4 com transcrição** | ⭐⭐ **ZERO na árvore rastreada** | as duas em código (`ph2d-quantize`, `ph2d-quadfill`) e a tabela do `PLAN.md` foram **re-expressas em comportamento por fase**; ⛔ e a atribuição de licença da tabela estava **errada** — a fase de quantização por retalhos **não é MIT**, herda GPL-3.0 |
+| **Blender** (GPL-2.0-or-later) | ~420 citações, ~21 com transcrição | ⚠️ **inalterado** | Classe A é higiene com custo de rastreabilidade (§3.3); a Classe B dele continua na lista do §2 |
+| **memória** (`project-memory/`) | 2 | ⭐ **1** — e o que resta é de alvo **MIT**, onde citar é lícito | a nota do Painter foi curada |
+
+⛔⛔ **Não leia «zero» como «o repo está limpo».** A vassoura cobre **uma** família — a do
+quad remesh. *Um sweep verde vale exactamente o que a vassoura contém.* A cura da família
+Blender exige a vassoura dela, e essa ainda não existe.
+
+⚠️ **E a vassoura encolheu de 24 para 21 entradas, de propósito:** três eram **interface
+pública** (opção de build, nomes de binário de linha de comando) que o **nosso próprio
+runbook tem de falar** — mantê-las fazia o instrumento reprovar sobre documentação correcta.
+*Um detector que não pergunta o estatuto do nome conta a mais.*
+
 ## §3 — ⛔ A prioridade que não é a maior contagem
 
 | # | alvo da cura | quantidade | por quê primeiro |

@@ -132,9 +132,10 @@ pub enum Deviation {
     /// de cada lado do alvo, então mover a primeira unidade custa o mesmo que mover
     /// a décima: *esmagar e espalhar custam exactamente o mesmo.*
     Abs,
-    /// `w·(x − t)²` — o `QuadDeviation` da referência, e ⭐ **o default de toda
-    /// aresta de sub-lado no `qr_flow.cpp` do QuadWild** (`add_subside_edge`, com
-    /// `ObjectiveKind obj = ObjectiveKind::QuadraticDeviation`).
+    /// `w·(x − t)²` — o desvio **quadrático**, e ⭐ **a escolha por omissão de
+    /// toda aresta de sub-lado na referência** (observado, 2026-08-24; o catálogo
+    /// dela tem três formas convexas e esta é a que a montagem usa).
+    /// Detalhe: `docs/3D/quad-remesh/PLAN.md`, secção *A referência, OBSERVADA*.
     #[default]
     Quad,
     /// `w·max((x+ε)/(t+ε), (t+ε)/(x+ε))` — o `ScaleFactor` da referência.

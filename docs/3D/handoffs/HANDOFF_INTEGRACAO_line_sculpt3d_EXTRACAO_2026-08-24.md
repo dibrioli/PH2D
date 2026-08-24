@@ -22,16 +22,20 @@
 
 Régua: `ph2d_quadfill::QuadShape` (espelho em Python, no arnês).
 
-| grandeza | ⭐ **nosso campo + extracção** | campo da biblioteca | oráculo de produção | ⛔ nosso F5 hoje |
-|---|---|---|---|---|
-| **enviesamento p50** | ⭐⭐ **`3,0°`** | `5,0°` | `6°` | ⛔ **`27°`** |
-| enviesamento máx | `29,6°` | `43,3°` | — | — |
-| canto pior que 60° | **`0`** | `0` | `0` | ⛔ **`9 159`** |
-| aspecto p50 | `1,06` | `1,13` | `1,08` | `1,98` |
+**Nas NOSSAS peças**, mesma régua, contra o oráculo **na mesma peça**:
 
-⭐⭐⭐ **Duas coisas de uma vez:** a rota da extracção **ultrapassa** o oráculo de produção, e
-**o nosso campo é melhor que o da referência** — o F2 estava ilibado por contagem de
-singularidades e passa a estar por **resultado**.
+| peça | ⭐ oráculo de produção | ⛔ a cadeia de referência | ⛔ nosso F5 hoje |
+|---|---|---|---|
+| enrugada | **`4,8°`** · `0` faces `>60°` | `11,1°` · `5` | `27°` · `9 159` |
+| estriada | **`7,1°`** · `0` | `12,4°` · `5` | — |
+| esfera uv | **`5,9°`** · `0` | `9,1°` · `6` | — |
+
+⭐ **A direcção decide-se aqui:** contra o nosso preenchimento por patch a rota é **2–3×
+melhor**, e as faces péssimas caem de **`9 159` para `5–6`**.
+⛔⛔ **E o que NÃO se pode dizer:** que ela ultrapassa o oráculo. Uma medição na peça **deles**
+deu `3,0°` e eu anunciei-o; o corpus **nosso** inverteu. ⇒ **a barra é o oráculo.**
+⭐⭐ **O nosso campo ganha ao da biblioteca** (`3,0°` vs `5,0°`) ⇒ F2 ilibado por resultado.
+⚠️ **Mas o CURL dele é pré-condição** — é a classe de defeito que explica `9–12°` contra `5–7°`.
 
 ## §3 — ⛔ O que NÃO se deve reconstruir
 

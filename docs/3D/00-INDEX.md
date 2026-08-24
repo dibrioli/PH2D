@@ -149,3 +149,16 @@ de a wave ter integrado faz a próxima LLM desconfiar de um verde legítimo.
   divergir de qualquer nota daqui.
 - [`CLAUDE.md`](../../CLAUDE.md) — o roteador operacional do projeto inteiro.
 - [`SKILL_Stack_PH2D_Definitiva.md`](../../SKILL_Stack_PH2D_Definitiva.md) — as Hard Rules (HR-1..HR-18).
+
+## `cleanroom/` — a proveniência de reimplementação de código restrito
+
+⚠️ **Leia a TRIAGEM antes de propor qualquer obra sobre o quad remesh** — ela mede em que
+degrau da escada de licenças cada fase está, e o veredito de 2026-08-24 foi **T0½, não T2**.
+
+- [`cleanroom/TRIAGEM_quad_remesh.md`](cleanroom/TRIAGEM_quad_remesh.md) — a escada de portas
+  medida por fase (⭐ o arredondamento inteiro e a extração existem sob **MPL-2.0**), a busca
+  de patente cumprida, e as três rotas com preço.
+- [`cleanroom/ACHADO_proveniencia_por_nome_interno.md`](cleanroom/ACHADO_proveniencia_por_nome_interno.md)
+  — ⛔ o achado do sweep: ~460 notas do repo **inteiro** citam fonte interno de alvo restrito,
+  25 delas com transcrição. **Zero fonte de alvo na árvore.**
+- ⛔ `cleanroom/LEDGER_*` e `cleanroom/VASSOURA_*` — **o Implementador NUNCA os abre**.

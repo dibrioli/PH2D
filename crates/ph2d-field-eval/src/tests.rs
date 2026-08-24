@@ -2549,3 +2549,600 @@ fn the_specialisation_gives_up_under_every_modifier_that_remaps_coordinates() {
         "acrescentou um modificador? decida se ele dobra o domínio e ponha-o nesta lista"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// W56f — a AUDITORIA de `‖∇f‖`: quem infla o gradiente, e quem não infla
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Um contorno de `n` lados, raio `r`, para as formas de perfil.
+fn ring(n: usize, r: f64) -> Vec<[f32; 2]> {
+    (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(r * a.cos()) as f32, (r * a.sin()) as f32]
+        })
+        .collect()
+}
+
+/// O **maior `‖∇f‖`** deste documento, sobre uma grelha densa da caixa `[-e, e]³`.
+///
+/// ⚠️ **Uma quina não dá falso positivo.** Numa aresta convexa a distância é exacta e `‖∇f‖ = 1`;
+/// num vinco côncavo (e no eixo medial, lá dentro) a derivada não existe e a diferença central lê
+/// **menos** que 1. O que esta sonda caça é o contrário: uma região **lisa** onde o campo sobe mais
+/// depressa que a distância — que é o que faz a marcha atravessar a superfície.
+fn worst_gradient(doc: &FieldDoc, e: f64, steps: usize) -> f64 {
+    let f = Field::new(doc);
+    let eps = 1e-4;
+    let mut worst = 0.0f64;
+    for i in 0..steps {
+        for j in 0..steps {
+            for k in 0..steps {
+                let p = |t: usize| -e + 2.0 * e * (t as f64 + 0.5) / steps as f64;
+                let g = f.gradient_norm(p(i), p(j), p(k), eps);
+                if g.is_finite() {
+                    worst = worst.max(g);
+                }
+            }
+        }
+    }
+    worst
+}
+
+fn leafs(prim: Primitive) -> FieldDoc {
+    FieldDoc::new(vec![leaf(prim, Xform::IDENTITY)], NodeId(0)).expect("a peça")
+}
+
+fn modded(prim: Primitive, m: ph2d_field::Unary) -> FieldDoc {
+    let mut n = leaf(prim, Xform::IDENTITY);
+    n.mods.push(m);
+    FieldDoc::new(vec![n], NodeId(0)).expect("a peça")
+}
+
+fn pair(op: Op) -> FieldDoc {
+    FieldDoc::new(
+        vec![
+            leaf(
+                Primitive::Box {
+                    half: [0.6, 0.3, 0.3],
+                    round: 0.0,
+                },
+                Xform::at(-0.2, 0.0, 0.0),
+            ),
+            leaf(
+                Primitive::Box {
+                    half: [0.3, 0.6, 0.3],
+                    round: 0.0,
+                },
+                Xform::at(0.2, 0.0, 0.0),
+            ),
+            combine(op, vec![NodeId(0), NodeId(1)]),
+        ],
+        NodeId(2),
+    )
+    .expect("a peça")
+}
+
+/// ⭐⭐⭐ **A AUDITORIA: quem infla `‖∇f‖`** (W56f) — a tabela que o passo da marcha lê.
+///
+/// A marcha anda `d · SAFE_STEP` com `SAFE_STEP = 1/√2`, e o número é o recíproco de uma constante
+/// **medida na W0**: `‖∇f‖` chega a `√2` no arredondamento exacto. ⚠️ Mas o `Xform::scale` deste
+/// módulo é **uniforme de propósito** e o doc dele já diz porquê — *"‖∇f‖ = 1 é a fundação de tudo
+/// neste módulo"*. Se quase todo construtor honra a fundação, então o passo curto é **o caminho
+/// mais lento a definir o teto do mais rápido**, que é o que o `CLAUDE.md` §0 proíbe.
+///
+/// Esta sonda mede, construtor a construtor, quem de facto infla.
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::the_table_of_who_inflates_the_gradient --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_who_inflates_the_gradient() {
+    use ph2d_field::{FillRule, Profile, Unary};
+    let profile = Profile::new(vec![ring(24, 0.5)], FillRule::NonZero, 1e-3).expect("perfil");
+    let bx = Primitive::Box {
+        half: [0.4, 0.3, 0.25],
+        round: 0.0,
+    };
+    let cases: Vec<(&str, FieldDoc)> = vec![
+        ("Box", leafs(bx.clone())),
+        (
+            "Box round=0,1",
+            leafs(Primitive::Box {
+                half: [0.4, 0.3, 0.25],
+                round: 0.1,
+            }),
+        ),
+        ("Sphere", leafs(Primitive::Sphere { radius: 0.5 })),
+        (
+            "Cylinder",
+            leafs(Primitive::Cylinder {
+                radius: 0.4,
+                half_height: 0.3,
+                round: 0.0,
+            }),
+        ),
+        (
+            "Cylinder round=0,1",
+            leafs(Primitive::Cylinder {
+                radius: 0.4,
+                half_height: 0.3,
+                round: 0.1,
+            }),
+        ),
+        (
+            "Torus",
+            leafs(Primitive::Torus {
+                major: 0.4,
+                minor: 0.15,
+            }),
+        ),
+        (
+            "Extrude",
+            leafs(Primitive::Extrude {
+                profile: profile.clone(),
+                half_height: 0.25,
+                round: 0.0,
+            }),
+        ),
+        (
+            "Extrude round=0,1",
+            leafs(Primitive::Extrude {
+                profile: profile.clone(),
+                half_height: 0.25,
+                round: 0.1,
+            }),
+        ),
+        (
+            "Revolve",
+            leafs(Primitive::Revolve {
+                profile: Profile::new(
+                    vec![vec![[0.2, -0.3], [0.5, -0.3], [0.5, 0.3], [0.2, 0.3]]],
+                    FillRule::NonZero,
+                    1e-3,
+                )
+                .expect("perfil"),
+            }),
+        ),
+        ("Union Sharp", pair(Op::Union(Blend::Sharp))),
+        ("Intersect Sharp", pair(Op::Intersection(Blend::Sharp))),
+        ("Difference Sharp", pair(Op::Difference(Blend::Sharp))),
+        (
+            "Union Exact r=0,1",
+            pair(Op::Union(Blend::Exact { radius: 0.1 })),
+        ),
+        (
+            "Intersect Exact r=0,1",
+            pair(Op::Intersection(Blend::Exact { radius: 0.1 })),
+        ),
+        (
+            "Difference Exact r=0,1",
+            pair(Op::Difference(Blend::Exact { radius: 0.1 })),
+        ),
+        (
+            "Union Organic k=0,2",
+            pair(Op::Union(Blend::Organic { k: 0.2 })),
+        ),
+        (
+            "Intersect Organic k=0,2",
+            pair(Op::Intersection(Blend::Organic { k: 0.2 })),
+        ),
+        (
+            "Difference Organic k=0,2",
+            pair(Op::Difference(Blend::Organic { k: 0.2 })),
+        ),
+        (
+            "Shell t=0,05",
+            modded(bx.clone(), Unary::Shell { thickness: 0.05 }),
+        ),
+        (
+            "Offset d=0,1",
+            modded(bx.clone(), Unary::Offset { distance: 0.1 }),
+        ),
+        ("Mirror", modded(bx.clone(), Unary::Mirror)),
+        (
+            "Array 3x0,5",
+            modded(
+                bx.clone(),
+                Unary::Array {
+                    count: 3,
+                    spacing: 0.5,
+                },
+            ),
+        ),
+        ("Radial 5", modded(bx.clone(), Unary::Radial { count: 5 })),
+        ("Taper 0,3", modded(bx.clone(), Unary::Taper { slope: 0.3 })),
+        (
+            "escala 0,4",
+            FieldDoc::new(
+                vec![leaf(
+                    bx.clone(),
+                    Xform {
+                        scale: 0.4,
+                        ..Xform::IDENTITY
+                    },
+                )],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+    ];
+    println!("construtor | pior ‖∇f‖");
+    for (name, doc) in cases {
+        println!("{name:>24} | {:.4}", worst_gradient(&doc, 1.0, 48));
+    }
+}
+
+/// ⭐⭐⭐ **A auditoria VARRIDA nos parâmetros** (W56f) — porque um valor não é uma família.
+///
+/// ⚠️ A tabela de [`the_table_of_who_inflates_the_gradient`] mede **um** valor por construtor, e um
+/// valor não prova nada sobre a família: o `Taper` a `slope = 0,3` lê `0,94`, e a pergunta é se ele
+/// passa de `1` mais acima. *Uma fixtura que não contém o fenómeno mede outra coisa* — foi o erro
+/// pago quatro vezes na W56.
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::the_table_of_the_gradient_across_the_parameter --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_the_gradient_across_the_parameter() {
+    use ph2d_field::{FillRule, Profile, Unary};
+    let bx = Primitive::Box {
+        half: [0.4, 0.3, 0.25],
+        round: 0.0,
+    };
+    let show = |name: &str, vals: Vec<(String, FieldDoc)>| {
+        let cells: Vec<String> = vals
+            .into_iter()
+            .map(|(v, d)| format!("{v}:{:.3}", worst_gradient(&d, 1.0, 40)))
+            .collect();
+        println!("{name:>22} | {}", cells.join("  "));
+    };
+    show(
+        "Taper slope",
+        [0.0f32, 0.2, 0.5, 1.0, 2.0, 4.0]
+            .into_iter()
+            .map(|s| {
+                (
+                    format!("{s}"),
+                    modded(bx.clone(), Unary::Taper { slope: s }),
+                )
+            })
+            .collect(),
+    );
+    show(
+        "Radial count",
+        [2u32, 3, 5, 8, 16, 64]
+            .into_iter()
+            .map(|c| {
+                (
+                    format!("{c}"),
+                    modded(bx.clone(), Unary::Radial { count: c }),
+                )
+            })
+            .collect(),
+    );
+    show(
+        "Array spacing",
+        [0.1f32, 0.3, 0.5, 1.0]
+            .into_iter()
+            .map(|s| {
+                (
+                    format!("{s}"),
+                    modded(
+                        bx.clone(),
+                        Unary::Array {
+                            count: 4,
+                            spacing: s,
+                        },
+                    ),
+                )
+            })
+            .collect(),
+    );
+    show(
+        "Shell thickness",
+        [0.01f32, 0.05, 0.2, 0.5]
+            .into_iter()
+            .map(|t| {
+                (
+                    format!("{t}"),
+                    modded(bx.clone(), Unary::Shell { thickness: t }),
+                )
+            })
+            .collect(),
+    );
+    show(
+        "Union Exact r",
+        [0.0f32, 0.02, 0.1, 0.3, 0.6]
+            .into_iter()
+            .map(|r| (format!("{r}"), pair(Op::Union(Blend::Exact { radius: r }))))
+            .collect(),
+    );
+    show(
+        "Difference Exact r",
+        [0.0f32, 0.02, 0.1, 0.3, 0.6]
+            .into_iter()
+            .map(|r| {
+                (
+                    format!("{r}"),
+                    pair(Op::Difference(Blend::Exact { radius: r })),
+                )
+            })
+            .collect(),
+    );
+    show(
+        "Union Organic k",
+        [0.0f32, 0.05, 0.2, 0.6, 1.2]
+            .into_iter()
+            .map(|k| (format!("{k}"), pair(Op::Union(Blend::Organic { k }))))
+            .collect(),
+    );
+    show(
+        "Difference Organic k",
+        [0.0f32, 0.05, 0.2, 0.6, 1.2]
+            .into_iter()
+            .map(|k| (format!("{k}"), pair(Op::Difference(Blend::Organic { k }))))
+            .collect(),
+    );
+    show(
+        "Extrude round",
+        [0.0f32, 0.05, 0.15, 0.24]
+            .into_iter()
+            .map(|r| {
+                (
+                    format!("{r}"),
+                    leafs(Primitive::Extrude {
+                        profile: Profile::new(vec![ring(24, 0.5)], FillRule::NonZero, 1e-3)
+                            .expect("perfil"),
+                        half_height: 0.25,
+                        round: r,
+                    }),
+                )
+            })
+            .collect(),
+    );
+    show(
+        "escala",
+        [0.2f32, 0.5, 1.0, 2.0, 4.0]
+            .into_iter()
+            .map(|s| {
+                (
+                    format!("{s}"),
+                    FieldDoc::new(
+                        vec![leaf(
+                            bx.clone(),
+                            Xform {
+                                scale: s,
+                                ..Xform::IDENTITY
+                            },
+                        )],
+                        NodeId(0),
+                    )
+                    .expect("a peça"),
+                )
+            })
+            .collect(),
+    );
+}
+
+/// ⭐⭐⭐ **O PASSO VEZES O PIOR GRADIENTE NUNCA PASSA DE 1** (W56f) — o invariante da marcha.
+///
+/// ⛔ **É o gate que impede a peça de FURAR.** A marcha de esferas anda `d · s`, e ela só é segura
+/// enquanto `s · ‖∇f‖ ≤ 1`: acima disso o passo é maior que a distância até à superfície, o raio
+/// atravessa-a, e o sintoma é pixel de fundo no meio da peça. ⚠️ Errar a classificação de um
+/// construtor **não fica lento — fura**.
+///
+/// ⚠️ **Ele mede o produto dos DOIS lados**, e é isso que o torna um gate e não uma tabela: a
+/// [`crate::safe_march_step`] classifica, a [`worst_gradient`] mede, e o que se afirma é a relação
+/// entre elas. Um construtor novo que infle e não seja classificado reprova aqui.
+///
+/// ⚠️ **E cada família é varrida no parâmetro** — a `Difference Exact` lê `1,000` **exacto** a
+/// `r = 0,1` e `1,143` a `r = 0,6`. *Um valor não é uma família, e foi a fixtura de um valor só que
+/// quase deixou passar esta.*
+#[test]
+fn the_step_times_the_worst_gradient_never_exceeds_one() {
+    use ph2d_field::{FillRule, Profile, Unary};
+    let bx = Primitive::Box {
+        half: [0.4, 0.3, 0.25],
+        round: 0.0,
+    };
+    let mut cases: Vec<(String, FieldDoc)> = Vec::new();
+    for r in [0.0f32, 0.1] {
+        cases.push((
+            format!("Box round={r}"),
+            leafs(Primitive::Box {
+                half: [0.4, 0.3, 0.25],
+                round: r,
+            }),
+        ));
+        cases.push((
+            format!("Cylinder round={r}"),
+            leafs(Primitive::Cylinder {
+                radius: 0.4,
+                half_height: 0.3,
+                round: r,
+            }),
+        ));
+        cases.push((
+            format!("Extrude round={r}"),
+            leafs(Primitive::Extrude {
+                profile: Profile::new(vec![ring(24, 0.5)], FillRule::NonZero, 1e-3)
+                    .expect("perfil"),
+                half_height: 0.25,
+                round: r,
+            }),
+        ));
+    }
+    cases.push(("Sphere".into(), leafs(Primitive::Sphere { radius: 0.5 })));
+    cases.push((
+        "Torus".into(),
+        leafs(Primitive::Torus {
+            major: 0.4,
+            minor: 0.15,
+        }),
+    ));
+    cases.push((
+        "Revolve".into(),
+        leafs(Primitive::Revolve {
+            profile: Profile::new(
+                vec![vec![[0.2, -0.3], [0.5, -0.3], [0.5, 0.3], [0.2, 0.3]]],
+                FillRule::NonZero,
+                1e-3,
+            )
+            .expect("perfil"),
+        }),
+    ));
+    // ⚠️ As três operações × os três caracteres × a faixa do número — é aqui que a
+    // `Difference Exact` mora, e ela só aparece com `r` grande.
+    for (on, op) in [("Union", 0u8), ("Intersect", 1), ("Difference", 2)] {
+        for r in [0.0f32, 0.02, 0.1, 0.3, 0.6] {
+            for (bn, b) in [
+                ("Sharp", Blend::Sharp),
+                ("Exact", Blend::Exact { radius: r }),
+                ("Organic", Blend::Organic { k: r * 2.0 }),
+            ] {
+                if bn == "Sharp" && r != 0.0 {
+                    continue;
+                }
+                let o = match op {
+                    0 => Op::Union(b),
+                    1 => Op::Intersection(b),
+                    _ => Op::Difference(b),
+                };
+                cases.push((format!("{on} {bn} {r}"), pair(o)));
+            }
+        }
+    }
+    for s in [0.0f32, 0.2, 0.5, 1.0, 2.0, 4.0] {
+        cases.push((
+            format!("Taper {s}"),
+            modded(bx.clone(), Unary::Taper { slope: s }),
+        ));
+    }
+    for c in [2u32, 3, 5, 8, 16, 64] {
+        cases.push((
+            format!("Radial {c}"),
+            modded(bx.clone(), Unary::Radial { count: c }),
+        ));
+    }
+    for sp in [0.1f32, 0.3, 0.5, 1.0] {
+        cases.push((
+            format!("Array {sp}"),
+            modded(
+                bx.clone(),
+                Unary::Array {
+                    count: 4,
+                    spacing: sp,
+                },
+            ),
+        ));
+    }
+    for t in [0.01f32, 0.05, 0.2, 0.5] {
+        cases.push((
+            format!("Shell {t}"),
+            modded(bx.clone(), Unary::Shell { thickness: t }),
+        ));
+    }
+    for d in [-0.1f32, 0.0, 0.1, 0.3] {
+        cases.push((
+            format!("Offset {d}"),
+            modded(bx.clone(), Unary::Offset { distance: d }),
+        ));
+    }
+    cases.push(("Mirror".into(), modded(bx.clone(), Unary::Mirror)));
+    for sc in [0.2f32, 0.5, 1.0, 2.0, 4.0] {
+        cases.push((
+            format!("escala {sc}"),
+            FieldDoc::new(
+                vec![leaf(
+                    bx.clone(),
+                    Xform {
+                        scale: sc,
+                        ..Xform::IDENTITY
+                    },
+                )],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ));
+    }
+
+    // ⚠️ A folga é da DIFERENÇA CENTRAL, não do produto: a sonda mede `‖∇f‖` com `eps = 1e-4` sobre
+    // um campo avaliado em `f32`, e o ruído de cancelamento não é zero.
+    const SLACK: f64 = 1.02;
+    let (mut worst_ratio, mut worst_name) = (0.0f64, String::new());
+    let mut long_step = 0usize;
+    // ⭐⭐ **A afirmação tem DOIS lados, e um só não a prende.** *Segura*: o passo vezes o gradiente
+    // nunca passa de 1 — quem falha isto fura a peça. *Justa*: um documento cujo gradiente **não**
+    // passa de 1 tem de receber o passo inteiro — quem falha isto castiga quem não usa a feature,
+    // que é o defeito que esta wave veio curar. ⛔ Uma mutação que marcava o `Organic` como
+    // inflador **sobreviveu** ao lado seguro sozinho: ela só torna a marcha mais lenta.
+    //
+    // ⚠️ **A metade justa NÃO se pergunta da família `Exact`**, e o motivo é uma medição: ela infla
+    // `1,4142` em `Union`/`Intersection` a **todo** `r > 0`, e `1,143` na `Difference` a `r = 0,6`.
+    // Que a `Difference` leia `1,000` **exacto** a `r = 0,1` é facto da FIXTURA, não do construtor —
+    // outra geometria com o mesmo `r` pode inflar. *Classificar um construtor pelo valor que uma
+    // fixtura lhe deu é o mesmo erro que esta wave pagou quatro vezes.* O que fica gateado é que a
+    // reserva é **merecida**: as duas operações abaixo têm de medir acima de `1,2`.
+    let mut too_shy: Vec<String> = Vec::new();
+    let has_exact = |d: &FieldDoc| {
+        d.nodes().iter().any(|n| {
+            matches!(&n.kind, NodeKind::Combine { op, .. }
+                if matches!(op.blend(), Blend::Exact { radius } if radius != 0.0))
+        })
+    };
+    for (name, doc) in &cases {
+        let step = f64::from(crate::safe_march_step(doc));
+        assert!(step > 0.0 && step <= 1.0, "{name}: passo absurdo ({step})");
+        if step > 0.99 {
+            long_step += 1;
+        }
+        let grad = worst_gradient(doc, 1.0, 32);
+        let ratio = step * grad;
+        if ratio > worst_ratio {
+            worst_ratio = ratio;
+            worst_name = name.clone();
+        }
+        if grad <= SLACK && step <= 0.99 && !has_exact(doc) {
+            too_shy.push(format!("{name} (‖∇f‖ = {grad:.3})"));
+        }
+    }
+    assert!(
+        worst_ratio <= SLACK,
+        "{worst_name}: passo × ‖∇f‖ = {worst_ratio:.4} > {SLACK} — a marcha atravessa a superfície \
+         neste documento, e o sintoma é pixel de fundo no meio da peça"
+    );
+    assert!(
+        too_shy.is_empty(),
+        "{} documentos honram ‖∇f‖ ≤ 1 e mesmo assim levam o passo curto: {} — a classificação \
+         está a castigar quem não infla",
+        too_shy.len(),
+        too_shy.join(", ")
+    );
+    // ⭐ **E a reserva da família `Exact` é MERECIDA, não superstição** — senão o passo curto dela
+    // seria uma cerca sem medição atrás, que é o estado de que esta wave veio tirar o módulo.
+    for (name, doc) in [
+        ("Union Exact", pair(Op::Union(Blend::Exact { radius: 0.1 }))),
+        (
+            "Intersect Exact",
+            pair(Op::Intersection(Blend::Exact { radius: 0.1 })),
+        ),
+    ] {
+        let g = worst_gradient(&doc, 1.0, 32);
+        assert!(
+            g > 1.2,
+            "{name}: ‖∇f‖ = {g:.4} — se o arredondamento exacto deixou de inflar, o passo curto \
+             dele deixou de ter motivo, e a `safe_march_step` está a castigar sem medição atrás"
+        );
+    }
+    // …e o CONTROLE: se toda a gente ficasse no passo curto, o gate acima passaria sem provar nada.
+    assert!(
+        long_step * 2 >= cases.len(),
+        "só {long_step} de {} documentos ganharam o passo inteiro — ou a classificação ficou \
+         conservadora demais, ou o gate deixou de medir o que a wave construiu",
+        cases.len()
+    );
+}

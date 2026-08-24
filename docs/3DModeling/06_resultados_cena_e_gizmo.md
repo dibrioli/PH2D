@@ -5060,6 +5060,104 @@ por natureza. *A paridade prova a IMAGEM; a tabela prova o PREÇO.*
 - ⏸️ O tecto do `MAX_PROFILE_RESOLUTION = 16` foi derivado com o custo **antigo** e pede recontagem.
 - ⏸️ A marcha ficou ~2,4× mais cara que na W3 e ninguém explicou porquê (herdado da W54).
 
+## §59 — W56f: o passo da marcha é do DOCUMENTO, não uma constante (24/08)
+
+> A W56e deixou isto ⏸️ com o preço medido (`1,16×`) e a razão de não shipar escrita: *"falta a
+> AUDITORIA dos operadores — errar isto não fica lento: **fura a peça**"*. Esta wave é a auditoria.
+
+### §59.1 — A pergunta, e por que ela é de `CLAUDE.md` §0
+
+A marcha de esferas anda `d · s` e é segura enquanto `s · ‖∇f‖ ≤ 1`. O traçador andava `1/√2` **em
+todo documento**, e o número é o recíproco de uma constante medida na W0: `‖∇f‖ = √2` no
+arredondamento **exacto**.
+
+⚠️ Mas o `Xform::scale` deste módulo é **uniforme de propósito**, e o doc-comment dele já escrevia a
+fundação: *"‖∇f‖ = 1 destrói-se com escala não-uniforme, e ela é a fundação de tudo neste módulo"*.
+⇒ se quase todo construtor honra a fundação, o passo curto é **o caminho mais lento a definir o teto
+do mais rápido**, que é a primeira coisa que o §0 proíbe.
+
+### §59.2 — A auditoria, medida construtor a construtor
+
+Pior `‖∇f‖` sobre uma grelha de 48³ (`the_table_of_who_inflates_the_gradient` + a varredura irmã):
+
+| construtor | pior `‖∇f‖` |
+|---|---|
+| as 6 primitivas, com e sem `round` | `1,000` |
+| `Union` / `Intersection` / `Difference` **`Sharp`** | `1,000` |
+| `Shell` (`0,01`–`0,5`) · `Offset` · `Mirror` | `1,000` |
+| `Array` (espaçamento `0,1`–`1,0`) · `Radial` (2–64 cópias) | `1,000` |
+| `Organic` (`k` de `0` a `1,2`), nas três operações | `1,000` |
+| escala uniforme (`0,2`–`4,0`) | `1,000` |
+| **`Taper`** (declive `0` a `4`) | `1,000` → **`0,844`** |
+| ⛔ **`Union` / `Intersection` `Exact`**, todo `r > 0` | **`1,4142`** |
+| ⛔ **`Difference` `Exact`** | `1,000` até `r = 0,1`, **`1,143`** a `r = 0,6` |
+
+⭐ **Três achados:**
+
+1. **Só o arredondamento exacto infla** — e exactamente a `√2`, confirmando a W0 quatro waves depois.
+2. **O `Taper` DESCE.** O doc dele avisa que é *"o primeiro modificador que não devolve uma distância
+   exacta"*, e a inexactidão é para **baixo** — ele subestima, o que é seguro para a marcha. *Nem
+   toda inexactidão é perigo: a que subestima é folga.*
+3. ⚠️ **A `Difference Exact` quase escapou.** A 1.ª tabela media `r = 0,1` e lia `1,000` **exacto**.
+   Só a varredura no parâmetro a apanhou. *Um valor não é uma família.*
+
+### §59.3 — A lei, e por que ela é grosseira de propósito
+
+`ph2d_field_eval::safe_march_step(doc)`: **sem nenhum arredondamento exacto, anda `1,0`; com
+qualquer um, fica no `1/√2` de sempre.**
+
+⛔ **Não se compõe um limite por nó.** Encadear misturas pode compor os factores, e essa pergunta
+**não foi medida** — ficar no valor de hoje quando há um `Exact` não piora nada. O que a função faz é
+**deixar de castigar quem não o usa**. ⚠️ Uma escultura (`NodeKind::Sampled`) também fica no curto: o
+campo dela é interpolado de uma grelha, e ninguém mediu o gradiente da interpolação.
+
+### §59.4 — Os dois gates, e o lado que faltava
+
+- **`the_step_times_the_worst_gradient_never_exceeds_one`** (aritmética): mede o **produto** dos dois
+  lados sobre ~70 documentos varridos nos parâmetros. A classificação classifica, a sonda mede, e o
+  que se afirma é a relação. ⛔ É este que impede a peça de furar.
+- **`the_full_march_step_draws_the_same_piece_as_the_short_one`** (produto): compara a IMAGEM do
+  passo inteiro com a do curto e caça o **buraco interior** — um pixel que o curto acerta e o longo
+  fura, longe da silhueta. É a coisa que o artista vê, e que norma de gradiente nenhuma exprime.
+  ⭐ Ele fecha também a **ligação**: `crate::trace()` tem de desenhar o que a lei mandou, nos dois
+  sentidos (documento liso ⇒ passo inteiro; documento arredondado ⇒ passo curto). *Uma lei que o
+  caminho do produto não chama não é uma lei.*
+
+⚠️ **E o gate da aritmética tinha só metade da afirmação.** Uma mutação que marcava o `Organic` como
+inflador **sobreviveu**: ela só torna a marcha mais lenta. A metade que faltava é a **justiça** —
+*um documento cujo gradiente não passa de 1 tem de receber o passo inteiro*. ⚠️ Ela não se pergunta
+da família `Exact` (a reserva dela é do CONSTRUTOR, não do valor que uma fixtura lhe deu), e em troca
+gateia-se que a reserva é **merecida**: `Union`/`Intersection Exact` têm de medir acima de `1,2`,
+senão o passo curto deles virou cerca sem medição atrás.
+
+7 mutações, **7 vermelhas** com os três controles.
+
+### §59.5 — O número
+
+A/B no mesmo processo, máquina calma (`load 1,2`), 640×480:
+
+| arestas | `1/√2` | `1,0` | ganho | pixels ≠ |
+|---:|---:|---:|---:|---:|
+| 56 | 34,3 | 30,9 | **1,11×** | 2 |
+| 168 | 70,9 | 65,0 | **1,09×** | 0 |
+| 664 | 263,5 | 235,0 | **1,12×** | 0 |
+
+⚠️ **É `1,1×` e não o `1,41×` que a razão dos passos sugere** — porque o passo só governa a parte da
+marcha que é *dar passos*: montar a fita, construir os raios e as normais não encolhem com ele.
+
+⭐ **E ele vale para as DUAS marchas** (a de linha e a por ladrilho), então o quadro inteiro desce
+sem a razão entre elas se mexer: a peça de 168 arestas está hoje em **65–67 ms**, contra os **167 ms**
+com que a W56 começou.
+
+### §59.6 — ⏸️ O que fica
+
+- ⏸️ **A composição de dois `Exact` encadeados** não foi medida — a lei é conservadora ali de
+  propósito, e refiná-la pede a medição.
+- ⏸️ **O campo de uma escultura** (`Sampled`) fica no passo curto sem ninguém ter medido o gradiente
+  da interpolação trilinear. É a única classe do documento sem número.
+- ⏸️ **A `Difference Exact` podia andar `1/1,143` em vez de `1/√2`** — mas o limite dela depende da
+  geometria, não só do raio, e um número por-fixtura não é um limite.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

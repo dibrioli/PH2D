@@ -24,7 +24,8 @@ pub(crate) struct Scene<'a> {
     ///
     /// ⭐ E ela paga-se sozinha: os passos de aproximação em espaço vazio deixam de existir.
     pub(crate) clip: Option<([f32; 3], [f32; 3])>,
-    /// ⭐⭐ **A fracção da distância que o raio anda** — ver [`SAFE_STEP`].
+    /// ⭐⭐ **A fracção da distância que o raio anda** — ver
+    /// [`ph2d_field_eval::safe_march_step`], que é quem a deriva.
     ///
     /// ⚠️ Ela viaja na cena, e não é a constante lida directamente, porque a pergunta *"que passo é
     /// seguro?"* é do **documento**: um campo sem operador que infle o gradiente é uma distância

@@ -36,14 +36,6 @@
 use ph2d_field::FieldDoc;
 use rayon::prelude::*;
 
-/// `1/√2` — o passo seguro da marcha.
-///
-/// ⚠️ **Não é um fator de conforto: é o recíproco de uma constante MEDIDA.** A W0 mediu ‖∇f‖
-/// chegando a **√2** no operador de arredondamento exato (`01_resultados_spike.md` §3), onde duas
-/// superfícies se tocam quase tangentes. Avançar `d` num campo assim **atravessa** a superfície, e
-/// o furo aparece como pixel de fundo no meio da peça.
-const SAFE_STEP: f32 = std::f32::consts::FRAC_1_SQRT_2;
-
 /// Distância abaixo da qual o raio considerou-se na superfície — **o teto**, nunca o valor fixo.
 ///
 /// ⚠️ Ver [`Sharpness`]: o valor efetivo desce com o zoom.
@@ -259,7 +251,16 @@ fn trace_inner(
     cancel: Option<&std::sync::atomic::AtomicBool>,
 ) -> Gbuffer {
     trace_inner_tiles(
-        doc, reg, cam, width, height, parallel, antialias, cancel, true, SAFE_STEP,
+        doc,
+        reg,
+        cam,
+        width,
+        height,
+        parallel,
+        antialias,
+        cancel,
+        true,
+        ph2d_field_eval::safe_march_step(doc),
     )
 }
 
@@ -291,7 +292,7 @@ pub fn trace_tiled_for_test(
         basis: cam.basis(),
         sharp: Sharpness::for_frame(cam.half_extent, (width as usize).min(height as usize)),
         clip: Some(bbox),
-        step: SAFE_STEP,
+        step: ph2d_field_eval::safe_march_step(doc),
     };
     Some(tiled_trace(
         doc, &rc, &scene, plane, bbox, true, antialias, None, tile, slabs,
@@ -330,7 +331,16 @@ pub fn trace_by_rows_for_test(
     height: u32,
 ) -> Gbuffer {
     trace_inner_tiles(
-        doc, reg, cam, width, height, true, true, None, false, SAFE_STEP,
+        doc,
+        reg,
+        cam,
+        width,
+        height,
+        true,
+        true,
+        None,
+        false,
+        ph2d_field_eval::safe_march_step(doc),
     )
 }
 
@@ -474,7 +484,7 @@ pub fn surface_under(
         basis: cam.basis(),
         sharp: Sharpness::for_frame(cam.half_extent, side),
         clip: None,
-        step: SAFE_STEP,
+        step: ph2d_field_eval::safe_march_step(doc),
     };
     let (hit, _, point) = march(&scene, &[screen.plane_at(px[0], px[1])]);
     hit[0].then(|| point[0])

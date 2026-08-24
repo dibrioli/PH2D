@@ -402,6 +402,64 @@ pub fn compile_in_region(doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
     RegionCompiler::new(doc).compile(doc, lo, hi)
 }
 
+/// ⭐⭐⭐ **O PASSO SEGURO DESTE DOCUMENTO** (W56f) — e ele é do documento, não uma constante.
+///
+/// A marcha de esferas anda `d · s` e é segura enquanto `s · ‖∇f‖ ≤ 1`: se o campo sobe mais
+/// depressa que a distância, um passo do tamanho do valor **atravessa** a superfície, e o furo
+/// aparece como pixel de fundo no meio da peça.
+///
+/// # ⭐ A auditoria, medida construtor a construtor
+///
+/// O traçador andava `1/√2` **em tudo**, e o número é o recíproco de uma constante medida na W0 —
+/// `‖∇f‖ = √2` no arredondamento exacto. ⚠️ Mas o [`ph2d_field::Xform::scale`] deste módulo é
+/// **uniforme de propósito**, e o doc dele já diz porquê: *"‖∇f‖ = 1 é a fundação de tudo neste
+/// módulo"*. Se quase todo construtor honra a fundação, o passo curto é **o caminho mais lento a
+/// definir o teto do mais rápido** (`CLAUDE.md` §0).
+///
+/// Medido (`the_table_of_who_inflates_the_gradient` + a varredura irmã, pior `‖∇f‖` sobre uma
+/// grelha de 48³):
+///
+/// | construtor | pior `‖∇f‖` |
+/// |---|---|
+/// | as 6 primitivas, com e sem `round` | `1,000` |
+/// | `Union` / `Intersection` / `Difference` **`Sharp`** | `1,000` |
+/// | `Shell`, `Offset`, `Mirror` | `1,000` |
+/// | `Array` (espaçamento `0,1`–`1,0`) · `Radial` (2–64) | `1,000` |
+/// | `Organic` (`k` de `0` a `1,2`), nas três operações | `1,000` |
+/// | escala uniforme (`0,2`–`4,0`) | `1,000` |
+/// | **`Taper`** (declive `0` a `4`) | `1,000` → **`0,844`** |
+/// | ⛔ **`Union`/`Intersection` `Exact`**, todo `r > 0` | **`1,4142`** |
+/// | ⛔ **`Difference` `Exact`** | `1,000` até `r = 0,1`, **`1,143`** a `r = 0,6` |
+///
+/// ⭐ **O `Taper` DESCE** — ele subestima a distância, o que é seguro para a marcha. ⚠️ E a
+/// `Difference Exact` é a que a régua quase deixou passar: a 1.ª fixtura usava `r = 0,1` e leu
+/// `1,000` **exacto**. *Um valor não é uma família.*
+///
+/// # A regra, e por que ela é grosseira de propósito
+///
+/// Um documento **sem nenhum arredondamento exacto** anda `1,0`; com qualquer um, fica no `1/√2` de
+/// sempre. ⛔ Não se compõe um limite por nó: encadear misturas pode compor os factores, e essa
+/// pergunta **não foi medida**. Ficar no valor de hoje quando há um `Exact` não piora nada — o que
+/// esta função faz é **deixar de castigar quem não o usa**. ⚠️ Uma [`ph2d_field::NodeKind::Sampled`]
+/// (uma escultura) também fica no curto: o campo dela é interpolado de uma grelha, e ninguém mediu
+/// o gradiente da interpolação.
+#[must_use]
+pub fn safe_march_step(doc: &FieldDoc) -> f32 {
+    let inflates = doc.nodes().iter().any(|n| match &n.kind {
+        NodeKind::Sampled { .. } => true,
+        NodeKind::Combine { op, .. } => match op.blend() {
+            Blend::Exact { radius } => radius != 0.0,
+            Blend::Sharp | Blend::Organic { .. } => false,
+        },
+        NodeKind::Leaf(_) => false,
+    });
+    if inflates {
+        std::f32::consts::FRAC_1_SQRT_2
+    } else {
+        1.0
+    }
+}
+
 /// ⭐⭐ **O compilador de regiões, com os índices já construídos** (W56).
 ///
 /// ⚠️ **Ele existe por uma medição:** construir a [`profile_index::ProfileIndex`] de um contorno de

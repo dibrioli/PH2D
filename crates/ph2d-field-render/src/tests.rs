@@ -2201,3 +2201,182 @@ fn a_depth_slab_keeps_fewer_edges_than_the_whole_tube() {
         b * 100.0 / a
     );
 }
+
+/// ⭐⭐⭐ **O PASSO INTEIRO DESENHA A MESMA IMAGEM QUE O CURTO** (W56f) — a outra metade da prova.
+///
+/// ⚠️ **O gate do gradiente vive na `ph2d-field-eval` e prova a ARITMÉTICA** (`passo × ‖∇f‖ ≤ 1`).
+/// Este prova o **produto**: se a classificação estiver errada num construtor, o passo maior
+/// atravessa a superfície e o sintoma é **pixel de fundo no meio da peça** — que é a coisa que o
+/// artista vê, e que nenhuma norma de gradiente exprime.
+///
+/// ⛔ Ele compara com o `1/√2` de sempre, que é o comportamento que shipou até a W56e — *a régua é
+/// o que a peça era ontem*.
+#[test]
+fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
+    use ph2d_field::{
+        Blend, FieldDoc, FillRule, Node, NodeId, NodeKind, Op, Primitive, Profile, Unary, Xform,
+    };
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let short = std::f32::consts::FRAC_1_SQRT_2;
+    let bx = Primitive::Box {
+        half: [0.4, 0.3, 0.25],
+        round: 0.0,
+    };
+    let one = |p: Primitive, mods: Vec<Unary>| {
+        let mut n = Node::new(Xform::IDENTITY, NodeKind::Leaf(p));
+        n.mods = mods;
+        FieldDoc::new(vec![n], NodeId(0)).expect("a peça")
+    };
+    let two = |op: Op| {
+        FieldDoc::new(
+            vec![
+                Node::new(
+                    Xform::at(-0.2, 0.0, 0.0),
+                    NodeKind::Leaf(Primitive::Box {
+                        half: [0.6, 0.3, 0.3],
+                        round: 0.0,
+                    }),
+                ),
+                Node::new(
+                    Xform::at(0.2, 0.0, 0.0),
+                    NodeKind::Leaf(Primitive::Box {
+                        half: [0.3, 0.6, 0.3],
+                        round: 0.0,
+                    }),
+                ),
+                Node::new(
+                    Xform::IDENTITY,
+                    NodeKind::Combine {
+                        op,
+                        children: vec![NodeId(0), NodeId(1)],
+                    },
+                ),
+            ],
+            NodeId(2),
+        )
+        .expect("a peça")
+    };
+    let cases: Vec<(&str, FieldDoc)> = vec![
+        ("caixa", one(bx.clone(), vec![])),
+        (
+            "caixa arredondada",
+            one(
+                Primitive::Box {
+                    half: [0.4, 0.3, 0.25],
+                    round: 0.12,
+                },
+                vec![],
+            ),
+        ),
+        (
+            "toro",
+            one(
+                Primitive::Torus {
+                    major: 0.4,
+                    minor: 0.12,
+                },
+                vec![],
+            ),
+        ),
+        (
+            "desenho puxado",
+            one(
+                Primitive::Extrude {
+                    profile: Profile::new(vec![star_probe(64, 0.2, 0.5)], FillRule::NonZero, 1e-3)
+                        .expect("perfil"),
+                    half_height: 0.25,
+                    round: 0.0,
+                },
+                vec![],
+            ),
+        ),
+        (
+            "casca",
+            one(bx.clone(), vec![Unary::Shell { thickness: 0.04 }]),
+        ),
+        (
+            "matriz radial",
+            one(bx.clone(), vec![Unary::Radial { count: 7 }]),
+        ),
+        (
+            "inclinação",
+            one(bx.clone(), vec![Unary::Taper { slope: 1.5 }]),
+        ),
+        ("união viva", two(Op::Union(Blend::Sharp))),
+        ("subtracção viva", two(Op::Difference(Blend::Sharp))),
+        ("união orgânica", two(Op::Union(Blend::Organic { k: 0.4 }))),
+    ];
+    for (name, doc) in cases {
+        let step = ph2d_field_eval::safe_march_step(&doc);
+        assert!(
+            step > 0.99,
+            "{name}: este documento nem sequer ganhou o passo inteiro — a fixtura não contém o que \
+             o gate mede"
+        );
+        for cam in [
+            crate::Orbit::from_yaw_pitch(0.72, 0.52),
+            crate::Orbit::from_yaw_pitch(0.0, 0.0),
+        ] {
+            let a = crate::trace_stepped_for_test(&doc, &reg, &cam, 240, 180, short);
+            let b = crate::trace_stepped_for_test(&doc, &reg, &cam, 240, 180, step);
+            let (w, h) = (a.width as usize, a.height as usize);
+            let on_silhouette = |k: usize| {
+                let (x, y) = (k % w, k / w);
+                [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)]
+                    .iter()
+                    .any(|(dx, dy)| {
+                        let (nx, ny) = (x as i32 + dx, y as i32 + dy);
+                        nx < 0
+                            || ny < 0
+                            || nx >= w as i32
+                            || ny >= h as i32
+                            || a.hit[ny as usize * w + nx as usize] != a.hit[k]
+                    })
+            };
+            // ⛔ **O que se caça é o buraco INTERIOR**: um pixel que o passo curto acerta e o longo
+            // falha, longe da silhueta, é a marcha a atravessar a peça.
+            let holes: Vec<usize> = (0..w * h)
+                .filter(|k| a.hit[*k] && !b.hit[*k] && !on_silhouette(*k))
+                .collect();
+            assert!(
+                holes.is_empty(),
+                "{name}: {} pixels que o passo curto acerta e o inteiro FURA, longe da silhueta — \
+                 a classificação de `safe_march_step` está errada para este documento",
+                holes.len()
+            );
+            let diff = (0..w * h).filter(|k| a.hit[*k] != b.hit[*k]).count();
+            assert!(
+                diff * 200 < w * h,
+                "{name}: {diff} pixels de máscara diferem ({:.2}% do quadro) — deixou de ser \
+                 fronteira",
+                diff as f32 * 100.0 / (w * h) as f32
+            );
+            assert!(
+                a.hit.iter().filter(|x| **x).count() > 300,
+                "{name}: a peça não apareceu — o gate compararia dois vazios"
+            );
+            // ⭐⭐ **E o PRODUTO tem de usar o passo que a lei deu.** Sem esta metade, a lei podia
+            // estar certa e o traçador continuar a ler uma constante — que é precisamente o estado
+            // de antes desta wave, e ele passa em todo gate que compare `trace_stepped_for_test`
+            // consigo próprio. *Uma lei que o caminho do produto não chama não é uma lei.*
+            let prod = crate::trace(&doc, &reg, &cam, 240, 180);
+            assert_eq!(
+                prod.hit, b.hit,
+                "{name}: a marcha do produto não desenhou o mesmo que o passo `{step}` que a \
+                 `safe_march_step` deu para este documento"
+            );
+        }
+    }
+    // …e o outro lado: um documento que a lei classifica como INFLADOR tem de continuar no curto.
+    let rounded = two(Op::Union(Blend::Exact { radius: 0.15 }));
+    assert!(
+        (ph2d_field_eval::safe_march_step(&rounded) - short).abs() < 1e-6,
+        "um documento com arredondamento exacto deixou de receber o passo curto"
+    );
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    assert_eq!(
+        crate::trace(&rounded, &reg, &cam, 240, 180).hit,
+        crate::trace_stepped_for_test(&rounded, &reg, &cam, 240, 180, short).hit,
+        "a peça arredondada deixou de ser marchada com o passo curto"
+    );
+}

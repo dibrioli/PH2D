@@ -14,6 +14,19 @@ authors.workspace = true
 # native input source into [`Event`] and call apply_event.
 # Keeps the crate buildable on every target including no_std-adjacent
 # WASM in the future.
+#
+# ⚠️ **`serde` entrou em 2026-08-24 com a camada de AÇÕES** (o Input Map —
+# `docs/Vector Module/30_plano_input_map.md`), e ele NÃO fere a regra acima: a proibição escrita é
+# de dependência de **plataforma** (gilrs / IOKit / evdev / winit), pela portabilidade de alvo, e o
+# `serde` é portável e serve `no_std`. A razão de ele ser necessário é que o `InputMap` é
+# **conteúdo autorado que viaja no `.ph2dproj`** — sem serialização, o mapa do artista não
+# sobrevive a fechar o app.
+#
+# ⛔ A allowlist é de UM, e `tests/the_input_map_stays_a_leaf.rs` lê este arquivo. Qualquer outra
+# dep é vermelha antes de alguém a usar — mesmo precedente do `the_event_core_is_a_leaf` do
+# `ph2d-runtime`.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 criterion = { version = "0.7", default-features = false }

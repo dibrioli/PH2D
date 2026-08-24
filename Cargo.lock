@@ -6060,6 +6060,7 @@ name = "ph2d-input"
 version = "0.0.0"
 dependencies = [
  "criterion 0.7.0",
+ "serde",
 ]
 
 [[package]]

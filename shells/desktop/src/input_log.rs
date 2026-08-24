@@ -37,5 +37,11 @@ pub fn log_input_event(elapsed_ms: u128, event: &InputEvent) {
         InputEvent::Pencil(_) => {
             // No iPad shell yet; pencil events can't originate here.
         }
+        // ⚠️ **O TECLADO é MUDO aqui, e é decisão, não esquecimento.** Este log existe para o
+        // spam de gamepad, que chega sem que ninguém peça; o teclado do editor passa por aqui a
+        // cada letra digitada num campo de texto, e imprimi-lo transformaria a consola numa
+        // gravação do que o artista está a escrever. Quem quiser ver o teclado tem o diagnóstico
+        // do Input Map, que imprime **acções**, não teclas.
+        InputEvent::KeyDown(_) | InputEvent::KeyUp(_) | InputEvent::FocusLost => {}
     }
 }

@@ -21,12 +21,21 @@
 //! Pencil M8 is **stub-only** — types declared so iPad shell can
 //! plumb without breaking ph2d-input's API in M9+. No real handler.
 
+pub mod action;
 pub mod event;
 pub mod gamepad;
+pub mod keyboard;
+pub mod map;
 pub mod pencil;
+pub mod resolve;
 pub mod state;
 
 pub use event::Event;
 pub use gamepad::{GamepadAxis, GamepadButton, GamepadState};
+pub use keyboard::{Key, KeyboardState};
 pub use pencil::{PencilButton, PencilEvent, PencilState};
 pub use state::InputState;
+
+pub use action::{ActionId, Binding, InputAction};
+pub use map::InputMap;
+pub use resolve::{ActionState, Input, Sample};

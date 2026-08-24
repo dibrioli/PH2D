@@ -86,6 +86,37 @@ registado aqui para **não** ser reconstruído no sítio errado.
 
 ## §2 — O desenho, com a PORTA ÚNICA de cada pergunta
 
+### 2.0 ⛔⛔⛔ EMENDA — **a crate `ph2d-input` JÁ EXISTIA**, e este plano não a tinha visto
+
+**Medido em 2026-08-24, ao começar a W1, e por não ter medido antes:** `crates/ph2d-input/` existe
+desde o commit `7329d63d5` (*"M8: ph2d-input (gamepad via gilrs + Pencil stub) + ph2d.input Luau
+binding + first prod bench in CI"*). O plano acima foi escrito a falar de uma crate a criar.
+
+| O que a M8 já tinha | Consequência para este plano |
+|---|---|
+| **folha pura, zero deps** (só `criterion` em dev), *"no gilrs / IOKit / evdev / winit"* | ⭐ a disciplina de folha que a §7 W1 mandava construir **já estava lá**, escrita e justificada |
+| `GamepadButton` (**34** variantes) · `GamepadAxis` (6) · `GamepadState` com `pressed`/`held`/`released`/`axis`/`iter_held`/`iter_axes` | ⛔ o `Devices` que este plano desenhava era **um duplicado** — uma segunda fotografia dos mesmos botões |
+| `Event` + `InputState::{begin_frame, apply_event}` | ⭐ o protocolo de quadro **já existe**, e o `ph2d.input` do Luau já o lê |
+| **consumidores vivos**: `ph2d-script`, `ph2d-render`, `ph2d-editor-core/zen.rs`, `shells/desktop` (`gilrs_adapter`, `input_log`, `integration`, `main`), **e um bench no CI** | qualquer mudança de superfície é paga por sete sítios |
+| ⛔ **NÃO tinha teclado** | é o buraco real, e a maior parte das ligações que um artista autora é uma tecla |
+
+⭐⭐ **A leitura certa, e ela melhora o desenho:** o que existia é a camada **`InputEvent`** do
+Godot (dispositivo cru); o que o Enio pediu é a camada **`InputMap`** (acções nomeadas) **por
+cima**. As duas são a mesma divisão que a referência faz — ⇒ as acções entram **na mesma crate**,
+lendo o `InputState` que já lá está, e não ao lado dele.
+
+⇒ **A §2.2 e a §2.3 abaixo ficam válidas na forma; o que muda é de onde vem o valor cru.** O
+`Devices` deste plano **não foi construído**: quem responde *"este botão está em baixo?"* continua a
+ser o `InputState` da M8, agora com um `KeyboardState` irmão do `GamepadState`.
+
+⚠️ **A lição, e ela é a nona da mesma família nesta linha:** o
+[estudo §6.6](Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md) manda **medir um item
+antes de o pegar**, e isto foi escrito sem um `ls crates/ | grep input`. O sinal existia e passou
+despercebido — a ferramenta de escrita respondeu **"updated"** em vez de **"created"** ao gravar o
+`Cargo.toml`, que é exactamente o que este repo tem registado como o aviso de que o ficheiro já
+existia. *Nada se perdeu (o git restaurou os dois ficheiros sobrescritos), mas o plano descreveu por
+uma hora um terreno vazio que não estava vazio.*
+
 ### 2.1 ⛔⛔ O que JÁ existe aqui, e que decide quase tudo (medido 2026-08-24)
 
 **Não estamos a construir num terreno vazio.** A cadeia de hoje:
@@ -260,8 +291,15 @@ mensagem ao Enio** — sonda headless primeiro, `CLAUDE.md §0.0`.
 
 ## §7 — Ordem de execução
 
-1. **W1** — o modelo + a resolução, **crate-folha pura** (`ph2d-input`), sem `winit` e sem shell.
-   ⭐ Folha porque *"funcional no runtime do game"* (doc 31) vai precisar dela **fora do editor**.
+1. ✅ **W1 — FEITA em 2026-08-24.** O modelo + a resolução, na crate-folha `ph2d-input` que **já
+   existia** (§2.0), sem `winit` e sem shell. Entregue: `keyboard.rs` (o dispositivo que faltava) ·
+   `action.rs` (`Binding`/`ActionId`/`InputAction`, sobre os tipos de gamepad da M8) · `map.rs`
+   (`InputMap` + o contador estável) · `resolve.rs` (`ActionState`/`Sample`/`Input`, lendo o
+   `InputState` da M8) · `Event::{KeyDown, KeyUp, FocusLost}`. **40 gates verdes**, **10 provados
+   por mutação** com os três controles, clippy limpo, e **zero pacote externo novo** no
+   `Cargo.lock` (o `serde` já lá estava).
+   ⚠️ **Fica NOMEADO o que a W1 não fez:** o rato não é modelado (esta crate nunca o modelou; o
+   editor trata dele pelo despacho próprio), e nada disto está **ligado ao jogador** ainda — é a W2.
 2. **W2** — a fita passa a gravar acções (§2.1). ⛔ **Gate do `physics_ecs_c9` verde antes e depois.**
 3. **W3** — contextos com prioridade; a lista negra do `player_input.rs` **morre** (§2.4).
 4. **W4** — persistência: mapa no projecto + override em `~/.ph2d/` (§2.5).

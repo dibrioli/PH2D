@@ -8,7 +8,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+// ⚠️ `Serialize`/`Deserialize` entraram em 2026-08-24: uma LIGAÇÃO do Input Map nomeia um destes,
+// e o mapa é conteúdo autorado que viaja no `.ph2dproj`. Sem isto, a ligação do artista ao botão
+// do comando não sobreviveria a fechar o app.
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum GamepadButton {
     /// Bottom face button (Xbox A, PS Cross, Nintendo B).
     South,
@@ -60,7 +65,12 @@ impl GamepadButton {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+// ⚠️ `Serialize`/`Deserialize` entraram em 2026-08-24: uma LIGAÇÃO do Input Map nomeia um destes,
+// e o mapa é conteúdo autorado que viaja no `.ph2dproj`. Sem isto, a ligação do artista ao botão
+// do comando não sobreviveria a fechar o app.
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum GamepadAxis {
     LeftStickX,
     LeftStickY,

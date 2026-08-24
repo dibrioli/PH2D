@@ -284,11 +284,26 @@ pub fn sd_profile_in_region(
         return sd_profile_inner(profile, u, v, axis_seam);
     };
 
-    // ⭐ O canto da região é a ÂNCORA do enrolamento, e o número dele entra como constante.
-    let base = index.winding_at(lo);
+    // ⭐⭐ **A ÂNCORA do enrolamento, e ela tem de estar LONGE de toda aresta.**
+    //
+    // ⛔ **Defeito medido (W56, gate de imagem):** com o canto da região a assentar **em cima** de
+    // uma aresta, o enrolamento ali é ambíguo — a regra do raio `+x` decide por um lado, o caminho
+    // decide por outro — e a região inteira sai com o **sinal invertido**. O sintoma na tela foi um
+    // pixel a acertar onde não há peça: um `d` negativo é um acerto imediato para a esfera-marcha.
+    //
+    // ⚠️ **Ela tem de ficar DENTRO da região**, senão o caminho âncora→ponto sai dela e passa a poder
+    // ser cruzado por arestas que não estão na conta. A região é convexa, logo o segmento entre dois
+    // pontos dela nunca a deixa.
+    let crossing = index.crossing_edges(lo, hi);
+    let Some(anchor) = anchor_in(index, lo, hi, &crossing) else {
+        // Uma região tão povoada que nenhum candidato fica livre: a conta completa, que não tem
+        // âncora nenhuma. Correcta, só não mais rápida.
+        return sd_profile_inner(profile, u, v, axis_seam);
+    };
+    let base = index.winding_at(anchor);
     let mut w: Tree = Tree::constant(f64::from(base));
-    for i in index.crossing_edges(lo, hi) {
-        w += crossing_term(index, i, u, v, lo);
+    for i in crossing {
+        w += crossing_term(index, i, u, v, anchor);
     }
     let inside = if non_zero {
         w.abs().min(1.0)
@@ -297,6 +312,37 @@ pub fn sd_profile_in_region(
     };
     let sign = Tree::constant(1.0) - Tree::constant(2.0) * inside;
     crate::ops::safe_sqrt(dist2) * sign
+}
+
+/// ⭐ **Um ponto da região que não assenta em aresta nenhuma** — a âncora do enrolamento.
+///
+/// ⚠️ **A barra é uma fração do TAMANHO DA REGIÃO, e não um epsilon absoluto.** Uma peça desenhada em
+/// milímetros e a mesma em metros têm de escolher a mesma âncora; um número fixo aqui faria a
+/// robustez depender da unidade do documento — o mesmo erro que o `TOLERANCE_RATIO` existe para não
+/// cometer.
+fn anchor_in(
+    index: &crate::profile_index::ProfileIndex,
+    lo: [f32; 2],
+    hi: [f32; 2],
+    crossing: &[u32],
+) -> Option<[f32; 2]> {
+    let span = (hi[0] - lo[0]).max(hi[1] - lo[1]).max(f32::MIN_POSITIVE);
+    let bar = (span * 1.0e-3).powi(2);
+    // Os cantos primeiro (é o que dá as constantes mais simples), depois o centro e as medianas.
+    let mid = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
+    [
+        lo,
+        [hi[0], lo[1]],
+        [lo[0], hi[1]],
+        hi,
+        mid,
+        [mid[0], lo[1]],
+        [mid[0], hi[1]],
+        [lo[0], mid[1]],
+        [hi[0], mid[1]],
+    ]
+    .into_iter()
+    .find(|p| index.min_dist2_to(crossing, *p) > bar)
 }
 
 /// **Quantas vezes (com sinal) a aresta atravessa o caminho `c → p`**, como árvore.
@@ -332,10 +378,13 @@ fn crossing_term(
     let d3 = px.clone() * Tree::constant(ay - cy) - py.clone() * Tree::constant(ax - cx);
     let d4 = px.clone() * Tree::constant(by - cy) - py.clone() * Tree::constant(bx - cx);
 
-    let neg = |t: Tree| t.compare(0.0).max(0.0);
-    // `d1` é constante: o produto `d1·d2` é `d2` escalado, e o sinal do escalar decide.
-    let hit_ab = neg(Tree::constant(-d1) * d2);
-    let hit_cp = neg(Tree::constant(0.0) - d3 * d4);
+    // ⭐⭐ **A regra é SEMIABERTA** — ver [`crate::profile_index`]: um caminho que passa por um
+    // **vértice** tem de contar **uma** vez, e o teste simétrico conta zero. `lt0(t)` vale 1 sse
+    // `t < 0`, e o `|a − b|` de dois valores 0/1 é o «ou exclusivo»: as duas pontas de um lado
+    // diferente.
+    let lt0 = |t: Tree| Tree::constant(0.0).compare(t).max(0.0);
+    let hit_ab = (Tree::constant(f64::from(d1 < 0.0)) - lt0(d2)).abs();
+    let hit_cp = (lt0(d3) - lt0(d4)).abs();
     // O lado por que a aresta atravessa o caminho: `sign(caminho × aresta)`, invertido para casar
     // com a convenção do raio `+x` do [`sd_profile`].
     let side = (px * Tree::constant(ey) - py * Tree::constant(ex)).compare(0.0);

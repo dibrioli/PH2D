@@ -361,6 +361,24 @@ impl ProfileIndex {
         ray_winding(&self.edges, p)
     }
 
+    /// A menor distância (ao quadrado) do ponto às arestas dadas — `∞` para uma lista vazia.
+    ///
+    /// ⚠️ Ela existe para uma pergunta de **robustez**, não de geometria: *este ponto serve de âncora
+    /// do enrolamento?* Ver [`crate::profile::sd_profile_in_region`].
+    #[must_use]
+    pub fn min_dist2_to(&self, edges: &[u32], p: [f32; 2]) -> f32 {
+        edges.iter().fold(f32::INFINITY, |acc, i| {
+            acc.min(seg_dist2(p, &self.edges[*i as usize]))
+        })
+    }
+
+    /// ⚠️ Só para o gate: os atravessamentos do caminho `a → b`, somados sobre **todas** as arestas.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn probe_path_winding(&self, a: [f32; 2], b: [f32; 2]) -> i32 {
+        self.edges.iter().map(|e| path_crossing(a, b, e)).sum()
+    }
+
     /// Quantas arestas o perfil tem, na ordem em que [`Self::edge`] as endereça.
     #[must_use]
     pub fn edge_count(&self) -> usize {
@@ -461,12 +479,22 @@ fn ray_winding(edges: &[Edge], p: [f32; 2]) -> i32 {
 /// é isso que a torna pré-computável: `w(p) = w(c) + Σ atravessamentos`. O sinal segue a convenção
 /// do raio: uma aresta que sobe conta `+1` quando o caminho a cruza deixando-a à esquerda.
 fn path_crossing(c: [f32; 2], p: [f32; 2], e: &Edge) -> i32 {
-    // Orientação dos quatro pontos: o par cruza-se sse os dois testes discordam.
+    // ⭐⭐ **A regra é SEMIABERTA, e não simétrica** — `< 0` de um lado, `>= 0` do outro.
+    //
+    // ⛔ **Defeito medido (W56):** com o teste simétrico (`d1·d2 < 0`), um caminho que passa **por um
+    // vértice** do contorno é contado **zero** vezes — as duas arestas que o partilham vêem produto
+    // nulo e ambas desistem. O enrolamento sai errado por um numa cunha fina à volta daquele vértice,
+    // o sinal inverte-se lá, e a esfera-marcha inventa uma superfície. Um quadro de 240×180 com 168
+    // arestas apanhou-o num pixel — de ~800 mil amostras.
+    //
+    // ⚠️ É a **mesma** disciplina que o raio `+x` do [`ray_winding`] já segue (a variante semi-aberta
+    // do *crossing number*, de Dan Sunday): um vértice pertence a exactamente uma das suas duas
+    // arestas. *Uma regra de fronteira escrita duas vezes tem de ser a mesma nas duas.*
     let d1 = orient(e.a, e.b, c);
     let d2 = orient(e.a, e.b, p);
     let d3 = orient(c, p, e.a);
     let d4 = orient(c, p, e.b);
-    if d1 * d2 >= 0.0 || d3 * d4 >= 0.0 {
+    if (d1 < 0.0) == (d2 < 0.0) || (d3 < 0.0) == (d4 < 0.0) {
         return 0;
     }
     // De que lado a aresta atravessa o caminho: o sinal do produto vetorial das duas direções.

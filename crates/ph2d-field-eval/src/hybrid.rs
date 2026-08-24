@@ -156,6 +156,18 @@ impl Hybrid {
         Self::from_parts(expr, b.trees, b.sampled)
     }
 
+    /// ⭐⭐ **Um avaliador a partir de uma ÁRVORE já compilada** — a porta da especialização por
+    /// região (W56, [`crate::compile_in_region`]).
+    ///
+    /// ⚠️ **Ela preserva o gradiente exacto**, e não por sorte: o `grad` nasce de
+    /// `sampled.is_empty() && trees.len() == 1`, que é exactamente a forma que esta porta produz.
+    /// Era essa a propriedade que a rota da folha nativa perdia, e é a razão de a especialização ter
+    /// ficado **dentro** da árvore.
+    #[must_use]
+    pub fn from_tree(tree: Tree) -> Self {
+        Self::from_parts(Plan::Analytic(0), vec![tree], Vec::new())
+    }
+
     /// ⭐ **Um avaliador NOVO sobre o mesmo plano** — o que uma marcha paralela precisa.
     ///
     /// ⚠️ **O avaliador da `fidget` tem estado mutável**, então partilhá-lo entre threads exigiria

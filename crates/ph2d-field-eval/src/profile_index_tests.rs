@@ -488,10 +488,19 @@ fn the_specialised_tree_agrees_inside_its_region() {
         };
         let (mut worst, mut nodes_full, mut nodes_cut, mut regions) =
             (0.0f32, 0usize, 0usize, 0usize);
-        for _ in 0..120 {
-            // Regiões espalhadas: dentro, fora, e a cavalo da fronteira.
-            let c = [(rnd() - 0.5) * 1.6, (rnd() - 0.5) * 1.6];
-            let half = 0.15f32.mul_add(rnd(), 0.01);
+        for k in 0..122 {
+            // ⚠️ **As duas PRIMEIRAS são a peça INTEIRA.** Um ladrilho cuja pegada é quase toda a
+            // peça é o caso comum de um quadro afastado — e é onde o caminho âncora→ponto cruza
+            // dezenas de arestas em vez de uma. As regiões pequenas de antes não continham o
+            // fenómeno, e um defeito de sinal atravessou-as todas até um gate de IMAGEM o apanhar.
+            let (c, half) = if k < 2 {
+                ([0.0f32, 0.0], if k == 0 { 0.75 } else { 0.55 })
+            } else {
+                (
+                    [(rnd() - 0.5) * 1.6, (rnd() - 0.5) * 1.6],
+                    0.15f32.mul_add(rnd(), 0.01),
+                )
+            };
             let lo = [c[0] - half, c[1] - half];
             let hi = [c[0] + half, c[1] + half];
             let cut = crate::profile::sd_profile_in_region(
@@ -625,5 +634,162 @@ fn the_table_of_what_specialising_the_tree_buys() {
                 full_ns / ms[2]
             );
         }
+    }
+}
+
+/// ⭐⭐⭐ **O ENROLAMENTO POR CAMINHO É O MESMO QUE O ENROLAMENTO POR RAIO** — a lei, sozinha.
+///
+/// ⚠️ **É o gate que faltava, e a ausência dele custou um pixel na tela.** Tudo nesta wave assenta
+/// numa identidade: `w(p) = w(âncora) + atravessamentos do caminho âncora→p`. Ela foi usada em dois
+/// sítios (a grelha do sinal e a árvore especializada) e **medida em nenhum**: os dois gates que a
+/// exerciam usavam regiões **pequenas**, onde o caminho cruza uma ou duas arestas. Um caminho
+/// **longo** — o de um ladrilho cuja região é quase a peça inteira — cruza dezenas, e é aí que uma
+/// convenção de sinal errada aparece.
+///
+/// *Uma identidade usada por dois consumidores e afirmada por nenhum é uma suposição com dois donos.*
+#[test]
+fn the_path_winding_equals_the_ray_winding() {
+    for (name, contours, _fill) in [
+        (
+            "polígono de 168 lados",
+            vec![ngon(168, 0.5, [0.0, 0.0])],
+            (),
+        ),
+        (
+            "anel com buraco",
+            vec![ngon(64, 0.5, [0.0, 0.0]), {
+                let mut i = ngon(48, 0.25, [0.0, 0.0]);
+                i.reverse();
+                i
+            }],
+            (),
+        ),
+        (
+            "duas ilhas",
+            vec![ngon(24, 0.2, [-0.35, 0.0]), ngon(24, 0.2, [0.35, 0.0])],
+            (),
+        ),
+    ] {
+        let p = Profile::new(contours, FillRule::NonZero, 1e-3).expect("perfil válido");
+        let idx = ProfileIndex::build(&p);
+        let all: Vec<u32> = (0..idx.edge_count() as u32).collect();
+        let mut s = 0x1357_9BDFu64;
+        let mut rnd = move || {
+            s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            (s >> 33) as f32 / u32::MAX as f32
+        };
+        let mut bad = 0usize;
+        for _ in 0..4000 {
+            // ⚠️ Caminhos LONGOS de propósito: âncora e ponto espalhados por toda a caixa.
+            let a = [(rnd() - 0.5) * 1.6, (rnd() - 0.5) * 1.6];
+            let q = [(rnd() - 0.5) * 1.6, (rnd() - 0.5) * 1.6];
+            // Pontos colados a uma aresta têm enrolamento ambíguo — a identidade não fala deles.
+            if idx.min_dist2_to(&all, a) < 1.0e-6 || idx.min_dist2_to(&all, q) < 1.0e-6 {
+                continue;
+            }
+            let by_ray = idx.winding_at(q);
+            let by_path = idx.winding_at(a) + idx.probe_path_winding(a, q);
+            if by_ray != by_path {
+                bad += 1;
+            }
+        }
+        assert_eq!(
+            bad, 0,
+            "{name}: {bad} caminhos em que o enrolamento por CAMINHO discorda do por RAIO — a \
+             identidade que sustenta a wave inteira"
+        );
+
+        // ⭐⭐ **E os caminhos que passam POR UM VÉRTICE** — o caso que a aleatoriedade nunca dá e
+        // que foi o defeito de facto.
+        //
+        // ⛔ Com a regra simétrica (`d1·d2 < 0`), as **duas** arestas que partilham o vértice veem
+        // produto nulo e ambas desistem ⇒ o atravessamento conta **zero** onde devia contar **um**.
+        // O erro é de ±1 numa cunha fina à volta daquele vértice, e o sinal inverte-se lá dentro.
+        // Um quadro de 240×180 apanhou-o **num** pixel, de ~800 mil amostras. *Uma regra de
+        // fronteira só se mede numa fixture que ESTÁ na fronteira.*
+        let mut through = 0usize;
+        for i in 0..idx.edge_count() {
+            let (v, _) = idx.edge(i as u32);
+            for k in 0..4 {
+                let ang = std::f32::consts::FRAC_PI_2 * k as f32 + 0.37;
+                let (dx, dy) = (ang.cos(), ang.sin());
+                // Âncora e ponto de lados opostos do vértice, colineares com ele.
+                let a = [v[0] - dx * 0.9, v[1] - dy * 0.9];
+                let q = [v[0] + dx * 0.9, v[1] + dy * 0.9];
+                if idx.min_dist2_to(&all, a) < 1.0e-6 || idx.min_dist2_to(&all, q) < 1.0e-6 {
+                    continue;
+                }
+                through += 1;
+                assert_eq!(
+                    idx.winding_at(q),
+                    idx.winding_at(a) + idx.probe_path_winding(a, q),
+                    "{name}: um caminho POR UM VÉRTICE ({v:?}) conta mal — a regra tem de ser \
+                     semiaberta, como a do raio"
+                );
+            }
+        }
+        assert!(
+            through > 100,
+            "{name}: só {through} caminhos por vértice — a fixture não contém o fenómeno"
+        );
+    }
+}
+
+/// ⭐⭐ **UMA REGIÃO CUJO CANTO ASSENTA NUMA ARESTA** — a fixture que a aleatoriedade nunca dá.
+///
+/// ⛔ **Defeito medido (W56):** o enrolamento no canto é a **âncora** de toda a região, e um canto
+/// que assenta numa aresta tem enrolamento ambíguo — a região inteira sai com o sinal invertido, e a
+/// esfera-marcha inventa uma superfície. A cura é escolher a âncora **longe de toda aresta**; este
+/// gate é o que a segura.
+#[test]
+fn the_anchor_is_never_a_point_that_sits_on_an_edge() {
+    use fidget::context::Tree;
+    use fidget::shape::EzShape;
+    // Um quadrado: as arestas são horizontais e verticais, então um canto de região cai **em cima**
+    // delas com um número redondo.
+    let p = Profile::new(
+        vec![vec![
+            [-0.5f32, -0.25],
+            [0.5, -0.25],
+            [0.5, 0.25],
+            [-0.5, 0.25],
+        ]],
+        FillRule::NonZero,
+        1e-3,
+    )
+    .expect("perfil");
+    let idx = ProfileIndex::build(&p);
+    let mut full = tape_of(&p);
+    // O canto inferior-esquerdo da região assenta **na aresta de baixo** (`y = −0,25`).
+    for (lo, hi) in [
+        ([-0.2f32, -0.25], [0.3f32, 0.4]),
+        ([-0.5, -0.25], [0.0, 0.1]),
+        ([0.5, -0.25], [0.9, 0.3]),
+        ([-0.3, 0.25], [0.2, 0.7]),
+    ] {
+        let cut =
+            crate::profile::sd_profile_in_region(&p, &idx, &Tree::x(), &Tree::y(), lo, hi, false);
+        let shape = crate::Engine::from(cut);
+        let mut eval = crate::Engine::new_float_slice_eval();
+        let tape = shape.ez_float_slice_tape();
+        let (mut xs, mut ys) = (Vec::new(), Vec::new());
+        for i in 0..40 {
+            for j in 0..40 {
+                xs.push((hi[0] - lo[0]).mul_add(i as f32 / 39.0, lo[0]));
+                ys.push((hi[1] - lo[1]).mul_add(j as f32 / 39.0, lo[1]));
+            }
+        }
+        let zs = vec![0.0f32; xs.len()];
+        let got = eval.eval(&tape, &xs, &ys, &zs).expect("avalia").to_vec();
+        let want = full(&xs, &ys);
+        let mut worst = 0.0f32;
+        for i in 0..xs.len() {
+            worst = worst.max((got[i] - want[i]).abs());
+        }
+        assert!(
+            worst < 1.0e-5,
+            "região {lo:?}..{hi:?}: a árvore especializada discorda em {worst:e} — o canto assenta \
+             numa aresta e a âncora do enrolamento ficou ambígua"
+        );
     }
 }

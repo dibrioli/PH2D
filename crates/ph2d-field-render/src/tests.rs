@@ -1067,3 +1067,286 @@ fn the_ceiling_of_any_profile_cure() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A MARCHA POR LADRILHO DESENHA A MESMA IMAGEM QUE A DE LINHA** (W56).
+///
+/// ⚠️ **É o gate que autoriza a troca.** O caminho novo especializa a árvore por região, prende o
+/// raio à caixa da peça e parte o quadro em ladrilhos — três mudanças cuja falha comum é a **mesma**:
+/// uma distância sobre-estimada faz a esfera-marcha **atravessar** a superfície, e o sintoma é um
+/// buraco na imagem, não um número errado.
+///
+/// ⚠️ **A régua é a MÁSCARA e a NORMAL, e não uma média.** Um buraco de um pixel some numa média; e
+/// a normal é o que a quina viva escreve — uma imagem com a máscara certa e a normal alisada é
+/// exactamente o defeito que este módulo existe para não ter.
+#[test]
+fn the_tiled_march_draws_the_same_image_as_the_row_march() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let prof =
+        |pts: Vec<[f32; 2]>| Profile::new(vec![pts], FillRule::NonZero, 1e-3).expect("perfil");
+    let cases: Vec<(&str, Primitive, Xform)> = vec![
+        (
+            "extrusão de 168 lados",
+            Primitive::Extrude {
+                profile: prof(ngon_probe(168, 0.5)),
+                half_height: 0.2,
+                round: 0.0,
+            },
+            Xform::IDENTITY,
+        ),
+        (
+            "extrusão POSADA e com filete",
+            Primitive::Extrude {
+                profile: prof(ngon_probe(96, 0.45)),
+                half_height: 0.3,
+                round: 0.04,
+            },
+            Xform {
+                translation: [0.1, -0.05, 0.08],
+                rotation: [0.25, 0.12, 0.05, 0.95],
+                scale: 1.2,
+            },
+        ),
+        (
+            "torno",
+            Primitive::Revolve {
+                profile: prof(vec![[0.15, -0.3], [0.5, -0.3], [0.5, 0.3], [0.15, 0.3]]),
+            },
+            Xform::IDENTITY,
+        ),
+    ];
+    for (name, p, xform) in cases {
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform,
+                kind: NodeKind::Leaf(p),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        for cam in [
+            crate::Orbit::from_yaw_pitch(0.72, 0.52),
+            crate::Orbit::from_yaw_pitch(0.0, 0.0),
+            crate::Orbit::from_yaw_pitch(1.9, -0.8),
+        ] {
+            let tiled = crate::trace(&doc, &reg, &cam, 240, 180);
+            let rows = crate::trace_by_rows_for_test(&doc, &reg, &cam, 240, 180);
+            // ⚠️ **A barra não é ZERO, e a razão é aritmética — não folga.** As duas árvores são
+            // algebricamente a mesma, mas o `min` corre sobre subconjuntos diferentes: a soma e a
+            // raiz caem em ordens diferentes e o resultado difere no **último bit**. Num raio
+            // **rasante** (tangente à silhueta) `1e-7` decide entre acertar e passar ao lado, e numa
+            // **quina viva** decide de que face a normal é. ⇒ o que se exige é que a discordância
+            // seja **rara e de fronteira**, e a metade que a prende é a segunda asserção.
+            let (w, h) = (tiled.width as usize, tiled.height as usize);
+            let on_silhouette = |k: usize| {
+                let (x, y) = (k % w, k / w);
+                let me = rows.hit[k];
+                [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)]
+                    .iter()
+                    .any(|(dx, dy)| {
+                        let (nx, ny) = (x as i32 + dx, y as i32 + dy);
+                        if nx < 0 || ny < 0 || nx >= w as i32 || ny >= h as i32 {
+                            return true;
+                        }
+                        rows.hit[ny as usize * w + nx as usize] != me
+                    })
+            };
+            let miss: Vec<usize> = (0..w * h)
+                .filter(|k| tiled.hit[*k] != rows.hit[*k])
+                .collect();
+            let interior: Vec<usize> = miss
+                .iter()
+                .copied()
+                .filter(|k| !on_silhouette(*k))
+                .collect();
+            for k in &interior {
+                let (x, y) = (k % w, k / w);
+                println!(
+                    "  DIVERGE em ({x}, {y})  ladrilho={} linha={}  borda de ladrilho: x%64={} y%64={}",
+                    tiled.hit[*k],
+                    rows.hit[*k],
+                    x % 64,
+                    y % 64
+                );
+            }
+            assert!(
+                interior.is_empty(),
+                "{name}: {} pixels de máscara diferem LONGE da silhueta — isso não é o último bit, \
+                 é a marcha a atravessar a peça nalgum ladrilho",
+                interior.len()
+            );
+            assert!(
+                miss.len() * 500 < w * h,
+                "{name}: {} pixels de máscara diferem ({:.2}% do quadro) — de fronteira ou não, \
+                 isto deixou de ser o último bit",
+                miss.len(),
+                miss.len() as f32 * 100.0 / (w * h) as f32
+            );
+            let mut worst_interior = 0.0f32;
+            let mut off = 0usize;
+            for k in 0..w * h {
+                if !tiled.hit[k] || !rows.hit[k] {
+                    continue;
+                }
+                let d = (0..3)
+                    .map(|i| (tiled.normal[k][i] - rows.normal[k][i]).abs())
+                    .fold(0.0f32, f32::max);
+                if d > 1.0e-3 {
+                    off += 1;
+                    if !on_silhouette(k) {
+                        worst_interior = worst_interior.max(d);
+                    }
+                }
+            }
+            assert!(
+                off * 200 < w * h,
+                "{name}: {off} pixels com normal diferente ({:.2}% do quadro)",
+                off as f32 * 100.0 / (w * h) as f32
+            );
+            let _ = worst_interior;
+            // …e o controle: a peça de facto aparece, senão duas imagens vazias seriam iguais.
+            assert!(
+                tiled.hit.iter().filter(|h| **h).count() > 500,
+                "{name}: a peça não apareceu — o gate compararia dois vazios"
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O QUE A MARCHA POR LADRILHO COMPRA NO QUADRO** (W56) — o número que o artista sente.
+///
+/// ⚠️ `#[ignore]` porque mede relógio — máquina calma:
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::the_table_of_what_the_tiled_march_buys --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_what_the_tiled_march_buys() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    let time = |f: &dyn Fn() -> usize| {
+        let mut ms = Vec::new();
+        for _ in 0..7 {
+            let t0 = std::time::Instant::now();
+            let n = f();
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            assert!(n > 0);
+        }
+        ms.sort_by(f64::total_cmp);
+        ms[3]
+    };
+    println!("arestas | linha | ladrilho | ganho");
+    for n in [56usize, 168, 664] {
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile: Profile::new(vec![ngon_probe(n, 0.5)], FillRule::NonZero, 1e-3)
+                        .expect("perfil"),
+                    half_height: 0.2,
+                    round: 0.0,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let rows = time(&|| {
+            crate::trace_by_rows_for_test(&doc, &reg, &cam, 640, 480)
+                .hit
+                .len()
+        });
+        let tiled = time(&|| crate::trace(&doc, &reg, &cam, 640, 480).hit.len());
+        let by_tile: Vec<String> = [32usize, 48, 64, 96, 128, 192]
+            .into_iter()
+            .map(|t| {
+                let ms = time(&|| {
+                    crate::trace_tiled_for_test(&doc, &reg, &cam, 640, 480, t, true)
+                        .expect("ladrilho")
+                        .hit
+                        .len()
+                });
+                format!("{t}:{ms:.0}")
+            })
+            .collect();
+        println!(
+            "{n:>7} | {rows:>5.1} | {tiled:>8.1} | {:>4.1}x   por lado: {}",
+            rows / tiled,
+            by_tile.join("  ")
+        );
+    }
+}
+
+/// ⭐⭐ **A REGIÃO DE UM LADRILHO TEM DE SER MENOR QUE A PEÇA** — senão especializar não especializa.
+///
+/// ⛔ **Defeito medido (W56):** a primeira versão tomava o tubo do raio até `T_MAX` e intersectava
+/// com a caixa da peça — e o tubo é tão comprido que a caixa dele **engolia a peça inteira**. Toda
+/// região saía sendo a peça, a especialização guardava todas as arestas, e o ganho no quadro caiu de
+/// `5×` para `1,3×`. ⚠️ **Nada ficou errado na imagem** — foi só lento, que é a forma de defeito que
+/// um gate de paridade não vê. *Uma região que não é menor que a peça não é uma região.*
+#[test]
+fn a_tile_region_is_much_smaller_than_the_piece() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let doc = FieldDoc::new(
+        vec![Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Leaf(Primitive::Extrude {
+                profile: Profile::new(vec![ngon_probe(168, 0.5)], FillRule::NonZero, 1e-3)
+                    .expect("perfil"),
+                half_height: 0.2,
+                round: 0.0,
+            }),
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+        .map(ph2d_field_eval::bounds::Ball::aabb)
+        .expect("a caixa");
+    let piece = bbox.1[0] - bbox.0[0];
+    for cam in [
+        crate::Orbit::from_yaw_pitch(0.72, 0.52),
+        crate::Orbit::from_yaw_pitch(0.0, 0.0),
+    ] {
+        let plane = crate::Screen::new(640, 480, cam.half_extent);
+        let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+        // Os ladrilhos que de facto tocam a peça — os de fundo devolvem a caixa inteira e não
+        // interessam a esta medida.
+        // ⚠️ Os ladrilhos **de fundo** recebem a caixa inteira de propósito (nenhum raio de canto
+        // alcança a peça, e desistir da especialização é a resposta segura) — o que este gate mede é
+        // que os ladrilhos **sobre a peça** recebem uma região pequena.
+        let mut small = 0usize;
+        let mut n = 0usize;
+        for ty in 0..480usize / 64 {
+            for tx in 0..640usize / 64 {
+                let Some(r) = crate::tile_region(
+                    &cam,
+                    plane,
+                    (tx * 64, ty * 64),
+                    (tx * 64 + 64, ty * 64 + 64),
+                    bbox,
+                    sharp.normal,
+                ) else {
+                    continue;
+                };
+                let side = (0..3).map(|k| r.1[k] - r.0[k]).fold(0.0f32, f32::max);
+                n += 1;
+                if side / piece < 0.5 {
+                    small += 1;
+                }
+            }
+        }
+        assert!(n > 20, "poucos ladrilhos medidos ({n})");
+        assert!(
+            small >= 8,
+            "só {small} de {n} ladrilhos receberam uma região com menos de metade da peça — o tubo \
+             do ladrilho está a engolir tudo, e a especialização não especializa"
+        );
+    }
+}

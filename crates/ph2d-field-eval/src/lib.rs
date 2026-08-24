@@ -399,6 +399,52 @@ mod tests;
 /// ⚠️ `Shell` e `Offset` **não** remapeiam (agem no valor), então não desistem.
 #[must_use]
 pub fn compile_in_region(doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
+    RegionCompiler::new(doc).compile(doc, lo, hi)
+}
+
+/// ⭐⭐ **O compilador de regiões, com os índices já construídos** (W56).
+///
+/// ⚠️ **Ele existe por uma medição:** construir a [`profile_index::ProfileIndex`] de um contorno de
+/// 168 arestas custa **0,2 ms**, e um quadro pede uma região por ladrilho — dezenas delas.
+/// Reconstruir o índice por região pagaria mais do que a especialização poupa. *Um índice é do
+/// CONTORNO, não da região.*
+pub struct RegionCompiler {
+    /// Índice por nó, só para os nós que são forma de perfil.
+    idx: std::collections::BTreeMap<usize, profile_index::ProfileIndex>,
+}
+
+impl RegionCompiler {
+    /// Constrói os índices dos perfis do documento — uma vez.
+    #[must_use]
+    pub fn new(doc: &FieldDoc) -> Self {
+        let mut idx = std::collections::BTreeMap::new();
+        for (i, node) in doc.nodes().iter().enumerate() {
+            if let NodeKind::Leaf(
+                Primitive::Extrude { profile, .. } | Primitive::Revolve { profile },
+            ) = &node.kind
+            {
+                idx.insert(i, profile_index::ProfileIndex::build(profile));
+            }
+        }
+        Self { idx }
+    }
+
+    /// **Este documento tem alguma forma de perfil?** — se não, especializar não compra nada, e o
+    /// consumidor fica com a marcha de sempre.
+    #[must_use]
+    pub fn is_worth_it(&self) -> bool {
+        !self.idx.is_empty()
+    }
+
+    /// A árvore do documento, especializada para a caixa de mundo `[lo, hi]`. Ver
+    /// [`compile_in_region`].
+    #[must_use]
+    pub fn compile(&self, doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
+        compile_in_region_with(self, doc, lo, hi)
+    }
+}
+
+fn compile_in_region_with(rc: &RegionCompiler, doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
     // Passo 1 — o mapa mundo→local de cada nó. A arena tem os filhos ANTES dos pais, então o
     // percurso é de cima para baixo a partir da raiz.
     let n = doc.nodes().len();
@@ -424,7 +470,8 @@ pub fn compile_in_region(doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
         let inner = match &node.kind {
             NodeKind::Leaf(p) => to_local[i]
                 .filter(|_| !node.mods.iter().any(remaps_coordinates))
-                .and_then(|m| specialised_profile(p, m.box_of(lo, hi)))
+                .zip(rc.idx.get(&i))
+                .and_then(|(m, idx)| specialised_profile(p, idx, m.box_of(lo, hi)))
                 .unwrap_or_else(|| primitive(p)),
             NodeKind::Combine { op, children } => combine(*op, children, &built),
             NodeKind::Sampled { .. } => Tree::constant(f64::from(hybrid::ABSENT)),
@@ -449,7 +496,11 @@ fn remaps_coordinates(m: &Unary) -> bool {
 }
 
 /// A forma de perfil especializada para a caixa **local**, ou `None` se não for uma forma de perfil.
-fn specialised_profile(p: &Primitive, local: ([f32; 3], [f32; 3])) -> Option<Tree> {
+fn specialised_profile(
+    p: &Primitive,
+    idx: &profile_index::ProfileIndex,
+    local: ([f32; 3], [f32; 3]),
+) -> Option<Tree> {
     let (lo, hi) = local;
     match p {
         Primitive::Extrude {
@@ -457,10 +508,9 @@ fn specialised_profile(p: &Primitive, local: ([f32; 3], [f32; 3])) -> Option<Tre
             half_height,
             round,
         } => {
-            let idx = profile_index::ProfileIndex::build(profile);
             let flat = profile::sd_profile_in_region(
                 profile,
-                &idx,
+                idx,
                 &Tree::x(),
                 &Tree::y(),
                 [lo[0], lo[1]],
@@ -474,7 +524,6 @@ fn specialised_profile(p: &Primitive, local: ([f32; 3], [f32; 3])) -> Option<Tre
             ))
         }
         Primitive::Revolve { profile } => {
-            let idx = profile_index::ProfileIndex::build(profile);
             // ⚠️ `u = √(x² + z²)`: a caixa local vira um **anel** em `u`, e o mínimo é a distância do
             // eixo à caixa no plano `xz` — zero quando ela o contém.
             let du = axis_gap(lo[0], hi[0]);
@@ -489,7 +538,7 @@ fn specialised_profile(p: &Primitive, local: ([f32; 3], [f32; 3])) -> Option<Tre
             let r = ops::safe_sqrt(Tree::x().square() + Tree::z().square());
             Some(profile::sd_profile_in_region(
                 profile,
-                &idx,
+                idx,
                 &r,
                 &Tree::y(),
                 [u_lo, lo[1]],

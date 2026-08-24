@@ -4833,10 +4833,74 @@ correcto, só não mais rápido. *Uma especialização que erra a pré-imagem n�
   de compilação ali). *Quando a versão comportamental não morde de forma fiável, a lei tem de ser
   afirmada onde ela é decidida.*
 
+### §57.14 — O CONSUMIDOR: a marcha por ladrilho, e o que ela de facto comprou
+
+O traçado passa a marchar em **ladrilhos** e a pedir uma árvore por região. Duas metades, e as duas
+são de correcção:
+
+1. **o raio prende-se à caixa da peça** (`Scene::clip`): ele começa na entrada e pára na saída, então
+   **nenhuma amostra cai fora** da região para que a árvore foi construída;
+2. **a região é o tubo do ladrilho ∩ a caixa da peça**, com o `t` tirado do **recorte pela caixa** e
+   inflada pela sonda da normal.
+
+| arestas | por linha | por ladrilho | ganho |
+|---:|---:|---:|---:|
+| 56 | 65,6 ms | **36,8 ms** | 1,8× |
+| 168 | 166,6 ms | **91,8 ms** | 1,8× |
+| 664 | 545,7 ms | **337,8 ms** | 1,6× |
+
+⚠️ **1,8×, e não os 5–6× que o §57.12 projectava.** O mecanismo está medido: a projecção supunha uma
+pegada de `0,125` da peça, e um ladrilho de 64 px não a alcança — **um raio de viés varre em `(u, v)`
+muito mais do que a largura do ladrilho**, porque ele atravessa a espessura da peça. A pegada efectiva
+fica em ~`0,4`, que a tabela do §57.12 já dizia valer ~3×, e o resto vai na montagem das fitas
+(≈ 0,29 ms por ladrilho, medido).
+
+⭐ ⇒ **O próximo degrau é ladrilhar também em PROFUNDIDADE** — uma árvore por fatia de `z` além de por
+ladrilho de ecrã. É o mesmo mecanismo, um eixo a mais, e é o que fecha a distância até ao tecto.
+
+### §57.15 — ⛔⛔ Três defeitos que só o gate de IMAGEM apanhou
+
+O caminho novo passou em todos os gates de avaliação e **desenhou errado**. Os três, por ordem de
+descoberta:
+
+1. **A região era a peça inteira.** O tubo do ladrilho ia até `T_MAX`, e a caixa dele engolia tudo ⇒
+   toda região guardava todas as arestas. ⚠️ **Nada ficou errado na imagem** — foi só lento (`1,3×` em
+   vez de `5×`), que é a forma de defeito que um gate de paridade **não vê**. Gate novo:
+   `a_tile_region_is_much_smaller_than_the_piece`.
+2. **As sondas da NORMAL saíam da região.** Ela é uma diferença central em `ponto ± ε`, e um `ε` fora
+   da região faz a árvore especializada responder onde ela não vale: **90 pixels apagaram-se** (o
+   gradiente saía nulo e a marcha desistia do acerto). ⇒ a região é inflada pela sonda. *Uma região
+   tem de conter tudo o que é avaliado — inclusive o que é avaliado DEPOIS de o raio parar.*
+3. ⭐⭐⭐ **A regra do atravessamento tinha de ser SEMIABERTA.** Um caminho que passa **por um
+   vértice** do contorno era contado **zero** vezes — as duas arestas que o partilham veem produto
+   nulo e ambas desistem. O enrolamento sai errado por um numa cunha fina à volta daquele vértice, o
+   sinal inverte-se lá dentro, e a esfera-marcha **inventa uma superfície**. Um pixel, de ~800 mil
+   amostras. É a mesma disciplina que o raio `+x` já seguia (Dan Sunday): *uma regra de fronteira
+   escrita duas vezes tem de ser a mesma nas duas.*
+
+⚠️ **E os três foram encontrados por uma SONDA DE MECANISMO, não por leitura:** marchar o raio do
+pixel divergente imprimindo `spec` e `full` lado a lado deu, no passo 13, *a mesma magnitude com o
+sinal trocado* — que aponta para o enrolamento e para mais nada. *Um pixel errado tem um raio, e um
+raio tem passos.*
+
+### §57.16 — ⚠️ E três gates que passavam sem medir nada
+
+Cada um dos defeitos acima sobreviveu a gates verdes, e a razão foi sempre a **fixture**:
+
+| o que não estava coberto | porquê passava | a cura |
+|---|---|---|
+| caminho por um **vértice** | 4 000 caminhos aleatórios nunca passam por um | caminhos **construídos** por cada vértice |
+| âncora **em cima** de uma aresta | as regiões aleatórias nunca caem lá | um quadrado, com a região a começar na aresta |
+| região do tamanho da **peça** | as regiões do gate eram pequenas | as duas primeiras passaram a ser a peça inteira |
+
+⭐ E o custo de não as ter: **21 das 22 mutações ficaram vermelhas à primeira; as três que
+sobreviveram são exactamente estas.** *A prova de mutação não mede o código — mede a fixture.*
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
-- ⏸️ **A MARCHA POR REGIÃO** (`ph2d-field-render`) — a única metade que falta, e a que dá o número
-  ao artista. ⭐ A ponte já existe (`compile_in_region`, §57.13); o que falta é o **consumidor**. Hoje a marcha é por **linha de ecrã**; ela tem de passar a pedir uma árvore
+- ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é
+  ladrilhar também em **PROFUNDIDADE**: um raio de viés varre em `(u, v)` muito mais do que a largura
+  do ladrilho, e é isso que separa o `1,8×` medido do tecto de `12,5×`. Hoje a marcha é por **linha de ecrã**; ela tem de passar a pedir uma árvore
   especializada por região e a marchar dentro dela. ⚠️ **A região é em espaço LOCAL do nó, e não do
   ecrã** — logo ela **não depende da câmera**, e as fitas especializadas podem ser construídas uma
   vez por documento em vez de uma vez por quadro (a montagem é 0,07–0,23 ms por região).
@@ -4869,6 +4933,16 @@ correcto, só não mais rápido. *Uma especialização que erra a pré-imagem n�
   fita única, JIT, gradiente exacto, modificadores e poses. ⛔ A folha nativa foi **recusada por
   produto**, não por velocidade: ela perderia os modificadores e a quina viva. ⏸️ Falta **uma** metade
   — a marcha por região —, e a região é em espaço **local**, logo independente da câmera.
+  ⭐⭐ **E o CONSUMIDOR existe** (§57.14): a marcha passa a ser por **ladrilho**, com o raio preso à
+  caixa da peça — **1,8×** no quadro (167 → 92 ms a 168 arestas). ⚠️ Não os 5–6× projectados, e o
+  mecanismo está medido: um raio de viés varre em `(u, v)` muito mais do que a largura do ladrilho ⇒
+  a pegada efectiva é ~`0,4` e não `0,125`. ⏸️ O degrau seguinte é ladrilhar em **profundidade**.
+  ⛔⛔ **Três defeitos só o gate de IMAGEM os apanhou** (§57.15) — a região que era a peça inteira
+  (lento, e invisível a um gate de paridade), as sondas da normal a saírem da região (90 pixels
+  apagados), e ⭐ a regra do atravessamento que tinha de ser **semiaberta**: um caminho que passa por
+  um **vértice** contava zero em vez de um, o sinal invertia-se numa cunha fina e a marcha **inventava
+  uma superfície**. ⚠️ **E os três sobreviveram a gates verdes por causa da FIXTURE** (§57.16): 21 das
+  22 mutações ficaram vermelhas à primeira, e as três sobreviventes eram exactamente estas.
   ⚠️ **E metade da wave foi escrita na árvore ERRADA** — a cwd
   escorregou para o primário e tudo compilou lá; quem o apanhou foi o caminho absoluto do arnês de
   mutação.

@@ -1,0 +1,44 @@
+[package]
+name = "ph2d-quadextract"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A EXTRACCAO DE MALHA QUAD a partir de um MAPA DE GRADE INTEIRA (ADR-0162; a fase
+# que o pivo' da familia global deixou nomeada e por construir).
+#
+# ⭐ CLEAN-ROOM a partir de literatura PUBLICADA -- Ebke, Bommes, Campen, Kobbelt,
+# «QEx: Robust Quad Mesh Extraction», SIGGRAPH Asia 2013 (o metodo), e Bommes,
+# Zimmer, Kobbelt, «Mixed-Integer Quadrangulation», SIGGRAPH 2009 (o arredondamento
+# que a alimenta). ⛔ Nenhuma linha traduzida de implementacao nenhuma: o fonte das
+# implementacoes existentes NUNCA entrou na janela que escreveu esta crate, e o
+# insumo foi uma especificacao funcional auditada mais os papers. Protocolo,
+# proveniencia e atestados: `docs/3D/cleanroom/`.
+#
+# ⚠️ SEM DEPENDENCIA DE PRECISAO MULTIPLA, e nao por economia: o dominio saneado e'
+# QUANTIZADO para inteiros exactos de 64 bits (`exact.rs`), e ai' o predicado de
+# orientacao e' um determinante `i128` -- exacto por construcao, sem filtro e sem
+# epsilon. Os limites sao estruturais, nao medidos: ver `exact::Q_HEADROOM`.
+
+[dependencies]
+ph2d-mesh = { path = "../ph2d-mesh" }
+
+[dev-dependencies]
+# ⚠️ SO' para os gates e o instrumento: a REGUA POR-FACE desta linha ja' existe, e e'
+# a barra do oraculo. Reconstrui-la aqui seria uma segunda resposta a' mesma pergunta.
+ph2d-quadfill = { path = "../ph2d-quadfill" }
+# A descompressao dos fixtures (`.mapa.gz`). ⚠️ `miniz_oxide` e nao `flate2`: ele ja'
+# esta' na arvore como dependencia DIRECTA de duas crates da casa.
+miniz_oxide = "0.8"
+# ⚠️ A CADEIA INTEIRA DA CASA, so' para o instrumento `chain_info` e para o gate que
+# mede a forma com a FASE ZERO honrada. ⛔ Nenhuma delas e' dependencia do produto: a
+# extraccao consome um mapa por canto e nao sabe quem o produziu.
+ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
+ph2d-crossfield = { path = "../ph2d-crossfield" }
+ph2d-trace = { path = "../ph2d-trace" }
+ph2d-gridmap = { path = "../ph2d-gridmap" }

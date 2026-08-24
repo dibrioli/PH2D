@@ -590,6 +590,116 @@ painéis é **600**, não 700 — `architecture_panel_loc_cap`).
 
 ---
 
+## §0-nonies — DÉCIMO BLOCO: **a conferência vai a ZERO P1**
+
+⭐⭐⭐ **Não há mais nenhum P1 aberto na conferência dos nós.** Placar final desta
+jornada: **68 P2 · 0 P1 · ✅ 240**.
+
+E o que fechou o último não foi uma capacidade nova — foi **reconferir uma recusa
+que o próprio bloco anterior tinha dissolvido**.
+
+### ⚠️ A recusa dissolveu porque o SUBSTRATO mudou, e quem o mudou fui eu
+
+A célula (folha 01, *inherit velocity*) dizia **NÃO**, e a razão era estrutural e
+correcta *quando foi escrita*: as duas saídas eram **estado** (que paga a
+propriedade que define o nó) ou **velocidade autorada** (que é outra feature). A
+**terceira** — re-cozinhar a origem nos instantes de nascimento — não existia.
+
+O bloco §0-septies criou-a (ADR-0163). CLAUDE.md §0.0 diz o resto: *«fora de
+escopo porque é inalcançável» é uma afirmação sobre um número que outra pessoa
+pode mudar — **quem move o número tem de reconferir a nota***. Numa linha longa,
+essa outra pessoa é você mesmo, três blocos depois.
+
+### ⭐⭐ E a medição achou a metade que vinha ANTES da célula
+
+O `P` do emissor é a posição de **nascimento**, e ela era a origem de **AGORA**
+para toda partícula viva ⇒ **arrastar o emissor arrastava o penacho inteiro,
+rigidamente**. Sonda: `origem +5,0 ⇒ todas as partículas +5,0`.
+
+A célula pedia a velocidade; o defeito de baixo era a **posição**, e nenhuma
+célula o tinha nomeado. Os dois curam no mesmo sítio.
+
+### O que o nó ganhou
+
+`Emitter Motion` (enum apendado, `0` = o de sempre **ao bit**):
+
+| modo | o quê |
+|---|---|
+| **`Carry`** | o penacho anda junto. ⚠️ **Não é um bug com nome bonito** — um efeito ANEXADO (a chama que anda com a tocha) quer exactamente isto |
+| **`Leave`** | a partícula fica onde nasceu (a base de toda referência) |
+| **`Inherit`** | e ainda leva a velocidade da fonte |
+
+mais **`Inherit Strength`** (o *Strength* da Cavalry), **gateado** ao modo que o
+lê — um knob vivo que não muda nada é a doença que o `PARAM_GATES` deste nó já
+curava para outros três.
+
+### Os dois números, e de onde saíram
+
+⚠️ **A resolução da história é uma TAXA (240 Hz), não uma contagem.** Uma contagem
+fixa repartida pela vida faria a resolução **piorar** quando o artista alonga a
+vida — o oposto do que ele pediu. E 240 Hz é escolhido contra a referência que se
+quer bater: um motor com estado amostra a posição do emissor **uma vez por
+quadro**, então quatro vezes isso já é melhor do que aquilo que se imita.
+
+⚠️ **O tecto é 1024 amostras, e ele nomeia o recurso: TEMPO.** Medido em release
+(`custo_de_uma_fatia`), uma fatia de leque custa **~300-490 ns**:
+
+| fatias | ms/quadro | % de um quadro |
+|---|---|---|
+| 512 | 0,168 | 1,0 % |
+| **1024** | **0,435** | **2,6 %** ← shipa aqui |
+| 2048 | 0,913 | 5,5 % |
+| 4096 | 2,005 | 12,0 % |
+
+2,6% de um quadro por um knob **opcional** de um nó é o que *fácil de usar*
+tolera; 5,5% não.
+
+⛔ **Fronteira NOMEADA:** os modos novos são **CPU-only**. O device precisaria de
+uma tabela ALIMENTADA pelo leque, e o `LutSpec::fill` vê params e texto, nunca o
+grafo — o `applicable` recusa-os, como já recusava `probability < 1`.
+
+### ⚠️⚠️ E o substrato tinha um defeito que só este nó revelou
+
+O leque contava as fatias da **PORTA 0**. Um nó **sem portas** — que é toda FONTE
+— lia **zero** fatias com o leque montado e cheio: o emissor ignorava **529
+amostras** da própria história em silêncio, com a cena a desenhar e os três modos
+idênticos.
+
+⚠️ **E o gate do leque não o apanhou porque contava o trabalho FEITO** (as
+cozeduras aconteceram) e a afirmação era sobre o trabalho **RECEBIDO**. A sonda
+passou para dentro do consumidor. A lei que fica: **uma entrada por fatia,
+sempre** — *o que falta é o conteúdo da porta, não a fatia*. ADR-0163 emendado, e
+o leque passou também a re-resolver os params **dirigidos**
+(`EvalCtx::fan_param`), sem o que ele não serviria fonte nenhuma.
+
+### Cena `=89`, e a régua que estava invertida
+
+Três fontes iguais varridas pelo mesmo relógio: **CARREGA** (o controle) ·
+**DEIXA** · **HERDA**.
+
+⚠️ **A origem é DIRIGIDA POR FIO de propósito** — sem movimento não há história e
+os três modos coincidem *por aritmética*; um smoke com a fonte parada ficaria
+verde sobre nada.
+
+⚠️ **A minha régua estava invertida:** afirmei que a herança ESPALHA o jacto e
+medi **0,1522 contra 0,7943**. Ela **aperta** — uma partícula que leva a
+velocidade da fonte **viaja com ela**. A física corrigiu a afirmação, não o
+código.
+
+### Provas de mutação
+
+| mutação | gates que morrem |
+|---|---|
+| a história é ignorada | 4 |
+| a herança sai da soma | 2 |
+
+Split por HR-18: `ph2d-node-motion-emitter/history.rs`.
+
+**Gate deste bloco:** fmt · clippy **0** · typos **0** · **workspace inteira:
+18 029 testes, 18 029 ✓** — sem uma única flake.
+
+---
+
 ## §1 — O que entrou, em uma frase
 
 **Todo teto deste catálogo passa a dizer de que RECURSO ele é** (`CLAUDE.md` §0.0) — 27 params

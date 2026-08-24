@@ -124,6 +124,7 @@
 - [Provas de mutação (7)](reference_topic_mutation_proofs.md) — ⚠️ os 3 controles vão NO ARNÊS: verde-antes · `Compiling <pkg>` · `running 1 test` (sem o 1º, um gate que rebenta sozinho lê como mutação apanhada)
 - [Restore que preserva o mtime deixa o cargo STALE](feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md) — `shutil.copy2` devolve conteúdo E carimbo; a suíte fica vermelha acusando código já correto. Carimbe o restore e exija o verde de volta; ⛔ `git status` é cego dentro de uma crate `??`
 - [Uma metade NOVA torna a antiga inobservável](feedback_a_new_half_can_make_the_old_half_unobservable.md) — re-corra as mutações da antiga; as que sobreviverem apontam a fixtura que falta
+- [Reproduza o resultado da ferramenta ALHEIA antes de lhe dar o seu insumo](feedback_reproduce_the_foreign_tools_own_result_before_feeding_it_yours.md) — troque UM insumo por vez; malha+campo+formato juntos = horas a acusar a ferramenta
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [ONDE os objetos NASCEM é a fixtura que falta](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md) — a cena real é empilhada no sítio por omissão do gesto de criação, e é lá que vive todo defeito de oclusão

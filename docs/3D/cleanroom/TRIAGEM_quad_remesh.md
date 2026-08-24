@@ -42,8 +42,8 @@ de fonte, no clone local e via API pública.
 | `libTimekeeper` · `nlohmann/json` | **MIT** | T0 | instrumentação, serialização |
 | `eigen` | **MPL-2.0** | T0½ | álgebra linear |
 | `glew` | **BSD-3** | T0 | só visualização |
-| `blossom5-cmake` | Unlicense (o **wrapper**) | ⚠️ | ⚠️ o *blossom5* empacotado tem licença própria, **não conferida** — e o build do próprio projeto o desliga por default (`SATSUMA_ENABLE_BLOSSOM5=0`) |
-| `lpsolve` | ⚠️ **não conferida** (tipicamente LGPL) | ⚠️ | solver linear |
+| `blossom5-cmake` | ⛔⛔ **wrapper Unlicense, ALGORITMO NÃO-LIVRE** — *avaliação e pesquisa* apenas, **redistribuição proibida**, licença comercial à parte (por isso o repositório dele só guarda um *patch*, nunca o fonte) | **T4** | emparelhamento perfeito de custo mínimo — ⚠️ **o «solver exato» que a nossa `ph2d-quantize` nomeia como *a cura*** |
+| `lpsolve` | **LGPL** (conferida) | T0½ | solver linear |
 
 ⚠️ **A leitura que a tabela obriga:** o copyleft da família entra por **três** submódulos
 (`vcglib`, `xfield_tracer`, `CoMISo`) mais um sem licença (`quadretopology`). **Não** por
@@ -154,6 +154,77 @@ traduzir uma linha.
 
 ---
 
+## §5-bis — ⭐ A Rota 0 FOI EXECUTADA: o que a medição disse (2026-08-24)
+
+Arnês fora da árvore (`~/Referencias/directional-bench/`), a biblioteca clonada em
+`~/Referencias/directional/`. Régua: espelho em Python de `ph2d_quadfill::QuadShape`.
+
+### §5-bis.1 — O que se aprendeu ANTES de qualquer resultado
+
+| achado | consequência |
+|---|---|
+| ⛔ **A extração não compila sem GMP** — o inteiro-grande embutido não oferece a interface que aquele passo chama | ⚠️ **e o guarda tem o nome trocado**: o `CMake` do próprio projeto define um símbolo, o código testa **outro** ⇒ o caminho com GMP **nunca liga** pela via oficial. ⭐ Irrelevante para nós: em Rust o inteiro/racional exacto é **MIT/Apache** |
+| ⚠️ **A integração exige campo de CURL REDUZIDO** | um campo apenas liso **não serve**; os próprios tutoriais de integração leem sempre o campo curl-corrigido |
+| ⛔ **Todo o nosso corpus é de QUADS** (só o cubo e o toro são puros; as outras misturam) | uma biblioteca de triângulos lê lixo. *O oráculo de produção tolera porque triangula sozinho* |
+
+### §5-bis.2 — ⭐⭐ A qualidade, com a NOSSA régua, no caso que terminou
+
+Malha **deles**, campo **deles**, extração completa em segundos: **1124 faces, 97,9% quads**.
+
+| grandeza | ⭐ biblioteca MPL-2.0 | oráculo de produção (orelha) | ⛔ o nosso F5 hoje (orelha) |
+|---|---|---|---|
+| **enviesamento p50** | **`5,0°`** | `6°` | `27°` |
+| enviesamento p99 | `30,3°` | `20°` | — |
+| **faces com canto pior que 60°** | **`0`** | `0` | **`9 159`** |
+| aspecto p50 | `1,13` | `1,08` | `1,98` |
+| ⚠️ aspecto p99 · max · `>4×` | `15,45` · `187` · **`43`** | `1,4` · — · **`0`** | — · `122,7` · — |
+| espalhamento de área | `1,28` | — | — |
+
+⭐⭐⭐ **A leitura que importa:** na grandeza que perseguimos — **enviesamento** — uma cadeia
+por **extração** aterra em `5,0°`, a classe do oráculo, e **5× melhor** que os `27°` do nosso
+preenchimento por patch. ⇒ *a cura que a caça por eliminação nomeou tem agora um número
+independente por trás.*
+⚠️ **E o preço vem junto:** a cauda de **aspecto** dela é **pior** que a do oráculo — `43`
+faces acima de `4×` contra `0`. *Ela não é o oráculo; é outra troca.*
+⛔ **Comparação entre peças DIFERENTES** (a jarra é deles, a orelha é nossa). Vale como
+**classe**, nunca como placar.
+
+### §5-bis.3 — ⛔ E a extração sobre o NOSSO corpus ficou INCONCLUSIVA — por culpa do insumo
+
+| corrida | campo | resultado |
+|---|---|---|
+| jarra deles · campo **deles** | — | ⭐ **extração completa**, segundos |
+| jarra deles · campo **meu** | ⛔ `curl max = 5724` | **cai** (SIGFPE) |
+| gancho nosso · campo **meu** | `curl max = 0,70` (plausível) | integração **ok**; extração **> 420 s sem terminar** |
+| peça furada nossa (38 arestas de bordo) | — | cai **antes da 1ª linha** |
+
+⇒ ⛔ **Não se pode concluir «a extração é frágil».** O único insumo que produziu extração
+completa foi o **deles**; o meu produziu `5724` de curl numa malha onde o deles funciona.
+*Toda falha a jusante está confundida com um campo em que não se pode confiar.*
+
+⭐ **O que ISSO entrega, e é o mais accionável da medição:** o contrato de entrada da
+extração é **um campo de baixo curl**, e satisfazê-lo é sub-problema próprio.
+⚠️⚠️ **E ele apanha-nos:** o nosso F2 foi **ilibado** por contagem de singularidades
+(8 = mínimo de Poincaré–Hopf), e **ninguém mediu o curl dele**. Se for alto, a extração
+falha para nós pela mesma porta. ⇒ **medição barata e decisiva, antes de qualquer porte.**
+
+### §5-bis.4 — ⛔ Os QUATRO erros desta medição (a parte reutilizável)
+
+1. ⛔ **Alimentei uma biblioteca de triângulos com malhas de quadriláteros** — o corpus
+   inteiro. Invalidou as três primeiras corridas.
+2. ⛔ **Usei o campo sem curl-correcção** e li a queda como fragilidade da biblioteca; o
+   tutorial dela lê sempre o irmão corrigido.
+3. ⛔⛔ **Li `curl max = 1,47e-15` como «excelente»** numa peça com **zero** restrições —
+   era o **balde que ninguém encheu**, sobre uma malha que já era lixo (erro 1).
+4. ⛔ **`pkill -f` matou a própria janela que o executava** (o texto do script estava na
+   linha de comando dela), e o `| tail` mascarou três códigos de saída.
+
+⭐⭐ **A lei que os atravessa:** *antes de medir uma ferramenta alheia, REPRODUZA o resultado
+DELA com os insumos DELA — e só então troque **um** insumo de cada vez.* Eu troquei malha,
+campo e formato ao mesmo tempo, e passei horas a acusar a ferramenta.
+
+---
+
 ## §6 — ⛔ Recusas MEDIDAS
 
 | recusa | mecanismo medido | onde |
@@ -164,18 +235,31 @@ traduzir uma linha.
 | ⛔ **Não construir a partir do *paper* de extração de 2025** | o próprio *paper* se declara **fundação**, não algoritmo; sem código | §4 |
 | ⛔ **Não gerar a vassoura de identificadores do alvo GPL agora** | gerá-la **exige ler o fonte GPL**, e isso aumenta contaminação por uma rota que pode nunca abrir | §7 |
 | ⛔ **Não tratar a família GPL como bloco único** | o copyleft entra por **3 submódulos + 1 sem licença**; a quantização que reimplementámos era **MIT** o tempo todo | §2.1 |
+| ⛔ **Não portar a implementação de referência do emparelhamento (Blossom)** | ela **não é livre** — redistribuição proibida, licença comercial. É **T4**: reimplementar do *paper* é a única rota | §7.1 |
+| ⛔ **Não concluir «a extração é frágil»** | todas as quedas medidas estão **confundidas com um campo em que não se pode confiar** (o meu deu `5724` de curl onde o deles funciona) | §5-bis.3 |
+| ⛔ **Não usar a leitura de `curl` de uma peça sem restrições como prova** | balde vazio lê-se como perfeito (`1,47e-15`) | §5-bis.4 |
 
 ---
 
 ## §7 — O que ficou por conferir (dito, não escondido)
 
-1. ⚠️ A licença real do *blossom5* empacotado (o **wrapper** é Unlicense; o algoritmo tem
-   licença própria). **Sem urgência:** o build do próprio projecto o desliga por omissão.
-2. ⚠️ A licença do solver linear embutido (tipicamente LGPL).
-3. ⚠️ O arquivo do mesher de N-funções **sem banner** de licença — a declaração de
-   repositório cobre, mas quem tomar a Rota A deve pedir confirmação ao autor.
-4. ⛔ **A vassoura de identificadores do alvo GPL NÃO foi gerada**, de propósito (§6).
-   Ela é o **primeiro acto** da Rota B, se a Rota B abrir.
+1. ✅ **RESOLVIDO — e virou o achado mais afiado da triagem.** O *blossom5* empacotado
+   **não é software livre**: o autor publica-o para *avaliação e pesquisa*, **proíbe a
+   redistribuição** e vende licença comercial à parte (o repositório de empacotamento
+   guarda **só um patch**, nunca o fonte — é a assinatura da restrição).
+   ⛔⛔ **Por que dói:** a nossa [`ph2d-quantize`](../../../crates/ph2d-quantize/src/solve.rs)
+   nomeia, em **dois** doc-comments, *«o solver exato por matching (Blossom)»* como **a cura
+   da meia-integralidade**. ⇒ *uma cerca que nomeia a cura tem de dizer se a cura está
+   disponível.* O fato de licença foi colado aos dois sítios; o caminho lícito é
+   **escrevê-lo do *paper*** (público, citado no próprio empacotamento), **nunca portá-lo**.
+   ⭐ O nosso oráculo é construído **sem** ele — conferido no binário, que não linka um
+   único símbolo dessa família.
+2. ✅ **RESOLVIDO:** o solver linear embutido é **LGPL**.
+3. ⚠️ **ABERTO:** o arquivo do mesher de N-funções **sem banner** de licença — a declaração
+   de repositório cobre, mas quem tomar a Rota A deve pedir confirmação ao autor.
+4. ⛔ **A vassoura de identificadores do alvo GPL NÃO foi gerada** para a travessia (§6);
+   a que existe foi montada **só do que esta janela de facto viu**, e é o que varre os
+   artefatos. A vassoura completa é o **primeiro acto** da Rota B, se a Rota B abrir.
 
 ---
 

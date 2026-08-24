@@ -115,6 +115,8 @@ pub(crate) mod conferencia_demos_body;
 #[path = "motion_state_conferencia_demos_echo.rs"]
 pub(crate) mod conferencia_demos_echo;
 
+#[path = "motion_state_conferencia_demos_ladder.rs"]
+pub(crate) mod conferencia_demos_ladder;
 /// A cena do EMISSOR QUE DEIXA RASTO (`=89`) — os tres modos de `Emitter Motion`.
 /// ⚠️ A origem e' DIRIGIDA POR FIO de proposito: sem movimento nao ha' historia, e os tres
 /// modos coincidem por aritmetica — um smoke com a fonte parada ficaria verde sobre nada.

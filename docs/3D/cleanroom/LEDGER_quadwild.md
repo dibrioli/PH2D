@@ -425,6 +425,7 @@ precisamente o padrão que uma auditoria independente existe para apanhar:
 |---|---|---|
 | 1 (2026-08-24) | [`SPEC_extracao_de_malha_quad.md`](SPEC_extracao_de_malha_quad.md) | `4455ee56e1ae6ae5` |
 | 2 (2026-08-24, **pós-implementação**) | idem — a correcção do [§R-pós.4](#r-pós4) no §5 + a linha de atestado no cabeçalho | `9086a1dd766e53d6` |
+| ⭐ **obra seguinte**, 1 (2026-08-24) | [`SPEC_restricoes_por_eliminacao.md`](SPEC_restricoes_por_eliminacao.md) — a costura e as linhas de feição, **um mecanismo só** | `f56aad2648c4086b` |
 
 ⛔ **A versão 2 é POSTERIOR à obra e não a alimentou** — ela **retira** expressão emprestada
 e põe no lugar a derivação que a `ph2d-gridmap` já tinha escrito. ⚠️ *Nenhum algoritmo foi
@@ -458,7 +459,18 @@ anterior a esta linha e à própria skill. ⛔ **DESCRITO, nunca reproduzido**, 
 |---|---|
 | **E ⇒ R-pré** | ⭐ **entregue** em [`NEXT_R-PRE.md`](NEXT_R-PRE.md), 2026-08-24, **sweep verde sobre o próprio handoff** |
 | **R-pré ⇒ I** | ⭐ **entregue** em [`NEXT_I.md`](NEXT_I.md), 2026-08-24, **sweep verde sobre o próprio handoff** (as DUAS mensagens do Modo L) |
+| I ⇒ R-pós | ⭐ **entregue e FECHADO** em 2026-08-24 — ver [Fechamento R](#fechamento-r) |
+
+### ⭐ A corrente da OBRA SEGUINTE (as restrições por eliminação)
+
+| passo | estado |
+|---|---|
+| **E ⇒ R-pré** | ⭐ **entregue** em [`NEXT_R-PRE_eliminacao.md`](NEXT_R-PRE_eliminacao.md), 2026-08-24, **sweep verde sobre os dois artefactos, com controlo positivo antes** |
+| R-pré ⇒ I | ⏳ pendente — ⛔ **e é o que bloqueia a obra**: sem o atestado do §4.2 no cabeçalho da espec, a janela I não abre |
 | I ⇒ R-pós | ⏳ pendente |
+
+⛔ **O R-pré tem de ser uma janela que não seja o E** (§3.R) — logo **não** a
+`49c94a84-…`, que escreveu esta espec.
 
 ⛔ **Bloqueio operacional a montante, e não é do E resolvê-lo:** o passo 9 do BLOCO-E manda
 commitar espec+ledger+vassoura+README **no `main` do primário antes de a linha I abrir**.
@@ -719,6 +731,40 @@ o §R-pós.3 (similaridade) não é afectado por ele.
 
 ⛔ **O que esta janela NÃO pode voltar a ser:** a janela I de qualquer obra do §5 ou da
 extracção. Ela entra no conjunto **{janelas queimadas}** para este módulo, ao lado da E.
+
+---
+
+## ⭐ OBRA SEGUINTE — a mesma janela assume o papel **E** (§3.E)
+
+**2026-08-24, ordem do Enio: *«siga ao estado da arte»*.**
+
+⚠️ **«Estado da arte» tem endereço medido**, e são as duas queixas do smoke: a casca não
+fecha (`~1 %` de células rasgadas) e a grade não encosta aos vincos. ⭐⭐⭐ **E a leitura
+do *paper* público mostrou que são o MESMO mecanismo em falta** — *uma restrição linear
+entra eliminando uma variável*. A costura é uma; a aresta de feição é outra. ⇒ **uma obra,
+dois pagamentos**, e é isso que dimensiona o trabalho.
+
+| | |
+|---|---|
+| papel | ⭐ **E — Especificador.** §3.E: *«contaminado por definição, e tudo bem»* — **é precisamente por já ter visto que esta janela pode especificar** |
+| ⛔ o que ela continua a NÃO poder ser | a **I** desta obra, nem de nenhuma outra deste módulo |
+| espec entregue | [`SPEC_restricoes_por_eliminacao.md`](SPEC_restricoes_por_eliminacao.md) |
+| handoff da corrente | [`NEXT_R-PRE_eliminacao.md`](NEXT_R-PRE_eliminacao.md) |
+| sweep | ✓ limpo sobre os dois, **com controlo positivo vermelho antes** |
+
+⛔⛔ **A contra-medida que esta espec carrega, e que o R-pré tem de cobrar:** o risco dela
+**não é o de sempre**. O de sempre é o E filtrar mal a travessia; aqui é **convergência de
+expressão a entrar pelo próprio E**, num ponto onde ele viu a resposta (a montagem de
+restrições da biblioteca MPL). ⇒ a espec foi escrita **sem receita de montagem** — diz o
+que tem de ser **verdade** e qual é a **lei publicada**, e recusa estrutura de dados,
+decomposição e ordem. ⚠️ *Isso é uma afirmação do E sobre o próprio trabalho, e o
+[`NEXT_R-PRE_eliminacao.md`](NEXT_R-PRE_eliminacao.md) põe-na como item nº1 da auditoria —
+precisamente para não ser aceite de graça.*
+
+⭐ **E a espec traz a prova de que descende do *paper* e não de uma implementação, pelo
+mesmo teste que valeu para a anterior:** o *paper* dá os quatro coeficientes concretos da
+detecção de feição, e ⛔ **a espec não os copia** — manda medi-los no nosso corpus.
+*Quem traduz código herda as constantes; quem descreve herda a lei.*
 
 ---
 

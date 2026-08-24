@@ -52,13 +52,19 @@
 //! quatro «byte-idêntico ao controlo» custaram meia jornada nesta linha.
 
 pub mod comb;
+/// ⭐ A porta do mapa por CANTO, que a extracção consome — ver o módulo.
+pub mod corners;
 pub mod cut;
 pub mod gauge;
 pub mod marks;
+/// ⭐⭐⭐ **G5 — o arredondamento inteiro** que a extracção exige — ver o módulo.
+pub mod round;
 pub mod solve;
 
 pub use comb::{CombReport, Combed, comb_patches, jumps_only};
+pub use corners::corner_map;
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};
 pub use gauge::{Gauge, GaugeReport};
 pub use marks::{MarkReport, arc_marks};
+pub use round::{RoundOptions, RoundReport, round_to_integers};
 pub use solve::{GridMap, SolveReport, rounded_shifts, solve, solve_pinned, solve_with};

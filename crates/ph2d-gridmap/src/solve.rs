@@ -145,23 +145,23 @@ pub fn turn2(z: [f32; 2], k: i32) -> [f32; 2] {
 }
 
 /// Um triângulo já preparado: gradientes de base, área e o alvo do campo.
-struct Tri {
-    v: [u32; 3],
-    g: [[f32; 2]; 3],
-    area: f32,
+pub(crate) struct Tri {
+    pub v: [u32; 3],
+    pub g: [[f32; 2]; 3],
+    pub area: f32,
     /// `X/h` e `Y/h` no plano do triângulo.
-    target: [[f32; 2]; 2],
+    pub target: [[f32; 2]; 2],
 }
 
 /// Quem é o par de um vértice do outro lado de uma costura.
-struct Partner {
-    patch: u32,
-    local: u32,
-    seam: u32,
+pub(crate) struct Partner {
+    pub patch: u32,
+    pub local: u32,
+    pub seam: u32,
     /// `true` = eu sou o lado `0`, logo o alvo é `R^{−k}(z_par − t)`.
     /// `false` = eu sou o lado `1`, logo o alvo é `R^{k}(z_par) + t`.
-    first: bool,
-    jump: i32,
+    pub first: bool,
+    pub jump: i32,
 }
 
 /// O mapa resolvido.
@@ -226,7 +226,13 @@ pub struct SolveReport {
 }
 
 /// Prepara os triângulos de um patch.
-fn prepare(mesh: &Mesh, cut: &CutMesh, combed: &Combed, p: usize, h: f32) -> (Vec<Tri>, usize) {
+pub(crate) fn prepare(
+    mesh: &Mesh,
+    cut: &CutMesh,
+    combed: &Combed,
+    p: usize,
+    h: f32,
+) -> (Vec<Tri>, usize) {
     let pos = mesh.positions();
     let mut out = Vec::with_capacity(cut.tris[p].len());
     let mut skipped = 0usize;
@@ -268,6 +274,90 @@ fn prepare(mesh: &Mesh, cut: &CutMesh, combed: &Combed, p: usize, h: f32) -> (Ve
         });
     }
     (out, skipped)
+}
+
+/// ⭐ **O SISTEMA MONTADO** — os triângulos preparados, os pares de costura e o
+/// denominador de Poisson de cada vértice.
+///
+/// ⚠️ **Ele existe como PORTA e não como conveniência.** O arredondamento inteiro
+/// ([`crate::round`]) relaxa o mesmo sistema, um vértice de cada vez, e montá-lo por
+/// conta própria seria escrever a mesma lei duas vezes — com as duas a divergirem em
+/// silêncio no dia em que uma delas mudasse.
+pub(crate) struct Assembly {
+    pub tris: Vec<Vec<Tri>>,
+    /// Por patch, por vértice local, quem é o par dele do outro lado de cada costura.
+    pub partners: Vec<Vec<Vec<Partner>>>,
+    /// O denominador de Poisson de cada vértice, que não muda com o mapa.
+    pub denom: Vec<Vec<f32>>,
+}
+
+/// Monta o sistema, somando ao relatório o que a montagem mede.
+pub(crate) fn assemble(
+    mesh: &Mesh,
+    cut: &CutMesh,
+    combed: &Combed,
+    h: f32,
+    rep: &mut SolveReport,
+) -> Assembly {
+    let np = cut.tris.len();
+    let mut tris: Vec<Vec<Tri>> = Vec::with_capacity(np);
+    for p in 0..np {
+        let (t, s) = prepare(mesh, cut, combed, p, h);
+        rep.triangles += t.len();
+        rep.skipped += s;
+        tris.push(t);
+    }
+
+    let mut partners: Vec<Vec<Vec<Partner>>> = cut
+        .origin
+        .iter()
+        .map(|o| (0..o.len()).map(|_| Vec::new()).collect())
+        .collect();
+    for (s, seam) in cut.seams.iter().enumerate() {
+        let Some(k) = combed.jump.get(s).copied().flatten() else {
+            rep.loose_seams += 1;
+            continue;
+        };
+        let Ok(sid) = u32::try_from(s) else {
+            continue;
+        };
+        let (pa, pb) = (seam.side[0].patch, seam.side[1].patch);
+        for (la, lb) in seam.side[0].local.iter().zip(&seam.side[1].local) {
+            let (Some(la), Some(lb)) = (la, lb) else {
+                continue;
+            };
+            partners[pa as usize][*la as usize].push(Partner {
+                patch: pb,
+                local: *lb,
+                seam: sid,
+                first: true,
+                jump: k,
+            });
+            partners[pb as usize][*lb as usize].push(Partner {
+                patch: pa,
+                local: *la,
+                seam: sid,
+                first: false,
+                jump: k,
+            });
+            rep.pairs += 1;
+        }
+    }
+
+    let mut denom: Vec<Vec<f32>> = cut.origin.iter().map(|o| vec![0.0f32; o.len()]).collect();
+    for (p, ts) in tris.iter().enumerate() {
+        for t in ts {
+            for k in 0..3 {
+                let g = t.g[k];
+                denom[p][t.v[k] as usize] += t.area * g[0].mul_add(g[0], g[1] * g[1]);
+            }
+        }
+    }
+    Assembly {
+        tris,
+        partners,
+        denom,
+    }
 }
 
 /// ⭐⭐⭐ **RESOLVE O MAPA.** `h` é o passo alvo da grade, na unidade da peça.
@@ -322,6 +412,97 @@ pub fn rounded_shifts(map: &GridMap) -> Vec<[f32; 2]> {
         .collect()
 }
 
+/// ⭐ **AS RÉGUAS DO MAPA** — alinhamento, ângulo, escala, costura, e a distância a
+/// inteiro das translações.
+///
+/// ⚠️ **Porta única, pela mesma razão da [`Assembly`]:** o arredondamento inteiro
+/// ([`crate::round`]) mede o mapa que ele produz, e uma segunda cópia destas contas
+/// divergiria da primeira sem ninguém dar por isso.
+pub(crate) fn measure(
+    a: &Assembly,
+    cut: &CutMesh,
+    combed: &Combed,
+    map: &GridMap,
+    h: f32,
+    rep: &mut SolveReport,
+) {
+    // ── ⭐ AS DUAS RÉGUAS.
+    let mut align: Vec<f32> = Vec::with_capacity(a.tris.iter().map(Vec::len).sum::<usize>());
+    let mut angle: Vec<f32> = Vec::with_capacity(a.tris.iter().map(Vec::len).sum::<usize>());
+    let mut scale: Vec<f32> = Vec::with_capacity(a.tris.iter().map(Vec::len).sum::<usize>());
+    for (p, ts) in a.tris.iter().enumerate() {
+        for t in ts {
+            let mut gu = [0.0f32; 2];
+            let mut gv = [0.0f32; 2];
+            for k in 0..3 {
+                let z = map.uv[p][t.v[k] as usize];
+                gu[0] += z[0] * t.g[k][0];
+                gu[1] += z[0] * t.g[k][1];
+                gv[0] += z[1] * t.g[k][0];
+                gv[1] += z[1] * t.g[k][1];
+            }
+            let du = [gu[0] - t.target[0][0], gu[1] - t.target[0][1]];
+            let dv = [gv[0] - t.target[1][0], gv[1] - t.target[1][1]];
+            let err =
+                (du[0].mul_add(du[0], du[1] * du[1]) + dv[0].mul_add(dv[0], dv[1] * dv[1])).sqrt();
+            // ⭐ **Relativo ao alvo**, senão o número depende da escala da peça.
+            align.push(err * h / std::f32::consts::SQRT_2);
+            // ⭐⭐⭐ E a decomposição: para que lado, e de que tamanho.
+            let lu = gu[0].mul_add(gu[0], gu[1] * gu[1]).sqrt();
+            let lt = t.target[0][0]
+                .mul_add(t.target[0][0], t.target[0][1] * t.target[0][1])
+                .sqrt();
+            if lu > 1.0e-12 && lt > 1.0e-12 {
+                let c = (gu[0].mul_add(t.target[0][0], gu[1] * t.target[0][1]) / (lu * lt))
+                    .clamp(-1.0, 1.0);
+                angle.push(c.acos().to_degrees());
+                scale.push(lu / lt);
+            }
+        }
+    }
+    let mut seam: Vec<f32> = Vec::with_capacity(a.partners.len());
+    for (s, sm) in cut.seams.iter().enumerate() {
+        let Some(k) = combed.jump.get(s).copied().flatten() else {
+            continue;
+        };
+        let (pa, pb) = (sm.side[0].patch as usize, sm.side[1].patch as usize);
+        let t = map.shift[s];
+        for (la, lb) in sm.side[0].local.iter().zip(&sm.side[1].local) {
+            let (Some(la), Some(lb)) = (la, lb) else {
+                continue;
+            };
+            let za = turn2(map.uv[pa][*la as usize], k);
+            let zb = map.uv[pb][*lb as usize];
+            let d = [zb[0] - za[0] - t[0], zb[1] - za[1] - t[1]];
+            seam.push(d[0].mul_add(d[0], d[1] * d[1]).sqrt());
+        }
+    }
+    let pct = |v: &mut Vec<f32>, q: f32| -> f32 {
+        if v.is_empty() {
+            return 0.0;
+        }
+        v.sort_by(f32::total_cmp);
+        #[allow(clippy::cast_precision_loss, clippy::cast_sign_loss)]
+        let i = ((v.len() - 1) as f32 * q).round() as usize;
+        v[i.min(v.len() - 1)]
+    };
+    rep.align_p50 = pct(&mut align, 0.50);
+    rep.align_p95 = pct(&mut align, 0.95);
+    rep.angle_p50 = pct(&mut angle, 0.50);
+    rep.angle_p95 = pct(&mut angle, 0.95);
+    rep.scale_p50 = pct(&mut scale, 0.50);
+    rep.scale_p95 = pct(&mut scale, 0.95);
+    rep.seam_p50 = pct(&mut seam, 0.50);
+    rep.seam_max = seam.last().copied().unwrap_or(0.0);
+    let mut frac: Vec<f32> = map
+        .shift
+        .iter()
+        .map(|t| (t[0] - t[0].round()).abs().max((t[1] - t[1].round()).abs()))
+        .collect();
+    rep.shift_frac_p50 = pct(&mut frac, 0.50);
+    rep.shift_frac_max = frac.last().copied().unwrap_or(0.0);
+}
+
 #[allow(clippy::too_many_lines, clippy::too_many_arguments)]
 fn run(
     mesh: &Mesh,
@@ -334,50 +515,11 @@ fn run(
 ) -> (GridMap, SolveReport) {
     let mut rep = SolveReport::default();
     let np = cut.tris.len();
-    let mut tris: Vec<Vec<Tri>> = Vec::with_capacity(np);
-    for p in 0..np {
-        let (t, s) = prepare(mesh, cut, combed, p, h);
-        rep.triangles += t.len();
-        rep.skipped += s;
-        tris.push(t);
-    }
-
-    // ── Os pares de costura, por patch e por vértice local.
-    let mut partners: Vec<Vec<Vec<Partner>>> = cut
-        .origin
-        .iter()
-        .map(|o| (0..o.len()).map(|_| Vec::new()).collect())
-        .collect();
-    for (s, seam) in cut.seams.iter().enumerate() {
-        let Some(k) = combed.jump.get(s).copied().flatten() else {
-            rep.loose_seams += 1;
-            continue;
-        };
-        let Ok(sid) = u32::try_from(s) else {
-            continue;
-        };
-        let (pa, pb) = (seam.side[0].patch, seam.side[1].patch);
-        for (la, lb) in seam.side[0].local.iter().zip(&seam.side[1].local) {
-            let (Some(la), Some(lb)) = (la, lb) else {
-                continue;
-            };
-            partners[pa as usize][*la as usize].push(Partner {
-                patch: pb,
-                local: *lb,
-                seam: sid,
-                first: true,
-                jump: k,
-            });
-            partners[pb as usize][*lb as usize].push(Partner {
-                patch: pa,
-                local: *la,
-                seam: sid,
-                first: false,
-                jump: k,
-            });
-            rep.pairs += 1;
-        }
-    }
+    let Assembly {
+        tris,
+        partners,
+        denom,
+    } = assemble(mesh, cut, combed, h, &mut rep);
 
     let mut map = GridMap {
         uv: cut
@@ -387,17 +529,6 @@ fn run(
             .collect(),
         shift: pinned.map_or_else(|| vec![[0.0; 2]; cut.seams.len()], <[[f32; 2]]>::to_vec),
     };
-
-    // ── O denominador de Poisson de cada vértice, que não muda.
-    let mut denom: Vec<Vec<f32>> = map.uv.iter().map(|u| vec![0.0f32; u.len()]).collect();
-    for (p, ts) in tris.iter().enumerate() {
-        for t in ts {
-            for k in 0..3 {
-                let g = t.g[k];
-                denom[p][t.v[k] as usize] += t.area * g[0].mul_add(g[0], g[1] * g[1]);
-            }
-        }
-    }
 
     for round in 0..rounds {
         for p in 0..np {
@@ -482,82 +613,18 @@ fn run(
         rep.rounds = round + 1;
     }
 
-    // ── ⭐ AS DUAS RÉGUAS.
-    let mut align: Vec<f32> = Vec::with_capacity(rep.triangles);
-    let mut angle: Vec<f32> = Vec::with_capacity(rep.triangles);
-    let mut scale: Vec<f32> = Vec::with_capacity(rep.triangles);
-    for (p, ts) in tris.iter().enumerate() {
-        for t in ts {
-            let mut gu = [0.0f32; 2];
-            let mut gv = [0.0f32; 2];
-            for k in 0..3 {
-                let z = map.uv[p][t.v[k] as usize];
-                gu[0] += z[0] * t.g[k][0];
-                gu[1] += z[0] * t.g[k][1];
-                gv[0] += z[1] * t.g[k][0];
-                gv[1] += z[1] * t.g[k][1];
-            }
-            let du = [gu[0] - t.target[0][0], gu[1] - t.target[0][1]];
-            let dv = [gv[0] - t.target[1][0], gv[1] - t.target[1][1]];
-            let err =
-                (du[0].mul_add(du[0], du[1] * du[1]) + dv[0].mul_add(dv[0], dv[1] * dv[1])).sqrt();
-            // ⭐ **Relativo ao alvo**, senão o número depende da escala da peça.
-            align.push(err * h / std::f32::consts::SQRT_2);
-            // ⭐⭐⭐ E a decomposição: para que lado, e de que tamanho.
-            let lu = gu[0].mul_add(gu[0], gu[1] * gu[1]).sqrt();
-            let lt = t.target[0][0]
-                .mul_add(t.target[0][0], t.target[0][1] * t.target[0][1])
-                .sqrt();
-            if lu > 1.0e-12 && lt > 1.0e-12 {
-                let c = (gu[0].mul_add(t.target[0][0], gu[1] * t.target[0][1]) / (lu * lt))
-                    .clamp(-1.0, 1.0);
-                angle.push(c.acos().to_degrees());
-                scale.push(lu / lt);
-            }
-        }
-    }
-    let mut seam: Vec<f32> = Vec::with_capacity(rep.pairs);
-    for (s, sm) in cut.seams.iter().enumerate() {
-        let Some(k) = combed.jump.get(s).copied().flatten() else {
-            continue;
-        };
-        let (pa, pb) = (sm.side[0].patch as usize, sm.side[1].patch as usize);
-        let t = map.shift[s];
-        for (la, lb) in sm.side[0].local.iter().zip(&sm.side[1].local) {
-            let (Some(la), Some(lb)) = (la, lb) else {
-                continue;
-            };
-            let za = turn2(map.uv[pa][*la as usize], k);
-            let zb = map.uv[pb][*lb as usize];
-            let d = [zb[0] - za[0] - t[0], zb[1] - za[1] - t[1]];
-            seam.push(d[0].mul_add(d[0], d[1] * d[1]).sqrt());
-        }
-    }
-    let pct = |v: &mut Vec<f32>, q: f32| -> f32 {
-        if v.is_empty() {
-            return 0.0;
-        }
-        v.sort_by(f32::total_cmp);
-        #[allow(clippy::cast_precision_loss, clippy::cast_sign_loss)]
-        let i = ((v.len() - 1) as f32 * q).round() as usize;
-        v[i.min(v.len() - 1)]
-    };
-    rep.align_p50 = pct(&mut align, 0.50);
-    rep.align_p95 = pct(&mut align, 0.95);
-    rep.angle_p50 = pct(&mut angle, 0.50);
-    rep.angle_p95 = pct(&mut angle, 0.95);
-    rep.scale_p50 = pct(&mut scale, 0.50);
-    rep.scale_p95 = pct(&mut scale, 0.95);
-    rep.seam_p50 = pct(&mut seam, 0.50);
-    rep.seam_max = seam.last().copied().unwrap_or(0.0);
-    let mut frac: Vec<f32> = map
-        .shift
-        .iter()
-        .map(|t| (t[0] - t[0].round()).abs().max((t[1] - t[1].round()).abs()))
-        .collect();
-    rep.shift_frac_p50 = pct(&mut frac, 0.50);
-    rep.shift_frac_max = frac.last().copied().unwrap_or(0.0);
-
+    measure(
+        &Assembly {
+            tris,
+            partners,
+            denom,
+        },
+        cut,
+        combed,
+        &map,
+        h,
+        &mut rep,
+    );
     (map, rep)
 }
 

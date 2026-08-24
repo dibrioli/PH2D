@@ -64,6 +64,8 @@ impl WidgetStore {
             sheet_size: 1024,
             sheet_size_request: None,
             fill_modal: None,
+            input_map_window: None,
+            input_map_listening: None,
             onion_modal: None,
             command_palette: None,
             radial: None,

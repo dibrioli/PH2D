@@ -115,6 +115,14 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::CTX_MENU_SETTINGS_DISPLAY, "Display", None),
             (ids::CTX_MENU_SETTINGS_TEXT, "Text rendering", None),
             (ids::CTX_MENU_SETTINGS_MOTION, "Motion", None),
+            // ⚠️ **Esta entrada NÃO é uma categoria** — ela abre a janela flutuante do Input Map,
+            // não um submenu. Fica aqui porque é a casa que o Godot lhe dá (*Project Settings >
+            // Input Map*) e a equivalência era o pedido; as reticências dizem *"isto abre uma
+            // janela"*, que é a convenção que toda a UI de desktop usa.
+            // ⛔ **A NOTAR NO SMOKE:** o laço deste menu põe um `ChevronRight` em cada linha por
+            // ser `SettingsMenu`, e um chevron promete um submenu que esta linha não tem. Se o Enio
+            // o vir como errado, a cura é o laço perguntar pela LINHA e não pelo tipo do menu.
+            (ids::CTX_MENU_SETTINGS_INPUT_MAP, "Input Map\u{2026}", None),
         ],
         // Pixels-per-meter submenu — 5 presets (retro 16 · Unity 32 · Godot 100 · HD 256 · 4K 1024).
         ContextMenuKind::SettingsPpmSubmenu => &[

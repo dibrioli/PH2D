@@ -370,6 +370,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_PPM_100,
         ids::CTX_MENU_PPM_256,
         ids::CTX_MENU_PPM_1024,
+        ids::CTX_MENU_SETTINGS_INPUT_MAP,
         ids::CTX_MENU_SETTINGS_UNIT,
         ids::CTX_MENU_UNIT_METERS,
         ids::CTX_MENU_UNIT_PIXELS,

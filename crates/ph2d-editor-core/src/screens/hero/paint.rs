@@ -598,6 +598,18 @@ pub fn paint_hero_screen(
         &hero.tether,
         viewport,
     );
+    // A JANELA DO INPUT MAP (plano 30 §0.2) — flutuante sobre o canvas, à la Godot. No-op quando
+    // fechada. Mesma camada de diálogo flutuante que o Fill modal, e pintada DEPOIS do menu de
+    // contexto pelo mesmo motivo: os hit rects dela ficam acima do canvas.
+    chrome::paint_input_map_window(
+        scene,
+        text_system,
+        hero.theme,
+        &mut hero.hit_index,
+        &hero.store,
+        &hero.input_map,
+        viewport,
+    );
     // Onion settings modal (ADR-0142 W3b) — a floating, draggable card opened from the timeline's
     // Onion-settings button (no-op when closed). Same floating-dialog layer as the Fill modal.
     chrome::paint_onion_modal(

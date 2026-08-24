@@ -752,14 +752,15 @@ pub(crate) struct App {
     pub(crate) audio_scrub_drag: bool,
     /// Input snapshot pumped by the gilrs adapter each frame.
     pub(crate) input: InputState,
-    /// **O INPUT MAP do projecto** (v96) — as acções nomeadas que o artista autorou.
+    /// **O que cada acção VALE** neste tique — resolvido do `input` através do mapa AUTORADO.
     ///
-    /// ⚠️ **Ao lado do `input`, e não dentro dele**, porque são fatos de natureza diferente: o
-    /// `input` é o **retrato dos dispositivos** deste quadro (some quando a janela perde o foco), e
-    /// este é **documento** (viaja no `.ph2dproj`, sobrevive a tudo). Metê-los no mesmo tipo faria
-    /// um `load` ter de preservar metade dele.
-    pub(crate) input_map: ph2d_input::InputMap,
-    /// **O que cada acção VALE** neste tique — resolvido do `input` através do `input_map`.
+    /// ⚠️ **O MAPA não está aqui**, e é deliberado: o dono dele é o `HeroScreen`
+    /// (`ph2d_editor_core::screens::hero::HeroScreen::input_map`), pelo mesmo motivo das
+    /// `ProjectSettings` — a janela flutuante que o edita é pintada por `paint_hero_screen`, que só
+    /// recebe o hero. Guardá-lo aqui **também** seriam duas memórias do mesmo facto, e a segunda
+    /// divergiria no primeiro `load`.
+    ///
+    /// O que fica aqui é só o **derivado**: nunca é salvo, nunca entra no undo.
     ///
     /// ⚠️ Guarda **um** tique atrás, e é isso que paga as bordas (`just_pressed`). Ele é derivado:
     /// nunca é salvo, nunca entra no undo.

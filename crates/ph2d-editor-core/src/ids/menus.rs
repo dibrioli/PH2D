@@ -63,6 +63,15 @@ pub const CTX_MENU_PPM_1024: NodeId = hash_node_id("ctx_menu_ppm_1024");
 /// the Pixels-per-meter submenu.
 pub const CTX_MENU_SETTINGS_PPM: NodeId = hash_node_id("ctx_menu_settings_ppm");
 
+/// **Input Map…** — abre a janela flutuante do mapa de entradas (plano 30 §0.2).
+///
+/// ⚠️ **No menu Settings, e é onde o Godot o põe** (*Project Settings > Input Map*) — o pedido do
+/// Enio foi *"equivalente ao da godot"*, e a casa do gesto faz parte da equivalência.
+///
+/// ⛔ Ao contrário das outras entradas deste menu, esta **não abre um submenu**: ela abre uma
+/// janela. Ver a nota em `menu_rows.rs`.
+pub const CTX_MENU_SETTINGS_INPUT_MAP: NodeId = hash_node_id("ctx_menu_settings_input_map");
+
 /// Top-level Settings entry that opens the Display-unit submenu
 /// (Meters / Pixels). Companion of `CTX_MENU_SETTINGS_PPM`.
 pub const CTX_MENU_SETTINGS_UNIT: NodeId = hash_node_id("ctx_menu_settings_unit");

@@ -22,6 +22,7 @@ mod authored;
 mod bgremoval;
 mod flip;
 mod image_tools;
+mod input_map;
 mod inspector;
 /// **Os ids do painel de MODELAGEM 3D** (ADR-0161) — não confundir com `sculpt3d`.
 mod model3d;
@@ -93,6 +94,7 @@ pub use authored::*;
 pub use bgremoval::*;
 pub use flip::*;
 pub use image_tools::*;
+pub use input_map::*;
 pub use inspector::*;
 pub use model3d::*;
 pub use motion::*;

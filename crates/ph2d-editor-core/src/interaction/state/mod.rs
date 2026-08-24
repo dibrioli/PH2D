@@ -19,6 +19,7 @@
 
 mod blender_ops;
 mod chrome_ops;
+mod input_map_ops;
 /// **O que um estado de widget É** (o `InteractiveState` + a paleta nomeada).
 mod kinds;
 /// O PIE MENU (E4) — irmão do `chrome_ops` por assunto e pelo teto de LOC.
@@ -323,6 +324,18 @@ pub struct WidgetStore {
     /// band offsets it. Its threshold slider's value lives in the `PAINTER_FILL_MODAL_SLIDER` widget.
     /// `(posição, âncora)` — as duas no MESMO campo, ver `open_fill_modal`.
     pub(super) fill_modal: Option<((f32, f32), (f32, f32))>,
+    /// **A janela do INPUT MAP**: onde ela está, ou `None` se estiver fechada (plano 30 §0.2).
+    ///
+    /// ⚠️ **Uma só posição, e não a âncora dupla do `fill_modal` acima:** aquele nasce no ponto em
+    /// que o dedo largou a tinta e precisa de lembrar onde foi; esta abre-se por um gesto de menu e
+    /// só tem *onde está agora*.
+    pub(super) input_map_window: Option<(f32, f32)>,
+    /// **Qual acção está à ESCUTA de uma tecla** (o gesto *press-to-bind*).
+    ///
+    /// ⚠️ Enquanto isto é `Some`, a próxima tecla é **conteúdo**, não atalho — e é o despacho de
+    /// teclado que tem de perguntar primeiro. Sem essa ordem, ligar `S` a uma acção salva o
+    /// projecto e a ligação nunca acontece.
+    pub(super) input_map_listening: Option<ph2d_input::ActionId>,
     /// Onion settings floating modal (ADR-0142 W3b): `Some((x, y))` = the card's top-left in screen
     /// px (open); `None` = closed. Opened by the timeline's Onion-settings button (shell-side, so it
     /// can seed the widgets from `TimelineState::onion`); dragging the title band offsets it. Its

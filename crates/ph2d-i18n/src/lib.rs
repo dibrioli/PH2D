@@ -44,6 +44,18 @@ pub fn tr(key: &str) -> &'static str {
         // Image Tools — action row pills. Labels abreviados (Enio
         // 2026-05-25): cabem na coluna do chip (44 px) sem clip; o
         // tooltip mantém o nome completo + descrição.
+        // ⭐ **A JANELA DO INPUT MAP** (plano 30 §0.2) — a janela flutuante que abre sobre o canvas.
+        // ⚠️ UI em INGLÊS (feedback do Enio), e via i18n mesmo sendo uma língua só: uma string
+        // literal no pintor é a que ninguém encontra no dia em que a segunda língua entrar.
+        "input_map.title" => "Input Map",
+        "input_map.add" => "Add",
+        "input_map.new_name.placeholder" => "New action name",
+        "input_map.listen" => "Bind…",
+        "input_map.listening" => "Press a key…",
+        "input_map.empty" => "No actions yet. Name one above and press Add.",
+        "input_map.binding.key" => "Key",
+        "input_map.binding.pad" => "Pad",
+        "input_map.binding.axis" => "Axis",
         "tool.trim_transparency.label" => "TRIM",
         "tool.trim_transparency.tooltip" => "Trim Transparency",
         "tool.make_square.label" => "SQUAR",

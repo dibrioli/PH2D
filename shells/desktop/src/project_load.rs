@@ -349,7 +349,12 @@ impl crate::App {
         // load é uma troca de DOCUMENTO, e costurar o mapa do projecto novo com o do anterior
         // deixaria acções de um jogo a viver dentro de outro. Um projecto ≤ v95 nunca chega aqui
         // (o schema recusa antes), então o vazio que isto instala é sempre um vazio autorado.
-        self.input_map = file.input_map.clone();
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.input_map = file.input_map.clone();
+        }
+        // ⚠️ E o estado RESOLVIDO zera junto: ele guarda um tique atrás, e o tique atrás de um
+        // documento que acabou de fechar é de outro jogo — uma borda `just_pressed` fantasma no
+        // primeiro quadro depois do load.
         self.input_actions = ph2d_input::ActionState::new();
         // O grafo de Motion. Um erro de parse NÃO aborta o load: a cena, a geometria e os
         // pixels já entraram, e recusar tudo por causa do grafo perderia o resto do

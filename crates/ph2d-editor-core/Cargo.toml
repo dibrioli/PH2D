@@ -37,6 +37,12 @@ ph2d-color            = { path = "../ph2d-color" }
 # se a linha nasce horizontal ou vertical, e esse vocabulário tem um dono só.
 ph2d-guides           = { path = "../ph2d-guides" }
 ph2d-a11y             = { path = "../ph2d-a11y" }
+# **O INPUT MAP** (plano 30). O `HeroScreen` guarda o mapa AUTORADO deste projecto, exactamente
+# como guarda as `ProjectSettings` — e a janela flutuante que o edita PINTA a partir dele, o que
+# obriga o tipo a estar ao alcance do pintor (`paint_hero_screen` só recebe o `HeroScreen`).
+# ⚠️ É uma FOLHA (só `serde`), com gate próprio a defendê-la: `ph2d-input` não arrasta `winit` nem
+# um `World`, e é isso que a mantém legível também do runtime do jogo.
+ph2d-input            = { path = "../ph2d-input" }
 ph2d-vector           = { path = "../ph2d-vector" }
 ph2d-text             = { path = "../ph2d-text" }
 ph2d-host             = { path = "../ph2d-host" }

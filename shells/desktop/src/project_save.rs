@@ -108,7 +108,15 @@ impl crate::App {
                 .and_then(|g| g.sim.world().get_resource::<ph2d_ecs::StableIdCounter>())
                 .map_or(ph2d_ecs::StableId::FIRST, |c| c.next_free()),
             // ⚠️ O mapa vai por VALOR, e nao ha' traducao: ele E' o documento (v97).
-            input_map: self.input_map.clone(),
+            // ⚠️ **O dono e' o `HeroScreen`**, como as `ProjectSettings` -- e a janela que o edita
+            // e' pintada por `paint_hero_screen`, que so' recebe o hero. Sem hero (a GPU ainda nao
+            // subiu) grava-se o vazio, que e' o que o projecto de facto tem.
+            input_map: self
+                .gfx
+                .as_ref()
+                .and_then(|g| g.hero_screen.as_ref())
+                .map(|h| h.input_map.clone())
+                .unwrap_or_default(),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,

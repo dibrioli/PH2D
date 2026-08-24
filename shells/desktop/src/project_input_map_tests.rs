@@ -36,7 +36,7 @@ fn the_save_writes_the_live_input_map() {
         body.len()
     );
     assert!(
-        body.contains("input_map: self.input_map.clone()"),
+        body.contains("input_map: self") && body.contains("h.input_map.clone()"),
         "o save nao grava o Input Map VIVO da sessao -- o artista autora as accoes e elas nao \
          chegam ao ficheiro. Construcao:\n{body}"
     );
@@ -53,14 +53,14 @@ fn the_save_writes_the_live_input_map() {
 fn the_load_installs_the_map_and_never_merges_it() {
     let src = include_str!("project_load.rs");
     assert!(
-        src.contains("self.input_map = file.input_map.clone();"),
+        src.contains("hero.input_map = file.input_map.clone();"),
         "o load nao instala o Input Map do arquivo: abrir um projecto deixaria as accoes da sessao \
          anterior no lugar das dele"
     );
     // ⛔ A forma que NAO pode aparecer: qualquer coisa que ACRESCENTE ao mapa vivo em vez de o
     // substituir. Um `extend`/`insert` sobre o mapa da sessao seria a fusao que este gate proibe.
     assert!(
-        !src.contains("self.input_map.insert(") && !src.contains("self.input_map.create("),
+        !src.contains("hero.input_map.insert(") && !src.contains("hero.input_map.create("),
         "o load esta' a FUNDIR o mapa do arquivo com o da sessao anterior, em vez de o instalar"
     );
     // ⚠️ E o estado RESOLVIDO tem de ser zerado junto: ele guarda um tique atras, e o tique atras
@@ -83,5 +83,37 @@ fn the_map_is_not_part_of_the_undo_unit() {
     assert!(
         !src.contains("input_map"),
         "o Input Map entrou no `ProjectState`: um Ctrl+Z do canvas passa a rebobinar os controlos"
+    );
+}
+
+/// ⛔⛔ **O MAPA TEM UM DONO SÓ.**
+///
+/// ⚠️ Ele nasceu na `App` (W2) e mudou-se para o `HeroScreen` na W3, quando a janela flutuante
+/// mostrou que o pintor só recebe o hero. Guardá-lo nos **dois** seria duas memórias do mesmo
+/// facto — e a segunda divergiria no primeiro `load`, com o artista a ver as acções antigas numa
+/// janela e o jogo a obedecer às novas.
+#[test]
+fn the_authored_map_has_exactly_one_holder() {
+    let src = include_str!("app_state.rs");
+    // ⚠️ **A agulha tem sintaxe que so' o CODIGO tem.** Procurar `input_map` cru acusaria o
+    // doc-comment ao lado do `input_actions`, que EXPLICA porque o mapa nao mora aqui -- e' o
+    // segundo gate desta linha a quase reprovar sobre PROSA (o primeiro foi removido em 24/08 por
+    // acusar um comentario do `keyboard.rs`). *Um gate de texto cuja agulha e' um identificador nu
+    // le' documentacao.*
+    let declares_field = src
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .any(|l| l.contains("input_map:"));
+    assert!(
+        !declares_field,
+        "a `App` voltou a DECLARAR o Input Map. O dono e' o `HeroScreen` (o pintor da janela so' \
+         recebe o hero); o que fica na App e' o RESOLVIDO (`input_actions`), que e' derivado."
+    );
+    // O controle POSITIVO: se o campo derivado tambem sumir, este gate deixou de olhar para o
+    // ficheiro certo e passaria verde a afirmar sobre nada.
+    assert!(
+        src.contains("input_actions:"),
+        "o `input_actions` sumiu da App: ou o desenho mudou, ou este gate esta' a ler o ficheiro \
+         errado -- em nenhum dos casos ele esta' a provar que ha' um dono so'"
     );
 }

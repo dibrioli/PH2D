@@ -202,6 +202,19 @@ pub struct HeroScreen {
     /// during image import to convert source-pixel dimensions to
     /// world meters.
     pub project: crate::project::ProjectSettings,
+    /// **O INPUT MAP deste projecto** (plano 30 W3) — as acções nomeadas que o artista autorou.
+    ///
+    /// ⚠️ **Aqui e não na shell**, e o motivo é a costura: a janela flutuante que o edita é pintada
+    /// por `paint_hero_screen`, que **só recebe o `HeroScreen`**. Um mapa fora dele obrigaria a
+    /// mudar essa assinatura ou a manter um espelho por quadro — e um espelho seria duas memórias
+    /// do mesmo facto, a doença que este repo já pagou várias vezes.
+    ///
+    /// ⚠️ É o **mesmo precedente do [`HeroScreen::project`]** logo acima: dado de PROJECTO,
+    /// autorado por chrome, que a shell lê ao salvar e escreve ao carregar.
+    ///
+    /// ⛔ E é por isso que o tipo mora numa **folha** (`ph2d-input`, só `serde`): o runtime do jogo
+    /// tem de o poder ler **sem** o editor. Aqui vive o holder do EDITOR, não a definição.
+    pub input_map: ph2d_input::InputMap,
     /// M14.4e: when the OS is hovering external files over the
     /// window, the host pushes the `(paths, cursor_px)` tuple here so
     /// the canvas painter can render a "Drop to import" overlay
@@ -332,6 +345,7 @@ impl HeroScreen {
             import_requested: false,
             file_menu: file_menu::FileMenuRequests::default(),
             project: crate::project::ProjectSettings::default(),
+            input_map: ph2d_input::InputMap::default(),
             dragging_files: None,
             stats: BottomHudStats::default(),
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),

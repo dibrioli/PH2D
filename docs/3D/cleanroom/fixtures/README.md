@@ -12,7 +12,7 @@ arredondamento inteiro (espec §5) esteja pronto.
 | **Campo direccional** | ⭐ **nosso** — `ph2d-crossfield`, exportado pelo arnês `rustfield` |
 | **Quem calculou o mapa** | uma implementação independente sob **MPL-2.0**, corrida **fora da árvore** como oráculo ([ADR-0164](../../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)) |
 | **Estatuto legal** | ⭐ **dados.** Saída de programa não é coberta pela licença do programa — é texto de licença, não opinião (SKILL_Cleanroom §1.1) |
-| **Regenerar** | `~/Referencias/directional-bench/` — o arnês, o exportador de campo e o modo `so-mapa` |
+| **Regenerar** | ⛔ **correcção do R-pré (2026-08-24): NÃO é acto do Implementador.** O arnês vive fora da árvore e é consumidor **header-only** da implementação alheia — compilá-lo põe fonte alheio no terminal por um simples erro de compilação. ⇒ regenerar é acto de **E** (skill §5); I pede o dump **pelo Enio**, como emenda à espec, e ⛔ nunca vai buscá-lo |
 | **Data** | 2026-08-24 |
 
 ⛔ **Não há aqui nenhum asset de terceiros.** A malha da jarra usada nas primeiras medições
@@ -20,10 +20,17 @@ arredondamento inteiro (espec §5) esteja pronto.
 
 ## As peças, e por que estas duas
 
-| arquivo | peça | arestas interiores | ⭐ costuras (rotação ≠ 0) | por que ela está aqui |
+| arquivo | peça | arestas interiores (⚠️ **medidas**) | ⭐ costuras (rotação ≠ 0) | por que ela está aqui |
 |---|---|---|---|---|
-| `sculpt_hooked.mapa.gz` | gancho orgânico, fechado, 6 768 triângulos | 10 151 | **247** | o caso realista |
-| `torus_64x32.mapa.gz` | toro, **género 1**, 4 096 triângulos | 6 143 | **138** | ⭐ gate nº10 da espec: `χ = 0`, e é a peça que já expôs uma perda de asa nesta linha |
+| `sculpt_hooked.mapa.gz` | gancho orgânico, fechado, 6 768 triângulos | 10 152 (**10 151**) | **247** | o caso realista |
+| `torus_64x32.mapa.gz` | toro, **género 1**, 4 096 triângulos | 6 144 (**6 143**) | **138** | ⭐ gate nº10 da espec: `χ = 0`, e é a peça que já expôs uma perda de asa nesta linha |
+
+⚠️ **Correcção do R-pré (2026-08-24): as duas colunas eram UMA, e escondiam um facto.** O
+número entre parênteses é o que o verificador de facto **mede**; o outro é quantas arestas
+interiores a peça **tem**. A diferença é **exactamente `1` em cada peça**: uma aresta cuja
+imagem no domínio tem comprimento **zero**. ⛔ Isso não é ruído nem defeito do fixture — é
+precisamente o fenómeno que a espec **§2.1** manda colapsar **antes de tudo**, e as duas peças
+contêm-no. ⇒ *o fixture prova o que contém, e agora diz que o contém.*
 
 ⚠️ **Uma peça sem costura não pode gatear a máquina de transição.** A primeira medição saiu
 sobre um mapa com **`{0: 3535}`** — zero costuras — e teria deixado passar uma extração que
@@ -51,7 +58,7 @@ carta, e é de comparar as duas imagens de uma aresta partilhada que sai a funç
 ## O verificador — ⭐ é o gate nº4 da espec, executável
 
 ```
-cd /home/enio/Documentos/Projetos/PH2D && \
+cd "$(git rev-parse --show-toplevel)" && \
   gzip -dc docs/3D/cleanroom/fixtures/torus_64x32.mapa.gz > /tmp/t.mapa && \
   python3 docs/3D/cleanroom/fixtures/verifica_mapa.py /tmp/t.mapa
 ```

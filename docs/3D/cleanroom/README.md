@@ -6,11 +6,18 @@ Decisão: [`ADR-0164`](../../architecture/decisions/0164-quad-extraction-is-clea
 
 ## ⭐ O que colar, e em que ordem
 
-👉 **[`NEXT_R-PRE.md`](NEXT_R-PRE.md)** — o bloco do **próximo papel**, já preenchido pelo E.
-Abra **janela nova** (não a que escreveu a espec) e cole-o.
+👉 **[`NEXT_I.md`](NEXT_I.md)** — o bloco do **próximo papel**, já preenchido pelo **R-pré**.
+São **DUAS** mensagens (Modo L): abertura de linha, e depois o BLOCO-I. Abra **janela nova e
+limpa** (nem a E, nem a do R-pré) e cole-as em sequência.
+
+⚠️ **Ele traz UMA decisão sua na cabeça:** a worktree do Implementador tem de nascer de
+`line/sculpt3d` — **é onde esta pasta existe**; do `main` ela nasceria sem a própria espec.
+A alternativa é ordenar antes a integração desta pasta para o `main`.
+
+✅ [`NEXT_R-PRE.md`](NEXT_R-PRE.md) — **cumprido** em 2026-08-24 (veredito no ledger, §Papel R).
 
 ⚠️ **A corrente do §10:** cada papel entrega o bloco do seguinte, salvo em `NEXT_<papel>.md`.
-O R-pré produzirá o `NEXT_I.md`. ⛔ *Um handoff nunca acrescenta conteúdo além dos campos do
+O I produzirá o `NEXT_R-POS.md`. ⛔ *Um handoff nunca acrescenta conteúdo além dos campos do
 molde* — o resto vive na espec e no ledger.
 
 ## Os arquivos

@@ -2,10 +2,21 @@
 
 ```
 Alvo funcional: extração robusta de malha quad de um mapa de grade inteira · Degrau: T2-por-papers
+Alvo NOMEADO · Licença (campo obrigatório do §4, completado pelo R-pré em 2026-08-24):
+  ⛔ NENHUM fonte é insumo desta espec — o insumo é a literatura pública do mapa de leitura.
+  As implementações existentes ficam FORA da árvore e servem só de ORÁCULO, e são DUAS,
+  sob licenças diferentes: a família do remalhador de produção (GPL-3.0) e uma biblioteca
+  de campos direccionais (MPL-2.0). Decisão: ADR-0164. ⛔ Nenhuma das duas é fonte a portar,
+  e a MPL NÃO é uma excepção à parede: o §3.I conta porte/fork do alvo "em qualquer
+  linguagem e sob qualquer licença" como código do alvo.
 Ledger: docs/3D/cleanroom/LEDGER_quadwild.md, aberto 2026-08-24
 Patente (§8.1): buscado 2026-08-24 — nenhuma viva alcança este caminho; detalhe em TRIAGEM §3
 Filtragem §4.3: executada 2026-08-24 · Sweep: verde 2026-08-24
-Auditoria §4.2 (R-pré): ⏳ PENDENTE — exige janela que NÃO seja a E
+Auditoria §4.2 (R-pré): ✅ VERDE — auditada contra §4.2 por R em 2026-08-24, janela
+  `23c68c7a-90db-4316-9d14-a4efcda6af7f` (≠ a janela E). Os cinco itens do §4.2 conferidos um
+  a um contra os *papers* citados; veredito e método no LEDGER §"Papel R". ⚠️ A auditoria
+  devolveu DUAS correcções de parede (não de §4.2), já aplicadas pelo R nesta espec e no
+  README dos fixtures — procure "correcção do R-pré".
 Mapa de leitura da literatura:
   · Ebke, Bommes, Campen, Kobbelt — "QEx: Robust Quad Mesh Extraction", SIGGRAPH Asia 2013.
     ⭐ A fonte principal desta espec (§2-§6).
@@ -25,6 +36,11 @@ Mapa de leitura da literatura:
 Denylist de URLs (⛔ NÃO abrir): qualquer hospedagem de código, issue tracker, PR ou
   code-search de `libQEx`, `CoMISo`, `vcglib`, `xfield_tracer`, `quadretopology`,
   `quadwild`, `quadwild-bimdf`, `blossom5`.
+Denylist de CAMINHOS (⛔ correcção do R-pré, 2026-08-24 — a denylist de URLs não bastava,
+  porque as duas implementações estão NESTE disco): `~/Referencias/**` (as duas, mais os
+  arnêses que as incluem por cabeçalho) · `ph2d-quadbench/oracle/**` ⚠️ que é IRMÃO de
+  `ph2d-quadbench/corpus/` — o corpus é nosso e lícito, o irmão ao lado é o clone GPL.
+  ⇒ O Passo 0 do BLOCO-I transforma isto em permissão do harness, e não em lembrança.
 "Este documento descreve comportamento; não contém expressão do alvo."
 ```
 
@@ -458,10 +474,20 @@ mapa antes considerado defeituoso passa a ser utilizável.
 | 10 | uma malha de **género 1** produz saída com `χ = 0` | o toro do corpus |
 | 11 | ⛔ **o caminho antigo continua byte-idêntico** enquanto o interruptor estiver desligado | a lei desta linha: tudo o que é novo shipa **desligado** com a tabela ao lado |
 
-⚠️ **Comparação fase a fase é mais forte que comparar o fim** — e ela está **disponível**: o
-arnês em `~/Referencias/directional-bench/` corre uma implementação independente sobre a
+⚠️ **Comparação fase a fase é mais forte que comparar o fim** — e ela está **disponível**:
+existe, **fora da árvore**, um arnês que corre uma implementação independente sobre a
 **nossa** malha e o **nosso** campo, e escreve a malha resultante. ⇒ *cada fase nossa pode
 ser cobrada contra a dela, na mesma peça.*
+
+⛔⛔ **Correcção do R-pré (2026-08-24): correr esse arnês NÃO é acto do Implementador.**
+A 1ª redacção desta espec dava aqui o caminho do arnês, e o Implementador que o seguisse
+violaria o próprio Passo 0 dele. O mecanismo: o arnês é um consumidor **header-only** —
+compilá-lo põe a implementação alheia no terminal por um erro de compilação, e uma
+exposição involuntária conta na mesma (§6).
+⇒ **A lei é a do §5 da skill: execução do oráculo é acto de E (ou de um wrapper de E que
+entregue só dados); I consome dumps prontos.** O que I precisa **já está publicado como
+dados** em [`fixtures/`](fixtures/README.md). Falta um dump? Peça-o **pelo Enio**, como
+emenda — ⛔ nunca vá buscá-lo.
 
 ---
 
@@ -471,10 +497,14 @@ ser cobrada contra a dela, na mesma peça.*
 [`fixtures/`](fixtures/README.md) estão **mapas de grade inteira de referência**, sobre a
 **nossa** malha e o **nosso** campo, já **verificados**:
 
-| peça | triângulos | arestas interiores | ⭐ costuras | resíduo de translação máx |
+| peça | triângulos | arestas interiores (⚠️ **medidas**) | ⭐ costuras | resíduo de translação máx |
 |---|---|---|---|---|
-| gancho orgânico (fechado) | 6 768 | 10 151 | **247** | `3,55e-15` |
-| toro (**género 1**) | 4 096 | 6 143 | **138** | `3,55e-15` |
+| gancho orgânico (fechado) | 6 768 | 10 152 (**10 151**) | **247** | `3,55e-15` |
+| toro (**género 1**) | 4 096 | 6 144 (**6 143**) | **138** | `3,55e-15` |
+
+⚠️ **Correcção do R-pré:** a diferença de `1` em cada peça é uma aresta de imagem
+**degenerada** no domínio — o fenómeno que a **§2.1** manda colapsar primeiro. As duas peças
+contêm-no, e o verificador passou a nomeá-lo em vez de o saltar em silêncio.
 
 ⇒ **A obra parte em duas de verdade:** a extração consome estes mapas e é gateada contra a
 régua por-face **hoje**; o arredondamento inteiro (§5) é cobrado, mais tarde, contra estes

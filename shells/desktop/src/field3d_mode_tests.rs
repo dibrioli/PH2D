@@ -85,7 +85,10 @@ fn the_edge_fires_once_and_then_stays_quiet() {
 fn opening_the_model_panel_is_its_own_edge() {
     forget_owner();
     assert!(!super::model_just_opened(false), "fechado não é abrir");
-    assert!(super::model_just_opened(true), "fechado → aberto é a borda");
+    assert!(
+        super::model_just_opened(true),
+        "fechado -> aberto é a borda"
+    );
     assert!(
         !super::model_just_opened(true),
         "…e ela dispara UMA vez: senão o barro cederia a cada quadro com o MODEL aberto"

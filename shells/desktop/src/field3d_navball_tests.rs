@@ -152,7 +152,7 @@ fn the_widget_follows_the_camera() {
     let after = at(&cam, Standard::Front);
     assert!(
         (before[0] - after[0]).abs() + (before[1] - after[1]).abs() > 1.0,
-        "orbitar não moveu a bola: {before:?} → {after:?}"
+        "orbitar não moveu a bola: {before:?} -> {after:?}"
     );
 }
 
@@ -194,7 +194,7 @@ fn the_chrome_pushes_the_gizmo_left_and_down() {
     let with_panel = centre_in(a, safe_corner(a, &[panel]));
     assert!(
         (bare[0] - with_panel[0] - 300.0).abs() < 0.01,
-        "o painel de 300 px devia mover o gizmo 300 px para a esquerda: {} → {}",
+        "o painel de 300 px devia mover o gizmo 300 px para a esquerda: {} -> {}",
         bare[0],
         with_panel[0]
     );
@@ -208,7 +208,7 @@ fn the_chrome_pushes_the_gizmo_left_and_down() {
     let with_bar = centre_in(a, safe_corner(a, &[bar]));
     assert!(
         (with_bar[1] - bare[1] - 60.0).abs() < 0.01,
-        "a faixa de 60 px devia baixar o gizmo 60 px: {} → {}",
+        "a faixa de 60 px devia baixar o gizmo 60 px: {} -> {}",
         bare[1],
         with_bar[1]
     );

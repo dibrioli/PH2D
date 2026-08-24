@@ -29,12 +29,12 @@ fn the_trip_lands_exactly_on_the_destination() {
             assert_eq!(
                 f.at(1.0),
                 f.to,
-                "{a:?} → {b:?}: em t=1 a câmera tem de SER o destino, escrita, não interpolada"
+                "{a:?} -> {b:?}: em t=1 a câmera tem de SER o destino, escrita, não interpolada"
             );
             assert_eq!(
                 named_view(&f.at(1.0)),
                 Some(b),
-                "{a:?} → {b:?}: o destino não é reconhecido como a vista dele"
+                "{a:?} -> {b:?}: o destino não é reconhecido como a vista dele"
             );
         }
     }
@@ -72,7 +72,7 @@ fn the_trip_takes_the_short_way_round() {
             }
             assert!(
                 walked <= direct + 0.01,
-                "{a:?} → {b:?}: o percurso andou {walked:.3} rad para um destino a {direct:.3} — \
+                "{a:?} -> {b:?}: o percurso andou {walked:.3} rad para um destino a {direct:.3} — \
                  deu a volta pelo lado comprido"
             );
         }
@@ -92,7 +92,7 @@ fn every_step_gets_closer_to_the_destination() {
         let d = angle(f.at(i as f32 / 64.0).rotation, f.to.rotation);
         assert!(
             d <= last + 1.0e-4,
-            "no passo {i} a câmera AFASTOU-SE do destino: {last:.4} → {d:.4}"
+            "no passo {i} a câmera AFASTOU-SE do destino: {last:.4} -> {d:.4}"
         );
         last = d;
     }

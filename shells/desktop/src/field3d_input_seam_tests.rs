@@ -369,7 +369,7 @@ fn the_published_safe_rect_moves_the_gizmo() {
         let moved = crate::field3d_navball::centre_in(AREA, crate::field3d_smoke::safe_of(s));
         assert!(
             (bare[0] - moved[0] - 300.0).abs() < 0.01,
-            "a parte livre publicada não moveu o gizmo: {bare:?} → {moved:?}"
+            "a parte livre publicada não moveu o gizmo: {bare:?} -> {moved:?}"
         );
         // …e o gesto segue-o: o clique tem de cair no sítio NOVO, não no antigo.
         let safe = crate::field3d_smoke::safe_of(s);

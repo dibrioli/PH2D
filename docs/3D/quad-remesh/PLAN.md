@@ -4576,3 +4576,80 @@ mesma disciplina do `regraduate`. ⇒ um factor de escala global sai na normaliz
 | controlo negativo sobre o resíduo da costura | um salto errado **não** abre a costura — paga-se no gradiente | [`solve_tests.rs`](../../../crates/ph2d-gridmap/src/solve_tests.rs) |
 | `SEAM_WEIGHT` baixo (`1`) pelo ângulo de `4,1°` | costura a `2,98` células destrói a leitura das marcas | [`solve.rs`](../../../crates/ph2d-gridmap/src/solve.rs) |
 | mais rondas para desempatar o compromisso | `40 k → 640 k` move `12,1° → 12,3°`: assentou | idem |
+
+## §4-quinetquinquagies — ⛔⛔⛔ G4: o mapa global CHEGA ao produto, e a marcação do arco NUNCA foi o constrangimento (2026-08-23)
+
+### A fase
+
+O `τ` de um arco passa a ser **a coordenada do mapa global** ao longo dele, mantendo o
+total (a mesma disciplina do `regraduate`: muda-se a forma de dentro do arco e mais nada).
+⭐ Os dois patches que o partilham leem a **mesma função**, logo concordam **por
+construção** — não por uma média negociada.
+
+⭐⭐ **E o parâmetro é a PROJECÇÃO na direcção do arco**, não uma das coordenadas. A
+primeira versão escolhia «o eixo que mais anda» e isso é uma moeda ao ar: no arco `5` o
+lado `0` percorre `(0,592 · 0,580)` e cada lado caía num eixo diferente — `62 %` de
+desacordo. ⚠️ E o diagnóstico mostrou mais: no arco `38` os dois lados escolhem eixos
+**diferentes e ambos certos**, porque as molduras estão rodadas. *Não há «o eixo» de um
+arco; há a direcção dele.*
+
+### ⭐ A promessa do mapa global está ENTREGUE, e medida
+
+| esfera fina `96×144` | |
+|---|---|
+| arcos marcados | `43/43` |
+| ⭐ **desacordo entre os dois lados, p50** | **`0,0008`** |
+| desacordo, pior | `0,0159` |
+
+⇒ **os dois lados marcam o arco no mesmo sítio, a menos de `0,1 %` do comprimento.** É
+exactamente o que as seis curas locais não conseguiam.
+
+### ⛔⛔⛔ E o PRODUTO quase não mexe
+
+Esfera fina, `d = 0,55`, controlo `18°`:
+
+| peso da costura | ângulo do mapa | costura max | ⭐ **enviesamento dos quads** |
+|---|---|---|---|
+| `1` | `2,3°` | `1,12` | ⭐ **`17°`** |
+| ⭐ **`8`** | `2,9°` | `0,23` | ⭐ **`17°`** |
+| `64` | `4,7°` | `0,05` | `19°` |
+| `512` | `16,8°` | `0,01` | ⛔ **`22°`** |
+
+⭐ **O melhor que a marcação dá é `18° → 17°`.** Um grau, onde o oráculo faz `6°`.
+
+⭐⭐ **E a varredura corrigiu a escolha do `SEAM_WEIGHT`, que eu tinha feito por
+raciocínio:** «o G4 lê isolinhas, logo quem manda é a costura» ⇒ `512`. **Falso** — quem
+manda é o **ângulo**, e o peso alto entrega quads *piores que o controlo*. Shipa `8`.
+
+### ⛔⛔⛔ A derivação que fechou a caça estava INCOMPLETA
+
+Toda a semana concluiu: *«o enviesamento nasce da discordância entre lados opostos, a
+marcação é escolhida localmente, e só uma parametrização global a pode fixar»*.
+
+⇒ **Está construída. Os dois lados concordam a `0,1 %`. O produto move `1°`.**
+⛔ **A marcação do arco nunca foi o constrangimento** — era *um* constrangimento, e não
+o que dói.
+
+⚠️ **E a coluna que o diz está na tabela desde o início:** o `DOMINIO` é **idêntico** ao
+do controlo (`2,4°` rect / `22,1°` leque), porque o domínio de um patch é construído das
+**contagens** e não do `τ`. *A marcação nunca lhe tocou.*
+
+### ⇒ O que isto PROMOVE, e já estava medido
+
+O `CLAUDE.md` §5 regista, de 23/08: *«O MECANISMO FOI ACHADO E ISOLADO EM 2D PURO: é o
+LEQUE. Um sector de leque num domínio plano partilhado traz enviesamento `|360/n − 90|`
+de máximo … a cura é dar a cada sector o SEU domínio, o que muda o `ph2d_quadfill::param`»*.
+
+⭐⭐⭐ Essa cura **nunca foi construída**, e o resultado desta secção promove-a: o
+`DOMINIO leque` mede `19°`–`27°`, não responde à marcação, e o arnês 2D já diz de onde
+vem e quanto vale. ⇒ **é a obra seguinte, e agora por eliminação medida e não por
+hipótese.**
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| escolher «o eixo que mais anda» de um arco | moeda ao ar quando as duas coordenadas andam igual: `62 %` de desacordo | [`marks.rs`](../../../crates/ph2d-gridmap/src/marks.rs) |
+| `SEAM_WEIGHT = 512` por raciocínio | o produto piora para `22°` contra `18°` do controlo | [`solve.rs`](../../../crates/ph2d-gridmap/src/solve.rs) |
+| ⭐ **a marcação do arco como cura do enviesamento** | os dois lados concordam a `0,1 %` e o produto move `1°` | [`marks_tests.rs`](../../../crates/ph2d-gridmap/src/marks_tests.rs) |
+| pregar as pontas do `τ` depois de forçar a monotonia | desfaz a rede: o `τ` sai a recuar na mesma | [`marks.rs`](../../../crates/ph2d-gridmap/src/marks.rs) |

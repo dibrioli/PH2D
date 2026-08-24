@@ -5667,6 +5667,9 @@ version = "0.0.0"
 dependencies = [
  "ph2d-crossfield",
  "ph2d-mesh",
+ "ph2d-quadfill",
+ "ph2d-quadflow",
+ "ph2d-quantize",
  "ph2d-remesh-iso",
  "ph2d-trace",
 ]

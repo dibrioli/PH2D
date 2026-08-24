@@ -618,8 +618,18 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   (2) na esfera a coluna combinada dava `0,33` e eu ia ler «o solver não presta» — separada em **ângulo** e
   **escala**, o ângulo é **`4,1°`** e o resto era escala. ⭐ **Compromisso real, medido:** fechar as costuras custa
   o ângulo (`4,1° → 13,0°` de `w=1` a `w=512`), e `40 k → 640 k` rondas não o move ⇒ não é solver lento. Shipa
-  `SEAM_WEIGHT = 512` (o G4 lê isolinhas: a costura manda) e `ROUNDS = 160 000`. **Falta o G4** — ler as marcações
-  onde as isolinhas inteiras cruzam cada arco, e então medir o **produto**. ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  `ROUNDS = 160 000`. ⭐⭐⭐ **E o G4 FECHOU A CADEIA — com um resultado NEGATIVO que vale mais que a fase**
+  (§4-quinetquinquagies): o `τ` de cada arco passa a ser a coordenada do mapa global (⚠️ a **projecção na direcção
+  do arco**, não um eixo — escolher «o eixo que mais anda» é moeda ao ar e deu `62%` de desacordo). ⭐ **A promessa
+  está entregue e medida: os dois lados marcam o arco no MESMO sítio, a `0,1%` do comprimento** — exactamente o que
+  as seis curas locais não conseguiam. ⛔⛔⛔ **E o produto move UM GRAU** (`18° → 17°` na esfera fina; o oráculo faz
+  `6°`). ⇒ **a marcação do arco NUNCA foi o constrangimento**, e a coluna que o dizia estava na tabela desde o
+  início: o `DOMINIO` é **idêntico** ao do controlo, porque o domínio de um patch nasce das **contagens** e não do
+  `τ`. ⚠️ A varredura também corrigiu o `SEAM_WEIGHT`, que eu escolhera por raciocínio (`512` ⇒ produto **pior** que
+  o controlo, `22°`); shipa **`8`** — quem manda é o **ângulo**, não a costura.
+  ⇒ ⭐⭐⭐ **A OBRA SEGUINTE é a que o §5 já tinha medido e nunca foi construída: DAR A CADA SECTOR DE LEQUE O SEU
+  PRÓPRIO DOMÍNIO** (`ph2d_quadfill::param`). O `DOMINIO leque` mede `19°–27°`, **não responde à marcação**, e o
+  arnês 2D puro já diz de onde vem (`|360/n − 90|`) e quanto vale. *Agora por eliminação medida, não por hipótese.* ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

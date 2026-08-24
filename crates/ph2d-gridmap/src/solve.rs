@@ -74,15 +74,28 @@ use crate::cut::CutMesh;
 /// rondas o ângulo a `w = 64` vai de `11,9°` a `12,3°` e a `w = 512` de `25,0°` a
 /// `13,0°` — *os dois assentam*. **Fechar as costuras custa o alinhamento.**
 ///
-/// ⭐ **`512` porque o G4 lê onde as isolinhas INTEIRAS cruzam cada arco**, e aí quem
-/// manda é o resíduo da costura: `0,15` de célula seria `15 %` de desacordo sobre onde
-/// a marca cai. *O ângulo paga `9°`; a marca ganha uma ordem de grandeza.*
+/// # ⛔⛔⛔ E o valor que SHIPA saiu do PRODUTO, não deste raciocínio
+///
+/// Esta nota dizia *«`512` porque o G4 lê isolinhas e aí quem manda é o resíduo da
+/// costura»*. ⚠️ **É um raciocínio, e o produto desmentiu-o.** Medido na esfera fina
+/// `96×144`, `d = 0,55`, com o G4 a marcar os arcos e o F5 a montar (controlo `18°`):
+///
+/// | peso | ângulo | costura max | ⭐ **enviesamento dos quads** |
+/// |---|---|---|---|
+/// | `1` | `2,3°` | `1,12` | ⭐ **`17°`** |
+/// | ⭐ **`8`** | `2,9°` | `0,23` | ⭐ **`17°`** |
+/// | `64` | `4,7°` | `0,05` | `19°` |
+/// | `512` | `16,8°` | `0,01` | ⛔ **`22°`** |
+///
+/// ⇒ **quem manda é o ÂNGULO, não a costura** — o peso alto fecha as costuras e paga-o
+/// em quads piores que o controlo. ⭐ `8` porque dá o melhor produto com a costura ainda
+/// dentro de um quarto de célula; `1` empata no produto e deixa a costura a `1,12`.
 ///
 /// ⚠️ **A escala baixa NÃO bloqueia**, e é por desenho: o G4 usa o mapa só para decidir
 /// *onde ao longo de cada arco* as marcas caem, mantendo as CONTAGENS do F4 — a mesma
 /// disciplina do `regraduate`. ⇒ *um factor de escala global sai na normalização por
 /// arco.*
-pub const SEAM_WEIGHT: f32 = 512.0;
+pub const SEAM_WEIGHT: f32 = 8.0;
 
 /// Quantas rondas de Gauss–Seidel.
 ///

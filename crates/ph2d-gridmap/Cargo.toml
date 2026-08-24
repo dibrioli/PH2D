@@ -32,3 +32,10 @@ ph2d-trace = { path = "../ph2d-trace" }
 
 [dev-dependencies]
 ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
+# ⚠️ SO' PARA A SONDA DO PRODUTO. O F5 e' a jusante desta crate; ele entra aqui como
+# dev-dependency para a sonda poder medir a FORMA DOS QUADS -- que e' o unico numero que
+# decide se esta fase serviu para alguma coisa. Tudo o resto (angulo, residuo de costura,
+# desacordo entre lados) sao proxies.
+ph2d-quadfill = { path = "../ph2d-quadfill" }
+ph2d-quantize = { path = "../ph2d-quantize" }
+ph2d-quadflow = { path = "../ph2d-quadflow" }

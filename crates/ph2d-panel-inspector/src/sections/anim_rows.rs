@@ -229,6 +229,23 @@ fn editor(
         &[ids::INSP_ANIM_FRAME_MS, ids::INSP_ANIM_REPEAT],
         1.0,
     );
+    // ⚠️ **Uma animação com ritmo PRÓPRIO por célula (§8.12) tem de o DIZER.** Sem esta linha o
+    // campo `Frame ms` acima mente sobre ela — mostra a duração mais comum e nada explica por que
+    // a animação não anda naquele ritmo. O Inspector não a edita (a §8.8 põe essa edição no editor
+    // de timeline futuro); ele diz que ela existe, que é a diferença entre um dado e um mistério.
+    if row.per_frame_timing {
+        paint_text(
+            text_system,
+            scene,
+            "\u{2022} this animation has per-frame timing (imported)",
+            x,
+            cur_y,
+            TypeToken::Sm.px(),
+            w,
+            resolve(ColorToken::Warn, theme),
+        );
+        cur_y += TypeToken::Sm.px() + Spacing::Xs.px();
+    }
     cur_y = super::anchors::field_row(
         scene,
         text_system,

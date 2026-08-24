@@ -57,6 +57,7 @@ fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 repeat_delay_ms: 250,
                 signal_on_finish: String::new(),
                 signal_on_loop: String::new(),
+                per_frame_timing: false,
             },
             InspectorAnimRow {
                 name: "attack".into(),
@@ -69,6 +70,7 @@ fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 repeat_delay_ms: 0,
                 signal_on_finish: String::new(),
                 signal_on_loop: String::new(),
+                per_frame_timing: false,
             },
         ],
         player_present: true,

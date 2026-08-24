@@ -384,7 +384,9 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 92→93: a `AnimationTag` ganhou `signal_on_finish`+`signal_on_loop` (§8.10 — os
         // sinais da §11). Campos apendados, layout posicional muda. ⚠️ O `FlipDoc` e a `VecScene`
         // NAO mudaram — a tag e' do `ph2d-ecs`, entao os dois numeros ao lado ficam onde estavam.
-        (93, 13, 14),
+        // PROJECT 93→94: a `AnimationTag` ganhou `per_frame_ms` (§8.12 — a duracao por-quadro
+        // que o importador de `.ase` passou a produzir). Campo apendado, layout posicional muda.
+        (94, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

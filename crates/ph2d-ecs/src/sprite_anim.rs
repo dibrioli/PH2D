@@ -183,6 +183,22 @@ pub struct AnimationTag {
     /// ⚠️ **Vazio = calada, e é o default** — a maioria das animações não tem nada a dizer, e uma
     /// que grita por omissão enche o canal de eventos que ninguém pediu.
     pub signal_on_finish: String,
+    /// **A duração de CADA célula do intervalo**, em ms — vazio = todas duram `frame_ms`.
+    ///
+    /// ⚠️ **É a recusa medida da spec §8.12, reaberta pelo importador de `.ase`.** Ela dizia *«não
+    /// há quem produza durações por-quadro»*; o importador é exactamente quem as produz, e nos
+    /// ficheiros reais elas **variam** (o `example.ase` de terceiros vai de 50 a 500 ms, e as três
+    /// tags dele variam por dentro). *Quem move o número que tornava algo inalcançável tem de
+    /// reconferir a nota.*
+    ///
+    /// ⚠️ **Indexado a partir do `from`** (`per_frame_ms[cell - lo]`), e **curto é válido**: uma
+    /// entrada em falta — ou um `0` — cai no `frame_ms`. Um vetor que pode estar dessincronizado
+    /// do intervalo seria estado inválido a guardar; com o fallback, **não há estado inválido**.
+    /// Mexer no `from`/`to` não o invalida: ele reindexa-se sozinho.
+    ///
+    /// ⚠️ O `hold_ms` continua a ser a pausa do ÚLTIMO frame do ciclo, e soma-se a isto. Os dois
+    /// resolvem coisas diferentes: este é o ritmo interno, aquele é a respiração entre voltas.
+    pub per_frame_ms: Vec<u32>,
     /// O nome do sinal que esta animação grita ao **fechar um ciclo**. Vazio = calada.
     ///
     /// ⚠️ Um tique atrasado fecha vários ciclos de uma vez e sai **um** sinal, com a contagem
@@ -205,6 +221,7 @@ impl AnimationTag {
             repeat_delay_ms: 0,
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
+            per_frame_ms: Vec::new(),
         }
     }
 
@@ -226,9 +243,31 @@ impl AnimationTag {
         (lo <= hi).then_some((lo, hi))
     }
 
-    /// A duração de um frame desta tag em microssegundos, com o cap da spec imposto.
-    fn frame_ticks(&self) -> u64 {
-        u64::from(self.frame_ms.clamp(FRAME_MS_MIN, FRAME_MS_MAX)) * 1_000
+    /// **A duração da célula `frame`**, em microssegundos, com o cap da spec imposto.
+    ///
+    /// ⚠️ **A lei já perguntava POR FRAME** — o `step_ticks` chama-a dentro do laço, com a célula
+    /// que está no ecrã. Era só a resposta que era uniforme, e é por isso que a duração por-quadro
+    /// coube numa função e não numa refactoração: *quando a pergunta certa já está no sítio certo,
+    /// a feature é a resposta*.
+    ///
+    /// `lo` é o `from` **resolvido** (o intervalo pode ter sido cortado pela grelha de hoje), e é
+    /// contra ele que o vetor se indexa.
+    fn frame_ticks_at(&self, frame: u32, lo: u32) -> u64 {
+        let ms = self
+            .per_frame_ms
+            .get(frame.saturating_sub(lo) as usize)
+            .copied()
+            // `0` é «não declarado», e não «instantâneo»: um zero real faria o laço de recuperação
+            // do `advance` girar até ao guarda, e um ficheiro adulterado não pode fazer isso.
+            .filter(|v| *v > 0)
+            .unwrap_or(self.frame_ms);
+        u64::from(ms.clamp(FRAME_MS_MIN, FRAME_MS_MAX)) * 1_000
+    }
+
+    /// Esta tag tem ritmo próprio por célula? (O que o painel mostra, e o que o importador diz.)
+    #[must_use]
+    pub fn has_per_frame_timing(&self) -> bool {
+        self.per_frame_ms.iter().any(|&v| v > 0)
     }
 }
 
@@ -513,7 +552,7 @@ pub fn advance(
 
 /// Quanto o frame ATUAL dura, com o hold e o atraso entre ciclos dobrados nele.
 fn step_ticks(animator: &SpriteAnimator, tag: &AnimationTag, frame: u32, lo: u32, hi: u32) -> u64 {
-    let base = tag.frame_ticks();
+    let base = tag.frame_ticks_at(frame, lo);
     if !is_cycle_end(animator, tag, frame, lo, hi) {
         return base;
     }

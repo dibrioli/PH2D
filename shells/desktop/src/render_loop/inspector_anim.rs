@@ -142,6 +142,7 @@ pub(super) fn build_anim_info(
                     repeat_delay_ms: t.repeat_delay_ms,
                     signal_on_finish: t.signal_on_finish.clone(),
                     signal_on_loop: t.signal_on_loop.clone(),
+                    per_frame_timing: t.has_per_frame_timing(),
                 })
                 .collect()
         })

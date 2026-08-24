@@ -1566,9 +1566,10 @@ impl crate::App {
                     kind: ph2d_editor::ViewFocusKind::Selected,
                 });
             toasts.push(Toast::success(
-                "Animation smoke: open the Animation section — it is playing walk (silent). \
-                 Click idle: a signal per lap. Click attack: it plays once, stays on the last \
-                 cell, and announces the end"
+                "Animation smoke: open the Animation section — it is playing walk (silent, even \
+                 rhythm). Click idle: it HESITATES on one cell (per-frame timing) and fires a \
+                 signal per lap. Click attack: it plays once, stays on the last cell, and \
+                 announces the end"
                     .to_string(),
             ));
             self.title_dirty = true;

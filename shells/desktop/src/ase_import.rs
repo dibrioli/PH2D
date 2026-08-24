@@ -23,14 +23,16 @@
 //! o extract usa para converter uma célula em sub-UV. Empacotar por colunas daria uma folha bonita
 //! e animações trocadas.
 //!
-//! ## ⛔ A duração por-quadro: a recusa que este ficheiro reabre
+//! ## ✅ A duração por-quadro: a recusa que este ficheiro reabriu, e que o modelo passou a exprimir
 //!
-//! A §11 guarda **um** `frame_ms` por tag, e a recusa de então (spec §8.12) dizia *«não há quem
-//! produza durações por-quadro»*. Há: é este importador. O que se faz **hoje** é aproximar pela
-//! duração mais comum da tag **e dizê-lo ao artista**, nomeando a tag. ⚠️ *Aproximar em silêncio
-//! seria a resposta errada com a certeza da resposta certa* — o artista veria o *hold* de
-//! antecipação dele desaparecer sem uma linha a explicar. A decisão de pôr a duração por-quadro no
-//! modelo é de produto, e move o `PROJECT_SCHEMA`.
+//! A §11 guardava **um** `frame_ms` por tag, e a recusa (spec §8.12) dizia *«não há quem produza
+//! durações por-quadro»*. Há: é este importador — e nos ficheiros REAIS elas variam (o
+//! `example.ase` de terceiros vai de 50 a 500 ms, com as **três** tags a variar por dentro). ⇒ a
+//! `AnimationTag` ganhou `per_frame_ms`, e aqui ela **passa inteira**.
+//!
+//! ⚠️ **A nota ao artista continua**, e mudou de conteúdo: ela dizia *«foi aproximado»* e agora diz
+//! *o que entrou* — porque nenhum campo do Inspector edita este ritmo (a §8.8 põe essa edição no
+//! editor de timeline futuro), e um valor que se importa e não se vê é o mesmo defeito de sempre.
 
 use ph2d_aseprite::{AseDoc, AseFrame, AseTag};
 use ph2d_ecs::{AnimDirection, AnimationTag, SimWorld, SpriteAnimations, SpriteAnimator};
@@ -128,10 +130,30 @@ pub(crate) fn pack(frames: &[AseFrame], fw: u16, fh: u16, cols: u32, rows: u32) 
 pub(crate) fn tag_from_ase(t: &AseTag, frames: &[AseFrame]) -> (AnimationTag, Option<String>) {
     let uniform = t.uniform_duration_ms(frames);
     let ms = uniform.unwrap_or_else(|| t.dominant_duration_ms(frames));
-    let note = uniform.is_none().then(|| {
+    // ⚠️ **A duração por-QUADRO passa inteira** (§8.12, a recusa que este importador reabriu e que
+    // o modelo passou a saber exprimir). Ela só é preenchida quando o artista de facto variou o
+    // ritmo dentro da tag — uniforme fica vazio, que é o comportamento de sempre e o estado normal.
+    let per_frame_ms = if uniform.is_some() {
+        Vec::new()
+    } else {
+        let lo = usize::from(t.from.min(t.to));
+        let hi = usize::from(t.from.max(t.to)).min(frames.len().saturating_sub(1));
+        frames
+            .get(lo..=hi)
+            .map(|s| s.iter().map(|f| u32::from(f.duration_ms).max(1)).collect())
+            .unwrap_or_default()
+    };
+    // ⚠️ A nota deixou de dizer «foi aproximado» e passa a dizer **o que entrou** — o artista tem
+    // de saber que aquela tag tem ritmo próprio, porque nenhum campo do Inspector o edita ainda
+    // (a §8.8 põe essa edição no editor de timeline futuro, e não aqui).
+    let note = (!per_frame_ms.is_empty()).then(|| {
         format!(
-            "\"{}\" has per-frame durations; every frame now lasts {ms} ms",
-            t.name
+            "\"{}\" has per-frame timing ({} frames, {}..{} ms) — the Frame ms field shows the \
+             most common one",
+            t.name,
+            per_frame_ms.len(),
+            per_frame_ms.iter().copied().min().unwrap_or(ms.into()),
+            per_frame_ms.iter().copied().max().unwrap_or(ms.into()),
         )
     });
     (
@@ -140,6 +162,7 @@ pub(crate) fn tag_from_ase(t: &AseTag, frames: &[AseFrame]) -> (AnimationTag, Op
             direction: AnimDirection::from_tag(t.direction),
             // Aseprite: `0` = para sempre. A §11 diz o mesmo com `None`.
             repeat: (t.repeat > 0).then(|| u32::from(t.repeat)),
+            per_frame_ms,
             ..AnimationTag::new(t.name.clone(), u32::from(t.from), u32::from(t.to))
         },
         note,

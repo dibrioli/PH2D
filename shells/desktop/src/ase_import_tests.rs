@@ -129,7 +129,7 @@ fn a_tag_crosses_over_whole() {
 ///
 /// **Mutação que deve sangrar:** devolver `None` em vez da nota.
 #[test]
-fn a_tag_with_per_frame_durations_is_approximated_and_says_so() {
+fn a_tag_with_per_frame_durations_keeps_them_all() {
     let frames = vec![
         frame(50, 1, 1, 0),
         frame(50, 1, 1, 0),
@@ -137,10 +137,42 @@ fn a_tag_with_per_frame_durations_is_approximated_and_says_so() {
         frame(50, 1, 1, 0),
     ];
     let (tag, note) = tag_from_ase(&ase_tag("idle", 0, 3, 0, 0), &frames);
-    assert_eq!(tag.frame_ms, 50, "a aproximacao honesta e' a mais comum");
-    let note = note.expect("tinha de avisar");
+    assert_eq!(
+        tag.per_frame_ms,
+        vec![50, 50, 400, 50],
+        "o ritmo proprio tem de passar INTEIRO — era isto que a recusa impedia"
+    );
+    assert!(tag.has_per_frame_timing());
+    assert_eq!(tag.frame_ms, 50, "e o campo do painel mostra o mais comum");
+    let note = note.expect("tinha de avisar que ha' ritmo proprio");
     assert!(note.contains("idle"), "a nota tem de NOMEAR a tag: {note}");
-    assert!(note.contains("50"), "e dizer o numero que ficou: {note}");
+    assert!(note.contains("400"), "e dizer o intervalo real: {note}");
+}
+
+/// **UMA TAG DE RITMO UNIFORME NÃO CARREGA VETOR NENHUM** — é o caso comum, e a metade que impede
+/// a feature de encher todo projeto de dados que dizem o que o `frame_ms` já diz.
+///
+/// **Mutação que deve sangrar:** preencher o `per_frame_ms` sempre.
+#[test]
+fn a_uniform_tag_carries_no_vector() {
+    let frames: Vec<AseFrame> = (0..4).map(|_| frame(80, 1, 1, 0)).collect();
+    let (tag, note) = tag_from_ase(&ase_tag("walk", 0, 3, 0, 0), &frames);
+    assert!(tag.per_frame_ms.is_empty(), "uniforme nao guarda vetor");
+    assert!(!tag.has_per_frame_timing());
+    assert_eq!(tag.frame_ms, 80);
+    assert!(note.is_none(), "e nao ha' nada a avisar");
+}
+
+/// **O vetor é do INTERVALO da tag, não do ficheiro inteiro** — uma tag `4..6` num ficheiro de dez
+/// quadros guarda três valores, e o primeiro é o do quadro 4.
+///
+/// **Mutação que deve sangrar:** copiar `frames` inteiro em vez da fatia.
+#[test]
+fn the_vector_covers_the_tags_own_range() {
+    let mut frames: Vec<AseFrame> = (0..10).map(|_| frame(60, 1, 1, 0)).collect();
+    frames[4] = frame(300, 1, 1, 0);
+    let (tag, _) = tag_from_ase(&ase_tag("attack", 4, 6, 0, 0), &frames);
+    assert_eq!(tag.per_frame_ms, vec![300, 60, 60]);
 }
 
 /// **UM FICHEIRO SEM TAGS RECEBE UMA**, com o nome do ficheiro, a cobrir todos os quadros.

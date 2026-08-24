@@ -284,6 +284,7 @@ fn the_panel_names_the_directions_the_engine_names() {
                 repeat_delay_ms: 0,
                 signal_on_finish: String::new(),
                 signal_on_loop: String::new(),
+                per_frame_timing: false,
             }
             .direction_tag,
             tag

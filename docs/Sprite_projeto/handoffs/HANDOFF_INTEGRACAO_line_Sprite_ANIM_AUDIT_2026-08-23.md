@@ -724,3 +724,57 @@ ao mesmo tempo, ou por editar a árvore com um teste a correr. `rm -rf target/de
 curou, e a corrida limpa mostrou o defeito real. ⚠️ **Duas vezes no mesmo dia eu editei ficheiros
 com a suíte a correr e reportei uma reprovação que não era do código** — a leitura só vale com a
 árvore quieta.
+
+## §18 — Adenda: **a DURAÇÃO POR-QUADRO** (spec §8.12) — a recusa reabriu e fechou
+
+A [§13](#) registou que o importador de `.ase` **reabria** a recusa da duração por-quadro. Os
+ficheiros reais fecharam a discussão: o `example.ase` de terceiros vai de **50 a 500 ms**, e as
+**três** tags dele variam por dentro. *Quem move o número que tornava algo inalcançável tem de
+reconferir a nota.*
+
+**O que shipa:** `AnimationTag::per_frame_ms: Vec<u32>` — a duração de cada célula do intervalo.
+
+### ⭐ A lei pura não precisou de refactoração, e a razão vale registar
+
+O `step_ticks` já era chamado **dentro do laço de recuperação, com a célula que está no ecrã**. A
+pergunta já era *por frame*; era só a **resposta** que era uniforme. A feature coube numa função
+(`frame_ticks_at`) e numa linha do chamador.
+
+> *Quando a pergunta certa já está no sítio certo, a feature é a resposta.*
+
+### As três leis do vetor
+
+1. **Vazio = uniforme**, e é o caso normal — o comportamento de sempre, sem um byte a mais no
+   ficheiro de quem não usa isto.
+2. ⚠️ **Curto é válido, e `0` também**: os dois caem no `frame_ms`. Um vetor obrigado a acompanhar o
+   intervalo seria **estado inválido a guardar** — mexer no `to` deixaria a tag num estado que o
+   modelo não sabe descrever. Com o fallback, mexer no intervalo **não invalida nada**. (E um `0`
+   real faria o laço de recuperação girar até ao guarda: um ficheiro adulterado não pode conseguir
+   isso.)
+3. **Indexa a partir do `from` resolvido** (`per_frame_ms[cell - lo]`) — uma tag que começa na
+   célula 4 tem o primeiro valor na célula 4, e o cap da spec vale **por célula**.
+
+⚠️ **O Inspector NÃO o edita** — a §8.8 põe essa edição no editor de timeline futuro, e esta seção
+não legisla por ele. O que ele faz é **dizer que ele existe** (uma linha na animação selecionada),
+porque um `Frame ms` que mostra a duração *mais comum* de uma animação com ritmo variável **mente**.
+Quem o autora hoje é o **importador**.
+
+### O que a wave obrigou a arrumar
+
+⚠️ **`PROJECT_SCHEMA` 93 → 94** (a tripla junto).
+⭐ **E o gate da cena de smoke media a ENCENAÇÃO:** ele reconstruía as três tags à mão, então mudar
+o que o Enio vê **não o reprovava**. A biblioteca virou uma função (`demo_library`) que o
+`spawn_if_enabled` e o gate partilham — e a cena passou a demonstrar as duas features novas: a
+`idle` **hesita** numa célula e grita a cada volta; a `walk`, que toca por omissão, é **uniforme e
+calada**. *O contraste é o que ensina que o silêncio e o ritmo liso são o default.*
+
+⛔ **E um ✗ do gate batched que NÃO é meu:**
+`flip_smooth::…::the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke` reprovou no fan-out de
+3,9 mil testes e passou **3 de 3** sozinho, sobre um diff que não toca **uma linha** do Flip. É um
+gate de **razão de relógio** (`ms_longo / ms_curto < 5`) — a família já descrita no `CLAUDE.md`
+§5.0, e ele já tira o **melhor de 3** medições para se defender. ⚠️ **Não o acrescentei à lista de
+lá de propósito:** aquela nota diz, por escrito, que a lista nunca estará completa e que *o que se
+lê é a FORMA, não o nome*.
+
+**11 gates novos** (6 da lei pura + 3 do importador + 2 da cena), **7 mutações**, todas sangraram.
+Suíte do shell: **3.923/3.923**.

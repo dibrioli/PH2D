@@ -359,7 +359,7 @@ Zero asset novo, zero pixels duplicados, e a persistência vem do registro de co
 | `speed_scale_q16_16` | ✅ `SPEED_ONE_Q16 = 65 536`, teto `±100×` |
 | `in_hold_phase: bool` | ⛔ **dobrado na duração** do último frame — mesmo resultado observável, menos um estado a dessincronizar |
 | tags ≤ **256** | ⚠️ **64** — ver abaixo |
-| duração por-FRAME | ⛔ ver abaixo |
+| duração por-FRAME | ✅ **existe** desde 2026-08-23 — `AnimationTag::per_frame_ms`; ver abaixo |
 | signals no ActionBus (§8.10) | ✅ **existem** desde 2026-08-23 — mas no **outbox** (`ph2d-runtime`), não no ActionBus; ver abaixo |
 | Aseprite import (§8.12) | ✅ **existe** desde 2026-08-23 — `ph2d-aseprite` + `ase_import.rs` |
 
@@ -397,7 +397,7 @@ que esteve parada fecharia dez ciclos de uma vez, e dez passos que ninguém deu 
 existe para mostrar o movimento — não para fazer acontecer coisas na cena. Sem esta metade, pegar
 no pincel tocaria um som.
 
-## ⏳ Duração por-FRAME: a recusa foi REABERTA no mesmo dia, e agora tem quem a produza
+## ✅ Duração por-FRAME: a recusa reabriu e FECHOU no mesmo dia
 
 **A recusa original, verbatim:** *ela existe na spec por paridade com o Aseprite — e não há
 importador de `.ase`, por isso ninguém a produziria. A própria §8.8 diz que editá-la é do editor de
@@ -409,14 +409,26 @@ exactamente esse dado** — um `.ase` traz `duration_ms` por quadro, e um artist
 no meio de uma tag tem uma tag que o nosso `frame_ms` único não sabe exprimir. *Quem move o número
 que tornava algo inalcançável tem de reconferir a nota.*
 
-**O que shipa hoje:** o importador **aproxima pela duração mais comum da tag e DIZ**, nomeando a tag
-e o número (`AseTag::uniform_duration_ms` devolver `None` **é** a informação). ⛔ Aproximar em
-silêncio seria a resposta errada com a certeza da certa.
+**O que shipa:** `AnimationTag::per_frame_ms: Vec<u32>` — a duração de cada célula do intervalo,
+**vazio = todas duram `frame_ms`** (o caso comum, e o comportamento de sempre).
 
-**O que a decisão de produto custa, para quem a tomar:** um `Vec<u32>` por tag (ou um override
-esparso), o `PROJECT_SCHEMA` a mover, e a UI — que a §8.8 já diz não ser do Inspector. O `hold_ms`
-continua a servir o caso do último frame; o que ele **não** serve é um *hold* no MEIO da tag, que é
-o que um `.ase` real traz.
+⭐ **A lei pura não precisou de refactoração**, e a razão é interessante: o `step_ticks` já era
+chamado **dentro do laço, com a célula que está no ecrã** — a pergunta já era por-frame, era só a
+resposta que era uniforme. *Quando a pergunta certa já está no sítio certo, a feature é a resposta.*
+
+⚠️ **Curto é válido, e `0` também** — os dois caem no `frame_ms`. Um vetor que tivesse de acompanhar
+o intervalo seria **estado inválido a guardar**: mexer no `to` deixaria a tag num estado que o
+modelo não sabe descrever. Com o fallback, mexer no intervalo **não invalida nada** — o vetor
+reindexa-se sozinho. (E um `0` real faria o laço de recuperação do `advance` girar até ao guarda,
+que é o que um ficheiro adulterado não pode conseguir.)
+
+⚠️ **O `hold_ms` continua a somar-se por cima** do ritmo próprio: este é o ritmo **interno**, aquele
+é a respiração **entre voltas**.
+
+⚠️ **O Inspector NÃO o edita** — a §8.8 põe essa edição no editor de timeline futuro, e esta seção
+não legisla por ele. O que ele faz é **dizer que ele existe** (uma linha na animação selecionada),
+porque um `Frame ms` que mostra a duração mais comum de uma animação com ritmo variável **mente**, e
+um dado importado que não se vê é o defeito de sempre. Quem o autora hoje é o **importador**.
 
 ## ⚠️ O cap de tags desceu de 256 para 64, e a razão é a da própria spec
 

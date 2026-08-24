@@ -11,9 +11,9 @@
 //!
 //! | animação | células | direção | o que prova |
 //! |---|---|---|---|
-//! | `idle` | 0-3 | Ping-Pong | vai e volta sem repetir as pontas, e respira (`hold`) |
-//! | `walk` | 0-7 | Forward | a tira inteira, em ciclo |
-//! | `attack` | 4-7 | Forward, 1 volta | **pára no ÚLTIMO frame** — a pose final é o resultado |
+//! | `idle` | 0-3 | Ping-Pong | vai e volta sem repetir as pontas, respira (`hold`), **hesita numa célula** (§8.12) e **grita a cada volta** (§8.10) |
+//! | `walk` | 0-7 | Forward | a tira inteira, em ciclo — **uniforme e CALADA**, que é o default |
+//! | `attack` | 4-7 | Forward, 1 volta | **pára no ÚLTIMO frame** — e **anuncia o fim**, uma vez |
 //!
 //! ⚠️ **As três partilham as MESMAS células.** É isto que o modelo do Aseprite compra e que o
 //! `SpriteFrames` do Godot (N arrays separados) não tem: `idle` e `walk` sobrepõem-se em 0-3 sem
@@ -28,6 +28,13 @@
 //!    `walk` volta ao ciclo.
 //! 3. **Speed** a `-1` toca ao contrário; a `0` pausa sem perder o sítio.
 //! 4. Clicar em **`idle`** → vai e volta entre as quatro primeiras, com uma pausa no fim da volta.
+//!    ⚠️ **Repare que ela HESITA na 3.ª célula** (460 ms contra 80 das outras): é a *antecipação*
+//!    que um artista desenha à mão, e o caso que um `frame_ms` único não sabia exprimir — uma
+//!    animação importada saía com o tempo **achatado** (spec §8.12). Abaixo do campo `Frame ms`
+//!    aparece a linha *«this animation has per-frame timing»*; na `walk` ela não aparece.
+//!    ⚠️ E a cada volta sai um **sinal** (`idle_cycle`) como um aviso na tela; o `attack` manda um
+//!    (`attack_done`) ao acabar, e a `walk` — a que toca por omissão — **não diz nada**. O silêncio
+//!    é o default (spec §8.10).
 //! 5. **Direction override** força uma direção sobre a que a animação declara; **Inherit** devolve.
 //! 6. **Rewind** devolve a imagem à primeira célula da animação escolhida.
 //! 7. Depois de o `attack` acabar, **Playing** volta a tocá-lo do princípio — num clique só.
@@ -152,12 +159,38 @@ pub(crate) fn spawn_if_enabled(
         s.size = [s.size[0] / CELLS as f32, s.size[1]];
     }
 
-    // As três animações, pela porta que impõe os caps — nunca `lib.0.push`.
+    let lib = demo_library()?;
+
+    let mut player = SpriteAnimator::new("walk");
+    player.playing = true;
+    player.autoplay = true;
+    if let Ok(mut ent) = sim.world_mut().get_entity_mut(e) {
+        ent.insert((lib, player));
+    }
+    Some(bits)
+}
+
+/// **AS TRÊS ANIMAÇÕES da cena de smoke** — e cada uma existe para mostrar uma coisa diferente.
+///
+/// ⚠️ **Uma função, e não um bloco dentro do `spawn_if_enabled`:** aquele pede um `SpriteRenderer`
+/// vivo e não é alcançável de um teste, então o gate desta cena reconstruía a biblioteca à mão —
+/// e um gate que encena a cena mede a encenação. Com isto, ele corre a **mesma** biblioteca que o
+/// Enio vê.
+///
+/// `None` só se um cap da §11 recusar uma tag, o que seria um bug deste ficheiro.
+fn demo_library() -> Option<SpriteAnimations> {
+    // Pela porta que impõe os caps — nunca `lib.0.push`.
     let mut lib = SpriteAnimations::new();
     // ⚠️ **A `idle` GRITA a cada volta** (spec §8.10): é o que mostra a contagem — um tique que
     // apanha atraso fecha vários ciclos e sai **um** sinal, com quantos.
+    //
+    // ⚠️ **E ela tem RITMO PRÓPRIO** (spec §8.12): a 3.ª célula dura quase meio segundo, as outras
+    // um sexto disso. É a *antecipação* que um artista desenha à mão — e é o caso que o `frame_ms`
+    // único não sabia exprimir, então uma animação importada saía com o tempo **achatado**. Aqui
+    // ele vê-se sem importar nada: a sprite hesita numa célula e corre nas outras.
     lib.insert(AnimationTag {
         frame_ms: 140,
+        per_frame_ms: vec![80, 80, 460, 80],
         direction: AnimDirection::PingPong,
         hold_ms: 300,
         signal_on_loop: "idle_cycle".into(),
@@ -180,13 +213,7 @@ pub(crate) fn spawn_if_enabled(
     })
     .ok()?;
 
-    let mut player = SpriteAnimator::new("walk");
-    player.playing = true;
-    player.autoplay = true;
-    if let Ok(mut ent) = sim.world_mut().get_entity_mut(e) {
-        ent.insert((lib, player));
-    }
-    Some(bits)
+    Some(lib)
 }
 
 #[cfg(test)]
@@ -194,23 +221,28 @@ mod tests {
     use super::*;
 
     /// A cena tem de conter **as três formas de ciclo** — é a comparação que ensina o modelo.
+    ///
+    /// ⚠️ **Ele lê a biblioteca REAL** (`demo_library`), e não uma cópia dela: até 2026-08-23 este
+    /// gate reconstruía as três tags à mão, então o que ele afirmava era sobre a reconstrução —
+    /// mudar a cena não o reprovava. *Um gate que encena a cena mede a encenação.*
     #[test]
     fn the_scene_shows_the_three_kinds_of_cycle() {
-        let mut lib = SpriteAnimations::new();
-        lib.insert(AnimationTag {
-            direction: AnimDirection::PingPong,
-            hold_ms: 300,
-            ..AnimationTag::new("idle", 0, 3)
-        })
-        .unwrap();
-        lib.insert(AnimationTag::new("walk", 0, CELLS - 1)).unwrap();
-        lib.insert(AnimationTag {
-            repeat: Some(1),
-            ..AnimationTag::new("attack", 4, CELLS - 1)
-        })
-        .unwrap();
+        let lib = demo_library().expect("a biblioteca da cena tem de caber nos caps da §11");
 
         assert_eq!(lib.len(), 3);
+        // ⚠️ **E a cena demonstra as DUAS features novas de 2026-08-23**, senão o smoke passa a
+        // dizer o que já dizia ontem: a `idle` hesita numa célula (§8.12) e grita a cada volta
+        // (§8.10); a `walk`, que é a que toca por omissão, é **uniforme e calada** — é o contraste
+        // que ensina que o silêncio e o ritmo liso são o DEFAULT.
+        let idle = lib.get("idle").unwrap();
+        assert!(
+            idle.has_per_frame_timing(),
+            "a `idle` tem de HESITAR — e' ela que mostra a duracao por-quadro sem importar nada"
+        );
+        assert_eq!(idle.signal_on_loop, "idle_cycle");
+        let walk = lib.get("walk").unwrap();
+        assert!(!walk.has_per_frame_timing() && walk.signal_on_loop.is_empty());
+        assert_eq!(lib.get("attack").unwrap().signal_on_finish, "attack_done");
         assert_eq!(lib.get("idle").unwrap().direction, AnimDirection::PingPong);
         assert_eq!(
             lib.get("walk").unwrap().repeat,

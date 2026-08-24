@@ -755,9 +755,12 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   empacotada em linha; por colunas dá uma folha bonita e todas as animações trocadas.
   ⚠️ **UMA TIRA sempre que couber** (o `hframes` do inspector fica legível); o teto é
   `MAX_SHEET_EDGE_PX = 8192`, que é **memória de GPU** (`max_texture_dimension_2d`).
-  ⛔ **E ele REABRIU a recusa medida da duração por-FRAME** (spec §8.12: *«não há quem a produza»* —
-  há, é este importador): o que shipa aproxima pela duração mais comum **e diz**, nomeando a tag e o
-  número; pôr a duração por-quadro no **modelo** é decisão de produto e move o `PROJECT_SCHEMA`.
+  ✅ **E a recusa da duração por-FRAME reabriu e FECHOU** (spec §8.12: *«não há quem a produza»* —
+  há, é este importador, e nos ficheiros reais elas **variam**): `AnimationTag::per_frame_ms`, vazio
+  = uniforme. ⭐ A lei pura não precisou de refactoração — o `step_ticks` já perguntava **por
+  frame**, era só a resposta que era uniforme. ⚠️ Curto ou `0` caem no `frame_ms`, então **não há
+  estado inválido** quando o intervalo muda. ⚠️ O Inspector **não o edita** (a §8.8 põe isso no
+  editor de timeline futuro) — ele **diz que existe**, senão o campo `Frame ms` mente.
   ⚠️ O que o ficheiro traz e não honramos sai numa **nota que nomeia a camada** (tilemaps, z-index
   de cel, modo de mistura de grupo) — *um importador que ignora em silêncio é pior que um que
   recusa*. ⭐ **O smoke ESCREVE o `.ase`** (`PH2D_ASE_SMOKE=1`), então testá-lo não precisa do

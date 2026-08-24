@@ -34,6 +34,12 @@ pub struct InspectorAnimRow {
     pub signal_on_finish: String,
     /// O nome do sinal ao fechar um CICLO. Vazio = calada.
     pub signal_on_loop: String,
+    /// **Esta animação tem ritmo PRÓPRIO por célula?** (spec §8.12, o que um `.ase` traz.)
+    ///
+    /// ⚠️ Um **facto**, e não o vetor: o Inspector não o edita — a §8.8 põe essa edição no editor
+    /// de timeline futuro. O que ele tem de fazer é **dizer que ele existe**, senão o campo
+    /// `Frame ms` mente sobre a animação e ninguém sabe porquê.
+    pub per_frame_timing: bool,
 }
 
 impl InspectorAnimRow {
@@ -245,6 +251,7 @@ mod tests {
             repeat_delay_ms: 0,
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
+            per_frame_timing: false,
         }
     }
 

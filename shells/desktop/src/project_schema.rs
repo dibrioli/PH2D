@@ -358,4 +358,13 @@
 /// ⚠️ **Dois campos e não um mais uma fase**: é a lei que a física já escreveu para os contatos —
 /// acabar e dar a volta distinguem-se por serem NOMES diferentes, autorados em dois sítios.
 /// ⚠️ Ausência dos dois é «a animação é calada», que é o que toda animação fazia até v92.
-pub(crate) const PROJECT_SCHEMA: u32 = 93;
+/// v94 (`line/Sprite` — a DURAÇÃO POR-QUADRO, spec §8.12): a `AnimationTag` ganhou
+/// `per_frame_ms: Vec<u32>`.
+/// ⚠️ **É uma recusa medida que se REABRIU**: ela dizia *«não há quem produza durações
+/// por-quadro»*, e o importador de `.ase` (construído no mesmo dia) é exactamente quem as produz —
+/// nos ficheiros reais elas variam. *Quem move o número que tornava algo inalcançável tem de
+/// reconferir a nota.*
+/// ⚠️ Campo apendado, postcard posicional — e um `Vec` **vazio** é o comportamento de sempre, então
+/// um projeto de v93 lido com o modelo novo comporta-se igual **depois** de migrar; antes disso,
+/// falha alto no schema, que é o que este número existe para fazer.
+pub(crate) const PROJECT_SCHEMA: u32 = 94;

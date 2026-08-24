@@ -11,13 +11,13 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**9 arquivos** · **0** citados pelo `CLAUDE.md` (marcados **◆**).
+**9 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | | Arquivo | Papel | Assunto |
 |---|---|---|---|
 |   | [AUDITORIA_widgets_achados_2026-08-09.md](AUDITORIA_widgets_achados_2026-08-09.md) | auditoria | Auditoria do sistema de widgets — o que fechou e o que ficou (2026-08-09) |
 |   | [ESTUDO_containers_e_catalogo_minimo_de_UI_2026-08-10.md](ESTUDO_containers_e_catalogo_minimo_de_UI_2026-08-10.md) | pesquisa | Estudo — contêineres organizadores e o catálogo MÍNIMO de UI |
-|   | [ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md](ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md) | pesquisa | ESTUDO — A UI VIVA: o que falta para encantar |
+| ◆ | [ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md](ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md) | pesquisa | ESTUDO — A UI VIVA: o que falta para encantar |
 |   | [LEVANTAMENTO_vector_para_a_UI_do_app_2026-08-08.md](LEVANTAMENTO_vector_para_a_UI_do_app_2026-08-08.md) | pesquisa | Levantamento — o que falta ao Vector para desenhar **a UI deste app** |
 |   | [PH2D_manual_features_figma.md](PH2D_manual_features_figma.md) | referência | Manual de Implementação — Features de Sistema (Figma) para o PH2D |
 |   | [PH2D_manual_features_rive.md](PH2D_manual_features_rive.md) | referência | Manual de Implementação — Features Runtime-First (Rive) para o PH2D |

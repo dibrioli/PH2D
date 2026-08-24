@@ -177,7 +177,7 @@
 
 ---
 
-**164 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**165 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

@@ -85,8 +85,9 @@ impl ProjectState {
         let mut world = WorldSnapshot::new();
         // O snapshot só falha se um componente registrado não (de)serializa — um bug
         // de registro, não estado do usuário. Um estado vazio é o degradado seguro.
-        let _ = world_to_snapshot(sim.world(), prop, worklist, registry, &mut world);
-        canonicalize(&mut world);
+        // A ordem canónica já vem de dentro (por `StableId`, v2) — ver a nota no lugar onde o
+        // `canonicalize` vivia, mais abaixo neste arquivo.
+        let _ = world_to_snapshot(sim.world_mut(), prop, worklist, registry, &mut world);
         crate::preview_drive::PreviewDrive::restore_live(sim, &live);
         Self {
             world,
@@ -148,48 +149,22 @@ pub(crate) fn surviving_selection(was: &[VecPathId], scene: &VecScene) -> Vec<Ve
         .collect()
 }
 
-/// Reordena as entidades do snapshot por **conteúdo**, não por `Entity::to_bits()`.
-///
-/// O `world_to_snapshot` ordena por `to_bits()` — o id de ALOCAÇÃO do bevy, que muda
-/// a cada spawn. Então dois estados logicamente iguais, mas cujas entidades foram
-/// spawnadas em ordem diferente (o que um restore SEMPRE causa), produzem snapshots
-/// byte-diferentes. Para o diff de undo isso é fatal: registraria um passo espúrio a
-/// cada frame com input, e o Ctrl+Z pareceria "não fazer nada" (Enio 2026-07-09).
-///
-/// A chave de ordenação é a serialização dos componentes da entidade (já id-sorted
-/// pelo registry), então a ordem passa a ser função do CONTEÚDO — estável entre
-/// re-spawns. O `parent` (índice no vec) é remapeado para a nova ordem. Duas
-/// entidades byte-idênticas empatam; a ordem entre elas é indiferente (são
-/// intercambiáveis), então o snapshot resultante é o mesmo de qualquer jeito.
-fn canonicalize(snap: &mut WorldSnapshot) {
-    let key = |row: &ph2d_ecs::scene::EntitySnapshotRow| -> Vec<u8> {
-        let mut k = Vec::new();
-        for b in &row.components {
-            k.extend_from_slice(&b.type_id.to_le_bytes());
-            k.extend_from_slice(&b.data);
-        }
-        k
-    };
-    let n = snap.entities.len();
-    let mut order: Vec<usize> = (0..n).collect();
-    order.sort_by(|&a, &b| key(&snap.entities[a]).cmp(&key(&snap.entities[b])));
-    // new_index[old] = posição de `old` na ordem canônica.
-    let mut new_index = vec![0u32; n];
-    for (new, &old) in order.iter().enumerate() {
-        new_index[old] = new as u32;
-    }
-    let old_rows = std::mem::take(&mut snap.entities);
-    // `order` indexa `old_rows`; move cada linha para a posição nova.
-    let mut slots: Vec<Option<ph2d_ecs::scene::EntitySnapshotRow>> =
-        old_rows.into_iter().map(Some).collect();
-    let mut reordered: Vec<ph2d_ecs::scene::EntitySnapshotRow> = Vec::with_capacity(n);
-    for &old in &order {
-        let mut row = slots[old].take().expect("cada índice usado uma vez");
-        row.parent = row.parent.map(|p| new_index[p as usize]);
-        reordered.push(row);
-    }
-    snap.entities = reordered;
-}
+// ⭐ **`canonicalize` MORREU AQUI** (ADR-0164 F1, snapshot v2).
+//
+// Ela reordenava as linhas do snapshot por CONTEÚDO a cada captura, para que dois estados
+// logicamente iguais dessem bytes iguais — porque a ordem vinha do `Entity::to_bits()`, o id
+// de ALOCAÇÃO, que muda a cada respawn do undo. Sem ela, todo quadro com input registava um
+// passo espúrio e o Ctrl+Z parecia "não fazer nada" (Enio, 2026-07-09).
+//
+// ⚠️ **A propriedade não foi retirada — ela mudou de dono.** O `world_to_snapshot` agora
+// ordena por `StableId`, que sobrevive ao respawn **por construção**; a invariância vem da
+// identidade em vez de vir de reler os bytes. E o preço muda de classe: a chave desta função
+// era a serialização INTEIRA de cada linha (~230 B), construída **dentro do comparador** do
+// `sort_by` — ~266 k alocações a 10 k entidades, **18,7 ms** medidos, contra **0,088 ms** de
+// um sort por inteiro (doc 04 §1.1).
+//
+// ⛔ Não a reintroduza "para garantir": duas ordens canónicas é a divergência que a F2 vai
+// pagar, porque o cache incremental dela é chaveado pela mesma identidade.
 
 /// A pilha de undo/redo global. O registro de passos é dirigido por **diff de
 /// estado** no [`crate::App::post_frame_undo`] (não por begin/commit de gesto), então

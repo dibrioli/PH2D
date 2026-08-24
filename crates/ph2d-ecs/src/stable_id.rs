@@ -15,8 +15,11 @@
 //!
 //! # As quatro invariantes (ADR-0164 §2.7 item 6)
 //!
-//! 1. **Toda entidade editável tem um** — o critério é o mesmo do `RootOrder`: ter
-//!    [`crate::Transform`].
+//! 1. **Toda entidade que o snapshot CAPTURA tem um** — o critério é ter
+//!    [`crate::Transform`] **ou** `ChildOf`. ⚠️ **Não** é *"ter `Transform`"*, e a diferença
+//!    custou um gate vermelho: os filhos de uma peça 3D não o têm (ver a nota dentro de
+//!    [`assign_missing_stable_ids`]). O critério é o do CONSUMIDOR — o que a DFS do snapshot
+//!    alcança —, e não o de um irmão que responde a outra pergunta.
 //! 2. **Único por documento** — gate com prova de mutação.
 //! 3. **Nunca reusado**, e o contador é **monotónico e vive FORA do `ProjectState`**: um undo
 //!    não o pode rebobinar, senão um *redo* reusaria um id que ainda está vivo na pilha.
@@ -62,7 +65,8 @@
 //! fim do quadro — e há gate a fixar essa ordem.
 
 use bevy_ecs::component::Component;
-use bevy_ecs::prelude::{Entity, Resource, With, Without, World};
+use bevy_ecs::hierarchy::ChildOf;
+use bevy_ecs::prelude::{Entity, Or, Resource, With, Without, World};
 use serde::{Deserialize, Serialize};
 
 /// A identidade durável de um objeto. Opaca: **não** derive significado do número, e
@@ -152,9 +156,11 @@ impl StableIdCounter {
 /// **Dá um `StableId` a toda entidade editável que ainda não tem um.** Idempotente: rodar de
 /// novo é no-op, e devolve `false`.
 ///
-/// Gémea de [`crate::assign_missing_root_order`], com a mesma lei de ordenação e a mesma razão
-/// (ver o cabeçalho do módulo): as sem-id recebem números na ordem de `to_bits()`, que é a
-/// ordem de SPAWN — a mesma premissa de determinismo que o `world_to_snapshot` já assume.
+/// Gémea de [`crate::assign_missing_root_order`], com a mesma razão (ver o cabeçalho do
+/// módulo) e **uma chave diferente**: as sem-id recebem números na ordem de
+/// [`Entity::index`], que é a ordem de SPAWN — ⚠️ e **não** a de `to_bits()`, que o bevy 0.18
+/// entrega invertida (medido; há gate). É a mesma premissa de determinismo que o
+/// `world_to_snapshot` já assume: *"byte output is invariant given the same spawn sequence"*.
 ///
 /// ⚠️ **Reconcilia o contador contra o mundo ANTES de alocar.** Sem isto, um documento
 /// carregado cujo contador venha atrasado entregaria um id que já está vivo — e a unicidade
@@ -173,8 +179,28 @@ pub fn assign_missing_stable_ids(world: &mut World) -> bool {
     counter.reconcile_at_least(highest.saturating_add(1));
 
     // 2. Quem ainda não tem.
+    //
+    // ⚠️⚠️ **O critério é `Transform` OU `ChildOf`, e a segunda metade custou um gate
+    // vermelho.** A 1.ª versão perguntava só `With<Transform>`, seguindo o `RootOrder` e a
+    // frase que o `undo.rs` repete há meses — *"toda entidade editável tem `Transform`
+    // (sprites, formas, objetos Flip, grupos)"*. **Essa frase envelheceu**: desde o módulo de
+    // modelagem 3D (ADR-0161) os FILHOS de uma peça não têm `Transform` — o `spawn_doc`
+    // declara-o, *"a raiz recebe `FieldObject`, `Transform` e `RootOrder`; os filhos recebem
+    // só o que é deles: nome, forma e pose"*.
+    //
+    // Sem id, a linha deles saía com `StableId::NONE` — **todas com o mesmo** —, o mapa
+    // `id → entidade` do restore colapsava-as numa só, e uma peça de 5 nós voltava com 2.
+    //
+    // A regra certa é a do CONSUMIDOR: o snapshot captura o que a DFS alcança, e a DFS parte
+    // das raízes (que têm `Transform`) e desce por `Children` — logo tudo o que ela visita ou
+    // tem `Transform` ou tem `ChildOf`. ⛔ Não estreite isto de volta a `Transform` "para
+    // ficar igual ao `RootOrder`": aquele responde *"que raízes ordenar?"*, este responde
+    // *"o que é que o ficheiro guarda?"*.
     let mut missing = world
-        .query_filtered::<Entity, (With<crate::Transform>, Without<StableId>)>()
+        .query_filtered::<Entity, (
+            Without<StableId>,
+            Or<(With<crate::Transform>, With<ChildOf>)>,
+        )>()
         .iter(world)
         .collect::<Vec<_>>();
     let changed = !missing.is_empty();

@@ -90,7 +90,7 @@ fn full_pipeline_cook_spawn_propagate_snapshot_restore() {
     // verify hash equality (HR-5).
     let mut snap_a = WorldSnapshot::new();
     world_to_snapshot(
-        sim.world(),
+        sim.world_mut(),
         &mut prop_state,
         &mut worklist,
         &registry,
@@ -104,7 +104,7 @@ fn full_pipeline_cook_spawn_propagate_snapshot_restore() {
     let mut prop_state_b = TransformPropagationState::new(sim_b.world_mut());
     let mut snap_b = WorldSnapshot::new();
     world_to_snapshot(
-        sim_b.world(),
+        sim_b.world_mut(),
         &mut prop_state_b,
         &mut worklist,
         &registry,

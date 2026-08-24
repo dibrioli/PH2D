@@ -101,7 +101,8 @@ fn physics_components_survive_a_world_snapshot_round_trip() {
     let mut state = TransformPropagationState::new(src.world_mut());
     let mut worklist = WorklistBuf::new();
     let mut snap = WorldSnapshot::new();
-    world_to_snapshot(src.world(), &mut state, &mut worklist, &reg, &mut snap).expect("snapshot");
+    world_to_snapshot(src.world_mut(), &mut state, &mut worklist, &reg, &mut snap)
+        .expect("snapshot");
 
     let mut dst = SimWorld::new();
     let spawned = snapshot_to_world(dst.world_mut(), &snap, &reg).expect("restore");

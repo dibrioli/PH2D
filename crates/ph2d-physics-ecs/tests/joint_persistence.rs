@@ -54,7 +54,7 @@ fn snapshot(sim: &mut SimWorld, reg: &ComponentRegistry) -> WorldSnapshot {
     let mut snap = WorldSnapshot::new();
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut worklist = WorklistBuf::default();
-    world_to_snapshot(sim.world(), &mut prop, &mut worklist, reg, &mut snap).expect("snapshot");
+    world_to_snapshot(sim.world_mut(), &mut prop, &mut worklist, reg, &mut snap).expect("snapshot");
     snap
 }
 

@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::Transform;
+use bevy_ecs::hierarchy::ChildOf;
 
 fn world_with(n: usize) -> World {
     let mut w = World::new();
@@ -185,6 +186,34 @@ fn a_restored_entity_keeps_the_id_it_came_with() {
         w.get::<StableId>(e).unwrap().0,
         77,
         "o id restaurado tem de sobreviver a varredura",
+    );
+}
+
+/// ⭐ **Um filho SEM `Transform` também recebe id — e este gate nasceu VERMELHO.**
+///
+/// O critério da 1.ª versão era `With<Transform>`, copiado do `RootOrder` e da frase que o
+/// `undo.rs` repete há meses (*"toda entidade editável tem `Transform`"*). Ela envelheceu com
+/// o módulo de modelagem 3D: os filhos de uma peça recebem *"só o que é deles: nome, forma e
+/// pose"*. Sem id, as linhas deles saíam todas com `StableId::NONE`, **colidiam** no mapa do
+/// restore, e uma peça de 5 nós voltava com 2.
+///
+/// ⛔ O caso é fácil de recriar e fácil de perder: um filho **sem** `Transform`.
+#[test]
+fn a_child_without_a_transform_still_gets_an_id() {
+    let mut w = World::new();
+    let parent = w.spawn(Transform::IDENTITY).id();
+    // Sem `Transform`, como os nos de uma peca 3D.
+    let child = w.spawn(ChildOf(parent)).id();
+    assign_missing_stable_ids(&mut w);
+    let id = w
+        .get::<StableId>(child)
+        .copied()
+        .expect("um filho sem Transform e' capturado pelo snapshot, logo precisa de id");
+    assert!(!id.is_none(), "e o id nao pode ser o reservado");
+    assert_ne!(
+        id,
+        *w.get::<StableId>(parent).unwrap(),
+        "pai e filho nao podem partilhar id",
     );
 }
 

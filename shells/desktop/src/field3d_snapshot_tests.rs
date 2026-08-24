@@ -66,7 +66,7 @@ fn the_whole_part_survives_the_world_snapshot_round_trip() {
         .expect("válida");
 
     let mut snap = WorldSnapshot::new();
-    world_to_snapshot(sim.world(), &mut prop, &mut worklist, &reg, &mut snap)
+    world_to_snapshot(sim.world_mut(), &mut prop, &mut worklist, &reg, &mut snap)
         .expect("o snapshot só falha se um componente registrado não (de)serializa");
 
     // Um mundo NOVO, como o undo faz: ele limpa e re-spawna do snapshot.
@@ -117,7 +117,7 @@ fn a_sculpture_crosses_the_snapshot_carrying_its_file_name() {
         .expect("válida");
 
     let mut snap = WorldSnapshot::new();
-    world_to_snapshot(sim.world(), &mut prop, &mut worklist, &reg, &mut snap)
+    world_to_snapshot(sim.world_mut(), &mut prop, &mut worklist, &reg, &mut snap)
         .expect("o snapshot só falha se um componente registrado não (de)serializa");
     let mut restored = SimWorld::new();
     snapshot_to_world(restored.world_mut(), &snap, &reg).expect("restaura");
@@ -164,7 +164,7 @@ fn without_the_registration_the_snapshot_drops_it_silently() {
     ph2d_field_ecs::spawn_doc(sim.world_mut(), &a_doc(), "peça");
 
     let mut snap = WorldSnapshot::new();
-    world_to_snapshot(sim.world(), &mut prop, &mut worklist, &reg, &mut snap)
+    world_to_snapshot(sim.world_mut(), &mut prop, &mut worklist, &reg, &mut snap)
         .expect("o snapshot passa — e é esse o problema");
 
     let mut restored = SimWorld::new();

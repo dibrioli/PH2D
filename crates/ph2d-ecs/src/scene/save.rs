@@ -14,6 +14,7 @@
 //! Both formats use postcard for the wire layout so a future
 //! `Saveable` macro can shore up both pipelines simultaneously.
 
+use crate::StableId;
 use crate::scene::registry::{ComponentRegistry, RegistryError};
 use crate::transform::{TransformPropagationState, WorklistBuf};
 use bevy_ecs::entity::Entity;
@@ -24,18 +25,38 @@ use serde::{Deserialize, Serialize};
 
 /// One row in a [`WorldSnapshot`]: a single entity's full state.
 ///
-/// `parent_index` references another row in the same snapshot. We
-/// store **indices** instead of `Entity::to_bits()` because
-/// `bevy_ecs` allocates fresh ids in the restore world — the
-/// snapshot is portable across world instances by design.
+/// # v2 (ADR-0164 F1): a linha é chaveada por [`StableId`], não por índice
+///
+/// Na v1 tanto a ORDEM das linhas quanto o `parent` eram **índices** no vetor. Isso
+/// era portável entre mundos (que era o requisito de então), mas tem duas
+/// consequências que a wave da instância não pode pagar:
+///
+/// 1. ⚠️ **Um índice desloca-se.** Inserir UMA entidade empurra o `parent` de todas as
+///    linhas seguintes ⇒ os bytes delas mudam ⇒ a captura incremental da **F2** veria
+///    o mundo inteiro sujo por causa de um objeto novo. Com `StableId`, a linha de um
+///    objeto que não mudou é **byte-idêntica** à da captura anterior, que é a
+///    propriedade inteira sobre a qual a F2 é construída.
+/// 2. **A ordem tinha de ser imposta depois.** O `canonicalize` do shell reordenava as
+///    linhas por CONTEÚDO a cada captura — construindo uma chave de ~230 B **dentro do
+///    comparador** do sort (medido: 18,7 ms a 10 k entidades). Ordenar por `StableId`
+///    custa 0,088 ms e é a mesma resposta.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EntitySnapshotRow {
+    /// A identidade durável desta entidade — **a chave da linha**.
+    ///
+    /// ⚠️ Ela também viaja dentro de `components` (o `StableId` é um componente
+    /// registado, e é de lá que o restore o instala). Este campo é a cópia **derivada**
+    /// que a ordenação e o `parent` usam sem ter de desserializar um blob por linha;
+    /// há gate a exigir que os dois concordem.
+    pub id: StableId,
     /// Registered components on this entity, in `ComponentRegistry`
     /// id-sorted order (HR-5 determinism).
     pub components: Vec<ComponentBlob>,
-    /// Index of this entity's parent (`ChildOf::0`) in the
-    /// snapshot's `entities` vec, if any. `None` for roots.
-    pub parent: Option<u32>,
+    /// O `StableId` do pai (`ChildOf::0`), ou `None` para uma raiz.
+    ///
+    /// ⚠️ **Um id, não um índice** — ver o item 1 acima. É isto que faz a linha de uma
+    /// entidade não mudar quando outra entidade nasce ou morre.
+    pub parent: Option<StableId>,
 }
 
 /// Full-world snapshot. Versioned (HR-14); the snapshot pipeline is
@@ -48,9 +69,13 @@ pub struct WorldSnapshot {
 }
 
 impl WorldSnapshot {
-    /// Current schema version. Migrations land alongside future
-    /// bumps; for v1 there is none.
-    pub const VERSION: u32 = 1;
+    /// Current schema version.
+    ///
+    /// **v1 → v2** (ADR-0164 F1): as linhas passam a ser chaveadas e ordenadas por
+    /// [`StableId`], e o `parent` passa de índice a id. A migração de documentos v1 vive
+    /// no `project_load.rs` da shell, junto do degrau do `PROJECT_SCHEMA` — é a primeira
+    /// migração da história do repo (HR-14 exigia-a e havia **zero**).
+    pub const VERSION: u32 = 2;
 
     pub fn new() -> Self {
         Self {
@@ -112,12 +137,22 @@ impl From<RegistryError> for SaveError {
 /// and `WorklistBuf` so this function makes zero per-call
 /// allocations beyond the output `Vec`'s own growth.
 pub fn world_to_snapshot(
-    world: &World,
+    world: &mut World,
     state: &mut TransformPropagationState,
     worklist: &mut WorklistBuf,
     registry: &ComponentRegistry,
     out: &mut WorldSnapshot,
 ) -> Result<(), SaveError> {
+    // ⚠️ **A identidade é garantida AQUI, na derivação, e não em cada chamador** (a lei da
+    // casa: *invariante na DERIVAÇÃO, não em cada gesto*). Uma entidade sem [`StableId`] não
+    // teria chave de linha nem forma de ser referida como pai — e exigir que os 44 sítios de
+    // chamada se lembrassem de a semear seria uma pré-condição que apodrece.
+    //
+    // É idempotente: no app a varredura do passe de quadro já correu, e esta chamada não faz
+    // nada. É a rede para os caminhos que constroem um mundo e capturam de imediato.
+    crate::assign_missing_stable_ids(world);
+    let world: &World = world;
+
     out.version = WorldSnapshot::VERSION;
     out.entities.clear();
     worklist.clear();
@@ -163,15 +198,13 @@ pub fn world_to_snapshot(
         }
     }
 
-    // Phase 2: build the index map (Entity → snapshot index), then
-    // emit rows.
-    let mut index_of: std::collections::BTreeMap<Entity, u32> = std::collections::BTreeMap::new();
-    for (i, e) in visit_order.iter().enumerate() {
-        index_of.insert(*e, i as u32);
-    }
-
+    // Phase 2: emit rows. A chave de cada uma é o `StableId` da entidade — não é preciso
+    // mapa nenhum de índices, porque o `parent` também é um id (v2).
     for entity in &visit_order {
         let mut row = EntitySnapshotRow {
+            // O `assign_missing_stable_ids` acima garante que existe. O `NONE` é
+            // inalcançável e seria um bug de programa, não estado do utilizador.
+            id: crate::stable_id_of(world, *entity).unwrap_or(StableId::NONE),
             components: Vec::new(),
             parent: None,
         };
@@ -187,14 +220,45 @@ pub fn world_to_snapshot(
                 Err(e) => return Err(e.into()),
             }
         }
-        // Look up parent (if any) and translate to snapshot index.
+        // O pai, pelo id dele.
         if let Ok(eref) = world.get_entity(*entity)
             && let Some(co) = eref.get::<ChildOf>()
         {
-            row.parent = index_of.get(&co.0).copied();
+            row.parent = crate::stable_id_of(world, co.0);
         }
         out.entities.push(row);
     }
+
+    // ⭐ **A ordem canónica é o `StableId`, e ela nasce AQUI** — não num passe do shell
+    // depois. É isto que apaga o `canonicalize` do `undo.rs`, cuja chave de ordenação era a
+    // serialização inteira de cada linha, construída **dentro do comparador** do sort:
+    // 18,7 ms a 10 k entidades contra os 0,088 ms desta linha (medido, doc 04 §1.1).
+    //
+    // ⚠️ **É a MESMA propriedade, obtida mais barato:** o que o `canonicalize` comprava era
+    // *"dois estados logicamente iguais dão o mesmo snapshot"*, porque a ordem deixava de
+    // depender do `Entity::to_bits()` (id de ALOCAÇÃO, novo a cada respawn do undo). O
+    // `StableId` sobrevive ao respawn **por construção**, então ordenar por ele dá a mesma
+    // invariância sem ler os bytes.
+    out.entities.sort_unstable_by_key(|r| r.id);
+
+    // ⚠️⚠️ **A rede da CLASSE, e ela já apanhou um defeito real.**
+    //
+    // Uma linha com `StableId::NONE` não é só uma linha sem nome: **todas** as `NONE`
+    // colidem, o mapa `id → entidade` do restore colapsa-as numa só, e a hierarquia volta
+    // mutilada. Aconteceu: os filhos de uma peça 3D não têm `Transform`, o critério da
+    // varredura era `With<Transform>`, e uma peça de 5 nós voltava com 2 — passando em todos
+    // os outros gates, porque cada componente individualmente sobrevivia.
+    //
+    // O `debug_assert` é a forma certa aqui: em release isto é um caminho quente (uma captura
+    // por quadro com input), e a condição é um invariante de PROGRAMA — se falhar, o defeito
+    // está na varredura, não no documento do utilizador.
+    debug_assert!(
+        out.entities.iter().all(|r| !r.id.is_none()),
+        "world_to_snapshot: {} linha(s) sem StableId. Todas as NONE colidem no mapa do \
+         restore e a hierarquia volta mutilada — alargue o criterio de \
+         `assign_missing_stable_ids`, nao remende aqui.",
+        out.entities.iter().filter(|r| r.id.is_none()).count(),
+    );
     Ok(())
 }
 
@@ -222,12 +286,26 @@ pub fn snapshot_to_world(
         }
         entities.push(entity);
     }
-    // Pass 2: relations.
+    // Pass 2: relations, resolvidas por `StableId` (v2).
+    //
+    // ⚠️ O mapa é construído das LINHAS e não do mundo: o mundo pode ter entidades
+    // pré-existentes (o contrato desta função é *"`world` não precisa de estar vazio"*), e
+    // uma delas com o mesmo id resolveria o pai para fora do snapshot restaurado.
+    let by_id: std::collections::BTreeMap<StableId, Entity> = snapshot
+        .entities
+        .iter()
+        .zip(entities.iter())
+        .map(|(row, &e)| (row.id, e))
+        .collect();
     for (i, row) in snapshot.entities.iter().enumerate() {
         if let Some(p) = row.parent {
-            let parent = entities[p as usize];
-            let child = entities[i];
-            world.entity_mut(child).insert(ChildOf(parent));
+            // ⚠️ Um pai que não está no snapshot é **ignorado**, e a entidade fica raiz. É o
+            // degradado honesto: a alternativa seria pendurá-la em qualquer coisa, e a
+            // alternativa oposta (recusar o load inteiro) perderia a cena por causa de uma
+            // aresta. O caso só é alcançável por um ficheiro adulterado.
+            if let Some(&parent) = by_id.get(&p) {
+                world.entity_mut(entities[i]).insert(ChildOf(parent));
+            }
         }
     }
     Ok(entities)
@@ -240,6 +318,90 @@ mod tests {
     use crate::scene::register_ecs_components;
     use crate::{Name, Transform};
     use ph2d_core::Vec2;
+
+    /// ⭐ **A propriedade que o `canonicalize` comprava, provada sem ele** (ADR-0164 F1).
+    ///
+    /// A lei: *dois estados logicamente iguais dão o MESMO snapshot* — e o caso duro é o
+    /// **restore**, que despawna tudo e re-spawna com `Entity` novos. Enquanto a ordem das
+    /// linhas vinha do `to_bits()` (id de ALOCAÇÃO), esse respawn mudava os bytes, e o diff
+    /// do undo registava um passo espúrio a cada quadro com input — o Ctrl+Z parecia *"não
+    /// fazer nada"* (Enio, 2026-07-09). O shell curava-o reordenando por CONTEÚDO a cada
+    /// captura (18,7 ms a 10 k entidades).
+    ///
+    /// Na v2 a ordem é o `StableId`, que **sobrevive ao respawn por construção**. Este gate é
+    /// o que prova que a cura não se perdeu com a função que a implementava.
+    #[test]
+    fn the_snapshot_survives_a_respawn_byte_for_byte() {
+        let (mut sim, reg) = populated_world();
+        let mut prop = TransformPropagationState::new(sim.world_mut());
+        let mut worklist = WorklistBuf::default();
+
+        let mut before = WorldSnapshot::new();
+        world_to_snapshot(sim.world_mut(), &mut prop, &mut worklist, &reg, &mut before)
+            .expect("captura");
+
+        // O restore do undo: despawna tudo e re-spawna — `Entity` novos, `to_bits` novos.
+        let editable: Vec<Entity> = {
+            let mut q = sim.world_mut().query::<Entity>();
+            q.iter(sim.world()).collect()
+        };
+        for e in editable {
+            let _ = sim.world_mut().despawn(e);
+        }
+        snapshot_to_world(sim.world_mut(), &before, &reg).expect("restore");
+
+        let mut after = WorldSnapshot::new();
+        world_to_snapshot(sim.world_mut(), &mut prop, &mut worklist, &reg, &mut after)
+            .expect("re-captura");
+
+        assert_eq!(
+            before.state_hash(),
+            after.state_hash(),
+            "capturar -> restaurar -> capturar tem de dar o MESMO hash. Se falhar, a ordem \
+             das linhas voltou a depender de algo que o respawn muda, e cada quadro com \
+             input volta a registar um passo de undo espurio.",
+        );
+        assert_eq!(before, after, "e byte a byte, nao so o hash");
+    }
+
+    /// **O `parent` é um ID, e é isso que faz a linha de um objeto não mudar quando OUTRO
+    /// nasce** — a propriedade sobre a qual a captura incremental da F2 é construída.
+    ///
+    /// Com o `parent` em índice, inserir uma entidade empurrava o índice de todas as linhas
+    /// seguintes: os bytes delas mudavam, e um diff por linha veria o mundo inteiro sujo por
+    /// causa de um objeto novo.
+    #[test]
+    fn adding_an_entity_does_not_change_the_other_rows() {
+        let (mut sim, reg) = populated_world();
+        let mut prop = TransformPropagationState::new(sim.world_mut());
+        let mut worklist = WorklistBuf::default();
+
+        let mut before = WorldSnapshot::new();
+        world_to_snapshot(sim.world_mut(), &mut prop, &mut worklist, &reg, &mut before)
+            .expect("captura");
+
+        // Uma raiz nova, sem relacao nenhuma com as que ja' existiam.
+        sim.world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Newcomer")));
+
+        let mut after = WorldSnapshot::new();
+        world_to_snapshot(sim.world_mut(), &mut prop, &mut worklist, &reg, &mut after)
+            .expect("re-captura");
+
+        for old in &before.entities {
+            let same = after
+                .entities
+                .iter()
+                .find(|r| r.id == old.id)
+                .expect("a linha antiga continua la");
+            assert_eq!(
+                same, old,
+                "a linha de {:?} mudou por causa de um objeto NOVO — o `parent` voltou a ser \
+                 um indice, e a captura incremental da F2 veria o mundo inteiro sujo.",
+                old.id,
+            );
+        }
+    }
 
     fn populated_world() -> (SimWorld, ComponentRegistry) {
         let mut sim = SimWorld::new();
@@ -275,7 +437,7 @@ mod tests {
         let mut state = TransformPropagationState::new(sim.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap = WorldSnapshot::new();
-        world_to_snapshot(sim.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
+        world_to_snapshot(sim.world_mut(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
         assert_eq!(snap.entities.len(), 3);
     }
 
@@ -330,7 +492,14 @@ mod tests {
         let mut state = TransformPropagationState::new(sim_a.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap = WorldSnapshot::new();
-        world_to_snapshot(sim_a.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
+        world_to_snapshot(
+            sim_a.world_mut(),
+            &mut state,
+            &mut worklist,
+            &reg,
+            &mut snap,
+        )
+        .unwrap();
 
         let mut sim_b = SimWorld::new();
         let back = snapshot_to_world(sim_b.world_mut(), &snap, &reg).unwrap();
@@ -380,7 +549,14 @@ mod tests {
         let mut state = TransformPropagationState::new(sim_a.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap = WorldSnapshot::new();
-        world_to_snapshot(sim_a.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
+        world_to_snapshot(
+            sim_a.world_mut(),
+            &mut state,
+            &mut worklist,
+            &reg,
+            &mut snap,
+        )
+        .unwrap();
 
         let mut sim_b = SimWorld::new();
         let back = snapshot_to_world(sim_b.world_mut(), &snap, &reg).unwrap();
@@ -410,7 +586,14 @@ mod tests {
         let mut state = TransformPropagationState::new(sim_a.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap = WorldSnapshot::new();
-        world_to_snapshot(sim_a.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
+        world_to_snapshot(
+            sim_a.world_mut(),
+            &mut state,
+            &mut worklist,
+            &reg,
+            &mut snap,
+        )
+        .unwrap();
 
         let mut sim_b = SimWorld::new();
         let entities = snapshot_to_world(sim_b.world_mut(), &snap, &reg).unwrap();
@@ -448,7 +631,14 @@ mod tests {
         let mut state = TransformPropagationState::new(sim_a.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap_a = WorldSnapshot::new();
-        world_to_snapshot(sim_a.world(), &mut state, &mut worklist, &reg, &mut snap_a).unwrap();
+        world_to_snapshot(
+            sim_a.world_mut(),
+            &mut state,
+            &mut worklist,
+            &reg,
+            &mut snap_a,
+        )
+        .unwrap();
         let hash_a = snap_a.state_hash();
 
         // Restore to a fresh world, snapshot again — hashes match.
@@ -457,7 +647,7 @@ mod tests {
         let mut state_b = TransformPropagationState::new(sim_b.world_mut());
         let mut snap_b = WorldSnapshot::new();
         world_to_snapshot(
-            sim_b.world(),
+            sim_b.world_mut(),
             &mut state_b,
             &mut worklist,
             &reg,
@@ -477,7 +667,7 @@ mod tests {
         let mut state = TransformPropagationState::new(sim.world_mut());
         let mut worklist = WorklistBuf::new();
         let mut snap = WorldSnapshot::new();
-        world_to_snapshot(sim.world(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
+        world_to_snapshot(sim.world_mut(), &mut state, &mut worklist, &reg, &mut snap).unwrap();
         let bytes = postcard::to_allocvec(&snap).unwrap();
         let decoded: WorldSnapshot = postcard::from_bytes(&bytes).unwrap();
         assert_eq!(decoded, snap);

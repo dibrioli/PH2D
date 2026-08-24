@@ -178,8 +178,14 @@ fn the_joint_survives_the_respawn_an_undo_performs() {
     let mut snap = WorldSnapshot::new();
     let mut prop = TransformPropagationState::new(sim.world_mut());
     let mut worklist = WorklistBuf::default();
-    world_to_snapshot(sim.world(), &mut prop, &mut worklist, &registry, &mut snap)
-        .expect("snapshot");
+    world_to_snapshot(
+        sim.world_mut(),
+        &mut prop,
+        &mut worklist,
+        &registry,
+        &mut snap,
+    )
+    .expect("snapshot");
     let editable: Vec<Entity> = {
         let mut q = sim
             .world_mut()

@@ -2,12 +2,29 @@
 
 > ⛔ **ISTO NÃO É UM PLANO — é a FILA.** Pedido do Enio em **2026-08-24**, com a instrução
 > explícita: *"Apenas insira na fila de implementação. não começaremos hoje. Amanhã iniciaremos"*.
-> Nenhuma linha de código foi escrita, nenhuma decisão de desenho foi tomada.
 >
-> ⭐ **O plano de cada uma nasce quando ela começar**, pelo `/pd-feature` (pesquisa do estado da
-> arte · a porta única · onde encosta em contrato/schema · as 4 condições de UI · os gates
-> red-first · a cena de smoke com números medidos). Este doc existe só para que esse plano **não
-> gaste a primeira hora a redescobrir o que já está construído**.
+> ⭐⭐ **ACTUALIZADO no mesmo dia** — o Enio deu a direcção e mudou a ORDEM:
+>
+> > *"A maquina de estados do morph deve funcionar no próprio canvas 2d onde criaremos setar de uma
+> > forma para outra e nas setas colocaremos condições. (…) **Antes da máquina de estados,
+> > criaremos o sistema de Inputs** (como o input Map do Godot). (…) **Primeiro o input map.**"*
+
+## A ORDEM (e o porquê dela, que a pesquisa confirmou)
+
+| # | O quê | Documento | Estado |
+|---|---|---|---|
+| **1** | ⭐ **O Input Map** — entradas nomeadas, à la Godot | **[30 — PLANO](30_plano_input_map.md)** | **plano escrito, pronto a começar** |
+| **2** | **A máquina de estados do Morph** — no canvas, setas forma→forma, condições nas setas | **[31 — PESQUISA + direcção](31_pesquisa_maquinas_de_estado.md)** | pesquisa feita; o plano nasce quando a wave começar |
+| **3** | **Texture pattern** no preenchimento vectorial | §F2 **deste** doc | fila, sem plano |
+
+⭐⭐ **Por que o input map vem primeiro, e não é só ordem preferida:** a pesquisa de máquinas de
+estado (doc 31) mostrou que as entradas da State Machine da **Rive** são exactamente **três** —
+*boolean · trigger · number* — e que um input map produz as três **de graça**: `pressed()` é o
+boolean, `just_pressed()` é o trigger, `strength()`/`axis()` é o number. **Construir a máquina
+antes teria obrigado a inventar uma fonte falsa para as condições dela.**
+
+> ⛔ **O que resta abaixo é a FILA original**, mantida porque a F2 continua sem plano. A F1 foi
+> **substituída** pelos docs 30 e 31 — leia-os, não a esta secção.
 
 ---
 

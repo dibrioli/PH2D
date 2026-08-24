@@ -342,11 +342,17 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **A lei do ADR-0153:** *o passe publica **onde** as coisas ficam; ele não escreve **onde** elas estão* — nada no auto
   layout toca `Transform`, senão cada quadro de um resize vira um passo de undo.
   ⚠️ **Regra-mãe do pen:** *o que se vê/aponta/encaixa é MUNDO; o que o documento guarda é LOCAL.*
-  **Aberto:** ⭐ **NA FILA, a começar em 25/08** (pedido do Enio em 24/08 — fila em [doc 29](docs/Vector%20Module/29_fila_morph_state_machine_e_texture_pattern.md), que **não é plano**):
-  **(a)** uma *state machine* **específica do Morph**: morph entre **N** formas, não-destrutivo e **vivo no runtime do jogo**
-  — ⚠️ o [`VecMorph`](crates/ph2d-ecs/src/vec_morph.rs) **já** é não-destrutivo e já se re-cozinha por quadro, mas é entre **DUAS**;
-  e *"no runtime"* obriga a decidir se a lei desce a uma crate-folha ou se o **R1 sai do gelo** ·
-  **(b)** **Texture pattern** no preenchimento: o `Paint` tem **4** variantes e **nenhuma de imagem**
+  **Aberto:** ⭐⭐ **A FILA, em ORDEM** (Enio 24/08 — índice em [doc 29](docs/Vector%20Module/29_fila_morph_state_machine_e_texture_pattern.md)):
+  **(1)** ⭐ **O INPUT MAP** ([plano 30](docs/Vector%20Module/30_plano_input_map.md)) — entradas **nomeadas** à la Godot, mais os
+  **contextos com prioridade** do Unreal (que o Godot não tem e este app precisa: `W`/`Space` já são do editor, e a cura de hoje é
+  uma **lista negra à mão** no [`player_input.rs`](shells/desktop/src/player_input.rs)). ⛔ **LEI Nº 1: a `InputTape` grava a AÇÃO
+  RESOLVIDA, nunca a tecla** — senão remapear reescreve o passado e parte o replay-hash `physics_ecs_c9` da matriz 3-OS ·
+  **(2)** a *state machine* do **Morph** **no canvas 2D** (setas forma→forma, condições nas setas), viva no **runtime do jogo**
+  ([pesquisa 31](docs/Vector%20Module/31_pesquisa_maquinas_de_estado.md) — base **Rive**, com duas correções: *só as transições do
+  estado CORRENTE* (State Tree) e *todo input sabe quem o lê* (a cura do medo do Animator)). ⚠️ O [`VecMorph`](crates/ph2d-ecs/src/vec_morph.rs)
+  **já** é não-destrutivo e re-cozido por quadro, mas é entre **DUAS** formas; e *"no runtime"* obriga a decidir se a lei desce a uma
+  **crate-folha** ou se o **R1 sai do gelo** — é o item que muda o preço ·
+  **(3)** **Texture pattern** no preenchimento: o `Paint` tem **4** variantes e **nenhuma de imagem**
   ([`paint.rs`](crates/ph2d-vec-scene/src/paint.rs)) — ⚠️ a lei do módulo é *preenchimento em **world-space**, que transforma
   com o path*, e ⛔ leia o [plano 23](docs/Vector%20Module/23_plano_pattern_along_path.md) antes de desenhar ·
   ✅ **o `n`/folga do *tether* e o `DRAG_RATE_X = 50` NUNCA foram «feel sem medição» — a NOTA é que

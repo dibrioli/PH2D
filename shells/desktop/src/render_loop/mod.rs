@@ -471,6 +471,10 @@ impl crate::App {
         if let Some(what) = self.pending_ui_sound.take() {
             self.ui_sound(what);
         }
+        // ⭐ **O dedo do jogador, resolvido do mapa** (plano 30 W5) — no TOPO do quadro, e num
+        // local, porque ele lê o `HeroScreen` (onde o mapa mora) e escreve no estado resolvido da
+        // `App`: fazê-lo no sítio do consumo emprestaria `self` duas vezes.
+        let player_input = self.resolve_player_input();
         let pointer = self.last_pointer;
         self.hovered_object = self.pick_hovered_object(pointer);
         // ⭐ **A geometria do contorno é resolvida AQUI, com o objecto.** Ela precisa da
@@ -2435,9 +2439,10 @@ impl crate::App {
             self.fixed_step.fixed_dt(),
             &mut self.timeline.doc,
             simulate_physics,
-            // O dedo do jogador, observado no `key_input` (`crate::player_input`)
-            // e entregue INTEIRO por uma porta só.
-            self.player_keys.input(),
+            // O dedo do jogador — **resolvido do `InputMap` do projecto** (plano 30 W5), e
+            // entregue INTEIRO por uma porta só. Ele é calculado no topo do quadro, antes de
+            // qualquer empréstimo de `self`.
+            player_input,
             &mut self.player_tape,
             // ⚠️ **A pose que o solver escreve é pré-visualização** — o ledger que a separa do
             // documento (`crate::preview_drive`, Enio 2026-08-23: *«corrigir o CtrlZ para ambas»*).

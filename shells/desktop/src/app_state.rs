@@ -1070,7 +1070,6 @@ pub(crate) struct App {
     /// Estado de JANELA, não do documento: ele nasce vazio a cada execução e
     /// nada o serializa. A ponte de física o lê a cada frame e o entrega a todo
     /// player da cena (`render_loop::physics_bridge`).
-    pub(crate) player_keys: crate::player_input::PlayerKeys,
     /// **A FITA do dedo** (W7) — o que o jogador fez em cada tique.
     ///
     /// Estado de JANELA como as teclas, e pelo mesmo motivo: nada a serializa.

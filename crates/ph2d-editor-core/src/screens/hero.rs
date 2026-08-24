@@ -345,7 +345,7 @@ impl HeroScreen {
             import_requested: false,
             file_menu: file_menu::FileMenuRequests::default(),
             project: crate::project::ProjectSettings::default(),
-            input_map: ph2d_input::InputMap::default(),
+            input_map: ph2d_input::InputMap::with_player_defaults(),
             dragging_files: None,
             stats: BottomHudStats::default(),
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),

@@ -360,8 +360,21 @@ mensagem ao Enio** — sonda headless primeiro, `CLAUDE.md §0.0`.
    a feature inalcançável.
 4. **W4 — CONTEXTOS com prioridade** (§2.4). Assim que a janela liga uma tecla qualquer, o conflito
    editor↔jogo deixa de ser hipótese: a lista negra à mão do `player_input.rs` **morre** aqui.
-5. **W5 — O JOGADOR** (era W2): a fita passa a gravar **acções**, e o `PlayerKeys` cravado
-   desaparece. ⛔ **Gate do `physics_ecs_c9` verde antes e depois** — é o controlo da LEI Nº 1.
+5. ✅ **W5 — O JOGADOR — FEITA em 2026-08-24.** O `PlayerKeys` **cravado desapareceu**: o dedo do
+   jogador é resolvido do `InputMap` do projecto (`App::resolve_player_input`), e o mapa de fábrica
+   traz os **seis** verbos com as teclas de ontem **ao bit**.
+   ⭐⭐ **E a LEI Nº 1 deste plano era um risco que o desenho JÁ evitava.** Medido: o `TapeWire`
+   grava `(drive: f32, botões: u8)` — **semântico, nunca um keycode**. Remapear `jump` de `Z` para
+   `Espaço` não toca em gravação nenhuma, e o hash do `physics_ecs_c9` ficou **byte-idêntico**
+   (`2d7f9d51…`), com as crates `ph2d-physics-ecs` e `ph2d-platformer` **intocadas** pela linha.
+   *Uma nota de risco escrita sem medir descreve um perigo que o desenho já tinha evitado.*
+   ⚠️ **Dois normalizadores de tecla, e um gate a impedi-los de divergir:** o do editor devolve
+   `None` de propósito para o que ele deixa **cair** (e alargá-lo mudaria todo atalho que depende
+   dessa queda); o do Input Map mapeia tudo, no **mesmo** espaço `u32`.
+   `the_two_normalizers_never_disagree` prova que onde um diz `Some(v)`, o outro diz o mesmo `v`.
+   ⚠️ **Cinco gates pré-existentes foram RE-ANCORADOS, nenhum apagado** — a lei deles continua a
+   valer, só mudou de endereço (`the_space_bar_is_not_a_jump_key` passou de scanner de texto a
+   medição de comportamento, que é mais forte).
 6. **W6 — gamepad ao vivo** e a deadzone real no dispositivo. ⚠️ **Só aqui entra dependência nova**
    (o `gilrs` já existe na shell); antes disso o `Cargo.lock` não ganha pacote externo.
 

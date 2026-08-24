@@ -74,8 +74,11 @@ fn a_modifier_chord_never_reaches_the_player() {
 
 /// O bloco que observa a tecla física: `(início do `if let`, a chamada)`.
 fn observation_block(src: &str) -> (usize, usize) {
+    // ⚠️ **RE-ANCORADO em 2026-08-24 (plano 30 W5).** A observação deixou de escrever num
+    // `PlayerKeys` da shell e passa a alimentar o retrato de dispositivos que o Input Map resolve.
+    // A LEI é a mesma (observar sem consumir, recusar acordes); o que mudou foi o endereço.
     let call = src
-        .find("self.player_keys.key(code, pressed);")
+        .find("crate::keymap::winit_to_input_keycode(code)")
         .expect("o dedo do jogador tem de OBSERVAR a tecla fisica");
     let open = src[..call]
         .rfind("if let PhysicalKey::Code(code) = physical_key {")
@@ -94,10 +97,11 @@ fn observation_block(src: &str) -> (usize, usize) {
 #[test]
 fn the_whole_finger_is_handed_to_the_physics_dispatch() {
     let src = read("src/render_loop/mod.rs");
+    // ⚠️ **RE-ANCORADO (W5):** a porta única passou a ser `App::resolve_player_input`, que
+    // resolve o `InputMap` do projecto. A propriedade é a mesma — o dedo vai INTEIRO, num valor só.
     assert!(
-        src.contains("self.player_keys.input()"),
-        "o `render_loop` tem de entregar a entrada INTEIRA (a porta unica \
-         `PlayerKeys::input`) ao `physics_bridge::dispatch`"
+        src.contains("let player_input = self.resolve_player_input();"),
+        "o `render_loop` tem de RESOLVER o dedo do jogador a partir do Input Map, no topo do quadro"
     );
 }
 
@@ -146,7 +150,7 @@ fn the_input_is_handed_over_before_the_hold_early_out() {
 /// gate que lê fonte.
 #[test]
 fn the_files_the_gate_reads_are_the_ones_that_carry_the_wire() {
-    assert!(read("src/input_dispatch/keyboard.rs").contains("player_keys"));
+    assert!(read("src/input_dispatch/keyboard.rs").contains("winit_to_input_keycode"));
     assert!(read("src/render_loop/mod.rs").contains("physics_bridge::dispatch("));
     assert!(read("src/render_loop/physics_bridge.rs").contains("fn hand_input_to_players"));
 }

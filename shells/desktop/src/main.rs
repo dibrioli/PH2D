@@ -935,7 +935,6 @@ impl App {
             flip_edit_gesture: None,
             flip_trace_drag: None,
             flip_peek: None,
-            player_keys: crate::player_input::PlayerKeys::default(),
             player_tape: ph2d_physics_ecs::InputTape::new(),
             discarded_run: ph2d_physics_ecs::InputTape::new(),
             flip_pose_drag: None,
@@ -1180,7 +1179,12 @@ impl ApplicationHandler for App {
             // Perder o foco SOLTA as teclas de caminhada: o `Up` de uma tecla
             // presa nunca chega quando a janela vai embora, e sem isto o player
             // anda sozinho até alguém tocá-la de novo (W3).
-            WindowEvent::Focused(false) => self.player_keys.release_all(),
+            WindowEvent::Focused(false) => {
+                // ⚠️ **UMA memória da mão, e ela larga tudo.** O `PlayerKeys` que vivia ao lado
+                // foi removido na W5 do plano 30: duas memórias divergiriam no primeiro `Up` que
+                // uma recebesse e a outra não.
+                self.input.apply_event(ph2d_input::Event::FocusLost);
+            }
             WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
             WindowEvent::Ime(winit::event::Ime::Commit(text)) => self.on_ime_commit(text),
             WindowEvent::CursorMoved { position, .. } => self.on_cursor_moved(position),

@@ -164,7 +164,21 @@ impl App {
                 || self.modifiers.alt_key()
                 || self.modifiers.super_key();
             if !pressed || !chord {
-                self.player_keys.key(code, pressed);
+                // ⭐ **O retrato dos dispositivos que o Input Map resolve** (plano 30 W5).
+                //
+                // ⚠️ **A guarda de acorde é a de sempre:** uma tecla premida com `Ctrl` segurado é
+                // um atalho de ficheiro, não um passo do jogador — e o RELEASE passa sempre, senão
+                // soltar com o `Ctrl` preso deixaria o personagem a andar para sempre.
+                //
+                // ⚠️ **Normalizador TOTAL** (`winit_to_input_keycode`), não o do editor: este tem
+                // de alcançar o `W`/`S`/`Z`/`Q` que o do editor deixa cair de propósito.
+                if let Some(k) = crate::keymap::winit_to_input_keycode(code) {
+                    self.input.apply_event(if pressed {
+                        ph2d_input::Event::KeyDown(ph2d_input::Key(k))
+                    } else {
+                        ph2d_input::Event::KeyUp(ph2d_input::Key(k))
+                    });
+                }
             }
         }
 

@@ -241,7 +241,9 @@ fn the_part_crosses_the_project_file_and_the_load_replaces_it_instead_of_stackin
 
     // A captura REAL — a mesma função que o `App::capture_project` chama.
     let state = crate::undo::ProjectState::capture(
-        &sim,
+        // Nada sob condução: este gate é da peça no arquivo, não do ledger de preview.
+        &crate::preview_drive::PreviewDrive::default(),
+        &mut sim,
         &ph2d_vec_scene::VecScene::new(),
         &ph2d_flip::FlipDoc::new(),
         &ph2d_guides::GuideSet::default(),

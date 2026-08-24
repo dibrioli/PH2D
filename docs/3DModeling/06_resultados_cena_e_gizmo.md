@@ -4612,7 +4612,189 @@ vem antes da tecla de verbo, senão um `5` digitado no meio de um gesto vira um 
 
 ---
 
+## §57 — W56: o perfil deixa de ser uma FITA e passa a ser uma CONSULTA — o alicerce, e a receita que foi refutada (24/08)
+
+### §57.1 — O gatilho disparou, e quem o disparou fui eu
+
+O [`04_resultados_perfis.md`](../3DModeling/04_resultados_perfis.md) §7 escreveu em **2026-08-19** o
+gatilho e as duas direções, e fechou com: *"⛔ **Nenhuma das duas foi feita**, e é de propósito: o
+número que as pediria — um perfil real acima de 128 arestas, num fluxo real — ainda não existe."*
+
+⭐ **A W55 criou esse número**: o default shipa **168** arestas e o knob de `Resolution` vai a **664**.
+*Quem move o número que tornava algo inalcançável tem de reconferir a nota* (`CLAUDE.md` §0.0) — e
+esta wave é a reconferência.
+
+### §57.2 — ⛔ E a cura PRESCRITA não serviria
+
+A nota prescrevia: *"aceleração espacial **dentro da árvore** — partir o perfil numa hierarquia de
+`min`/`max` por caixa, para que **a poda por intervalo** volte a morder."*
+
+⚠️ **Ninguém avalia intervalos neste caminho.** O `Hybrid` monta `float_slice_tape` (ponto a ponto) e
+`grad_slice_tape`; não há passe por ladrilho, não há `simplify`, e a extração varre uma grade
+uniforme — também ponto a ponto. Uma hierarquia de `min`/`max` numa fita ponto-a-ponto é percorrida
+**inteira**: ela não moveria o traçado um milissegundo.
+
+⭐ *Meça o mecanismo antes de construir o que a nota prescreve* — a mesma lição da W54, onde a
+aritmética refutou a minha primeira hipótese antes do código. Aqui foi a **leitura do caminho de
+avaliação** que refutou uma prescrição de cinco dias antes.
+
+### §57.3 — O TETO de qualquer cura (o limite de Amdahl)
+
+Sem este número, uma aceleração de `k×` no perfil é uma promessa sobre o quadro que ninguém mediu
+(sonda `the_ceiling_of_any_profile_cure`, 640×480, mediana de 7, máquina calma):
+
+| | traçado | fração que é o PERFIL | teto |
+|---|---:|---:|---|
+| um cilindro analítico | **10,7 ms** | — | é o **piso**: marcha, normais, anti-serrilhado |
+| 56 arestas | 56,8 ms | 81,2 % | 5,3× |
+| **168** (o default) | **133,6 ms** | **92,0 %** | **12,5×** |
+| 664 (o teto do knob) | 531,9 ms | 98,0 % | **49,8×** |
+
+### §57.4 — ⚠️ E a barra é ALTA: a fita custa 0,95 ns por ponto por aresta
+
+| arestas | ns/ponto | × cilindro | ns/ponto/**aresta** |
+|---:|---:|---:|---:|
+| — | 2,0 | 1,00× | — |
+| 56 | 52,5 | 26,6× | 0,937 |
+| 168 | 155,8 | 79,0× | 0,927 |
+| 664 | 636,2 | 322,7× | 0,958 |
+| 940 | 877,7 | 445,1× | 0,934 |
+
+⭐ **Linear perfeito.** ⚠️ E `0,95 ns` são ~20 operações por aresta em **oito faixas de SIMD com
+JIT** ⇒ *por aresta, a fita é quase óptima*. O que se pode ganhar não é fazer cada aresta mais
+barata — é **tocar menos arestas**.
+
+### §57.5 — A consulta: duas estruturas, porque as duas metades têm naturezas diferentes
+
+[`ph2d-field-eval/src/profile_index.rs`](../../crates/ph2d-field-eval/src/profile_index.rs):
+
+| metade | estrutura | custo medido |
+|---|---|---|
+| **distância** | BVH sobre os segmentos, ramo-e-limite | 85 → 148 → 281 ns (56 → 168 → 664) |
+| **sinal** | grelha sobre a caixa, enrolamento **pré-somado** por célula | **14,5 ns, PLANO em `n`** |
+
+⭐⭐ **O sinal fora da caixa é ZERO e é exacto** (o enrolamento de uma curva fechada contida na caixa
+é nulo fora dela) — é isso que dispensa a grelha de cobrir o espaço onde a marcha passa a maior parte
+do tempo. ⭐ E dentro da caixa o enrolamento é um **invariante de caminho**: `w(p) = w(canto) +
+atravessamentos`, e o caminho canto→ponto não sai da célula ⇒ só as arestas que a atravessam contam.
+
+### §57.6 — ⚠️ A primeira nuvem NÃO continha o fenómeno
+
+A nuvem uniforme sobre 1,8² sobre-representa o **miolo**, e é lá que a busca do segmento mais próximo
+é patológica: no centro de um círculo **todas** as arestas estão à mesma distância, e nenhuma
+estrutura poda o que é equidistante. Uma esfera-marcha caminha de fora para dentro e **pára na
+casca** — ela quase não amostra o miolo:
+
+| arestas | longe | **colado à casca** | no miolo |
+|---:|---:|---:|---:|
+| 56 | 62,4 ns | 54,9 ns | 275,5 ns |
+| 168 | 109,3 ns | **80,9 ns** | 612,8 ns |
+| 664 | 191,8 ns | **125,3 ns** | 1304,2 ns |
+
+*Uma fixture que não contém o fenómeno mede outra coisa* — e aqui ela mediria a cura como 1,0× onde
+ela vale 1,9×.
+
+### §57.7 — O que fecha a distância até ao tecto: cortar por LOTE
+
+Uma busca escalar dá **1,9×** contra uma fita de oito faixas. O que muda de ordem de grandeza é
+**cortar as arestas para um lote compacto** e depois correr um laço tenso — e o corte tem de ser
+**conservador**, ou a marcha atravessa a peça (deitar fora a aresta mais próxima faz a distância sair
+**maior** que a verdadeira, e uma esfera-marcha que sobre-estima o passo salta a superfície). A regra
+exacta usa a convexidade da distância a um segmento:
+
+```text
+dmax = min sobre as arestas de (maior distância de um CANTO da caixa àquela aresta)
+fica  = toda aresta cuja MENOR distância à caixa é <= dmax
+```
+
+Com lotes de 1024 pontos (o tamanho de um ladrilho):
+
+| arestas | pegada | arestas após o corte | ns/ponto | vs fita |
+|---:|---:|---:|---:|---:|
+| 168 | 1,000 | 134,5 | 442,0 | 0,3× |
+| 168 | 0,250 | 24,3 | 101,3 | 1,5× |
+| **168** | **0,062** | **6,5** | **40,5** | **3,8×** |
+| 664 | 0,250 | 91,2 | 318,4 | 1,9× |
+| **664** | **0,062** | **23,1** | **115,3** | **5,3×** |
+
+⚠️ **O corte mede a compacidade de quem o chamou.** Uma linha inteira de ecrã tem pegada larga e
+corta **nada** (0,3×, pior que a fita); um punhado de raios vizinhos corta quase tudo. ⇒ *o consumidor
+tem de marchar em ladrilhos, não em linhas* — e é isso que falta construir.
+
+⭐ No quadro, 3,8× e 5,3× sobre 92 % e 98 % dão **3,1×** e **4,9×**: 134 → 43 ms e 532 → 109 ms.
+
+### §57.8 — ⛔ O obstáculo que uma leitura revelou, e que muda o desenho
+
+O `Hybrid` já mistura fita com folha **amostrada** (é assim que a escultura entra). ⚠️ Mas o
+gradiente exacto só existe quando `sampled.is_empty() && trees.len() == 1`: **qualquer** folha
+amostrada derruba a normal para diferença central — e é a diferença central que **apaga a quina
+viva**, que é a razão deste módulo existir. ⇒ A consulta **não pode** pegar boleia daquele caminho:
+ela tem de trazer o próprio gradiente analítico, e o `Hybrid` tem de aprender a reduzi-lo.
+
+### §57.9 — Provas de mutação
+
+Sete, todas RED, todas com os três controles (verde-antes · `Compiling` · `running N tests`):
+
+| # | o que se partiu | gate |
+|---|---|---|
+| 1 | o sinal do atravessamento invertido | `the_query_is_the_same_law_as_the_tape` |
+| 2 | o enrolamento pré-somado da célula é ignorado | *(o mesmo)* |
+| 3 | as arestas que atravessam a célula são ignoradas | *(o mesmo)* |
+| 4 | o irmão direito do BVH volta a ser `left + 1` | *(o mesmo)* |
+| 5 | o corte deita fora a aresta mais próxima | `the_cull_never_drops_the_nearest_edge` |
+| 6 | o sinal do lote cortado é sempre positivo | *(o mesmo)* |
+| 7 | fora da caixa deixa de ser fora | `the_query_knows_inside_from_outside` |
+
+⚠️ **A 4 é um defeito REAL da primeira versão**, apanhado por leitura: a construção é pós-ordem, então
+o irmão direito **não** fica em `left + 1` — a versão que o supôs lia um nó de outra sub-árvore.
+
+⚠️ **E o arnês mentiu duas vezes antes de dizer a verdade.** A linha-base dava `running 0 tests` com
+`rc == 0`: o binário de teste estava **obsoleto** (o `cargo` não reconstruía ao apender no arquivo de
+gates montado por `#[path]`). Sem o controle de *«correu N testes»*, aquilo teria contado como sete
+mutações apanhadas — e nenhuma teria sido.
+
+### §57.10 — ⛔⛔ O incidente: a cwd escorregou para o primário
+
+⚠️ **Metade desta wave foi escrita na árvore ERRADA.** Os `python3 - <<'PY'` com caminho **relativo**
+foram parar ao checkout primário (`/…/PH2D/`) em vez da worktree, e como o mesmo caminho relativo
+existe nas duas árvores, **tudo compilou e todos os gates passaram lá** — o sintoma só apareceu quando
+o arnês de mutação, que usa caminho **absoluto**, mediu um binário sem os testes novos.
+
+É a armadilha que a memória [[feedback_bash_cwd_resets_and_slips_to_the_primary]] nomeia, e o
+`CLAUDE.md` §1 avisa em maiúsculas: *"editar a errada compila e commita **sem erro**"*. Recuperado por
+cópia + `git apply` do diff, com o primário reposto ao que era. ⇒ **Todo comando de shell desta linha
+leva o `cd` da worktree à frente**, e um caminho de edição é **absoluto**.
+
+### §57.11 — ⏸️ O que falta para o produto ver isto
+
+- ⏸️ **A marcha por LADRILHO** (`ph2d-field-render`): hoje ela marcha por **linha de ecrã**, cuja
+  pegada em `(u, v)` é larga — e a tabela do §57.7 diz que com pegada larga o corte vale `0,3×`.
+  Sem esta metade, a consulta não chega ao produto.
+- ⏸️ **A folha com GRADIENTE próprio** no `Hybrid` (§57.8), senão a quina viva morre.
+- ⏸️ O laço do corte ainda não é vectorizado, e o `inside` (14,5 ns) já é 36 % do que sobra.
+- ⏸️ **Re-derivar o teto de `Resolution`** com o custo novo — o **16** foi escolhido contra o custo
+  linear de hoje.
+
+---
+
 ## §13 — Aberto
+
+- 🔶 **W56 (§57): o perfil deixa de ser uma FITA e passa a ser uma CONSULTA — o ALICERCE está posto,
+  o produto ainda não o vê.** ⭐ O gatilho que o `04_resultados_perfis` §7 deixou armado em 19/08
+  disparou — e **quem o disparou foi a W55** (168 arestas por omissão, 664 no teto do knob). ⛔ **E a
+  cura que aquela nota prescrevia foi REFUTADA por leitura**: ela pedia poda por intervalo, e
+  **ninguém avalia intervalos neste caminho** — a fita é ponto-a-ponto, sem ladrilho e sem
+  `simplify`. ⭐⭐ O tecto foi medido primeiro (Amdahl): o perfil é **92 %** do quadro no default e
+  **98 %** no teto ⇒ uma cura perfeita vale **12,5×** e **49,8×**. ⚠️ E a barra é alta: a fita custa
+  **0,95 ns por ponto por aresta** — oito faixas de SIMD com JIT, quase óptima *por aresta*; o que se
+  ganha é **tocar menos arestas**. A consulta nova (BVH para a distância + grelha com o enrolamento
+  pré-somado para o sinal, ambas exactas, com a fita como **juiz**) dá 1,9× sozinha e **3,8×/5,3×**
+  quando o lote é compacto ⇒ **3,1×/4,9× no quadro**. ⛔ Duas metades faltam para o produto ver isto:
+  a marcha tem de ser por **ladrilho** (por linha, a pegada é larga e o corte vale `0,3×`) e a folha
+  nova tem de trazer **gradiente próprio** (qualquer folha amostrada derruba a normal para diferença
+  central, que apaga a quina viva). ⚠️ **E metade da wave foi escrita na árvore ERRADA** — a cwd
+  escorregou para o primário e tudo compilou lá; quem o apanhou foi o caminho absoluto do arnês de
+  mutação.
 
 - ✅ **W55 (§56): o contorno continua a ser a FONTE — e o knob que faltava era a mesma ausência.** ⭐
   Os dois ⏸️ que a W54 deixou (*"não há knob de resolução"* e *"o nó não se religa ao contorno"*) eram

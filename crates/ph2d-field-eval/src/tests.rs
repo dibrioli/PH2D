@@ -2184,3 +2184,124 @@ fn the_exported_mesh_is_closed() {
         );
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// ⭐⭐ A SONDA DO CUSTO DO PERFIL (W56) — onde o tempo de facto está, antes de escolher a cura.
+
+/// ⭐⭐ **QUANTO CUSTA UM PERFIL, e quanto dele é o PERFIL** (W56).
+///
+/// # A nota que esta sonda existe para conferir
+///
+/// O [`04_resultados_perfis.md`] §7 escreveu, em 2026-08-19, o gatilho e as duas direções:
+/// *"aceleração espacial dentro da árvore — partir o perfil numa hierarquia de `min`/`max` por
+/// caixa, para que **a poda por intervalo** volte a morder"*, e disse que nenhuma tinha sido feita
+/// porque *"o número que as pediria (um perfil real acima de 128 arestas) ainda não existe"*.
+///
+/// ⭐ **O número passou a existir na W55**: o default shipa **168** arestas e o knob de `Resolution`
+/// vai a **664**. Quem move o número que tornava algo inalcançável tem de reconferir a nota
+/// (`CLAUDE.md` §0.0) — e a reconferência tem de medir o **mecanismo**, não repetir a prescrição.
+///
+/// # ⚠️ O que a leitura do código já disse, e que a tabela abaixo tem de confirmar
+///
+/// O traçado avalia **ponto a ponto** (`float_slice_tape`) e **ninguém avalia intervalos**: não há
+/// passe por ladrilho, não há `simplify`. ⇒ *A poda por intervalo não tem onde morder neste
+/// caminho*, e a direção 1 daquela nota, **como está escrita**, não moveria o traçado um
+/// milissegundo. A tabela mede a consequência: o custo por ponto tem de ser **linear nas arestas**.
+///
+/// ⚠️ `#[ignore]` porque mede relógio — máquina calma:
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::the_table_that_says_where_a_profile_spends_its_time --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_that_says_where_a_profile_spends_its_time() {
+    const N: usize = 200_000;
+    let reg = crate::hybrid::Registry::new();
+    // Um lote de pontos numa nuvem à volta da peça — o que uma marcha de facto pede.
+    let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
+    let mut s = 12_345u64;
+    let mut rnd = || {
+        s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        ((s >> 33) as f64 / f64::from(u32::MAX)) as f32 - 0.5
+    };
+    for _ in 0..N {
+        xs.push(rnd() * 2.0);
+        ys.push(rnd() * 2.0);
+        zs.push(rnd() * 2.0);
+    }
+
+    let time = |doc: &FieldDoc| -> f64 {
+        let mut h = crate::hybrid::Hybrid::new(doc, &reg);
+        // Uma corrida a frio para a fita se montar, depois a mediana de cinco.
+        let _ = h.eval(&xs, &ys, &zs).expect("avalia");
+        let mut ms = Vec::new();
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            let _ = h.eval(&xs, &ys, &zs).expect("avalia");
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        ms.sort_by(f64::total_cmp);
+        ms[2]
+    };
+
+    let base = time(&doc_of(Primitive::Cylinder {
+        radius: 0.5,
+        half_height: 0.2,
+        round: 0.0,
+    }));
+    println!("arestas |  ms/{N} pts |  ns/ponto | x cilindro | ns/ponto/aresta");
+    println!(
+        "      — | {base:>10.2} | {:>9.1} |      1,00x |               —",
+        base * 1e6 / N as f64
+    );
+    for n in [56usize, 168, 332, 664, 940] {
+        let p = profile_of(vec![ngon(n, 0.5, [0.0, 0.0])], FillRule::NonZero);
+        let ms = time(&doc_of(Primitive::Extrude {
+            profile: p,
+            half_height: 0.2,
+            round: 0.0,
+        }));
+        let ns = ms * 1e6 / N as f64;
+        println!(
+            "{n:>7} | {ms:>10.2} | {ns:>9.1} | {:>9.2}x | {:>15.3}",
+            ms / base,
+            ns / n as f64
+        );
+    }
+
+    // ⭐ E o SEGUNDO número, o que decide entre as duas curas: montar a fita.
+    //
+    // Especializar a fita **por ladrilho** (o que a `fidget` faz no renderer dela) só paga se
+    // montar uma fita for barato perto de a avaliar. Se um ladrilho custar mais a compilar do que
+    // a marchar, a cura tem de ser outra.
+    println!();
+    println!("arestas | montar a fita | avaliar 200k pts | ladrilhos que a montagem paga");
+    for n in [56usize, 168, 332, 664] {
+        let p = profile_of(vec![ngon(n, 0.5, [0.0, 0.0])], FillRule::NonZero);
+        let doc = doc_of(Primitive::Extrude {
+            profile: p,
+            half_height: 0.2,
+            round: 0.0,
+        });
+        let mut ms = Vec::new();
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            let h = crate::hybrid::Hybrid::new(&doc, &reg);
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            drop(h);
+        }
+        ms.sort_by(f64::total_cmp);
+        let build = ms[2];
+        let mut h = crate::hybrid::Hybrid::new(&doc, &reg);
+        let _ = h.eval(&xs, &ys, &zs).expect("avalia");
+        let t0 = std::time::Instant::now();
+        let _ = h.eval(&xs, &ys, &zs).expect("avalia");
+        let ev = t0.elapsed().as_secs_f64() * 1e3;
+        println!(
+            "{n:>7} | {build:>10.2} ms | {ev:>13.2} ms | {:>28.1}",
+            ev / build
+        );
+    }
+}

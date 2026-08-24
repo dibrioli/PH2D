@@ -1002,3 +1002,68 @@ fn an_abandoned_march_returns_nothing_and_returns_fast() {
         "a marcha cancelável e a de sempre são a MESMA marcha"
     );
 }
+
+/// Polígono regular de `n` lados inscrito no círculo de raio `r` — a fixture das sondas de perfil.
+fn ngon_probe(n: usize, r: f64) -> Vec<[f32; 2]> {
+    (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(r * a.cos()) as f32, (r * a.sin()) as f32]
+        })
+        .collect()
+}
+
+/// ⭐⭐ **O TETO DE QUALQUER CURA DO PERFIL** — quanto do quadro é, de facto, o perfil.
+///
+/// ⚠️ Sem este número, uma aceleração de `k×` no perfil vira uma promessa sobre o quadro que ninguém
+/// mediu. Ele é o **limite de Amdahl** desta wave.
+#[test]
+#[ignore]
+fn the_ceiling_of_any_profile_cure() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    let trace = |p: Primitive| -> f64 {
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(p),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let mut ms = Vec::new();
+        for _ in 0..7 {
+            let t0 = std::time::Instant::now();
+            let _ = crate::trace(&doc, &reg, &cam, 640, 480);
+            ms.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        ms.sort_by(f64::total_cmp);
+        ms[3]
+    };
+    let base = trace(Primitive::Cylinder {
+        radius: 0.5,
+        half_height: 0.2,
+        round: 0.0,
+    });
+    println!("um cilindro analítico: {base:.1} ms  (o piso: marcha, normais, anti-serrilhado)");
+    println!("arestas | traçado | fração que é o PERFIL | teto de uma cura de {{k}}x no perfil");
+    for n in [56usize, 168, 664] {
+        let p =
+            Profile::new(vec![ngon_probe(n, 0.5)], FillRule::NonZero, 1e-3).expect("perfil válido");
+        let ms = trace(Primitive::Extrude {
+            profile: p,
+            half_height: 0.2,
+            round: 0.0,
+        });
+        let frac = (ms - base) / ms;
+        println!(
+            "{n:>7} | {ms:>5.1} ms | {:>19.1}% | 2x -> {:.1}x · 5x -> {:.1}x · ∞ -> {:.1}x",
+            frac * 100.0,
+            1.0 / (1.0 - frac / 2.0),
+            1.0 / (1.0 - frac * 0.8),
+            1.0 / (1.0 - frac)
+        );
+    }
+}

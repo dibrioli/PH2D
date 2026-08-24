@@ -21,6 +21,8 @@ pub mod extract;
 pub mod hybrid;
 pub mod ops;
 pub mod profile;
+/// ⭐⭐ O perfil como CONSULTA (W56) — a cura do custo linear nas arestas.
+pub mod profile_index;
 
 use fidget::context::Tree;
 use ph2d_field::{Blend, FieldDoc, Node, NodeKind, Op, Primitive, Unary, Xform};

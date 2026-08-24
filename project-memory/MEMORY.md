@@ -16,6 +16,7 @@
 - [Prompt Deck](reference_prompt_deck_app.md) — apps pessoais em "Meus Apps"; fonte única `prompts.json`, 3 saídas geradas
 - [Apps à mão em `~/Apps` são invisíveis ao cachy-update (23/08)](reference_manual_apps_in_home_apps_are_invisible_to_cachy_update.md) — `pacman -Qo $(which app)` sem dono = instalação manual; Chrome migrado ao AUR, os outros 5 seguem fora
 - [Atalho global no Plasma 6](reference_kde_plasma6_global_shortcut.md) — `[services][x.desktop]` + o grab que falta após o login
+- [Extensão VSCode recusa bypass e edits sempre pedem em `default` (23/08)](reference_vscode_extension_refuses_bypass_and_edits_always_prompt_in_default.md) — allowlist não alcança o diff de aprovação; cura = 2 chaves `claudeCode.*` no settings DO VSCODE, por máquina
 - [HISTÓRICO: aquarela/wash](reference_topic_watercolor_historical.md) — ADR-0096/0099/0108; 17 memórias da era
 
 ## Comunicação & decisão

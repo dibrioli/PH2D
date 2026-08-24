@@ -16,15 +16,22 @@ impl AudioSystem {
     ///
     /// ⚠️ **No bus SFX**, e não no Master: é lá que o mixer do artista o pode baixar sem levar a
     /// música dele junto — a mesma razão de o sinal de teste já lá tocar.
-    pub(crate) fn play_ui(&mut self, what: crate::ui_sound::UiSound) {
+    pub(crate) fn play_ui(&mut self, what: crate::ui_sound::UiSound, diag: bool) {
         let (hz, secs, gain) = what.voice();
         let data = signals::blip_loop(self.format, hz, secs, secs, gain);
         let params = PlayParams {
             bus: BusId::Sfx,
             ..PlayParams::default()
         };
-        if let Err(e) = self.engine.play(data, params) {
-            eprintln!("audio: ui sound dropped ({e})");
+        match self.engine.play(data, params) {
+            Ok(v) => {
+                if diag {
+                    eprintln!(
+                        "[ui-sound]   -> voz {v:?} · {hz} Hz · {secs}s · ganho {gain} · bus SFX"
+                    );
+                }
+            }
+            Err(e) => eprintln!("[ui-sound]   -> RECUSADO pelo motor: {e}"),
         }
     }
 }

@@ -80,13 +80,24 @@ impl crate::App {
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
             .is_some_and(|h| h.ui_sound);
+        // ⭐ **`PH2D_UI_SOUND_DIAG=1` diz QUAL elo está partido**, e existe porque a cadeia tem
+        // quatro (a preferência · o dispositivo · o disparo · o mixer) e o sintoma dos quatro é o
+        // mesmo: silêncio. *Um sintoma que não separa as causas pede um instrumento, não um
+        // palpite.*
+        let diag = std::env::var_os("PH2D_UI_SOUND_DIAG").is_some();
+        if diag {
+            eprintln!(
+                "[ui-sound] {what:?} · pref={on} · dispositivo={}",
+                self.audio.is_some()
+            );
+        }
         if !on {
             return;
         }
         let Some(audio) = self.audio.as_mut() else {
             return;
         };
-        audio.play_ui(what);
+        audio.play_ui(what, diag);
     }
 }
 

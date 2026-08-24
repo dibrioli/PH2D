@@ -301,6 +301,26 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             .open_input_map(v.x + Spacing::Xl4.px(), v.y + Spacing::Xl4.px());
         return true;
     }
+    // ⭐ **A TECLA APANHADA** — o `Click` sintético que o despacho de teclado emitiu. Ele vem antes
+    // da guarda da janela pelo mesmo motivo do abridor: se a janela fechasse entre a tecla e este
+    // ramo, a captura ficaria pendurada para sempre.
+    if id == ids::INPUT_MAP_BIND_CAPTURED {
+        let key = hero.store.take_captured_key();
+        let armed = hero.store.input_map_listening();
+        hero.store.stop_listening();
+        if let (Some(k), Some(aid)) = (key, armed)
+            && let Some(a) = hero.input_map.get_mut(aid)
+        {
+            let b = Binding::Key(k);
+            // ⚠️ **Ligar duas vezes a mesma tecla não a duplica.** A lista é um conjunto de
+            // caminhos até a acção, e dois caminhos idênticos não são dois caminhos — seriam duas
+            // linhas iguais no painel, uma delas impossível de distinguir da outra ao apagar.
+            if !a.bindings.contains(&b) {
+                a.bindings.push(b);
+            }
+        }
+        return true;
+    }
     if hero.store.input_map_pos().is_none() {
         return false;
     }

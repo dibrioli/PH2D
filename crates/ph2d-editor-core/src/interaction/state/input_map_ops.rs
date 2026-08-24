@@ -5,12 +5,44 @@
 //! O **mapa** é documento e vive no `HeroScreen` — metê-lo aqui faria o `WidgetStore`, que é estado
 //! de UI, passar a carregar conteúdo autorado que tem de sobreviver a tudo.
 
-use super::WidgetStore;
+use super::{ButtonState, InteractiveState, TextInputState, WidgetStore};
 
 impl WidgetStore {
     /// **Abre a janela** em `(x, y)` — idempotente: reabrir só a reposiciona.
+    ///
+    /// ⚠️ **E REGISTA os widgets fixos, sem o que a janela seria desenho.** Foi a condição 2 da
+    /// costura (*pintado **E** registrado*) a morder: na primeira versão o campo de nome era
+    /// pintado e nunca registrado, então `Add` lia sempre a string vazia e **nada nascia** — com
+    /// todos os outros gates verdes. O gate da sequência apanhou-o.
+    ///
+    /// ⚠️ **Reabrir NÃO limpa o campo** (o `register` só semeia quem ainda não existe aqui, porque
+    /// o texto é reposto a vazio só no `Add`): fechar por engano e reabrir tem de devolver o que
+    /// estava escrito.
     pub fn open_input_map(&mut self, x: f32, y: f32) {
         self.input_map_window = Some((x, y));
+        if self.get(crate::ids::INPUT_MAP_NEW_NAME).is_none() {
+            self.register(
+                crate::ids::INPUT_MAP_NEW_NAME,
+                InteractiveState::TextInput {
+                    state: TextInputState::Normal,
+                    text: String::new(),
+                    caret: 0,
+                    selection_anchor: None,
+                },
+            );
+        }
+        for id in [
+            crate::ids::INPUT_MAP_ADD,
+            crate::ids::INPUT_MAP_CLOSE,
+            crate::ids::INPUT_MAP_HANDLE,
+        ] {
+            self.register(
+                id,
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
     }
 
     /// Fecha a janela — e ⚠️ **desarma a escuta junto**.
@@ -47,6 +79,20 @@ impl WidgetStore {
     /// Desarma a escuta sem fechar a janela (o `Esc`, ou a tecla já capturada).
     pub fn stop_listening(&mut self) {
         self.input_map_listening = None;
+    }
+
+    /// **Guarda a tecla apanhada** — chamado pelo despacho de teclado, drenado pelo chrome.
+    pub fn capture_bound_key(&mut self, k: ph2d_input::Key) {
+        self.input_map_captured = Some(k);
+    }
+
+    /// **Drena** a tecla apanhada — `take`, nunca uma leitura que a deixe lá.
+    ///
+    /// ⚠️ Uma leitura sem drenar faria a mesma tecla ligar-se outra vez ao gesto seguinte: o
+    /// artista arma `Bind…` numa segunda acção e ela nasce já ligada à tecla da primeira, sem
+    /// ninguém ter carregado em nada.
+    pub fn take_captured_key(&mut self) -> Option<ph2d_input::Key> {
+        self.input_map_captured.take()
     }
 
     /// Qual acção está à escuta, se alguma.

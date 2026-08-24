@@ -66,6 +66,7 @@ impl WidgetStore {
             fill_modal: None,
             input_map_window: None,
             input_map_listening: None,
+            input_map_captured: None,
             onion_modal: None,
             command_palette: None,
             radial: None,

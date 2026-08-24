@@ -336,6 +336,12 @@ pub struct WidgetStore {
     /// teclado que tem de perguntar primeiro. Sem essa ordem, ligar `S` a uma acção salva o
     /// projecto e a ligação nunca acontece.
     pub(super) input_map_listening: Option<ph2d_input::ActionId>,
+    /// **A tecla que a escuta acabou de apanhar**, à espera de quem a saiba ligar.
+    ///
+    /// ⚠️ Ela vive um instante: o despacho de teclado escreve-a e o handler de chrome **drena-a**
+    /// no mesmo quadro. Guardá-la sem drenar faria a mesma tecla ligar-se outra vez ao gesto
+    /// seguinte — a família do canal que se lê com `take`, que este repo já pinou noutro sítio.
+    pub(super) input_map_captured: Option<ph2d_input::Key>,
     /// Onion settings floating modal (ADR-0142 W3b): `Some((x, y))` = the card's top-left in screen
     /// px (open); `None` = closed. Opened by the timeline's Onion-settings button (shell-side, so it
     /// can seed the widgets from `TimelineState::onion`); dragging the title band offsets it. Its

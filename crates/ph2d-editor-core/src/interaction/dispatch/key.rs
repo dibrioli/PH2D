@@ -39,6 +39,26 @@ pub fn dispatch_key<'frame>(
     if event.kind == KeyKind::Up {
         return events.into_bump_slice();
     }
+    // ⭐⭐ **A ESCUTA DO INPUT MAP VEM PRIMEIRO, ANTES DE TUDO** (plano 30 §4 condição 3).
+    //
+    // Enquanto o `Bind…` está armado, a tecla é **conteúdo**, não atalho. Este ramo tem de estar
+    // acima do grafo, do foco e dos widgets de texto — senão ligar `S` a uma acção **salva o
+    // projeto**, ligar `A` selecciona tudo, e a ligação nunca acontece. *A ordem É a feature.*
+    //
+    // ⚠️ O `Esc` desarma em vez de ligar: um modo sem saída é um modo que prende o teclado, e o
+    // artista que armou por engano não teria como sair sem escolher uma tecla.
+    if store.input_map_listening().is_some() {
+        if event.keycode == KEY_ESCAPE {
+            store.stop_listening();
+        } else {
+            // ⚠️ O despacho **guarda** e emite; quem LIGA é o handler de chrome, que tem o
+            // `HeroScreen` (onde o mapa mora). Daqui não se alcança o mapa, e inventar um caminho
+            // que o alcançasse seria a segunda porta para o mesmo facto.
+            store.capture_bound_key(ph2d_input::Key(event.keycode));
+            events.push(WidgetEvent::Click(crate::ids::INPUT_MAP_BIND_CAPTURED));
+        }
+        return events.into_bump_slice();
+    }
     // Motion Nodes M0.T3 — while a graph surface holds keyboard focus and no
     // text widget is being edited, the graph shortcuts (Delete/F/A/Esc/K/P and
     // Ctrl/Cmd+D) are consumed here, ahead of the generic focus/text handlers.

@@ -19,6 +19,14 @@ pub const INPUT_MAP_CLOSE: NodeId = hash_node_id("input_map.close");
 pub const INPUT_MAP_NEW_NAME: NodeId = hash_node_id("input_map.new_name");
 /// **+ Add** — cria a acção com o nome do campo acima.
 pub const INPUT_MAP_ADD: NodeId = hash_node_id("input_map.add");
+/// **A TECLA FOI CAPTURADA** — o `Click` sintético que o despacho de teclado emite quando a escuta
+/// estava armada.
+///
+/// ⚠️ **Não é um botão**: nenhum pixel o desenha e nenhum hit rect o regista. Ele existe porque o
+/// despacho de teclado só alcança o `WidgetStore` e a ligação precisa do `HeroScreen` — o despacho
+/// **guarda** a tecla e emite isto, e o handler de chrome, que tem o hero, **liga**. *O seed é dono
+/// do valor; o dispatch é dono do estado.*
+pub const INPUT_MAP_BIND_CAPTURED: NodeId = hash_node_id("input_map.bind_captured");
 
 /// O **X** da linha da acção `row` — apaga a acção inteira.
 #[must_use]

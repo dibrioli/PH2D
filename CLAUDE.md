@@ -176,6 +176,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ([`motion_state_conferencia_demos_audio_tests.rs`](shells/desktop/src/motion_state_conferencia_demos_audio_tests.rs))
   reprovou com «max delta 0» no fan-out de 10,7 mil testes e passou **5 de 5** sozinha — já nomeada no
   handoff da `sculpt3d` de 16/08. O `nextest` cancelou a corrida inteira nela; a re-corrida foi verde.
+  ⚠️ **A quinta, e ela é uma FAMÍLIA inteira, confirmada 2026-08-23:** os gates de razão de
+  `flip_smooth::resample_measurement::precisao::orcamento`
+  ([`flip_fit_budget_tests.rs`](shells/desktop/src/flip_fit_budget_tests.rs)) — medido no fan-out de
+  3.887 testes, **a falha MUDA de teste entre corridas** dentro da mesma família
+  (`a_long_stroke_is_bounded_by_the_redundancy_floor…` numa, `the_fit_rebuilds_the_neighbourhood…` na
+  seguinte), e os **três** passam sozinhos. ⭐ *Uma regressão não muda de sítio entre corridas; uma
+  leitura de relógio muda.* Eles medem razões de tempos **sub-milissegundo** (`1,36 → 8,77 ms`), e a
+  linha que os viu reprovar não tocava **um ficheiro** de Flip.
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na
   primeira falha**: use `--no-fail-fast`, senão suítes inteiras nunca chegam a correr.
 

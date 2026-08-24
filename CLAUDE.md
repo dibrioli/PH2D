@@ -160,76 +160,38 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Modo L: o caminho é o da SUA worktree** (`.../PH2D/Worktrees/line-<módulo>`), não o do primário — o Enio roda de outro diretório, e sem o `cd` o comando falha ou testa a árvore errada.
 - ⚠️ **Nenhuma leitura de relógio desta workstation vale nada acima de `load ~5`** (medido: o mesmo binário deu 11,36 e
   5,50 ms para o mesmo passe). Gates de razão reprovam sob carga sem que uma linha de código tenha mudado.
-  ⚠️ **Flake CONFIRMADA e pré-existente, 2026-08-18:** `a_round_live_offset_costs_like_the_other_joins`
-  ([`ph2d-vec-boolean/tests/offset_live_cost.rs`](crates/ph2d-vec-boolean/tests/offset_live_cost.rs))
-  reprovou no `ship.sh` como o **único ✗ de 15.323 testes**, no teste 15.294/16.324 — ou seja, no pico
-  do fan-out — e passou **5 de 5** sozinho na máquina calma. O commit em causa não tocava **uma linha**
-  de código de produção. Ela mede a razão de duas medianas de uma operação **sub-milissegundo**, com um
-  piso de 200 µs no divisor: sob 16 mil testes em paralelo isso é ruído. *Re-rode sozinho **antes** de
-  suspeitar da sua mudança* — irmã da flake já listada na Timeline.
-  ⚠️ **A terceira, e ela também é de RELÓGIO:** `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs`
-  ([`ph2d-tool-painter`](crates/ph2d-tool-painter/src/tool/paint/wetpaint/tests.rs)) reprova no fan-out e passa
-  **5 de 5** sozinha (0,1 s). Está registada desde 2026-08-16 em
-  [`39_auditoria_solid_e_tracos.md`](docs/Painter/39_auditoria_solid_e_tracos.md) — mas **não estava aqui**, e é
-  aqui que se olha quando o gate batched fica vermelho.
-  ⚠️⚠️ **PARE DE AS CONTAR UMA A UMA — é uma FAMÍLIA, e ela tem seis membros conhecidos.** Em
-  2026-08-23, num único dia e num diff que não tocava **uma linha** do Painter nem da Timeline,
-  reprovaram no fan-out de 17,9 mil testes e passaram **3 de 3 sozinhas**:
-  `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger` (Painter) ·
-  `the_cost_of_sampling_a_path_is_flat_in_its_anchors` (Timeline) — mais as três já nomeadas acima.
-  Duas corridas seguidas da MESMA árvore deram `17.883/17.883` e depois `17.881/17.884`.
-  ⚠️⚠️ **E ela NÃO é só de relógio — 2026-08-23 acrescentou uma de ALOCAÇÃO:**
-  `the_trusted_len_collect_allocates_once` (`ph2d-audio-edit::measure_arc_build`) foi o único ✗ de
-  17.966 testes e passou **3 de 3** sozinho, sobre um diff que não tocava uma linha de áudio. Um
-  contador de alocações parece imune a carga e não é: sob 17,9 mil testes em paralelo o alocador
-  global reutiliza arenas de outra maneira. ⇒ *a forma que se lê é «o gate mede um RECURSO», e não
-  «o gate mede tempo»* — relógio, alocações, e o que vier a seguir.
-  ⇒ **Todo gate que compara duas medianas de tempo é candidato**, e a lista nunca estará completa:
-  o que se lê não é o nome, é a *forma* — se um ✗ do gate batched for uma razão de relógio, **re-rode
-  sozinho ANTES de olhar para o seu commit**. O sinal de que é carga: o mesmo teste verde isolado, e
-  o seu diff sem uma linha no módulo dele.
-  ⚠️ **A quarta, confirmada na integração de 2026-08-22:** `only_the_lower_row_breathes_and_it_moves_with_the_playhead`
-  ([`motion_state_conferencia_demos_audio_tests.rs`](shells/desktop/src/motion_state_conferencia_demos_audio_tests.rs))
-  reprovou com «max delta 0» no fan-out de 10,7 mil testes e passou **5 de 5** sozinha — já nomeada no
-  handoff da `sculpt3d` de 16/08. O `nextest` cancelou a corrida inteira nela; a re-corrida foi verde.
-  ⚠️ **A quinta, e ela é uma FAMÍLIA inteira** — medida em 2026-08-22 pela `line/3DModeling` e
-  confirmada em 2026-08-23 pela `line/sculpt3d`, **em diffs que não tocavam um ficheiro de Flip**:
-  os gates de razão de `flip_smooth::resample_measurement::precisao::orcamento`
-  ([`flip_fit_budget_tests.rs`](shells/desktop/src/flip_fit_budget_tests.rs)) — medido no fan-out de
-  3.887 testes, **a falha MUDA de teste entre corridas** dentro da mesma família
-  (`a_long_stroke_is_bounded_by_the_redundancy_floor…` numa, `the_fit_rebuilds_the_neighbourhood…` na
-  seguinte), e os **três** passam sozinhos (5 de 5, 0,02 s). ⭐ *Uma regressão não muda de sítio entre
-  corridas; uma leitura de relógio muda.* Eles medem razões de tempos **sub-milissegundo** (`1,36 → 8,77 ms`).
-  ⚠️ **A SEXTA e a SÉTIMA, confirmadas em 2026-08-23** numa corrida `--no-fail-fast` de **17.865**
-  testes (2 ✗, as duas verdes **3 de 3** sozinhas, as duas em crates que a linha que as viu **não
-  tocava**): `the_mask_stroke_cost_does_not_follow_the_canvas`
-  ([`ph2d-tool-painter`](crates/ph2d-tool-painter/src/tool/paint/mask_tests.rs)) — irmã exacta da
-  terceira, e o doc-comment dela diz-se *"imune à deriva da máquina"* por medir uma RAZÃO, que é
-  precisamente o que o fan-out quebra — e `apply_from_doc_is_zero_alloc_steady_state`
-  ([`ph2d-timeline`](crates/ph2d-timeline/tests/no_alloc_bridge.rs)), um gate de **zero-alloc**,
-  espécie nova nesta lista.
-  ⚠️ **E a primeira corrida daquele gate parou em 11.240 com `1.007` testes por correr** — o
-  `nextest` cancela no primeiro ✗. *Um vermelho de flake esconde o resto da suíte:* re-corra com
-  `--no-fail-fast` **antes** de concluir o que quer que seja sobre o seu diff.
-  ⚠️ **A OITAVA, confirmada DUAS vezes em 2026-08-23** (duas corridas independentes de
-  **17.923** testes, o mesmo único ✗ nas duas):
+  ⚠️⚠️ **FLAKES DE RECURSO SOB FAN-OUT — é uma FAMÍLIA, não uma lista: pare de as contar uma a uma.**
+  A forma que se lê não é o nome, é o MECANISMO: um gate que mede um RECURSO partilhado — razão de
+  dois relógios · contagem de alocações · o que vier — reprova sob 10–18 mil testes em paralelo e
+  passa sozinho na máquina calma. O sinal de que é carga: o mesmo teste verde isolado (3–5 de 3–5),
+  o diff sem uma linha no módulo dele — e num grupo, o **CONJUNTO de reprovadas MUDA entre corridas
+  do mesmo binário** (um defeito de lógica reprova o mesmo caso sempre). ⇒ *re-rode sozinho ANTES de
+  olhar para o seu commit*, e re-corra com `--no-fail-fast`: o nextest cancela no 1º ✗ e **esconde o
+  resto da suíte** (uma corrida parou em 11.240 com 1.007 por correr).
+  **Membros confirmados (2026-08-16..23):** `a_round_live_offset_costs_like_the_other_joins`
+  ([`ph2d-vec-boolean`](crates/ph2d-vec-boolean/tests/offset_live_cost.rs) — o caso canónico: único
+  ✗ de 15.323, no pico do fan-out, commit sem uma linha de produção) ·
+  `the_cost_of_depth_is_linear_not_explosive` (Timeline) ·
+  `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs` ·
+  `the_mask_stroke_cost_does_not_follow_the_canvas` ·
+  `the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger` (as três em
+  [`ph2d-tool-painter`](crates/ph2d-tool-painter/) — uma delas com doc a dizer-se *"imune à deriva
+  da máquina"* por medir uma RAZÃO, que é precisamente o que o fan-out quebra) ·
+  `only_the_lower_row_breathes_and_it_moves_with_the_playhead` (demos de áudio, «max delta 0») ·
+  a família `flip_smooth::resample_measurement::precisao::orcamento` — **3 testes** em
+  [`flip_fit_budget_tests.rs`](shells/desktop/src/flip_fit_budget_tests.rs), medida 22/08 pela
+  `line/3DModeling` e confirmada 23/08 pela `line/sculpt3d`, com a falha a MUDAR de teste entre
+  corridas · `the_cost_of_sampling_a_path_is_flat_in_its_anchors` (Timeline) ·
   `the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh`
-  ([`ph2d-mesh/tests/measure_normals.rs`](crates/ph2d-mesh/tests/measure_normals.rs)) —
-  **verde 3 de 3 sozinha, a 0,65 s contra 1,53 s no fan-out**, numa crate que o diff da
-  linha não tocava. Ela divide **dois relógios de parede** (`costs[1] / costs[0]`, barra
-  `3,0`): sob 17,9 mil testes em paralelo as duas medições são escalonadas de forma
-  diferente e a razão estoura. ⚠️ **Espécie NOVA nesta lista por uma razão que interessa:
-  o doc-comment dela declara-se imune** (*"o gate é a FORMA, não o relógio"*) — e a forma é
-  medida DIVIDINDO dois relógios, que é precisamente o que o fan-out quebra. *Um gate que
-  se diz independente do relógio ainda o é, se o numerador e o denominador forem tempos.*
-  ⚠️ **A NONA, confirmada em 2026-08-23**, e ela é a irmã exacta da oitava:
-  `measure_brush_kernel` ([`ph2d-sculpt3d/tests/measure_brush_kernel.rs`](crates/ph2d-sculpt3d/tests/measure_brush_kernel.rs))
-  reprovou como o **único ✗ de 18.016 testes** e passou **4 de 4** sozinha, numa
-  crate que o diff da linha não tocava. Ela divide **dois relógios de parede**
-  (`fixed[1] / fixed[0]`, barra `3,0`) para afirmar que dez vezes a malha com a
-  MESMA pegada não custa dez vezes — sob 18 mil testes em paralelo as duas
-  medições são escalonadas de forma diferente e a razão estoura. ⚠️ E ela é
-  **cara** (34 s sozinha), o que a põe no pico do fan-out por construção.
+  ([`ph2d-mesh`](crates/ph2d-mesh/tests/measure_normals.rs) — ⚠️ o doc-comment declara-se imune,
+  *«o gate é a FORMA, não o relógio»*, e a forma é medida DIVIDINDO dois relógios: *um gate que se
+  diz independente do relógio ainda o é, se o numerador e o denominador forem tempos*) ·
+  `measure_brush_kernel` ([`ph2d-sculpt3d`](crates/ph2d-sculpt3d/tests/measure_brush_kernel.rs) —
+  cara, 34 s sozinha, no pico do fan-out por construção) · e ⚠️ **as duas de ALOCAÇÃO**, espécie
+  própria: `apply_from_doc_is_zero_alloc_steady_state` (ph2d-timeline) e
+  `the_trusted_len_collect_allocates_once` (ph2d-audio-edit) — um contador de alocações parece
+  imune a carga e não é: sob fan-out o alocador global reutiliza arenas de outra maneira.
+  *Todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa.*
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na
   primeira falha**: use `--no-fail-fast`, senão suítes inteiras nunca chegam a correr.
 

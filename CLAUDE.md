@@ -172,7 +172,19 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **5 de 5** sozinha (0,1 s). Está registada desde 2026-08-16 em
   [`39_auditoria_solid_e_tracos.md`](docs/Painter/39_auditoria_solid_e_tracos.md) — mas **não estava aqui**, e é
   aqui que se olha quando o gate batched fica vermelho.
-  ⚠️ **A QUINTA e a SEXTA, confirmadas em 2026-08-23** numa corrida `--no-fail-fast` de **17.865**
+  ⚠️ **A quarta, confirmada na integração de 2026-08-22:** `only_the_lower_row_breathes_and_it_moves_with_the_playhead`
+  ([`motion_state_conferencia_demos_audio_tests.rs`](shells/desktop/src/motion_state_conferencia_demos_audio_tests.rs))
+  reprovou com «max delta 0» no fan-out de 10,7 mil testes e passou **5 de 5** sozinha — já nomeada no
+  handoff da `sculpt3d` de 16/08. O `nextest` cancelou a corrida inteira nela; a re-corrida foi verde.
+  ⚠️ **A quinta, e ela é uma FAMÍLIA inteira** — medida em 2026-08-22 pela `line/3DModeling` e
+  confirmada em 2026-08-23 pela `line/sculpt3d`, **em diffs que não tocavam um ficheiro de Flip**:
+  os gates de razão de `flip_smooth::resample_measurement::precisao::orcamento`
+  ([`flip_fit_budget_tests.rs`](shells/desktop/src/flip_fit_budget_tests.rs)) — medido no fan-out de
+  3.887 testes, **a falha MUDA de teste entre corridas** dentro da mesma família
+  (`a_long_stroke_is_bounded_by_the_redundancy_floor…` numa, `the_fit_rebuilds_the_neighbourhood…` na
+  seguinte), e os **três** passam sozinhos (5 de 5, 0,02 s). ⭐ *Uma regressão não muda de sítio entre
+  corridas; uma leitura de relógio muda.* Eles medem razões de tempos **sub-milissegundo** (`1,36 → 8,77 ms`).
+  ⚠️ **A SEXTA e a SÉTIMA, confirmadas em 2026-08-23** numa corrida `--no-fail-fast` de **17.865**
   testes (2 ✗, as duas verdes **3 de 3** sozinhas, as duas em crates que a linha que as viu **não
   tocava**): `the_mask_stroke_cost_does_not_follow_the_canvas`
   ([`ph2d-tool-painter`](crates/ph2d-tool-painter/src/tool/paint/mask_tests.rs)) — irmã exacta da
@@ -183,7 +195,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **E a primeira corrida daquele gate parou em 11.240 com `1.007` testes por correr** — o
   `nextest` cancela no primeiro ✗. *Um vermelho de flake esconde o resto da suíte:* re-corra com
   `--no-fail-fast` **antes** de concluir o que quer que seja sobre o seu diff.
-  ⚠️ **A SÉTIMA, confirmada DUAS vezes em 2026-08-23** (duas corridas independentes de
+  ⚠️ **A OITAVA, confirmada DUAS vezes em 2026-08-23** (duas corridas independentes de
   **17.923** testes, o mesmo único ✗ nas duas):
   `the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh`
   ([`ph2d-mesh/tests/measure_normals.rs`](crates/ph2d-mesh/tests/measure_normals.rs)) —
@@ -194,7 +206,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   o doc-comment dela declara-se imune** (*"o gate é a FORMA, não o relógio"*) — e a forma é
   medida DIVIDINDO dois relógios, que é precisamente o que o fan-out quebra. *Um gate que
   se diz independente do relógio ainda o é, se o numerador e o denominador forem tempos.*
-  ⚠️ **A OITAVA, confirmada em 2026-08-23**, e ela é a irmã exacta da sétima:
+  ⚠️ **A NONA, confirmada em 2026-08-23**, e ela é a irmã exacta da oitava:
   `measure_brush_kernel` ([`ph2d-sculpt3d/tests/measure_brush_kernel.rs`](crates/ph2d-sculpt3d/tests/measure_brush_kernel.rs))
   reprovou como o **único ✗ de 18.016 testes** e passou **4 de 4** sozinha, numa
   crate que o diff da linha não tocava. Ela divide **dois relógios de parede**
@@ -202,18 +214,6 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   MESMA pegada não custa dez vezes — sob 18 mil testes em paralelo as duas
   medições são escalonadas de forma diferente e a razão estoura. ⚠️ E ela é
   **cara** (34 s sozinha), o que a põe no pico do fan-out por construção.
-  ⚠️ **A quarta, confirmada na integração de 2026-08-22:** `only_the_lower_row_breathes_and_it_moves_with_the_playhead`
-  ([`motion_state_conferencia_demos_audio_tests.rs`](shells/desktop/src/motion_state_conferencia_demos_audio_tests.rs))
-  reprovou com «max delta 0» no fan-out de 10,7 mil testes e passou **5 de 5** sozinha — já nomeada no
-  handoff da `sculpt3d` de 16/08. O `nextest` cancelou a corrida inteira nela; a re-corrida foi verde.
-  ⚠️ **A quinta, e ela é uma FAMÍLIA inteira, confirmada 2026-08-23:** os gates de razão de
-  `flip_smooth::resample_measurement::precisao::orcamento`
-  ([`flip_fit_budget_tests.rs`](shells/desktop/src/flip_fit_budget_tests.rs)) — medido no fan-out de
-  3.887 testes, **a falha MUDA de teste entre corridas** dentro da mesma família
-  (`a_long_stroke_is_bounded_by_the_redundancy_floor…` numa, `the_fit_rebuilds_the_neighbourhood…` na
-  seguinte), e os **três** passam sozinhos. ⭐ *Uma regressão não muda de sítio entre corridas; uma
-  leitura de relógio muda.* Eles medem razões de tempos **sub-milissegundo** (`1,36 → 8,77 ms`), e a
-  linha que os viu reprovar não tocava **um ficheiro** de Flip.
 - ⚠️ **Gates de GPU são `#[ignore]`** e precisam de adapter — *skip gracioso não é verde*; e o `nextest` **cancela na
   primeira falha**: use `--no-fail-fast`, senão suítes inteiras nunca chegam a correr.
 
@@ -480,224 +480,35 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Cinco saídas já foram MEDIDAS e fechadas** (mais segmentos na lasca · `dissolve` · desligar a ponte ·
   recuo do `uv` · faixa em vez de leque): ⇒ o problema **não é como o patch é preenchido, é o patch** — o traçado
   tem de o CORTAR, que é o mesmo trabalho da asa que a ponte só adiou.
-  ⛔⛔ **DUAS CURAS CERTAS, ZERO MOVIMENTO (23/08)** — o interior do patch alinhado ao campo e o domínio
-  com os lados ∝ segmentos: as duas deixam o enviesamento mediano da orelha em **27°**, e a segunda **piora**
-  a cauda do gancho (aspecto max 22,5 → 49,0). As duas ficam no código **desligadas com a tabela**
-  (`Interior::FromBoundary`, `PROPORTIONAL_DOMAIN = false`). ⭐⭐ **O que a falha comprou foi a régua que
-  localiza:** `skew_by_provenance` diz onde o enviesamento mora — orelha `canto 0° · arco 26° · centro 0° ·
-  raio 56° · grade 26°`, ou seja **em TODA a parte, com a grade interior igual ao resto** ⇒ *toda a família
-  «uma construção local está errada» está excluída de uma vez*. ⭐ E o alisamento foi **ilibado com número**
-  (a 0 rondas a grade mede 27° e o raio 75°; a 20, 25° e 37° — ele REPARA). ⛔⛔⛔ **A HOLONOMIA: a RÉGUA estava errada, e a resposta certa fecha a caça** (`PLAN.md` §4-quinquagies).
-  A leitura de `29°/44°` que aqui se escreveu como *«o campo dentro dos nossos patches não é combável, a
-  dívida é do F3»* saía de uma grandeza **limitada a 45° por construção** (o resto do arredondamento ao
-  quarto de volta), e que **nunca testava o fecho de ciclo** — comparava o braço cru do vizinho. ⚠️ *`29°` e
-  `44°` eram o TECTO do número, não um defeito grande*, e a rede que devia apanhá-lo era
-  `assert!(holonomia >= 0.0)` — tautologia sobre um ângulo. ⭐⭐⭐ Com a régua a sério (inteira: quantas
-  voltas fechadas devolvem o braço rodado), **esfera lisa `0/16` · orelha `0/17` · enrugada `0/14` ·
-  gancho `2/26`** — e o controlo positivo mostra a régua antiga a dar `11,25°` a uma singularidade
-  fabricada, **menos** do que dava a campo limpo. ⇒ **o alinhamento ao campo correu sobre campo LIMPO na
-  orelha e mesmo assim não moveu nada: a última desculpa da família local caiu.** Fica
-  `ph2d_crossfield::comb` com as duas colunas separadas (`rough_*` sem barra · `defects` inteira), cinco
-  gates com controlo positivo/negativo, e `FillReport::dirty_patches` **com denominador**.
-  ⭐⭐⭐⭐ **O MECANISMO FOI ACHADO E ISOLADO EM 2D PURO (23/08): é o LEQUE.** Um sector de leque
-  num domínio plano partilhado traz enviesamento **`|360/n − 90|`** de máximo e metade disso de
-  mediana — `n=3 → 14,4°`, `n=5 → 7,6°`, ⭐ **`n=4 → 0,0°`** (gate `how_much_skew_does_a_fan_sector_force`,
-  sem malha nem campo). Na esfera lisa **8 dos 16 patches são triângulos e 3 pentágonos** ⇒ é daí que
-  vem a maior parte dos `18°`. ⛔ **E não é afinável:** `n` cantos rectos à volta de um ponto pedem
-  `n × 90°` e o plano só dá `360°` — a cura é **dar a cada sector o SEU domínio** (uma unidade
-  quadrada por sector, cosidos nos raios), o que muda o `ph2d_quadfill::param`. ⛔ **A cura por
-  MAPA DE POTÊNCIA (`z^(n/4)`, conforme) foi medida no arnês e rejeitada em dez minutos:** ela
-  **piora** o `n=3` (14,4° → 18,6°), que é o caso dominante — os dois bordos não-radiais do sector
-  são rectas do polígono e deixam de o ser sob a potência. *O arnês de isolamento paga-se na
-  primeira hipótese que mata.* ⚠️ *A primeira versão do isolamento passou um bordo ao contrário e deu
-  `45°` no `n=4`; o controlo do quadrilátero — um valor conhecido de antemão — foi o que a apanhou.*
-  ⛔⛔⛔ **AS DUAS RÉGUAS DE VALÊNCIA MEDIAM A POPULAÇÃO ERRADA, e um dia de conclusões assentou
-  nisso** (23/08): a escrituração vivia no fim do laço dos patches e o caminho do rectângulo saía por
-  `continue` **antes dela** ⇒ o balde do domínio dos rectângulos ficava **sempre vazio**, e a mediana
-  de um vector vazio é `0,0` — que se leu como *«a grade do rectângulo nasce PERFEITA»*. ⚠️ **Um zero
-  de «não medido» e um zero de «perfeito» são o mesmo byte.** Corrigido: domínio dos rectângulos
-  **`1,0°`** (não `0,0°`), superfície **`16°`** (não `12°`), leque **`19°`** — ⇒ *o leque nunca
-  explicou «um terço»*. A cura é estrutural (`else`, não `continue`) mais **contagens** ao lado das
-  medianas (`domain_cells`, `slid`/`quad_patches`, `NaN` numa etiquetagem curta) e três gates provados
-  por mutação (`ph2d-quadfill/tests/rulers.rs`).
-  ⭐⭐⭐ **E o MAPA CONFORME deu NOME ao defeito, ao ser rejeitado** (`src/rectangle.rs`, `PLAN.md`
-  §4-tresetquadragies): com a fronteira **a deslizar** (dois problemas mistos sobre o cotangente — o
-  quadrilátero extremal), a esfera lisa vai de `16° → 14°` na superfície **e o domínio sobe de `1,0°`
-  para `12,4°`**. ⭐ *Leia as duas juntas:* presa, `15°` apareciam do nada; a deslizar, sobram `1,6°`
-  de folga — **e essa quase-igualdade é a prova de que o mapa é conforme**. ⇒ ⛔ *a conformalidade não
-  REDUZ o enviesamento, MUDA-O DE SÍTIO*. ⛔ E as esculturas recusam-no (orelha `d=1,0`: faces `>60°`
-  **9 159 → 14 794**, dobras `171 → 267`) — um mapa conforme é fiel ao ângulo e **não à área**.
-  ⇒ ⭐⭐⭐ **o defeito É a subdivisão do arco:** os `12,4°` são a *discordância conforme entre lados
-  OPOSTOS* — o ponto `k` de cada lado é posto por comprimento de arco, e a correspondência que a
-  conformalidade pede não é «fracções iguais». **Nenhuma construção do interior a endireita.** O
-  oráculo não tem o problema porque tem **UMA parametrização global** (os pontos de subdivisão são
-  onde as isolinhas inteiras cruzam o arco ⇒ os dois patches concordam por construção) — *é a mesma
-  diferença de classe, local contra global, que motivou o pivô, um nível abaixo*. As duas saídas:
-  ponto fixo sobre o layout, ou a parametrização global **quantizada** (os inteiros já vêm do F4, logo
-  o que resta dela é **linear**).
-  ⭐⭐⭐ **E A OBRA MUDOU DE FASE: nós FRAGMENTAMOS O DOBRO** (23/08, `PLAN.md`
-  §4-quatuoretquadragies). Derivando a valência dos patches do **dono de cada face** — a nossa e a
-  **dele** —, com `χ = V − E + F` a fechar em `2` nos dois lados e nas quatro fixturas: esfera lisa
-  **16 patches / 26 cantos** contra **8 / 6** dele; enrugada 14/22 contra 8/6; orelha 17/28 contra
-  12/13; gancho 26/39 contra 15/17. ⛔⛔ **Isto MATA «reescrever o F3 para emitir só quadriláteros»:**
-  na esfera lisa e na enrugada o oráculo entrega `{3: 8}` — **oito patches TRIANGULARES, 0% de quads**
-  — e mede `6°`. *A referência usa mais leques do que nós e sai mais quadrada.* ⇒ a obra é **emitir
-  MENOS patches** (juntar vizinhos cuja fronteira comum o campo não exige): cada canto é um
-  irregular na saída, e cada fronteira é um sítio onde a discordância conforme nasce. ⚠️ E o primeiro
-  controlo da régua — conferi-la contra o nosso `side_arcs` — **reprovou com razão**: um *lado* nosso
-  é feito de vários **arcos**, logo são duas definições e não duas medições; quem valida é o `χ`.
-  ⭐⭐⭐ **E O CAMPO (F2) ESTÁ ILIBADO COM NÚMERO — ~76% dos nossos cantos são INVENTADOS** (23/08,
-  `PLAN.md` §4-quinquietquadragies). Com o `CrossField::from_directions` (o campo dele passa pelas
-  **nossas** réguas; gate de ida-e-volta provado por mutação, com controlo negativo): esfera lisa e
-  enrugada têm **8 singularidades nossas contra 8 dele** (o mínimo de Poincaré–Hopf, `Σ = 8` nos dois);
-  na **orelha temos 8 e ele 12** — o nosso campo é *mais limpo* — e ainda assim damos 17 patches contra
-  12. ⇒ **a fragmentação não vem do campo; é toda do F3.** ⛔⛔ O partidor: *a única razão legítima
-  para um canto existir é uma singularidade*, e na esfera lisa **29 cantos, 7 em singularidade, 22
-  INVENTADOS** (enrugada 19, orelha 22, gancho 32). Cada canto inventado é um irregular a mais **e**
-  uma fronteira a mais onde a discordância conforme nasce — *os dois defeitos desta investigação têm a
-  mesma origem*. ⇒ a obra é **emitir arcos de singularidade a singularidade**. ⚠️ E há um 2.º defeito
-  pequeno e específico: **1 a 4 singularidades ficam SEM canto** — ⛔ mas **«sem canto» NÃO é «dentro»**, e
-  a inferência que aqui estava caiu: a holonomia a sério dá `0` patches incombáveis na esfera lisa, que tem
-  `8` singularidades e `7` em canto ⇒ a oitava está **sobre um arco**. *Uma singularidade na costura não
-  torna nenhum dos dois interiores incombável* — é defeito de traçado mais fraco, e outra cura. ⛔⛔ E o «controlo»
-  que a tinha descartado (a linha «ORACULO 18,6°/38,4°») cruzava o **campo do `_rem.obj`** com os
-  **patches do `_rem_p0.obj`** — malhas diferentes, 9.534 contra 9.638 faces; a conferência nomeava o
-  risco e nunca comparava as duas contagens. **Linha retirada**, guarda apertada.
-  ⭐⭐⭐ **E a afirmação «canto inventado = irregular a mais» foi VERIFICADA na saída** (`PLAN.md`
-  §4-sexetquadragies): irregulares **18 (nós) contra 8 (ele)** na esfera lisa e **14 contra 8** na
-  enrugada — e **`8` é o piso de Poincaré–Hopf, onde ele aterra exactamente**. Como o nosso campo tem
-  `8` singularidades nas duas, **dez dos nossos irregulares são fabricados entre o traçado e o
-  preenchimento**. ⚠️ Antes de a citar, a régua foi conferida: *cantos* (ângulo interno) e *nós*
-  (pontas de arco) são conjuntos **idênticos** nas 4 fixturas — a união sobre patches contém sempre o
-  nó em T, logo ⛔ **ela não serve para testar a regra do ângulo**, embora o número coincidisse.
-  ⭐⭐ **O mecanismo é medido:** um nó a mais parte um LADO em vários ARCOS — **37%** dos lados da
-  esfera lisa (pior: **6** arcos num lado, na orelha) —, e *dentro de um arco a reamostragem por `τ`
-  é proporcional; a discordância entre lados opostos nasce quando um lado tem vários*. ⇒ **uma causa,
-  dois sintomas**, e a obra é uma: **arcos de singularidade a singularidade**.
-  ⭐⭐⭐ **A PODA foi construída, CONFIRMOU o diagnóstico e é REJEITADA — e é a rejeição que fixa a
-  ORDEM da obra** (`ph2d-trace/src/prune.rs`, `PLAN.md` §4-septemetquadragies). Removendo os arcos que
-  morrem em vértice regular: esfera lisa **16 → 6 patches**, nós fora de singularidade **22 → 4**,
-  irregulares **18 → 9** (piso 8); enrugada 14 → 9; ⭐⭐ **orelha 18 → 12, a EMPATAR com o oráculo**.
-  *A cadeia causal fecha por intervenção, não por correlação.* ⛔⛔ **E a geometria colapsa na mesma
-  peça:** enviesamento `18° → 38°`, aspecto `1,26 → 2,10`, dobras `0 → 29`. ⛔ **Não é a forma do domínio**
-  (`PROPORTIONAL_DOMAIN` sobre a poda: `38° → 38°`). ⚠️⚠️ **E o teste do MAPA eu li mal, e corrigi:**
-  o `RECTANGLE_MAP` deu `38° → 36°` e escrevi «não é o mapa» — mas ele **só serve patches de 4 lados**
-  e a esfera podada é `{3:4, 4:2}`, logo candidatou-se a **2 de 6**; a contagem de recusas nova
-  (`FillReport::slid_refused`) diz `deslizou 1/2 · recusas [0,0,0,1,0]` — o outro recusou por
-  **fronteira livre não-monótona**. ⇒ *medi o mapa em UM patch de seis*. ⭐ O que sobra, verdadeiro e
-  mais fraco: um Tutte de um terço de esfera sobre um polígono unitário está distorcido, **e a
-  alternativa conforme por-patch recusa-se a correr nessa escala** — nenhuma das duas famílias
-  por-patch lá chegou.
-  ⭐⭐⭐ **E A PREMISSA DA SEMANA FOI REFUTADA: um mapa CONFORME dá o PIOR resultado** (`PLAN.md`
-  §4-octoetquadragies). O **LSCM** (mínimos quadrados conformes, clean-room Lévy 2002 — o único
-  achatamento **sem condição de fronteira** e que serve **todo `n`**) leva o erro conforme de
-  **`4,32` a `1,01`** na esfera lisa — quase perfeito — e o enviesamento **piora de `18°` para
-  `28°`**, com as dobras a ir de `0` para `68`. ⛔⛔ *«Mais conforme ⇒ mais quadrado» é falso*, e
-  isso derruba a premissa que sustentou o `CONFORMAL_MAP`, o `rectangle.rs` e o próprio LSCM.
-  ⭐⭐⭐ **O mecanismo está na coluna do DOMÍNIO:** com o mapa conforme ele salta de `1,0°` para
-  **`21,4°`** (rectângulos) e de `18,7°` para **`50,8°`** (leques) — *num domínio conforme os pontos
-  de bordo, postos por comprimento de arco, caem em posições muito desiguais*. ⇒ **o Tutte pregado
-  não é defeito: ele MASCARA a discordância da subdivisão**, e o líquido é melhor. ⇒ o
-  constrangimento é a **SUBDIVISÃO DO ARCO** e é maior do que estava medido (`21,4°`/`50,8°`, não
-  `12,4°`); **quatro achatamentos medidos, família fechada**. ⚠️ Duas armadilhas apanhadas a
-  caminho: a régua da conformalidade nasceu a devolver `0,00` (um script meu abortou no `assert` e
-  eu fui atrás do erro do compilador), e o LSCM corria com as `4 000` rondas do Tutte —
-  **sub-convergido** (`1,0929` contra `1,0000` numa faixa plana; ele precisa de `100 000`).
-  *Dois solvers diferentes não partilham um teto de espera.*
-  ⚠️ **E a obra que sobra — a RE-GRADUAÇÃO DO ARCO — está construída com o gate de presença
-  VERMELHO** (`regraduate.rs`, `PLAN.md` §4-novemetquadragies): cada patch propõe a distribuição
-  que o domínio dele pede e o arco fica com a **média das duas**; ela troca **uma** régua
-  (`arc_tau`) e com isso os três sítios que a leem, mantendo o total de cada arco para não mexer
-  na quantização. ⛔ **Dois erros meus a caminho, os dois com recuo SILENCIOSO:** a 1.ª versão era
-  **circular** (tirava a «fracção conforme» do Tutte, que prega a fronteira *por `τ`* ⇒ devolvia
-  `τ`), e a 2.ª tinha um `?` a abortar a função inteira. ⇒ duas colunas novas (`FillReport::regraduated`, o
-  numerador, e `Regraduation::gave_up`, o **motivo**) levaram-na de `5/42` a **`42/42`** — a 3.ª
-  causa era um `return` que não preenchia o `side_alpha`, e só a coluna do motivo a apanhou
-  (`sem alfa 57`). ⚠️ **Quarta variante da mesma lei esta semana**: mediana sem contagem · numerador
-  sem denominador · numerador sem motivo · **recuo sem voz**.
-  ⛔ **E a correr ela NÃO move o número** — nem sozinha (`18° → 19°`) nem com o domínio conforme
-  (`28°`), e o que decide é a linha do domínio: **`21,4° → 21,3°`, zero**. ⭐⭐⭐ **Porque ela
-  emparelha o lado ERRADO:** o enviesamento nasce do desacordo entre os **lados OPOSTOS do mesmo
-  patch**, e ela alinha cada arco com o **vizinho do outro lado da costura** — outro par. ⚠️ E os
-  dois pedidos não se satisfazem ao mesmo tempo localmente: a distribuição de um lado tem de servir
-  *o lado oposto do meu patch* **e** *o patch do outro lado do arco*, e a cadeia atravessa a peça.
-  ⇒ ⭐⭐⭐ **é isso que a parametrização GLOBAL resolve, e a razão deixou de ser citação da
-  referência** — ela impõe o acordo desde o início pela função de transição, em vez de fazer a média
-  de duas propostas em desacordo. ⭐⭐⭐ **E o PONTO FIXO — a outra das duas saídas — foi construído e
-  medido** (`PLAN.md` §4-unetquinquagies): ⛔ a nota que o descartava (*«nem sequer contrai»*) saía de
-  **um** termo, com o laço a correr uma vez; medida a sequência ele **contrai por exactamente `½` por
-  ronda** (`0,185 · 0,060 · 0,030 · 0,015 · 0,0075 · 0,0038`, 42/42 arcos). ⛔⛔ **E o ponto fixo não
-  endireita nada:** `1` ronda e `8` dão o MESMO número (domínio `24,4°`), e contra o controlo ele piora
-  o rectângulo (`22,5 → 24,4`) e melhora o leque (`66,9 → 62,0`) — *move a discordância, não a remove*.
-  ⇒ *convergir e acertar são coisas diferentes*, e a família local fecha por medição, não por argumento.
-  **A caça está fechada: campo ilibado · mapa fechado · forma do
-  domínio fechada · menos patches é a ordem errada · subdivisão local fechada · ponto fixo fechado. Sobra a global.**
-  ⭐⭐⭐ **E ela COMEÇOU: `ph2d-gridmap` (a 6.ª crate da cadeia), clean-room de Bommes 2009 + QuadCover 2007**
-  (`PLAN.md` §4-duoetquinquagies). O **G1 — a malha cortada** está feito: cada patch fica um disco próprio com
-  tabela de costuras, e ⚠️ **o corte é por SECTOR e não por vértice** — um `BTreeMap` global→local (o que o
-  `quadfill::param` usa) **não corta a ponte** e o anel sai anel, sem nada a acusar. Régua: `χ = V−E+F` por patch,
-  que apanha sub-cortar (`≤0`) **e** sobre-cortar (`≥2`). ⛔⛔ **E a 1.ª corrida achou dívida do F3:** o toro
-  entrega um patch com `χ=0`, 666 faces, 16 arcos e **zero arcos repetidos** ⇒ o traçado nunca lhe construiu
-  ponte. O G1 **abre-o sozinho** (contrato dele é entregar discos), com a guarda de melhoria **estrita** e o corte
-  registado com `arc: None` — *um corte que a fase seguinte não veja deixa o patch RASGADO, pior que anel*.
-  ⭐⭐ **O G2 também está feito** (§4-tresetquinquagies): penteia cada patch e lê o **salto de período** de cada
-  costura — sem ele o G3 pediria `(u,v)` igual dos dois lados, quando o que é igual é um lado e o outro **rodado**
-  de `k` quartos de volta. ⚠️ Duas armadilhas mudas apanhadas antes de medir: a saída do `comb` **não está alinhada
-  com a entrada** (ele filtra faces degeneradas ⇒ recusa-se e conta-se), e escolher os lados de uma aresta pela
-  ordem de armazenamento dá **sinal arbitrário** por aresta. ⛔⛔ **E o gate da consistência disparou no toro (4
-  costuras) — mas a dívida é do F3:** as 4 tocam um dos **3 patches sujos** dele (um com **10** voltas), e a esfera
-  lisa dá `0` de `42`. ⇒ a barra é `inconsistent_clean == 0` — *sobre a população certa, nem mais alta nem mais
-  baixa*. ⭐⭐⭐ **E o G3 — o SOLVER — está feito** (§4-quatuoretquinquagies): energia
-  `Σ A·(|∇u − X/h|² + |∇v − Y/h|²)`, **sem condição de fronteira nenhuma** (é a diferença de espécie contra os
-  quatro achatamentos do F5), com as costuras acopladas por `z_b = R^k z_a + t`. ⭐ O controlo é uma **tira plana
-  montada à mão**, onde a resposta é exacta — e com o salto certo dá **`0,00000` nas duas réguas**. ⛔⛔ **Duas
-  leituras minhas inverteram-se por medição:** (1) o controlo negativo exigia que a costura ABRISSE com salto
-  errado, e ela **não abre** (`0,016`) — o solver paga no gradiente, ⇒ *«as costuras fecharam» não é sinal de saúde*;
-  (2) na esfera a coluna combinada dava `0,33` e eu ia ler «o solver não presta» — separada em **ângulo** e
-  **escala**, o ângulo é **`4,1°`** e o resto era escala. ⭐ **Compromisso real, medido:** fechar as costuras custa
-  o ângulo (`4,1° → 13,0°` de `w=1` a `w=512`), e `40 k → 640 k` rondas não o move ⇒ não é solver lento. Shipa
-  `ROUNDS = 160 000`. ⭐⭐⭐ **E o G4 FECHOU A CADEIA — com um resultado NEGATIVO que vale mais que a fase**
-  (§4-quinetquinquagies): o `τ` de cada arco passa a ser a coordenada do mapa global (⚠️ a **projecção na direcção
-  do arco**, não um eixo — escolher «o eixo que mais anda» é moeda ao ar e deu `62%` de desacordo). ⭐ **A promessa
-  está entregue e medida: os dois lados marcam o arco no MESMO sítio, a `0,1%` do comprimento** — exactamente o que
-  as seis curas locais não conseguiam. ⛔⛔⛔ **E o produto move UM GRAU** (`18° → 17°` na esfera fina; o oráculo faz
-  `6°`). ⇒ **a marcação do arco NUNCA foi o constrangimento**, e a coluna que o dizia estava na tabela desde o
-  início: o `DOMINIO` é **idêntico** ao do controlo, porque o domínio de um patch nasce das **contagens** e não do
-  `τ`. ⚠️ A varredura também corrigiu o `SEAM_WEIGHT`, que eu escolhera por raciocínio (`512` ⇒ produto **pior** que
-  o controlo, `22°`); shipa **`8`** — quem manda é o **ângulo**, não a costura.
-  ⇒ ⭐⭐⭐ **A OBRA SEGUINTE é a que o §5 já tinha medido e nunca foi construída: DAR A CADA SECTOR DE LEQUE O SEU
-  PRÓPRIO DOMÍNIO** (`ph2d_quadfill::param`). O `DOMINIO leque` mede `19°–27°`, **não responde à marcação**, e o
-  arnês 2D puro já diz de onde vem (`|360/n − 90|`) e quanto vale. ⛔⛔⛔ **E ESSA CURA FOI MEDIDA ANTES DE SER
-  CONSTRUÍDA, e NÃO CHEGA** (§4-sexetquinquagies): na fixtura canónica as faces de patches de **quatro lados** — sem
-  leque nenhum, com o domínio a `2,4°` e a marcação a `0,1%` — já medem **`15,2°`**, contra `19,4°` das de leque e
-  `6°` do oráculo. *Um leque perfeito deixaria `15,2°`.* ⚠️ Na esfera **grossa** o leque é de facto o problema
-  (`61,8°` vs `13,0°`), mas ali é o **F1 que refina** — justificar a cura por essa fixtura seria curar o defeito de
-  outra fase. ⇒ ⭐⭐⭐ **A distorção nasce entre o DOMÍNIO e a SUPERFÍCIE:** não é a forma do domínio, não é a
-  marcação, não é o leque — é o achatamento por patch que leva a grade plana de volta à peça. **Mesmo com F3,
-  marcação e domínio perfeitos o preenchimento por patch fica em `15°`.** ⇒ a obra é a **EXTRACÇÃO**: pôr os pontos
-  da grade nas isolinhas inteiras do mapa global (QEx, Ebke 2013 — o *paper*; ⛔ a `libQEx` é GPL), que é o que o
-  G1–G4 preparou. ⚠️ Falta-lhe as translações das costuras serem **inteiras** (hoje reais, resíduo `0,23` de célula). ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
-  nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
-  (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
-  **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch
-  grande ANTES de o traçado poder emitir poucos.** ⚠️ A poda tem **seis** guardas, três delas
-  acrescentadas por medição — sem a 4.ª as fixturas iam a **2 patches** com 6 das 8 singularidades
-  enterradas; e a 6.ª («o F4 ainda resolve») teve uma tentativa errada antes, deduzida de uma paridade
-  que era **coincidência de quatro amostras**.
-  ⭐ **A REPRODUÇÃO MAIS BARATA É UMA ESFERA LISA** (23/08) — sem relevo nenhum ela mede
-  **`18°` de enviesamento contra `6°` do oráculo**, com o aspecto quase igual (`1,26` vs `1,22`):
-  *as células têm as proporções certas e os ângulos errados*, e o defeito é do **NÚCLEO**. Gate
-  vermelho `a_plain_sphere_is_as_square_as_the_oracles`, com a barra do oráculo **na mesma peça**.
-  ⛔ **Sete hipóteses morreram sobre ESCULTURAS** — as duas últimas: a **densidade** (à contagem
-  dele, `4 162` contra `4 658`, ainda `22°` vs `6°`) e o **mapa conforme** (cotangente: `18° → 18°`
-  com **`0/16` recuos** — dois Laplacianos diferentes dão o mesmo número ⇒ *o interior do
-  achatamento não decide o enviesamento*). ⛔ **Meça toda hipótese nova NA ESFERA LISA primeiro.**
-  ⛔⛔ **E dois defeitos NOVOS só aparecem nos casos triviais:** o **toro 64×32** faz a quantização
-  **RECUSAR** nos três níveis (o oráculo dá 5 538 quads a `2°`), e a **esfera 24×36** — grossa, logo
-  o F1 **REFINA** — sai com aspecto `4,38`, enviesamento `52°`, **50 dobras** e densidade
-  **não-monótona** (`d=0,55` dá 823 quads, `d=0,80` dá 643). *A rota em que o F1 refina nunca tinha
-  sido medida.* ⭐ **A canalização FICA e é o ganho durável:**
-  o campo agora **chega** ao F5 (`PatchLayout::face_dir`), que era a primeira coisa que faltava.
+  ⭐⭐⭐ **A JORNADA DE 23/08 FECHOU A CAÇA AO ENVIESAMENTO POR ELIMINAÇÃO MEDIDA** — campo (F2)
+  **ilibado com número** (8 singularidades nossas contra 8 dele, o mínimo de Poincaré–Hopf; ~76% dos
+  nossos cantos são INVENTADOS pelo F3) · **quatro achatamentos medidos, família fechada** (o conforme dá
+  o PIOR: «mais conforme ⇒ mais quadrado» é **FALSO** — LSCM leva o erro conforme a `1,01` e o
+  enviesamento a `28°`) · forma do domínio fechada · **menos patches é a ordem errada** (a poda empata a
+  orelha com o oráculo e colapsa a geometria `18°→38°`; o oráculo usa MAIS leques e sai mais quadrado —
+  o preenchimento tem de aguentar um patch grande ANTES de o traçado emitir poucos) · subdivisão local
+  fechada · ponto fixo fechado (contrai por exactamente ½ por ronda e não endireita nada — *convergir e
+  acertar são coisas diferentes*). ⇒ **A distorção nasce entre o DOMÍNIO e a SUPERFÍCIE**: mesmo com F3,
+  marcação e domínio perfeitos, o preenchimento por patch fica em `15°` (o oráculo faz `6°`) — a mesma
+  diferença de classe, local contra global, que motivou o pivô, um nível abaixo. **A obra seguinte é a
+  EXTRACÇÃO** (QEx, Ebke 2013 — o *paper*; ⛔ a `libQEx` é GPL): pôr os pontos da grade nas isolinhas
+  inteiras do mapa global, que o **G1–G4 da `ph2d-gridmap`** (6ª crate da cadeia, clean-room Bommes 2009
+  + QuadCover 2007) preparou — a marcação já concorda a `0,1%` dos dois lados de cada arco, e o que falta
+  está nomeado e medido: as translações de costura têm de ser **inteiras** (hoje reais, resíduo `0,29` de
+  célula — pede arredondamento **uma-a-uma com re-solve**, o *mixed-integer* do nome, nunca em lote).
+  ⚠️ **Três correções ao que este §5 afirmava:** a leitura `29°/44°` da holonomia saía de uma grandeza
+  **limitada a 45° por construção** que nunca testava o fecho de ciclo (a régua a sério dá **0** patches
+  incombáveis na esfera lisa — a acusação ao F3 caiu) · «singularidade SEM CANTO = DENTRO de um patch»
+  está **refutado** (a oitava está sobre um ARCO — defeito de traçado mais fraco, outra cura) · as duas
+  réguas de valência mediam a população ERRADA (o caminho do rectângulo saía por `continue` antes da
+  escrituração ⇒ balde sempre vazio, mediana `0,0` lida como «perfeito» — *um zero de «não medido» e um
+  de «perfeito» são o mesmo byte*; a cura é `else` + contagens ao lado das medianas).
+  ⚠️ **Nada disto muda o produto:** tudo o que a jornada construiu está **desligado com a tabela da
+  rejeição ao lado** (`Interior::FromBoundary` · `LSCM_MAP`/`REGRADUATE`/`RECTANGLE_MAP`/
+  `PROPORTIONAL_DOMAIN` = `false` · `SQUARE_ROUNDS = 0` · `prune::PRUNE_STEMS = false` · `ph2d-gridmap`
+  sem consumidor no produto) — **a saída do botão `Quad Retopology` é byte-idêntica à de antes**.
+  O mecanismo de cada passo, as tabelas e as recusas medidas: [`PLAN.md`](docs/3D/quad-remesh/PLAN.md)
+  §4-tricies..§4-septemetquinquagies + o [handoff de 23/08](docs/3D/handoffs/HANDOFF_INTEGRACAO_line_sculpt3d_QUADREMESH_2026-08-23.md).
   ⭐⭐ **O ORÁCULO GRAVA AS FASES INTERMÉDIAS** (achado 22/08, `PLAN.md` §4-duotricies): em
   `ph2d-quadbench/ref/<peça>/` estão o **campo** dele (`*_rem.rosy`, uma direção por face) e a **decomposição**
   dele (`*_rem_p0.patch`, o dono de cada face) — as duas fases cujo código é GPL. ⇒ Comparar fase a fase **na

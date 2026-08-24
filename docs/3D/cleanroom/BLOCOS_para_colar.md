@@ -29,6 +29,13 @@ Modo PRÉ (antes de o Implementador abrir):
    §4.2: pseudo-código espelhado, wording de manual, nomes internos,
    tabela verbatim, organização transcrita. Achado → E reescreve;
    verde → ateste no cabeçalho.
+1-bis. ⭐ DECIDA a pergunta que o ledger deixa para você: o
+   "INVENTÁRIO DE EXPOSIÇÃO, fase a fase". A janela E declarou-se
+   queimada; o inventário mostra que o único T2 lido não é algoritmo
+   e é de fase fora desta obra, enquanto a exposição REAL (o laço de
+   arredondamento) é de um alvo T0½ e cobre só a SPEC §5/§5.1.
+   ⛔ A decisão é SUA (§6.2: nunca a janela interessada). Registre-a
+   no ledger, e diga o ESCOPO — não basta "queimada".
    ⚠️ Atenção particular: a espec foi escrita a partir de DOIS papers
    (QEx 2013, MIQ 2009) e o §5.1 foi CORRIGIDO contra o segundo.
    Confira que descreve COMPORTAMENTO, não a escrita deles.
@@ -108,6 +115,24 @@ Entregável: código + gates verdes + handoff normal da casa (que NÃO
 menciona mecanismo interno do alvo — só o link p/ cleanroom/).
 ═══════════════════════════════════════════════════════════════════
 ```
+
+---
+
+## ⚡ Alternativa — o **BLOCO-SOLO** (uma janela do início ao fim)
+
+A skill ganhou um **Modo SOLO** (§3): uma janela **nasce** sob as regras do BLOCO-I, **nunca
+abre o fonte**, delega E e R a **subagentes** (contexto isolado por construção) e implementa
+ela mesma. O bloco está na skill, §10.
+
+⚠️ **A recomendação desta linha é NÃO usá-lo aqui**, e o motivo está na própria skill:
+*«SOLO serve a alvo pequeno/médio (um filtro, um algoritmo); obra grande, de dias, prefere
+janelas separadas»*. **Esta obra é de dias** — a extração são seis fases com aritmética exacta,
+mais o arredondamento, mais a costura.
+
+⭐ **E aqui há uma economia que o SOLO não tem:** a espec **já está escrita e a exposição já
+foi paga**. O SOLO gastaria um subagente-E a refazer o que existe.
+⇒ **Use os blocos 1️⃣ e 2️⃣.** O SOLO fica registado como a rota certa para a *próxima* obra
+pequena deste género.
 
 ---
 

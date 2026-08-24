@@ -143,6 +143,45 @@ Implementador busca-as pelos **URLs** do cabeçalho da espec, não por lá).
 ⛔ **Nada do oráculo entrou no repositório** além de **saídas** (mapas verificados) e do
 verificador escrito por E.
 
+### ⚠️⚠️ INVENTÁRIO DE EXPOSIÇÃO, fase a fase — **uma pergunta para o R decidir**
+
+⛔ **A janela E NÃO se auto-certifica** (§6.2: *«na dúvida, R decide — nunca a própria janela
+interessada»*). Este bloco existe para o **R-pré** poder decidir com o inventário na mão, em
+vez de herdar um «queimada» sem alcance definido.
+
+**O que esta janela de facto teve no contexto, por artefacto:**
+
+| o que li | grau | o que vi |
+|---|---|---|
+| ⛔ **integração + arredondamento** da biblioteca (MPL-2.0) | **T0½** | ⛔ **o LAÇO de arredondamento e a estrutura de dados de opções** — é uma implementação directa da **SPEC §5/§5.1** |
+| extração da biblioteca (MPL-2.0) | T0½ | ⭐ **apenas** os `#include` do topo, o banner de licença e uma busca que não devolveu nada. ⛔ **Nenhuma linha de algoritmo.** |
+| assinaturas públicas e `struct`s de opções dos módulos de extração | T0½ | interface pública (§4.1.13) |
+| tutoriais da biblioteca | T0½ | a **sequência de chamadas** da API pública — não algoritmo |
+| banners de licença de ~10 cabeçalhos | T0½ | só o texto legal |
+| quantização por retalhos (**GPL-3.0**) | ⛔ **T2** | uma `struct` de avaliação + nomes de campo, colhidos ao conferir licença. ⛔ **Nenhum algoritmo**, e pertence à fase **F4**, que **já está construída** e **não faz parte desta obra** |
+| ⭐ os *papers* (QEx 2013, MIQ 2009) | público | **a fonte real da espec** — lícita para **todos** os papéis |
+
+**A pergunta, posta com todas as letras:**
+
+> A parede é do **T2/T3** (o próprio §3 o diz: *«onde um agente só já era permitido sem parede
+> nenhuma: T0/T0½ … A parede é só do T2/T3»*). O único T2 que esta janela leu **não é
+> algoritmo** e pertence a uma fase **fora desta obra**. ⇒ **esta janela está queimada para
+> qual escopo?**
+
+**A leitura desta janela (⛔ não é veredito — é o material para o R):**
+
+| escopo | leitura de E |
+|---|---|
+| ⛔ **SPEC §5/§5.1 — o arredondamento** | **QUEIMADA, e sem dúvida.** Vi o laço equivalente. Escrevê-lo aqui arriscaria convergência de expressão **e** converteria em silêncio a rota do [ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md) (*clean-room dos papers*) na rota **rejeitada** (porte). |
+| ⚠️ **SPEC §2–§6 — a extração** | **em aberto.** O insumo que li foi o *paper* — a mesma fonte que o Implementador usaria. Nenhuma implementação de extração entrou neste contexto. |
+
+⛔⛔ **Enquanto o R não decidir, vale o mais restritivo: esta janela não escreve produto
+nenhum deste módulo.** É a postura que o ledger inteiro sustenta, e afrouxá-la por conta
+própria destruiria o valor probatório dele.
+
+⚠️ **Modo SOLO não resolve isto:** a janela SOLO **nasce** sob as regras do BLOCO-I e delega a
+leitura a subagentes. Esta nasceu como E e leu. *SOLO é para a próxima janela, não para esta.*
+
 ---
 
 ## Papel I — Implementador

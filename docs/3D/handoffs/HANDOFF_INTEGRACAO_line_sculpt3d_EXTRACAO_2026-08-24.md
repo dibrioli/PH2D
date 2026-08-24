@@ -116,10 +116,20 @@ lentes.
 
 ## §8 — ⚠️ Para quem assumir
 
-⛔⛔ **Esta janela está QUEIMADA para implementar este módulo, e não é tecnicalidade.** Ela
-conteve fonte de alvo copyleft (durante a triagem) **e** a implementação MPL-2.0 do próprio
-passo que a espec descreve. ⇒ se ela escrevesse o arredondamento, converteria em silêncio a
-rota escolhida (**clean-room dos papers**) na rota **rejeitada** (porte).
+⛔⛔ **Esta janela está QUEIMADA para implementar, e o ESCOPO disso é uma pergunta para o R.**
+
+Ela conteve a implementação **MPL-2.0** do arredondamento (**SPEC §5/§5.1**) — aí não há
+dúvida: escrevê-lo aqui converteria em silêncio a rota escolhida (*clean-room dos papers*) na
+rota **rejeitada** (porte). ⚠️ Mas o único **T2** que ela leu **não é algoritmo** e pertence a
+uma fase **fora desta obra**, e da **extração** (§2–§6) ela viu apenas *includes* e assinaturas.
+
+⇒ ⭐ **O ledger traz o `INVENTÁRIO DE EXPOSIÇÃO, fase a fase`, e o bloco do R-pré tem um passo
+`1-bis` que manda decidi-lo.** ⛔ *A janela interessada não se auto-certifica* (§6.2) —
+até haver veredito, vale o mais restritivo: **ela não escreve produto nenhum deste módulo.**
+
+⚠️ **O Modo SOLO da skill não se aplica a esta janela** — a janela SOLO **nasce** limpa e
+delega a leitura a subagentes. Esta nasceu como E e leu. Para *esta* obra, os blocos separados
+continuam a recomendação (obra de dias), e a espec **já está escrita**.
 
 ⭐ **A janela que implementa lê:** a **espec** e os **papers** do mapa de leitura dela · os
 **fixtures** · o código do PH2D. ⛔ **Nunca** `~/Referencias/`, nunca `LEDGER_*`, nunca

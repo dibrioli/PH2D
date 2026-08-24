@@ -409,6 +409,8 @@ Se não for, ela fica com **dois**, e o segundo vem primeiro.
 | ⛔ **Não portar a implementação de referência do emparelhamento (Blossom)** | ela **não é livre** — redistribuição proibida, licença comercial. É **T4**: reimplementar do *paper* é a única rota | §7.1 |
 | ⛔ **Não concluir «a extração é frágil»** | todas as quedas medidas estão **confundidas com um campo em que não se pode confiar** (o meu deu `5724` de curl onde o deles funciona) | §5-bis.3 |
 | ⛔ **Não usar a leitura de `curl` de uma peça sem restrições como prova** | balde vazio lê-se como perfeito (`1,47e-15`) | §5-bis.4 |
+| ⛔ **Não usar o Modo SOLO nesta obra** | a própria skill o limita a *«alvo pequeno/médio»* e esta obra é de **dias**; e a espec **já está escrita** — o SOLO gastaria um subagente-E a refazer o que existe | SKILL §3, Modo SOLO |
+| ⛔ **Não acrescentar conteúdo ao handoff da corrente** | o molde do §10 proíbe-o: *o que E quiser dizer a mais vai na espec*. Um passo extra que eu tinha inventado no bloco do R foi **retirado** — ele vive no **ledger**, que é onde o R lê | §10 da skill |
 | ⛔⛔ **Não anunciar um resultado medido numa peça DELES como se fosse do nosso corpus** | a jarra deu `3,0°` e o nosso corpus deu `9–12°`; a conclusão inverteu-se | §5-bis.3-ter |
 | ⛔ **Não dizer que a extração é «lenta na nossa escala»** | 8–10 s em peças de 27 360 triângulos; o defeito é **robustez** (3 de 7 falham), não velocidade | §5-bis.3-ter |
 | ⛔⛔ **Não medir a cadeia sobre uma triangulação por LEQUE de quads** | ela injecta viés diagonal e custa **o dobro** do enviesamento (`10–12°` contra `5,1–5,5°`) — remalhe isotropicamente **primeiro** | §5-bis.3-quater |

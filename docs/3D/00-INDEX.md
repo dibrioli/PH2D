@@ -161,8 +161,8 @@ degrau da escada de licenças cada fase está, e o veredito de 2026-08-24 foi **
 - [`cleanroom/ACHADO_proveniencia_por_nome_interno.md`](cleanroom/ACHADO_proveniencia_por_nome_interno.md)
   — ⛔ o achado do sweep: ~460 notas do repo **inteiro** citam fonte interno de alvo restrito,
   25 delas com transcrição. **Zero fonte de alvo na árvore.**
-- 👉 **[`cleanroom/BLOCOS_para_colar.md`](cleanroom/BLOCOS_para_colar.md)** — **o que colar e em
-  que ordem** para pôr a obra a andar. O próximo passo é a **auditoria R-pré**.
+- 👉 **[`cleanroom/NEXT_R-PRE.md`](cleanroom/NEXT_R-PRE.md)** — **o bloco a colar a seguir**
+  (janela nova, não a que escreveu a espec). A corrente do §10 entrega o resto.
 - ⭐⭐⭐ [`cleanroom/SPEC_extracao_de_malha_quad.md`](cleanroom/SPEC_extracao_de_malha_quad.md)
   — **a espec funcional da obra seguinte**: sanear · nós · saídas · traçar · células · fundir,
   com os 11 gates e as barras derivadas. ⏳ *Aguarda a auditoria R-pré antes de a janela I abrir.*

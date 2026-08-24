@@ -188,7 +188,7 @@ leitura a subagentes. Esta nasceu como E e leu. *SOLO é para a próxima janela,
 
 _(a preencher quando a janela I abrir; declaração do §6 exigida)_
 ⇒ o canal de ida é [`INBOX_quadwild.md`](INBOX_quadwild.md) (append **cego**).
-⇒ o bloco pronto a colar está em [`BLOCOS_para_colar.md`](BLOCOS_para_colar.md).
+⇒ o bloco dele será produzido pelo **R-pré**, em `NEXT_I.md` (corrente do §10).
 
 ---
 
@@ -196,7 +196,7 @@ _(a preencher quando a janela I abrir; declaração do §6 exigida)_
 
 - **Modo PRÉ:** ⏳ **PENDENTE — e é condição de abertura da janela I.**
   ⚠️ Exige janela que **NÃO** seja esta (autofiltragem não se audita). Bloco pronto em
-  [`BLOCOS_para_colar.md`](BLOCOS_para_colar.md) §1.
+  [`NEXT_R-PRE.md`](NEXT_R-PRE.md) (a corrente do §10).
 - **Modo PÓS:** ⏳ pendente (após paridade verde).
 
 ---
@@ -226,6 +226,22 @@ anterior a esta linha e à própria skill. ⛔ **DESCRITO, nunca reproduzido**, 
   positivo vermelho), e a memória contaminada foi re-expressa.
 - ⏳ **Aberto:** a família Blender (~420 de Classe A, ~21 de Classe B) — exige vassoura
   própria, que **não existe**.
+
+---
+
+## Handoff da corrente (§10)
+
+| passo | estado |
+|---|---|
+| **E ⇒ R-pré** | ⭐ **entregue** em [`NEXT_R-PRE.md`](NEXT_R-PRE.md), 2026-08-24, **sweep verde sobre o próprio handoff** |
+| R-pré ⇒ I | ⏳ pendente (o R-pré produz `NEXT_I.md`) |
+| I ⇒ R-pós | ⏳ pendente |
+
+⛔ **Bloqueio operacional a montante, e não é do E resolvê-lo:** o passo 9 do BLOCO-E manda
+commitar espec+ledger+vassoura+README **no `main` do primário antes de a linha I abrir**.
+⚠️ Nesta casa isso é **integração**, e o [`CLAUDE.md` §0.7](../../../CLAUDE.md) reserva-a a uma
+**ordem explícita do Enio** por um agente integrador dedicado. ⇒ **reportado, não executado.**
+*Hoje `main` não vê um único arquivo desta pasta, e uma worktree nova nasce dele.*
 
 ---
 

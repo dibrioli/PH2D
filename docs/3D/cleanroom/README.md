@@ -6,9 +6,12 @@ Decisão: [`ADR-0164`](../../architecture/decisions/0164-quad-extraction-is-clea
 
 ## ⭐ O que colar, e em que ordem
 
-👉 **[`BLOCOS_para_colar.md`](BLOCOS_para_colar.md)** — os blocos dos três papéis, já
-preenchidos. **O próximo passo é o §1: a auditoria R-pré**, e ela é condição de abertura da
-janela que implementa.
+👉 **[`NEXT_R-PRE.md`](NEXT_R-PRE.md)** — o bloco do **próximo papel**, já preenchido pelo E.
+Abra **janela nova** (não a que escreveu a espec) e cole-o.
+
+⚠️ **A corrente do §10:** cada papel entrega o bloco do seguinte, salvo em `NEXT_<papel>.md`.
+O R-pré produzirá o `NEXT_I.md`. ⛔ *Um handoff nunca acrescenta conteúdo além dos campos do
+molde* — o resto vive na espec e no ledger.
 
 ## Os arquivos
 
@@ -18,6 +21,7 @@ janela que implementa.
 | ⭐ [`fixtures/`](fixtures/README.md) | **todos** — mapas de referência verificados + o verificador |
 | [`TRIAGEM_quad_remesh.md`](TRIAGEM_quad_remesh.md) | quem decide — a escada de licenças, a patente, e **todas as medições** |
 | [`ACHADO_proveniencia_por_nome_interno.md`](ACHADO_proveniencia_por_nome_interno.md) | quem cura o repo |
+| ⭐ [`NEXT_R-PRE.md`](NEXT_R-PRE.md) | o Enio — é o que se cola a seguir |
 | [`INBOX_quadwild.md`](INBOX_quadwild.md) | o Implementador **escreve** (append cego), nunca lê |
 | ⛔ `LEDGER_quadwild.md` · `VASSOURA_quadwild.txt` | **E e R apenas** — carregam rastros do alvo de propósito |
 

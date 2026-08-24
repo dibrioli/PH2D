@@ -116,6 +116,28 @@ impl NodeOp for MotionSpring {
 }
 
 /// One spring step (or a seed) as a pure function — the whole node.
+/// **UM NÓ PARA A POSIÇÃO INTEIRA** (doc 89 folha 03 — MOPs *Spring Modifier* faz T/R/S de
+/// uma vez; a célula: *"1 canal por nó ⇒ **4 nós** para molejar um transform"*).
+///
+/// ⚠️ **A célula media a composição e ela FUNCIONA** — encadear quatro molas é legal, cada uma
+/// tem o `pre` dela e o clobber de `spring_value` não as cruza. O que entra aqui é o caso
+/// COMUM, não a generalização: uma mola de posição precisa dos dois eixos, e dois nós para
+/// *"esta coisa persegue aquela"* é o dobro do grafo para um gesto só.
+///
+/// ⚠️ **É o precedente do `Position XY` do `motion.wiggle`**, e a mesma palavra — um artista
+/// que aprendeu o canal num nó não o re-aprende no outro.
+///
+/// ⚠️ **O estado é APPEND-ONLY:** o eixo Y guarda-se em `spring_value_y`/`spring_vel_y`,
+/// colunas que os quatro canais escalares **nunca escrevem**. Um grafo já autorado continua a
+/// ler e escrever exactamente as colunas que lia, e o `pairing` continua a perguntar pelo
+/// `spring_value` — que existe nos cinco casos.
+///
+/// ⛔ **E NÃO é o T/R/S inteiro da referência**: rotação e tamanho têm unidades próprias e
+/// quereriam a sua própria tensão (uma mola que persegue graus com a rigidez de metros não é
+/// a mesma mola), então juntá-los pediria um jogo de knobs por canal — que é o nó de quatro
+/// cabeças que a cerca do `motion.scale` (§4-C3) já ensinou a não construir.
+const CHANNEL_POSITION_XY: i32 = 4;
+
 fn step(
     input: &Stream,
     state: &Stream,
@@ -124,6 +146,72 @@ fn step(
     friction: f32,
     playhead: f32,
 ) -> Stream {
+    if channel == CHANNEL_POSITION_XY {
+        // Os dois eixos, cada um com o seu estado. O X escreve as colunas de sempre.
+        let x = solve(
+            input,
+            state,
+            0,
+            "spring_value",
+            "spring_vel",
+            tension,
+            friction,
+            playhead,
+        );
+        let y = solve(
+            input,
+            state,
+            1,
+            "spring_value_y",
+            "spring_vel_y",
+            tension,
+            friction,
+            playhead,
+        );
+        let mut out = channel_set(input, 0, &x.0);
+        out = channel_set(&out, 1, &y.0);
+        out.set("spring_value", Column::Scalar(x.1));
+        out.set("spring_vel", Column::Scalar(x.2));
+        out.set("spring_value_y", Column::Scalar(y.1));
+        out.set("spring_vel_y", Column::Scalar(y.2));
+        out.set("sim_t", Column::Scalar(vec![playhead; input.count()]));
+        return out;
+    }
+    let (blended, value, vel) = solve(
+        input,
+        state,
+        channel,
+        "spring_value",
+        "spring_vel",
+        tension,
+        friction,
+        playhead,
+    );
+    let mut out = channel_set(input, channel, &blended);
+    out.set("spring_value", Column::Scalar(value));
+    out.set("spring_vel", Column::Scalar(vel));
+    out.set("sim_t", Column::Scalar(vec![playhead; input.count()]));
+    out
+}
+
+/// **Uma mola sobre UM canal escalar** — devolve `(saída misturada, valor, velocidade)`.
+///
+/// ⚠️ Os nomes das colunas de estado são ARGUMENTOS, e é isso que deixa o `Position XY` correr
+/// a mesma lei duas vezes sem uma segunda cópia dela.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "cada argumento é um param do MANIFEST ou o nome de uma coluna de estado; um struct só para contar menos poria uma segunda declaração da mesma lista ao lado do manifesto"
+)]
+fn solve(
+    input: &Stream,
+    state: &Stream,
+    channel: i32,
+    value_col: &str,
+    vel_col: &str,
+    tension: f32,
+    friction: f32,
+    playhead: f32,
+) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
     let n = input.count();
     // Pure per-instance map → parallel above the threshold
     // (bit-identical, no reduction). GPU/M5 Fase 0.
@@ -145,7 +233,7 @@ fn step(
             v.resize(sn, 0.0);
             v
         };
-        let (s_value, s_vel) = (read("spring_value"), read("spring_vel"));
+        let (s_value, s_vel) = (read(value_col), read(vel_col));
         let t_prev = match state.get("sim_t") {
             Some(Column::Scalar(v)) => v.first().copied().unwrap_or(playhead),
             _ => playhead,
@@ -191,11 +279,7 @@ fn step(
             targets[i] + (value[i] - targets[i]) * fs.max(0.0)
         }
     });
-    let mut out = channel_set(input, channel, &blended);
-    out.set("spring_value", Column::Scalar(value));
-    out.set("spring_vel", Column::Scalar(vel));
-    out.set("sim_t", Column::Scalar(vec![playhead; n]));
-    out
+    (blended, value, vel)
 }
 
 /// For each of the `n` input elements, the row of `state` holding its previous
@@ -253,10 +337,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: "channel",
         label: "Channel",
         min: 0.0,
-        max: 3.0,
+        max: 4.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["X", "Y", "Rotation", "Size"],
+            // ⚠️ **Apendado no FIM** — ver [`CHANNEL_POSITION_XY`]: os quatro índices que já
+            // existiam ficam onde estavam, e toda cena guardada continua a nomear o mesmo canal.
+            labels: &["X", "Y", "Rotation", "Size", "Position XY"],
         },
     },
     ParamUiHint {
@@ -348,260 +434,9 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[
 ];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::cook::{Cook, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+#[path = "lib_tests.rs"]
+mod tests;
 
-    // A target that STEPS: y = 0 before t = 0.5, y = 2 after. The spring must
-    // lag it, overshoot it, and settle on it.
-    static SRC_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("motion.spring.test.src"),
-        name: "motion.spring.test.src",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Temporal,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Src;
-    impl NodeOp for Src {
-        fn manifest(&self) -> &'static NodeManifest {
-            &SRC_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            let y = if ctx.playhead() < 0.5 { 0.0 } else { 2.0 };
-            ctx.emit(Stream::new(1).with("P", Column::Vec2(vec![[0.0, y]])));
-        }
-    }
-    struct Ops;
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == SRC_MAN.id => Some(&Src),
-                t if t == MANIFEST.id => Some(&MotionSpring),
-                _ => None,
-            }
-        }
-    }
-
-    /// src → spring.in, with the pre self-loop the editor template creates.
-    fn spring_graph(params: &[(&str, f32)]) -> (Graph, NodeId) {
-        let mut g = Graph::new();
-        let src = g.add_node("motion.spring.test.src");
-        let sp = g.add_node("motion.spring");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (sp, 0),
-            delayed: false,
-        })
-        .unwrap();
-        g.connect(Edge {
-            from: (sp, 0),
-            to: (sp, 1),
-            delayed: true,
-        })
-        .unwrap();
-        for (name, v) in params {
-            g.set_param(sp, *name, *v);
-        }
-        (g, sp)
-    }
-
-    /// Run `ticks` fixed steps at 60 Hz, returning the emitted Y per tick.
-    fn run(params: &[(&str, f32)], ticks: usize) -> Vec<f32> {
-        let (g, sp) = spring_graph(params);
-        let mut cook = Cook::new();
-        let mut ys = Vec::new();
-        for k in 0..ticks {
-            let ph = k as f64 / 60.0;
-            let out = cook.cook(&g, &Ops, sp, ph).unwrap();
-            match out[0].as_stream().get("P").unwrap() {
-                Column::Vec2(v) => ys.push(v[0][1]),
-                _ => panic!("P"),
-            }
-            cook.advance_tick(&g, &Ops, ph).unwrap();
-        }
-        ys
-    }
-
-    #[test]
-    fn seeds_at_the_target_then_lags_overshoots_and_settles() {
-        // 3 seconds at 60 Hz; the step lands at t = 0.5 (tick 30).
-        let ys = run(&[("tension", 20.0), ("friction", 3.0)], 180);
-        assert_eq!(ys[0], 0.0, "seeded at the target, no snap");
-        // Right after the step the spring LAGS (well below the new target).
-        assert!(ys[32] < 1.0, "lags the step, got {}", ys[32]);
-        // It then OVERSHOOTS (crosses above 2) — the follow-through that
-        // distinguishes a spring from a lerp; a lerp never crosses its target.
-        let peak = ys[30..].iter().cloned().fold(f32::MIN, f32::max);
-        assert!(peak > 2.05, "overshoots the target, peak {peak}");
-        // And finally SETTLES on it.
-        let last = *ys.last().unwrap();
-        assert!(
-            (last - 2.0).abs() < 0.05,
-            "settles at the target, got {last}"
-        );
-    }
-
-    #[test]
-    fn without_the_state_loop_it_follows_the_target_exactly() {
-        // No pre self-loop wired → seeds every tick → output == target. The
-        // reference's "only acts on targets that change" footnote, inverted.
-        let mut g = Graph::new();
-        let src = g.add_node("motion.spring.test.src");
-        let sp = g.add_node("motion.spring");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (sp, 0),
-            delayed: false,
-        })
-        .unwrap();
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, sp, 0.9).unwrap();
-        match out[0].as_stream().get("P").unwrap() {
-            Column::Vec2(v) => assert_eq!(v[0][1], 2.0, "seeds at the live target"),
-            _ => panic!("P"),
-        }
-    }
-
-    #[test]
-    fn stiff_spring_stays_stable_via_sub_steps() {
-        // tension 60 (the UI max) would explode a single 1/60 Euler step
-        // (dt²·k = 0.0167²·60 ≈ 0.017 is fine, but MAX_DT-sized steps are not:
-        // 0.1²·60 = 0.6 >> 0.05). Drive with dt = MAX_DT ticks: bounded, settles.
-        let (g, sp) = spring_graph(&[("tension", 60.0), ("friction", 2.0)]);
-        let mut cook = Cook::new();
-        let mut last = 0.0f32;
-        for k in 0..60 {
-            let ph = k as f64 * 0.1;
-            let out = cook.cook(&g, &Ops, sp, ph).unwrap();
-            match out[0].as_stream().get("P").unwrap() {
-                Column::Vec2(v) => last = v[0][1],
-                _ => panic!("P"),
-            }
-            assert!(last.is_finite() && last.abs() < 10.0, "bounded at tick {k}");
-            cook.advance_tick(&g, &Ops, ph).unwrap();
-        }
-        assert!((last - 2.0).abs() < 0.1, "settled, got {last}");
-    }
-
-    #[test]
-    fn replay_is_deterministic() {
-        let a = run(&[("tension", 8.0)], 90);
-        let b = run(&[("tension", 8.0)], 90);
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn size_channel_springs_around_unit_identity() {
-        // A bare P-only stream on the Size channel: the target is the unit
-        // identity → the spring holds size 1.0 (never 0 — sprites don't vanish).
-        let (g, sp) = spring_graph(&[("channel", 3.0)]);
-        let mut cook = Cook::new();
-        for k in 0..3 {
-            let ph = k as f64 / 60.0;
-            let out = cook.cook(&g, &Ops, sp, ph).unwrap();
-            match out[0].as_stream().get("size").unwrap() {
-                Column::Vec2(v) => assert_eq!(v[0], [1.0, 1.0], "unit identity at tick {k}"),
-                _ => panic!("size"),
-            }
-            cook.advance_tick(&g, &Ops, ph).unwrap();
-        }
-    }
-
-    #[test]
-    fn falloff_zero_makes_the_spring_transparent() {
-        // Poke the pure step fn directly: with falloff 0 the OUTPUT is the raw
-        // target even while the internal state lags elsewhere.
-        let input = Stream::new(1)
-            .with("P", Column::Vec2(vec![[0.0, 5.0]]))
-            .with("falloff", Column::Scalar(vec![0.0]));
-        let state = Stream::new(1)
-            .with("P", Column::Vec2(vec![[0.0, 0.0]]))
-            .with("spring_value", Column::Scalar(vec![0.0]))
-            .with("spring_vel", Column::Scalar(vec![0.0]))
-            .with("sim_t", Column::Scalar(vec![0.0]));
-        let out = step(&input, &state, 1, 8.0, 1.5, 1.0 / 60.0);
-        match out.get("P").unwrap() {
-            Column::Vec2(v) => assert_eq!(v[0][1], 5.0, "falloff 0: raw target"),
-            _ => panic!("P"),
-        }
-    }
-
-    /// A **pinned** element (`motion.pin_constraint`'s `inv_mass = 0`) tracks its
-    /// target rigidly: no lag, no overshoot. Its free neighbour, same spring,
-    /// still lags behind. FALSIFIED if the spring ignored the pin weight (the
-    /// pinned element would lag with the other one).
-    #[test]
-    fn a_pinned_element_tracks_its_target_rigidly() {
-        let input = Stream::new(2)
-            .with("P", Column::Vec2(vec![[0.0, 5.0], [0.0, 5.0]]))
-            .with("inv_mass", Column::Scalar(vec![0.0, 1.0]));
-        let state = Stream::new(2)
-            .with("P", Column::Vec2(vec![[0.0, 0.0], [0.0, 0.0]]))
-            .with("spring_value", Column::Scalar(vec![0.0, 0.0]))
-            .with("spring_vel", Column::Scalar(vec![0.0, 0.0]))
-            .with("sim_t", Column::Scalar(vec![0.0, 0.0]));
-        let out = step(&input, &state, 1, 8.0, 1.5, 1.0 / 60.0);
-        match out.get("P").unwrap() {
-            Column::Vec2(v) => {
-                assert_eq!(v[0][1], 5.0, "pinned: exactly on target, no lag");
-                assert!(v[1][1] < 5.0, "free: still lagging behind ({})", v[1][1]);
-            }
-            _ => panic!("P"),
-        }
-    }
-
-    /// **SONDA (folha 03, linha 65)** — *uma massa por elemento já é exprimível?*
-    ///
-    /// A célula diz *"POR ELEMENTO: gap real"*. A cadeia que a testa são DUAS
-    /// molas em série com `falloff` COMPLEMENTAR: cada nó tem os seus próprios
-    /// `tension`/`friction`, e o falloff 0 faz a mola ser transparente ali.
-    #[test]
-    #[ignore = "sonda"]
-    fn measure_whether_two_springs_give_two_effective_masses() {
-        const N: usize = 2;
-        let mut sa = Stream::new(N);
-        let mut sb = Stream::new(N);
-        let mut ctrl = Stream::new(N);
-        println!("alvo salta 0 -> 5 no tique 5; A: tension 30 | B: tension 3");
-        println!("tique |  elem0 (so' A)  |  elem1 (so' B)  |  controle (uma mola so')");
-        for k in 0..40 {
-            let t = k as f32 / 60.0;
-            let target = if k < 5 { 0.0 } else { 5.0 };
-            let base = Stream::new(N).with("P", Column::Vec2(vec![[0.0, target]; N]));
-
-            let a_in = base.clone().with("falloff", Column::Scalar(vec![1.0, 0.0]));
-            let a = step(&a_in, &sa, 1, 30.0, 3.0, t);
-            let b_in = a.clone().with("falloff", Column::Scalar(vec![0.0, 1.0]));
-            let b = step(&b_in, &sb, 1, 3.0, 1.0, t);
-            let c = step(&base, &ctrl, 1, 30.0, 3.0, t);
-
-            if k % 5 == 0 || k == 39 {
-                let (Some(Column::Vec2(v)), Some(Column::Vec2(cv))) = (b.get("P"), c.get("P"))
-                else {
-                    panic!("P")
-                };
-                println!(
-                    "{k:5} | {:14.4} | {:14.4} | {:10.4}",
-                    v[0][1], v[1][1], cv[0][1]
-                );
-            }
-            sa = a;
-            sb = b;
-            ctrl = c;
-        }
-    }
-
-    #[test]
-    fn registers_and_resolves() {
-        let mut reg = NodeRegistry::new();
-        register(&mut reg).unwrap();
-        assert!(reg.resolve(MANIFEST.id).is_some());
-    }
-}
+#[cfg(test)]
+#[path = "xy_tests.rs"]
+mod xy_tests;

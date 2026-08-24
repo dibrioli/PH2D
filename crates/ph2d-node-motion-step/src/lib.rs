@@ -170,6 +170,19 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         // TD's *Reset Value*: where the staircase restarts. **0 is the neutral**
         // point — with the port unwired it is never read at all.
+        // **A ESCADA PUBLICADA** — ver [`Ladder`]. `1, 0, Up` ⇒ a coluna `count` de sempre.
+        ParamSpec {
+            name: "increment",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "limit_min",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "direction",
+            default: 0.0,
+        },
         ParamSpec {
             name: "reset_to",
             default: 0.0,
@@ -205,6 +218,8 @@ struct Params {
     count_max: i64,
     mode: LimitMode,
     reset_to: f32,
+    /// **A escada publicada** — ver [`Ladder`].
+    ladder: Ladder,
 }
 
 /// The monotonic tick after this frame: +1 only on the pulse's rising edge, and
@@ -240,6 +255,55 @@ fn displayed(tick: i64, n: i64, mode: LimitMode) -> i64 {
     }
 }
 
+/// **A ESCADA QUE SAI DAQUI** (doc 89 folha 07 — TD *Count CHOP*: `Increment`, `Limit Min`, e
+/// a segunda entrada de *count-down*).
+///
+/// ⚠️ **As duas células desta folha eram a MESMA:** o `step` deste nó escala o
+/// **DESLOCAMENTO**, e a coluna `count` publicada — a que um `value.attribute("count")` lê —
+/// andava sempre de `1` em `1`, sempre de `0` para cima. Um `step` negativo descia a peça e
+/// **subia o índice**, então quem consumia o índice (`value.attribute → value.switch`) não
+/// descia com ela. *Duas coisas que descrevem o mesmo facto, a discordar.*
+///
+/// ⇒ `count = limit_min + increment · d`, com `d` a contagem dobrada de sempre — e para baixo
+/// `d` é espelhada dentro do próprio ciclo (`n − 1 − d`), não um tique a decrescer: espelhar
+/// mantém as três leis de limite (`Wrap`/`Clamp`/`Zigzag`) a valer sem uma segunda escada.
+///
+/// ⚠️ **E o DESLOCAMENTO passa a ler a mesma escada.** Deixá-lo em `d` cru faria o nó mover a
+/// peça por um número e publicar outro — que é o defeito que esta wave veio curar, só que do
+/// outro lado.
+///
+/// ⚠️ **Os três no default ⇒ a coluna de sempre, por ESTRUTURA**: o ramo literal existe para o
+/// caso de `0,0 + 1,0 · d` e `d` diferirem num zero negativo, e para não pagar a conta em todo
+/// grafo que nunca pediu nada.
+#[derive(Clone, Copy)]
+struct Ladder {
+    increment: f32,
+    min: f32,
+    down: bool,
+}
+
+impl Ladder {
+    /// A escada de sempre? — ver [`Ladder`].
+    fn is_plain(self) -> bool {
+        self.increment == 1.0 && self.min == 0.0 && !self.down
+    }
+
+    /// O valor publicado para a contagem dobrada `d`, num ciclo de `n` degraus.
+    fn at(self, d: i64, n: i64) -> f32 {
+        if self.is_plain() {
+            #[expect(clippy::cast_precision_loss, reason = "uma contagem, ≤ 2^24")]
+            let v = d as f32;
+            return v;
+        }
+        // ⚠️ O espelho é DENTRO do ciclo: `n − 1 − d` percorre os mesmos degraus ao contrário,
+        // seja qual for a lei de limite que os produziu.
+        let k = if self.down { (n.max(1) - 1) - d } else { d };
+        #[expect(clippy::cast_precision_loss, reason = "uma contagem, ≤ 2^24")]
+        let k = k as f32;
+        self.min + self.increment * k
+    }
+}
+
 fn step(input: &Stream, pulse: &Stream, state: &Stream, reset: &Stream, p: &Params) -> Stream {
     let n = input.count();
     // As portas do MESMO tique: a escada `0/1/n` (um batimento global alcança
@@ -272,7 +336,10 @@ fn step(input: &Stream, pulse: &Stream, state: &Stream, reset: &Stream, p: &Para
         let this_pulse = beat_at(&pulses, i);
         pulse_out.push(this_pulse);
         let t = advance_tick(this_pulse, pp, pt, beat_at(&resets, i), p.reset_to);
-        let disp = displayed(t as i64, p.count_max, p.mode) as f32;
+        // A escada publicada — ver [`Ladder`]. E o deslocamento lê a MESMA.
+        let disp = p
+            .ladder
+            .at(displayed(t as i64, p.count_max, p.mode), p.count_max);
         tick.push(t);
         count.push(disp);
         // The displacement rides the falloff mask like every behaviour; applied to
@@ -297,6 +364,11 @@ impl NodeOp for MotionStep {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let p = Params {
+            ladder: Ladder {
+                increment: ctx.param("increment"),
+                min: ctx.param("limit_min"),
+                down: ctx.param("direction").round() as i32 == 1,
+            },
             channel: ctx.param("channel").round() as i32,
             step: ctx.param("step"),
             count_max: (ctx.param("count_max").round() as i64).max(1),
@@ -374,6 +446,37 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: &["Wrap", "Clamp", "Zigzag"],
         },
     },
+    // **A ESCADA PUBLICADA** (doc 89 folha 07 — TD *Count CHOP*) — ver [`Ladder`].
+    //
+    // ⚠️ O `increment` chega ao NEGATIVO pelo curso, e de propósito: contar de `2` em `2` para
+    // trás é uma escada legítima, e ela não é a mesma coisa que `Direction = Down` (aquela
+    // percorre os mesmos degraus ao contrário DENTRO do ciclo; esta muda o tamanho do degrau).
+    ParamUiHint {
+        param: "increment",
+        label: "Increment",
+        min: -8.0,
+        max: 8.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "limit_min",
+        label: "Limit Min",
+        min: -32.0,
+        max: 32.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "direction",
+        label: "Direction",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Up", "Down"],
+        },
+    },
     ParamUiHint {
         param: "reset_to",
         label: "Reset To",
@@ -423,3 +526,108 @@ static PARAM_CHANNEL_RANGE: &[ParamChannelRange] = &[ParamChannelRange {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod ladder_tests {
+    //! Os gates da [`super::Ladder`] — **a escada publicada** (doc 89 folha 07, as duas
+    //! últimas células, que eram a mesma).
+    use super::{Ladder, LimitMode, displayed};
+
+    fn plain() -> Ladder {
+        Ladder {
+            increment: 1.0,
+            min: 0.0,
+            down: false,
+        }
+    }
+
+    /// ⭐ **O default é a coluna de sempre, AO BIT** — o caminho por que passa todo grafo
+    /// autorado.
+    #[test]
+    fn the_plain_ladder_is_the_count_that_shipped_bit_for_bit() {
+        let l = plain();
+        assert!(l.is_plain());
+        for n in [1_i64, 4, 8, 33] {
+            for d in 0..n {
+                #[expect(clippy::cast_precision_loss, reason = "uma contagem pequena")]
+                let want = d as f32;
+                assert_eq!(
+                    l.at(d, n).to_bits(),
+                    want.to_bits(),
+                    "n={n}, d={d}: a escada plana tem de devolver o proprio degrau"
+                );
+            }
+        }
+    }
+
+    /// ⭐ **`Increment` muda o TAMANHO do degrau, e `Limit Min` onde ele começa.**
+    #[test]
+    fn the_increment_sizes_the_step_and_the_minimum_places_it() {
+        let l = Ladder {
+            increment: 5.0,
+            min: 100.0,
+            down: false,
+        };
+        assert!(!l.is_plain());
+        assert!((l.at(0, 8) - 100.0).abs() < 1e-6, "comeca no minimo");
+        assert!((l.at(1, 8) - 105.0).abs() < 1e-6, "um degrau de 5");
+        assert!((l.at(3, 8) - 115.0).abs() < 1e-6, "tres degraus");
+    }
+
+    /// ⭐⭐ **`Down` percorre os MESMOS degraus ao contrário, dentro do ciclo** — e é isso que
+    /// a distingue de um `increment` negativo (que muda o tamanho do degrau).
+    #[test]
+    fn down_walks_the_same_rungs_backwards_inside_the_cycle() {
+        let n = 6;
+        let up = plain();
+        let dn = Ladder {
+            increment: 1.0,
+            min: 0.0,
+            down: true,
+        };
+        // O conjunto dos valores é o MESMO; só a ordem inverte.
+        let a: Vec<f32> = (0..n).map(|d| up.at(d, n)).collect();
+        let b: Vec<f32> = (0..n).map(|d| dn.at(d, n)).collect();
+        let mut b_sorted = b.clone();
+        b_sorted.sort_by(f32::total_cmp);
+        assert_eq!(a, b_sorted, "os mesmos degraus");
+        assert!(b[0] > b[b.len() - 1], "e ao contrario: {b:?}");
+        assert!((b[0] - 5.0).abs() < 1e-6, "comeca no topo do ciclo");
+        assert!(b[b.len() - 1].abs() < 1e-6, "e acaba no fundo");
+    }
+
+    /// ⚠️ **As TRÊS leis de limite continuam a valer sob `Down`** — espelhar dentro do ciclo é
+    /// o que as preserva; um tique a decrescer teria pedido uma segunda escada por lei.
+    #[test]
+    fn every_limit_mode_survives_the_reversal() {
+        let n = 5;
+        let dn = Ladder {
+            increment: 1.0,
+            min: 0.0,
+            down: true,
+        };
+        for mode in [LimitMode::Wrap, LimitMode::Clamp, LimitMode::Zigzag] {
+            let seen: Vec<f32> = (0..12).map(|t| dn.at(displayed(t, n, mode), n)).collect();
+            for (k, v) in seen.iter().enumerate() {
+                assert!(
+                    (0.0..=4.0).contains(v),
+                    "modo {m} no tique {k} saiu do ciclo: {v}",
+                    m = mode as i32
+                );
+            }
+        }
+    }
+
+    /// ⚠️ **Um ciclo de UM degrau não anda para trás de menos** — `n − 1 − d` com `n = 1` é
+    /// `−d`, e a contagem dobrada ali é sempre `0`.
+    #[test]
+    fn a_single_rung_cycle_does_not_walk_below_itself() {
+        let dn = Ladder {
+            increment: 1.0,
+            min: 0.0,
+            down: true,
+        };
+        assert!(dn.at(displayed(7, 1, LimitMode::Wrap), 1).abs() < 1e-6);
+        assert!(dn.at(0, 0).abs() < 1e-6, "e nem com um ciclo de zero");
+    }
+}

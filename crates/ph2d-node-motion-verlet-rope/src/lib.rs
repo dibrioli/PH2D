@@ -42,6 +42,7 @@
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 
 mod params_ui;
+mod rest;
 use params_ui::{PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
@@ -51,6 +52,7 @@ use ph2d_nodegraph::node::{
     param_as_count,
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+use rest::{seed, seg_rest_at};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `anchor_*` inputs — the per-instance scalar field on the
@@ -178,6 +180,19 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         // A RIGIDEZ À FLEXÃO (Vellum *Bend Stiffness*) — **0 = off**, o default,
         // e o caminho de hoje é pulado por completo, não multiplicado por zero.
+        // **O PERFIL de repouso** — ver [`rest::Profile`]. `1, 1` ⇒ a corda uniforme.
+        ParamSpec {
+            name: "rest_start",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "rest_end",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "rest_profile",
+            default: 0.0,
+        },
         ParamSpec {
             name: "bend",
             default: 0.0,
@@ -314,6 +329,9 @@ fn accel_col(s: &Stream, n: usize) -> Vec<[f32; 2]> {
 struct Params {
     count: usize,
     seg_rest: f32,
+    /// **O PERFIL de repouso** — ver [`rest::Profile`]. `None` (o default) é a corda uniforme,
+    /// e nesse caso os três leitores usam o MESMO `seg_rest` que sempre usaram.
+    rest: Option<Vec<f32>>,
     gravity: f32,
     iterations: usize,
     damping: f32,
@@ -335,16 +353,6 @@ struct Params {
     /// propaga uma correção JÁ calculada sobre a mesma pose, este re-pergunta
     /// onde a corda está. Ver `MAX_SUBSTEPS` para o preço.
     substeps: usize,
-}
-
-/// Seed a straight, horizontal strand of `count` points from `anchor`, pinned at
-/// index 0 (previous == current → at rest). The first gravity step then swings it.
-fn seed(anchor: [f32; 2], p: &Params) -> (Vec<[f32; 2]>, Vec<[f32; 2]>) {
-    let pos: Vec<[f32; 2]> = (0..p.count)
-        .map(|i| [anchor[0] + i as f32 * p.seg_rest, anchor[1]])
-        .collect();
-    let prev = pos.clone();
-    (pos, prev)
 }
 
 /// One Verlet step + constraint relaxation as a pure function.
@@ -478,7 +486,7 @@ fn step(
                 if dist < EPS {
                     continue;
                 }
-                let diff = (dist - p.seg_rest) / dist;
+                let diff = (dist - seg_rest_at(p, i)) / dist;
                 let (wa, wb) = share(w[i], w[i + 1]);
                 pos[i] = [a[0] + d[0] * diff * wa, a[1] + d[1] * diff * wa];
                 pos[i + 1] = [b[0] - d[0] * diff * wb, b[1] - d[1] * diff * wb];
@@ -493,8 +501,9 @@ fn step(
             // pousa exatamente em `-0.0` (o topo pinado na origem é o caso comum)
             // teria mudado de bits sem ninguém pedir nada.
             if p.bend > 0.0 {
-                let bend_rest = p.seg_rest + p.seg_rest;
                 for i in 0..n.saturating_sub(2) {
+                    // O repouso RETO de dois segmentos — os DOIS que este vão atravessa.
+                    let bend_rest = seg_rest_at(p, i) + seg_rest_at(p, i + 1);
                     let (a, b) = (pos[i], pos[i + 2]);
                     let d = [b[0] - a[0], b[1] - a[1]];
                     let dist = (d[0] * d[0] + d[1] * d[1]).sqrt();
@@ -620,6 +629,15 @@ impl NodeOp for MotionVerletRope {
             pin_tail: ctx.param("pin_tail") >= 0.5,
             bend: ctx.param("bend").clamp(0.0, 1.0),
             substeps: (ctx.param("solver_substeps").round() as i64).clamp(1, MAX_SUBSTEPS) as usize,
+            // **O PERFIL de repouso** — ver [`rest::Profile`]. Plano ⇒ `None` ⇒ a corda
+            // uniforme de sempre, sem um `Vec` no caminho.
+            rest: rest::Profile::resolve(
+                ctx.param(rest::REST_START),
+                ctx.param(rest::REST_END),
+                ctx.param(rest::REST_PROFILE).round() as i32,
+                count.saturating_sub(1),
+                length / (count as f32 - 1.0),
+            ),
         };
         let playhead = ctx.playhead() as f32;
         let anchor = [

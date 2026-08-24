@@ -106,6 +106,7 @@ fn the_tail_lands_exactly_on_the_authored_target() {
     for target in [0.9f32, 0.5, 0.25, 1.0, 1.5] {
         for (len, sp) in CONFIGS {
             let d = Decay {
+                alpha_max: 1.0,
                 fade: target,
                 shrink: target,
                 saturation: target,
@@ -131,6 +132,7 @@ fn the_tail_lands_exactly_on_the_authored_target() {
 #[test]
 fn the_authored_target_does_not_move_when_the_length_or_the_spacing_moves() {
     let d = Decay {
+        alpha_max: 1.0,
         saturation: 0.9,
         ..Decay::NEUTRAL
     };
@@ -162,6 +164,7 @@ fn the_angles_are_totals_across_the_tail() {
             len,
             sp,
             Decay {
+                alpha_max: 1.0,
                 spin: 90.0,
                 ..Decay::NEUTRAL
             },
@@ -207,6 +210,7 @@ fn a_target_of_zero_is_a_ramp_not_a_cliff() {
         8.0,
         1.0,
         Decay {
+            alpha_max: 1.0,
             fade: 0.0,
             ..Decay::NEUTRAL
         },

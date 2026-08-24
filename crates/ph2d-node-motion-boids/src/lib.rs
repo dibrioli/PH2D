@@ -12,6 +12,22 @@
 //! - **Separation** — steer away from crowding neighbours (inverse-square repulsion,
 //!   so it bites only when they get close).
 //! - **Alignment** — steer toward the average heading of neighbours.
+//!
+//! ## ⛔ E os três pesos NÃO viram três nós (doc 89 folha 03)
+//!
+//! A célula pede *"1 regra = 1 NÓ empilhável com peso próprio"* — a família POP Steer do
+//! Houdini, em que separação, alinhamento e coesão são nós distintos que se empilham.
+//!
+//! ⛔ **RECUSADO POR NATUREZA, e o bloqueio é uma PRIMITIVA que não existe:** as três regras
+//! leem uma **VIZINHANÇA** (quem está dentro do `radius`), e o catálogo não a expõe. As
+//! reduções que existem — `value.reduce`, `median`, `percentile` — reduzem o stream INTEIRO,
+//! não uma vizinhança; decompor exigiria construir primeiro *"o que está perto de mim"* como
+//! canal, que é uma wave inteira e não uma refactoração deste nó.
+//!
+//! ⚠️ **E o que a decomposição compraria já está comprado:** os três pesos são params
+//! **dirigíveis** (doc 58), então misturar as regras animadamente — que é o ganho prático de
+//! as ter separadas — faz-se hoje com fios. O que ficaria por comprar é a EXTENSIBILIDADE (uma
+//! quarta regra escrita por fora), e essa é a promessa de um substrato, não de um nó.
 //! - **Cohesion** — steer toward the average position (centroid) of neighbours.
 //!
 //! Plus a **seek** pull toward a target point (the value inputs; unconnected → the

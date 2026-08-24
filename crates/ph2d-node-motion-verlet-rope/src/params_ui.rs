@@ -155,6 +155,36 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     },
     // ⚠️ A pista começa em `0` porque `0` é o DESLIGADO — um piso aqui esconderia
     // o neutro, e é ele que mantém toda corda já autorada byte-idêntica.
+    // **O PERFIL DE REPOUSO** (doc 89 folha 03 — Vellum *Rest Length Scale*): quanto cada
+    // segmento QUER medir, ao longo da corda. ⚠️ O curso vai a `3` e começa em `0`: um
+    // multiplicador de repouso é uma razão, `0` é *"este pedaço colapsa"* e acima de `1` ele
+    // folga — e o total é preservado, então mexer aqui redistribui em vez de encompridar.
+    ParamUiHint {
+        param: super::rest::REST_START,
+        label: "Rest Start",
+        min: 0.0,
+        max: 3.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: super::rest::REST_END,
+        label: "Rest End",
+        min: 0.0,
+        max: 3.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: super::rest::REST_PROFILE,
+        label: "Rest Profile",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: super::rest::REST_PROFILE_LABELS,
+        },
+    },
     ParamUiHint {
         param: "bend",
         label: "Bend Stiffness",

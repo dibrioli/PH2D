@@ -29,6 +29,7 @@ fn one_substep_is_the_old_rope_to_the_bit() {
     let mut p = Params {
         count,
         seg_rest: seg,
+        rest: None,
         gravity: 9.8,
         iterations: 8,
         damping: 0.02,

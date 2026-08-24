@@ -23,6 +23,17 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
     // smoke de 2026-08-08 reprovou. Um rótulo que dissesse só "Fade" deixaria o artista
     // adivinhar se 0.9 é por tick, por eco ou no fim — e as três respostas dão desenhos
     // que diferem por ordens de grandeza.
+    // ⚠️ **O TETO vem ANTES do `Tail Alpha`**, e a ordem é a leitura: a rampa da cauda vai
+    // *deste* número até àquele. Fechado em `1` pelo mesmo SIGNIFICADO — um fantasma mais
+    // opaco que a fonte dele não é uma cauda, é outra coisa.
+    ParamUiHint {
+        param: super::ALPHA_MAX,
+        label: "Tail Alpha Max",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "fade",
         label: "Tail Alpha",

@@ -119,6 +119,28 @@ pub(crate) fn scale_vec2(s: &mut Stream, name: &str, k: f32) {
 
 /// Multiply the ALPHA (`w`) of a `Vec4` column (the echo's `fade`), leaving the
 /// hue alone — a faded echo is the same colour, more transparent.
+/// **A alfa de ALGUMAS linhas** — o irmão por-linha do [`fade_alpha`].
+///
+/// ⚠️ Existe para o `alpha_max` do `motion.trail`, que é um multiplicador de **ESTREIA**: ele
+/// morde uma vez, quando a linha é promovida a fantasma, e nunca mais. Um multiplicador
+/// aplicado a todo tique seria um segundo `fade`.
+pub(crate) fn fade_alpha_where(s: &mut Stream, name: &str, k: f32, hit: &[bool]) {
+    if let Some(Column::Vec4(v)) = s.get(name) {
+        let faded = v
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                if hit.get(i).copied().unwrap_or(false) {
+                    [c[0], c[1], c[2], c[3] * k]
+                } else {
+                    *c
+                }
+            })
+            .collect();
+        s.set(name, Column::Vec4(faded));
+    }
+}
+
 pub(crate) fn fade_alpha(s: &mut Stream, name: &str, k: f32) {
     if let Some(Column::Vec4(v)) = s.get(name) {
         let faded = v.iter().map(|c| [c[0], c[1], c[2], c[3] * k]).collect();

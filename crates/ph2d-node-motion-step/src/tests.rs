@@ -24,6 +24,11 @@ fn params(count_max: i64, mode: LimitMode) -> Params {
         count_max,
         mode,
         reset_to: 0.0,
+        ladder: super::Ladder {
+            increment: 1.0,
+            min: 0.0,
+            down: false,
+        },
     }
 }
 fn count(s: &Stream) -> f32 {

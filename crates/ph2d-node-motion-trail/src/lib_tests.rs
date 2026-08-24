@@ -217,6 +217,7 @@ fn the_tail_shifts_hue_desaturates_and_spins() {
             .with("size", Column::Vec2(vec![[1.0, 1.0]]))
     };
     let decay = Decay {
+        alpha_max: 1.0,
         fade: 1.0,
         shrink: 1.0,
         hue_shift: 40.0,
@@ -257,6 +258,7 @@ fn the_tail_shifts_hue_desaturates_and_spins() {
     // fixo aqui seria calibrado contra o giro e não contra a saturação. A mesma cena com
     // o knob no NEUTRO responde a pergunta sem inventar limiar.
     let control = run(Decay {
+        alpha_max: 1.0,
         saturation: 1.0,
         ..decay
     });
@@ -298,6 +300,7 @@ fn the_neutral_colour_knobs_change_nothing_and_add_no_column() {
             &b,
             4.0,
             Decay {
+                alpha_max: 1.0,
                 ..Decay::new(0.8, 0.9)
             },
             1.0,
@@ -568,6 +571,7 @@ fn the_echo_operator_writes_the_column_only_when_chosen() {
 
     // Default (`Sink`): nenhuma coluna.
     let neutral = Decay {
+        alpha_max: 1.0,
         fade: 1.0,
         shrink: 1.0,
         hue_shift: 0.0,
@@ -591,4 +595,96 @@ fn the_echo_operator_writes_the_column_only_when_chosen() {
     // E o teto é o da lista, nunca um literal.
     let top = (super::ECHO_BLEND_LABELS.len() - 1) as f32;
     assert_eq!(super::echo_blend_tag(999.0), Some(top));
+}
+
+/// Os gates do [`super::ALPHA_MAX`] — **o teto da cauda** (doc 89 folha 07).
+mod tail_ceiling {
+    use super::*;
+
+    /// A alfa de cada linha, por idade.
+    fn alphas(s: &Stream) -> Vec<(f32, f32)> {
+        let ages = match s.get(super::super::AGE) {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => vec![],
+        };
+        match s.get("tint") {
+            Some(Column::Vec4(v)) => ages.iter().copied().zip(v.iter().map(|c| c[3])).collect(),
+            _ => vec![],
+        }
+    }
+
+    /// Roda `ticks` tiques de um elemento que anda, e devolve a última saída.
+    fn run(alpha_max: f32, ticks: usize) -> Stream {
+        let live = Stream::new(1)
+            .with("P", Column::Vec2(vec![[0.0, 0.0]]))
+            .with("tint", Column::Vec4(vec![[1.0, 1.0, 1.0, 1.0]]));
+        let decay = Decay {
+            alpha_max,
+            fade: 0.25,
+            shrink: 1.0,
+            hue_shift: 0.0,
+            saturation: 1.0,
+            spin: 0.0,
+        };
+        let mut state = Stream::new(0);
+        for _ in 0..ticks {
+            state = super::super::step(&live, &state, 6.0, decay, 1.0);
+        }
+        state
+    }
+
+    /// ⭐ **O teto no default é a cauda de sempre, AO BIT.**
+    #[test]
+    fn the_default_ceiling_is_the_tail_that_shipped_bit_for_bit() {
+        let a = alphas(&run(1.0, 8));
+        assert!(a.len() > 3, "a cauda encheu ({} linhas)", a.len());
+        // A rampa de sempre: a cabeça a 1, e cada geração multiplicada pela taxa.
+        for (age, alpha) in &a {
+            if *age == 0.0 {
+                assert_eq!(alpha.to_bits(), 1.0_f32.to_bits(), "a cabeca fica a 1");
+            }
+        }
+    }
+
+    /// ⭐⭐ **O teto baixa a CAUDA e não a cabeça** — que é exactamente o que compor um
+    /// `motion.tint` a jusante não conseguia fazer.
+    #[test]
+    fn the_ceiling_dims_the_tail_and_never_the_head() {
+        let full = alphas(&run(1.0, 8));
+        let capped = alphas(&run(0.5, 8));
+        assert_eq!(full.len(), capped.len(), "a mesma contagem de linhas");
+        for ((age, a), (age2, b)) in full.iter().zip(&capped) {
+            assert!((age - age2).abs() < 1e-6, "as idades casam");
+            if *age == 0.0 {
+                assert_eq!(a.to_bits(), b.to_bits(), "a CABECA nao se mexe");
+            } else {
+                assert!(
+                    (b - a * 0.5).abs() < 1e-4,
+                    "idade {age}: a cauda tinha de descer por metade ({a:.4} -> {b:.4})"
+                );
+            }
+        }
+    }
+
+    /// ⚠️ **É um multiplicador de ESTREIA, não uma segunda taxa:** ele morde uma vez, então a
+    /// RAZÃO entre gerações vizinhas fica exactamente a que era.
+    #[test]
+    fn the_ceiling_is_a_debut_multiplier_not_a_second_decay() {
+        let ratios = |v: &[(f32, f32)]| -> Vec<f32> {
+            let mut ghosts: Vec<(f32, f32)> = v.iter().copied().filter(|(a, _)| *a > 0.0).collect();
+            ghosts.sort_by(|x, y| x.0.total_cmp(&y.0));
+            ghosts.windows(2).map(|w| w[1].1 / w[0].1).collect()
+        };
+        let a = ratios(&alphas(&run(1.0, 8)));
+        let b = ratios(&alphas(&run(0.4, 8)));
+        assert!(!a.is_empty(), "ha' gerações que comparar");
+        for (i, (x, y)) in a.iter().zip(&b).enumerate() {
+            assert!(
+                (x - y).abs() < 1e-4,
+                "a razao entre as geracoes {i} e {} mudou: {x:.5} contra {y:.5} -- \
+                 o teto virou uma segunda taxa",
+                i + 1
+            );
+        }
+    }
 }

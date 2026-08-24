@@ -9,6 +9,7 @@ fn params(count: usize, length: f32, gravity: f32, pin_tail: bool) -> Params {
     Params {
         count,
         seg_rest: length / (count as f32 - 1.0),
+        rest: None,
         gravity,
         iterations: 32,
         damping: 0.0,
@@ -426,6 +427,7 @@ fn a_point_pinned_in_flight_stops_instead_of_coasting() {
     let p = super::Params {
         count: 3,
         seg_rest: 1.0,
+        rest: None,
         gravity: 0.0,
         iterations: 1,
         damping: 0.0,

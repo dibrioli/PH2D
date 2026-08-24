@@ -20,6 +20,7 @@ pub(crate) fn steady_stretch(
     let p = Params {
         count,
         seg_rest: seg,
+        rest: None,
         gravity,
         iterations,
         damping: 0.0,
@@ -89,6 +90,7 @@ fn what_a_substep_costs() {
             let p = Params {
                 count,
                 seg_rest: seg,
+                rest: None,
                 gravity: 9.8,
                 iterations: 24,
                 damping: 0.0,
@@ -152,6 +154,7 @@ pub(crate) fn travel(substeps: usize) -> f32 {
     let p = Params {
         count,
         seg_rest: seg,
+        rest: None,
         gravity: 0.0,
         iterations: 24,
         damping: 0.0,
@@ -181,6 +184,7 @@ pub(crate) fn free_fall(substeps: usize) -> f32 {
     let p = Params {
         count,
         seg_rest: 1.0,
+        rest: None,
         gravity: 9.8,
         iterations: 0,
         damping: 0.0,
@@ -238,6 +242,7 @@ fn measure_what_substeps_do_to_the_damping() {
             let p = Params {
                 count: 24,
                 seg_rest: 0.25,
+                rest: None,
                 gravity: 9.8,
                 iterations: 8,
                 damping,

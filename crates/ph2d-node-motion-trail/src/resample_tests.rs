@@ -83,6 +83,7 @@ fn the_authored_span_does_not_move_with_the_forward_split() {
 #[test]
 fn the_absolute_decay_at_one_tick_is_the_per_tick_rate() {
     let d = Decay {
+        alpha_max: 1.0,
         fade: 0.1,
         shrink: 0.65,
         hue_shift: 90.0,
@@ -108,6 +109,7 @@ fn the_absolute_decay_at_one_tick_is_the_per_tick_rate() {
 #[test]
 fn the_absolute_decay_reaches_the_authored_target_at_the_span() {
     let d = Decay {
+        alpha_max: 1.0,
         fade: 0.2,
         shrink: 0.5,
         hue_shift: 120.0,

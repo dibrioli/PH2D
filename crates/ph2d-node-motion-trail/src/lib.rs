@@ -22,6 +22,22 @@
 //!
 //! Carried rows draw FIRST so the live head paints on top of its own tail.
 //!
+//! ## ⛔ E a cauda NÃO vira uma FITA (doc 89 folha 07)
+//!
+//! A célula pede o *Path Type* do Cavalry (*Béziers / Lines*) e o *Ribbon renderer* do
+//! Niagara: uma cauda CONTÍNUA em vez de N cópias.
+//!
+//! ⛔ **RECUSADO POR NATUREZA, e a fronteira é do DOMÍNIO, não deste nó:** a saída de todo
+//! `motion.*` é um stream de INSTÂNCIAS, e uma fita é uma geometria — uma tira de triângulos
+//! costurada entre posições consecutivas, com largura, junta e ponta. Não existe primitiva de
+//! fita no motion, e construí-la aqui poria este nó a emitir uma coisa que nenhum outro sabe
+//! consumir.
+//!
+//! ⚠️ **O sítio onde uma fita PODE nascer já tem nome**, e não é aqui: uma cadeia de posições
+//! vira uma forma pelo canal de externos (doc 65) — o mesmo por onde o `motion.spline_wrap` e
+//! o `motion.path` leem uma curva desenhada. *Uma fita é uma CURVA com espessura, e o módulo
+//! que tem curvas com espessura é o vetorial.*
+//!
 //! ## O ESPAÇAMENTO (doc 88 §B3 — a varredura PRO da família ECHO)
 //!
 //! Um fantasma por TICK é um rastro contínuo: a 60 fps ele lê como borrão, e o eco
@@ -81,9 +97,32 @@ mod resample;
 pub use resample::{FORWARD, SOURCE, SOURCE_RESAMPLED, echo_offsets, time_fans};
 use resample::{authored_span, forward_of, step_resampled};
 mod colour;
-use carry::{add_scalar, ages, concat, fade_alpha, gather, scale_vec2, tint_op};
+use carry::{ages, concat, fade_alpha_where, gather};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+/// **O TETO DA CAUDA — a alfa do eco mais NOVO** (doc 89 folha 07 — minicavalry
+/// `motionTrail`: `opacityMax/Min 1/0`; a célula: *"o alvo do eco mais NOVO é inalcançável, só
+/// o mais VELHO é autorado"*).
+///
+/// ⚠️ **A célula media o sintoma certo pela porta errada:** ela dizia que compor
+/// `trail → motion.tint` escurece TUDO, *inclusive a cabeça* — e é verdade, mas o `fade` deste
+/// nó já poupa a cabeça (ele só toca as linhas carregadas). O que faltava era autorar a outra
+/// PONTA da rampa: hoje ela nasce em `1` e desce até ao `fade`, e um artista que quer a cauda
+/// claramente separada da cabeça não tem como a começar a 50%.
+///
+/// ⚠️ **É um multiplicador de ESTREIA, e é isso que preserva a lei de decaimento.** Ele morde
+/// UMA vez, na linha que acaba de ser promovida a fantasma (idade `1`), e nunca mais — então
+/// `valor(n) = alpha_max · fade^(n/span)` e o `fade` continua a significar exactamente o que
+/// significava (a alfa do eco mais velho, agora **relativa ao teto**). Um multiplicador por
+/// tique seria um segundo `fade` a discordar do primeiro.
+///
+/// ⛔ **E o `satMax` da mesma linha da referência NÃO entra**, com o motivo medido: a saturação
+/// aqui é uma **matriz de cor** composta uma vez por tique (`colour::compose`), e um teto de
+/// estreia pediria uma segunda matriz num segundo sítio — enquanto a própria referência ship a
+/// `satMax/Min 1/1`, isto é, com a saturação **não rampada** por omissão. O teto de uma rampa
+/// que ninguém liga não tem consumidor.
+const ALPHA_MAX: &str = "alpha_max";
 
 /// The column holding how many ticks ago a row was live. `0` = the live head.
 /// Namespaced away from the emitter's own `age` (a particle's lifetime), which
@@ -241,6 +280,10 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // **DE ONDE O ECO VEM** — `0` = Remembered (o ring que sempre existiu, o
         // default, byte-idêntico), `1` = Resampled (a entrada RE-COZIDA em
         // `t ± k·spacing`). Ver `SOURCE_RESAMPLED`.
+        ParamSpec {
+            name: ALPHA_MAX,
+            default: 1.0,
+        },
         ParamSpec {
             name: SOURCE,
             default: 0.0,
@@ -427,122 +470,8 @@ fn step_for(total: f32, span: u32) -> f32 {
     total / span as f32
 }
 
-/// **Tudo o que um eco sofre ao longo da CAUDA INTEIRA**, num lugar só.
-///
-/// ⚠️ Os cinco campos são o que o artista AUTORA — o estado do eco mais VELHO, relativo à
-/// cabeça viva (os multiplicativos) e o total percorrido (os angulares). Eles **não** são
-/// taxas por tick: quem as deriva é [`Decay::per_tick`], e é essa derivação que torna o
-/// número do slider independente do Length e do Spacing. Um knob no neutro é a identidade
-/// **ao bit** — nenhum deles toca um byte no default.
-#[derive(Copy, Clone, Debug)]
-pub struct Decay {
-    /// Alfa do eco mais velho, relativa à cabeça viva.
-    pub fade: f32,
-    /// Tamanho do eco mais velho, relativo à cabeça viva.
-    pub shrink: f32,
-    /// Graus de matiz que a cauda inteira percorre (rotação luma-preservante, RGB linear).
-    pub hue_shift: f32,
-    /// Saturação do eco mais velho, relativa à cabeça viva.
-    pub saturation: f32,
-    /// Graus de giro que a cauda inteira percorre.
-    pub spin: f32,
-}
-
-impl Decay {
-    /// O ponto neutro — todo operador na identidade.
-    pub const NEUTRAL: Self = Self {
-        fade: 1.0,
-        shrink: 1.0,
-        hue_shift: 0.0,
-        saturation: 1.0,
-        spin: 0.0,
-    };
-
-    /// Só o par que sempre existiu (para as fixtures que não falam de cor).
-    #[must_use]
-    pub fn new(fade: f32, shrink: f32) -> Self {
-        Self {
-            fade,
-            shrink,
-            ..Self::NEUTRAL
-        }
-    }
-
-    /// **Converte os alvos AUTORADOS nas taxas POR TICK que os alcançam.**
-    ///
-    /// `span` é a idade do eco mais VELHO — `(length − 1) × spacing` —, então
-    /// `rate^span == target` por construção: o que o artista digita é o que ele vê na
-    /// ponta da cauda, e o número **não se move** quando o Length ou o Spacing mudam.
-    ///
-    /// ⚠️ O `span` sai do `k` **CLAMPADO** (o orçamento de instâncias pode encurtar a
-    /// cauda), porque o alvo pertence à cauda que de fato existe. Se o `k` mudar no meio
-    /// de um traço, as linhas já carregadas guardam o que a taxa anterior lhes deu e as
-    /// novas seguem a nova — transitório, e ele se cura sozinho quando as velhas saem.
-    #[must_use]
-    fn per_tick(self, span: u32) -> Self {
-        if span == 0 {
-            return Self::NEUTRAL;
-        }
-        let inv = 1.0 / span as f32;
-        Self {
-            fade: rate_for(self.fade, inv),
-            shrink: rate_for(self.shrink, inv),
-            saturation: rate_for(self.saturation, inv),
-            hue_shift: step_for(self.hue_shift, span),
-            spin: step_for(self.spin, span),
-        }
-    }
-
-    /// **O estado ABSOLUTO de um eco de idade `age`**, em vez do passo de um tick.
-    ///
-    /// O ring aplica [`Self::per_tick`] uma vez por tick, então uma linha com `n`
-    /// ticks levou-a `n` vezes; o rastro RE-COZIDO não tem passado nenhum a que
-    /// somar, e tem de chegar ao mesmo sítio de uma vez.
-    ///
-    /// ⚠️ **`at_age(span, 1)` é `per_tick(span)`, expressão por expressão** — a
-    /// generalização contém o caso antigo, e é por isso que existe uma lei e não
-    /// duas. (Não ao BIT ao longo da cauda, de propósito: `rate^n` por `n`
-    /// multiplicações e `rate_for(alvo, n/span)` são a mesma matemática por dois
-    /// caminhos de arredondamento, e o modo do ring continua a ser o primeiro.)
-    #[must_use]
-    fn at_age(self, span: u32, age: u32) -> Self {
-        if span == 0 {
-            return Self::NEUTRAL;
-        }
-        let f = age as f32 / span as f32;
-        Self {
-            fade: rate_for(self.fade, f),
-            shrink: rate_for(self.shrink, f),
-            saturation: rate_for(self.saturation, f),
-            hue_shift: step_for(self.hue_shift, span) * age as f32,
-            spin: step_for(self.spin, span) * age as f32,
-        }
-    }
-
-    /// Envelhece um conjunto de linhas carregadas em UM tick. **Recebe as taxas já
-    /// derivadas** — chamá-la com os alvos autorados é o defeito que o smoke de
-    /// 2026-08-08 reportou.
-    fn apply(self, carried: &mut Stream) {
-        fade_alpha(carried, "tint", self.fade);
-        scale_vec2(carried, "size", self.shrink);
-        // ⚠️ UMA matriz para os dois operadores de cor: compor antes do laço deixa o
-        // caminho por-linha com nove multiplicações, sejam zero, um ou dois knobs armados
-        // — e no neutro a matriz É a identidade, então o `tint` não se move.
-        let m = colour::compose(
-            colour::hue_rotation(self.hue_shift),
-            colour::saturation(self.saturation),
-        );
-        if m != colour::IDENTITY {
-            tint_op(carried, "tint", m);
-        }
-        // ⚠️ Gateado em `!= 0`, ao contrário dos outros: o `rot` é MATERIALIZADO quando
-        // ausente, e materializá-lo sem o artista ter pedido giro acrescentaria uma coluna
-        // que ninguém pediu a todo rastro do app.
-        if self.spin != 0.0 {
-            add_scalar(carried, "rot", self.spin);
-        }
-    }
-}
+mod decay;
+pub use decay::Decay;
 
 /// One tick of the echo: age last tick's rows, drop the generation that fell
 /// off the end, decay the survivors, and put the live head in front.
@@ -577,7 +506,7 @@ fn step(live: &Stream, state: &Stream, length: f32, decay: Decay, spacing: f32) 
         .collect();
     let mut carried = gather(state, &keep);
     let bumped: Vec<f32> = keep.iter().map(|&i| prev_ages[i] + 1.0).collect();
-    carried.set(AGE, Column::Scalar(bumped));
+    carried.set(AGE, Column::Scalar(bumped.clone()));
     // Geometric decay: applied once per tick to the rows carried forward, so a
     // row `n` ticks old has had it applied exactly `n` times. Nothing to undo.
     //
@@ -586,6 +515,13 @@ fn step(live: &Stream, state: &Stream, length: f32, decay: Decay, spacing: f32) 
     // o alvo pertencer à cauda REAL: o `k` já passou pelo teto de instâncias.
     let span = u32::try_from(window - 1).unwrap_or(u32::MAX);
     decay.per_tick(span).apply(&mut carried);
+    // **O TETO DA CAUDA** — ver [`ALPHA_MAX`]. Um multiplicador de ESTREIA: ele morde na
+    // linha que acabou de ser promovida (idade `1`) e nunca mais, então a cauda inteira
+    // desce por ele UMA vez e a lei de decaimento fica exactamente a que sempre foi.
+    if decay.alpha_max != 1.0 {
+        let fresh: Vec<bool> = bumped.iter().map(|a| (*a - 1.0).abs() < 1e-6).collect();
+        fade_alpha_where(&mut carried, "tint", decay.alpha_max, &fresh);
+    }
 
     let mut head = live.clone();
     head.set(AGE, Column::Scalar(vec![0.0; live.count()]));
@@ -606,6 +542,7 @@ impl NodeOp for MotionTrail {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let decay = Decay {
+            alpha_max: ctx.param(ALPHA_MAX),
             fade: ctx.param("fade"),
             shrink: ctx.param("shrink"),
             hue_shift: ctx.param("hue_shift"),

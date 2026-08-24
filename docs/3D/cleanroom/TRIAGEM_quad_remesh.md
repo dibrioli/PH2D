@@ -284,6 +284,56 @@ da integração). ⛔ *Isto refuta a minha própria frase «é lenta na nossa es
 27 360 triângulos ela leva 8–10 segundos.* **O problema não é velocidade, é robustez** — e
 robustez é precisamente o que o método promete resolver.
 
+### §5-bis.3-quater — ⭐⭐⭐ A RESOLUÇÃO: a causa era a TRIANGULAÇÃO DE ENTRADA, e o nosso campo GANHA
+
+⚠️ **Terceira leitura, e é a que fica** — porque desta vez há **experimento controlado**, não
+uma peça.
+
+#### (a) ⛔ Hipóteses REFUTADAS, cada uma com número
+
+| hipótese | como foi testada | veredito |
+|---|---|---|
+| **o curl do nosso campo** | régua nova no arnês, com a convenção do salto de período **provada** (a errada satura em `2`; a certa dá `max 0,26`) e controlo positivo (emparelhamento destruído ⇒ `1,999`) | ⛔ **REFUTADA.** O nosso campo é **mais** integrável que o da jarra que deu `3,0°` — `p50 = 0,0019` contra `0,0044` |
+| **a densidade da grade** | mesma peça, `4 474` faces (o oráculo faz `4 696`) | ⛔ **REFUTADA.** `11,1°` ⇒ `10,4°`. Explica `0,7°` de uma diferença de `6,3°` |
+
+#### (b) ⭐⭐⭐ A causa, isolada em DOIS experimentos
+
+**Experimento 1 — só o CAMPO muda** (malha *deles*, extração igual, densidade igual):
+
+| campo | quads | aspecto p50 · p99 · máx · `>4×` | enviesamento p50 · p99 · máx · `>60°` |
+|---|---|---|---|
+| **deles** (o `.rosy` que o oráculo grava) | `100%` | `1,10` · `1,64` · `4,79` · `2` | `7,4°` · `34,2°` · `83,5°` · `9` |
+| ⭐⭐ **NOSSO** | `100%` | **`1,09`** · **`1,33`** · **`1,63`** · **`0`** | ⭐ **`5,1°`** · **`19,3°`** · **`47,5°`** · **`0`** |
+
+⇒ ⭐⭐⭐ **O nosso campo bate o do oráculo na malha DELE, em TODAS as colunas.** O F2 está
+ilibado por resultado, contra o padrão-ouro, no terreno dele.
+⚠️ O desacordo angular entre os dois é grande (`p50 = 13,4°`, 36% das faces além de `20°`) —
+⛔ *dois campos lisos podem discordar sem que um seja pior; foi o resultado que decidiu, não a
+concordância.*
+
+**Experimento 2 — só a TRIANGULAÇÃO muda** (mesma superfície, mesmo campo, mesma extração,
+mesma densidade):
+
+| peça | ⛔ a nossa (leque sobre a malha de quads) | ⭐ remalhada isotropicamente | oráculo (saída final) |
+|---|---|---|---|
+| **enrugada** | `10,4°` · `7` faces `>60°` · `99,9%` quads | ⭐ **`5,1°`** · **`0`** · **`100%`** | `4,8°` · `0` |
+| **estriada** | `12,5°` · `7` · `99,9%` | ⭐ **`5,5°`** · `3` · **`100%`** | `7,1°` · `0` |
+
+⇒ ⭐⭐⭐ **`10–12°` ⇒ `5,1–5,5°` sem uma linha de algoritmo mudar.** Na estriada a cadeia
+**ultrapassa** o oráculo (`5,5°` contra `7,1°`); na enrugada empata (`5,1°` contra `4,8°`).
+
+#### (c) ⛔ O que isto diz de mim, e o que diz do produto
+
+⛔ **O `9–12°` era defeito do MEU ARNÊS.** O nosso corpus está guardado em **quadriláteros**, e
+eu triangulei-o partindo cada quad em leque — o que produz triângulos compridos com viés
+diagonal sistemático, e a parametrização herda-o. **O oráculo remalha na fase 1, de propósito.**
+
+⭐ **E o produto já tem essa fase:** o `ph2d-remesh-iso` (F1) existe exactamente para isso.
+⇒ ⛔⛔ **A espec passa a NOMEAR o remalhamento isotrópico como fase ZERO obrigatória.**
+
+⚠️ **A cerca honesta:** estas medições usam a malha remalhada **do oráculo**. ⇒ *o número
+final depende do nosso F1 ser tão bom quanto o dele*, e isso **ainda não foi medido**.
+
 ### §5-bis.4 — ⛔ Os QUATRO erros desta medição (a parte reutilizável)
 
 1. ⛔ **Alimentei uma biblioteca de triângulos com malhas de quadriláteros** — o corpus
@@ -299,7 +349,16 @@ robustez é precisamente o que o método promete resolver.
 DELA com os insumos DELA — e só então troque **um** insumo de cada vez.* Eu troquei malha,
 campo e formato ao mesmo tempo, e passei horas a acusar a ferramenta.
 
-### §5-bis.5 — ⭐⭐ O passo seguinte, ENDEREÇADO (e não é meu: exige escrever produto)
+### §5-bis.5 — ⚠️ (HISTÓRICO) A medição de curl que eu prescrevi — **executada e REFUTADA**
+
+> ⛔ **Esta secção previa que o curl do nosso campo fosse a causa dos `9–12°`. Foi medida em
+> 2026-08-24 e o resultado é o contrário:** o nosso campo é **mais** integrável que o de
+> referência (`p50 0,0019` contra `0,0044`), e a causa era a **triangulação de entrada**
+> (§5-bis.3-quater). ⭐ A régua ficou construída no arnês e é útil como diagnóstico —
+> ⚠️ com a convenção do salto de período **provada** (`−period`; a outra satura em `2`).
+> **O passo seguinte REAL está no §5-bis.6.**
+
+#### A régua, para quem a quiser no produto
 
 ⛔ **Meça o curl do NOSSO campo antes de qualquer porte.** É a única medição barata que
 pode **matar ou confirmar** a rota inteira, e hoje ela **não existe**: `ph2d-crossfield`
@@ -352,6 +411,10 @@ Se não for, ela fica com **dois**, e o segundo vem primeiro.
 | ⛔ **Não usar a leitura de `curl` de uma peça sem restrições como prova** | balde vazio lê-se como perfeito (`1,47e-15`) | §5-bis.4 |
 | ⛔⛔ **Não anunciar um resultado medido numa peça DELES como se fosse do nosso corpus** | a jarra deu `3,0°` e o nosso corpus deu `9–12°`; a conclusão inverteu-se | §5-bis.3-ter |
 | ⛔ **Não dizer que a extração é «lenta na nossa escala»** | 8–10 s em peças de 27 360 triângulos; o defeito é **robustez** (3 de 7 falham), não velocidade | §5-bis.3-ter |
+| ⛔⛔ **Não medir a cadeia sobre uma triangulação por LEQUE de quads** | ela injecta viés diagonal e custa **o dobro** do enviesamento (`10–12°` contra `5,1–5,5°`) — remalhe isotropicamente **primeiro** | §5-bis.3-quater |
+| ⛔ **Não culpar o curl do nosso campo** | ele é **mais** integrável que o de referência (`0,0019` vs `0,0044`) | §5-bis.3-quater(a) |
+| ⛔ **Não culpar a densidade** | igualar a contagem de faces move `0,7°` de `6,3°` | §5-bis.3-quater(a) |
+| ⛔ **Não usar a CONCORDÂNCIA entre dois campos como veredito** | o nosso discorda do de referência em `13,4°` medianos **e ganha** em todas as colunas | §5-bis.3-quater(b) |
 
 ---
 
@@ -385,3 +448,27 @@ clean-room a partir do *paper*. A biblioteca que a implementa é **MIT**, e semp
 ⇒ *A triagem que a skill manda fazer no passo 1 não existia quando aquela fase foi
 construída.* **Não é trabalho perdido** (o nosso F4 é nosso, sem obrigação nenhuma), mas é a
 medida exacta do que este documento poupa: **uma fase inteira**.
+
+---
+
+### §5-bis.6 — ⭐⭐⭐ O PASSO SEGUINTE REAL (e não é meu: exige escrever produto)
+
+⛔ **A cerca honesta das medições acima:** elas usam a malha **remalhada pelo oráculo**. ⇒ o
+número final depende de o **nosso** `ph2d-remesh-iso` (F1) ser tão bom quanto o dele, e isso
+**nunca foi medido**.
+
+**A medição, e é barata:**
+
+1. Correr o **nosso F1** sobre `sculpt_wrinkled` e `sculpt_ridged` do corpus, com alvo de
+   aresta igual ao que a malha remalhada do oráculo tem (contagem de faces `≈ 9 500`).
+2. Correr a cadeia inteira sobre a **nossa** remalhagem, e medir com o `QuadShape`.
+3. Comparar com a tabela do §5-bis.3-quater(b), que é o mesmo experimento sobre a
+   remalhagem **dele**.
+
+| o que se lê | o que significa |
+|---|---|
+| `5,1°`–`5,5°` | ⭐ o nosso F1 está à altura; a cadeia inteira é nossa e bate o padrão-ouro |
+| pior que isso | ⚠️ o F1 é o elo, e a obra passa a ser ele — **antes** da extração |
+
+⚠️ **Meça a FORMA dos triângulos do F1, não só a contagem** — foi exactamente o viés de forma
+(triângulos compridos com diagonal sistemática) que custou o dobro do enviesamento.

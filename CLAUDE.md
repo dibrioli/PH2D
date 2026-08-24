@@ -512,13 +512,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   acertar são coisas diferentes*). ⇒ **A distorção nasce entre o DOMÍNIO e a SUPERFÍCIE**: mesmo com F3,
   marcação e domínio perfeitos, o preenchimento por patch fica em `15°` (o oráculo faz `6°`) — a mesma
   diferença de classe, local contra global, que motivou o pivô, um nível abaixo. **A obra seguinte é a
-  EXTRACÇÃO, e em 2026-08-24 ela deixou de ser aposta: MEDIDA.** ⭐⭐ Uma cadeia por extracção, com o **nosso**
-  campo, dá **`9°`–`12°`** de enviesamento mediano no nosso corpus — **2–3× melhor** que os **`27°`** do
-  nosso preenchimento por patch, e as faces péssimas caem de **`9 159` para `5–6`**. ⚠️⚠️ **Ela ainda NÃO
-  bate o oráculo de produção** (`4,8°`–`7,1°` nas mesmas peças, com **zero** faces péssimas) — ⛔ *a barra é
-  ele.* ⚠️ **A hipótese nomeada para a diferença é o CURL do nosso campo** (liso, nunca tornado
-  integrável) ⇒ medi-lo e reduzi-lo é **pré-condição**. ⭐ O campo em si ganha ao da biblioteca de
-  referência (`3,0°` vs `5,0°`) ⇒ o F2 está ilibado por **resultado**. Decisão em
+  EXTRACÇÃO, e em 2026-08-24 ela deixou de ser aposta: MEDIDA.** ⭐⭐⭐ Uma cadeia por extracção, com o **nosso**
+  campo, dá **`5,1°`–`5,5°`** de enviesamento mediano e **`100%` de quads** — a classe do oráculo de
+  produção (`4,8°`–`7,1°`), que ela **ultrapassa** numa das peças; contra os **`27°`** e **`9 159`** faces
+  péssimas do nosso preenchimento por patch de hoje. ⭐⭐ **E o nosso CAMPO bate o do oráculo na malha DELE**
+  (`5,1°` · `0` péssimas contra `7,4°` · `9`) ⇒ o F2 está ilibado por **resultado**.
+  ⛔⛔ **FASE ZERO obrigatória, medida:** remalhar isotropicamente (`ph2d-remesh-iso`, F1) **antes** da
+  cadeia. Sem ela a MESMA cadeia dá `10–12°` — *o dobro, sem uma linha de algoritmo mudar* (o corpus está
+  guardado em quads, e triangular por leque injecta viés diagonal). ⛔ **Duas hipóteses foram REFUTADAS por
+  medição** antes de se achar essa: o **curl** do nosso campo (ele é *mais* integrável que o de referência)
+  e a **densidade** da grade (`0,7°` de `6,3°`). Decisão em
   [ADR-0164](docs/architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md):
   **clean-room dos papers; a biblioteca MPL-2.0 fica FORA, como oráculo** (⛔ não se porta — obrigaria a
   publicar arquivos no subsistema mais valioso, e a extração dela não termina na nossa escala). Espec

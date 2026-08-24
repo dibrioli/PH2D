@@ -22,20 +22,30 @@
 
 Régua: `ph2d_quadfill::QuadShape` (espelho em Python, no arnês).
 
-**Nas NOSSAS peças**, mesma régua, contra o oráculo **na mesma peça**:
+⭐⭐⭐ **Dois experimentos controlados, e são a entrega desta linha.**
 
-| peça | ⭐ oráculo de produção | ⛔ a cadeia de referência | ⛔ nosso F5 hoje |
-|---|---|---|---|
-| enrugada | **`4,8°`** · `0` faces `>60°` | `11,1°` · `5` | `27°` · `9 159` |
-| estriada | **`7,1°`** · `0` | `12,4°` · `5` | — |
-| esfera uv | **`5,9°`** · `0` | `9,1°` · `6` | — |
+**Só a TRIANGULAÇÃO muda** (mesma superfície, mesmo campo, mesma extração, mesma densidade):
 
-⭐ **A direcção decide-se aqui:** contra o nosso preenchimento por patch a rota é **2–3×
-melhor**, e as faces péssimas caem de **`9 159` para `5–6`**.
-⛔⛔ **E o que NÃO se pode dizer:** que ela ultrapassa o oráculo. Uma medição na peça **deles**
-deu `3,0°` e eu anunciei-o; o corpus **nosso** inverteu. ⇒ **a barra é o oráculo.**
-⭐⭐ **O nosso campo ganha ao da biblioteca** (`3,0°` vs `5,0°`) ⇒ F2 ilibado por resultado.
-⚠️ **Mas o CURL dele é pré-condição** — é a classe de defeito que explica `9–12°` contra `5–7°`.
+| peça | ⛔ leque sobre a malha de quads | ⭐ remalhada isotropicamente | oráculo (final) | ⛔ nosso F5 hoje |
+|---|---|---|---|---|
+| enrugada | `10,4°` · `7` faces `>60°` | ⭐ **`5,1°`** · **`0`** · `100%` quads | `4,8°` · `0` | `27°` · `9 159` |
+| estriada | `12,5°` · `7` | ⭐ **`5,5°`** · `3` · `100%` quads | `7,1°` · `0` | — |
+
+**Só o CAMPO muda** (malha *deles*, extração igual):
+
+| campo | enviesamento p50 · `>60°` | aspecto p50 · máx · `>4×` |
+|---|---|---|
+| deles | `7,4°` · `9` | `1,10` · `4,79` · `2` |
+| ⭐⭐ **nosso** | **`5,1°`** · **`0`** | **`1,09`** · **`1,63`** · **`0`** |
+
+⇒ ⭐⭐⭐ **A cadeia atinge a classe do oráculo e ultrapassa-o numa peça; e o nosso campo bate o
+dele no terreno dele, em todas as colunas.**
+⛔⛔ **FASE ZERO obrigatória:** remalhar isotropicamente (`ph2d-remesh-iso`, F1) antes de tudo —
+saltá-la custa **o dobro** do enviesamento.
+⛔ **Duas hipóteses REFUTADAS por medição** antes de se achar essa: o **curl** do nosso campo
+(mais integrável que o de referência) e a **densidade** (`0,7°` de `6,3°`).
+⚠️ **A cerca honesta:** estas medições usam a malha remalhada **do oráculo** ⇒ o número final
+depende do nosso F1 ser tão bom quanto o dele, e **isso ainda não foi medido**.
 
 ## §3 — ⛔ O que NÃO se deve reconstruir
 

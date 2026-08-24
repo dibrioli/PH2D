@@ -42,17 +42,28 @@ coisa, medida com a mesma régua contra o oráculo **na mesma peça**:
 | estriada | **`7,1°`** · `0` | `12,4°` · `5` | — |
 | esfera uv | **`5,9°`** · `0` | `9,1°` · `6` | — |
 
-⛔ **RETRACTADO:** *«ultrapassa o oráculo»*. No nosso corpus a cadeia é **1,6×–2,3×** o
-enviesamento dele e produz faces péssimas onde ele produz zero.
+⭐⭐⭐ **RESOLVIDO no mesmo dia, com experimento controlado — e a causa não era nenhuma das
+duas hipóteses.** Aquele `9–12°` era defeito do **arnês**: o corpus está guardado em
+**quadriláteros** e eu triangulei-o por leque, o que injecta viés diagonal.
 
-⭐ **O que sobrevive e decide:** contra o nosso preenchimento por patch ela é **2–3× melhor**
-(`9–12°` contra `27°`) e as faces péssimas caem de **`9 159` para `5–6`**. ⇒ *a direcção
-mantém-se; a margem é que era fantasia.*
+**Só a TRIANGULAÇÃO muda** (mesma superfície, mesmo campo, mesma extração, mesma densidade):
 
-⭐⭐ **E o nosso campo continua a ganhar ao da biblioteca** (`3,0°` contra `5,0°`, na peça
-deles): o F2 está ilibado por **resultado**.
-⚠️ **Mas o curl dele volta a ser pré-condição** — a diferença entre `9–12°` e `5–7°` é a
-classe de defeito que um campo **não integrável** produz, e o nosso nunca teve o curl reduzido.
+| peça | ⛔ leque sobre quads | ⭐ remalhada isotropicamente | oráculo (final) |
+|---|---|---|---|
+| enrugada | `10,4°` · `7` faces `>60°` | ⭐ **`5,1°`** · **`0`** · `100%` quads | `4,8°` · `0` |
+| estriada | `12,5°` · `7` | ⭐ **`5,5°`** · `3` · `100%` quads | `7,1°` · `0` |
+
+⇒ ⭐⭐⭐ **A cadeia atinge a classe do oráculo, e ULTRAPASSA-O numa das peças.**
+⛔ **E as duas hipóteses que eu tinha nomeado foram REFUTADAS por medição:** o curl do nosso
+campo (ele é **mais** integrável que o de referência) e a densidade (`0,7°` de `6,3°`).
+
+⭐⭐⭐ **Só o CAMPO muda** (malha *deles*, extração igual): o **nosso** dá `5,1°` · `0` faces
+péssimas · aspecto máx `1,63`; o **deles** dá `7,4°` · `9` · `4,79`. ⇒ **o F2 bate o padrão-ouro
+no terreno dele, em todas as colunas.**
+
+⛔⛔ **Consequência que entra na espec como FASE ZERO:** o remalhamento isotrópico
+(`ph2d-remesh-iso`, F1) é **obrigatório** antes da cadeia — o remalhador de referência fá-lo na
+primeira fase, e saltá-lo custa **o dobro** do enviesamento.
 
 ## Decisão
 

@@ -56,6 +56,23 @@ manchete tem de esperar pelo corpus.*
 uma peça que travou; no corpus ela leva **8–10 s** em malhas de 27 mil triângulos e **falha em
 3 de 7**. *O defeito não era velocidade, era robustez — e eu tinha nomeado o eixo errado.*
 
+⭐⭐⭐ **E a resolução, que veio de trocar UM insumo de cada vez — a lei desta nota, aplicada
+tarde:** o defeito não estava na ferramenta, nem no nosso campo, nem na densidade. Estava na
+**triangulação de entrada** que eu próprio fabriquei: o corpus está guardado em
+**quadriláteros** e eu parti cada um em leque, o que injecta triângulos compridos com viés
+diagonal. Com a superfície **remalhada isotropicamente** — tudo o resto igual — o enviesamento
+caiu de `10–12°` para **`5,1°`–`5,5°`**, a classe do padrão-ouro.
+
+| hipótese | veredito | como caiu |
+|---|---|---|
+| o **curl** do nosso campo | ⛔ refutada | ele é **mais** integrável que o de referência |
+| a **densidade** da grade | ⛔ refutada | igualar a contagem de faces move `0,7°` de `6,3°` |
+| ⭐ a **triangulação de entrada** | **confirmada** | dois experimentos controlados, duas peças |
+
+⭐⭐ **E o resultado que só apareceu depois de isolar a variável certa:** o nosso campo **bate**
+o do programa de referência **na malha dele**, em todas as colunas. *Enquanto o insumo estava
+contaminado, essa vitória era invisível.*
+
 **How to apply:**
 1. **Corra o exemplo dela, com os dados dela, primeiro.** Se não reproduzir, pare: o
    problema é o ambiente, e nada a jusante vale.
@@ -66,3 +83,9 @@ uma peça que travou; no corpus ela leva **8–10 s** em malhas de 27 mil triân
    *«funciona»*, nunca *«é melhor que X»*.
 6. ⭐ **Nomeie o EIXO do defeito só depois de o corpus o separar.** «Lento» e «frágil» leem-se
    iguais numa peça que trava, e prescrevem obras diferentes.
+7. ⭐⭐⭐ **Suspeite do FORMATO em que o seu corpus está guardado.** O meu estava em
+   quadriláteros e a ferramenta queria triângulos; a conversão ingénua foi a causa de tudo, e
+   custou três leituras erradas antes de eu olhar para ela. *A ferramenta de referência não
+   sofria disso porque remalha na primeira fase — e eu tinha lido isso e não liguei.*
+8. ⭐ **Quando refutar as suas duas primeiras hipóteses, pare de propor curas e volte ao
+   INSUMO.** Irmã: [[feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two]].

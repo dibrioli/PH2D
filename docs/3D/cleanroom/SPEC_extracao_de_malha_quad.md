@@ -33,7 +33,23 @@ Denylist de URLs (⛔ NÃO abrir): qualquer hospedagem de código, issue tracker
 
 ## §0 — O que entra, o que sai, e o vocabulário desta casa
 
-**Entra:** a malha de triângulos + um **mapa de grade inteira** — uma parametrização
+### ⛔⛔ FASE ZERO, obrigatória: remalhar isotropicamente
+
+⚠️ **A entrada tem de ser uma malha de triângulos BEM FORMADOS.** Medido em 2026-08-24, em
+duas peças, com tudo o resto igual (mesma superfície, mesmo campo, mesma extração, mesma
+densidade):
+
+| triangulação de entrada | enviesamento p50 | faces com canto `>60°` | quads |
+|---|---|---|---|
+| ⛔ leque sobre uma malha de **quadriláteros** | `10,4°` · `12,5°` | `7` · `7` | `99,9%` |
+| ⭐ **remalhada isotropicamente** | **`5,1°`** · **`5,5°`** | **`0`** · `3` | **`100%`** |
+
+⇒ ⭐⭐⭐ **O dobro do enviesamento, sem uma linha de algoritmo mudar.** Triângulos compridos
+com viés diagonal contaminam a parametrização, e a extração herda-o.
+⭐ **Esta fase já existe na casa:** `ph2d-remesh-iso` (F1). ⛔ **Não a salte, e não meça sem
+ela.** ⚠️ *O remalhador de produção de referência faz exactamente isto na primeira fase.*
+
+**Entra:** a malha de triângulos **remalhada** + um **mapa de grade inteira** — uma parametrização
 por-triângulo `f_t : t → R²` em que as **isolinhas inteiras**, trazidas de volta à
 superfície, *são* a malha quad.
 
@@ -385,7 +401,7 @@ mapa antes considerado defeituoso passa a ser utilizável.
 | 5 | o predicado de orientação **concorda com o exacto** em casos adversariais | gere pontos quase-colineares em escala de `f64`; o filtro rápido tem de **desistir**, não errar |
 | 6 | **toda** face da saída é um quad | é o teorema do §6.3 — se falhar, a fusão está incompleta |
 | 7 | a característica de Euler da saída **iguala** a da entrada | ⚠️ a família de defeitos que a `line/sculpt3d` já pagou: `χ` do toro tem de dar `0`, não `2` |
-| 8 | ⭐ **a forma por-face** bate a barra do oráculo | `QuadShape`, medido pelo **mesmo código** sobre a saída dele, **nas nossas peças**: enviesamento p50 **`4,8°`–`7,1°`** · faces com canto pior que 60° = **`0`** · aspecto p50 `1,08`–`1,22`. ⚠️⚠️ **A cadeia de referência montada em 24/08 NÃO atinge esta barra no nosso corpus** — ela dá `9,1°`–`12,4°` e `5`–`6` faces péssimas. ⛔ **A barra é o oráculo, não a cadeia de referência**: bater `12°` seria copiar um resultado pior |
+| 8 | ⭐ **a forma por-face** bate a barra do oráculo | `QuadShape`, medido pelo **mesmo código** sobre a saída dele: enviesamento p50 **`4,8°`–`7,1°`** · faces com canto `>60°` = **`0`** · aspecto p50 `1,08`–`1,22`. ⭐⭐ **MEDIDO ALCANÇÁVEL com a fase zero honrada: `5,1°`–`5,5°`, `100%` quads, `0`–`3` faces péssimas** — na estriada isso **ultrapassa** o oráculo (`5,5°` contra `7,1°`). ⛔ **Sem a fase zero a mesma cadeia dá `10–12°`** — se o gate reprovar aí, o defeito é a entrada |
 | 9 | uma malha com **bordo** produz saída | a peça com 38 arestas de bordo do corpus |
 | 10 | uma malha de **género 1** produz saída com `χ = 0` | o toro do corpus |
 | 11 | ⛔ **o caminho antigo continua byte-idêntico** enquanto o interruptor estiver desligado | a lei desta linha: tudo o que é novo shipa **desligado** com a tabela ao lado |
@@ -434,12 +450,13 @@ transição legítima).
   (género 1) — ⭐ **cujo mapa saiu perfeito**, logo o defeito é da extração.
   ⛔ *Robustez é precisamente o que o método promete; a implementação de referência não a
   entrega no nosso corpus.*
-- **Qualidade:** nas três que passaram ela dá `9,1°`–`12,4°` de enviesamento mediano, contra
-  `4,8°`–`7,1°` do oráculo de produção **nas mesmas peças**. ⇒ ⛔ **não copie o comportamento
-  dela; a barra é o oráculo** (gate nº8).
-- ⚠️ **A hipótese nomeada para essa diferença** é o **curl** do campo: o nosso é liso mas
-  nunca foi tornado integrável. ⇒ **medir e reduzir o curl é pré-condição**, não diagnóstico
-  opcional (§5-bis.5 da triagem).
+- **Qualidade:** ⭐⭐ com a **fase zero** honrada, a cadeia dá `5,1°`–`5,5°` e **`100%` quads**
+  — a classe do oráculo, e **melhor que ele** numa das peças. ⛔ Sem ela, `10–12°`.
+- ⛔ **A hipótese do CURL foi REFUTADA por medição:** o nosso campo é **mais** integrável que
+  o de referência (`p50 0,0019` contra `0,0044`). A densidade também foi refutada
+  (igualar a contagem de faces move `0,7°`). ⇒ **a causa era a triangulação de entrada.**
+- ⭐⭐⭐ **E o nosso CAMPO ganha ao de referência**, na malha dele, pela mesma extração:
+  `5,1°` contra `7,4°`, e `0` faces péssimas contra `9`.
 
 ---
 

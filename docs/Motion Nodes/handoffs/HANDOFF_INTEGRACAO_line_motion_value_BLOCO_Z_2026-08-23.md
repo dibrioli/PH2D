@@ -490,6 +490,106 @@ mapas) · a sonda `test.fan` mudou-se do `cook_tests.rs` para junto dos seus gat
 
 ---
 
+## §0-octies — NONO BLOCO: **duas folhas fecham** (09 e 10), e o gate que estava vermelho há um bloco
+
+Placar: **68 P2 + 1 P1** (era 71 + 1); ✅ 236 → **239**. As folhas **09 (cor)** e
+**10 (field)** vão a **zero**. O único P1 que resta é da folha 01
+(`motion.emitter` *inherit velocity*) e é **decisão de produto do Enio**.
+
+As três células eram a mesma forma: **um número onde a pergunta tem dois lados**.
+
+| célula | cura | ⚠️ a escolha que interessa |
+|---|---|---|
+| `field.radial_sweep` — softness angular vs radial | `soft_angular`, um **multiplicador** (rótulo *Angular Bias*) | a **CERCA declarada** escolheu a forma |
+| `field.remap` — `Clamp Min`/`Clamp Max` | **enum de 4 estados** no param que já existia | um param novo mudaria o sentido de `Clamp = 0` em toda cena salva |
+| `motion.color_ramp` — interp por stop | geração **`g4`** + `RampStop::interp` + o botão a ciclar a parada | o `_slot` que o botão já recebia e ignorava era onde a resposta estava |
+
+### ⭐ A cerca do `radial_sweep` escolheu a própria cura
+
+O doc-comment declarava: *"uma knob adimensional, porque as duas bordas vivem em
+unidades diferentes — graus vs mundo"*. Um segundo `soft` **absoluto** reabriria
+exactamente a pergunta que essa cerca fechou. A cura é um **viés relativo**:
+`1` = as duas iguais (byte-idêntico, `x·1.0` é `x` exacto), `0` = borda angular
+DURA com a radial macia — o caso que a célula nomeia. Memória:
+`feedback_a_declared_fence_chooses_the_shape_of_its_own_cure`.
+
+⚠️ **A sonda errou antes do código:** medir a borda angular a meio raio media a
+RADIAL (com `soft = 0.9` o platô acaba em `0,8` de um raio 8), e a faixa dava 159
+mesmo com a angular dura. *Uma sonda de uma borda tem de estar longe da outra.*
+
+### ⛔ O `field.remap` NÃO ganhou um `clamp_max`
+
+A primeira tentativa apendou o param — e o gate `multiplier_scales_then_clamp_bounds`,
+que já existia, reprovou: com `clamp` a significar *o piso*, toda cena salva com
+`Clamp` **desligado** passaria a ter o teto ligado, cortando em silêncio o excesso
+que ela desenhava. A escada `0 = Off · 1 = Both · 2 = Min Only · 3 = Max Only`
+preserva os dois estados que um documento pode guardar, e os novos vivem onde
+nenhum deles chega.
+
+### A rampa: `g4`, e o botão que já recebia a resposta
+
+`<pos>:<r>,<g>,<b>,<a>:<stop_interp_u8>` — o segundo `:` espelha o `x:y:interp` do
+`ph2d-curve` que o cabeçalho do módulo já citava como modelo. `STOP_INTERP_GLOBAL
+= 255` **e não `RampInterp::COUNT`**: a contagem cresce quando alguém acrescenta
+um modo, e um sentinela que anda por cima do primeiro modo novo reinterpreta em
+silêncio toda rampa salva. A versão continua escolhida pelo conteúdo — dar e
+**tirar** a escolha devolve a string de antes byte a byte, com gate.
+
+⛔ O dispositivo herda de graça: o LUT é assado na CPU pela mesma
+`parse_gradient`, então não há WGSL a escrever nem segunda expressão da lei.
+
+---
+
+### ⚠️⚠️ E o portão de fecho apanhou QUATRO vermelhos — leia esta parte
+
+**Um deles estava vermelho desde o bloco do `motion.bezier_warp`** e ninguém o
+viu, porque o portão de cada bloco corria só as crates do diff. *O portão do fim
+da linha é sobre a WORKSPACE, e é para isto.*
+
+**1. `the_scroll_is_inert_at_todays_row_cap_…`** — o teto de linhas subiu de 20
+para 24 e a rolagem deixou de ser inerte. O gate previa-o em texto: *"o dia em
+que o teto subir é o dia em que a blindagem passa a ser necessária"*, e nomeava
+duas curas candidatas.
+
+⭐ **A cura é *uma banda, dois consumidores*, e a ferramenta JÁ EXISTIA:** o
+painel chamava `scene.push_clip(body_rect)` e nunca o gémeo
+`hit_index.push_clip(body_rect)` — a mesma pilha que o `section_header::body`
+usa desde que nasceu. Duas linhas.
+
+**2, 3, 4.** As outras três caíram *por causa da cura*, e todas pela mesma razão:
+mediam **o fundo do último hit-rect**, que com a blindagem **satura na altura da
+janela**. O `motion.bezier_warp` passou a ler `802` de um dock de `880` e o gate
+acusou-o de ter perdido params. Não perdeu — a sonda deixou de medir o nó.
+
+A régua passou a ser a altura de **conteúdo publicada** (`panel_content_h`), e a
+barra com ela: `content_h` contra `visible_h`, o mesmo par que o `dispatch_wheel`
+usa. ⚠️ O retrato nomeado do `bezier_warp` **mudou de `1083` para `969`** sem uma
+linha de produto se mexer — 114 px é a faixa do título, que a régua velha incluía
+e a nova não. Memória:
+`feedback_shielding_the_hit_index_changes_what_every_probe_measures`.
+
+⚠️ **E o quarto era WGSL:** o `soft_angular` entrou no kernel sem entrar na lista
+de params que gera a `struct KernelParams` — invisível a todo `cargo test` de
+crate, apanhado pelo `generated_wgsl_validates`. *Um param novo num kernel são
+DOIS sítios.*
+
+### Provas de mutação
+
+| mutação | gate que morre |
+|---|---|
+| tirar o `hit_index.push_clip` do painel | `nothing_scrolled_above_the_body_can_still_be_clicked_under_the_title` |
+
+### Splits por HR-18 (três)
+
+`ph2d-node-field-remap`: `clamp_tests.rs` + `curve_offset_tests.rs` (o `tests.rs`
+bateu em 765/700) · `ph2d-panel-motion-params`: `gradient_row_tests.rs` (o cap dos
+painéis é **600**, não 700 — `architecture_panel_loc_cap`).
+
+**Gate deste bloco:** fmt limpo · clippy **0** sobre as 4 crates do diff · typos
+**0** · **workspace inteira** verde.
+
+---
+
 ## §1 — O que entrou, em uma frase
 
 **Todo teto deste catálogo passa a dizer de que RECURSO ele é** (`CLAUDE.md` §0.0) — 27 params

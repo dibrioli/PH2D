@@ -169,9 +169,13 @@ pub(crate) fn paint_gradient_row(
         buttons.push((MODE_W, ramp.hue.name(), param_grad_hue_id(slot)));
     }
     buttons.push((MODE_W, ramp.color_mode.name(), param_grad_space_id(slot)));
+    // ⚠️ **O rótulo é o da PARADA quando há uma selecionada com interpolação
+    // própria** — o botão cicla aquela, e um rótulo que continuasse a mostrar a
+    // global seria pintar de uma fonte e despachar de outra.
     buttons.push((
         INTERP_W,
-        interp_name(ramp.interp),
+        sel.and_then(|i| ramp.stops()[i].interp)
+            .map_or_else(|| interp_name(ramp.interp), RampInterp::name),
         param_grad_interp_id(slot),
     ));
     buttons.push((BTN_W, "+", param_grad_add_id(slot)));
@@ -390,16 +394,43 @@ pub(crate) fn preset_gradient(i: usize) -> String {
     serialize_gradient(&GradientPreset::ALL[i.min(PRESET_COUNT - 1)].ramp())
 }
 
-/// Cycle the ramp's global interpolation (Linear → Ease → Constant → Cardinal → B-Spline).
-pub(crate) fn cycle_interp(value: &str, _slot: usize) -> String {
-    let mut ramp = working(value);
-    ramp.interp = match ramp.interp {
+/// O passo seguinte da roda (Linear → Ease → Constant → Cardinal → B-Spline).
+fn next_interp(i: RampInterp) -> RampInterp {
+    match i {
         RampInterp::Linear => RampInterp::Ease,
         RampInterp::Ease => RampInterp::Constant,
         RampInterp::Constant => RampInterp::Cardinal,
         RampInterp::Cardinal => RampInterp::BSpline,
         RampInterp::BSpline => RampInterp::Linear,
-    };
+    }
+}
+
+/// Cicla a interpolação — **da PARADA selecionada quando há uma**, da rampa
+/// inteira quando não há.
+///
+/// ⚠️ **É esta a cura da célula da folha 09** (*"interpolação POR STOP — o ramp
+/// parameter do Houdini: cada ponto carrega a própria interpolação"*): o botão
+/// ciclava só a global, e o `_slot` que ele já recebia e ignorava era exactamente
+/// onde a resposta estava.
+///
+/// A roda da parada tem um degrau a mais — **`Global`** —, e é ele que faz a
+/// escolha ser reversível: sem um caminho de volta, dar interpolação própria a um
+/// stop seria uma porta de sentido único.
+pub(crate) fn cycle_interp(value: &str, slot: usize) -> String {
+    let mut ramp = working(value);
+    match selected_for(slot).filter(|&i| i < ramp.stops().len()) {
+        Some(i) => {
+            let next = match ramp.stops()[i].interp {
+                None => Some(RampInterp::Linear),
+                // A volta ao `Global` fecha a roda no fim, e não no início: quem
+                // está a percorrer os modos quer vê-los todos antes de sair.
+                Some(RampInterp::BSpline) => None,
+                Some(cur) => Some(next_interp(cur)),
+            };
+            ramp.set_stop_interp(i, next);
+        }
+        None => ramp.interp = next_interp(ramp.interp),
+    }
     serialize_gradient(&ramp)
 }
 
@@ -437,112 +468,5 @@ fn interp_name(interp: RampInterp) -> &'static str {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_editor_core::interaction::WidgetStore;
-
-    /// **O TETO DE PARADAS É O PAINEL MAIS ESTREITO A DIVIDIR POR UM ALVO DE PONTEIRO.**
-    ///
-    /// Bloco Z (doc 91), célula da folha 09 da conferência. A tabela inteira está no
-    /// doc-comment de [`MAX_GRADIENT_STOPS`]; aqui ela
-    /// é **refeita** a partir dos números vivos, para que mexer no recuo do painel, no raio de
-    /// agarrar ou no piso do arrasto de redimensionar reprove em vez de mentir.
-    ///
-    /// ⚠️ **A medição CONFIRMOU o `8` que já lá estava, e é esse o achado**: o número nunca
-    /// esteve errado — o que não existia era a razão. *Um teto certo sem derivação e um teto
-    /// errado leem exactamente igual no dia em que alguém precisa de o mover.*
-    #[test]
-    fn the_gradient_stop_ceiling_is_the_narrowest_panel_divided_by_a_pointer_target() {
-        let strip = ph2d_tokens::PANEL_MIN_W_PX - ph2d_tokens::PANEL_HEAD_PAD_PX * 2.0;
-        // Por parada: o alvo de ponteiro que este editor declara para um marcador, mais a folga
-        // que a célula da amostra come dos dois lados.
-        let per_stop = GRAB_R * 2.0 + SWATCH_PAD * 2.0;
-        let derived = (strip / per_stop).floor() as usize;
-        assert_eq!(
-            MAX_GRADIENT_STOPS, derived,
-            "faixa util {strip} px / {per_stop} px por parada = {derived}"
-        );
-        // O controle: a régua não é vacuamente pequena — o modelo admite MUITO mais que isto, e
-        // é essa distância que torna o teto uma decisão de PAINEL e não do formato.
-        assert!(
-            derived < ph2d_color::MAX_RAMP_STOPS,
-            "o teto do painel e' mais apertado que o do modelo ({} paradas)",
-            ph2d_color::MAX_RAMP_STOPS
-        );
-        // E o outro controle: uma parada a mais já não caberia.
-        assert!(
-            (derived + 1) as f32 * per_stop > strip,
-            "e a parada seguinte nao cabe"
-        );
-    }
-
-    #[test]
-    fn working_falls_back_to_the_default_ramp() {
-        // Empty / garbage open on the draggable black→white default (2 stops).
-        assert_eq!(working("").len(), 2);
-        assert_eq!(working("nonsense").len(), 2);
-        let three = working("g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1");
-        assert_eq!(three.len(), 3);
-    }
-
-    #[test]
-    fn add_stop_lands_in_the_widest_gap_without_a_jump() {
-        // Default black→white: stops at 0 and 1. Add → midpoint 0.5, colour = eval(0.5).
-        let r = parse_gradient(&add_stop("g1 2 0:0,0,0 1:1,1,1")).unwrap();
-        assert_eq!(r.len(), 3);
-        assert!((r.stops()[1].pos - 0.5).abs() < 1e-6);
-        assert!((r.stops()[1].color[0] - 0.5).abs() < 1e-6, "no colour jump");
-    }
-
-    #[test]
-    fn add_stop_stops_at_the_cap() {
-        let mut v = "g1 2 0:0,0,0 1:1,1,1".to_string();
-        for _ in 0..MAX_GRADIENT_STOPS + 4 {
-            v = add_stop(&v);
-        }
-        assert_eq!(parse_gradient(&v).unwrap().len(), MAX_GRADIENT_STOPS);
-    }
-
-    #[test]
-    fn remove_keeps_at_least_two() {
-        assert_eq!(
-            parse_gradient(&remove_stop("g1 2 0:0,0,0 1:1,1,1", 0))
-                .unwrap()
-                .len(),
-            2
-        );
-        SELECTED.with(|s| s.set(Some((0, 1))));
-        let r = parse_gradient(&remove_stop("g1 2 0:0,0,0 0.5:0,1,0 1:1,1,1", 0)).unwrap();
-        assert_eq!(r.len(), 2);
-    }
-
-    #[test]
-    fn cycle_interp_advances_and_wraps() {
-        let v = cycle_interp("g1 2 0:0,0,0 1:1,1,1", 0); // Linear -> Ease (u8 2 -> 0)
-        assert_eq!(parse_gradient(&v).unwrap().interp, RampInterp::Ease);
-    }
-
-    #[test]
-    fn drain_drag_folds_the_position_and_never_lets_it_cross() {
-        let slot = 0;
-        let mut store = WidgetStore::with_capacity(2);
-        // Drag the MIDDLE stop (index 1) far right (x=2.0). It must clamp strictly below
-        // its right neighbour's position — stops never cross.
-        store.set_curve_point_drag(param_grad_editor_id(slot), 0, 1, 2.0, 0.5);
-        let r = parse_gradient(
-            &drain_drag(&mut store, slot, "g1 2 0:1,0,0 0.5:0,1,0 1:0,0,1").unwrap(),
-        )
-        .unwrap();
-        assert!(
-            r.stops()[0].pos < r.stops()[1].pos && r.stops()[1].pos < r.stops()[2].pos,
-            "position order preserved: {:?}",
-            r.stops().iter().map(|s| s.pos).collect::<Vec<_>>()
-        );
-        assert!(
-            store
-                .take_curve_point_drag_if(|p| p == param_grad_editor_id(slot))
-                .is_none(),
-            "slot drained"
-        );
-    }
-}
+#[path = "gradient_row_tests.rs"]
+mod tests;

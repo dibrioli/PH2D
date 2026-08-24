@@ -233,7 +233,25 @@ fn contour(
 /// The full remap of one mask value `t_in` — the SAME pipeline the WGSL kernel runs.
 /// Invert flips the input; `inner_offset` expands the solid core (values above the
 /// offset saturate to 1); the contour shapes it; the `[min, max]` range + `multiplier`
-/// scale it; `clamp` bounds it to `[0,1]`; and `strength` blends input→remapped (so
+/// **OS QUATRO ESTADOS DO CLAMP** — os rótulos do param `clamp`, na ordem em que
+/// o número os indexa.
+///
+/// A célula da conferência (folha 10) cita o C4D §B6 verbatim: *"Min / Max |
+/// limites de saída + **Clamp Min** / **Clamp Max** separados"*. Um `bool` não
+/// exprime *"segure o piso, deixe o teto voar"* — e é exactamente isso que a lei
+/// de espaço linear do `field.combine` pede: somar dois campos passa de `1`, e
+/// cortar ali destrói a informação que a soma carregava.
+///
+/// ⚠️ **A cura é um ENUM no param que já existe, e não um param NOVO — e a razão
+/// é compatibilidade, medida.** Um `clamp_max` apendado obrigaria o `clamp` a
+/// significar *o piso*, e então toda cena salva com `Clamp` DESLIGADO passaria a
+/// ter o teto ligado: o excesso que ela desenhava seria cortado, em silêncio.
+/// Com a escada `0 = Off` e `1 = Both`, **todo documento já autorado lê
+/// exactamente o que escreveu** — os estados novos vivem em `2` e `3`, que
+/// nenhum deles contém.
+pub const CLAMP_LABELS: &[&str] = &["Off", "Both", "Min Only", "Max Only"];
+
+/// scale it; `clamp` escolhe quais dos dois limites valem; and `strength` blends input→remapped (so
 /// `strength = 0` is an exact passthrough).
 // The 12 args are the C4D Remapping pipeline; a struct would be a second model of the
 // same knobs the `NodeManifest` already lists (mirrors `field_gizmo`'s `view_from_params`).
@@ -249,7 +267,7 @@ fn remap(
     lo: f32,
     hi: f32,
     multiplier: f32,
-    clamp: bool,
+    clamp: i32,
     invert: bool,
     strength: f32,
 ) -> f32 {
@@ -260,8 +278,14 @@ fn remap(
     t = (t / (1.0 - io)).min(1.0);
     t = contour(mode, t, curvature, steps, curve, curve_offset);
     let mut mapped = (lo + t * (hi - lo)) * multiplier;
-    if clamp {
-        mapped = mapped.clamp(0.0, 1.0);
+    // ⚠️ O **piso primeiro**: `clamp(0,1)` é `max(0).min(1)`, então aplicar `max`
+    // e depois `min` é a MESMA expressão na mesma ordem — o estado `Both` é
+    // byte-idêntico ao `clamp` de sempre.
+    if clamp == 1 || clamp == 2 {
+        mapped = mapped.max(0.0);
+    }
+    if clamp == 1 || clamp == 3 {
+        mapped = mapped.min(1.0);
     }
     t_in + (mapped - t_in) * strength
 }
@@ -290,7 +314,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             i32(rm_round(params.contour)), rm_t,\n\
             params.curvature, params.steps, params.curve_offset);\n\
         var rm_mapped = (params.min + rm_t * (params.max - params.min)) * params.multiplier;\n\
-        if (params.clamp >= 0.5) { rm_mapped = clamp(rm_mapped, 0.0, 1.0); }\n\
+        let rm_cl = i32(rm_round(params.clamp));\n\
+        if (rm_cl == 1 || rm_cl == 2) { rm_mapped = max(rm_mapped, 0.0); }\n\
+        if (rm_cl == 1 || rm_cl == 3) { rm_mapped = min(rm_mapped, 1.0); }\n\
         let rm_out = rm_in + (rm_mapped - rm_in) * params.strength;\n\
         // The probability gate — the SAME integer hash as the CPU (bit-identical).\n\
         let rm_gate = select(0.0, 1.0, rm_hash01(i, u32(max(params.seed, 0.0))) < params.probability);\n\
@@ -413,7 +439,7 @@ impl NodeOp for FieldRemap {
         let lo = ctx.param("min");
         let hi = ctx.param("max");
         let multiplier = ctx.param("multiplier");
-        let clamp = ctx.param("clamp") >= 0.5;
+        let clamp = ctx.param("clamp").round() as i32;
         let invert = ctx.param("invert") >= 0.5;
         let strength = ctx.param("strength");
         let curve_offset = ctx.param("curve_offset");

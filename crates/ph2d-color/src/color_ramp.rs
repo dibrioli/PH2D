@@ -179,6 +179,20 @@ pub struct RampStop {
     /// neighbours and keep tracking the same stop. Assigned by the owning [`ColorRamp`];
     /// [`RampStop::new`] leaves it `0` until the ramp adopts the stop.
     pub id: u8,
+    /// **A interpolação DESTE segmento** — o do stop até ao seguinte (a lei do
+    /// *ramp parameter* do Houdini: cada ponto carrega a própria interpolação).
+    ///
+    /// `None` ⇒ segue a global da rampa, que é o que toda rampa já autorada diz.
+    ///
+    /// ⚠️ **É o segmento que COMEÇA aqui, e não o que acaba** — a escolha importa
+    /// e é a da referência: arrastar um stop leva consigo o carácter da subida
+    /// que sai dele, que é o que o artista vê ao mexer.
+    ///
+    /// ⚠️ **O último stop não tem segmento**, então o campo dele nunca é lido —
+    /// e mesmo assim viaja no formato, porque um campo que se perde ao mover um
+    /// stop para o fim e volta a ser preciso quando ele volta para o meio é um
+    /// campo que apaga trabalho.
+    pub interp: Option<RampInterp>,
 }
 
 impl RampStop {
@@ -189,7 +203,15 @@ impl RampStop {
             pos: pos.clamp(0.0, 1.0),
             color,
             id: 0,
+            interp: None,
         }
+    }
+
+    /// O mesmo stop, com a interpolação do PRÓPRIO segmento escolhida.
+    #[must_use]
+    pub fn with_interp(mut self, interp: Option<RampInterp>) -> Self {
+        self.interp = interp;
+        self
     }
 }
 
@@ -362,7 +384,10 @@ impl ColorRamp {
         let (a, b) = (self.stops[i], self.stops[i + 1]);
         let span = (b.pos - a.pos).max(1e-8);
         let fac = ((t - a.pos) / span).clamp(0.0, 1.0);
-        match self.interp {
+        // ⚠️ **A interpolação é a do SEGMENTO**, e a global é o que um segmento
+        // que não escolheu nada herda. `None` em todos ⇒ a expressão de sempre.
+        let seg = a.interp.unwrap_or(self.interp);
+        match seg {
             RampInterp::Constant => a.color,
             RampInterp::Linear => self.mix2(a.color, b.color, fac),
             RampInterp::Ease => self.mix2(a.color, b.color, smoothstep(fac)),
@@ -372,7 +397,7 @@ impl ColorRamp {
                 let c1 = a.color;
                 let c2 = b.color;
                 let c3 = self.stops[(i + 2).min(n - 1)].color;
-                let w = if self.interp == RampInterp::Cardinal {
+                let w = if seg == RampInterp::Cardinal {
                     catmull_rom_weights(fac)
                 } else {
                     bspline_weights(fac)
@@ -396,6 +421,18 @@ impl ColorRamp {
         let inv = 1.0 / (n as f32 - 1.0);
         for (i, slot) in lut.iter_mut().enumerate() {
             *slot = self.eval(i as f32 * inv);
+        }
+    }
+
+    /// **Escolhe a interpolação do segmento que começa na parada `i`.** `None`
+    /// devolve-a à global.
+    ///
+    /// ⚠️ Passa pelo dono porque as paradas são mantidas ORDENADAS por posição —
+    /// um `stops_mut` público deixaria um chamador partir essa invariante para
+    /// escrever um campo que nada tem com a ordem.
+    pub fn set_stop_interp(&mut self, i: usize, interp: Option<RampInterp>) {
+        if let Some(s) = self.stops.get_mut(i) {
+            s.interp = interp;
         }
     }
 

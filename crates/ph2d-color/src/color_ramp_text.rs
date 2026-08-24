@@ -66,11 +66,46 @@
 //! os tokens a cada campo novo; aqui cada versão nova é o **superset**, e as antigas
 //! sobrevivem por causa dos documentos que já as usam.
 //!
+//! ## `g4` — a interpolação POR STOP (2026-08-23)
+//!
+//! O `interp` do header é **global**, e o *ramp parameter* do Houdini — que a
+//! folha 09 da conferência cita — dá a cada ponto a própria interpolação. Era a
+//! mesma forma de defeito que o `g2` fechou para a alfa e o `g3` para o espaço:
+//! a capacidade cabia no motor e **não cabia no formato**.
+//!
+//! ```text
+//! g4 <interp_u8> <mode_u8> <hue_u8> <pos>:<r>,<g>,<b>,<a>:<stop_interp_u8> …
+//! ```
+//!
+//! - o segundo `:` do stop espelha o `x:y:interp` do `ph2d-curve`, que o
+//!   cabeçalho deste módulo já citava como modelo;
+//! - **[`STOP_INTERP_GLOBAL`]** (`255`) é *"segue a global"*, e é o que todo stop
+//!   de uma rampa que ninguém tocou carrega. A alternativa — omitir o token nos
+//!   stops sem escolha — partiria a lei que o `g2` instalou (*a versão diz a
+//!   aridade do stop*) e deixaria o parser a adivinhar por contagem.
+//!
+//! ⚠️ **A interpolação de um stop é a do segmento que COMEÇA nele.** O último
+//! stop não tem segmento e o campo dele nunca é lido — e viaja na mesma, porque
+//! um campo que se perde ao arrastar um stop para o fim, e volta a ser preciso
+//! quando ele volta para o meio, é um campo que apaga trabalho.
+//!
+//! ⚠️ **A versão continua ESCOLHIDA pelo conteúdo:** `g4` sai apenas quando algum
+//! stop tem interpolação própria. Uma rampa que ninguém partiu serializa
+//! `g1`/`g2`/`g3` **byte a byte** como antes.
+//!
 //! ⚠️ **E o dispositivo herda o espaço de graça:** o LUT da GPU é assado na CPU por
 //! [`ColorRamp::bake_into`] → [`ColorRamp::eval`], pela MESMA `parse_gradient` — então não
 //! há WGSL a escrever, e não há segunda expressão da lei para divergir.
 
 use crate::color_ramp::{ColorRamp, RampColorMode, RampHue, RampInterp, RampStop};
+
+/// O token de stop que diz **"segue a interpolação global"** — o valor que todo
+/// stop de uma rampa que ninguém partiu carrega no `g4`.
+///
+/// ⚠️ `255` e não `RampInterp::COUNT`: a contagem cresce quando alguém acrescenta
+/// um modo, e um sentinela que anda por cima do primeiro modo novo reinterpreta
+/// em silêncio toda rampa já salva.
+pub const STOP_INTERP_GLOBAL: u8 = 255;
 
 /// Serialize a ramp to the compact text form (the inverse of [`parse_gradient`]).
 ///
@@ -87,7 +122,18 @@ pub fn serialize_gradient(ramp: &ColorRamp) -> String {
     // RGB, e guardá-lo assim mesmo é o que faz a escolha do artista sobreviver a um
     // desvio por RGB (o gate `a_hue_chosen_in_hsv_survives_a_detour_through_rgb`).
     let spaced = ramp.color_mode != RampColorMode::Rgb || ramp.hue != RampHue::Near;
-    let mut s = if spaced {
+    // A pergunta é a mesma das outras duas versões: a rampa PRECISA deste campo?
+    let per_stop = ramp.stops().iter().any(|s| s.interp.is_some());
+    let mut s = if per_stop {
+        // `g4` é o superset: alfa e os dois tokens de header sempre, mais o
+        // token por stop.
+        format!(
+            "g4 {} {} {}",
+            ramp.interp.to_u8(),
+            ramp.color_mode.to_u8(),
+            ramp.hue.to_u8()
+        )
+    } else if spaced {
         // `g3` é o superset: alfa sempre, mais os dois tokens de header.
         format!(
             "g3 {} {} {}",
@@ -104,12 +150,15 @@ pub fn serialize_gradient(ramp: &ColorRamp) -> String {
     };
     // A aridade do stop é função da VERSÃO, não da translucidez: o `g3` é quatro canais
     // mesmo com todo stop opaco (a regra que o `g2` instalou — a versão diz a aridade).
-    let four_channel = translucent || spaced;
+    let four_channel = translucent || spaced || per_stop;
     for stop in ramp.stops() {
         // `{}` on f32 is the shortest decimal that round-trips (Rust's Grisu/Ryū),
         // so parse-then-serialize is byte-stable.
         let [r, g, b, a] = stop.color;
-        if four_channel {
+        if per_stop {
+            let it = stop.interp.map_or(STOP_INTERP_GLOBAL, RampInterp::to_u8);
+            s.push_str(&format!(" {}:{r},{g},{b},{a}:{it}", stop.pos));
+        } else if four_channel {
             s.push_str(&format!(" {}:{r},{g},{b},{a}", stop.pos));
         } else {
             s.push_str(&format!(" {}:{r},{g},{b}", stop.pos));
@@ -127,10 +176,11 @@ pub fn parse_gradient(s: &str) -> Option<ColorRamp> {
     let mut it = s.split_whitespace();
     // `g1` = três canais (alfa implícita 1.0); `g2` = quatro; `g3` = quatro **mais** o
     // espaço de interpolação e o caminho de matiz no header.
-    let (with_alpha, spaced) = match it.next()? {
-        "g1" => (false, false),
-        "g2" => (true, false),
-        "g3" => (true, true),
+    let (with_alpha, spaced, per_stop) = match it.next()? {
+        "g1" => (false, false, false),
+        "g2" => (true, false, false),
+        "g3" => (true, true, false),
+        "g4" => (true, true, true),
         _ => return None,
     };
     let interp = RampInterp::from_u8(it.next()?.parse::<u8>().ok()?);
@@ -147,6 +197,16 @@ pub fn parse_gradient(s: &str) -> Option<ColorRamp> {
     };
     let mut stops = Vec::new();
     for tok in it {
+        // No `g4` o stop tem um segundo `:` com a interpolação PRÓPRIA — a lei da
+        // versão dizer a aridade, que o `g2` instalou.
+        let (tok, stop_interp) = if per_stop {
+            let (head, it_str) = tok.rsplit_once(':')?;
+            let raw = it_str.parse::<u8>().ok()?;
+            let chosen = (raw != STOP_INTERP_GLOBAL).then(|| RampInterp::from_u8(raw));
+            (head, chosen)
+        } else {
+            (tok, None)
+        };
         let (pos_str, rgb_str) = tok.split_once(':')?;
         let pos = pos_str.parse::<f32>().ok()?;
         let mut c = rgb_str.split(',');
@@ -167,7 +227,7 @@ pub fn parse_gradient(s: &str) -> Option<ColorRamp> {
         if !(pos.is_finite() && r.is_finite() && g.is_finite() && b.is_finite() && a.is_finite()) {
             return None;
         }
-        stops.push(RampStop::new(pos, [r, g, b, a]));
+        stops.push(RampStop::new(pos, [r, g, b, a]).with_interp(stop_interp));
     }
     if stops.len() < 2 {
         return None;
@@ -404,5 +464,97 @@ mod tests {
         assert_eq!(parse_gradient(linear).unwrap().interp, RampInterp::Linear);
         assert_eq!(parse_gradient(ease).unwrap().interp, RampInterp::Ease);
         assert_ne!(linear, ease, "the interp is a distinguishing token");
+    }
+
+    // ───────────── `g4` — a interpolação POR STOP (folha 09) ─────────────
+
+    /// ⭐ **A CÉLULA, medida:** o *ramp parameter* do Houdini dá a cada ponto a
+    /// própria interpolação, e o formato só tinha uma global. Round-trip.
+    #[test]
+    fn a_per_stop_interp_survives_the_round_trip() {
+        let mut r = ColorRamp::new(
+            vec![
+                RampStop::new(0.0, [0.0, 0.0, 0.0, 1.0]),
+                RampStop::new(0.5, [1.0, 0.0, 0.0, 1.0]),
+                RampStop::new(1.0, [1.0, 1.0, 1.0, 1.0]),
+            ],
+            RampColorMode::Rgb,
+            RampInterp::Linear,
+        );
+        r.set_stop_interp(1, Some(RampInterp::Constant));
+        let text = serialize_gradient(&r);
+        assert!(text.starts_with("g4 "), "a versao tem de subir: {text}");
+        let back = parse_gradient(&text).expect("volta");
+        assert_eq!(
+            back.stops()[0].interp,
+            None,
+            "o stop sem escolha segue a global"
+        );
+        assert_eq!(back.stops()[1].interp, Some(RampInterp::Constant));
+        assert_eq!(back.interp, RampInterp::Linear, "a global nao se mexeu");
+        assert_eq!(
+            serialize_gradient(&back),
+            text,
+            "e a ida-e-volta e' estavel"
+        );
+    }
+
+    /// ⚠️ **A versão continua ESCOLHIDA pelo conteúdo** — uma rampa que ninguém
+    /// partiu serializa `g1`/`g2`/`g3` byte a byte como antes.
+    #[test]
+    fn a_ramp_nobody_split_never_pays_the_new_header() {
+        let mut r = ColorRamp::new(
+            vec![
+                RampStop::new(0.0, [0.0, 0.0, 0.0, 1.0]),
+                RampStop::new(1.0, [1.0, 1.0, 1.0, 1.0]),
+            ],
+            RampColorMode::Rgb,
+            RampInterp::Ease,
+        );
+        let before = serialize_gradient(&r);
+        assert!(before.starts_with("g1 "), "{before}");
+        // Dar e TIRAR a escolha devolve exactamente a string de antes.
+        r.set_stop_interp(0, Some(RampInterp::BSpline));
+        assert!(serialize_gradient(&r).starts_with("g4 "));
+        r.set_stop_interp(0, None);
+        assert_eq!(
+            serialize_gradient(&r),
+            before,
+            "a volta nao e' byte-identica"
+        );
+    }
+
+    /// ⭐ **E ela PINTA:** o segmento com interpolação própria avalia diferente do
+    /// que a global daria, e o segmento vizinho **não se mexe**.
+    #[test]
+    fn only_the_segment_that_chose_changes_colour() {
+        let stops = vec![
+            RampStop::new(0.0, [0.0, 0.0, 0.0, 1.0]),
+            RampStop::new(0.5, [1.0, 1.0, 1.0, 1.0]),
+            RampStop::new(1.0, [0.0, 0.0, 0.0, 1.0]),
+        ];
+        let plain = ColorRamp::new(stops.clone(), RampColorMode::Rgb, RampInterp::Linear);
+        let mut split = plain.clone();
+        split.set_stop_interp(0, Some(RampInterp::Constant));
+        // No primeiro segmento o Constant segura a cor do stop de baixo.
+        assert!(plain.eval(0.25)[0] > 0.4, "CONTROLE: linear a meio");
+        assert_eq!(split.eval(0.25)[0], 0.0, "Constant segura o preto");
+        // E o SEGUNDO segmento, que não escolheu nada, sai idêntico.
+        for k in 0..16 {
+            let t = 0.5 + k as f32 / 32.0;
+            assert_eq!(
+                plain.eval(t)[0].to_bits(),
+                split.eval(t)[0].to_bits(),
+                "o segmento vizinho mexeu-se em t={t}"
+            );
+        }
+    }
+
+    /// ⚠️ Um token de stop malformado é **malformado**, não um default implícito —
+    /// a lei que a versão instala sobre a aridade.
+    #[test]
+    fn a_g4_stop_without_its_interp_token_is_malformed() {
+        assert!(parse_gradient("g4 0 0 0 0:0,0,0,1 1:1,1,1,1").is_none());
+        assert!(parse_gradient("g4 0 0 0 0:0,0,0,1:0 1:1,1,1,1:255").is_some());
     }
 }

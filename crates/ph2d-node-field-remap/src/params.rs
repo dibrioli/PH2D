@@ -170,9 +170,14 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "clamp",
         label: "Clamp",
         min: 0.0,
-        max: 1.0,
+        #[expect(clippy::cast_precision_loss, reason = "quatro rotulos")]
+        max: (super::CLAMP_LABELS.len() - 1) as f32,
         step: 1.0,
-        widget: ParamWidget::Toggle,
+        // Era um Toggle; os dois estados dele são os índices `0` e `1`, que a
+        // escada preserva — ver `CLAMP_LABELS`.
+        widget: ParamWidget::Enum {
+            labels: super::CLAMP_LABELS,
+        },
     },
     ParamUiHint {
         param: "invert",

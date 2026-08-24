@@ -315,22 +315,54 @@ use ph2d_editor::zones::Rect;
 /// de linha ao lado dele: as linhas não têm a mesma altura (um editor de Curva, de Gradiente ou
 /// de Paleta devolve a própria), então *mais linhas* não é o mesmo que *mais alto* — e uma
 /// segunda aritmética divergiria exatamente no nó composto, que é o caso que importa.
+/// A altura do CORPO do inspector — a régua contra a qual «transborda?» se
+/// pergunta.
+///
+/// ⚠️ **Não é `INSPECTOR_MAX_H`**, que é a do dock INTEIRO: entre os dois há a
+/// faixa do título e o padding, e o número que o `dispatch_wheel` compara é o do
+/// corpo. Enquanto a sonda media o fundo do último hit-rect (em coordenadas de
+/// ECRÃ) as duas coincidiam por acidente; medindo o conteúdo PUBLICADO — que
+/// começa em zero — elas diferem pela altura do cabeçalho, e comparar contra a do
+/// dock diria que um nó cabe quando ele já não cabe.
+fn inspector_body_h() -> f32 {
+    reach_census_body()
+}
+
 fn height_census() -> Vec<(&'static str, f32)> {
+    // ⚠️ **A altura é a que o painel PUBLICA, e não o fundo do último hit-rect** —
+    // e a régua mudou por uma razão que vale registar. Desde que o corpo blinda o
+    // `HitIndex` com a mesma banda que recorta o desenho
+    // (`nothing_scrolled_above_the_body_can_still_be_clicked_under_the_title`), o
+    // fundo do último retângulo **satura na altura do corpo**: o
+    // `motion.bezier_warp` passou a ler `802` de um dock de `880` e o gate
+    // acusou-o de ter perdido params. Não perdeu — a sonda é que deixou de medir
+    // o nó e passou a medir a janela.
     let mut census: Vec<(&'static str, f32)> = reach_census()
         .into_iter()
-        .map(|(ty, bottom, _)| (ty, bottom))
+        .map(|(ty, _, content)| (ty, content))
         .collect();
     census.sort_by(|a, b| b.1.total_cmp(&a.1));
     census
+}
+
+thread_local! {
+    /// A altura VISÍVEL que o último censo leu — a mesma para todo nó (ela é do
+    /// dock, não do conteúdo), publicada aqui para o gate a poder comparar.
+    static BODY_H: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+}
+
+fn reach_census_body() -> f32 {
+    let _ = reach_census();
+    BODY_H.with(std::cell::Cell::get)
 }
 
 /// `(tipo, fundo do último retângulo registado, altura de CONTEÚDO publicada)` por nó.
 ///
 /// ⚠️ **A terceira coluna é a que passou a decidir**, e a razão é uma medição: o corpo do
 /// painel **ROLA** desde a wave da rolagem (`lib_scroll_tests`), e o `dispatch_wheel` deriva
-/// o `max_scroll` de `content_h`/`visible_h`. Enquanto ele não rolava, *desenhar abaixo do
-/// dock* era o fim da linha; hoje o fim da linha é outro: uma linha registada **além do
-/// conteúdo publicado** não tem rolamento que a alcance — o painel para antes dela.
+/// o `max_scroll` de `content_h`/`visible_h`. A primeira — o fundo do último hit-rect —
+/// deixou de medir o nó desde que o corpo blinda o `HitIndex`: ela satura na janela, e o que
+/// responde agora é *o que se pode APONTAR*, não *o que se desenhou*.
 fn reach_census() -> Vec<(&'static str, f32, f32)> {
     let mut motion = MotionState::new();
     let types: Vec<&'static str> = motion.registry.manifests().map(|m| m.name).collect();
@@ -361,6 +393,11 @@ fn reach_census() -> Vec<(&'static str, f32, f32)> {
                 .store()
                 .panel_content_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
                 .unwrap_or(0.0);
+            let visible = host
+                .store()
+                .panel_visible_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+                .unwrap_or(0.0);
+            BODY_H.with(|b| b.set(visible));
             (ty, bottom, content)
         })
         .collect::<Vec<_>>();
@@ -453,7 +490,7 @@ fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
             .map(|(_, r)| r.y + r.h)
             .fold(0.0f32, f32::max)
     };
-    let at_rest = paint(&mut host);
+    paint(&mut host);
     let content = host
         .store()
         .panel_content_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
@@ -462,10 +499,14 @@ fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
         .store()
         .panel_visible_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
         .expect("...e a VISÍVEL, que é a régua do `dispatch_wheel`");
+    // ⚠️ **A régua é `content` contra `visible`, e não o fundo do último hit-rect
+    // contra a altura do dock.** Desde a blindagem do `HitIndex` aquele fundo
+    // satura na janela — ele mede o que se pode APONTAR, que é precisamente o que
+    // este gate não quer saber aqui.
     assert!(
-        at_rest > INSPECTOR_MAX_H,
-        "a fixture tem de TRANSBORDAR, senao rolar nao prova nada: {at_rest:.0} px de \
-         {INSPECTOR_MAX_H}"
+        content > visible,
+        "a fixture tem de TRANSBORDAR, senao rolar nao prova nada: {content:.0} px de \
+         {visible:.0}"
     );
     // O rolamento máximo que o `dispatch_wheel` deixa o artista pedir — derivado do painel,
     // nunca de uma segunda conta.
@@ -478,7 +519,7 @@ fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
     assert!(
         rolled <= INSPECTOR_MAX_H + 0.5,
-        "o nó mais alto ({tallest}) tem {at_rest:.0} px de linhas e o painel só deixa rolar \
+        "o nó mais alto ({tallest}) tem {content:.0} px de linhas e o painel só deixa rolar \
          {max_scroll:.0} px (conteúdo {content:.0}, visível {visible:.0}) — no fim do \
          rolamento a última linha ainda termina em {rolled:.0}, além do dock de \
          {INSPECTOR_MAX_H} px, e nenhum gesto a alcança"
@@ -512,17 +553,25 @@ fn the_dock_overflow_is_named_not_discovered() {
     /// com o painel a **cortar quatro das 24 linhas**. `920` era a altura do TETO, não a do
     /// nó. Com o teto no lugar certo ele mede `1083`. *Uma altura medida sob um limite que
     /// está a cortar é a altura do limite.*
-    const NAMED_OVERFLOW: &[(&str, f32)] = &[("motion.bezier_warp", 1083.0)];
+    ///
+    /// ⚠️ **E a segunda leitura foi `1083` medida pela régua ERRADA.** Ela vinha do
+    /// fundo do último hit-rect, em coordenadas de ECRÃ — logo incluía a faixa do
+    /// título. Desde que o corpo blinda o `HitIndex`, esse fundo satura na altura
+    /// da janela e deixou de medir o nó; a régua passou a ser a altura de CONTEÚDO
+    /// que o painel publica, que começa em zero. O mesmo nó, o mesmo painel:
+    /// **969**.
+    const NAMED_OVERFLOW: &[(&str, f32)] = &[("motion.bezier_warp", 969.0)];
+    let body = inspector_body_h();
     let census = height_census();
     let (worst_ty, worst_h) = census.first().copied().expect("o registry não é vazio");
     let over: Vec<String> = census
         .iter()
-        .filter(|(ty, h)| *h > INSPECTOR_MAX_H && !NAMED_OVERFLOW.iter().any(|(n, _)| n == ty))
+        .filter(|(ty, h)| *h > body && !NAMED_OVERFLOW.iter().any(|(n, _)| n == ty))
         .map(|(ty, h)| format!("{ty} ({h:.0} px)"))
         .collect();
     assert!(
         over.is_empty(),
-        "estes nós desenham além da altura do dock ({INSPECTOR_MAX_H} px) no estado de \
+        "estes nós desenham além da altura do CORPO ({body:.0} px) no estado de \
          DEFAULT e NÃO estão nomeados — alcançáveis pela roda, mas o inspector abre já a \
          precisar dela: {over:?}. O pior é {worst_ty} com {worst_h:.0} px."
     );
@@ -541,8 +590,8 @@ fn the_dock_overflow_is_named_not_discovered() {
              entrou ou saiu; re-meça e mova o número, ou desfaça"
         );
         assert!(
-            got > INSPECTOR_MAX_H,
-            "`{ty}` já CABE no dock ({got:.0} ≤ {INSPECTOR_MAX_H}) — tire-o da lista"
+            got > body,
+            "`{ty}` já CABE no corpo ({got:.0} ≤ {body:.0}) — tire-o da lista"
         );
     }
 }

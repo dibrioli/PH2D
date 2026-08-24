@@ -83,6 +83,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "soft",
             default: 0.15,
         },
+        // **O VIÉS ANGULAR do `soft`** — ver [`SOFT_ANGULAR`]. Apendado; `1` ⇒ as
+        // duas bordas amaciadas igual, o de sempre, **ao bit**.
+        ParamSpec {
+            name: SOFT_ANGULAR,
+            default: 1.0,
+        },
         ParamSpec {
             name: "center_x",
             default: 0.0,
@@ -117,6 +123,31 @@ fn curve(kind: i32, s: f32) -> f32 {
         _ => s,                                         // Linear
     }
 }
+
+/// **O viés da borda ANGULAR** — um MULTIPLICADOR adimensional do `soft`, não um
+/// segundo `soft`.
+///
+/// A célula da conferência (folha 10) pedia *"softness SEPARADA para a borda
+/// angular e a radial"*, e nomeava o caso: uma cunha **fina** com borda radial
+/// macia é inexprimível, porque `soft = 0.9` amacia **as duas**.
+///
+/// ⚠️ **A cerca que este nó já declarava continua de pé, e é ela que escolhe a
+/// forma da cura.** O doc-comment do `soft` diz: *"uma knob adimensional, porque
+/// as duas bordas vivem em unidades diferentes — graus vs mundo"*. O motivo é
+/// bom; a consequência é que não estava medida. Um **segundo `soft` absoluto**
+/// reabriria exactamente a pergunta que a cerca fechou (em que unidade?); um
+/// **viés relativo** mantém `soft` como *o* botão de maciez e dá o eixo que
+/// faltava.
+///
+/// - `1` (default) ⇒ as duas bordas como sempre, **byte-idêntico** (`x · 1.0` é
+///   `x` exacto em IEEE-754, e a expressão passa a ser `soft · 1.0 · half`).
+/// - `0` ⇒ **borda angular DURA** com a radial macia — o caso que a célula nomeia.
+/// - `> 1` ⇒ a angular mais macia que a radial.
+///
+/// ⚠️ **Ele NÃO toca a borda radial nem a do buraco**, de propósito: `soft` é o
+/// botão que move as três, e um viés que também mexesse na radial faria os dois
+/// números disputarem a mesma grandeza.
+pub const SOFT_ANGULAR: &str = "soft_angular";
 
 /// The plateau-and-ramp: `1` for `|d| ≤ half − soft`, ramping to `0` at `|d| = half`;
 /// `soft = 0` is a hard edge; `soft` is clamped so it can never exceed `half`. `half ≤ 0`
@@ -242,7 +273,15 @@ fn inner_rise(r: f32, inner: f32, soft: f32) -> f32 {
 /// the centre — i.e. the offset already un-rotated into the field's frame. It is the
 /// `min` of the radial ramp (inside the disk of `radius`) and the angular ramp (inside the
 /// nearest repetition of the sector), each softened by `soft` (a fraction of its extent).
-fn sweep_mask(lx: f32, ly: f32, radius: f32, inner: f32, soft: f32, sec: &Sector) -> f32 {
+fn sweep_mask(
+    lx: f32,
+    ly: f32,
+    radius: f32,
+    inner: f32,
+    soft: f32,
+    soft_angular: f32,
+    sec: &Sector,
+) -> f32 {
     let r = (lx * lx + ly * ly).sqrt();
     let rad = edge_ramp(r, radius, soft * radius).min(inner_rise(r, inner, soft * inner));
     let ang = if sec.full {
@@ -250,7 +289,10 @@ fn sweep_mask(lx: f32, ly: f32, radius: f32, inner: f32, soft: f32, sec: &Sector
     } else {
         let pa = pseudo_angle(lx, ly);
         let d = wrap_sym(pa - sec.pa_mid, sec.period);
-        edge_ramp(d, sec.pa_half, soft * sec.pa_half)
+        // ⚠️ `soft * soft_angular` e não `soft_angular` sozinho: o viés multiplica
+        // o botão de maciez, então baixar o `soft` continua a endurecer as DUAS
+        // bordas. Ver [`SOFT_ANGULAR`].
+        edge_ramp(d, sec.pa_half, soft * soft_angular * sec.pa_half)
     };
     rad.min(ang)
 }
@@ -272,6 +314,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let rs_lx =  rs_dx * rs_b.x + rs_dy * rs_b.y;\n\
         let rs_ly = -rs_dx * rs_b.y + rs_dy * rs_b.x;\n\
         let rs_soft = clamp(params.soft, 0.0, 1.0);\n\
+        let rs_soft_ang = max(params.soft_angular, 0.0);\n\
         // Radial ramp: inside the disk of `radius`.\n\
         let rs_r = sqrt(rs_lx * rs_lx + rs_ly * rs_ly);\n\
         var rs_rad = rs_edge_ramp(rs_r, params.radius, rs_soft * params.radius);\n\
@@ -288,7 +331,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         if (abs(params.end_angle - params.start_angle) < 360.0) {\n\
             let rs_pa = rs_pseudo_angle(rs_lx, rs_ly);\n\
             let rs_d = rs_wrap_sym(rs_pa - rs_pa_mid, rs_period);\n\
-            rs_ang = rs_edge_ramp(rs_d, rs_pa_half, rs_soft * rs_pa_half);\n\
+            rs_ang = rs_edge_ramp(rs_d, rs_pa_half, rs_soft * rs_soft_ang * rs_pa_half);\n\
         }\n\
         let rs_m = rs_curve(i32(rs_round(params.curve)), min(rs_rad, rs_ang));\n\
         var rs_f = rs_m;\n\
@@ -369,6 +412,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "end_angle",
         "repetitions",
         "soft",
+        SOFT_ANGULAR,
         "center_x",
         "center_y",
         "rotation",
@@ -401,6 +445,7 @@ impl NodeOp for FieldRadialSweep {
             ctx.param("end_angle"),
             ctx.param("repetitions"),
         );
+        let soft_angular = ctx.param(SOFT_ANGULAR).max(0.0);
         let curve_kind = ctx.param("curve").round() as i32;
         let invert = ctx.param("invert") >= 0.5;
         let out = {
@@ -419,7 +464,10 @@ impl NodeOp for FieldRadialSweep {
                 let (dx, dy) = (p[0] - cx, p[1] - cy);
                 // Rotate the offset by −rotation into the field's local frame.
                 let (lx, ly) = (dx * rc + dy * rs, -dx * rs + dy * rc);
-                let m = curve(curve_kind, sweep_mask(lx, ly, radius, inner, soft, &sec));
+                let m = curve(
+                    curve_kind,
+                    sweep_mask(lx, ly, radius, inner, soft, soft_angular, &sec),
+                );
                 let f = if invert { 1.0 - m } else { m };
                 let base = prev.and_then(|v| v.get(i).copied()).unwrap_or(1.0);
                 base * f
@@ -559,6 +607,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 1.0,
         step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: SOFT_ANGULAR,
+        // O rótulo diz que ele é RELATIVO — «Angular Softness» prometeria uma
+        // maciez própria, e o modelo entrega um viés sobre a de cima.
+        label: "Angular Bias",
+        min: 0.0,
+        // O curso vai a 2 porque o interessante é a razão entre as duas bordas, e
+        // acima do dobro a angular já está saturada na sua própria extensão.
+        max: 2.0,
+        step: 0.05,
         widget: ParamWidget::Slider,
     },
     ParamUiHint {

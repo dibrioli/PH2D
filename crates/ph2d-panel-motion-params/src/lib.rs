@@ -156,6 +156,23 @@ impl Panel for MotionParamsPanel {
         let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
         let scroll = ctx.host.store().panel_scroll(ids::MOTION_PARAMS_PANEL);
         ctx.scene.push_clip(&rect_to_vello(body_rect));
+        // ⚠️ **UMA BANDA, DOIS CONSUMIDORES.** O `push_clip` da cena recorta o
+        // DESENHO; sem o gémeo no `HitIndex`, uma linha rolada para cima continua
+        // **registada** onde ninguém a vê — o hit-rect sobe para a faixa do
+        // TÍTULO e o clique dele passa a valer ali.
+        //
+        // Enquanto o teto de linhas coube no dock isso era inofensivo por
+        // ARITMÉTICA (o `max_scroll` era `0` e nada saía do corpo), e o gate
+        // `the_scroll_is_inert_at_todays_row_cap_so_no_row_can_hide_under_the_title`
+        // dizia, em texto, que *"o dia em que o teto subir é o dia em que a
+        // blindagem passa a ser necessária"*. O teto subiu (20 → 24, a wave do
+        // `motion.bezier_warp`), e este é o dia.
+        //
+        // ⚠️ **A ferramenta já existia e este painel não a chamava** — o
+        // `HitIndex::push_clip` é a mesma pilha que o `section_header::body` usa
+        // desde que nasceu. A cura não é código novo: é o segundo consumidor da
+        // banda que já se calculava aqui.
+        ctx.host.hit_index_mut().push_clip(body_rect);
 
         // Phase A — seed the pooled widgets from the doc values (skipping any row
         // being interacted with) + refresh each chip's range + slider↔chip link.
@@ -190,6 +207,10 @@ impl Panel for MotionParamsPanel {
             )
         };
         ctx.scene.pop_layer();
+        // ⚠️ O `pop` vem ANTES da barra de rolagem, e de propósito: o thumb vive
+        // no corpo mas não rola com ele — recortá-lo pela mesma banda seria
+        // correcto hoje e uma armadilha no dia em que ele saísse um pixel.
+        ctx.host.hit_index_mut().pop_clip();
         paint_scroll_chrome(
             ctx,
             body_rect,

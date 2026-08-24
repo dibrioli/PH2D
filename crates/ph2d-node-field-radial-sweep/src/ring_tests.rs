@@ -9,7 +9,7 @@ fn full() -> Sector {
 
 /// A máscara radial a uma distância `r` do centro, num sector cheio.
 fn at(r: f32, radius: f32, inner: f32, soft: f32) -> f32 {
-    sweep_mask(r, 0.0, radius, inner, soft, &full())
+    sweep_mask(r, 0.0, radius, inner, soft, 1.0, &full())
 }
 
 /// **O ANEL É VAZIO POR DENTRO, CHEIO NA BANDA, VAZIO POR FORA.**
@@ -109,5 +109,97 @@ fn the_inner_radius_is_reachable_and_uploaded() {
     assert!(
         GPU_KERNEL.wgsl_lib.contains("rs_inner_rise"),
         "a rampa interna falta no shader"
+    );
+}
+
+// ───────────────────────── O VIÉS ANGULAR (folha 10) ─────────────────────────
+
+/// Um sector estreito — a cunha FINA que a célula da conferência nomeia.
+fn wedge() -> Sector {
+    sector(-20.0, 20.0, 1.0)
+}
+
+/// O quanto a borda ANGULAR de uma cunha é macia: varre em ângulo e devolve a
+/// largura da faixa em que a máscara não é nem `0` nem `1`.
+///
+/// ⚠️ **O raio da varredura tem de cair no PLATÔ radial**, e a primeira versão
+/// não caía: a máscara é o `min` das duas rampas, então varrer a `r = 3` com
+/// `soft = 0.9` e `radius = 8` media a rampa RADIAL (o platô acaba em `0.8`) e a
+/// faixa dava 159 mesmo com a borda angular dura. *Uma sonda de uma borda tem de
+/// estar longe da outra.*
+fn angular_band(soft: f32, bias: f32) -> usize {
+    let r = 0.4;
+    (0..721)
+        .filter(|k| {
+            let a = (*k as f32 - 360.0).to_radians() * 0.25;
+            let (lx, ly) = (r * a.cos(), r * a.sin());
+            let m = sweep_mask(lx, ly, 8.0, 0.0, soft, bias, &wedge());
+            m > 1e-4 && m < 1.0 - 1e-4
+        })
+        .count()
+}
+
+/// A mesma medida para a borda RADIAL — a que o viés **não** pode tocar.
+fn radial_band(soft: f32, bias: f32) -> usize {
+    (0..2000)
+        .filter(|k| {
+            let r = *k as f32 * 0.01;
+            let m = sweep_mask(r, 0.0, 8.0, 0.0, soft, bias, &full());
+            m > 1e-4 && m < 1.0 - 1e-4
+        })
+        .count()
+}
+
+/// ⭐ **A CÉLULA, medida:** uma cunha fina com borda radial macia e angular DURA
+/// era inexprimível — `soft = 0.9` amaciava as duas.
+#[test]
+fn the_angular_edge_can_be_hard_while_the_radial_one_stays_soft() {
+    let soft = 0.9;
+    let (linked, hard_angle) = (angular_band(soft, 1.0), angular_band(soft, 0.0));
+    assert!(
+        linked > 50,
+        "CONTROLE: com o viés no neutro a borda angular tem de ser MACIA ({linked})"
+    );
+    assert_eq!(hard_angle, 0, "viés 0 tem de dar uma borda angular DURA");
+    // E a radial não se mexeu — é a metade que faz disto um viés e não um `soft`.
+    assert_eq!(
+        radial_band(soft, 1.0),
+        radial_band(soft, 0.0),
+        "o viés angular tocou a borda RADIAL"
+    );
+}
+
+/// **O neutro é a identidade ao BIT** — `soft · 1.0 · half` é `soft · half` exacto
+/// em IEEE-754, então nenhum campo já autorado se move.
+#[test]
+fn the_neutral_bias_is_bit_identical() {
+    for &soft in &[0.0f32, 0.15, 0.5, 0.9, 1.0] {
+        for k in 0..64 {
+            let a = (k as f32 / 64.0 - 0.5) * 0.8;
+            let (lx, ly) = (3.0 * a.cos(), 3.0 * a.sin());
+            let with = sweep_mask(lx, ly, 8.0, 1.0, soft, 1.0, &wedge());
+            // O oráculo é a expressão de antes, escrita à mão.
+            let want = {
+                let sec = wedge();
+                let r = (lx * lx + ly * ly).sqrt();
+                let rad = edge_ramp(r, 8.0, soft * 8.0).min(inner_rise(r, 1.0, soft * 1.0));
+                let pa = pseudo_angle(lx, ly);
+                let d = wrap_sym(pa - sec.pa_mid, sec.period);
+                rad.min(edge_ramp(d, sec.pa_half, soft * sec.pa_half))
+            };
+            assert_eq!(with.to_bits(), want.to_bits(), "soft={soft} k={k}");
+        }
+    }
+}
+
+/// E o viés ABRE também: acima de `1` a borda angular fica mais macia que a
+/// radial — a outra metade do eixo, que a célula não pedia e a lei dá de graça.
+#[test]
+fn a_bias_above_one_softens_the_angular_edge_further() {
+    let soft = 0.3;
+    let (neutral, wider) = (angular_band(soft, 1.0), angular_band(soft, 2.0));
+    assert!(
+        wider > neutral,
+        "viés 2 tinha de alargar a faixa macia: {neutral} -> {wider}"
     );
 }

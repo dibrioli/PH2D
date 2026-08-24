@@ -52,6 +52,7 @@
 - [Ferramenta só é adotada se um PASSO a chama pelo nome](feedback_a_tool_is_adopted_only_when_a_written_step_names_it.md) — medido: 5 usos contra 13.791 do comando cru; ponteiro ≠ adoção
 - [Arquivar sem indexar as RECUSAS é apagá-las](feedback_archiving_without_indexing_the_refusals_deletes_them.md) — e a cura de um doc inchado pode REALOCAR a doença; o teto se mede (80-110 KB)
 - [Mecanismo certo, cura errada](feedback_a_correct_mechanism_can_prescribe_the_wrong_cure.md) — meça o mecanismo antes de construir o que a nota prescreve
+- [Uma cerca DECLARADA escolhe a forma da própria cura](feedback_a_declared_fence_chooses_the_shape_of_its_own_cure.md) — a célula acerta no sintoma e não na forma; leia o doc-comment do knob de que ela se queixa
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — "intentionally NOT X" = decisão
 - [Revert pode diferir só no TEMPO DE VIDA](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md) — leia o MOTIVO do revert, não o diff; escopo é o que mata tentativa boa
 - [`match` exaustivo NÃO guarda a lista que um laço itera](feedback_an_exhaustive_match_does_not_guard_the_list_a_loop_iterates.md) — variante nova = braço morto sem warning; agulha com espaço nunca casa
@@ -97,6 +98,7 @@
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Pintar e agarrar projectam por UMA porta](feedback_paint_and_hit_test_must_project_through_one_door.md) — janela cheia na tinta e janela da cena no hit-test dá DOIS sintomas de uma causa (deslocado + não clica); a lei estava no módulo irmão, que eu li
 - [Hit-test próprio herda a pergunta da REGIÃO](feedback_a_consumer_that_bypasses_the_hit_index_inherits_the_region_question.md) — sem o `on_canvas` o gizmo engolia cliques do painel do grafo, e o sintoma era «não consigo ligar um fio»
+- [Blindar o hit-index MUDA o que as sondas medem](feedback_shielding_the_hit_index_changes_what_every_probe_measures.md) — o fundo do último hit-rect passa a saturar na janela: quem o usava como tamanho media a janela, não a coisa
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Pintar e despachar têm de ler a MESMA fonte](feedback_paint_and_dispatch_must_read_the_same_source.md) — caixa que pinta do mundo e decide do store só diverge quando o MOTOR escreve o facto; sintoma é «às vezes, ao 2º clique»
 - [Lista escrita à mão ao lado de um predicado = duas respostas](feedback_a_hand_written_list_beside_a_predicate_is_two_answers.md) — quem ENUMERA copia a lista de quem DECIDE; o diálogo oferecia 4 de 11 formatos há meses, e só uma extensão nova gerou report

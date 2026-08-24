@@ -4403,10 +4403,235 @@ crate não compilava. Terceira vez hoje que o controle positivo apanha uma muta�
   sombrear uma superfície diferente da que se marcha — uma segunda verdade sobre a forma —, e por
   isso não foi feito. Fica nomeado.
 
+## §56 — W55: o contorno continua a ser a FONTE — e o knob que faltava era a mesma ausência (23/08)
+
+### §56.1 — Dois itens abertos, uma causa
+
+O §55.7 fechou com dois ⏸️ escritos em linhas diferentes:
+
+| o que o §5 dizia | o que o artista via |
+|---|---|
+| *"não há knob de resolução"* (o pedido literal do Enio) | o painel não tem o número |
+| *"o nó não se religa ao contorno"* (W53) | editar a curva não muda a peça |
+
+⭐ **São o mesmo item.** O `+ Extrude` cozia o contorno **uma vez** e o `Primitive::Extrude { profile }`
+era tudo o que sobrava — a peça deixava de conhecer o desenho no instante em que nascia. O knob não
+era uma linha de painel a faltar: era **inexprimível**, porque afinar a conversão exige ter a fonte
+para reconverter. Construir um sem o outro seria meia feature nos dois sentidos.
+
+### §56.2 — O vínculo é um componente, e o que ele NÃO guarda
+
+[`FieldProfileSource { path: u64, level: u32 }`](../../crates/ph2d-field-ecs/src/lib.rs) —
+**opcional**, registado, salvo e desfeito como os irmãos. Três decisões:
+
+- ⚠️ **`u64` e não `VecPathId`.** A `ph2d-field-ecs` é a ponte ECS do modelador e **não** conhece o
+  documento vetorial — a mesma lei pela qual o `ph2d_field::Profile` **copia** a `FillRule` em vez de
+  a importar. Quem traduz é o shell, que é quem tem as duas cenas.
+- ⚠️ **O NÍVEL, e não a tolerância.** Guardar o número cozido prenderia uma peça salva hoje ao joelho
+  de hoje: reabri-la depois de a lei se mover daria uma finura que já ninguém escolheria. *Guarda-se
+  a intenção, deriva-se o número.*
+- ⚠️ **Componente próprio e não um campo no `FieldNode`** — as duas razões do `FieldMods`: quase
+  nenhum nó tem um, e o blob é postcard **posicional**, então apendar quebraria todo projeto gravado.
+
+⚠️ **Ele segue a FORMA, nunca a POSE.** O desenho tem pose própria no canvas 2D; a peça tem a dela no
+espaço 3D, posta pelo artista com o gizmo. Arrastar a curva **não** teleporta a peça, e o tamanho de
+convivência (o enquadramento da W53) continua a ser dele. *Uma pose, um dono.*
+
+### §56.3 — Sem cache — e a medição é o que o dispensa
+
+A [`field3d_profile_live::reconcile`](../../shells/desktop/src/field3d_profile_live.rs) **recoze e
+compara**, todo quadro. A alternativa óbvia — guardar um resumo e só reconverter quando ele mudar —
+precisa de um sítio, e os dois possíveis são maus: num **componente** é estado derivado a viajar no
+save e a envenenar o undo (o `canonicalize` ordena por bytes ⇒ todo quadro vira um passo); numa
+**tabela lateral** é indexado por bits de entidade, que morrem em cada desfazer.
+
+⭐ **E medido, o cache não compra nada** (sonda `the_table_that_chose_the_resolution_ceiling`):
+
+| nível | recozer | comparar |
+|---:|---:|---:|
+| 1 (168 arestas) | **7,4 µs** | 0,18 µs |
+| 8 (472) | 7,7 µs | 0,23 µs |
+| 32 (940) | 13,2 µs | 0,43 µs |
+
+Contra um quadro de 16,7 ms, o pior caso é **0,08 %**. ⚠️ E as mesmas colunas lidas a `load ≈ 22` deram
+**6–13 µs / 0,18–0,43 µs** — praticamente idênticas, porque isto é trabalho de microssegundos que cabe
+inteiro numa fatia de escalonamento. *Quando a conclusão é «é desprezável», até uma medição pessimista
+chega.*
+
+### §56.4 — O nível: a lei, o piso e o teto
+
+`tolerance_ratio_for(level) = TOLERANCE_RATIO / level` — e numa curva suave a contagem de arestas
+anda com `tol^-1/2`, então o preço de um nível cresce com a **raiz** dele:
+
+| nível | tolerância | arestas | traçado assente | *idem*, calmo |
+|---:|---:|---:|---:|---:|
+| **1** (omissão) | `1e-4` | 168 | 184,1 ms | *139 ms* |
+| 2 | `5e-5` | 236 | 241,4 ms | *183 ms* |
+| 4 | `2,5e-5` | 332 | 336,0 ms | *254 ms* |
+| 8 | `1,25e-5` | 472 | 450,3 ms | *341 ms* |
+| **16** (teto) | `6,3e-6` | 664 | 648,7 ms | *491 ms* |
+| 32 | `3,1e-6` | 940 | 900,5 ms | *682 ms* |
+
+⭐⭐ **E a tabela trouxe uma medição de graça sobre o próprio instrumento.** A corrida saiu com
+`load ≈ 4,7`, e a linha do nível 1 é a **mesma configuração** que a W54 mediu a `load < 3` em
+**139,3 ms**. Duas leituras do mesmo trabalho: **184,1** e **139,3** — ⭐ *32 % de diferença só de
+carga, sem uma linha de código mudar*. É a lei do `CLAUDE.md` §5 com o número dela ao lado, e torna o
+teto escolhido sobre a coluna **medida** conservador de propósito. A coluna «calmo» é a medida
+escalada por 0,757, e está marcada como derivada.
+
+⚠️ **O custo é linear nas arestas** (0,95 a 1,10 ms/aresta ao longo da tabela inteira) ⇒ **não há
+joelho onde se esconder**: ao contrário da W54, o teto aqui é uma escolha de produto sobre uma reta.
+O que a torna legítima é dizer **de que recurso** é — o tempo de assentar — e trazer a medição.
+
+- ⭐ **O piso é 1, e não é conforto:** abaixo do joelho estão exactamente os degraus de luz que a W54
+  matou, e oferecê-los seria devolver o defeito com um rótulo por cima. Quem quer mais barato já tem
+  o preview grosso, que sai do **relógio** e não da autoria (W24/W32).
+- ⭐ **O teto é 16 porque é onde o assentar deixa de parecer instantâneo** — meio segundo, e este knob
+  **arrasta-se**, então cada passo do arrasto o paga. O 32 não compra nada que se veja (o salto de
+  normal já está em 0,54° no 16) e paga **39 %** a mais.
+- ⚠️ **É limite de RECURSO e não de validade:** um perfil de 940 arestas é correcto, e o documento
+  aceita-o pela porta de baixo (`Profile::new` com a tolerância à mão). O que o número fecha é a
+  **faixa do controle**, que é onde um teto pertence.
+
+O `Span::Count { max }` era o molde exacto e já existia (a matriz usa-o): passo de arrasto **1**, sem
+casas decimais, piso 1. ⇒ **o painel não mudou uma linha** — a fileira nasce de `params_of`, e o
+`SetParam` do intent já carrega o `Param` inteiro.
+
+### §56.5 — A costura: onde a reconciliação corre, e porquê ali
+
+A `VecScene` mora na fase do shell que serve os pedidos de perfil; o mundo é escrito na ponte
+(`ecs_bridge`, *"o mundo é a verdade e este é o único sítio que a escreve"*). Havia duas saídas:
+
+1. reconciliar **do lado da cena** e publicar o resultado por caixa de correio ⇒ a peça fica **um
+   quadro atrás** da mão que edita a curva, e nasce uma segunda escrita do mundo;
+2. **passar a cena à ponte** ⇒ mesma fase, mesmo quadro, uma escrita só.
+
+Escolhida a 2: `ecs_bridge`/`sync_scene_and_birth` recebem `&VecScene`, e os 32 sítios de gate que já
+existiam passam `&crate::field3d_scene::no_drawing()` — uma função **nomeada** e não um
+`&VecScene::default()` repetido, porque o que ela diz é *esta gate não tem desenho, e a reconciliação
+não tem o que fazer aqui*.
+
+⚠️ **A voz sai depois do cozimento, e não onde é produzida:** o `cook` chama `notice::clear()` quando
+a peça está bem (para que um problema corrigido e recriado volte a ser dito), e a peça **cozinha bem**
+sem o desenho — ela guarda a última forma. Uma frase dita antes seria apagada e re-dita para sempre.
+A memória do `MISSING` é a outra metade da mesma lei, e ela **esquece quando o desenho volta**, senão
+um desenho apagado → desfeito → apagado ficaria mudo na segunda vez (o modo de falha exacto que o
+`forget_tried` da W23 já pagou).
+
+### §56.6 — ⛔ O defeito PRÉ-EXISTENTE que a leitura encontrou
+
+`copy_subtree` (a duplicação da Hierarquia) nascia na W26 com uma lista **escrita à mão** — `Name`,
+`FieldNode`, `FieldPose` — e o **`FieldMods` nunca lá esteve**. Duplicar um cilindro **oco** devolvia
+um maciço: sem erro, sem aviso, e com a linha da espessura simplesmente ausente do painel da cópia.
+*Uma lista escrita à mão ao lado do registo de componentes são duas respostas à pergunta «o que é um
+nó».*
+
+⚠️ O `bevy_ecs` não copia componentes sem reflexão, então a enumeração é inevitável — o que se pode
+fazer é **prendê-la ao registo**. O gate `a_duplicate_carries_every_optional_component_of_a_node`
+começa por uma **censura** (`ComponentRegistry::len() == 5`) com a instrução na mensagem: quem
+acrescentar o sexto vê o vermelho antes de o artista ver a cópia mutilada.
+
+⚠️ E o `len()` que ela usa **já existia** — foi acrescentado por engano e removido: o meu `grep` da
+API parou 25 linhas antes dele. *A peça que falta pode já estar construída.*
+
+### §56.7 — Provas de mutação
+
+Dez, todas RED, todas com os três controles (verde-antes · `Compiling` · `running N tests`):
+
+| # | o que se partiu | gate que ficou RED |
+|---|---|---|
+| 1 | a cópia larga o modificador (**o defeito de W26**) | `a_duplicate_carries_every_optional_component_of_a_node` |
+| 2 | a cópia larga o vínculo ao desenho | *(o mesmo)* |
+| 3 | o componente novo não é registado | *(o mesmo — o braço da censura)* |
+| 4 | a reconciliação reescreve o nó sem mudança | `an_unchanged_outline_never_writes_the_node` |
+| 5 | a reconciliação nunca escreve | `editing_the_outline_reshapes_the_piece` |
+| 6 | o nível é ignorado pela lei da tolerância | `the_resolution_level_buys_edges_through_the_panel_door` |
+| 7 | o desenho ausente fala em todo quadro | `a_deleted_outline_speaks_once_and_the_shape_keeps_its_form` |
+| 8 | a linha «Resolution» é oferecida a todo nó | `the_resolution_row_is_offered_exactly_where_the_link_is` |
+| 9 | a forma nasce sem vínculo (**o estado da W53**) | `a_drawn_shape_is_born_linked_to_the_outline_it_came_from` |
+| 10 | o teto do nível não se impõe na escrita | `the_resolution_is_bounded_where_it_is_written_not_only_where_it_is_dragged` |
+
+⚠️ **A 4 mentiu no lote** (`correu 0 testes`): o `rustc` falhou a **ligar** sob a carga do fan-out, e
+sem o controle positivo aquele vermelho teria contado como prova. Corrida sozinha: `running 1 test`,
+`FAILED`. *Segunda vez que o controle apanha um vermelho que não era do gate* — a primeira foi a W50.
+
+⚠️ **A régua da 4 é a marca de escrita do ECS (`Changed<FieldNode>`), não o conteúdo.** Um perfil
+reescrito com o mesmo valor tem os mesmos bytes ⇒ uma comparação de conteúdo passaria com a guarda
+arrancada, que é exactamente a guarda que o gate defende.
+
+### §56.8 — ⛔ O gate de LOC estava VERMELHO há waves, e ninguém o corria
+
+O fecho desta wave correu a suíte **inteira** do shell pela primeira vez em várias waves, e o
+`shell_files_respect_hr18_loc_cap` estava vermelho com **quatro** arquivos — três deles **antes** de
+esta wave tocar em nada:
+
+| arquivo | em `main` | ao abrir a W55 | causa |
+|---|---:|---:|---|
+| `field3d_smoke.rs` | 506 | **790** | W38, W44, W45, W46, W51, W52 |
+| `field3d_scene.rs` | 555 | **659** | idem |
+| `input_dispatch/keyboard.rs` | 585 | **606** | as seis teclas do módulo |
+| `field3d_isolate_tests.rs` | — | 582 → **618** (W55) | o `fmt` re-expandiu o argumento novo |
+
+⚠️ **O mecanismo do último é o que a memória já registava:** um argumento acrescentado a 32 chamadas
+não muda o número de linhas — o `cargo fmt` é que parte as chamadas longas e **cria** linhas. *Medir
+LOC antes do `fmt` mede outra coisa.*
+
+⛔ **E o mecanismo dos três primeiros é o fecho estreito:** cada wave correu os testes que tocou, e
+este gate não está em nenhum deles — ele varre `shells/desktop/src/` inteiro. É a irmã exacta da
+lição do clippy da W44 (*o alvo do fecho deriva do DIFF, nunca da minha memória*), aplicada ao
+**teste**: um gate de árvore não é alcançado por um filtro de nome.
+
+A cura foi **cortar para o irmão**, nunca uma allowlist, e as quatro fronteiras já existiam por
+dentro:
+
+| novo arquivo | o que levou | a fronteira |
+|---|---|---|
+| `field3d_scene_gizmo.rs` | arrasto, pick, âncora, duplicar | *o que o gesto AGARRA* ≠ *o que a peça É* |
+| `field3d_smoke_state.rs` | `Smoke`, `Grip`, `Drag`, `Ready`, `InFlight`, a célula | *o que existe* ≠ *o que se faz* |
+| `input_dispatch/keyboard_field3d.rs` | as seis teclas do módulo, numa porta | o irmão de escultura já tinha a dele |
+| `field3d_profile_reach_tests.rs` | os gates de alcance do perfil (W53) | *o painel oferece?* ≠ *o isolamento diz-se?* |
+
+⚠️ **A ordem das seis teclas viajou inteira e está dita no doc do módulo novo**: a entrada numérica
+vem antes da tecla de verbo, senão um `5` digitado no meio de um gesto vira um pedido de lente.
+*Reordenar ali é mudar comportamento, não estilo.*
+
+### §56.9 — ⏸️ O que fica aberto
+
+- ⏸️ **A tabela do teto foi medida a `load ≈ 4,7`**, não abaixo de 3 (§56.4). A coluna calma é
+  escalada pelo fator que a própria tabela mede, e o teto sai conservador — mas uma corrida com a
+  máquina parada é trabalho por fazer. ⚠️ O que ela pode mover é o **teto**, não a lei.
+- ⏸️ **O traçado 2,4× mais caro** desde a W3 (§55.3) continua por explicar — e agora tem mais um
+  consumidor.
+- ⏸️ **O contorno é UM.** Um `+ Extrude` com várias formas escolhidas usa a primeira (herdado da W53).
+- ⏸️ **Nada na Hierarquia mostra que uma forma está ligada a um desenho** — o painel diz (a linha
+  «Resolution» só aparece com vínculo), mas quem olha a árvore não vê a diferença entre uma extrusão
+  viva e uma solta.
+- ⏸️ **Não há gesto para LARGAR o vínculo** nem para o **religar** a outro contorno. Largar é a
+  metade fácil (tirar o componente); religar é a mesma pergunta de UI que a escultura que mudou de
+  sítio já tinha — *o app ainda não pergunta «qual asset?» por asset nenhum*.
+
 ---
 
 ## §13 — Aberto
 
+- ✅ **W55 (§56): o contorno continua a ser a FONTE — e o knob que faltava era a mesma ausência.** ⭐
+  Os dois ⏸️ que a W54 deixou (*"não há knob de resolução"* e *"o nó não se religa ao contorno"*) eram
+  **um só**: o `+ Extrude` cozia uma vez e a peça deixava de conhecer o desenho, então afinar a
+  conversão era **inexprimível**. O `FieldProfileSource { path, level }` resolve os dois — editar a
+  curva remodela a peça, e a linha **Resolution** aparece exactamente onde tem onde escrever. ⚠️ Sem
+  cache, de propósito: recozer custa **7 µs** e comparar **0,2 µs** contra um quadro de 16,7 ms, e um
+  resumo guardado seria estado derivado a envenenar o undo. ⚠️ O nível guarda a **intenção**, nunca a
+  tolerância cozida. ⚠️ O teto do nível (**16**) sai de uma tabela medida, e ela trouxe de graça a
+  medida do **próprio instrumento**: o mesmo traçado deu **184,1 ms** a `load ≈ 4,7` e **139,3 ms** a
+  `load < 3` — ⭐ *32 % só de carga*. ⛔ E a leitura desenterrou um defeito de W26: `copy_subtree`
+  copiava uma lista escrita à mão e **largava o `FieldMods`** — duplicar um cilindro oco devolvia-o
+  maciço, em silêncio; a cura leva uma **censura** presa ao registo de componentes. ⛔⛔ E o fecho
+  correu a suíte **inteira** do shell pela primeira vez em waves: o gate de **LOC** estava vermelho
+  com **quatro** arquivos, três deles antes desta wave (§56.8) — *um gate de árvore não é alcançado
+  por um filtro de nome*, que é a irmã da lição do clippy da W44. Curado por **quatro cortes para o
+  irmão**, cada um numa fronteira que já existia por dentro. ⏸️ Fica: a tabela do teto pede uma
+  corrida com a máquina parada · nada na Hierarquia mostra que uma forma está ligada · não há gesto
+  para largar nem para religar o vínculo · um contorno de cada vez
 - ✅ **W54 (§55): a régua da suavidade é a NORMAL** — Enio, com duas fotos: *"sem ajustes de
   resolução"*. ⭐ A minha primeira hipótese (a polilinha na silhueta) foi **refutada pela aritmética**:
   ela erra **0,079 % da peça**, invisível. As bandas estão na **LUZ** — o campo de um polígono tem
@@ -4414,8 +4639,9 @@ crate não compilava. Terceira vez hoje que o controle positivo apanha uma muta�
   **joelho medido** (degraus **56×** menores; o passo seguinte custa +70 % para nada). ⛔⛔ E a tabela
   de 19/08 estava **desmentida por 2,4×** — o traçado engordou desde a W3 e ninguém reconferiu
   (suspeito nomeado: o anti-serrilhado, que re-amostra a borda 4×). ⛔ O gate que lá estava media
-  **arestas** (o custo) e defendia o número velho. ⏸️ Fica: **sem knob** (ele exige religar ao
-  desenho) · o traçado 2,4× mais caro por explicar · a normal suavizada, nomeada e recusada
+  **arestas** (o custo) e defendia o número velho. ✅ **O knob FECHOU na W55** (§56), e pela ligação
+  que esta nota previa. ⏸️ Fica: o traçado 2,4× mais caro por explicar · a normal suavizada, nomeada
+  e recusada
 - ✅ **W53 (§54): o PERFIL DESENHADO vira peça** — ⛔ `Extrude` e `Revolve` existiam no motor **desde
   a W3**, medidos contra oráculos, e **nenhum botão os alcançava**: uma família de features completa
   e invisível, e o plano chama-lhes a razão de existir do módulo (*"é aqui que o fluxo do MoI
@@ -4423,8 +4649,8 @@ crate não compilava. Terceira vez hoje que o controle positivo apanha uma muta�
   oferece o que a seleção permite?"*, e o que faltava é *"o painel oferece tudo o que o MOTOR sabe
   fazer?"*. ⭐ A ponte já existia inteira (`cook_path_auto`) — a wave escreveu o **gesto**, não
   geometria. Dois gates existentes reprovaram e os dois estavam a trabalhar (um deles **previa** isto
-  no próprio comentário). ⏸️ Fica: um contorno de cada vez · o nó não se religa ao desenho · nada
-  mostra o eixo do *Revolve* antes do clique
+  no próprio comentário). ✅ **O religar FECHOU na W55** (§56). ⏸️ Fica: um contorno de cada vez ·
+  nada mostra o eixo do *Revolve* antes do clique
 - ✅ **W52 (§53): a viagem NÃO é do *reduced motion*** — Enio: *"o lerp não deve estar vinculado ao
   Reduced Motion. Mas deve ser o único modo."* ⚠️ O smoke da W51 leu *"não funcionou, está como
   antes"* e **o código estava certo**: a preferência dele diz `reduced_motion=1`, e o papel de então

@@ -130,6 +130,7 @@ mod field3d_pick;
 mod field3d_preview;
 /// ADR-0161 W53 — o perfil DESENHADO vira peça: o fluxo do MoI, com a caneta que a casa já tem.
 mod field3d_profile;
+mod field3d_profile_live;
 /// ADR-0161 W23 — o REGRESSO: um projeto carregado regenera cada escultura do arquivo que a nomeia.
 mod field3d_reload;
 mod field3d_scene;

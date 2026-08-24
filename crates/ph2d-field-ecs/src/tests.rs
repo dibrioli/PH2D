@@ -339,3 +339,80 @@ fn isolating_a_node_keeps_it_where_it_was_in_the_world() {
         "a fixture só prova alguma coisa se a pose local e a de mundo DIFERIREM"
     );
 }
+
+/// ⭐⭐ **UMA CÓPIA LEVA TODOS OS COMPONENTES OPCIONAIS DO NÓ** (W55) — e a primeira metade deste
+/// gate é uma **censura**, não uma asserção sobre a cópia.
+///
+/// # O defeito que ele fecha, e o que estava errado
+///
+/// O `copy_subtree` nascia com uma lista escrita à mão — `Name`, [`FieldNode`], [`FieldPose`] — e o
+/// [`FieldMods`] **nunca lá esteve** (desde a W26). Duplicar um cilindro oco devolvia um maciço, sem
+/// erro e sem aviso. *Uma lista escrita à mão ao lado do registo de componentes são duas respostas à
+/// pergunta «o que é um nó».*
+///
+/// ⚠️ **A contagem é o que impede a próxima.** O `bevy_ecs` não copia componentes sem reflexão, então
+/// a enumeração no `copy_optional` é inevitável — o que se pode fazer é prendê-la ao registo. Quem
+/// acrescentar o sexto componente do módulo vê **este** gate vermelho, com o que fazer escrito na
+/// mensagem, antes de o artista ver a cópia mutilada.
+#[test]
+fn a_duplicate_carries_every_optional_component_of_a_node() {
+    let mut reg = ComponentRegistry::new();
+    crate::register_field_components(&mut reg);
+    assert_eq!(
+        reg.len(),
+        5,
+        "o módulo passou a ter outro componente — ensine-o ao `copy_optional` (a cópia da \
+         Hierarquia) e acrescente-o à fixture abaixo, senão duplicar um nó perde-o em silêncio"
+    );
+
+    let mut world = bevy_ecs::world::World::new();
+    // ⚠️ Uma peça com **grupo**: `duplicate` recusa a raiz (ela *é* a peça), então a fixture só prova
+    // alguma coisa se houver um nó com pai.
+    let grouped = FieldDoc::new(
+        vec![
+            Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.3 }),
+                mods: Vec::new(),
+            },
+            Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Combine {
+                    op: ph2d_field::Op::Union(Blend::Sharp),
+                    children: vec![NodeId(0)],
+                },
+                mods: Vec::new(),
+            },
+        ],
+        NodeId(1),
+    )
+    .expect("a peça");
+    let root = crate::spawn_doc(&mut world, &grouped, "peça");
+    let leaf = *world
+        .get::<bevy_ecs::hierarchy::Children>(root)
+        .expect("a raiz tem filho")
+        .iter()
+        .next()
+        .expect("a folha");
+    // Os dois opcionais, no mesmo nó: a cópia tem de trazer os dois.
+    assert!(crate::add_mod(
+        &mut world,
+        leaf,
+        ph2d_field::UnaryKind::Shell
+    ));
+    world
+        .entity_mut(leaf)
+        .insert(crate::FieldProfileSource { path: 77, level: 3 });
+
+    let copy = crate::duplicate(&mut world, leaf, [0.5, 0.0, 0.0]).expect("duplicou");
+    assert_eq!(
+        crate::mods_of(&world, copy).len(),
+        1,
+        "a cópia de um nó OCO tinha de sair oca — a lista escrita à mão deixava-a maciça"
+    );
+    assert_eq!(
+        world.get::<crate::FieldProfileSource>(copy).copied(),
+        Some(crate::FieldProfileSource { path: 77, level: 3 }),
+        "e a cópia continua ligada ao mesmo desenho, no mesmo nível"
+    );
+}

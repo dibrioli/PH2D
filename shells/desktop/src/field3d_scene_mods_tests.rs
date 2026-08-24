@@ -23,7 +23,13 @@ fn the_modifier_button_is_a_switch_not_a_stack_of_shells() {
         ph2d_panel_model3d::state::push_intent_for_test(
             ph2d_panel_model3d::ModelIntent::ToggleMod { slot },
         );
-        crate::field3d_scene::sync_scene_and_birth(sim, None, &[root], 0.0);
+        crate::field3d_scene::sync_scene_and_birth(
+            sim,
+            None,
+            &[root],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
     };
     let stack = |sim: &mut SimWorld| ph2d_field_ecs::mods_of(sim.world(), root);
 
@@ -336,7 +342,13 @@ fn the_export_button_reaches_the_request_channel() {
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::Export {
         slot: 1,
     });
-    crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[root], 0.0);
+    crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &[root],
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    );
 
     assert_eq!(
         crate::field3d_smoke::take_export_request(),

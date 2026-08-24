@@ -33,6 +33,52 @@
 
 use serde::{Deserialize, Serialize};
 
+/// ⭐⭐ **O NÍVEL DE RESOLUÇÃO de omissão** de uma forma ainda ligada ao desenho (W55).
+///
+/// É o joelho que a tabela do `ph2d_field_profile::TOLERANCE_RATIO` mediu: a silhueta erra 0,009 %
+/// da peça e o salto de normal fica em 2,14°, o que apagou 98 % dos pixels em degrau. *O default é
+/// o número certo; o knob existe para a peça que é grande ou vista de perto.*
+pub const DEFAULT_PROFILE_RESOLUTION: u32 = 1;
+
+/// ⭐⭐ **O TETO do nível de resolução — e o recurso dele é o TRAÇADO ASSENTE** (W55).
+///
+/// Cada nível divide a tolerância de cozimento por si (`ph2d_field_profile::tolerance_ratio_for`).
+/// Numa curva suave a contagem de arestas anda com `tol^-1/2`, e o custo do traçado é **linear** nas
+/// arestas — então o preço de um nível cresce com a **raiz** dele, e não com ele:
+///
+/// | nível | tolerância | arestas | traçado assente | *idem*, calmo |
+/// |---:|---:|---:|---:|---:|
+/// | **1** (omissão) | `1e-4` | 168 | 184,1 ms | *139 ms* |
+/// | 2 | `5e-5` | 236 | 241,4 ms | *183 ms* |
+/// | 4 | `2,5e-5` | 332 | 336,0 ms | *254 ms* |
+/// | 8 | `1,25e-5` | 472 | 450,3 ms | *341 ms* |
+/// | **16** (teto) | `6,3e-6` | 664 | 648,7 ms | *491 ms* |
+/// | 32 | `3,1e-6` | 940 | 900,5 ms | *682 ms* |
+///
+/// (sonda `field3d_profile::tests::the_table_that_chose_the_resolution_ceiling`: círculo de raio 0,5
+/// extrudado, 640×480, mediana de 7.)
+///
+/// ⚠️ **A coluna «calmo» é DERIVADA, e a razão está medida ao lado.** A corrida saiu com `load ≈ 4,7`
+/// — abaixo do inutilizável, acima do ideal —, e a linha do nível 1 é a **mesma configuração** que a
+/// W54 mediu a `load < 3` em **139,3 ms**. As duas leituras do mesmo trabalho dão **184,1** e
+/// **139,3**: ⭐ *32 % de diferença só de carga, sem uma linha de código mudar* — que é exactamente
+/// por que a lei do `CLAUDE.md` §5 existe. A coluna calma é a medida escalada por esse fator (0,757),
+/// e o teto escolhido sobre a coluna **medida** é, por isso, conservador.
+///
+/// ⭐ **O teto é 16 porque é onde o assentar deixa de parecer instantâneo.** Meio segundo depois de
+/// cada gesto é o limite em que o artista ainda lê a espera como *"está a afinar"* em vez de *"o app
+/// prendeu"* — e este knob **arrasta-se**, então cada passo do arrasto paga aquilo. O nível 32 não
+/// compra nada que se veja (o salto de normal já está em 0,54° no 16) e paga **39 %** a mais.
+///
+/// ⚠️ **O custo é linear nas arestas** — 0,95 a 1,10 ms/aresta ao longo da tabela inteira —, então
+/// não há joelho onde se esconder: o teto é uma escolha de produto sobre uma reta, e diz de que
+/// recurso é.
+///
+/// ⚠️ **É um limite de RECURSO e não de validade**: um perfil de 940 arestas é perfeitamente
+/// correcto, e o documento aceita-o por outra porta (`Profile::new` com a tolerância à mão). O que
+/// este número fecha é a **faixa do controle**, que é onde um teto pertence.
+pub const MAX_PROFILE_RESOLUTION: u32 = 16;
+
 /// Como os contornos de um perfil se combinam.
 ///
 /// Para um perfil de **um** contorno as duas regras coincidem — a distinção só existe quando há

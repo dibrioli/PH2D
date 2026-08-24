@@ -195,6 +195,28 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 .map(|(i, d)| (Param::Dim(i as u16), d)),
         ),
     }
+    // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55) — logo depois do que a forma mede, e antes do que
+    // se fez a ela.
+    //
+    // ⚠️ **A pergunta é feita ao VÍNCULO, não à forma.** Um `Extrude` cujo desenho foi largado é uma
+    // extrusão normal, com as mesmas dimensões e sem esta linha — e é o componente ausente que o
+    // diz. Perguntar `matches!(shape, Extrude | Revolve)` ofereceria um controle que não tem onde
+    // escrever.
+    if let Some(src) = world.get::<crate::FieldProfileSource>(entity) {
+        out.push((
+            Param::Resolution,
+            Dim {
+                key: "field.dim.resolution",
+                value: src.level as f32,
+                // ⭐ **Uma CONTAGEM**: o passo do arrasto é 1, não há meio nível, e as duas pontas
+                // são do documento — o piso é o joelho que a W54 mediu e o teto é o custo do
+                // traçado assente (ver [`ph2d_field::MAX_PROFILE_RESOLUTION`]).
+                span: Span::Count {
+                    max: ph2d_field::MAX_PROFILE_RESOLUTION,
+                },
+            },
+        ));
+    }
     // ⭐ **Os modificadores vêm por ÚLTIMO**, e é a ordem em que eles correm: primeiro o que a forma
     // é, depois o que se fez a ela. Uma linha de casca acima da largura da caixa leria como se a
     // parede fosse uma propriedade da caixa, e ela é uma operação sobre o resultado.
@@ -355,6 +377,27 @@ pub fn set_param(
             Ok(())
         }
         Param::Dim(i) => set_dim(world, entity, i as usize, value),
+        // ⭐⭐ **O NÍVEL DE RESOLUÇÃO** (W55) — e escrever aqui não muda geometria nenhuma: muda a
+        // **intenção**, e quem a converte é o recozimento do quadro seguinte.
+        //
+        // ⚠️ **A lei é a da contagem da matriz, copiada de propósito** ([`ph2d_field::Unary::set_dim`]):
+        // abaixo de 1 **recusa** (não existe meio nível, e zero seria uma peça sem contorno), acima
+        // do teto **limita em silêncio** — e o silêncio é visível, porque o número que a linha mostra
+        // vem do componente e muda à vista. Uma segunda lei aqui daria dois tatos ao mesmo tipo de
+        // controle no mesmo painel.
+        Param::Resolution => {
+            let Some(mut src) = world.get_mut::<crate::FieldProfileSource>(entity) else {
+                return Err(FieldError::BadRoot);
+            };
+            if value < 1.0 {
+                return Err(FieldError::NonPositive {
+                    node: entity.to_bits() as u32,
+                    what: "resolution",
+                });
+            }
+            src.level = (value.round() as u32).min(ph2d_field::MAX_PROFILE_RESOLUTION);
+            Ok(())
+        }
         // ⚠️ A escrita passa pela porta do próprio modificador (`Unary::set_value`), que é a mesma
         // que a validação do documento usa — ver a nota lá sobre duas listas de regras.
         Param::Mod { slot, field } => {

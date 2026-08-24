@@ -56,6 +56,8 @@ mod keyboard;
 /// `keyboard`, cortado dele pelo cap de LOC. A ORDEM entre elas é a lei, e é por isso que
 /// viajam juntas em vez de por dono.
 mod keyboard_escapes;
+/// ⭐ As teclas do modelador 3D, numa porta só — ver [`keyboard_field3d`].
+mod keyboard_field3d;
 
 /// **Os acordes de ARQUIVO** — irmão do `keyboard`, cortado dele pelo cap de LOC.
 mod keyboard_files;

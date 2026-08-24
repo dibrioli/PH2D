@@ -15,7 +15,7 @@ use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::world::World;
 use ph2d_field::{FieldError, NodeShape, Op, Primitive, set_shape_radius};
 
-use crate::{FieldNode, FieldPose};
+use crate::{FieldMods, FieldNode, FieldPose};
 
 // ⚠️ Os irmãos entram pelo ROTEADOR (`super`), nunca pelo caminho da crate: é o que mantém
 // `edit.rs` a ser a única lista de quem sai deste módulo.
@@ -374,6 +374,7 @@ fn copy_subtree(world: &mut World, from: Entity, into: Entity) -> Option<Entity>
         let pose = world.get::<FieldPose>(src).copied().unwrap_or_default();
         let name = unique_sibling_name(world, dst_parent, crate::shape_name(&node.shape));
         let copy = world.spawn((ph2d_ecs::Name::new(name), node, pose)).id();
+        copy_optional(world, src, copy);
         world.entity_mut(dst_parent).add_child(copy);
         first.get_or_insert(copy);
         // ⚠️ Em ordem INVERSA, porque a fila é uma pilha: assim os filhos nascem na ordem de
@@ -387,6 +388,36 @@ fn copy_subtree(world: &mut World, from: Entity, into: Entity) -> Option<Entity>
         }
     }
     first
+}
+
+/// ⭐⭐ **OS COMPONENTES OPCIONAIS DE UM NÓ, na cópia** (W55) — e a razão de existir é um defeito
+/// silencioso que estava aqui desde a W26.
+///
+/// # O que estava errado
+///
+/// O [`copy_subtree`] nascia com uma lista **escrita à mão** — `Name`, [`FieldNode`], [`FieldPose`]
+/// —, e o [`FieldMods`] nunca lá esteve. Duplicar um cilindro **oco** devolvia um cilindro maciço:
+/// sem erro, sem aviso, e com a linha da espessura simplesmente ausente do painel do novo. *Uma
+/// lista escrita à mão ao lado do registo de componentes é duas respostas à pergunta «o que é um
+/// nó».*
+///
+/// # ⚠️ Porque a lista continua a existir, e o que a prende
+///
+/// O `bevy_ecs` não copia componentes sem reflexão, então a enumeração é inevitável. O que se pode
+/// fazer — e é o que se faz — é **prendê-la à contagem** do [`crate::register_field_components`]:
+/// o gate `a_duplicate_carries_every_optional_component_of_a_node` conhece o número de componentes
+/// registados e falha quando ele sobe. Quem acrescentar o sexto vê o gate vermelho **antes** de o
+/// artista ver a cópia mutilada.
+fn copy_optional(world: &mut World, src: Entity, dst: Entity) {
+    if let Some(mods) = world.get::<FieldMods>(src).cloned() {
+        world.entity_mut(dst).insert(mods);
+    }
+    // ⭐ **O vínculo ao desenho viaja com a cópia** (W55): duas peças do mesmo contorno é um gesto
+    // normal de modelagem, e as duas seguem-no. Deixá-lo cair daria uma cópia que deixa de
+    // acompanhar o desenho — e a diferença entre as duas só apareceria ao editar a curva.
+    if let Some(src_link) = world.get::<crate::FieldProfileSource>(src).copied() {
+        world.entity_mut(dst).insert(src_link);
+    }
 }
 
 /// ⭐ **Apaga um nó e o que está debaixo dele.**

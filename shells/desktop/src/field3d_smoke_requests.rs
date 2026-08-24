@@ -273,21 +273,26 @@ thread_local! {
     static PROFILE_REQ: std::cell::Cell<Option<ProfileShape>> = const { std::cell::Cell::new(None) };
 }
 
-/// ⭐ **A forma cozida, à espera de virar nó** — a volta do pedido, com a **extensão** do contorno.
+/// ⭐ **A forma cozida, à espera de virar nó** — a volta do pedido, com a **extensão** do contorno e
+/// o **desenho de onde ele veio**.
 ///
 /// ⚠️ A extensão viaja ao lado pela mesma razão da escultura: o perfil é construído nas unidades em
 /// que foi **desenhado** (o editor vetorial), e o tamanho de convivência mora na **pose**, onde um
 /// clique o desfaz.
-pub(crate) fn take_pending_profile() -> Option<(ph2d_field::Primitive, f32)> {
+///
+/// ⚠️ **E o id do contorno viaja com eles** (W55): é ele que vira o `FieldProfileSource`, e é o que
+/// faz a peça continuar a seguir o desenho em vez de ser uma fotografia dele. Ele **não** podia ser
+/// redescoberto do lado de lá — a ponte com a cena recebe o mundo e não a cena vetorial.
+pub(crate) fn take_pending_profile() -> Option<(ph2d_field::Primitive, f32, u64)> {
     PENDING_PROFILE.with(|c| c.borrow_mut().take())
 }
 
-pub(crate) fn ask_spawn_profile(prim: ph2d_field::Primitive, extent: f32) {
-    PENDING_PROFILE.with(|c| *c.borrow_mut() = Some((prim, extent)));
+pub(crate) fn ask_spawn_profile(prim: ph2d_field::Primitive, extent: f32, path: u64) {
+    PENDING_PROFILE.with(|c| *c.borrow_mut() = Some((prim, extent, path)));
 }
 
 thread_local! {
-    static PENDING_PROFILE: std::cell::RefCell<Option<(ph2d_field::Primitive, f32)>> =
+    static PENDING_PROFILE: std::cell::RefCell<Option<(ph2d_field::Primitive, f32, u64)>> =
         const { std::cell::RefCell::new(None) };
 }
 

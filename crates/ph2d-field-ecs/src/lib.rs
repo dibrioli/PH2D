@@ -105,9 +105,50 @@ pub struct FieldMods {
     pub stack: Vec<Unary>,
 }
 
+/// ⭐⭐ **O DESENHO DE ONDE ESTA FORMA VEIO** — o vínculo vivo entre o contorno do editor vetorial e
+/// a peça (W55).
+///
+/// # O que ele torna possível, e o que ele deliberadamente NÃO faz
+///
+/// Até esta wave, `+ Extrude` cozia o contorno **uma vez** e o resultado era tudo o que sobrava: o
+/// desenho continuava na cena, a peça já não o conhecia, e as duas coisas divergiam em silêncio ao
+/// primeiro gesto do artista sobre a curva. Enio, no smoke da W53: *"contudo sem ajustes de
+/// resolução"* — e o knob era inexprimível **pela mesma ausência**, porque afinar a conversão exige
+/// ter a fonte.
+///
+/// Com o vínculo, a forma é **derivada** do desenho a cada quadro
+/// ([`crate::field3d_profile_live`], no shell) e o [`Self::level`] é o número que decide a finura.
+///
+/// ⚠️ **Ele segue a FORMA do desenho, nunca a POSE dele.** A pose 3D da peça é do artista — ele
+/// colocou-a onde quis, com o gizmo — e o desenho vive noutro espaço, com uma pose 2D própria.
+/// Arrastar a curva no canvas 2D **não** teleporta a peça; mudar a curva muda a peça. *Uma pose, um
+/// dono.*
+///
+/// ⚠️ **Componente PRÓPRIO e opcional**, pelas duas razões que o [`FieldMods`] já paga: quase nenhum
+/// nó tem um, e o blob de um componente é postcard **posicional** — apendar um campo ao [`FieldNode`]
+/// quebraria todo projeto já gravado.
+///
+/// ⚠️ **`u64` e não `VecPathId`**: esta crate é a ponte ECS do modelador e **não** conhece o
+/// documento vetorial, pela mesma lei que o [`ph2d_field::Profile`] copia a `FillRule` em vez de a
+/// importar. O tipo lá é um alias de `u64`, e quem traduz é o shell — que é quem tem as duas cenas.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FieldProfileSource {
+    /// O contorno na cena vetorial (`ph2d_vec_scene::VecPathId`).
+    pub path: u64,
+    /// **Com que finura** o contorno é convertido — `1` é o joelho medido na W54, e o teto é
+    /// [`ph2d_field::MAX_PROFILE_RESOLUTION`].
+    ///
+    /// ⚠️ **O NÍVEL, e não a tolerância.** O número que o artista escreve tem de sobreviver a
+    /// mudanças na lei que o traduz: guardar a tolerância cozida faria uma peça salva hoje ficar
+    /// presa ao valor de hoje, e re-abri-la depois de o joelho se mover daria uma finura que já
+    /// ninguém escolheria. *Guarda-se a intenção, deriva-se o número.*
+    pub level: u32,
+}
+
 impl SimComponent for FieldNode {}
 impl SimComponent for FieldPose {}
 impl SimComponent for FieldMods {}
+impl SimComponent for FieldProfileSource {}
 
 impl Default for FieldPose {
     fn default() -> Self {
@@ -130,6 +171,7 @@ pub fn register_field_components(reg: &mut ComponentRegistry) {
     reg.register::<FieldNode>("ph2d::field::FieldNode");
     reg.register::<FieldPose>("ph2d::field::FieldPose");
     reg.register::<FieldMods>("ph2d::field::FieldMods");
+    reg.register::<FieldProfileSource>("ph2d::field::FieldProfileSource");
 }
 
 /// O campo de uma **cena**: a união de todos os objetos, na ordem da chave.

@@ -72,7 +72,9 @@ pub(crate) fn from_selection(
         ProfileShape::Revolve => Primitive::Revolve { profile },
     };
     let n = segments_of(&prim);
-    crate::field3d_smoke::ask_spawn_profile(prim, extent);
+    // ⭐⭐ **O ID DO DESENHO VIAJA COM A FORMA** (W55) — é ele que vira o vínculo vivo, e sem ele a
+    // peça nasceria já a ser uma fotografia do contorno.
+    crate::field3d_smoke::ask_spawn_profile(prim, extent, *id);
     match which {
         ProfileShape::Extrude => format!("Extruded the shape ({n} edges)"),
         ProfileShape::Revolve => format!("Revolved the shape around Y ({n} edges)"),
@@ -84,7 +86,7 @@ pub(crate) fn from_selection(
 /// ⚠️ Ela existe pela lei que o `field3d_notice` já carrega: *"as frases dizem o que está errado na
 /// peça — nunca o nome da variante, do campo ou do nó. Um `Rejected(SelfIntersecting)` no ecrã é a
 /// mesma coisa que silêncio para quem está a modelar."*
-fn explain(e: &ph2d_field_profile::CookError) -> String {
+pub(crate) fn explain(e: &ph2d_field_profile::CookError) -> String {
     use ph2d_field_profile::CookError as C;
     match e {
         C::OpenContour { .. } => "This shape is open — close it before making it solid".to_string(),

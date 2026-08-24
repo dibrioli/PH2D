@@ -132,15 +132,31 @@ pub fn cook_path(path: &VecPath, tolerance: f64) -> Result<Profile, CookError> {
     Profile::new(contours, fill_rule(path.fill_rule), tolerance as f32).map_err(CookError::Rejected)
 }
 
-/// O mesmo, com a tolerância **derivada do tamanho do desenho** — `TOLERANCE_RATIO` da maior
-/// dimensão da caixa envolvente.
+/// ⭐⭐ **A TOLERÂNCIA DE UM NÍVEL** (W55) — a lei que traduz o número do artista.
+///
+/// O nível `1` é o joelho que a tabela do [`TOLERANCE_RATIO`] mediu, e cada nível **divide** a
+/// tolerância por ele. Numa curva suave a contagem de arestas anda com `tol^-1/2`, então o nível `4`
+/// não custa quatro vezes: custa **duas** (medido — ver [`ph2d_field::MAX_PROFILE_RESOLUTION`]).
+///
+/// ⚠️ **O piso é 1 e não é conforto:** abaixo do joelho estão exactamente os degraus de luz que a
+/// W54 acabou de matar, e oferecê-los seria devolver o defeito com um rótulo por cima. Quem quiser
+/// mais barato tem o preview grosso, que já sai do relógio e não da autoria.
+///
+/// ⚠️ **Clampa em vez de recusar** porque é uma função **pura de leitura**: quem valida a escrita é
+/// [`ph2d_field_ecs::set_param`], e uma segunda recusa aqui daria duas respostas à mesma pergunta.
+#[must_use]
+pub fn tolerance_ratio_for(level: u32) -> f64 {
+    f64::from(level.clamp(1, ph2d_field::MAX_PROFILE_RESOLUTION)).recip() * TOLERANCE_RATIO
+}
+
+/// **Coze o path no NÍVEL dado**, com a tolerância derivada do tamanho do desenho.
 ///
 /// É a porta normal: uma tolerância absoluta obriga quem chama a saber a escala do documento, e
 /// errar nisso é ou um perfil facetado ou um traçado dez vezes mais caro.
 ///
 /// # Errors
 /// Ver [`CookError`].
-pub fn cook_path_auto(path: &VecPath) -> Result<Profile, CookError> {
+pub fn cook_path_at(path: &VecPath, level: u32) -> Result<Profile, CookError> {
     let cooked = path.cooked();
     let mut min = [f64::INFINITY; 2];
     let mut max = [f64::NEG_INFINITY; 2];
@@ -161,14 +177,24 @@ pub fn cook_path_auto(path: &VecPath) -> Result<Profile, CookError> {
         }
     }
     let span = (max[0] - min[0]).max(max[1] - min[1]);
+    let ratio = tolerance_ratio_for(level);
     // Um desenho sem extensão não tem escala de onde tirar tolerância; o `Profile` recusa-o logo a
     // seguir, e um número positivo qualquer chega lá.
     let tolerance = if span.is_finite() && span > 0.0 {
-        span * TOLERANCE_RATIO
+        span * ratio
     } else {
-        TOLERANCE_RATIO
+        ratio
     };
     cook_path(&cooked, tolerance)
+}
+
+/// O mesmo no nível de omissão ([`ph2d_field::DEFAULT_PROFILE_RESOLUTION`]) — a porta de quem ainda
+/// não tem opinião sobre finura, que é toda a gente até abrir o painel.
+///
+/// # Errors
+/// Ver [`CookError`].
+pub fn cook_path_auto(path: &VecPath) -> Result<Profile, CookError> {
+    cook_path_at(path, ph2d_field::DEFAULT_PROFILE_RESOLUTION)
 }
 
 fn fill_rule(r: ph2d_vec_scene::FillRule) -> FillRule {

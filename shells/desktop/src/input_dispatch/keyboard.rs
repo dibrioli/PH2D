@@ -83,62 +83,9 @@ impl App {
         {
             return;
         }
-        // ADR-0161 W4: `Home` repõe a vista da janela 3D de modelagem — a volta que a
-        // rotação LIVRE torna necessária (ela inclina o horizonte, de propósito).
-        // Inerte sem o smoke armado; ver a nota de `field3d_home_key` sobre o dia em
-        // que isso deixar de ser a única porta.
-        if state == ElementState::Pressed
-            && let PhysicalKey::Code(code) = physical_key
-            && self.field3d_home_key(code)
-        {
-            return;
-        }
-        // ADR-0161 W26: o NÚMERO digitado no meio de um gesto do gizmo (`G X 0,5`). ⚠️ **Antes da
-        // tecla de verbo**, e a ordem é a lei: com uma entrada aberta, um `5` é um cinco. Ela exige
-        // uma alça AGARRADA, então só pode disparar com o botão do rato em baixo sobre o gizmo.
-        if state == ElementState::Pressed
-            && let PhysicalKey::Code(code) = physical_key
-            && self.field3d_typed_key(code)
-        {
-            return;
-        }
-        // ADR-0161 W6: `G`/`R`/`S` trocam o verbo do gizmo 3D (mover/rodar/escalar), as letras
-        // do Blender. ⚠️ Só com o ponteiro SOBRE a janela 3D — ver a nota de `field3d_mode_key`:
-        // sem essa guarda, três letras comuns deixariam de chegar a qualquer campo de texto.
-        if state == ElementState::Pressed
-            && let PhysicalKey::Code(code) = physical_key
-            && self.field3d_mode_key(code)
-        {
-            return;
-        }
-
-        // ADR-0161 W15: `Numpad5` alterna a LENTE da janela 3D (convergente ↔ paralela), a tecla
-        // do Blender para a mesma coisa. Mesma guarda de ponteiro das outras — ver `over_window`.
-        if state == ElementState::Pressed
-            && let PhysicalKey::Code(code) = physical_key
-            && self.field3d_lens_key(code)
-        {
-            return;
-        }
-
-        // ADR-0161 W47: `Numpad1/3/7` (+ `Ctrl` para a oposta) põem a câmera numa VISTA NOMEADA —
-        // frente, trás, direita, esquerda, topo, base. As TECLAS são as do Blender; os EIXOS são os
-        // nossos (Y para cima). Mesma guarda de ponteiro das outras.
-        if state == ElementState::Pressed
-            && let PhysicalKey::Code(code) = physical_key
-            && self.field3d_view_key(code)
-        {
-            return;
-        }
-
-        // ADR-0161 W44: `Shift+I` isola o escolhido — ou devolve a peça inteira. A tecla é a do
-        // módulo de escultura, lida e não escolhida. ⭐ É ela a **porta de saída** do isolamento: o
-        // chip da fileira desaparece com a raiz escolhida, e sem esta tecla a peça isolada não
-        // tinha volta. Mesma guarda de ponteiro das outras.
-        if state == ElementState::Pressed
-            && let PhysicalKey::Code(code) = physical_key
-            && self.field3d_isolate_key(code)
-        {
+        // ⭐ **AS TECLAS DO MODELADOR 3D, numa porta só** — ver
+        // [`keyboard_field3d`](super::keyboard_field3d).
+        if self.field3d_keys(physical_key, state) {
             return;
         }
 

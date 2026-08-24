@@ -429,7 +429,7 @@ fn deleting_the_part_does_not_replant_it_next_frame() {
     let mut sim = a_world();
 
     // Quadro 1: a ponte planta a semente.
-    crate::field3d_scene::ecs_bridge(&mut sim, None, &[]);
+    crate::field3d_scene::ecs_bridge(&mut sim, None, &[], &crate::field3d_scene::no_drawing());
     let root = {
         let world = sim.world_mut();
         let mut q = world.query::<(bevy_ecs::entity::Entity, &FieldObject)>();
@@ -440,7 +440,7 @@ fn deleting_the_part_does_not_replant_it_next_frame() {
     sim.world_mut().despawn(root);
 
     // Quadro 2: a ponte corre outra vez — e **não replanta**.
-    crate::field3d_scene::ecs_bridge(&mut sim, None, &[]);
+    crate::field3d_scene::ecs_bridge(&mut sim, None, &[], &crate::field3d_scene::no_drawing());
     let world = sim.world_mut();
     let mut q = world.query::<&FieldObject>();
     assert_eq!(

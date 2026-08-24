@@ -71,6 +71,16 @@ pub enum Param {
     /// só obrigaria a achatar a pilha inteira numa lista de números, e aí inserir um modificador no
     /// meio renumeraria tudo o que vem depois — com um arrasto a meio a escrever noutro campo.
     Mod { slot: u16, field: u8 },
+    /// ⭐⭐ **O NÍVEL DE RESOLUÇÃO de uma forma que ainda está ligada ao desenho** (W55).
+    ///
+    /// ⚠️ **Não é uma dimensão da FORMA, e é por isso que tem chave própria.** Um `Dim` diz o que a
+    /// peça mede — largura, altura, filete —, e mexer nele muda a peça. Este número não muda a peça
+    /// nenhuma: muda **com que finura o contorno desenhado é convertido** nela. As duas coisas vivem
+    /// em sítios diferentes (a forma no nó, o vínculo ao lado dele) e sobrevivem a gestos
+    /// diferentes — largar o vínculo apaga este número e deixa a forma intacta.
+    ///
+    /// O teto é [`crate::MAX_PROFILE_RESOLUTION`], e ele é medido.
+    Resolution,
 }
 
 /// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.

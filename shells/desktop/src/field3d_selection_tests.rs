@@ -240,7 +240,7 @@ fn a_child_of_a_selected_node_does_not_move_twice() {
 fn the_pivot_survives_the_motion_it_applies() {
     let (mut sim, leaves) = scene_of_three();
     let sel = [leaves[0], leaves[1], leaves[2]];
-    let before = super::selection_pivot(sim.world(), &sel);
+    let before = crate::field3d_scene::selection_pivot(sim.world(), &sel);
 
     for motion in [
         crate::field3d_gizmo::Motion::Rotate {
@@ -254,7 +254,7 @@ fn the_pivot_survives_the_motion_it_applies() {
         },
     ] {
         crate::field3d_scene::apply_motion_for_test(&mut sim, sel[0].to_bits(), &sel, motion);
-        let now = super::selection_pivot(sim.world(), &sel);
+        let now = crate::field3d_scene::selection_pivot(sim.world(), &sel);
         assert!(
             now.iter().zip(before).all(|(a, b)| (a - b).abs() < 1e-4),
             "o pivô andou com o gesto ({motion:?}): {before:?} -> {now:?} — um arrasto contínuo \

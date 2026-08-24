@@ -213,7 +213,13 @@ const ROWS: &[Row] = &[
 fn offered(row: &Row, build: Build) -> bool {
     let (mut sim, sel) = build();
     let _ = ph2d_panel_model3d::drain_intents();
-    crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0);
+    crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &sel,
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    );
     (row.read)(&ph2d_panel_model3d::state::current())
 }
 
@@ -227,7 +233,14 @@ fn acts(row: &Row, build: Build) -> bool {
         let _ = ph2d_panel_model3d::drain_intents();
         let before = crate::field3d_scene::sync_scene(&mut sim, None, 0.0).expect("cozinha");
         ph2d_panel_model3d::state::push_intent_for_test((row.intent)(slot));
-        let after = crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &sel, 0.0).0;
+        let after = crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &sel,
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        )
+        .0;
         // ⚠️ `None` conta como MUDANÇA: apagar o último nó deixa a peça sem cozimento, e isso é o
         // gesto a fazer alguma coisa — não a falhar.
         after.is_none_or(|a| a != before)
@@ -344,7 +357,13 @@ fn every_camera_chip_moves_the_camera() {
     armed(|| {
         let (mut sim, _root) = scene(&flat());
         let _ = ph2d_panel_model3d::drain_intents();
-        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
 
         let snap = ph2d_panel_model3d::state::current();
         assert_eq!(
@@ -370,7 +389,13 @@ fn every_camera_chip_moves_the_camera() {
                 s.cam.target = [9.0, 9.0, 9.0];
             });
             ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::SetView { slot });
-            crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+            crate::field3d_scene::sync_scene_and_birth(
+                &mut sim,
+                None,
+                &[],
+                0.0,
+                &crate::field3d_scene::no_drawing(),
+            );
             // ⭐ A câmera **viaja** (W51) — o chip pede a viagem; quem a serve é a mola da casa.
             assert!(
                 crate::field3d_smoke::with_smoke(|s| s.flight.is_some()).unwrap_or(false),
@@ -402,7 +427,13 @@ fn every_camera_chip_moves_the_camera() {
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
             slot: crate::field3d_scene::panel::ORTHO_SLOT,
         });
-        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
         assert_ne!(lens_of(), before, "o chip da lente não trocou a lente");
         // …e o retrato DIZ o estado novo: um interruptor que não acende mente sobre o que fez.
         assert_eq!(
@@ -419,7 +450,13 @@ fn every_camera_chip_moves_the_camera() {
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
             slot: crate::field3d_scene::panel::FRAME_SLOT,
         });
-        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
         crate::field3d_smoke::note_flight_progress(1.0);
         let t = crate::field3d_smoke::with_smoke(|s| s.cam.target).expect("armado");
         assert!(
@@ -438,9 +475,21 @@ fn the_lit_view_chip_goes_out_when_the_camera_leaves_it() {
         let (mut sim, _root) = scene(&flat());
         let _ = ph2d_panel_model3d::drain_intents();
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::SetView { slot: 0 });
-        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
         crate::field3d_smoke::note_flight_progress(1.0);
-        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
         assert!(
             ph2d_panel_model3d::state::current().views[0].active,
             "o controle: a vista escolhida tem de acender"
@@ -449,7 +498,13 @@ fn the_lit_view_chip_goes_out_when_the_camera_leaves_it() {
         crate::field3d_smoke::with_smoke(|s| {
             crate::field3d_input::law::orbit(&mut s.cam, 4.0, 0.0);
         });
-        crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[], 0.0);
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
         assert!(
             ph2d_panel_model3d::state::current()
                 .views

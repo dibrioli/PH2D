@@ -6762,6 +6762,7 @@ impl crate::App {
                 sim,
                 hero.gizmo.selection,
                 &hero.gizmo.extra_selection,
+                vec_scene,
             ) {
                 Some(crate::field3d_scene::SelectRequest::Entity(bits)) => {
                     hero.gizmo.replace_selection(Some(bits));

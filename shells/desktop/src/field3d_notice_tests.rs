@@ -57,7 +57,14 @@ fn a_modifier_click_on_a_sculpture_never_blanks_the_piece() {
         ph2d_panel_model3d::state::push_intent_for_test(
             ph2d_panel_model3d::ModelIntent::ToggleMod { slot },
         );
-        let after = crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[sculpture], 0.0).0;
+        let after = crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[sculpture],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        )
+        .0;
         assert!(
             after.is_some(),
             "o modificador nº {slot} sobre uma escultura APAGOU a peça inteira — e nada na tela o \

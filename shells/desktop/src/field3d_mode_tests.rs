@@ -262,7 +262,7 @@ fn rearming_does_not_replant_the_demo_over_the_artists_piece() {
     set_armed_by_panel(true);
     let mut sim = ph2d_ecs::SimWorld::new();
     // Quadro 1: a semente planta a peça.
-    crate::field3d_scene::ecs_bridge(&mut sim, None, &[]);
+    crate::field3d_scene::ecs_bridge(&mut sim, None, &[], &crate::field3d_scene::no_drawing());
     let before = {
         let world = sim.world_mut();
         let mut q = world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
@@ -273,11 +273,12 @@ fn rearming_does_not_replant_the_demo_over_the_artists_piece() {
     // O artista fecha o painel (agora isto DESARMA) e volta a abri-lo.
     set_armed_by_panel(false);
     assert!(
-        crate::field3d_scene::ecs_bridge(&mut sim, None, &[]).is_none(),
+        crate::field3d_scene::ecs_bridge(&mut sim, None, &[], &crate::field3d_scene::no_drawing())
+            .is_none(),
         "desarmado, a ponte é inerte — não coze, não semeia, não pede seleção"
     );
     set_armed_by_panel(true);
-    crate::field3d_scene::ecs_bridge(&mut sim, None, &[]);
+    crate::field3d_scene::ecs_bridge(&mut sim, None, &[], &crate::field3d_scene::no_drawing());
 
     let after = {
         let world = sim.world_mut();

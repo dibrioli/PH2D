@@ -2,6 +2,35 @@
 
 use ph2d_field_render::Orbit;
 
+/// O contorno das duas sondas: um círculo de raio `0,5` em quatro segmentos de Bézier — o caso do
+/// torno do Enio.
+///
+/// ⚠️ **Deslocado do eixo**: o torno recusa um perfil com `x < 0` (regra do documento), e é essa a
+/// forma de um perfil de torno a sério — um anel em volta do eixo.
+fn circle_path() -> ph2d_vec_scene::VecPath {
+    use ph2d_vec_scene::{VecPath, VecVertex};
+    let k = 0.552_284_75_f64;
+    let r = 0.5_f64;
+    let cx = 0.9_f64;
+    let mut verts = Vec::new();
+    for (i, (ax, ay)) in [(cx + r, 0.0), (cx, r), (cx - r, 0.0), (cx, -r)]
+        .into_iter()
+        .enumerate()
+    {
+        let (tx, ty) = [(0.0, k * r), (-k * r, 0.0), (0.0, -k * r), (k * r, 0.0)][i];
+        verts.push(VecVertex {
+            in_handle: [ax - tx, ay - ty],
+            out_handle: [ax + tx, ay + ty],
+            ..VecVertex::corner([ax, ay])
+        });
+    }
+    VecPath {
+        verts,
+        closed: true,
+        ..VecPath::default()
+    }
+}
+
 /// ⭐⭐ **A SONDA QUE ESCOLHEU A TOLERÂNCIA** (W54) — imprime a tabela que vive no doc do
 /// [`ph2d_field_profile::TOLERANCE_RATIO`].
 ///
@@ -19,30 +48,8 @@ use ph2d_field_render::Orbit;
 #[test]
 #[ignore]
 fn the_table_that_chose_the_tolerance() {
-    use ph2d_vec_scene::{VecPath, VecVertex};
-    // Um círculo desenhado com quatro segmentos de Bézier — o caso do torno do Enio.
-    let k = 0.552_284_75_f64;
     let r = 0.5_f64;
-    let mut verts = Vec::new();
-    // ⚠️ **Deslocado do eixo**: o torno recusa um perfil com `x < 0` (regra do documento), e é essa
-    // a forma de um perfil de torno a sério — um anel em volta do eixo.
-    let cx = 0.9_f64;
-    for (i, (ax, ay)) in [(cx + r, 0.0), (cx, r), (cx - r, 0.0), (cx, -r)]
-        .into_iter()
-        .enumerate()
-    {
-        let (tx, ty) = [(0.0, k * r), (-k * r, 0.0), (0.0, -k * r), (k * r, 0.0)][i];
-        verts.push(VecVertex {
-            in_handle: [ax - tx, ay - ty],
-            out_handle: [ax + tx, ay + ty],
-            ..VecVertex::corner([ax, ay])
-        });
-    }
-    let path = VecPath {
-        verts,
-        closed: true,
-        ..VecPath::default()
-    };
+    let path = circle_path();
 
     println!("ratio | arestas | salto de normal | EXTRUSAO | TORNO | bandas");
     let reg = ph2d_field_eval::hybrid::Registry::new();
@@ -114,6 +121,79 @@ fn the_table_that_chose_the_tolerance() {
         println!(
             "{ratio:>5.0e} | {n:>7} | {jump:>10.2}° | {:>7.1} ms | {:>6.1} ms | {bands:>6}",
             ext_ms[3], ms[3]
+        );
+    }
+}
+
+/// ⭐⭐ **A SONDA DO CONTORNO VIVO** (W55) — as duas perguntas que o vínculo levanta, num sítio só.
+///
+/// 1. **Quanto custa reconferir por quadro?** O vínculo não guarda cache nenhum: ele **recoze** o
+///    contorno e compara com o que está no nó (ver [`crate::field3d_profile_live`]). Se isso custasse
+///    um milissegundo, o desenho é que teria de avisar — e o desenho não conhece a peça.
+/// 2. **Onde fica o TETO do knob de resolução?** O recurso é o traçado **assente**, e ele cresce com
+///    as arestas. O número tem de sair da tabela, não do conforto (`CLAUDE.md` §0).
+///
+/// ⚠️ `#[ignore]` porque mede relógio — máquina calma, `load < 3`:
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --bin ph2d-host-desktop --release -- \
+///     --exact field3d_profile::tests::the_table_that_chose_the_resolution_ceiling --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_that_chose_the_resolution_ceiling() {
+    let path = circle_path();
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    println!("nivel | ratio | arestas | recozer | comparar | EXTRUSAO");
+    for level in [1u32, 2, 4, 8, 16, 32] {
+        let ratio = ph2d_field_profile::TOLERANCE_RATIO / f64::from(level);
+        let d = 1.0_f64;
+        // O recozimento inteiro, como o vínculo o faz — achatar + validar o documento.
+        let mut cook_us = Vec::new();
+        let mut prof = None;
+        for _ in 0..21 {
+            let t0 = std::time::Instant::now();
+            let p = ph2d_field_profile::cook_path(&path, ratio * d).expect("perfil");
+            cook_us.push(t0.elapsed().as_secs_f64() * 1e6);
+            prof = Some(p);
+        }
+        cook_us.sort_by(f64::total_cmp);
+        let prof = prof.expect("perfil");
+        let n = prof.segment_count();
+        // A comparação que decide se alguma coisa mudou — o caso comum é IGUAL, que é o pior caso
+        // dela (percorre tudo antes de responder).
+        let twin = ph2d_field_profile::cook_path(&path, ratio * d).expect("perfil");
+        let mut cmp_us = Vec::new();
+        for _ in 0..21 {
+            let t0 = std::time::Instant::now();
+            assert!(prof == twin);
+            cmp_us.push(t0.elapsed().as_secs_f64() * 1e6);
+        }
+        cmp_us.sort_by(f64::total_cmp);
+        let doc = ph2d_field::FieldDoc::new(
+            vec![ph2d_field::Node {
+                xform: ph2d_field::Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Leaf(ph2d_field::Primitive::Extrude {
+                    profile: prof,
+                    half_height: 0.2,
+                    round: 0.0,
+                }),
+                mods: Vec::new(),
+            }],
+            ph2d_field::NodeId(0),
+        )
+        .expect("a peça");
+        let cam = Orbit::from_yaw_pitch(0.72, 0.52);
+        let mut ms = Vec::new();
+        for _ in 0..7 {
+            let t0 = std::time::Instant::now();
+            let _ = ph2d_field_render::trace(&doc, &reg, &cam, 640, 480);
+            ms.push(t0.elapsed().as_secs_f64() * 1000.0);
+        }
+        ms.sort_by(f64::total_cmp);
+        println!(
+            "{level:>5} | {ratio:>5.0e} | {n:>7} | {:>6.1} us | {:>6.2} us | {:>7.1} ms",
+            cook_us[10], cmp_us[10], ms[3]
         );
     }
 }

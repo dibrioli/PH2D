@@ -94,6 +94,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ "Fillet" e não "Round": é a palavra que um modelador usa, e é a promessa do módulo
         // dita pelo nome dela.
         "field.dim.round" => "Fillet",
+        // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55). ⚠️ "Resolution" e não "Quality": o número diz
+        // com que finura o **desenho** é convertido na peça, e "Quality" prometeria uma opinião
+        // sobre o resultado. Quem modela num CAD conhece a palavra com este sentido exacto.
+        //
+        // ⚠️ **Sem unidade no rótulo**, ao contrário das dimensões: ela não mede nada da peça — é
+        // uma contagem de níveis, e o que ela compra (arestas, custo) é um facto que o rodapé já
+        // diz.
+        "field.dim.resolution" => "Resolution",
         // ⭐ A POSE. ⚠️ "Position" é LOCAL, como o Inspector da casa mostra o `Transform` — um painel
         // que mostrasse mundo contradiria o número ao lado no dia em que alguém agrupasse.
         "field.dim.pos_x" => "Position X",

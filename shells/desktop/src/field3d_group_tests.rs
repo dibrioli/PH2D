@@ -198,9 +198,15 @@ fn one_selected_shape_becomes_a_group() {
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::ApplyOp {
         slot: 0,
     });
-    let after = crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[leaves[1]], 0.0)
-        .0
-        .expect("cozinha");
+    let after = crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &[leaves[1]],
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    )
+    .0
+    .expect("cozinha");
 
     assert_eq!(
         after
@@ -250,9 +256,15 @@ fn an_operation_selected_alone_still_swaps_its_op() {
     ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::ApplyOp {
         slot: 0,
     });
-    let after = crate::field3d_scene::sync_scene_and_birth(&mut sim, None, &[group], 0.0)
-        .0
-        .expect("cozinha");
+    let after = crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &[group],
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    )
+    .0
+    .expect("cozinha");
 
     assert_eq!(
         after

@@ -59,7 +59,7 @@ pub use drag::{
 };
 pub use event::{PainterLayerDrop, WidgetEvent};
 pub use hit::HitIndex;
-pub use state::{InteractiveState, NamedPalette, WidgetStore};
+pub use state::{InteractiveState, NamedPalette, WidgetStore, capture_if_listening};
 pub use types::{
     BlenderHitKind, BufferAction, GestureMods, GesturePhase, GraphGesture, GraphHitKind, GraphKey,
     GraphZoom, NoteData, PaletteIoKind, TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R,

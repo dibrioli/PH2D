@@ -27,6 +27,11 @@ pub const INPUT_MAP_ADD: NodeId = hash_node_id("input_map.add");
 /// **guarda** a tecla e emite isto, e o handler de chrome, que tem o hero, **liga**. *O seed é dono
 /// do valor; o dispatch é dono do estado.*
 pub const INPUT_MAP_BIND_CAPTURED: NodeId = hash_node_id("input_map.bind_captured");
+/// **A ESCUTA FOI CANCELADA** (o `Esc`) — o irmão do acima, e existe pela mesma razão.
+///
+/// ⚠️ Ele é emitido para que quem chamou a lei saiba que a tecla **foi consumida**: sem um evento,
+/// o `Esc` cairia para o resto da cadeia e fecharia também um painel ou cancelaria uma ferramenta.
+pub const INPUT_MAP_LISTEN_CANCELLED: NodeId = hash_node_id("input_map.listen_cancelled");
 
 /// O **X** da linha da acção `row` — apaga a acção inteira.
 #[must_use]
@@ -58,6 +63,22 @@ pub fn input_map_deadzone_id(row: usize) -> NodeId {
 #[must_use]
 pub fn input_map_press_point_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("input_map.press_point.{row}"))
+}
+
+/// O **chip numérico** da zona morta da linha `row` — o número que o slider mostra.
+///
+/// ⚠️ O `paint_slider_with_chip` da casa quer **dois** ids: a barra e o número. É o par que faz o
+/// artista **ver o valor** em vez de adivinhar pela posição — que era o defeito da primeira versão
+/// desta janela (uma barra rosa, sem rótulo e sem número).
+#[must_use]
+pub fn input_map_deadzone_chip_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("input_map.deadzone_chip.{row}"))
+}
+
+/// O **chip numérico** do ponto de disparo da linha `row`. Ver [`input_map_deadzone_chip_id`].
+#[must_use]
+pub fn input_map_press_point_chip_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("input_map.press_point_chip.{row}"))
 }
 
 /// O **X** da ligação `bind` da acção `row` — apaga uma ligação só.

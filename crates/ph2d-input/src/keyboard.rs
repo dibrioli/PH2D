@@ -20,6 +20,48 @@ use serde::{Deserialize, Serialize};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Key(pub u32);
 
+impl Key {
+    /// **O NOME QUE O ARTISTA LÊ** — `"Left Arrow"`, `"A"`, `"Space"`.
+    ///
+    /// ⛔⛔ **Ele existe porque a primeira versão desta janela mostrava `Key 0xF702`**, e o Enio
+    /// respondeu o óbvio: *"Quem vai usar são artistas e não IA"*. Um código hexadecimal é a
+    /// representação interna a vazar para a cara do produto — e o artista não tem como saber que
+    /// `0xF702` é a seta para a esquerda, nem tem por que saber.
+    ///
+    /// ⚠️ **Devolve `String` e não `&'static str`** por causa da última linha: uma tecla que este
+    /// mapa não conhece tem de dizer **alguma coisa** em vez de sumir da lista, e o que ela pode
+    /// dizer honestamente é o número. *Uma ligação invisível é pior que uma ligação feia.*
+    #[must_use]
+    pub fn label(self) -> String {
+        let named = match self.0 {
+            0x09 => "Tab",
+            0x0D => "Enter",
+            0x20 => "Space",
+            0x1B => "Esc",
+            0x08 => "Backspace",
+            0xF728 => "Delete",
+            0xF700 => "Up Arrow",
+            0xF701 => "Down Arrow",
+            0xF702 => "Left Arrow",
+            0xF703 => "Right Arrow",
+            0xF710 => "Left Shift",
+            0xF711 => "Right Shift",
+            0xF712 => "Left Ctrl",
+            0xF713 => "Right Ctrl",
+            0xF714 => "Left Alt",
+            0xF715 => "Right Alt",
+            // Letras e dígitos vivem no ASCII, então o próprio código É o nome.
+            c @ (0x30..=0x39 | 0x41..=0x5A) => {
+                return char::from_u32(c).map_or_else(|| format!("Key {c:#X}"), String::from);
+            }
+            // F1..F12, contíguas a partir de `0xF704`.
+            c @ 0xF704..=0xF70F => return format!("F{}", c - 0xF704 + 1),
+            c => return format!("Key {c:#X}"),
+        };
+        named.to_string()
+    }
+}
+
 /// Retrato do teclado: o que está em baixo agora, e o que estava no quadro anterior.
 ///
 /// ⚠️ **Listas ordenadas e sem repetidos**, nunca um `HashMap`. Não é arrumação: a resolução em

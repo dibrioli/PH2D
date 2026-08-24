@@ -57,6 +57,7 @@ pub fn tr(key: &str) -> &'static str {
         "input_map.binding.pad" => "Pad",
         "input_map.binding.axis" => "Axis",
         // ⭐ Os DOIS números que substituem a `deadzone` de duplo propósito do Godot.
+        "input_map.no_binding" => "No key yet. Press Bind to assign one.",
         "input_map.dead_zone" => "Dead",
         "input_map.press_point" => "Press",
         "tool.trim_transparency.label" => "TRIM",

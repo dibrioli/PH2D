@@ -39,6 +39,37 @@ pub enum GamepadButton {
 }
 
 impl GamepadButton {
+    /// **O NOME QUE O ARTISTA LÊ.**
+    ///
+    /// ⚠️ **Nomeia as DUAS famílias de comando**, porque o mesmo botão físico tem nomes diferentes
+    /// na Xbox e na PlayStation — e um artista que só tem um dos dois não reconhece o nome do
+    /// outro. `"A / Cross"` diz-lhe qual é sem lhe pedir para aprender a nossa palavra.
+    ///
+    /// ⛔ Não confundir com o `as_lua_key`, que é o nome de **FIO** (`"south"`) — esse é contrato
+    /// com o script e não pode mudar; este é cara de produto e pode.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::South => "A / Cross",
+            Self::East => "B / Circle",
+            Self::West => "X / Square",
+            Self::North => "Y / Triangle",
+            Self::LeftBumper => "L1 / LB",
+            Self::RightBumper => "R1 / RB",
+            Self::LeftTrigger => "L2 / LT",
+            Self::RightTrigger => "R2 / RT",
+            Self::Select => "Select",
+            Self::Start => "Start",
+            Self::Mode => "Home",
+            Self::LeftStick => "Left Stick Press",
+            Self::RightStick => "Right Stick Press",
+            Self::DPadUp => "D-Pad Up",
+            Self::DPadDown => "D-Pad Down",
+            Self::DPadLeft => "D-Pad Left",
+            Self::DPadRight => "D-Pad Right",
+        }
+    }
+
     /// **TODOS os botões, em ordem estável** — a lista que quem ENUMERA precisa.
     ///
     /// ⚠️ **Ela existe porque um `match` exaustivo NÃO guarda uma lista que um laço percorre**: o
@@ -114,6 +145,19 @@ pub enum GamepadAxis {
 }
 
 impl GamepadAxis {
+    /// **O NOME QUE O ARTISTA LÊ** — irmão do [`GamepadButton::label`].
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::LeftStickX => "Left Stick X",
+            Self::LeftStickY => "Left Stick Y",
+            Self::RightStickX => "Right Stick X",
+            Self::RightStickY => "Right Stick Y",
+            Self::LeftTrigger => "Left Trigger",
+            Self::RightTrigger => "Right Trigger",
+        }
+    }
+
     /// **TODOS os eixos, em ordem estável** — irmão da [`GamepadButton::ALL`], e existe pela mesma
     /// razão: um `match` exaustivo não guarda a lista que um laço percorre.
     pub const ALL: [Self; 6] = [

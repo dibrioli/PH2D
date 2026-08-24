@@ -113,7 +113,7 @@ impl crate::App {
         const PUSHED: f32 = 0.5;
         ph2d_input::GamepadAxis::ALL.iter().copied().find_map(|axis| {
             let v = self.input.gamepad.axis(axis);
-            (v.abs() >= PUSHED).then(|| ph2d_input::Binding::PadAxis {
+            (v.abs() >= PUSHED).then_some(ph2d_input::Binding::PadAxis {
                 axis,
                 positive: v > 0.0,
             })

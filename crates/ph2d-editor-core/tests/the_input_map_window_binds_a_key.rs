@@ -169,7 +169,19 @@ fn escape_disarms_the_listening_without_binding() {
     h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row)));
 
     let evts = dispatch_key(&mut h.store, key(KEY_ESCAPE), &arena);
-    assert!(evts.is_empty(), "o Esc nao produz captura nenhuma");
+    // ⚠️ **Ele emite o CANCELAMENTO, e não uma lista vazia** — mudou em 2026-08-24 e a diferença
+    // é o report do Enio (*"os atalhos de editor estão em conflito com o Bind"*): uma lista vazia
+    // significaria *"não consumi"*, e o `Esc` cairia para o resto da cadeia a fechar um painel ou
+    // a cancelar uma ferramenta. Ele **foi consumido**; o que não fez foi ligar.
+    assert_eq!(
+        evts,
+        [WidgetEvent::Click(ids::INPUT_MAP_LISTEN_CANCELLED)],
+        "o Esc tem de CONSUMIR a tecla, e nao produzir captura nenhuma"
+    );
+    assert!(
+        h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_LISTEN_CANCELLED)),
+        "e o cancelamento tem de ser consumido pelo chrome, para nao vazar"
+    );
     assert!(h.store.input_map_listening().is_none(), "desarmou");
     assert!(
         h.input_map.get(grab).expect("existe").bindings.is_empty(),

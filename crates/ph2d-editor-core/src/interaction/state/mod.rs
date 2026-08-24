@@ -20,6 +20,7 @@
 mod blender_ops;
 mod chrome_ops;
 mod input_map_ops;
+pub use input_map_ops::capture_if_listening;
 /// **O que um estado de widget É** (o `InteractiveState` + a paleta nomeada).
 mod kinds;
 /// O PIE MENU (E4) — irmão do `chrome_ops` por assunto e pelo teto de LOC.

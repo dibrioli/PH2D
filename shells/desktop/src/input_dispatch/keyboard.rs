@@ -58,6 +58,12 @@ impl App {
             (ElementState::Pressed, true) => KeyKind::Repeat,
             (ElementState::Released, _) => KeyKind::Up,
         };
+        // ⭐⭐⭐ **A ESCUTA DO INPUT MAP É O PRIMEIRO RAMO DESTA FUNÇÃO, E TEM DE SER** — o
+        // mecanismo inteiro está em [`super::keyboard_bind_capture`], cortado para lá pelo teto de
+        // LOC. Abaixo desta linha há ~20 `return`, e nenhum deles pode ver a tecla antes dela.
+        if self.capture_binding_if_listening(physical_key, kind) {
+            return;
+        }
         // ADR-0150 W2: a cena 3D toma as teclas dela ANTES do store.
         //
         // ⚠️ **A justificativa que morava aqui ENVELHECEU, e a nota virou o bug.** Ela

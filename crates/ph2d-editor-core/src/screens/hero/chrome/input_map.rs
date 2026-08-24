@@ -29,7 +29,11 @@ use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::screens::hero::HeroScreen;
-use crate::widget::{Button, ButtonKind, Slider, paint_button, paint_slider};
+use crate::icons::IconId;
+use crate::widget::{
+    Button, ButtonKind, Divider, IconButtonStyle, IconGlyph, ListItem, ListItemState, paint_button,
+    paint_divider, paint_icon_button, paint_list_item, paint_slider_with_chip,
+};
 use crate::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_input::{Binding, InputMap};
@@ -56,20 +60,30 @@ fn window_w() -> f32 {
     Spacing::Xl4.px() * 9.0 // LITERAL-PX-OK: multiplicador do token, nao um px -- derivacao acima
 }
 
-/// **A descrição legível de uma ligação** — a única porta.
+/// **A descrição legível de uma ligação** — a única porta: `(o que é, de que dispositivo)`.
 ///
 /// ⚠️ Ela existe porque o pintor e o gate precisam da **mesma** frase: um texto construído no
 /// pintor tornaria o gate uma segunda implementação, e as duas divergiriam no dia em que uma
 /// variante nova entrasse no `Binding`.
+///
+/// ⛔⛔ **A primeira versão devolvia `Key 0xF702`**, e o Enio respondeu o óbvio: *"Quem vai usar são
+/// artistas e não IA"*. Um código hexadecimal é a representação interna a vazar para a cara do
+/// produto. Agora devolve **o nome e o dispositivo** — `("Left Arrow", "Keyboard")` —, e o
+/// dispositivo vai na coluna secundária do `ListItem`, que é onde a casa põe texto de apoio.
 #[must_use]
-pub fn binding_label(b: Binding) -> String {
+pub fn binding_label(b: Binding) -> (String, &'static str) {
     match b {
-        Binding::Key(k) => format!("{} 0x{:X}", tr("input_map.binding.key"), k.0),
-        Binding::PadButton(p) => format!("{} {p:?}", tr("input_map.binding.pad")),
-        Binding::PadAxis { axis, positive } => format!(
-            "{} {axis:?}{}",
+        Binding::Key(k) => (k.label(), tr("input_map.binding.key")),
+        Binding::PadButton(p) => (p.label().to_string(), tr("input_map.binding.pad")),
+        // ⚠️ A metade da haste diz-se com uma SETA e não com `+`/`-`: o artista empurrou para um
+        // lado, e é o lado que ele reconhece.
+        Binding::PadAxis { axis, positive } => (
+            format!(
+                "{} {}",
+                axis.label(),
+                if positive { "(+)" } else { "(-)" }
+            ),
             tr("input_map.binding.axis"),
-            if positive { "+" } else { "-" }
         ),
     }
 }
@@ -109,6 +123,20 @@ pub fn sync_input_map_rows(store: &mut WidgetStore, map: &InputMap) {
         // ⚠️ Os dois números da zona, **semeados do valor autorado** a cada sincronia: o
         // `set_zone` COAGE (`press_point >= dead_zone`), então arrastar um pode mover o outro — e
         // o slider tem de mostrar o valor que ficou, não o que o dedo pediu.
+        // ⚠️ **O CHIP também se regista.** Ele mostra o número e aceita ser digitado; sem
+        // registro, ele é pintado e **morto sob o dedo** — o mesmo defeito do campo de nome, que
+        // esta janela já pagou uma vez.
+        for id in [
+            ids::input_map_deadzone_chip_id(row),
+            ids::input_map_press_point_chip_id(row),
+        ] {
+            store.register(
+                id,
+                crate::interaction::InteractiveState::Button {
+                    state: crate::widget::ButtonState::Normal,
+                },
+            );
+        }
         for (id, v) in [
             (ids::input_map_deadzone_id(row), a.dead_zone),
             (ids::input_map_press_point_id(row), a.press_point),
@@ -265,7 +293,11 @@ pub fn paint_input_map_window(
 
     let listening = store.input_map_listening();
     for (row, action) in map.actions().iter().enumerate() {
-        // A linha da ACÇÃO: o nome, e o X que a apaga.
+        // ── A ACÇÃO: nome forte, e um botão de LIXO à direita. ──
+        //
+        // ⚠️ **Ícone e não a letra `x`**, e o ícone é o `Trash` e não o `Close`: apagar uma acção
+        // destrói trabalho, fechar uma janela não. Dois gestos com pesos diferentes não podem ter
+        // o mesmo desenho — foi um dos defeitos que o Enio apanhou de olho na primeira versão.
         paint_text(
             text_system,
             scene,
@@ -277,49 +309,75 @@ pub fn paint_input_map_window(
             resolve(ColorToken::Text1, theme),
         );
         let del = ids::input_map_delete_action_id(row);
-        let del_rect = Rect::new(rect.x + rect.w - Spacing::Xl.px(), cy, row_h, row_h);
+        let del_rect = Rect::new(rect.x + rect.w - Spacing::Xl2.px(), cy, row_h, row_h);
         hit_index.register(del, del_rect);
-        paint_button(
-            &Button::new(del, "x").kind(ButtonKind::Default),
+        paint_icon_button(
             del_rect,
+            IconGlyph::Builtin(IconId::Trash),
+            IconButtonStyle::Plain,
+            store.button_visual(del),
             scene,
-            text_system,
             theme,
         );
         cy += row_h + gap;
 
-        // As LIGAÇÕES, indentadas, cada uma com o seu X.
+        // ── As LIGAÇÕES, cada uma numa linha da LISTA da casa. ──
+        //
+        // ⚠️ `ListItem` e não texto solto: ele traz o realce de hover, a coluna secundária (onde
+        // vai o DISPOSITIVO) e o fundo arredondado que separa uma linha da seguinte. Desenhá-lo à
+        // mão foi o que fez a primeira versão parecer "fora do padrão" — porque estava.
         for (bi, b) in action.bindings.iter().enumerate() {
-            paint_text(
-                text_system,
-                scene,
-                &binding_label(*b),
-                inner_x + Spacing::Md.px(),
-                cy + (row_h - font) * 0.5,
-                font,
-                inner_w,
-                resolve(ColorToken::Text2, theme),
-            );
+            let (what, device) = binding_label(*b);
             let db = ids::input_map_delete_binding_id(row, bi);
-            let db_rect = Rect::new(rect.x + rect.w - Spacing::Xl.px(), cy, row_h, row_h);
-            hit_index.register(db, db_rect);
-            paint_button(
-                &Button::new(db, "x").kind(ButtonKind::Default),
-                db_rect,
+            let li_rect = Rect::new(
+                inner_x + Spacing::Md.px(),
+                cy,
+                inner_w - Spacing::Md.px() - Spacing::Xl2.px(),
+                row_h,
+            );
+            paint_list_item(
+                &ListItem::new(db, what)
+                    .value(device)
+                    .state(list_state(store, db)),
+                li_rect,
                 scene,
                 text_system,
+                theme,
+            );
+            let db_rect = Rect::new(rect.x + rect.w - Spacing::Xl2.px(), cy, row_h, row_h);
+            hit_index.register(db, db_rect);
+            paint_icon_button(
+                db_rect,
+                IconGlyph::Builtin(IconId::Close),
+                IconButtonStyle::Plain,
+                store.button_visual(db),
+                scene,
                 theme,
             );
             cy += row_h + gap;
         }
 
-        // O **Bind…** — e ele DIZ que está à escuta, em vez de mudar só de cor.
-        let listen = ids::input_map_listen_id(row);
-        // ⚠️ O `Bind…` encolheu para os dois números caberem na MESMA linha: uma linha extra por
-        // acção faria a janela crescer 28 px por acção, e um mapa de dez acções sairia do ecrã.
-        let listen_rect = Rect::new(inner_x + Spacing::Md.px(), cy, Spacing::Xl4.px() * 2.0, row_h);
-        hit_index.register(listen, listen_rect);
+        // ── A face VAZIA de uma acção sem ligação: ela diz o que fazer, em vez de nada. ──
+        if action.bindings.is_empty() {
+            paint_text(
+                text_system,
+                scene,
+                tr("input_map.no_binding"),
+                inner_x + Spacing::Md.px(),
+                cy + (row_h - font) * 0.5,
+                font,
+                inner_w,
+                resolve(ColorToken::Text3, theme),
+            );
+            cy += row_h + gap;
+        }
+
+        // ── O Bind… e os DOIS números, com RÓTULO e VALOR. ──
         let armed = listening == Some(action.id);
+        let listen = ids::input_map_listen_id(row);
+        let listen_w = Spacing::Xl4.px() * 2.0;
+        let listen_rect = Rect::new(inner_x + Spacing::Md.px(), cy, listen_w, row_h);
+        hit_index.register(listen, listen_rect);
         paint_button(
             &Button::new(
                 listen,
@@ -340,26 +398,62 @@ pub fn paint_input_map_window(
             theme,
         );
 
-        // ⭐ **OS DOIS NÚMEROS DA ZONA**, à direita do `Bind…` e na mesma linha — a correcção à
-        // referência tornada alcançável. Um deles é o ruído (`dead_zone`), o outro é o gatilho
-        // (`press_point`), e a porta da acção mantém-nos coerentes.
-        let zone_w = Spacing::Xl4.px() * 2.0;
-        for (i, (id, label)) in [
-            (ids::input_map_deadzone_id(row), tr("input_map.dead_zone")),
-            (ids::input_map_press_point_id(row), tr("input_map.press_point")),
+        // ⭐ **`paint_slider_with_chip` da casa**: rótulo à esquerda, barra, e o NÚMERO num chip.
+        // A primeira versão pintava uma barra rosa nua — sem dizer o que era nem quanto valia.
+        let zone_x = inner_x + Spacing::Md.px() + listen_w + Spacing::Sm.px();
+        let zone_w = (inner_x + inner_w - zone_x - Spacing::Xl2.px()) * 0.5;
+        for (i, (sid, cid, label, v)) in [
+            (
+                ids::input_map_deadzone_id(row),
+                ids::input_map_deadzone_chip_id(row),
+                tr("input_map.dead_zone"),
+                action.dead_zone,
+            ),
+            (
+                ids::input_map_press_point_id(row),
+                ids::input_map_press_point_chip_id(row),
+                tr("input_map.press_point"),
+                action.press_point,
+            ),
         ]
         .into_iter()
         .enumerate()
         {
-            #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: indice 0/1, cabe em f32
-            let zx = rect.x + rect.w - Spacing::Xl.px() - zone_w * (2.0 - i as f32);
+            #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: indice 0/1
+            let zx = zone_x + zone_w * i as f32;
             let zr = Rect::new(zx, cy, zone_w - Spacing::Xs.px(), row_h);
-            hit_index.register(id, zr);
-            let mut sl = Slider::new(id, label).visual(store.slider_visual(id));
-            sl.value = store.slider(id).map_or(0.0, |(_, v)| v);
-            paint_slider(&sl, zr, scene, theme);
+            paint_slider_with_chip(
+                zr, label, v, sid, cid, store, hit_index, scene, text_system, theme,
+            );
         }
         cy += row_h + gap;
+
+        // ── O DIVISOR entre acções — o que dá ritmo à lista. ──
+        //
+        // ⚠️ Sem ele, seis acções × quatro linhas leem-se como vinte e quatro linhas iguais, que
+        // foi exactamente a queixa. ⛔ Não vai depois da ÚLTIMA: uma régua a fechar a lista lê-se
+        // como "há mais coisa por baixo".
+        if row + 1 < map.len() {
+            let dr = Rect::new(inner_x, cy, inner_w, gap);
+            paint_divider(&Divider::new(ids::INPUT_MAP_HANDLE), dr, scene, theme);
+            cy += gap;
+        }
+    }
+}
+
+/// O estado visual de uma linha da lista — hover incluído.
+///
+/// ⚠️ **Vem do `WidgetStore`, e não de um `state` local**: um `ListItem` construído com o estado
+/// por omissão nasce **inerte sob o rato**, e o artista lê isso como "esta linha não faz nada".
+fn list_state(store: &WidgetStore, id: ph2d_a11y::NodeId) -> ListItemState {
+    match store.get(id) {
+        Some(crate::interaction::InteractiveState::Button {
+            state: crate::widget::ButtonState::Hovered,
+        }) => ListItemState::Hovered,
+        Some(crate::interaction::InteractiveState::Button {
+            state: crate::widget::ButtonState::Pressed,
+        }) => ListItemState::Pressed,
+        _ => ListItemState::Normal,
     }
 }
 
@@ -414,6 +508,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // ⭐ **A TECLA APANHADA** — o `Click` sintético que o despacho de teclado emitiu. Ele vem antes
     // da guarda da janela pelo mesmo motivo do abridor: se a janela fechasse entre a tecla e este
     // ramo, a captura ficaria pendurada para sempre.
+    // O `Esc` durante a escuta: consumido, sem ligar nada. A lei já desarmou; aqui só se
+    // reconhece o evento para ele não vazar para outro chrome.
+    if id == ids::INPUT_MAP_LISTEN_CANCELLED {
+        return true;
+    }
     if id == ids::INPUT_MAP_BIND_CAPTURED {
         let key = hero.store.take_captured_key();
         let armed = hero.store.input_map_listening();

@@ -110,3 +110,42 @@ impl WidgetStore {
         self.input_map_listening
     }
 }
+
+/// **A LEI DA ESCUTA, num sítio só** — chamada pela shell **e** pelo despacho de teclado.
+///
+/// ⛔⛔ **Report do Enio (2026-08-24): *"Os atalhos de editor estão em conflito com o Bind"*.**
+///
+/// A primeira versão pôs esta guarda como o primeiro ramo do `dispatch_key` — o primeiro **dentro
+/// do editor-core**. Mas a shell tem ~20 `return` no `key_input` **antes** de chamar o
+/// `dispatch_key`: o `P` do menu radial, o `W` do painel de mundo, o Espaço do transporte, o peek
+/// do Flip. Nenhuma dessas teclas chegava aqui, então carregar nelas durante o `Bind…` executava o
+/// atalho e não ligava nada.
+///
+/// ⇒ **a guarda sobe para o topo do `key_input` da shell**, e esta função é a lei que os dois
+/// chamam. *A ordem é a feature, e ela tem de estar no topo da cadeia REAL, não no topo de um
+/// pedaço dela.*
+///
+/// Devolve `Some(evento)` quando a tecla foi **consumida pela escuta** — quem chama tem de parar
+/// ali. `None` quando não há escuta armada e a tecla segue o caminho normal.
+///
+/// ⚠️ O `Esc` **desarma sem ligar**, e devolve `Some` na mesma: ele foi consumido, e deixá-lo cair
+/// para o resto fecharia também um painel ou cancelaria uma ferramenta.
+#[must_use]
+pub fn capture_if_listening(
+    store: &mut WidgetStore,
+    keycode: u32,
+) -> Option<crate::interaction::WidgetEvent> {
+    /// O `Esc` no espaço de keycode normalizado do app.
+    const ESCAPE: u32 = 0x1B;
+    store.input_map_listening()?;
+    if keycode == ESCAPE {
+        store.stop_listening();
+        return Some(crate::interaction::WidgetEvent::Click(
+            crate::ids::INPUT_MAP_LISTEN_CANCELLED,
+        ));
+    }
+    store.capture_bound_key(ph2d_input::Key(keycode));
+    Some(crate::interaction::WidgetEvent::Click(
+        crate::ids::INPUT_MAP_BIND_CAPTURED,
+    ))
+}

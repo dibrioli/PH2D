@@ -51,6 +51,8 @@ mod eyedropper;
 pub(crate) mod fill_drag;
 mod gizmo_drag;
 mod keyboard;
+/// **A escuta do Input Map no topo do teclado** — irmão de [`keyboard`], cortado por teto de LOC.
+mod keyboard_bind_capture;
 
 /// **As teclas que ENCERRAM um gesto em curso** (Esc cancela, Enter confirma) — irmão do
 /// `keyboard`, cortado dele pelo cap de LOC. A ORDEM entre elas é a lei, e é por isso que

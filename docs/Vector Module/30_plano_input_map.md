@@ -353,11 +353,19 @@ mensagem ao Enio** — sonda headless primeiro, `CLAUDE.md §0.0`.
    ⛔ **O que a W2 NÃO fez, e é sequenciamento e não lacuna:** o **override por-jogador** em
    `~/.ph2d/` — ele só tem consumidor quando existir a janela para remapear (W3), e construí-lo
    antes seria um ficheiro que ninguém escreve.
-3. ⭐⭐ **W3 — A JANELA FLUTUANTE** (era W5), §0.2. *Chrome handler* com `z` **contado**, metade de
-   pintura + metade de despacho, `cargo run -p ph2d-chrome-sync` a gerar o `mod` e o `dispatch_all`.
-   É a entrega que o Enio nomeou, e é o que torna o mapa alcançável para **qualquer objecto**.
-   ⚠️ As **quatro condições** de §4 medem-se aqui, e a quarta (a SEQUÊNCIA) é a que fica verde com
-   a feature inalcançável.
+3. ✅ **W3 — A JANELA FLUTUANTE — FEITA em 2026-08-24.** *Chrome handler* `z=181`, metade de
+   pintura + metade de despacho, geradas pelo `ph2d-chrome-sync`. Abre no menu **Settings** — a
+   casa que o Godot lhe dá. Lista, cria, apaga, **arrasta pela faixa do título**, e liga **tecla ou
+   botão de comando**.
+   ⭐ **A quarta condição (a SEQUÊNCIA) apanhou um defeito ao nascer:** o campo de nome era pintado
+   e **nunca registrado**, então `Add` lia sempre vazio e nada nascia — com as três primeiras
+   condições verdes.
+   ⚠️ **E os gates dela reprovaram outra vez quando a W5 semeou o mapa de fábrica**, porque
+   assumiam `linha 0` e mapa vazio: passaram a localizar a linha **pelo NOME**. *Um índice literal
+   é uma âncora na implementação; o nome é a âncora na lei.*
+   ⚠️ **A escuta do comando é polled uma vez por quadro**, e não despachada: um gamepad não tem
+   despacho. Ela lê a **BORDA** — com `held`, um botão já em baixo quando o artista carrega em
+   `Bind…` ligar-se-ia sozinho.
 4. **W4 — CONTEXTOS com prioridade** (§2.4). Assim que a janela liga uma tecla qualquer, o conflito
    editor↔jogo deixa de ser hipótese: a lista negra à mão do `player_input.rs` **morre** aqui.
 5. ✅ **W5 — O JOGADOR — FEITA em 2026-08-24.** O `PlayerKeys` **cravado desapareceu**: o dedo do

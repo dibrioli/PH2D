@@ -474,6 +474,10 @@ impl crate::App {
         // ⭐ **O dedo do jogador, resolvido do mapa** (plano 30 W5) — no TOPO do quadro, e num
         // local, porque ele lê o `HeroScreen` (onde o mapa mora) e escreve no estado resolvido da
         // `App`: fazê-lo no sítio do consumo emprestaria `self` duas vezes.
+        // ⚠️ **A escuta do comando ANTES da resolução**: se o botão que o artista acabou de ligar
+        // fosse resolvido no mesmo quadro, ele dispararia a acção que acabou de nascer — o gesto de
+        // LIGAR viraria também o gesto de ACCIONAR.
+        self.poll_input_map_pad_binding();
         let player_input = self.resolve_player_input();
         let pointer = self.last_pointer;
         self.hovered_object = self.pick_hovered_object(pointer);

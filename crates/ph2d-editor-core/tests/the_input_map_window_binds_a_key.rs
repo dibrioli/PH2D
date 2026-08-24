@@ -21,6 +21,21 @@ fn hero() -> HeroScreen {
     HeroScreen::new(NodeId(1))
 }
 
+/// **A linha de uma acção na janela, pelo NOME.**
+///
+/// ⚠️ **Escrita depois de a W5 semear o mapa de fábrica**, e a lição é sobre gates: estes testes
+/// nasceram a assumir `input_map_listen_id(0)` porque um `HeroScreen` novo tinha o mapa **vazio**.
+/// Quando o projecto passou a nascer com os seis verbos do jogador, a linha `0` deixou de ser a
+/// acção que o teste tinha acabado de criar — e eles reprovaram sobre produto **correcto**.
+/// *Um índice literal é uma âncora na implementação; o nome é a âncora na lei.*
+fn row_of(h: &HeroScreen, name: &str) -> usize {
+    h.input_map
+        .actions()
+        .iter()
+        .position(|a| a.name == name)
+        .unwrap_or_else(|| panic!("a accao `{name}` tem de existir para ter linha"))
+}
+
 fn key(code: u32) -> KeyEvent {
     KeyEvent {
         keycode: code,
@@ -49,6 +64,12 @@ fn the_settings_item_opens_the_window() {
 /// ⭐⭐ **O CAMINHO INTEIRO**: abrir · nomear · Add · Bind… · carregar numa tecla · a ligação existe.
 #[test]
 fn the_whole_gesture_reaches_the_map() {
+    /// A accao que ESTE teste cria -- e a linha dela procura-se pelo NOME, nunca por um indice.
+    ///
+    /// ⚠️ **NÃO pode ser `"jump"`:** desde a W5 o mapa de fábrica já a traz, com duas ligações — e
+    /// `create` de um nome repetido devolve a que existe, em vez de criar uma segunda (que é a lei
+    /// certa). O teste ficaria a medir o mapa de fábrica em vez do gesto que ele acabou de fazer.
+    const NAME: &str = "test_action";
     let arena = Bump::new();
     let mut h = hero();
     h.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP));
@@ -57,17 +78,18 @@ fn the_whole_gesture_reaches_the_map() {
     if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput { text, .. }) =
         h.store.get_mut(ids::INPUT_MAP_NEW_NAME)
     {
-        *text = "jump".to_string();
+        *text = NAME.to_string();
     }
     assert!(h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD)), "Add consumido");
-    let jump = h.input_map.id("jump").expect("a accao `jump` nasceu");
+    let jump = h.input_map.id(NAME).expect("a accao nasceu");
     assert!(
         h.input_map.get(jump).expect("existe").bindings.is_empty(),
         "e nasce SEM ligacao -- declarada e por atribuir"
     );
 
     // `Bind…` arma a escuta da linha 0.
-    assert!(h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(0))));
+    let row = row_of(&h, NAME);
+    assert!(h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row))));
     assert_eq!(
         h.store.input_map_listening(),
         Some(jump),
@@ -104,16 +126,19 @@ fn the_whole_gesture_reaches_the_map() {
 /// escuta é o **primeiro** do `dispatch_key`, acima do grafo, do foco e dos widgets de texto.
 #[test]
 fn a_captured_key_never_fires_the_editors_shortcut() {
+    /// A accao que ESTE teste cria -- e a linha dela procura-se pelo NOME, nunca por um indice.
+    const NAME: &str = "dash_test";
     let arena = Bump::new();
     let mut h = hero();
     h.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP));
     if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput { text, .. }) =
         h.store.get_mut(ids::INPUT_MAP_NEW_NAME)
     {
-        *text = "dash".to_string();
+        *text = NAME.to_string();
     }
     h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD));
-    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(0)));
+    let row = row_of(&h, NAME);
+    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row)));
 
     // `Tab` é o caso mais visível: fora da escuta ele PERCORRE o foco.
     const KEY_TAB: u32 = 0x09;
@@ -128,17 +153,20 @@ fn a_captured_key_never_fires_the_editors_shortcut() {
 /// **O `Esc` desarma sem ligar** — um modo sem saída prende o teclado de quem armou por engano.
 #[test]
 fn escape_disarms_the_listening_without_binding() {
+    /// A accao que ESTE teste cria -- e a linha dela procura-se pelo NOME, nunca por um indice.
+    const NAME: &str = "grab_test";
     let arena = Bump::new();
     let mut h = hero();
     h.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP));
     if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput { text, .. }) =
         h.store.get_mut(ids::INPUT_MAP_NEW_NAME)
     {
-        *text = "grab".to_string();
+        *text = NAME.to_string();
     }
     h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD));
-    let grab = h.input_map.id("grab").expect("existe");
-    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(0)));
+    let grab = h.input_map.id(NAME).expect("existe");
+    let row = row_of(&h, NAME);
+    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row)));
 
     let evts = dispatch_key(&mut h.store, key(KEY_ESCAPE), &arena);
     assert!(evts.is_empty(), "o Esc nao produz captura nenhuma");
@@ -155,19 +183,22 @@ fn escape_disarms_the_listening_without_binding() {
 /// uma e vê a outra ficar, sem nada dizer porquê.
 #[test]
 fn binding_the_same_key_twice_does_not_duplicate_it() {
+    /// A accao que ESTE teste cria -- e a linha dela procura-se pelo NOME, nunca por um indice.
+    const NAME: &str = "jump_test";
     let arena = Bump::new();
     let mut h = hero();
     h.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP));
     if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput { text, .. }) =
         h.store.get_mut(ids::INPUT_MAP_NEW_NAME)
     {
-        *text = "jump".to_string();
+        *text = NAME.to_string();
     }
     h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD));
-    let jump = h.input_map.id("jump").expect("existe");
+    let jump = h.input_map.id(NAME).expect("existe");
 
     for _ in 0..2 {
-        h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(0)));
+        let row = row_of(&h, NAME);
+    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row)));
         let evts = dispatch_key(&mut h.store, key(KEY_Z), &arena);
         for e in evts {
             h.apply_event(*e);
@@ -186,15 +217,18 @@ fn binding_the_same_key_twice_does_not_duplicate_it() {
 /// nada na tela diria porquê. *Fechar é largar tudo.*
 #[test]
 fn closing_the_window_disarms_the_listening() {
+    /// A accao que ESTE teste cria -- e a linha dela procura-se pelo NOME, nunca por um indice.
+    const NAME: &str = "jump_close";
     let mut h = hero();
     h.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP));
     if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput { text, .. }) =
         h.store.get_mut(ids::INPUT_MAP_NEW_NAME)
     {
-        *text = "jump".to_string();
+        *text = NAME.to_string();
     }
     h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD));
-    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(0)));
+    let row = row_of(&h, NAME);
+    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row)));
     assert!(h.store.input_map_listening().is_some());
 
     h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_CLOSE));
@@ -211,6 +245,9 @@ fn closing_the_window_disarms_the_listening() {
 fn an_empty_name_creates_nothing() {
     let mut h = hero();
     h.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP));
+    // ⚠️ Conta ANTES e DEPOIS, em vez de `is_empty`: desde a W5 um projecto novo nasce com os
+    // seis verbos do jogador, e `is_empty` mediria isso em vez de medir o Add.
+    let before = h.input_map.len();
     assert!(h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD)), "consome o clique");
-    assert!(h.input_map.is_empty(), "e nao nasceu accao nenhuma");
+    assert_eq!(h.input_map.len(), before, "nao pode ter nascido accao nenhuma");
 }

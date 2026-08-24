@@ -39,6 +39,36 @@ pub enum GamepadButton {
 }
 
 impl GamepadButton {
+    /// **TODOS os botões, em ordem estável** — a lista que quem ENUMERA precisa.
+    ///
+    /// ⚠️ **Ela existe porque um `match` exaustivo NÃO guarda uma lista que um laço percorre**: o
+    /// compilador obriga o `as_lua_key` abaixo a cobrir cada variante nova, e não diz nada a quem
+    /// itera. Um botão acrescentado ao enum e esquecido aqui fica **inligável** no Input Map, sem
+    /// um aviso — e o gate `every_button_is_reachable` é o que o torna erro em vez de silêncio.
+    ///
+    /// ⚠️ A ORDEM é estável de propósito: é ela que decide qual botão vence quando dois estão em
+    /// baixo no instante da escuta, e uma resposta que mudasse entre corridas seria um gesto que
+    /// liga coisas diferentes com a mesma mão.
+    pub const ALL: [Self; 17] = [
+        Self::South,
+        Self::East,
+        Self::West,
+        Self::North,
+        Self::LeftBumper,
+        Self::RightBumper,
+        Self::LeftTrigger,
+        Self::RightTrigger,
+        Self::Select,
+        Self::Start,
+        Self::Mode,
+        Self::LeftStick,
+        Self::RightStick,
+        Self::DPadUp,
+        Self::DPadDown,
+        Self::DPadLeft,
+        Self::DPadRight,
+    ];
+
     /// Stable lowercase string used as the Luau-side key in
     /// `ph2d.input`. Don't change without also bumping the script
     /// API contract — user scripts depend on these names.
@@ -231,5 +261,41 @@ mod tests {
         ];
         let keys: BTreeSet<&str> = buttons.iter().map(|b| b.as_lua_key()).collect();
         assert_eq!(keys.len(), buttons.len());
+    }
+}
+
+#[cfg(test)]
+mod all_tests {
+    use super::GamepadButton;
+
+    /// ⛔ **TODO botão do enum tem de estar na [`GamepadButton::ALL`].**
+    ///
+    /// ⚠️ O `as_lua_key` é um `match` exaustivo e o compilador força-o a cobrir uma variante nova —
+    /// mas **não diz nada** a quem itera a lista. Um botão acrescentado e esquecido no `ALL` fica
+    /// **inligável** no Input Map, em silêncio, com todos os outros gates verdes.
+    ///
+    /// A ponte entre os dois é o `as_lua_key`: se um botão existe, ele tem um nome; se está no
+    /// `ALL`, o nome dele aparece aqui. Comparar os dois conjuntos torna o esquecimento um erro.
+    #[test]
+    fn every_button_is_reachable_from_the_all_list() {
+        let named: Vec<&str> = GamepadButton::ALL.iter().map(|b| b.as_lua_key()).collect();
+        assert_eq!(
+            named.len(),
+            GamepadButton::ALL.len(),
+            "a lista tem repetidos -- um deles esta' a ocupar o lugar de um botao que falta"
+        );
+        // O CONTROLE POSITIVO: as quatro faces e o d-pad tem de la' estar, senao a lista foi
+        // esvaziada e este gate passaria a afirmar sobre quase nada.
+        for must in ["south", "east", "west", "north", "dpad_up"] {
+            assert!(
+                named.contains(&must),
+                "`{must}` sumiu da lista de botoes ligaveis do Input Map"
+            );
+        }
+        assert!(
+            GamepadButton::ALL.len() >= 17,
+            "a lista encolheu para {} -- botoes deixaram de ser ligaveis",
+            GamepadButton::ALL.len()
+        );
     }
 }

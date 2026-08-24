@@ -60,11 +60,16 @@ impl WidgetStore {
         self.input_map_window
     }
 
-    /// Move a janela (o arrasto pela faixa do título). No-op se ela estiver fechada — mover uma
-    /// janela que não existe é a forma de a fazer reaparecer no sítio errado.
-    pub fn move_input_map(&mut self, x: f32, y: f32) {
-        if self.input_map_window.is_some() {
-            self.input_map_window = Some((x, y));
+    /// **Desloca a janela** de `(dx, dy)` — o arrasto pela faixa do título.
+    ///
+    /// ⚠️ **Um DELTA e não uma posição**, como a irmã `move_fill_modal`: o arrasto conhece o
+    /// movimento do cursor, não o canto da janela, e converter no chamador espalharia a conta.
+    ///
+    /// No-op se ela estiver fechada — mover uma janela que não existe é a forma de a fazer
+    /// reaparecer no sítio errado quando alguém a reabrir.
+    pub fn move_input_map(&mut self, dx: f32, dy: f32) {
+        if let Some((x, y)) = self.input_map_window {
+            self.input_map_window = Some((x + dx, y + dy));
         }
     }
 

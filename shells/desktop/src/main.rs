@@ -240,6 +240,7 @@ mod impasto_smoke;
 mod import_router;
 mod init;
 mod input_dispatch;
+mod input_map_drag;
 mod input_drop;
 mod input_handlers;
 mod input_log;

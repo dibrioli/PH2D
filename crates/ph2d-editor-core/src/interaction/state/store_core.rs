@@ -67,6 +67,7 @@ impl WidgetStore {
             input_map_window: None,
             input_map_listening: None,
             input_map_captured: None,
+            input_map_scroll: 0.0,
             onion_modal: None,
             command_palette: None,
             radial: None,

@@ -120,3 +120,33 @@ impl crate::App {
         })
     }
 }
+
+impl crate::App {
+    /// **A RODA sobre a janela do Input Map rola a lista.** `true` ⇒ consome.
+    ///
+    /// ⛔ Report do Enio (2026-08-24): *"estreito e **sem scroll**"*. Um cartão que cresce com a
+    /// lista sai do ecrã e a última acção fica inalcançável — e nada na tela diz porquê.
+    ///
+    /// ⚠️ **O TETO vem daqui, não do `WidgetStore`**: ele não vê o mapa, e só quem conta as linhas
+    /// sabe onde a lista acaba. Sem teto, a roda leva a lista para longe e o artista vê um cartão
+    /// vazio sem saber como voltar.
+    ///
+    /// ⚠️ **Consome sempre que o cursor está sobre a janela**, mesmo quando ela cabe inteira: a
+    /// roda que atravessasse o cartão daria zoom no canvas por baixo dele, que é o gesto errado
+    /// com a mão no sítio certo.
+    pub(crate) fn input_map_wheel(&mut self, dy: f32) -> bool {
+        let (px, py) = self.last_pointer;
+        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
+            return false;
+        };
+        let Some((wx, wy)) = hero.store.input_map_pos() else {
+            return false;
+        };
+        let w = ph2d_editor::screens::hero::chrome::input_map_window_size(&hero.input_map);
+        if px < wx || px > wx + w.0 || py < wy || py > wy + w.1 {
+            return false;
+        }
+        hero.store.scroll_input_map(-dy, w.2);
+        true
+    }
+}

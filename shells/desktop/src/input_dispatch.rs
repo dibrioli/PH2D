@@ -3096,6 +3096,11 @@ impl App {
         // M14.4b.bis: wheel over the canvas zooms the camera. Wheel
         // over a hero panel keeps the existing panel-scroll behavior
         // (forward to hero).
+        // ⭐ **A roda sobre a janela do Input Map é dela** — e vem ANTES de tudo, pelo motivo do
+        // arrasto: a roda que atravessasse o cartão daria zoom no canvas por baixo dele.
+        if self.input_map_wheel(dy) {
+            return;
+        }
         let over_panel =
             cursor_over_hero_panel(self.gfx.as_ref(), self.last_pointer.0, self.last_pointer.1);
         // ADR-0150 W1/M2: fora de painel, a roda aproxima a câmera 3D. Um

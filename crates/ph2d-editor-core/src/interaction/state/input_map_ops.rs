@@ -100,6 +100,21 @@ impl WidgetStore {
         self.input_map_captured.take()
     }
 
+    /// Quanto a lista está rolada, em px.
+    #[must_use]
+    pub fn input_map_scroll(&self) -> f32 {
+        self.input_map_scroll
+    }
+
+    /// **Rola a lista**, presa entre o topo e o fim do conteúdo.
+    ///
+    /// ⚠️ **O limite vem do CHAMADOR**, que é quem sabe quanto conteúdo há: o `WidgetStore` não vê
+    /// o mapa. Sem o teto, a roda levaria a lista para longe e o artista veria um cartão vazio sem
+    /// saber como voltar.
+    pub fn scroll_input_map(&mut self, dy: f32, max: f32) {
+        self.input_map_scroll = (self.input_map_scroll + dy).clamp(0.0, max.max(0.0));
+    }
+
     /// Qual acção está à escuta, se alguma.
     ///
     /// ⚠️ **É esta a pergunta que o despacho de teclado tem de fazer PRIMEIRO.** Enquanto ela

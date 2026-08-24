@@ -31,34 +31,15 @@ use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::screens::hero::HeroScreen;
 use crate::icons::IconId;
 use crate::widget::{
-    Button, ButtonKind, Divider, IconButtonStyle, IconGlyph, ListItem, ListItemState, paint_button,
-    paint_divider, paint_icon_button, paint_list_item, paint_slider_with_chip,
+    Button, IconButtonStyle, IconGlyph, ListItem, ListItemState, paint_button, paint_icon_button,
+    paint_list_item, paint_scrollbar, paint_slider_with_chip_layout, slider_with_chip_is_stacked,
 };
 use crate::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_input::{Binding, InputMap};
+use ph2d_input::{Binding, InputAction, InputMap};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
-
-/// **A largura do cartão, DERIVADA dos tokens** — não um número cravado.
-///
-/// ⚠️ Ela é `9 × Spacing::Xl4` (**medido**: `Xl4 = 48 px` ⇒ **432 px**), e a conta é o que a janela
-/// tem de conter na linha mais larga:
-///
-/// | parte | largura |
-/// |---|---|
-/// | recuo da ligação | `Spacing::Md` = 8 |
-/// | o rótulo mais longo (`Axis LeftStickX+`, 16 glifos a `TypeToken::Sm`) | ~130 |
-/// | o botão **Bind…** ao lado dele | `2 × Spacing::Xl4` = 96 |
-/// | a coluna do `x` à direita | `Spacing::Xl` = 16 |
-/// | as duas margens | `2 × Spacing::Md` = 16 |
-///
-/// ⇒ ~266 px de conteúdo, e o resto é folga para um nome de acção longo **sem elidir**, que é o
-/// caso que um mapa real produz. *Um múltiplo de token acompanha o design system; um `420.0` não.*
-fn window_w() -> f32 {
-    Spacing::Xl4.px() * 9.0 // LITERAL-PX-OK: multiplicador do token, nao um px -- derivacao acima
-}
 
 /// **A descrição legível de uma ligação** — a única porta: `(o que é, de que dispositivo)`.
 ///
@@ -158,17 +139,94 @@ pub fn sync_input_map_rows(store: &mut WidgetStore, map: &InputMap) {
     }
 }
 
-/// Quantas linhas o cartão tem, dado o mapa: título · campo+Add · e por acção (1 + ligações + 1).
-fn row_count(map: &InputMap) -> usize {
-    let body: usize = map
-        .actions()
-        .iter()
-        .map(|a| 1 + a.bindings.len() + 1)
-        .sum();
-    2 + if map.is_empty() { 1 } else { body }
+/// **A largura do cartão, DERIVADA dos tokens** — não um número cravado.
+///
+/// ⛔⛔ **Report do Enio (2026-08-24, com foto): *"estreito e sem scroll"*.** A primeira largura
+/// (`9 × Xl4` = 432 px) foi calculada para uma linha que já não existe — e era estreita **por
+/// baixo do limiar do widget**: o `paint_slider_with_chip` **EMPILHA o rótulo numa linha própria**
+/// quando o espaço aperta ([`slider_with_chip_is_stacked`]), e o doc dele diz *"quem chama tem de
+/// avançar"*. Eu não avancei ⇒ os números caíam **por cima da acção seguinte** e a última saía do
+/// cartão. *Um widget que muda de forma sob pressão exige que quem o coloca lhe pergunte a altura.*
+///
+/// A largura agora é **`13 × Spacing::Xl4`** (medido: `Xl4 = 48` ⇒ **624 px**), e sai da linha mais
+/// larga, que é a da **ACÇÃO**:
+///
+/// | parte | largura |
+/// |---|---|
+/// | nome da acção | ~130 |
+/// | dois `slider_with_chip` (rótulo 36 + número 48 + trilho mínimo 60 + folgas) | `2 × 160` = 320 |
+/// | os dois ícones (`+` e lixo) | `2 × 28` = 56 |
+/// | margens e folgas | ~40 |
+///
+/// ⇒ ~546 px de conteúdo, e o `13 × Xl4` é o degrau de token que o cobre com folga para um nome
+/// de acção longo. ⚠️ O trilho mínimo **é do widget** — abaixo dele o rótulo empilha, e foi isso.
+fn window_w() -> f32 {
+    Spacing::Xl4.px() * 13.0 // LITERAL-PX-OK: multiplicador do token, derivacao acima
+}
+
+/// A coluna do rótulo dos dois números. ⚠️ **Mais estreita que a `DEFAULT_LABEL_W` (70) de
+/// propósito**: "Dead" e "Press" são curtos, e os 70 px do default empurravam a linha para além do
+/// limiar de empilhamento — que foi o defeito da foto.
+fn zone_label_w() -> f32 {
+    Spacing::Xl4.px() * 0.75 // LITERAL-PX-OK: fraccao do token
+}
+
+/// A coluna do número. Vem do próprio `number_input`, que é quem sabe quanto um número ocupa.
+/// O trilho mínimo que o `slider_with_chip` exige antes de **empilhar** o rótulo.
+///
+/// ⚠️ **É o espelho do `SLIDER_CHIP_MIN_SLIDER_W` do widget**, e está aqui porque a conta da
+/// largura da janela precisa dele ANTES de pintar. O `debug_assert` do pintor e o gate
+/// `the_zone_numbers_never_stack_at_the_windows_width` são os dois guardas de que os dois números
+/// concordam.
+const ZONE_MIN_TRACK: f32 = 60.0; // LITERAL-PX-OK: espelho do piso do widget (ver acima)
+
+fn zone_chip_w() -> f32 {
+    Spacing::Xl4.px() // LITERAL-PX-OK: a coluna do numero, um degrau de token
+}
+
+/// **A ALTURA de uma acção**, em linhas: a linha da acção + uma por ligação (ou a face vazia).
+///
+/// ⚠️ **Uma função, e os dois lados chamam-na** — o cálculo da altura do cartão e o pintor. Duas
+/// contas da mesma coisa divergem, e o sintoma é exactamente o da foto: a janela com um tamanho e
+/// o conteúdo com outro.
+fn rows_of(a: &InputAction) -> usize {
+    1 + a.bindings.len().max(1)
+}
+
+/// Quantas linhas o corpo do cartão tem, incluindo os divisores.
+fn body_rows(map: &InputMap) -> usize {
+    if map.is_empty() {
+        return 1;
+    }
+    map.actions().iter().map(rows_of).sum()
+}
+
+/// **O TAMANHO da janela e o TETO da rolagem** — `(largura, altura, rolagem máxima)`.
+///
+/// ⚠️ **A mesma conta que o pintor faz**, e é por isso que ela mora numa função: a shell precisa do
+/// rectângulo para saber se a roda é dela, e duas contas da mesma coisa divergem — com o sintoma a
+/// ser *"a roda funciona no meio da janela e não na ponta"*.
+///
+/// ⚠️ A altura é **clampada à viewport** quando ela é conhecida; sem viewport (a shell a perguntar
+/// antes do primeiro quadro) devolve o tamanho pedido, que é o pior caso e nunca subestima.
+#[must_use]
+pub fn input_map_window_size(map: &InputMap) -> (f32, f32, f32) {
+    let row_h = ROW_H_PX;
+    let gap = Spacing::Xs.px();
+    let chrome_h = Spacing::Sm.px() * 2.0 + (row_h + gap) * 2.0;
+    #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: contagem de linhas
+    let want_body = (row_h + gap) * body_rows(map) as f32;
+    (window_w(), chrome_h + want_body, 0.0_f32.max(want_body))
 }
 
 /// **Desenha a janela** (no-op quando fechada).
+///
+/// ⭐ **A forma é a do Godot**, e a decisão que mais encurta a lista é esta: os **dois números
+/// vivem na LINHA DA ACÇÃO**, à direita do nome — não numa linha própria. Era a linha extra por
+/// acção que fazia seis acções ocuparem vinte e quatro linhas.
+///
+/// ⚠️ E o **`+`** que arma a escuta também está lá, no lugar do antigo botão `Bind…`: um botão de
+/// texto numa linha só dele custava mais uma linha por acção e dizia menos que um ícone.
 pub fn paint_input_map_window(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
@@ -184,11 +242,19 @@ pub fn paint_input_map_window(
     let row_h = ROW_H_PX;
     let gap = Spacing::Xs.px();
     let pad_y = Spacing::Sm.px();
-    let rows = row_count(map);
-    #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: contagem de linhas cabe em f32
-    let total_h = pad_y * 2.0 + row_h * rows as f32 + gap * (rows.saturating_sub(1)) as f32;
-
     let window_w = window_w();
+
+    // ── A altura: título + corpo + rodapé, e o corpo é CLAMPADO à viewport. ──
+    //
+    // ⛔ Report do Enio: *"sem scroll"*. Um cartão que cresce com a lista sai do ecrã e a última
+    // acção fica inalcançável — que é pior do que uma lista curta, porque nada na tela o diz.
+    let chrome_h = pad_y * 2.0 + (row_h + gap) * 2.0;
+    #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: contagem de linhas cabe em f32
+    let want_body = (row_h + gap) * body_rows(map) as f32;
+    let max_body = (viewport.h - chrome_h - Spacing::Xl4.px()).max(row_h);
+    let body_h = want_body.min(max_body);
+    let total_h = chrome_h + body_h;
+
     let max_x = (viewport.x + viewport.w - window_w).max(viewport.x);
     let max_y = (viewport.y + viewport.h - total_h).max(viewport.y);
     let rect_x = x.clamp(viewport.x, max_x); // CLAMP-OK: bounds ordered + non-NaN
@@ -217,191 +283,69 @@ pub fn paint_input_map_window(
         inner_w,
         resolve(ColorToken::Text1, theme),
     );
-    let close_rect = Rect::new(rect.x + rect.w - Spacing::Xl.px(), cy, row_h, row_h);
+    let close_rect = Rect::new(rect.x + rect.w - Spacing::Xl2.px(), cy, row_h, row_h);
     hit_index.register(ids::INPUT_MAP_CLOSE, close_rect);
-    paint_button(
-        &Button::new(ids::INPUT_MAP_CLOSE, "x").kind(ButtonKind::Default),
+    paint_icon_button(
         close_rect,
+        IconGlyph::Builtin(IconId::Close),
+        IconButtonStyle::Plain,
+        store.button_visual(ids::INPUT_MAP_CLOSE),
         scene,
-        text_system,
         theme,
     );
     cy += row_h + gap;
 
-    // ── Campo de nome + Add. ──
-    let add_w = Spacing::Xl4.px();
-    let name_rect = Rect::new(inner_x, cy, inner_w - add_w - gap, row_h);
-    hit_index.register(ids::INPUT_MAP_NEW_NAME, name_rect);
-    let typed = store.text(ids::INPUT_MAP_NEW_NAME).unwrap_or_default();
-    let shown = if typed.is_empty() {
-        tr("input_map.new_name.placeholder")
-    } else {
-        typed
-    };
-    stroke_rounded_rect(
-        scene,
-        name_rect,
-        Radius::Sm.px(),
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
-    paint_text(
-        text_system,
-        scene,
-        shown,
-        name_rect.x + Spacing::Xs.px(),
-        cy + (row_h - font) * 0.5,
-        font,
-        name_rect.w,
-        resolve(
-            if typed.is_empty() {
-                ColorToken::Text3
-            } else {
-                ColorToken::Text1
-            },
-            theme,
-        ),
-    );
-    let add_rect = Rect::new(inner_x + inner_w - add_w, cy, add_w, row_h);
-    hit_index.register(ids::INPUT_MAP_ADD, add_rect);
-    paint_button(
-        &Button::new(ids::INPUT_MAP_ADD, tr("input_map.add")),
-        add_rect,
-        scene,
-        text_system,
-        theme,
-    );
-    cy += row_h + gap;
-
-    // ── A FACE VAZIA: um mapa sem acções diz o que fazer a seguir. ──
+    // ── O CORPO, recortado: o que passar do fundo não pinta e não é clicável. ──
     //
-    // ⚠️ *A cura de "não há rota" é a face vazia, nunca o desaparecimento* — uma janela que abre
-    // num rectângulo em branco lê-se como avariada.
+    // ⚠️ **O `push_clip` é o que separa "não desenha" de "não responde".** Sem ele, uma linha
+    // fora do cartão continuaria a receber cliques — a família de defeito que esta linha já pinou
+    // no painel do Motion.
+    let body = Rect::new(rect.x, cy, rect.w, body_h);
+    hit_index.push_clip(body);
+    let scroll = store.input_map_scroll();
+    let mut by = cy - scroll;
+
     if map.is_empty() {
         paint_text(
             text_system,
             scene,
             tr("input_map.empty"),
             inner_x,
-            cy + (row_h - font) * 0.5,
+            by + (row_h - font) * 0.5,
             font,
             inner_w,
             resolve(ColorToken::Text3, theme),
         );
-        return;
     }
 
     let listening = store.input_map_listening();
+    let icon_w = Spacing::Xl2.px();
     for (row, action) in map.actions().iter().enumerate() {
-        // ── A ACÇÃO: nome forte, e um botão de LIXO à direita. ──
-        //
-        // ⚠️ **Ícone e não a letra `x`**, e o ícone é o `Trash` e não o `Close`: apagar uma acção
-        // destrói trabalho, fechar uma janela não. Dois gestos com pesos diferentes não podem ter
-        // o mesmo desenho — foi um dos defeitos que o Enio apanhou de olho na primeira versão.
+        // ═══ A LINHA DA ACÇÃO: nome · Dead · Press · `+` · lixo ═══
+        let armed = listening == Some(action.id);
+        let del = ids::input_map_delete_action_id(row);
+        let listen = ids::input_map_listen_id(row);
+        let del_rect = Rect::new(rect.x + rect.w - icon_w, by, row_h, row_h);
+        let listen_rect = Rect::new(del_rect.x - icon_w, by, row_h, row_h);
+
         paint_text(
             text_system,
             scene,
             &action.name,
             inner_x,
-            cy + (row_h - font) * 0.5,
+            by + (row_h - font) * 0.5,
             font,
             inner_w,
             resolve(ColorToken::Text1, theme),
         );
-        let del = ids::input_map_delete_action_id(row);
-        let del_rect = Rect::new(rect.x + rect.w - Spacing::Xl2.px(), cy, row_h, row_h);
-        hit_index.register(del, del_rect);
-        paint_icon_button(
-            del_rect,
-            IconGlyph::Builtin(IconId::Trash),
-            IconButtonStyle::Plain,
-            store.button_visual(del),
-            scene,
-            theme,
-        );
-        cy += row_h + gap;
 
-        // ── As LIGAÇÕES, cada uma numa linha da LISTA da casa. ──
-        //
-        // ⚠️ `ListItem` e não texto solto: ele traz o realce de hover, a coluna secundária (onde
-        // vai o DISPOSITIVO) e o fundo arredondado que separa uma linha da seguinte. Desenhá-lo à
-        // mão foi o que fez a primeira versão parecer "fora do padrão" — porque estava.
-        for (bi, b) in action.bindings.iter().enumerate() {
-            let (what, device) = binding_label(*b);
-            let db = ids::input_map_delete_binding_id(row, bi);
-            let li_rect = Rect::new(
-                inner_x + Spacing::Md.px(),
-                cy,
-                inner_w - Spacing::Md.px() - Spacing::Xl2.px(),
-                row_h,
-            );
-            paint_list_item(
-                &ListItem::new(db, what)
-                    .value(device)
-                    .state(list_state(store, db)),
-                li_rect,
-                scene,
-                text_system,
-                theme,
-            );
-            let db_rect = Rect::new(rect.x + rect.w - Spacing::Xl2.px(), cy, row_h, row_h);
-            hit_index.register(db, db_rect);
-            paint_icon_button(
-                db_rect,
-                IconGlyph::Builtin(IconId::Close),
-                IconButtonStyle::Plain,
-                store.button_visual(db),
-                scene,
-                theme,
-            );
-            cy += row_h + gap;
-        }
-
-        // ── A face VAZIA de uma acção sem ligação: ela diz o que fazer, em vez de nada. ──
-        if action.bindings.is_empty() {
-            paint_text(
-                text_system,
-                scene,
-                tr("input_map.no_binding"),
-                inner_x + Spacing::Md.px(),
-                cy + (row_h - font) * 0.5,
-                font,
-                inner_w,
-                resolve(ColorToken::Text3, theme),
-            );
-            cy += row_h + gap;
-        }
-
-        // ── O Bind… e os DOIS números, com RÓTULO e VALOR. ──
-        let armed = listening == Some(action.id);
-        let listen = ids::input_map_listen_id(row);
-        let listen_w = Spacing::Xl4.px() * 2.0;
-        let listen_rect = Rect::new(inner_x + Spacing::Md.px(), cy, listen_w, row_h);
-        hit_index.register(listen, listen_rect);
-        paint_button(
-            &Button::new(
-                listen,
-                if armed {
-                    tr("input_map.listening")
-                } else {
-                    tr("input_map.listen")
-                },
-            )
-            .kind(if armed {
-                ButtonKind::Accent
-            } else {
-                ButtonKind::Default
-            }),
-            listen_rect,
-            scene,
-            text_system,
-            theme,
-        );
-
-        // ⭐ **`paint_slider_with_chip` da casa**: rótulo à esquerda, barra, e o NÚMERO num chip.
-        // A primeira versão pintava uma barra rosa nua — sem dizer o que era nem quanto valia.
-        let zone_x = inner_x + Spacing::Md.px() + listen_w + Spacing::Sm.px();
-        let zone_w = (inner_x + inner_w - zone_x - Spacing::Xl2.px()) * 0.5;
+        // Os dois números, numa linha só e SEM empilhar — a largura da janela sai desta conta.
+        let (lw, cw) = (zone_label_w(), zone_chip_w());
+        // ⚠️ **O trilho mínimo vem do WIDGET, não de um palpite** — `slider_with_chip_is_stacked`
+        // é a mesma função que o `debug_assert` abaixo consulta, e a folga de `Xs` é o que separa
+        // "cabe exactamente" de "empilha por um pixel".
+        let zone_w = (lw + cw + Spacing::Sm.px() * 2.0 + ZONE_MIN_TRACK + Spacing::Xs.px()).ceil();
+        let zone_x = listen_rect.x - zone_w * 2.0 - Spacing::Sm.px();
         for (i, (sid, cid, label, v)) in [
             (
                 ids::input_map_deadzone_id(row),
@@ -421,24 +365,159 @@ pub fn paint_input_map_window(
         {
             #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: indice 0/1
             let zx = zone_x + zone_w * i as f32;
-            let zr = Rect::new(zx, cy, zone_w - Spacing::Xs.px(), row_h);
-            paint_slider_with_chip(
-                zr, label, v, sid, cid, store, hit_index, scene, text_system, theme,
+            let zr = Rect::new(zx, by, zone_w - Spacing::Xs.px(), row_h);
+            debug_assert!(
+                !slider_with_chip_is_stacked(zr.w, lw, cw),
+                "o numero empilhou: a janela ficou estreita e a linha vai vazar (report de 24/08)"
+            );
+            paint_slider_with_chip_layout(
+                zr,
+                label,
+                v,
+                f64::from(v),
+                None,
+                sid,
+                cid,
+                lw,
+                cw,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
             );
         }
-        cy += row_h + gap;
 
-        // ── O DIVISOR entre acções — o que dá ritmo à lista. ──
-        //
-        // ⚠️ Sem ele, seis acções × quatro linhas leem-se como vinte e quatro linhas iguais, que
-        // foi exactamente a queixa. ⛔ Não vai depois da ÚLTIMA: uma régua a fechar a lista lê-se
-        // como "há mais coisa por baixo".
-        if row + 1 < map.len() {
-            let dr = Rect::new(inner_x, cy, inner_w, gap);
-            paint_divider(&Divider::new(ids::INPUT_MAP_HANDLE), dr, scene, theme);
-            cy += gap;
+        hit_index.register(listen, listen_rect);
+        paint_icon_button(
+            listen_rect,
+            IconGlyph::Builtin(IconId::Add),
+            if armed {
+                IconButtonStyle::Chip
+            } else {
+                IconButtonStyle::Plain
+            },
+            store.button_visual(listen),
+            scene,
+            theme,
+        );
+        hit_index.register(del, del_rect);
+        paint_icon_button(
+            del_rect,
+            IconGlyph::Builtin(IconId::Trash),
+            IconButtonStyle::Plain,
+            store.button_visual(del),
+            scene,
+            theme,
+        );
+        by += row_h + gap;
+
+        // ═══ As LIGAÇÕES, indentadas ═══
+        if action.bindings.is_empty() {
+            paint_text(
+                text_system,
+                scene,
+                if armed {
+                    tr("input_map.listening")
+                } else {
+                    tr("input_map.no_binding")
+                },
+                inner_x + Spacing::Xl.px(),
+                by + (row_h - font) * 0.5,
+                font,
+                inner_w,
+                resolve(ColorToken::Text3, theme),
+            );
+            by += row_h + gap;
+        }
+        for (bi, b) in action.bindings.iter().enumerate() {
+            let (what, device) = binding_label(*b);
+            let db = ids::input_map_delete_binding_id(row, bi);
+            let li_rect = Rect::new(
+                inner_x + Spacing::Xl.px(),
+                by,
+                inner_w - Spacing::Xl.px() - icon_w,
+                row_h,
+            );
+            paint_list_item(
+                &ListItem::new(db, what)
+                    .value(device)
+                    .state(list_state(store, db)),
+                li_rect,
+                scene,
+                text_system,
+                theme,
+            );
+            let db_rect = Rect::new(rect.x + rect.w - icon_w, by, row_h, row_h);
+            hit_index.register(db, db_rect);
+            paint_icon_button(
+                db_rect,
+                IconGlyph::Builtin(IconId::Close),
+                IconButtonStyle::Plain,
+                store.button_visual(db),
+                scene,
+                theme,
+            );
+            by += row_h + gap;
         }
     }
+    hit_index.pop_clip();
+
+    // ── A BARRA DE ROLAGEM, quando a lista não cabe. ──
+    paint_scrollbar(
+        body,
+        scroll,
+        want_body,
+        body_h,
+        (crate::widget::ScrollbarState::Normal, 0.0),
+        scene,
+        theme,
+    );
+
+    // ── O RODAPÉ: nome novo + Add. ⭐ **Em BAIXO, como no Godot** — criar é o gesto raro, e no
+    // topo ele empurrava a lista para longe do olho a cada abertura. ──
+    let fy = rect.y + rect.h - pad_y - row_h;
+    let add_w = Spacing::Xl4.px() * 1.5; // LITERAL-PX-OK: multiplicador do token, nao um px
+    let name_rect = Rect::new(inner_x, fy, inner_w - add_w - gap, row_h);
+    hit_index.register(ids::INPUT_MAP_NEW_NAME, name_rect);
+    let typed = store.text(ids::INPUT_MAP_NEW_NAME).unwrap_or_default();
+    stroke_rounded_rect(
+        scene,
+        name_rect,
+        Radius::Sm.px(),
+        1.0,
+        resolve(ColorToken::Border, theme),
+    );
+    paint_text(
+        text_system,
+        scene,
+        if typed.is_empty() {
+            tr("input_map.new_name.placeholder")
+        } else {
+            typed
+        },
+        name_rect.x + Spacing::Sm.px(),
+        fy + (row_h - font) * 0.5,
+        font,
+        name_rect.w,
+        resolve(
+            if typed.is_empty() {
+                ColorToken::Text3
+            } else {
+                ColorToken::Text1
+            },
+            theme,
+        ),
+    );
+    let add_rect = Rect::new(inner_x + inner_w - add_w, fy, add_w, row_h);
+    hit_index.register(ids::INPUT_MAP_ADD, add_rect);
+    paint_button(
+        &Button::new(ids::INPUT_MAP_ADD, tr("input_map.add")),
+        add_rect,
+        scene,
+        text_system,
+        theme,
+    );
 }
 
 /// O estado visual de uma linha da lista — hover incluído.

@@ -14,7 +14,7 @@ use bumpalo::Bump;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::interaction::dispatch::dispatch_key;
-use ph2d_editor_core::screens::hero::{HeroScreen, ids};
+use ph2d_editor_core::screens::hero::{HeroScreen, chrome, ids};
 use ph2d_host::{KeyEvent, KeyKind, Modifiers};
 
 fn hero() -> HeroScreen {
@@ -345,5 +345,61 @@ fn dragging_the_dead_zone_past_the_press_point_shows_the_coerced_value() {
         (shown - a.press_point).abs() < 1e-6,
         "a janela mostra {shown} e o produto usa {} -- a UI esta' a mentir",
         a.press_point
+    );
+}
+
+/// ⛔⛔ **REPORT DO ENIO (2026-08-24, com foto): *"estreito e sem scroll"*.**
+///
+/// ⚠️ **A causa era o widget a mudar de FORMA sob pressão.** O `paint_slider_with_chip` demote o
+/// rótulo para uma linha própria quando o espaço aperta, e o doc dele diz *"quem chama tem de
+/// avançar"*. A janela era estreita o bastante para disparar isso, e eu não avancei ⇒ os números
+/// caíam por cima da acção seguinte e a última saía do cartão.
+///
+/// Este gate mede a **causa**, não o sintoma: com a largura que a janela usa, os dois números
+/// **não podem** empilhar.
+#[test]
+fn the_zone_numbers_never_stack_at_the_windows_width() {
+    use ph2d_editor_core::widget::slider_with_chip_is_stacked;
+    let (w, _, _) = chrome::input_map_window_size(&ph2d_input::InputMap::with_player_defaults());
+    // A conta do pintor: dois números repartem o espaço à esquerda dos dois ícones.
+    let icon_w = ph2d_tokens::Spacing::Xl2.px();
+    let lw = ph2d_tokens::Spacing::Xl4.px() * 0.75;
+    let cw = ph2d_tokens::Spacing::Xl4.px();
+    let zone_w = (lw + cw + ph2d_tokens::Spacing::Sm.px() * 2.0 + 60.0 + ph2d_tokens::Spacing::Xs.px())
+        .ceil()
+        - ph2d_tokens::Spacing::Xs.px();
+    assert!(
+        !slider_with_chip_is_stacked(zone_w, lw, cw),
+        "a {w} px, os numeros da zona EMPILHAM ({zone_w} px de coluna): a linha vai vazar por cima \
+         da accao seguinte, que foi exactamente o report"
+    );
+    // ⚠️ E os dois têm de CABER à esquerda dos ícones — senão eles saem pela direita do cartão.
+    let inner = w - ph2d_tokens::Spacing::Md.px() * 2.0;
+    assert!(
+        zone_w * 2.0 + icon_w * 2.0 < inner,
+        "os dois numeros mais os dois icones ({}) nao cabem na largura util ({inner})",
+        zone_w * 2.0 + icon_w * 2.0
+    );
+}
+
+/// **A janela NUNCA é mais alta que a viewport** — e é isso que o scroll compra.
+///
+/// ⚠️ Um cartão que cresce com a lista sai do ecrã e a última acção fica **inalcançável**, que é
+/// pior que uma lista curta: nada na tela diz porquê.
+#[test]
+fn the_window_never_grows_past_the_viewport() {
+    let mut map = ph2d_input::InputMap::with_player_defaults();
+    for i in 0..40 {
+        map.create(format!("extra_{i}"));
+    }
+    let (_, h, max_scroll) = chrome::input_map_window_size(&map);
+    assert!(
+        h > 800.0,
+        "a fixtura tem de conter o fenomeno: com 46 accoes a janela PEDIDA tem de ser alta (foi {h})"
+    );
+    assert!(
+        max_scroll > 0.0,
+        "com a lista a transbordar, o teto de rolagem tem de ser positivo -- senao a roda nao leva \
+         a lado nenhum"
     );
 }

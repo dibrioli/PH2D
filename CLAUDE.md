@@ -559,16 +559,39 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   desarma o módulo** — e a **vista** (câmera · prato parado · verbo e referencial do gizmo ·
   isolamento) sobrevive ao fecho (W43), enquanto o cache do quadro não. ⛔ Um campo novo no `Smoke`
   é **erro de compilação** em `field3d_view::View::of` até alguém dizer se é vista ou cache.
-  **Aberto:** religar uma escultura que mudou de sítio (pede UI) · ⛔ o vínculo à escultura **viva**
-  do módulo 3D foi **medido e recusado** (voxelizar custa 229–389 ms a 128³ contra um quadro de
-  16,7) — a escultura entra da cena **sem disco** e não se atualiza sozinha · ⏸️ o `Mirror` não se
-  consegue demonstrar (adiado pelo Enio) · a exportação não diz **onde** a peça está (o tamanho já
-  diz, W36) · nada mostra na Hierarquia que há um **isolamento** em curso.
+  ⭐ **A CÂMERA é alcançável** (W47–W52): seis **vistas nomeadas** (`Numpad1/3/7` + `Ctrl` para a
+  oposta) com botões que dizem o atalho, o **gizmo de navegação** por bolas de eixo — pesquisado a
+  pedido do Enio, ⛔ o *ViewCube* da Autodesk está **patenteado** (US 7 782 319, expira 2029) e o
+  próprio paper deles mediu que o ganho está no **arrasto**, não no clique —, que se **desloca para
+  fugir à moldura** (`panel_ops::panel_rects`, a fuga mais barata), e a **viagem** animada entre
+  vistas. ⚠️ **`Role::Viewpoint` SOBREVIVE ao `reduced_motion`**, sozinho entre todos os papéis, por
+  decisão do Enio com a alternativa na mão: *aqui o CORTE é pior do que o movimento*.
+  ⭐⭐ **O DESENHO VIRA PEÇA, e continua a ser a FONTE** (W53–W55): `+ Extrude` / `+ Revolve` cozem o
+  contorno escolhido no editor vetorial (o fluxo do MoI, com a caneta que a casa já tem) — o motor
+  existia **desde a W3** e nenhum botão o alcançava. O `FieldProfileSource { path, level }` mantém o
+  vínculo **vivo**: editar a curva remodela a peça, e a linha **Resolution** (1..16) afina a
+  conversão. ⚠️ **Sem cache, de propósito** — recozer custa 7 µs e comparar 0,2 µs contra um quadro
+  de 16,7 ms, e um resumo guardado seria estado derivado a envenenar o undo.
+  ⚠️ **A régua da suavidade é a NORMAL, não a silhueta** (W54): a polilinha erra **0,079 %** da peça
+  (invisível) e a normal salta **6,43°** — é isso que a luz mostra. A tolerância é `1e-4` pelo joelho
+  medido, e ⛔ a tabela de 2026-08-19 estava **desmentida por 2,4×**.
+  **Aberto:** ⏸️ o traçado ficou **~2,4× mais caro** desde a W3 e ninguém o reconferiu (suspeito
+  nomeado: o anti-serrilhado adaptativo) · a tabela que escolheu o teto do nível foi medida a
+  `load ≈ 4,7`, não abaixo de 3 · nada na Hierarquia mostra que uma forma está **ligada** a um
+  desenho, e não há gesto para **largar** nem para **religar** o vínculo · um contorno de cada vez ·
+  religar uma escultura que mudou de sítio (pede UI) · ⛔ o vínculo à escultura **viva** do módulo 3D
+  foi **medido e recusado** (voxelizar custa 229–389 ms a 128³ contra um quadro de 16,7) — a
+  escultura entra da cena **sem disco** e não se atualiza sozinha · ⏸️ o `Mirror` não se consegue
+  demonstrar (adiado pelo Enio) · a exportação não diz **onde** a peça está (o tamanho já diz, W36) ·
+  nada mostra na Hierarquia que há um **isolamento** em curso.
   **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (o roteador é
   [`field3d_smoke_scenes.rs`](shells/desktop/src/field3d_smoke_scenes.rs)).
+  ⚠️ **Preferência fora do repo:** `~/.ph2d/prefs.txt` — um `reduced_motion=1` esquecido reprova
+  smokes sobre produto correto **em todo o resto do app**, e a viagem entre vistas é a excepção.
   **Ler:** [`docs/3DModeling/`](docs/3DModeling/) ·
+  [`06_resultados_cena_e_gizmo.md`](docs/3DModeling/06_resultados_cena_e_gizmo.md) §1–§56 (uma seção
+  por wave, com a tabela medida e as provas de mutação; o **§13** é a lista viva do que está aberto) ·
   [handoffs](docs/3DModeling/handoffs/README.md)
-
 - **Flip** — animação 2D no idioma do Grease Pencil: tira de quadros, onion, tween v2 (correspondência por atribuição
   ótima + espiral logarítmica), **colorize LazyBrush**, multiplano 2.5D, airbrush, pressão, e o
   **motor novo de traço**, em que o traço deixa de ser rasterizado e passa a ser **PERCORRIDO**

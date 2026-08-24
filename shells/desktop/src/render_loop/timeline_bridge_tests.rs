@@ -338,6 +338,7 @@ fn a_clock_running_into_the_containers_list_is_paused_by_the_bridge() {
         false,
         None,
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!(
         !ph.is_playing(),
@@ -358,6 +359,7 @@ fn a_clock_running_into_the_containers_list_is_paused_by_the_bridge() {
         false,
         None,
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!(
         ph2.is_playing(),

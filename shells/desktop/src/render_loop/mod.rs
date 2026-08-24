@@ -2331,6 +2331,9 @@ impl crate::App {
             keys_mode,
             container,
             &mut self.timeline_signals,
+            // ⚠️ **O terceiro membro da família pré-visualização↔documento** — o que as curvas
+            // escrevem enquanto o playhead toca não é uma edição (`crate::timeline_preview`).
+            &mut self.preview_drive,
         );
         if timeline_reset {
             // The document just went back to a fresh state (the last animated

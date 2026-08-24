@@ -487,6 +487,9 @@ mod timeline_onion_smoke;
 #[path = "timeline_orphan_tests.rs"]
 mod timeline_orphan_tests;
 mod timeline_persist;
+/// **A timeline é o TERCEIRO membro da família pré-visualização↔documento** — enquanto o playhead
+/// toca, as curvas escrevem poses que não são edições do artista (`crate::preview_drive`).
+mod timeline_preview;
 mod timescale_smoke;
 /// **AS MOLDURAS** (plano UI/UX W0): que intervalo da pilha de z cada `VecFrame` recorta. A
 /// metade que a shell possui — o renderer sabe desenhar, a shell sabe a ÁRVORE.

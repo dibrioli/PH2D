@@ -225,6 +225,7 @@ fn the_playhead_runs_free_past_the_authored_end() {
         false,
         None,
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!(
         (ph.time() - 9.0).abs() < 1e-9,
@@ -244,6 +245,7 @@ fn the_playhead_runs_free_past_the_authored_end() {
         false,
         None,
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!(
         (ph.time() - 9.0).abs() < 1e-9,
@@ -261,6 +263,7 @@ fn the_playhead_runs_free_past_the_authored_end() {
         false,
         None,
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!((ph.time() - 5.0).abs() < 1e-9, "o play nao e' preso no fim");
     assert!(
@@ -281,6 +284,7 @@ fn the_playhead_runs_free_past_the_authored_end() {
         true,
         None,
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!((clip_ph.time() - 9.0).abs() < 1e-9, "clip sem Dur: livre");
     st.doc.set_clip_length_override(0, Some(1.0));
@@ -294,6 +298,7 @@ fn the_playhead_runs_free_past_the_authored_end() {
         true,
         None,
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!(
         (clip_ph.time() - 9.0).abs() < 1e-9,
@@ -315,6 +320,7 @@ fn the_playhead_runs_free_past_the_authored_end() {
         false,
         Some(c),
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!(
         (cont_ph.time() - 9.0).abs() < 1e-9,
@@ -350,6 +356,7 @@ fn a_clip_duration_no_longer_pins_the_playhead_with_no_stack() {
         false, // solo — FALSO sem pilha, exatamente o caso da cena de fisica de 1 clip
         None,
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!(
         (ph.time() - 2.333).abs() < 1e-9,
@@ -369,6 +376,7 @@ fn a_clip_duration_no_longer_pins_the_playhead_with_no_stack() {
         false,
         None,
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     assert!((ph.time() - 5.0).abs() < 1e-9);
     assert!(
@@ -516,6 +524,7 @@ fn run_inside_a_container_plays_the_interior_at_its_own_clock() {
         false,   // não é Keys
         Some(0), // é o container 0
         &mut super::SignalEmitter::default(),
+        &mut crate::preview_drive::PreviewDrive::default(),
     );
     let x = f64::from(
         sim.world()

@@ -633,3 +633,51 @@ faria o motor de animação **chamar** o editor — o oposto do ADR-0075.
 **6 gates novos + 2 alargados**, **4 mutações**, todas sangraram.
 **Smoke:** `PH2D_ANIM_SMOKE=1` — a `walk` (que toca por omissão) é **calada**, a `idle` grita a cada
 volta, e a `attack` anuncia o fim uma vez. `PH2D_SIGNAL_LOG=1` imprime a origem e a contagem.
+
+## §17 — Adenda: **o TERCEIRO membro da família** — a timeline (o Ctrl+Z fecha)
+
+A §12 curou dois casos e **mediu** um terceiro, deixando-o de fora com duas razões. ⭐ **Uma delas
+era falsa, e é a que decidia o preço.**
+
+> *«do lado do shell a alternativa é um censo de TODAS as poses por quadro de reprodução, e esse
+> custo é um número que ninguém mediu»*
+
+**Não é.** O `TimelineDoc` **nomeia** as entidades que anima — `doc.bindings()`, uma binding por
+prop keyada. O censo é **`O(bindings)`** (a dúzia de objetos que o artista keyou) e não `O(mundo)`.
+⚠️ *Uma ausência afirmada sem olhar a API é um palpite com cara de medição* — e foi a **segunda vez
+no mesmo dia** que esta linha pagou essa: a primeira foi a nota do `sheet_import` que dizia *«este
+app não tem diálogo de ficheiro»*.
+
+A **outra** razão continua verdadeira e é o que decidiu o desenho: a escrita mora *dentro* da crate
+da timeline, então declarar de lá inverteria a dependência. ⇒ o shell mede **antes e depois**, tal
+como faz com o solver — a única forma exacta de saber o que aquele passe escreveu sem lhe mudar a
+API.
+
+### ⛔ O que fica de fora, e o motivo é uma COLISÃO de granularidade
+
+O `apply` escreve **quatro** componentes: `Transform`, `VecMorph`, `PhysicsJoint` e **`Sprite`** (a
+opacidade vive no `tint`). Os três primeiros entram; o `Sprite` **não**.
+
+⚠️ A §11 já conduz o `Sprite`, mas **por CAMPO** (o `frame`) — e este censo é por **componente**. As
+duas entradas coexistiriam no ledger com chaves diferentes e a substituição escreveria as duas: a
+que corresse por último ganhava o `frame`. *Duas granularidades sobre o mesmo componente é uma
+divergência à espera de acontecer*, e o preço de a evitar é **uma linha nesta lista** em vez de um
+defeito que aparece «às vezes». ⇒ uma animação de **opacidade pura** ainda suja a captura; a cura é
+um facto `SpriteTint` (por campo, como o `SpriteAnim`) e cabe numa wave própria.
+
+### A costura, e o arch-gate que a cobre
+
+O `timeline_bridge::run` continua **sem arnês headless** (nove pedaços de estado do shell, zero
+chamadores fora do laço de quadro), então a declaração vive **dentro** dele e um arch-gate de FONTE
+afirma as duas coisas que podem estar erradas ali:
+
+1. **a ORDEM** — censo *antes* do apply, declaração *depois*. Invertida, a comparação daria sempre
+   igual, o ledger ficaria vazio, e o defeito voltava **com a suíte verde**;
+2. **UMA declaração para os três ramos** (`container` / `solo` / Arrange) — uma cópia por braço é
+   como a do ramo menos usado fica para trás, e o Arrange (o comum) seria o único a funcionar.
+
+⚠️ A LEI em si é gateada a sério: os gates correm o `apply_from_doc` **real** do `ph2d-timeline`
+sobre um objeto keyado e afirmam que a captura não se mexe durante a reprodução — com controlo
+positivo (o objeto **andou**) e a metade oposta (parar deixa **um** passo).
+
+**5 gates novos** (3 da lei + 2 de alcance), **4 mutações**, todas sangraram.

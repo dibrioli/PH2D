@@ -220,14 +220,30 @@ reprodução guarda a célula que o artista escolheu. Para a física é a frase 
 [ADR-0131](../architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) já lhe
 dá — *runtime-truth + **bake opcional***.
 
-⛔ **O TERCEIRO MEMBRO DA FAMÍLIA FICA MEDIDO E POR CURAR:** a **timeline** escreve `Transform` a
-partir das curvas enquanto o playhead toca ([`apply.rs`](../../crates/ph2d-timeline/src/apply.rs) ·
-`apply_prop.rs`), e é o mesmo defeito. Não entrou por **duas razões medidas**: (1) a escrita mora
-*dentro* da crate da timeline — declarar de lá inverteria a dependência, ou exigiria que o `apply`
-devolvesse a lista de entidades escritas (API de outro módulo); (2) do lado do shell a alternativa é
-um **censo de todas as poses por quadro de reprodução**, e esse custo é um número que ninguém mediu.
-⚠️ E o `timeline_bridge::run` **não tem arnês headless nenhum** (zero chamadores fora do laço de
-quadro), então a wave começa por construir um.
+✅ **O TERCEIRO MEMBRO DA FAMÍLIA — a timeline — FOI CURADO no mesmo dia**
+([`timeline_preview.rs`](../../shells/desktop/src/timeline_preview.rs)), pelo **mesmo ledger**.
+
+⚠️ **E uma das duas razões que o deixavam de fora estava ERRADA.** Ela dizia que a alternativa do
+lado do shell era *«um censo de TODAS as poses por quadro de reprodução, e esse custo é um número
+que ninguém mediu»*. Não é: o `TimelineDoc` **nomeia** as entidades que anima (`doc.bindings()`),
+então o censo é **`O(bindings)`** — a dúzia de objetos que o artista keyou — e não `O(mundo)`.
+*Uma ausência afirmada sem olhar a API é um palpite com cara de medição*, e foi a segunda vez no
+mesmo dia que esta linha pagou essa (a primeira: *«este app não tem diálogo de ficheiro»*).
+
+A outra razão **continua verdadeira**, e é o que decidiu o desenho: a escrita mora *dentro* da crate
+da timeline, então declarar de lá inverteria a dependência. Por isso o shell mede **antes e depois**,
+exactamente como faz com o solver.
+
+⛔ **O que fica de fora, e o motivo é uma COLISÃO:** o `apply` escreve quatro componentes
+(`Transform`, `VecMorph`, `PhysicsJoint`, **`Sprite`**). Os três primeiros entram; o `Sprite` não —
+a §11 já o conduz, mas **por CAMPO** (o `frame`), e este censo é por COMPONENTE. As duas entradas
+coexistiriam no ledger e a substituição escreveria as duas: a última ganhava o `frame`. ⇒ **uma
+animação de opacidade pura ainda suja a captura**; a cura é um facto `SpriteTint` por campo, e cabe
+numa wave própria.
+
+⚠️ O `timeline_bridge::run` continua **sem arnês headless** (nove pedaços de estado do shell, zero
+chamadores fora do laço de quadro) — a costura dele é coberta por um arch-gate de FONTE que afirma a
+**ordem** (censo → apply → declaração) e que a declaração é **uma** para os três ramos.
 
 ## §5 — ⛔ Recusas MEDIDAS
 

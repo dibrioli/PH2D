@@ -96,6 +96,7 @@ pub(crate) fn run(
     solo: bool,
     container: Option<usize>,
     signals: &mut SignalEmitter,
+    drive: &mut crate::preview_drive::PreviewDrive,
 ) -> bool {
     // **The Containers list has no playback mode** (Enio, 2026-07-22). The two
     // refusal layers upstream (the play button paints dead + unhittable; the
@@ -161,6 +162,15 @@ pub(crate) fn run(
     timeline
         .doc
         .set_reverse_play(playhead.is_playing() && !playhead.is_advancing_forward());
+    // **A POSE DE ANTES** — a timeline é o terceiro membro da família pré-visualização↔documento
+    // (`crate::timeline_preview`): o que as curvas escrevem enquanto o playhead toca não é uma
+    // edição do artista, e sem esta declaração cada clique naquele quadro empilhava um passo de
+    // Ctrl+Z vazio.
+    //
+    // ⚠️ **O censo é `O(bindings)`** — o documento nomeia quem ele anima. A nota que deixou este
+    // caso de fora dizia que a alternativa era varrer o mundo inteiro; não é, e a diferença é o
+    // preço da wave.
+    let posed_before = crate::timeline_preview::poses_of_bindings(world, &timeline.doc);
     if let Some(c) = container {
         ph2d_timeline::apply_container(world, &mut timeline.doc, c, playhead.time(), skip);
     } else if solo {
@@ -173,6 +183,9 @@ pub(crate) fn run(
         // two views freeze the scene clock, so nothing bursts on return.
         signals.emit(&timeline.doc, playhead, jumped);
     }
+    // E o que os três ramos escreveram é declarado por UM sítio — pô-lo dentro de cada braço seria
+    // três cópias, e a que ficasse de fora é a que ninguém repara (o Arrange é o ramo comum).
+    crate::timeline_preview::declare_timeline_writes(world, &posed_before, drive);
     // Identity upkeep: heal (a project load's detached bindings recolam pelo
     // nome), then purge — a deleted object's tracks leave the document with it,
     // and deleting the LAST animated object resets the timeline whole

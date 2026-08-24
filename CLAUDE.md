@@ -626,9 +626,15 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   input) — e é por isso que tirar só o relógio do componente registado **não** curava. ⭐ A `settle`
   faz a corrida virar **um** passo (*«desfaz a corrida»*), e a lei da **outra mão** impede que uma
   edição feita a meio dela fique por baixo do memo. Vale para o **save** pela mesma porta.
-  ⛔ **O TERCEIRO MEMBRO DA FAMÍLIA está MEDIDO e por curar:** a timeline escreve `Transform` a
-  partir das curvas enquanto o playhead toca — a escrita mora *dentro* da crate da timeline, e do
-  lado do shell a alternativa é um censo de todas as poses por quadro, cujo custo ninguém mediu
+  ✅ **E O TERCEIRO MEMBRO — a timeline — CURADO no mesmo dia**
+  ([`timeline_preview.rs`](shells/desktop/src/timeline_preview.rs)), pelo mesmo ledger. ⚠️ **A nota
+  que o deixava de fora estava ERRADA no ponto que decidia o preço:** ela dizia que o censo era
+  `O(mundo)`; o `TimelineDoc` **nomeia** quem ele anima (`doc.bindings()`), então é `O(bindings)`.
+  *Uma ausência afirmada sem olhar a API é um palpite com cara de medição* — a segunda no mesmo dia
+  (a outra: «este app não tem diálogo de ficheiro»). ⛔ **Fica de fora o `Sprite` (a opacidade), e o
+  motivo é uma COLISÃO de granularidade**: a §11 já conduz aquele componente por CAMPO e este censo
+  é por componente — as duas entradas escreveriam por cima uma da outra. Uma animação de opacidade
+  pura ainda suja a captura; a cura é um facto `SpriteTint`
   ([auditoria 21 §4](docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md)) ·
   **Aberto:**
   ✅ **O FICHEIRO DO PROJETO TEM NOME** (2026-08-23, [`project_io.rs`](shells/desktop/src/project_io.rs)):

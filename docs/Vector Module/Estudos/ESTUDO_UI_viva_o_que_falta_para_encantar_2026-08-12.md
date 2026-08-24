@@ -335,7 +335,7 @@ decisão de produto — não a tomei.
 são duas perguntas, não duas respostas — há gate a afirmá-lo
 (`the_flat_surface_reads_the_clock`).
 
-### 6.6 — ⛔ ESTE ESTUDO MENTE SOBRE SI PRÓPRIO, e já são CINCO linhas
+### 6.6 — ⛔ ESTE ESTUDO MENTE SOBRE SI PRÓPRIO, e já são NOVE linhas
 
 Medido ao longo de 2026-08-23, uma por uma, ao ir buscar o item seguinte:
 
@@ -347,14 +347,42 @@ Medido ao longo de 2026-08-23, uma por uma, ao ir buscar o item seguinte:
 | **F2** | *"2 sítios leem o `t`, 161 pintam"* | **128** passam o par, **9** famílias no relógio |
 | **F4** | aberta, com aviso de custo | **feita** (a wave F4b, 24 ficheiros) |
 | **E1 · E2 · R1** | abertas | as três feitas, e as três com *"a linha mentia"* escrito ao lado |
+| **D2** | *"partículas de feedback **do motor que já temos**"*, tamanho **G** | ⛔ **mispreçada nos dois sentidos** (medido 24/08): o motor existe — e é o simulador **do DOCUMENTO** (`ph2d-eval-motion` + `ph2d-gpu-cook`, cozido por quadro a partir de um **grafo de nós**). No chrome não há **canal de partículas nenhum**: os únicos acertos em `editor-core`/`shells` são cenas de smoke daquele motor e um `IconId::Particle`. ⇒ ligar o simulador do documento ao chrome pediria grafo, cook e documento para uma faísca de 12 partículas num ponto de encaixe — **arquitectura errada**. O que a D2 de facto pede é um **burst local de chrome** no relógio de UI que o F0/F2 já deixaram, e isso não é tamanho **G** |
 
-⚠️ **Oito de vinte e uma linhas.** O padrão não é descuido de quem fecha: é que **fechar uma wave
+⚠️ **NOVE de vinte e uma linhas.** O padrão não é descuido de quem fecha: é que **fechar uma wave
 escreve no commit e no doc do módulo, e não aqui** — este estudo é um PLANO, e um plano que
 ninguém reconcilia envelhece à velocidade a que o produto anda.
 
 ⇒ **A regra que isto pede é a do `CLAUDE.md` §0:** *quem move o número reconfere a nota*. Antes de
 pegar um item desta tabela, **meça-o**. Foi assim que a F2 rendeu uma wave real (a superfície
 plana) em vez da wave inteira que a linha anunciava — e foi assim que o F4 não custou nada.
+
+#### 6.6.1 — ⛔ O MESMO PADRÃO no `CLAUDE.md §5`, e ali ele custa mais (medido 2026-08-24)
+
+O §5 do Vector carregava, como item **ABERTO** e ⏸️ *"do Enio, com o número na mão"*:
+
+> *o `n`/folga do tether e o `DRAG_RATE_X = 50` são números de **FEEL sem medição atrás** (a lei
+> irmã diz `rate = step`, **50× menos**, em **141 campos**)*
+
+**As três metades caíram na leitura do código.**
+
+| a nota dizia | o que está no código |
+|---|---|
+| o *tether* é feel sem medição | [`tether.rs`](../../../crates/ph2d-editor-core/src/tether.rs) traz a **medição no cabeçalho** — `ITERS = 3` fixo, folga pedida de 244 px, e *"a corda pendura **29,7 px** mais baixo na máquina lenta"*, com a medição a **nomear três** causas |
+| `DRAG_RATE_X = 50` governa 141 campos | é o **atalho de ÚLTIMO RECURSO**, consultado *"só por quem não tem intervalo nenhum"*. Acima dele, a `ScrubLaw` de [`number_scrub.rs`](../../../crates/ph2d-editor-core/src/interaction/state/number_scrub.rs) resolve **quatro fontes de intervalo em ordem** (taxa registada ⇒ ilimitado · faixa explícita · projeção do slider ligado · canal do picker) |
+| a «lei irmã» diz `rate = step` | ⛔ **não existe.** O único `rate = step` da árvore é a **taxa de secagem da aquarela** do Painter — outro domínio, outro eixo, nenhuma relação |
+| — | e a cura real **já shipou**: o arrasto é **proporcional à faixa** (`DRAG_RANGE_PX_H = 250` px atravessam o intervalo INTEIRO), pedido pelo Enio em **25/06** precisamente porque *"um `±1` box corria para além de 100 em poucos pixels"*. Curou os **43** campos que se atravessavam em menos de 20 px — e **43** é o número medido, não 141 |
+
+⚠️ **Por que dói mais aqui do que na tabela acima:** este estudo é lido por quem vem buscar um item;
+o `CLAUDE.md §5` é injetado **por inteiro em todo agente, antes da primeira palavra do Enio**. Uma
+nota falsa ali é lida por todos, sempre — e esta pedia ao Enio um número que ele **já tinha dado
+uma vez**, em 25/06, e que já estava no código.
+
+⇒ **Ao fechar uma wave, reconfira as linhas ⏸️ do §5 que ela encosta.** Um item marcado
+*"decisão do Enio"* é o que menos gente reabre para conferir — é exactamente por isso que apodrece
+mais depressa que um item marcado *aberto*. Irmão de
+[[feedback_a_deferral_notes_bar_may_exceed_the_projects_policy]] e
+[[feedback_the_principles_decide_not_the_enio]].
 
 ### 6.5 — ⚠️ O GESTO do radial foi MEDIDO, e o teclado deste app está saturado
 

@@ -342,8 +342,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **A lei do ADR-0153:** *o passe publica **onde** as coisas ficam; ele não escreve **onde** elas estão* — nada no auto
   layout toca `Transform`, senão cada quadro de um resize vira um passo de undo.
   ⚠️ **Regra-mãe do pen:** *o que se vê/aponta/encaixa é MUNDO; o que o documento guarda é LOCAL.*
-  **Aberto:** ⏸️ o `n`/folga do *tether* e o `DRAG_RATE_X = 50` são números de **FEEL sem medição atrás** (a lei irmã diz
-  `rate = step`, **50× menos**, em **141 campos**) — do Enio, com o número na mão · ⏸️ abrir/fechar painel **nunca** foi
+  **Aberto:** ✅ **o `n`/folga do *tether* e o `DRAG_RATE_X = 50` NUNCA foram «feel sem medição» — a NOTA é que
+  envelheceu** (conferido 24/08, mecanismo no [estudo §6.6](docs/Vector%20Module/Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)):
+  o `50` é o atalho de **último recurso** de uma caixa **sem intervalo nenhum**, e acima dele está a `ScrubLaw` · ⏸️ abrir/fechar painel **nunca** foi
   animado (ausência, não regressão; e **não** é o gêmeo da dobra) ·
   ✅ **a cascata (F5), o menu radial (E4) e o realce de proveniência (C2) FECHARAM** — o radial é
   **`P` segurado** (o gesto foi MEDIDO: o botão do meio é o pan, a caneta não entrega botão, e só

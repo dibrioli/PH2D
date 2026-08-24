@@ -207,7 +207,7 @@
 /// espelham (`VecBoolOp` em v89, `VecBoolGroup` antes dele) já lá estavam. Aqui quem obriga o bump
 /// é o LAYOUT: postcard é posicional, e um leitor velho leria os bytes de `bool_op` como o começo
 /// do `ObjectPose` seguinte.
-/// ⚠️ **`None` nos dois é a identidade byte-a-byte de todo arquivo ≤ v89**: nenhuma pose antiga
+/// ⚠️ **`None` nos dois é a identidade byte-a-byte de todo arquivo ≤ v94**: nenhuma pose antiga
 /// nomeia verbo nenhum, e `None` no primeiro é *herda* (a lei do componente) enquanto no segundo é
 /// *não sei de grupo nenhum* — que **nunca** desfaz um grupo.
 pub(crate) const PROJECT_SCHEMA: u32 = 95;

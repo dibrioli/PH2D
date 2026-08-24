@@ -72,6 +72,7 @@ fn a_recorded_run_survives_the_file() {
         player_tape: saved.to_wire(),
         sprite_pixels: Vec::new(),
         stable_id_counter: ph2d_ecs::StableId::FIRST,
+        input_map: ph2d_input::InputMap::new(),
     };
     std::fs::write(
         &path,

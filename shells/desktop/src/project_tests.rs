@@ -62,6 +62,7 @@ fn write_project_full(path: &std::path::Path, schema: u32, timeline: Vec<u8>, sc
         player_tape: ph2d_physics_ecs::TapeWire::default(),
         sprite_pixels: Vec::new(),
         stable_id_counter: ph2d_ecs::StableId::FIRST,
+        input_map: ph2d_input::InputMap::new(),
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");
@@ -419,9 +420,57 @@ fn project_file_round_trips_through_postcard() {
         player_tape: ph2d_physics_ecs::TapeWire::default(),
         sprite_pixels: Vec::new(),
         stable_id_counter: ph2d_ecs::StableId::FIRST,
+        // ⚠️ NAO-DEFAULT de proposito: um mapa vazio aqui faria a ida-e-volta passar sobre o
+        // `Default` do serde em vez de sobre os bytes que o campo de facto escreve -- foi
+        // exactamente assim que uma mutacao sobreviveu a 10.503 testes na auditoria de 23/08.
+        input_map: authored_input_map(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
+    // ⭐ **O INPUT MAP atravessa o arquivo** (v97) — e a afirmação é CAMPO A CAMPO, não um
+    // `assert_eq!` do mapa inteiro: um igual de estrutura passaria se os dois lados fossem o
+    // default, e é precisamente esse o modo de falha que esta linha já pagou.
+    let want = authored_input_map();
+    assert_eq!(back.input_map.len(), want.len(), "as duas accoes voltaram");
+    let jump = back.input_map.id("jump").expect("`jump` voltou pelo NOME");
+    let ja = back.input_map.get(jump).expect("e a accao dela existe");
+    assert_eq!(ja.bindings.len(), 2, "as DUAS ligacoes voltaram");
+    assert!(
+        ja.bindings
+            .contains(&ph2d_input::Binding::Key(ph2d_input::Key(0x5A))),
+        "a ligacao de TECLADO voltou"
+    );
+    assert!(
+        ja.bindings.contains(&ph2d_input::Binding::PadButton(
+            ph2d_input::GamepadButton::South
+        )),
+        "a ligacao de COMANDO voltou -- e' o par que prova que uma accao e' agnostica ao dispositivo"
+    );
+    assert_eq!(ja.dead_zone, 0.15, "a dead_zone autorada voltou");
+    assert_eq!(ja.press_point, 0.75, "e o press_point tambem, separado dela");
+    // ⚠️ E o ID sobreviveu: e' ele que uma gravacao guarda, entao um mapa que volta com os ids
+    // trocados reescreveria o passado em silencio.
+    assert_eq!(
+        back.input_map.id("move_right"),
+        want.id("move_right"),
+        "o ID estavel atravessou o arquivo"
+    );
+    // ⛔⛔ **E O CONTADOR TAMBEM ATRAVESSA** -- o gate que faltava, achado por mutacao em
+    // 2026-08-24: um `#[serde(skip)]` no `next_id` do mapa passava por TODAS as afirmacoes acima,
+    // porque elas so' olham para as accoes que ja' existem. O contador e' privado, entao a
+    // pergunta faz-se pela PORTA: a proxima accao criada no mapa que voltou nao pode receber um id
+    // que ja' esta' em uso -- se recebesse, uma gravacao antiga passaria a accionar outra coisa.
+    let mut reloaded = back.input_map.clone();
+    let fresh = reloaded.create("dash");
+    for a in want.actions() {
+        assert_ne!(
+            fresh, a.id,
+            "o contador NAO atravessou o arquivo: a accao nova recebeu o id de `{}`, que uma \
+             gravacao anterior ja' referencia",
+            a.name
+        );
+    }
+
     assert_eq!(ver, PROJECT_SCHEMA);
     assert_eq!(back.state, state, "estado (mundo + geometria) preservado");
     assert_eq!(back.assets.len(), 1);
@@ -522,3 +571,29 @@ mod tape;
 /// pela razão exata dos dois acima: as fixtures desta suíte são as portas dele.
 #[path = "project_field_tests.rs"]
 mod field;
+
+/// **Um Input Map AUTORADO**, e cada campo dele é deliberadamente **não-default**.
+///
+/// ⚠️ Uma fixtura com o mapa vazio faria a ida-e-volta passar sobre o `Default` do serde em vez de
+/// sobre os bytes que o campo de facto escreve — foi exactamente assim que uma mutação sobreviveu a
+/// **10.503** testes na auditoria de 2026-08-23 desta linha. Aqui: nomes, **duas** ligações de
+/// dispositivos **diferentes** na mesma acção, e os dois números da zona longe do default
+/// (`0,0` / `0,5`).
+fn authored_input_map() -> ph2d_input::InputMap {
+    use ph2d_input::{Binding, GamepadAxis, GamepadButton, InputMap, Key};
+    let mut m = InputMap::new();
+    let jump = m.create("jump");
+    let a = m.get_mut(jump).expect("acabou de nascer");
+    a.bindings.push(Binding::Key(Key(0x5A)));
+    a.bindings.push(Binding::PadButton(GamepadButton::South));
+    a.set_zone(0.15, 0.75);
+    let right = m.create("move_right");
+    m.get_mut(right)
+        .expect("acabou de nascer")
+        .bindings
+        .push(Binding::PadAxis {
+            axis: GamepadAxis::LeftStickX,
+            positive: true,
+        });
+    m
+}

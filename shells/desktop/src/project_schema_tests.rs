@@ -398,7 +398,16 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // mudaram — a identidade e' fato de ENTIDADE, entao os dois numeros ao lado ficam
         // onde estavam. ⭐ E' o PRIMEIRO degrau que nao recusa o passado: um v95 migra
         // (`crate::project_migrate`), e a auditoria de 21/08 registava zero migracoes no repo.
-        (96, 13, 14),
+        //
+        // PROJECT 96→97: o `ProjectFile` ganhou `input_map` apendado ao fim -- as accoes
+        // nomeadas do projecto. Campo apendado, layout posicional muda. A `VecScene` e o `FlipDoc`
+        // NAO mudaram (o mapa e' do PROJECTO, nao de uma entidade nem de um quadro).
+        // ⚠️⚠️ Este degrau nasceu `96` na `line/Vector` e foi RECONTADO para `97` na integracao
+        // de 2026-08-24: as DUAS linhas da jornada apendaram um campo e as duas escreveram o
+        // mesmo literal `96`. O valor certo nao estava em nenhum dos dois lados -- CONTA-SE.
+        // ⛔ E a ORDEM dos dois campos e' o formato: `stable_id_counter` antes, `input_map`
+        // depois. Troca-los nao da' erro; da' dois campos a ler os bytes um do outro.
+        (97, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

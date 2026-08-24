@@ -232,4 +232,36 @@
 /// ⚠️ **Este degrau é o primeiro que não recusa o passado.** Até aqui a política de facto era
 /// *"versão diferente = recusado"* (a auditoria de 21/08 registou-a como ambiguidade §8 item
 /// 7: HR-14 exige `migrate_vN_to_vN+1` e o repo tinha **zero**). Um v95 agora abre.
-pub(crate) const PROJECT_SCHEMA: u32 = 96;
+///
+/// ## v97 (`line/Vector` — O INPUT MAP): o `ProjectFile` ganhou **`input_map`** apendado ao fim — as
+/// acções nomeadas do projecto (`ph2d_input::InputMap`), com as ligações de cada uma e os dois
+/// números da zona. Enio, 2026-08-24: *"precisamos do input Map completo não apenas para o jogador
+/// mas para qualquer objeto do game via UI"*.
+/// ⚠️ **É AUTORIA, e é por isso que viaja no arquivo e não no `prefs.txt`**: `jump` é uma decisão
+/// do projecto (o jogo tem um botão de pulo), enquanto *qual tecla* um jogador prefere é dele. O
+/// segundo mora fora do repo, como o `motion_character` — a mesma divisão que o Godot faz entre as
+/// project settings e o remap em runtime.
+/// ⚠️ **Fora do `ProjectState`**, pelo motivo de sempre: aquele é a unidade do undo GLOBAL, e um
+/// Ctrl+Z do canvas não pode rebobinar o mapa de controlos.
+/// ⚠️ Campo apendado, postcard posicional — um mapa **vazio** é o comportamento de sempre (nenhuma
+/// acção declarada ⇒ toda leitura devolve silêncio), então um projecto antigo comporta-se igual
+/// **depois** de migrar.
+/// ⚠️ **Nenhum registro novo no `ComponentRegistry`** — o mapa não é um componente: ele é do
+/// PROJECTO, não de uma entidade. Quem o consome pergunta pelo nome.
+///
+/// ⚠️⚠️ **ESTE DEGRAU NASCEU `96` E FOI RECONTADO PARA `97` NA INTEGRAÇÃO de 2026-08-24.** Duas
+/// linhas paralelas apendaram um campo no `ProjectFile` na mesma jornada e **as duas escreveram
+/// o literal `96`** — o valor certo não estava em nenhum dos dois lados: conta-se
+/// (95 + identidade + input map). ⛔ E a `collision-surface.sh` **não podia** ver esta colisão:
+/// ela compara a linha com o **ponto de fork**, não com o tip do `main`, então a segunda linha
+/// da jornada lê `base: 95` para um `main` que já estava em `96`.
+///
+/// ⛔ **E a nota original deste degrau dizia *"antes disso falha alto no schema"* — ela envelheceu
+/// no mesmo instante em que foi escrita.** A linha irmã construiu a PRIMEIRA escada de migração do
+/// repo um degrau abaixo; recusar aqui deixaria o trabalho dela morto à nascença (um v95 subiria
+/// um degrau e bateria numa parede). Como este campo é apendado com default vazio, o v95 sobe
+/// **direto** até aqui — ver `crate::project_migrate`.
+/// ⚠️ **Não há degrau `96 -> 97`, e a ausência é a decisão:** a v96 nunca existiu fora destas duas
+/// worktrees (nada foi publicado nela), então não há ficheiro v96 no mundo para migrar. Quem
+/// precisar de um um dia, congela o tipo primeiro — como o `ProjectFileV95` foi congelado.
+pub(crate) const PROJECT_SCHEMA: u32 = 97;

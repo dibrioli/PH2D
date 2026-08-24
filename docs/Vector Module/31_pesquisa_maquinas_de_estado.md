@@ -10,6 +10,41 @@
 
 ---
 
+## §0 — ⭐⭐ EMENDA (Enio, 2026-08-24): a máquina VIVE na secção **States**, e corre em **PREVIEW**
+
+> *"No caso da máquina de estado do morph deverá funcionar à **seção states do módulo vector**
+> utilizando um **modo preview**."*
+
+Isto responde à divergência que a §2.1 tinha deixado **em aberto**, e responde-a melhor do que a
+mitigação que eu ia propor:
+
+| pergunta | resposta do Enio |
+|---|---|
+| onde a máquina é **autorada** | na **secção States** do painel do Vector — que já existe, já é o sítio dos estados de UI, e já sabe morfar booleanas por transição (a wave de 23/08 desta linha) |
+| como se **vê correr** | num **modo PREVIEW**, e não no documento |
+| e as setas no canvas | continuam a ser o gesto de ligação (o pedido anterior), com a secção States como o **dono** |
+
+⭐⭐ **Isto encaixa em duas coisas que já estão construídas, e por isso o preço cai:**
+
+1. **A secção States** ([`state_ui_states.rs`](../../crates/ph2d-panel-vector/src/state_ui_states.rs) ·
+   [`paint_states.rs`](../../crates/ph2d-panel-vector/src/paint_states.rs)) — e a `ph2d-ui-state`
+   por trás dela já carrega **morfos por-objecto na transição** (`BoolMorph`,
+   `Transition::bool_morphs(t)`). *O padrão "a transição carrega um morfo" já foi construído e
+   smokado uma vez.*
+2. ⭐ **O modo PREVIEW já é uma LEI deste app, com um ledger** — a wave de 23/08 do shell separou
+   *documento* de *pré-visualização*: **o documento é o valor AUTORADO; o que um motor escreve
+   agora vê-se, não se guarda nem se desfaz** ([`preview_drive.rs`](../../shells/desktop/src/preview_drive.rs)).
+   ⇒ uma máquina a correr em preview **não pode** sujar o documento nem encher o undo, e o
+   mecanismo que o garante **não é para construir**: é para **ligar**.
+
+⚠️ **A pergunta que isto abre, e que o plano terá de medir:** o ledger de preview é por **campo**
+(repor um componente inteiro engoliria uma edição feita a meio). Uma máquina de morph escreve a
+**geometria cozida** de uma forma — e é preciso decidir se isso é um campo do ledger ou se a
+geometria viva já está fora do documento por construção (o `VecMorph` re-cozinha por quadro, o que
+sugere a segunda).
+
+---
+
 ## §1 — As cinco referências, e o que cada uma resolveu
 
 ### 1.1 ⭐⭐⭐ **Rive — *State Machine*** (a mais próxima, e este módulo já é *Rive-referenced*)

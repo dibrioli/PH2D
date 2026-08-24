@@ -861,6 +861,8 @@ impl App {
             #[cfg(feature = "panel-audio-editor")]
             audio_scrub_drag: false,
             input: InputState::new(),
+            input_map: ph2d_input::InputMap::new(),
+            input_actions: ph2d_input::ActionState::new(),
             pan_anchor: None,
             held_button: None,
             eyedropper_dragging: false,

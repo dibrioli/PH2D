@@ -752,6 +752,18 @@ pub(crate) struct App {
     pub(crate) audio_scrub_drag: bool,
     /// Input snapshot pumped by the gilrs adapter each frame.
     pub(crate) input: InputState,
+    /// **O INPUT MAP do projecto** (v96) — as acções nomeadas que o artista autorou.
+    ///
+    /// ⚠️ **Ao lado do `input`, e não dentro dele**, porque são fatos de natureza diferente: o
+    /// `input` é o **retrato dos dispositivos** deste quadro (some quando a janela perde o foco), e
+    /// este é **documento** (viaja no `.ph2dproj`, sobrevive a tudo). Metê-los no mesmo tipo faria
+    /// um `load` ter de preservar metade dele.
+    pub(crate) input_map: ph2d_input::InputMap,
+    /// **O que cada acção VALE** neste tique — resolvido do `input` através do `input_map`.
+    ///
+    /// ⚠️ Guarda **um** tique atrás, e é isso que paga as bordas (`just_pressed`). Ele é derivado:
+    /// nunca é salvo, nunca entra no undo.
+    pub(crate) input_actions: ph2d_input::ActionState,
     /// M14.4b.bis: middle-button camera pan state.
     /// `Some(anchor)` while a middle-drag is in progress; subsequent
     /// `CursorMoved` events feed `Camera2d::pan_screen_delta`.

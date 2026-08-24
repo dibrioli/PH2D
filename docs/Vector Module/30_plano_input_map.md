@@ -11,6 +11,46 @@
 
 ---
 
+## §0 — ⭐⭐ EMENDA DE ESCOPO (Enio, 2026-08-24, depois da W1)
+
+> *"precisamos do input Map **completo** não apenas para o jogador mas para **qualquer objeto do
+> game via UI**. (…) Nosso input map deve ser **equivalente ao da godot com janela flutuante
+> abrindo sobre o canvas**."*
+
+**Três consequências, e elas reordenam o plano:**
+
+### 0.1 O mapa **não é do jogador** — é do PROJECTO
+
+O plano original tratava o `player_input.rs` como o consumidor. Ele passa a ser **um** consumidor
+entre N: qualquer objecto do jogo lê acções pelo nome, e a máquina de estados do Morph (doc 31) é
+o segundo consumidor já nomeado.
+
+⭐ **A W1 já nasceu certa para isto** — o `InputMap` é uma folha, sem uma linha sobre jogador, e o
+`Input::pressed("jump")` não sabe quem pergunta. *O que muda não é o modelo; é a ordem em que o
+resto se constrói.*
+
+### 0.2 ⭐ A UI é uma **JANELA FLUTUANTE sobre o canvas**, à la Godot
+
+Não um painel na doca. O precedente exacto existe e é um caminho **scaffoldado** (DIRETRIZ §3.B.3):
+um *chrome handler* com marcador `z=NN`, metade de **pintura** e metade de **despacho**, geradas no
+`dispatch_all` pelo `ph2d-chrome-sync`. O irmão mais próximo é o
+[`fill_modal.rs`](../../crates/ph2d-editor-core/src/screens/hero/chrome/fill_modal.rs) — cartão
+arrastável pela faixa do título, preso à viewport — e o
+[`command_palette.rs`](../../crates/ph2d-editor-core/src/screens/hero/chrome/command_palette.rs)
+para a parte de **lista**.
+
+⚠️ **Medido 2026-08-24:** o espaço de `z` tem 36 marcadores tomados e folgas (`181..184`,
+`186..189`, `195`). O número escolhe-se **contando**, nunca de memória — é a mesma família dos
+números que somam entre linhas.
+
+### 0.3 ⛔ E isso **promove a UI e a persistência** à frente do jogador
+
+A ordem antiga fazia a fita do jogador (W2) vir antes do painel. Com o escopo novo isso está
+errado: uma janela que o artista abre e que **não grava** é uma mentira, e ligar o jogador antes de
+existir UI deixaria o mapa inalcançável para todos os outros objectos. Ver **§7 reordenado**.
+
+---
+
 ## §1 — Pesquisa: o estado da arte, e o que foi TENTADO E ABANDONADO
 
 ### 1.1 Godot — *Input Map* (a referência que o Enio nomeou)
@@ -300,12 +340,30 @@ mensagem ao Enio** — sonda headless primeiro, `CLAUDE.md §0.0`.
    `Cargo.lock` (o `serde` já lá estava).
    ⚠️ **Fica NOMEADO o que a W1 não fez:** o rato não é modelado (esta crate nunca o modelou; o
    editor trata dele pelo despacho próprio), e nada disto está **ligado ao jogador** ainda — é a W2.
-2. **W2** — a fita passa a gravar acções (§2.1). ⛔ **Gate do `physics_ecs_c9` verde antes e depois.**
-3. **W3** — contextos com prioridade; a lista negra do `player_input.rs` **morre** (§2.4).
-4. **W4** — persistência: mapa no projecto + override em `~/.ph2d/` (§2.5).
-5. **W5** — o painel e o press-to-bind (§4).
-6. **W6** — gamepad (`PadButton`/`PadAxis`) e a deadzone real. ⚠️ **Só aqui entra dependência nova**
-   — antes disso o `Cargo.lock` não ganha pacote externo.
+2. ✅ **W2 — PERSISTÊNCIA — FEITA em 2026-08-24.** O mapa viaja no `.ph2dproj`:
+   **`PROJECT_SCHEMA` 95 → 96** nos **três** sítios, campo `input_map` **apendado ao fim** do
+   `ProjectFile` (postcard é posicional), fora do `ProjectState` (um Ctrl+Z do canvas não rebobina
+   controlos). A `App` ganhou o mapa **autorado** ao lado do retrato de dispositivos, e o estado
+   **resolvido** ao lado dos dois. **4 138 gates verdes**, **4 provados por mutação**.
+   ⭐⭐ **E a mutação achou um buraco real:** um `#[serde(skip)]` no contador de ids passava por
+   **todas** as afirmações da ida-e-volta, porque elas só olhavam para as acções que já existem —
+   um mapa recarregado reatribuiria ids **já gravados**. A cura é perguntar pela **porta** (criar
+   uma acção nova no mapa que voltou e exigir que o id dela não colida), e é a armadilha que o
+   doc-comment do `ActionId` nomeia.
+   ⛔ **O que a W2 NÃO fez, e é sequenciamento e não lacuna:** o **override por-jogador** em
+   `~/.ph2d/` — ele só tem consumidor quando existir a janela para remapear (W3), e construí-lo
+   antes seria um ficheiro que ninguém escreve.
+3. ⭐⭐ **W3 — A JANELA FLUTUANTE** (era W5), §0.2. *Chrome handler* com `z` **contado**, metade de
+   pintura + metade de despacho, `cargo run -p ph2d-chrome-sync` a gerar o `mod` e o `dispatch_all`.
+   É a entrega que o Enio nomeou, e é o que torna o mapa alcançável para **qualquer objecto**.
+   ⚠️ As **quatro condições** de §4 medem-se aqui, e a quarta (a SEQUÊNCIA) é a que fica verde com
+   a feature inalcançável.
+4. **W4 — CONTEXTOS com prioridade** (§2.4). Assim que a janela liga uma tecla qualquer, o conflito
+   editor↔jogo deixa de ser hipótese: a lista negra à mão do `player_input.rs` **morre** aqui.
+5. **W5 — O JOGADOR** (era W2): a fita passa a gravar **acções**, e o `PlayerKeys` cravado
+   desaparece. ⛔ **Gate do `physics_ecs_c9` verde antes e depois** — é o controlo da LEI Nº 1.
+6. **W6 — gamepad ao vivo** e a deadzone real no dispositivo. ⚠️ **Só aqui entra dependência nova**
+   (o `gilrs` já existe na shell); antes disso o `Cargo.lock` não ganha pacote externo.
 
 > ⚠️ **Meça cada linha deste plano antes de a honrar.** Escrito em 2026-08-24; *quem move o número
 > reconfere a nota* ([estudo §6.6.1](Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)).

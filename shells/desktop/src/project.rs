@@ -147,6 +147,32 @@ pub(crate) struct ProjectFile {
     /// entidades com o mesmo `StableId` corrompem tudo o que aponta para um objeto (uma
     /// junta, um binding, um override). Ele só sobe.
     pub(crate) stable_id_counter: u64,
+    /// **O INPUT MAP** (v97) — as acções nomeadas deste projecto, com as ligações de cada uma.
+    ///
+    /// ⚠️ **É AUTORIA do projecto, e não preferência de utilizador.** `jump` existir é uma decisão
+    /// do jogo; *qual tecla* um jogador prefere é dele, e isso mora fora do repo (`~/.ph2d/`), como
+    /// o `motion_character`. É a mesma divisão que o Godot faz entre as project settings e o remap
+    /// em runtime — e é o que impede que abrir o projecto de outra pessoa reescreva os controlos
+    /// dela.
+    ///
+    /// ⚠️ **Fora do `ProjectState`** pelo motivo de `motion`/`timeline`/`physics`: aquele é a
+    /// unidade do undo GLOBAL, e um Ctrl+Z do canvas não pode rebobinar o mapa de controlos.
+    ///
+    /// ⚠️ **Tipo da crate-folha, e aqui isso é seguro** — ao contrário do `tokens` e do `settings`,
+    /// que ganharam tipo próprio do arquivo porque herdavam o layout de um tipo de *runtime*. O
+    /// `InputMap` **é** o documento: ele não tem forma de runtime a divergir dele, e serializá-lo é
+    /// a razão de a folha ter `serde`.
+    ///
+    /// Vazio num projecto onde ninguém declarou acção nenhuma — e um mapa vazio devolve silêncio
+    /// em toda leitura, que é exactamente o comportamento de todo arquivo ≤ v96.
+    ///
+    /// ⚠️⚠️ **A POSIÇÃO É O FORMATO, e este campo é o ÚLTIMO** (integração de 2026-08-24). O
+    /// postcard é posicional: `input_map` vem **depois** do `stable_id_counter`, que a linha
+    /// irmã apendou na mesma jornada. As duas linhas escreveram o literal `96` de forma
+    /// independente e o valor certo não estava em nenhum dos dois lados — **contou-se**:
+    /// 95 (base) + 1 (identidade) + 1 (input map) = **97**. Trocar estes dois campos de
+    /// ordem não dá erro nenhum: dá dois campos a ler os bytes um do outro.
+    pub(crate) input_map: ph2d_input::InputMap,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -194,3 +220,8 @@ mod settings_tests;
 #[cfg(test)]
 #[path = "project_schema_tests.rs"]
 mod schema_tests;
+
+/// **A costura do INPUT MAP** (v97) — irmão de `settings_tests`, cortado por assunto.
+#[cfg(test)]
+#[path = "project_input_map_tests.rs"]
+mod input_map_tests;

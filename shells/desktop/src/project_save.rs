@@ -107,6 +107,8 @@ impl crate::App {
                 .as_ref()
                 .and_then(|g| g.sim.world().get_resource::<ph2d_ecs::StableIdCounter>())
                 .map_or(ph2d_ecs::StableId::FIRST, |c| c.next_free()),
+            // ⚠️ O mapa vai por VALOR, e nao ha' traducao: ele E' o documento (v97).
+            input_map: self.input_map.clone(),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,

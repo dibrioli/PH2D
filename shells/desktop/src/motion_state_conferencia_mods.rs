@@ -115,6 +115,12 @@ pub(crate) mod conferencia_demos_body;
 #[path = "motion_state_conferencia_demos_echo.rs"]
 pub(crate) mod conferencia_demos_echo;
 
+/// A cena de ONDE AS COISAS NASCEM (`=93`) — a forma do domínio, a densidade graduada,
+/// a métrica do Voronoi e a variância de vida.
+/// ⚠️ As quatro primeiras fileiras são PARADAS de propósito: uma distribuição é função
+/// pura dos params, e pô-la a mexer esconderia o que a cena existe para mostrar.
+#[path = "motion_state_conferencia_demos_born.rs"]
+pub(crate) mod conferencia_demos_born;
 #[path = "motion_state_conferencia_demos_ladder.rs"]
 pub(crate) mod conferencia_demos_ladder;
 /// A cena do EMISSOR QUE DEIXA RASTO (`=89`) — os tres modos de `Emitter Motion`.

@@ -21,6 +21,11 @@ use ph2d_panel_motion_params::RowDisplay;
 #[path = "motion_bridge_params_stream.rs"]
 mod params_stream;
 
+/// As SEÇÕES: a reordenação por grupo, onde cada cabeçalho começa e quais nascem
+/// FECHADAS. Separado pelo teto de LOC (HR-18), no corte que a pergunta desenha.
+#[path = "motion_bridge_params_sections.rs"]
+mod sections;
+
 /// The channel-aware magnitude presets (a sibling child, shell LOC cap).
 #[path = "motion_bridge_params_channel.rs"]
 mod params_channel;
@@ -554,40 +559,13 @@ pub(crate) fn build_params_snapshot(
     if let Some(over) = motion.doc.graph.node_text_param_overrides(NodeId(only)) {
         modified.extend(over.keys().cloned());
     }
-    // ── As SEÇÕES (doc 88 B3) ────────────────────────────────────────────────────────────
-    // As rows chegam em ordem de manifesto; aqui elas são reordenadas por GRUPO, com as
-    // soltas primeiro. `sort_by_key` é ESTÁVEL, então dentro de um grupo a ordem que o autor
-    // do nó escreveu sobrevive — a alternativa (ordenar por nome) reescreveria a intenção dele.
-    let order = motion.registry.param_group_order(type_id);
-    let group_of = |row: &ParamRow| -> Option<&'static str> {
-        row.params()
-            .first()
-            .and_then(|p| motion.registry.param_group(type_id, p))
-    };
-    rows.sort_by_key(|r| {
-        group_of(r).map_or(0, |g| {
-            1 + order.iter().position(|o| *o == g).unwrap_or(order.len())
-        })
-    });
-    // Onde cada seção começa. Uma seção cujo grupo não produziu row nenhuma (todo param dela
-    // escondido por um `ParamGate`) simplesmente não aparece — cabeçalho sem conteúdo é a
-    // seção-morta irmã do botão-morto.
-    let mut sections: Vec<(String, usize)> = Vec::new();
-    let mut prev: Option<&'static str> = None;
-    for (i, row) in rows.iter().enumerate() {
-        let g = group_of(row);
-        if g != prev
-            && let Some(g) = g
-        {
-            sections.push((g.to_string(), i));
-        }
-        prev = g;
-    }
+    let (rows, sections, folded_by_default) = sections::split_into_sections(rows, motion, type_id);
     Some(ParamsSnapshot {
         node: only,
         title,
         rows,
         modified,
         sections,
+        folded_by_default,
     })
 }

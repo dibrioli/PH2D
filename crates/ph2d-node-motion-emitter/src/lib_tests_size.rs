@@ -235,6 +235,7 @@ fn the_param_list_is_append_only_and_its_tail_is_named() {
         ("size_random", 0.0),
         (crate::MOTION, 0.0),
         (crate::INHERIT, 1.0),
+        (crate::LIFE_RANDOM, 0.0),
     ];
     let names: Vec<&str> = MANIFEST.params.iter().map(|p| p.name).collect();
     let got: Vec<&str> = names[names.len() - TAIL.len()..].to_vec();

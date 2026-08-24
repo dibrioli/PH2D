@@ -24,6 +24,8 @@ use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+// ⚠️ **`Region`, e não `Domain`** — o `Domain` do `port` diz em que PLANO a porta vive.
+use ph2d_motion_region::carve;
 
 mod hash;
 use hash::hash3;
@@ -68,6 +70,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "spacing",
             default: 0.7,
+        },
+        // **A FORMA** (doc 89, folha 01) — `Rect` é a colmeia de sempre, ao bit. A
+        // rede triangular não se dobra para caber num círculo, então a forma RECORTA:
+        // a contagem cai, e é suposto cair. Ver `ph2d_motion_region`.
+        ParamSpec {
+            name: ph2d_motion_region::SHAPE,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: ph2d_motion_region::INNER,
+            default: 0.5,
         },
         ParamSpec {
             name: "seed",
@@ -135,6 +148,19 @@ impl NodeOp for MotionLattice {
             _ => Vec::new(),
         };
         let positions = lattice(rows, cols, spacing, seed, &jitter);
+        // ⚠️ **A extensão é a que a `lattice` de facto ocupa** — a largura leva a
+        // meia célula extra que o desencontro das fileiras ímpares acrescenta, e a
+        // altura vai no passo `ROW_PITCH`. Uma caixa «rows × cols × spacing» daria um
+        // círculo que não encosta na colmeia.
+        let positions = carve(
+            positions,
+            &ph2d_motion_region::Region::of(
+                ctx.param(ph2d_motion_region::SHAPE),
+                (cols as f32 - 1.0) * spacing + spacing * 0.5,
+                (rows as f32 - 1.0) * spacing * ROW_PITCH,
+                ctx.param(ph2d_motion_region::INNER),
+            ),
+        );
         ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
     }
 }
@@ -152,6 +178,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
@@ -212,6 +239,24 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Seed,
     },
+    ParamUiHint {
+        param: ph2d_motion_region::SHAPE,
+        label: "Shape",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: ph2d_motion_region::SHAPE_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: ph2d_motion_region::INNER,
+        label: "Hole",
+        min: 0.0,
+        max: 0.98,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -227,6 +272,16 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
     param: "spacing",
     unit: ParamUnit::Length,
 }];
+
+/// O buraco só existe no anel.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
+    param: ph2d_motion_region::INNER,
+    when: ph2d_motion_region::SHAPE,
+    values: &[ph2d_motion_region::SHAPE_RING],
+}];
+
+#[cfg(test)]
+mod region_tests;
 
 #[cfg(test)]
 mod tests {

@@ -34,6 +34,7 @@ fn snapshot_with_one_modified() -> ParamsSnapshot {
         title: "Grid".into(),
         modified: ["rows".to_string()].into_iter().collect(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![row("rows"), row("cols")],
     }
 }
@@ -111,6 +112,7 @@ fn reverting_a_colour_undoes_all_four_channels() {
         title: "Tint".into(),
         modified: ["c_g".to_string()].into_iter().collect(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Color(ColorRow {
             label: "Colour".into(),
             channels: ["c_r", "c_g", "c_b", "c_a"],
@@ -161,6 +163,7 @@ fn snapshot_with_a_section() -> ParamsSnapshot {
         title: "Remap".into(),
         modified: Default::default(),
         sections: vec![("Range".to_string(), 1)],
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![row("contour"), row("min"), row("max")],
     }
 }

@@ -331,6 +331,14 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // ceiling entry: above 1 the multiplier turns negative and the kernel's floor takes it to
     // zero, i.e. some particles simply vanish, which is a thing to type rather than to drag past.
     ParamUiHint {
+        param: crate::LIFE_RANDOM,
+        label: "Life Random",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
         param: "size_random",
         label: "Size Random",
         min: 0.0,
@@ -425,6 +433,20 @@ pub static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("burst_count", "Burst"),
     ParamGroup::new("burst_time", "Burst"),
     ParamGroup::new("burst_period", "Burst"),
+    // **Quanto cada partícula difere das irmãs** — e a secção NASCE FECHADA.
+    //
+    // ⚠️ **Ela não é arrumação: é o que tira este nó da lista de nós que estouram o dock.**
+    // Com o `life_random` a lista plana passou a desenhar 698 px num corpo de 664, e o gate
+    // `the_dock_overflow_is_named_not_discovered` reprovou — a nota dele já dizia, há dois
+    // blocos, que a resposta era uma secção a nascer fechada, e é esta.
+    //
+    // ⚠️ **Fechada e não escondida:** os três continuam alcançáveis por um clique, e quem
+    // os abre uma vez fica com eles abertos (o store lembra a escolha; o nó só diz como ela
+    // COMEÇA). ⛔ O `probability` fica de fora de propósito — ele decide se uma partícula
+    // NASCE, não o quanto ela difere de quem nasceu, e a nota acima já o mantinha solto.
+    ParamGroup::new("speed_random", "Randomness").folded(),
+    ParamGroup::new("size_random", "Randomness").folded(),
+    ParamGroup::new(crate::LIFE_RANDOM, "Randomness").folded(),
 ];
 
 /// **`Direction` is only offered once a shape gives a particle a radius.**

@@ -300,6 +300,7 @@ mod tests {
                 title: "motion.color_array".into(),
                 modified: Default::default(),
                 sections: Vec::new(),
+                folded_by_default: std::collections::BTreeSet::new(),
                 rows: vec![crate::snapshot::ParamRow::Palette(PaletteRow {
                     name: "palette",
                     label: "Palette".into(),

@@ -70,7 +70,10 @@ mod gpu;
 /// A HISTÓRIA do emissor — a lei do `Emitter Motion` e o construtor do leque.
 mod history;
 use history::history_at;
+mod life;
 pub use history::{INHERIT, MOTION, MOTION_LABELS, history_offsets, history_samples, time_fans};
+pub use life::LIFE_RANDOM;
+use life::life_of;
 mod hash;
 mod params_ui;
 mod trig;
@@ -286,6 +289,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: INHERIT,
             default: 1.0,
         },
+        // **A VARIÂNCIA DE VIDA** — ver [`LIFE_RANDOM`]. ⚠️ **No FIM**, e não junto do
+        // `size_random` de que é irmã: a lista é APPEND-ONLY e há gate a dizê-lo. Um
+        // param novo no meio empurra a cauda, e a cauda é o que o gate NOMEIA.
+        ParamSpec {
+            name: LIFE_RANDOM,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -337,6 +347,7 @@ impl NodeOp for MotionEmitter {
             size: ctx.param("size").max(0.0),
             size_random: ctx.param("size_random"),
             probability: ctx.param("probability"),
+            life_random: ctx.param(LIFE_RANDOM),
         };
         ctx.emit(emit(&spec, ctx.playhead() as f32));
     }
@@ -377,6 +388,9 @@ struct Spec {
     inherit: f32,
     /// A fracção das candidatas que de facto nasce — ver [`LANE_PROB`].
     probability: f32,
+    /// Quanto a vida de cada partícula pode ENCURTAR, em fração de `life` — ver
+    /// [`LIFE_RANDOM`].
+    life_random: f32,
 }
 
 /// **WHEN particles are born** — a steady stream, or all at once.
@@ -535,7 +549,7 @@ fn emit(spec: &Spec, t: f32) -> Stream {
 
     let (mut p, mut vel) = (Vec::with_capacity(n), Vec::with_capacity(n));
     let (mut ids, mut ages) = (Vec::with_capacity(n), Vec::with_capacity(n));
-    let mut sizes = Vec::with_capacity(n);
+    let (mut sizes, mut lives) = (Vec::with_capacity(n), Vec::with_capacity(n));
     for k in 0..n {
         let id = (w.first + k as u32) % ID_WRAP;
         // Where it is born — read BEFORE the direction now, because `Outwards`/`Inwards` are a
@@ -545,6 +559,16 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         // não há estado a consumir, então uma recusa não "gasta" a extracção de ninguém. É a
         // mesma propriedade que faz o scrub deste nó ser grátis, aplicada a mais uma pista.
         if spec.probability < 1.0 && rand01(spec.seed, id, LANE_PROB) >= spec.probability {
+            continue;
+        }
+        // ⚠️ **A idade sobe para aqui porque a VIDA agora decide quem existe**, e ela é
+        // a mesma expressão de sempre — a lei que este nó já pagava: quem decide onde a
+        // partícula nasceu e quanto ela envelheceu tem de ser UM sítio, senão a origem
+        // fica num instante e a idade noutro.
+        let age = w.age_first - spec.spawn.age_step(w.first, k);
+        let my_life = life_of(spec.life, spec.life_random, spec.seed, id);
+        // ⚠️ **Ela morre CEDO, nunca tarde** — ver [`LIFE_RANDOM`]. A janela é o teto.
+        if age > my_life {
             continue;
         }
         let off = birth_offset(
@@ -574,7 +598,6 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         // ⚠️ **A idade é calculada DUAS linhas abaixo, e é a mesma expressão** —
         // ela decide onde a partícula nasceu e quanto já envelheceu, e derivá-la
         // por dois caminhos poria a origem num instante e a idade noutro.
-        let age = w.age_first - spec.spawn.age_step(w.first, k);
         // Onde o emissor ESTAVA. Sem história (modo `Carry`, ou origem parada) é
         // a origem de agora — a expressão que sempre shipou, ao bit.
         let (o, ov) =
@@ -606,6 +629,7 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         let jz = rand01(spec.seed, id, LANE_SIZE) - 0.5;
         let sz = (spec.size * (1.0 + jz * spec.size_random * 2.0)).max(0.0);
         sizes.push([sz, sz]);
+        lives.push(my_life);
     }
     // ⚠️ **`Index`/`Count` contam os SOBREVIVENTES, não as candidatas.** Eles são um facto
     // sobre a lista que sai daqui (o `motion.tint` em gradiente divide por `Count − 1`), e uma
@@ -627,7 +651,11 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         .with("vel", Column::Vec2(vel))
         .with("id", Column::Scalar(ids))
         .with("age", Column::Scalar(ages))
-        .with("life", Column::Scalar(vec![spec.life; n]))
+        // ⚠️ **A coluna `life` é POR PARTÍCULA**, e não o param. É ela que o
+        // `value.attribute(Life)` lê, e é o denominador da fração de vida — com uma
+        // vida variável, um `life` uniforme faria toda curva-sobre-vida mentir
+        // exactamente nas partículas que morrem cedo.
+        .with("life", Column::Scalar(lives))
         .with("Index", Column::Scalar(index))
         .with("Count", Column::Scalar(count))
         .with("size", Column::Vec2(sizes))
@@ -660,6 +688,10 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "life_tests.rs"]
+mod life_tests;
 
 #[cfg(test)]
 #[path = "lib_tests_probability.rs"]

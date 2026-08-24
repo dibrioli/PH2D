@@ -227,5 +227,12 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
     // tabela ALIMENTADA pelo leque, que não existe; enquanto não existir, estes
     // dois modos cozem na CPU — que computa a MESMA resposta, e é tudo o que um
     // caminho de referência tem de fazer (a lei do `MAX_ALIVE`, uma casa acima).
-    applicable: Some(|p| p("probability") >= 1.0 && p(crate::MOTION) < 0.5),
+    // ⛔ **FRONTEIRA NOMEADA, e o `life_random` entra nela pelo MESMO mecanismo do
+    // `probability`:** uma morte por-partícula torna a contagem dependente de DADOS, e a
+    // `count_law` é obrigada a devolver a largura antes de o kernel correr (ela só vê
+    // params). Mapear a invocação à i-ésima sobrevivente pede um prefix-sum — a máquina
+    // do `motion.cull` existe, ligá-la a um GERADOR é uma wave própria.
+    applicable: Some(|p| {
+        p("probability") >= 1.0 && p(crate::MOTION) < 0.5 && p(crate::LIFE_RANDOM) <= 0.0
+    }),
 };

@@ -41,6 +41,21 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod hash;
 mod poisson;
 
+// ⚠️ **`Region`, e não `Domain`** — este arquivo já importa o `Domain` do
+// `ph2d_nodegraph::port`, que diz em que PLANO de dados a porta vive.
+use ph2d_motion_region::Region;
+
+/// A chave do param **da densidade graduada** — quanto a densidade cai do coração da
+/// região até à fronteira dela. Aqui ela vira o RAIO local.
+pub const DENSITY_FALLOFF: &str = "density_falloff";
+
+/// O buraco só existe no anel.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
+    param: ph2d_motion_region::INNER,
+    when: ph2d_motion_region::SHAPE,
+    values: &[ph2d_motion_region::SHAPE_RING],
+}];
+
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// The static contract of this node type (ADR-0031).
@@ -75,6 +90,21 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 1.0,
         },
+        // **A REGIÃO** (doc 89, folha 01) — `Rect` é o retângulo de sempre, ao bit.
+        ParamSpec {
+            name: ph2d_motion_region::SHAPE,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: ph2d_motion_region::INNER,
+            default: 0.5,
+        },
+        // **A DENSIDADE GRADUADA** — aqui ela é o RAIO, e por isso é capacidade e não
+        // ergonomia (ver `poisson::sample`). `0` é uniforme, e uniforme é o de hoje.
+        ParamSpec {
+            name: DENSITY_FALLOFF,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -91,7 +121,13 @@ impl NodeOp for DistributePoisson {
         let w = ctx.param("width");
         let h = ctx.param("height");
         let seed = ctx.param("seed").max(0.0).round() as u32;
-        let pts = poisson::sample(w, h, radius, seed);
+        let region = Region::of(
+            ctx.param(ph2d_motion_region::SHAPE),
+            w,
+            h,
+            ctx.param(ph2d_motion_region::INNER),
+        );
+        let pts = poisson::sample(&region, w, h, radius, ctx.param(DENSITY_FALLOFF), seed);
         ctx.emit(Stream::new(pts.len()).with("P", Column::Vec2(pts)));
     }
 }
@@ -110,6 +146,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
@@ -147,6 +184,32 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Seed,
     },
+    ParamUiHint {
+        param: ph2d_motion_region::SHAPE,
+        label: "Shape",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: ph2d_motion_region::SHAPE_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: ph2d_motion_region::INNER,
+        label: "Hole",
+        min: 0.0,
+        max: 0.98,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: DENSITY_FALLOFF,
+        label: "Density Falloff",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -172,6 +235,9 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
         unit: ParamUnit::Length,
     },
 ];
+
+#[cfg(test)]
+mod region_tests;
 
 #[cfg(test)]
 mod tests {

@@ -19,6 +19,7 @@ fn painted_ramp(
         title: "Color Ramp".into(),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Gradient(GradientRow {
             name: "ramp",
             label: "Gradient".into(),
@@ -134,6 +135,7 @@ fn the_gradient_editor_is_reachable_and_wired() {
         title: "Color Ramp".into(),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Gradient(GradientRow {
             name: "ramp",
             label: "Gradient".into(),

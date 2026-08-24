@@ -251,6 +251,15 @@ pub struct ParamGroup {
     pub param: &'static str,
     /// O título da seção, em inglês (HR-15: a face do artista sai por i18n no painel).
     pub group: &'static str,
+    /// **Esta seção NASCE FECHADA.**
+    ///
+    /// ⚠️ **É o NÓ que diz como a seção começa; é o STORE que lembra o que o artista
+    /// escolheu.** Um default guardado no store seria um segundo sítio onde o desenho de
+    /// um nó vive, e os dois podiam discordar — o painel semeia isto uma vez e depois
+    /// nunca mais escreve por cima da escolha de quem clicou.
+    ///
+    /// `false` em toda seção que já existia, então nada se dobra por esta emenda.
+    pub folded: bool,
 }
 
 impl ParamGroup {
@@ -262,7 +271,22 @@ impl ParamGroup {
     /// cópias de `const fn g(..)` são seis respostas à mesma pergunta.
     #[must_use]
     pub const fn new(param: &'static str, group: &'static str) -> Self {
-        Self { param, group }
+        Self {
+            param,
+            group,
+            folded: false,
+        }
+    }
+
+    /// **Esta seção nasce FECHADA** — `ParamGroup::new("speed_random", "Randomness").folded()`.
+    ///
+    /// Um construtor a mais e não um campo no `new`, porque as dezenas de entradas que já
+    /// existem não têm de reescrever nada: a emenda é apendada, e o default é o que sempre
+    /// houve.
+    #[must_use]
+    pub const fn folded(mut self) -> Self {
+        self.folded = true;
+        self
     }
 }
 

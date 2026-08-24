@@ -34,6 +34,11 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod hash;
 use hash::hash3;
+// ⚠️ **`Region`, e não `Domain`** — a palavra `Domain` já é da casa: no
+// `ph2d_nodegraph::port` ela diz em que PLANO de dados a porta vive (instâncias,
+// vetor, campo). Reusá-la para «a região do plano» daria dois sentidos ao mesmo
+// nome dentro deste arquivo, que importa os dois.
+use ph2d_motion_region::Region;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -42,6 +47,10 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// constant — the blue-noise quality is already excellent and the cost stays
 /// `O(N²·K)` linear in K.
 const CANDIDATES: u32 = 12;
+
+/// A chave do param **da densidade graduada** — quanto a densidade cai do coração
+/// da região até à fronteira dela.
+pub const DENSITY_FALLOFF: &str = "density_falloff";
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -74,6 +83,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "seed",
             default: 1.0,
         },
+        // **A REGIÃO** (doc 89, folha 01) — `Rect` é o retângulo de sempre, ao bit.
+        ParamSpec {
+            name: ph2d_motion_region::SHAPE,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: ph2d_motion_region::INNER,
+            default: 0.5,
+        },
+        // **A DENSIDADE GRADUADA** — `0` é uniforme, e uniforme é o de hoje.
+        ParamSpec {
+            name: DENSITY_FALLOFF,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -89,23 +112,44 @@ fn nearest_sq(p: [f32; 2], placed: &[[f32; 2]]) -> f32 {
         .fold(f32::MAX, f32::min)
 }
 
-/// Lay out `count` blue-noise points in the `w×h` rectangle (centred on the
-/// origin) by best-candidate: for each point, throw `CANDIDATES` hashed darts and
-/// keep the one whose nearest existing neighbour is farthest away.
-fn scatter(count: usize, w: f32, h: f32, seed: u32) -> Vec<[f32; 2]> {
+/// Lay out `count` blue-noise points in `region` (centred on the origin) by
+/// best-candidate: for each point, throw `CANDIDATES` hashed darts and keep the one
+/// whose nearest existing neighbour is farthest away.
+///
+/// ## ⭐ A densidade entra na PONTUAÇÃO, e por isso a contagem não se mexe
+///
+/// O critério de Mitchell é *"o candidato mais longe do que já lá está"*. Com uma
+/// densidade graduada ele passa a ser *"o mais longe **medido em espaçamentos
+/// locais**"* — e como o espaçamento alvo vai com `1/√densidade`, a pontuação é
+/// `nearest² × densidade`. Um candidato numa zona rala só ganha se estiver `√5 ≈
+/// 2,2×` mais afastado, o que dá exactamente `1/5` da densidade de área.
+///
+/// ⚠️ **É isto que a cadeia `field.remap(probability) → motion.cull` NÃO faz.** Ela
+/// sorteia quem morre: pedir 400 pontos com metade da densidade devolve ~200, e a
+/// contagem deixa de ser o que o artista digitou. Aqui `count` continua exacto e o
+/// que muda é **onde** os pontos se acomodam — que é o que a referência (Blender
+/// *Distribute Points on Faces*, `Density Max` × campo) entrega.
+fn scatter(count: usize, region: &Region, falloff: f32, seed: u32) -> Vec<[f32; 2]> {
     let mut placed: Vec<[f32; 2]> = Vec::with_capacity(count);
+    let graded = falloff > 0.0;
     for i in 0..count {
         let mut best = [0.0, 0.0];
-        let mut best_sq = -1.0_f32;
+        let mut best_score = -1.0_f32;
         for k in 0..CANDIDATES {
             let key = i as u32 * CANDIDATES + k;
-            // Two decorrelated lanes → x, y in the centred rectangle.
-            let x = (hash3(seed, key, 0) - 0.5) * w;
-            let y = (hash3(seed, key, 1) - 0.5) * h;
-            let d = nearest_sq([x, y], &placed);
-            if d > best_sq {
-                best_sq = d;
-                best = [x, y];
+            // Two decorrelated lanes → a point drawn uniformly over the region.
+            let p = region.sample(hash3(seed, key, 0), hash3(seed, key, 1));
+            let d = nearest_sq(p, &placed);
+            // ⚠️ Sem gradação a pontuação É a distância — sem uma multiplicação por
+            // `1,0` no caminho, que num `f32` não é a identidade para todo valor.
+            let score = if graded {
+                d * region.density(p, falloff)
+            } else {
+                d
+            };
+            if score > best_score {
+                best_score = score;
+                best = p;
             }
         }
         placed.push(best);
@@ -122,10 +166,14 @@ impl NodeOp for MotionScatter {
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let count = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
-        let w = ctx.param("width");
-        let h = ctx.param("height");
+        let region = Region::of(
+            ctx.param(ph2d_motion_region::SHAPE),
+            ctx.param("width"),
+            ctx.param("height"),
+            ctx.param(ph2d_motion_region::INNER),
+        );
         let seed = ctx.param("seed").max(0.0).round() as u32;
-        let positions = scatter(count, w, h, seed);
+        let positions = scatter(count, &region, ctx.param(DENSITY_FALLOFF), seed);
         ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
     }
 }
@@ -146,8 +194,17 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
+
+/// O buraco só existe no anel — nas outras duas formas ele seria um controle vivo
+/// que não muda nada, que é a doença que um gate cura.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
+    param: ph2d_motion_region::INNER,
+    when: ph2d_motion_region::SHAPE,
+    values: &[ph2d_motion_region::SHAPE_RING],
+}];
 
 use ph2d_node_registry::{ParamHardMax, ParamUiHint, ParamWidget};
 /// **O teto DURO de `count` — e aqui ele é um limite de RECURSO, não um freio ergonômico** (doc 88
@@ -204,6 +261,32 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Seed,
     },
+    ParamUiHint {
+        param: ph2d_motion_region::SHAPE,
+        label: "Shape",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: ph2d_motion_region::SHAPE_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: ph2d_motion_region::INNER,
+        label: "Hole",
+        min: 0.0,
+        max: 0.98,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: DENSITY_FALLOFF,
+        label: "Density Falloff",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -227,9 +310,17 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 ];
 
 #[cfg(test)]
+mod region_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use ph2d_nodegraph::cook::OpResolver;
+
+    /// O retângulo de sempre — o que estes gates mediam antes de a região existir.
+    pub(super) fn rect(w: f32, h: f32) -> Region {
+        Region::of(0.0, w, h, 0.0)
+    }
 
     fn nearest_neighbour_sq(pts: &[[f32; 2]]) -> f32 {
         // The smallest neighbour distance in the whole set — the blue-noise floor.
@@ -246,7 +337,7 @@ mod tests {
     /// Every point lands INSIDE the requested rectangle (centred on the origin).
     #[test]
     fn all_points_lie_in_the_rectangle() {
-        let pts = scatter(200, 4.0, 3.0, 1);
+        let pts = scatter(200, &rect(4.0, 3.0), 0.0, 1);
         assert_eq!(pts.len(), 200);
         for p in &pts {
             assert!(
@@ -263,7 +354,7 @@ mod tests {
     #[test]
     fn it_is_blue_noise_not_white_noise() {
         let (w, h, n, seed) = (4.0, 4.0, 200, 3);
-        let blue = scatter(n, w, h, seed);
+        let blue = scatter(n, &rect(w, h), 0.0, seed);
         // White noise: just the first dart per index (no best-candidate choice).
         let white: Vec<[f32; 2]> = (0..n)
             .map(|i| {
@@ -287,13 +378,13 @@ mod tests {
     #[test]
     fn same_seed_reproduces_and_a_new_seed_re_rolls() {
         assert_eq!(
-            scatter(50, 4.0, 4.0, 1),
-            scatter(50, 4.0, 4.0, 1),
+            scatter(50, &rect(4.0, 4.0), 0.0, 1),
+            scatter(50, &rect(4.0, 4.0), 0.0, 1),
             "reproducible"
         );
         assert_ne!(
-            scatter(50, 4.0, 4.0, 1),
-            scatter(50, 4.0, 4.0, 2),
+            scatter(50, &rect(4.0, 4.0), 0.0, 1),
+            scatter(50, &rect(4.0, 4.0), 0.0, 2),
             "seed re-rolls"
         );
     }

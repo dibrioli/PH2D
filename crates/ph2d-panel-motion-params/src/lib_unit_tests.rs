@@ -22,6 +22,7 @@ fn pixel_row(value_px: f64) -> ParamsSnapshot {
         title: "Emitter".into(),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Scalar(ScalarRow {
             name: "x",
             label: "Origin X".into(),

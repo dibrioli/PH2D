@@ -140,6 +140,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "iterations",
             default: 8.0,
         },
+        // **A MÉTRICA** (doc 89, folha 01) — `Euclidean` é o CVT de sempre, ao bit.
+        ParamSpec {
+            name: METRIC,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -160,13 +165,45 @@ fn sample_pos(s: usize, w: f32, h: f32, res: usize) -> [f32; 2] {
     ]
 }
 
-/// The index of the point nearest to `sp` (squared distance — no `sqrt`).
-fn nearest(sp: [f32; 2], points: &[[f32; 2]]) -> u32 {
+/// A chave do param **da métrica de distância** que decide de que célula um ponto do
+/// plano é.
+pub const METRIC: &str = "metric";
+
+/// Euclidiana — a de sempre, e o default.
+pub const METRIC_EUCLIDEAN: i32 = 0;
+/// Manhattan (`L¹`) — as células saem com fronteiras diagonais e ortogonais.
+pub const METRIC_MANHATTAN: i32 = 1;
+/// Chebyshev (`L∞`) — as células puxam para quadrados alinhados aos eixos.
+pub const METRIC_CHEBYSHEV: i32 = 2;
+
+/// Os rótulos de [`METRIC`], na ordem em que o número os indexa.
+///
+/// ⛔ **A `Minkowski` da referência NÃO entra, e o motivo é o HR-5.** Ela é a família
+/// `(|dx|^p + |dy|^p)^(1/p)` com um expoente livre, e um expoente livre é `powf` — um
+/// transcendental, que não é bit-reprodutível entre plataformas. O replay-hash corre
+/// numa matriz de **três** sistemas operativos, então um `powf` no caminho de um
+/// gerador troca determinismo por um knob.
+///
+/// ⚠️ **E o que se perde é menos do que a lista sugere:** `p = 1` **é** a Manhattan,
+/// `p = 2` **é** a Euclidiana e `p → ∞` **é** a Chebyshev. As três que shipam são os
+/// três marcos da família; o que fica de fora é o contínuo ENTRE elas.
+pub const METRIC_LABELS: &[&str] = &["Euclidean", "Manhattan", "Chebyshev"];
+
+/// The index of the point nearest to `sp` under `metric`.
+///
+/// ⚠️ **A euclidiana continua a comparar o QUADRADO** — sem `sqrt`, exactamente como
+/// antes. As outras duas são monótonas na sua própria distância, então também não
+/// precisam de raiz: o que se compara é sempre a mesma grandeza de cada lado.
+fn nearest(sp: [f32; 2], points: &[[f32; 2]], metric: i32) -> u32 {
     let mut best = 0u32;
     let mut best_d = f32::MAX;
     for (j, p) in points.iter().enumerate() {
         let (dx, dy) = (sp[0] - p[0], sp[1] - p[1]);
-        let d = dx * dx + dy * dy;
+        let d = match metric {
+            METRIC_MANHATTAN => dx.abs() + dy.abs(),
+            METRIC_CHEBYSHEV => dx.abs().max(dy.abs()),
+            _ => dx * dx + dy * dy,
+        };
         if d < best_d {
             best_d = d;
             best = j as u32;
@@ -183,13 +220,13 @@ fn nearest(sp: [f32; 2], points: &[[f32; 2]]) -> u32 {
 /// to the serial version** (float addition order is preserved — the replay-hash gate is
 /// unaffected). This is what lets an animated `relax` stay real-time on a many-core box;
 /// it is a constant-factor (cores×) win, not a change to the `O(count²)` scaling.
-fn lloyd_step(points: &[[f32; 2]], w: f32, h: f32, res: usize) -> Vec<[f32; 2]> {
+fn lloyd_step(points: &[[f32; 2]], w: f32, h: f32, res: usize, metric: i32) -> Vec<[f32; 2]> {
     use rayon::prelude::*;
     let n = points.len();
     // Parallel, order-preserving: sample s → its nearest point index.
     let assign: Vec<u32> = (0..res * res)
         .into_par_iter()
-        .map(|s| nearest(sample_pos(s, w, h, res), points))
+        .map(|s| nearest(sample_pos(s, w, h, res), points, metric))
         .collect();
     // Sequential ordered accumulate (fixed addition order → deterministic).
     let mut sum = vec![[0.0f32; 2]; n];
@@ -224,12 +261,13 @@ fn relaxed_points(
     seed: u32,
     iterations: usize,
     relax: f32,
+    metric: i32,
 ) -> Vec<[f32; 2]> {
     let raw = seed_points(count, w, h, seed);
     let res = resolution(count);
     let mut relaxed = raw.clone();
     for _ in 0..iterations {
-        relaxed = lloyd_step(&relaxed, w, h, res);
+        relaxed = lloyd_step(&relaxed, w, h, res, metric);
     }
     let t = relax.clamp(0.0, 1.0);
     raw.iter()
@@ -256,7 +294,15 @@ impl NodeOp for MotionVoronoi {
             Some(Column::Scalar(v)) => v.first().copied().unwrap_or(1.0),
             _ => 1.0,
         };
-        let positions = relaxed_points(count, w, h, seed, iterations, relax);
+        let positions = relaxed_points(
+            count,
+            w,
+            h,
+            seed,
+            iterations,
+            relax,
+            ctx.param(METRIC).round() as i32,
+        );
         ctx.emit(Stream::new(positions.len()).with("P", Column::Vec2(positions)));
     }
 }
@@ -360,6 +406,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Slider,
     },
+    ParamUiHint {
+        param: METRIC,
+        label: "Distance",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: METRIC_LABELS,
+        },
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -383,6 +439,9 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 ];
 
 #[cfg(test)]
+mod metric_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -403,8 +462,8 @@ mod tests {
     /// clumps). FALSIFIED against the raw seed (`relax = 0`), which keeps the clumps.
     #[test]
     fn lloyd_relaxation_evens_the_cloud() {
-        let raw = relaxed_points(80, 5.0, 5.0, 1, 12, 0.0);
-        let cvt = relaxed_points(80, 5.0, 5.0, 1, 12, 1.0);
+        let raw = relaxed_points(80, 5.0, 5.0, 1, 12, 0.0, METRIC_EUCLIDEAN);
+        let cvt = relaxed_points(80, 5.0, 5.0, 1, 12, 1.0, METRIC_EUCLIDEAN);
         assert!(
             min_pair(&cvt) > min_pair(&raw) * 1.5,
             "the CVT spaces points far better than white noise (cvt {} vs raw {})",
@@ -417,9 +476,9 @@ mod tests {
     /// mid value sits strictly between (each point partway along its migration).
     #[test]
     fn relax_lerps_from_raw_seed_to_the_cvt() {
-        let raw = relaxed_points(40, 5.0, 5.0, 2, 12, 0.0);
-        let cvt = relaxed_points(40, 5.0, 5.0, 2, 12, 1.0);
-        let half = relaxed_points(40, 5.0, 5.0, 2, 12, 0.5);
+        let raw = relaxed_points(40, 5.0, 5.0, 2, 12, 0.0, METRIC_EUCLIDEAN);
+        let cvt = relaxed_points(40, 5.0, 5.0, 2, 12, 1.0, METRIC_EUCLIDEAN);
+        let half = relaxed_points(40, 5.0, 5.0, 2, 12, 0.5, METRIC_EUCLIDEAN);
         // The seed at relax 0 is the plain white-noise draw.
         assert_eq!(raw, seed_points(40, 5.0, 5.0, 2), "relax 0 = raw seed");
         // Halfway is the midpoint of each point's raw→cvt migration.
@@ -432,7 +491,7 @@ mod tests {
     /// Every point stays inside the domain (the Lloyd centroids never leave it).
     #[test]
     fn all_points_stay_in_the_domain() {
-        let pts = relaxed_points(120, 6.0, 4.0, 5, 15, 1.0);
+        let pts = relaxed_points(120, 6.0, 4.0, 5, 15, 1.0, METRIC_EUCLIDEAN);
         assert_eq!(pts.len(), 120);
         for p in &pts {
             assert!(
@@ -446,12 +505,12 @@ mod tests {
     #[test]
     fn same_seed_reproduces_and_a_new_seed_re_rolls() {
         assert_eq!(
-            relaxed_points(50, 5.0, 5.0, 1, 10, 1.0),
-            relaxed_points(50, 5.0, 5.0, 1, 10, 1.0),
+            relaxed_points(50, 5.0, 5.0, 1, 10, 1.0, METRIC_EUCLIDEAN),
+            relaxed_points(50, 5.0, 5.0, 1, 10, 1.0, METRIC_EUCLIDEAN),
         );
         assert_ne!(
-            relaxed_points(50, 5.0, 5.0, 1, 10, 1.0),
-            relaxed_points(50, 5.0, 5.0, 2, 10, 1.0),
+            relaxed_points(50, 5.0, 5.0, 1, 10, 1.0, METRIC_EUCLIDEAN),
+            relaxed_points(50, 5.0, 5.0, 2, 10, 1.0, METRIC_EUCLIDEAN),
         );
     }
 
@@ -501,7 +560,7 @@ mod cost_probe {
             let mut pts = seed_points(count, w, h, seed);
             let t0 = std::time::Instant::now();
             for _ in 0..8 {
-                pts = lloyd_step(&pts, w, h, res);
+                pts = lloyd_step(&pts, w, h, res, METRIC_EUCLIDEAN);
             }
             let ms = t0.elapsed().as_secs_f64() * 1e3;
             eprintln!("  lloyd count {count:>4} res {res:>3} iter 8: {ms:>8.2} ms/frame");

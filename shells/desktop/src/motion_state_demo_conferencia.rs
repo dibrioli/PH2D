@@ -477,6 +477,9 @@ mod bezier;
 /// O anuncio da cena `=87` — o corpo que nao e' um retangulo (folha 03, o P1).
 #[path = "motion_state_demo_conferencia_body.rs"]
 mod body;
+/// O anuncio da cena `=93` — onde as coisas nascem (folha 01, as oito ultimas).
+#[path = "motion_state_demo_conferencia_born.rs"]
+mod born;
 /// A cena do Grupo Y (`=83`) — as portas de campo lidas no elemento 0, e a altura da onda.
 #[path = "motion_state_demo_conferencia_campo.rs"]
 mod campo;
@@ -503,6 +506,7 @@ mod sibling;
 mod slice;
 pub(super) use bezier::bezier_family;
 pub(super) use body::body_family;
+pub(super) use born::born_family;
 pub(super) use campo::field_port_family;
 pub(super) use drawn::drawn_family;
 pub(super) use echo::echo_family;

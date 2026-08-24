@@ -143,6 +143,7 @@ pub(super) fn params_snapshot(
         title: "Backdrop".to_string(),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![
             ParamRow::Text(TextRow {
                 name: "title",

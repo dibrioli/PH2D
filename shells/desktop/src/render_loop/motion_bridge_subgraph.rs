@@ -447,6 +447,7 @@ pub(super) fn params_snapshot(
         title: format!("Group ({} nodes)", inside.len()),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Text(TextRow {
             name: "title",
             label: "Name".to_string(),

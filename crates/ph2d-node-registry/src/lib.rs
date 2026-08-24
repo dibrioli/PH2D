@@ -422,6 +422,22 @@ impl NodeRegistry {
             .map(|g| g.group)
     }
 
+    /// **Os títulos de seção deste tipo que NASCEM FECHADOS** — ver [`ParamGroup::folded`].
+    ///
+    /// Derivado da tabela, nunca escrito ao lado dela: uma segunda lista seria a segunda
+    /// resposta à mesma pergunta, e a que o artista vê é a que envelhece.
+    #[must_use]
+    pub fn param_groups_folded(&self, id: NodeTypeId) -> Vec<&'static str> {
+        let mut v: Vec<&'static str> = self
+            .param_groups(id)
+            .iter()
+            .filter(|g| g.folded)
+            .map(|g| g.group)
+            .collect();
+        v.dedup();
+        v
+    }
+
     /// A tabela de seções deste tipo, crua. Existe para o CENSO — o gate que confere que toda
     /// entrada nomeia um param que o nó de fato declara. Um nome errado aqui não falha: a row
     /// simplesmente não acha grupo nenhum e fica solta, que é indistinguível de uma escolha.

@@ -407,6 +407,16 @@ pub struct ParamsSnapshot {
     /// Vazio = lista plana, que é como todo nó sem tabela de grupos pinta — e como TODOS
     /// pintavam antes do doc 88 B3.
     pub sections: Vec<(String, usize)>,
+    /// **Os títulos de seção que NASCEM FECHADOS** (doc 89, folha 01).
+    ///
+    /// ⚠️ **Um conjunto ao lado, e não um terceiro campo na tupla acima**, porque ele
+    /// responde outra pergunta: as `sections` dizem ONDE um cabeçalho é desenhado (o
+    /// pintor lê isso por row), e isto diz COMO ele começa (o seed lê isso uma vez, na
+    /// fase mutável). Enfiá-los na mesma tupla obrigaria o pintor a carregar um bit que
+    /// ele nunca lê.
+    ///
+    /// Vazio = tudo abre, que é como todo nó pintava antes desta emenda.
+    pub folded_by_default: std::collections::BTreeSet<String>,
 }
 
 /// A param edit the panel asks the shell to apply (M1.P1). Tagged with the node

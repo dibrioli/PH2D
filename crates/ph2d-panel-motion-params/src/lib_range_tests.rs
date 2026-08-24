@@ -19,6 +19,7 @@ fn soft_hard_row(value: f64) -> ParamsSnapshot {
         title: "Emitter".into(),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Scalar(ScalarRow {
             name: "rate",
             label: "Rate".into(),
@@ -43,6 +44,7 @@ fn soft_hard_floor_row(value: f64) -> ParamsSnapshot {
         title: "Noise".into(),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Scalar(ScalarRow {
             name: "frequency",
             label: "Frequency".into(),
@@ -190,6 +192,7 @@ fn integer_soft_hard_row(value: f64) -> ParamsSnapshot {
         title: "Grid".into(),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Scalar(ScalarRow {
             name: "rows",
             label: "Rows".into(),

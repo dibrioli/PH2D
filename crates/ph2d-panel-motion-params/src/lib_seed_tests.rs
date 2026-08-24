@@ -17,6 +17,7 @@ fn scalar_row_snapshot(value: f64) -> ParamsSnapshot {
         title: "Grid".into(),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: vec![ParamRow::Scalar(ScalarRow {
             name: "rows",
             label: "Rows".into(),

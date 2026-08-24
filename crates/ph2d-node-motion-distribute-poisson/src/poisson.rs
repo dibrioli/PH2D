@@ -29,6 +29,13 @@
 //! that is most likely to be already occupied.
 
 use crate::hash::Draws;
+use ph2d_motion_region::Region;
+
+/// Sorteios da SEMENTE numa forma recortada antes de o nó desistir. A aceitação é a
+/// razão de áreas (um disco na sua caixa aceita `π/4 ≈ 79%`, um anel de buraco `0,98`
+/// aceita `~3%`), e `64` leva a probabilidade de falhar todos abaixo de `1e-9` no pior
+/// anel que o [`Region`] deixa construir.
+const SEED_TRIES: u32 = 64;
 
 /// Bridson's cell size is `r/√2` — see the module doc.
 const SQRT2: f32 = std::f32::consts::SQRT_2;
@@ -87,24 +94,52 @@ fn cell_of(p: [f32; 2], cell: f32, gw: usize, gh: usize) -> (usize, usize) {
     (cx, cy)
 }
 
+/// **A GRADE DE FUNDO do Bridson** — as células e o que já foi colocado.
+///
+/// ⚠️ Agrupada por ser um conceito, e não para caber num teto: o `cell`, o `gw`, o `gh`
+/// e o `grid` são a MESMA estrutura (o índice espacial que torna a pergunta *«há alguma
+/// coisa a menos de `r`?»* uma varredura de bloco fixo), e passá-los soltos deixava um
+/// deles poder chegar de outro sítio.
+#[derive(Copy, Clone)]
+struct Bg<'a> {
+    grid: &'a [u32],
+    pts: &'a [[f32; 2]],
+    cell: f32,
+    gw: usize,
+    gh: usize,
+}
+
 /// **The invariant, checked**: is `p` at least `r` from every point already placed?
 ///
 /// A Bridson cell is `r/√2` across, so anything within `r` of `p` lies in the 5×5 block
 /// of cells around it — a fixed scan, which is where the `O(N)` comes from.
-fn far_enough(
-    grid: &[u32],
-    pts: &[[f32; 2]],
-    cell: f32,
-    gw: usize,
-    gh: usize,
-    p: [f32; 2],
-    r: f32,
-) -> bool {
+///
+/// ## ⚠️ Com raio VARIÁVEL o `span` cresce, e o teste é o MÁXIMO dos dois
+///
+/// A densidade graduada faz de `r` uma função do ponto (`r = r_base/densidade`), e aí
+/// duas coisas mudam. **A varredura** deixa de ser 5×5: o vizinho mais distante que
+/// ainda pode conflitar está a `r_max`, logo o bloco é `⌈r_max/cell⌉` células de cada
+/// lado — e é por isso que a densidade tem um PISO (`MIN_DENSITY`), que é o que torna
+/// esse número finito. **E o teste** passa a ser `dist < max(r(p), r(q))`: um ponto
+/// grosso e um fino em conflito têm de concordar sobre quem manda, senão a relação
+/// deixa de ser simétrica e a ordem de colocação muda o resultado.
+///
+/// ⚠️ Sem gradação (`adaptive = None`) este é o corpo de sempre, **verbatim** — o
+/// `span` volta a `2` e `r_sq` a `r·r`.
+fn far_enough(bg: &Bg<'_>, p: [f32; 2], r: f32, adaptive: Option<&Adaptive<'_>>) -> bool {
+    let Bg {
+        grid,
+        pts,
+        cell,
+        gw,
+        gh,
+    } = *bg;
     let (cx, cy) = cell_of(p, cell, gw, gh);
-    let lo_x = cx.saturating_sub(2);
-    let lo_y = cy.saturating_sub(2);
-    let hi_x = (cx + 2).min(gw - 1);
-    let hi_y = (cy + 2).min(gh - 1);
+    let span = adaptive.map_or(2, Adaptive::span);
+    let lo_x = cx.saturating_sub(span);
+    let lo_y = cy.saturating_sub(span);
+    let hi_x = (cx + span).min(gw - 1);
+    let hi_y = (cy + span).min(gh - 1);
     let r_sq = r * r;
     for y in lo_y..=hi_y {
         for x in lo_x..=hi_x {
@@ -114,7 +149,14 @@ fn far_enough(
             }
             let q = pts[at as usize];
             let (dx, dy) = (p[0] - q[0], p[1] - q[1]);
-            if dx * dx + dy * dy < r_sq {
+            let bar = match adaptive {
+                None => r_sq,
+                Some(a) => {
+                    let m = r.max(a.radius(q));
+                    m * m
+                }
+            };
+            if dx * dx + dy * dy < bar {
                 return false;
             }
         }
@@ -122,10 +164,60 @@ fn far_enough(
     true
 }
 
-/// Fill the `w × h` rectangle (centred on the origin) with points no two of which are
-/// closer than `radius`. The count is **implicit** — it is whatever the spacing allows,
-/// which is the whole difference between this node and `motion.scatter`.
-pub(crate) fn sample(w: f32, h: f32, radius: f32, seed: u32) -> Vec<[f32; 2]> {
+/// **A densidade graduada, vista pelo dardo** — o raio local e o quanto ele obriga a
+/// varredura a crescer.
+///
+/// ⚠️ **Ela guarda a meia-extensão** porque este algoritmo autora em `[0,w)×[0,h)` e
+/// só re-centra no fim, enquanto a [`Region`] fala sempre em coordenadas centradas na
+/// origem. *Uma das duas tem de converter, e é quem sabe das duas convenções.*
+struct Adaptive<'a> {
+    region: &'a Region,
+    falloff: f32,
+    base: f32,
+    hw: f32,
+    hh: f32,
+}
+
+impl Adaptive<'_> {
+    /// O raio local em `p` (coordenadas de autoria).
+    fn radius(&self, p: [f32; 2]) -> f32 {
+        self.base
+            / self
+                .region
+                .density([p[0] - self.hw, p[1] - self.hh], self.falloff)
+    }
+
+    /// Quantas células de cada lado a varredura precisa. `r_max = base/MIN_DENSITY` e a
+    /// célula é `base/√2`, então o bloco é `⌈√2/MIN_DENSITY⌉` — **8** com o piso de hoje.
+    fn span(&self) -> usize {
+        (SQRT2 / ph2d_motion_region::MIN_DENSITY).ceil() as usize
+    }
+}
+
+/// Fill `region` (centred on the origin, bounded by the `w × h` box) with points no two
+/// of which are closer than `radius`. The count is **implicit** — it is whatever the
+/// spacing allows, which is the whole difference between this node and `motion.scatter`.
+///
+/// ## ⭐⭐ A densidade aqui é uma CAPACIDADE, não ergonomia
+///
+/// A célula da folha 01 dava a cadeia `poisson → field.remap(probability) → cull` como
+/// exprimindo isto, *"e correto por construção: o cull só REMOVE, então o piso de
+/// distância mínima sobrevive"*. **A primeira metade é verdade e a segunda é o
+/// problema.** Sortear quem morre deixa os sobreviventes no espaçamento original: a
+/// zona rala fica com **buracos**, não com um azul mais grosso. O que a referência
+/// (*Distribute Points on Faces*, `Density Max` × campo) dá é a outra coisa —
+/// **espaçamento maior**, com cada ponto ainda maximamente empacotado para o raio
+/// local. Culling não consegue produzir esse conjunto, porque ele nunca MOVE um ponto.
+///
+/// ⇒ o raio passa a ser `r_base / densidade(p)`, e é isso que um Poisson adaptativo é.
+pub(crate) fn sample(
+    region: &Region,
+    w: f32,
+    h: f32,
+    radius: f32,
+    falloff: f32,
+    seed: u32,
+) -> Vec<[f32; 2]> {
     if !w.is_finite() || !h.is_finite() || !radius.is_finite() || w <= 0.0 || h <= 0.0 {
         return Vec::new();
     }
@@ -143,6 +235,29 @@ pub(crate) fn sample(w: f32, h: f32, radius: f32, seed: u32) -> Vec<[f32; 2]> {
     let mut active: Vec<u32> = Vec::new();
     let mut d = Draws { seed, n: 0 };
 
+    // Author in [0,w)×[0,h), hand back centred on the origin (the convention every
+    // distribution here shares: the rectangle is around where you dropped the node).
+    let (hw, hh) = (w * 0.5, h * 0.5);
+    let adaptive = (falloff > 0.0).then_some(Adaptive {
+        region,
+        falloff,
+        base: r,
+        hw,
+        hh,
+    });
+    // ⚠️ **A caixa é o caminho de sempre, e ele não ganha uma pergunta a mais.** Um
+    // `region.contains` incondicional daria a MESMA resposta num `Rect` e ainda assim
+    // mudaria o resultado, porque o ponto-semente abaixo passa a poder ser rejeitado —
+    // e uma rejeição a mais desloca toda a sequência de sorteios que vem depois.
+    let boxed = region.is_rect();
+    let inside = |p: [f32; 2]| {
+        p[0] >= 0.0
+            && p[0] < w
+            && p[1] >= 0.0
+            && p[1] < h
+            && (boxed || region.contains([p[0] - hw, p[1] - hh]))
+    };
+
     let place = |p: [f32; 2], grid: &mut [u32], pts: &mut Vec<[f32; 2]>, active: &mut Vec<u32>| {
         let (cx, cy) = cell_of(p, cell, gw, gh);
         grid[cy * gw + cx] = pts.len() as u32;
@@ -150,25 +265,46 @@ pub(crate) fn sample(w: f32, h: f32, radius: f32, seed: u32) -> Vec<[f32; 2]> {
         pts.push(p);
     };
 
-    place(
-        [d.next() * w, d.next() * h],
-        &mut grid,
-        &mut pts,
-        &mut active,
-    );
+    // A semente. Numa caixa o primeiro sorteio serve sempre; numa forma recortada ele
+    // pode cair fora, e aí re-sorteia-se um número LIMITADO de vezes — a aceitação de
+    // um anel fino é pequena, mas nunca zero, e desistir devolve o conjunto vazio em
+    // vez de rodar para sempre.
+    let mut seedp = [d.next() * w, d.next() * h];
+    if !boxed {
+        let mut tries = 0;
+        while !inside(seedp) && tries < SEED_TRIES {
+            seedp = [d.next() * w, d.next() * h];
+            tries += 1;
+        }
+        if !inside(seedp) {
+            return Vec::new();
+        }
+    }
+    place(seedp, &mut grid, &mut pts, &mut active);
 
     while !active.is_empty() && pts.len() < MAX_CELLS {
         // Bridson picks the active point at RANDOM (not FIFO): the front grows in every
         // direction at once instead of sweeping across the rectangle in a wave.
         let a = ((d.next() * active.len() as f32) as usize).min(active.len() - 1);
         let center = pts[active[a] as usize];
+        // O anel de dardos usa o raio LOCAL do ponto ativo: numa zona rala ele atira
+        // mais longe, que é como o espaçamento maior de facto acontece.
+        let local = adaptive.as_ref().map_or(r, |ad| ad.radius(center));
         let mut landed = false;
         for _ in 0..K {
-            let c = dart(&mut d, center, r);
-            if c[0] < 0.0 || c[0] >= w || c[1] < 0.0 || c[1] >= h {
+            let c = dart(&mut d, center, local);
+            if !inside(c) {
                 continue;
             }
-            if far_enough(&grid, &pts, cell, gw, gh, c, r) {
+            let bar = adaptive.as_ref().map_or(r, |ad| ad.radius(c));
+            let bg = Bg {
+                grid: &grid,
+                pts: &pts,
+                cell,
+                gw,
+                gh,
+            };
+            if far_enough(&bg, c, bar, adaptive.as_ref()) {
                 place(c, &mut grid, &mut pts, &mut active);
                 landed = true;
                 break;
@@ -179,15 +315,17 @@ pub(crate) fn sample(w: f32, h: f32, radius: f32, seed: u32) -> Vec<[f32; 2]> {
         }
     }
 
-    // Author in [0,w)×[0,h), hand back centred on the origin (the convention every
-    // distribution here shares: the rectangle is around where you dropped the node).
-    let (hw, hh) = (w * 0.5, h * 0.5);
     pts.iter().map(|p| [p[0] - hw, p[1] - hh]).collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// O retangulo de sempre — o que estes gates mediam antes de a regiao existir.
+    fn rect(w: f32, h: f32) -> Region {
+        Region::of(0.0, w, h, 0.0)
+    }
 
     /// The closest pair in the set. `f32::MAX` for fewer than two points.
     fn min_gap(pts: &[[f32; 2]]) -> f32 {
@@ -205,7 +343,7 @@ mod tests {
     #[test]
     fn no_two_points_are_closer_than_the_radius() {
         for seed in 0..6u32 {
-            let pts = sample(4.0, 3.0, 0.3, seed);
+            let pts = sample(&rect(4.0, 3.0), 4.0, 3.0, 0.3, 0.0, seed);
             assert!(pts.len() > 10, "seed {seed} produced almost nothing");
             let gap = min_gap(&pts);
             assert!(
@@ -222,7 +360,7 @@ mod tests {
     #[test]
     fn it_actually_fills_the_rectangle() {
         let (w, h, r) = (4.0f32, 3.0f32, 0.3f32);
-        let pts = sample(w, h, r, 1);
+        let pts = sample(&rect(w, h), w, h, r, 0.0, 1);
         let hex_max = (w * h) / (r * r * 0.866);
         let ratio = pts.len() as f32 / hex_max;
         assert!(
@@ -247,8 +385,8 @@ mod tests {
     /// the family, and the thing that makes this node different from `motion.scatter`.
     #[test]
     fn halving_the_radius_roughly_quadruples_the_count() {
-        let coarse = sample(4.0, 4.0, 0.4, 1).len();
-        let fine = sample(4.0, 4.0, 0.2, 1).len();
+        let coarse = sample(&rect(4.0, 4.0), 4.0, 4.0, 0.4, 0.0, 1).len();
+        let fine = sample(&rect(4.0, 4.0), 4.0, 4.0, 0.2, 0.0, 1).len();
         let factor = fine as f32 / coarse as f32;
         assert!(
             (3.0..5.0).contains(&factor),
@@ -260,8 +398,14 @@ mod tests {
     /// exact same layout — and another seed redraws a different one.
     #[test]
     fn the_layout_is_a_pure_function_of_the_seed() {
-        assert_eq!(sample(4.0, 3.0, 0.3, 5), sample(4.0, 3.0, 0.3, 5));
-        assert_ne!(sample(4.0, 3.0, 0.3, 5), sample(4.0, 3.0, 0.3, 6));
+        assert_eq!(
+            sample(&rect(4.0, 3.0), 4.0, 3.0, 0.3, 0.0, 5),
+            sample(&rect(4.0, 3.0), 4.0, 3.0, 0.3, 0.0, 5)
+        );
+        assert_ne!(
+            sample(&rect(4.0, 3.0), 4.0, 3.0, 0.3, 0.0, 5),
+            sample(&rect(4.0, 3.0), 4.0, 3.0, 0.3, 0.0, 6)
+        );
     }
 
     /// **A radius of zero must not hang the app, and must not allocate the world.** A
@@ -270,7 +414,7 @@ mod tests {
     #[test]
     fn a_pathological_radius_is_bounded_not_fatal() {
         for r in [0.0, -1.0, f32::NAN, f32::INFINITY, 1e-30] {
-            let pts = sample(4.0, 4.0, r, 1);
+            let pts = sample(&rect(4.0, 4.0), 4.0, 4.0, r, 0.0, 1);
             assert!(
                 pts.len() <= MAX_CELLS,
                 "radius {r} produced {} points",
@@ -278,9 +422,9 @@ mod tests {
             );
         }
         // A degenerate rectangle is empty, not a panic.
-        assert!(sample(0.0, 4.0, 0.3, 1).is_empty());
-        assert!(sample(f32::NAN, 4.0, 0.3, 1).is_empty());
+        assert!(sample(&rect(0.0, 4.0), 0.0, 4.0, 0.3, 0.0, 1).is_empty());
+        assert!(sample(&rect(f32::NAN, 4.0), f32::NAN, 4.0, 0.3, 0.0, 1).is_empty());
         // A radius larger than the rectangle fits exactly one point (the seed dart).
-        assert_eq!(sample(1.0, 1.0, 10.0, 1).len(), 1);
+        assert_eq!(sample(&rect(1.0, 1.0), 1.0, 1.0, 10.0, 0.0, 1).len(), 1);
     }
 }

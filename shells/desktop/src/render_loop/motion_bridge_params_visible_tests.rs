@@ -188,11 +188,18 @@ fn a_threshold_gated_row_is_hidden_at_the_neutral_and_shown_above_it() {
 #[test]
 fn a_node_with_no_gate_table_shows_every_param() {
     let reg = registry();
-    let m = manifest_of(&reg, "motion.grid");
-    assert!(
-        reg.param_gates(m.id).is_none() && reg.param_gates_above(m.id).is_none(),
-        "o controle negativo precisa de um no' SEM tabela; escolha outro"
-    );
+    // ⚠️ **O nó é DERIVADO, não nomeado.** Ele era `motion.grid` escrito à mão, e o dia em
+    // que aquele nó ganhou uma tabela (a forma do domínio, doc 89 folha 01) este controle
+    // reprovou sobre produto correcto. *Uma lista escrita à mão ao lado de um predicado é a
+    // segunda resposta à mesma pergunta, e a que envelhece.*
+    let m = reg
+        .manifests()
+        .find(|m| {
+            m.params.len() >= 2
+                && reg.param_gates(m.id).is_none()
+                && reg.param_gates_above(m.id).is_none()
+        })
+        .expect("ha' pelo menos um no' SEM tabela de gates -- senao este controle e' vazio");
     let vis = Visibility::of(&reg, m.id);
     for p in m.params {
         assert!(

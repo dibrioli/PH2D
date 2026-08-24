@@ -40,6 +40,9 @@ pub(super) fn spec() -> Spec {
         // The one size every particle had before `size_random` existed — declared, never
         // inherited, the same reason the three above are.
         size_random: 0.0,
+        // A vida única que toda partícula tinha antes do `life_random` — DECLARADA, nunca
+        // herdada, pela mesma razão que as cinco acima.
+        life_random: 0.0,
     }
 }
 

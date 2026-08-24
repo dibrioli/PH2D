@@ -28,6 +28,7 @@ fn node_with_rows(n: usize) -> ParamsSnapshot {
         title: "Fixture".into(),
         modified: Default::default(),
         sections: Vec::new(),
+        folded_by_default: std::collections::BTreeSet::new(),
         rows: (0..n)
             .map(|i| {
                 ParamRow::Scalar(ScalarRow {

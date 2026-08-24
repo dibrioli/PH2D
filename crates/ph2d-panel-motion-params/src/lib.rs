@@ -185,6 +185,33 @@ impl Panel for MotionParamsPanel {
         // `paint_rows` draws + registers hit rects (it holds `hit_index`); a Curve row's
         // `CurvePoint`/`Button` STORE states cannot be registered through the immutable
         // store here, so they ride back in `curve_widgets` for Phase C below.
+        // ── A SEMENTE DAS SEÇÕES, **antes** do desenho que ela governa ───────────────
+        //
+        // O collapse genérico exige DOIS sítios: o hit-rect (no paint) e a MARCA aqui. Sem a
+        // marca o cabeçalho pinta um chevron e não dobra — o título morto que o painel do
+        // Vector já pagou. Marcado na fase mutável porque os títulos são do NÓ selecionado,
+        // e o `populate` (estático) não os conhece.
+        //
+        // ⚠️ **Isto vivia na fase C, DEPOIS do `paint_rows`, e mudar de sítio foi uma
+        // CORREÇÃO, não arrumação:** uma seção que nasce fechada era desenhada ABERTA no
+        // primeiro quadro e só fechava no seguinte — um pisca visível, e o censo de altura
+        // (que pinta exactamente uma vez) media o nó com a seção aberta e a acusar de
+        // estourar o dock. *Uma semente que corre depois do desenho que ela governa mostra
+        // um quadro do estado errado.*
+        //
+        // ⚠️ **`collapsed_choice` distingue «o artista não escolheu» de «ele escolheu
+        // aberto»** — sem essa distinção este laço re-fecharia a gaveta a cada quadro, e o
+        // clique de quem a abriu duraria um frame.
+        {
+            let store = ctx.host.store_mut();
+            for (title, _) in &snap.sections {
+                let id = rows_paint::sections::section_id(title);
+                store.mark_collapsible_section(id);
+                if snap.folded_by_default.contains(title) && store.collapsed_choice(id).is_none() {
+                    store.set_collapsed(id, true);
+                }
+            }
+        }
         let (curve_widgets, gradient_widgets, content_h) = {
             let scene = &mut *ctx.scene;
             let text_system = &mut *ctx.text_system;
@@ -230,9 +257,6 @@ impl Panel for MotionParamsPanel {
             // Sem a marca o cabeçalho pinta um chevron e não dobra — o título morto que o
             // painel do Vector já pagou. Marcado na fase mutável porque os títulos são do NÓ
             // selecionado, e o `populate` (estático) não os conhece.
-            for (title, _) in &snap.sections {
-                store.mark_collapsible_section(rows_paint::sections::section_id(title));
-            }
             for row in &snap.rows {
                 if let ParamRow::Color(c) = row {
                     store.register_picker_swatch(param_swatch_id(c.channels[0]));

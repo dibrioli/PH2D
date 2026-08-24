@@ -115,28 +115,84 @@ Gerar ≥20 identificadores idiossincráticos **exige ler o fonte do alvo GPL**.
 
 ---
 
+### Literatura lida (a fonte REAL da espec)
+
+⭐ **A rota escolhida ([ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md))
+é clean-room dos *papers*** — logo a travessia integral do fonte copyleft **não é o insumo**,
+e não foi feita. O insumo é público:
+
+| fonte | uso | onde |
+|---|---|---|
+| QEx (SIGGRAPH Asia 2013) | §2–§6 da espec | público; ⚠️ PDF de **imagem**, extraído com `pdftotext -layout` |
+| Mixed-Integer Quadrangulation (SIGGRAPH 2009) | §5 e **§5.1** da espec | público — ⭐ **corrigiu** a 1ª redacção, que dizia «re-resolva» onde a receita é uma **escada adaptativa** |
+| Integer-Grid Maps (SIGGRAPH 2013) · Ray (arXiv 2025) | contexto | públicos |
+
+⚠️ Cópias locais em `~/Referencias/papers/` (zona contaminada por convenção; ⛔ o
+Implementador busca-as pelos **URLs** do cabeçalho da espec, não por lá).
+
+### Instrumentação do oráculo (§5 da skill)
+
+| artefacto | onde | estatuto |
+|---|---|---|
+| biblioteca **MPL-2.0** clonada | `~/Referencias/directional/` | permissiva; corrida como oráculo |
+| arnês C++ (leitor OBJ/OFF, despejo do mapa, modo `so-mapa`, `lengthRatio`) | `~/Referencias/directional-bench/` | escrito por E |
+| exportador do **nosso** campo + **fase zero** (`ph2d-remesh-iso`) + régua de **curl** | `~/Referencias/directional-bench/rustfield/` | escrito por E; depende das nossas crates por caminho |
+| régua por-face (espelho do `QuadShape`) e verificador do mapa | idem, e **o verificador entrou no repo** | dados/harness |
+| ⭐ **fixtures** publicados a I | `docs/3D/cleanroom/fixtures/` | **dados** — entrada nossa, campo nosso |
+
+⛔ **Nada do oráculo entrou no repositório** além de **saídas** (mapas verificados) e do
+verificador escrito por E.
+
+---
+
 ## Papel I — Implementador
 
 _(a preencher quando a janela I abrir; declaração do §6 exigida)_
+⇒ o canal de ida é [`INBOX_quadwild.md`](INBOX_quadwild.md) (append **cego**).
+⇒ o bloco pronto a colar está em [`BLOCOS_para_colar.md`](BLOCOS_para_colar.md).
 
 ---
 
 ## Papel R — Revisor
 
-- Modo PRÉ: _(pendente — exige janela que NÃO seja esta)_
-- Modo PÓS: _(pendente)_
+- **Modo PRÉ:** ⏳ **PENDENTE — e é condição de abertura da janela I.**
+  ⚠️ Exige janela que **NÃO** seja esta (autofiltragem não se audita). Bloco pronto em
+  [`BLOCOS_para_colar.md`](BLOCOS_para_colar.md) §1.
+- **Modo PÓS:** ⏳ pendente (após paridade verde).
+
+---
+
+## Espec entregue
+
+| versão | caminho | `sha256` (16) |
+|---|---|---|
+| 1 (2026-08-24) | [`SPEC_extracao_de_malha_quad.md`](SPEC_extracao_de_malha_quad.md) | `4455ee56e1ae6ae5` |
+
+⚠️ **A espec foi corrigida três vezes no dia da entrega**, sempre por medição — as correcções
+estão no corpo dela e na [`TRIAGEM §5-bis`](TRIAGEM_quad_remesh.md). A auditoria R-pré incide
+sobre **esta** versão.
 
 ---
 
 ## Incidentes
 
-_(vazio)_
+⚠️ **Um, e é do repositório, não da janela.** O sweep de abertura achou **~460 notas** no repo
+**inteiro** a citar arquivo de fonte interno de alvo restrito, **25 com transcrição** —
+anterior a esta linha e à própria skill. ⛔ **DESCRITO, nunca reproduzido**, em
+[`ACHADO_proveniencia_por_nome_interno.md`](ACHADO_proveniencia_por_nome_interno.md).
+
+- **Régua do §6.2:** todas são *assinatura/nome isolado* ⇒ **relance**, não substancial.
+  ⇒ **nenhuma janela é queimada por elas.**
+- **Curado:** a família do quad remesh está a **ZERO na árvore rastreada** (com controlo
+  positivo vermelho), e a memória contaminada foi re-expressa.
+- ⏳ **Aberto:** a família Blender (~420 de Classe A, ~21 de Classe B) — exige vassoura
+  própria, que **não existe**.
 
 ---
 
 ## Fechamento R
 
-_(pendente)_
+_(pendente — modo PÓS)_
 
 ---
 

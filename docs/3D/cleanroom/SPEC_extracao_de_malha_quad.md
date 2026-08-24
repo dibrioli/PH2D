@@ -8,10 +8,15 @@ Filtragem §4.3: executada 2026-08-24 · Sweep: verde 2026-08-24
 Auditoria §4.2 (R-pré): ⏳ PENDENTE — exige janela que NÃO seja a E
 Mapa de leitura da literatura:
   · Ebke, Bommes, Campen, Kobbelt — "QEx: Robust Quad Mesh Extraction", SIGGRAPH Asia 2013.
-    ⭐ A fonte principal desta espec. Cópia local: ~/Referencias/papers/qex2013.pdf (+ .txt).
+    ⭐ A fonte principal desta espec (§2-§6).
+    URL: https://www.graphics.rwth-aachen.de/media/papers/ebck2013_1.pdf
+    ⚠️ O PDF é de IMAGEM — um leitor de página devolve lixo binário. Use
+       `pdftotext -layout <pdf> <txt>`; sai legível (777 linhas).
     ⛔ NÃO existe apêndice de listagem: o paper publica pseudo-código de NÍVEL DE PAPER,
        que é lícito (§4.1.10). Ainda assim esta espec RE-DESCREVE, nunca transcreve.
-  · Bommes et al. — "Mixed-Integer Quadrangulation", SIGGRAPH 2009 (o arredondamento).
+  · Bommes, Zimmer, Kobbelt — "Mixed-Integer Quadrangulation", SIGGRAPH 2009.
+    ⭐ A fonte do §5 (o arredondamento guloso + a escada adaptativa do solver).
+    URL: https://www.graphics.rwth-aachen.de/media/papers/bommes_zimmer_2009_siggraph_011.pdf
   · Bommes et al. — "Integer-Grid Maps for Reliable Quad Meshing", SIGGRAPH 2013 (o mapa).
   · Shewchuk — "Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric
     Predicates", 1996 (o predicado de orientação exacto).
@@ -275,14 +280,46 @@ de uma carta não casa com a da vizinha e a §2 apenas *arredonda o erro para de
 **arredondar UMA variável de cada vez e RE-RESOLVER**, nunca em lote.
 
 1. Resolva o sistema contínuo (mínimos quadrados com as costuras).
-2. Entre as variáveis ainda livres que têm de ser inteiras, escolha a **mais próxima de um
-   inteiro** — a de menor `|x − round(x)|`.
-3. **Pregue-a** nesse inteiro e **re-resolva** o sistema com essa restrição.
+2. Entre as variáveis ainda livres que têm de ser inteiras, escolha a que **causa o menor
+   erro de arredondamento** — a de menor `|x − round(x)|`.
+3. **Pregue-a** nesse inteiro e **actualize** a parte contínua (§5.1).
 4. Repita até não sobrar variável livre.
 
-⭐ **Por que uma-a-uma:** pregar todas de uma vez desloca todas as outras ao mesmo tempo, e
-o erro **soma**. Re-resolver depois de cada uma deixa o sistema **absorver** o deslocamento
-nas que ainda estão livres.
+⭐ **Por que uma-a-uma:** arredondar todas de uma vez desloca todas as outras ao mesmo tempo,
+e o erro **soma**. Actualizar depois de cada uma deixa o sistema **absorver** o deslocamento
+nas que ainda estão livres. *A premissa é que um erro de arredondamento pequeno tem impacto
+pequeno no resultado final — e é por isso que se escolhe sempre o menor.*
+
+### §5.1 — ⭐⭐⭐ A ACTUALIZAÇÃO é adaptativa, e NÃO é um re-solve completo
+
+⛔⛔ **Aqui estava o erro da 1ª redacção desta espec**, corrigido contra o *paper* de 2009: ela
+dizia *«re-resolva o sistema»*. Re-resolver do zero **`k` vezes** é exactamente o custo que o
+método foi desenhado para não pagar. A receita é uma **escada de três degraus**, subida só
+quando o degrau anterior não converge:
+
+**Degrau 1 — Gauss-Seidel LOCAL** (o caminho normal, e quase sempre o único):
+
+- arredonde `x_i`; ponha na fila os índices dos **não-zeros da linha `i`** da matriz;
+- enquanto a fila não esvaziar **e** o contador não estourar o tecto:
+  - tire `x_k` da fila; calcule o resíduo `r_k = b_k − Σ_j A_kj·x_j`;
+  - se `|r_k|` passar a tolerância: `x_k ← x_k − r_k / A_kk`, e ponha na fila os
+    **não-zeros da linha `k`**.
+
+⭐ *A propagação segue o grafo de dependências, e na prática pára cedo: uma variável
+arredondada mexe num vizinho local, não na malha inteira.*
+
+**Degrau 2 — gradiente conjugado**, se o contador estourar o tecto (não convergiu localmente).
+
+**Degrau 3 — factorização esparsa directa**, só se ainda for preciso.
+⚠️ **Ela só é necessária quando se arredonda uma variável de grande impacto**, e os autores
+registam que esta escada adaptativa é **mais eficiente que ficar por um solver iterativo puro**.
+
+⚠️ **Restrições lineares** entram eliminando **uma variável por restrição independente** —
+não como equações extra no sistema.
+
+⛔ **O que medir, e é o que separa esta espec de uma tradução:** a **fracção de arredondamentos
+que fica no degrau 1**. Se ela for baixa, o tecto de iterações ou a tolerância estão mal
+escolhidos — e o custo vai para o degrau 3, que é o que se queria evitar.
 
 ⚠️ **Duas modalidades, e a escolha é de produto:**
 - **arredondar as COSTURAS** — as variáveis de translação. Mais rápido.
@@ -481,7 +518,9 @@ transição legítima).
 |---|---|---|
 | ⛔ **Não usar tolerância com `ε` no lugar de predicado exacto** | obriga a intersectar uma bola com toda a vizinhança e a decidir consistentemente em ambiguidades: mais código, mais lento, e não fecha | §1 |
 | ⛔ **Não saltar o saneamento de precisão** | pontos de grade caem na fenda entre dois triângulos **ou nos dois**, e isso é o caso NORMAL onde há alinhamento a feição | §2.3 |
-| ⛔ **Não arredondar as variáveis inteiras em LOTE** | o erro soma; o nome do método é *misto-inteiro* precisamente por ser uma-a-uma com re-solve | §5 |
+| ⛔ **Não arredondar as variáveis inteiras em LOTE** | o erro soma; o nome do método é *misto-inteiro* precisamente por ser uma-a-uma | §5 |
+| ⛔⛔ **Não re-resolver o sistema inteiro após cada arredondamento** | é o custo que o método existe para evitar; a receita é **Gauss-Seidel local ⇒ gradiente conjugado ⇒ directo**, subindo só quando não converge | §5.1 |
+| ⛔ **Não meter as restrições lineares como equações extra** | elimina-se **uma variável por restrição independente** | §5.1 |
 | ⛔ **Não terminar o arredondamento ao esgotar as singularidades** | numa peça com alça sobram costuras por arredondar e o mapa fica *quase* inteiro — que é pior que contínuo | §5 |
 | ⛔ **Não guardar as saídas na ordem do DOMÍNIO** | transições e triângulos dobrados quebram a correspondência com a ordem na superfície, e *virar à esquerda* deixa de funcionar | §4 |
 | ⛔ **Não esquecer a transição do LEQUE** na acumulação | dá coordenadas locais impossíveis e a fusão não converge | §6.2 |

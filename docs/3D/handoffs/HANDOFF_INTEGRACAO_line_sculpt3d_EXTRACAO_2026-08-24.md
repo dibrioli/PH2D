@@ -17,6 +17,8 @@
 | 6 | ⛔ **O achado do sweep**: ~460 notas do repo **inteiro** citam fonte interno de alvo restrito, 25 com transcrição — **zero fonte de alvo na árvore** | [`ACHADO`](../cleanroom/ACHADO_proveniencia_por_nome_interno.md) |
 | 7 | ledger, vassoura (24 entradas, base64) e o README de `cleanroom/` | `docs/3D/cleanroom/` |
 | 8 | duas curas: a memória contaminada, e o fato de licença colado à cerca do Blossom | `project-memory/` · `crates/ph2d-quantize/` |
+| 9 | ⭐ **os blocos dos três papéis, preenchidos**, + o `INBOX` do Implementador + o ledger fechado do lado do E | [`BLOCOS_para_colar.md`](../cleanroom/BLOCOS_para_colar.md) · `INBOX_quadwild.md` |
+| 10 | ⭐⭐ **A cadeia MEDIDA ponta a ponta**: fase zero (o nosso F1) · campo (o nosso, que **bate** o do oráculo) · mapa (verificado a `3,55e-15`) · extração (`5,1°`–`5,5°`, `100%` quads) | `TRIAGEM` §5-bis.3-quater e §5-bis.7 |
 
 ## §2 — O número, e o que ele muda
 
@@ -61,6 +63,8 @@ depende do nosso F1 ser tão bom quanto o dele, e **isso ainda não foi medido**
 
 1. ⏳ **A auditoria R-pré da espec** (SKILL_Cleanroom §3.R, modo PRÉ) — **condição** de abertura
    da janela que implementa. ⚠️ Tem de ser **janela que não seja esta**.
+   👉 ⭐ **O bloco está pronto a colar** em [`BLOCOS_para_colar.md`](../cleanroom/BLOCOS_para_colar.md) §1.
+   *Uma ferramenta que nenhum passo escrito chama pelo nome morre* — por isso ela tem um passo.
 2. ⛔ **A obra 1 — o arredondamento inteiro** uma-a-uma com re-solve (espec §5), na
    `ph2d-gridmap`. Fecha o bloqueador nomeado (resíduo `0,291` de célula).
 3. ⛔ **A obra 2 — a extracção** (espec §2–§6). ⭐ **Pode começar JÁ**, contra os fixtures.

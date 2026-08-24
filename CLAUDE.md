@@ -512,11 +512,22 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   acertar são coisas diferentes*). ⇒ **A distorção nasce entre o DOMÍNIO e a SUPERFÍCIE**: mesmo com F3,
   marcação e domínio perfeitos, o preenchimento por patch fica em `15°` (o oráculo faz `6°`) — a mesma
   diferença de classe, local contra global, que motivou o pivô, um nível abaixo. **A obra seguinte é a
-  EXTRACÇÃO** (QEx, Ebke 2013 — o *paper*; ⛔ a `libQEx` é GPL): pôr os pontos da grade nas isolinhas
-  inteiras do mapa global, que o **G1–G4 da `ph2d-gridmap`** (6ª crate da cadeia, clean-room Bommes 2009
-  + QuadCover 2007) preparou — a marcação já concorda a `0,1%` dos dois lados de cada arco, e o que falta
-  está nomeado e medido: as translações de costura têm de ser **inteiras** (hoje reais, resíduo `0,29` de
-  célula — pede arredondamento **uma-a-uma com re-solve**, o *mixed-integer* do nome, nunca em lote).
+  EXTRACÇÃO, e em 2026-08-24 ela deixou de ser aposta: MEDIDA.** ⭐⭐⭐ O **nosso** campo, numa cadeia
+  por extracção, dá enviesamento mediano **`3,0°`** — contra `6°` do oráculo de produção e **`27°`** do
+  nosso preenchimento por patch; e o nosso campo bate o da biblioteca de referência (`3,0°` vs `5,0°`),
+  ⇒ o F2 está ilibado por **resultado**, não só por contagem de singularidades. Decisão em
+  [ADR-0164](docs/architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md):
+  **clean-room dos papers; a biblioteca MPL-2.0 fica FORA, como oráculo** (⛔ não se porta — obrigaria a
+  publicar arquivos no subsistema mais valioso, e a extração dela não termina na nossa escala). Espec
+  funcional pronta e com 11 gates: [`SPEC_extracao_de_malha_quad.md`](docs/3D/cleanroom/SPEC_extracao_de_malha_quad.md)
+  (⏳ falta a auditoria R-pré, que é condição de abrir a janela que implementa). ⭐ **A obra parte em duas e
+  a extração já pode começar sozinha:** [`fixtures/`](docs/3D/cleanroom/fixtures/README.md) traz mapas de
+  grade inteira de referência sobre a **nossa** malha e o **nosso** campo, verificados a `3,55e-15`, com
+  costuras a sério (247 e 138) — ⛔ *uma peça sem costura aprovaria uma extração que ignorasse transições*.
+  O que a `ph2d-gridmap` ainda deve é o arredondamento **uma-a-uma com re-solve** (resíduo `0,29` de célula).
+  ⚠️ **A triagem de licença que abriu tudo isto** — e que achou ~460 notas do repo INTEIRO a citar fonte
+  interno de alvo restrito — está em [`TRIAGEM`](docs/3D/cleanroom/TRIAGEM_quad_remesh.md) e
+  [`ACHADO`](docs/3D/cleanroom/ACHADO_proveniencia_por_nome_interno.md).
   ⚠️ **Três correções ao que este §5 afirmava:** a leitura `29°/44°` da holonomia saía de uma grandeza
   **limitada a 45° por construção** que nunca testava o fecho de ciclo (a régua a sério dá **0** patches
   incombáveis na esfera lisa — a acusação ao F3 caiu) · «singularidade SEM CANTO = DENTRO de um patch»

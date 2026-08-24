@@ -397,6 +397,42 @@ ser cobrada contra a dela, na mesma peça.*
 
 ---
 
+## §9-bis — ⭐⭐ OS FIXTURES JÁ EXISTEM: a extração pode ser construída SOZINHA
+
+⛔ **Não espere pelo §5 para começar o §2–§6.** Em
+[`fixtures/`](fixtures/README.md) estão **mapas de grade inteira de referência**, sobre a
+**nossa** malha e o **nosso** campo, já **verificados**:
+
+| peça | triângulos | arestas interiores | ⭐ costuras | resíduo de translação máx |
+|---|---|---|---|---|
+| gancho orgânico (fechado) | 6 768 | 10 151 | **247** | `3,55e-15` |
+| toro (**género 1**) | 4 096 | 6 143 | **138** | `3,55e-15` |
+
+⇒ **A obra parte em duas de verdade:** a extração consome estes mapas e é gateada contra a
+régua por-face **hoje**; o arredondamento inteiro (§5) é cobrado, mais tarde, contra estes
+mesmos mapas como **saída esperada**.
+
+⭐ **O verificador é o gate nº4, executável**, e foi provado por **dois** controlos positivos
+(deslocar uma face por não-inteiro ⇒ reprova; rodar uma face 90° ⇒ **aprova**, porque é
+transição legítima).
+
+⚠️⚠️ **Duas cercas que a preparação dos fixtures descobriu, e as duas mudam a obra:**
+
+1. ⛔ **Uma peça SEM COSTURA não gateia nada.** A primeira medição saiu sobre um mapa com
+   **zero** arestas de rotação não-nula — ele teria aprovado uma extração que ignorasse
+   transições por completo. *Fixture só prova o que contém.* ⇒ **os dois fixtures acima têm
+   costuras de propósito.**
+2. ⛔⛔ **O gate nº9 (malha com BORDO) NÃO TERÁ ORÁCULO.** Medido em duas peças: a integração
+   da implementação de referência **cai com falha de segmentação** em malha com bordo. ⇒ a
+   nossa extração tem de resolver o bordo **sem gabarito**, e a §4 já diz como (a condição de
+   aceitação relaxa quando o triângulo não tem vizinho do lado anti-horário).
+
+⚠️ **E um número para calibrar a ambição:** a extração da implementação de referência leva
+**segundos** numa peça de 2 404 triângulos e **não terminou em 900 s** numa de 6 768. ⇒ *o
+desempenho não vem de graça com o algoritmo; ele é obra nossa.*
+
+---
+
 ## §10 — ⛔ Recusas MEDIDAS
 
 | recusa | mecanismo | onde |
@@ -411,3 +447,6 @@ ser cobrada contra a dela, na mesma peça.*
 | ⛔ **Não usar biblioteca de precisão múltipla copyleft** | `num-bigint`/`num-rational` são MIT/Apache e bastam | §1 |
 | ⛔ **Não re-derivar a rotação da transição** | o nosso salto de período já é um facto do campo | §2.2 |
 | ⛔ **Não construir contagem de valência antes do saneamento** | basta distinguir `4` de `≥8`, e nós já temos o índice | §6.5 |
+| ⛔ **Não esperar pelo arredondamento (§5) para começar a extração** | os mapas de referência já existem, verificados, sobre a nossa malha e o nosso campo | §9-bis |
+| ⛔ **Não gatear com peça sem costura** | um mapa de rotação toda-nula aprova uma extração que ignore transições | §9-bis.1 |
+| ⛔ **Não contar com oráculo para o caso de BORDO** | a integração de referência cai com falha de segmentação ali, medido em duas peças | §9-bis.2 |

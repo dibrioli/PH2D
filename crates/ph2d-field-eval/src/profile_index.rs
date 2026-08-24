@@ -597,3 +597,7 @@ fn build_bvh(
 #[cfg(test)]
 #[path = "profile_index_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "profile_index_tables.rs"]
+mod tables;

@@ -1325,7 +1325,7 @@ fn a_tile_region_is_much_smaller_than_the_piece() {
         let mut n = 0usize;
         for ty in 0..480usize / 64 {
             for tx in 0..640usize / 64 {
-                let Some(r) = crate::tile_region(
+                let Some(r) = crate::tiles::tile_region(
                     &cam,
                     plane,
                     (tx * 64, ty * 64),

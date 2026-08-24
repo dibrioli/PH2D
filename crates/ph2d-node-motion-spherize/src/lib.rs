@@ -18,6 +18,30 @@
 //! node shows something); `amount = 0` is the identity. `radius` (world units) sets the
 //! lens size. Falloff-masked. `Effect::Pure`.
 //!
+//! ## O PERFIL da lente — por que ele não é um param (doc 89 folha 04, o padrão §9.2)
+//!
+//! ⚠️ **O *Taper Radius* do AE *Bulge*** (*"controls the shallowness of the sides"*) — a forma
+//! do perfil, aqui soldada no quadrático `1 − t²`. ⛔ **RECUSADO por composição, e a razão é
+//! GEOMÉTRICA, não de gosto:**
+//!
+//! ```text
+//! motion.falloff  (shape = Circle · curve = Linear/Quad/Smooth/Smoother · center · radius)
+//!   → falloff → motion.spherize
+//! ```
+//! ou, para um perfil arbitrário, `field.remap` com **Curve**.
+//!
+//! ⚠️ **Isto funciona AQUI e não funciona no `motion.twist`, e a diferença tem nome.** O
+//! contrato de campo desta casa mistura *deformado ↔ original* por elemento
+//! (`p_out = p + (p_def − p)·f`). Este deformador é **RADIAL**: `p` e `p_def` ficam na MESMA
+//! recta que sai do centro, logo `c + d·(1 + f·amount·(1 − t²))` — o `f` **multiplica o
+//! `amount` exactamente**, e mascarar é o mesmo que remodelar o perfil. Num deformador
+//! **ROTACIONAL** (`twist`) os dois pontos estão num ARCO e o lerp corta pela CORDA: o raio
+//! encolhe para `r·cos(θ/2)` e o layout **encolhe** em vez de destorcer — foi por isso que o
+//! `motion.twist` teve de ganhar um `profile` próprio e este não.
+//!
+//! ⚠️ **O *Pinning* do AE (*"prevents the edges of the layer from bulging"*) JÁ EXISTE** e é o
+//! comportamento do kernel: `r ≥ radius ⇒ identidade`. Escrito aqui para ninguém o acrescentar.
+//!
 //! ## Where the lens SITS — `offset_x` / `offset_y` (doc 88 §9, a varredura DEFORMERS)
 //!
 //! The centre is the layout **centroid, displaced by the offset** (`c' = c + offset`).

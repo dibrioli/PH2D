@@ -32,15 +32,10 @@ use ph2d_nodegraph::node::{
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+mod radial;
 mod trig;
-use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
-
-/// Degrees per full turn — the exact divisor from the authored angle into the
-/// cycle-based trig's unit. IEEE division is correctly rounded → deterministic
-/// (HR-5); multiplying by a reciprocal would not be exact.
-const DEG_PER_TURN: f32 = 360.0;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -82,6 +77,24 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "rot_taper",
             default: 0.0,
         },
+        // **O LEQUE** — ver [`radial`]. O default é o NOME do modo, não um `0` solto.
+        ParamSpec {
+            name: "mode",
+            default: radial::MODE_LINEAR as f32,
+        },
+        // O SETOR que as cópias repartem, em graus. `360` ⇒ o círculo inteiro.
+        ParamSpec {
+            name: "arc",
+            default: 360.0,
+        },
+        ParamSpec {
+            name: "pivot_x",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "pivot_y",
+            default: 0.0,
+        },
     ],
     // CPU-only by design (see handoff §9): a cloner *changes the element count*
     // (1 → N×in), which is structural, not a per-element `ph2d-expr` map an
@@ -114,6 +127,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
 /// girado e escalado a cada cópia, o que colide com o `center` (um somatório não tem posto
 /// assinado) e não é o que a referência desta célula define.
 const SCALE_TAPER: &str = "scale_taper";
+/// **O MODO de disposição** — ver [`radial`]. `Linear` (o default) é a fila em recta;
+/// `Radial` é o leque em torno de um pivô, a capacidade que a folha 04 pedia ao cloner e que
+/// nenhum nó entregava.
+const MODE: &str = "mode";
+/// **O SETOR** que as `k` cópias repartem, em graus — ver [`radial`]. `360` é o círculo
+/// inteiro (e a lei do `motion.kaleidoscope`); um valor menor faz o leque, e negativo
+/// inverte-lhe o sentido.
+const ARC: &str = "arc";
 /// O taper de rotação, em **graus** — a unidade autorada da casa, a mesma da coluna `rot` e
 /// do `angle` deste nó. Ver [`SCALE_TAPER`] para a lei.
 const ROT_TAPER: &str = "rot_taper";
@@ -184,12 +205,37 @@ fn copy_rank(copy: usize, k: usize, center: bool) -> f32 {
 /// the allocation. Pure and isolated so the per-copy offset, the global
 /// renumbering, *and* the column-replication alignment are unit-tested directly,
 /// alongside the end-to-end cook test that drives the params via overrides.
-fn clone_stream(
+/// A fila em recta com o passo JÁ resolvido (`sx`, `sy`) — a assinatura que os gates desta
+/// crate usavam antes do leque existir, mantida para eles.
+///
+/// ⚠️ `#[cfg(test)]`: ela é uma projecção de [`clone_stream`] e **não** uma segunda lei — mas
+/// uma projecção sem chamador de produção é exactamente a forma que vira uma segunda resposta
+/// no dia em que alguém pega no nome mais curto. Os gates do modo novo entram pelo
+/// [`clone_stream`], como o `eval`.
+#[cfg(test)]
+fn clone_row(
     input: &Stream,
     k: usize,
     sx: f32,
     sy: f32,
     center: bool,
+    scale_taper: f32,
+    rot_taper: f32,
+) -> Stream {
+    let place = |copy: usize| {
+        let rank = copy_rank(copy, k, center);
+        radial::Placement::Linear {
+            dx: rank * sx,
+            dy: rank * sy,
+        }
+    };
+    clone_stream(input, k, &place, scale_taper, rot_taper)
+}
+
+fn clone_stream(
+    input: &Stream,
+    k: usize,
+    place: &dyn Fn(usize) -> radial::Placement,
     scale_taper: f32,
     rot_taper: f32,
 ) -> Stream {
@@ -216,10 +262,12 @@ fn clone_stream(
             ("P", Column::Vec2(v)) => {
                 let mut nv = Vec::with_capacity(total);
                 for copy in 0..k {
-                    let rank = copy_rank(copy, k, center);
-                    let (dx, dy) = (rank * sx, rank * sy);
+                    // ⚠️ A colocação é resolvida UMA vez por cópia, fora do laço dos
+                    // elementos: em `Radial` ela carrega um `cos`/`sin`, e um por elemento
+                    // seria o mesmo número recalculado `in_count` vezes.
+                    let pl = place(copy);
                     for p in v {
-                        nv.push([p[0] + dx, p[1] + dy]);
+                        nv.push(pl.apply(*p));
                     }
                 }
                 out.set("P", Column::Vec2(nv));
@@ -295,17 +343,31 @@ impl NodeOp for MotionClone {
         // so `distance = 2` reproduces the old `(step_x, step_y) = (2, 0)` row.
         // Degrees→cycles at the trig edge (exact IEEE division; HR-5).
         let distance = ctx.param("distance");
-        let (c, s) = cos_sin_cycles(ctx.param("angle") / DEG_PER_TURN);
-        let (sx, sy) = (distance * c, distance * s);
+        let angle = ctx.param("angle");
         let center = ctx.param("center") >= 0.5; // Toggle: ≥0.5 → centred queue
         let (scale_taper, rot_taper) = (ctx.param(SCALE_TAPER), ctx.param(ROT_TAPER));
+        // **O LEQUE** — ver [`radial`]. `Linear` é o default e corre pela expressão de sempre.
+        let radial = ctx.param(MODE).round() as i32 == radial::MODE_RADIAL;
+        let arc = ctx.param(ARC);
+        let pivot = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         // `count` from an `f32` param: total conversion (non-finite/negative →
         // 0) then clamped so `in_count * k` cannot overflow the allocation; at
         // least one copy (passthrough).
         let requested = param_as_count(ctx.param("count"), RECOMMENDED_MAX_ELEMENTS);
         let input = ctx.input(0);
         let k = copies_within_budget(requested, input.count(), RECOMMENDED_MAX_ELEMENTS);
-        let out = clone_stream(input, k, sx, sy, center, scale_taper, rot_taper);
+        let step = radial::step_deg(arc, k);
+        let place = |copy: usize| {
+            radial::Placement::of(
+                radial,
+                copy_rank(copy, k, center),
+                step,
+                angle,
+                distance,
+                pivot,
+            )
+        };
+        let out = clone_stream(input, k, &place, scale_taper, rot_taper);
         ctx.emit(out);
     }
 }
@@ -328,6 +390,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
 
@@ -366,6 +429,19 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::IntSlider,
     },
+    // ⚠️ **Primeiro, porque ele decide o que os outros QUEREM DIZER** (a fila ou o leque).
+    ParamUiHint {
+        param: MODE,
+        label: "Mode",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: radial::MODE_LABELS,
+        },
+    },
+    // ⚠️ **Vivo nos DOIS modos**, e é isso que o mantém fora da caça aos knobs mortos: em
+    // `Linear` é o passo entre cópias, em `Radial` é o RAIO a que o leque as põe.
     ParamUiHint {
         param: "distance",
         label: "Distance",
@@ -381,6 +457,33 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 360.0,
         step: 1.0,
         widget: ParamWidget::Angle,
+    },
+    // ⚠️ **O setor e o pivô só aparecem em `Radial`** (ver [`PARAM_GATES`]): num modo em que
+    // não têm significado eles seriam três knobs a não fazer nada, que é o defeito que o
+    // doc 90 mede.
+    ParamUiHint {
+        param: ARC,
+        label: "Arc",
+        min: -360.0,
+        max: 360.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
+    },
+    ParamUiHint {
+        param: "pivot_x",
+        label: "Pivot X",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "pivot_y",
+        label: "Pivot Y",
+        min: -10.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
     },
     ParamUiHint {
         param: "center",
@@ -423,213 +526,41 @@ static PARAM_HINTS: &[ParamUiHint] = &[
 /// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
 /// that is wrong is worse than a unit that is missing, because the artist can read
 /// a bare number but a mislabelled one teaches them something false.
+/// **Os três controles do leque só existem no modo que os lê** — ver [`radial`].
+///
+/// ⚠️ **O `distance` NÃO está aqui, de propósito**: ele é o passo em `Linear` e o raio em
+/// `Radial`, vivo nos dois. Um gate sobre ele esconderia o knob mais usado do nó no modo em
+/// que ele é o mais usado.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: ARC,
+        when: MODE,
+        values: &[radial::MODE_RADIAL],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "pivot_x",
+        when: MODE,
+        values: &[radial::MODE_RADIAL],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "pivot_y",
+        when: MODE,
+        values: &[radial::MODE_RADIAL],
+    },
+];
+
 static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
     param: "distance",
     unit: ParamUnit::Length,
 }];
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ph2d_nodegraph::cook::{Cook, EvalCtx, OpResolver};
-    use ph2d_nodegraph::graph::{Edge, Graph};
-
-    static SRC_MAN: NodeManifest = NodeManifest {
-        id: NodeTypeId::of("motion.clone.test.src"),
-        name: "motion.clone.test.src",
-        inputs: &[],
-        outputs: &[PortSpec {
-            name: "out",
-            ty: INST_VEC2,
-        }],
-        effect: Effect::Pure,
-        clock: Clock::Frame,
-        params: &[],
-        lowerings: &[LoweringKind::Cpu],
-    };
-    struct Src;
-    impl NodeOp for Src {
-        fn manifest(&self) -> &'static NodeManifest {
-            &SRC_MAN
-        }
-        fn eval(&self, ctx: &mut EvalCtx<'_>) {
-            ctx.emit(Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]])));
-        }
-    }
-    struct Ops;
-    impl OpResolver for Ops {
-        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
-            match ty {
-                t if t == SRC_MAN.id => Some(&Src),
-                t if t == MANIFEST.id => Some(&MotionClone),
-                _ => None,
-            }
-        }
-    }
-
-    /// Cook `motion.clone` on the 1-element source, applying `setup` to its
-    /// params, and return the output `P` column.
-    fn clone_p(setup: impl FnOnce(&mut Graph, ph2d_nodegraph::graph::NodeId)) -> Vec<[f32; 2]> {
-        let mut g = Graph::new();
-        let src = g.add_node("motion.clone.test.src");
-        let clone = g.add_node("motion.clone");
-        g.connect(Edge {
-            from: (src, 0),
-            to: (clone, 0),
-            delayed: false,
-        })
-        .unwrap();
-        setup(&mut g, clone);
-        let mut cook = Cook::new();
-        let out = cook.cook(&g, &Ops, clone, 0.0).unwrap();
-        match out[0].as_stream().get("P").unwrap() {
-            Column::Vec2(v) => v.clone(),
-            _ => panic!("P"),
-        }
-    }
-
-    #[test]
-    fn multiplies_stream_with_per_copy_offset() {
-        // 1 instance × default count 3, distance 2 (angle 0 → +X) → x=0,2,4.
-        let p = clone_p(|_, _| {});
-        assert_eq!(p, vec![[0.0, 0.0], [2.0, 0.0], [4.0, 0.0]]);
-    }
-
-    #[test]
-    fn per_instance_overrides_drive_clone_through_the_cook() {
-        // Authoring path: override count → 2, distance → 5, on a 1-element source
-        // → 2 copies at x = 0, 5 (vs the default count 3, distance 2).
-        let p = clone_p(|g, clone| {
-            g.set_param(clone, "count", 2.0);
-            g.set_param(clone, "distance", 5.0);
-        });
-        assert_eq!(p, vec![[0.0, 0.0], [5.0, 0.0]]);
-    }
-
-    #[test]
-    fn centered_queue_balances_copies_on_the_original() {
-        // count 3, distance 2, centre on → ranks −1,0,1 → x = −2, 0, 2 (the
-        // original element sits at rank 0, unmoved, with a copy each side).
-        let p = clone_p(|g, clone| {
-            g.set_param(clone, "count", 3.0);
-            g.set_param(clone, "distance", 2.0);
-            g.set_param(clone, "center", 1.0);
-        });
-        assert_eq!(p, vec![[-2.0, 0.0], [0.0, 0.0], [2.0, 0.0]]);
-    }
-
-    #[test]
-    fn polar_angle_rotates_the_step_axis() {
-        // angle 90° → step direction +Y: count 3, distance 2 → y = 0, 2, 4.
-        let p = clone_p(|g, clone| {
-            g.set_param(clone, "angle", 90.0);
-            g.set_param(clone, "distance", 2.0);
-        });
-        for (i, expected) in [0.0f32, 2.0, 4.0].into_iter().enumerate() {
-            assert!(p[i][0].abs() < 1e-5, "x stays ~0 (pure +Y step)");
-            assert!((p[i][1] - expected).abs() < 1e-5, "y = {expected}");
-        }
-    }
-
-    #[test]
-    fn a_360_degree_angle_is_the_plus_x_axis_again() {
-        // The degrees→cycles edge is exact: 360° wraps to a whole cycle, so the
-        // step axis returns to +X (guards the `deg / 360` divisor).
-        let p = clone_p(|g, clone| {
-            g.set_param(clone, "angle", 360.0);
-            g.set_param(clone, "distance", 2.0);
-        });
-        assert!(
-            (p[1][0] - 2.0).abs() < 1e-5 && p[1][1].abs() < 1e-5,
-            "back to +X"
-        );
-    }
-
-    #[test]
-    fn copy_rank_is_balanced_when_centered() {
-        // off: 0,1,2 ; on (k=3): −1,0,1 ; on (k=4): −1.5,−0.5,0.5,1.5.
-        assert_eq!([0, 1, 2].map(|c| copy_rank(c, 3, false)), [0.0, 1.0, 2.0]);
-        assert_eq!([0, 1, 2].map(|c| copy_rank(c, 3, true)), [-1.0, 0.0, 1.0]);
-        assert_eq!(
-            [0, 1, 2, 3].map(|c| copy_rank(c, 4, true)),
-            [-1.5, -0.5, 0.5, 1.5]
-        );
-    }
-
-    #[test]
-    fn index_and_count_are_renumbered_continuous_across_copies() {
-        // 2 input elements (Index 0,1 / Count 2) × 3 copies → one uninterrupted
-        // Index 0..5 and a Count of 6 everywhere, so a downstream ramp spans the
-        // whole set instead of restarting per copy.
-        let input = Stream::new(2)
-            .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]))
-            .with("Index", Column::Scalar(vec![0.0, 1.0]))
-            .with("Count", Column::Scalar(vec![2.0, 2.0]));
-        let out = clone_stream(&input, 3, 5.0, 0.0, false, 1.0, 0.0);
-        match out.get("Index").unwrap() {
-            Column::Scalar(v) => assert_eq!(v, &vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0]),
-            _ => panic!("Index"),
-        }
-        match out.get("Count").unwrap() {
-            Column::Scalar(v) => assert_eq!(v, &vec![6.0; 6]),
-            _ => panic!("Count"),
-        }
-    }
-
-    #[test]
-    fn clone_stream_aligns_p_offset_with_replicated_columns() {
-        // The riskiest invariant: a *second* column (here `tint`) must stay
-        // aligned with `P` element-for-element across copies (copy-major order).
-        // 2 input elements × 2 copies, step (10, 0), centre off.
-        let input = Stream::new(2)
-            .with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0]]))
-            .with(
-                "tint",
-                Column::Vec4(vec![[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]]),
-            );
-        let out = clone_stream(&input, 2, 10.0, 0.0, false, 1.0, 0.0);
-        assert_eq!(out.count(), 4);
-        // copy 0: elements at x=0,1 ; copy 1: same elements + (10,0).
-        match out.get("P").unwrap() {
-            Column::Vec2(v) => {
-                assert_eq!(v, &vec![[0.0, 0.0], [1.0, 0.0], [10.0, 0.0], [11.0, 0.0]]);
-            }
-            _ => panic!("P"),
-        }
-        // tint of element e in copy c sits at index c*in_count + e, with the
-        // SAME color it had in the input — proving offset and replicate share
-        // copy-major order (a mismatch here is the silent-misalignment bug).
-        match out.get("tint").unwrap() {
-            Column::Vec4(v) => assert_eq!(
-                v,
-                &vec![
-                    [1.0, 0.0, 0.0, 1.0],
-                    [0.0, 1.0, 0.0, 1.0],
-                    [1.0, 0.0, 0.0, 1.0],
-                    [0.0, 1.0, 0.0, 1.0],
-                ]
-            ),
-            _ => panic!("tint"),
-        }
-    }
-
-    #[test]
-    fn copies_within_budget_caps_and_floors() {
-        // floors at 1 copy even if 0 requested (cloner is ≥ passthrough).
-        assert_eq!(copies_within_budget(0, 10, 1000), 1);
-        // honors the request when it fits.
-        assert_eq!(copies_within_budget(3, 10, 1000), 3);
-        // clamps so in_count * k ≤ max: 10 elements, max 25 → at most 2 copies.
-        assert_eq!(copies_within_budget(99, 10, 25), 2);
-        // empty input: no division by zero, output will be empty anyway.
-        assert_eq!(copies_within_budget(5, 0, 1000), 5);
-        // input ALREADY over budget (in_count > max): still ≥ 1 copy
-        // (passthrough), never 0 — the cloner does not drop a stream it cannot
-        // grow. `in_count * 1` does not overflow (no multiplication grows it).
-        assert_eq!(copies_within_budget(5, 1001, 1000), 1);
-    }
-}
-
-#[cfg(test)]
 #[path = "taper_tests.rs"]
 mod taper_tests;
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;
+
+#[cfg(test)]
+#[path = "radial_tests.rs"]
+mod radial_tests;

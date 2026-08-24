@@ -120,6 +120,8 @@ pub(crate) mod conferencia_demos_echo;
 /// modos coincidem por aritmetica — um smoke com a fonte parada ficaria verde sobre nada.
 #[path = "motion_state_conferencia_demos_plume.rs"]
 pub(crate) mod conferencia_demos_plume;
+#[path = "motion_state_conferencia_demos_slice.rs"]
+pub(crate) mod conferencia_demos_slice;
 
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.

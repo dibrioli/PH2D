@@ -180,6 +180,9 @@ mod colour_tests;
 #[path = "motion_bridge_connect_tests.rs"]
 mod connect_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_dock_height_tests.rs"]
+mod dock_height_tests;
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_dock_tests.rs"]
 mod dock_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
@@ -196,7 +199,6 @@ mod library_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_param_tests.rs"]
 mod param_tests;
-
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_plumbing_tests.rs"]
 mod plumbing_tests;

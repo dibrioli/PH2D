@@ -17,6 +17,43 @@
 //! copy. Transcendental-free (HR-5): the rotation uses `cos_sin_cycles` — the parabolic
 //! sine copied from `motion.orbit` — so no `sin`/`cos`; no `sqrt`. `Effect::Pure` (no
 //! clock — the spin animation arrives through the value input).
+//!
+//! ## O que este nó NÃO faz, e onde isso mora (doc 89 folha 04, o padrão §9.2)
+//!
+//! ⚠️ **A CUNHA de origem** (AE *CC Kaleida* ▸ *Size*: um caleidoscópio real dobra a fonte
+//! numa fatia antes de a repetir; nós repetimos a fonte **INTEIRA**, então uma fonte larga faz
+//! as cópias invadirem as vizinhas). Isto é **composição, e a cadeia foi verificada peça por
+//! peça**:
+//!
+//! ```text
+//! field.radial_sweep   (a cunha angular → escreve `falloff`)
+//!   → motion.cull      (`mode = 1` Falloff — mantém `falloff ≥ amount`)
+//!     → motion.kaleidoscope
+//! ```
+//!
+//! Os dois nós existem e casam. ⛔ **Não construa um `wedge` aqui:** o recorte é uma pergunta
+//! sobre *que parte da fonte entra*, e o grafo já a responde antes de a fonte chegar — pô-la
+//! dentro deste nó seria um segundo sítio a decidir a mesma coisa.
+//!
+//! ⚠️ **O SETOR** (as cópias num leque em vez do giro cheio — C4D Cloner *Radial*, Cavalry
+//! Duplicator). ⛔ **RECUSADO, e desde 2026-08-24 a recusa tem ENDEREÇO:** um leque é trabalho
+//! de um *cloner*, e o `motion.clone` ganhou o **modo `Radial`** (`Mode` · `Arc` · `Pivot`) —
+//! `arc = 360` é exactamente a lei deste nó, e um `arc` menor reparte o setor. Um `start`/`end`
+//! aqui daria à casa dois nós a disputar a mesma capacidade, e ainda por cima **este** é o que
+//! não a sabe fazer: `spin` gira o padrão INTEIRO e um `motion.cull` a jusante **APAGA** cópias
+//! (deixa buracos) em vez de as comprimir.
+//!
+//! ⚠️ *Até essa wave a recusa apontava para um dono que **não entregava** — nenhum nó do
+//! catálogo dispunha cópias num arco. Uma recusa que delega para quem não faz é um adiamento
+//! com cara de decisão, e é por isso que a capacidade foi construída antes de a célula fechar.*
+//!
+//! ⚠️ **O `falloff` é IGNORADO aqui, e isso está CERTO** (refutado por medição em 2026-08-23):
+//! este nó não é um deformador, é um **REPLICADOR** (`n → k·n`), e a família dele lê `falloff`
+//! zero por unanimidade (`mirror` · `clone` · `duplicator` · `kaleidoscope`). Uma máscara
+//! por-elemento multiplica uma DEFORMAÇÃO; ela não tem significado sobre uma operação que muda
+//! a CONTAGEM — `f = 0` poria as `k·n` cópias coincidentes, que não é a identidade em contagem.
+//! Atenuar a k-ésima CÓPIA é outra feature, e o `motion.clone` exprime-a (`scale_taper` /
+//! `rot_taper`).
 
 use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};

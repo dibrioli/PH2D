@@ -44,7 +44,7 @@ fn per_copy<T: Copy>(v: &[T], k: usize) -> Vec<T> {
 /// **O TAPER É UM LERP DA 1ª À ÚLTIMA, e o meio é onde ele se distingue da potência.**
 #[test]
 fn the_taper_lerps_and_the_middle_copy_is_what_tells_the_two_laws_apart() {
-    let out = clone_stream(&input(vec![("P", ps())]), 5, 3.0, 0.0, false, 0.5, 0.0);
+    let out = clone_row(&input(vec![("P", ps())]), 5, 3.0, 0.0, false, 0.5, 0.0);
     let s = sizes(&out).expect("o taper cunha o `size` que faltava");
     let got = per_copy(&s, 5).iter().map(|x| x[0]).collect::<Vec<_>>();
     assert_eq!(
@@ -64,7 +64,7 @@ fn the_taper_lerps_and_the_middle_copy_is_what_tells_the_two_laws_apart() {
 /// **A ROTAÇÃO SOMA GRAUS, e a última cópia leva o número inteiro que o artista digitou.**
 #[test]
 fn the_rotation_taper_hands_the_whole_angle_to_the_last_copy() {
-    let out = clone_stream(&input(vec![("P", ps())]), 4, 3.0, 0.0, false, 1.0, 90.0);
+    let out = clone_row(&input(vec![("P", ps())]), 4, 3.0, 0.0, false, 1.0, 90.0);
     let r = rots(&out).expect("o taper cunha o `rot` que faltava");
     assert_eq!(per_copy(&r, 4), vec![0.0, 30.0, 60.0, 90.0]);
 }
@@ -80,7 +80,7 @@ fn the_taper_modulates_what_the_piece_already_carries() {
         ("size", Column::Vec2(vec![[2.0, 2.0], [4.0, 4.0]])),
         ("rot", Column::Scalar(vec![10.0, 20.0])),
     ]);
-    let out = clone_stream(&inp, 3, 3.0, 0.0, false, 0.0, 180.0);
+    let out = clone_row(&inp, 3, 3.0, 0.0, false, 0.0, 180.0);
     let s = sizes(&out).expect("size");
     let r = rots(&out).expect("rot");
     // Fatores 1 · 0,5 · 0 — e a primeira peça de cada cópia tinha 2,0.
@@ -104,11 +104,11 @@ fn the_taper_modulates_what_the_piece_already_carries() {
 /// de todos — uma grelha, que não traz `size` nem `rot`.
 #[test]
 fn the_default_neither_touches_nor_mints() {
-    let out = clone_stream(&input(vec![("P", ps())]), 4, 3.0, 0.0, false, 1.0, 0.0);
+    let out = clone_row(&input(vec![("P", ps())]), 4, 3.0, 0.0, false, 1.0, 0.0);
     assert!(sizes(&out).is_none(), "não cunha `size` no literal");
     assert!(rots(&out).is_none(), "nem `rot`");
     // E o controle: com o knob ligado ele cunha.
-    let on = clone_stream(&input(vec![("P", ps())]), 4, 3.0, 0.0, false, 0.5, 5.0);
+    let on = clone_row(&input(vec![("P", ps())]), 4, 3.0, 0.0, false, 0.5, 5.0);
     assert!(sizes(&on).is_some() && rots(&on).is_some(), "ligado, cunha");
 }
 
@@ -116,8 +116,8 @@ fn the_default_neither_touches_nor_mints() {
 #[test]
 fn centring_the_queue_does_not_reverse_the_taper() {
     let inp = input(vec![("P", ps())]);
-    let off = clone_stream(&inp, 5, 3.0, 0.0, false, 0.5, 0.0);
-    let on = clone_stream(&inp, 5, 3.0, 0.0, true, 0.5, 0.0);
+    let off = clone_row(&inp, 5, 3.0, 0.0, false, 0.5, 0.0);
+    let on = clone_row(&inp, 5, 3.0, 0.0, true, 0.5, 0.0);
     assert_eq!(
         sizes(&off).expect("size"),
         sizes(&on).expect("size"),
@@ -134,7 +134,7 @@ fn centring_the_queue_does_not_reverse_the_taper() {
 /// **UMA CÓPIA SÓ É A PRIMEIRA CÓPIA** — `t = 0`, e nenhuma divisão por `k − 1 = 0`.
 #[test]
 fn a_queue_of_one_is_the_head_of_the_taper() {
-    let out = clone_stream(&input(vec![("P", ps())]), 1, 3.0, 0.0, false, 0.25, 90.0);
+    let out = clone_row(&input(vec![("P", ps())]), 1, 3.0, 0.0, false, 0.25, 90.0);
     let s = sizes(&out).expect("size");
     assert!(
         s.iter().all(|q| q[0] == 1.0 && q[1] == 1.0),

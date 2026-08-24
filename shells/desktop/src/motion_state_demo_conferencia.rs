@@ -492,6 +492,9 @@ mod fx_modes;
 /// O anuncio da cena `=89` — o emissor que deixa rasto (folha 01, o P1).
 #[path = "motion_state_demo_conferencia_plume.rs"]
 mod plume;
+/// O anuncio da cena `=90` — qual fatia, que eixo, que leque (folha 04, as ultimas sete).
+#[path = "motion_state_demo_conferencia_slice.rs"]
+mod slice;
 pub(super) use bezier::bezier_family;
 pub(super) use body::body_family;
 pub(super) use campo::field_port_family;
@@ -499,3 +502,4 @@ pub(super) use drawn::drawn_family;
 pub(super) use echo::echo_family;
 pub(super) use fx_modes::fx_modes_family;
 pub(super) use plume::plume_family;
+pub(super) use slice::slice_family;

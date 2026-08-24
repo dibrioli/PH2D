@@ -107,6 +107,17 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ **O MESMO rótulo, widget e curso que o `direction` do `motion.bend`** — os dois
+    // respondem *"em que eixo isto corre?"*, e a volta INTEIRA é distinta (a `−90` o layout
+    // deita-se para o outro lado, que não é o mesmo que `+90`).
+    ParamUiHint {
+        param: super::taper::DIRECTION,
+        label: "Axis",
+        min: -180.0,
+        max: 180.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
+    },
     // ⚠️ Um `Enum` e não um Toggle: os dois nomes são o vocabulário da referência (C4D), e
     // *"Keep Length"* diz o que faz enquanto *"não esticar"* pedia para se adivinhar o resto.
     ParamUiHint {
@@ -146,6 +157,35 @@ pub(super) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 0.01,
         widget: ParamWidget::Slider,
+    },
+    // ⚠️ **O curso vai a `4` e começa em `0`** — o mesmo do `height_scale`, e pela mesma razão:
+    // um afunilamento é um MULTIPLICADOR, `0` é *"some na ponta"* (o uso canónico de uma cauda)
+    // e acima de `1` ele engrossa, que é a outra metade do que a referência desenha.
+    ParamUiHint {
+        param: super::taper::SIZE_TAPER.0,
+        label: "Size Start",
+        min: 0.0,
+        max: 4.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: super::taper::SIZE_TAPER.1,
+        label: "Size End",
+        min: 0.0,
+        max: 4.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: super::taper::SIZE_TAPER.2,
+        label: "Size Profile",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Linear", "Quad", "Smooth", "Smoother"],
+        },
     },
     pt("p0x", "P0 X"),
     pt("p0y", "P0 Y"),

@@ -34,13 +34,14 @@
 //! quebrado exactamente onde está a funcionar.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
-use ph2d_nodegraph::attr::{Column, Stream};
+use ph2d_nodegraph::attr::{Column, SIZE_IDENTITY, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod curve;
+mod taper;
 mod trig;
 use curve::{ArcLut, EPS, P2, arc_lut, frame_at};
 
@@ -102,6 +103,25 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // through untouched, which is the node that shipped.
         ParamSpec {
             name: "follow_rotation",
+            default: 0.0,
+        },
+        // **QUAL EIXO DO LAYOUT CORRE NA CURVA** — ver `taper::DIRECTION`. `0` ⇒ o X de sempre.
+        ParamSpec {
+            name: "direction",
+            default: 0.0,
+        },
+        // **O AFUNILAMENTO AO LONGO DO ARCO** — ver `taper::SIZE_TAPER`. `1, 1` ⇒ o `size` é
+        // COPIADO, que é o nó que shipou.
+        ParamSpec {
+            name: "size_start",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "size_end",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "size_profile",
             default: 0.0,
         },
         // The four control points (world units). Default: a gentle S-curve.
@@ -326,7 +346,17 @@ fn wrap(
     amount: &[f32],
     falloff: &[f32],
 ) -> Vec<P2> {
-    wrap_with_frame(p, curve, height_scale, map, keep_length, amount, falloff).0
+    wrap_with_frame(
+        p,
+        curve,
+        height_scale,
+        map,
+        keep_length,
+        0.0,
+        amount,
+        falloff,
+    )
+    .0
 }
 
 /// The same wrap, also returning **how much each element turned** — the angle of
@@ -340,21 +370,37 @@ fn wrap(
 /// ⚠️ And the tangent was **already computed and thrown away** (`frame_at` returns
 /// it; the wrap bound it to `_t`). Nothing about this is new geometry: the node
 /// always knew which way the curve was going, and simply never said.
+/// ⚠️ **E a POSIÇÃO DE ARCO de cada elemento** — a terceira saída, e a razão de ela existir é
+/// o afunilamento ([`taper::SIZE_TAPER`]): o `s` nasce aqui, dentro de um `clamp`, e nenhum nó
+/// a jusante o pode reconstruir. Devolvê-lo é o que torna o perfil uma propriedade da CURVA em
+/// vez de mais uma rampa sobre o layout.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "cada argumento é um param do MANIFEST que a lei lê; agrupá-los num struct só para contar menos põe uma segunda declaração da mesma lista ao lado do manifesto, que é onde as duas divergem. O `ArcMap` é a excepção porque ele responde a UMA pergunta (onde na curva pousa `u`), não a um agrupamento de conveniência"
+)]
 fn wrap_with_frame(
     p: &[P2],
     curve: &Curve<'_>,
     height_scale: f32,
     map: ArcMap,
     keep_length: bool,
+    direction_deg: f32,
     amount: &[f32],
     falloff: &[f32],
-) -> (Vec<P2>, Vec<f32>) {
+) -> (Vec<P2>, Vec<f32>, Vec<f32>) {
     let n = p.len();
     if n == 0 {
-        return (Vec::new(), Vec::new());
+        return (Vec::new(), Vec::new(), Vec::new());
     }
+    // O quadro LOCAL do embrulho — ver [`taper::DIRECTION`]. Em `0` a base é `(1, 0)` ao bit e
+    // `to_local` devolve o ponto intacto, então tudo abaixo é a expressão de sempre.
+    let cs = taper::frame_of(direction_deg);
+    let local: Vec<P2> = p
+        .iter()
+        .map(|q| taper::to_local(*q, direction_deg, cs))
+        .collect();
     let (mut xmin, mut xmax) = (f32::MAX, f32::MIN);
-    for q in p {
+    for q in &local {
         xmin = xmin.min(q[0]);
         xmax = xmax.max(q[0]);
     }
@@ -362,31 +408,38 @@ fn wrap_with_frame(
     // O DIVISOR é a parametrização — ver [`MODE_KEEP_LENGTH`]. Em `Fit` é a largura do
     // layout (a expressão de sempre); em `Keep Length`, o comprimento da curva.
     let denom = if keep_length { curve.length() } else { w };
-    (0..n)
-        .map(|i| {
-            let u = if denom < EPS {
-                0.5
-            } else {
-                (p[i][0] - xmin) / denom
-            };
-            // Clamp (not wrap): the layout spans the curve [0,1]; `offset` slides it and
-            // clamps at the ends, so the endpoint (u=1) stays on the curve end.
-            let s = map.s_at(u);
-            let (b, ut, un) = curve.frame_at(s);
-            let wrapped = [
-                b[0] + un[0] * p[i][1] * height_scale,
-                b[1] + un[1] * p[i][1] * height_scale,
-            ];
-            let a = (amount_at(amount, i) * falloff_at(falloff, i)).clamp(0.0, 1.0);
-            (
-                [
-                    p[i][0] + (wrapped[0] - p[i][0]) * a,
-                    p[i][1] + (wrapped[1] - p[i][1]) * a,
-                ],
-                trig::deg(trig::atan2_approx(ut[1], ut[0])) * a,
-            )
-        })
-        .unzip()
+    let (mut out, mut turn, mut arc) = (
+        Vec::with_capacity(n),
+        Vec::with_capacity(n),
+        Vec::with_capacity(n),
+    );
+    for i in 0..n {
+        let u = if denom < EPS {
+            0.5
+        } else {
+            (local[i][0] - xmin) / denom
+        };
+        // Clamp (not wrap): the layout spans the curve [0,1]; `offset` slides it and
+        // clamps at the ends, so the endpoint (u=1) stays on the curve end.
+        let s = map.s_at(u);
+        let (b, ut, un) = curve.frame_at(s);
+        // ⚠️ O desvio perpendicular é o `y` do quadro LOCAL — é o que faz `direction` escolher
+        // o eixo em vez de apenas re-ordenar as coisas ao longo da curva.
+        let wrapped = [
+            b[0] + un[0] * local[i][1] * height_scale,
+            b[1] + un[1] * local[i][1] * height_scale,
+        ];
+        // ⚠️ E a mistura é contra o ponto de MUNDO, nunca contra o local: `amount` mistura
+        // *plano ↔ embrulhado*, e o plano é onde o elemento de facto está.
+        let a = (amount_at(amount, i) * falloff_at(falloff, i)).clamp(0.0, 1.0);
+        out.push([
+            p[i][0] + (wrapped[0] - p[i][0]) * a,
+            p[i][1] + (wrapped[1] - p[i][1]) * a,
+        ]);
+        turn.push(trig::deg(trig::atan2_approx(ut[1], ut[0])) * a);
+        arc.push(s);
+    }
+    (out, turn, arc)
 }
 
 struct MotionSplineWrap;
@@ -438,12 +491,13 @@ impl NodeOp for MotionSplineWrap {
         };
         let falloff = scalar_col(input, "falloff");
         let curve = Curve::drawn(&drawn).unwrap_or_else(|| Curve::cubic(&cp));
-        let (out_p, turn) = wrap_with_frame(
+        let (out_p, turn, arc) = wrap_with_frame(
             &p,
             &curve,
             height_scale,
             map,
             keep_length,
+            ctx.param(taper::DIRECTION),
             &amount,
             &falloff,
         );
@@ -452,13 +506,26 @@ impl NodeOp for MotionSplineWrap {
         // mints one (its sibling `motion.distribute_curve` SETS `rot` because
         // there is nothing there to compose with).
         let base = scalar_col(input, "rot");
+        // **O AFUNILAMENTO ao longo do arco** — ver [`taper::SIZE_TAPER`]. Com as duas pontas
+        // em `1` a coluna `size` é COPIADA pelo laço abaixo, como o `rot` com o follow
+        // desligado: byte-idêntico por ESTRUTURA, e um stream sem `size` continua sem ele.
+        let taper = taper::Taper {
+            start: ctx.param(taper::SIZE_TAPER.0),
+            end: ctx.param(taper::SIZE_TAPER.1),
+            profile: ctx.param(taper::SIZE_TAPER.2).round() as i32,
+        };
+        let tapering = !taper.is_identity();
+        let size_base: Vec<[f32; 2]> = match input.get("size") {
+            Some(Column::Vec2(v)) => v.clone(),
+            _ => Vec::new(),
+        };
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             // ⚠️ With `follow_rotation` off, `rot` is copied through like every
             // other column — not written with an unchanged value, COPIED. So a
             // stream that never had one still does not, and the default is the
             // node that shipped by STRUCTURE rather than by arithmetic.
-            if name != "P" && !(follow && name == "rot") {
+            if name != "P" && !(follow && name == "rot") && !(tapering && name == "size") {
                 out.set(name.clone(), col.clone());
             }
         }
@@ -468,6 +535,23 @@ impl NodeOp for MotionSplineWrap {
                 .map(|i| base.get(i).copied().unwrap_or(0.0) + turn[i])
                 .collect();
             out.set("rot", Column::Scalar(rot));
+        }
+        if tapering {
+            // ⚠️ O afunilamento **MULTIPLICA** o que já lá está (a identidade da coluna é
+            // `[1, 1]`, e é ela que um stream sem `size` traz): é um modificador sobre um
+            // layout que um `motion.scale` a montante pode já ter dimensionado, a mesma lei
+            // do `rot` acima. E ele honra a MESMA máscara que a posição — um elemento
+            // meio-embrulhado é meio-afunilado, senão o falloff leria como quebrado
+            // exactamente onde está a funcionar.
+            let size: Vec<[f32; 2]> = (0..n)
+                .map(|i| {
+                    let b = size_base.get(i).copied().unwrap_or(SIZE_IDENTITY);
+                    let a = (amount_at(&amount, i) * falloff_at(&falloff, i)).clamp(0.0, 1.0);
+                    let k = 1.0 + (taper.at(arc[i]) - 1.0) * a;
+                    [b[0] * k, b[1] * k]
+                })
+                .collect();
+            out.set("size", Column::Vec2(size));
         }
         ctx.emit(out);
     }
@@ -519,6 +603,10 @@ mod tests;
 #[cfg(test)]
 #[path = "follow_tests.rs"]
 mod follow_tests;
+
+#[cfg(test)]
+#[path = "axis_taper_tests.rs"]
+mod axis_taper_tests;
 
 #[cfg(test)]
 #[path = "drawn_tests.rs"]

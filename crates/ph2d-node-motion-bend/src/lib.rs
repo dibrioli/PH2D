@@ -20,7 +20,7 @@
 
 #![forbid(unsafe_code)]
 
-use ph2d_node_registry::{NodeRegistry, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -30,7 +30,9 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 use std::f32::consts::{PI, TAU};
 
 mod trig;
+mod ui;
 use trig::cos_sin_cycles;
+use ui::{PARAM_HINTS, PARAM_UNITS};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 /// The value type of the `amount` input (mirror of `ph2d_node_pulse_counter::VALUE`).
@@ -73,6 +75,22 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "direction",
             default: 0.0,
+        },
+        // **O QUE ACONTECE FORA DA FATIA** — ver [`MODE`]. O default é o nome, não um `0`
+        // solto: assim o literal e a escada não podem discordar.
+        ParamSpec {
+            name: "mode",
+            default: MODE_UNLIMITED as f32,
+        },
+        // **QUAL FATIA DO EIXO DOBRA**, em frações do extent sobre o pivô — ver [`LIMITS`].
+        // `−1, +1` é o layout INTEIRO, que é o nó que shipou.
+        ParamSpec {
+            name: "limit_lo",
+            default: -1.0,
+        },
+        ParamSpec {
+            name: "limit_hi",
+            default: 1.0,
         },
         ParamSpec {
             name: "pivot_x",
@@ -137,6 +155,88 @@ static REDUCES: &[ReduceSpec] = &[ReduceSpec {
 /// força errada **em silêncio**.
 const DIRECTION: &str = "direction";
 
+/// **QUAL FATIA DO EIXO DOBRA** (doc 89 folha 04 — Blender *Simple Deform ▸ Limits lower/upper*;
+/// a caixa do C4D Bend, que é o mesmo controle vestido de gizmo).
+///
+/// Em frações do extent MEDIDO, sobre o pivô: `−1` é a ponta de um lado, `+1` a do outro, e
+/// `0` o pivô. É a coordenada NATIVA deste nó — `angle` já é *"a volta do pivô até a ponta"* e
+/// `x_extent` já é `max|dx|` sobre o pivô —, então um artista que entendeu o pivô entendeu os
+/// limites. Uma faixa `0..1` como a do Blender pediria uma segunda convenção para o mesmo eixo.
+///
+/// ⚠️ **A fatia RE-ESCALA a curvatura, e as DUAS referências concordam nisso:** o ângulo
+/// inteiro passa a acontecer dentro da fatia, então encolher os limites APERTA a dobra em vez
+/// de a revelar aos poucos. É isso que torna o controle poderoso — *"dobre estes 10% em 180°"*
+/// é uma DOBRADIÇA, e não há outro jeito de a exprimir com um `angle` só. (A leitura contrária
+/// — limites que só escondem — deixaria `angle` a significar a volta sobre um extent que a
+/// fatia já não usa.)
+///
+/// ⚠️ **Os dois limites são um INTERVALO, não um percurso**, e por isso são ordenados antes de
+/// serem usados: ao contrário do `from`/`to` do `motion.spline_wrap` — onde `from > to` percorre
+/// a curva ao contrário e é legítimo — aqui inverter os dois nomearia a mesma fatia. Sem a
+/// ordenação o `clamp` da CPU **entra em pânico** (`f32::clamp` exige `min ≤ max`).
+///
+/// ⚠️ **A identidade do default é LITERAL, e a conta foi conferida e não assumida:** com
+/// `−1, +1` temos `a = −e`, `b = +e` ⇒ `mid = (a + b) · 0,5 = 0,0` e `half = (b − a) · 0,5 = e`
+/// **ao bit** (multiplicar e dividir por 2 é exato em IEEE-754). Daí `k = θ/half` é
+/// *literalmente* o `θ/x_extent` de sempre, `held − mid` é `dx − 0,0 = dx` (inclusive para
+/// `dx = −0,0`), e `run` é `0,0` ⇒ o ramo do arco é a MESMA expressão. Não é um `if` que
+/// devolve o mesmo número por outro caminho.
+const LIMITS: (&str, &str) = ("limit_lo", "limit_hi");
+
+/// **O QUE ACONTECE COM O QUE FICA DE FORA** (doc 89 folha 04 — C4D Bend *Mode:
+/// Limited / Within Box / Unlimited*).
+///
+/// - `0` **Unlimited** (o default, e o nó que shipou): não há fora — a dobra continua para
+///   além da fatia, e o excesso enrola no MESMO círculo. Com os limites no default isto é
+///   exatamente o de sempre, porque nenhum elemento está fora.
+/// - `1` **Limited**: dentro da fatia, o arco; fora, o layout **acompanha rigidamente** a ponta
+///   dobrada — o troço reto sai pela TANGENTE do arco onde ele parou. É a torre cuja base fica
+///   a prumo e cujo topo verga inteiro, e a única das três que **não** era exprimível.
+/// - `2` **Within Box**: fora da fatia, identidade — o elemento fica onde estava.
+///
+/// ⚠️ **A célula media que o «Within Box» já era exprimível** (`field.box` → `falloff` → bend,
+/// e é verdade), e ele entra na mesma. Duas razões, e nenhuma é conforto: os limites vivem no
+/// eixo LOCAL deste nó, então com `direction ≠ 0` a caixa composta teria de ser rodada à mão
+/// para o mesmo ângulo — duas fontes para uma orientação só; e um enum que oferecesse dois dos
+/// três estados da referência faria o artista procurar o terceiro num sítio onde ele não está.
+///
+/// ⚠️ **O «Limited» é UM TERMO, e é o que prova que a fatia é geometria e não máscara:**
+/// `arco + run · tangente(θ)`, onde `run = dx − clamp(dx, a, b)`. Com `run = 0` o termo não é
+/// somado (o ramo é o literal de sempre) — somar `0,0 · c` seria byte-idêntico em quase todo
+/// lado e trocaria o sinal de um zero negativo no resto, que é a diferença que um golden vê.
+///
+/// ⛔ **E aqui morre o `Keep Y-Axis Length`** (`BENDOBJECT_KEEPYAXIS`), a outra célula desta
+/// folha: **RECUSADO POR MEDIÇÃO.** Não preservar o comprimento de arco quer dizer preservar a
+/// **CORDA** (as pontas ficam onde estavam e o layout estica para arquear — a bandeira presa
+/// nos dois cantos), o que é `r = extent / sin(θ)`. Essa expressão **diverge em ±180° e troca
+/// de sinal para lá** — o layout atravessa para o outro lado —, e o slider de `angle` deste nó
+/// vai a **±270°** ([`PARAM_HINTS`]), medido. ⇒ o modo seria indefinido em mais de metade do
+/// curso do knob vizinho, sem porta para o cercar (`ParamHardMax` só ALARGA a caixa de texto
+/// para fora do slider — medido na célula `from`/`to` do `motion.spline_wrap`). Preservar o
+/// arco é o **default da própria referência**, e o esticado aproxima-se a jusante com um
+/// `motion.transform`. *Um knob que faz o layout explodir quando OUTRO knob cruza um número não
+/// é um modo, é uma armadilha.*
+const MODE: &str = "mode";
+
+/// A dobra continua para além da fatia — o default, e o nó que sempre shipou.
+const MODE_UNLIMITED: i32 = 0;
+/// Fora da fatia o layout acompanha RIGIDAMENTE a ponta dobrada (pela tangente).
+const MODE_LIMITED: i32 = 1;
+/// Fora da fatia, identidade — o elemento fica onde estava.
+const MODE_WITHIN_BOX: i32 = 2;
+/// As PALAVRAS da referência, na ordem dos números acima (C4D Bend ▸ Mode).
+const MODE_LABELS: &[&str] = &["Unlimited", "Limited", "Within Box"];
+
+/// A fatia do eixo que dobra, no quadro LOCAL: `(a, b, mid, half)`.
+///
+/// `a`/`b` são os limites em unidades de mundo, JÁ ORDENADOS (ver [`LIMITS`]); `mid` é o ponto
+/// que não se move (o zero do ângulo) e `half` é o meio-curso que o `angle` inteiro atravessa.
+fn slice_of(x_extent: f32, lo: f32, hi: f32) -> (f32, f32, f32, f32) {
+    let (a, b) = (lo * x_extent, hi * x_extent);
+    let (a, b) = if a <= b { (a, b) } else { (b, a) };
+    ((a), b, (a + b) * 0.5, (b - a) * 0.5)
+}
+
 /// The device form of [`bend`] (GPU/M5). One invocation per element, reading the
 /// layout's X extent from the reduction above.
 ///
@@ -152,20 +252,38 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let bd_dy = bd_p.y - params.pivot_y;\n\
         let bd_theta = params.angle * read_amount_v(i) * 3.1415927 / 180.0;\n\
         let bd_ext = reduce_x_extent();\n\
+        // A FATIA, ordenada — o `min`/`max` é a mesma lei da CPU (`slice_of`).\n\
+        let bd_a = min(params.limit_lo, params.limit_hi) * bd_ext;\n\
+        let bd_b = max(params.limit_lo, params.limit_hi) * bd_ext;\n\
+        let bd_mid = (bd_a + bd_b) * 0.5;\n\
+        let bd_half = (bd_b - bd_a) * 0.5;\n\
+        let bd_mode = i32(bd_round(params.mode));\n\
         var bd_bent = vec2<f32>(bd_dx, bd_dy);\n\
-        if (bd_ext >= 1e-4 && abs(bd_theta) >= 1e-4) {\n\
-        \x20   let bd_k = bd_theta / bd_ext;\n\
-        \x20   let bd_r = 1.0 / bd_k;\n\
-        \x20   let bd_ph = (bd_k * bd_dx) / 6.2831855;\n\
-        \x20   let bd_c = bend_sin_cycles(bd_ph + 0.25);\n\
-        \x20   let bd_s = bend_sin_cycles(bd_ph);\n\
-        \x20   bd_bent = vec2<f32>((bd_r - bd_dy) * bd_s, bd_r * (1.0 - bd_c) + bd_dy * bd_c);\n\
+        if (bd_half >= 1e-4 && abs(bd_theta) >= 1e-4) {\n\
+        \x20   var bd_held = bd_dx;\n\
+        \x20   if (bd_mode != 0) { bd_held = clamp(bd_dx, bd_a, bd_b); }\n\
+        \x20   let bd_run = bd_dx - bd_held;\n\
+        \x20   if (bd_mode != 2 || bd_run == 0.0) {\n\
+        \x20       let bd_k = bd_theta / bd_half;\n\
+        \x20       let bd_r = 1.0 / bd_k;\n\
+        \x20       let bd_ph = (bd_k * (bd_held - bd_mid)) / 6.2831855;\n\
+        \x20       let bd_c = bend_sin_cycles(bd_ph + 0.25);\n\
+        \x20       let bd_s = bend_sin_cycles(bd_ph);\n\
+        \x20       bd_bent = vec2<f32>((bd_r - bd_dy) * bd_s, bd_r * (1.0 - bd_c) + bd_dy * bd_c);\n\
+        \x20       if (bd_run != 0.0) {\n\
+        \x20           bd_bent = vec2<f32>(bd_bent.x + bd_run * bd_c, bd_bent.y + bd_run * bd_s);\n\
+        \x20       }\n\
+        \x20   }\n\
         }\n\
         let bd_f = clamp(read_in_falloff(i), 0.0, 1.0);\n\
         write_P(i, vec2<f32>(\n\
         \x20   bd_p.x + (params.pivot_x + bd_bent.x - bd_p.x) * bd_f,\n\
         \x20   bd_p.y + (params.pivot_y + bd_bent.y - bd_p.y) * bd_f));\n",
     wgsl_lib: "\
+        fn bd_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (WGSL round is half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
         // The corrected parabolic sine at `phase` CYCLES — the port of `trig.rs`.\n\
         fn bend_sin_cycles(phase: f32) -> f32 {\n\
             let f = phase - floor(phase);\n\
@@ -206,7 +324,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 1,
         },
     ],
-    params: &["angle", "pivot_x", "pivot_y"],
+    params: &[
+        "angle", "mode", "limit_lo", "limit_hi", "pivot_x", "pivot_y",
+    ],
     count_law: None,
     variant_by_param: None,
     // ⚠️ Ver [`DIRECTION`]: a redução `x_extent` não roda com o quadro.
@@ -234,11 +354,18 @@ fn amount_at(vals: &[f32], i: usize) -> f32 {
 /// `angle_deg · amount`; element `i` at `(dx, dy)` (relative to the pivot) wraps to
 /// `((R − dy)·sinθ, R·(1 − cosθ) + dy·cosθ)` where `θ = angle · dx / x_extent` and
 /// `R = x_extent / angle` — a rotation-free arc-wrap that preserves arc length.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "a assinatura É o contrato do nó: cada argumento é um param do MANIFEST que a lei lê, e agrupá-los num struct só para contar menos põe uma segunda declaração da mesma lista ao lado do manifesto — que é onde as duas divergem"
+)]
 fn bend(
     base: &[[f32; 2]],
     pivot: [f32; 2],
     angle_deg: f32,
     direction_deg: f32,
+    mode: i32,
+    limit_lo: f32,
+    limit_hi: f32,
     amount: &[f32],
     falloff: &[f32],
 ) -> Vec<[f32; 2]> {
@@ -262,17 +389,39 @@ fn bend(
     // `x_extent` is a max-reduction across all instances (kept serial above);
     // given it, output element `i` is a pure per-instance map → parallel above
     // the threshold (bit-identical, no reduction). GPU/M5 Fase 0.
+    // A FATIA que dobra — ver [`LIMITS`]. No default `half` é `x_extent` AO BIT e `mid` é `0`,
+    // então tudo abaixo reduz literalmente à expressão que sempre shipou.
+    let (a, b, mid, half) = slice_of(x_extent, limit_lo, limit_hi);
     par_build(base.len(), |i| {
         let p = base[i];
         let (dx, dy) = local(p);
         let theta_max = angle_deg * amount_at(amount, i) * PI / 180.0;
-        let bent = if x_extent < MIN_ANGLE_RAD || theta_max.abs() < MIN_ANGLE_RAD {
-            [dx, dy] // no extent / no angle → identity
+        // Onde a dobra PARA, e o troço reto que sobra depois dela.
+        // ⚠️ Um `mode` fora da lista lê como `Unlimited`, que é o default — nunca como um
+        // quarto comportamento sem nome.
+        let held = if mode == MODE_LIMITED || mode == MODE_WITHIN_BOX {
+            dx.clamp(a, b)
         } else {
-            let k = theta_max / x_extent; // curvature (rad per world unit)
+            dx
+        };
+        let run = dx - held;
+        // TRÊS razões distintas para a MESMA resposta — o layout intacto: não há fatia, não
+        // há ângulo, ou o elemento está fora de uma caixa que não o leva consigo.
+        let degenerate = half < MIN_ANGLE_RAD || theta_max.abs() < MIN_ANGLE_RAD;
+        let outside_the_box = mode == MODE_WITHIN_BOX && run != 0.0;
+        let bent = if degenerate || outside_the_box {
+            [dx, dy]
+        } else {
+            let k = theta_max / half; // curvature (rad per world unit)
             let r = 1.0 / k; // radius of the spine arc
-            let (c, s) = cos_sin_cycles((k * dx) / TAU); // cos/sin of the arc angle
-            [(r - dy) * s, r * (1.0 - c) + dy * c]
+            let (c, s) = cos_sin_cycles((k * (held - mid)) / TAU); // cos/sin of the arc angle
+            let arc = [(r - dy) * s, r * (1.0 - c) + dy * c];
+            if run == 0.0 {
+                arc // a EXPRESSÃO DE SEMPRE, e é por aqui que todo grafo autorado passa
+            } else {
+                // `Limited`: o que ficou de fora sai pela TANGENTE, rígido.
+                [arc[0] + run * c, arc[1] + run * s]
+            }
         };
         // De volta ao mundo — a mesma base, no sentido contrário.
         let world = if direction_deg == 0.0 {
@@ -299,6 +448,8 @@ impl NodeOp for MotionBend {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         let angle = ctx.param("angle");
         let direction = ctx.param(DIRECTION);
+        let mode = ctx.param(MODE).round() as i32;
+        let (limit_lo, limit_hi) = (ctx.param(LIMITS.0), ctx.param(LIMITS.1));
         let pivot = [ctx.param("pivot_x"), ctx.param("pivot_y")];
         let amount: Vec<f32> = match ctx.input(1).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
@@ -313,7 +464,9 @@ impl NodeOp for MotionBend {
         // Pure per-instance map → parallel above the threshold
         // (bit-identical, no reduction). GPU/M5 Fase 0.
         let falloff: Vec<f32> = par_build(n, |i| falloff_at(input, i));
-        let moved = bend(&base, pivot, angle, direction, &amount, &falloff);
+        let moved = bend(
+            &base, pivot, angle, direction, mode, limit_lo, limit_hi, &amount, &falloff,
+        );
         let mut out = Stream::new(n);
         for (name, col) in input.columns() {
             if name != "P" {
@@ -347,69 +500,6 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
-
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "angle",
-        label: "Angle",
-        min: -270.0,
-        max: 270.0,
-        step: 1.0,
-        widget: ParamWidget::Slider,
-    },
-    // ⚠️ Um `Angle`, e a volta INTEIRA: a direção da dobra é um eixo, e um eixo tem 360° de
-    // resposta distinta (a `−90` a dobra corre para baixo, e isso não é o mesmo que `+90`).
-    ParamUiHint {
-        param: DIRECTION,
-        label: "Direction",
-        min: -180.0,
-        max: 180.0,
-        step: 1.0,
-        widget: ParamWidget::Angle,
-    },
-    ParamUiHint {
-        param: "pivot_x",
-        label: "Pivot X",
-        min: -10.0,
-        max: 10.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "pivot_y",
-        label: "Pivot Y",
-        min: -10.0,
-        max: 10.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-];
-
-/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
-/// shown. A `Length` is stored in world METRES and the panel resolves the face
-/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
-/// that could pin one would be overriding a setting it does not own.
-///
-/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
-/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
-/// that is wrong is worse than a unit that is missing, because the artist can read
-/// a bare number but a mislabelled one teaches them something false.
-static PARAM_UNITS: &[ParamUnitDecl] = &[
-    ParamUnitDecl {
-        param: "pivot_x",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "pivot_y",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "angle",
-        unit: ParamUnit::Angle,
-    },
-];
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -420,7 +510,17 @@ mod tests {
     #[test]
     fn a_straight_row_bends_into_an_arc() {
         let row = [[-2.0, 0.0], [-1.0, 0.0], [0.0, 0.0], [1.0, 0.0], [2.0, 0.0]];
-        let out = bend(&row, [0.0, 0.0], 90.0, 0.0, &[], &[1.0; 5]); // amount empty → 1
+        let out = bend(
+            &row,
+            [0.0, 0.0],
+            90.0,
+            0.0,
+            MODE_UNLIMITED,
+            -1.0,
+            1.0,
+            &[],
+            &[1.0; 5],
+        ); // amount empty → 1
         // Centre (dx=0) is unmoved.
         assert!(
             out[2][0].abs() < 1e-4 && out[2][1].abs() < 1e-4,
@@ -446,7 +546,17 @@ mod tests {
     fn the_bend_preserves_arc_length() {
         // A 180° bend wraps the row into a half-circle; the two ±rims meet at the top.
         let row = [[-1.0, 0.0], [1.0, 0.0]];
-        let out = bend(&row, [0.0, 0.0], 180.0, 0.0, &[], &[1.0; 2]);
+        let out = bend(
+            &row,
+            [0.0, 0.0],
+            180.0,
+            0.0,
+            MODE_UNLIMITED,
+            -1.0,
+            1.0,
+            &[],
+            &[1.0; 2],
+        );
         // Both rims land at the same x (0) and the same height (the arc diameter).
         assert!(
             (out[0][0] - out[1][0]).abs() < 1e-3,
@@ -467,13 +577,43 @@ mod tests {
     #[test]
     fn amount_scales_and_signs_the_bend() {
         let row = [[2.0, 0.0]];
-        let flat = bend(&row, [0.0, 0.0], 90.0, 0.0, &[0.0], &[1.0]);
+        let flat = bend(
+            &row,
+            [0.0, 0.0],
+            90.0,
+            0.0,
+            MODE_UNLIMITED,
+            -1.0,
+            1.0,
+            &[0.0],
+            &[1.0],
+        );
         assert!(
             (flat[0][0] - 2.0).abs() < 1e-4 && flat[0][1].abs() < 1e-4,
             "amount 0 = identity"
         );
-        let up = bend(&row, [0.0, 0.0], 90.0, 0.0, &[1.0], &[1.0]);
-        let down = bend(&row, [0.0, 0.0], 90.0, 0.0, &[-1.0], &[1.0]);
+        let up = bend(
+            &row,
+            [0.0, 0.0],
+            90.0,
+            0.0,
+            MODE_UNLIMITED,
+            -1.0,
+            1.0,
+            &[1.0],
+            &[1.0],
+        );
+        let down = bend(
+            &row,
+            [0.0, 0.0],
+            90.0,
+            0.0,
+            MODE_UNLIMITED,
+            -1.0,
+            1.0,
+            &[-1.0],
+            &[1.0],
+        );
         assert!(up[0][1] > 0.3, "positive curls up: {:?}", up[0]);
         assert!(down[0][1] < -0.3, "negative curls down: {:?}", down[0]);
     }
@@ -483,7 +623,17 @@ mod tests {
     #[test]
     fn falloff_zero_leaves_an_element_flat() {
         let row = [[2.0, 0.0], [2.0, 0.0]];
-        let out = bend(&row, [0.0, 0.0], 90.0, 0.0, &[], &[1.0, 0.0]);
+        let out = bend(
+            &row,
+            [0.0, 0.0],
+            90.0,
+            0.0,
+            MODE_UNLIMITED,
+            -1.0,
+            1.0,
+            &[],
+            &[1.0, 0.0],
+        );
         assert!(out[1][1].abs() < 1e-4, "masked stays flat: {:?}", out[1]);
         assert!(out[0][1] > 0.3, "focused bends: {:?}", out[0]);
     }
@@ -507,3 +657,7 @@ mod tests {
 #[cfg(test)]
 #[path = "direction_tests.rs"]
 mod direction_tests;
+
+#[cfg(test)]
+#[path = "limits_tests.rs"]
+mod limits_tests;

@@ -1,6 +1,7 @@
 //! Os gates da [`super::DIRECTION`] — a direção da dobra (doc 89, folha 04).
 
 use super::*;
+use ph2d_node_registry::ParamWidget;
 
 /// Uma fileira ao longo de X, centrada na origem.
 fn row() -> Vec<[f32; 2]> {
@@ -21,12 +22,42 @@ fn rotated(deg: f32) -> Vec<[f32; 2]> {
 #[test]
 fn zero_is_the_bend_that_shipped_bit_for_bit() {
     let r = row();
-    let a = bend(&r, [0.0, 0.0], 90.0, 0.0, &[], &[1.0; 7]);
+    let a = bend(
+        &r,
+        [0.0, 0.0],
+        90.0,
+        0.0,
+        MODE_UNLIMITED,
+        -1.0,
+        1.0,
+        &[],
+        &[1.0; 7],
+    );
     // A mesma chamada, e a igualdade é EXACTA: o caminho de `0` não passa pela base.
-    let b = bend(&r, [0.0, 0.0], 90.0, 0.0, &[], &[1.0; 7]);
+    let b = bend(
+        &r,
+        [0.0, 0.0],
+        90.0,
+        0.0,
+        MODE_UNLIMITED,
+        -1.0,
+        1.0,
+        &[],
+        &[1.0; 7],
+    );
     assert_eq!(a, b);
     // E o controle: uma direção qualquer TEM de mudar alguma coisa.
-    let turned = bend(&r, [0.0, 0.0], 90.0, 40.0, &[], &[1.0; 7]);
+    let turned = bend(
+        &r,
+        [0.0, 0.0],
+        90.0,
+        40.0,
+        MODE_UNLIMITED,
+        -1.0,
+        1.0,
+        &[],
+        &[1.0; 7],
+    );
     assert_ne!(a, turned, "a direção tem de morder");
 }
 
@@ -41,12 +72,32 @@ fn bending_a_turned_row_equals_turning_the_bent_row() {
     let deg = 35.0;
     let (c, s) = cos_sin_cycles(deg / 360.0);
     // (a) dobrar a fileira JÁ rodada, com a dobra a correr no mesmo eixo dela
-    let a = bend(&rotated(deg), [0.0, 0.0], 90.0, deg, &[], &[1.0; 7]);
+    let a = bend(
+        &rotated(deg),
+        [0.0, 0.0],
+        90.0,
+        deg,
+        MODE_UNLIMITED,
+        -1.0,
+        1.0,
+        &[],
+        &[1.0; 7],
+    );
     // (b) dobrar a fileira original no eixo X, e rodar o resultado
-    let b: Vec<[f32; 2]> = bend(&row(), [0.0, 0.0], 90.0, 0.0, &[], &[1.0; 7])
-        .iter()
-        .map(|p| [p[0] * c - p[1] * s, p[0] * s + p[1] * c])
-        .collect();
+    let b: Vec<[f32; 2]> = bend(
+        &row(),
+        [0.0, 0.0],
+        90.0,
+        0.0,
+        MODE_UNLIMITED,
+        -1.0,
+        1.0,
+        &[],
+        &[1.0; 7],
+    )
+    .iter()
+    .map(|p| [p[0] * c - p[1] * s, p[0] * s + p[1] * c])
+    .collect();
     // ⚠️ **A barra é 0,5% e não um épsilon de `f32`, e o número tem dono:** os dois caminhos
     // não são a mesma expressão — um roda a ENTRADA e o outro roda a SAÍDA, e a base é a
     // senoide parabólica do `trig.rs` (~0,09% fora da trig verdadeira, HR-5). Duas rotações
@@ -69,7 +120,17 @@ fn bending_a_turned_row_equals_turning_the_bent_row() {
 #[test]
 fn at_ninety_the_bend_runs_across_the_row_and_finds_no_extent() {
     let r = row();
-    let out = bend(&r, [0.0, 0.0], 90.0, 90.0, &[], &[1.0; 7]);
+    let out = bend(
+        &r,
+        [0.0, 0.0],
+        90.0,
+        90.0,
+        MODE_UNLIMITED,
+        -1.0,
+        1.0,
+        &[],
+        &[1.0; 7],
+    );
     for (p, q) in r.iter().zip(&out) {
         assert!(
             (p[0] - q[0]).abs() < 1e-4 && (p[1] - q[1]).abs() < 1e-4,

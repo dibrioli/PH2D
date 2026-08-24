@@ -44,6 +44,20 @@ fn rot(doc: &MotionDoc, reg: &NodeRegistry, sink: NodeId) -> Vec<f32> {
     }
 }
 
+/// A coluna `size` da cena — a **terceira** coisa que um param pode mudar (ver o censo
+/// `every_control_the_write_on_scene_offers_does_something_in_it`).
+fn size_col(doc: &MotionDoc, reg: &NodeRegistry, sink: NodeId) -> Vec<[f32; 2]> {
+    let mut c = Cook::new();
+    let out = c.cook(&doc.graph, reg, sink, 0.0).expect("a cena coze");
+    let CookValue::Instances(s) = &out[0] else {
+        panic!("stream")
+    };
+    match ph2d_nodegraph::attr::Stream::get(s, "size") {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
 fn has(doc: &MotionDoc, ty: &str) -> bool {
     doc.graph
         .nodes()
@@ -448,15 +462,37 @@ fn probe_conferencia_scenes() {
 /// cena não continha o fenômeno que prometia. Este gate faz a pergunta uma vez
 /// por param, em vez de eu me lembrar dela uma vez por smoke.
 ///
-/// O oráculo é `P` **ou** `rot`: o `Follow Curve` não move um elemento, ele o
-/// vira — pedir só posição deixaria o toggle passar por morto.
+/// O oráculo é `P` **ou** `rot` **ou** `size`: o `Follow Curve` não move um elemento, ele o
+/// vira — pedir só posição deixaria o toggle passar por morto. ⚠️ **E o `size` entrou em
+/// 2026-08-24, pela mesma lição uma terceira vez:** o afunilamento ao longo do arco
+/// (`size_start`/`size_end`) não move nem vira nada, ele ENGROSSA — e o censo acusou-o de
+/// morto sobre produto correcto. *Um censo que pergunta «mudou alguma coisa?» tem de saber
+/// todas as coisas que um nó pode mudar; ele estava a perguntar «mudou alguma das duas que
+/// eu conheço?».*
+///
+/// ⚠️ **E há params que são INERTES no default por desenho**, não por defeito — a forma de um
+/// afunilamento que ainda não existe. Para esses o censo aplica primeiro o
+/// [`CONDITIONED_ON`], que é mais forte que os saltar: o knob continua a ter de provar que faz
+/// alguma coisa, só que sob a precondição que lhe dá significado.
 #[test]
 fn every_control_the_write_on_scene_offers_does_something_in_it() {
     let reg = registry();
     let sw_id = NodeTypeId::of("motion.spline_wrap");
 
-    let cook_both = |doc: &MotionDoc, sink: NodeId| -> (Vec<[f32; 2]>, Vec<f32>) {
-        (cook(doc, &reg, sink, 0.0), rot(doc, &reg, sink))
+    /// **Params cujo efeito depende de OUTRO param estar ligado** — `(o param, o habilitador,
+    /// o valor que o habilita)`.
+    ///
+    /// ⚠️ É a mesma família do `Inherit Strength` do `motion.emitter`, que se cura com um
+    /// `ParamGate` no painel; aqui o `size_profile` não é gateável porque a condição não é um
+    /// valor de enum, é *«as duas pontas do afunilamento não são iguais»*.
+    const CONDITIONED_ON: &[(&str, &str, f32)] = &[("size_profile", "size_end", 0.2)];
+
+    let cook_both = |doc: &MotionDoc, sink: NodeId| -> (Vec<[f32; 2]>, Vec<f32>, Vec<[f32; 2]>) {
+        (
+            cook(doc, &reg, sink, 0.0),
+            rot(doc, &reg, sink),
+            size_col(doc, &reg, sink),
+        )
     };
     let base_doc = {
         let mut d = MotionDoc::new();
@@ -473,7 +509,6 @@ fn every_control_the_write_on_scene_offers_does_something_in_it() {
         let mut doc = MotionDoc::new();
         let sinks = build_write_on_demo_document(&mut doc, &reg).expect("cena");
         let sink = *sinks.first().expect("sink");
-        let before = cook_both(&base_doc, sink);
 
         // Um valor DENTRO da faixa que o painel oferece e diferente do de hoje —
         // ⚠️ empurrar sempre para cima faria o `to` (default 1, teto 1) saturar e
@@ -507,6 +542,10 @@ fn every_control_the_write_on_scene_offers_does_something_in_it() {
             }
         }
 
+        // ⚠️ **O habilitador entra ANTES do empurrão** (ver [`CONDITIONED_ON`]), e nas DUAS
+        // fotografias: sem ele no `before`, o gate mediria o habilitador em vez do param.
+        let enabler = CONDITIONED_ON.iter().find(|(p, ..)| *p == spec.name);
+        let mut base_doc = base_doc.clone();
         for n in doc
             .graph
             .nodes()
@@ -515,8 +554,13 @@ fn every_control_the_write_on_scene_offers_does_something_in_it() {
             .map(|n| n.id)
             .collect::<Vec<_>>()
         {
+            if let Some((_, k, v)) = enabler {
+                doc.graph.set_param(n, *k, *v);
+                base_doc.graph.set_param(n, *k, *v);
+            }
             doc.graph.set_param(n, spec.name, nudged);
         }
+        let before = cook_both(&base_doc, sink);
         let after = cook_both(&doc, sink);
         let moved = before
             .0
@@ -529,8 +573,14 @@ fn every_control_the_write_on_scene_offers_does_something_in_it() {
                 .iter()
                 .zip(&after.1)
                 .any(|(a, b)| (a - b).abs() > 1e-4);
+        let thickened = before.2.len() != after.2.len()
+            || before
+                .2
+                .iter()
+                .zip(&after.2)
+                .any(|(a, b)| (a[0] - b[0]).abs().max((a[1] - b[1]).abs()) > 1e-4);
         assert!(
-            moved || turned,
+            moved || turned || thickened,
             "`{}` ({} -> {nudged}) nao mudou NADA na cena -- ou o param esta morto, \
              ou a cena nao lhe da entrada (foi o caso do `height_scale` com uma fila)",
             spec.name,

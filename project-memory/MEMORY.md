@@ -45,6 +45,7 @@
 - [Comentário velho e código morto MENTEM](feedback_stale_comment_and_dead_code_lie.md)
 - ["O design rejeita X"? grepe o gate](feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate.md)
 - [Nota de diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) — confira e corrija a nota
+- [Nem toda inexactidão é PERIGO — a que subestima é folga](feedback_not_every_inexactness_is_danger_the_one_that_underestimates_is_slack.md) — meça o SINAL do erro antes de honrar um limite herdado
 - [Coluna de sonda sem rótulo é lida ao contrário](feedback_an_unlabelled_probe_column_gets_read_backwards.md) — reportei «17 buracos» onde a linha dizia `0 bordo · 17 dobradas`; e quase culpei o instrumento certo
 - [Pergunte que número a resposta CONTRÁRIA imprimiria](feedback_ask_what_number_the_opposite_answer_would_print.md) — **as três faces:** a régua tem de exprimir a resposta (ALCANCE: `90` não cabia numa grandeza limitada a `45`), sobre amostras que a contenham (EXTENSÃO: «não contrai» dito de UMA varredura), e não depender do que não importa (INVARIÂNCIA: a translação de uma costura é de calibre)
 - [Cura medida numa fixtura que NÃO contém o fenômeno lê como inútil](feedback_a_cure_measured_on_a_fixture_that_lacks_the_phenomenon_reads_as_useless.md) — meça a fração alcançável ANTES do resultado; um zero pode ser implementação meio-feita
@@ -113,6 +114,7 @@
 - [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
 - [Desigualdade ≠ oráculo, e área somada ≠ REGIÃO](feedback_an_inequality_accepts_a_whole_interval_only_an_oracle_accepts_an_answer.md) — "o meio está entre as pontas" deixa passar produto errado; `Σ|área|` lê 400 e 272 para a MESMA região
 - [Afirmação que mutação nenhuma mata é afirmação sobre NADA](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) — encolha a afirmação até ao que a máquina faz; perseguir o gate antes de a reler custa duas voltas
+- [Afirmação de SEGURANÇA sem a metade JUSTA deixa passar toda mutação conservadora](feedback_a_safety_claim_needs_its_fairness_half_or_a_conservative_mutation_survives.md) — e a metade justa não pode ser a implementação escrita ao contrário
 - [Contar o trabalho FEITO não é contar o ENTREGUE](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) — o gate contava cozeduras e o consumidor recebia zero; ponha a sonda dentro de quem consome
 - [Duas hipóteses boas que falham refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md) — ao 2.º falhanço pare de propor curas e construa a régua que LOCALIZA; ilibe também o suspeito improvável
 - [Provas de mutação (7)](reference_topic_mutation_proofs.md) — ⚠️ os 3 controles vão NO ARNÊS: verde-antes · `Compiling <pkg>` · `running 1 test` (sem o 1º, um gate que rebenta sozinho lê como mutação apanhada)

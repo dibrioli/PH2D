@@ -14,6 +14,7 @@
 - [Disco cheio CORROMPE os .o e o mold morre em SIGBUS (22/08)](project_disk_full_corrupts_objects_mold_sigbus.md) — linker a 0% de CPU com `wchan=vfs_coredump`; cura é `cargo clean -p`, e o `df` já não mostra a causa
 - [«Disco cheio» com 526 GB livres = METADATA do btrfs; swap 100% = target em tmpfs no zram; csum corrompido = kernel 7.2.0 (22/08)](project_btrfs_metadata_starved_not_disk_full_2026_08_22.md) — três doenças, um instrumento: `scripts/btrfs-health.sh`; cura de metadata é balance (root), não `rm -rf`
 - [Prompt Deck](reference_prompt_deck_app.md) — apps pessoais em "Meus Apps"; fonte única `prompts.json`, 3 saídas geradas
+- [Apps à mão em `~/Apps` são invisíveis ao cachy-update (23/08)](reference_manual_apps_in_home_apps_are_invisible_to_cachy_update.md) — `pacman -Qo $(which app)` sem dono = instalação manual; Chrome migrado ao AUR, os outros 5 seguem fora
 - [Atalho global no Plasma 6](reference_kde_plasma6_global_shortcut.md) — `[services][x.desktop]` + o grab que falta após o login
 - [HISTÓRICO: aquarela/wash](reference_topic_watercolor_historical.md) — ADR-0096/0099/0108; 17 memórias da era
 
@@ -51,6 +52,7 @@
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — "intentionally NOT X" = decisão
 - [Revert pode diferir só no TEMPO DE VIDA](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md) — leia o MOTIVO do revert, não o diff; escopo é o que mata tentativa boa
 - [`match` exaustivo NÃO guarda a lista que um laço itera](feedback_an_exhaustive_match_does_not_guard_the_list_a_loop_iterates.md) — variante nova = braço morto sem warning; agulha com espaço nunca casa
+- [Um nome de param da CASA carrega contrato](feedback_a_house_param_name_carries_a_contract_pick_another_word.md) — `channel` tem gate atrás; reusá-lo reprova sobre produto correcto, e a cura é o nome (irmã do `substeps`)
 - [Convenção vs inércia](feedback_convention_vs_inertia.md) — tem gate? default = mais isolamento
 
 ## Git & colisão multi-agente
@@ -70,14 +72,19 @@
 - [Laço colável em idioma bash NÃO itera em zsh](feedback_a_pastable_bash_loop_never_iterates_under_zsh.md) — `for p in $VAR` roda 1× com a string inteira; portão que ENUMERA exige array citado + controle positivo
 - [Crase em msg de commit executa](feedback_backticks_in_commit_message_are_command_substitution.md) — `git commit -F`
 - [LOC cap = split](feedback_loc_cap_split_not_allowlist_and_fmt_reexpands.md) · [cap de FN ≠ cap de ARQUIVO](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md) — fmt ANTES de medir; corte para o IRMÃO
+- [O clippy do fecho cobre TODA crate que a linha tocou](feedback_the_closing_clippy_must_cover_every_crate_the_line_touched.md) — alvo derivado do DIFF, nunca escrito à mão; um `-p` a dedo mede a minha memória e o integrador paga
 - [Cadência de processo + armadilhas de CI (17)](reference_topic_process_cadence.md) — gist em CLAUDE.md §2-§3 · fmt-skew · ship committed vs WIP · cold-build drift · paridade CI · `rustup default` · allowlist duplicada · seletor de impacto cego. ⚠️ o babysit do CI É polling de 15 min (§3)
 
 ## Auditoria (famílias — 2 saltos)
 - [Reprodução/diagnóstico (18)](reference_topic_repro_discipline.md) — harness/mecanismo · cursor real · não-repro ≠ fix · escala antes de causa · controle positivo
 - [Réguas do quad remesh (13)](reference_topic_quad_remesh_rulers.md) — ⛔ suíte topológica cega a geometria · extremo global ≠ régua por-face · cura que falha delimita a causa · gate tautológico · régua que deduplica · `round` sem resíduo · invariante conservada · proveniência do defeito · provas de ótimo
 - [Ofício de gate (32)](reference_topic_gate_discipline.md) — ausência+presença · razão doente · verde por acidente · paridade CPU/GPU · fixture contém o fenômeno
+- [Modo SUPERSET ganha a dedup, nunca perde](feedback_a_superset_mode_must_win_the_dedup_never_lose_it.md) — desistir do modo rico apaga o que só ele desenha; a pergunta é qual CONTÉM o outro, não quem chegou primeiro
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) — seed=sample · âncora · id-counter · load adota · ponto fixo · unidades mistas
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
+- [Pintar e despachar têm de ler a MESMA fonte](feedback_paint_and_dispatch_must_read_the_same_source.md) — caixa que pinta do mundo e decide do store só diverge quando o MOTOR escreve o facto; sintoma é «às vezes, ao 2º clique»
+- [Lista escrita à mão ao lado de um predicado = duas respostas](feedback_a_hand_written_list_beside_a_predicate_is_two_answers.md) — quem ENUMERA copia a lista de quem DECIDE; o diálogo oferecia 4 de 11 formatos há meses, e só uma extensão nova gerou report
+- [«Acabou» lê-se igual a «foi pausado»](feedback_stopped_because_it_ended_reads_the_same_as_stopped_by_hand.md) — religar um transporte esgotado é gesto MORTO sem o predicado; e rebobinar tem de mover a IMAGEM
 - [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
 - [Provas de mutação (6)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra

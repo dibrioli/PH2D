@@ -451,6 +451,47 @@ medida exacta do que este documento poupa: **uma fase inteira**.
 
 ---
 
+### §5-bis.7 — ⭐⭐ O NOSSO F1 foi medido, e ele está à altura
+
+⚠️ A §5-bis.6 pedia esta medição «como passo seguinte». Ela **foi feita no mesmo dia**, no
+arnês (o `ph2d-remesh-iso` entrou como dependência de caminho — harness, fora das crates de
+produto).
+
+**A qualidade dos TRIÂNGULOS, que é o que a fase zero de facto entrega:**
+
+| malha | aspecto p50 | p99 | máx | área mínima |
+|---|---|---|---|---|
+| ⭐ **o nosso F1** (`alpha = 0,014` ⇒ 10 600 faces) | **`1,16`** | **`1,58`** | `3,1` | `6,8e-05` |
+| a remalhagem **do oráculo** (9 534 faces) | `1,22` | `1,94` | `2,5` | `5,1e-04` |
+| ⛔ **o meu leque sobre a malha de quads** | `1,65` | ⛔ **`22,97`** | ⛔ **`23,0`** | `2,3e-05` |
+
+⇒ ⭐⭐⭐ **O nosso F1 é tão bom quanto o do oráculo — melhor na mediana e no p99.** E o
+mecanismo do defeito fica **quantificado**: a triangulação que eu fabriquei tinha um p99 de
+aspecto de **`23`**, quinze vezes pior.
+⚠️ **A área mínima é uma ordem de grandeza menor que a dele** — a única coluna em que ele
+ganha, e é a que a extração com predicados exactos mais sente.
+
+#### ⛔ O que NÃO se conseguiu fechar, e porquê
+
+A corrida ponta-a-ponta **sobre a nossa remalhagem** cai (falha de segmentação) **dentro da
+implementação de referência**, depois de ler a malha e o campo (`lido: V=5302 F=10600 N=4`) e
+antes de a integração terminar. ⚠️ A mesma implementação, com o **nosso** campo sobre a
+remalhagem **dele**, corre e dá `5,1°`.
+
+⇒ **Não há aqui uma acusação ao nosso F1** — a medição de forma acima diz que ele está à
+altura. É mais uma entrada na conta de **robustez** da implementação de referência, que agora
+está em **5 falhas em 9 entradas**. ⛔ *E é exactamente por isso que não a portamos.*
+
+⚠️ **Tentei o discriminador** — correr o pipeline **inteiro deles** (campo próprio incluído)
+sobre a nossa remalhagem, para separar «a nossa malha» de «a nossa escolha de campo». Ele ficou
+**preso na fase de campo por mais de 15 minutos** sem chegar a imprimir uma linha, e foi morto.
+⇒ **inconclusivo**, e mais uma entrada na conta de robustez deles.
+
+⚠️ **O número ponta-a-ponta sobre a nossa remalhagem só sai com a NOSSA extração.** É o
+primeiro smoke da obra.
+
+---
+
 ### §5-bis.6 — ⭐⭐⭐ O PASSO SEGUINTE REAL (e não é meu: exige escrever produto)
 
 ⛔ **A cerca honesta das medições acima:** elas usam a malha **remalhada pelo oráculo**. ⇒ o

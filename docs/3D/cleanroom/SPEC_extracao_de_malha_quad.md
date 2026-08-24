@@ -46,8 +46,22 @@ densidade):
 
 ⇒ ⭐⭐⭐ **O dobro do enviesamento, sem uma linha de algoritmo mudar.** Triângulos compridos
 com viés diagonal contaminam a parametrização, e a extração herda-o.
-⭐ **Esta fase já existe na casa:** `ph2d-remesh-iso` (F1). ⛔ **Não a salte, e não meça sem
-ela.** ⚠️ *O remalhador de produção de referência faz exactamente isto na primeira fase.*
+
+⭐ **Esta fase já existe na casa, e foi MEDIDA:** `ph2d-remesh-iso` (F1).
+
+| malha | aspecto do triângulo p50 · p99 · máx |
+|---|---|
+| ⭐ **o nosso F1** | **`1,16`** · **`1,58`** · `3,1` |
+| a remalhagem do oráculo | `1,22` · `1,94` · `2,5` |
+| ⛔ a triangulação por leque | `1,65` · ⛔ **`22,97`** · ⛔ **`23,0`** |
+
+⇒ **O nosso F1 está à altura** — melhor na mediana e no p99. ⚠️ **A área mínima dele é uma
+ordem de grandeza menor** que a do oráculo, e é a coluna que uma extração com predicados
+exactos mais sente ⇒ **meça-a**, e considere um piso.
+
+⛔ **Não salte a fase zero, e não meça sem ela.** ⚠️ *O remalhador de produção de referência
+faz exactamente isto na primeira fase — está escrito na descrição dele, e ignorá-lo custou
+três leituras erradas.*
 
 **Entra:** a malha de triângulos **remalhada** + um **mapa de grade inteira** — uma parametrização
 por-triângulo `f_t : t → R²` em que as **isolinhas inteiras**, trazidas de volta à
@@ -403,6 +417,7 @@ mapa antes considerado defeituoso passa a ser utilizável.
 | 7 | a característica de Euler da saída **iguala** a da entrada | ⚠️ a família de defeitos que a `line/sculpt3d` já pagou: `χ` do toro tem de dar `0`, não `2` |
 | 8 | ⭐ **a forma por-face** bate a barra do oráculo | `QuadShape`, medido pelo **mesmo código** sobre a saída dele: enviesamento p50 **`4,8°`–`7,1°`** · faces com canto `>60°` = **`0`** · aspecto p50 `1,08`–`1,22`. ⭐⭐ **MEDIDO ALCANÇÁVEL com a fase zero honrada: `5,1°`–`5,5°`, `100%` quads, `0`–`3` faces péssimas** — na estriada isso **ultrapassa** o oráculo (`5,5°` contra `7,1°`). ⛔ **Sem a fase zero a mesma cadeia dá `10–12°`** — se o gate reprovar aí, o defeito é a entrada |
 | 9 | uma malha com **bordo** produz saída | a peça com 38 arestas de bordo do corpus |
+| 9-bis | ⭐ **a fase zero entrega triângulos bem formados** | aspecto p99 ≤ `1,6` (medido no nosso F1: `1,58`); ⛔ e a **área mínima** não desce abaixo do que o predicado exacto tolera |
 | 10 | uma malha de **género 1** produz saída com `χ = 0` | o toro do corpus |
 | 11 | ⛔ **o caminho antigo continua byte-idêntico** enquanto o interruptor estiver desligado | a lei desta linha: tudo o que é novo shipa **desligado** com a tabela ao lado |
 

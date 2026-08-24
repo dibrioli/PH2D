@@ -519,7 +519,8 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   (`5,1°` · `0` péssimas contra `7,4°` · `9`) ⇒ o F2 está ilibado por **resultado**.
   ⛔⛔ **FASE ZERO obrigatória, medida:** remalhar isotropicamente (`ph2d-remesh-iso`, F1) **antes** da
   cadeia. Sem ela a MESMA cadeia dá `10–12°` — *o dobro, sem uma linha de algoritmo mudar* (o corpus está
-  guardado em quads, e triangular por leque injecta viés diagonal). ⛔ **Duas hipóteses foram REFUTADAS por
+  guardado em quads, e triangular por leque injecta viés diagonal: aspecto p99 de **`23`** contra o `1,58`
+  do nosso F1, que está **à altura do remalhador do oráculo**). ⛔ **Duas hipóteses foram REFUTADAS por
   medição** antes de se achar essa: o **curl** do nosso campo (ele é *mais* integrável que o de referência)
   e a **densidade** da grade (`0,7°` de `6,3°`). Decisão em
   [ADR-0164](docs/architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md):

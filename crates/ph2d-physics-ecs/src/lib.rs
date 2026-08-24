@@ -144,38 +144,38 @@ use ph2d_ecs::scene::ComponentRegistry;
 /// (the `Locked`/`GroupedChildren`/`VecPathRef` bug). Registered here, they
 /// round-trip through undo + save with zero snapshot-side code.
 pub fn register_physics_components(reg: &mut ComponentRegistry) {
-    reg.register::<RigidBody>("ph2d::physics::RigidBody");
-    reg.register::<Collider>("ph2d::physics::Collider");
-    reg.register::<PhysicsJoint>("ph2d::physics::PhysicsJoint");
-    reg.register::<GravityScale>("ph2d::physics::GravityScale");
-    reg.register::<PlayerSignals>("ph2d::physics::PlayerSignals");
-    reg.register::<SignalOnHit>("ph2d::physics::SignalOnHit");
-    reg.register::<SignalOnLeave>("ph2d::physics::SignalOnLeave");
-    reg.register::<InitialVelocity>("ph2d::physics::InitialVelocity");
-    reg.register::<Ccd>("ph2d::physics::Ccd");
-    reg.register::<LockRotation>("ph2d::physics::LockRotation");
-    reg.register::<LockPositionX>("ph2d::physics::LockPositionX");
-    reg.register::<LockPositionY>("ph2d::physics::LockPositionY");
+    reg.register_default::<RigidBody>("ph2d::physics::RigidBody");
+    reg.register_default::<Collider>("ph2d::physics::Collider");
+    reg.register_default::<PhysicsJoint>("ph2d::physics::PhysicsJoint");
+    reg.register_default::<GravityScale>("ph2d::physics::GravityScale");
+    reg.register_default::<PlayerSignals>("ph2d::physics::PlayerSignals");
+    reg.register_default::<SignalOnHit>("ph2d::physics::SignalOnHit");
+    reg.register_default::<SignalOnLeave>("ph2d::physics::SignalOnLeave");
+    reg.register_default::<InitialVelocity>("ph2d::physics::InitialVelocity");
+    reg.register_default::<Ccd>("ph2d::physics::Ccd");
+    reg.register_default::<LockRotation>("ph2d::physics::LockRotation");
+    reg.register_default::<LockPositionX>("ph2d::physics::LockPositionX");
+    reg.register_default::<LockPositionY>("ph2d::physics::LockPositionY");
     reg.register::<MassOverride>("ph2d::physics::MassOverride");
     reg.register::<Dominance>("ph2d::physics::Dominance");
-    reg.register::<MaterialCombine>("ph2d::physics::MaterialCombine");
-    reg.register::<PulleyWheel>("ph2d::physics::PulleyWheel");
-    reg.register::<DampingOverride>("ph2d::physics::DampingOverride");
-    reg.register::<OneWayPlatform>("ph2d::physics::OneWayPlatform");
-    reg.register::<AreaEffector>("ph2d::physics::AreaEffector");
-    reg.register::<AreaDrag>("ph2d::physics::AreaDrag");
-    reg.register::<AreaBuoyancy>("ph2d::physics::AreaBuoyancy");
-    reg.register::<AreaFormDrag>("ph2d::physics::AreaFormDrag");
-    reg.register::<AreaTorque>("ph2d::physics::AreaTorque");
-    reg.register::<AreaForceWorldAxes>("ph2d::physics::AreaForceWorldAxes");
-    reg.register::<AreaFalloff>("ph2d::physics::AreaFalloff");
-    reg.register::<WestonAxle>("ph2d::physics::WestonAxle");
-    reg.register::<RopeStops>("ph2d::physics::RopeStops");
-    reg.register::<JointWorldAnchor>("ph2d::physics::JointWorldAnchor");
-    reg.register::<PlatformPlayer>("ph2d::physics::PlatformPlayer");
-    reg.register::<PlayerMode>("ph2d::physics::PlayerMode");
-    reg.register::<WalkSurface>("ph2d::physics::WalkSurface");
-    reg.register::<NoWallCling>("ph2d::physics::NoWallCling");
+    reg.register_default::<MaterialCombine>("ph2d::physics::MaterialCombine");
+    reg.register_default::<PulleyWheel>("ph2d::physics::PulleyWheel");
+    reg.register_default::<DampingOverride>("ph2d::physics::DampingOverride");
+    reg.register_default::<OneWayPlatform>("ph2d::physics::OneWayPlatform");
+    reg.register_default::<AreaEffector>("ph2d::physics::AreaEffector");
+    reg.register_default::<AreaDrag>("ph2d::physics::AreaDrag");
+    reg.register_default::<AreaBuoyancy>("ph2d::physics::AreaBuoyancy");
+    reg.register_default::<AreaFormDrag>("ph2d::physics::AreaFormDrag");
+    reg.register_default::<AreaTorque>("ph2d::physics::AreaTorque");
+    reg.register_default::<AreaForceWorldAxes>("ph2d::physics::AreaForceWorldAxes");
+    reg.register_default::<AreaFalloff>("ph2d::physics::AreaFalloff");
+    reg.register_default::<WestonAxle>("ph2d::physics::WestonAxle");
+    reg.register_default::<RopeStops>("ph2d::physics::RopeStops");
+    reg.register_default::<JointWorldAnchor>("ph2d::physics::JointWorldAnchor");
+    reg.register_default::<PlatformPlayer>("ph2d::physics::PlatformPlayer");
+    reg.register_default::<PlayerMode>("ph2d::physics::PlayerMode");
+    reg.register_default::<WalkSurface>("ph2d::physics::WalkSurface");
+    reg.register_default::<NoWallCling>("ph2d::physics::NoWallCling");
 }
 
 #[cfg(test)]

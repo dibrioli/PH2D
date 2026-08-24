@@ -19,7 +19,7 @@
 
 | Fase | O quê (uma frase) | Estado |
 |---|---|---|
-| F0 | O descritor de componente (+ `category`/`applies_to`) + `insert_default` — o inspector aprende a derivar | ⬜ |
+| F0 | O descritor de componente (+ `category`/`applies_to`) + `insert_default` — o inspector aprende a derivar | ✅ 2026-08-24 |
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ⬜ |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ⬜ |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ⬜ |
@@ -83,6 +83,11 @@ fases.
 | `WorldSnapshot::VERSION` | 1 → **2** (F1) | `save.rs` |
 | `PROJECT_SCHEMA` | 95 → **96** (F1) — ⚠️ **reconte no dia**: se outra linha integrar antes, o degrau é o próximo livre, não o 96 | escada + tripla |
 | Ids de widget novos | `INSP_ADD_COMPONENT` (F3, o `+` do cabeçalho do Inspector) | `ph2d-editor-core/src/ids/` + o gate `node_id_collisions` |
+| **Superfície pública nova (F0, feita)** | `ComponentRegistry::register_default::<T>` · `ComponentTypeEntry::insert_default` · `ComponentTypeEntry::desc` | ⚠️ **`register_inner` é privado** — as duas portas públicas são `register` (sem default) e `register_default` |
+| **Sítios de chamada convertidos (F0, feita)** | **109** `reg.register::<T>` → `register_default::<T>`, menos **27** revertidos (sem `Default`) = **82** convertidos | ⚠️ 5 arquivos: `ph2d-ecs/scene/registry.rs` (70, um deles num teste) · `-render` (1) · `-script` (1) · `-physics-ecs` (32) · `-field-ecs` (5). **É a maior superfície de colisão desta linha** — uma linha que acrescente um componente toca o mesmo arquivo |
+| **Dependências novas (F0, feita)** | `ph2d-ecs` → `ph2d-component-desc` · `shells/desktop` → idem · `ph2d-panel-inspector` → idem | ⚠️ conta para o `machete` no `ship.sh` |
+| **Arquivos de teste novos (F0, feita)** | `shells/desktop/tests/every_registered_component_is_described.rs` (5 censos) · `ph2d-panel-inspector/tests/the_ordering_labels_come_from_the_descriptor.rs` (2) | nomes novos, sem colisão |
+| Componentes acrescentados na F0 | **nenhum** — os contadores 69/70/70/32/5 ficam intactos | (a F1 é que os move) |
 | Envs de smoke | `PH2D_INSTANCE_SMOKE=<n>` (F4+) · `PH2D_ASSET_BROWSER_SMOKE` (F7) | roteador de cenas próprio |
 | Campo novo no `ProjectFile` | `stable_id_counter` (F1 — FORA do `ProjectState`, undo não rebobina) | conta no degrau do schema |
 | Teto do ADR-0074 | +3 opcionais no corte da Sprite (o teto é 32) | `architecture_*` do Sprite |
@@ -136,6 +141,50 @@ ordering (o resto entra por demanda nas fases seguintes; a tabela cresce append-
 ⚠️ **Mas `category`/`attach`/`applies_to` são para TODOS os 107 desde já** — são uma linha por tipo,
 e é o que a F3 precisa para a paleta não nascer com buracos. Descrever *campos* é caro; declarar
 *em que gaveta o tipo vive* não é.
+
+---
+
+### ✅ F0 — FECHADA em 2026-08-24. O que ela mediu (e o que mudou por causa disso)
+
+⭐ **O `Attach` tem TRÊS estados, não dois — e quem o provou foi o compilador.** A versão
+desenhada era `Authored`/`Machinery`. Ao converter os registadores para `register_default`,
+**27 dos 109 tipos não implementam `Default`**, e **17 deles estavam marcados `Authored`**: a
+paleta oferecê-los-ia e não os conseguiria construir (anexar é inserir o **ponto neutro do
+tipo**). Entrou `Attach::Intrinsic` — *dado do artista que chega com o GESTO, nunca oferecido,
+mas que **pode** ter seção* (a `Sprite` tem a maior de todas). Gate:
+`every_offered_component_can_be_constructed`.
+
+⚠️ **E dentro dos 27 há DUAS espécies, com consequência para a F3:**
+1. **Não há neutro que signifique nada** — `VecShape` sem geometria não é uma forma vazia; a
+   `Sprite` exige uma `source`; um objeto sem `Name` não é um objeto de nome vazio.
+2. ⚠️ **O neutro existe e anexá-lo seria um NO-OP** — a cerca que `MassOverride` e `Dominance`
+   documentam: *"absent = the neutral default and the Inspector detaches it at 0 (a project
+   file stays free of the no-op)"*. Neles a **presença** carrega o sentido, e o valor de
+   anexação teria de vir do **contexto** (a massa que o corpo tem agora).
+   ⇒ ⭐ **Nem todas as cinco portas por-seção são redundantes com o `+`** (emenda ao ADR-0166):
+   as que **SEMEIAM do valor vivo** fazem algo que a paleta genérica não pode fazer. A F3 tem
+   de as distinguir antes de podar.
+
+⭐ **O piloto (§7 Ordering) achou um defeito ao ser ligado:** o rótulo de cada linha vivia em
+**dois** sítios — literal no pintor, `FieldDesc::name` no catálogo — e eles **já discordavam em
+2 das 10 linhas** (`Sort At Root` × `Sort at Root`; `Y-Sort` × `Enabled`). Hoje o pintor lê o
+descritor (`field_label`/`marker_label`), o descritor foi corrigido **para o que o produto
+pinta**, e há dois gates com prova de mutação.
+
+**Entregue:** crate-folha `ph2d-component-desc` (vocabulário + catálogo de **108** tipos,
+cortado por 7 famílias) · `ComponentRegistry::register_default` + `ComponentTypeEntry::{insert_default, desc}`
+· **13 gates**, todos com prova de mutação (6 no catálogo · 5 de censo na shell · 2 no piloto).
+
+⛔ **NÃO entregue, de propósito:** o `component_id: ComponentId` que a linha «Toca» acima
+prevê. Ele é pré-requisito do **scan por archetype da F2** e não tem consumidor hoje — armá-lo
+agora seria o fio órfão que a DIRETIVA §1 chama de causa nº 1 de feature morta. A F2 acrescenta-o
+**com** o scan que o lê.
+
+⚠️ **Duas armadilhas de arnês que esta fase pagou** (as duas com o gate a ficar verde sobre
+código errado): um `shutil.copy2` no restore de mutação devolve o **mtime** antigo e o cargo
+serve o binário da mutação ([memória](../../project-memory/feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md));
+e um gate estrutural escrito **por linha** não vê um literal numa invocação **multi-linha** — a
+1.ª versão do `the_painter_does_not_hardcode_the_row_labels` ficou verde sobre um rótulo à mão.
 
 ---
 

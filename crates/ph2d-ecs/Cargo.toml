@@ -27,6 +27,12 @@ ph2d-asset = { path = "../ph2d-asset" }
 # `ph2d_warp_style::WarpStyle`, a MESMA lista do efeito Warp. Folha pura (só serde), não fere a
 # regra "a fundação não puxa satélite pesado".
 ph2d-warp-style = { path = "../ph2d-warp-style" }
+# O DESCRITOR de componente (ADR-0164 F0 · ADR-0166): side-metadata chaveada pelo nome
+# canónico, que o `ComponentRegistry` resolve uma vez por tipo no `register`. Folha PURA
+# (zero dependências, nem serde), então não fere "a fundação não puxa satélite pesado".
+# ⚠️ A seta aponta desta direção de propósito: o descritor não pode conhecer `bevy_ecs`,
+# senão não poderia descrever tipos de OUTRAS crates (`Sprite` mora em `ph2d-render`).
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 # A casa ÚNICA do perfil de largura (ADR-0148): `VecStrokeProfile` guarda um
 # `WidthStops`, e o MESMO tipo é consumido pelo motor da fita (`ph2d-vec-boolean`,
 # via o re-export da `ph2d-vec-scene`). Fundação e modelo puro não se veem, então a

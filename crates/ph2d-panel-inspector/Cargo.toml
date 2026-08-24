@@ -10,6 +10,11 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# ADR-0166 / plano F0: a §7 Ordering é a seção PILOTO — os rótulos das linhas dela vêm do
+# descritor, não de literais no pintor. ⚠️ Ligá-la revelou que as duas fontes já discordavam
+# ("Sort At Root" × "Sort at Root"), que é exatamente o defeito que uma fonte só apaga.
+# Folha PURA (zero dependências), então não puxa nada para o painel.
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }

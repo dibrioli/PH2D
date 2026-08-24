@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-component-desc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# ⛔ NENHUMA. Esta crate é uma FOLHA de propósito (ADR-0164 F0, ADR-0166): ela descreve
+# componentes sem conhecer nenhum deles — nem `bevy_ecs` (senão a descrição não poderia
+# falar de tipos de OUTRAS crates: `Sprite` mora em `ph2d-render`, os corpos em
+# `ph2d-physics-ecs`, o campo em `ph2d-field-ecs`), nem `ph2d-nodegraph`, nem `serde`.
+#
+# A chave é o NOME CANÓNICO (`&'static str`), que é o que já existe em todos os cinco
+# registros e o único identificador que atravessa as crates sem as ligar. O precedente da
+# casa é o `NodeUiManifest` (`ph2d-node-registry/src/ui.rs`): *"side-metadata, additive and
+# non-frozen, it lives beside the ops"*, chaveada por `NodeTypeId`. Aqui é o mesmo padrão
+# um nível acima.
+#
+# ⚠️ Sem `serde` PORQUE nada disto vai a disco: o descritor é conhecimento do BINÁRIO sobre
+# os seus próprios tipos, não dado do documento. O que vai a disco é o `field_id` (um `u16`
+# que o override carrega), e quem o serializa é o consumidor.

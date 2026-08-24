@@ -5339,6 +5339,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-component-desc"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-core"
 version = "0.0.0"
 dependencies = [
@@ -5367,6 +5371,7 @@ dependencies = [
  "libm",
  "ph2d-asset",
  "ph2d-asset-cooker",
+ "ph2d-component-desc",
  "ph2d-core",
  "ph2d-fx-op",
  "ph2d-render",
@@ -5722,6 +5727,7 @@ dependencies = [
  "ph2d-audio-opus",
  "ph2d-audio-spectral",
  "ph2d-color",
+ "ph2d-component-desc",
  "ph2d-core",
  "ph2d-crossfield",
  "ph2d-curve",
@@ -7496,6 +7502,7 @@ name = "ph2d-panel-inspector"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-component-desc",
  "ph2d-editor-core",
  "ph2d-text",
  "ph2d-tokens",

@@ -46,6 +46,11 @@ ph2d-panel-authored = { path = "../../crates/ph2d-panel-authored" }
 ph2d-panel-sculpt3d = { path = "../../crates/ph2d-panel-sculpt3d" }
 ph2d-panel-wet-tuning = { path = "../../crates/ph2d-panel-wet-tuning" }
 ph2d-render = { path = "../../crates/ph2d-render" }
+# ADR-0166: o descritor de componente. A shell é a ÚNICA que vê os cinco registradores, e
+# por isso é aqui que mora o censo de dois lados do catálogo
+# (`tests/every_registered_component_is_described.rs`) — um censo dentro de qualquer crate
+# sozinha seria verdadeiro por vacuidade sobre os componentes das outras.
+ph2d-component-desc = { path = "../../crates/ph2d-component-desc" }
 # Os PIXELS PRÓPRIOS de um sprite dentro do arquivo de projeto (plano `docs/Sprite_projeto/17`
 # §3). Crate fina, ao lado da `ph2d-render` porque é a mesma matéria vista do lado do disco: ela
 # é dona do `SpriteSource`, esta é dona dos bytes que o `Individual` deixava morrer com o

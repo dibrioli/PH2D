@@ -15,6 +15,29 @@ use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 pub(crate) const LAYER_LABELS: [&str; 5] =
     ["Background", "Midground", "Default", "Foreground", "UI"];
 
+/// ⭐ **O rótulo de um CAMPO, lido do descritor** (ADR-0166 · plano F0 — a §7 é a seção
+/// piloto).
+///
+/// Antes desta wave o rótulo vivia como literal aqui e o nome do campo vivia no descritor:
+/// **duas fontes para a mesma string**, e elas já tinham divergido (*"Sort At Root"* ×
+/// *"Sort at Root"*; *"Y-Sort"* × *"Enabled"*). Quem manda é o produto — o descritor foi
+/// corrigido para o que o Inspector pinta —, e agora há uma fonte só.
+///
+/// ⚠️ **Faltar não é opção silenciosa:** um `field_id` sem descrição faz o painel pintar
+/// `??` em vez de uma linha muda ou de um rótulo inventado. É a lei do *zero no-op
+/// silencioso* (DIRETIVA §2) aplicada a uma string.
+fn field_label(canonical_name: &'static str, field_id: u16) -> &'static str {
+    ph2d_component_desc::desc_for(canonical_name)
+        .and_then(|d| d.field(field_id))
+        .map_or("??", |f| f.name)
+}
+
+/// O rótulo de um **marcador de tamanho zero** — nele a presença É o valor, então a linha
+/// mostra o nome do COMPONENTE (`Show Behind Parent`), não o de um campo que não existe.
+fn marker_label(canonical_name: &'static str) -> &'static str {
+    ph2d_component_desc::desc_for(canonical_name).map_or("??", |d| d.display_name)
+}
+
 fn label_color(theme: Theme) -> VelloColor {
     resolve(ColorToken::Text2, theme)
 }
@@ -303,10 +326,26 @@ pub(crate) fn paint_ordering_section(
     // style): a non-zero value attaches `ZIndexOverride`, `0` detaches it
     // (= default, pure DFS / hierarchy order — `0` and absent sort
     // identically). Z as Relative pairs with it.
-    yy = ni!(yy, ids::INSP_ORDER_Z_INDEX, "Z Index");
-    yy = cb!(yy, ids::INSP_ORDER_Z_RELATIVE, "Z as Relative");
-    yy = cb!(yy, ids::INSP_ORDER_SHOW_BEHIND, "Show Behind Parent");
-    yy = ni!(yy, ids::INSP_ORDER_ORDER_IN_LAYER, "Order in Layer");
+    yy = ni!(
+        yy,
+        ids::INSP_ORDER_Z_INDEX,
+        field_label("ph2d::ecs::ZIndexOverride", 1)
+    );
+    yy = cb!(
+        yy,
+        ids::INSP_ORDER_Z_RELATIVE,
+        field_label("ph2d::ecs::ZAsRelative", 1)
+    );
+    yy = cb!(
+        yy,
+        ids::INSP_ORDER_SHOW_BEHIND,
+        marker_label("ph2d::ecs::ShowBehindParent")
+    );
+    yy = ni!(
+        yy,
+        ids::INSP_ORDER_ORDER_IN_LAYER,
+        field_label("ph2d::ecs::OrderInLayer", 1)
+    );
     yy = layer_row(
         scene,
         text_system,
@@ -318,15 +357,33 @@ pub(crate) fn paint_ordering_section(
         yy,
         info.sorting_layer as usize,
     );
-    yy = cb!(yy, ids::INSP_ORDER_YSORT_ENABLED, "Y-Sort");
+    yy = cb!(
+        yy,
+        ids::INSP_ORDER_YSORT_ENABLED,
+        field_label("ph2d::ecs::YSort", 1)
+    );
     if live(store, ids::INSP_ORDER_YSORT_ENABLED, info.y_sort_enabled) {
         yy = ysort_point_rows(scene, text_system, theme, hit_index, store, x, w, yy, info);
     }
-    yy = cb!(yy, ids::INSP_ORDER_SORTING_GROUP, "Sorting Group");
+    // ⚠️ A linha-mãe mostra o nome do COMPONENTE (a presença do `SortingGroup` é o que ela
+    // liga) e a filha mostra o nome do CAMPO dele — duas perguntas, dois rótulos.
+    yy = cb!(
+        yy,
+        ids::INSP_ORDER_SORTING_GROUP,
+        marker_label("ph2d::ecs::SortingGroup")
+    );
     if live(store, ids::INSP_ORDER_SORTING_GROUP, info.sorting_group) {
-        yy = cb!(yy, ids::INSP_ORDER_SORT_AT_ROOT, "Sort At Root");
+        yy = cb!(
+            yy,
+            ids::INSP_ORDER_SORT_AT_ROOT,
+            field_label("ph2d::ecs::SortingGroup", 1)
+        );
     }
-    yy = cb!(yy, ids::INSP_ORDER_TOP_LEVEL, "Top Level");
+    yy = cb!(
+        yy,
+        ids::INSP_ORDER_TOP_LEVEL,
+        marker_label("ph2d::ecs::TopLevel")
+    );
 
     fold.finish(
         store,

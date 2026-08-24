@@ -96,15 +96,45 @@ pub type SerializeFn = fn(&World, Entity) -> Result<Option<Vec<u8>>, RegistryErr
 /// marker / unsetting an optional override).
 pub type RemoveFn = fn(&mut World, Entity);
 
+/// Insert `T::default()` onto `entity` — **o elo que faltava** para um UI genérico
+/// de *Add Component* (ADR-0166 §4, plano F0).
+///
+/// A auditoria de 2026-08-21 mediu o buraco: a vtable tinha `insert_from_bytes`,
+/// `serialize` e `remove`, e nenhum construtor. Um catálogo que recebe um
+/// `ComponentTypeId` **não tem como produzir um valor inicial** sem conhecer o tipo
+/// Rust em tempo de compilação — e é por isso que este ponteiro tem de ser capturado
+/// no sítio do `register`, que é o único que ainda sabe o que `T` é.
+///
+/// ⚠️ **Anexar é INERTE**: o componente chega no ponto neutro do próprio tipo, nunca
+/// num valor inventado pelo painel. É a lei que a §5 9-Slice já escrevia sozinha
+/// (*"um botão que abre uma seção não pode ser uma edição destrutiva disfarçada"*),
+/// aqui generalizada — e o desfazer vem de graça, porque a mudança de archetype
+/// altera os bytes do snapshot e o diff a apanha.
+pub type InsertDefaultFn = fn(&mut World, Entity) -> Result<(), RegistryError>;
+
 /// One registered Component type's vtable: canonical name + id +
 /// fn pointers for `(de)serialize through postcard` + type-erased
-/// removal.
+/// removal + type-erased default construction.
 pub struct ComponentTypeEntry {
     pub canonical_name: &'static str,
     pub type_id: ComponentTypeId,
     pub insert_from_bytes: InsertFromBytesFn,
     pub serialize: SerializeFn,
     pub remove: RemoveFn,
+    /// `None` quando o tipo **não implementa `Default`** — hoje só a `Sprite`, que
+    /// precisa de uma `source` e por isso não é uma escolha do Inspector: ela chega
+    /// pelo gesto que cria a imagem. Um `None` aqui é o que impede a paleta de
+    /// oferecer algo que ela não consegue construir.
+    pub insert_default: Option<InsertDefaultFn>,
+    /// O descritor deste tipo ([`ph2d_component_desc`]), resolvido pelo **nome
+    /// canónico** no momento do registo.
+    ///
+    /// ⚠️ **Side-metadata, não contrato.** O catálogo vive numa crate-folha e é
+    /// chaveado por string, precisamente para que acrescentar um componente não
+    /// obrigue a tocar nos 107 sítios de chamada em 5 crates (DIRETRIZ §1.5.2.1 —
+    /// projete foundational novo para ISOLAMENTO). O preço é a deriva silenciosa, e
+    /// quem a paga é o censo de dois lados na shell, que tem o registo COMPLETO.
+    pub desc: Option<&'static ph2d_component_desc::ComponentDesc>,
 }
 
 /// Manual registry of component types known to the spawn / save
@@ -131,6 +161,47 @@ impl ComponentRegistry {
     /// runtime condition we want to recover from.
     pub fn register<T>(&mut self, canonical_name: &'static str)
     where
+        T: Component<Mutability = bevy_ecs::component::Mutable>
+            + Serialize
+            + DeserializeOwned
+            + 'static,
+    {
+        self.register_inner::<T>(canonical_name, None);
+    }
+
+    /// Como [`Self::register`], **mais** o construtor de default — a porta pela qual um
+    /// UI genérico anexa um componente que ele não conhece (ADR-0166).
+    ///
+    /// ⚠️ **Prefira SEMPRE este.** O [`Self::register`] cru fica para os tipos que
+    /// genuinamente não têm um ponto neutro (hoje só a `Sprite`, que exige uma
+    /// `source`), e um tipo registado sem `insert_default` é um tipo que a paleta do
+    /// `+` **não pode oferecer** — o que é a resposta certa quando não há default, e
+    /// um buraco silencioso quando há e ninguém o ligou.
+    pub fn register_default<T>(&mut self, canonical_name: &'static str)
+    where
+        T: Component<Mutability = bevy_ecs::component::Mutable>
+            + Serialize
+            + DeserializeOwned
+            + Default
+            + 'static,
+    {
+        self.register_inner::<T>(
+            canonical_name,
+            Some(|world, entity| {
+                let mut e = world
+                    .get_entity_mut(entity)
+                    .map_err(|_| RegistryError::EntityMissing(entity))?;
+                e.insert(T::default());
+                Ok(())
+            }),
+        );
+    }
+
+    fn register_inner<T>(
+        &mut self,
+        canonical_name: &'static str,
+        insert_default: Option<InsertDefaultFn>,
+    ) where
         T: Component<Mutability = bevy_ecs::component::Mutable>
             + Serialize
             + DeserializeOwned
@@ -178,6 +249,11 @@ impl ComponentRegistry {
                     e.remove::<T>();
                 }
             },
+            insert_default,
+            // Resolvido AQUI, uma vez por tipo, e não a cada consulta: o Inspector
+            // pergunta por componente presente por quadro, e uma busca por string no
+            // caminho de pintura seria um custo de UI que ninguém vê até crescer.
+            desc: ph2d_component_desc::desc_for(canonical_name),
         };
         self.by_id.insert(id, entry);
         self.by_name.insert(canonical_name, id);
@@ -220,54 +296,54 @@ impl Default for ComponentRegistry {
 /// `register_*_components` functions, called once at boot from the
 /// shell.
 pub fn register_ecs_components(reg: &mut ComponentRegistry) {
-    reg.register::<crate::Transform>("ph2d::ecs::Transform");
+    reg.register_default::<crate::Transform>("ph2d::ecs::Transform");
     reg.register::<crate::Name>("ph2d::ecs::Name");
-    reg.register::<crate::Visibility>("ph2d::ecs::Visibility");
-    reg.register::<crate::RootOrder>("ph2d::ecs::RootOrder");
+    reg.register_default::<crate::Visibility>("ph2d::ecs::Visibility");
+    reg.register_default::<crate::RootOrder>("ph2d::ecs::RootOrder");
     // Sprite Inspector v2 W3 — sorting / visibility / sampling
     // components (spec §02). Optional: serialized only when present, so
     // legacy scenes are byte-unchanged.
-    reg.register::<crate::SortingLayer>("ph2d::ecs::SortingLayer");
-    reg.register::<crate::OrderInLayer>("ph2d::ecs::OrderInLayer");
-    reg.register::<crate::ZIndexOverride>("ph2d::ecs::ZIndexOverride");
-    reg.register::<crate::ZAsRelative>("ph2d::ecs::ZAsRelative");
-    reg.register::<crate::YSort>("ph2d::ecs::YSort");
-    reg.register::<crate::SortingGroup>("ph2d::ecs::SortingGroup");
-    reg.register::<crate::ShowBehindParent>("ph2d::ecs::ShowBehindParent");
-    reg.register::<crate::TopLevel>("ph2d::ecs::TopLevel");
-    reg.register::<crate::ClipChildren>("ph2d::ecs::ClipChildren");
-    reg.register::<crate::MaskInteraction>("ph2d::ecs::MaskInteraction");
-    reg.register::<crate::Mask2D>("ph2d::ecs::Mask2D");
-    reg.register::<crate::TextureFilter>("ph2d::ecs::TextureFilter");
-    reg.register::<crate::TextureRepeat>("ph2d::ecs::TextureRepeat");
-    reg.register::<crate::VisibilityLayer>("ph2d::ecs::VisibilityLayer");
-    reg.register::<crate::OnScreenEnabler>("ph2d::ecs::OnScreenEnabler");
-    reg.register::<crate::UvTransform>("ph2d::ecs::UvTransform");
-    reg.register::<crate::BlendMode>("ph2d::ecs::BlendMode");
+    reg.register_default::<crate::SortingLayer>("ph2d::ecs::SortingLayer");
+    reg.register_default::<crate::OrderInLayer>("ph2d::ecs::OrderInLayer");
+    reg.register_default::<crate::ZIndexOverride>("ph2d::ecs::ZIndexOverride");
+    reg.register_default::<crate::ZAsRelative>("ph2d::ecs::ZAsRelative");
+    reg.register_default::<crate::YSort>("ph2d::ecs::YSort");
+    reg.register_default::<crate::SortingGroup>("ph2d::ecs::SortingGroup");
+    reg.register_default::<crate::ShowBehindParent>("ph2d::ecs::ShowBehindParent");
+    reg.register_default::<crate::TopLevel>("ph2d::ecs::TopLevel");
+    reg.register_default::<crate::ClipChildren>("ph2d::ecs::ClipChildren");
+    reg.register_default::<crate::MaskInteraction>("ph2d::ecs::MaskInteraction");
+    reg.register_default::<crate::Mask2D>("ph2d::ecs::Mask2D");
+    reg.register_default::<crate::TextureFilter>("ph2d::ecs::TextureFilter");
+    reg.register_default::<crate::TextureRepeat>("ph2d::ecs::TextureRepeat");
+    reg.register_default::<crate::VisibilityLayer>("ph2d::ecs::VisibilityLayer");
+    reg.register_default::<crate::OnScreenEnabler>("ph2d::ecs::OnScreenEnabler");
+    reg.register_default::<crate::UvTransform>("ph2d::ecs::UvTransform");
+    reg.register_default::<crate::BlendMode>("ph2d::ecs::BlendMode");
     // A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8). Opcional: sem o componente o
     // quadro é byte-idêntico, e um projeto antigo carrega sem ele — mas quem o autorou tem de o
     // reencontrar depois de gravar, e sem esta linha o `world_to_snapshot` descartava-o em silêncio.
-    reg.register::<crate::SpriteEmissive>("ph2d::ecs::SpriteEmissive");
+    reg.register_default::<crate::SpriteEmissive>("ph2d::ecs::SpriteEmissive");
     // Trava e group-lock: markers que o Hierarchy edita e que o save/undo precisa
     // preservar (sem eles, `world_to_snapshot` os descartava em silêncio).
-    reg.register::<crate::Locked>("ph2d::ecs::Locked");
-    reg.register::<crate::GroupedChildren>("ph2d::ecs::GroupedChildren");
+    reg.register_default::<crate::Locked>("ph2d::ecs::Locked");
+    reg.register_default::<crate::GroupedChildren>("ph2d::ecs::GroupedChildren");
     // ADR-0110: a referência que faz de um path vetorial uma entidade. Sem ela um
     // save do mundo perderia o vínculo path↔entidade e o load duplicaria as formas.
-    reg.register::<crate::VecPathRef>("ph2d::ecs::VecPathRef");
+    reg.register_default::<crate::VecPathRef>("ph2d::ecs::VecPathRef");
     // A identidade ESTÁVEL do documento do Painter (camadas + pixels + relevo). Sem ela
     // um save/load não teria como devolver a um sprite o documento que era dele — os bits
     // da entidade são id de alocação e morrem no restore —, e a pintura voltaria como um
     // bake achatado, sem camadas e sem espessura.
-    reg.register::<crate::PaintedDoc>("ph2d::ecs::PaintedDoc");
+    reg.register_default::<crate::PaintedDoc>("ph2d::ecs::PaintedDoc");
     // ADR-0150 (W8.7): a identidade ESTÁVEL dos canais assados de uma malha (`base` + `form`).
     // Mesmo mecanismo do `PaintedDoc` e mesma consequência de esquecê-la — mas com um agravante
     // próprio: os canais existem justamente para o objeto sobreviver ao módulo 3D sair do build, e
     // sem esta identidade eles não sobreviveriam nem ao arquivo ser reaberto com ele DENTRO.
-    reg.register::<crate::BakedForm>("ph2d::ecs::BakedForm");
+    reg.register_default::<crate::BakedForm>("ph2d::ecs::BakedForm");
     // ADR-0114: idem para um objeto Flip (animação quadro-a-quadro). Sem ela o
     // save perderia o vínculo objeto↔entidade e o load duplicaria os objetos Flip.
-    reg.register::<crate::FlipObjectRef>("ph2d::ecs::FlipObjectRef");
+    reg.register_default::<crate::FlipObjectRef>("ph2d::ecs::FlipObjectRef");
     // Live Shapes: os parâmetros de uma forma paramétrica viva (a geometria é
     // derivada deles). Sem registrar, um save/undo perderia a "forma-ness" e o texto
     // não saberia se re-cozinhar / converter em curvas.
@@ -282,16 +358,16 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // irmãos — sem o registro o snapshot o DESCARTA, e um Ctrl+Z (ou um save) devolveria a
     // forma sem o offset, em silêncio, com a curva certa por baixo.
     reg.register::<crate::VecOffset>("ph2d::ecs::VecOffset");
-    reg.register::<crate::VecStrokeProfile>("ph2d::ecs::VecStrokeProfile");
+    reg.register_default::<crate::VecStrokeProfile>("ph2d::ecs::VecStrokeProfile");
     // A SIMETRIA viva: o eixo autorado de uma forma. Mesma razão de todos os irmãos — sem o
     // registro o snapshot a DESCARTA, e um Ctrl+Z (ou reabrir o projeto) devolveria a forma com
     // metade do desenho, sem que nada dissesse por quê: as cópias são derivadas, então o que tem
     // de sobreviver é a RELAÇÃO, e é este componente.
-    reg.register::<crate::VecSymmetry>("ph2d::ecs::VecSymmetry");
+    reg.register_default::<crate::VecSymmetry>("ph2d::ecs::VecSymmetry");
     // A LÂMINA: qual caminho é linha de corte. Mesma razão de todos os irmãos, e mais afiada —
     // sem o registro, reabrir o projeto devolveria a linha como um caminho SEM fill e SEM stroke:
     // invisível na tela, inerte, e fora do alcance do botão que existe para a apagar.
-    reg.register::<crate::VecCutPath>("ph2d::ecs::VecCutPath");
+    reg.register_default::<crate::VecCutPath>("ph2d::ecs::VecCutPath");
     // A BOOLEANA viva: com que operação os filhos de um grupo se combinam. Mesma razão de todos
     // os irmãos, e aqui a perda seria a mais visível de todas — sem o registro, um Ctrl+Z (ou
     // reabrir o projeto) devolveria os operandos SOLTOS, empilhados uns sobre os outros, e a
@@ -302,8 +378,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // os irmãos — sem o registro, reabrir o projeto devolveria a forma como DESENHO cru, e o
     // artista teria de re-vestir cada controle da tela que acabou de compor.
     reg.register::<crate::VecWidget>("ph2d::ecs::VecWidget");
-    reg.register::<crate::VecWidgetBind>("ph2d::ecs::VecWidgetBind");
-    reg.register::<crate::VecWidgetValue>("ph2d::ecs::VecWidgetValue");
+    reg.register_default::<crate::VecWidgetBind>("ph2d::ecs::VecWidgetBind");
+    reg.register_default::<crate::VecWidgetValue>("ph2d::ecs::VecWidgetValue");
     // O ÍCONE escolhido de um botão de ícone (plano UI/UX W8b, §6.2). Sem o registro, reabrir o
     // projeto devolveria o botão desenhando a FORMA — a escolha do artista evaporaria e o glifo
     // trocaria sozinho, que é o modo de falha mais enganoso: nada some, e o desenho está errado.
@@ -316,16 +392,16 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // Os BINDINGS de token. Sem o registro, reabrir o projeto devolveria a forma com o LITERAL
     // que estava debaixo do token — a arte apareceria inteira, com a cor de antes de o artista
     // bindar, e nada indicaria que uma referência tinha evaporado.
-    reg.register::<crate::VecBindings>("ph2d::ecs::VecBindings");
+    reg.register_default::<crate::VecBindings>("ph2d::ecs::VecBindings");
     // O AUTO LAYOUT (plano UI/UX W2, ADR-0153): a regra no PAI e o comportamento no FILHO. Dois
     // componentes porque são duas perguntas — *"esta moldura empilha?"* × *"este filho cresce?"* —
     // e porque o que eles descrevem é uma REGRA: a posição que dela sai é derivada por frame e
     // nunca entra no `Transform` autorado (é o que impede cada redimensionamento de virar um passo
     // de undo).
-    reg.register::<crate::VecLayout>("ph2d::ecs::VecLayout");
-    reg.register::<crate::VecLayoutItem>("ph2d::ecs::VecLayoutItem");
-    reg.register::<crate::VecLayoutSize>("ph2d::ecs::VecLayoutSize");
-    reg.register::<crate::VecLayoutAbsolute>("ph2d::ecs::VecLayoutAbsolute");
+    reg.register_default::<crate::VecLayout>("ph2d::ecs::VecLayout");
+    reg.register_default::<crate::VecLayoutItem>("ph2d::ecs::VecLayoutItem");
+    reg.register_default::<crate::VecLayoutSize>("ph2d::ecs::VecLayoutSize");
+    reg.register_default::<crate::VecLayoutAbsolute>("ph2d::ecs::VecLayoutAbsolute");
     // AS ÂNCORAS (plano UI/UX W3): a outra metade da responsividade — a regra do filho que NÃO
     // está num fluxo. Sem o registro, um Ctrl+Z (ou reabrir o projeto) devolveria a arte inteira,
     // com todas as formas no lugar certo, e a REGRA evaporada: a moldura voltaria a redimensionar
@@ -348,18 +424,18 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // registro, um Ctrl+Z (ou reabrir) devolveria o motivo SOLTO do caminho, uma cópia só, no meio
     // da cena -- e o caminho continuaria lá. As cópias são desenho derivado, então o que o snapshot
     // tem de guardar é a RELAÇÃO, e é este componente.
-    reg.register::<crate::VecPatternPath>("ph2d::ecs::VecPatternPath");
+    reg.register_default::<crate::VecPatternPath>("ph2d::ecs::VecPatternPath");
     // A ORIENTAÇÃO do motivo sobre a guia (o par opcional do vínculo acima). Componente separado, e
     // não um campo no `VecPatternPath`, porque o blob é postcard POSICIONAL: apender campo bumparia
     // o `PROJECT_SCHEMA`, e um bump RECUSA todo projeto já salvo. Ausência = sem rotação, então
     // documento antigo carrega inalterado. Sem o registro, o ângulo autorado morreria no primeiro
     // Ctrl+Z com as cópias a voltarem deitadas -- e o vínculo, esse, sobreviveria: o pattern
     // pareceria certo e estaria errado.
-    reg.register::<crate::VecPatternRotation>("ph2d::ecs::VecPatternRotation");
+    reg.register_default::<crate::VecPatternRotation>("ph2d::ecs::VecPatternRotation");
     // O Contour: N anéis concêntricos com progressão de cor. Mesma razão de todos os irmãos — sem
     // o registro, o snapshot o DESCARTA e um Ctrl+Z devolveria a forma sozinha, com os anéis
     // sumidos e a cor-alvo perdida.
-    reg.register::<crate::VecContour>("ph2d::ecs::VecContour");
+    reg.register_default::<crate::VecContour>("ph2d::ecs::VecContour");
     // O vínculo do RÓTULO com o objeto que ele nomeia. Mesma razão, e mais forte: a pose do
     // rótulo é DERIVADA dele — sem o componente no snapshot, o undo devolveria um texto solto
     // no meio da forma, com o offset do usuário perdido.
@@ -375,14 +451,14 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // sem o registro, o snapshot o DESCARTA e um Ctrl+Z (ou reabrir) devolveria a forma NUA, sem a
     // sombra/brilho, com a curva certa por baixo. O FX é DESENHO derivado; o snapshot guarda a
     // RELAÇÃO, e é este componente.
-    reg.register::<crate::VecFilter>("ph2d::ecs::VecFilter");
+    reg.register_default::<crate::VecFilter>("ph2d::ecs::VecFilter");
     // OS COMPONENTES (plano UI/UX W5): o mestre e a instância. Mesma razão de todos os irmãos, e
     // aqui com dois modos de falha distintos — sem o registro do MARCADOR, um Ctrl+Z devolveria a
     // arte com as instâncias a apontar para um caminho que já não se declara mestre (todas órfãs
     // de uma vez); sem o registro da INSTÂNCIA, o que se perde é o vínculo E os overrides
     // autorados, e o que sobra é um caminho vazio no lugar onde havia uma cópia.
-    reg.register::<crate::VecComponentMain>("ph2d::ecs::VecComponentMain");
-    reg.register::<crate::VecInstance>("ph2d::ecs::VecInstance");
+    reg.register_default::<crate::VecComponentMain>("ph2d::ecs::VecComponentMain");
+    reg.register_default::<crate::VecInstance>("ph2d::ecs::VecInstance");
     // O NOME DURÁVEL dos pixels próprios de um sprite (plano 17 §3). Mesma razão de todos os
     // irmãos, e o modo de falha aqui já estava a acontecer em produção: `SpriteSource::Individual`
     // guarda um id de alocação da GPU, que recomeça em `1` a cada processo — sem esta identidade no
@@ -406,28 +482,28 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // SliceNine` dava ZERO. Sem o registro, anexar 9-slice a uma caixa de dialogo e gravar o
     // projeto devolveria, ao reabrir, um sprite esticado: as bordas nao sao re-derivaveis de
     // nada -- sao uma medida que o artista tirou da imagem.
-    reg.register::<crate::SliceNine>("ph2d::ecs::SliceNine");
+    reg.register_default::<crate::SliceNine>("ph2d::ecs::SliceNine");
     // AS ANCORAS NOMEADAS (ADR-0072, spec Sprite 07) -- socket, slice e regiao 9-slice num tipo
     // so'. Sem o registro, um artista que marca a boca da arma e grava o projeto reabre-o sem
     // ela: uma ancora nao e' re-derivavel de nada, e' uma medida que alguem tirou.
-    reg.register::<crate::NamedAnchorList>("ph2d::ecs::NamedAnchorList");
+    reg.register_default::<crate::NamedAnchorList>("ph2d::ecs::NamedAnchorList");
     // QUEM MONTA numa dessas ancoras (ADR-0072 §2.6, 2026-08-22) -- o CONSUMIDOR que faltava.
     // Sem o registro, reabrir o projeto devolve a espada como filha COMUM do personagem: ela
     // continua la', no mesmo sitio, e deixou de andar com a mao. E' o modo de falha caro --
     // nada some, nada avisa, e o defeito so' aparece quando o braco se mexe.
-    reg.register::<crate::AnchorMount>("ph2d::ecs::AnchorMount");
+    reg.register_default::<crate::AnchorMount>("ph2d::ecs::AnchorMount");
     // QUANDO as ancoras de uma entidade se desenham (Enio, 2026-08-23): sem selecao, e em
     // runtime. Sem o registro, marcar «manter visiveis» e gravar o projeto devolve, ao reabrir,
     // uma cena onde os pontos voltaram a aparecer so' com o dono selecionado -- e o artista
     // remarcaria a caixa todos os dias sem perceber que ela nunca guardou.
-    reg.register::<crate::AnchorVisibility>("ph2d::ecs::AnchorVisibility");
+    reg.register_default::<crate::AnchorVisibility>("ph2d::ecs::AnchorVisibility");
     // A §11 ANIMATION (spec Sprite 08) -- a biblioteca de tags e o estado de reproducao. Sem
     // o registro, o artista autora `idle`/`walk`/`attack`, grava, reabre, e a sprite volta a
     // ser uma grelha parada: as tags nao sao re-derivaveis de nada, sao intervalos que alguem
     // escolheu. ⚠️ O `SpriteAnimator` grava TAMBEM o estado (frame, ciclo, acumulador), e e
     // isso que faz o replay reproduzir a mesma animacao -- a razao de ele ser SimComponent.
-    reg.register::<crate::SpriteAnimations>("ph2d::ecs::SpriteAnimations");
-    reg.register::<crate::SpriteAnimator>("ph2d::ecs::SpriteAnimator");
+    reg.register_default::<crate::SpriteAnimations>("ph2d::ecs::SpriteAnimations");
+    reg.register_default::<crate::SpriteAnimator>("ph2d::ecs::SpriteAnimator");
     // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA
     // (2026-08-21). Sem o registro, o modo de falha é o mesmo da moldura e igualmente enganoso:
     // um Ctrl+Z devolveria a forma inteira, com todos os filhos no lugar, e o recorte
@@ -441,169 +517,5 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Hard-coded type ids — locked in to catch accidental renames.
-    /// If you change a canonical name, bump the prefab schema
-    /// version (HR-14) and add a migration; do **not** silently
-    /// recompute this constant.
-    #[test]
-    fn stable_type_ids_are_locked_in() {
-        // These values are the first 8 bytes of `blake3(name)` in
-        // little-endian. Recompute with:
-        //   echo -n 'ph2d::ecs::Transform' | b3sum --no-names | head -c 16
-        // and reverse byte order.
-        // The assertion catches accidental renames before they ship.
-        let t = stable_type_id("ph2d::ecs::Transform");
-        let n = stable_type_id("ph2d::ecs::Name");
-        // Sanity: distinct names → distinct ids.
-        assert_ne!(t, n);
-        // Determinism: same input → same id every call.
-        assert_eq!(stable_type_id("ph2d::ecs::Transform"), t);
-    }
-
-    #[test]
-    fn register_ecs_components_populates_registry() {
-        let mut reg = ComponentRegistry::new();
-        register_ecs_components(&mut reg);
-        // 4 foundational (Transform/Name/Visibility/RootOrder) + 16 W3
-        // sorting/visibility/sampling/mask components (incl. Mask2D source)
-        // + 1 §10 BlendMode + 5 save/undo
-        // (Locked/GroupedChildren/VecPathRef/FlipObjectRef/PaintedDoc)
-        // + 1 Live Shapes (VecShape) + 1 conector (VecConnector) + 1 Blend Object (VecBlend)
-        // + 1 rótulo (VecLabel) + 1 Envelope Object (VecEnvelope, ADR-0129)
-        // + 1 Offset vivo (VecOffset) + 1 texto em caminho (VecTextPath)
-        // + 1 pattern em caminho (VecPatternPath, plano 23)
-        // + 1 FX raster (VecFilter, plano 24)
-        // + 1 largura viva (VecStrokeProfile, ADR-0148)
-        // + 1 linha de corte (VecCutPath, plano 25 §7)
-        // + 1 simetria viva (VecSymmetry, plano 25 §9 W6.3)
-        // + 1 booleana viva (VecBoolGroup, plano UI/UX W1)
-        // + 1 moldura (VecFrame, plano UI/UX W0)
-        // + 1 tabela de bindings de token (VecBindings, plano UI/UX W4)
-        // + 2 auto layout (VecLayout no pai + VecLayoutItem no filho, plano UI/UX W2)
-        // + 2 sizing (VecLayoutSize no no + VecLayoutAbsolute, o fora-do-fluxo)
-        // + 1 âncoras (VecAnchors, plano UI/UX W3)
-        // + 1 resize-box (VecResizeBox, plano UI/UX W3b)
-        // + 1 pele por-widget (VecWidget, plano UI/UX W6.2)
-        // + 1 vinculo row -> forma (VecWidgetBind, plano UI/UX W8b.3)
-        // + 1 posicao do controle (VecWidgetValue, plano UI/UX W8b.4)
-        // + 1 icone escolhido (VecWidgetIcon, plano UI/UX W8b §6.2)
-        // + 1 nome duravel dos pixels proprios (SpritePixels, plano Sprite 17 §3)
-        // + 1 regiao de folha hand-packed (SpriteSheetRef, plano Sprite 17 §6)
-        // + 1 folha como OBJETO (SpriteSheetFrame, plano Sprite 17 §7).
-        //
-        // **Este número existe para doer.** Um componente que não passa por aqui é
-        // DESCARTADO em silêncio pelo snapshot — o undo e o save o perdem, e o bug só
-        // aparece três telas depois (foi assim que o `PaintedDoc`, a identidade estável do
-        // documento do Painter, teria nascido morto). Ao acrescentar um componente, some 1
-        // aqui de propósito.
-        //
-        // Na integração ele SOMA entre linhas: o Painter trouxe o `PaintedDoc` e o Vector o
-        // `VecConnector`, e as duas linhas, sozinhas, diziam 27 — por motivos diferentes. A
-        // árvore combinada tem 28. Escolher "um dos lados" aqui é o erro que deixa o
-        // workspace vermelho com dois merges verdes.
-        // + 1 autoria de 9-slice (SliceNine, spec Sprite 03 §3.5 -- a secao 5, declarada
-        //   em 2026-05 e construida em 2026-08-21)
-        // + 1 lista de ancoras nomeadas (NamedAnchorList, ADR-0072 -- `Accepted` desde
-        //   2026-05-28 sobre codigo que nao existia).
-        // + 1 recorte (VecClipContent — o bit que SAIU do VecFrame para valer em qualquer
-        //   forma fechada, 2026-08-21). ⚠️ CONTADO na integracao de 2026-08-22: a `line/Sprite`
-        //   (+6) entrou antes da `line/Vector` (+2) — o valor e' a SOMA, nao o de nenhum lado.
-        // + 1 verbo POR FORMA dentro dela (VecBoolOp, 2026-08-22)
-        // + 1 MONTAGEM numa ancora (AnchorMount, ADR-0072 §2.6, 2026-08-22 — o consumidor).
-        //   ⚠️ SAO TRES contadores desta familia (ecs · render · script), cada um so' visivel
-        //   na suite da SUA crate — e esta linha ja' os deixou 2 e 4 atras, com a nota escrita.
-        //   Ao mexer aqui, mexa nos tres NO MESMO commit: `ph2d-render` e `ph2d-script`.
-        // + 1 VISIBILIDADE das ancoras (AnchorVisibility, Enio 2026-08-23).
-        // + 2 da §11 ANIMATION (SpriteAnimations + SpriteAnimator, spec Sprite 08).
-        assert_eq!(reg.len(), 69);
-        assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::SpriteSheetRef").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::SpriteSheetFrame").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::NamedAnchorList").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::AnchorMount").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::AnchorVisibility").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::SpriteAnimations").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::SpriteAnimator").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecAnchors").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecResizeBox").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecWidget").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecWidgetBind").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecWidgetValue").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecWidgetIcon").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecBindings").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecLayout").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecLayoutItem").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecLayoutSize").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecLayoutAbsolute").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecCutPath").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecSymmetry").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecPatternPath").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecFilter").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecStrokeProfile").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::Transform").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::Name").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::Visibility").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::RootOrder").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::Locked").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::PaintedDoc").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::BakedForm").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::GroupedChildren").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecPathRef").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecConnector").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecBlend").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecOffset").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecTextPath").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecLabel").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::FlipObjectRef").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::VecShape").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::ZIndexOverride").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::YSort").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::TextureFilter").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::OnScreenEnabler").is_some());
-        assert!(reg.get_by_name("ph2d::ecs::Missing").is_none());
-    }
-
-    #[test]
-    fn insert_serialize_round_trip_transform() {
-        use crate::Transform;
-        use bevy_ecs::world::World;
-        use ph2d_core::Vec2;
-
-        let mut reg = ComponentRegistry::new();
-        register_ecs_components(&mut reg);
-        let entry = reg.get_by_name("ph2d::ecs::Transform").unwrap();
-
-        let original = Transform {
-            translation: Vec2::new(3.0, 4.0),
-            rotation: 1.5,
-            scale: Vec2::new(2.0, 2.0),
-            ..Transform::IDENTITY
-        };
-        let bytes = postcard::to_allocvec(&original).unwrap();
-
-        let mut world = World::new();
-        let entity = world.spawn_empty().id();
-        (entry.insert_from_bytes)(&mut world, entity, &bytes).unwrap();
-
-        let serialized = (entry.serialize)(&world, entity).unwrap().unwrap();
-        let back: Transform = postcard::from_bytes(&serialized).unwrap();
-        assert_eq!(back, original);
-    }
-
-    #[test]
-    fn duplicate_registration_panics() {
-        let mut reg = ComponentRegistry::new();
-        register_ecs_components(&mut reg);
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            reg.register::<crate::Transform>("ph2d::ecs::Transform");
-        }));
-        assert!(result.is_err(), "duplicate registration must panic");
-    }
-}
+#[path = "registry_tests.rs"]
+mod tests;

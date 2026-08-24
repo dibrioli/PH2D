@@ -113,6 +113,7 @@
 - [Contar o trabalho FEITO não é contar o ENTREGUE](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) — o gate contava cozeduras e o consumidor recebia zero; ponha a sonda dentro de quem consome
 - [Duas hipóteses boas que falham refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md) — ao 2.º falhanço pare de propor curas e construa a régua que LOCALIZA; ilibe também o suspeito improvável
 - [Provas de mutação (7)](reference_topic_mutation_proofs.md) — ⚠️ os 3 controles vão NO ARNÊS: verde-antes · `Compiling <pkg>` · `running 1 test` (sem o 1º, um gate que rebenta sozinho lê como mutação apanhada)
+- [Restore que preserva o mtime deixa o cargo STALE](feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md) — `shutil.copy2` devolve conteúdo E carimbo; a suíte fica vermelha acusando código já correto. Carimbe o restore e exija o verde de volta; ⛔ `git status` é cego dentro de uma crate `??`
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep

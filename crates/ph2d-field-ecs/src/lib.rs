@@ -169,8 +169,8 @@ impl Default for FieldPose {
 pub fn register_field_components(reg: &mut ComponentRegistry) {
     reg.register::<FieldObject>("ph2d::field::FieldObject");
     reg.register::<FieldNode>("ph2d::field::FieldNode");
-    reg.register::<FieldPose>("ph2d::field::FieldPose");
-    reg.register::<FieldMods>("ph2d::field::FieldMods");
+    reg.register_default::<FieldPose>("ph2d::field::FieldPose");
+    reg.register_default::<FieldMods>("ph2d::field::FieldMods");
     reg.register::<FieldProfileSource>("ph2d::field::FieldProfileSource");
 }
 

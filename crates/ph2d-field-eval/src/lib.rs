@@ -375,3 +375,199 @@ pub fn leaf(p: Primitive, xform: Xform) -> Node {
 
 #[cfg(test)]
 mod tests;
+
+/// ⭐⭐⭐ **O DOCUMENTO COMPILADO PARA UMA REGIÃO DO MUNDO** (W56) — a ponte entre a especialização
+/// do perfil e quem a vai consumir.
+///
+/// A [`profile::sd_profile_in_region`] especializa **um** perfil numa região do plano dele. Um
+/// documento tem poses, pilhas e booleanas por cima; esta função é a que leva uma caixa do **mundo**
+/// até ao plano de cada perfil e devolve a árvore inteira, com a mesma lei e uma fração das arestas.
+///
+/// ⚠️ **A árvore devolvida só vale DENTRO de `[lo, hi]`** — fora, a distância pode sair **maior** que
+/// a verdadeira, e uma esfera-marcha que sobre-estima o passo **atravessa a peça**. Quem chama é quem
+/// sabe onde a vai avaliar.
+///
+/// # ⛔ Onde ela DESISTE, e por quê
+///
+/// Quatro modificadores **remapeiam coordenadas** — `Mirror` (`x → |x|`), `Array` e `Radial`
+/// (dobram o domínio) e `Taper` (escala com `y`). Debaixo de qualquer um deles, a caixa do mundo
+/// **não** mapeia para uma caixa no plano do perfil: uma matriz dobra meio espaço numa célula.
+/// Calcular a pré-imagem de cada um é possível e é uma wave própria; até lá o perfil por baixo deles
+/// é baixado **inteiro** — correcto, só não mais rápido. *Uma especialização que erra a pré-imagem
+/// não fica lenta: fura a peça.*
+///
+/// ⚠️ `Shell` e `Offset` **não** remapeiam (agem no valor), então não desistem.
+#[must_use]
+pub fn compile_in_region(doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
+    // Passo 1 — o mapa mundo→local de cada nó. A arena tem os filhos ANTES dos pais, então o
+    // percurso é de cima para baixo a partir da raiz.
+    let n = doc.nodes().len();
+    let mut to_local = vec![None::<Affine>; n];
+    let root = doc.root().0 as usize;
+    to_local[root] = Some(Affine::of(doc.nodes()[root].xform));
+    // Da raiz para trás: um filho tem índice menor que o pai, logo descer por índices decrescentes
+    // visita todo pai antes dos filhos dele.
+    for i in (0..n).rev() {
+        let Some(parent) = to_local[i] else {
+            continue;
+        };
+        if let NodeKind::Combine { children, .. } = &doc.nodes()[i].kind {
+            for c in children {
+                let ci = c.0 as usize;
+                to_local[ci] = Some(Affine::of(doc.nodes()[ci].xform).after(parent));
+            }
+        }
+    }
+
+    let mut built: Vec<Tree> = Vec::with_capacity(n);
+    for (i, node) in doc.nodes().iter().enumerate() {
+        let inner = match &node.kind {
+            NodeKind::Leaf(p) => to_local[i]
+                .filter(|_| !node.mods.iter().any(remaps_coordinates))
+                .and_then(|m| specialised_profile(p, m.box_of(lo, hi)))
+                .unwrap_or_else(|| primitive(p)),
+            NodeKind::Combine { op, children } => combine(*op, children, &built),
+            NodeKind::Sampled { .. } => Tree::constant(f64::from(hybrid::ABSENT)),
+        };
+        built.push(place(&stacked(&inner, &node.mods), node.xform));
+    }
+    built[root].clone()
+}
+
+/// A mesma pergunta, aberta ao gate — ver [`remaps_coordinates`].
+#[cfg(test)]
+pub(crate) fn remaps_coordinates_for_test(m: &Unary) -> bool {
+    remaps_coordinates(m)
+}
+
+/// Este modificador mexe nas **coordenadas** (e não só no valor)? Ver [`compile_in_region`].
+fn remaps_coordinates(m: &Unary) -> bool {
+    match m {
+        Unary::Shell { .. } | Unary::Offset { .. } => false,
+        Unary::Mirror | Unary::Array { .. } | Unary::Radial { .. } | Unary::Taper { .. } => true,
+    }
+}
+
+/// A forma de perfil especializada para a caixa **local**, ou `None` se não for uma forma de perfil.
+fn specialised_profile(p: &Primitive, local: ([f32; 3], [f32; 3])) -> Option<Tree> {
+    let (lo, hi) = local;
+    match p {
+        Primitive::Extrude {
+            profile,
+            half_height,
+            round,
+        } => {
+            let idx = profile_index::ProfileIndex::build(profile);
+            let flat = profile::sd_profile_in_region(
+                profile,
+                &idx,
+                &Tree::x(),
+                &Tree::y(),
+                [lo[0], lo[1]],
+                [hi[0], hi[1]],
+                false,
+            );
+            Some(profile::extrude_from(
+                &flat,
+                f64::from(*half_height),
+                f64::from(*round),
+            ))
+        }
+        Primitive::Revolve { profile } => {
+            let idx = profile_index::ProfileIndex::build(profile);
+            // ⚠️ `u = √(x² + z²)`: a caixa local vira um **anel** em `u`, e o mínimo é a distância do
+            // eixo à caixa no plano `xz` — zero quando ela o contém.
+            let du = axis_gap(lo[0], hi[0]);
+            let dv = axis_gap(lo[2], hi[2]);
+            let u_lo = du.hypot(dv);
+            let u_hi = lo[0]
+                .abs()
+                .max(hi[0].abs())
+                .hypot(lo[2].abs().max(hi[2].abs()));
+            // ⚠️ **O `u` do torno é `√(x² + z²)`, não `x`** — a árvore especializada recebe o raio,
+            // como a [`profile::sd_revolve`] faz, senão ela mediria o perfil no plano errado.
+            let r = ops::safe_sqrt(Tree::x().square() + Tree::z().square());
+            Some(profile::sd_profile_in_region(
+                profile,
+                &idx,
+                &r,
+                &Tree::y(),
+                [u_lo, lo[1]],
+                [u_hi, hi[1]],
+                true,
+            ))
+        }
+        _ => None,
+    }
+}
+
+/// A distância do zero ao intervalo `[lo, hi]` — zero quando ele o contém.
+fn axis_gap(lo: f32, hi: f32) -> f32 {
+    if lo > 0.0 {
+        lo
+    } else if hi < 0.0 {
+        -hi
+    } else {
+        0.0
+    }
+}
+
+/// Um mapa afim `p ↦ M·p + c` — a composição de poses que leva o mundo ao plano de um perfil.
+///
+/// ⚠️ **A escala é uniforme** por decisão do módulo (ADR-0161 §6), então `M` continua a ser uma
+/// rotação escalada, e a caixa transformada por cantos é conservadora sem folga inventada.
+#[derive(Clone, Copy)]
+struct Affine {
+    m: [[f64; 3]; 3],
+    c: [f64; 3],
+}
+
+impl Affine {
+    /// O que a [`place`] faz às coordenadas: `local = R⁻¹·(p − t)/s`.
+    fn of(x: Xform) -> Self {
+        let inv_s = 1.0 / f64::from(x.scale);
+        let r = inverse_rotation_matrix(x.rotation);
+        let t = x.translation.map(f64::from);
+        let mut m = [[0.0; 3]; 3];
+        let mut c = [0.0; 3];
+        for (i, row) in m.iter_mut().enumerate() {
+            for (j, cell) in row.iter_mut().enumerate() {
+                *cell = r[i][j] * inv_s;
+            }
+            c[i] = -(r[i][0] * t[0] + r[i][1] * t[1] + r[i][2] * t[2]) * inv_s;
+        }
+        Self { m, c }
+    }
+
+    /// `self ∘ outer` — primeiro o de fora (o pai), depois este.
+    fn after(self, outer: Self) -> Self {
+        let mut m = [[0.0; 3]; 3];
+        let mut c = self.c;
+        for (i, row) in m.iter_mut().enumerate() {
+            for (j, cell) in row.iter_mut().enumerate() {
+                *cell = (0..3).map(|k| self.m[i][k] * outer.m[k][j]).sum();
+            }
+            c[i] += (0..3).map(|k| self.m[i][k] * outer.c[k]).sum::<f64>();
+        }
+        Self { m, c }
+    }
+
+    /// A caixa local que contém a imagem da caixa do mundo — pelos **oito cantos**, que é exacto
+    /// para um mapa afim.
+    fn box_of(self, lo: [f32; 3], hi: [f32; 3]) -> ([f32; 3], [f32; 3]) {
+        let (mut out_lo, mut out_hi) = ([f32::INFINITY; 3], [f32::NEG_INFINITY; 3]);
+        for k in 0..8u8 {
+            let p = [
+                if k & 1 == 0 { lo[0] } else { hi[0] },
+                if k & 2 == 0 { lo[1] } else { hi[1] },
+                if k & 4 == 0 { lo[2] } else { hi[2] },
+            ];
+            for i in 0..3 {
+                let v = (0..3).map(|j| self.m[i][j] * f64::from(p[j])).sum::<f64>() + self.c[i];
+                out_lo[i] = out_lo[i].min(v as f32);
+                out_hi[i] = out_hi[i].max(v as f32);
+            }
+        }
+        (out_lo, out_hi)
+    }
+}

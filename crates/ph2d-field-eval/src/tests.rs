@@ -2305,3 +2305,247 @@ fn the_table_that_says_where_a_profile_spends_its_time() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O DOCUMENTO ESPECIALIZADO CONCORDA COM O COMPLETO — DENTRO DA REGIÃO** (W56).
+///
+/// ⚠️ **É o gate que autoriza o consumidor a existir.** A [`crate::profile::sd_profile_in_region`]
+/// já tinha o dela sobre um perfil solto; esta mede a travessia inteira — pose, pilha de
+/// modificadores, booleana, e as **duas** formas de perfil (a extrusão no plano `xy` e o torno, cujo
+/// `u` é `√(x² + z²)` e que ainda tira a costura do eixo da distância).
+///
+/// ⚠️ E mede as **duas pontas**: concorda dentro da região, **e** a especialização de facto encolhe a
+/// árvore (senão a cura degenerada — especializar guardando tudo — passaria).
+#[test]
+fn the_specialised_document_agrees_inside_its_region() {
+    use fidget::shape::EzShape;
+    use ph2d_field::{Op, Unary};
+    let ring = |n: usize, r: f64| ngon(n, r, [0.0, 0.0]);
+    let cases: Vec<(&str, FieldDoc)> = vec![
+        (
+            "extrusão nua",
+            doc_of(Primitive::Extrude {
+                profile: profile_of(vec![ring(168, 0.5)], FillRule::NonZero),
+                half_height: 0.2,
+                round: 0.0,
+            }),
+        ),
+        (
+            "extrusão POSADA",
+            doc_of_posed(
+                Primitive::Extrude {
+                    profile: profile_of(vec![ring(168, 0.5)], FillRule::NonZero),
+                    half_height: 0.2,
+                    round: 0.03,
+                },
+                Xform {
+                    translation: [0.13, -0.07, 0.21],
+                    rotation: [0.2, 0.1, 0.05, 0.97],
+                    scale: 1.4,
+                },
+            ),
+        ),
+        (
+            "torno",
+            doc_of(Primitive::Revolve {
+                profile: profile_of(
+                    vec![vec![[0.2, -0.3], [0.5, -0.3], [0.5, 0.3], [0.2, 0.3]]],
+                    FillRule::NonZero,
+                ),
+            }),
+        ),
+        (
+            "torno de contorno FINO",
+            doc_of(Primitive::Revolve {
+                profile: profile_of(vec![ngon(96, 0.18, [0.42, 0.0])], FillRule::NonZero),
+            }),
+        ),
+        // ⚠️ **Um torno cuja costura ASSENTA NO EIXO** — sem esta fixture, arrancar a regra da
+        // costura do especializado passaria despercebido, e o campo ganharia um nível zero DENTRO
+        // do sólido (o defeito medido no vaso da cena 5, §21).
+        (
+            "torno com costura NO EIXO",
+            doc_of(Primitive::Revolve {
+                profile: profile_of(
+                    vec![vec![[0.0, -0.35], [0.45, -0.1], [0.45, 0.1], [0.0, 0.35]]],
+                    FillRule::NonZero,
+                ),
+            }),
+        ),
+        // ⚠️ **Uma extrusão sob um modificador que REMAPEIA coordenadas** — a especialização tem de
+        // DESISTIR aqui, e o gate mede que desistir continua correcto. Sem esta fixture, aceitar a
+        // matriz por engano daria uma peça furada e nenhum teste vermelho.
+        ("extrusão sob MATRIZ (a especialização desiste)", {
+            // ⚠️ **Um contorno ALONGADO, e não um círculo.** Um círculo é equidistante de todos
+            // os lados: guardar as arestas erradas devolve o **mesmo** número, e a fixture
+            // passaria com a especialização a ser aplicada por engano debaixo da matriz. *Uma
+            // fixture que não contém o fenómeno mede outra coisa* — foi a terceira vez que esta
+            // linha pagou a mesma lição.
+            let mut d = doc_of(Primitive::Extrude {
+                profile: profile_of(
+                    vec![vec![
+                        [-0.40f32, -0.06],
+                        [0.40, -0.06],
+                        [0.40, 0.06],
+                        [-0.40, 0.06],
+                    ]],
+                    FillRule::NonZero,
+                ),
+                half_height: 0.15,
+                round: 0.0,
+            });
+            let mut nodes = d.nodes().to_vec();
+            nodes[0].mods = vec![Unary::Array {
+                count: 3,
+                spacing: 0.6,
+            }];
+            d = FieldDoc::new(nodes, NodeId(0)).expect("a matriz");
+            d
+        }),
+    ];
+    // …e uma união de uma extrusão OCA com uma esfera, sob uma pose de grupo.
+    let mixed = {
+        let mut nodes = vec![
+            Node {
+                xform: Xform::at(0.05, 0.0, 0.0),
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile: profile_of(vec![ring(120, 0.45)], FillRule::NonZero),
+                    half_height: 0.25,
+                    round: 0.0,
+                }),
+                mods: vec![Unary::Shell { thickness: 0.06 }],
+            },
+            Node {
+                xform: Xform::at(0.3, 0.1, 0.0),
+                kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.3 }),
+                mods: Vec::new(),
+            },
+        ];
+        nodes.push(Node {
+            xform: Xform {
+                translation: [-0.1, 0.05, 0.02],
+                rotation: [0.0, 0.3, 0.0, 0.95],
+                scale: 0.9,
+            },
+            kind: NodeKind::Combine {
+                op: Op::Union(Blend::Sharp),
+                children: vec![NodeId(0), NodeId(1)],
+            },
+            mods: Vec::new(),
+        });
+        FieldDoc::new(nodes, NodeId(2)).expect("a peça mista")
+    };
+    let mut all = cases;
+    all.push(("união OCA + esfera, sob pose de grupo", mixed));
+
+    let mut s = 0xC0FF_EE00u64;
+    let mut rnd = move || {
+        s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        (s >> 33) as f32 / u32::MAX as f32
+    };
+    for (name, doc) in &all {
+        let full = crate::compile(doc);
+        let full_shape = crate::Engine::from(full);
+        let mut full_eval = crate::Engine::new_float_slice_eval();
+        let full_tape = full_shape.ez_float_slice_tape();
+        let (mut worst, mut shrunk) = (0.0f32, 0usize);
+        const REGIONS: usize = 60;
+        for _ in 0..REGIONS {
+            let c = [
+                (rnd() - 0.5) * 1.4,
+                (rnd() - 0.5) * 1.4,
+                (rnd() - 0.5) * 1.4,
+            ];
+            let half = 0.12f32.mul_add(rnd(), 0.02);
+            let lo = [c[0] - half, c[1] - half, c[2] - half];
+            let hi = [c[0] + half, c[1] + half, c[2] + half];
+            let cut = crate::compile_in_region(doc, lo, hi);
+            let shape = crate::Engine::from(cut);
+            let mut eval = crate::Engine::new_float_slice_eval();
+            let tape = shape.ez_float_slice_tape();
+            let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
+            for _ in 0..256 {
+                xs.push((rnd() - 0.5).mul_add(2.0 * half, c[0]));
+                ys.push((rnd() - 0.5).mul_add(2.0 * half, c[1]));
+                zs.push((rnd() - 0.5).mul_add(2.0 * half, c[2]));
+            }
+            let got = eval.eval(&tape, &xs, &ys, &zs).expect("avalia").to_vec();
+            let want = full_eval
+                .eval(&full_tape, &xs, &ys, &zs)
+                .expect("avalia")
+                .to_vec();
+            for i in 0..xs.len() {
+                worst = worst.max((got[i] - want[i]).abs());
+            }
+            if got.len() == want.len() {
+                shrunk += 1;
+            }
+        }
+        assert!(
+            worst < 1.0e-4,
+            "{name}: o documento especializado discorda do completo em {worst:e} DENTRO da região \
+             — a marcha atravessaria a peça"
+        );
+        assert_eq!(shrunk, REGIONS, "{name}: alguma região não avaliou");
+    }
+}
+
+/// ⚠️ **E a especialização de facto ENCOLHE a árvore** — a metade que impede a cura degenerada.
+///
+/// A régua é a contagem de arestas que a região guarda, contra as que o perfil tem. Um documento
+/// especializado que guardasse tudo passaria no gate de concordância e não compraria nada.
+#[test]
+fn the_specialised_document_actually_shrinks_the_tree() {
+    let p = profile_of(vec![ngon(168, 0.5, [0.0, 0.0])], FillRule::NonZero);
+    let idx = crate::profile_index::ProfileIndex::build(&p);
+    // Uma região colada à casca, do tamanho de um ladrilho.
+    let (lo, hi) = ([0.44f32, -0.06], [0.56f32, 0.06]);
+    let kept = idx.distance_edges(lo, hi).len() + idx.crossing_edges(lo, hi).len();
+    assert!(
+        kept * 4 < idx.edge_count(),
+        "a região guardou {kept} das {} arestas — a especialização não está a cortar",
+        idx.edge_count()
+    );
+}
+
+/// ⭐ **A CENSURA dos modificadores que remapeiam coordenadas** (W56).
+///
+/// ⚠️ **Ela existe porque a versão comportamental não morde de forma fiável.** Debaixo de uma matriz,
+/// a caixa do mundo mapeia para outra célula — mas numa região **longe** da peça o corte guarda quase
+/// todas as arestas, e a discrepância desaparece no ruído. Uma mutação que aceitasse a matriz
+/// sobreviveu ao gate de concordância (medido), e é este que a mata.
+///
+/// ⚠️ **O `match` é exaustivo de propósito:** um `Unary` novo é **erro de compilação** aqui, que é o
+/// momento certo para alguém decidir se ele dobra o domínio. *Uma lista de excepções que compila com
+/// um membro a menos é uma peça furada à espera de acontecer.*
+#[test]
+fn the_specialisation_gives_up_under_every_modifier_that_remaps_coordinates() {
+    use ph2d_field::Unary;
+    let remaps = [
+        (Unary::Mirror, true),
+        (
+            Unary::Array {
+                count: 3,
+                spacing: 0.5,
+            },
+            true,
+        ),
+        (Unary::Radial { count: 6 }, true),
+        (Unary::Taper { slope: 0.2 }, true),
+        (Unary::Shell { thickness: 0.05 }, false),
+        (Unary::Offset { distance: 0.02 }, false),
+    ];
+    for (m, want) in remaps {
+        assert_eq!(
+            crate::remaps_coordinates_for_test(&m),
+            want,
+            "{m:?}: a especialização tem de {} debaixo dele",
+            if want { "DESISTIR" } else { "continuar" }
+        );
+    }
+    // …e a contagem, para um `Unary` novo não entrar em silêncio pelo lado errado.
+    assert_eq!(
+        remaps.len(),
+        6,
+        "acrescentou um modificador? decida se ele dobra o domínio e ponha-o nesta lista"
+    );
+}

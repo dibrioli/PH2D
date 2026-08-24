@@ -4805,10 +4805,38 @@ modo de falha que atravessa a peça) e o sinal pode ter a base errada. O gate
 `the_specialised_tree_agrees_inside_its_region` mede as duas pontas: concorda a `1e-5` dentro, **e**
 guarda menos de metade das arestas (senão a cura degenerada — especializar guardando tudo — passaria).
 
+### §57.13 — A ponte: o DOCUMENTO especializado para uma região do mundo
+
+A `sd_profile_in_region` especializa **um** perfil no plano dele. Um documento tem poses, pilhas e
+booleanas por cima — e é a [`compile_in_region`](../../crates/ph2d-field-eval/src/lib.rs) que leva
+uma caixa do **mundo** até ao plano de cada perfil:
+
+1. **de cima para baixo**, o mapa afim mundo→local de cada nó (a arena tem os filhos antes dos pais,
+   então descer por índices decrescentes visita todo pai antes dos filhos dele);
+2. a caixa do mundo transformada pelos **oito cantos** (exacto para um mapa afim);
+3. o perfil baixado para essa caixa — `(x, y)` numa extrusão, e um **anel em `u = √(x²+z²)`** num
+   torno, que ainda tira a costura do eixo da distância.
+
+⛔ **E ela DESISTE debaixo de quatro modificadores**, com a razão escrita: `Mirror`, `Array`,
+`Radial` e `Taper` **remapeiam coordenadas**, e aí a caixa do mundo não mapeia para uma caixa no
+plano do perfil — uma matriz dobra meio espaço numa célula. Ali o perfil é baixado **inteiro**:
+correcto, só não mais rápido. *Uma especialização que erra a pré-imagem não fica lenta: fura a peça.*
+⚠️ `Shell` e `Offset` agem no **valor** e não desistem.
+
+⚠️ **Dois furos de gate apanhados por mutação, e os dois eram FIXTURE:**
+
+- a costura do eixo não estava coberta — nenhum torno da fixture tinha aresta em `x = 0`;
+- e a desistência sob `Array` **sobreviveu duas vezes**: primeiro porque o contorno era um
+  **círculo** (equidistante de todos os lados ⇒ guardar as arestas erradas devolve o mesmo número), e
+  depois porque numa região **longe** o corte guarda quase tudo e a discrepância some no ruído.
+  ⇒ a lei passou a ter um gate **directo** (uma censura com `match` exaustivo: um `Unary` novo é erro
+  de compilação ali). *Quando a versão comportamental não morde de forma fiável, a lei tem de ser
+  afirmada onde ela é decidida.*
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ⏸️ **A MARCHA POR REGIÃO** (`ph2d-field-render`) — a única metade que falta, e a que dá o número
-  ao artista. Hoje a marcha é por **linha de ecrã**; ela tem de passar a pedir uma árvore
+  ao artista. ⭐ A ponte já existe (`compile_in_region`, §57.13); o que falta é o **consumidor**. Hoje a marcha é por **linha de ecrã**; ela tem de passar a pedir uma árvore
   especializada por região e a marchar dentro dela. ⚠️ **A região é em espaço LOCAL do nó, e não do
   ecrã** — logo ela **não depende da câmera**, e as fitas especializadas podem ser construídas uma
   vez por documento em vez de uma vez por quadro (a montagem é 0,07–0,23 ms por região).

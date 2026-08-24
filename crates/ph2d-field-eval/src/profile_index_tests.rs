@@ -494,8 +494,15 @@ fn the_specialised_tree_agrees_inside_its_region() {
             let half = 0.15f32.mul_add(rnd(), 0.01);
             let lo = [c[0] - half, c[1] - half];
             let hi = [c[0] + half, c[1] + half];
-            let cut =
-                crate::profile::sd_profile_in_region(&p, &idx, &Tree::x(), &Tree::y(), lo, hi);
+            let cut = crate::profile::sd_profile_in_region(
+                &p,
+                &idx,
+                &Tree::x(),
+                &Tree::y(),
+                lo,
+                hi,
+                false,
+            );
             let shape = crate::Engine::from(cut);
             let mut eval = crate::Engine::new_float_slice_eval();
             let tape = shape.ez_float_slice_tape();
@@ -570,15 +577,30 @@ fn the_table_of_what_specialising_the_tree_buys() {
             let mut build = Vec::new();
             for _ in 0..5 {
                 let t0 = std::time::Instant::now();
-                let t =
-                    crate::profile::sd_profile_in_region(&p, &idx, &Tree::x(), &Tree::y(), lo, hi);
+                let t = crate::profile::sd_profile_in_region(
+                    &p,
+                    &idx,
+                    &Tree::x(),
+                    &Tree::y(),
+                    lo,
+                    hi,
+                    false,
+                );
                 let shape = crate::Engine::from(t);
                 let tape = shape.ez_float_slice_tape();
                 build.push(t0.elapsed().as_secs_f64() * 1e3);
                 drop(tape);
             }
             build.sort_by(f64::total_cmp);
-            let t = crate::profile::sd_profile_in_region(&p, &idx, &Tree::x(), &Tree::y(), lo, hi);
+            let t = crate::profile::sd_profile_in_region(
+                &p,
+                &idx,
+                &Tree::x(),
+                &Tree::y(),
+                lo,
+                hi,
+                false,
+            );
             let shape = crate::Engine::from(t);
             let mut eval = crate::Engine::new_float_slice_eval();
             let tape = shape.ez_float_slice_tape();

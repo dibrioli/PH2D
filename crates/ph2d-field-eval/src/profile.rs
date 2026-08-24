@@ -155,7 +155,21 @@ fn sd_profile_inner(profile: &Profile, u: &Tree, v: &Tree, axis_seam: bool) -> T
 /// faz — não é um caso de erro, e por isso o documento não o recusa.
 #[must_use]
 pub fn sd_extrude(profile: &Profile, half_height: f64, round: f64) -> Tree {
-    let flat = sd_profile(profile, &Tree::x(), &Tree::y());
+    extrude_from(
+        &sd_profile(profile, &Tree::x(), &Tree::y()),
+        half_height,
+        round,
+    )
+}
+
+/// ⭐ **A casca da extrusão sobre um perfil já baixado** — a metade que não conhece as arestas.
+///
+/// ⚠️ Ela existe para a [`crate::compile_in_region`] poder trocar a metade PLANA por uma versão
+/// especializada sem uma segunda cópia desta receita. *Duas cópias da casca divergiriam no dia em
+/// que o filete mudasse, e só uma das formas de perfil o notaria.*
+#[must_use]
+pub fn extrude_from(flat: &Tree, half_height: f64, round: f64) -> Tree {
+    let flat = flat.clone();
     if round <= 0.0 {
         // ⚠️ Caminho DURO de propósito, pelo mesmo motivo do `ops::union`: com `round = 0` a versão
         // arredondada é algebricamente idêntica, e paga dois nós a mais **por amostra** — e o
@@ -231,13 +245,22 @@ pub fn sd_profile_in_region(
     v: &Tree,
     lo: [f32; 2],
     hi: [f32; 2],
+    axis_seam: bool,
 ) -> Tree {
     let non_zero = profile.fill() == FillRule::NonZero;
+    // A mesma tolerância do [`sd_profile_inner`]: uma aresta a menos que isso do eixo **é** o eixo.
+    let on_axis = f64::from(profile.tolerance());
     let near = index.distance_edges(lo, hi);
     let mut dist2: Option<Tree> = None;
     for i in &near {
         let (a, b) = index.edge(*i);
         let (ax, ay) = (f64::from(a[0]), f64::from(a[1]));
+        // ⚠️ **A costura do eixo sai da DISTÂNCIA e fica no enrolamento** — a mesma lei (e a mesma
+        // razão medida) do [`sd_profile_inner`]: uma aresta sobre o eixo varre uma linha, não uma
+        // parede, e deixá-la na conta põe um nível zero DENTRO do sólido.
+        if axis_seam && ax.abs() <= on_axis && f64::from(b[0]).abs() <= on_axis {
+            continue;
+        }
         let (ex, ey) = (f64::from(b[0]) - ax, f64::from(b[1]) - ay);
         let inv_ee = 1.0 / (ex * ex + ey * ey);
         let wx = u.clone() - Tree::constant(ax);
@@ -258,7 +281,7 @@ pub fn sd_profile_in_region(
     // sempre pelo menos a aresta que realiza o `dmax`. Recair na conta completa é o degenerado
     // seguro, e não um caso que se espera.
     let Some(dist2) = dist2 else {
-        return sd_profile(profile, u, v);
+        return sd_profile_inner(profile, u, v, axis_seam);
     };
 
     // ⭐ O canto da região é a ÂNCORA do enrolamento, e o número dele entra como constante.

@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**21 handoffs** · **9** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**23 handoffs** · **11** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -33,6 +33,9 @@
 | 2026-08-19 |  | [HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-19.md](HANDOFF_CONTINUACAO_line_sculpt3d_2026-08-19.md) | continuação | *(superseded)* — a fila depois da W9, e as duas decisões do Enio |
 | 2026-08-19 | ▣ | [HANDOFF_INTEGRACAO_line_sculpt3d_UNDO_2026-08-19.md](HANDOFF_INTEGRACAO_line_sculpt3d_UNDO_2026-08-19.md) | integração | o **UNDO do filtro** — o registo pergunta um FATO, não o verbo em mãos |
 | 2026-08-22 | ★ | [HANDOFF_INTEGRACAO_line_sculpt3d_QUADREMESH_2026-08-22.md](HANDOFF_INTEGRACAO_line_sculpt3d_QUADREMESH_2026-08-22.md) | integração | **COMECE AQUI** — o **QUAD REMESH GLOBAL** (F1–F5, 6 crates novas). ⛔ entra com o defeito da foto ABERTO, com gate vermelho e causa medida |
+| 2026-08-23 |  | [HANDOFF_INTEGRACAO_line_sculpt3d_QUADREMESH_2026-08-23.md](HANDOFF_INTEGRACAO_line_sculpt3d_QUADREMESH_2026-08-23.md) | integração | a caça ao ENVIESAMENTO fechada por eliminação medida — ⚠️ **retrato a meio da jornada**, não um fecho |
+| 2026-08-24 | ◆ | [HANDOFF_INTEGRACAO_line_sculpt3d_EXTRACAO_2026-08-24.md](HANDOFF_INTEGRACAO_line_sculpt3d_EXTRACAO_2026-08-24.md) | integração | papel **E** (especificador): a triagem de licença, a espec auditada e os fixtures verificados — ⛔ **zero código de produto** |
+| 2026-08-24 | ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md) | integração | a **EXTRACÇÃO** de malha quad a partir de um mapa de grade inteira + o **arredondamento inteiro** (G5). ⭐ Clean-room; a forma bate a barra do oráculo e a topologia nomeia o bloqueador **a montante** |
 
 ---
 
@@ -46,6 +49,8 @@ W7 aberta; hoje são **84**, **33** e fechada).
 
 **▣** = supersedidos como *"o que integrar agora"* pelo MESTRE de 17/08, mas ⚠️ **ainda são a
 FONTE do mecanismo** do porte do `layer.cc`; o MESTRE não os copiou de propósito.
+
+*Índice conferido em 2026-08-24 — e ele estava **dois handoffs atrás do diretório** (o de 23/08 e o do papel E de 24/08). ⚠️ A contagem foi **derivada do `ls`**, como esta nota manda; sem isso o buraco não teria aparecido.*
 
 *Índice conferido na reabertura de 2026-08-18. ⚠️ Ele já esteve **seis handoffs atrás** do
 diretório — a contagem e o **★** se **DERIVAM do `ls`**, nunca de memória. Handoff novo entra

@@ -195,6 +195,24 @@ impl InspectorAnimInfo {
         Some(row.per_frame_ms.get(i).copied().unwrap_or(0))
     }
 
+    /// **QUEM o campo de duração edita: `(linha, célula)`** — e as duas saem da mesma lei.
+    ///
+    /// ⚠️ **A linha é a da animação que a BARRA mostra (`current`), e não a que a lista tem
+    /// selecionada** — e a diferença foi um defeito reportado (Enio, 2026-08-23: *«o tempo volta a
+    /// 0 no enter»*). O campo mora na zona do TOCADOR (barra, Playing, Speed, Rewind), que fala da
+    /// animação a tocar; a zona da BIBLIOTECA, por baixo, é que fala da linha selecionada. Escrever
+    /// o valor numa e lê-lo da outra faz o campo **reverter sozinho**, que é exactamente como o
+    /// defeito se via.
+    ///
+    /// ⇒ **Uma função devolve as duas**, para que quem escreve não possa usar um índice de linha
+    /// diferente do que produziu a célula.
+    #[must_use]
+    pub fn this_frame_target(&self) -> Option<(u8, u32)> {
+        let row = u8::try_from(self.current_index()?).ok()?;
+        let cell = u32::try_from(self.this_frame_index()?).ok()?;
+        Some((row, cell))
+    }
+
     /// A posição do frame atual dentro da animação a tocar, para a barra: `(passo, total)`.
     ///
     /// `None` quando não há animação a tocar, ou quando ela não cabe — não há barra que mostrar.

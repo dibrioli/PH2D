@@ -637,3 +637,49 @@ fn the_frame_bar_is_dragged_not_just_looked_at() {
         "arrastar até ao meio",
     );
 }
+
+/// **O CAMPO DE DURAÇÃO EDITA A ANIMAÇÃO QUE A BARRA MOSTRA, e não a linha selecionada.**
+///
+/// ⚠️ **Defeito reportado** (Enio, 2026-08-23: *«o tempo volta a 0 no enter»*). A §11 tem duas
+/// zonas: o **TOCADOR** (a barra, `Playing`, `Speed`, `Rewind`) fala da animação a tocar; a
+/// **BIBLIOTECA**, por baixo, fala da linha selecionada. O campo mora na primeira — e escrevia na
+/// segunda. Com as duas em animações diferentes, o valor ia para uma e era lido da outra: o campo
+/// revertia sozinho, e parecia que o Enter não guardava.
+///
+/// ⛔ *Escrever num sítio e ler de outro não dá erro nenhum — dá um controlo que "não funciona".*
+///
+/// **Mutação que deve sangrar:** voltar a usar o `sel_u8` no `FrameMsAt`.
+#[test]
+fn the_duration_field_edits_the_animation_the_bar_shows() {
+    // A lista fica na linha 0 (`walk`, o default do painel) e o TOCADOR toca a linha 1 (`attack`),
+    // que é exactamente a divergência do smoke.
+    let mut info = anim(true, false);
+    info.current = "attack".into();
+    info.frame = 5; // a 2.ª célula de `attack` (4..7)
+    assert_eq!(info.current_index(), Some(1));
+    assert_eq!(
+        info.this_frame_target(),
+        Some((1, 1)),
+        "a lei tem de apontar para a LINHA que toca e a celula certa"
+    );
+
+    let acts = commit(info, ids::INSP_ANIM_FRAME_MS_THIS, 250.0);
+    expect(
+        &acts,
+        AnimFieldEdit::FrameMsAt(1, 1, 250),
+        "o campo tem de escrever na animacao que a barra mostra (linha 1), na celula 1",
+    );
+}
+
+/// **E ele não existe quando a barra não mostra célula nenhuma** — sem animação a tocar não há a
+/// que a duração se refira, e um campo que escrevesse aí iria para uma linha à sorte.
+#[test]
+fn with_nothing_playing_the_duration_field_has_no_target() {
+    let mut info = anim(true, false);
+    info.current = String::new();
+    assert_eq!(info.this_frame_target(), None);
+    assert!(
+        commit(info, ids::INSP_ANIM_FRAME_MS_THIS, 250.0).is_empty(),
+        "sem alvo, o campo nao pode inventar um"
+    );
+}

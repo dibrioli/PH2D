@@ -819,3 +819,33 @@ editava; um campo que **edita** precisa de ler o valor. O predicado passou a ser
 
 **9 gates novos** (4 no modelo + 4 na escrita + 1 alargado), **6 mutações**; uma sobreviveu e matou
 uma linha. Suítes: shell **3.927** · editor-core **1.227** · panel-inspector **196** · ecs **230**.
+
+### §18-ter — ⛔ Report: *«não funcionou. o tempo volta a 0 no enter»* — e eram DUAS causas
+
+O campo da §18-bis shipou partido, e o report do Enio apanhou **as duas metades de uma vez**.
+
+**Causa 1 — o campo escrevia numa animação e lia de outra.** A §11 tem duas zonas: o **TOCADOR**
+(a barra, `Playing`, `Speed`, `Rewind`) fala da animação **a tocar** (`current_index`); a
+**BIBLIOTECA**, por baixo, fala da **linha selecionada** (`panel.anim_selected`). O campo mora na
+primeira — e eu escrevi-o com o índice da segunda. Na cena de smoke elas **divergem** (toca a
+`walk`, a lista abre na `idle`), então o valor ia para a `idle` e o campo continuava a ler a `walk`.
+
+> ⛔ *Escrever num sítio e ler de outro não dá erro nenhum — dá um controlo que «não funciona».*
+
+⇒ **Uma função devolve a LINHA e a CÉLULA juntas** (`InspectorAnimInfo::this_frame_target`), para
+que quem escreve não possa usar um índice diferente do que produziu a célula. Gate:
+`the_duration_field_edits_the_animation_the_bar_shows`, com a mutação que repõe o `sel_u8` — o
+defeito exacto — a sangrar.
+
+**Causa 2 — com a reprodução a correr, a célula foge debaixo do campo.** «This frame ms» é a
+duração *da célula que está no ecrã*, e enquanto toca essa célula muda dez vezes por segundo: o
+Enter cairia num quadro que já não é o que o artista vê.
+
+⇒ **A mesma lei da barra (F12): escrever PAUSA.** *O dedo e o relógio leem o mesmo sítio; quem pega
+no volante conduz.* ⚠️ E, ao contrário do `SetFrame`, o acumulador **não** se zera — não se mudou de
+célula, mudou-se quanto ela dura (há mutação a prender as duas metades).
+
+⚠️ **A lição do par:** a §18-bis tinha gates a mais — a lei do modelo, a escrita esparsa, a poda, o
+cap, o alcance pelo gesto — e **nenhum** deles ligava *o que o campo mostra* a *onde o campo
+escreve*, porque a fixtura tinha a lista e o tocador na **mesma** animação. *Uma fixtura só prova o
+que ela contém*, e a divergência entre as duas zonas é justamente o que a cena real tem.

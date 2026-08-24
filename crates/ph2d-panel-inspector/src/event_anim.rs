@@ -160,7 +160,10 @@ pub(crate) fn apply_anim_event(
     // que a barra usa (`this_frame_index`), e não de uma segunda conta.
     if let WidgetEvent::ValueChanged(id) = ev
         && id == ids::INSP_ANIM_FRAME_MS_THIS
-        && let Some(i) = info.this_frame_index()
+        // ⚠️ **A linha vem daqui, e NÃO do `sel_u8`** — este campo é da zona do TOCADOR, e edita a
+        // animação que a barra mostra. Usar a linha selecionada escrevia numa animação e lia de
+        // outra, e o campo **revertia sozinho** (report do Enio: *«o tempo volta a 0 no enter»*).
+        && let Some((row, cell)) = info.this_frame_target()
     {
         let v = host.store().number_value(id).unwrap_or(0.0);
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
@@ -168,7 +171,7 @@ pub(crate) fn apply_anim_event(
         push(
             host,
             info.entity_bits,
-            AnimFieldEdit::FrameMsAt(sel_u8, i as u32, ms),
+            AnimFieldEdit::FrameMsAt(row, cell, ms),
         );
         return true;
     }

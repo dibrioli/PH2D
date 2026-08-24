@@ -524,3 +524,51 @@ fn the_spec_cap_holds_at_this_door_too() {
         ph2d_ecs::FRAME_MS_MAX
     );
 }
+
+/// **ESCREVER A DURAÇÃO DE UM QUADRO PAUSA** — a mesma lei que arrastar a barra (F12), e pela
+/// mesma razão: o campo mostra o tempo *da célula que está no ecrã*, e enquanto a reprodução corre
+/// essa célula muda dez vezes por segundo. Sem a pausa, o artista escreve num quadro que já não é o
+/// que ele vê — e foi essa a segunda metade do report *«o tempo volta a 0 no enter»*.
+///
+/// ⚠️ **E o acumulador NÃO se zera**, ao contrário do `SetFrame`: não se mudou de célula, mudou-se
+/// quanto ela dura.
+///
+/// **Mutação que deve sangrar:** tirar o bloco que põe `playing = false`.
+#[test]
+fn writing_a_frames_duration_pauses_like_dragging_the_bar_does() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sprite(&mut sim, 8);
+    let mut lib = SpriteAnimations::new();
+    lib.insert(AnimationTag::new("walk", 0, 7)).unwrap();
+    sim.world_mut().entity_mut(e).insert(lib);
+    edit(&mut sim, e, &reg, AnimFieldEdit::AddPlayer);
+    edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("walk".into()));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
+    // Deixa o relógio andar um pouco, para o acumulador ter conteúdo.
+    crate::render_loop::sprite_anim_tick::tick_sprite_animations(
+        &mut sim,
+        2,
+        0.016,
+        &[],
+        &mut crate::preview_drive::PreviewDrive::default(),
+    );
+    let elapsed = sim
+        .world()
+        .get::<SpriteAnimator>(e)
+        .map(|p| p.elapsed_ticks)
+        .unwrap_or(0);
+    assert!(
+        elapsed > 0,
+        "a fixtura precisa de um acumulador com conteudo"
+    );
+
+    edit(&mut sim, e, &reg, AnimFieldEdit::FrameMsAt(0, 2, 400));
+    let p = sim.world().get::<SpriteAnimator>(e).unwrap();
+    assert!(!p.playing, "escrever a duracao tem de PAUSAR");
+    assert_eq!(
+        p.elapsed_ticks, elapsed,
+        "…e NAO zerar o acumulador: nao se mudou de celula"
+    );
+    assert_eq!(tag_of(&sim, e, "walk").per_frame_ms, vec![0, 0, 400]);
+}

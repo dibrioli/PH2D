@@ -278,6 +278,21 @@ pub(super) fn apply_anim_edit(
         return None;
     }
 
+    // ⚠️ **ESCREVER A DURAÇÃO DE UM QUADRO PAUSA, e é a MESMA lei da barra de frames** (F12): o
+    // campo mostra o tempo *da célula que está no ecrã*, e enquanto a reprodução corre essa célula
+    // muda dez vezes por segundo — o dedo e o relógio leem o mesmo sítio, e o artista acabaria a
+    // escrever num quadro que já não é o que ele vê. *Quem pega no volante conduz.*
+    //
+    // ⚠️ Ao contrário do `SetFrame`, o acumulador **não** se zera: não se mudou de célula, mudou-se
+    // quanto ela dura.
+    if let AnimFieldEdit::FrameMsAt(..) = edit
+        && let Some(mut p) = world.get::<SpriteAnimator>(entity).cloned()
+        && p.playing
+    {
+        p.playing = false;
+        queue_set(queue, registry, entity_bits, ANIMATOR, &p);
+    }
+
     // ── A BIBLIOTECA ─────────────────────────────────────────────────────────────────────────
     let mut lib = world
         .get::<SpriteAnimations>(entity)

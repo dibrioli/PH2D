@@ -317,6 +317,62 @@ impl ProfileIndex {
         v.len()
     }
 
+    /// ⭐⭐ **As arestas que a DISTÂNCIA precisa nesta região** — a porta pública do corte.
+    ///
+    /// Ver [`Self::sd_batch_culled`] para a regra e para por que ela tem de ser conservadora.
+    #[must_use]
+    pub fn distance_edges(&self, lo: [f32; 2], hi: [f32; 2]) -> Vec<u32> {
+        let mut v = Vec::new();
+        self.cull(lo, hi, &mut v);
+        v
+    }
+
+    /// ⭐⭐ **As arestas que o SINAL precisa nesta região** — as que atravessam a caixa.
+    ///
+    /// ⚠️ **É um conjunto diferente do da distância, e menor.** O enrolamento é um invariante de
+    /// caminho: `w(p) = w(canto) + atravessamentos do caminho canto→p`, e esse caminho **não sai da
+    /// caixa** ⇒ só uma aresta que a atravessa o pode cruzar. Uma aresta longe muda a distância e
+    /// **não** pode mudar o sinal.
+    #[must_use]
+    pub fn crossing_edges(&self, lo: [f32; 2], hi: [f32; 2]) -> Vec<u32> {
+        let mut v = Vec::new();
+        for (i, e) in self.edges.iter().enumerate() {
+            let elo = [e.a[0].min(e.b[0]), e.a[1].min(e.b[1])];
+            let ehi = [e.a[0].max(e.b[0]), e.a[1].max(e.b[1])];
+            if elo[0] <= hi[0] && ehi[0] >= lo[0] && elo[1] <= hi[1] && ehi[1] >= lo[1] {
+                v.push(i as u32);
+            }
+        }
+        v
+    }
+
+    /// Os dois extremos da aresta `i` — o que a baixagem especializada precisa de constantes.
+    #[must_use]
+    pub fn edge(&self, i: u32) -> ([f32; 2], [f32; 2]) {
+        let e = self.edges[i as usize];
+        (e.a, e.b)
+    }
+
+    /// ⭐ **O enrolamento no ponto, pela regra do raio `+x`** — o mesmo número que a árvore calcula.
+    ///
+    /// É ele que vira a **constante** de uma região especializada.
+    #[must_use]
+    pub fn winding_at(&self, p: [f32; 2]) -> i32 {
+        ray_winding(&self.edges, p)
+    }
+
+    /// Quantas arestas o perfil tem, na ordem em que [`Self::edge`] as endereça.
+    #[must_use]
+    pub fn edge_count(&self) -> usize {
+        self.edges.len()
+    }
+
+    /// A lei de preenchimento — `true` para `NonZero`.
+    #[must_use]
+    pub fn is_non_zero(&self) -> bool {
+        self.non_zero
+    }
+
     fn sd_at(&self, stack: &mut Stack, u: f32, v: f32) -> f32 {
         let d = self.dist2(stack, [u, v]).sqrt();
         if self.inside([u, v]) { -d } else { d }

@@ -438,3 +438,170 @@ fn the_cull_never_drops_the_nearest_edge() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A ÁRVORE ESPECIALIZADA CONCORDA COM A COMPLETA — DENTRO DA REGIÃO DELA.**
+///
+/// ⚠️ **É o gate que autoriza a wave inteira.** Se a especialização discordar, o traçado ganha uma
+/// imagem errada em troca de velocidade — e o modo de falha é o pior: uma distância **maior** que a
+/// verdadeira faz a esfera-marcha **atravessar a peça**, o que se lê como um buraco, não como um
+/// número errado.
+///
+/// ⚠️ **E ele mede as DUAS pontas**: dentro da região tem de concordar; e a fixture inclui regiões
+/// que atravessam a fronteira do perfil, que é onde o enrolamento pré-somado tem de estar certo.
+#[test]
+fn the_specialised_tree_agrees_inside_its_region() {
+    use fidget::context::Tree;
+    use fidget::shape::EzShape;
+    for (name, contours, fill) in [
+        (
+            "polígono de 168 lados",
+            vec![ngon(168, 0.5, [0.0, 0.0])],
+            FillRule::NonZero,
+        ),
+        (
+            "anel com buraco (NonZero)",
+            vec![ngon(64, 0.5, [0.0, 0.0]), {
+                let mut i = ngon(48, 0.25, [0.0, 0.0]);
+                i.reverse();
+                i
+            }],
+            FillRule::NonZero,
+        ),
+        (
+            "anel com buraco (EvenOdd)",
+            vec![ngon(64, 0.5, [0.0, 0.0]), ngon(48, 0.25, [0.0, 0.0])],
+            FillRule::EvenOdd,
+        ),
+        (
+            "duas ilhas",
+            vec![ngon(24, 0.2, [-0.35, 0.0]), ngon(24, 0.2, [0.35, 0.0])],
+            FillRule::NonZero,
+        ),
+    ] {
+        let p = Profile::new(contours, fill, 1e-3).expect("perfil válido");
+        let idx = ProfileIndex::build(&p);
+        let mut full = tape_of(&p);
+        let mut s = 0xF00D_BEEFu64;
+        let mut rnd = move || {
+            s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            (s >> 33) as f32 / u32::MAX as f32
+        };
+        let (mut worst, mut nodes_full, mut nodes_cut, mut regions) =
+            (0.0f32, 0usize, 0usize, 0usize);
+        for _ in 0..120 {
+            // Regiões espalhadas: dentro, fora, e a cavalo da fronteira.
+            let c = [(rnd() - 0.5) * 1.6, (rnd() - 0.5) * 1.6];
+            let half = 0.15f32.mul_add(rnd(), 0.01);
+            let lo = [c[0] - half, c[1] - half];
+            let hi = [c[0] + half, c[1] + half];
+            let cut =
+                crate::profile::sd_profile_in_region(&p, &idx, &Tree::x(), &Tree::y(), lo, hi);
+            let shape = crate::Engine::from(cut);
+            let mut eval = crate::Engine::new_float_slice_eval();
+            let tape = shape.ez_float_slice_tape();
+            let (mut xs, mut ys) = (Vec::new(), Vec::new());
+            for _ in 0..256 {
+                xs.push((rnd() - 0.5).mul_add(2.0 * half, c[0]));
+                ys.push((rnd() - 0.5).mul_add(2.0 * half, c[1]));
+            }
+            let zs = vec![0.0f32; xs.len()];
+            let got = eval.eval(&tape, &xs, &ys, &zs).expect("avalia").to_vec();
+            let want = full(&xs, &ys);
+            for i in 0..xs.len() {
+                worst = worst.max((got[i] - want[i]).abs());
+            }
+            nodes_cut += idx.distance_edges(lo, hi).len() + idx.crossing_edges(lo, hi).len();
+            nodes_full += idx.edge_count();
+            regions += 1;
+        }
+        assert!(
+            worst < 1.0e-5,
+            "{name}: a árvore especializada discorda da completa em {worst:e} DENTRO da região — \
+             a marcha atravessaria a peça"
+        );
+        // ⚠️ **A metade que impede a cura degenerada**: uma especialização que guardasse todas as
+        // arestas passaria no gate acima e não compraria nada.
+        let ratio = nodes_cut as f64 / nodes_full as f64;
+        assert!(
+            ratio < 0.5,
+            "{name}: a especialização guardou {:.0}% das arestas em média ({regions} regiões) — \
+             ela concorda e não compra nada",
+            ratio * 100.0
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O QUE A ESPECIALIZAÇÃO COMPRA** — a tabela que decide o desenho da wave.
+///
+/// ⚠️ `#[ignore]` porque mede relógio — máquina calma:
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     profile_index::tests::the_table_of_what_specialising_the_tree_buys --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_what_specialising_the_tree_buys() {
+    use fidget::context::Tree;
+    use fidget::shape::EzShape;
+    const N: usize = 200_000;
+    let mut s = 0x0BAD_F00Du64;
+    let mut rnd = move || {
+        s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        (s >> 33) as f32 / u32::MAX as f32
+    };
+    println!("arestas | pegada | dist+cruz | montar | ns/ponto | vs fita completa");
+    for n in [168usize, 664] {
+        let p = Profile::new(vec![ngon(n, 0.5, [0.0, 0.0])], FillRule::NonZero, 1e-3)
+            .expect("perfil válido");
+        let idx = ProfileIndex::build(&p);
+        let full_ns = if n == 168 { 155.0 } else { 636.0 };
+        for foot in [0.25f32, 0.125, 0.0625] {
+            let half = 0.5 * foot * 0.5;
+            // Uma região colada à casca — onde a marcha de facto pára.
+            let a = rnd() * std::f32::consts::TAU;
+            let c = [0.5 * a.cos(), 0.5 * a.sin()];
+            let lo = [c[0] - half, c[1] - half];
+            let hi = [c[0] + half, c[1] + half];
+            let (near, cross) = (
+                idx.distance_edges(lo, hi).len(),
+                idx.crossing_edges(lo, hi).len(),
+            );
+            let mut build = Vec::new();
+            for _ in 0..5 {
+                let t0 = std::time::Instant::now();
+                let t =
+                    crate::profile::sd_profile_in_region(&p, &idx, &Tree::x(), &Tree::y(), lo, hi);
+                let shape = crate::Engine::from(t);
+                let tape = shape.ez_float_slice_tape();
+                build.push(t0.elapsed().as_secs_f64() * 1e3);
+                drop(tape);
+            }
+            build.sort_by(f64::total_cmp);
+            let t = crate::profile::sd_profile_in_region(&p, &idx, &Tree::x(), &Tree::y(), lo, hi);
+            let shape = crate::Engine::from(t);
+            let mut eval = crate::Engine::new_float_slice_eval();
+            let tape = shape.ez_float_slice_tape();
+            let (mut xs, mut ys) = (Vec::with_capacity(N), Vec::with_capacity(N));
+            for _ in 0..N {
+                xs.push((rnd() - 0.5).mul_add(2.0 * half, c[0]));
+                ys.push((rnd() - 0.5).mul_add(2.0 * half, c[1]));
+            }
+            let zs = vec![0.0f32; N];
+            let _ = eval.eval(&tape, &xs, &ys, &zs).expect("avalia");
+            let mut ms = Vec::new();
+            for _ in 0..5 {
+                let t0 = std::time::Instant::now();
+                let _ = eval.eval(&tape, &xs, &ys, &zs).expect("avalia");
+                ms.push(t0.elapsed().as_secs_f64() * 1e9 / N as f64);
+            }
+            ms.sort_by(f64::total_cmp);
+            println!(
+                "{n:>7} | {foot:>6.3} | {near:>4}+{cross:<4} | {:>5.2} ms | {:>8.1} | {:>16.1}x",
+                build[2],
+                ms[2],
+                full_ns / ms[2]
+            );
+        }
+    }
+}

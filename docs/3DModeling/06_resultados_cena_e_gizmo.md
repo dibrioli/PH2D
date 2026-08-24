@@ -4765,15 +4765,60 @@ o arnês de mutação, que usa caminho **absoluto**, mediu um binário sem os te
 cópia + `git apply` do diff, com o primário reposto ao que era. ⇒ **Todo comando de shell desta linha
 leva o `cd` da worktree à frente**, e um caminho de edição é **absoluto**.
 
+### §57.12 — ⭐⭐⭐ E a saída é ESPECIALIZAR A ÁRVORE, não sair dela
+
+Uma leitura do `Builder` do [`hybrid`](../../crates/ph2d-field-eval/src/hybrid.rs) fechou a rota da
+folha nativa, e não pela velocidade — pelo **produto**:
+
+- ⛔ uma folha amostrada **não passa pela pilha de modificadores** (`FieldError::ModsOnSampled`) ⇒
+  uma peça desenhada perderia *Hollow*, *Offset*, *Array*, *Taper*;
+- ⛔ o `Combine` **misto** não aplica pose nem pilha (item aberto nomeado no §22) ⇒ um grupo com uma
+  peça desenhada dentro perderia a própria pose;
+- ⛔ e o gradiente exacto morre (§57.8).
+
+⭐ **A saída não era sair da árvore: era especializá-la.** A mesma lei, com uma fração das arestas —
+e as duas metades precisam de **conjuntos diferentes**:
+
+| metade | de que arestas precisa | porquê |
+|---|---|---|
+| **distância** | as que podem ser a mais próxima de **algum** ponto da região | `min`: uma aresta longe pode ganhar |
+| **sinal** | só as que **atravessam** a região | o enrolamento é invariante de caminho |
+
+⭐⭐ **O enrolamento vira uma CONSTANTE mais um punhado de termos:** `w(p) = w(c) + atravessamentos
+do caminho c→p`, com `c` o canto da região. `w(c)` calcula-se na construção e entra como número; o
+caminho não sai da região ⇒ só uma aresta que a atravessa o pode cruzar — tipicamente **três**.
+
+| arestas | pegada | dist+cruz | montar | ns/ponto | vs fita completa |
+|---:|---:|---:|---:|---:|---:|
+| 168 | 0,250 | 20+10 | 0,23 ms | 15,1 | **10,3×** |
+| 168 | 0,125 | 9+4 | 0,11 ms | 7,0 | **22,2×** |
+| **168** | **0,062** | **5+3** | **0,07 ms** | **4,8** | **32,5×** |
+| 664 | 0,125 | 37+17 | 0,40 ms | 25,9 | 24,6× |
+| **664** | **0,062** | **20+10** | **0,23 ms** | **14,9** | **42,7×** |
+
+⭐⭐⭐ **Contra o tecto de Amdahl de 12,5× e 49,8×, isto SATURA-O** — e mantém tudo: fusão numa fita
+só, JIT, gradiente exacto, modificadores, poses e booleanas. A consulta nativa (§57.5–57.7) fica
+sendo o que ela é de facto: o **índice** que escolhe as arestas, e o **juiz** que prova o corte.
+
+⚠️ **A árvore especializada só vale DENTRO da região dela** — fora, a distância pode sair maior (o
+modo de falha que atravessa a peça) e o sinal pode ter a base errada. O gate
+`the_specialised_tree_agrees_inside_its_region` mede as duas pontas: concorda a `1e-5` dentro, **e**
+guarda menos de metade das arestas (senão a cura degenerada — especializar guardando tudo — passaria).
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
-- ⏸️ **A marcha por LADRILHO** (`ph2d-field-render`): hoje ela marcha por **linha de ecrã**, cuja
-  pegada em `(u, v)` é larga — e a tabela do §57.7 diz que com pegada larga o corte vale `0,3×`.
-  Sem esta metade, a consulta não chega ao produto.
-- ⏸️ **A folha com GRADIENTE próprio** no `Hybrid` (§57.8), senão a quina viva morre.
-- ⏸️ O laço do corte ainda não é vectorizado, e o `inside` (14,5 ns) já é 36 % do que sobra.
+- ⏸️ **A MARCHA POR REGIÃO** (`ph2d-field-render`) — a única metade que falta, e a que dá o número
+  ao artista. Hoje a marcha é por **linha de ecrã**; ela tem de passar a pedir uma árvore
+  especializada por região e a marchar dentro dela. ⚠️ **A região é em espaço LOCAL do nó, e não do
+  ecrã** — logo ela **não depende da câmera**, e as fitas especializadas podem ser construídas uma
+  vez por documento em vez de uma vez por quadro (a montagem é 0,07–0,23 ms por região).
+  ⚠️ **E há um caso a medir antes**: um raio que atravessa a peça de viés varre uma faixa larga em
+  `(u, v)`. Numa peça **fina** (uma extrusão) a varredura é pequena; numa espessa, não — e aí a
+  especialização degenera **graciosamente** na árvore completa (correcta, só não mais rápida).
 - ⏸️ **Re-derivar o teto de `Resolution`** com o custo novo — o **16** foi escolhido contra o custo
-  linear de hoje.
+  linear de hoje, e deixa de ser uma parede quando o custo deixar de ser linear.
+- ⏸️ A consulta nativa fica como **índice e juiz**; o laço dela não é vectorizado e o `inside`
+  (14,5 ns) já é 36 % do que sobra — só volta a interessar se alguém a puser no caminho.
 
 ---
 
@@ -4790,9 +4835,13 @@ leva o `cd` da worktree à frente**, e um caminho de edição é **absoluto**.
   ganha é **tocar menos arestas**. A consulta nova (BVH para a distância + grelha com o enrolamento
   pré-somado para o sinal, ambas exactas, com a fita como **juiz**) dá 1,9× sozinha e **3,8×/5,3×**
   quando o lote é compacto ⇒ **3,1×/4,9× no quadro**. ⛔ Duas metades faltam para o produto ver isto:
-  a marcha tem de ser por **ladrilho** (por linha, a pegada é larga e o corte vale `0,3×`) e a folha
-  nova tem de trazer **gradiente próprio** (qualquer folha amostrada derruba a normal para diferença
-  central, que apaga a quina viva). ⚠️ **E metade da wave foi escrita na árvore ERRADA** — a cwd
+  ⭐⭐⭐ **e a saída não era sair da árvore, era ESPECIALIZÁ-LA** (§57.12): a mesma lei com uma
+  fracção das arestas — distância pelas que podem ganhar o `min`, sinal por uma **constante** mais os
+  atravessamentos da região — dá **32,5×** (168) e **42,7×** (664) e **satura o tecto**, mantendo
+  fita única, JIT, gradiente exacto, modificadores e poses. ⛔ A folha nativa foi **recusada por
+  produto**, não por velocidade: ela perderia os modificadores e a quina viva. ⏸️ Falta **uma** metade
+  — a marcha por região —, e a região é em espaço **local**, logo independente da câmera.
+  ⚠️ **E metade da wave foi escrita na árvore ERRADA** — a cwd
   escorregou para o primário e tudo compilou lá; quem o apanhou foi o caminho absoluto do arnês de
   mutação.
 

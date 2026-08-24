@@ -189,3 +189,132 @@ pub fn sd_revolve(profile: &Profile) -> Tree {
     let r = crate::ops::safe_sqrt(Tree::x().square() + Tree::z().square());
     sd_profile_inner(profile, &r, &Tree::y(), true)
 }
+
+/// ⭐⭐⭐ **O PERFIL BAIXADO PARA UMA REGIÃO** (W56) — a mesma lei, com uma fração das arestas.
+///
+/// # Por que isto e não uma folha nativa
+///
+/// A [`ProfileIndex`] responde em `40 ns` o que a fita responde em `155` — mas ela é **dados**, e a
+/// álgebra da `fidget` é fechada. Pôr o perfil no caminho das folhas **amostradas** (o da escultura)
+/// custaria duas coisas que o produto tem hoje, e uma leitura do [`crate::hybrid`] disse quais:
+///
+/// - ⛔ **os modificadores**: uma folha amostrada não passa pela pilha (`FieldError::ModsOnSampled`)
+///   ⇒ uma peça desenhada perderia *Hollow*, *Offset*, *Array*, *Taper*;
+/// - ⛔ **a quina viva**: o gradiente exacto só existe com `sampled.is_empty()` ⇒ a normal cairia
+///   para diferença central, que é o que a razão de ser deste módulo não admite.
+///
+/// ⭐ **A saída é especializar a ÁRVORE, e não sair dela.** O que se mantém é tudo: fusão numa fita
+/// só, JIT, gradiente exacto, modificadores, poses e booleanas. O que muda é **quantas arestas** a
+/// expressão contém.
+///
+/// # As duas metades, e por que os conjuntos são DIFERENTES
+///
+/// | metade | de que arestas precisa | porquê |
+/// |---|---|---|
+/// | **distância** | as que podem ser a mais próxima de **algum** ponto da caixa | `min`: uma aresta longe pode ganhar |
+/// | **sinal** | só as que **atravessam** a caixa | o enrolamento é invariante de caminho |
+///
+/// ⭐⭐ **O enrolamento vira uma CONSTANTE mais um punhado de termos.** `w(p) = w(c) + os
+/// atravessamentos do caminho `c → p``, e `c` é o canto da caixa: `w(c)` calcula-se **na
+/// construção** e entra na árvore como número. O caminho `c → p` não sai da caixa ⇒ só uma aresta
+/// que a atravessa o pode cruzar — e são tipicamente uma ou duas.
+///
+/// ⚠️ **A árvore devolvida só vale DENTRO de `[lo, hi]`.** Fora dela a distância pode sair maior que
+/// a verdadeira (arestas cortadas) e o sinal pode sair errado (enrolamento com a base errada). Quem
+/// chama é quem sabe onde a vai avaliar — e o gate `the_specialised_tree_agrees_inside_its_region`
+/// mede exactamente essa fronteira.
+#[must_use]
+pub fn sd_profile_in_region(
+    profile: &Profile,
+    index: &crate::profile_index::ProfileIndex,
+    u: &Tree,
+    v: &Tree,
+    lo: [f32; 2],
+    hi: [f32; 2],
+) -> Tree {
+    let non_zero = profile.fill() == FillRule::NonZero;
+    let near = index.distance_edges(lo, hi);
+    let mut dist2: Option<Tree> = None;
+    for i in &near {
+        let (a, b) = index.edge(*i);
+        let (ax, ay) = (f64::from(a[0]), f64::from(a[1]));
+        let (ex, ey) = (f64::from(b[0]) - ax, f64::from(b[1]) - ay);
+        let inv_ee = 1.0 / (ex * ex + ey * ey);
+        let wx = u.clone() - Tree::constant(ax);
+        let wy = v.clone() - Tree::constant(ay);
+        let h = ((wx.clone() * Tree::constant(ex) + wy.clone() * Tree::constant(ey))
+            * Tree::constant(inv_ee))
+        .max(0.0)
+        .min(1.0);
+        let qx = wx - h.clone() * Tree::constant(ex);
+        let qy = wy - h * Tree::constant(ey);
+        let seg2 = qx.square() + qy.square();
+        dist2 = Some(match dist2 {
+            None => seg2,
+            Some(acc) => acc.min(seg2),
+        });
+    }
+    // ⚠️ **Um perfil cujo corte não deixou aresta nenhuma é impossível** — a regra do corte guarda
+    // sempre pelo menos a aresta que realiza o `dmax`. Recair na conta completa é o degenerado
+    // seguro, e não um caso que se espera.
+    let Some(dist2) = dist2 else {
+        return sd_profile(profile, u, v);
+    };
+
+    // ⭐ O canto da região é a ÂNCORA do enrolamento, e o número dele entra como constante.
+    let base = index.winding_at(lo);
+    let mut w: Tree = Tree::constant(f64::from(base));
+    for i in index.crossing_edges(lo, hi) {
+        w += crossing_term(index, i, u, v, lo);
+    }
+    let inside = if non_zero {
+        w.abs().min(1.0)
+    } else {
+        w.modulo(2.0)
+    };
+    let sign = Tree::constant(1.0) - Tree::constant(2.0) * inside;
+    crate::ops::safe_sqrt(dist2) * sign
+}
+
+/// **Quantas vezes (com sinal) a aresta atravessa o caminho `c → p`**, como árvore.
+///
+/// ⚠️ **Sem `if`, como o resto do módulo.** Dois segmentos cruzam-se sse cada um separa os extremos
+/// do outro — dois produtos de orientação negativos. `compare(−d, 0)` é `+1` exactamente quando `d`
+/// é negativo, e o `max(·, 0)` transforma os `−1`/`0` em zero: o produto dos dois é a **indicadora**
+/// do cruzamento.
+///
+/// ⭐ Duas das quatro orientações são **constantes** (`c` é o canto da região, e a aresta é
+/// conhecida): `d1` sai da conta na construção, e o que resta é linear no ponto.
+fn crossing_term(
+    index: &crate::profile_index::ProfileIndex,
+    edge: u32,
+    u: &Tree,
+    v: &Tree,
+    c: [f32; 2],
+) -> Tree {
+    let (a, b) = index.edge(edge);
+    let (ax, ay) = (f64::from(a[0]), f64::from(a[1]));
+    let (bx, by) = (f64::from(b[0]), f64::from(b[1]));
+    let (ex, ey) = (bx - ax, by - ay);
+    let (cx, cy) = (f64::from(c[0]), f64::from(c[1]));
+
+    // d1 = orient(a, b, c) — CONSTANTE.
+    let d1 = ex * (cy - ay) - ey * (cx - ax);
+    // d2 = orient(a, b, p) — linear no ponto.
+    let d2 = (v.clone() - Tree::constant(ay)) * Tree::constant(ex)
+        - (u.clone() - Tree::constant(ax)) * Tree::constant(ey);
+    // d3 = orient(c, p, a) e d4 = orient(c, p, b) — bilineares no ponto.
+    let px = u.clone() - Tree::constant(cx);
+    let py = v.clone() - Tree::constant(cy);
+    let d3 = px.clone() * Tree::constant(ay - cy) - py.clone() * Tree::constant(ax - cx);
+    let d4 = px.clone() * Tree::constant(by - cy) - py.clone() * Tree::constant(bx - cx);
+
+    let neg = |t: Tree| t.compare(0.0).max(0.0);
+    // `d1` é constante: o produto `d1·d2` é `d2` escalado, e o sinal do escalar decide.
+    let hit_ab = neg(Tree::constant(-d1) * d2);
+    let hit_cp = neg(Tree::constant(0.0) - d3 * d4);
+    // O lado por que a aresta atravessa o caminho: `sign(caminho × aresta)`, invertido para casar
+    // com a convenção do raio `+x` do [`sd_profile`].
+    let side = (px * Tree::constant(ey) - py * Tree::constant(ex)).compare(0.0);
+    Tree::constant(0.0) - side * hit_ab * hit_cp
+}

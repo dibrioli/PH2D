@@ -368,6 +368,7 @@ pub(crate) fn build_initial_state(
         let prefs = crate::prefs::load();
         hero.motion.set_character(prefs.character);
         hero.motion.set_reduced_motion(prefs.reduced_motion);
+        hero.ui_sound = prefs.ui_sound;
         Some(hero)
     } else {
         None

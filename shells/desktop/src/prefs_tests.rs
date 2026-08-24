@@ -16,18 +16,23 @@ use ph2d_editor::motion::UiCharacter;
 /// ⚠️ Este gate é também o que torna o `wire()`/`from_wire()` uma porta ÚNICA: se um lado
 /// escrevesse `"Expressive"` e o outro lesse `"expressive"`, a ida-e-volta partia aqui.
 #[test]
-fn every_combination_of_the_two_axes_survives_a_round_trip() {
+fn every_combination_of_the_axes_survives_a_round_trip() {
     for character in [UiCharacter::Discrete, UiCharacter::Expressive] {
         for reduced_motion in [false, true] {
-            let p = Prefs {
-                character,
-                reduced_motion,
-            };
-            assert_eq!(
-                parse(&serialize(&p)),
-                p,
-                "{character:?} + reduced={reduced_motion} tem de voltar igual"
-            );
+            // ⚠️ O terceiro eixo (o SOM de UI, D1) entra no laço e não num gate ao lado: a
+            // combinação é o que este gate mede, e um eixo testado à parte não prova a combinação.
+            for ui_sound in [false, true] {
+                let p = Prefs {
+                    character,
+                    reduced_motion,
+                    ui_sound,
+                };
+                assert_eq!(
+                    parse(&serialize(&p)),
+                    p,
+                    "{character:?} + reduced={reduced_motion} + som={ui_sound} tem de voltar igual"
+                );
+            }
         }
     }
 }
@@ -70,6 +75,7 @@ fn a_key_from_a_newer_build_is_skipped_and_the_rest_survives() {
         Prefs {
             character: UiCharacter::Expressive,
             reduced_motion: true,
+            ui_sound: false,
         },
         "as duas chaves conhecidas sobrevivem intactas ao lado de duas que este build nunca viu"
     );
@@ -97,6 +103,7 @@ fn the_first_observation_seeds_the_mirror_it_does_not_write() {
     let loaded = Prefs {
         character: UiCharacter::Expressive,
         reduced_motion: true,
+        ui_sound: false,
     };
 
     assert!(

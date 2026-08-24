@@ -5395,6 +5395,7 @@ impl App {
                             {
                                 gfx.toasts
                                     .push(Toast::warning(crate::painter_lock::REFUSAL));
+                                self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
                                 None
                             }
                             other => other,
@@ -5637,6 +5638,7 @@ impl App {
                             if crate::painter_lock::locked_entity(&gfx.tools, hero).is_some() {
                                 gfx.toasts
                                     .push(Toast::warning(crate::painter_lock::REFUSAL));
+                                self.pending_ui_sound = Some(crate::ui_sound::UiSound::Refuse);
                             } else {
                                 if !rb.add_mode {
                                     hero.gizmo.clear_all_selection();

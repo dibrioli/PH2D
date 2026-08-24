@@ -565,6 +565,15 @@ pub(crate) struct App {
     /// FUNDIDO (`vec_live_drawn`), que só fica pronto no fim do quadro. O atraso é de ~16 ms —
     /// abaixo do perceptível — e é a mesma escolha que os selos do papel booleano já fazem.
     pub(crate) hovered_object: Option<u64>,
+    /// **O som de UI que este quadro deve tocar** (estudo de UI viva, D1), ou `None`.
+    ///
+    /// ⚠️ **Um canal diferido, e não uma chamada no sítio do gesto**, pelo empréstimo: quase todo
+    /// gesto corre com o `gfx` (e o `hero` dentro dele) emprestado mutavelmente, e tocar exigiria
+    /// um segundo `&mut self`. É o mesmo padrão dos `pending_*` que este ficheiro já tem às dezenas.
+    ///
+    /// ⚠️ **Um só por quadro, de propósito:** dois sons no mesmo quadro são um clique duplo que
+    /// ninguém deu — e a `Option` torna isso inexprimível.
+    pub(crate) pending_ui_sound: Option<crate::ui_sound::UiSound>,
     /// **O que o contorno de proveniência desenha neste quadro**, em MUNDO — resolvido no mesmo
     /// instante que o [`Self::hovered_object`], e vazio quando nada é apontado.
     ///

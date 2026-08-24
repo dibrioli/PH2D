@@ -465,6 +465,12 @@ impl crate::App {
         // ⚠️ **Aqui em cima, e não em cada consumidor.** A Hierarquia publica cedo no quadro e o
         // contorno do canvas desenha tarde: dois picks separados dariam duas respostas assim que o
         // mapa vivo mudasse entre eles, e a linha acesa deixaria de ser a forma contornada.
+        // ⭐ **O SOM DE UI** (estudo de UI viva, D1) — o canal diferido que os gestos enchem,
+        // drenado UMA vez por quadro. ⚠️ O `take` é o que garante *um som por gesto*: sem ele, um
+        // gesto que não limpasse o canal tocaria em todos os quadros seguintes.
+        if let Some(what) = self.pending_ui_sound.take() {
+            self.ui_sound(what);
+        }
         let pointer = self.last_pointer;
         self.hovered_object = self.pick_hovered_object(pointer);
         // ⭐ **A geometria do contorno é resolvida AQUI, com o objecto.** Ela precisa da
@@ -5854,6 +5860,12 @@ impl crate::App {
             // olhado. Ligar não precisa (entrar só captura), mas custa uma disjunção e cobre o
             // caso de alguém pôr uma escrita no `enter` um dia.
             let preview_frame = self.ui_preview.is_on();
+            if pending_ui_preview_toggle {
+                // ⭐ **TOGGLE** (D1) — um interruptor que muda de estado. ⚠️ Aqui e não no ramo do
+                // `ui_preview_leave`: aquele também dispara pelo **Esc** e pelo fim de um modo, e
+                // um som ali anunciaria o que o app decidiu em vez de confirmar o que a mão fez.
+                self.pending_ui_sound = Some(crate::ui_sound::UiSound::Toggle);
+            }
             if pending_ui_preview_toggle || std::mem::take(&mut self.ui_preview_leave) {
                 if self.ui_preview.is_on() {
                     self.ui_preview
@@ -8488,6 +8500,9 @@ impl crate::App {
                 {
                     let n = crate::bool_gesture::bake(sim, vec_scene, &mut self.vec_pen, plan, g);
                     eprintln!("[ph2d-vec] boolean live: consolidada ({n} path[s])");
+                    // ⭐ **COMMIT** (D1): consolidar é o gesto que muda o documento de vez, e é
+                    // exactamente o que uma confirmação pelo ouvido serve.
+                    self.pending_ui_sound = Some(crate::ui_sound::UiSound::Commit);
                 }
             }
             // **O AUTO LAYOUT roda entre a booleana e o alinhamento** (ADR-0153), e as duas

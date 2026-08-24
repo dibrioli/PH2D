@@ -159,3 +159,106 @@ fn the_highlight_has_no_mode_gate() {
          objecto em qualquer modo"
     );
 }
+
+/// ⛔ **O SOM DE UI CONFIRMA O QUE A MÃO FEZ, e o HOVER nunca soa** (estudo de UI viva, D1).
+///
+/// ⚠️ É a única linha que separa um som de UI bom de um irritante. Passar o rato por uma fileira de
+/// botões é o gesto mais barato e mais frequente do editor; sonorizá-lo transforma navegar num
+/// chocalho — e é a irmã exacta da cerca do §6.2 (*o realce de uma lista obedece ao cursor*).
+///
+/// ⚠️ **A 1ª versão deste gate media PROXIMIDADE a uma palavra** (`hover`/`point(` a três linhas do
+/// armamento) e um mutante que armava o som **dentro do `pick_hovered_object`** passou por ela — o
+/// contexto local não dizia `hover` nenhum. *Um oráculo de vizinhança mede a redacção, não a lei.*
+///
+/// ⇒ o que se afirma agora é preciso e verificável: **o pipeline do ponteiro é MUDO** (o módulo do
+/// realce não arma som nenhum), e os sítios que armam são uma **lista explícita** — um sítio novo
+/// aparece no diff em vez de nascer em silêncio.
+#[test]
+fn the_ui_sound_never_follows_the_pointer() {
+    assert!(
+        !shell("src/hover_highlight.rs").contains("pending_ui_sound"),
+        "o módulo do REALCE armou um som — ele corre a cada movimento do ponteiro, e navegar \
+         viraria um chocalho"
+    );
+}
+
+/// ⛔ **OS SÍTIOS QUE ARMAM UM SOM SÃO ESTES, e nenhum outro.**
+///
+/// ⚠️ A lista é a feature: cada entrada é uma coisa que **a mão fez** (uma escolha no pie menu, uma
+/// consolidação, um interruptor, uma recusa). Um sítio novo aqui é um ato deliberado — e um som que
+/// nasça noutro sítio, sem passar por esta lista, é a forma exacta de o app começar a comentar o
+/// que ele próprio decidiu.
+#[test]
+fn only_the_listed_gestures_arm_a_sound() {
+    // (ficheiro, quantos armamentos ele tem, o que eles CONFIRMAM)
+    const ARMED: &[(&str, usize, &str)] = &[
+        ("src/radial_input.rs", 1, "escolher no pie menu"),
+        (
+            "src/render_loop/mod.rs",
+            2,
+            "consolidar a booleana · o interruptor da preview",
+        ),
+        (
+            "src/input_dispatch.rs",
+            2,
+            "as duas recusas da trava do Painter",
+        ),
+    ];
+    for (rel, want, what) in ARMED {
+        let n = shell(rel).matches("pending_ui_sound = Some").count();
+        assert_eq!(
+            n, *want,
+            "{rel} arma {n} som(ns) e a lista diz {want} ({what}) — se o novo é deliberado, \
+             acrescente-o AQUI com o que ele confirma"
+        );
+    }
+    // ⚠️ **E nenhum outro ficheiro da shell arma**: sem esta metade, a lista acima seria uma
+    // contagem de quem já lá está, e o sítio novo nasceria noutro ficheiro sem ninguém ver.
+    let listed: Vec<&str> = ARMED.iter().map(|(r, _, _)| *r).collect();
+    let mut strays = Vec::new();
+    walk_shell_src(&mut |rel, src| {
+        if !listed.contains(&rel.as_str()) && src.contains("pending_ui_sound = Some") {
+            strays.push(rel);
+        }
+    });
+    assert!(
+        strays.is_empty(),
+        "estes ficheiros armam um som fora da lista:\n  {}",
+        strays.join("\n  ")
+    );
+}
+
+/// Percorre `src/` da shell, chamando `f(caminho_relativo, fonte)`.
+fn walk_shell_src(f: &mut dyn FnMut(String, String)) {
+    fn go(dir: &Path, root: &Path, f: &mut dyn FnMut(String, String)) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                go(&p, root, f);
+            } else if p.extension().and_then(|s| s.to_str()) == Some("rs")
+                && let Ok(s) = std::fs::read_to_string(&p)
+                && let Ok(rel) = p.strip_prefix(root)
+            {
+                f(format!("src/{}", rel.display()), s);
+            }
+        }
+    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    go(&root, &root, f);
+}
+
+/// ⛔ **E UM SOM POR QUADRO, drenado com `take`.**
+///
+/// ⚠️ Sem o `take`, um gesto que enchesse o canal e não o limpasse tocaria em **todos** os quadros
+/// seguintes — um clique viraria um zumbido, e o artista desligaria a feature inteira.
+#[test]
+fn the_ui_sound_channel_is_drained_with_take() {
+    let frame = shell("src/render_loop/mod.rs");
+    assert!(
+        frame.contains("if let Some(what) = self.pending_ui_sound.take()"),
+        "o canal do som deixou de ser drenado com `take` — um clique viraria um zumbido"
+    );
+}

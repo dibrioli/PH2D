@@ -36,13 +36,18 @@ impl crate::App {
             return;
         };
         let Some(item) = hero.store.close_radial() else {
-            return; // zona morta, ou menu fechado: nada a fazer
-        };
-        if item.id == radial::RADIAL_MORE {
-            crate::global_palette_input::open_global_palette(hero);
+            // ⚠️ **A zona morta é MUDA**, e é a lei do som: ele confirma o que a mão FEZ, e
+            // cancelar é justamente não ter feito nada.
             return;
+        };
+        let more = item.id == radial::RADIAL_MORE;
+        if more {
+            crate::global_palette_input::open_global_palette(hero);
+        } else {
+            ph2d_editor::screens::hero::global_palette::route_global_pick(hero, item.id);
         }
-        ph2d_editor::screens::hero::global_palette::route_global_pick(hero, item.id);
+        // ⭐ O som vem DEPOIS do verbo: ele confirma o que aconteceu, não anuncia o que vai.
+        self.pending_ui_sound = Some(crate::ui_sound::UiSound::Click);
     }
 }
 

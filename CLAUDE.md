@@ -347,8 +347,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ✅ **a cascata (F5), o menu radial (E4) e o realce de proveniência (C2) FECHARAM** — o radial é
   **`P` segurado** (o gesto foi MEDIDO: o botão do meio é o pan, a caneta não entrega botão, e só
   9 letras estão livres sem modificador), e o realce vale para **todo objecto em todo modo**.
-  ⛔ **Sobram só o som de UI (D1, nunca ligado por omissão) e as partículas (D2)** — os dois de
-  eixo 4. ⚠️ E o estudo que os lista **mentiu sobre OITO das próprias linhas**: meça um item
+  ✅ **O som de UI (D1) FECHOU, e nasce DESLIGADO** (`~/.ph2d/prefs.txt`, `ui_sound=0`): quatro
+  vozes sintetizadas, e a lei é *um som CONFIRMA o que a mão fez, nunca ANUNCIA o que o app
+  decidiu* — o **hover é mudo**, e os sítios que armam são uma lista explícita com gate.
+  ⛔ **Sobram só as partículas (D2)** — eixo 4, e o item mais caro da tabela. ⚠️ E o estudo que os lista **mentiu sobre OITO das próprias linhas**: meça um item
   daquela tabela antes de o pegar ([§6.6](docs/Vector%20Module/Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)) ·
   ✅ **o hit-test já lê o mapa fundido — este item FECHOU** e a nota envelheceu aqui por semanas:
   `App::vec_live_drawn` é a `LiveGeometry` fundida e **6 sítios de pick** a consomem

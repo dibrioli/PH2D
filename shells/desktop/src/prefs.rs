@@ -30,6 +30,10 @@ use ph2d_editor::motion::UiCharacter;
 pub struct Prefs {
     pub character: UiCharacter,
     pub reduced_motion: bool,
+    /// **O SOM DE UI** (estudo de UI viva, D1). ⛔ **Nasce DESLIGADO**, e o default é a feature: um
+    /// app de desenho vive em cima de música e de referências em vídeo, e um som que ninguém pediu
+    /// desliga-se no primeiro minuto e leva a feature com ele.
+    pub ui_sound: bool,
 }
 
 /// `~/.ph2d/prefs.txt`, ou `None` com `$HOME` por definir (a persistência é então saltada).
@@ -43,9 +47,10 @@ fn prefs_file() -> Option<PathBuf> {
 #[must_use]
 pub fn serialize(p: &Prefs) -> String {
     format!(
-        "# PH2D prefs\nmotion_character={}\nreduced_motion={}\n",
+        "# PH2D prefs\nmotion_character={}\nreduced_motion={}\nui_sound={}\n",
         p.character.wire(),
         u8::from(p.reduced_motion),
+        u8::from(p.ui_sound),
     )
 }
 
@@ -72,6 +77,7 @@ pub fn parse(text: &str) -> Prefs {
                 }
             }
             "reduced_motion" => p.reduced_motion = value.trim() == "1",
+            "ui_sound" => p.ui_sound = value.trim() == "1",
             _ => {}
         }
     }

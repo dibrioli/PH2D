@@ -37,6 +37,8 @@ pub(crate) mod fx_presets;
 #[cfg(feature = "panel-audio-editor")]
 use editor::AudioEditorRuntime;
 mod signals;
+/// A VOZ DO SOM DE UI (D1) — irmão por assunto e pelo teto de 600 LOC.
+mod ui_voice;
 use signals::{blip_loop, pluck_loop, sine_tone, swell_loop};
 
 /// The desktop audio system: the control handle + the live output stream.

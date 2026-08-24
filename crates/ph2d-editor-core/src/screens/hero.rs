@@ -130,6 +130,13 @@ pub struct HeroScreen {
     /// Per-widget interactive state (hover/press/focus). Pre-populated
     /// at construction; mutated in-place by [`HeroScreen::handle_pointer`].
     pub store: WidgetStore,
+    /// **O SOM DE UI está ligado?** (estudo de UI viva, D1) — ⛔ **nasce DESLIGADO**, e o porquê
+    /// inteiro está no `ui_sound.rs` da shell.
+    ///
+    /// ⚠️ Aqui e não no [`Self::motion`]: aquele é o substrato do MOVIMENTO, e um flag de som ali
+    /// seria a segunda coisa que o `reduced_motion` significa. Derivado para o `prefs.txt` pelo
+    /// mesmo caminho que o carácter — **derivação, nunca um canal**.
+    pub ui_sound: bool,
     /// **A CORDA** do card de Fill — ver [`crate::tether`]. Ao lado do `motion` pela mesma razão:
     /// é estado de APARÊNCIA por-quadro, e o store é o estado semântico que dezenas de gates leem.
     pub tether: crate::tether::Tether,
@@ -296,6 +303,7 @@ impl HeroScreen {
         Self {
             motion: crate::motion::UiMotion::default(),
             palette_open_secs: 0.0,
+            ui_sound: false,
             tether: crate::tether::Tether::default(),
             id,
             theme: Theme::Forge,

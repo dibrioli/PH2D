@@ -207,7 +207,7 @@ descartável por construção; um corpo do mundo nunca é.*
 | ~~C3~~ ✅ | o **readout que segue a mão** vira REGRA — **FEITA**. ⚠️ E a medição corrigiu a linha: eram **três** superfícies (o rótulo do smart guide · a carga de um joint · as dimensões do Line), cada uma com o próprio corpo e caixa, e **nenhuma segue a mão** — as três ancoram em GEOMETRIA. O buraco real era o gesto mais usado do app (arrastar o gizmo), que **não tinha número nenhum** sobre a tela | 2 | — | **M** |
 | ~~R1~~ ✅ | **reduced motion** — **FEITO e persistido** (`~/.ph2d/prefs.txt`), eixo INDEPENDENTE do caracter (§10.2). ⚠️ Nao esperou a F2, e a linha mentia | 4 | ~~F2~~ | **P** |
 | ~~⭐~~ **X1** | **a pressão da caneta chega à shell** (afecta Flip **e** Painter) — ⚠️ o ⭐ e o **P** foram **REFUTADOS por medição**: winit 0.30.13 crava `force: None` nos três backends de desktop, então não há função a escrever. Ver a §8 | 3 | **winit** | **M/G** |
-| D1 | **som de UI** opt-in, do motor que já temos | 4 | F0 | **M** |
+| ~~D1~~ ✅ | **som de UI** — **FEITO e DESLIGADO por omissão** (`~/.ph2d/prefs.txt`, `ui_sound=0`). Quatro vozes SINTETIZADAS (sem asset nenhum): clique · toggle · commit · **recusa** — a única que desce, e a mais importante das quatro (*uma recusa silenciosa lê-se como um clique que não funcionou*). ⭐ **A lei:** um som CONFIRMA o que a mão fez, nunca ANUNCIA o que o app decidiu — e o **hover é MUDO**, com gate a exigir que o módulo do realce não arme som nenhum. ⛔ Os sítios que armam são uma **lista explícita**: um som novo aparece no diff | 4 | F0 | **M** |
 | D2 | **partículas de feedback** do motor que já temos (dissolver em vez de sumir) | 4 | F0 | **G** |
 
 ⭐ = **melhor razão ganho/custo do quadro**, e nenhum dos dois é animado.

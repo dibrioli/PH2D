@@ -523,6 +523,7 @@ mod ui_preview_bool_tests;
 /// **O RATO dentro do modo de preview** (plano UI/UX W7r) — a metade da shell do
 /// `render_loop::ui_preview`: quem aponta, e o gesto modal que precede tudo.
 mod ui_preview_gesture;
+mod ui_sound;
 /// A cena de smoke da **MOLA** (`PH2D_BUILD_SMOKE=65`) — irmã de `build_smoke`.
 mod ui_spring_smoke;
 mod ui_states_bool_smoke;
@@ -806,6 +807,7 @@ impl App {
             modifiers: ModifiersState::default(),
             last_pointer: (0.0, 0.0),
             hovered_object: None,
+            pending_ui_sound: None,
             hover_outline: Vec::new(),
             dragging: None,
             title_dirty: true,

@@ -98,6 +98,16 @@ D. git rebase main no início de cada jornada e antes de integrar.
    Conflito em Cargo.lock ou arquivo GERADO (registry-init): NUNCA
    resolva na mão — regenere (DIRETRIZ §1.5.5). Conflito em código
    fora da sua pasta = você violou a regra B.
+   ⚠️⚠️ EXCEÇÃO DESTA LINHA, e ela vem do passo 4: sua base é
+   `line/sculpt3d`, não `main`. ⛔ NÃO rebase em `main` enquanto
+   `line/sculpt3d` não tiver sido integrada — você arrastaria os
+   commits DELA para dentro da SUA branch, e o integrador veria a
+   mesma obra duas vezes. Enquanto isso: `git rebase line/sculpt3d`
+   (se aquela linha andar), e só depois de ela entrar no `main` é
+   que a regra D volta a valer literalmente.
+   ⚠️ No seu HANDOFF (regra H), o campo `base:` é `line/sculpt3d`
+   e NÃO `main` — diga-o com todas as letras: a ordem de integração
+   deixa de ser livre (sculpt3d entra ANTES, ou as duas juntas).
 E. Fechamento do módulo = gate batched (DIRETRIZ §6.6.A.2: nextest-
    impacted + clippy --all-targets + audit ≥2 lentes + DIRETIVA §3-§5).
    Então PARE — NÃO integre nem faça ship por conta própria. Quem funde

@@ -29,6 +29,13 @@
 //! da meia-integralidade, e o seu preço é uma implementação de emparelhamento
 //! geral com custos. Construí-lo antes de medir quantas arestas de facto saem
 //! meio-inteiras seria escrever um limite sem a tabela ao lado.
+//!
+//! ⛔⛔ **O preço é maior do que a linha acima diz** (medido 2026-08-24): a
+//! implementação de referência do Blossom é **não-livre** — *avaliação e pesquisa*
+//! apenas, **redistribuição proibida**, licença comercial à parte. ⇒ «uma
+//! implementação de emparelhamento geral com custos» significa **escrevê-la do
+//! *paper***, nunca portá-la. *Uma cerca que nomeia a cura tem de dizer se a cura
+//! está disponível.*
 
 use std::collections::BTreeMap;
 

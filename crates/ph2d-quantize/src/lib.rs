@@ -61,6 +61,13 @@
 //! - ⛔ O solver **exato por matching** (§3.7, Blossom) **não** está aqui. Ele
 //!   só se justifica se o `gap` medido no corpus for maior que zero — e essa
 //!   medição está no PLAN. *Medir antes de limitar* (CLAUDE.md §0.0).
+//! - ⛔⛔ **E se um dia se justificar, a implementação de referência do Blossom
+//!   NÃO é utilizável** (medido 2026-08-24): o autor publica-a para *avaliação e
+//!   pesquisa*, **proíbe a redistribuição** e vende licença comercial à parte. ⇒
+//!   ela não é T0 nem T2 — é **T4**, e o caminho lícito é reimplementar do
+//!   *paper* (público) sem tocar no fonte dela. O oráculo desta casa é
+//!   construído **sem** ela, de propósito. Detalhe:
+//!   `docs/3D/cleanroom/TRIAGEM_quad_remesh.md`.
 
 #![forbid(unsafe_code)]
 

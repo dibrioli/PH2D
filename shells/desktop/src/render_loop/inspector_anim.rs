@@ -142,7 +142,7 @@ pub(super) fn build_anim_info(
                     repeat_delay_ms: t.repeat_delay_ms,
                     signal_on_finish: t.signal_on_finish.clone(),
                     signal_on_loop: t.signal_on_loop.clone(),
-                    per_frame_timing: t.has_per_frame_timing(),
+                    per_frame_ms: t.per_frame_ms.clone(),
                 })
                 .collect()
         })
@@ -343,7 +343,8 @@ pub(super) fn apply_anim_edit(
                 | AnimFieldEdit::Repeat(i, _)
                 | AnimFieldEdit::Direction(i, _)
                 | AnimFieldEdit::SignalOnFinish(i, _)
-                | AnimFieldEdit::SignalOnLoop(i, _) => usize::from(*i),
+                | AnimFieldEdit::SignalOnLoop(i, _)
+                | AnimFieldEdit::FrameMsAt(i, _, _) => usize::from(*i),
                 // Tratados acima; o braço existe para o `match` não precisar de curinga, que
                 // engoliria em silêncio a próxima variante.
                 _ => return None,
@@ -375,6 +376,7 @@ fn write_tag(t: &mut AnimationTag, edit: &AnimFieldEdit) {
         // volta é invisível no campo e faz o contrato **não casar** do outro lado.
         AnimFieldEdit::SignalOnFinish(_, v) => t.signal_on_finish = clean_signal_name(v),
         AnimFieldEdit::SignalOnLoop(_, v) => t.signal_on_loop = clean_signal_name(v),
+        AnimFieldEdit::FrameMsAt(_, i, ms) => set_frame_ms_at(t, *i as usize, *ms),
         _ => {}
     }
 }
@@ -450,5 +452,34 @@ fn clean_signal_name(raw: &str) -> String {
             }
             t[..end].to_owned()
         }
+    }
+}
+
+/// **A duração de UMA célula**, escrita no vetor esparso da tag (spec §8.12).
+///
+/// ⚠️ **O vetor cresce só até à célula tocada, e o resto fica a ZERO** — declarar o ritmo de um
+/// quadro não pode escrever os outros sete. Zero é «herda o `frame_ms`», que é a mesma convenção
+/// do `Repeat (0 = forever)` que esta seção já usa, e é o que torna o esparso possível.
+///
+/// ⚠️ **E ele ENCOLHE quando o artista desfaz.** Sem a poda, limpar o último valor deixaria um
+/// vetor de zeros — invisível no ecrã, gravado no ficheiro, e a fazer o aviso *«this animation has
+/// per-frame timing»* mentir para sempre. *Um estado que só existe como resíduo é um estado que
+/// ninguém volta a explicar.*
+fn set_frame_ms_at(t: &mut AnimationTag, index: usize, ms: u32) {
+    let ms = if ms == 0 {
+        0
+    } else {
+        ms.clamp(ph2d_ecs::FRAME_MS_MIN, ph2d_ecs::FRAME_MS_MAX)
+    };
+    if index >= t.per_frame_ms.len() {
+        t.per_frame_ms.resize(index + 1, 0);
+    }
+    t.per_frame_ms[index] = ms;
+    // ⚠️ **A poda é o que torna «limpar» idempotente**, e ela cobre mais do que parece: limpar uma
+    // célula que nunca foi declarada cresce o vetor de zeros e ele volta a encolher aqui — o mesmo
+    // resultado, sem um caso especial. *Uma mutação que sobreviveu foi quem o disse: o atalho que
+    // eu tinha escrito acima («se é zero e está fora, não faças nada») não mudava resultado nenhum.*
+    while t.per_frame_ms.last() == Some(&0) {
+        t.per_frame_ms.pop();
     }
 }

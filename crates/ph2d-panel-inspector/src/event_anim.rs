@@ -155,6 +155,24 @@ pub(crate) fn apply_anim_event(
         return true;
     }
 
+    // **A duração da célula que a barra mostra** (spec §8.12). ⚠️ Ela é a única edição da §11 cujo
+    // ALVO não é a linha selecionada nem a sprite, mas a **célula** — e o índice sai da mesma lei
+    // que a barra usa (`this_frame_index`), e não de uma segunda conta.
+    if let WidgetEvent::ValueChanged(id) = ev
+        && id == ids::INSP_ANIM_FRAME_MS_THIS
+        && let Some(i) = info.this_frame_index()
+    {
+        let v = host.store().number_value(id).unwrap_or(0.0);
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+        let ms = v.max(0.0).round() as u32;
+        push(
+            host,
+            info.entity_bits,
+            AnimFieldEdit::FrameMsAt(sel_u8, i as u32, ms),
+        );
+        return true;
+    }
+
     if let WidgetEvent::ValueChanged(id) = ev {
         let v = host.store().number_value(id).unwrap_or(0.0);
         // A velocidade é do TOCADOR e não da linha — ela não precisa da biblioteca.

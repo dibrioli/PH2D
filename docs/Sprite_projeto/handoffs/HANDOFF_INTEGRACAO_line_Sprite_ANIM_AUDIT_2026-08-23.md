@@ -778,3 +778,44 @@ lê é a FORMA, não o nome*.
 
 **11 gates novos** (6 da lei pura + 3 do importador + 2 da cena), **7 mutações**, todas sangraram.
 Suíte do shell: **3.923/3.923**.
+
+### §18-bis — ⭐ O Inspector EDITA a duração de cada quadro (pedido do Enio)
+
+*«temos como configurar o tempo do quadro na UI? Já temos o slider que desloca o quadro. se não
+tiver um parâmetro de duração para cada quadro, crie»*
+
+A §18 tinha declarado que o Inspector **não** editaria isto, citando a §8.8 (que põe essa edição no
+editor de timeline futuro). ⚠️ **O dono do produto pediu-a aqui, e a decisão é dele** — e ela cabe
+**sem um controlo novo de selecção**, o que é a parte interessante:
+
+> **O campo mora colado à BARRA DE FRAMES, porque ela já é o selector de célula.**
+> *Um painel que pergunta duas vezes «qual quadro?» é um painel em que os dois podem discordar.*
+
+O Enio já tinha visto isso — ele nomeou a barra no próprio pedido.
+
+| a lei | o que ela impede |
+|---|---|
+| **`0` = herda o `Frame ms`** | a convenção do `Repeat (0 = forever)` que a seção já usa; é o que torna o vetor **esparso** possível |
+| **declarar uma célula não escreve as outras** | materializar as oito gravaria sete números que dizem o que o `frame_ms` já diz — e o primeiro que o artista mudasse deixava os outros seis **congelados** no valor de então |
+| **limpar ENCOLHE o vetor** | sem a poda ele ficava de zeros: invisível no ecrã, gravado no ficheiro, e a fazer o aviso de ritmo próprio mentir para sempre. *Um estado que só existe como resíduo é um estado que ninguém volta a explicar* |
+| **o índice é relativo ao `from` resolvido** | é o que o reindexa sozinho quando o intervalo muda |
+| **o campo só existe quando há célula** | fora do intervalo não há a que a duração se refira |
+
+⭐ **E o `bool` do snapshot virou o VETOR.** A §18 levava só *«tem ritmo próprio?»*, porque nada o
+editava; um campo que **edita** precisa de ler o valor. O predicado passou a ser derivado
+(`InspectorAnimRow::has_per_frame_timing`) — *uma fonte, e a pergunta calcula-se dela*.
+
+**Duas coisas que as mutações encontraram:**
+
+1. ⭐ **Uma linha MORTA.** Eu tinha escrito um atalho — *«se é zero e está fora do vetor, não
+   escrevas nada»* — e sabotá-lo **não reprovou nada**: a poda no fim já dava o mesmo resultado.
+   Apagado. É a quarta vez nesta linha que uma mutação sobrevivente aponta **duplicação**, e não um
+   gate em falta.
+2. ⛔ **O gate `no_magic_numeric` disparou em PROSA**: ele leu `§8.12` (a referência da spec, num
+   comentário à direita) como o literal `8.12`. ⚠️ **Curou-se o SCANNER, não o comentário** — é a
+   lição que o `sculpt_source::source` do shell já tinha pago e escrito: *um gate que dispara em
+   documentação ensina a não documentar.* O corte respeita **strings** (um `"http://…"` não abre
+   comentário), e há prova de que ele continua a apanhar um literal real antes do `//`.
+
+**9 gates novos** (4 no modelo + 4 na escrita + 1 alargado), **6 mutações**; uma sobreviveu e matou
+uma linha. Suítes: shell **3.927** · editor-core **1.227** · panel-inspector **196** · ecs **230**.

@@ -233,7 +233,7 @@ fn editor(
     // campo `Frame ms` acima mente sobre ela — mostra a duração mais comum e nada explica por que
     // a animação não anda naquele ritmo. O Inspector não a edita (a §8.8 põe essa edição no editor
     // de timeline futuro); ele diz que ela existe, que é a diferença entre um dado e um mistério.
-    if row.per_frame_timing {
+    if row.has_per_frame_timing() {
         paint_text(
             text_system,
             scene,

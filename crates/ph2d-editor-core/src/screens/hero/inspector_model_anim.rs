@@ -34,15 +34,24 @@ pub struct InspectorAnimRow {
     pub signal_on_finish: String,
     /// O nome do sinal ao fechar um CICLO. Vazio = calada.
     pub signal_on_loop: String,
-    /// **Esta animação tem ritmo PRÓPRIO por célula?** (spec §8.12, o que um `.ase` traz.)
+    /// **A duração de cada célula do intervalo**, em ms — `0` = herda o `frame_ms`, vazio = todas
+    /// herdam (spec §8.12).
     ///
-    /// ⚠️ Um **facto**, e não o vetor: o Inspector não o edita — a §8.8 põe essa edição no editor
-    /// de timeline futuro. O que ele tem de fazer é **dizer que ele existe**, senão o campo
-    /// `Frame ms` mente sobre a animação e ninguém sabe porquê.
-    pub per_frame_timing: bool,
+    /// ⚠️ **O VETOR, e não um `bool`.** A primeira versão trazia só *«tem ritmo próprio?»*, porque
+    /// o Inspector não o editava; o Enio pediu o campo (*«se não tiver um parâmetro de duração
+    /// para cada quadro, crie»*), e um campo que EDITA precisa de ler o valor. O predicado passou a
+    /// ser derivado ([`Self::has_per_frame_timing`]) — *uma fonte, e a pergunta calcula-se dela*.
+    pub per_frame_ms: Vec<u32>,
 }
 
 impl InspectorAnimRow {
+    /// Esta animação declara o ritmo de alguma célula? **Derivado do vetor**, nunca guardado ao
+    /// lado dele — duas respostas à mesma pergunta divergem no dia em que uma for esquecida.
+    #[must_use]
+    pub fn has_per_frame_timing(&self) -> bool {
+        self.per_frame_ms.iter().any(|&v| v > 0)
+    }
+
     /// O intervalo cabe na grelha que a sprite tem?
     ///
     /// ⚠️ **Derivado contra o `cells` do snapshot, nunca guardado.** Mexer em `hframes` encolhe a
@@ -156,6 +165,36 @@ impl InspectorAnimInfo {
         Some(row.from.min(row.to) + step)
     }
 
+    /// **Onde, no vetor de ritmo, mora a célula que a barra está a mostrar.**
+    ///
+    /// ⚠️ **Derivado, e é a mesma célula que o arrasto escolhe** (`scrub_cell`): o controlo de
+    /// duração por-quadro não precisa de um segundo selector, porque a barra **já** é o selector.
+    /// *Um painel que pede duas vezes «qual quadro?» é um painel em que os dois podem discordar.*
+    ///
+    /// `None` quando não há animação a tocar, ou quando o frame no ecrã caiu fora do intervalo
+    /// dela — não há célula desta animação a que a duração se possa referir.
+    #[must_use]
+    pub fn this_frame_index(&self) -> Option<usize> {
+        let row = self.rows.get(self.current_index()?)?;
+        let (lo, hi) = (
+            row.from.min(row.to),
+            row.from.max(row.to).min(self.cells.checked_sub(1)?),
+        );
+        (self.frame >= lo && self.frame <= hi).then(|| (self.frame - lo) as usize)
+    }
+
+    /// **Quanto dura a célula que a barra mostra**, em ms. `0` = herda o `frame_ms` da animação.
+    ///
+    /// ⚠️ **`0` é «não declarado», e não «instantâneo»** — é a mesma convenção do `Repeat (0 =
+    /// forever)` que esta seção já usa, e é o que permite ao vetor ser **esparso**: declarar a
+    /// duração de UMA célula não obriga a escrever as outras sete.
+    #[must_use]
+    pub fn this_frame_ms(&self) -> Option<u32> {
+        let i = self.this_frame_index()?;
+        let row = self.rows.get(self.current_index()?)?;
+        Some(row.per_frame_ms.get(i).copied().unwrap_or(0))
+    }
+
     /// A posição do frame atual dentro da animação a tocar, para a barra: `(passo, total)`.
     ///
     /// `None` quando não há animação a tocar, ou quando ela não cabe — não há barra que mostrar.
@@ -204,6 +243,12 @@ pub enum AnimFieldEdit {
     SignalOnFinish(u8, String),
     /// `(animação, nome do sinal ao fechar um CICLO)` — vazio cala a animação.
     SignalOnLoop(u8, String),
+    /// **`(animação, índice DENTRO do intervalo, ms)`** — a duração de UMA célula (spec §8.12).
+    ///
+    /// ⚠️ O índice é relativo ao `from` da animação, e não à grelha: é assim que o vetor se
+    /// reindexa sozinho quando o intervalo muda. `0` limpa a declaração (a célula volta a herdar
+    /// o `frame_ms`).
+    FrameMsAt(u8, u32, u32),
 
     /// Anexa o TOCADOR a esta sprite.
     AddPlayer,
@@ -251,7 +296,7 @@ mod tests {
             repeat_delay_ms: 0,
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
-            per_frame_timing: false,
+            per_frame_ms: Vec::new(),
         }
     }
 
@@ -363,5 +408,62 @@ mod tests {
         // Sem animação, ou sem intervalo, não há barra.
         assert_eq!(info(8, "").progress(), None);
         assert_eq!(info(2, "walk").progress(), None);
+    }
+
+    /// **O CAMPO DE DURAÇÃO APONTA PARA A CÉLULA QUE A BARRA MOSTRA** — e para nenhuma outra.
+    ///
+    /// ⚠️ O índice é relativo ao `from` da animação: uma tag `4..7` com o frame no 5 edita a
+    /// **segunda** entrada do vetor, não a sexta. É isso que faz o vetor reindexar-se sozinho
+    /// quando o artista mexe no intervalo, em vez de apontar para o sítio errado em silêncio.
+    #[test]
+    fn the_duration_field_points_at_the_cell_the_bar_shows() {
+        let mut i = info(8, "attack");
+        i.rows = vec![row("attack", 4, 7)];
+        i.frame = 4;
+        assert_eq!(i.this_frame_index(), Some(0), "o `from` e' o indice ZERO");
+        i.frame = 5;
+        assert_eq!(i.this_frame_index(), Some(1));
+        i.frame = 7;
+        assert_eq!(i.this_frame_index(), Some(3));
+    }
+
+    /// **Fora do intervalo não há campo** — não existe célula desta animação a que a duração se
+    /// possa referir, e um campo que edita «a célula 9 de uma animação que vai até à 7» escreveria
+    /// num sítio que ninguém vê.
+    #[test]
+    fn outside_the_range_there_is_no_cell_to_edit() {
+        let mut i = info(8, "attack");
+        i.rows = vec![row("attack", 4, 7)];
+        i.frame = 2;
+        assert_eq!(i.this_frame_index(), None);
+        assert_eq!(i.this_frame_ms(), None);
+        i.frame = 4;
+        assert!(i.this_frame_index().is_some(), "e dentro dele ha'");
+    }
+
+    /// **O valor mostrado é o da célula, e `0` quer dizer «herda»** — a mesma convenção do
+    /// `Repeat (0 = forever)` que esta seção já usa, e o que torna o vetor ESPARSO possível.
+    #[test]
+    fn the_shown_value_is_the_cells_own_and_zero_means_inherit() {
+        let mut i = info(8, "attack");
+        let mut r = row("attack", 4, 7);
+        r.per_frame_ms = vec![0, 250];
+        assert!(r.has_per_frame_timing(), "um valor > 0 conta");
+        i.rows = vec![r];
+        i.frame = 4;
+        assert_eq!(i.this_frame_ms(), Some(0), "declarado como herdar");
+        i.frame = 5;
+        assert_eq!(i.this_frame_ms(), Some(250));
+        i.frame = 6;
+        assert_eq!(i.this_frame_ms(), Some(0), "fora do vetor tambem herda");
+    }
+
+    /// **Um vetor só de zeros NÃO é ritmo próprio** — senão o aviso *«this animation has per-frame
+    /// timing»* ficaria colado à animação depois de o artista limpar tudo.
+    #[test]
+    fn a_vector_of_zeros_is_not_per_frame_timing() {
+        let mut r = row("walk", 0, 3);
+        r.per_frame_ms = vec![0, 0, 0];
+        assert!(!r.has_per_frame_timing());
     }
 }

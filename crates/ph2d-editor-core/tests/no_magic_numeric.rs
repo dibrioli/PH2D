@@ -218,6 +218,27 @@ fn line_is_comment(line: &str) -> bool {
     t.starts_with("//")
 }
 
+/// **O código antes do comentário da direita.** `//` dentro de uma string não conta.
+///
+/// Devolve a linha inteira quando não há comentário — e nunca corta uma string ao meio, que é o
+/// que faria um `find("//")` ingénuo numa linha com um URL.
+fn strip_trailing_comment(line: &str) -> &str {
+    let spans = string_spans(line);
+    let bytes = line.as_bytes();
+    let mut i = 0;
+    while i + 1 < bytes.len() {
+        if let Some(&(_, end)) = spans.iter().find(|(a, b)| i >= *a && i < *b) {
+            i = end;
+            continue;
+        }
+        if bytes[i] == b'/' && bytes[i + 1] == b'/' {
+            return &line[..i];
+        }
+        i += 1;
+    }
+    line
+}
+
 /// Per-line allowlist: trailing `// LITERAL-PX-OK: <reason>`.
 fn line_has_allowlist(line: &str) -> bool {
     line.contains("LITERAL-PX-OK")
@@ -411,6 +432,16 @@ fn no_magic_numeric_in_widget_or_screens() {
                 if line_is_comment(line) || line_has_allowlist(line) {
                     continue;
                 }
+                // ⚠️ **O COMENTÁRIO À DIREITA não é código, e varrê-lo é varrer PROSA.** Este gate
+                // reprovou em 2026-08-23 sobre a linha `… // 0 = herda (spec §8.12)`: ele leu a
+                // referência da spec como o literal `8.12`. É a lição que o `sculpt_source::source`
+                // do shell já tinha pago, escrita lá: *um gate que dispara em documentação ensina a
+                // não documentar*.
+                //
+                // ⚠️ O corte respeita as STRINGS (`"http://…"` não abre comentário), senão ele
+                // truncava código a sério — o `string_spans` abaixo é a mesma lei, e reusá-la aqui
+                // é o que impede as duas de discordarem.
+                let line = strip_trailing_comment(line);
                 let bytes = line.as_bytes();
                 let strings = string_spans(line);
                 let mut i = 0;

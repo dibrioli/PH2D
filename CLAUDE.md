@@ -759,8 +759,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   há, é este importador, e nos ficheiros reais elas **variam**): `AnimationTag::per_frame_ms`, vazio
   = uniforme. ⭐ A lei pura não precisou de refactoração — o `step_ticks` já perguntava **por
   frame**, era só a resposta que era uniforme. ⚠️ Curto ou `0` caem no `frame_ms`, então **não há
-  estado inválido** quando o intervalo muda. ⚠️ O Inspector **não o edita** (a §8.8 põe isso no
-  editor de timeline futuro) — ele **diz que existe**, senão o campo `Frame ms` mente.
+  estado inválido** quando o intervalo muda. ⭐ **E o Inspector EDITA-O** (Enio pediu: *«se não tiver um
+  parâmetro de duração para cada quadro, crie»*) — o campo mora **colado à barra de frames**, que já
+  é o selector de célula: *um painel que pergunta duas vezes «qual quadro?» é um painel em que os
+  dois podem discordar*. ⚠️ `0` = herda · declarar uma célula **não** escreve as outras · limpar
+  **encolhe** o vetor (senão o aviso de ritmo próprio mente para sempre).
   ⚠️ O que o ficheiro traz e não honramos sai numa **nota que nomeia a camada** (tilemaps, z-index
   de cel, modo de mistura de grupo) — *um importador que ignora em silêncio é pior que um que
   recusa*. ⭐ **O smoke ESCREVE o `.ase`** (`PH2D_ASE_SMOKE=1`), então testá-lo não precisa do

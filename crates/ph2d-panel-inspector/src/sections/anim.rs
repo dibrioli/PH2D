@@ -221,6 +221,31 @@ fn player_block(
             theme,
         );
         cur_y += BAR_H + Spacing::Sm.px();
+        // **A DURAÇÃO DESTA CÉLULA** (spec §8.12, pedido do Enio: *«se não tiver um parâmetro de
+        // duração para cada quadro, crie»*).
+        //
+        // ⚠️ **Ele mora AQUI, colado à barra, e não na autoria lá em baixo** — a barra é que
+        // escolhe a célula, e pôr o campo longe dela obrigaria o artista a segurar na cabeça qual
+        // quadro está a editar. *Um painel que pede duas vezes «qual quadro?» é um painel em que
+        // os dois podem discordar.*
+        //
+        // ⚠️ E ele só existe quando há célula a que se referir: o `this_frame_index` devolve `None`
+        // se o frame no ecrã caiu fora do intervalo da animação a tocar.
+        if info.this_frame_index().is_some() {
+            cur_y = super::anchors::field_row(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                cur_y,
+                "This frame ms (0 = use Frame ms)",
+                &[ids::INSP_ANIM_FRAME_MS_THIS],
+                10.0, // LITERAL-PX-OK: passo de scrub em MILISSEGUNDOS, não em pixels
+            );
+        }
     }
 
     if info.current_dangling() {

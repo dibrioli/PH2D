@@ -204,7 +204,7 @@ fn publish_the_whole_sprite_scene() {
             repeat_delay_ms: 250,
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
-            per_frame_timing: false,
+            per_frame_ms: Vec::new(),
         }],
         player_present: true,
         cells: 8,

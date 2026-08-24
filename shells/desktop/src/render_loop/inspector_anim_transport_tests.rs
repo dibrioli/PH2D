@@ -10,6 +10,16 @@
 
 use super::*;
 
+/// A tag `name` da biblioteca desta sprite — o que o mundo de facto guarda depois da edição.
+fn tag_of(sim: &SimWorld, e: Entity, name: &str) -> AnimationTag {
+    sim.world()
+        .get::<SpriteAnimations>(e)
+        .expect("a sprite tem biblioteca")
+        .get(name)
+        .expect("a animacao existe")
+        .clone()
+}
+
 /// **REBOBINAR MOVE A IMAGEM** — e não só contadores que ninguém vê.
 ///
 /// ⚠️ Enio, 2026-08-23. O botão repunha `elapsed_ticks`/`repeat_count`/o ping-pong e deixava a
@@ -415,4 +425,102 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
              mediria outra vez o fim de um ciclo"
         );
     }
+}
+
+/// **DECLARAR A DURAÇÃO DE UM QUADRO NÃO ESCREVE OS OUTROS** (spec §8.12, pedido do Enio:
+/// *«se não tiver um parâmetro de duração para cada quadro, crie»*).
+///
+/// ⚠️ O vetor cresce **só até à célula tocada**, e o resto fica a `0` — que quer dizer *herda o
+/// `Frame ms`*. Materializar as oito células ao tocar numa gravaria sete números que dizem o que o
+/// `frame_ms` já diz, e o primeiro que o artista mudasse deixaria os outros seis congelados no
+/// valor de então.
+///
+/// **Mutação que deve sangrar:** preencher o vetor com o `frame_ms` em vez de `0`.
+#[test]
+fn setting_one_frames_duration_does_not_write_the_others() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sprite(&mut sim, 8);
+    let mut lib = SpriteAnimations::new();
+    lib.insert(AnimationTag::new("walk", 0, 7)).unwrap();
+    sim.world_mut().entity_mut(e).insert(lib);
+
+    edit(&mut sim, e, &reg, AnimFieldEdit::FrameMsAt(0, 2, 400));
+    let tag = tag_of(&sim, e, "walk");
+    assert_eq!(
+        tag.per_frame_ms,
+        vec![0, 0, 400],
+        "o vetor cresce ate' a celula tocada e o resto HERDA"
+    );
+    assert!(tag.has_per_frame_timing());
+}
+
+/// **E LIMPAR O ÚLTIMO VALOR ENCOLHE O VETOR** — sem a poda, ele ficaria cheio de zeros: invisível
+/// no ecrã, gravado no ficheiro, e a fazer o aviso *«this animation has per-frame timing»* mentir
+/// para sempre.
+///
+/// ⛔ *Um estado que só existe como resíduo é um estado que ninguém volta a explicar.*
+///
+/// **Mutação que deve sangrar:** tirar o `while … pop()`.
+#[test]
+fn clearing_the_last_value_shrinks_the_vector_back_to_nothing() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sprite(&mut sim, 8);
+    let mut lib = SpriteAnimations::new();
+    lib.insert(AnimationTag::new("walk", 0, 7)).unwrap();
+    sim.world_mut().entity_mut(e).insert(lib);
+
+    edit(&mut sim, e, &reg, AnimFieldEdit::FrameMsAt(0, 1, 200));
+    edit(&mut sim, e, &reg, AnimFieldEdit::FrameMsAt(0, 3, 300));
+    assert_eq!(tag_of(&sim, e, "walk").per_frame_ms, vec![0, 200, 0, 300]);
+
+    // Limpa o último: o vetor encolhe até ao que ainda declara alguma coisa.
+    edit(&mut sim, e, &reg, AnimFieldEdit::FrameMsAt(0, 3, 0));
+    assert_eq!(tag_of(&sim, e, "walk").per_frame_ms, vec![0, 200]);
+    // E limpar o que resta deixa-o VAZIO — a animação volta a ser de ritmo uniforme.
+    edit(&mut sim, e, &reg, AnimFieldEdit::FrameMsAt(0, 1, 0));
+    let tag = tag_of(&sim, e, "walk");
+    assert!(
+        tag.per_frame_ms.is_empty(),
+        "sobrou residuo: {:?}",
+        tag.per_frame_ms
+    );
+    assert!(
+        !tag.has_per_frame_timing(),
+        "e o aviso do painel tem de sumir"
+    );
+}
+
+/// **Limpar uma célula que nunca foi declarada não escreve nada** — sem isto, pôr `0` num campo
+/// que já mostrava `0` faria o vetor crescer só para guardar zeros.
+#[test]
+fn clearing_a_cell_that_was_never_declared_writes_nothing() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sprite(&mut sim, 8);
+    let mut lib = SpriteAnimations::new();
+    lib.insert(AnimationTag::new("walk", 0, 7)).unwrap();
+    sim.world_mut().entity_mut(e).insert(lib);
+
+    edit(&mut sim, e, &reg, AnimFieldEdit::FrameMsAt(0, 5, 0));
+    assert!(tag_of(&sim, e, "walk").per_frame_ms.is_empty());
+}
+
+/// **O cap da spec vale nesta porta também** — a escrita cobre o gesto, e a lei pura volta a
+/// impô-lo na leitura (é a mesma dupla do `FrameMs`).
+#[test]
+fn the_spec_cap_holds_at_this_door_too() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sprite(&mut sim, 8);
+    let mut lib = SpriteAnimations::new();
+    lib.insert(AnimationTag::new("walk", 0, 7)).unwrap();
+    sim.world_mut().entity_mut(e).insert(lib);
+
+    edit(&mut sim, e, &reg, AnimFieldEdit::FrameMsAt(0, 0, u32::MAX));
+    assert_eq!(
+        tag_of(&sim, e, "walk").per_frame_ms[0],
+        ph2d_ecs::FRAME_MS_MAX
+    );
 }

@@ -123,6 +123,12 @@ pub const INSP_ANIM_DELAY_MS: NodeId = hash_node_id("insp_anim_delay_ms");
 /// Quantos ciclos tocar. `0` = para sempre — ver o rótulo do campo.
 pub const INSP_ANIM_REPEAT: NodeId = hash_node_id("insp_anim_repeat");
 
+/// **A duração da célula que a BARRA está a mostrar** (spec §8.12). `0` = herda o `Frame ms`.
+///
+/// ⚠️ Ele vive ao lado da barra de propósito: ela **já** é o selector de célula, e um segundo
+/// selector é um sítio onde os dois podem discordar.
+pub const INSP_ANIM_FRAME_MS_THIS: NodeId = hash_node_id("insp_anim_frame_ms_this");
+
 /// **O nome do sinal que esta animação grita ao ACABAR** (spec §8.10). Vazio = calada.
 pub const INSP_ANIM_SIGNAL_FINISH: NodeId = hash_node_id("insp_anim_signal_finish");
 /// **O nome do sinal que ela grita ao fechar um CICLO.** Vazio = calada.

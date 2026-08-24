@@ -73,6 +73,7 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
         (ids::INSP_ANIM_FROM, 0.0_f64),
         (ids::INSP_ANIM_TO, 0.0),
         (ids::INSP_ANIM_FRAME_MS, 100.0), // LITERAL-PX-OK: ms por frame (10 fps), valor de domínio
+        (ids::INSP_ANIM_FRAME_MS_THIS, 0.0), // 0 = herda o `Frame ms` (spec §8.12)
         (ids::INSP_ANIM_HOLD_MS, 0.0),
         (ids::INSP_ANIM_DELAY_MS, 0.0),
         (ids::INSP_ANIM_REPEAT, 0.0),

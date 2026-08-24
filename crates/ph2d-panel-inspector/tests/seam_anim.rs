@@ -57,7 +57,7 @@ fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 repeat_delay_ms: 250,
                 signal_on_finish: String::new(),
                 signal_on_loop: String::new(),
-                per_frame_timing: false,
+                per_frame_ms: Vec::new(),
             },
             InspectorAnimRow {
                 name: "attack".into(),
@@ -70,7 +70,7 @@ fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 repeat_delay_ms: 0,
                 signal_on_finish: String::new(),
                 signal_on_loop: String::new(),
-                per_frame_timing: false,
+                per_frame_ms: Vec::new(),
             },
         ],
         player_present: true,
@@ -420,6 +420,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         E::Direction(0, 0),
         E::SignalOnFinish(0, String::new()),
         E::SignalOnLoop(0, String::new()),
+        E::FrameMsAt(0, 0, 0),
         E::AddPlayer,
         E::SetCurrent(String::new()),
         E::Playing(false),
@@ -444,6 +445,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
             E::Direction(..) => 9,
             E::SignalOnFinish(..) => 19,
             E::SignalOnLoop(..) => 20,
+            E::FrameMsAt(..) => 21,
             E::AddPlayer => 10,
             E::SetCurrent(..) => 11,
             E::Playing(..) => 12,
@@ -494,6 +496,8 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         (ids::INSP_ANIM_DELAY_MS, 20.0),
         (ids::INSP_ANIM_REPEAT, 2.0),
         (ids::INSP_ANIM_SPEED, 0.5),
+        // A duração da célula que a barra mostra (§8.12) — o alvo é a CÉLULA, não a linha.
+        (ids::INSP_ANIM_FRAME_MS_THIS, 250.0),
     ] {
         note(commit(anim(true, false), id, v));
     }

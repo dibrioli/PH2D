@@ -219,18 +219,38 @@ fn the_size_lane_is_its_own() {
     assert!(hi - lo > 0.8, "the lane varies: {lo}..{hi}");
 }
 
-/// The manifest carries the param, and it is the LAST one — appended, so a saved graph reads it
-/// as absent and takes the default that reproduces the emitter that always shipped.
+/// **A lista de params deste nó é APPEND-ONLY, e a CAUDA dela é nomeada aqui** —
+/// um graph salvo lê um param que não conhece como ausente e toma o default, que
+/// tem de reproduzir o emissor de antes dele.
+///
+/// ⚠️ **Era `size_random_is_appended_last`, e afirmava que aquele param era o
+/// último.** Isso é verdade sobre o dia em que ele nasceu, não sobre a lista: o
+/// gate ficava vermelho ao acrescentar o param SEGUINTE, que é exactamente o
+/// gesto que ele existe para abençoar. A afirmação que se sustenta é a ORDEM da
+/// cauda, e cada nova entra no fim dela.
 #[test]
-fn size_random_is_appended_last() {
+fn the_param_list_is_append_only_and_its_tail_is_named() {
+    /// A cauda apendada, na ordem, e o neutro de cada uma.
+    const TAIL: &[(&str, f32)] = &[
+        ("size_random", 0.0),
+        (crate::MOTION, 0.0),
+        (crate::INHERIT, 1.0),
+    ];
     let names: Vec<&str> = MANIFEST.params.iter().map(|p| p.name).collect();
-    assert_eq!(names.last(), Some(&"size_random"), "params: {names:?}");
-    let spec = MANIFEST
-        .params
-        .iter()
-        .find(|p| p.name == "size_random")
-        .expect("declared");
-    assert_eq!(spec.default, 0.0, "the neutral is the shipped behaviour");
+    let got: Vec<&str> = names[names.len() - TAIL.len()..].to_vec();
+    let want: Vec<&str> = TAIL.iter().map(|(n, _)| *n).collect();
+    assert_eq!(got, want, "a cauda mudou de ordem; params: {names:?}");
+    for (name, neutral) in TAIL {
+        let spec = MANIFEST
+            .params
+            .iter()
+            .find(|p| p.name == *name)
+            .unwrap_or_else(|| panic!("`{name}` declarado"));
+        assert_eq!(
+            spec.default, *neutral,
+            "`{name}` tem de nascer no neutro que reproduz o emissor de antes dele"
+        );
+    }
 }
 
 /// The GPU kernel is handed the param. Without this the mirror would read a uniform slot that

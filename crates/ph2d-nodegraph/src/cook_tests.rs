@@ -64,6 +64,9 @@ fn out_scalars(v: &CookValue) -> Vec<f32> {
 
 struct Gen {
     calls: AtomicU64,
+    /// Quantas fatias de leque o nó VIU no último eval — a sonda de que o leque
+    /// chega a um nó sem portas de entrada.
+    fan_seen: AtomicU64,
 }
 impl NodeOp for Gen {
     fn manifest(&self) -> &'static NodeManifest {
@@ -71,6 +74,7 @@ impl NodeOp for Gen {
     }
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         self.calls.fetch_add(1, Ordering::Relaxed);
+        self.fan_seen.store(ctx.fan_len() as u64, Ordering::Relaxed);
         ctx.emit(Stream::new(3).with("v", Column::Scalar(vec![1.0, 2.0, 3.0])));
     }
 }
@@ -206,6 +210,7 @@ fn ops() -> Ops {
     Ops {
         generator: Gen {
             calls: AtomicU64::new(0),
+            fan_seen: AtomicU64::new(0),
         },
         scale: Scale,
         acc: Acc {

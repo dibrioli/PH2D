@@ -449,6 +449,7 @@ rfd = "0.15"
 # cena `=77` autora o `Echo Operator`/`Flash Operator` pelo NOME do param (nunca por um
 # literal), e o arch-gate do operador por-linha pina o vocabulário deles contra o do sink —
 # um nó é uma folha e não importa do irmão, então a shell é o único sítio que vê os três.
+ph2d-node-motion-emitter = { path = "../../crates/ph2d-node-motion-emitter" }
 ph2d-node-motion-trail = { path = "../../crates/ph2d-node-motion-trail" }
 ph2d-node-motion-strobe = { path = "../../crates/ph2d-node-motion-strobe" }
 # …e o TERCEIRO escritor da coluna (doc 89 folha 11): o `shadow_blend` do `fx.drop_shadow`.

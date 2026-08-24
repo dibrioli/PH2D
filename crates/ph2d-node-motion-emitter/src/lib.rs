@@ -67,6 +67,10 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod gpu;
+/// A HISTÓRIA do emissor — a lei do `Emitter Motion` e o construtor do leque.
+mod history;
+use history::history_at;
+pub use history::{INHERIT, MOTION, MOTION_LABELS, history_offsets, history_samples, time_fans};
 mod hash;
 mod params_ui;
 mod trig;
@@ -115,6 +119,7 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 /// slow to PLAY a 4M sim is a performance fact; it still computes the same
 /// answer, which is all a reference has to do.
 const MAX_ALIVE: usize = 4 * 1024 * 1024;
+
 /// Hash lane for the launch angle draw (see [`hash::rand01`]).
 const LANE_ANGLE: u32 = 0;
 /// Hash lane for the launch SPEED draw. A lane of its own, never a re-use of
@@ -269,6 +274,18 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "size_random",
             default: 0.0,
         },
+        // **O que a partícula guarda do movimento do emissor** — ver [`MOTION_LABELS`].
+        // `0` = Carry, o penacho de sempre, ao bit.
+        ParamSpec {
+            name: MOTION,
+            default: 0.0,
+        },
+        // **Quanto da velocidade do emissor ela leva** (Cavalry *Strength*). Só
+        // no modo `Inherit`; `1` = toda.
+        ParamSpec {
+            name: INHERIT,
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -295,6 +312,23 @@ impl NodeOp for MotionEmitter {
             angle: ctx.param("angle"),
             spread: ctx.param("spread"),
             origin: [ctx.param("x"), ctx.param("y")],
+            // ⚠️ **A história vem do LEQUE, e o leque só existe se a camada de
+            // domínio o montou** (ADR-0163). Ausente ⇒ vazia ⇒ o modo cai em
+            // `Carry` sozinho: um penacho que PISCASSE enquanto o shell não
+            // pousa os mapas seria pior que um penacho que anda.
+            history: (0..ctx.fan_len())
+                .map(|k| {
+                    [
+                        ctx.fan_param("x", k).unwrap_or_else(|| ctx.param("x")),
+                        ctx.fan_param("y", k).unwrap_or_else(|| ctx.param("y")),
+                    ]
+                })
+                .collect(),
+            inherit: if ctx.param(MOTION).round() as i32 == 2 {
+                ctx.param(INHERIT).clamp(0.0, 1.0)
+            } else {
+                0.0
+            },
             shape: Shape::from_param(ctx.param("shape_mode")),
             shape_wh: [ctx.param("shape_w"), ctx.param("shape_h")],
             dir: DirMode::from_param(ctx.param("dir_mode")),
@@ -334,6 +368,13 @@ struct Spec {
     size: f32,
     /// Per-particle spread of `size`, as a fraction of it.
     size_random: f32,
+    /// **A HISTÓRIA da origem**, do instante mais VELHO para o AGORA — vazia no
+    /// modo `Carry` e sempre que a origem não é dirigida por fio nenhum (uma
+    /// origem parada não tem história, e as três respostas coincidem).
+    history: Vec<[f32; 2]>,
+    /// Quanto da velocidade do emissor a partícula leva ao nascer (`0` no modo
+    /// `Leave`, o param `inherit` no `Inherit`).
+    inherit: f32,
     /// A fracção das candidatas que de facto nasce — ver [`LANE_PROB`].
     probability: f32,
 }
@@ -530,16 +571,29 @@ fn emit(spec: &Spec, t: f32) -> Stream {
         // construction, not by epsilon. With `speed_random = 0` the factor is `1.0` exactly.
         let js = rand01(spec.seed, id, LANE_SPEED) - 0.5;
         let speed = spec.speed * (1.0 + js * spec.speed_random * 2.0);
+        // ⚠️ **A idade é calculada DUAS linhas abaixo, e é a mesma expressão** —
+        // ela decide onde a partícula nasceu e quanto já envelheceu, e derivá-la
+        // por dois caminhos poria a origem num instante e a idade noutro.
+        let age = w.age_first - spec.spawn.age_step(w.first, k);
+        // Onde o emissor ESTAVA. Sem história (modo `Carry`, ou origem parada) é
+        // a origem de agora — a expressão que sempre shipou, ao bit.
+        let (o, ov) =
+            history_at(&spec.history, spec.life, age).unwrap_or((spec.origin, [0.0, 0.0]));
         p.push(match off {
-            Some(d) => [spec.origin[0] + d[0], spec.origin[1] + d[1]],
-            None => spec.origin,
+            Some(d) => [o[0] + d[0], o[1] + d[1]],
+            None => o,
         });
-        vel.push([cx * speed, sy * speed]);
+        // A velocidade de boca mais a do emissor, escalada pela força. Com
+        // `inherit = 0` o segundo termo é `0.0` exacto e a soma é a de sempre.
+        vel.push([
+            cx * speed + ov[0] * spec.inherit,
+            sy * speed + ov[1] * spec.inherit,
+        ]);
         ids.push(id as f32);
         // The SAME two-step the kernel runs (`age_first − step`), not `t − born_at(id)`: the
         // kernel has to mirror this arithmetic exactly, and the one-step form is the one that
         // cancels.
-        ages.push(w.age_first - spec.spawn.age_step(w.first, k));
+        ages.push(age);
         // Same law as `speed_random`, same term order as the kernel — with `size_random = 0` the
         // factor is `1.0` exactly and `size × 1.0` is exact in IEEE-754, so the column is the
         // uniform one that always shipped, byte for byte.

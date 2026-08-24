@@ -115,6 +115,12 @@ pub(crate) mod conferencia_demos_body;
 #[path = "motion_state_conferencia_demos_echo.rs"]
 pub(crate) mod conferencia_demos_echo;
 
+/// A cena do EMISSOR QUE DEIXA RASTO (`=89`) — os tres modos de `Emitter Motion`.
+/// ⚠️ A origem e' DIRIGIDA POR FIO de proposito: sem movimento nao ha' historia, e os tres
+/// modos coincidem por aritmetica — um smoke com a fonte parada ficaria verde sobre nada.
+#[path = "motion_state_conferencia_demos_plume.rs"]
+pub(crate) mod conferencia_demos_plume;
+
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.
 #[path = "motion_state_conferencia_demos_campo.rs"]

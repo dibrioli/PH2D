@@ -21,6 +21,7 @@
 
 ## Comunicação & decisão
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) — padrão-ouro, execute, reporte
+- [Os PRINCÍPIOS decidem, não o Enio](feedback_the_principles_decide_not_the_enio.md) — padrão-ouro · estado da arte · intuitivo para artistas · poderoso · fácil. Duas saídas medidas não é empate: é a régua à espera
 - [«checksum» vermelho: o agente AGE, não escala (22/08)](feedback_a_red_checksum_is_acted_on_by_the_agent_not_escalated.md) — DIRETIVA_FIM_DE_DIA §6; ao Enio só o que exige reboot/senha, com o comando
 - [Estilo](feedback_communication_style.md) + [simplicidade](feedback_communication_simplicity.md) — ⚠️ **corrigidas 18/08**: ao Enio, curto e sem jargão (§0.8); denso só para a próxima LLM
 - ["Difícil de ajustar" = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md) — questione o modelo
@@ -105,6 +106,7 @@
 - [«Acabou» lê-se igual a «foi pausado»](feedback_stopped_because_it_ended_reads_the_same_as_stopped_by_hand.md) — religar um transporte esgotado é gesto MORTO sem o predicado; e rebobinar tem de mover a IMAGEM
 - [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
 - [Afirmação que mutação nenhuma mata é afirmação sobre NADA](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) — encolha a afirmação até ao que a máquina faz; perseguir o gate antes de a reler custa duas voltas
+- [Contar o trabalho FEITO não é contar o ENTREGUE](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) — o gate contava cozeduras e o consumidor recebia zero; ponha a sonda dentro de quem consome
 - [Duas hipóteses boas que falham refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md) — ao 2.º falhanço pare de propor curas e construa a régua que LOCALIZA; ilibe também o suspeito improvável
 - [Provas de mutação (6)](reference_topic_mutation_proofs.md) — RED só sobre visto-VERDE · sobrevivente = gate faltando
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra

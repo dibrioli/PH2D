@@ -7,6 +7,10 @@ use super::*;
 
 pub(super) fn spec() -> Spec {
     Spec {
+        // Sem história e sem herança — o modo `Carry`, que é o default do nó.
+        // Declarado e nunca herdado, pela mesma razão que os de baixo.
+        history: Vec::new(),
+        inherit: 0.0,
         // The steady stream the node had before `emit_mode` existed — declared, never
         // inherited, the same reason the four below are.
         spawn: Spawn::Continuous { rate: 10.0 },
@@ -507,6 +511,10 @@ mod launch;
 
 #[path = "lib_tests_size.rs"]
 mod size;
+
+/// Os gates do MOVIMENTO do emissor — o que a particula guarda dele.
+#[path = "motion_tests.rs"]
+mod motion_tests;
 
 #[path = "lib_tests_burst.rs"]
 mod burst;

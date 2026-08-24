@@ -141,6 +141,35 @@ nenhuma mutação mata é uma afirmação sobre nada.*
 | **Concatenar as fatias no substrato**, entregando um stream só | o substrato teria de escrever uma coluna de geração, ou seja **conhecer um tipo de nó** — a linha que o `TimeScopes` traça de propósito (*"o substrato fica type-agnostic"*). |
 | **Substituir o ring** | uma simulação não é função de `t`. `Resampled` é um MODO, e o default reduz. |
 
+## Emenda 1 (2026-08-23) — **o leque alcança os params DIRIGIDOS, e uma fatia existe mesmo sem porta**
+
+O `motion.emitter` fechou o último P1 da conferência com este leque, e para isso
+ele teve de crescer em dois sítios — os dois achados pelo produto, não por
+revisão.
+
+**1. Os params DIRIGIDOS viajam no leque.** O emissor tem `inputs: &[]` — a
+origem dele é um param. Um leque que só soubesse ler a porta 0 nunca serviria uma
+FONTE, que é metade dos nós com história para contar. O `cook_node` passa a
+re-resolver `param_sources` em cada instante, e o `EvalCtx` ganha
+`fan_param(name, k)`.
+
+**2. ⚠️ UMA ENTRADA POR FATIA, SEMPRE — mesmo sem porta 0.** A primeira versão só
+empurrava uma entrada quando havia aresta, e um gate afirmava isso (*"um nó sem
+aresta na porta 0 não ganha leque nenhum"*). O resultado: `fan_len()` contava as
+fatias da **PORTA** em vez das do **LEQUE**, e o emissor lia **zero** fatias com o
+leque montado e cheio — **529 amostras ignoradas em silêncio**, com a cena a
+desenhar e os três modos idênticos.
+
+⚠️ **E o gate do leque não o apanhou porque contava o trabalho FEITO** (as
+cozeduras aconteceram) e a afirmação era sobre o trabalho **RECEBIDO**. A cura foi
+pôr a sonda dentro do consumidor: o nó de teste guarda `ctx.fan_len()` e o gate
+compara. Memória:
+`feedback_counting_the_work_done_is_not_counting_the_work_delivered`.
+
+**A lei que fica:** *o que falta é o CONTEÚDO da porta, não a fatia.*
+
+---
+
 ## Referências
 
 - Folha 07 da conferência, `SUPERAR:` **S1** — [`docs/Motion Nodes/89_conferencia/07_tempo_estilisticos.md`](../../Motion%20Nodes/89_conferencia/07_tempo_estilisticos.md)

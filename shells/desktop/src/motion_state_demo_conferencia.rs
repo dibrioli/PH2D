@@ -489,9 +489,13 @@ mod echo;
 /// O anuncio da cena `=84` — as curas novas da folha 11 (fx raster).
 #[path = "motion_state_demo_conferencia_fx_modes.rs"]
 mod fx_modes;
+/// O anuncio da cena `=89` — o emissor que deixa rasto (folha 01, o P1).
+#[path = "motion_state_demo_conferencia_plume.rs"]
+mod plume;
 pub(super) use bezier::bezier_family;
 pub(super) use body::body_family;
 pub(super) use campo::field_port_family;
 pub(super) use drawn::drawn_family;
 pub(super) use echo::echo_family;
 pub(super) use fx_modes::fx_modes_family;
+pub(super) use plume::plume_family;

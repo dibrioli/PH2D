@@ -469,11 +469,19 @@ pub(super) fn dispatch(
     // o outro é um quadro a cozinhar com metade da resposta. O `fixed_dt` entra
     // aqui porque o `spacing` do rastro conta TIQUES, e a duração de um tique é
     // do shell, não do documento.
-    motion.pump.set_time_fans(ph2d_node_motion_trail::time_fans(
+    //
+    // ⚠️ **Dois produtores, um mapa** — o rastro re-cozido e a história da origem
+    // do emissor. Eles não colidem por construção (o mapa é chaveado por
+    // `NodeId`, e um nó é de um tipo só), e a UNIÃO é montada aqui em vez de
+    // dentro de um deles: quem sabe que existem dois é o shell, e um `time_fans`
+    // que chamasse o outro faria de duas crates-folha uma cadeia.
+    let mut fans = ph2d_node_motion_trail::time_fans(&motion.doc.graph, &motion.registry, fixed_dt);
+    fans.extend(ph2d_node_motion_emitter::time_fans(
         &motion.doc.graph,
         &motion.registry,
         fixed_dt,
     ));
+    motion.pump.set_time_fans(fans);
     let target = motion_tick(playhead, fixed_dt);
 
     // ── GPU-resident cook (GPU/M5 Fase 1 + F1.2, ADR-0126) — opt-in preview ──

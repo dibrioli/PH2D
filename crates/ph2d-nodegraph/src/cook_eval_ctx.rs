@@ -24,6 +24,9 @@ pub struct EvalCtx<'a> {
     /// instantes, em vez de uma vez. Vazio para todo nó que não pediu um, que é
     /// todo nó menos um.
     pub(super) fan: &'a [CookValue],
+    /// **Os params DIRIGIDOS em cada instante do leque** — a mesma pergunta que o
+    /// [`Self::fan`], para um nó cuja história vive num param e não numa porta.
+    pub(super) fan_driven: &'a [BTreeMap<&'a str, f32>],
     pub(super) playhead: f64,
     pub(super) manifest: &'static NodeManifest,
     pub(super) overrides: Option<&'a BTreeMap<String, f32>>,
@@ -106,6 +109,15 @@ impl<'a> EvalCtx<'a> {
     /// A fatia `k` do leque, do instante mais próximo do agora para o mais
     /// distante — a ordem em que a camada de domínio montou os mapas. Vazia fora
     /// de alcance, como uma porta desligada.
+    /// O valor que o param DIRIGIDO `name` tinha na fatia `k` do leque.
+    ///
+    /// `None` quando o param não é dirigido por fio nenhum naquele instante — e
+    /// aí o valor é o mesmo de sempre ([`Self::param`]), porque um param estático
+    /// não tem história.
+    pub fn fan_param(&self, name: &str, k: usize) -> Option<f32> {
+        self.fan_driven.get(k)?.get(name).copied()
+    }
+
     pub fn fan(&self, k: usize) -> &Stream {
         static EMPTY: Stream = Stream::empty();
         self.fan.get(k).map_or(&EMPTY, CookValue::as_stream)

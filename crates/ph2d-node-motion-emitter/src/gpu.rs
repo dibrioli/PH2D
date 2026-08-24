@@ -220,5 +220,12 @@ pub(crate) const GPU_KERNEL: GpuKernel = GpuKernel {
     // (`KEEP_FLAG_COL` + `StreamOp` de compactação), e ligá-la a um GERADOR com
     // `count_law` é uma wave própria, não uma linha. Desligado (o default) nada recua, e é a
     // mesma porta que o `reindex` do `motion.combine` usa.
-    applicable: Some(|p| p("probability") >= 1.0),
+    // ⚠️ **O device fica com o modo `Carry`, e a fronteira é NOMEADA.** Os outros
+    // dois precisam da HISTÓRIA da origem — uma tabela que o cook enche cozendo a
+    // sub-árvore que dirige `x`/`y` em N instantes (ADR-0163), e o `LutSpec::fill`
+    // vê params e texto, nunca o grafo. Levá-la ao device exigiria um canal de
+    // tabela ALIMENTADA pelo leque, que não existe; enquanto não existir, estes
+    // dois modos cozem na CPU — que computa a MESMA resposta, e é tudo o que um
+    // caminho de referência tem de fazer (a lei do `MAX_ALIVE`, uma casa acima).
+    applicable: Some(|p| p("probability") >= 1.0 && p(crate::MOTION) < 0.5),
 };

@@ -525,9 +525,12 @@ impl Cook {
         // ecos que pedem o mesmo instante — dois rastros irmãos, ou o mesmo sob
         // um `Loop` — partilham a faixa e o custo, em vez de recomputarem.
         let mut fan_values: Vec<CookValue> = Vec::new();
-        if let Some(maps) = fans.get(&node)
-            && let Some((src, src_port, false)) = graph.input_edge(node, 0)
-        {
+        let mut fan_driven: Vec<BTreeMap<&str, f32>> = Vec::new();
+        if let Some(maps) = fans.get(&node) {
+            let port0 = match graph.input_edge(node, 0) {
+                Some((src, src_port, false)) => Some((src, src_port)),
+                _ => None,
+            };
             for map in maps {
                 let (fan_playhead, fan_key) = if map.is_identity() {
                     (in_playhead, in_key)
@@ -537,9 +540,41 @@ impl Cook {
                 if fan_key != SCOPE_ROOT {
                     self.live_keys.insert(fan_key);
                 }
-                let rev = self.cook_node(graph, ops, src, fan_playhead, fan_key, scopes, fans)?;
-                input_revs.push(rev);
-                fan_values.push(self.cur_output(src, fan_key, src_port));
+                // ⚠️ **UMA ENTRADA POR FATIA, SEMPRE** — mesmo sem porta 0. Empurrar
+                // só quando há aresta faria o `fan_len()` contar as fatias da PORTA
+                // em vez das do LEQUE, e um nó sem portas (toda fonte) leria zero
+                // fatias com o leque montado e cheio. Medido: o `motion.emitter`
+                // ignorava 529 amostras da própria história em silêncio.
+                match port0 {
+                    Some((src, src_port)) => {
+                        let rev =
+                            self.cook_node(graph, ops, src, fan_playhead, fan_key, scopes, fans)?;
+                        input_revs.push(rev);
+                        fan_values.push(self.cur_output(src, fan_key, src_port));
+                    }
+                    None => fan_values.push(CookValue::Empty),
+                }
+                // ⚠️ **Os params DIRIGIDOS viajam no leque também**, e sem isto ele
+                // não alcança um nó SEM portas de entrada — que é o caso de toda
+                // fonte (o `motion.emitter` tem `inputs: &[]`, e a origem dele é
+                // um param). Um leque que só soubesse ler portas seria um leque
+                // que não serve a metade dos nós que têm história para contar.
+                let mut at = BTreeMap::new();
+                if let Some(sources) = sources {
+                    for (name, (src, src_port)) in sources {
+                        let rev =
+                            self.cook_node(graph, ops, *src, fan_playhead, fan_key, scopes, fans)?;
+                        input_revs.push(rev);
+                        if let Some(v) = crate::param_source::driven_value(&self.cur_output(
+                            *src,
+                            fan_key,
+                            *src_port as usize,
+                        )) {
+                            at.insert(name.as_str(), v);
+                        }
+                    }
+                }
+                fan_driven.push(at);
             }
         }
 
@@ -581,6 +616,7 @@ impl Cook {
         let mut ctx = EvalCtx {
             inputs: &input_values,
             fan: &fan_values,
+            fan_driven: &fan_driven,
             externals: &self.externals,
             read_externals: Vec::new(),
             playhead,

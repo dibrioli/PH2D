@@ -199,11 +199,20 @@ fn changing_the_fan_recomputes_the_node() {
     assert_eq!(b, vec![4.0, 5.0, 6.0], "o memo devolveu a cauda antiga");
 }
 
-/// ⚠️ **O leque é da PORTA 0, e de mais nenhuma.** Um nó sem aresta na porta 0
-/// não ganha leque nenhum — e não estoura: ele cai no caminho de sempre, como
-/// uma porta desligada.
+/// ⚠️ **Sem aresta na porta 0, as FATIAS continuam a existir e o stream de cada
+/// uma é VAZIO** — e a distinção custou um defeito.
+///
+/// A primeira versão deste gate afirmava que *"um nó sem aresta na porta 0 não
+/// ganha leque nenhum"*, e o código fazia isso: só empurrava uma entrada quando
+/// havia aresta. O resultado é que `fan_len()` contava as fatias da **PORTA**, e
+/// um nó SEM portas — que é toda FONTE — lia **zero** fatias com o leque montado
+/// e cheio. Medido no produto: o `motion.emitter` ignorava **529 amostras** da
+/// própria história, em silêncio.
+///
+/// A lei que fica: **uma entrada por fatia, sempre**; o que falta é o *conteúdo*
+/// da porta, não a fatia.
 #[test]
-fn a_fan_on_a_node_with_no_input_is_simply_absent() {
+fn a_node_with_no_input_port_still_gets_its_slices() {
     let mut g = Graph::new();
     let fan = g.add_node("test.fan");
     let o = ops();
@@ -212,9 +221,12 @@ fn a_fan_on_a_node_with_no_input_is_simply_absent() {
     let out = cook
         .cook_scoped_fanned(&g, &o, fan, 3.0, &TimeScopes::new(), &fans)
         .unwrap();
-    assert!(
-        out_scalars(&out[0]).is_empty(),
-        "sem entrada nao ha' leque, e nao ha' panico"
+    // O `test.fan` emite uma linha por fatia, lendo `v` de cada uma — todas
+    // vazias aqui, logo `NaN`. O que importa é a CONTAGEM: duas fatias.
+    assert_eq!(
+        out_scalars(&out[0]).len(),
+        2,
+        "as fatias existem mesmo sem porta 0 — o que falta e' o conteudo delas"
     );
 }
 
@@ -327,4 +339,79 @@ fn repeating_an_instant_out_of_order_still_hits_the_memo() {
         calls, 3,
         "a porta 0 no agora, `t−1` e `t−2` — a REPETIÇÃO tem de sair do memo"
     );
+}
+
+/// **SONDA: quanto custa uma FATIA de leque?** — o número que decide quantas
+/// amostras um nó pode pedir por quadro.
+///
+/// `cargo test -p ph2d-nodegraph -- --ignored --nocapture custo_de_uma_fatia`
+#[test]
+#[ignore = "sonda de medição, não gate"]
+fn custo_de_uma_fatia() {
+    let mut g = Graph::new();
+    let clock = g.add_node("test.clock");
+    let fan = g.add_node("test.fan");
+    g.connect(Edge {
+        from: (clock, 0),
+        to: (fan, 0),
+        delayed: false,
+    })
+    .unwrap();
+    let o = ops();
+    eprintln!("\n=== CUSTO DE UM LEQUE (uma sub-árvore escalar, uma fatia = uma cozedura) ===");
+    for n in [64usize, 256, 512, 1024, 2048, 4096] {
+        let maps: Vec<TimeMap> = (0..n).map(|k| shift(-(k as f64) * 0.001)).collect();
+        let fans: TimeFans = [(fan, maps)].into();
+        let mut cook = Cook::new();
+        const REPS: u32 = 20;
+        let t0 = std::time::Instant::now();
+        for r in 0..REPS {
+            cook.cook_scoped_fanned(&g, &o, fan, 100.0 + f64::from(r), &TimeScopes::new(), &fans)
+                .unwrap();
+        }
+        let ms = t0.elapsed().as_secs_f64() * 1e3 / f64::from(REPS);
+        eprintln!(
+            "  {n:>5} fatias: {ms:>7.3} ms/quadro  ({:>5.1}% de um quadro de 16,7)  \
+             {:.0} ns/fatia",
+            ms / 16.7 * 100.0,
+            ms * 1e6 / n as f64
+        );
+    }
+    eprintln!();
+}
+
+/// ⭐ **O LEQUE ALCANÇA UM NÓ SEM PORTAS DE ENTRADA** — a metade que faltava, e sem
+/// a qual ele não serve fonte nenhuma.
+///
+/// O `motion.emitter` tem `inputs: &[]` e a origem dele é um **param dirigido**.
+/// Um leque que só soubesse ler portas nunca lhe daria a própria história.
+#[test]
+fn a_fan_carries_the_driven_params_of_a_node_with_no_input_ports() {
+    let mut g = Graph::new();
+    let clock = g.add_node("test.clock");
+    // `test.gen` não tem portas de entrada; o `scale` dele é dirigido pelo relógio.
+    let sink = g.add_node("test.gen");
+    g.drive_param(sink, "scale", (clock, 0)).unwrap();
+    let o = ops();
+    let mut cook = Cook::new();
+
+    let fans: TimeFans = [(sink, vec![shift(-2.0), shift(-1.0), TimeMap::default()])].into();
+    cook.cook_scoped_fanned(&g, &o, sink, 20.0, &TimeScopes::new(), &fans)
+        .unwrap();
+    let calls = o.clock.calls.load(std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(
+        calls, 3,
+        "o driver tinha de cozer nos TRES instantes do leque (e nao ha' porta 0 a pagar um quarto)"
+    );
+    // ⚠️ **E o nó tem de VER as três**, o que é outra afirmação: a primeira versão
+    // deste gate só contava cozeduras, e passava enquanto o `fan_len()` devolvia
+    // ZERO — ele contava as fatias da PORTA, e este nó não tem porta nenhuma.
+    // Medido: o `motion.emitter` ignorava 529 amostras da própria história em
+    // silêncio, com este gate verde. *Contar o trabalho feito não é contar o
+    // trabalho ENTREGUE.*
+    let seen = o
+        .generator
+        .fan_seen
+        .load(std::sync::atomic::Ordering::Relaxed);
+    assert_eq!(seen, 3, "o no' viu {seen} fatias, e o leque tinha 3");
 }

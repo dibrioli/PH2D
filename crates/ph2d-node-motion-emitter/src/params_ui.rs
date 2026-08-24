@@ -338,6 +338,30 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    ParamUiHint {
+        param: crate::MOTION,
+        // «Emitter Motion» diz a pergunta inteira — *o que a partícula guarda do
+        // movimento do emissor* — e cada rótulo diz a resposta. «Inherit
+        // Velocity» sozinho (o nome da referência) esconderia que o modo do meio
+        // existe, e é ele o comportamento base de toda referência.
+        label: "Emitter Motion",
+        min: 0.0,
+        #[expect(clippy::cast_precision_loss, reason = "tres rotulos")]
+        max: (crate::MOTION_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: crate::MOTION_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: crate::INHERIT,
+        // O *Strength* da Cavalry. Fica GATEADO ao modo que o lê — ver `PARAM_GATES`.
+        label: "Inherit Strength",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     // ⚠️ **Uma FRACÇÃO, e o curso é `[0, 1]` inteiro** — o `0` (nenhuma nasce) é uma resposta
     // legítima e visível, não um estado inválido a esconder: é como se desliga o emitter sem
     // lhe mexer no `rate`, e é o que um `pulse.*` dirigido liga e desliga.
@@ -378,6 +402,11 @@ pub static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("speed_random", "Velocity"),
     ParamGroup::new("angle", "Velocity"),
     ParamGroup::new("spread", "Velocity"),
+    // ⚠️ Os dois vivem em **Velocity** e não numa secção própria: a pergunta é
+    // *com que velocidade a partícula parte*, e o emissor é uma das duas fontes
+    // dela. Uma secção «Emitter» separaria os dois lados da mesma soma.
+    ParamGroup::new(crate::MOTION, "Velocity"),
+    ParamGroup::new(crate::INHERIT, "Velocity"),
     // De onde.
     ParamGroup::new("x", "Origin"),
     ParamGroup::new("y", "Origin"),
@@ -409,6 +438,13 @@ pub static PARAM_GROUPS: &[ParamGroup] = &[
 /// law never reads, and a `burst_count` in continuous mode the same — the dead knob this
 /// side-channel exists to prevent, twice.
 pub static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    // A força da herança só é lida no modo que a herda — nos outros ela é um
+    // controle vivo que não muda nada, que é a doença que este gate cura.
+    ph2d_node_registry::ParamGate {
+        param: crate::INHERIT,
+        when: crate::MOTION,
+        values: &[2],
+    },
     ph2d_node_registry::ParamGate {
         param: "dir_mode",
         when: "shape_mode",

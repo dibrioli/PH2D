@@ -2,9 +2,10 @@
 
 > **Executor:** a linha `line/components` (Modo L, worktree própria). **Governança:**
 > [ADR-0164](../architecture/decisions/0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md)
-> (F0–F5) e [ADR-0165](../architecture/decisions/0165-assets-are-born-inside-the-app-three-level-identity-index-before-browser.md)
-> (F6–F7). **A forma longa de cada decisão** é o [doc 04 v2](04_decisao_arquitetura.md); **a
-> evidência** (medições, refutações, `file:line`) é
+> (F0–F5), [ADR-0165](../architecture/decisions/0165-assets-are-born-inside-the-app-three-level-identity-index-before-browser.md)
+> (F6–F7) e [ADR-0166](../architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md)
+> (a composição do Inspector — afina **F0** e **F3**). **A forma longa de cada decisão** é o
+> [doc 04 v2](04_decisao_arquitetura.md); **a evidência** (medições, refutações, `file:line`) é
 > [`pesquisa/instancias_2026-08-21/`](pesquisa/instancias_2026-08-21/). Este plano não re-explica o
 > porquê — ele diz **o quê, onde, e como saber que ficou pronto**.
 >
@@ -18,10 +19,10 @@
 
 | Fase | O quê (uma frase) | Estado |
 |---|---|---|
-| F0 | O descritor de componente + `insert_default` — o inspector aprende a derivar | ⬜ |
+| F0 | O descritor de componente (+ `category`/`applies_to`) + `insert_default` — o inspector aprende a derivar | ⬜ |
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ⬜ |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ⬜ |
-| F3 | Add Component com cascata visível + objeto vazio na raiz — **walking skeleton** | ⬜ |
+| F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ⬜ |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ⬜ |
 | F5 | Aninhamento + variantes + Overrides sem alvo | ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ⬜ |
@@ -53,21 +54,46 @@ fases.
 
 ## §0.2 — Números e nomes NOVOS desta linha (anote aqui + no handoff; colisão!)
 
+> ⚠️ **BASE RE-MEDIDA em 2026-08-24, na abertura da linha** — três números que este plano trazia
+> tinham envelhecido entre a redação (21/08) e a ordem de implementação (24/08), porque outras linhas
+> integraram no meio. ~~`PROJECT_SCHEMA` 84~~ · ~~registro `ph2d-ecs` 57~~ · ~~"o repo nunca chama
+> `clear_trackers`, zero ocorrências"~~. Os valores abaixo são os **lidos no código da worktree**,
+> com o comando ao lado. *Um número que soma entre linhas conta-se, nunca se escolhe.*
+
+**A base de hoje (`main` @ `5038249c6`), medida:**
+
+| O quê | Valor lido | Onde |
+|---|---:|---|
+| `PROJECT_SCHEMA` | **95** | [`project_schema.rs:213`](../../shells/desktop/src/project_schema.rs) |
+| `WorldSnapshot::VERSION` | **1** | [`save.rs:53`](../../crates/ph2d-ecs/src/scene/save.rs) |
+| Registro `ph2d-ecs` | **69** (assert 69) | [`registry.rs`](../../crates/ph2d-ecs/src/scene/registry.rs) |
+| Espelhos render/script | **70** cada (69+1) | `ph2d-render`, `ph2d-script` |
+| Registro física | **32** | `ph2d-physics-ecs/src/lib.rs:192` |
+| Registro field (3D) | **5** | `ph2d-field-ecs/src/lib.rs:169` |
+| **Total no boot** | **107** | [`init.rs:503-518`](../../shells/desktop/src/init.rs) — ⚠️ `register_script_components` continua **não** chamado (`LuauScript` não é salvo nem desfeito; ambiguidade §8.1 do doc 01, ainda de pé) |
+| ADRs | **167** (próximo livre: 0167) | `scripts/adr-index.sh` |
+| `clear_trackers` no repo | **1** — num TESTE (`field3d_profile_live_tests.rs:158`), com um `Changed<FieldNode>` ao lado | a produção continua a nunca avançar o tick; ⚠️ **este teste não pode quebrar** quando a F2 passar a chamá-lo por captura |
+
+**O que esta linha ACRESCENTA (é isto que colide):**
+
 | O quê | Valor | Quem soma |
 |---|---|---|
 | Crates novas | `ph2d-component-desc` (F0) · `ph2d-asset-index` (F6) | workspace glob |
-| Componentes novos no registro | `StableId` · `SiblingOrder` (F1) · `MasterRoot` · `MasterPiece` · `InstanceOf` · `ObjectInstance` (F4) | contador do `ph2d-ecs` (57 → 59 → 63) **+ os espelhos 58 das suítes render/script** |
+| Componentes novos no registro | `StableId` · `SiblingOrder` (F1) · `SpriteCornerTint` · `SpriteSheet` · `SpriteRegion` (F1, corte da Sprite) · `MasterRoot` · `MasterPiece` · `InstanceOf` · `ObjectInstance` (F4) | `ph2d-ecs` **69 → 71 → 74 → 78**; espelhos render/script **70 → …** (+1 cada); boot **107 → 116** |
 | `WorldSnapshot::VERSION` | 1 → **2** (F1) | `save.rs` |
-| `PROJECT_SCHEMA` | 84 → **85** (F1; conte contra o main do dia — pode ter subido) | escada + tripla |
+| `PROJECT_SCHEMA` | 95 → **96** (F1) — ⚠️ **reconte no dia**: se outra linha integrar antes, o degrau é o próximo livre, não o 96 | escada + tripla |
+| Ids de widget novos | `INSP_ADD_COMPONENT` (F3, o `+` do cabeçalho do Inspector) | `ph2d-editor-core/src/ids/` + o gate `node_id_collisions` |
 | Envs de smoke | `PH2D_INSTANCE_SMOKE=<n>` (F4+) · `PH2D_ASSET_BROWSER_SMOKE` (F7) | roteador de cenas próprio |
-| Campo novo no `ProjectFile` | `stable_id_counter` (F1 — FORA do `ProjectState`, undo não rebobina) | conta no degrau 85 |
+| Campo novo no `ProjectFile` | `stable_id_counter` (F1 — FORA do `ProjectState`, undo não rebobina) | conta no degrau do schema |
+| Teto do ADR-0074 | +3 opcionais no corte da Sprite (o teto é 32) | `architecture_*` do Sprite |
 
 ---
 
 ## §F0 — O descritor de componente
 
-**Objetivo:** um componente descreve os próprios campos UMA vez, e disso derivam inspector,
-override, remap de referências e política de propagação.
+**Objetivo:** um componente descreve-se UMA vez, e disso derivam inspector, override, remap de
+referências, política de propagação — **e agora também a paleta da F3** (categoria + aplicabilidade,
+[ADR-0166](../architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md)).
 
 **Pronto quando (observável):** a seção *Ordering* do Inspector é **pintada pelo descritor** (não
 mais artesanal) e fica **visualmente idêntica** à atual; `insert_default` existe na vtable e um
@@ -75,10 +101,23 @@ teste insere `SortingLayer` por `type_id` sem conhecer o tipo.
 
 **Toca:**
 - **Nova** `crates/ph2d-component-desc/` — crate-FOLHA (⛔ sem `bevy_ecs`, sem `ph2d-nodegraph`;
-  o precedente é `ph2d-warp-style`): `ComponentDesc { fields: &[FieldDesc] }`,
+  o precedente é `ph2d-warp-style`): `ComponentDesc { fields: &[FieldDesc], … }`,
   `FieldDesc { field_id: u16 /*append-only, estilo tag protobuf*/, name, kind: FieldKind,
   policy: Propagation, is_ref: Option<RefKind> }` + `FieldKind` espelhando o vocabulário do
   `ParamRow` (Scalar·Color·Toggle·Enum·Angle·Seed·Text·…).
+- ⭐ **E as três declarações que o ADR-0166 exige** — no MESMO descritor, porque a paleta e o
+  gating de seção têm de ler a mesma fonte:
+  - `category: ComponentCategory` — o grupo colorido da paleta. É o `NodeUiCategory` dos
+    componentes; ⚠️ **as categorias derivam-se do que os 107 registados JÁ são**, não se inventam
+    (Identity/Transform · Ordering · Rendering · Image · Animation · Anchors · Vector · Physics ·
+    3D · Scripting). Escreva a tabela **contando os tipos**, e deixe a contagem por categoria ao lado.
+  - `attach: Attach` — `Authored { … }` ou **`Machinery`**. As quatro pontes de identidade
+    (`VecPathRef` · `PaintedDoc` · `BakedForm` · `FlipObjectRef`) são `Machinery`: nunca oferecidas
+    na paleta, nunca uma seção. *A ausência passa a ser declarada, não um esquecimento.*
+  - `applies_to: ObjectKinds` — bitset sobre `{Empty, Image, Vector, Flip, Painted, Model3D, …}`.
+    ⚠️ **Um tipo de objeto lê-se por PRESENÇA de marcador** (`Sprite` · `VecPathRef` ·
+    `FlipObjectRef` · `PaintedDoc` · `FieldObject` · `BakedForm`; nenhum ⇒ vazio) — o `ObjectKinds`
+    é **derivado do marcador**, senão vira a segunda fonte de verdade que o ADR-0166 §3 proíbe.
 - `ph2d-ecs/src/scene/registry.rs` — `ComponentTypeEntry` ganha `insert_default: Option<fn>`,
   `desc: Option<&'static ComponentDesc>`, `component_id: ComponentId` (preenchido no boot;
   pré-requisito do scan da F2) e `patch_field`/`read_field` por `field_id`.
@@ -87,9 +126,16 @@ teste insere `SortingLayer` por `type_id` sem conhecer o tipo.
 **Testes:** gate de **snapshot da tabela de `field_id`** por tipo descrito (mudar/reordenar id =
 vermelho; apender = ok) — é o `FormerlySerializedAs` de graça; prova de mutação: trocar dois
 `field_id` ⇒ o gate mata. Round-trip `patch_field`→`read_field` para cada `FieldKind`.
+⭐ **E o CENSO da aplicabilidade** (o gate que impede o `applies_to` de apodrecer): todo tipo
+descrito declara `attach`; nenhum `Authored` declara `applies_to` **vazio** (seria inalcançável em
+todo objeto — um componente que existe e nunca aparece); nenhum `Machinery` tem seção. Prova de
+mutação: pôr `SliceNine` como `Machinery` ⇒ o censo da F3 mata (ela some da paleta).
 
-**Não fazer:** descrever os 91 tipos já — F0 descreve `Transform`, `Name`, `Sprite` + os de
+**Não fazer:** descrever os 107 tipos já — F0 descreve `Transform`, `Name`, `Sprite` + os de
 ordering (o resto entra por demanda nas fases seguintes; a tabela cresce append-only).
+⚠️ **Mas `category`/`attach`/`applies_to` são para TODOS os 107 desde já** — são uma linha por tipo,
+e é o que a F3 precisa para a paleta não nascer com buracos. Descrever *campos* é caro; declarar
+*em que gaveta o tipo vive* não é.
 
 ---
 
@@ -125,6 +171,13 @@ prova de mutação (duplicar blob ⇒ vermelho).
    `SpriteSheet` · região → `SpriteRegion` — **ausência = default benigno**, criar sprite continua
    1 gesto. ⚠️ Os três somam nos contadores (regra §0.1.2) e o cap do ADR-0074 (≤32 opcionais)
    recebe +3.
+   ⭐ **E o corte ganhou uma SEGUNDA razão, que não é tamanho** (ADR-0166): enquanto o dado for
+   *campo* de um componente que todo objeto-imagem tem, **não há como não o mostrar** no Inspector.
+   Um campo só pode desaparecer da vista quando é um componente que pode estar ausente. ⇒ o critério
+   de corte deixa de ser *"a Sprite é grande"* e passa a ser ***"isto pertence ao objeto-imagem BASE,
+   ou é uma escolha que o artista faz?"***. Os três acima são escolhas; ⚠️ **releia os 20 campos com
+   esta pergunta antes de cortar** — o resultado pode não ser exatamente três, e se não for, **corrija
+   esta linha com a razão** (regra do plano vivo).
 
 **Testes:** determinismo — `state_hash` idêntico em duas capturas do mesmo estado e através de
 restore; mutação: remover o remap de `StableId` na cópia de blobs ⇒ gate de unicidade mata.
@@ -172,23 +225,75 @@ continua O(doc) e o log deve dizê-lo.
 
 ---
 
-## §F3 — Add Component + objeto vazio — ⭐ walking skeleton
+## §F3 — O Inspector mostra o que o objeto TEM + o `+` e a paleta + objeto vazio — ⭐ walking skeleton
 
-**Objetivo:** o artista cria um objeto vazio, adiciona componentes por um diálogo com busca, e vê
-ANTES de aplicar o que vem junto.
+> **Governada pelo [ADR-0166](../architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md)**
+> (instruções do Enio de 2026-08-24). Esta fase cresceu: ela já era *"criar objeto vazio + Add
+> Component"*; passa a incluir **tirar do painel o que não é do objeto base**.
+
+**Objetivo:** o artista cria um objeto vazio, vê **duas** seções (não doze), e acrescenta o que
+precisa por **uma** porta — um `+` que abre a paleta que o Motion já usa, com categorias coloridas,
+busca, e **filtrada pelo tipo do objeto selecionado**.
 
 **Pronto quando (o smoke que o Enio roda):** criar objeto vazio na raiz (o botão **Add** da
-Hierarquia — hoje morto, `§0.3 do doc 01`) → *Add Component* → buscar "Rigid" → o diálogo mostra
-**"RigidBody — traz junto: Collider"** → aplicar → salvar → reabrir → Ctrl+Z remove o componente.
-Tudo num fluxo, sem tocar código.
+Hierarquia — hoje morto, `§0.3 do doc 01`) → o Inspector mostra **Name + Transform, e mais nada** →
+`+` → a paleta abre com as categorias → buscar "Rigid" → o diálogo mostra **"RigidBody — traz junto:
+Collider"** → aplicar → a seção Physics **aparece** → salvar → reabrir → Ctrl+Z remove o componente
+**e a seção some**. E, na sprite: selecionar uma imagem, abrir o `+`, e ver que **9-Slice é oferecido**;
+selecionar um objeto vetorial e ver que ele **não é** (fica sob *Show all*, esmaecido, com a razão).
 
-**Toca:** handler do `HIERARCHY_ADD` (spawn `Transform+Name+StableId+RootOrder`) · diálogo Add
-Component (busca fuzzy sobre o registro via descritor; ⚠️ **a cascata é MOSTRADA antes de aplicar**
-— é a correção da crítica medida ao Bevy, doc 02 §1.4) · `#[require]`-equivalente por descritor
-(`requires: &[type_id]`) · `EditorCommand::Spawn`/`SetComponent` já existem — é wiring.
+**As quatro peças (a ordem entre elas é lei — vide o ⛔ no fim):**
 
-**Testes:** seam completo (pintado/populado/clicado/**sequência** — as 4 perguntas); censo "todo
-tipo com descritor aparece na busca"; a11y (HR-12).
+1. **O Inspector passa a pintar por PRESENÇA.** A cascata literal (hoje: `populate()` é uma lista de
+   19 funções e o paint é uma sequência escrita à mão, com `any_live_section(flags: [bool; 11])`)
+   passa a derivar do descritor + do que a entidade tem. **Base = `Transform` + `Name`.** Tudo o mais
+   — ordering, sampling, blend, folha, 9-slice, âncoras, animação, física, joint, roda, player —
+   aparece **se, e só se**, o componente estiver lá.
+2. **O `+` no cabeçalho do Inspector** (`INSP_ADD_COMPONENT`, id novo — §0.2) abre a paleta.
+3. ⭐ **A paleta NÃO é um modal novo** — é o
+   [`ph2d_editor_core::widget::command_palette`](../../crates/ph2d-editor-core/src/widget/command_palette.rs),
+   que já é **genérico por desenho** (o doc-comment dele diz *"reusable by any future
+   browse-everything picker"*: ele conhece só `PaletteModel`, e quem abriu mapeia o `id` de volta).
+   Já tem scrim, cascata de entrada, busca (`item_matches` — **um** predicado servindo o filtro
+   pintado e o `Enter`), sub-clusters e promoção a 2 colunas. **Construa só o MODELO**, copiando os
+   dois precedentes: [`motion_bridge_library.rs`](../../shells/desktop/src/render_loop/motion_bridge_library.rs)
+   (a biblioteca de nós) e [`global_palette.rs`](../../crates/ph2d-editor-core/src/screens/hero/global_palette.rs)
+   (o `Ctrl+K`). ⚠️ **O dreno do pick é CONDICIONAL** (`take_command_pick_if`): o canal já tem dois
+   consumidores, e um `take` incondicional faria quem recebe o pick ser *a ordem dos drenos no
+   quadro*. O terceiro dreno reconhece só os **seus** ids.
+4. **O filtro por tipo de objeto.** A paleta abre filtrada pelo `ObjectKinds` do selecionado
+   (derivado do marcador — F0). O inaplicável **não some**: fica sob *Show all*, **esmaecido e com a
+   razão nomeada**. ⛔ Nem no-op silencioso (DIRETIVA §2), nem apagar da lista (um componente que
+   existe e é invisível lê-se como defeito). *Esmaecido ainda despacha* — aqui, a explicação.
+
+**Toca:** handler do `HIERARCHY_ADD` (spawn `Transform+Name+StableId+RootOrder`) ·
+`ph2d-panel-inspector` (a cascata; `populate`/`paint`/`sync` deixam de ser listas literais) ·
+`shells/desktop` (o modelo da paleta + o 3º dreno; `snapshots.rs` deixa de publicar seções que a
+entidade não tem) · `ph2d-editor-core/src/ids/` (o `+`) · `#[require]`-equivalente por descritor
+(`requires: &[type_id]`; ⚠️ **a cascata é MOSTRADA antes de aplicar** — correção da crítica medida ao
+Bevy, doc 02 §1.4) · `EditorCommand::Spawn`/`SetComponent` já existem — é wiring.
+
+**As CINCO portas de hoje são subsumidas, não mantidas ao lado:** `INSP_PLAYER_ADD` ·
+`INSP_ANCHOR_ADD` · `INSP_ANIM_ADD` · `INSP_PHYS_ADD` + o botão de anexar da §5 9-Slice. Duas
+respostas a *"como se adiciona um componente?"* é a divergência que esta fase existe para apagar. (Um
+botão de anexar pode sobreviver como atalho **da seção já visível**; o que não sobrevive é ser a
+única rota.)
+
+**Testes:** seam completo (pintado/populado/clicado/**sequência** — as 4 perguntas) sobre o `+` e
+sobre um pick; **censo de alcance nos dois sentidos** — todo `Authored` aparece na paleta de algum
+tipo de objeto **e** nenhum `Machinery` aparece; o gate de presença (`SliceNine` ausente ⇒ zero
+widgets da §5 no hit-index — ⚠️ não basta "não pinta": um id órfão no índice continua clicável);
+anexar é **inerte** (bytes do componente == default) e **desfazível** (1 passo); a11y (HR-12);
+colisão de id (`node_id_collisions` cobre o `INSP_ADD_COMPONENT`).
+
+⛔ **A ORDEM DENTRO DA FASE É LEI, e a razão está medida:** a peça **1 não pode ir antes das 2–4**.
+Hoje várias seções são a **única rota** para a feature delas (a §14 Player publica `Some` para todo
+corpo dinâmico **com ou sem** o componente, com o comentário *"porque o botão dela é o que faz o
+comportamento existir"* — [`snapshots.rs`](../../shells/desktop/src/render_loop/snapshots.rs)).
+Apagar a face vazia antes de a porta nova estar viva e testada torna a feature **inalcançável** — e
+é assim que a lei da face vazia foi paga da primeira vez
+([memória](../../project-memory/feedback_the_three_ui_seam_questions_miss_the_fourth_the_sequence.md)).
+⇒ **porta primeiro, poda depois**, com o censo verde entre as duas.
 
 ---
 
@@ -312,6 +417,19 @@ clonados/comparados inteiros por captura.
 2. **Ordem de irmãos é dado overridável por instância** (Unity sim, Figma não — escolhemos sim).
 3. **Nome da peça é campo overridável** como outro qualquer; o da RAIZ da instância é *Local*.
 4. **Duplicar = independente; Instanciar = vinculado** — vocabulário do Enio, fixado.
+5. ⭐ **O Inspector mostra o que o objeto TEM, no modelo do Unity** (Enio, 2026-08-24; ADR-0166). O
+   objeto nasce com **duas** seções e cresce por escolha. Alternativa nomeada se o smoke recusar:
+   *"seções vazias recolhidas"* (todas presentes, dobradas, esmaecidas) — que é o meio-termo do
+   Godot; ⛔ mas ele reintroduz exatamente o que o Enio pediu para tirar, então só entra se o smoke
+   disser que a descoberta ficou pior.
+6. ⭐ **Uma porta, não seis.** O `+` do Inspector é a rota; as cinco portas por-seção de hoje viram
+   atalhos ou somem. Alternativa nomeada: manter a porta por-seção **também** — recusada por
+   antecipação (duas respostas à mesma pergunta), reabrível se o smoke mostrar que o `+` não é achado.
+7. ⭐ **O filtro por tipo de objeto é a VISTA, não uma cerca.** O inaplicável fica sob *Show all*,
+   esmaecido e com a razão. Alternativa nomeada: **recusar** a anexação de um componente inaplicável
+   (hard block). Fica de fora da v1 porque exige saber que *"não se aplica"* é sempre verdade — e a
+   declaração `applies_to` é uma afirmação de produto, não uma prova. *Mostrar a razão é honesto com
+   menos risco do que proibir com base numa tabela escrita à mão.*
 
 ## §10 — O que este plano NÃO faz (com o degrau nomeado)
 

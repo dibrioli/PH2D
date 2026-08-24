@@ -349,3 +349,13 @@ Manter o modelo derivado (1 entidade) **e** o materializado seria *"duas respost
 > Executor: linha `line/components` (Modo L). As duas decisões de produto (mestre na biblioteca;
 > ordem de irmãos como dado overridável) estão embutidas — o smoke da F4 é onde o Enio as sente, e o
 > plano §9 nomeia a alternativa de cada uma.
+>
+> ⚠️ **EMENDA (Enio, 2026-08-24, instruções complementares) —
+> [ADR-0166](../architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md).**
+> Este doc descreve o modelo de objeto e a instância; ele **não decidia a composição do Inspector**, e
+> o dono decidiu-a: no modelo do Unity, **o Inspector mostra o que o objeto TEM** (base = `Transform`
+> + `Name`), componentes anexam-se por **UMA** porta (o `+` → a paleta genérica que o Motion já usa,
+> com categorias), e a paleta é **filtrada por tipo de objeto** (`applies_to` declarado no descritor).
+> Isto afina o **C1/C2** da tabela §3 e as fases **F0** e **F3** do plano; nada em §2 se move.
+> Consequência para o **C4** (corte da Sprite): o critério passa a ser *"é do objeto-imagem base ou é
+> uma escolha?"*, não o tamanho do tipo.

@@ -176,10 +176,11 @@
 | [0163](0163-a-node-may-cook-its-own-input-at-n-instants-a-time-fan.md) | Accepted | Um nó pode cozinhar a PRÓPRIA entrada em N instantes (o *leque de tempo*) |
 | [0164](0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) | Accepted (aprovado pelo Enio em 2026-08-24 ao ordenar a implementação) | Instância = objetos REAIS ligados por id ao mestre, sync vivo no mesmo mundo, e o undo vira INCREMENTAL |
 | [0165](0165-assets-are-born-inside-the-app-three-level-identity-index-before-browser.md) | Accepted (aprovado pelo Enio em 2026-08-24, junto com o ADR-0164) | O asset nasce DENTRO do app: identidade em 3 níveis, o ÍNDICE antes do navegador, catálogos por UUID — e o mestre É um asset |
+| [0166](0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md) | Accepted (Enio, 2026-08-24 — instruções complementares à ordem de implementação … | O Inspector mostra o que o objeto TEM; componente anexa-se por UMA porta, com categorias e filtro por TIPO DE OBJETO |
 
 ---
 
-**167 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**168 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

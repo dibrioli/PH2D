@@ -28,6 +28,7 @@
 - [Knob por-passo é ALVO, não taxa](feedback_a_knob_consumed_as_a_per_step_rate_is_a_target_not_a_rate.md) — resposta exponencial e composta por OUTRO knob; meça a fração ÚTIL do curso
 - [Remédio novo → velho é CONTAGEM DUPLA](feedback_a_new_remedy_makes_the_old_one_double_counting.md) — 3º ajuste da mesma constante = modelo errado
 - [Parâmetro que não muda NADA](feedback_a_parameter_that_changes_nothing_is_discarded_downstream.md) — grepe o consumidor
+- [Publicar um `bool` onde a fonte tinha um ID apaga a metade seguinte](feedback_publishing_a_bool_where_the_source_had_an_id_throws_away_the_next_feature.md) — publique a identidade e derive o predicado
 - [Campo COLAPSADO não fica neutro — ele MANDA](feedback_a_collapsed_field_does_not_go_neutral_it_takes_over.md) — `min=mediana=max` a 2,5× o alvo: o knob grosseirava a peça; dois valores não-neutros idênticos é a assinatura
 - [Rótulo promete o que o MODELO entrega](feedback_a_label_must_promise_what_the_model_delivers.md) — "Air Drag" sobre damping uniforme
 - [Affordance herdada por analogia](feedback_inherited_affordance_must_be_rederived.md) — gate verde pode pinar bug de design
@@ -110,6 +111,7 @@
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
 - [Pintar e despachar têm de ler a MESMA fonte](feedback_paint_and_dispatch_must_read_the_same_source.md) — caixa que pinta do mundo e decide do store só diverge quando o MOTOR escreve o facto; sintoma é «às vezes, ao 2º clique»
 - [Lista escrita à mão ao lado de um predicado = duas respostas](feedback_a_hand_written_list_beside_a_predicate_is_two_answers.md) — quem ENUMERA copia a lista de quem DECIDE; o diálogo oferecia 4 de 11 formatos há meses, e só uma extensão nova gerou report
+- [Fileira CONDICIONAL torna todo despacho por índice um bug mudo](feedback_a_conditional_row_turns_every_index_based_dispatch_into_a_silent_bug.md) — resolva o slot em CHAVE, e o gate tem de empurrar a intenção pelo dreno de verdade
 - [«Acabou» lê-se igual a «foi pausado»](feedback_stopped_because_it_ended_reads_the_same_as_stopped_by_hand.md) — religar um transporte esgotado é gesto MORTO sem o predicado; e rebobinar tem de mover a IMAGEM
 - [O seed é dono do VALOR, o dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) — espelho por-quadro REMENDA; `register` inteiro apaga o hover, e fica inerte até alguém dar cor ao estado
 - [Desigualdade ≠ oráculo, e área somada ≠ REGIÃO](feedback_an_inequality_accepts_a_whole_interval_only_an_oracle_accepts_an_answer.md) — "o meio está entre as pontas" deixa passar produto errado; `Σ|área|` lê 400 e 272 para a MESMA região

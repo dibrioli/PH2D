@@ -75,6 +75,7 @@
 | 2026-08-15 |  | [HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-15.md](HANDOFF_INTEGRACAO_line_Vector_MESTRE_2026-08-15.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` **MESTRE** (2026-08-15) |
 | 2026-08-16 |  | [HANDOFF_INTEGRACAO_line_Vector_f4b_2026-08-16.md](HANDOFF_INTEGRACAO_line_Vector_f4b_2026-08-16.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector`, a DOBRA e as três medições (2026-08-16) |
 | 2026-08-22 |  | [HANDOFF_line_Vector_2026-08-22.md](HANDOFF_line_Vector_2026-08-22.md) | sessão | HANDOFF — linha `line/Vector` (2026-08-22) |
+| 2026-08-23 |  | [HANDOFF_INTEGRACAO_line_Vector_ui_viva_2026-08-23.md](HANDOFF_INTEGRACAO_line_Vector_ui_viva_2026-08-23.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · a booleana nos **ESTADOS** + o fecho do estudo de **UI VIVA** (2026-08-23) |
 ---
 *Índice arrumado em 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na raiz de
 `docs/`.*

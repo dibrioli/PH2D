@@ -4715,3 +4715,72 @@ isolinhas casarem dos dois lados. Hoje são reais e o resíduo mede `0,23` de c�
 |---|---|---|
 | ⭐ **dar a cada sector de leque o seu domínio** | o rectângulo já mede `15,2°` na fixtura canónica: o tecto da cura é `4°` | esta secção |
 | justificar essa cura pela esfera grossa | ali o F1 **refina**, e o `61,8°` é defeito de outra fase | idem |
+
+## §4-septemetquinquagies — ⭐⭐⭐ O CALIBRE: eu perguntei a uma grandeza que não podia responder (2026-08-23)
+
+### A pergunta certa, feita à grandeza errada
+
+A extracção precisa que as translações das costuras sejam **inteiras**, senão as
+isolinhas de `(u, v)` não casam dos dois lados. Perguntei directamente *«quão longe de
+inteiro estão elas?»*:
+
+| esfera fina | |
+|---|---|
+| distância a inteiro, p50 | `0,408` |
+| distância a inteiro, max | `0,498` |
+
+⛔ Uniformemente distribuídas, com `0,5` a ser o pior caso possível. ⇒ *«a extracção não
+é viável»*.
+
+### ⛔⛔ E a medição não tinha como estar certa
+
+**A translação de uma costura é uma grandeza de CALIBRE.** Somar uma constante `o_p` ao
+`(u, v)` de um patch muda **todas** as translações que lhe tocam, sem mudar coisa nenhuma
+na peça. ⇒ *perguntar se um número de calibre é inteiro é perguntar sobre a escolha de
+quem o escreveu.*
+
+⚠️ **A assinatura estava à vista e eu quase a li ao contrário:** pregar as translações
+arredondadas quase não mudava nada (ângulo `2,9° → 2,9°`). *Se forçar uma grandeza a
+mudar não muda o resultado, ela não é o resultado.*
+
+### ⭐ O que é invariante: a volta a um CICLO
+
+Numa costura, `z_b = R^k z_a + t`; sob o calibre, `t ↦ t + o_b − R^k o_a`. ⇒ **numa
+árvore de expansão do grafo de patches as translações podem ser todas levadas a `0`**,
+escolhendo `o_b = R^k o_a − t` a partir da raiz. ⭐⭐⭐ O que sobra são as arestas que
+**fecham ciclo**, e essas são a holonomia de translação da volta — invariantes.
+
+*É a mesma estrutura do salto de período do G2, um andar acima: lá o que fecha é a
+rotação, aqui é a translação.*
+
+### ⭐⭐⭐ A régua invariante, e a resposta continua a ser NÃO
+
+| fixtura | patches | árvore | ⭐ **ciclos** | ⭐ **invariante p50** | max | *(calibre, sem sentido)* |
+|---|---|---|---|---|---|---|
+| esfera fina | 16 | 15 | **28** | **`0,291`** | `0,485` | *`0,408`* |
+| esfera lisa | 16 | 15 | 27 | `0,354` | `0,485` | *`0,363`* |
+| toro | 18 | 17 | 34 | `0,385` | `0,492` | *`0,384`* |
+
+⇒ ⛔ **as translações de ciclo estão genuinamente longe de inteiros**, e arredondar as
+`28` de uma vez destruiria o mapa.
+
+⭐⭐ **Mas agora a conclusão está apoiada na grandeza certa, e ela NOMEIA a obra:** é
+exactamente por isto que a referência não arredonda no fim — ela **arredonda uma
+variável de cada vez e volta a resolver**, deixando o resto do sistema acomodar-se. *É o
+«mixed-integer» do nome, e é o que torna os inteiros alcançáveis em vez de impostos.*
+
+### O que ficou construído
+
+- `ph2d_gridmap::gauge::fix` — árvore de expansão do grafo de patches, calibre por
+  patch, e as translações de ciclo já invariantes.
+- Gate: **a árvore cobre tudo e a conta `arestas − vértices + componentes` fecha** nas
+  duas fixturas. *Se ela não fechar, a árvore não é árvore e as «invariantes» não o são.*
+- A sonda imprime a grandeza invariante **com a de calibre ao lado**, rotulada
+  `(sem sentido)` — *para que ninguém volte a lê-la.*
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| perguntar «é inteira?» à translação crua de uma costura | é grandeza de **calibre**: a resposta é sobre quem a escreveu | [`gauge.rs`](../../../crates/ph2d-gridmap/src/gauge.rs) |
+| arredondar as translações todas de uma vez | `0,29` de mediana em `28` variáveis: destrói o mapa | idem |

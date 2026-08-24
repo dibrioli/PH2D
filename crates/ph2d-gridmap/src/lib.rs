@@ -53,10 +53,12 @@
 
 pub mod comb;
 pub mod cut;
+pub mod gauge;
 pub mod marks;
 pub mod solve;
 
 pub use comb::{CombReport, Combed, comb_patches, jumps_only};
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};
+pub use gauge::{Gauge, GaugeReport};
 pub use marks::{MarkReport, arc_marks};
-pub use solve::{GridMap, SolveReport, solve, solve_with};
+pub use solve::{GridMap, SolveReport, rounded_shifts, solve, solve_pinned, solve_with};

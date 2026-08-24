@@ -211,6 +211,18 @@ pub struct SolveReport {
     pub seam_p50: f32,
     /// O pior resíduo de costura.
     pub seam_max: f32,
+    /// ⭐⭐⭐ **A DISTÂNCIA A INTEIRO das translações das costuras**, em células:
+    /// mediana e pior.
+    ///
+    /// ⛔ **A extracção precisa delas INTEIRAS** — só assim as isolinhas de `(u, v)`
+    /// casam dos dois lados. `0,5` é o pior caso possível (a meio caminho entre dois
+    /// inteiros), e uma mediana perto disso diz que arredondar vai custar caro.
+    ///
+    /// ⚠️ *Medir isto ANTES de forçar o arredondamento é a diferença entre saber o
+    /// preço e descobri-lo depois de pagar.*
+    pub shift_frac_p50: f32,
+    /// A pior distância a inteiro.
+    pub shift_frac_max: f32,
 }
 
 /// Prepara os triângulos de um patch.
@@ -280,6 +292,46 @@ pub fn solve_with(
     weight: f32,
     rounds: usize,
 ) -> (GridMap, SolveReport) {
+    run(mesh, cut, combed, h, weight, rounds, None)
+}
+
+/// ⭐⭐⭐ **O MESMO, com as translações das costuras PREGADAS.**
+///
+/// ⚠️ É o segundo passo do arredondamento: resolve-se com as translações livres,
+/// arredondam-se para inteiro, e resolve-se outra vez com elas fixas. *A extracção
+/// precisa delas inteiras; o que ela custa mede-se comparando os dois resíduos.*
+#[must_use]
+pub fn solve_pinned(
+    mesh: &Mesh,
+    cut: &CutMesh,
+    combed: &Combed,
+    h: f32,
+    weight: f32,
+    rounds: usize,
+    shift: &[[f32; 2]],
+) -> (GridMap, SolveReport) {
+    run(mesh, cut, combed, h, weight, rounds, Some(shift))
+}
+
+/// ⭐ **AS TRANSLAÇÕES ARREDONDADAS**, e a distância que cada uma andou.
+#[must_use]
+pub fn rounded_shifts(map: &GridMap) -> Vec<[f32; 2]> {
+    map.shift
+        .iter()
+        .map(|t| [t[0].round(), t[1].round()])
+        .collect()
+}
+
+#[allow(clippy::too_many_lines, clippy::too_many_arguments)]
+fn run(
+    mesh: &Mesh,
+    cut: &CutMesh,
+    combed: &Combed,
+    h: f32,
+    weight: f32,
+    rounds: usize,
+    pinned: Option<&[[f32; 2]]>,
+) -> (GridMap, SolveReport) {
     let mut rep = SolveReport::default();
     let np = cut.tris.len();
     let mut tris: Vec<Vec<Tri>> = Vec::with_capacity(np);
@@ -333,7 +385,7 @@ pub fn solve_with(
             .iter()
             .map(|o| vec![[0.0f32; 2]; o.len()])
             .collect(),
-        shift: vec![[0.0; 2]; cut.seams.len()],
+        shift: pinned.map_or_else(|| vec![[0.0; 2]; cut.seams.len()], <[[f32; 2]]>::to_vec),
     };
 
     // ── O denominador de Poisson de cada vértice, que não muda.
@@ -404,7 +456,7 @@ pub fn solve_with(
         }
 
         // ── A translação de cada costura: a média do resíduo.
-        if round % SHIFT_EVERY == SHIFT_EVERY - 1 {
+        if pinned.is_none() && round % SHIFT_EVERY == SHIFT_EVERY - 1 {
             for (s, seam) in cut.seams.iter().enumerate() {
                 if combed.jump.get(s).copied().flatten().is_none() {
                     continue;
@@ -498,6 +550,13 @@ pub fn solve_with(
     rep.scale_p95 = pct(&mut scale, 0.95);
     rep.seam_p50 = pct(&mut seam, 0.50);
     rep.seam_max = seam.last().copied().unwrap_or(0.0);
+    let mut frac: Vec<f32> = map
+        .shift
+        .iter()
+        .map(|t| (t[0] - t[0].round()).abs().max((t[1] - t[1].round()).abs()))
+        .collect();
+    rep.shift_frac_p50 = pct(&mut frac, 0.50);
+    rep.shift_frac_max = frac.last().copied().unwrap_or(0.0);
 
     (map, rep)
 }

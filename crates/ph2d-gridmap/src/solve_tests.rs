@@ -358,3 +358,66 @@ fn does_the_stiff_system_just_need_more_rounds() {
         }
     }
 }
+
+/// ⭐⭐⭐ **SONDA — as translações das costuras dão para ARREDONDAR?**
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-gridmap --release \
+///     can_the_seam_shifts_be_rounded -- --ignored --nocapture
+/// ```
+///
+/// ⛔ **A extracção precisa delas INTEIRAS** — só assim as isolinhas de `(u, v)` casam
+/// dos dois lados. ⚠️ *Medir o preço antes de o pagar:* se as translações já caírem
+/// perto de inteiros, arredondar é de graça; se caírem a meio caminho (`0,5`), o
+/// arredondamento é uma mudança grande e o resíduo da costura vai subir.
+#[test]
+#[ignore = "sonda -- o preco de arredondar as costuras"]
+fn can_the_seam_shifts_be_rounded() {
+    for (name, mesh) in [
+        ("ESFERA FINA", ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)),
+        ("ESFERA LISA", ph2d_mesh::shapes::uv_sphere(24, 36, 1.0)),
+    ] {
+        let mut mesh = mesh;
+        mesh.triangulate();
+        ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
+        mesh.triangulate();
+        let dual = ph2d_crossfield::Dual::build(&mesh);
+        let (field, _) = ph2d_crossfield::solve_miq(&dual);
+        let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+        let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
+        let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
+        let pos = mesh.positions();
+        let mut edges: Vec<f32> = Vec::new();
+        for f in mesh.faces() {
+            let v = f.verts();
+            for k in 0..v.len() {
+                let (a, b) = (pos[v[k] as usize], pos[v[(k + 1) % v.len()] as usize]);
+                let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+                edges.push(d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt());
+            }
+        }
+        edges.sort_by(f32::total_cmp);
+        let h = edges[edges.len() / 2];
+
+        let (map, free) = super::solve(&mesh, &cut, &combed, h);
+        eprintln!(
+            "── {name}: LIVRE angulo p50 {:>4.1}° | costura p50 {:.4} max {:.4} \
+             | ⭐distancia a inteiro p50 {:.3} max {:.3}",
+            free.angle_p50, free.seam_p50, free.seam_max, free.shift_frac_p50, free.shift_frac_max
+        );
+        let shift = super::rounded_shifts(&map);
+        let (_, pin) = super::solve_pinned(
+            &mesh,
+            &cut,
+            &combed,
+            h,
+            super::SEAM_WEIGHT,
+            super::ROUNDS,
+            &shift,
+        );
+        eprintln!(
+            "   {name}: ⭐INTEIRA angulo p50 {:>4.1}° | costura p50 {:.4} max {:.4}",
+            pin.angle_p50, pin.seam_p50, pin.seam_max
+        );
+    }
+}

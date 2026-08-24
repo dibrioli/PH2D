@@ -73,6 +73,19 @@ exprimir dos dois lados.**
    a partir do estado que estava a substituir, ⇒ *a segunda varredura vê outra coisa, e
    nunca chegou a correr.* **Antes de dizer «não converge», corra duas.**
 
+7. ⭐⭐⭐ **E antes de perguntar se um número é inteiro, zero ou grande, veja se ele é
+   INVARIANTE.** Uma grandeza de **calibre** — uma que muda quando se muda uma escolha
+   arbitrária do modelo, sem mudar nada no resultado — não responde a pergunta nenhuma
+   sobre a peça. *Medido no mapa global: a translação de uma costura muda toda quando se
+   soma uma constante ao `(u,v)` de um patch; a distância a inteiro dela deu `0,408`, e a
+   grandeza certa — a volta a um ciclo, depois de a árvore ser levada a zero — deu
+   `0,291`.* ⚠️ **A assinatura:** *se forçar a grandeza a mudar não muda o resultado, ela
+   não é o resultado* — pregar as translações arredondadas deixou o ângulo em `2,9°`.
+
+⇒ ⭐ **As três faces da mesma lei:** a régua tem de conseguir exprimir a resposta
+(**alcance**), sobre amostras que a contenham (**extensão**), e não pode depender do que
+não importa (**invariância**).
+
 Irmãs: [[feedback_an_unlabelled_probe_column_gets_read_backwards]] ·
 [[feedback_a_correct_mechanism_can_prescribe_the_wrong_cure]] ·
 [[feedback_a_better_instrument_can_make_the_product_worse_and_that_is_the_finding]] ·

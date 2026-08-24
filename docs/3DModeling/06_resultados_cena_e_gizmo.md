@@ -5232,6 +5232,75 @@ vermelho. ⇒ a lista publicada e a lista despachada são **a mesma função** (
 
 8 mutações, **8 vermelhas** com os três controles.
 
+## §61 — W58: a seleção múltipla nasce no CANVAS (24/08)
+
+> O `§28` fechou o gesto do gizmo sobre **a seleção inteira** e deixou ⏸️: *"um laço de seleção na
+> janela 3D — hoje escolhe-se na Hierarquia com `Ctrl`"*. A capacidade existia; a única forma de a
+> **exprimir** era sair da janela onde a peça está.
+
+### §61.1 — O modificador é o vocabulário, e ele já existia
+
+⛔ **Arrastar em espaço vazio NÃO podia virar laço.** Arrastar orbita, e é o gesto principal do
+módulo — a pesquisa do navball mede os utilizadores *quase 2× mais rápidos* a arrastar do que a
+clicar. Roubá-lo em espaço vazio faria o mesmo botão fazer duas coisas conforme o que estivesse por
+baixo, e o artista descobriria a diferença ao girar a peça e ver um rectângulo.
+
+⭐ **`Shift`/`Ctrl` é a MESMA tecla que o canvas 2D já usa** para falar da seleção
+(`input_dispatch`: `shift_key() || super_key() || control_key()` → `toggle_in_selection`). Segurada
+com um **clique**, ela alterna um objeto; segurada com um **arrasto**, alterna um rectângulo.
+*Um vocabulário, não dois.* ⚠️ E ela **perde** para uma alça do gizmo: `Shift`+arrastar uma seta
+continua a mover a peça, senão o modificador tiraria ao artista o gesto que ele tem debaixo do dedo.
+
+### §61.2 — Como se pergunta a um CAMPO o que está dentro de um rectângulo
+
+Uma malha traz consigo os vértices, e um laço testa-os contra o rectângulo. Um campo implícito
+**não tem vértices**: a única coisa que existe é *"o que está sob este pixel"*. ⇒ o laço faz a mesma
+pergunta do clique, **em muitos pixels de uma vez** — e o que ele apanha é exactamente **o que se
+vê** dentro do rectângulo, que é o que um laço de viewport faz em todo modelador.
+
+⛔ **E sem içar as compilações, isso não é lento — é impossível.** A `surface_under` compila a árvore
+do documento a **cada chamada** (um JIT: `2,3 ms` num contorno de 168 arestas), e o `node_under`
+compila **uma árvore por folha por chamada**. Um rectângulo de 300 amostras numa peça de 5 folhas
+custaria `300 × 6 = 1 800` JITs — **quase um segundo por gesto**.
+
+| | por chamada, antes | por chamada, agora |
+|---|---|---|
+| a árvore do documento | **uma por pixel** | **uma** |
+| a árvore de cada folha | **uma por folha por pixel** | **uma por folha** |
+
+⇒ `ph2d_field_render::surfaces_under` (a marcha já recebia um **lote** de raios — só faltava a porta)
+e `field3d_pick::owners_under`. ⭐ O `node_under` de sempre passa a ser **o caso de um**, pela mesma
+porta. *Uma função escrita para um ponto costuma ter o custo no sítio certo — até alguém a chamar
+num laço.*
+
+⚠️ **O passo é o recurso, e ele diz de que é**: `LASSO_STRIDE_PX = 6`, porque cada amostra é uma
+**marcha de raio**. Um rectângulo de 400×300 pixel a pixel seriam 120 000 marchas; com passo 6 são
+~3 300. ⭐ O que o passo pode deixar escapar é uma forma que se veja num quadrado menor que `6 × 6`
+px — e a `CLICK_SLOP_PX` do próprio módulo é `3`, então *o laço não é mais cego do que a mão*.
+
+### §61.3 — As três decisões de produto, cada uma com o seu porquê
+
+- **O laço ALTERNA, não substitui.** A tecla que o abriu já significa *«estou a falar da seleção»* —
+  um laço que limpasse tudo contradiria a tecla que o pediu.
+- **Um laço que não apanhou nada não mexe na seleção.** O artista falhou a mira; limpar seria
+  castigá-lo.
+- **Um clique aditivo no FUNDO não limpa.** Sem a tecla, o fundo limpa — como em todo modelador.
+- ⭐ **E `Shift`+clique sem arrastar é um clique aditivo, não um rectângulo de área zero** — sem
+  isto, o gesto morria entre os dois ramos.
+
+### §61.4 — ⚠️ A mutação que apagou uma condição morta (a segunda nesta função)
+
+A 1.ª versão guardava a tecla num campo (`additive_press`) lido no `Down` e consumido no `Up`.
+⛔ **A mutação que o punha sempre a `false` SOBREVIVEU** — e a razão é que o campo era
+**inalcançável**: um `Down` com o modificador em baixo vai para `Drag::Lasso` **antes** de o ramo que
+o lia (`Drag::Orbit`) existir. O campo saiu, e o ramo passa `false` com o porquê escrito ao lado.
+
+⚠️ **É a segunda condição morta que uma prova de mutação apanha nesta mesma função** — a primeira foi
+um `nav.is_none()` na W49. *Uma condição que não pode mudar o resultado é uma afirmação falsa sobre o
+código para quem o ler a seguir.*
+
+10 mutações, **10 vermelhas** com os três controles.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

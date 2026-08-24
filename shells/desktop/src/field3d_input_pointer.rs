@@ -24,6 +24,8 @@ pub(crate) fn begin(
     s: &mut Smoke,
     button: winit::event::MouseButton,
     fallback: Drag,
+    // `Shift`/`Ctrl` em baixo — ver [`Drag::Lasso`].
+    additive: bool,
     pos: (f32, f32),
 ) -> bool {
     // ⚠️ **Fora da área desenhada, o gesto não é meu.** O `Move` e o `Up` NÃO fazem esta pergunta,
@@ -65,6 +67,22 @@ pub(crate) fn begin(
     let grabbed = (button == winit::event::MouseButton::Left)
         .then(|| local(s, pos).and_then(|p| field3d_gizmo::pick(&handles(s), p)))
         .flatten();
+    // ⭐⭐ **O LAÇO ganha do gesto de câmera, e só com o MODIFICADOR em baixo** (W58) — mas **perde**
+    // para uma alça do gizmo: `Shift`+arrastar uma seta continua a mover a peça, senão o
+    // modificador tiraria ao artista o gesto que ele tem debaixo do dedo.
+    if grabbed.is_none()
+        && button == winit::event::MouseButton::Left
+        && additive
+        && let Some(p) = local(s, pos)
+    {
+        s.drag = Some(Drag::Lasso);
+        s.lasso = Some((p, p));
+        s.drag_grip = None;
+        s.gizmo_hot = None;
+        s.last_pointer = pos;
+        s.press_at = Some(pos);
+        return true;
+    }
     s.drag = Some(grabbed.map_or(fallback, Drag::Gizmo));
     // ⭐ A pegada congela a âncora e o pixel: é contra eles que o total se mede até soltar.
     s.drag_grip = grabbed.and_then(|h| {
@@ -229,6 +247,12 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         // `line/sculpt3d` já pagou para descobrir, e o gate que os prende aqui mede **o
         // modelo na tela**, nunca o sinal: foi argumentando sobre sinais que o erro entrou
         // lá.
+        // ⭐ O laço só **desenha**: ele não mexe na câmera nem no mundo até soltar.
+        Drag::Lasso => {
+            if let (Some(from), Some(p)) = (s.lasso.map(|(a, _)| a), local(s, (x, y))) {
+                s.lasso = Some((from, p));
+            }
+        }
         Drag::Orbit => law::orbit(&mut s.cam, dx, dy),
         // O alvo anda ao CONTRÁRIO da mão: mover o ponto olhado para a esquerda é o que faz
         // o modelo aparecer mais à direita.
@@ -366,8 +390,26 @@ pub(crate) fn finish(s: &mut Smoke) -> (bool, bool) {
         // `nav.is_none()`. *Uma condição que não pode mudar o resultado é uma afirmação falsa sobre
         // o código para quem o ler a seguir* — e ela sobrevive a toda mutação, de propósito.
 
-        s.pending_pick = Some([from.0 - area.x, from.1 - area.y]);
+        // ⚠️ **`false`, e não um campo guardado — este ramo NÃO pode ser aditivo.** Ele só é
+        // alcançado por `Drag::Orbit`, e um `Down` com o modificador em baixo vai para `Drag::Lasso`
+        // antes de lá chegar. Uma versão anterior guardava a tecla num campo (`additive_press`) e
+        // lia-a aqui: ⛔ **uma mutação que a punha sempre a `false` SOBREVIVEU**, porque o campo era
+        // inalcançável. *É a segunda condição morta que uma prova de mutação apanha nesta função —
+        // e uma condição que não pode mudar o resultado é uma afirmação falsa sobre o código.*
+        s.pending_pick = Some(([from.0 - area.x, from.1 - area.y], false));
     }
+    // ⭐⭐ **O laço vira PEDIDO ao soltar** (W58) — e um laço que não andou é um clique aditivo, não
+    // um rectângulo de área zero: sem isto, `Shift`+clique num objeto não fazia nada.
+    if was == Some(Drag::Lasso)
+        && let Some((a, b)) = s.lasso.take()
+    {
+        if (a[0] - b[0]).abs() > CLICK_SLOP_PX || (a[1] - b[1]).abs() > CLICK_SLOP_PX {
+            s.pending_lasso = Some((a, b));
+        } else {
+            s.pending_pick = Some((a, true));
+        }
+    }
+    s.lasso = None;
     s.press_at = None;
     (was.is_some(), matches!(was, Some(Drag::Gizmo(_))))
 }

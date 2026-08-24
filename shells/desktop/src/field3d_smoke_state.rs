@@ -130,7 +130,16 @@ pub(crate) struct Smoke {
     ///
     /// ⚠️ Resolver aqui é impossível — a pergunta *"de quem é este ponto?"* precisa do MUNDO, e o
     /// ponteiro corre fora do quadro. Ele viaja para a ponte pelo mesmo cano dos intents do painel.
-    pub(crate) pending_pick: Option<[f32; 2]>,
+    /// ⚠️ **O `bool` é «aditivo?»** (W58): um clique com `Shift`/`Ctrl` **alterna** o objeto na
+    /// seleção em vez de a substituir — o mesmo verbo do canvas 2D.
+    pub(crate) pending_pick: Option<([f32; 2], bool)>,
+    /// ⭐⭐ **O laço em curso**, em pixels LOCAIS da área 3D — `(canto de partida, canto de agora)`.
+    /// É ele que a moldura pinta enquanto o dedo está em baixo.
+    pub(crate) lasso: Option<([f32; 2], [f32; 2])>,
+    /// O laço **terminado**, à espera de virar seleção. ⚠️ Separado do de cima porque um deles é
+    /// *desenho* e o outro é *pedido*: pintar a partir do pedido faria a moldura sobreviver ao
+    /// dedo por um quadro.
+    pub(crate) pending_lasso: Option<([f32; 2], [f32; 2])>,
     /// ⭐ **Que verbo o gizmo está a oferecer** — mover, rodar ou escalar.
     ///
     /// ⚠️ É estado de **vista**, e não do documento: por isso vive aqui e não num componente. O
@@ -220,6 +229,18 @@ pub(crate) enum Drag {
     /// onde a navegação cede: uma seta que orbitasse a câmera em vez de mover a peça seria uma alça
     /// pintada e morta.
     Gizmo(crate::field3d_gizmo::Handle),
+    /// ⭐⭐ **O LAÇO** (W58) — um rectângulo que escolhe tudo o que se vê dentro dele.
+    ///
+    /// ⚠️ **Ele nasce do MODIFICADOR, nunca de arrastar em espaço vazio.** Arrastar orbita, e é o
+    /// gesto principal do módulo (a pesquisa do navball mede os utilizadores *quase 2× mais rápidos*
+    /// a arrastar do que a clicar). Roubá-lo em espaço vazio faria o mesmo botão fazer duas coisas
+    /// conforme o que estivesse por baixo — e o artista descobriria a diferença ao girar a peça e
+    /// ver um rectângulo.
+    ///
+    /// ⭐ **`Shift`/`Ctrl` é a MESMA tecla que já significa «estou a falar da seleção»** neste app
+    /// (o canvas 2D usa-a para alternar um objeto no clique). Segurada com um **clique** ela
+    /// alterna um; segurada com um **arrasto**, alterna um rectângulo. *Um vocabulário, não dois.*
+    Lasso,
 }
 
 /// O que uma requisição de traçado devolve.

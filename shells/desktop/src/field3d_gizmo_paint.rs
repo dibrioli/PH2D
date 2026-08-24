@@ -166,6 +166,39 @@ fn ring(scene: &mut VectorScene, center: [f32; 2], radius: f32, c: Color, at: Af
     scene.fill_path(&p, &brush(c), at);
 }
 
+/// ⭐⭐ **A MOLDURA DO LAÇO** (W58) — o rectângulo que o artista está a arrastar.
+///
+/// ⚠️ **Uma moldura, e não um preenchimento translúcido.** O que está por baixo é a peça, e é ela
+/// que o artista está a mirar: uma manta por cima esconderia exactamente o que o gesto escolhe.
+/// ⚠️ E ela é pintada em [`ColorToken::Accent`] — o mesmo tom com que este app diz *seleção*.
+pub(crate) fn paint_lasso(
+    scene: &mut VectorScene,
+    from: [f32; 2],
+    to: [f32; 2],
+    theme: Theme,
+    origin: [f32; 2],
+) {
+    let at = Affine::translate((f64::from(origin[0]), f64::from(origin[1])));
+    let c = ColorToken::Accent.resolve(theme);
+    let (lo, hi) = (
+        [from[0].min(to[0]), from[1].min(to[1])],
+        [from[0].max(to[0]), from[1].max(to[1])],
+    );
+    // O contorno como quatro fitas — a mesma primitiva das alças, e por isso a mesma espessura.
+    ribbon(
+        scene,
+        &[
+            [lo[0], lo[1]],
+            [hi[0], lo[1]],
+            [hi[0], hi[1]],
+            [lo[0], hi[1]],
+            [lo[0], lo[1]],
+        ],
+        c,
+        at,
+    );
+}
+
 /// Uma poligonal com espessura, um quadrilátero por segmento.
 ///
 /// ⚠️ **Sem junta nas dobras, de propósito.** Uma argola amostrada em 48 pedaços dobra ~7,5° por

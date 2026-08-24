@@ -143,6 +143,8 @@ fn boot() -> Option<Smoke> {
         typed: None,
         press_at: None,
         pending_pick: None,
+        lasso: None,
+        pending_lasso: None,
         gizmo_mode: v.gizmo_mode,
         gizmo_frame: v.gizmo_frame,
     })

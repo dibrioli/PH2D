@@ -490,5 +490,40 @@ pub fn surface_under(
     hit[0].then(|| point[0])
 }
 
+/// ⭐⭐⭐ **A MESMA PERGUNTA, PARA MUITOS PIXELS DE UMA VEZ** (W58) — a porta de um laço de seleção.
+///
+/// ⚠️ **Ela existe por um custo medido, e a irmã de cima é o caso de um.** A [`surface_under`]
+/// compila a árvore do documento **a cada chamada** (é um JIT: `2,3 ms` num contorno de 168 arestas,
+/// ver `tiles::TILE`). Um laço que amostrasse 300 pixels chamando-a 300 vezes pagaria 300 JITs —
+/// ⛔ **quase um segundo** para responder a um arrasto. Aqui a árvore é compilada **uma** vez e a
+/// marcha recebe o lote inteiro, que é exactamente o que ela já sabe fazer.
+///
+/// `None` numa posição = aquele raio caiu no fundo.
+#[must_use]
+pub fn surfaces_under(
+    doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &Orbit,
+    screen: Screen,
+    px: &[[f32; 2]],
+) -> Vec<Option<[f32; 3]>> {
+    if px.is_empty() {
+        return Vec::new();
+    }
+    let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
+    let side = screen.width().min(screen.height()) as usize;
+    let scene = Scene {
+        shape: &shape,
+        cam,
+        basis: cam.basis(),
+        sharp: Sharpness::for_frame(cam.half_extent, side),
+        clip: None,
+        step: ph2d_field_eval::safe_march_step(doc),
+    };
+    let pts: Vec<(f32, f32)> = px.iter().map(|p| screen.plane_at(p[0], p[1])).collect();
+    let (hit, _, point) = march(&scene, &pts);
+    (0..px.len()).map(|i| hit[i].then(|| point[i])).collect()
+}
+
 #[cfg(test)]
 mod tests;

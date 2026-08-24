@@ -71,7 +71,13 @@ fn pressing_on_an_arrow_grabs_it_instead_of_orbiting() {
     armed(|s| {
         let p = mid_of_axis(s, 0);
         let before = s.cam;
-        assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, p));
+        assert!(begin(
+            s,
+            winit::event::MouseButton::Left,
+            Drag::Orbit,
+            false,
+            p
+        ));
         assert_eq!(
             s.drag,
             Some(Drag::Gizmo(Handle::Axis(0))),
@@ -97,7 +103,13 @@ fn pressing_on_an_arrow_grabs_it_instead_of_orbiting() {
 fn pressing_away_from_the_gizmo_still_orbits() {
     armed(|s| {
         let far = (AREA.x + AREA.w - 5.0, AREA.y + 5.0);
-        assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, far));
+        assert!(begin(
+            s,
+            winit::event::MouseButton::Left,
+            Drag::Orbit,
+            false,
+            far
+        ));
         assert_eq!(s.drag, Some(Drag::Orbit));
         assert!(s.pending_move.is_none());
     });
@@ -109,7 +121,13 @@ fn pressing_away_from_the_gizmo_still_orbits() {
 fn the_right_button_orbits_even_over_a_handle() {
     armed(|s| {
         let p = mid_of_axis(s, 0);
-        assert!(begin(s, winit::event::MouseButton::Right, Drag::Orbit, p));
+        assert!(begin(
+            s,
+            winit::event::MouseButton::Right,
+            Drag::Orbit,
+            false,
+            p
+        ));
         assert_eq!(s.drag, Some(Drag::Orbit));
     });
 }
@@ -123,7 +141,7 @@ fn the_right_button_orbits_even_over_a_handle() {
 fn pointer_events_between_two_frames_add_up() {
     armed(|s| {
         let p = mid_of_axis(s, 0);
-        begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
+        begin(s, winit::event::MouseButton::Left, Drag::Orbit, false, p);
         advance(s, p.0 + 30.0, p.1);
         let one = translation_of(s.pending_move.expect("primeiro evento").1);
         advance(s, p.0 + 60.0, p.1);
@@ -159,13 +177,17 @@ fn hover_lights_the_handle_without_swallowing_the_event() {
 fn a_press_and_release_without_dragging_asks_for_a_pick() {
     armed(|s| {
         let far = (AREA.x + AREA.w - 60.0, AREA.y + 40.0);
-        begin(s, winit::event::MouseButton::Left, Drag::Orbit, far);
+        begin(s, winit::event::MouseButton::Left, Drag::Orbit, false, far);
         s.last_pointer = far;
         crate::field3d_input::finish_for_test(s);
-        let px = s.pending_pick.expect("um clique tem de pedir uma seleção");
+        let (px, add) = s.pending_pick.expect("um clique tem de pedir uma seleção");
         assert!(
             (px[0] - (far.0 - AREA.x)).abs() < 0.01 && (px[1] - (far.1 - AREA.y)).abs() < 0.01,
             "o pixel pedido tem de ser o do CLIQUE, no referencial da área: {px:?}"
+        );
+        assert!(
+            !add,
+            "um clique SEM modificador não pode pedir para acrescentar à seleção"
         );
     });
 }
@@ -175,7 +197,7 @@ fn a_press_and_release_without_dragging_asks_for_a_pick() {
 fn dragging_the_camera_is_not_a_click() {
     armed(|s| {
         let far = (AREA.x + AREA.w - 60.0, AREA.y + 40.0);
-        begin(s, winit::event::MouseButton::Left, Drag::Orbit, far);
+        begin(s, winit::event::MouseButton::Left, Drag::Orbit, false, far);
         advance(s, far.0 + 40.0, far.1 + 30.0);
         crate::field3d_input::finish_for_test(s);
         assert!(
@@ -193,7 +215,7 @@ fn dragging_the_camera_is_not_a_click() {
 fn releasing_a_gizmo_handle_is_never_a_selection() {
     armed(|s| {
         let p = mid_of_axis(s, 0);
-        begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
+        begin(s, winit::event::MouseButton::Left, Drag::Orbit, false, p);
         assert!(matches!(s.drag, Some(Drag::Gizmo(_))));
         crate::field3d_input::finish_for_test(s);
         assert!(s.pending_pick.is_none());
@@ -206,7 +228,7 @@ fn releasing_a_gizmo_handle_is_never_a_selection() {
 fn the_grabbed_handle_stays_lit_while_the_cursor_walks_away() {
     armed(|s| {
         let p = mid_of_axis(s, 2);
-        begin(s, winit::event::MouseButton::Left, Drag::Orbit, p);
+        begin(s, winit::event::MouseButton::Left, Drag::Orbit, false, p);
         advance(s, AREA.x + AREA.w - 3.0, AREA.y + AREA.h - 3.0);
         assert_eq!(hot_handle(s), Some(Handle::Axis(2)));
     });
@@ -237,7 +259,7 @@ fn clicking_a_navball_takes_the_camera_to_that_view() {
             s.nav_press = None;
             let at = ball_at(s, v);
             assert!(
-                begin(s, winit::event::MouseButton::Left, Drag::Orbit, at),
+                begin(s, winit::event::MouseButton::Left, Drag::Orbit, false, at),
                 "{v:?}: o gizmo de navegação não pegou o botão"
             );
             assert_eq!(
@@ -286,7 +308,13 @@ fn dragging_from_the_navball_orbits_instead_of_snapping() {
         s.cam.rotation = ph2d_field_render::Orbit::default().rotation;
         let start = s.cam.rotation;
         let at = ball_at(s, crate::field3d_views::Standard::Front);
-        assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, at));
+        assert!(begin(
+            s,
+            winit::event::MouseButton::Left,
+            Drag::Orbit,
+            false,
+            at
+        ));
         s.pending_pick = None;
         advance(s, at.0 + 60.0, at.1 + 12.0);
         assert_ne!(s.cam.rotation, start, "o arrasto tinha de orbitar");
@@ -314,7 +342,13 @@ fn a_click_on_the_navball_never_reaches_the_part() {
     armed(|s| {
         s.pending_pick = None;
         let at = ball_at(s, crate::field3d_views::Standard::Top);
-        assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, at));
+        assert!(begin(
+            s,
+            winit::event::MouseButton::Left,
+            Drag::Orbit,
+            false,
+            at
+        ));
         crate::field3d_input::finish_for_test(s);
         assert_eq!(
             s.pending_pick, None,
@@ -332,7 +366,13 @@ fn a_click_away_from_the_navball_still_belongs_to_the_part() {
         s.nav_press = None;
         // O canto oposto ao widget, bem longe dele.
         let at = (AREA.x + 20.0, AREA.y + AREA.h - 20.0);
-        assert!(begin(s, winit::event::MouseButton::Left, Drag::Orbit, at));
+        assert!(begin(
+            s,
+            winit::event::MouseButton::Left,
+            Drag::Orbit,
+            false,
+            at
+        ));
         assert_eq!(
             s.nav_press, None,
             "o gizmo pegou um clique que não era dele"
@@ -399,7 +439,7 @@ fn the_hand_cancels_a_trip_in_flight() {
 
         // Um arrasto: começa e move.
         let at = (AREA.x + 100.0, AREA.y + 100.0);
-        crate::field3d_input::begin(s, winit::event::MouseButton::Left, Drag::Orbit, at);
+        crate::field3d_input::begin(s, winit::event::MouseButton::Left, Drag::Orbit, false, at);
         crate::field3d_input::advance(s, at.0 + 30.0, at.1);
         assert!(
             s.flight.is_none(),

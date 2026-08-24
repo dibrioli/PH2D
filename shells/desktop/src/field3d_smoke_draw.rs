@@ -228,6 +228,18 @@ pub(crate) fn draw(
                 f64::from(area.y + area.h),
             ));
             crate::field3d_gizmo_paint::paint(scene_out, &handles, hot, theme, [area.x, area.y]);
+            // ⭐⭐ **O LAÇO desenha-se enquanto o dedo está em baixo** (W58) — e sai do campo do
+            // GESTO (`smoke.lasso`), nunca do pedido: pintar a partir do pedido faria a moldura
+            // sobreviver ao dedo por um quadro.
+            if let Some((from, to)) = smoke.lasso {
+                crate::field3d_gizmo_paint::paint_lasso(
+                    scene_out,
+                    from,
+                    to,
+                    theme,
+                    [area.x, area.y],
+                );
+            }
             // ⭐ **O NÚMERO do gesto**, ao lado do gizmo — só durante o arrasto.
             //
             // ⚠️ Ele sai do que o mundo **aplicou** (`Grip::applied`), nunca de uma segunda conta a

@@ -117,6 +117,8 @@ impl View {
             typed: _,
             press_at: _,
             pending_pick: _,
+            lasso: _,
+            pending_lasso: _,
             flight: _,
             flight_gen: _,
             flight_fresh: _,

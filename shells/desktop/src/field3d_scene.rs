@@ -27,12 +27,20 @@ const PART_NAME: &str = "Model";
 
 /// Corre uma vez por quadro, antes do traçado. No-op silencioso quando o módulo não está armado.
 /// **O que o shell tem de fazer à seleção** depois de a ponte correr.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum SelectRequest {
     Entity(u64),
     /// O clique caiu no fundo. ⚠️ Limpar é a resposta certa e é o que todo modelador faz — a
     /// alternativa (manter a seleção) deixaria o gizmo aceso em cima de nada.
     Clear,
+    /// ⭐⭐ **Alternar um objeto na seleção** (W58) — o clique com `Shift`/`Ctrl`, o mesmo verbo que
+    /// o canvas 2D já usa.
+    Toggle(u64),
+    /// ⭐⭐ **O que o LAÇO apanhou** (W58). ⚠️ **Alternar, e não substituir**: o laço só nasce com o
+    /// modificador em baixo, e a tecla que o abriu já significa *«estou a falar da seleção»* — um
+    /// laço que limpasse tudo contradiria a tecla que o pediu. Vazio = o laço não apanhou nada, e
+    /// aí não se mexe na seleção (o artista falhou a mira; limpar seria castigá-lo).
+    ToggleMany(Vec<u64>),
 }
 
 /// Devolve **um pedido de seleção** quando há um: um clique na peça, ou a peça a nascer.
@@ -53,6 +61,7 @@ pub(crate) fn ecs_bridge(
             s.pending_pick.take(),
         )
     })?;
+    let lasso = with_smoke(|s| s.pending_lasso.take()).flatten();
     let chosen: Vec<bevy_ecs::entity::Entity> = selected
         .iter()
         .chain(extras.iter())
@@ -70,7 +79,11 @@ pub(crate) fn ecs_bridge(
     // ⚠️ Ele ganha do pedido de nascimento: uma escolha do artista sobrepõe-se sempre a um default,
     // e os dois só coincidem no primeiro quadro de uma peça — onde a ordem errada faria o primeiro
     // clique não pegar.
-    let picked = pick.and_then(|px| resolve_pick(sim, cooked.as_ref(), px));
+    let picked = pick
+        .and_then(|(px, add)| resolve_pick(sim, cooked.as_ref(), px, add))
+        // ⭐ O laço vem DEPOIS do clique na ordem, e os dois nunca coexistem: um gesto é clique ou
+        // arrasto, nunca ambos.
+        .or_else(|| lasso.and_then(|(a, b)| resolve_lasso(sim, cooked.as_ref(), a, b)));
     let anchor = anchor_for(sim, selected, &chosen);
     with_smoke(|s| {
         s.gizmo = anchor;
@@ -99,7 +112,7 @@ pub(crate) use gizmo::apply_motion_for_test;
 pub(crate) use gizmo::duplicate_node;
 #[cfg(test)]
 pub(crate) use gizmo::selection_pivot;
-use gizmo::{anchor_for, apply_motion, resolve_pick};
+use gizmo::{anchor_for, apply_motion, resolve_lasso, resolve_pick};
 // ⚠️ Só os gates a chamam pela porta do pai — a produção entra pelo `duplicate_node`, que a
 // envolve com a vista.
 #[cfg(test)]
@@ -128,6 +141,10 @@ mod profile_reach_tests;
 #[cfg(test)]
 #[path = "field3d_link_reach_tests.rs"]
 mod link_reach_tests;
+
+#[cfg(test)]
+#[path = "field3d_lasso_tests.rs"]
+mod lasso_tests;
 
 /// ⭐ **DE ONDE se coze** — a peça inteira, ou só o nó isolado (W38).
 ///

@@ -23,7 +23,7 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
 use ph2d_field::{FieldDoc, Node, NodeId, NodeKind, NodeShape};
 use ph2d_field_ecs::FieldNode;
-use ph2d_field_render::{Orbit, Screen, surface_under};
+use ph2d_field_render::{Orbit, Screen};
 
 /// ⭐ **O nó sob o pixel** — `None` quando o clique caiu no fundo.
 ///
@@ -38,44 +38,84 @@ pub(crate) fn node_under(
     screen: Screen,
     px: [f32; 2],
 ) -> Option<Entity> {
-    let p = surface_under(
+    // ⭐ **O caso de UM**, pela mesma porta do laço — *uma pergunta, um lugar*.
+    owners_under(world, root, doc, cam, screen, &[px])
+        .into_iter()
+        .next()
+        .flatten()
+}
+
+/// ⭐⭐⭐ **DE QUEM É CADA UM DESTES PIXELS** (W58) — a porta que um laço de seleção consome.
+///
+/// A mesma pergunta em dois passos do [`node_under`], com as **duas** compilações içadas para fora
+/// do laço:
+///
+/// | | por chamada, antes | por chamada, agora |
+/// |---|---|---|
+/// | a árvore do documento (JIT) | **uma por pixel** | **uma** |
+/// | a árvore de cada folha (JIT) | **uma por folha por pixel** | **uma por folha** |
+///
+/// ⛔ **Sem isto um laço não é lento, é impossível:** amostrar 300 pixels de um rectângulo numa peça
+/// de 5 folhas custaria `300 × 6 = 1 800` compilações de JIT. *Uma função escrita para um ponto
+/// costuma ter o custo no sítio certo — até alguém a chamar num laço.*
+pub(crate) fn owners_under(
+    world: &World,
+    root: Entity,
+    doc: &FieldDoc,
+    cam: &Orbit,
+    screen: Screen,
+    px: &[[f32; 2]],
+) -> Vec<Option<Entity>> {
+    let hits = ph2d_field_render::surfaces_under(
         doc,
         &crate::field3d_smoke::sampled_registry(),
         cam,
         screen,
         px,
-    )?;
-    let mut best: Option<(f32, Entity)> = None;
-    for (e, _) in ph2d_field_ecs::walk(world, root) {
-        let Some(FieldNode {
-            shape: NodeShape::Leaf(prim),
-        }) = world.get::<FieldNode>(e)
-        else {
-            continue;
-        };
-        // ⚠️ A pose de MUNDO, e não a local: o ponto veio do mundo. Uma folha avaliada com a pose
-        // local responderia sobre um sítio onde ela não está — e o erro cresce com o aninhamento,
-        // então ele passaria despercebido numa peça plana e escolheria o objeto errado numa peça
-        // agrupada.
-        let placed = FieldDoc::new(
-            vec![Node {
-                xform: ph2d_field_ecs::world_xform(world, e),
-                kind: NodeKind::Leaf(prim.clone()),
-                mods: Vec::new(),
-            }],
-            NodeId(0),
-        );
-        let Ok(placed) = placed else {
-            continue;
-        };
-        let v = ph2d_field_eval::Field::new(&placed)
-            .at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]))
-            .abs() as f32;
-        if best.is_none_or(|(b, _)| v < b) {
-            best = Some((v, e));
-        }
+    );
+    if hits.iter().all(Option::is_none) {
+        return vec![None; px.len()];
     }
-    best.map(|(_, e)| e)
+    // Uma fita por folha, **uma vez** — e a pose de MUNDO, não a local: o ponto veio do mundo. Uma
+    // folha avaliada com a pose local responderia sobre um sítio onde ela não está — e o erro cresce
+    // com o aninhamento, então passaria despercebido numa peça plana e escolheria o objeto errado
+    // numa peça agrupada.
+    let leaves: Vec<(Entity, ph2d_field_eval::Field)> = ph2d_field_ecs::walk(world, root)
+        .into_iter()
+        .filter_map(|(e, _)| {
+            let FieldNode {
+                shape: NodeShape::Leaf(prim),
+            } = world.get::<FieldNode>(e)?
+            else {
+                return None;
+            };
+            let placed = FieldDoc::new(
+                vec![Node {
+                    xform: ph2d_field_ecs::world_xform(world, e),
+                    kind: NodeKind::Leaf(prim.clone()),
+                    mods: Vec::new(),
+                }],
+                NodeId(0),
+            )
+            .ok()?;
+            Some((e, ph2d_field_eval::Field::new(&placed)))
+        })
+        .collect();
+    hits.into_iter()
+        .map(|hit| {
+            let p = hit?;
+            let mut best: Option<(f32, Entity)> = None;
+            for (e, f) in &leaves {
+                let v = f
+                    .at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]))
+                    .abs() as f32;
+                if best.is_none_or(|(b, _)| v < b) {
+                    best = Some((v, *e));
+                }
+            }
+            best.map(|(_, e)| e)
+        })
+        .collect()
 }
 
 #[cfg(test)]

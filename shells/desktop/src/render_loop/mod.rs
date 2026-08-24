@@ -7008,6 +7008,16 @@ impl crate::App {
                 Some(crate::field3d_scene::SelectRequest::Clear) => {
                     hero.gizmo.clear_all_selection();
                 }
+                // ⭐⭐ **A seleção múltipla nasce no CANVAS** (W58) — e pelo MESMO verbo do canvas
+                // 2D (`toggle_in_selection`), nunca por um próprio deste módulo.
+                Some(crate::field3d_scene::SelectRequest::Toggle(bits)) => {
+                    hero.gizmo.toggle_in_selection(bits);
+                }
+                Some(crate::field3d_scene::SelectRequest::ToggleMany(all)) => {
+                    for bits in all {
+                        hero.gizmo.toggle_in_selection(bits);
+                    }
+                }
                 None => {}
             }
             // O painel de TOKENS (plano UI/UX W6), na MESMA fase e pela mesma razão: um painel de

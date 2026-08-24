@@ -262,7 +262,13 @@ impl App {
             winit::event::MouseButton::Middle => Drag::Pan,
             _ => return false,
         };
-        with_smoke(|s| begin(s, button, fallback, pos)).unwrap_or(false)
+        // ⭐ **A MESMA tecla que o canvas 2D usa** para falar da seleção (`input_dispatch`:
+        // `shift_key() || super_key() || control_key()`). Um terceiro vocabulário de modificador no
+        // mesmo app é onde a mão aprende errado.
+        let additive = self.modifiers.shift_key()
+            || self.modifiers.super_key()
+            || self.modifiers.control_key();
+        with_smoke(|s| begin(s, button, fallback, additive, pos)).unwrap_or(false)
     }
 
     /// O ponteiro moveu. **Só consome com um arrasto em curso** — senão a janela 3D engoliria todo

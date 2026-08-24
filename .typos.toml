@@ -168,6 +168,8 @@ instale = "instale"  # pt-BR imperativo ("instale este plano", donated_form.rs) 
 # palavra so aparece como sufixo de `§4-`.
 decies = "decies"
 comercial = "comercial"  # pt-PT ("valor comercial") — o ingles seria `commercial`, mas o texto e' portugues
+contentes = "contentes"  # pt ("as guardas ficavam todas contentes") — o ingles seria `contents`, mas o texto e' portugues (ph2d-trace, 2026-08-23)
+inconveniente = "inconveniente"  # pt ("um gate inconveniente") — o ingles seria `inconvenience`; texto portugues (sim_extract_sheet_tests, 2026-08-23)
 # pt-BR de comentario, drenadas no ship de 2026-07-31 (a jornada de SETE linhas
 # acumulou 33 ocorrencias / 16 palavras -- este gate nao roda no fechamento de
 # linha, so' no `ship.sh`, entao a divida chega toda junta ao integrador).

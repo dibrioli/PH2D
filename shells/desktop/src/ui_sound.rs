@@ -132,9 +132,7 @@ impl crate::App {
                     "[ui-sound] se TUDO abaixo estiver verde e ainda assim for mudo, o elo que \
                      falta e' o mixer do SO (mute por-aplicacao, gravado em disco):"
                 );
-                eprintln!(
-                    "[ui-sound]   pactl list sink-inputs | grep -E 'application.name|Mute:'"
-                );
+                eprintln!("[ui-sound]   pactl list sink-inputs | grep -E 'application.name|Mute:'");
             });
             eprintln!(
                 "[ui-sound] {what:?} · pref={on} · dispositivo={}",

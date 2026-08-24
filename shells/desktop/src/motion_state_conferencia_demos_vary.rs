@@ -29,10 +29,14 @@ const CUSTOM_WAVE: &str = "c1 0:1:L 0.5:0:L 1:1:L";
 const AMOUNT: f32 = 0.7;
 
 fn wire(g: &mut Graph, from: NodeId, fp: u16, to: NodeId, tp: u16) -> Option<()> {
+    wire_d(g, from, fp, to, tp, false)
+}
+
+fn wire_d(g: &mut Graph, from: NodeId, fp: u16, to: NodeId, tp: u16, delayed: bool) -> Option<()> {
     g.connect(Edge {
         from: (from, fp),
         to: (to, tp),
-        delayed: false,
+        delayed,
     })
     .ok()
 }
@@ -75,10 +79,26 @@ fn oscillator(g: &mut Graph, ey: f32, custom: bool) -> Option<NodeId> {
     Some(osc)
 }
 
-/// **O PENACHO** — o emissor que as quatro fileiras de baixo partilham.
-fn plume(g: &mut Graph, ey: f32) -> NodeId {
+/// **O PENACHO SIMULADO** — o emissor mais o integrador que o faz obedecer a uma força.
+///
+/// ⚠️ **A topologia não é a horizontal, e é o que este helper existe para não deixar
+/// errar** (Enio, 2026-08-24: *«para as partículas serem simuladas precisa ter um
+/// integrate no grafo»*). Uma `force.*` é `Pure` e só acumula a coluna transitória
+/// `accel`; **um** integrador a consome. E a cadeia de forças vive **DENTRO** do laço:
+///
+/// ```text
+/// emitter ──fwd──> integrate.rest
+/// integrate.out ──pre──> force.wind ──fwd──> integrate.forces
+/// ```
+///
+/// ⚠️ **A primeira versão desta cena montava a horizontal** (`emitter → force → …`) e o
+/// maior passo de `P` entre quadros media **0,0000** — nada se movia, sem erro nenhum.
+/// Com a topologia certa mede `0,0307`. *O app conserta este gesto sozinho quando o
+/// artista o faz (ADR-0155, com aviso e desfazer próprio); um documento montado em código
+/// não passa por esse portão, e é por isso que ele mora aqui numa função só.*
+fn plume(g: &mut Graph, ey: f32) -> Option<NodeId> {
     let em = g.add_node("motion.emitter");
-    g.set_pos(em, Pos { x: 240.0, y: ey });
+    g.set_pos(em, Pos { x: 120.0, y: ey });
     g.set_param(em, "rate", 45.0);
     g.set_param(em, "life", 2.0);
     g.set_param(em, "speed", 0.9);
@@ -87,7 +107,23 @@ fn plume(g: &mut Graph, ey: f32) -> NodeId {
     g.set_param(em, "max", 192.0);
     g.set_param(em, "size", 0.16);
     g.set_param(em, "seed", 6.0);
-    em
+
+    let integ = g.add_node("motion.integrate");
+    g.set_pos(integ, Pos { x: 300.0, y: ey });
+    let wind = g.add_node("force.wind");
+    g.set_pos(
+        wind,
+        Pos {
+            x: 300.0,
+            y: ey + 90.0,
+        },
+    );
+    g.set_param(wind, "strength", 1.6);
+    g.set_param(wind, "angle", 250.0);
+    wire(g, em, 0, integ, 0)?;
+    wire_d(g, integ, 0, wind, 0, true)?;
+    wire(g, wind, 0, integ, 1)?;
+    Some(integ)
 }
 
 /// A cor de base das fileiras que variam cor — **antes** do `motion.randomize`, nunca
@@ -137,7 +173,7 @@ pub(crate) fn build_vary_demo_document(
     for (row, channel) in rows.iter().enumerate() {
         for col in 0..2 {
             let ey = ((row + 1) * 2 + col) as f32 * 260.0;
-            let em = plume(g, ey);
+            let em = plume(g, ey)?;
             let head = painted(g, em, ey, rgb[row])?;
             let head = if col == 1 {
                 vary(g, head, ey, *channel)?
@@ -160,13 +196,13 @@ pub(crate) fn band_labels() -> impl Iterator<Item = (usize, &'static str)> {
     [
         "ONDA Sine -- a onda de sempre, e no painel dela NAO ha' editor de curva",
         "ONDA Custom -- a forma DESENHADA (um V) a conduzir mesmo, e o editor aparece",
-        "PENACHO de sempre -- toda particula com o mesmo angulo",
+        "PENACHO SIMULADO -- emissor + integrate + vento; toda particula com o mesmo angulo",
         "PENACHO + Randomize(Rotation) -- cada uma com o seu angulo",
-        "PENACHO de sempre -- todas igualmente opacas",
+        "PENACHO SIMULADO -- todas igualmente opacas",
         "PENACHO + Randomize(Opacity) -- umas mais apagadas que outras",
-        "PENACHO de sempre -- todas da mesma cor",
+        "PENACHO SIMULADO -- todas da mesma cor",
         "PENACHO + Randomize(Hue) -- cada uma com a sua cor",
-        "PENACHO de sempre -- todas do mesmo tamanho",
+        "PENACHO SIMULADO -- todas do mesmo tamanho",
         "PENACHO + Randomize(Size) -- cada uma com o seu tamanho",
     ]
     .into_iter()

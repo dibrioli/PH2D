@@ -158,6 +158,42 @@ fn a_particle_keeps_its_draw_while_it_lives() {
     );
 }
 
+/// ⭐⭐⭐ **AS PARTÍCULAS SIMULAM DE FACTO** — a `P` anda entre quadros, e ela só anda
+/// porque há um `motion.integrate` no grafo.
+///
+/// ⚠️ **Este gate nasceu de uma frase do Enio** (*«para as partículas serem simuladas
+/// precisa ter um integrate no grafo»*) e apanhou a versão anterior desta cena: ela
+/// montava a cadeia HORIZONTAL (`emitter → força → …`), o maior passo de `P` entre
+/// quadros media **0,0000**, e nada — nem um erro, nem um gate — dizia isso. Uma `force.*`
+/// é `Pure` e só acumula a coluna transitória `accel`; **um** integrador a consome, e a
+/// cadeia de forças vive DENTRO do laço `pre`. *Um grafo que não simula e um que simula
+/// devagar são indistinguíveis numa fotografia; só a diferença entre duas é que os separa.*
+#[test]
+fn the_particles_actually_simulate() {
+    let (doc, reg, sinks) = scene();
+    let mut cook = Cook::new();
+    let mut prev: Vec<[f32; 2]> = Vec::new();
+    let mut moved = 0.0_f32;
+    for k in 0..40 {
+        let t = 1.0 + f64::from(k) / 60.0;
+        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
+        let out = cook.cook(&doc.graph, &reg, sinks[2], t).expect("coze");
+        if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
+            if prev.len() == p.len() {
+                for (a, b) in p.iter().zip(&prev) {
+                    moved = moved.max((a[0] - b[0]).hypot(a[1] - b[1]));
+                }
+            }
+            prev = p.clone();
+        }
+    }
+    assert!(
+        moved > 0.005,
+        "as particulas nao andaram ({moved:.4}) -- sem `motion.integrate` no laco a forca \
+         escreve `accel` e ninguem o le^, e a cena fica parada SEM erro nenhum"
+    );
+}
+
 /// As fichas do canvas: uma por banda, curta.
 #[test]
 fn every_band_carries_its_caption() {

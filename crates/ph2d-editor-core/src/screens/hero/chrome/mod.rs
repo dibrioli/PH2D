@@ -104,7 +104,7 @@ pub use rail_painter_tools::sync_rail_to_stroke_method as sync_painter_rail_to_s
 /// Paint the Fill (Bucket) "Fill adjust" floating modal (gated on `store.fill_modal_pos()`). Re-exported
 /// so the hero paint pass can render it above the canvas alongside the other floating dialogs.
 pub use fill_modal::paint_fill_adjust_modal;
-pub use input_map::{binding_label, paint_input_map_window};
+pub use input_map::{binding_label, paint_input_map_window, sync_input_map_rows};
 
 /// Paint the Onion settings floating modal (ADR-0142 W3b; gated on `store.onion_modal_pos()`).
 /// Re-exported so the hero paint pass renders it alongside the other floating dialogs.

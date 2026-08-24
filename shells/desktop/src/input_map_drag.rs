@@ -71,11 +71,16 @@ impl crate::App {
         else {
             return;
         };
-        let Some(hit) = ph2d_input::GamepadButton::ALL
+        // ⚠️ **O botão primeiro, a haste depois.** Um comando em repouso já reporta um resíduo
+        // nos eixos; se a haste ganhasse, um analógico ligeiramente descentrado ligaria-se sozinho
+        // antes de o artista tocar num botão. O limiar abaixo é a segunda metade dessa defesa.
+        let hit = ph2d_input::GamepadButton::ALL
             .iter()
             .copied()
             .find(|b| self.input.gamepad.pressed(*b))
-        else {
+            .map(ph2d_input::Binding::PadButton)
+            .or_else(|| self.listening_axis_push());
+        let Some(b) = hit else {
             return;
         };
         let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
@@ -83,12 +88,35 @@ impl crate::App {
         };
         hero.store.stop_listening();
         if let Some(a) = hero.input_map.get_mut(armed) {
-            let b = ph2d_input::Binding::PadButton(hit);
             // ⚠️ Não duplica, pela razão do teclado: duas linhas iguais no painel seriam
             // indistinguíveis ao apagar.
             if !a.bindings.contains(&b) {
                 a.bindings.push(b);
             }
         }
+        let map = hero.input_map.clone();
+        ph2d_editor::screens::hero::chrome::sync_input_map_rows(&mut hero.store, &map);
+    }
+
+    /// **A haste empurrada a fundo** — a metade ANALÓGICA da escuta, e o que torna os dois números
+    /// da zona alcançáveis (sem um eixo ligado, eles não têm o que medir).
+    ///
+    /// ⚠️ **O limiar é `0,5` e ele é de GESTO, não de produto:** ele responde *"o artista empurrou
+    /// esta haste de propósito?"*, e não *"a partir de onde esta acção conta?"* — essa é a pergunta
+    /// do `press_point`, que o artista afina **depois**, na própria janela. Confundir os dois faria
+    /// a zona morta de uma acção depender de como ela foi ligada.
+    ///
+    /// ⚠️ E o SINAL decide a metade: empurrar para a esquerda liga a metade negativa. É o que faz
+    /// `move_left` e `move_right` serem duas acções sobre o mesmo eixo físico.
+    fn listening_axis_push(&self) -> Option<ph2d_input::Binding> {
+        /// Meio curso: fundo do curso é `1,0`, e o resíduo de um comando parado fica muito abaixo.
+        const PUSHED: f32 = 0.5;
+        ph2d_input::GamepadAxis::ALL.iter().copied().find_map(|axis| {
+            let v = self.input.gamepad.axis(axis);
+            (v.abs() >= PUSHED).then(|| ph2d_input::Binding::PadAxis {
+                axis,
+                positive: v > 0.0,
+            })
+        })
     }
 }

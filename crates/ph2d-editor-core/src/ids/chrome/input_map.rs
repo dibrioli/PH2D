@@ -43,6 +43,23 @@ pub fn input_map_listen_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("input_map.listen.{row}"))
 }
 
+/// **A ZONA MORTA** da acção `row` — abaixo dela a força é `0` (o ruído do analógico).
+///
+/// ⚠️ Um dos **DOIS** números que substituem o de duplo propósito do Godot. Ver [`crate`].
+#[must_use]
+pub fn input_map_deadzone_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("input_map.deadzone.{row}"))
+}
+
+/// **O PONTO DE DISPARO** da acção `row` — acima dele `pressed` é `true`.
+///
+/// ⚠️ O segundo dos dois. A porta da acção impõe `press_point >= dead_zone`, então arrastar um
+/// **empurra** o outro em vez de deixar nascer um estado incoerente.
+#[must_use]
+pub fn input_map_press_point_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("input_map.press_point.{row}"))
+}
+
 /// O **X** da ligação `bind` da acção `row` — apaga uma ligação só.
 #[must_use]
 pub fn input_map_delete_binding_id(row: usize, bind: usize) -> NodeId {

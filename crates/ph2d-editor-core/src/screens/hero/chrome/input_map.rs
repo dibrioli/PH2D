@@ -29,7 +29,7 @@ use crate::ids;
 use crate::interaction::{HitIndex, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
 use crate::screens::hero::HeroScreen;
-use crate::widget::{Button, ButtonKind, paint_button};
+use crate::widget::{Button, ButtonKind, Slider, paint_button, paint_slider};
 use crate::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_input::{Binding, InputMap};
@@ -71,6 +71,62 @@ pub fn binding_label(b: Binding) -> String {
             tr("input_map.binding.axis"),
             if positive { "+" } else { "-" }
         ),
+    }
+}
+
+/// **REGISTA os widgets de TODA linha do mapa** — a porta única, chamada onde a lista pode mudar.
+///
+/// ⚠️ **Uma lista DINÂMICA não cabe no `pre_populate`**, que é onde o resto do chrome regista: ali
+/// o número de linhas é conhecido de véspera (o painel de tokens tem uma por `ColorToken`). Aqui
+/// ele muda a cada acção criada ou apagada — e um widget pintado sem estar registrado é **morto sob
+/// o ponteiro**, que é o defeito que esta linha já pagou duas vezes em 23/08 (os quatro chips da
+/// booleana) e uma terceira nesta mesma wave (o campo de nome).
+///
+/// ⚠️ **Re-regista TODAS as linhas, e não só a que mudou.** É idempotente e custa uma dezena de
+/// escritas; a alternativa — lembrar de chamar a coisa certa em cada um dos caminhos de mutação —
+/// é a que se esquece no caminho seguinte que alguém acrescentar.
+pub fn sync_input_map_rows(store: &mut WidgetStore, map: &InputMap) {
+    for (row, a) in map.actions().iter().enumerate() {
+        for id in [
+            ids::input_map_delete_action_id(row),
+            ids::input_map_listen_id(row),
+        ] {
+            store.register(
+                id,
+                crate::interaction::InteractiveState::Button {
+                    state: crate::widget::ButtonState::Normal,
+                },
+            );
+        }
+        for bi in 0..a.bindings.len() {
+            store.register(
+                ids::input_map_delete_binding_id(row, bi),
+                crate::interaction::InteractiveState::Button {
+                    state: crate::widget::ButtonState::Normal,
+                },
+            );
+        }
+        // ⚠️ Os dois números da zona, **semeados do valor autorado** a cada sincronia: o
+        // `set_zone` COAGE (`press_point >= dead_zone`), então arrastar um pode mover o outro — e
+        // o slider tem de mostrar o valor que ficou, não o que o dedo pediu.
+        for (id, v) in [
+            (ids::input_map_deadzone_id(row), a.dead_zone),
+            (ids::input_map_press_point_id(row), a.press_point),
+        ] {
+            store.register(
+                id,
+                crate::interaction::InteractiveState::Slider {
+                    state: crate::widget::SliderState::Normal,
+                    value: v,
+                    orientation: crate::widget::SliderOrientation::Horizontal,
+                },
+            );
+            if let Some(crate::interaction::InteractiveState::Slider { value, .. }) =
+                store.get_mut(id)
+            {
+                *value = v;
+            }
+        }
     }
 }
 
@@ -259,6 +315,8 @@ pub fn paint_input_map_window(
 
         // O **Bind…** — e ele DIZ que está à escuta, em vez de mudar só de cor.
         let listen = ids::input_map_listen_id(row);
+        // ⚠️ O `Bind…` encolheu para os dois números caberem na MESMA linha: uma linha extra por
+        // acção faria a janela crescer 28 px por acção, e um mapa de dez acções sairia do ecrã.
         let listen_rect = Rect::new(inner_x + Spacing::Md.px(), cy, Spacing::Xl4.px() * 2.0, row_h);
         hit_index.register(listen, listen_rect);
         let armed = listening == Some(action.id);
@@ -281,12 +339,60 @@ pub fn paint_input_map_window(
             text_system,
             theme,
         );
+
+        // ⭐ **OS DOIS NÚMEROS DA ZONA**, à direita do `Bind…` e na mesma linha — a correcção à
+        // referência tornada alcançável. Um deles é o ruído (`dead_zone`), o outro é o gatilho
+        // (`press_point`), e a porta da acção mantém-nos coerentes.
+        let zone_w = Spacing::Xl4.px() * 2.0;
+        for (i, (id, label)) in [
+            (ids::input_map_deadzone_id(row), tr("input_map.dead_zone")),
+            (ids::input_map_press_point_id(row), tr("input_map.press_point")),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: indice 0/1, cabe em f32
+            let zx = rect.x + rect.w - Spacing::Xl.px() - zone_w * (2.0 - i as f32);
+            let zr = Rect::new(zx, cy, zone_w - Spacing::Xs.px(), row_h);
+            hit_index.register(id, zr);
+            let mut sl = Slider::new(id, label).visual(store.slider_visual(id));
+            sl.value = store.slider(id).map_or(0.0, |(_, v)| v);
+            paint_slider(&sl, zr, scene, theme);
+        }
         cy += row_h + gap;
     }
 }
 
 /// A metade de DESPACHO — ligada ao `dispatch_all` pelo `ph2d-chrome-sync`.
 pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
+    // ⭐ **OS DOIS NÚMEROS DA ZONA** — e eles chegam por `ValueChanged`, não por `Click`.
+    if let WidgetEvent::ValueChanged(id) = event {
+        let v = hero.store.slider(id).map_or(0.0, |(_, x)| x);
+        let ids_of: Vec<_> = hero.input_map.actions().iter().map(|a| a.id).collect();
+        for (row, aid) in ids_of.into_iter().enumerate() {
+            let is_dz = id == ids::input_map_deadzone_id(row);
+            let is_pp = id == ids::input_map_press_point_id(row);
+            if !is_dz && !is_pp {
+                continue;
+            }
+            if let Some(a) = hero.input_map.get_mut(aid) {
+                // ⚠️ **A porta da acção COAGE** (`press_point >= dead_zone`), então o outro número
+                // pode mover-se — e é por isso que a sincronia logo abaixo re-semeia os DOIS
+                // sliders: sem ela, o slider mostraria o valor que o dedo pediu em vez do que
+                // ficou, e o artista veria a janela discordar do produto.
+                let (dz, pp) = if is_dz {
+                    (v, a.press_point)
+                } else {
+                    (a.dead_zone, v)
+                };
+                a.set_zone(dz, pp);
+            }
+            let map = hero.input_map.clone();
+            sync_input_map_rows(&mut hero.store, &map);
+            return true;
+        }
+        return false;
+    }
     let WidgetEvent::Click(id) = event else {
         return false;
     };
@@ -299,6 +405,10 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         let v = hero.last_viewport;
         hero.store
             .open_input_map(v.x + Spacing::Xl4.px(), v.y + Spacing::Xl4.px());
+        // ⚠️ E as linhas do mapa que veio do FICHEIRO registam-se aqui: elas existiam antes de a
+        // janela existir, e nenhum gesto as criou nesta sessão.
+        let map = hero.input_map.clone();
+        sync_input_map_rows(&mut hero.store, &map);
         return true;
     }
     // ⭐ **A TECLA APANHADA** — o `Click` sintético que o despacho de teclado emitiu. Ele vem antes
@@ -319,6 +429,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
                 a.bindings.push(b);
             }
         }
+        let map = hero.input_map.clone();
+        sync_input_map_rows(&mut hero.store, &map);
         return true;
     }
     if hero.store.input_map_pos().is_none() {
@@ -344,6 +456,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         // linha no painel que nada pode usar.
         if !name.is_empty() {
             hero.input_map.create(&name);
+            let map = hero.input_map.clone();
+            sync_input_map_rows(&mut hero.store, &map);
             // ⚠️ Limpar o campo pela MESMA porta que o lê — `InteractiveState::TextInput`. Um
             // `set_text` proprio seria uma segunda escrita do mesmo facto.
             if let Some(crate::interaction::InteractiveState::TextInput { text, caret, .. }) =
@@ -361,6 +475,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     for (row, aid) in ids_of.into_iter().enumerate() {
         if id == ids::input_map_delete_action_id(row) {
             hero.input_map.remove(aid);
+            let map = hero.input_map.clone();
+            sync_input_map_rows(&mut hero.store, &map);
             // ⚠️ Apagar a acção à escuta **desarma** a escuta: senão a próxima tecla iria para um
             // id que já não existe, e sumiria sem que nada na tela dissesse porquê.
             if hero.store.input_map_listening() == Some(aid) {
@@ -386,6 +502,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
                 if let Some(a) = hero.input_map.get_mut(aid) {
                     a.bindings.remove(bi);
                 }
+                let map = hero.input_map.clone();
+                sync_input_map_rows(&mut hero.store, &map);
                 return true;
             }
         }

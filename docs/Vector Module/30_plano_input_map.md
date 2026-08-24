@@ -383,8 +383,14 @@ mensagem ao Enio** — sonda headless primeiro, `CLAUDE.md §0.0`.
    ⚠️ **Cinco gates pré-existentes foram RE-ANCORADOS, nenhum apagado** — a lei deles continua a
    valer, só mudou de endereço (`the_space_bar_is_not_a_jump_key` passou de scanner de texto a
    medição de comportamento, que é mais forte).
-6. **W6 — gamepad ao vivo** e a deadzone real no dispositivo. ⚠️ **Só aqui entra dependência nova**
-   (o `gilrs` já existe na shell); antes disso o `Cargo.lock` não ganha pacote externo.
+6. ✅ **W6 — O COMANDO — FEITA em 2026-08-24**, e **sem dependência nova** (o `gilrs` já estava na
+   shell e já bombeava para o retrato de dispositivos). A escuta apanha **botão** e **haste**; os
+   **dois números da zona** têm slider por acção, com a coerção da porta visível na janela.
+   ⚠️ **O botão vence a haste**, e o limiar da haste é `0,5` — um comando parado reporta resíduo
+   nos eixos, e sem essas duas defesas um analógico ligeiramente descentrado ligar-se-ia sozinho.
+   ⚠️ **O limiar da escuta é de GESTO, não de produto:** ele responde *"empurrou de propósito?"*; a
+   pergunta *"a partir de onde conta?"* é do `press_point`, que o artista afina depois — confundir
+   os dois faria a zona morta depender de **como** a acção foi ligada.
 
 > ⚠️ **Meça cada linha deste plano antes de a honrar.** Escrito em 2026-08-24; *quem move o número
 > reconfere a nota* ([estudo §6.6.1](Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)).

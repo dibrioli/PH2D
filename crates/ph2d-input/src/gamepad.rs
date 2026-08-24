@@ -114,6 +114,17 @@ pub enum GamepadAxis {
 }
 
 impl GamepadAxis {
+    /// **TODOS os eixos, em ordem estável** — irmão da [`GamepadButton::ALL`], e existe pela mesma
+    /// razão: um `match` exaustivo não guarda a lista que um laço percorre.
+    pub const ALL: [Self; 6] = [
+        Self::LeftStickX,
+        Self::LeftStickY,
+        Self::RightStickX,
+        Self::RightStickY,
+        Self::LeftTrigger,
+        Self::RightTrigger,
+    ];
+
     pub const fn as_lua_key(self) -> &'static str {
         match self {
             Self::LeftStickX => "left_stick_x",

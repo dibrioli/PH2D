@@ -251,3 +251,87 @@ fn an_empty_name_creates_nothing() {
     assert!(h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD)), "consome o clique");
     assert_eq!(h.input_map.len(), before, "nao pode ter nascido accao nenhuma");
 }
+
+/// ⭐⭐ **OS DOIS NÚMEROS DA ZONA SÃO ALCANÇÁVEIS PELA JANELA.**
+///
+/// ⚠️ Este é o gate que separa *"corrigimos a falha do Godot"* de *"corrigimos a falha do Godot e o
+/// artista não consegue lá chegar"*. A correcção (dois números em vez de um de duplo propósito) só
+/// é uma correcção se ela tiver um gesto.
+#[test]
+fn both_zone_numbers_are_reachable_from_the_window() {
+    let mut h = hero();
+    h.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP));
+    let row = row_of(&h, "jump");
+    let aid = h.input_map.id("jump").expect("existe");
+
+    for (id, want, read) in [
+        (
+            ids::input_map_deadzone_id(row),
+            0.30_f32,
+            (|a: &ph2d_input::InputAction| a.dead_zone) as fn(&ph2d_input::InputAction) -> f32,
+        ),
+        (
+            ids::input_map_press_point_id(row),
+            0.80,
+            (|a: &ph2d_input::InputAction| a.press_point) as fn(&ph2d_input::InputAction) -> f32,
+        ),
+    ] {
+        if let Some(ph2d_editor_core::interaction::InteractiveState::Slider { value, .. }) =
+            h.store.get_mut(id)
+        {
+            *value = want;
+        } else {
+            panic!("o slider {id:?} nao esta' REGISTRADO -- ele seria pintado e morto sob o dedo");
+        }
+        assert!(
+            h.apply_event(WidgetEvent::ValueChanged(id)),
+            "o arrasto do numero nao foi consumido"
+        );
+        let a = h.input_map.get(aid).expect("existe");
+        assert!(
+            (read(a) - want).abs() < 1e-6,
+            "o numero arrastado nao chegou a' accao: queria {want}, ficou {}",
+            read(a)
+        );
+    }
+}
+
+/// ⛔ **A COERÇÃO aparece na janela, e não só no modelo.**
+///
+/// ⚠️ A porta da acção mantém `press_point >= dead_zone`. Se o slider continuasse a mostrar o valor
+/// que o dedo pediu, a janela **discordaria do produto** — e o artista veria um número que não é o
+/// que o jogo usa. É o defeito mais caro de uma UI: mentir com confiança.
+#[test]
+fn dragging_the_dead_zone_past_the_press_point_shows_the_coerced_value() {
+    let mut h = hero();
+    h.apply_event(WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP));
+    let row = row_of(&h, "jump");
+    let aid = h.input_map.id("jump").expect("existe");
+    let (dz_id, pp_id) = (
+        ids::input_map_deadzone_id(row),
+        ids::input_map_press_point_id(row),
+    );
+
+    // A zona morta sobe ACIMA do ponto de disparo (que nasce em 0,5).
+    if let Some(ph2d_editor_core::interaction::InteractiveState::Slider { value, .. }) =
+        h.store.get_mut(dz_id)
+    {
+        *value = 0.90;
+    }
+    h.apply_event(WidgetEvent::ValueChanged(dz_id));
+
+    let a = h.input_map.get(aid).expect("existe");
+    assert!(
+        a.press_point >= a.dead_zone,
+        "o modelo aceitou `premida com forca zero`: dz={} pp={}",
+        a.dead_zone,
+        a.press_point
+    );
+    // ⭐ E o SLIDER mostra o valor coagido, e não o que o dedo pediu.
+    let shown = h.store.slider(pp_id).map_or(-1.0, |(_, v)| v);
+    assert!(
+        (shown - a.press_point).abs() < 1e-6,
+        "a janela mostra {shown} e o produto usa {} -- a UI esta' a mentir",
+        a.press_point
+    );
+}

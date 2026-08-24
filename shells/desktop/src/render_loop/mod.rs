@@ -231,6 +231,8 @@ mod run_stash;
 #[cfg(feature = "sculpt3d")]
 pub(crate) mod sculpt3d_panel_bridge;
 pub(crate) mod timeline_bridge;
+/// **A AUTORIA de uma chave** — irmão do `timeline_bridge` por teto de LOC (HR-18).
+mod timeline_bridge_keys;
 pub(crate) mod timeline_onion;
 mod timeline_presets;
 /// **A ponte do painel de TOKENS** (plano UI/UX W6) — o read-back do picker e os intents de

@@ -234,12 +234,16 @@ A outra razão **continua verdadeira**, e é o que decidiu o desenho: a escrita 
 da timeline, então declarar de lá inverteria a dependência. Por isso o shell mede **antes e depois**,
 exactamente como faz com o solver.
 
-⛔ **O que fica de fora, e o motivo é uma COLISÃO:** o `apply` escreve quatro componentes
-(`Transform`, `VecMorph`, `PhysicsJoint`, **`Sprite`**). Os três primeiros entram; o `Sprite` não —
-a §11 já o conduz, mas **por CAMPO** (o `frame`), e este censo é por COMPONENTE. As duas entradas
-coexistiriam no ledger e a substituição escreveria as duas: a última ganhava o `frame`. ⇒ **uma
-animação de opacidade pura ainda suja a captura**; a cura é um facto `SpriteTint` por campo, e cabe
-numa wave própria.
+✅ **E os QUATRO componentes que o `apply` escreve entram** (`Transform`, `VecMorph`,
+`PhysicsJoint`, `Sprite`).
+
+⚠️ **A 1.ª versão desta wave deixou o `Sprite` de fora**, e o motivo era real: a §11 já o conduz
+**por CAMPO** (o `frame`), e um facto por COMPONENTE escreveria por cima dela. ⭐ **A cura foi olhar
+o que a curva de facto escreve:** `sprite.tint[3] = f` — **um número**. Os outros dois
+não-`Transform` são iguais (`morph.t = f`, um campo do joint). ⇒ o ledger ganhou factos **tão
+estreitos quanto a escrita**, e a colisão **dissolveu-se** em vez de ser contornada. *Quando duas
+granularidades colidem, a pergunta é qual delas é grosseira demais para o que o motor de facto
+faz.* Há gate a provar que o `frame` e a opacidade são conduzidos **lado a lado** na mesma sprite.
 
 ⚠️ O `timeline_bridge::run` continua **sem arnês headless** (nove pedaços de estado do shell, zero
 chamadores fora do laço de quadro) — a costura dele é coberta por um arch-gate de FONTE que afirma a

@@ -19,7 +19,7 @@ use sculpt_source::{function_body, source};
 fn the_bridge_measures_before_the_apply_and_declares_after() {
     let body = function_body(&source("render_loop/timeline_bridge.rs"), "run");
     let census = body
-        .find("poses_of_bindings")
+        .find("state_of_bindings")
         .expect("a ponte precisa de fotografar as poses antes do apply");
     let apply = body
         .find("apply_scene(")

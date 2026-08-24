@@ -21,41 +21,67 @@
 //! **antes e depois** — exactamente como faz com o solver, e pela mesma razão: é a única forma
 //! exacta de saber o que aquele passe escreveu sem lhe mudar a API.
 //!
-//! # ⛔ O que fica de fora, e o motivo é uma COLISÃO
+//! # Os QUATRO componentes que o `apply` escreve, e porque nenhum colide
 //!
-//! O `apply` escreve quatro componentes: `Transform`, `VecMorph`, `PhysicsJoint` e **`Sprite`** (a
-//! opacidade, que vive no `tint`). Os três primeiros entram; o `Sprite` **não**.
+//! Ele escreve `Transform`, `VecMorph`, `PhysicsJoint` e **`Sprite`** — e os **quatro** entram.
 //!
-//! ⚠️ A razão é que a §11 já conduz o `Sprite` — mas **por CAMPO** (o `frame`), e este censo é por
-//! COMPONENTE. As duas entradas coexistiriam no ledger com chaves diferentes, e a substituição
-//! escreveria as duas: a que corresse por último ganhava o `frame`. *Duas granularidades sobre o
-//! mesmo componente é uma divergência à espera de acontecer*, e o preço de a evitar é uma linha
-//! nesta lista em vez de um defeito que aparece «às vezes».
+//! ⚠️ **A 1.ª versão desta wave deixou o `Sprite` de fora**, e o motivo era real: a §11 já o conduz
+//! **por CAMPO** (o `frame`), e um facto por COMPONENTE escreveria por cima dela — a entrada que
+//! corresse por último ganhava. *Duas granularidades sobre o mesmo componente é uma divergência à
+//! espera de acontecer.*
 //!
-//! ⇒ Uma animação de **opacidade** pura ainda suja a captura. A cura é dar ao ledger um facto
-//! `SpriteTint` (por campo, como o `SpriteAnim`), e ela cabe numa wave própria.
+//! ⭐ **A cura foi olhar o que a curva de facto escreve:** `sprite.tint[3] = f` — **um** número. Os
+//! outros dois não-`Transform` são iguais (`morph.t = f`, e um campo do joint). ⇒ o ledger ganhou
+//! factos **tão estreitos quanto a escrita** (`SpriteAlpha`, `MorphT`), e a colisão dissolveu-se em
+//! vez de ser contornada. *Quando duas granularidades colidem, a pergunta é qual delas é grosseira
+//! demais para o que o motor de facto faz.*
+//!
+//! ⚠️ O `PhysicsJoint` vai **inteiro**, e ali isso é correcto: nenhum outro motor o conduz por
+//! campo, e a curva pode keyar qualquer um dos parâmetros dele.
 
 use crate::preview_drive::{Driven, PreviewDrive};
 use ph2d_ecs::{Entity, Transform, World};
 use ph2d_timeline::TimelineDoc;
 
-/// A pose de cada entidade que o documento anima — **uma por entidade**, mesmo que ela tenha dez
-/// props keyadas.
+/// O que uma entidade keyada tinha **antes** do `apply` — os quatro factos que as curvas escrevem.
+///
+/// ⚠️ Cada um é `Option` porque uma entidade keyada **não tem** necessariamente os quatro: uma
+/// forma vetorial não é um joint, e um sprite não tem morph. Ausente = nada a comparar.
+pub(crate) struct BoundBefore {
+    pub(crate) entity: Entity,
+    pub(crate) pose: Option<Transform>,
+    pub(crate) alpha: Option<f32>,
+    pub(crate) morph_t: Option<f32>,
+    pub(crate) joint: Option<ph2d_physics_ecs::PhysicsJoint>,
+}
+
+/// O estado de cada entidade que o documento anima — **uma entrada por entidade**, mesmo que ela
+/// tenha dez props keyadas.
+///
+/// ⚠️ Ela chamou-se `poses_of_bindings` enquanto só olhava o `Transform`; o nome deixou de dizer a
+/// verdade quando ela passou a carregar os quatro factos, e um nome que mente é pior que um longo.
 ///
 /// ⚠️ **Ordenado e sem repetidos** por construção: a mesma entidade aparece numa binding por prop
-/// (`TranslationX` e `TranslationY` são duas), e declarar a mesma pose duas vezes é trabalho a
-/// dobrar por nada.
+/// (`TranslationX` e `TranslationY` são duas), e ler a mesma pose duas vezes é trabalho a dobrar
+/// por nada.
 #[must_use]
-pub(crate) fn poses_of_bindings(world: &World, doc: &TimelineDoc) -> Vec<(Entity, Transform)> {
+pub(crate) fn state_of_bindings(world: &World, doc: &TimelineDoc) -> Vec<BoundBefore> {
     let mut bits: Vec<u64> = doc.bindings().iter().map(|b| b.entity).collect();
     bits.sort_unstable();
     bits.dedup();
     bits.into_iter()
         .filter_map(|b| {
-            let e = Entity::try_from_bits(b)?;
+            let entity = Entity::try_from_bits(b)?;
             // Uma binding pendurada (o objeto foi apagado) é MOSTRADA a vermelho de propósito —
-            // ela não é um erro, é estado que o artista precisa de ver.
-            Some((e, *world.get::<Transform>(e)?))
+            // ela não é um erro, é estado que o artista precisa de ver. Aqui ela some do censo.
+            world.get_entity(entity).ok()?;
+            Some(BoundBefore {
+                entity,
+                pose: world.get::<Transform>(entity).copied(),
+                alpha: world.get::<ph2d_render::Sprite>(entity).map(|s| s.tint[3]),
+                morph_t: world.get::<ph2d_ecs::VecMorph>(entity).map(|m| m.t),
+                joint: world.get::<ph2d_physics_ecs::PhysicsJoint>(entity).copied(),
+            })
         })
         .collect()
 }
@@ -67,15 +93,37 @@ pub(crate) fn poses_of_bindings(world: &World, doc: &TimelineDoc) -> Vec<(Entity
 /// sem nada para esquecer: a reprodução nunca acabaria aos olhos do undo.
 pub(crate) fn declare_timeline_writes(
     world: &World,
-    before: &[(Entity, Transform)],
+    before: &[BoundBefore],
     drive: &mut PreviewDrive,
 ) {
-    for &(entity, was) in before {
-        let Some(now) = world.get::<Transform>(entity) else {
-            continue; // o objeto saiu da cena neste quadro
-        };
-        if *now != was {
-            drive.driven(entity, Driven::SolverPose(was), Driven::SolverPose(*now));
+    for b in before {
+        let e = b.entity;
+        // ⚠️ **Uma linha por facto, e o `zip` de `Option`s é o guarda**: um facto que a entidade
+        // não tinha antes e não tem agora não se declara, e um que ela perdeu no meio do quadro
+        // (o componente foi removido) também não — não há o que repor.
+        if let (Some(was), Some(now)) = (b.pose, world.get::<Transform>(e).copied())
+            && was != now
+        {
+            drive.driven(e, Driven::SolverPose(was), Driven::SolverPose(now));
+        }
+        if let (Some(was), Some(now)) = (
+            b.alpha,
+            world.get::<ph2d_render::Sprite>(e).map(|s| s.tint[3]),
+        ) && was != now
+        {
+            drive.driven(e, Driven::SpriteAlpha(was), Driven::SpriteAlpha(now));
+        }
+        if let (Some(was), Some(now)) = (b.morph_t, world.get::<ph2d_ecs::VecMorph>(e).map(|m| m.t))
+            && was != now
+        {
+            drive.driven(e, Driven::MorphT(was), Driven::MorphT(now));
+        }
+        if let (Some(was), Some(now)) = (
+            b.joint,
+            world.get::<ph2d_physics_ecs::PhysicsJoint>(e).copied(),
+        ) && was != now
+        {
+            drive.driven(e, Driven::JointParams(was), Driven::JointParams(now));
         }
     }
 }

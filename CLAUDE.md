@@ -631,10 +631,11 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   que o deixava de fora estava ERRADA no ponto que decidia o preço:** ela dizia que o censo era
   `O(mundo)`; o `TimelineDoc` **nomeia** quem ele anima (`doc.bindings()`), então é `O(bindings)`.
   *Uma ausência afirmada sem olhar a API é um palpite com cara de medição* — a segunda no mesmo dia
-  (a outra: «este app não tem diálogo de ficheiro»). ⛔ **Fica de fora o `Sprite` (a opacidade), e o
-  motivo é uma COLISÃO de granularidade**: a §11 já conduz aquele componente por CAMPO e este censo
-  é por componente — as duas entradas escreveriam por cima uma da outra. Uma animação de opacidade
-  pura ainda suja a captura; a cura é um facto `SpriteTint`
+  (a outra: «este app não tem diálogo de ficheiro»). ⭐ **E os QUATRO componentes que a timeline
+  escreve entram**: o `Sprite` ficou de fora na 1.ª versão por uma COLISÃO de granularidade (a §11
+  conduz aquele componente por CAMPO), e a cura foi **olhar o que a curva de facto escreve** —
+  `tint[3]` é um número, não o `Sprite`. *Quando duas granularidades colidem, a pergunta é qual
+  delas é grosseira demais para o que o motor faz*
   ([auditoria 21 §4](docs/Sprite_projeto/21_auditoria_da_animacao_2026-08-23.md)) ·
   **Aberto:**
   ✅ **O FICHEIRO DO PROJETO TEM NOME** (2026-08-23, [`project_io.rs`](shells/desktop/src/project_io.rs)):

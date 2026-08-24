@@ -79,7 +79,7 @@ fn a_playing_timeline_is_not_an_edit() {
     let mut t = 0.0;
     for _ in 0..24 {
         t += 1.0 / 60.0;
-        let before = crate::timeline_preview::poses_of_bindings(sim.world(), &doc);
+        let before = crate::timeline_preview::state_of_bindings(sim.world(), &doc);
         ph2d_timeline::apply_from_doc(sim.world_mut(), &mut doc, t);
         crate::timeline_preview::declare_timeline_writes(sim.world(), &before, &mut drive);
         drive.settle();
@@ -118,7 +118,7 @@ fn the_census_only_looks_at_what_the_document_animates() {
         sim.world_mut()
             .spawn((Transform::default(), Name::new(format!("Extra {i}"))));
     }
-    let poses = crate::timeline_preview::poses_of_bindings(sim.world(), &doc);
+    let poses = crate::timeline_preview::state_of_bindings(sim.world(), &doc);
     assert_eq!(
         poses.len(),
         1,
@@ -144,7 +144,7 @@ fn an_entity_keyed_on_two_axes_is_censused_once() {
         "a fixtura precisa de duas bindings"
     );
     assert_eq!(
-        crate::timeline_preview::poses_of_bindings(sim.world(), &doc).len(),
+        crate::timeline_preview::state_of_bindings(sim.world(), &doc).len(),
         1
     );
 }
@@ -155,5 +155,123 @@ fn an_entity_keyed_on_two_axes_is_censused_once() {
 fn a_dangling_binding_does_not_break_the_census() {
     let (mut sim, e, doc) = rig();
     sim.world_mut().despawn(e);
-    assert!(crate::timeline_preview::poses_of_bindings(sim.world(), &doc).is_empty());
+    assert!(crate::timeline_preview::state_of_bindings(sim.world(), &doc).is_empty());
+}
+
+/// **UMA CURVA DE OPACIDADE TAMBÉM NÃO É UMA EDIÇÃO** — o caso que a 1.ª versão desta wave deixou
+/// de fora, e que uma animação de *fade* produz o tempo todo.
+///
+/// ⚠️ **A colisão que o justificava DISSOLVEU-SE, e a cura foi olhar o que a curva escreve:**
+/// `sprite.tint[3] = f` é **um número**, não o `Sprite` inteiro. O facto do ledger passou a ser tão
+/// estreito quanto a escrita, e deixou de disputar o componente com o `frame` da §11. *Quando duas
+/// granularidades colidem, a pergunta é qual delas é grosseira demais para o que o motor faz.*
+///
+/// **Mutação que deve sangrar:** tirar o braço do `alpha` do `declare_timeline_writes`.
+#[test]
+fn a_fading_opacity_is_not_an_edit_either() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            Name::new("Fading"),
+            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        ))
+        .id();
+    let mut doc = TimelineDoc::new();
+    for (t, v) in [(0.0, 1.0_f32), (2.0, 0.0)] {
+        doc.insert_key(
+            e.to_bits(),
+            PropKind::Opacity,
+            RationalTime::from_seconds(t),
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
+    }
+    let mut drive = PreviewDrive::default();
+    let at_rest = capture(&drive, &mut sim, &reg);
+    let mut t = 0.0;
+    for _ in 0..24 {
+        t += 1.0 / 60.0;
+        let before = crate::timeline_preview::state_of_bindings(sim.world(), &doc);
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut doc, t);
+        crate::timeline_preview::declare_timeline_writes(sim.world(), &before, &mut drive);
+        drive.settle();
+        assert_eq!(
+            capture(&drive, &mut sim, &reg),
+            at_rest,
+            "o fade mudou a captura — cada clique viraria um passo de Ctrl+Z vazio"
+        );
+    }
+    // CONTROLO POSITIVO: a opacidade DESCEU de facto.
+    assert!(
+        sim.world().get::<ph2d_render::Sprite>(e).unwrap().tint[3] < 0.9,
+        "a curva nao mexeu na opacidade — o gate acima nao mediu nada"
+    );
+}
+
+/// **A OPACIDADE E O FRAME COEXISTEM na mesma sprite** — e é isto que a 1.ª versão não conseguia.
+///
+/// ⚠️ Duas conduções sobre o **mesmo componente**, com granularidades diferentes: a §11 possui o
+/// `frame`, a timeline possui o `tint[3]`. Elas só coexistem porque **nenhuma das duas escreve o
+/// `Sprite` inteiro** — se uma o fizesse, a substituição escreveria por cima da outra e a que
+/// corresse por último ganhava.
+///
+/// **Mutação que deve sangrar:** o `SpriteAlpha::write` escrever o `tint` inteiro é benigno, mas
+/// fazê-lo escrever também o `frame` (o componente todo) parte este gate.
+#[test]
+fn the_frame_and_the_alpha_are_driven_side_by_side() {
+    use crate::preview_drive::Driven;
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::default(),
+            Name::new("Both"),
+            ph2d_render::Sprite {
+                hframes: 4,
+                vframes: 1,
+                ..ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4])
+            },
+            // ⚠️ **O animador faz parte da fixtura**, e o gate ensinou-o: o facto `SpriteAnim` é
+            // lido do PAR (`SpriteAnimator` + `Sprite`), então uma sprite sem tocador não é
+            // conduzida pela §11 — a substituição salta-a, e o gate reprova a dizer que o
+            // documento não guardou a célula. *Uma fixtura só prova o que ela contém.*
+            ph2d_ecs::SpriteAnimator::new("walk"),
+        ))
+        .id();
+    let mut drive = PreviewDrive::default();
+    // A §11 avançou o frame 0 → 2; a timeline baixou o alfa 1,0 → 0,4.
+    drive.driven(
+        e,
+        Driven::SpriteAnim {
+            elapsed_ticks: 0,
+            pingpong_reverse: false,
+            repeat_count: 0,
+            frame: 0,
+        },
+        Driven::SpriteAnim {
+            elapsed_ticks: 100,
+            pingpong_reverse: false,
+            repeat_count: 0,
+            frame: 2,
+        },
+    );
+    drive.driven(e, Driven::SpriteAlpha(1.0), Driven::SpriteAlpha(0.4));
+    if let Some(mut s) = sim.world_mut().get_mut::<ph2d_render::Sprite>(e) {
+        s.frame = 2;
+        s.tint[3] = 0.4;
+    }
+    let live = drive.substitute_authored(&mut sim);
+    let doc_sprite = *sim.world().get::<ph2d_render::Sprite>(e).unwrap();
+    assert_eq!(doc_sprite.frame, 0, "o documento guarda a celula autorada");
+    assert_eq!(doc_sprite.tint[3], 1.0, "…E a opacidade autorada, as DUAS");
+    PreviewDrive::restore_live(&mut sim, &live);
+    let back = *sim.world().get::<ph2d_render::Sprite>(e).unwrap();
+    assert_eq!(
+        (back.frame, back.tint[3]),
+        (2, 0.4),
+        "e o vivo volta inteiro"
+    );
 }

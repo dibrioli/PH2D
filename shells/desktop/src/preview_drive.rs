@@ -76,8 +76,15 @@ use std::collections::BTreeMap;
 pub(crate) enum Driver {
     /// O relógio da §11 Animation e o índice de célula que ele produz.
     SpriteAnim,
-    /// A pose que o solver escreve enquanto o mundo corre (ADR-0131).
+    /// A pose que o solver escreve enquanto o mundo corre (ADR-0131) — e a que as curvas da
+    /// timeline escrevem, que é o mesmo facto vindo de outro motor.
     SolverPose,
+    /// A **opacidade** que uma curva de `Opacity` escreve (`Sprite::tint[3]`).
+    SpriteAlpha,
+    /// O `t` de um `VecMorph` que uma curva de `Morph` escreve.
+    MorphT,
+    /// Os parâmetros de um `PhysicsJoint` que as curvas de joint escrevem.
+    JointParams,
 }
 
 /// **O FACTO que um motor escreve** — o recorte exacto do componente que é dele, e nada mais.
@@ -97,8 +104,19 @@ pub(crate) enum Driven {
         repeat_count: u32,
         frame: u32,
     },
-    /// A pose de um corpo rígido.
+    /// A pose de um corpo rígido — ou de um objeto keyado.
     SolverPose(Transform),
+    /// ⚠️ **Um `f32`, e não o `Sprite` inteiro.** A §11 já conduz aquele componente pelo `frame`,
+    /// e duas granularidades sobre o mesmo componente escreveriam por cima uma da outra — a que
+    /// corresse por último ganhava. O que a curva de `Opacity` escreve é **um** número
+    /// (`tint[3]`), então é um número que se guarda.
+    SpriteAlpha(f32),
+    /// O `t` de um `VecMorph` — também **um** número, pela mesma razão.
+    MorphT(f32),
+    /// ⚠️ O joint vai **inteiro**, e aqui isso é correcto: nenhum outro motor o conduz por campo, e
+    /// a curva pode keyar qualquer um dos parâmetros dele (o alvo do servo, a taxa, os
+    /// comprimentos). Guardar o struct é mais barato que uma variante por campo, e ele é `Copy`.
+    JointParams(ph2d_physics_ecs::PhysicsJoint),
 }
 
 impl Driven {
@@ -107,6 +125,9 @@ impl Driven {
         match self {
             Self::SpriteAnim { .. } => Driver::SpriteAnim,
             Self::SolverPose(_) => Driver::SolverPose,
+            Self::SpriteAlpha(_) => Driver::SpriteAlpha,
+            Self::MorphT(_) => Driver::MorphT,
+            Self::JointParams(_) => Driver::JointParams,
         }
     }
 
@@ -126,6 +147,15 @@ impl Driven {
                 })
             }
             Driver::SolverPose => Some(Self::SolverPose(*sim.world().get::<Transform>(entity)?)),
+            Driver::SpriteAlpha => Some(Self::SpriteAlpha(
+                sim.world().get::<Sprite>(entity)?.tint[3],
+            )),
+            Driver::MorphT => Some(Self::MorphT(
+                sim.world().get::<ph2d_ecs::VecMorph>(entity)?.t,
+            )),
+            Driver::JointParams => Some(Self::JointParams(
+                *sim.world().get::<ph2d_physics_ecs::PhysicsJoint>(entity)?,
+            )),
         }
     }
 
@@ -164,6 +194,29 @@ impl Driven {
                     && *t != pose
                 {
                     *t = pose;
+                }
+            }
+            Self::SpriteAlpha(a) => {
+                if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(entity)
+                    && s.tint[3] != a
+                {
+                    s.tint[3] = a;
+                }
+            }
+            Self::MorphT(v) => {
+                if let Some(mut m) = sim.world_mut().get_mut::<ph2d_ecs::VecMorph>(entity)
+                    && m.t != v
+                {
+                    m.t = v;
+                }
+            }
+            Self::JointParams(j) => {
+                if let Some(mut cur) = sim
+                    .world_mut()
+                    .get_mut::<ph2d_physics_ecs::PhysicsJoint>(entity)
+                    && *cur != j
+                {
+                    *cur = j;
                 }
             }
         }

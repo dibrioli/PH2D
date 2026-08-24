@@ -681,3 +681,46 @@ sobre um objeto keyado e afirmam que a captura não se mexe durante a reproduç�
 positivo (o objeto **andou**) e a metade oposta (parar deixa **um** passo).
 
 **5 gates novos** (3 da lei + 2 de alcance), **4 mutações**, todas sangraram.
+
+### §17-bis — ⭐ A colisão que deixou o `Sprite` de fora **DISSOLVEU-SE**, e a família fecha
+
+A §17 declarou o `Sprite` como resíduo, com um motivo real: a §11 conduz aquele componente **por
+CAMPO** (o `frame`) e o censo era por **componente** — as duas entradas escreveriam por cima uma da
+outra.
+
+⭐ **A cura foi olhar o que a curva de facto escreve:** `sprite.tint[3] = f` — **um número**. E os
+outros dois não-`Transform` são iguais: `morph.t = f`, e **um** campo do joint. ⇒ o ledger ganhou
+factos **tão estreitos quanto a escrita** (`SpriteAlpha(f32)`, `MorphT(f32)`,
+`JointParams(PhysicsJoint)`), e a colisão **deixou de existir** em vez de ser contornada.
+
+> *Quando duas granularidades colidem, a pergunta é qual delas é grosseira demais para o que o
+> motor de facto faz.*
+
+⇒ **Os QUATRO componentes que o `apply` escreve entram**, e há gate a provar que o `frame` e a
+opacidade são conduzidos **lado a lado** na mesma sprite. Uma animação de *fade* deixou de sujar a
+captura.
+
+⚠️ **O gate da coexistência apanhou a MINHA fixtura**, e a lição é a de sempre: a sprite de teste
+não tinha `SpriteAnimator`, e o facto `SpriteAnim` é lido do **par** (`SpriteAnimator` + `Sprite`) —
+sem tocador não há condução, a substituição salta-a, e o gate reprovou a dizer que o documento não
+guardara a célula. *Uma fixtura só prova o que ela contém.* Corrigiu-se a **cena**, não o teste.
+
+### §17-ter — O que a wave obrigou a cortar (e o ICE que escondeu a reprovação)
+
+⚠️ **O `timeline_bridge.rs` estava EXACTAMENTE no teto** (600/600, HR-18) e as quatro linhas da
+declaração empurraram-no. *Quem toca num ficheiro que está no limite é quem paga o corte, e a cura
+é o corte para um irmão — nunca uma isenção.*
+
+O corte é por **responsabilidade**: fica no pai o que corre **a cada quadro** (o relógio, os
+intents, o apply, os sinais); sai para `timeline_bridge_keys.rs` o que responde *«que chave é que
+este K insere, e onde?»* (`sample_prop_value` → `default_interp`). **600 → 406.**
+⚠️ **Os endereços NÃO mudaram** — o pai re-exporta (`pub(crate) use …_keys::*`), então nenhum
+chamador mexeu numa linha. *Um corte que obriga vinte ficheiros a mudar de `use` é um corte que
+ninguém volta a fazer.*
+
+⛔ **E a reprovação esteve escondida por um ICE do rustc** (`dep_graph/serialized.rs`) — cache
+incremental corrompido por builds concorrentes, que é o que se ganha por correr `clippy` e a suíte
+ao mesmo tempo, ou por editar a árvore com um teste a correr. `rm -rf target/debug/incremental`
+curou, e a corrida limpa mostrou o defeito real. ⚠️ **Duas vezes no mesmo dia eu editei ficheiros
+com a suíte a correr e reportei uma reprovação que não era do código** — a leitura só vale com a
+árvore quieta.

@@ -9,6 +9,14 @@ extend-ignore-identifiers-re = [
     # Abbreviated git commit hashes quoted in handoffs — typos tokenizes a
     # hex hash like `b685beed` and reads "beed" wanting "bead"/"been".
     "\\b[0-9a-f]{8,40}\\b",
+    # `dispersa` — português: *«uma magnitude dispersa-se multiplicando»*, do
+    # `motion.randomize`. O typos lê-a como `dispensary`, que não é uma palavra que
+    # este repo alguma vez escreveria. Ancorada, e a família inteira (`dispersa`,
+    # `dispersam`) porque a doença é a raiz e não a flexão.
+    "^dispersa(m|-se)?$",
+    # `excepcional` — português (pt-PT / pt-BR pré-reforma). O typos quer `exceptional`,
+    # que é inglês; a palavra está certa no idioma em que o doc está escrito.
+    "^excepcional$",
     # mlua + Luau API surface and types
     "luau",
     "mlua",

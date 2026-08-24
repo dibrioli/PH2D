@@ -475,8 +475,11 @@ fn fill_curve_lut_samples_the_curve_and_falls_back_to_identity() {
 /// `curvature` (do Quadratic) e o `steps` (do Step/Quantize). Um controle vivo que não
 /// muda nada é indistinguível de um bug — e foi lido como um.
 ///
-/// ⛔ O `curve` (o editor) fica FORA da tabela de propósito — ver o doc do
-/// [`PARAM_GATES`].
+/// ⭐⭐ **E desde 2026-08-24 o `curve` (o editor) está DENTRO da tabela** — a cerca que o
+/// deixava de fora dissolveu pelo mesmo tipo de report que a criou, vindo do irmão
+/// `motion.oscillator` (*«Wave curve dos osciladores não está funcionando»*): um editor de
+/// forma vivo num modo que não o lê é indistinguível de um partido, e a cerca trocava um
+/// report por outro. O mecanismo está no doc do [`PARAM_GATES`].
 #[test]
 fn every_contour_number_is_gated_to_the_contour_that_reads_it() {
     let by = |p: &str| {
@@ -490,17 +493,31 @@ fn every_contour_number_is_gated_to_the_contour_that_reads_it() {
     assert_eq!(by("curve_offset").values, &[4]);
     for g in PARAM_GATES {
         assert_eq!(g.when, "contour", "todos gateiam pelo mesmo modo");
-        assert_ne!(
-            g.param, CURVE_KEY,
-            "o editor de curva NÃO é gateado — ver o doc de PARAM_GATES"
-        );
     }
-    // CONTROLE: cada param gateado existe mesmo no manifesto (um nome mal escrito
-    // esconderia nada e passaria verde).
+    // ⭐ E a FORMA anda com o NÚMERO dela: o `curve_offset` só existe no contorno `Curve`,
+    // e o editor que ele desloca também. Os dois no mesmo `values` é o que impede um deles
+    // de sobreviver a uma mudança de modo sem o outro — um offset sem curva para deslocar,
+    // ou uma curva cujo deslocamento sumiu, são os dois metade de um controle.
+    assert_eq!(
+        by(CURVE_KEY).values,
+        by("curve_offset").values,
+        "o editor e o offset dele vivem no MESMO contorno"
+    );
+    // CONTROLE: cada param gateado existe mesmo (um nome mal escrito esconderia nada e
+    // passaria verde).
+    //
+    // ⚠️ **E ele tem de olhar para os DOIS canais.** Ele perguntava só ao `MANIFEST`, e no
+    // dia em que o editor de curva entrou na tabela acusou `«curve não é param deste nó»`
+    // — sobre produto correcto: uma curva **não é** um `ParamSpec`, ela vive no canal de
+    // texto, por decisão registada. *É o mesmo ponto cego que deixou o editor mudo do
+    // `motion.oscillator` passar, um nível abaixo: um censo que só conhece um dos dois
+    // canais não vê metade dos controles.*
     for g in PARAM_GATES {
+        let numeric = MANIFEST.params.iter().any(|p| p.name == g.param);
+        let shape = g.param == CURVE_KEY;
         assert!(
-            MANIFEST.params.iter().any(|p| p.name == g.param),
-            "`{}` não é param deste nó",
+            numeric || shape,
+            "`{}` não é param deste nó -- nem número no manifesto, nem forma no canal de texto",
             g.param
         );
     }

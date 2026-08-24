@@ -71,6 +71,7 @@ ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
 ph2d-node-motion-path = { path = "../ph2d-node-motion-path" }
 ph2d-node-motion-pin-constraint = { path = "../ph2d-node-motion-pin-constraint" }
 ph2d-node-motion-proximity = { path = "../ph2d-node-motion-proximity" }
+ph2d-node-motion-randomize = { path = "../ph2d-node-motion-randomize" }
 ph2d-node-motion-rotate = { path = "../ph2d-node-motion-rotate" }
 ph2d-node-motion-scale = { path = "../ph2d-node-motion-scale" }
 ph2d-node-motion-scatter = { path = "../ph2d-node-motion-scatter" }

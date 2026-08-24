@@ -1,5 +1,5 @@
 [package]
-name = "ph2d-node-motion-oscillator"
+name = "ph2d-node-motion-randomize"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,9 +10,6 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-ph2d-curve = { path = "../ph2d-curve" }
+ph2d-color = { path = "../ph2d-color" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
 ph2d-node-registry = { path = "../ph2d-node-registry" }
-
-[dev-dependencies]
-ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }

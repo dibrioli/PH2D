@@ -64,6 +64,12 @@ fn selected_field_remap_yields_an_interactive_curve_row() {
     use ph2d_panel_motion_params::ParamRow;
     let mut motion = MotionState::new();
     let rm = motion.doc.graph.add_node("field.remap");
+    // ⚠️ **O contorno é ESCOLHIDO, e isso é a reconciliação que a cerca do nó nomeava.**
+    // Desde 2026-08-24 o editor de curva é gateado a `contour = Curve`: ele deixou de ser
+    // oferecido nos contornos que não o lêem, que é o que o report do `motion.oscillator`
+    // mostrou ser lido como «não está funcionando». Sem esta linha a fixture pergunta pelo
+    // editor num modo em que ele já não existe — e isso é produto correcto, não regressão.
+    motion.doc.graph.set_param(rm, "contour", 4.0);
     motion
         .doc
         .graph

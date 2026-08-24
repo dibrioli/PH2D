@@ -121,6 +121,7 @@ pub(crate) mod conferencia_demos_echo;
 /// pura dos params, e pô-la a mexer esconderia o que a cena existe para mostrar.
 #[path = "motion_state_conferencia_demos_born.rs"]
 pub(crate) mod conferencia_demos_born;
+
 #[path = "motion_state_conferencia_demos_ladder.rs"]
 pub(crate) mod conferencia_demos_ladder;
 /// A cena do EMISSOR QUE DEIXA RASTO (`=89`) — os tres modos de `Emitter Motion`.
@@ -132,6 +133,12 @@ pub(crate) mod conferencia_demos_plume;
 pub(crate) mod conferencia_demos_sibling;
 #[path = "motion_state_conferencia_demos_slice.rs"]
 pub(crate) mod conferencia_demos_slice;
+/// A cena da FORMA DESENHADA e da VARIAÇÃO POR ELEMENTO (`=94`) — o editor de curva do
+/// oscilador curado, e o `motion.randomize` nos quatro canais que o report nomeou.
+/// ⚠️ Ela fecha SEM `motion.tint` a jusante de propósito: três das fileiras variam a COR, e
+/// um nó de cor depois escreveria a coluna `tint` por cima do que a variação dispersou.
+#[path = "motion_state_conferencia_demos_vary.rs"]
+pub(crate) mod conferencia_demos_vary;
 
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.

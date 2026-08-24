@@ -159,80 +159,13 @@ use signals::signal_nodes;
 #[cfg(feature = "panel-motion-graph")]
 #[path = "motion_bridge_intents.rs"]
 mod intents;
+
+/// Os 22 módulos de TESTE desta membrana — declarados num irmão pelo teto de LOC (HR-18).
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_test_mods.rs"]
+mod test_mods;
 #[cfg(feature = "panel-motion-graph")]
 use intents::apply_graph_intents;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_arrange_tests.rs"]
-mod arrange_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_backdrop_tests.rs"]
-mod backdrop_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_bypass_tests.rs"]
-mod bypass_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_channel_tests.rs"]
-mod channel_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_colour_tests.rs"]
-mod colour_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_connect_tests.rs"]
-mod connect_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_dock_height_tests.rs"]
-mod dock_height_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_dock_tests.rs"]
-mod dock_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_edit_tests.rs"]
-mod edit_tests;
-/// O censo do TETO de opções — o mesmo do `rowcap_tests` um nível abaixo: aquele pina que a
-/// ROW aparece, este que as OPÇÕES dentro dela aparecem.
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_enumcap_tests.rs"]
-mod enumcap_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_library_tests.rs"]
-mod library_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_param_tests.rs"]
-mod param_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_plumbing_tests.rs"]
-mod plumbing_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_range_tests.rs"]
-mod range_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_rename_tests.rs"]
-mod rename_tests;
-/// O gesto de REVERTER um param ao default — a metade que vive na ponte (o conjunto de
-/// modificados que o painel lê, pelos dois canais).
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_reset_tests.rs"]
-mod reset_tests;
-/// O censo do TETO de linhas — o terceiro irmão do `range_tests`/`unit_tests`: eles pinam a
-/// escala e a unidade de um valor, este pina que o valor **aparece**.
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_rowcap_tests.rs"]
-mod rowcap_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_subgraph_ports_tests.rs"]
-mod subgraph_ports_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_subgraph_tests.rs"]
-mod subgraph_tests;
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_tests.rs"]
-mod tests;
-/// The display FACE of a row (doc 88) — a sibling of `range_tests` because it is
-/// the same subject seen from the other side: that one pins the SCALE a value is
-/// read against, this one pins the UNIT it is read in.
-#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
-#[path = "motion_bridge_unit_tests.rs"]
-mod unit_tests;
 #[cfg(test)]
 #[path = "motion_bridge_visibility_tests.rs"]
 mod visibility_tests;

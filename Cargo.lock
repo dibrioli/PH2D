@@ -6578,6 +6578,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-curve",
  "ph2d-node-registry",
+ "ph2d-node-registry-init",
  "ph2d-nodegraph",
 ]
 
@@ -6610,6 +6611,15 @@ dependencies = [
 name = "ph2d-node-motion-proximity"
 version = "0.0.0"
 dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-motion-randomize"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
  "ph2d-node-registry",
  "ph2d-nodegraph",
 ]
@@ -6948,6 +6958,7 @@ dependencies = [
  "ph2d-node-motion-path",
  "ph2d-node-motion-pin-constraint",
  "ph2d-node-motion-proximity",
+ "ph2d-node-motion-randomize",
  "ph2d-node-motion-rotate",
  "ph2d-node-motion-scale",
  "ph2d-node-motion-scatter",

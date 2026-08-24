@@ -163,6 +163,24 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
 /// mostrar um controle que o cook não lê — e pior que o botão morto: dois números na tela
 /// que discordam entre si sobre a mesma grandeza, sem nada dizendo qual manda.
 pub(crate) static PARAM_GATES: &[ParamGate] = &[
+    // ⛔ **A FORMA só aparece na onda que a LÊ** (Enio, 2026-08-24, com foto: *«Wave curve
+    // dos osciladores não está funcionando»*).
+    //
+    // ⚠️ **O motor estava certo o tempo todo** — com `wave = Custom` a cozedura segue a
+    // curva ao valor. O que estava errado é que o editor era oferecido em TODA onda, e a
+    // `waveform` só o lê no braço `Custom`: o artista abria o nó em `Sine`, desenhava, e
+    // não acontecia nada. *Um controle vivo num modo que não o lê e um controle partido
+    // dão o MESMO report.*
+    //
+    // ⚠️ É a doença que esta mesma tabela já curava quatro vezes abaixo, e a curva ficou
+    // de fora porque ela **não é um `ParamSpec`** — a caça aos knobs mortos varre o
+    // `MANIFEST`, e um text param nunca foi perguntado. O censo que fecha a espécie é o
+    // `every_shape_param_is_either_always_read_or_gated_to_the_mode_that_reads_it`.
+    ParamGate {
+        param: super::CURVE_KEY,
+        when: "wave",
+        values: &[super::WAVE_CUSTOM],
+    },
     ParamGate {
         param: "frequency",
         when: "time_mode",

@@ -200,11 +200,21 @@ use ph2d_node_registry::{ParamGate, ParamUiHint, ParamWidget};
 /// e nada se move. *É o primeiro gesto que qualquer pessoa faz neste nó.*
 ///
 /// `0 = Linear` · `1..7 = Quad · Cubic · Quart · Quint · Circ · Back · Bounce`.
-static PARAM_GATES: &[ParamGate] = &[ParamGate {
-    param: "ease_dir",
-    when: "ease_curve",
-    values: &[1, 2, 3, 4, 5, 6, 7],
-}];
+static PARAM_GATES: &[ParamGate] = &[
+    // ⛔ **A FORMA só aparece na ease que a LÊ** — o irmão exacto do `motion.oscillator`,
+    // achado pelo mesmo censo e no mesmo dia. Fora da `Custom` o `ease` devolve a família
+    // enumerada sem olhar para a curva, e o editor era oferecido em todas as nove.
+    ParamGate {
+        param: CURVE_KEY,
+        when: "ease_curve",
+        values: &[ease::EASE_CUSTOM],
+    },
+    ParamGate {
+        param: "ease_dir",
+        when: "ease_curve",
+        values: &[1, 2, 3, 4, 5, 6, 7],
+    },
+];
 
 /// Param UI hints (M1.P1). `channel` / `ease_curve` / `ease_dir` are **named**
 /// selectors (segmented buttons), `reverse` a checkbox — never number sliders.

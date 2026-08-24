@@ -15,6 +15,7 @@
 | [2](#bug-2--o-glow-e-a-forma-vivem-nos-dois-lados-do-tonemap-e-o-lod-troca-o-lado) | **"Glow não funciona com shape"** | `fx.glow` (acusado, **inocente**) + a partição de render sprite ⁄ vetor | ✅ **CURADO** (aguarda smoke) — o passe passou a ler a CAMADA | 2026-08-20 |
 | [3](#bug-3--o-diagnoser-sabia-e-ninguem-perguntava) | **"Todas as peças paradas"** (cena `=71`, banda 6) | uma cena com um fio a menos — e o INSTRUMENTO que ninguém invocava | ✅ **CURADO** (aguarda smoke) — mais um falso positivo pré-existente do diagnoser | 2026-08-20 |
 | [4](#bug-4--o-multiply-não-desobedecia-à-alfa-ele-a-invertia-e-o-gate-media-o-único-ponto-em-que-os-modos-concordam) | **"Shadow multiply não obedece o alpha"** (cena `=84`) | `fx.drop_shadow` (acusado, **inocente**) + o par de fatores do `Multiply` em `ph2d-render` | ✅ **FECHADO — smoke aprovado** (cena `=84`, linha ALFA) — resposta invertida, num gate verde há anos | 2026-08-23 |
+| [5](#bug-5--o-editor-de-curva-era-oferecido-numa-onda-que-não-o-lê--e-o-censo-que-o-teria-apanhado-não-podia-vê-lo) | **"Wave curve dos osciladores não está funcionando"** (com foto) | `motion.oscillator` (o MOTOR, **inocente**) + a tabela de gates dele — e mais DOIS nós pelo mesmo mecanismo | ✅ **CURADO** (aguarda smoke, cena `=94`) — o editor aparecia em toda onda e só era lido na `Custom` | 2026-08-24 |
 
 ---
 
@@ -489,3 +490,84 @@ caminho é o passe programável.*
 5. ⚠️ **O sintoma apareceu num nó e a causa estava numa crate que o nó não conhece.** O
    `fx.drop_shadow` só escreve um número numa coluna; quem escolhe o pipeline é o lowering,
    e quem compõe é o `wgpu`. *Três camadas entre a queixa e o defeito.*
+
+---
+
+## Bug #5 — O editor de curva era oferecido numa ONDA QUE NÃO O LÊ — e o censo que o teria apanhado não podia vê-lo
+
+**Estado:** ✅ **CURADO** em 2026-08-24 — mecanismo medido, três nós curados, e o **censo da
+espécie** construído. Aguarda smoke (cena `PH2D_GPU_COOK_DEMO=94`, fileira de cima).
+
+### Sintoma
+
+Report do Enio, com foto do painel do `motion.oscillator`: uma curva de três pontos desenhada
+no editor **Custom Wave**, e a legenda *«Wave curve dos osciladores não está funcionando»*.
+
+### ⚠️ O motor estava CERTO — medido antes de tocar em nada
+
+Uma sonda que coze `motion.grid → motion.oscillator` com o texto da curva posto à mão:
+
+| `wave` | a saída em 9 instantes |
+|---|---|
+| `0` (Sine) | `0,000 0,708 1,000 0,708 0,000 −0,708 −1,000 −0,708 0,000` |
+| `5` (**Custom**) | `1,000 0,750 0,500 0,250 0,000 0,250 0,500 0,750 1,000` |
+
+O V autorado sai **ao valor**. A curva chega, é parseada, e conduz. ⇒ *o defeito não estava
+onde o report o punha*, e a primeira hora foi gasta a provar isso em vez de a mexer no motor.
+
+### O mecanismo
+
+O `wave` nasce em **`Sine`**, e o editor `Custom Wave` era desenhado **em toda onda** — sem
+`ParamGate`. A `waveform` só lê a curva no braço `Custom`. Logo: o artista abre o nó, vê um
+editor, desenha, e não acontece nada.
+
+⚠️ **É a doença que a própria tabela deste nó já curava quatro vezes** — `frequency`/`bpm` e
+`amplitude`/`min`/`max` são gateados exactamente por isto. A curva ficou de fora porque ela
+**não é um `ParamSpec`**: uma curva vive no canal de TEXTO, por decisão registada (*«uma curva
+não é um número»*).
+
+### ⭐⭐ E o report expôs uma ESPÉCIE, não um caso
+
+A caça aos knobs mortos ([doc 90](90_caca_aos_knobs_mortos.md)) varre **660 params
+declarados** — e ela lê o `MANIFEST`. **Nenhum param de forma foi alguma vez perguntado se
+alguém o lê**: são dezassete, em dezasseis nós. É o **nono ponto cego** daquela sonda, e o
+único que é uma família inteira em vez de um caso.
+
+O censo novo — `every_shape_param_is_either_always_read_or_gated_to_the_mode_that_reads_it`
+(`shells/desktop/src/render_loop/motion_bridge_shape_reach_tests.rs`) — pergunta: *ou é lido
+em todo modo, ou é gateado ao modo que o lê*. Ele acusou **três**:
+
+| nó | param | lido só quando |
+|---|---|---|
+| `motion.oscillator` | `curve` | `wave = Custom` |
+| `motion.stagger` | `curve` | `ease_curve = Custom` |
+| `field.remap` | `curve` | `contour = Curve` |
+
+⇒ **O Enio reportou um e o instrumento achou três.**
+
+### ⛔ E uma CERCA DECLARADA dissolveu — pelo mesmo tipo de report que a criou
+
+O `field.remap` tinha escrito, verbatim: *«O `curve` NÃO é gateado, de propósito … gateá-lo por
+`contour == 4` esconderia-o no modo default e reprovaria o gate
+`selected_field_remap_yields_an_interactive_curve_row`. Se um dia a decisão for escondê-lo, é
+aquele gate que se reconcilia primeiro»*.
+
+⚠️ **A cerca nasceu de um report do Enio de 21/08** (*«Curve offset e outros parâmetros não têm
+efeito»*) e curou os três knobs numéricos vizinhos, deixando o editor de fora para ele não
+sumir no modo default. **O preço era um editor vivo e inerte** — e três dias depois o irmão
+produziu a mesma frase. *A cerca trocava um report por outro.* O gate que ela nomeava é uma
+afirmação sobre o PAINEL, e reconciliou-se escolhendo o contorno na fixture.
+
+### ⚠️ E uma mutação mostrou que «gateado» não é «gateado ao modo certo»
+
+Trocar o `values` da curva do oscilador de `[Custom]` para `[0,1,2,3,4,5]` **passava no censo**
+— ele perguntava *«existe gate?»*. O segundo censo (`no_gate_hides_nothing`) deriva a escada do
+param observado e exige que a lista do gate seja um subconjunto **estrito** dela.
+
+### ⚠️ E o controle de um nó tinha o mesmo ponto cego, um nível abaixo
+
+O `every_contour_number_is_gated_to_the_contour_that_reads_it` do `field.remap` confere que
+todo nome gateado existe — perguntando **só ao `MANIFEST`**. No dia em que a curva entrou na
+tabela ele acusou *«`curve` não é param deste nó»*, sobre produto correcto. *Um censo que só
+conhece um dos dois canais não vê metade dos controles.*
+

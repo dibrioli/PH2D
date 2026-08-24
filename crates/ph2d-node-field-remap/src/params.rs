@@ -46,12 +46,26 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
 /// dois knobs que ali não fazem nada **por desenho**. Um controle vivo que não muda
 /// nada é indistinguível de um bug, e foi lido como um.
 ///
-/// ⛔ **O `curve` (o editor de curva) NÃO é gateado, de propósito.** O gate
-/// `selected_field_remap_yields_an_interactive_curve_row` afirma que ele é a PRIMEIRA
-/// linha e é interactivo; gateá-lo por `contour == 4` esconderia-o no modo default
-/// (Quadratic) e reprovaria aquele gate. Se um dia a decisão for escondê-lo, é aquele
-/// gate que se reconcilia primeiro — não este.
+/// ⭐⭐ **E a CERCA que deixava o `curve` de fora DISSOLVEU em 2026-08-24** — pelo mesmo
+/// tipo de report que a criou, vindo do irmão.
+///
+/// Ela dizia: *«o `curve` NÃO é gateado, de propósito; gateá-lo por `contour == 4`
+/// esconderia-o no modo default (Quadratic) e reprovaria o gate
+/// `selected_field_remap_yields_an_interactive_curve_row`»* — e nomeava a própria saída:
+/// *«Se um dia a decisão for escondê-lo, é aquele gate que se reconcilia primeiro»*.
+///
+/// ⛔ **O dia chegou.** O `motion.oscillator` oferecia o editor `Custom Wave` em toda onda
+/// e só o lia na `Custom`, e o report do Enio foi *«não está funcionando»* — exactamente a
+/// frase que este nó já tinha produzido em 21/08 sobre os knobs vizinhos. *A cerca trocava
+/// um report por outro:* ela protegia o editor de sumir no modo default, e o preço era um
+/// editor vivo e inerte, que é indistinguível de um partido. O gate que ela nomeava é uma
+/// afirmação sobre o PAINEL, e reconcilia-se escolhendo o contorno na fixture.
 pub(crate) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: CURVE_KEY,
+        when: "contour",
+        values: &[4],
+    },
     ph2d_node_registry::ParamGate {
         param: "curvature",
         when: "contour",

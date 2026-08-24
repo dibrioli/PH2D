@@ -85,7 +85,13 @@ que o justifica:
 
 ---
 
-## §4 — Os OITO pontos cegos da sonda (medidos, cada um com o caso que o revelou)
+## §4 — Os NOVE pontos cegos da sonda (medidos, cada um com o caso que o revelou)
+
+⚠️ **E o nono é de outra espécie: ele não é um caso que a bancada não reproduzia — é uma
+POPULAÇÃO que a varredura nunca viu.** Os `660 params declarados` do cabeçalho são os
+`ParamSpec` do `MANIFEST`; um param de FORMA (curva, rampa, paleta, expressão) vive no canal
+de TEXTO e não aparece em número nenhum acima. *Uma contagem que parece exaustiva é a forma
+mais cara de uma ausência se esconder.*
 
 ⚠️ **Esta lista é o valor durável deste doc.** Uma bancada não prova a ausência de um efeito, só a
 ausência dele **naquela bancada** — e cada linha abaixo custou um lote de falsos positivos.
@@ -104,6 +110,7 @@ Quem correr a sonda outra vez lê isto primeiro.
 | — | **ligar as portas OPCIONAIS** muda a lei do nó | meia dúzia de nós dizem que um param só vale com a porta homónima **desligada**; e um `reset` alto congela um contador | ✅ curado (bancada irmã que lê `required_inputs`) |
 | ⚠️ | **o efeito pode não estar nas COLUNAS** | um `fx.*` de raster produz uma imagem | ⛔ **por curar** — estes saem como `BANCADA-SUSPEITA` e não acusam nada |
 | ⚠️ | **um nó pode precisar de uma CENA** | `motion.look_at` em `Object`/`Cursor` resolve por `ctx.external` | ⛔ **por curar** — idem |
+| ⭐⭐ | **os PARAMS DE FORMA não estão no `MANIFEST`** — e portanto nunca entraram nesta sonda | uma foto do Enio (2026-08-24): o editor `Custom Wave` do `motion.oscillator` era oferecido em toda onda e só lido na `Custom`. São **17** params de forma em **16** nós (curva · rampa · paleta · texto), e **nenhum** deles foi alguma vez perguntado se alguém o lê | ✅ **curado por FORA desta sonda** — o censo é o `every_shape_param_is_either_always_read_or_gated_to_the_mode_that_reads_it` ([`motion_bridge_shape_reach_tests.rs`](../../shells/desktop/src/render_loop/motion_bridge_shape_reach_tests.rs)), e ele acusou **três**: `motion.oscillator::curve`, `motion.stagger::curve`, `field.remap::curve`. Mecanismo completo: [`BUGS_motion_nodes.md` #5](BUGS_motion_nodes.md) |
 
 ### A CALIBRAÇÃO — o que as oito curas valeram, medido
 

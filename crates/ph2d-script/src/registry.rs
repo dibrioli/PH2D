@@ -59,7 +59,7 @@ mod tests {
         // acima pediam depois de este contador ficar 4 atras e depois 2 atras na mesma linha.
         // +1 `AnchorVisibility` (quando as ancoras se desenham, 2026-08-23): ECS 67 ⇒ 68.
         // +2 da §11 Animation (`SpriteAnimations` + `SpriteAnimator`): ECS 69 ⇒ aqui 70.
-        assert_eq!(reg.len(), 70);
+        assert_eq!(reg.len(), 72);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

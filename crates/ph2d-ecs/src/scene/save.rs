@@ -150,6 +150,13 @@ pub fn world_to_snapshot(
         {
             worklist.children_scratch.clear();
             worklist.children_scratch.extend(children.iter());
+            // ⚠️ **A ordem vem do `SiblingOrder`, não da inserção** (ADR-0164 F1) — a mesma
+            // porta que a travessia do painel usa (`build_hierarchy_snapshot`). Enquanto a
+            // lista `Children` mandava, a ordem era memória de runtime: não entrava no
+            // snapshot, logo não era desfazível nem sobrevivia ao load (classe BUGS #15).
+            worklist
+                .children_scratch
+                .sort_by_key(|&c| crate::sibling_key(world, c));
             for c in worklist.children_scratch.iter().rev().copied() {
                 worklist.stack.push((c, crate::Transform::IDENTITY));
             }

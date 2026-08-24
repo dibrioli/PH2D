@@ -57,6 +57,7 @@ pub mod present;
 pub mod root_order;
 pub mod sampling;
 pub mod scene;
+pub mod sibling_order;
 pub mod sim;
 pub mod slice_nine;
 pub mod sort_key;
@@ -66,6 +67,7 @@ pub mod sprite_anim;
 pub mod sprite_pixels;
 pub mod sprite_sheet_frame;
 pub mod sprite_sheet_ref;
+pub mod stable_id;
 pub mod transform;
 pub mod transform_inverse;
 pub mod transform_versioned;
@@ -99,6 +101,9 @@ pub use sampling::{
     FilterMode, RepeatMode, TextureFilter, TextureRepeat, UvTransform, resolve_texture_filter,
     resolve_texture_repeat,
 };
+pub use sibling_order::{
+    SiblingOrder, assign_missing_sibling_order, ordered_children, set_sibling_order, sibling_key,
+};
 pub use sim::{SimComponent, SimWorld};
 pub use slice_nine::{SliceDrawMode, SliceNine, SliceRegion, SliceTileMode, TileRegionMode};
 pub use sort_key::{SortInput, SortKey, compute_sort_ranks, effective_z_index};
@@ -114,6 +119,9 @@ pub use sprite_anim::{
 pub use sprite_pixels::SpritePixels;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
+pub use stable_id::{
+    StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id, stable_id_of,
+};
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,
     WorklistBuf, is_locked_for_edit, propagate_transforms, propagate_transforms_into_present,

@@ -300,6 +300,16 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register::<crate::Name>("ph2d::ecs::Name");
     reg.register_default::<crate::Visibility>("ph2d::ecs::Visibility");
     reg.register_default::<crate::RootOrder>("ph2d::ecs::RootOrder");
+    // ⚠️ **`register`, NÃO `register_default`** — o `StableId` não deriva `Default` de
+    // propósito (o default seria `StableId(0)`, o id reservado para «nenhum», e a varredura
+    // nunca o corrigiria por a entidade já ter o componente). Registá-lo é o que faz a
+    // identidade **sobreviver ao respawn do undo**: sem esta linha o snapshot descartá-lo-ia
+    // em silêncio e cada Ctrl+Z daria uma identidade nova a todo objeto — que é o oposto
+    // exato do que ADR-0164 compra.
+    reg.register::<crate::StableId>("ph2d::ecs::StableId");
+    // A ordem entre irmãos como DADO (F1) — o gémeo do `RootOrder`. Sem registo ela não
+    // entra no snapshot, e reordenar continuaria a não ser desfazível (classe BUGS #15).
+    reg.register_default::<crate::SiblingOrder>("ph2d::ecs::SiblingOrder");
     // Sprite Inspector v2 W3 — sorting / visibility / sampling
     // components (spec §02). Optional: serialized only when present, so
     // legacy scenes are byte-unchanged.

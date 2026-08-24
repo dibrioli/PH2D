@@ -193,7 +193,21 @@ pub fn build_hierarchy_snapshot(
         if let Some(children) = children {
             // Push children in reverse so DFS visits the first child
             // first (LIFO stack semantics).
-            let kids: Vec<Entity> = children.iter().copied().collect();
+            //
+            // ⚠️ **A ordem vem do `SiblingOrder`, não da lista `Children`** (ADR-0164 F1). A
+            // lista do bevy guarda a ordem de INSERÇÃO — memória de runtime que o respawn do
+            // undo reconstrói do zero. Enquanto ela mandava, reordenar irmãos não era
+            // desfazível nem sobrevivia a um restore (classe BUGS #15). É a mesma lei que o
+            // `RootOrder` já aplicava às raízes cinco linhas acima; esta é a outra metade.
+            //
+            // ⛔ **Esta travessia e a do `world_to_snapshot` leem pela MESMA porta**
+            // (`ordered_children`): se divergirem, o painel mostra uma ordem e o ficheiro
+            // guarda outra — e o artista só descobre ao reabrir.
+            let kids: Vec<Entity> = {
+                let mut k: Vec<Entity> = children.iter().copied().collect();
+                k.sort_by_key(|&c| crate::sibling_key(sim_w, c));
+                k
+            };
             for c in kids.iter().rev().copied() {
                 let next_depth = depth.saturating_add(1);
                 scratch.push((c, next_depth, Some(entity)));

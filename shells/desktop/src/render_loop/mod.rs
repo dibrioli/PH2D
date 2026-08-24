@@ -7886,6 +7886,23 @@ impl crate::App {
             // undo troca os bits, a pilha de z se reordena sozinha a cada Ctrl+Z, e o passo
             // espúrio volta vestido de outra coisa. Não ter empate > escolher desempate.
             ph2d_ecs::assign_missing_root_order(sim.world_mut());
+            // **As duas gémeas do `RootOrder`** (ADR-0164 F1), aqui pela MESMA razão e no
+            // MESMO sítio: elas têm de correr depois do `sync` (as entidades novas do quadro
+            // já existem) e **antes da captura do fim do quadro**, senão o objeto criado neste
+            // quadro entra no snapshot sem identidade e sem ordem — e o primeiro Ctrl+Z não
+            // teria o que repor.
+            //
+            // ⚠️ `StableId` é a identidade DURÁVEL: ela sobrevive ao respawn do undo, que é a
+            // propriedade inteira pela qual a wave existe. `SiblingOrder` faz a ordem entre
+            // irmãos ser DADO — antes dela, reordenar não era desfazível nem sobrevivia a um
+            // restore (classe BUGS #15), porque a ordem vivia na lista `Children` do bevy, que
+            // é memória de runtime.
+            //
+            // ⚠️ **As duas são idempotentes**, e isso não é higiene: se reescrevessem por
+            // quadro, o diff do undo veria o arquétipo de toda entidade mudar e **cada quadro
+            // com input viraria um passo espúrio** — a doença que o `RootOrder` curou.
+            ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+            ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
             // O Blend pediu uma sequência de z; agora as entidades existem (o `sync` rodou) e ela
             // pode ser escrita na ÁRVORE — que é quem manda no z (ADR-0110). Escrever na ordem do
             // vetor da cena seria a porta errada: a projeção abaixo a reescreve todo frame.

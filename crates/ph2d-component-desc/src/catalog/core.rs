@@ -152,6 +152,10 @@ pub const DESCS: &[D] = &[
         O::ANY,
         MARKER,
     ),
+    // ⚠️ Máquina, pela MESMA razão do `RootOrder` (o gémeo dele para raízes): a ordem entre
+    // irmãos é escrita pelo GESTO de arrastar na Hierarquia, e o editor mantém-na. Um artista
+    // que a pusesse à mão estaria a escrever num campo que a varredura reescreve.
+    D::machinery("ph2d::ecs::SiblingOrder", "Sibling Order", C::Ordering),
     D::authored(
         "ph2d::ecs::SortingGroup",
         "Sorting Group",
@@ -173,6 +177,11 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         &[],
     ),
+    // ⚠️ **Máquina, e das mais duras.** A identidade durável de um objeto (F1) é posta pela
+    // varredura e nunca pelo artista — um `StableId` escolhido à mão é uma referência que
+    // aponta para outra coisa. Não deriva `Default`, logo não teria `insert_default` nem se
+    // alguém a marcasse `Authored`: o censo da shell recusaria antes.
+    D::machinery("ph2d::ecs::StableId", "Stable Id", C::Identity),
     D::authored(
         "ph2d::ecs::TextureFilter",
         "Texture Filter",

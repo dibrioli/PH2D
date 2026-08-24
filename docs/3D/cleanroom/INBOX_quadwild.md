@@ -24,3 +24,4 @@ echo "I session: <id> $(date -I)" >> docs/3D/cleanroom/INBOX_quadwild.md
 ## Registos
 
 _(vazio — a primeira linha é a declaração de sessão do Implementador)_
+I session: 186ce13e-479b-467a-904c-0ff087ab76c9 2026-08-24

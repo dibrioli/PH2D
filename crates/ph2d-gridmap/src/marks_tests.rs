@@ -363,3 +363,62 @@ fn which_arcs_disagree() {
         }
     }
 }
+
+/// ⭐⭐⭐ **SONDA — a FRACÇÃO ALCANÇÁVEL de curar o leque.**
+///
+/// ```text
+/// cd .../Worktrees/line-sculpt3d && cargo test -p ph2d-gridmap --release \
+///     how_much_can_fixing_the_fan_possibly_buy -- --ignored --nocapture
+/// ```
+///
+/// ⛔⛔ **Antes de construir a cura do leque, medir quanto ela pode valer no MÁXIMO.**
+/// Se as faces vindas de patches de quatro lados — que não têm leque nenhum — já
+/// medirem quase o mesmo que as de leque, então curar o leque não pode levar `18°` a
+/// `6°`, e a obra é outra. *É a lei da cura medida numa fixtura que não contém o
+/// fenómeno, um nível acima: medir a fracção alcançável ANTES do resultado.*
+#[test]
+#[ignore = "sonda -- quanto vale curar o leque, no maximo"]
+fn how_much_can_fixing_the_fan_possibly_buy() {
+    for (name, mesh) in [
+        ("ESFERA FINA", ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)),
+        ("ESFERA LISA", ph2d_mesh::shapes::uv_sphere(24, 36, 1.0)),
+    ] {
+        let (mesh, layout, _, _, _) = upto_map(mesh);
+        for detail in [0.55f32, 0.8] {
+            let target = ph2d_quadflow::edge_for_detail_with(
+                &mesh,
+                detail,
+                ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
+            );
+            let Ok(spec) = layout.to_layout(target) else {
+                continue;
+            };
+            let Ok((quant, _)) =
+                ph2d_quantize::quantize_within(&spec, ph2d_quantize::Budget::new(256, 512))
+            else {
+                continue;
+            };
+            let Ok((_, r)) = ph2d_quadfill::fill(
+                &mesh,
+                &mesh,
+                &layout,
+                &quant,
+                ph2d_quadfill::SMOOTHING_ROUNDS,
+            ) else {
+                continue;
+            };
+            eprintln!(
+                "  {name} d={detail:.2}: p50 GLOBAL {:>4.0}° | ⭐rectangulo {:>5.1}° LEQUE {:>5.1}° \
+                 | por origem {:?}",
+                r.shape.skew_p50,
+                r.skew_by_fan.0,
+                r.skew_by_fan.1,
+                ph2d_quadfill::Provenance::NAMES
+                    .iter()
+                    .zip(r.skew_prov)
+                    .map(|(n, v)| format!("{n} {v:.0}°"))
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+}

@@ -4653,3 +4653,65 @@ hipótese.**
 | `SEAM_WEIGHT = 512` por raciocínio | o produto piora para `22°` contra `18°` do controlo | [`solve.rs`](../../../crates/ph2d-gridmap/src/solve.rs) |
 | ⭐ **a marcação do arco como cura do enviesamento** | os dois lados concordam a `0,1 %` e o produto move `1°` | [`marks_tests.rs`](../../../crates/ph2d-gridmap/src/marks_tests.rs) |
 | pregar as pontas do `τ` depois de forçar a monotonia | desfaz a rede: o `τ` sai a recuar na mesma | [`marks.rs`](../../../crates/ph2d-gridmap/src/marks.rs) |
+
+## §4-sexetquinquagies — ⛔⛔⛔ CURAR O LEQUE NÃO PODE CHEGAR: o rectângulo já mede `15°` (2026-08-23)
+
+### A pergunta, feita ANTES de construir
+
+O §4-quinetquinquagies promoveu «dar a cada sector de leque o seu domínio». ⚠️ Antes de a
+construir: **quanto pode ela valer no máximo?** Se as faces vindas de patches de quatro
+lados — que não têm leque nenhum — já medirem quase o mesmo, curar o leque não leva `18°`
+a `6°`. *É a lei da cura medida numa fixtura sem o fenómeno, um nível acima: medir a
+fracção alcançável antes do resultado.*
+
+### ⭐⭐⭐ A resposta
+
+| fixtura | global | ⭐ **rectângulo** | leque | por origem |
+|---|---|---|---|---|
+| **fina `96×144`** `d=0,55` | `18°` | ⛔ **`15,2°`** | `19,4°` | canto `0°` · **arco `24°`** · centro `0°` · raio `19°` · grade `18°` |
+| fina `d=0,80` | `18°` | `16,4°` | `18,9°` | arco `26°` · raio `22°` · grade `17°` |
+| grossa `24×36` `d=0,55` | `52°` | `13,0°` | ⛔ **`61,8°`** | arco `30°` · raio `42°` · grade `58°` |
+| grossa `d=0,80` | `50°` | `13,4°` | ⛔ `63,7°` | arco `37°` · raio `41°` · grade `52°` |
+
+⛔ **Na fixtura canónica o leque vale `4°` de diferença.** Um leque **perfeito** (`0°`)
+deixaria as faces de rectângulo em `15,2°`, contra `6°` do oráculo.
+
+⚠️ Na esfera **grossa** o leque é de facto o problema (`61,8°` contra `13,0°`) — mas essa
+é a rota em que o **F1 refina**, que o §5 já marca como partida por outros motivos. *Uma
+cura justificada só naquela fixtura seria uma cura para o defeito de outra fase.*
+
+### ⇒ E isto diz de onde vem o defeito, por eliminação
+
+Um patch de quatro lados tem:
+
+| | medido |
+|---|---|
+| domínio (a grade no plano) | ⭐ `2,4°` — quase perfeito |
+| marcação dos arcos | ⭐ os dois lados a `0,1 %` (§4-quinetquinquagies) |
+| ⛔ **as faces na superfície** | **`15,2°`** |
+
+⇒ ⭐⭐⭐ **A distorção nasce entre o DOMÍNIO e a SUPERFÍCIE.** Não é a forma do domínio,
+não é a marcação, não é o leque. É o mapa que leva a grade plana de volta à peça — e
+esse mapa é o achatamento por patch, cuja família foi medida quatro vezes
+(§4-octoetquadragies) e onde *o mais conforme deu o pior resultado*.
+
+⭐⭐ **Dito na forma mais dura, e agora medido em vez de argumentado:** mesmo com um F3
+perfeito, uma marcação perfeita e um domínio perfeito, **o preenchimento por patch não
+alcança o oráculo** — ele fica em `15°` contra `6°`.
+
+### ⇒ A obra seguinte
+
+⭐ **Colocar os pontos da grade a partir do mapa global directamente** — as isolinhas
+inteiras de `(u, v)` — em vez de continuar a melhorar as *entradas* de um preenchimento
+por patch que não pode lá chegar. É a extracção (QEx, Ebke 2013 — o **paper**; ⛔ a
+`libQEx` é GPL), e é o passo que o G1–G4 preparou.
+
+⚠️ **O que ela ainda pede:** as translações das costuras têm de ser **inteiras** para as
+isolinhas casarem dos dois lados. Hoje são reais e o resíduo mede `0,23` de célula.
+
+### ⛔ Recusas MEDIDAS nesta secção
+
+| o quê | porquê não | onde |
+|---|---|---|
+| ⭐ **dar a cada sector de leque o seu domínio** | o rectângulo já mede `15,2°` na fixtura canónica: o tecto da cura é `4°` | esta secção |
+| justificar essa cura pela esfera grossa | ali o F1 **refina**, e o `61,8°` é defeito de outra fase | idem |

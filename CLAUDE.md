@@ -629,7 +629,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   o controlo, `22°`); shipa **`8`** — quem manda é o **ângulo**, não a costura.
   ⇒ ⭐⭐⭐ **A OBRA SEGUINTE é a que o §5 já tinha medido e nunca foi construída: DAR A CADA SECTOR DE LEQUE O SEU
   PRÓPRIO DOMÍNIO** (`ph2d_quadfill::param`). O `DOMINIO leque` mede `19°–27°`, **não responde à marcação**, e o
-  arnês 2D puro já diz de onde vem (`|360/n − 90|`) e quanto vale. *Agora por eliminação medida, não por hipótese.* ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
+  arnês 2D puro já diz de onde vem (`|360/n − 90|`) e quanto vale. ⛔⛔⛔ **E ESSA CURA FOI MEDIDA ANTES DE SER
+  CONSTRUÍDA, e NÃO CHEGA** (§4-sexetquinquagies): na fixtura canónica as faces de patches de **quatro lados** — sem
+  leque nenhum, com o domínio a `2,4°` e a marcação a `0,1%` — já medem **`15,2°`**, contra `19,4°` das de leque e
+  `6°` do oráculo. *Um leque perfeito deixaria `15,2°`.* ⚠️ Na esfera **grossa** o leque é de facto o problema
+  (`61,8°` vs `13,0°`), mas ali é o **F1 que refina** — justificar a cura por essa fixtura seria curar o defeito de
+  outra fase. ⇒ ⭐⭐⭐ **A distorção nasce entre o DOMÍNIO e a SUPERFÍCIE:** não é a forma do domínio, não é a
+  marcação, não é o leque — é o achatamento por patch que leva a grade plana de volta à peça. **Mesmo com F3,
+  marcação e domínio perfeitos o preenchimento por patch fica em `15°`.** ⇒ a obra é a **EXTRACÇÃO**: pôr os pontos
+  da grade nas isolinhas inteiras do mapa global (QEx, Ebke 2013 — o *paper*; ⛔ a `libQEx` é GPL), que é o que o
+  G1–G4 preparou. ⚠️ Falta-lhe as translações das costuras serem **inteiras** (hoje reais, resíduo `0,23` de célula). ⚠️ E o oráculo enche **8** patches numa esfera com `6°` ⇒ *o
   nosso F5 não é viável nessa escala*, pela mesma razão que o `rectangle.rs` nomeara por outro caminho
   (cada patch resolvido em separado contra um domínio plano, contra **uma parametrização global**).
   **Duas rotas independentes, a mesma conclusão.** ⇒ ⭐⭐⭐ **o preenchimento tem de aguentar um patch

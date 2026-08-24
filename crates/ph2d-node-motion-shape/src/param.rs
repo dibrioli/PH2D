@@ -121,3 +121,39 @@ pub const ALL: &[&str] = &[
     DASH,
     DASH_GAP,
 ];
+
+/// **A COR PRÓPRIA da forma** (doc 89 folha 14 — idem Cavalry / AE / Illustrator: um
+/// primitivo desenhado tem preenchimento).
+///
+/// ⚠️ **A célula media a composição e ela FUNCIONA** — `source.shape → motion.tint` pinta o
+/// primitivo, e o picker OKLCH já vive naquele nó. Isto entra na mesma pela razão que fechou
+/// metade da folha 05: *um nó a mais para dizer de que cor é a coisa que este nó desenha*. Uma
+/// forma é a única fonte do catálogo cujo produto é ELA PRÓPRIA — as outras emitem posições
+/// para outra coisa pintar.
+///
+/// ⚠️ **É um TOGGLE e não uma sentinela na alfa.** O irmão `stroke_*` usa `stroke_width = 0`
+/// como *"sem traço"*, e ali a sentinela é natural (uma largura de zero é a ausência). Uma cor
+/// não tem essa grandeza: usar `fill_a = 0` faria arrastar a alfa até ao fim no picker
+/// **trocar silenciosamente de modo**, em vez de dar uma forma transparente.
+///
+/// ⚠️ **Desligado, a coluna `tint` NÃO é tocada** — o que o shell publicou atravessa como
+/// atravessava, byte a byte. É a lei estrutural do `follow_rotation` do `motion.spline_wrap`:
+/// o default não é *"escrever o mesmo valor"*, é *"não escrever"*.
+pub const FILL: &str = "fill";
+pub const FILL_R: &str = "fill_r";
+pub const FILL_G: &str = "fill_g";
+pub const FILL_B: &str = "fill_b";
+pub const FILL_A: &str = "fill_a";
+
+/// **A ROTAÇÃO PRÓPRIA da forma**, em graus (doc 89 folha 14 — *"uma estrela apontando para
+/// cima"*).
+///
+/// ⚠️ **ATRIBUI, não soma**, e é a lei da casa vista do lado da FONTE: o
+/// `motion.distribute_curve` faz `set` no `rot` *porque é uma fonte e não há nada com que
+/// compor*, enquanto o `motion.spline_wrap` SOMA por ser modificador. Este nó é fonte.
+///
+/// ⚠️ **`0` não escreve a coluna** (a mesma lei estrutural do [`FILL`]) — e `0` é também o
+/// valor que a coluna teria, então a única diferença é entre *não haver `rot`* e *haver um
+/// `rot` de zero*. A jusante isso importa: um `motion.rotate` a somar sobre uma coluna ausente
+/// parte do `0` na mesma, mas um censo de colunas veria uma que ninguém autorou.
+pub const ROTATION: &str = "rotation";

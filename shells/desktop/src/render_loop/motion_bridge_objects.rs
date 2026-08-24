@@ -39,7 +39,7 @@ use ph2d_ecs::{
 use ph2d_eval_motion::VectorInstance;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::Cook;
-use ph2d_render::{RenderInstance, Sprite, SpriteSource, TextureAtlas};
+use ph2d_render::{RenderInstance, Sprite};
 
 // The LOD partition (the 160k freeze fix) lives in a sibling FILHO via `#[path]`
 // so this parent stays under the shell LOC cap; the re-export keeps
@@ -65,45 +65,21 @@ use crate::motion_flip_bake::FlipTile;
 use crate::motion_object_bake::ObjectVector;
 use crate::motion_state::MotionState;
 
-/// The appearance tile for one sprite: one instance at the origin carrying
-/// `(P, size, tint, uv_rect, texture_id)`. `None` for a source the atlas cannot
-/// resolve here (a cooked KTX2 sprite needs the renderer's cooked-texture store,
-/// not in hand — deferred to a later wave; it is skipped, not guessed).
-fn sprite_tile(spr: &Sprite, atlas: &TextureAtlas) -> Option<Stream> {
-    let (uv_rect, texture_id) = sprite_appearance(spr, atlas)?;
-    // `collapsed_tint` = self_tint × tint (the per-sprite modulate). The
-    // inherited ancestor cascade the extract folds in is a refinement of a
-    // template, deferred: a source is *this object's* appearance.
-    Some(appearance_tile(
-        spr.size,
-        spr.collapsed_tint(),
-        uv_rect,
-        texture_id,
-    ))
-}
-
-/// The `(uv_rect, texture_id)` a sprite resolves to — the branch `sim_extract`
-/// runs. `None` for a cooked KTX2 (its store isn't in hand here). Shared by the
-/// single-sprite path and the group-child path (doc 86 §2 A4).
-fn sprite_appearance(spr: &Sprite, atlas: &TextureAtlas) -> Option<([f32; 4], u32)> {
-    match spr.source {
-        // Atlas → the packed cell's UV, sampling the shared atlas (`0`); the
-        // cheap direct path (no bake) the sprite renderer already uses.
-        SpriteSource::Atlas { key } => {
-            Some((atlas.region_uv(key), RenderInstance::ATLAS_TEXTURE_ID))
-        }
-        // Individual → the full unit rect + the store handle it already carries.
-        SpriteSource::Individual { texture_id } => Some(([0.0, 0.0, 1.0, 1.0], texture_id)),
-        // Cooked KTX2 resolves through `renderer.cooked_texture_id`, not in hand.
-        SpriteSource::CookedTexture { .. } => None,
-    }
-}
-
 /// Os streams que DESCREVEM um objeto — a aparência e a pose. Irmão pelo teto de LOC,
 /// e o corte é por FAMÍLIA: os três respondem *"o que o grafo recebe quando nomeia X"*.
 #[cfg(test)]
 #[path = "motion_bridge_objects_pose_tests.rs"]
 mod pose_tests;
+
+/// **COMO UM SPRITE VIRA UMA IMAGEM** — as duas lojas e o tile de uma instância só.
+#[path = "motion_bridge_objects_appearance.rs"]
+mod appearance;
+pub(crate) use appearance::Appearance;
+use appearance::{sprite_appearance, sprite_tile};
+
+#[cfg(test)]
+#[path = "motion_bridge_objects_appearance_tests.rs"]
+mod appearance_tests;
 
 #[path = "motion_bridge_objects_streams.rs"]
 mod streams;
@@ -138,7 +114,7 @@ pub(super) fn publish_vector_bakes(cook: &mut Cook, bakes: &crate::motion_object
 pub(super) fn publish(
     cook: &mut Cook,
     sim: &mut SimWorld,
-    atlas: &TextureAtlas,
+    look: Appearance<'_>,
     bakes: &crate::motion_object_bake::ObjectBake,
     flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
 ) {
@@ -156,7 +132,7 @@ pub(super) fn publish(
         if super::shapes::is_reserved(&name.0) {
             continue; // the editor's namespace (`motion_bridge_shapes::is_reserved`)
         }
-        if let Some(tile) = sprite_tile(spr, atlas) {
+        if let Some(tile) = sprite_tile(spr, look) {
             cook.set_external(name.0.clone(), tile);
         }
         // ⚠️ **And WHERE it is, on its own channel.** The appearance stream above puts
@@ -213,7 +189,7 @@ pub(super) fn publish(
     // Groups (doc 86 §2 A4) publish LAST: a named GROUP resolves to N live
     // instances (its subtree's leaves), and its children may also be published
     // individually above — the two coexist (different names).
-    group_externals(cook, sim, atlas, bakes, flip_bakes);
+    group_externals(cook, sim, look, bakes, flip_bakes);
 }
 
 /// **Publish every named GROUP as N live instances** (doc 86 §2 A4). A group is an
@@ -236,7 +212,7 @@ pub(super) fn publish(
 fn group_externals(
     cook: &mut Cook,
     sim: &mut SimWorld,
-    atlas: &TextureAtlas,
+    look: Appearance<'_>,
     bakes: &crate::motion_object_bake::ObjectBake,
     flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
 ) {
@@ -262,7 +238,7 @@ fn group_externals(
         walk_group_transforms(world, group, Transform::IDENTITY, &mut subtree);
         let leaves: Vec<LeafInstance> = subtree
             .iter()
-            .filter_map(|(e, acc)| resolve_leaf(world, *e, acc, atlas, bakes, flip_bakes))
+            .filter_map(|(e, acc)| resolve_leaf(world, *e, acc, look, bakes, flip_bakes))
             .collect();
         if leaves.is_empty() {
             continue;
@@ -354,13 +330,13 @@ fn resolve_leaf(
     world: &ph2d_ecs::World,
     entity: Entity,
     acc: &Transform,
-    atlas: &TextureAtlas,
+    look: Appearance<'_>,
     bakes: &crate::motion_object_bake::ObjectBake,
     flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
 ) -> Option<LeafInstance> {
     let p = [acc.translation.x, acc.translation.y];
     if let Some(spr) = world.get::<Sprite>(entity) {
-        let (uv, tid) = sprite_appearance(spr, atlas)?;
+        let (uv, tid) = sprite_appearance(spr, look)?;
         // A sprite's atlas cell is orientation-free ⇒ the child's rotation/scale
         // relative to the group is applied here (rot in DEGREES, size scaled).
         return Some(LeafInstance {
@@ -477,14 +453,14 @@ fn group_stream(leaves: &[LeafInstance]) -> Stream {
 ///
 /// ⚠️ **Call AFTER `publish_shapes`:** it clears the external table first and this
 /// APPENDS objects into it, so the cook sees both the curves and the objects.
-pub(crate) fn publish_objects(motion: &mut MotionState, sim: &mut SimWorld, atlas: &TextureAtlas) {
+pub(crate) fn publish_objects(motion: &mut MotionState, sim: &mut SimWorld, look: Appearance<'_>) {
     // `&mut pump.cook` and the two `_bake` reads are disjoint fields — sprites resolve
     // live from the atlas; the fx phase filled `object_bake`/`flip_object_bake` last
     // frame (doc 86 §2 A2/A3).
     publish(
         &mut motion.pump.cook,
         sim,
-        atlas,
+        look,
         &motion.object_bake,
         &motion.flip_object_bake,
     );

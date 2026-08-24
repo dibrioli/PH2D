@@ -483,6 +483,32 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::STROKE_A,
             default: 1.0,
         },
+        // ⚠️ **Apendados** (doc 89 folha 14, as duas últimas células). `fill = 0` e
+        // `rotation = 0` ⇒ as colunas `tint`/`rot` do shell atravessam INTOCADAS.
+        ParamSpec {
+            name: param::FILL,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::FILL_R,
+            default: 1.0,
+        },
+        ParamSpec {
+            name: param::FILL_G,
+            default: 1.0,
+        },
+        ParamSpec {
+            name: param::FILL_B,
+            default: 1.0,
+        },
+        ParamSpec {
+            name: param::FILL_A,
+            default: 1.0,
+        },
+        ParamSpec {
+            name: param::ROTATION,
+            default: 0.0,
+        },
         // ⚠️ **Apendados** (doc 89 folha 14, as linhas do *sweep/start/inner* e do *raio
         // por canto*). Todos neutros no default — o `sweep = 0` pela sentinela documentada
         // no [`param::SWEEP`], os outros seis porque `0` já é o valor que a biblioteca usa.
@@ -559,7 +585,26 @@ impl NodeOp for SourceShape {
         // Clone is refcount (Arc columns); a key with no published shape (a
         // forward cook, before the shell's publish pass ran) is the empty
         // external → an empty stream ⇒ nothing drawn, no panic.
-        let stream = ctx.external(&key).clone();
+        let mut stream = ctx.external(&key).clone();
+        // **A COR e a ROTAÇÃO próprias** — ver [`param::FILL`] e [`param::ROTATION`]. Nos
+        // defaults nenhuma das duas escreve, e o que o shell publicou sai como entrou.
+        let n = stream.count();
+        if n > 0 && ctx.param(param::FILL) >= 0.5 {
+            let rgba = [
+                ctx.param(param::FILL_R),
+                ctx.param(param::FILL_G),
+                ctx.param(param::FILL_B),
+                ctx.param(param::FILL_A),
+            ];
+            stream.set("tint", ph2d_nodegraph::attr::Column::Vec4(vec![rgba; n]));
+        }
+        let rotation = ctx.param(param::ROTATION);
+        if n > 0 && rotation != 0.0 {
+            stream.set(
+                "rot",
+                ph2d_nodegraph::attr::Column::Scalar(vec![rotation; n]),
+            );
+        }
         ctx.emit(stream);
     }
 }
@@ -605,6 +650,10 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "fill_tests.rs"]
+mod fill_tests;
 
 mod hints;
 use hints::{PARAM_GATES, PARAM_GATES_ABOVE, PARAM_HINTS};

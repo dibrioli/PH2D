@@ -290,8 +290,13 @@ fn the_dock_overflow_is_named_not_discovered() {
     /// `bezier_warp` estoura porque 24 params são a superfície da referência; o
     /// `spline_wrap` estoura só no FALLBACK (sem forma escolhida ele mostra as oito
     /// coordenadas da cúbica), e com uma forma mede **456 px** num corpo de 664.
-    const NAMED_OVERFLOW: &[(&str, f32)] =
-        &[("motion.bezier_warp", 969.0), ("motion.spline_wrap", 755.0)];
+    const NAMED_OVERFLOW: &[(&str, f32)] = &[
+        ("motion.bezier_warp", 969.0),
+        ("motion.spline_wrap", 755.0),
+        // O terceiro, 2026-08-24: uma lista PLANA que passou por 16 px (meia linha) ao ganhar
+        // a cor e a rotação próprias. Sem `ParamGroup`, nenhuma dobra o alcança.
+        ("source.shape", 680.0),
+    ];
     let body = inspector_body_h();
     let census = height_census();
     let (worst_ty, worst_h) = census.first().copied().expect("o registry não é vazio");

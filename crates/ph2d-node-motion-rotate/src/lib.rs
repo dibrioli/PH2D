@@ -19,6 +19,36 @@
 //! node, and the node that already pays for them is [`motion.orbit`], which rotates `P` about a
 //! centre. Spinning a sprite in place and moving a layout about a point are two operations;
 //! this is the first one.
+//!
+//! ## ⛔ E não há `speed` aqui — a assimetria com o `motion.orbit` é uma ETIQUETA DE PREÇO
+//!
+//! (doc 89 folha 05 — C4D *Time effector*: *"valor que acumula com o tempo, rotação contínua
+//! sem keyframe"*; Cavalry *Accumulator*.)
+//!
+//! A célula lia a assimetria como um descuido — *"o irmão `motion.orbit` já tem `speed` e o
+//! `rotate` não; a família nomeia a capacidade e um dos dois não a exprime"* — e a medição diz
+//! o contrário: **o irmão é `Effect::Temporal` PORQUE tem `speed`**, e esse é o preço.
+//!
+//! ⚠️ **O que `Temporal` custa está medido, e não por mim:** o `Fingerprint` do cook chaveia um
+//! nó temporal no `playhead.to_bits()` (`cook.rs`), e a revisão de um nó **sobe sempre que ele
+//! recozinha** — logo a jusante inteira recozinha junto, todo quadro, mesmo com `speed = 0`. O
+//! doc do próprio `motion.orbit` traz a tabela (`ph2d-gpu-cook::measure_static_orbit`, 120
+//! quadros, params parados):
+//!
+//! | elementos | um nó `Pure` | o orbit `Temporal` com `speed = 0` | razão |
+//! |-----------|--------------|------------------------------------|-------|
+//! | 1.600     | 0,0003 ms    | 0,0105 ms                          | 37×   |
+//! | 102.400   | 0,0003 ms    | 0,6477 ms                          | 2294× |
+//!
+//! ⇒ dar `speed` a este nó faria **todo grafo que o contém** pagar isso, inclusive os que nunca
+//! giram. A composição `value.time → motion.drive(Rotation, scale = speed, Add)` põe o custo
+//! **onde o artista o pediu**: o nó temporal é o `value.time`, e um grafo sem ele fica
+//! inteiramente memoizado.
+//!
+//! ⚠️ **A cura de verdade está nomeada e BLOQUEADA**, e é a mesma que o `motion.orbit` já
+//! escreveu: o cook poder perguntar *"este nó é temporal NESTE instante?"*. `NodeManifest` e
+//! `OpResolver` são contrato **congelado** (§6) ⇒ ADR + Enio, nunca uma edição — e ela pagaria
+//! os dois nós de uma vez, tornando o orbit estático `Pure` de graça.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};

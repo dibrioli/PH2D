@@ -180,7 +180,7 @@ fn the_default_pivot_is_the_node_that_shipped_bit_for_bit() {
 fn the_pivot_folds_into_the_offset_instead_of_becoming_a_second_affine() {
     // (p - c)*s + c + o  ==  p*s + (o + c(1-s))
     for (s, c, o) in [(2.0f32, 5.0f32, 1.0f32), (0.5, -3.0, 0.0), (1.0, 7.0, -2.0)] {
-        let (fx, _) = folded_offset(s, o, 0.0, [c, 0.0]);
+        let (fx, _) = folded_offset(s, s, o, 0.0, [c, 0.0]);
         for p in [-4.0f32, 0.0, 9.5] {
             let folded = p * s + fx;
             let literal = (p - c) * s + c + o;
@@ -191,7 +191,7 @@ fn the_pivot_folds_into_the_offset_instead_of_becoming_a_second_affine() {
         }
     }
     // E o atalho do neutro devolve o offset intacto.
-    assert_eq!(folded_offset(2.0, 1.5, -2.5, [0.0, 0.0]), (1.5, -2.5));
+    assert_eq!(folded_offset(2.0, 2.0, 1.5, -2.5, [0.0, 0.0]), (1.5, -2.5));
 
     // ⚠️ E AQUI e onde o atalho deixa de ser cosmetico, no unico valor que o
     // separa da rota aritmetica: com `scale < 1` o termo `0 * (1 - s)` e `+0.0`,
@@ -200,7 +200,7 @@ fn the_pivot_folds_into_the_offset_instead_of_becoming_a_second_affine() {
     // estrutura -- uma fixture com `scale = 2` NAO ve isto (`0 * (1 - 2)` e
     // `-0.0`, e a soma coincide), e foi assim que a mutacao que apaga o atalho
     // sobreviveu a primeira rodada deste arquivo.
-    let (nx, ny) = folded_offset(0.5, -0.0, -0.0, [0.0, 0.0]);
+    let (nx, ny) = folded_offset(0.5, 0.5, -0.0, -0.0, [0.0, 0.0]);
     assert_eq!(
         (nx.to_bits(), ny.to_bits()),
         ((-0.0f32).to_bits(), (-0.0f32).to_bits()),

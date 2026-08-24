@@ -6833,7 +6833,18 @@ impl crate::App {
             // doc 86 §2: and the engine OBJECTS (named sprites) into the same
             // external table — AFTER shapes (which clears it), so the cook sees
             // both curves and objects. The atlas resolves each sprite's tile.
-            motion_bridge::publish_objects(motion, sim, renderer.atlas());
+            // ⚠️ **As DUAS lojas de aparência**, não só o atlas — ver `Appearance`: um sprite
+            // KTX2 assado era fonte INVISÍVEL só porque quem o resolvia não estava em mão
+            // aqui dentro, e ele está: é o mesmo `renderer` de onde sai o atlas.
+            let cooked = |id| renderer.cooked_texture_id(id);
+            motion_bridge::publish_objects(
+                motion,
+                sim,
+                motion_bridge::Appearance {
+                    atlas: renderer.atlas(),
+                    cooked: &cooked,
+                },
+            );
             // ...and the CURSOR, last, into the same table (`ph2d_nodegraph::external`).
             // It is not a document value — it is an editor input that changes every
             // frame — so publishing it is what lets `motion.look_at` aim at the mouse

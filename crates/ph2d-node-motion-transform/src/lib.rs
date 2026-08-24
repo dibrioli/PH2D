@@ -60,7 +60,7 @@
 //! ask *"is this node temporal at THIS instant?"*, and both `NodeManifest` and `OpResolver` are
 //! frozen (§6) — so it is an ADR, not an edit.
 
-use ph2d_node_registry::{NodeRegistry, ParamGate, ParamUnit, ParamUnitDecl, RegistryError};
+use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream, par_build};
 use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
@@ -97,6 +97,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "offset_y",
             default: 0.0,
         },
+        // **O LINK DE CORRENTE e o eixo Y** — ver [`UNIFORM`]. `uniform = 1` ⇒ o `scale`
+        // vale para os dois eixos, byte a byte (o precedente exato do `motion.scale`).
+        ParamSpec {
+            name: "uniform",
+            default: 1.0,
+        },
+        ParamSpec {
+            name: "scale_y",
+            default: 1.0,
+        },
         // WHAT the scale happens about: 0 the world origin (what this node always
         // did), 1 the typed point, 2 the layout's own centroid. Default 0 ⇒ every
         // document written before this reads exactly what it read before.
@@ -122,11 +132,43 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     lowerings: &[LoweringKind::Cpu],
 };
 
+/// **O LINK DE CORRENTE** (doc 89 folha 04… não: folha 05 — Blender *Transform Geometry* ▸
+/// Scale é um **Vector**; C4D Cloner/effector **S.XYZ**; Cavalry Duplicator *Shape Scale*).
+///
+/// ⚠️ **A cura é a CÓPIA da do irmão, e a célula pré-condenou a alternativa.** O
+/// `motion.scale` teve exactamente este defeito — *"uma coluna Vec2 a partir de um número"* — e
+/// foi curado em 08/08 com `uniform` + `amount_y` + `ParamGate`. A cerca dele (§4-C3 da folha)
+/// diz por que o `amount` **NÃO** vira "o fator X": *"mudaria o comportamento de todo grafo já
+/// autorado… e a demo de boot sozinha põe treze `motion.scale`"*. Partir o `scale` deste nó em
+/// dois números soltos teria o mesmo defeito, no arquivo ao lado.
+///
+/// ⚠️ **`>= 0.5` e não `!= 0.0`**: o param chega como `f32` de um toggle, e é a mesma leitura
+/// que o WGSL faz — o CPU e o device não podem discordar sobre o que *"uniform"* quer dizer.
+///
+/// ⚠️ **Ligado, os dois eixos são O MESMO NÚMERO** (não dois números iguais): é isso que faz o
+/// default reduzir à expressão que sempre shipou, e não a uma que dá no mesmo.
+const UNIFORM: &str = "uniform";
+/// O fator do eixo Y quando o link está desligado — ver [`UNIFORM`].
+const SCALE_Y: &str = "scale_y";
+
+/// Os dois fatores que o artista autorou. Espelho verbatim do `authored_factors` do
+/// `motion.scale`: uma segunda lei para *"o que o link significa"* é como as duas divergem.
+fn authored_factors(scale: f32, uniform: f32, scale_y: f32) -> (f32, f32) {
+    if uniform >= 0.5 {
+        (scale, scale)
+    } else {
+        (scale, scale_y)
+    }
+}
+
 /// The per-element affine map `p' = p * scale + (ox, oy)`. Pure and isolated so
 /// the arithmetic is unit-tested directly with non-identity values, alongside
 /// the end-to-end cook test that drives it via per-instance param overrides.
-fn apply_xform(p: [f32; 2], scale: f32, ox: f32, oy: f32) -> [f32; 2] {
-    [p[0] * scale + ox, p[1] * scale + oy]
+///
+/// ⚠️ Com o link ligado `sx` e `sy` são **o mesmo `f32`**, então isto é literalmente
+/// `p * scale + (ox, oy)` — a expressão de sempre, não uma que a iguala.
+fn apply_xform(p: [f32; 2], sx: f32, sy: f32, ox: f32, oy: f32) -> [f32; 2] {
+    [p[0] * sx + ox, p[1] * sy + oy]
 }
 
 /// The multiplicative `falloff` weight for instance `i` (absent → `1.0`) —
@@ -191,18 +233,18 @@ fn centroid(s: &Stream) -> Option<[f32; 2]> {
 /// `o + 0·(1−s)`: the two differ only in the sign of a zero, which nothing can
 /// see — and that is the point. Byte-identity for every document written before
 /// the pivot existed is then a fact of STRUCTURE, not an argument about IEEE.
-fn folded_offset(scale: f32, ox: f32, oy: f32, c: [f32; 2]) -> (f32, f32) {
+fn folded_offset(sx: f32, sy: f32, ox: f32, oy: f32, c: [f32; 2]) -> (f32, f32) {
     if c[0] == 0.0 && c[1] == 0.0 {
         return (ox, oy);
     }
-    (ox + c[0] * (1.0 - scale), oy + c[1] * (1.0 - scale))
+    (ox + c[0] * (1.0 - sx), oy + c[1] * (1.0 - sy))
 }
 
 /// Apply the affine map to `p`, then blend from the original toward the
 /// transformed position by `f` (the falloff): `f = 0` keeps `p`, `f = 1` takes
 /// the full transform. Mirrors `motion.orbit`'s focus blend.
-fn xform_masked(p: [f32; 2], scale: f32, ox: f32, oy: f32, f: f32) -> [f32; 2] {
-    let full = apply_xform(p, scale, ox, oy);
+fn xform_masked(p: [f32; 2], sx: f32, sy: f32, ox: f32, oy: f32, f: f32) -> [f32; 2] {
+    let full = apply_xform(p, sx, sy, ox, oy);
     [p[0] + (full[0] - p[0]) * f, p[1] + (full[1] - p[1]) * f]
 }
 
@@ -221,15 +263,19 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         // The pivot folded into the offset, the same expression and the same\n\
         // order as the CPU's `folded_offset` -- including its zero shortcut, so\n\
         // the neutral is structural on both paths and not an IEEE argument.\n\
+        // O link de corrente, lido como no CPU (`authored_factors`): `>= 0.5`, e ligado os\n\
+        // dois eixos sao o MESMO numero.\n\
+        let xf_sx = params.scale;\n\
+        let xf_sy = select(params.scale_y, params.scale, params.uniform >= 0.5);\n\
         var xf_ox = params.offset_x;\n\
         var xf_oy = params.offset_y;\n\
         if (params.pivot_x != 0.0 || params.pivot_y != 0.0) {\n\
-            xf_ox = params.offset_x + params.pivot_x * (1.0 - params.scale);\n\
-            xf_oy = params.offset_y + params.pivot_y * (1.0 - params.scale);\n\
+            xf_ox = params.offset_x + params.pivot_x * (1.0 - xf_sx);\n\
+            xf_oy = params.offset_y + params.pivot_y * (1.0 - xf_sy);\n\
         }\n\
         let xf_full = vec2<f32>(\n\
-            xf_p.x * params.scale + xf_ox,\n\
-            xf_p.y * params.scale + xf_oy);\n\
+            xf_p.x * xf_sx + xf_ox,\n\
+            xf_p.y * xf_sy + xf_oy);\n\
         write_P(i, vec2<f32>(\n\
             xf_p.x + (xf_full.x - xf_p.x) * xf_f,\n\
             xf_p.y + (xf_full.y - xf_p.y) * xf_f));\n",
@@ -250,7 +296,9 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["scale", "offset_x", "offset_y", "pivot_x", "pivot_y"],
+    params: &[
+        "scale", "uniform", "scale_y", "offset_x", "offset_y", "pivot_x", "pivot_y",
+    ],
     count_law: None,
     variant_by_param: None,
     // ⚠️ The device handles the origin and the typed point -- both are just
@@ -271,7 +319,8 @@ impl NodeOp for MotionTransform {
     }
 
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
-        let scale = ctx.param("scale");
+        // Os dois fatores — ver [`UNIFORM`]. Ligado (o default), `sx` e `sy` são o MESMO `f32`.
+        let (sx, sy) = authored_factors(ctx.param("scale"), ctx.param(UNIFORM), ctx.param(SCALE_Y));
         let (ox, oy) = (ctx.param("offset_x"), ctx.param("offset_y"));
         let mode = Pivot::of(ctx.param("pivot_mode"));
         let typed = [ctx.param("pivot_x"), ctx.param("pivot_y")];
@@ -286,7 +335,7 @@ impl NodeOp for MotionTransform {
                 Pivot::Point => typed,
                 Pivot::Centroid => centroid(input).unwrap_or([0.0, 0.0]),
             };
-            let (ox, oy) = folded_offset(scale, ox, oy, pivot);
+            let (ox, oy) = folded_offset(sx, sy, ox, oy, pivot);
             // The port type guarantees `P` is `Vec2`; a `P` of any other dim is
             // an upstream node-author bug. Assert it loudly in debug/test rather
             // than silently passing it through untransformed (which would emit
@@ -302,7 +351,7 @@ impl NodeOp for MotionTransform {
                         // Pure per-instance map → parallel above the threshold
                         // (bit-identical, no reduction). GPU/M5 Fase 0.
                         let t: Vec<[f32; 2]> = par_build(v.len(), |i| {
-                            xform_masked(v[i], scale, ox, oy, falloff_at(input, i))
+                            xform_masked(v[i], sx, sy, ox, oy, falloff_at(input, i))
                         });
                         out.set("P", Column::Vec2(t));
                     }
@@ -334,87 +383,15 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // M1.P1 — param rows: uniform scale + signed offsets.
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     // GPU/M5 Fase 2 (ADR-0126): the WGSL lowering, registered on the side.
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamUiHint, ParamWidget};
-
-/// Param UI hints (M1.P1) for the transform rows.
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "pivot_mode",
-        label: "Scale About",
-        min: 0.0,
-        max: 2.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &["World Origin", "Point", "Centroid"],
-        },
-    },
-    ParamUiHint {
-        param: "pivot_x",
-        label: "Pivot X",
-        min: -10.0,
-        max: 10.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "pivot_y",
-        label: "Pivot Y",
-        min: -10.0,
-        max: 10.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "scale",
-        label: "Scale",
-        min: 0.0,
-        max: 5.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "offset_x",
-        label: "Offset X",
-        min: -10.0,
-        max: 10.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "offset_y",
-        label: "Offset Y",
-        min: -10.0,
-        max: 10.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-];
-
-/// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
-/// shown. A `Length` is stored in world METRES and the panel resolves the face
-/// the artist reads (`px` or `m`) from `ProjectSettings::display_unit`; a node
-/// that could pin one would be overriding a setting it does not own.
-///
-/// Only params whose value is a world COORDINATE or a world DISTANCE are declared
-/// here. A weight, a fraction, a rate and a count are left bare on purpose: a unit
-/// that is wrong is worse than a unit that is missing, because the artist can read
-/// a bare number but a mislabelled one teaches them something false.
-static PARAM_UNITS: &[ParamUnitDecl] = &[
-    ParamUnitDecl {
-        param: "offset_x",
-        unit: ParamUnit::Length,
-    },
-    ParamUnitDecl {
-        param: "offset_y",
-        unit: ParamUnit::Length,
-    },
-];
+mod ui;
+use ui::{PARAM_GATES, PARAM_HARD_MIN, PARAM_HINTS, PARAM_UNITS};
 
 #[cfg(test)]
 mod tests {
@@ -517,19 +494,28 @@ mod tests {
         // Unit-proves the `p*scale + offset` arithmetic directly with
         // non-identity values (the end-to-end override path is covered by
         // `per_instance_overrides_drive_the_affine_through_the_cook`).
-        assert_eq!(apply_xform([2.0, 3.0], 2.0, 1.0, -1.0), [5.0, 5.0]);
-        assert_eq!(apply_xform([0.0, 0.0], 10.0, 4.0, 7.0), [4.0, 7.0]);
-        assert_eq!(apply_xform([1.0, 1.0], 0.0, 0.0, 0.0), [0.0, 0.0]); // collapse
-        assert_eq!(apply_xform([-2.0, 5.0], 1.0, 0.0, 0.0), [-2.0, 5.0]); // identity
+        assert_eq!(apply_xform([2.0, 3.0], 2.0, 2.0, 1.0, -1.0), [5.0, 5.0]);
+        assert_eq!(apply_xform([0.0, 0.0], 10.0, 10.0, 4.0, 7.0), [4.0, 7.0]);
+        assert_eq!(apply_xform([1.0, 1.0], 0.0, 0.0, 0.0, 0.0), [0.0, 0.0]); // collapse
+        assert_eq!(apply_xform([-2.0, 5.0], 1.0, 1.0, 0.0, 0.0), [-2.0, 5.0]); // identity
     }
 
     #[test]
     fn xform_masked_blends_by_falloff() {
         // f=1 → full transform; f=0 → unmoved; f=0.5 → halfway between.
-        assert_eq!(xform_masked([1.0, 1.0], 2.0, 10.0, 0.0, 1.0), [12.0, 2.0]);
-        assert_eq!(xform_masked([1.0, 1.0], 2.0, 10.0, 0.0, 0.0), [1.0, 1.0]);
+        assert_eq!(
+            xform_masked([1.0, 1.0], 2.0, 2.0, 10.0, 0.0, 1.0),
+            [12.0, 2.0]
+        );
+        assert_eq!(
+            xform_masked([1.0, 1.0], 2.0, 2.0, 10.0, 0.0, 0.0),
+            [1.0, 1.0]
+        );
         // full = (12, 2); midpoint with (1,1) = (6.5, 1.5).
-        assert_eq!(xform_masked([1.0, 1.0], 2.0, 10.0, 0.0, 0.5), [6.5, 1.5]);
+        assert_eq!(
+            xform_masked([1.0, 1.0], 2.0, 2.0, 10.0, 0.0, 0.5),
+            [6.5, 1.5]
+        );
     }
 
     // Source with a falloff column so the mask is exercised end to end.
@@ -597,22 +583,10 @@ mod tests {
     }
 }
 
-/// The two coordinates belong to the mode that reads them: at the origin they are
-/// zero by definition, and on a centroid the layout answers — so a pair of number
-/// rows in either would be two knobs the cook never opens.
-static PARAM_GATES: &[ParamGate] = &[
-    ParamGate {
-        param: "pivot_x",
-        when: "pivot_mode",
-        values: &[1],
-    },
-    ParamGate {
-        param: "pivot_y",
-        when: "pivot_mode",
-        values: &[1],
-    },
-];
-
 #[cfg(test)]
 #[path = "pivot_tests.rs"]
 mod pivot_tests;
+
+#[cfg(test)]
+#[path = "uniform_tests.rs"]
+mod uniform_tests;

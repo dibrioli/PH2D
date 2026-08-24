@@ -18,6 +18,36 @@ use ph2d_node_registry::{ParamGate, ParamGateAbove, ParamUiHint, ParamWidget};
 /// row past `size` is gated by [`PARAM_GATES`], so the panel shows ONLY the
 /// controls the current `kind` uses.
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
+    // **A COR e a ROTAÇÃO próprias** (doc 89 folha 14, as duas últimas células) — no topo, com
+    // o traço, porque *de que cor é* e *para que lado aponta* são o que se pergunta de uma
+    // forma depois de escolher qual ela é.
+    ParamUiHint {
+        param: param::FILL,
+        label: "Own Fill",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
+    // O MESMO swatch do traço, pela mesma lei (nunca quatro sliders lineares crus).
+    ParamUiHint {
+        param: param::FILL_R,
+        label: "Fill",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Color {
+            channels: [param::FILL_R, param::FILL_G, param::FILL_B, param::FILL_A],
+        },
+    },
+    ParamUiHint {
+        param: param::ROTATION,
+        label: "Rotation",
+        min: -180.0,
+        max: 180.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
+    },
     // **O TRAÇO** (doc 89 folha 14, P0) — o controle que separa *forma* de
     // *silhueta*. `0` = sem traço ⇒ a forma que sempre shipou.
     ParamUiHint {
@@ -449,6 +479,13 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
 /// dobrados nele e nem chegam a ter linha própria) — gatear um canal dobrado não esconderia
 /// nada.
 pub(crate) static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
+    // ⚠️ O swatch do preenchimento só aparece com o modo ligado — e ancora no `fill_r` pela
+    // mesma razão que o do traço: os outros três canais estão dobrados nele.
+    ParamGateAbove {
+        param: param::FILL_R,
+        when: param::FILL,
+        above: 0.0,
+    },
     ParamGateAbove {
         param: param::STROKE_R,
         when: param::STROKE_WIDTH,

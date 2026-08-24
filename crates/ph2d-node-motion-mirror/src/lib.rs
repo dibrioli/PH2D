@@ -89,6 +89,31 @@ const FLIP_ROT: &str = "flip_rot";
 /// plausivelmente o que se quer de um espelho. Ligar é pedir *"uma lista só"*.
 const REINDEX: &str = "reindex";
 
+/// **O QUE FICA no fim** (doc 89 folha 05 — o 3.º modo *"Discard original"* do Inkscape, que a
+/// `line/Vector` W6.3 nomeou e não construiu; no idioma de layout, espelhar sem duplicar).
+///
+/// - `0` **Both** (o default): os `2n` de sempre — originais e depois os gêmeos.
+/// - `1` **Reflection only**: fica só a metade espelhada, `n` elementos.
+///
+/// ⚠️ **A célula media a composição e ela EXISTE** — `motion.cull(mode = Fraction, amount = 0.5,
+/// invert = on)` fica com a segunda metade. Isto entra na mesma pela razão que fechou metade da
+/// folha 04: *dois nós para um estado de um enum*, e o segundo deles obriga o artista a saber
+/// que este nó emite **originais primeiro e gêmeos depois** — uma ordem que é detalhe de
+/// implementação e que ele teria de decorar para escrever o `invert` no sentido certo.
+///
+/// ⚠️ **O corte acontece DEPOIS de tudo**, e é isso que o torna barato e correcto: a reflexão é
+/// a mesma, o `flip_rot` é o mesmo, e o [`reindex`] renumera **o que sobrou** — que é a resposta
+/// certa, porque uma lista de `n` que se diz `0..2n` mente para todo nó a jusante.
+///
+/// ⚠️ **E o espelho continua a ser em torno do CENTROIDE do que entrou**, não do que sai: o
+/// centroide da metade espelhada é outro ponto, e recalculá-lo faria o `offset` significar
+/// coisas diferentes nos dois modos.
+const KEEP: &str = "keep";
+/// Só o reflexo — ver [`KEEP`].
+const KEEP_REFLECTION: i32 = 1;
+/// As palavras que o painel mostra, na ordem dos números.
+const KEEP_LABELS: &[&str] = &["Both", "Reflection Only"];
+
 /// As duas colunas de identidade — *quem é este elemento na lista*. Os mesmos
 /// nomes que o `motion.sort` e o `motion.combine` usam.
 const INDEX: &str = "Index";
@@ -127,6 +152,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         ParamSpec {
             name: "reindex",
+            default: 0.0,
+        },
+        // **O QUE FICA** — ver [`KEEP`]. `0` (Both) ⇒ os `2n` de sempre.
+        ParamSpec {
+            name: "keep",
             default: 0.0,
         },
     ],
@@ -181,6 +211,7 @@ impl NodeOp for MotionMirror {
             Some(Column::Vec2(v)) => v.clone(),
             _ => vec![[0.0, 0.0]; n],
         };
+        let keep_reflection = ctx.param(KEEP).round() as i32 == KEEP_REFLECTION;
         let mirrored = mirror_positions(&p, vertical, offset);
         // Every column is duplicated onto the twin; `P` is reflected, and with
         // [`FLIP_ROT`] the two ORIENTED channels are reflected too.
@@ -192,6 +223,13 @@ impl NodeOp for MotionMirror {
             out.set(name.clone(), twin(name.as_str(), col, vertical, flip));
         }
         out.set("P", Column::Vec2(mirrored));
+        // ⚠️ O corte vem ANTES do [`reindex`] — ver [`KEEP`]: renumerar `2n` e depois deitar
+        // fora metade deixaria a lista a dizer `0..2n` sobre `n` elementos.
+        let mut out = if keep_reflection {
+            keep_second_half(&out, n)
+        } else {
+            out
+        };
         if renumber {
             reindex(&mut out);
         }
@@ -243,6 +281,33 @@ fn mirror_vec(q: [f32; 2], vertical: bool) -> [f32; 2] {
 /// **Reescreve as duas colunas de identidade** para a lista dobrada: `Index = 0..2n−1`
 /// e `Count = 2n` em todas as linhas. Ver [`REINDEX`] — escreve as duas mesmo em
 /// branco, porque a contagem MUDOU.
+/// **Fica só a metade espelhada** — os últimos `n` de cada coluna (ver [`KEEP`]).
+///
+/// ⚠️ Percorre TODA coluna, não só o `P`: um `size`/`tint`/`id` que ficasse com `2n` linhas
+/// sobre um `P` de `n` seria um stream mal-formado, e o modo de falha é a coluna a ler o
+/// elemento errado em silêncio.
+/// ⚠️ Devolve um stream NOVO em vez de encolher o que entrou: a contagem de um `Stream` é
+/// fixada na construção (`Stream::new`), e um stream cujas colunas encolheram sem a contagem
+/// os acompanhar seria mal-formado de uma maneira que só um consumidor a jusante veria.
+fn keep_second_half(src: &Stream, n: usize) -> Stream {
+    fn tail<T: Clone>(v: &[T], n: usize) -> Vec<T> {
+        v[v.len().saturating_sub(n)..].to_vec()
+    }
+    let mut out = Stream::new(n);
+    for (name, col) in src.columns() {
+        out.set(
+            name.clone(),
+            match col {
+                Column::Scalar(v) => Column::Scalar(tail(v, n)),
+                Column::Vec2(v) => Column::Vec2(tail(v, n)),
+                Column::Vec3(v) => Column::Vec3(tail(v, n)),
+                Column::Vec4(v) => Column::Vec4(tail(v, n)),
+            },
+        );
+    }
+    out
+}
+
 fn reindex(out: &mut Stream) {
     let n = out.count();
     #[expect(clippy::cast_precision_loss, reason = "uma contagem de elementos")]
@@ -320,6 +385,19 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Toggle,
+    },
+    // ⚠️ Um `Enum` e não um Toggle: *"Reflection Only"* diz o que fica, enquanto *"descartar o
+    // original"* pedia para se adivinhar qual dos dois é o original. É a mesma escolha que o
+    // `mode` do `motion.spline_wrap` fez pelo vocabulário da referência.
+    ParamUiHint {
+        param: KEEP,
+        label: "Keep",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: KEEP_LABELS,
+        },
     },
 ];
 
@@ -507,3 +585,7 @@ mod tests {
 #[cfg(test)]
 #[path = "twin_tests.rs"]
 mod twin_tests;
+
+#[cfg(test)]
+#[path = "keep_tests.rs"]
+mod keep_tests;

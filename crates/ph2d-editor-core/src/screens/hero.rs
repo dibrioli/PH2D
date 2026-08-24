@@ -33,8 +33,10 @@ pub mod context_menu_overlay;
 pub mod file_menu;
 pub mod fixture;
 pub mod global_palette;
+pub mod panel_ids;
 /// O MODELO do menu radial (E4) — a vista de OITO direcções da mesma lista da paleta.
 pub mod radial;
+pub use panel_ids::{PANEL_MOTION_GRAPH, PANEL_TIMELINE};
 // Wave 6+7 Phase 2: hero ids promoted to ph2d-editor-core so dispatch
 // and panel crates can reach them without depending back on hero. The
 // `screens::hero::ids` path continues to resolve via this re-export.
@@ -322,7 +324,7 @@ impl HeroScreen {
                 rulers_visible: true,
                 center_split: crate::screens::layout::CenterSplit::None,
             },
-            panel_visibility: default_panel_visibility(),
+            panel_visibility: panel_ids::default_panel_visibility(),
             image_edit: ImageEditState::default(),
             gizmo: GizmoStateGroup::default(),
             grid: GridState::default(),
@@ -614,7 +616,7 @@ impl crate::panel::PanelHostInternal for HeroScreen {
     fn set_panel_visible(&mut self, id: &str, value: bool) {
         // Use the canonical interned id when one matches a known
         // panel so the HashMap lookup is keyed by `&'static str`.
-        let key = canonical_panel_id(id).unwrap_or_else(|| {
+        let key = panel_ids::canonical_panel_id(id).unwrap_or_else(|| {
             // Fall back to leaking — unknown panels are rare (3rd
             // party / future migrations); a single allocation per
             // unique id is acceptable for the unstable internal tier.
@@ -643,51 +645,6 @@ impl crate::panel::PanelHostInternal for HeroScreen {
 
     fn set_grid_snap_panel_rect(&mut self, rect: Option<crate::zones::Rect>) {
         self.grid.snap_state.panel_rect = rect;
-    }
-}
-
-/// Build the default per-panel visibility map for a fresh
-/// `HeroScreen`. Inspector + Hierarchy visible by default; floating
-/// panels (Widget Gallery, Grid Snap) hidden.
-fn default_panel_visibility() -> std::collections::BTreeMap<&'static str, bool> {
-    let mut map = std::collections::BTreeMap::new();
-    map.insert("inspector", true);
-    map.insert("hierarchy", true);
-    map.insert("widget_gallery", false);
-    map.insert("grid_snap", false);
-    map.insert("timeline", false);
-    map
-}
-
-/// **The two panel ids the Motion dock is a conversation between** (W4.T4).
-///
-/// The shell's Motion bridge WRITES these keys into `panel_visibility`; the hero's paint READS
-/// them to decide whether to carve the timeline's band out of the graph. A string written on one
-/// side and typed again on the other is two doors to the same question, and two doors diverge
-/// ([[feedback_two_doors_to_the_same_question_diverge]]) — silently, because a missing key just
-/// reads as `false` and the feature simply never happens.
-pub const PANEL_MOTION_GRAPH: &str = "motion_graph";
-pub const PANEL_TIMELINE: &str = "timeline";
-
-/// Canonical `&'static str` for known panel ids — keeps the
-/// visibility HashMap keys stable across calls without leaking.
-fn canonical_panel_id(id: &str) -> Option<&'static str> {
-    match id {
-        "inspector" => Some("inspector"),
-        "hierarchy" => Some("hierarchy"),
-        "widget_gallery" => Some("widget_gallery"),
-        "grid_snap" => Some("grid_snap"),
-        PANEL_TIMELINE => Some(PANEL_TIMELINE),
-        // O painel da cena 3D (ADR-0150 W12). A ponte do shell o abre no frame
-        // em que a escultura nasce, então a chave é escrita a cada sessão de
-        // smoke — vazá-la pelo `Box::leak` seria uma alocação por processo, o
-        // que é barato e mesmo assim errado quando o nome é conhecido.
-        "sculpt3d" => Some("sculpt3d"),
-        // O painel de MODELAGEM 3D (ADR-0161 W4) — o irmão do de cima. Sem esta entrada o
-        // `set_panel_visible` cai no `Box::leak`, o que funciona e mesmo assim é errado
-        // quando o nome é conhecido.
-        "model3d" => Some("model3d"),
-        _ => None,
     }
 }
 

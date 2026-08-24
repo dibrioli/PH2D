@@ -1,12 +1,27 @@
-# HANDOFF DE INTEGRAÇÃO · `line/motion-value` · **bloco Z** — 2026-08-23
+# HANDOFF DE INTEGRAÇÃO · `line/motion-value` — 2026-08-23
 
-> **A linha NÃO integrou e NÃO pushou** (`CLAUDE.md` §0.7). **Vinte e um** commits locais, à espera
-> de ordem explícita do Enio. **Quatro blocos** no mesmo dia: os TETOS (§1), a folha 11 (§0-bis, §9),
-> o defeito que o smoke da folha 11 devolveu (**§0-ter — leia-o primeiro se você integra**: ele é o
-> único item deste handoff que muda o pixel de **toda sprite do app**) e a folha 06 (§0-quater).
+> **A linha NÃO integrou e NÃO pushou** (`CLAUDE.md` §0.7). **39 commits locais**, à espera de
+> ordem explícita do Enio.
+
+## ⚠️ SE VOCÊ VAI INTEGRAR, LEIA ESTES QUATRO E NADA MAIS
+
+| | onde | por quê |
+|---|---|---|
+| **1** | [§2](#2--superfície-de-colisão-159-item-3) | a superfície de colisão — **re-rode o script antes de fundir**, a tabela colada envelhece |
+| **2** | [§3.1](#31---ph2d-nodegraph--o-leque-de-tempo-adr-0163) | **`ph2d-nodegraph`** — é a única linha da jornada que o toca |
+| **3** | [§3.2](#32---ph2d-render--o-multiply-deixa-de-inverter-a-alfa) | o **`Multiply`** do renderer — muda o pixel de **toda sprite da app**, e um golden alheio muda de valor |
+| **4** | [§4](#4--mudanças-de-comportamento-leia-antes-de-integrar) | as seis mudanças de comportamento |
+
+O resto do documento são as **§0-\*** (a narrativa de cada um dos dez blocos, para
+quem quiser o mecanismo) e as §5-§9 (ship, gate, mutação, dívida).
 
 **Worktree:** `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value` · **branch:**
-`line/motion-value` · **base:** `main` em `35f937cb2`.
+`line/motion-value` · **base:** `main` em `35f937cb2` · **HEAD:** `2c986ecdc`.
+
+⚠️ **O `incremental/` desta worktree ainda NÃO foi reclamado** (§1.5.9 item 7): a
+linha continua a trabalhar por ordem do Enio, e o `incremental/` do `dev` é o que
+faz o `cargo check -p` voar durante a jornada. Ele é reclamado quando a linha
+PARAR — `rm -rf "$(git rev-parse --show-toplevel)"/target/*/incremental`.
 
 ---
 
@@ -700,213 +715,315 @@ Split por HR-18: `ph2d-node-motion-emitter/history.rs`.
 
 ---
 
-## §1 — O que entrou, em uma frase
+## §1 — IDENTIDADE (§1.5.9 item 1)
 
-**Todo teto deste catálogo passa a dizer de que RECURSO ele é** (`CLAUDE.md` §0.0) — 27 params
-curados em 11 crates, os dois grampos de integração medidos, e a legenda das cenas de smoke
-mudou-se para o canvas. Conferência 89: **89 → 82 P2** (7 células, 4 folhas).
-
-Registro completo: [`docs/Motion Nodes/91_os_tetos_que_ninguem_mediu.md`](../91_os_tetos_que_ninguem_mediu.md).
-
----
-
-## §2 — Os commits (ordem de aplicação)
-
-| sha | o que |
+| | |
 |---|---|
-| `311176ba8` | folha 04: o `falloff` do `motion.kaleidoscope` REFUTADO por medição |
-| `1d1634cdb` | a porta que promete um CAMPO e lê só o elemento 0 (`spline_wrap`, `lattice`) |
-| `e6e324509` | `motion.wave`: a altura escolhe o canal (`height_channel`) |
-| `029a939be` | cena `=83` — o campo que era um número |
-| `079305096` | **bloco Z**: 25 tetos de precisão + o `rate` + o ângulo + os dois `MAX_DT` |
-| `ef97264af` | a legenda das cenas de smoke vai para o CANVAS |
-| `e947b6c98` | o teto de paradas do gradiente ganha derivação (e a medição confirmou o 8) |
-| `e04f092b5` | o doc 91 + as 7 células fechadas + as contagens reconciliadas |
-| `7538b0d3d` | o handoff do bloco Z + duas flakes novas no §5.0 |
-| `32d813b84` | **folha 11**: o modo da sombra e a lente do `rgb_split` (STREAM) |
-| `ea8818872` | **folha 11**: a operação e a fonte do halo + o gate de WGSL que faltava |
-| `57e3174ec` | **folha 11**: a cor do halo por RAMPA (LUT de 512 texels, medida) |
-| `+2` | a cena `=84`, a folha 11 fechada e o split do `motion_fx.rs` por HR-18; e duas memórias |
+| branch | `line/motion-value` |
+| HEAD | `2c986ecdc` |
+| merge-base com `main` | `35f937cb2` |
+| commits | **39** · 205 ficheiros |
+| smoke | **aprovado pelo Enio** nas cenas `=84` `=85` `=86` `=87` `=88` `=89` |
+
+**Em uma frase:** a conferência dos nós (doc 89) vai de **89 P2 + 4 P1** a
+**68 P2 + ZERO P1** — e o preço disso foi **uma capacidade nova no substrato**
+(o *leque de tempo*, ADR-0163), **um defeito do renderer que valia para toda a
+app** (o `Multiply` invertido) e **um gizmo de canvas novo**.
+
+⚠️ **Esta é a única linha da jornada que toca o `ph2d-nodegraph`.** Leia o §3.1
+antes de fundir.
 
 ---
 
-## §3 — Superfície de colisão (o que o integrador tem de saber)
+## §2 — SUPERFÍCIE DE COLISÃO (§1.5.9 item 3)
 
-### §3.1 — ⚠️ **Um TOKEN novo** (o único item foundational-ish)
+⚠️ **Saída colada de `bash scripts/collision-surface.sh`, corrida em `2c986ecdc`
+contra `35f937cb2`.** É **REFERÊNCIA, nunca EVIDÊNCIA** — se outra linha fundir
+antes desta, todo número da coluna *base* muda e esta tabela não reclama. **O
+integrador RE-RODA o script na worktree antes de fundir**, e a divergência entre
+as duas leituras é ela própria um achado.
 
-`docs/design/tokens.json` ganha **`chrome.panel-min-w: 220`**, re-exportado como
-`ph2d_tokens::PANEL_MIN_W_PX`. O valor **já existia** — era um `const MIN_W` privado *dentro* de
-`clamp_panel_rect`, e o comportamento não muda um pixel.
+```text
+SUPERFÍCIE DE COLISÃO — line/motion-value contra main
+  merge-base 35f937cb2   ·   39 commit(s)   ·   205 arquivo(s)
+───────────────────────────────────────────────────────────────────────────────
+▸ SCHEMAS — ⚠️ o valor se CONTA contra o main do dia; confira nos TRÊS sítios
+    PROJECT_SCHEMA                         89   (base: 89)
+      └ tripla do gate               (89, 13, 14)   (base: (89, 13, 14))
+    VEC_SCENE_SCHEMA                       14   (base: 14)
+    FLIP_SCHEMA                            13   (base: 13)
+    DOC_VERSION (timeline)                 18   (base: 18)
 
-⚠️ **Se outra linha tocou `tokens.json`, este é o ponto de merge.** É um acréscimo de uma linha
-num bloco ordenado; a lista de re-export em `ph2d-tokens/src/lib.rs` é alfabética e o nome novo
-entra entre `PANEL_HEAD_PAD_PX` e `PANEL_RADIUS_PX`.
+▸ REGISTRO DE COMPONENTES — o contador é TRÊS, cada um roda só na suíte da própria crate
+    ph2d-ecs                               65   (base: 65)
+    ph2d-render (espelho)                  66   (base: 66)
+    ph2d-script (espelho)                  66   (base: 66)
 
-### §3.2 — Crates tocadas (11 crates-nó, 3 de infra, 1 shell)
+▸ CONTRATO CONGELADO (§6) — deve ser INTOCADO; se não, exige ADR
+    crates/ph2d-nodegraph/src/node.rs              intocado
+    crates/ph2d-editor-core/src/tool.rs            intocado
 
-`ph2d-node-{field-box, field-radial-sweep, field-remap, force-attractor, force-buoyancy,
-force-vortex, force-wind, motion-emitter, motion-four-point-warp, motion-integrate, motion-move,
-motion-spherize, motion-voronoi, sim-spawn, sim-step, value-lfo, registry-init}` ·
-`ph2d-{tokens, editor-core, panel-motion-params, gpu-cook}` · `shells/desktop`.
+▸ ADR — número escolhido numa linha paralela é PROVISÓRIO
+    último no disco: 0163   próximo livre: 0164
+  ⚠ esta linha cria ADR: 0163   — reconte contra o main do dia
 
-⚠️ **Quase toda a edição é APENDAR uma `static PARAM_HARD_MAX`/`PARAM_HARD_MIN` e uma linha de
-`register_*`** — colisão de mesmo-símbolo é improvável, e um merge textual que perca uma das duas
-metades é apanhado pelo gate (que exige a entrada E o número).
+▸ Cargo.lock — pacote EXTERNO novo é o que importa; aresta interna não
+  ⚠ 1 pacote(s) '+name' novo(s):
+      "ph2d-node-motion-bezier-warp"
 
-### §3.3 — Dois splits por HR-18
+▸ MARCADORES DE CONFLITO — inclui '|||||||' (diff3)
+    nenhum nos arquivos da linha
 
-- `ph2d-node-field-remap/src/params.rs` (novo) — hints/gates/grupos/teto saem do `lib.rs` (686 → 503)
-- `ph2d-node-motion-four-point-warp/src/bounds.rs` (novo) — os 16 limites dos 8 cantos (681 → 693)
+▸ TETOS DE LOC nos arquivos que a linha tocou
+    nenhum arquivo da linha passa do teto
+```
 
-### §3.4 — Uma dev-dependency nova
+**Leitura:** **nenhum schema mexeu**, **nenhum registo de componente mexeu**,
+**nenhum contrato congelado encostado** (§1.5.9 item 4 = *nenhum*, sem ADR de
+contrato). Os dois únicos itens que somam entre linhas são:
 
-`ph2d-node-registry-init` ganha `ph2d-core` em `[dev-dependencies]` (só o gate dos tetos, que mede
-à cadência de `DEFAULT_HZ`). **`Cargo.lock` mexe.**
+1. ⚠️ **ADR-0163** — o número é PROVISÓRIO. Reconte contra o `main` do dia e
+   renumere se outra linha o gastou. Ele é referenciado por **nome de ficheiro**
+   em: `CLAUDE.md §5`, o doc-comment de `history.rs`/`resample.rs`, a folha 01 e
+   a folha 07 da conferência, e este handoff.
+2. ⚠️ **`Cargo.lock`** — um pacote novo, **interno** (`ph2d-node-motion-bezier-warp`).
+   Nenhuma dependência externa nova ⇒ nada para o `cargo-machete`/`deny` que já
+   não estivesse lá.
+
+---
+
+## §3 — FOUNDATIONAL E COMPARTILHADO (§1.5.9 item 2)
+
+### §3.1 — ⚠️⚠️ `ph2d-nodegraph` — o LEQUE DE TEMPO ([ADR-0163](../../architecture/decisions/0163-a-node-may-cook-its-own-input-at-n-instants-a-time-fan.md))
+
+**É o único item de risco real desta linha.** Um nó pode agora cozinhar a própria
+entrada em **N instantes**.
+
+| símbolo | ficheiro | forma |
+|---|---|---|
+| `pub type TimeFans = BTreeMap<NodeId, Vec<TimeMap>>` | `cook.rs` | **NOVO** |
+| `Cook::cook_scoped_fanned` · `Cook::advance_tick_fanned` | `cook.rs` | **métodos NOVOS**; os irmãos delegam com leque vazio |
+| `EvalCtx::fan(k)` · `fan_len()` · `fan_param(name, k)` + 2 campos | `cook_eval_ctx.rs` | **NOVOS** |
+| `cook_node` ganha o 8.º argumento | `cook.rs` (privado) | não sai da crate |
+| `MotionCookPump::set_time_fans` / `time_fans` | `ph2d-eval-motion/fans.rs` | **ficheiro NOVO** |
+
+⚠️ **NENHUMA assinatura existente mexeu**, e isso foi desenho e não sorte
+(CLAUDE.md §0.2, *ao criar foundational novo projete-o para isolamento*): a
+alternativa — pendurar um argumento no `advance_or_scrub_scoped` — tocaria **29
+sítios de chamada** em duas crates e no shell, e seria um ímã de conflito para
+toda linha viva.
+
+⚠️ **Um leque VAZIO é byte-idêntico ao cook de sempre**, com gate
+(`an_empty_fan_is_the_cook_that_shipped`). Toda linha que não saiba que isto
+existe cozinha exactamente como cozinhava.
+
+### §3.2 — ⚠️ `ph2d-render` — o **`Multiply`** deixa de inverter a alfa
+
+`pipeline.rs::blend_state_for`, tag 3: `dst_factor` de `Zero` para
+`OneMinusSrcAlpha`.
+
+⚠️⚠️ **ISTO MUDA O PIXEL DE TODA SPRITE DA APP** com `BlendMode::Multiply` em
+alfa **parcial** — não é um nó do Motion, é o renderer. Em `α = 1` nada se move
+(e era **só** `α = 1` que o gate media). **Um golden de outra linha que contenha
+um Multiply translúcido MUDA DE VALOR, e a mudança É a cura**: antes, `α = 0`
+pintava **preto** e subir a alfa **clareava**. Registo: `BUGS_motion_nodes.md`
+Bug #4 e o §0-ter deste handoff.
+
+### §3.3 — Outros ficheiros fora de `crates/ph2d-node-*`
+
+| área | o quê | risco |
+|---|---|---|
+| `ph2d-color` (`color_ramp.rs`, `color_ramp_text.rs`) | `RampStop::interp` + geração **`g4`** do formato | aditivo; `g1`/`g2`/`g3` byte-idênticos, com gate |
+| `ph2d-panel-motion-params` | `MAX_PARAM_ROWS` **20 → 24**; `hit_index.push_clip` no corpo; split do `gradient_row` | ⚠️ ver §4.2 |
+| `ph2d-tokens` (`chrome.rs`, `lib.rs`) | `chrome.panel-min-w: 220` re-exportado como `PANEL_MIN_W_PX` | o valor já existia como `const` privado; zero pixels |
+| `ph2d-editor-core/src/widget/panel_chrome.rs` | passa a ler o token acima | idem |
+| `ph2d-gpu-cook/tests/*` | 3 suítes de paridade CPU×GPU novas + `Cargo.toml` (dev-dep) | só testes |
+| `shells/desktop` | 48 ficheiros — as 6 cenas de smoke, o gizmo de warp, o `render_loop` | ver §3.4 |
+
+### §3.4 — `shells/desktop` — os pontos que uma outra linha pode tocar
+
+- **`motion_state_demo_router.rs`** — braços `=84`..`=89` e `MAX_DEMO_LEVEL`
+  **84 → 89**. ⚠️ **Duas linhas que acrescentem cenas colidem AQUI**, e o número
+  se **CONTA**, não se escolhe (CLAUDE.md §5.0). Os gates
+  `no_two_*_scenes_claim_the_same_level` apanham a duplicata.
+- **`render_loop/motion_bridge.rs`** — monta `time_scopes` **e** a união dos dois
+  `time_fans` (rastro + emissor) e pousa-a com `set_time_fans`.
+- **`input_dispatch.rs`** — três pontas de ponteiro para o gizmo de warp, atrás
+  de `&& on_canvas`.
+- **`render_loop/mod.rs`**, **`app_state.rs`**, **`main.rs`** — declarações de
+  módulo e o campo `warp_drag`. Aditivo.
+- Ficheiros NOVOS (não colidem): `warp_gizmo{,_doc,_tests}.rs`,
+  `warp_gizmo_drag.rs`, `warp_overlay.rs`, `motion_demo_legend{,_tests}.rs`, e os
+  três ficheiros de cada cena `=84`..`=89`.
+
+### §3.5 — Crates-nó tocadas (31) — drop-crate, sem colisão esperada
+
+`field-box` · `field-radial-sweep` · `field-remap` · `force-attractor` ·
+`force-buoyancy` · `force-vortex` · `force-wind` · `fx-drop-shadow` · `fx-glow` ·
+`fx-rgb-split` · **`motion-bezier-warp` (NOVA)** · `motion-emitter` ·
+`motion-four-point-warp` · `motion-integrate` · `motion-lattice` · `motion-move` ·
+`motion-noise` · `motion-oscillator` · `motion-path` · `motion-soft-body` ·
+`motion-spherize` · `motion-spline-wrap` · `motion-stagger` · `motion-trail` ·
+`motion-voronoi` · `motion-wave` · `motion-wiggle` · `sim-spawn` · `sim-step` ·
+`value-lfo` · **`node-registry-init`** (codegen do nó novo).
 
 ---
 
 ## §4 — MUDANÇAS DE COMPORTAMENTO (leia antes de integrar)
 
-### §4.1 — ⚠️ O `MAX_DT` dos dois integradores: `0,1` e `0,05` → **`0,03`**
+Cada uma destas muda o que já shipava. As restantes ~40 curas são params novos
+com neutro byte-idêntico e não estão aqui.
 
-**Em regime é byte-idêntico** (o tique fixo é `1/60 = 0,0167`, muito abaixo do grampo, e o
-`FixedStep` da casa entrega um tique por cozedura mesmo num ecrã lento). O que muda é **quanto de
-um SCRUB o sim absorve** — e absorver é a resposta certa ali.
+### §4.1 — ⚠️⚠️ O `Multiply` do renderer (§3.2)
 
-A medição (doc 91 §5): a `0,1`, o laço fechado real com uma força que se alcança **arrastando**
-atira uma grelha nascida em raio `1,0` a **127,19**; o irmão `sim.step`, a `0,05`, segurava a mesma
-cena em `2,49`.
+O maior alcance de toda a linha. Ver acima.
 
-⛔ **`motion.spring`, `motion.boids` e `motion.wave` NÃO foram tocados.** O `spring` deriva do
-`MAX_DT` dele **três** tetos medidos e é wave própria; os outros dois ficam registados como dívida.
+### §4.2 — ⚠️ O corpo do inspector de params **BLINDA o hit-index**
 
-### §4.2 — ⚠️ Três testes deixaram de estar pinados a literais
+`hit_index.push_clip(body_rect)` ao lado do `scene.push_clip` que já existia.
+Sem isto, com o teto de linhas em 24, uma linha rolada para cima continuava
+**clicável sob o título**.
 
-`motion.integrate` tinha três gates com `dt` escrito à mão (`0.1`, `0.05`, `0.1`) que reprovavam
-**sobre produto correcto** quando o grampo desceu. Passam a derivar do `MAX_DT`.
+⚠️ **A consequência para quem MEDE:** o fundo do último hit-rect **satura na
+altura da janela**. Três gates que usavam essa grandeza como *altura de um nó*
+passaram a medir a janela — o retrato nomeado do `motion.bezier_warp` foi de
+`1083` para **969** px sem uma linha de produto se mexer (114 px é a faixa do
+título). A régua passou a ser `panel_content_h` contra `panel_visible_h`.
+**Qualquer gate de outra linha que meça altura por hit-rects tem o mesmo
+problema.**
 
-### §4.3 — ⚠️ A fixtura do mar da paridade CPU/GPU: `density 40 → 90`
+### §4.3 — ⚠️ O `MAX_DT` dos DOIS integradores: `0,1`/`0,05` → **`0,03`**
 
-Com o grampo mais apertado, dois tiques deixaram de mover o campo acima do piso de **vacuidade**
-(`0,0923` contra `0,1`) — e esse piso é o que impede o gate de comparar dois campos congelados.
-⛔ **Alargar o PERCURSO está REFUTADO por medição** (4 tiques dão `0,00526 > ε`, 3 dão `0,00266`):
-aquela fixtura é caótica **em número de passos**, e o comentário dela já o dizia. A cura é a FORÇA
-(paridade final: `2,3e-4`, 8× de folga sob o ε).
+Medido: a `0,1` o laço fechado atirava uma grelha a **127×** o raio em que
+nascia. Uma cena com um salto de playhead grande estabiliza diferente.
 
-### §4.4 — Nada de UI muda de aparência
+### §4.4 — ⚠️ Tetos que SUBIRAM (o slider não muda; o campo digitável sim)
 
-Os `ParamHardMax`/`ParamHardMin` só alargam o campo **digitável**; nenhum `ParamUiHint` foi tocado,
-então **todo arrasto é idêntico**. A legenda das cenas de smoke é chrome novo e é **no-op** quando
-nenhuma cena publicou (todo arranque normal do editor).
+`sim.spawn::rate` 60 → **15 360/s** · `motion.trail::MAX_INSTANCES` 65 536 →
+**262 144** (e o mesmo literal nos `fx.drop_shadow`/`fx.rgb_split`) · 25 params
+com teto derivado do `step` do slider. Um documento que digitava acima do teto
+antigo passa a ser honrado em vez de clampado em silêncio.
+
+### §4.5 — ⚠️ `motion.emitter`: os modos novos são **CPU-only**
+
+O `applicable` do kernel recusa `emitter_motion > 0`. Uma cena que use `Leave`/
+`Inherit` deixa de cozinhar no device — pelo mesmo desenho que `probability < 1`
+já usava.
+
+### §4.6 — Três testes deixaram de estar pinados a literais
+
+Eles liam um teto como se fosse a lei; hoje derivam-no. Nomeados no §0-quater.
 
 ---
 
-## §5 — Gate de fecho (batched, 1×)
+## §5 — O QUE SÓ O `ship.sh` PEGA (§1.5.9 item 5)
+
+O gate de integração **não** roda estes. Corram-nos no ship:
+
+- **`typos` project-wide** — esta linha corre-o a cada bloco e fecha a **0**, mas
+  ele varre a árvore inteira e apanha resíduo pré-fork.
+- **`cargo machete` / `cargo deny` / `cargo audit`** — ⚠️ **nenhuma dependência
+  externa nova** nesta linha (o único `+name` do `Cargo.lock` é interno), então
+  não há alvo novo; o que aparecer é pré-fork.
+- **`clippy --all-targets` + features** — esta linha corre-o sobre as crates
+  **derivadas do diff** e fecha a 0; combinações de feature que o diff não toca
+  ficam para o ship.
+- **`nextest --cargo-profile ci-test`** sobre a workspace — ver §6.
+- **`fmt`** — limpo em `cargo fmt --all`.
+
+---
+
+## §6 — GATE DE FECHO (batched, 1×)
+
+Corrido em `2c986ecdc`, **sobre a WORKSPACE INTEIRA**:
 
 | | |
 |---|---|
-| `cargo nextest run --workspace --cargo-profile ci-test --no-fail-fast` | **17.893 testes · 17.892 ✓ · 1 ✗** |
-| clippy `--all-targets --all-features`, alvo DERIVADO do diff (**29 crates**) | **0** |
 | `cargo fmt --all` | limpo |
-| `typos crates/ shells/ docs/Motion Nodes/ CLAUDE.md` | **0** |
-| `file_loc_caps` · `architecture_widget_loc_cap` · `architecture_panel_loc_cap` · `architecture_workspace_file_loc_cap` | ✓ |
-| `placar_conferencia.py` | verde · **76 P2 · 4 P1 · ✅ 228** |
-| paridade CPU/GPU de sim (`--ignored`, RTX) | **29/29 ✓** |
-| pipelines do halo num **device real** (as 2 operações, as 2 fontes, com e sem LUT) | ✓ |
-| `doc-index.sh` · `architecture_docs_paths_and_smokes_resolve` | ✓ |
+| `cargo clippy --all-targets` (crates do diff) | **0** |
+| `typos` project-wide | **0** |
+| `cargo check --workspace --all-targets` | limpo |
+| `cargo nextest run --workspace --no-fail-fast` | **18 029 testes · 18 029 ✓ · 0 ✗** |
 
-⚠️ **O `1 ✗` da corrida final é a flake nº 2 do §5.0** (`a_round_live_offset_costs_like_the_other_joins`,
-`ph2d-vec-boolean`) — verde **3 de 3** sozinha, em crate que esta linha não toca. As duas do bloco Z
-(a máscara do Painter e o zero-alloc da timeline) não reapareceram nesta corrida, o que é o
-comportamento de uma flake e não de uma regressão.
+⚠️ **Sem uma única flake nesta corrida** — o que é notável, porque as três
+corridas anteriores da jornada tiveram uma cada. As oito flakes de relógio
+conhecidas estão no `CLAUDE.md §5.0`; **duas foram descobertas por esta linha** (a
+sétima, `the_region_refresh_is_bound_by_the_footprint_not_by_the_mesh`, e a
+oitava, `measure_brush_kernel`), **ambas em crates que esta linha não toca**.
 
-### ⚠️ Os 2 ✗ são FLAKES pré-existentes, em crates que esta linha não toca
-
-| teste | crate | sozinho |
-|---|---|---|
-| `the_mask_stroke_cost_does_not_follow_the_canvas` | `ph2d-tool-painter` | **4 de 5 ✓** (é flaky mesmo sozinho) |
-| `apply_from_doc_is_zero_alloc_steady_state` | `ph2d-timeline` | **3 de 3 ✓** |
-| `a_wet_move_costs_what_the_footprint_costs...` | `ph2d-tool-painter` | **3 de 3 ✓** (já listada no §5.0) |
-
-As duas primeiras foram **acrescentadas ao `CLAUDE.md` §5.0** como a 5.ª e a 6.ª — a de zero-alloc
-é espécie nova naquela lista.
-
-⚠️⚠️ **E há um achado de PROCESSO ali:** a primeira corrida (com fail-fast) parou em **11.240 com
-1.007 testes por correr**. *Um vermelho de flake esconde o resto da suíte.* O `--no-fail-fast` é o
-que torna o gate batched uma medição em vez de uma amostra — está escrito no §5.0 agora.
+⚠️ **Lição de processo desta jornada, e ela custou um bloco:** o portão de cada
+bloco corria só as crates **derivadas do diff**, e um gate ficou vermelho **um
+bloco inteiro** sem ninguém ver (o `the_scroll_is_inert_at_todays_row_cap_…`).
+*O portão do fim da linha é sobre a workspace, e é para isto.*
 
 ---
 
-## §6 — Prova de mutação (gates novos)
+## §7 — PROVA DE MUTAÇÃO
 
-| gate | mutação | RED |
-|---|---|---|
-| `every_scene_labels_both_halves_on_opposite_sides` | as duas fichas do mesmo lado | ✓ |
-| `every_caption_is_chip_sized` | a frase inteira do terminal numa ficha (70 chars) | ✓ |
-| `every_precision_bound_param_types_to_the_measured_ceiling` | apanhou, ao vivo, um erro MEU de sinal (`-A - B` em vez de `-(A - B)`) na reescrita dos literais | ✓ |
+Todas as leis novas têm mutação que as mata. As que mais interessam ao
+integrador:
 
-⚠️ **O terceiro não é uma mutação encenada: é o gate a fazer o trabalho dele durante este bloco.**
-Ao trocar os literais truncados pela aritmética exacta (`2_097_152.0 - 0.125`), o `replace` deixou
-os pisos negativos como `-2_097_152.0 - 0.125`, que é outro número. *Um piso simétrico escrito como
-literal é um sinal à espera de se perder;* a forma segura é a do `bounds.rs`, com um `const REACH` e
-`-REACH`.
+| mutação | gates que morrem |
+|---|---|
+| o `Multiply` volta a `dst: Zero` | 3 (`ph2d-render`) |
+| a porta `shape` do soft body é ignorada | 5 |
+| o modo `Resampled` do rastro cai no ring | 2 |
+| o leque sai da impressão digital do nó | 2 |
+| a história do emissor é ignorada | 4 |
+| a herança sai da soma do emissor | 2 |
+| o `hit_index.push_clip` do painel | 1 |
+| o pino do soft body volta a ser um ponto | 1 |
 
----
-
-## §7 — O que fica ABERTO (dívida nomeada)
-
-1. ⏳ **`motion.boids::MAX_DT` e `motion.wave::MAX_DT`** continuam a `0,1` **por medir** — copiaram
-   o número sem derivação, como os dois que este bloco curou. A sonda `excursion` já está escrita
-   (`integrator_ceilings.rs`) e serve-lhes com outro grafo.
-2. ⏸️ **`motion.spring`** — mexer no `MAX_DT` dele move **três** tabelas medidas (`friction`,
-   saturação do sub-passo, `tension`). Wave própria, com o oráculo de três braços dele.
-3. **`MAX_CURVE_POINTS = 8`** (o irmão do teto de paradas, no mesmo arquivo) continua sem
-   derivação: *"matches the field.remap text param's practical ceiling"*. O editor de curva tem o
-   MESMO `GRAB_R = 9,0`, então a conta é a mesma — só não foi feita.
-4. **A legenda no canvas cobre 2 cenas** (`=82`, `=83`). Cena nova = uma `captions()` pura + uma
-   linha no `publish`. A lista está em `motion_demo_legend_tests.rs::scenes()`.
-5. ⏳ **A *dirt texture* do `fx.glow`** — a única célula da folha 11 que fica, e a estimativa dela
-   foi **corrigida por medição**: ela não é «um asset». Uma máscara de sujidade é um overlay de
-   TELA no passe do halo e precisa de uma textura que o composite consiga LIGAR — e a textura de
-   uma sprite é uma de **três** coisas (`Atlas{key}` · `Individual{texture_id}` · `CookedTexture`,
-   ver `sprite_appearance`), das quais só a primeira é um rectângulo no atlas partilhado. Cobrir só
-   essa daria uma feature que funciona com umas imagens e falha em silêncio com outras.
-6. ⚠️ **Sinal pré-existente:** `conferencia_vs_manifesto.py` sai vermelho na metade *"já existe no
-   manifesto"* com 4 células. Lidas uma a uma, são **falsos positivos**: a ferramenta casa o nome
-   do param mencionado na CURA proposta (*"um 9º `ease_curve = Custom`"*), não um param que já
-   fecharia a célula. A metade das CONTAGENS está verde (127 nós).
+⚠️ **Uma mutação SOBREVIVEU e a cura foi ENCOLHER a afirmação**, não inventar um
+gate: o doc do `TimeFans` prometia mais do que a máquina fazia. Registo no
+§0-septies e no ADR-0163.
 
 ---
 
-## §8 — O smoke, para o Enio
+## §8 — O QUE FICA ABERTO (dívida NOMEADA)
 
-Ele já smokou a `=83`. O que este bloco lhe dá para conferir é **o que estava trancado**:
+⚠️ Nada aqui bloqueia a integração. É o que a próxima janela herda.
 
-```
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=13 cargo run -p ph2d-host-desktop --release
-```
+**Da conferência (68 P2, 0 P1):** ~20 são **obras** (nós novos), não knobs. As
+folhas **02, 05, 06, 08, 09, 10, 11, 12, 14, 16, 17** estão fechadas ou a zero
+P1; o resto é P2 espalhado.
 
-1. Clique no nó **Spherize** (a lente).
-2. No painel, ache **Radius**. Ele diz **320**.
-3. Arraste o slider: ele salta para **20 ou menos**, e daí não volta.
-4. Escreva `320` na caixa e dê Enter. **Antes deste bloco a caixa recusava** (parava em 20); agora
-   ela aceita, e a lente volta ao que a cena tinha.
-
-**Deu errado se** a caixa recusar o 320, ou se aceitar e a lente não voltar ao que era.
-
-E a legenda nova:
-
-```
-cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-motion-value && env PH2D_GPU_COOK_DEMO=83 cargo run -p ph2d-host-desktop --release
-```
-
-Cada figura tem agora **uma ficha em cima dela** dizendo o que é. **Deu errado se** as fichas não
-aparecerem, ou se aparecerem sobre a figura errada.
-
+**Nomeadas nesta linha:**
+- `motion.boids` / `motion.wave` — `MAX_DT` **por medir** (os outros dois foram).
+- `motion.spring` — fica fora da varredura de tetos: ele **deriva três** do dele.
+- `motion.noise` — falta a metade *Use Layer as Seed* do `Position XY`.
+- `fx.glow` — a *dirt texture*, com o preço agora **medido** (a textura de uma
+  sprite é uma de TRÊS coisas, e só uma é um rectângulo no atlas partilhado).
+- **Espaçamento não-uniforme do rastro re-cozido** — a lei aceita deslocamentos
+  arbitrários; falta-lhe **UI**. É autoria, não mecanismo.
+- **`Emitter Motion` no device** — precisa de um canal de tabela ALIMENTADA pelo
+  leque, que não existe. Fronteira nomeada no `applicable` do kernel.
+- ⛔ Os **quatro chips da booleana viva** do módulo Vector não respondem ao
+  clique — **não é desta linha**, mas o `input_dispatch.rs` foi tocado por ela e
+  o integrador vai ver os dois diffs no mesmo ficheiro.
 
 ---
 
-## §9 — O que a folha 11 custou, em erros meus
+## §8-bis — O SMOKE, para o Enio (todas já aprovadas)
+
+```
+cd /home/enio/Documentos/Projetos/PH2D && env PH2D_GPU_COOK_DEMO=<n> cargo run -p ph2d-host-desktop --release
+```
+
+| `<n>` | o que se vê |
+|---|---|
+| `84` | as curas dos nós de FX (sombra, lente, halo) |
+| `85` | a forma desenhada (onda/ease Custom) e os dois eixos |
+| `86` | os mesmos quatro cantos, e só um dos dois entorta o miolo |
+| `87` | três gelatinas: retângulo · anel · cruz |
+| `88` | três rastros: lembrado · re-cozido · **para a frente** |
+| `89` | três fontes varridas: carrega · deixa · **herda** |
+
+⚠️ Depois da integração o caminho é o do **primário**, não o da worktree.
+
+---
+
+## §9 — O que a folha 11 custou, em erros meus (registo do 2.º bloco)
 
 1. ⚠️⚠️ **Escrevi por cima de um arquivo que já existia.** A cena nova foi para
    `motion_state_conferencia_demos_fx.rs`, que **é** a cena `=70` (a família `fx.*`, 140 linhas de

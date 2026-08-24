@@ -94,10 +94,12 @@ impl Sharpness {
 
 mod camera;
 mod edges;
+mod march;
 mod shade;
 mod tiles;
 use edges::resample_edges;
-use tiles::{TILE, tiled_trace};
+use march::{Scene, march};
+use tiles::{SLABS, TILE, tiled_trace};
 
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Screen};
 pub use shade::Matcap;
@@ -257,13 +259,14 @@ fn trace_inner(
     cancel: Option<&std::sync::atomic::AtomicBool>,
 ) -> Gbuffer {
     trace_inner_tiles(
-        doc, reg, cam, width, height, parallel, antialias, cancel, true,
+        doc, reg, cam, width, height, parallel, antialias, cancel, true, SAFE_STEP,
     )
 }
 
 /// ⭐ **A marcha por ladrilho com o lado ESCOLHIDO** — a porta que a sonda do `TILE` dirige.
 #[doc(hidden)]
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn trace_tiled_for_test(
     doc: &FieldDoc,
     reg: &ph2d_field_eval::hybrid::Registry,
@@ -271,6 +274,7 @@ pub fn trace_tiled_for_test(
     width: u32,
     height: u32,
     tile: usize,
+    slabs: usize,
     antialias: bool,
 ) -> Option<Gbuffer> {
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
@@ -287,10 +291,29 @@ pub fn trace_tiled_for_test(
         basis: cam.basis(),
         sharp: Sharpness::for_frame(cam.half_extent, (width as usize).min(height as usize)),
         clip: Some(bbox),
+        step: SAFE_STEP,
     };
     Some(tiled_trace(
-        doc, &rc, &scene, plane, bbox, true, antialias, None, tile,
+        doc, &rc, &scene, plane, bbox, true, antialias, None, tile, slabs,
     ))
+}
+
+/// ⭐⭐ **A marcha com o PASSO escolhido** — a porta que a sonda do passo dirige.
+///
+/// ⚠️ Ela existe para que as duas respostas sejam medidas no **mesmo processo**: entre duas corridas
+/// desta workstation a montagem — que não depende do passo — mexeu-se `14,4 -> 22,1 ms`, e um A/B
+/// nessas condições mede o relógio da máquina, não a mudança.
+#[doc(hidden)]
+#[must_use]
+pub fn trace_stepped_for_test(
+    doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &Orbit,
+    width: u32,
+    height: u32,
+    step: f32,
+) -> Gbuffer {
+    trace_inner_tiles(doc, reg, cam, width, height, true, true, None, true, step)
 }
 
 /// ⭐ **A MARCHA DE LINHA, forçada** — a porta que o gate de paridade dirige.
@@ -306,7 +329,9 @@ pub fn trace_by_rows_for_test(
     width: u32,
     height: u32,
 ) -> Gbuffer {
-    trace_inner_tiles(doc, reg, cam, width, height, true, true, None, false)
+    trace_inner_tiles(
+        doc, reg, cam, width, height, true, true, None, false, SAFE_STEP,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -320,6 +345,7 @@ fn trace_inner_tiles(
     antialias: bool,
     cancel: Option<&std::sync::atomic::AtomicBool>,
     tiles_allowed: bool,
+    step: f32,
 ) -> Gbuffer {
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let basis = cam.basis();
@@ -335,6 +361,7 @@ fn trace_inner_tiles(
         basis,
         sharp,
         clip: None,
+        step,
     };
 
     // ⭐⭐⭐ **A MARCHA POR LADRILHO** (W56) — o consumidor da especialização por região.
@@ -359,7 +386,7 @@ fn trace_inner_tiles(
         bbox.filter(|_| tiles_allowed && shape.sampled_count() == 0 && rc.is_worth_it())
     {
         return tiled_trace(
-            doc, &rc, &scene, plane, bbox, parallel, antialias, cancel, TILE,
+            doc, &rc, &scene, plane, bbox, parallel, antialias, cancel, TILE, SLABS,
         );
     }
 
@@ -423,166 +450,6 @@ pub(crate) fn slab(o: [f32; 3], d: [f32; 3], lo: [f32; 3], hi: [f32; 3]) -> Opti
     (t0 <= t1 && t1 > 0.0).then_some((t0, t1))
 }
 
-/// **Tudo o que uma marcha precisa de saber, e que não muda entre lotes.**
-///
-/// Os quatro viajam sempre juntos — a árvore compilada, a câmera, a base dela e as tolerâncias do
-/// quadro. Passá-los soltos era o que fazia as duas funções abaixo crescerem para oito parâmetros,
-/// e uma lista de oito é onde dois deles trocam de lugar sem o compilador reparar.
-struct Scene<'a> {
-    shape: &'a ph2d_field_eval::hybrid::Hybrid,
-    cam: &'a Orbit,
-    basis: ([f32; 3], [f32; 3], [f32; 3]),
-    sharp: Sharpness,
-    /// ⭐⭐ **A caixa a que a marcha se prende** (W56) — `None` = a marcha de sempre, do plano da
-    /// câmera até `T_MAX`.
-    ///
-    /// ⚠️ **É ela que torna a árvore especializada VÁLIDA em todo ponto avaliado.** Com o recorte, o
-    /// raio começa na **entrada** da caixa e pára na saída dela: nenhuma amostra cai fora, e a
-    /// especialização — que só vale dentro da região — nunca é perguntada onde ela mente.
-    ///
-    /// ⭐ E ela paga-se sozinha: os passos de aproximação em espaço vazio deixam de existir.
-    clip: Option<([f32; 3], [f32; 3])>,
-}
-
-/// **O núcleo**: marcha um lote arbitrário de raios e devolve `(acertou, normal de vista)`.
-///
-/// Recebe posições no **plano da câmera** (unidades de mundo), e não índices de pixel, e é isso que
-/// o deixa servir às duas passagens — a linha inteira e as quatro amostras espalhadas de um pixel
-/// de borda. *Uma marcha, um lugar.*
-fn march(scene: &Scene<'_>, screen: &[(f32, f32)]) -> (Vec<bool>, Vec<[f32; 3]>, Vec<[f32; 3]>) {
-    let (right, up, fwd) = scene.basis;
-    let (cam, sharp) = (scene.cam, scene.sharp);
-    let n = screen.len();
-    // Um avaliador POR LOTE: a `fidget` precisa de estado mutável para avaliar, e partilhá-lo entre
-    // threads exigiria trava. Criar o próprio é barato e mantém a escrita disjunta, que é a
-    // condição do ADR-0109.
-    let mut eval = scene.shape.fork();
-    let mut hit = vec![false; n];
-    let mut normal = vec![[0.0f32; 3]; n];
-    // ⭐ **Onde o raio parou, no MUNDO.** Ele sai de graça (a marcha já sabe o `t`), e é o que uma
-    // seleção por clique precisa de saber. Devolvê-lo aqui é o que impede uma segunda marcha de
-    // existir só para responder à mesma pergunta.
-    let mut point = vec![[0.0f32; 3]; n];
-    if n == 0 {
-        return (hit, normal, point);
-    }
-
-    // ⭐ **O raio vem da CÂMERA**, e não de uma segunda cópia da conta dela. Este laço reconstruía
-    // a aritmética do `Orbit::ray` com um afastamento próprio — duas respostas para *"que raio sai
-    // daqui?"*, no mesmo módulo cujo doc promete que a projeção é a mesma do gizmo. Com a lente
-    // convergente a direção passou a ser **por raio**, e uma das duas cópias teria ficado paralela.
-    let (mut ox, mut oy, mut oz) = (vec![0.0f32; n], vec![0.0f32; n], vec![0.0f32; n]);
-    let mut dir = vec![[0.0f32; 3]; n];
-    for (i, &(sx, sy)) in screen.iter().enumerate() {
-        let (o, d) = cam.ray_at_plane(sx, sy);
-        (ox[i], oy[i], oz[i]) = (o[0], o[1], o[2]);
-        dir[i] = d;
-    }
-
-    let mut t = vec![0.0f32; n];
-    // ⭐ **Cada raio entra e sai da caixa** — ver [`Scene::clip`]. Sem recorte, a marcha de sempre.
-    let mut t_end = vec![T_MAX; n];
-    let mut alive: Vec<u32> = Vec::with_capacity(n);
-    for i in 0..n {
-        match scene.clip {
-            None => alive.push(i as u32),
-            Some((lo, hi)) => {
-                let o = [ox[i], oy[i], oz[i]];
-                if let Some((a, b)) = slab(o, dir[i], lo, hi) {
-                    t[i] = a.max(0.0);
-                    t_end[i] = b.min(T_MAX);
-                    if t[i] < t_end[i] {
-                        alive.push(i as u32);
-                    }
-                }
-            }
-        }
-    }
-    let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
-    for _ in 0..MAX_STEPS {
-        if alive.is_empty() {
-            break;
-        }
-        xs.clear();
-        ys.clear();
-        zs.clear();
-        for &i in &alive {
-            let i = i as usize;
-            xs.push(ox[i] + dir[i][0] * t[i]);
-            ys.push(oy[i] + dir[i][1] * t[i]);
-            zs.push(oz[i] + dir[i][2] * t[i]);
-        }
-        let Ok(out) = eval.eval(&xs, &ys, &zs) else {
-            break;
-        };
-        let mut next = Vec::with_capacity(alive.len());
-        for (k, &i) in alive.iter().enumerate() {
-            let iu = i as usize;
-            let d = out[k];
-            if d < sharp.hit {
-                hit[iu] = true;
-                continue;
-            }
-            t[iu] += d * SAFE_STEP;
-            if t[iu] < t_end[iu] {
-                next.push(i);
-            }
-        }
-        alive = next;
-    }
-
-    // Normais por diferença central, em lote, só onde acertou.
-    let idx: Vec<usize> = (0..n).filter(|i| hit[*i]).collect();
-    for &i in &idx {
-        point[i] = [
-            ox[i] + dir[i][0] * t[i],
-            oy[i] + dir[i][1] * t[i],
-            oz[i] + dir[i][2] * t[i],
-        ];
-    }
-    if idx.is_empty() {
-        return (hit, normal, point);
-    }
-    let mut gx = Vec::with_capacity(idx.len() * 6);
-    let mut gy = Vec::with_capacity(idx.len() * 6);
-    let mut gz = Vec::with_capacity(idx.len() * 6);
-    for &i in &idx {
-        let [px, py, pz] = point[i];
-        let e = sharp.normal;
-        for (dx, dy, dz) in [
-            (e, 0.0, 0.0),
-            (-e, 0.0, 0.0),
-            (0.0, e, 0.0),
-            (0.0, -e, 0.0),
-            (0.0, 0.0, e),
-            (0.0, 0.0, -e),
-        ] {
-            gx.push(px + dx);
-            gy.push(py + dy);
-            gz.push(pz + dz);
-        }
-    }
-    if let Ok(g) = eval.eval(&gx, &gy, &gz) {
-        for (k, &i) in idx.iter().enumerate() {
-            let b = k * 6;
-            let world = [g[b] - g[b + 1], g[b + 2] - g[b + 3], g[b + 4] - g[b + 5]];
-            let len = (world[0] * world[0] + world[1] * world[1] + world[2] * world[2]).sqrt();
-            if len <= 0.0 {
-                hit[i] = false;
-                continue;
-            }
-            let nrm = [world[0] / len, world[1] / len, world[2] / len];
-            // Para o espaço de VISTA — é nele que o matcap vive.
-            normal[i] = [
-                nrm[0] * right[0] + nrm[1] * right[1] + nrm[2] * right[2],
-                nrm[0] * up[0] + nrm[1] * up[1] + nrm[2] * up[2],
-                nrm[0] * fwd[0] + nrm[1] * fwd[1] + nrm[2] * fwd[2],
-            ];
-        }
-    }
-    (hit, normal, point)
-}
-
 /// ⭐ **Onde a superfície está sob um pixel** — a pergunta que uma seleção por clique faz.
 ///
 /// ⚠️ **Um raio, pela MESMA marcha.** Uma função própria que repetisse o laço seria a segunda
@@ -607,6 +474,7 @@ pub fn surface_under(
         basis: cam.basis(),
         sharp: Sharpness::for_frame(cam.half_extent, side),
         clip: None,
+        step: SAFE_STEP,
     };
     let (hit, _, point) = march(&scene, &[screen.plane_at(px[0], px[1])]);
     hit[0].then(|| point[0])

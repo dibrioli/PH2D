@@ -4896,6 +4896,170 @@ Cada um dos defeitos acima sobreviveu a gates verdes, e a razão foi sempre a **
 ⭐ E o custo de não as ter: **21 das 22 mutações ficaram vermelhas à primeira; as três que
 sobreviveram são exactamente estas.** *A prova de mutação não mede o código — mede a fixture.*
 
+## §58 — W56e: a PROFUNDIDADE, e o que ela obrigou a admitir (24/08)
+
+> A W56d fechou com uma nota: *"o degrau seguinte é ladrilhar também em **PROFUNDIDADE** — é o mesmo
+> mecanismo, um eixo a mais, e é o que fecha a distância até ao tecto."* Esta wave foi construí-lo.
+> ⚠️ **A nota lia o mecanismo certo e errava o preço por quatro vezes**, e o caminho até o descobrir
+> devolveu um **defeito de correcção** que estava latente desde a W56c.
+
+### §58.0 — ⛔ O portão de LOC estava VERMELHO desde a W56d
+
+`architecture_workspace_file_loc_cap`: `ph2d-field-render/src/lib.rs` a **889/700** e
+`ph2d-field-eval/src/profile_index_tests.rs` a **795/700** — os dois escritos pela W56.
+
+⚠️ **É a família da memória [`feedback_a_tree_scanning_gate_is_never_reached_by_a_name_filter`], uma
+wave depois de ela ser escrita.** O gate VARRE `crates/*/src/` e mora em `ph2d-editor-core`; o fecho
+da W56d correu `-p ph2d-field-eval` e `-p ph2d-field-render`, e **filtro de nome nenhum o alcança**.
+
+Cura: quatro cortes por responsabilidade (nunca allowlist) — `tiles.rs` (o repartir), `edges.rs` (a
+segunda passagem), `march.rs` (o laço), `profile_index_tables.rs` (as varreduras, separadas dos
+gates). `lib.rs` **889 → 482**.
+
+### §58.1 — A régua primeiro: o que uma fatia compra, ANTES de a construir
+
+Arestas guardadas por região, no quadro real (640×480, 70 ladrilhos sobre a peça):
+
+| N | Σ das fatias (montar) | média (avaliar) | máx |
+|---:|---:|---:|---:|
+| 1 | 128,6 | 128,6 | 168 |
+| 2 | 185,0 | 92,5 | 168 |
+| 4 | 268,9 | 67,2 | 168 |
+| 8 | 427,3 | 53,4 | 168 |
+
+⇒ repartir **divide** o custo de avaliar e **multiplica** o de montar. Qual manda decide a wave, e
+isso mediu-se: **montar é 18% do quadro, marchar 82%** (`the_table_of_which_half_the_tiled_frame_pays`).
+
+⚠️ **A 1.ª versão dessa sonda imprimiu `197%`** — um número impossível, e ele só dizia que o
+denominador corria em 32 núcleos e o numerador em série. *Uma régua tem de correr no mesmo regime do
+que ela mede.*
+
+⭐ **E a montagem é 96% JIT**: por ladrilho, a 168 arestas, `96 µs` para construir a árvore e
+**`2 334 µs`** para a `fidget` a compilar em máquina (`the_table_of_where_the_tile_assembly_goes`).
+É esse número que põe o tecto em quantas fatias cabem.
+
+### §58.2 — ⛔ A hipótese do círculo, medida e REFUTADA
+
+O corte guarda toda aresta a menos de `dmax = min_e (máx distância de um CANTO da região a e)`. Numa
+peça **redonda** todas as arestas são equidistantes do centro, então uma região interior guarda as
+168 — e a coluna `máx` da tabela acima dizia-o de frente em todo `N`. A fixtura de **toda a W56** é
+um `n`-gono regular. ⇒ hipótese: o `1,8×` de manchete é um **piso**, e um contorno real cortaria melhor.
+
+**Medido em três contornos** (`the_table_of_what_the_shape_of_the_outline_does`):
+
+| contorno | arestas | guardadas | % |
+|---|---:|---:|---:|
+| círculo | 168 | 128,6 | 77% |
+| **estrela** | 168 | **144,0** | **86%** |
+| pente | 172 | 138,1 | 80% |
+
+⛔ **Refutada — a estrela corta PIOR que o círculo.** ⭐ E a refutação nomeia a causa verdadeira:
+para uma região de diâmetro `D` com a aresta mais próxima a `a`, `dmax ≈ a + D`. *O corte não é
+fraco porque a peça é redonda: ele é fraco porque a REGIÃO é grande.*
+
+⭐⭐ E daí sai a lei que fecha a varredura do `TILE` da W56d: a região mede
+`lado + profundidade · |direcção|`, e o segundo termo **não sabe o lado** — foi por isso que
+encolher o ladrilho deu um **vale** e não uma descida. **Só a profundidade sobra.**
+
+### §58.3 — ⛔⛔ O defeito que a fatia acordou: os quatro cantos NÃO bastam
+
+O doc do `tile_region` dizia, desde a W56c, que os quatro raios de canto bastam *"e não é
+aproximação"*. **É**, e só na **paralela** é exacta.
+
+- Na ortográfica a direcção é constante ⇒ o ponto é bilinear na posição de ecrã ⇒ um raio interior é
+  **combinação convexa** dos cantos. ✔
+- Na **convergente** — que é o default de `Orbit::from_yaw_pitch` — a direcção é **normalizada**:
+  `d̂(s)` percorre um quadrilátero **esférico**, que abaúla para fora da corda dos quatro cantos.
+
+⛔ **Medido**, câmera de frente: a fuga vai de `2,80e-4` com uma fatia a **`4,03e-4` com oito**, e
+**passa a folga** (`4e-4`) exactamente quando a fatia aperta. *A premissa não mordia porque o tubo
+era grande; fatiar é o que a acorda — e ela é de uma wave que já shipou.*
+
+⭐ **A cura tem prova e custa dois produtos internos.** Todo ponto a parâmetro `t` está na esfera de
+raio `t` em torno do olho, dentro do cone do ladrilho; a distância dele à corda dos quatro cantos no
+mesmo `t` é no máximo a **flecha** `t·(1 − cos α)`, com `α` o ângulo do canto mais afastado ao raio
+central. E `hull{p_j(t)} ⊆ hull{p_j(t₀), p_j(t₁)}` porque `p_j(t)` é linear em `t` ⇒ a caixa dos oito
+pontos contém a corda em toda a faixa. ⚠️ Na paralela `α = 0` e a inflação é **exactamente zero** —
+a lente sem o defeito não paga por ele.
+
+⭐⭐ **E há um segundo, do mesmo tipo:** o `t` de entrada na caixa é `max` de funções afins da
+posição de ecrã ⇒ **convexo** ⇒ o mínimo dele pode ser **interior** ao ladrilho. Medido: um raio
+interior entra até **`7,4e-2` antes** do `t_lo` que os cantos dão, e sai até `1,2e-1` depois do
+`t_hi` — sobre uma peça que mede `1,0`. ⇒ a 1.ª fatia começa em **`0`** e a última acaba em
+**`T_MAX`**, o que torna a cobertura **trivialmente** completa. Como a montagem é preguiçosa, elas
+custam **zero** quando ninguém lá chega. *A cerca não é uma afirmação sobre onde os raios entram: é
+a ausência de uma.*
+
+### §58.4 — A marcha por fatia, e o grampo que era pior de duas maneiras
+
+`march_slabs` (em `crates/ph2d-field-render/src/march.rs`) é agora **o** núcleo, e a marcha de sempre
+é o caso `N = 1` — *uma marcha, um lugar*. Ela recebe as fronteiras e um `shape_of(k)` que só é
+chamado **quando algum raio de facto chega à fatia `k`**, e a normal é avaliada na fita **da fatia em
+que o raio parou**, antes de ela morrer.
+
+⭐ **O grampo na fronteira era desnecessário — e uma mutação disse-o.** A 1.ª versão fazia
+`t = lim` "para não sair da região". Uma mutação que apagou essa linha **SOBREVIVEU**: o passo é a
+**distância verdadeira**, então nada existe no intervalo saltado, e o filtro da fatia seguinte manda
+o raio para a fatia que de facto o contém — saltando por cima das que ele atravessou **sem as
+montar**. Tirá-lo ficou mais rápido **e apagou todos os pixels divergentes** (eram 1–4 por quadro a
+`N ≥ 2`; passaram a **zero**): a amostra extra na fronteira caía por vezes rasante e disparava o
+teste de acerto. *Uma guarda que mutação nenhuma mata estava a comprar uma avaliação por travessia,
+e um pixel.*
+
+### §58.5 — A varredura, e o número honesto
+
+640×480, mediana de 5, `ms / pixels ≠ da marcha de linha`:
+
+| contorno | linha | N=1 | **N=2** | N=3 | N=4 | N=6 | N=8 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| círculo 56 | 53 | 35/0 | **33/0** | 38/0 | 44/0 | 54/0 | 64/0 |
+| círculo 168 | 131 | 81/0 | **69/0** | 73/0 | 80/0 | 93/0 | 107/0 |
+| estrela 168 | 207 | 191/0 | **168/0** | 183/0 | 181/0 | 190/0 | 206/0 |
+| círculo 664 | 510 | 318/0 | **257/0** | 253/0 | 259/0 | 283/0 | 301/0 |
+
+⇒ **`SLABS = 2`**, melhor ou empatado nas quatro. Contra a marcha de linha: **1,89×** no detalhe
+padrão (era `1,8×`), **1,98×** no máximo. Contra o ladrilho sem fatias: **1,06×–1,24×**.
+
+⚠️ **É `1,17×`, não os `5×` que a nota da W56d prometia.** A nota lia o mecanismo certo — a pegada —
+e errava o preço, porque a montagem é **JIT** e cresce com a **soma** sobre as fatias enquanto a
+avaliação cai com a **média**. *Uma nota que nomeia o mecanismo certo ainda pode errar a ordem de
+grandeza, e o que a corrige é medir as duas contas separadas.*
+
+### §58.6 — ⚠️ O que as mutações apanharam: uma lei escrita duas vezes
+
+10 mutações. Na 1.ª volta, **quatro sobreviveram** — e três pela mesma causa: o gate
+`every_sample_lies_inside_the_region_that_built_its_tape` **reconstruía as fronteiras dentro do
+teste**. Mexer na cópia do produto não movia a do gate. ⇒ `slab_bounds` e `slab_region` passam a ser
+**uma porta só**, chamada pelos dois. *Duas cópias de uma lei é uma lei que gate nenhum defende.*
+
+⭐ E a quarta sobrevivente era o próprio gate a cortar-se: ele media as amostras **dentro das
+fronteiras**, então apagar a 1.ª e a última fronteira nunca aparecia — o pedaço de raio que ficava de
+fora não era medido. A metade que faltava é a **COBERTURA** (`bounds[0] ≤ entrada` e
+`saída ≤ bounds[último]`). *Um invariante avaliado dentro do domínio que ele define não diz nada
+sobre a fronteira dele.*
+
+⚠️ **A décima não morre, e o motivo fica escrito:** fazer o `shape_of` devolver sempre `None`
+desliga a especialização inteira e a imagem sai **idêntica** — é defeito só de relógio, a mesma
+família do «a região era a peça inteira» da W56d. Quem o defende é a tabela medida, que é relógio
+por natureza. *A paridade prova a IMAGEM; a tabela prova o PREÇO.*
+
+### §58.7 — ⏸️ O que fica medido e por construir
+
+- ⏸️ **O passo da marcha é do DOCUMENTO, não uma constante.** `SAFE_STEP = 1/√2` é o recíproco de uma
+  constante medida na W0 (`‖∇f‖` chega a `√2` no arredondamento exacto). Um extrude sem `round`
+  sobre uma distância de polígono exacta é uma distância **verdadeira**, e nele andar `d` inteiro é
+  seguro: **medido `1,16×` no mesmo processo, com a imagem idêntica** (0 pixels de diferença a 168 e
+  664 arestas; 2 a 56). ⚠️ **Não shipa por falta da AUDITORIA dos operadores** — quem infla o
+  gradiente: `round`, os `Smooth*`, o `Taper`, uma escala não-uniforme no `Xform`; quem não infla:
+  `Union`/`Intersect`/`Subtract`, `Shell`, `Offset`, `Mirror`. `Array`/`Radial` são o caso subtil (a
+  repetição de domínio só é um limite válido se a peça couber na célula). ⛔ Errar isto não fica
+  lento: **fura a peça**. O `Scene::step` já existe e já viaja — falta a função que o deriva.
+- ⏸️ **Ladrilhar em `(u, v)` sem AABB.** A pegada real de um ladrilho no plano do perfil é um
+  **paralelogramo**, e o corte só sabe caixas. Cortar contra o quadrilátero apertaria a região **sem
+  pagar JIT nenhum** — é o único eixo que resta que não multiplica a montagem.
+- ⏸️ O tecto do `MAX_PROFILE_RESOLUTION = 16` foi derivado com o custo **antigo** e pede recontagem.
+- ⏸️ A marcha ficou ~2,4× mais cara que na W3 e ninguém explicou porquê (herdado da W54).
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

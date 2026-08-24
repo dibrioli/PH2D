@@ -1004,6 +1004,24 @@ fn an_abandoned_march_returns_nothing_and_returns_fast() {
 }
 
 /// Polígono regular de `n` lados inscrito no círculo de raio `r` — a fixture das sondas de perfil.
+/// A região de um ladrilho de 64 px pelo **caminho do produto** — `tile_t_range` + `region_between`.
+///
+/// ⚠️ Ela existe porque o `tile_region` de uma peça só **morreu** quando a marcha passou a fatiar:
+/// o produto já não pergunta a caixa do tubo inteiro. Uma sonda que chamasse a função morta mediria
+/// código que ninguém corre.
+fn region_of_tile(
+    cam: &crate::Orbit,
+    plane: crate::Screen,
+    tile: (usize, usize),
+    bbox: ([f32; 3], [f32; 3]),
+    margin: f32,
+) -> Option<([f32; 3], [f32; 3])> {
+    let lo_px = (tile.0 * 64, tile.1 * 64);
+    let hi_px = (lo_px.0 + 64, lo_px.1 + 64);
+    let (t_lo, t_hi) = crate::tiles::tile_t_range(cam, plane, lo_px, hi_px, bbox)?;
+    crate::tiles::region_between(cam, plane, lo_px, hi_px, bbox, margin, t_lo, t_hi)
+}
+
 fn ngon_probe(n: usize, r: f64) -> Vec<[f32; 2]> {
     (0..n)
         .map(|i| {
@@ -1265,10 +1283,19 @@ fn the_table_of_what_the_tiled_march_buys() {
             .into_iter()
             .map(|t| {
                 let ms = time(&|| {
-                    crate::trace_tiled_for_test(&doc, &reg, &cam, 640, 480, t, true)
-                        .expect("ladrilho")
-                        .hit
-                        .len()
+                    crate::trace_tiled_for_test(
+                        &doc,
+                        &reg,
+                        &cam,
+                        640,
+                        480,
+                        t,
+                        crate::tiles::SLABS,
+                        true,
+                    )
+                    .expect("ladrilho")
+                    .hit
+                    .len()
                 });
                 format!("{t}:{ms:.0}")
             })
@@ -1325,14 +1352,7 @@ fn a_tile_region_is_much_smaller_than_the_piece() {
         let mut n = 0usize;
         for ty in 0..480usize / 64 {
             for tx in 0..640usize / 64 {
-                let Some(r) = crate::tiles::tile_region(
-                    &cam,
-                    plane,
-                    (tx * 64, ty * 64),
-                    (tx * 64 + 64, ty * 64 + 64),
-                    bbox,
-                    sharp.normal,
-                ) else {
+                let Some(r) = region_of_tile(&cam, plane, (tx, ty), bbox, sharp.normal) else {
                     continue;
                 };
                 let side = (0..3).map(|k| r.1[k] - r.0[k]).fold(0.0f32, f32::max);
@@ -1349,4 +1369,835 @@ fn a_tile_region_is_much_smaller_than_the_piece() {
              do ladrilho está a engolir tudo, e a especialização não especializa"
         );
     }
+}
+
+/// ⭐⭐⭐ **O QUE UMA FATIA DE PROFUNDIDADE COMPRA, ANTES DE A CONSTRUIR** (W56e) — a régua.
+///
+/// ⚠️ **A W56d parou em `1,8×` com o tecto em `12,5×`, e o mecanismo foi medido:** um raio de viés
+/// varre em `(u, v)` muito mais do que a largura do ladrilho, então a pegada efectiva é `≈ 0,4` da
+/// peça e não os `0,125` do lado. ⭐ **E a varredura é `largura + profundidade · |direcção|`** — o
+/// segundo termo **não depende do lado do ladrilho**, e é por isso que a varredura de `TILE` viu um
+/// vale e não uma descida: encolher o ladrilho não encolhe a pegada. *A única forma de encolher a
+/// pegada é encolher a PROFUNDIDADE.*
+///
+/// Esta sonda mede, na moeda que decide — **arestas guardadas** —, o que repartir a profundidade em
+/// `N` fatias faz às duas contas que puxam para lados opostos:
+///
+/// - **Σ das fatias** — o que a montagem custaria se TODAS fossem construídas (o pessimista).
+/// - **média das fatias** — o que cada avaliação passa a custar.
+/// - **1ª fatia com peça** — quantas fatias um raio que ACERTA de facto atravessa, que é o que a
+///   montagem preguiçosa paga.
+///
+/// ⚠️ `#[ignore]` porque imprime uma tabela:
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::the_table_of_what_a_depth_slab_would_buy --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_what_a_depth_slab_would_buy() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    for n in [56usize, 168, 664] {
+        let profile =
+            Profile::new(vec![ngon_probe(n, 0.5)], FillRule::NonZero, 1e-3).expect("perfil");
+        let idx = ph2d_field_eval::profile_index::ProfileIndex::build(&profile);
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile,
+                    half_height: 0.2,
+                    round: 0.0,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+            .map(ph2d_field_eval::bounds::Ball::aabb)
+            .expect("a caixa");
+        let plane = crate::Screen::new(640, 480, cam.half_extent);
+        let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+        // ⚠️ A pegada é do EXTRUDE, cujo `(u, v)` é `(x, y)` local — e a pose é a identidade, então
+        // a caixa de mundo é a caixa local. Uma peça com pose pediria o `Affine::box_of`.
+        let kept = |r: ([f32; 3], [f32; 3])| idx.probe_cull([r.0[0], r.0[1]], [r.1[0], r.1[1]]);
+        println!("--- {n} arestas ---");
+        println!("  N | Σ fatias | média | máx | 1ª com peça | ladrilhos");
+        for slabs in [1usize, 2, 3, 4, 6, 8] {
+            let (mut sum, mut mean, mut mx, mut first, mut tiles) =
+                (0.0f64, 0.0f64, 0usize, 0.0f64, 0usize);
+            for ty in 0..480usize / 64 {
+                for tx in 0..640usize / 64 {
+                    let (lo_px, hi_px) = ((tx * 64, ty * 64), (tx * 64 + 64, ty * 64 + 64));
+                    // Só os ladrilhos que de facto tocam a peça — os de fundo desistem, e
+                    // acrescentá-los diluiria a medida com regiões que ninguém especializa.
+                    let Some((t_lo, t_hi)) =
+                        crate::tiles::tile_t_range(&cam, plane, lo_px, hi_px, bbox)
+                    else {
+                        continue;
+                    };
+                    let mut each = Vec::with_capacity(slabs);
+                    for k in 0..slabs {
+                        let a = t_lo + (t_hi - t_lo) * (k as f32) / (slabs as f32);
+                        let b = t_lo + (t_hi - t_lo) * ((k + 1) as f32) / (slabs as f32);
+                        let e = crate::tiles::region_between(
+                            &cam,
+                            plane,
+                            lo_px,
+                            hi_px,
+                            bbox,
+                            sharp.normal,
+                            a,
+                            b,
+                        )
+                        .map_or(0, kept);
+                        each.push(e);
+                    }
+                    if each.iter().all(|e| *e == 0) {
+                        continue;
+                    }
+                    tiles += 1;
+                    sum += each.iter().sum::<usize>() as f64;
+                    mean += each.iter().sum::<usize>() as f64 / slabs as f64;
+                    mx = mx.max(each.iter().copied().max().unwrap_or(0));
+                    // Quantas fatias um raio atravessa até à primeira que contém alguma aresta —
+                    // ⚠️ é um LIMITE INFERIOR do que a montagem preguiçosa paga (um raio que falha a
+                    // peça atravessa todas), e é de propósito: ele diz se a preguiça tem o que colher.
+                    first += each.iter().position(|e| *e > 0).map_or(slabs, |i| i + 1) as f64;
+                }
+            }
+            let t = tiles.max(1) as f64;
+            println!(
+                "  {slabs} | {:>8.1} | {:>5.1} | {mx:>3} | {:>11.2} | {tiles}",
+                sum / t,
+                mean / t,
+                first / t,
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **AS DUAS METADES DO QUADRO POR LADRILHO: montar a fita, e marchar** (W56e).
+///
+/// ⚠️ **Sem esta separação, qualquer decisão sobre fatiar a profundidade é um modelo.** Repartir a
+/// profundidade em `N` fatias **divide** o custo de avaliar e **multiplica** o de montar (medido em
+/// `the_table_of_what_a_depth_slab_would_buy`: a `N = 4`, avaliar cai a `0,52×` e montar sobe a
+/// `2,1×`). Qual das duas manda decide se a wave vale — e o número tem de ser medido, não estimado.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::the_table_of_which_half_the_tiled_frame_pays --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_which_half_the_tiled_frame_pays() {
+    use rayon::prelude::*;
+
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    let med = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    println!("arestas | quadro | montar | marchar | montar%");
+    for n in [56usize, 168, 664] {
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile: Profile::new(vec![ngon_probe(n, 0.5)], FillRule::NonZero, 1e-3)
+                        .expect("perfil"),
+                    half_height: 0.2,
+                    round: 0.0,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+            .map(ph2d_field_eval::bounds::Ball::aabb)
+            .expect("a caixa");
+        let plane = crate::Screen::new(640, 480, cam.half_extent);
+        let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+        let rc = ph2d_field_eval::RegionCompiler::new(&doc);
+        let mut frame = Vec::new();
+        let mut build = Vec::new();
+        for _ in 0..7 {
+            let t0 = std::time::Instant::now();
+            let g = crate::trace(&doc, &reg, &cam, 640, 480);
+            frame.push(t0.elapsed().as_secs_f64() * 1e3);
+            assert!(g.hit.iter().any(|h| *h));
+            // ⚠️ **A montagem SOZINHA, pelo mesmo caminho** — a mesma `region_between`, a mesma
+            // `compile`, o mesmo `from_tree`. Uma segunda conta aqui mediria outra coisa.
+            // ⚠️ **`par_iter`, como o quadro faz.** A 1ª versão desta sonda mediu a montagem em
+            // SÉRIE e imprimiu `197%` do quadro — um número impossível que só dizia que o
+            // denominador corria em 32 núcleos e o numerador em um. *Uma régua tem de correr no
+            // mesmo regime do que ela mede.*
+            let tiles: Vec<(usize, usize)> = (0..480usize / 64)
+                .flat_map(|ty| (0..640usize / 64).map(move |tx| (tx, ty)))
+                .collect();
+            let t0 = std::time::Instant::now();
+            let acc: usize = tiles
+                .par_iter()
+                .map(|&(tx, ty)| {
+                    let Some(r) = region_of_tile(&cam, plane, (tx, ty), bbox, sharp.normal) else {
+                        return 0;
+                    };
+                    let tree = rc.compile(&doc, r.0, r.1);
+                    ph2d_field_eval::hybrid::Hybrid::from_tree(tree).sampled_count() + 1
+                })
+                .sum();
+            build.push(t0.elapsed().as_secs_f64() * 1e3);
+            assert!(acc > 0);
+        }
+        let (f, b) = (med(frame), med(build));
+        println!(
+            "{n:>7} | {f:>6.1} | {b:>6.1} | {:>7.1} | {:>6.0}%",
+            f - b,
+            b * 100.0 / f
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O PASSO DA MARCHA É UMA PROPRIEDADE DO DOCUMENTO, NÃO UMA CONSTANTE?** (W56e) — a sonda.
+///
+/// A marcha anda `d · SAFE_STEP` com `SAFE_STEP = 1/√2`, e o número é o recíproco de uma constante
+/// **medida**: a W0 viu `‖∇f‖` chegar a `√2` no operador de arredondamento exacto. ⚠️ Mas um extrude
+/// sem `round`, sobre uma distância de polígono exacta, é uma distância **verdadeira** — `‖∇f‖ = 1`
+/// quase em todo o lado —, e nele andar `d` inteiro é seguro. *O caminho mais lento a definir o
+/// passo do mais rápido é exactamente o que o `CLAUDE.md` §0 proíbe.*
+///
+/// A sonda mede as duas respostas **no mesmo processo** e compara também a IMAGEM: um passo maior
+/// que atravesse a superfície aparece como pixel de fundo no meio da peça.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::the_table_of_what_a_full_march_step_would_buy --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_what_a_full_march_step_would_buy() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    let med = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    println!("arestas | 1/√2 | 1,0 | ganho | pixels diferentes");
+    for n in [56usize, 168, 664] {
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile: Profile::new(vec![ngon_probe(n, 0.5)], FillRule::NonZero, 1e-3)
+                        .expect("perfil"),
+                    half_height: 0.2,
+                    round: 0.0,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        // ⚠️ **Alternadas**, e não sete de uma e sete da outra: uma deriva de máquina a meio da
+        // corrida ficaria toda dentro de um dos dois lados.
+        let (mut safe, mut full) = (Vec::new(), Vec::new());
+        let (mut a, mut b) = (None, None);
+        for _ in 0..7 {
+            let t0 = std::time::Instant::now();
+            let g = crate::trace_stepped_for_test(
+                &doc,
+                &reg,
+                &cam,
+                640,
+                480,
+                std::f32::consts::FRAC_1_SQRT_2,
+            );
+            safe.push(t0.elapsed().as_secs_f64() * 1e3);
+            let t0 = std::time::Instant::now();
+            let h = crate::trace_stepped_for_test(&doc, &reg, &cam, 640, 480, 1.0);
+            full.push(t0.elapsed().as_secs_f64() * 1e3);
+            a = Some(g);
+            b = Some(h);
+        }
+        let (g, h) = (a.expect("g"), b.expect("h"));
+        let diff = (0..g.hit.len()).filter(|k| g.hit[*k] != h.hit[*k]).count();
+        let (s, f) = (med(safe), med(full));
+        println!("{n:>7} | {s:>4.1} | {f:>3.1} | {:>4.2}x | {diff}", s / f);
+    }
+}
+
+/// ⭐⭐⭐ **ONDE A MONTAGEM DE UM LADRILHO GASTA** (W56e) — porque é ela que limita as fatias.
+///
+/// ⚠️ **É o número que decide a wave.** Repartir a profundidade em `N` fatias divide o custo de
+/// avaliar e MULTIPLICA o de montar; a `N = 4` a conta modelada dá `1,25×` só porque montar custa
+/// `18%` do quadro. Se a montagem tiver gordura, `N` pode subir e o ganho com ela.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::the_table_of_where_the_tile_assembly_goes --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_where_the_tile_assembly_goes() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    let med = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    println!("arestas | árvore | fita | total (µs por ladrilho, SÉRIE)");
+    for n in [56usize, 168, 664] {
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile: Profile::new(vec![ngon_probe(n, 0.5)], FillRule::NonZero, 1e-3)
+                        .expect("perfil"),
+                    half_height: 0.2,
+                    round: 0.0,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+            .map(ph2d_field_eval::bounds::Ball::aabb)
+            .expect("a caixa");
+        let plane = crate::Screen::new(640, 480, cam.half_extent);
+        let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+        let rc = ph2d_field_eval::RegionCompiler::new(&doc);
+        let regions: Vec<([f32; 3], [f32; 3])> = (0..480usize / 64)
+            .flat_map(|ty| (0..640usize / 64).map(move |tx| (tx, ty)))
+            .filter_map(|(tx, ty)| region_of_tile(&cam, plane, (tx, ty), bbox, sharp.normal))
+            .collect();
+        let (mut tree_ms, mut tape_ms) = (Vec::new(), Vec::new());
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            let trees: Vec<_> = regions.iter().map(|r| rc.compile(&doc, r.0, r.1)).collect();
+            tree_ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            let t0 = std::time::Instant::now();
+            let mut acc = 0usize;
+            for t in trees {
+                acc += ph2d_field_eval::hybrid::Hybrid::from_tree(t).sampled_count() + 1;
+            }
+            tape_ms.push(t0.elapsed().as_secs_f64() * 1e3);
+            assert!(acc > 0);
+        }
+        let k = regions.len() as f64;
+        let (a, b) = (med(tree_ms) * 1e3 / k, med(tape_ms) * 1e3 / k);
+        println!(
+            "{n:>7} | {a:>6.0} | {b:>4.0} | {:>5.0}  ({} ladrilhos)",
+            a + b,
+            regions.len()
+        );
+    }
+}
+
+/// Um contorno em **estrela** com `n` vértices — o oposto de equidistante.
+fn star_probe(n: usize, r_in: f64, r_out: f64) -> Vec<[f32; 2]> {
+    (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            let r = if i % 2 == 0 { r_out } else { r_in };
+            [(r * a.cos()) as f32, (r * a.sin()) as f32]
+        })
+        .collect()
+}
+
+/// Uma **barra dentada** — comprida num eixo, com dentes de um lado só.
+fn comb_probe(teeth: usize, half_w: f64, half_h: f64, tooth: f64) -> Vec<[f32; 2]> {
+    let mut v = Vec::with_capacity(teeth * 4 + 4);
+    v.push([-half_w as f32, -half_h as f32]);
+    v.push([half_w as f32, -half_h as f32]);
+    v.push([half_w as f32, half_h as f32]);
+    for i in (0..teeth).rev() {
+        let x0 = -half_w + 2.0 * half_w * (i as f64 + 0.15) / teeth as f64;
+        let x1 = -half_w + 2.0 * half_w * (i as f64 + 0.85) / teeth as f64;
+        v.push([x1 as f32, half_h as f32]);
+        v.push([x1 as f32, (half_h + tooth) as f32]);
+        v.push([x0 as f32, (half_h + tooth) as f32]);
+        v.push([x0 as f32, half_h as f32]);
+    }
+    v.push([-half_w as f32, half_h as f32]);
+    v
+}
+
+/// ⭐⭐⭐ **O CORTE NUNCA PODIA CORTAR: a fixtura desta wave é um CÍRCULO** (W56e).
+///
+/// ⛔ **Medido, e reabre o número de manchete.** O corte guarda toda aresta a menos de
+/// `dmax = min_e (máx distância de um CANTO da caixa a `e`)`. Numa peça **redonda** todas as
+/// arestas estão à mesma distância do centro ⇒ uma região no interior, por mais pequena que seja,
+/// guarda **as 168**. A coluna `máx` da sonda das fatias dizia-o de frente — `168` em todo `N` — e
+/// eu li-a como "há um ladrilho mau", quando ela é a lei da peça.
+///
+/// ⚠️ **Um `n`-gono regular é o PIOR caso de um corte por distância, e foi a fixtura de toda a
+/// W56.** O `1,8×` de manchete é, portanto, um **piso**, não a medida do que o artista sente.
+/// *A terceira vez nesta wave que a fixtura mede outra coisa que não o fenómeno.*
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::the_table_of_what_the_shape_of_the_outline_does --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_what_the_shape_of_the_outline_does() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    let med = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let shapes: Vec<(&str, Vec<[f32; 2]>)> = vec![
+        ("círculo 168", ngon_probe(168, 0.5)),
+        ("estrela 168", star_probe(168, 0.22, 0.5)),
+        ("pente 172", comb_probe(42, 0.55, 0.12, 0.10)),
+    ];
+    println!("contorno | arestas | guardadas | % | linha | ladrilho | ganho");
+    for (name, ring) in shapes {
+        let n = ring.len();
+        let profile = Profile::new(vec![ring], FillRule::NonZero, 1e-3).expect("perfil");
+        let idx = ph2d_field_eval::profile_index::ProfileIndex::build(&profile);
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile,
+                    half_height: 0.2,
+                    round: 0.0,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+            .map(ph2d_field_eval::bounds::Ball::aabb)
+            .expect("a caixa");
+        let plane = crate::Screen::new(640, 480, cam.half_extent);
+        let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+        let (mut kept, mut tiles) = (0usize, 0usize);
+        for ty in 0..480usize / 64 {
+            for tx in 0..640usize / 64 {
+                let Some(r) = region_of_tile(&cam, plane, (tx, ty), bbox, sharp.normal) else {
+                    continue;
+                };
+                kept += idx.probe_cull([r.0[0], r.0[1]], [r.1[0], r.1[1]]);
+                tiles += 1;
+            }
+        }
+        let (mut rows, mut tiled) = (Vec::new(), Vec::new());
+        for _ in 0..7 {
+            let t0 = std::time::Instant::now();
+            let a = crate::trace_by_rows_for_test(&doc, &reg, &cam, 640, 480);
+            rows.push(t0.elapsed().as_secs_f64() * 1e3);
+            let t0 = std::time::Instant::now();
+            let b = crate::trace(&doc, &reg, &cam, 640, 480);
+            tiled.push(t0.elapsed().as_secs_f64() * 1e3);
+            assert!(a.hit.iter().any(|h| *h) && b.hit.iter().any(|h| *h));
+        }
+        let (r, t) = (med(rows), med(tiled));
+        let k = kept as f64 / tiles.max(1) as f64;
+        println!(
+            "{name:>11} | {n:>7} | {k:>9.1} | {:>3.0}% | {r:>5.1} | {t:>8.1} | {:>4.1}x",
+            k * 100.0 / n as f64,
+            r / t
+        );
+    }
+}
+
+/// ⛔⛔ **TODA AMOSTRA CAI DENTRO DA REGIÃO QUE CONSTRUIU A FITA QUE A AVALIA** (W56e).
+///
+/// É **o** invariante da marcha por fatia: a árvore especializada só concorda com o documento
+/// dentro da região para que foi construída, então uma amostra fora dela é resposta inventada — e
+/// o sintoma não é ruído, é a marcha a atravessar a peça ou a inventar superfície.
+///
+/// # As duas coisas que este gate apanhou
+///
+/// ⛔ **Os quatro raios de canto NÃO bastam na lente convergente.** O doc do `tile_region` dizia
+/// *"e não é aproximação"*. É, e só na **paralela** é exacta: lá a direcção é constante e um raio
+/// interior é combinação convexa dos cantos. Na convergente a direcção é **normalizada**, `d̂(s)`
+/// percorre um quadrilátero **esférico**, e ele abaúla para fora da corda. Medido, câmera de
+/// frente: a fuga vai de `2,80e-4` com uma fatia a `4,03e-4` com oito, e **passa a folga** de
+/// `4e-4` exactamente quando a fatia aperta. *A premissa não mordia porque o tubo era grande;
+/// fatiar é o que a acorda.* A cura é a **flecha** (ver [`crate::tiles::region_between`]).
+///
+/// ⛔ **E o `t` de entrada é CONVEXO na posição de ecrã** (`max` de funções afins), então o mínimo
+/// dele pode ser **interior** ao ladrilho: medido, um raio interior entra até **`7,4e-2` antes** do
+/// `t_lo` que os quatro cantos dão, e sai até `1,2e-1` depois do `t_hi` — sobre uma peça que mede
+/// `1,0`. É por isso que a 1.ª fatia começa em `0` e a última acaba em `T_MAX`.
+#[test]
+fn every_sample_lies_inside_the_region_that_built_its_tape() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let doc = FieldDoc::new(
+        vec![Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Leaf(Primitive::Extrude {
+                profile: Profile::new(vec![ngon_probe(24, 0.5)], FillRule::NonZero, 1e-3)
+                    .expect("perfil"),
+                half_height: 0.2,
+                round: 0.0,
+            }),
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+        .map(ph2d_field_eval::bounds::Ball::aabb)
+        .expect("a caixa");
+    for (name, cam) in [
+        ("de viés", crate::Orbit::from_yaw_pitch(0.72, 0.52)),
+        ("de frente", crate::Orbit::from_yaw_pitch(0.0, 0.0)),
+        ("quase de canto", crate::Orbit::from_yaw_pitch(0.78, 0.62)),
+    ] {
+        let plane = crate::Screen::new(640, 480, cam.half_extent);
+        let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+        // ⚠️ **Mais fatias do que o produto usa, de propósito.** A fuga da flecha CRESCE quando a
+        // fatia aperta, então medir só no `SLABS` que shipa é medir o caso fácil.
+        for slabs in [crate::tiles::SLABS, 4, 8, 16] {
+            let (mut worst, mut where_, mut measured) = (0.0f32, (0usize, 0usize, 0usize), 0usize);
+            for ty in 0..480usize / 64 {
+                for tx in 0..640usize / 64 {
+                    let (lo_px, hi_px) = ((tx * 64, ty * 64), (tx * 64 + 64, ty * 64 + 64));
+                    // As MESMAS fronteiras que a marcha constrói — ver `tiles::tiled_trace`.
+                    let Some((t_lo, t_hi)) =
+                        crate::tiles::tile_t_range(&cam, plane, lo_px, hi_px, bbox)
+                    else {
+                        continue;
+                    };
+                    let bounds = crate::tiles::slab_bounds(t_lo, t_hi, slabs);
+                    measured += 1;
+                    // ⭐⭐ **As fronteiras têm de COBRIR o que cada raio marcha.** ⛔ Sem esta
+                    // metade, duas mutações que apagavam a 1.ª e a última fronteira SOBREVIVIAM:
+                    // o gate cortava as amostras pelas próprias fronteiras, então o pedaço de raio
+                    // que ficava de fora nunca era medido. *Um invariante que se avalia dentro do
+                    // domínio que ele define não diz nada sobre a fronteira dele.*
+                    for ia in 0..17 {
+                        for ib in 0..17 {
+                            let px = lo_px.0 as f32 + 64.0 * ia as f32 / 16.0;
+                            let py = lo_px.1 as f32 + 64.0 * ib as f32 / 16.0;
+                            let (sx, sy) = plane.plane_at(px, py);
+                            let (o, d) = cam.ray_at_plane(sx, sy);
+                            let Some((ea, eb)) = crate::slab(o, d, bbox.0, bbox.1) else {
+                                continue;
+                            };
+                            let (e0, e1) = (ea.max(0.0), eb.min(crate::T_MAX));
+                            if e1 <= e0 {
+                                continue;
+                            }
+                            assert!(
+                                bounds[0] <= e0 && e1 <= bounds[bounds.len() - 1],
+                                "{name}, {slabs} fatias: o ladrilho ({tx}, {ty}) marcha \
+                                 [{e0:.4}, {e1:.4}] e as fatias só cobrem [{:.4}, {:.4}] — um \
+                                 pedaço do raio é avaliado por fita nenhuma",
+                                bounds[0],
+                                bounds[bounds.len() - 1]
+                            );
+                        }
+                    }
+                    for k in 0..bounds.len() - 1 {
+                        let (a0, a1) = (bounds[k], bounds[k + 1]);
+                        if a1 <= a0 {
+                            continue;
+                        }
+                        // `None` = a fatia não cruza a peça ⇒ a marcha usa o documento INTEIRO,
+                        // que vale em todo o lado. Nada a exigir.
+                        let Some(r) = crate::tiles::slab_region(
+                            &cam,
+                            plane,
+                            lo_px,
+                            hi_px,
+                            bbox,
+                            sharp.normal,
+                            &bounds,
+                            k,
+                        ) else {
+                            continue;
+                        };
+                        for ia in 0..9 {
+                            for ib in 0..9 {
+                                let px = lo_px.0 as f32 + 64.0 * ia as f32 / 8.0;
+                                let py = lo_px.1 as f32 + 64.0 * ib as f32 / 8.0;
+                                let (sx, sy) = plane.plane_at(px, py);
+                                let (o, d) = cam.ray_at_plane(sx, sy);
+                                // Só a parte do raio que ESTA fatia marcha: da entrada na caixa
+                                // até à saída, cortada pela fatia.
+                                let Some((ea, eb)) = crate::slab(o, d, bbox.0, bbox.1) else {
+                                    continue;
+                                };
+                                let (s0, s1) = (ea.max(0.0).max(a0), eb.min(crate::T_MAX).min(a1));
+                                if s1 <= s0 {
+                                    continue;
+                                }
+                                for j in 0..9 {
+                                    let t = s0 + (s1 - s0) * j as f32 / 8.0;
+                                    for c in 0..3 {
+                                        let v = d[c].mul_add(t, o[c]);
+                                        let out = (r.0[c] - v).max(v - r.1[c]);
+                                        if out > worst {
+                                            worst = out;
+                                            where_ = (tx, ty, k);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            assert!(
+                measured > 20,
+                "{name}: poucos ladrilhos medidos ({measured})"
+            );
+            assert!(
+                worst <= 0.0,
+                "{name}, {slabs} fatias: uma amostra sai {worst:.3e} da região da fatia \
+                 {where_:?} — a fita dela responde ali onde não vale"
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **QUANTAS FATIAS DE PROFUNDIDADE** (W56e) — a varredura que escolhe o [`crate::tiles::SLABS`].
+///
+/// ⚠️ **Ela mede também a IMAGEM**, e não só o relógio: uma fatia a mais é uma árvore a mais a ser
+/// perguntada, e a coluna `≠` é o que separa "ficou rápido" de "ficou rápido e errado".
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::the_table_of_how_many_depth_slabs --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_how_many_depth_slabs() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    let med = |mut v: Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let shapes: Vec<(&str, Vec<[f32; 2]>)> = vec![
+        ("círculo 56", ngon_probe(56, 0.5)),
+        ("círculo 168", ngon_probe(168, 0.5)),
+        ("estrela 168", star_probe(168, 0.22, 0.5)),
+        ("círculo 664", ngon_probe(664, 0.5)),
+    ];
+    println!("contorno | linha | N=1 | 2 | 3 | 4 | 6 | 8 | melhor");
+    for (name, ring) in shapes {
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile: Profile::new(vec![ring], FillRule::NonZero, 1e-3).expect("perfil"),
+                    half_height: 0.2,
+                    round: 0.0,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let rows = med((0..5)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                let g = crate::trace_by_rows_for_test(&doc, &reg, &cam, 640, 480);
+                assert!(g.hit.iter().any(|h| *h));
+                t0.elapsed().as_secs_f64() * 1e3
+            })
+            .collect());
+        let base = crate::trace_by_rows_for_test(&doc, &reg, &cam, 640, 480);
+        let mut cells = Vec::new();
+        let mut best = (f64::INFINITY, 0usize);
+        for n in [1usize, 2, 3, 4, 6, 8] {
+            let ms = med((0..5)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    let g = crate::trace_tiled_for_test(&doc, &reg, &cam, 640, 480, 64, n, true)
+                        .expect("ladrilho");
+                    assert!(g.hit.iter().any(|h| *h));
+                    t0.elapsed().as_secs_f64() * 1e3
+                })
+                .collect());
+            let g = crate::trace_tiled_for_test(&doc, &reg, &cam, 640, 480, 64, n, true)
+                .expect("ladrilho");
+            let diff = (0..g.hit.len())
+                .filter(|k| g.hit[*k] != base.hit[*k])
+                .count();
+            cells.push(format!("{ms:.0}/{diff}"));
+            if ms < best.0 {
+                best = (ms, n);
+            }
+        }
+        println!(
+            "{name:>11} | {rows:>5.0} | {} | N={} a {:.2}x",
+            cells.join(" | "),
+            best.1,
+            rows / best.0
+        );
+    }
+}
+
+/// ⭐⭐ **UM RAIO INTERIOR ENTRA ANTES DO QUE OS QUATRO CANTOS DIZEM?** (W56e) — a cerca medida.
+///
+/// A faixa `[t_lo, t_hi]` de um ladrilho sai dos quatro raios de CANTO. O `t` de entrada na caixa é
+/// `max` de funções afins da posição de ecrã ⇒ **convexo** ⇒ o **mínimo** dele pode ser interior ao
+/// ladrilho, e não num canto. Se isso acontecer, um raio interior entra **antes** de `t_lo`, e a
+/// fatia que começa aí seria perguntada onde não vale. É por causa disto que a 1.ª fatia começa em
+/// `0` e a última acaba em `T_MAX`.
+///
+/// ⚠️ **Duas mutações que apagavam essas duas fronteiras SOBREVIVERAM ao gate de paridade** — ou
+/// seja, a cerca pode estar a defender algo que a fixtura não contém. Esta sonda mede o défice.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::the_table_of_whether_an_inner_ray_enters_first --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_whether_an_inner_ray_enters_first() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let doc = FieldDoc::new(
+        vec![Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Leaf(Primitive::Extrude {
+                profile: Profile::new(vec![ngon_probe(24, 0.5)], FillRule::NonZero, 1e-3)
+                    .expect("perfil"),
+                half_height: 0.2,
+                round: 0.0,
+            }),
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+        .map(ph2d_field_eval::bounds::Ball::aabb)
+        .expect("a caixa");
+    println!("câmera | ladrilhos | pior défice de entrada | pior excesso de saída");
+    for (name, cam) in [
+        ("de viés", crate::Orbit::from_yaw_pitch(0.72, 0.52)),
+        ("de frente", crate::Orbit::from_yaw_pitch(0.0, 0.0)),
+        ("quase de canto", crate::Orbit::from_yaw_pitch(0.78, 0.62)),
+    ] {
+        let plane = crate::Screen::new(640, 480, cam.half_extent);
+        let (mut early, mut late, mut n) = (0.0f32, 0.0f32, 0usize);
+        for ty in 0..480usize / 64 {
+            for tx in 0..640usize / 64 {
+                let (lo_px, hi_px) = ((tx * 64, ty * 64), (tx * 64 + 64, ty * 64 + 64));
+                let Some((t_lo, t_hi)) =
+                    crate::tiles::tile_t_range(&cam, plane, lo_px, hi_px, bbox)
+                else {
+                    continue;
+                };
+                n += 1;
+                for a in 0..17 {
+                    for b in 0..17 {
+                        let px = lo_px.0 as f32 + 64.0 * a as f32 / 16.0;
+                        let py = lo_px.1 as f32 + 64.0 * b as f32 / 16.0;
+                        let (sx, sy) = plane.plane_at(px, py);
+                        let (o, d) = cam.ray_at_plane(sx, sy);
+                        let Some((ea, eb)) = crate::slab(o, d, bbox.0, bbox.1) else {
+                            continue;
+                        };
+                        early = early.max(t_lo - ea.max(0.0));
+                        late = late.max(eb.min(crate::T_MAX) - t_hi);
+                    }
+                }
+            }
+        }
+        println!("{name:>15} | {n:>9} | {early:>21.3e} | {late:>20.3e}");
+    }
+}
+
+/// ⭐⭐ **UMA FATIA TEM DE GUARDAR MENOS ARESTAS QUE O TUBO INTEIRO** (W56e) — senão fatiar não
+/// fatia, e o que sobra é o preço da montagem a mais.
+///
+/// ⚠️ É o irmão de [`a_tile_region_is_much_smaller_than_the_piece`], um nível abaixo: aquele mede a
+/// região do LADRILHO contra a peça, este mede a região da FATIA contra a do ladrilho. ⛔ Uma
+/// mutação que colapsava as fronteiras de volta a uma fatia só **sobreviveu** ao gate de cima —
+/// ele não tem como ver a decomposição em profundidade. *Um gate que mede o pai não mede o filho.*
+#[test]
+fn a_depth_slab_keeps_fewer_edges_than_the_whole_tube() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let profile =
+        Profile::new(vec![ngon_probe(168, 0.5)], FillRule::NonZero, 1e-3).expect("perfil");
+    let idx = ph2d_field_eval::profile_index::ProfileIndex::build(&profile);
+    let doc = FieldDoc::new(
+        vec![Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Leaf(Primitive::Extrude {
+                profile,
+                half_height: 0.2,
+                round: 0.0,
+            }),
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+        .map(ph2d_field_eval::bounds::Ball::aabb)
+        .expect("a caixa");
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    let plane = crate::Screen::new(640, 480, cam.half_extent);
+    let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+    let kept = |r: ([f32; 3], [f32; 3])| idx.probe_cull([r.0[0], r.0[1]], [r.1[0], r.1[1]]);
+    let (mut tube, mut sliced, mut n) = (0usize, 0usize, 0usize);
+    for ty in 0..480usize / 64 {
+        for tx in 0..640usize / 64 {
+            let (lo_px, hi_px) = ((tx * 64, ty * 64), (tx * 64 + 64, ty * 64 + 64));
+            let Some((t_lo, t_hi)) = crate::tiles::tile_t_range(&cam, plane, lo_px, hi_px, bbox)
+            else {
+                continue;
+            };
+            let bounds = crate::tiles::slab_bounds(t_lo, t_hi, crate::tiles::SLABS);
+            let region = |k: usize| {
+                crate::tiles::slab_region(&cam, plane, lo_px, hi_px, bbox, sharp.normal, &bounds, k)
+            };
+            let Some(whole) = crate::tiles::region_between(
+                &cam,
+                plane,
+                lo_px,
+                hi_px,
+                bbox,
+                sharp.normal,
+                t_lo,
+                t_hi,
+            ) else {
+                continue;
+            };
+            n += 1;
+            tube += kept(whole);
+            // O PIOR caso da decomposição — não a média: é o que uma avaliação chega a pagar.
+            // ⚠️ Sem as duas fatias de FORA, que não são profundidade da peça e sim a cerca.
+            let mut worst = 0usize;
+            for k in 1..bounds.len() - 2 {
+                worst = worst.max(region(k).map_or(0, kept));
+            }
+            sliced += worst;
+        }
+    }
+    assert!(n > 20, "poucos ladrilhos medidos ({n})");
+    let (a, b) = (tube as f32 / n as f32, sliced as f32 / n as f32);
+    assert!(
+        b * 100.0 <= a * 92.0,
+        "a fatia guarda {b:.1} arestas contra {a:.1} do tubo inteiro ({:.0}%) — repartir a \
+         profundidade deixou de repartir, e o que sobra é a montagem a mais",
+        b * 100.0 / a
+    );
 }

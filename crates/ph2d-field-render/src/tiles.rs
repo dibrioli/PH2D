@@ -5,7 +5,8 @@
 //! é o que o `architecture_workspace_file_loc_cap` pede: o `lib.rs` fica com **a marcha**, este
 //! ficheiro com **o repartir**.
 
-use crate::{Gbuffer, Orbit, Scene, Screen, T_MAX, march, resample_edges, slab};
+use crate::march::{Scene, march, march_slabs};
+use crate::{Gbuffer, Orbit, Screen, T_MAX, resample_edges, slab};
 use ph2d_field::FieldDoc;
 use rayon::prelude::*;
 
@@ -30,6 +31,30 @@ type TileResult = (Vec<usize>, Vec<bool>, Vec<[f32; 3]>);
 /// modelo — **≈ 0,29 ms de montagem por ladrilho**, e o resto é avaliação.
 pub(crate) const TILE: usize = 64;
 
+/// ⭐⭐⭐ **Em quantas FATIAS DE PROFUNDIDADE o tubo de um ladrilho se reparte** (W56e) — medido.
+///
+/// ⚠️ **É o segundo eixo, e o único que sobra.** Ver [`crate::march::march_slabs`]: a região de um
+/// ladrilho mede `lado + profundidade · |direcção|`, e encolher o **lado** não toca no segundo
+/// termo — foi por isso que a varredura do [`TILE`] viu um vale e não uma descida.
+///
+/// A conta puxa para os dois lados: repartir **divide** o custo de avaliar (arestas guardadas por
+/// região: `128,6` a `N = 1`, `67,2` a `N = 4`, `53,4` a `N = 8`) e **multiplica** o de montar (a
+/// soma sobre as fatias: `1,00×`, `2,09×`, `3,32×`), que é 96% JIT.
+///
+/// ⭐ **A varredura (640×480, mediana de 5, `ms/pixels ≠ da marcha de linha`):**
+///
+/// | contorno | linha | N=1 | **N=2** | N=3 | N=4 | N=6 | N=8 |
+/// |---|---:|---:|---:|---:|---:|---:|---:|
+/// | círculo 56 | 63 | 38/0 | **34/1** | 41/2 | 44/1 | 57/2 | 68/2 |
+/// | círculo 168 | 147 | 88/0 | **76/0** | 78/0 | 83/0 | 93/0 | 108/0 |
+/// | estrela 168 | 220 | 195/0 | **181/1** | 187/2 | 182/2 | 199/2 | 213/4 |
+/// | círculo 664 | 514 | 328/0 | **265/2** | 276/2 | 264/2 | 306/2 | 330/3 |
+///
+/// ⭐ **`2` é o melhor ou empata nas quatro**, e o vale é raso entre 2 e 4 — acima disso a montagem
+/// domina. ⚠️ **E o ganho é `1,08×–1,24×`, não os `5×` que a nota da W56d prometia**: a nota lia o
+/// mecanismo certo (a pegada) e errava o preço, porque a montagem é JIT e cresce com a soma.
+pub(crate) const SLABS: usize = 2;
+
 /// ⭐⭐⭐ **A marcha por ladrilho, com uma árvore por região** — ver o `TILE`.
 ///
 /// ⚠️ **A região é a caixa do FRUSTUM do ladrilho intersectada com a da peça**, e a marcha de cada
@@ -47,6 +72,7 @@ pub(crate) fn tiled_trace(
     antialias: bool,
     cancel: Option<&std::sync::atomic::AtomicBool>,
     tile: usize,
+    slabs: usize,
 ) -> Gbuffer {
     let (w, h) = (plane.width() as usize, plane.height() as usize);
     let (out_w, out_h) = (plane.width() as u32, plane.height() as u32);
@@ -72,28 +98,52 @@ pub(crate) fn tiled_trace(
         if cancel.is_some_and(|c| c.load(std::sync::atomic::Ordering::Relaxed)) {
             return (idx, empty.1, empty.2);
         }
-        // A caixa do frustum do ladrilho: os quatro raios de canto, de `t = 0` a `T_MAX`.
-        let Some(region) = tile_region(
-            scene.cam,
-            plane,
-            (x0, y0),
-            (x1, y1),
-            bbox,
-            scene.sharp.normal,
-        ) else {
-            // A caixa do ladrilho não cruza a da peça ⇒ nenhum raio dele acerta em nada.
-            return (idx, empty.1, empty.2);
-        };
-        let tree = rc.compile(doc, region.0, region.1);
-        let local = ph2d_field_eval::hybrid::Hybrid::from_tree(tree);
         let tile_scene = Scene {
-            shape: &local,
+            shape: scene.shape,
             cam: scene.cam,
             basis: scene.basis,
             sharp: scene.sharp,
             clip: Some(bbox),
+            step: scene.step,
         };
-        let (hit, normal, _) = march(&tile_scene, &pts);
+        // ⭐⭐⭐ **AS FRONTEIRAS DAS FATIAS** (W56e) — e as duas de FORA são o que torna isto
+        // correcto sem uma premissa.
+        //
+        // ⚠️ A faixa `[t_lo, t_hi]` sai dos quatro raios de CANTO, e o `t` de entrada na caixa é
+        // uma função **convexa** da posição de ecrã: o mínimo dela pode ser INTERIOR ao ladrilho,
+        // e um raio interior pode portanto entrar antes de `t_lo`. ⇒ a 1ª e a última fatia vão de
+        // `0` e até `T_MAX`, o que torna a cobertura das fronteiras **trivialmente** completa; e
+        // como a montagem é preguiçosa, elas custam **zero** quando ninguém lá chega. *A cerca não
+        // é uma afirmação sobre onde os raios entram, é a ausência de uma.*
+        let Some((t_lo, t_hi)) = tile_t_range(scene.cam, plane, (x0, y0), (x1, y1), bbox) else {
+            // Nenhum raio de canto alcança a peça — não há o que especializar, e desistir é a
+            // resposta segura (um raio INTERIOR ainda pode acertar).
+            let (hit, normal, _) = march(&tile_scene, &pts);
+            return (idx, hit, normal);
+        };
+        // ⚠️ **O que mutação nenhuma mata aqui, e por quê.** Fazer este `shape_of` devolver
+        // sempre `None` desliga a especialização inteira — e a imagem sai **idêntica**, porque o
+        // documento não especializado é a resposta certa em todo o lado. É um defeito **só de
+        // relógio**, a mesma família do «a região era a peça inteira» da W56d, e nenhum gate de
+        // paridade o pode ver. Quem o defende é a tabela medida
+        // (`the_table_of_how_many_depth_slabs`), que é relógio por natureza. *A afirmação encolhe
+        // até ao que a máquina faz: a paridade prova a IMAGEM, a tabela prova o PREÇO.*
+        let bounds = slab_bounds(t_lo, t_hi, slabs);
+        let (hit, normal, _) = march_slabs(&tile_scene, &pts, &bounds, &mut |k| {
+            let r = slab_region(
+                scene.cam,
+                plane,
+                (x0, y0),
+                (x1, y1),
+                bbox,
+                scene.sharp.normal,
+                &bounds,
+                k,
+            )?;
+            Some(ph2d_field_eval::hybrid::Hybrid::from_tree(
+                rc.compile(doc, r.0, r.1),
+            ))
+        });
         (idx, hit, normal)
     };
     let done: Vec<TileResult> = if parallel {
@@ -124,24 +174,57 @@ pub(crate) fn tiled_trace(
     }
 }
 
-/// A caixa de mundo que contém tudo o que os raios deste ladrilho podem amostrar **dentro da peça**.
+/// ⭐⭐⭐ **AS FRONTEIRAS DAS FATIAS DE UM LADRILHO** (W56e) — e as duas de FORA são o que torna a
+/// marcha correcta **sem uma premissa**.
 ///
-/// ⚠️ **Os quatro raios de CANTO bastam, e não é aproximação:** o frustum de um ladrilho é o casco
-/// convexo dos quatro segmentos de canto (a lente é convergente ou paralela, e nas duas o ladrilho é
-/// um quadrilátero plano), então a caixa dos oito extremos contém todo raio interior.
-/// ⚠️ **`margin` não é folga de conforto — é a SONDA DA NORMAL.** Ela é uma diferença central em
-/// `ponto ± ε`, e um `ε` que saia da região faria a árvore especializada responder onde ela não vale.
-/// O sintoma medido: 90 pixels a **apagarem-se** (o gradiente saía nulo e a marcha desistia do
-/// acerto), num quadro em que a máscara devia ser idêntica. *Uma região tem de conter tudo o que é
-/// avaliado — inclusive o que é avaliado DEPOIS de o raio parar.*
-pub(crate) fn tile_region(
+/// ⚠️ A faixa `[t_lo, t_hi]` sai dos quatro raios de CANTO, e o `t` de entrada na caixa é `max` de
+/// funções afins da posição de ecrã ⇒ **convexo** ⇒ o mínimo dele pode ser **interior** ao
+/// ladrilho. ⛔ **Medido:** um raio interior entra até `7,4e-2` **antes** de `t_lo` e sai até
+/// `1,2e-1` depois de `t_hi`, sobre uma peça que mede `1,0`. ⇒ a 1.ª fatia começa em `0` e a última
+/// acaba em `T_MAX`, o que torna a cobertura **trivialmente** completa; e como a montagem é
+/// preguiçosa, elas custam **zero** quando ninguém lá chega. *A cerca não é uma afirmação sobre
+/// onde os raios entram: é a ausência de uma.*
+///
+/// ⚠️ **Uma função só, e o gate chama ESTA.** A 1.ª versão do
+/// `every_sample_lies_inside_the_region_that_built_its_tape` reconstruía as fronteiras dentro do
+/// teste — e três mutações que apagavam as fronteiras de fora **sobreviveram**, porque mexiam na
+/// cópia do produto enquanto o gate media a dele. *Duas cópias de uma lei é uma lei que gate nenhum
+/// defende.*
+pub(crate) fn slab_bounds(t_lo: f32, t_hi: f32, slabs: usize) -> Vec<f32> {
+    let mut bounds: Vec<f32> = Vec::with_capacity(slabs + 3);
+    bounds.push(0.0);
+    for k in 0..=slabs {
+        bounds.push(t_lo + (t_hi - t_lo) * k as f32 / slabs as f32);
+    }
+    bounds.push(T_MAX);
+    bounds
+}
+
+/// A região da fatia `k` — a mesma porta para o produto e para o gate, pela mesma razão.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn slab_region(
     cam: &Orbit,
     plane: Screen,
     lo_px: (usize, usize),
     hi_px: (usize, usize),
     bbox: ([f32; 3], [f32; 3]),
     margin: f32,
+    bounds: &[f32],
+    k: usize,
 ) -> Option<([f32; 3], [f32; 3])> {
+    let (a, b) = (*bounds.get(k)?, *bounds.get(k + 1)?);
+    (b > a).then(|| region_between(cam, plane, lo_px, hi_px, bbox, margin, a, b))?
+}
+
+/// ⭐⭐ **A faixa de `t` que o ladrilho inteiro ocupa dentro da caixa da peça**, ou `None` se
+/// nenhum raio de canto a alcança. Ver [`tile_region`] — e é ela que a marcha por FATIA reparte.
+pub(crate) fn tile_t_range(
+    cam: &Orbit,
+    plane: Screen,
+    lo_px: (usize, usize),
+    hi_px: (usize, usize),
+    bbox: ([f32; 3], [f32; 3]),
+) -> Option<(f32, f32)> {
     // ⭐⭐ **A faixa de `t` é a da CAIXA, não `[0, T_MAX]`.**
     //
     // ⛔ **Medido:** com `T_MAX` o tubo do ladrilho é tão comprido que a caixa dele engole a peça
@@ -166,15 +249,61 @@ pub(crate) fn tile_region(
             t_hi = t_hi.max(b.min(T_MAX));
         }
     }
-    if !t_lo.is_finite() || t_lo > t_hi {
-        // Nenhum raio de canto alcança a caixa. ⚠️ Um raio INTERIOR ainda pode, então o que se faz é
-        // **desistir da especialização** — nunca dar o ladrilho por vazio.
-        return Some(bbox);
-    }
+    (t_lo.is_finite() && t_lo <= t_hi).then_some((t_lo, t_hi))
+}
+
+/// A caixa de mundo varrida pelo ladrilho **entre `t0` e `t1`** — ver [`tile_region`].
+///
+/// ⭐⭐⭐ **É a porta da marcha por FATIA DE PROFUNDIDADE** (W56e): a mesma conta, com a faixa
+/// repartida. Uma fatia varre menos `(u, v)` do que o tubo inteiro, e é exactamente essa varredura
+/// que decide quantas arestas a árvore especializada tem de guardar.
+///
+/// # ⛔ Os quatro cantos NÃO bastam na lente convergente — e a prova que os salva
+///
+/// O doc do [`tile_region`] dizia *"e não é aproximação"*. É, e só na **paralela** é exacta: lá a
+/// direcção é constante, o ponto de entrada é bilinear na posição de ecrã, e um raio interior é
+/// combinação convexa dos quatro cantos. Na convergente a direcção é **normalizada**, então
+/// `d̂(s)` percorre um quadrilátero **esférico** que abaúla para fora da corda dos quatro cantos.
+/// ⛔ **Medido** (`a_tile_region_contains_the_rays_inside_it`, câmera de frente): a fuga vai de
+/// `2,80e-4` com uma fatia a `4,03e-4` com oito — e **passa a folga** (`4e-4`) exactamente quando
+/// a fatia aperta. *A premissa não mordia porque o tubo era grande; fatiar é o que a acorda.*
+///
+/// ⭐ **A cura tem prova, e custa dois produtos internos.** Todo ponto a parâmetro `t` está sobre a
+/// esfera de raio `t` em torno do olho, dentro do cone do ladrilho; a distância dele à **corda**
+/// dos quatro cantos no mesmo `t` é no máximo a **flecha** `t · (1 − cos α)`, com `α` o ângulo
+/// entre o raio central e o canto mais afastado. E `hull{p_j(t)} ⊆ hull{p_j(t₀), p_j(t₁)}` porque
+/// `p_j(t)` é linear em `t` ⇒ a caixa dos oito pontos contém a corda em toda a faixa. Inflar essa
+/// caixa por `t₁ · (1 − cos α)` contém, portanto, **todo** raio interior. ⚠️ Na paralela `α = 0` e
+/// a inflação é **exactamente zero** — a lente sem o defeito não paga por ele.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn region_between(
+    cam: &Orbit,
+    plane: Screen,
+    lo_px: (usize, usize),
+    hi_px: (usize, usize),
+    bbox: ([f32; 3], [f32; 3]),
+    margin: f32,
+    t_lo: f32,
+    t_hi: f32,
+) -> Option<([f32; 3], [f32; 3])> {
+    let corners = [
+        (lo_px.0 as f32, lo_px.1 as f32),
+        (hi_px.0 as f32, lo_px.1 as f32),
+        (lo_px.0 as f32, hi_px.1 as f32),
+        (hi_px.0 as f32, hi_px.1 as f32),
+    ];
     let (mut lo, mut hi) = ([f32::INFINITY; 3], [f32::NEG_INFINITY; 3]);
+    // O raio CENTRAL do ladrilho — o eixo do cone contra o qual a flecha se mede.
+    let (cx, cy) = plane.plane_at(
+        (lo_px.0 + hi_px.0) as f32 * 0.5,
+        (lo_px.1 + hi_px.1) as f32 * 0.5,
+    );
+    let (_, axis) = cam.ray_at_plane(cx, cy);
+    let mut cos_a = 1.0f32;
     for (px, py) in corners {
         let (sx, sy) = plane.plane_at(px, py);
         let (o, d) = cam.ray_at_plane(sx, sy);
+        cos_a = cos_a.min(d[0] * axis[0] + d[1] * axis[1] + d[2] * axis[2]);
         for t in [t_lo, t_hi] {
             for k in 0..3 {
                 let v = d[k].mul_add(t, o[k]);
@@ -185,7 +314,8 @@ pub(crate) fn tile_region(
     }
     // …intersectada com a da peça: fora dela não há superfície nenhuma.
     let mut out = ([0.0f32; 3], [0.0f32; 3]);
-    let pad = margin * 4.0;
+    // ⭐ A folga da sonda da normal **mais** a flecha do cone — ver o doc acima.
+    let pad = margin * 4.0 + t_hi.abs() * (1.0 - cos_a).max(0.0);
     for k in 0..3 {
         out.0[k] = lo[k].max(bbox.0[k]);
         out.1[k] = hi[k].min(bbox.1[k]);

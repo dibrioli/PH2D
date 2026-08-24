@@ -342,7 +342,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **A lei do ADR-0153:** *o passe publica **onde** as coisas ficam; ele não escreve **onde** elas estão* — nada no auto
   layout toca `Transform`, senão cada quadro de um resize vira um passo de undo.
   ⚠️ **Regra-mãe do pen:** *o que se vê/aponta/encaixa é MUNDO; o que o documento guarda é LOCAL.*
-  **Aberto:** ✅ **o `n`/folga do *tether* e o `DRAG_RATE_X = 50` NUNCA foram «feel sem medição» — a NOTA é que
+  **Aberto:** ⭐ **NA FILA, a começar em 25/08** (pedido do Enio em 24/08 — fila em [doc 29](docs/Vector%20Module/29_fila_morph_state_machine_e_texture_pattern.md), que **não é plano**):
+  **(a)** uma *state machine* **específica do Morph**: morph entre **N** formas, não-destrutivo e **vivo no runtime do jogo**
+  — ⚠️ o [`VecMorph`](crates/ph2d-ecs/src/vec_morph.rs) **já** é não-destrutivo e já se re-cozinha por quadro, mas é entre **DUAS**;
+  e *"no runtime"* obriga a decidir se a lei desce a uma crate-folha ou se o **R1 sai do gelo** ·
+  **(b)** **Texture pattern** no preenchimento: o `Paint` tem **4** variantes e **nenhuma de imagem**
+  ([`paint.rs`](crates/ph2d-vec-scene/src/paint.rs)) — ⚠️ a lei do módulo é *preenchimento em **world-space**, que transforma
+  com o path*, e ⛔ leia o [plano 23](docs/Vector%20Module/23_plano_pattern_along_path.md) antes de desenhar ·
+  ✅ **o `n`/folga do *tether* e o `DRAG_RATE_X = 50` NUNCA foram «feel sem medição» — a NOTA é que
   envelheceu** (conferido 24/08, mecanismo no [estudo §6.6](docs/Vector%20Module/Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)):
   o `50` é o atalho de **último recurso** de uma caixa **sem intervalo nenhum**, e acima dele está a `ScrubLaw` · ⏸️ abrir/fechar painel **nunca** foi
   animado (ausência, não regressão; e **não** é o gêmeo da dobra) ·
@@ -352,7 +359,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ✅ **O som de UI (D1) FECHOU, e nasce DESLIGADO** (`~/.ph2d/prefs.txt`, `ui_sound=0`): quatro
   vozes sintetizadas, e a lei é *um som CONFIRMA o que a mão fez, nunca ANUNCIA o que o app
   decidiu* — o **hover é mudo**, e os sítios que armam são uma lista explícita com gate.
-  ⛔ **Sobram só as partículas (D2)** — eixo 4, e o item mais caro da tabela. ⚠️ E o estudo que os lista **mentiu sobre OITO das próprias linhas**: meça um item
+  ⛔ **Do estudo sobra só a D2 (partículas)** — e ⚠️ **ela NÃO é tamanho `G`**: medido 24/08, o motor que o estudo diz que
+  *"já temos"* é o simulador **do documento** (grafo de nós + cook por quadro) e **o chrome não tem canal de partículas
+  nenhum**; ligar um ao outro por uma faísca de encaixe é arquitectura errada — o que a D2 pede é um **burst local** no
+  relógio de UI que o F0/F2 deixaram. ⚠️ E o estudo que os lista **mentiu sobre NOVE das próprias linhas**: meça um item
   daquela tabela antes de o pegar ([§6.6](docs/Vector%20Module/Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)) ·
   ✅ **o hit-test já lê o mapa fundido — este item FECHOU** e a nota envelheceu aqui por semanas:
   `App::vec_live_drawn` é a `LiveGeometry` fundida e **6 sítios de pick** a consomem

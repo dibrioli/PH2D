@@ -47,11 +47,27 @@ fn main() {
     let mut args = std::env::args().skip(1);
     let piece = args.next().unwrap_or_else(|| String::from("esfera"));
     let scale: f32 = args.next().and_then(|s| s.parse().ok()).unwrap_or(1.0);
-    let mut mesh = match piece.as_str() {
-        "toro" => ph2d_mesh::shapes::torus(64, 32, 1.0, 0.35),
-        "esfera-fina" => ph2d_mesh::shapes::uv_sphere(96, 144, 1.0),
-        "esfera-irregular" => ph2d_mesh::shapes::uv_sphere_shuffled(48, 72, 1.0),
-        _ => ph2d_mesh::shapes::uv_sphere(24, 36, 1.0),
+    // ⭐⭐ **UM CAMINHO DE FICHEIRO É UMA PEÇA.** ⚠️ *Uma régua só prova o que a
+    // fixtura contém* — as formas analíticas acima não têm relevo, e a queixa do
+    // artista («não é fiel à curvatura») é **sobre relevo**. Medi-la nas peças que
+    // ele de facto viu exige carregar as peças que ele de facto viu.
+    let mut mesh = if piece.ends_with(".obj") {
+        let text = std::fs::read_to_string(&piece)
+            .unwrap_or_else(|e| panic!("nao consegui ler {piece}: {e}"));
+        let pieces = ph2d_mesh::import_obj(&text)
+            .unwrap_or_else(|e| panic!("{piece} nao e' um OBJ que este leitor entenda: {e:?}"));
+        let first = pieces
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| panic!("{piece} nao tem uma peca dentro"));
+        first.mesh
+    } else {
+        match piece.as_str() {
+            "toro" => ph2d_mesh::shapes::torus(64, 32, 1.0, 0.35),
+            "esfera-fina" => ph2d_mesh::shapes::uv_sphere(96, 144, 1.0),
+            "esfera-irregular" => ph2d_mesh::shapes::uv_sphere_shuffled(48, 72, 1.0),
+            _ => ph2d_mesh::shapes::uv_sphere(24, 36, 1.0),
+        }
     };
     mesh.triangulate();
     let (a50, a99) = aspect(&mesh);

@@ -6,8 +6,16 @@
 //! relaxação por CG, o arredondamento guloso); aqui **quantas vezes e com que
 //! peso** — que é a pergunta que o relevo abriu.
 //!
-//! ⚠️ **Hoje isto é código INERTE no caminho que shipa** ([`ALIGN_WEIGHT`] é `0`), e
-//! há gate a exigi-lo byte a byte (`the_continuation_is_inert_without_alignment`).
+//! ⛔⛔ **CORREÇÃO (2026-08-24): a frase que estava aqui envelheceu, e ela mandava o
+//! leitor para o diagnóstico errado.** Ela dizia *«hoje isto é código INERTE no
+//! caminho que shipa ([`ALIGN_WEIGHT`] é `0`)»* — e o [`ALIGN_WEIGHT`] **shipa a
+//! `0,03` desde 2026-08-22**. ⇒ **este código está VIVO nos dois caminhos do botão**
+//! (o de sempre e o do mapa de grade inteira), e é ele que faz a grade obedecer ao
+//! relevo. *O valor é o código; uma nota sobre ele é uma afirmação com data.*
+//!
+//! ⚠️ **O gate `the_continuation_is_inert_without_alignment` continua certo e continua
+//! a valer** — mas ele fala do que acontece quando alguém **passa** `align = 0`, que é
+//! a rede de recurso do produto, e **não** de qual é o peso que shipa.
 
 use crate::{CrossField, Dual, QUARTER, wrap};
 

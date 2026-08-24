@@ -261,6 +261,63 @@ costura fica onde estava: uma célula inteira.** *Um defeito que não se move qu
 botões do subsistema varrem toda a gama não é afinação daquele subsistema* — e é a
 demonstração de que a cura tem de mudar a FORMA do sistema, não os seus números.
 
+#### ⭐⭐⭐ §8-ter — O SMOKE DO ENIO (2026-08-24), e as peças dele MEDIDAS
+
+**Veredito dele, textual:** *«resultado razoável, contudo com vários buracos. não é
+perfeitamente fiel à curvatura da topologia»* · *«mas é o melhor resultado conseguido até
+agora»* · *«obedece razoavelmente o relevo»*.
+
+⭐ **É a resposta à pergunta que o roteiro fez** (a troca entre forma e casca): **seguir
+por aqui**. Fica registado como decisão de produto — o passo (4) do roteiro existia para a
+obter, e obteve-a.
+
+⚠️ **E as peças que ele viu não estavam na bancada.** O `chain_info` só conhecia formas
+analíticas, que **não têm relevo** — e a queixa dele é *sobre* relevo. O instrumento passa a
+aceitar um caminho de `.obj`, e as duas peças da cena foram medidas:
+
+| peça (a da cena) | dobras do mapa | ⛔ costura max (antes → depois) | ⭐ aspecto p50 | ⭐ enviesamento p50 | `>60°` | células más | bordo | `χ` |
+|---|---|---|---|---|---|---|---|---|
+| **enrugada** (`=35`) | ⭐ `0,0 %` | `0,2977` → ⛔ `1,0000` | ⭐ **`1,15`** | ⭐ **`5,7°`** | ⭐ **`4`** | **19 de 2 041** | `46` | `−8` |
+| **orelha** (`=36`) | ⭐ `0,0 %` | `0,2578` → ⛔ `1,0000` | ⭐ **`1,12`** | ⭐ **`7,1°`** | `7` | **33 de 2 071** | `50` | `−6` |
+| — a barra do **oráculo** — | | | `1,08`–`1,22` | `4,8°`–`7,1°` | `0`–`4` | | | |
+
+⭐⭐⭐ **Na peça enrugada as TRÊS colunas de forma estão DENTRO da barra do oráculo**, e na
+orelha duas de três. ⇒ *a metade «forma» da obra está ao nível da referência de produção,
+nas peças que o artista de facto olhou* — e não só nas esferas analíticas que a bancada
+tinha.
+
+⛔⛔ **E as duas peças confirmam o §8-bis exactamente:** mapa com **zero dobras**,
+translações **exactamente** inteiras, e a costura a rasgar **uma célula inteira** na mesma.
+⇒ *«a causa é a montante, são as dobras» está refutado nas duas peças do smoke também.*
+
+⭐⭐ **A dimensão do defeito, que nenhum número anterior dava:** os buracos são **19 de
+2 041** e **33 de 2 071** células — **`0,9 %` e `1,6 %`** —, e **todas** descendem do mesmo
+rasgo. *Não é uma malha má com buracos; é uma malha ao nível da referência com ~1 % de
+células rasgadas por uma causa só.*
+
+#### ⚠️ A segunda queixa — «não é perfeitamente fiel à curvatura» — tem mecanismo NOMEADO
+
+⚠️ **A hipótese óbvia foi REFUTADA antes de ser reportada:** o caminho novo **já** usa o
+campo alinhado ao relevo (`solve_miq` **é** o alinhado, `ALIGN_WEIGHT = 0,03`) — o que a
+frase seguinte dele (*«obedece razoavelmente o relevo»*) confirma do lado do produto.
+⛔ **O doc de módulo da [`continuation.rs`](../../../crates/ph2d-crossfield/src/continuation.rs)
+ainda diz «hoje isto é código INERTE, o `ALIGN_WEIGHT` é `0`» — está VELHO** e leva ao
+diagnóstico errado.
+
+⇒ **O que falta para ser *perfeito* é a fase que a cadeia nunca teve: LINHAS DE FEIÇÃO.**
+Medido: `grep` por detecção de feição sobre `ph2d-crossfield`, `-trace`, `-gridmap`,
+`-quadextract` e `-remesh-iso` devolve **zero ficheiros**. ⚠️ A referência de produção
+chama-se, literalmente, *«remalhamento quad conduzido por linhas de feição»* — é a
+diferença de classe entre *seguir a curvatura* e *encostar a grade ao vinco*.
+⭐ **A espec já tem o gancho pronto** (§2.5: *«encoste as arestas de feição à isolinha
+inteira mais próxima, aqui — não depois»*), e o que falta é quem as produza.
+⚠️ **Réguas de hoje, para a próxima janela não partir do zero:** desvio de alinhamento
+`p50 0,12` · `p95 0,31` do alvo, ângulo grade↔campo `p50 3°` · `p95 11–12°`.
+
+⛔ **Fica ABERTO e não foi construído** — é obra de wave, não de remendo, e a prioridade que
+o smoke dá é a outra: ~1 % de células rasgadas contra uma fidelidade que o artista já
+chamou de razoável.
+
 #### ⇒ O que fica prescrito (em termos funcionais — [SKILL_Cleanroom §7.3.d](../../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md))
 
 1. **O G3 tem de eliminar a variável de costura**, não pesá-la — espec §5.1, e agora com o

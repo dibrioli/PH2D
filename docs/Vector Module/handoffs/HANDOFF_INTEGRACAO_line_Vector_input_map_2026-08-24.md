@@ -14,7 +14,7 @@
 | worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-Vector` |
 | HEAD | **este commit** (o do handoff). ⚠️ O **código** termina em `d7ae6c0aa`; o 15.º commit é só este documento e o índice da pasta. |
 | merge-base com `main` | `5038249c6` |
-| commits | **15** (14 de código + este handoff) |
+| commits | **14 de código** (até `d7ae6c0aa`), mais os de fecho — este handoff e a aresta do `Cargo.lock` |
 | ficheiros | **71** (`+5 720 / −354`) |
 | gate batched | **5 446/5 446 verdes**, 257 `skipped`, clippy `--all-targets` **0** (`ph2d-editor-core` · `ph2d-host-desktop` · `ph2d-i18n` · `ph2d-input`) |
 
@@ -348,7 +348,7 @@ está no §1 do mesmo doc.
 
 ## 9. Resumo colável
 
-> Linha `Vector` pronta (HEAD = o commit deste handoff; código até `d7ae6c0aa`, **15** commits, base `5038249c6`). **O INPUT MAP**, W1–W7,
+> Linha `Vector` pronta (**14 commits de código** até `d7ae6c0aa` + os de fecho, base `5038249c6`). **O INPUT MAP**, W1–W7,
 > smoke aprovado. Foundational: `ph2d-input` (a crate **já existia** — reconstruído por cima; dep
 > nova `serde`, allowlist de UM com gate a lê-la), `ph2d-editor-core` (+dep `ph2d-input`, +campo no
 > `HeroScreen`, +4 campos no `WidgetStore`, **um ramo no topo do `dispatch_key`**), `shells/desktop`

@@ -5406,6 +5406,7 @@ dependencies = [
  "ph2d-guides",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-input",
  "ph2d-panel-registry-init",
  "ph2d-spring",
  "ph2d-text",

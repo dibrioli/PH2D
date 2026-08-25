@@ -4,7 +4,7 @@
 Alvo funcional: fechar a casca e encostar a grade aos vincos · Degrau: T2-por-papers
 Alvo NOMEADO · Licença: ⛔ NENHUM fonte é insumo desta espec. O insumo é a literatura
   pública do mapa de leitura, mais a MEDIÇÃO do nosso próprio código. As implementações
-  existentes ficam FORA da árvore e servem só de ORÁCULO (ADR-0164), e o §3.I conta
+  existentes ficam FORA da árvore e servem só de ORÁCULO (ADR-0167), e o §3.I conta
   porte/fork "em qualquer linguagem e sob qualquer licença" como código do alvo.
 Ledger: docs/3D/cleanroom/LEDGER_quadwild.md
 Papel E desta espec: a janela 49c94a84-e903-48a9-bd7f-b14685d71061 (2026-08-24), que foi o

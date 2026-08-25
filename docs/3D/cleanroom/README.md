@@ -1,7 +1,7 @@
 # `cleanroom/` — a reimplementação de código restrito, no módulo 3D
 
 Protocolo: [`SKILL_Cleanroom_Reimplementacao.md`](../../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md).
-Decisão: [`ADR-0164`](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
+Decisão: [`ADR-0167`](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
 — **clean-room dos *papers*; a biblioteca MPL-2.0 fica FORA, como oráculo.**
 
 ## ⭐ O que colar AGORA

@@ -10,7 +10,7 @@ arredondamento inteiro (espec §5) esteja pronto.
 |---|---|
 | **Malha de entrada** | ⭐ **nossa** — `ph2d-quadbench/corpus/`, triangulada por nós |
 | **Campo direccional** | ⭐ **nosso** — `ph2d-crossfield`, exportado pelo arnês `rustfield` |
-| **Quem calculou o mapa** | uma implementação independente sob **MPL-2.0**, corrida **fora da árvore** como oráculo ([ADR-0164](../../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)) |
+| **Quem calculou o mapa** | uma implementação independente sob **MPL-2.0**, corrida **fora da árvore** como oráculo ([ADR-0167](../../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)) |
 | **Estatuto legal** | ⭐ **dados.** Saída de programa não é coberta pela licença do programa — é texto de licença, não opinião (SKILL_Cleanroom §1.1) |
 | **Regenerar** | ⛔ **correcção do R-pré (2026-08-24): NÃO é acto do Implementador.** O arnês vive fora da árvore e é consumidor **header-only** da implementação alheia — compilá-lo põe fonte alheio no terminal por um simples erro de compilação. ⇒ regenerar é acto de **E** (skill §5); I pede o dump **pelo Enio**, como emenda à espec, e ⛔ nunca vai buscá-lo |
 | **Data** | 2026-08-24 |

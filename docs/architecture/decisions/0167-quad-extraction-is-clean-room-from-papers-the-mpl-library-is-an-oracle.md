@@ -1,4 +1,4 @@
-# ADR-0164 — A EXTRAÇÃO de malha quad é clean-room dos *papers*; a biblioteca MPL-2.0 é ORÁCULO, não fonte a portar
+# ADR-0167 — A EXTRAÇÃO de malha quad é clean-room dos *papers*; a biblioteca MPL-2.0 é ORÁCULO, não fonte a portar
 
 - **Status:** Accepted
 - **Data:** 2026-08-24

@@ -6,7 +6,7 @@ Alvo NOMEADO · Licença (campo obrigatório do §4, completado pelo R-pré em 2
   ⛔ NENHUM fonte é insumo desta espec — o insumo é a literatura pública do mapa de leitura.
   As implementações existentes ficam FORA da árvore e servem só de ORÁCULO, e são DUAS,
   sob licenças diferentes: a família do remalhador de produção (GPL-3.0) e uma biblioteca
-  de campos direccionais (MPL-2.0). Decisão: ADR-0164. ⛔ Nenhuma das duas é fonte a portar,
+  de campos direccionais (MPL-2.0). Decisão: ADR-0167. ⛔ Nenhuma das duas é fonte a portar,
   e a MPL NÃO é uma excepção à parede: o §3.I conta porte/fork do alvo "em qualquer
   linguagem e sob qualquer licença" como código do alvo.
 Ledger: docs/3D/cleanroom/LEDGER_quadwild.md, aberto 2026-08-24

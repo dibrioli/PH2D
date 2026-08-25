@@ -3,7 +3,7 @@
 > DIRETRIZ §1.5.9. **6 commits**, árvore limpa, `main..HEAD` rebasado.
 > ⚠️ **Esta janela operou como ESPECIFICADOR** ([SKILL_Cleanroom](../../_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md), papel E)
 > e **não escreveu código de produto** — por regra do papel, e agora também por decisão
-> ([ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)).
+> ([ADR-0167](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)).
 
 ## §1 — O que esta linha entrega
 
@@ -11,7 +11,7 @@
 |---|---|---|
 | 1 | ⭐ **A triagem de licença do quad remesh**, degrau a degrau, com a busca de patente cumprida | [`TRIAGEM_quad_remesh.md`](../cleanroom/TRIAGEM_quad_remesh.md) |
 | 2 | ⭐⭐⭐ **A medição que decidiu a arquitectura** — o nosso campo numa cadeia por extracção dá **`3,0°`** de enviesamento mediano | `TRIAGEM` §5-bis |
-| 3 | ⭐ **A decisão**, com as alternativas rejeitadas e o mecanismo de cada uma | [`ADR-0164`](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md) |
+| 3 | ⭐ **A decisão**, com as alternativas rejeitadas e o mecanismo de cada uma | [`ADR-0167`](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md) |
 | 4 | ⭐⭐ **A espec funcional da obra**, 452 linhas, 11 gates com barras derivadas, 13 recusas medidas | [`SPEC_extracao_de_malha_quad.md`](../cleanroom/SPEC_extracao_de_malha_quad.md) |
 | 5 | ⭐⭐ **Fixtures de mapa de grade inteira** sobre a nossa malha e o nosso campo, + o **verificador** provado por dois controlos positivos | [`fixtures/`](../cleanroom/fixtures/README.md) |
 | 6 | ⛔ **O achado do sweep**: ~460 notas do repo **inteiro** citam fonte interno de alvo restrito, 25 com transcrição — **zero fonte de alvo na árvore** | [`ACHADO`](../cleanroom/ACHADO_proveniencia_por_nome_interno.md) |
@@ -76,7 +76,7 @@ depende do nosso F1 ser tão bom quanto o dele, e **isso ainda não foi medido**
 ## §5 — Ficheiros tocados
 
 - **Novos:** `docs/3D/cleanroom/` (ledger · triagem · achado · espec · vassoura · README ·
-  `fixtures/` com 2 mapas + verificador + README) · `ADR-0164` ·
+  `fixtures/` com 2 mapas + verificador + README) · `ADR-0167` ·
   `project-memory/feedback_reproduce_the_foreign_tools_own_result_before_feeding_it_yours.md`
 - **Editados:** `CLAUDE.md` §5 (a linha do quad remesh) · `docs/3D/00-INDEX.md` ·
   `docs/architecture/decisions/README.md` (derivado) · `project-memory/MEMORY.md` ·
@@ -105,7 +105,7 @@ lentes.
 
 ## §7 — Risco de colisão
 
-**Baixo.** `docs/3D/cleanroom/` e o `ADR-0164` são **novos**. Os pontos de encontro:
+**Baixo.** `docs/3D/cleanroom/` e o `ADR-0167` são **novos**. Os pontos de encontro:
 
 | ficheiro | risco |
 |---|---|

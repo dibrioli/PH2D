@@ -78,7 +78,7 @@ existe para evitar.
 | | ficheiro |
 |---|---|
 | **no `main` de hoje** | `0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md` |
-| **nas três linhas** | `0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md` |
+| **nas três linhas** | `0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md` |
 
 O `main` ganhou **0164, 0165 e 0166** enquanto estas linhas corriam (vieram da
 `line/components`). ⇒ ⭐ **o ADR da extracção passa a ser o `0167`**, que é o próximo

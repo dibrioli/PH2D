@@ -132,7 +132,7 @@ alvo copyleft.
 
 ### Literatura lida (a fonte REAL da espec)
 
-⭐ **A rota escolhida ([ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md))
+⭐ **A rota escolhida ([ADR-0167](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md))
 é clean-room dos *papers*** — logo a travessia integral do fonte copyleft **não é o insumo**,
 e não foi feita. O insumo é público:
 
@@ -187,7 +187,7 @@ vez de herdar um «queimada» sem alcance definido.
 
 | escopo | leitura de E |
 |---|---|
-| ⛔ **SPEC §5/§5.1 — o arredondamento** | **QUEIMADA, e sem dúvida.** Vi o laço equivalente. Escrevê-lo aqui arriscaria convergência de expressão **e** converteria em silêncio a rota do [ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md) (*clean-room dos papers*) na rota **rejeitada** (porte). |
+| ⛔ **SPEC §5/§5.1 — o arredondamento** | **QUEIMADA, e sem dúvida.** Vi o laço equivalente. Escrevê-lo aqui arriscaria convergência de expressão **e** converteria em silêncio a rota do [ADR-0167](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md) (*clean-room dos papers*) na rota **rejeitada** (porte). |
 | ⚠️ **SPEC §2–§6 — a extração** | **em aberto.** O insumo que li foi o *paper* — a mesma fonte que o Implementador usaria. Nenhuma implementação de extração entrou neste contexto. |
 
 ⛔⛔ **Enquanto o R não decidir, vale o mais restritivo: esta janela não escreve produto
@@ -317,7 +317,7 @@ e pertence a uma fase fora desta obra. O que ele viu foi a **biblioteca MPL-2.0*
 violação de parede nenhuma (a MPL é permissiva e aceite pelo `deny.toml`); o risco é **outro**:
 escrever o §5 com aquele laço na memória produziria plausivelmente **obra derivada de um
 arquivo MPL**, cujo custo é o arquivo ficar **permanentemente público** — exactamente a Rota A
-que o [ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
+que o [ADR-0167](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
 **rejeitou**, tomada em silêncio.
 
 ⇒ ⭐ **E por isso «qual janela está queimada» é a pergunta errada.** A resposta certa é *«qual
@@ -326,7 +326,7 @@ identidade de janela. É o que a correcção de parede do §R-pré.3 faz.
 
 **Consequência operacional:** a janela I pode escrever **§2–§6 e §5**, na mesma janela, desde
 que a parede corrigida esteja de pé. A janela E mantém-se fora de escrever produto neste
-módulo — ⚠️ e isso já era verdade **por decisão registada no ADR-0164**, sem precisar deste
+módulo — ⚠️ e isso já era verdade **por decisão registada no ADR-0167**, sem precisar deste
 veredito.
 
 ### §R-pré.3 — ⛔⛔ ACHADO DE PAREDE (a razão de o R-pré existir), CURADO
@@ -413,7 +413,7 @@ precisamente o padrão que uma auditoria independente existe para apanhar:
    (*«a que existe foi montada só do que esta janela de facto viu»*). O ledger foi alinhado à
    triagem: **existe uma vassoura parcial, de proveniência lícita; a completa é o 1º acto da Rota B.**
 2. o **«Veredito da triagem»** no pé do ledger dizia *«T0½ ⇒ PARADO e REPORTADO ao Enio»* — estado
-   **anterior** ao [ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md),
+   **anterior** ao [ADR-0167](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md),
    que está **Accepted** e escolheu a rota dos *papers*. Um leitor que parasse no pé do ledger
    concluiria que a decisão ainda não foi tomada. Marcado como **superado**, com o ADR ao lado.
 
@@ -722,7 +722,7 @@ escrever**, porque é a fronteira que dá valor ao resto do ledger.
 
 | | |
 |---|---|
-| ⛔ **NÃO escrito, e a recusa é o ponto** | a eliminação da variável de costura no G3 / qualquer linha de `solve.rs` ou `round.rs`. ⚠️ **Esta janela leu o laço de arredondamento da referência** para a revisão estrutural do [§R-pós.3](#r-pós3) — escrevê-lo aqui converteria em silêncio a rota do ADR-0164 na que ele rejeitou. ⇒ **janela I nova** ([handoff §8-bis](../handoffs/HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md)) |
+| ⛔ **NÃO escrito, e a recusa é o ponto** | a eliminação da variável de costura no G3 / qualquer linha de `solve.rs` ou `round.rs`. ⚠️ **Esta janela leu o laço de arredondamento da referência** para a revisão estrutural do [§R-pós.3](#r-pós3) — escrevê-lo aqui converteria em silêncio a rota do ADR-0167 na que ele rejeitou. ⇒ **janela I nova** ([handoff §8-bis](../handoffs/HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md)) |
 | ⭐ **escrito** | [`sculpt3d_scenes_quad.rs`](../../../shells/desktop/src/sculpt3d_scenes_quad.rs) — o **roteiro de smoke** da cena `=35` para o caminho novo, mais dois gates. ⛔ **Zero linhas de algoritmo**, em crate nenhuma da cadeia; é texto de terminal e a bifurcação que o escolhe |
 | a razão de ser produto e não doc | o roteiro **existente** manda *"PARE"* diante de uma casca esburacada — correcto no caminho de sempre, **falso** no novo, onde o buraco está medido. *Um smoke que manda reportar como regressão o que já está medido gasta o dono do produto duas vezes.* |
 
@@ -816,7 +816,7 @@ símbolos com valor; a espec dá **zero** e manda medir.
 
 **O sweep do E saiu verde sobre uma vassoura de 21 entradas — e as 21 são todas da família
 GPL da obra anterior.** A implementação que o E desta espec de facto leu é **outra
-biblioteca** (a permissiva, tratada como alvo por decisão do [ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
+biblioteca** (a permissiva, tratada como alvo por decisão do [ADR-0167](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
 e pelo §3.I: *porte/fork em qualquer linguagem e sob qualquer licença conta como código do
 alvo*). ⛔ **Nenhum dos identificadores dela estava na rede.**
 
@@ -1032,7 +1032,7 @@ misturar as duas numa wave.
 > ⛔ **Leia o parágrafo seguinte antes deste bloco.** Este veredito é o estado **anterior** à
 > decisão, e quem parasse aqui concluiria que ela ainda não foi tomada.
 > ⭐ **A decisão foi tomada e está `Accepted`:**
-> [ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
+> [ADR-0167](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
 > — **clean-room dos *papers*; a biblioteca MPL-2.0 fica FORA, como oráculo.** A Rota A (porte
 > fiel T0½) foi **rejeitada com motivo medido**: arquivos permanentemente públicos no subsistema
 > mais valioso, descarte da cadeia própria, e ⛔ **falha em 3 de 7 peças do nosso corpus**.
@@ -1045,5 +1045,5 @@ misturar as duas numa wave.
 inteira — existem sob **MPL-2.0**, licença **já aceite** pelo `deny.toml` desta casa.
 
 ⇒ **PARADO e REPORTADO ao Enio**, conforme a ordem embutida no passo 1 do BLOCO-E — e foi
-dessa paragem que saiu o ADR-0164.
+dessa paragem que saiu o ADR-0167.
 As três rotas, com preço medido: [`TRIAGEM_quad_remesh.md` §5](TRIAGEM_quad_remesh.md).

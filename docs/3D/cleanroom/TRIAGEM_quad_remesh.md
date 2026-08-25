@@ -12,7 +12,7 @@
 ## §1 — O achado em uma linha
 
 > ⭐⭐⭐ **ATUALIZADO 2026-08-24, depois da medição:** a decisão final está no
-> **[ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)**
+> **[ADR-0167](../../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)**
 > — *a extração é clean-room dos papers; a biblioteca MPL-2.0 fica FORA, como oráculo.*
 > A espec funcional completa está em
 > [`SPEC_extracao_de_malha_quad.md`](SPEC_extracao_de_malha_quad.md).
@@ -246,7 +246,7 @@ publica o campo do `ph2d-crossfield` no formato de intercâmbio dela.
 
 ⚠️ **O que fica em aberto, medido:** a extração dela é **lenta na nossa escala** — segundos
 numa peça de `2 404` triângulos, **minutos sem terminar** numa de `6 768`. ⛔ Isso não
-invalida a qualidade; **é razão para não portar** (ADR-0164, razão 5).
+invalida a qualidade; **é razão para não portar** (ADR-0167, razão 5).
 
 ### §5-bis.3-ter — ⛔⛔⛔ E O CORPUS INTEIRO INVERTEU A CONCLUSÃO (mesma tarde)
 

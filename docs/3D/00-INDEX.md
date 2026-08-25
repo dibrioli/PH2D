@@ -166,6 +166,6 @@ degrau da escada de licenças cada fase está, e o veredito de 2026-08-24 foi **
 - ⭐⭐⭐ [`cleanroom/SPEC_extracao_de_malha_quad.md`](cleanroom/SPEC_extracao_de_malha_quad.md)
   — **a espec funcional da obra seguinte**: sanear · nós · saídas · traçar · células · fundir,
   com os 11 gates e as barras derivadas. ⏳ *Aguarda a auditoria R-pré antes de a janela I abrir.*
-- ⭐ [`ADR-0164`](../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
+- ⭐ [`ADR-0167`](../architecture/decisions/0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
   — a decisão: **clean-room dos papers; a biblioteca MPL-2.0 é ORÁCULO, não fonte a portar**.
 - ⛔ `cleanroom/LEDGER_*` e `cleanroom/VASSOURA_*` — **o Implementador NUNCA os abre**.

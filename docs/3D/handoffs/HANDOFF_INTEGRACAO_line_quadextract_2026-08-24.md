@@ -67,7 +67,7 @@ SUPERFÍCIE DE COLISÃO — line/quadextract contra main
 
 | onde | ficheiro |
 |---|---|
-| nesta linha (herdado da `line/sculpt3d`) | `0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md` |
+| nesta linha (herdado da `line/sculpt3d`) | `0167-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md` |
 | ⛔ **na árvore primária, NÃO versionado** | `0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md` |
 | ⛔ **idem** | `0165-assets-are-born-inside-the-app-three-level-identity-index-before-browser.md` |
 
@@ -332,7 +332,7 @@ chamou de razoável.
 arredondamento da implementação de referência para fazer a revisão estrutural do
 [`LEDGER §R-pós.3`](../cleanroom/LEDGER_quadwild.md), e o §5 é exactamente a região que
 ela viu. *Escrever a eliminação com aquele laço em contexto converteria em silêncio a rota
-do ADR-0164 na rota que ele rejeitou.* ⇒ **janela I nova, que retoma da espec.**
+do ADR-0167 na rota que ele rejeitou.* ⇒ **janela I nova, que retoma da espec.**
 
 ## 9 — Divergências deliberadas da espec (para o R-pós)
 

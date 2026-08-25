@@ -7996,6 +7996,23 @@ impl crate::App {
             // re-cozida aqui, todo frame, sobre os afins DESTE frame. É o que a faz SEGUIR a
             // forma que o gizmo acabou de mover, e o que faz o `t` da timeline virar movimento.
             // (O `t` já foi escrito: o apply da timeline roda antes desta metade do frame.)
+            // ⭐ **A MÁQUINA DE MORPH, um quadro** (plano 32 W5) — ela escreve o PAR e o `t`, e o
+            // `recook` logo abaixo transforma-os em forma. ⚠️ **Antes do recook, de propósito**: é
+            // a mesma ordem pela qual o `t` da timeline vira movimento.
+            //
+            // ⚠️ **Só com o relógio ANDANDO.** A condição de uma seta é uma tecla; a escutar
+            // durante a edição, carregar em `Z` morfava a forma **e** fazia o que o `Z` faz no
+            // editor. Neste app *"o jogo a correr"* é o playhead a andar — a mesma porta pela qual
+            // o dedo do jogador alcança a física.
+            crate::morph_machine_drive::tick(
+                &mut self.morph_machines,
+                sim,
+                &hero.input_map,
+                &self.input_actions,
+                self.playhead.is_playing(),
+                self.fixed_step.fixed_dt(),
+                &mut self.preview_drive,
+            );
             crate::morph_live::recook(
                 sim,
                 vec_scene,

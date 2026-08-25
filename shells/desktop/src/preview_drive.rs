@@ -83,6 +83,14 @@ pub(crate) enum Driver {
     SpriteAlpha,
     /// O `t` de um `VecMorph` que uma curva de `Morph` escreve.
     MorphT,
+    /// **O PAR de fontes de um `VecMorph` que a máquina de estados troca** (plano 32 W5).
+    ///
+    /// ⚠️ **Um segundo motor sobre o MESMO componente, e é seguro porque os campos NÃO se
+    /// cruzam:** a curva da timeline escreve o `t`, a máquina escreve o `sources` (e também o
+    /// `t`, pelo `MorphT`). É a mesma forma do par `SpriteAnim`/`SpriteAlpha` sobre a `Sprite` —
+    /// e ali o doc avisa que *duas granularidades sobre o mesmo componente escreveriam por cima
+    /// uma da outra*. ⇒ a fronteira aqui é o CAMPO, e ela é disjunta de propósito.
+    MorphPair,
     /// Os parâmetros de um `PhysicsJoint` que as curvas de joint escrevem.
     JointParams,
 }
@@ -113,6 +121,10 @@ pub(crate) enum Driven {
     SpriteAlpha(f32),
     /// O `t` de um `VecMorph` — também **um** número, pela mesma razão.
     MorphT(f32),
+    /// **As duas fontes de um `VecMorph`** — o par que a máquina de estados troca a cada
+    /// transição. ⚠️ Sem ele, mudar de par durante a pré-visualização entraria no undo: o `MorphT`
+    /// cobre o `t` e **só** o `t`.
+    MorphPair([u64; 2]),
     /// ⚠️ O joint vai **inteiro**, e aqui isso é correcto: nenhum outro motor o conduz por campo, e
     /// a curva pode keyar qualquer um dos parâmetros dele (o alvo do servo, a taxa, os
     /// comprimentos). Guardar o struct é mais barato que uma variante por campo, e ele é `Copy`.
@@ -127,6 +139,7 @@ impl Driven {
             Self::SolverPose(_) => Driver::SolverPose,
             Self::SpriteAlpha(_) => Driver::SpriteAlpha,
             Self::MorphT(_) => Driver::MorphT,
+            Self::MorphPair(_) => Driver::MorphPair,
             Self::JointParams(_) => Driver::JointParams,
         }
     }
@@ -152,6 +165,9 @@ impl Driven {
             )),
             Driver::MorphT => Some(Self::MorphT(
                 sim.world().get::<ph2d_ecs::VecMorph>(entity)?.t,
+            )),
+            Driver::MorphPair => Some(Self::MorphPair(
+                sim.world().get::<ph2d_ecs::VecMorph>(entity)?.sources,
             )),
             Driver::JointParams => Some(Self::JointParams(
                 *sim.world().get::<ph2d_physics_ecs::PhysicsJoint>(entity)?,
@@ -208,6 +224,13 @@ impl Driven {
                     && m.t != v
                 {
                     m.t = v;
+                }
+            }
+            Self::MorphPair(v) => {
+                if let Some(mut m) = sim.world_mut().get_mut::<ph2d_ecs::VecMorph>(entity)
+                    && m.sources != v
+                {
+                    m.sources = v;
                 }
             }
             Self::JointParams(j) => {

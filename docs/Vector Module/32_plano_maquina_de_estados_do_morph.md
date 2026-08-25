@@ -176,6 +176,32 @@ não é preciso aba nenhuma.
   faz nada — *é assim que o artista aprende a não confiar nos botões desta seção*, e é a lei que a
   própria seção de poses já escreve (*"Show e Clear só existem depois do Rec"*).
 
+## §3-quinquies — A máquina a correr (W5)
+
+⭐ **O «modo preview» que o Enio pediu é o RELÓGIO A ANDAR** — e ele já existia. Neste editor *"o
+jogo a correr"* é o playhead, a mesma porta pela qual o dedo do jogador alcança a física; uma
+terceira noção de runtime seria uma terceira coisa para o artista aprender.
+
+⛔⛔ **E a guarda não é conservadorismo.** A condição de uma seta é uma **acção do Input Map**, isto
+é, uma **tecla**. A escutar durante a edição, carregar em `Z` faria a forma mudar **e** o que quer
+que o `Z` faça no editor — os dois, sem que nada na tela explicasse. É o argumento do `ui_preview`
+(*"um hover que animasse a forma enquanto o artista trabalha tornaria o editor inutilizável"*) com
+outro dispositivo de entrada, e a resposta é a mesma: **um modo**.
+
+* ⭐⭐ **PARAR o relógio devolve a forma autorada, e isso não custa código:** é o que o ledger faz
+  por construção. *Sair restaura o MUNDO, nunca «vá para o estado inicial»* — que moveria o desenho.
+* ⛔⛔ **O `Driver::MorphT` sozinho NÃO bastava, e o plano já o tinha medido:** ele cobre o `t` e
+  **só** o `t`. Sem o **`Driver::MorphPair`** novo, trocar de par durante a reprodução entrava no
+  undo como se o artista tivesse re-ligado as fontes à mão. ⚠️ Dois motores sobre o mesmo
+  componente é seguro **porque os campos são disjuntos** — a curva da timeline escreve o `t`, a
+  máquina escreve o par; é a forma do par `SpriteAnim`/`SpriteAlpha` sobre a `Sprite`, e ali o doc
+  avisa que *duas granularidades sobre o mesmo componente escreveriam por cima uma da outra*.
+* ⚠️ **O ledger PRIMEIRO, a escrita depois** — ele precisa do valor ANTES para saber o que repor.
+* ⚠️ **`just_pressed`, nunca `pressed`:** uma tecla segurada re-disparava a cada quadro e a máquina
+  saltava a cadeia inteira num piscar de olhos.
+* ⚠️ **Uma máquina cuja entidade morreu some junto** — senão sobreviveria ao objecto e o mapa
+  cresceria para sempre (a varredura das `UiMachines`).
+
 ## §4 — As waves
 
 | | | estado |
@@ -186,7 +212,7 @@ não é preciso aba nenhuma.
 | **W3b** | **O CANVAS, metade de AUTORAR**: `DrawMode::MorphLink` — arrastar de uma forma para outra cria a seta | ✅ **2026-08-25** — 5 gates, **4 mutações, 4 sangraram** |
 | **W4a** | A secção **States**: a lista de setas + a **condição** (menu das acções do Input Map) + apagar | ✅ **2026-08-25** — 7 gates, **6 mutações, 6 sangraram** |
 | **W4b** | O **ritmo** por seta (duração · curva · mola) — e o botão de **percorrer**, que precisa da máquina viva (W5) | ⏳ |
-| **W5** | O **modo preview** + o ledger de undo (⚠️ o `Driven::MorphT` cobre o `t`, **não** o `sources`) | ⏳ |
+| **W5** | A **máquina VIVA** + o ledger de undo | ✅ **2026-08-25** — 5 gates, **5 mutações, 5 sangraram** |
 | **W6** | A cena de smoke, com números MEDIDOS | ⏳ |
 
 ⚠️ **O que a W5 vai encontrar, e está medido de antemão:** o ledger de pré-visualização

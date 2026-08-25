@@ -14,11 +14,19 @@
 | merge-base com `main` | `5038249c6` |
 | worktree | `Worktrees/line-seamelim/` |
 
-⛔⛔ **A ORDEM DE INTEGRAÇÃO NÃO É LIVRE.** Esta linha descende de `line/quadextract`,
-que por sua vez descende de `line/sculpt3d`. ⇒ ou as três entram **nessa ordem**
-(`sculpt3d` → `quadextract` → `seamelim`), ou entram juntas. Integrar esta primeiro
-arrastaria os commits das outras duas para dentro dela, e o integrador veria a mesma obra
-duas vezes.
+⛔⛔ **A ORDEM DE INTEGRAÇÃO NÃO É LIVRE, e o MAPA dela vive noutro documento:**
+[`HANDOFF_INTEGRACAO_CORRENTE_quadremesh_2026-08-24.md`](HANDOFF_INTEGRACAO_CORRENTE_quadremesh_2026-08-24.md).
+
+⚠️ **A 1ª redacção desta secção estava ERRADA**, e a medição corrigiu-a: ela dizia que a
+corrente era `sculpt3d` → `quadextract` → `seamelim`, três elos em fila. **Não é.** A
+`line/quadextract` bifurcou da `line/sculpt3d` em `e9c9ec8db`, e a `sculpt3d` ganhou
+**um** commit **depois** disso (`e207f91d4`, que toca só o LEDGER da sala limpa) ⇒
+`sculpt3d` **não é ancestral** de `quadextract`.
+
+⭐ **O que fica valendo:** esta linha carrega **38 dos 39 commits** da corrente e os
+**três** handoffs pendentes. Integre-a **sozinha**; o commit que sobra e as três
+colisões medidas (o **ADR-0164 tomado duas vezes** no `main` de hoje é a que importa)
+estão no handoff da corrente.
 
 ## 2 — Foundational / compartilhado tocado, e por quê
 

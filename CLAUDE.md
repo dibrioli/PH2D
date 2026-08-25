@@ -575,11 +575,22 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **A régua da suavidade é a NORMAL, não a silhueta** (W54): a polilinha erra **0,079 %** da peça
   (invisível) e a normal salta **6,43°** — é isso que a luz mostra. A tolerância é `1e-4` pelo joelho
   medido, e ⛔ a tabela de 2026-08-19 estava **desmentida por 2,4×**.
+  ⭐⭐ **O traçado é 2,5× mais rápido e o vínculo é ALCANÇÁVEL** (W56e–W58d): a marcha especializa a
+  árvore por **ladrilho × fatia de profundidade** (`167 → 66 ms` a 168 arestas) e o passo dela sai do
+  **documento** — auditado construtor a construtor, **só o arredondamento exacto infla** (`√2`), e o
+  `Taper` **desce** a `0,844`. O vínculo desenho→peça vê-se na Hierarquia (selo `LNK`) e tem gesto
+  (`Unlink` / `Link Drawing`), e a **selecção múltipla nasce no canvas** (`Shift`+clique alterna ·
+  `Shift`+arrasto **soma**, apanhando também **o que está tapado** — as formas nascem empilhadas no
+  alvo da câmera). ⚠️ **Um desenho com contorno interior já virava peça com FURO** — a composição do
+  `VecPath` exprimia-o desde a v6 do formato, e o que faltava era o gate.
   **Aberto:** ⏸️ o traçado ficou **~2,4× mais caro** desde a W3 e ninguém o reconferiu (suspeito
-  nomeado: o anti-serrilhado adaptativo) · a tabela que escolheu o teto do nível foi medida a
-  `load ≈ 4,7`, não abaixo de 3 · nada na Hierarquia mostra que uma forma está **ligada** a um
-  desenho, e não há gesto para **largar** nem para **religar** o vínculo · um contorno de cada vez ·
-  religar uma escultura que mudou de sítio (pede UI) · ⛔ o vínculo à escultura **viva** do módulo 3D
+  nomeado: o anti-serrilhado adaptativo) · o teto de `Resolution` (16) foi derivado com o custo
+  **antigo** e a tabela dele foi medida a `load ≈ 4,7` · ⏸️ ladrilhar em `(u, v)` contra o
+  **paralelogramo** em vez da AABB (o único eixo que não multiplica a montagem de JIT) · a
+  composição de dois `Exact` encadeados e o gradiente de uma **escultura** ficam no passo curto sem
+  ninguém os ter medido · ⏸️ um laço que **SUBTRAI** (pede decisão: aqui `Shift` e `Ctrl` são a
+  mesma tecla) · vários `VecPath` **separados** numa peça só · religar uma escultura que mudou de
+  sítio (pede UI) · ⛔ o vínculo à escultura **viva** do módulo 3D
   foi **medido e recusado** (voxelizar custa 229–389 ms a 128³ contra um quadro de 16,7) — a
   escultura entra da cena **sem disco** e não se atualiza sozinha · ⏸️ o `Mirror` não se consegue
   demonstrar (adiado pelo Enio) · a exportação não diz **onde** a peça está (o tamanho já diz, W36) ·

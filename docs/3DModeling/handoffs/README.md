@@ -19,6 +19,7 @@ medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **f
 |---|---|---|---|
 | 2026-08-22 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-22.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-22.md) | integração | Handoff de INTEGRAÇÃO — `line/3DModeling`, 73 commits (DIRETRIZ §1.5.9) |
 | 2026-08-23 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-23.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-23.md) | integração | Handoff de INTEGRAÇÃO — as waves **35–55**, 24 commits (DIRETRIZ §1.5.9) |
+| 2026-08-24 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-24.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-24.md) | integração | Handoff de INTEGRAÇÃO — as waves **56e–58d**, 20 commits (DIRETRIZ §1.5.9) |
 
 ---
 

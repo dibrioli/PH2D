@@ -89,7 +89,24 @@ impl Sculpt3dScene {
         );
 
         // ── F2 + F3 + G1 + G2.
-        let dual = ph2d_crossfield::Dual::build(&work);
+        let mut dual = ph2d_crossfield::Dual::build(&work);
+        // ⭐⭐ **AS LINHAS DE FEIÇÃO** — obra B da `SPEC_restricoes_por_eliminacao.md` §3, o
+        // 1.º dos três consumidores (o campo). ⛔ **Nasce DESLIGADA**, e a medição é a razão:
+        // na peça do artista ela leva as arestas de bordo — que é o que um buraco é — de
+        // `14` para `6` e o enviesamento de `7,4°` para `6,7°` (dentro da barra do oráculo),
+        // ⛔ **e triplica as faces com canto pior que 60°** (`4` para `12`). ⚠️ *É a MESMA
+        // regressão que a obra A deixou, com a mesma cura publicada por nomear (`local
+        // stiffening`, §5.4).* ⇒ o artista pode vê-la; o produto ainda não a assume.
+        if super::retopo_extract::features_requested() {
+            // ⚠️ **O `h` é o `target`**, e não uma medida da malha: a lei da feição mede-se
+            // em múltiplos do **passo alvo da grade**, que é exactamente o número que o G3
+            // recebe três blocos abaixo. *Medi-lo outra vez daria duas respostas à mesma
+            // pergunta, e a que envelhece é a que ninguém vê.*
+            let (fd, _) =
+                ph2d_mesh::feature_dirs(&work, target, ph2d_mesh::FeatureOptions::default());
+            let (fe, _) = ph2d_mesh::feature_edges(&work, &fd, ph2d_mesh::FEATURE_EDGE_MIN_COS);
+            dual.constrain(&work, &fe);
+        }
         let (field, _) = ph2d_crossfield::solve_miq(&dual);
         let layout = ph2d_trace::trace_patches(&work, &dual, &field);
         let (cut, _) = ph2d_gridmap::cut_along_patches(&work, &layout);
@@ -160,6 +177,18 @@ impl Sculpt3dScene {
 #[must_use]
 pub(in crate::sculpt3d) fn extract_requested() -> bool {
     extract_from(std::env::var("PH2D_RETOPO_EXTRACT").ok().as_deref())
+}
+
+/// ⭐⭐ **AS LINHAS DE FEIÇÃO entram no campo?** — obra B, e ⛔ **`false` por omissão**.
+///
+/// ⚠️ **Ela é o contrário do [`extract_requested`], e a diferença é a medição.** Aquele
+/// virou o default porque o motor novo bate o antigo em tudo o que o artista nomeou; esta
+/// fica desligada porque **compra e vende**: na peça dele as arestas de bordo caem de `14`
+/// para `6` e o enviesamento entra na barra do oráculo, ⛔ e as faces com canto pior que
+/// `60°` vão de `4` para `12`. *Uma troca com dois sinais é decisão do dono do produto, e
+/// ele decide vendo — não lendo uma tabela.*
+pub(in crate::sculpt3d) fn features_requested() -> bool {
+    std::env::var("PH2D_FEATURE_EDGES").as_deref() == Ok("1")
 }
 
 /// **A DECISÃO, sem tocar no ambiente** — a metade que se pode gatear.

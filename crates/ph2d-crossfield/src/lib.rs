@@ -48,11 +48,13 @@ use ph2d_mesh::Mesh;
 
 /// ⭐⭐ **PENTEAR uma região e MEDIR o que sobra** — ver [`comb`].
 pub mod comb;
+mod constrain;
 mod continuation;
 mod index;
 mod solve;
 
 pub use comb::{Holonomy, holonomy};
+pub use constrain::{CONSTRAINT_AGREEMENT, ConstrainReport};
 pub use continuation::{ALIGN_WEIGHT, Continuation, solve_miq_aligned, solve_miq_continued};
 pub use index::{IndexReport, ring_totals, singularities, vertex_index, vertex_index_with_report};
 pub use solve::{
@@ -212,6 +214,12 @@ pub struct Dual {
     /// **13,7°** do porte do Instant Meshes, que semeia o campo na superfície.
     /// *A obediência ao relevo é um TERMO, não uma afinação.*
     align: Vec<(f32, f32)>,
+    /// ⭐⭐⭐ **O `θ` FIXO de cada face restringida** — ver [`Dual::constrain`].
+    ///
+    /// ⚠️ **Ele NÃO é um alinhamento mais forte: é a ausência de uma incógnita.** Uma
+    /// face com valor aqui sai do sistema linear, e o valor dela viaja no lado
+    /// constante das arestas duais que a tocam — a mesma lei da costura da obra A.
+    constrained: Vec<Option<f32>>,
     /// Por face, os índices das arestas duais que a tocam.
     incident: Vec<Vec<u32>>,
 }
@@ -344,6 +352,7 @@ impl Dual {
             .collect();
 
         Self {
+            constrained: vec![None; frames.len()],
             frames,
             edges,
             incident,

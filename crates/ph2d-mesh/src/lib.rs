@@ -40,7 +40,6 @@ mod adjacency;
 mod collapse;
 mod cotangent;
 mod curvature;
-mod feature_dirs;
 mod curvature_dirs;
 mod dyntopo;
 mod dyntopo_flip;
@@ -48,6 +47,8 @@ mod edges;
 mod export;
 mod extract;
 mod face;
+mod feature_dirs;
+mod feature_edges;
 mod holes;
 mod merge;
 mod mesh;
@@ -79,13 +80,14 @@ pub use curvature::{
     curvature_at, curvature_of, curvature_pair_at, recompute_curvature, world_curvature_at,
 };
 pub use curvature_dirs::{PrincipalDir, principal_dirs};
-pub use feature_dirs::{FeatureDir, FeatureOptions, FeatureReport, feature_dirs};
 pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere};
 pub use dyntopo_flip::relax_valence;
 pub use edges::Edges;
 pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};
 pub use extract::{Extract, extract_masked};
 pub use face::{Face, TRI};
+pub use feature_dirs::{FeatureDir, FeatureOptions, FeatureReport, feature_dirs};
+pub use feature_edges::{FEATURE_EDGE_MIN_COS, FeatureEdge, FeatureEdgeReport, feature_edges};
 pub use holes::{HoleFill, fill_holes};
 pub use merge::merge;
 pub use mesh::{

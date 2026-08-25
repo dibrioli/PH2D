@@ -90,7 +90,48 @@ fn main() {
         mesh.face_count()
     );
 
-    let dual = ph2d_crossfield::Dual::build(&mesh);
+    // ⚠️ O `h` sobe para ANTES do campo: a lei da feição mede-se em múltiplos do passo alvo
+    // da grade, e a detecção corre antes do F2 porque é ela que o restringe.
+    let h = median_edge(&mesh) * scale;
+    let mut dual = ph2d_crossfield::Dual::build(&mesh);
+    // ⭐⭐ **AS LINHAS DE FEIÇÃO** (obra B, `SPEC_restricoes_por_eliminacao.md` §3) — o 1.º
+    // dos três consumidores. ⛔ Nasce DESLIGADA: a régua desta obra é «a peça ficou melhor»,
+    // e enquanto a tabela não estiver escrita ela não entra no caminho de ninguém.
+    if std::env::var("PH2D_FEATURE_EDGES").as_deref() == Ok("1") {
+        // ⚠️ Os cinco coeficientes entram por ENV para que a varredura corra sobre a régua
+        // que decide — **a peça no fim da cadeia** — e não sobre a contagem de
+        // singularidades, que é só o sinal de alarme do gate nº7.
+        let num = |k: &str, d: f32| {
+            std::env::var(k)
+                .ok()
+                .and_then(|v| v.parse::<f32>().ok())
+                .unwrap_or(d)
+        };
+        let base = ph2d_mesh::FeatureOptions::default();
+        let opts = ph2d_mesh::FeatureOptions {
+            r1_in_h: num("PH2D_FEATURE_R1", base.r1_in_h),
+            half_window_in_h: num("PH2D_FEATURE_WIN", base.half_window_in_h),
+            min_anisotropy: num("PH2D_FEATURE_ANISO", base.min_anisotropy),
+            ..base
+        };
+        let (fd, fr) = ph2d_mesh::feature_dirs(&mesh, h, opts);
+        let (fe, er) = ph2d_mesh::feature_edges(
+            &mesh,
+            &fd,
+            num("PH2D_FEATURE_COS", ph2d_mesh::FEATURE_EDGE_MIN_COS),
+        );
+        let cr = dual.constrain(&mesh, &fe);
+        println!(
+            "  FEICAO: {} vertices marcados ({} recusados pela janela) ⇒ {} arestas \
+             ({:.2}% da peca) ⇒ {} faces fixas, {} conflitos",
+            fr.marked,
+            fr.rejected_window,
+            er.kept,
+            er.sparsity_pct(),
+            cr.faces,
+            cr.conflicts
+        );
+    }
     let (field, _) = ph2d_crossfield::solve_miq(&dual);
     let singular: Vec<u32> = ph2d_crossfield::vertex_index(&mesh, &dual, &field)
         .into_iter()
@@ -106,7 +147,6 @@ fn main() {
         cr.patches, cr.discs, comb.seams, comb.jumps
     );
 
-    let h = median_edge(&mesh) * scale;
     let t = std::time::Instant::now();
     let pin = std::env::args().nth(3).as_deref() != Some("sem-singularidades");
     // ⭐ O caminho SOLDADO (a costura entra por eliminação, não por peso).

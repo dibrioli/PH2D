@@ -46,16 +46,22 @@ fn the_sphere_has_no_feature_and_the_cylinder_rim_is_one() {
 
     let (_, or) = feature_dirs(&cyl, edge_mean(&cyl), opts);
 
-    let frac = |r: &crate::FeatureReport| {
-        100.0 * r.marked as f64 / r.points.max(1) as f64
-    };
+    let frac = |r: &crate::FeatureReport| 100.0 * r.marked as f64 / r.points.max(1) as f64;
     eprintln!(
         "esfera:   {} de {} vertices marcados ({:.1}%) | recusados: {} planos, {} pela JANELA",
-        sr.marked, sr.points, frac(&sr), sr.rejected_flat, sr.rejected_window
+        sr.marked,
+        sr.points,
+        frac(&sr),
+        sr.rejected_flat,
+        sr.rejected_window
     );
     eprintln!(
         "cilindro: {} de {} vertices marcados ({:.1}%) | recusados: {} planos, {} pela JANELA",
-        or.marked, or.points, frac(&or), or.rejected_flat, or.rejected_window
+        or.marked,
+        or.points,
+        frac(&or),
+        or.rejected_flat,
+        or.rejected_window
     );
     assert!(
         sr.points > 500,
@@ -109,9 +115,8 @@ fn the_feature_law_sweeps_its_four_coefficients() {
                 };
                 let (_, sr) = feature_dirs(&sphere, hs, opts);
                 let (_, or) = feature_dirs(&cyl, ho, opts);
-                let pct = |r: &crate::FeatureReport| {
-                    100.0 * r.marked as f64 / r.points.max(1) as f64
-                };
+                let pct =
+                    |r: &crate::FeatureReport| 100.0 * r.marked as f64 / r.points.max(1) as f64;
                 eprintln!(
                     "{r1:>8.1} {min_a:>10.2} {hw:>8.2} | {:>7} ({:>5.1}%) jan {:>4} | \
                      {:>7} ({:>5.1}%) jan {:>4}",
@@ -134,15 +139,36 @@ fn what_does_the_law_actually_read() {
     let mut cyl = shapes::cylinder(64, 0.5, 1.5);
     cyl.triangulate();
     let n = cyl.normals();
-    eprintln!("normais: {} entradas · primeiras 3: {:?}", n.len(), &n[..3.min(n.len())]);
-    let nz = n.iter().filter(|v| v[0].abs() + v[1].abs() + v[2].abs() > 1e-6).count();
+    eprintln!(
+        "normais: {} entradas · primeiras 3: {:?}",
+        n.len(),
+        &n[..3.min(n.len())]
+    );
+    let nz = n
+        .iter()
+        .filter(|v| v[0].abs() + v[1].abs() + v[2].abs() > 1e-6)
+        .count();
     eprintln!("normais NAO nulas: {nz} de {}", n.len());
     let e = edge_mean(&cyl);
     eprintln!("aresta media {e:.4} · vertices {}", cyl.positions().len());
-    let (dirs, rep) = feature_dirs(&cyl, e, FeatureOptions { r1_in_h: 4.0, min_anisotropy: 0.0, min_curvature_in_bbox: 0.0, ..FeatureOptions::default() });
-    eprintln!("com os pisos a ZERO: {} marcados, {} planos, {} janela, {} degenerados",
-        rep.marked, rep.rejected_flat, rep.rejected_window, rep.rejected_degenerate);
+    let (dirs, rep) = feature_dirs(
+        &cyl,
+        e,
+        FeatureOptions {
+            r1_in_h: 4.0,
+            min_anisotropy: 0.0,
+            min_curvature_in_bbox: 0.0,
+            ..FeatureOptions::default()
+        },
+    );
+    eprintln!(
+        "com os pisos a ZERO: {} marcados, {} planos, {} janela, {} degenerados",
+        rep.marked, rep.rejected_flat, rep.rejected_window, rep.rejected_degenerate
+    );
     for d in dirs.iter().take(5) {
-        eprintln!("   v{} anisotropia {:.3} raio {:.3}", d.vert, d.anisotropy, d.radius);
+        eprintln!(
+            "   v{} anisotropia {:.3} raio {:.3}",
+            d.vert, d.anisotropy, d.radius
+        );
     }
 }

@@ -81,38 +81,52 @@ pub struct FeatureOptions {
 }
 
 impl Default for FeatureOptions {
-    /// ⛔⛔ **Estes números são um PONTO DE PARTIDA da varredura, não um veredito.**
-    /// Quem os fixa é a sonda, e a tabela dela tem de estar escrita ao lado do valor
-    /// que shipar (`CLAUDE.md` §0.0).
-    /// ⭐ **A TABELA QUE OS FIXOU** — varredura de 2026-08-25 sobre a peça do artista
-    /// (`sculpt_t001`, 2 327 vértices depois do F1), com a esfera lisa como controlo:
+    /// ⭐⭐⭐ **A TABELA QUE OS FIXOU — e a régua é a PEÇA NO FIM DA CADEIA, não a
+    /// contagem de marcados** (`SPEC_restricoes_por_eliminacao.md` §3.1: *«a régua desta obra
+    /// não é ‹quantas feições achámos›, é ‹a peça ficou melhor›»*).
     ///
-    /// | `r₁/h` | janela | marcados na peça | ⭐ recusados **pela janela** | esfera |
-    /// |---|---|---|---|---|
-    /// | ⭐ **`2,0`** | ⭐ **`1,0`** | **`7,1 %`** | **`267`** | **`0,00 %`** |
-    /// | `4,0` | `0,25` | `22,1 %` | ⛔ **`0`** | `0,00 %` |
-    /// | `8,0` | `0,25` | `28,6 %` | ⛔ **`0`** | `0,00 %` |
+    /// Varredura de 2026-08-25 com `chain_info` sobre a peça do artista (`sculpt_t001`), a
+    /// cadeia inteira, com o `min_cos` da [`crate::feature_edges`] a `0,966`:
     ///
-    /// ⛔⛔ **A coluna que decide é a das recusas PELA JANELA, e ela mede se o degrau 2
-    /// existe.** Com a janela pequena em relação à faixa ela recusa **zero** — a
-    /// condição de estabilidade deixa de ser aplicada e a lei degenera na de um raio
-    /// só, que é precisamente o que faz o ruído passar por feição.
+    /// | `r₁/h` | janela | anisotropia | arestas | ⭐ bordo | `χ` | ⭐ enviesamento p50 | `>60°` |
+    /// |---|---|---|---|---|---|---|---|
+    /// | ⛔ *sem restrição* | — | — | `0` | `14` | `1` | `7,4°` | **`4`** |
+    /// | `2,0` | `1,0` | `0,85` | 29 | `16` | `0` | `8,0°` | `8` |
+    /// | `4,0` | `2,0` | `0,85` | 34 | `10` | `0` | `7,8°` | `8` |
+    /// | ⭐⭐ **`4,0`** | ⭐⭐ **`2,0`** | ⭐⭐ **`0,96`** | **30** | ⭐ **`6`** | **`1`** | ⭐ **`6,7°`** | ⛔ `12` |
+    /// | `4,0` | `1,0` | `0,92` | 49 | `8` | `1` | `8,2°` | `7` |
     ///
-    /// ⭐⭐ **E o controlo é o que torna isto uma medição:** a esfera lisa marca
-    /// `0,00 %` em **todas** as 54 combinações, com os 2 525 vértices recusados pelo
-    /// piso. *Uma detecção que marca a esfera está a ler ruído; nenhuma coluna sozinha
-    /// distingue os dois erros.*
+    /// ⭐ **A linha escolhida é a única que melhora as três colunas que o artista nomeou**
+    /// (2026-08-25: *«buracos»*, *«vincos»*): as arestas de bordo — que é o que um buraco é —
+    /// caem de `14` para `6`, o `χ` fica, e o enviesamento entra na **barra do oráculo**
+    /// (`4,8°`–`7,1°`). ⛔ **O preço tem nome:** as faces com canto `>60°` sobem de `4` para
+    /// `12` — ⚠️ *é a MESMA regressão que a obra A deixou, e a cura publicada é a mesma
+    /// (`local stiffening`, §5.4 do mesmo paper).*
     ///
-    /// ⚠️ **`7,1 %` ainda não é «esparso»** para a régua da espec (cada restrição força
-    /// uma singularidade) — a varredura seguinte tem de subir os dois pisos e medir a
-    /// contagem de singularidades ao lado, que é o gate nº7.
+    /// # ⭐⭐ E o corpus inteiro, porque uma peça só não é uma medição
+    ///
+    /// | peça | arestas marcadas | enviesamento p50 | `>60°` |
+    /// |---|---|---|---|
+    /// | com orelha | 4 | `8,1°` ⇒ ⭐ **`6,7°`** | `7` ⇒ ⛔ `12` |
+    /// | com gancho | 14 | `7,5°` ⇒ ⭐ **`6,7°`** | `9` ⇒ ⭐ **`8`** |
+    /// | com cristas | 10 | `5,6°` ⇒ ⛔ `7,9°` | `7` ⇒ ⭐ **`5`** |
+    /// | ⭐ **enrugada** | **`0`** | `6,1°` ⇒ `6,1°` | `10` ⇒ `10` |
+    /// | do artista | 30 | `7,4°` ⇒ ⭐ **`6,7°`** | `4` ⇒ ⛔ `12` |
+    ///
+    /// ⭐⭐⭐ **A linha da enrugada é a que prova a conservadoria:** uma peça que é toda rugas
+    /// macias recebe **zero** restrições e sai **byte-idêntica**. *A lei não inventa vinco onde
+    /// não há; é isso que «esparso por construção» quer dizer, e não uma percentagem baixa.*
+    ///
+    /// ⚠️ **A contagem de singularidades é o ALARME do gate nº7, nunca o alvo:** com estes
+    /// números ela fica em `22`–`29` contra `25` sem restrição — *e chegou a `579` enquanto
+    /// havia um defeito na eliminação* (ver [`ph2d_crossfield::Dual::constrain`]).
     fn default() -> Self {
         Self {
             r0_in_edges: 1.0,
-            r1_in_h: 2.0,
+            r1_in_h: 4.0,
             samples: 6,
-            half_window_in_h: 1.0,
-            min_anisotropy: 0.85,
+            half_window_in_h: 2.0,
+            min_anisotropy: 0.96,
             min_curvature_in_bbox: 0.05,
         }
     }
@@ -246,16 +260,11 @@ pub fn feature_dirs(mesh: &Mesh, h: f32, opts: FeatureOptions) -> (Vec<FeatureDi
                 }
                 let e = sub(pos[q as usize], p);
                 let dn = sub(normalize(vn[q as usize]), n);
-                pairs.push((
-                    [dot(e, u), dot(e, w)],
-                    [dot(dn, u), dot(dn, w)],
-                ));
+                pairs.push(([dot(e, u), dot(e, w)], [dot(dn, u), dot(dn, w)]));
             }
             // ⚠️ Três pares é o mínimo para os três coeficientes; abaixo disso o
             // sistema é subdeterminado e a resposta honesta é «não há direcção».
-            let Some((k1, k2, dir2)) = (pairs.len() >= 3)
-                .then(|| second_form(&pairs))
-                .flatten()
+            let Some((k1, k2, dir2)) = (pairs.len() >= 3).then(|| second_form(&pairs)).flatten()
             else {
                 cands.push(Candidate {
                     radius: r,

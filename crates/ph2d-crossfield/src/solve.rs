@@ -253,16 +253,122 @@ pub fn solve_alternating(dual: &Dual, max_rounds: usize) -> (CrossField, usize) 
     (CrossField { theta, period }, rounds)
 }
 
+/// ⭐⭐⭐ **QUEM ANCORA O `θ` DE CADA COMPONENTE — e NUNCA duas vezes a mesma.**
+///
+/// Com os inteiros congelados, o sistema em `θ` é um laplaciano: a solução fica
+/// determinada **a menos de uma constante por componente**, e é por isso que uma face tem
+/// de ser presa. ⭐ **Uma face restringida JÁ é essa âncora.**
+///
+/// # ⛔⛔ Por que a face `0` deixa de ser presa quando há restrição
+///
+/// A `θ = 0` da face `0` é uma escolha arbitrária de **calibre**, e ela é legítima enquanto
+/// for a única: somar uma constante a todo `θ` não muda a energia, então uma referência tem
+/// de ser escrita. ⚠️ **Ao lado de uma restrição real ela passa a ser uma segunda equação,
+/// falsa** — o ângulo entre a face `0` e a face restringida fica fixo num valor que ninguém
+/// pediu, e a suavidade deixa de poder decidi-lo.
+///
+/// # ⚠️ E o que ela NÃO curou — a atribuição honesta
+///
+/// ⛔ **Esta cura sozinha vale ~zero, e foi medida:** ela levou o controlo de `111` para
+/// `109` singularidades onde a resposta certa era `25`. Quem curou foi a
+/// [`spanning_tree`] — e a 1.ª redacção deste bloco atribuía-lhe o mérito. *Duas correcções
+/// no mesmo turno leem-se como uma; só a medição separada diz qual pagou.*
+///
+/// ⇒ Ela fica por ser **certa**, não por ter movido um número: uma equação falsa que hoje
+/// custa uma face em 4 654 continua a ser uma equação falsa. ⚠️ **Nenhuma mutação a mata
+/// pelo resultado** (`gate_feature_sparse` fica verde sem ela); quem a defende é o gate
+/// estrutural [`crate::Dual::constrain`] ⇒ `the_gauge_is_written_once_per_component`.
+///
+/// ⚠️ **Com nenhuma restrição a resposta é `[face 0]`, exactamente como antes** — ⛔ e não
+/// «uma por componente», que seria mais correcto **e** mudaria a saída de toda malha de
+/// duas peças. *Corrigir de passagem um defeito que ninguém mediu é mudar o produto sem a
+/// tabela ao lado.*
+pub(crate) fn gauge_seeds(dual: &Dual) -> Vec<bool> {
+    let n = dual.frames().len();
+    let mut seeds = vec![false; n];
+    if dual.constrained_count() == 0 {
+        if n > 0 {
+            seeds[0] = true;
+        }
+        return seeds;
+    }
+    let mut comp = vec![usize::MAX; n];
+    let mut queue = std::collections::VecDeque::new();
+    let mut roots: Vec<(usize, bool)> = Vec::new();
+    for start in 0..n {
+        if comp[start] != usize::MAX {
+            continue;
+        }
+        let c = roots.len();
+        roots.push((start, dual.constrained(start).is_some()));
+        comp[start] = c;
+        queue.push_back(start);
+        while let Some(f) = queue.pop_front() {
+            for &e in dual.incident(f) {
+                let de = &dual.edges()[e as usize];
+                let other = if de.f as usize == f {
+                    de.g as usize
+                } else {
+                    de.f as usize
+                };
+                if comp[other] == usize::MAX {
+                    comp[other] = c;
+                    if dual.constrained(other).is_some() {
+                        roots[c].1 = true;
+                    }
+                    queue.push_back(other);
+                }
+            }
+        }
+    }
+    for (start, held) in roots {
+        if !held {
+            seeds[start] = true;
+        }
+    }
+    seeds
+}
+
 /// **A ÁRVORE GERADORA do grafo dual** — o gauge.
 ///
 /// ⚠️ **BFS a partir da face 0, com vizinhos em ordem de índice.** Qualquer
 /// árvore serve para consumir a liberdade de calibre; o que **não** serve é uma
 /// árvore que mude entre corridas, porque ela decide quais inteiros existem.
+///
+/// # ⛔⛔ UMA FACE RESTRINGIDA NÃO PODE SER FILHA, e ignorá-lo custou 5× as singularidades
+///
+/// O gauge é uma **liberdade**: `θ_f → θ_f + (π/2)·m_f` com `p_e` compensado deixa a
+/// energia igual, e é ela que permite pôr `p_e = 0` em toda aresta da árvore — cada
+/// face **absorve** no seu `θ` o salto da aresta que a alcançou.
+///
+/// ⭐⭐⭐ **Eliminar `θ_f` remove essa liberdade naquela face** ([`crate::Dual::constrain`]):
+/// o `θ` dela está fixo, `m_f` tem de ser `0`, e não há como absorver nada. Forçar
+/// `p_e = 0` na aresta que a alcança injecta ali um quarto de volta arbitrário — e cada
+/// um deles é uma singularidade a mais.
+///
+/// ⚠️ **MEDIDO (2026-08-25, peça do artista, 4 654 faces):** com as restringidas a serem
+/// filhas como as outras, **26** faces fixas levavam o campo de **25** para **128**
+/// singularidades, e 486 faces fixas a **579**. *O sintoma lê-se exactamente como «a
+/// espec avisou: marcar feição a mais planta singularidades» — e não era isso.*
+///
+/// ⇒ **Elas entram como RAÍZES:** exploram-se a partir delas (o vizinho livre pode
+/// absorver), e nenhuma aresta da árvore aponta para dentro delas. ⭐ Com nenhuma
+/// restrição a lista de raízes é vazia e esta função é a de sempre, aresta a aresta.
 fn spanning_tree(dual: &Dual) -> Vec<u32> {
     let n = dual.frames().len();
     let mut seen = vec![false; n];
     let mut tree: Vec<u32> = Vec::new();
     let mut queue = std::collections::VecDeque::new();
+    // ⛔⛔ **Marcadas ANTES da primeira travessia, e a 1.ª versão desta cura não o fazia** —
+    // ela punha-as só na frente da lista de raízes, e a BFS que arrancava na primeira delas
+    // alcançava as outras 25 e dava-lhes um pai à mesma. ⚠️ *O sintoma era mudo: o
+    // `free_integers` saía **idêntico** ao da corrida sem restrição nenhuma* — que é
+    // exactamente o número que prova que a árvore não viu nada.
+    for (f, s) in seen.iter_mut().enumerate().take(n) {
+        if dual.constrained(f).is_some() {
+            *s = true;
+        }
+    }
     // ⚠️ Todas as componentes, não só a do 0: uma malha com duas peças tem duas
     // árvores, e deixar a segunda sem gauge deixaria o sistema singular ali.
     for start in 0..n {
@@ -314,10 +420,41 @@ fn solve_relaxation(
         slot[e] = Some(i);
     }
 
+    // ⭐⭐⭐ **AS VARIÁVEIS ELIMINADAS** — o gauge (face `0` a zero) e as faces que uma
+    // aresta de feição restringe ([`crate::Dual::constrain`]).
+    //
+    // ⚠️ **As duas são a MESMA coisa para o sistema**, e é isso que torna a obra B
+    // barata: o `pinned` já era uma eliminação, com valor `0` e cardinalidade `1`.
+    // Generalizá-lo é dar-lhe um valor e um conjunto.
+    //
+    // ⚠️ **O representante 4-RoSy sai do `θ` CORRENTE**, pela razão do doc do
+    // [`crate::ConstrainReport`]: `α` e `α + k·π/2` são a mesma cruz, e escolher o `k`
+    // longe do `θ` de partida faria a face dar meia volta que o vizinho teria de pagar.
+    let seeds = gauge_seeds(dual);
+    let fix: Vec<Option<f32>> = (0..n)
+        .map(|f| match dual.constrained(f) {
+            Some(a) => {
+                let k = ((theta[f] - a) / QUARTER).round();
+                Some(QUARTER.mul_add(k, a))
+            }
+            None if seeds[f] => Some(0.0),
+            None => None,
+        })
+        .collect();
+
     // b = −scatter( w · constante )
     let mut b = vec![0.0f32; dim];
     for (e, de) in dual.edges().iter().enumerate() {
-        let konst = de.kappa + QUARTER * fixed[e].unwrap_or(0) as f32;
+        let mut konst = de.kappa + QUARTER * fixed[e].unwrap_or(0) as f32;
+        // ⚠️ **O `θ` de uma face eliminada é CONSTANTE**, então ele viaja aqui, ao
+        // lado do `κ` e do salto de período. ⭐ Com `fix` vazio o termo é `+0,0 − 0,0`
+        // sobre a face do gauge e a conta é a de sempre, bit a bit.
+        if let Some(a) = fix[de.f as usize] {
+            konst += a;
+        }
+        if let Some(a) = fix[de.g as usize] {
+            konst -= a;
+        }
         let wc = de.weight * konst;
         b[de.f as usize] -= wc;
         b[de.g as usize] += wc;
@@ -338,7 +475,9 @@ fn solve_relaxation(
     let pull: Vec<f32> = (0..n)
         .map(|f| {
             let (a, conf) = dual.align(f);
-            if conf <= 0.0 {
+            // ⛔ Uma face eliminada não tem para onde ser puxada: ela já não é
+            // incógnita, e um termo suave sobre ela seria energia sem variável.
+            if conf <= 0.0 || fix[f].is_some() {
                 return 0.0;
             }
             let k = ((theta[f] - a) / QUARTER).round();
@@ -349,15 +488,22 @@ fn solve_relaxation(
         b[f] += item;
     }
 
-    let pinned = 0usize;
     let mut x = vec![0.0f32; dim];
     x[..n].copy_from_slice(theta);
-    x[pinned] = 0.0;
+    for (f, item) in fix.iter().enumerate().take(n) {
+        if item.is_some() {
+            x[f] = 0.0;
+        }
+    }
 
     let mut ax = vec![0.0f32; dim];
-    apply(dual, &slot, n, &x, &mut ax, pinned, align);
+    apply(dual, &slot, n, &x, &mut ax, &fix, align);
     let mut r: Vec<f32> = (0..dim).map(|i| b[i] - ax[i]).collect();
-    r[pinned] = 0.0;
+    for (f, item) in fix.iter().enumerate().take(n) {
+        if item.is_some() {
+            r[f] = 0.0;
+        }
+    }
     let mut p = r.clone();
     let mut rr = ddot(&r, &r);
     let r0 = rr.sqrt().max(1.0);
@@ -367,7 +513,7 @@ fn solve_relaxation(
         if rr.sqrt() <= CG_TOLERANCE * r0 {
             break;
         }
-        apply(dual, &slot, n, &p, &mut ap, pinned, align);
+        apply(dual, &slot, n, &p, &mut ap, &fix, align);
         let denom = ddot(&p, &ap);
         if denom.abs() <= 1.0e-30 {
             break;
@@ -385,31 +531,41 @@ fn solve_relaxation(
         rr = rr_next;
     }
 
-    theta.copy_from_slice(&x[..n]);
+    // ⚠️ **O `θ` de uma face eliminada é o valor FIXO, nunca o `x` dela** — o `x` de
+    // uma eliminada é `0` por construção, e escrevê-lo apagaria a restrição no exacto
+    // sítio onde ela vale.
+    for (f, t) in theta.iter_mut().enumerate().take(n) {
+        *t = fix[f].unwrap_or(x[f]);
+    }
     (x[n..].to_vec(), rr.sqrt() / r0)
 }
 
-/// `A x`, com a linha e a coluna do gauge de `θ` zeradas.
+/// `A x`, com a linha e a coluna de **cada variável eliminada** zeradas.
+///
+/// ⚠️ **O `fix` entrou no lugar do `pinned`, e não é uma generalização gratuita:** a
+/// linha identidade que mantinha o sistema não-singular sobre a face do gauge é
+/// exactamente a que uma face restringida precisa. *Um gauge é uma restrição com valor
+/// zero, e escrever as duas coisas duas vezes seria pedir que divergissem.*
 fn apply(
     dual: &Dual,
     slot: &[Option<usize>],
     n: usize,
     x: &[f32],
     out: &mut [f32],
-    pinned: usize,
+    fix: &[Option<f32>],
     align: f32,
 ) {
     out.fill(0.0);
     for (e, de) in dual.edges().iter().enumerate() {
         let (f, g) = (de.f as usize, de.g as usize);
-        let tf = if f == pinned { 0.0 } else { x[f] };
-        let tg = if g == pinned { 0.0 } else { x[g] };
+        let tf = if fix[f].is_some() { 0.0 } else { x[f] };
+        let tg = if fix[g].is_some() { 0.0 } else { x[g] };
         let q = slot[e].map_or(0.0, |i| x[n + i]);
         let r = de.weight * (tf - tg + QUARTER * q);
-        if f != pinned {
+        if fix[f].is_none() {
             out[f] += r;
         }
-        if g != pinned {
+        if fix[g].is_none() {
             out[g] -= r;
         }
         if let Some(i) = slot[e] {
@@ -424,7 +580,7 @@ fn apply(
     // isso que o `pinned` existe; com ele, cada face confiante já tem um alvo — o
     // `pinned` continua porque uma malha inteiramente isotrópica não tem nenhum.
     for (f, o) in out.iter_mut().enumerate().take(n) {
-        if f == pinned {
+        if fix[f].is_some() {
             continue;
         }
         let (_, conf) = dual.align(f);
@@ -432,7 +588,11 @@ fn apply(
             *o += align * conf * x[f];
         }
     }
-    out[pinned] = x[pinned];
+    for (f, item) in fix.iter().enumerate().take(n) {
+        if item.is_some() {
+            out[f] = x[f];
+        }
+    }
 }
 
 /// ⚠️ Acumulador em `f64`: a soma de dezenas de milhares de termos em `f32`

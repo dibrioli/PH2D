@@ -1,4 +1,7 @@
-//! **A PRIMEIRA migração de `PROJECT_SCHEMA` da história do repo** — v95 → v96 (ADR-0164 F1).
+//! **A PRIMEIRA migração de `PROJECT_SCHEMA` da história do repo** — v95 para o schema
+//! CORRENTE (ADR-0164 F1). Nasceu `v95 -> v96`; a integração de 2026-08-24 fê-la aterrar na
+//! **v97**, porque uma linha irmã apendou um campo na mesma jornada — ver
+//! [`migrate_v95_to_v96`].
 //!
 //! # O que estava aqui antes
 //!
@@ -66,10 +69,27 @@ pub(crate) struct MigratedV95 {
     pub(crate) stable_id_counter: u64,
 }
 
-/// **v95 → v96.**
+/// **v95 → o schema CORRENTE** (nasceu `v95 -> v96`; ver a nota abaixo).
 ///
 /// A conversão do mundo é a [`migrate_v1_to_v2`] do `ph2d-ecs` (ids na ordem das linhas, que
 /// na v1 já era a ordem canónica); tudo o resto viaja intacto.
+///
+/// ⚠️⚠️ **O DESTINO desta função subiu na integração de 2026-08-24, e o nome não a segue de
+/// propósito** — o que está congelado é a ORIGEM (`ProjectFileV95`, os bytes que se sabem ler),
+/// e é a origem que o nome anuncia. Uma linha irmã apendou o `input_map` ao `ProjectFile` na
+/// mesma jornada, o degrau dela foi recontado de `96` para `97`, e este salto passou a aterrar
+/// lá: o campo novo entra com o **default vazio**, que é exactamente o que um ficheiro v95 tem
+/// a dizer sobre um mapa de controlos que ainda não existia.
+///
+/// ⚠️ **Não há `migrate_v96_to_v97`, e a ausência é a decisão:** a v96 viveu apenas dentro de
+/// duas worktrees durante uma jornada e nunca foi publicada, logo **não existe ficheiro v96 no
+/// mundo** para migrar. O `_ =>` do [`crate::project_load`] recusa-a, que é a resposta certa
+/// para uma versão que ninguém pode ter. Quem um dia precisar de um degrau intermédio congela
+/// o tipo primeiro — como o [`ProjectFileV95`] foi congelado.
+///
+/// ⛔ **O compilador é a cerca deste salto:** todo campo novo no `ProjectFile` torna esta
+/// função um erro de compilação até alguém dizer com que valor um ficheiro v95 o preenche.
+/// Foi assim que o `input_map` foi apanhado.
 #[must_use]
 pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
     let stable_id_counter = next_free_after_migration(&old.state.world);
@@ -94,6 +114,11 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
             player_tape: old.player_tape,
             sprite_pixels: old.sprite_pixels,
             stable_id_counter,
+            // ⚠️ **VAZIO, e o vazio é a resposta certa** (v97): um ficheiro v95 foi gravado por
+            // um build em que nenhuma acção nomeada existia, então ele não tem nada a dizer
+            // sobre controlos. E um `InputMap` vazio devolve silêncio em toda leitura — o
+            // comportamento byte-a-byte de todo ficheiro anterior ao mapa.
+            input_map: ph2d_input::InputMap::default(),
         },
         stable_id_counter,
     }

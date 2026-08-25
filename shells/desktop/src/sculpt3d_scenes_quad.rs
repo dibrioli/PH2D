@@ -73,25 +73,29 @@ fn announce_extract() {
         "[sculpt3d] =35 A RETOPOLOGIA -- CAMINHO NOVO (PH2D_RETOPO_EXTRACT esta' ligado).\n\
          [sculpt3d]    O botao e' o mesmo `Quad Retopology`; o motor por tras dele e' outro.\n\
          [sculpt3d]    Abra o painel com a CRASE (`) e ache a secao Topology.\n\
-         [sculpt3d]    (1) CLIQUE em `Quad Retopology`. ⚠️ A janela FICA PARADA cerca de dez\n\
+         [sculpt3d]    (1) CLIQUE em `Quad Retopology`. ⚠️ A janela FICA PARADA alguns\n\
          [sculpt3d]        segundos -- e' o solver a correr, nao e' um travamento. Se passar de\n\
          [sculpt3d]        um minuto, ai' sim PARE e diga.\n\
-         [sculpt3d]    (2) OLHE OS QUADRADOS, que e' o que este caminho existe para melhorar.\n\
-         [sculpt3d]        Eles tem de parecer QUADRADOS -- nao losangos, nao tiras compridas.\n\
-         [sculpt3d]        No terminal, `enviesamento X/Y graus`: o X e' o tipico, e menor e'\n\
-         [sculpt3d]        melhor. Abaixo de 7 e' o nivel do melhor programa que existe.\n\
-         [sculpt3d]    (3) ⚠️⚠️ A PECA VAI TER BURACOS, E ISSO JA' E' CONHECIDO. O terminal\n\
-         [sculpt3d]        escreve `N BURACO(S) na casca`. ⛔ NAO e' regressao e NAO precisa de\n\
-         [sculpt3d]        report: a causa esta' medida e escrita. O que ainda nao se sabe e' o\n\
-         [sculpt3d]        passo (4).\n\
-         [sculpt3d]    (4) ⭐ A COMPARACAO, e e' a UNICA coisa que eu preciso que voce julgue.\n\
-         [sculpt3d]        Feche o app; abra outra vez SEM o PH2D_RETOPO_EXTRACT; clique no\n\
-         [sculpt3d]        mesmo botao. O de sempre fecha a casca e da' quads piores; este da'\n\
-         [sculpt3d]        quads melhores e nao fecha. Vale a pena seguir por aqui?\n\
-         [sculpt3d]    (5) O Ctrl+Z DESFAZ, e devolve a malha inteira de antes -- nas duas.\n\
-         [sculpt3d]    (6) ⛔ NAO arraste o `Detail` de ponta a ponta a espera de casca fechada:\n\
-         [sculpt3d]        esse passo e' do caminho de sempre. Aqui nao fecha em ponta nenhuma,\n\
-         [sculpt3d]        por enquanto, e reprovaria por desenho."
+         [sculpt3d]    (2) NO TERMINAL, procure `casca FECHADA`. ⭐ Desde 24/08 ela FECHA: a\n\
+         [sculpt3d]        costura deixou de ser negociada e passou a ser imposta. Se em vez\n\
+         [sculpt3d]        disso aparecer `N BURACO(S) na casca`, ⚠️ ISSO E' REGRESSAO e eu\n\
+         [sculpt3d]        preciso do report -- ao contrario do que este roteiro dizia ate' 24/08.\n\
+         [sculpt3d]    (3) OLHE OS QUADRADOS. Eles tem de parecer QUADRADOS -- nao losangos,\n\
+         [sculpt3d]        nao tiras compridas. No terminal, `enviesamento X/Y graus`: o X e' o\n\
+         [sculpt3d]        tipico, e menor e' melhor. Abaixo de 7 e' o nivel do melhor programa\n\
+         [sculpt3d]        que existe.\n\
+         [sculpt3d]    (4) ⭐⭐ OLHE AS PONTAS, OS CHIFRES E OS VINCOS -- e' o que falta.\n\
+         [sculpt3d]        O motor ainda NAO sabe que um vinco existe, entao a grelha atravessa\n\
+         [sculpt3d]        a aresta em diagonal e, numa ponta, chega a fechar-se num ponto.\n\
+         [sculpt3d]        ⛔ Isso E' conhecido e esta' medido (num octaedro sao 9% das faces);\n\
+         [sculpt3d]        NAO precisa de report. O que eu preciso e' do passo (5).\n\
+         [sculpt3d]    (5) ⭐ O JULGAMENTO, e e' a unica coisa que eu nao consigo medir sozinho:\n\
+         [sculpt3d]        tirando as pontas e os vincos, a malha ja' serve para trabalhar?\n\
+         [sculpt3d]        Se serve, o proximo passo e' ensinar o motor a ver os vincos; se nao\n\
+         [sculpt3d]        serve, diga O QUE ficou pior que o de sempre e eu meco isso primeiro.\n\
+         [sculpt3d]    (6) O Ctrl+Z DESFAZ, e devolve a malha inteira de antes.\n\
+         [sculpt3d]    (7) ⚠️ Aumentar o `Detail` NAO limpa os defeitos: a taxa deles por face e'\n\
+         [sculpt3d]        praticamente a mesma, entao uma malha 6x maior mostra 6x mais. Medido."
     );
 }
 
@@ -114,8 +118,15 @@ mod tests {
             .split_once("mod tests")
             .map_or(novo, |(antes, _)| antes);
         assert!(
-            novo.contains("JA' E' CONHECIDO"),
-            "o roteiro novo tem de dizer que o buraco e' conhecido, senao o Enio reporta-o"
+            novo.contains("casca FECHADA") && novo.contains("ISSO E' REGRESSAO"),
+            "⚠️ a premissa deste gate MUDOU em 2026-08-24: a casca passou a fechar. O \
+             roteiro tem de mandar REPORTAR um buraco, e nao calar-se sobre ele — \
+             *quem move o numero que tornava algo inalcancavel tem de reconferir a nota*"
+        );
+        assert!(
+            novo.contains("PONTAS") && novo.contains("NAO precisa de report"),
+            "o defeito que HOJE esta' medido e' o das feicoes; e' esse que o roteiro tem \
+             de nomear como conhecido, senao o Enio gasta uma jornada a reporta-lo"
         );
         assert!(
             !novo.contains("PARE -- e'"),

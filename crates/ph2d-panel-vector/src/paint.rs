@@ -423,4 +423,9 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     if let Some((prop, chip_rect)) = state::take_pending_token_dd() {
         crate::paint_tokens::paint_token_popover(ctx, prop, chip_rect, theme);
     }
+    // Idem para a CONDIÇÃO de uma seta do Morph (plano 32 W4): a lista das acções do Input Map
+    // vive dentro do scroll da seção States, e sem o passe diferido ela seria cortada na borda.
+    if let Some((row, chip_rect)) = state::take_pending_morph_when_dd() {
+        crate::paint_sections::morph_arrows::paint_when_popover(ctx, row, chip_rect, theme);
+    }
 }

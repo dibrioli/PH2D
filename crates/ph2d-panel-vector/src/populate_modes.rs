@@ -44,3 +44,28 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     // clique NUNCA vira evento; é o defeito que este arquivo já pagou três vezes.
     button(store, ids::VECTOR_MODE_FRAME);
 }
+
+/// **REGISTA os widgets das SETAS do Morph** (plano 32 W4) — o pool inteiro, de antemão.
+///
+/// ⚠️ **De antemão e não por linha viva**, ao contrário da janela do Input Map: aqui o teto é o
+/// próprio `MAX_MORPH_ARROWS`, e um pool fixo é o que o resto deste painel faz. ⛔ Sem isto, cada
+/// controlo nasce **morto sob o ponteiro** — o defeito que esta linha já pagou três vezes.
+pub(crate) fn populate_morph_arrows(store: &mut WidgetStore) {
+    for row in 0..ids::MAX_MORPH_ARROWS {
+        button(store, ids::morph_arrow_delete_id(row));
+        // A CONDIÇÃO é um menu, e um menu não é um botão: registá-lo como botão faria o clique
+        // acender o chip e nunca abrir a lista. (A cicatriz da swatch do painel de tokens, e a
+        // dos dois números do Input Map.)
+        store.register(
+            ids::morph_arrow_when_id(row),
+            ph2d_editor_core::interaction::InteractiveState::Dropdown {
+                state: ph2d_editor_core::widget::DropdownState::Normal,
+                open: false,
+                selected_index: None,
+            },
+        );
+        for a in 0..ids::MAX_MORPH_ACTIONS {
+            button(store, ids::morph_arrow_when_option_id(row, a));
+        }
+    }
+}

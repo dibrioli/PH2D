@@ -599,6 +599,7 @@ mod vec_guide;
 mod vec_instance_follow;
 mod vec_layout_edit;
 mod vec_marquee;
+mod vec_morph_edit;
 mod vec_overlay;
 mod vec_overlay_diag;
 mod vec_pencil_input;

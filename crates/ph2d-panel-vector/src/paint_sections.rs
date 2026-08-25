@@ -66,6 +66,11 @@ mod ui_states;
 #[path = "paint_signals.rs"]
 mod ui_signals;
 
+/// ⭐ **AS SETAS do Morph** (plano 32 W4) — irmã das duas acima, na MESMA seção *States*: um
+/// objecto tem poses **ou** setas, e o Inspector mostra o que ele TEM (ADR-0166).
+#[path = "paint_morph_states.rs"]
+pub(crate) mod morph_arrows;
+
 pub(crate) use ui_signals::mirror as mirror_signal_fields;
 
 /// A seção **Blend** — módulo irmão (teto de 600 LOC).

@@ -70,6 +70,7 @@ mod vector_cut;
 mod vector_filters;
 mod vector_frame;
 mod vector_layout;
+mod vector_morph;
 /// Os ids da seção **Pattern on Path** (plano 23) — irmão de `vector` pelo teto de 700 LOC.
 mod vector_patternpath;
 /// Os ids da seção **Pencil** (a mão livre, plano 25) — irmão de `vector` pelo teto de 700 LOC.
@@ -133,6 +134,7 @@ pub use vector_cut::*;
 pub use vector_filters::*;
 pub use vector_frame::*;
 pub use vector_layout::*;
+pub use vector_morph::*;
 pub use vector_patternpath::*;
 pub use vector_pencil::*;
 pub use vector_sections::*;

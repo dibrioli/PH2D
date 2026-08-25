@@ -39,6 +39,10 @@ pub use ph2d_editor_core::ids::{
     vector_instance_piece_show_id, vector_variant_option_id,
 };
 pub use ph2d_editor_core::ids::{
+    MAX_MORPH_ACTIONS, MAX_MORPH_ARROWS, morph_arrow_delete_id, morph_arrow_when_id,
+    morph_arrow_when_option_id,
+};
+pub use ph2d_editor_core::ids::{
     MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,
     vector_shape_id,
 };

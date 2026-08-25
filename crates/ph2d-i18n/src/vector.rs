@@ -192,6 +192,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.mode.connect" => "Connect",
         // O pill das SETAS do Morph (plano 32 W3b) -- curto, ele divide a fileira com 13 irmaos.
         "panel.vector.mode.morph_link" => "States",
+        // ⭐ AS SETAS do Morph (plano 32 W4) — a sub-lista dentro da seccao States.
+        "panel.vector.morph.arrows" => "Morph arrows",
+        "panel.vector.morph.current" => "Now showing:",
+        // ⚠️ A face vazia diz o GESTO, e nao so' a ausencia: «nao ha' setas» e «isto esta'
+        // partido» leem-se igual sem uma frase que nomeie o pill e o movimento da mao.
+        "panel.vector.morph.arrows.empty" => {
+            "No arrows yet. Pick States in the mode row, then drag from one shape onto another."
+        }
+        "panel.vector.morph.when" => "When",
+        "panel.vector.morph.when.none" => "\u{2014}",
+        "panel.vector.morph.beyond" => "more arrows not shown here",
         "panel.vector.mode.fillet" => "Fillet",
         "panel.vector.mode.chamfer" => "Chamfer",
         "panel.vector.mode.width" => "Width",

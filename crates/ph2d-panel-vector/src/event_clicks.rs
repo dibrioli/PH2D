@@ -107,11 +107,29 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
     )
 }
 
+/// ⭐ **AS SETAS do Morph** (plano 32 W4) — apagar uma, e escolher a acção que a dispara. As duas
+/// mexem no COMPONENTE (mundo), então o clique atravessa o barramento e é a shell que age; o painel
+/// só mostra.
+///
+/// ⚠️ **Percorridas pela MESMA porta que as pinta** (`MAX_MORPH_ARROWS` → `morph_arrow_*`): uma
+/// seta a mais entra aqui sozinha. ⛔ Sem isto elas pintariam, acenderiam sob o rato e o Click
+/// **morreria no painel** — o defeito exacto que a décima lista deste modo custou uma wave atrás.
+///
+/// ⚠️ **Função própria e não mais um `||` na irmã**: o `forwards_plain_click` bateu no teto de 200
+/// LOC no dia em que este bloco lá entrou, e o corte por assunto já era o certo.
+fn is_morph_arrow_control(id: ph2d_a11y::NodeId) -> bool {
+    (0..ids::MAX_MORPH_ARROWS).any(|r| {
+        id == ids::morph_arrow_delete_id(r)
+            || (0..ids::MAX_MORPH_ACTIONS).any(|a| id == ids::morph_arrow_when_option_id(r, a))
+    })
+}
+
 pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
     is_mode_pill(id)
         // Os dois botões da seção CUT — executar e descartar a linha de corte.
         || id == ids::VECTOR_CUT_APPLY
         || id == ids::VECTOR_CUT_DISCARD
+        || is_morph_arrow_control(id)
         // **A FORMA do marquee** (`Box | Lasso`) — a tool é a dona do valor pegajoso, então o
         // clique atravessa o barramento como o dos pills de modo.
         || id == ids::VECTOR_MARQUEE_BOX

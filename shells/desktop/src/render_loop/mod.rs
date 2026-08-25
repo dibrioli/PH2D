@@ -3052,6 +3052,7 @@ impl crate::App {
             // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
+            let mut pending_morph_arrow: Option<crate::vec_morph_edit::ArrowCmd> = None;
             let mut pending_bool_apply = false;
             // A MOLDURA (plano UI/UX W0): o chip de recorte e o preset de dispositivo.
             let mut pending_frame_clip: Option<bool> = None;
@@ -3512,6 +3513,11 @@ impl crate::App {
                                 // Um preset é uma 2ª forma de PEDIR a edição de W/H — ele cai na
                                 // MESMA porta que os campos numéricos do Transform.
                                 pending_frame_preset = Some(p);
+                            } else if let Some(cmd) = crate::vec_morph_edit::arrow_cmd_for_id(*id) {
+                                // ⭐ Uma SETA do Morph (plano 32 W4): apagar, ou escolher a acção
+                                // que a dispara. O valor mora no COMPONENTE (mundo), então o
+                                // clique é da shell — o painel só mostra.
+                                pending_morph_arrow = Some(cmd);
                             } else if *id == ph2d_editor::ids::VECTOR_BOOL_APPLY {
                                 pending_bool_apply = true;
                             } else if let Some(op) = crate::input_dispatch::vec_bool_op_for_id(*id)
@@ -8416,6 +8422,20 @@ impl crate::App {
                 // **OS ESTADOS de UI** (plano UI/UX W7) — que poses esta forma tem, e qual delas a
                 // cena mostra AGORA. O `live` sai da MESMA máquina que escreve o mundo: um
                 // readout derivado noutro lugar diria um papel e a cena mostraria outro.
+                // ⭐ **AS SETAS do Morph** (plano 32 W4) — que arestas a máquina tem, e qual
+                // delas a cena percorre. As acções vêm do Input Map do projecto: elas são o
+                // vocabulário das condições, e lê-las no painel seria uma segunda leitura.
+                ph2d_panel_vector::state::set_morph_states_state(crate::vec_morph_edit::publish(
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    &sel,
+                    hero.input_map
+                        .actions()
+                        .iter()
+                        .map(|a| a.name.clone())
+                        .collect(),
+                ));
                 ph2d_panel_vector::state::set_ui_states_state(crate::vec_ui_state_edit::publish(
                     sim,
                     vec_scene,
@@ -8543,6 +8563,20 @@ impl crate::App {
                         primary,
                     ),
                 );
+                // ⭐ **A SETA do Morph** (plano 32 W4) — apagar, ou trocar a condição. As acções
+                // são as MESMAS que o menu mostrou (as do Input Map do projecto): resolver o
+                // índice contra uma segunda leitura poria o nome escolhido a apontar para outro.
+                if let Some(cmd) = pending_morph_arrow
+                    && let Some(e) = crate::vec_morph_edit::morph_of_selection(sim, &sel)
+                {
+                    let actions: Vec<String> = hero
+                        .input_map
+                        .actions()
+                        .iter()
+                        .map(|a| a.name.clone())
+                        .collect();
+                    crate::vec_morph_edit::apply(sim, e, cmd, &actions);
+                }
                 if pending_bool_apply
                     && let Some(g) = group
                     && let Some(plan) = self.bool_live.plan(g)

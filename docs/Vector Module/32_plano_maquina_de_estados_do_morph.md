@@ -146,6 +146,36 @@ linha, e o único que nenhuma das minhas nove edições apanharia. *Uma feature 
 listas escritas à mão só é alcançável se um gate percorrer as dez* — e a mensagem daquele gate
 **nomeia o ficheiro que falta**, que é o que o torna útil em vez de só vermelho.
 
+## §3-quater — A secção (W4a)
+
+⭐ **Ela vive na MESMA seção *States*** que as poses de UI — Enio, 24/08 — e a lei da casa concorda:
+**o Inspector mostra o que o objecto TEM** (ADR-0166). Um objecto raramente é as duas coisas, então
+não é preciso aba nenhuma.
+
+* **Duas linhas por seta**, o corte do `paint_signals`: `de -> para` + a lixeira em cima; a
+  **condição** em baixo. Espremer as duas numa daria um chip de meia dúzia de caracteres.
+  ⛔ **`->` em ASCII**: a fonte da casa não cobre o bloco de setas do Unicode e o glifo sairia caixa
+  vazia (gate `no_tofu_glyphs`, que já mordeu três vezes neste repo).
+* ⚠️ **A condição é um MENU das acções do Input Map, nunca um campo de texto.** Um nome digitado
+  pode não existir, e uma seta que espera uma acção inexistente **nunca dispara** — sem uma palavra
+  na tela. *Um modelo que aceita o que o painel não mostra produz estado inalcançável.*
+* ⚠️ **A opção `0` é o «—»**: tirar a condição tem de ser um gesto, senão o artista só poderia
+  apagar a seta inteira para se arrepender.
+* ⭐⭐ **Um Morph SEM máquina publica a face VAZIA, e nunca `None`.** `None` = *"a seleção não é um
+  Morph"* (a seção nem fala de setas); vazio = *"é um Morph e ainda não tem setas"* — e é essa face
+  que **diz o gesto** (nomeia o pill e o movimento da mão). Sem ela o artista vê um cabeçalho e nada
+  por baixo, e *"não há setas"* e *"isto está partido"* leem-se igual.
+* ⚠️ **O Morph é achado na seleção INTEIRA**, nunca em `sel.first()`: tocar num morph traz o grupo,
+  e a seção mostraria as setas de um objecto enquanto o clique escrevia noutro (a lição do
+  `host_of_selection`).
+* ⚠️ **As acções são PUBLICADAS pela shell**, e o índice escolhido resolve-se contra **essa mesma**
+  lista — uma segunda leitura poria o nome escolhido a apontar para outro no quadro em que o artista
+  criasse uma acção.
+* ⛔ **A seta NÃO tem botão de «percorrer» nesta wave, e a ausência é deliberada:** o que ele faria é
+  pôr a máquina VIVA a andar, e ela nasce na W5. Um botão pintado antes disso é um clique que não
+  faz nada — *é assim que o artista aprende a não confiar nos botões desta seção*, e é a lei que a
+  própria seção de poses já escreve (*"Show e Clear só existem depois do Rec"*).
+
 ## §4 — As waves
 
 | | | estado |
@@ -154,7 +184,8 @@ listas escritas à mão só é alcançável se um gate percorrer as dez* — e a
 | **W2** | O componente + a persistência | ✅ **2026-08-25** — 2 gates, 1 mutação, e ⛔ o `PROJECT_SCHEMA` **não** se mexeu (§3) |
 | **W3a** | **O CANVAS, metade de VER**: as setas desenhadas entre as formas | ✅ **2026-08-25** — 8 gates, **6 mutações, 6 sangraram** |
 | **W3b** | **O CANVAS, metade de AUTORAR**: `DrawMode::MorphLink` — arrastar de uma forma para outra cria a seta | ✅ **2026-08-25** — 5 gates, **4 mutações, 4 sangraram** |
-| **W4** | A secção **States** do painel: a lista de setas, a condição (lê as acções do Input Map), o ritmo | ⏳ |
+| **W4a** | A secção **States**: a lista de setas + a **condição** (menu das acções do Input Map) + apagar | ✅ **2026-08-25** — 7 gates, **6 mutações, 6 sangraram** |
+| **W4b** | O **ritmo** por seta (duração · curva · mola) — e o botão de **percorrer**, que precisa da máquina viva (W5) | ⏳ |
 | **W5** | O **modo preview** + o ledger de undo (⚠️ o `Driven::MorphT` cobre o `t`, **não** o `sources`) | ⏳ |
 | **W6** | A cena de smoke, com números MEDIDOS | ⏳ |
 

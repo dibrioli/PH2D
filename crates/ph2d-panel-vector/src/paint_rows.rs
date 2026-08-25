@@ -165,6 +165,25 @@ impl BodyCtx<'_> {
         y + self.row_h + Spacing::Xs.px()
     }
 
+    /// **O mesmo readout, num RECT dado, e sem avançar o `y`** — para quando a linha partilha a
+    /// altura com botões à direita.
+    ///
+    /// ⚠️ Ela delega no mesmo `paint_text` da irmã de propósito: duas leis de *onde o texto assenta
+    /// na altura da row* divergiriam no primeiro ajuste de tipografia, e o artista veria duas
+    /// linhas vizinhas desalinhadas por um pixel.
+    pub(crate) fn label_line_in(&mut self, text: &str, rect: Rect) {
+        paint_text(
+            self.text_system,
+            self.scene,
+            text,
+            rect.x,
+            rect.y + (rect.h - TypeToken::Sm.px()) * 0.5,
+            TypeToken::Sm.px(),
+            rect.w,
+            resolve(ColorToken::Text2, self.theme),
+        );
+    }
+
     /// A full-width action button (Boolean / Vertex-delete / Duplicate).
     pub(crate) fn action_button(&mut self, id: ph2d_a11y::NodeId, label: &str, y: f32) -> f32 {
         self.action_button_kind(id, label, ButtonKind::Default, y)

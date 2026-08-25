@@ -9,7 +9,6 @@
 //! swatches), so the panel holds no authoritative state.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::zones::Rect;
 use ph2d_tool_vector::shapes::ShapeGroup;
 use ph2d_tool_vector::{TextAlign, VectorStyleSnapshot, VertexSel};
 use ph2d_vec_scene::ShapeKind;
@@ -107,6 +106,28 @@ pub(crate) use widget_state::{
 mod ui_states_state;
 pub(crate) use ui_states_state::ui_states_state;
 pub use ui_states_state::{UiStatesState, set_ui_states_state};
+
+/// ⭐ **QUAL POPOVER ESTÁ ABERTO neste quadro** — irmão pelo teto de 600 LOC, e o corte é por
+/// ASSUNTO: os quatro slots respondem a **uma** pergunta (*que chip guardou o rect para o passe
+/// diferido?*), e nenhuma outra parte deste ficheiro fala de popovers.
+///
+/// ⚠️ Eles nasceram aqui e mudaram-se quando o ficheiro bateu no teto — a linha de corte já era
+/// esta.
+#[path = "state_pending_dd.rs"]
+mod pending_dd;
+pub(crate) use pending_dd::{
+    set_pending_blend_dd, set_pending_font_dd, set_pending_group_dd, set_pending_marker_dd,
+    take_pending_blend_dd, take_pending_font_dd, take_pending_group_dd, take_pending_marker_dd,
+};
+
+/// **AS SETAS do Morph da seleção** (plano 32 W4) — que arestas a máquina tem, e qual delas a cena
+/// está a percorrer.
+#[path = "state_morph_states.rs"]
+mod morph_states_state;
+pub use morph_states_state::{MorphArrowRow, MorphStatesState, set_morph_states_state};
+pub(crate) use morph_states_state::{
+    morph_states_state, set_pending_morph_when_dd, take_pending_morph_when_dd,
+};
 
 /// **COM QUE TINTA a forma aparece** — o tipo de preenchimento, o ângulo do gradiente, os dois
 /// números do ponto selecionado e a regra do caminho composto. Irmão pelo teto de 600 LOC, e o
@@ -210,21 +231,6 @@ thread_local! {
     /// the shell (only after [`request_font_previews`]) so the system-font scan +
     /// parse is paid the first time the dropdown opens, never on Text-mode entry.
     static FONT_PREVIEWS: RefCell<Vec<FontPreview>> = const { RefCell::new(Vec::new()) };
-    /// One-shot: the popover sets this when it has no previews yet; the shell reads
-    /// it (`take_want_font_previews`), builds + publishes, and it stays quiet after.
-    /// Chip rect stashed by the body paint when the font dropdown is open, taken by
-    /// the deferred popover pass so the list paints ON TOP of every section.
-    static PENDING_FONT_DD: Cell<Option<Rect>> = const { Cell::new(None) };
-    /// Idem para o chip de CATEGORIA do catálogo de formas. Sem o passe diferido o
-    /// `push_clip` do scroll cortaria o popover na borda da seção.
-    static PENDING_GROUP_DD: Cell<Option<Rect>> = const { Cell::new(None) };
-    /// Idem para os chips de PONTA do traço — mas guardando também o SLOT (0 = começo,
-    /// 1 = fim): os dois seletores compartilham o passe diferido, e o popover precisa
-    /// saber de quem ele é. Só um fica aberto por vez (abrir o outro fecha este, pelo
-    /// dispatch genérico do dropdown).
-    static PENDING_MARKER_DD: Cell<Option<(usize, Rect)>> = const { Cell::new(None) };
-    /// A LINHA da pilha de filtros cujo chip de mistura está aberto, + o rect dele.
-    static PENDING_BLEND_DD: Cell<Option<(usize, Rect)>> = const { Cell::new(None) };
 }
 
 /// Which kind of fill the selected path has (published by the shell each frame so
@@ -523,43 +529,6 @@ pub(crate) fn request_font_previews() {
 /// opção de fonte). Casa contra as previews publicadas na ordem selecionável.
 pub(crate) fn font_option_index(id: NodeId) -> Option<usize> {
     with_font_previews(|p| (0..p.len()).find(|&i| crate::ids::vector_text_font_option_id(i) == id))
-}
-
-/// O body-paint guarda o rect do chip quando o dropdown de fonte está aberto; o
-/// pass diferido do popover o consome (para pintar POR CIMA das seções).
-pub(crate) fn set_pending_font_dd(rect: Option<Rect>) {
-    PENDING_FONT_DD.with(|c| c.set(rect));
-}
-
-pub(crate) fn take_pending_font_dd() -> Option<Rect> {
-    PENDING_FONT_DD.with(|c| c.take())
-}
-
-/// Idem para o chip de CATEGORIA (o popover das famílias de forma).
-pub(crate) fn set_pending_group_dd(rect: Option<Rect>) {
-    PENDING_GROUP_DD.with(|c| c.set(rect));
-}
-
-pub(crate) fn take_pending_group_dd() -> Option<Rect> {
-    PENDING_GROUP_DD.with(|c| c.take())
-}
-
-/// Idem para o chip de PONTA aberto (`slot` = 0 começo / 1 fim, + o rect do chip).
-pub(crate) fn set_pending_marker_dd(slot_rect: Option<(usize, Rect)>) {
-    PENDING_MARKER_DD.with(|c| c.set(slot_rect));
-}
-
-pub(crate) fn take_pending_marker_dd() -> Option<(usize, Rect)> {
-    PENDING_MARKER_DD.with(|c| c.take())
-}
-
-/// Idem para o chip de LEI DE MISTURA de um degrau da pilha de filtros (`row` + o rect do chip).
-pub(crate) fn set_pending_blend_dd(row_rect: Option<(usize, Rect)>) {
-    PENDING_BLEND_DD.with(|c| c.set(row_rect));
-}
-
-pub(crate) fn take_pending_blend_dd() -> Option<(usize, Rect)> {
-    PENDING_BLEND_DD.with(|c| c.take())
 }
 
 /// `(slot, índice)` da opção de ponta cujo id é `id` (`None` se não for uma). Casa contra

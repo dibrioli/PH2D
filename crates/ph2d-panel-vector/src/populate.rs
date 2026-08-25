@@ -217,6 +217,10 @@ pub fn populate(store: &mut WidgetStore) {
     style::populate_style(store);
     populate_arrange(store);
     populate_connector(store);
+    // ⭐ AS SETAS do Morph (plano 32 W4) — o pool inteiro. ⛔ Aqui e não no módulo que as pinta:
+    // a gate `architecture_panel_wiring_parity` exige a chamada de registro dentro do
+    // `populate.rs`, e ela tem razão (um widget pintado e não registrado nasce morto).
+    modes::populate_morph_arrows(store);
 }
 
 /// Os três campos do **CONECTOR** (Route / Jetty / Spread).

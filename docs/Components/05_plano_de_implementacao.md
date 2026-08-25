@@ -232,11 +232,34 @@ prova de mutação (duplicar blob ⇒ vermelho).
    o bench da F2 precisa dele lá).
 4. Migração `v84→v85` em `project_load.rs` (a primeira do repo): atribui `StableId`/`SiblingOrder`
    na ordem canônica antiga (determinística), semeia o contador.
-5. **As duas famílias de `stable_name_id`, na MESMA wave** (o `name.rs:73-79` proíbe metade):
-   timeline (`WireId` = `StableId`; `timeline_persist.rs:38`, `frame_solve.rs:139/218/251`,
-   `persist.rs:28/54/88`) e física (`PhysicsJoint.body_a/b`, `PulleyWheel.rope/.body`,
-   `bridge/joints.rs:152/315`, `bridge/rope.rs:130`, `joint_group.rs:139` + 12 sítios de inspector
-   + fixtures do `physics_ecs_c9`). `stable_name_id` fica **deprecado com nota**, não removido.
+5. ✅ **As duas famílias de `stable_name_id` — FEITAS** (5a física, 24/08 · 5b timeline, 25/08).
+   `stable_name_id` fica **deprecado com nota**, não removido ([`name.rs`](../../crates/ph2d-ecs/src/name.rs)),
+   e continua a ser a função certa para **autoria** (`stable_id_for_name`) e **legado**.
+
+   ⚠️⚠️ **DUAS afirmações desta linha foram REFUTADAS por medição antes de se tocar em código**
+   (sondas em [`timeline_persist_tests.rs`](../../shells/desktop/src/timeline_persist_tests.rs), o
+   mecanismo no cabeçalho de [`timeline_persist.rs`](../../shells/desktop/src/timeline_persist.rs)):
+
+   - ⛔ **«renomear desliga a binding da timeline» era FALSO.** A metade viva do
+     `refresh_and_heal_bindings` re-carimbava o `wire_id` a partir do nome CORRENTE a cada frame, então
+     o rename era seguido em silêncio — inclusive atravessando o arquivo de projeto. *Duas famílias
+     partilhavam a função e **não** partilhavam o defeito:* a junta guardava o hash e nunca o
+     refrescava; a binding refrescava-o sempre. ⇒ A **condição de pronto (3) mede a física**, e o que
+     a troca cura na timeline é **outra coisa**: dois objetos com o mesmo nome faziam a animação
+     **DESAPARECER** (dormente, sem badge nem erro). Gate novo: `two_homonyms_no_longer_hide_the_animation`.
+   - ⛔ **`frame_solve.rs:139/218/251` NÃO pertence a este passo, e não deve mudar.** Ali o
+     `stable_name_id` hasheia **o texto que o autor escreveu** (`Expr::Attr("Ball.x")` — o
+     `resolve_link` parte a string no `.`), não uma referência guardada. Trocá-lo por `StableId` poria
+     a fórmula a mostrar `Ball` e a ler outro objeto: *uma variável de fórmula é um nome por
+     construção*. `persist.rs:28/54/88` também não muda — são genéricas sobre `WireId` (closures), e o
+     que mudou foi o **significado** do número, escrito no shell.
+
+   **O que de facto mudou (5b):** `wire_of` devolve o `StableId` · o mapa do `upkeep` leva **duas
+   chaves** (identidade + o hash legado, com a identidade a ganhar) · `serialize` passou a `&mut World`
+   e garante os ids ele próprio (corre **antes** da captura). ⭐ **Sem degrau de schema:** um documento
+   legado sobe de substrato sozinho — heal por hash num frame, re-carimbo com o id no seguinte.
+   ⚠️ Os mundos de teste que spawnavam `Name` **sem `Transform`** foram corrigidos: nenhum objeto deste
+   app nasce assim, e a fixtura irreal deixava-os sem id.
 6. Corte da Sprite (doc 04 C4): `per_corner_tint` → `SpriteCornerTint` · folha inline →
    `SpriteSheet` · região → `SpriteRegion` — **ausência = default benigno**, criar sprite continua
    1 gesto. ⚠️ Os três somam nos contadores (regra §0.1.2) e o cap do ADR-0074 (≤32 opcionais)

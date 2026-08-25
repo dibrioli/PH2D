@@ -48,12 +48,13 @@ impl crate::App {
         // coisas seria gravar duas verdades sobre o mesmo sprite. Antes dele, o carimbo ainda
         // não existiria e o achatado entraria no arquivo à socapa.
         let sprite_pixels = self.collect_sprite_pixels();
-        // A animação. O `serialize` carimba em cada binding o hash do NOME do objeto — é por
-        // ele que a track reencontra o objeto do outro lado do arquivo (os bits de entidade
-        // não sobrevivem a um respawn). Precisa do mundo, então vem antes da captura.
-        let timeline = match self.gfx.as_ref() {
+        // A animação. O `serialize` carimba em cada binding a IDENTIDADE do objeto
+        // (`StableId`) — é por ela que a track reencontra o objeto do outro lado do arquivo
+        // (os bits de entidade não sobrevivem a um respawn). Precisa do mundo, então vem antes
+        // da captura — e por isso pede `&mut`: os ids têm de existir aqui, não depois.
+        let timeline = match self.gfx.as_mut() {
             Some(gfx) => {
-                let world = gfx.sim.world();
+                let world = gfx.sim.world_mut();
                 match crate::timeline_persist::serialize(&mut self.timeline, world) {
                     Ok(b) => b,
                     Err(e) => {

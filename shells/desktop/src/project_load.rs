@@ -381,9 +381,9 @@ impl crate::App {
         // **A ANIMAÇÃO** (W4.T6/B5). Já parseada lá em cima (um documento ilegível recusa o
         // arquivo INTEIRO, antes de tocar na sessão). As bindings entram DESTACADAS — `entity`
         // zerada — e o `upkeep` do frame as recola nos objetos que o `apply_project` acabou de
-        // spawnar, pelo hash do `Name`: a MESMA função que cura delete+undo. Por isso este
-        // passo não precisa do mundo, e por isso o load não pode divergir do undo — a
-        // resolução por nome existe uma vez só.
+        // spawnar, pela identidade guardada (`StableId`): a MESMA função que cura delete+undo.
+        // Por isso este passo não precisa do mundo, e por isso o load não pode divergir do undo —
+        // a resolução existe uma vez só.
         let tracks = timeline.doc.bindings().len();
         self.timeline = timeline;
         // **O LOOP mora no CLIP** e é POR-VISTA (`NamedClip.loop_range` para a timeline,

@@ -76,7 +76,7 @@ pub fn resolve_entities(doc: &mut TimelineDoc, entity_of: impl Fn(WireId) -> Opt
 /// instead of at the save/load boundary.
 ///
 /// Two halves: every LIVE binding refreshes its `wire_id` from its object (so
-/// the name-hash is already stored when the entity later dies), and every
+/// the id is already stored when the entity later dies), and every
 /// MISSING binding with a known `wire_id` tries to reconnect. This is what lets
 /// a track survive its object: deleting the object hides its rows (the snapshot
 /// skips missing bindings), and when an object with the same name comes back —
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn a_missing_binding_heals_back_to_a_live_entity_with_its_wire_id() {
-        // Session-time upkeep: entity 10's binding got its name-hash stamped
+        // Session-time upkeep: entity 10's binding got its wire id stamped
         // while alive (wire 100); the object died (missing) and came back under
         // fresh bits (11) — the binding must reconnect, and the live one (20)
         // must keep refreshing its stamp.

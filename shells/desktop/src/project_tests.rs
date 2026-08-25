@@ -72,12 +72,19 @@ fn write_project(path: &std::path::Path, schema: u32) {
     write_project_with(path, schema, Vec::new());
 }
 
-/// O documento de uma animação: uma track em `hero`, com o `wire_id` (hash do nome) carimbado
-/// como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.
+/// O documento de uma animação: uma track em `hero`, com o `wire_id` (a identidade do objeto)
+/// carimbado como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.
 fn animation_of_hero() -> Vec<u8> {
     use ph2d_ecs::{Name, SimWorld};
     let mut sim = SimWorld::new();
-    let hero = sim.world_mut().spawn(Name::new("hero")).id().to_bits();
+    // ⚠️ Com `Transform`: o `StableId` só é atribuído a quem a DFS do snapshot alcança
+    // (`Transform` ou `ChildOf`), e nenhum objeto deste app nasce sem um. Sem ele o
+    // `serialize` carimbaria NULL e a fixtura não conteria o fenómeno que o gate mede.
+    let hero = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id()
+        .to_bits();
     let mut timeline = ph2d_timeline::TimelineState::new();
     timeline.doc.upsert_key(
         hero,
@@ -86,7 +93,8 @@ fn animation_of_hero() -> Vec<u8> {
         ph2d_timeline::AnimValue::Float(42.0),
         ph2d_timeline::Interp::Linear,
     );
-    crate::timeline_persist::serialize(&mut timeline, sim.world()).expect("serializa a timeline")
+    crate::timeline_persist::serialize(&mut timeline, sim.world_mut())
+        .expect("serializa a timeline")
 }
 
 /// Um caminho temporário por gate (os testes correm em paralelo, no mesmo processo —
@@ -161,12 +169,13 @@ fn a_loaded_project_rewinds_the_clock_and_starts_a_fresh_history() {
 ///
 /// A timeline do documento ANTERIOR não pode sobreviver ao Ctrl+O — e o perigo não é lixo, é
 /// ADOÇÃO: as bindings dela nomeiam entidades que o `apply_project` acabou de despawnar → ficam
-/// `missing` → e o `timeline_persist::upkeep` **reconecta binding órfã pelo hash do `Name`** (é o
-/// que faz delete+undo curar a animação). Nomes se repetem entre projetos ("Layer 1",
-/// "sprite_001"): sem este reset, a animação do projeto A adotaria os objetos homônimos do
-/// projeto B no frame seguinte e passaria a dirigir a pose deles — uma animação que não está em
-/// arquivo nenhum, sobre um projeto que nunca a teve, e com a fila de undo zerada pelo próprio
-/// load. (O arquivo AGORA carrega a sua própria timeline — W4.T6/B5 — e é ela que entra no lugar:
+/// `missing` → e o `timeline_persist::upkeep` **reconecta binding órfã pela identidade guardada**
+/// (é o que faz delete+undo curar a animação). ⚠️ **E identidades também se repetem entre
+/// projetos** — o `StableId` é sequencial por documento, então `1` existe em todo projeto, tal
+/// como "Layer 1" e "sprite_001" existiam quando a chave era o nome: sem este reset, a animação
+/// do projeto A adotaria os objetos de mesmo id do projeto B no frame seguinte e passaria a
+/// dirigir a pose deles — uma animação que não está em arquivo nenhum, sobre um projeto que
+/// nunca a teve, e com a fila de undo zerada pelo próprio load. (O arquivo AGORA carrega a sua própria timeline — W4.T6/B5 — e é ela que entra no lugar:
 /// ver `a_loaded_project_brings_its_animation_back_pending_the_name_heal`.)
 ///
 /// (A dupla `autokey` + `timeline_insert_key` vai junto pelo mesmo motivo do
@@ -280,9 +289,9 @@ fn a_refused_load_leaves_the_clock_and_the_history_alone() {
 ///
 /// As bindings voltam **destacadas** (`entity == 0`, `missing`) de propósito: os bits de
 /// entidade do save não valem nada nesta sessão — e, pior, poderiam colidir com um objeto
-/// DIFERENTE e vivo. Quem as recola é o `upkeep` do frame, pelo hash do `Name` — a mesma
-/// função que cura delete+undo, gateada em `timeline_persist`
-/// (`the_animation_crosses_the_project_file_and_finds_its_objects_by_name`).
+/// DIFERENTE e vivo. Quem as recola é o `upkeep` do frame, pela IDENTIDADE guardada
+/// (`StableId`, ADR-0164 F1 passo 5b) — a mesma função que cura delete+undo, gateada em
+/// `timeline_persist` (`the_animation_crosses_the_project_file_and_finds_its_objects_by_name`).
 #[test]
 fn a_loaded_project_brings_its_animation_back_pending_the_name_heal() {
     let mut app = headless_app();
@@ -301,7 +310,7 @@ fn a_loaded_project_brings_its_animation_back_pending_the_name_heal() {
     );
     assert!(
         !bindings[0].wire_id.is_null(),
-        "…carregando a identidade por NOME, que é o que sobrevive a um respawn"
+        "…carregando a IDENTIDADE do objeto, que é o que sobrevive a um respawn"
     );
     assert!(
         bindings[0].missing && bindings[0].entity == 0,

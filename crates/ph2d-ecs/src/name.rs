@@ -77,6 +77,35 @@ impl Name {
 /// `StableId` component assigned at spawn, migrated for *both* consumers at
 /// once; a second identity scheme for one of them would be the divergence this
 /// doc-comment is here to prevent.
+///
+/// # ⛔ DEPRECADO como identidade (ADR-0164 F1 passo 5) — e o parágrafo acima
+/// estava ERRADO sobre metade dos consumidores
+///
+/// O dia previsto chegou: [`crate::StableId`] existe, e **as duas famílias
+/// migraram na mesma fase**, como este doc-comment exigia — a física (`PhysicsJoint`,
+/// `PulleyWheel`; `ph2d-physics-ecs/src/name_refs.rs`) e a timeline (o `WireId` de
+/// `TargetBinding`; `shells/desktop/src/timeline_persist.rs`).
+///
+/// ⚠️ **Mas «renomear desliga» só era verdade para a física.** Medido em 2026-08-25,
+/// antes de mudar uma linha: a timeline re-carimbava o `wire_id` a partir do nome
+/// CORRENTE a cada frame, então um rename era seguido em silêncio — inclusive
+/// atravessando o arquivo de projeto. *Duas famílias partilhavam esta função e não
+/// partilhavam o defeito;* o que a troca de substrato de facto curou na timeline foi
+/// o **empate de nome**, que fazia a animação desaparecer sem badge nem erro.
+///
+/// **Continua a ser a função certa para duas coisas, e só para essas:**
+///
+/// 1. **Autoria** — traduzir o nome que um humano escolheu para a identidade do objeto
+///    que o tem, UMA vez ([`crate::stable_id_for_name`]). *"Prende ao Poste"* é o que
+///    uma pessoa diz; `47` não é.
+/// 2. **Legado** — reler ficheiros gravados antes desta wave, onde o hash É o que está
+///    em disco. Os dois sítios que ainda o fazem estão nomeados: `resolve_body_names`
+///    (migração v95) e o mapa do `timeline_persist::upkeep` (a chave legada).
+///
+/// ⛔ **Não a use como a identidade guardada de um objeto num componente novo.** Um
+/// campo que guarde este hash reintroduz, sozinho, os dois defeitos que a wave curou —
+/// e a colisão passa muda, porque um `u64` de nome e um `u64` de identidade têm o mesmo
+/// tipo. Guarde um [`crate::StableId`].
 pub fn stable_name_id(name: &str) -> u64 {
     const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const PRIME: u64 = 0x0000_0100_0000_01b3;

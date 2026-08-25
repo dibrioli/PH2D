@@ -13,7 +13,12 @@ fn world_with(names: &[&str]) -> (SimWorld, Vec<u64>) {
     let mut sim = SimWorld::new();
     let bits = names
         .iter()
-        .map(|n| sim.world_mut().spawn(Name::new(*n)).id().to_bits())
+        .map(|n| {
+            sim.world_mut()
+                .spawn((ph2d_ecs::Transform::IDENTITY, Name::new(*n)))
+                .id()
+                .to_bits()
+        })
         .collect();
     (sim, bits)
 }
@@ -109,7 +114,10 @@ fn an_authored_duration_including_an_infinite_clip_survives_load() {
 #[test]
 fn deleting_the_last_animated_object_resets_the_timeline_to_four_seconds() {
     let mut sim = SimWorld::new();
-    let hero = sim.world_mut().spawn(Name::new("hero")).id();
+    let hero = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
     let mut timeline = TimelineState::with_default_duration();
     key(&mut timeline, hero.to_bits()); // anima o objeto -> cria uma binding
     assert_eq!(timeline.doc.bindings().len(), 1);
@@ -135,30 +143,101 @@ fn deleting_the_last_animated_object_resets_the_timeline_to_four_seconds() {
     );
 }
 
-/// **Um nome AMBÍGUO não cura, não purga — recusa.**
+/// ⭐ **DOIS objetos com o mesmo nome já não fazem a animação desaparecer** — a cura de
+/// produto do ADR-0164 F1 passo 5b, medida a vermelho antes de existir.
 ///
-/// A animação reencontra o objeto pelo NOME (`wire_id` = hash do `Name`), e a unicidade é um
-/// invariante mantido em N lugares do shell. Se dois objetos vivos dividem o nome, *"de quem é
-/// esta track?"* não tem resposta — curar num deles seria dirigir a pose do objeto errado, e
-/// PURGAR seria destruir trabalho por causa de um empate transitório. A track fica dormente
-/// (some do painel) até o empate acabar; então cura no que sobrou.
+/// **O defeito que este gate substitui.** Enquanto a identidade era o hash do `Name`, um
+/// homónimo tornava *"de quem é esta track?"* uma pergunta sem resposta, e o `upkeep`
+/// recusava as duas saídas: não curava (dirigir a pose do objeto errado) e não purgava
+/// (destruir trabalho por um empate). A track ficava **dormente — sumia do painel** —, sem
+/// badge e sem erro, até o empate acabar. Medido antes da troca: uma binding carregada de um
+/// projeto para um mundo com dois `hero` voltava `missing = true`.
+///
+/// Hoje a resposta existe: dois objetos nunca partilham um [`ph2d_ecs::StableId`], então o
+/// empate **não se forma**. O caso especial não foi resolvido — a representação apagou-o.
+///
+/// (Mutação: pôr o `wire_of` a devolver o hash do nome outra vez ⇒ `missing` volta — RED.)
 #[test]
-fn an_ambiguous_name_refuses_to_heal_and_refuses_to_purge() {
+fn two_homonyms_no_longer_hide_the_animation() {
     let mut sim = SimWorld::new();
-    let hero = sim.world_mut().spawn(Name::new("hero")).id();
+    let hero = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
     let mut timeline = TimelineState::new();
     key(&mut timeline, hero.to_bits());
-    assert!(
-        !upkeep(&mut timeline, sim.world_mut()),
-        "vivo: nada a fazer"
-    );
+    upkeep(&mut timeline, sim.world_mut()); // carimba a identidade em vida
+    let bytes = serialize(&mut timeline, sim.world_mut()).expect("serializa");
 
-    // O objeto morre — e ANTES do próximo upkeep dois homônimos entram em cena
-    // (um sprite renomeado, uma forma homônima). O empate tem de existir no
-    // frame em que a purga olharia, senão a fixture não contém o fenômeno.
+    // A sessão seguinte: o objeto animado volta, e um HOMÓNIMO existe ao lado dele — a
+    // forma que a F4 traz (mestre + cópia) e que qualquer duplicação de nome produz.
+    let mut sim2 = SimWorld::new();
+    let hero2 = sim2
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
+    let twin = sim2
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
+    assert_ne!(hero2, twin);
+    // O restore reinsere a identidade da linha do snapshot; aqui ela é encenada à mão.
+    let id = ph2d_ecs::stable_id_of(sim.world(), hero).expect("o upkeep atribuiu");
+    sim2.world_mut().entity_mut(hero2).insert(id);
+
+    let mut loaded = install_from_project(&bytes).expect("install");
+    assert!(
+        !upkeep(&mut loaded, sim2.world_mut()),
+        "há animação viva: nada reseta"
+    );
+    let b = &loaded.doc.bindings()[0];
+    assert!(
+        !b.missing,
+        "o homónimo já não esconde a animação — ela recola no objeto certo"
+    );
+    assert_eq!(b.entity, hero2.to_bits(), "e é o objeto certo, não o gémeo");
+}
+
+/// **A metade que SOBREVIVE: um documento LEGADO com nome ambíguo continua a recusar as
+/// duas saídas.**
+///
+/// A chave legada (o hash do `Name`) ainda está no mapa do `upkeep` — sem ela a purga
+/// apagaria a animação de todo projeto gravado antes do ADR-0164 F1. E enquanto ela for
+/// consultada, o empate que ela pode formar tem de manter a lei antiga, **palavra por
+/// palavra**: curar num dos dois seria dirigir a pose do objeto errado, e PURGAR seria
+/// destruir trabalho por causa de um empate transitório. A track fica dormente até o empate
+/// acabar; então cura no que sobrou.
+///
+/// ⚠️ **Este gate morre com a chave legada, não antes** — ver a nota de deprecação em
+/// [`ph2d_ecs::stable_name_id`].
+#[test]
+fn a_legacy_documents_ambiguous_name_still_refuses_to_heal_and_to_purge() {
+    let mut sim = SimWorld::new();
+    let hero = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
+    let mut timeline = TimelineState::new();
+    key(&mut timeline, hero.to_bits());
+    upkeep(&mut timeline, sim.world_mut());
+
+    // ⚠️ A fixtura tem de conter o fenómeno: um documento LEGADO guarda o HASH DO NOME no
+    // `wire_id`. Carimbá-lo à mão é o que um `.ph2dproj` pré-ADR-0164 traz de disco.
+    timeline.doc.bindings_mut()[0].wire_id =
+        ph2d_timeline::WireId(ph2d_ecs::stable_name_id("hero"));
+
+    // O objeto morre — e ANTES do próximo upkeep dois homónimos entram em cena (um sprite
+    // renomeado, uma forma homónima). O empate tem de existir no frame em que a purga
+    // olharia, senão a fixtura não contém o fenómeno.
     sim.world_mut().despawn(hero);
-    let a = sim.world_mut().spawn(Name::new("hero")).id();
-    let b = sim.world_mut().spawn(Name::new("hero")).id();
+    let a = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
+    let b = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
     assert_ne!(a, b);
     ph2d_timeline::apply_from_doc(sim.world_mut(), &mut timeline.doc, 0.0);
     assert!(timeline.doc.bindings()[0].missing);
@@ -182,6 +261,29 @@ fn an_ambiguous_name_refuses_to_heal_and_refuses_to_purge() {
     upkeep(&mut timeline, sim.world_mut());
     assert_eq!(timeline.doc.bindings()[0].entity, a.to_bits());
     assert!(!timeline.doc.bindings()[0].missing, "sem empate, cura");
+
+    // ⭐ **E o documento legado SOBE DE SUBSTRATO sozinho** — sem degrau de schema e sem
+    // migração escrita: o re-carimbo escreve a identidade por cima do hash.
+    //
+    // ⚠️ **São DOIS frames, e a fronteira é deliberada.** O `refresh_and_heal_bindings` tem
+    // uma passagem só, e nela cada binding é OU curada (resolve pela chave guardada) OU
+    // re-carimbada (lê o mundo) — nunca as duas. Fundi-las faria a mesma passagem ler e
+    // escrever o mesmo campo, e o heal deixaria de ser só uma leitura da chave. A janela é
+    // de 1/60 s e não tem consequência: se o Ctrl+S cair dentro dela, o `serialize` carimba
+    // a identidade na mesma (ele lê `wire_of` da entidade, que a cura já resolveu).
+    let stale = timeline.doc.bindings()[0].wire_id;
+    assert_eq!(
+        stale,
+        ph2d_timeline::WireId(ph2d_ecs::stable_name_id("hero")),
+        "no frame da cura a chave ainda é a legada"
+    );
+    upkeep(&mut timeline, sim.world_mut());
+    let id = ph2d_ecs::stable_id_of(sim.world(), a).expect("tem id");
+    assert_eq!(
+        timeline.doc.bindings()[0].wire_id,
+        ph2d_timeline::WireId(id.0),
+        "no frame seguinte subiu para a identidade — o hash não fica lá a envelhecer"
+    );
 }
 
 /// **Deletar o objeto purga a track dele no MESMO upkeep** (Enio, 2026-07-22: *"a timeline
@@ -196,7 +298,10 @@ fn an_ambiguous_name_refuses_to_heal_and_refuses_to_purge() {
 #[test]
 fn a_deleted_objects_track_is_purged_and_the_last_one_resets_the_document() {
     let mut sim = SimWorld::new();
-    let hero = sim.world_mut().spawn(Name::new("hero")).id();
+    let hero = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
     let mut timeline = TimelineState::new();
     key(&mut timeline, hero.to_bits());
     upkeep(&mut timeline, sim.world_mut()); // carimba o wire_id em vida
@@ -244,11 +349,11 @@ fn a_deleted_objects_track_is_purged_and_the_last_one_resets_the_document() {
 #[test]
 fn the_animation_crosses_the_project_file_and_finds_its_objects_by_name() {
     // Sessão 1: dois sprites nomeados, uma track cada.
-    let (save_world, save_bits) = world_with(&["sprite_001", "sprite_002"]);
+    let (mut save_world, save_bits) = world_with(&["sprite_001", "sprite_002"]);
     let mut timeline = TimelineState::new();
     key(&mut timeline, save_bits[0]);
     key(&mut timeline, save_bits[1]);
-    let bytes = serialize(&mut timeline, save_world.world()).unwrap();
+    let bytes = serialize(&mut timeline, save_world.world_mut()).unwrap();
 
     // Sessão 2: os MESMOS nomes, bits NOVOS (as entidades descartadas deslocam o
     // alocador, para que os bits realmente difiram).
@@ -258,7 +363,12 @@ fn the_animation_crosses_the_project_file_and_finds_its_objects_by_name() {
     }
     let load_bits: Vec<u64> = ["sprite_001", "sprite_002"]
         .iter()
-        .map(|n| sim2.world_mut().spawn(Name::new(*n)).id().to_bits())
+        .map(|n| {
+            sim2.world_mut()
+                .spawn((ph2d_ecs::Transform::IDENTITY, Name::new(*n)))
+                .id()
+                .to_bits()
+        })
         .collect();
     assert_ne!(save_bits, load_bits, "um respawn dá bits novos");
 
@@ -295,11 +405,11 @@ fn the_animation_crosses_the_project_file_and_finds_its_objects_by_name() {
 /// OUTRAS bindings curam normalmente, e curar uma é o que impede o reset total.
 #[test]
 fn a_track_whose_object_is_not_in_the_loaded_project_leaves_with_it() {
-    let (save_world, save_bits) = world_with(&["sprite_001", "sprite_002"]);
+    let (mut save_world, save_bits) = world_with(&["sprite_001", "sprite_002"]);
     let mut timeline = TimelineState::new();
     key(&mut timeline, save_bits[0]);
     key(&mut timeline, save_bits[1]);
-    let bytes = serialize(&mut timeline, save_world.world()).unwrap();
+    let bytes = serialize(&mut timeline, save_world.world_mut()).unwrap();
 
     // Sessão 2: só o primeiro sprite voltou.
     let (mut load_world, _) = world_with(&["sprite_001"]);
@@ -325,10 +435,10 @@ fn a_track_whose_object_is_not_in_the_loaded_project_leaves_with_it() {
 /// próprio da timeline.)
 #[test]
 fn install_resets_panel_state_so_undo_cannot_cross_sessions() {
-    let (world, bits) = world_with(&["sprite_001"]);
+    let (mut world, bits) = world_with(&["sprite_001"]);
     let mut timeline = TimelineState::new();
     key(&mut timeline, bits[0]);
-    let bytes = serialize(&mut timeline, world.world()).unwrap();
+    let bytes = serialize(&mut timeline, world.world_mut()).unwrap();
 
     let mut dirty = TimelineState::new();
     key(&mut dirty, bits[0]); // uma sessão suja: um passo no histórico
@@ -483,7 +593,11 @@ fn renaming_the_object_renames_its_rows() {
 #[test]
 fn an_object_without_a_name_publishes_none() {
     let mut sim = SimWorld::new();
-    let bits = sim.world_mut().spawn(Name::new("Ghost")).id().to_bits();
+    let bits = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("Ghost")))
+        .id()
+        .to_bits();
     let mut view = view_of(&[bits]);
     publish_object_names(&mut view, sim.world());
     assert_eq!(view.object_name(bits), Some("Ghost"), "premissa");

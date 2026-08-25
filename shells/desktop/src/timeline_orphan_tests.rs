@@ -267,15 +267,22 @@ fn the_purge_is_one_timeline_undo_step_and_the_undo_heals_back() {
         .id();
     crate::nest_smoke::build_library(&mut timeline.doc, obj.to_bits());
     run_frame(&mut sim, &mut timeline); // carimba o wire_id em vida
+    // ⚠️ **A identidade que o snapshot vai devolver.** Até o ADR-0164 F1 este teste
+    // encenava o Ctrl+Z global spawnando um objeto NOVO com o mesmo `Name`, e isso era
+    // fiel enquanto a identidade ERA o nome. Hoje o `snapshot_to_world` reinsere o
+    // `StableId` da linha (`row.id`), então um homónimo de id novo não é um respawn — é
+    // outro objeto. A encenação passa a carregar o id, que é o que o restore de facto faz.
+    let id = ph2d_ecs::stable_id_of(sim.world(), obj).expect("o upkeep atribuiu o id");
 
     sim.world_mut().despawn(obj);
     assert!(run_frame(&mut sim, &mut timeline), "reset");
     assert!(timeline.doc.containers().is_empty(), "resetou mesmo");
 
-    // Ctrl+Z global: o undo restaura o `Name` literal do snapshot (nunca `unique_name`).
+    // Ctrl+Z global: o undo restaura o `Name` literal do snapshot (nunca `unique_name`)
+    // e **reinsere o `StableId`** — bits novos, identidade a mesma.
     let reborn = sim
         .world_mut()
-        .spawn((Transform::IDENTITY, Name::new("LibraryDemo")))
+        .spawn((Transform::IDENTITY, Name::new("LibraryDemo"), id))
         .id();
     assert_ne!(reborn, obj, "um respawn da' bits novos");
 

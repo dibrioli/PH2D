@@ -145,6 +145,10 @@ pub(crate) mod conferencia_demos_vary;
 /// ⚠️ As oito bandas montam a topologia do INTEGRADOR: uma forca so' acumula `accel`.
 #[path = "motion_state_conferencia_demos_forces.rs"]
 pub(crate) mod conferencia_demos_forces;
+/// A cena do DOMINIO DE VALOR (`=96`) — a faixa como campo, a janela causal, a
+/// tolerancia do de-spike e o eixo contra a magnitude (folha 15).
+#[path = "motion_state_conferencia_demos_value.rs"]
+pub(crate) mod conferencia_demos_value;
 
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.

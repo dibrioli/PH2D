@@ -507,6 +507,9 @@ mod sibling;
 /// O anuncio da cena `=90` — qual fatia, que eixo, que leque (folha 04, as ultimas sete).
 #[path = "motion_state_demo_conferencia_slice.rs"]
 mod slice;
+/// O anuncio da cena `=96` — o que um campo de valor nao sabia dizer (folha 15).
+#[path = "motion_state_demo_conferencia_value.rs"]
+mod value;
 /// O anuncio da cena `=94` — a forma desenhada e a variacao por elemento.
 #[path = "motion_state_demo_conferencia_vary.rs"]
 mod vary;
@@ -522,4 +525,5 @@ pub(super) use ladder::ladder_family;
 pub(super) use plume::plume_family;
 pub(super) use sibling::sibling_family;
 pub(super) use slice::slice_family;
+pub(super) use value::value_family;
 pub(super) use vary::vary_family;

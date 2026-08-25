@@ -53,7 +53,7 @@
 | **Quem é o Enio / estado do projeto** | [project-memory/MEMORY.md](project-memory/MEMORY.md) |
 | **Quem possui o quê agora** | **Modo L: `git worktree list`** — o registro de posse é a própria árvore, e responde na hora. ⚠️ [SESSION_ACTIVE.md](docs/SESSION_ACTIVE.md) é do **Modo C** e o seu único escritor autorizado (o Coordenador) **não existe neste tier**: em 2026-08-18 ele estava parado desde 04/08 com 5 worktrees vivas |
 | **Achar um ADR pelo número** | [`decisions/README.md`](docs/architecture/decisions/README.md) — índice **derivado** (`bash scripts/adr-index.sh`), com o `Status:` e quem alega supersedê-lo |
-| **Reimplementar código RESTRITO (GPL/proprietário)** | [SKILL_Cleanroom_Reimplementacao.md](docs/_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md) (`/pd-cleanroom`) — triagem de licença PRIMEIRO (a porta permissiva quase sempre existe); papéis E/I/R; ⛔ quem escreve o produto nunca viu o fonte do alvo |
+| **Reimplementar código RESTRITO (GPL/proprietário)** | [SKILL_Cleanroom_Reimplementacao.md](docs/_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md) (`/pd-cleanroom`) — triagem de licença PRIMEIRO (a porta permissiva quase sempre existe); **uma feature = UMA linha, UMA janela** (E/R são subagentes; a retomada assume a MESMA linha); ⛔ quem escreve o produto nunca viu o fonte do alvo |
 
 > **Os 15 comandos de fluxo vivem em [`.claude/commands/`](.claude/commands/) e são versionados** —
 > `/pd-feature` · `/pd-linha-abrir` · `/pd-linha-assumir` · `/pd-linha-fechar` · `/pd-integracao` ·

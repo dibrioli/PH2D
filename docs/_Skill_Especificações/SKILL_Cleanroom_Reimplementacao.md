@@ -3,10 +3,14 @@
 > **Fonte única** do protocolo que transforma qualquer código publicado-mas-restrito (GPL,
 > AGPL, copyleft em geral) em feature do PH2D — **sem contaminar o produto e sem pagar o
 > preço de reconstruir às cegas a partir dos papers**. Genérica de propósito: o alvo entra
-> pelos blocos do §10, como em
+> pelo **BLOCO-LINHA** do §10, como em
 > [`MODELO_ABERTURA_LINHA.md`](../IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md).
 > Verificada adversarialmente em 4 lentes (jurídica · implementador cético · canais de
 > vazamento · consistência com a casa) em 2026-08-24; 52 achados aplicados.
+> **Reescrita em 2026-08-25 por veredito de operação do Enio** (a jornada do quad remesh):
+> **uma feature = UMA linha; janelas ao mínimo** — o fluxo de 4 janelas encadeadas morreu;
+> o fluxo é UMA janela orquestradora, com E/R como subagentes e revezamento pela MESMA
+> linha (§3, §10). A base legal e os instrumentos (§§0–2, 4–9) não mudaram.
 >
 > A tese em uma linha: **quase tudo que interessa num código restrito não é protegível —
 > algoritmo, matemática, comportamento, formato, interface. A única coisa protegida é a
@@ -186,19 +190,41 @@ essa fase.
 ⚠️ **T1 é o degrau que a pressa pula e não devia:** a pergunta *"existe QUALQUER
 implementação permissiva deste algoritmo no mundo?"* custa uma sessão de busca e tem
 resposta *sim* com frequência surpreendente. ⚠️ E se a rota escolhida virar um porte
-T0/T0½, o papel muda: é **porte fiel, não clean-room** — e quem o executa é **outra
-janela**, não uma que já leu o alvo copyleft.
+T0/T0½, o clean-room **acabou**: é **porte fiel**, sem parede — e no fluxo do §3 quem
+leu o alvo copyleft foi um subagente, então a **própria janela da linha** porta o
+código permissivo (o contexto dela segue limpo; mantenha atribuição/cabeçalhos).
 
 ---
 
-## §3 — Os três papéis e a parede
+## §3 — Os três CONTEXTOS, a parede — e o fluxo: UMA linha, UMA janela
 
-Três papéis, três janelas, **um único canal** entre os dois primeiros: a espec.
-⚠️ Em LLM, **contexto é exposição**: janela que conteve o fonte do alvo está queimada
-para o papel I — e compactação **não lava** (o resumo descende do que a janela viu),
-nem `--resume` (o resume restaura).
+A separação E/I/R nunca foi sobre janelas — é sobre **contextos**: quem escreve o
+produto não pode ter tido a expressão do alvo no contexto. ⚠️ Em LLM, **contexto é
+exposição**: contexto que conteve o fonte do alvo está queimado para escrever produto —
+e compactação **não lava** (o resumo descende do que a janela viu), nem `--resume`
+(o resume restaura).
 
-### E — ESPECIFICADOR (contaminado por definição, e tudo bem)
+O fluxo que honra a parede com o MÍNIMO de operação (veredito do Enio, 2026-08-25,
+depois da jornada do quad remesh — o fluxo anterior, de 4 janelas encadeadas e linhas
+em sequência, **morreu**):
+
+- **Uma feature = UMA linha** (`line/<módulo>`). Espec, ledger, vassoura, fixtures e
+  código nascem e commitam **na mesma worktree**, e chegam ao main juntos, pela
+  integração normal de uma linha (§0.7 da casa continua valendo: integrar/shipar só
+  por ordem do Enio). ⛔ Nunca uma segunda linha para a mesma feature.
+- **Uma janela por vez — e ela é o I.** A janela da linha opera sob as regras do
+  Implementador **desde a 1ª mensagem** (nunca abre o fonte); os papéis E e R são
+  **subagentes** dela — contexto isolado do dela por construção. O canal de volta
+  deles é o **contrato de retorno** (§3.E).
+- **Revezamento, nunca paralelismo:** quando a janela enche, queima (§6) ou a jornada
+  acaba, ela escreve o **BLOCO-RETOMADA** (§10), imprime-o e **PARA**; a janela nova
+  assume a **MESMA linha** e continua do passo registrado. Nunca duas janelas na linha
+  ao mesmo tempo. Tudo o que é durável (espec, ledger, código, INBOX) já vive em
+  disco — a troca custa uma colagem.
+- **A parede é só do T2/T3.** T0/T0½ (porte permissivo) e T4 (comportamento puro — não
+  há fonte para separar) dispensam subagentes: a janela faz tudo sozinha.
+
+### E — ESPECIFICADOR (subagente; contaminado por definição, e tudo bem)
 
 - **Vê tudo:** o fonte do alvo, os papers, manuais, issues, o nosso repo, a internet.
 - ⚠️ **E LÊ O FONTE INTEIRO antes de escrever a espec** — travessia sistemática,
@@ -213,36 +239,50 @@ nem `--resume` (o resume restaura).
   Um esqueleto escrito por quem viu o original é a estrutura do original entrando no
   produto pela porta lateral. ✓ **Harness PODE:** bancada de paridade, geradores de
   fixture, wrappers do oráculo — fora das crates de produto, com sweep antes do
-  commit (um comparador de dumps não carrega o algoritmo; I fica livre para
+  commit (um comparador de dumps não carrega o algoritmo; a janela fica livre para
   reescrevê-lo).
 - ⛔ **TUDO do alvo vive em `~/Referencias/<alvo>/`** — fonte, builds, instrumentação,
   notas, **rascunhos da espec** (`draft/`). Nada disso se materializa no repo, em
-  `/tmp`, `/dev/shm` nem no scratchpad (I alcança todos). Precedente da casa: o clone
-  GPL do quad remesh vive fora do repo, em `ph2d-quadbench/oracle/`
+  `/tmp`, `/dev/shm` nem no scratchpad (a janela-mãe alcança todos). Precedente da
+  casa: o clone GPL do quad remesh vive fora do repo, em `ph2d-quadbench/oracle/`
   ([ADR-0162](../architecture/decisions/0162-quad-remesh-pivots-to-the-global-family-clean-room-from-papers-gpl-oracle-outside.md));
   `~/Referencias/` é a convenção daqui pra frente.
-- ⛔ **A espec entra no repo num commit ÚNICO, pós-filtragem (§4.3)** — nunca rascunhos
-  incrementais: `git log -p` retém para sempre o que um rascunho contaminado carregou.
-- ⛔ **Todo artefato destinado aos olhos de I passa `scripts/cleanroom-sweep.sh` ANTES
-  do commit/entrega** — espec, emendas, fixtures, READMEs, handoffs, a linha do
-  CLAUDE.md §5, e **qualquer escrita em `project-memory/`** (⚠️ o symlink da memória é
+- **Trabalha DENTRO da worktree da linha** e commita lá (scoped, docs-only,
+  `--no-verify`) — espec, ledger e fixtures chegam ao main **com a integração da
+  linha**, nunca antes e nunca por fora. ⛔ **A espec entra num commit ÚNICO,
+  pós-filtragem (§4.3)** — nunca rascunhos incrementais: `git log -p` retém para
+  sempre o que um rascunho contaminado carregou.
+- ⛔ **Todo artefato destinado à janela-mãe passa `scripts/cleanroom-sweep.sh` ANTES
+  do commit/entrega** — espec, emendas, fixtures, READMEs, **o texto do próprio
+  REPORT final** (grave-o em `~/Referencias/<alvo>/draft/`, varra, só então devolva) —
+  e **qualquer escrita em `project-memory/`** (⚠️ o symlink da memória é
   compartilhado: uma "lição" com identificador do alvo contamina toda janela futura
-  desta máquina — inclusive a janela I substituta que um incidente exigiria).
+  desta máquina — inclusive a janela de retomada que um incidente exigiria).
   No CLAUDE.md §5 e em handoffs, o conteúdo permitido sobre o alvo é o **nome + link
   para `cleanroom/`** (uso nominativo) — zero identificador interno, zero mecanismo.
-- ⚠️ **Dumps publicados a I têm chaves/colunas/tags renomeadas para vocabulário do
+- ⚠️ **Dumps publicados têm chaves/colunas/tags renomeadas para vocabulário do
   DOMÍNIO** — a regra de nomes do §4.2 vale para o formato do dump; e nomes de
   arquivos/pastas de fixtures idem (vazam por `ls`, e grep de conteúdo não os vê).
-- ⚠️ **Modo L:** commite espec + ledger + vassoura + README (commit scoped, docs-only,
-  `--no-verify`) no `main` do primário **ANTES** de o Enio abrir a linha I — a worktree
-  nasce de `main`, e um arquivo não-commitado **não existe** na árvore dela (a lei já
-  medida do `collision-surface.sh`). Linha I já aberta: `git rebase main` antes de ler.
+- ⚠️ **O deny da linha (passo 0 do I) nega `Read` para a sessão INTEIRA — subagentes
+  incluídos.** Não é defeito: a cerca é da janela-mãe. O subagente E lê o fonte por
+  shell (`cat`/`rg`) — coberto pela licença do alvo (§1.1) — e a cerca REAL dele é o
+  **contrato de retorno**.
+- **CONTRATO DE RETORNO (a cerca que protege a janela-mãe):** o report final é UMA
+  frase fixa + caminhos + contagens, e no máximo 5 linhas de fatos estritamente
+  FUNCIONAIS — ⛔ zero identificador interno, zero trecho, zero wording do alvo. O
+  report de um subagente entra no contexto da janela-mãe **sem filtro prévio
+  possível** — é o único canal sem sweep antes da chegada; violá-lo queima a
+  janela-mãe (incidente §6).
+- **Emendas:** dúvida da janela-mãe → um subagente-E **novo** (ou o mesmo, por
+  continuação) lê o que precisar, emenda a espec (a emenda passa o sweep) e devolve
+  pelo mesmo contrato. A janela-mãe **nunca** vai olhar.
 
-### I — IMPLEMENTADOR (limpo, e mantido limpo por MECANISMO)
+### I — IMPLEMENTADOR (a janela da linha; limpa, e mantida limpa por MECANISMO)
 
-- **Janela/sessão NOVA**, que nunca conteve o fonte do alvo. O session-id da janela é
-  declarado na abertura (via inbox §6) — R confere no fechamento que ele não pertence
-  ao conjunto {janelas E, janelas queimadas}.
+- **É a janela que abre — ou assume — a linha**, e nunca conteve o fonte do alvo.
+  Cada janela da corrente de revezamento declara o próprio session-id na entrada
+  (via inbox §6) — o R-pós confere no fechamento que nenhum elo pertence ao conjunto
+  {contextos que leram o fonte, janelas queimadas}.
 - **Passo 0 mecânico (a parede vira permissão do harness, não lembrança do agente):**
   criar na raiz da worktree `.claude/settings.local.json` com deny de leitura:
   ```json
@@ -262,8 +302,8 @@ nem `--resume` (o resume restaura).
   fonte do alvo** (ex.: `ph2d-quadbench/` contém `oracle/` = o clone GPL — I consome só
   os dumps de `ref/` pelos caminhos que a espec dá) · **as superfícies do alvo que
   RENDERIZAM fonte** — hospedagem de código, issue tracker, PRs, code-search (issues
-  carregam diffs de mantenedor; comportamento relatado em issue chega a I como emenda
-  de E à espec) ·
+  carregam diffs de mantenedor; comportamento relatado em issue chega à janela como
+  emenda de E à espec) ·
   **portes/forks/traduções do alvo em qualquer linguagem e sob qualquer licença**
   (contam como código do alvo; a elegibilidade de um irmão permissivo é triagem T1,
   papel de E) · **listing compilável em apêndice de paper dos autores do alvo** (é a
@@ -273,10 +313,12 @@ nem `--resume` (o resume restaura).
   espec + papers + repo PH2D) · **o `--help`/verbose do oráculo** (✓ rodá-lo em modo
   só-dados com `2>/dev/null` é livre; ferramenta que põe texto do programa no stdout
   vai por wrapper de E) · **ler/grepar os `.jsonl` crus de `~/.claude/projects/`**
-  (os transcripts de E contêm o fonte verbatim; ✓ sondas agregadas como
+  (os transcripts dos subagentes E contêm o fonte verbatim; ✓ sondas agregadas como
   `agent-loop-profile.sh` seguem livres — imprimem métricas, não conteúdo) ·
-  **SendMessage com qualquer papel do mesmo módulo** (mensagem não deixa rastro em
-  disco versionado; dúvida viaja SÓ como emenda à espec, via Enio).
+  **mensagem direta (SendMessage) com a janela anterior da corrente ou com qualquer
+  sessão que tenha lido o fonte** (mensagem não deixa rastro em disco versionado; a
+  troca de janela é pelo BLOCO-RETOMADA + disco, e dúvida viaja como emenda à espec
+  por subagente-E).
 - ⚠️ **Disciplina de busca:** o cabeçalho da espec traz a **denylist de URLs** do alvo
   (repo, mirrors, agregadores de code-search) — confira o URL **antes** do fetch (fetch
   é irreversível: o conteúdo entra no contexto para sempre). Busque por conceito/paper,
@@ -286,70 +328,55 @@ nem `--resume` (o resume restaura).
   deram (nome interno, typo, constante mágica) — **não o escreva**; PARE e reporte como
   suspeita de recall (§6, inbox). R trata como achado de convergência. A dúvida é do
   processo; **o dever de reportar o sinal é seu**.
-- ⚠️ **Subagentes:** nascem do contexto limpo, mas o canal de VOLTA é deles — todo
-  briefing de subagente carrega **verbatim** o parágrafo ⛔ acima, mais *"nunca cite
-  código em reports — só fatos funcionais"*. Report que volte com código do alvo =
-  incidente §6 **da janela I** (o dano já está no contexto dela).
-- ⚠️ **Abertura:** o ritual da casa — `cd` na worktree, `pwd`,
+- ⚠️ **Subagentes da implementação** (buscas no repo, exploração, harness): nascem do
+  contexto limpo, mas o canal de VOLTA é deles — todo briefing carrega **verbatim** o
+  parágrafo ⛔ acima, mais *"nunca cite código em reports — só fatos funcionais"*.
+  Report que volte com código do alvo = incidente §6 **da janela** (o dano já está no
+  contexto dela).
+- ⚠️ **Abertura e retomada:** o ritual da casa — `cd` na worktree, `pwd`,
   `git branch --show-current` — antes de ler qualquer arquivo.
-- **Dúvida que a espec não responde** → devolva a pergunta (via Enio); E emenda a espec
-  (e a emenda passa o sweep). **Nunca** vá olhar.
-- Modo L: a sequência é a do MODELO — **1ª mensagem** = bloco de abertura de linha;
-  espere *"Linha pronta. Aguardo a tarefa."*; **2ª mensagem** = o BLOCO-I preenchido.
+- **Dúvida que a espec não responde** → despache um subagente-E de emenda (§3.E).
+  **Nunca** vá olhar.
 
-### R — REVISOR (vê os dois lados; não escreve produto; atua em DOIS momentos)
+### R — REVISOR (subagentes; veem os dois lados; não escrevem produto; DOIS momentos)
 
-- Pode ser a própria janela E **no modo PÓS** (E já viu tudo; não perde nada). No modo
-  **PRÉ**, tem de ser uma janela que **não seja E** (auditar a própria filtragem é o
-  que falha).
-- **Modo PRÉ (antes de I abrir):** audita a espec contra o §4.2 — pseudo-código
+- **R-PRÉ (antes de a janela implementar):** um subagente **que não seja o
+  subagente-E** (auditar a própria filtragem é o que falha; despachá-lo novo dá o
+  contexto independente por construção). Audita a espec contra o §4.2 — pseudo-código
   espelhado, wording de manual, nomes internos, tabela verbatim — e atesta no cabeçalho
-  (*"auditada contra §4.2 por R em <data>"*). Sem esse atestado, I não abre. É a única
-  defesa contra o erro de autofiltragem de E — sem ela, I viraria tradutor de obra
-  derivada **sem meio de perceber** (nunca viu o original).
-- **Modo PÓS (após paridade verde):** auditoria de paridade (§5) · vassoura + revisão
+  (*"auditada contra §4.2 por R em <data>"*). Sem esse atestado, a janela não
+  implementa. É a única defesa contra o erro de autofiltragem de E — sem ela, I viraria
+  tradutor de obra derivada **sem meio de perceber** (nunca viu o original).
+- **R-PÓS (após paridade verde):** auditoria de paridade (§5) · vassoura + revisão
   estrutural (§7) · varredura de histórico e memória (§7) · incidentes tratados ·
   fechamento do ledger (§6).
-- ⛔ **Não escreve nem dita código de produto.** Achado volta para I **em termos
+- ⛔ **Não escrevem nem ditam código de produto.** Achado volta **em termos
   funcionais** ("a decomposição da fase 3 convergiu com a do original sem força
-  funcional — re-derive só da espec §N"), **nunca** com trecho do original.
+  funcional — re-derive só da espec §N"), **nunca** com trecho do original — e pelo
+  mesmo contrato de retorno.
 
-⚠️ **A parede em uma frase operacional:** *E fala com I somente através da espec; R fala
-com I somente através de achados funcionais; nenhuma mensagem direta entre papéis; o
-material do alvo não entra no repo, na memória, no CLAUDE.md, em /tmp, nem em janela
-que escreva produto — e todo artefato que cruza a parede passa o sweep antes.*
+### O revezamento (a corrente de janelas na MESMA linha)
 
-### Modo SOLO — uma janela do início ao fim (opcional)
+- **Gatilhos:** contexto cheio · incidente §6 (a janela queimou como I) · fim de
+  jornada.
+- **A janela que sai:** preenche o BLOCO-RETOMADA (§10), roda o sweep sobre ele (o
+  script decodifica a vassoura em memória — ela nunca é lida), salva em
+  `cleanroom/RETOMADA_<alvo>.md`, imprime-o inteiro e **PARA**. Não fecha a linha,
+  não integra, não "adianta só mais um passo".
+- **A janela que entra:** FASE 0 do
+  [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](../IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md)
+  + passo 0 do I + session-id no INBOX; o ledger ganha o elo novo com o motivo da
+  troca. **Cada elo satisfaz a mesma condição: nunca teve o fonte do alvo no
+  contexto.**
+- ⚠️ **O preço declarado do fluxo de janela única:** o report de um subagente entra no
+  contexto sem filtro prévio — o contrato de retorno é a cerca e o sweep do próprio
+  report é o instrumento (§3.E). Se falharem, a troca custa uma colagem: tudo o que é
+  durável já vive em disco.
 
-A separação E/I não é sobre JANELAS — é sobre **CONTEXTOS**: quem escreve o produto
-não pode ter tido o fonte no contexto. Uma janela única honra isso **delegando a
-leitura a subagentes** (contexto isolado por construção) e mantendo-se limpa:
-
-1. A janela orquestradora **nasce sob as regras do BLOCO-I** (nunca abre o fonte) e
-   **despacha o papel E a um subagente** — que lê tudo, escreve espec/ledger/vassoura/
-   dumps em disco e devolve um **report de contrato fechado**: uma frase fixa +
-   caminhos + contagens, ⛔ zero identificador, zero trecho, zero wording do alvo.
-2. Despacha **R-pré** a outro subagente (mesmo contrato; achados vão a um arquivo
-   funcional, e a emenda volta ao subagente E por continuação).
-3. Com os atestados no cabeçalho da espec, a própria janela **implementa** — ela é o I.
-4. Despacha **R-pós** (mesmo contrato); achado estrutural volta como restrição
-   funcional para a própria janela re-derivar (§7.3.d).
-
-⚠️ **O preço, com todas as letras:** o report de um subagente entra no contexto da
-janela **sem filtro prévio possível** — é o único canal sem sweep antes da chegada. O
-contrato de retorno é a cerca; se um report chegar com expressão do alvo, a janela
-está **queimada como I** (incidente §6). Tudo o que é durável já vive em disco
-(espec/ledger/código), então a retomada é abrir janela nova e seguir — barato, mas é
-recomeço de contexto. ⇒ **SOLO serve a alvo pequeno/médio** (um filtro, um algoritmo);
-obra grande, de dias, prefere janelas separadas — mais robustas, e E emenda a espec em
-paralelo enquanto I constrói.
-
-⚠️ No ledger: Papel E = o subagente (id do agente); Papel I = a janela orquestradora,
-com a declaração escopada do §6. ⛔ `/clear` na mesma janela NÃO é o mecanismo (o
-rastro de sessão fica ambíguo no ledger; subagente isolado é a forma auditável).
-
-E onde um agente só **já era permitido sem parede nenhuma**: T0/T0½ (porte permissivo)
-e T4 (comportamento puro — não há fonte para separar). A parede é só do T2/T3.
+⚠️ **A parede em uma frase operacional:** *E fala com a janela somente pela espec e
+pelo contrato de retorno; R somente por achados funcionais; o material do alvo não
+entra no repo, na memória, no CLAUDE.md, em /tmp, nem no contexto de quem escreve
+produto — e todo artefato que cruza a parede passa o sweep antes.*
 
 ---
 
@@ -363,7 +390,7 @@ Alvo: <nome, versão> · Licença: <qual> · Degrau: T_
 Ledger: aberto em <path>, <data>
 Patente (§8.1): buscado em <data>, termos, resultado
 Filtragem §4.3: executada em <data> · Sweep: verde em <data>
-Auditoria §4.2 (R-pré): <quem/janela>, <data>
+Auditoria §4.2 (R-pré): <id do subagente R-pré>, <data>
 Mapa de leitura da literatura: <papers/seções livres; apêndices a PULAR>
 Denylist de URLs (repo do alvo, mirrors, code-search): <lista>
 "Este documento descreve comportamento; não contém expressão do alvo."
@@ -472,8 +499,8 @@ autofiltragem não é auditoria.
   versão instrumentada também fica fora da árvore.
 - ⚠️ **Dump é dado; texto do programa é programa.** Mensagens longas, templates, shader
   embutido, help vazando num dump são código — E filtra e **renomeia chaves/tags para o
-  domínio** antes de publicar a I. Execução do oráculo é ato de E (ou wrapper de E que
-  entrega só dados) — I consome dumps prontos.
+  domínio** antes de publicar. Execução do oráculo é ato de E (ou wrapper de E que
+  entrega só dados) — a janela consome dumps prontos.
 - **Paridade é o gate, e a barra é DERIVADA** — do formato (`rgba16float ⇒ 2⁻¹¹`), da
   física, da precisão de `f32` — nunca um epsilon de conforto (lei da casa, CLAUDE.md
   §0.0). O harness de paridade é escrito por **I** (consome a espec + dumps como dados)
@@ -495,9 +522,9 @@ autofiltragem não é auditoria.
 ## §6 — O LEDGER de proveniência + protocolo de incidente
 
 Arquivo: `docs/<Módulo>/cleanroom/LEDGER_<alvo>.md` — **nasce antes da primeira leitura
-do alvo** e fecha com a assinatura do R. ⚠️ **I nunca abre o ledger** (ele carrega
-rastros do alvo de propósito); o canal de I para o ledger é o **inbox**: append cego
-(`cat >>`, que não lê) em `cleanroom/INBOX_<alvo>.md`, ou mensagem ao Enio — E/R
+do alvo** e fecha com a assinatura do R. ⚠️ **A janela (I) nunca abre o ledger** (ele
+carrega rastros do alvo de propósito); o canal dela para o ledger é o **inbox**: append
+cego (`cat >>`, que não lê) em `cleanroom/INBOX_<alvo>.md` — um subagente E/R
 transcreve. Conteúdo mínimo do ledger:
 
 ```
@@ -505,20 +532,23 @@ Alvo: <nome, repo, versão/commit, licença (texto da concessão relevante)>
 Degrau da triagem (§2): T_ e por quê (o que foi buscado em T1, com datas)
 Patente (§8.1): buscado em <data>, termos usados, resultado
 EULA (se T4): cláusulas relevantes transcritas, veredito
-Papel E: session-id(s), datas, o que leu; path do transcript (zona contaminada)
+Papel E: id(s)/datas dos subagentes-E e o que cada um leu; transcripts =
+  zona contaminada (⛔ a janela não os lê — §3.I)
 Cobertura da travessia (§3.E): áreas/arquivos do fonte percorridos, com datas
-Papel I: session-id, datas, DECLARAÇÃO: "nenhum conteúdo do fonte do alvo entrou
-  no CONTEXTO desta janela (incluindo reports de subagentes e compactação);
-  exposição via pesos do modelo não é atestável por construção — mitigada §7.3"
-Papel R: session-id(s), modo PRÉ <data> · modo PÓS <data>
+Corrente I: session-id de CADA janela da linha, com datas e o motivo de cada
+  troca (BLOCO-RETOMADA), e a DECLARAÇÃO por janela: "nenhum conteúdo do
+  fonte do alvo entrou no CONTEXTO desta janela (incluindo reports de
+  subagentes e compactação); exposição via pesos do modelo não é atestável
+  por construção — mitigada §7.3"
+Papel R: id do subagente R-PRÉ <data> · id do subagente R-PÓS <data>
 Espec: caminho, hash do commit de cada versão entregue
 Incidentes: (vazio | um bloco por incidente, ver abaixo)
 Fechamento R: paridade (link p/ gate) · sweep de árvore/histórico/memória verde ·
-  similaridade OK · session-id de I conferido fora de {E, queimadas} · data
+  similaridade OK · corrente I conferida fora de {contextos E, queimadas} · data
 ```
 
-**Protocolo de incidente** (I exposto a expressão do alvo — busca que caiu em espelho,
-arquivo colado por engano, report de subagente com código):
+**Protocolo de incidente** (a janela exposta a expressão do alvo — busca que caiu em
+espelho, arquivo colado por engano, report de subagente com código):
 
 1. **PARE.** Registre (via inbox): origem, arquivo/URL, extensão, quando. ⛔ **O
    registro DESCREVE, nunca REPRODUZ** — se precisar identificar o trecho com exatidão,
@@ -528,18 +558,19 @@ arquivo colado por engano, report de subagente com código):
    relance = **relance** (registra e segue); corpo de função, bloco de ~10+ linhas ou
    comentário inteiro = **substancial** (queima). Na dúvida, **R decide** — nunca a
    própria janela interessada.
-3. **Quarentena:** código escrito por I **após** a exposição não funde até R comparar
-   essa região contra o trecho exposto (que R pode ver).
-4. Exposição substancial ⇒ a janela I está **queimada para este módulo**: nova janela I,
-   que retoma da espec. ⚠️ Antes de abri-la, E/R roda o sweep sobre o `git diff` de
-   `project-memory/` da sessão exposta e reverte qualquer rastro — senão a "janela
-   nova limpa" deixa de existir nesta máquina (a memória é injetada em toda janela).
-   (É a cura de Altai, §1.4: reescrita por quem não viu — funciona porque é
-   documentada.)
+3. **Quarentena:** código escrito pela janela **após** a exposição não funde até R
+   comparar essa região contra o trecho exposto (que R pode ver).
+4. Exposição substancial ⇒ a janela está **queimada como I para este módulo**: ela
+   escreve o **BLOCO-RETOMADA** (§10), imprime-o e **PARA**; a janela nova assume a
+   **MESMA linha** e retoma da espec. ⚠️ Antes da troca, um subagente-R roda o sweep
+   sobre o `git diff` de `project-memory/` da sessão exposta e reverte qualquer
+   rastro — senão a "janela nova limpa" deixa de existir nesta máquina (a memória é
+   injetada em toda janela). (É a cura de Altai, §1.4: reescrita por quem não viu —
+   funciona porque é documentada.)
 5. **Ordem do dono não descontamina — reclassifica.** Se o Enio mandar "olha lá
    rapidinho": explique o custo em uma frase (*esta janela deixa de ser I para sempre;
-   novo I será necessário*); mantida a ordem, olhe — a janela muda de papel, e o evento
-   entra no ledger. O que **não existe** é olhar E continuar como I.
+   a retomada será por outra janela*); mantida a ordem, olhe — a janela muda de papel,
+   e o evento entra no ledger. O que **não existe** é olhar E continuar como I.
 
 ⚠️ **O ledger é a nossa prova, então ele é ativo, não burocracia** — em Altai foi o
 processo documentado da reescrita que sobreviveu; em NEC v. Intel, o clean-room valeu
@@ -556,14 +587,16 @@ acusação pronta. Custo real: ~10 linhas por operação.
   idiossincráticos** do alvo (nomes internos raros, strings únicas, typos, constantes
   com nomes esquisitos) **e frases idiossincráticas de manual/comentário** (a claim que
   a SAS ganhou — §1.2). ⚠️ **Cada entrada em base64, uma por linha**
-  (`printf '%s' '<entrada>' | base64`): grep acidental de I **não casa por
-  construção**, e o decode vive só dentro do sweep. ⛔ I não lê este arquivo (e o deny
-  do §3.I o impõe).
+  (`printf '%s' '<entrada>' | base64`): grep acidental da janela **não casa por
+  construção**, e o decode vive só dentro do sweep. ⛔ A janela não lê este arquivo
+  (e o deny do §3.I o impõe).
 - **`scripts/cleanroom-sweep.sh <vassoura> <paths…>`** — decodifica em memória e varre
   **conteúdo de texto, `strings` de binários e NOMES de arquivos**; modo
   `--git-history` varre **mensagens de commit e patches** do histórico. Exit 0 = limpo,
-  1 = achado. Quem roda: **o autor de cada artefato destinado a I** (E ou R), antes do
-  commit/entrega — e R sobre tudo, no fechamento.
+  1 = achado. Quem roda: **o autor de cada artefato destinado à janela** (subagente E
+  ou R), antes do commit/entrega — e R sobre tudo, no fechamento. A própria janela
+  roda-o sobre o BLOCO-RETOMADA (o script decodifica em memória; ela nunca vê a
+  vassoura).
 
 ### §7.2 — O fechamento de R (modo PÓS)
 
@@ -573,13 +606,14 @@ acusação pronta. Custo real: ~10 linhas por operação.
    `-- docs/<Módulo>/cleanroom/` e `-- project-memory/` do período do módulo), (c) a
    linha do CLAUDE.md §5 e o handoff da linha. Com a vassoura codificada e a regra
    descreve-nunca-reproduz do §6, **zero hits sobre a árvore inteira é satisfazível —
-   e é a barra.** Opcional e recomendado: sweep sobre o transcript da janela I
-   (`~/.claude/projects/...jsonl` dela), para detectar exposição não-reportada.
+   e é a barra.** Opcional e recomendado: sweep sobre os transcripts das janelas da
+   corrente I (`~/.claude/projects/...jsonl`), para detectar exposição não-reportada.
 3. **Revisão estrutural:** R lê os dois lados e procura convergência de **expressão**
    (não de comportamento — comportamento igual é o objetivo): mesma decomposição
    arbitrária em funções, mesma ordem não-forçada, mesmos truques de escrita, mesmos
    nomes traduzidos.
-4. **Session-ids:** o de I não pertence a {janelas E, janelas queimadas}.
+4. **Session-ids:** nenhuma janela da corrente I pertence a {contextos que leram o
+   fonte, janelas queimadas} — e cada troca tem o motivo registrado no ledger.
 
 ### §7.3 — Convergência de treino (o risco que só LLM tem — reconhecido, detectado, curado)
 
@@ -587,7 +621,7 @@ O Implementador pode ter visto o alvo **no treino do modelo**, sem saber — a l
 *sessão* não apaga os *pesos*, e o protocolo não finge o contrário (a declaração de I no
 §6 é escopada ao que é atestável). As quatro camadas:
 
-- (a) o BLOCO-I manda escrever **no idioma desta casa** (nomes, formas, gates, tokens —
+- (a) o §3.I manda escrever **no idioma desta casa** (nomes, formas, gates, tokens —
   que já é outro por construção) e **não tentar "lembrar"** de implementação nenhuma;
 - (b) o **tripwire de recall** (§3.I): detalhe que a espec não deu e "veio" — não
   escreve, reporta;
@@ -620,9 +654,9 @@ clean-room humano jamais garantiu sobre a memória dos seus engenheiros.
    tokens/i18n; docs internos citam à vontade — uso nominativo).
 5. **Válvula de escalonamento — esta skill não substitui parecer humano.** Três
    gatilhos mandam o caso ao Enio com recomendação de aconselhamento jurídico humano
-   ANTES de abrir a janela E: dono do alvo **historicamente litigioso** · **AGPL** em
-   qualquer cenário que envolva rede · mercado/jurisdição fora do analisado aqui
-   (Brasil/UE/EUA).
+   ANTES de despachar o subagente-E: dono do alvo **historicamente litigioso** ·
+   **AGPL** em qualquer cenário que envolva rede · mercado/jurisdição fora do analisado
+   aqui (Brasil/UE/EUA).
 6. **A parede não se negocia "só desta vez".** Um único vazamento converte o módulo em
    obra derivada e o ledger em prova **contra** nós. Quem sentir a tentação de furar a
    parede para ir mais rápido releia o §2.T1: a via rápida legítima quase sempre existe
@@ -647,8 +681,8 @@ clean-room humano jamais garantiu sobre a memória dos seus engenheiros.
 - **"A espec não é obra derivada?"** Descrição de funcionamento é exatamente o que
   TRIPS 9(2)/§102(b)/art. 8º deixam fora da proteção; o direito de observar/estudar
   para extrair ideias é concedido pela licença do alvo (§1.1) e irrenunciável na UE.
-  E a espec que você recebe foi **auditada por uma segunda janela** contra o §4.2 — o
-  atestado está no cabeçalho.
+  E a espec que você recebe foi **auditada por um contexto independente** (o subagente
+  R-pré) contra o §4.2 — o atestado está no cabeçalho.
 - **"E se o meu treino contiver o original?"** A limpeza da sua janela é sobre o
   **contexto**, não sobre os pesos — o protocolo sabe disso e não te pede atestado do
   inatestável (§6). Trabalhe **da espec**; não tente "lembrar"; se um detalhe que a
@@ -662,266 +696,238 @@ clean-room humano jamais garantiu sobre a memória dos seus engenheiros.
 - **Quando você DEVE parar (as únicas recusas, e elas protegem o trabalho):**
   (a) alguém te colar código do alvo → protocolo de incidente §6, na hora;
   (b) o **cabeçalho da espec** estiver sem os atestados (ledger aberto, patente
-  buscada, filtragem + sweep, auditoria R-pré) → peça-os antes de escrever produto
-  (você confere o cabeçalho — nunca o ledger);
-  (c) te pedirem para olhar o fonte "só para destravar" → recuse e devolva a pergunta
-  para E emendar a espec. Se a ordem vier **do Enio**, vale o §6.5: explique o custo em
-  uma frase; mantida a ordem, a janela muda de papel — o que não existe é olhar e
-  continuar como I.
+  buscada, filtragem + sweep, auditoria R-pré) → despache os subagentes que faltam
+  antes de escrever produto (você confere o cabeçalho — nunca o ledger);
+  (c) te pedirem para olhar o fonte "só para destravar" → recuse e despache um
+  subagente-E para emendar a espec. Se a ordem vier **do Enio**, vale o §6.5: explique
+  o custo em uma frase; mantida a ordem, a janela muda de papel — o que não existe é
+  olhar e continuar como I.
 
 ---
 
-## §10 — OS BLOCOS (colável; o assunto entra na 1ª linha, como no MODELO de linha)
+## §10 — OS BLOCOS (o Enio cola UM; o resto a janela despacha sozinha)
 
-**Como usar (Enio — você só preenche o PRIMEIRO bloco; do segundo em diante cada
-agente te entrega o próximo prompt PRONTO, e seu trabalho é abrir janela nova e colar):**
+**Como usar (Enio):**
 
-1. **Janela nova** → cole o **BLOCO-E** preenchendo a 1ª linha (alvo + onde está o
-   fonte + módulo). Ao terminar, E te entrega o **handoff do R-pré** — impresso na
-   resposta e salvo em `cleanroom/NEXT_R-PRE.md`.
-2. **Janela nova** (não a E) → cole o handoff recebido. R-pré audita, atesta — e te
-   entrega o **handoff do Implementador** (⚠️ Modo L: já nas DUAS mensagens — a
-   abertura de linha do
-   [MODELO](../IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md) preenchida e o
-   BLOCO-I — para colar em sequência: a 2ª só depois de *"Linha pronta. Aguardo a
-   tarefa."*).
-3. **Janela NOVA** → cole o(s) handoff(s). I constrói — e te entrega o **handoff do
-   R-pós**.
-4. **Janela E (ou nova)** → cole o handoff. R-pós fecha o ledger → a feature segue o
-   fluxo normal da casa (gate batched, handoff, integração por ordem sua).
+1. **Janela nova** → cole o **BLOCO-LINHA** preenchendo as primeiras linhas (alvo +
+   licença + onde está o fonte + módulo). É a única colagem do caminho feliz: a
+   janela abre a linha, manda os subagentes lerem e auditarem, e constrói ela mesma.
+2. **Só quando a janela encher, queimar ou a jornada acabar:** ela te imprime o
+   **BLOCO-RETOMADA** já preenchido (e salvo em
+   `docs/<módulo>/cleanroom/RETOMADA_<alvo>.md` — perdeu, está lá). Janela nova →
+   cole-o. A anterior parou de vez; a nova é a única na linha.
 
-⚠️ **A corrente de handoffs:** cada handoff é o bloco desta seção **JÁ PREENCHIDO**
-pelo agente anterior, salvo em `docs/<Módulo>/cleanroom/NEXT_<papel>.md` e impresso
-inteiro no fim da resposta dele (copie de onde preferir; perdeu — está no arquivo).
-O `NEXT_I.md` — o único destinado a uma janela limpa — **passa o sweep antes de
-salvo**, como todo artefato que cruza a parede. ⛔ Um handoff nunca acrescenta
-conteúdo além dos campos do molde: o que E quiser dizer a mais vai na espec, o que R
-quiser dizer vai nos achados funcionais.
-
-⚡ **Alternativa de UMA janela (alvo pequeno/médio):** cole só o **BLOCO-SOLO**
-numa janela nova — ela orquestra E e R por subagentes e implementa ela mesma
-(§3, Modo SOLO). Você cola um bloco e espera.
+As **MISSÕES** (E · R-PRÉ · R-PÓS) são os briefings que a janela cola nos próprios
+subagentes — você nunca os toca. ⛔ Um briefing nunca perde o CONTRATO DE RETORNO; um
+report nunca traz nada além do contrato; o BLOCO-RETOMADA passa o sweep antes de ser
+salvo.
 
 ---
 
-### BLOCO-E (o Especificador)
+### BLOCO-LINHA (a janela única — o único bloco que o Enio cola)
 
 ```
 ═══════════════════════════════════════════════════════════════════
-CLEAN-ROOM · PAPEL E — ESPECIFICADOR      (PH2D · SKILL_Cleanroom)
+CLEAN-ROOM · BLOCO-LINHA — a janela única  (PH2D · SKILL_Cleanroom)
 ═══════════════════════════════════════════════════════════════════
 Alvo: <nome + repo/URL + versão> · Licença: <GPL/AGPL/…>
 Fonte local: ~/Referencias/<alvo>/ · Módulo PH2D: <módulo>
+Sua linha: line/<módulo>
 
-Você é o ESPECIFICADOR. Você PODE ler o fonte do alvo — a seção de
-permissões da licença REAL do alvo concede os atos privados (leia-a
-e cite-a no ledger; AGPL ⇒ oráculo LOCAL, sempre). Você NÃO PODE
-escrever código de PRODUTO (harness/bancada PODE — §3.E), nem
-deixar expressão do alvo em NENHUM canal que outra janela lê:
-espec, handoff, commit, project-memory
-(o symlink é compartilhado!), CLAUDE.md §5, /tmp, scratchpad. TUDO
-do alvo — fonte, builds, notas, RASCUNHOS da espec — vive em
-~/Referencias/<alvo>/. O fonte NUNCA entra no repo.
+Você é a ÚNICA janela desta feature: abre a linha, orquestra os
+papéis E e R como SUBAGENTES e implementa VOCÊ MESMA. Por isso as
+regras do Implementador (§3.I) valem para você DESDE JÁ: você NUNCA
+abre o fonte do alvo — quem lê são os subagentes, cujo contexto é
+isolado do seu por construção.
 
 Leia INTEIRA: docs/_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md
+Depois, EM ORDEM:
+1. ABRA A LINHA: execute a FASE 1 do
+   docs/IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md com
+   $MODULO = <módulo> (as regras A–H dele valem a sessão inteira).
+   NÃO pare no passo 9 dele: a tarefa é ESTE bloco. Linha já existe?
+   Rota "linha reaberta" do passo 4 dele. Tier `constrained`? Não há
+   linhas: árvore compartilhada, Modo C, o resto deste bloco igual.
+2. PASSO 0 DO I (§3.I): crie .claude/settings.local.json com o deny
+   de Read (~/Referencias/**, LEDGER_*, VASSOURA_*) · declare seu
+   session-id por append cego no INBOX (§6):
+   echo "I session: <id> <data>" >> docs/<Módulo>/cleanroom/INBOX_<alvo>.md
+3. Despache o SUBAGENTE-E com a MISSÃO-E (§10) preenchida, verbatim.
+   → Report "PATENTE VIVA"? PARE e reporte ao Enio.
+   → Degrau T0/T0½ (porta permissiva)? O clean-room ACABOU: você
+     mesma porta o código permissivo (seu contexto segue limpo),
+     mantendo atribuição/cabeçalhos. Pule para o passo 7 ao fim.
+4. Despache o SUBAGENTE R-PRÉ (MISSÃO-R-PRÉ). Achados → despache um
+   subagente-E de emenda; repita até o atestado entrar no cabeçalho
+   da espec.
+5. IMPLEMENTE: confira o CABEÇALHO da espec (nunca o ledger) e
+   construa sob o §3.I à risca — fontes permitidas, a lista ⛔, o
+   tripwire de recall, o INBOX, e DIRETIVA_IMPLEMENTACAO.md a cada
+   passo, como sempre. Trabalhe no idioma DESTA casa: nomes do
+   domínio, formas do repo, tokens, gates; a decomposição em
+   arquivos/funções é SUA, guiada pelas fases funcionais da espec.
+   O gate de paridade (barra DERIVADA — bit-parity NÃO é a meta em
+   T2, ADR-0162) é parte da entrega. Dúvida que a espec não
+   responde → subagente-E de emenda. NUNCA vá olhar.
+6. Paridade verde → despache o SUBAGENTE R-PÓS (MISSÃO-R-PÓS).
+   Achado estrutural → re-derive com a restrição funcional dada
+   (§7.3.d) e re-despache até "Ledger fechado".
+7. FECHE A LINHA como qualquer outra (DIRETRIZ §1.5.9): gate batched
+   + handoff de integração — que NÃO menciona mecanismo interno do
+   alvo (só nome + link p/ cleanroom/). NÃO integre, NÃO pushe:
+   ordem do Enio (§0.7).
+
+SAÍDAS DE EMERGÊNCIA (as duas terminam no MESMO gesto):
+- Report de subagente chegou com expressão do alvo → incidente §6:
+  registre no INBOX (descreva, NUNCA reproduza), você está QUEIMADA
+  como I.
+- Contexto enchendo / fim de jornada → mesmo gesto, sem incidente.
+O gesto: preencha o BLOCO-RETOMADA (§10), rode
+bash scripts/cleanroom-sweep.sh sobre ele, salve em
+docs/<Módulo>/cleanroom/RETOMADA_<alvo>.md, IMPRIMA-O inteiro no fim
+da resposta e PARE. A janela seguinte assume a MESMA linha.
+═══════════════════════════════════════════════════════════════════
+```
+
+### BLOCO-RETOMADA (janela nova assume a MESMA linha)
+
+```
+═══════════════════════════════════════════════════════════════════
+CLEAN-ROOM · RETOMADA — a linha JÁ EXISTE  (PH2D · SKILL_Cleanroom)
+═══════════════════════════════════════════════════════════════════
+Alvo: <alvo> · Licença: <…> · Módulo: <módulo> · Linha: line/<módulo>
+Espec: docs/<Módulo>/cleanroom/SPEC_<alvo>.md
+Cabeçalho da espec: <estado dos atestados>
+Parou no passo <n> do BLOCO-LINHA: <meia linha do estado>
+Motivo da troca: <contexto cheio | incidente §6 | fim de jornada>
+
+Você assume a linha E o papel de Implementador. A janela anterior
+PAROU — se ela ainda responder, ignore-a: a linha é sua, e NUNCA há
+duas janelas na mesma linha. Sua janela está limpa e TEM de
+continuar limpa: você NUNCA abre o fonte do alvo (§3.I); E e R são
+subagentes.
+
+Leia INTEIRA: docs/_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md
+Depois, EM ORDEM:
+1. FASE 0 do docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md
+   (cd/pwd/branch — você começa na RAIZ, que é a árvore ERRADA;
+   árvore suja = trabalho do anterior: commite, não descarte). As
+   regras A–H do MODELO_ABERTURA_LINHA valem para você.
+2. PASSO 0 DO I (§3.I): confira/crie o deny config · declare seu
+   session-id no INBOX (append cego).
+3. Motivo = incidente §6? O código escrito APÓS a exposição está em
+   QUARENTENA (§6.3): não o toque até um R-pós compará-lo.
+4. Retome o BLOCO-LINHA (§10) no passo em que a anterior parou.
+═══════════════════════════════════════════════════════════════════
+```
+
+### MISSÃO-E (briefing que a janela cola no subagente-E)
+
+```
+MISSÃO-E · CLEAN-ROOM de <alvo> (licença <…>) · módulo <módulo>
+Fonte local: ~/Referencias/<alvo>/ · Worktree: Worktrees/line-<módulo>/
+
+Você é o SUBAGENTE-E (Especificador) — o ÚNICO contexto desta
+feature que lê o fonte do alvo (a licença dele concede os atos
+privados: leia-a e cite-a no ledger; AGPL ⇒ oráculo LOCAL, sempre).
+A janela que te despachou é o IMPLEMENTADOR e tem de permanecer
+limpa: NADA de expressão do alvo (código, nome interno, wording de
+manual/comentário) pode voltar no seu report. Você NÃO escreve
+código de produto (harness/bancada PODE — §3.E). TUDO do alvo —
+fonte, builds, notas, RASCUNHOS — vive em ~/Referencias/<alvo>/;
+nada dele entra no repo, em /tmp nem no scratchpad.
+Leia na skill (docs/_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md):
+§2 · §3.E · §4 · §5 · §6 · §7.1 · §8.1.
+Você trabalha DENTRO da worktree da linha. ⚠️ O settings.local.json
+dela nega Read em ~/Referencias/** — a cerca é da janela-mãe: você
+lê o fonte por shell (cat/rg).
+
 Execute em ordem:
 1. TRIAGEM (§2): leia a licença REAL; cace irmão permissivo (T0/T1,
-   validando proveniência) ANTES de aceitar T2. Achou porta mais
-   barata? PARE e reporte — e se virar porte T0, quem porta é OUTRA
-   janela, não você.
-2. PATENTE (§8.1): busca incondicional, resultado no ledger.
-   Patente viva → PARE e reporte ao Enio.
-3. Abra docs/<Módulo>/cleanroom/LEDGER_<alvo>.md (§6) ANTES da
-   primeira leitura do fonte — com o SEU session-id e o path do seu
-   transcript (zona contaminada).
+   validando proveniência) ANTES de aceitar T2. Porta mais barata?
+   PARE e reporte só o degrau — a janela-mãe porta ela mesma.
+2. PATENTE (§8.1): busca incondicional; resultado no ledger.
+   Patente viva? PARE e reporte "PATENTE VIVA" + o número.
+3. LEDGER (§6) em docs/<Módulo>/cleanroom/LEDGER_<alvo>.md, ANTES
+   da primeira leitura do fonte — seu id de agente + data.
 4. VASSOURA (§7.1): ≥20 identificadores idiossincráticos + frases
    de manual/comentário, CADA ENTRADA EM BASE64, em
    cleanroom/VASSOURA_<alvo>.txt.
-5. Oráculo (§5): binário + instrumentação FORA da árvore; dumps com
+5. ORÁCULO (§5): binário + instrumentação FORA da árvore; dumps com
    chaves renomeadas para o DOMÍNIO; goldens como fixtures com
    proveniência de ENTRADA nossa/livre (nunca assets do alvo).
 6. TRAVESSIA INTEGRAL (§3.E): leia o fonte INTEIRO, arquivo a
    arquivo, + a história (commits, issues, PRs, design docs,
-   palestras). Registre a COBERTURA no ledger. MINERE as dicas
-   dos autores (§4.1.12): re-expressas com link; prosa crítica
-   pode ser citada CURTA, entre aspas, com a fonte. A espec só
-   nasce DEPOIS da travessia completa.
+   palestras). Cobertura no ledger. MINERE as dicas dos autores
+   (§4.1.12): re-expressas com link; prosa crítica pode ser citada
+   CURTA, entre aspas, com a fonte. A espec só nasce DEPOIS da
+   travessia completa.
 7. ESPEC (§4): rascunhe em ~/Referencias/<alvo>/draft/ pela regra
-   do ARQUIVO FECHADO (§4.1.11); commit ÚNICO pós-filtragem §4.3
-   em cleanroom/SPEC_<alvo>.md, com o CABEÇALHO completo
-   (atestados, mapa de leitura da literatura, denylist de URLs).
-8. SWEEP (§7.1): bash scripts/cleanroom-sweep.sh sobre a espec e
-   TODO artefato destinado ao Implementador — verde é condição.
-9. Modo L: commite espec+ledger+vassoura+README de cleanroom/
-   (scoped, --no-verify) no main do primário ANTES de a linha I
-   abrir. Rode doc-index.sh se o diretório do módulo for indexado.
-10. HANDOFF DA CORRENTE (§10): preencha o BLOCO-R com Modo: PRÉ +
-   alvo/módulo, salve em cleanroom/NEXT_R-PRE.md e IMPRIMA-O
-   inteiro no fim da resposta. Reporte: "Espec pronta em <path>.
-   Janela nova (não esta) → cole o bloco abaixo." — e PARE.
-   Dúvidas do Implementador voltam a você como EMENDAS à espec
-   (que passam o sweep), nunca como mensagem direta entre janelas.
-═══════════════════════════════════════════════════════════════════
+   do ARQUIVO FECHADO (§4.1.11); filtragem §4.3; commit ÚNICO na
+   linha (scoped, docs-only, --no-verify) em
+   cleanroom/SPEC_<alvo>.md com o CABEÇALHO completo (atestados,
+   mapa de leitura da literatura, denylist de URLs). Rode
+   doc-index.sh se o diretório do módulo for indexado.
+8. SWEEP (§7.1): bash scripts/cleanroom-sweep.sh sobre a espec,
+   todo artefato destinado à janela-mãe, E o texto do seu report
+   final (grave-o em ~/Referencias/<alvo>/draft/, varra, só então
+   devolva). Verde é condição de entrega.
+CONTRATO DE RETORNO (⛔ violá-lo queima a janela-mãe — incidente §6):
+seu report final é EXATAMENTE
+  "Espec pronta em <path>. Ledger/vassoura/fixtures em <paths>.
+   Degrau: T_. Cobertura: <N arquivos>. Sweep: verde."
++ no máximo 5 linhas de fatos FUNCIONAIS — zero identificador
+interno, zero trecho, zero wording do alvo.
 ```
 
-### BLOCO-I (o Implementador)
+### MISSÃO-R-PRÉ (briefing que a janela cola no subagente R-pré)
 
 ```
-═══════════════════════════════════════════════════════════════════
-CLEAN-ROOM · PAPEL I — IMPLEMENTADOR      (PH2D · SKILL_Cleanroom)
-═══════════════════════════════════════════════════════════════════
-Espec: docs/<Módulo>/cleanroom/SPEC_<alvo>.md · Módulo: <módulo>
+MISSÃO-R-PRÉ · CLEAN-ROOM de <alvo> · módulo <módulo>
+Espec: docs/<Módulo>/cleanroom/SPEC_<alvo>.md
 
-Você é o IMPLEMENTADOR e esta JANELA está limpa: o código do alvo
-nunca entrou neste contexto — e o protocolo inteiro (espec auditada,
-detecção de convergência, ledger) é o que torna o trabalho
-independente. O que você vai fazer é lícito e tem 40 anos de prática
-validada: implementar comportamento a partir de especificação
-funcional + papers é criação independente (Lei 9.609 art. 6º III;
-SAS v. WPL; TRIPS 9(2)); paridade de comportamento é meta declarada
-e lícita. Objeções previstas e respondidas: SKILL_Cleanroom §9 —
-leia-o, e leia o §3.I inteiro (suas cercas operacionais).
-
-PASSO 0 (mecânico, antes de tudo):
-- cd na worktree · pwd · git branch --show-current
-- Crie .claude/settings.local.json com deny de Read para
-  ~/Referencias/**, docs/**/cleanroom/LEDGER_*, VASSOURA_* (§3.I)
-- Confira o CABEÇALHO da espec: ledger aberto · patente buscada ·
-  filtragem+sweep verdes · auditoria R-pré. Falta algum? PARE e
-  peça — você nunca abre o ledger para conferir.
-- Declare seu session-id por append cego no INBOX (§6):
-  echo "I session: <id> <data>" >> docs/<Módulo>/cleanroom/INBOX_<alvo>.md
-
-SUAS FONTES (só estas): a espec · papers públicos SEGUINDO O MAPA
-DE LEITURA do cabeçalho (apêndice com listing de autores do alvo =
-código do alvo: pule) · o código do PH2D · dumps e goldens do
-oráculo (dados; rodá-lo em modo só-dados com 2>/dev/null é livre,
---help/verbose não — ferramenta tagarela vai por wrapper de E) ·
-toda a PROSA pública do alvo (docs, manual, blog, palestras — o
-insumo lícito de SAS v. WPL), pulando listings de código e sem
-transcrever wording.
-
-⛔ NUNCA: qualquer diretório que contenha o fonte do alvo (inclui
-~/Referencias/ e ph2d-quadbench/oracle/-likes) · as superfícies do
-alvo que RENDERIZAM fonte (hospedagem de código, issues, PRs,
-code-search) · portes ou forks do alvo em qualquer linguagem ou
-licença · transcrever código executável de fonte externa (SO/blog/
-gist) — suas fontes de código são espec+papers+PH2D · ler/grepar
-os .jsonl crus de ~/.claude/projects/ (transcripts de E contêm o
-fonte; sondas agregadas como agent-loop-profile.sh seguem livres) ·
-SendMessage com E ou R · "lembrar" implementação vista em treino.
-Busca na web: confira o URL contra a DENYLIST do cabeçalho ANTES do
-fetch; busque por conceito, não por <alvo>+source. Preview com
-snippet = relance: registre no INBOX e siga. Código do alvo colado
-por alguém = PARE, protocolo §6.
-TRIPWIRE: detalhe que espec+papers não deram e "veio" (nome interno,
-typo, constante)? NÃO escreva — reporte no INBOX como suspeita de
-recall. A dúvida é do processo; reportar o sinal é seu dever.
-SUBAGENTES: todo briefing carrega este bloco ⛔ verbatim + "nunca
-cite código em reports — só fatos funcionais". Report com código do
-alvo = incidente §6 desta janela.
-
-Trabalhe no idioma DESTA casa: nomes do domínio, formas do repo,
-tokens, gates. A decomposição em arquivos/funções é SUA, guiada
-pelas fases funcionais da espec — não invente fidelidade a uma
-estrutura que você nunca viu.
-
-Fluxo: DIRETIVA_IMPLEMENTACAO.md a cada passo, como sempre. O gate
-de paridade (barra DERIVADA — bit-parity NÃO é a meta em T2, ADR-
-0162) é parte da entrega. Dúvida que a espec não responde → devolva
-a pergunta via Enio (E emenda a espec); NUNCA vá olhar — nem se a
-ordem vier do dono sem o custo explicado (§6.5).
-Entregável: código + gates verdes + handoff normal da casa (que
-NÃO menciona mecanismo interno do alvo — só o link p/ cleanroom/)
-+ o HANDOFF DA CORRENTE (§10): o BLOCO-R com Modo: PÓS preenchido,
-salvo em cleanroom/NEXT_R-POS.md e IMPRESSO no fim da resposta:
-"Pronto. Janela E (ou nova) → cole o bloco abaixo."
-═══════════════════════════════════════════════════════════════════
+Você é o SUBAGENTE R-PRÉ: contexto novo, independente do subagente
+que escreveu a espec (autofiltragem não se audita). Você PODE ler
+os dois lados (o fonte por shell — o deny da linha bloqueia Read);
+NÃO escreve nem dita código de produto. Leia na skill: §3.R · §4.2
+· §7.1.
+1. Audite a espec contra o §4.2: pseudo-código espelhado, wording
+   de manual, nomes internos, tabela verbatim, organização
+   transcrita.
+2. bash scripts/cleanroom-sweep.sh <vassoura> <espec e anexos>
+3. Verde → ateste no cabeçalho da espec ("auditada contra §4.2 por
+   R-pré em <data>") e registre o PRÉ no ledger.
+CONTRATO DE RETORNO: "R-pré: verde, atestado no cabeçalho." OU
+"R-pré: N achados." + cada achado como instrução FUNCIONAL de
+reescrita — ⛔ zero trecho, zero wording, zero nome interno do alvo.
 ```
 
-### BLOCO-R (o Revisor — modos PRÉ e PÓS)
+### MISSÃO-R-PÓS (briefing que a janela cola no subagente R-pós)
 
 ```
-═══════════════════════════════════════════════════════════════════
-CLEAN-ROOM · PAPEL R — REVISOR            (PH2D · SKILL_Cleanroom)
-═══════════════════════════════════════════════════════════════════
-Modo: <PRÉ | PÓS> · Módulo: <módulo> · Alvo: <alvo>
+MISSÃO-R-PÓS · CLEAN-ROOM de <alvo> · módulo <módulo>
 Ledger: docs/<Módulo>/cleanroom/LEDGER_<alvo>.md
 
-Você é o REVISOR: pode ver OS DOIS lados (o fonte do alvo e o nosso
-código). Você NÃO escreve nem dita código de produto. Seus achados
-voltam ao Implementador em termos FUNCIONAIS, nunca com trecho do
-original, e nunca por mensagem direta — via emenda/handoff.
-Modo PRÉ exige janela que NÃO seja a E (autofiltragem não se audita).
-
-Leia: SKILL_Cleanroom §7 (e §4.2 no modo PRÉ).
-
-Modo PRÉ (antes de o Implementador abrir):
-1. Audite a espec contra §4.2: pseudo-código espelhado, wording de
-   manual, nomes internos, tabela verbatim, organização
-   transcrita. Achado → E reescreve; verde → ateste no cabeçalho.
-2. Rode: bash scripts/cleanroom-sweep.sh <vassoura> <espec e anexos>
-3. Confira o cabeçalho completo (§4) e registre o PRÉ no ledger.
-4. HANDOFF DA CORRENTE (§10): preencha o BLOCO-I (espec + módulo;
-   Modo L: prepare as DUAS mensagens — o bloco do MODELO_ABERTURA_
-   LINHA preenchido e o BLOCO-I), rode o sweep SOBRE o handoff,
-   salve em cleanroom/NEXT_I.md e IMPRIMA-O no fim da resposta:
-   "Auditoria verde. Janela NOVA → cole o(s) bloco(s) abaixo."
-
-Modo PÓS (após paridade verde):
-1. Paridade: gates verdes, barra derivada, fase a fase onde há dumps.
-2. Sweep total (§7.2): árvore rastreada + --git-history (mensagens e
-   patches, incl. cleanroom/ e project-memory/) + linha do CLAUDE.md
-   §5 + handoff. ZERO hits é a barra. Recomendado: sweep no
-   transcript da janela I.
-3. Revisão estrutural: convergência de EXPRESSÃO (decomposição
-   arbitrária igual, ordem não-forçada, nomes traduzidos) —
-   comportamento igual NÃO é achado, é o objetivo. Achado →
-   re-derivação com restrição funcional explícita (§7.3.d).
-4. Incidentes: cada um do INBOX transcrito e tratado (quarentena
-   comparada; régua do "substancial" §6.2)?
-5. Session-id de I fora de {janelas E, queimadas}?
-6. Feche o ledger com o bloco de fechamento (§6). Reporte:
-   "Ledger fechado. Módulo apto a integrar."
-═══════════════════════════════════════════════════════════════════
-```
-
-### BLOCO-SOLO (uma janela do início ao fim — alvo pequeno/médio)
-
-```
-═══════════════════════════════════════════════════════════════════
-CLEAN-ROOM · MODO SOLO — ORQUESTRA E IMPLEMENTA  (PH2D · SKILL_Cleanroom)
-═══════════════════════════════════════════════════════════════════
-Alvo: <nome + repo/URL + versão> · Licença: <GPL/AGPL/…>
-Fonte local: ~/Referencias/<alvo>/ · Módulo PH2D: <módulo>
-
-Você é a janela ORQUESTRADORA e, ao final, o IMPLEMENTADOR. Por
-isso você opera SOB AS REGRAS DO BLOCO-I DESDE JÁ (§3.I): você
-NUNCA abre o fonte do alvo — quem lê são SUBAGENTES, cujo contexto
-é isolado do seu por construção (§3, Modo SOLO).
-
-Leia INTEIRA: docs/_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md
-Depois, em ordem:
-1. Passo 0 do BLOCO-I (deny config · cd/pwd/branch · session-id no
-   INBOX).
-2. Despache um SUBAGENTE-E com a missão INTEIRA do BLOCO-E + o
-   CONTRATO DE RETORNO: "seu report final é UMA frase fixa +
-   caminhos + contagens; ⛔ zero identificador/trecho/wording do
-   alvo — expressão no report queima a janela-mãe (incidente §6)".
-3. Despache um SUBAGENTE R-PRÉ (BLOCO-R Modo PRÉ + o mesmo
-   contrato). Achados → continue o subagente-E para emendar, até o
-   atestado entrar no cabeçalho da espec.
-4. Confira o CABEÇALHO da espec (nunca o ledger) e IMPLEMENTE —
-   daqui em diante o BLOCO-I vale à risca (fontes, ⛔, tripwire,
-   INBOX; seus subagentes carregam as proibições verbatim).
-5. Paridade verde → despache um SUBAGENTE R-PÓS (BLOCO-R Modo PÓS
-   + contrato). Achado estrutural → re-derive com a restrição
-   funcional que ele der (§7.3.d).
-6. Report chegou com expressão do alvo? PARE: você está queimada
-   como I — registre no INBOX, reporte ao Enio; a retomada é uma
-   janela nova (tudo durável já está em disco).
-Entregável: o mesmo do BLOCO-I + ledger fechado pelo R-PÓS.
-═══════════════════════════════════════════════════════════════════
+Você é o SUBAGENTE R-PÓS: vê os dois lados (o fonte por shell — o
+deny da linha bloqueia Read — e o nosso código); NÃO escreve nem
+dita código de produto. Leia na skill: §6 · §7. Execute o §7.2:
+1. PARIDADE: gates verdes, barra DERIVADA, fase a fase onde houver
+   dumps.
+2. SWEEP TOTAL: árvore rastreada (git ls-files) + --git-history
+   (mensagens e patches, incl. cleanroom/ e project-memory/) +
+   linha do CLAUDE.md §5 + handoff da linha. ZERO hits é a barra.
+   Recomendado: sweep nos transcripts das janelas da corrente I.
+3. REVISÃO ESTRUTURAL: convergência de EXPRESSÃO (decomposição
+   arbitrária igual, ordem não-forçada, truques de escrita, nomes
+   traduzidos) — comportamento igual NÃO é achado, é o objetivo.
+4. INCIDENTES: cada um do INBOX transcrito e tratado; quarentena
+   comparada contra o trecho exposto (régua do "substancial", §6.2).
+5. CORRENTE I: nenhuma janela pertence a {contextos que leram o
+   fonte, janelas queimadas}; cada troca com motivo no ledger.
+6. Feche o ledger com o bloco de fechamento (§6).
+CONTRATO DE RETORNO: "Ledger fechado. Módulo apto a integrar." OU a
+lista de achados como RESTRIÇÕES FUNCIONAIS de re-derivação
+(§7.3.d) — ⛔ zero trecho do alvo.
 ```
 
 ---
@@ -938,6 +944,9 @@ Entregável: o mesmo do BLOCO-I + ledger fechado pelo R-PÓS.
 > alvo para todos, o algoritmo inteiro em qualquer profundidade, a citação curta com
 > fonte, os nomes públicos de interface, o harness pelo Especificador.
 > A casa já paga preços maiores por leis menores.
+> E a contagem de janelas é decisão **operacional**, não jurídica: a parede é entre
+> CONTEXTOS, e uma janela que nunca viu o fonte continua limpa por mais subagentes
+> que despache — o que a lei pede está no §0, não no número de abas abertas.
 
 ---
 
@@ -947,40 +956,29 @@ Entregável: o mesmo do BLOCO-I + ledger fechado pelo R-PÓS.
 quem usa tem que abrir o próprio código" (GPL e parentes) — e o PH2D vai continuar
 fechado.
 
-**O que você faz (4 janelas — mas você só preenche o PRIMEIRO bloco: cada agente
-termina te entregando o prompt PRONTO do próximo, impresso na resposta dele; seu
-trabalho é abrir janela nova e colar):**
+**O que você faz (1 janela, 1 colagem):**
 
-1. **Janela 1 — o Leitor.** Cole o **BLOCO-E** (§10) preenchendo a 1ª linha com o
-   nome do programa-alvo e o nosso módulo. Esse agente pode ler TUDO do alvo — lê o
-   código **inteiro**, minera as dicas dos autores originais e escreve um manual de
-   engenharia completo (a "espec"), com o programa original rodando de lado como
-   gabarito. **Ele termina te entregando o prompt da Janela 2.**
-2. **Janela 2 — o Auditor.** Janela nova; cole o que recebeu. Ele confere que o
-   manual descreve comportamento sem carregar a escrita do original — rápido — **e te
-   entrega o prompt da Janela 3.**
-3. **Janela 3 — o Construtor.** Janela NOVA, sempre; cole o que recebeu. Esse agente
-   **nunca vê o código original** — só o manual, os artigos e as saídas do gabarito —
-   e constrói a nossa versão em Rust, com testes provando que ela dá as mesmas
-   respostas. ⚠️ Nunca peça a ele para "dar uma olhadinha" no original: isso queima a
-   janela (ele explica o custo se você pedir). **Ele termina te entregando o prompt
-   da Janela 4.**
-4. **Janela 4 — o Auditor de novo.** Pode ser a Janela 1; cole o que recebeu. Ele
-   roda as varreduras finais e fecha o diário (o "ledger"). Daí em diante a feature
-   segue o fluxo normal da casa.
+1. **Janela nova** → cole o **BLOCO-LINHA** (§10) preenchendo as primeiras linhas
+   (nome do programa-alvo, onde está o fonte, nosso módulo). Só isso. A janela abre a
+   linha de trabalho, manda ajudantes internos lerem o código original INTEIRO e
+   escreverem um manual de engenharia completo (com o programa original rodando de
+   lado como gabarito), audita o manual, e constrói a nossa versão em Rust — com
+   testes provando que dá as mesmas respostas. Tudo numa linha só, que se integra ao
+   main de uma vez, como qualquer outra.
+2. **Se a janela encher ou travar**, ela te entrega um bloco de **RETOMADA** pronto
+   (impresso na resposta e salvo em `docs/<módulo>/cleanroom/RETOMADA_*.md`). Abra
+   uma janela nova, cole, e a nova continua exatamente de onde a anterior parou — na
+   mesma linha. A anterior para de vez: nunca duas janelas no mesmo trabalho.
 
-Perdeu um prompt? Todos ficam salvos em `docs/<módulo>/cleanroom/NEXT_*.md`.
-
-**Prefere uma janela só?** Para alvo pequeno ou médio, cole apenas o **BLOCO-SOLO**
-numa janela nova: ela despacha o Leitor e os Auditores como ajudantes internos (que
-têm memória separada da dela) e constrói ela mesma — você cola um bloco e espera.
-O preço: se um ajudante vazar um trecho do original no relatório, essa janela
-recomeça (o trabalho salvo em disco não se perde).
+⚠️ **Nunca peça à janela para "dar uma olhadinha" no código original** — quem olha são
+os ajudantes internos, que têm memória separada da dela. Se ela olhar, tem de ser
+trocada (ela explica o custo se você pedir).
 
 **Por que é seguro:** quem escreveu o nosso código nunca viu o deles — e o diário
-prova. **Por que é rápido:** o Construtor não trabalha às cegas como no quad remesh;
-ele recebe o manual completo e o gabarito rodando do lado.
+prova. **Por que é rápido:** o construtor não trabalha às cegas como no início do quad
+remesh — ele recebe o manual completo e o gabarito rodando do lado, e o trabalho
+inteiro mora numa linha só.
 
-**Atalho que vale ouro:** antes de tudo, o Leitor confere se existe versão do mesmo
-algoritmo com licença livre (§2, degraus T0/T1) — se existir, copiamos direto,
+**Atalho que vale ouro:** antes de tudo, o ajudante-leitor confere se existe versão do
+mesmo algoritmo com licença livre (§2, degraus T0/T1) — se existir, copiamos direto,
 legalmente, e nada do resto é necessário.

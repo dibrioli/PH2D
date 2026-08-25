@@ -5452,6 +5452,78 @@ executa.*
 
 20 mutações, **20 vermelhas** com os três controles.
 
+## §65 — W59: a região do corte é o CASCO, não a caixa dele (24/08)
+
+> A W56e deixou ⏸️: *"ladrilhar em `(u, v)` contra o **paralelogramo** em vez da AABB — o único eixo
+> que não multiplica a montagem de JIT"*. ⚠️ Isso é uma afirmação sobre o **preço**; o **ganho**
+> ainda não tinha número, e esta linha já pagou quatro vezes por construir o que uma nota prescreve.
+
+### §65.1 — A régua primeiro, e ela teve de ser corrigida
+
+| contorno | câmera | fatias | caixa | casco | ganho | área caixa/casco |
+|---|---|---:|---:|---:|---:|---:|
+| círculo 168 | **de viés** | 2 | 94,3 | **78,2** | **1,21×** | 1,97× |
+| círculo 168 | de viés | 4 | 68,7 | 56,8 | 1,21× | 1,58× |
+| círculo 168 | de frente | 2 | 54,3 | 50,8 | 1,07× | 1,19× |
+| estrela 168 | **de viés** | 4 | 77,7 | **60,6** | **1,28×** | 1,58× |
+| estrela 168 | rasante | 2 | 104,7 | 90,7 | 1,15× | 1,52× |
+
+⭐⭐ **A área cai `1,97×` e o ganho é só `1,21×`** — e essa distância é a lição: o corte guarda toda
+aresta a menos de `dmax = min_e (máx distância de um VÉRTICE da região a e)`, e o `dmax` cresce com
+o **diâmetro**, não com a área. *A diagonal de uma caixa e o comprimento do tubo que ela envolve são
+parecidos; as áreas não são.*
+
+⛔ **E a 1.ª versão da régua mediu duas coisas diferentes:** ela comparava o casco **cru** com a
+caixa **∩ peça e inflada**, e imprimiu *"área do casco maior que a da caixa"* — impossível para um
+casco dentro da própria AABB. Foi esse número absurdo que a denunciou. *Uma régua que compara duas
+regiões tem de as recortar e inflar do mesmo modo.*
+
+### §65.2 — A obra, e a ordem que é load-bearing
+
+`ProfileIndex::distance_edges_hull` — a **mesma** regra, com a região a ser um polígono convexo. A
+região passa a viajar como **caixa + os oito cantos do tubo** (`tiles::Region`), e o
+`RegionCompiler::compile_at` mapeia os cantos pela cadeia de poses (um mapa afim leva ponto a ponto).
+
+⚠️ **Só o `Extrude` a consome, e não é esquecimento:** o `u` do `Revolve` é `√(x²+z²)`, e a região
+dele em `(u, v)` é um **rectângulo** por construção — não há polígono a apertar.
+
+⚠️ **Só a DISTÂNCIA a consome.** O conjunto do **sinal** e a **âncora** continuam a sair da caixa: o
+enrolamento é um invariante de **caminho**, e o caminho âncora→ponto anda dentro da caixa. *A metade
+que compra está na distância; a outra é risco sem prémio.*
+
+⛔ **INFLA e só depois RECORTA.** Ao contrário, o casco espeta para fora da caixa por até `pad` e
+deixa de estar contido nela — e um gate de **monotonia** apanhou isso (uma região guardava **mais**
+arestas com o casco do que com a caixa, o que é impossível para um subconjunto).
+
+### §65.3 — ⚠️ Três mutações sobreviveram a um gate de amostragem
+
+Elas deitavam fora arestas a mais (medido: a média caiu de `39,7` para `37,8`, o mínimo de `9` para
+`5`) e **nenhum** dos 300 × 24 pontos amostrados perdeu a sua aresta vencedora.
+
+⭐ **A causa é a mesma de sempre: num círculo todas as arestas estão à mesma distância do interior**,
+então um corte agressivo raramente deita fora *a vencedora*. Uma estrela de 96 pontas ajudou — e não
+chegou. ⇒ **parei de caçar fixtura e gateei a PROPRIEDADE**, onde ela é definida:
+
+1. **`seg_hull_dist2` é um MINORANTE verdadeiro** — a distância² região↔aresta nunca passa a de um
+   ponto qualquer da região a ela.
+2. **`dmax` MAJORA a distância ao vizinho mais próximo em toda a região** — a prova usa que o máximo
+   de uma função convexa sobre um polígono está num **vértice**, e por isso ele olha **todos**.
+
+*Uma fixtura de amostras prova o que ela amostrou; a propriedade prova-se onde ela é definida.*
+
+⚠️ **E o controle dessa gate reprovou por medir a lei ao contrário:** ele exigia que a **maioria**
+dos pontos ficasse perto da barra, e a folga medida foi de `82%` — que é da **lei**, não da fixtura
+(`dmax` é um majorante deliberadamente generoso, tem de valer para o **pior** ponto da região). Ele
+passa a exigir que **alguns** cheguem lá.
+
+10 mutações, **10 vermelhas** com os três controles.
+
+### §65.4 — E o teto de LOC voltou a estourar — três cortes
+
+`ph2d-field-eval/src/lib.rs` 936/700 e `profile_index.rs` 728/700. Cortes por responsabilidade:
+`hull.rs` (a geometria convexa da região), `affine.rs` (o mapa de poses), `profile_dist.rs` (as
+primitivas de distância 2D). `lib.rs` **936 → 687**.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

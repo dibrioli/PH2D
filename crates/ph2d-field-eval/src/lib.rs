@@ -373,6 +373,12 @@ pub fn leaf(p: Primitive, xform: Xform) -> Node {
     Node::new(xform, NodeKind::Leaf(p))
 }
 
+mod affine;
+use affine::Affine;
+mod hull;
+use hull::hull_uv;
+pub use hull::{probe_hull_uv, probe_in_hull};
+
 #[cfg(test)]
 mod tests;
 
@@ -400,6 +406,26 @@ mod tests;
 #[must_use]
 pub fn compile_in_region(doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
     RegionCompiler::new(doc).compile(doc, lo, hi)
+}
+
+/// ⚠️ Só para a prova de mutação: os oito cantos de uma caixa.
+#[doc(hidden)]
+#[must_use]
+pub fn probe_box_corners(lo: [f32; 3], hi: [f32; 3]) -> Vec<[f32; 3]> {
+    box_corners(lo, hi)
+}
+
+/// Os oito cantos de uma caixa — a região «forma real» de quem só tem a caixa.
+fn box_corners(lo: [f32; 3], hi: [f32; 3]) -> Vec<[f32; 3]> {
+    (0..8u8)
+        .map(|k| {
+            [
+                if k & 1 == 0 { lo[0] } else { hi[0] },
+                if k & 2 == 0 { lo[1] } else { hi[1] },
+                if k & 4 == 0 { lo[2] } else { hi[2] },
+            ]
+        })
+        .collect()
 }
 
 /// ⭐⭐⭐ **O PASSO SEGURO DESTE DOCUMENTO** (W56f) — e ele é do documento, não uma constante.
@@ -498,11 +524,37 @@ impl RegionCompiler {
     /// [`compile_in_region`].
     #[must_use]
     pub fn compile(&self, doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
-        compile_in_region_with(self, doc, lo, hi)
+        compile_in_region_with(self, doc, lo, hi, &box_corners(lo, hi))
+    }
+
+    /// ⭐⭐⭐ **A MESMA especialização, com a região a ser um CONJUNTO DE PONTOS** (W59).
+    ///
+    /// ⚠️ **A caixa continua a viajar, e não é redundância:** ela é o que o `Revolve` usa (o `(u, v)`
+    /// dele é `√(x²+z²)`, e a região ali é um rectângulo por construção), o que o sinal e a âncora
+    /// consomem, e o que `Affine::box_of` sabe mapear. O que os **pontos** acrescentam é a forma
+    /// real, e só a **distância** de um `Extrude` a consome.
+    ///
+    /// ⚠️ Os pontos são os cantos do tubo da região, **crus** (sem a folga da sonda da normal): quem
+    /// a soma de volta é [`hull_uv`], que a lê da caixa.
+    #[must_use]
+    pub fn compile_at(
+        &self,
+        doc: &FieldDoc,
+        lo: [f32; 3],
+        hi: [f32; 3],
+        corners: &[[f32; 3]],
+    ) -> Tree {
+        compile_in_region_with(self, doc, lo, hi, corners)
     }
 }
 
-fn compile_in_region_with(rc: &RegionCompiler, doc: &FieldDoc, lo: [f32; 3], hi: [f32; 3]) -> Tree {
+fn compile_in_region_with(
+    rc: &RegionCompiler,
+    doc: &FieldDoc,
+    lo: [f32; 3],
+    hi: [f32; 3],
+    corners: &[[f32; 3]],
+) -> Tree {
     // Passo 1 — o mapa mundo→local de cada nó. A arena tem os filhos ANTES dos pais, então o
     // percurso é de cima para baixo a partir da raiz.
     let n = doc.nodes().len();
@@ -529,7 +581,12 @@ fn compile_in_region_with(rc: &RegionCompiler, doc: &FieldDoc, lo: [f32; 3], hi:
             NodeKind::Leaf(p) => to_local[i]
                 .filter(|_| !node.mods.iter().any(remaps_coordinates))
                 .zip(rc.idx.get(&i))
-                .and_then(|(m, idx)| specialised_profile(p, idx, m.box_of(lo, hi)))
+                .and_then(|(m, idx)| {
+                    // ⭐⭐ **Os CANTOS da região, mapeados** (W59) — o casco em `(u, v)` sai deles, e
+                    // não da caixa. Um mapa afim leva canto a canto, então os oito bastam.
+                    let pts = m.points_of(corners);
+                    specialised_profile(p, idx, m.box_of(lo, hi), &pts)
+                })
                 .unwrap_or_else(|| primitive(p)),
             NodeKind::Combine { op, children } => combine(*op, children, &built),
             NodeKind::Sampled { .. } => Tree::constant(f64::from(hybrid::ABSENT)),
@@ -558,6 +615,8 @@ fn specialised_profile(
     p: &Primitive,
     idx: &profile_index::ProfileIndex,
     local: ([f32; 3], [f32; 3]),
+    // Os cantos da região, já em espaço LOCAL — ver `hull_uv`.
+    pts: &[[f32; 3]],
 ) -> Option<Tree> {
     let (lo, hi) = local;
     match p {
@@ -566,6 +625,12 @@ fn specialised_profile(
             half_height,
             round,
         } => {
+            // ⭐⭐⭐ **A região do EXTRUDE é o casco, não a caixa dele** (W59): o `(u, v)` dele é
+            // `(x, y)`, então a pegada real do tubo no plano do perfil é o **polígono** dos cantos
+            // projectados. ⛔ O `Revolve` fica de fora e não é esquecimento: o `u` dele é
+            // `√(x² + z²)`, e a região em `(u, v)` é um **rectângulo** por construção — não há
+            // polígono a apertar.
+            let hull = hull_uv(pts, [lo[0], lo[1]], [hi[0], hi[1]]);
             let flat = profile::sd_profile_in_region(
                 profile,
                 idx,
@@ -574,6 +639,7 @@ fn specialised_profile(
                 [lo[0], lo[1]],
                 [hi[0], hi[1]],
                 false,
+                (hull.len() >= 3).then_some(&hull[..]),
             );
             Some(profile::extrude_from(
                 &flat,
@@ -602,6 +668,7 @@ fn specialised_profile(
                 [u_lo, lo[1]],
                 [u_hi, hi[1]],
                 true,
+                None,
             ))
         }
         _ => None,
@@ -616,65 +683,5 @@ fn axis_gap(lo: f32, hi: f32) -> f32 {
         -hi
     } else {
         0.0
-    }
-}
-
-/// Um mapa afim `p ↦ M·p + c` — a composição de poses que leva o mundo ao plano de um perfil.
-///
-/// ⚠️ **A escala é uniforme** por decisão do módulo (ADR-0161 §6), então `M` continua a ser uma
-/// rotação escalada, e a caixa transformada por cantos é conservadora sem folga inventada.
-#[derive(Clone, Copy)]
-struct Affine {
-    m: [[f64; 3]; 3],
-    c: [f64; 3],
-}
-
-impl Affine {
-    /// O que a [`place`] faz às coordenadas: `local = R⁻¹·(p − t)/s`.
-    fn of(x: Xform) -> Self {
-        let inv_s = 1.0 / f64::from(x.scale);
-        let r = inverse_rotation_matrix(x.rotation);
-        let t = x.translation.map(f64::from);
-        let mut m = [[0.0; 3]; 3];
-        let mut c = [0.0; 3];
-        for (i, row) in m.iter_mut().enumerate() {
-            for (j, cell) in row.iter_mut().enumerate() {
-                *cell = r[i][j] * inv_s;
-            }
-            c[i] = -(r[i][0] * t[0] + r[i][1] * t[1] + r[i][2] * t[2]) * inv_s;
-        }
-        Self { m, c }
-    }
-
-    /// `self ∘ outer` — primeiro o de fora (o pai), depois este.
-    fn after(self, outer: Self) -> Self {
-        let mut m = [[0.0; 3]; 3];
-        let mut c = self.c;
-        for (i, row) in m.iter_mut().enumerate() {
-            for (j, cell) in row.iter_mut().enumerate() {
-                *cell = (0..3).map(|k| self.m[i][k] * outer.m[k][j]).sum();
-            }
-            c[i] += (0..3).map(|k| self.m[i][k] * outer.c[k]).sum::<f64>();
-        }
-        Self { m, c }
-    }
-
-    /// A caixa local que contém a imagem da caixa do mundo — pelos **oito cantos**, que é exacto
-    /// para um mapa afim.
-    fn box_of(self, lo: [f32; 3], hi: [f32; 3]) -> ([f32; 3], [f32; 3]) {
-        let (mut out_lo, mut out_hi) = ([f32::INFINITY; 3], [f32::NEG_INFINITY; 3]);
-        for k in 0..8u8 {
-            let p = [
-                if k & 1 == 0 { lo[0] } else { hi[0] },
-                if k & 2 == 0 { lo[1] } else { hi[1] },
-                if k & 4 == 0 { lo[2] } else { hi[2] },
-            ];
-            for i in 0..3 {
-                let v = (0..3).map(|j| self.m[i][j] * f64::from(p[j])).sum::<f64>() + self.c[i];
-                out_lo[i] = out_lo[i].min(v as f32);
-                out_hi[i] = out_hi[i].max(v as f32);
-            }
-        }
-        (out_lo, out_hi)
     }
 }

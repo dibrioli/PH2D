@@ -3146,3 +3146,89 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
         cases.len()
     );
 }
+
+/// ⭐⭐ **A ESPECIALIZAÇÃO DE FACTO USA O CASCO** (W59) — a metade do fio, sem relógio.
+///
+/// ⚠️ **Os dois gates do renderer medem a LEI (`probe_hull_uv`), não o FIO.** Fazer o
+/// `specialised_profile` ignorar o casco é uma regressão **só de relógio** — a imagem sai idêntica,
+/// porque a caixa é uma região válida. *É a mesma família do «a região era a peça inteira» da W56d,
+/// e a quarta vez nesta linha que a metade que falta é a de quem executa.*
+///
+/// ⭐ **A régua que não é relógio:** as duas árvores guardam **conjuntos de arestas diferentes**,
+/// então elas concordam DENTRO da região (isso é o outro gate) e **discordam fora** dela. Uma
+/// especialização que ignorasse o casco daria a MESMA árvore, byte a byte.
+#[test]
+fn the_specialisation_actually_consumes_the_hull() {
+    use ph2d_field::{FillRule, Profile};
+    let ring: Vec<[f32; 2]> = (0..168)
+        .map(|i| {
+            let a = std::f64::consts::TAU * f64::from(i) / 168.0;
+            [(0.5 * a.cos()) as f32, (0.5 * a.sin()) as f32]
+        })
+        .collect();
+    let profile = Profile::new(vec![ring], FillRule::NonZero, 1e-3).expect("perfil");
+    let doc = FieldDoc::new(
+        vec![leaf(
+            Primitive::Extrude {
+                profile,
+                half_height: 0.2,
+                round: 0.0,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let rc = crate::RegionCompiler::new(&doc);
+    // ⚠️ Um tubo **oblíquo, pequeno e PERTO DA BORDA**. ⛔ Duas fixturas anteriores falharam o
+    // fenómeno pela mesma razão: o corte guarda tudo a menos de `dmax ≈ a + D`, com `a` a distância
+    // à aresta mais próxima — e no **meio** de um círculo `a` é o raio, então uma região central
+    // guarda as 168 por mais pequena que seja. *É perto da parede que um corte corta*, e é por isso
+    // que o controle abaixo mede a caixa antes de o gate acusar seja quem for.
+    let pts: Vec<[f32; 3]> = (0..8)
+        .map(|k| {
+            let t = if k < 4 { 0.0f32 } else { 1.0 };
+            let (dx, dy) = ((k % 2) as f32 * 0.02, ((k / 2) % 2) as f32 * 0.02);
+            [0.34 + 0.10 * t + dx, 0.34 - 0.20 * t + dy, 0.0]
+        })
+        .collect();
+    let (mut lo, mut hi) = ([f32::INFINITY; 3], [f32::NEG_INFINITY; 3]);
+    for p in &pts {
+        for k in 0..3 {
+            lo[k] = lo[k].min(p[k] - 0.01);
+            hi[k] = hi[k].max(p[k] + 0.01);
+        }
+    }
+    let with = Field::from_tree(&rc.compile_at(&doc, lo, hi, &pts));
+    let without = Field::from_tree(&rc.compile(&doc, lo, hi));
+    // ⚠️ **FORA da região**, onde as duas não prometem nada uma à outra: é lá que um conjunto de
+    // arestas diferente aparece como um número diferente.
+    let mut diff = 0usize;
+    for i in 0..40 {
+        for j in 0..40 {
+            let x = -0.9 + 1.8 * f64::from(i) / 39.0;
+            let y = -0.9 + 1.8 * f64::from(j) / 39.0;
+            if (with.at(x, y, 0.0) - without.at(x, y, 0.0)).abs() > 1e-6 {
+                diff += 1;
+            }
+        }
+    }
+    // ⚠️ **O controle da fixtura**: se a região for grande, os dois cortes guardam TUDO e as duas
+    // árvores saem idênticas — e o gate acusaria produto correto.
+    let idx = crate::profile_index::ProfileIndex::build(match &doc.nodes()[0].kind {
+        ph2d_field::NodeKind::Leaf(Primitive::Extrude { profile, .. }) => profile,
+        _ => unreachable!("a fixtura é um extrude"),
+    });
+    let boxed = idx.probe_cull([lo[0], lo[1]], [hi[0], hi[1]]);
+    assert!(
+        boxed * 2 < idx.edge_count(),
+        "a região é grande demais: a CAIXA já guarda {boxed} de {} arestas, e ali o casco não tem o \
+         que apertar — a fixtura não contém o fenómeno",
+        idx.edge_count()
+    );
+    assert!(
+        diff > 0,
+        "as duas árvores são idênticas em 1600 pontos — a especialização está a ignorar o casco, e \
+         a regressão seria SÓ de relógio (a imagem sai igual, e gate de paridade nenhum a vê)"
+    );
+}

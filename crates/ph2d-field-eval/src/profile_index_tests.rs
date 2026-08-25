@@ -266,6 +266,7 @@ fn the_specialised_tree_agrees_inside_its_region() {
                 lo,
                 hi,
                 false,
+                None,
             );
             let shape = crate::Engine::from(cut);
             let mut eval = crate::Engine::new_float_slice_eval();
@@ -432,8 +433,16 @@ fn the_anchor_is_never_a_point_that_sits_on_an_edge() {
         ([0.5, -0.25], [0.9, 0.3]),
         ([-0.3, 0.25], [0.2, 0.7]),
     ] {
-        let cut =
-            crate::profile::sd_profile_in_region(&p, &idx, &Tree::x(), &Tree::y(), lo, hi, false);
+        let cut = crate::profile::sd_profile_in_region(
+            &p,
+            &idx,
+            &Tree::x(),
+            &Tree::y(),
+            lo,
+            hi,
+            false,
+            None,
+        );
         let shape = crate::Engine::from(cut);
         let mut eval = crate::Engine::new_float_slice_eval();
         let tape = shape.ez_float_slice_tape();
@@ -457,4 +466,182 @@ fn the_anchor_is_never_a_point_that_sits_on_an_edge() {
              numa aresta e a âncora do enrolamento ficou ambígua"
         );
     }
+}
+
+/// ⛔⛔ **O CORTE POR CASCO NUNCA DEITA FORA A ARESTA MAIS PRÓXIMA** (W59) — a irmã da lei acima,
+/// com a região a ser um polígono.
+///
+/// ⚠️ **É ESTE o gate que faltava, e duas mutações disseram-no.** Elas faziam a distância
+/// aresta↔casco sair **maior** do que é (olhar só o primeiro lado do polígono · não reconhecer uma
+/// ponta que cai dentro dele), e as duas **sobreviveram** ao gate de imagem: uma aresta a menos no
+/// conjunto é uma distância grande demais **nalguns pontos**, e a marcha só a nota se calhar de a
+/// amostrar num pixel visível. *Um gate de imagem prova a imagem que ele desenhou, não a lei.*
+///
+/// A régua é a mesma da versão de caixa: para uma nuvem de pontos **dentro** da região, a aresta que
+/// de facto ganha o `min` tem de estar no conjunto guardado.
+#[test]
+fn the_hull_cull_never_drops_the_nearest_edge() {
+    // ⚠️ **Uma ESTRELA, e não só círculos.** ⛔ Três mutações sobreviveram à 1.ª fixtura, e todas
+    // pela mesma causa: num **círculo** todas as arestas estão à mesma distância do interior, então
+    // um corte que deita fora arestas a mais raramente deita fora **a vencedora** — e é a vencedora
+    // que este gate mede. *A régua de um corte precisa de um contorno onde a aresta mais próxima
+    // MUDA ao longo da região.*
+    let star: Vec<[f32; 2]> = (0..96)
+        .map(|i| {
+            let a = std::f64::consts::TAU * f64::from(i) / 96.0;
+            let r = if i % 2 == 0 { 0.5 } else { 0.18 };
+            [(r * a.cos()) as f32, (r * a.sin()) as f32]
+        })
+        .collect();
+    for (name, contours) in [
+        ("estrela de 96 pontas", vec![star]),
+        ("polígono de 168 lados", vec![ngon(168, 0.5, [0.0, 0.0])]),
+        (
+            "duas ilhas",
+            vec![ngon(24, 0.2, [-0.35, 0.0]), ngon(24, 0.2, [0.35, 0.0])],
+        ),
+    ] {
+        let p = Profile::new(contours, FillRule::NonZero, 1e-3).expect("perfil válido");
+        let idx = ProfileIndex::build(&p);
+        let mut s = 0x243F_6A88u64;
+        let mut rnd = move || {
+            s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+            (s >> 33) as f32 / u32::MAX as f32
+        };
+        let (mut checked, mut tight) = (0usize, 0usize);
+        for _ in 0..300 {
+            // Um **quadrilátero oblíquo** aleatório — a forma que um tubo de viés de facto tem.
+            let c = [(rnd() - 0.5) * 1.6, (rnd() - 0.5) * 1.6];
+            let ang = rnd() * std::f32::consts::TAU;
+            // ⚠️ Regiões **compridas**: o defeito só aparece quando a aresta vencedora muda de uma
+            // ponta da região à outra.
+            let (long, thin) = (0.6f32.mul_add(rnd(), 0.10), 0.10f32.mul_add(rnd(), 0.01));
+            let (ca, sa) = (ang.cos(), ang.sin());
+            let quad: Vec<[f32; 2]> = [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
+                .into_iter()
+                .map(|(u, v)| {
+                    let (x, y) = (u * long, v * thin);
+                    [c[0] + x * ca - y * sa, c[1] + x * sa + y * ca]
+                })
+                .collect();
+            let kept = idx.distance_edges_hull(&quad);
+            if kept.len() < idx.edge_count() {
+                tight += 1;
+            }
+            // Pontos DENTRO do quadrilátero: a aresta vencedora tem de estar no conjunto.
+            for _ in 0..24 {
+                let (u, v) = ((rnd() - 0.5) * 2.0, (rnd() - 0.5) * 2.0);
+                let (x, y) = (u * long, v * thin);
+                let q = [c[0] + x * ca - y * sa, c[1] + x * sa + y * ca];
+                let all = idx.min_dist2_to(&(0..idx.edge_count() as u32).collect::<Vec<_>>(), q);
+                let cut = idx.min_dist2_to(&kept, q);
+                checked += 1;
+                assert!(
+                    (cut - all).abs() <= 1e-9 + all * 1e-5,
+                    "{name}: num ponto do casco a distância² caiu {all:.9} com todas as arestas e \
+                     {cut:.9} com as guardadas — o corte deitou fora a aresta que ganha o mínimo, e \
+                     a marcha atravessa a peça"
+                );
+            }
+        }
+        assert!(checked > 3000, "{name}: poucos pontos medidos ({checked})");
+        // …e o controle: se o corte guardasse SEMPRE tudo, o gate acima passaria sem provar nada.
+        assert!(
+            tight * 4 > 300,
+            "{name}: só {tight} de 300 regiões viram o corte apertar — a fixtura não contém o \
+             fenómeno que o gate existe para medir"
+        );
+    }
+}
+
+/// ⛔⛔ **AS DUAS PROPRIEDADES DE QUE A PROVA DO CORTE DEPENDE** (W59) — afirmadas directamente.
+///
+/// ⚠️ **Elas existem porque três mutações sobreviveram a um gate de amostragem.** As mutações
+/// deitavam fora arestas a mais (medido: a média caiu de `39,7` para `37,8`), e mesmo assim
+/// **nenhum** dos 300 × 24 pontos amostrados perdeu a sua aresta vencedora. *Uma fixtura de amostras
+/// prova o que ela amostrou; a propriedade prova-se onde ela é definida.*
+///
+/// A prova do corte tem duas metades, e cada uma é uma desigualdade:
+///
+/// 1. **`seg_hull_dist2` é um MINORANTE verdadeiro** — a distância² da região à aresta nunca passa
+///    da distância² de um ponto qualquer da região a ela. Se ela sobrestimar, uma aresta próxima é
+///    deitada fora e a distância sai grande demais.
+/// 2. **`dmax` MAJORA a distância ao vizinho mais próximo em toda a região** — é ele que garante
+///    que a vencedora de qualquer ponto sobrevive ao corte. A prova usa que o máximo de uma função
+///    convexa sobre um polígono está num **vértice**, e por isso ele tem de olhar **todos**.
+#[test]
+fn the_two_inequalities_the_hull_cut_rests_on() {
+    let star: Vec<[f32; 2]> = (0..96)
+        .map(|i| {
+            let a = std::f64::consts::TAU * f64::from(i) / 96.0;
+            let r = if i % 2 == 0 { 0.5 } else { 0.18 };
+            [(r * a.cos()) as f32, (r * a.sin()) as f32]
+        })
+        .collect();
+    let p = Profile::new(vec![star], FillRule::NonZero, 1e-3).expect("perfil");
+    let idx = ProfileIndex::build(&p);
+    let mut s = 0x1234_5678u64;
+    let mut rnd = move || {
+        s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+        (s >> 33) as f32 / u32::MAX as f32
+    };
+    let all: Vec<u32> = (0..idx.edge_count() as u32).collect();
+    let (mut checked, mut slack) = (0usize, 0usize);
+    for _ in 0..200 {
+        let c = [(rnd() - 0.5) * 1.4, (rnd() - 0.5) * 1.4];
+        let ang = rnd() * std::f32::consts::TAU;
+        let (long, thin) = (0.5f32.mul_add(rnd(), 0.08), 0.25f32.mul_add(rnd(), 0.02));
+        let (ca, sa) = (ang.cos(), ang.sin());
+        let quad: Vec<[f32; 2]> = [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
+            .into_iter()
+            .map(|(u, v): (f32, f32)| {
+                let (x, y) = (u * long, v * thin);
+                [c[0] + x * ca - y * sa, c[1] + x * sa + y * ca]
+            })
+            .collect();
+        let dmax = idx.probe_hull_dmax(&quad);
+        // Uma grelha DENSA dentro do quadrilátero — as duas desigualdades são «para todo ponto».
+        for iu in 0..7 {
+            for iv in 0..7 {
+                let (u, v) = (-1.0 + 2.0 * iu as f32 / 6.0, -1.0 + 2.0 * iv as f32 / 6.0);
+                let (x, y) = (u * long, v * thin);
+                let q = [c[0] + x * ca - y * sa, c[1] + x * sa + y * ca];
+                // (2) o `dmax` majora a distância² ao vizinho mais próximo.
+                let near = idx.min_dist2_to(&all, q);
+                checked += 1;
+                assert!(
+                    near <= dmax * (1.0 + 1e-4) + 1e-9,
+                    "num ponto da região a distância² ao vizinho mais próximo é {near:.9} e o \
+                     `dmax` é {dmax:.9} — a vencedora deste ponto pode ser deitada fora pelo corte"
+                );
+                if near * 2.0 < dmax {
+                    slack += 1;
+                }
+                // (1) a distância região↔aresta nunca passa a de um ponto dela.
+                for &i in &all {
+                    let region = idx.probe_hull_dist2(i, &quad);
+                    let point = idx.min_dist2_to(&[i], q);
+                    assert!(
+                        region <= point * (1.0 + 1e-4) + 1e-9,
+                        "a aresta {i} está a {region:.9} da REGIÃO e a {point:.9} de um ponto dela \
+                         — a distância da região sobrestima, e uma aresta próxima é deitada fora"
+                    );
+                }
+            }
+        }
+    }
+    assert!(checked > 5000, "poucos pontos medidos ({checked})");
+    // …e o controle: **alguns** pontos têm de chegar perto da barra, senão a desigualdade (2) é
+    // afirmada só onde ela é trivial.
+    //
+    // ⚠️ **A 1.ª versão exigia que a MAIORIA fosse apertada, e reprovou com `82%` de folga** — e a
+    // folga é da lei, não da fixtura: `dmax = min_e max_v d²` é um majorante deliberadamente
+    // generoso (ele tem de valer para **todo** ponto da região, incluindo o pior). *Um controle que
+    // pede que o caso comum seja o pior caso mede a lei ao contrário.*
+    let tight = checked - slack;
+    assert!(
+        tight * 20 > checked,
+        "só {tight} de {checked} pontos chegam a metade do `dmax` — a fixtura não aproxima a barra, \
+         e a desigualdade fica afirmada só onde é trivial"
+    );
 }

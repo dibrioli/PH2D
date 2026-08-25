@@ -238,6 +238,7 @@ pub fn sd_revolve(profile: &Profile) -> Tree {
 /// chama é quem sabe onde a vai avaliar — e o gate `the_specialised_tree_agrees_inside_its_region`
 /// mede exactamente essa fronteira.
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn sd_profile_in_region(
     profile: &Profile,
     index: &crate::profile_index::ProfileIndex,
@@ -246,11 +247,21 @@ pub fn sd_profile_in_region(
     lo: [f32; 2],
     hi: [f32; 2],
     axis_seam: bool,
+    // ⭐⭐ **A região REAL, quando ela é um polígono** (W59) — `None` = usa a caixa.
+    //
+    // ⚠️ **Só a DISTÂNCIA a consome.** O conjunto do SINAL (`crossing_edges`) e a ÂNCORA continuam
+    // a sair da caixa, e é de propósito: o enrolamento é um invariante de CAMINHO, e o caminho
+    // âncora→ponto anda dentro da CAIXA. *A metade que compra está na distância; a outra é risco
+    // sem prémio.*
+    hull: Option<&[[f32; 2]]>,
 ) -> Tree {
     let non_zero = profile.fill() == FillRule::NonZero;
     // A mesma tolerância do [`sd_profile_inner`]: uma aresta a menos que isso do eixo **é** o eixo.
     let on_axis = f64::from(profile.tolerance());
-    let near = index.distance_edges(lo, hi);
+    let near = hull.map_or_else(
+        || index.distance_edges(lo, hi),
+        |h| index.distance_edges_hull(h),
+    );
     let mut dist2: Option<Tree> = None;
     for i in &near {
         let (a, b) = index.edge(*i);

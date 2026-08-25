@@ -141,7 +141,7 @@ pub(crate) fn tiled_trace(
                 k,
             )?;
             Some(ph2d_field_eval::hybrid::Hybrid::from_tree(
-                rc.compile(doc, r.0, r.1),
+                rc.compile_at(doc, r.lo, r.hi, &r.pts),
             ))
         });
         (idx, hit, normal)
@@ -211,7 +211,7 @@ pub(crate) fn slab_region(
     margin: f32,
     bounds: &[f32],
     k: usize,
-) -> Option<([f32; 3], [f32; 3])> {
+) -> Option<Region> {
     let (a, b) = (*bounds.get(k)?, *bounds.get(k + 1)?);
     (b > a).then(|| region_between(cam, plane, lo_px, hi_px, bbox, margin, a, b))?
 }
@@ -285,7 +285,7 @@ pub(crate) fn region_between(
     margin: f32,
     t_lo: f32,
     t_hi: f32,
-) -> Option<([f32; 3], [f32; 3])> {
+) -> Option<Region> {
     let corners = [
         (lo_px.0 as f32, lo_px.1 as f32),
         (hi_px.0 as f32, lo_px.1 as f32),
@@ -314,6 +314,21 @@ pub(crate) fn region_between(
     }
     // …intersectada com a da peça: fora dela não há superfície nenhuma.
     let mut out = ([0.0f32; 3], [0.0f32; 3]);
+    // ⭐⭐ **Os cantos CRUS do tubo desta fatia** (W59) — é deles que sai o casco em `(u, v)`, e é
+    // por isso que eles viajam ao lado da caixa em vez de serem redescobertos do outro lado: quem
+    // especializa recebe o MUNDO, não a câmera.
+    let mut pts: Vec<[f32; 3]> = Vec::with_capacity(8);
+    for (px, py) in corners {
+        let (sx, sy) = plane.plane_at(px, py);
+        let (o, d) = cam.ray_at_plane(sx, sy);
+        for t in [t_lo, t_hi] {
+            pts.push([
+                d[0].mul_add(t, o[0]),
+                d[1].mul_add(t, o[1]),
+                d[2].mul_add(t, o[2]),
+            ]);
+        }
+    }
     // ⭐ A folga da sonda da normal **mais** a flecha do cone — ver o doc acima.
     let pad = margin * 4.0 + t_hi.abs() * (1.0 - cos_a).max(0.0);
     for k in 0..3 {
@@ -325,5 +340,22 @@ pub(crate) fn region_between(
         out.0[k] -= pad;
         out.1[k] += pad;
     }
-    Some(out)
+    Some(Region {
+        lo: out.0,
+        hi: out.1,
+        pts,
+    })
+}
+
+/// ⭐⭐ **A região de uma fatia** (W59) — a caixa **e** a forma real.
+///
+/// ⚠️ **As duas, e não uma:** a caixa é o que o recorte da marcha, o `Revolve` e o sinal consomem;
+/// os pontos são a pegada real do tubo, e só a **distância** de um `Extrude` a usa. Trocar a caixa
+/// pelos pontos obrigaria os outros três a redescobri-la.
+#[derive(Clone, Debug)]
+pub(crate) struct Region {
+    pub(crate) lo: [f32; 3],
+    pub(crate) hi: [f32; 3],
+    /// Os oito cantos do tubo, **crus** — a folga é somada por `ph2d_field_eval::hull_uv`.
+    pub(crate) pts: Vec<[f32; 3]>,
 }

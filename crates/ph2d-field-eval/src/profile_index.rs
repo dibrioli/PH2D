@@ -308,6 +308,76 @@ impl ProfileIndex {
         }
     }
 
+    /// ⚠️ Só para o gate: a distância² da região ao contorno da aresta `i` — ver
+    /// [`seg_hull_dist2`]. É ela que tem de ser um **minorante verdadeiro**.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn probe_hull_dist2(&self, i: u32, hull: &[[f32; 2]]) -> f32 {
+        seg_hull_dist2(&self.edges[i as usize], hull)
+    }
+
+    /// ⚠️ Só para o gate: o `dmax` que o corte por casco usa — ver [`Self::distance_edges_hull`].
+    #[doc(hidden)]
+    #[must_use]
+    pub fn probe_hull_dmax(&self, hull: &[[f32; 2]]) -> f32 {
+        let mut dmax = f32::INFINITY;
+        for e in &self.edges {
+            dmax = dmax.min(hull.iter().fold(0.0f32, |acc, c| acc.max(seg_dist2(*c, e))));
+        }
+        dmax
+    }
+
+    /// ⚠️ Só para a sonda: quantas arestas sobrevivem ao corte deste **casco convexo** (W59).
+    ///
+    /// ⭐ **A mesma regra, com a região a ser um polígono em vez de uma caixa.** A caixa de um tubo
+    /// de viés é muito maior do que o tubo, e o `dmax` do corte cresce com o **diâmetro** da região
+    /// — logo a caixa deita fora menos arestas do que a forma real deitaria.
+    ///
+    /// ⚠️ Ela é **sonda antes de ser produto**: a nota que a pediu diz que este é *"o único eixo que
+    /// não multiplica a montagem de JIT"*, e isso é uma afirmação sobre o **preço**. Se o casco não
+    /// cortar mais do que a caixa, não há obra a fazer — e esta linha já pagou quatro vezes por
+    /// construir antes de medir.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn probe_cull_hull(&self, hull: &[[f32; 2]]) -> usize {
+        self.distance_edges_hull(hull).len()
+    }
+
+    /// ⭐⭐⭐ **AS ARESTAS QUE A DISTÂNCIA PRECISA NESTE POLÍGONO** (W59) — a irmã do
+    /// [`Self::distance_edges`], com a região a ser a forma real em vez da caixa dela.
+    ///
+    /// ⚠️ **A regra é a MESMA** (ver [`Self::sd_batch_culled`]): guarda-se toda aresta a menos de
+    /// `dmax = min_e (máx distância de um VÉRTICE da região a e)`. O que muda é a região — e é o
+    /// `dmax` que colhe: ele cresce com o **diâmetro**, e a diagonal de uma caixa é maior que a do
+    /// polígono que ela envolve.
+    ///
+    /// ⭐ **Medido** (`the_table_of_whether_a_hull_culls_better_than_its_box`, 640×480, contra a
+    /// caixa que shipava): `1,21×`–`1,28×` menos arestas na câmera de viés, `1,06×`–`1,08×` de
+    /// frente. ⚠️ E a **área** cai `1,97×` para render só `1,21×` — *o corte segue o diâmetro, não a
+    /// área*, e é por isso que o ganho é bem menor do que a figura sugere.
+    ///
+    /// ⚠️ Um polígono com menos de 3 vértices é degenerado (a região colapsou) ⇒ devolve **tudo**,
+    /// que é a resposta segura.
+    #[must_use]
+    pub fn distance_edges_hull(&self, hull: &[[f32; 2]]) -> Vec<u32> {
+        if hull.len() < 3 {
+            return (0..self.edges.len() as u32).collect();
+        }
+        let mut dmax = f32::INFINITY;
+        for e in &self.edges {
+            // ⚠️ O máximo de uma função **convexa** sobre um polígono convexo está num VÉRTICE — é
+            // a mesma lei que deixa a versão de caixa olhar só os quatro cantos.
+            let far = hull.iter().fold(0.0f32, |acc, c| acc.max(seg_dist2(*c, e)));
+            dmax = dmax.min(far);
+        }
+        self.edges
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| seg_hull_dist2(e, hull) <= dmax)
+            .map(|(i, _)| i as u32)
+            .collect()
+    }
+
     /// ⚠️ Só para a sonda: quantas arestas sobrevivem ao corte desta caixa.
     #[doc(hidden)]
     #[must_use]
@@ -507,51 +577,6 @@ fn orient(a: [f32; 2], b: [f32; 2], p: [f32; 2]) -> f32 {
     (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
 }
 
-fn seg_dist2(p: [f32; 2], e: &Edge) -> f32 {
-    let w = [p[0] - e.a[0], p[1] - e.a[1]];
-    let h = (w[0].mul_add(e.e[0], w[1] * e.e[1]) * e.inv_ee).clamp(0.0, 1.0);
-    let q = [w[0] - h * e.e[0], w[1] - h * e.e[1]];
-    q[0].mul_add(q[0], q[1] * q[1])
-}
-
-/// A MENOR distância ao quadrado entre um segmento e uma caixa.
-///
-/// ⚠️ Entre dois convexos o par mais próximo envolve sempre um **vértice** de um deles — então os
-/// seis candidatos abaixo esgotam o caso, e uma aproximação aqui seria uma aresta deitada fora que
-/// podia ser a mais próxima (ver [`ProfileIndex::sd_batch_culled`]).
-fn seg_box_dist2(e: &Edge, lo: [f32; 2], hi: [f32; 2]) -> f32 {
-    // Sobrepostos ⇒ zero, e é o caso comum perto da superfície.
-    let elo = [e.a[0].min(e.b[0]), e.a[1].min(e.b[1])];
-    let ehi = [e.a[0].max(e.b[0]), e.a[1].max(e.b[1])];
-    if elo[0] <= hi[0] && ehi[0] >= lo[0] && elo[1] <= hi[1] && ehi[1] >= lo[1] {
-        // As caixas tocam-se; o segmento pode ainda não tocar a caixa, e a conta abaixo resolve.
-        let d = [
-            box_dist2(e.a, lo, hi),
-            box_dist2(e.b, lo, hi),
-            seg_dist2([lo[0], lo[1]], e),
-            seg_dist2([hi[0], lo[1]], e),
-            seg_dist2([lo[0], hi[1]], e),
-            seg_dist2([hi[0], hi[1]], e),
-        ];
-        return d.iter().fold(f32::INFINITY, |a, b| a.min(*b));
-    }
-    let d = [
-        box_dist2(e.a, lo, hi),
-        box_dist2(e.b, lo, hi),
-        seg_dist2([lo[0], lo[1]], e),
-        seg_dist2([hi[0], lo[1]], e),
-        seg_dist2([lo[0], hi[1]], e),
-        seg_dist2([hi[0], hi[1]], e),
-    ];
-    d.iter().fold(f32::INFINITY, |a, b| a.min(*b))
-}
-
-fn box_dist2(p: [f32; 2], lo: [f32; 2], hi: [f32; 2]) -> f32 {
-    let dx = (lo[0] - p[0]).max(0.0).max(p[0] - hi[0]);
-    let dy = (lo[1] - p[1]).max(0.0).max(p[1] - hi[1]);
-    dx.mul_add(dx, dy * dy)
-}
-
 /// Constrói o BVH por mediana no eixo mais longo, e devolve o índice do nó criado.
 fn build_bvh(
     edges: &[Edge],
@@ -593,6 +618,10 @@ fn build_bvh(
     nodes[me as usize].right = r;
     me
 }
+
+#[path = "profile_dist.rs"]
+mod dist;
+use dist::{box_dist2, seg_box_dist2, seg_dist2, seg_hull_dist2};
 
 #[cfg(test)]
 #[path = "profile_index_tests.rs"]

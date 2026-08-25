@@ -300,6 +300,7 @@ fn the_table_of_what_specialising_the_tree_buys() {
                     lo,
                     hi,
                     false,
+                    None,
                 );
                 let shape = crate::Engine::from(t);
                 let tape = shape.ez_float_slice_tape();
@@ -315,6 +316,7 @@ fn the_table_of_what_specialising_the_tree_buys() {
                 lo,
                 hi,
                 false,
+                None,
             );
             let shape = crate::Engine::from(t);
             let mut eval = crate::Engine::new_float_slice_eval();

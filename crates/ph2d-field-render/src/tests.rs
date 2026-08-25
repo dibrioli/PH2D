@@ -1015,7 +1015,7 @@ fn region_of_tile(
     tile: (usize, usize),
     bbox: ([f32; 3], [f32; 3]),
     margin: f32,
-) -> Option<([f32; 3], [f32; 3])> {
+) -> Option<crate::tiles::Region> {
     let lo_px = (tile.0 * 64, tile.1 * 64);
     let hi_px = (lo_px.0 + 64, lo_px.1 + 64);
     let (t_lo, t_hi) = crate::tiles::tile_t_range(cam, plane, lo_px, hi_px, bbox)?;
@@ -1355,7 +1355,7 @@ fn a_tile_region_is_much_smaller_than_the_piece() {
                 let Some(r) = region_of_tile(&cam, plane, (tx, ty), bbox, sharp.normal) else {
                     continue;
                 };
-                let side = (0..3).map(|k| r.1[k] - r.0[k]).fold(0.0f32, f32::max);
+                let side = (0..3).map(|k| r.hi[k] - r.lo[k]).fold(0.0f32, f32::max);
                 n += 1;
                 if side / piece < 0.5 {
                     small += 1;
@@ -1424,7 +1424,7 @@ fn the_table_of_what_a_depth_slab_would_buy() {
         let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
         // ⚠️ A pegada é do EXTRUDE, cujo `(u, v)` é `(x, y)` local — e a pose é a identidade, então
         // a caixa de mundo é a caixa local. Uma peça com pose pediria o `Affine::box_of`.
-        let kept = |r: ([f32; 3], [f32; 3])| idx.probe_cull([r.0[0], r.0[1]], [r.1[0], r.1[1]]);
+        let kept = |r: crate::tiles::Region| idx.probe_cull([r.lo[0], r.lo[1]], [r.hi[0], r.hi[1]]);
         println!("--- {n} arestas ---");
         println!("  N | Σ fatias | média | máx | 1ª com peça | ladrilhos");
         for slabs in [1usize, 2, 3, 4, 6, 8] {
@@ -1549,7 +1549,7 @@ fn the_table_of_which_half_the_tiled_frame_pays() {
                     let Some(r) = region_of_tile(&cam, plane, (tx, ty), bbox, sharp.normal) else {
                         return 0;
                     };
-                    let tree = rc.compile(&doc, r.0, r.1);
+                    let tree = rc.compile_at(&doc, r.lo, r.hi, &r.pts);
                     ph2d_field_eval::hybrid::Hybrid::from_tree(tree).sampled_count() + 1
                 })
                 .sum();
@@ -1676,14 +1676,17 @@ fn the_table_of_where_the_tile_assembly_goes() {
         let plane = crate::Screen::new(640, 480, cam.half_extent);
         let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
         let rc = ph2d_field_eval::RegionCompiler::new(&doc);
-        let regions: Vec<([f32; 3], [f32; 3])> = (0..480usize / 64)
+        let regions: Vec<crate::tiles::Region> = (0..480usize / 64)
             .flat_map(|ty| (0..640usize / 64).map(move |tx| (tx, ty)))
             .filter_map(|(tx, ty)| region_of_tile(&cam, plane, (tx, ty), bbox, sharp.normal))
             .collect();
         let (mut tree_ms, mut tape_ms) = (Vec::new(), Vec::new());
         for _ in 0..5 {
             let t0 = std::time::Instant::now();
-            let trees: Vec<_> = regions.iter().map(|r| rc.compile(&doc, r.0, r.1)).collect();
+            let trees: Vec<_> = regions
+                .iter()
+                .map(|r| rc.compile_at(&doc, r.lo, r.hi, &r.pts))
+                .collect();
             tree_ms.push(t0.elapsed().as_secs_f64() * 1e3);
             let t0 = std::time::Instant::now();
             let mut acc = 0usize;
@@ -1792,7 +1795,7 @@ fn the_table_of_what_the_shape_of_the_outline_does() {
                 let Some(r) = region_of_tile(&cam, plane, (tx, ty), bbox, sharp.normal) else {
                     continue;
                 };
-                kept += idx.probe_cull([r.0[0], r.0[1]], [r.1[0], r.1[1]]);
+                kept += idx.probe_cull([r.lo[0], r.lo[1]], [r.hi[0], r.hi[1]]);
                 tiles += 1;
             }
         }
@@ -1945,7 +1948,7 @@ fn every_sample_lies_inside_the_region_that_built_its_tape() {
                                     let t = s0 + (s1 - s0) * j as f32 / 8.0;
                                     for c in 0..3 {
                                         let v = d[c].mul_add(t, o[c]);
-                                        let out = (r.0[c] - v).max(v - r.1[c]);
+                                        let out = (r.lo[c] - v).max(v - r.hi[c]);
                                         if out > worst {
                                             worst = out;
                                             where_ = (tx, ty, k);
@@ -2156,7 +2159,7 @@ fn a_depth_slab_keeps_fewer_edges_than_the_whole_tube() {
     let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
     let plane = crate::Screen::new(640, 480, cam.half_extent);
     let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
-    let kept = |r: ([f32; 3], [f32; 3])| idx.probe_cull([r.0[0], r.0[1]], [r.1[0], r.1[1]]);
+    let kept = |r: crate::tiles::Region| idx.probe_cull([r.lo[0], r.lo[1]], [r.hi[0], r.hi[1]]);
     let (mut tube, mut sliced, mut n) = (0usize, 0usize, 0usize);
     for ty in 0..480usize / 64 {
         for tx in 0..640usize / 64 {
@@ -2378,5 +2381,466 @@ fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
         crate::trace(&rounded, &reg, &cam, 240, 180).hit,
         crate::trace_stepped_for_test(&rounded, &reg, &cam, 240, 180, short).hit,
         "a peça arredondada deixou de ser marchada com o passo curto"
+    );
+}
+
+/// O casco convexo de uns quantos pontos 2D (Andrew monotone chain) — sentido anti-horário.
+fn hull_of(mut pts: Vec<[f32; 2]>) -> Vec<[f32; 2]> {
+    pts.sort_by(|a, b| a[0].total_cmp(&b[0]).then(a[1].total_cmp(&b[1])));
+    pts.dedup();
+    if pts.len() < 3 {
+        return pts;
+    }
+    let cross = |o: [f32; 2], a: [f32; 2], b: [f32; 2]| {
+        (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    };
+    let mut out: Vec<[f32; 2]> = Vec::with_capacity(pts.len() * 2);
+    for pass in 0..2 {
+        let start = out.len();
+        let it: Box<dyn Iterator<Item = &[f32; 2]>> = if pass == 0 {
+            Box::new(pts.iter())
+        } else {
+            Box::new(pts.iter().rev())
+        };
+        for &p in it {
+            while out.len() >= start + 2 && cross(out[out.len() - 2], out[out.len() - 1], p) <= 0.0
+            {
+                out.pop();
+            }
+            out.push(p);
+        }
+        out.pop();
+    }
+    out
+}
+
+/// Corta o polígono convexo contra um rectângulo (Sutherland–Hodgman) — continua convexo.
+fn clip_to_rect(poly: &[[f32; 2]], lo: [f32; 2], hi: [f32; 2]) -> Vec<[f32; 2]> {
+    let mut cur = poly.to_vec();
+    // Cada lado do rectângulo é um semi-plano; `keep` diz de que lado se fica.
+    for (axis, bound, keep_ge) in [
+        (0usize, lo[0], true),
+        (0, hi[0], false),
+        (1, lo[1], true),
+        (1, hi[1], false),
+    ] {
+        if cur.is_empty() {
+            break;
+        }
+        let inside = |p: &[f32; 2]| {
+            if keep_ge {
+                p[axis] >= bound
+            } else {
+                p[axis] <= bound
+            }
+        };
+        let mut out: Vec<[f32; 2]> = Vec::with_capacity(cur.len() + 1);
+        for i in 0..cur.len() {
+            let (a, b) = (cur[i], cur[(i + 1) % cur.len()]);
+            let (ia, ib) = (inside(&a), inside(&b));
+            if ia {
+                out.push(a);
+            }
+            if ia != ib {
+                let t = (bound - a[axis]) / (b[axis] - a[axis]);
+                let mut q = [0.0f32; 2];
+                for k in 0..2 {
+                    q[k] = a[k] + t * (b[k] - a[k]);
+                }
+                out.push(q);
+            }
+        }
+        cur = out;
+    }
+    cur
+}
+
+/// Infla um polígono convexo por `pad`, empurrando cada LADO para fora e re-intersectando.
+///
+/// ⚠️ **Conservador de propósito:** o offset verdadeiro de um polígono é arredondado nas quinas, e
+/// empurrar os lados dá o polígono que o **contém** (as quinas ficam bicudas, para fora). Uma
+/// região *maior* que a necessária corta menos — nunca fura.
+fn inflate(poly: &[[f32; 2]], pad: f32) -> Vec<[f32; 2]> {
+    if poly.len() < 3 || pad <= 0.0 {
+        return poly.to_vec();
+    }
+    // Semi-planos deslocados: a intersecção deles é o inflado. Feita por cortes sucessivos sobre um
+    // quadrado bem maior que a peça.
+    let (mut lo, mut hi) = ([f32::INFINITY; 2], [f32::NEG_INFINITY; 2]);
+    for p in poly {
+        for k in 0..2 {
+            lo[k] = lo[k].min(p[k]);
+            hi[k] = hi[k].max(p[k]);
+        }
+    }
+    let big = (hi[0] - lo[0]).max(hi[1] - lo[1]) + 4.0 * pad + 1.0;
+    let c = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
+    let mut cur = vec![
+        [c[0] - big, c[1] - big],
+        [c[0] + big, c[1] - big],
+        [c[0] + big, c[1] + big],
+        [c[0] - big, c[1] + big],
+    ];
+    for i in 0..poly.len() {
+        let (a, b) = (poly[i], poly[(i + 1) % poly.len()]);
+        let e = [b[0] - a[0], b[1] - a[1]];
+        let len = e[0].hypot(e[1]);
+        if len <= f32::EPSILON {
+            continue;
+        }
+        // A normal EXTERIOR de um polígono anti-horário é `(e.y, -e.x)`.
+        let nrm = [e[1] / len, -e[0] / len];
+        let off = [a[0] + nrm[0] * pad, a[1] + nrm[1] * pad];
+        let mut out: Vec<[f32; 2]> = Vec::with_capacity(cur.len() + 1);
+        let side = |p: &[f32; 2]| (p[0] - off[0]) * nrm[0] + (p[1] - off[1]) * nrm[1];
+        for j in 0..cur.len() {
+            let (u, v) = (cur[j], cur[(j + 1) % cur.len()]);
+            let (su, sv) = (side(&u), side(&v));
+            if su <= 0.0 {
+                out.push(u);
+            }
+            if (su <= 0.0) != (sv <= 0.0) {
+                let t = su / (su - sv);
+                out.push([u[0] + t * (v[0] - u[0]), u[1] + t * (v[1] - u[1])]);
+            }
+        }
+        cur = out;
+        if cur.is_empty() {
+            break;
+        }
+    }
+    cur
+}
+
+/// ⭐⭐⭐ **O CASCO CORTA MAIS QUE A CAIXA?** (W59) — a régua, antes da obra.
+///
+/// A nota da W56e deixou ⏸️: *"ladrilhar em `(u, v)` contra o **paralelogramo** em vez da AABB — o
+/// único eixo que não multiplica a montagem de JIT"*. ⚠️ Isso é uma afirmação sobre o **preço**, e
+/// não sobre o **ganho**: se o casco não cortar mais arestas do que a caixa, não há obra nenhuma a
+/// fazer. *Esta linha já pagou quatro vezes por construir o que a nota prescrevia sem medir.*
+///
+/// ⭐ **O mecanismo em disputa:** o `dmax` do corte cresce com o **diâmetro** da região, e o
+/// diâmetro de uma caixa é a diagonal dela. Um tubo de viés tem uma caixa muito maior que ele — mas
+/// a **diagonal** de uma e o **comprimento** do outro podem ser parecidos. É isso que a tabela
+/// resolve.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::the_table_of_whether_a_hull_culls_better_than_its_box --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_whether_a_hull_culls_better_than_its_box() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    println!("contorno | câmera | fatias | caixa | casco | ganho | área caixa/casco");
+    for (name, ring) in [
+        ("círculo 168", ngon_probe(168, 0.5)),
+        ("estrela 168", star_probe(168, 0.22, 0.5)),
+    ] {
+        let profile = Profile::new(vec![ring], FillRule::NonZero, 1e-3).expect("perfil");
+        let idx = ph2d_field_eval::profile_index::ProfileIndex::build(&profile);
+        let doc = FieldDoc::new(
+            vec![Node {
+                xform: Xform::IDENTITY,
+                kind: NodeKind::Leaf(Primitive::Extrude {
+                    profile,
+                    half_height: 0.2,
+                    round: 0.0,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+            .map(ph2d_field_eval::bounds::Ball::aabb)
+            .expect("a caixa");
+        for (cn, cam) in [
+            ("de viés", crate::Orbit::from_yaw_pitch(0.72, 0.52)),
+            ("de frente", crate::Orbit::from_yaw_pitch(0.0, 0.0)),
+            ("rasante", crate::Orbit::from_yaw_pitch(0.9, 0.15)),
+        ] {
+            let plane = crate::Screen::new(640, 480, cam.half_extent);
+            let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+            for slabs in [crate::tiles::SLABS, 4] {
+                let (mut box_k, mut hull_k, mut n) = (0usize, 0usize, 0usize);
+                let (mut area_box, mut area_hull) = (0.0f64, 0.0f64);
+                for ty in 0..480usize / 64 {
+                    for tx in 0..640usize / 64 {
+                        let (lo_px, hi_px) = ((tx * 64, ty * 64), (tx * 64 + 64, ty * 64 + 64));
+                        let Some((t_lo, t_hi)) =
+                            crate::tiles::tile_t_range(&cam, plane, lo_px, hi_px, bbox)
+                        else {
+                            continue;
+                        };
+                        let bounds = crate::tiles::slab_bounds(t_lo, t_hi, slabs);
+                        // ⚠️ Só as fatias INTERIORES: as duas de fora são a cerca, e ninguém as
+                        // monta a não ser num caso raro (ver `tiles::slab_bounds`).
+                        for k in 1..bounds.len() - 2 {
+                            let Some(r) = crate::tiles::slab_region(
+                                &cam,
+                                plane,
+                                lo_px,
+                                hi_px,
+                                bbox,
+                                sharp.normal,
+                                &bounds,
+                                k,
+                            ) else {
+                                continue;
+                            };
+                            // O casco em `(u, v)` = `(x, y)` dos 8 cantos do tubo desta fatia.
+                            let (a0, a1) = (bounds[k], bounds[k + 1]);
+                            let mut pts = Vec::with_capacity(8);
+                            for (px, py) in [
+                                (lo_px.0 as f32, lo_px.1 as f32),
+                                (hi_px.0 as f32, lo_px.1 as f32),
+                                (lo_px.0 as f32, hi_px.1 as f32),
+                                (hi_px.0 as f32, hi_px.1 as f32),
+                            ] {
+                                let (sx, sy) = plane.plane_at(px, py);
+                                let (o, d) = cam.ray_at_plane(sx, sy);
+                                for t in [a0, a1] {
+                                    pts.push([d[0].mul_add(t, o[0]), d[1].mul_add(t, o[1])]);
+                                }
+                            }
+                            // ⚠️ **A MESMA região que a caixa descreve**: ∩ com a caixa da peça em
+                            // `(u, v)`, e inflada pela mesma folga. ⛔ A 1.ª versão desta sonda
+                            // comparava o casco CRU com a caixa recortada-e-inflada, e imprimiu
+                            // «área do casco MAIOR que a da caixa» — impossível para um casco dentro
+                            // da própria AABB, e o sinal de que ela media duas coisas diferentes.
+                            let pad = sharp.normal * 4.0 + a1.abs() * 1.0e-3;
+                            let hull = inflate(
+                                &clip_to_rect(
+                                    &hull_of(pts),
+                                    [bbox.0[0], bbox.0[1]],
+                                    [bbox.1[0], bbox.1[1]],
+                                ),
+                                pad,
+                            );
+                            if hull.len() < 3 {
+                                continue;
+                            }
+                            n += 1;
+                            box_k += idx.probe_cull([r.lo[0], r.lo[1]], [r.hi[0], r.hi[1]]);
+                            hull_k += idx.probe_cull_hull(&hull);
+                            area_box += f64::from((r.hi[0] - r.lo[0]) * (r.hi[1] - r.lo[1]));
+                            let mut a = 0.0f64;
+                            for i in 0..hull.len() {
+                                let (p, q) = (hull[i], hull[(i + 1) % hull.len()]);
+                                a += f64::from(p[0] * q[1] - q[0] * p[1]);
+                            }
+                            area_hull += a.abs() * 0.5;
+                        }
+                    }
+                }
+                let t = n.max(1) as f64;
+                println!(
+                    "{name:>11} | {cn:>9} | {slabs:>6} | {:>5.1} | {:>5.1} | {:>4.2}x | {:>4.2}x  ({n} regiões)",
+                    box_k as f64 / t,
+                    hull_k as f64 / t,
+                    box_k as f64 / hull_k.max(1) as f64,
+                    area_box / area_hull.max(1e-9),
+                );
+            }
+        }
+    }
+}
+
+/// ⛔⛔ **O CASCO CONTÉM TUDO O QUE A FITA DELE É PERGUNTADA** (W59) — o invariante da wave.
+///
+/// ⚠️ **É a mesma lei do [`every_sample_lies_inside_the_region_that_built_its_tape`], um nível mais
+/// apertado.** Aquele mede a **caixa**; este mede o **polígono** que a substituiu no corte da
+/// distância. Um casco apertado demais não fica lento — ele deita fora a aresta mais próxima, a
+/// distância sai **grande demais**, e a marcha **atravessa a peça**.
+///
+/// ⭐ **A régua vai ao caminho do produto**: `region_between` dá os cantos, `ph2d_field_eval` deriva
+/// o casco com a mesma função que a especialização usa, e o gate amostra uma grelha densa de raios
+/// **interiores** — que são exactamente os que os quatro cantos não descrevem.
+#[test]
+fn the_hull_contains_every_ray_of_its_own_tile() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let doc = FieldDoc::new(
+        vec![Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Leaf(Primitive::Extrude {
+                profile: Profile::new(vec![ngon_probe(24, 0.5)], FillRule::NonZero, 1e-3)
+                    .expect("perfil"),
+                half_height: 0.2,
+                round: 0.0,
+            }),
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+        .map(ph2d_field_eval::bounds::Ball::aabb)
+        .expect("a caixa");
+    for (name, cam) in [
+        ("de viés", crate::Orbit::from_yaw_pitch(0.72, 0.52)),
+        ("de frente", crate::Orbit::from_yaw_pitch(0.0, 0.0)),
+        ("rasante", crate::Orbit::from_yaw_pitch(0.9, 0.15)),
+    ] {
+        let plane = crate::Screen::new(640, 480, cam.half_extent);
+        let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+        // ⚠️ **Mais fatias do que o produto usa**, como no gate irmão: o casco aperta com a fatia, e
+        // medir só no `SLABS` que shipa é medir o caso fácil.
+        for slabs in [crate::tiles::SLABS, 4, 8] {
+            let (mut worst, mut where_, mut measured) = (0i32, (0usize, 0usize, 0usize), 0usize);
+            for ty in 0..480usize / 64 {
+                for tx in 0..640usize / 64 {
+                    let (lo_px, hi_px) = ((tx * 64, ty * 64), (tx * 64 + 64, ty * 64 + 64));
+                    let Some((t_lo, t_hi)) =
+                        crate::tiles::tile_t_range(&cam, plane, lo_px, hi_px, bbox)
+                    else {
+                        continue;
+                    };
+                    let bounds = crate::tiles::slab_bounds(t_lo, t_hi, slabs);
+                    for k in 0..bounds.len() - 1 {
+                        let Some(r) = crate::tiles::slab_region(
+                            &cam,
+                            plane,
+                            lo_px,
+                            hi_px,
+                            bbox,
+                            sharp.normal,
+                            &bounds,
+                            k,
+                        ) else {
+                            continue;
+                        };
+                        // ⚠️ **A pose é a identidade**, então a caixa de mundo é a local e os pontos
+                        // passam directos — é a mesma conta que `compile_at` faz com `Affine`.
+                        let hull = ph2d_field_eval::probe_hull_uv(
+                            &r.pts,
+                            [r.lo[0], r.lo[1]],
+                            [r.hi[0], r.hi[1]],
+                        );
+                        if hull.len() < 3 {
+                            continue;
+                        }
+                        measured += 1;
+                        let (a0, a1) = (bounds[k], bounds[k + 1]);
+                        for ia in 0..9 {
+                            for ib in 0..9 {
+                                let px = lo_px.0 as f32 + 64.0 * ia as f32 / 8.0;
+                                let py = lo_px.1 as f32 + 64.0 * ib as f32 / 8.0;
+                                let (sx, sy) = plane.plane_at(px, py);
+                                let (o, d) = cam.ray_at_plane(sx, sy);
+                                let Some((ea, eb)) = crate::slab(o, d, bbox.0, bbox.1) else {
+                                    continue;
+                                };
+                                let (s0, s1) = (ea.max(0.0).max(a0), eb.min(crate::T_MAX).min(a1));
+                                if s1 <= s0 {
+                                    continue;
+                                }
+                                for j in 0..9 {
+                                    let t = s0 + (s1 - s0) * j as f32 / 8.0;
+                                    let uv = [d[0].mul_add(t, o[0]), d[1].mul_add(t, o[1])];
+                                    if !ph2d_field_eval::probe_in_hull(uv, &hull) {
+                                        worst += 1;
+                                        where_ = (tx, ty, k);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            assert!(measured > 20, "{name}: poucas regiões medidas ({measured})");
+            assert_eq!(
+                worst, 0,
+                "{name}, {slabs} fatias: {worst} amostras caíram FORA do casco da fatia \
+                 {where_:?} — o corte da distância deita fora a aresta mais próxima, a distância sai \
+                 grande demais e a marcha atravessa a peça"
+            );
+        }
+    }
+}
+
+/// ⭐⭐ **O CASCO CORTA MAIS QUE A CAIXA, E NUNCA MENOS** — a promessa de perf, gateada.
+///
+/// ⚠️ A **monotonia** dá a segunda metade de graça: o casco está **dentro** da própria caixa, e o
+/// corte é monótono (região menor ⇒ `dmax` menor ⇒ menos arestas). Se alguma região guardasse MAIS
+/// arestas com o casco, ou o casco não está dentro da caixa, ou a regra deixou de ser a mesma.
+#[test]
+fn the_hull_culls_strictly_better_than_its_box() {
+    use ph2d_field::{FieldDoc, FillRule, Node, NodeId, NodeKind, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let profile =
+        Profile::new(vec![ngon_probe(168, 0.5)], FillRule::NonZero, 1e-3).expect("perfil");
+    let idx = ph2d_field_eval::profile_index::ProfileIndex::build(&profile);
+    let doc = FieldDoc::new(
+        vec![Node {
+            xform: Xform::IDENTITY,
+            kind: NodeKind::Leaf(Primitive::Extrude {
+                profile,
+                half_height: 0.2,
+                round: 0.0,
+            }),
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+        .map(ph2d_field_eval::bounds::Ball::aabb)
+        .expect("a caixa");
+    // ⚠️ **A câmera de VIÉS**, que é onde o tubo é de facto oblíquo — de frente o casco quase É a
+    // caixa, e um gate ali mediria o caso em que a wave não faz nada.
+    let cam = crate::Orbit::from_yaw_pitch(0.72, 0.52);
+    let plane = crate::Screen::new(640, 480, cam.half_extent);
+    let sharp = crate::Sharpness::for_frame(cam.half_extent, 480);
+    let (mut boxed, mut hulled, mut n) = (0usize, 0usize, 0usize);
+    for ty in 0..480usize / 64 {
+        for tx in 0..640usize / 64 {
+            let (lo_px, hi_px) = ((tx * 64, ty * 64), (tx * 64 + 64, ty * 64 + 64));
+            let Some((t_lo, t_hi)) = crate::tiles::tile_t_range(&cam, plane, lo_px, hi_px, bbox)
+            else {
+                continue;
+            };
+            let bounds = crate::tiles::slab_bounds(t_lo, t_hi, crate::tiles::SLABS);
+            for k in 1..bounds.len() - 2 {
+                let Some(r) = crate::tiles::slab_region(
+                    &cam,
+                    plane,
+                    lo_px,
+                    hi_px,
+                    bbox,
+                    sharp.normal,
+                    &bounds,
+                    k,
+                ) else {
+                    continue;
+                };
+                let hull =
+                    ph2d_field_eval::probe_hull_uv(&r.pts, [r.lo[0], r.lo[1]], [r.hi[0], r.hi[1]]);
+                if hull.len() < 3 {
+                    continue;
+                }
+                let b = idx.probe_cull([r.lo[0], r.lo[1]], [r.hi[0], r.hi[1]]);
+                let h = idx.probe_cull_hull(&hull);
+                assert!(
+                    h <= b,
+                    "a região ({tx}, {ty}, fatia {k}) guarda {h} arestas com o casco e {b} com a \
+                     caixa — o casco tem de estar DENTRO dela, e o corte é monótono"
+                );
+                n += 1;
+                boxed += b;
+                hulled += h;
+            }
+        }
+    }
+    assert!(n > 20, "poucas regiões medidas ({n})");
+    assert!(
+        hulled * 100 <= boxed * 92,
+        "o casco guardou {:.1} arestas contra {:.1} da caixa ({:.0}%) — ele deixou de apertar, e o \
+         que sobra é o custo de o construir",
+        hulled as f32 / n as f32,
+        boxed as f32 / n as f32,
+        hulled as f32 * 100.0 / boxed as f32
     );
 }

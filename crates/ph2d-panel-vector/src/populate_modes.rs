@@ -23,6 +23,7 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     button(store, ids::VECTOR_MODE_TEXT);
     // Connect (a linha que gruda em duas formas) + Build (Shape Builder).
     button(store, ids::VECTOR_MODE_CONNECT);
+    button(store, ids::VECTOR_MODE_MORPH_LINK);
     button(store, ids::VECTOR_MODE_BUILD);
     // Pick Shapes (Blend): o botão mora na seção BLEND, mas registra-se aqui.
     button(store, ids::VECTOR_MODE_PICKBLEND);

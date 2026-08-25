@@ -390,6 +390,8 @@ pub const VECTOR_MODE_SHAPE: NodeId = hash_node_id("vector.mode.shape");
 /// geometria dele é uma função pura da RELAÇÃO (quem, e como), re-cozida a cada frame —
 /// por isso é um modo, e não mais um item na grade de tipos.
 pub const VECTOR_MODE_CONNECT: NodeId = hash_node_id("vector.mode.connect");
+/// O pill das **setas do Morph** (plano 32 W3b) — o gesto forma->forma que autora uma aresta.
+pub const VECTOR_MODE_MORPH_LINK: NodeId = hash_node_id("vector.mode.morph_link");
 
 /// **Shape Builder** — o 7º pill. Arrasta sobre as regiões de 2+ formas selecionadas: o que
 /// o cursor pinta vira uma forma só; com Alt, some.

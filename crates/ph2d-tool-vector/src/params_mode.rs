@@ -49,6 +49,15 @@ pub enum DrawMode {
     /// conector não é autorada, é **derivada** (uma função pura de a quem cada ponta se
     /// prende), e a shell a re-cozinha a cada frame (`connector_live`).
     Connect,
+    /// **Setas do Morph**: pressiona sobre uma forma, arrasta, solta sobre outra — nasce uma
+    /// **seta** na máquina de estados do Morph selecionado (plano 32 W3b).
+    ///
+    /// ⚠️ **É o gesto do [`DrawMode::Connect`] com outro produto**, e por isso é um MODO próprio e
+    /// não uma variante dele: o conector produz uma **linha no documento** (que exporta, imprime e
+    /// se selecciona); esta seta produz uma **aresta num grafo** — chrome, a explicação de uma
+    /// regra. Dois produtos diferentes atrás do mesmo movimento da mão precisam de dois modos,
+    /// senão o artista não tem como dizer qual deles quer.
+    MorphLink,
     /// **Pick Shapes** (Blend): coleta as formas fechadas clicadas **na ordem**; o botão Blend as
     /// liga nessa sequência (ADR-0128 C2b). É um modo — como o Build e o Connect — porque o gesto é
     /// escolher formas no canvas, não editar a selecionada; a ORDEM da cadeia é a de clique, não a

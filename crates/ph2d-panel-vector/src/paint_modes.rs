@@ -84,6 +84,13 @@ impl BodyCtx<'_> {
                 tr("panel.vector.mode.connect"),
                 DrawMode::Connect,
             ),
+            // **Setas do Morph** — o gesto do conector com outro produto: uma ARESTA no grafo da
+            // maquina, e nao uma linha no documento (plano 32 W3b).
+            (
+                ids::VECTOR_MODE_MORPH_LINK,
+                tr("panel.vector.mode.morph_link"),
+                DrawMode::MorphLink,
+            ),
             (
                 ids::VECTOR_MODE_BUILD,
                 tr("panel.vector.mode.build"),

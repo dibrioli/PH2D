@@ -306,3 +306,31 @@ pub(crate) fn draw(
         }
     }
 }
+
+/// **A seta EM VOO** — do sítio onde o arrasto começou até ao cursor.
+///
+/// ⚠️ **Recta, e não curva.** A curvatura existe para separar a ida da volta; uma seta que ainda
+/// não tem destino não tem par de quem se separar, e curvá-la só a faria parecer que aponta para
+/// outro sítio. *O que se vê durante o arrasto é o que se obtém — e o que ainda não se sabe não se
+/// desenha.*
+pub(crate) fn preview(
+    from_world: [f64; 2],
+    cursor_px: (f32, f32),
+    camera: &Camera2d,
+    window: WindowSize,
+    scene: &mut ph2d_vector::VectorScene,
+) {
+    use ph2d_vector::{Affine, Brush, Color, Stroke};
+    #[allow(clippy::cast_possible_truncation)] // LITERAL-PX-OK: mundo em f32, como a camera
+    let (fx, fy) = camera.world_to_screen([from_world[0] as f32, from_world[1] as f32], window);
+    let mut path = BezPath::new();
+    path.move_to(Point::new(f64::from(fx), f64::from(fy)));
+    path.line_to(Point::new(f64::from(cursor_px.0), f64::from(cursor_px.1)));
+    scene.inner_mut().stroke(
+        &Stroke::new(STROKE_PX),
+        Affine::IDENTITY,
+        &Brush::Solid(Color::new(ARROW_RGBA)),
+        None,
+        &path,
+    );
+}

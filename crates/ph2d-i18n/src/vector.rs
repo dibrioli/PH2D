@@ -190,6 +190,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.mode.shape" => "Shape",
         "panel.vector.mode.text" => "Text",
         "panel.vector.mode.connect" => "Connect",
+        // O pill das SETAS do Morph (plano 32 W3b) -- curto, ele divide a fileira com 13 irmaos.
+        "panel.vector.mode.morph_link" => "States",
         "panel.vector.mode.fillet" => "Fillet",
         "panel.vector.mode.chamfer" => "Chamfer",
         "panel.vector.mode.width" => "Width",

@@ -139,6 +139,11 @@ impl VectorTool {
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_CONNECT => {
                 self.mode = DrawMode::Connect;
             }
+            // **Setas do Morph** (plano 32 W3b) — o mesmo movimento da mao do conector, outro
+            // produto: uma aresta no grafo do Morph selecionado.
+            PanelEvent::Click(id) if id == ids::VECTOR_MODE_MORPH_LINK => {
+                self.mode = DrawMode::MorphLink;
+            }
             // **Shape Builder** — o 7º pill. Precisa de 2+ formas selecionadas; a shell é
             // quem sabe disso (a tool não vê a cena).
             PanelEvent::Click(id) if id == ids::VECTOR_MODE_BUILD => {

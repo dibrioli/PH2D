@@ -8818,6 +8818,17 @@ impl crate::App {
             // desenho: uma seta é a explicação de uma regra, e ela tem de se ler por cima das
             // formas que liga.
             morph_arrow_overlay::draw(&self.vec_morph_arrows, camera, window_size, vector_scene);
+            // E a seta EM VOO, enquanto o arrasto dura (plano 32 W3b). ⚠️ Mesmo âmbar, mesmo
+            // traço: *o que se vê durante o arrasto é o que se obtém*.
+            if let Some(d) = self.morph_link_drag {
+                morph_arrow_overlay::preview(
+                    d.from_world,
+                    self.last_pointer,
+                    camera,
+                    window_size,
+                    vector_scene,
+                );
+            }
             // **Pick Shapes** (ADR-0128 C2b): realça as formas escolhidas e costura a ORDEM de
             // clique numa polilinha (a prévia do spine). Fora do modo Pick, a lista não vale —
             // limpa, para não vazar escolhas velhas para o próximo blend.

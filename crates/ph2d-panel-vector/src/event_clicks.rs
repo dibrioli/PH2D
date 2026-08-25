@@ -92,6 +92,7 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             || x == ids::VECTOR_MODE_SHAPE
             || x == ids::VECTOR_MODE_TEXT
             || x == ids::VECTOR_MODE_CONNECT
+            || x == ids::VECTOR_MODE_MORPH_LINK
             || x == ids::VECTOR_MODE_BUILD
             || x == ids::VECTOR_MODE_PICKBLEND
             || x == ids::VECTOR_MODE_FILLET

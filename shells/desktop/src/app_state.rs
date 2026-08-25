@@ -1133,6 +1133,12 @@ pub(crate) struct App {
     /// `last_pointer`) — arrastar do vazio com a ferramenta Vector activa. `None` = parado; no
     /// release dirige `box_select_with` ou `lasso_select_with`, conforme a forma que ele congelou.
     pub(crate) vec_marquee: Option<crate::vec_marquee::VecMarquee>,
+    /// **A seta do Morph em construção** (modo `DrawMode::MorphLink`, Down..Up).
+    ///
+    /// ⚠️ **Transiente e não documento:** ela vive entre o Down e o Up, e o que sobra do gesto é
+    /// uma aresta no `VecMorphMachine`. Guardá-la no mundo faria um projecto reabrir a meio de um
+    /// arrasto.
+    pub(crate) morph_link_drag: Option<crate::morph_link_gesture::MorphLinkDrag>,
     /// **O conector em construção** (modo `DrawMode::Connect`, Down..Up). O path já está na
     /// cena desde o Down e o componente já está na entidade: o "preview" do arrasto É o
     /// conector de verdade, re-cozido pela MESMA `route` a cada frame — o que se vê é o que

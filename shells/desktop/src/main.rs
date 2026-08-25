@@ -274,6 +274,7 @@ mod mask_smoke;
 mod merge_layers;
 mod modal;
 mod morph_fade_smoke;
+mod morph_link_gesture;
 mod morph_live;
 mod motion_autofix_smoke;
 mod motion_autofix_smoke_appropriate;
@@ -974,6 +975,7 @@ impl App {
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),
             vec_morph_arrows: Vec::new(),
+            morph_link_drag: None,
             vec_blend_spines: crate::blend_live::BlendSpines::new(),
             vec_blend_picks: Vec::new(),
             vec_label_pending: None,

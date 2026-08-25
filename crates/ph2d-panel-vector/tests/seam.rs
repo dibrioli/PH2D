@@ -135,6 +135,7 @@ fn mode_button_click_switches_tool_mode_through_seam() {
         (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
         // O 6º pill: o CONECTOR.
         (ids::VECTOR_MODE_CONNECT, DrawMode::Connect),
+        (ids::VECTOR_MODE_MORPH_LINK, DrawMode::MorphLink),
         // **Pick Shapes** (Blend) — coleta formas na ordem de clique. O botão dele mora na seção
         // BLEND (não nesta fileira), mas o id/seam é o mesmo.
         (ids::VECTOR_MODE_PICKBLEND, DrawMode::PickBlend),

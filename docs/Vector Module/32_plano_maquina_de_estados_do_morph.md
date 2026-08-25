@@ -104,6 +104,48 @@ existe) e o **vocabulário das condições** (as acções do Input Map, de ontem
 isso que ela vive no overlay e **não** como um `VecPath` derivado, que é o que o **conector** faz.
 *O conector é uma linha que o artista quer no produto final; a seta é a explicação de uma regra.*
 
+## §3-ter — O gesto (W3b): o mesmo movimento do conector, outro produto
+
+⭐ **`DrawMode::MorphLink`** — pressiona numa forma, arrasta, solta noutra. É **um modo próprio** e
+não uma variante do `Connect`, e a razão é o **produto**: o conector faz uma **linha no documento**
+(que exporta, imprime e se selecciona); esta faz uma **aresta num grafo**, que é chrome. *Dois
+produtos atrás do mesmo movimento da mão precisam de dois modos, senão o artista não tem como dizer
+qual deles quer.*
+
+⚠️ **O hit-test é o MESMO** (`App::shape_under_cursor`), não uma cópia — a pergunta é literalmente
+a mesma, e duas respostas divergiriam no dia em que uma anotação nova nascesse.
+
+* ⛔ **Sem um Morph SELECIONADO o gesto é inerte**, e é a resposta honesta: uma seta é uma aresta no
+  grafo de alguém. Criar um `VecMorph` do nada a meio de um arrasto poria no documento um objecto
+  que o artista não pediu.
+* ⭐ **A PRIMEIRA seta faz nascer a máquina**, com `start` na forma de onde ela parte — é por isso
+  que o `VecMorphMachine` não tem `Default`: o `start` é um facto do **gesto**.
+* ⛔ **Uma forma não se liga a si própria.** ⚠️ E isto **não** é a decisão do conector, que aceita o
+  laço de propósito: lá o laço é um **desenho** legítimo; aqui seria uma regra vazia.
+* ⚠️ **Uma seta repetida não se duplica** — duas arestas iguais seriam duas linhas idênticas no
+  painel, uma impossível de distinguir da outra ao apagar (a lei que a ligação de tecla do Input
+  Map já paga).
+* A seta **em voo** é **recta**: a curvatura existe para separar a ida da volta, e uma seta sem
+  destino não tem par de quem se separar.
+
+⚠️ **A lei mora FORA do `impl App` (`link_shapes`), e é isso que a torna gateável:** o gesto precisa
+de um `AppGfx` — janela real e superfície de GPU —, que um teste não alcança (a mesma parede que o
+undo do filtro do sculpt3d registou). ⇒ a **lei** tem gate de comportamento; a **costura** tem gate
+de texto, e sem essa metade os outros quatro ficariam verdes sobre uma feature que **gesto nenhum
+alcança**.
+
+⛔⛔ **DEZ sítios para um modo novo, e o décimo só apareceu porque um gate o disse.** Eu editei
+nove — o `enum` · o `NodeId` · o censo de ids · o re-export do painel · o `populate` (sem ele o
+pill nasce **morto sob o ponteiro**) · a fileira pintada · o clique→modo · o gate de costura
+id→modo · o rótulo i18n — e o portão reprovou com **`Ignored` em vez de `Consumed`**: havia uma
+**décima** lista, uma allowlist de `VECTOR_MODE_*` em `event_clicks.rs`, e sem ela o clique era
+**engolido** e o modo nunca trocava.
+
+⚠️ **O pill teria ficado pintado, registado, e inerte** — o terceiro membro daquela família nesta
+linha, e o único que nenhuma das minhas nove edições apanharia. *Uma feature espalhada por dez
+listas escritas à mão só é alcançável se um gate percorrer as dez* — e a mensagem daquele gate
+**nomeia o ficheiro que falta**, que é o que o torna útil em vez de só vermelho.
+
 ## §4 — As waves
 
 | | | estado |
@@ -111,7 +153,7 @@ isso que ela vive no overlay e **não** como um `VecPath` derivado, que é o que
 | **W1** | **A LEI**, folha (`ph2d-morph-machine`): grafo · setas · condições · fila · mola/curva | ✅ **2026-08-25** — 13 gates, **8 mutações, 8 sangraram** |
 | **W2** | O componente + a persistência | ✅ **2026-08-25** — 2 gates, 1 mutação, e ⛔ o `PROJECT_SCHEMA` **não** se mexeu (§3) |
 | **W3a** | **O CANVAS, metade de VER**: as setas desenhadas entre as formas | ✅ **2026-08-25** — 8 gates, **6 mutações, 6 sangraram** |
-| **W3b** | **O CANVAS, metade de AUTORAR**: arrastar de uma forma para outra cria a seta | ⏳ |
+| **W3b** | **O CANVAS, metade de AUTORAR**: `DrawMode::MorphLink` — arrastar de uma forma para outra cria a seta | ✅ **2026-08-25** — 5 gates, **4 mutações, 4 sangraram** |
 | **W4** | A secção **States** do painel: a lista de setas, a condição (lê as acções do Input Map), o ritmo | ⏳ |
 | **W5** | O **modo preview** + o ledger de undo (⚠️ o `Driven::MorphT` cobre o `t`, **não** o `sources`) | ⏳ |
 | **W6** | A cena de smoke, com números MEDIDOS | ⏳ |

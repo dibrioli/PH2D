@@ -69,9 +69,24 @@ fn every_registered_physics_component_has_a_ui_writer() {
     // Os nomes canônicos exatamente como o registry os cunha — a mesma string que o
     // `queue_set` precisa para achar o `type_id`, então comparar por ela é comparar a
     // coisa que de fato liga os dois lados.
+    //
+    // ⚠️ **DUAS grafias registram, e a segunda chegou na integração de 2026-08-24.** O
+    // descritor de componente (ADR-0164 F0) trouxe o `register_default::<T>`, que
+    // acrescenta um construtor à vtable e **não** muda o que fica registrado; 30 das 32
+    // chamadas da física passaram a usá-lo, e `MassOverride`/`Dominance` ficaram na forma
+    // antiga por não implementarem `Default`.
+    //
+    // ⛔ **Este gate leu 2 nomes e disparou o `>= 22` abaixo com a própria mensagem que
+    // previa o caso** (*"ou o parse quebrou"*) — a rede fez exatamente o que existe para
+    // fazer, e a cura é ensinar o parse as duas grafias, **nunca** baixar a barra. Uma
+    // terceira grafia futura volta a encolher a contagem e a barra volta a apanhá-la.
     let mut registered: Vec<&str> = registry
         .lines()
-        .filter_map(|l| l.trim().strip_prefix("reg.register::<"))
+        .filter_map(|l| {
+            let l = l.trim();
+            l.strip_prefix("reg.register::<")
+                .or_else(|| l.strip_prefix("reg.register_default::<"))
+        })
         .filter_map(|l| l.split('"').nth(1))
         .collect();
     registered.sort_unstable();

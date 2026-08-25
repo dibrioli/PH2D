@@ -9,7 +9,7 @@
 | | |
 |---|---|
 | branch | `line/seamelim` |
-| HEAD | `4d918ad61` (6 commits) |
+| HEAD | `4854223a9` (**10** commits) · ⚠️ a linha ainda ganha 1 commit ao corrigir esta própria tabela |
 | **base do fork** | ⚠️⚠️ **`line/quadextract`**, e **NÃO `main`** |
 | merge-base com `main` | `5038249c6` |
 | worktree | `Worktrees/line-seamelim/` |

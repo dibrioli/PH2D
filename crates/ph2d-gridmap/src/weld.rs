@@ -309,7 +309,12 @@ pub fn weld(cut: &CutMesh, combed: &Combed) -> (Weld, WeldReport) {
     rep.copies = n;
 
     // ── As ligações: um par casado de uma costura é uma aresta entre duas cópias.
-    let mut adj: Vec<Vec<(u32, u32, bool, i32)>> = vec![Vec::new(); n];
+    // ⚠️ **Cada ligação leva um ID**, e não é decoração: sem ele o fecho detecta-se pelo
+    // SENTIDO (`forward`), e uma aresta percorrida como árvore no sentido inverso é
+    // recontada como fecho quando o outro extremo a olha. ⛔ Medido: `469 + 30 ≠ 497`, e
+    // as duas a mais apareciam depois como equações **órfãs** — restrições redundantes a
+    // pedir uma variável que já não havia.
+    let mut adj: Vec<Vec<(u32, u32, bool, i32, u32)>> = vec![Vec::new(); n];
     for (s, seam) in cut.seams.iter().enumerate() {
         let Some(k) = combed.jump.get(s).copied().flatten() else {
             rep.loose += 1;
@@ -331,12 +336,15 @@ pub fn weld(cut: &CutMesh, combed: &Combed) -> (Weld, WeldReport) {
                 continue;
             }
             // `z_b = R^k z_a + t` — de `a` para `b` é para a frente.
-            adj[ca as usize].push((cb, sid, true, k));
-            adj[cb as usize].push((ca, sid, false, k));
+            #[allow(clippy::cast_possible_truncation)]
+            let eid = rep.links as u32;
+            adj[ca as usize].push((cb, sid, true, k, eid));
+            adj[cb as usize].push((ca, sid, false, k, eid));
             rep.links += 1;
         }
     }
 
+    let mut used = vec![false; rep.links];
     let mut class = vec![u32::MAX; n];
     let mut rot = vec![0i32; n];
     let mut roots: Vec<u32> = Vec::new();
@@ -358,9 +366,13 @@ pub fn weld(cut: &CutMesh, combed: &Combed) -> (Weld, WeldReport) {
         let lo = steps.len() as u32;
         let mut queue = std::collections::VecDeque::from([start]);
         while let Some(a) = queue.pop_front() {
-            for &(b, seam, forward, k) in &adj[a] {
+            for &(b, seam, forward, k, eid) in &adj[a] {
+                if used[eid as usize] {
+                    continue;
+                }
                 let b = b as usize;
                 if class[b] == u32::MAX {
+                    used[eid as usize] = true;
                     class[b] = cid;
                     // ⭐ `z_b = R^k z_a + t` ⇒ `rot_b = rot_a + k`; ao contrário,
                     // `rot_a = rot_b − k`.
@@ -375,14 +387,16 @@ pub fn weld(cut: &CutMesh, combed: &Combed) -> (Weld, WeldReport) {
                         jump: k,
                     });
                     queue.push_back(b);
-                } else if forward && class[b] == cid {
-                    // ⛔ Fecha ciclo. ⚠️ **Só o sentido `a → b` é registado**, senão
-                    // cada ligação apareceria duas vezes.
+                } else if class[b] == cid {
+                    // ⛔ Fecha ciclo. ⚠️ **A ligação marca-se USADA** — é a identidade
+                    // dela que a conta uma vez, não o sentido em que se olhou.
+                    used[eid as usize] = true;
+                    let (ca, cb) = if forward { (a, b) } else { (b, a) };
                     closures.push(Closure {
                         seam,
                         #[allow(clippy::cast_possible_truncation)]
-                        copies: [a as u32, b as u32],
-                        turn: (rot[a] + k - rot[b]).rem_euclid(4),
+                        copies: [ca as u32, cb as u32],
+                        turn: (rot[ca] + k - rot[cb]).rem_euclid(4),
                         jump: k,
                     });
                 }

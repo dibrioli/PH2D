@@ -171,6 +171,36 @@ impl ClosureSystem {
         u32::try_from(class).is_ok_and(|c| self.dep_class.contains(&c))
     }
 
+    /// ⭐⭐⭐ **MEXE uma livre e propaga o efeito** — incremental, e exacto.
+    ///
+    /// ⚠️ **Exacto porque a dependência é LINEAR:** se a livre `i` anda `Δ`, cada
+    /// dependente anda `A·Δ`, com `A` o coeficiente dela na expressão. *Reconstruir
+    /// todas as dependentes a cada passo dá o mesmo número e custa `O(dependentes)` por
+    /// relaxação — medido, era o que punha a cadeia em 69 s.*
+    pub fn bump(&self, w: &Weld, map: &mut GridMap, i: usize, delta: [f32; 2]) {
+        let mut write = |v: Var, d: [f32; 2], map: &mut GridMap| match v {
+            Var::Shift(s) => {
+                map.shift[s as usize][0] += d[0];
+                map.shift[s as usize][1] += d[1];
+                for &cl in w.shift_classes_pub(s as usize) {
+                    w.derive(map, cl as usize);
+                }
+            }
+            Var::Class(c) => {
+                let y = w.value_pub(map, c as usize);
+                w.set(map, c as usize, [y[0] + d[0], y[1] + d[1]]);
+            }
+        };
+        let Some(&v) = self.free.get(i) else { return };
+        write(v, delta, map);
+        let Ok(fi) = u32::try_from(i) else { return };
+        for (dv, expr) in &self.dep {
+            if let Some(&(_, a)) = expr.iter().find(|e| e.0 == fi) {
+                write(*dv, mul_vec(a, delta), map);
+            }
+        }
+    }
+
     /// ⭐ **ESCREVE as dependentes** a partir das livres, e re-deriva o que se mexeu.
     ///
     /// ⚠️ **Uma passagem chega, e não é sorte:** cada dependente está expressa nas
@@ -234,8 +264,17 @@ impl ClosureSystem {
         let index = |v: Var| -> Option<usize> { vars.iter().position(|&x| x == v) };
 
         // ── 2. As equações, uma por fecho.
+        // ⭐⭐ **Os fechos que RODAM entram primeiro, e a razão é a INTEGRALIDADE.**
+        // A equação de um fecho que roda tem duas famílias de pivô: as translações
+        // (`|det| = 1`) e a imagem do vértice singular (`M`, com `|det| = 2` ou `4`).
+        // Se as translações dela já estiverem tomadas, o único pivô que sobra é `M` — e
+        // um pivô de determinante `2` põe a dependente num **meio-inteiro**. *É o mesmo
+        // meio-inteiro que a modalidade das singularidades do caminho penalizado já
+        // tinha encontrado, um andar acima.*
+        let mut order: Vec<&crate::weld::Closure> = w.closures().iter().collect();
+        order.sort_by_key(|c| i32::from(c.turn == 0));
         let mut eqs: Vec<Vec<(usize, M2)>> = Vec::new();
-        for c in w.closures() {
+        for c in order {
             rep.equations += 1;
             let mut terms: Vec<(usize, M2)> = Vec::new();
             let mut put = |v: Var, m: M2, terms: &mut Vec<(usize, M2)>| {

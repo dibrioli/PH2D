@@ -232,36 +232,15 @@ impl<'a> WeldRelaxer<'a> {
         let Some(step) = solve2(h, g, f) else {
             return 0.0;
         };
-        let v = self.sys.free()[i];
-        match v {
-            Var::Shift(s) => {
-                map.shift[s as usize][0] += step[0];
-                map.shift[s as usize][1] += step[1];
-                for &cl in self.w.shift_classes_pub(s as usize) {
-                    self.w.derive(map, cl as usize);
-                }
-            }
-            Var::Class(c) => {
-                let y = self.w.value_pub(map, c as usize);
-                self.w.set(map, c as usize, [y[0] + step[0], y[1] + step[1]]);
-            }
-        }
-        self.sys.apply(self.w, map);
+        self.sys.bump(self.w, map, i, step);
         step[0].abs().max(step[1].abs())
     }
 
-    /// Escreve uma incógnita livre num valor, e assenta as dependentes.
+    /// Escreve uma incógnita livre num valor, e propaga às dependentes.
     pub(crate) fn write_free(&self, map: &mut GridMap, i: usize, value: [f32; 2]) {
-        match self.sys.free()[i] {
-            Var::Shift(s) => {
-                map.shift[s as usize] = value;
-                for &cl in self.w.shift_classes_pub(s as usize) {
-                    self.w.derive(map, cl as usize);
-                }
-            }
-            Var::Class(c) => self.w.set(map, c as usize, value),
-        }
-        self.sys.apply(self.w, map);
+        let now = self.read_free(map, i);
+        self.sys
+            .bump(self.w, map, i, [value[0] - now[0], value[1] - now[1]]);
     }
 
     /// O valor de uma incógnita livre.

@@ -26,6 +26,30 @@
 //! triângulos dobrados e uma translação de costura a meia célula de um inteiro,
 //! contra `0,02 %`–`0,2 %` e `3,5e-15` dos mapas de referência. *A extracção e o
 //! arredondamento não são o bloqueador; o solver contínuo é.*
+//!
+//! # ⭐⭐⭐ E ESSA CAUSA FOI CURADA (2026-08-24) — a costura entra por ELIMINAÇÃO
+//!
+//! O G3 **pesava** a costura; hoje ela é uma restrição eliminada
+//! ([`ph2d_gridmap::round_welded`]). ⇒ o resíduo da costura deixa de ser uma célula
+//! inteira e passa a ser **zero**, e a casca fecha. Medido na cadeia inteira, nas duas
+//! peças que o artista de facto olhou:
+//!
+//! | peça | | arestas de bordo | células más | `χ` | aspecto p50 | enviesamento p50 | `>60°` |
+//! |---|---|---|---|---|---|---|---|
+//! | enrugada | penalizado | ⛔ `46` | `19 de 2 041` | ⛔ `−8` | `1,15` | `5,7°` | `4` |
+//! | enrugada | ⭐ **soldado** | ⭐ **`0`** | ⭐ **`0`** | ⭐ **`+2`** | `1,15` | `6,3°` | ⚠️ `11` |
+//! | orelha | penalizado | ⛔ `50` | `33 de 2 071` | ⛔ `−6` | `1,12` | `7,1°` | `7` |
+//! | orelha | ⭐ **soldado** | ⭐ **`0`** | ⭐ **`0`** | ⭐ **`+2`** | `1,14` | ⚠️ `8,2°` | `7` |
+//!
+//! ⚠️ **A regressão que fica tem nome e uma cura publicada:** as faces com canto pior
+//! que `60°` sobem de `4` para `11` na enrugada, e o enviesamento da orelha passa o
+//! tecto do oráculo por `1,1°`. O mecanismo é o *local stiffening* do mesmo *paper*
+//! (§5.4) — pesar por triângulo o que ficou distorcido e re-resolver. ⛔ **Não é desta
+//! wave, de propósito:** com dois mecanismos dentro, uma regressão de forma fica sem
+//! dono.
+//!
+//! ⚠️ **`PH2D_GRIDMAP_WELD=0` volta ao G3 penalizado**, dentro deste caminho — é a
+//! forma de bissecar.
 
 use ph2d_mesh::Mesh;
 
@@ -78,14 +102,15 @@ impl Sculpt3dScene {
             .collect();
 
         // ── G3 + G5. O mapa, e o arredondamento uma-a-uma que o torna inteiro.
-        let (map, round) = ph2d_gridmap::round_to_integers(
-            &work,
-            &cut,
-            &combed,
-            target,
-            ph2d_gridmap::RoundOptions::default(),
-            &singular,
-        );
+        // ⭐ O G3 soldado é o default DENTRO deste caminho (que já shipa desligado);
+        // `PH2D_GRIDMAP_WELD=0` volta ao penalizado, para bissecar.
+        let welded = std::env::var("PH2D_GRIDMAP_WELD").ok().as_deref() != Some("0");
+        let opts = ph2d_gridmap::RoundOptions::default();
+        let (map, round) = if welded {
+            ph2d_gridmap::round_welded(&work, &cut, &combed, target, opts, &singular)
+        } else {
+            ph2d_gridmap::round_to_integers(&work, &cut, &combed, target, opts, &singular)
+        };
 
         // ── A extracção das isolinhas.
         let (tris, uv) = ph2d_gridmap::corner_map(&cut, &map);

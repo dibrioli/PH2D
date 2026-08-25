@@ -137,10 +137,19 @@ pub fn round_welded(
         }
     }
 
-    crate::solve::measure(&a, cut, combed, &map, h, &mut solve_rep);
-    rep.seam_after = (solve_rep.seam_p50, solve_rep.seam_max);
-    rep.seam = seam_residual(&w, &map);
-    crate::weld::holonomy(&w, &map, &mut rep.weld);
+    // ── ⭐⭐⭐ **O FECHO: reconstruir as dependentes das livres, e ENCAIXAR nos
+    // inteiros que elas matematicamente já são.**
+    //
+    // ⚠️ **As duas metades são de representação, não de modelo.** (1) A propagação
+    // incremental (`bump`) é exacta em ℝ e acumula erro de `f32` ao longo de dezenas de
+    // pregos ⇒ reconstrói-se a expressão inteira uma vez. (2) Uma dependente sai de uma
+    // substituição com pivôs de `|det| = 1` sobre livres inteiras ⇒ ela **é** inteira, e
+    // o que se lê (`1,3e-5` na esfera lisa) é o resíduo de a ter somado em `f32`.
+    //
+    // ⛔ **A DISTÂNCIA MEDE-SE ANTES DE ENCAIXAR**, e é ela que fica no relatório: se
+    // algum pivô tivesse determinante `2`, a dependente cairia num **meio-inteiro** e
+    // encaixá-la calaria o defeito. *Um encaixe que não mede primeiro é um tapete.*
+    r.sys.apply(&w, &mut map);
     rep.shift_frac_max = map
         .shift
         .iter()
@@ -148,6 +157,19 @@ pub fn round_welded(
         .filter(|(s, _)| combed.jump.get(*s).copied().flatten().is_some())
         .map(|(_, t)| (t[0] - t[0].round()).abs().max((t[1] - t[1].round()).abs()))
         .fold(0.0f32, f32::max);
+    for (s, t) in map.shift.iter_mut().enumerate() {
+        if combed.jump.get(s).copied().flatten().is_some() {
+            *t = [t[0].round(), t[1].round()];
+        }
+    }
+    for c in 0..w.classes() {
+        w.derive(&mut map, c);
+    }
+
+    crate::solve::measure(&a, cut, combed, &map, h, &mut solve_rep);
+    rep.seam_after = (solve_rep.seam_p50, solve_rep.seam_max);
+    rep.seam = seam_residual(&w, &map);
+    crate::weld::holonomy(&w, &map, &mut rep.weld);
     rep.solve = solve_rep;
     (map, rep)
 }

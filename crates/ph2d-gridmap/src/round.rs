@@ -187,7 +187,12 @@ pub struct RoundReport {
     /// corpus tem um toro. ⛔ Terminar ali deixaria o mapa *quase* inteiro, que é pior
     /// que contínuo.
     pub switched_to_seams: bool,
-    /// ⛔ **A pior distância a inteiro DEPOIS**. Tem de ser exactamente `0`.
+    /// ⛔ **A pior distância a inteiro DEPOIS**. Tem de ser exactamente `0` no caminho
+    /// penalizado.
+    ///
+    /// ⚠️ **No caminho soldado ela é medida ANTES do encaixe final** e é o resíduo de
+    /// `f32` da substituição — a barra ali é derivada, não `0` exacto. *Ler as duas
+    /// como a mesma grandeza faria uma delas mentir.*
     pub shift_frac_max: f32,
     /// O resíduo de costura antes e depois — o **preço** do arredondamento.
     pub seam_before: (f32, f32),

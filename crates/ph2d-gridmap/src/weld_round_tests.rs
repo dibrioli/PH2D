@@ -8,7 +8,12 @@ use crate::weld::{seam_residual, weld};
 fn chain_welded(
     mesh: &mut ph2d_mesh::Mesh,
     rounds: usize,
-) -> (crate::solve::GridMap, crate::round::RoundReport, crate::cut::CutMesh, crate::comb::Combed) {
+) -> (
+    crate::solve::GridMap,
+    crate::round::RoundReport,
+    crate::cut::CutMesh,
+    crate::comb::Combed,
+) {
     let (cut, combed, h, singular) = crate::round::tests::chain(mesh);
     let (map, rep) = round_welded(
         mesh,
@@ -41,7 +46,11 @@ fn chain_welded(
 fn every_transition_of_the_welded_map_is_an_integer_translation() {
     let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 36, 1.0);
     let (map, rep, _cut, _combed) = chain_welded(&mut mesh, 2_000);
-    assert!(rep.pinned > 20, "a fixtura tem de conter o fenómeno: {} pregadas", rep.pinned);
+    assert!(
+        rep.pinned > 20,
+        "a fixtura tem de conter o fenómeno: {} pregadas",
+        rep.pinned
+    );
     let biggest = map
         .shift
         .iter()

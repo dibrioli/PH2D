@@ -87,23 +87,7 @@ fn det(m: M2) -> f32 {
 
 fn inv(m: M2) -> Option<M2> {
     let d = det(m);
-    (d.abs() > 1.0e-6).then(|| {
-        [
-            [m[1][1] / d, -m[0][1] / d],
-            [-m[1][0] / d, m[0][0] / d],
-        ]
-    })
-}
-
-/// Uma condição de fecho plano, já como equação.
-#[derive(Debug, Clone)]
-struct Eq {
-    /// `(costura, coeficiente)`, sem termo constante.
-    terms: Vec<(u32, M2)>,
-    /// A costura que esta equação elimina.
-    owned: u32,
-    /// `−C_dono⁻¹`, pré-calculado.
-    solve: M2,
+    (d.abs() > 1.0e-6).then(|| [[m[1][1] / d, -m[0][1] / d], [-m[1][0] / d, m[0][0] / d]])
 }
 
 /// O que o sistema plano mediu de si próprio.
@@ -184,7 +168,7 @@ impl ClosureSystem {
     /// todas as dependentes a cada passo dá o mesmo número e custa `O(dependentes)` por
     /// relaxação — medido, era o que punha a cadeia em 69 s.*
     pub fn bump(&self, w: &Weld, map: &mut GridMap, i: usize, delta: [f32; 2]) {
-        let mut write = |v: Var, d: [f32; 2], map: &mut GridMap| match v {
+        let write = |v: Var, d: [f32; 2], map: &mut GridMap| match v {
             Var::Shift(s) => {
                 map.shift[s as usize][0] += d[0];
                 map.shift[s as usize][1] += d[1];
@@ -199,7 +183,9 @@ impl ClosureSystem {
         };
         let Some(&v) = self.free.get(i) else { return };
         write(v, delta, map);
-        let Some(list) = self.by_free.get(i) else { return };
+        let Some(list) = self.by_free.get(i) else {
+            return;
+        };
         for &(d, a) in list {
             write(self.dep[d as usize].0, mul_vec(a, delta), map);
         }
@@ -281,7 +267,7 @@ impl ClosureSystem {
         for c in order {
             rep.equations += 1;
             let mut terms: Vec<(usize, M2)> = Vec::new();
-            let mut put = |v: Var, m: M2, terms: &mut Vec<(usize, M2)>| {
+            let put = |v: Var, m: M2, terms: &mut Vec<(usize, M2)>| {
                 let Some(i) = index(v) else { return };
                 if let Some(e) = terms.iter_mut().find(|e| e.0 == i) {
                     e.1 = add(e.1, m);
@@ -303,7 +289,11 @@ impl ClosureSystem {
                     rot(c.jump + w.rot_of_pub(c.copies[0])),
                 );
                 #[allow(clippy::cast_possible_truncation)]
-                put(Var::Class(w.class_of_pub(c.copies[0]) as u32), m, &mut terms);
+                put(
+                    Var::Class(w.class_of_pub(c.copies[0]) as u32),
+                    m,
+                    &mut terms,
+                );
             }
             terms.retain(|e| e.1.iter().flatten().any(|x| x.abs() > 1.0e-6));
             eqs.push(terms);
@@ -435,7 +425,7 @@ impl ClosureSystem {
             .collect();
 
         let mut touch: Vec<Vec<(u32, M2)>> = vec![Vec::new(); free.len()];
-        let mut push = |slot: &mut Vec<(u32, M2)>, c: u32, m: M2| {
+        let push = |slot: &mut Vec<(u32, M2)>, c: u32, m: M2| {
             if let Some(e) = slot.iter_mut().find(|e| e.0 == c) {
                 e.1 = add(e.1, m);
             } else {

@@ -33,7 +33,11 @@ fn the_incremental_bump_agrees_with_the_full_apply() {
             rep.resolved
         );
         let base = crate::solve::GridMap {
-            uv: cut.origin.iter().map(|o| vec![[0.0f32; 2]; o.len()]).collect(),
+            uv: cut
+                .origin
+                .iter()
+                .map(|o| vec![[0.0f32; 2]; o.len()])
+                .collect(),
             shift: vec![[0.0; 2]; cut.seams.len()],
         };
         let mut checked = 0usize;
@@ -66,6 +70,9 @@ fn the_incremental_bump_agrees_with_the_full_apply() {
             }
             checked += 1;
         }
-        assert!(checked > 5, "poucas livres para provar coisa nenhuma: {checked}");
+        assert!(
+            checked > 5,
+            "poucas livres para provar coisa nenhuma: {checked}"
+        );
     }
 }

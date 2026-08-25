@@ -117,7 +117,14 @@ fn main() {
     } else {
         ph2d_gridmap::round_to_integers(&mesh, &cut, &combed, h, opts, &singular)
     };
-    println!("  caminho: {}", if welded { "SOLDADO (eliminacao)" } else { "penalizado" });
+    println!(
+        "  caminho: {}",
+        if welded {
+            "SOLDADO (eliminacao)"
+        } else {
+            "penalizado"
+        }
+    );
     println!("  modalidade das singularidades: {pin}");
     println!(
         "  G3+G5 ({:.1} s): {} costuras de arvore + {} de CICLO + {} singularidades (de {}, {} copias, {} ambiguas) ⇒ {} inteiros \

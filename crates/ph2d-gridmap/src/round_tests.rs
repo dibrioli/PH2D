@@ -7,7 +7,9 @@ use crate::solve::{SolveReport, assemble, solve_with};
 ///
 /// ⚠️ **`pub(crate)` de propósito:** a sonda da soldadura precisa da MESMA cadeia, e
 /// uma segunda cópia dela divergiria desta sem ninguém dar por isso.
-pub(crate) fn chain(mesh: &mut ph2d_mesh::Mesh) -> (crate::cut::CutMesh, crate::comb::Combed, f32, Vec<u32>) {
+pub(crate) fn chain(
+    mesh: &mut ph2d_mesh::Mesh,
+) -> (crate::cut::CutMesh, crate::comb::Combed, f32, Vec<u32>) {
     mesh.triangulate();
     ph2d_remesh_iso::remesh_isotropic(mesh, ph2d_remesh_iso::ALPHA);
     mesh.triangulate();

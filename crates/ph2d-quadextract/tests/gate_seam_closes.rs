@@ -49,11 +49,10 @@ fn measure(m: &ph2d_quadextract::mapa::Mapa) -> (ExtractReport, f64) {
         tris: &m.tris,
         uv: &m.uv,
     };
-    let biggest = m
-        .uv
-        .iter()
-        .flatten()
-        .fold(0.0f64, |a, z| a.max(z[0].abs()).max(z[1].abs()));
+    let biggest =
+        m.uv.iter()
+            .flatten()
+            .fold(0.0f64, |a, z| a.max(z[0].abs()).max(z[1].abs()));
     let (_, rep) = extract(&cm, None).expect("a referência tem de extrair");
     (rep, biggest)
 }

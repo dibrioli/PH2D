@@ -58,9 +58,7 @@ use ph2d_mesh::Mesh;
 
 use crate::comb::Combed;
 use crate::cut::CutMesh;
-use crate::solve::{
-    Assembly, GridMap, SolveReport, assemble, measure, poisson_numerator, turn2,
-};
+use crate::solve::{Assembly, GridMap, SolveReport, assemble, measure, poisson_numerator, turn2};
 use crate::weld::{Weld, WeldReport, weld};
 use crate::weld_flat::{ClosureSystem, FlatReport, Var};
 
@@ -106,16 +104,16 @@ impl<'a> WeldRelaxer<'a> {
         let seams = cut.seams.len();
         let nc = w.classes();
         let mut den = vec![0.0f32; nc];
-        for c in 0..nc {
+        for (c, slot) in den.iter_mut().enumerate() {
             for ((p, l), _) in w.members_pub(c) {
-                den[c] += a.denom[p as usize][l as usize];
+                *slot += a.denom[p as usize][l as usize];
             }
         }
         // ⚠️ A vizinhança é entre CLASSES: duas classes são vizinhas se alguma cópia de
         // uma partilha um triângulo com alguma cópia da outra. *É a vizinhança do
         // sistema reduzido, e não a da malha cortada.*
         let mut neigh: Vec<Vec<u32>> = vec![Vec::new(); nc];
-        for c in 0..nc {
+        for (c, slot) in neigh.iter_mut().enumerate() {
             for ((p, l), _) in w.members_pub(c) {
                 let (p, l) = (p as usize, l as usize);
                 for &ti in &a.by_vert[p][l] {
@@ -125,13 +123,13 @@ impl<'a> WeldRelaxer<'a> {
                         }
                         if let Some((other, _)) = w.of(p, v as usize) {
                             #[allow(clippy::cast_possible_truncation)]
-                            neigh[c].push(other as u32);
+                            slot.push(other as u32);
                         }
                     }
                 }
             }
-            neigh[c].sort_unstable();
-            neigh[c].dedup();
+            slot.sort_unstable();
+            slot.dedup();
         }
         let jumped: Vec<bool> = (0..seams)
             .map(|s| combed.jump.get(s).copied().flatten().is_some())
@@ -251,14 +249,6 @@ impl<'a> WeldRelaxer<'a> {
         }
     }
 
-    /// Prega uma componente de uma classe.
-    pub(crate) fn freeze_class(&mut self, class: usize, ax: usize) {
-        self.frozen[class][ax] = true;
-        if let Some(i) = self.free_index_class(class) {
-            self.free_frozen[i][ax] = true;
-        }
-    }
-
     /// Prega uma componente de uma incógnita livre.
     pub(crate) fn freeze_free(&mut self, i: usize, ax: usize) {
         self.free_frozen[i][ax] = true;
@@ -278,9 +268,7 @@ impl<'a> WeldRelaxer<'a> {
             .sys
             .touched(i)
             .iter()
-            .map(|&(c, _)| {
-                u32::try_from(self.w.class_of_pub(c)).unwrap_or(0)
-            })
+            .map(|&(c, _)| u32::try_from(self.w.class_of_pub(c)).unwrap_or(0))
             .collect();
         out.sort_unstable();
         out.dedup();

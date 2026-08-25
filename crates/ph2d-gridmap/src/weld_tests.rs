@@ -16,7 +16,10 @@ use super::{holonomy, weld};
 fn the_weld_measures_what_elimination_cannot_reach() {
     for (name, mut mesh) in [
         ("esfera 24x36", ph2d_mesh::shapes::uv_sphere(24, 36, 1.0)),
-        ("esfera fina 96x144", ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)),
+        (
+            "esfera fina 96x144",
+            ph2d_mesh::shapes::uv_sphere(96, 144, 1.0),
+        ),
         ("toro 64x32", ph2d_mesh::shapes::torus(64, 32, 1.0, 0.35)),
     ] {
         let (cut, combed, h, singular) = crate::round::tests::chain(&mut mesh);
@@ -77,7 +80,8 @@ fn where_does_the_link_count_disagree() {
     eprintln!("fechos com a cópia repetida (auto-laço): {selfloop} | pares repetidos: {repeated}");
     // as ligações cruas: pares casados por costura com salto
     let mut raw = 0usize;
-    let mut pairs: std::collections::BTreeMap<(u32, u32), usize> = std::collections::BTreeMap::new();
+    let mut pairs: std::collections::BTreeMap<(u32, u32), usize> =
+        std::collections::BTreeMap::new();
     for (s, seam) in cut.seams.iter().enumerate() {
         if combed.jump.get(s).copied().flatten().is_none() {
             continue;
@@ -97,5 +101,8 @@ fn where_does_the_link_count_disagree() {
     }
     let dupe_raw: usize = pairs.values().filter(|&&n| n > 1).map(|n| n - 1).sum();
     let loops = pairs.keys().filter(|(a, b)| a == b).count();
-    eprintln!("pares crus {raw} | pares distintos {} | repetidos {dupe_raw} | auto-laços {loops}", pairs.len());
+    eprintln!(
+        "pares crus {raw} | pares distintos {} | repetidos {dupe_raw} | auto-laços {loops}",
+        pairs.len()
+    );
 }

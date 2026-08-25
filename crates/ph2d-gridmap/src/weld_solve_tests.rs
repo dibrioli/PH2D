@@ -15,7 +15,11 @@ fn the_crossings_predict_how_a_translation_moves_a_copy() {
     let (cut, combed, _h, _) = crate::round::tests::chain(&mut mesh);
     let (w, _) = weld(&cut, &combed);
     let mut map = crate::solve::GridMap {
-        uv: cut.origin.iter().map(|o| vec![[0.0f32; 2]; o.len()]).collect(),
+        uv: cut
+            .origin
+            .iter()
+            .map(|o| vec![[0.0f32; 2]; o.len()])
+            .collect(),
         shift: vec![[0.0; 2]; cut.seams.len()],
     };
     for c in 0..w.classes() {
@@ -59,7 +63,10 @@ fn the_crossings_predict_how_a_translation_moves_a_copy() {
             w.derive(&mut map, c as usize);
         }
     }
-    assert!(checked > 100, "a fixtura tem de conter o fenómeno: {checked} travessias");
+    assert!(
+        checked > 100,
+        "a fixtura tem de conter o fenómeno: {checked} travessias"
+    );
 }
 
 /// ⭐⭐⭐ **GATE nº1 DA ESPEC — o resíduo de uma ligação ELIMINADA é o chão da
@@ -118,7 +125,10 @@ fn an_eliminated_seam_link_is_closed_to_the_floor_of_f32() {
 fn the_welded_system_beats_the_penalised_one_on_both_columns() {
     for (name, mut mesh) in [
         ("esfera 24x36", ph2d_mesh::shapes::uv_sphere(24, 36, 1.0)),
-        ("esfera fina 96x144", ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)),
+        (
+            "esfera fina 96x144",
+            ph2d_mesh::shapes::uv_sphere(96, 144, 1.0),
+        ),
         ("toro 64x32", ph2d_mesh::shapes::torus(64, 32, 1.0, 0.35)),
     ] {
         let (cut, combed, h, _) = crate::round::tests::chain(&mut mesh);

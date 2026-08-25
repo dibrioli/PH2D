@@ -225,11 +225,6 @@ impl Weld {
         self.crossings.get(seam).map_or(&[], Vec::as_slice)
     }
 
-    /// `(patch, local)` de uma cópia.
-    pub(crate) fn where_is(&self, copy: u32) -> (u32, u32) {
-        self.at[copy as usize]
-    }
-
     /// A classe de uma cópia.
     pub(crate) fn class_of(&self, copy: u32) -> usize {
         self.class[copy as usize] as usize
@@ -260,13 +255,6 @@ impl Weld {
             } else {
                 turn2([from[0] - t[0], from[1] - t[1]], -s.jump)
             };
-        }
-    }
-
-    /// O mesmo, para todas as classes — usado quando as translações mudam.
-    pub(crate) fn derive_all(&self, map: &mut GridMap) {
-        for c in 0..self.roots.len() {
-            self.derive(map, c);
         }
     }
 
@@ -309,12 +297,15 @@ pub fn weld(cut: &CutMesh, combed: &Combed) -> (Weld, WeldReport) {
     rep.copies = n;
 
     // ── As ligações: um par casado de uma costura é uma aresta entre duas cópias.
+    // ⭐ `(vizinho, costura, sentido, salto, id da ligação)` — o tipo tem nome porque o
+    // lint pede, e o nome diz o que a tupla é.
+    type Link = (u32, u32, bool, i32, u32);
     // ⚠️ **Cada ligação leva um ID**, e não é decoração: sem ele o fecho detecta-se pelo
     // SENTIDO (`forward`), e uma aresta percorrida como árvore no sentido inverso é
     // recontada como fecho quando o outro extremo a olha. ⛔ Medido: `469 + 30 ≠ 497`, e
     // as duas a mais apareciam depois como equações **órfãs** — restrições redundantes a
     // pedir uma variável que já não havia.
-    let mut adj: Vec<Vec<(u32, u32, bool, i32, u32)>> = vec![Vec::new(); n];
+    let mut adj: Vec<Vec<Link>> = vec![Vec::new(); n];
     for (s, seam) in cut.seams.iter().enumerate() {
         let Some(k) = combed.jump.get(s).copied().flatten() else {
             rep.loose += 1;
@@ -326,10 +317,8 @@ pub fn weld(cut: &CutMesh, combed: &Combed) -> (Weld, WeldReport) {
             let (Some(la), Some(lb)) = (la, lb) else {
                 continue;
             };
-            let (Some(ca), Some(cb)) = (
-                base.get(pa).map(|b| b + la),
-                base.get(pb).map(|b| b + lb),
-            ) else {
+            let (Some(ca), Some(cb)) = (base.get(pa).map(|b| b + la), base.get(pb).map(|b| b + lb))
+            else {
                 continue;
             };
             if ca as usize >= n || cb as usize >= n {
@@ -517,7 +506,7 @@ pub struct SeamResidual {
 pub fn seam_residual(w: &Weld, map: &GridMap) -> SeamResidual {
     let mut out = SeamResidual::default();
     let mut v: Vec<f32> = Vec::with_capacity(w.steps.len());
-    let mut one = |ca: u32, cb: u32, seam: u32, jump: i32| -> f32 {
+    let one = |ca: u32, cb: u32, seam: u32, jump: i32| -> f32 {
         let (pa, la) = w.at[ca as usize];
         let (pb, lb) = w.at[cb as usize];
         let za = turn2(map.uv[pa as usize][la as usize], jump);

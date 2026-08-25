@@ -20,7 +20,7 @@
 | Fase | O quê (uma frase) | Estado |
 |---|---|---|
 | F0 | O descritor de componente (+ `category`/`applies_to`) + `insert_default` — o inspector aprende a derivar | ✅ 2026-08-24 |
-| F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ⬜ |
+| F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ⬜ |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ⬜ |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ⬜ |
@@ -100,18 +100,20 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | O quê | Valor | Quem soma |
 |---|---|---|
 | Crates novas | `ph2d-component-desc` (F0) · `ph2d-asset-index` (F6) | workspace glob |
-| Componentes novos no registro | `StableId` · `SiblingOrder` (F1) · `SpriteCornerTint` · `SpriteSheet` · `SpriteRegion` (F1, corte da Sprite) · `MasterRoot` · `MasterPiece` · `InstanceOf` · `ObjectInstance` (F4) | `ph2d-ecs` **69 → 71 → 74 → 78**; espelhos render/script **70 → …** (+1 cada); boot **107 → 116** |
+| Componentes novos no registro | `SiblingOrder` (F1) · `SpriteCornerTint` · **`SpriteGrid`** · `SpriteRegion` (F1.6, corte da Sprite) · `MasterRoot` · `MasterPiece` · `InstanceOf` · `ObjectInstance` (F4) | ✅ `ph2d-ecs` 69 → 70 → **73**; espelhos render/script 70 → 71 → **74**. ⚠️ O `StableId` **NÃO** entrou (ver F1). ⚠️ **`SpriteGrid`, não `SpriteSheet`** — ver F1.6 |
 | `WorldSnapshot::VERSION` | 1 → **2** (F1) | `save.rs` |
-| `PROJECT_SCHEMA` | ✅ **96** (F1, feito e integrado) — ⚠️ hoje o topo é **97** (a `line/Vector` entrou depois); o **próximo** degrau é o **98** | escada + tripla |
+| `PROJECT_SCHEMA` | ✅ **96** (F1, integrado) · ✅ **98** (F1.6, o corte da Sprite) — ⚠️ o `97` é da `line/Vector`; o **próximo** degrau é o **99** | escada + tripla |
 | Ids de widget novos | `INSP_ADD_COMPONENT` (F3, o `+` do cabeçalho do Inspector) | `ph2d-editor-core/src/ids/` + o gate `node_id_collisions` |
 | **Superfície pública nova (F0, feita)** | `ComponentRegistry::register_default::<T>` · `ComponentTypeEntry::insert_default` · `ComponentTypeEntry::desc` | ⚠️ **`register_inner` é privado** — as duas portas públicas são `register` (sem default) e `register_default` |
 | **Sítios de chamada convertidos (F0, feita)** | **109** `reg.register::<T>` → `register_default::<T>`, menos **27** revertidos (sem `Default`) = **82** convertidos | ⚠️ 5 arquivos: `ph2d-ecs/scene/registry.rs` (70, um deles num teste) · `-render` (1) · `-script` (1) · `-physics-ecs` (32) · `-field-ecs` (5). **É a maior superfície de colisão desta linha** — uma linha que acrescente um componente toca o mesmo arquivo |
 | **Dependências novas (F0, feita)** | `ph2d-ecs` → `ph2d-component-desc` · `shells/desktop` → idem · `ph2d-panel-inspector` → idem | ⚠️ conta para o `machete` no `ship.sh` |
 | **Arquivos de teste novos (F0, feita)** | `shells/desktop/tests/every_registered_component_is_described.rs` (5 censos) · `ph2d-panel-inspector/tests/the_ordering_labels_come_from_the_descriptor.rs` (2) | nomes novos, sem colisão |
-| Componentes acrescentados na F0 | **nenhum** — a F0 não move contador | ✅ a **F1** moveu: `ph2d-ecs` 69 → **70** (só o `SiblingOrder`; o `StableId` ficou FORA do registo), espelhos 70 → **71** |
+| Componentes acrescentados na F0 | **nenhum** — a F0 não move contador | ✅ a **F1** moveu: `ph2d-ecs` 69 → **70** (só o `SiblingOrder`; o `StableId` ficou FORA do registo) → **73** (os três do corte), espelhos 70 → 71 → **74** |
 | Envs de smoke | `PH2D_INSTANCE_SMOKE=<n>` (F4+) · `PH2D_ASSET_BROWSER_SMOKE` (F7) | roteador de cenas próprio |
 | Campo novo no `ProjectFile` | `stable_id_counter` (F1 — FORA do `ProjectState`, undo não rebobina) | conta no degrau do schema |
-| Teto do ADR-0074 | +3 opcionais no corte da Sprite (o teto é 32) | `architecture_*` do Sprite |
+| Teto do ADR-0074 | ✅ +3 opcionais no corte da Sprite (o teto é 32) | `architecture_*` do Sprite |
+| **`Sprite::VERSION`** | ✅ 4 → **5** (F1.6): 20 campos → **13**. Envelope `SpriteVersioned::V5` (0x02); o `V4` passa a apontar para o espelho **congelado** `SpriteV4` | gate `sprite_struct_field_count_capped` (20 → **13**) + `sprite_schema_version_v4` |
+| **ADRs novos (F1.6)** | [`0070-amendment-8`](../architecture/decisions/0070-amendment-8.md) (o corte) · [`0071-amendment-1`](../architecture/decisions/0071-amendment-1.md) (o 4.º canal de tinta muda de casa) | ⚠️ números **contados** contra `decisions/`, não escolhidos |
 
 ---
 
@@ -260,17 +262,43 @@ prova de mutação (duplicar blob ⇒ vermelho).
    legado sobe de substrato sozinho — heal por hash num frame, re-carimbo com o id no seguinte.
    ⚠️ Os mundos de teste que spawnavam `Name` **sem `Transform`** foram corrigidos: nenhum objeto deste
    app nasce assim, e a fixtura irreal deixava-os sem id.
-6. Corte da Sprite (doc 04 C4): `per_corner_tint` → `SpriteCornerTint` · folha inline →
-   `SpriteSheet` · região → `SpriteRegion` — **ausência = default benigno**, criar sprite continua
-   1 gesto. ⚠️ Os três somam nos contadores (regra §0.1.2) e o cap do ADR-0074 (≤32 opcionais)
-   recebe +3.
-   ⭐ **E o corte ganhou uma SEGUNDA razão, que não é tamanho** (ADR-0166): enquanto o dado for
-   *campo* de um componente que todo objeto-imagem tem, **não há como não o mostrar** no Inspector.
-   Um campo só pode desaparecer da vista quando é um componente que pode estar ausente. ⇒ o critério
-   de corte deixa de ser *"a Sprite é grande"* e passa a ser ***"isto pertence ao objeto-imagem BASE,
-   ou é uma escolha que o artista faz?"***. Os três acima são escolhas; ⚠️ **releia os 20 campos com
-   esta pergunta antes de cortar** — o resultado pode não ser exatamente três, e se não for, **corrija
-   esta linha com a razão** (regra do plano vivo).
+6. ✅ **Corte da Sprite — FEITO** (2026-08-25). `per_corner_tint` → `SpriteCornerTint` · a folha
+   inline → **`SpriteGrid`** · a região → `SpriteRegion`. **Ausência = default benigno**, criar
+   sprite continua 1 gesto. Os três somam nos contadores (§0.1.2) e o cap do ADR-0074 recebe +3.
+   Decisões em [ADR-0070-amendment-8](../architecture/decisions/0070-amendment-8.md) +
+   [ADR-0071-amendment-1](../architecture/decisions/0071-amendment-1.md).
+
+   ⚠️ **DUAS coisas que esta linha dizia saíram diferentes, e a razão fica escrita:**
+
+   - ⛔ ~~`SpriteSheet`~~ → **`SpriteGrid`**. A `ph2d-ecs` **já tem** `SpriteSheetRef` e
+     `SpriteSheetFrame`, e as duas significam a folha **hand-packed** — outra coisa. Um terceiro
+     nome quase igual para uma ideia distinta é o que se lê ao contrário; *grelha* já é a palavra
+     que os docs usam para esta (§11 Animation).
+   - ⛔ ~~«corta TRÊS campos»~~ → **sete campos, em três componentes**. A conta original contava
+     *grupos*, não campos: a grelha são três (`hframes`/`vframes`/`frame`) e a região outros três.
+     A `Sprite` foi de **20 para 13**, não para 17.
+
+   ⭐ **E a releitura dos 20 campos com a pergunta do ADR-0166 CONFIRMOU os três grupos** — com
+   dois candidatos considerados e **recusados com razão**: o `self_tint` (o Godot põe `modulate` e
+   `self_modulate` sempre; o par com `tint` é a base) e o `tint_fill` (é um **modo** do tint, não
+   uma feature — um componente de um bool só é pior ergonomia que o campo).
+
+   ⭐⭐ **A PRESENÇA do `SpriteRegion` é o antigo `region_enabled`**, e isso apaga um estado que
+   ninguém conseguia ler (`enabled = false` **com** um rect autorado ao lado). O mesmo movimento
+   apaga o `region_filter_clip` de toda sprite **sem** região — um bool que não se aplicava a ela,
+   e cujo `serde default` o próprio campo v4 documentava como **errado para Individual**.
+
+   ⚠️ **O degrau de schema (97 → 98) é obrigatório apesar de a FORMA do `ProjectFile` não mudar** —
+   os bytes da `Sprite` vivem dentro do `Vec<u8>` opaco de um `ComponentBlob`, que o parse
+   atravessa sem olhar. ⛔ **A tripla do §0.1.7 não podia ver isto:** ela mede a forma da `VecScene`
+   e do `FlipDoc`, e nenhuma se mexeu. *Um degrau não é só «a estrutura mudou» — é «os bytes
+   deixaram de significar o mesmo».* A migração (`project_migrate_sprite`) é uma travessia do
+   snapshot, e o **v95 sobe encadeado** (95 → 96 → o corte).
+
+   ⚠️ **MEDIDO ao fazer:** o `load_sprite` — documentado como *"a ÚNICA forma sancionada de ler um
+   sprite persistido"* — **não tem chamador de produção**, só os próprios testes. E o
+   `SpriteSheetRef` (folha hand-packed) é construído **por cima** da região: todo sprite de folha
+   tem de ficar com um `SpriteRegion`, senão amostra a folha INTEIRA.
 
 **Testes:** determinismo — `state_hash` idêntico em duas capturas do mesmo estado e através de
 restore; mutação: remover o remap de `StableId` na cópia de blobs ⇒ gate de unicidade mata.

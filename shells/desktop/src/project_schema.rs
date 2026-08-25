@@ -274,4 +274,32 @@
 /// {PROJECT_SCHEMA} — recusado"`), que é o comportamento certo: postcard é posicional e
 /// não-auto-descritivo, então **sem o bump ele leria os bytes errados em silêncio**. *O bump é o
 /// que transforma um mal-entendido silencioso numa recusa legível.*
-pub(crate) const PROJECT_SCHEMA: u32 = 98;
+///
+/// ⚠️⚠️ **ESTE DEGRAU NASCEU `98` E FOI RECONTADO PARA `99` NA INTEGRAÇÃO de 2026-08-26** — a
+/// SEGUNDA vez que isto acontece neste ficheiro (ver o degrau `97` acima). A `line/Vector` e a
+/// `line/components` mudaram o formato **por razões diferentes** e as duas escreveram o literal
+/// `98`; o valor certo não estava em nenhum dos dois lados. ⛔ **E desta vez a `collision-surface.sh`
+/// ficou CEGA por outro motivo:** depois de a primeira linha aterrar, o merge-base da segunda passa
+/// a ser um `main` que já diz `98`, então ela lê `98 (base: 98)` — **sem aviso nenhum**, e o git
+/// funde o literal repetido **limpo**. *Conte o delta de cada linha; não confie no aviso.*
+///
+/// ⚠️ **Um v97 é RECUSADO** (não migrado): o degrau `98` acima é da `line/Vector` e ela decidiu,
+/// com o Enio, não congelar um tipo `ProjectFileV97`. Sem tipo congelado não há como ler aqueles
+/// bytes sem os reinterpretar — que é exactamente o que o bump existe para impedir. O `v95`
+/// continua a subir a escada inteira.
+///
+/// # 99 — o CORTE DA SPRITE (ADR-0164 F1 passo 6 / ADR-0166 / ADR-0070-amendment-8)
+///
+/// ⚠️⚠️ **A forma do `ProjectFile` NÃO mudou, e o degrau é obrigatório na mesma.** Os 20 campos
+/// da `Sprite` v4 passaram a 13 (sete saíram para `SpriteGrid`/`SpriteRegion`/`SpriteCornerTint`),
+/// e esses bytes vivem **dentro** do `Vec<u8>` opaco de um `ComponentBlob` — que o parse do
+/// `ProjectFile` atravessa sem olhar. Um v98 lido por este binário abriria **sem erro** e cada
+/// sprite leria 20 campos com um tipo de 13: lixo bem-formado.
+///
+/// ⛔ **É por isso que a tripla abaixo não é a defesa aqui.** Ela mede a forma da `VecScene` e do
+/// `FlipDoc`; nenhuma das duas se mexeu. *Um degrau de schema não é só «a estrutura mudou» — é
+/// «os bytes deixaram de significar o mesmo».*
+///
+/// A migração é uma travessia das linhas do snapshot (`crate::project_migrate_sprite`), não um
+/// espelho do ficheiro: congelar 14 campos que não mudaram seria a cópia errada.
+pub(crate) const PROJECT_SCHEMA: u32 = 99;

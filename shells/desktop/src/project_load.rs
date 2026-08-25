@@ -54,14 +54,45 @@ impl crate::App {
                     return;
                 }
             },
+            // ⭐ **97 → 98: o corte da `Sprite`** (ADR-0164 F1 passo 6). A forma do ficheiro é a
+            // mesma, então ele lê-se com o tipo VIVO — o que muda são os bytes DENTRO do blob da
+            // `Sprite`, que o parse atravessa sem olhar. Ver `crate::project_migrate_sprite`.
+            97 => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
+                Ok((_, mut f)) => {
+                    let r = crate::project_migrate_sprite::split_sprite_blobs(&mut f.state.world);
+                    eprintln!(
+                        "[proj] migrado v97 -> v{PROJECT_SCHEMA} ({} sprites partidas, {} componentes anexados, {} ilegiveis)",
+                        r.sprites, r.components, r.unreadable
+                    );
+                    self.toast(format!(
+                        "Project migrated from format 97 to {PROJECT_SCHEMA}"
+                    ));
+                    (f, None)
+                }
+                Err(e) => {
+                    eprintln!("[proj] v97 ilegivel: {e}");
+                    self.toast(format!(
+                        "Project refused: format 97 file is unreadable ({e})"
+                    ));
+                    return;
+                }
+            },
             95 => {
                 match postcard::from_bytes::<(u32, crate::project_migrate::ProjectFileV95)>(&bytes)
                 {
                     Ok((_, old)) => {
-                        let m = crate::project_migrate::migrate_v95_to_v96(old);
+                        let mut m = crate::project_migrate::migrate_v95_to_v96(old);
+                        // ⚠️ **A escada é ENCADEADA: um v95 sobe a 96 e depois passa pelo corte
+                        // da 98.** O `migrate_v95_to_v96` não sabe da `Sprite`, e um v95 tem
+                        // sprites v4 como qualquer outro — saltar este passo daria um ficheiro
+                        // antigo que abre com todas as sprites a ler lixo bem-formado.
+                        let split = crate::project_migrate_sprite::split_sprite_blobs(
+                            &mut m.file.state.world,
+                        );
                         eprintln!(
-                            "[proj] migrado v95 -> v{PROJECT_SCHEMA} ({} objetos receberam identidade)",
-                            m.file.state.world.entities.len()
+                            "[proj] migrado v95 -> v{PROJECT_SCHEMA} ({} objetos receberam identidade, {} sprites partidas)",
+                            m.file.state.world.entities.len(),
+                            split.sprites
                         );
                         self.toast(format!(
                             "Project migrated from format 95 to {PROJECT_SCHEMA}"

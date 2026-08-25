@@ -416,6 +416,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // v97 e' RECUSADO em voz alta -- que e' o ponto do bump: postcard e' posicional, entao sem
         // ele o ficheiro antigo seria lido ERRADO em silencio.
         (98, 13, 14),
+        //
+        // PROJECT 98→99: o CORTE DA SPRITE (ADR-0164 F1 passo 6). ⚠️ **A `VecScene` e o `FlipDoc`
+        // nao mudaram, e o `ProjectFile` tambem nao** — os dois numeros ao lado ficam onde
+        // estavam, e a forma do ficheiro e' a mesma. O que mudou foram os BYTES dentro do
+        // `ComponentBlob` da `Sprite` (20 campos -> 13). ⛔ Esta tripla NAO podia ver esse degrau:
+        // ela mede a forma dos documentos, e o blob e' um `Vec<u8>` opaco para ela. O gate que o
+        // ve' e' `crate::project_migrate_sprite`.
+        (99, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

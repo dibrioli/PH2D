@@ -5654,6 +5654,67 @@ delas.
   crate** que as duas consomem.
 - ⛔ **Não afinar o DC** — a tabela do cubo rodado é a recusa medida.
 
+## §68 — W61b: a exportação passa pela cadeia de quads — e ela bate o oráculo (24/08)
+
+> Enio, depois do placar: *"pode fazer"*.
+
+### §68.1 — O número
+
+A malha que a exportação entrega, com a cadeia adoptada:
+
+| peça | extraída (grade dual) | **pela cadeia** | oráculo `quadwild-bimdf` |
+|---|---|---|---|
+| **esfera** | `1,48` / `26,6°` / 120 péssimas | ⭐ **`1,08` / `6,4°` / 4** | `1,08` / `4,8–7,1°` |
+| toro | `1,49` / `24,8°` / 16 | `1,20` / `9,0°` / 9 | — |
+| ⛔ cubo rodado 45° | `1,00` / **`0,0°`** / 0 | `1,35` / `17,9°` / 112, **+6 bordo** | — |
+
+⭐⭐⭐ **Na esfera acertamos o aspecto do oráculo ao centésimo (`1,08`) e ficamos a `6,4°` da banda
+dele (`4,8–7,1°`)** — dentro dela.
+
+### §68.2 — ⛔ Mas «sempre» seria errado, e o cubo prova
+
+Numa peça **dura** (faces planas, quinas vivas) a grade dual **já é** a resposta certa: o quad pousa
+na face e sai a `0°`. O campo cruzado não tem a que se alinhar, e o que ele inventa é pior — **e
+abre a peça** (6 arestas de bordo onde havia zero).
+
+⇒ [`ph2d_quadchain::quads_or_keep`] — a cadeia corre e **só troca a malha se a troca for uma
+melhoria**, por duas metades que não são pesos arbitrários:
+
+1. ⛔ **Uma peça fechada continua fechada** — bordo ou não-manifold novo é veto **duro**. *Nenhum
+   ganho de forma paga um buraco.*
+2. Depois disso, troca-se **se a forma melhorar**.
+
+### §68.3 — ⛔⛔ Dois defeitos a jusante, e o que a porta pode fazer
+
+1. **O `ph2d-gridmap` ESTOURA numa malha válida.** Um cubo subdividido — fechado, manifold, 100 %
+   quads — dá `index out of bounds: the len is 129 but the index is 157` (`solve.rs:336`).
+   ⚠️ **Não é uma pré-condição conferível**: a malha satisfaz tudo o que se sabe exigir.
+2. **E estoura noutro sítio numa peça com bordo** (`solve.rs:343`).
+
+⭐ A porta apanha o estouro e devolve `Verdict::Panicked` — ela oferece uma **melhoria opcional**, e
+um `panic` a jusante não pode derrubar quem exportou uma peça. ⛔ **Isto não é a cura**: o defeito é
+do `ph2d-gridmap`, a `line/quadextract` está **viva sobre aquele arquivo**, e tocá-lo daqui seria
+colisão de mesmo-símbolo (`DIRETRIZ` §1.5.5). Ele vai **nomeado no handoff, com a fixtura**.
+
+### §68.4 — ⚠️ Por que uma crate NOVA, e não a migração da que existe
+
+A ordem da cadeia vivia em `shells/desktop/src/sculpt3d_history_retopo_extract.rs`,
+`pub(in crate::sculpt3d)` — alcançável por um módulo só. ⛔ E a `line/quadextract` tem **7 commits em
+curso exactamente naquele arquivo**.
+
+⇒ `crates/ph2d-quadchain` nasce **aditiva**: a lista de membros da workspace é um **glob**, então não
+há sítio central a editar, e o shell da escultura fica **intocado**. ⚠️ Ela é escrita para que aquela
+metade adopte esta porta **numa linha**, quando aquela linha quiser. *Duas cópias de uma lei é uma lei
+que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
+
+### §68.5 — ⚠️ E duas fixturas minhas não continham o fenómeno
+
+- Uma esfera UV feita à mão já sai a **`2,8°`** ⇒ sobre ela a regra devolve «sem ganho», e o gate
+  reprovava sobre produto correto. ⇒ o gate da adopção mudou-se para `ph2d-field-eval`, onde a
+  **entrada de verdade** (a malha do *Dual Contouring*, `26,6°`) existe.
+- E a barra do gate é a do **oráculo** (`≤ 10°`, `aspecto ≤ 1,15`), não «melhor que antes» — *uma
+  barra relativa aceitaria `20°`*.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

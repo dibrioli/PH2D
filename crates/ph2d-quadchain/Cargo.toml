@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-quadchain"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+# A cadeia inteira, na ordem em que ela corre. ⚠️ Esta crate NÃO tem algoritmo: ela é a ORDEM, e a
+# ordem é a coisa que duas linhas estavam prestes a escrever duas vezes.
+ph2d-mesh = { path = "../ph2d-mesh" }
+ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
+ph2d-crossfield = { path = "../ph2d-crossfield" }
+ph2d-trace = { path = "../ph2d-trace" }
+ph2d-gridmap = { path = "../ph2d-gridmap" }
+ph2d-quadextract = { path = "../ph2d-quadextract" }
+ph2d-quadfill = { path = "../ph2d-quadfill" }

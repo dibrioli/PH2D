@@ -3586,3 +3586,161 @@ fn the_skew_belongs_to_the_grid_not_to_the_piece() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A CADEIA CERTA SOBRE A NOSSA MALHA** (W61b) — a experiência que responde ao Enio.
+///
+/// ⛔ A primeira tentativa correu a metade **errada** da cadeia da casa (o preenchimento por patch,
+/// `ph2d_quadfill::fill`) e **piorou**: esfera `26,6° → 23,2°`, toro `24,8° → 30,3°`. ⚠️ *Que ela
+/// reproduza os `27°` que o repo já regista é o que VALIDA o arnês* — ela não contradisse a nota,
+/// confirmou-a.
+///
+/// Esta corre a metade boa — a **extracção** (`ph2d-gridmap` + `ph2d-quadextract`), agora por uma
+/// porta que qualquer módulo alcança ([`ph2d_quadchain::quads_from_mesh`]).
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::the_quad_chain_turns_our_mesh_into_oracle_class --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_quad_chain_turns_our_mesh_into_oracle_class() {
+    use ph2d_quadfill::quad_shape;
+    let reg = hybrid::Registry::new();
+    let cases: Vec<(&str, FieldDoc)> = vec![
+        (
+            "esfera",
+            FieldDoc::new(
+                vec![leaf(Primitive::Sphere { radius: 0.45 }, Xform::IDENTITY)],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "toro",
+            FieldDoc::new(
+                vec![leaf(
+                    Primitive::Torus {
+                        major: 0.35,
+                        minor: 0.13,
+                    },
+                    Xform::IDENTITY,
+                )],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "cubo rodado 45°",
+            FieldDoc::new(
+                vec![leaf(
+                    Primitive::Box {
+                        half: [0.35, 0.35, 0.35],
+                        round: 0.0,
+                    },
+                    Xform {
+                        rotation: [
+                            0.0,
+                            0.0,
+                            (0.25f32 * std::f32::consts::PI).sin(),
+                            (0.25f32 * std::f32::consts::PI).cos(),
+                        ],
+                        ..Xform::IDENTITY
+                    },
+                )],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+    ];
+    println!("peça | fase | faces | aspecto p50/máx | skew p50/p99 | >60° | ≠2 faces | bordo");
+    for (name, doc) in &cases {
+        let Ok(mesh) = extract::extract(doc, &reg, 6) else {
+            println!("{name}: a extração recusou");
+            continue;
+        };
+        let a = quad_shape(&mesh);
+        println!(
+            "{name:>16} | EXTRAÍDA | {:>5} | {:>5.2}/{:>6.2} | {:>5.1}/{:>5.1} | {:>4} | {:>8} | {}",
+            mesh.faces().len(),
+            a.aspect_p50,
+            a.aspect_max,
+            a.skew_p50,
+            a.skew_p99,
+            a.skew_over_60,
+            ph2d_quadchain::non_manifold_edges(&mesh),
+            ph2d_quadchain::boundary_edges(&mesh),
+        );
+        // ⭐ O alvo sai da malha que ENTRA — a lei da cadeia.
+        let target = ph2d_remesh_iso::target_edge(&mesh, ph2d_remesh_iso::ALPHA);
+        match ph2d_quadchain::quads_from_mesh(&mesh, target) {
+            Ok((out, r)) => println!(
+                "{name:>16} | CADEIA   | {:>5} | {:>5.2}/{:>6.2} | {:>5.1}/{:>5.1} | {:>4} | {:>8} | {}   (não-quads {}, dobras {}, alinhado {})",
+                out.faces().len(),
+                r.shape.aspect_p50,
+                r.shape.aspect_max,
+                r.shape.skew_p50,
+                r.shape.skew_p99,
+                r.shape.skew_over_60,
+                ph2d_quadchain::non_manifold_edges(&out),
+                r.boundary_edges,
+                r.non_quads,
+                r.folded,
+                r.aligned,
+            ),
+            Err(e) => println!("{name:>16} | a cadeia recusou: {e:?}"),
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A CADEIA É ADOPTADA NA PEÇA QUE A GRADE ENVIESA** (W61b) — e o número é o do oráculo.
+///
+/// ⚠️ **Este gate vive aqui, e não na `ph2d-quadchain`, porque a ENTRADA de verdade é esta:** a
+/// malha que o *Dual Contouring* extrai, com `26,6°` de enviesamento. ⛔ Uma esfera feita à mão já
+/// sai a `2,8°`, e sobre ela a regra devolve «sem ganho» — *uma fixtura que já é boa não distingue
+/// «a regra funciona» de «a regra nunca troca nada»*.
+///
+/// A barra é a do oráculo de produção `quadwild-bimdf`, que a `line/sculpt3d` calibrou:
+/// **aspecto `1,08`, enviesamento `4,8–7,1°`**.
+#[test]
+fn the_chain_is_adopted_on_the_piece_the_grid_skews() {
+    use ph2d_quadchain::{Verdict, quads_or_keep};
+    let reg = hybrid::Registry::new();
+    let doc = FieldDoc::new(
+        vec![leaf(Primitive::Sphere { radius: 0.45 }, Xform::IDENTITY)],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let mesh = extract::extract(&doc, &reg, 6).expect("a extração");
+    let before = ph2d_quadfill::quad_shape(&mesh);
+    // ⚠️ O controle da fixtura: a entrada tem de estar de facto enviesada, senão não há o que curar.
+    assert!(
+        before.skew_p50 > 15.0,
+        "a malha extraída saiu a {:.1}° — a fixtura não contém o defeito que o gate mede",
+        before.skew_p50
+    );
+    let target = ph2d_remesh_iso::target_edge(&mesh, ph2d_remesh_iso::ALPHA);
+    let (out, v) = quads_or_keep(&mesh, target);
+    let Verdict::Adopted(r) = &v else {
+        panic!("a cadeia devia ser adoptada nesta peça e o veredito foi {v:?}");
+    };
+    // ⭐ **A barra é a do oráculo**, e não «melhor que antes»: uma barra relativa aceitaria `20°`.
+    assert!(
+        r.shape.skew_p50 <= 10.0,
+        "a cadeia entregou {:.1}° de enviesamento — o oráculo `quadwild-bimdf` mede `4,8`–`7,1°`, e \
+         uma barra relativa aceitaria qualquer melhoria",
+        r.shape.skew_p50
+    );
+    assert!(
+        r.shape.aspect_p50 <= 1.15,
+        "o aspecto mediano saiu {:.2} — o oráculo mede `1,08`",
+        r.shape.aspect_p50
+    );
+    // …e a peça continua fechada e toda em quads.
+    assert_eq!(r.boundary_edges, 0, "a peça saiu ABERTA");
+    assert_eq!(r.non_quads, 0, "saiu face que não é quad");
+    assert_eq!(
+        ph2d_quadchain::non_manifold_edges(&out),
+        0,
+        "saiu aresta não-manifold"
+    );
+}

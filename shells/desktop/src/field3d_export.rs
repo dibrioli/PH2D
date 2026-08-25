@@ -180,6 +180,31 @@ pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::Toast
                 return;
             }
         };
+        // ⭐⭐⭐ **A CADEIA DE QUADS ALINHADOS** (W61b) — a exportação passa a oferecer o que há de
+        // melhor, e só o adopta quando ele é de facto melhor.
+        //
+        // ⛔ **Medido** (`ph2d_field_eval::tests::the_scorecard_of_the_extracted_mesh` e a irmã): a
+        // extração por *Dual Contouring* já entrega topologia **perfeita** (`0` não-manifold, `0`
+        // bordo) e geometria quase exacta (`|f|` médio de `~0,005` célula), mas a **forma da face**
+        // sai a `25–27°` de enviesamento contra os `4,8–7,1°` do oráculo de produção. ⭐ A cadeia
+        // leva a esfera a **`1,08` de aspecto e `6,4°`** — a classe do oráculo.
+        //
+        // ⚠️ **E ela NÃO é «sempre»:** numa peça de faces planas a grade dual já é a resposta certa
+        // (o quad pousa na face e sai a `0°`), e a cadeia piora. Quem decide é o veto de
+        // [`ph2d_quadchain::quads_or_keep`], que nunca devolve uma malha pior nem uma peça aberta.
+        let target = ph2d_remesh_iso::target_edge(&mesh, ph2d_remesh_iso::ALPHA);
+        let (mesh, verdict) = ph2d_quadchain::quads_or_keep(&mesh, target);
+        let quality = match &verdict {
+            ph2d_quadchain::Verdict::Adopted(r) => {
+                format!(
+                    " · quads alinhados ({:.1}° de enviesamento)",
+                    r.shape.skew_p50
+                )
+            }
+            // ⚠️ **Silencioso quando não muda nada.** Um aviso a dizer *"a melhoria opcional não se
+            // aplicou"* seria ruído sobre uma exportação que correu bem.
+            _ => String::new(),
+        };
         let ms = t0.elapsed().as_secs_f64() * 1000.0;
         // ⚠️ **A pose é a identidade, e isso não é um esquecimento.** O documento cozido já tem
         // toda a cadeia de poses dentro do campo (`cook` compõe, `place` aplica), então a malha sai
@@ -208,7 +233,7 @@ pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::Toast
                     toasts,
                     format!(
                         "Exported {quads} quads = {tris} tris, {sx:.2} x {sy:.2} x {sz:.2}, \
-                         {} KB in {ms:.0} ms -- {name} ({})",
+                         {} KB in {ms:.0} ms -- {name} ({}){quality}",
                         size / 1024,
                         crate::sculpt3d::lost_by(fmt)
                     ),

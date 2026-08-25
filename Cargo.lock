@@ -5480,8 +5480,14 @@ name = "ph2d-field-eval"
 version = "0.0.0"
 dependencies = [
  "fidget",
+ "ph2d-crossfield",
  "ph2d-field",
  "ph2d-mesh",
+ "ph2d-quadchain",
+ "ph2d-quadfill",
+ "ph2d-quantize",
+ "ph2d-remesh-iso",
+ "ph2d-trace",
 ]
 
 [[package]]
@@ -5815,6 +5821,7 @@ dependencies = [
  "ph2d-panel-vector",
  "ph2d-panel-wet-tuning",
  "ph2d-physics-ecs",
+ "ph2d-quadchain",
  "ph2d-quadextract",
  "ph2d-quadfill",
  "ph2d-quadflow",
@@ -7797,6 +7804,19 @@ name = "ph2d-platformer"
 version = "0.0.0"
 dependencies = [
  "libm",
+]
+
+[[package]]
+name = "ph2d-quadchain"
+version = "0.0.0"
+dependencies = [
+ "ph2d-crossfield",
+ "ph2d-gridmap",
+ "ph2d-mesh",
+ "ph2d-quadextract",
+ "ph2d-quadfill",
+ "ph2d-remesh-iso",
+ "ph2d-trace",
 ]
 
 [[package]]

@@ -333,6 +333,13 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // quadro é byte-idêntico, e um projeto antigo carrega sem ele — mas quem o autorou tem de o
     // reencontrar depois de gravar, e sem esta linha o `world_to_snapshot` descartava-o em silêncio.
     reg.register_default::<crate::SpriteEmissive>("ph2d::ecs::SpriteEmissive");
+    // ADR-0164 F1 passo 6 / ADR-0166 — os três grupos que saíram do `Sprite` v4. Cada um é
+    // OPCIONAL, e a ausência é o default benigno que o campo tinha (grelha de 1 célula ·
+    // textura inteira · cantos brancos), então um projeto que nunca os tocou continua
+    // byte-idêntico. ⚠️ A PRESENÇA do `SpriteRegion` é o antigo `region_enabled`.
+    reg.register_default::<crate::SpriteGrid>("ph2d::ecs::SpriteGrid");
+    reg.register_default::<crate::SpriteRegion>("ph2d::ecs::SpriteRegion");
+    reg.register_default::<crate::SpriteCornerTint>("ph2d::ecs::SpriteCornerTint");
     // Trava e group-lock: markers que o Hierarchy edita e que o save/undo precisa
     // preservar (sem eles, `world_to_snapshot` os descartava em silêncio).
     reg.register_default::<crate::Locked>("ph2d::ecs::Locked");

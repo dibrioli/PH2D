@@ -458,6 +458,13 @@ pub enum FieldKind {
     Int,
     /// Par de reais (eixo, tamanho, deslocamento).
     Vec2,
+    /// Quatro reais que se editam como UM valor — um retângulo `[x, y, w, h]`.
+    ///
+    /// ⚠️ **Não é «um `Vec2` de posição mais um de tamanho»**, e a distinção é o override
+    /// por-campo da F4: o `SpriteRegion.rect` é **um** campo do componente, então descrevê-lo
+    /// como dois daria dois `field_id` a um só `[f32; 4]` — e um override gravado sobre metade
+    /// dele não teria onde ser aplicado. O descritor espelha a ESTRUTURA, não o layout do painel.
+    Vec4,
     /// Cor RGBA.
     Color,
     /// Liga/desliga.

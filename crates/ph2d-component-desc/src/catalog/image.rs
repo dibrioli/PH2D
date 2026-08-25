@@ -33,15 +33,40 @@ const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
     }
 }
 
-/// ⚠️ **Parcial de propósito.** A `Sprite` tem 20 campos; a F0 descreve os que a §7/§4 do
-/// Inspector já editam, e a tabela cresce **append-only** por procura (F1 corta três; F3
-/// descreve o resto quando a seção for derivada). ⛔ Nunca reordene nem reuse um `field_id`.
+/// ⚠️ **Parcial de propósito.** A `Sprite` tem 17 campos (eram 20 até o corte do ADR-0164 F1
+/// passo 6); a F0 descreve os que a §7/§4 do Inspector já editam, e a tabela cresce
+/// **append-only** por procura (F3 descreve o resto quando a seção for derivada).
+/// ⛔ Nunca reordene nem reuse um `field_id`.
+///
+/// ⚠️ **O `field_id` 5 está APOSENTADO, não livre.** Ele era o *Frame*, e o índice de célula
+/// mudou-se para o [`ph2d_ecs::SpriteGrid`] com a grelha que lhe dá sentido. Reusar o 5 para
+/// outro campo faria um override por-campo gravado antes do corte (F4) apontar para o campo
+/// errado — a colisão passa muda porque os dois lados são `u16`.
 const SPRITE: &[FieldDesc] = &[
     f(1, "Tint", K::Color),
     f(2, "Flip X", K::Toggle),
     f(3, "Flip Y", K::Toggle),
     f(4, "Pivot", K::Vec2),
-    f(5, "Frame", K::Int),
+    // 5 — APOSENTADO (era "Frame"; ver a nota acima).
+];
+
+/// Os três grupos que saíram da `Sprite` (ADR-0164 F1 passo 6 / ADR-0166).
+const SPRITE_GRID: &[FieldDesc] = &[
+    f(1, "Columns", K::Int),
+    f(2, "Rows", K::Int),
+    f(3, "Frame", K::Int),
+];
+
+const SPRITE_REGION: &[FieldDesc] = &[
+    f(1, "Region", K::Vec4),
+    f(2, "Filter Clip", K::Toggle),
+];
+
+const SPRITE_CORNER_TINT: &[FieldDesc] = &[
+    f(1, "Top Left", K::Color),
+    f(2, "Top Right", K::Color),
+    f(3, "Bottom Left", K::Color),
+    f(4, "Bottom Right", K::Color),
 ];
 
 const SLICE_NINE: &[FieldDesc] = &[
@@ -101,9 +126,36 @@ pub const DESCS: &[D] = &[
         O::IMAGE,
         &[],
     ),
+    // ⭐ Os TRÊS do corte (ADR-0164 F1 passo 6 / ADR-0166) — `Authored` e `O::IMAGE`: é a
+    // paleta do F3 que os anexa, e só a um objeto-imagem. A ausência de cada um é o default
+    // benigno que o campo tinha, então nada aparece no Inspector até o artista o pedir.
+    D::authored(
+        "ph2d::ecs::SpriteCornerTint",
+        "Corner Tint",
+        C::Image,
+        O::IMAGE,
+        SPRITE_CORNER_TINT,
+    ),
+    // ⚠️ Categoria `Image` e não `Animation`: a grelha é um FATO da textura (como ela se
+    // divide), e é a `SpriteAnimations` que a percorre. Pô-la em Animation faria um sprite com
+    // folha estática — o caso comum — procurar a grelha na secção errada.
+    D::authored(
+        "ph2d::ecs::SpriteGrid",
+        "Sprite Grid",
+        C::Image,
+        O::IMAGE,
+        SPRITE_GRID,
+    ),
     // Os pixels editados desta sprite (`project_sprite_pixels.rs`): identidade de CONTEÚDO,
     // posta pelo funil de commit das oito ferramentas de imagem. O artista não a anexa.
     D::machinery("ph2d::ecs::SpritePixels", "Sprite Pixels", C::Image),
+    D::authored(
+        "ph2d::ecs::SpriteRegion",
+        "Region",
+        C::Image,
+        O::IMAGE,
+        SPRITE_REGION,
+    ),
     // Proveniência de autoria (que folha esta sprite veio de), não índice de célula — o
     // índice vivo é o `Sprite::frame`. Máquina: quem a põe é o importador.
     D::machinery("ph2d::ecs::SpriteSheetFrame", "Sheet Frame", C::Image),

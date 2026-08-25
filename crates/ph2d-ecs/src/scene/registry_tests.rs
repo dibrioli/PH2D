@@ -144,7 +144,14 @@ fn register_ecs_components_populates_registry() {
     //   Ao mexer aqui, mexa nos tres NO MESMO commit: `ph2d-render` e `ph2d-script`.
     // + 1 VISIBILIDADE das ancoras (AnchorVisibility, Enio 2026-08-23).
     // + 2 da §11 ANIMATION (SpriteAnimations + SpriteAnimator, spec Sprite 08).
-    assert_eq!(reg.len(), 71);
+    // + 3 do CORTE DA SPRITE (SpriteGrid + SpriteRegion + SpriteCornerTint, ADR-0164 F1
+    //   passo 6 / ADR-0166, 2026-08-25) — os tres campos que SAIRAM do `Sprite` v4 para
+    //   poderem estar AUSENTES, que e' o que os tira do Inspector ate' o artista os pedir.
+    // + 1 MAQUINA DE ESTADOS do Morph (VecMorphMachine, `line/Vector`, 2026-08-26).
+    //   ⚠️ Degrau escrito na INTEGRACAO: aquela linha subiu o numero e nao o registou aqui,
+    //   e um contador sem escada nao e' auditavel — o proximo a mexer nele tem de poder
+    //   somar os degraus e chegar ao total sem confiar no literal.
+    assert_eq!(reg.len(), 74);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

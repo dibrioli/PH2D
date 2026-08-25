@@ -66,6 +66,11 @@ fn main() {
             "toro" => ph2d_mesh::shapes::torus(64, 32, 1.0, 0.35),
             "esfera-fina" => ph2d_mesh::shapes::uv_sphere(96, 144, 1.0),
             "esfera-irregular" => ph2d_mesh::shapes::uv_sphere_shuffled(48, 72, 1.0),
+            // ⭐ AS PONTAS. O corpus não tem nenhuma verdadeiramente aguda, e o report
+            // do artista (2026-08-25) nomeia «ponta, chifres» como o pior caso. *Uma
+            // fixtura que não contém o fenómeno não o pode medir.*
+            "octaedro" => ph2d_mesh::shapes::octahedron(1.0),
+            "cilindro" => ph2d_mesh::shapes::cylinder(64, 0.5, 1.5),
             _ => ph2d_mesh::shapes::uv_sphere(24, 36, 1.0),
         }
     };

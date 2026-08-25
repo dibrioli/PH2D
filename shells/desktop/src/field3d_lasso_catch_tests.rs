@@ -60,7 +60,7 @@ fn a_lasso_catches_the_shapes_that_hide_behind_each_other() {
                 &[],
                 &crate::field3d_scene::no_drawing(),
             ) {
-                Some(SelectRequest::ToggleMany(bits)) => bits.len(),
+                Some(SelectRequest::AddMany(bits)) => bits.len(),
                 other => panic!("{n} formas empilhadas: o laço não pediu seleção: {other:?}"),
             }
         });
@@ -138,7 +138,7 @@ fn the_surface_half_catches_what_the_origin_half_cannot_see() {
         });
         let req =
             crate::field3d_scene::ecs_bridge(sim, None, &[], &crate::field3d_scene::no_drawing());
-        let Some(SelectRequest::ToggleMany(v)) = req else {
+        let Some(SelectRequest::AddMany(v)) = req else {
             panic!("o laço não apanhou os corpos que entram nele: {req:?}");
         };
         assert_eq!(
@@ -192,7 +192,7 @@ fn a_lasso_does_not_catch_what_is_behind_the_camera() {
         });
         match crate::field3d_scene::ecs_bridge(sim, None, &[], &crate::field3d_scene::no_drawing())
         {
-            Some(SelectRequest::ToggleMany(bits)) => bits.len(),
+            Some(SelectRequest::AddMany(bits)) => bits.len(),
             other => panic!("o laço não pediu seleção: {other:?}"),
         }
     });
@@ -254,11 +254,115 @@ fn the_probe_of_how_many_a_lasso_catches_when_they_overlap() {
                     &[],
                     &crate::field3d_scene::no_drawing(),
                 ) {
-                    Some(SelectRequest::ToggleMany(bits)) => bits.len(),
+                    Some(SelectRequest::AddMany(bits)) => bits.len(),
                     _ => 0,
                 }
             });
             println!("{n:>6} | {spread:>11.2} | {got:>9}");
         }
+    }
+}
+
+/// ⛔⛔ **UM LAÇO SOBRE UMA JÁ SELECIONADA E UMA NÃO FICA COM AS DUAS** (W58d) — o caso do report.
+///
+/// Enio, 2026-08-24: *"se uma peça estiver selecionada e outra não, o retângulo não seleciona
+/// todas, mas inverte a seleção — a que estava selecionada é desselecionada"*.
+///
+/// ⚠️ **A W58 escolheu ALTERNAR e estava errado.** O raciocínio dela era certo até meio caminho (*a
+/// tecla que abriu o laço diz «selecção», então ele não pode limpar*) e deu um passo a mais: de
+/// «não limpa» para «alterna». ⭐ A assimetria com o clique é a **lei**: um clique tem um alvo
+/// **único e visível**, e alternar é preciso; um rectângulo cobre vários, e alternar mistura estados
+/// que o artista **não vê** — o mesmo gesto sobre a mesma tela passa a dar resultados diferentes.
+///
+/// ⚠️ **Nenhum dos nove gates do laço podia ver isto**: todos começavam com a seleção **vazia**, e
+/// com ela vazia *alternar* e *acrescentar* são a **mesma coisa**. *Uma fixtura que começa do zero
+/// não distingue os dois verbos que só diferem sobre estado prévio.*
+#[test]
+fn a_lasso_over_a_selected_and_an_unselected_keeps_both() {
+    for n in [2usize, 3, 4] {
+        let doc = {
+            let mut nodes: Vec<Node> = (0..n)
+                .map(|i| {
+                    let t = -0.4 + 0.8 * (i as f32) / ((n - 1) as f32);
+                    ph2d_field_eval::leaf(
+                        Primitive::Sphere { radius: 0.12 },
+                        Xform {
+                            translation: [t, 0.0, 0.0],
+                            ..Xform::IDENTITY
+                        },
+                    )
+                })
+                .collect();
+            nodes.push(Node::new(
+                Xform::IDENTITY,
+                NodeKind::Combine {
+                    op: Op::Union(Blend::Sharp),
+                    children: (0..n as u32).map(NodeId).collect(),
+                },
+            ));
+            FieldDoc::new(nodes, NodeId(n as u32)).expect("a peça")
+        };
+        armed_with(&doc, |sim| {
+            // ⭐ **A PRIMEIRA já está selecionada** — é a condição do report, e é o que as fixturas
+            // anteriores nunca tinham.
+            let leaves: Vec<u64> = {
+                let world = sim.world_mut();
+                let mut q =
+                    world.query::<(bevy_ecs::entity::Entity, &ph2d_field_ecs::FieldObject)>();
+                let root = q.iter(world).next().map(|(e, _)| e).expect("a peça");
+                ph2d_field_ecs::walk(sim.world(), root)
+                    .into_iter()
+                    .filter(|(e, _)| {
+                        matches!(
+                            sim.world()
+                                .get::<ph2d_field_ecs::FieldNode>(*e)
+                                .map(|x| &x.shape),
+                            Some(ph2d_field::NodeShape::Leaf(_))
+                        )
+                    })
+                    .map(|(e, _)| e.to_bits())
+                    .collect()
+            };
+            assert_eq!(leaves.len(), n, "a fixtura não tem as {n} folhas");
+            let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+            gizmo.replace_selection(Some(leaves[0]));
+
+            let (a, b) = ([4.0f32, 4.0], [AREA.w - 4.0, AREA.h - 4.0]);
+            crate::field3d_smoke::with_smoke(|s| {
+                begin(
+                    s,
+                    winit::event::MouseButton::Left,
+                    Drag::Orbit,
+                    true,
+                    win(a),
+                );
+                s.last_pointer = win(b);
+                s.lasso = s.lasso.map(|(from, _)| (from, b));
+                crate::field3d_input::finish_for_test(s);
+            });
+            let req = crate::field3d_scene::ecs_bridge(
+                sim,
+                gizmo.selection,
+                &gizmo.extra_selection,
+                &crate::field3d_scene::no_drawing(),
+            );
+            assert!(
+                matches!(req, Some(SelectRequest::AddMany(_))),
+                "{n} bolas: o laço não pediu para acrescentar: {req:?}"
+            );
+            // ⭐ **A porta do PRODUTO**, nunca uma cópia da lei aqui — ver `field3d_scene::apply`.
+            crate::field3d_scene::apply(&mut gizmo, req.expect("o pedido"));
+            assert_eq!(
+                gizmo.selected_len(),
+                n,
+                "{n} bolas com UMA já selecionada: o laço deixou {} — ele está a inverter em vez de \
+                 somar, e a que já estava escolhida saiu",
+                gizmo.selected_len()
+            );
+            assert!(
+                gizmo.is_selected(leaves[0]),
+                "a peça que JÁ estava selecionada foi desselecionada pelo laço"
+            );
+        });
     }
 }

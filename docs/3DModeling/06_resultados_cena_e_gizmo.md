@@ -5407,6 +5407,51 @@ moldura não pintada dá dois resultados **idênticos**.
 
 3 mutações, **3 vermelhas** — a primeira delas é o defeito reportado, reposto tal e qual.
 
+## §64 — W58d: o laço SOMA, o clique alterna — e a assimetria é a lei (24/08)
+
+> Enio: *"se uma peça estiver selecionada e outra não, o retângulo não seleciona todas, mas inverte a
+> seleção — a que estava selecionada é desselecionada"*.
+
+### §64.1 — O raciocínio da W58 estava certo até meio caminho
+
+A W58 escreveu: *"a tecla que o abriu já significa «estou a falar da seleção» — um laço que limpasse
+tudo contradiria a tecla que o pediu"*. ✔ Isso justifica **não limpar**. ⛔ E eu dei um passo a mais:
+de *"não limpa"* para **"alterna"**, que é outro verbo.
+
+⭐ **A assimetria com o clique é a lei, não uma inconsistência:**
+
+| gesto | alvo | verbo | porquê |
+|---|---|---|---|
+| **clique** com modificador | **um**, visível | **alterna** | o artista vê exactamente o que vai mudar; alternar é preciso e reversível |
+| **rectângulo** com modificador | **vários**, alguns já escolhidos | **soma** | alternar mistura estados que ele **não vê** |
+
+*Um gesto cujo resultado depende de estado invisível não é usável* — o mesmo laço, sobre a mesma
+tela, dava resultados diferentes conforme o que estivesse selecionado por baixo. E é o que todo
+editor faz: o laço com modificador **soma**.
+
+⏸️ **O laço que SUBTRAI fica por fazer**, e o motivo é de vocabulário: neste app `Shift` e `Ctrl` são
+a **mesma** tecla (as duas dizem *"selecção"*), e separá-las aqui criaria um terceiro vocabulário de
+modificador — exactamente o que a W58 recusou fazer. Ele pede uma decisão de produto.
+
+### §64.2 — ⚠️ Nenhum dos nove gates do laço podia ver isto
+
+Todos começavam com a seleção **vazia** — e com ela vazia, *alternar* e *acrescentar* são a **mesma
+coisa**. *Uma fixtura que começa do zero não distingue dois verbos que só diferem sobre estado
+prévio.* ⇒ o gate novo põe **uma peça já selecionada** antes do laço.
+
+### §64.3 — ⛔ E a lei do consumidor estava escrita DUAS vezes (a terceira nesta linha)
+
+As duas primeiras mutações — *o consumidor volta a alternar* (o defeito reportado, reposto tal e
+qual) e *o consumidor substitui a seleção* — **SOBREVIVERAM**: o gate lia o `SelectRequest` e
+aplicava-o com uma **cópia** da lei escrita dentro do teste.
+
+⇒ `field3d_scene::apply(&mut gizmo, req)` — **uma porta**, chamada pelo `render_loop` e pelos gates.
+⚠️ E o gate do clique tinha o mesmo buraco: ele afirmava que o **pedido** era `Toggle`, e não que
+aplicá-lo **tira** o que já estava. *É a terceira vez nesta linha que a metade que falta é a de quem
+executa.*
+
+20 mutações, **20 vermelhas** com os três controles.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

@@ -213,7 +213,7 @@ pub(super) fn resolve_lasso(
     }
     bits.sort_unstable();
     bits.dedup();
-    (!bits.is_empty()).then_some(SelectRequest::ToggleMany(bits))
+    (!bits.is_empty()).then_some(SelectRequest::AddMany(bits))
 }
 
 /// O passo do laço, em pixels de ecrã.

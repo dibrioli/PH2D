@@ -6996,29 +6996,14 @@ impl crate::App {
             // ⭐ Um clique na peça (ou a peça a nascer) pede uma seleção. É a MESMA porta que a
             // Hierarquia usa — uma seleção própria deste módulo seria uma segunda ideia de "o que
             // está selecionado" dentro do mesmo app.
-            match crate::field3d_scene::ecs_bridge(
+            if let Some(req) = crate::field3d_scene::ecs_bridge(
                 sim,
                 hero.gizmo.selection,
                 &hero.gizmo.extra_selection,
                 vec_scene,
             ) {
-                Some(crate::field3d_scene::SelectRequest::Entity(bits)) => {
-                    hero.gizmo.replace_selection(Some(bits));
-                }
-                Some(crate::field3d_scene::SelectRequest::Clear) => {
-                    hero.gizmo.clear_all_selection();
-                }
-                // ⭐⭐ **A seleção múltipla nasce no CANVAS** (W58) — e pelo MESMO verbo do canvas
-                // 2D (`toggle_in_selection`), nunca por um próprio deste módulo.
-                Some(crate::field3d_scene::SelectRequest::Toggle(bits)) => {
-                    hero.gizmo.toggle_in_selection(bits);
-                }
-                Some(crate::field3d_scene::SelectRequest::ToggleMany(all)) => {
-                    for bits in all {
-                        hero.gizmo.toggle_in_selection(bits);
-                    }
-                }
-                None => {}
+                // ⭐ **A lei mora numa porta só** (`field3d_scene::apply`) — o gate chama a MESMA.
+                crate::field3d_scene::apply(&mut hero.gizmo, req);
             }
             // O painel de TOKENS (plano UI/UX W6), na MESMA fase e pela mesma razão: um painel de
             // MUNDO, cuja visibilidade é do artista. ⚠️ Ele tem de correr DEPOIS do dispatch de

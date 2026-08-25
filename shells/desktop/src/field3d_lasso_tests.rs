@@ -168,7 +168,7 @@ fn a_lasso_over_both_balls_asks_for_both() {
         });
         let req =
             crate::field3d_scene::ecs_bridge(sim, None, &[], &crate::field3d_scene::no_drawing());
-        let Some(SelectRequest::ToggleMany(bits)) = req else {
+        let Some(SelectRequest::AddMany(bits)) = req else {
             panic!("o laço não pediu uma seleção múltipla: {req:?}");
         };
         assert_eq!(
@@ -201,7 +201,7 @@ fn a_lasso_over_one_ball_asks_for_one() {
         });
         let req =
             crate::field3d_scene::ecs_bridge(sim, None, &[], &crate::field3d_scene::no_drawing());
-        let Some(SelectRequest::ToggleMany(bits)) = req else {
+        let Some(SelectRequest::AddMany(bits)) = req else {
             panic!("o laço não pediu uma seleção: {req:?}");
         };
         assert_eq!(
@@ -256,6 +256,29 @@ fn the_modifier_turns_a_click_into_a_toggle() {
         assert!(
             matches!(req, Some(SelectRequest::Toggle(_))),
             "um clique com modificador não pediu para ALTERNAR: {req:?}"
+        );
+        // ⭐⭐ **E aplicar DUAS vezes tira-a** — a assimetria com o laço, medida sobre estado
+        // prévio. ⛔ Sem esta metade o gate lia só o *pedido*, e uma mutação que trocava o verbo do
+        // consumidor (`toggle` → `add`) sobrevivia: o pedido continuava a dizer `Toggle`.
+        let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
+        crate::field3d_scene::apply(&mut gizmo, req.expect("o pedido"));
+        assert_eq!(
+            gizmo.selected_len(),
+            1,
+            "o 1.º clique aditivo não escolheu nada"
+        );
+        crate::field3d_smoke::with_smoke(|s| {
+            s.pending_pick = Some((on_ball, true));
+        });
+        let again =
+            crate::field3d_scene::ecs_bridge(sim, None, &[], &crate::field3d_scene::no_drawing())
+                .expect("o 2.º pedido");
+        crate::field3d_scene::apply(&mut gizmo, again);
+        assert_eq!(
+            gizmo.selected_len(),
+            0,
+            "clicar com modificador numa peça JÁ escolhida não a tirou — um clique alterna, e é o \
+             que o separa do laço, que soma"
         );
         crate::field3d_smoke::with_smoke(|s| {
             s.pending_pick = Some((on_ball, false));
@@ -346,7 +369,7 @@ fn a_lasso_over_many_asks_for_all_of_them() {
                 &[],
                 &crate::field3d_scene::no_drawing(),
             ) {
-                Some(SelectRequest::ToggleMany(bits)) => bits.len(),
+                Some(SelectRequest::AddMany(bits)) => bits.len(),
                 other => panic!("{n} bolas: o laço não pediu uma seleção múltipla: {other:?}"),
             }
         });
@@ -366,7 +389,7 @@ fn a_lasso_over_many_asks_for_all_of_them() {
 fn the_consumer_puts_all_of_them_in_the_selection() {
     for n in [2usize, 3, 4, 5, 6] {
         let mut gizmo = ph2d_editor::screens::hero::GizmoStateGroup::default();
-        // A MESMA lei que o `render_loop` corre sobre `SelectRequest::ToggleMany`.
+        // A MESMA lei que o `render_loop` corre sobre `SelectRequest::AddMany`.
         for bits in 1..=n as u64 {
             gizmo.toggle_in_selection(bits);
         }
@@ -411,16 +434,9 @@ fn the_lasso_selection_survives_the_next_frames() {
                     &gizmo.extra_selection,
                     &crate::field3d_scene::no_drawing(),
                 );
-                match req {
-                    Some(SelectRequest::Entity(bits)) => gizmo.replace_selection(Some(bits)),
-                    Some(SelectRequest::Clear) => gizmo.clear_all_selection(),
-                    Some(SelectRequest::Toggle(bits)) => gizmo.toggle_in_selection(bits),
-                    Some(SelectRequest::ToggleMany(all)) => {
-                        for bits in all {
-                            gizmo.toggle_in_selection(bits);
-                        }
-                    }
-                    None => {}
+                // ⭐ A porta do PRODUTO — ver `field3d_scene::apply`.
+                if let Some(req) = req {
+                    crate::field3d_scene::apply(&mut gizmo, req);
                 }
                 assert_eq!(
                     gizmo.selected_len(),

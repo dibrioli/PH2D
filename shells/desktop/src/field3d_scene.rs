@@ -25,6 +25,27 @@ use crate::field3d_smoke::with_smoke;
 /// por isso não passa pelo i18n. Ver `ph2d_field_ecs::shape_name`.
 const PART_NAME: &str = "Model";
 
+/// ⭐⭐⭐ **A LEI DA SELEÇÃO, NUMA PORTA SÓ** — o app e os gates chamam **esta**.
+///
+/// ⚠️ **Ela nasceu de duas mutações que sobreviveram** (W58d): o gate lia o [`SelectRequest`] e
+/// aplicava-o com uma **cópia** da lei escrita dentro do teste, então trocar `add_to_selection` por
+/// `toggle_in_selection` no `render_loop` — que é **exactamente** o defeito reportado — ficava
+/// verde. *É a terceira vez nesta linha que a metade que falta é a de quem executa: duas cópias de
+/// uma lei é uma lei que gate nenhum defende.*
+pub(crate) fn apply(gizmo: &mut ph2d_editor::screens::hero::GizmoStateGroup, req: SelectRequest) {
+    match req {
+        SelectRequest::Entity(bits) => gizmo.replace_selection(Some(bits)),
+        SelectRequest::Clear => gizmo.clear_all_selection(),
+        SelectRequest::Toggle(bits) => gizmo.toggle_in_selection(bits),
+        // ⭐ **ACRESCENTA**, nunca alterna — ver [`SelectRequest::AddMany`].
+        SelectRequest::AddMany(all) => {
+            for bits in all {
+                gizmo.add_to_selection(bits);
+            }
+        }
+    }
+}
+
 /// Corre uma vez por quadro, antes do traçado. No-op silencioso quando o módulo não está armado.
 /// **O que o shell tem de fazer à seleção** depois de a ponte correr.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -36,11 +57,21 @@ pub(crate) enum SelectRequest {
     /// ⭐⭐ **Alternar um objeto na seleção** (W58) — o clique com `Shift`/`Ctrl`, o mesmo verbo que
     /// o canvas 2D já usa.
     Toggle(u64),
-    /// ⭐⭐ **O que o LAÇO apanhou** (W58). ⚠️ **Alternar, e não substituir**: o laço só nasce com o
-    /// modificador em baixo, e a tecla que o abriu já significa *«estou a falar da seleção»* — um
-    /// laço que limpasse tudo contradiria a tecla que o pediu. Vazio = o laço não apanhou nada, e
-    /// aí não se mexe na seleção (o artista falhou a mira; limpar seria castigá-lo).
-    ToggleMany(Vec<u64>),
+    /// ⭐⭐ **O que o LAÇO apanhou** (W58) — e ele **ACRESCENTA**, nunca alterna.
+    ///
+    /// ⛔ **A W58 fê-lo alternar, e estava errado** (Enio, 2026-08-24: *"se uma peça estiver
+    /// selecionada e outra não, o retângulo não seleciona todas, mas inverte a seleção"*).
+    ///
+    /// ⭐ **A assimetria com o clique é a lei, não uma inconsistência:** um **clique** tem um alvo
+    /// **único e visível**, então alternar é preciso e reversível — o artista vê exactamente o que
+    /// vai mudar. Um **rectângulo** cobre vários, e alternar mistura estados que ele **não vê**: o
+    /// resultado passa a depender de qual estava selecionado por baixo, e o mesmo gesto sobre a
+    /// mesma tela dá resultados diferentes. *Um gesto cujo resultado depende de estado invisível
+    /// não é usável.* É também o que todo editor faz — o laço com modificador **soma**.
+    ///
+    /// ⚠️ Vazio = o laço não apanhou nada, e aí não se mexe na seleção (o artista falhou a mira;
+    /// limpar seria castigá-lo).
+    AddMany(Vec<u64>),
 }
 
 /// Devolve **um pedido de seleção** quando há um: um clique na peça, ou a peça a nascer.

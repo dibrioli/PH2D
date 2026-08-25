@@ -94,6 +94,11 @@ fn announce_extract() {
          [sculpt3d]        Se serve, o proximo passo e' ensinar o motor a ver os vincos; se nao\n\
          [sculpt3d]        serve, diga O QUE ficou pior que o de sempre e eu meco isso primeiro.\n\
          [sculpt3d]    (6) O Ctrl+Z DESFAZ, e devolve a malha inteira de antes.\n\
+         [sculpt3d]    ⭐ E PARA ME MANDAR A PECA: Ctrl+Shift+E grava a cena num ficheiro.\n\
+         [sculpt3d]        Escreva o nome com  .obj  no fim (a extensao e' que decide o\n\
+         [sculpt3d]        formato; .stl perde a cor). Grave DUAS: uma ANTES de clicar no\n\
+         [sculpt3d]        botao e outra DEPOIS -- com as duas eu reproduzo o defeito exacto\n\
+         [sculpt3d]        em vez de o adivinhar a partir de uma peca parecida.\n\
          [sculpt3d]    (7) ⚠️ Aumentar o `Detail` NAO limpa os defeitos: a taxa deles por face e'\n\
          [sculpt3d]        praticamente a mesma, entao uma malha 6x maior mostra 6x mais. Medido."
     );

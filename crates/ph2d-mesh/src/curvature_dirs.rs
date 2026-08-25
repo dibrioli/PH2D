@@ -92,57 +92,21 @@ pub fn principal_dirs(mesh: &Mesh) -> Vec<PrincipalDir> {
             }
             let w = cross(n, u);
 
-            // ⭐ As três arestas e as três diferenças de normal, na moldura.
-            let mut ata = [[0.0f64; 3]; 3];
-            let mut atb = [0.0f64; 3];
-            for k in 0..3 {
+            // ⭐ As três arestas e as três diferenças de normal, na moldura — e o
+            // ajuste vai pela PORTA ([`second_form`]), a mesma que a detecção de
+            // feição usa sobre uma vizinhança de raio. ⚠️ A ordem de acumulação é a
+            // mesma, então a saída é byte-idêntica à da versão em linha.
+            let mut pairs = [([0.0f32; 2], [0.0f32; 2]); 3];
+            for (k, slot) in pairs.iter_mut().enumerate() {
                 let (a, b) = (v[k] as usize, v[(k + 1) % 3] as usize);
                 let e = sub(pos[b], pos[a]);
                 let dn = sub(vn[b], vn[a]);
-                let (eu, ew) = (dot(e, u), dot(e, w));
-                let (du, dw) = (dot(dn, u), dot(dn, w));
-                // `II·(eu, ew) = (du, dw)` com `II = [[x0, x1], [x1, x2]]` dá duas
-                // linhas: `(eu, ew, 0)·x = du` e `(0, eu, ew)·x = dw`.
-                for (row, rhs) in [([eu, ew, 0.0], du), ([0.0, eu, ew], dw)] {
-                    for i in 0..3 {
-                        for j in 0..3 {
-                            ata[i][j] += f64::from(row[i]) * f64::from(row[j]);
-                        }
-                        atb[i] += f64::from(row[i]) * f64::from(rhs);
-                    }
-                }
+                *slot = ([dot(e, u), dot(e, w)], [dot(dn, u), dot(dn, w)]);
             }
-            let Some(x) = solve3(ata, atb) else {
+            let Some((k1, k2, [cu, cw])) = second_form(&pairs) else {
                 return PrincipalDir::default();
             };
-            #[allow(clippy::cast_possible_truncation)]
-            let (a, b, c) = (x[0] as f32, x[1] as f32, x[2] as f32);
-
-            // Autovalores/autovetores da simétrica `[[a, b], [b, c]]`.
-            let half = (a + c) * 0.5;
-            let disc = (((a - c) * 0.5).powi(2) + b * b).max(0.0).sqrt();
-            let (k1, k2) = (half + disc, half - disc);
-            let denom = k1.abs() + k2.abs();
-            let anisotropy = if denom > 1.0e-12 {
-                ((k1 - k2).abs() / denom).clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
-            // O autovetor de `k1`, na moldura: `(b, k1 − a)` ou `(k1 − c, b)` —
-            // ⚠️ o que tiver o maior módulo, senão o quase-isotrópico devolve zero.
-            let (cu, cw) = if (k1 - a).abs() > (k1 - c).abs() {
-                (b, k1 - a)
-            } else {
-                (k1 - c, b)
-            };
-            let len = cu.hypot(cw);
-            if len < 1.0e-12 {
-                return PrincipalDir {
-                    dir: u,
-                    anisotropy: 0.0,
-                };
-            }
-            let (cu, cw) = (cu / len, cw / len);
+            let anisotropy = anisotropy_of(k1, k2);
             PrincipalDir {
                 dir: normalize([
                     cu.mul_add(u[0], cw * w[0]),
@@ -153,6 +117,60 @@ pub fn principal_dirs(mesh: &Mesh) -> Vec<PrincipalDir> {
             }
         })
         .collect()
+}
+
+/// ⭐⭐⭐ **O NÚCLEO: a segunda forma fundamental, ajustada a pares `(aresta, salto de
+/// normal)` numa moldura.**
+///
+/// ⚠️ **Ele existe como PORTA e não como conveniência.** A [`principal_dirs`] ajusta-a
+/// sobre as **três arestas de um triângulo**; a detecção de feição
+/// ([`crate::feature_dirs`]) ajusta-a sobre uma **vizinhança de raio `r`**. É a mesma
+/// lei — `II·e ≈ Δn`, seis equações por três coeficientes — e escrevê-la duas vezes
+/// seria tê-la a divergir no dia em que uma delas mudasse.
+///
+/// Devolve `(k₁, k₂, direcção de k₁ na moldura)`, ou `None` se o sistema for singular.
+pub(crate) fn second_form(pairs: &[([f32; 2], [f32; 2])]) -> Option<(f32, f32, [f32; 2])> {
+    let mut ata = [[0.0f64; 3]; 3];
+    let mut atb = [0.0f64; 3];
+    for &([eu, ew], [du, dw]) in pairs {
+        // `II·(eu, ew) = (du, dw)` com `II = [[x0, x1], [x1, x2]]` dá duas linhas.
+        for (row, rhs) in [([eu, ew, 0.0], du), ([0.0, eu, ew], dw)] {
+            for i in 0..3 {
+                for j in 0..3 {
+                    ata[i][j] += f64::from(row[i]) * f64::from(row[j]);
+                }
+                atb[i] += f64::from(row[i]) * f64::from(rhs);
+            }
+        }
+    }
+    let x = solve3(ata, atb)?;
+    #[allow(clippy::cast_possible_truncation)]
+    let (a, b, c) = (x[0] as f32, x[1] as f32, x[2] as f32);
+    let half = (a + c) * 0.5;
+    let disc = (((a - c) * 0.5).powi(2) + b * b).max(0.0).sqrt();
+    let (k1, k2) = (half + disc, half - disc);
+    // O autovetor de `k1`, na moldura: `(b, k1 − a)` ou `(k1 − c, b)` —
+    // ⚠️ o que tiver o maior módulo, senão o quase-isotrópico devolve zero.
+    let (cu, cw) = if (k1 - a).abs() > (k1 - c).abs() {
+        (b, k1 - a)
+    } else {
+        (k1 - c, b)
+    };
+    let len = cu.hypot(cw);
+    (len >= 1.0e-12).then(|| (k1, k2, [cu / len, cw / len]))
+}
+
+/// ⭐ **A ANISOTROPIA relativa**, em `[0, 1]` — `|k₁ − k₂| / (|k₁| + |k₂|)`.
+///
+/// ⚠️ Porta única: [`principal_dirs`] e a detecção de feição leem a MESMA definição.
+#[must_use]
+pub(crate) fn anisotropy_of(k1: f32, k2: f32) -> f32 {
+    let denom = k1.abs() + k2.abs();
+    if denom > 1.0e-12 {
+        ((k1 - k2).abs() / denom).clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
 }
 
 /// Gauss com pivô parcial sobre `3×3`; `None` quando o sistema é singular.

@@ -768,6 +768,244 @@ detecção de feição, e ⛔ **a espec não os copia** — manda medi-los no no
 
 ---
 
+## ⭐ OBRA 2 — Papel **R, modo PRÉ** (as restrições por eliminação)
+
+| campo | valor |
+|---|---|
+| session-id | `6ce7cd70-b800-48d7-91c7-b18f17bc7bc1` |
+| data | 2026-08-24 |
+| ≠ janela E? | ✅ **sim** — a E desta espec é `49c94a84-…`; esta janela é outra, e nunca conteve fonte de alvo antes de assumir R |
+| espec auditada | [`SPEC_restricoes_por_eliminacao.md`](SPEC_restricoes_por_eliminacao.md) |
+| handoff produzido | [`NEXT_I_eliminacao.md`](NEXT_I_eliminacao.md) |
+
+### §R-pré2.1 — ⭐ O veredito do §4.2: **VERDE**, e a contra-medida do E sustenta-se
+
+⚠️ **O item nº1 desta auditoria não era filtragem, era CONVERGÊNCIA vinda do próprio E** —
+a janela que escreveu esta espec leu, no mesmo dia, o laço de arredondamento **e a montagem
+de restrições** de uma implementação de referência. Ela declarou ter escrito a espec **sem
+receita de montagem**. ⛔ *Uma afirmação do E sobre o próprio trabalho é exactamente o que o
+R existe para não aceitar de graça.*
+
+**Conferido por varredura de alarme sobre a espec inteira** (estrutura de matriz · ordem de
+eliminação · decomposição · factorização · permutação · esparsidade · nomes de ficheiro,
+função ou tipo):
+
+| onde | o que a varredura devolveu |
+|---|---|
+| §1 (a lei) e §2.3 (o requisito) | ⭐ **ZERO** — nenhuma das palavras de alarme. Os quatro pontos do §2.3 são requisitos (*o que tem de ser verdade*), e o parágrafo final recusa explicitamente estrutura, decomposição e ordem |
+| §3 (as feições) | ZERO |
+| únicos hits em toda a espec | o **próprio aviso** do E (linhas 30/35), a palavra *«decomposição»* a designar o **dump** do oráculo (§5) e *«esparsas»*, que é a **cerca do *paper*** |
+
+⭐ **E a lei que a espec afirma está PUBLICADA**, conferida no *paper* de 2009 (fim do §2
+dele, imediatamente antes do §3): os autores dizem, em uma frase, que tratam restrições
+lineares **eliminando internamente uma variável por restrição independente**. ⚠️ E o *paper*
+**também não diz como** — a espec está ao nível dele ou abaixo. A segunda metade da lei da
+espec (*«nunca como termo de energia»*) é **nossa**, e vem da medição do `SEAM_WEIGHT`.
+
+⭐ Idem para o §3: *«uma coordenada constante e inteira ao longo da aresta ⇒ uma variável
+eliminada»* e o **bónus do bordo** (a mesma maquinaria preserva o bordo e evita bordo
+serrilhado) estão os dois publicados no §5.2 do *paper*. ⚠️ **Falta-lhes a citação da
+secção** — a espec diz *«publicado»* sem dizer onde (§4.1.12 pede o link). Emenda menor.
+
+⭐⭐ **E a prova de descendência do *paper* e não de uma implementação sustenta-se**: os
+coeficientes concretos da detecção de feição **não** foram copiados. O *paper* dá cinco
+símbolos com valor; a espec dá **zero** e manda medir.
+
+### §R-pré2.2 — ⛔⛔ ACHADO DE PAREDE nº1: a vassoura não cobria o que o E leu
+
+**O sweep do E saiu verde sobre uma vassoura de 21 entradas — e as 21 são todas da família
+GPL da obra anterior.** A implementação que o E desta espec de facto leu é **outra
+biblioteca** (a permissiva, tratada como alvo por decisão do [ADR-0164](../../architecture/decisions/0164-quad-extraction-is-clean-room-from-papers-the-mpl-library-is-an-oracle.md)
+e pelo §3.I: *porte/fork em qualquer linguagem e sob qualquer licença conta como código do
+alvo*). ⛔ **Nenhum dos identificadores dela estava na rede.**
+
+⇒ ⭐⭐⭐ *Um controlo positivo prova o INSTRUMENTO; ele não prova a COBERTURA.* O verde do E
+era verde sobre uma rede sem os buracos do peixe que se caçava — e o controlo positivo dele,
+correcto e vermelho, não podia dizê-lo.
+
+**Curado por este R:** a vassoura passa de **21 para 56 entradas** (+35), colhidas dos
+módulos de integração/arredondamento e do esboço de extracção que o inventário de exposição
+do E nomeia — nomes de tipo, nomes de função e **os campos da estrutura de opções**, que é a
+superfície de maior risco desta obra. ⛔ Tudo em base64, uma entrada por linha, como o §7.1
+manda; nada em claro toca a árvore.
+
+⚠️ **A vassoura não aceita comentários** — o sweep exige que *toda* linha não-vazia decodifique
+para base64 não-vazio, e sai `2` se não. Registado para quem a alargar a seguir.
+
+### §R-pré2.3 — ⛔⛔ ACHADO DE PAREDE nº2: a `TRIAGEM` estava do lado errado da parede
+
+⭐ **É o achado que só a vassoura alargada podia produzir**, e apareceu no primeiro sweep
+depois dela:
+
+| ficheiro | estatuto ANTES | o que ele carrega |
+|---|---|---|
+| `LEDGER_quadwild.md` | ⛔ marcado, e **negado** pelo Passo 0 | 1 hit — esperado, é a zona contaminada |
+| ⛔⛔ `TRIAGEM_quad_remesh.md` | **não marcado, não negado, e a README convidava a lê-lo** (*«quem decide»*) | ⛔ **3 hits: nomes de ficheiro internos e os campos da estrutura de opções do alvo, com a glosa do que cada um faz** |
+
+⚠️ E um deles é precisamente o campo de opções cuja **ideia** o [§R-pós.4](#r-pós4) já
+apanhou a atravessar a parede na espec anterior. ⇒ *O mesmo identificador estava, ao mesmo
+tempo, registado como incidente numa página e oferecido em lista de leitura na página ao
+lado.*
+
+⛔ **A regra já existia e não estava em mecanismo nenhum:** o §3.I diz *«dentro de
+`cleanroom/`, SÓ `SPEC_*`»*, e o `deny` do Passo 0 cobria `LEDGER_*` e `VASSOURA_*` — dois de
+seis. **Curado:** a README marca ⛔ a `TRIAGEM`, o `ACHADO` e os `NEXT_*`, transcreve a regra
+do §3.I, e o `deny` do novo `NEXT_I_eliminacao.md` cobre a pasta inteira por padrão.
+
+### §R-pré2.4 — ⛔⛔⛔ ACHADO DE PAREDE nº3: o `deny` do Passo 0 **nunca foi exercido**, e corre sob `bypassPermissions`
+
+O handoff do E pedia um `deny` que cobrisse **Bash** e não só `Read` (medido: a janela I
+anterior fez **177** chamadas `Bash` e **ZERO** `Read`). ⭐ **Reconferi a medição no
+transcript daquela janela e ela está exacta** — `{'Bash': 177}`, mais nada.
+
+⚠️ **Mas a causa é uma camada acima, e o `deny` de Bash não a alcançaria.** Medido nesta
+máquina, em 2026-08-24:
+
+| onde | o que diz |
+|---|---|
+| `~/.claude/settings.json` | `defaultMode: bypassPermissions` · `deny: []` · allow de `Bash` e `Read(//**)` **nus** |
+| `<repo>/.claude/settings.local.json` | `defaultMode: bypassPermissions` · `deny: []` · `Bash(*)` no allow |
+| `~/.config/Code/User/settings.json` | `claudeCode.allowDangerouslySkipPermissions: true` + `claudeCode.initialPermissionMode: "bypassPermissions"` — a cura aplicada em **2026-08-24** para os prompts de edição ([memória](../../../project-memory/reference_vscode_extension_refuses_bypass_and_edits_always_prompt_in_default.md)) |
+
+⇒ **A máquina está configurada para NÃO consultar a camada de permissões, e a parede do
+Passo 0 vive inteiramente dentro dela.**
+
+⭐ **E o transcript prova que ela nunca foi testada:** das 177 chamadas da janela I, **duas**
+citam os caminhos proibidos — e as duas são a própria janela a **escrever** o ficheiro de
+`deny` e a escrever o handoff. **ZERO tentativas de leitura.** Os dois «resultados com cara de
+recusa» são falsos positivos (o texto da skill e o eco do ficheiro). ⇒ *a parede aguentou
+porque ninguém lhe encostou; não há uma única observação de que ela pare alguém.*
+
+⛔ **O que este R NÃO faz:** afirmar se um `deny` é ou não consultado sob `bypassPermissions`.
+Não é atestável de dentro de uma sessão, e um ledger que o afirmasse repetiria o defeito que
+o §R-pré.7 já corrigiu duas vezes — uma afirmação confortável e não medida.
+
+⭐⭐⭐ **A cura, e ela não depende da resposta:** o Passo 0 do `NEXT_I_eliminacao.md` termina
+com um **CONTROLO POSITIVO sobre a própria parede** — a janela I tenta ler
+`~/Referencias/CANARIO_do_passo_zero.txt`, criado por este R **precisamente para poder ser
+lido sem contaminar ninguém** (não contém expressão de alvo nenhum, e diz isso mesmo no
+corpo). Recusado ⇒ a parede está de pé. Devolvido ⇒ **a parede está em baixo, a janela PARA e
+reporta antes de escrever uma linha de produto.** *Um muro que ninguém empurrou é um muro que
+ninguém tem — e empurrá-lo tinha de deixar de custar a contaminação que ele protege.*
+
+### §R-pré2.5 — Achados de PROVENIÊNCIA (§4.3.2) — nenhum é de parede, todos são de rigor
+
+⚠️ **Nenhuma tabela desta espec vem do alvo** — todas rastreiam para código ou handoff
+nossos, e conferi uma a uma. Mas três não sobrevivem ao teste *«escreva o número que a
+medição deu, com a tabela ao lado»*:
+
+1. ⛔⛔ **§1, a tabela do `SEAM_WEIGHT` — a coluna que carrega o argumento mistura DUAS
+   estatísticas e DUAS medições.** O doc-comment de `SEAM_WEIGHT` tem **duas** tabelas: uma na
+   esfera `24×36` (com colunas `p50` e `max` separadas) e outra na esfera fina `96×144` com o
+   G4/F5 a montar. A espec toma a linha `8` da segunda (`2,9°` · `0,23`, que é a coluna
+   **max**) e as linhas `64` e `512` da primeira (`0,004` e `0,0006`, que são a coluna
+   **p50**) — e escreve o ângulo de `512` como um intervalo `13,0°–16,8°` que atravessa as
+   duas. ⇒ *a queda de `0,23` para `0,0006` mistura max com p50 e malha com malha.* Lida de
+   forma consistente, a queda é `0,23 → 0,05 → 0,01` (fina) ou `0,90 → 0,146 → 0,017`
+   (`24×36`). ⭐ **O veredito de §7 — não afinar o peso — SOBREVIVE**, e sobrevive melhor pela
+   terceira coluna da segunda tabela (o enviesamento dos quads: `17° → 19° → 22°`), que é
+   produto e não resíduo. **Emenda: uma tabela, com as condições dela ao lado.**
+2. ⚠️ **§2.1 e §2.2** rastreiam **exactos** para o [handoff da linha](../handoffs/HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md)
+   (`1,0834` · `18 282` · `0,4913` · `0,2348`). ⭐ Proveniência nossa, confirmada. Falta só
+   **nomeá-la** na espec.
+3. ⚠️ **§0** não nomeia o instrumento das duas linhas medidas (é o `chain_info`, que o §4 já
+   nomeia noutro sítio). Emenda de uma linha.
+
+### §R-pré2.6 — ⛔ O gate nº1 REPROVA a referência de que diz descender
+
+⭐ **Medido por mim, correndo o verificador de `fixtures/` sobre as duas peças:**
+
+| peça | resíduo de translação **max** | rotação max | arestas |
+|---|---|---|---|
+| `torus_64x32` | **`3,553e-15`** | `4,959e-15` | `6 143` (1 degenerada) |
+| `sculpt_hooked` | **`3,553e-15`** | `4,652e-14` | `10 151` (1 degenerada) |
+
+⛔ A espec escreve a barra do gate nº1 como **`3,5e-15`**, e `3,553e-15 > 3,5e-15` ⇒ **os
+próprios mapas de referência falhariam o gate.** *Uma barra copiada com um dígito a menos
+inverte-se de «tão bom como a referência» para «melhor que a referência».*
+
+⚠️ **E há uma segunda metade:** o §1 promete resíduo **zero por construção**, *«não «pequeno»,
+não «abaixo de uma tolerância»»* — e o gate nº1 é uma tolerância. As duas afirmações
+reconciliam-se (depois da eliminação o resíduo é o erro de **avaliação** da substituição em
+vírgula flutuante, que é representação e não folga), mas a espec **não as reconcilia**, e um
+implementador que leve o §1 à letra escreverá `== 0.0`.
+
+⇒ **Emenda devida pelo E** (registada no cabeçalho da espec, que é o único sítio que o I lê).
+⛔ Este R **não** fixa a barra: é conteúdo funcional da espec, e o §3.R diz *achado → E
+reescreve*.
+
+### §R-pré2.7 — ⛔ A OBRA B perdeu a janela de estabilidade (e é a única emenda que BLOQUEIA)
+
+O §3.1 manda **medir** os quatro coeficientes — ⭐ e a recusa de os copiar é correcta e é a
+prova de descendência do *paper*. ⛔ **Mas ele descreve o papel de três.**
+
+O que a lei publicada faz, e a espec não diz: a estimativa é feita numa **faixa** de raios, e
+à volta de **cada** raio candidato há uma **janela** — é *dentro dessa janela* que os dois
+limiares (anisotropia e piso de curvatura média) têm de valer **em toda ela** para o candidato
+ser válido, e é *dentro dela* que se mede a variação de direcção que elege o mais estável. A
+espec funde a janela na faixa e escreve *«a de menor variação de direcção dentro da faixa»*.
+
+⇒ ⛔ **Como está, ela especifica outra regra** — o desvio sobre a faixa inteira —, e manda
+medir um quarto coeficiente cujo papel nunca nomeia. *Uma espec pode ser menos específica que
+o paper nos NÚMEROS; ela não pode ser menos específica na LEI, que é a metade que não tem dono.*
+
+⭐ **Não bloqueia a obra:** o §6 da própria espec manda fazer **a costura primeiro** e proíbe
+misturar as duas numa wave. ⇒ a janela I abre na OBRA A e a emenda chega a tempo.
+
+### §R-pré2.8 — Cabeçalho (§4): quatro campos em falta, preenchidos
+
+| campo do §4 | antes | agora |
+|---|---|---|
+| Ledger · Patente · Denylists · a frase final | ✅ | ✅ |
+| **Mapa de leitura da literatura** | ⛔ **ausente** — e a espec manda o I seguir um mapa que não existia | ✅ os dois *papers*, com as secções que interessam e o apêndice a pular |
+| **Filtragem §4.3 · Sweep** | ⛔ ausentes | ✅ com data |
+| **Auditoria §4.2 (R-pré)** | ⛔ ausente (é a que faltava para a janela I poder abrir) | ✅ |
+| ⛔⛔ **as duas emendas devidas** | — | ✅ escritas **no cabeçalho**, que é o único sítio da pasta que o I lê |
+
+⛔⛔ **E um achado que só apareceu ao preencher o mapa de leitura:** os *papers* estavam em
+`~/Referencias/papers/`, **dentro da árvore que o Passo 0 nega inteira**. ⇒ *a espec mandava o
+Implementador ler uma fonte lícita guardada atrás da parede que o proíbe de a alcançar* — e
+teria de escolher entre desobedecer à espec e desobedecer ao Passo 0. **Curado:** literatura
+pública passa a viver em `~/Literatura/`, fora de qualquer denylist, com README a dizer porquê.
+
+### §R-pré2.9 — Sweep (§7.1), com **DOIS** controlos positivos
+
+⚠️ Corrido pela cópia **rastreada** do script (ver §R-pré2.10), não pela do primário.
+
+| alvo do sweep | resultado |
+|---|---|
+| ⭐ controlo positivo **A** — entrada ANTIGA semeada | ✅ **✗ exit 1** — o script funciona |
+| ⭐⭐ controlo positivo **B** — entrada **NOVA** semeada | ✅ **✗ exit 1** — a **cobertura nova** funciona (é o controlo que faltava) |
+| espec + `NEXT_R-PRE_eliminacao.md` + README + INBOX + `fixtures/` (o que cruza a parede) | ✓ **limpo, exit 0** — com **56** entradas |
+| árvore rastreada do produto (`crates` `shells` `scripts` `CLAUDE.md`) | ✓ limpo, exit 0 |
+| zona E/R (`LEDGER` · `TRIAGEM` · `ACHADO` · `NEXT_*` antigos) | ⛔ **✗ exit 1 — 4 hits**, e é o §R-pré2.3 |
+| `NEXT_I_eliminacao.md` (antes de ser salvo) | ✓ limpo |
+
+### §R-pré2.10 — Os dois «passam mudas» do handoff: um curado, um NOMEADO
+
+1. ✅ **`scripts/cleanroom-sweep.sh` deixa de ser não-rastreado** — pedido pelo §R-pré.6.2,
+   por vir no §R-pós.7.1, e agora commitado nesta branch. ⇒ a worktree do I (que nasce daqui)
+   passa a tê-lo, e a prova deste ledger passa a ser reproduzível noutra máquina. ⭐ Conferido
+   pela cópia local, com controlo positivo vermelho antes.
+2. ⛔ **A colisão do ADR `0164` continua, e continua a passar muda** — medido hoje:
+   `line/quadextract` tem `0164-quad-extraction-is-clean-room-from-papers…` (versionado) e a
+   árvore primária tem `0164-instances-are-real-entities…` **não versionado**, mais um `0165`
+   idem. **Não é do R resolver**: quem integrar conta, escolhe e regenera o índice
+   (`bash scripts/adr-index.sh`). ⚠️ *Um número que soma entre linhas conta-se, e a colisão de
+   dois literais iguais funde MUDA.*
+
+### §R-pré2.11 — ⭐ Veredito
+
+| pergunta | veredito |
+|---|---|
+| §4.2 (o que o modo PRÉ existe para responder) | ⭐ **VERDE** — atestado no cabeçalho da espec |
+| a contra-medida declarada pelo E | ⭐ **sustenta-se**, conferida por varredura e por leitura |
+| convergência de expressão vinda do E | ⛔ **nenhuma encontrada na espec.** ⚠️ E a rede que o diz é agora a rede certa (§R-pré2.2) |
+| a janela I pode abrir? | ⭐ **SIM, na OBRA A (a costura)** — que é a ordem que o §6 da espec já impunha. A OBRA B espera a emenda do §3.1 |
+| session-id do R-pré ≠ E? | ✅ `6ce7cd70-…` ≠ `49c94a84-…` (E) e ≠ `edbb014f-…` / `23c68c7a-…` / `186ce13e-…` |
+
+---
+
 ## Veredito da triagem (§2) — 2026-08-24 · ⚠️ **SUPERADO no mesmo dia (nota do R-pré)**
 
 > ⛔ **Leia o parágrafo seguinte antes deste bloco.** Este veredito é o estado **anterior** à

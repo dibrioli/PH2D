@@ -23,6 +23,40 @@ Denylist de CAMINHOS (⛔ as duas implementações estão NESTE disco): `~/Refer
   ⚠️⚠️ E acrescente um `deny` de **Bash**, não só de `Read`: medido em 2026-08-24, a janela
   I anterior fez 177 chamadas `Bash` e ZERO `Read` — um `deny` só de `Read` não é parede
   nenhuma sob um agente que trabalha por shell (LEDGER, "Papel I").
+Mapa de leitura da literatura (⭐ os dois são PÚBLICOS e lícitos a TODOS os papéis):
+  · Bommes, Zimmer, Kobbelt — "Mixed-Integer Quadrangulation", SIGGRAPH 2009.
+    §2 (o solver guloso, e a lei da eliminação no fim dele) · §3 (direcções salientes:
+    a detecção de feição) · §5 + §5.2 (as condições de compatibilidade da costura, e o
+    alinhamento a feições e a bordo). Cópia local: `~/Literatura/papers/miq2009.pdf|.txt`
+  · Ebke, Bommes, Campen, Kobbelt — "QEx: Robust Quad Mesh Extraction", SIGGRAPH Asia
+    2013. Contexto da extracção. Cópia local: `~/Literatura/papers/qex2013.pdf|.txt`
+  ⛔ Apêndice com listing compilável de autores do alvo: **PULE** (é código do alvo).
+  ⚠️ ⛔ NÃO os procure em `~/Referencias/papers/` — essa árvore está NEGADA ao I inteira,
+  de propósito. `~/Literatura/` existe exactamente porque uma fonte lícita guardada dentro
+  de uma pasta negada é uma fonte inalcançável (R-pré, 2026-08-24).
+Filtragem §4.3: executada pelo E em 2026-08-24 · Sweep: verde em 2026-08-24 (E) e
+  RE-CORRIDO verde em 2026-08-24 pelo R-pré sobre uma vassoura ALARGADA de 21 para 56
+  entradas — a de 21 não continha um único identificador da implementação que o E leu.
+Auditoria §4.2 (R-pré): ⭐ **VERDE — auditada contra §4.2 por R (janela
+  6ce7cd70-b800-48d7-91c7-b18f17bc7bc1) em 2026-08-24.** Nenhum texto de código, nome
+  interno, comentário do alvo, tabela verbatim, organização transcrita nem pseudo-código
+  espelhado. A contra-medida que o E declarou — espec sem receita de montagem — foi
+  CONFERIDA e sustenta-se: §1 e §2.3 não nomeiam estrutura, decomposição, factorização,
+  permutação nem ordem de eliminação, e a lei que eles afirmam está PUBLICADA no *paper*
+  de 2009 (fim do §2 dele).
+⛔⛔ DUAS EMENDAS DEVIDAS PELO E — leia-as antes de construir (R-pré, 2026-08-24):
+  1. §5, gate nº1: a barra escrita (`3,5e-15`) é MENOR que o valor medido nos próprios
+     mapas de referência de que ela diz descender (`3,553e-15`, nas duas peças, pelo
+     verificador de `fixtures/`) ⇒ como está, ela REPROVA a referência. E o §1 promete
+     "zero, não uma tolerância" enquanto o gate é uma tolerância: falta dizer que o
+     resíduo que sobra é o erro de AVALIAÇÃO da própria substituição, não uma folga.
+     ⇒ **não fixe a barra por conta própria; devolva a pergunta pelo Enio.**
+  2. §3.1 (a detecção de feição, OBRA B): a espec manda medir "os quatro coeficientes" e
+     descreve o papel de três. O quarto — a MEIA-LARGURA da janela de estabilidade à
+     volta de cada raio — desapareceu, e com ele a condição de que os dois limiares
+     valham em TODA a janela; a espec lê-se como se o desvio de direcção fosse medido
+     sobre a faixa inteira, que é outra regra. ⇒ **a OBRA B fica à espera da emenda.**
+     ⭐ A OBRA A (a costura) NÃO depende disto e é a primeira pelo §6 da própria espec.
 "Este documento descreve comportamento; não contém expressão do alvo."
 ```
 

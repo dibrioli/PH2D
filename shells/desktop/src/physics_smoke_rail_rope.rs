@@ -70,6 +70,7 @@ fn tie(world: &mut World, a: &str, b: &str, kind: JointKind, at: [f32; 2], limit
         },
         Transform::from_translation(Vec2::new(at[0], at[1])),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// Uma corrente de quatro elos de 1 m em +X, presa na altura `y`.

@@ -104,6 +104,7 @@ fn windlass(world: &mut World, tag: &str, x: f32, geared: bool, rgba: [f32; 4]) 
         },
         Transform::from_translation(Vec2::new(x, DRUM_Y)),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// **Quanto a carga do rig ENGRENADO SOBE em 2 s**, metros.

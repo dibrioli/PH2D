@@ -61,6 +61,7 @@ fn rig() -> SimWorld {
             Transform::from_translation(Vec2::new(x, 6.0)),
         ));
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -274,6 +275,7 @@ fn measure_the_residual_of_a_rig_smaller_than_the_default() {
     for born_degenerate in [false, true] {
         let mut sim = small(born_degenerate);
         let mut bridge = PhysicsBridge::new();
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, false, 0);
         let sealed = joint(&mut sim).0;
         if born_degenerate {
@@ -347,6 +349,7 @@ fn measure_a_route_that_degenerates_mid_play() {
     }
 
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     println!("\n=== A rota degenerando DURANTE o play (a carga sobe ate a roldana) ===");
     println!("  rota em repouso = {:?}", route_of(&bridge));

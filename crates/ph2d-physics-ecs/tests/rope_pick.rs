@@ -75,6 +75,7 @@ fn rope(sim: &mut SimWorld, tag: &str, x: f32) {
         },
         Transform::from_translation(Vec2::new(x + 0.5, 4.5)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
 }
 
 fn named(sim: &mut SimWorld, name: &str) -> Entity {

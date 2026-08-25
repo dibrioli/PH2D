@@ -157,6 +157,7 @@ fn car(world: &mut World, label: &str, y_offset: f32, kind: JointKind, tint: [f3
                 ..PhysicsJoint::of_kind(kind)
             },
         ));
+        ph2d_physics_ecs::resolve_body_names(world);
     }
 }
 

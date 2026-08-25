@@ -8,7 +8,7 @@
 
 use bevy_ecs::world::World;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
-use ph2d_ecs::{Entity, Name, SimWorld, stable_name_id};
+use ph2d_ecs::{Entity, Name, SimWorld};
 use ph2d_editor::{InspectorJointInfo, JointFieldEdit};
 use ph2d_physics_ecs::{JointKind, MotorMode, PhysicsJoint};
 
@@ -127,14 +127,20 @@ pub(crate) fn tag_of(kind: JointKind) -> u8 {
 /// only while §12 is on screen. A cached index would be a second copy of a
 /// fact the `Name`s already hold — and one that goes stale on every rename,
 /// which is precisely the event this has to report correctly.
-fn name_for(world: &World, id: u64, q: &mut bevy_ecs::query::QueryState<(&Name,)>) -> String {
+/// O NOME do objeto de identidade `id` — o documento guarda id, o painel mostra nome
+/// (ADR-0164 F1). Era o contrário: guardava o hash do nome e comparava-o, e por isso renomear
+/// um corpo esvaziava a linha do joint que o citava.
+fn name_for(
+    world: &World,
+    id: u64,
+    q: &mut bevy_ecs::query::QueryState<(&Name, &ph2d_ecs::StableId)>,
+) -> String {
     if id == 0 {
         return String::new();
     }
     q.iter(world)
-        .map(|(n,)| n)
-        .find(|n| stable_name_id(n.as_str()) == id)
-        .map(|n| n.as_str().to_string())
+        .find(|(_, s)| s.0 == id)
+        .map(|(n, _)| n.as_str().to_string())
         .unwrap_or_default()
 }
 
@@ -158,7 +164,7 @@ pub(crate) fn build_joint_info(
     // uma corda cujo joint ainda não foi construído mostraria zero se a pergunta
     // fosse ao solver.
     let wheel_count = super::inspector_joint_wheel::rope_wheel_count(sim, entity);
-    let mut q = sim.world_mut().query::<(&Name,)>();
+    let mut q = sim.world_mut().query::<(&Name, &ph2d_ecs::StableId)>();
     let world = sim.world();
     let a = name_for(world, joint.body_a, &mut q);
     let b = name_for(world, joint.body_b, &mut q);
@@ -263,7 +269,11 @@ pub(crate) fn set_joint_body(
     let Some(name) = ensure_named(sim, target, "Body") else {
         return false;
     };
-    let hash = stable_name_id(&name);
+    // ⚠️ A IDENTIDADE do alvo, pela entidade que este sítio tem em mãos. O `name` continua
+    // garantido (um corpo sem nome é ilegível na Hierarquia), mas não é ele que se guarda.
+    let _ = &name;
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let hash = ph2d_ecs::stable_id_of(sim.world(), target).map_or(0, |s| s.0);
     let mut next = current;
     if slot_b {
         next.body_b = hash;

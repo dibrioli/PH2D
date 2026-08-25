@@ -65,6 +65,7 @@ fn rig() -> (SimWorld, PhysicsBridge, Entity) {
     ));
     let j = joint(&mut sim, "Link", "Post", "Arm", [0.0, 6.0]);
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     (sim, bridge, j)
 }
@@ -100,6 +101,7 @@ fn every_joint_in_the_scene_is_offered_and_a_sprite_is_not() {
     body(&mut sim, "Post2", BodyKind::Static, [4.0, 6.0]);
     body(&mut sim, "Arm2", BodyKind::Dynamic, [5.0, 5.0]);
     let j2 = joint(&mut sim, "Link2", "Post2", "Arm2", [4.0, 6.0]);
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
 
     let handles = joint_anchor_handles(&sim, &bridge, true);
@@ -158,6 +160,7 @@ fn a_dormant_joints_a_end_is_offered_and_its_b_end_is_not() {
     body(&mut sim, "Post", BodyKind::Static, [0.0, 6.0]);
     let j = joint(&mut sim, "Link", "Post", "NoSuchBody", [0.0, 6.0]);
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
 
     let handles = joint_anchor_handles(&sim, &bridge, true);
@@ -250,6 +253,7 @@ fn param_rig() -> (SimWorld, PhysicsBridge) {
         Transform::from_translation(Vec2::new(5.0, 0.0)),
     ));
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     (sim, bridge)
 }
@@ -293,6 +297,7 @@ fn a_hinge_without_limits_has_no_walls() {
     if let Some(mut c) = sim.world_mut().get_mut::<PhysicsJoint>(hinge) {
         c.limits_enabled = false;
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let hs = joint_param_handles(&bridge, &camera(), window(), true, true);
     assert_eq!(kinds(&hs), vec![PointHandleKind::Length], "got {hs:?}");
@@ -383,6 +388,7 @@ fn a_rails_stroke_grips_sit_on_the_rail_not_on_an_arc() {
         t,
     ));
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let hs = joint_param_handles(&bridge, &camera(), window(), true, true);
     assert_eq!(
@@ -430,6 +436,7 @@ fn every_kind_with_a_length_offers_the_ring_to_grab() {
             c.kind = kind;
             c.limits_enabled = false;
         }
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, false, 0);
         let hs = joint_param_handles(&bridge, &camera(), window(), true, true);
         assert!(
@@ -491,6 +498,7 @@ fn a_pulley_offers_no_length_ring_and_its_wheels_are_the_wheels_own_handles() {
         ))
         .id();
     let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     assert!(
         joint_param_handles(&bridge, &camera(), window(), true, true).is_empty(),

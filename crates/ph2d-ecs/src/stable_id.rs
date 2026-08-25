@@ -223,6 +223,43 @@ pub fn stable_id_of(world: &World, entity: Entity) -> Option<StableId> {
     world.get::<StableId>(entity).copied()
 }
 
+/// ⭐ **O id do objeto que se chama `name` — a resolução de AUTORIA.**
+///
+/// # Esta função é a cura, e não uma conveniência
+///
+/// Antes desta wave uma junta guardava `stable_name_id(nome)` — o **hash do nome** — e a ponte
+/// da física reconstruía o mapa `hash → entidade` **a cada dispatch**. Isso põe a resolução no
+/// RUNTIME, e é de lá que vêm os dois defeitos que o `name.rs` já documentava:
+///
+/// - **Renomear desliga.** O hash muda, a junta deixa de achar o corpo, e nada avisa.
+/// - **Copiar prende no original.** A cópia recebe o nome `" (1)"`, o hash muda, e a junta da
+///   cópia continua a apontar para os corpos do MESTRE (ADR-0164 — é o defeito que a wave da
+///   instância existe para curar).
+///
+/// A cura não é um hash melhor: é **resolver uma vez, no momento em que o artista aponta para
+/// o objeto**, e guardar a identidade. O nome é para humanos, na hora de autorar; o id é para
+/// o documento. Depois disto, renomear é só renomear.
+///
+/// ⚠️ **`0` (o reservado) quando ninguém se chama assim** — a mesma resposta que um hash sem
+/// dono dava, e ela continua a significar *"não aponta para nada"*.
+///
+/// ⚠️ **Nomes não são únicos pelo tipo** (o `Name` documenta-o; a unicidade é imposta pelo
+/// editor, em `name_unique.rs`). Com dois homónimos esta função devolve o de **menor
+/// `StableId`** — o mais antigo —, que é determinístico e não *"o que o archetype listou
+/// primeiro"*. ⛔ Não é uma escolha boa, é uma escolha REPRODUTÍVEL: quem depende de a
+/// resolução acertar tem de garantir o nome único, e o editor garante.
+#[must_use]
+pub fn stable_id_for_name(world: &mut World, name: &str) -> u64 {
+    assign_missing_stable_ids(world);
+    world
+        .query::<(&crate::Name, &StableId)>()
+        .iter(world)
+        .filter(|(n, _)| n.as_str() == name)
+        .map(|(_, s)| s.0)
+        .min()
+        .unwrap_or(StableId::NONE.0)
+}
+
 /// A entidade que carrega este `StableId`, se existir.
 ///
 /// ⚠️ Varredura linear, e é de propósito **não** haver um índice: um mapa

@@ -10,7 +10,7 @@
 //! `inspector_joint` re-exporta as três funções, então todo chamador mantém o
 //! caminho `inspector_joint::create_joint` que já usava.
 
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
+use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{JointKind, PhysicsJoint};
 
 /// Create a joint between two bodies — the gesture behind §11's *Join Selected
@@ -81,12 +81,25 @@ pub(crate) fn create_joint_at(
     let name_a = ensure_named(sim, a, "Body")?;
     let name_b = ensure_named(sim, b, "Body")?;
 
-    // ⚠️ The `a == b` guard above compares ENTITIES; this compares the thing a
-    // joint actually stores. Two bodies that happen to share a name resolve to
-    // one id, so the joint could never bind — and it would report success.
-    if ph2d_ecs::stable_name_id(&name_a) == ph2d_ecs::stable_name_id(&name_b) {
-        return None;
-    }
+    // ⭐ **Esta guarda DISSOLVEU com o `StableId`** (ADR-0164 F1), e a razão dela é a melhor
+    // descrição do defeito que a wave cura. Ela dizia:
+    //
+    // > *"O `a == b` acima compara ENTIDADES; esta compara o que o joint de facto guarda.
+    // > Dois corpos que por acaso partilhem o nome resolvem para UM id, então o joint nunca
+    // > poderia prender — e reportaria sucesso."*
+    //
+    // Isso era verdade enquanto o que o joint guardava era o **hash do nome**. Hoje ele
+    // guarda a identidade, e dois corpos homónimos têm ids **diferentes**: o joint prende
+    // certo. Recusar o gesto agora seria proibir uma coisa que passou a funcionar.
+    //
+    // ⚠️ A guarda `a == b` de cima **fica** — ela é sobre o caso degenerado real (um corpo
+    // preso a si mesmo), que continua a não ter sentido.
+    // ⚠️ **Pela ENTIDADE, não pelo nome.** Este sítio tem `a` e `b` em mãos — passar pelo nome
+    // seria uma volta que reintroduz a pergunta dos homónimos que acabou de deixar de existir.
+    // O `stable_id_for_name` existe para quem só tem o nome (as cenas de smoke), não para aqui.
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let id_a = ph2d_ecs::stable_id_of(sim.world(), a).map_or(0, |s| s.0);
+    let id_b = ph2d_ecs::stable_id_of(sim.world(), b).map_or(0, |s| s.0);
     // **A joint is named after what it joins** (W-J8) — the Unreal Constraints
     // Graph idiom. "Post : Plank" in the Hierarchy is a joint you can find; the
     // "Joint (3)" it replaces is a row you have to click to identify, in a rig
@@ -166,8 +179,8 @@ pub(crate) fn create_joint_at(
         .spawn((
             Name::new(label.clone()),
             PhysicsJoint {
-                body_a: stable_name_id(&name_a),
-                body_b: stable_name_id(&name_b),
+                body_a: id_a,
+                body_b: id_b,
                 local_a: anchored.map_or([0.0, 0.0], |(la, _, _, _)| la),
                 local_b: anchored.map_or([0.0, 0.0], |(_, lb, _, _)| lb),
                 anchored: anchored.is_some(),
@@ -190,7 +203,11 @@ pub(crate) fn create_joint_at(
     // roldanas, apagar uma, nomeá-la, desfazer) sem nada além do que a Hierarquia
     // já faz com qualquer objeto.
     if let Some((wheels, _)) = rig {
-        let rope = stable_name_id(&label);
+        // ⚠️ A corda é apontada pela IDENTIDADE do joint que acabou de nascer — e por isso
+        // a varredura corre AQUI, depois do spawn: sem ela o joint ainda não tem id, e as
+        // roldanas nasceriam a apontar para `0` (nenhuma corda).
+        ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+        let rope = ph2d_ecs::stable_id_of(sim.world(), joint).map_or(0, |s| s.0);
         for (i, w) in wheels.into_iter().enumerate() {
             let order = u16::try_from(i).unwrap_or(0);
             sim.world_mut().spawn((

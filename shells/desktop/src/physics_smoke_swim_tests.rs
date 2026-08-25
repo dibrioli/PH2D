@@ -31,6 +31,7 @@ fn swims(who: &str, input: PlayerInput) -> f32 {
     const START: f32 = -1.0;
     let mut sim = SimWorld::new();
     build_swim_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let target = named(&sim, who);
     sim.world_mut()
         .get_mut::<Transform>(target)
@@ -224,6 +225,7 @@ fn the_shallow_puddle_is_below_the_threshold() {
 fn the_two_subjects_differ_only_in_the_capability() {
     let mut sim = SimWorld::new();
     build_swim_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut seen: Vec<(String, ph2d_physics_ecs::PlatformPlayer, ColliderShape, f32)> = Vec::new();
     let mut q = sim
         .world()

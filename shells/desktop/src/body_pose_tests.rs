@@ -38,6 +38,7 @@ fn rig() -> (ph2d_ecs::SimWorld, PhysicsBridge, Entity) {
             Transform::from_translation(Vec2::new(x, 0.0)),
         ));
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     bridge.dispatch(&mut sim, false, 0);
     let tip = {
@@ -87,6 +88,7 @@ fn a_body_with_no_rigid_chain_is_not_posable() {
         Transform::from_translation(Vec2::new(0.0, 0.0)),
     ));
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let e = {
         let mut q = sim.world_mut().query::<(Entity, &Name)>();

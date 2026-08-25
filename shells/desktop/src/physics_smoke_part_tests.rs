@@ -9,6 +9,7 @@ fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
     crate::physics_smoke::spawn_floor(sim.world_mut());
     build_keys(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let ticks = (secs * 60.0) as u64;
     for t in 0..=ticks {
@@ -102,6 +103,7 @@ fn narrowing_the_part_lets_the_wide_key_through() {
     let mut sim = SimWorld::new();
     crate::physics_smoke::spawn_floor(sim.world_mut());
     build_keys(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let bit = entity(&mut sim, "Wide Bit");
     // O MESMO edit que o campo do painel emite.
     crate::render_loop::inspector_physics_tests::apply(
@@ -127,6 +129,7 @@ fn removing_the_part_also_lets_the_wide_key_through() {
     let mut sim = SimWorld::new();
     crate::physics_smoke::spawn_floor(sim.world_mut());
     build_keys(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let bit = entity(&mut sim, "Wide Bit");
     crate::render_loop::inspector_physics_tests::apply(
         &mut sim,

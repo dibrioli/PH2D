@@ -19,6 +19,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
     build_kin_water_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let ticks = (secs * 60.0) as u64;
@@ -48,6 +49,7 @@ fn y_of(sim: &SimWorld, who: &str) -> f32 {
 fn bob_of(who: &str) -> f32 {
     let mut sim = SimWorld::new();
     build_kin_water_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let (mut lo, mut hi) = (f32::MAX, f32::MIN);
     for t in 0..=360u64 {
@@ -112,6 +114,7 @@ fn probe_smoke_104() {
 fn the_three_subjects_differ_only_in_what_the_wave_changes() {
     let mut sim = SimWorld::new();
     build_kin_water_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let world = sim.world();
 
     let mut shapes = Vec::new();
@@ -228,6 +231,7 @@ fn the_scene_delivers_the_numbers_its_message_prints() {
 fn the_pool_is_deep_enough_that_nothing_stands_in_it() {
     let mut sim = SimWorld::new();
     build_kin_water_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     // O fundo da poça, e a folga até o ponto mais baixo que qualquer sujeito
     // alcança em dez segundos.
     let floor = -2.0 * POOL_HALF[1];

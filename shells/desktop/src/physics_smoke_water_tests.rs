@@ -11,6 +11,7 @@ use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
 fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
     build_water_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let ticks = (secs * 60.0) as u64;
     for t in 0..=ticks {
@@ -23,6 +24,7 @@ fn run(secs: f32) -> SimWorld {
 fn run_walking_in(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
     build_water_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let player: Entity = {
         let mut q = sim.world_mut().query::<(Entity, &Name)>();
         q.iter(sim.world())
@@ -127,6 +129,7 @@ const NEUTRAL: f32 = 1.0;
 fn probe_dropped_in_the_pool() {
     let mut sim = SimWorld::new();
     build_water_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     // Um segundo player, largado já dentro da água, longe de tudo.
     sim.world_mut().spawn((
         Name::new("Swimmer"),

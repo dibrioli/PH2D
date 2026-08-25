@@ -8,11 +8,16 @@
 //!
 //! Existem duas fontes possíveis e elas DIVERGEM num caso real: o componente
 //! ECS existe para todo joint que o artista autorou, e a ponte só carrega os
-//! que conseguiu construir. Um joint cujos corpos não resolvem (um nome
-//! renomeado — a exposição que o `stable_name_id` documenta desde o W3) segue
-//! autorado e **não está no solver**; desenhá-lo do componente pintaria uma
-//! relação que nada está impondo, e o artista veria uma corrente inteira
-//! ligada por um elo que não existe.
+//! que conseguiu construir. Um joint cujos corpos não resolvem segue autorado e
+//! **não está no solver**; desenhá-lo do componente pintaria uma relação que
+//! nada está impondo, e o artista veria uma corrente inteira ligada por um elo
+//! que não existe.
+//!
+//! ⚠️ **O caso que produzia essa divergência MUDOU** (ADR-0164 F1). Era *"um nome
+//! renomeado — a exposição que o `stable_name_id` documenta desde o W3"*: a junta guardava o
+//! hash do nome, e renomear uma peça na Hierarquia derrubava a corrente. Hoje ela guarda a
+//! identidade, e renomear é só renomear. O caso real que sobra é o corpo que **desaparece** —
+//! e é sobre ele que o gate abaixo pergunta.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
@@ -60,6 +65,7 @@ fn pendulum(kind: JointKind) -> SimWorld {
         },
         Transform::from_translation(Vec2::new(0.0, 5.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -90,15 +96,35 @@ fn a_joint_the_solver_does_not_hold_is_not_drawn() {
          o que desenhar"
     );
 
-    // O corpo B muda de nome: o joint fica órfão no solver e INTACTO no ECS.
+    // ⭐ **RENOMEAR já não desliga nada** (ADR-0164 F1) — e este bloco pinava o defeito.
+    //
+    // A versão anterior deste gate renomeava o corpo B e exigia **zero** views: *"um joint
+    // cujos corpos não resolvem (um nome renomeado — a exposição que o `stable_name_id`
+    // documenta desde o W3) segue autorado e não está no solver"*. Era verdade, e era o
+    // defeito: o artista renomeava uma peça na Hierarquia e a corrente caía.
+    //
+    // Hoje a junta guarda a IDENTIDADE, e o nome é só um rótulo. O gate passou a medir a
+    // propriedade certa — a que o produto promete.
     let plank = named(&mut sim, "Plank");
     *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Plank2");
+    bridge.dispatch(&mut sim, false, 0);
+    assert_eq!(
+        bridge.joint_views().count(),
+        1,
+        "renomear um corpo DESLIGOU a junta dele — era o defeito que o StableId cura, e ele \
+         voltou"
+    );
+
+    // ⚠️ **E a pergunta original do gate continua a ser feita**, sobre o caso em que ela é de
+    // facto verdadeira: um corpo que **desaparece**. Aí a junta segue autorada, o solver não a
+    // constrói, e desenhá-la pintaria uma relação que nada está a impor.
+    sim.world_mut().entity_mut(plank).despawn();
     bridge.dispatch(&mut sim, false, 0);
 
     let joint = named(&mut sim, "Pin");
     assert!(
         sim.world().get::<PhysicsJoint>(joint).is_some(),
-        "premissa do gate: o componente autorado sobrevive ao rename"
+        "premissa do gate: o componente autorado sobrevive ao desaparecimento do corpo"
     );
     assert_eq!(
         bridge.joint_views().count(),
@@ -259,6 +285,7 @@ fn two_curve_driven_bodies_pulled_apart_break_the_constraint_visibly() {
         Transform::from_translation(Vec2::new(0.0, 5.0)),
     ));
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
 
     // A "curva" afasta B — o que uma track assada faz todo frame.

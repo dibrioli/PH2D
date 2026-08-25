@@ -159,6 +159,7 @@ fn weston_hoist(world: &mut World, tag: &str, x: f32, weston: bool, rgba: [f32; 
         },
         Transform::from_translation(Vec2::new(x, LOAD_Y)),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// **Quanto a carga da WESTON sobe em 2 s**, metros. Medido por `probe_smoke_64`.

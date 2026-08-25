@@ -120,7 +120,8 @@ pub use sprite_pixels::SpritePixels;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
 pub use stable_id::{
-    StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id, stable_id_of,
+    StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id, stable_id_for_name,
+    stable_id_of,
 };
 pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,

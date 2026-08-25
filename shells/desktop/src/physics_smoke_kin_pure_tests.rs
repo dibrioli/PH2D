@@ -13,6 +13,7 @@ const TAGS: [&str; 3] = ["Pure", "Snap", "Spring"];
 fn scene() -> (SimWorld, PhysicsBridge) {
     let mut sim = SimWorld::new();
     build(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     (sim, PhysicsBridge::new())
 }
 

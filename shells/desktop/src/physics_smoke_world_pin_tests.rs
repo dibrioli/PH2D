@@ -20,6 +20,7 @@ fn pos_of(sim: &mut SimWorld, name: &str) -> [f32; 2] {
 fn probe_smoke_65() {
     let mut sim = SimWorld::new();
     build_world_pin(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start = [pos_of(&mut sim, "Old Bob"), pos_of(&mut sim, "New Bob")];
     for t in 1..=120 {
@@ -47,6 +48,7 @@ fn probe_smoke_65() {
 fn the_two_pendulums_of_scene_65_swing_alike() {
     let mut sim = SimWorld::new();
     build_world_pin(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start = [pos_of(&mut sim, "Old Bob"), pos_of(&mut sim, "New Bob")];
     for t in 1..=120 {
@@ -82,6 +84,7 @@ fn the_two_pendulums_of_scene_65_swing_alike() {
 fn the_new_rig_costs_one_fewer_object_than_the_old_one() {
     let mut sim = SimWorld::new();
     build_world_pin(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut q = sim.world_mut().query::<&Name>();
     let names: Vec<String> = q
         .iter(sim.world())

@@ -116,6 +116,7 @@ fn sling(world: &mut World, tag: &str, top: f32) {
             ..PhysicsJoint::of_kind(JointKind::Spring)
         },
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// Monta a cena — extraída para o irmão headless poder dirigir a MESMA coisa.

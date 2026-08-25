@@ -83,6 +83,7 @@ fn linked(world: &mut World, name: &str, a: &str, b: &str, at: [f32; 2], kind: J
         Name::new(name),
         j,
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// As três colunas + a treliça. `pub(crate)` porque a sonda monta as MESMAS

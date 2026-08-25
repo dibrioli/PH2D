@@ -39,6 +39,7 @@ fn rig() -> (SimWorld, PhysicsBridge, Entity) {
         ));
     }
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let link = {
         let mut q = sim.world_mut().query::<(Entity, &Name)>();
@@ -88,6 +89,7 @@ fn a_body_with_no_joint_above_it_is_not_fk_posable() {
         Transform::from_translation(Vec2::new(0.0, 0.0)),
     ));
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let e = {
         let mut q = sim.world_mut().query::<(Entity, &Name)>();

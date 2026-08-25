@@ -37,6 +37,7 @@ fn joint(sim: &mut SimWorld, name: &str, a: &str, b: &str) {
         },
         Transform::from_translation(Vec2::new(0.0, 0.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
 }
 
 fn named(sim: &mut SimWorld, name: &str) -> Entity {

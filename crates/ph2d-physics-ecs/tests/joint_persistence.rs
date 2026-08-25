@@ -90,6 +90,7 @@ fn scene(with_joint: bool) -> SimWorld {
             Transform::from_translation(Vec2::new(0.0, 6.0)),
         ));
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -183,8 +184,20 @@ fn a_joint_round_trips_through_the_snapshot_with_its_parameters() {
     );
     assert_eq!(j.max_length, 3.25, "the rope's length was not preserved");
     assert!(j.soft, "o `soft` (v47) não sobreviveu ao round-trip");
-    assert_eq!(j.body_a, stable_name_id("Hook"));
-    assert_eq!(j.body_b, stable_name_id("Plank"));
+    // ⭐ **E ela continua a apontar para o MESMO OBJETO** (ADR-0164 F1). Antes desta wave a
+    // asserção era contra `stable_name_id("Hook")` — o hash do nome —, e por isso ela passava
+    // mesmo que o objeto tivesse sido substituído por outro com o mesmo nome. Agora ela
+    // pergunta a coisa certa: o id que a junta guarda é o do Hook que voltou do disco.
+    let id_of = |w: &mut SimWorld, name: &str| -> u64 {
+        let mut q = w.world_mut().query::<(&Name, &ph2d_ecs::StableId)>();
+        let world = w.world();
+        q.iter(world)
+            .find(|(n, _)| n.as_str() == name)
+            .map(|(_, s)| s.0)
+            .unwrap_or(0)
+    };
+    assert_eq!(j.body_a, id_of(&mut back, "Hook"));
+    assert_eq!(j.body_b, id_of(&mut back, "Plank"));
     assert!(
         j.names_two_bodies(),
         "the restored joint no longer names two bodies"

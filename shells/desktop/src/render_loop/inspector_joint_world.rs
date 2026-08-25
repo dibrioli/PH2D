@@ -11,7 +11,7 @@
 //! ponto onde o artista soltou. Duas cópias desta regra divergiriam na primeira
 //! vez que qualquer uma mudasse.
 
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
+use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{JointKind, JointWorldAnchor, PhysicsJoint};
 
 use super::inspector_joint::ensure_named;
@@ -68,6 +68,10 @@ pub(crate) fn create_world_pin_at(
     // **Um joint é nomeado pelo que ele junta** (W-J8) — e aqui a outra ponta é
     // o cenário, então ela se chama pelo que é.
     let label = crate::name_unique::unique_name(sim, &format!("{name_a} : World"));
+    // ⚠️ A IDENTIDADE do corpo, pela entidade (ADR-0164 F1) — o nome continua a dar o rótulo,
+    // mas não é ele que o joint guarda.
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let id_a = ph2d_ecs::stable_id_of(sim.world(), a).map_or(0, |s| s.0);
     // A âncora em A: o ponto do PRESS num tipo de duas pontas (a mola prende
     // onde você agarrou), e o ponto do RELEASE num que compartilha um ponto —
     // porque ali os dois lados são o MESMO lugar, e esse lugar é o pivô que o
@@ -80,7 +84,7 @@ pub(crate) fn create_world_pin_at(
         .spawn((
             Name::new(label),
             PhysicsJoint {
-                body_a: stable_name_id(&name_a),
+                body_a: id_a,
                 // O mundo não tem nome a apontar; quem diz que este zero é o
                 // cenário — e não uma ponta que falta — é o marcador abaixo.
                 body_b: 0,

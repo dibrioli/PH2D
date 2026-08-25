@@ -20,6 +20,7 @@ fn y_of(sim: &mut SimWorld, name: &str) -> f32 {
 fn probe_smoke_60() {
     let mut sim = SimWorld::new();
     build_break(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Snap", "Axle", "Holds"]
         .iter()
@@ -74,6 +75,7 @@ const MEASURED_FALL: f32 = 1.05;
 fn the_break_scene_states_the_numbers_the_sim_produces() {
     let mut sim = SimWorld::new();
     build_break(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Holds", "Snap", "Axle"]
         .iter()

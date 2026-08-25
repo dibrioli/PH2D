@@ -37,6 +37,7 @@ fn pin(sim: &mut SimWorld, name: &str, a: &str, b: &str) {
         },
         Transform::from_translation(Vec2::ZERO),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
 }
 
 /// Os bits que a semeadura produziu, ordenados — o oráculo é o CONJUNTO, não a

@@ -71,11 +71,15 @@ fn constraint_gap(sim: &mut SimWorld, joint_name: &str) -> f32 {
             .expect("joint vivo")
     };
     let _ = j;
-    let mut anchor = |name_id: u64, local: [f32; 2]| -> ph2d_core::Vec2 {
+    // ⚠️ Resolve pela IDENTIDADE (ADR-0164 F1) — o joint deixou de guardar o hash do nome, e
+    // procurar por hash não encontrava o corpo (o `expect("corpo vivo")` disparava).
+    let mut anchor = |id: u64, local: [f32; 2]| -> ph2d_core::Vec2 {
         let e = {
-            let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
+            let mut q = sim
+                .world_mut()
+                .query::<(ph2d_ecs::Entity, &ph2d_ecs::StableId)>();
             q.iter(sim.world())
-                .find(|(_, n)| ph2d_ecs::stable_name_id(n.as_str()) == name_id)
+                .find(|(_, s)| s.0 == id)
                 .map(|(e, _)| e)
                 .expect("corpo vivo")
         };
@@ -98,6 +102,7 @@ fn run(ticks: u64) -> (f32, f32) {
 
     let mut bridge = PhysicsBridge::new();
     for t in 1..=ticks {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, t);
     }
     let y1 = pos(&mut sim, "Torso").y;
@@ -150,6 +155,7 @@ fn probe_smoke_67() {
     let (mut sim, _, _) = rigged();
     let mut bridge = PhysicsBridge::new();
     for t in 1..=180u64 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, t);
     }
     for n in ["Torso", "Head", "ArmL", "ArmR", "LegL", "LegR"] {
@@ -218,6 +224,7 @@ fn the_rigged_doll_collapses_onto_the_floor_instead_of_falling_through() {
     let (mut sim, _, _) = rigged();
     let mut bridge = PhysicsBridge::new();
     for t in 1..=180 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, t);
     }
     let torso = pos(&mut sim, "Torso");
@@ -246,6 +253,7 @@ fn probe_reset_67() {
 
     let mut bridge = PhysicsBridge::new();
     for t in 1..=120u64 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, t);
     }
     let collapsed: Vec<ph2d_core::Vec2> = names.iter().map(|n| pos(&mut sim, n)).collect();
@@ -317,6 +325,7 @@ fn probe_rig_limits() {
         let mut worst: Vec<f32> = vec![0.0; names.len()];
         let t0 = pos(&mut sim, "Torso");
         for t in 1..=180u64 {
+            ph2d_physics_ecs::resolve_body_names(sim.world_mut());
             bridge.dispatch(&mut sim, true, t);
             for (i, n) in names.iter().enumerate() {
                 let rel = rel_angle(&mut sim, n).to_degrees().abs();
@@ -371,5 +380,6 @@ fn rel_angle(sim: &mut SimWorld, joint_name: &str) -> f32 {
     while d < -std::f32::consts::PI {
         d += std::f32::consts::TAU;
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     d
 }

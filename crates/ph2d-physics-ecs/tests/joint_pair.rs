@@ -42,6 +42,10 @@ fn joint(sim: &mut SimWorld, j: PhysicsJoint, at: Vec2) {
 }
 
 fn run(sim: &mut SimWorld, ticks: u64) -> PhysicsBridge {
+    // ⚠️ A resolução NOME → IDENTIDADE vive AQUI, na porta que corre o solver, e não no fim
+    // de cada teste: posta no fim ela corria DEPOIS do dispatch, e as juntas já tinham falhado
+    // em prender. Esta é a única porta deste arquivo que dispara física.
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::default();
     for t in 1..=ticks {
         bridge.dispatch(sim, true, t);

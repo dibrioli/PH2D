@@ -54,6 +54,7 @@ fn plank_rotation_after_settling(kind: JointKind) -> f32 {
 
     let mut bridge = PhysicsBridge::new();
     for tick in 1..=180u64 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, tick);
     }
     let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();

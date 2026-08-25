@@ -66,6 +66,7 @@ fn joining_two_bodies_makes_a_joint_that_holds() {
 
     let mut bridge = PhysicsBridge::new();
     for tick in 1..=120 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, tick);
     }
     assert_eq!(
@@ -105,8 +106,10 @@ fn joining_unnamed_bodies_names_them_first() {
     let b = sim.world().get::<Name>(plank).expect("plank was named");
     assert_ne!(a.as_str(), b.as_str(), "both bodies got the SAME name");
     let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
-    assert_eq!(j.body_a, stable_name_id(a.as_str()));
-    assert_eq!(j.body_b, stable_name_id(b.as_str()));
+    // ⚠️ A IDENTIDADE, não o hash do nome (ADR-0164 F1): é o que o joint guarda desde a F1.
+    let id = |e| ph2d_ecs::stable_id_of(sim.world(), e).map_or(0, |s: ph2d_ecs::StableId| s.0);
+    assert_eq!(j.body_a, id(hook));
+    assert_eq!(j.body_b, id(plank));
     assert!(j.names_two_bodies());
 }
 
@@ -167,16 +170,20 @@ fn the_angle_fields_convert_at_the_boundary() {
     assert!((info.limit_max_ui - 90.0).abs() < 1e-3);
 }
 
-/// **The snapshot shows the two bodies by NAME, and says when one is gone.**
+/// ⭐ **A §12 continua a NOMEAR os corpos — e renomear já não parte o elo** (ADR-0164 F1).
 ///
-/// The joint stores hashes; a hash is not something to show a person, and an
-/// empty gap where a name should be is not either.
+/// ⚠️ **Este gate pinava o defeito.** Ele renomeava um corpo e exigia
+/// `info.bound == false`: *"depois do rename a seção tem de reportar o elo como partido"*.
+/// Era o comportamento certo **para um id que era o nome** — e é exatamente o que a wave da
+/// identidade cura. Hoje o joint guarda o `StableId`, e o painel resolve o NOME a partir dele:
+/// renomear muda o rótulo que a §12 mostra, e não o elo.
+///
+/// ⚠️ O caso em que o elo PARTE de verdade — o corpo que desaparece — continua medido abaixo.
 #[test]
-fn the_snapshot_resolves_the_body_names_and_reports_a_broken_link() {
+fn renaming_a_body_relabels_the_section_without_breaking_the_link() {
     let (mut sim, hook, plank) = two_bodies(true);
     let joint =
         create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).expect("join");
-
     let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
     assert_eq!(info.body_a_name, "Hook");
     assert_eq!(info.body_b_name, "Plank");
@@ -185,9 +192,20 @@ fn the_snapshot_resolves_the_body_names_and_reports_a_broken_link() {
     *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Renamed");
     let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
     assert!(
-        !info.bound && info.body_b_name.is_empty(),
-        "after the rename the section must report the link as broken, not \
-         keep showing the old name as if nothing happened"
+        info.bound,
+        "renomear PARTIU o elo — era o defeito que o StableId cura, e ele voltou"
+    );
+    assert_eq!(
+        info.body_b_name, "Renamed",
+        "a seccao tem de mostrar o nome NOVO: ela resolve o rotulo a partir da identidade"
+    );
+
+    // ⚠️ E o elo parte de verdade quando o corpo DESAPARECE.
+    sim.world_mut().entity_mut(plank).despawn();
+    let info = build_joint_info(&mut sim, joint.to_bits(), 0, 0).expect("info");
+    assert!(
+        !info.bound,
+        "um corpo que sumiu tem de reportar o elo como partido"
     );
 }
 
@@ -198,24 +216,31 @@ fn a_plain_body_has_no_joint_section() {
     assert!(build_joint_info(&mut sim, hook.to_bits(), 0, 0).is_none());
 }
 
-/// **Two bodies that share a name cannot be joined, and the gesture says so.**
+/// ⭐ **Dois corpos com o MESMO NOME já podem ser juntados** (ADR-0164 F1).
 ///
-/// The `a == b` guard compares ENTITIES; a joint stores name HASHES. Two
-/// distinct bodies with the same name resolve to one id, so the joint could
-/// never bind — and before this it was still created, handing the artist an
-/// object that does nothing and (until the ring fix) cleared the scrub cache
-/// every frame for as long as it existed.
+/// ⚠️ **Este gate pinava a limitação, e a razão que ele dava era exacta:** *"a guarda `a == b`
+/// compara ENTIDADES; um joint guarda HASHES DE NOME. Dois corpos distintos com o mesmo nome
+/// resolvem para um id, então o joint nunca poderia prender"*. A premissa era verdadeira — e
+/// era o defeito.
+///
+/// Hoje o joint guarda a **identidade**, e dois corpos homónimos têm ids diferentes: ele
+/// prende certo. Recusar o gesto agora seria proibir uma coisa que passou a funcionar. A
+/// guarda `a == b` (um corpo preso a si mesmo) fica, e é a irmã abaixo que a mede.
 #[test]
-fn two_bodies_sharing_a_name_cannot_be_joined() {
+fn two_bodies_sharing_a_name_can_now_be_joined() {
     let (mut sim, hook, plank) = two_bodies(true);
     *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Hook");
-    assert!(
-        create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin).is_none(),
-        "a joint was created between two bodies that share a name — it can \
-         never bind, because the two ids it stores are the same number"
+    let j = create_joint(&mut sim, hook.to_bits(), plank.to_bits(), JointKind::Pin)
+        .expect("dois homonimos sao dois OBJETOS, e a juncao deles prende");
+    let stored = *sim.world().get::<PhysicsJoint>(j).expect("o joint vive");
+    let id = |e| ph2d_ecs::stable_id_of(sim.world(), e).map_or(0, |s: ph2d_ecs::StableId| s.0);
+    assert_eq!(stored.body_a, id(hook));
+    assert_eq!(stored.body_b, id(plank));
+    assert_ne!(
+        stored.body_a, stored.body_b,
+        "dois corpos homonimos tem de guardar ids DIFERENTES — se colapsarem, a identidade \
+         voltou a ser o nome",
     );
-    let mut q = sim.world_mut().query::<&PhysicsJoint>();
-    assert_eq!(q.iter(sim.world()).count(), 0);
 }
 
 /// Spawn a named physical body — a third body for the re-pick tests.
@@ -255,20 +280,21 @@ fn set_joint_body_rebinds_slot_a_and_the_joint_still_binds() {
     );
 
     let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
+    // ⚠️ A IDENTIDADE do objeto chamado assim (ADR-0164 F1) — o joint deixou de guardar o
+    // hash do nome, então perguntar pelo hash mediria uma coisa que já não existe.
+    let id_named = |sim: &mut SimWorld, n: &str| ph2d_ecs::stable_id_for_name(sim.world_mut(), n);
+    let want_a = id_named(&mut sim, "Post");
+    let want_b = id_named(&mut sim, "Plank");
+    assert_eq!(j.body_a, want_a, "slot A did not re-bind to Post");
     assert_eq!(
-        j.body_a,
-        stable_name_id("Post"),
-        "slot A did not re-bind to Post"
-    );
-    assert_eq!(
-        j.body_b,
-        stable_name_id("Plank"),
+        j.body_b, want_b,
         "slot B was touched — the wrong slot moved"
     );
 
     // Not dormant: the re-bound joint still reaches the solver.
     let mut bridge = PhysicsBridge::new();
     for tick in 1..=60 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, tick);
     }
     assert_eq!(
@@ -318,6 +344,7 @@ fn a_world_pin_reads_as_bound_with_a_single_body() {
         .spawn((
             ph2d_ecs::Name::new("Wall Pin"),
             PhysicsJoint {
+                // Autorado por NOME e resolvido logo abaixo — a mesma costura do roteador.
                 body_a: ph2d_ecs::stable_name_id("Hook"),
                 body_b: 0,
                 kind: JointKind::Pin,
@@ -326,6 +353,7 @@ fn a_world_pin_reads_as_bound_with_a_single_body() {
             ph2d_ecs::Transform::default(),
         ))
         .id();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
 
     let before = super::inspector_joint::build_joint_info(&mut sim, joint.to_bits(), 0, 0)
         .expect("a §12 tem de existir para um joint selecionado");

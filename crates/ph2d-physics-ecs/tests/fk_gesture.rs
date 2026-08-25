@@ -62,6 +62,7 @@ fn joint(
         j,
         Transform::from_translation(Vec2::new(at[0], at[1])),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     named(sim, &n)
 }
 

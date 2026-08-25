@@ -37,6 +37,7 @@ fn joint_of(sim: &SimWorld, e: Entity) -> PhysicsJoint {
 /// answer the canvas handle and the solver read.
 fn anchor(sim: &mut SimWorld, joint: Entity, side: ph2d_physics_ecs::JointSide) -> [f32; 2] {
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(sim, false, 0);
     bridge
         .joint_anchor_world(sim, joint, side)
@@ -171,13 +172,18 @@ fn a_chain_of_four_bodies_is_three_joints_linked_in_order() {
     let mut q = sim.world_mut().query::<&PhysicsJoint>();
     let pairs: Vec<(u64, u64)> = q.iter(sim.world()).map(|j| (j.body_a, j.body_b)).collect();
     for i in 0..3 {
-        let want = (stable_name_id(names[i]), stable_name_id(names[i + 1]));
+        // A IDENTIDADE do objeto com esse nome (ADR-0164 F1) — o joint deixou de guardar o hash.
+        let want = (
+            ph2d_ecs::stable_id_for_name(sim.world_mut(), names[i]),
+            ph2d_ecs::stable_id_for_name(sim.world_mut(), names[i + 1]),
+        );
         assert!(
             pairs.contains(&want),
             "the chain must link {} to {}; got {pairs:?}",
             names[i],
             names[i + 1]
         );
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     }
 }
 

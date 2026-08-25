@@ -66,7 +66,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ph2d_ecs::{Entity, Name, World, stable_name_id};
+use ph2d_ecs::{Entity, World};
 
 use crate::components::{BodyKind, RigidBody};
 use crate::joint::PhysicsJoint;
@@ -128,15 +128,19 @@ pub fn jointed_by(world: &mut World, seed: &[Entity], reach: DragReach) -> Vec<E
 /// A travessia: BFS pelo grafo de joints AUTORADO, conduzindo (e acrescentando)
 /// só pelos corpos que `carries` aceita.
 fn walk(world: &mut World, seed: &[Entity], carries: impl Fn(BodyKind) -> bool) -> Vec<Entity> {
-    // name hash -> body entity, and the set of CONDUCTING body bits. Same key the
-    // reconcile uses; the source is the ECS because a bake is about the authored
-    // scene. Only NAMED bodies can be part of the joint graph (a joint names its
-    // bodies), so requiring `Name` here is not a filter, it is the domain.
+    // ⭐ **identidade -> corpo**, e não mais hash-do-nome (ADR-0164 F1). A frase que este
+    // bloco sempre teve — *"a MESMA chave que o reconcile usa"* — é o que obriga a mudança:
+    // a ponte passou a resolver por [`ph2d_ecs::StableId`], e uma segunda chave aqui faria o
+    // bake e o solver discordarem sobre o que está ligado a quê.
+    //
+    // ⚠️ E o domínio deixou de ser *"corpos NOMEADOS"*: um corpo sem nome tem identidade e
+    // pode estar no grafo. A exigência de `Name` era um artefacto da chave, não do problema.
     let mut name_to_body: BTreeMap<u64, Entity> = BTreeMap::new();
     let mut conducting: BTreeSet<u64> = BTreeSet::new();
-    let mut bodies = world.query::<(Entity, &Name, &RigidBody)>();
-    for (e, name, rb) in bodies.iter(world) {
-        name_to_body.insert(stable_name_id(name.as_str()), e);
+    ph2d_ecs::assign_missing_stable_ids(world);
+    let mut bodies = world.query::<(Entity, &ph2d_ecs::StableId, &RigidBody)>();
+    for (e, sid, rb) in bodies.iter(world) {
+        name_to_body.insert(sid.0, e);
         if carries(rb.kind) {
             conducting.insert(e.to_bits());
         }

@@ -20,6 +20,7 @@ fn y_of(sim: &mut SimWorld, name: &str) -> f32 {
 fn probe_smoke_63() {
     let mut sim = SimWorld::new();
     build_composition(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Geared", "Plain"]
         .iter()
@@ -71,6 +72,7 @@ fn probe_smoke_63_floor() {
     fn scene() -> (SimWorld, PhysicsBridge) {
         let mut sim = SimWorld::new();
         build_composition(sim.world_mut());
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         let mut bridge = PhysicsBridge::new();
         bridge.dispatch(&mut sim, false, 0);
         (sim, bridge)
@@ -154,6 +156,7 @@ fn probe_smoke_63_floor() {
 fn the_composition_scene_says_what_happens() {
     let mut sim = SimWorld::new();
     build_composition(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Geared", "Plain"]
         .iter()
@@ -211,6 +214,7 @@ fn the_composition_scene_says_what_happens() {
 fn the_counterweight_never_reaches_its_drum() {
     let mut sim = SimWorld::new();
     build_composition(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let mut lowest = f32::INFINITY;
     let mut highest = f32::NEG_INFINITY;
@@ -263,6 +267,7 @@ fn the_counterweight_never_reaches_its_drum() {
 fn the_scene_fits_the_frame_it_sets() {
     let mut sim = SimWorld::new();
     build_composition(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let (top, bottom) = (
         CAMERA_CENTRE[1] + CAMERA_HEIGHT * 0.5,
         CAMERA_CENTRE[1] - CAMERA_HEIGHT * 0.5,
@@ -338,6 +343,7 @@ fn the_composition_scene_survives_the_floors_two_gestures() {
     fn scene() -> (SimWorld, PhysicsBridge) {
         let mut sim = SimWorld::new();
         build_composition(sim.world_mut());
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         let mut bridge = PhysicsBridge::new();
         bridge.dispatch(&mut sim, false, 0);
         (sim, bridge)

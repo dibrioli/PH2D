@@ -297,6 +297,24 @@ impl crate::App {
                 .unwrap_or_default();
             counter.reconcile_at_least(stable_id_seed);
             gfx.sim.world_mut().insert_resource(counter);
+            // ⭐ **E as referências da física passam a apontar por IDENTIDADE** (ADR-0164 F1).
+            //
+            // Um ficheiro v95 guarda `body_a = hash(nome)`; a ponte, desde esta wave, resolve
+            // por `StableId`. Sem esta tradução um projeto antigo abriria com **todas as
+            // juntas soltas** — a cena apareceria certa e nada prenderia.
+            //
+            // ⚠️ Só na rota da MIGRAÇÃO: um ficheiro v96 já guarda identidades, e a função é
+            // idempotente de qualquer maneira (um `StableId` é pequeno e sequencial; o mapa só
+            // tem hashes FNV-1a, que são grandes).
+            if migrated_counter.is_some() {
+                let n = ph2d_physics_ecs::resolve_body_names(gfx.sim.world_mut());
+                if n.total() > 0 {
+                    eprintln!(
+                        "[proj] migracao: {} junta(s) e {} roldana(s) passaram a apontar por identidade",
+                        n.joints, n.wheels
+                    );
+                }
+            }
         }
         // **OS PIXELS PRÓPRIOS** (plano `docs/Sprite_projeto/17` §3) — depois do mundo, porque é
         // pelo `SpritePixels` (que viaja no snapshot) que cada sprite reencontra os bytes que

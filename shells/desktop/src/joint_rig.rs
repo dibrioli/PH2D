@@ -19,8 +19,10 @@
 
 use std::collections::BTreeSet;
 
+#[cfg(test)]
+use ph2d_ecs::Name;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, World, stable_name_id};
+use ph2d_ecs::{Entity, SimWorld, Transform, World};
 use ph2d_physics_ecs::{JointKind, PhysicsJoint, RigidBody, rig_edges, subtree_parts};
 
 /// O que um clique em *Rig* faria — contado ANTES de fazer, porque o rótulo do
@@ -193,11 +195,13 @@ const fn pair_key(a: u64, b: u64) -> (u64, u64) {
     if a <= b { (a, b) } else { (b, a) }
 }
 
+/// A identidade de `e` — a chave por que um joint o nomeia (ADR-0164 F1).
+///
+/// ⚠️ Era o **hash do nome**, e por isso o rig tratava um corpo sem nome como inexistente
+/// (`filter(|n| !n.as_str().is_empty())`). Com identidade essa condição desapareceu: todo
+/// objeto tem id, com ou sem nome. O `None` fica para a entidade que já não existe.
 fn name_id(world: &World, e: Entity) -> Option<u64> {
-    world
-        .get::<Name>(e)
-        .filter(|n| !n.as_str().is_empty())
-        .map(|n| stable_name_id(n.as_str()))
+    world.get::<ph2d_ecs::StableId>(e).map(|s| s.0)
 }
 
 #[cfg(test)]

@@ -29,6 +29,7 @@ fn entity_of(sim: &mut SimWorld, name: &str) -> Entity {
 fn probe_smoke_62() {
     let mut sim = SimWorld::new();
     build_differential(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Diff", "Plain"]
         .iter()
@@ -63,6 +64,7 @@ fn probe_smoke_62() {
 fn the_differential_scene_says_what_happens() {
     let mut sim = SimWorld::new();
     build_differential(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Diff", "Plain"]
         .iter()
@@ -104,6 +106,7 @@ fn typing_an_out_radius_turns_a_plain_wheel_into_a_drum() {
     let travel = |out: f32| {
         let mut sim = SimWorld::new();
         build_differential(sim.world_mut());
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         let drum = entity_of(&mut sim, "Plain Rope Drum");
         // A porta pura que o painel alcança — a mesma que a row do Inspector usa.
         let current = *sim
@@ -151,6 +154,7 @@ fn typing_an_out_radius_turns_a_plain_wheel_into_a_drum() {
 fn the_scene_fits_the_frame_it_sets() {
     let mut sim = SimWorld::new();
     build_differential(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let worst = crate::physics_smoke_pulley::outside_frame(
         sim.world_mut(),
         CAMERA_CENTRE,

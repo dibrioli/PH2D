@@ -135,6 +135,7 @@ fn tackle(world: &mut World, tag: &str, x: f32, mounted: bool, rgba: [f32; 4]) {
         },
         Transform::from_translation(Vec2::new(x + SPAN, BOOM_Y)),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// **Quanto o bloco da TALHA anda em 2 s**, metros — ele fica onde está: dois

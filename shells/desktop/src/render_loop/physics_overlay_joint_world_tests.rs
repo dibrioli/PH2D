@@ -277,6 +277,7 @@ fn probe_world_pin_two_handles() {
         ))
         .id();
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let show = |sim: &SimWorld, bridge: &PhysicsBridge, tag: &str| {
         let j = sim.world().get::<PhysicsJoint>(pin).unwrap();
@@ -349,6 +350,7 @@ fn a_world_pin_is_offered_two_handles_that_start_on_the_same_point() {
         Transform::from_translation(Vec2::new(0.0, 2.0)),
     ));
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
 
     let handles = super::super::point_gizmo::joint_anchor_handles(&sim, &bridge, true);

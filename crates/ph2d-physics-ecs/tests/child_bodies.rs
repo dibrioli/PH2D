@@ -408,6 +408,7 @@ fn a_parented_joint_anchors_where_it_is_drawn() {
     );
 
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, true, 120);
 
     // A pinned plank swings, but its left end stays on the anchor: the pin is a

@@ -54,6 +54,7 @@ fn joint(world: &mut World, name: &str, a: &str, b: &str, kind: JointKind, at: [
         },
         Transform::from_translation(Vec2::new(at[0], at[1])),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// Uma fileira de elos ligados ponta a ponta, autorada da ESQUERDA para a

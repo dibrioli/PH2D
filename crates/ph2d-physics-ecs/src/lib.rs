@@ -22,6 +22,7 @@ pub mod interaction;
 mod joint;
 mod joint_group;
 pub mod joint_tool;
+pub mod name_refs;
 mod parts;
 mod rig;
 mod scale;
@@ -39,6 +40,7 @@ pub use bridge::contacts::{
 pub use bridge::joint_break::JointBreakEvent;
 pub use bridge::signals::SignalEvent;
 pub use bridge::triggers::TriggerEvent;
+pub use name_refs::{ResolvedRefs, resolve_body_names};
 // O par de números que um readout de joint mostra. Re-exportado porque a shell
 // não depende de `ph2d-physics` direto.
 pub use bridge::Launch;

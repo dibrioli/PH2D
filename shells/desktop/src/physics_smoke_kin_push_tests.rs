@@ -12,6 +12,7 @@ use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
 fn scene() -> (SimWorld, PhysicsBridge) {
     let mut sim = SimWorld::new();
     build(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     (sim, PhysicsBridge::new())
 }
 
@@ -154,6 +155,7 @@ fn the_knob_turns_the_channel_off_for_snap_only() {
     fn travel(push: f32) -> (f32, f32) {
         let mut sim = SimWorld::new();
         build(sim.world_mut());
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         for tag in ["Snap", "Spring"] {
             let e = named(&sim, tag);
             let mut ent = sim.world_mut().entity_mut(e);

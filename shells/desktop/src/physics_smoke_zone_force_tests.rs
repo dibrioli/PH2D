@@ -23,6 +23,7 @@ use ph2d_physics_ecs::{AreaEffector, PhysicsBridge, PhysicsSettings, PlayerInput
 fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
     build_zone_force_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     bridge.set_settings(PhysicsSettings {
         gravity_y: 0.0,
@@ -89,6 +90,7 @@ fn probe_smoke_106() {
 fn the_four_subjects_differ_only_in_the_mode() {
     let mut sim = SimWorld::new();
     build_zone_force_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let world = sim.world();
 
     let mut shapes = Vec::new();
@@ -275,6 +277,7 @@ fn the_message_is_honest_about_walking_against_the_current() {
 fn walked_x(drive: f32, force: f32) -> f32 {
     let mut sim = SimWorld::new();
     build_zone_force_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     if (force - FORCE).abs() > f32::EPSILON {
         let zone = {
             let mut q = sim

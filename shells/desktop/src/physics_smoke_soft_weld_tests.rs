@@ -11,6 +11,7 @@ fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
     crate::physics_smoke::spawn_floor(sim.world_mut());
     build_soft_weld(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let ticks = (secs * 60.0) as u64;
     for t in 0..=ticks {
@@ -61,6 +62,7 @@ fn probe_smoke_68() {
     let mut sim = SimWorld::new();
     crate::physics_smoke::spawn_floor(sim.world_mut());
     build_soft_weld(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let mut peak = 0.0f32;
     for t in 0..=600u64 {
@@ -130,6 +132,7 @@ fn the_impact_lane_bends_far_and_springs_back() {
     let mut sim = SimWorld::new();
     crate::physics_smoke::spawn_floor(sim.world_mut());
     build_soft_weld(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let mut peak = 0.0f32;
     for t in 0..=600u64 {

@@ -396,13 +396,16 @@ pub fn rope_joint_of(
     if rope == 0 {
         return None;
     }
+    // ⚠️ Pela IDENTIDADE (ADR-0164 F1) — era o hash do NOME, e por isso renomear uma corda
+    // fazia as roldanas dela deixarem de a achar: o `L0` não era reaberto, a rota crescia sob
+    // um comprimento parado, e o solver comia a diferença num tique.
     let mut q = world.query::<(
         bevy_ecs::entity::Entity,
-        &ph2d_ecs::Name,
+        &ph2d_ecs::StableId,
         &crate::PhysicsJoint,
     )>();
     q.iter(world)
-        .find(|(_, n, _)| ph2d_ecs::stable_name_id(n.as_str()) == rope)
+        .find(|(_, s, _)| s.0 == rope)
         .map(|(e, _, _)| e)
 }
 

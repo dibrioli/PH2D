@@ -116,6 +116,7 @@ fn breaker(
         },
         Transform::from_translation(Vec2::new(x, BOOM_Y)),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// **Quanto a carga do rig VERDE anda em 2 s**, metros — ela fica onde está,

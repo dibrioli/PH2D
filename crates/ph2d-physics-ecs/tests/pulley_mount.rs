@@ -63,6 +63,7 @@ fn rig(mount: &str) -> SimWorld {
         // convertido* — a fixture não conteria o fenômeno que ela mede.
         Transform::from_translation(Vec2::new(0.25, 2.4)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 

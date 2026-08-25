@@ -77,6 +77,7 @@ fn spring_scene() -> SimWorld {
         },
         Transform::from_translation(Vec2::new(0.0, 10.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -167,6 +168,7 @@ fn re_speeding_a_motor_mid_play_changes_the_spin() {
     ));
     let mut bridge = PhysicsBridge::new();
     for tick in 1..=200 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, tick);
     }
 

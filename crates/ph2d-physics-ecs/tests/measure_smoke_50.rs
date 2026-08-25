@@ -207,6 +207,7 @@ fn where_the_smoke_50_rigs_settle() {
     let swapped = sim.world().get::<PhysicsJoint>(e).unwrap().swapped();
     *sim.world_mut().get_mut::<PhysicsJoint>(e).unwrap() = swapped;
     for _ in 0..3 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, false, 300);
     }
     println!("\n== Rig C (Swap) ==");

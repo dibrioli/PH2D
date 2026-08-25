@@ -12,6 +12,7 @@ use ph2d_physics_ecs::{IkOptions, PhysicsBridge};
 fn scene() -> (SimWorld, PhysicsBridge) {
     let mut sim = SimWorld::new();
     build_lead_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     bridge.dispatch(&mut sim, false, 0);
     (sim, bridge)

@@ -90,6 +90,7 @@ fn winch(world: &mut World, tag: &str, x: f32, stop: f32, rgba: [f32; 4]) {
         },
         Transform::from_translation(Vec2::new(x, BOOM_Y)),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// Monta a cena.

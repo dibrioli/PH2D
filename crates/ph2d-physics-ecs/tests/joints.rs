@@ -62,6 +62,7 @@ fn pendulum() -> SimWorld {
         },
         Transform::from_translation(Vec2::new(0.0, 5.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -290,14 +291,18 @@ fn a_joint_that_names_only_one_body_is_inert() {
     );
 }
 
-/// **A joint naming a body that is not there goes dormant — and comes back.**
+/// ⭐ **RENOMEAR um corpo já NÃO desliga a junta dele** (ADR-0164 F1).
 ///
-/// Deleting a body (or renaming it) detaches its joints rather than breaking
-/// them; put the name back and the joint re-attaches by itself. This is the
-/// same healing the timeline's bindings get, and it falls out of resolving by
-/// name every frame instead of remembering a handle.
+/// ⚠️ **Este gate pinava o defeito, e a razão que ele dava era exacta:** *"renaming a body must
+/// detach the joint that named it — **the id IS the name**, and pretending otherwise would
+/// leave the joint bound to a body the artist believes they have renamed"*. A premissa
+/// (*"o id É o nome"*) era verdadeira e era o problema: um artista que renomeasse uma peça na
+/// Hierarquia via a corrente cair, sem um aviso.
+///
+/// Hoje a junta guarda o [`ph2d_ecs::StableId`] — resolvido no momento da AUTORIA — e o nome
+/// voltou a ser o que devia ser: um rótulo para humanos. Renomear é só renomear.
 #[test]
-fn a_joint_whose_body_is_renamed_detaches_and_re_attaches() {
+fn renaming_a_body_no_longer_detaches_its_joint() {
     let mut sim = pendulum();
     let mut bridge = PhysicsBridge::new();
     bridge.dispatch(&mut sim, true, 1);
@@ -308,18 +313,20 @@ fn a_joint_whose_body_is_renamed_detaches_and_re_attaches() {
     bridge.dispatch(&mut sim, true, 2);
     assert_eq!(
         bridge.joint_count(),
-        0,
-        "renaming a body must detach the joint that named it — the id IS the \
-         name, and pretending otherwise would leave the joint bound to a body \
-         the artist believes they have renamed"
+        1,
+        "renomear um corpo DESLIGOU a junta dele — o defeito que o StableId cura voltou, e o \
+         artista ve a corrente cair ao editar um nome na Hierarquia"
     );
 
-    *sim.world_mut().get_mut::<Name>(plank).expect("name") = Name::new("Plank");
+    // ⚠️ **E o corpo que DESAPARECE continua a soltar a junta** — é o caso em que soltar é a
+    // resposta certa, e sem esta metade o gate não distinguiria *"passou a ser robusto"* de
+    // *"deixou de reparar em coisa nenhuma"*.
+    sim.world_mut().entity_mut(plank).despawn();
     bridge.dispatch(&mut sim, true, 3);
     assert_eq!(
         bridge.joint_count(),
-        1,
-        "putting the name back must re-attach the joint"
+        0,
+        "um corpo que desaparece tem de soltar a junta que o nomeava"
     );
 }
 
@@ -476,6 +483,7 @@ fn the_chain_hashes_the_same_however_the_archetypes_fall() {
         }
         let mut bridge = PhysicsBridge::new();
         for tick in 1..=120 {
+            ph2d_physics_ecs::resolve_body_names(sim.world_mut());
             bridge.dispatch(&mut sim, true, tick);
         }
         assert_eq!(bridge.joint_count(), 4, "the chain is not fully linked");
@@ -521,6 +529,7 @@ fn a_dormant_joint_does_not_destroy_the_scrub_cache() {
         }
         let mut bridge = PhysicsBridge::new();
         for tick in 1..=200 {
+            ph2d_physics_ecs::resolve_body_names(sim.world_mut());
             bridge.dispatch(&mut sim, true, tick);
         }
         let before = bridge.steps_taken();
@@ -585,6 +594,7 @@ fn a_joint_made_mid_swing_survives_a_reset_unchanged() {
     let mut bridge = PhysicsBridge::new();
     // Let it FALL for a while, so the bodies are nowhere near their rest pose.
     for tick in 1..=40 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, tick);
     }
     // …and only now does the artist join them.
@@ -597,6 +607,9 @@ fn a_joint_made_mid_swing_survives_a_reset_unchanged() {
         },
         Transform::from_translation(Vec2::new(0.0, 5.0)),
     ));
+    // ⚠️ A junta nasceu AGORA, autorada por nome — resolve-se aqui, antes do primeiro
+    // dispatch que a vai ver. O laço acima já resolveu as anteriores; esta é nova.
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     for tick in 41..=140 {
         bridge.dispatch(&mut sim, true, tick);
     }

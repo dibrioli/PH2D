@@ -65,6 +65,7 @@ fn rig() -> SimWorld {
             Transform::from_translation(Vec2::new(x, 6.0)),
         ));
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 

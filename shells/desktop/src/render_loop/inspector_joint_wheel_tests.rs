@@ -115,6 +115,9 @@ fn the_snapshot_names_the_rope_and_only_a_rope_counts() {
         .world_mut()
         .spawn((Name::new("Rope Wheel 1"), wheel(2), Transform::default()))
         .id();
+    // A costura NOME → IDENTIDADE, depois de a cena estar montada (ADR-0164 F1): o `wheel()`
+    // autora `rope` pelo nome, e o produto guarda a identidade.
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let info = build_wheel_info(&mut sim, w.to_bits(), false, false).expect("a roldana tem seção");
     assert!(info.bound);
     assert_eq!(info.rope_name, "Rope");

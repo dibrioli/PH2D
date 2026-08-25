@@ -9,6 +9,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
     build_rafts(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let ticks = (secs * 60.0) as u64;
     for t in 0..=ticks {

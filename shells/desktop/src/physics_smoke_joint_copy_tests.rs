@@ -25,6 +25,8 @@ fn angle_deg(sim: &mut SimWorld, name: &str) -> f32 {
 fn run(paste_onto_the_rest: bool) -> [f32; 4] {
     let mut sim = SimWorld::new();
     build_joint_copy(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     if paste_onto_the_rest {
         // O paste, pela PORTA — a mesma que o botão da §12 usa. Um paste
         // simulado com um `limits_enabled = true` escrito à mão provaria que a

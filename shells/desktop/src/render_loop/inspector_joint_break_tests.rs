@@ -215,6 +215,7 @@ fn the_toast_names_the_joint_and_the_load_it_broke_at() {
     let mut bridge = PhysicsBridge::default();
     let mut said = Vec::new();
     for t in 1..=90 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, true, t);
         said.extend(super::physics_bridge::break_reports(&bridge, &sim));
     }

@@ -57,6 +57,7 @@ fn hanging(marked: bool) -> (SimWorld, Entity) {
     if marked {
         sim.world_mut().entity_mut(joint).insert(JointWorldAnchor);
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     (sim, joint)
 }
 

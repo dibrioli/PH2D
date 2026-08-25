@@ -84,6 +84,7 @@ fn rig(kind: JointKind, stiffness: f32, limits: Option<[f32; 2]>) -> SimWorld {
         },
         t,
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 

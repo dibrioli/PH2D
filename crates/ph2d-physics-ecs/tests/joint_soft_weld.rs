@@ -55,6 +55,7 @@ fn cantilever(kind: JointKind, soft: bool) -> SimWorld {
         },
         Transform::from_translation(Vec2::new(0.0, 5.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 

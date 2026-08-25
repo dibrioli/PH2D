@@ -12,6 +12,8 @@ const DT: f64 = 1.0 / 60.0;
 fn staged() -> (SimWorld, TimelineDoc, [Entity; 4], PhysicsBridge) {
     let mut sim = SimWorld::new();
     let joints = build_joint_anim_scene(sim.world_mut());
+    // A costura NOME → IDENTIDADE (ADR-0164 F1) — o roteador das cenas fá-la no produto.
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut doc = TimelineDoc::new();
     author_joint_anim_tracks(&mut doc, joints);
     (sim, doc, joints, PhysicsBridge::new())

@@ -34,7 +34,7 @@
 //! unchanged), so it never re-describes and never churns the checkpoint ring —
 //! only a genuine edit does (gate `an_unedited_joint_does_not_churn_the_scrub_cache`).
 
-use ph2d_ecs::{Entity, Name, SimWorld, stable_name_id};
+use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics::world::pulley::PulleyDesc;
 use ph2d_physics::world::rope_route;
 use ph2d_physics::{ImpulseJointHandle, JointDesc, PhysicsWorld, RigidBodyHandle};
@@ -146,10 +146,22 @@ impl PhysicsBridge {
         // `self.bodies` rather than from a second world query: a joint may only
         // name something that is actually a body, and this way that is true by
         // construction instead of by a check someone has to remember.
+        // ⭐ **A chave é o `StableId`, não o hash do NOME** (ADR-0164 F1).
+        //
+        // Enquanto era o hash do nome, esta reconstrução por dispatch era também a porta pela
+        // qual **renomear um corpo desligava a junta dele** — o hash mudava e o `get` deixava
+        // de achar, sem um aviso. E era por isso que a junta de uma CÓPIA prendia os corpos do
+        // MESTRE: a cópia recebe o nome `" (1)"`, o hash muda, e a junta copiada continua a
+        // nomear o original.
+        //
+        // ⚠️ O mapa continua a ser reconstruído por dispatch, e continua a sair só dos corpos
+        // que esta ponte segura — a razão escrita acima não mudou (*"uma junta só pode nomear
+        // algo que é de facto um corpo, e assim isso é verdade por construção"*). O que mudou
+        // é a chave: uma identidade em vez de um hash de texto editável.
         self.names.clear();
         for &e in self.bodies.keys() {
-            if let Some(n) = world.get::<Name>(e) {
-                self.names.insert(stable_name_id(n.as_str()), e);
+            if let Some(s) = world.get::<ph2d_ecs::StableId>(e) {
+                self.names.insert(s.0, e);
             }
         }
 
@@ -310,9 +322,10 @@ impl PhysicsBridge {
                     // A corda é apontada pelo NOME dela, que é a mesma chave
                     // por que ela aponta os corpos. Uma corda sem nome não pode
                     // ser apontada — e uma roldana com `rope: 0` não aponta nada.
-                    let rope = world
-                        .get::<Name>(e)
-                        .map_or(0, |n| stable_name_id(n.as_str()));
+                    // A corda é apontada pela IDENTIDADE dela — a mesma chave por que ela
+                    // aponta os corpos (ADR-0164 F1). Uma corda sem identidade não pode ser
+                    // apontada, e uma roldana com `rope: 0` não aponta nada.
+                    let rope = world.get::<ph2d_ecs::StableId>(e).map_or(0, |s| s.0);
                     let start = self.pulley_wheels_to_install.len() as u32;
                     let first = self.rope_wheels.partition_point(|r| r.rope < rope);
                     // A taxa da corda é a SOMA das taxas dos tambores dela (§6 do

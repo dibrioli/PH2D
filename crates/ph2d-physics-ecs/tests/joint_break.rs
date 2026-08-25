@@ -51,6 +51,7 @@ fn rig(joint: PhysicsJoint, mass: f32) -> SimWorld {
         },
         Transform::from_translation(Vec2::new(0.0, 6.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -476,6 +477,7 @@ fn chain_probe(link_mass: f32, anvil: f32, spacing: f32, rating: f32) {
     let mut b = PhysicsBridge::default();
     let mut broke: Vec<String> = Vec::new();
     for t in 1..=180 {
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         b.dispatch(&mut sim, true, t);
         for e in b.joint_breaks() {
             let name = sim

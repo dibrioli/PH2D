@@ -57,6 +57,7 @@ fn rig() -> (SimWorld, PhysicsBridge, Entity, Entity) {
         Transform::from_translation(Vec2::new(0.0, 6.0)),
     ));
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let named = |sim: &mut SimWorld, n: &str| {
         let mut q = sim.world_mut().query::<(Entity, &Name)>();

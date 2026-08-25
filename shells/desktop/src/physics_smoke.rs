@@ -222,6 +222,25 @@ impl crate::App {
             "119" => self.physics_smoke_brink(),
             _ => self.physics_smoke_drop(),
         }
+        // ⭐ **A resolução NOME → IDENTIDADE, uma vez, para TODA cena** (ADR-0164 F1).
+        //
+        // As cenas autoram uma junta escrevendo *"prende ao Poste"* (`stable_name_id("Post")`)
+        // — que é a forma legível e a que um humano quer escrever. A ponte da física, desde
+        // esta wave, resolve por `StableId`. Esta chamada é a costura entre as duas.
+        //
+        // ⚠️ **AQUI e não em cada cena, e a diferença é o modo de falha.** São 35 cenas; uma
+        // que esquecesse a chamada guardaria um hash onde a ponte espera uma identidade, a
+        // junta **não prenderia, e nada avisaria** — o defeito calado que esta linha inteira
+        // existe para tornar impossível. Num roteador, esquecer não é uma opção.
+        if let Some(gfx) = self.gfx.as_mut() {
+            let n = ph2d_physics_ecs::resolve_body_names(gfx.sim.world_mut());
+            if n.total() > 0 {
+                eprintln!(
+                    "[physics-smoke] {} junta(s) e {} roldana(s) passaram a apontar por identidade",
+                    n.joints, n.wheels
+                );
+            }
+        }
 
         // Play so the bridge steps the world forward — except in the scenes
         // that must sit STILL until the artist has done something. Scene 3

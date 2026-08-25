@@ -9,6 +9,7 @@ fn run(secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
     crate::physics_smoke::spawn_floor(sim.world_mut());
     build_compound(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let ticks = (secs * 60.0) as u64;
     for t in 0..=ticks {

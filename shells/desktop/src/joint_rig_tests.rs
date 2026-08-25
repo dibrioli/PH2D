@@ -166,9 +166,15 @@ fn a_group_gets_no_body_and_the_grandchild_joins_the_grandparent() {
     let pairs = joint_pairs(&mut sim);
     assert_eq!(
         pairs,
-        vec![(stable_name_id("Torso"), stable_name_id("ArmL"))],
+        vec![(id_of(&mut sim, "Torso"), id_of(&mut sim, "ArmL"))],
         "o joint não pulou o grupo"
     );
+}
+
+/// A IDENTIDADE do objeto chamado `name` (ADR-0164 F1) — o que um joint guarda desde a F1.
+/// Era o hash do nome, e por isso estas asserções passavam mesmo com o objeto trocado.
+fn id_of(sim: &mut ph2d_ecs::SimWorld, name: &str) -> u64 {
+    ph2d_ecs::stable_id_for_name(sim.world_mut(), name)
 }
 
 /// **O PAI é o lado A.** O filho pende do pai, e é o lado A que o pivô segue
@@ -177,7 +183,7 @@ fn a_group_gets_no_body_and_the_grandchild_joins_the_grandparent() {
 fn the_parent_is_body_a() {
     let (mut sim, torso) = doll();
     rig(&mut sim, torso);
-    let t = stable_name_id("Torso");
+    let t = id_of(&mut sim, "Torso");
     for (a, _b) in joint_pairs(&mut sim) {
         assert_eq!(a, t, "um joint nasceu com o filho no lado A");
     }

@@ -115,6 +115,7 @@ fn lane(world: &mut World, i: usize, name: &str, soft: bool, tint: [f32; 4]) {
         },
         Transform::from_translation(Vec2::new(x, ARM_Y)),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 pub(crate) fn build_soft_weld(world: &mut World) {

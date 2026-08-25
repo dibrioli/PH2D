@@ -7,6 +7,7 @@ use ph2d_physics_ecs::{PhysicsBridge, PulleyWheel, WrapSide};
 fn run(ticks: u64) -> (SimWorld, PhysicsBridge) {
     let mut sim = SimWorld::new();
     build(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     for t in 1..=ticks {
         bridge.dispatch(&mut sim, false, t);
@@ -139,6 +140,7 @@ fn probe_wrap_58() {
     for wrap in [WrapSide::Auto, WrapSide::Over, WrapSide::Under] {
         let mut sim = SimWorld::new();
         build(sim.world_mut());
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         {
             let mut q = sim.world_mut().query::<(&Name, &mut PulleyWheel)>();
             for (n, mut w) in q.iter_mut(sim.world_mut()) {
@@ -170,6 +172,7 @@ fn probe_wrap_58() {
 fn probe_smoke_59() {
     let mut sim = SimWorld::new();
     build_winch(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Hoist", "Lower", "Gear Big", "Gear Small"]
         .iter()
@@ -213,6 +216,7 @@ fn probe_smoke_59() {
 fn the_winch_scene_states_the_numbers_the_sim_produces() {
     let mut sim = SimWorld::new();
     build_winch(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Hoist", "Lower", "Gear Big", "Gear Small"]
         .iter()

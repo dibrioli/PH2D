@@ -22,6 +22,7 @@ fn run(secs: f32, drive: f32) -> SimWorld {
 fn run_walking(secs: f32, drive: f32, walk_secs: f32) -> SimWorld {
     let mut sim = SimWorld::new();
     build_reaction_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let players: Vec<Entity> = {
         let mut q = sim.world_mut().query::<(Entity, &Name)>();
         q.iter(sim.world())

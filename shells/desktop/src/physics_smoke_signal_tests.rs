@@ -8,6 +8,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 fn fired(secs: f32) -> Vec<String> {
     let mut sim = SimWorld::new();
     build_signal_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let mut out = Vec::new();
     for t in 0..=(secs * 60.0) as u64 {

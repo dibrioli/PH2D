@@ -67,6 +67,7 @@ fn rig() -> SimWorld {
             Transform::from_translation(Vec2::new(x, 6.0)),
         ));
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -128,6 +129,7 @@ fn measure_which_gestures_move_the_route_behind_the_doors_back() {
     println!("\n=== 0. CONTROLE: ninguém tocou em nada ===");
     let mut sim = rig();
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     report("controle", &mut sim, &mut bridge);
 

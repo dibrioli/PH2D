@@ -78,6 +78,7 @@ fn rig() -> SimWorld {
             Transform::from_translation(Vec2::new(x, 6.0)),
         ));
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -145,6 +146,7 @@ fn add_third_wheel(sim: &mut SimWorld, radius: f32) {
         },
         Transform::from_translation(Vec2::new(0.0, 6.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
 }
 
 /// **Nenhum gesto que CRESCE a rota deixa a corda violada.**

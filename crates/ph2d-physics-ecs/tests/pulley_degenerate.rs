@@ -71,6 +71,7 @@ fn rig() -> SimWorld {
             Transform::from_translation(Vec2::new(x, 6.0)),
         ));
     }
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -271,6 +272,7 @@ fn the_sim_cannot_pull_an_anchor_into_a_wheel() {
     }
 
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let mut closest = f32::INFINITY;
     let mut ever_degenerate = false;

@@ -129,6 +129,7 @@ fn changing_the_kind_re_seeds_the_anchor() {
 
     // Seed the anchors: the first reconcile flips `anchored` to true.
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     assert!(
         sim.world().get::<PhysicsJoint>(joint).unwrap().anchored,
@@ -358,14 +359,11 @@ fn a_pulley_is_rigged_by_both_creation_routes() {
         )
         .expect("join");
         let mut bridge = PhysicsBridge::new();
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         bridge.dispatch(&mut sim, false, 1);
         let j = *sim.world().get::<PhysicsJoint>(joint).expect("joint");
-        let rope_id = ph2d_ecs::stable_name_id(
-            sim.world()
-                .get::<ph2d_ecs::Name>(joint)
-                .expect("a corda tem nome")
-                .as_str(),
-        );
+        // A IDENTIDADE da corda (ADR-0164 F1) — era o hash do nome dela.
+        let rope_id = ph2d_ecs::stable_id_of(sim.world(), joint).map_or(0, |s| s.0);
 
         // 1. As roldanas EXISTEM como objetos — o sintoma, direto: elas eram dois
         //    campos que ficavam em `[0, 0]`, e agora são duas entidades que o
@@ -448,6 +446,7 @@ fn adding_a_wheel_puts_it_on_the_rope() {
     )
     .expect("join");
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let before: Vec<_> = bridge.rope_wheels(joint).map(|(_, w)| w).collect();
     assert_eq!(before.len(), 2, "a criação dá duas");

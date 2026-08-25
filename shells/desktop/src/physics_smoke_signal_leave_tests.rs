@@ -10,6 +10,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 fn fired(secs: f32) -> Vec<String> {
     let mut sim = SimWorld::new();
     build_signal_leave_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let mut out = Vec::new();
     for t in 0..=(secs * 60.0) as u64 {
@@ -107,6 +108,7 @@ fn the_half_marked_door_opens_and_never_closes() {
 fn the_scene_builds_the_three_lanes_it_names() {
     let mut sim = SimWorld::new();
     build_signal_leave_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     for name in LANE_NAMES {
         let found = sim
             .world_mut()

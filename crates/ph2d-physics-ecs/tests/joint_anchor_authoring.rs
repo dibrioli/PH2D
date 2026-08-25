@@ -63,6 +63,7 @@ fn rig() -> SimWorld {
         },
         Transform::from_translation(Vec2::new(0.0, 6.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -333,6 +334,7 @@ fn the_bridge_lists_every_joint_entity_including_a_dormant_one() {
         Transform::from_translation(Vec2::new(2.0, 2.0)),
     ));
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
 
     let link = named(&mut sim, "Link");
@@ -382,6 +384,7 @@ fn a_deleted_dormant_joint_leaves_the_published_list() {
         Transform::from_translation(Vec2::new(2.0, 2.0)),
     ));
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let joint = named(&mut sim, "Dangling");
     assert_eq!(bridge.joint_entities(), [joint], "seen but never built");

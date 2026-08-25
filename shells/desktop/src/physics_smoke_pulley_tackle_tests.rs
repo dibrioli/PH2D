@@ -29,6 +29,7 @@ fn entity_of(sim: &mut SimWorld, name: &str) -> Entity {
 fn probe_smoke_61() {
     let mut sim = SimWorld::new();
     build_tackle(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Tackle", "Plain"]
         .iter()
@@ -69,6 +70,7 @@ fn probe_smoke_61() {
 fn the_tackle_scene_says_what_happens() {
     let mut sim = SimWorld::new();
     build_tackle(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Tackle", "Plain"]
         .iter()
@@ -111,6 +113,7 @@ fn the_tackle_scene_says_what_happens() {
 fn the_mount_gesture_leads_somewhere() {
     let mut sim = SimWorld::new();
     build_tackle(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let wheel = entity_of(&mut sim, "Plain Rope Wheel 1");
     let block = entity_of(&mut sim, "Plain Block");
     let read = |sim: &mut SimWorld| {
@@ -125,7 +128,7 @@ fn the_mount_gesture_leads_somewhere() {
     let mounted = read(&mut sim);
     assert_eq!(
         mounted.body,
-        ph2d_ecs::stable_name_id("Plain Block"),
+        ph2d_ecs::stable_id_for_name(sim.world_mut(), "Plain Block"),
         "o conta-gotas tinha de montar a roldana no bloco clicado"
     );
     assert!(
@@ -186,6 +189,7 @@ fn arming_the_mount_pick_writes_nothing() {
 fn the_tackle_scene_offers_the_magnet_it_promises_and_only_where_it_should() {
     let mut sim = SimWorld::new();
     build_tackle(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     bridge.dispatch(&mut sim, false, 0);
 

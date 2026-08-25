@@ -8,7 +8,7 @@
 //! entidade (W-Pulley W1), e a próxima wave da polia (motor, ruptura no centro)
 //! chega aqui, não lá.
 
-use ph2d_ecs::{Entity, Name, stable_name_id};
+use ph2d_ecs::Entity;
 use ph2d_physics::world::pulley::{self, StopLeg};
 use ph2d_physics::world::rope_route::{self, RopeWheel};
 
@@ -26,13 +26,13 @@ pub(super) type WheelQuery = QueryState<(Entity, &'static crate::PulleyWheel, &'
 /// Uma roldana colhida do mundo, com a chave por que ela é ordenada.
 ///
 /// A ordem é `(corda, order autorado, desempate)` e o desempate é o
-/// `stable_name_id` do NOME — nunca os bits da entidade, que são id de ALOCAÇÃO e
+/// **`StableId`** — nunca os bits da entidade, que são id de ALOCAÇÃO e
 /// mudam a cada undo. Duas roldanas com o mesmo `order` na mesma corda são um
 /// empate que o artista criou, e resolvê-lo por algo que o undo embaralha faria a
 /// corda trocar de rota ao desfazer.
 #[derive(Copy, Clone, Debug)]
 pub(super) struct RopeWheelRow {
-    /// `stable_name_id` da corda a que ela pertence.
+    /// O `StableId` da corda a que ela pertence.
     pub(super) rope: u64,
     /// A chave de ordenação dentro da corda.
     pub(super) key: (u16, u64),
@@ -125,9 +125,10 @@ impl PhysicsBridge {
                     let centre = ph2d_physics::PhysicsWorld::world_from_local_at_pose(rest, local);
                     (b.handle, local, centre)
                 });
-            let name_id = world
-                .get::<Name>(we)
-                .map_or(0, |n| stable_name_id(n.as_str()));
+            // A IDENTIDADE da roldana (ADR-0164 F1) — o desempate que a doc-comment do
+            // `RopeWheelRow` descreve. Era o hash do nome; renomear uma roldana reordenava-a
+            // dentro da corda, o que é a mesma classe de defeito que a junta que se desliga.
+            let name_id = world.get::<ph2d_ecs::StableId>(we).map_or(0, |s| s.0);
             // **A talha de WESTON (W-Weston):** este eixo é atravessado DUAS vezes,
             // com o que houver no meio abraçado pelos dois contatos.
             //

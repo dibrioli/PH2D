@@ -48,6 +48,8 @@ fn chain() -> (SimWorld, Entity) {
     };
     pin(&mut sim, "J0", "Hook", "L1", 0.5);
     pin(&mut sim, "J1", "L1", "L2", 1.5);
+    // A costura NOME → IDENTIDADE, depois de a cena estar montada (ADR-0164 F1).
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut q = sim.world_mut().query::<(Entity, &Name)>();
     let l2 = q
         .iter(sim.world())

@@ -55,6 +55,7 @@ fn joint(sim: &mut SimWorld, a: &str, b: &str, kind: JointKind, at: f32) {
         },
         Transform::from_translation(Vec2::new(at, 0.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
 }
 
 /// Três elos de 1 m **SOLDADOS** ponta a ponta, sem parede — a peça rígida vai

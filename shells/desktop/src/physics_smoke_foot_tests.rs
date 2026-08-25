@@ -9,6 +9,7 @@ use ph2d_physics_ecs::PhysicsBridge;
 fn run(secs: f32) -> (SimWorld, PhysicsBridge) {
     let mut sim = SimWorld::new();
     build_characters(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let ticks = (secs * 60.0) as u64;
     for t in 0..=ticks {
@@ -128,6 +129,7 @@ fn a_solid_foot_props_the_torso_up_by_its_own_height() {
 
     let mut sim = SimWorld::new();
     build_characters(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let f = foot(&mut sim, 0);
     sim.world_mut()
         .get_mut::<Collider>(f)

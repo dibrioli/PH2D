@@ -99,6 +99,7 @@ fn gate(world: &mut World, i: usize, tune: bool) {
         // A âncora na ponta ESQUERDA do portão: o pivô fica onde se vê.
         Transform::from_translation(Vec2::new(x - HALF_W, ANCHOR_Y)),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 pub(crate) fn build_joint_copy(world: &mut World) {

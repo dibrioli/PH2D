@@ -61,6 +61,7 @@ fn pin(world: &mut World, name: &str, a: &str, b: &str, at: [f32; 2], limits: Op
         Name::new(name),
         j,
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// As duas estações. A MESMA construção que a sonda headless mede.

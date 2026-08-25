@@ -9,7 +9,7 @@
 
 use super::inspector_ordering::queue_set;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
+use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_editor::{InspectorWheelInfo, WheelFieldEdit};
 use ph2d_physics_ecs::PhysicsBridge;
 
@@ -18,11 +18,8 @@ const WHEEL: &str = "ph2d::physics::PulleyWheel";
 
 /// Quantas roldanas apontam para esta corda, no mundo AUTORADO.
 pub(crate) fn rope_wheel_count(sim: &mut SimWorld, joint: Entity) -> u32 {
-    let Some(rope) = sim
-        .world()
-        .get::<Name>(joint)
-        .map(|n| stable_name_id(n.as_str()))
-    else {
+    // A corda é apontada pela IDENTIDADE dela (ADR-0164 F1), não pelo hash do nome.
+    let Some(rope) = ph2d_ecs::stable_id_of(sim.world(), joint).map(|s| s.0) else {
         return 0;
     };
     let mut q = sim.world_mut().query::<&ph2d_physics_ecs::PulleyWheel>();
@@ -54,7 +51,8 @@ pub(crate) fn add_pulley_wheel(sim: &mut SimWorld, physics: &PhysicsBridge, join
     else {
         return;
     };
-    let rope = stable_name_id(&name);
+    // A IDENTIDADE da corda — o que a roldana guarda desde a F1.
+    let rope = ph2d_ecs::stable_id_of(sim.world(), joint).map_or(0, |s| s.0);
     let Some(v) = physics.joint_views().find(|v| v.entity == joint) else {
         return;
     };
@@ -117,15 +115,18 @@ pub(crate) fn build_wheel_info(
     // ⚠️ Exige um `RigidBody`, não só um nome que bate — uma roldana montada num
     // sprite sem corpo não está montada em coisa alguma, e mostrar o nome dele
     // seria a mesma mentira que o `bound` da corda existe para não contar.
+    // ⚠️ A busca é pela IDENTIDADE e o resultado é o NOME: o documento guarda id, o painel
+    // mostra nome. Era o contrário — guardava nome e comparava hash —, e por isso renomear
+    // um corpo fazia a roldana perder o ponto de montagem.
     let mut mq = sim
         .world_mut()
-        .query::<(&Name, &ph2d_physics_ecs::RigidBody)>();
+        .query::<(&Name, &ph2d_physics_ecs::RigidBody, &ph2d_ecs::StableId)>();
     let mount_name = if wheel.body == 0 {
         String::new()
     } else {
         mq.iter(sim.world())
-            .find(|(n, _)| stable_name_id(n.as_str()) == wheel.body)
-            .map(|(n, _)| n.as_str().to_string())
+            .find(|(_, _, s)| s.0 == wheel.body)
+            .map(|(n, _, _)| n.as_str().to_string())
             .unwrap_or_default()
     };
     // A corda a que ela pertence, resolvida do HASH para o nome. ⚠️ Exige um
@@ -133,12 +134,12 @@ pub(crate) fn build_wheel_info(
     // o nome for o de uma CORDA, e um sprite homônimo não a põe em lugar nenhum.
     let mut q = sim
         .world_mut()
-        .query::<(&Name, &ph2d_physics_ecs::PhysicsJoint)>();
+        .query::<(&Name, &ph2d_physics_ecs::PhysicsJoint, &ph2d_ecs::StableId)>();
     let world = sim.world();
     let rope_name = q
         .iter(world)
-        .find(|(n, _)| stable_name_id(n.as_str()) == wheel.rope)
-        .map(|(n, _)| n.as_str().to_string())
+        .find(|(_, _, s)| s.0 == wheel.rope)
+        .map(|(n, _, _)| n.as_str().to_string())
         .unwrap_or_default();
     // **A talha de WESTON e o que ela COMPROU** (W-Weston).
     //
@@ -308,12 +309,18 @@ pub(crate) fn set_wheel_mount(sim: &mut SimWorld, wheel_bits: u64, body: Entity)
             n
         }
     };
+    // ⚠️ O `name` acima continua a ser garantido (uma roldana montada num corpo sem nome
+    // seria ilegível na Hierarquia), mas o que se GUARDA é a identidade — pela entidade que
+    // este sítio já tem em mãos, sem passar pelo nome.
+    let _ = &name;
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let id_for_name = ph2d_ecs::stable_id_of(sim.world(), body).map_or(0, |s| s.0);
     let entity = Entity::from_bits(wheel_bits);
     if let Some(mut w) = sim
         .world_mut()
         .get_mut::<ph2d_physics_ecs::PulleyWheel>(entity)
     {
-        w.body = stable_name_id(&name);
+        w.body = id_for_name;
         w.local = [0.0, 0.0];
         w.mounted = false;
     }
@@ -351,6 +358,11 @@ pub(crate) fn set_wheel_rope(sim: &mut SimWorld, wheel_bits: u64, rope: Entity) 
             n
         }
     };
+    // ⚠️ O `name` acima continua garantido (uma corda sem nome é ilegível na Hierarquia), mas
+    // o que se GUARDA é a identidade — pela entidade, sem passar pelo nome.
+    let _ = &name;
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let id_for_name = ph2d_ecs::stable_id_of(sim.world(), rope).map_or(0, |s| s.0);
     let entity = Entity::from_bits(wheel_bits);
     {
         let Some(mut w) = sim
@@ -359,7 +371,7 @@ pub(crate) fn set_wheel_rope(sim: &mut SimWorld, wheel_bits: u64, rope: Entity) 
         else {
             return false;
         };
-        w.rope = stable_name_id(&name);
+        w.rope = id_for_name;
         // O empréstimo do componente sai de escopo aqui — a re-abertura do `L0` precisa
         // do `&mut World` de novo.
     }
@@ -380,7 +392,9 @@ mod rope_pick_tests {
             .spawn((
                 Name::new("Wheel"),
                 ph2d_physics_ecs::PulleyWheel {
-                    rope: stable_name_id("Old Rope"),
+                    // Autorada por NOME e resolvida no fim do `rig` — a mesma costura que
+                    // o roteador das cenas de smoke usa.
+                    rope: ph2d_ecs::stable_name_id("Old Rope"),
                     radius: 0.3,
                     ..Default::default()
                 },
@@ -408,6 +422,10 @@ mod rope_pick_tests {
                 Transform::default(),
             ))
             .id();
+        // ⚠️ A resolução NOME → IDENTIDADE, no fim do rig — a mesma costura que o roteador
+        // das cenas de smoke faz para todas elas de uma vez. Sem ela a roldana guardaria um
+        // hash onde o produto guarda um id.
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
         (sim, wheel.to_bits(), rope, pin)
     }
 
@@ -433,8 +451,9 @@ mod rope_pick_tests {
             .expect("a roldana vive");
         assert_eq!(
             w.rope,
-            stable_name_id("New Rope"),
-            "a roldana tinha de citar a corda NOVA pelo nome"
+            ph2d_ecs::stable_id_of(sim.world(), rope).map_or(0, |s| s.0),
+            "a roldana tinha de citar a corda NOVA pela IDENTIDADE dela (ADR-0164 F1) — era \
+             pelo nome, e por isso renomear uma corda soltava as roldanas dela"
         );
         assert!(
             !sim.world()
@@ -451,6 +470,14 @@ mod rope_pick_tests {
     #[test]
     fn picking_a_non_pulley_is_refused() {
         let (mut sim, wheel, _, pin) = rig();
+        // ⚠️ O valor ANTES do gesto, seja ele qual for. A roldana do rig aponta para uma
+        // corda que não existe (`"Old Rope"` não é spawnada) — de propósito: o que este gate
+        // mede é que a RECUSA não escreve, e não qual é o valor.
+        let before = sim
+            .world()
+            .get::<ph2d_physics_ecs::PulleyWheel>(Entity::from_bits(wheel))
+            .expect("vive")
+            .rope;
         assert!(
             !set_wheel_rope(&mut sim, wheel, pin),
             "um Pin não é uma corda"
@@ -460,7 +487,7 @@ mod rope_pick_tests {
                 .get::<ph2d_physics_ecs::PulleyWheel>(Entity::from_bits(wheel))
                 .expect("vive")
                 .rope,
-            stable_name_id("Old Rope"),
+            before,
             "a recusa não pode ter mexido na corda que ela já tinha"
         );
     }

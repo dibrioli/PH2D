@@ -99,6 +99,7 @@ fn wheel(world: &mut World, rope: &str, order: u16, x: f32, y: f32, radius: f32)
         },
         Transform::from_translation(Vec2::new(x, y)),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// Um rig: carga + contrapeso + a corda que os une + as roldanas dela.
@@ -151,6 +152,7 @@ fn rig(world: &mut World, tag: &str, centre: f32, rgba: [f32; 4], zigzag: bool) 
         // Duas roldanas de tamanhos DIFERENTES — é o diâmetro que se vê.
         wheel(world, &rope, 0, centre - SPAN / 2.0, top, 0.45);
         wheel(world, &rope, 1, centre + SPAN / 2.0, top, 0.18);
+        ph2d_physics_ecs::resolve_body_names(world);
     }
 }
 
@@ -363,6 +365,7 @@ fn winch(world: &mut World, tag: &str, x: f32, radius: f32, omega_deg: f32, rgba
         },
         Transform::from_translation(Vec2::new(x, BOOM_Y)),
     ));
+    ph2d_physics_ecs::resolve_body_names(world);
 }
 
 /// **Quanto o gancho AZUL sobe em 2 s**, metros — `ω·r` com `ω = 60°/s` e

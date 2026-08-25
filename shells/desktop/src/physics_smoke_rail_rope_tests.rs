@@ -20,6 +20,7 @@ fn head(sim: &mut SimWorld, lane: usize) -> Entity {
 fn drag(lane: usize, dir: [f32; 2], d: f32) -> Vec<f32> {
     let mut sim = SimWorld::new();
     build_rail_rope_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut b = PhysicsBridge::new();
     b.dispatch(&mut sim, false, 0);
     let h = head(&mut sim, lane);
@@ -128,6 +129,7 @@ fn the_welded_control_travels_whole_under_the_same_gesture() {
 fn the_scene_builds_the_three_lanes_it_names() {
     let mut sim = SimWorld::new();
     build_rail_rope_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     for lane in 0..3 {
         let _ = head(&mut sim, lane);
     }

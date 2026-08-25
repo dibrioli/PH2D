@@ -57,6 +57,7 @@ fn a_pose_survives_the_dispatch_that_follows_its_own_write() {
         ));
     }
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let tip = named(&mut sim, "L2");
 

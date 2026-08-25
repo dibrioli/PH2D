@@ -47,6 +47,7 @@ fn rig(joint: PhysicsJoint, joint_rot: f32) -> SimWorld {
         },
         t,
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 

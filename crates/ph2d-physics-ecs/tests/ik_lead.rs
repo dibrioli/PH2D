@@ -52,6 +52,7 @@ fn joint(sim: &mut SimWorld, a: &str, b: &str, kind: JointKind, at: f32) {
         },
         Transform::from_translation(Vec2::new(at, 0.0)),
     ));
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
 }
 
 /// Quatro elos de 1 m em +X, **autorados L1→L2→L3→L4**: L1 é a cabeça, e é ela

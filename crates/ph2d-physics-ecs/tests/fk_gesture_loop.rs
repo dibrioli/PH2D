@@ -60,6 +60,7 @@ fn a_swing_survives_the_dispatches_that_follow_its_own_writes() {
         ));
     }
     let mut bridge = PhysicsBridge::new();
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     bridge.dispatch(&mut sim, false, 0);
     let l1 = named(&mut sim, "L1");
     let l2 = named(&mut sim, "L2");

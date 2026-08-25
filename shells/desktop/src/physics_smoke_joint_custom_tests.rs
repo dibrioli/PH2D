@@ -8,6 +8,8 @@ use ph2d_physics_ecs::{FrozenScene, PhysicsBridge};
 fn staged() -> (SimWorld, PhysicsBridge) {
     let mut sim = SimWorld::new();
     build_joint_custom_scene(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     (sim, PhysicsBridge::new())
 }
 

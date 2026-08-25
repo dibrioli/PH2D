@@ -58,6 +58,7 @@ fn rig(kind: JointKind, load: f32, counterweight: f32, active: bool) -> SimWorld
         Transform::from_translation(Vec2::new(-SPAN / 2.0, START_Y)),
     ));
     wheels(&mut sim, 0.0);
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     sim
 }
 
@@ -87,6 +88,7 @@ fn wheels(sim: &mut SimWorld, radius: f32) {
             },
             Transform::from_translation(Vec2::new(x, START_Y + lift)),
         ));
+        ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     }
 }
 

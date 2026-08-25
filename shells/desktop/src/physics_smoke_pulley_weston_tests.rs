@@ -20,6 +20,7 @@ fn y_of(sim: &mut SimWorld, name: &str) -> f32 {
 fn probe_smoke_64() {
     let mut sim = SimWorld::new();
     build_weston(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let start: Vec<f32> = ["Weston", "Drum"]
         .iter()
@@ -61,6 +62,7 @@ fn probe_smoke_64() {
 fn the_two_rigs_of_scene_64_move_to_opposite_sides() {
     let mut sim = SimWorld::new();
     build_weston(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut bridge = PhysicsBridge::new();
     let w0 = y_of(&mut sim, "Weston Load");
     let d0 = y_of(&mut sim, "Drum Load");
@@ -111,6 +113,7 @@ fn the_two_rigs_of_scene_64_move_to_opposite_sides() {
 fn the_chip_is_the_only_difference_between_the_two_rigs() {
     let mut sim = SimWorld::new();
     build_weston(sim.world_mut());
+    ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     let mut q = sim
         .world_mut()
         .query::<(&Name, &ph2d_physics_ecs::PulleyWheel)>();

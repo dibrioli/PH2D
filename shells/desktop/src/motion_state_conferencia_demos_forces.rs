@@ -434,3 +434,7 @@ pub(crate) fn sea_authored() -> (f32, f32, f32, f32, f32) {
 #[cfg(test)]
 #[path = "motion_state_conferencia_demos_forces_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_state_conferencia_demos_forces_sea_tests.rs"]
+mod sea_tests;

@@ -667,3 +667,74 @@ põe**:
   acrescentar camadas, e três dessas não parecem ter nada a ver com ela),
   `the_floats_resolve_the_finest_wave` e `the_floats_are_in_the_water`.
 - ⚠️ **O `force.buoyancy` não foi tocado no comportamento** — a cena `=4` é byte-idêntica.
+
+---
+
+## Bug #7 — ⏳ ABERTO: a banda 8 (mar de 4 ondas) não mostra cristas diferentes — a BOIA é um filtro passa-baixo
+
+**Estado:** ⏳ **ABERTO** — reportado pelo Enio em 2026-08-24 sobre a cena `=95` já curada
+(Bug #6), adiado por decisão dele (*«deixe isso para amanhã»*). O mecanismo abaixo está
+**medido**, e a alavanca está **nomeada**; o que falta é escolher o número e provar.
+
+### Sintoma
+
+*«no 8 as cristas não parecem diferentes»* — a fileira da direita do par do mar (`waves = 4`)
+lê-se igual à da esquerda (`waves = 1`), quando o par existe precisamente para mostrar a
+diferença entre uma senoide e um espectro.
+
+### ⚠️ A medição já diz que a banda do espectro se mexe MENOS, e não mais variadamente
+
+Excursão vertical mediana no regime assentado, contra uma altura de vaga de `0,467`:
+
+| banda | ondas | excursão vertical | fracção da vaga |
+|---|---|---|---|
+| 7 (esq.) | 1 | `0,377` | `0,81` |
+| 8 (dir.) | **4** | **`0,228`** | `0,49` |
+
+⇒ *A banda que devia mostrar MAIS estrutura é a que se mexe menos.* Isso não é um defeito do
+espectro: é a boia a não conseguir seguir as ondas curtas.
+
+### O mecanismo, e ele é aritmética de um oscilador forçado
+
+A boia é uma massa-mola: a rigidez é `densidade / calado` e a frequência própria é
+
+```
+ω_n = √(densidade / calado) = √(6 / 0,5) = 3,46 rad/s = 0,55 Hz
+```
+
+As camadas do espectro têm comprimento `λ/2ᵏ`, logo frequência `2ᵏ · velocidade/λ`:
+
+| camada | comprimento | frequência | `f / f_n` | resposta |
+|---|---|---|---|---|
+| 1 | `2,33` | `0,43 Hz` | `0,78` | segue |
+| 2 | `1,17` | `0,86 Hz` | `1,56` | atenuada |
+| 3 | `0,58` | `1,71 Hz` | `3,1` | quase nada |
+| 4 | `0,29` | `3,43 Hz` | `6,2` | **~2,6%** |
+
+⇒ **A boia é um passa-baixo, e ela apaga exactamente as cristas finas que o par existe para
+mostrar.** A superfície tem a estrutura; o que a desenha é que não a reproduz.
+
+### ⭐ A alavanca, e porque é ESTA e não a óbvia
+
+Subir `ω_n` pede subir a densidade **ou** baixar o calado — e as duas não são equivalentes:
+
+- ⛔ **densidade não serve**: ela está dos DOIS lados. Ela sobe `ω_n` por `√`, mas sobe o
+  limiar da armadilha do Bug #6 **linearmente** — o arrasto teria de subir com ela, e o
+  arrasto abafa a boia. Anda-se para trás.
+- ⭐ **o CALADO serve**: `ω_n = √(densidade/calado)` sobe quando ele desce, e ⚠️ **o limiar da
+  armadilha não o contém** (`densidade · declive · inv_len / velocidade`) — logo baixar o
+  calado compra resposta **sem** reabrir o Bug #6. Com calado `0,05`, `ω_n = 1,74 Hz`.
+
+⚠️ **Duas cercas a medir antes de escrever o número:**
+1. A `1,74 Hz` a **3.ª camada (`1,71 Hz`) entra em RESSONÂNCIA**, e o amortecimento é
+   `ζ = arrasto·sub/(2ω_n) ≈ 0,17` — sub-amortecido, ou seja ela seria **amplificada**, não só
+   seguida. Uma boia que exagera uma camada não é mais fiel que uma que a ignora.
+2. Um calado pequeno encolhe a faixa em que a submersão varia, e é ela que espalha as boias
+   numa banda em vez de as pregar a um fio (é o que a cena `=4` diz do `depth = 4` dela). O
+   gate `the_floats_are_in_the_water` mede em unidades de calado e a barra dele acompanha —
+   ⚠️ **confirme que ele ainda separa alguma coisa depois de mexer**, senão vira tautologia.
+
+⚠️ **E há uma terceira saída, mais barata, que tem de ser medida ANTES das outras duas:**
+baixar o **número de camadas** de `4` para `2` ou `3`. A 4.ª camada tem `1/8` da amplitude e é
+invisível de qualquer maneira; se o par se lê com `2`, o problema dissolve-se sem tocar na
+física da boia. *Meça o que o olho separa antes de construir o que o segue.*

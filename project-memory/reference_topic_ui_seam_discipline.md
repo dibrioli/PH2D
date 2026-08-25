@@ -24,3 +24,4 @@ metadata:
 - [[feedback_disabled_button_still_dispatches]] — botão dimmed ainda despacha; recuse no event.rs
 - [[feedback_ship_the_ui_in_the_same_wave_not_later]] — atalho com valores fixos é harness vazando; sem indicador não há diagnóstico
 - [[feedback_one_parameter_two_roles_makes_the_wrong_call_defensible]] — parametro com dois papeis: o produto e o unico chamador que os separa
+- [[feedback_the_fifth_seam_link_is_whoever_paints]] — as 4 condicoes verdes e o widget ainda le morto: o pintor desenhou o rect a mao e nao le o estado que o despacho JA escreve

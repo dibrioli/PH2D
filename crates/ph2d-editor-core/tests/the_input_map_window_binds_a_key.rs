@@ -80,7 +80,10 @@ fn the_whole_gesture_reaches_the_map() {
     {
         *text = NAME.to_string();
     }
-    assert!(h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD)), "Add consumido");
+    assert!(
+        h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD)),
+        "Add consumido"
+    );
     let jump = h.input_map.id(NAME).expect("a accao nasceu");
     assert!(
         h.input_map.get(jump).expect("existe").bindings.is_empty(),
@@ -210,7 +213,7 @@ fn binding_the_same_key_twice_does_not_duplicate_it() {
 
     for _ in 0..2 {
         let row = row_of(&h, NAME);
-    h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row)));
+        h.apply_event(WidgetEvent::Click(ids::input_map_listen_id(row)));
         let evts = dispatch_key(&mut h.store, key(KEY_Z), &arena);
         for e in evts {
             h.apply_event(*e);
@@ -260,8 +263,15 @@ fn an_empty_name_creates_nothing() {
     // ⚠️ Conta ANTES e DEPOIS, em vez de `is_empty`: desde a W5 um projecto novo nasce com os
     // seis verbos do jogador, e `is_empty` mediria isso em vez de medir o Add.
     let before = h.input_map.len();
-    assert!(h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD)), "consome o clique");
-    assert_eq!(h.input_map.len(), before, "nao pode ter nascido accao nenhuma");
+    assert!(
+        h.apply_event(WidgetEvent::Click(ids::INPUT_MAP_ADD)),
+        "consome o clique"
+    );
+    assert_eq!(
+        h.input_map.len(),
+        before,
+        "nao pode ter nascido accao nenhuma"
+    );
 }
 
 /// ⭐⭐ **OS DOIS NÚMEROS DA ZONA SÃO ALCANÇÁVEIS PELA JANELA.**
@@ -360,14 +370,16 @@ fn dragging_the_dead_zone_past_the_press_point_shows_the_coerced_value() {
 #[test]
 fn the_zone_numbers_never_stack_at_the_windows_width() {
     use ph2d_editor_core::widget::slider_with_chip_is_stacked;
-    let (w, _, _) = chrome::input_map_window_size(&ph2d_input::InputMap::with_player_defaults(), 1080.0);
+    let (w, _, _) =
+        chrome::input_map_window_size(&ph2d_input::InputMap::with_player_defaults(), 1080.0);
     // A conta do pintor: dois números repartem o espaço à esquerda dos dois ícones.
     let icon_w = ph2d_tokens::Spacing::Xl2.px();
     let lw = ph2d_tokens::Spacing::Xl4.px() * 0.75;
     let cw = ph2d_tokens::Spacing::Xl4.px();
-    let zone_w = (lw + cw + ph2d_tokens::Spacing::Sm.px() * 2.0 + 60.0 + ph2d_tokens::Spacing::Xs.px())
-        .ceil()
-        - ph2d_tokens::Spacing::Xs.px();
+    let zone_w =
+        (lw + cw + ph2d_tokens::Spacing::Sm.px() * 2.0 + 60.0 + ph2d_tokens::Spacing::Xs.px())
+            .ceil()
+            - ph2d_tokens::Spacing::Xs.px();
     assert!(
         !slider_with_chip_is_stacked(zone_w, lw, cw),
         "a {w} px, os numeros da zona EMPILHAM ({zone_w} px de coluna): a linha vai vazar por cima \

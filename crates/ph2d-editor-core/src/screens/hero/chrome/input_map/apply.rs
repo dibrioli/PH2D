@@ -179,10 +179,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             }
             return true;
         }
-        let n = hero
-            .input_map
-            .get(aid)
-            .map_or(0, |a| a.bindings.len());
+        let n = hero.input_map.get(aid).map_or(0, |a| a.bindings.len());
         for bi in 0..n {
             if id == ids::input_map_delete_binding_id(row, bi) {
                 if let Some(a) = hero.input_map.get_mut(aid) {

@@ -5,12 +5,16 @@
 //! Enio, 2026-08-24: *"precisamos do input Map completo não apenas para o jogador mas para qualquer
 //! objeto do game via UI. (…) equivalente ao da godot com janela flutuante abrindo sobre o canvas"*.
 //!
-//! Duas metades, colocadas — o padrão do [`super::fill_modal`]:
+//! **Três** metades, colocadas — o padrão do [`super::fill_modal`], mais uma que a auditoria de
+//! 2026-08-24 obrigou a existir:
 //!
-//! * [`paint_input_map_window`] — desenha o cartão em `store.input_map_pos()` (preso à viewport),
-//!   com a faixa de título arrastável, o campo de nome, o **Add**, e uma linha por acção com as
-//!   ligações dela por baixo;
-//! * [`apply`] — a metade de despacho, ligada ao `chrome::dispatch_all` pelo `ph2d-chrome-sync`.
+//! * [`paint_input_map_window`] — desenha o cartão em `store.input_map_pos()` (preso à viewport):
+//!   a faixa de título arrastável, **o campo de nome + Add logo por baixo dela** (é o topo, como
+//!   no Godot), e depois uma linha por acção com as ligações dela indentadas;
+//! * [`apply`] — a metade de despacho, ligada ao `chrome::dispatch_all` pelo `ph2d-chrome-sync`;
+//! * [`layout`] — **onde as coisas ficam**: a sequência das linhas ([`layout::BodyLine`]), as
+//!   larguras, e o que a faixa do título diz. ⚠️ Ela nasceu porque a altura e o desenho eram
+//!   **duas contas da mesma coisa** e divergiram — os dois reports com foto do Enio.
 //!
 //! # ⭐ Ele MUTA o `hero.input_map` directamente, e não pelo barramento
 //!
@@ -25,17 +29,18 @@
 //! conteúdo, não atalho** — e quem tem de perguntar primeiro é o despacho de teclado. Sem essa
 //! ordem, ligar `S` a uma acção **salva o projecto** e a ligação nunca acontece.
 
+use crate::icons::IconId;
 use crate::ids;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, resolve, stroke_rounded_rect};
-use crate::icons::IconId;
 use crate::widget::{
-    Button, IconButtonStyle, IconGlyph, ListItem, ListItemState, paint_button, paint_icon_button,
-    paint_list_item, paint_scrollbar, paint_slider_with_chip_layout, slider_with_chip_is_stacked,
+    Button, IconButtonStyle, IconGlyph, ListItem, ListItemState, TextInput, TextInputState,
+    paint_button, paint_icon_button, paint_list_item, paint_scrollbar,
+    paint_slider_with_chip_layout, paint_text_input_with_buffer, slider_with_chip_is_stacked,
 };
 use crate::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_input::{Binding, InputAction, InputMap};
+use ph2d_input::{Binding, InputMap};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
@@ -58,11 +63,7 @@ pub fn binding_label(b: Binding) -> (String, &'static str) {
         // ⚠️ A metade da haste diz-se com uma SETA e não com `+`/`-`: o artista empurrou para um
         // lado, e é o lado que ele reconhece.
         Binding::PadAxis { axis, positive } => (
-            format!(
-                "{} {}",
-                axis.label(),
-                if positive { "(+)" } else { "(-)" }
-            ),
+            format!("{} {}", axis.label(), if positive { "(+)" } else { "(-)" }),
             tr("input_map.binding.axis"),
         ),
     }
@@ -146,98 +147,6 @@ pub fn sync_input_map_rows(store: &mut WidgetStore, map: &InputMap) {
     }
 }
 
-/// **A largura do cartão, DERIVADA dos tokens** — não um número cravado.
-///
-/// ⛔⛔ **Report do Enio (2026-08-24, com foto): *"estreito e sem scroll"*.** A primeira largura
-/// (`9 × Xl4` = 432 px) foi calculada para uma linha que já não existe — e era estreita **por
-/// baixo do limiar do widget**: o `paint_slider_with_chip` **EMPILHA o rótulo numa linha própria**
-/// quando o espaço aperta ([`slider_with_chip_is_stacked`]), e o doc dele diz *"quem chama tem de
-/// avançar"*. Eu não avancei ⇒ os números caíam **por cima da acção seguinte** e a última saía do
-/// cartão. *Um widget que muda de forma sob pressão exige que quem o coloca lhe pergunte a altura.*
-///
-/// A largura agora é **`13 × Spacing::Xl4`** (medido: `Xl4 = 48` ⇒ **624 px**), e sai da linha mais
-/// larga, que é a da **ACÇÃO**:
-///
-/// | parte | largura |
-/// |---|---|
-/// | nome da acção | ~130 |
-/// | dois `slider_with_chip` (rótulo 36 + número 48 + trilho mínimo 60 + folgas) | `2 × 160` = 320 |
-/// | os dois ícones (`+` e lixo) | `2 × 28` = 56 |
-/// | margens e folgas | ~40 |
-///
-/// ⇒ ~546 px de conteúdo, e o `13 × Xl4` é o degrau de token que o cobre com folga para um nome
-/// de acção longo. ⚠️ O trilho mínimo **é do widget** — abaixo dele o rótulo empilha, e foi isso.
-fn window_w() -> f32 {
-    Spacing::Xl4.px() * 13.0 // LITERAL-PX-OK: multiplicador do token, derivacao acima
-}
-
-/// A coluna do rótulo dos dois números. ⚠️ **Mais estreita que a `DEFAULT_LABEL_W` (70) de
-/// propósito**: "Dead" e "Press" são curtos, e os 70 px do default empurravam a linha para além do
-/// limiar de empilhamento — que foi o defeito da foto.
-fn zone_label_w() -> f32 {
-    Spacing::Xl4.px() * 0.75 // LITERAL-PX-OK: fraccao do token
-}
-
-/// A coluna do número. Vem do próprio `number_input`, que é quem sabe quanto um número ocupa.
-/// O trilho mínimo que o `slider_with_chip` exige antes de **empilhar** o rótulo.
-///
-/// ⚠️ **É o espelho do `SLIDER_CHIP_MIN_SLIDER_W` do widget**, e está aqui porque a conta da
-/// largura da janela precisa dele ANTES de pintar. O `debug_assert` do pintor e o gate
-/// `the_zone_numbers_never_stack_at_the_windows_width` são os dois guardas de que os dois números
-/// concordam.
-const ZONE_MIN_TRACK: f32 = 60.0; // LITERAL-PX-OK: espelho do piso do widget (ver acima)
-
-fn zone_chip_w() -> f32 {
-    Spacing::Xl4.px() // LITERAL-PX-OK: a coluna do numero, um degrau de token
-}
-
-/// **A ALTURA de uma acção**, em linhas: a linha da acção + uma por ligação (ou a face vazia).
-///
-/// ⚠️ **Uma função, e os dois lados chamam-na** — o cálculo da altura do cartão e o pintor. Duas
-/// contas da mesma coisa divergem, e o sintoma é exactamente o da foto: a janela com um tamanho e
-/// o conteúdo com outro.
-fn rows_of(a: &InputAction) -> usize {
-    1 + a.bindings.len().max(1)
-}
-
-/// Quantas linhas o corpo do cartão tem, incluindo os divisores.
-fn body_rows(map: &InputMap) -> usize {
-    if map.is_empty() {
-        return 1;
-    }
-    map.actions().iter().map(rows_of).sum()
-}
-
-/// **O TAMANHO da janela e o TETO da rolagem** — `(largura, altura, rolagem máxima)`.
-///
-/// ⚠️ **A mesma conta que o pintor faz**, e é por isso que ela mora numa função: a shell precisa do
-/// rectângulo para saber se a roda é dela, e duas contas da mesma coisa divergem — com o sintoma a
-/// ser *"a roda funciona no meio da janela e não na ponta"*.
-///
-/// ⚠️ **A altura é a CLAMPADA — a mesma que o pintor desenha.** A primeira versão devolvia a
-/// pedida e o doc dela afirmava o contrário; a auditoria de 2026-08-24 mostrou que a roda e o
-/// arrasto passavam a testar um rectângulo que **não está na tela** assim que a lista transborda.
-/// *Um doc que afirma o que a função não faz é pior que nenhum doc.*
-#[must_use]
-pub fn input_map_window_size(map: &InputMap, viewport_h: f32) -> (f32, f32, f32) {
-    let row_h = ROW_H_PX;
-    let gap = Spacing::Xs.px();
-    let chrome_h = Spacing::Sm.px() * 2.0 + (row_h + gap) * 2.0;
-    #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: contagem de linhas
-    let want_body = (row_h + gap) * body_rows(map) as f32;
-    // ⛔⛔ **O TETO É O TRANSBORDO, não o conteúdo inteiro** — auditoria 2026-08-24, apanhado por
-    // QUATRO lentes independentes. Com o conteúdo inteiro, a roda levava a lista `body_h` px para
-    // ALÉM do fim: o cartão ficava **vazio** e nada na tela dizia como voltar.
-    //
-    // ⚠️ E a altura devolvida é a **CLAMPADA**, a mesma que o pintor desenha. A versão anterior
-    // devolvia a pedida, e o doc dela afirmava que clampava — então a roda e o arrasto testavam um
-    // rectângulo que **não é o que está na tela** assim que a lista passa da viewport.
-    let want_h = chrome_h + want_body;
-    let h = want_h.min(viewport_h.max(chrome_h + row_h));
-    let body_h = (h - chrome_h).max(row_h);
-    (window_w(), h, (want_body - body_h).max(0.0))
-}
-
 /// **Desenha a janela** (no-op quando fechada).
 ///
 /// ⭐ **A forma é a do Godot**, e a decisão que mais encurta a lista é esta: os **dois números
@@ -263,16 +172,19 @@ pub fn paint_input_map_window(
     let pad_y = Spacing::Sm.px();
     let window_w = window_w();
 
-    // ── A altura: título + corpo + rodapé, e o corpo é CLAMPADO à viewport. ──
+    // ── A altura vem da PORTA, e não de uma segunda conta. ──
     //
     // ⛔ Report do Enio: *"sem scroll"*. Um cartão que cresce com a lista sai do ecrã e a última
     // acção fica inalcançável — que é pior do que uma lista curta, porque nada na tela o diz.
-    let chrome_h = pad_y * 2.0 + (row_h + gap) * 2.0;
-    #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: contagem de linhas cabe em f32
-    let want_body = (row_h + gap) * body_rows(map) as f32;
-    let max_body = (viewport.h - chrome_h - Spacing::Xl4.px()).max(row_h);
-    let body_h = want_body.min(max_body);
-    let total_h = chrome_h + body_h;
+    //
+    // ⛔⛔ **E as duas contas DIVERGIAM em 48 px**: a [`input_map_window_size`] (que a shell usa
+    // para a roda e o arrasto) clampava à viewport inteira, e aqui subtraía-se mais um `Xl4` de
+    // margem. O doc dela dizia *"a mesma conta que o pintor faz"* — e não era. *Uma função que se
+    // diz a porta única só o é quando o outro lado a CHAMA.*
+    let chrome_h = layout::chrome_h();
+    let (_, total_h, max_scroll) = input_map_window_size(map, viewport.h);
+    let body_h = (total_h - chrome_h).max(row_h);
+    let want_body = body_h + max_scroll;
 
     let max_x = (viewport.x + viewport.w - window_w).max(viewport.x);
     let max_y = (viewport.y + viewport.h - total_h).max(viewport.y);
@@ -300,19 +212,36 @@ pub fn paint_input_map_window(
     let mut cy = rect.y + pad_y;
 
     // ── Faixa de título = alça de arrasto, com o X à direita. ──
+    //
+    // ⭐⭐ **COM A ESCUTA ARMADA, a faixa DIZ-O — e diz de QUEM.**
+    //
+    // ⛔ A versão anterior punha esse aviso **dentro do corpo**, ao lado do nome da acção — e o
+    // corpo **rola e é recortado**: bastava a acção armada sair da janela para o único sinal de
+    // que o app estava à espera de uma tecla desaparecer. A faixa do título não rola nunca.
+    //
+    // ⚠️ E ele **SUBSTITUI** o título em vez de o acompanhar: `Input Map` é decoração (a janela
+    // está à frente do artista), a escuta é urgente — e dois textos a partilhar uma faixa é
+    // exactamente a colisão que o report de 24/08 fotografou.
+    let listening = store.input_map_listening();
     let handle_rect = Rect::new(rect.x, rect.y, rect.w, pad_y + row_h);
     hit_index.register(ids::INPUT_MAP_HANDLE, handle_rect);
+    let (title, title_tok) = match layout::title_text(map, listening) {
+        Some(t) => (t, ColorToken::Accent),
+        None => (tr("input_map.title").to_string(), ColorToken::Text1),
+    };
+    let close_rect = Rect::new(rect.x + rect.w - Spacing::Sm.px() - row_h, cy, row_h, row_h);
     paint_text(
         text_system,
         scene,
-        tr("input_map.title"),
+        &title,
         inner_x,
         cy + (row_h - font) * 0.5,
         font,
-        inner_w,
-        resolve(ColorToken::Text1, theme),
+        // ⚠️ A largura PÁRA no botão de fechar: sem isso um nome de acção longo desenhava-se por
+        // baixo do X, que é a mesma doença um nível acima.
+        (close_rect.x - inner_x - Spacing::Sm.px()).max(0.0),
+        resolve(title_tok, theme),
     );
-    let close_rect = Rect::new(rect.x + rect.w - Spacing::Sm.px() - row_h, cy, row_h, row_h);
     hit_index.register(ids::INPUT_MAP_CLOSE, close_rect);
     paint_icon_button(
         close_rect,
@@ -320,6 +249,57 @@ pub fn paint_input_map_window(
         IconButtonStyle::Plain,
         store.button_visual(ids::INPUT_MAP_CLOSE),
         scene,
+        theme,
+    );
+    cy += row_h + gap;
+
+    // ── O CAMPO DO NOME + **Add** — ⭐ **EM CIMA**. ──
+    //
+    // ⛔⛔ **A nota anterior dizia *"em baixo, como no Godot"* e estava ERRADA sobre a
+    // referência**: o *Input Map* do Godot põe o campo e o botão **no topo** do painel. Enio,
+    // 2026-08-24: *"a caixa de Action name fica em cima e não embaixo do painel"*.
+    //
+    // ⛔⛔ **E o campo era DESENHADO À MÃO** — um rectângulo com borda e um texto por cima. Report
+    // do mesmo dia: *"A caixa de texto parece morta, não se vê que o foco está nela ao clicar."*
+    // Estava certo, e a causa não era o despacho: o `TextInputState::Focused` **já** era escrito
+    // no `pointer_down`, e não havia **quem o lesse**. Agora é o widget da casa que pinta —
+    // preenchimento, anel de foco `Accent` de 2 px, cursor, selecção e hover, de graça.
+    // *A costura estava toda feita menos o último elo: quem PINTA.*
+    let add_w = Spacing::Xl4.px() * 1.5; // LITERAL-PX-OK: multiplicador do token, nao um px
+    let name_rect = Rect::new(inner_x, cy, inner_w - add_w - gap, row_h);
+    hit_index.register(ids::INPUT_MAP_NEW_NAME, name_rect);
+    let (typed, caret, anchor, ti_state) = match store.get(ids::INPUT_MAP_NEW_NAME) {
+        Some(crate::interaction::InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            state,
+        }) => (text.as_str(), *caret, *selection_anchor, *state),
+        _ => ("", 0, None, TextInputState::Normal),
+    };
+    paint_text_input_with_buffer(
+        &TextInput::new(ids::INPUT_MAP_NEW_NAME, "")
+            .placeholder(tr("input_map.new_name.placeholder"))
+            .visual((ti_state, store.hover_live(ids::INPUT_MAP_NEW_NAME))),
+        Some(typed),
+        Some(caret),
+        anchor,
+        name_rect,
+        scene,
+        text_system,
+        theme,
+    );
+    let add_rect = Rect::new(inner_x + inner_w - add_w, cy, add_w, row_h);
+    hit_index.register(ids::INPUT_MAP_ADD, add_rect);
+    // ⚠️ **`accent` + `visual`**: ele é a acção principal desta janela e estava a nascer cinzento
+    // e **inerte sob o rato** — um botão que não acende lê-se como desligado.
+    paint_button(
+        &Button::new(ids::INPUT_MAP_ADD, tr("input_map.add"))
+            .accent()
+            .visual(store.button_visual(ids::INPUT_MAP_ADD)),
+        add_rect,
+        scene,
+        text_system,
         theme,
     );
     cy += row_h + gap;
@@ -339,26 +319,79 @@ pub fn paint_input_map_window(
         f64::from(body.y + body.h),
     ));
     let scroll = store.input_map_scroll();
-    let mut by = cy - scroll;
-
-    if map.is_empty() {
-        paint_text(
-            text_system,
-            scene,
-            tr("input_map.empty"),
-            inner_x,
-            by + (row_h - font) * 0.5,
-            font,
-            inner_w,
-            resolve(ColorToken::Text3, theme),
-        );
-    }
-
-    let listening = store.input_map_listening();
     let icon_w = Spacing::Xl2.px();
-    // A coluna do NOME da acção — e o indicador de escuta começa logo a seguir a ela.
-    let name_w = Spacing::Xl4.px() * 2.5; // LITERAL-PX-OK: multiplicador do token
-    for (row, action) in map.actions().iter().enumerate() {
+    // ⭐ **UMA lista, e o `y` de cada linha É o índice dela.** Enquanto o desenho re-derivava a
+    // sequência à mão, um texto pintado fora de ordem caía por cima do vizinho — que é o
+    // *"labels emboladas"* do report. Ver [`BodyLine`].
+    for (i, line) in body_lines(map, listening).into_iter().enumerate() {
+        #[allow(clippy::cast_precision_loss)] // LITERAL-PX-OK: indice de linha cabe em f32
+        let by = cy - scroll + (row_h + gap) * i as f32;
+        let row = match line {
+            BodyLine::NoActions => {
+                paint_text(
+                    text_system,
+                    scene,
+                    tr("input_map.empty"),
+                    inner_x,
+                    by + (row_h - font) * 0.5,
+                    font,
+                    inner_w,
+                    resolve(ColorToken::Text3, theme),
+                );
+                continue;
+            }
+            // ⚠️ **UM texto por linha.** Com a escuta armada é a INSTRUÇÃO que aparece aqui, e não
+            // o convite a carregar no `+` — que o artista acabou de carregar. Os dois ao mesmo
+            // tempo, no mesmo `y`, era literalmente a foto do report de 24/08.
+            BodyLine::Empty { armed, .. } => {
+                let (msg, tok) = if armed {
+                    (tr("input_map.listening"), ColorToken::Accent)
+                } else {
+                    (tr("input_map.no_binding"), ColorToken::Text3)
+                };
+                paint_text(
+                    text_system,
+                    scene,
+                    msg,
+                    inner_x + Spacing::Xl.px(),
+                    by + (row_h - font) * 0.5,
+                    font,
+                    inner_w - Spacing::Xl.px(),
+                    resolve(tok, theme),
+                );
+                continue;
+            }
+            BodyLine::Binding { row, bi } => {
+                let Some(b) = map
+                    .actions()
+                    .get(row)
+                    .and_then(|a| a.bindings.get(bi).copied())
+                else {
+                    continue;
+                };
+                paint_binding_row(
+                    b,
+                    ids::input_map_delete_binding_id(row, bi),
+                    Rect::new(
+                        inner_x + Spacing::Xl.px(),
+                        by,
+                        inner_w - Spacing::Xl.px() - icon_w,
+                        row_h,
+                    ),
+                    Rect::new(rect.x + rect.w - Spacing::Sm.px() - row_h, by, row_h, row_h),
+                    store,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                );
+                continue;
+            }
+            BodyLine::Action { row } => row,
+        };
+        let Some(action) = map.actions().get(row) else {
+            continue;
+        };
         // ═══ A LINHA DA ACÇÃO: nome · Dead · Press · `+` · lixo ═══
         let armed = listening == Some(action.id);
         let del = ids::input_map_delete_action_id(row);
@@ -452,74 +485,6 @@ pub fn paint_input_map_window(
             scene,
             theme,
         );
-        by += row_h + gap;
-
-        // ═══ O INDICADOR DA ESCUTA — ⛔ auditoria 2026-08-24, e é o «não tem indicadores do que
-        // fazer em seguida» na letra. ═══
-        //
-        // A primeira versão só o pintava dentro de `if bindings.is_empty()` — e o caso canónico do
-        // smoke é o OPOSTO (`jump` nasce com DUAS ligações). Armar a escuta numa acção já ligada
-        // não escrevia uma palavra: o único sinal era o fundo de um glifo de 24 px a mudar.
-        //
-        // ⇒ o texto vive AO LADO DO NOME da acção, sempre que ela está armada. É a linha que o
-        // artista já está a olhar, e ela cabe sem custar linha nenhuma.
-        if armed {
-            paint_text(
-                text_system,
-                scene,
-                tr("input_map.listening"),
-                inner_x + name_w,
-                by + (row_h - font) * 0.5,
-                font,
-                inner_w,
-                resolve(ColorToken::Accent, theme),
-            );
-        }
-
-        // ═══ As LIGAÇÕES, indentadas ═══
-        if action.bindings.is_empty() {
-            paint_text(
-                text_system,
-                scene,
-                tr("input_map.no_binding"),
-                inner_x + Spacing::Xl.px(),
-                by + (row_h - font) * 0.5,
-                font,
-                inner_w,
-                resolve(ColorToken::Text3, theme),
-            );
-            by += row_h + gap;
-        }
-        for (bi, b) in action.bindings.iter().enumerate() {
-            let (what, device) = binding_label(*b);
-            let db = ids::input_map_delete_binding_id(row, bi);
-            let li_rect = Rect::new(
-                inner_x + Spacing::Xl.px(),
-                by,
-                inner_w - Spacing::Xl.px() - icon_w,
-                row_h,
-            );
-            paint_list_item(
-                &ListItem::new(db, what)
-                    .value(device)
-                    .state(list_state(store, db)),
-                li_rect,
-                scene,
-                text_system,
-                theme,
-            );
-            let db_rect = Rect::new(rect.x + rect.w - Spacing::Sm.px() - row_h, by, row_h, row_h);
-            hit_index.register(db, db_rect);
-            paint_icon_button(
-                db_rect,
-                IconGlyph::Builtin(IconId::Close),
-                IconButtonStyle::Plain,
-                store.button_visual(db),
-                scene,
-                theme,
-            );
-            by += row_h + gap;
-        }
     }
     hit_index.pop_clip();
     scene.pop_layer();
@@ -530,7 +495,10 @@ pub fn paint_input_map_window(
     // hover, e não tinha id nenhum. *Uma barra que não se pode agarrar é um enfeite que promete um
     // gesto.* O `visual` também passa a vir do store, senão ela nasce inerte sob o rato.
     if want_body > body_h {
-        hit_index.register(crate::widget::INPUT_MAP_SCROLLBAR_ID, crate::widget::scrollbar_track_rect(body));
+        hit_index.register(
+            crate::widget::INPUT_MAP_SCROLLBAR_ID,
+            crate::widget::scrollbar_track_rect(body),
+        );
         paint_scrollbar(
             body,
             scroll,
@@ -541,49 +509,41 @@ pub fn paint_input_map_window(
             theme,
         );
     }
+}
 
-    // ── O RODAPÉ: nome novo + Add. ⭐ **Em BAIXO, como no Godot** — criar é o gesto raro, e no
-    // topo ele empurrava a lista para longe do olho a cada abertura. ──
-    let fy = rect.y + rect.h - pad_y - row_h;
-    let add_w = Spacing::Xl4.px() * 1.5; // LITERAL-PX-OK: multiplicador do token, nao um px
-    let name_rect = Rect::new(inner_x, fy, inner_w - add_w - gap, row_h);
-    hit_index.register(ids::INPUT_MAP_NEW_NAME, name_rect);
-    let typed = store.text(ids::INPUT_MAP_NEW_NAME).unwrap_or_default();
-    stroke_rounded_rect(
-        scene,
-        name_rect,
-        Radius::Sm.px(),
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
-    paint_text(
-        text_system,
-        scene,
-        if typed.is_empty() {
-            tr("input_map.new_name.placeholder")
-        } else {
-            typed
-        },
-        name_rect.x + Spacing::Sm.px(),
-        fy + (row_h - font) * 0.5,
-        font,
-        name_rect.w,
-        resolve(
-            if typed.is_empty() {
-                ColorToken::Text3
-            } else {
-                ColorToken::Text1
-            },
-            theme,
-        ),
-    );
-    let add_rect = Rect::new(inner_x + inner_w - add_w, fy, add_w, row_h);
-    hit_index.register(ids::INPUT_MAP_ADD, add_rect);
-    paint_button(
-        &Button::new(ids::INPUT_MAP_ADD, tr("input_map.add")),
-        add_rect,
+/// **UMA LIGAÇÃO, indentada** — o que ela é, de que dispositivo, e o `X` que a remove.
+///
+/// ⚠️ Sai do laço porque o corpo dele passou a ser um `match` sobre [`BodyLine`], e um braço com
+/// trinta linhas esconde os outros três.
+#[allow(clippy::too_many_arguments)]
+fn paint_binding_row(
+    b: Binding,
+    db: ph2d_a11y::NodeId,
+    li_rect: Rect,
+    db_rect: Rect,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let (what, device) = binding_label(b);
+    paint_list_item(
+        &ListItem::new(db, what)
+            .value(device)
+            .state(list_state(store, db)),
+        li_rect,
         scene,
         text_system,
+        theme,
+    );
+    hit_index.register(db, db_rect);
+    paint_icon_button(
+        db_rect,
+        IconGlyph::Builtin(IconId::Close),
+        IconButtonStyle::Plain,
+        store.button_visual(db),
+        scene,
         theme,
     );
 }
@@ -607,3 +567,8 @@ fn list_state(store: &WidgetStore, id: ph2d_a11y::NodeId) -> ListItemState {
 /// **A metade de DESPACHO** — irmã por teto de LOC; ver [`apply`].
 mod apply;
 pub use apply::apply;
+
+/// **ONDE AS COISAS FICAM** — a terceira irmã; ver [`layout`].
+mod layout;
+pub use layout::input_map_window_size;
+use layout::{BodyLine, ZONE_MIN_TRACK, body_lines, window_w, zone_chip_w, zone_label_w};

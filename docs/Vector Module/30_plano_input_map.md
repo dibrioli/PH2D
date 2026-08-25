@@ -392,6 +392,43 @@ mensagem ao Enio** — sonda headless primeiro, `CLAUDE.md §0.0`.
    pergunta *"a partir de onde conta?"* é do `press_point`, que o artista afina depois — confundir
    os dois faria a zona morta depender de **como** a acção foi ligada.
 
+7. ✅ **W7 — OS TRÊS REPORTS COM FOTO, e a razão de terem vindo dele — 2026-08-24 (2ª volta).**
+   ⛔⛔ **A auditoria multiagêntica devolveu 25 achados e NENHUM dos doze gates olhava para o que
+   foi DESENHADO** — todos mediam o mapa e o `WidgetStore`. É por isso que doze verdes conviviam
+   com uma janela a desenhar por cima do próprio título, e por isso que os três reports com foto
+   tiveram de vir do Enio:
+   - *"a caixa de Action name fica em cima e não embaixo do painel"* — o campo estava no **rodapé**,
+     e a nota que o pôs lá justificava-se com a referência (*"como no Godot"*), **que é falso**: o
+     Godot põe o *Add New Action* no **topo**. ⚠️ E a `input_map.empty` dizia *"at the bottom"*, que
+     é a **terceira** frase-guia desta janela a nomear um sítio que não existe.
+   - *"A caixa de texto parece morta, não se vê que o foco está nela ao clicar."* — o campo era um
+     `stroke_rounded_rect` + `paint_text` **à mão**. ⚠️ **A causa não era o despacho:** o
+     `pointer_down` **já** escrevia `TextInputState::Focused` e não havia **quem o lesse**. As
+     quatro condições de costura estavam verdes e faltava o quinto elo — **quem PINTA**.
+   - *"labels emboladas"* — o aviso da escuta era pintado **depois** de o cursor vertical já ter
+     avançado, e caía por cima do texto da face vazia. ⚠️ A causa é estrutural: a altura vinha de
+     uma função e o desenho **re-derivava a sequência à mão** dentro do laço.
+   ⭐ **A cura das três é a mesma crate-irmã, `chrome/input_map/layout.rs`:** a sequência das linhas
+   é **uma** lista (`BodyLine`) que quem conta e quem pinta percorrem, o `y` de cada linha **é** o
+   índice dela, e a faixa do título é uma função (`title_text`) — pelo motivo exacto do
+   `binding_label`.
+   ⚠️ **E a `input_map_window_size` NÃO era a porta única que o doc dela dizia ser:** ela clampava à
+   viewport e o pintor subtraía mais um `Xl4`, **48 px de divergência** entre o rectângulo que a
+   roda testava e o que estava na tela. *Uma função que se diz a porta única só o é quando o outro
+   lado a CHAMA* — hoje chama.
+   ⚠️ **O aviso mudou-se para a faixa do título** porque o corpo **rola e é recortado**: uma acção
+   armada que saísse de vista levava consigo o único sinal de que o app esperava uma tecla.
+   ⛔⛔ **E a sonda desta última lei SOBREVIVEU à mutação na 1ª tentativa:** armar muda a tinta da
+   janela por **duas** razões independentes (a faixa, e o `+` da linha a trocar de estilo), então
+   uma mutação que calasse a faixa deixava o segundo sinal intacto. *Uma sonda que soma dois sinais
+   não diz qual dos dois falhou* — a lei mudou-se para uma função pura com gate próprio.
+   **Gates novos:** `the_name_field_sits_above_every_action_row` ·
+   `the_name_field_shows_that_it_has_the_focus` (mede **tinta**, que é a única pergunta que apanha
+   um pintor a ignorar o estado que lhe entregam) ·
+   `arming_an_action_paints_a_sign_without_moving_a_single_row` ·
+   `the_title_strip_names_the_action_it_is_listening_to` · `an_empty_map_still_has_a_face` ·
+   `arming_an_action_never_changes_the_line_count`. **4 mutações, 4 sangraram.**
+
 > ⚠️ **Meça cada linha deste plano antes de a honrar.** Escrito em 2026-08-24; *quem move o número
 > reconfere a nota* ([estudo §6.6.1](Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)).
 

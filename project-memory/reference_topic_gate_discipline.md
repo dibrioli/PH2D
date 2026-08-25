@@ -48,3 +48,4 @@ metadata:
 - [[feedback_an_ignored_sweep_is_not_the_gpu_gate_sweep]] — ela roda placeholders `unimplemented!()` e sondas lentas junto; rode os NOMES do handoff, por crate
 - [[feedback_dropping_ownership_blinds_every_comparator_that_reads_that_side]] — elidir um dado faz o detector que o lê responder "mudou" para sempre
 - [[feedback_a_correct_number_can_carry_a_false_story]] — um número medido corretamente pode sustentar uma explicação ERRADA: o gate fica verde e a afirmação do produto é falsa
+- [[feedback_a_probe_that_sums_two_signals_cannot_say_which_failed]] — sonda AGREGADA (tinta da cena, soma, hash) fica verde enquanto qualquer emissor funcionar; conte os emissores antes de a escrever

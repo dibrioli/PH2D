@@ -57,8 +57,14 @@ pub fn tr(key: &str) -> &'static str {
         // ⚠️ A chave `input_map.listen` (o rótulo «Bind…») MORREU com o botão dela na W6, e sai
         // daqui: uma string órfã é onde alguém escreve, um dia, uma frase sobre um controlo que já
         // não existe — que é exactamente o defeito que esta linha acabou de pagar.
-        "input_map.listening" => "· press a key or a gamepad button…",
-        "input_map.empty" => "No actions yet. Type a name at the bottom and press Add.",
+        // ⛔ E a de 24/08 (2ª volta) foi a MESMA doença, na 3ª frase: «at the bottom» deixou de ser
+        // verdade quando o campo subiu para o topo, que é onde a referência (Godot) o tem.
+        // ⚠️ A `listening` é uma FRASE COMPLETA porque é lida em DOIS sítios — a face vazia da
+        // acção e a faixa do título, onde o nome dela vai à frente. Um fragmento («· press a
+        // key…») só lê bem num deles.
+        "input_map.listening" => "Press a key or a gamepad button. Esc cancels.",
+        "input_map.listening.title" => "Listening for",
+        "input_map.empty" => "No actions yet. Type a name at the top and press Add.",
         "input_map.binding.key" => "Key",
         "input_map.binding.pad" => "Pad",
         "input_map.binding.axis" => "Axis",

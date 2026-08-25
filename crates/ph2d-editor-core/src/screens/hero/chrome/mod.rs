@@ -108,7 +108,6 @@ pub use input_map::{
     binding_label, input_map_window_size, paint_input_map_window, sync_input_map_rows,
 };
 
-
 /// Paint the Onion settings floating modal (ADR-0142 W3b; gated on `store.onion_modal_pos()`).
 /// Re-exported so the hero paint pass renders it alongside the other floating dialogs.
 pub use onion_modal::paint_onion_modal;

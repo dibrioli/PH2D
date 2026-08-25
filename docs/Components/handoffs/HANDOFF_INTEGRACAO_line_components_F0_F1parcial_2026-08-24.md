@@ -127,7 +127,7 @@ duas leituras é ela própria um achado.
   no primário e eles estavam **não commitados** quando a linha abriu; eu trouxe-os para cá
   (commit `b73349143`, cópia conferida byte-a-byte). Só o **0166** nasceu nesta linha.
   ⚠️ Se o Enio commitar os dois no `main` entretanto, o rebase dá conflito de **arquivo idêntico**
-  — resolva mantendo qualquer um dos lados e **regenere o índice** (`bash scripts/adr-index.sh`),
+  — resolva mantendo qualquer um dos lados e **volte a gerar o índice** (`bash scripts/adr-index.sh`),
   ⛔ nunca editando o `decisions/README.md` à mão.
 
 ### 3.3 Números que SOMAM entre linhas

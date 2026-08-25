@@ -5524,6 +5524,56 @@ passa a exigir que **alguns** cheguem lá.
 `hull.rs` (a geometria convexa da região), `affine.rs` (o mapa de poses), `profile_dist.rs` (as
 primitivas de distância 2D). `lib.rs` **936 → 687**.
 
+## §66 — W60: reconferir a nota que o custo tornava inalcançável — e o eixo do zoom não existe (24/08)
+
+> `CLAUDE.md` §0: *"quem move o número que tornava algo inalcançável tem de reconferir a nota"*. As
+> W56e–W59 baixaram o traçado ~`2,2×`; o teto de `Resolution` foi escolhido **por causa** daquele
+> custo. Esta wave é a reconferência — e ela **não muda o número**.
+
+### §66.1 — O teto tinha duas pernas; uma caiu
+
+| nível | arestas | traçado, 23/08 | **traçado, 24/08** | ms/aresta |
+|---:|---:|---:|---:|---:|
+| 1 | 168 | 184,1 ms | **81,0 / 83,9** | 0,48–0,50 |
+| 8 | 472 | 450,3 ms | **201,5 / 209,2** | 0,43–0,44 |
+| **16** | 664 | 648,7 ms | **288,4 / 317,0** | 0,43–0,48 |
+| 32 | 940 | 900,5 ms | **439,7 / 460,1** | 0,47–0,49 |
+| 64 | 1328 | — | **705,6 / 727,8** | 0,53–0,55 |
+
+Pela regra escrita — *meio segundo é onde o artista lê «está a afinar» em vez de «o app prendeu»* —
+o teto de hoje seria **32**. ⚠️ E o `128` deu `2 071,8 ms` na 1.ª corrida e `1 184,0` na 2.ª: o
+"joelho" **era carga**. *Uma leitura só não é um joelho.*
+
+### §66.2 — ⛔ Mas a perna que segura o número é a do OLHO, e três réguas falharam a medi-la
+
+1. **A régua das bandas SATURA.** Ela conta vizinhos com salto de normal acima de **3°**, e o salto
+   do nível 1 já é `2,14°` ⇒ ela devolve o mesmo do nível 1 ao 64 (`91 · 117 · 98 · 102 · 97 · 98 ·
+   96`). *Uma régua com limiar não distingue nada que esteja todo abaixo dele* — e os ~100 pixels
+   que ela conta são o **aro** da extrusão, uma quina de 90° que é geometria de verdade.
+2. **Sem limiar, o aro engole tudo.** O `p99,9` do salto dá `11°` a `half_extent = 0,8` e `79°` a
+   `0,4` — plano em todos os níveis.
+3. ⛔ **E a câmera ENTRA na peça.** `olho = half_extent / tan(0,3454)` ⇒ `0,556` a
+   `half_extent = 0,2`, contra uma bola de raio `0,539`. As três linhas de baixo da tabela eram
+   **quadros vazios**.
+
+### §66.3 — ⭐⭐⭐ E a razão de fundo: o facetamento é INVARIANTE À ESCALA
+
+O cozimento **não conhece a câmera** — `cook_path_at` deriva a tolerância de `span × ratio`, com
+`span` a extensão do **desenho**. ⇒ o perfil é o mesmo em qualquer enquadramento, e o salto de normal
+de um círculo de `n` lados é `360/n` **sempre**.
+
+⇒ *«O knob existe para a peça vista de perto»* — a frase que o doc do default escreve — é uma
+afirmação sobre a **SILHUETA**, não sobre a luz. E a W54 já mediu as duas: a silhueta erra `0,079 %`
+da peça (invisível) enquanto a normal salta `6,43°` (visível).
+
+### §66.4 — O que fica
+
+- **O número fica em 16**, agora com **uma perna só** e ela nomeada no doc-comment.
+- ⏸️ **Subir o teto é decisão de produto**, e a medição que falta pede um contorno de **curvatura
+  variável** (uma quina apertada ao lado de um arco longo) — não um círculo, onde a resposta é
+  `360/n` e não depende de mais nada.
+- ⭐ A sonda fica no repo como **registo das três refutações**, não como régua viva.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

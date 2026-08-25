@@ -65,14 +65,44 @@ pub const DEFAULT_PROFILE_RESOLUTION: u32 = 1;
 /// por que a lei do `CLAUDE.md` §5 existe. A coluna calma é a medida escalada por esse fator (0,757),
 /// e o teto escolhido sobre a coluna **medida** é, por isso, conservador.
 ///
-/// ⭐ **O teto é 16 porque é onde o assentar deixa de parecer instantâneo.** Meio segundo depois de
-/// cada gesto é o limite em que o artista ainda lê a espera como *"está a afinar"* em vez de *"o app
-/// prendeu"* — e este knob **arrasta-se**, então cada passo do arrasto paga aquilo. O nível 32 não
-/// compra nada que se veja (o salto de normal já está em 0,54° no 16) e paga **39 %** a mais.
+/// ⚠️⚠️ **A PERNA DO RELÓGIO DESTE TETO CAIU** (W60, 2026-08-24). Ele foi escolhido por **duas**
+/// razões, e só uma continua de pé.
 ///
-/// ⚠️ **O custo é linear nas arestas** — 0,95 a 1,10 ms/aresta ao longo da tabela inteira —, então
-/// não há joelho onde se esconder: o teto é uma escolha de produto sobre uma reta, e diz de que
-/// recurso é.
+/// ~~*O teto é 16 porque é onde o assentar deixa de parecer instantâneo*~~ — meio segundo por gesto.
+/// ⛔ As waves W56e–W59 (fatia de profundidade · passo derivado do documento · corte por casco)
+/// baixaram o traçado **~2,2×**, e a mesma escada, medida a `load ≈ 4,2`, dá hoje:
+///
+/// | nível | arestas | traçado, 23/08 | **traçado, 24/08** | ms/aresta |
+/// |---:|---:|---:|---:|---:|
+/// | 1 | 168 | 184,1 ms | **81,0 / 83,9 ms** | 0,48–0,50 |
+/// | 8 | 472 | 450,3 ms | **201,5 / 209,2 ms** | 0,43–0,44 |
+/// | **16** | 664 | 648,7 ms | **288,4 / 317,0 ms** | 0,43–0,48 |
+/// | 32 | 940 | 900,5 ms | **439,7 / 460,1 ms** | 0,47–0,49 |
+/// | 64 | 1328 | — | **705,6 / 727,8 ms** | 0,53–0,55 |
+///
+/// ⇒ pela regra de **meio segundo**, o teto de hoje seria **32**. ⚠️ E o `128` da 1.ª corrida deu
+/// `2 071,8 ms` (`1,10 ms/aresta`, um joelho aparente) e `1 184,0 ms` na 2.ª (`0,63`) — **era
+/// carga**, e não lei. *Uma leitura só não é um joelho.*
+///
+/// ⭐ **O que segura o 16 é a outra perna: o OLHO.** O nível 32 não compra nada que se veja — e essa
+/// afirmação é **mais forte** do que este doc dizia: a régua das bandas põe o joelho em **168
+/// arestas**, que é o próprio [`DEFAULT_PROFILE_RESOLUTION`]. ⛔ E ela **não consegue** medir acima
+/// disso: o limiar dela é `3°` e o salto do nível 1 já é `2,14°`
+/// (`field3d_profile::tests::the_table_of_where_the_banding_knee_moves_with_zoom` regista as três
+/// refutações — a régua saturada, o aro a engolir a versão sem limiar, e a câmera a entrar na peça).
+///
+/// ⛔⛔ **E o zoom NÃO é um eixo:** o cozimento não conhece a câmera (a tolerância é `span × ratio`,
+/// com `span` do **desenho**), então o salto de normal de um círculo de `n` lados é `360/n` em
+/// qualquer enquadramento. *«O knob existe para a peça vista de perto» é sobre a SILHUETA, não sobre
+/// a luz.*
+///
+/// ⇒ **Subir o teto é decisão de produto e precisa de um contorno de curvatura VARIÁVEL** para ser
+/// medida — não de um círculo. Até lá o número fica onde está, agora com uma perna só e ela
+/// nomeada.
+///
+/// ⚠️ **O custo é linear nas arestas** — `0,43` a `0,55 ms/aresta` ao longo da escada inteira em
+/// 24/08 (era `0,95`–`1,10` em 23/08) —, então não há joelho onde se esconder: o teto é uma escolha
+/// de produto sobre uma reta, e diz de que recurso é.
 ///
 /// ⚠️ **É um limite de RECURSO e não de validade**: um perfil de 940 arestas é perfeitamente
 /// correcto, e o documento aceita-o por outra porta (`Profile::new` com a tolerância à mão). O que

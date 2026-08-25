@@ -40,6 +40,7 @@ mod adjacency;
 mod collapse;
 mod cotangent;
 mod curvature;
+mod feature_dirs;
 mod curvature_dirs;
 mod dyntopo;
 mod dyntopo_flip;
@@ -78,6 +79,7 @@ pub use curvature::{
     curvature_at, curvature_of, curvature_pair_at, recompute_curvature, world_curvature_at,
 };
 pub use curvature_dirs::{PrincipalDir, principal_dirs};
+pub use feature_dirs::{FeatureDir, FeatureOptions, FeatureReport, feature_dirs};
 pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere};
 pub use dyntopo_flip::relax_valence;
 pub use edges::Edges;

@@ -47,8 +47,14 @@ fn the_factory_keys_are_the_ones_the_shell_had_hardcoded() {
             .bindings
             .contains(&ph2d_input::Binding::Key(Key(k)))
     };
-    assert!(has("move_left", 0xF702) && has("move_left", 0x41), "seta esquerda e A");
-    assert!(has("move_right", 0xF703) && has("move_right", 0x44), "seta direita e D");
+    assert!(
+        has("move_left", 0xF702) && has("move_left", 0x41),
+        "seta esquerda e A"
+    );
+    assert!(
+        has("move_right", 0xF703) && has("move_right", 0x44),
+        "seta direita e D"
+    );
     assert!(has("jump", 0xF700) && has("jump", 0x5A), "seta cima e Z");
     assert!(has("down", 0xF701) && has("down", 0x53), "seta baixo e S");
     assert!(has("dash", 0x51), "Q");
@@ -130,5 +136,9 @@ fn the_player_resolves_the_map_and_never_a_hardcoded_key() {
         "voltou uma tecla CRAVADA ao dedo do jogador -- a janela do Input Map passa a ser decoracao"
     );
     // O controle POSITIVO: se o ficheiro encolher, este gate passa a afirmar sobre quase nada.
-    assert!(src.len() > 1500, "o ficheiro tem {} bytes: este gate parou de olhar para o produto", src.len());
+    assert!(
+        src.len() > 1500,
+        "o ficheiro tem {} bytes: este gate parou de olhar para o produto",
+        src.len()
+    );
 }

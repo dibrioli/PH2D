@@ -68,19 +68,17 @@ fn the_shell_and_the_editor_call_one_law() {
         bind_capture().contains("ph2d_editor::interaction::capture_if_listening("),
         "o irmao da guarda tem de chamar a LEI, e nao uma copia dela"
     );
-    let editor = fs::read_to_string(
-        "../../crates/ph2d-editor-core/src/interaction/dispatch/key.rs",
-    )
-    .expect("o dispatch do editor");
+    let editor =
+        fs::read_to_string("../../crates/ph2d-editor-core/src/interaction/dispatch/key.rs")
+            .expect("o dispatch do editor");
     assert!(
         editor.contains("capture_if_listening(store, event.keycode)"),
         "o despacho do editor tem de chamar a MESMA lei, e nao uma copia dela"
     );
     // O CONTROLE POSITIVO: a lei existe num sítio só.
-    let law = fs::read_to_string(
-        "../../crates/ph2d-editor-core/src/interaction/state/input_map_ops.rs",
-    )
-    .expect("a lei");
+    let law =
+        fs::read_to_string("../../crates/ph2d-editor-core/src/interaction/state/input_map_ops.rs")
+            .expect("a lei");
     assert!(
         law.contains("pub fn capture_if_listening("),
         "a lei mudou de casa -- este gate esta' a medir dois chamadores de uma porta que sumiu"

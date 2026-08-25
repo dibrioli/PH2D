@@ -124,7 +124,11 @@ impl InputAction {
 #[inline]
 #[must_use]
 fn clamp01(x: f32) -> f32 {
-    if x.is_finite() { x.clamp(0.0, 1.0) } else { 0.0 }
+    if x.is_finite() {
+        x.clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
 }
 
 #[cfg(test)]

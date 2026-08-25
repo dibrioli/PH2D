@@ -10,7 +10,10 @@ use crate::pencil::PencilEvent;
 pub enum Event {
     GamepadButtonDown(GamepadButton),
     GamepadButtonUp(GamepadButton),
-    GamepadAxis { axis: GamepadAxis, value: f32 },
+    GamepadAxis {
+        axis: GamepadAxis,
+        value: f32,
+    },
     Pencil(PencilEvent),
     /// ⚠️ **O teclado entrou em 2026-08-24 com o Input Map.** A crate nasceu na M8 com gamepad e
     /// caneta; a esmagadora maioria das ligações que um artista autora é uma tecla.

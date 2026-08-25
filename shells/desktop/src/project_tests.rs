@@ -447,7 +447,10 @@ fn project_file_round_trips_through_postcard() {
         "a ligacao de COMANDO voltou -- e' o par que prova que uma accao e' agnostica ao dispositivo"
     );
     assert_eq!(ja.dead_zone, 0.15, "a dead_zone autorada voltou");
-    assert_eq!(ja.press_point, 0.75, "e o press_point tambem, separado dela");
+    assert_eq!(
+        ja.press_point, 0.75,
+        "e o press_point tambem, separado dela"
+    );
     // ⚠️ E o ID sobreviveu: e' ele que uma gravacao guarda, entao um mapa que volta com os ids
     // trocados reescreveria o passado em silencio.
     assert_eq!(

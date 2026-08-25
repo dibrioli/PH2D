@@ -186,11 +186,30 @@ mod tests {
     #[test]
     fn the_two_normalizers_never_disagree() {
         let every = [
-            KeyCode::Tab, KeyCode::Enter, KeyCode::NumpadEnter, KeyCode::Space, KeyCode::Escape,
-            KeyCode::Backspace, KeyCode::Delete, KeyCode::F2, KeyCode::ArrowUp, KeyCode::ArrowDown,
-            KeyCode::ArrowLeft, KeyCode::ArrowRight, KeyCode::KeyA, KeyCode::KeyC, KeyCode::KeyD,
-            KeyCode::KeyF, KeyCode::KeyG, KeyCode::KeyH, KeyCode::KeyI, KeyCode::KeyK,
-            KeyCode::KeyL, KeyCode::KeyP, KeyCode::KeyV, KeyCode::KeyX,
+            KeyCode::Tab,
+            KeyCode::Enter,
+            KeyCode::NumpadEnter,
+            KeyCode::Space,
+            KeyCode::Escape,
+            KeyCode::Backspace,
+            KeyCode::Delete,
+            KeyCode::F2,
+            KeyCode::ArrowUp,
+            KeyCode::ArrowDown,
+            KeyCode::ArrowLeft,
+            KeyCode::ArrowRight,
+            KeyCode::KeyA,
+            KeyCode::KeyC,
+            KeyCode::KeyD,
+            KeyCode::KeyF,
+            KeyCode::KeyG,
+            KeyCode::KeyH,
+            KeyCode::KeyI,
+            KeyCode::KeyK,
+            KeyCode::KeyL,
+            KeyCode::KeyP,
+            KeyCode::KeyV,
+            KeyCode::KeyX,
         ];
         let mut checked = 0;
         for code in every {
@@ -216,8 +235,13 @@ mod tests {
     /// existirem dois, e as teclas mais óbvias de um jogo (WASD) seriam inligáveis.
     #[test]
     fn the_input_normalizer_reaches_what_the_editor_drops() {
-        for code in [KeyCode::KeyW, KeyCode::KeyS, KeyCode::KeyZ, KeyCode::KeyQ, KeyCode::ShiftLeft]
-        {
+        for code in [
+            KeyCode::KeyW,
+            KeyCode::KeyS,
+            KeyCode::KeyZ,
+            KeyCode::KeyQ,
+            KeyCode::ShiftLeft,
+        ] {
             assert!(
                 winit_to_editor_keycode(code).is_none(),
                 "{code:?} passou a ser do editor -- este gate mede a diferenca entre os dois e a \

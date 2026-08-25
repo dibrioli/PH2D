@@ -17,6 +17,14 @@ extend-ignore-identifiers-re = [
     # `excepcional` — português (pt-PT / pt-BR pré-reforma). O typos quer `exceptional`,
     # que é inglês; a palavra está certa no idioma em que o doc está escrito.
     "^excepcional$",
+    # `PROJECTO` — mesma família do `excepcional` (pt-PT): o typos lê-a como `PROJECTION`.
+    # Aparece em doc-comments e comentários da `line/Vector`, sempre a dizer *«o mapa é do
+    # PROJECTO, não do jogador»* — trocá-la por `PROJECTION` inverteria o sentido da frase.
+    # ⚠️ Ancorada e SÓ na forma maiúscula, que é a única que o typos assinala.
+    "^PROJECTO$",
+    # `factores` — pt-PT de «fatores», num doc-comment do `ph2d-field-eval` sobre compor
+    # limites (*«encadear misturas pode compor os factores»*). O typos quer o inglês `factors`.
+    "^factores$",
     # mlua + Luau API surface and types
     "luau",
     "mlua",

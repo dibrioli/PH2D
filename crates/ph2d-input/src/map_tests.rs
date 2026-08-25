@@ -19,7 +19,11 @@ fn reordering_the_panel_never_changes_an_id() {
     let removed = m.remove(jump).expect("jump existia");
     m.insert(removed);
 
-    assert_eq!(m.id("jump"), Some(jump), "o id de `jump` sobreviveu a' mudanca de posicao");
+    assert_eq!(
+        m.id("jump"),
+        Some(jump),
+        "o id de `jump` sobreviveu a' mudanca de posicao"
+    );
     assert_eq!(m.id("fire"), Some(fire));
     assert_ne!(jump, fire, "e os dois continuam distintos");
 }

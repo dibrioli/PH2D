@@ -35,7 +35,11 @@ fn an_os_key_repeat_never_duplicates_the_key() {
     k.handle_key_down(A);
     k.handle_key_down(A);
 
-    assert_eq!(k.iter_held().count(), 1, "a tecla entrou tres vezes na lista");
+    assert_eq!(
+        k.iter_held().count(),
+        1,
+        "a tecla entrou tres vezes na lista"
+    );
 
     k.begin_frame();
     assert!(!k.pressed(A), "o repeat re-armou a borda");
@@ -70,7 +74,10 @@ fn release_all_empties_the_keyboard() {
 
     // Quadro 2: continuam seguradas -- e' isto que poe as duas na fotografia do quadro anterior.
     k.begin_frame();
-    assert!(k.held(A) && k.held(B), "a corrida atravessa a fronteira do quadro");
+    assert!(
+        k.held(A) && k.held(B),
+        "a corrida atravessa a fronteira do quadro"
+    );
 
     // Quadro 3: a janela perde o foco a meio da corrida.
     k.begin_frame();
@@ -94,5 +101,9 @@ fn the_held_order_is_stable_and_sorted() {
     k.handle_key_down(B);
     k.handle_key_down(A);
     let got: Vec<Key> = k.iter_held().collect();
-    assert_eq!(got, vec![A, B], "a lista tem de sair ordenada, sempre igual");
+    assert_eq!(
+        got,
+        vec![A, B],
+        "a lista tem de sair ordenada, sempre igual"
+    );
 }

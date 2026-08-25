@@ -24,9 +24,9 @@ usage() {
 }
 
 [ $# -ge 2 ] || usage
-VAS="$1"
+VASSOURA="$1"
 shift
-[ -f "$VAS" ] || { echo "✗ vassoura não encontrada: $VAS" >&2; exit 2; }
+[ -f "$VASSOURA" ] || { echo "✗ vassoura não encontrada: $VASSOURA" >&2; exit 2; }
 
 # Decodifica a vassoura em memória. Entradas vazias ou não-base64 são recusadas
 # alto (uma linha de padrão vazia faria o grep casar TUDO — pior que falhar).
@@ -42,7 +42,7 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
   PATTERNS="${PATTERNS}${decoded}
 "
-done < "$VAS"
+done < "$VASSOURA"
 [ -n "$PATTERNS" ] || { echo "✗ vassoura vazia" >&2; exit 2; }
 
 hits=0
@@ -81,7 +81,7 @@ else
     # (1)+(2) conteúdo, arquivo a arquivo
     while IFS= read -r -d '' f; do
       # a própria vassoura é base64 — o decode nunca casa nela; pular por clareza
-      [ "$(readlink -f "$f")" = "$(readlink -f "$VAS")" ] && continue
+      [ "$(readlink -f "$f")" = "$(readlink -f "$VASSOURA")" ] && continue
       if grep -qI . "$f" 2>/dev/null; then
         out="$(grep -HnF -f <(patfile) -- "$f" 2>/dev/null)" || true
         report "conteúdo" "$out"

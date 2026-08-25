@@ -2588,7 +2588,7 @@ fn worst_gradient(doc: &FieldDoc, e: f64, steps: usize) -> f64 {
     worst
 }
 
-fn leafs(prim: Primitive) -> FieldDoc {
+fn leaves(prim: Primitive) -> FieldDoc {
     FieldDoc::new(vec![leaf(prim, Xform::IDENTITY)], NodeId(0)).expect("a peça")
 }
 
@@ -2646,18 +2646,18 @@ fn the_table_of_who_inflates_the_gradient() {
         round: 0.0,
     };
     let cases: Vec<(&str, FieldDoc)> = vec![
-        ("Box", leafs(bx.clone())),
+        ("Box", leaves(bx.clone())),
         (
             "Box round=0,1",
-            leafs(Primitive::Box {
+            leaves(Primitive::Box {
                 half: [0.4, 0.3, 0.25],
                 round: 0.1,
             }),
         ),
-        ("Sphere", leafs(Primitive::Sphere { radius: 0.5 })),
+        ("Sphere", leaves(Primitive::Sphere { radius: 0.5 })),
         (
             "Cylinder",
-            leafs(Primitive::Cylinder {
+            leaves(Primitive::Cylinder {
                 radius: 0.4,
                 half_height: 0.3,
                 round: 0.0,
@@ -2665,7 +2665,7 @@ fn the_table_of_who_inflates_the_gradient() {
         ),
         (
             "Cylinder round=0,1",
-            leafs(Primitive::Cylinder {
+            leaves(Primitive::Cylinder {
                 radius: 0.4,
                 half_height: 0.3,
                 round: 0.1,
@@ -2673,14 +2673,14 @@ fn the_table_of_who_inflates_the_gradient() {
         ),
         (
             "Torus",
-            leafs(Primitive::Torus {
+            leaves(Primitive::Torus {
                 major: 0.4,
                 minor: 0.15,
             }),
         ),
         (
             "Extrude",
-            leafs(Primitive::Extrude {
+            leaves(Primitive::Extrude {
                 profile: profile.clone(),
                 half_height: 0.25,
                 round: 0.0,
@@ -2688,7 +2688,7 @@ fn the_table_of_who_inflates_the_gradient() {
         ),
         (
             "Extrude round=0,1",
-            leafs(Primitive::Extrude {
+            leaves(Primitive::Extrude {
                 profile: profile.clone(),
                 half_height: 0.25,
                 round: 0.1,
@@ -2696,7 +2696,7 @@ fn the_table_of_who_inflates_the_gradient() {
         ),
         (
             "Revolve",
-            leafs(Primitive::Revolve {
+            leaves(Primitive::Revolve {
                 profile: Profile::new(
                     vec![vec![[0.2, -0.3], [0.5, -0.3], [0.5, 0.3], [0.2, 0.3]]],
                     FillRule::NonZero,
@@ -2894,7 +2894,7 @@ fn the_table_of_the_gradient_across_the_parameter() {
             .map(|r| {
                 (
                     format!("{r}"),
-                    leafs(Primitive::Extrude {
+                    leaves(Primitive::Extrude {
                         profile: Profile::new(vec![ring(24, 0.5)], FillRule::NonZero, 1e-3)
                             .expect("perfil"),
                         half_height: 0.25,
@@ -2953,14 +2953,14 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
     for r in [0.0f32, 0.1] {
         cases.push((
             format!("Box round={r}"),
-            leafs(Primitive::Box {
+            leaves(Primitive::Box {
                 half: [0.4, 0.3, 0.25],
                 round: r,
             }),
         ));
         cases.push((
             format!("Cylinder round={r}"),
-            leafs(Primitive::Cylinder {
+            leaves(Primitive::Cylinder {
                 radius: 0.4,
                 half_height: 0.3,
                 round: r,
@@ -2968,7 +2968,7 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
         ));
         cases.push((
             format!("Extrude round={r}"),
-            leafs(Primitive::Extrude {
+            leaves(Primitive::Extrude {
                 profile: Profile::new(vec![ring(24, 0.5)], FillRule::NonZero, 1e-3)
                     .expect("perfil"),
                 half_height: 0.25,
@@ -2976,17 +2976,17 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
             }),
         ));
     }
-    cases.push(("Sphere".into(), leafs(Primitive::Sphere { radius: 0.5 })));
+    cases.push(("Sphere".into(), leaves(Primitive::Sphere { radius: 0.5 })));
     cases.push((
         "Torus".into(),
-        leafs(Primitive::Torus {
+        leaves(Primitive::Torus {
             major: 0.4,
             minor: 0.15,
         }),
     ));
     cases.push((
         "Revolve".into(),
-        leafs(Primitive::Revolve {
+        leaves(Primitive::Revolve {
             profile: Profile::new(
                 vec![vec![[0.2, -0.3], [0.5, -0.3], [0.5, 0.3], [0.2, 0.3]]],
                 FillRule::NonZero,

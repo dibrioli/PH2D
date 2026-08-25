@@ -21,7 +21,9 @@ fn sources() -> Vec<(String, String)> {
     String::from_utf8_lossy(&out.stdout)
         .lines()
         .filter_map(|rel| {
-            std::fs::read_to_string(root.join(rel)).ok().map(|s| (rel.to_string(), s))
+            std::fs::read_to_string(root.join(rel))
+                .ok()
+                .map(|s| (rel.to_string(), s))
         })
         .collect()
 }

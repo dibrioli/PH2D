@@ -18,7 +18,10 @@ fn read(path: &str) -> String {
 fn the_drag_is_wired_at_all_three_points() {
     let src = read("src/input_dispatch.rs");
     for (needle, what) in [
-        ("self.arm_input_map_drag_if_on_handle(", "ARMAR no Primary Down"),
+        (
+            "self.arm_input_map_drag_if_on_handle(",
+            "ARMAR no Primary Down",
+        ),
         ("self.input_map_drag_move(", "MOVER no CursorMoved"),
         ("self.input_map_drag_up();", "LARGAR no Primary Up"),
     ] {

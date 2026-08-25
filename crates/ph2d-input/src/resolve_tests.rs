@@ -15,8 +15,14 @@ fn walk_map() -> InputMap {
     let mut m = InputMap::new();
     let l = m.create("move_left");
     let r = m.create("move_right");
-    m.get_mut(l).expect("existe").bindings.push(Binding::Key(LEFT));
-    m.get_mut(r).expect("existe").bindings.push(Binding::Key(RIGHT));
+    m.get_mut(l)
+        .expect("existe")
+        .bindings
+        .push(Binding::Key(LEFT));
+    m.get_mut(r)
+        .expect("existe")
+        .bindings
+        .push(Binding::Key(RIGHT));
     m
 }
 
@@ -240,7 +246,10 @@ fn a_pad_button_and_a_key_drive_the_same_action() {
         &map,
         &mut dev,
         &mut st,
-        &[Event::GamepadButtonUp(GamepadButton::South), Event::KeyDown(Key(0x5A))],
+        &[
+            Event::GamepadButtonUp(GamepadButton::South),
+            Event::KeyDown(Key(0x5A)),
+        ],
     );
     assert!(st.sample(id).pressed, "e a tecla tambem, sozinha");
 }
@@ -323,7 +332,11 @@ fn losing_focus_releases_everything() {
 
     let input = Input::new(&map, &st);
     for n in ["move_left", "move_right"] {
-        assert_eq!(input.strength(n), 0.0, "{n} ficou com forca depois do FocusLost");
+        assert_eq!(
+            input.strength(n),
+            0.0,
+            "{n} ficou com forca depois do FocusLost"
+        );
         assert!(!input.pressed(n));
     }
 }

@@ -73,7 +73,8 @@ impl InputMap {
             let id = m.create(name);
             let a = m.get_mut(id).expect("acabou de nascer");
             for k in keys {
-                a.bindings.push(crate::action::Binding::Key(crate::keyboard::Key(*k)));
+                a.bindings
+                    .push(crate::action::Binding::Key(crate::keyboard::Key(*k)));
             }
         }
         m

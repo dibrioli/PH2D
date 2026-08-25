@@ -111,13 +111,16 @@ impl crate::App {
     fn listening_axis_push(&self) -> Option<ph2d_input::Binding> {
         /// Meio curso: fundo do curso é `1,0`, e o resíduo de um comando parado fica muito abaixo.
         const PUSHED: f32 = 0.5;
-        ph2d_input::GamepadAxis::ALL.iter().copied().find_map(|axis| {
-            let v = self.input.gamepad.axis(axis);
-            (v.abs() >= PUSHED).then_some(ph2d_input::Binding::PadAxis {
-                axis,
-                positive: v > 0.0,
+        ph2d_input::GamepadAxis::ALL
+            .iter()
+            .copied()
+            .find_map(|axis| {
+                let v = self.input.gamepad.axis(axis);
+                (v.abs() >= PUSHED).then_some(ph2d_input::Binding::PadAxis {
+                    axis,
+                    positive: v > 0.0,
+                })
             })
-        })
     }
 }
 

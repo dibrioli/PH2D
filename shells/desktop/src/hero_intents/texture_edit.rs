@@ -66,6 +66,9 @@ pub(crate) fn read_sprite_source(
 ) -> Option<SourceRead> {
     let world = sim.world();
     let sprite = world.get::<Sprite>(entity)?;
+    // ⚠️ A janela é do componente (ADR-0164 F1 passo 6): ausente = a textura inteira, que é
+    // exatamente o que o `region_enabled = false` significava.
+    let region = world.get::<ph2d_ecs::SpriteRegion>(entity).copied();
     let old_size_world = sprite.size;
     let old_source = sprite.source;
     let old_premultiplied = sprite.premultiplied;
@@ -82,7 +85,7 @@ pub(crate) fn read_sprite_source(
     let pixels_16 = match sprite.source {
         SpriteSource::Individual { texture_id } => renderer
             .readback_individual_16(texture_id)
-            .and_then(|(w, h, px)| crop_region_16(&px, w, h, sprite)),
+            .and_then(|(w, h, px)| crop_region_16(&px, w, h, region.as_ref())),
         // O atlas é de 8 bits por construção; uma cozida não tem pixels na CPU.
         _ => None,
     };
@@ -117,7 +120,7 @@ pub(crate) fn read_sprite_source(
             // import de folhas sem que ninguém revisitasse o leitor. Ele só ficou ALCANÇÁVEL
             // quando a folha passou a ser produzida aqui dentro. *Curar no ponto de
             // estrangulamento cobre as oito ferramentas de uma vez* — que é a razão de ele existir.
-            crop_region(full, sprite)
+            crop_region(full, region.as_ref())
         }
         // W2.T2: a tier-cooked KTX2 texture is GPU-compressed (BC/ASTC/
         // ETC2) with no CPU-side RGBA — the raster image tools (Trim,
@@ -141,11 +144,16 @@ pub(crate) fn read_sprite_source(
 /// bits: ali devolver a imagem inteira é errado de forma **visível**; aqui o consumidor é uma
 /// ferramenta que ia preservar precisão, e o que ela faz sem os 16 bits é **converter para 8** —
 /// que é o comportamento seguro. *Uma ausência degrada; um todo errado mente.*
-fn crop_region_16(px: &[u16], w: u32, h: u32, sprite: &Sprite) -> Option<Vec<u16>> {
-    if !sprite.region_enabled {
+fn crop_region_16(
+    px: &[u16],
+    w: u32,
+    h: u32,
+    region: Option<&ph2d_ecs::SpriteRegion>,
+) -> Option<Vec<u16>> {
+    let Some(region) = region else {
         return Some(px.to_vec());
-    }
-    let [rx, ry, rw, rh] = sprite.region_rect;
+    };
+    let [rx, ry, rw, rh] = region.rect;
     let rect = [
         rx.round().max(0.0) as u32,
         ry.round().max(0.0) as u32,
@@ -164,11 +172,11 @@ fn crop_region_16(px: &[u16], w: u32, h: u32, sprite: &Sprite) -> Option<Vec<u16
 /// sai da textura significa que alguém a re-uploadou mais pequena por baixo do sprite, e cortar
 /// com aritmética que dá a volta produziria lixo. Devolver o todo é errado de forma VISÍVEL —
 /// devolver lixo é errado de forma silenciosa.
-fn crop_region(img: SpriteImage, sprite: &Sprite) -> SpriteImage {
-    if !sprite.region_enabled {
+fn crop_region(img: SpriteImage, region: Option<&ph2d_ecs::SpriteRegion>) -> SpriteImage {
+    let Some(region) = region else {
         return img;
-    }
-    let [rx, ry, rw, rh] = sprite.region_rect;
+    };
+    let [rx, ry, rw, rh] = region.rect;
     // Os quatro vêm de um `[f32; 4]` que carrega pixels inteiros; qualquer coisa que não seja um
     // pixel inteiro positivo não é uma janela.
     let (x, y, w, h) = (
@@ -386,11 +394,8 @@ mod tests {
         SpriteImage::from_bytes(w, h, px, AlphaMode::Straight)
     }
 
-    fn region_sprite(rect: [f32; 4]) -> Sprite {
-        let mut s = Sprite::individual(1, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]);
-        s.region_enabled = true;
-        s.region_rect = rect;
-        s
+    fn region_sprite(rect: [f32; 4]) -> ph2d_ecs::SpriteRegion {
+        ph2d_ecs::SpriteRegion::individual(rect)
     }
 
     /// ⚠️ **O bug que o Enio viu na folha exportada** (*"com múltiplas repetições"*): sem o
@@ -398,7 +403,7 @@ mod tests {
     /// carimbava-a no lugar de cada peça, uma vez por peça.
     #[test]
     fn a_region_sprite_reads_only_its_window() {
-        let img = crop_region(tagged(16, 16), &region_sprite([4.0, 8.0, 3.0, 2.0]));
+        let img = crop_region(tagged(16, 16), Some(&region_sprite([4.0, 8.0, 3.0, 2.0])));
         assert_eq!((img.width, img.height), (3, 2));
         // O primeiro pixel do recorte tem de ser o `(4, 8)` da origem.
         assert_eq!(&img.pixels[0..2], &[4, 8]);
@@ -409,12 +414,13 @@ mod tests {
 
     /// Controle positivo: sem janela, a imagem passa inteira. Sem isto o teste acima passaria com
     /// um `crop_region` que devolvesse sempre um recorte fixo.
+    ///
+    /// ⚠️ **«Sem janela» passou a ser a AUSÊNCIA do componente** (ADR-0164 F1 passo 6). Antes era
+    /// `region_enabled = false` **com um rect autorado ao lado** — o estado que ninguém conseguia
+    /// ler, e que este teste construía de propósito. Ele deixou de ser exprimível.
     #[test]
     fn a_plain_sprite_reads_whole() {
-        let mut s = Sprite::individual(1, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]);
-        s.region_enabled = false;
-        s.region_rect = [4.0, 8.0, 3.0, 2.0];
-        let img = crop_region(tagged(16, 16), &s);
+        let img = crop_region(tagged(16, 16), None);
         assert_eq!((img.width, img.height), (16, 16));
     }
 
@@ -428,7 +434,7 @@ mod tests {
             [0.0, 0.0, 0.0, 4.0],  // largura zero
             [-1.0, 0.0, 4.0, 4.0], // canto negativo (o `max(0)` traz para 0, mas fica dentro)
         ] {
-            let img = crop_region(tagged(16, 16), &region_sprite(rect));
+            let img = crop_region(tagged(16, 16), Some(&region_sprite(rect)));
             let cropped = (img.width, img.height) != (16, 16);
             // O canto negativo é o único que PODE recortar (vira 0,0 4x4) — os outros três não.
             if rect[0] >= 0.0 {
@@ -476,7 +482,7 @@ mod tests {
     fn the_crop_keeps_the_alpha_mode() {
         let mut img = tagged(8, 8);
         img.alpha = AlphaMode::Premultiplied;
-        let out = crop_region(img, &region_sprite([1.0, 1.0, 2.0, 2.0]));
+        let out = crop_region(img, Some(&region_sprite([1.0, 1.0, 2.0, 2.0])));
         assert_eq!(out.alpha, AlphaMode::Premultiplied);
     }
 }

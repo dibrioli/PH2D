@@ -93,6 +93,82 @@ pub struct SpriteV3 {
     pub premultiplied: bool,
 }
 
+/// **Espelho CONGELADO do `Sprite` v4** — os 20 campos como eles estavam no fio até o corte
+/// do ADR-0164 F1 passo 6 / ADR-0166.
+///
+/// # Porque ele existe, e porque tem DOIS consumidores
+///
+/// O postcard é **posicional e não auto-descritivo**: ler bytes de 20 campos com um tipo de 13
+/// **não dá erro** — dá lixo bem-formado. O `Sprite` vivo perdeu 7 campos, logo os bytes v4
+/// precisam de um tipo que ainda os tenha. Gémeo exato do [`SpriteV3`], pela mesma razão.
+///
+/// 1. O envelope [`SpriteVersioned::V4`], que é o que o [`load_sprite`] decodifica;
+/// 2. ⭐ **a migração do arquivo de PROJETO** (`PROJECT_SCHEMA`), que é o caminho que de facto
+///    tem utilizadores — ver a nota do módulo sobre o `load_sprite` não ter chamador nenhum.
+///
+/// ⛔ **Nunca acrescente, remova nem reordene um campo daqui.** Ele descreve bytes que já estão
+/// gravados; mudá-lo não muda o passado, só passa a lê-lo errado.
+///
+/// Os `#[serde(default)]` são **documentais** sob postcard (o atributo nunca dispara), mantidos
+/// para o espelho ser fiel ao tipo que os tinha — a mesma decisão que o [`SpriteV3`] tomou.
+#[doc(hidden)]
+#[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SpriteV4 {
+    #[serde(default)]
+    pub version: u32,
+    pub source: SpriteSource,
+    pub size: [f32; 2],
+    pub tint: [f32; 4],
+    #[serde(default)]
+    pub anchor: [f32; 2],
+    #[serde(skip)]
+    pub premultiplied: bool,
+    #[serde(default)]
+    pub self_tint: [f32; 4],
+    #[serde(default)]
+    pub per_corner_tint: [[f32; 4]; 4],
+    #[serde(default)]
+    pub tint_fill: bool,
+    #[serde(default)]
+    pub opacity: f32,
+    #[serde(default)]
+    pub flip_x: bool,
+    #[serde(default)]
+    pub flip_y: bool,
+    #[serde(default)]
+    pub centered: bool,
+    #[serde(default)]
+    pub offset: [f32; 2],
+    #[serde(default)]
+    pub hframes: u32,
+    #[serde(default)]
+    pub vframes: u32,
+    #[serde(default)]
+    pub frame: u32,
+    #[serde(default)]
+    pub region_enabled: bool,
+    #[serde(default)]
+    pub region_rect: [f32; 4],
+    #[serde(default)]
+    pub region_filter_clip: bool,
+}
+
+/// O que uma `Sprite` v4 vira: a `Sprite` v5 **mais** os componentes que os campos cortados
+/// passaram a ser (ADR-0164 F1 passo 6).
+///
+/// ⚠️ **Cada componente é `Option`, e o `None` é uma DECISÃO, não uma falha:** anexar um
+/// componente cujo valor é indistinguível da ausência (grelha de uma célula, cantos brancos)
+/// encheria toda cena antiga de componentes que não dizem nada — e a paleta da F3 passaria a
+/// mostrar seções que o artista nunca pediu, que é exatamente o que o ADR-0166 existe para
+/// evitar. *Migrar é preservar o que foi autorado, não materializar defaults.*
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct MigratedSprite {
+    pub sprite: Sprite,
+    pub grid: Option<ph2d_ecs::SpriteGrid>,
+    pub region: Option<ph2d_ecs::SpriteRegion>,
+    pub corner_tint: Option<ph2d_ecs::SpriteCornerTint>,
+}
+
 /// Canonical W0 v3 fixture set — single source of truth shared by
 /// the T0.12 generator and the T0.13 verifier. The
 /// `fixtures_match_canonical_serialization` gate asserts these 5
@@ -223,12 +299,18 @@ pub enum SpriteVersioned {
     /// Legacy v3 payload — 5 fields, 4 on the wire (`premultiplied`
     /// is `#[serde(skip)]`). Discriminant byte 0x00.
     V3(SpriteV3),
-    /// Current v4 payload — the live [`Sprite`] schema (20 fields, 18
-    /// on the wire: `premultiplied` is `#[serde(skip)]`). Discriminant
-    /// byte 0x01, appended after `V3` so the frozen 0x00 fixtures keep
-    /// loading. Never reorder these variants (postcard discriminants
-    /// are positional — see module docs).
-    V4(Sprite),
+    /// Legacy v4 payload — os 20 campos do [`SpriteV4`] (18 no fio:
+    /// `premultiplied` é `#[serde(skip)]`). Discriminante 0x01.
+    ///
+    /// ⚠️ **Era `V4(Sprite)` até o ADR-0164 F1 passo 6.** O `Sprite` vivo perdeu 7 campos, e
+    /// deixar o variante a apontar para o tipo VIVO faria os bytes v4 já gravados serem lidos
+    /// com um tipo de 13 campos — que sob postcard **não dá erro, dá lixo**. Congelar o
+    /// espelho é a mesma coisa que o `V3` fez, pela mesma razão.
+    V4(SpriteV4),
+    /// Payload corrente v5 — o [`Sprite`] vivo (13 campos, 12 no fio). Discriminante 0x02,
+    /// **apendado**, para os envelopes 0x00 e 0x01 continuarem a carregar. ⛔ Nunca reordene
+    /// (os discriminantes do postcard são posicionais — ver o doc do módulo).
+    V5(Sprite),
 }
 
 /// Error returned by [`load_sprite`] when a byte slice cannot be decoded
@@ -320,7 +402,7 @@ impl From<postcard::Error> for LoadError {
 /// wire); the load/extract boundary rebuilds the runtime flag from
 /// texture-store context where applicable — see
 /// [`Sprite::migrate_v3_to_v4`].
-pub fn load_sprite(bytes: &[u8]) -> Result<Sprite, LoadError> {
+pub fn load_sprite(bytes: &[u8]) -> Result<MigratedSprite, LoadError> {
     let (versioned, rest) = postcard::take_from_bytes::<SpriteVersioned>(bytes)?;
     if !rest.is_empty() {
         return Err(LoadError::TrailingBytes {
@@ -328,10 +410,21 @@ pub fn load_sprite(bytes: &[u8]) -> Result<Sprite, LoadError> {
             total: bytes.len(),
         });
     }
-    let sprite = match versioned {
-        SpriteVersioned::V3(v3) => Sprite::migrate_v3_to_v4(v3),
-        SpriteVersioned::V4(v4) => v4,
+    // ⚠️ **A escada é encadeada, nunca paralela:** um v3 sobe a v4 e SÓ ENTÃO a v5. Dois
+    // caminhos independentes para o mesmo destino seriam duas leis a divergir no primeiro
+    // degrau novo — o defeito que o `migrate_v3_to_v4` já evitava ao não ser re-corrido num
+    // envelope v4.
+    let migrated = match versioned {
+        SpriteVersioned::V3(v3) => Sprite::migrate_v4_to_v5(Sprite::migrate_v3_to_v4(v3)),
+        SpriteVersioned::V4(v4) => Sprite::migrate_v4_to_v5(v4),
+        SpriteVersioned::V5(v5) => MigratedSprite {
+            sprite: v5,
+            grid: None,
+            region: None,
+            corner_tint: None,
+        },
     };
+    let sprite = migrated.sprite;
     // Spec §10.1 Nota Lens C M2: the struct's `version` field is
     // redundant with the wrapper discriminant; this post-deserialize
     // assert pins the `enum=V4 ↔ sprite.version=4` invariant. The
@@ -345,5 +438,5 @@ pub fn load_sprite(bytes: &[u8]) -> Result<Sprite, LoadError> {
         sprite.version,
         Sprite::VERSION
     );
-    Ok(sprite)
+    Ok(migrated)
 }

@@ -20,7 +20,9 @@ use super::inspector_ordering::queue_set;
 const ANIMATIONS: &str = "ph2d::ecs::SpriteAnimations";
 const ANIMATOR: &str = "ph2d::ecs::SpriteAnimator";
 /// ⚠️ **O único sink do índice de célula** — ver o doc de [`ph2d_ecs::sprite_anim`].
-const SPRITE: &str = "ph2d::render::Sprite";
+/// Desde o ADR-0164 F1 passo 6 ele é o `SpriteGrid`, não a `Sprite`: a célula viva mudou-se
+/// para o componente da grelha que lhe dá sentido.
+const GRID: &str = "ph2d::ecs::SpriteGrid";
 
 /// A tag que este tocador aponta, se ela existir na biblioteca de hoje.
 fn current_tag(world: &World, entity: Entity, name: &str) -> Option<AnimationTag> {
@@ -56,17 +58,18 @@ fn rewind_to_start(
     player.rewind(tag);
     let entity = Entity::from_bits(entity_bits);
     let Some(tag) = tag else { return };
-    let Some(mut sprite) = world.get::<ph2d_render::Sprite>(entity).cloned() else {
+    // Sem grelha não há célula para onde rebobinar — a sprite mostra a textura inteira.
+    let Some(mut grid) = world.get::<ph2d_ecs::SpriteGrid>(entity).copied() else {
         return;
     };
     let Some(frame) = ph2d_ecs::entry_frame(player, tag, cells_of(world, entity)) else {
         return;
     };
-    if sprite.frame == frame {
+    if grid.frame == frame {
         return;
     }
-    sprite.frame = frame;
-    queue_set(queue, registry, entity_bits, SPRITE, &sprite);
+    grid.frame = frame;
+    queue_set(queue, registry, entity_bits, GRID, &grid);
 }
 
 /// **Põe a cabeça de leitura numa célula**, fixando-a ao intervalo da animação em curso.
@@ -84,7 +87,7 @@ fn set_frame(
     registry: &ComponentRegistry,
 ) {
     let entity = Entity::from_bits(entity_bits);
-    let Some(mut sprite) = world.get::<ph2d_render::Sprite>(entity).cloned() else {
+    let Some(mut grid) = world.get::<ph2d_ecs::SpriteGrid>(entity).copied() else {
         return;
     };
     let cells = cells_of(world, entity);
@@ -94,18 +97,19 @@ fn set_frame(
         .and_then(|t| t.resolve(cells))
         .unwrap_or((0, cells.saturating_sub(1)));
     let frame = cell.clamp(lo, hi);
-    if sprite.frame == frame {
+    if grid.frame == frame {
         return;
     }
-    sprite.frame = frame;
-    queue_set(queue, registry, entity_bits, SPRITE, &sprite);
+    grid.frame = frame;
+    queue_set(queue, registry, entity_bits, GRID, &grid);
 }
 
-/// Quantas células a grelha desta sprite tem — **o pool**, lido do `Sprite` e de mais nada.
+/// Quantas células a grelha desta sprite tem — **o pool**, lido do [`ph2d_ecs::SpriteGrid`] e
+/// de mais nada. Sem grelha o pool é **uma** célula: é o que a ausência do componente significa.
 fn cells_of(world: &World, entity: Entity) -> u32 {
     world
-        .get::<ph2d_render::Sprite>(entity)
-        .map_or(1, |s| s.hframes.saturating_mul(s.vframes).max(1))
+        .get::<ph2d_ecs::SpriteGrid>(entity)
+        .map_or(1, |g| g.cells().max(1))
 }
 
 /// Constrói o snapshot da §11, ou `None` quando a entidade não é uma sprite.
@@ -123,8 +127,8 @@ pub(super) fn build_anim_info(
     let entity = Entity::from_bits(entity_bits);
     // ⚠️ **Só uma SPRITE tem animação de frames**, porque o pool é a grelha dela. Numa entidade
     // sem `Sprite`, a seção inteira não se pinta — em vez de oferecer knobs sobre um pool vazio.
-    let sprite = world.get::<ph2d_render::Sprite>(entity)?;
-    let cells = sprite.hframes.saturating_mul(sprite.vframes).max(1);
+    world.get::<ph2d_render::Sprite>(entity)?;
+    let cells = cells_of(world, entity);
     let lib = world.get::<SpriteAnimations>(entity);
     let rows: Vec<InspectorAnimRow> = lib
         .map(|l| {
@@ -166,7 +170,9 @@ pub(super) fn build_anim_info(
                 if on { 1 } else { 2 }
             },
         ),
-        frame: sprite.frame,
+        frame: world
+            .get::<ph2d_ecs::SpriteGrid>(entity)
+            .map_or(0, |g| g.frame),
         selected_count,
     })
 }

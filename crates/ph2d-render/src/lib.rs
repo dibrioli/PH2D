@@ -130,6 +130,6 @@ pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, Sprite, SpriteSource};
 // `LoadError`, ADR-0070-amendment-2 §4) are re-exported at crate root —
 // `SpriteV3` stays internal migrator machinery (`#[doc(hidden)]` on the
 // struct). Tests reach it via `ph2d_render::sprite_versioned::SpriteV3`.
-pub use sprite_versioned::{LoadError, SpriteVersioned, load_sprite};
+pub use sprite_versioned::{LoadError, MigratedSprite, SpriteV4, SpriteVersioned, load_sprite};
 pub use tonemap::Tonemap;
 pub use vello_pass::VelloPass;

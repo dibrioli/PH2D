@@ -43,11 +43,15 @@ pub(super) fn draw_op_badges(
     ) else {
         return;
     };
+    // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula, e aí o quad do
+    // afim é o de sempre, byte-idêntico.
+    let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     let base_affine = super::bgremoval_preview::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,
         sprite,
+        sprite_grid,
         camera,
         window_size,
     );

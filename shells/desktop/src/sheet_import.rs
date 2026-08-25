@@ -201,7 +201,7 @@ pub(crate) fn import_sheet(
         let mut sprite = Sprite::individual(texture_id, world_size, [1.0, 1.0, 1.0, 1.0]);
         // ⚠️ MEDIDO na folha, não assumido: um `.png` do Aseprite pode vir com as regiões
         // coladas (aí o recuo defende) ou com padding (aí ele só cortaria borda).
-        crate::project_sprite_pixels::bind_sheet_region(
+        let sprite_region = crate::project_sprite_pixels::bind_sheet_region(
             &mut sprite,
             texture_id,
             region.rect,
@@ -215,6 +215,7 @@ pub(crate) fn import_sheet(
             .spawn((
                 Transform::from_translation(center),
                 sprite,
+                sprite_region,
                 Name::new(label),
                 // A AUTORIA — o que sobrevive ao `texture_id` morrer com o processo.
                 SpriteSheetRef {

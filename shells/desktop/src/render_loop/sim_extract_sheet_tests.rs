@@ -16,12 +16,30 @@ use super::*;
 use ph2d_render::Sprite;
 
 /// Uma sprite de uma célula de `2×2` metros, numa grelha `hf × vf`, parada no frame `live`.
-fn spr(hf: u32, vf: u32, live: u32) -> Sprite {
-    let mut s = Sprite::atlas(0, [2.0, 2.0], [1.0; 4]);
-    s.hframes = hf;
-    s.vframes = vf;
-    s.frame = live;
-    s
+fn spr(hf: u32, vf: u32, live: u32) -> (Sprite, ph2d_ecs::SpriteGrid) {
+    (
+        Sprite::atlas(0, [2.0, 2.0], [1.0; 4]),
+        ph2d_ecs::SpriteGrid {
+            hframes: hf,
+            vframes: vf,
+            frame: live,
+        },
+    )
+}
+
+/// Os quatro helpers sobre o PAR — a grelha saiu da `Sprite` no ADR-0164 F1 passo 6, e estes
+/// deixam os gates ler como liam.
+fn cc(f: &(Sprite, ph2d_ecs::SpriteGrid)) -> Option<u32> {
+    cell_count(f.1)
+}
+fn cl(f: &(Sprite, ph2d_ecs::SpriteGrid), uv: [f32; 4], i: u32) -> Option<([f32; 4], [f32; 2])> {
+    cell(&f.0, f.1, uv, i)
+}
+fn uq(f: &(Sprite, ph2d_ecs::SpriteGrid)) -> Option<[f32; 2]> {
+    unfolded_quad(&f.0, f.1)
+}
+fn apq(f: &(Sprite, ph2d_ecs::SpriteGrid), uv: [f32; 4]) -> Option<([f32; 4], [f32; 2])> {
+    anim_preview_quad(&f.0, f.1, uv)
 }
 
 fn base() -> RenderInstance {
@@ -52,15 +70,11 @@ const FULL: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 /// **Um sprite SEM grelha não é uma folha** — e a ausência é a resposta.
 #[test]
 fn a_sprite_without_a_grid_has_no_sheet_to_open() {
-    assert_eq!(cell_count(&spr(1, 1, 0)), None);
-    assert_eq!(
-        cell_count(&spr(0, 0, 0)),
-        None,
-        "o piso de 1 vale aqui tambem"
-    );
-    assert_eq!(cell(&spr(1, 1, 0), FULL, 0), None);
+    assert_eq!(cc(&spr(1, 1, 0)), None);
+    assert_eq!(cc(&spr(0, 0, 0)), None, "o piso de 1 vale aqui tambem");
+    assert_eq!(cl(&spr(1, 1, 0), FULL, 0), None);
     // E uma grelha de verdade conta.
-    assert_eq!(cell_count(&spr(4, 2, 0)), Some(8));
+    assert_eq!(cc(&spr(4, 2, 0)), Some(8));
 }
 
 /// **A CÉLULA VIVA não ganha fantasma** — o caminho normal já a desenha.
@@ -71,19 +85,19 @@ fn a_sprite_without_a_grid_has_no_sheet_to_open() {
 fn the_live_cell_is_never_ghosted() {
     for live in 0..8u32 {
         let s = spr(4, 2, live);
-        assert_eq!(cell(&s, FULL, live), None, "o frame {live} e' o vivo");
+        assert_eq!(cl(&s, FULL, live), None, "o frame {live} e' o vivo");
         // ⚠️ Controlo positivo: as OUTRAS sete existem — sem isto um `None` sempre passaria.
         let others = (0..8)
             .filter(|i| *i != live)
-            .filter(|i| cell(&s, FULL, *i).is_some())
+            .filter(|i| cl(&s, FULL, *i).is_some())
             .count();
         assert_eq!(others, 7, "as outras celulas tem de existir");
     }
     // Fora da grelha não existe.
-    assert_eq!(cell(&spr(4, 2, 0), FULL, 8), None);
+    assert_eq!(cl(&spr(4, 2, 0), FULL, 8), None);
     // ⚠️ Um `frame` fora da grelha (a grelha encolheu debaixo dele) fixa na ULTIMA — e é essa que
     // fica sem fantasma, senão a folha abriria com duas células vivas.
-    assert_eq!(cell(&spr(4, 2, 99), FULL, 7), None);
+    assert_eq!(cl(&spr(4, 2, 99), FULL, 7), None);
 }
 
 /// **A grelha abre-se no lugar certo: a coluna anda em `+X`, a linha anda em `−Y`.**
@@ -94,21 +108,21 @@ fn the_live_cell_is_never_ghosted() {
 fn the_grid_opens_right_and_down() {
     let s = spr(4, 2, 0); // celula viva = coluna 0, linha 0
     // Mesma linha, uma coluna à direita: +1 largura de célula.
-    assert_eq!(cell(&s, FULL, 1).unwrap().1, [2.0, 0.0]);
-    assert_eq!(cell(&s, FULL, 3).unwrap().1, [6.0, 0.0]);
+    assert_eq!(cl(&s, FULL, 1).unwrap().1, [2.0, 0.0]);
+    assert_eq!(cl(&s, FULL, 3).unwrap().1, [6.0, 0.0]);
     // Linha de baixo, mesma coluna: uma altura de célula para BAIXO.
-    assert_eq!(cell(&s, FULL, 4).unwrap().1, [0.0, -2.0]);
-    assert_eq!(cell(&s, FULL, 7).unwrap().1, [6.0, -2.0]);
+    assert_eq!(cl(&s, FULL, 4).unwrap().1, [0.0, -2.0]);
+    assert_eq!(cl(&s, FULL, 7).unwrap().1, [6.0, -2.0]);
 
     // E é RELATIVO à célula viva: com o frame no meio, há vizinhas dos dois lados.
     let s = spr(4, 2, 5); // coluna 1, linha 1
     assert_eq!(
-        cell(&s, FULL, 4).unwrap().1,
+        cl(&s, FULL, 4).unwrap().1,
         [-2.0, 0.0],
         "a de tras fica a' esquerda"
     );
     assert_eq!(
-        cell(&s, FULL, 1).unwrap().1,
+        cl(&s, FULL, 1).unwrap().1,
         [0.0, 2.0],
         "a linha de cima fica ACIMA"
     );
@@ -123,13 +137,13 @@ fn the_grid_opens_right_and_down() {
 fn a_ghosts_uv_is_the_one_the_extract_would_give_that_frame() {
     let s = spr(4, 2, 0);
     for i in 1..8u32 {
-        let (uv, _) = cell(&s, FULL, i).unwrap();
+        let (uv, _) = cl(&s, FULL, i).unwrap();
         let want = super::super::sim_extract::sprite_sheet_subrect(FULL, 4, 2, i);
         assert_eq!(uv, want, "a celula {i} diverge do extract");
     }
     // E ela respeita um `base_uv` já estreitado por REGIÃO — a folha vive dentro da região.
     let region = [0.25, 0.0, 0.75, 0.5];
-    let (uv, _) = cell(&s, region, 1).unwrap();
+    let (uv, _) = cl(&s, region, 1).unwrap();
     assert_eq!(
         uv,
         super::super::sim_extract::sprite_sheet_subrect(region, 4, 2, 1)
@@ -200,27 +214,27 @@ fn the_sheet_opens_only_for_the_previewed_sprite_that_has_a_grid() {
     let plain = spr(1, 1, 0);
 
     assert_eq!(
-        should_open(Some(e), e, false, &sheet),
+        should_open(Some(e), e, false, Some(sheet.1)),
         Some(8),
         "o caso de ABRIR"
     );
     assert_eq!(
-        should_open(None, e, false, &sheet),
+        should_open(None, e, false, Some(sheet.1)),
         None,
         "a caixa esta' desmarcada"
     );
     assert_eq!(
-        should_open(Some(other), e, false, &sheet),
+        should_open(Some(other), e, false, Some(sheet.1)),
         None,
         "marcada sobre OUTRA entidade nao abre esta"
     );
     assert_eq!(
-        should_open(Some(e), e, true, &sheet),
+        should_open(Some(e), e, true, Some(sheet.1)),
         None,
         "sob pre-visualizacao de ferramenta a textura nao e' uma folha"
     );
     assert_eq!(
-        should_open(Some(e), e, false, &plain),
+        should_open(Some(e), e, false, Some(plain.1)),
         None,
         "1x1 nao e' folha"
     );
@@ -236,21 +250,21 @@ fn the_sheet_opens_only_for_the_previewed_sprite_that_has_a_grid() {
 #[test]
 fn the_unfolded_quad_covers_the_sheet_and_ignores_the_live_frame() {
     assert_eq!(
-        unfolded_quad(&spr(1, 1, 0)),
+        uq(&spr(1, 1, 0)),
         None,
         "sem grelha nao ha' o que desdobrar"
     );
-    let first = unfolded_quad(&spr(4, 2, 0)).unwrap();
+    let first = uq(&spr(4, 2, 0)).unwrap();
     assert_eq!(first, [8.0, 4.0], "4x2 celulas de 2 m sao 8x4 m");
     for live in 1..8u32 {
         assert_eq!(
-            unfolded_quad(&spr(4, 2, live)).unwrap(),
+            uq(&spr(4, 2, live)).unwrap(),
             first,
             "o frame {live} nao pode mover o quad -- a folha deslizaria sob o pincel"
         );
     }
     // E uma coluna também desdobra.
-    assert_eq!(unfolded_quad(&spr(1, 4, 0)).unwrap(), [2.0, 8.0]);
+    assert_eq!(uq(&spr(1, 4, 0)).unwrap(), [2.0, 8.0]);
 }
 
 /// **A PRÉ-VISUALIZAÇÃO ANIMADA mostra a célula VIVA, fora da folha, e ela ANDA.**
@@ -260,16 +274,12 @@ fn the_unfolded_quad_covers_the_sheet_and_ignores_the_live_frame() {
 /// e o artista pintaria oito desenhos sem nunca ver a animação que eles formam.
 #[test]
 fn the_animated_preview_follows_the_live_frame_and_sits_outside_the_sheet() {
-    assert_eq!(
-        anim_preview_quad(&spr(1, 1, 0), FULL),
-        None,
-        "sem grelha nao ha' preview"
-    );
+    assert_eq!(apq(&spr(1, 1, 0), FULL), None, "sem grelha nao ha' preview");
 
     let mut seen = std::collections::BTreeSet::new();
     for live in 0..8u32 {
         let s = spr(4, 2, live);
-        let (uv, off) = anim_preview_quad(&s, FULL).unwrap();
+        let (uv, off) = apq(&s, FULL).unwrap();
         // A sub-UV é a do frame vivo — a MESMA que o extract daria.
         assert_eq!(
             uv,
@@ -280,7 +290,7 @@ fn the_animated_preview_follows_the_live_frame_and_sits_outside_the_sheet() {
         // Fica ACIMA, e fora da folha: meia folha (2 m) + meia célula + folga.
         assert_eq!(off[0], 0.0, "alinhado com o centro da folha");
         assert!(
-            f64::from(off[1]) >= f64::from(s.vframes) * 0.5 * f64::from(s.size[1]),
+            f64::from(off[1]) >= f64::from(s.1.vframes) * 0.5 * f64::from(s.0.size[1]),
             "tem de ficar FORA da folha, senao tapa o que se esta' a pintar (viu {})",
             off[1]
         );

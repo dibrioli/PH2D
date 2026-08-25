@@ -340,11 +340,12 @@ fn read_pieces(
         // ORIGEM, o tamanho ALVO, se houve reamostragem, e as duas bandeiras que decidem como os
         // bytes são interpretados.
         if std::env::var_os("PH2D_SHEET_BAKE_LOG").is_some() {
-            let (pre, region) = sim
+            let pre = sim
                 .world()
                 .get::<Sprite>(child)
-                .map(|s| (s.premultiplied, s.region_enabled))
-                .unwrap_or((false, false));
+                .is_some_and(|s| s.premultiplied);
+            // ⭐ «Tem região?» é a PRESENÇA do componente (ADR-0164 F1 passo 6).
+            let region = sim.world().get::<ph2d_ecs::SpriteRegion>(child).is_some();
             eprintln!(
                 "[bake] {:<20} src={sw}x{sh} alvo={want_w}x{want_h} escala={sx:.6}x{sy:.6}                  reamostrou={needs_resample} saiu={out_w}x{out_h} premul={pre} regiao={region}",
                 sim.world()
@@ -410,13 +411,14 @@ fn rebind(
         let rect = authored.regions[region].rect;
         if let Ok(mut e) = sim.world_mut().get_entity_mut(*entity) {
             if let Some(mut sprite) = e.get_mut::<Sprite>() {
-                crate::project_sprite_pixels::bind_sheet_region(
+                let region = crate::project_sprite_pixels::bind_sheet_region(
                     &mut sprite,
                     texture_id,
                     rect,
                     filter_clip,
                     authored.premultiplied,
                 );
+                e.insert(region);
             }
             e.insert(SpriteSheetRef {
                 sheet: sheet_id,

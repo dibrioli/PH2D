@@ -22,7 +22,7 @@
 //! (the `#[serde(default)]` helper returns the Atlas value `true` for
 //! everyone), `..._individual_..._region_filter_clip_false` fails.
 
-use ph2d_render::sprite_versioned::{SpriteV3, SpriteVersioned, canonical_v3_fixtures};
+use ph2d_render::sprite_versioned::{SpriteV3, SpriteV4, SpriteVersioned, canonical_v3_fixtures};
 use ph2d_render::{LoadError, Sprite, SpriteSource, load_sprite};
 use std::path::PathBuf;
 
@@ -50,8 +50,8 @@ fn v3_fixtures_dispatch_through_wrapper() {
             .unwrap_or_else(|e| panic!("postcard wrapper-enum dispatch on {name} failed: {e}"));
         match versioned {
             SpriteVersioned::V3(_) => {} // expected — committed fixtures are v3 envelopes
-            SpriteVersioned::V4(_) => {
-                panic!("v3 fixture {name} dispatched as V4 — discriminant/fixture regression")
+            SpriteVersioned::V4(_) | SpriteVersioned::V5(_) => {
+                panic!("v3 fixture {name} dispatched as V4/V5 — discriminant/fixture regression")
             }
         }
     }
@@ -60,10 +60,25 @@ fn v3_fixtures_dispatch_through_wrapper() {
 #[test]
 fn deserialize_v3_postcard_loads_as_v4_with_defaults() {
     let bytes = read_fixture("sprite_v3_atlas.postcard");
-    let sprite = load_sprite(&bytes).expect("v3 atlas fixture loads");
+    let m = load_sprite(&bytes).expect("v3 atlas fixture loads");
+    let sprite = m.sprite;
+
+    // ⭐ **A escada sobe DOIS degraus agora** (v3 → v4 → v5, ADR-0164 F1 passo 6) — e o que ela
+    // NÃO faz é o mais importante: nenhum dos três componentes nasce, porque uma grelha de uma
+    // célula, uma janela desligada e cantos brancos são indistinguíveis da ausência.
+    // *Migrar é preservar o que foi autorado, não materializar defaults.*
+    assert_eq!(m.grid, None, "1x1 nao materializa componente");
+    assert_eq!(
+        m.region, None,
+        "region_enabled=false nao materializa componente"
+    );
+    assert_eq!(
+        m.corner_tint, None,
+        "cantos brancos nao materializam componente"
+    );
 
     // Forwarded v3 fields.
-    assert_eq!(sprite.version, 4);
+    assert_eq!(sprite.version, 5);
     assert_eq!(sprite.source, SpriteSource::Atlas { key: 0 });
     assert_eq!(sprite.size, [10.0, 10.0]);
     assert_eq!(sprite.tint, [1.0, 1.0, 1.0, 1.0]);
@@ -71,29 +86,41 @@ fn deserialize_v3_postcard_loads_as_v4_with_defaults() {
 
     // New v4 fields → benign identity defaults.
     assert_eq!(sprite.self_tint, [1.0; 4]);
-    assert_eq!(sprite.per_corner_tint, [[1.0; 4]; 4]);
     assert!(!sprite.tint_fill);
     assert_eq!(sprite.opacity, 1.0);
     assert!(!sprite.flip_x);
     assert!(!sprite.flip_y);
     assert!(sprite.centered);
     assert_eq!(sprite.offset, [0.0, 0.0]);
-    assert_eq!(sprite.hframes, 1);
-    assert_eq!(sprite.vframes, 1);
-    assert_eq!(sprite.frame, 0);
-    assert!(!sprite.region_enabled);
-    assert_eq!(sprite.region_rect, [0.0; 4]);
-    assert!(sprite.region_filter_clip); // Atlas → true via migrator
 }
 
 #[test]
 fn deserialize_v3_individual_sprite_loads_with_region_filter_clip_false() {
     let bytes = read_fixture("sprite_v3_individual.postcard");
-    let sprite = load_sprite(&bytes).expect("v3 individual fixture loads");
-    assert_eq!(sprite.version, 4);
-    assert_eq!(sprite.source, SpriteSource::Individual { texture_id: 42 });
-    assert_eq!(sprite.tint, [1.0, 1.0, 1.0, 0.5]);
-    assert!(!sprite.region_filter_clip); // Individual → false via migrator
+    let m = load_sprite(&bytes).expect("v3 individual fixture loads");
+    assert_eq!(m.sprite.version, 5);
+    assert_eq!(m.sprite.source, SpriteSource::Individual { texture_id: 42 });
+    assert_eq!(m.sprite.tint, [1.0, 1.0, 1.0, 0.5]);
+    // ⚠️ **O `region_filter_clip` deixou de existir num sprite SEM região** (ADR-0164 F1 passo
+    // 6): a escolha Atlas/Individual mudou-se para os construtores do `SpriteRegion`, e um v3
+    // nunca tem região — logo não há bool nenhum a carregar. O gate que a mede agora é
+    // `the_migrator_still_picks_the_clip_from_the_source`, abaixo.
+    assert_eq!(m.region, None, "um v3 nao tem regiao");
+}
+
+/// ⚠️ **A escolha Atlas→clip / Individual→sem-clip SOBREVIVEU ao corte** — ela mudou de casa
+/// (para os construtores do [`ph2d_ecs::SpriteRegion`]), e este gate afirma-a onde ela vive
+/// agora. Sem ele o corte teria apagado, em silêncio, uma lei que dois testes v3 mediam.
+#[test]
+fn the_migrator_still_picks_the_clip_from_the_source() {
+    assert!(
+        ph2d_ecs::SpriteRegion::for_atlas([0.0; 4]).filter_clip,
+        "no atlas ha' vizinhos de verdade: o clamp defende"
+    );
+    assert!(
+        !ph2d_ecs::SpriteRegion::individual([0.0; 4]).filter_clip,
+        "numa textura propria nao ha' vizinho, e o clamp so' cortaria borda"
+    );
 }
 
 /// Drive ALL 5 frozen fixtures through `load_sprite`, asserting the
@@ -105,9 +132,14 @@ fn deserialize_v3_individual_sprite_loads_with_region_filter_clip_false() {
 fn all_v3_fixtures_migrate_preserving_fields_and_region_branch() {
     for (name, v3) in canonical_v3_fixtures() {
         let bytes = read_fixture(name);
-        let sprite = load_sprite(&bytes).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let m = load_sprite(&bytes).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let sprite = m.sprite;
+        // ⭐ Nenhum dos três componentes nasce de um v3 — ver o gate acima.
+        assert_eq!(m.grid, None, "{name}: grid");
+        assert_eq!(m.region, None, "{name}: region");
+        assert_eq!(m.corner_tint, None, "{name}: corner_tint");
 
-        assert_eq!(sprite.version, 4, "{name}: version");
+        assert_eq!(sprite.version, 5, "{name}: version");
         assert_eq!(sprite.source, v3.source, "{name}: source");
         assert_eq!(sprite.size, v3.size, "{name}: size");
         assert_eq!(sprite.tint, v3.tint, "{name}: tint");
@@ -123,21 +155,11 @@ fn all_v3_fixtures_migrate_preserving_fields_and_region_branch() {
             "{name}: wire-loaded premultiplied must be false (serde skip)"
         );
 
-        let expect_clip = matches!(v3.source, SpriteSource::Atlas { .. });
-        assert_eq!(
-            sprite.region_filter_clip, expect_clip,
-            "{name}: region_filter_clip must follow Atlas={expect_clip}"
-        );
-
         // v4 identity defaults hold for every migrated sprite.
         assert_eq!(sprite.self_tint, [1.0; 4], "{name}: self_tint");
-        assert_eq!(sprite.per_corner_tint, [[1.0; 4]; 4], "{name}: per_corner");
         assert!(!sprite.tint_fill, "{name}: tint_fill");
         assert_eq!(sprite.opacity, 1.0, "{name}: opacity");
         assert!(sprite.centered, "{name}: centered");
-        assert_eq!(sprite.hframes, 1, "{name}: hframes");
-        assert_eq!(sprite.vframes, 1, "{name}: vframes");
-        assert!(!sprite.region_enabled, "{name}: region_enabled");
     }
 }
 
@@ -154,57 +176,144 @@ fn migrate_v3_to_v4_preserves_in_memory_premultiplied_flag() {
         anchor: [0.0, 0.0],
         premultiplied: true,
     };
-    let sprite = Sprite::migrate_v3_to_v4(v3);
+    let v4 = Sprite::migrate_v3_to_v4(v3);
     assert!(
-        sprite.premultiplied,
+        v4.premultiplied,
         "pure migrator preserves an in-memory premultiplied flag"
     );
-    assert!(!sprite.region_filter_clip, "Individual → false");
-    assert_eq!(sprite.version, 4);
+    assert!(!v4.region_filter_clip, "Individual → false");
+    assert_eq!(
+        v4.version, 4,
+        "o migrador v3->v4 carimba 4, nao o VERSION vivo"
+    );
+    // E o degrau seguinte preserva a bandeira e sobe a versao.
+    let m = Sprite::migrate_v4_to_v5(v4);
+    assert!(m.sprite.premultiplied, "o 2o degrau tambem a preserva");
+    assert_eq!(m.sprite.version, 5);
 }
 
+/// ⭐ **UM BLOB v4 AUTORADO PARTE-SE EM QUATRO** (ADR-0164 F1 passo 6) — a afirmação central da
+/// migração, e a única que mede o caso que importa: um ficheiro real, com grelha, janela e
+/// degradê **autorados**, tem de os devolver como componentes, sem perder um bit.
+///
+/// ⚠️ O envelope é construído com o espelho CONGELADO [`SpriteV4`], e não com a `Sprite` viva:
+/// são estes os bytes que já estão em disco. Construí-lo com o tipo vivo mediria a minha ideia
+/// do formato, não o formato.
 #[test]
-fn deserialize_v4_round_trip() {
-    let mut original = Sprite::atlas(3, [20.0, 40.0], [0.9, 0.8, 0.7, 0.6]);
-    original.per_corner_tint = [
-        [1.0, 0.0, 0.0, 1.0], // TL red
-        [0.0, 1.0, 0.0, 1.0], // TR green
-        [0.0, 0.0, 1.0, 1.0], // BL blue
-        [1.0, 1.0, 0.0, 1.0], // BR yellow
-    ];
-    original.self_tint = [0.5, 0.5, 0.5, 1.0];
-    original.tint_fill = true;
-    original.opacity = 0.5;
-    original.flip_x = true;
-    original.flip_y = true;
-    original.centered = false;
-    original.offset = [3.0, -4.0];
-    original.hframes = 4;
-    original.vframes = 2;
-    original.frame = 5;
-    original.region_enabled = true;
-    original.region_rect = [1.0, 2.0, 8.0, 8.0];
+fn an_authored_v4_blob_splits_into_the_three_components() {
+    let original = SpriteV4 {
+        version: 4,
+        source: SpriteSource::Atlas { key: 3 },
+        size: [20.0, 40.0],
+        tint: [0.9, 0.8, 0.7, 0.6],
+        anchor: [0.0, 0.0],
+        premultiplied: false,
+        self_tint: [0.5, 0.5, 0.5, 1.0],
+        per_corner_tint: [
+            [1.0, 0.0, 0.0, 1.0], // TL red
+            [0.0, 1.0, 0.0, 1.0], // TR green
+            [0.0, 0.0, 1.0, 1.0], // BL blue
+            [1.0, 1.0, 0.0, 1.0], // BR yellow
+        ],
+        tint_fill: true,
+        opacity: 0.5,
+        flip_x: true,
+        flip_y: true,
+        centered: false,
+        offset: [3.0, -4.0],
+        hframes: 4,
+        vframes: 2,
+        frame: 5,
+        region_enabled: true,
+        region_rect: [1.0, 2.0, 8.0, 8.0],
+        region_filter_clip: false,
+    };
 
     let bytes = postcard::to_allocvec(&SpriteVersioned::V4(original)).expect("v4 serializes");
-    let restored = load_sprite(&bytes).expect("v4 round-trips");
-    assert_eq!(original, restored);
+    let m = load_sprite(&bytes).expect("v4 round-trips");
+
+    // Os 13 que FICAM na Sprite, verbatim.
+    assert_eq!(m.sprite.version, 5, "a versao sobe");
+    assert_eq!(m.sprite.source, original.source);
+    assert_eq!(m.sprite.size, original.size);
+    assert_eq!(m.sprite.tint, original.tint);
+    assert_eq!(m.sprite.self_tint, original.self_tint);
+    assert!(m.sprite.tint_fill);
+    assert_eq!(m.sprite.opacity, 0.5);
+    assert!(m.sprite.flip_x && m.sprite.flip_y);
+    assert!(!m.sprite.centered);
+    assert_eq!(m.sprite.offset, [3.0, -4.0]);
+
+    // E os 7 que SAEM, cada um no componente dele.
+    assert_eq!(
+        m.grid,
+        Some(ph2d_ecs::SpriteGrid {
+            hframes: 4,
+            vframes: 2,
+            frame: 5
+        })
+    );
+    assert_eq!(
+        m.region,
+        Some(ph2d_ecs::SpriteRegion {
+            rect: [1.0, 2.0, 8.0, 8.0],
+            // ⚠️ **O bool GRAVADO, não o derivado da fonte.** Este é um sprite de Atlas, cujo
+            // construtor escolheria `true` — mas o ficheiro diz `false`, e migrar é preservar
+            // bytes, não recalcular a escolha. (Mutação: derivar do `source` ⇒ RED.)
+            filter_clip: false,
+        })
+    );
+    assert_eq!(
+        m.corner_tint,
+        Some(ph2d_ecs::SpriteCornerTint(original.per_corner_tint))
+    );
 }
 
-/// A `V4` envelope is returned VERBATIM — `load_sprite` must not re-run
-/// the migrator's `region_filter_clip` branch on it. Guards against a
-/// future edit that "normalizes" on every load and would clobber a
-/// deliberately non-default value the author saved.
+/// ⚠️ **Um `region_rect` autorado com `enabled = false` é DESCARTADO** — e é a decisão certa: ele
+/// era o estado que ninguém conseguia ler (*"há janela ou não há?"* com duas respostas). Guardá-lo
+/// anexaria uma região desligada, e uma região desligada deixou de existir.
 #[test]
-fn load_sprite_v4_envelope_returns_without_re_migrating() {
-    let mut s = Sprite::individual(5, [10.0, 10.0], [1.0; 4]);
-    s.region_filter_clip = true; // deliberately non-default for Individual
-    let bytes = postcard::to_allocvec(&SpriteVersioned::V4(s)).expect("v4 serializes");
-    let loaded = load_sprite(&bytes).expect("v4 loads");
+fn a_disabled_region_rect_does_not_survive_the_split() {
+    let mut v4 = SpriteV4 {
+        version: 4,
+        source: SpriteSource::Individual { texture_id: 5 },
+        size: [10.0, 10.0],
+        tint: [1.0; 4],
+        anchor: [0.0; 2],
+        premultiplied: false,
+        self_tint: [1.0; 4],
+        per_corner_tint: [[1.0; 4]; 4],
+        tint_fill: false,
+        opacity: 1.0,
+        flip_x: false,
+        flip_y: false,
+        centered: true,
+        offset: [0.0; 2],
+        hframes: 1,
+        vframes: 1,
+        frame: 0,
+        region_enabled: false,
+        region_rect: [1.0, 2.0, 8.0, 8.0], // autorado, e DESLIGADO
+        region_filter_clip: true,
+    };
+    assert_eq!(Sprite::migrate_v4_to_v5(v4).region, None);
+    // Controle: ligado, ela sobrevive — senão este gate passaria com um migrador que
+    // descartasse SEMPRE a região.
+    v4.region_enabled = true;
+    assert!(Sprite::migrate_v4_to_v5(v4).region.is_some());
+}
+
+/// ⚠️ **Uma grelha 1×1 com `frame != 0` NÃO é «indistinguível da ausência»** — o frame autorado é
+/// autoria, e descartá-lo perderia informação. A régua é [`ph2d_ecs::SpriteGrid::is_single`], que
+/// pergunta pelos TRÊS números, não só pelos dois da grelha.
+#[test]
+fn a_single_cell_grid_with_an_authored_frame_still_materialises() {
+    let single = ph2d_ecs::SpriteGrid::SINGLE;
+    assert!(single.is_single());
     assert!(
-        loaded.region_filter_clip,
-        "V4 path must not re-run the Individual→false migrator branch"
+        !ph2d_ecs::SpriteGrid { frame: 3, ..single }.is_single(),
+        "um frame autorado nao e' o neutro"
     );
-    assert_eq!(loaded, s);
 }
 
 /// Bytes that are not a valid `SpriteVersioned` envelope (truncated, or

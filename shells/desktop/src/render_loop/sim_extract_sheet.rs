@@ -95,12 +95,12 @@ pub(super) fn should_open(
     previewed: Option<ph2d_ecs::Entity>,
     entity: ph2d_ecs::Entity,
     has_tool_override: bool,
-    spr: &Sprite,
+    grid: Option<ph2d_ecs::SpriteGrid>,
 ) -> Option<u32> {
     if previewed != Some(entity) || has_tool_override {
         return None;
     }
-    cell_count(spr)
+    cell_count(grid?)
 }
 
 /// Quantas células a grelha deste sprite tem — `None` quando ele **não é uma folha**.
@@ -108,8 +108,8 @@ pub(super) fn should_open(
 /// ⚠️ `1×1` devolve `None`, e não `Some(1)`: abrir uma folha de uma célula desenharia zero
 /// fantasmas e um interruptor que não faz nada. *A ausência de grelha é uma resposta, não um caso
 /// degenerado a tratar mais à frente.*
-pub(super) fn cell_count(spr: &Sprite) -> Option<u32> {
-    let n = spr.hframes.max(1).saturating_mul(spr.vframes.max(1));
+pub(super) fn cell_count(grid: ph2d_ecs::SpriteGrid) -> Option<u32> {
+    let n = grid.hframes.max(1).saturating_mul(grid.vframes.max(1));
     (n > 1).then_some(n)
 }
 
@@ -123,20 +123,25 @@ pub(super) fn cell_count(spr: &Sprite) -> Option<u32> {
 /// ⚠️ **O `Y` do mundo cresce para CIMA e o `V` da textura cresce para BAIXO**, por isso a linha
 /// seguinte da grelha fica **abaixo**: o sinal do `dy` é negativo. É a mesma conta do
 /// `cy = y_top - …` que o [`ph2d_render::nine_slice`] faz.
-pub(super) fn cell(spr: &Sprite, base_uv: [f32; 4], index: u32) -> Option<([f32; 4], [f32; 2])> {
-    let cells = cell_count(spr)?;
+pub(super) fn cell(
+    spr: &Sprite,
+    grid: ph2d_ecs::SpriteGrid,
+    base_uv: [f32; 4],
+    index: u32,
+) -> Option<([f32; 4], [f32; 2])> {
+    let cells = cell_count(grid)?;
     if index >= cells {
         return None;
     }
-    let hf = spr.hframes.max(1);
-    let live = spr.frame.min(cells - 1);
+    let hf = grid.hframes.max(1);
+    let live = grid.frame.min(cells - 1);
     if index == live {
         return None;
     }
     // ⚠️ **A sub-UV sai da MESMA função que o extract usa** para a célula viva
     // ([`super::sim_extract::sprite_sheet_subrect`]) — reimplementá-la aqui daria uma segunda
     // resposta a *«onde está a célula N»*, e a divergência só apareceria na pré-visualização.
-    let uv = super::sim_extract::sprite_sheet_subrect(base_uv, spr.hframes, spr.vframes, index);
+    let uv = super::sim_extract::sprite_sheet_subrect(base_uv, grid.hframes, grid.vframes, index);
     let dcol = index % hf;
     let drow = index / hf;
     let lcol = live % hf;
@@ -173,9 +178,9 @@ pub(super) fn cell(spr: &Sprite, base_uv: [f32; 4], index: u32) -> Option<([f32;
 /// dela. *Dois modos, duas âncoras — e a diferença é qual dos dois desenha a célula viva.*
 ///
 /// `None` quando não há grelha — e aí o quad é o de sempre, byte-idêntico.
-pub(crate) fn unfolded_quad(spr: &Sprite) -> Option<[f32; 2]> {
-    cell_count(spr)?;
-    let (hf, vf) = (spr.hframes.max(1), spr.vframes.max(1));
+pub(crate) fn unfolded_quad(spr: &Sprite, grid: ph2d_ecs::SpriteGrid) -> Option<[f32; 2]> {
+    cell_count(grid)?;
+    let (hf, vf) = (grid.hframes.max(1), grid.vframes.max(1));
     Some([spr.size[0] * hf as f32, spr.size[1] * vf as f32])
 }
 
@@ -192,11 +197,15 @@ pub(crate) fn unfolded_quad(spr: &Sprite) -> Option<[f32; 2]> {
 ///
 /// `None` sem grelha. ⛔ Não pergunta se há animação a tocar: o frame é o do `Sprite`, e uma sprite
 /// parada mostra a célula parada — que é a leitura honesta de *«é isto que está no ecrã»*.
-pub(crate) fn anim_preview_quad(spr: &Sprite, base_uv: [f32; 4]) -> Option<([f32; 4], [f32; 2])> {
-    let cells = cell_count(spr)?;
-    let live = spr.frame.min(cells - 1);
-    let uv = super::sim_extract::sprite_sheet_subrect(base_uv, spr.hframes, spr.vframes, live);
-    let vf = spr.vframes.max(1);
+pub(crate) fn anim_preview_quad(
+    spr: &Sprite,
+    grid: ph2d_ecs::SpriteGrid,
+    base_uv: [f32; 4],
+) -> Option<([f32; 4], [f32; 2])> {
+    let cells = cell_count(grid)?;
+    let live = grid.frame.min(cells - 1);
+    let uv = super::sim_extract::sprite_sheet_subrect(base_uv, grid.hframes, grid.vframes, live);
+    let vf = grid.vframes.max(1);
     // Meia folha para cima, mais meia célula e uma folga de uma célula — encostado por fora.
     let dy = (f64::from(vf) * 0.5 + 1.0) * f64::from(spr.size[1]);
     Some((uv, [0.0, dy as f32]))

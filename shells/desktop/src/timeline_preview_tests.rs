@@ -229,10 +229,13 @@ fn the_frame_and_the_alpha_are_driven_side_by_side() {
         .spawn((
             Transform::default(),
             Name::new("Both"),
-            ph2d_render::Sprite {
+            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            // ⭐ A grelha é um componente (ADR-0164 F1 passo 6) — e o facto `SpriteAnim` lê-se
+            // hoje do par (`SpriteAnimator` + `SpriteGrid`), porque a célula viva mora nela.
+            ph2d_ecs::SpriteGrid {
                 hframes: 4,
                 vframes: 1,
-                ..ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4])
+                frame: 0,
             },
             // ⚠️ **O animador faz parte da fixtura**, e o gate ensinou-o: o facto `SpriteAnim` é
             // lido do PAR (`SpriteAnimator` + `Sprite`), então uma sprite sem tocador não é
@@ -259,18 +262,22 @@ fn the_frame_and_the_alpha_are_driven_side_by_side() {
         },
     );
     drive.driven(e, Driven::SpriteAlpha(1.0), Driven::SpriteAlpha(0.4));
+    if let Some(mut g) = sim.world_mut().get_mut::<ph2d_ecs::SpriteGrid>(e) {
+        g.frame = 2;
+    }
     if let Some(mut s) = sim.world_mut().get_mut::<ph2d_render::Sprite>(e) {
-        s.frame = 2;
         s.tint[3] = 0.4;
     }
     let live = drive.substitute_authored(&mut sim);
     let doc_sprite = *sim.world().get::<ph2d_render::Sprite>(e).unwrap();
-    assert_eq!(doc_sprite.frame, 0, "o documento guarda a celula autorada");
+    let doc_grid = *sim.world().get::<ph2d_ecs::SpriteGrid>(e).unwrap();
+    assert_eq!(doc_grid.frame, 0, "o documento guarda a celula autorada");
     assert_eq!(doc_sprite.tint[3], 1.0, "…E a opacidade autorada, as DUAS");
     PreviewDrive::restore_live(&mut sim, &live);
     let back = *sim.world().get::<ph2d_render::Sprite>(e).unwrap();
+    let back_grid = *sim.world().get::<ph2d_ecs::SpriteGrid>(e).unwrap();
     assert_eq!(
-        (back.frame, back.tint[3]),
+        (back_grid.frame, back.tint[3]),
         (2, 0.4),
         "e o vivo volta inteiro"
     );

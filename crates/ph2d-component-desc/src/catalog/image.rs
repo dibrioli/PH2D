@@ -4,15 +4,18 @@
 //! juntas porque o catálogo é cortado por **família**, não por crate dona. É a mesma razão
 //! por que a chave é o nome canónico: o descritor fala de tipos que ele não pode importar.
 //!
-//! # ⚠️ A `Sprite` é a peça que este plano vai partir
+//! # ✅ A `Sprite` FOI partida (ADR-0164 F1 passo 6 / ADR-0166)
 //!
-//! Ela é o **marcador** de [`crate::ObjectKind::Image`] e tem 20 campos congelados
-//! (ADR-0074). A F1 corta três deles para componentes próprios (`SpriteCornerTint` ·
-//! `SpriteSheet` · `SpriteRegion`) — e o ADR-0166 deu ao corte uma segunda razão que não é
-//! tamanho: *enquanto o dado for campo de um componente que todo objeto-imagem tem, não há
-//! como não o mostrar*. Quando esses três nascerem, entram **aqui**, e os `field_id` da
-//! `Sprite` que eles substituem **não são reusados** (a tabela é append-only, e um id reusado
-//! faria um override antigo alvejar o campo novo).
+//! Ela é o **marcador** de [`crate::ObjectKind::Image`] e tinha **20** campos congelados; hoje
+//! tem **13**. Sete saíram para três componentes — [`ph2d_ecs::SpriteCornerTint`] ·
+//! [`ph2d_ecs::SpriteGrid`] · [`ph2d_ecs::SpriteRegion`] —, e a razão do corte não é tamanho:
+//! *enquanto o dado for campo de um componente que todo objeto-imagem tem, não há como não o
+//! mostrar*. Os três estão **aqui**, e os `field_id` da `Sprite` que eles substituem **não são
+//! reusados** (a tabela é append-only, e um id reusado faria um override antigo alvejar o campo
+//! novo).
+//!
+//! ⚠️ **O nome é `SpriteGrid` e não `SpriteSheet`**, que o plano dizia: a `ph2d-ecs` já tem
+//! `SpriteSheetRef` e `SpriteSheetFrame`, e as duas significam a folha HAND-PACKED — outra coisa.
 //!
 //! ⚠️ A `Sprite` **não deriva `Default`** (precisa de uma `source`), logo não tem
 //! `insert_default` no registo — e é por isso que ela não pode ser anexada pela paleta. Ela
@@ -33,8 +36,8 @@ const fn f(field_id: u16, name: &'static str, kind: K) -> FieldDesc {
     }
 }
 
-/// ⚠️ **Parcial de propósito.** A `Sprite` tem 17 campos (eram 20 até o corte do ADR-0164 F1
-/// passo 6); a F0 descreve os que a §7/§4 do Inspector já editam, e a tabela cresce
+/// ⚠️ **Parcial de propósito.** A `Sprite` tem 13 campos (eram 20 até o corte do ADR-0164 F1
+/// passo 6, que levou SETE para três componentes); a F0 descreve os que a §7/§4 do Inspector já editam, e a tabela cresce
 /// **append-only** por procura (F3 descreve o resto quando a seção for derivada).
 /// ⛔ Nunca reordene nem reuse um `field_id`.
 ///
@@ -57,10 +60,7 @@ const SPRITE_GRID: &[FieldDesc] = &[
     f(3, "Frame", K::Int),
 ];
 
-const SPRITE_REGION: &[FieldDesc] = &[
-    f(1, "Region", K::Vec4),
-    f(2, "Filter Clip", K::Toggle),
-];
+const SPRITE_REGION: &[FieldDesc] = &[f(1, "Region", K::Vec4), f(2, "Filter Clip", K::Toggle)];
 
 const SPRITE_CORNER_TINT: &[FieldDesc] = &[
     f(1, "Top Left", K::Color),
@@ -157,7 +157,7 @@ pub const DESCS: &[D] = &[
         SPRITE_REGION,
     ),
     // Proveniência de autoria (que folha esta sprite veio de), não índice de célula — o
-    // índice vivo é o `Sprite::frame`. Máquina: quem a põe é o importador.
+    // índice vivo é o `SpriteGrid::frame`. Máquina: quem a põe é o importador.
     D::machinery("ph2d::ecs::SpriteSheetFrame", "Sheet Frame", C::Image),
     D::machinery("ph2d::ecs::SpriteSheetRef", "Sheet Source", C::Image),
     // ⚠️ O MARCADOR de ObjectKind::Image. Sem `Default` ⇒ sem `insert_default` ⇒ a paleta

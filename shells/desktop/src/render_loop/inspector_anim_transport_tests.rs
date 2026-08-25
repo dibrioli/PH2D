@@ -42,7 +42,7 @@ fn rewinding_puts_the_picture_back_at_the_start() {
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("walk".into()));
 
     // A sprite parou a MEIO do intervalo — dentro dele, que é o caso que o `advance` nao toca.
-    if let Some(mut s) = sim.world_mut().get_mut::<ph2d_render::Sprite>(e) {
+    if let Some(mut s) = sim.world_mut().get_mut::<ph2d_ecs::SpriteGrid>(e) {
         s.frame = 5;
     }
     edit(&mut sim, e, &reg, AnimFieldEdit::Rewind);
@@ -79,7 +79,7 @@ fn choosing_an_overlapping_animation_still_starts_it_at_its_own_beginning() {
     lib.insert(AnimationTag::new("idle", 3, 5)).unwrap();
     sim.world_mut().entity_mut(e).insert(lib);
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("walk".into()));
-    if let Some(mut s) = sim.world_mut().get_mut::<ph2d_render::Sprite>(e) {
+    if let Some(mut s) = sim.world_mut().get_mut::<ph2d_ecs::SpriteGrid>(e) {
         s.frame = 4; // ⚠️ DENTRO do intervalo da `idle` tambem — a fixtura contem o fenomeno.
     }
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("idle".into()));

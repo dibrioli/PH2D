@@ -52,10 +52,13 @@ fn playing_sprite(sim: &mut SimWorld) -> Entity {
         .spawn((
             Transform::default(),
             Name::new("Hero"),
-            Sprite {
+            Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            // ⭐ A grelha é um componente (ADR-0164 F1 passo 6) — e sem ela o tique nem entra
+            // no laço, porque uma sprite sem células não tem o que animar.
+            ph2d_ecs::SpriteGrid {
                 hframes: 8,
                 vframes: 1,
-                ..Sprite::atlas(0, [1.0, 1.0], [1.0; 4])
+                frame: 0,
             },
             animator,
             lib,
@@ -79,7 +82,10 @@ fn frame(sim: &mut SimWorld, drive: &mut PreviewDrive, ticks: u32) {
 /// O que o DOCUMENTO diz desta sprite — o mundo posto no autorado, lido, e devolvido ao vivo.
 fn document(drive: &PreviewDrive, sim: &mut SimWorld, e: Entity) -> (u32, u64) {
     let live = drive.substitute_authored(sim);
-    let f = sim.world().get::<Sprite>(e).map_or(u32::MAX, |s| s.frame);
+    let f = sim
+        .world()
+        .get::<ph2d_ecs::SpriteGrid>(e)
+        .map_or(u32::MAX, |g| g.frame);
     let t = sim
         .world()
         .get::<SpriteAnimator>(e)
@@ -91,7 +97,7 @@ fn document(drive: &PreviewDrive, sim: &mut SimWorld, e: Entity) -> (u32, u64) {
 /// O que o MUNDO VIVO diz — o que o artista vê.
 fn live(sim: &SimWorld, e: Entity) -> (u32, u64) {
     (
-        sim.world().get::<Sprite>(e).unwrap().frame,
+        sim.world().get::<ph2d_ecs::SpriteGrid>(e).unwrap().frame,
         sim.world().get::<SpriteAnimator>(e).unwrap().elapsed_ticks,
     )
 }
@@ -202,7 +208,7 @@ fn scrubbing_the_frame_bar_is_an_edit() {
         a.playing = false;
         a.elapsed_ticks = 0;
     }
-    if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(e) {
+    if let Some(mut s) = sim.world_mut().get_mut::<ph2d_ecs::SpriteGrid>(e) {
         s.frame = 5;
     }
     frame(&mut sim, &mut drive, 4); // o tique ja' nao declara: parada e sem ferramenta
@@ -267,7 +273,7 @@ fn another_hand_writing_takes_over_the_authored_value() {
         "o autorado ainda e' o do inicio da corrida"
     );
     // A outra mão, sem pausar: escreve a célula e deixa a animação a tocar.
-    if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(e) {
+    if let Some(mut s) = sim.world_mut().get_mut::<ph2d_ecs::SpriteGrid>(e) {
         s.frame = 6;
     }
     frame(&mut sim, &mut drive, 1); // o tique volta a conduzir, e VÊ a mão alheia
@@ -401,7 +407,7 @@ fn one_entity_can_be_driven_by_two_engines_at_once() {
         "as duas conducoes da mesma entidade tem de coexistir"
     );
     let saved = drive.substitute_authored(&mut sim);
-    assert_eq!(sim.world().get::<Sprite>(e).unwrap().frame, 0);
+    assert_eq!(sim.world().get::<ph2d_ecs::SpriteGrid>(e).unwrap().frame, 0);
     assert_eq!(sim.world().get::<Transform>(e).unwrap().translation.y, 0.0);
     PreviewDrive::restore_live(&mut sim, &saved);
     assert_eq!(sim.world().get::<Transform>(e).unwrap().translation.y, -3.0);

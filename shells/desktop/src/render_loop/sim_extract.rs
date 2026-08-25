@@ -429,8 +429,12 @@ pub(super) fn run(
                     // ⚠️ O caminho do PONTEIRO faz a mesma conta
                     // (`bgremoval_preview::sprite_image_to_screen_affine`), e é por isso que ele
                     // chama a MESMA função: pintar-se-ia num sítio e ver-se-ia noutro.
+                    // A grelha (ausente = uma célula), lida uma vez para os três consumidores
+                    // do quad desdobrado abaixo.
+                    let sheet_grid = sim.get::<ph2d_ecs::SpriteGrid>(sim_entity).copied();
                     let quad_size = override_for_entity
-                        .and_then(|_| crate::render_loop::sim_extract_sheet::unfolded_quad(spr))
+                        .and_then(|_| sheet_grid)
+                        .and_then(|g| crate::render_loop::sim_extract_sheet::unfolded_quad(spr, g))
                         .unwrap_or(spr.size);
                     let quad_anchor = spr.resolve_anchor(pixels_per_meter);
                     // Record this sprite for the sort pipeline; `z_order`
@@ -497,14 +501,21 @@ pub(super) fn run(
                             renderer.cooked().dims(texture_id)
                         }
                     };
-                    let atlas_uv = if spr.region_enabled && override_for_entity.is_none() {
+                    // ADR-0164 F1 passo 6: janela e grelha são componentes; ausentes = a
+                    // textura inteira e uma célula, que é o que os campos v4 significavam.
+                    let region = sim.get::<ph2d_ecs::SpriteRegion>(sim_entity).copied();
+                    let grid = sim
+                        .get::<ph2d_ecs::SpriteGrid>(sim_entity)
+                        .copied()
+                        .unwrap_or(ph2d_ecs::SpriteGrid::SINGLE);
+                    let atlas_uv = if let Some(region) = region.filter(|_| override_for_entity.is_none()) {
                         match src_dims {
                             Some((sw, sh)) => {
                                 // Half-texel size in the SAMPLED texture's UV
                                 // space: atlas sprites sample the shared atlas
                                 // (1 / size_px); individual sprites sample
                                 // their own texture (1 / w, 1 / h).
-                                let half_texel = if spr.region_filter_clip {
+                                let half_texel = if region.filter_clip {
                                     let (tw, th) = match spr.source {
                                         ph2d_render::SpriteSource::Atlas { .. } => {
                                             let s = atlas.size_px.max(1) as f32;
@@ -524,7 +535,7 @@ pub(super) fn run(
                                 };
                                 region_subrect(
                                     atlas_uv,
-                                    spr.region_rect,
+                                    region.rect,
                                     sw as f32,
                                     sh as f32,
                                     half_texel,
@@ -550,7 +561,7 @@ pub(super) fn run(
                     let atlas_uv = if override_for_entity.is_some() {
                         atlas_uv
                     } else {
-                        sprite_sheet_subrect(atlas_uv, spr.hframes, spr.vframes, spr.frame)
+                        sprite_sheet_subrect(atlas_uv, grid.hframes, grid.vframes, grid.frame)
                     };
                     let base = RenderInstance {
                         world_pos: [p.x, p.y],
@@ -572,7 +583,9 @@ pub(super) fn run(
                         // `world_pos` (the pivot) under skew too. Default
                         // (centered, offset 0, anchor 0) = [0,0] (legacy).
                         anchor: quad_anchor,
-                        per_corner_tint: spr.per_corner_tint,
+                        per_corner_tint: sim
+                            .get::<ph2d_ecs::SpriteCornerTint>(sim_entity)
+                            .map_or(ph2d_ecs::SpriteCornerTint::IDENTITY.0, |c| c.0),
                         opacity: spr.opacity,
                         flip_uv,
                         z_order,
@@ -596,6 +609,8 @@ pub(super) fn run(
                     match crate::render_loop::sim_extract_slice::patches_for(
                         sim.get::<ph2d_ecs::SliceNine>(sim_entity),
                         spr,
+                        region,
+                        grid,
                         atlas_uv,
                         src_dims,
                         pixels_per_meter,
@@ -620,7 +635,7 @@ pub(super) fn run(
                                 sheet_preview,
                                 sim_entity,
                                 override_for_entity.is_some(),
-                                spr,
+                                sheet_grid,
                             );
                             // ⚠️ **A base é `[0,0,1,1]`, e NÃO o `sheet_uv`.** Sob override a
                             // textura é a transitória da ferramenta — o bake da imagem inteira —,
@@ -631,6 +646,7 @@ pub(super) fn run(
                             let anim_preview = override_for_entity.and_then(|_| {
                                 crate::render_loop::sim_extract_sheet::anim_preview_quad(
                                     spr,
+                                    grid,
                                     [0.0, 0.0, 1.0, 1.0],
                                 )
                             });
@@ -640,7 +656,9 @@ pub(super) fn run(
                                 drop(builder);
                                 for i in 0..ghosts.unwrap_or(0) {
                                     if let Some((uv, off)) =
-                                        crate::render_loop::sim_extract_sheet::cell(spr, sheet_uv, i)
+                                        crate::render_loop::sim_extract_sheet::cell(
+                                            spr, grid, sheet_uv, i,
+                                        )
                                     {
                                         present.spawn((
                                             SimRef(sim_entity),

@@ -122,9 +122,7 @@ pub use sprite_anim::{
     AnimatorState, FRAME_MS_MAX, FRAME_MS_MIN, SPEED_MAX_Q16, SPEED_ONE_Q16, SpriteAnimations,
     SpriteAnimator, advance, animator_state, entry_frame, validate_tag_name,
 };
-pub use sprite_corner_tint::{
-    BOTTOM_LEFT, BOTTOM_RIGHT, SpriteCornerTint, TOP_LEFT, TOP_RIGHT,
-};
+pub use sprite_corner_tint::{BOTTOM_LEFT, BOTTOM_RIGHT, SpriteCornerTint, TOP_LEFT, TOP_RIGHT};
 pub use sprite_grid::SpriteGrid;
 pub use sprite_pixels::SpritePixels;
 pub use sprite_region::SpriteRegion;

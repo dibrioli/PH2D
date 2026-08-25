@@ -55,6 +55,9 @@ pub(super) fn draw_selection_overlay(
     ) else {
         return;
     };
+    // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula, e aí o quad do
+    // afim é o de sempre, byte-idêntico.
+    let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     let phase = SELECTION_ANIM_PHASE.fetch_add(1, Ordering::Relaxed);
     let Some((rgba, w, h)) = painter.selection_overlay_rgba(phase) else {
         return;
@@ -66,6 +69,7 @@ pub(super) fn draw_selection_overlay(
         ih,
         tr,
         sprite,
+        sprite_grid,
         camera,
         window_size,
     );

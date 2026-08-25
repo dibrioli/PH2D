@@ -23,15 +23,22 @@ use ph2d_render::{RenderInstance, Sprite};
 /// ⚠️ Tem de ser o rect FINAL (região aplicada, célula da folha aplicada), não a imagem inteira:
 /// as bordas do 9-slice são medidas na imagem que o artista vê no Inspector. Medir na textura
 /// completa faria a borda de um sprite numa folha 4×2 sair **oito vezes** maior do que se pediu.
-pub(super) fn sub_rect_source_px(spr: &Sprite, src_dims: Option<(u32, u32)>) -> Option<[f32; 2]> {
+pub(super) fn sub_rect_source_px(
+    region: Option<ph2d_ecs::SpriteRegion>,
+    grid: ph2d_ecs::SpriteGrid,
+    src_dims: Option<(u32, u32)>,
+) -> Option<[f32; 2]> {
     let (sw, sh) = src_dims?;
     let (mut w, mut h) = (sw as f32, sh as f32);
-    if spr.region_enabled && spr.region_rect[2] > 0.0 && spr.region_rect[3] > 0.0 {
-        w = spr.region_rect[2];
-        h = spr.region_rect[3];
+    if let Some(region) = region
+        && region.rect[2] > 0.0
+        && region.rect[3] > 0.0
+    {
+        w = region.rect[2];
+        h = region.rect[3];
     }
-    let hf = spr.hframes.max(1) as f32;
-    let vf = spr.vframes.max(1) as f32;
+    let hf = grid.hframes.max(1) as f32;
+    let vf = grid.vframes.max(1) as f32;
     let (w, h) = (w / hf, h / vf);
     (w > 0.0 && h > 0.0).then_some([w, h])
 }
@@ -41,6 +48,8 @@ pub(super) fn sub_rect_source_px(spr: &Sprite, src_dims: Option<(u32, u32)>) -> 
 pub(super) fn patches_for(
     slice: Option<&ph2d_ecs::SliceNine>,
     spr: &Sprite,
+    region: Option<ph2d_ecs::SpriteRegion>,
+    grid: ph2d_ecs::SpriteGrid,
     atlas_uv: [f32; 4],
     src_dims: Option<(u32, u32)>,
     pixels_per_meter: f32,
@@ -50,7 +59,7 @@ pub(super) fn patches_for(
     if !slice.draw_mode.is_nine() {
         return None;
     }
-    let src_px = sub_rect_source_px(spr, src_dims)?;
+    let src_px = sub_rect_source_px(region, grid, src_dims)?;
     let patches = nine_slice_patches(
         atlas_uv,
         src_px,
@@ -214,19 +223,25 @@ mod tests {
     /// A medida das bordas é tirada da CÉLULA, não da folha inteira.
     #[test]
     fn the_source_px_is_the_cell_not_the_whole_sheet() {
-        let mut s = spr();
-        s.hframes = 4;
-        s.vframes = 2;
-        assert_eq!(sub_rect_source_px(&s, Some((256, 128))), Some([64.0, 64.0]));
+        let grid = ph2d_ecs::SpriteGrid {
+            hframes: 4,
+            vframes: 2,
+            frame: 0,
+        };
+        assert_eq!(
+            sub_rect_source_px(None, grid, Some((256, 128))),
+            Some([64.0, 64.0])
+        );
     }
 
     /// E é a REGIÃO, quando há região.
     #[test]
     fn the_source_px_follows_the_region_when_enabled() {
-        let mut s = spr();
-        s.region_enabled = true;
-        s.region_rect = [10.0, 10.0, 32.0, 16.0];
-        assert_eq!(sub_rect_source_px(&s, Some((256, 256))), Some([32.0, 16.0]));
+        let region = ph2d_ecs::SpriteRegion::for_atlas([10.0, 10.0, 32.0, 16.0]);
+        assert_eq!(
+            sub_rect_source_px(Some(region), ph2d_ecs::SpriteGrid::SINGLE, Some((256, 256))),
+            Some([32.0, 16.0])
+        );
     }
 
     /// Sem 9-slice, ou em `Simple`, não há quads — o caminho de sempre.
@@ -236,6 +251,8 @@ mod tests {
             patches_for(
                 None,
                 &spr(),
+                None,
+                ph2d_ecs::SpriteGrid::SINGLE,
                 [0.0, 0.0, 1.0, 1.0],
                 Some((64, 64)),
                 100.0,
@@ -248,6 +265,8 @@ mod tests {
             patches_for(
                 Some(&inert),
                 &spr(),
+                None,
+                ph2d_ecs::SpriteGrid::SINGLE,
                 [0.0, 0.0, 1.0, 1.0],
                 Some((64, 64)),
                 100.0,
@@ -273,6 +292,8 @@ mod tests {
             patches_for(
                 Some(&all_blank),
                 &spr(),
+                None,
+                ph2d_ecs::SpriteGrid::SINGLE,
                 [0.0, 0.0, 1.0, 1.0],
                 Some((64, 64)),
                 100.0,
@@ -327,6 +348,8 @@ mod tests {
         let patches = patches_for(
             Some(&s),
             &spr(),
+            None,
+            ph2d_ecs::SpriteGrid::SINGLE,
             [0.0, 0.0, 1.0, 1.0],
             Some((64, 64)),
             100.0,
@@ -368,6 +391,8 @@ mod tests {
         let patches = patches_for(
             Some(&s),
             &spr(),
+            None,
+            ph2d_ecs::SpriteGrid::SINGLE,
             [0.0, 0.0, 1.0, 1.0],
             Some((64, 64)),
             100.0,
@@ -426,6 +451,8 @@ mod tests {
         let patches = patches_for(
             Some(&s),
             &spr(),
+            None,
+            ph2d_ecs::SpriteGrid::SINGLE,
             [0.0, 0.0, 1.0, 1.0],
             Some((64, 64)),
             100.0,
@@ -465,6 +492,8 @@ mod tests {
         let patches = patches_for(
             Some(&s),
             &spr(),
+            None,
+            ph2d_ecs::SpriteGrid::SINGLE,
             [0.0, 0.0, 1.0, 1.0],
             Some((64, 64)),
             100.0,

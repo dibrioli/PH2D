@@ -133,6 +133,8 @@ impl App {
         ) else {
             return false;
         };
+        // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
+        let sprite_grid = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
         let window_size = gfx.surface.size();
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
@@ -149,6 +151,7 @@ impl App {
             ih,
             tr,
             sprite,
+            sprite_grid,
             &gfx.camera,
             window_size,
         );
@@ -283,6 +286,8 @@ impl App {
         ) else {
             return;
         };
+        // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
+        let sprite_grid = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
         let window_size = gfx.surface.size();
         let camera = gfx.camera;
         let Some(painter) = gfx
@@ -301,6 +306,7 @@ impl App {
             ih,
             tr,
             sprite,
+            sprite_grid,
             &camera,
             window_size,
         );
@@ -387,6 +393,8 @@ impl App {
         ) else {
             return false;
         };
+        // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
+        let sprite_grid = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
         let window_size = gfx.surface.size();
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
@@ -407,6 +415,7 @@ impl App {
             ih,
             tr,
             sprite,
+            sprite_grid,
             &gfx.camera,
             window_size,
         );

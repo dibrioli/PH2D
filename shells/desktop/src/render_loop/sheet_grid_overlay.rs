@@ -58,10 +58,14 @@ pub(crate) fn draw(
     let Some(spr) = sim.world().get::<Sprite>(entity) else {
         return;
     };
-    let Some(l) = lattice(spr, pixels_per_meter, unfolded) else {
+    // ⚠️ Sem grelha não há cortes que desenhar — a sprite mostra a textura inteira.
+    let Some(grid) = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied() else {
         return;
     };
-    let (hf, vf) = (spr.hframes.max(1), spr.vframes.max(1));
+    let Some(l) = lattice(spr, grid, pixels_per_meter, unfolded) else {
+        return;
+    };
+    let (hf, vf) = (grid.hframes.max(1), grid.vframes.max(1));
     let (sx, sy) = (l.cell_w, l.cell_h);
     // A pose de MUNDO, pela mesma porta que o gizmo usa — uma resposta só a *«onde isto está»*.
     let Some(wt) = ph2d_ecs::world_transform(sim.world(), entity) else {
@@ -156,9 +160,14 @@ pub(crate) struct Lattice {
 /// `(lcol + ½ − hf/2)·cw`, e vale meia célula no caso fotografado (8 células, viva na 4);
 /// noutro frame é maior. ⚠️ *A 1.ª versão do gate escreveu «meia célula sempre» e sangrou na hora.* *Duas disposições existem porque dois modos existem; o que
 /// não pode existir é uma delas a descrever o outro.*
-pub(crate) fn lattice(spr: &Sprite, pixels_per_meter: f32, unfolded: bool) -> Option<Lattice> {
-    let cells = super::sim_extract_sheet::cell_count(spr)?;
-    let (hf, vf) = (spr.hframes.max(1), spr.vframes.max(1));
+pub(crate) fn lattice(
+    spr: &Sprite,
+    grid: ph2d_ecs::SpriteGrid,
+    pixels_per_meter: f32,
+    unfolded: bool,
+) -> Option<Lattice> {
+    let cells = super::sim_extract_sheet::cell_count(grid)?;
+    let (hf, vf) = (grid.hframes.max(1), grid.vframes.max(1));
     let (cell_w, cell_h) = (f64::from(spr.size[0]), f64::from(spr.size[1]));
     if cell_w <= 0.0 || cell_h <= 0.0 {
         return None;
@@ -172,7 +181,7 @@ pub(crate) fn lattice(spr: &Sprite, pixels_per_meter: f32, unfolded: bool) -> Op
     // deslocamento, e as linhas têm de acompanhar. Espelhar o ÍNDICE da célula viva dá o mesmo
     // resultado com uma conta só, e deixa o retângulo dela onde ele está (o centro não se move —
     // só o que fica à volta dele).
-    let live = spr.frame.min(cells - 1);
+    let live = grid.frame.min(cells - 1);
     let (mut lcol, mut lrow) = (live % hf, live / hf);
     if spr.flip_x {
         lcol = hf - 1 - lcol;
@@ -230,6 +239,7 @@ pub(crate) fn lattice(spr: &Sprite, pixels_per_meter: f32, unfolded: bool) -> Op
 #[must_use]
 pub(crate) fn gizmo_box(
     spr: &Sprite,
+    grid: Option<ph2d_ecs::SpriteGrid>,
     pixels_per_meter: f32,
     sheet_open: bool,
     unfolded: bool,
@@ -241,7 +251,7 @@ pub(crate) fn gizmo_box(
     if !sheet_open {
         return folded;
     }
-    match lattice(spr, pixels_per_meter, unfolded) {
+    match grid.and_then(|g| lattice(spr, g, pixels_per_meter, unfolded)) {
         Some(l) => (
             [(l.x0 + l.w * 0.5) as f32, (l.y0 - l.h * 0.5) as f32],
             [(l.w * 0.5) as f32, (l.h * 0.5) as f32],

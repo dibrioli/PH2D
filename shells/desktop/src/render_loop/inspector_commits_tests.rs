@@ -3,7 +3,8 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::render_loop::inspector_commits_sprite::apply_sprite_field;
+    use crate::render_loop::inspector_commits_sprite::{SpriteEditables, apply_sprite_field};
+    use ph2d_ecs::{SpriteCornerTint, SpriteGrid};
     use ph2d_editor::SpriteFieldEdit;
     use ph2d_render::Sprite;
 
@@ -11,10 +12,15 @@ mod tests {
     const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
     const BLUE: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 
-    fn sprite_with_corners(c: [[f32; 4]; 4]) -> Sprite {
-        let mut s = Sprite::individual(1, [1.0, 1.0], [1.0; 4]);
-        s.per_corner_tint = c;
-        s
+    /// ⭐ Os cantos são um componente desde o ADR-0164 F1 passo 6 — mas a LEI por-índice é a
+    /// mesma, e é ela que estes gates medem.
+    fn sprite_with_corners(c: [[f32; 4]; 4]) -> SpriteEditables {
+        SpriteEditables {
+            sprite: Sprite::individual(1, [1.0, 1.0], [1.0; 4]),
+            grid: SpriteGrid::SINGLE,
+            region: None,
+            corner_tint: SpriteCornerTint(c),
+        }
     }
 
     /// **Editar UM canto preserva os outros três** — a lei que já governava `OffsetX`/`OffsetY` e
@@ -28,14 +34,11 @@ mod tests {
     fn editing_one_corner_leaves_the_other_three_alone() {
         // Uma sprite «vizinha» com cantos DIVERGENTES da primária: é ela que o bug atropelava.
         let mut neighbour = sprite_with_corners([GREEN, BLUE, RED, GREEN]);
-        let before = neighbour.per_corner_tint;
+        let before = neighbour.corner_tint.0;
         apply_sprite_field(&mut neighbour, SpriteFieldEdit::PerCornerTintAt(0, RED));
+        assert_eq!(neighbour.corner_tint.0[0], RED, "o canto pedido nao mudou");
         assert_eq!(
-            neighbour.per_corner_tint[0], RED,
-            "o canto pedido nao mudou"
-        );
-        assert_eq!(
-            &neighbour.per_corner_tint[1..],
+            &neighbour.corner_tint.0[1..],
             &before[1..],
             "editar o TL reescreveu os outros cantos — e' exatamente o atropelo que o variante \
              por-indice existe para impedir"
@@ -47,7 +50,7 @@ mod tests {
     fn a_corner_index_the_ui_cannot_produce_is_ignored() {
         let mut s = sprite_with_corners([GREEN; 4]);
         apply_sprite_field(&mut s, SpriteFieldEdit::PerCornerTintAt(9, RED));
-        assert_eq!(s.per_corner_tint, [GREEN; 4]);
+        assert_eq!(s.corner_tint.0, [GREEN; 4]);
     }
 
     /// **«Igualar» usa o TL DE CADA SPRITE, não o da primária.**
@@ -61,9 +64,9 @@ mod tests {
         let mut neighbour = sprite_with_corners([BLUE, RED, GREEN, RED]);
         apply_sprite_field(&mut primary, SpriteFieldEdit::EqualizeCorners);
         apply_sprite_field(&mut neighbour, SpriteFieldEdit::EqualizeCorners);
-        assert_eq!(primary.per_corner_tint, [RED; 4]);
+        assert_eq!(primary.corner_tint.0, [RED; 4]);
         assert_eq!(
-            neighbour.per_corner_tint, [BLUE; 4],
+            neighbour.corner_tint.0, [BLUE; 4],
             "a vizinha igualou pelo TL da PRIMARIA — o verbo esta' a difundir um valor em vez de \
              executar uma operacao"
         );

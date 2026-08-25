@@ -20,10 +20,12 @@ fn sprite(sim: &mut SimWorld, cells: u32) -> Entity {
     sim.world_mut()
         .spawn((
             Transform::default(),
-            ph2d_render::Sprite {
+            sprite_default(),
+            // ⭐ A grelha é um componente (ADR-0164 F1 passo 6).
+            ph2d_ecs::SpriteGrid {
                 hframes: cells,
                 vframes: 1,
-                ..sprite_default()
+                frame: 0,
             },
         ))
         .id()
@@ -460,8 +462,8 @@ fn the_panel_and_the_engine_agree_on_a_dangling_playback() {
         ("far", 4, "a grelha encolheu debaixo dela"),
     ] {
         edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent(name.into()));
-        if let Some(mut s) = sim.world_mut().get_mut::<ph2d_render::Sprite>(e) {
-            s.hframes = cells;
+        if let Some(mut g) = sim.world_mut().get_mut::<ph2d_ecs::SpriteGrid>(e) {
+            g.hframes = cells;
         }
         let animator = sim
             .world()

@@ -69,9 +69,7 @@ const CANONICAL_V3_WIRE_LEN: usize = 35;
 fn expect_v3(versioned: SpriteVersioned) -> SpriteV3 {
     match versioned {
         SpriteVersioned::V3(sprite) => sprite,
-        SpriteVersioned::V4(_) => {
-            panic!("v3 fixture decoded as V4 — discriminant/fixture regression")
-        }
+        other => panic!("v3 fixture decoded as {other:?} — discriminant/fixture regression"),
     }
 }
 
@@ -381,18 +379,49 @@ fn sprite_versioned_v4_serializes_with_one_discriminant() {
     // 0x01 (V3 stays 0x00). If a future edit reorders the enum, this
     // catches it before a reorder silently invalidates every saved
     // V4 blob (and every V3 blob, symmetrically).
-    let bytes = postcard::to_allocvec(&SpriteVersioned::V4(Sprite::atlas(
-        0,
-        [1.0, 1.0],
-        [1.0, 1.0, 1.0, 1.0],
-    )))
-    .expect("serialize V4 envelope");
+    let bytes = postcard::to_allocvec(&SpriteVersioned::V4(v4_sample())).expect("serialize V4");
     assert_eq!(
         bytes[0], 0x01,
         "SpriteVersioned::V4 discriminant must be 0x01 (appended after V3=0x00); \
          got 0x{:02x} — enum variant order regressed",
         bytes[0]
     );
+    // ⭐ E o V5 é 0x02 — apendado, para os dois envelopes anteriores continuarem a carregar
+    // (ADR-0164 F1 passo 6 / ADR-0070-amendment-8).
+    let bytes5 = postcard::to_allocvec(&SpriteVersioned::V5(Sprite::atlas(
+        0,
+        [1.0, 1.0],
+        [1.0, 1.0, 1.0, 1.0],
+    )))
+    .expect("serialize V5 envelope");
+    assert_eq!(bytes5[0], 0x02, "SpriteVersioned::V5 tem de ser 0x02");
+}
+
+/// Um `SpriteV4` de amostra — o espelho CONGELADO dos 20 campos, que é o que os bytes v4 em
+/// disco de facto contêm.
+fn v4_sample() -> ph2d_render::SpriteV4 {
+    ph2d_render::SpriteV4 {
+        version: 4,
+        source: ph2d_render::SpriteSource::Atlas { key: 0 },
+        size: [1.0, 1.0],
+        tint: [1.0; 4],
+        anchor: [0.0; 2],
+        premultiplied: false,
+        self_tint: [1.0; 4],
+        per_corner_tint: [[1.0; 4]; 4],
+        tint_fill: false,
+        opacity: 1.0,
+        flip_x: false,
+        flip_y: false,
+        centered: true,
+        offset: [0.0; 2],
+        hframes: 1,
+        vframes: 1,
+        frame: 0,
+        region_enabled: false,
+        region_rect: [0.0; 4],
+        region_filter_clip: true,
+    }
 }
 
 #[test]
@@ -402,7 +431,10 @@ fn versioned_wrapper_round_trip_preserves_v4() {
     // field family: tint, self_tint, per_corner_tint, the flag bools,
     // opacity, the sprite-sheet grid, offset, and the region rect — so a
     // dropped/reordered field in the v4 layout fails here, not in prod.
-    let mut original = Sprite::individual(99, [128.0, 256.0], [0.5, 0.6, 0.7, 0.8]);
+    let mut original = v4_sample();
+    original.source = ph2d_render::SpriteSource::Individual { texture_id: 99 };
+    original.size = [128.0, 256.0];
+    original.tint = [0.5, 0.6, 0.7, 0.8];
     original.self_tint = [0.1, 0.2, 0.3, 0.9];
     original.per_corner_tint = [
         [1.0, 0.0, 0.0, 1.0],
@@ -421,7 +453,7 @@ fn versioned_wrapper_round_trip_preserves_v4() {
     original.frame = 5;
     original.region_enabled = true;
     original.region_rect = [8.0, 16.0, 32.0, 64.0];
-    // `individual()` already set region_filter_clip = false; keep it.
+    original.region_filter_clip = false;
 
     let bytes =
         postcard::to_allocvec(&SpriteVersioned::V4(original)).expect("serialize V4 envelope");
@@ -431,7 +463,7 @@ fn versioned_wrapper_round_trip_preserves_v4() {
             s, original,
             "v4 round trip must preserve every wire field bit-for-bit"
         ),
-        SpriteVersioned::V3(_) => panic!("V4 envelope dispatched as V3 — discriminant regression"),
+        other => panic!("V4 envelope dispatched as {other:?} — discriminant regression"),
     }
 }
 
@@ -465,7 +497,11 @@ fn cooked_texture_is_appended_as_source_variant_tag_2() {
 fn versioned_v4_cooked_texture_round_trips_preserving_logical_id() {
     use ph2d_asset::LogicalTextureId;
     let logical_id = LogicalTextureId::from_source_bytes(b"cooked-texture-fixture");
-    let original = Sprite::cooked_texture(logical_id, [64.0, 32.0], [0.25, 0.5, 0.75, 1.0]);
+    let mut original = v4_sample();
+    original.source = SpriteSource::CookedTexture { logical_id };
+    original.size = [64.0, 32.0];
+    original.tint = [0.25, 0.5, 0.75, 1.0];
+    original.region_filter_clip = false;
     let bytes =
         postcard::to_allocvec(&SpriteVersioned::V4(original)).expect("serialize V4 envelope");
     assert_eq!(bytes[0], 0x01, "V4 envelope discriminant must be 0x01");
@@ -478,7 +514,7 @@ fn versioned_v4_cooked_texture_round_trips_preserving_logical_id() {
                 "cooked-texture v4 round trip must preserve every wire field"
             );
         }
-        SpriteVersioned::V3(_) => panic!("V4 envelope dispatched as V3 — discriminant regression"),
+        other => panic!("V4 envelope dispatched as {other:?} — discriminant regression"),
     }
 }
 

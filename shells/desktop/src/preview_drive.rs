@@ -151,12 +151,16 @@ impl Driven {
         match driver {
             Driver::SpriteAnim => {
                 let a = sim.world().get::<ph2d_ecs::SpriteAnimator>(entity)?;
-                let s = sim.world().get::<Sprite>(entity)?;
+                // ⚠️ **A célula viva mudou de casa** (ADR-0164 F1 passo 6): era `Sprite::frame`,
+                // hoje é `SpriteGrid::frame`. Uma sprite SEM grelha não tem célula que o motor
+                // possa mexer, então não há facto de pré-visualização a guardar — e o `?` aqui é
+                // a leitura certa disso, não uma falha.
+                let g = sim.world().get::<ph2d_ecs::SpriteGrid>(entity)?;
                 Some(Self::SpriteAnim {
                     elapsed_ticks: a.elapsed_ticks,
                     pingpong_reverse: a.pingpong_reverse,
                     repeat_count: a.repeat_count,
-                    frame: s.frame,
+                    frame: g.frame,
                 })
             }
             Driver::SolverPose => Some(Self::SolverPose(*sim.world().get::<Transform>(entity)?)),
@@ -199,10 +203,10 @@ impl Driven {
                         a.repeat_count = repeat_count;
                     }
                 }
-                if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(entity)
-                    && s.frame != frame
+                if let Some(mut g) = sim.world_mut().get_mut::<ph2d_ecs::SpriteGrid>(entity)
+                    && g.frame != frame
                 {
-                    s.frame = frame;
+                    g.frame = frame;
                 }
             }
             Self::SolverPose(pose) => {

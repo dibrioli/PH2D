@@ -62,11 +62,14 @@ pub(crate) fn rebind_to_individual(
         sprite.source = SpriteSource::Individual { texture_id };
         sprite.size = new_size_world;
         sprite.premultiplied = premultiplied;
-        if window == SamplingWindow::Dies {
-            // O `region_rect` fica como está de propósito (é ignorado enquanto `region_enabled` é
-            // falso, e zerá-lo só acrescentaria uma escrita que ninguém lê).
-            sprite.region_enabled = false;
-        }
+    }
+    if window == SamplingWindow::Dies {
+        // ⚠️ **A janela morre RETIRANDO o componente** (ADR-0164 F1 passo 6). Antes isto punha
+        // `region_enabled = false` e deixava o `region_rect` autorado ao lado, de propósito —
+        // hoje esse par deixou de ser exprimível, e «não há região» diz-se ausentando-a.
+        sim.world_mut()
+            .entity_mut(entity)
+            .remove::<ph2d_ecs::SpriteRegion>();
     }
     // Stamped AFTER the sprite write and unconditionally: an entity whose `Sprite` vanished
     // mid-frame gets no stamp because `insert` on a dead entity is the caller's bug, so guard on
@@ -110,10 +113,12 @@ mod sampling_window_tests {
     /// Uma sprite `Individual` com janela de amostragem autorada e ligada.
     fn sprite_with_a_live_window(sim: &mut SimWorld) -> (Entity, [f32; 4]) {
         let rect = [8.0, 8.0, 64.0, 64.0];
-        let mut sprite = Sprite::individual(7, [1.0, 1.0], [1.0; 4]);
-        sprite.region_enabled = true;
-        sprite.region_rect = rect;
-        let e = sim.world_mut().spawn((sprite,)).id();
+        let sprite = Sprite::individual(7, [1.0, 1.0], [1.0; 4]);
+        // ⭐ A janela é um componente, e a PRESENÇA dele é o antigo `region_enabled`.
+        let e = sim
+            .world_mut()
+            .spawn((sprite, ph2d_ecs::SpriteRegion::individual(rect)))
+            .id();
         (e, rect)
     }
 
@@ -142,14 +147,15 @@ mod sampling_window_tests {
         let mut sim = SimWorld::default();
         let (e, rect) = sprite_with_a_live_window(&mut sim);
         rebind(&mut sim, e, SamplingWindow::Survives);
-        let after = sim.world().get::<Sprite>(e).copied().expect("sprite");
+        let after = sim.world().get::<ph2d_ecs::SpriteRegion>(e).copied();
         assert!(
-            after.region_enabled,
+            after.is_some(),
             "a troca de precisao apagou a janela de amostragem — ela sobe A MESMA imagem noutra \
              precisao, entao o recorte continua a apontar para os mesmos pixels"
         );
         assert_eq!(
-            after.region_rect, rect,
+            after.expect("a janela").rect,
+            rect,
             "a janela sobreviveu mas mudou de sitio"
         );
     }
@@ -165,9 +171,8 @@ mod sampling_window_tests {
         let mut sim = SimWorld::default();
         let (e, _) = sprite_with_a_live_window(&mut sim);
         rebind(&mut sim, e, SamplingWindow::Dies);
-        let after = sim.world().get::<Sprite>(e).copied().expect("sprite");
         assert!(
-            !after.region_enabled,
+            sim.world().get::<ph2d_ecs::SpriteRegion>(e).is_none(),
             "a edicao de ferramenta manteve a janela — os pixels novos sao OUTRA imagem, e a \
              janela antiga recortaria um pedaco arbitrario dela"
         );
@@ -182,18 +187,8 @@ mod sampling_window_tests {
         let (b, _) = sprite_with_a_live_window(&mut sim);
         rebind(&mut sim, a, SamplingWindow::Survives);
         rebind(&mut sim, b, SamplingWindow::Dies);
-        let ra = sim
-            .world()
-            .get::<Sprite>(a)
-            .copied()
-            .expect("a")
-            .region_enabled;
-        let rb = sim
-            .world()
-            .get::<Sprite>(b)
-            .copied()
-            .expect("b")
-            .region_enabled;
+        let ra = sim.world().get::<ph2d_ecs::SpriteRegion>(a).is_some();
+        let rb = sim.world().get::<ph2d_ecs::SpriteRegion>(b).is_some();
         assert_ne!(
             ra, rb,
             "`SamplingWindow` nao muda nada — o parametro existe e o corpo nao o le"

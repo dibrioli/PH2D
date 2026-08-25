@@ -18,6 +18,14 @@
 //! teto de 600 do HR-18 volta a morder de verdade. *Um marcador que só precisa existir para o
 //! gate passar não envelhece com barulho* — este envelheceu 36 linhas em silêncio antes de sair.
 
+/// Os nomes canónicos que o commit da §2 pode gravar (ADR-0164 F1 passo 6). ⚠️ **Literais e não
+/// `type_name`**: o registo é indexado pelo nome CANÓNICO, que é dado à mão no `register_*` e não
+/// derivado do tipo Rust — renomear o módulo não pode mudar o que o arquivo diz.
+const SPRITE_TYPE: &str = "ph2d::render::Sprite";
+const GRID_TYPE: &str = "ph2d::ecs::SpriteGrid";
+const REGION_TYPE: &str = "ph2d::ecs::SpriteRegion";
+const CORNER_TINT_TYPE: &str = "ph2d::ecs::SpriteCornerTint";
+
 use crate::EPS_PIXELS_PER_METER;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::scene::{
@@ -188,7 +196,9 @@ pub(super) fn dispatch(
     // sequentially re-reads the just-written Sprite each iteration.
     for &(entity_bits, edit) in sprite_edits {
         let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-        let Some(mut sprite) = sim.world().get::<Sprite>(entity).copied() else {
+        let Some(mut editables) =
+            super::inspector_commits_sprite::SpriteEditables::read(sim.world(), entity)
+        else {
             continue;
         };
         // `Sprite.premultiplied` is `#[serde(skip)]` — a runtime hint set
@@ -196,13 +206,43 @@ pub(super) fn dispatch(
         // trip (postcard → from_bytes) would reset it to `false` and
         // silently reintroduce the straight-alpha edge fringe. Capture
         // the live flag and re-assert it after the commit (audit F1).
-        let was_premultiplied = sprite.premultiplied;
-        super::inspector_commits_sprite::apply_sprite_field(&mut sprite, edit);
-        match postcard::to_allocvec(&sprite) {
-            Ok(data) => {
+        let was_premultiplied = editables.sprite.premultiplied;
+        let target = super::inspector_commits_sprite::apply_sprite_field(&mut editables, edit);
+        // ⚠️ **Retirar um componente não passa pelo `SetComponent`** (ADR-0164 F1 passo 6):
+        // desligar a região é uma AUSÊNCIA, e o comando que grava bytes não sabe exprimi-la.
+        // O `remove` é direto no mundo, e o passo de undo nasce do diff do quadro como sempre.
+        if target == super::inspector_commits_sprite::SpriteEditTarget::RegionRemoved {
+            sim.world_mut()
+                .entity_mut(entity)
+                .remove::<ph2d_ecs::SpriteRegion>();
+            continue;
+        }
+        let encoded = match target {
+            super::inspector_commits_sprite::SpriteEditTarget::Sprite => {
+                postcard::to_allocvec(&editables.sprite).map(|d| (SPRITE_TYPE, d))
+            }
+            super::inspector_commits_sprite::SpriteEditTarget::Grid => {
+                postcard::to_allocvec(&editables.grid).map(|d| (GRID_TYPE, d))
+            }
+            super::inspector_commits_sprite::SpriteEditTarget::Region => {
+                postcard::to_allocvec(&editables.region.expect("o alvo Region garante-a"))
+                    .map(|d| (REGION_TYPE, d))
+            }
+            super::inspector_commits_sprite::SpriteEditTarget::CornerTint => {
+                postcard::to_allocvec(&editables.corner_tint).map(|d| (CORNER_TINT_TYPE, d))
+            }
+            super::inspector_commits_sprite::SpriteEditTarget::RegionRemoved => unreachable!(),
+        };
+        match encoded {
+            Ok((type_name, data)) => {
+                let type_id = if type_name == SPRITE_TYPE {
+                    sprite_type_id
+                } else {
+                    ph2d_ecs::scene::stable_type_id(type_name)
+                };
                 let push_res = editor_queue.push(EditorCommand::SetComponent {
                     entity: entity_bits,
-                    type_id: sprite_type_id,
+                    type_id,
                     data,
                 });
                 if let Err(e) = push_res {
@@ -444,84 +484,136 @@ pub(super) fn dispatch(
 
 #[cfg(test)]
 mod sprite_field_tests {
-    use super::super::inspector_commits_sprite::{apply_sprite_field, clamp_frame};
+    use super::super::inspector_commits_sprite::{
+        SpriteEditTarget, SpriteEditables, apply_sprite_field, clamp_frame,
+    };
+    use ph2d_ecs::{SpriteCornerTint, SpriteGrid};
     use ph2d_editor::SpriteFieldEdit;
     use ph2d_render::Sprite;
 
-    fn sprite() -> Sprite {
-        Sprite::atlas(0, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0])
+    /// Os quatro editáveis no estado neutro — o que uma sprite sem nenhum dos três componentes
+    /// apresenta ao commit (ADR-0164 F1 passo 6).
+    fn editables() -> SpriteEditables {
+        SpriteEditables {
+            sprite: Sprite::atlas(0, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]),
+            grid: SpriteGrid::SINGLE,
+            region: None,
+            corner_tint: SpriteCornerTint::IDENTITY,
+        }
     }
 
     #[test]
     fn flip_edits_set_the_flags() {
-        let mut s = sprite();
-        apply_sprite_field(&mut s, SpriteFieldEdit::FlipX(true));
-        apply_sprite_field(&mut s, SpriteFieldEdit::FlipY(true));
-        assert!(s.flip_x && s.flip_y);
-        apply_sprite_field(&mut s, SpriteFieldEdit::FlipX(false));
-        assert!(!s.flip_x && s.flip_y);
+        let mut t = editables();
+        assert_eq!(
+            apply_sprite_field(&mut t, SpriteFieldEdit::FlipX(true)),
+            SpriteEditTarget::Sprite
+        );
+        apply_sprite_field(&mut t, SpriteFieldEdit::FlipY(true));
+        assert!(t.sprite.flip_x && t.sprite.flip_y);
+        apply_sprite_field(&mut t, SpriteFieldEdit::FlipX(false));
+        assert!(!t.sprite.flip_x && t.sprite.flip_y);
     }
 
     #[test]
     fn opacity_is_clamped_to_unit() {
-        let mut s = sprite();
-        apply_sprite_field(&mut s, SpriteFieldEdit::Opacity(2.5));
-        assert_eq!(s.opacity, 1.0);
-        apply_sprite_field(&mut s, SpriteFieldEdit::Opacity(-0.3));
-        assert_eq!(s.opacity, 0.0);
+        let mut t = editables();
+        apply_sprite_field(&mut t, SpriteFieldEdit::Opacity(2.5));
+        assert_eq!(t.sprite.opacity, 1.0);
+        apply_sprite_field(&mut t, SpriteFieldEdit::Opacity(-0.3));
+        assert_eq!(t.sprite.opacity, 0.0);
     }
 
     #[test]
     fn frame_count_floors_at_one_and_reclamps_frame() {
-        let mut s = sprite();
-        apply_sprite_field(&mut s, SpriteFieldEdit::Hframes(4));
-        apply_sprite_field(&mut s, SpriteFieldEdit::Vframes(2));
-        apply_sprite_field(&mut s, SpriteFieldEdit::Frame(7)); // last cell of 4*2
-        assert_eq!(s.frame, 7);
+        let mut t = editables();
+        assert_eq!(
+            apply_sprite_field(&mut t, SpriteFieldEdit::Hframes(4)),
+            SpriteEditTarget::Grid,
+            "a grelha e' o alvo, nao a Sprite"
+        );
+        apply_sprite_field(&mut t, SpriteFieldEdit::Vframes(2));
+        apply_sprite_field(&mut t, SpriteFieldEdit::Frame(7)); // last cell of 4*2
+        assert_eq!(t.grid.frame, 7);
         // Shrinking the grid must drag the stale frame back in-range.
-        apply_sprite_field(&mut s, SpriteFieldEdit::Vframes(1)); // now 4 cells
-        assert_eq!(s.frame, 3);
+        apply_sprite_field(&mut t, SpriteFieldEdit::Vframes(1)); // now 4 cells
+        assert_eq!(t.grid.frame, 3);
         // 0 is floored to 1 (never a zero-cell sheet).
-        apply_sprite_field(&mut s, SpriteFieldEdit::Hframes(0));
-        assert_eq!(s.hframes, 1);
-        assert_eq!(s.frame, 0); // 1*1 = 1 cell → frame 0
+        apply_sprite_field(&mut t, SpriteFieldEdit::Hframes(0));
+        assert_eq!(t.grid.hframes, 1);
+        assert_eq!(t.grid.frame, 0); // 1*1 = 1 cell → frame 0
     }
 
     #[test]
     fn frame_set_past_grid_is_clamped_immediately() {
-        let mut s = sprite();
+        let mut t = editables();
         // default hframes=vframes=1 → only cell is 0.
-        apply_sprite_field(&mut s, SpriteFieldEdit::Frame(99));
-        assert_eq!(s.frame, 0);
+        apply_sprite_field(&mut t, SpriteFieldEdit::Frame(99));
+        assert_eq!(t.grid.frame, 0);
     }
 
     #[test]
     fn region_rect_clamps_extent_non_negative_but_keeps_origin() {
-        let mut s = sprite();
+        let mut t = editables();
         apply_sprite_field(
-            &mut s,
+            &mut t,
             SpriteFieldEdit::RegionRect([-4.0, -2.0, -10.0, 8.0]),
         );
         // x/y pass through (extract clamps into the source); w/h floor at 0.
-        assert_eq!(s.region_rect, [-4.0, -2.0, 0.0, 8.0]);
+        assert_eq!(t.region.expect("materializou").rect, [-4.0, -2.0, 0.0, 8.0]);
+    }
+
+    /// ⭐ **Ligar/desligar a janela é anexar/retirar o componente** (ADR-0164 F1 passo 6) — o
+    /// antigo `region_enabled`, dito da única maneira que ele hoje se diz.
+    #[test]
+    fn the_region_toggle_is_the_components_presence() {
+        let mut t = editables();
+        assert_eq!(
+            apply_sprite_field(&mut t, SpriteFieldEdit::RegionEnabled(true)),
+            SpriteEditTarget::Region
+        );
+        assert!(t.region.is_some());
+        assert_eq!(
+            apply_sprite_field(&mut t, SpriteFieldEdit::RegionEnabled(false)),
+            SpriteEditTarget::RegionRemoved,
+            "desligar tem de pedir a REMOCAO — um SetComponent nao sabe exprimir ausencia"
+        );
+        assert!(t.region.is_none());
+    }
+
+    /// ⚠️ **Uma edição de campo da região MATERIALIZA o componente**, em vez de ser um no-op: o
+    /// painel ainda mostra as linhas a toda sprite, e um campo que aceita o gesto e não faz nada
+    /// é o defeito que a DIRETIVA §2 proíbe.
+    #[test]
+    fn a_region_field_edit_materialises_the_component() {
+        let mut t = editables();
+        assert!(t.region.is_none());
+        apply_sprite_field(&mut t, SpriteFieldEdit::RegionW(12.0));
+        assert_eq!(t.region.expect("materializou").rect[2], 12.0);
+        // E o `filter_clip` sai da FONTE dos pixels — esta e' uma sprite de Atlas.
+        assert!(t.region.expect("regiao").filter_clip);
     }
 
     #[test]
     fn per_axis_edits_preserve_the_other_components() {
         // BulkSelect D-1: editing one axis must NOT touch the siblings
         // (so a bulk edit of one axis can't stomp a diverging sibling).
-        let mut s = sprite();
-        s.offset = [3.0, 5.0];
-        apply_sprite_field(&mut s, SpriteFieldEdit::OffsetX(9.0));
-        assert_eq!(s.offset, [9.0, 5.0], "OffsetX left Y untouched");
+        let mut t = editables();
+        t.sprite.offset = [3.0, 5.0];
+        apply_sprite_field(&mut t, SpriteFieldEdit::OffsetX(9.0));
+        assert_eq!(t.sprite.offset, [9.0, 5.0], "OffsetX left Y untouched");
 
-        s.region_rect = [1.0, 2.0, 3.0, 4.0];
-        apply_sprite_field(&mut s, SpriteFieldEdit::RegionY(8.0));
-        assert_eq!(s.region_rect, [1.0, 8.0, 3.0, 4.0], "RegionY left X/W/H");
-        // W/H still floor at 0 per-axis.
-        apply_sprite_field(&mut s, SpriteFieldEdit::RegionW(-7.0));
+        t.region = Some(ph2d_ecs::SpriteRegion::for_atlas([1.0, 2.0, 3.0, 4.0]));
+        apply_sprite_field(&mut t, SpriteFieldEdit::RegionY(8.0));
         assert_eq!(
-            s.region_rect,
+            t.region.expect("regiao").rect,
+            [1.0, 8.0, 3.0, 4.0],
+            "RegionY left X/W/H"
+        );
+        // W/H still floor at 0 per-axis.
+        apply_sprite_field(&mut t, SpriteFieldEdit::RegionW(-7.0));
+        assert_eq!(
+            t.region.expect("regiao").rect,
             [1.0, 8.0, 0.0, 4.0],
             "RegionW floored, rest kept"
         );
@@ -529,11 +621,12 @@ mod sprite_field_tests {
 
     #[test]
     fn clamp_frame_is_idempotent_in_range() {
-        let mut s = sprite();
-        s.hframes = 3;
-        s.vframes = 3;
-        s.frame = 4;
-        clamp_frame(&mut s);
-        assert_eq!(s.frame, 4);
+        let mut g = SpriteGrid {
+            hframes: 3,
+            vframes: 3,
+            frame: 4,
+        };
+        clamp_frame(&mut g);
+        assert_eq!(g.frame, 4);
     }
 }

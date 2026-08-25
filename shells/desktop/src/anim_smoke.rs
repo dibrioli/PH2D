@@ -152,12 +152,14 @@ pub(crate) fn spawn_if_enabled(
     let e = ph2d_ecs::Entity::from_bits(bits);
     // **A GRELHA é o pool**: oito células numa linha. Sem isto a §11 teria uma célula só.
     if let Some(mut s) = sim.world_mut().get_mut::<ph2d_render::Sprite>(e) {
-        s.hframes = CELLS;
-        s.vframes = 1;
-        s.frame = 0;
         // A sprite mostra UMA célula, então ela é quadrada no mundo.
         s.size = [s.size[0] / CELLS as f32, s.size[1]];
     }
+    sim.world_mut().entity_mut(e).insert(ph2d_ecs::SpriteGrid {
+        hframes: CELLS,
+        vframes: 1,
+        frame: 0,
+    });
 
     let lib = demo_library()?;
 

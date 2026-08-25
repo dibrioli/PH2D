@@ -347,6 +347,8 @@ pub(super) fn dispatch(
             ph2d_ecs::world_transform(sim.world(), entity),
             sim.world().get::<Sprite>(entity),
         ) {
+            // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
+            let grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
             let quality = match hero.project.image_filter {
                 ph2d_editor::ImageFilterMode::PixelArt => ImageQuality::Low,
                 ph2d_editor::ImageFilterMode::Smooth => ImageQuality::Medium,
@@ -356,7 +358,7 @@ pub(super) fn dispatch(
             // pixel-for-pixel even when the sprite is rotated/scaled.
             if let Some((tint, tw, th)) = &protect_tint {
                 let tint_to_screen =
-                    sprite_image_to_screen_affine(*tw, *th, tr, sprite, camera, window_size);
+                    sprite_image_to_screen_affine(*tw, *th, tr, sprite, grid, camera, window_size);
                 vector_scene.draw_image_rgba_transformed(tint, *tw, *th, tint_to_screen, quality);
             }
             // Brush-size ring at the cursor — the source-px radius
@@ -375,6 +377,7 @@ pub(super) fn dispatch(
                     preview.height,
                     tr,
                     sprite,
+                    grid,
                     camera,
                     window_size,
                 )
@@ -436,6 +439,8 @@ pub(crate) fn sprite_image_to_screen_affine(
     image_h: u32,
     world_tr: ph2d_ecs::Transform,
     sprite: &Sprite,
+    // A grelha da sprite; ausente = uma célula (ADR-0164 F1 passo 6).
+    grid: Option<ph2d_ecs::SpriteGrid>,
     camera: &Camera2d,
     window_size: WindowSize,
 ) -> Affine {
@@ -449,8 +454,9 @@ pub(crate) fn sprite_image_to_screen_affine(
     // ⚠️ **A MESMA função que o extract usa** (`sim_extract_sheet::unfolded_quad`), e não uma cópia:
     // o render e o ponteiro leem daqui, e uma segunda conta faria pintar num sítio e ver noutro.
     // *É a lei que a caixa «Playing» pagou neste mesmo dia, noutra superfície.*
-    let unfolded_size =
-        crate::render_loop::sim_extract_sheet::unfolded_quad(sprite).unwrap_or(sprite.size);
+    let unfolded_size = grid
+        .and_then(|g| crate::render_loop::sim_extract_sheet::unfolded_quad(sprite, g))
+        .unwrap_or(sprite.size);
     let size_w = unfolded_size[0] as f64;
     let size_h = unfolded_size[1] as f64;
     // image-px → centered, with Y flipped (image-Y is down, world-Y up):

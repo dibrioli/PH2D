@@ -33,7 +33,6 @@ pub(crate) struct AnimSignal {
     /// Quantos ciclos fecharam neste tique (≥ 1).
     pub(crate) cycles: u32,
 }
-use ph2d_render::Sprite;
 
 /// Quantos microssegundos vale um passo fixo. Convertido **uma vez**, a partir de uma constante.
 ///
@@ -76,13 +75,17 @@ pub(crate) fn tick_sprite_animations(
         return out;
     }
     let world = sim.world_mut();
+    // ⭐ **`&mut SpriteGrid` e já não `&mut Sprite`** (ADR-0164 F1 passo 6): o índice de célula
+    // mudou-se para a grelha. E o filtro passa a ser uma LEI — uma sprite sem grelha não tem
+    // células que uma animação possa percorrer, então ela nem entra no laço, em vez de ser
+    // tiquetaqueada sobre um pool de uma célula só.
     let mut q = world.query::<(
         ph2d_ecs::Entity,
         &mut SpriteAnimator,
         &SpriteAnimations,
-        &mut Sprite,
+        &mut ph2d_ecs::SpriteGrid,
     )>();
-    for (entity, mut animator, tags, mut sprite) in q.iter_mut(world) {
+    for (entity, mut animator, tags, mut grid) in q.iter_mut(world) {
         // ⚠️ **UMA FOLHA EM PINTURA TOCA, mesmo com o transporte parado** (Enio, 2026-08-23:
         // *«o preview não está animado»*).
         //
@@ -123,8 +126,8 @@ pub(crate) fn tick_sprite_animations(
         }
         // O pool é a grelha desta sprite, lida **agora** — mexer em `hframes` a meio de uma
         // animação encolhe o intervalo no mesmo quadro, sem estado intermédio a envelhecer.
-        let cells = sprite.hframes.saturating_mul(sprite.vframes).max(1);
-        let mut frame = sprite.frame;
+        let cells = grid.cells().max(1);
+        let mut frame = grid.frame;
         // O que o artista tem no documento, ANTES de este tique lhe tocar (`crate::preview_drive`).
         let before = crate::preview_drive::Driven::SpriteAnim {
             elapsed_ticks: animator.elapsed_ticks,
@@ -143,8 +146,8 @@ pub(crate) fn tick_sprite_animations(
         // ⚠️ **Escreve só quando MUDA.** O `Sprite` é `SimComponent` e o undo regista por DIFF:
         // tocar-lhe todo o quadro faria uma sprite pausada num frame só produzir um passo de
         // undo por quadro. `bevy` marca a mudança no `deref_mut`, não na atribuição.
-        if sprite.frame != frame {
-            sprite.frame = frame;
+        if grid.frame != frame {
+            grid.frame = frame;
         }
         // **A DECLARAÇÃO**, com o depois lido do que ficou de facto escrito (o `preview_only`
         // devolve só o relógio, então `run` sozinho mentiria sobre o animador).

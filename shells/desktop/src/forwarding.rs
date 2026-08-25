@@ -225,6 +225,8 @@ fn painter_eyedropper_sample(
     // ponteiro para fora da pegada dele.
     let tr = ph2d_ecs::world_transform(sim.world(), entity)?;
     let sprite = sim.world().get::<ph2d_render::Sprite>(entity)?;
+    // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
+    let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     let painter = tools
         .active_mut()?
         .as_any_mut()
@@ -237,7 +239,13 @@ fn painter_eyedropper_sample(
     // same geometry the brush uses, so the eyedropper tracks the sprite under any resize, AR change OR
     // rotation. `u`/`v` is the image fraction; not clamped (a Repeat-Image neighbour lands outside `[0,1]`).
     let affine = crate::render_loop::bgremoval_preview::sprite_image_to_screen_affine(
-        iw, ih, tr, sprite, camera, window,
+        iw,
+        ih,
+        tr,
+        sprite,
+        sprite_grid,
+        camera,
+        window,
     );
     let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
     let (u, v) = (

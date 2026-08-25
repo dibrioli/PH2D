@@ -322,7 +322,6 @@ fn demote_to_atlas(
     // ⚠️ AQUI o clip muda, e ao contrário do sentido oposto ele tem consequência MEDÍVEL: no
     // atlas partilhado há vizinhos de verdade, e sem o clamp a amostragem bilinear puxa os texels
     // da região ao lado pela borda.
-    updated.region_filter_clip = true;
     if !write_sprite(
         entity_bits,
         updated,
@@ -333,6 +332,14 @@ fn demote_to_atlas(
         toasts,
     ) {
         return true;
+    }
+    // ⚠️ **O clip vive no `SpriteRegion` desde o ADR-0164 F1 passo 6**, então isto só se aplica a
+    // quem TEM região — e uma sprite sem região não tem borda de região que sangre. Antes era um
+    // campo que toda sprite carregava, e escrevê-lo num sprite sem região era escrever no vazio.
+    if let Some(mut region) = sim.world_mut().get_mut::<ph2d_ecs::SpriteRegion>(entity)
+        && !region.filter_clip
+    {
+        region.filter_clip = true;
     }
     // O carimbo de pixels próprios deixa de fazer sentido: quem guarda estes bytes agora é o
     // `atlas_asset_map`, pelo caminho do `collect_assets`. Deixá-lo faria o arquivo gravar os

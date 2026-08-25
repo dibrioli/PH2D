@@ -39,6 +39,7 @@ pub(super) fn draw_line_overlay(
                 ih,
                 tr,
                 sprite,
+                sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied(),
                 camera,
                 window_size,
             );

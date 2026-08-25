@@ -33,39 +33,71 @@ use std::collections::BTreeMap;
 /// editing the field would stomp the divergence. `selected` includes the
 /// primary (a no-op self-compare); unknown / non-sprite entities are
 /// skipped. Returns all-`false` for a single selection.
+///
+/// ⚠️ **Os três componentes do corte (ADR-0164 F1 passo 6) comparam-se pelo valor EFETIVO**, e é
+/// a mesma lei que o [`emissive_of`] abaixo já escrevia: *a ausência **é** o valor neutro*. Uma
+/// sprite sem `SpriteGrid` e outra com `1×1` concordam; comparar `Option` diria que divergem, e o
+/// chip «Mixed» acenderia sobre duas sprites que têm exatamente a mesma grelha de uma célula.
+/// ⭐ A ÚNICA exceção é o `region_enabled`, que **é** a presença — ali `Option::is_some()` é o valor.
 #[allow(clippy::float_cmp)] // exact compare: same stored value = not mixed
 fn compute_sprite_mixed(
     world: &ph2d_ecs::World,
     selected: &[u64],
-    primary: &Sprite,
+    primary_bits: u64,
 ) -> ph2d_editor::InspectorSpriteMixed {
     let mut m = ph2d_editor::InspectorSpriteMixed::default();
+    let primary_entity = ph2d_ecs::Entity::from_bits(primary_bits);
+    let Some(primary) = world.get::<Sprite>(primary_entity) else {
+        return m;
+    };
+    let p_grid = grid_of(world, primary_entity);
+    let p_region = world.get::<ph2d_ecs::SpriteRegion>(primary_entity).copied();
+    let p_rect = p_region.map_or([0.0; 4], |r| r.rect);
+    let p_corner = corner_tint_of(world, primary_entity);
     for &bits in selected {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let Some(s) = world.get::<Sprite>(entity) else {
             continue;
         };
+        let grid = grid_of(world, entity);
+        let region = world.get::<ph2d_ecs::SpriteRegion>(entity).copied();
+        let rect = region.map_or([0.0; 4], |r| r.rect);
         m.flip_x |= s.flip_x != primary.flip_x;
         m.flip_y |= s.flip_y != primary.flip_y;
         m.tint_fill |= s.tint_fill != primary.tint_fill;
         m.centered |= s.centered != primary.centered;
-        m.region_enabled |= s.region_enabled != primary.region_enabled;
-        m.region_filter_clip |= s.region_filter_clip != primary.region_filter_clip;
+        m.region_enabled |= region.is_some() != p_region.is_some();
+        m.region_filter_clip |= region.map(|r| r.filter_clip) != p_region.map(|r| r.filter_clip);
         m.opacity |= s.opacity != primary.opacity;
-        m.hframes |= s.hframes != primary.hframes;
-        m.vframes |= s.vframes != primary.vframes;
-        m.frame |= s.frame != primary.frame;
+        m.hframes |= grid.hframes != p_grid.hframes;
+        m.vframes |= grid.vframes != p_grid.vframes;
+        m.frame |= grid.frame != p_grid.frame;
         m.offset_x |= s.offset[0] != primary.offset[0];
         m.offset_y |= s.offset[1] != primary.offset[1];
-        m.region_x |= s.region_rect[0] != primary.region_rect[0];
-        m.region_y |= s.region_rect[1] != primary.region_rect[1];
-        m.region_w |= s.region_rect[2] != primary.region_rect[2];
-        m.region_h |= s.region_rect[3] != primary.region_rect[3];
+        m.region_x |= rect[0] != p_rect[0];
+        m.region_y |= rect[1] != p_rect[1];
+        m.region_w |= rect[2] != p_rect[2];
+        m.region_h |= rect[3] != p_rect[3];
         m.tint |= s.tint != primary.tint;
         m.self_tint |= s.self_tint != primary.self_tint;
-        m.per_corner |= s.per_corner_tint != primary.per_corner_tint;
+        m.per_corner |= corner_tint_of(world, entity) != p_corner;
     }
     m
+}
+
+/// A grelha efetiva desta entidade — ausente = uma célula ([`ph2d_ecs::SpriteGrid::SINGLE`]).
+fn grid_of(world: &ph2d_ecs::World, entity: ph2d_ecs::Entity) -> ph2d_ecs::SpriteGrid {
+    world
+        .get::<ph2d_ecs::SpriteGrid>(entity)
+        .copied()
+        .unwrap_or(ph2d_ecs::SpriteGrid::SINGLE)
+}
+
+/// O degradê efetivo — ausente = quatro cantos brancos (identidade).
+fn corner_tint_of(world: &ph2d_ecs::World, entity: ph2d_ecs::Entity) -> [[f32; 4]; 4] {
+    world
+        .get::<ph2d_ecs::SpriteCornerTint>(entity)
+        .map_or(ph2d_ecs::SpriteCornerTint::IDENTITY.0, |c| c.0)
 }
 
 /// **A divergência de EMISSÃO** — comparada à parte porque ela não vive no `Sprite`.
@@ -492,6 +524,7 @@ pub(super) fn publish(
         // escala e a rotação, como sempre.
         let (eff_anchor, half) = crate::render_loop::sheet_grid_overlay::gizmo_box(
             sprite,
+            sim.world().get::<ph2d_ecs::SpriteGrid>(sim_entity).copied(),
             gizmo_ppm,
             sheet_gizmo_bits == Some(bits),
             crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, sim_entity),
@@ -710,8 +743,11 @@ pub(super) fn publish(
         // metades — o valor mostrado e a decisão de o mostrar — poderiam discordar sobre o que
         // «ausente» significa.
         let emissive = emissive_of(world, entity);
+        // A grelha e a janela desta sprite (ADR-0164 F1 passo 6).
+        let grid = grid_of(world, entity);
+        let region = world.get::<ph2d_ecs::SpriteRegion>(entity).copied();
         let mut mixed = if inspector_selection.len() > 1 {
-            compute_sprite_mixed(world, &inspector_selection, sprite)
+            compute_sprite_mixed(world, &inspector_selection, bits)
         } else {
             ph2d_editor::InspectorSpriteMixed::default()
         };
@@ -853,15 +889,20 @@ pub(super) fn publish(
             flip_y: sprite.flip_y,
             opacity: sprite.opacity,
             tint_fill: sprite.tint_fill,
-            hframes: sprite.hframes,
-            vframes: sprite.vframes,
-            frame: sprite.frame,
+            // ⚠️ **Os três do corte (ADR-0164 F1 passo 6) publicam o valor EFETIVO** — ausente =
+            // o neutro que o campo v4 tinha. É a mesma lei do `emissive` acima: para o painel,
+            // «sem componente» e «componente no neutro» são a mesma coisa, e é isso que deixa a
+            // seção desaparecer sem que o widget mude de leitura.
+            hframes: grid.hframes,
+            vframes: grid.vframes,
+            frame: grid.frame,
             tint: sprite.tint,
             self_tint: sprite.self_tint,
-            per_corner_tint: sprite.per_corner_tint,
-            region_enabled: sprite.region_enabled,
-            region_rect: sprite.region_rect,
-            region_filter_clip: sprite.region_filter_clip,
+            per_corner_tint: corner_tint_of(world, entity),
+            // ⭐ A PRESENÇA é o antigo `region_enabled`.
+            region_enabled: region.is_some(),
+            region_rect: region.map_or([0.0; 4], |r| r.rect),
+            region_filter_clip: region.is_some_and(|r| r.filter_clip),
             centered: sprite.centered,
             offset: sprite.offset,
             selected_count,

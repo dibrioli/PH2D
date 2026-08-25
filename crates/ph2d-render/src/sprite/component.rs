@@ -146,11 +146,6 @@ pub struct Sprite {
     /// (identity, zero visual effect).
     #[serde(default = "default_white")]
     pub self_tint: [f32; 4],
-    /// Per-corner tint — a 4-stop bilinear gradient with no custom
-    /// shader (Phaser-style). Order `[TopLeft, TopRight, BottomLeft,
-    /// BottomRight]`, each RGBA. Default all-WHITE = identity. 64 bytes.
-    #[serde(default = "default_per_corner_white")]
-    pub per_corner_tint: [[f32; 4]; 4],
     /// Tint fill (Phaser `setTintFill`): when `true`, the texel RGB is
     /// IGNORED and the tint color replaces it (colored silhouette /
     /// damage flash) while alpha is preserved. Default `false`.
@@ -181,45 +176,6 @@ pub struct Sprite {
     /// `Transform`. Default `[0.0, 0.0]`.
     #[serde(default)]
     pub offset: [f32; 2],
-    /// Inline sprite-sheet horizontal frame count. `hframes × vframes`
-    /// divides the texture into a grid that [`frame`] indexes — no
-    /// separate `SpriteFrames` asset needed. Default `1` (single frame);
-    /// `>= 1` enforced by the setter.
-    ///
-    /// [`frame`]: Sprite::frame
-    #[serde(default = "default_one_u32")]
-    pub hframes: u32,
-    /// Inline sprite-sheet vertical frame count. See [`Sprite::hframes`].
-    #[serde(default = "default_one_u32")]
-    pub vframes: u32,
-    /// Active frame index into the `hframes × vframes` grid. Default `0`;
-    /// kept `< hframes * vframes` by the setter.
-    #[serde(default)]
-    pub frame: u32,
-    /// When `true`, the sprite samples the arbitrary sub-rect
-    /// [`region_rect`] instead of the whole texture. Default `false`.
-    ///
-    /// [`region_rect`]: Sprite::region_rect
-    #[serde(default)]
-    pub region_enabled: bool,
-    /// Sub-region rectangle `[x, y, w, h]` in texture pixels. Only read
-    /// when [`region_enabled`] is `true`. `w`/`h` kept `>= 0`.
-    ///
-    /// [`region_enabled`]: Sprite::region_enabled
-    #[serde(default)]
-    pub region_rect: [f32; 4],
-    /// Region filter clip — clamps the sampler to [`region_rect`] to stop
-    /// neighboring-texel bleed across atlas region edges. Default `true`
-    /// for Atlas sprites, `false` for Individual. The conditional default
-    /// is set by `migrate_v3_to_v4` / the constructors, NOT by this
-    /// `#[serde(default)]` (which returns the Atlas value `true` and is
-    /// the wrong value for Individual under a serde-default load — see
-    /// anatomia §1.4 critical note; the wrapper enum is the canonical
-    /// load path).
-    ///
-    /// [`region_rect`]: Sprite::region_rect
-    #[serde(default = "default_region_filter_clip")]
-    pub region_filter_clip: bool,
 }
 
 /// Default-helper functions for the v4 `#[serde(default = ...)]`
@@ -231,23 +187,10 @@ const fn default_version_4() -> u32 {
 const fn default_white() -> [f32; 4] {
     [1.0, 1.0, 1.0, 1.0]
 }
-const fn default_per_corner_white() -> [[f32; 4]; 4] {
-    [[1.0; 4]; 4]
-}
 const fn default_one() -> f32 {
     1.0
 }
 const fn default_true() -> bool {
-    true
-}
-const fn default_one_u32() -> u32 {
-    1
-}
-/// Atlas-style default (`true`). NOTE: incorrect for Individual sprites,
-/// which need `false` — the conditional choice lives in
-/// `migrate_v3_to_v4` and [`Sprite::individual`], not here. This helper
-/// only backstops a hypothetical self-describing-format load.
-const fn default_region_filter_clip() -> bool {
     true
 }
 
@@ -259,7 +202,7 @@ impl Sprite {
     /// serialized `anchor` (pivot offset) field landed for the
     /// TOOL_PIVOT + Padding-Keep work; to 4 for Sprite Inspector v2
     /// (14 intrinsic-appearance fields; ADR-0069/0070).
-    pub const VERSION: u32 = 4;
+    pub const VERSION: u32 = 5;
 
     /// Convenience constructor for atlas-backed sprites — the
     /// dominant case after M14.4d. Initializes every v4 field to its
@@ -275,31 +218,25 @@ impl Sprite {
             anchor: [0.0, 0.0],
             premultiplied: false,
             self_tint: [1.0, 1.0, 1.0, 1.0],
-            per_corner_tint: [[1.0; 4]; 4],
             tint_fill: false,
             opacity: 1.0,
             flip_x: false,
             flip_y: false,
             centered: true,
             offset: [0.0, 0.0],
-            hframes: 1,
-            vframes: 1,
-            frame: 0,
-            region_enabled: false,
-            region_rect: [0.0, 0.0, 0.0, 0.0],
-            region_filter_clip: true,
         }
     }
 
     /// Convenience constructor for individual-texture sprites.
-    /// `texture_id` must come from
-    /// `IndividualTextureStore::acquire`. Identical to [`Sprite::atlas`]
-    /// except the source and `region_filter_clip` (`false` — Individual
-    /// textures are native-resolution, no atlas-neighbor bleed to clip).
+    /// `texture_id` must come from `IndividualTextureStore::acquire`.
+    ///
+    /// ⚠️ **O `region_filter_clip = false` que morava aqui mudou-se para
+    /// [`ph2d_ecs::SpriteRegion::individual`]** (ADR-0164 F1 passo 6): a escolha é de quem
+    /// CRIA a região, porque é quem sabe de que fonte ela é. Um sprite Individual sem região
+    /// nenhuma — o caso comum — deixou de carregar um bool que não se aplicava a ele.
     pub fn individual(texture_id: u32, size: [f32; 2], tint: [f32; 4]) -> Self {
         let mut s = Self::atlas(0, size, tint);
         s.source = SpriteSource::Individual { texture_id };
-        s.region_filter_clip = false;
         s
     }
 
@@ -307,8 +244,8 @@ impl Sprite {
     /// W2.T2). `logical_id` is the tier-agnostic
     /// [`ph2d_asset::LogicalTextureId`]; the loader (W2.T4) resolves it
     /// against the active `DeviceTier` to the concrete cooked asset.
-    /// Like [`Sprite::individual`], cooked textures are native-resolution
-    /// (no atlas-neighbor bleed) so `region_filter_clip` is `false`.
+    /// Como a [`Sprite::individual`], uma textura cozida é de resolução nativa (não há
+    /// vizinho de quem sangrar) — ver lá a nota sobre onde essa escolha vive hoje.
     pub fn cooked_texture(
         logical_id: ph2d_asset::LogicalTextureId,
         size: [f32; 2],
@@ -316,7 +253,6 @@ impl Sprite {
     ) -> Self {
         let mut s = Self::atlas(0, size, tint);
         s.source = SpriteSource::CookedTexture { logical_id };
-        s.region_filter_clip = false;
         s
     }
 
@@ -356,10 +292,12 @@ impl Sprite {
     /// transform's. Keeping it a value copy preserves
     /// `migrate(in-memory v3 with premultiplied=true)` round-tripping —
     /// the migrator never silently drops a field a caller set in memory.
-    pub fn migrate_v3_to_v4(v3: crate::sprite_versioned::SpriteV3) -> Sprite {
-        let region_filter_clip = matches!(v3.source, SpriteSource::Atlas { .. });
-        Sprite {
-            version: Self::VERSION,
+    pub fn migrate_v3_to_v4(v3: crate::sprite_versioned::SpriteV3) -> crate::SpriteV4 {
+        crate::SpriteV4 {
+            // ⚠️ **`4` literal, não `Self::VERSION`.** O `VERSION` é o do `Sprite` VIVO e já
+            // vale 5; um migrador que o lesse carimbaria a versão errada no espelho congelado
+            // no dia em que a escada crescesse — e o degrau seguinte leria 5 onde há 4.
+            version: 4,
             source: v3.source,
             size: v3.size,
             tint: v3.tint,
@@ -369,19 +307,67 @@ impl Sprite {
             // defaults (shared with the constructors' helper fns so the
             // v4 default surface stays single-sourced).
             self_tint: default_white(),
-            per_corner_tint: default_per_corner_white(),
+            per_corner_tint: [[1.0; 4]; 4],
             tint_fill: false,
             opacity: default_one(),
             flip_x: false,
             flip_y: false,
             centered: default_true(),
             offset: [0.0, 0.0],
-            hframes: default_one_u32(),
-            vframes: default_one_u32(),
+            hframes: 1,
+            vframes: 1,
             frame: 0,
             region_enabled: false,
             region_rect: [0.0, 0.0, 0.0, 0.0],
-            region_filter_clip,
+            region_filter_clip: matches!(v3.source, SpriteSource::Atlas { .. }),
+        }
+    }
+
+    /// ⭐ **v4 → v5: os três grupos saem da `Sprite` e viram componentes**
+    /// (ADR-0164 F1 passo 6 / ADR-0166). Pura — não toca no mundo; quem insere é quem chama.
+    ///
+    /// ⚠️ **Um componente só nasce se o campo foi AUTORADO.** Grelha de uma célula, cantos
+    /// brancos e `region_enabled = false` são indistinguíveis da ausência, e materializá-los
+    /// encheria toda cena antiga de seções que o artista nunca pediu — o oposto do ADR-0166.
+    ///
+    /// ⚠️ **A REGIÃO segue o `region_enabled`, e leva o `filter_clip` GRAVADO — não o derivado
+    /// da fonte.** O bool em disco pode divergir do que os construtores escolheriam (o artista
+    /// pôde tê-lo mudado, e o `#[serde(default)]` v4 estava documentado como *errado* para
+    /// Individual). Migrar é preservar bytes, não recalcular a escolha.
+    ///
+    /// ⚠️ **Um `region_rect` autorado com `enabled = false` é DESCARTADO**, e é a decisão certa:
+    /// era o estado que ninguém conseguia ler (§ do [`ph2d_ecs::SpriteRegion`]). Guardá-lo
+    /// anexaria uma região desligada — e uma região desligada deixou de existir.
+    #[must_use]
+    pub fn migrate_v4_to_v5(v4: crate::SpriteV4) -> crate::sprite_versioned::MigratedSprite {
+        let grid = ph2d_ecs::SpriteGrid {
+            hframes: v4.hframes.max(1),
+            vframes: v4.vframes.max(1),
+            frame: v4.frame,
+        };
+        let corner_tint = ph2d_ecs::SpriteCornerTint(v4.per_corner_tint);
+        crate::sprite_versioned::MigratedSprite {
+            sprite: Sprite {
+                version: Self::VERSION,
+                source: v4.source,
+                size: v4.size,
+                tint: v4.tint,
+                anchor: v4.anchor,
+                premultiplied: v4.premultiplied,
+                self_tint: v4.self_tint,
+                tint_fill: v4.tint_fill,
+                opacity: v4.opacity,
+                flip_x: v4.flip_x,
+                flip_y: v4.flip_y,
+                centered: v4.centered,
+                offset: v4.offset,
+            },
+            grid: (!grid.is_single()).then_some(grid),
+            region: v4.region_enabled.then_some(ph2d_ecs::SpriteRegion {
+                rect: v4.region_rect,
+                filter_clip: v4.region_filter_clip,
+            }),
+            corner_tint: (!corner_tint.is_identity()).then_some(corner_tint),
         }
     }
 

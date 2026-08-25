@@ -29,10 +29,11 @@ fn scene(finish: &str, on_loop: &str, repeat: Option<u32>) -> (SimWorld, Entity)
         .world_mut()
         .spawn((
             Transform::default(),
-            Sprite {
+            Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            ph2d_ecs::SpriteGrid {
                 hframes: 4,
                 vframes: 1,
-                ..Sprite::atlas(0, [1.0, 1.0], [1.0; 4])
+                frame: 0,
             },
             player,
             lib,

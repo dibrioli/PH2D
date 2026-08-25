@@ -175,11 +175,15 @@ pub(super) fn refresh_shape_grab_tol(
     ) else {
         return;
     };
+    // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula, e aí o quad do
+    // afim é o de sempre, byte-idêntico.
+    let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,
         sprite,
+        sprite_grid,
         camera,
         window_size,
     );
@@ -219,11 +223,15 @@ fn draw_symmetry_overlay(
     ) else {
         return;
     };
+    // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula, e aí o quad do
+    // afim é o de sempre, byte-idêntico.
+    let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     let affine = super::bgremoval_preview::sprite_image_to_screen_affine(
         iw,
         ih,
         tr,
         sprite,
+        sprite_grid,
         camera,
         window_size,
     );
@@ -294,6 +302,9 @@ pub(super) fn draw_repeat_image(
     ) else {
         return;
     };
+    // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula, e aí o quad do
+    // afim é o de sempre, byte-idêntico.
+    let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     // image-px → screen for the centre sprite; each neighbour prepends a screen-space translation of
     // the world offset (a pure translation maps through the world→screen scale `k`, Y flipped).
     let base = super::bgremoval_preview::sprite_image_to_screen_affine(
@@ -301,6 +312,7 @@ pub(super) fn draw_repeat_image(
         preview.height,
         tr,
         sprite,
+        sprite_grid,
         camera,
         window_size,
     );
@@ -364,6 +376,7 @@ fn draw_ellipse_overlay(
                 ih,
                 tr,
                 sprite,
+                sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied(),
                 camera,
                 window_size,
             );
@@ -441,6 +454,7 @@ fn draw_polygon_overlay(
                 ih,
                 tr,
                 sprite,
+                sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied(),
                 camera,
                 window_size,
             );
@@ -521,6 +535,7 @@ fn draw_stencil_overlay(
                 ih,
                 tr,
                 sprite,
+                sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied(),
                 camera,
                 window_size,
             );

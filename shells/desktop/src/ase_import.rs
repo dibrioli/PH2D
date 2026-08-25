@@ -288,11 +288,15 @@ pub(crate) fn import_ase(
     // **A GRELHA é o pool da §11.** E o tamanho no mundo é o de UMA célula — o `spawn_rgba` deu à
     // sprite o tamanho da folha inteira, que é o que ela mostraria sem grelha.
     if let Some(mut s) = sim.world_mut().get_mut::<ph2d_render::Sprite>(entity) {
-        s.hframes = cols;
-        s.vframes = rows;
-        s.frame = 0;
         s.size = [s.size[0] / cols as f32, s.size[1] / rows as f32];
     }
+    sim.world_mut()
+        .entity_mut(entity)
+        .insert(ph2d_ecs::SpriteGrid {
+            hframes: cols,
+            vframes: rows,
+            frame: 0,
+        });
     let (lib, mut notes) = library(&doc, &name);
     notes.splice(0..0, doc.notes.iter().cloned());
     let animations = lib.iter().count();

@@ -279,15 +279,19 @@ impl crate::App {
                 );
                 continue;
             };
-            if let Some(mut sprite) = gfx
+            let entity = Entity::from_bits(bits);
+            let region = gfx
                 .sim
                 .world_mut()
-                .get_mut::<Sprite>(Entity::from_bits(bits))
-            {
-                // ⚠️ A folha carregada pode ter vindo de qualquer lado, então a decisão sai da
-                // GEOMETRIA dela, não da proveniência: se as regiões têm folga, o recuo de meio
-                // texel não defende de nada e só corta borda.
-                bind_sheet_region(&mut sprite, texture_id, rect, needs_clip, premultiplied);
+                .get_mut::<Sprite>(entity)
+                .map(|mut sprite| {
+                    // ⚠️ A folha carregada pode ter vindo de qualquer lado, então a decisão sai
+                    // da GEOMETRIA dela, não da proveniência: se as regiões têm folga, o recuo de
+                    // meio texel não defende de nada e só corta borda.
+                    bind_sheet_region(&mut sprite, texture_id, rect, needs_clip, premultiplied)
+                });
+            if let Some(region) = region {
+                gfx.sim.world_mut().entity_mut(entity).insert(region);
             }
         }
     }
@@ -350,13 +354,17 @@ fn reattach_pixels(sprite: &mut Sprite, texture_id: u32, premultiplied: bool) {
 ///
 /// ⚠️ E **não se toca no `size`** — ele é a pose em METROS e já veio do snapshot. O retângulo é
 /// em pixels da folha; confundir os dois é o canvas de 1024 metros do Painter outra vez.
+///
+/// ⚠️ **DEVOLVE a região em vez de a escrever no sprite** (ADR-0164 F1 passo 6): ela é hoje um
+/// componente, e quem tem de a inserir é quem tem a entidade. Os três chamadores já a tinham.
+#[must_use]
 pub(crate) fn bind_sheet_region(
     sprite: &mut Sprite,
     texture_id: u32,
     rect: [u32; 4],
     filter_clip: bool,
     premultiplied: bool,
-) {
+) -> ph2d_ecs::SpriteRegion {
     sprite.source = SpriteSource::Individual { texture_id };
     // ⚠️ **O MODO DE ALFA VEM DA FOLHA, e era um `false` fixo** — a causa da borda que o Enio
     // fotografou (2026-08-19). A amostragem bilinear interpola os bytes ARMAZENADOS antes de o
@@ -365,14 +373,15 @@ pub(crate) fn bind_sheet_region(
     // `.png` é mesmo reta; uma folha assada aqui é pré-multiplicada, como as texturas do app.
     // *Dizer «é sempre PNG» sobre uma folha que o próprio app acabou de produzir era a suposição.*
     sprite.premultiplied = premultiplied;
-    sprite.region_enabled = true;
-    sprite.region_rect = [
-        rect[0] as f32,
-        rect[1] as f32,
-        rect[2] as f32,
-        rect[3] as f32,
-    ];
-    sprite.region_filter_clip = filter_clip;
+    ph2d_ecs::SpriteRegion {
+        rect: [
+            rect[0] as f32,
+            rect[1] as f32,
+            rect[2] as f32,
+            rect[3] as f32,
+        ],
+        filter_clip,
+    }
 }
 
 #[cfg(test)]

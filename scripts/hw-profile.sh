@@ -139,7 +139,7 @@ echo   "────────────────────────
 case "$tier" in
   constrained) echo "  → Follow DIRETRIZ §6.6 verbatim (this is the baseline)." ;;
   standard)    echo "  → §6.6 baseline + measured overrides above. Pilot heavy levers before mandating." ;;
-  workstation) echo "  → §6.6 OVERRIDDEN: RA-as-oracle, high parallelism, slots optional. target/ on DISK + chattr +C (tmpfs retired 2026-08-22)." ;;
+  workstation) echo "  → §6.6 OVERRIDDEN: RA-as-oracle, high parallelism, slots optional. target/ on DISK + chattr +C. tmpfs RETURNED 2026-08-24 via scripts/ram-build.sh (noswap; 73% less SSD write, MEASURED) -- the 22/08 retirement was /dev/shm, which SWAPS." ;;
 esac
 # Disk health is a JOURNEY gate, not a CI gate — and a tool nobody names by a
 # written step dies (CLAUDE.md §2). This is the first command every agent runs,

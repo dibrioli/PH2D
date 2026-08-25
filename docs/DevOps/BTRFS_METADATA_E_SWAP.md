@@ -106,7 +106,26 @@ reboot**: o tmpfs evaporou, não há build a preservar, e o swap já nasceu vazi
 quente ficou bloqueada pelo próprio portão 3 (não-alocado 0 < 40 GiB), e o reboot no LTS a torna
 desnecessária.
 
-**Política (ADR-0104, emenda 2026-08-22):** `target/` em tmpfs **retirado** do tier workstation.
+> ### ⚠️ EMENDA 2026-08-24 — a recusa DISSOLVEU, e quem a dissolveu foi o kernel
+>
+> A causa nomeada acima é **`/dev/shm`, que é um tmpfs SWAPPÁVEL**. O kernel 6.4
+> trouxe a opção de montagem **`noswap`**, e esta máquina corre 6.18: com ela a
+> página nunca entra no swap — ou está na RAM, ou a escrita falha com ENOSPC.
+>
+> **Prova, medida em 2026-08-24:** enchi um tmpfs `noswap` de 24 GiB até 100% e o
+> **swap não se moveu um byte** (12 GB antes, 12 GB depois); o `dd` parou limpo.
+>
+> ⚠️ **E a nota «o ganho nunca esteve» estava certa sobre VELOCIDADE e não mediu
+> ESCRITA** — ninguém perguntava pelo desgaste do SSD. A/B com sccache aquecido:
+> tudo em disco **9,09 GB** · **target inteiro na RAM 2,42 GB (−73%)** · e
+> ⚠️ **só `incremental/` na RAM dá 7,69 GB (−15%)**, o que refuta a intuição de
+> que o churn mora ali: o que escreve é `deps/`, porque o cargo nunca coleta o
+> artefato velho. Sucessor: **`scripts/ram-build.sh`** (cabeçalho = a derivação
+> completa, incluindo o teto de **2 árvores armadas**).
+>
+> ⛔ O `target-on-tmpfs.sh` **continua retirado** — ele usa `/dev/shm` e nada nele mudou.
+
+**Política (ADR-0104, emenda 2026-08-22, EMENDADA 2026-08-24):** `target/` em `/dev/shm` **retirado** do tier workstation.
 `scripts/target-on-tmpfs.sh` só arma com `--force`. A regra `/etc/tmpfiles.d/ph2d-ramtarget.conf`
 é inofensiva (recria um dir vazio no boot); retirar: `sudo rm /etc/tmpfiles.d/ph2d-ramtarget.conf`.
 

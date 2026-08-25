@@ -54,6 +54,7 @@
 - [Arquivar sem indexar as RECUSAS é apagá-las](feedback_archiving_without_indexing_the_refusals_deletes_them.md) — e a cura de um doc inchado pode REALOCAR a doença; o teto se mede (80-110 KB)
 - [Mecanismo certo, cura errada](feedback_a_correct_mechanism_can_prescribe_the_wrong_cure.md) — meça o mecanismo antes de construir o que a nota prescreve
 - [Uma cerca DECLARADA escolhe a forma da própria cura](feedback_a_declared_fence_chooses_the_shape_of_its_own_cure.md) — a célula acerta no sintoma e não na forma; leia o doc-comment do knob de que ela se queixa
+- [Recusa medida responde UMA pergunta](feedback_a_measured_refusal_answers_one_question_recheck_it_when_yours_is_another.md) — reconfira se a sua é outra (velocidade≠escrita) ou se o substrato mudou (`noswap`); e churn≠escrita
 - [Cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) — "intentionally NOT X" = decisão
 - [Revert pode diferir só no TEMPO DE VIDA](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md) — leia o MOTIVO do revert, não o diff; escopo é o que mata tentativa boa
 - [`match` exaustivo NÃO guarda a lista que um laço itera](feedback_an_exhaustive_match_does_not_guard_the_list_a_loop_iterates.md) — variante nova = braço morto sem warning; agulha com espaço nunca casa
@@ -115,6 +116,8 @@
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
+- [Espec limpa é MENOS específica que o paper de que descende](feedback_a_clean_spec_is_less_specific_than_the_paper_it_descends_from.md) — quem traduz código herda as constantes, quem descreve herda a lei; e audite por `grep` no texto da fonte, não pela memória
+- [Documento de instruções pode mandar o que a CERCA do leitor proíbe](feedback_an_instruction_doc_can_order_what_its_readers_own_fence_forbids.md) — confronte-o com o passo 0 / as regras permanentes de quem executa, não só com o assunto; regra herdada de molde fala do mundo do molde
 - [Física do impasto/sculpt (8)](reference_topic_impasto_physics.md)
 - [O oráculo grava as FASES INTERMÉDIAS](feedback_the_oracle_writes_its_intermediate_stages_compare_phase_by_phase.md) — `ls` na saída dele antes de reimplementar; ler saída ≠ obra derivada
 - [A peça que falta pode JÁ estar construída](feedback_the_missing_piece_may_already_be_built_measure_its_structure_first.md) — meça a estrutura do que já lá está; material produzido-e-ignorado não aparece em régua nenhuma

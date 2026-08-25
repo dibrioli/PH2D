@@ -32,6 +32,20 @@ uma lista, e uma lista não corre. **Ela vale como GATILHO, não como conselho:*
 sem julgar se "este nome parece livre" — foi precisamente o julgamento que falhou as
 duas vezes.
 
+⚠️⚠️⚠️ **TERCEIRA vez, 2026-08-24, e a PIOR — porque não foi o `Write`.** Ao cortar
+`motion_bridge_rowcap_tests.rs` pelo teto de LOC, escrevi a metade da altura em
+`motion_bridge_dock_tests.rs` com um `open(p,'w')` de python. Aquele nome já era um
+arquivo de **88 linhas com 3 gates de costura do dock da timeline** (W4.T4). O `Write`
+pelo menos diz *«updated»*; **um `open('w')` não diz nada** — nem uma palavra, nem um
+verbo para ler. Quem acusou foi o **clippy**, dez passos depois, com *«file is loaded
+as a module multiple times»*, e só porque o `mod` antigo continuava a apontar para o
+mesmo caminho. Se o módulo antigo tivesse outro nome de path, a perda passava.
+
+⇒ **O gatilho do item 1 vale para TODA escrita, não para a ferramenta `Write`**: um
+`open('w')`, um `>` de shell, um `cp` para um destino. E o padrão do nome repetiu-se
+pela terceira vez com a mesma forma — *dock* era o nome certo para a metade que mede o
+dock, e por isso já estava ocupado por outra coisa que mede o dock.
+
 **How to apply:**
 1. ⚠️ **GATILHO, não conselho:** *`Write` num caminho que não foi lido nesta sessão ⇒
    `ls` do diretório PRIMEIRO.* Um comando, resposta imediata, e ele custa menos que os

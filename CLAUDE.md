@@ -53,11 +53,12 @@
 | **Quem é o Enio / estado do projeto** | [project-memory/MEMORY.md](project-memory/MEMORY.md) |
 | **Quem possui o quê agora** | **Modo L: `git worktree list`** — o registro de posse é a própria árvore, e responde na hora. ⚠️ [SESSION_ACTIVE.md](docs/SESSION_ACTIVE.md) é do **Modo C** e o seu único escritor autorizado (o Coordenador) **não existe neste tier**: em 2026-08-18 ele estava parado desde 04/08 com 5 worktrees vivas |
 | **Achar um ADR pelo número** | [`decisions/README.md`](docs/architecture/decisions/README.md) — índice **derivado** (`bash scripts/adr-index.sh`), com o `Status:` e quem alega supersedê-lo |
+| **Reimplementar código RESTRITO (GPL/proprietário)** | [SKILL_Cleanroom_Reimplementacao.md](docs/_Skill_Especificações/SKILL_Cleanroom_Reimplementacao.md) (`/pd-cleanroom`) — triagem de licença PRIMEIRO (a porta permissiva quase sempre existe); papéis E/I/R; ⛔ quem escreve o produto nunca viu o fonte do alvo |
 
-> **Os 14 comandos de fluxo vivem em [`.claude/commands/`](.claude/commands/) e são versionados** —
+> **Os 15 comandos de fluxo vivem em [`.claude/commands/`](.claude/commands/) e são versionados** —
 > `/pd-feature` · `/pd-linha-abrir` · `/pd-linha-assumir` · `/pd-linha-fechar` · `/pd-integracao` ·
 > `/pd-ship` · `/pd-auditoria` · `/pd-mutacao` · `/pd-gate-fechamento` · `/pd-bug-causa` · `/pd-perf` ·
-> `/pd-adr` · `/pd-smoke-report` · `/pd-livre`. Cada um é o protocolo desta tabela já destilado.
+> `/pd-adr` · `/pd-smoke-report` · `/pd-livre` · `/pd-cleanroom`. Cada um é o protocolo desta tabela já destilado.
 > ⚠️ **Medido 2026-08-18: existiam há semanas em `~/.claude/commands/` (fora do repo), nenhum doc os
 > apontava, e foram usados ZERO vezes em 101 sessões** — enquanto a compactação disparou 1.777 vezes.
 > *Uma ferramenta fora do repo não existe nas outras máquinas, e uma que o roteador não aponta não existe em nenhuma.*

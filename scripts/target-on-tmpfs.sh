@@ -29,7 +29,9 @@ fi
 # with swap at 100% and 61 GiB of RAM free. The replacement is target/ on disk
 # with chattr +C — `scripts/target-to-disk.sh` migrates back, keeping the build.
 if [ "${1:-}" != "--off" ] && [ "${1:-}" != "--force" ]; then
-  echo "[tmpfs] RETIRED (2026-08-22): target/ on tmpfs lives in zram under load — see docs/DevOps/BTRFS_METADATA_E_SWAP.md §2."
+  echo "[tmpfs] RETIRED (2026-08-22): this script uses /dev/shm, a SWAPPABLE tmpfs — under load it lived in zram (= RAM). See docs/DevOps/BTRFS_METADATA_E_SWAP.md §2."
+  echo "[tmpfs] ⚠️  SUCCESSOR: 'bash scripts/ram-build.sh' — same idea, but a dedicated tmpfs mounted 'noswap' (kernel 6.4+), so the failure mode is impossible."
+  echo "[tmpfs]     Measured 2026-08-24: 73% less SSD write, and a noswap tmpfs filled to 100% moved the swap by ZERO bytes."
   echo "[tmpfs] Use 'bash scripts/target-to-disk.sh' to go back to disk; pass --force to arm tmpfs anyway."
   exit 1
 fi

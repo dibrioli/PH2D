@@ -100,14 +100,31 @@ pub const WAVES: &str = "waves";
 /// tem `1/8` da amplitude da primeira — abaixo do que o olho separa de uma linha.
 const MAX_WAVES: i32 = 4;
 
-/// Cada onda seguinte é **metade da altura e metade do comprimento** da anterior.
+/// **A RAZÃO entre camadas** — e ⛔ **ela NÃO PODE SER UM INTEIRO.**
 ///
-/// ⚠️ **Não são números soltos: são o `lacunarity = 2` e o `roughness = 0,5` que o
-/// `force.wind` já declara como default**, escritos aqui como constantes porque este nó
-/// soma SENOS e não ruído — o que se partilha é a razão entre camadas, e ela é a mesma.
-/// Expô-los seria um par de knobs a mais num nó que já tem sete; o gatilho para o fazer é
-/// alguém pedir um mar com uma razão que não é esta.
-const WAVE_LACUNARITY: f32 = 2.0;
+/// ⛔⛔ **A justificação anterior está REFUTADA por medição (2026-08-25).** Ela dizia: *«são o
+/// `lacunarity = 2` e o `roughness = 0,5` que o `force.wind` já declara como default … o que
+/// se partilha é a razão entre camadas, e ela é a mesma»*. **O que se partilha não sobrevive
+/// à diferença entre os dois nós:** o `force.wind` soma **RUÍDO** — cada oitava é
+/// independentemente aleatória, e frequências harmónicas não produzem repetição nenhuma.
+/// Este nó soma **SENOS**, e aí produzem.
+///
+/// Com razão `2` a camada `k` tem comprimento `λ/2ᵏ`, logo sobre uma distância `λ` ela
+/// completa `2ᵏ` ciclos **inteiros** ⇒ **a soma é exactamente periódica com período `λ`**.
+/// Medido: `surface(x)` e `surface(x + λ)` diferiam por **`0,000008` da amplitude** — o mesmo
+/// desenho, repetido. Um mar que se repete não é um mar, e o report foi exactamente esse:
+/// *«há dois formatos de onda juntas mas regulares e não irregulares»* (Enio, 2026-08-25).
+///
+/// ⭐ **O número é `φ`**, e não um irracional qualquer: a razão áurea é o número **pior
+/// aproximável por racionais**, logo é o que adia mais a quase-repetição. É a mesma constante
+/// que o [`PHASE_STEP`] deste ficheiro já usa (`φ − 1`), e não é coincidência — as duas
+/// existem para a mesma coisa, que é impedir que camadas coincidam.
+///
+/// ⚠️ **Nada de compatibilidade se parte:** o `waves` nasce a `1`, e nesse caso o [`sea_at`]
+/// devolve a expressão literal do nó de sempre **por RAMO**. Só um grafo que peça `waves > 1`
+/// vê esta constante, e em 2026-08-25 existia exactamente um.
+const WAVE_LACUNARITY: f32 = 1.618_034;
+/// Cada onda seguinte é **metade da altura** da anterior (o `roughness` da referência).
 const WAVE_GAIN: f32 = 0.5;
 
 /// **O desencontro de FASE entre camadas** — o deslocamento áureo, o mesmo espalhamento que
@@ -380,7 +397,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20       by_h = by_h + by_a * by_cs.y;\n\
         \x20       by_slope = by_slope + by_a * (6.2831855 / by_l) * by_cs.x;\n\
         \x20       by_a = by_a * 0.5;\n\
-        \x20       by_l = by_l / 2.0;\n\
+        \x20       by_l = by_l / 1.618034;\n\
         \x20   }\n\
         }\n\
         let by_surface = params.level + by_h;\n\

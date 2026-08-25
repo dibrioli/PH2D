@@ -234,13 +234,17 @@ fn the_drag_clears_the_trapping_threshold() {
         "o espectro tinha de tornar a armadilha MAIS facil, nao menos"
     );
     // ⭐⭐ **E o arrasto tem um SEGUNDO dono, que hoje é quem manda: o AMORTECIMENTO.** Uma
-    // boia sub-amortecida ressoa e inventa cristas — medido, a `ζ = 0,55` ela desenha `12`
-    // onde a superfície tem `8`, e a `ζ = 0,61` desce a `7`. ⚠️ A barra é o degrau MEDIDO
-    // entre esses dois, e não uma folga escolhida.
+    // boia sub-amortecida ressoa e inventa cristas.
+    // ⚠️ **A barra desceu de `0,58` para `0,40` quando a razão entre camadas do nó passou a
+    // `φ`** — e não por se ter afrouxado nada: a onda mais fina passou de `λ/8` a `λ/φ³`, e
+    // uma onda mais larga precisa de menos amortecimento para ser seguida. O degrau MEDIDO
+    // mudou de sítio (`ζ = 0,37` ressoa com `8` cristas onde há `5`; `ζ = 0,43` acerta as
+    // `5`), e a barra é esse degrau. *Uma barra derivada muda quando a lei de que deriva
+    // muda; uma barra escolhida ficaria a defender o mar antigo.*
     let zeta = sea_damping_ratio();
     assert!(
-        zeta > 0.58,
-        "amortecimento {zeta:.4}: abaixo de ~0,58 a boia RESSOA e inventa cristas"
+        zeta > 0.40,
+        "amortecimento {zeta:.4}: abaixo de ~0,40 a boia RESSOA e inventa cristas"
     );
 }
 

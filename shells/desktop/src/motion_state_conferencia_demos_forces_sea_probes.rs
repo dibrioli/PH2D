@@ -315,3 +315,39 @@ fn measure_the_trapping_sweep() {
         }
     }
 }
+
+/// SONDA — **o mar REPETE-SE?** O report do Enio de 2026-08-25: *«há dois formatos de onda
+/// juntas mas regulares e não irregulares»*.
+///
+/// ⚠️ **A régua da variedade não pode ver isto.** Ela mede o ESPALHAMENTO das alturas de
+/// crista; um padrão que se repete três vezes tem exactamente o mesmo espalhamento de um que
+/// nunca se repete. *«Irregular» não é «as cristas têm alturas diferentes» — é «a sequência
+/// não volta».*
+///
+/// A hipótese: as camadas têm comprimentos `λ, λ/2, λ/4, λ/8` — **divisores exactos**. Sobre
+/// uma distância `λ` a camada `k` completa `2ᵏ` ciclos **inteiros**, logo a soma é
+/// **exactamente periódica com período `λ`**, e a banda de `7` mostra o MESMO desenho `3`
+/// vezes. Os deslocamentos de fase não o quebram: eles deslocam cada camada, não a mudam de
+/// período.
+#[test]
+#[ignore = "sonda de medicao, nao gate"]
+fn measure_the_sea_repeats() {
+    let (amp, lambda, speed, ..) = sea_authored();
+    let t = 1199.0_f32 / 60.0;
+    println!("ondas | maior diferenca entre x e x+lambda (fraccao da amplitude)");
+    for waves in [1.0_f32, 2.0, 3.0, 4.0] {
+        let mut worst = 0.0_f32;
+        for i in 0..2048 {
+            let x = -3.5 + 3.5 * i as f32 / 2047.0;
+            let a = ph2d_node_force_buoyancy::surface_at(x, t, 0.0, amp, lambda, speed, waves);
+            let b =
+                ph2d_node_force_buoyancy::surface_at(x + lambda, t, 0.0, amp, lambda, speed, waves);
+            worst = worst.max((a - b).abs());
+        }
+        println!(
+            "{waves:5.0} | {:.6}  ({:.4} em unidades de mundo)",
+            worst / amp,
+            worst
+        );
+    }
+}

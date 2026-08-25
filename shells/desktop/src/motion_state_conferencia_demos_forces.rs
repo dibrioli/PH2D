@@ -15,7 +15,7 @@
 //!
 //! ⚠️ **A fileira do mar não é uma nuvem: é uma FILEIRA DE BOIAS**, e ela leva coisas que as
 //! outras não levam — **gravidade** ([`GRAVITY`]), um **arrasto no tecto do digitável**
-//! ([`SEA_DRAG_TYPEABLE_MAX`]) e uma **vaga lenta** ([`SEA_SPEED`]). Cada uma saiu de um
+//! ([`SEA_DRAG`]) e uma **vaga lenta** ([`SEA_SPEED`]). Cada uma saiu de um
 //! report do Enio sobre esta mesma fileira, e as três curam defeitos DIFERENTES que se leem
 //! iguais no ecrã:
 //!
@@ -62,7 +62,7 @@ const SEA_DENSITY: f32 = 6.0;
 ///
 /// ⚠️ **A prova de mutação refutou-o:** repor `0,5` aqui deixa **todos os gates verdes**,
 /// espectro visível incluído. Quem cura o Bug #7 é a VELOCIDADE ([`SEA_SPEED`]) mais o
-/// AMORTECIMENTO ([`SEA_DRAG_TYPEABLE_MAX`]); o calado é um **ganho secundário**, medido:
+/// AMORTECIMENTO ([`SEA_DRAG`]); o calado é um **ganho secundário**, medido:
 ///
 /// | calado | cristas desenhadas (a superfície tem 8) | variedade |
 /// |---|---|---|
@@ -110,23 +110,31 @@ const SEA_DRAFT: f32 = 0.20;
 /// ⭐⭐ **E O ARRASTO DEIXOU DE SER DERIVADO DELA em 2026-08-25** — a armadilha passou a ser
 /// o PISO, e quem manda no número é o TOQUE da boia ([Bug #7]). Um arrasto pouco acima do
 /// limiar deixa a boia sub-amortecida: ela não segue a superfície, ela RESSOA — e uma boia
-/// que ressoa **inventa cristas**. Medido no ponto que shipa (calado `0,20`, velocidade
-/// `0,50`), contra as **8** cristas que a superfície de facto tem:
+/// que ressoa **inventa cristas**.
 ///
-/// | arrasto | ζ | cristas desenhadas | variedade |
-/// |---|---|---|---|
-/// | `12` | `0,37` | **23** | `2,77` |
-/// | `14` | `0,43` | **17** | `1,41` |
-/// | `16` | `0,49` | **20** | `1,79` |
-/// | `18` | `0,55` | **12** | `0,59` |
-/// | **`20`** | **`0,61`** | **`7`** | `0,59` |
+/// ⚠️ **A tabela mudou DUAS vezes no mesmo dia, e a segunda é a que vale.** Enquanto a razão
+/// entre camadas do nó era `2`, a onda mais fina era `λ/8` e só o TECTO do digitável (`20`)
+/// a domava. Com a razão a passar a `φ` (o mar deixou de se repetir — ver o [Bug #7]), a mais
+/// fina passou a `λ/φ³ ≈ λ/4,24`: **mais larga, logo mais fácil de seguir**, e o arrasto de
+/// que a cena precisa saiu do tecto. Medido no ponto que shipa (calado `0,20`, velocidade
+/// `0,50`), contra as **5** cristas que a superfície tem:
 ///
-/// ⛔⛔ **O arrasto de que a cena precisa está NO TECTO do que o artista consegue digitar**
-/// (o slider do `Drag` pára em `20`), e isso é um FACTO MEDIDO e não um conforto: só ali a
-/// contagem de cristas desce ao que existe. ⇒ um quinto estrato, ou um mar mais rápido,
-/// pediriam um arrasto **inalcançável pela UI** — a cena está na borda da caixa, e é bom que
-/// isso esteja escrito onde alguém o leia antes de mexer.
-const SEA_DRAG_TYPEABLE_MAX: f32 = 20.0;
+/// | arrasto | ζ | cristas | variedade | deriva (barra `0,3`) |
+/// |---|---|---|---|---|
+/// | `12` | `0,37` | **8** (ressoa) | `2,61` | `0,90` ✗ |
+/// | `14` | `0,43` | **5** (exacto) | `2,08` | `0,45` ✗ |
+/// | `16` | `0,49` | `4` | `1,16` | `0,33` ✗ |
+/// | **`18`** | **`0,55`** | `3` | **`1,09`** | **`0,27`** ✓ |
+/// | `20` | `0,61` | `3` | `1,03` | `0,20` ✓ |
+///
+/// ⚠️ **A escolha é o topo da região ADMISSÍVEL, não o óptimo da fidelidade.** O melhor
+/// desenho é a `14` — cristas exactas e `108%` da variedade da superfície —, e ele é
+/// **recusado** porque a banda derivaria `0,45` contra a barra de `0,3` que o [Bug #6]
+/// defende. ⛔ *Não se afrouxa um gate que defende um defeito já reportado para deixar
+/// passar um número mais bonito noutro eixo.* Entre os dois que passam, `18` desenha mais
+/// que `20` — e, ao contrário do `20`, **não está no tecto do que o artista consegue
+/// digitar**, o que era uma fragilidade nomeada na versão de manhã.
+const SEA_DRAG: f32 = 18.0;
 
 /// O limiar da armadilha para um mar de `waves` camadas — hoje o **PISO** do arrasto.
 #[cfg(test)]
@@ -135,9 +143,9 @@ pub(crate) fn sea_trap_threshold(waves: f32) -> f32 {
     SEA_DENSITY * slope / (1.0 + slope * slope).sqrt() / SEA_SPEED
 }
 
-/// O arrasto que a cena autora — ver [`SEA_DRAG_TYPEABLE_MAX`].
+/// O arrasto que a cena autora — ver [`SEA_DRAG`].
 pub(crate) fn sea_drag() -> f32 {
-    SEA_DRAG_TYPEABLE_MAX
+    SEA_DRAG
 }
 
 /// **A razão de amortecimento que esse arrasto compra**, `ζ = arrasto · submersão / 2ω_n`.

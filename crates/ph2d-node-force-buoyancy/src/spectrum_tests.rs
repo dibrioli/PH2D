@@ -158,3 +158,79 @@ fn the_wave_count_is_totalised() {
     assert_eq!(wave_count(f32::NAN), 1);
     assert_eq!(MANIFEST.param_default(WAVES), Some(1.0));
 }
+
+/// ⭐⭐ **O KERNEL DA GPU ESPELHA AS TRÊS CONSTANTES, e agora há quem o diga.**
+///
+/// ⛔ O WGSL é uma STRING: a razão entre camadas, o ganho e o passo de fase vivem lá como
+/// números soltos (`/ 1.618034`, `* 0.5`, `* 0.618034`), copiados à mão dos `const` acima.
+/// Até 2026-08-25 **nenhum gate ligava os dois lados** — mudar a constante em Rust deixava a
+/// GPU a calcular outro mar, e a paridade CPU/GPU só reprovaria numa máquina com adapter, em
+/// gates `#[ignore]` que o CI nunca corre.
+///
+/// ⚠️ **Este gate é TEXTUAL de propósito**: ele corre sem GPU, em todo o lado, e apanha a
+/// divergência no instante em que ela é escrita — que é a única altura em que ela é barata.
+/// *Uma lei escrita em dois sítios ainda não é uma lei; aqui a segunda cópia é obrigatória
+/// (é outra linguagem), então o que se constrói é a PONTE.*
+#[test]
+fn the_gpu_kernel_mirrors_the_three_spectrum_constants() {
+    let wgsl = GPU_KERNEL.wgsl;
+    for (needle, name) in [
+        (format!("/ {WAVE_LACUNARITY};"), "WAVE_LACUNARITY"),
+        (format!("* {WAVE_GAIN};"), "WAVE_GAIN"),
+        (format!("* {PHASE_STEP})"), "PHASE_STEP"),
+    ] {
+        assert!(
+            wgsl.contains(&needle),
+            "o WGSL nao contem `{needle}` -- a constante {name} de Rust e a copia da GPU \
+             divergiram, e o mar sai diferente nos dois caminhos"
+        );
+    }
+    // CONTROLE: a razão NÃO é inteira — é isso que impede a soma de se repetir.
+    assert!(
+        (WAVE_LACUNARITY - WAVE_LACUNARITY.round()).abs() > 0.1,
+        "uma razao inteira torna a soma de senos exactamente periodica ({WAVE_LACUNARITY})"
+    );
+}
+
+/// ⭐⭐⭐ **O MAR NÃO SE REPETE** — o report do Enio de 2026-08-25: *«há dois formatos de onda
+/// juntas mas regulares e não irregulares»*.
+///
+/// ⛔ **Nenhuma régua anterior podia ver isto.** A variedade de alturas de crista mede o
+/// ESPALHAMENTO; um desenho que se repete três vezes tem exactamente o mesmo espalhamento de
+/// um que nunca se repete. *«Irregular» não é «as cristas têm alturas diferentes» — é «a
+/// sequência não volta»*, e são duas propriedades distintas que uma régua só lia como uma.
+///
+/// A lei: com razão entre camadas `r`, a camada `k` tem comprimento `λ/rᵏ` e completa `rᵏ`
+/// ciclos sobre uma distância `λ`. Com `r` INTEIRO isso é um número inteiro de ciclos para
+/// toda a camada ⇒ **soma exactamente periódica**. Medido com `r = 2`: `0,000008` da
+/// amplitude de diferença entre `x` e `x + λ` — o mesmo desenho, repetido.
+///
+/// ⚠️ **O CONTROLO é a senoide única**, e ele tem de dar ZERO: um seno **é** periódico por
+/// definição, e uma régua que o acusasse estaria a medir outra coisa.
+#[test]
+fn the_summed_sea_does_not_repeat_itself() {
+    let (amp, lambda, speed) = (0.25_f32, 2.5_f32, 0.7_f32);
+    let worst_at = |waves: f32| {
+        (0..1024)
+            .map(|i| {
+                let x = -4.0 + 4.0 * i as f32 / 1023.0;
+                let a = surface_at(x, 1.3, 0.0, amp, lambda, speed, waves);
+                let b = surface_at(x + lambda, 1.3, 0.0, amp, lambda, speed, waves);
+                (a - b).abs() / amp
+            })
+            .fold(0.0_f32, f32::max)
+    };
+    let plain = worst_at(1.0);
+    assert!(
+        plain < 1e-3,
+        "CONTROLE: um seno E' periodico por definicao, e a regua tem de o dizer ({plain:.6})"
+    );
+    for waves in [2.0_f32, 3.0, 4.0] {
+        let w = worst_at(waves);
+        assert!(
+            w > 0.5,
+            "com {waves} camadas o mar repete-se a cada comprimento de onda \
+             (diferenca {w:.6} da amplitude) -- a razao entre camadas e' inteira?"
+        );
+    }
+}

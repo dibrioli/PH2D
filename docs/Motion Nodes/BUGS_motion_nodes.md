@@ -672,9 +672,9 @@ põe**:
 
 ## Bug #7 — a banda 8 não mostrava cristas diferentes: a BOIA é um passa-baixo, e a cura NÃO era a que a nota previa
 
-**Estado:** ✅ **CURADO** em 2026-08-25 — o mecanismo medido, **três famílias de cura
-REFUTADAS** por medição antes de se achar a que funciona, e o gate que faltava construído.
-Aguarda smoke (cena `PH2D_GPU_COOK_DEMO=95`, fileira de baixo à direita).
+**Estado:** ✅ **CURADO** em 2026-08-25, em **DUAS rondas** — a segunda a partir de um
+segundo report do Enio sobre a mesma fileira (§ *A segunda ronda*, no fim). Aguarda smoke
+(cena `PH2D_GPU_COOK_DEMO=95`, fileira de baixo à direita).
 
 ### Sintoma
 
@@ -770,3 +770,58 @@ não é conforto.*
 - `the_drag_clears_the_trapping_threshold` ganha a segunda metade: o **amortecimento** derivado
   (`ζ = arrasto·submersão / 2ω_n`), com a barra no degrau MEDIDO entre `0,55` (ressoa) e `0,61`.
 - 4 mutações, **3 mortas e 1 sobreviva** — e a sobreviva é o achado acima.
+
+### ⭐⭐⭐ A SEGUNDA RONDA — *«regulares e não irregulares»*
+
+Com a cura acima aplicada, o Enio voltou: *«há dois formatos de onda juntas mas regulares e
+não irregulares»*. Ele passou a **ver** as duas camadas (a 1.ª ronda funcionou) e o conjunto
+continuava a ler-se como padrão, não como água.
+
+⛔⛔ **E NENHUMA das réguas construídas na 1.ª ronda podia ver isto** — nem a que eu tinha
+acabado de escrever para este mesmo bug. A variedade mede o **ESPALHAMENTO** das alturas de
+crista; um desenho que se repete três vezes tem **exactamente** o mesmo espalhamento de um que
+nunca se repete. ⇒ *«Irregular» não é «as cristas têm alturas diferentes»: é «a sequência não
+volta».* São duas propriedades, e uma régua só as lia como uma.
+
+**A causa, medida em dois minutos com a régua certa** (`surface(x)` contra `surface(x + λ)`):
+
+| camadas | diferença a `x + λ`, em amplitudes |
+|---|---|
+| `1` | `0,000003` ← **controlo**: um seno *é* periódico por definição |
+| `2` | `0,000006` |
+| `3` | `0,000008` |
+| `4` | `0,000008` |
+
+⇒ **o mar era exactamente periódico com período `λ`**, e a banda de `7` mostrava o mesmo
+desenho **três vezes**. A causa é a razão entre camadas ser **`2`, um INTEIRO**: a camada `k`
+completa `2ᵏ` ciclos **inteiros** sobre `λ`, logo tudo se realinha.
+
+⚠️ **A justificação que estava escrita no nó não sobreviveu**: ela dizia que `2` era *«o mesmo
+`lacunarity` que o `force.wind` já declara»*. **Aquele nó soma RUÍDO** — cada oitava é
+independentemente aleatória e frequências harmónicas não repetem nada. **Este soma SENOS.** *O
+que se partilha entre dois nós tem de sobreviver à diferença entre eles.*
+
+**A cura: a razão passa a `φ`** (`1,618034`), o número pior aproximável por racionais, logo o
+que mais adia a quase-repetição — a **mesma** constante que o `PHASE_STEP` do ficheiro já usava,
+e pela mesma razão. Medido depois: `1` camada continua em `0,000003` (o controlo aguenta) e `4`
+camadas dão **`1,56` amplitudes** de diferença a `x + λ`.
+
+⭐ **E ela pagou de volta noutro eixo:** a onda mais fina passou de `λ/8` a `λ/φ³ ≈ λ/4,24` —
+**mais larga, logo mais fácil de a boia seguir**. O arrasto necessário caiu de `20` (que era o
+**tecto do digitável**, uma fragilidade nomeada de manhã) para `18`, e a variedade desenhada
+subiu de `0,59` para **`1,09`**. *A cura da segunda ronda melhorou a métrica da primeira.*
+
+⚠️ **A escolha de `18` é o topo da região ADMISSÍVEL, não o óptimo:** a `14` o desenho é
+perfeito (as `5` cristas exactas, `108%` da variedade) e é **recusado** porque a deriva daria
+`0,45` contra a barra de `0,3` do Bug #6. ⛔ *Não se afrouxa um gate que defende um defeito já
+reportado para deixar passar um número melhor noutro eixo.*
+
+⚠️ **E o caminho da GPU tinha as três constantes copiadas à mão, sem gate nenhum a ligá-las ao
+Rust** (`/ 2.0`, `* 0.5`, `* 0.618034` dentro de uma string WGSL). Mudar a razão só em Rust
+deixaria a placa a calcular **outro mar**, e a paridade só reprovaria numa máquina com adapter,
+em gates `#[ignore]` que o CI nunca corre. ⇒ `the_gpu_kernel_mirrors_the_three_spectrum_constants`,
+**textual e sem GPU**, apanha a divergência no instante em que ela é escrita.
+
+**Gates:** `the_summed_sea_does_not_repeat_itself` (com o controlo da senoide) ·
+`the_gpu_kernel_mirrors_the_three_spectrum_constants`. **3 mutações, 3 mortas** — e repor a
+razão inteira mata **duas** de uma vez, porque deixa o Rust e a GPU a discordar.

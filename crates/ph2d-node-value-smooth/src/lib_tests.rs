@@ -53,7 +53,7 @@ fn the_box_weight_is_bit_identical_to_the_filter_that_shipped() {
     for n in [1usize, 5, 33, 128] {
         let f = structured_field(n);
         for r in [0usize, 1, 2, 5, 17, 200] {
-            let got = smooth(&f, r, Weight::Box);
+            let got = smooth(&f, r, Weight::Box, Window::Centered);
             let want = frozen_box(&f, r);
             assert_eq!(got.len(), want.len());
             for (i, (a, b)) in got.iter().zip(want.iter()).enumerate() {
@@ -73,7 +73,7 @@ fn the_box_weight_is_bit_identical_to_the_filter_that_shipped() {
 fn radius_zero_is_the_identity_under_every_weight() {
     let f = vec![3.0, -1.0, 7.5, 2.0];
     for w in [Weight::Box, Weight::Triangle, Weight::Smooth] {
-        assert_eq!(smooth(&f, 0, w), f, "{w:?}");
+        assert_eq!(smooth(&f, 0, w, Window::Centered), f, "{w:?}");
     }
 }
 
@@ -96,7 +96,7 @@ fn the_factory_weight_is_the_plain_mean() {
 #[test]
 fn a_spike_is_spread_across_its_window() {
     let f = vec![0.0, 0.0, 9.0, 0.0, 0.0];
-    let out = smooth(&f, 1, Weight::Box);
+    let out = smooth(&f, 1, Weight::Box, Window::Centered);
     assert!(out[2] < 9.0, "the spike drops");
     assert!(out[1] > 0.0 && out[3] > 0.0, "the neighbours rise");
     assert_eq!(out[1], out[2], "the window becomes a plateau, not a peak");
@@ -126,9 +126,9 @@ fn a_spike_is_spread_across_its_window() {
 fn the_three_weights_draw_three_different_profiles() {
     let f = vec![0.0, 0.0, 0.0, 0.0, 9.0, 0.0, 0.0, 0.0, 0.0];
     let (c, r) = (4usize, 3usize);
-    let b = smooth(&f, r, Weight::Box);
-    let t = smooth(&f, r, Weight::Triangle);
-    let s = smooth(&f, r, Weight::Smooth);
+    let b = smooth(&f, r, Weight::Box, Window::Centered);
+    let t = smooth(&f, r, Weight::Triangle, Window::Centered);
+    let s = smooth(&f, r, Weight::Smooth, Window::Centered);
     // O Box é CHATO dentro da janela inteira — é o que "box" quer dizer.
     for d in 1..=r {
         assert_eq!(b[c], b[c - d], "Box: platô em -{d}");
@@ -163,7 +163,7 @@ fn a_constant_field_is_unchanged() {
     let f = vec![4.0; 7];
     for w in [Weight::Box, Weight::Triangle, Weight::Smooth] {
         for r in [0usize, 1, 3, 20] {
-            let out = smooth(&f, r, w);
+            let out = smooth(&f, r, w, Window::Centered);
             for (i, v) in out.iter().enumerate() {
                 assert!((v - 4.0).abs() < 1e-5, "{w:?} r={r} i={i}: {v}");
             }
@@ -178,7 +178,7 @@ fn output_is_finite_and_length_preserving() {
     let f = vec![-3.0, 100.0, -50.0, 0.0, 8.0];
     for w in [Weight::Box, Weight::Triangle, Weight::Smooth] {
         for r in [0usize, 1, 2, 5, 100] {
-            let out = smooth(&f, r, w);
+            let out = smooth(&f, r, w, Window::Centered);
             assert_eq!(out.len(), f.len(), "{w:?} r={r}");
             assert!(out.iter().all(|x| x.is_finite()), "{w:?} r={r}");
         }
@@ -206,7 +206,7 @@ fn no_tap_in_the_window_weighs_nothing() {
 fn box_passes(field: &[f32], radius: usize, passes: usize) -> Vec<f32> {
     let mut cur = field.to_vec();
     for _ in 0..passes {
-        cur = smooth(&cur, radius, Weight::Box);
+        cur = smooth(&cur, radius, Weight::Box, Window::Centered);
     }
     cur
 }
@@ -249,7 +249,16 @@ fn a_wide_smooth_window_reaches_what_repeated_box_passes_reach() {
         let want = box_passes(&f, r, passes);
         // Varre o raio de UMA janela `Smooth` e fica com o melhor.
         let (best, at) = (1..=(4 * r * passes))
-            .map(|rr| (worst_rel(&smooth(&f, rr, Weight::Smooth), &want, range), rr))
+            .map(|rr| {
+                (
+                    worst_rel(
+                        &smooth(&f, rr, Weight::Smooth, Window::Centered),
+                        &want,
+                        range,
+                    ),
+                    rr,
+                )
+            })
             .fold((f32::MAX, 0usize), |a, b| if b.0 < a.0 { b } else { a });
         assert!(
             best < 0.025,
@@ -281,7 +290,7 @@ fn a_box_window_does_not_reach_it_and_that_is_why_the_shape_matters() {
     let range = f.iter().fold(0.0f32, |a, b| a.max(*b)) - f.iter().fold(f32::MAX, |a, b| a.min(*b));
     let best = |w: Weight, want: &[f32]| {
         (1..=48)
-            .map(|rr| worst_rel(&smooth(&f, rr, w), want, range))
+            .map(|rr| worst_rel(&smooth(&f, rr, w, Window::Centered), want, range))
             .fold(f32::MAX, f32::min)
     };
     let want = box_passes(&f, 2, 3); // suporte 6: onde a forma ainda decide
@@ -302,7 +311,7 @@ fn measure_what_a_radius_costs() {
     println!("{:>8} {:>14} {:>12}", "raio", "taps", "ms");
     for r in [1usize, 16, 64, 128, 256, 512] {
         let t0 = std::time::Instant::now();
-        let out = smooth(&f, r, Weight::Smooth);
+        let out = smooth(&f, r, Weight::Smooth, Window::Centered);
         let ms = t0.elapsed().as_secs_f64() * 1e3;
         let taps = (n * (2 * r + 1)) as f64;
         println!("{r:>8} {:>14.0} {ms:>12.3}", taps);
@@ -390,4 +399,59 @@ fn registers_and_resolves() {
         reg.param_hard_max(MANIFEST.id, "radius"),
         Some(RADIUS_LAST_USEFUL)
     );
+}
+
+/// ⭐⭐ **UM FILTRO CAUSAL NÃO REAGE ANTES DO ACONTECIMENTO** (doc 89, folha 15 linha 138).
+///
+/// O oráculo é um DEGRAU: zeros até `k`, uns a partir dali. A propriedade que separa as três
+/// janelas não é a forma da resposta — é **de que lado dela o filtro consegue olhar**.
+///
+/// ⚠️ **A régua tem de ser um IGUAL EXACTO a zero, e não «pequeno»**: a afirmação de
+/// causalidade é que a amostra futura **não entra na soma**, não que entra pouco. Um `< ε`
+/// passaria com um peso minúsculo mas não-nulo, que é precisamente o defeito.
+#[test]
+fn the_causal_windows_only_look_one_way() {
+    const K: usize = 8;
+    let step: Vec<f32> = (0..16).map(|i| f32::from(u8::from(i >= K))).collect();
+    let r = 3;
+
+    let left = smooth(&step, r, Weight::Box, Window::Left);
+    for (i, v) in left.iter().enumerate().take(K) {
+        assert_eq!(
+            *v, 0.0,
+            "`Left Half` leu o FUTURO no indice {i}: um filtro causal nao antecipa o degrau"
+        );
+    }
+    assert!(
+        left[K] > 0.0,
+        "e no degrau ele TEM de reagir: {:?}",
+        left[K]
+    );
+
+    let right = smooth(&step, r, Weight::Box, Window::Right);
+    assert!(
+        right[K - 1] > 0.0,
+        "`Right Half` olha em frente, logo ANTECIPA o degrau: {:?}",
+        right[K - 1]
+    );
+    for (i, v) in right.iter().enumerate().skip(K) {
+        assert_eq!(*v, 1.0, "`Right Half` nao pode ver o passado (indice {i})");
+    }
+
+    // ⛔ CONTROLE: a centrada vaza para os DOIS lados — sem isto, um gate que só medisse as
+    // meias-janelas passaria mesmo que elas fossem apelidos uma da outra.
+    let centred = smooth(&step, r, Weight::Box, Window::Centered);
+    assert!(
+        centred[K - 1] > 0.0 && centred[K] < 1.0,
+        "CONTROLE: a janela centrada le' os dois lados: {:?}",
+        (centred[K - 1], centred[K])
+    );
+    // E as três são a MESMA coisa quando não há janela nenhuma.
+    for w in [Window::Centered, Window::Left, Window::Right] {
+        assert_eq!(
+            smooth(&step, 0, Weight::Box, w),
+            step,
+            "raio 0 e' a identidade em toda janela"
+        );
+    }
 }

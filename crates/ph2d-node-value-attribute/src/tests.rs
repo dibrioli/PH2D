@@ -407,3 +407,62 @@ fn no_entry_reads_a_vec2_column_in_the_scalar_mode() {
         "a fixture tem de CONTER colunas Vec2 nomeadas pela tabela"
     );
 }
+
+/// ⭐⭐ **AS LANES CARTESIANAS de `vel` e `size`** (doc 89, folha 15 linha 124) — e o CONTROLO
+/// que mostra porque a leitura polar não as substituía.
+///
+/// ⚠️ **Não é ergonomia, é ALCANCE.** O picker `Custom…` escreve o nome da coluna com **modo
+/// 0**, e uma `Vec2` lida em modo 0 cai no `_` da escada do [`field`] e devolve **zeros no
+/// comprimento cheio, em silêncio** — indistinguível de um nome mal digitado. Logo uma
+/// coluna `Vec2` só é alcançável **por uma entrada**, e `vel`/`size` só tinham entradas
+/// POLARES (`Speed`, `Direction`, `Size`).
+///
+/// ⚠️ **E é por isso que o gate de alcance do shell não via nada:** ele pergunta se a coluna
+/// tem **algum** chip, e tinha. *Uma leitura polar satisfaz «alcançável» e não devolve um
+/// eixo* — são duas perguntas, e uma régua só as lia como uma.
+#[test]
+fn the_cartesian_lanes_of_vel_and_size_are_reachable_by_name() {
+    let s = Stream::new(3)
+        .with(
+            "vel",
+            Column::Vec2(vec![[3.0, 4.0], [-1.0, 0.0], [0.0, -2.0]]),
+        )
+        .with(
+            "size",
+            Column::Vec2(vec![[2.0, 5.0], [1.5, 0.5], [7.0, 0.25]]),
+        );
+    for (label, want) in [
+        ("Velocity X", vec![3.0, -1.0, 0.0]),
+        ("Velocity Y", vec![4.0, 0.0, -2.0]),
+        ("Size X", vec![2.0, 1.5, 7.0]),
+        ("Size Y", vec![5.0, 0.5, 0.25]),
+    ] {
+        let ch = READ_CHANNELS
+            .iter()
+            .find(|c| c.label == label)
+            .unwrap_or_else(|| panic!("o picker oferece o canal {label}"));
+        assert_eq!(
+            field(&s, ch.column, ch.mode),
+            want,
+            "o canal `{label}` tem de devolver o EIXO, e nao a magnitude"
+        );
+    }
+    // ⛔ CONTROLE: a entrada polar da MESMA coluna responde outra pergunta. Sem isto, um
+    // gate que só lesse as lanes passaria mesmo que elas fossem apelidos de `Speed`.
+    let speed = READ_CHANNELS.iter().find(|c| c.label == "Speed").unwrap();
+    assert_eq!(
+        field(&s, speed.column, speed.mode),
+        vec![5.0, 1.0, 2.0],
+        "CONTROLE: `Speed` e' a magnitude (3,4 -> 5), e nenhuma lane a da'"
+    );
+    // E o inverso: nenhuma lane coincide com a magnitude em toda a parte.
+    let vx = READ_CHANNELS
+        .iter()
+        .find(|c| c.label == "Velocity X")
+        .unwrap();
+    assert_ne!(
+        field(&s, vx.column, vx.mode),
+        field(&s, speed.column, speed.mode),
+        "CONTROLE: se a lane desse a magnitude, a entrada nova nao compraria nada"
+    );
+}

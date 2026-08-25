@@ -30,7 +30,13 @@ fn every_demo_scene_ends_in_an_output_node() {
         };
         // As cenas: `motion_state_conferencia_demos*.rs`, menos os arquivos de gate
         // (um `*_tests.rs` não constrói cena nenhuma).
-        if !name.starts_with("motion_state_conferencia_demos") || name.ends_with("_tests.rs") {
+        // ⚠️ `_probes.rs` entrou na exclusão em 2026-08-25 pela MESMA razão que `_tests.rs`:
+        // uma sonda de medição é irmã de um gate, não uma cena — ela não desenha, ela MEDE.
+        // O nome dela partilha o prefixo porque ela pertence à cena que mede.
+        if !name.starts_with("motion_state_conferencia_demos")
+            || name.ends_with("_tests.rs")
+            || name.ends_with("_probes.rs")
+        {
             continue;
         }
         let src = fs::read_to_string(&path).expect("le a cena");

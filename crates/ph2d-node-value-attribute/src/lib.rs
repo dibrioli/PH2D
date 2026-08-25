@@ -298,6 +298,42 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
         column: "vel",
         mode: MODE_ANGLE,
     },
+    // ⭐⭐ **AS LANES CARTESIANAS de `vel` e `size`** (doc 89, folha 15 linha 124) — o
+    // *Separate XYZ* do Blender aplicado ao resto da tabela.
+    //
+    // ⚠️ **O nó SEMPRE soube fazer isto**: `MODE_COMPONENT_BASE + k` lê a lane `k` de
+    // qualquer coluna `Vec2`, e é como a `Opacity` alcança o alfa dentro do `tint`. O que
+    // faltava era o NOME — e para uma coluna `Vec2` isso não é ergonomia, é alcance: o
+    // picker `Custom…` escreve o nome com **modo 0**, e uma `Vec2` lida em modo 0 cai no `_`
+    // da escada e devolve **zeros no comprimento cheio, em silêncio**. *Uma coluna `Vec2` só
+    // é alcançável POR UMA ENTRADA*, e esta lista já o dizia de si própria três blocos acima.
+    //
+    // ⚠️ **A assimetria que estas quatro fecham foi criada pela MESMA jornada, do outro
+    // lado:** o `motion.drive` ganhou `Size X`/`Size Y` (folha 06 linha 39) e o domínio de
+    // valor **não conseguia ler de volta** o que ele acabara de escrever por eixo. O gate
+    // `every_non_scalar_column_is_reachable_or_deliberately_hidden` não via nada de errado —
+    // ele pergunta se a coluna tem **algum** chip, e `Speed`/`Direction`/`Size` respondiam
+    // que sim. *Uma leitura POLAR satisfaz «alcançável» e não devolve um eixo.*
+    ReadChannel {
+        label: "Velocity X",
+        column: "vel",
+        mode: MODE_COMPONENT_BASE,
+    },
+    ReadChannel {
+        label: "Velocity Y",
+        column: "vel",
+        mode: MODE_COMPONENT_BASE + 1,
+    },
+    ReadChannel {
+        label: "Size X",
+        column: "size",
+        mode: MODE_COMPONENT_BASE,
+    },
+    ReadChannel {
+        label: "Size Y",
+        column: "size",
+        mode: MODE_COMPONENT_BASE + 1,
+    },
     // ⚠️ **`tint` lane 3, not a column called `"opacity"`.** This entry used to name a
     // column that NOTHING in the library writes: `motion.drive`'s opacity channel writes
     // `tint` (`CH_OPACITY => "tint"`, lane 3) and `lower_to_instances` reads the alpha from

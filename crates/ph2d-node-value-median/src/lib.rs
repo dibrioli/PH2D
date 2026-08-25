@@ -63,7 +63,31 @@ const MAX_RADIUS: usize = 16;
 /// it agrees with the GPU's rank selection to the byte (both pick the same order
 /// statistic of the same multiset). `total_cmp` is a total order (no panic; for the
 /// finite fields the value nodes produce it agrees with `<`, the GPU's comparison).
-fn median(field: &[f32], radius: usize) -> Vec<f32> {
+/// **A TOLERÂNCIA do de-spike** (doc 89, folha 15 linha 139) — a segunda metade do par que o
+/// **Filter CHOP** do TouchDesigner ship (`De-Spike` + `Tolerance`).
+///
+/// ⚠️ **O nó JÁ ERA o de-spike** — o próprio teste deste ficheiro diz *«a lone spike is
+/// deleted, not spread»*. O que faltava era poder dizer **quão grande tem de ser o pico**
+/// para valer a pena apagá-lo: sem tolerância, a mediana reescreve **toda** amostra, e um
+/// campo com ruído fino perde a textura junto com os picos.
+///
+/// ⭐ **A lei respeita a cerca declarada do nó**: o kernel de GPU selecciona por *rank
+/// contado, sem sort*, com o array de registadores dimensionado por `MAX_RADIUS` — e uma
+/// tolerância **não pode crescer a janela**. Esta não cresce: a mediana é calculada como
+/// sempre e a tolerância decide, **depois**, se ela substitui a amostra.
+///
+/// ⚠️ **`0` é o nó de sempre, ao bit** — e não por convenção: com `tolerance = 0` a condição
+/// é `|amostra − mediana| > 0`, que só é falsa quando os dois são o MESMO número, e aí
+/// substituir ou não dá o mesmo bit.
+fn despike(sample: f32, med: f32, tolerance: f32) -> f32 {
+    if (sample - med).abs() > tolerance {
+        med
+    } else {
+        sample
+    }
+}
+
+fn median(field: &[f32], radius: usize, tolerance: f32) -> Vec<f32> {
     let n = field.len();
     let r = radius.min(MAX_RADIUS);
     if r == 0 || n == 0 {
@@ -80,7 +104,8 @@ fn median(field: &[f32], radius: usize) -> Vec<f32> {
                 })
                 .collect();
             win.sort_by(|a, b| a.total_cmp(b));
-            win[r] // the middle of the sorted window — the r-th order statistic
+            // the middle of the sorted window — the r-th order statistic
+            despike(field[i], win[r], tolerance)
         })
         .collect()
 }
@@ -100,10 +125,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[ParamSpec {
-        name: "radius",
-        default: 0.0,
-    }],
+    params: &[
+        ParamSpec {
+            name: "radius",
+            default: 0.0,
+        },
+        // **A TOLERÂNCIA** — ver [`despike`]. `0` = o nó de sempre, ao bit.
+        ParamSpec {
+            name: "tolerance",
+            default: 0.0,
+        },
+    ],
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -154,7 +186,13 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
                 if (vmd_rank == vmd_r) { vmd_out = vmd_win[vmd_a]; }\n\
                 vmd_a = vmd_a + 1;\n\
             }\n\
-            write_v(i, vmd_out);\n\
+            // A TOLERANCIA decide DEPOIS da mediana -- ela nao cresce a janela.\n\
+            let vmd_s = read_v(i);\n\
+            if (abs(vmd_s - vmd_out) > max(params.tolerance, 0.0)) {\n\
+            \x20   write_v(i, vmd_out);\n\
+            } else {\n\
+            \x20   write_v(i, vmd_s);\n\
+            }\n\
         }\n",
     wgsl_lib: "\
         fn vmd_round(x: f32) -> f32 {\n\
@@ -168,7 +206,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         identity: [0.0; 4],
         port: 0,
     }],
-    params: &["radius"],
+    params: &["radius", "tolerance"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -184,12 +222,13 @@ impl NodeOp for ValueMedian {
     fn eval(&self, ctx: &mut EvalCtx<'_>) {
         // Radius is a non-negative half-window; round, clamp at 0, cap at MAX.
         let radius = (ctx.param("radius").round().max(0.0) as usize).min(MAX_RADIUS);
+        let tolerance = ctx.param("tolerance").max(0.0);
         let input: Vec<f32> = match ctx.input(0).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         };
         let n = input.len();
-        let out = median(&input, radius);
+        let out = median(&input, radius, tolerance);
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }
 }
@@ -214,16 +253,30 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    // The half-window. `0` is a passthrough; `1` is the classic median-of-3. The
-    // max is the fixed selection window (a median is a small-window de-spiker).
-    param: "radius",
-    label: "Radius",
-    min: 0.0,
-    max: 16.0,
-    step: 1.0,
-    widget: ParamWidget::Slider,
-}];
+static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⭐ **A TOLERÂNCIA** — ver [`despike`]. O tecto do slider é `10`: a tolerância vive nas
+    // unidades do campo, e um campo de valor é normalizado por convenção (`0..1`) — dez é
+    // uma ordem de grandeza acima do que qualquer campo dessa família alcança, e acima disso
+    // a mediana deixa de substituir seja o que for.
+    ParamUiHint {
+        param: "tolerance",
+        label: "Tolerance",
+        min: 0.0,
+        max: 10.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        // The half-window. `0` is a passthrough; `1` is the classic median-of-3. The
+        // max is the fixed selection window (a median is a small-window de-spiker).
+        param: "radius",
+        label: "Radius",
+        min: 0.0,
+        max: 16.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -235,7 +288,7 @@ mod tests {
     #[test]
     fn radius_zero_is_the_identity() {
         let f = vec![3.0, -1.0, 7.5, 2.0];
-        assert_eq!(median(&f, 0), f);
+        assert_eq!(median(&f, 0, 0.0), f);
     }
 
     /// **A lone spike is DELETED, and this is the whole point** — a single tall
@@ -245,11 +298,14 @@ mod tests {
     #[test]
     fn a_lone_spike_is_deleted_not_spread() {
         assert_eq!(
-            median(&[0.0, 0.0, 9.0, 0.0, 0.0], 1),
+            median(&[0.0, 0.0, 9.0, 0.0, 0.0], 1, 0.0),
             vec![0.0, 0.0, 0.0, 0.0, 0.0]
         );
         // Salt-and-pepper: isolated outliers on a constant field, all removed.
-        assert_eq!(median(&[5.0, 99.0, 5.0, 5.0, -99.0, 5.0], 1), vec![5.0; 6]);
+        assert_eq!(
+            median(&[5.0, 99.0, 5.0, 5.0, -99.0, 5.0], 1, 0.0),
+            vec![5.0; 6]
+        );
     }
 
     /// **An EDGE is KEPT razor-sharp** — the median does not soften a step the way
@@ -259,7 +315,7 @@ mod tests {
     #[test]
     fn an_edge_is_kept_sharp() {
         assert_eq!(
-            median(&[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], 1),
+            median(&[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], 1, 0.0),
             vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             "the step is preserved exactly"
         );
@@ -271,7 +327,7 @@ mod tests {
     fn a_constant_field_is_unchanged() {
         let f = vec![4.0; 7];
         for r in [0usize, 1, 3, 20] {
-            assert_eq!(median(&f, r), f, "constant survives radius {r}");
+            assert_eq!(median(&f, r, 0.0), f, "constant survives radius {r}");
         }
     }
 
@@ -282,7 +338,7 @@ mod tests {
     fn output_is_an_existing_sample_finite_and_length_preserving() {
         let f = vec![-3.0, 100.0, -50.0, 0.0, 8.0];
         for r in [0usize, 1, 2, 5, 100] {
-            let out = median(&f, r);
+            let out = median(&f, r, 0.0);
             assert_eq!(out.len(), f.len(), "length preserved at radius {r}");
             for o in &out {
                 assert!(o.is_finite(), "finite at radius {r}");
@@ -294,8 +350,8 @@ mod tests {
         }
         // The cap: radius 100 behaves exactly as radius MAX_RADIUS (16).
         assert_eq!(
-            median(&f, 100),
-            median(&f, MAX_RADIUS),
+            median(&f, 100, 0.0),
+            median(&f, MAX_RADIUS, 0.0),
             "radius is capped at MAX_RADIUS"
         );
     }
@@ -366,5 +422,34 @@ mod tests {
         let mut reg = NodeRegistry::new();
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+    /// ⭐⭐ **A TOLERÂNCIA separa o PICO do RUÍDO** (doc 89, folha 15 linha 139).
+    ///
+    /// A fixtura tem as duas coisas de propósito: um pico grande (`9`) e uma ondulação fina
+    /// (`±0,3`). *Sem as duas no MESMO campo a régua não distingue «apaga tudo» de «apaga só
+    /// o que passa da barra»* — e era exactamente essa a queixa da célula.
+    #[test]
+    fn the_tolerance_deletes_the_spike_and_keeps_the_ripple() {
+        let f = vec![0.0, 0.3, 0.0, 9.0, 0.0, 0.3, 0.0];
+        // Com tolerância acima da ondulação e abaixo do pico: só o pico cai.
+        let got = median(&f, 1, 1.0);
+        assert_eq!(
+            got[3], 0.0,
+            "o PICO passa da barra e e' substituido: {got:?}"
+        );
+        for i in [1_usize, 5] {
+            assert_eq!(
+                got[i], 0.3,
+                "a ondulacao fica ABAIXO da barra e sobrevive intacta: {got:?}"
+            );
+        }
+        // ⛔ CONTROLE: a `0` — o nó de sempre — a ondulação também é achatada. Sem isto, um
+        // gate que só medisse o pico passaria mesmo que a tolerância não fizesse nada.
+        let old = median(&f, 1, 0.0);
+        assert_eq!(old[3], 0.0, "o pico sempre caiu, tolerancia ou nao");
+        assert_ne!(
+            old[1], 0.3,
+            "CONTROLE: sem tolerancia a mediana reescreve TODA amostra, ondulacao incluida"
+        );
     }
 }

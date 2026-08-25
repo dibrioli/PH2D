@@ -129,19 +129,63 @@ fn tap_weight(weight: Weight, dist: u32, r: u32) -> f32 {
 /// ⚠️ **`Box` is bit-identical to the unweighted code that shipped**, and that is
 /// arithmetic rather than promise: its weights are `1.0`, `1.0 * x` is exactly
 /// `x`, and `Σ 1.0` over `2r+1` taps is exactly the integer divisor `2r+1`.
-fn smooth(field: &[f32], radius: usize, weight: Weight) -> Vec<f32> {
+/// **A JANELA do filtro** (doc 89, folha 15 linha 138) — o par *Left/Right Half* que o
+/// **Filter CHOP** do TouchDesigner ship ao lado do centrado.
+///
+/// ⚠️ **`Centered` é `0` e é o de sempre, ao bit** — a escada nasce onde o nó já estava.
+///
+/// ⭐ **A diferença não é estética, é CAUSALIDADE.** Um filtro centrado lê o FUTURO do
+/// campo: sobre uma série temporal ele suaviza com amostras que ainda não aconteceram, e
+/// sobre um `value.time` isso é um sinal que se antecipa a si próprio. `Left` só lê o
+/// passado — é o único que um sinal ao vivo pode ter — e `Right` só o futuro, que é o que
+/// se quer quando o campo é ESPACIAL e a assimetria é de propósito (uma cauda que arrasta
+/// para um lado).
+///
+/// ⚠️ **A ponta que se corta NÃO é a que se pesa a zero**: o peso continua a ser
+/// `tap_weight(|k|)`, então uma meia-janela é meia GAUSSIANA (ou meia caixa), e não uma
+/// gaussiana inteira truncada. É o que a referência chama *Half*.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum Window {
+    Centered,
+    Left,
+    Right,
+}
+
+impl Window {
+    /// A escada do param — fora de alcance ⇒ `Centered`, como todo enum desta casa.
+    #[must_use]
+    pub fn from_param(v: f32) -> Self {
+        match v.round() as i32 {
+            1 => Self::Left,
+            2 => Self::Right,
+            _ => Self::Centered,
+        }
+    }
+
+    /// As duas pontas do laço, em desvios relativos a `i`.
+    const fn span(self, r: isize) -> (isize, isize) {
+        match self {
+            Self::Centered => (-r, r),
+            Self::Left => (-r, 0),
+            Self::Right => (0, r),
+        }
+    }
+}
+
+fn smooth(field: &[f32], radius: usize, weight: Weight, window: Window) -> Vec<f32> {
     let n = field.len();
     if radius == 0 || n == 0 {
         return field.to_vec();
     }
     let r = radius as isize;
     let last = n as isize - 1;
+    let (span_lo, span_hi) = window.span(r);
     (0..n)
         .map(|i| {
             let mut sum = 0.0f32;
             let mut wsum = 0.0f32;
-            let mut k = i as isize - r;
-            let hi = i as isize + r;
+            let mut k = i as isize + span_lo;
+            let hi = i as isize + span_hi;
             while k <= hi {
                 let w = tap_weight(
                     weight,
@@ -183,6 +227,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "weight",
             default: 0.0,
         },
+        // **A JANELA** (doc 89, folha 15 linha 138) — ver [`Window`]. `0` = `Centered`,
+        // o filtro de sempre, ao bit.
+        ParamSpec {
+            name: "window",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -204,9 +254,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             let vs_span = f32(vs_r + 1);\n\
             var vs_sum = 0.0;\n\
             var vs_wsum = 0.0;\n\
-            var vs_k = -vs_r;\n\
+            // A JANELA: 0 centrada · 1 so' o passado · 2 so' o futuro.\n\
+            let vs_win = i32(vs_round(params.window));\n\
+            var vs_from = -vs_r;\n\
+            var vs_to = vs_r;\n\
+            if (vs_win == 1) { vs_to = 0; } else if (vs_win == 2) { vs_from = 0; }\n\
+            var vs_k = vs_from;\n\
             loop {\n\
-                if (vs_k > vs_r) { break; }\n\
+                if (vs_k > vs_to) { break; }\n\
                 let vs_lin = f32(vs_r + 1 - abs(vs_k));\n\
                 var vs_tw = 1.0;\n\
                 if (vs_w == 1) {\n\
@@ -234,7 +289,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         identity: [0.0; 4],
         port: 0,
     }],
-    params: &["radius", "weight"],
+    params: &["radius", "weight", "window"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -251,12 +306,13 @@ impl NodeOp for ValueSmooth {
         // Radius is a non-negative half-window; round and clamp at 0.
         let radius = ctx.param("radius").round().max(0.0) as usize;
         let weight = Weight::from_param(ctx.param("weight"));
+        let window = Window::from_param(ctx.param("window"));
         let input: Vec<f32> = match ctx.input(0).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         };
         let n = input.len();
-        let out = smooth(&input, radius, weight);
+        let out = smooth(&input, radius, weight, window);
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }
 }
@@ -304,6 +360,19 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: &["Box", "Triangle", "Smooth"],
+        },
+    },
+    // ⭐ **A JANELA** — ver [`Window`]. Os rótulos são os do Filter CHOP do TouchDesigner,
+    // que é a referência da célula: *Half* diz que o peso é o de meia gaussiana/caixa, e
+    // não o de uma inteira cortada ao meio.
+    ParamUiHint {
+        param: "window",
+        label: "Window",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Centered", "Left Half", "Right Half"],
         },
     },
 ];

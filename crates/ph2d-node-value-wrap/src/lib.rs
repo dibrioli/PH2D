@@ -107,10 +107,31 @@ fn wrap_one(v: f32, lo: f32, hi: f32, mode: Mode) -> f32 {
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("value.wrap"),
     name: "value.wrap",
-    inputs: &[PortSpec {
-        name: "in",
-        ty: VALUE,
-    }],
+    inputs: &[
+        PortSpec {
+            name: "in",
+            ty: VALUE,
+        },
+        // ⭐⭐ **A FAIXA COMO CAMPO** (doc 89, folha 15 linha 69) — o Blender recebe o
+        // `Max`/`Min` do *Wrap* como **sockets**, logo como campos, e uma faixa
+        // por-instância era **inexprimível** aqui: os params são uniformes no dispatch
+        // inteiro, e nenhuma composição os torna por-elemento.
+        //
+        // ⚠️ **APENDADAS, nunca inseridas.** As arestas de um documento salvo guardam o
+        // ÍNDICE da porta; a porta `in` continua a `0` e um doc de ontem abre igual.
+        //
+        // ⚠️ **Desligada ⇒ o param de hoje, ao bit** — e o comprimento manda: `0` valores
+        // é o param, `1` **difunde** (uma faixa para o campo todo), `n` é por-elemento.
+        // É a mesma escada da porta `time` do `motion.oscillator`.
+        PortSpec {
+            name: "lo",
+            ty: VALUE,
+        },
+        PortSpec {
+            name: "hi",
+            ty: VALUE,
+        },
+    ],
     outputs: &[PortSpec {
         name: "out",
         ty: VALUE,
@@ -151,7 +172,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let vw_mode = i32(vw_round(params.mode));\n\
         let vw_lo = params.lo;\n\
         let vw_hi = params.hi;\n\
-        let vw_v = read_v(i);\n\
+        let vw_v = read_in_v(i);\n\
         let vw_w = vw_hi - vw_lo;\n\
         var vw_o: f32;\n\
         if (vw_w <= 0.0) {\n\
@@ -173,18 +194,81 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
         }\n",
-    bindings: &[ColumnBinding {
-        column: VALUE_COL,
-        dim: Dim::Scalar,
-        access: ColumnAccess::ReadWrite,
-        identity: [0.0; 4],
-        port: 0,
-    }],
+    bindings: &[
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // ⚠️⚠️ **ACRESCENTAR PORTAS RENOMEOU O ACESSOR DO KERNEL.** O
+        // `accessor_suffix` do codegen qualifica pelo NOME DA PORTA assim que o nó tem
+        // **mais de uma** entrada (senão `read_vel` do `motion.integrate` resolveria em
+        // silêncio para a primeira das duas que o declaram). Este ficheiro era de entrada
+        // única, logo o corpo estava escrito contra o `read_v` **nu** — e passou a ser
+        // `read_in_v` no instante em que estas portas nasceram. *Uma porta nova reescreve o
+        // vocabulário do kernel, e o WGSL é uma string que ninguém recompila.* Quem apanhou
+        // foi o `every_registered_kernel_validates_across_the_whole_presence_space`.
+        //
+        // ⛔⛔ **A FAIXA POR FIO É CPU-ONLY, e o bloqueador tem nome.**
+        //
+        // O `identity` de um binding é uma **constante**: ele diz o que uma coluna AUSENTE
+        // vale, e o padrão da casa para porta opcional com kernel é a contribuição ter
+        // **identidade algébrica** (o `falloff` do `field.combine` é `1` porque multiplica;
+        // o `accel` de uma força é `0` porque soma). ⚠️ **Uma FAIXA não tem identidade
+        // algébrica**: o valor de recuo destas portas é *o param deste nó*, que muda por
+        // instância de nó e não cabe numa constante de compilação.
+        //
+        // As saídas medidas eram três, e duas são piores: (a) semântica **aditiva**
+        // (`param + porta`, identidade `0`) — exprime tudo e obriga o artista a zerar o
+        // param para usar a porta como absoluto, que é acoplamento escondido; (b) identidade
+        // = o **default** do param — parte toda cena que já tenha `lo`/`hi` autorados e a
+        // porta desligada. ⇒ (c) **recuar**: com fio, o `eval` da CPU — que é o caminho
+        // canónico — responde, e o nó desligado continua **inteiro no device**, que é o
+        // norte declarado deste ficheiro para o caso normal.
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::RefuseIfPresent,
+            identity: [0.0; 4],
+            port: 1,
+        },
+        ColumnBinding {
+            column: VALUE_COL,
+            dim: Dim::Scalar,
+            access: ColumnAccess::RefuseIfPresent,
+            identity: [0.0; 4],
+            port: 2,
+        },
+    ],
     params: &["lo", "hi", "mode"],
     count_law: None,
     variant_by_param: None,
     applicable: None,
 };
+
+/// Os valores escalares de uma porta (ausente ⇒ vazio).
+fn scalars(stream: &Stream) -> Vec<f32> {
+    match stream.get(VALUE_COL) {
+        Some(Column::Scalar(v)) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
+/// A escada do comprimento de uma porta opcional: **vazia ⇒ o param**, **um valor
+/// DIFUNDE** para o campo inteiro, e `n` é por-elemento.
+///
+/// ⚠️ O caso do meio não é conforto: uma faixa é a mesma para todo o campo com muito mais
+/// frequência do que é diferente, e sem a difusão ligar um `value.lfo` a `hi` exigiria que
+/// ele tivesse o comprimento do campo — o que um gerador de UM número não tem.
+fn at(field: &[f32], i: usize, fallback: f32) -> f32 {
+    match field.len() {
+        0 => fallback,
+        1 => field[0],
+        _ => field.get(i).copied().unwrap_or(fallback),
+    }
+}
 
 struct ValueWrap;
 
@@ -197,13 +281,20 @@ impl NodeOp for ValueWrap {
         let lo = ctx.param("lo");
         let hi = ctx.param("hi");
         let mode = Mode::from_param(ctx.param("mode"));
+        // As portas de faixa (opcionais) — ver o `PortSpec` de `lo`.
+        let lo_field = scalars(ctx.input(1));
+        let hi_field = scalars(ctx.input(2));
         let input: Vec<f32> = match ctx.input(0).get(VALUE_COL) {
             Some(Column::Scalar(v)) => v.clone(),
             _ => Vec::new(),
         };
         let n = input.len();
         // Unary map — the field's length is preserved exactly.
-        let out: Vec<f32> = input.iter().map(|&v| wrap_one(v, lo, hi, mode)).collect();
+        let out: Vec<f32> = input
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| wrap_one(v, at(&lo_field, i, lo), at(&hi_field, i, hi), mode))
+            .collect();
         ctx.emit(Stream::new(n).with(VALUE_COL, Column::Scalar(out)));
     }
 }
@@ -472,5 +563,141 @@ mod tests {
         let mut reg = NodeRegistry::new();
         register(&mut reg).unwrap();
         assert!(reg.resolve(MANIFEST.id).is_some());
+    }
+
+    // ── As portas de FAIXA (doc 89, folha 15 linha 69) ───────────────────────────────
+    macro_rules! range_src {
+        ($man:ident, $ty:ident, $name:literal) => {
+            static $man: NodeManifest = NodeManifest {
+                id: NodeTypeId::of($name),
+                name: $name,
+                inputs: &[],
+                outputs: &[PortSpec {
+                    name: "out",
+                    ty: VALUE,
+                }],
+                effect: Effect::Pure,
+                clock: Clock::Frame,
+                params: &[],
+                lowerings: &[LoweringKind::Cpu],
+            };
+            struct $ty(Vec<f32>);
+            impl NodeOp for $ty {
+                fn manifest(&self) -> &'static NodeManifest {
+                    &$man
+                }
+                fn eval(&self, ctx: &mut EvalCtx<'_>) {
+                    ctx.emit(
+                        Stream::new(self.0.len()).with(VALUE_COL, Column::Scalar(self.0.clone())),
+                    );
+                }
+            }
+        };
+    }
+    range_src!(LO_MAN, LoSrc, "value.wrap.test.lo");
+    range_src!(HI_MAN, HiSrc, "value.wrap.test.hi");
+
+    struct RangeOps(Vec<f32>, Vec<f32>, Vec<f32>);
+    impl OpResolver for RangeOps {
+        fn resolve(&self, ty: NodeTypeId) -> Option<&dyn NodeOp> {
+            match ty {
+                t if t == SRC_MAN.id => Some(Box::leak(Box::new(Src(self.0.clone())))),
+                t if t == LO_MAN.id => Some(Box::leak(Box::new(LoSrc(self.1.clone())))),
+                t if t == HI_MAN.id => Some(Box::leak(Box::new(HiSrc(self.2.clone())))),
+                t if t == MANIFEST.id => Some(&ValueWrap),
+                _ => None,
+            }
+        }
+    }
+
+    /// Coza `input` com as faixas dadas; um vetor VAZIO deixa a porta desligada.
+    fn fold_with(input: &[f32], lo: &[f32], hi: &[f32], param_lo: f32, param_hi: f32) -> Vec<f32> {
+        let ops = RangeOps(input.to_vec(), lo.to_vec(), hi.to_vec());
+        let mut g = Graph::new();
+        let src = g.add_node(SRC_MAN.name);
+        let w = g.add_node("value.wrap");
+        g.set_param(w, "lo", param_lo);
+        g.set_param(w, "hi", param_hi);
+        g.set_param(w, "mode", 1.0); // Repeat
+        let lo_node = (!lo.is_empty()).then(|| g.add_node(LO_MAN.name));
+        let hi_node = (!hi.is_empty()).then(|| g.add_node(HI_MAN.name));
+        for (from, to_port) in [
+            Some((src, 0)),
+            lo_node.map(|n| (n, 1)),
+            hi_node.map(|n| (n, 2)),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            g.connect(Edge {
+                from: (from, 0),
+                to: (w, to_port),
+                delayed: false,
+            })
+            .unwrap();
+        }
+        let mut cook = Cook::new();
+        let out = cook.cook(&g, &ops, w, 0.0).unwrap();
+        match out[0].as_stream().get(VALUE_COL).unwrap() {
+            Column::Scalar(v) => v.clone(),
+            _ => panic!("o wrap emite um escalar"),
+        }
+    }
+
+    /// ⭐⭐ **A FAIXA POR-INSTÂNCIA** — e as três leituras do comprimento de uma porta.
+    ///
+    /// ⚠️ **O CONTROLO é a porta desligada**: sem ele, um gate que só medisse a porta ligada
+    /// passaria mesmo que ela tivesse passado a ignorar o param — e toda cena já salva muda
+    /// de valor em silêncio.
+    #[test]
+    fn the_range_ports_make_the_fold_per_instance() {
+        let ramp = [0.5_f32, 1.5, 2.5, 3.5];
+        // CONTROLE: desligadas ⇒ os params de hoje, ao bit.
+        let base = fold_with(&ramp, &[], &[], 0.0, 1.0);
+        assert_eq!(
+            base,
+            vec![0.5, 0.5, 0.5, 0.5],
+            "portas desligadas tem de dar exactamente o que os params davam"
+        );
+        // UM valor DIFUNDE: uma faixa `[0,2]` para o campo inteiro.
+        let bcast = fold_with(&ramp, &[0.0], &[2.0], 0.0, 1.0);
+        assert_eq!(
+            bcast,
+            vec![0.5, 1.5, 0.5, 1.5],
+            "uma porta de UM valor vale para o campo todo"
+        );
+        // `n` valores: uma faixa DIFERENTE por elemento.
+        //
+        // ⚠️ **A fixtura é ENTRADAS IGUAIS com faixas diferentes**, e a escolha é o que faz o
+        // controlo abaixo valer: com uma faixa uniforme, entradas iguais dão **forçosamente**
+        // saídas iguais — logo qualquer resposta com valores distintos é inalcançável sem a
+        // porta, por construção e não por sorte. ⛔ A 1.ª fixtura era uma RAMPA dentro de
+        // `[0,4]`, onde dobrar é a identidade e a faixa uniforme dava o mesmo: *uma fixtura
+        // só prova o que contém.*
+        let same = [3.0_f32; 4];
+        let per = fold_with(
+            &same,
+            &[0.0, 0.0, 0.0, 0.0],
+            &[1.0, 2.0, 4.0, 8.0],
+            0.0,
+            1.0,
+        );
+        assert_eq!(
+            per,
+            vec![0.0, 1.0, 3.0, 3.0],
+            "cada elemento dobra na SUA faixa: 3 mod [1,2,4,8]"
+        );
+        // ⛔ E a prova estrutural: entradas iguais + faixa uniforme = saídas iguais.
+        for hi in [1.0_f32, 2.0, 4.0, 8.0] {
+            let uniform = fold_with(&same, &[], &[], 0.0, hi);
+            assert!(
+                uniform.windows(2).all(|w| w[0] == w[1]),
+                "faixa uniforme sobre entradas iguais tinha de dar saidas iguais: {uniform:?}"
+            );
+            assert_ne!(
+                uniform, per,
+                "se uma faixa uniforme `[0,{hi}]` desse o mesmo, a porta nao compraria nada"
+            );
+        }
     }
 }

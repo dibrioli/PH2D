@@ -10,18 +10,17 @@
 //! nunca subirem nem descerem — e as réguas que a cena tinha partilhavam essa assinatura com
 //! elas.
 
-use super::tests::{DT, registry, scene};
+use super::tests::{DT, scene};
 use super::*;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
-use ph2d_nodegraph::graph::Graph;
 
 /// **QUÃO FUNDO cada boia está**, em decis `[p10, mediana, p90]`.
 ///
 /// ⚠️ **A pose chega em coordenadas de MUNDO e a simulação correu em LOCAIS** — o `finish`
 /// desloca a banda para o quadrante dela depois de tudo. Comparar a pose com a superfície
 /// sem desfazer esse deslocamento mediria o quadrante, e não a água.
-fn submersions(p: &[[f32; 2]], band: usize, t: f32) -> [f32; 3] {
+pub(super) fn submersions(p: &[[f32; 2]], band: usize, t: f32) -> [f32; 3] {
     let at = band_at(band);
     let (amp, lambda, speed, _draft, _sub) = sea_authored();
     // A esquerda é a senoide única; a direita é o espectro.
@@ -42,215 +41,75 @@ fn submersions(p: &[[f32; 2]], band: usize, t: f32) -> [f32; 3] {
     [pick(0.1), pick(0.5), pick(0.9)]
 }
 
-/// SONDA — o **mar**: a média de `y` de cada banda ao longo do tempo.
+/// **AS CRISTAS de uma linha de pontos** — as alturas dos máximos locais.
 ///
-/// ⚠️ **A régua é a DERIVA da média, e não a dispersão.** Uma nuvem que assenta numa
-/// superfície tem média estável; uma que foi LANÇADA tem média a subir para sempre, e as
-/// duas podem ter a mesma dispersão.
-#[test]
-#[ignore = "sonda de medicao, nao gate"]
-fn measure_the_sea() {
-    let (doc, reg, sinks) = scene();
-    let mut cook = Cook::new();
-    let mut trace: Vec<Vec<f32>> = vec![Vec::new(); 2];
-    // ⚠️ Mais longo que o gate de propósito: o que se procura aqui é ONDE assenta, e o
-    // transiente do mergulho inicial dura mais que a janela que os gates medem.
-    const LONG: usize = 900;
-    for k in 0..LONG {
-        let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
-        for &s in &sinks {
-            let _ = cook.cook(&doc.graph, &reg, s, t);
+/// ⚠️ **`win` não é cosmético.** As boias vêm em DUAS fileiras e derivam de lado, então há
+/// dois pontos quase no mesmo `x` com alturas ligeiramente diferentes: um teste de vizinho
+/// imediato chamaria crista a metade deles. Um máximo tem de o ser numa JANELA — e a janela
+/// certa é uma fracção da onda mais fina que se quer resolver.
+pub(super) fn crest_heights(p: &[[f32; 2]], win: f32) -> Vec<f32> {
+    let mut q = p.to_vec();
+    q.sort_by(|a, b| a[0].total_cmp(&b[0]));
+    let mut out: Vec<[f32; 2]> = Vec::new();
+    for v in &q {
+        if q.iter().any(|w| (w[0] - v[0]).abs() <= win && w[1] > v[1]) {
+            continue;
         }
-        if k % 75 == 0 || k == LONG - 1 {
-            for (j, &s) in sinks.iter().enumerate().skip(6) {
-                let out = cook.cook(&doc.graph, &reg, s, t).expect("coze");
-                if let Some(Column::Vec2(p)) = out[0].as_stream().get("P") {
-                    let mean = p.iter().map(|q| q[1]).sum::<f32>() / p.len() as f32;
-                    let wx = p.iter().map(|q| q[0]).fold(f32::MIN, f32::max)
-                        - p.iter().map(|q| q[0]).fold(f32::MAX, f32::min);
-                    let d = submersions(p, j, t as f32);
-                    println!(
-                        "tique {k:3} banda {j}: media y {mean:8.4} · largura x {wx:6.3} · \
-                         submersao mediana {:7.4} (p10 {:7.4} · p90 {:7.4})",
-                        d[1], d[0], d[2]
-                    );
-                    trace[j - 6].push(mean);
+        // Um planalto emite vizinhos: fica o mais alto de cada grupo.
+        match out.last_mut() {
+            Some(l) if (v[0] - l[0]).abs() <= win => {
+                if v[1] > l[1] {
+                    *l = *v;
                 }
             }
+            _ => out.push(*v),
         }
     }
-    for (j, tr) in trace.iter().enumerate() {
-        let drift = tr.windows(2).map(|w| w[1] - w[0]).fold(0.0_f32, f32::max);
-        println!("banda {}: MAIOR subida entre amostras {drift:.4}", j + 6);
+    // ⛔ **AS PONTAS DA JANELA SÃO SEMPRE MÁXIMOS**, e foi assim que esta régua nasceu
+    // errada: uma senoide PURA — cujas cristas são idênticas por definição — mediu
+    // variedade `1,39`, porque a crista de bordo está cortada a meio. *O controlo que a
+    // apanhou é o caso em que a resposta certa é ZERO.* Fora a mais externa de cada lado.
+    if out.len() > 2 {
+        out.remove(0);
+        out.pop();
+    } else {
+        out.clear();
     }
-    // ⭐ **O que cada boia FAZ**, no regime já assentado: quanto ela sobe e desce, e quanto
-    // ela anda de lado. É isto que decide se o mar se VÊ a mexer.
-    let mut track: Vec<Vec<Vec<[f32; 2]>>> = vec![Vec::new(); 2];
-    for k in LONG..LONG + 300 {
-        let t = k as f64 * DT;
-        cook.advance_tick(&doc.graph, &reg, t).expect("avanca");
-        for (j, &s) in sinks.iter().enumerate() {
-            let o = cook.cook(&doc.graph, &reg, s, t).expect("coze");
-            if j >= 6
-                && k % 5 == 0
-                && let Some(Column::Vec2(p)) = o[0].as_stream().get("P")
-            {
-                track[j - 6].push(p.clone());
-            }
-        }
-    }
-    for (j, frames) in track.iter().enumerate() {
-        let n = frames[0].len();
-        let span = |axis: usize| {
-            let mut v: Vec<f32> = (0..n)
-                .map(|i| {
-                    let lo = frames.iter().map(|f| f[i][axis]).fold(f32::MAX, f32::min);
-                    let hi = frames.iter().map(|f| f[i][axis]).fold(f32::MIN, f32::max);
-                    hi - lo
-                })
-                .collect();
-            v.sort_by(f32::total_cmp);
-            (v[n / 2], v[n - 1])
-        };
-        let (my, xy) = span(1);
-        let (mx, xx) = span(0);
-        println!(
-            "banda {}: excursao VERTICAL mediana {my:.4} (max {xy:.4}) · HORIZONTAL mediana {mx:.4} (max {xx:.4})",
-            j + 6
-        );
-    }
+    out.into_iter().map(|c| c[1]).collect()
 }
 
-/// Uma banda de mar sozinha, com os números que se quiserem — o arnês da varredura.
+/// `(quantas cristas, espalhamento das alturas em fracção da AMPLITUDE da vaga)`.
 ///
-/// Devolve `(excursão vertical mediana, excursão horizontal mediana, submersão mediana)` no
-/// regime já assentado.
-fn one_sea(density: f32, grav: f32, drag: f32, speed: f32, waves: f32) -> (f32, f32, f32) {
-    let reg = registry();
-    let mut g = Graph::new();
-    let (_, lambda, _, draft, _) = sea_authored();
-    let amp = lambda * 0.1;
-    let src = g.add_node("motion.grid");
-    g.set_param(src, "rows", 2.0);
-    g.set_param(src, "cols", 128.0);
-    g.set_param(src, "gap_x", 7.0 / 127.0);
-    g.set_param(src, "gap_y", 0.3);
-    let up = g.add_node("motion.move");
-    g.set_param(up, "dy", 0.6);
-    let integ = g.add_node("motion.integrate");
-    let w = g.add_node("force.wind");
-    g.set_param(w, "angle", 270.0);
-    g.set_param(w, "strength", grav);
-    g.set_param(w, "gust", 0.0);
-    let b = g.add_node("force.buoyancy");
-    g.set_param(b, "level", 0.0);
-    g.set_param(b, "density", density);
-    g.set_param(b, "depth", draft);
-    g.set_param(b, "drag", drag);
-    g.set_param(b, "wave_amplitude", amp);
-    g.set_param(b, "wave_length", lambda);
-    g.set_param(b, "wave_speed", speed);
-    g.set_param(b, ph2d_node_force_buoyancy::WAVES, waves);
-    for (from, to, port, delayed) in [
-        (src, up, 0, false),
-        (up, integ, 0, false),
-        (integ, w, 0, true),
-        (w, b, 0, false),
-        (b, integ, 1, false),
-    ] {
-        g.connect(ph2d_nodegraph::graph::Edge {
-            from: (from, 0),
-            to: (to, port),
-            delayed,
-        })
-        .expect("liga");
+/// ⚠️ **Normalizado pela amplitude**, e não pela altura média: a média é uma coordenada de
+/// mundo (a banda vive a `y ≈ −6`), e dividir por ela mediria o quadrante.
+pub(super) fn crest_variety(p: &[[f32; 2]], win: f32, amp: f32) -> (usize, f32) {
+    let h = crest_heights(p, win);
+    if h.len() < 2 {
+        return (h.len(), 0.0);
     }
-    g.validate(&reg).expect("bem-tipada");
-
-    let mut cook = Cook::new();
-    let mut frames: Vec<Vec<[f32; 2]>> = Vec::new();
-    let mut last = Vec::new();
-    for k in 0..1200 {
-        let t = f64::from(k) / 60.0;
-        cook.advance_tick(&g, &reg, t).expect("avanca");
-        let o = cook.cook(&g, &reg, integ, t).expect("coze");
-        if let Some(Column::Vec2(p)) = o[0].as_stream().get("P") {
-            if k >= 900 && k % 5 == 0 {
-                frames.push(p.clone());
-            }
-            last = p.clone();
-        }
-    }
-    let n = frames[0].len();
-    let median_span = |axis: usize| {
-        let mut v: Vec<f32> = (0..n)
-            .map(|i| {
-                let lo = frames.iter().map(|f| f[i][axis]).fold(f32::MAX, f32::min);
-                let hi = frames.iter().map(|f| f[i][axis]).fold(f32::MIN, f32::max);
-                hi - lo
-            })
-            .collect();
-        v.sort_by(f32::total_cmp);
-        v[n / 2]
-    };
-    let t = 1199.0_f32 / 60.0;
-    let mut d: Vec<f32> = last
-        .iter()
-        .map(|q| {
-            ph2d_node_force_buoyancy::surface_at(q[0], t, 0.0, amp, lambda, speed, waves) - q[1]
-        })
-        .collect();
-    d.sort_by(f32::total_cmp);
-    // ⚠️ **A excursão horizontal não distingue ORBITAR de PARTIR.** Uma boia que vai e vem
-    // meia onda tem a mesma excursão de uma que anda meia onda e nunca volta; o que separa
-    // as duas é a deriva LÍQUIDA da banda.
-    let mean_x = |f: &Vec<[f32; 2]>| f.iter().map(|q| q[0]).sum::<f32>() / f.len() as f32;
-    let net = mean_x(frames.last().expect("frames")) - mean_x(&frames[0]);
-    (median_span(1), net, d[d.len() / 2])
+    let lo = h.iter().copied().fold(f32::MAX, f32::min);
+    let hi = h.iter().copied().fold(f32::MIN, f32::max);
+    (h.len(), (hi - lo) / amp)
 }
 
-/// SONDA — **a boia ENCAIXA na cava?** A varredura que escolhe o arrasto do mar.
-///
-/// ⚠️ **A lei da armadilha:** a boia escorrega para a cava até o empurrão em declive igualar
-/// o arrasto. Ela ENCAIXA se existir um declive onde isso acontece à velocidade da onda, ou
-/// seja se `densidade · declive_máximo ≥ arrasto · velocidade`. Encaixada, a excursão
-/// vertical dela é ZERO e a horizontal é a onda inteira — que foi o que se mediu na 1.ª
-/// versão (`0,0056` contra `4,92`).
-///
-/// ⚠️ **E o espectro multiplica o declive pelo número de camadas** (cada oitava tem metade da
-/// amplitude e metade do comprimento ⇒ o MESMO declive), então a fileira de 4 ondas precisa
-/// de ~4× o arrasto da de 1 — e é ela que manda.
-#[test]
-#[ignore = "sonda de medicao, nao gate"]
-fn measure_the_trapping_sweep() {
-    // A altura da vaga, que é o que a excursão vertical tem de reproduzir.
-    let (_, lambda, ..) = sea_authored();
-    let height = 2.0 * lambda * 0.1;
-    println!("altura da vaga = {height:.4}");
-    println!(
-        "densidade grav arrasto ondas | limiar | vertical (x altura) deriva_liquida submersao"
-    );
-    for (dens, grav) in [(12.0_f32, 4.0_f32), (6.0, 2.0)] {
-        for drag in [6.0_f32, 11.0, 12.8, 16.7, 20.0] {
-            for waves in [1.0_f32, 4.0] {
-                // O limiar da armadilha, pela lei: `densidade · declive_max · inv_len / vel`.
-                let slope = waves * std::f32::consts::TAU * 0.1;
-                let bar = dens * slope / (1.0 + slope * slope).sqrt();
-                let (v, net, s) = one_sea(dens, grav, drag, 1.0, waves);
-                println!(
-                    "{dens:8.1} {grav:4.1} {drag:7.1} {waves:5.1} | {bar:6.2} | {v:8.4} ({:4.2}) {net:13.4} {s:10.4}",
-                    v / height
-                );
-            }
-        }
-    }
+/// A superfície AUTORADA, amostrada fino — a VERDADE que as boias tentam desenhar.
+pub(super) fn surface_line(t: f32, waves: f32) -> Vec<[f32; 2]> {
+    let (amp, lambda, speed, ..) = sea_authored();
+    (0..1024)
+        .map(|i| {
+            let x = -3.5 + 7.0 * i as f32 / 1023.0;
+            [
+                x,
+                ph2d_node_force_buoyancy::surface_at(x, t, 0.0, amp, lambda, speed, waves),
+            ]
+        })
+        .collect()
 }
 
 /// Quantos tiques o mar precisa para ASSENTAR — medido, não escolhido: o mergulho inicial
 /// ainda domina no tique 150 (submersão mediana `0,29`), e a partir de ~375 a mediana já
 /// está a 5% do valor de equilíbrio. `600` dá margem sem esticar o relógio da suíte.
-const SEA_TICKS: usize = 600;
+pub(super) const SEA_TICKS: usize = 600;
 
 /// Corre só as duas bandas do mar, e devolve a pose delas em dois instantes.
 fn sea_poses(
@@ -374,6 +233,15 @@ fn the_drag_clears_the_trapping_threshold() {
         sea_trap_threshold(4.0) > sea_trap_threshold(1.0),
         "o espectro tinha de tornar a armadilha MAIS facil, nao menos"
     );
+    // ⭐⭐ **E o arrasto tem um SEGUNDO dono, que hoje é quem manda: o AMORTECIMENTO.** Uma
+    // boia sub-amortecida ressoa e inventa cristas — medido, a `ζ = 0,55` ela desenha `12`
+    // onde a superfície tem `8`, e a `ζ = 0,61` desce a `7`. ⚠️ A barra é o degrau MEDIDO
+    // entre esses dois, e não uma folga escolhida.
+    let zeta = sea_damping_ratio();
+    assert!(
+        zeta > 0.58,
+        "amortecimento {zeta:.4}: abaixo de ~0,58 a boia RESSOA e inventa cristas"
+    );
 }
 
 /// ⭐ **E as boias estão NA ÁGUA** — nem a voar por cima, nem afundadas.
@@ -388,17 +256,19 @@ fn the_drag_clears_the_trapping_threshold() {
 #[test]
 fn the_floats_are_in_the_water() {
     let (doc, reg, sinks) = scene();
-    let (_, _, _, draft, _) = sea_authored();
+    let (amp, _, _, draft, _) = sea_authored();
     let poses = sea_poses(&doc, &reg, &sinks[6..8], &[SEA_TICKS - 1]);
     let t = (SEA_TICKS - 1) as f32 * DT as f32;
     for (i, p) in poses.iter().enumerate() {
         let d = submersions(&p[0], 6 + i, t);
-        // ⚠️ **A barra NÃO é «dentro de água»**, e a primeira versão dela era: reprovou com
-        // `p10 = −0,0032`. Uma boia viva SALTA um pouco fora na descida da crista e é
-        // COBERTA na subida da seguinte — é isso que uma rolha faz, e uma barra que o
-        // proibisse estaria a pedir de volta o mar preso. O que se afirma é que ela nunca se
-        // afasta da superfície mais do que meio calado, para cada lado.
-        // Medido: `[−0,013 · 0,325 · 0,479]` e `[0,070 · 0,208 · 0,602]`, calado `0,5`.
+        // ⚠️ **A ESCALA da barra MUDOU em 2026-08-25, e a mudança é a cura do Bug #7.**
+        // Enquanto o calado era `0,5` contra uma vaga de `0,47`, «a boia está dentro de água»
+        // media-se em CALADOS. Hoje o calado é `0,20` — **mais pequeno que a vaga** —, e uma
+        // crista de `0,47` cobre por completo uma boia de `0,20`: é o que uma rolha faz, e uma
+        // barra em calados chamaria defeito a isso. A escala passa a ser `calado + vaga`, que
+        // são as duas únicas distâncias em jogo.
+        // Medido: banda 7 `[+0,031 · 0,305 · 0,516]`, banda 6 `[+0,027 · 0,107 · 0,206]`.
+        let deepest = draft + 2.0 * amp;
         assert!(
             d[0] > -0.5 * draft,
             "banda {}: o decil de cima esta' no AR ({:.4}, calado {draft:.4})",
@@ -406,18 +276,77 @@ fn the_floats_are_in_the_water() {
             d[0]
         );
         assert!(
-            d[2] < 1.5 * draft,
-            "banda {}: o decil de baixo AFUNDOU ({:.4}, calado {draft:.4})",
+            d[2] < deepest,
+            "banda {}: o decil de baixo AFUNDOU alem do que a vaga o pode enterrar \
+             ({:.4} contra {deepest:.4} = calado + vaga)",
             6 + i,
             d[2]
         );
         assert!(
-            d[1] > 0.0 && d[1] < draft,
-            "banda {}: a boia MEDIANA tinha de estar dentro de agua ({:.4})",
+            d[1] > 0.0 && d[1] < 2.0 * amp,
+            "banda {}: a boia MEDIANA tinha de estar dentro de agua e nao afundada ({:.4})",
             6 + i,
             d[1]
         );
     }
+}
+
+/// ⭐⭐⭐ **O GATE DO [Bug #7]: o ESPECTRO vê-se no que as boias DESENHAM.**
+///
+/// ⛔ **É o report do Enio virado número** — *«no 8 as cristas não parecem diferentes»*. Nenhum
+/// gate desta cena o podia ver: todos mediam se as boias **bóiam** (excursão, deriva,
+/// submersão) e nenhum media a **FORMA** que a fileira delas desenha.
+///
+/// ⚠️ **Mede as DUAS pontas, e a diferença é o defeito**: a variedade de alturas de crista
+/// que a superfície TEM, e a que as boias REPRODUZEM. Antes da cura: superfície `1,94`,
+/// boias **`0,0002`** — elas apagavam ~100% da estrutura. Depois: **`0,59`**.
+///
+/// ⚠️ **A CONTAGEM de cristas é a segunda régua, e sem ela a primeira mente:** uma boia
+/// sub-amortecida RESSOA e inventa cristas, o que INFLA a variedade sem desenhar o mar
+/// (medido a arrasto `12`: variedade `2,77` com **23** cristas onde a superfície tem `8`).
+/// *Uma régua de variedade sozinha premeia o ruído.*
+///
+/// ⚠️ E os dois **CONTROLOS** vivem aqui de propósito: a senoide pura tem de dar `0` nos dois
+/// lados (as cristas de um seno são idênticas **por definição** — foi este controlo que
+/// apanhou a régua a contar as pontas da janela como máximos, e a dar `1,39` onde a resposta
+/// certa é `0`).
+#[test]
+fn the_spectrum_is_visible_in_what_the_floats_draw() {
+    let (doc, reg, sinks) = scene();
+    let (amp, lambda, ..) = sea_authored();
+    let t = (SEA_TICKS - 1) as f32 * DT as f32;
+    let poses = sea_poses(&doc, &reg, &sinks[6..8], &[SEA_TICKS - 1]);
+    let win = |w: f32| ph2d_node_force_buoyancy::finest_wavelength(lambda, w) / 3.0;
+
+    // CONTROLO — a senoide pura, dos dois lados.
+    let (_, plain_surface) = crest_variety(&surface_line(t, 1.0), win(1.0), amp);
+    let (_, plain_floats) = crest_variety(&poses[0][0], win(1.0), amp);
+    assert!(
+        plain_surface < 0.05,
+        "CONTROLE: as cristas de um seno sao identicas por definicao ({plain_surface:.4})"
+    );
+    assert!(
+        plain_floats < 0.05,
+        "CONTROLE: a fileira de UMA onda tinha de desenhar cristas iguais ({plain_floats:.4})"
+    );
+
+    let waves = authored().2;
+    let (sn, sv) = crest_variety(&surface_line(t, waves), win(waves), amp);
+    let (fnum, fv) = crest_variety(&poses[1][0], win(waves), amp);
+    assert!(
+        sv > 1.5,
+        "CONTROLE: a superficie de {waves} ondas TEM estrutura ({sv:.4})"
+    );
+    assert!(
+        fv > 0.25,
+        "as boias desenham {fv:.4} de uma superficie com {sv:.4} -- o espectro nao se ve'"
+    );
+    // ⚠️ A contagem: nem mudas (a boia nao segue) nem a inventar (a boia ressoa).
+    assert!(
+        fnum * 2 >= sn && fnum <= sn * 2,
+        "as boias desenham {fnum} cristas onde a superficie tem {sn} -- \
+         a menos e' passa-baixo, a mais e' RESSONANCIA"
+    );
 }
 
 /// ⭐ **AS BOIAS RESOLVEM A ONDA MAIS FINA** — Nyquist, sobre os números autorados.

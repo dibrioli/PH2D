@@ -670,71 +670,103 @@ põe**:
 
 ---
 
-## Bug #7 — ⏳ ABERTO: a banda 8 (mar de 4 ondas) não mostra cristas diferentes — a BOIA é um filtro passa-baixo
+## Bug #7 — a banda 8 não mostrava cristas diferentes: a BOIA é um passa-baixo, e a cura NÃO era a que a nota previa
 
-**Estado:** ⏳ **ABERTO** — reportado pelo Enio em 2026-08-24 sobre a cena `=95` já curada
-(Bug #6), adiado por decisão dele (*«deixe isso para amanhã»*). O mecanismo abaixo está
-**medido**, e a alavanca está **nomeada**; o que falta é escolher o número e provar.
+**Estado:** ✅ **CURADO** em 2026-08-25 — o mecanismo medido, **três famílias de cura
+REFUTADAS** por medição antes de se achar a que funciona, e o gate que faltava construído.
+Aguarda smoke (cena `PH2D_GPU_COOK_DEMO=95`, fileira de baixo à direita).
 
 ### Sintoma
 
-*«no 8 as cristas não parecem diferentes»* — a fileira da direita do par do mar (`waves = 4`)
-lê-se igual à da esquerda (`waves = 1`), quando o par existe precisamente para mostrar a
-diferença entre uma senoide e um espectro.
+Report do Enio sobre a cena `=95` já curada do [Bug #6](#bug-6): *«no 8 as cristas não parecem
+diferentes»*. A fileira de **4 ondas** lia-se igual à de **1**, quando o par existe para mostrar
+exactamente essa diferença. Todos os gates verdes.
 
-### ⚠️ A medição já diz que a banda do espectro se mexe MENOS, e não mais variadamente
+### ⛔ A régua que faltava — e o controlo que a apanhou ERRADA à primeira
 
-Excursão vertical mediana no regime assentado, contra uma altura de vaga de `0,467`:
+Nenhum gate desta cena podia ver o defeito: todos mediam se as boias **bóiam** (excursão,
+deriva, submersão) e nenhum media a **FORMA** que a fileira delas desenha. A régua nova é a
+**variedade de alturas de crista**, normalizada pela amplitude da vaga.
 
-| banda | ondas | excursão vertical | fracção da vaga |
-|---|---|---|---|
-| 7 (esq.) | 1 | `0,377` | `0,81` |
-| 8 (dir.) | **4** | **`0,228`** | `0,49` |
+⚠️ **A primeira versão dela media `1,39` numa senoide PURA** — cujas cristas são idênticas *por
+definição*, logo a resposta certa é `0`. Causa: **as pontas da janela são sempre máximos
+locais**, e a crista de bordo está cortada a meio. *O controlo que a apanhou é o caso em que se
+sabe a resposta de antemão* — e sem ele toda a investigação teria corrido sobre ruído.
 
-⇒ *A banda que devia mostrar MAIS estrutura é a que se mexe menos.* Isso não é um defeito do
-espectro: é a boia a não conseguir seguir as ondas curtas.
+### O mecanismo, medido
 
-### O mecanismo, e ele é aritmética de um oscilador forçado
+Com a régua limpa, no que shipava:
 
-A boia é uma massa-mola: a rigidez é `densidade / calado` e a frequência própria é
+| | cristas | variedade |
+|---|---|---|
+| a superfície de 4 ondas TEM | `8` | `1,94` |
+| as boias DESENHAVAM | `2` | **`0,0002`** |
 
-```
-ω_n = √(densidade / calado) = √(6 / 0,5) = 3,46 rad/s = 0,55 Hz
-```
+⇒ **as boias apagavam ~100% da estrutura.** Elas são um oscilador forçado de frequência própria
+`ω_n = √(densidade/calado)`; as camadas do espectro estão em `λ/2ᵏ`, logo em frequências `2ᵏ`
+vezes maiores. A 4.ª camada respondia a **2,6%**.
 
-As camadas do espectro têm comprimento `λ/2ᵏ`, logo frequência `2ᵏ · velocidade/λ`:
+### ⛔⛔ TRÊS famílias de cura, REFUTADAS por medição
 
-| camada | comprimento | frequência | `f / f_n` | resposta |
-|---|---|---|---|---|
-| 1 | `2,33` | `0,43 Hz` | `0,78` | segue |
-| 2 | `1,17` | `0,86 Hz` | `1,56` | atenuada |
-| 3 | `0,58` | `1,71 Hz` | `3,1` | quase nada |
-| 4 | `0,29` | `3,43 Hz` | `6,2` | **~2,6%** |
+1. **Menos camadas** (a «saída barata» que a nota do bug mandava medir primeiro): ⛔ **`2` ondas
+   é IDÊNTICO a `1`** — variedade `0,0000` na própria superfície. A 2.ª harmónica tem derivada de
+   igual amplitude à fundamental, logo não cria máximos novos. *A saída barata não existia.*
+2. **O calado** (a alavanca que a nota NOMEAVA): ⛔ varrido em 18 combinações de
+   `calado × arrasto`, **em lado nenhum** as boias desenham as 8 cristas reais — ou dão `2`
+   (não seguem) ou `13`–`21` (**ressoam e inventam**). Mais arrasto mata a variedade; menos
+   arrasto faz ruído.
+3. ⇒ **Ao 2.º falhanço, a FAMÍLIA está refutada**, não as duas hipóteses: *afinar a boia* não
+   cura, porque **uma boia é um passa-baixo por construção**.
 
-⇒ **A boia é um passa-baixo, e ela apaga exactamente as cristas finas que o par existe para
-mostrar.** A superfície tem a estrutura; o que a desenha é que não a reproduz.
+### ⭐⭐ O que estava fora do espaço varrido, e é a cura
 
-### ⭐ A alavanca, e porque é ESTA e não a óbvia
+A varredura tinha um buraco: **só media ACIMA do limiar da armadilha** do Bug #6. Abaixo dele —
+com as boias TRAVADAS na onda — a linha desenha a superfície **quase exactamente** (`6` cristas,
+variedade `2,12` contra `1,94`, e **invariante ao calado**: `2,1188`–`2,1229` em toda a faixa,
+que é a assinatura de seguimento quase-estático).
 
-Subir `ω_n` pede subir a densidade **ou** baixar o calado — e as duas não são equivalentes:
+⇒ ⭐⭐⭐ **A lei: a boia só DESENHA o mar quando está TRAVADA nele, e travada quer dizer LEVADA.**
+Fidelidade e ficar-no-sítio são o mesmo botão a puxar para lados opostos — e é por isso que o
+Bug #6 e o Bug #7 são o mesmo eixo lido das duas pontas.
 
-- ⛔ **densidade não serve**: ela está dos DOIS lados. Ela sobe `ω_n` por `√`, mas sobe o
-  limiar da armadilha do Bug #6 **linearmente** — o arrasto teria de subir com ela, e o
-  arrasto abafa a boia. Anda-se para trás.
-- ⭐ **o CALADO serve**: `ω_n = √(densidade/calado)` sobe quando ele desce, e ⚠️ **o limiar da
-  armadilha não o contém** (`densidade · declive · inv_len / velocidade`) — logo baixar o
-  calado compra resposta **sem** reabrir o Bug #6. Com calado `0,05`, `ω_n = 1,74 Hz`.
+**A saída é ABRANDAR a vaga.** Ela move toda camada para baixo em frequência contra uma boia de
+frequência própria fixa — o único eixo que melhora as quatro de uma vez —, e a armadilha
+mantém-se fechada porque o limiar dela (`∝ 1/velocidade`) ainda cabe no arrasto disponível.
 
-⚠️ **Duas cercas a medir antes de escrever o número:**
-1. A `1,74 Hz` a **3.ª camada (`1,71 Hz`) entra em RESSONÂNCIA**, e o amortecimento é
-   `ζ = arrasto·sub/(2ω_n) ≈ 0,17` — sub-amortecido, ou seja ela seria **amplificada**, não só
-   seguida. Uma boia que exagera uma camada não é mais fiel que uma que a ignora.
-2. Um calado pequeno encolhe a faixa em que a submersão varia, e é ela que espalha as boias
-   numa banda em vez de as pregar a um fio (é o que a cena `=4` diz do `depth = 4` dela). O
-   gate `the_floats_are_in_the_water` mede em unidades de calado e a barra dele acompanha —
-   ⚠️ **confirme que ele ainda separa alguma coisa depois de mexer**, senão vira tautologia.
+| | antes | depois |
+|---|---|---|
+| velocidade da vaga | `1,00` | **`0,50`** |
+| arrasto | `11,15` | **`20,00`** |
+| calado | `0,50` | **`0,20`** |
+| cristas desenhadas (a superfície tem 8) | `2` | **`7`** |
+| variedade | `0,0002` | **`0,59`** |
+| deriva líquida em 5 s | `0,024` | `0,206` (barra: `0,3`) |
 
-⚠️ **E há uma terceira saída, mais barata, que tem de ser medida ANTES das outras duas:**
-baixar o **número de camadas** de `4` para `2` ou `3`. A 4.ª camada tem `1/8` da amplitude e é
-invisível de qualquer maneira; se o par se lê com `2`, o problema dissolve-se sem tocar na
-física da boia. *Meça o que o olho separa antes de construir o que o segue.*
+⛔⛔ **E o arrasto de que a cena precisa está NO TECTO do que o artista consegue digitar** (o
+slider pára em `20`): a `18` a linha inventa `12` cristas onde há `8`; só a `20` desce a `7`.
+*Um quinto estrato, ou um mar mais rápido, pediriam um arrasto inalcançável pela UI* — a cena
+está na borda da caixa, e isso está escrito onde alguém o leia antes de mexer.
+
+### ⚠️ E uma afirmação minha ENCOLHEU por mutação
+
+O doc que eu escrevi dizia que o **calado** era a alavanca. ⛔ **A prova de mutação refutou-o:**
+repor `0,5` deixa **todos os gates verdes**, espectro visível incluído (`8` cristas, variedade
+`0,42`). O calado fica em `0,20` por ser **40% mais** daquilo que o Enio disse não ver — é ganho
+secundário, não mecanismo. ⛔ **E a barra do gate NÃO foi apertada para matar essa mutação:**
+`0,42` *é* visível, e calibrar a régua até ela separar duas configurações boas seria ajustá-la à
+configuração em vez de à verdade.
+
+⚠️ Preço registado: a boia passa a ser **mais pequena que a vaga** (`0,20` contra `0,47`), logo
+uma crista chega a cobri-la — o que obrigou o gate `the_floats_are_in_the_water` a trocar a
+escala de CALADOS para `calado + vaga`. *Uma escolha de conforto que muda a escala de uma régua
+não é conforto.*
+
+### O que ficou construído
+
+- `the_spectrum_is_visible_in_what_the_floats_draw` — a variedade nas duas pontas (o que a
+  superfície TEM e o que as boias DESENHAM), com **dois controlos de senoide pura** e a
+  **CONTAGEM** de cristas ao lado. ⚠️ *Uma régua de variedade sozinha premeia o ruído*: uma boia
+  que ressoa infla a variedade sem desenhar o mar (`2,77` com `23` cristas onde há `8`).
+- `the_drag_clears_the_trapping_threshold` ganha a segunda metade: o **amortecimento** derivado
+  (`ζ = arrasto·submersão / 2ω_n`), com a barra no degrau MEDIDO entre `0,55` (ressoa) e `0,61`.
+- 4 mutações, **3 mortas e 1 sobreviva** — e a sobreviva é o achado acima.

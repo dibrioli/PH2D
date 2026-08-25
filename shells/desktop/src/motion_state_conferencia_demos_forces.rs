@@ -13,12 +13,17 @@
 //! mover alguma coisa: a fonte entra em `rest`, e a cadeia de forças vive DENTRO do laço
 //! `pre`. Ver [`sim_chain`].
 //!
-//! ⚠️ **A fileira do mar não é uma nuvem: é uma FILEIRA DE BOIAS**, e ela leva mais duas
-//! coisas que as outras não levam — **gravidade** ([`GRAVITY`]) e um **arrasto derivado**
-//! ([`SEA_TRAP_MARGIN`]). As duas nasceram do mesmo report do Enio (*«os exemplos do mar não
-//! parecem mar mas sim partículas ao vento»*), e cada uma é metade da causa: sem gravidade o
-//! empuxo LANÇA tudo; com pouco arrasto a boia ENCAIXA na cava e viaja com a onda. Os dois
-//! defeitos leem-se igual — peças a atravessar a banda sem subir nem descer.
+//! ⚠️ **A fileira do mar não é uma nuvem: é uma FILEIRA DE BOIAS**, e ela leva coisas que as
+//! outras não levam — **gravidade** ([`GRAVITY`]), um **arrasto no tecto do digitável**
+//! ([`SEA_DRAG_TYPEABLE_MAX`]) e uma **vaga lenta** ([`SEA_SPEED`]). Cada uma saiu de um
+//! report do Enio sobre esta mesma fileira, e as três curam defeitos DIFERENTES que se leem
+//! iguais no ecrã:
+//!
+//! | report | causa | leitura |
+//! |---|---|---|
+//! | *«partículas ao vento»* | sem gravidade: o empuxo LANÇA tudo | as peças sobem e não voltam |
+//! | *(o mesmo report)* | pouco arrasto: a boia ENCAIXA na cava | a banda desliza rígida de lado |
+//! | *«as cristas não parecem diferentes»* | a boia é um **passa-baixo** | o mar de 4 ondas lê-se igual ao de 1 |
 
 use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
@@ -52,9 +57,28 @@ const WAVES: f32 = 4.0;
 const GRAVITY: f32 = 2.0;
 /// A densidade da água contra a [`GRAVITY`]: `6` contra `2` ⇒ assenta a um terço do calado.
 const SEA_DENSITY: f32 = 6.0;
-/// **O calado.** Fundo de propósito: a rampa de submersão é o que espalha as boias numa
-/// FAIXA em vez de as pregar todas a um fio de cabelo.
-const SEA_DRAFT: f32 = 0.5;
+/// **O CALADO** — `0,20`, e ⛔ **ele NÃO é o mecanismo do [Bug #7], ao contrário do que a
+/// nota do bug previa e do que esta linha escreveu na primeira tentativa.**
+///
+/// ⚠️ **A prova de mutação refutou-o:** repor `0,5` aqui deixa **todos os gates verdes**,
+/// espectro visível incluído. Quem cura o Bug #7 é a VELOCIDADE ([`SEA_SPEED`]) mais o
+/// AMORTECIMENTO ([`SEA_DRAG_TYPEABLE_MAX`]); o calado é um **ganho secundário**, medido:
+///
+/// | calado | cristas desenhadas (a superfície tem 8) | variedade |
+/// |---|---|---|
+/// | `0,5` | **8** | `0,42` |
+/// | **`0,20`** | `7` | **`0,59`** |
+///
+/// Fica em `0,20` porque a queixa do Enio era sobre a **variedade** das cristas, e `0,59` é
+/// 40% mais do que `0,42` daquilo que ele disse não ver. ⚠️ Preço: a boia passa a ser **mais
+/// pequena que a vaga** (`0,20` contra `0,47`), logo uma crista chega a cobri-la — foi isso
+/// que obrigou o gate `the_floats_are_in_the_water` a trocar a escala de CALADOS para
+/// `calado + vaga`. *Uma escolha de conforto que muda a escala de uma régua não é conforto.*
+///
+/// ⛔ **Não suba a barra do gate para matar essa mutação:** `0,42` **é** visível, e apertar a
+/// régua até ela distinguir duas configurações boas seria calibrar o gate à configuração em
+/// vez de à verdade.
+const SEA_DRAFT: f32 = 0.20;
 
 /// **O ARRASTO, e ele é DERIVADO de uma armadilha** — o segundo defeito que o smoke do Enio
 /// devolveu, e o mais interessante dos dois.
@@ -83,20 +107,47 @@ const SEA_DRAFT: f32 = 0.5;
 /// | 12 | 4 | `11,15` | preso (deriva `4,92`) | livre (deriva `1,72`) |
 /// | 6 | 4 | `5,57` | livre | livre (deriva **`0,025`**) |
 ///
-/// ⚠️ **A margem é `2×` e ela CUSTA vida:** mais arrasto afasta da armadilha e ao mesmo tempo
-/// abafa a boia (a `20` a excursão vertical cai para `0,29` da altura da vaga). `2×` é onde a
-/// deriva já é desprezável (`0,07` em 5 s) e a boia ainda faz `0,82` da vaga.
-const SEA_TRAP_MARGIN: f32 = 2.0;
+/// ⭐⭐ **E O ARRASTO DEIXOU DE SER DERIVADO DELA em 2026-08-25** — a armadilha passou a ser
+/// o PISO, e quem manda no número é o TOQUE da boia ([Bug #7]). Um arrasto pouco acima do
+/// limiar deixa a boia sub-amortecida: ela não segue a superfície, ela RESSOA — e uma boia
+/// que ressoa **inventa cristas**. Medido no ponto que shipa (calado `0,20`, velocidade
+/// `0,50`), contra as **8** cristas que a superfície de facto tem:
+///
+/// | arrasto | ζ | cristas desenhadas | variedade |
+/// |---|---|---|---|
+/// | `12` | `0,37` | **23** | `2,77` |
+/// | `14` | `0,43` | **17** | `1,41` |
+/// | `16` | `0,49` | **20** | `1,79` |
+/// | `18` | `0,55` | **12** | `0,59` |
+/// | **`20`** | **`0,61`** | **`7`** | `0,59` |
+///
+/// ⛔⛔ **O arrasto de que a cena precisa está NO TECTO do que o artista consegue digitar**
+/// (o slider do `Drag` pára em `20`), e isso é um FACTO MEDIDO e não um conforto: só ali a
+/// contagem de cristas desce ao que existe. ⇒ um quinto estrato, ou um mar mais rápido,
+/// pediriam um arrasto **inalcançável pela UI** — a cena está na borda da caixa, e é bom que
+/// isso esteja escrito onde alguém o leia antes de mexer.
+const SEA_DRAG_TYPEABLE_MAX: f32 = 20.0;
 
-/// O limiar da armadilha para um mar de `waves` camadas — ver [`SEA_TRAP_MARGIN`].
+/// O limiar da armadilha para um mar de `waves` camadas — hoje o **PISO** do arrasto.
+#[cfg(test)]
 pub(crate) fn sea_trap_threshold(waves: f32) -> f32 {
     let slope = waves * std::f32::consts::TAU * SEA_STEEPNESS;
     SEA_DENSITY * slope / (1.0 + slope * slope).sqrt() / SEA_SPEED
 }
 
-/// O arrasto que a cena autora: acima do limiar da fileira mais exigente (a de 4 ondas).
+/// O arrasto que a cena autora — ver [`SEA_DRAG_TYPEABLE_MAX`].
 pub(crate) fn sea_drag() -> f32 {
-    SEA_TRAP_MARGIN * sea_trap_threshold(WAVES)
+    SEA_DRAG_TYPEABLE_MAX
+}
+
+/// **A razão de amortecimento que esse arrasto compra**, `ζ = arrasto · submersão / 2ω_n`.
+///
+/// ⚠️ **Derivada, para um gate a poder afirmar** — e a barra dele sai da tabela acima: a
+/// `18` (`ζ = 0,55`) a boia ainda inventa 12 cristas; a `20` (`ζ = 0,61`) desce a 7.
+#[cfg(test)]
+pub(crate) fn sea_damping_ratio() -> f32 {
+    let wn = (SEA_DENSITY / SEA_DRAFT).sqrt();
+    sea_drag() * (GRAVITY / SEA_DENSITY) / (2.0 * wn)
 }
 
 /// A largura da banda de boias, e quantas cristas ela mostra.
@@ -122,7 +173,13 @@ const SEA_WAVELENGTH: f32 = SEA_SPAN / SEA_CRESTS;
 /// por escolha artística, e *uma segunda cena de mar não é onde essa decisão se re-abre*.
 const SEA_STEEPNESS: f32 = 0.1;
 const SEA_AMPLITUDE: f32 = SEA_WAVELENGTH * SEA_STEEPNESS;
-const SEA_SPEED: f32 = 1.0;
+/// **A VELOCIDADE da vaga**, e ela é a outra metade da cura do [Bug #7].
+///
+/// ⚠️ **Abrandar o mar move TODA camada para baixo em frequência** contra uma boia cuja
+/// frequência própria é fixa — é o único eixo que melhora as quatro camadas de uma vez. O
+/// preço está no outro lado: o limiar da armadilha é `∝ 1/velocidade`, então cada corte na
+/// velocidade exige mais arrasto, e o arrasto tem tecto. `0,50` é onde os dois cabem.
+const SEA_SPEED: f32 = 0.50;
 
 /// **Quantas BOIAS**, e o número vem de Nyquist.
 ///
@@ -438,3 +495,7 @@ mod tests;
 #[cfg(test)]
 #[path = "motion_state_conferencia_demos_forces_sea_tests.rs"]
 mod sea_tests;
+
+#[cfg(test)]
+#[path = "motion_state_conferencia_demos_forces_sea_probes.rs"]
+mod sea_probes;

@@ -465,6 +465,10 @@ rfd = "0.15"
 # um nó é uma folha e não importa do irmão, então a shell é o único sítio que vê os três.
 ph2d-node-motion-emitter = { path = "../../crates/ph2d-node-motion-emitter" }
 ph2d-motion-region = { path = "../../crates/ph2d-motion-region" }
+ph2d-node-force-attractor = { path = "../../crates/ph2d-node-force-attractor" }
+ph2d-node-force-buoyancy = { path = "../../crates/ph2d-node-force-buoyancy" }
+ph2d-node-force-vortex = { path = "../../crates/ph2d-node-force-vortex" }
+ph2d-node-force-wind = { path = "../../crates/ph2d-node-force-wind" }
 ph2d-node-motion-distribute-poisson = { path = "../../crates/ph2d-node-motion-distribute-poisson" }
 ph2d-node-motion-voronoi = { path = "../../crates/ph2d-node-motion-voronoi" }
 ph2d-node-motion-trail = { path = "../../crates/ph2d-node-motion-trail" }

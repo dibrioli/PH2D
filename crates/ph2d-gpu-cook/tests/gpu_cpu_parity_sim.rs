@@ -1356,6 +1356,51 @@ fn one_step_of_attractor_and_vortex_matches_the_cpu() {
     assert_parity("attractor+vortex one step", &cpu[2], &gpu_out);
 }
 
+/// ⭐ **O PERFIL DE DISTÂNCIA do atrator, nos DOIS lados** (doc 89, folha 02).
+///
+/// ⚠️ **A fixture escolhe os três knobs ligados AO MESMO tempo, e a razão é que eles são
+/// ramos:** o `peak` acima do `inner` troca a rampa única por duas, e o `reverse` inverte o
+/// sinal num pedaço. Um fixture com um só ligado deixaria os outros dois ramos por
+/// atravessar — e o `select` do WGSL e o `if` do Rust são exactamente onde duas
+/// implementações da mesma lei se separam.
+#[test]
+#[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
+fn the_attractors_distance_profile_matches_the_cpu() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let reg = registry();
+    let (g, _, out) = sim_chain(
+        &reg,
+        &[(
+            "force.attractor",
+            &[
+                ("target_x", 1.25),
+                ("target_y", -0.75),
+                ("strength", 55.0),
+                ("radius", 9.5),
+                ("curve", 1.0),
+                ("repel", 0.0),
+                // O perfil: uma janela que começa longe do centro, um pico no meio dela, e
+                // uma inversão que apanha só o miolo.
+                (ph2d_node_force_attractor::INNER, 1.5),
+                (ph2d_node_force_attractor::PEAK, 4.0),
+                (ph2d_node_force_attractor::REVERSE, 2.5),
+            ],
+        )],
+    );
+    let cpu = cpu_ticks(&g, &reg, out, 2);
+    let gpu_out = gpu_ticks(&gpu, &g, &reg, out, 2, 3);
+    let moved = max_move(&cpu[0], &cpu[2]);
+    assert!(
+        moved > MUST_MOVE,
+        "a fixture tem de integrar de facto: {moved}"
+    );
+    eprintln!("perfil de distancia moveu o campo em {moved}");
+    assert_parity("attractor distance profile", &cpu[2], &gpu_out);
+}
+
 #[test]
 #[ignore = "requires a GPU adapter; run with --ignored on a dev machine"]
 fn one_step_of_curl_matches_the_cpu() {

@@ -28,9 +28,11 @@ use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, Param
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod accum;
+mod params_ui;
+use params_ui::{PARAM_GATES_ABOVE, PARAM_HARD_MAX, PARAM_HARD_MIN, PARAM_HINTS};
 mod noise;
 mod trig;
-use accum::{add_accel, falloff_at};
+use accum::{add_accel, falloff_at, vec2_at};
 
 /// O teto de oitavas — o mesmo do `force.curl`: o laço é real e o kernel de GPU o
 /// percorre por elemento, então ele é um limite de CUSTO, não de gosto.
@@ -38,6 +40,32 @@ const MAX_OCTAVES: u32 = 4;
 use trig::cos_sin_cycles;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
+
+/// A chave do param **do modo**: uma aceleração, ou uma velocidade-ALVO.
+pub const MODE: &str = "mode";
+/// A chave do param **da resistência do ar** — quão depressa o elemento alcança o alvo.
+pub const AIR_RESIST: &str = "air_resist";
+
+/// Os rótulos de [`MODE`], na ordem em que o número os indexa.
+///
+/// ## ⭐ `Target Velocity` — o vento que SATURA (doc 89, folha 02)
+///
+/// A referência (POP Wind, `Wind vec3` + `Air Resistance`; Niagara Wind Force, *«só acelera
+/// até a partícula igualar o vento»*) não descreve uma aceleração constante: ela descreve
+/// **`a = resistência · (alvo − v)`**, que empurra cada vez menos à medida que o elemento
+/// se aproxima da velocidade do vento e **para** quando a alcança. Uma aceleração constante
+/// acelera para sempre — uma folha ao vento não faz isso.
+///
+/// ⚠️ **A composição que a célula dava como exacta É exacta, e o que ela não garante é a
+/// concordância:** `force.wind(strength = k·|alvo|)` + `force.drag(coefficient = k)` soma
+/// `k·alvo − k·v` termo a termo. Mas são **dois nós**, e cada um tem o SEU campo `falloff`
+/// — pôr máscaras diferentes nos dois quebra a identidade em silêncio, e nada na tela diz
+/// que os dois números tinham de ser o mesmo. Aqui há um campo só porque há um nó só.
+///
+/// ⚠️ **O irmão `force.vortex` tem o MESMO par de params, com os mesmos rótulos** (a
+/// referência põe o `Treat as Wind` no POP Axis Force também). A lei é uma linha de
+/// aritmética em cada um — o que se partilha é o VOCABULÁRIO, e há gate a compará-lo.
+pub const MODE_LABELS: &[&str] = &["Force", "Target Velocity"];
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -95,6 +123,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "roughness",
             default: 0.5,
         },
+        // **O MODO** (doc 89, folha 02) — `Force` é o de sempre, ao bit. Ver [`MODE_LABELS`].
+        ParamSpec {
+            name: MODE,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: AIR_RESIST,
+            default: 1.0,
+        },
         ParamSpec {
             name: "loop_period",
             default: 0.0,
@@ -144,7 +181,13 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         }\n\
         let wd_var = params.gust * wd_n;\n\
         let wd_mag = params.strength * (1.0 + wd_var) * read_falloff(i);\n\
-        write_accel(i, read_accel(i) + vec2<f32>(wd_dir.x * wd_mag, wd_dir.y * wd_mag));\n",
+        var wd_c = vec2<f32>(wd_dir.x * wd_mag, wd_dir.y * wd_mag);\n\
+        if (i32(wd_round(params.mode)) == 1) {\n\
+        \x20   let wd_v = read_vel(i);\n\
+        \x20   let wd_k = max(params.air_resist, 0.0);\n\
+        \x20   wd_c = vec2<f32>((wd_c.x - wd_v.x) * wd_k, (wd_c.y - wd_v.y) * wd_k);\n\
+        }\n\
+        write_accel(i, read_accel(i) + wd_c);\n",
     wgsl_lib: "\
         const WD_MAX_OCTAVES: f32 = 4.0;\n\
         fn wd_round(x: f32) -> f32 {\n\
@@ -235,6 +278,13 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [1.0; 4],
             port: 0,
         },
+        ColumnBinding {
+            column: "vel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
     ],
     params: &[
         "angle",
@@ -247,6 +297,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "lacunarity",
         "roughness",
         "loop_period",
+        MODE,
+        AIR_RESIST,
     ],
     count_law: None,
     variant_by_param: None,
@@ -282,6 +334,8 @@ impl NodeOp for ForceWind {
         };
         let (t_a, t_b, blend) =
             ph2d_fbm::loop_times(ctx.playhead() as f32, ctx.param("loop_period"));
+        let target_mode = ctx.param(MODE).round() as i32 == 1;
+        let air_resist = ctx.param(AIR_RESIST).max(0.0);
         let out = {
             let input = ctx.input(0);
             // Pure per-instance map → parallel above the threshold
@@ -301,7 +355,19 @@ impl NodeOp for ForceWind {
                 };
                 let variation = gust * n;
                 let mag = strength * (1.0 + variation) * falloff_at(input, i);
-                [dir_x * mag, dir_y * mag]
+                if !target_mode {
+                    // O caminho de sempre, sem uma multiplicação a mais no meio.
+                    return [dir_x * mag, dir_y * mag];
+                }
+                // `a = resistência · (alvo − v)`: o vento é a VELOCIDADE que se persegue.
+                // ⚠️ O `falloff` já entrou no `mag`, então ele escala o ALVO e não a
+                // resistência — mascarar a resistência faria a máscara mudar *quão depressa*
+                // em vez de *quanto*, e um elemento fora da máscara nunca pararia de acelerar.
+                let v = vec2_at(input, "vel", i, [0.0, 0.0]);
+                [
+                    (dir_x * mag - v[0]) * air_resist,
+                    (dir_y * mag - v[1]) * air_resist,
+                ]
             });
             add_accel(input, &contrib)
         };
@@ -327,6 +393,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, MODE_GATES);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_hard_min(MANIFEST.id, PARAM_HARD_MIN);
     reg.register_param_gates_above(MANIFEST.id, PARAM_GATES_ABOVE);
@@ -335,146 +402,6 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_dense_window(MANIFEST.id);
     Ok(())
 }
-
-use ph2d_node_registry::{ParamGateAbove, ParamUiHint, ParamWidget};
-
-/// **A LEI DA SEGUNDA OITAVA** (doc 90 §1 — a caça aos knobs mortos, 2026-08-22).
-///
-/// ⚠️ `lacunarity` e `roughness` são os dois números que descrevem **a relação entre oitavas
-/// consecutivas**, e o `ph2d-fbm` aplica-os (`px *= lacunarity`, `amp *= gain`) **depois** de
-/// somar a oitava corrente. Com `octaves = 1` — o **default deste nó** — não existe oitava
-/// seguinte, e os dois são provadamente inertes: mexê-los não muda um bit da saída.
-///
-/// O sintoma media-se no painel do nó recém-largado: **dois sliders de aspecto fractal, lado a
-/// lado, ambos mudos**. E é a pior forma do defeito — *dois knobs inertes vizinhos ensinam que
-/// o BLOCO de ruído não funciona, e não que falta subir um terceiro número primeiro.*
-///
-/// ⚠️ Um `ParamGate` não serviria: ele arredonda a inteiro e compara com uma lista de índices
-/// de enum, e `octaves` é uma grandeza. A pergunta *"apareça quando isto passar de 1"* é
-/// exactamente o [`ParamGateAbove`].
-/// **O ângulo é CÍCLICO, e é por isso que o piso é negativo** — bloco Z, doc 91.
-///
-/// ⚠️ **A cena `=24` autora `angle = −90` e o campo digitava `[0, 360]`.** O nó honra o valor
-/// perfeitamente (`frac(p) = p − p.floor()` leva `−0,25` a `0,75`, então `−90° ≡ 270°`), mas o
-/// artista não conseguia escrevê-lo — e escrever `−90` para *"para baixo"* é o gesto natural de
-/// quem vem de qualquer outra ferramenta. Acusação da sonda
-/// `what_the_corpus_authors_and_no_one_can_type`.
-///
-/// **De que recurso é este teto: do SIGNIFICADO** (`CLAUDE.md` §0.0), não da precisão. Uma volta
-/// inteira esgota as direções: `450°` desenha o mesmo vento que `90°`, então um campo que
-/// aceitasse mais estaria a oferecer uma escolha que não existe — a mesma lei do
-/// `sim.spawn::probability`, que para em `1` porque acima dali todo nascimento acontece.
-static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registry::ParamHardMax {
-    param: "angle",
-    max: 360.0,
-}];
-
-/// A volta NEGATIVA — a metade que faltava.
-static PARAM_HARD_MIN: &[ph2d_node_registry::ParamHardMin] = &[ph2d_node_registry::ParamHardMin {
-    param: "angle",
-    min: -360.0,
-}];
-
-static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
-    ParamGateAbove {
-        param: "lacunarity",
-        when: "octaves",
-        above: 1.0,
-    },
-    ParamGateAbove {
-        param: "roughness",
-        when: "octaves",
-        above: 1.0,
-    },
-];
-
-/// Param UI hints (M1.P1).
-static PARAM_HINTS: &[ParamUiHint] = &[
-    ParamUiHint {
-        param: "octaves",
-        label: "Octaves",
-        min: 1.0,
-        max: 4.0,
-        step: 1.0,
-        widget: ParamWidget::IntSlider,
-    },
-    ParamUiHint {
-        param: "type",
-        label: "Noise Type",
-        min: 0.0,
-        max: 2.0,
-        step: 1.0,
-        widget: ParamWidget::Enum {
-            labels: &["fBm", "Turbulence", "Ridged"],
-        },
-    },
-    ParamUiHint {
-        param: "lacunarity",
-        label: "Lacunarity",
-        min: 1.0,
-        max: 4.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "roughness",
-        label: "Roughness",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "loop_period",
-        label: "Loop Period",
-        min: 0.0,
-        max: 20.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "angle",
-        label: "Angle",
-        min: 0.0,
-        max: 360.0,
-        step: 1.0,
-        widget: ParamWidget::Angle,
-    },
-    // ⚠️ O curso do arrasto é **uma volta**, de propósito, e o teto digitável abre a volta
-    // NEGATIVA — ver [`PARAM_HARD_MIN`].
-    ParamUiHint {
-        param: "strength",
-        label: "Strength",
-        min: 0.0,
-        max: 40.0,
-        step: 0.1,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "gust",
-        label: "Gust",
-        min: 0.0,
-        max: 1.0,
-        step: 0.01,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "gust_freq",
-        label: "Gust Frequency",
-        min: 0.1,
-        max: 5.0,
-        step: 0.05,
-        widget: ParamWidget::Slider,
-    },
-    ParamUiHint {
-        param: "seed",
-        label: "Seed",
-        min: 0.0,
-        max: 100.0,
-        step: 1.0,
-        widget: ParamWidget::Seed,
-    },
-];
 
 #[cfg(test)]
 mod tests {
@@ -640,3 +567,14 @@ mod tests {
         assert!(reg.resolve(MANIFEST.id).is_some());
     }
 }
+
+/// A resistência só existe no modo que a lê.
+static MODE_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
+    param: AIR_RESIST,
+    when: MODE,
+    values: &[1],
+}];
+
+#[cfg(test)]
+#[path = "target_tests.rs"]
+mod target_tests;

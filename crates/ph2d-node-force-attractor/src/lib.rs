@@ -27,6 +27,9 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
 mod accum;
 use accum::{add_accel, falloff_at, vec2_at, vec2_col};
+mod profile;
+use profile::Profile;
+pub use profile::{INNER, PEAK, REVERSE};
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -90,6 +93,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         },
         // **O TETO DA ANTECIPAÇÃO**, em segundos. `0` = mirar onde o alvo ESTÁ, que é
         // o que este nó sempre fez. Ver [`LEAD`].
+        // **O PERFIL DE DISTÂNCIA** (doc 89, folha 02) — ver [`profile`]. Os três a `0`
+        // devolvem a rampa de sempre, ao bit.
+        ParamSpec {
+            name: INNER,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: PEAK,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: REVERSE,
+            default: 0.0,
+        },
         ParamSpec {
             name: "lead",
             default: 0.0,
@@ -222,16 +239,27 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     wgsl: "\
         let at_radius = max(params.radius, AT_DEAD_ZONE);\n\
         let at_sign = select(1.0, -1.0, params.repel >= 0.5);\n\
+        let at_lo = max(at_finite(params.inner), AT_DEAD_ZONE);\n\
+        let at_peak = max(at_finite(params.peak), 0.0);\n\
+        let at_rev = max(at_finite(params.reverse), 0.0);\n\
         let at_p = read_in_P(i);\n\
         let at_dx = params.target_x - at_p.x;\n\
         let at_dy = params.target_y - at_p.y;\n\
         let at_d = sqrt(at_dx * at_dx + at_dy * at_dy);\n\
         var at_c = vec2<f32>(0.0, 0.0);\n\
-        if (at_d >= AT_DEAD_ZONE && at_d <= at_radius) {\n\
-        \x20   let at_w = at_curve(\n\
-        \x20       i32(at_round(params.curve)),\n\
-        \x20       clamp(1.0 - at_d / at_radius, 0.0, 1.0));\n\
-        \x20   let at_mag = params.strength * at_w * at_sign * read_in_falloff(i);\n\
+        if (at_d >= at_lo && at_d <= at_radius) {\n\
+        \x20   var at_s = clamp(1.0 - at_d / at_radius, 0.0, 1.0);\n\
+        \x20   if (at_peak > at_lo) {\n\
+        \x20       if (at_d <= at_peak) {\n\
+        \x20           at_s = clamp((at_d - at_lo) / (at_peak - at_lo), 0.0, 1.0);\n\
+        \x20       } else {\n\
+        \x20           let at_span = at_radius - at_peak;\n\
+        \x20           at_s = clamp(select(1.0, (at_radius - at_d) / at_span, at_span > 0.0), 0.0, 1.0);\n\
+        \x20       }\n\
+        \x20   }\n\
+        \x20   let at_w = at_curve(i32(at_round(params.curve)), at_s);\n\
+        \x20   let at_turn = select(1.0, -1.0, at_d < at_rev);\n\
+        \x20   let at_mag = params.strength * at_w * at_sign * at_turn * read_in_falloff(i);\n\
         \x20   at_c = vec2<f32>((at_dx / at_d) * at_mag, (at_dy / at_d) * at_mag);\n\
         }\n\
         write_accel(i, read_in_accel(i) + at_c);\n",
@@ -240,6 +268,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         fn at_round(x: f32) -> f32 {\n\
             // Rust f32::round = half away from zero (WGSL round is half-even).\n\
             return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
+        fn at_finite(x: f32) -> f32 {\n\
+            // O espelho do `is_finite()` da CPU: um param dirigido por fio pode ser NaN,\n\
+            // e um NaN aqui envenenaria o `accel` de toda a cadeia.\n\
+            return select(0.0, x, x == x && abs(x) < 3.4e38);\n\
         }\n\
         fn at_curve(kind: i32, s: f32) -> f32 {\n\
             if (kind == 0) { return s; }\n\
@@ -271,7 +304,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         },
     ],
     params: &[
-        "target_x", "target_y", "strength", "radius", "curve", "repel",
+        "target_x", "target_y", "strength", "radius", "curve", "repel", INNER, PEAK, REVERSE,
     ],
     count_law: None,
     variant_by_param: None,
@@ -301,6 +334,14 @@ impl NodeOp for ForceAttractor {
         let radius = ctx.param("radius").max(DEAD_ZONE);
         let kind = ctx.param("curve").round() as i32;
         let sign = if ctx.param("repel") >= 0.5 { -1.0 } else { 1.0 };
+        let profile = Profile::of(
+            ctx.param(INNER),
+            ctx.param(PEAK),
+            ctx.param(REVERSE),
+            radius,
+            kind,
+            DEAD_ZONE,
+        );
         let out = {
             let input = ctx.input(0);
             // Pure per-instance map → parallel above the threshold
@@ -320,11 +361,14 @@ impl NodeOp for ForceAttractor {
                 let dx = target[0] - p[0];
                 let dy = target[1] - p[1];
                 let d = (dx * dx + dy * dy).sqrt();
-                if d < DEAD_ZONE || d > radius {
+                let Some(s) = profile.shape_at(d) else {
                     return [0.0, 0.0];
-                }
-                let w = curve(kind, (1.0 - d / radius).clamp(0.0, 1.0));
-                let mag = strength * w * sign * falloff_at(input, i);
+                };
+                let w = curve(kind, s);
+                // ⚠️ A inversão MULTIPLICA o sinal em vez de o substituir: `repel` vira
+                // tudo, `reverse` vira um pedaço, e os dois compõem sem precedência.
+                let turn = if profile.flips(d) { -1.0 } else { 1.0 };
+                let mag = strength * w * sign * turn * falloff_at(input, i);
                 [(dx / d) * mag, (dy / d) * mag]
             });
             add_accel(input, &contrib)
@@ -452,6 +496,33 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 2.0,
         step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // **O PERFIL DE DISTÂNCIA** — as três da folha 02. As faixas são a do `radius`, porque
+    // eles são distâncias no MESMO espaço que ele: um pico que o slider não alcança até à
+    // borda de influência seria meio controle.
+    ParamUiHint {
+        param: INNER,
+        label: "Min Distance",
+        min: 0.0,
+        max: 20.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: PEAK,
+        label: "Peak Distance",
+        min: 0.0,
+        max: 20.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: REVERSE,
+        label: "Reversal Distance",
+        min: 0.0,
+        max: 20.0,
+        step: 0.05,
         widget: ParamWidget::Slider,
     },
 ];

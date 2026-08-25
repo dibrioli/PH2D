@@ -489,6 +489,9 @@ mod drawn;
 /// O anuncio da cena `=88` — o eco que ve^ o futuro (folha 07, o P1).
 #[path = "motion_state_demo_conferencia_echo.rs"]
 mod echo;
+/// O anuncio da cena `=95` — o que uma forca nao sabia dizer (folha 02).
+#[path = "motion_state_demo_conferencia_forces.rs"]
+mod forces;
 /// O anuncio da cena `=84` — as curas novas da folha 11 (fx raster).
 #[path = "motion_state_demo_conferencia_fx_modes.rs"]
 mod fx_modes;
@@ -513,6 +516,7 @@ pub(super) use born::born_family;
 pub(super) use campo::field_port_family;
 pub(super) use drawn::drawn_family;
 pub(super) use echo::echo_family;
+pub(super) use forces::forces_family;
 pub(super) use fx_modes::fx_modes_family;
 pub(super) use ladder::ladder_family;
 pub(super) use plume::plume_family;

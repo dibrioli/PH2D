@@ -17,6 +17,13 @@ pub(crate) fn falloff_at(stream: &Stream, i: usize) -> f32 {
 /// Copy `input` through unchanged except `accel`, which becomes
 /// `input.accel (or 0) + contrib` — chained forces accumulate (Houdini POP
 /// convention: microsolvers add force, one solver integrates).
+pub(crate) fn vec2_at(stream: &Stream, name: &str, i: usize, default: [f32; 2]) -> [f32; 2] {
+    match stream.get(name) {
+        Some(Column::Vec2(v)) => v.get(i).copied().unwrap_or(default),
+        _ => default,
+    }
+}
+
 pub(crate) fn add_accel(input: &Stream, contrib: &[[f32; 2]]) -> Stream {
     let n = input.count();
     let mut out = Stream::new(n);

@@ -21,6 +21,26 @@
 //! Params: `strength` (accel scale), `scale` (spatial frequency of the eddies),
 //! `speed` (how fast the field itself drifts, in playhead-seconds), `octaves`
 //! (1..=4 scales of swirl), `seed`.
+//!
+//! ## ⛔ **RECUSA MEDIDA: o campo NÃO contorna colisores** (doc 89, folha 02)
+//!
+//! O POP Curl Noise da referência tem um *Add Collision Objects*: *«o campo CONTORNA SDFs
+//! de colisores»*. Aqui não, e o mecanismo é de ORDEM e não de custo.
+//!
+//! ⚠️ **Uma força é `Pure` e roda ANTES do solver.** O `sim.collide`/`motion.collide` age
+//! **depois**, sobre `vel`/`P`, empurrando de volta quem penetrou. Para o campo contornar
+//! um colisor ele teria de *consultar a geometria dele* na hora de calcular a aceleração —
+//! ou seja, uma força a ler o estado de um nó que ainda não correu.
+//!
+//! ⚠️ **E as duas saídas são as duas caras** que esta casa já recusa noutro sítio: uma
+//! porta nova trazendo a geometria do colisor para dentro da força (o campo passa a ter uma
+//! dependência que a topologia `pre` não sabe ordenar), ou uma segunda representação do
+//! colisor dentro do próprio curl (dois sítios onde a mesma parede vive, e o dia em que
+//! discordarem é invisível). O doc 63 já a marcou P2 pela mesma leitura.
+//!
+//! ⇒ **É trabalho de outra wave, não um param**, e o que existe hoje já entrega o caso
+//! comum: o colisor empurra de volta *depois* do campo, então uma partícula não atravessa
+//! a parede — ela apenas não a **antecipa**.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::par_build;

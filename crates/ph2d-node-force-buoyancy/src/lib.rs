@@ -92,6 +92,78 @@ const MIN_DEPTH: f32 = 1e-3;
 /// zero in the slope.
 const MIN_WAVELENGTH: f32 = 1e-3;
 
+/// A chave do param **do número de ondas somadas** — o espectro do mar.
+pub const WAVES: &str = "waves";
+
+/// O tecto de ondas somadas. ⚠️ **É o mesmo `4` do `octaves` do `force.wind`**, e pela
+/// mesma razão: cada camada é uma avaliação de seno por elemento por quadro, e a quarta já
+/// tem `1/8` da amplitude da primeira — abaixo do que o olho separa de uma linha.
+const MAX_WAVES: i32 = 4;
+
+/// Cada onda seguinte é **metade da altura e metade do comprimento** da anterior.
+///
+/// ⚠️ **Não são números soltos: são o `lacunarity = 2` e o `roughness = 0,5` que o
+/// `force.wind` já declara como default**, escritos aqui como constantes porque este nó
+/// soma SENOS e não ruído — o que se partilha é a razão entre camadas, e ela é a mesma.
+/// Expô-los seria um par de knobs a mais num nó que já tem sete; o gatilho para o fazer é
+/// alguém pedir um mar com uma razão que não é esta.
+const WAVE_LACUNARITY: f32 = 2.0;
+const WAVE_GAIN: f32 = 0.5;
+
+/// **O desencontro de FASE entre camadas** — o deslocamento áureo, o mesmo espalhamento que
+/// o `decorrelate` do `value.instance_field` usa.
+///
+/// ⛔ **A justificação que eu tinha escrito aqui foi REFUTADA POR MEDIÇÃO, e ao contrário.**
+/// Ela dizia: *«com a fase de todas a ser `(x − vt)/λ_k`, em `x = vt` todas as cristas
+/// coincidem e o mar ganha um pico viajante»*. **Falso duas vezes.** Primeiro, `fase = 0` é
+/// o cruzamento por ZERO de um seno e não a crista. Segundo — e é o que importa — com
+/// comprimentos **harmónicos** (`λ, λ/2, λ/4, λ/8`) as camadas completam números de ciclos
+/// diferentes, então elas **nunca** cristam juntas, com ou sem deslocamento: o pico da soma
+/// em fase mede `0,7563` de um empilhamento total de `1,1250`.
+///
+/// ⭐ **O que o deslocamento de facto compra está medido, e é o oposto do que eu disse:** o
+/// pico sobe para **`1,0251`**, ou seja as cristas ficam **mais variadas em altura** para a
+/// mesma energia — e é exactamente isso que separa um mar de um padrão. A constante fica,
+/// com a razão certa ao lado dela. *Uma mutação que a apagava sobreviveu ao gate que a
+/// defendia, porque o gate media a premissa errada.*
+const PHASE_STEP: f32 = 0.618_034;
+
+/// Quantas ondas o param pede — totalizado, e nunca menos que uma.
+fn wave_count(v: f32) -> i32 {
+    if v.is_finite() {
+        (v.round() as i32).clamp(1, MAX_WAVES)
+    } else {
+        1
+    }
+}
+
+/// **O MAR em `x` no instante `t`** — a altura da superfície e a inclinação dela.
+///
+/// ⚠️ **Com `waves = 1` esta função devolve a expressão LITERAL do nó de sempre**, por
+/// ramo: uma soma de um termo é o termo, mas `0 + a` não é `a` para todo `a` em `f32`
+/// (o `-0.0` muda de sinal), e o default de um nó que já shipou reduz ao bit ou não reduz.
+fn sea_at(x: f32, t: f32, level: f32, amp: f32, lambda: f32, speed: f32, waves: i32) -> (f32, f32) {
+    let one = |amp: f32, lambda: f32, phase_off: f32| {
+        let phase = (x - speed * t) / lambda + phase_off;
+        let (cos, sin) = cos_sin_cycles(phase);
+        (amp * sin, amp * (std::f32::consts::TAU / lambda) * cos)
+    };
+    if waves <= 1 {
+        let (h, s) = one(amp, lambda, 0.0);
+        return (level + h, s);
+    }
+    let (mut h, mut s) = (0.0, 0.0);
+    let (mut a, mut l) = (amp, lambda);
+    for k in 0..waves {
+        let (dh, ds) = one(a, l, k as f32 * PHASE_STEP);
+        h += dh;
+        s += ds;
+        a *= WAVE_GAIN;
+        l /= WAVE_LACUNARITY;
+    }
+    (level + h, s)
+}
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("force.buoyancy"),
@@ -142,6 +214,11 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             default: 2.5,
         },
         // World units per second the crests travel in +X (negative = the other way).
+        // **O ESPECTRO** (doc 89, folha 02) — `1` é a senoide única de sempre, ao bit.
+        ParamSpec {
+            name: WAVES,
+            default: 1.0,
+        },
         ParamSpec {
             name: "wave_speed",
             default: 0.4,
@@ -166,6 +243,7 @@ impl NodeOp for ForceBuoyancy {
         let lambda = ctx.param("wave_length").max(MIN_WAVELENGTH);
         let speed = ctx.param("wave_speed");
         let t = ctx.playhead() as f32;
+        let waves = wave_count(ctx.param(WAVES));
 
         let out = {
             let input = ctx.input(0);
@@ -175,11 +253,7 @@ impl NodeOp for ForceBuoyancy {
                     let vel = vec2_at(input, "vel", i, [0.0, 0.0]);
 
                     // The sea at this instance's x, right now.
-                    let phase = (p[0] - speed * t) / lambda;
-                    let (cos, sin) = cos_sin_cycles(phase);
-                    let surface = level + amp * sin;
-                    // d/dx of `amp·sin(2π·(x − vt)/λ)` — the surface slope under it.
-                    let slope = amp * (std::f32::consts::TAU / lambda) * cos;
+                    let (surface, slope) = sea_at(p[0], t, level, amp, lambda, speed, waves);
 
                     // How much of it is under water: 0 dry, 1 fully submerged.
                     let sub = ((surface - p[1]) / depth).clamp(0.0, 1.0);
@@ -236,11 +310,28 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         let by_p = read_P(i);\n\
         let by_vel = read_vel(i);\n\
         let by_lambda = max(params.wave_length, 1e-3);\n\
-        let by_cs = by_cos_sin_cycles(\n\
-        \x20   (by_p.x - params.wave_speed * params.playhead) / by_lambda);\n\
-        let by_surface = params.level + params.wave_amplitude * by_cs.y;\n\
-        // d/dx of `amp·sin(2π·(x − vt)/λ)` — the surface slope under it.\n\
-        let by_slope = params.wave_amplitude * (6.2831855 / by_lambda) * by_cs.x;\n\
+        // O ESPECTRO: N senos, cada um metade da altura e metade do comprimento do\n\
+        // anterior, desencontrados pelo aureo para as cristas nunca coincidirem.\n\
+        let by_n = i32(clamp(by_round(params.waves), 1.0, 4.0));\n\
+        let by_x = by_p.x - params.wave_speed * params.playhead;\n\
+        var by_h = 0.0;\n\
+        var by_slope = 0.0;\n\
+        var by_a = params.wave_amplitude;\n\
+        var by_l = by_lambda;\n\
+        if (by_n <= 1) {\n\
+        \x20   let by_cs = by_cos_sin_cycles(by_x / by_lambda);\n\
+        \x20   by_h = params.wave_amplitude * by_cs.y;\n\
+        \x20   by_slope = params.wave_amplitude * (6.2831855 / by_lambda) * by_cs.x;\n\
+        } else {\n\
+        \x20   for (var k = 0; k < by_n; k = k + 1) {\n\
+        \x20       let by_cs = by_cos_sin_cycles(by_x / by_l + f32(k) * 0.618034);\n\
+        \x20       by_h = by_h + by_a * by_cs.y;\n\
+        \x20       by_slope = by_slope + by_a * (6.2831855 / by_l) * by_cs.x;\n\
+        \x20       by_a = by_a * 0.5;\n\
+        \x20       by_l = by_l / 2.0;\n\
+        \x20   }\n\
+        }\n\
+        let by_surface = params.level + by_h;\n\
         let by_sub = clamp((by_surface - by_p.y) / max(params.depth, 1e-3), 0.0, 1.0);\n\
         let by_w = by_sub * read_falloff(i);\n\
         // Buoyancy is normal to the surface: n = normalize(-slope, 1).\n\
@@ -251,6 +342,10 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   (by_dens * -by_slope * by_inv_len - by_drag * by_vel.x) * by_w,\n\
         \x20   (by_dens * by_inv_len - by_drag * by_vel.y) * by_w));\n",
     wgsl_lib: "\
+        fn by_round(x: f32) -> f32 {\n\
+            // Rust f32::round = half away from zero (o `round` do WGSL e' half-even).\n\
+            return select(ceil(x - 0.5), floor(x + 0.5), x >= 0.0);\n\
+        }\n\
         fn by_sin_cycles(phase: f32) -> f32 {\n\
             let f = phase - floor(phase);\n\
             var p: f32;\n\
@@ -317,6 +412,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "wave_amplitude",
         "wave_length",
         "wave_speed",
+        WAVES,
     ],
     count_law: None,
     variant_by_param: None,
@@ -422,6 +518,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.05,
         widget: ParamWidget::Slider,
     },
+    ParamUiHint {
+        param: WAVES,
+        label: "Waves",
+        min: 1.0,
+        max: 4.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
 ];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
@@ -459,3 +563,7 @@ mod tests;
 #[cfg(test)]
 #[path = "density_tests.rs"]
 mod density_tests;
+
+#[cfg(test)]
+#[path = "spectrum_tests.rs"]
+mod spectrum_tests;

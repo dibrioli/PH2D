@@ -140,6 +140,12 @@ pub(crate) mod conferencia_demos_slice;
 #[path = "motion_state_conferencia_demos_vary.rs"]
 pub(crate) mod conferencia_demos_vary;
 
+/// A cena do QUE UMA FORCA NAO SABIA DIZER (`=95`) — o perfil de distancia do atrator, o
+/// modo alvo-velocidade do vento e do vortice, e o espectro do mar (folha 02).
+/// ⚠️ As oito bandas montam a topologia do INTEGRADOR: uma forca so' acumula `accel`.
+#[path = "motion_state_conferencia_demos_forces.rs"]
+pub(crate) mod conferencia_demos_forces;
+
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.
 #[path = "motion_state_conferencia_demos_campo.rs"]

@@ -26,6 +26,19 @@ use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 mod accum;
 use accum::{add_accel, falloff_at, vec2_at};
 
+/// A chave do param **do modo**: uma aceleração, ou uma velocidade-ALVO.
+///
+/// ⚠️ **O mesmo par do [`force.wind`](../../ph2d-node-force-wind/src/lib.rs), com os mesmos
+/// rótulos e o mesmo default** — a lei é uma linha de aritmética em cada nó; o que se
+/// partilha é o VOCABULÁRIO, e há gate a compará-lo (um `Treat as Wind` que quisesse dizer
+/// coisas diferentes em dois nós seria pior que não existir).
+pub const MODE: &str = "mode";
+/// A chave do param **da resistência do ar**.
+pub const AIR_RESIST: &str = "air_resist";
+
+/// Os rótulos de [`MODE`] — idênticos aos do `force.wind`, por gate.
+pub const MODE_LABELS: &[&str] = &["Force", "Target Velocity"];
+
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
 /// Dead-zone radius around the centre (direction is meaningless as d → 0).
@@ -100,6 +113,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "curve",
             default: 0.0,
         },
+        // **O MODO** (doc 89, folha 02) — o irmão exacto do `force.wind`, com os MESMOS
+        // rótulos: a referência põe o *Treat as Wind* no POP Axis Force também.
+        ParamSpec {
+            name: MODE,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: AIR_RESIST,
+            default: 1.0,
+        },
         ParamSpec {
             name: "clockwise",
             default: 1.0,
@@ -132,6 +155,11 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20       vx_c = vec2<f32>(vx_dy * vx_mag, -vx_dx * vx_mag);\n\
         \x20   } else {\n\
         \x20       vx_c = vec2<f32>(-vx_dy * vx_mag, vx_dx * vx_mag);\n\
+        \x20   }\n\
+        \x20   if (i32(vx_round(params.mode)) == 1) {\n\
+        \x20       let vx_v = read_vel(i);\n\
+        \x20       let vx_k = max(params.air_resist, 0.0);\n\
+        \x20       vx_c = vec2<f32>((vx_c.x - vx_v.x) * vx_k, (vx_c.y - vx_v.y) * vx_k);\n\
         \x20   }\n\
         }\n\
         write_accel(i, read_accel(i) + vx_c);\n",
@@ -170,6 +198,13 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [0.0; 4],
             port: 0,
         },
+        ColumnBinding {
+            column: "vel",
+            dim: Dim::Vec2,
+            access: ColumnAccess::Read,
+            identity: [0.0; 4],
+            port: 0,
+        },
     ],
     params: &[
         "center_x",
@@ -178,6 +213,8 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         "radius",
         "clockwise",
         "curve",
+        MODE,
+        AIR_RESIST,
     ],
     count_law: None,
     variant_by_param: None,
@@ -196,6 +233,8 @@ impl NodeOp for ForceVortex {
         let strength = ctx.param("strength");
         let radius = ctx.param("radius").max(DEAD_ZONE);
         let clockwise = ctx.param("clockwise") >= 0.5;
+        let target_mode = ctx.param(MODE).round() as i32 == 1;
+        let air_resist = ctx.param(AIR_RESIST).max(0.0);
         let curve_kind = ctx.param(CURVE).round() as i32;
         let out = {
             let input = ctx.input(0);
@@ -213,11 +252,19 @@ impl NodeOp for ForceVortex {
                 // próprio `t`, então o Linear é a MESMA expressão de antes, ao bit.
                 let t = curve(curve_kind, 1.0 - d / radius);
                 let mag = strength * t * falloff_at(input, i) / d;
-                if clockwise {
+                let w = if clockwise {
                     [dy * mag, -dx * mag]
                 } else {
                     [-dy * mag, dx * mag]
+                };
+                if !target_mode {
+                    return w;
                 }
+                // `a = resistência · (alvo − v)` — a mesma lei do `force.wind`, com o alvo
+                // a ser a velocidade TANGENCIAL em vez de uma direção fixa. É o que faz um
+                // rodamoinho estabilizar num anel em vez de acelerar para sempre.
+                let v = vec2_at(input, "vel", i, [0.0, 0.0]);
+                [(w[0] - v[0]) * air_resist, (w[1] - v[1]) * air_resist]
             });
             add_accel(input, &contrib)
         };
@@ -243,6 +290,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
         },
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    reg.register_param_gates(MANIFEST.id, MODE_GATES);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
@@ -320,6 +368,24 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 1.0,
         step: 1.0,
         widget: ParamWidget::Toggle,
+    },
+    ParamUiHint {
+        param: MODE,
+        label: "Mode",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: MODE_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: AIR_RESIST,
+        label: "Air Resistance",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
     },
 ];
 
@@ -505,3 +571,10 @@ mod tests {
 #[cfg(test)]
 #[path = "curve_tests.rs"]
 mod curve_tests;
+
+/// A resistência só existe no modo que a lê.
+static MODE_GATES: &[ph2d_node_registry::ParamGate] = &[ph2d_node_registry::ParamGate {
+    param: AIR_RESIST,
+    when: MODE,
+    values: &[1],
+}];

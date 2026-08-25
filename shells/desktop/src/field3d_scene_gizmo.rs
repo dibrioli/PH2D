@@ -178,6 +178,39 @@ pub(super) fn resolve_lasso(
             .flatten()
             .map(|e| e.to_bits())
             .collect();
+    // ⭐⭐⭐ **E TUDO O QUE TEM A ORIGEM DENTRO DO RECTÂNGULO** (W58b) — a metade que faltava.
+    //
+    // ⛔ **Medido (Enio, 2026-08-24: «o retângulo de seleção não seleciona mais de 2 objetos ao
+    // mesmo tempo»):** só com a superfície, um laço sobre **cinco** formas empilhadas apanha
+    // **uma**. E empilhadas é como elas nascem — `+ Box`/`+ Sphere` nascem no **alvo da câmera**,
+    // então um artista que acrescenta três formas antes de as mexer tem três no mesmo sítio.
+    // *Perguntar só «o que se vê» torna inalcançável tudo o que está atrás.*
+    //
+    // ⭐ **É a lei do modo de OBJETO de todo modelador** (o *box select* do Blender apanha por
+    // origem, e apanha o que está tapado): a superfície resolve a forma grande cuja origem ficou de
+    // fora, a origem resolve a forma tapada. *A união das duas é mais capaz que qualquer uma.*
+    //
+    // ⚠️ E a origem é a de **MUNDO** (`world_xform`), nunca a local: a local responde sobre um sítio
+    // onde o nó não está assim que ele tem um pai com pose.
+    for (e, _) in ph2d_field_ecs::walk(sim.world(), root) {
+        // Só FOLHAS — uma operação não é um objeto que o artista aponta, e é a mesma lei do
+        // `field3d_pick::node_under` («devolve sempre uma folha, nunca a operação que a contém»).
+        if !matches!(
+            sim.world().get::<FieldNode>(e).map(|n| &n.shape),
+            Some(ph2d_field::NodeShape::Leaf(_))
+        ) {
+            continue;
+        }
+        let o = ph2d_field_ecs::world_xform(sim.world(), e).translation;
+        // ⚠️ `None` = **atrás do olho**. Um ponto atrás da câmera projecta-se num sítio qualquer do
+        // ecrã, e sem esta guarda um laço na quina apanharia o que está às costas do artista.
+        let Some((p, _)) = cam.project(o, screen) else {
+            continue;
+        };
+        if p[0] >= lo[0] && p[0] <= hi[0] && p[1] >= lo[1] && p[1] <= hi[1] {
+            bits.push(e.to_bits());
+        }
+    }
     bits.sort_unstable();
     bits.dedup();
     (!bits.is_empty()).then_some(SelectRequest::ToggleMany(bits))

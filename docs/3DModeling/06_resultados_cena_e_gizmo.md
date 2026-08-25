@@ -5301,6 +5301,81 @@ código para quem o ler a seguir.*
 
 10 mutações, **10 vermelhas** com os três controles.
 
+## §62 — W58b: «não seleciona mais de 2» — a causa não era um teto, era a PERGUNTA (24/08)
+
+> Enio, no smoke da W58: *"o retângulo de seleção não seleciona mais de 2 objetos ao mesmo tempo"*.
+
+### §62.1 — Três hipóteses medidas e refutadas, uma a uma
+
+⚠️ **Nenhuma delas era a causa, e medi-las foi o que evitou curar o sítio errado:**
+
+| hipótese | como foi medida | veredito |
+|---|---|---|
+| um **teto** no pedido do laço | varredura 2/3/4/5 bolas em fila | ⛔ o laço pediu **todas** |
+| um **teto** no consumidor | `toggle_in_selection` × n num `GizmoStateGroup` limpo | ⛔ ficaram **todas** |
+| algo **a jusante** come a seleção | quatro quadros de `ecs_bridge` com a seleção viva | ⛔ sobreviveu |
+
+⇒ o defeito não estava em nenhuma das metades que eu tinha gateado. Ele estava na **fixtura**: as
+três punham as bolas **em fila**, cada uma com o seu pedaço de silhueta.
+
+### §62.2 — A causa: um laço que só pergunta «o que se vê»
+
+⭐ **`+ Box`/`+ Sphere` nascem no ALVO DA CÂMERA.** Um artista que acrescenta três formas antes de as
+mexer tem **três no mesmo sítio** — e a pergunta do laço era *"de quem é este pixel?"*, que numa
+união tem **uma** resposta por pixel. Medido, com a sonda do afastamento:
+
+| formas | afastamento 0,00 | 0,05 | 0,15 |
+|---:|---:|---:|---:|
+| 3 | **1** | 3 | 3 |
+| 4 | **1** | 4 | 4 |
+| 5 | **1** | 5 | 5 |
+
+*Perguntar só «o que se vê» torna inalcançável, por gesto de canvas, tudo o que está atrás.*
+
+### §62.3 — A cura: a lei do modo de OBJETO
+
+Um objeto entra no laço se **a superfície dele foi amostrada dentro do rectângulo** **OU** se a
+**origem dele** projecta dentro dele. É o que o *box select* do Blender faz em modo de objeto, e as
+duas metades cobrem casos opostos:
+
+- a **superfície** apanha a forma grande cuja origem ficou de fora do rectângulo;
+- a **origem** apanha a forma **tapada** por outra.
+
+⚠️ A origem é a de **MUNDO**, e o `project` a devolver `None` (atrás do olho) **descarta**: um ponto
+às costas do artista projecta-se num sítio qualquer do ecrã. ⚠️ E só **folhas** — uma operação não é
+um objeto que o artista aponta, a mesma lei do `node_under`.
+
+Com a cura: `3/3`, `4/4`, `5/5` empilhadas. ⛔ **O que ela não promete** (e não é defeito): uma forma
+**fora do enquadramento** não é apanhada — um rectângulo de ecrã não pode apanhar o que não está no
+ecrã.
+
+### §62.4 — ⚠️ A metade nova tornou a antiga INOBSERVÁVEL
+
+⛔ **Três mutações que estavam vermelhas passaram a SOBREVIVER** ao acrescentar a metade da origem:
+sabotar a amostragem da superfície ficava verde, porque a origem apanhava tudo na mesma nas fixturas
+de bolas em fila. *Uma metade nova pode apagar o gate da antiga — e uma metade que nenhum gate
+observa é uma metade que se apaga sem ninguém reparar.*
+
+⇒ fixtura que as separa, e é **exigente de propósito**: **duas** esferas cujas origens ficam à
+esquerda do rectângulo e cujos corpos entram nele em **alturas diferentes**, com o canto de partida
+no fundo. Ela prende as três de uma vez (a cobertura da amostragem, o dono de cada pixel, e a própria
+metade).
+
+⚠️ **E uma quarta mutação estava MAL ROTULADA:** *"o laço só amostra o canto de partida"* deixava na
+verdade uma **coluna inteira** de pé (o laço tem dois `while`), e duas colunas chegavam para apanhar
+as duas esferas. *Uma mutação que não faz o que o nome dela diz mede outra coisa.*
+
+15 mutações, **15 vermelhas** com os três controles.
+
+### §62.5 — ⛔ E um TERCEIRO portão de LOC
+
+`shells/desktop/tests/file_loc_caps.rs` (HR-18, **600** LOC para o shell) — o arquivo de gates do
+laço chegou a **687**. ⚠️ **A corrida com filtro (`cargo test -p … field3d`) não o alcança**, e foi a
+corrida **sem filtro** do pacote que o apanhou — que é exactamente a cura escrita na memória
+[`feedback_a_closing_run_with_a_name_filter_never_reaches_a_tree_scanning_gate`] uma wave antes.
+*A prescrição funcionou; o que faltava era a linha executá-la.* Corte por responsabilidade: o
+**gesto** fica, **o que o laço apanha** vai para o irmão.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

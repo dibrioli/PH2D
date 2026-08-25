@@ -73,15 +73,54 @@ antes teria obrigado a inventar uma fonte falsa para as condições dela.**
 5. **Onde a máquina é AUTORADA** — painel do Vector, timeline, ou a árvore? A booleana-nos-estados
    de 23/08 escolheu o painel `states`; o precedente existe e tem gates de costura.
 
+### ⭐ RECONFERÊNCIA de 2026-08-25 — **três afirmações desta folha estavam erradas no ponto que decide o preço**
+
+> ⚠️ *Quem move o número que tornava algo inalcançável tem de reconferir a nota* (`CLAUDE.md` §0.0).
+> Entre a escrita desta folha e hoje, o Input Map fechou e **oito outras linhas integraram**. Medido
+> na reabertura, com endereço:
+
+1. ⛔⛔ **A parede NÃO é «o `VecMorph` é entre duas formas».** O `vec_morph.rs` tem **64 linhas** e é
+   um morph **keyado pela timeline** entre dois `VecPathId` — outro subsistema. Quem já interpola
+   **N objectos** entre poses, com correspondência por id, geometria **cozida** e morfo de booleana,
+   é a [`ph2d-ui-state`](../../crates/ph2d-ui-state/) — **3 112 LOC**, viva, e a dirigir o canvas
+   pela ponte [`ui_state_bridge.rs`](../../shells/desktop/src/render_loop/ui_state_bridge.rs).
+   ⇒ **a pergunta 1 já tem resposta medida: a máquina que contém a outra é a `ph2d-ui-state`.**
+2. ⛔ **A parede REAL é o CATÁLOGO.** A máquina existente move-se entre **quatro papéis FIXOS**
+   (`StateRole::{Default,Hover,Pressed,Disabled}` — um `enum`, `ALL: [_; 4]`), e a
+   [`Transition`](../../crates/ph2d-ui-state/src/transition.rs) é **calculada** entre duas listas de
+   pose, **nunca autorada**. Não há estado com **nome**, não há **aresta** e não há **condição**.
+   ⇒ a obra é *generalizar de papel-fixo para estado-nomeado + arestas autoradas*, não construir uma
+   máquina.
+3. ⭐⭐ **O «modo preview» que o Enio pediu JÁ EXISTE** —
+   [`ui_preview.rs`](../../shells/desktop/src/render_loop/ui_preview.rs), **323 LOC**, e o
+   doc-comment dele chama-se a si próprio *"a metade de RUNTIME"*. Ele já resolve as duas coisas
+   difíceis: enquanto corre, **o gesto de edição não existe e o undo não regista**; ao sair, **o
+   mundo volta ao que era** (⚠️ restaura a pose CAPTURADA, ⛔ nunca «vai para o Default», que
+   moveria o desenho do artista). ⇒ a pergunta 3 encolhe: **a lei desce a uma crate-folha** (já está
+   numa) e corre na preview **hoje**; o `shells/game` continua a não existir e continua adiado — é o
+   MESMO bloqueio dos contextos do Input Map, e não um preço novo desta feature.
+
+⚠️ **E o vocabulário das CONDIÇÕES nasceu no dia 24:** as acções nomeadas do Input Map
+([plano 30](30_plano_input_map.md)) são exactamente o que uma aresta lê. Uma condição sobre uma
+tecla crua teria de ser reescrita no dia seguinte.
+
+⚠️ **Arestas no canvas 2D — o que existe e o que não existe:** há um editor de grafo completo
+(`ph2d-panel-motion-graph`, **11 381 LOC**: fios, sockets, hit-test, zoom, subgrafos) — mas ele é um
+**painel**, não o canvas. No canvas há precedente de **vínculo autorado desenhado e arrastável**
+(as juntas da física, o gizmo de âncoras). ⇒ o plano tem de dizer **qual dos dois** é o chão, e a
+resposta muda o tamanho da wave.
+
 ### Onde encosta (a conferir no plano, não decidido)
 
-- **Schema:** um componente novo, ou campos novos no `VecMorph`, movem o **`PROJECT_SCHEMA`**
-  (hoje **95**) — e o número **conta-se** contra o `main` do dia, nos **três** sítios
-  ([`CLAUDE.md §5.0`](../../CLAUDE.md)).
+- **Schema:** um componente novo, ou campos novos, movem o **`PROJECT_SCHEMA`** — medido **97** em
+  2026-08-25 (era 95 quando esta folha nasceu, e a integração de 24/08 **RECONTOU** 96→97 porque
+  duas linhas escreveram o mesmo literal). O número **conta-se** contra o `main` do dia, nos **três**
+  sítios ([`CLAUDE.md §5.0`](../../CLAUDE.md)).
 - **Contrato congelado (§6):** `VectorOp`/`Vertex`/`Segment`/`AnimValue` em `ph2d-vector-doc` estão
   **congelados**. O motor novo (`ph2d-vec-*`) **não** está. ⚠️ Confirme por grep antes de assumir.
-- **Registro de componentes:** `ph2d-ecs` está em **65**, com **dois espelhos** em 66
-  (`ph2d-render`, `ph2d-script`) — número que **soma entre linhas**.
+- **Registro de componentes:** os **dois espelhos** estão em **71** (`ph2d-render`, `ph2d-script`) —
+  eram 66 quando esta folha nasceu. Número que **soma entre linhas**; ⛔ conte-o, nunca o copie
+  daqui.
 
 ---
 

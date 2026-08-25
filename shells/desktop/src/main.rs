@@ -277,6 +277,7 @@ mod morph_fade_smoke;
 mod morph_link_gesture;
 mod morph_live;
 mod morph_machine_drive;
+mod morph_states_smoke;
 mod motion_autofix_smoke;
 mod motion_autofix_smoke_appropriate;
 mod motion_autofix_smoke_dead_branch;

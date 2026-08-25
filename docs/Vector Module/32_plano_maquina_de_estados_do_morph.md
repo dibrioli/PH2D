@@ -202,6 +202,27 @@ outro dispositivo de entrada, e a resposta é a mesma: **um modo**.
 * ⚠️ **Uma máquina cuja entidade morreu some junto** — senão sobreviveria ao objecto e o mapa
   cresceria para sempre (a varredura das `UiMachines`).
 
+## §3-sexies — A cena (W6)
+
+`PH2D_BUILD_SMOKE=74`. Ela arma o **material** — três formas bem diferentes (larga · alta · fina) e
+um Morph entre as duas primeiras — e ⛔ **nada nasce ligado**: nenhuma seta, nenhuma condição.
+
+⚠️ **É deliberado, e é a disciplina das cenas irmãs desta linha:** quem desenha as setas e escolhe o
+que as dispara é o artista, e é **exactamente essa** a costura que a wave existe para provar. *Um
+smoke que arma o gesto por baixo do pano pula a costura que devia testar.*
+
+⚠️ **As acções são as de FÁBRICA** (`jump`, `dash`) — nenhuma nova é criada. A lista que o menu da
+condição mostra é a do **projecto**, e usar a que já lá está prova que o vínculo com o Input Map é
+real em vez de o simular. ⚠️ **E o roteiro nomeia a TECLA lida do mapa VIVO**, nunca de memória: se
+o artista já remapeou, o texto acompanha.
+
+⚠️ **A diferença entre as três formas é o instrumento**: um morph entre dois rectângulos parecidos é
+indistinguível de *nada a acontecer*.
+
+⭐ **Os passos 6 e 7 são os CONTROLOS**, e são o que separa esta feature de uma que parece funcionar:
+parar o transporte tem de **devolver a forma desenhada** e deixar o Ctrl+Z **sem nada** para
+desfazer; e com o transporte parado a tecla **não pode mover nada**.
+
 ## §4 — As waves
 
 | | | estado |
@@ -213,7 +234,7 @@ outro dispositivo de entrada, e a resposta é a mesma: **um modo**.
 | **W4a** | A secção **States**: a lista de setas + a **condição** (menu das acções do Input Map) + apagar | ✅ **2026-08-25** — 7 gates, **6 mutações, 6 sangraram** |
 | **W4b** | O **ritmo** por seta (duração · curva · mola) — e o botão de **percorrer**, que precisa da máquina viva (W5) | ⏳ |
 | **W5** | A **máquina VIVA** + o ledger de undo | ✅ **2026-08-25** — 5 gates, **5 mutações, 5 sangraram** |
-| **W6** | A cena de smoke, com números MEDIDOS | ⏳ |
+| **W6** | A cena de smoke (`PH2D_BUILD_SMOKE=74`) | ✅ **2026-08-25** |
 
 ⚠️ **O que a W5 vai encontrar, e está medido de antemão:** o ledger de pré-visualização
 (`preview_drive.rs`) já tem `Driver::MorphT` / `Driven::MorphT(f32)` — construído em 23/08 para a

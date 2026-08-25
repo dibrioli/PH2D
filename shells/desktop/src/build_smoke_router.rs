@@ -365,5 +365,13 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::node_xy_smoke::frame(app, f);
         return true;
     }
+    // ⭐ A MÁQUINA DE ESTADOS DO MORPH (=74, plano 32 W6) — irmã `morph_states_smoke`. Mesma
+    // disciplina: dá o material (três formas bem diferentes e um Morph entre duas delas) e **nada
+    // nasce ligado** — nenhuma seta, nenhuma condição. Quem as desenha e escolhe é o artista, e é
+    // exactamente essa a costura que a wave existe para provar.
+    if level == 74 {
+        crate::morph_states_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -571,3 +571,99 @@ todo nome gateado existe — perguntando **só ao `MANIFEST`**. No dia em que a 
 tabela ele acusou *«`curve` não é param deste nó»*, sobre produto correcto. *Um censo que só
 conhece um dos dois canais não vê metade dos controles.*
 
+
+---
+
+## Bug #6 — O mar não parecia mar: DOIS defeitos com a mesma assinatura, e as réguas da cena partilhavam-na com eles
+
+**Estado:** ✅ **CURADO** em 2026-08-24 — as duas causas medidas, quatro gates novos, quatro
+mutações. Aguarda smoke (cena `PH2D_GPU_COOK_DEMO=95`, fileira de baixo).
+
+### Sintoma
+
+Report do Enio sobre a cena `=95`: *«os exemplos do mar não parecem mar mas sim partículas ao
+vento»*. Nenhum gate da cena estava vermelho.
+
+### ⚠️ Duas causas independentes, e leem-se IGUAL no ecrã
+
+A assinatura partilhada é: **as peças atravessam a banda sem nunca subirem nem descerem.**
+
+| | causa | excursão vertical | deriva horizontal em 5 s |
+|---|---|---|---|
+| 1.ª | **não havia gravidade no grafo** | — | a média de `y` subia `0,58` por 25 tiques, **sem abrandar** (`−5,73 → −2,72`), e a banda ia de `3,16` a `14,01` de largura |
+| 2.ª | **armadilha de cava** | `0,0056` | `4,92` — exactamente `0,98` da velocidade da onda |
+| curado | — | `0,377` (`0,81` da altura da vaga) | `0,26`, e **líquida `0,067`** |
+
+**A primeira** é a que a cena `=4` já documentava e ninguém releu: o `force.buoyancy` **não
+tem param de gravidade de propósito** (nem existe nó `force.gravity`) porque uma força
+direcional constante já existe — o `force.wind` a 270° **É** a gravidade. Sem ela o empuxo
+lança tudo, e a nota da `=4` di-lo por palavras: *«buoyancy alone would launch everything
+upward»*. ⇒ *Uma cena que demonstra um nó tem de reproduzir as condições em que a resposta
+dele quer dizer alguma coisa.*
+
+**A segunda** é mais interessante, e **o nó não está errado**: o doc-comment dele declara-a
+(*«a boia deriva para a cava e cavalga a vaga, em vez de subir e descer no mesmo sítio»*). O
+que estava errado era a cena escolher números **dentro do regime onde esse comportamento come
+tudo o resto**. A boia escorrega para a cava até o empurrão em declive igualar o arrasto, logo
+ela **ENCAIXA** se existir declive que o faça à velocidade da onda:
+
+```
+densidade · declive_máximo · inv_len  ≥  arrasto · velocidade
+```
+
+⚠️ **O espectro multiplica o declive pelo número de camadas** — cada oitava tem metade da
+amplitude e metade do comprimento, logo o **mesmo** declive —, então a fileira de 4 ondas é a
+exigente e é ela que manda no número. A varredura confirma que a transição cai **onde a lei a
+põe**:
+
+| densidade | ondas | limiar previsto | arrasto 6 | arrasto 11 |
+|---|---|---|---|---|
+| 12 | 1 | `6,38` | preso (deriva `4,92`) | livre |
+| 12 | 4 | `11,15` | preso (deriva `4,92`) | livre (deriva `1,72`) |
+| 6 | 4 | `5,57` | livre | livre (deriva **`0,025`**) |
+
+⚠️ **A margem CUSTA vida:** mais arrasto afasta da armadilha e ao mesmo tempo abafa a boia (a
+`20` a excursão vertical cai para `0,29` da altura da vaga). A cena shipa `2×` o limiar.
+
+### ⛔ Porque nenhuma régua o via — e uma delas era MINHA e estava a favor do defeito
+
+1. **Dispersão e distância entre as duas bandas são grandezas que um mar e uma nuvem lançada
+   PARTILHAM.** O gate que existia media `|y| < 40` e passava com as peças a sair do ecrã.
+2. **Uma régua só de `y` não vê a segunda causa**, que é horizontal.
+3. ⚠️ **A excursão horizontal sozinha não distingue ORBITAR de PARTIR** — uma boia que vai e
+   vem meia onda mede o mesmo que uma que anda meia onda e nunca volta. É preciso a deriva
+   **líquida** da banda.
+4. ⛔⛔ **E o gate «bonito» que eu escrevi no meio da cura passava PELA RAZÃO ERRADA.** Ele
+   afirmava que a mediana da submersão bate o equilíbrio estático `(gravidade/densidade) ·
+   calado`, e batia — a **`0,8%`**. Só que um corpo **encaixado** na cava não se mexe, logo
+   assenta no estático: *o gate só era verde enquanto o defeito estava lá*. Assim que as boias
+   passaram a cavalgar a vaga ele passou a medir `0,29` contra `0,167` e teve de cair. **Um
+   gate que só passa quando a cena está morta é um gate a favor da cena morta.**
+5. ⚠️ **E o CONTROLO do gate da deriva teve de nascer por mutação sobreviva:** com a gravidade
+   a zero e as boias a nascerem acima da água elas ficam secas ⇒ **força nenhuma** ⇒ paradas
+   para sempre, e um campo congelado tem deriva zero. *Um balde que ninguém enche lê-se como
+   perfeito.*
+
+### Mais duas coisas que a medição corrigiu na cena (não eram o report, apareceram a caminho)
+
+- ⚠️ **A vaga estava `2,7×` para lá do ponto em que uma onda de água QUEBRA.** O limite físico
+  é `H/λ = 1/7`, ou seja `a/λ = 1/14 ≈ 0,071`; a cena estava a `0,19`. Uma forma que a água
+  não faz é uma forma que o olho não lê como água. O número que fica é o que a `=4` já shipa
+  (`2,0 / 20,0` ⇒ **`0,1`**) — *uma segunda cena de mar não é onde essa decisão se re-abre*.
+- ⚠️ **A amostragem estava abaixo de Nyquist.** A onda mais fina do espectro é `λ/8`, e as 48
+  boias davam **1,96 por período** — abaixo de dois pontos um seno não é sub-amostrado, é
+  **irreconhecível**. A fileira prometia «cristas de tamanhos diferentes» e teria mostrado
+  pontinhos a tremer. `128` boias dão `5,3`.
+
+### O que ficou construído
+
+- Duas funções públicas no `force.buoyancy` — `surface_at` e `finest_wavelength`. ⚠️ Elas
+  existem porque **uma lei que só o autor consegue avaliar não é verificável por quem a
+  mostra**: sem a superfície, o gate de uma cena só mede dispersões e derivas, que é
+  precisamente o conjunto de grandezas que o defeito partilhava com o produto correcto.
+- Quatro gates na cena: `the_floats_ride_the_wave_instead_of_being_carried_by_it` (com o
+  controlo de que elas estão a boiar), `the_drag_clears_the_trapping_threshold` (a LEI, não o
+  sintoma — dispara em quem baixar o arrasto, subir a esbelteza, subir a densidade ou
+  acrescentar camadas, e três dessas não parecem ter nada a ver com ela),
+  `the_floats_resolve_the_finest_wave` e `the_floats_are_in_the_water`.
+- ⚠️ **O `force.buoyancy` não foi tocado no comportamento** — a cena `=4` é byte-idêntica.

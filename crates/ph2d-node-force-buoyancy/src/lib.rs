@@ -164,6 +164,58 @@ fn sea_at(x: f32, t: f32, level: f32, amp: f32, lambda: f32, speed: f32, waves: 
     (level + h, s)
 }
 
+/// **A ALTURA DA SUPERFÍCIE em `x` no instante `t`** — a metade pública de [`sea_at`].
+///
+/// ⚠️ **Existe porque uma cena que DESENHA este mar tem de poder afirmar que as boias
+/// assentam nele**, e a forma da onda só é calculável aqui. Sem isto, o gate de uma cena de
+/// smoke só consegue medir dispersões e derivas — grandezas que um mar e uma nuvem lançada
+/// partilham. *Uma lei que só o autor consegue avaliar não é verificável por quem a mostra.*
+///
+/// Devolve só a altura; a INCLINAÇÃO fica privada de propósito (ela é do modelo de força,
+/// não da superfície que se vê).
+#[must_use]
+pub fn surface_at(
+    x: f32,
+    t: f32,
+    level: f32,
+    amp: f32,
+    lambda: f32,
+    speed: f32,
+    waves: f32,
+) -> f32 {
+    sea_at(
+        x,
+        t,
+        level,
+        amp,
+        lambda.max(MIN_WAVELENGTH),
+        speed,
+        wave_count(waves),
+    )
+    .0
+}
+
+/// **O COMPRIMENTO DA ONDA MAIS FINA** que este mar contém, dado o comprimento base e
+/// quantas camadas foram pedidas.
+///
+/// ⚠️ **Existe porque quem AMOSTRA este mar precisa de saber o que tem de resolver.** A
+/// razão entre camadas ([`WAVE_LACUNARITY`]) e o tecto ([`MAX_WAVES`]) são decisões deste
+/// nó; uma cena que espalhe boias sobre a superfície e queira garantir que a onda mais fina
+/// se lê **não pode adivinhá-los** — e adivinhar errado não dá erro nenhum, dá ruído com
+/// cara de onda. *Abaixo de dois pontos por período um seno não é sub-amostrado: ele é
+/// irreconhecível.*
+#[must_use]
+pub fn finest_wavelength(lambda: f32, waves: f32) -> f32 {
+    // ⚠️ A escada é PERCORRIDA e não elevada a potência: é a mesma divisão sucessiva que o
+    // `sea_at` faz, então as duas respostas não podem divergir por arredondamento (e HR-5
+    // fica fora de discussão neste arquivo, mesmo para uma função que o `eval` não chama).
+    let mut l = lambda.max(MIN_WAVELENGTH);
+    for _ in 1..wave_count(waves) {
+        l /= WAVE_LACUNARITY;
+    }
+    l
+}
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("force.buoyancy"),

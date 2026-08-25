@@ -5497,8 +5497,10 @@ dependencies = [
 name = "ph2d-field-profile"
 version = "0.0.0"
 dependencies = [
+ "fidget",
  "kurbo 0.13.0",
  "ph2d-field",
+ "ph2d-field-eval",
  "ph2d-vec-scene",
 ]
 

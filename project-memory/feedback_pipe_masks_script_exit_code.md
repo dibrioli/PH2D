@@ -25,6 +25,13 @@ em "ahead 149", o mesmo número de antes). **O estado contradisse o código de s
   origin/main..main`)? a branch virou ancestral (`git merge-base --is-ancestor`)?
 - O `ship.sh` **imprime `✗ NOT CI-clean` e ainda assim sai 0** — o log é a verdade, o `$?` não.
 
+⚠️ **E o sentido INVERSO morde igual: um código de saída pode MATAR o passo seguinte.** O `grep -c`
+sai **1** quando a contagem é **zero** — então `grep -c '<<<<<<<' f && git add f` **não faz o
+`git add`** exactamente no caso em que ele era devido (nenhum marcador = resolvido). Medido na
+integração de 2026-08-24: o `rebase --continue` seguinte reportou o mesmo conflito e eu li isso
+como «a resolução não pegou». ⇒ **nunca encadeie por `&&` a partir de um `grep`/`diff`/`test` cuja
+resposta NEGATIVA é o caso bom** — ponha um comando por linha, ou `|| true`.
+
 Corolário direto da regra-mãe da DIRETIVA (*verde-de-compilação vale zero*): **verde-de-exit-code
 também vale zero**. Ver [[feedback_no_industrial_claims_without_verification]] e
 [[project_integrator_ship_catches_latents_budget_iterations]].

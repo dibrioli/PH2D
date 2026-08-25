@@ -25,4 +25,5 @@ metadata:
 - [[feedback_rustup_default_loses_to_the_toolchain_file]] — `rustup default` PERDE para o `rust-toolchain.toml`; meça com `RUSTUP_TOOLCHAIN`
 - [[feedback_duplicate_allowlist_key_kills_the_gate_at_parse]] — allowlist duplicada mata o gate: o TOML morre no parse
 - [[feedback_an_impacted_test_selector_that_maps_paths_by_prefix_is_blind_outside_it]] — o seletor de impacto já saiu VERDE **sem medir** DUAS vezes: prefixo `crates/` (curado 22/08) e `git diff A...` cego ao trabalho **NÃO COMMITADO** (curado 23/08). ⚠️ leia a linha `changed:` contra o seu `git status`
+- [[feedback_the_c9_hashes_are_compared_across_oses_not_against_a_stored_baseline]] — ⚠️ os 3 gates C9 NÃO têm baseline gravado: o CI compara os 3 SOs entre si. Mudar o VALOR do hash é inofensivo; o que reprova é os 3 discordarem. Um handoff deu isto como «o mais provável de partir o CI» — certo sobre o facto, errado sobre a consequência
 - [[project_diretriz_v68_2026_05_22]] — HISTÓRICO: o modelo de 2 papéis/Coordenador (DIRETRIZ v68) foi superseded no workstation pelo Modo L (ADR-0106/0107)

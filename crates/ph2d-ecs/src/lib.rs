@@ -202,7 +202,9 @@ pub use vec_widget_icon::VecWidgetIcon;
 pub use vec_widget_value::VecWidgetValue;
 
 mod vec_morph;
+mod vec_morph_machine;
 pub use vec_morph::VecMorph;
+pub use vec_morph_machine::VecMorphMachine;
 
 mod vec_envelope;
 pub use vec_envelope::{

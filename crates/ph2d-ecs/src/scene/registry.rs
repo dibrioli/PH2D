@@ -451,6 +451,12 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // O Morph vivo (o irmão animável do Blend). Mesma razão: sem o registro, o snapshot o
     // DESCARTA e o undo/save perderiam o vínculo morph↔fontes — e o `t` autorado junto.
     reg.register::<crate::VecMorph>("ph2d::ecs::VecMorph");
+    // ⭐ O GRAFO da maquina de estados do Morph (plano 32). Mesma razao de todos acima: sem o
+    // registo, o snapshot o DESCARTA e o undo/save perderiam as setas que o artista desenhou.
+    // ⚠️ E ele viaja SEM mexer no `PROJECT_SCHEMA`: o `ComponentBlob` e' chaveado por
+    // `blake3(nome canonico)`, entao um ficheiro antigo simplesmente NAO TEM este blob e a
+    // entidade volta sem maquina -- que e' a leitura correcta de "ninguem desenhou seta nenhuma".
+    reg.register::<crate::VecMorphMachine>("ph2d::ecs::VecMorphMachine");
     // ADR-0129: o Envelope Object vivo. Mesma razão de todos acima — sem o registro, o snapshot o
     // DESCARTA e o undo/save perderiam a gaiola E a fonte autorada em silêncio (e a fonte, aqui,
     // é insubstituível: o recook já sobrescreveu o path da cena com a cozida).

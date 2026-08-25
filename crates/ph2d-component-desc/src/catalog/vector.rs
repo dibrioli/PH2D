@@ -64,6 +64,7 @@ pub const DESCS: &[D] = &[
     v("ph2d::ecs::VecLayoutItem", "Layout Item"),
     v("ph2d::ecs::VecLayoutSize", "Layout Size"),
     g("ph2d::ecs::VecMorph", "Morph"),
+    g("ph2d::ecs::VecMorphMachine", "Morph States"),
     g("ph2d::ecs::VecOffset", "Offset"),
     v("ph2d::ecs::VecPatternPath", "Pattern Path"),
     v("ph2d::ecs::VecPatternRotation", "Pattern Rotation"),

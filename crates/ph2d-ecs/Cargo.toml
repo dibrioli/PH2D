@@ -10,6 +10,12 @@ authors.workspace = true
 [lib]
 
 [dependencies]
+# ⭐ **O grafo autorado da maquina de estados do Morph** (plano 32). O componente
+# `VecMorphMachine` guarda-o, e o tipo tem de estar aqui porque o registo de componentes vive
+# nesta crate, ao lado do `VecMorph` que ele conduz.
+# ⚠️ E' uma FOLHA (serde + ph2d-spring + ph2d-anim, com gate a le'-la): a mesma lei corre no
+# editor e no runtime do jogo, que e' a razao de ela existir fora da shell.
+ph2d-morph-machine = { path = "../ph2d-morph-machine" }
 bevy_ecs = "0.18"
 # ADR-0072 §2.1: o `NamedAnchor` guarda a lista inline (4 âncoras cobrem ~99% dos sprites) e o
 # `AnchorData::Dict` guarda os pares ordenados inline (8). ⚠️ NÃO é dependência nova no projeto —

@@ -69,17 +69,22 @@ existe) e o **vocabulário das condições** (as acções do Input Map, de ontem
 ## §3 — Onde encosta
 
 * **Contrato congelado (§6):** nenhum. A crate é nova e o `VecMorph` **não se mexe**.
-* **Schema:** o grafo é conteúdo autorado ⇒ `PROJECT_SCHEMA` sobe (medido **97** em 2026-08-25;
-  ⛔ conte-o contra o `main` do dia, nos **três** sítios).
-* **Registro de componentes:** o componente do grafo é um registo novo — espelhos em **71**, e o
-  número **soma entre linhas**.
+* ⛔ **Schema: NÃO sobe — esta linha do plano estava errada e a W2 mediu-a.** O `ComponentBlob` é
+  chaveado por `blake3(nome canónico)`, **não** por posição: um ficheiro gravado antes desta wave
+  simplesmente **não tem** o blob, e a entidade volta **sem máquina** — que é a leitura correcta de
+  *"ninguém desenhou seta nenhuma"*. É a mesma lição que a `line/3DModeling` registou na W35 (*"a
+  peça atravessa o arquivo e o `PROJECT_SCHEMA` não se mexe; a nota que dizia o contrário era
+  velha"*), e há gate: `a_morph_without_arrows_comes_back_without_them`.
+* ⚠️ **O que SOBE é a contagem do REGISTO, nos TRÊS sítios** — `ph2d-ecs` **70 → 71** e os dois
+  espelhos (`ph2d-render`, `ph2d-script`) **71 → 72**. Número que **soma entre linhas**; ⛔ conte-o
+  contra o `main` do dia, nunca o copie daqui.
 
 ## §4 — As waves
 
 | | | estado |
 |---|---|---|
 | **W1** | **A LEI**, folha (`ph2d-morph-machine`): grafo · setas · condições · fila · mola/curva | ✅ **2026-08-25** — 13 gates, **8 mutações, 8 sangraram** |
-| **W2** | O componente + a persistência (`PROJECT_SCHEMA`) | ⏳ |
+| **W2** | O componente + a persistência | ✅ **2026-08-25** — 2 gates, 1 mutação, e ⛔ o `PROJECT_SCHEMA` **não** se mexeu (§3) |
 | **W3** | **O CANVAS**: desenhar as setas entre as formas, e autorá-las por arrasto | ⏳ |
 | **W4** | A secção **States** do painel: a lista de setas, a condição (lê as acções do Input Map), o ritmo | ⏳ |
 | **W5** | O **modo preview** + o ledger de undo (⚠️ o `Driven::MorphT` cobre o `t`, **não** o `sources`) | ⏳ |

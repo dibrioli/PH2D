@@ -3232,3 +3232,357 @@ fn the_specialisation_actually_consumes_the_hull() {
          a regressão seria SÓ de relógio (a imagem sai igual, e gate de paridade nenhum a vê)"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// W61 — O PLACAR DA MALHA EXTRAÍDA, contra o estado da arte
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Quantas arestas da malha são partilhadas por um número de faces **diferente de 2**.
+///
+/// ⚠️ É a definição de **não-manifold** que importa a jusante: subdivisão, booleana e impressão 3D
+/// pedem uma superfície fechada de duas faces por aresta. `(não-manifold, bordo)` — bordo é `1`.
+fn manifold_census(mesh: &ph2d_mesh::Mesh) -> (usize, usize) {
+    use std::collections::BTreeMap;
+    let mut count: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+    for f in mesh.faces() {
+        let v = f.0;
+        let n = if v[3] == v[2] { 3 } else { 4 };
+        for k in 0..n {
+            let (a, b) = (v[k], v[(k + 1) % n]);
+            *count.entry((a.min(b), a.max(b))).or_default() += 1;
+        }
+    }
+    let non = count.values().filter(|c| **c > 2).count();
+    let border = count.values().filter(|c| **c == 1).count();
+    (non, border)
+}
+
+/// ⭐⭐⭐ **O PLACAR DA MALHA QUE SAI DAQUI** (W61) — e as barras são as do ORÁCULO.
+///
+/// # Por que este placar existe
+///
+/// Enio, 2026-08-24: *"o tempo não é problema. Busque a qualidade, o estado da arte no resultado da
+/// malha, tente superar os melhores do mundo"*. ⛔ **Sem um placar, «estado da arte» é uma
+/// intenção.** Este mede as quatro coisas por que uma extração de campo é julgada, e três delas têm
+/// barra externa:
+///
+/// | eixo | régua | barra |
+/// |---|---|---|
+/// | **geometria** | `\|f\|` no vértice, em células | ⭐ o campo é o oráculo **analítico** — nenhum remalhador malha-a-malha tem isto |
+/// | **topologia** | arestas com ≠2 faces · bordo | `0` e `0` numa peça fechada |
+/// | **forma de face** | `ph2d_quadfill::quad_shape` | o oráculo `quadwild-bimdf` mede `1,08` de aspecto, `6°` de enviesamento, **0** faces com canto pior que 60° |
+/// | **quina viva** | já medida | `116/116`, desvio `0,00` de célula |
+///
+/// ⚠️ **A régua de forma é a MESMA que a linha da escultura calibrou** contra um oráculo de
+/// produção — e é por isso que ela é uma barra e não uma opinião.
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::the_scorecard_of_the_extracted_mesh --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_scorecard_of_the_extracted_mesh() {
+    use ph2d_field::{Blend, FillRule, Node, NodeKind, Op, Primitive, Profile};
+    let reg = hybrid::Registry::new();
+    let ring = |n: usize, r: f64| -> Vec<[f32; 2]> {
+        (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(r * a.cos()) as f32, (r * a.sin()) as f32]
+            })
+            .collect()
+    };
+    let cases: Vec<(&str, FieldDoc)> = vec![
+        (
+            "cubo (quina viva)",
+            FieldDoc::new(
+                vec![leaf(
+                    Primitive::Box {
+                        half: [0.4, 0.4, 0.4],
+                        round: 0.0,
+                    },
+                    Xform::IDENTITY,
+                )],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "esfera (lisa)",
+            FieldDoc::new(
+                vec![leaf(Primitive::Sphere { radius: 0.45 }, Xform::IDENTITY)],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "toro (género 1)",
+            FieldDoc::new(
+                vec![leaf(
+                    Primitive::Torus {
+                        major: 0.35,
+                        minor: 0.13,
+                    },
+                    Xform::IDENTITY,
+                )],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "cubo MENOS esfera (vinco curvo)",
+            FieldDoc::new(
+                vec![
+                    leaf(
+                        Primitive::Box {
+                            half: [0.4, 0.4, 0.4],
+                            round: 0.0,
+                        },
+                        Xform::IDENTITY,
+                    ),
+                    leaf(
+                        Primitive::Sphere { radius: 0.5 },
+                        Xform::at(0.35, 0.35, 0.35),
+                    ),
+                    Node::new(
+                        Xform::IDENTITY,
+                        NodeKind::Combine {
+                            op: Op::Difference(Blend::Sharp),
+                            children: vec![NodeId(0), NodeId(1)],
+                        },
+                    ),
+                ],
+                NodeId(2),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "desenho puxado (24 lados)",
+            FieldDoc::new(
+                vec![leaf(
+                    Primitive::Extrude {
+                        profile: Profile::new(vec![ring(24, 0.4)], FillRule::NonZero, 1e-3)
+                            .expect("perfil"),
+                        half_height: 0.25,
+                        round: 0.0,
+                    },
+                    Xform::IDENTITY,
+                )],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+    ];
+    println!(
+        "peça | prof | faces | ≠2 faces | bordo | |f| médio (cél) | |f| p99 | máx | aspecto p50/máx | skew p50/p99 | >60° | não-quads"
+    );
+    for (name, doc) in &cases {
+        for depth in [5u8, 6] {
+            let Ok(mesh) = extract::extract(doc, &reg, depth) else {
+                println!("{name:>28} | {depth} | RECUSOU");
+                continue;
+            };
+            let f = Field::new(doc);
+            let ball = crate::bounds::bounding_ball(doc, &reg).expect("a bola");
+            // ⭐ **A célula da grade** — é nela que o erro se lê, porque é a única escala que a
+            // extração conhece. (A grade cobre a bola com folga; ver `extract::Grid::new`.)
+            let cell = f64::from(ball.radius) * 2.2 / f64::from(1u32 << depth);
+            let mut errs: Vec<f64> = mesh
+                .positions()
+                .iter()
+                .map(|p| {
+                    f.at(f64::from(p[0]), f64::from(p[1]), f64::from(p[2]))
+                        .abs()
+                        / cell
+                })
+                .collect();
+            errs.sort_by(f64::total_cmp);
+            let mean = errs.iter().sum::<f64>() / errs.len().max(1) as f64;
+            let p99 = errs[errs.len().saturating_sub(1) * 99 / 100];
+            let max = errs.last().copied().unwrap_or(0.0);
+            let (non, border) = manifold_census(&mesh);
+            let sh = ph2d_quadfill::quad_shape(&mesh);
+            let non_quads = mesh.faces().iter().filter(|f| f.0[3] == f.0[2]).count();
+            println!(
+                "{name:>28} | {depth:>4} | {:>5} | {non:>8} | {border:>5} | {mean:>13.4} | {p99:>7.4} | {max:>6.3} | {:>6.2}/{:>5.2} | {:>5.1}/{:>5.1} | {:>4} | {non_quads}",
+                mesh.faces().len(),
+                sh.aspect_p50,
+                sh.aspect_max,
+                sh.skew_p50,
+                sh.skew_p99,
+                sh.skew_over_60,
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A EXPERIÊNCIA DECISIVA: a nossa malha entra na cadeia de quads da casa** (W61).
+///
+/// # A pergunta, e por que não se responde afinando a extração
+///
+/// O placar mediu o buraco: a extração entrega enviesamento mediano de **25–27°** onde o oráculo de
+/// produção (`quadwild-bimdf`) entrega **4,8–7,1°**. ⛔ **E afinar não cura**, por medição já no
+/// repo (a `line/sculpt3d`, `PLAN.md`): *16 rondas de relaxação por ajuste de quadrado levam o
+/// enviesamento mediano de `27°` para `26°` e pagam `3,4×` as dobras* ⇒ `SQUARE_ROUNDS = 0`.
+/// *Se mover vértices 16× não move a mediana, o defeito está na CONECTIVIDADE.*
+///
+/// ⭐ **E a conectividade certa já existe neste monorepo**, medida a `5,1°`–`5,5°` — a classe do
+/// oráculo, que ela ultrapassa numa das peças. Esta sonda pergunta a única coisa que falta saber:
+/// **ela come a malha que SAI daqui?**
+///
+/// ⚠️ **A ordem tem uma FASE ZERO obrigatória**, e ela está medida: sem o remalhamento isotrópico à
+/// frente, a mesma cadeia dá `10–12°` — *o dobro, sem uma linha de algoritmo mudar*.
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::the_house_quad_chain_eats_the_mesh_this_crate_extracts --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_house_quad_chain_eats_the_mesh_this_crate_extracts() {
+    use ph2d_crossfield::{Dual, solve_miq};
+    use ph2d_quadfill::{SMOOTHING_ROUNDS, fill, quad_shape};
+    use ph2d_quantize::{Budget, quantize_within};
+    use ph2d_trace::trace_patches;
+    let reg = hybrid::Registry::new();
+    let cases: Vec<(&str, FieldDoc)> = vec![
+        (
+            "esfera",
+            FieldDoc::new(
+                vec![leaf(Primitive::Sphere { radius: 0.45 }, Xform::IDENTITY)],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "toro",
+            FieldDoc::new(
+                vec![leaf(
+                    Primitive::Torus {
+                        major: 0.35,
+                        minor: 0.13,
+                    },
+                    Xform::IDENTITY,
+                )],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+    ];
+    println!(
+        "peça | fase | faces | aspecto p50/máx | skew p50/p99 | >60° | não-quads | irregulares"
+    );
+    for (name, doc) in &cases {
+        let Ok(mut mesh) = extract::extract(doc, &reg, 6) else {
+            println!("{name}: a extração recusou");
+            continue;
+        };
+        let before = quad_shape(&mesh);
+        println!(
+            "{name:>8} | EXTRAÍDA | {:>5} | {:>6.2}/{:>6.2} | {:>5.1}/{:>5.1} | {:>4} | {:>9} | —",
+            mesh.faces().len(),
+            before.aspect_p50,
+            before.aspect_max,
+            before.skew_p50,
+            before.skew_p99,
+            before.skew_over_60,
+            mesh.faces().iter().filter(|f| f.0[3] == f.0[2]).count(),
+        );
+        // ⚠️ **FASE ZERO** — sem ela a mesma cadeia dá o dobro do enviesamento (medido).
+        let r = ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
+        let target_edge = ph2d_remesh_iso::target_edge(&mesh, ph2d_remesh_iso::ALPHA);
+        let _ = r;
+        mesh.triangulate();
+        let dual = Dual::build(&mesh);
+        let (field, _) = solve_miq(&dual);
+        let layout = trace_patches(&mesh, &dual, &field);
+        let Ok(l) = layout.to_layout(target_edge) else {
+            println!("{name:>8} | o traçado devolveu um layout inválido");
+            continue;
+        };
+        let Ok((q, _qr)) = quantize_within(&l, Budget::new(256, 512)) else {
+            println!("{name:>8} | a quantização recusou");
+            continue;
+        };
+        match fill(&mesh, &mesh, &layout, &q, SMOOTHING_ROUNDS) {
+            Ok((out, rep)) => {
+                let after = quad_shape(&out);
+                println!(
+                    "{name:>8} | CADEIA   | {:>5} | {:>6.2}/{:>6.2} | {:>5.1}/{:>5.1} | {:>4} | {:>9} | {} ({:.1} %)",
+                    out.faces().len(),
+                    after.aspect_p50,
+                    after.aspect_max,
+                    after.skew_p50,
+                    after.skew_p99,
+                    after.skew_over_60,
+                    rep.non_quads,
+                    rep.irregular,
+                    100.0 * rep.irregular as f64 / rep.verts.max(1) as f64,
+                );
+            }
+            Err(e) => println!("{name:>8} | o preenchimento recusou: {e:?}"),
+        }
+    }
+}
+
+/// ⛔⛔ **O ENVIESAMENTO É DA GRADE, NÃO DA PEÇA** (W61) — o que fecha a pergunta «afinar chega?».
+///
+/// # A hipótese que esta sonda mata
+///
+/// O placar mostrou `25–27°` de enviesamento contra os `4,8–7,1°` do oráculo, e a resposta preguiçosa
+/// seria *"afinar o extrator"*. ⛔ Duas coisas dizem que não:
+///
+/// 1. já está no repo que **mover vértices não cura** (a `line/sculpt3d` mediu 16 rondas de
+///    relaxação a levarem a mediana de `27°` para `26°`, pagando `3,4×` as dobras);
+/// 2. e esta sonda mostra **de onde o ângulo vem**: um cubo **alinhado** com a grade sai a `0,0°`, e
+///    o MESMO cubo **rodado** sai enviesado. *A forma da face segue a GRADE, não a superfície* — que
+///    é a definição de uma malha dual, e não um defeito de afinação.
+///
+/// ⇒ curar isto pede outra **conectividade**, não outro parâmetro. E a conectividade certa já existe
+/// neste monorepo, medida a `5,1°`–`5,5°`.
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::the_skew_belongs_to_the_grid_not_to_the_piece --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_skew_belongs_to_the_grid_not_to_the_piece() {
+    use ph2d_quadfill::quad_shape;
+    let reg = hybrid::Registry::new();
+    println!("peça | ângulo | faces | aspecto p50/máx | skew p50/p99 | >60°");
+    for deg in [0.0f32, 15.0, 30.0, 45.0] {
+        let a = deg.to_radians() * 0.5;
+        // Rotação em torno de Z — o quaternion `(0, 0, sin, cos)`.
+        let rot = Xform {
+            rotation: [0.0, 0.0, a.sin(), a.cos()],
+            ..Xform::IDENTITY
+        };
+        let doc = FieldDoc::new(
+            vec![leaf(
+                Primitive::Box {
+                    half: [0.35, 0.35, 0.35],
+                    round: 0.0,
+                },
+                rot,
+            )],
+            NodeId(0),
+        )
+        .expect("a peça");
+        let Ok(mesh) = extract::extract(&doc, &reg, 6) else {
+            println!("cubo | {deg:>5.0}° | a extração recusou");
+            continue;
+        };
+        let sh = quad_shape(&mesh);
+        println!(
+            "cubo | {deg:>5.0}° | {:>5} | {:>6.2}/{:>6.2} | {:>5.1}/{:>5.1} | {:>4}",
+            mesh.faces().len(),
+            sh.aspect_p50,
+            sh.aspect_max,
+            sh.skew_p50,
+            sh.skew_p99,
+            sh.skew_over_60,
+        );
+    }
+}

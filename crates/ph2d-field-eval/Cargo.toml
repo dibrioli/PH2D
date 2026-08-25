@@ -45,3 +45,12 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 # comparava `VmShape` com `VmShape` (registro em
 # `docs/3DModeling/01_resultados_spike.md` §6).
 fidget = { version = "0.5", default-features = false, features = ["jit"] }
+
+[dev-dependencies]
+# ⚠️ **Só de teste.** A régua de FORMA de face (`QuadShape`) foi calibrada pela linha da escultura
+# contra um oráculo de produção — e o placar da extração desta crate mede-se contra a MESMA barra.
+ph2d-quadfill = { path = "../ph2d-quadfill" }
+ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
+ph2d-crossfield = { path = "../ph2d-crossfield" }
+ph2d-trace = { path = "../ph2d-trace" }
+ph2d-quantize = { path = "../ph2d-quantize" }

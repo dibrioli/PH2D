@@ -5574,6 +5574,86 @@ da peça (invisível) enquanto a normal salta `6,43°` (visível).
   `360/n` e não depende de mais nada.
 - ⭐ A sonda fica no repo como **registo das três refutações**, não como régua viva.
 
+## §67 — W61: o PLACAR da malha extraída, contra o estado da arte (24/08)
+
+> Enio: *"o tempo não é problema. Busque a qualidade, o estado da arte no resultado da malha, tente
+> superar os melhores do mundo"*. ⛔ **Sem um placar, «estado da arte» é uma intenção.**
+
+### §67.1 — Duas hipóteses minhas, refutadas por LEITURA antes de escrever código
+
+1. ⛔ *"o extrator é Surface Nets e arredonda quina"* — **falso**: é **Dual Contouring com QEF**,
+   vértice preso à célula, quads de verdade. E a quina viva está em `116/116` com desvio `0,00` de
+   célula desde a W20.
+2. ⛔ *"um vértice por célula ⇒ não-manifold"* (a fraqueza clássica do DC) — **falso na medição**:
+   `0` arestas com ≠2 faces e `0` de bordo em **todas** as fixturas, incluindo o toro (género 1) e
+   uma booleana.
+
+### §67.2 — O placar (profundidade 6)
+
+| peça | faces | ≠2 faces | bordo | `\|f\|` médio (cél) | p99 | aspecto p50/máx | **skew p50/p99** | >60° | não-quads |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| cubo | 7 350 | **0** | **0** | **0,0000** | 0,0000 | 1,00 / 1,10 | **0,0 / 0,0** | **0** | **0** |
+| esfera | 17 550 | **0** | **0** | 0,0050 | 0,0117 | 1,48 / 2,42 | **26,6 / 55,2** | 120 | **0** |
+| toro | 10 680 | **0** | **0** | 0,0088 | 0,0213 | 1,49 / 18,32 | **24,8 / 53,6** | 16 | **0** |
+| cubo − esfera | 7 362 | **0** | **0** | 0,0018 | 0,0225 | 1,00 / 7,12 | 0,0 / 52,2 | 33 | **0** |
+| desenho puxado | 6 318 | **0** | **0** | 0,0045 | 0,0615 | 1,06 / 7,97 | 0,0 / 74,0 | 80 | **0** |
+
+⭐ **Onde já estamos no nível, ou acima:** topologia **perfeita**; geometria com `\|f\|` médio de
+`0,000`–`0,009` **célula** (o cubo é exactamente `0` — analítico); **100 % quads**; quina viva exacta.
+⚠️ E a régua da geometria é uma coisa que **nenhum remalhador malha-a-malha tem**: o campo é o
+oráculo, e o erro é exacto e não aproximado.
+
+⛔ **O buraco é UM: a FORMA da face.** `25–27°` de enviesamento mediano contra os `4,8–7,1°` do
+oráculo de produção `quadwild-bimdf` (a barra que a `line/sculpt3d` calibrou), e `16`–`120` faces com
+canto pior que 60° contra **zero**.
+
+### §67.3 — ⛔⛔ E o buraco é ESTRUTURAL: a forma da face segue a GRADE
+
+O **mesmo cubo**, rodado em torno de Z:
+
+| ângulo | aspecto p50 | skew p99 | faces >60° |
+|---:|---:|---:|---:|
+| 0° | **1,00** | **0,0°** | **0** |
+| 15° | 1,07 | 43,8° | 0 |
+| 30° | 1,28 | 69,3° | 168 |
+| **45°** | **1,41** | **90,0°** | **192** |
+
+⭐⭐ **`1,41` é `√2`** — o quad dual de uma grade sobre uma superfície a 45° é um rectângulo de
+`1 × √2`, exactamente. *A forma da face segue a grade, não a superfície*, que é a **definição** de uma
+malha dual e não um defeito de afinação.
+
+⇒ ⛔ **Nenhum parâmetro cura isto**, e o repo já o dizia pelo outro lado: a `line/sculpt3d` mediu 16
+rondas de relaxação por ajuste de quadrado a levarem a mediana de `27°` para `26°`, pagando `3,4×` as
+dobras (`SQUARE_ROUNDS = 0`). *Se mover vértices 16× não move a mediana, o defeito está na
+CONECTIVIDADE.*
+
+### §67.4 — A cura existe nesta árvore, e eu corri a metade ERRADA
+
+A cadeia de quads da casa tem **duas** metades, e só uma é a boa:
+
+| metade | o que dá | medido |
+|---|---|---|
+| **preenchimento por patch** (`ph2d-quadfill::fill`) | `27°` | ⛔ corri-a sobre a nossa malha: esfera `26,6° → 23,2°`, **toro `24,8° → 30,3°`** (pior), faces >60° de `16` para **675** |
+| ⭐ **extracção** (`ph2d-gridmap` + `ph2d-quadextract`) | **`5,1°`–`5,5°`** | a classe do oráculo, que ela **ultrapassa** numa das peças |
+
+⚠️ **Que a metade errada reproduza os `27°` do registo é o que VALIDA o arnês** — ela não
+contradisse a nota, confirmou-a.
+
+⛔ **A metade certa não é alcançável da minha linha:** ela é orquestrada em
+`shells/desktop/src/sculpt3d_history_retopo_extract.rs`, `pub(in crate::sculpt3d)`, e shipa
+**desligada** (`PH2D_RETOPO_EXTRACT`). Ligá-la à exportação deste módulo é um movimento **entre
+linhas** — e a orquestração que duas linhas consomem pertence a uma **crate**, não ao shell de uma
+delas.
+
+### §67.5 — ⏸️ O que fica, e o que é decisão do Enio
+
+- ⭐ **O placar fica** (`the_scorecard_of_the_extracted_mesh`), e com ele «estado da arte» passa a
+  ser um número que se re-corre.
+- ⏸️ **Ligar a exportação à extracção de quads** é o passo que fecha o único buraco. Ele pede uma
+  ordem do Enio porque atravessa duas linhas, e o desenho certo é **içar a orquestração para uma
+  crate** que as duas consomem.
+- ⛔ **Não afinar o DC** — a tabela do cubo rodado é a recusa medida.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

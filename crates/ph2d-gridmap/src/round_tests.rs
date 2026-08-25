@@ -4,7 +4,10 @@ use super::{Relaxer, RoundOptions, round_to_integers};
 use crate::solve::{SolveReport, assemble, solve_with};
 
 /// A cadeia até ao corte e ao pente, sobre uma peça de verdade.
-fn chain(mesh: &mut ph2d_mesh::Mesh) -> (crate::cut::CutMesh, crate::comb::Combed, f32, Vec<u32>) {
+///
+/// ⚠️ **`pub(crate)` de propósito:** a sonda da soldadura precisa da MESMA cadeia, e
+/// uma segunda cópia dela divergiria desta sem ninguém dar por isso.
+pub(crate) fn chain(mesh: &mut ph2d_mesh::Mesh) -> (crate::cut::CutMesh, crate::comb::Combed, f32, Vec<u32>) {
     mesh.triangulate();
     ph2d_remesh_iso::remesh_isotropic(mesh, ph2d_remesh_iso::ALPHA);
     mesh.triangulate();

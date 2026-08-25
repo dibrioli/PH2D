@@ -195,6 +195,15 @@ pub struct RoundReport {
     pub seam_after: (f32, f32),
     /// As réguas do mapa final.
     pub solve: SolveReport,
+    /// ⭐ A estrutura da soldadura — **só o caminho soldado a preenche**.
+    pub weld: crate::weld::WeldReport,
+    /// ⭐ O resíduo da costura separado por espécie — **só o caminho soldado**.
+    ///
+    /// ⚠️ Ele responde ao que [`Self::seam_after`] não distingue: aquele mistura as
+    /// ligações eliminadas (onde o resíduo é o chão da representação) com as que fecham
+    /// ciclo (onde é um facto do mapa). *Uma coluna que soma as duas lê-se como se a
+    /// eliminação não tivesse acontecido.*
+    pub seam: crate::weld::SeamResidual,
 }
 
 /// ⭐⭐⭐ **ARREDONDA O MAPA PARA A GRADE INTEIRA.**
@@ -398,8 +407,6 @@ pub fn round_to_integers(
 /// ponto fixo do outro»* e não ao bit — ver `round_tests`.
 pub(crate) struct Relaxer<'a> {
     a: &'a Assembly,
-    /// Por patch, por vértice local, os triângulos incidentes.
-    by_vert: Vec<Vec<Vec<u32>>>,
     /// Por costura, os pares `(patch, local)` dos dois lados.
     on_seam: Vec<Vec<(u32, u32)>>,
     /// ⭐ Por patch, por vértice local, que componentes estão **pregadas**.
@@ -416,16 +423,6 @@ pub(crate) struct Relaxer<'a> {
 
 impl<'a> Relaxer<'a> {
     pub(crate) fn new(a: &'a Assembly, cut: &CutMesh, combed: &Combed, weight: f32) -> Self {
-        let mut by_vert: Vec<Vec<Vec<u32>>> =
-            a.denom.iter().map(|d| vec![Vec::new(); d.len()]).collect();
-        for (p, ts) in a.tris.iter().enumerate() {
-            for (i, t) in ts.iter().enumerate() {
-                for k in 0..3 {
-                    #[allow(clippy::cast_possible_truncation)]
-                    by_vert[p][t.v[k] as usize].push(i as u32);
-                }
-            }
-        }
         let mut on_seam: Vec<Vec<(u32, u32)>> = vec![Vec::new(); cut.seams.len()];
         for (p, list) in a.partners.iter().enumerate() {
             for (l, qs) in list.iter().enumerate() {
@@ -457,7 +454,6 @@ impl<'a> Relaxer<'a> {
         let frozen = a.denom.iter().map(|d| vec![[false; 2]; d.len()]).collect();
         Self {
             a,
-            by_vert,
             on_seam,
             pairs,
             frozen,
@@ -505,33 +501,7 @@ impl<'a> Relaxer<'a> {
         if base <= 0.0 {
             return 0.0;
         }
-        let (mut nu, mut nv) = (0.0f32, 0.0f32);
-        for &ti in &self.by_vert[p][l] {
-            let t = &self.a.tris[p][ti as usize];
-            let Some(k) = (0..3).find(|&k| t.v[k] as usize == l) else {
-                continue;
-            };
-            let zs = [
-                map.uv[p][t.v[0] as usize],
-                map.uv[p][t.v[1] as usize],
-                map.uv[p][t.v[2] as usize],
-            ];
-            let (mut rest, mut rest_v) = ([0.0f32; 2], [0.0f32; 2]);
-            for (j, (z, g)) in zs.iter().zip(&t.g).enumerate() {
-                if j == k {
-                    continue;
-                }
-                rest[0] += z[0] * g[0];
-                rest[1] += z[0] * g[1];
-                rest_v[0] += z[1] * g[0];
-                rest_v[1] += z[1] * g[1];
-            }
-            let gu = [t.target[0][0] - rest[0], t.target[0][1] - rest[1]];
-            let gv = [t.target[1][0] - rest_v[0], t.target[1][1] - rest_v[1]];
-            let g = t.g[k];
-            nu += t.area * gu[0].mul_add(g[0], gu[1] * g[1]);
-            nv += t.area * gv[0].mul_add(g[0], gv[1] * g[1]);
-        }
+        let [mut nu, mut nv] = crate::solve::poisson_numerator(self.a, map, p, l);
         let w = self.weight * base;
         let mut den = base;
         for q in &self.a.partners[p][l] {
@@ -674,7 +644,7 @@ impl<'a> Relaxer<'a> {
         let mut out: Vec<(u32, u32)> = Vec::with_capacity(12);
         #[allow(clippy::cast_possible_truncation)]
         let p32 = p as u32;
-        for &ti in &self.by_vert[p][l] {
+        for &ti in &self.a.by_vert[p][l] {
             for v in self.a.tris[p][ti as usize].v {
                 if v as usize != l {
                     out.push((p32, v));
@@ -692,4 +662,4 @@ impl<'a> Relaxer<'a> {
 
 #[cfg(test)]
 #[path = "round_tests.rs"]
-mod tests;
+pub(crate) mod tests;

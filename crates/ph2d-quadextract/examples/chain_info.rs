@@ -104,17 +104,19 @@ fn main() {
     let h = median_edge(&mesh) * scale;
     let t = std::time::Instant::now();
     let pin = std::env::args().nth(3).as_deref() != Some("sem-singularidades");
-    let (map, r) = ph2d_gridmap::round_to_integers(
-        &mesh,
-        &cut,
-        &combed,
-        h,
-        ph2d_gridmap::RoundOptions {
-            pin_singularities: pin,
-            ..ph2d_gridmap::RoundOptions::default()
-        },
-        &singular,
-    );
+    // ⭐ `PH2D_GRIDMAP_WELD=1` corre o caminho SOLDADO (a costura entra por eliminação,
+    // não por peso). Sem ele, o caminho de sempre — byte-idêntico.
+    let welded = std::env::var("PH2D_GRIDMAP_WELD").ok().as_deref() == Some("1");
+    let opts = ph2d_gridmap::RoundOptions {
+        pin_singularities: pin,
+        ..ph2d_gridmap::RoundOptions::default()
+    };
+    let (map, r) = if welded {
+        ph2d_gridmap::round_welded(&mesh, &cut, &combed, h, opts, &singular)
+    } else {
+        ph2d_gridmap::round_to_integers(&mesh, &cut, &combed, h, opts, &singular)
+    };
+    println!("  caminho: {}", if welded { "SOLDADO (eliminacao)" } else { "penalizado" });
     println!("  modalidade das singularidades: {pin}");
     println!(
         "  G3+G5 ({:.1} s): {} costuras de arvore + {} de CICLO + {} singularidades (de {}, {} copias, {} ambiguas) ⇒ {} inteiros \

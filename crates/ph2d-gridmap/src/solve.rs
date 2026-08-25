@@ -289,6 +289,13 @@ pub(crate) struct Assembly {
     pub partners: Vec<Vec<Vec<Partner>>>,
     /// O denominador de Poisson de cada vértice, que não muda com o mapa.
     pub denom: Vec<Vec<f32>>,
+    /// Por patch, por vértice local, os triângulos incidentes.
+    ///
+    /// ⚠️ **Vive aqui e não no relaxador** porque agora há TRÊS leitores (a varredura
+    /// do [`crate::round::Relaxer`], a classe soldada e a translação): *a mesma
+    /// incidência construída em três sítios divergiria no dia em que um deles
+    /// mudasse.*
+    pub by_vert: Vec<Vec<Vec<u32>>>,
 }
 
 /// Monta o sistema, somando ao relatório o que a montagem mede.
@@ -353,11 +360,58 @@ pub(crate) fn assemble(
             }
         }
     }
+    let mut by_vert: Vec<Vec<Vec<u32>>> = denom.iter().map(|d| vec![Vec::new(); d.len()]).collect();
+    for (p, ts) in tris.iter().enumerate() {
+        for (i, t) in ts.iter().enumerate() {
+            for k in 0..3 {
+                #[allow(clippy::cast_possible_truncation)]
+                by_vert[p][t.v[k] as usize].push(i as u32);
+            }
+        }
+    }
     Assembly {
         tris,
         partners,
         denom,
+        by_vert,
     }
+}
+
+/// ⭐⭐ **O NUMERADOR DE POISSON de um vértice** — a soma, sobre os triângulos
+/// incidentes, do que a energia de orientação pede a este vértice.
+///
+/// ⚠️ **Porta única.** Ele era escrito à mão em dois sítios (a varredura por patch e o
+/// relaxador); com a soldadura passariam a ser quatro. *A mesma equação em quatro
+/// sítios é quatro equações à espera de divergirem.*
+pub(crate) fn poisson_numerator(a: &Assembly, map: &GridMap, p: usize, l: usize) -> [f32; 2] {
+    let (mut nu, mut nv) = (0.0f32, 0.0f32);
+    for &ti in &a.by_vert[p][l] {
+        let t = &a.tris[p][ti as usize];
+        let Some(k) = (0..3).find(|&k| t.v[k] as usize == l) else {
+            continue;
+        };
+        let zs = [
+            map.uv[p][t.v[0] as usize],
+            map.uv[p][t.v[1] as usize],
+            map.uv[p][t.v[2] as usize],
+        ];
+        let (mut rest, mut rest_v) = ([0.0f32; 2], [0.0f32; 2]);
+        for (j, (z, g)) in zs.iter().zip(&t.g).enumerate() {
+            if j == k {
+                continue;
+            }
+            rest[0] += z[0] * g[0];
+            rest[1] += z[0] * g[1];
+            rest_v[0] += z[1] * g[0];
+            rest_v[1] += z[1] * g[1];
+        }
+        let gu = [t.target[0][0] - rest[0], t.target[0][1] - rest[1]];
+        let gv = [t.target[1][0] - rest_v[0], t.target[1][1] - rest_v[1]];
+        let g = t.g[k];
+        nu += t.area * gu[0].mul_add(g[0], gu[1] * g[1]);
+        nv += t.area * gv[0].mul_add(g[0], gv[1] * g[1]);
+    }
+    [nu, nv]
 }
 
 /// ⭐⭐⭐ **RESOLVE O MAPA.** `h` é o passo alvo da grade, na unidade da peça.
@@ -519,6 +573,7 @@ fn run(
         tris,
         partners,
         denom,
+        by_vert,
     } = assemble(mesh, cut, combed, h, &mut rep);
 
     let mut map = GridMap {
@@ -618,6 +673,7 @@ fn run(
             tris,
             partners,
             denom,
+            by_vert,
         },
         cut,
         combed,

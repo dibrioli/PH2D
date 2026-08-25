@@ -433,3 +433,61 @@ fn the_lasso_selection_survives_the_next_frames() {
         });
     }
 }
+
+/// ⛔⛔ **A MOLDURA DO LAÇO PINTA-SE SEM NADA SELECIONADO** (W58c) — o gate que faltava.
+///
+/// Enio, 2026-08-24: *"o desenho do retângulo de seleção deixou de aparecer"*.
+///
+/// ⚠️ **A W58 gateou o gesto e a captura, e não a PINTURA** — e foi exactamente ali que o defeito
+/// se meteu: a moldura estava dentro da guarda `if let Some(anchor) = smoke.gizmo`, isto é, só era
+/// desenhada **com algo já selecionado**. O laço mais comum de todos — o primeiro, com a peça
+/// acabada de abrir — desenhava nada. *As três perguntas de costura desta casa são pintado /
+/// populado / clicado, e esta wave só tinha respondido às duas últimas.*
+///
+/// # ⚠️ A régua teve de ser corrigida: ela media o RECORTE
+///
+/// A 1.ª versão comparava o **tamanho** do `path_data` com e sem laço, e uma mutação que apagava a
+/// chamada a `paint_lasso` **SOBREVIVEU**: o `push_clip` que a envolve também escreve um caminho na
+/// cena, então a cena crescia na mesma. ⇒ a régua passa a comparar **dois rectângulos DIFERENTES**:
+/// o recorte é o mesmo nos dois (é a área), então qualquer diferença nos bytes vem da moldura — e
+/// uma moldura não pintada dá dois resultados **idênticos**.
+#[test]
+fn the_lasso_band_paints_with_nothing_selected() {
+    use ph2d_vector::VectorScene;
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Sphere { radius: 0.3 },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("a peça");
+    armed_with(&doc, |_| {
+        let mut text = ph2d_text::TextSystem::without_system_fonts();
+        let mut paint = |lasso: Option<([f32; 2], [f32; 2])>| {
+            crate::field3d_smoke::with_smoke(|s| {
+                s.lasso = lasso;
+                // ⚠️ **NADA selecionado** — é a condição exacta do defeito.
+                s.gizmo = None;
+            });
+            let mut scene = VectorScene::new();
+            crate::field3d_smoke::draw(AREA, ph2d_tokens::Theme::default(), &mut text, &mut scene);
+            scene.inner().encoding().path_data.clone()
+        };
+        let quiet = paint(None);
+        let small = paint(Some(([20.0, 20.0], [80.0, 60.0])));
+        let large = paint(Some(([20.0, 20.0], [300.0, 200.0])));
+        assert!(
+            large.len() > quiet.len(),
+            "com um laço em curso e nada selecionado a cena não cresceu ({} -> {}) — a moldura não \
+             está a ser pintada, e o artista arrasta às cegas",
+            quiet.len(),
+            large.len()
+        );
+        assert_ne!(
+            small, large,
+            "dois rectângulos de tamanhos diferentes puseram os MESMOS bytes na cena — o que cresceu \
+             foi o recorte, não a moldura"
+        );
+    });
+}

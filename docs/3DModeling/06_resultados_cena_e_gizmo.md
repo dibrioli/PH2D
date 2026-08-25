@@ -5376,6 +5376,37 @@ corrida **sem filtro** do pacote que o apanhou — que é exactamente a cura esc
 *A prescrição funcionou; o que faltava era a linha executá-la.* Corte por responsabilidade: o
 **gesto** fica, **o que o laço apanha** vai para o irmão.
 
+## §63 — W58c: a moldura do laço estava do lado ERRADO de uma lei escrita uma linha acima (24/08)
+
+> Enio: *"funcionou mas o desenho do retângulo de seleção deixou de aparecer"*.
+
+### §63.1 — A causa, e o parágrafo que já a proibia
+
+A moldura era pintada **dentro** de `if let Some(anchor) = smoke.gizmo` — a guarda de **seleção**.
+Sem nada escolhido não há âncora de gizmo, o bloco inteiro é saltado, e o laço mais comum de todos —
+**o primeiro**, com a peça acabada de abrir — desenhava nada.
+
+⚠️ **E a lei estava escrita uma linha acima**, no gizmo de navegação: *"ele é pintado **sempre**, e
+não dentro da guarda de seleção que vem a seguir: ele diz de que lado do modelo se está a olhar, e
+essa pergunta não depende de haver algo escolhido"*. A moldura é da mesma espécie — ela diz **o que
+a mão está a fazer** — e eu pus o código do outro lado da lei. *Ler a regra não é o mesmo que estar
+do lado certo dela.*
+
+### §63.2 — ⚠️ O gate que faltava, e a régua que teve de ser corrigida
+
+A W58 gateou **o gesto** (o modificador abre o laço, o zero-área vira clique) e **a captura** (o que
+o rectângulo apanha). Não gateou a **PINTURA** — e foi exactamente ali que o defeito se meteu.
+*As três perguntas de costura desta casa são pintado / populado / clicado, e esta wave só tinha
+respondido às duas últimas.*
+
+⛔ **A 1.ª régua media o RECORTE.** Ela comparava o tamanho do `path_data` com e sem laço — e a
+mutação que apagava a chamada a `paint_lasso` **SOBREVIVEU**, porque o `push_clip` que a envolve
+também escreve um caminho na cena. ⇒ a régua passa a comparar **dois rectângulos DIFERENTES**: o
+recorte é o mesmo nos dois (é a área), então qualquer diferença nos bytes vem da moldura, e uma
+moldura não pintada dá dois resultados **idênticos**.
+
+3 mutações, **3 vermelhas** — a primeira delas é o defeito reportado, reposto tal e qual.
+
 ### §57.11 — ⏸️ O que falta para o produto ver isto
 
 - ✅ **A MARCHA POR REGIÃO EXISTE** (§57.14) e dá **1,8×** no quadro. ⏸️ O degrau seguinte é

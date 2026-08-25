@@ -206,6 +206,29 @@ pub(crate) fn draw(
             );
         }
 
+        // ⭐⭐ **A MOLDURA DO LAÇO** (W58) — e ela é pintada **sempre**, como o gizmo de navegação
+        // logo acima e pela mesma razão: ela diz **o que a mão está a fazer**, e essa pergunta não
+        // depende de haver algo escolhido.
+        //
+        // ⛔ **A 1.ª versão pô-la DENTRO da guarda de seleção que vem a seguir** (Enio, 2026-08-24:
+        // *"o desenho do retângulo de seleção deixou de aparecer"*): sem nada selecionado não há
+        // âncora de gizmo, o bloco inteiro é saltado, e o laço mais comum de todos — o primeiro,
+        // com a peça acabada de abrir — desenhava **nada**. ⚠️ *O parágrafo do navball, uma linha
+        // acima, já escrevia esta lei; eu pus o código do outro lado dela.*
+        //
+        // ⚠️ Ela sai do campo do **GESTO** (`smoke.lasso`), nunca do pedido: pintar a partir do
+        // pedido faria a moldura sobreviver ao dedo por um quadro.
+        if let Some((from, to)) = smoke.lasso {
+            scene_out.push_clip(&ph2d_vector::Rect::new(
+                f64::from(area.x),
+                f64::from(area.y),
+                f64::from(area.x + area.w),
+                f64::from(area.y + area.h),
+            ));
+            crate::field3d_gizmo_paint::paint_lasso(scene_out, from, to, theme, [area.x, area.y]);
+            scene_out.pop_layer();
+        }
+
         // ⭐ **O gizmo por cima da peça**, e no referencial da área.
         //
         // ⚠️ Ele é desenhado **depois** do quadro traçado e **sem teste de profundidade**: uma alça
@@ -228,18 +251,6 @@ pub(crate) fn draw(
                 f64::from(area.y + area.h),
             ));
             crate::field3d_gizmo_paint::paint(scene_out, &handles, hot, theme, [area.x, area.y]);
-            // ⭐⭐ **O LAÇO desenha-se enquanto o dedo está em baixo** (W58) — e sai do campo do
-            // GESTO (`smoke.lasso`), nunca do pedido: pintar a partir do pedido faria a moldura
-            // sobreviver ao dedo por um quadro.
-            if let Some((from, to)) = smoke.lasso {
-                crate::field3d_gizmo_paint::paint_lasso(
-                    scene_out,
-                    from,
-                    to,
-                    theme,
-                    [area.x, area.y],
-                );
-            }
             // ⭐ **O NÚMERO do gesto**, ao lado do gizmo — só durante o arrasto.
             //
             // ⚠️ Ele sai do que o mundo **aplicou** (`Grip::applied`), nunca de uma segunda conta a

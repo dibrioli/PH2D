@@ -140,6 +140,12 @@ pub struct ClosureSystem {
     dep: Vec<(Var, Vec<(u32, M2)>)>,
     /// Por livre, as cópias que ela move e a jacobiana `∂z/∂v`.
     touch: Vec<Vec<(u32, M2)>>,
+    /// ⭐ Por livre, as dependentes que ela move — pré-computado.
+    ///
+    /// ⚠️ **Sem isto cada `bump` varre TODAS as dependentes** à procura de si próprio, e
+    /// o passo do guloso passa a custar `O(dependentes)` em vez de `O(as que dependem
+    /// desta)`. *Medido: a cadeia da peça enrugada estava em 60 s.*
+    by_free: Vec<Vec<(u32, M2)>>,
     /// Por costura, `true` se ela é dependente.
     dep_seam: Vec<bool>,
     /// Por classe singular, `true` se ela é dependente.
@@ -193,11 +199,9 @@ impl ClosureSystem {
         };
         let Some(&v) = self.free.get(i) else { return };
         write(v, delta, map);
-        let Ok(fi) = u32::try_from(i) else { return };
-        for (dv, expr) in &self.dep {
-            if let Some(&(_, a)) = expr.iter().find(|e| e.0 == fi) {
-                write(*dv, mul_vec(a, delta), map);
-            }
+        let Some(list) = self.by_free.get(i) else { return };
+        for &(d, a) in list {
+            write(self.dep[d as usize].0, mul_vec(a, delta), map);
         }
     }
 
@@ -409,15 +413,24 @@ impl ClosureSystem {
                 .position(|&v| v == vars[i])
                 .and_then(|p| u32::try_from(p).ok())
         };
+        // ⚠️ **Os termos repetidos SOMAM-SE.** Duas entradas da mesma livre na mesma
+        // expressão são dois caminhos até ela, e o coeficiente é a soma dos dois. ⛔ A
+        // primeira redacção da propagação incremental apanhava só o PRIMEIRO (`find`), e
+        // ficava verde porque o [`Self::apply`] do fim reconstruía tudo e tapava a
+        // diferença — *um erro mascarado pela função que corre a seguir.*
         let dep: Vec<(Var, Vec<(u32, M2)>)> = solved
             .iter()
             .map(|(pi, expr)| {
-                (
-                    vars[*pi],
-                    expr.iter()
-                        .filter_map(|&(i, c)| fidx(i).map(|f| (f, c)))
-                        .collect(),
-                )
+                let mut out: Vec<(u32, M2)> = Vec::with_capacity(expr.len());
+                for &(i, c) in expr {
+                    let Some(f) = fidx(i) else { continue };
+                    if let Some(e) = out.iter_mut().find(|e| e.0 == f) {
+                        e.1 = add(e.1, c);
+                    } else {
+                        out.push((f, c));
+                    }
+                }
+                (vars[*pi], out)
             })
             .collect();
 
@@ -464,6 +477,13 @@ impl ClosureSystem {
             }
         }
 
+        let mut by_free: Vec<Vec<(u32, M2)>> = vec![Vec::new(); free.len()];
+        for (d, (_, expr)) in dep.iter().enumerate() {
+            for &(fi, a) in expr {
+                #[allow(clippy::cast_possible_truncation)]
+                by_free[fi as usize].push((d as u32, a));
+            }
+        }
         let mut dep_seam = vec![false; seams];
         let mut dep_class = std::collections::BTreeSet::new();
         for (v, _) in &dep {
@@ -479,6 +499,7 @@ impl ClosureSystem {
                 free,
                 dep,
                 touch,
+                by_free,
                 dep_seam,
                 dep_class,
             },
@@ -499,3 +520,7 @@ fn matmul(a: M2, b: M2) -> M2 {
         ],
     ]
 }
+
+#[cfg(test)]
+#[path = "weld_flat_tests.rs"]
+mod tests;

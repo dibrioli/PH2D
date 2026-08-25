@@ -78,5 +78,5 @@ pub use round::{RoundOptions, RoundReport, round_to_integers};
 pub use solve::{GridMap, SolveReport, rounded_shifts, solve, solve_pinned, solve_with};
 pub use weld::{Closure, SeamResidual, Weld, WeldReport, seam_residual, weld};
 pub use weld_flat::{ClosureSystem, FlatReport, Var};
-pub use weld_round::round_welded;
+pub use weld_round::{round_welded, welded_enabled};
 pub use weld_solve::{WeldSolveReport, solve_welded};

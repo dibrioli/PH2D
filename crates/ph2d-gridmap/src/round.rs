@@ -73,8 +73,16 @@ type SeamPairs = (Vec<(u32, u32, u32, u32)>, i32);
 pub struct RoundOptions {
     /// O peso da costura — o mesmo do [`crate::solve`].
     pub weight: f32,
-    /// Rondas do solve contínuo inicial.
+    /// Rondas do solve contínuo inicial, no caminho **penalizado**.
     pub rounds: usize,
+    /// ⭐ Rondas do solve contínuo inicial, no caminho **soldado**.
+    ///
+    /// ⚠️ **São dois números porque são dois sistemas.** O penalizado é mal
+    /// condicionado *por causa do peso* e precisa de `160 000`; o soldado é a Poisson
+    /// pura e assenta em `8 000` (medido: o passo vai a `2,2e-6`). ⛔ Deixar o soldado
+    /// herdar o número do outro custava **20×** o relógio para chegar ao mesmo mapa —
+    /// medido, `60 s` contra `3 s` na peça enrugada.
+    pub welded_rounds: usize,
     /// ⭐ **A TOLERÂNCIA do degrau 1**, em células: abaixo dela um vértice que se
     /// mexeu não acorda os vizinhos.
     pub local_tol: f32,
@@ -101,6 +109,7 @@ impl Default for RoundOptions {
         Self {
             weight: SEAM_WEIGHT,
             rounds: crate::solve::ROUNDS,
+            welded_rounds: crate::weld_solve::ROUNDS,
             local_tol: LOCAL_TOL,
             local_cap: LOCAL_CAP,
             sweeps: SWEEPS,

@@ -40,6 +40,17 @@ use crate::weld::{seam_residual, weld};
 use crate::weld_flat::Var;
 use crate::weld_solve::{WeldRelaxer, solve_welded};
 
+/// ⭐ **O INTERRUPTOR, numa porta só:** `PH2D_GRIDMAP_WELD=0` volta ao G3 penalizado.
+///
+/// ⚠️ **Ele vive aqui e não em cada chamador** porque houve dois — o instrumento e o
+/// produto — e eles nasceram a ler a MESMA variável com sentidos **opostos** (um
+/// tratava-a como opt-in, o outro como opt-out). *Uma pergunta com duas respostas é a
+/// que envelhece.*
+#[must_use]
+pub fn welded_enabled() -> bool {
+    std::env::var("PH2D_GRIDMAP_WELD").ok().as_deref() != Some("0")
+}
+
 /// ⭐⭐⭐ **ARREDONDA O MAPA SOLDADO PARA A GRADE INTEIRA.**
 ///
 /// ⚠️ **Quais são as variáveis inteiras não é uma escolha:** são as **livres** do
@@ -56,7 +67,7 @@ pub fn round_welded(
     opts: RoundOptions,
     _singular: &[u32],
 ) -> (GridMap, RoundReport) {
-    let (mut map, before) = solve_welded(mesh, cut, combed, h, opts.rounds);
+    let (mut map, before) = solve_welded(mesh, cut, combed, h, opts.welded_rounds);
     let (w, _) = weld(cut, combed);
     let mut rep = RoundReport {
         seam_before: (before.solve.seam_p50, before.solve.seam_max),

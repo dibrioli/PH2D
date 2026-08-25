@@ -16,7 +16,7 @@ fn chain_welded(
         &combed,
         h,
         RoundOptions {
-            rounds,
+            welded_rounds: rounds,
             ..RoundOptions::default()
         },
         &singular,
@@ -28,24 +28,33 @@ fn chain_welded(
 ///
 /// ⚠️ **Ele já existia para o caminho penalizado e FICA**, agora sobre outra estrutura:
 /// no soldado as inteiras não são «as que fecham ciclo», são as **livres do sistema dos
-/// fechos** — e as dependentes têm de sair inteiras da substituição. *Um pivô de
-/// determinante `2` poria uma delas num meio-inteiro, e é este gate que o apanharia.*
+/// fechos** — e as dependentes têm de sair inteiras da substituição.
+///
+/// ⛔⛔ **A grandeza que ele lê é a de ANTES do encaixe** ([`RoundReport::shift_frac_max`]),
+/// e a primeira redacção deste gate lia o mapa DEPOIS — *ele conferia os inteiros que a
+/// própria função acabara de arredondar, que é um gate a fazer-se a si próprio uma
+/// pergunta cuja resposta ele escreveu.* A barra é o chão de acumulação de `f32`; um
+/// pivô de determinante `2` poria a dependente num **meio-inteiro** e passaria por cima
+/// dela, e é isso que este gate existe para não deixar passar.
 #[test]
 #[ignore = "lento -- corre a cadeia inteira"]
 fn every_transition_of_the_welded_map_is_an_integer_translation() {
     let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 36, 1.0);
-    let (map, rep, cut, combed) = chain_welded(&mut mesh, 2_000);
+    let (map, rep, _cut, _combed) = chain_welded(&mut mesh, 2_000);
     assert!(rep.pinned > 20, "a fixtura tem de conter o fenómeno: {} pregadas", rep.pinned);
-    for (s, t) in map.shift.iter().enumerate() {
-        if combed.jump.get(s).copied().flatten().is_none() {
-            continue;
-        }
-        assert!(
-            (t[0] - t[0].round()).abs() == 0.0 && (t[1] - t[1].round()).abs() == 0.0,
-            "a costura {s} ficou com translação {t:?}, que não é inteira"
-        );
-    }
-    let _ = cut;
+    let biggest = map
+        .shift
+        .iter()
+        .fold(0.0f32, |m, t| m.max(t[0].abs()).max(t[1].abs()));
+    // ⭐ O chão: uma dependente é uma soma de ~dezenas de termos `±R^m·t` em `f32`.
+    let bar = 64.0 * biggest.max(1.0) * f32::EPSILON;
+    assert!(
+        rep.shift_frac_max <= bar,
+        "a pior distância a inteiro ANTES do encaixe foi {:.3e}, e o chão de `f32` para \
+         |t| = {biggest:.1} é {bar:.3e} — um valor muito maior é um pivô de determinante \
+         `2` a pôr a dependente num meio-inteiro",
+        rep.shift_frac_max
+    );
 }
 
 /// ⭐⭐⭐ **GATE nº1 DA ESPEC, no fim da cadeia — o resíduo da costura é ZERO, nas duas

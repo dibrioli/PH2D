@@ -104,9 +104,10 @@ fn main() {
     let h = median_edge(&mesh) * scale;
     let t = std::time::Instant::now();
     let pin = std::env::args().nth(3).as_deref() != Some("sem-singularidades");
-    // ⭐ `PH2D_GRIDMAP_WELD=1` corre o caminho SOLDADO (a costura entra por eliminação,
-    // não por peso). Sem ele, o caminho de sempre — byte-idêntico.
-    let welded = std::env::var("PH2D_GRIDMAP_WELD").ok().as_deref() == Some("1");
+    // ⭐ O caminho SOLDADO (a costura entra por eliminação, não por peso).
+    // ⚠️ **O interruptor é lido pela porta da crate**, não aqui: as duas portas leram-no
+    // com sentidos opostos até 2026-08-24.
+    let welded = ph2d_gridmap::welded_enabled();
     let opts = ph2d_gridmap::RoundOptions {
         pin_singularities: pin,
         ..ph2d_gridmap::RoundOptions::default()

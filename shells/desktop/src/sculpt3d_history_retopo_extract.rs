@@ -104,7 +104,7 @@ impl Sculpt3dScene {
         // ── G3 + G5. O mapa, e o arredondamento uma-a-uma que o torna inteiro.
         // ⭐ O G3 soldado é o default DENTRO deste caminho (que já shipa desligado);
         // `PH2D_GRIDMAP_WELD=0` volta ao penalizado, para bissecar.
-        let welded = std::env::var("PH2D_GRIDMAP_WELD").ok().as_deref() != Some("0");
+        let welded = ph2d_gridmap::welded_enabled();
         let opts = ph2d_gridmap::RoundOptions::default();
         let (map, round) = if welded {
             ph2d_gridmap::round_welded(&work, &cut, &combed, target, opts, &singular)

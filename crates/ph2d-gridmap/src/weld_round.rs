@@ -13,6 +13,11 @@
 //!
 //! # ⛔ Por que o CALIBRE não se aplica aqui, e não é um esquecimento
 //!
+//! ⚠️ *(A tabela acima descreve o desenho; o que se prega são as **incógnitas livres do
+//! sistema dos fechos** — as translações que sobraram e as imagens dos vértices
+//! singulares. As dependentes escrevem-se por substituição, e são inteiras porque os
+//! pivôs têm `|det| = 1`.)*
+//!
 //! O [`crate::gauge`] prova que somar uma constante ao `(u, v)` de **um patch** não
 //! muda nada — logo as translações de árvore podem ir a `0` de graça. ⚠️ **Essa
 //! simetria é do sistema por-patch**: ali cada patch tem variáveis próprias. Com as
@@ -32,22 +37,15 @@ use crate::cut::CutMesh;
 use crate::round::{RoundOptions, RoundReport};
 use crate::solve::{GridMap, SolveReport, assemble};
 use crate::weld::{seam_residual, weld};
+use crate::weld_flat::Var;
 use crate::weld_solve::{WeldRelaxer, solve_welded};
-
-/// Uma componente ainda por pregar.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Var {
-    /// A componente `ax` da classe de um vértice singular.
-    Class(u32, usize),
-    /// A componente `ax` da translação de uma costura.
-    Shift(u32, usize),
-}
 
 /// ⭐⭐⭐ **ARREDONDA O MAPA SOLDADO PARA A GRADE INTEIRA.**
 ///
-/// ⚠️ **A ordem é a do método, não uma preferência:** as singularidades primeiro (a
-/// imagem delas tem de ser um nó da grade, senão a malha rasga-se ali), as translações
-/// depois. É a mesma ordem do [`crate::round`], pela mesma razão.
+/// ⚠️ **Quais são as variáveis inteiras não é uma escolha:** são as **livres** do
+/// sistema dos fechos. As outras translações são escritas por substituição, e caem em
+/// inteiros porque os pivôs da eliminação têm `|det| = 1` — *a integralidade é uma
+/// propriedade da eliminação, não uma verificação no fim.*
 #[must_use]
 #[allow(clippy::too_many_lines)]
 pub fn round_welded(
@@ -56,7 +54,7 @@ pub fn round_welded(
     combed: &Combed,
     h: f32,
     opts: RoundOptions,
-    singular: &[u32],
+    _singular: &[u32],
 ) -> (GridMap, RoundReport) {
     let (mut map, before) = solve_welded(mesh, cut, combed, h, opts.rounds);
     let (w, _) = weld(cut, combed);
@@ -69,110 +67,74 @@ pub fn round_welded(
     let a = assemble(mesh, cut, combed, h, &mut solve_rep);
     let mut r = WeldRelaxer::new(&a, &w, cut, combed);
 
-    // ── ⭐ AS VARIÁVEIS INTEIRAS. As classes singulares e todas as translações.
+    // ── ⭐ AS VARIÁVEIS INTEIRAS: as livres do sistema reduzido.
     //
-    // ⚠️ **Uma classe por vértice singular, não uma cópia** — é a soldadura que o
-    // garante: as cópias de um vértice singular são a MESMA variável.
-    let wanted: std::collections::BTreeSet<u32> = singular.iter().copied().collect();
-    let mut classes: Vec<u32> = Vec::new();
-    for (p, origin) in cut.origin.iter().enumerate() {
-        for (l, &g) in origin.iter().enumerate() {
-            if wanted.contains(&g) {
-                if let Some((c, _)) = w.of(p, l) {
-                    #[allow(clippy::cast_possible_truncation)]
-                    classes.push(c as u32);
-                }
-            }
-        }
-    }
-    classes.sort_unstable();
-    classes.dedup();
-    rep.singular_pinned = classes.len();
-
-    let mut free: Vec<Var> = Vec::new();
-    if opts.pin_singularities {
-        free.extend(classes.iter().flat_map(|&c| [Var::Class(c, 0), Var::Class(c, 1)]));
-    }
-    for s in 0..cut.seams.len() {
-        // ⛔ Sem salto não há costura acoplada; DERIVADA não é variável — quem a
-        // escreve é o fecho que a possui.
-        if combed.jump.get(s).copied().flatten().is_none() || w.is_derived(s) {
+    // ⚠️ **Os vértices singulares saem dos FECHOS, não de uma segunda contagem.** Um
+    // fecho que roda *é* a assinatura de um vértice singular, e a medição mostrou que os
+    // dois números batem exactamente (`8` para `8`, `12` para `12`). *Perguntar duas
+    // vezes «quem é singular» é ter duas respostas que podem discordar.*
+    let mut free: Vec<(usize, usize)> = Vec::new();
+    for i in 0..r.sys.free().len() {
+        if !opts.pin_singularities && matches!(r.sys.free()[i], Var::Class(_)) {
             continue;
         }
-        #[allow(clippy::cast_possible_truncation)]
-        free.extend([Var::Shift(s as u32, 0), Var::Shift(s as u32, 1)]);
+        free.push((i, 0));
+        free.push((i, 1));
     }
-    rep.cycle_seams = free
+    rep.singular_pinned = r
+        .sys
+        .free()
         .iter()
-        .filter(|v| matches!(v, Var::Shift(_, 0)))
+        .filter(|v| matches!(v, Var::Class(_)))
+        .count();
+    rep.cycle_seams = r
+        .sys
+        .free()
+        .iter()
+        .filter(|v| matches!(v, Var::Shift(_)))
         .count();
 
     // ── A ESCADA GULOSA: a de menor erro primeiro, e actualizar a seguir.
     while !free.is_empty() {
-        let read = |v: Var| -> f32 {
-            match v {
-                Var::Class(c, ax) => w.value(&map, c as usize)[ax],
-                Var::Shift(s, ax) => map.shift[s as usize][ax],
-            }
-        };
         let (best, _) = free
             .iter()
             .enumerate()
-            .map(|(i, &v)| {
-                let x = read(v);
-                (i, (x - x.round()).abs())
+            .map(|(k, &(i, ax))| {
+                let x = r.read_free(&map, i)[ax];
+                (k, (x - x.round()).abs())
             })
-            .fold((0usize, f32::INFINITY), |acc, (i, d)| {
-                if d < acc.1 { (i, d) } else { acc }
+            .fold((0usize, f32::INFINITY), |acc, (k, d)| {
+                if d < acc.1 { (k, d) } else { acc }
             });
-        let v = free.swap_remove(best);
-        let x = read(v);
-        let step = (x - x.round()).abs();
+        let (i, ax) = free.swap_remove(best);
+        let mut v = r.read_free(&map, i);
+        let step = (v[ax] - v[ax].round()).abs();
         rep.worst_step = rep.worst_step.max(step);
         rep.sum_step += step;
         rep.pinned += 1;
-
-        let seeds: Vec<u32> = match v {
-            Var::Class(c, ax) => {
-                let mut y = w.value(&map, c as usize);
-                y[ax] = x.round();
-                // ⭐ Numa classe singular, escrever a imagem ESCREVE a translação da
-                // costura do fecho — é a mesma variável.
-                r.write_singular_at(&mut map, c as usize, y);
-                r.freeze_class(c as usize, ax);
-                w.settle(&mut map, crate::weld_solve::SETTLE_PASSES);
-                r.neighbours(c as usize).to_vec()
-            }
-            Var::Shift(s, ax) => {
-                map.shift[s as usize][ax] = x.round();
-                r.freeze_shift(s as usize, ax);
-                r.rederive(&mut map, s as usize);
-                w.settle(&mut map, crate::weld_solve::SETTLE_PASSES);
-                r.touched_by(s as usize).to_vec()
-            }
-        };
+        v[ax] = v[ax].round();
+        r.write_free(&mut map, i, v);
+        r.freeze_free(i, ax);
 
         // ── §5.1 degrau 1: Gauss–Seidel LOCAL sobre as CLASSES, semeado onde se mexeu.
+        let seeds = r.classes_of_free(i);
         let (visits, converged) = drain(&r, &mut map, seeds, opts.local_tol, opts.local_cap);
         rep.visits += visits;
         if converged {
             rep.level1 += 1;
         } else {
-            // ── degrau 2: varreduras globais, orçamentadas.
             rep.level2 += 1;
             for _ in 0..opts.sweeps {
-                if r.sweep(&mut map, cut.seams.len()) < opts.local_tol {
+                if r.sweep(&mut map) < opts.local_tol {
                     break;
                 }
             }
         }
-        // ── ⭐⭐⭐ **E A PARTE CONTÍNUA ABSORVE**: as translações ainda livres
-        // relaxam-se sobre o mapa que acabou de se mexer. É isto que faz «uma de cada
-        // vez» ser diferente de «todas de uma vez».
-        for s in 0..cut.seams.len() {
-            r.relax_shift(&mut map, s);
+        // ── ⭐⭐⭐ **E A PARTE CONTÍNUA ABSORVE**: as livres ainda por pregar relaxam-se
+        // sobre o mapa que acabou de se mexer.
+        for &(j, _) in &free {
+            r.relax_free(&mut map, j);
         }
-        w.settle(&mut map, crate::weld_solve::SETTLE_PASSES);
     }
 
     crate::solve::measure(&a, cut, combed, &map, h, &mut solve_rep);
@@ -182,7 +144,9 @@ pub fn round_welded(
     rep.shift_frac_max = map
         .shift
         .iter()
-        .map(|t| (t[0] - t[0].round()).abs().max((t[1] - t[1].round()).abs()))
+        .enumerate()
+        .filter(|(s, _)| combed.jump.get(*s).copied().flatten().is_some())
+        .map(|(_, t)| (t[0] - t[0].round()).abs().max((t[1] - t[1].round()).abs()))
         .fold(0.0f32, f32::max);
     rep.solve = solve_rep;
     (map, rep)

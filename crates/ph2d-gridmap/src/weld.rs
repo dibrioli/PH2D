@@ -97,34 +97,10 @@ pub struct Weld {
     /// média de um resíduo — que, com a costura eliminada, é **zero por construção** e
     /// portanto não diz nada. *A grandeza que a movia deixou de existir.*
     crossings: Vec<Vec<(u32, i32)>>,
+    /// Por cópia, a forma linear de `off` — ver [`Weld::cross_of`].
+    cross: Vec<Vec<(u32, i32)>>,
     /// Por costura, as classes que a translação dela desloca.
     shift_classes: Vec<Vec<u32>>,
-    /// ⭐⭐⭐ Por costura, o FECHO que a possui — a translação dela é **derivada**, e
-    /// deixa de ser variável.
-    ///
-    /// ⚠️ **É a mesma lei uma segunda vez.** O fecho não tinha cópia para eliminar; ele
-    /// elimina, em vez disso, a **translação** da costura em que assenta:
-    ///
-    /// ```text
-    ///     t_s = z_b − R^k z_a          (as duas cópias já são função da classe)
-    /// ```
-    ///
-    /// ⭐ E o resultado é INTEIRO por construção quando as translações livres e as
-    /// classes singulares o são: num fecho **plano** o termo da classe cancela-se e
-    /// sobra uma combinação de translações; num que **roda**, sobra `(R^a − R^b)·y`,
-    /// que leva inteiros a inteiros.
-    owner: Vec<Option<u32>>,
-    /// ⭐⭐⭐ Por classe, o fecho que RODA e a determina — um vértice **singular**.
-    ///
-    /// ⚠️ *Um vértice singular não tem onde estar à vontade:* a volta à roda dele leva
-    /// a imagem a `R^d` dela própria mais uma translação, e a única solução é o **ponto
-    /// fixo**. Quem escolhe onde ele cai é a translação da costura do fecho — e é por
-    /// isso que pregar a imagem num inteiro é o que torna aquela translação inteira,
-    /// *com a paridade certa por construção*.
-    class_owner: Vec<Option<u32>>,
-    /// ⛔ Fechos que não puderam possuir costura nenhuma — a costura deles já estava
-    /// tomada. *Estes são o que a lei não alcança, e são contados.*
-    pub orphans: usize,
 }
 
 /// O que a soldadura mediu de si própria.
@@ -154,11 +130,6 @@ pub struct WeldReport {
     pub holonomy_p50: f32,
     /// ⛔ Costuras sem salto de período — não entram na soldadura.
     pub loose: usize,
-    /// ⛔⛔ Fechos ÓRFÃOS — a costura deles já estava possuída por outro fecho, e não
-    /// sobrou variável nenhuma para eles eliminarem. *É o que a lei não alcança.*
-    pub orphans: usize,
-    /// ⭐ Costuras cuja translação é **derivada** de um fecho.
-    pub derived: usize,
 }
 
 impl Weld {
@@ -192,6 +163,52 @@ impl Weld {
         )
     }
 
+    /// O valor da raiz de uma classe — porta pública.
+    #[must_use]
+    pub fn value_pub(&self, map: &GridMap, class: usize) -> [f32; 2] {
+        self.value(map, class)
+    }
+
+    /// As cópias de uma classe, com a rotação de cada uma — porta pública.
+    pub fn members_pub(&self, class: usize) -> impl Iterator<Item = ((u32, u32), i32)> + '_ {
+        self.members(class)
+    }
+
+    /// A cópia (no espaço plano) de um `(patch, local)`.
+    #[must_use]
+    pub fn copy_index(&self, patch: usize, local: usize) -> Option<u32> {
+        self.copy_of(patch, local)
+    }
+
+    /// A classe de uma cópia — porta pública.
+    #[must_use]
+    pub fn class_of_pub(&self, copy: u32) -> usize {
+        self.class_of(copy)
+    }
+
+    /// Os fechos.
+    #[must_use]
+    pub fn closures(&self) -> &[Closure] {
+        &self.closures
+    }
+
+    /// Os quartos de volta que levam a classe até uma cópia — porta pública.
+    #[must_use]
+    pub fn rot_of_pub(&self, copy: u32) -> i32 {
+        self.rot[copy as usize]
+    }
+
+    /// ⭐⭐⭐ **A FORMA LINEAR de `off_c`** — de que translações a cópia depende, e com
+    /// que rotação. `off_c = Σ R^m · t_s`, **sem termo constante**.
+    ///
+    /// ⚠️ É a mesma tabela das travessias, lida por cópia em vez de por costura. *Sem
+    /// ela a condição de um fecho plano não é escrevível como equação — e o que não é
+    /// escrevível como equação acaba imposto por alternância, que é o que divergiu.*
+    #[must_use]
+    pub fn cross_of(&self, copy: u32) -> &[(u32, i32)] {
+        self.cross.get(copy as usize).map_or(&[], Vec::as_slice)
+    }
+
     /// `(patch, local)` de uma cópia — a porta pública, para as sondas.
     #[must_use]
     pub fn where_is_pub(&self, copy: u32) -> (u32, u32) {
@@ -201,76 +218,9 @@ impl Weld {
     /// As classes que a translação de uma costura desloca — porta pública.
     #[must_use]
     pub fn shift_classes_pub(&self, seam: usize) -> &[u32] {
-        self.shift_classes(seam)
-    }
-
-    /// A costura cuja translação um fecho que roda determina.
-    #[must_use]
-    pub fn is_singular_seam(&self, seam: usize) -> bool {
-        self.class_owner.iter().flatten().any(|&i| {
-            self.closures
-                .get(i as usize)
-                .is_some_and(|c| c.seam as usize == seam)
-        })
-    }
-
-    /// Os quartos de volta que levam a classe até uma cópia.
-    pub(crate) fn rot_of(&self, copy: u32) -> i32 {
-        self.rot[copy as usize]
-    }
-
-    /// ⭐ **Esta classe é a de um vértice SINGULAR** — determinada por um fecho que roda?
-    /// Devolve `(fecho, d)` com `d` o defeito de rotação em quartos de volta.
-    #[must_use]
-    pub fn singular_class(&self, class: usize) -> Option<(&Closure, i32)> {
-        let i = (*self.class_owner.get(class)?)? as usize;
-        let c = self.closures.get(i)?;
-        Some((c, (-c.turn).rem_euclid(4)))
-    }
-
-    /// ⭐ **A translação desta costura é DERIVADA de um fecho?**
-    #[must_use]
-    pub fn is_derived(&self, seam: usize) -> bool {
-        self.is_flat_derived(seam) || self.is_singular_seam(seam)
-    }
-
-    /// A translação desta costura é derivada de um fecho **plano**?
-    #[must_use]
-    pub fn is_flat_derived(&self, seam: usize) -> bool {
-        self.owner.get(seam).copied().flatten().is_some()
-    }
-
-    /// As classes que a translação de uma costura desloca.
-    pub(crate) fn shift_classes(&self, seam: usize) -> &[u32] {
         self.shift_classes.get(seam).map_or(&[], Vec::as_slice)
     }
 
-    /// ⭐⭐⭐ **ASSENTA AS TRANSLAÇÕES DERIVADAS** — cada fecho escreve a da costura que
-    /// possui, e as cópias que ela desloca voltam a ser derivadas.
-    ///
-    /// ⚠️ **Iterativo de propósito:** a translação que um fecho escreve depende das
-    /// translações que os caminhos daquela classe atravessam, e essas podem ser
-    /// derivadas de outros fechos. *A dependência é um grafo, não uma lista* — e quem
-    /// diz se ela assentou é a régua ([`seam_residual`]), não este laço.
-    pub(crate) fn settle(&self, map: &mut GridMap, passes: usize) {
-        for _ in 0..passes {
-            for (s, own) in self.owner.iter().enumerate() {
-                let Some(ci) = *own else { continue };
-                let c = &self.closures[ci as usize];
-                let (pa, la) = self.at[c.copies[0] as usize];
-                let (pb, lb) = self.at[c.copies[1] as usize];
-                let za = turn2(map.uv[pa as usize][la as usize], c.jump);
-                let zb = map.uv[pb as usize][lb as usize];
-                map.shift[s] = [zb[0] - za[0], zb[1] - za[1]];
-                for &cl in &self.shift_classes[s] {
-                    self.derive(map, cl as usize);
-                }
-            }
-        }
-    }
-
-    /// As cópias que a translação de uma costura desloca, e com que rotação.
-    #[must_use]
     pub fn crossings(&self, seam: usize) -> &[(u32, i32)] {
         self.crossings.get(seam).map_or(&[], Vec::as_slice)
     }
@@ -462,6 +412,11 @@ pub fn weld(cut: &CutMesh, combed: &Combed) -> (Weld, WeldReport) {
             crossings[s as usize].push((c as u32, m.rem_euclid(4)));
         }
     }
+    for list in &mut cross {
+        for e in list.iter_mut() {
+            e.1 = e.1.rem_euclid(4);
+        }
+    }
 
     let mut shift_classes: Vec<Vec<u32>> = vec![Vec::new(); cut.seams.len()];
     for (s, list) in shift_classes.iter_mut().enumerate() {
@@ -490,46 +445,12 @@ pub fn weld(cut: &CutMesh, combed: &Combed) -> (Weld, WeldReport) {
     // uma classe que ainda está a relaxar-se, e as duas alternam sem assentar. *Uma
     // eliminação escrita no sentido errado não é uma eliminação: é uma projecção
     // alternada.*
-    // ⛔⛔ **UMA COSTURA SÓ PODE SER RECLAMADA UMA VEZ, e medi-lo custou uma corrida.**
-    // Com o fecho plano a escrever `t_s` e o que roda a escrever a MESMA `t_s`, cada um
-    // desfaz o outro e o par realimenta-se: isolados, os dois passos assentam (`0,147` e
-    // `0,244` ao fim de 12 rondas); juntos, o passo vai de `0,396` a **`41,75`**.
-    // *Duas leis sobre a mesma variável não são duas leis — são uma divergência.*
-    //
-    // ⭐ Os que RODAM entram primeiro: a violação deles cresce com `|z|` (mede-se em
-    // dezenas de células), a de um fecho plano é a holonomia (décimos).
-    let mut owner: Vec<Option<u32>> = vec![None; cut.seams.len()];
-    let mut class_owner: Vec<Option<u32>> = vec![None; roots.len()];
-    let mut taken = vec![false; cut.seams.len()];
-    for turning in [true, false] {
-        for (i, c) in closures.iter().enumerate() {
-            if (c.turn != 0) != turning {
-                continue;
-            }
-            #[allow(clippy::cast_possible_truncation)]
-            let idx = i as u32;
-            let cls = class[c.copies[0] as usize] as usize;
-            let free = !taken[c.seam as usize] && (!turning || class_owner[cls].is_none());
-            if free {
-                taken[c.seam as usize] = true;
-                if turning {
-                    class_owner[cls] = Some(idx);
-                } else {
-                    owner[c.seam as usize] = Some(idx);
-                }
-            } else {
-                rep.orphans += 1;
-            }
-        }
-    }
-
     // ⚠️ Uma ligação de árvore aparece uma vez em `steps`; as restantes fecham ciclo.
     rep.classes = roots.len();
     rep.eliminated = steps.len();
     rep.closures = closures.len();
     rep.turning = closures.iter().filter(|c| c.turn != 0).count();
     rep.flat = rep.closures - rep.turning;
-    rep.derived = owner.iter().filter(|o| o.is_some()).count();
 
     (
         Weld {
@@ -542,10 +463,8 @@ pub fn weld(cut: &CutMesh, combed: &Combed) -> (Weld, WeldReport) {
             span,
             closures,
             crossings,
+            cross,
             shift_classes,
-            owner,
-            class_owner,
-            orphans: rep.orphans,
         },
         rep,
     )

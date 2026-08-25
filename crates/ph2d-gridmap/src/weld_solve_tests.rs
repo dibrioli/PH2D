@@ -1,121 +1,8 @@
-//! Os gates do sistema soldado, e a sonda que justifica as constantes dele.
+//! Os gates do sistema soldado, e as sondas que justificam as constantes dele.
 
 use super::solve_welded;
 use crate::solve::{ROUNDS as PENALISED_ROUNDS, SEAM_WEIGHT, solve_with};
 use crate::weld::{seam_residual, weld};
-
-/// ⭐⭐⭐ **A SONDA QUE COMPARA AS DUAS ESPÉCIES DE SISTEMA** (`CLAUDE.md` §0.0).
-///
-/// ```text
-/// cargo test -p ph2d-gridmap --release -- --ignored the_welded_system --nocapture
-/// ```
-///
-/// ⛔ **O que ela mede não é «a costura fechou»** — isso é trivialmente verdade quando a
-/// variável que a mediria deixou de existir. Ela mede as DUAS colunas ao mesmo tempo: o
-/// resíduo **e** o ângulo. *A tabela do [`SEAM_WEIGHT`] mostra que o penalizado não
-/// consegue as duas; a pergunta desta sonda é se o soldado consegue.*
-#[test]
-#[ignore = "sonda -- soldado contra penalizado"]
-fn the_welded_system_beats_the_penalised_one_on_both_columns() {
-    use crate::weld_solve::{WeldOptions, solve_welded_with};
-    for (name, mut mesh) in [
-        ("esfera 24x36", ph2d_mesh::shapes::uv_sphere(24, 36, 1.0)),
-        ("esfera fina 96x144", ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)),
-        ("toro 64x32", ph2d_mesh::shapes::torus(64, 32, 1.0, 0.35)),
-    ] {
-        let (cut, combed, h, _) = crate::round::tests::chain(&mut mesh);
-        let (_, pen) = solve_with(&mesh, &cut, &combed, h, SEAM_WEIGHT, PENALISED_ROUNDS);
-        eprintln!(
-            "{name}\n  PENALIZADO (w={SEAM_WEIGHT}): angulo p50 {:.2}° | escala {:.3} \
-             | costura p50 {:.4} max {:.4}",
-            pen.angle_p50, pen.scale_p50, pen.seam_p50, pen.seam_max
-        );
-        for (label, opts) in [
-            ("so as copias      ", WeldOptions { settle_flat: false, singular: false, gauge: false }),
-            ("+ singulares      ", WeldOptions { settle_flat: false, singular: true, gauge: false }),
-            ("+ CALIBRE         ", WeldOptions { settle_flat: false, singular: false, gauge: true }),
-            ("+ CALIBRE+singular", WeldOptions { settle_flat: false, singular: true, gauge: true }),
-        ] {
-            let (map, r) = solve_welded_with(&mesh, &cut, &combed, h, 8_000, opts);
-            let (w, _) = weld(&cut, &combed);
-            let sr = seam_residual(&w, &map);
-            eprintln!(
-                "  SOLDADO {label}: angulo p50 {:>6.2}° | escala {:.3} | ⭐eliminadas max {:.2e} \
-                 | ⛔rodam max {:>7.3} | ⛔planos max {:>7.3} | passo {:.2e}",
-                r.solve.angle_p50, r.solve.scale_p50, sr.max, sr.turning_max, sr.flat_max, r.last_move
-            );
-        }
-    }
-}
-
-/// Sonda de diagnóstico: onde é que o mapa deixa de ser um número.
-#[test]
-#[ignore = "sonda -- caca ao NaN"]
-fn where_does_the_welded_map_stop_being_a_number() {
-    let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 36, 1.0);
-    let (cut, combed, h, _) = crate::round::tests::chain(&mut mesh);
-    let (w, wr) = weld(&cut, &combed);
-    let mut solve_rep = crate::solve::SolveReport::default();
-    let a = crate::solve::assemble(&mesh, &cut, &combed, h, &mut solve_rep);
-    let r = crate::weld_solve::WeldRelaxer::new(&a, &w, &cut, &combed);
-    let mut map = crate::solve::GridMap {
-        uv: cut.origin.iter().map(|o| vec![[0.0f32; 2]; o.len()]).collect(),
-        shift: vec![[0.0; 2]; cut.seams.len()],
-    };
-    eprintln!("fechos: {} ({} rodam) | derivadas {} | orfaos {}", wr.closures, wr.turning, wr.derived, wr.orphans);
-    let bad = |m: &crate::solve::GridMap| -> (usize, usize) {
-        (
-            m.uv.iter().flatten().filter(|z| !z[0].is_finite() || !z[1].is_finite()).count(),
-            m.shift.iter().filter(|t| !t[0].is_finite() || !t[1].is_finite()).count(),
-        )
-    };
-    for (label, do_settle, do_sing) in [
-        ("so classes+costuras", false, false),
-        ("+ assentamento dos planos", true, false),
-        ("+ passo singular", false, true),
-        ("os dois", true, true),
-    ] {
-    eprintln!(" == {label} ==");
-    for z in map.uv.iter_mut().flatten() { *z = [0.0, 0.0]; }
-    for t in &mut map.shift { *t = [0.0, 0.0]; }
-    for round in 0..12 {
-        // uma varredura decomposta, para saber QUAL passo estraga
-        let mut worst = 0.0f32;
-        for c in 0..w.classes() {
-            if !do_sing && w.singular_class(c).is_some() {
-                continue;
-            }
-            worst = worst.max(r.relax_class(&mut map, c));
-            let (u, s) = bad(&map);
-            if u + s > 0 {
-                eprintln!("  ronda {round}: NaN depois da CLASSE {c} (singular: {}) -> uv {u} shift {s}", w.singular_class(c).is_some());
-                return;
-            }
-        }
-        for s in 0..cut.seams.len() {
-            r.relax_shift(&mut map, s);
-            let (u, sh) = bad(&map);
-            if u + sh > 0 {
-                eprintln!("  ronda {round}: NaN depois da COSTURA {s} -> uv {u} shift {sh}");
-                return;
-            }
-        }
-        if do_settle {
-            w.settle(&mut map, crate::weld_solve::SETTLE_PASSES);
-        }
-        let (u, sh) = bad(&map);
-        if u + sh > 0 {
-            eprintln!("  ronda {round}: NaN depois do SETTLE -> uv {u} shift {sh}");
-            return;
-        }
-        let mx = map.uv.iter().flatten().fold(0.0f32, |m, z| m.max(z[0].abs()).max(z[1].abs()));
-        let mt = map.shift.iter().fold(0.0f32, |m, t| m.max(t[0].abs()).max(t[1].abs()));
-        if round % 4 == 3 || round < 2 {
-            eprintln!("  ronda {round}: passo {worst:.3e} | |uv|max {mx:.3e} | |t|max {mt:.3e}");
-        }
-    }
-    }
-}
 
 /// ⭐⭐⭐ **A TABELA DE DERIVADAS TEM DE PREVER O QUE ACONTECE** — o controlo directo.
 ///
@@ -131,7 +18,6 @@ fn the_crossings_predict_how_a_translation_moves_a_copy() {
         uv: cut.origin.iter().map(|o| vec![[0.0f32; 2]; o.len()]).collect(),
         shift: vec![[0.0; 2]; cut.seams.len()],
     };
-    // Um mapa qualquer, mas determinista: as raízes recebem um valor e o resto deriva.
     for c in 0..w.classes() {
         #[allow(clippy::cast_precision_loss)]
         let t = c as f32;
@@ -174,4 +60,110 @@ fn the_crossings_predict_how_a_translation_moves_a_copy() {
         }
     }
     assert!(checked > 100, "a fixtura tem de conter o fenómeno: {checked} travessias");
+}
+
+/// ⭐⭐⭐ **GATE nº1 DA ESPEC — o resíduo de uma ligação ELIMINADA é o chão da
+/// representação, e não uma folga.**
+///
+/// A igualdade `z_b = R^k·z_a + t` é **exacta em ℝ** depois da eliminação: a variável
+/// que a mediria deixou de existir. O que a régua lê é a diferença entre associar a
+/// mesma soma de duas maneiras em `f32` — ⛔ um *erro de avaliação*, não uma tolerância.
+///
+/// ⚠️ **A barra é DERIVADA:** `|z|·ε` com `ε = 2⁻²³`. Nas peças, `|z| ≲ 64` células ⇒
+/// `≲ 7,6e-6`. *Escrever aqui o `3,5e-15` dos mapas de referência seria copiar um número
+/// de `f64` para um mapa de `f32`* — a espec nomeia esta emenda, e ela é do Enio.
+#[test]
+fn an_eliminated_seam_link_is_closed_to_the_floor_of_f32() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 36, 1.0);
+    let (cut, combed, h, _) = crate::round::tests::chain(&mut mesh);
+    let (map, _) = solve_welded(&mesh, &cut, &combed, h, 2_000);
+    let (w, _) = weld(&cut, &combed);
+    let sr = seam_residual(&w, &map);
+    let biggest = map
+        .uv
+        .iter()
+        .flatten()
+        .fold(0.0f32, |m, z| m.max(z[0].abs()).max(z[1].abs()));
+    let bar = 8.0 * biggest * f32::EPSILON;
+    assert!(
+        sr.links > 400,
+        "a fixtura tem de conter o fenómeno: {} ligações eliminadas",
+        sr.links
+    );
+    assert!(
+        sr.p50 == 0.0,
+        "a mediana das eliminadas tem de ser ZERO exacto, deu {:.3e}",
+        sr.p50
+    );
+    assert!(
+        sr.max <= bar,
+        "o pior resíduo de uma ligação ELIMINADA foi {:.3e}, e o chão de `f32` para \
+         |z| = {biggest:.1} é {bar:.3e}",
+        sr.max
+    );
+}
+
+/// ⭐⭐⭐ **A SONDA QUE COMPARA AS DUAS ESPÉCIES DE SISTEMA** (`CLAUDE.md` §0.0).
+///
+/// ```text
+/// cargo test -p ph2d-gridmap --release -- --ignored the_welded_system --nocapture
+/// ```
+///
+/// ⛔ **O que ela mede não é «a costura fechou»** — isso é trivialmente verdade quando a
+/// variável que a mediria deixou de existir. Ela mede as DUAS colunas ao mesmo tempo: o
+/// resíduo **e** o ângulo. *A tabela do [`SEAM_WEIGHT`] mostra que o penalizado não
+/// consegue as duas.*
+#[test]
+#[ignore = "sonda -- soldado contra penalizado"]
+fn the_welded_system_beats_the_penalised_one_on_both_columns() {
+    for (name, mut mesh) in [
+        ("esfera 24x36", ph2d_mesh::shapes::uv_sphere(24, 36, 1.0)),
+        ("esfera fina 96x144", ph2d_mesh::shapes::uv_sphere(96, 144, 1.0)),
+        ("toro 64x32", ph2d_mesh::shapes::torus(64, 32, 1.0, 0.35)),
+    ] {
+        let (cut, combed, h, _) = crate::round::tests::chain(&mut mesh);
+        let t = std::time::Instant::now();
+        let (_, pen) = solve_with(&mesh, &cut, &combed, h, SEAM_WEIGHT, PENALISED_ROUNDS);
+        eprintln!(
+            "{name}\n  PENALIZADO (w={SEAM_WEIGHT}, {:.1}s): angulo p50 {:.2}° | escala {:.3} \
+             | costura p50 {:.4} max {:.4}",
+            t.elapsed().as_secs_f64(),
+            pen.angle_p50,
+            pen.scale_p50,
+            pen.seam_p50,
+            pen.seam_max
+        );
+        for rounds in [500usize, 2_000, 8_000] {
+            let t = std::time::Instant::now();
+            let (map, r) = solve_welded(&mesh, &cut, &combed, h, rounds);
+            let (w, _) = weld(&cut, &combed);
+            let sr = seam_residual(&w, &map);
+            eprintln!(
+                "  SOLDADO ({rounds:>5} rondas, {:>5.1}s): angulo p50 {:>6.2}° | escala {:.3} \
+                 | ⭐eliminadas ({}) p50 {:.1e} max {:.2e} | fechos: rodam {:.3} planos {:.3} \
+                 | passo {:.2e}",
+                t.elapsed().as_secs_f64(),
+                r.solve.angle_p50,
+                r.solve.scale_p50,
+                sr.links,
+                sr.p50,
+                sr.max,
+                sr.turning_max,
+                sr.flat_max,
+                r.last_move
+            );
+            eprintln!(
+                "        sistema: {} classes | {} ligacoes eliminadas | {} equacoes de fecho, \
+                 {} eliminaram, ⛔{} orfas | ciclo {} | pior |det| {:.1} | {} livres",
+                r.weld.classes,
+                r.weld.eliminated,
+                r.flat.equations,
+                r.flat.resolved,
+                r.flat.orphans,
+                r.flat.cyclic,
+                r.flat.worst_det,
+                r.flat.equations + r.weld.eliminated - r.flat.resolved - r.weld.eliminated,
+            );
+        }
+    }
 }

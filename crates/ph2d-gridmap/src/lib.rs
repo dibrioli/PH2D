@@ -62,6 +62,8 @@ pub mod round;
 pub mod solve;
 /// ⭐⭐⭐ **A COSTURA SOLDADA** — a restrição entra por eliminação — ver o módulo.
 pub mod weld;
+/// ⭐⭐⭐ **OS FECHOS PLANOS** — o sistema linear das translações — ver o módulo.
+pub mod weld_flat;
 /// ⭐⭐⭐ **G5 SOLDADO** — o arredondamento sobre o sistema reduzido — ver o módulo.
 pub mod weld_round;
 /// ⭐⭐⭐ **G3 SOLDADO** — o mesmo sistema sem o peso da costura — ver o módulo.
@@ -75,5 +77,6 @@ pub use marks::{MarkReport, arc_marks};
 pub use round::{RoundOptions, RoundReport, round_to_integers};
 pub use solve::{GridMap, SolveReport, rounded_shifts, solve, solve_pinned, solve_with};
 pub use weld::{Closure, SeamResidual, Weld, WeldReport, seam_residual, weld};
+pub use weld_flat::{ClosureSystem, FlatReport, Var};
 pub use weld_round::round_welded;
-pub use weld_solve::{WeldOptions, WeldSolveReport, solve_welded, solve_welded_with};
+pub use weld_solve::{WeldSolveReport, solve_welded};

@@ -109,6 +109,7 @@
 - [Hit-test próprio herda a pergunta da REGIÃO](feedback_a_consumer_that_bypasses_the_hit_index_inherits_the_region_question.md) — sem o `on_canvas` o gizmo engolia cliques do painel do grafo, e o sintoma era «não consigo ligar um fio»
 - [Blindar o hit-index MUDA o que as sondas medem](feedback_shielding_the_hit_index_changes_what_every_probe_measures.md) — o fundo do último hit-rect passa a saturar na janela: quem o usava como tamanho media a janela, não a coisa
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) — pintado/populado/clicado · duas portas · dimmed despacha · default é lei
+- [LER a regra não é estar do lado certo dela](feedback_reading_the_rule_is_not_the_same_as_being_on_the_right_side_of_it.md) — leia a GUARDA em que o bloco novo cai e pergunte se ele depende do que ela testa; e gateie a PINTURA
 - [Pintar e despachar têm de ler a MESMA fonte](feedback_paint_and_dispatch_must_read_the_same_source.md) — caixa que pinta do mundo e decide do store só diverge quando o MOTOR escreve o facto; sintoma é «às vezes, ao 2º clique»
 - [Lista escrita à mão ao lado de um predicado = duas respostas](feedback_a_hand_written_list_beside_a_predicate_is_two_answers.md) — quem ENUMERA copia a lista de quem DECIDE; o diálogo oferecia 4 de 11 formatos há meses, e só uma extensão nova gerou report
 - [Fileira CONDICIONAL torna todo despacho por índice um bug mudo](feedback_a_conditional_row_turns_every_index_based_dispatch_into_a_silent_bug.md) — resolva o slot em CHAVE, e o gate tem de empurrar a intenção pelo dreno de verdade

@@ -1,14 +1,17 @@
-//! ⭐⭐⭐ **O CAMINHO DO MAPA DE GRADE INTEIRA** — `PH2D_RETOPO_EXTRACT=1`.
+//! ⭐⭐⭐ **O CAMINHO DO MAPA DE GRADE INTEIRA** — o de OMISSÃO desde 2026-08-25.
+//! `PH2D_RETOPO_EXTRACT=0` volta ao de sempre.
 //!
 //! Irmão (`#[path]`) do [`super::retopo_global`], e o corte é de **fase**: lá a
 //! cadeia que decompõe em patches, quantiza e monta cada patch (F3–F5); aqui a que
 //! resolve **um mapa para a peça inteira**, arredonda-o para a grade inteira (G5) e
 //! extrai a malha das **isolinhas** dele.
 //!
-//! ⛔⛔ **Ele shipa DESLIGADO, e o interruptor é a lei desta linha:** com
-//! `PH2D_RETOPO_EXTRACT` em baixo, a [`super::retopo_global::quad_remesh_global`] é
-//! byte-idêntica ao que era — a única coisa que a env acrescenta é uma bifurcação na
-//! primeira linha dela, e há gate a prová-lo.
+//! ⭐⭐⭐ **Ele passou a ser o DEFAULT em 2026-08-25, por ordem do dono do produto**
+//! (*«pode ligar o motor novo; o antigo não apresenta resultados úteis»*). ⚠️ **A
+//! afirmação de byte-identidade INVERTE-SE, e continua a valer:** com
+//! `PH2D_RETOPO_EXTRACT=0` a [`super::retopo_global::quad_remesh_global`] é
+//! byte-idêntica ao que sempre foi — a bifurcação continua a ser **uma só**, na
+//! primeira linha dela, e há gate a contá-la.
 //!
 //! # ⚠️ O que a medição diz HOJE, e é por isso que ele está desligado
 //!
@@ -153,7 +156,7 @@ impl Sculpt3dScene {
     }
 }
 
-/// **O CAMINHO NOVO FOI PEDIDO?** — `PH2D_RETOPO_EXTRACT=1`.
+/// **O CAMINHO NOVO É O DE OMISSÃO** — `PH2D_RETOPO_EXTRACT=0` volta ao de sempre.
 #[must_use]
 pub(in crate::sculpt3d) fn extract_requested() -> bool {
     extract_from(std::env::var("PH2D_RETOPO_EXTRACT").ok().as_deref())
@@ -161,13 +164,23 @@ pub(in crate::sculpt3d) fn extract_requested() -> bool {
 
 /// **A DECISÃO, sem tocar no ambiente** — a metade que se pode gatear.
 ///
-/// ⚠️ **O `"0"` DESLIGA**, e a regra não é decoração: sem ela um
-/// `PH2D_RETOPO_EXTRACT=0` esquecido numa sessão ligaria o caminho novo — o oposto
-/// do que a variável diz. É a mesma lei do `PH2D_RETOPO_LEGACY`, do `PH2D_GPU_COOK`
-/// e do `PH2D_FLIP_NEW_ENGINE`.
+/// ⭐⭐⭐ **O DEFAULT VIROU em 2026-08-25, por ordem do dono do produto** — *«pode ligar
+/// o motor novo; o antigo não apresenta resultados úteis»* — e a medição que o suporta
+/// está no [handoff de 24/08](../../../docs/3D/handoffs/HANDOFF_INTEGRACAO_line_seamelim_2026-08-24.md):
+/// em cinco peças fechadas do corpus a casca passou a fechar (`χ` de `−4`..`−13` para
+/// `+2`, arestas de bordo de `30`–`78` para `0`), a forma ficou dentro da barra do
+/// oráculo, e a cadeia é **3–4× mais rápida**.
+///
+/// ⚠️ **A LEI DA CASA INVERTE-SE AQUI, e isso é dito em voz alta:** *tudo o que é novo
+/// shipa desligado* valeu enquanto o caminho novo não fechava a casca. Ele fecha. ⇒ o
+/// que fica desligado passa a ser o **antigo**, e é ele que agora precisa de ser pedido.
+///
+/// ⚠️ **O `"0"` continua a ser a única palavra que desliga** (não `"false"`, não
+/// `"off"`) — a mesma lei do `PH2D_GPU_COOK`, do `PH2D_FLIP_NEW_ENGINE` e do
+/// `PH2D_GRIDMAP_WELD`. *Uma variável com dois vocabulários é duas variáveis.*
 #[must_use]
 pub(in crate::sculpt3d) fn extract_from(value: Option<&str>) -> bool {
-    value.is_some_and(|v| v != "0")
+    value != Some("0")
 }
 
 /// A aresta mediana e a mais longa da saída.
@@ -244,13 +257,14 @@ mod tests {
     /// máquina sem adapter — e *skip gracioso não é verde*. O que se pina aqui é a
     /// **decisão**, que é a única coisa que a env acrescenta ao caminho de sempre.
     #[test]
-    fn o_caminho_novo_so_abre_quando_lhe_pedem() {
+    fn o_caminho_novo_e_o_de_omissao_e_so_o_zero_o_desliga() {
         for (value, want) in [
-            // ⭐ O caso por omissão, e é o que o Enio recebe sem configurar nada: o
-            // caminho de sempre. *Tudo o que é novo shipa desligado.*
-            (None, false),
-            // ⚠️ E o `"0"` DESLIGA — sem esta linha, um `=0` esquecido numa sessão
-            // ligaria o caminho novo, que é o oposto do que a variável diz.
+            // ⭐⭐ O caso por omissão VIROU em 2026-08-25 (ordem do dono do produto): é o
+            // caminho NOVO que o Enio recebe sem configurar nada. *A lei «shipa
+            // desligado» valeu enquanto ele não fechava a casca; ele fecha.*
+            (None, true),
+            // ⚠️ E o `"0"` é a ÚNICA palavra que desliga — quem quer o de sempre tem de
+            // o pedir por este nome exacto.
             (Some("0"), false),
             (Some("1"), true),
             (Some("sim"), true),

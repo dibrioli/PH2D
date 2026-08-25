@@ -65,8 +65,8 @@ pub(in crate::sculpt3d) enum RemeshRefusal {
     /// que satisfazem a lei por construção. Recusar em vez de remendar é o que
     /// impede uma malha torcida chegar à tela.
     Fill(ph2d_quadfill::FillError),
-    /// **A EXTRACÇÃO recusou** — o caminho do mapa de grade inteira
-    /// (`PH2D_RETOPO_EXTRACT=1`).
+    /// **A EXTRACÇÃO recusou** — o caminho do mapa de grade inteira, que desde
+    /// 2026-08-25 é o de **omissão** (`PH2D_RETOPO_EXTRACT=0` volta ao de sempre).
     ///
     /// ⚠️ **Caso próprio e não um [`Self::Fill`] reaproveitado:** aquele fala de uma
     /// montagem por patch, este de um domínio que não cabe na grade exacta ou de um
@@ -132,7 +132,7 @@ impl RemeshRefusal {
             }
             Self::Extract(e) => format!(
                 "a extraccao do mapa de grade inteira recusou, e a escultura fica como esta': \
-                 {e} -- tire o PH2D_RETOPO_EXTRACT para voltar ao caminho de sempre"
+                 {e} -- ponha PH2D_RETOPO_EXTRACT=0 para voltar ao caminho de sempre"
             ),
         }
     }

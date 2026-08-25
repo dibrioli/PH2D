@@ -18,16 +18,15 @@ pub(crate) fn announce() {
     }
     // ⭐⭐⭐ **O MESMO BOTÃO, OUTRO MOTOR ⇒ OUTRO ROTEIRO.**
     //
-    // ⛔⛔ **O roteiro de baixo MENTE sobre o caminho novo, e mente no passo que
-    // manda parar.** O passo (5) dele diz *"a peça tem de continuar fechada nas
-    // duas pontas; se esburacar, PARE — é o defeito de 19/08 a voltar"*. Com
-    // `PH2D_RETOPO_EXTRACT=1` a peça **vai** esburacar, por um defeito **medido e
-    // registado** (o handoff de 24/08 §8-bis): a costura abre uma célula inteira
-    // porque o solver a **pesa** em vez de a eliminar.
+    // ⭐⭐⭐ **DESDE 2026-08-25 O CAMINHO NOVO É O DE OMISSÃO**, e este `if` passou a
+    // ser o ramo NORMAL: quem lê o roteiro de baixo é quem pediu `=0`.
     //
-    // ⇒ *Um smoke que manda reportar como regressão aquilo que já está medido
-    // gasta o Enio duas vezes: uma a olhar, outra a escrever o report.* E o que
-    // ele tem para julgar aqui é **outra** pergunta — a troca entre forma e casca.
+    // ⚠️ **A razão de os dois roteiros existirem MUDOU de conteúdo mas não de
+    // natureza.** Ela era *"o novo vai esburacar e o de baixo mandaria reportar
+    // isso"*; a obra A curou o buraco, e hoje é outra: o de baixo manda o Enio
+    // arrastar o `Detail` à procura de casca fechada, um passo que só faz sentido
+    // no motor de sempre. *Dois motores, dois roteiros — e o que muda entre eles
+    // é o que se pede ao artista para OLHAR.*
     if crate::sculpt3d::history::retopo_extract::extract_requested() {
         announce_extract();
         return;
@@ -70,7 +69,8 @@ pub(crate) fn announce() {
 /// fechada. Aquele passo é do caminho de sempre e aqui reprovaria por desenho.
 fn announce_extract() {
     eprintln!(
-        "[sculpt3d] =35 A RETOPOLOGIA -- CAMINHO NOVO (PH2D_RETOPO_EXTRACT esta' ligado).\n\
+        "[sculpt3d] =35 A RETOPOLOGIA -- este e' o motor NOVO, e desde 25/08 ele e' o normal.\n\
+         [sculpt3d]    (PH2D_RETOPO_EXTRACT=0 volta ao de sempre, para comparar.)\n\
          [sculpt3d]    O botao e' o mesmo `Quad Retopology`; o motor por tras dele e' outro.\n\
          [sculpt3d]    Abra o painel com a CRASE (`) e ache a secao Topology.\n\
          [sculpt3d]    (1) CLIQUE em `Quad Retopology`. ⚠️ A janela FICA PARADA alguns\n\
@@ -142,10 +142,15 @@ mod tests {
 
     /// ⭐ **E o roteiro de sempre continua a ser o que se le sem a env var.**
     #[test]
-    fn sem_a_env_var_o_roteiro_e_o_de_sempre() {
+    fn sem_a_env_var_o_roteiro_e_o_NOVO() {
         assert!(
-            !crate::sculpt3d::history::retopo_extract::extract_from(None),
-            "sem a env var, a `announce` nao pode desviar para o roteiro novo"
+            crate::sculpt3d::history::retopo_extract::extract_from(None),
+            "⭐ desde 2026-08-25 o caminho novo e' o de omissao: sem a env var, a \
+             `announce` TEM de desviar para o roteiro novo"
+        );
+        assert!(
+            !crate::sculpt3d::history::retopo_extract::extract_from(Some("0")),
+            "e o `=0` tem de devolver o roteiro de sempre, senao nao ha' como bissecar"
         );
     }
 }

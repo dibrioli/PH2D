@@ -239,7 +239,8 @@ mod retopo_global;
 
 /// **O CAMINHO DO MAPA DE GRADE INTEIRA** — ver [`retopo_extract`]. Irmão do
 /// [`retopo_global`], e o corte é de **fase**: lá a decomposição em patches, aqui um
-/// mapa para a peça inteira. ⛔ Shipa **desligado** (`PH2D_RETOPO_EXTRACT=1`).
+/// mapa para a peça inteira. ⭐ É o caminho de **omissão** desde 2026-08-25
+/// (`PH2D_RETOPO_EXTRACT=0` volta ao de sempre).
 ///
 /// ⚠️ **`pub(in crate::sculpt3d)` e não privado**, porque o roteiro de smoke da cena
 /// `=35` ([`crate::sculpt3d::scenes::quad`]) tem de perguntar **à mesma função** se o

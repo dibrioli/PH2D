@@ -121,8 +121,10 @@
 - [Duas hipóteses boas que falham refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md) — ao 2.º falhanço pare de propor curas e construa a régua que LOCALIZA; ilibe também o suspeito improvável
 - [Provas de mutação (7)](reference_topic_mutation_proofs.md) — ⚠️ os 3 controles vão NO ARNÊS: verde-antes · `Compiling <pkg>` · `running 1 test` (sem o 1º, um gate que rebenta sozinho lê como mutação apanhada)
 - [Restore que preserva o mtime deixa o cargo STALE](feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md) — `shutil.copy2` devolve conteúdo E carimbo; a suíte fica vermelha acusando código já correto. Carimbe o restore e exija o verde de volta; ⛔ `git status` é cego dentro de uma crate `??`
+- [Uma metade NOVA torna a antiga inobservável](feedback_a_new_half_can_make_the_old_half_unobservable.md) — re-corra as mutações da antiga; as que sobreviverem apontam a fixtura que falta
 - [Disciplina de oráculo (9)](reference_topic_oracle_discipline.md) — aparência, não regra
 - [Disciplina de fixture (6)](reference_topic_fixture_discipline.md) — só prova o que contém; ordem de setup mascara bug de ordem
+- [ONDE os objetos NASCEM é a fixtura que falta](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md) — a cena real é empilhada no sítio por omissão do gesto de criação, e é lá que vive todo defeito de oclusão
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md) — lentes · claims · state-grep
 - [Espec limpa é MENOS específica que o paper de que descende](feedback_a_clean_spec_is_less_specific_than_the_paper_it_descends_from.md) — quem traduz código herda as constantes, quem descreve herda a lei; e audite por `grep` no texto da fonte, não pela memória
 - [Documento de instruções pode mandar o que a CERCA do leitor proíbe](feedback_an_instruction_doc_can_order_what_its_readers_own_fence_forbids.md) — confronte-o com o passo 0 / as regras permanentes de quem executa, não só com o assunto; regra herdada de molde fala do mundo do molde

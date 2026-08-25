@@ -60,19 +60,40 @@ fases.
 > `clear_trackers`, zero ocorrências"~~. Os valores abaixo são os **lidos no código da worktree**,
 > com o comando ao lado. *Um número que soma entre linhas conta-se, nunca se escolhe.*
 
-**A base de hoje (`main` @ `5038249c6`), medida:**
+⚠️⚠️ **RE-MEDIDA outra vez em 2026-08-24 (tarde), depois de a F0+F1-parcial INTEGRAR.** A tabela
+abaixo é a de DEPOIS; a de antes está no [handoff](handoffs/HANDOFF_INTEGRACAO_line_components_F0_F1parcial_2026-08-24.md) §3.
+*Uma tabela de números medidos tem prazo de validade curto num repo com linhas paralelas.*
+
+**A base de hoje (`main` @ `0f5ce8040`), medida:**
 
 | O quê | Valor lido | Onde |
 |---|---:|---|
-| `PROJECT_SCHEMA` | **95** | [`project_schema.rs:213`](../../shells/desktop/src/project_schema.rs) |
-| `WorldSnapshot::VERSION` | **1** | [`save.rs:53`](../../crates/ph2d-ecs/src/scene/save.rs) |
-| Registro `ph2d-ecs` | **69** (assert 69) | [`registry.rs`](../../crates/ph2d-ecs/src/scene/registry.rs) |
-| Espelhos render/script | **70** cada (69+1) | `ph2d-render`, `ph2d-script` |
-| Registro física | **32** | `ph2d-physics-ecs/src/lib.rs:192` |
-| Registro field (3D) | **5** | `ph2d-field-ecs/src/lib.rs:169` |
-| **Total no boot** | **107** | [`init.rs:503-518`](../../shells/desktop/src/init.rs) — ⚠️ `register_script_components` continua **não** chamado (`LuauScript` não é salvo nem desfeito; ambiguidade §8.1 do doc 01, ainda de pé) |
-| ADRs | **167** (próximo livre: 0167) | `scripts/adr-index.sh` |
-| `clear_trackers` no repo | **1** — num TESTE (`field3d_profile_live_tests.rs:158`), com um `Changed<FieldNode>` ao lado | a produção continua a nunca avançar o tick; ⚠️ **este teste não pode quebrar** quando a F2 passar a chamá-lo por captura |
+| `PROJECT_SCHEMA` | **97** | [`project_schema.rs:267`](../../shells/desktop/src/project_schema.rs) |
+| `WorldSnapshot::VERSION` | **2** ✅ (esta linha) | [`save.rs:85`](../../crates/ph2d-ecs/src/scene/save.rs) |
+| Registro `ph2d-ecs` | **70** ✅ | [`registry_tests.rs:147`](../../crates/ph2d-ecs/src/scene/registry_tests.rs) |
+| Espelhos render/script | **71** cada ✅ | `ph2d-render:55`, `ph2d-script:62` |
+| Registro física | **32** | `ph2d-physics-ecs/src/lib.rs:194` |
+| ADRs | último **0167** (próximo livre: **0168**) | `scripts/adr-index.sh` |
+| `clear_trackers` no repo | **1** — num TESTE (`field3d_profile_live_tests.rs`) | ⚠️ **este teste não pode quebrar** quando a F2 passar a chamá-lo por captura |
+
+⚠️ **DOIS números desta linha foram RECONTADOS na integração, e o padrão vale para a próxima:**
+
+- **O degrau de schema desta linha ficou `96`** e o da `line/Vector` (input map) **nasceu 96 e foi
+  recontado para 97**. ⇒ `PROJECT_SCHEMA` é hoje **97**, e o próximo degrau é **98**.
+- **O ADR-0164 desta linha ficou** e o da *extracção quad* **foi renumerado 0164 → 0167** — o número
+  estava tomado **duas** vezes e a colisão passou **muda**, exactamente como o §5.0 avisa.
+
+⚠️⚠️ **UM BURACO NOMEADO na escada, e ele é teórico — MEDIDO, não suposto.** O `project_load.rs`
+tem braços para `PROJECT_SCHEMA` (97) e `95`; **um ficheiro `v96` seria RECUSADO**. O `v96` só
+existiu num `main` intermédio, entre as duas integrações do mesmo dia. ⇒ **Não há ficheiro nenhum
+para perder:** `find /home/enio -name '*.ph2dproj'` devolve **zero** — nem v95, nem v96, nem v97.
+⛔ Construir o braço `96` agora seria código defensivo para uma versão que **nunca escreveu um
+ficheiro**; a decisão de o fazer é do Enio, e o custo de errar é baixo nos dois sentidos.
+
+⚠️⚠️ **E o mesmo zero desmente um SMOKE que este plano e o handoff pediam.** *«Abrir um `.ph2dproj`
+gravado ANTES de hoje»* **não é executável** — não existe nenhum. A migração está provada pelo gate
+`the_frozen_v95_bytes_still_load`, que **constrói** os bytes v95, e é essa a prova que existe. Quem
+quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit antigo + gravar).
 
 **O que esta linha ACRESCENTA (é isto que colide):**
 
@@ -81,13 +102,13 @@ fases.
 | Crates novas | `ph2d-component-desc` (F0) · `ph2d-asset-index` (F6) | workspace glob |
 | Componentes novos no registro | `StableId` · `SiblingOrder` (F1) · `SpriteCornerTint` · `SpriteSheet` · `SpriteRegion` (F1, corte da Sprite) · `MasterRoot` · `MasterPiece` · `InstanceOf` · `ObjectInstance` (F4) | `ph2d-ecs` **69 → 71 → 74 → 78**; espelhos render/script **70 → …** (+1 cada); boot **107 → 116** |
 | `WorldSnapshot::VERSION` | 1 → **2** (F1) | `save.rs` |
-| `PROJECT_SCHEMA` | 95 → **96** (F1) — ⚠️ **reconte no dia**: se outra linha integrar antes, o degrau é o próximo livre, não o 96 | escada + tripla |
+| `PROJECT_SCHEMA` | ✅ **96** (F1, feito e integrado) — ⚠️ hoje o topo é **97** (a `line/Vector` entrou depois); o **próximo** degrau é o **98** | escada + tripla |
 | Ids de widget novos | `INSP_ADD_COMPONENT` (F3, o `+` do cabeçalho do Inspector) | `ph2d-editor-core/src/ids/` + o gate `node_id_collisions` |
 | **Superfície pública nova (F0, feita)** | `ComponentRegistry::register_default::<T>` · `ComponentTypeEntry::insert_default` · `ComponentTypeEntry::desc` | ⚠️ **`register_inner` é privado** — as duas portas públicas são `register` (sem default) e `register_default` |
 | **Sítios de chamada convertidos (F0, feita)** | **109** `reg.register::<T>` → `register_default::<T>`, menos **27** revertidos (sem `Default`) = **82** convertidos | ⚠️ 5 arquivos: `ph2d-ecs/scene/registry.rs` (70, um deles num teste) · `-render` (1) · `-script` (1) · `-physics-ecs` (32) · `-field-ecs` (5). **É a maior superfície de colisão desta linha** — uma linha que acrescente um componente toca o mesmo arquivo |
 | **Dependências novas (F0, feita)** | `ph2d-ecs` → `ph2d-component-desc` · `shells/desktop` → idem · `ph2d-panel-inspector` → idem | ⚠️ conta para o `machete` no `ship.sh` |
 | **Arquivos de teste novos (F0, feita)** | `shells/desktop/tests/every_registered_component_is_described.rs` (5 censos) · `ph2d-panel-inspector/tests/the_ordering_labels_come_from_the_descriptor.rs` (2) | nomes novos, sem colisão |
-| Componentes acrescentados na F0 | **nenhum** — os contadores 69/70/70/32/5 ficam intactos | (a F1 é que os move) |
+| Componentes acrescentados na F0 | **nenhum** — a F0 não move contador | ✅ a **F1** moveu: `ph2d-ecs` 69 → **70** (só o `SiblingOrder`; o `StableId` ficou FORA do registo), espelhos 70 → **71** |
 | Envs de smoke | `PH2D_INSTANCE_SMOKE=<n>` (F4+) · `PH2D_ASSET_BROWSER_SMOKE` (F7) | roteador de cenas próprio |
 | Campo novo no `ProjectFile` | `stable_id_counter` (F1 — FORA do `ProjectState`, undo não rebobina) | conta no degrau do schema |
 | Teto do ADR-0074 | +3 opcionais no corte da Sprite (o teto é 32) | `architecture_*` do Sprite |

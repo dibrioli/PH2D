@@ -423,14 +423,14 @@ fn project_file_round_trips_through_postcard() {
         // ⚠️ NAO-DEFAULT de proposito: um mapa vazio aqui faria a ida-e-volta passar sobre o
         // `Default` do serde em vez de sobre os bytes que o campo de facto escreve -- foi
         // exactamente assim que uma mutacao sobreviveu a 10.503 testes na auditoria de 23/08.
-        input_map: authored_input_map(),
+        input_map: super::input_map_tests::authored_input_map(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();
     // ⭐ **O INPUT MAP atravessa o arquivo** (v97) — e a afirmação é CAMPO A CAMPO, não um
     // `assert_eq!` do mapa inteiro: um igual de estrutura passaria se os dois lados fossem o
     // default, e é precisamente esse o modo de falha que esta linha já pagou.
-    let want = authored_input_map();
+    let want = super::input_map_tests::authored_input_map();
     assert_eq!(back.input_map.len(), want.len(), "as duas accoes voltaram");
     let jump = back.input_map.id("jump").expect("`jump` voltou pelo NOME");
     let ja = back.input_map.get(jump).expect("e a accao dela existe");
@@ -574,29 +574,3 @@ mod tape;
 /// pela razão exata dos dois acima: as fixtures desta suíte são as portas dele.
 #[path = "project_field_tests.rs"]
 mod field;
-
-/// **Um Input Map AUTORADO**, e cada campo dele é deliberadamente **não-default**.
-///
-/// ⚠️ Uma fixtura com o mapa vazio faria a ida-e-volta passar sobre o `Default` do serde em vez de
-/// sobre os bytes que o campo de facto escreve — foi exactamente assim que uma mutação sobreviveu a
-/// **10.503** testes na auditoria de 2026-08-23 desta linha. Aqui: nomes, **duas** ligações de
-/// dispositivos **diferentes** na mesma acção, e os dois números da zona longe do default
-/// (`0,0` / `0,5`).
-fn authored_input_map() -> ph2d_input::InputMap {
-    use ph2d_input::{Binding, GamepadAxis, GamepadButton, InputMap, Key};
-    let mut m = InputMap::new();
-    let jump = m.create("jump");
-    let a = m.get_mut(jump).expect("acabou de nascer");
-    a.bindings.push(Binding::Key(Key(0x5A)));
-    a.bindings.push(Binding::PadButton(GamepadButton::South));
-    a.set_zone(0.15, 0.75);
-    let right = m.create("move_right");
-    m.get_mut(right)
-        .expect("acabou de nascer")
-        .bindings
-        .push(Binding::PadAxis {
-            axis: GamepadAxis::LeftStickX,
-            positive: true,
-        });
-    m
-}

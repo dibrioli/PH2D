@@ -1,4 +1,4 @@
-//! **O INPUT MAP ATRAVESSA O ARQUIVO** (v96) — os gates da costura.
+//! **O INPUT MAP ATRAVESSA O ARQUIVO** (v97) — os gates da costura.
 //!
 //! ⚠️ **Por que estes gates são de TEXTO e não de comportamento:** a ida-e-volta *serializada* já é
 //! provada em [`super::tests`], que monta um `ProjectFile` **à mão** — e é precisamente isso que
@@ -116,4 +116,30 @@ fn the_authored_map_has_exactly_one_holder() {
         "o `input_actions` sumiu da App: ou o desenho mudou, ou este gate esta' a ler o ficheiro \
          errado -- em nenhum dos casos ele esta' a provar que ha' um dono so'"
     );
+}
+
+/// **Um Input Map AUTORADO**, e cada campo dele é deliberadamente **não-default**.
+///
+/// ⚠️ Uma fixtura com o mapa vazio faria a ida-e-volta passar sobre o `Default` do serde em vez de
+/// sobre os bytes que o campo de facto escreve — foi exactamente assim que uma mutação sobreviveu a
+/// **10.503** testes na auditoria de 2026-08-23 desta linha. Aqui: nomes, **duas** ligações de
+/// dispositivos **diferentes** na mesma acção, e os dois números da zona longe do default
+/// (`0,0` / `0,5`).
+pub(super) fn authored_input_map() -> ph2d_input::InputMap {
+    use ph2d_input::{Binding, GamepadAxis, GamepadButton, InputMap, Key};
+    let mut m = InputMap::new();
+    let jump = m.create("jump");
+    let a = m.get_mut(jump).expect("acabou de nascer");
+    a.bindings.push(Binding::Key(Key(0x5A)));
+    a.bindings.push(Binding::PadButton(GamepadButton::South));
+    a.set_zone(0.15, 0.75);
+    let right = m.create("move_right");
+    m.get_mut(right)
+        .expect("acabou de nascer")
+        .bindings
+        .push(Binding::PadAxis {
+            axis: GamepadAxis::LeftStickX,
+            positive: true,
+        });
+    m
 }

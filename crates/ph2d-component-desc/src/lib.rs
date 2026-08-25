@@ -337,7 +337,9 @@ impl ObjectKinds {
     }
 
     /// Os tipos, em ordem — para a UI listar a razão de um item esmaecido.
-    #[must_use]
+    ///
+    /// ⚠️ **Sem `#[must_use]` de propósito:** o `Iterator` que isto devolve **já** o é, e
+    /// repeti-lo aqui sem mensagem é o que o clippy `--all-features` chama de redundante.
     pub fn iter(self) -> impl Iterator<Item = ObjectKind> {
         ObjectKind::ALL
             .into_iter()

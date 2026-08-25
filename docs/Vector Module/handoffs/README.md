@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**61 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**63 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -76,6 +76,7 @@
 | 2026-08-16 |  | [HANDOFF_INTEGRACAO_line_Vector_f4b_2026-08-16.md](HANDOFF_INTEGRACAO_line_Vector_f4b_2026-08-16.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector`, a DOBRA e as três medições (2026-08-16) |
 | 2026-08-22 |  | [HANDOFF_line_Vector_2026-08-22.md](HANDOFF_line_Vector_2026-08-22.md) | sessão | HANDOFF — linha `line/Vector` (2026-08-22) |
 | 2026-08-23 |  | [HANDOFF_INTEGRACAO_line_Vector_ui_viva_2026-08-23.md](HANDOFF_INTEGRACAO_line_Vector_ui_viva_2026-08-23.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · a booleana nos **ESTADOS** + o fecho do estudo de **UI VIVA** (2026-08-23) |
+| 2026-08-24 |  | [HANDOFF_INTEGRACAO_line_Vector_input_map_2026-08-24.md](HANDOFF_INTEGRACAO_line_Vector_input_map_2026-08-24.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · **O INPUT MAP** (W1–W7): acções nomeadas à la Godot, janela flutuante, press-to-bind, `PROJECT_SCHEMA` 95→96 (2026-08-24) |
 ---
 *Índice arrumado em 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na raiz de
 `docs/`.*
@@ -88,3 +89,15 @@
 > ⛔ **A cura durável não é arrumar outra vez:** é pôr este diretório sob o
 > `scripts/doc-index.sh`, como os outros 14. *Índice de diretório se GERA, não se escreve*
 > (`CLAUDE.md` §5.0) — e esta tabela é a prova viva disso.
+>
+> ⚠️ **MEDIDO em 2026-08-24, e o preço é maior do que a nota acima sugere: NENHUM diretório
+> `handoffs/` do repo está sob o `doc-index.sh`** — os 14 indexados são todos o *pensamento* de
+> um módulo, nunca o registro. Physics, Timeline, Flip, Audio, 3D e este carregam a **mesma**
+> tabela à mão com o **mesmo** aviso. ⇒ a cura não é uma entrada na lista do script: é um MODO
+> `handoffs` nele (data e papel derivados do nome, assunto da 1ª linha `# `, o **◆** derivado das
+> citações do `CLAUDE.md` §5) e a regeneração de **todos** os índices de handoff de uma vez —
+> obra foundational que toca o índice de todo módulo, e por isso **fora do escopo de uma linha**.
+> Fica aqui com o número ao lado, que é o que faz uma nota valer alguma coisa.
+>
+> ⚠️ E a tabela já estava **duas** entradas atrasada quando esta linha lhe voltou (dizia 61 para
+> 62 arquivos): *ela apodrece entre uma arrumação e a seguinte, não por descuido de alguém.*

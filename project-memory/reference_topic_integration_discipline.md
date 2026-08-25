@@ -18,5 +18,6 @@ metadata:
 - [[feedback_sweep_conflict_markers_every_commit]] — varra marcadores (inclusive `|||||||`) em CADA commit rebaseado
 - [[feedback_foundational_editable_design_for_isolation]] — foundational editável = crie isolado (módulo irmão, append-only); anote ids
 - [[feedback_numbers_that_sum_across_lines_count_dont_pick]] — números que SOMAM (PROJECT_SCHEMA, registros, ADR) se CONTAM: 84+2+3 = 89, e cada degrau renumerado diz de que número nasceu
+- [[feedback_collision_surface_reads_the_fork_point_not_the_tip_of_main]] — ⚠️ a sonda lê o MERGE-BASE, não o main de agora: da 2ª linha em diante ela imprime `base: 95` para um main já em 96, e a colisão de mesmo-literal passa MUDA. Leia o valor no main à mão, ou rode a sonda DEPOIS do rebase (24/08: 96 vs 96, o certo era 97)
 - [[project_integration_prefork_lines_ship_drift]] — integrar linhas pré-cutover = drift
 - [[feedback_bash_cwd_resets_and_slips_to_the_primary]] — a cwd do Bash VOLTA ao primário: todo comando de worktree começa com o `cd` dela (22/08: diagnostiquei «os arquivos da linha sumiram» no repo errado)

@@ -26,3 +26,4 @@ echo "I session: <id> $(date -I)" >> docs/3D/cleanroom/INBOX_quadwild.md
 _(vazio — a primeira linha é a declaração de sessão do Implementador)_
 I session: 186ce13e-479b-467a-904c-0ff087ab76c9 2026-08-24
 I session: 7499b0f4-218e-489b-879b-1e5a1c8b851f 2026-08-24 | canario: VAZOU
+I session: 7499b0f4-218e-489b-879b-1e5a1c8b851f 2026-08-25 | assume line/quadextract (obra B: feicao) | canario: VAZOU (modo bypass, decisao do Enio de 24/08 mantida)

@@ -426,6 +426,7 @@ precisamente o padrão que uma auditoria independente existe para apanhar:
 | 1 (2026-08-24) | [`SPEC_extracao_de_malha_quad.md`](SPEC_extracao_de_malha_quad.md) | `4455ee56e1ae6ae5` |
 | 2 (2026-08-24, **pós-implementação**) | idem — a correcção do [§R-pós.4](#r-pós4) no §5 + a linha de atestado no cabeçalho | `9086a1dd766e53d6` |
 | ⭐ **obra seguinte**, 1 (2026-08-24) | [`SPEC_restricoes_por_eliminacao.md`](SPEC_restricoes_por_eliminacao.md) — a costura e as linhas de feição, **um mecanismo só** | `f56aad2648c4086b` |
+| ⭐⭐ **obra seguinte**, 2 (2026-08-24) | idem — **as três emendas do R-pré**, entregues no mesmo dia ([`§E2.1`](#e21--as-três-emendas-entregues-pelo-e-no-mesmo-dia-2026-08-24)). ⚠️ **É esta a versão que o I lê** | `39b42cba058f85bc` |
 
 ⛔ **A versão 2 é POSTERIOR à obra e não a alimentou** — ela **retira** expressão emprestada
 e põe no lugar a derivação que a `ph2d-gridmap` já tinha escrito. ⚠️ *Nenhum algoritmo foi
@@ -1003,6 +1004,26 @@ pública passa a viver em `~/Literatura/`, fora de qualquer denylist, com README
 | convergência de expressão vinda do E | ⛔ **nenhuma encontrada na espec.** ⚠️ E a rede que o diz é agora a rede certa (§R-pré2.2) |
 | a janela I pode abrir? | ⭐ **SIM, na OBRA A (a costura)** — que é a ordem que o §6 da espec já impunha. A OBRA B espera a emenda do §3.1 |
 | session-id do R-pré ≠ E? | ✅ `6ce7cd70-…` ≠ `49c94a84-…` (E) e ≠ `edbb014f-…` / `23c68c7a-…` / `186ce13e-…` |
+
+### ⭐ §E2.1 — AS TRÊS EMENDAS, ENTREGUES pelo E no mesmo dia (2026-08-24)
+
+A janela E (`49c94a84-…`) recebeu os achados pelo canal (o Enio) e reescreveu a espec. ⚠️ **A
+espec sobe para a versão 2**; o cabeçalho dela regista as três, que é o único sítio que o I lê.
+
+| achado | o que o E fez |
+|---|---|
+| [`§R-pré2.6`](#r-pré26--o-gate-n1-reprova-a-referência-de-que-diz-descender) — o gate nº1 reprova a referência | ⭐ **§5.1 novo.** A barra **deixa de ser um literal** e passa a ser **lida** dos mapas de `fixtures/` pelo nosso verificador, dentro do próprio gate — *um número transcrito para um teste é uma medição que envelhece em silêncio; um lido da referência move-se com ela.* ⛔ O R pediu para não fixar a barra por conta própria, e ela **não foi fixada: foi retirada.** |
+| — a segunda metade do mesmo achado (`zero` × tolerância) | ✅ reconciliado por extenso: **zero é da ÁLGEBRA** (a variável deixou de existir), o resíduo medido é o **erro de avaliação** da substituição em vírgula flutuante — representação, não folga. A espec proíbe agora, com todas as letras, tanto o `== 0.0` como uma tolerância de conforto |
+| ⭐⭐ **uma armadilha que o R não pediu** | O E acrescentou-a por ela ser fatal e invisível: ⛔ **medir a cópia derivada contra a fórmula que a derivou é TAUTOLÓGICO** — ficaria verde para sempre, sobre qualquer implementação, incluindo uma errada. ⇒ o gate mede **à saída, pelo caminho que a extracção percorre**, e há prova de que os dois sítios diferem (o arredondamento declara `0` enquanto a extracção, re-derivando, mede `0,46` na mesma corrida) |
+| [`§R-pré2.7`](#r-pré27--a-obra-b-perdeu-a-janela-de-estabilidade-e-é-a-única-emenda-que-bloqueia) — a janela de estabilidade | ⭐ **§3.1 reescrito em três degraus** (*a faixa procura, a janela julga*), com a condição de que os dois limiares valham em **toda** a janela, a eleição pela menor variação **dentro dela**, e o quarto coeficiente nomeado com a régua dele. ⇒ ⭐ **a OBRA B fica DESBLOQUEADA** |
+| [`§R-pré2.5.1`](#r-pré25--achados-de-proveniência-432--nenhum-é-de-parede-todos-são-de-rigor) — a tabela do `SEAM_WEIGHT` | ✅ **UMA** medição, numa coluna só, com as condições ao lado. ⭐ E o veredito fica **mais forte**: a coluna que o carrega passa a ser o **enviesamento dos quads** (produto), não o resíduo |
+| `§R-pré2.5.2` e `.3` — proveniência e instrumento | ✅ o `chain_info` é nomeado no §0, e o §2 abre com a proveniência de cada número, marcada como refutável |
+
+⚠️ **O sweep foi RE-CORRIDO sobre a espec emendada, com a vassoura ALARGADA de 56 entradas
+e controlo positivo vermelho antes:** ✓ limpo.
+
+⛔ **A ordem não muda:** a janela I abre na **OBRA A**, e o §6 da espec continua a proibir
+misturar as duas numa wave.
 
 ---
 

@@ -44,19 +44,22 @@ Auditoria §4.2 (R-pré): ⭐ **VERDE — auditada contra §4.2 por R (janela
   CONFERIDA e sustenta-se: §1 e §2.3 não nomeiam estrutura, decomposição, factorização,
   permutação nem ordem de eliminação, e a lei que eles afirmam está PUBLICADA no *paper*
   de 2009 (fim do §2 dele).
-⛔⛔ DUAS EMENDAS DEVIDAS PELO E — leia-as antes de construir (R-pré, 2026-08-24):
-  1. §5, gate nº1: a barra escrita (`3,5e-15`) é MENOR que o valor medido nos próprios
-     mapas de referência de que ela diz descender (`3,553e-15`, nas duas peças, pelo
-     verificador de `fixtures/`) ⇒ como está, ela REPROVA a referência. E o §1 promete
-     "zero, não uma tolerância" enquanto o gate é uma tolerância: falta dizer que o
-     resíduo que sobra é o erro de AVALIAÇÃO da própria substituição, não uma folga.
-     ⇒ **não fixe a barra por conta própria; devolva a pergunta pelo Enio.**
-  2. §3.1 (a detecção de feição, OBRA B): a espec manda medir "os quatro coeficientes" e
-     descreve o papel de três. O quarto — a MEIA-LARGURA da janela de estabilidade à
-     volta de cada raio — desapareceu, e com ele a condição de que os dois limiares
-     valham em TODA a janela; a espec lê-se como se o desvio de direcção fosse medido
-     sobre a faixa inteira, que é outra regra. ⇒ **a OBRA B fica à espera da emenda.**
-     ⭐ A OBRA A (a costura) NÃO depende disto e é a primeira pelo §6 da própria espec.
+⭐ AS TRÊS EMENDAS DO R-PRÉ — ENTREGUES pelo E em 2026-08-24, na mesma data:
+  1. ✅ §5, gate nº1 ⇒ ver o §5.1 NOVO. A barra deixou de ser o literal `3,5e-15` (que
+     REPROVAVA a referência, medida a `3,553e-15`): ela passa a ser **LIDA** dos mapas de
+     `fixtures/` pelo nosso verificador, dentro do próprio gate. E o §5.1 reconcilia o
+     "zero" do §1 com a tolerância do gate — zero é da ÁLGEBRA, o resíduo é o erro de
+     AVALIAÇÃO da substituição — mais uma segunda armadilha que o R não tinha pedido e
+     que teria feito o gate ficar verde para sempre: ⛔ medir a cópia derivada contra a
+     fórmula que a derivou é TAUTOLÓGICO. O gate mede à saída, pelo caminho que a
+     extracção percorre.
+  2. ✅ §3.1 ⇒ reescrito com a JANELA DE ESTABILIDADE em três degraus (a faixa procura, a
+     janela julga), a condição de que os dois limiares valham em TODA a janela, e a
+     eleição pela menor variação DENTRO DA JANELA. ⭐ **A OBRA B fica DESBLOQUEADA.**
+  3. ✅ §1 ⇒ a tabela do `SEAM_WEIGHT` passa a ser UMA medição numa coluna só (a 1ª
+     misturava max com p50 e duas malhas). O veredito sobrevive e fica MAIS forte: a
+     coluna que o carrega passa a ser o enviesamento dos QUADS, que é produto.
+  (+ §0 e §2.1 nomeiam agora o instrumento e a proveniência de cada número.)
 "Este documento descreve comportamento; não contém expressão do alvo."
 ```
 
@@ -75,7 +78,10 @@ Auditoria §4.2 (R-pré): ⭐ **VERDE — auditada contra §4.2 por R (janela
 ## §0 — Por que esta espec existe, com os números
 
 ⭐ **O botão `Quad Retopology` no caminho novo já entrega quads ao nível da referência de
-produção**, medido nas duas peças que o artista de facto olhou (2026-08-24):
+produção**, medido nas duas peças que o artista de facto olhou (2026-08-24). ⚠️ **O
+instrumento é o `chain_info`** (o §4 nomeia-o), corrido sobre o `.obj` de cada peça do
+nosso corpus — ⛔ *e não sobre uma forma analítica*: as analíticas não têm relevo, e a
+segunda queixa do artista é **sobre** relevo:
 
 | peça (a da cena de smoke) | aspecto p50 | enviesamento p50 | `>60°` | ⛔ células más | ⛔ bordo |
 |---|---|---|---|---|---|
@@ -104,15 +110,31 @@ existe um `w` alto que fecha a restrição e estraga o resto, e um `w` baixo que
 resto e deixa a restrição aberta. ⛔ **Não existe `w` que faça as duas** — e isto está
 **medido no nosso código**, não suposto:
 
-| `SEAM_WEIGHT` | ângulo da grade | resíduo da costura |
-|---|---|---|
-| `8` (o que shipa) | ⭐ `2,9°` | ⛔ `0,23` de célula |
-| `64` | `12,3°` | `0,004` |
-| `512` | ⛔ `13,0°`–`16,8°` | ⭐ `0,0006` |
+> ⭐ **EMENDA DO E, 2026-08-24** (achado [`§R-pré2.5.1`](LEDGER_quadwild.md)): a 1ª redacção
+> desta tabela **misturava duas medições e duas estatísticas** — a linha `8` vinha de uma
+> malha com a coluna `max`, e as linhas `64`/`512` de outra malha com a coluna `p50`. ⛔ *Uma
+> tabela assim exagera a queda e não é refutável.* Fica **UMA** medição, com as condições
+> dela ao lado — e ⭐ **o veredito não só sobrevive como fica mais forte**, porque a coluna
+> que o carrega passa a ser **produto** e não resíduo.
 
-⇒ *Fechar a costura custa o alinhamento, e a curva não tem joelho.* **Uma restrição a
-fingir-se de termo de energia tem esta assinatura exacta**, e reconhecê-la é o critério
-para saber que a cura é a eliminação e não um número melhor.
+**Esfera fina `96×144`, `d = 0,55`, com o G4 a marcar os arcos e o F5 a montar** (controlo
+sem mapa: `18°`) — a tabela do
+[`SEAM_WEIGHT`](../../../crates/ph2d-gridmap/src/solve.rs), lida numa coluna só:
+
+| `SEAM_WEIGHT` | ângulo `grad u` vs `X` | costura **max** | ⭐ **enviesamento dos QUADS** |
+|---|---|---|---|
+| `1` | ⭐ `2,3°` | ⛔ `1,12` | ⭐ `17°` |
+| ⭐ **`8`** (o que shipa) | `2,9°` | `0,23` | ⭐ **`17°`** |
+| `64` | `4,7°` | `0,05` | `19°` |
+| `512` | ⛔ **`16,8°`** | ⭐ `0,01` | ⛔ **`22°`** |
+
+⇒ ⭐⭐ **Subir o peso fecha a costura 23× e paga-o em quads PIORES que o controlo.** *Fechar
+a costura custa o alinhamento, e a curva não tem joelho.* **Uma restrição a fingir-se de
+termo de energia tem esta assinatura exacta**, e reconhecê-la é o critério para saber que a
+cura é a eliminação e não um número melhor.
+
+⚠️ **E não é solver lento**, o que também está medido: de `40 000` a `640 000` rondas o
+ângulo assenta nos dois pesos. *O compromisso é do modelo, não do orçamento.*
 
 ⚠️ **O que a eliminação COMPRA, dito como requisito e não como método:** depois dela, o
 resíduo da restrição é **zero por construção** — não «pequeno», não «abaixo de uma
@@ -124,6 +146,12 @@ que o mediria deixou de ser uma variável livre.
 ## §2 — OBRA A: a COSTURA (é o que fecha a casca)
 
 ### §2.1 — O estado de hoje, medido
+
+> **Proveniência de tudo o que este §2 mede** (⚠️ nomeada, para ser refutável): o
+> [handoff da linha, §8-bis e §8-ter](../handoffs/HANDOFF_INTEGRACAO_line_quadextract_2026-08-24.md),
+> cujos números saem do `chain_info` e da sonda `#[ignore]`
+> `the_rounding_ladder_sweeps_its_two_constants` da `ph2d-gridmap`. ⛔ **Nada aqui vem do
+> alvo** — é medição do nosso próprio código, e cada linha é re-corrível.
 
 ⚠️ **Duas grandezas estão a ser lidas como uma, e é isso que esconde o defeito:**
 
@@ -209,21 +237,49 @@ nosso caso de bordo (hoje resolvido **sem oráculo**) melhora sem código própr
 `ph2d-trace`, `ph2d-gridmap`, `ph2d-quadextract` e `ph2d-remesh-iso` devolve **zero
 ficheiros** (medido 2026-08-24).
 
+> ⭐ **EMENDA DO E, 2026-08-24** (achado [`§R-pré2.7`](LEDGER_quadwild.md)): a 1ª redacção
+> deste bloco **fundiu a janela de estabilidade na faixa de raios** e, com ela, perdeu a
+> condição que torna um candidato válido — passando a especificar **outra regra**. ⛔ *Uma
+> espec pode ser menos específica que o paper nos NÚMEROS; não pode ser menos específica na
+> LEI.* Reescrito abaixo. **A OBRA B fica desbloqueada.**
+
 **A lei, do *paper* de 2009 (§3 dele, público):** as direcções que interessam são as das
 regiões **parabólicas** — onde as duas curvaturas principais são muito diferentes —,
 porque só elas têm orientação bem definida. A grandeza é a **anisotropia relativa** das
 curvaturas principais, normalizada para `[0, 1]`, e uma região quase plana é excluída por
-um piso de curvatura média. A estimativa é feita sobre uma **vizinhança geodésica**, e
-como ela depende do raio, mede-se numa **faixa** de raios e escolhe-se a leitura **estável**
-— a de menor variação de direcção dentro da faixa.
+um **piso de curvatura média**.
 
-⛔⛔ **O *paper* dá números concretos para os quatro coeficientes. Esta espec NÃO os copia,
-e a recusa é deliberada** ([`project-memory`](../../../project-memory/feedback_a_clean_spec_is_less_specific_than_the_paper_it_descends_from.md)):
+⚠️ **A estimativa depende do RAIO da vizinhança geodésica em que é feita**, e é daí que
+vem o resto da lei. Ela tem **três degraus, e cada um deles é uma pergunta diferente:**
+
+1. **A faixa.** Estime, para cada ponto, um operador de forma em **vários** raios ao longo
+   de uma faixa `[r₀, r₁]`. ⇒ um ponto tem um **conjunto de candidatos**, um por raio.
+2. ⭐⭐⭐ **A JANELA, e é ela que decide a validade.** À volta de **cada** raio candidato `r`
+   há uma **janela** `[r − w, r + w]`. ⛔ **Um candidato só é VÁLIDO se os dois limiares —
+   a anisotropia e o piso de curvatura média — valerem em TODA a janela dele**, e não só no
+   próprio `r`. ⚠️ *É esta condição que separa uma feição real de um pico de ruído*: uma
+   leitura que só passa num raio e falha ao lado dele **não é uma feição**, é uma
+   coincidência de escala.
+3. **A eleição.** Se um ponto tiver **vários** candidatos válidos, escolha o de direcção
+   mais estável — o de **menor variação de direcção DENTRO DA JANELA DELE**. ⛔ **Não** a
+   variação sobre a faixa inteira: a faixa é onde se procura, a janela é onde se julga, e
+   confundi-las mede a coisa errada.
+4. Um ponto **sem** candidato válido **não gera restrição nenhuma**. ⭐ É assim que a lei
+   fica esparsa por construção, e não por um corte posterior.
+
+⛔⛔ **O *paper* dá números concretos para os quatro coeficientes — os dois limiares, a
+faixa e a MEIA-LARGURA da janela. Esta espec NÃO os copia, e a recusa é deliberada**
+([`project-memory`](../../../project-memory/feedback_a_clean_spec_is_less_specific_than_the_paper_it_descends_from.md)):
 *quem traduz código herda as constantes; quem descreve herda a lei.* ⇒ **MEÇA-OS no nosso
 corpus**, e escreva ao lado a tabela que a medição deu (`CLAUDE.md` §0.0). ⭐ Os quatro têm
-sentido intuitivo e dois deles são **relativos a grandezas que já temos** (o passo alvo da
-grade `h`, o raio da caixa da peça) — o que torna a varredura barata e o resultado
-defensável.
+sentido intuitivo e **três** deles são **relativos a grandezas que já temos** (o passo alvo
+da grade `h`, o comprimento médio de aresta, o raio da caixa da peça) — o que torna a
+varredura barata e o resultado defensável.
+
+⚠️ **E a meia-largura tem uma régua própria, que a varredura tem de exprimir:** ela é o que
+troca **cobertura** por **confiança** — grande de mais e nenhum ponto é válido; pequena de
+mais e a condição do degrau 2 deixa de filtrar o que existe para filtrar. ⇒ **meça as duas
+pontas**, e ponha a **contagem de restrições** ao lado do resultado (gate nº7).
 
 ⚠️ **Uma cerca que o próprio *paper* declara:** as restrições devem ser **esparsas e
 conservadoras**. ⛔ *Marcar feição a mais é pior que marcar a menos* — cada restrição
@@ -254,7 +310,7 @@ peça ficou melhor»** (§5).
 
 | # | o gate | a barra, e de onde ela vem |
 |---|---|---|
-| 1 | ⭐⭐ **o resíduo da costura é ZERO** | ⛔ **é o gate que não existe hoje**, e é o coração da obra. A barra é a dos mapas de referência: `3,5e-15`, **não** «pequeno». ⚠️ Prove por **mutação** que desligar a eliminação fica vermelho |
+| 1 | ⭐⭐ **o resíduo da costura é o da REFERÊNCIA** | ⛔ **é o gate que não existe hoje**, e é o coração da obra. ⚠️ **A barra LÊ-SE, não se escreve** — ver o bloco logo abaixo desta tabela. ⚠️ Prove por **mutação** que desligar a eliminação fica vermelho |
 | 2 | a translação continua inteira | `x == x.round()`, exacto — o gate que já existe, e ele **fica** |
 | 3 | ⭐ **a casca fecha** | `χ` da saída = `χ` da entrada, **e zero arestas de bordo** numa peça fechada. Hoje: `−8` e `46` na enrugada, `−6` e `50` na orelha |
 | 4 | ⭐ **a forma NÃO regride** | a barra do oráculo, medida pelo mesmo código: aspecto p50 `1,08`–`1,22` · enviesamento p50 `4,8°`–`7,1°` · `>60°` = `0`–`4`. ⚠️ **A enrugada já está lá dentro** ⇒ este gate é de **não-regressão**, e é o que impede a cura de comprar topologia com geometria |
@@ -263,6 +319,52 @@ peça ficou melhor»** (§5).
 | 7 | ⛔ **as restrições ficam ESPARSAS** | a contagem de arestas marcadas contra a contagem de arestas da peça, e a **contagem de singularidades** ao lado. *Marcar feição a mais aparece como singularidades a mais, nunca como uma feição feia* |
 | 8 | ⭐ **o bordo é preservado** | a peça do corpus com bordo; as arestas de bordo da saída caem sobre as da entrada |
 | 9 | ⛔ **o caminho antigo continua byte-idêntico** com o interruptor desligado | a lei desta casa: tudo o que é novo shipa **desligado** com a tabela ao lado |
+
+### ⭐⭐⭐ §5.1 — O GATE Nº1, e as duas armadilhas dele
+
+> ⭐ **EMENDA DO E, 2026-08-24** (achado [`§R-pré2.6`](LEDGER_quadwild.md)): a 1ª redacção
+> escrevia a barra como o literal `3,5e-15`, e os mapas de referência medem **`3,553e-15`**
+> ⇒ ⛔ **o gate reprovava a própria referência de que dizia descender.** *Uma barra copiada
+> com um dígito a menos inverte-se de «tão bom como a referência» para «melhor que ela».*
+
+**A cura não é acrescentar um dígito — é a barra deixar de ser um literal:**
+
+⛔ **A barra LÊ-SE dos mapas de referência de [`fixtures/`](fixtures/README.md), com o NOSSO
+verificador, no próprio gate.** Um número transcrito para o corpo de um teste é uma medição
+que envelhece em silêncio; um número **lido da referência** move-se com ela. ⇒ o gate afirma
+*«o nosso resíduo não é pior que o da referência, medido pelo mesmo código»*, e não *«o nosso
+resíduo é menor que este literal»*.
+
+#### ⚠️ Armadilha 1 — «zero» e «uma tolerância» têm de ser reconciliados, ou o I escreve `== 0.0`
+
+O [§1](#1--a-lei-e-ela-é-a-espinha-de-tudo-o-que-vem-abaixo) promete resíduo **zero por
+construção**, *«não «pequeno», não «abaixo de uma tolerância»»*. As duas afirmações **são
+compatíveis, e a espec tem de dizer porquê:**
+
+- ⭐ **Zero** é uma afirmação sobre a **álgebra**: eliminada a variável, não existe caminho
+  de execução em que os dois lados discordem — a grandeza que mediria o desacordo deixou de
+  ser livre.
+- ⚠️ O que sobra ao **medir** é o erro de **avaliação** da substituição em vírgula
+  flutuante: aplicar `R(k)·z_a + t` e voltar a compará-lo com o que se aplicou não devolve o
+  mesmo bit. **Isso é representação, não folga** — e é da ordem de grandeza que a referência
+  também exibe (`~1e-15` em `f64`), que é exactamente por isso que a barra é a dela.
+
+⇒ ⛔ **NÃO escreva `== 0.0`.** ⇒ ⛔ **E não escreva uma tolerância de conforto.** Escreva
+*«não pior que a referência, pelo mesmo verificador»*, que é a única das três que envelhece
+bem.
+
+#### ⛔⛔ Armadilha 2 — um gate sobre uma variável que já não existe pode ser TAUTOLÓGICO
+
+⚠️ **Depois da eliminação, comparar a cópia derivada com a fórmula que a derivou mede a
+fórmula contra si própria** — fica verde para sempre, sobre qualquer implementação, incluindo
+uma errada. *É a família do «gate verde por acidente».*
+
+⇒ **O gate tem de medir o resíduo NO SÍTIO EM QUE ELE MACHUCA: à saída, pelo caminho que a
+extracção de facto percorre** — o mapa escrito por canto, com as transições **re-derivadas
+dali**. ⭐ **E há prova de que os dois sítios não são o mesmo:** hoje o arredondamento
+declara a translação exactamente inteira (`0`) enquanto a extracção, re-derivando do mapa por
+canto, mede até **`0,46`** de célula na mesma corrida. *Dois números da mesma grandeza, e só
+o segundo é o que a malha sente.*
 
 ⚠️ **A comparação fase a fase está disponível e é mais forte que comparar o fim** — o
 oráculo grava o **campo** dele e a **decomposição** dele em `ph2d-quadbench/ref/<peça>/`

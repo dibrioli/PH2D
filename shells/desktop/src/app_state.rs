@@ -1272,6 +1272,12 @@ pub(crate) struct App {
     /// `ph2d_vec_render::draw_blend_overlay`. Não está na cena (não é pickável) — é o que torna o
     /// blend UM objeto, e não N. Runtime-only.
     pub(crate) vec_blend_overlay: Vec<ph2d_vec_scene::VecPath>,
+    /// **As máquinas de Morph deste frame, prontas a desenhar** (plano 32 W3a).
+    ///
+    /// ⚠️ **Dois tempos, um frame** — o mesmo desenho do `vec_blend_overlay` logo acima: colhida
+    /// onde o `VecScene` e os afins deste frame estão vivos, consumida onde a câmera existe.
+    /// Guardá-la entre frames faria a seta descrever o mundo do frame anterior.
+    pub(crate) vec_morph_arrows: Vec<crate::render_loop::morph_arrow_overlay::MachineView>,
     /// O spine AUTOMÁTICO que o `blend_live::recook` escreveu por último, por blend — a memória que
     /// detecta a edição do spine (modo Node) para marcar `spine_authored` (ADR-0128). Runtime-only.
     pub(crate) vec_blend_spines: crate::blend_live::BlendSpines,

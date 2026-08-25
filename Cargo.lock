@@ -5767,6 +5767,7 @@ dependencies = [
  "ph2d-light",
  "ph2d-mesh",
  "ph2d-mesh-render",
+ "ph2d-morph-machine",
  "ph2d-motion-diagnose",
  "ph2d-motion-doc",
  "ph2d-motion-region",

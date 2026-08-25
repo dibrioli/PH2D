@@ -79,13 +79,39 @@ existe) e o **vocabulário das condições** (as acções do Input Map, de ontem
   espelhos (`ph2d-render`, `ph2d-script`) **71 → 72**. Número que **soma entre linhas**; ⛔ conte-o
   contra o `main` do dia, nunca o copie daqui.
 
+## §3-bis — As duas leis de LEGIBILIDADE da seta (W3a), e as três tentativas que morreram
+
+1. ⭐ **`A→B` e `B→A` não se sobrepõem.** Toda máquina útil tem pares de ida e volta, e duas rectas
+   entre os mesmos dois centros são **uma** recta na tela. As setas curvam, e o lado sai de
+   `perp(u)` — a normal da **direcção de viagem**, que inverte com ela **por construção**.
+   ⛔⛔ **Duas tentativas anteriores morreram, e a segunda passou no gate pelo motivo errado:**
+   a 1ª fazia `perp(u) · sign(ids)` e os dois fatores **cancelavam-se** (em `B→A` o versor inverte
+   *e* o sinal inverte) ⇒ as duas setas dobravam para o mesmo lado; a 2ª construiu um "versor
+   canónico" `u·sign` e tirou-lhe a normal com o mesmo `sign` — que é **algebricamente `perp(u)`**.
+   O gate ficou verde, mas a mutação `sign = 1.0` **não o matava**, porque o `sign` não decidia
+   nada. *Um gate verde sobre código morto continua verde — quem o apanhou foi a prova de mutação.*
+2. **A ponta encosta na BORDA da forma, não no centro.** Uma seta que morre no meio de um
+   rectângulo grande fica escondida por baixo dele.
+   ⚠️ **E ela aponta na tangente de CHEGADA, não na recta centro-a-centro** — numa seta curva as
+   duas divergem. ⛔ **A régua desta lei também teve de se corrigir:** o teste do **sinal** do
+   produto interno **sobreviveu à mutação** (com 22 px de curvatura sobre um segmento de centenas,
+   as duas direcções passam num teste de sinal). A régua é o **ÂNGULO**: o bissector das duas abas
+   é *exactamente* o oposto da tangente de chegada.
+3. ⚠️ **A curvatura é de ECRÃ.** Uma curvatura em mundo desapareceria ao afastar o zoom — e é
+   exactamente com a máquina inteira à vista que a ida e a volta precisam de se distinguir.
+
+⚠️ **A seta é CHROME, não desenho:** não se selecciona como forma, não exporta, não imprime. É por
+isso que ela vive no overlay e **não** como um `VecPath` derivado, que é o que o **conector** faz.
+*O conector é uma linha que o artista quer no produto final; a seta é a explicação de uma regra.*
+
 ## §4 — As waves
 
 | | | estado |
 |---|---|---|
 | **W1** | **A LEI**, folha (`ph2d-morph-machine`): grafo · setas · condições · fila · mola/curva | ✅ **2026-08-25** — 13 gates, **8 mutações, 8 sangraram** |
 | **W2** | O componente + a persistência | ✅ **2026-08-25** — 2 gates, 1 mutação, e ⛔ o `PROJECT_SCHEMA` **não** se mexeu (§3) |
-| **W3** | **O CANVAS**: desenhar as setas entre as formas, e autorá-las por arrasto | ⏳ |
+| **W3a** | **O CANVAS, metade de VER**: as setas desenhadas entre as formas | ✅ **2026-08-25** — 8 gates, **6 mutações, 6 sangraram** |
+| **W3b** | **O CANVAS, metade de AUTORAR**: arrastar de uma forma para outra cria a seta | ⏳ |
 | **W4** | A secção **States** do painel: a lista de setas, a condição (lê as acções do Input Map), o ritmo | ⏳ |
 | **W5** | O **modo preview** + o ledger de undo (⚠️ o `Driven::MorphT` cobre o `t`, **não** o `sources`) | ⏳ |
 | **W6** | A cena de smoke, com números MEDIDOS | ⏳ |

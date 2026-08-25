@@ -12,6 +12,8 @@ name = "ph2d-host-desktop"
 path = "src/main.rs"
 
 [dependencies]
+# A lei da máquina de estados do Morph (plano 32) — folha, partilhada com o runtime do jogo.
+ph2d-morph-machine = { path = "../../crates/ph2d-morph-machine" }
 # libm — HR-5 cross-OS bit-identical sincosf used in input_dispatch.rs
 # + render_loop/snapshots.rs + input_dispatch/gizmo_drag.rs (T1.3.5
 # workspace-wide sweep; the shell's gizmo math mirrors ph2d-ecs's

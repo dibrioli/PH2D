@@ -143,6 +143,8 @@ mod measure_bridge_phases;
 /// O que a FITA de entrada grava hoje — a sonda que abre a wave de persistência.
 #[cfg(test)]
 mod measure_player_tape;
+/// **As setas da máquina de Morph, no canvas** (plano 32 W3a).
+pub(crate) mod morph_arrow_overlay;
 pub(crate) mod motion_bridge;
 /// A trajetória do objeto selecionado no canvas (ADR-0141, Fatia 3).
 pub(crate) mod motion_path_overlay;
@@ -7995,6 +7997,11 @@ impl crate::App {
                 &vec_xf,
                 &mut self.vec_morph_plans,
             );
+            // **As SETAS da máquina de Morph** (plano 32 W3a) — colhidas AQUI, onde o `VecScene` e
+            // os afins deste frame estão vivos, e desenhadas onde a câmera existe. Mesmo desenho de
+            // dois tempos do `vec_blend_overlay`.
+            self.vec_morph_arrows =
+                morph_arrow_overlay::gather(sim, vec_scene, &vec_xf, &self.vec_entities);
             // **Envelope Objects (ADR-0129):** a forma de cada filho é a fonte autorada deformada
             // pela gaiola comum — re-cozida aqui, todo frame. Sem xforms nem mapa: a fonte é LOCAL do
             // container e é o `Transform` do container (via `vec_transform::build`) que leva os filhos
@@ -8807,6 +8814,10 @@ impl crate::App {
             // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a
             // pilha do blend por cima. O interleaving fino contra o resto da cena é da Fase C.
             ph2d_vec_render::draw_blend_overlay(&self.vec_blend_overlay, cam_affine, vector_scene);
+            // **As SETAS da máquina de Morph** (plano 32 W3a) — chrome, em px de ECRÃ, por cima do
+            // desenho: uma seta é a explicação de uma regra, e ela tem de se ler por cima das
+            // formas que liga.
+            morph_arrow_overlay::draw(&self.vec_morph_arrows, camera, window_size, vector_scene);
             // **Pick Shapes** (ADR-0128 C2b): realça as formas escolhidas e costura a ORDEM de
             // clique numa polilinha (a prévia do spine). Fora do modo Pick, a lista não vale —
             // limpa, para não vazar escolhas velhas para o próximo blend.

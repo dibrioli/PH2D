@@ -973,6 +973,7 @@ impl App {
             join_kind: 0, // Pin — the default joint kind for "Join Selected Bodies"
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),
+            vec_morph_arrows: Vec::new(),
             vec_blend_spines: crate::blend_live::BlendSpines::new(),
             vec_blend_picks: Vec::new(),
             vec_label_pending: None,

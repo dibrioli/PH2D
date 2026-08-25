@@ -1,0 +1,36 @@
+[package]
+name = "ph2d-morph-machine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+authors.workspace = true
+
+# ⭐ **A LEI DA MÁQUINA DE ESTADOS DO MORPH, e ela é uma FOLHA de propósito.**
+#
+# O pedido do Enio (2026-08-24) é que ela seja *"funcional no runtime do game"*, e o `shells/game`
+# (R1) está adiado — então uma lei que morasse na shell do EDITOR seria, por construção,
+# inalcançável do runtime, e reescrevê-la lá seria a segunda porta que este repo já pagou.
+#
+# ⛔ **Ela NÃO sabe o que é uma tecla, nem o que é um `VecPath`, nem o que é um `World`.** Um
+# estado é um `u64` (o id da forma) e uma condição é uma `String` (o nome de uma acção do Input
+# Map). Quem resolve o nome é quem tem o mapa — a shell no editor, o jogo no jogo. É a MESMA lei
+# do `ph2d_ui_state::Machine`, cujo doc diz *"ela não sabe o que é um mouse"*.
+#
+# ⚠️ **Allowlist de TRÊS**, e `tests/the_morph_machine_stays_a_leaf.rs` lê este ficheiro:
+#   · `serde`      — o grafo é conteúdo AUTORADO que viaja no `.ph2dproj`;
+#   · `ph2d-spring`— a mola (folha pura, só serde). Reimplementá-la seria uma segunda mola;
+#   · `ph2d-anim`  — a `Easing`, que é o vocabulário de curva DA CASA. Ela arrasta `glam` e
+#                    `ph2d-color`, e isso foi pesado contra a alternativa: um enum de curvas
+#                    próprio seria **duas respostas à mesma pergunta**, e o artista veria a
+#                    timeline e a seta oferecerem listas diferentes. O `ph2d-ui-state` paga o
+#                    mesmo preço pelo mesmo motivo.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+ph2d-spring = { path = "../ph2d-spring" }
+ph2d-anim = { path = "../ph2d-anim" }
+
+[dev-dependencies]
+# ⚠️ Só o gate de ida-e-volta. `dev-dependencies` NÃO alcança consumidor nenhum, e é por isso
+# que a allowlist da folha a ignora de propósito.
+serde_json = "1"

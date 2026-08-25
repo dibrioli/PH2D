@@ -6138,6 +6138,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-morph-machine"
+version = "0.0.0"
+dependencies = [
+ "ph2d-anim",
+ "ph2d-spring",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-motion-diagnose"
 version = "0.0.0"
 dependencies = [

@@ -7,7 +7,7 @@
 
 use super::*;
 use ph2d_core::Vec2;
-use ph2d_ecs::{Name, stable_name_id};
+use ph2d_ecs::Name;
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, PhysicsJoint, RigidBody};
 
 fn body(sim: &mut SimWorld, name: &str, at: [f32; 2]) -> Entity {

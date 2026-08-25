@@ -9,7 +9,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommandQueue, apply_editor_commands, register_ecs_components,
 };
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, stable_name_id};
+use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_editor::JointFieldEdit;
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderShape, JointKind, PhysicsBridge, PhysicsJoint, RigidBody,

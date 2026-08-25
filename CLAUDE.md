@@ -343,10 +343,16 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   layout toca `Transform`, senão cada quadro de um resize vira um passo de undo.
   ⚠️ **Regra-mãe do pen:** *o que se vê/aponta/encaixa é MUNDO; o que o documento guarda é LOCAL.*
   **Aberto:** ⭐⭐ **A FILA, em ORDEM** (Enio 24/08 — índice em [doc 29](docs/Vector%20Module/29_fila_morph_state_machine_e_texture_pattern.md)):
-  **(1)** ⭐ **O INPUT MAP** ([plano 30](docs/Vector%20Module/30_plano_input_map.md)) — entradas **nomeadas** à la Godot, mais os
-  **contextos com prioridade** do Unreal (que o Godot não tem e este app precisa: `W`/`Space` já são do editor, e a cura de hoje é
-  uma **lista negra à mão** no [`player_input.rs`](shells/desktop/src/player_input.rs)). ⛔ **LEI Nº 1: a `InputTape` grava a AÇÃO
-  RESOLVIDA, nunca a tecla** — senão remapear reescreve o passado e parte o replay-hash `physics_ecs_c9` da matriz 3-OS ·
+  ✅ **(1) O INPUT MAP FECHOU** ([plano 30](docs/Vector%20Module/30_plano_input_map.md) W1–W7,
+  [handoff](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_input_map_2026-08-24.md)) — acções **nomeadas** à la
+  Godot, janela flutuante em *Settings > Input Map…*, *press-to-bind* de tecla **e** de comando, e o mapa viaja no `.ph2dproj`.
+  ⭐ **A falha documentada do Godot está corrigida:** a `deadzone` dele tem **dois papéis** (ponto de disparo *e* offset de
+  normalização — proposta #3709); aqui são **dois números** (`dead_zone` · `press_point`), os dois lêem o valor **CRU**, e
+  `press_point >= dead_zone` é **coagido na porta**. ⛔ **LEI Nº 1 honrada:** a `InputTape` grava a **acção resolvida**, nunca a
+  tecla — remapear não reescreve o passado nem parte o `physics_ecs_c9`. ⚠️ **Faltam os CONTEXTOS com prioridade** (o que o Unreal
+  tem e o Godot não): **bloqueado** — só têm sentido com um modo de jogo, e o `shells/game`/R1 está adiado pelo Enio; a cura de
+  hoje é uma **lista negra à mão** no [`player_input.rs`](shells/desktop/src/player_input.rs). ⏳ Falta também o *override*
+  por-jogador em `~/.ph2d/` ·
   **(2)** a *state machine* do **Morph** **no canvas 2D** (setas forma→forma, condições nas setas), viva no **runtime do jogo**
   ([pesquisa 31](docs/Vector%20Module/31_pesquisa_maquinas_de_estado.md) — base **Rive**, com duas correções: *só as transições do
   estado CORRENTE* (State Tree) e *todo input sabe quem o lê* (a cura do medo do Animator)). ⚠️ O [`VecMorph`](crates/ph2d-ecs/src/vec_morph.rs)
@@ -656,6 +662,29 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   (subsumido pela captura).
   **Ler:** [`project.rs`](shells/desktop/src/project.rs) · [`undo.rs`](shells/desktop/src/undo.rs) ·
   [história](docs/archive/estado-2026-08-18/editor-shell.md)
+
+- **Componentes / instâncias** — identidade de objeto (`StableId`), ordem de irmãos como DADO (`SiblingOrder`),
+  snapshot v2 e a **PRIMEIRA migração de `PROJECT_SCHEMA` do repo** ([ADR-0164](docs/architecture/decisions/0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) ·
+  [0165](docs/architecture/decisions/0165-assets-are-born-inside-the-app-three-level-identity-index-before-browser.md) ·
+  [0166](docs/architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md)),
+  mais a crate-folha `ph2d-component-desc` (descritor de componente, catálogo de 108 tipos) de que o Inspector deriva rótulos.
+  ⚠️ **`canonicalize` MORREU e a propriedade dele não se perdeu** — mudou de dono (`world_to_snapshot` ordena por `StableId`,
+  que sobrevive ao respawn por construção; 18,7 ms para 0,088 ms a 10 k entidades, medido). ⛔ Não o reintroduza.
+  ⚠️ **O `StableId` NÃO é componente registado, e a ausência é a decisão** — registá-lo poria a identidade também num
+  `ComponentBlob`, e a cópia profunda da F4 daria à cópia a identidade do ORIGINAL.
+  **Aberto:** ⚠️⚠️ **a F1 está PELA METADE, e foi integrada assim por decisão do Enio (24/08):** a física já aponta por
+  identidade (renomear um corpo **não** solta mais a junta), mas a **timeline ainda não** — renomear um objeto animado
+  continua a desligar o binding, e nada na tela explica a diferença. Falta a outra metade do passo 5 (`stable_name_id` da
+  timeline) e o corte da Sprite (F1.6) · ⛔ **o `physics_ecs_c9` está POR RE-CAPTURAR** — o `deterministic_hash` muda de
+  valor com o snapshot v2, e é o item mais provável de reprovar a matriz 3-OS no próximo ship · F2-F8 do
+  [plano vivo](docs/Components/05_plano_de_implementacao.md).
+  **Smokes:** abrir um `.ph2dproj` gravado ANTES de 24/08 (tem de dizer *"Project migrated from format 95 to 97"*) ·
+  reordenar irmãos na Hierarquia + Ctrl+Z · renomear um corpo com junta (`PH2D_PHYSICS_SMOKE=6` ou `=67`) · copiar um
+  ragdoll e dar Play.
+  **Ler:** [`docs/Components/`](docs/Components/) ·
+  [handoffs](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F0_F1parcial_2026-08-24.md) (⚠️ o §9 lista
+  **cinco** coisas que uma leitura rápida do diff entende ao contrário, e o §10 as **três** premissas do plano que a
+  implementação refutou)
 
 - **Image Tools — os utilitários de bitmap** (⚠️ **~30 k LOC que esta seção nunca mencionou**, achado
   da auditoria de 2026-08-18): `ph2d-tool-color-equalization` (10.291) · `ph2d-tool-bgremoval` (8.377) ·

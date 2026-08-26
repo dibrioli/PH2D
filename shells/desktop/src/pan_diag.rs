@@ -81,6 +81,30 @@ fn vello_center() -> [f32; 2] {
     ]
 }
 
+/// **A POSIÇÃO DE MUNDO de uma amostra de cada rota**, guardada no quadro.
+///
+/// ⚠️ **É a pergunta que sobrou depois de a 1.ª corrida ilibar a projecção.** A sonda
+/// mediu `Δcam = 0` e `Δpx = 0` em todos os quadros de um arrasto: as duas rotas usam a
+/// MESMA câmera no MESMO instante e põem a origem do mundo no MESMO pixel. ⇒ o que deriva
+/// não é onde a câmera está — é **o que cada peça diz que a posição dela é**. Se o `P` de
+/// uma instância de sprite mudar enquanto se arrasta e o de uma vectorial não, o defeito
+/// está a MONTANTE do desenho, no que alimenta o cozimento.
+/// `(mundo da 1.ª sprite, mundo do 1.º vector, quantas sprites, quantos vectores)`.
+type Sample = ([f32; 2], [f32; 2], usize, usize);
+static SAMPLE: std::sync::Mutex<Option<Sample>> = std::sync::Mutex::new(None);
+
+/// Chamado depois do cozimento, com a 1.ª instância de cada rota.
+pub(crate) fn note_instances(sprites: &[ph2d_render::RenderInstance], vectors: &[[f32; 2]]) {
+    if !on() {
+        return;
+    }
+    let s = sprites.first().map_or([f32::NAN; 2], |i| i.world_pos);
+    let v = vectors.first().copied().unwrap_or([f32::NAN; 2]);
+    if let Ok(mut g) = SAMPLE.lock() {
+        *g = Some((s, v, sprites.len(), vectors.len()));
+    }
+}
+
 /// Uma linha por quadro, com as TRÊS respostas e o que cada uma usou.
 ///
 /// ⚠️ **O `Δ` é o que decide**: se ele for `0` e a imagem ainda derivar, o defeito não está
@@ -110,12 +134,21 @@ pub(crate) fn frame(
     // instante que o vector.
     let vc = vello_center();
     let dcam = (cam.center[0] - vc[0], cam.center[1] - vc[1]);
+    // ⚠️ **O MUNDO de uma amostra de cada rota.** Se estes números andarem enquanto se
+    // arrasta, o defeito está no COZIMENTO e não no desenho — e a linha di-lo-á.
+    let (sw_pos, vw_pos, ns, nv) =
+        SAMPLE
+            .lock()
+            .ok()
+            .and_then(|g| *g)
+            .unwrap_or(([f32::NAN; 2], [f32::NAN; 2], 0, 0));
     eprintln!(
         "[pan.diag] centro sprite ({:.4}, {:.4}) vello ({:.4}, {:.4}) Δcam ({:.4}, {:.4}) \
          | altura {:.3} | janela {w:.0}x{h:.0} cena {sw:.0}x{sh:.0} \
          | motion={motion_active} viewport={has_scene_viewport} split={split_is_split} \
          | origem: sprite ({:.2}, {:.2}) vector ({:.2}, {:.2}) Δpx ({:.3}, {:.3}) \
-         | mundo/px cena {per_px_scene:.5} janela {per_px_window:.5}",
+         | mundo/px cena {per_px_scene:.5} janela {per_px_window:.5} \
+         | MUNDO sprite[0] ({:.4}, {:.4}) de {ns} · vector[0] ({:.4}, {:.4}) de {nv}",
         cam.center[0],
         cam.center[1],
         vc[0],
@@ -129,5 +162,9 @@ pub(crate) fn frame(
         ve.1,
         sp.0 - ve.0,
         sp.1 - ve.1,
+        sw_pos[0],
+        sw_pos[1],
+        vw_pos[0],
+        vw_pos[1],
     );
 }

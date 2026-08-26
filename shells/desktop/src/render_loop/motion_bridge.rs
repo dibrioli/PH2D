@@ -464,6 +464,17 @@ pub(super) fn dispatch(
         &motion.object_bake,
         objects::LOD_COUNT,
     );
+    // A SONDA (`PH2D_PAN_DIAG=1`): o MUNDO de uma amostra de cada rota, depois do
+    // cozimento e do LOD — o último sítio antes do desenho.
+    if crate::pan_diag::on() {
+        let vecs: Vec<[f32; 2]> = motion
+            .pump
+            .vector_instances
+            .iter()
+            .map(|v| v.world_pos)
+            .collect();
+        crate::pan_diag::note_instances(&motion.pump.instances, &vecs);
+    }
 }
 
 /// **Re-derive everything the graph's SHAPE implies**, after any structural edit —

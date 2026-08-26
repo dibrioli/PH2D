@@ -174,3 +174,71 @@ fn a_pick_that_is_not_mine_is_left_alone() {
         "o pick alheio tem de ficar no canal para quem o sabe executar"
     );
 }
+
+/// ⭐ **Anexar é UM passo de desfazer, e desfazer FECHA a seção** (ADR-0166 / F3).
+///
+/// ⚠️ **Medido pela captura, que é a unidade do undo** (`ProjectState` = `WorldSnapshot` +
+/// `VecScene`; o passo nasce de um DIFF no fim do quadro). O que este gate afirma são as três
+/// coisas que o artista vê: a captura **muda** (senão não haveria passo nenhum e o Ctrl+Z saltaria
+/// por cima), repor a captura anterior **tira o componente**, e com ele fora a **seção some**.
+///
+/// ⛔ Ele não encena o `App::post_frame_undo` — aquele pede a janela inteira. O que ele mede é a
+/// propriedade de que o passo depende.
+#[test]
+fn attaching_is_one_undo_step_and_undoing_closes_the_section() {
+    let mut sim = SimWorld::new();
+    let bits = image(&mut sim);
+    let reg = registry();
+
+    let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
+    let mut work = ph2d_ecs::WorklistBuf::default();
+    let mut snap = |sim: &mut SimWorld| {
+        let mut out = ph2d_ecs::scene::WorldSnapshot::default();
+        ph2d_ecs::scene::world_to_snapshot(sim.world_mut(), &mut prop, &mut work, &reg, &mut out)
+            .expect("captura");
+        out
+    };
+
+    let before = snap(&mut sim);
+    crate::component_attach::attach_by_name(&mut sim, &reg, bits, "ph2d::ecs::SliceNine")
+        .expect("anexa");
+    let after = snap(&mut sim);
+    assert_ne!(
+        before, after,
+        "anexar nao mudou a captura — nao haveria passo de undo nenhum"
+    );
+
+    // O Ctrl+Z repõe a captura anterior.
+    //
+    // ⚠️ **DESPAWNA primeiro, como o `undo::restore` faz** — e a 1.ª versão deste gate não o fazia
+    // e ficou vermelha por isso. O `snapshot_to_world` declara no doc que *"`world` não precisa de
+    // estar vazio"*: ele SOMA linhas, não substitui o mundo. Sem a limpeza, o gate reencontrava a
+    // entidade ORIGINAL (com o componente) e acusava o produto de um defeito do arnês.
+    let editable: Vec<ph2d_ecs::Entity> = {
+        let mut q = sim
+            .world_mut()
+            .query_filtered::<ph2d_ecs::Entity, bevy_ecs::query::With<Transform>>();
+        q.iter(sim.world()).collect()
+    };
+    for e in editable {
+        let _ = sim.world_mut().despawn(e);
+    }
+    ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &before, &reg).expect("restore");
+    // ⚠️ **O restore RE-SPAWNA tudo com bits novos**, então a entidade tem de ser reencontrada
+    // pela identidade que sobrevive — que é a razão de o `StableId` existir.
+    let again = sim
+        .world_mut()
+        .query::<(ph2d_ecs::Entity, &ph2d_render::Sprite)>()
+        .iter(sim.world())
+        .map(|(e, _)| e)
+        .next()
+        .expect("a sprite volta");
+    assert!(
+        sim.world().get::<ph2d_ecs::SliceNine>(again).is_none(),
+        "desfazer nao tirou o componente"
+    );
+    assert!(
+        !crate::render_loop::inspector_presence_probe::slice(sim.world(), again.to_bits()),
+        "o componente saiu e a seccao ficou"
+    );
+}

@@ -22,7 +22,7 @@
 | F0 | O descritor de componente (+ `category`/`applies_to`) + `insert_default` — o inspector aprende a derivar | ✅ 2026-08-24 |
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
-| F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ⬜ |
+| F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ⬜ |
 | F5 | Aninhamento + variantes + Overrides sem alvo | ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ⬜ |
@@ -103,7 +103,11 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | Componentes novos no registro | `SiblingOrder` (F1) · `SpriteCornerTint` · **`SpriteGrid`** · `SpriteRegion` (F1.6, corte da Sprite) · `MasterRoot` · `MasterPiece` · `InstanceOf` · `ObjectInstance` (F4) | ✅ `ph2d-ecs` 69 → 70 → **73**; espelhos render/script 70 → 71 → **74**. ⚠️ O `StableId` **NÃO** entrou (ver F1). ⚠️ **`SpriteGrid`, não `SpriteSheet`** — ver F1.6 |
 | `WorldSnapshot::VERSION` | 1 → **2** (F1) | `save.rs` |
 | `PROJECT_SCHEMA` | ✅ **96** (F1, integrado) · ✅ **98** (F1.6, o corte da Sprite) — ⚠️ o `97` é da `line/Vector`; o **próximo** degrau é o **99** | escada + tripla |
-| Ids de widget novos | `INSP_ADD_COMPONENT` (F3, o `+` do cabeçalho do Inspector) | `ph2d-editor-core/src/ids/` + o gate `node_id_collisions` |
+| Ids de widget novos | ✅ `INSP_ADD_COMPONENT` (F3, o `+` do cabeçalho do Inspector) · ✅ `CMD_PALETTE_SHOW_ALL` (F3, a caixa da banda da paleta — mora em `widget/command_palette/header.rs`, ao lado dos irmãos `CMD_PALETTE_*`) | `ph2d-editor-core/src/ids/` + o gate `node_id_collisions` |
+| **Ações do barramento novas (F3)** | ✅ `EditorAction::HierAddRoot` (o botão `Add` da Hierarquia, **sem payload**) · ✅ `EditorAction::InspectorAddComponentRequested { entity_bits }` | ⚠️ **e uma MORREU: `PlayerFieldEdit::Add`** — o botão que a levantava vivia numa face vazia que a poda apagou |
+| **Campo novo no `ComponentDesc` (F3)** | ✅ `requires: &'static [&'static str]` + o construtor `authored_requiring` | ⚠️ **append-only**: os outros três construtores passam `&[]`. Duas entradas em 108 tipos (`RigidBody → Collider`, `PlatformPlayer → RigidBody`) |
+| **Campo novo no `PaletteModel` (F3)** | ✅ `toggle: Option<PaletteToggle>` | ⚠️ **obrigatório no literal** — o compilador apontou os **6** sítios de construção, e é isso que se quer |
+| **Catracas de LOC descidas (F3)** | `apply_event_impl` 292 → **276** · `command_palette.rs` 500 → **423** (a banda saiu) · `save.rs` 704 → **345** (os testes saíram) | ⚠️ o `save.rs` estava **acima do teto desde a F2** e ninguém tinha corrido o gate |
 | **Superfície pública nova (F0, feita)** | `ComponentRegistry::register_default::<T>` · `ComponentTypeEntry::insert_default` · `ComponentTypeEntry::desc` | ⚠️ **`register_inner` é privado** — as duas portas públicas são `register` (sem default) e `register_default` |
 | **Sítios de chamada convertidos (F0, feita)** | **109** `reg.register::<T>` → `register_default::<T>`, menos **27** revertidos (sem `Default`) = **82** convertidos | ⚠️ 5 arquivos: `ph2d-ecs/scene/registry.rs` (70, um deles num teste) · `-render` (1) · `-script` (1) · `-physics-ecs` (32) · `-field-ecs` (5). **É a maior superfície de colisão desta linha** — uma linha que acrescente um componente toca o mesmo arquivo |
 | **Dependências novas (F0, feita)** | `ph2d-ecs` → `ph2d-component-desc` · `shells/desktop` → idem · `ph2d-panel-inspector` → idem | ⚠️ conta para o `machete` no `ship.sh` |
@@ -429,6 +433,75 @@ Apagar a face vazia antes de a porta nova estar viva e testada torna a feature *
 é assim que a lei da face vazia foi paga da primeira vez
 ([memória](../../project-memory/feedback_the_three_ui_seam_questions_miss_the_fourth_the_sequence.md)).
 ⇒ **porta primeiro, poda depois**, com o censo verde entre as duas.
+
+
+---
+
+### ✅ F3 — FECHADA em 2026-08-25. O que ela mediu (e o que mudou por causa disso)
+
+⭐ **A ordem foi honrada e ela pagou-se:** porta primeiro (o `+`, a paleta, o filtro), **censo verde
+entre as duas** (`component_reach_tests`: **0** autorados que o registo constrói e nenhuma paleta
+oferece), poda depois.
+
+⚠️ **TRÊS seções têm DUAS metades, e a 1.ª redacção da poda apagava a UI de um dos lados.** Cada uma
+foi apanhada por um gate que já existia, e o mecanismo é o mesmo — *a seção descreve uma RELAÇÃO, e
+os dois lados dela são componentes diferentes*:
+
+| Seção | O que a 1.ª redacção gateava | O lado que ela apagava |
+|---|---|---|
+| §12 Anchors | `NamedAnchorList` (quem OFERECE âncoras) | `AnchorMount` (quem ANDA numa âncora do pai) |
+| §11 Animation | `SpriteAnimations` (a biblioteca) | `SpriteAnimator` (o transporte) |
+| §11 Physics | `RigidBody` (o corpo) | `Collider` sozinho (uma PEÇA de um corpo ancestral) |
+
+⚠️ **E a §11 Physics guarda ainda o `rig_parts > 0`**, que não é folga: o gesto canónico do *Rig* é
+marcar o TRONCO do personagem, que costuma ser um nó de organização **sem corpo nem collider** — e é
+um gesto sobre uma SUBÁRVORE, coisa que a paleta de componentes não sabe exprimir.
+
+⭐ **A emenda da F0 virou código: os DOIS seeds.** *Nem toda porta por-seção é redundante com o `+`;
+as que SEMEIAM do valor vivo fazem o que a paleta genérica não pode.* O `insert_default` é
+type-erased — constrói o `Default` do tipo e **não conhece a entidade**:
+
+| Componente | O `Default` sozinho | O seed |
+|---|---|---|
+| `Collider` | uma **bola de meio metro** debaixo de um sprite quadrado (o desencontro de 2026-07-18) | as meias-extensões do `Sprite` |
+| `PlatformPlayer` | a cápsula canónica **tangente** ao chão | a altura que de facto paira |
+
+⛔ **A meia-extensão estava escrita TRÊS vezes** (`Add`, `AddShape`, o seed) — hoje é
+`sprite_half_extents`, uma porta. E o `component_seed` tinha um `match` **ao lado** de uma lista de
+nomes que o gate percorria: duas respostas à mesma pergunta, hoje **uma tabela** que os dois leem.
+
+⭐ **O `requires` não era opcional.** Sem ele, anexar `PlatformPlayer` a um objeto sem corpo punha o
+componente lá e a §14 **não aparecia** — a poda abria um buraco próprio. A cascata viaja no **rótulo
+do item**, e é **FECHADA** (`Platform Player — brings Rigid Body, Collider`): mostrar só o 1.º salto
+seria a queixa do Bevy um nível abaixo. ⛔ Só o **estrutural** entra: a barra é *o componente é
+inerte sem aquele*, e a ponte da física consulta `(RigidBody, Collider, Transform)` — uma query, não
+uma opinião.
+
+⛔ **O que MORREU:** `PlayerFieldEdit::Add` + `INSP_PLAYER_ADD` («Make Platform Player») e a face
+vazia da §14 — o botão vivia dentro da seção que hoje só se pinta **com** o componente, logo a porta
+ficaria fechada sobre a própria chave. ⚠️ **E ele revelou a armadilha:** o `apply_player_edit`
+usava a mesma função como guarda de EDIÇÃO, então a poda fechou a porta sobre o gesto que a abre —
+*«a seção aparece?» e «esta edição é legal?» deixaram de ser a mesma pergunta*.
+
+⚠️ **REVERSÃO deliberada:** a §14 deixou de exigir `BodyKind != Static`. Aquela era a condição de
+OFERECER O BOTÃO, e o botão mudou-se para a paleta; mantê-la produziria o pior dos dois mundos — o
+artista anexa pelo `+` e **nada aparece**.
+
+✅ **O que FICA, com motivo medido, contra o que o plano previa:** `INSP_ANCHOR_ADD` e
+`INSP_ANIM_ADD` **não são portas de componente** — eles acrescentam uma LINHA (uma âncora, uma tag)
+dentro de um componente já presente. O plano listava-os como redundantes; a medição diz que não.
+`INSP_PHYS_ADD` sobrevive como atalho da §11 quando ela está visível (o caso do rig).
+
+⏳ **Ficou de fora, com o motivo:** a §4 **Sprite Sheet** NÃO foi gateada no `SpriteGrid`. Ela é uma
+sub-seção do `sprite_info` e hospeda também o **Flip X / Flip Y**, que são campos da `Sprite` base —
+gateá-la na grelha tornaria os dois inalcançáveis. *A poda pára onde a seção deixa de descrever um
+componente só.*
+
+**Entregue:** o `+` (`INSP_ADD_COMPONENT`) · a paleta filtrada por tipo de objeto com *Show all* ·
+o objeto vazio na raiz (`HierAddRoot`) · a poda de **8** seções · os **2** seeds · o `requires` com
+a cascata no rótulo · **32** gates novos (13 combinações de presença nos dois sentidos · o censo de
+alcance de dois lados · 7 de seed/cascata · 5 de SEQUÊNCIA · 4 de catálogo · 3 de widget/chrome).
+
 
 ---
 

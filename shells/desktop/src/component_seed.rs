@@ -37,7 +37,10 @@ use ph2d_ecs::SimWorld;
 /// semeia* para afirmar que **todo o resto anexa inerte**, e uma lista de nomes escrita ao lado de
 /// um `match` seriam **duas respostas à mesma pergunta** — a que o gate lê envelheceria em silêncio
 /// no dia em que alguém acrescentasse um braço sem a lista. Aqui os dois leem a mesma linha.
-pub(crate) const SEEDS: &[(&str, fn(&mut SimWorld, u64))] = &[
+/// O que uma semente faz: escreve o valor inicial daquele componente na entidade dada.
+type Seed = fn(&mut SimWorld, u64);
+
+pub(crate) const SEEDS: &[(&str, Seed)] = &[
     (
         "ph2d::physics::Collider",
         crate::render_loop::seed_attached_collider,

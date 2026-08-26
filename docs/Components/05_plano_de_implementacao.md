@@ -100,7 +100,9 @@ quiser o smoke de verdade tem de **fabricar** um v95 (checkout de um commit anti
 | O quê | Valor | Quem soma |
 |---|---|---|
 | Crates novas | `ph2d-component-desc` (F0) · `ph2d-asset-index` (F6) | workspace glob |
-| Componentes novos no registro | `SiblingOrder` (F1) · `SpriteCornerTint` · **`SpriteGrid`** · `SpriteRegion` (F1.6, corte da Sprite) · `MasterRoot` · `MasterPiece` · `InstanceOf` · `ObjectInstance` (F4) | ✅ `ph2d-ecs` 69 → 70 → **73**; espelhos render/script 70 → 71 → **74**. ⚠️ O `StableId` **NÃO** entrou (ver F1). ⚠️ **`SpriteGrid`, não `SpriteSheet`** — ver F1.6 |
+| Componentes novos no registro | `SiblingOrder` (F1) · `SpriteCornerTint` · **`SpriteGrid`** · `SpriteRegion` (F1.6, corte da Sprite) · ✅ `MasterRoot` (F4.1) · ✅ `InstanceOf` (F4.2) · `ObjectInstance` (F4.4) | ✅ `ph2d-ecs` 69 → 70 → 73 → 74 → **75**; espelhos render/script 70 → 71 → 74 → 75 → **76**. ⚠️ O `StableId` **NÃO** entrou (ver F1), e o **`MasterPiece` também não** — ele é DERIVADO (`assign_master_pieces`), e um valor derivado no arquivo envenena o undo. ⚠️ **`SpriteGrid`, não `SpriteSheet`** — ver F1.6 |
+| **Campos novos no `ComponentDesc` / `FieldKind` (F4.2)** | ✅ `FieldKind::Ref` (variante **apendada** no fim) · os 5 primeiros campos declarados `is_ref: Object`: `PhysicsJoint.body_a/b` · `PulleyWheel.rope/.body` · `InstanceOf.master` | ⚠️ **é a declaração que FAZ o remap acontecer** — censo de dois lados em `shells/desktop/src/instance_refs.rs`: declarar uma referência sem remapeador **reprova** |
+| **Campo novo no `ComponentDesc` (F4.2)** | ✅ `owned_document: bool` + o construtor `D::owned_bridge` — os **quatro** de `catalog/bridges.rs` | ⚠️ **append-only**: os outros quatro construtores passam `false`. É o que faz a cópia profunda **não** levar o id de um documento possuído 1:1 |
 | `WorldSnapshot::VERSION` | 1 → **2** (F1) | `save.rs` |
 | `PROJECT_SCHEMA` | ✅ **96** (F1, integrado) · ✅ **98** (F1.6, o corte da Sprite) — ⚠️ o `97` é da `line/Vector`; o **próximo** degrau é o **99** | escada + tripla |
 | Ids de widget novos | ✅ `INSP_ADD_COMPONENT` (F3, o `+` do cabeçalho do Inspector) · ✅ `CMD_PALETTE_SHOW_ALL` (F3, a caixa da banda da paleta — mora em `widget/command_palette/header.rs`, ao lado dos irmãos `CMD_PALETTE_*`) | `ph2d-editor-core/src/ids/` + o gate `node_id_collisions` |
@@ -552,6 +554,44 @@ consumidores hoje) com remap de `StableId` e refs — substitui a cópia rasa de
 
 **Smoke:** `PH2D_INSTANCE_SMOKE=<n>` — roteador próprio; cena 1 = ragdoll auto-play
 ([feedback: exemplo pronto pra smoke](../../project-memory/feedback_ready_to_smoke_example.md)).
+
+### Estado das FATIAS da F4 (a linha atualiza; a fase só fecha com os três smokes-gate)
+
+| Fatia | O quê | Estado |
+|---|---|---|
+| F4.1 | O mestre existe e é **INERTE** — a condição (a) da refutação 1 | ✅ 2026-08-25 |
+| F4.2 | **Instanciar**: cópia profunda + remap de identidade e de referências | ✅ 2026-08-26 — smoke-gate **1** |
+| F4.3 | Sync vivo mestre→instância (`set_if_neq`, ordem topológica, `pose_owner`) | ⬜ smoke-gate 2 |
+| F4.4 | Override por campo capturado por diff (`ObjectInstance`) | ⬜ |
+| F4.5 | Destacar / Redefinir / Aplicar ao mestre + **os verbos na UI** | ⬜ |
+| F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | ⬜ |
+| F4.7 | Lane do `physics_ecs_c9` com mestre+instância; ponto fixo sob física | ⬜ smoke-gate 3 |
+
+**O que a F4.1 mediu e o plano não dizia:** ⚠️ **a refutação nomeia CINCO `QueryState` da ponte
+(`bridge.rs:84-127`); são SEIS.** Ela cita uma *faixa de linhas de um ficheiro*, e a `WheelQuery`
+nasceu noutro (`bridge/rope.rs`) depois disso. Era a pior de faltar: uma roldana é alcançada **pelo
+nome da corda**, então uma dentro da biblioteca não só entraria no sistema vivo como **disputaria a
+resolução** com a da cena. *Uma referência por faixa de linhas envelhece à velocidade do ficheiro.*
+
+**O que a F4.2 mediu e o plano não dizia:**
+- ⚠️ **A nota do catálogo sobre o `AnchorMount.anchor` está REFUTADA** (`catalog/image.rs` dizia
+  *"é `RefKind::Object` quando a F1 migrar"*): o campo nomeia uma âncora **do próprio PAI**, e uma
+  cópia profunda leva o pai junto — o nome continua a resolver dentro da cópia. Declará-lo pediria
+  um remap que estragaria o que já funciona. *A estrutura da cópia apaga o caso especial.*
+- ⚠️ **A ORDEM entre remapear e ligar é load-bearing**, e o erro é mudo: o mapa contém
+  `mestre → cópia do mestre` (tem de conter — uma junta ancorada na raiz precisa dele), então
+  inserir o `InstanceOf` **antes** do remap fá-lo apontar para a **própria cópia**. Gate:
+  `the_instance_points_at_the_master_not_at_itself` (mutação mata).
+- ⚠️ **A cópia profunda tem de perder `RootOrder`/`SiblingOrder` da raiz** — dois irmãos com a
+  mesma ordem é o empate que a casa não tem. As peças **mantêm** os delas (é a receita).
+- ⭐⭐ **E ela NÃO pode levar o id de um documento POSSUÍDO.** Copiar bytes verbatim é a coisa certa
+  para 100 dos 104 tipos e a **errada** para os quatro de `catalog/bridges.rs` (`PaintedDoc` ·
+  `VecPathRef` · `BakedForm` · `FlipObjectRef`): o id é opaco, então a cópia ficaria a escrever no
+  **mesmo** documento — duplicar uma sprite pintada devolvia um sósia que apaga a tinta do
+  original. ⚠️ *A cópia rasa que existia acertava nisto por acidente* (ela levava quatro
+  componentes e nenhum era ponte), e a profunda tinha de o decidir de propósito. ⇒ `ComponentDesc
+  .owned_document`, com o gate `the_bridges_are_the_owned_documents` a prender a família à flag.
+  ⛔ **Não é `Attach::Machinery`**, que é 17 tipos e treze deles copiam-se muito bem.
 
 ---
 

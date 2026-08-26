@@ -24,6 +24,9 @@ mod joint_group;
 pub mod joint_tool;
 pub mod name_refs;
 mod parts;
+/// ⭐ **O REMAP identidade → identidade** (ADR-0164 / F4.2) — o que faz a junta de uma
+/// cópia prender os corpos DELA. Irmão do [`name_refs`], que traduz NOME → identidade.
+pub mod ref_remap;
 mod rig;
 mod scale;
 mod seam;
@@ -41,6 +44,7 @@ pub use bridge::joint_break::JointBreakEvent;
 pub use bridge::signals::SignalEvent;
 pub use bridge::triggers::TriggerEvent;
 pub use name_refs::{ResolvedRefs, resolve_body_names};
+pub use ref_remap::{remap_joint_refs, remap_wheel_refs};
 // O par de números que um readout de joint mostra. Re-exportado porque a shell
 // não depende de `ph2d-physics` direto.
 pub use bridge::Launch;

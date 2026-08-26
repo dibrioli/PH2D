@@ -73,6 +73,21 @@ pub struct ComponentDesc {
     /// inerte sem aquele*. A ponte da física consulta `(RigidBody, Collider, Transform)` — um corpo
     /// sem collider nunca é simulado, e isso é uma query, não uma opinião.
     pub requires: &'static [&'static str],
+    /// ⭐ **Este componente é o id de um documento que a entidade POSSUI 1:1** (F4.2).
+    ///
+    /// ⚠️ **A cópia profunda não o leva**, e a razão é a única que importa: o id é opaco, copiá-lo
+    /// daria **duas entidades a escrever no mesmo documento** — e o artista que duplica uma sprite
+    /// pintada esperava dois objetos independentes, não um sósia que apaga a tinta do original.
+    ///
+    /// São os quatro de [`catalog::bridges`] (`PaintedDoc` · `VecPathRef` · `BakedForm` ·
+    /// `FlipObjectRef`). ⛔ **Não é o mesmo que [`Attach::Machinery`]**, que é muito mais largo
+    /// (`RootOrder`, `SiblingOrder`, `SpritePixels`… são máquina e copiam-se muito bem).
+    ///
+    /// ⚠️ Um `AssetId` **não** entra aqui: um asset é partilhado por desenho, e duas sprites a
+    /// apontar para a mesma imagem é o caso normal. *O que decide é a posse, não a indireção.*
+    ///
+    /// ⏳ Ensinar cada documento a copiar-se é o que fecha isto — para o vetor é a **F4.6**.
+    pub owned_document: bool,
 }
 
 impl ComponentDesc {
@@ -96,6 +111,7 @@ impl ComponentDesc {
             attach: Attach::Authored { applies_to },
             fields,
             requires: &[],
+            owned_document: false,
         }
     }
 
@@ -120,6 +136,7 @@ impl ComponentDesc {
             attach: Attach::Authored { applies_to },
             fields,
             requires,
+            owned_document: false,
         }
     }
 
@@ -140,6 +157,7 @@ impl ComponentDesc {
             attach: Attach::Intrinsic,
             fields,
             requires: &[],
+            owned_document: false,
         }
     }
 
@@ -162,6 +180,29 @@ impl ComponentDesc {
             attach: Attach::Machinery,
             fields: &[],
             requires: &[],
+            owned_document: false,
+        }
+    }
+
+    /// **Máquina que é o id de um documento POSSUÍDO 1:1** — ver
+    /// [`ComponentDesc::owned_document`]. Os quatro de [`catalog::bridges`], e só eles.
+    ///
+    /// ⚠️ **Construtor à parte pela razão do [`Self::authored_requiring`]:** `machinery` é chamado
+    /// 17 vezes e treze delas copiam-se muito bem. *A excepção paga o preço dela.*
+    #[must_use]
+    pub const fn owned_bridge(
+        canonical_name: &'static str,
+        display_name: &'static str,
+        category: ComponentCategory,
+    ) -> Self {
+        Self {
+            canonical_name,
+            display_name,
+            category,
+            attach: Attach::Machinery,
+            fields: &[],
+            requires: &[],
+            owned_document: true,
         }
     }
 
@@ -526,6 +567,16 @@ pub enum FieldKind {
     /// Marcador de tamanho zero: não tem valor, a **presença** é o valor.
     /// (`ShowBehindParent`, `TopLevel`, `Locked` — um componente sem campos.)
     Marker,
+    /// **Uma REFERÊNCIA a outra coisa** — o controlo é um *picker*, nunca um número.
+    ///
+    /// ⚠️ **Não é redundante com o [`FieldDesc::is_ref`], e a divergência entre os dois é que
+    /// seria o defeito:** `is_ref` diz *o que* o campo aponta (para o remap da F4), e `kind`
+    /// diz *que controlo o edita*. Descrever o `PhysicsJoint.body_a` como [`Self::Int`]
+    /// — que é o que ele é nos bytes, um `u64` — poria um chip numérico na frente do artista
+    /// a pedir a identidade de um corpo. *O rótulo tem de prometer o que o modelo entrega.*
+    ///
+    /// Os dois andam juntos por gate (`a_ref_field_declares_both_halves`).
+    Ref,
 }
 
 /// **O que a propagação mestre→instância faz com este campo** (ADR-0164 §2.4).

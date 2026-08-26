@@ -150,7 +150,9 @@ fn register_ecs_components_populates_registry() {
     // + 1 do MESTRE (MasterRoot, ADR-0164 F4.1, 2026-08-25) -- a raiz de uma receita
     //   da biblioteca. ⚠️ O `MasterPiece` NAO entra: ele e' DERIVADO (`assign_master_pieces`),
     //   e um valor derivado no arquivo envenena o undo.
-    assert_eq!(reg.len(), 75);
+    // + 1 do ELO da instancia (InstanceOf, ADR-0164 F4.2, 2026-08-26) -- de que mestre esta
+    //   raiz nasceu, pelo StableId dele.
+    assert_eq!(reg.len(), 76);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

@@ -1,0 +1,215 @@
+//! ⭐ **A CÓPIA PROFUNDA** — a peça mecânica de que *Duplicar* e *Instanciar* nascem, e o elo
+//! [`InstanceOf`] que liga uma instância ao mestre (ADR-0164 / plano F4.2).
+//!
+//! # Porque ela não é o `spawn` de uma lista de componentes
+//!
+//! Copiar uma subárvore é copiar **bytes de componente que ninguém desta crate conhece** — a
+//! física, o vetor, o 3D e os scripts registam os deles. A porta que existe para isso é a vtable
+//! do [`ComponentRegistry`]: [`extract_component_snapshot`] serializa o que a entidade tem, e
+//! `insert_from_bytes` põe o mesmo no destino. A auditoria de 2026-08-21 mediu que os dois
+//! existiam e **não tinham consumidor nenhum**; este módulo é o primeiro.
+//!
+//! # ⚠️ O que a cópia NÃO leva, e porquê
+//!
+//! - **A identidade.** O [`crate::StableId`] não é registado ([`crate::scene::registry`]) — a
+//!   ausência é a decisão, e é ela que faz a cópia nascer **sem** id em vez de nascer com o id
+//!   do original. Quem lho dá é o [`crate::assign_missing_stable_ids`], no fim.
+//! - **A ORDEM.** `RootOrder`/`SiblingOrder` são registados e viriam verbatim — dois irmãos com
+//!   a mesma ordem é o empate que a casa não tem (*"não se escolhe um desempate melhor, não se
+//!   tem empate"*). A raiz da cópia perde-os e ganha os seus.
+//!
+//! # ⛔ Esta função sozinha NÃO instancia
+//!
+//! Ela copia bytes. Uma referência guardada por identidade (`PhysicsJoint.body_a`, a corda de
+//! uma `PulleyWheel`) continua a apontar para o **ORIGINAL** — e é assim que uma junta copiada
+//! prende os corpos do mestre. O remap é o segundo passo, e a porta do produto que compõe os
+//! dois é `instantiate::instantiate_master` na shell, com um censo a ligar cada campo declarado
+//! `RefKind::Object` ao remapeador dele. *Duas portas em que uma tem de seguir a outra são uma
+//! porta e uma armadilha* — por isso há gate a exigir que esta tenha um chamador só.
+//!
+//! [`extract_component_snapshot`]: crate::scene::extract_component_snapshot
+//! [`ComponentRegistry`]: crate::scene::ComponentRegistry
+
+use crate::scene::{
+    ComponentRegistry, ComponentSnapshot, RegistryError, extract_component_snapshot,
+};
+use crate::{ChildOf, Children, Entity, RootOrder, SiblingOrder, StableId};
+use bevy_ecs::prelude::Component;
+use bevy_ecs::world::World;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+
+/// **De que mestre esta raiz é uma instância** — o [`StableId`] dele.
+///
+/// ⚠️ Registado e persistido: o elo é autoria, e sem ele um projeto reaberto tem instâncias que
+/// já não sabem de onde vieram (o sync da F4.3 deixaria de as alcançar, calado).
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InstanceOf {
+    /// `0` = nenhum, a convenção do [`StableId::NONE`].
+    pub master: u64,
+}
+
+/// O que uma cópia profunda produziu — e o mapa que o remap consome.
+#[derive(Clone, Debug)]
+pub struct DeepCopy {
+    /// A raiz da cópia.
+    pub root: Entity,
+    /// Entidade do original → entidade da cópia, em ordem de visita.
+    pub entities: BTreeMap<Entity, Entity>,
+    /// `StableId` do original → `StableId` da cópia. **É esta a chave do remap**, e não os bits
+    /// de entidade: as referências guardam identidade.
+    pub stable_ids: BTreeMap<u64, u64>,
+}
+
+impl DeepCopy {
+    /// As entidades novas, na ordem em que nasceram — o que o remap varre.
+    #[must_use]
+    pub fn copies(&self) -> Vec<Entity> {
+        self.entities.values().copied().collect()
+    }
+}
+
+/// ⭐ **Copia `src_root` e toda a descendência dele**, devolvendo o mapa de identidade.
+///
+/// `parent` diz onde a cópia aterra: `Some(p)` para a pendurar (o *Duplicar*, que a põe ao lado
+/// do original), `None` para a deixar na raiz da cena.
+///
+/// ⚠️ **Ordem determinística** (pré-ordem, filhos na ordem do `Children`) — a mesma cópia tem de
+/// dar os mesmos ids em qualquer máquina, senão o `physics_ecs_c9` diverge entre os 3 OS.
+///
+/// ⛔ Ver o cabeçalho do módulo: **isto não remapeia referência nenhuma.**
+pub fn deep_copy_subtree(
+    world: &mut World,
+    registry: &ComponentRegistry,
+    src_root: Entity,
+    parent: Option<Entity>,
+) -> Result<DeepCopy, RegistryError> {
+    if world.get_entity(src_root).is_err() {
+        return Err(RegistryError::EntityMissing(src_root));
+    }
+    // O original tem de ter identidade ANTES, senão o mapa nasce sem chaves.
+    crate::assign_missing_stable_ids(world);
+
+    // 1. A subárvore, em pré-ordem.
+    let mut order: Vec<Entity> = Vec::new();
+    let mut stack = vec![src_root];
+    while let Some(e) = stack.pop() {
+        order.push(e);
+        if let Some(kids) = world.get::<Children>(e) {
+            let mut ks: Vec<Entity> = kids.iter().copied().collect();
+            // Empilhar ao contrário é o que faz a visita seguir a ordem do `Children`.
+            ks.reverse();
+            stack.extend(ks);
+        }
+    }
+
+    // 2. Os blobs, ANTES de tocar no mundo — a extração pede `&World` e a inserção `&mut`.
+    let mut snap = ComponentSnapshot::new();
+    let mut blobs: Vec<Vec<(u64, Vec<u8>)>> = Vec::with_capacity(order.len());
+    for &e in &order {
+        extract_component_snapshot(world, e, registry, &mut snap)?;
+        blobs.push(
+            snap.entries
+                .iter()
+                .map(|c| (c.type_id, c.data.clone()))
+                .collect(),
+        );
+    }
+
+    // 3. As entidades novas.
+    let mut entities: BTreeMap<Entity, Entity> = BTreeMap::new();
+    for (i, &src) in order.iter().enumerate() {
+        let dst = world.spawn_empty().id();
+        for (type_id, data) in &blobs[i] {
+            // ⚠️ Um id sem entrada no registo é um componente que o snapshot produziu e este
+            // registo não conhece — impossível hoje (é o mesmo registo), e saltá-lo é a
+            // resposta certa se algum dia deixar de ser: perder um componente é melhor que
+            // abortar a cópia a meio, com metade das entidades nascidas.
+            let Some(entry) = registry.get_by_id(*type_id) else {
+                continue;
+            };
+            // ⭐⭐ **A PONTE para um documento POSSUÍDO fica de fora** — ver
+            // [`ph2d_component_desc::ComponentDesc::owned_document`]. O id é opaco: copiá-lo daria
+            // duas entidades a escrever no MESMO documento (duplicar uma sprite pintada devolvia um
+            // sósia que apaga a tinta do original). A cópia nasce sem o elo, que é exatamente o que
+            // a cópia rasa fazia — e ensinar cada documento a copiar-se é outra obra.
+            //
+            // ⚠️ **Quem decide é o DESCRITOR, não uma lista aqui.** Uma ponte nova declarada no
+            // catálogo passa a ser saltada sem que ninguém se lembre deste ficheiro; uma lista de
+            // nomes local seria a segunda resposta que envelhece.
+            if entry.desc.is_some_and(|d| d.owned_document) {
+                continue;
+            }
+            let insert = entry.insert_from_bytes;
+            insert(world, dst, data)?;
+        }
+        entities.insert(src, dst);
+    }
+
+    // 4. A hierarquia — interna, e depois onde a raiz aterra.
+    for &src in &order {
+        if src == src_root {
+            continue;
+        }
+        let Some(&dst) = entities.get(&src) else {
+            continue;
+        };
+        let src_parent = world.get::<ChildOf>(src).map(|c| c.0);
+        if let Some(p) = src_parent
+            && let Some(&new_parent) = entities.get(&p)
+        {
+            world.entity_mut(dst).insert(ChildOf(new_parent));
+        }
+    }
+    let root = entities[&src_root];
+    // A raiz não herda a ordem do original (ver o cabeçalho).
+    world.entity_mut(root).remove::<RootOrder>();
+    world.entity_mut(root).remove::<SiblingOrder>();
+    if let Some(p) = parent {
+        world.entity_mut(root).insert(ChildOf(p));
+    }
+
+    // 5. Identidade nova, e o mapa que o remap consome.
+    crate::assign_missing_stable_ids(world);
+    let mut stable_ids: BTreeMap<u64, u64> = BTreeMap::new();
+    for (&src, &dst) in &entities {
+        if let (Some(a), Some(b)) = (world.get::<StableId>(src), world.get::<StableId>(dst)) {
+            stable_ids.insert(a.0, b.0);
+        }
+    }
+
+    Ok(DeepCopy {
+        root,
+        entities,
+        stable_ids,
+    })
+}
+
+/// **Reescreve o elo [`InstanceOf`] das entidades dadas** através do mapa de identidade.
+///
+/// O remapeador de `ph2d::ecs::InstanceOf` — a entrada dele na tabela da shell. Devolve quantos
+/// mexeu.
+///
+/// ⚠️ **Um mestre que está FORA do que se copiou não está no mapa, e o elo fica** — que é o caso
+/// normal (duplicar uma instância dá outra instância do mesmo mestre) e é o comportamento certo.
+pub fn remap_instance_of(
+    world: &mut World,
+    entities: &[Entity],
+    by_id: &BTreeMap<u64, u64>,
+) -> usize {
+    let mut hits = 0;
+    for &e in entities {
+        let Some(mut link) = world.get_mut::<InstanceOf>(e) else {
+            continue;
+        };
+        if let Some(&new) = by_id.get(&link.master) {
+            link.master = new;
+            hits += 1;
+        }
+    }
+    hits
+}
+
+#[cfg(test)]
+#[path = "instantiate_tests.rs"]
+mod tests;

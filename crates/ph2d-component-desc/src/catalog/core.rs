@@ -68,6 +68,25 @@ const NAME: &[FieldDesc] = &[FieldDesc {
 
 const VISIBILITY: &[FieldDesc] = &[f(1, "Hidden", K::Toggle)];
 
+/// **`InstanceOf`** — o `StableId` do mestre de que esta raiz nasceu (F4.2).
+///
+/// ⚠️ **A política segue o precedente do `Transform` acima:** aqui está a da PEÇA (uma instância
+/// aninhada dentro de um mestre — F5), que propaga porque o elo dela faz parte da receita. Na
+/// RAIZ de uma instância o elo é dela e nunca vem de cima; *um tipo, duas respostas, e quem
+/// escolhe é o sítio* — o passe de sync, não esta tabela.
+///
+/// ⚠️ É `RefKind::Object` e por isso exige remapeador (censo em `instance_refs.rs`): copiar um
+/// mestre que contenha uma instância DELE PRÓPRIO tem de religar a cópia à cópia. Quando o
+/// mestre está fora do que se copiou — o caso normal — a busca falha e o elo fica, que é
+/// exatamente o certo.
+const INSTANCE_OF: &[FieldDesc] = &[FieldDesc {
+    field_id: 1,
+    name: "Master",
+    kind: K::Ref,
+    policy: Propagation::Propagate,
+    is_ref: Some(crate::RefKind::Object),
+}];
+
 // ── Ordenação: a família PILOTO da F0 (a §7 do Inspector) ──────────────────────────
 
 const SORTING_LAYER: &[FieldDesc] = &[f(1, "Sorting Layer", K::Enum)];
@@ -112,6 +131,19 @@ pub const DESCS: &[D] = &[
         C::Identity,
         O::ANY,
         MARKER,
+    ),
+    // ⭐ **O ELO de uma instância ao mestre** (ADR-0164 / F4.2) — a raiz de uma instância diz
+    // de que receita ela nasceu, pelo `StableId` do mestre.
+    //
+    // ⚠️ **`Intrinsic` pela razão do `MasterRoot`:** ele chega pelo gesto *«instanciar»*, que
+    // COPIA a subárvore antes de o pôr. Oferecê-lo na paleta daria uma raiz que se diz instância
+    // de um mestre de que ninguém copiou peça nenhuma — e o sync (F4.3) escreveria por cima do
+    // que o artista tem, ou não escreveria nada, os dois calados.
+    D::intrinsic(
+        "ph2d::ecs::InstanceOf",
+        "Instance",
+        C::Instancing,
+        INSTANCE_OF,
     ),
     D::authored("ph2d::ecs::Locked", "Locked", C::Identity, O::ANY, MARKER),
     D::authored("ph2d::ecs::Mask2D", "Mask", C::Rendering, O::IMAGE, &[]),

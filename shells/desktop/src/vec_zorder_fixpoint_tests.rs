@@ -35,7 +35,6 @@ use ph2d_ecs::scene::{
     register_ecs_components,
 };
 use ph2d_ecs::{Name, Transform};
-use ph2d_ecs::{TransformPropagationState, WorklistBuf};
 use ph2d_flip::FlipDoc;
 use ph2d_vec_scene::{VecScene, rectangle};
 
@@ -48,8 +47,6 @@ struct Frame {
     scratch: Vec<(Entity, u8, Option<Entity>)>,
     snap: HierarchySnapshot,
     reg: ComponentRegistry,
-    prop: TransformPropagationState,
-    worklist: WorklistBuf,
     /// A cache da captura incremental (F2) — ela tem de SOBREVIVER entre quadros, senão o
     /// ponto fixo que estes gates medem seria sempre uma primeira captura.
     undo_cache: ph2d_ecs::scene::incremental::CaptureCache,
@@ -67,8 +64,6 @@ impl Frame {
             scratch: Vec::new(),
             snap: HierarchySnapshot::new(),
             reg,
-            prop: TransformPropagationState::new(sim.world_mut()),
-            worklist: WorklistBuf::new(),
             undo_cache: ph2d_ecs::scene::incremental::CaptureCache::new(),
         }
     }

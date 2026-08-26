@@ -340,6 +340,9 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ⚠️ O `MasterPiece` NÃO entra aqui, e a ausência é a decisão: ele é DERIVADO
     // (`assign_master_pieces`), e um valor derivado no arquivo envenena o undo.
     reg.register_default::<crate::MasterRoot>("ph2d::ecs::MasterRoot");
+    // ⭐ **O ELO ao mestre** (ADR-0164 / F4.2) — autoria também: sem ele um projeto reaberto
+    // tem instâncias que já não sabem de que receita nasceram, e o sync não as alcança.
+    reg.register_default::<crate::InstanceOf>("ph2d::ecs::InstanceOf");
     reg.register_default::<crate::ClipChildren>("ph2d::ecs::ClipChildren");
     reg.register_default::<crate::MaskInteraction>("ph2d::ecs::MaskInteraction");
     reg.register_default::<crate::Mask2D>("ph2d::ecs::Mask2D");

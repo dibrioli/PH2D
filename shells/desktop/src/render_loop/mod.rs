@@ -930,6 +930,7 @@ impl crate::App {
         self.morph_fade_smoke();
         self.nest_smoke();
         self.physics_smoke();
+        self.instance_smoke();
         self.flip_pose_smoke();
         self.flip_edit_smoke();
         self.flip_fill_smoke();
@@ -9861,6 +9862,7 @@ impl crate::App {
                 &mut self.vec_history,
                 &mut self.vec_pen,
                 &mut duplicate_made,
+                component_registry,
             ) {
                 self.title_dirty = true;
             }

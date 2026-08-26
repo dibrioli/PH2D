@@ -110,6 +110,9 @@ pub(super) fn dispatch(
     // Out: `(source_bits, new_bits)` of a sprite duplicate so the caller (which holds the painter +
     // renderer) can bake the source's live paint and give the copy an independent texture.
     duplicate_made: &mut Option<(u64, u64)>,
+    // ⭐ O registo de componentes (ADR-0164 / F4.2) — a row **Duplicate** copia bytes de tipos que
+    // esta shell não conhece, e a vtable dele é a única porta que sabe fazê-lo.
+    registry: &ph2d_ecs::scene::ComponentRegistry,
 ) -> bool {
     let mut title_dirty = false;
 
@@ -251,42 +254,27 @@ pub(super) fn dispatch(
                 title_dirty = true;
             }
         } else {
-            let transform = sim.world().get::<Transform>(src).copied();
-            let sprite = sim.world().get::<ph2d_render::Sprite>(src).copied();
-            let name = sim
-                .world()
-                .get::<Name>(src)
-                .map(|n| n.as_str().to_owned())
-                .unwrap_or_else(|| "Entity".to_string());
-            let parent = sim
-                .world()
-                .get::<ph2d_ecs::ChildOf>(src)
-                .map(|c| c.parent());
-            // Names MUST be unique scene-wide — the hierarchy panel's old
-            // label-match selection fallback (now removed) flagged every
-            // homonym as selected, and any future code that keys off the
-            // friendly label deserves the same defense. Strip + bump
-            // suffix so `Sprite (1)` duplicated → `Sprite (2)`.
-            let copy_name = crate::name_unique::unique_name(sim, &name);
-            let sim_w = sim.world_mut();
-            let mut builder = sim_w.spawn_empty();
-            if let Some(t) = transform {
-                builder.insert(t);
+            // ⭐ **A cópia é PROFUNDA** (ADR-0164 / F4.2) — a subárvore inteira, todo componente
+            // registado, identidade nova, e as referências internas remapeadas.
+            //
+            // ⚠️ **O que estava aqui antes copiava QUATRO componentes** (`Transform`, `Sprite`,
+            // `Name`, `ChildOf`) **e nenhum filho**: duplicar um ragdoll dava uma linha vazia na
+            // Hierarquia, e duplicar um corpo com junta dava um corpo solto. O ADR-0164 nomeia
+            // este defeito, e ele existia por falta de porta, não por decisão.
+            //
+            // ⚠️ **O nome único continua a ser lei** — a Hierarquia já teve seleção por rótulo, e
+            // qualquer código que volte a chavear pelo nome amigável merece a mesma defesa.
+            let sprite = sim.world().get::<ph2d_render::Sprite>(src).is_some();
+            if let Some(copy) = crate::instantiate::duplicate_subtree(sim, registry, src) {
+                // Report the pair so the caller can fork the copy's texture off the source
+                // (independent object) + flush any live paint on the source first. Only matters
+                // for sprite entities.
+                if sprite {
+                    *duplicate_made = Some((entity_bits, copy.to_bits()));
+                }
+                toasts.push(Toast::success("Duplicated entity"));
+                title_dirty = true;
             }
-            if let Some(s) = sprite {
-                builder.insert(s);
-            }
-            builder.insert(Name::new(copy_name));
-            if let Some(p) = parent {
-                builder.insert(ph2d_ecs::ChildOf(p));
-            }
-            // Report the pair so the caller can fork the copy's texture off the source (independent object)
-            // + flush any live paint on the source first. Only matters for sprite entities.
-            if sprite.is_some() {
-                *duplicate_made = Some((entity_bits, builder.id().to_bits()));
-            }
-            toasts.push(Toast::success("Duplicated entity"));
-            title_dirty = true;
         }
     }
     if let Some(row) = add_child_row

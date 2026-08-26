@@ -319,7 +319,7 @@ pub fn capture_incremental(
         let stale: Vec<(Entity, StableId)> = {
             let mut q = world.query::<(Entity, &StableId)>();
             q.iter(world)
-                .filter(|(_, s)| rows.get(s).map_or(true, |c| c.seen != generation))
+                .filter(|(_, s)| rows.get(s).is_none_or(|c| c.seen != generation))
                 .map(|(e, s)| (e, *s))
                 .collect()
         };

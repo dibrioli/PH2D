@@ -18,16 +18,29 @@
 use ph2d_render::nine_slice::{PATCH_COUNT, SlicePatch, nine_slice_patches};
 use ph2d_render::{RenderInstance, Sprite};
 
+/// **Onde os pixels deste sprite estão na FONTE** — os três que o corte lê juntos.
+///
+/// ⚠️ Eles andam sempre em trio (a região recorta a imagem, a grelha recorta a célula, as
+/// dimensões dizem em que escala isso é medido), e um deles sozinho não responde nada. Ter um tipo
+/// é o que impede a próxima assinatura de os separar — e foi o que o teto de argumentos apanhou.
+#[derive(Copy, Clone, Debug)]
+pub(super) struct SliceSource {
+    pub region: Option<ph2d_ecs::SpriteRegion>,
+    pub grid: ph2d_ecs::SpriteGrid,
+    pub src_dims: Option<(u32, u32)>,
+}
+
 /// Dimensões, em pixels da fonte, do rect que o `atlas_uv` **já recortado** cobre.
 ///
 /// ⚠️ Tem de ser o rect FINAL (região aplicada, célula da folha aplicada), não a imagem inteira:
 /// as bordas do 9-slice são medidas na imagem que o artista vê no Inspector. Medir na textura
 /// completa faria a borda de um sprite numa folha 4×2 sair **oito vezes** maior do que se pediu.
-pub(super) fn sub_rect_source_px(
-    region: Option<ph2d_ecs::SpriteRegion>,
-    grid: ph2d_ecs::SpriteGrid,
-    src_dims: Option<(u32, u32)>,
-) -> Option<[f32; 2]> {
+pub(super) fn sub_rect_source_px(src: SliceSource) -> Option<[f32; 2]> {
+    let SliceSource {
+        region,
+        grid,
+        src_dims,
+    } = src;
     let (sw, sh) = src_dims?;
     let (mut w, mut h) = (sw as f32, sh as f32);
     if let Some(region) = region
@@ -48,10 +61,8 @@ pub(super) fn sub_rect_source_px(
 pub(super) fn patches_for(
     slice: Option<&ph2d_ecs::SliceNine>,
     spr: &Sprite,
-    region: Option<ph2d_ecs::SpriteRegion>,
-    grid: ph2d_ecs::SpriteGrid,
+    src: SliceSource,
     atlas_uv: [f32; 4],
-    src_dims: Option<(u32, u32)>,
     pixels_per_meter: f32,
     basis: [f32; 4],
 ) -> Option<[Option<SlicePatch>; PATCH_COUNT]> {
@@ -59,7 +70,7 @@ pub(super) fn patches_for(
     if !slice.draw_mode.is_nine() {
         return None;
     }
-    let src_px = sub_rect_source_px(region, grid, src_dims)?;
+    let src_px = sub_rect_source_px(src)?;
     let patches = nine_slice_patches(
         atlas_uv,
         src_px,
@@ -171,6 +182,13 @@ mod tests {
     /// A `basis` de uma sprite sem rotação nem escala: `[col0, col1]` = identidade.
     const IDENTITY_BASIS: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 
+    /// A fonte dos testes: uma imagem 64×64, sem região e sem grelha.
+    const SRC_64: SliceSource = SliceSource {
+        region: None,
+        grid: ph2d_ecs::SpriteGrid::SINGLE,
+        src_dims: Some((64, 64)),
+    };
+
     fn spr() -> Sprite {
         Sprite::atlas(0, [2.0, 2.0], [1.0; 4])
     }
@@ -229,7 +247,11 @@ mod tests {
             frame: 0,
         };
         assert_eq!(
-            sub_rect_source_px(None, grid, Some((256, 128))),
+            sub_rect_source_px(SliceSource {
+                region: None,
+                grid,
+                src_dims: Some((256, 128))
+            }),
             Some([64.0, 64.0])
         );
     }
@@ -239,7 +261,11 @@ mod tests {
     fn the_source_px_follows_the_region_when_enabled() {
         let region = ph2d_ecs::SpriteRegion::for_atlas([10.0, 10.0, 32.0, 16.0]);
         assert_eq!(
-            sub_rect_source_px(Some(region), ph2d_ecs::SpriteGrid::SINGLE, Some((256, 256))),
+            sub_rect_source_px(SliceSource {
+                region: Some(region),
+                grid: ph2d_ecs::SpriteGrid::SINGLE,
+                src_dims: Some((256, 256))
+            }),
             Some([32.0, 16.0])
         );
     }
@@ -251,10 +277,8 @@ mod tests {
             patches_for(
                 None,
                 &spr(),
-                None,
-                ph2d_ecs::SpriteGrid::SINGLE,
+                SRC_64,
                 [0.0, 0.0, 1.0, 1.0],
-                Some((64, 64)),
                 100.0,
                 IDENTITY_BASIS,
             )
@@ -265,10 +289,8 @@ mod tests {
             patches_for(
                 Some(&inert),
                 &spr(),
-                None,
-                ph2d_ecs::SpriteGrid::SINGLE,
+                SRC_64,
                 [0.0, 0.0, 1.0, 1.0],
-                Some((64, 64)),
                 100.0,
                 IDENTITY_BASIS,
             )
@@ -292,10 +314,8 @@ mod tests {
             patches_for(
                 Some(&all_blank),
                 &spr(),
-                None,
-                ph2d_ecs::SpriteGrid::SINGLE,
+                SRC_64,
                 [0.0, 0.0, 1.0, 1.0],
-                Some((64, 64)),
                 100.0,
                 IDENTITY_BASIS,
             )
@@ -348,10 +368,8 @@ mod tests {
         let patches = patches_for(
             Some(&s),
             &spr(),
-            None,
-            ph2d_ecs::SpriteGrid::SINGLE,
+            SRC_64,
             [0.0, 0.0, 1.0, 1.0],
-            Some((64, 64)),
             100.0,
             IDENTITY_BASIS,
         )
@@ -391,10 +409,8 @@ mod tests {
         let patches = patches_for(
             Some(&s),
             &spr(),
-            None,
-            ph2d_ecs::SpriteGrid::SINGLE,
+            SRC_64,
             [0.0, 0.0, 1.0, 1.0],
-            Some((64, 64)),
             100.0,
             IDENTITY_BASIS,
         )
@@ -451,10 +467,8 @@ mod tests {
         let patches = patches_for(
             Some(&s),
             &spr(),
-            None,
-            ph2d_ecs::SpriteGrid::SINGLE,
+            SRC_64,
             [0.0, 0.0, 1.0, 1.0],
-            Some((64, 64)),
             100.0,
             IDENTITY_BASIS,
         )
@@ -492,10 +506,8 @@ mod tests {
         let patches = patches_for(
             Some(&s),
             &spr(),
-            None,
-            ph2d_ecs::SpriteGrid::SINGLE,
+            SRC_64,
             [0.0, 0.0, 1.0, 1.0],
-            Some((64, 64)),
             100.0,
             IDENTITY_BASIS,
         )

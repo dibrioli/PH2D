@@ -164,7 +164,11 @@ pub(crate) fn build_initial_state(
     // The physics smoke OWNS the scene: no demo sprites, so the hierarchy
     // shows only the simulation (Enio 2026-07-18). Spawning them here just to
     // despawn them later would leave a frame of debris in the hierarchy.
-    let physics_smoke = std::env::var_os("PH2D_PHYSICS_SMOKE").is_some();
+    // ⚠️ O smoke de instância entra na MESMA condição, e não numa segunda: ele também é uma
+    // cena de física, e a razão é a mesma — sprites de demonstração na Hierarquia ao lado de
+    // três instâncias é exatamente o ruído que torna o smoke ilegível.
+    let physics_smoke = std::env::var_os("PH2D_PHYSICS_SMOKE").is_some()
+        || std::env::var_os("PH2D_INSTANCE_SMOKE").is_some();
     if physics_smoke {
         println!(
             "[{:>6}ms] physics smoke: empty scene (only the physics bodies)",

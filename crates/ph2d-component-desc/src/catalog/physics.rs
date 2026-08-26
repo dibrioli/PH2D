@@ -11,15 +11,48 @@
 //! e um objeto vazio podem todos ser corpos. Estreitar isto para `IMAGE` seria escrever na
 //! tabela uma limitação que o código não tem.
 //!
-//! # ⚠️ As duas referências por NOME que a F1 migra
+//! # ✅ As quatro referências por identidade — DECLARADAS (F1 migrou, F4.2 remapeia)
 //!
-//! `PhysicsJoint.body_a/b` e `PulleyWheel.rope/.body` são `stable_name_id` — hash do `Name`.
-//! É por isso que hoje *a junta de uma cópia prende os corpos do MESTRE* (a cópia recebe
-//! nome `" (1)"`). Quando a F1 os migrar para `StableId`, os campos entram aqui com
-//! [`crate::RefKind::Object`], e é essa declaração que faz o remap da F4 acontecer **em toda
-//! propagação**, não só na instanciação.
+//! `PhysicsJoint.body_a/b` e `PulleyWheel.rope/.body` **eram** `stable_name_id` — hash do
+//! `Name` —, e era por isso que *a junta de uma cópia prendia os corpos do MESTRE* (a cópia
+//! recebe nome `" (1)"`, o hash muda, e a referência continuava a nomear o original). A F1
+//! migrou-os para [`ph2d_ecs::StableId`], e desde a **F4.2** eles estão declarados aqui com
+//! [`crate::RefKind::Object`].
+//!
+//! ⚠️ **É esta declaração que FAZ o remap acontecer**, e não uma lista de casos escrita à mão
+//! do outro lado: a tabela de remapeadores da shell é conferida contra estes campos por um
+//! censo de dois lados, então declarar uma referência nova sem quem a reescreva **reprova**.
+//! [`ph2d_ecs::StableId`]: https://github.com/dibrioli/PH2D/blob/main/crates/ph2d-ecs/src/stable_id.rs
 
-use crate::{ComponentCategory as C, ComponentDesc as D, ObjectKinds as O};
+use crate::{
+    ComponentCategory as C, ComponentDesc as D, FieldDesc, FieldKind as K, ObjectKinds as O,
+    Propagation, RefKind,
+};
+
+/// **Uma referência a outro objeto**, por `StableId` — ver o cabeçalho do módulo.
+///
+/// ⚠️ `Propagate`: o campo segue o mestre **depois de remapeado**. Não é `RuntimeOwned` — a
+/// referência é AUTORIA (*"prende neste corpo"*), e quem o solver possui é a pose, não o elo.
+const fn r(field_id: u16, name: &'static str) -> FieldDesc {
+    FieldDesc {
+        field_id,
+        name,
+        kind: K::Ref,
+        policy: Propagation::Propagate,
+        is_ref: Some(RefKind::Object),
+    }
+}
+
+/// **`PhysicsJoint`** — os dois corpos que ele prende. ⚠️ Os `field_id` seguem a ordem de
+/// declaração da struct (`joint.rs`), para que uma wave que descreva o resto do tipo não tenha
+/// de saltar por cima destes dois.
+const JOINT: &[FieldDesc] = &[r(1, "Body A"), r(2, "Body B")];
+
+/// **`PulleyWheel`** — a CORDA a que ela pertence (`rope`) e o CORPO em que é montada
+/// (`body`, `0` = pregada no cenário). Os ids seguem a struct (`components/rope.rs`):
+/// `rope` é o 1.º campo e `body` é o 7.º — os do meio ficam por descrever, e o id declarado
+/// é precisamente o que torna isso seguro.
+const PULLEY_WHEEL: &[FieldDesc] = &[r(1, "Rope"), r(7, "Body")];
 
 /// Um componente de física autorável. Sempre `Physics`, sempre `ANY` (ver o cabeçalho),
 /// ainda sem campos descritos.
@@ -80,10 +113,15 @@ pub const DESCS: &[D] = &[
     p("ph2d::physics::MaterialCombine", "Material Combine"),
     p("ph2d::physics::NoWallCling", "No Wall Cling"),
     p("ph2d::physics::OneWayPlatform", "One-Way Platform"),
-    // ⚠️ `body_a`/`body_b` são `stable_name_id` hoje; F1 migra-os para `StableId` e eles
-    // entram aqui como `RefKind::Object`. Sem isso, a junta de uma instância prende os
-    // corpos do mestre — o gate `the_instance_joint_binds_the_instances_own_bodies` (F4).
-    p("ph2d::physics::PhysicsJoint", "Joint"),
+    // ✅ `body_a`/`body_b` DECLARADOS (F4.2). Sem isto a junta de uma instância prende os
+    // corpos do mestre — o gate `the_instance_joint_binds_the_instances_own_bodies`.
+    D::authored(
+        "ph2d::physics::PhysicsJoint",
+        "Joint",
+        C::Physics,
+        O::ANY,
+        JOINT,
+    ),
     pr(
         "ph2d::physics::PlatformPlayer",
         "Platform Player",
@@ -91,8 +129,16 @@ pub const DESCS: &[D] = &[
     ),
     p("ph2d::physics::PlayerMode", "Player Mode"),
     p("ph2d::physics::PlayerSignals", "Player Signals"),
-    // ⚠️ `rope`/`body` idem — mesma migração, mesma razão.
-    p("ph2d::physics::PulleyWheel", "Pulley Wheel"),
+    // ✅ `rope`/`body` idem — e a roldana é a SEXTA consulta da ponte, a que a refutação não
+    // nomeava (F4.1): ela é alcançada pelo nome da corda, então uma referência por remapear
+    // faria a roldana da instância disputar a corda do mestre.
+    D::authored(
+        "ph2d::physics::PulleyWheel",
+        "Pulley Wheel",
+        C::Physics,
+        O::ANY,
+        PULLEY_WHEEL,
+    ),
     pr(
         "ph2d::physics::RigidBody",
         "Rigid Body",

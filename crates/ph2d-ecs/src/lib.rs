@@ -48,6 +48,9 @@ pub mod blend;
 /// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — módulo irmão, append-only.
 pub mod emissive;
 pub mod flip_object_ref;
+/// ⭐ **A CÓPIA PROFUNDA** (ADR-0164 / F4.2) — a peça de que *Duplicar* e *Instanciar* nascem,
+/// e o elo `InstanceOf`. ⛔ Ela copia bytes; quem remapeia referências é a porta da shell.
+pub mod instantiate;
 pub mod masking;
 /// ⭐ **O MESTRE de um componente de objeto** (ADR-0164 / F4) — e o que o torna INERTE para a
 /// ponte de física. A refutação 1 mediu o preço de não o excluir: *a receita não cai*.
@@ -97,6 +100,7 @@ pub use baked_form::BakedForm;
 pub use blend::BlendMode;
 pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
 pub use flip_object_ref::FlipObjectRef;
+pub use instantiate::{DeepCopy, InstanceOf, deep_copy_subtree, remap_instance_of};
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use master::{MasterPiece, MasterRoot, assign_master_pieces, is_master_piece, master_root_of};
 pub use name::{Name, stable_name_id};

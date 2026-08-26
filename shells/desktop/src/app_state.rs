@@ -706,6 +706,8 @@ pub(crate) struct App {
     /// segunda resposta para algo que a cena já sabe.
     pub(crate) player_readout_log: Option<u64>,
     pub(crate) physics_smoke_done: bool,
+    /// Latch de `PH2D_INSTANCE_SMOKE` (o ragdoll instanciado 3×, ADR-0164 F4).
+    pub(crate) instance_smoke_done: bool,
     /// Draw collider outlines over the canvas. **Default ON**, like Unity's
     /// scene gizmos: a collider is invisible, and an invisible thing you are
     /// authoring cannot be judged. Costs nothing and shows nothing in a scene

@@ -15,13 +15,20 @@
 //! ([`crate::ObjectKind::marker`]): ser máquina não os impede de RESPONDER *"que objeto é
 //! este?"* — pelo contrário, é exatamente por serem postos pelo gesto de criação que a
 //! resposta deles é confiável.
+//!
+//! ⭐ **E é por isso que a CÓPIA PROFUNDA não os leva** (F4.2): o id é opaco, então copiá-lo daria
+//! **duas entidades a escrever no mesmo documento** — duplicar uma sprite pintada devolveria um
+//! sósia que apaga a tinta do original, e duplicar uma forma vetorial poria duas entidades sobre um
+//! path que o `vec_entities::sync` mantém 1:1. Os quatro declaram-no com
+//! [`crate::ComponentDesc::owned_document`], e o gate `the_bridges_are_the_owned_documents` prende
+//! esta família àquela flag. ⏳ Ensinar cada documento a copiar-se é outra obra (vetor = F4.6).
 
 use crate::{ComponentCategory as C, ComponentDesc as D};
 
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[
-    D::machinery("ph2d::ecs::BakedForm", "Baked Form", C::Model3D),
-    D::machinery("ph2d::ecs::FlipObjectRef", "Flip Object", C::Identity),
-    D::machinery("ph2d::ecs::PaintedDoc", "Painted Document", C::Identity),
-    D::machinery("ph2d::ecs::VecPathRef", "Vector Path", C::Vector),
+    D::owned_bridge("ph2d::ecs::BakedForm", "Baked Form", C::Model3D),
+    D::owned_bridge("ph2d::ecs::FlipObjectRef", "Flip Object", C::Identity),
+    D::owned_bridge("ph2d::ecs::PaintedDoc", "Painted Document", C::Identity),
+    D::owned_bridge("ph2d::ecs::VecPathRef", "Vector Path", C::Vector),
 ];

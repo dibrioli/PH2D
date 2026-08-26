@@ -433,7 +433,7 @@ pub(super) fn run(
                     // do quad desdobrado abaixo.
                     let sheet_grid = sim.get::<ph2d_ecs::SpriteGrid>(sim_entity).copied();
                     let quad_size = override_for_entity
-                        .and_then(|_| sheet_grid)
+                        .and(sheet_grid)
                         .and_then(|g| crate::render_loop::sim_extract_sheet::unfolded_quad(spr, g))
                         .unwrap_or(spr.size);
                     let quad_anchor = spr.resolve_anchor(pixels_per_meter);
@@ -609,10 +609,12 @@ pub(super) fn run(
                     match crate::render_loop::sim_extract_slice::patches_for(
                         sim.get::<ph2d_ecs::SliceNine>(sim_entity),
                         spr,
-                        region,
-                        grid,
+                        crate::render_loop::sim_extract_slice::SliceSource {
+                            region,
+                            grid,
+                            src_dims,
+                        },
                         atlas_uv,
-                        src_dims,
                         pixels_per_meter,
                         basis,
                     ) {

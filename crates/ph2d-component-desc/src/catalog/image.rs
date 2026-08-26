@@ -81,9 +81,13 @@ const SLICE_NINE: &[FieldDesc] = &[
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[
     // A âncora é um QUADRO na hierarquia (ADR-0072-amendment-1): o filho monta-se nela.
-    // ⚠️ `AnchorMount.anchor` referencia uma âncora do PAI pelo nome — é `RefKind::Object`
-    // quando a F1 migrar para `StableId`. Hoje ainda não há campo descrito aqui, e a nota
-    // existe para que o remap da F4 não descubra isto tarde.
+    // ⛔ **A nota que estava aqui dizia que `AnchorMount.anchor` vira `RefKind::Object` na F1, e
+    // a F4.2 REFUTOU-A:** o campo nomeia uma âncora **do PRÓPRIO PAI**, não um objeto do mundo
+    // — é uma referência RELATIVA, e uma cópia profunda leva o pai junto. O nome continua a
+    // resolver dentro da cópia sem que ninguém reescreva byte nenhum.
+    // ⇒ **Declará-lo como referência seria pedir um remap que estragaria o que já funciona.**
+    // *A estrutura da cópia apaga o caso especial.* (Ver `shells/desktop/src/instance_refs.rs`,
+    // onde o censo confere declaração ↔ remapeador.)
     D::authored(
         "ph2d::ecs::AnchorMount",
         "Anchor Mount",

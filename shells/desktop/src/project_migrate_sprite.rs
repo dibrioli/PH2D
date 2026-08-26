@@ -68,7 +68,7 @@ pub(crate) fn split_sprite_blobs(world: &mut WorldSnapshot) -> SpriteSplit {
         // a única defesa contra isso, e é a mesma que o `load_sprite` já faz.
         let v4 =
             match postcard::take_from_bytes::<ph2d_render::SpriteV4>(&row.components[slot].data) {
-                Ok((v4, rest)) if rest.is_empty() => v4,
+                Ok((v4, [])) => v4,
                 _ => {
                     out.unreadable += 1;
                     continue;

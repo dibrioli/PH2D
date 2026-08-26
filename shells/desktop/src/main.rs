@@ -256,6 +256,10 @@ mod input_map_drag;
 #[path = "inspector_presence_tests.rs"]
 mod inspector_presence_tests;
 mod instance_live;
+mod instance_refs;
+mod instance_smoke;
+/// ⭐ **INSTANCIAR** (ADR-0164 / F4.2) — a porta que compõe a cópia profunda com o remap.
+mod instantiate;
 mod integration;
 mod joint_anchor_drag;
 mod joint_draw;
@@ -867,6 +871,7 @@ impl App {
             nest_smoke_done: false,
             player_readout_log: None,
             physics_smoke_done: false,
+            instance_smoke_done: false,
             show_colliders: true,
             onion_ghosts: Vec::new(),
             emissive_instances: Vec::new(),

@@ -175,6 +175,26 @@ impl crate::App {
                 } else {
                     &sprite_extra
                 };
+                // ⚠️ **A SONDA DO DRIFT** (`PH2D_PAN_DIAG=1`, report do Enio de 2026-08-25).
+                // Aqui é o único sítio que vê as TRÊS entradas ao mesmo tempo: a câmera, a
+                // janela e o sub-retângulo que este passe vai de facto usar.
+                crate::pan_diag::frame(
+                    camera,
+                    window_size,
+                    crate::field_gizmo::scene_camera_window(
+                        hero_screen
+                            .as_ref()
+                            .map_or(ph2d_editor::screens::layout::CenterSplit::None, |hs| {
+                                hs.view.center_split
+                            }),
+                        window_size,
+                    ),
+                    motion_active,
+                    scene_viewport.is_some(),
+                    hero_screen
+                        .as_ref()
+                        .is_some_and(|hs| hs.view.center_split.is_split()),
+                );
                 renderer.render_with_streams(
                     game_rt.view(),
                     present,

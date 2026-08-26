@@ -332,6 +332,8 @@ mod onion_modal;
 mod osc_ruler_smoke;
 mod painter_lock;
 mod palette_persist;
+/// A SONDA do drift de pan (`PH2D_PAN_DIAG=1`) — report do Enio de 2026-08-25.
+mod pan_diag;
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
 mod pattern_live;
 mod pattern_path_smoke;

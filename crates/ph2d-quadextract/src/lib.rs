@@ -184,6 +184,26 @@ pub struct ExtractReport {
     pub pending_boundary: usize,
     /// ⛔ Saídas que chegaram e não acharam parceira.
     pub orphan: usize,
+    /// ⛔⛔ A metade das órfãs que chegou ao ponto e não achou parceira — ver
+    /// [`crate::walk::WalkStats::orphan_no_partner`].
+    pub orphan_no_partner: usize,
+    /// ⛔⛔ A metade que não achou por onde sair do triângulo (carta dobrada).
+    pub orphan_no_exit: usize,
+    /// ⛔⛔⛔ Destas, quantas morreram num triângulo de área ZERO no domínio.
+    pub orphan_no_exit_flat: usize,
+    /// ⛔⛔ Destas, quantas tinham a origem já **fora** do triângulo.
+    pub orphan_no_exit_o_outside: usize,
+    /// ⛔⛔ Destas, quantas teriam saída pelo lado de **entrada**.
+    pub orphan_no_exit_entry_only: usize,
+    /// ⭐⭐⭐ A que distância o segmento passa do triângulo, em CÉLULAS de grade.
+    pub orphan_miss_cells_p50: f32,
+    /// ⭐ O diâmetro desse triângulo, em células — a régua da linha de cima.
+    pub orphan_tri_cells_p50: f32,
+    /// ⭐⭐⭐ **ONDE as órfãs morrem**, em raios normalizados — o sintoma MAIS A MONTANTE
+    /// da cadeia que produz um furo.
+    pub orphan_radius_p50: f32,
+    /// O `p99` do raio normalizado da peça — a régua da linha de cima.
+    pub piece_radius_p99: f32,
     /// ⛔ Traços que estouraram o tecto de passos.
     pub runaway: usize,
     /// ⛔ Traços que chegaram a uma parceira **já emparelhada com outra** — onde duas
@@ -290,6 +310,15 @@ pub fn extract(
         linked: ws.linked,
         pending_boundary: ws.boundary,
         orphan: ws.orphan,
+        orphan_no_partner: ws.orphan_no_partner,
+        orphan_no_exit: ws.orphan_no_exit,
+        orphan_no_exit_flat: ws.orphan_no_exit_flat,
+        orphan_no_exit_o_outside: ws.orphan_no_exit_o_outside,
+        orphan_no_exit_entry_only: ws.orphan_no_exit_entry_only,
+        orphan_miss_cells_p50: ws.orphan_miss_cells_p50,
+        orphan_tri_cells_p50: ws.orphan_tri_cells_p50,
+        orphan_radius_p50: ws.orphan_radius_p50,
+        piece_radius_p99: ws.piece_radius_p99,
         runaway: ws.runaway,
         contested: ws.contested,
         walk_steps: ws.steps,

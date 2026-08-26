@@ -81,9 +81,32 @@ pub fn round_welded(
     // ── ⭐ AS VARIÁVEIS INTEIRAS: as livres do sistema reduzido.
     //
     // ⚠️ **Os vértices singulares saem dos FECHOS, não de uma segunda contagem.** Um
-    // fecho que roda *é* a assinatura de um vértice singular, e a medição mostrou que os
-    // dois números batem exactamente (`8` para `8`, `12` para `12`). *Perguntar duas
-    // vezes «quem é singular» é ter duas respostas que podem discordar.*
+    // fecho que roda *é* a assinatura de um vértice singular.
+    //
+    // ⛔⛔ **CORRECÇÃO (2026-08-25): a frase que estava aqui dizia que «os dois números
+    // batem exactamente (`8` para `8`, `12` para `12`)», e ela foi medida nas DUAS únicas
+    // peças do corpus em que pode bater.** Na peça do artista o campo planta `25`
+    // singularidades e este passo prega `17`: um vértice singular que o corte **não
+    // duplicou** não tem cópias, logo não tem fecho, logo **nunca é pregado num inteiro**.
+    // Medido no corpus (`chain_info`, coluna «SINGULARES contra o CORTE»):
+    //
+    // | peça | duplicados | ⛔ uma cópia só | pregados | órfãs | bordo |
+    // |---|---|---|---|---|---|
+    // | enrugada | 8 | 0 | 8/8 | 0 | 0 |
+    // | com orelha | 8 | 0 | 8/8 | 0 | 0 |
+    // | com cristas | 12 | 0 | 12/12 | 0 | 0 |
+    // | com gancho | 11 | 4 | 12/15 | 0 | 0 |
+    // | ⛔ **do artista** | 19 | **6** | **17/25** | **11** | **14** |
+    //
+    // ⭐⭐⭐ **Toda peça com zero na coluna do meio tem zero furos.** E a cadeia causal
+    // está medida ponta a ponta: singular não pregado ⇒ a imagem dele fica fraccionária ⇒
+    // as transições à volta dele ficam fraccionárias (resíduo `0,47` de célula na peça do
+    // artista contra `1e-7` nas limpas) ⇒ o extractor **arredonda-as para células
+    // inteiras** ⇒ o traçado da isolinha cai `3,000` células ao lado num triângulo de
+    // `1,440` ⇒ órfã ⇒ saída pendente ⇒ célula abandonada ⇒ **aresta de bordo, na ponta**.
+    //
+    // ⚠️ *Uma afirmação de que dois números batem, verificada só onde eles batem, é a
+    // forma mais cara de nota errada: ela fecha a pergunta.*
     let mut free: Vec<(usize, usize)> = Vec::new();
     for i in 0..r.sys.free().len() {
         if !opts.pin_singularities && matches!(r.sys.free()[i], Var::Class(_)) {

@@ -191,6 +191,19 @@ pub struct RoundReport {
     /// imagem na carta do canto que encontrar primeiro — e as outras cópias ficavam
     /// onde a costura mole as tinha deixado, a um resto de inteiro.
     pub singular_copies: usize,
+    /// ⛔⛔⛔ **Vértices singulares que a malha CORTADA não contém** — pedidos e não
+    /// achados, logo **não pregados**.
+    ///
+    /// ⚠️ **A ausência deste contador escondia a causa dos furos.** O relatório dizia
+    /// *«17 singularidades»* e o campo tinha plantado **25**: os oito que faltavam não
+    /// eram uma escolha, era o `cut.origin` não os ter — e um vértice singular sem imagem
+    /// inteira deixa as transições à volta dele **fraccionárias**, que o extractor depois
+    /// arredonda para células inteiras. *Uma mentira de meia célula que passa em todos os
+    /// gates de integralidade e manda o traçado dois triângulos ao lado.*
+    ///
+    /// ⭐ Medido em 2026-08-25 no corpus: as peças com `0` aqui têm **zero** órfãs e zero
+    /// arestas de bordo; a peça do artista tem `8` aqui, `11` órfãs e `14` de bordo.
+    pub singular_absent: usize,
     /// ⚠️ **O CASO DE CANTO, e ele tem nome:** as singularidades esgotaram-se e ainda
     /// sobravam costuras por arredondar — acontece em peças com **alça**, e o nosso
     /// corpus tem um toro. ⛔ Terminar ali deixaria o mapa *quase* inteiro, que é pior
@@ -268,9 +281,14 @@ pub fn round_to_integers(
     if opts.pin_singularities && !singular.is_empty() {
         let mut copies: Vec<(usize, usize)> = Vec::new();
         let wanted: std::collections::BTreeSet<u32> = singular.iter().copied().collect();
+        // ⛔⛔ **Havia aqui um `&& !copies.iter().any(|&(_, _)| false)`** — uma condição
+        // cuja closure devolve `false` para tudo, logo o `any` é sempre `false` e o `!`
+        // sempre `true`. ⚠️ *Ela lia-se como uma guarda («já tenho uma cópia?») e não
+        // guardava nada; quem guarda de facto é o `retain` logo abaixo.* Uma guarda morta
+        // é pior que a ausência dela: ela responde à pergunta de quem audita.
         for (p, origin) in cut.origin.iter().enumerate() {
             for (l, &g) in origin.iter().enumerate() {
-                if wanted.contains(&g) && !copies.iter().any(|&(_, _)| false) {
+                if wanted.contains(&g) {
                     copies.push((p, l));
                 }
             }
@@ -317,6 +335,7 @@ pub fn round_to_integers(
             }
         }
         rep.singular_pinned = copies.len();
+        rep.singular_absent = wanted.len().saturating_sub(copies.len());
         pinned_seeds = copies;
     }
 

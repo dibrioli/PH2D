@@ -43,6 +43,51 @@ fn aspect(mesh: &ph2d_mesh::Mesh) -> (f32, f32) {
     (a[a.len() / 2], a[(a.len() - 1) * 99 / 100])
 }
 
+/// ⭐⭐⭐ **A BANDA DE RAIO de um conjunto de vértices** — a coordenada em que «ponta»
+/// quer dizer alguma coisa.
+///
+/// ⛔ Toda régua deste instrumento era um TOTAL, e o report do artista de 2026-08-25 é
+/// sobre POSIÇÃO. Devolve `p50 / p90` em múltiplos do raio **mediano** da peça, para se
+/// ler contra o `p99` dela.
+fn radius_band(pos: &[[f32; 3]], who: &[u32]) -> String {
+    if pos.is_empty() {
+        return String::from("(peca vazia)");
+    }
+    let c = pos.iter().fold([0.0f64; 3], |a, p| {
+        [
+            a[0] + f64::from(p[0]),
+            a[1] + f64::from(p[1]),
+            a[2] + f64::from(p[2]),
+        ]
+    });
+    #[allow(clippy::cast_precision_loss)]
+    let inv = 1.0 / pos.len() as f64;
+    let c = [c[0] * inv, c[1] * inv, c[2] * inv];
+    let r = |i: usize| {
+        let p = pos[i];
+        let d = [
+            f64::from(p[0]) - c[0],
+            f64::from(p[1]) - c[1],
+            f64::from(p[2]) - c[2],
+        ];
+        d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
+    };
+    let mut all: Vec<f64> = (0..pos.len()).map(r).collect();
+    all.sort_by(f64::total_cmp);
+    let med = all[all.len() / 2].max(1.0e-12);
+    let p99 = all[all.len() * 99 / 100] / med;
+    if who.is_empty() {
+        return format!("(nenhum) [a peca vai ate' {p99:.2}x]");
+    }
+    let mut v: Vec<f64> = who.iter().map(|&i| r(i as usize) / med).collect();
+    v.sort_by(f64::total_cmp);
+    format!(
+        "raio p50 {:.2}x p90 {:.2}x [a peca vai ate' {p99:.2}x]",
+        v[v.len() / 2],
+        v[v.len() * 9 / 10]
+    )
+}
+
 fn main() {
     let mut args = std::env::args().skip(1);
     let piece = args.next().unwrap_or_else(|| String::from("esfera"));
@@ -153,9 +198,20 @@ fn main() {
     // ⚠️ **O interruptor é lido pela porta da crate**, não aqui: as duas portas leram-no
     // com sentidos opostos até 2026-08-24.
     let welded = ph2d_gridmap::welded_enabled();
+    // ⚠️ As duas alavancas que o diagnostico das DOBRAS precisa de poder mexer sem
+    // recompilar: quantas rondas o continuo corre, e se as singularidades sao pregadas.
+    let num = |k: &str, d: usize| {
+        std::env::var(k)
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(d)
+    };
+    let base_opts = ph2d_gridmap::RoundOptions::default();
     let opts = ph2d_gridmap::RoundOptions {
         pin_singularities: pin,
-        ..ph2d_gridmap::RoundOptions::default()
+        welded_rounds: num("PH2D_G3_ROUNDS", base_opts.welded_rounds),
+        sweeps: num("PH2D_G3_SWEEPS", base_opts.sweeps),
+        ..base_opts
     };
     let (map, r) = if welded {
         ph2d_gridmap::round_welded(&mesh, &cut, &combed, h, opts, &singular)
@@ -171,14 +227,44 @@ fn main() {
         }
     );
     println!("  modalidade das singularidades: {pin}");
+    // ⭐⭐⭐ **QUANTOS singulares o CORTE de facto duplica.** O caminho soldado deriva os
+    // vértices singulares dos FECHOS do grafo de cópias — e um vértice que o corte não
+    // duplicou não tem cópias, logo não tem fecho, logo **nunca é pregado num inteiro**.
+    // ⚠️ O doc daquele passo afirma que as duas contagens batem *«8 para 8, 12 para 12»*;
+    // esta coluna é o que testa a afirmação numa peça em que ela pode não bater.
+    {
+        let mut copias: std::collections::BTreeMap<u32, usize> = std::collections::BTreeMap::new();
+        for origin in &cut.origin {
+            for &g in origin {
+                *copias.entry(g).or_default() += 1;
+            }
+        }
+        let (mut duplicados, mut unicos, mut ausentes) = (0usize, 0usize, 0usize);
+        for v in &singular {
+            match copias.get(v) {
+                None => ausentes += 1,
+                Some(1) => unicos += 1,
+                Some(_) => duplicados += 1,
+            }
+        }
+        println!(
+            "  ⭐⭐⭐ SINGULARES contra o CORTE: {} duplicados (tem fecho) · ⛔ {} com UMA \
+             cópia só (nunca pregados) · {} ausentes — de {}",
+            duplicados,
+            unicos,
+            ausentes,
+            singular.len()
+        );
+    }
     println!(
-        "  G3+G5 ({:.1} s): {} costuras de arvore + {} de CICLO + {} singularidades (de {}, {} copias, {} ambiguas) ⇒ {} inteiros \
+        "  G3+G5 ({:.1} s): {} costuras de arvore + {} de CICLO + {} singularidades (de {}, ⛔ {} AUSENTES DO CORTE, {} copias, {} ambiguas) ⇒ {} inteiros \
          | degrau1 {} degrau2 {} | {} visitas | passo pior {:.4} soma {:.3} | passou-as-costuras {}",
         t.elapsed().as_secs_f64(),
         r.tree_seams,
         r.cycle_seams,
         r.singular_pinned,
         singular.len(),
+        r.singular_absent,
         r.singular_copies,
         r.ambiguous_seams,
         r.pinned,
@@ -223,11 +309,28 @@ fn main() {
             d < 0.0
         })
         .count();
+    // ⭐ **ONDE as dobras moram** — o teste da hipotese de que tudo o que falha na peca
+    // e' UM mecanismo, e que ele vive na ponta.
+    let folded_where: Vec<u32> = uv
+        .iter()
+        .zip(&tris)
+        .filter(|(t, _)| {
+            let d = (t[1][0] - t[0][0]) * (t[2][1] - t[0][1])
+                - (t[1][1] - t[0][1]) * (t[2][0] - t[0][0]);
+            d < 0.0
+        })
+        .flat_map(|(_, v)| v.iter().copied())
+        .collect();
     println!(
-        "  ponte: {} triangulos, {} DOBRADOS no dominio ({:.1}%)  <- controlo independente",
+        "  ponte: {} triangulos, {} DOBRADOS no dominio ({:.1}%) · {}  <- controlo independente",
         tris.len(),
         folded,
-        100.0 * folded as f64 / tris.len().max(1) as f64
+        100.0 * folded as f64 / tris.len().max(1) as f64,
+        radius_band(mesh.positions(), &folded_where)
+    );
+    println!(
+        "  ⭐⭐ ONDE as SINGULARIDADES do campo moram: {}",
+        radius_band(mesh.positions(), &singular)
     );
     let cm = ph2d_quadextract::CornerMap {
         pos: mesh.positions(),
@@ -289,6 +392,27 @@ fn main() {
                 std::fs::write(&path, text).unwrap_or_else(|e| panic!("{path}: {e}"));
                 println!("  (peca gravada em {path})");
             }
+            println!(
+                "  ⭐⭐ SANEAMENTO: {} arestas colapsadas + {} tardias · {} faces MORTAS · \
+                 {} triangulos degenerados no dominio",
+                e.collapsed_edges, e.late_collapsed, e.dead_faces, e.degenerate_faces
+            );
+            println!(
+                "  ⭐⭐⭐ ORFAS (o sintoma mais A MONTANTE de um furo): {} sem parceira + \
+                 {} sem saida do triangulo ({} achatado / {} com a ORIGEM FORA / {} so' \
+                 pelo lado de ENTRADA) = {} · raio {:.2}x (a peca vai ate' {:.2}x) · \
+                 ⭐ FALHA POR {:.3} CELULAS num triangulo de {:.3}",
+                e.orphan_no_partner,
+                e.orphan_no_exit,
+                e.orphan_no_exit_flat,
+                e.orphan_no_exit_o_outside,
+                e.orphan_no_exit_entry_only,
+                e.orphan,
+                e.orphan_radius_p50,
+                e.piece_radius_p99,
+                e.orphan_miss_cells_p50,
+                e.orphan_tri_cells_p50
+            );
             // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
             println!(

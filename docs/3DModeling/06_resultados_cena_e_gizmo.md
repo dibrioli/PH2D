@@ -5992,3 +5992,74 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
   põe lá — e um laço de seleção na janela 3D (hoje escolhe-se na Hierarquia com `Ctrl`)
 - ✅ **perspectiva FECHOU** na W15 (§16) — entrou num sítio, como a nota previa, e revelou que o
   raio era construído em dois. `Numpad5` alterna as lentes
+
+## §57 — ⛔⛔ A nota do «traçado 2,4× mais caro» estava errada por 4×, e o suspeito era inocente
+
+O §55.3 deixou em aberto *"o traçado ficou ~2,4× mais caro desde a W3 e ninguém o reconferiu — o
+suspeito nomeado é o **anti-serrilhado adaptativo**"*. Medido hoje (`measure_the_edge_pass_share`,
+release, 640×480, mediana de 7 corridas **no mesmo processo**):
+
+| arestas | s/AA | c/AA | a quota do AA |
+|---|---|---|---|
+| 64 | 29,0 ms | 36,4 ms | **26 %** |
+| 128 | 46,3 ms | 60,9 ms | 32 % |
+| 256 | 86,8 ms | 105,9 ms | 22 % |
+| 512 | 171,3 ms | 229,6 ms | 34 % |
+
+⭐ **O AA custa 22–34 %, não os 140 % de que era acusado.** E o número da W3 (`24,1 ms` a 64
+arestas, medido **antes de o AA existir**) compara-se com os `29,0 ms` de hoje **sem AA**: **1,2×**,
+não `2,4×`.
+
+⚠️ **A nota envelheceu porque as waves de perf seguintes a desmentiram e ninguém a reconferiu** — a
+W56e (fatias de profundidade, `2,5×`), a W56f (o passo do documento, `1,10×`) e a W59 (o recorte
+pelo casco, `1,21×`). *Quem move o número que sustenta uma nota tem de reconferir a nota* — e desta
+vez quem o moveu fui eu, três vezes.
+
+### §57.1 — ⛔ A régua estava errada ANTES da resposta
+
+A primeira leitura desta pergunta subtraiu **dois relógios de ~30 ms**, medidos em **corridas
+separadas**, para ler um delta de ~10 ms. Ela devolveu `+34 %` numa corrida e `+22 %` noutra
+**sobre o mesmo código**. *Subtrair dois números ruidosos não dá um número menos ruidoso: dá a soma
+dos dois ruídos.*
+
+⚠️ E a lição já estava escrita **neste crate**, na porta irmã do passo (`trace_stepped_for_test`):
+*"ela existe para que as duas respostas sejam medidas no mesmo processo — entre duas corridas desta
+workstation a montagem mexeu-se `14,4 → 22,1 ms`, e um A/B nessas condições mede o relógio da
+máquina, não a mudança"*. Foi paga outra vez.
+
+### §57.2 — ⛔ RECUSA MEDIDA: especializar a segunda passagem por ladrilho
+
+Achado real por trás dos 26 %: os pixels de borda são **3,0 %** dos raios e custam **~11×** o de um
+raio primário. Duas causas, e só uma tinha cura aparente:
+
+1. **Geometria, sem cura:** um raio de silhueta é **rasante**, e a esfera-marcha dá muitos mais
+   passos quando caminha quase paralela à superfície.
+2. **A W56e especializou a marcha primária por ladrilho × fatia e deixou a segunda passagem a
+   marchar a árvore INTEIRA.** *A cura que acelerou metade da conta inflacionou a fracção da outra
+   metade.*
+
+⇒ Implementei (2): agrupar os pixels de borda por ladrilho e marchá-los com as **mesmas**
+fronteiras de fatia da passagem primária (`tile_t_range` / `slab_bounds` / `slab_region`). A/B no
+mesmo processo, mediana de 7:
+
+| arestas | s/AA | c/AA simples | c/AA por ladrilho |
+|---|---|---|---|
+| 64 | 29,0 ms | **36,4 ms** | 39,0 ms ⛔ |
+| 128 | 46,3 ms | 60,9 ms | 60,0 ms (empate) |
+| 256 | 86,8 ms | **105,9 ms** | 109,7 ms ⛔ |
+| 512 | 171,3 ms | 229,6 ms | 225,1 ms (empate) |
+
+⛔ **Neutro a pior. REVERTIDO.**
+
+⭐ **O mecanismo é a AMORTIZAÇÃO, e ele é aritmético:** a montagem da fita custa o mesmo por
+ladrilho nas duas passagens, e a primária dilui-a por **4 096** raios (`64×64`) enquanto a de borda
+só tem **~256** naquele ladrilho (a silhueta atravessa-o em ~64 pixels × 4 amostras). **16× menos
+raios para amortizar a mesma montagem** — e é exactamente essa razão que come o ganho da árvore
+menor.
+
+⏸️ **A saída que sobra, não construída:** **reaproveitar** as fitas que a passagem primária já
+montou, em vez de as remontar. Ela remove a montagem em vez de a diluir, mas paga memória (480
+ladrilhos × 2 fatias de fita vivas ao mesmo tempo) e um cache com tempo de vida. ⚠️ O tecto do ganho
+é **uma parte dos 26 %** do quadro **assente** — que se paga uma vez, quando a câmera pára, e que
+desde a W24 já não é o preço interativo. *Medir antes de construir vale para a segunda tentativa
+também.*

@@ -2844,3 +2844,94 @@ fn the_hull_culls_strictly_better_than_its_box() {
         hulled as f32 * 100.0 / boxed as f32
     );
 }
+
+/// ⭐⭐⭐ **QUANTO O ANTI-SERRILHADO CUSTA DE FACTO** — e ela existe porque a nota que o acusava
+/// estava errada por **4×**.
+///
+/// # ⛔ A nota que esta sonda mata
+///
+/// O §55.3 do doc do módulo dizia *"o traçado ficou ~2,4× mais caro desde a W3 e ninguém o
+/// reconferiu; o suspeito nomeado é o anti-serrilhado adaptativo"*. Medido aqui:
+///
+/// | arestas | s/AA | c/AA | a quota do AA |
+/// |---|---|---|---|
+/// | 64 | 29,0 ms | 36,4 ms | **26 %** |
+/// | 128 | 46,3 ms | 60,9 ms | 32 % |
+/// | 256 | 86,8 ms | 105,9 ms | 22 % |
+/// | 512 | 171,3 ms | 229,6 ms | 34 % |
+///
+/// ⇒ o AA custa **22–34 %**, não os 140 % de que era acusado. E contra o número da W3 (`24,1 ms` a
+/// 64 arestas, antes de o AA existir) o traçado de hoje **sem AA** está em `29,0 ms`: **1,2×**, não
+/// `2,4×`. *A nota envelheceu porque as waves de perf seguintes (W56e, W56f, W59) moveram o número
+/// e ninguém reconferiu a nota que elas desmentiam.*
+///
+/// # ⚠️ A RÉGUA era o defeito, e ela foi corrigida antes da resposta
+///
+/// A primeira leitura desta pergunta subtraiu **dois relógios de ~30 ms**, medidos em **corridas
+/// separadas**, para ler um delta de ~10 ms — e devolveu `+34 %` numa e `+22 %` noutra sobre o
+/// **mesmo** código. *Subtrair dois números ruidosos não dá um número menos ruidoso: dá a soma dos
+/// dois ruídos.* A lição já estava escrita na porta irmã do passo (`trace_stepped_for_test`) e foi
+/// paga outra vez. ⇒ as duas configurações correm no **mesmo processo**, `RUNS` vezes cada, e o que
+/// se reporta é a **mediana**.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::measure_the_edge_pass_share --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_edge_pass_share() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    const RUNS: usize = 7;
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let median = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    println!("arestas | s/AA | c/AA | quota do AA | bordas");
+    for n in [64_usize, 128, 256, 512] {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-3).expect("perfil");
+        let doc = FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão");
+
+        // ⚠️ **Uma corrida de aquecimento antes de medir**: a primeira paga a montagem a frio, e
+        // incluí-la na mediana mede o cache e não o algoritmo.
+        let _ = crate::trace_with(&doc, &reg, &cam, 640, 480, true, false);
+
+        let mut off = Vec::new();
+        let mut on = Vec::new();
+        let mut edges = 0;
+        for _ in 0..RUNS {
+            let t = std::time::Instant::now();
+            let _ = crate::trace_with(&doc, &reg, &cam, 640, 480, true, false);
+            off.push(t.elapsed().as_secs_f64() * 1000.0);
+
+            let t = std::time::Instant::now();
+            let g = crate::trace_with(&doc, &reg, &cam, 640, 480, true, true);
+            on.push(t.elapsed().as_secs_f64() * 1000.0);
+            edges = g.edges.len();
+        }
+        let (o, a) = (median(off), median(on));
+        println!(
+            "{n:7} | {o:6.1} ms | {a:6.1} ms | {:5.0} % | {edges}",
+            100.0 * (a - o) / o
+        );
+    }
+}

@@ -59,6 +59,7 @@
 - [Reprodução/diagnóstico (18)](reference_topic_repro_discipline.md)
 - [1º cruzamento ressonante ≠ fronteira](feedback_the_first_crossing_of_a_resonant_response_is_not_the_boundary.md) · [grelha uniforme ≠ esquina](feedback_a_uniform_grid_cannot_represent_a_corner.md)
 - [Réguas do quad remesh (13)](reference_topic_quad_remesh_rulers.md)
+- [A/B de duas corridas = soma dos ruídos; mesmo processo, mediana](feedback_subtracting_two_clocks_from_separate_runs_gives_the_sum_of_the_noises.md) · [especialização paga-se por AMORTIZAÇÃO — conte os raios por região](feedback_specialisation_pays_by_amortisation_count_the_rays_per_region.md)
 - [Alvo tirado da CAIXA: entrada fina é puro desperdício](feedback_a_target_derived_from_the_box_makes_a_finer_input_pure_waste.md) · [régua que atravessa panic alheio mede a travessia](feedback_a_ruler_that_crosses_another_crates_panic_measures_the_crossing.md)
 - [Régua no mundo mede o gesto — centroide](feedback_a_ruler_anchored_in_the_world_measures_the_gesture_not_the_shape.md) · [lei de índice: espessura DERIVADA](feedback_generalising_an_index_law_needs_a_derived_thickness_not_an_epsilon.md)
 - [Balde vazio lê como perfeito](feedback_a_bucket_nobody_fills_reads_as_perfect.md) · [cura que move o defeito nomeia-o](feedback_a_cure_that_moves_the_defect_names_it.md)

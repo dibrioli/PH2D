@@ -636,8 +636,19 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⏸️ **o custo que sobra é 71 % do `ph2d-gridmap`** (`3 322` dos `4 677 ms` da cadeia estão no G3/G5,
   medido em `max`) — crate de outra linha ·
   ⛔ **segundo reprodutor do panic do `ph2d-gridmap`** (`solve.rs:336`, *"len is 74, index 130"*):
-  um alvo **grosso** sobre uma `uv_sphere(48,32)` — a `line/quadextract` é a dona · ⏸️ o traçado ficou **~2,4× mais caro** desde a W3 e ninguém o reconferiu (suspeito
-  nomeado: o anti-serrilhado adaptativo) · o teto de `Resolution` (16) foi derivado com o custo
+  um alvo **grosso** sobre uma `uv_sphere(48,32)` — a `line/quadextract` é a dona · ✅ **o «traçado 2,4× mais caro» estava errado por 4× e o suspeito era inocente** (doc §57): o
+  anti-serrilhado custa **22–34 %**, não 140 %, e contra a W3 (`24,1 ms`, antes de o AA existir) o
+  traçado de hoje **sem AA** está em `29,0 ms` — **1,2×**. ⚠️ *A nota envelheceu porque as waves de
+  perf a desmentiram (W56e `2,5×` · W56f `1,10×` · W59 `1,21×`) e ninguém a reconferiu — e quem as
+  moveu foi esta linha.* ⛔ **RECUSA MEDIDA:** especializar a segunda passagem por ladrilho, como a
+  primária faz, é **neutro a pior** e foi revertido — a montagem da fita amortiza-se por **4 096**
+  raios na primária e por **~256** na de borda, e é essa razão de **16×** que come o ganho. ⏸️ Sobra
+  **reaproveitar** as fitas já montadas (remove a montagem em vez de a diluir; paga memória e um
+  cache) — tecto: parte dos 26 % do quadro **assente**, que a W24 já tirou do caminho interativo ·
+  ⚠️ **e a régua estava errada antes da resposta**: subtrair dois relógios de ~30 ms medidos em
+  corridas separadas deu `+34 %` e `+22 %` para o MESMO código — as duas configurações têm de correr
+  no mesmo processo, por mediana (a lição já estava escrita na porta irmã `trace_stepped_for_test`) ·
+  o teto de `Resolution` (16) foi derivado com o custo
   **antigo** e a tabela dele foi medida a `load ≈ 4,7` · ⏸️ ladrilhar em `(u, v)` contra o
   **paralelogramo** em vez da AABB (o único eixo que não multiplica a montagem de JIT) · a
   composição de dois `Exact` encadeados e o gradiente de uma **escultura** ficam no passo curto sem

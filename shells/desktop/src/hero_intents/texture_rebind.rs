@@ -58,6 +58,77 @@ pub(crate) fn rebind_to_individual(
     premultiplied: bool,
     window: SamplingWindow,
 ) {
+    // ⭐⭐ **OS PIXELS SÃO DA RECEITA, e por isso a edição sobe até ela** (Enio, 2026-08-26).
+    // Ver [`write_through_targets`]: sem esta linha o artista pinta uma cópia e as irmãs ficam
+    // como estavam, que foi exatamente o report.
+    for target in write_through_targets(sim, entity) {
+        rebind_one(
+            target,
+            sim,
+            texture_id,
+            pixels_id,
+            new_size_world,
+            premultiplied,
+            window,
+        );
+    }
+}
+
+/// ⭐⭐ **A cadeia que uma edição de pixels percorre**: a entidade tocada, e — se ela é peça de uma
+/// **instância** — a peça do MESTRE de que nasceu, e assim por diante.
+///
+/// # Por que os pixels sobem e o resto não (Enio, 2026-08-26)
+///
+/// > *«Pintei uma sprite de uma instância e as outras não mudaram.»*
+///
+/// Medido antes de decidir: a pintura mudava `Sprite` + `SpritePixels` **na cópia**, o passe de
+/// sync lia *«só a instância mexeu»* e capturava um **override** — modelo correto, resultado
+/// errado. Duas coisas o dizem:
+///
+/// 1. **Uma imagem é um ASSET, não uma propriedade.** Em todo motor 2D pintar a textura muda quem
+///    a usa; o que é per-objecto é *qual* imagem ele usa, não o conteúdo dela. O `tint`, a pose, a
+///    máscara continuam a ser da cópia — a fronteira é entre *os pixels* e *os botões*.
+/// 2. **A receita está ESCONDIDA** (F4.5), então pintá-la não é alcançável por gesto nenhum. Sem
+///    esta subida, os pixels de um componente eram a única coisa do app que não tinha como ser
+///    editada.
+///
+/// ⚠️ **Não é um override, e é por construção:** ao escrever no mestre o passe seguinte lê *«o
+/// mestre mexeu-se»* e leva os bytes a **todas** as instâncias; a que foi pintada já os tem, logo
+/// `want == have` e ela não é reescrita. O ponto fixo do sync fica intacto.
+///
+/// ⛔ **A FRONTEIRA, nomeada:** para pintar UMA cópia diferente das outras, *Detach from Master*
+/// primeiro. Uma cópia que ainda segue a receita não tem pixels próprios — é isso que ser cópia é.
+///
+/// ⚠️ **Sem entidade repetida**, e a guarda não é um tecto numérico: um elo corrompido que
+/// apontasse para trás daria um laço infinito dentro de um commit de ferramenta, e um número
+/// máximo de saltos transformaria isso numa contagem que ninguém sabe explicar.
+fn write_through_targets(sim: &mut SimWorld, entity: Entity) -> Vec<Entity> {
+    let by_id: std::collections::BTreeMap<u64, Entity> = {
+        let mut q = sim.world_mut().query::<(Entity, &ph2d_ecs::StableId)>();
+        q.iter(sim.world()).map(|(e, s)| (s.0, e)).collect()
+    };
+    let mut out = vec![entity];
+    let mut cur = entity;
+    while let Some(link) = sim.world().get::<ph2d_ecs::InstanceOf>(cur).copied()
+        && let Some(&up) = by_id.get(&link.master)
+        && !out.contains(&up)
+    {
+        out.push(up);
+        cur = up;
+    }
+    out
+}
+
+/// As invariantes de re-alojamento aplicadas a UMA entidade — o corpo de sempre.
+fn rebind_one(
+    entity: Entity,
+    sim: &mut SimWorld,
+    texture_id: u32,
+    pixels_id: ph2d_asset::AssetId,
+    new_size_world: [f32; 2],
+    premultiplied: bool,
+    window: SamplingWindow,
+) {
     if let Some(mut sprite) = sim.world_mut().get_mut::<Sprite>(entity) {
         sprite.source = SpriteSource::Individual { texture_id };
         sprite.size = new_size_world;
@@ -104,6 +175,103 @@ pub(crate) fn drop_sheet_authorship(entity: Entity, sim: &mut SimWorld) {
     sim.world_mut()
         .entity_mut(entity)
         .remove::<ph2d_ecs::SpriteSheetRef>();
+}
+
+#[cfg(test)]
+mod write_through_tests {
+    use super::{SamplingWindow, rebind_to_individual, write_through_targets};
+    use ph2d_ecs::{Entity, InstanceOf, SimWorld, StableId};
+    use ph2d_render::Sprite;
+
+    /// Uma peça de instância e a peça da receita de que ela nasceu.
+    fn a_copy_and_its_recipe(sim: &mut SimWorld) -> (Entity, Entity) {
+        let recipe = sim
+            .world_mut()
+            .spawn((Sprite::individual(1, [1.0, 1.0], [1.0; 4]), StableId(42)))
+            .id();
+        let copy = sim
+            .world_mut()
+            .spawn((
+                Sprite::individual(2, [1.0, 1.0], [1.0; 4]),
+                StableId(43),
+                InstanceOf { master: 42 },
+            ))
+            .id();
+        (copy, recipe)
+    }
+
+    /// ⭐⭐ **Pintar uma cópia escreve na RECEITA** (Enio, 2026-08-26) — os pixels são um asset.
+    ///
+    /// (Mutação: devolver `vec![entity]` em `write_through_targets` ⇒ RED.)
+    #[test]
+    fn painting_a_copy_writes_through_to_the_recipe() {
+        let mut sim = SimWorld::new();
+        let (copy, recipe) = a_copy_and_its_recipe(&mut sim);
+        let pixels = ph2d_asset::AssetId::from_bytes(b"tinta");
+        rebind_to_individual(
+            copy,
+            &mut sim,
+            9,
+            pixels,
+            [2.0, 2.0],
+            false,
+            SamplingWindow::Dies,
+        );
+        for (who, e) in [("a copia", copy), ("a receita", recipe)] {
+            assert_eq!(
+                sim.world().get::<ph2d_ecs::SpritePixels>(e).map(|p| p.0),
+                Some(pixels),
+                "{who} ficou sem o nome duravel dos pixels"
+            );
+            assert_eq!(
+                sim.world().get::<Sprite>(e).map(|s| s.size),
+                Some([2.0, 2.0]),
+                "{who} ficou com o tamanho antigo"
+            );
+        }
+    }
+
+    /// ⛔ **A FRONTEIRA, nomeada: uma cópia DESTACADA pinta-se sozinha.**
+    ///
+    /// *Destacar* apaga o `InstanceOf`, e é isso — e só isso — que faz a cadeia parar. É a resposta
+    /// a *«e se eu quiser esta cópia diferente?»*.
+    ///
+    /// (Mutação: subir a cadeia sem olhar ao `InstanceOf` ⇒ RED.)
+    #[test]
+    fn a_detached_copy_paints_only_itself() {
+        let mut sim = SimWorld::new();
+        let (copy, recipe) = a_copy_and_its_recipe(&mut sim);
+        sim.world_mut().entity_mut(copy).remove::<InstanceOf>();
+        rebind_to_individual(
+            copy,
+            &mut sim,
+            9,
+            ph2d_asset::AssetId::from_bytes(b"so' minha"),
+            [2.0, 2.0],
+            false,
+            SamplingWindow::Dies,
+        );
+        assert!(
+            sim.world().get::<ph2d_ecs::SpritePixels>(recipe).is_none(),
+            "uma copia destacada escreveu na receita — o Detach deixou de significar alguma coisa"
+        );
+    }
+
+    /// ⚠️ **Um elo que aponta para trás não faz a cadeia rodar para sempre** — a guarda é *«sem
+    /// entidade repetida»*, e não um tecto de saltos.
+    ///
+    /// (Mutação: apagar o `!out.contains(&up)` ⇒ o teste nunca termina.)
+    #[test]
+    fn a_link_that_points_back_does_not_loop() {
+        let mut sim = SimWorld::new();
+        let (copy, recipe) = a_copy_and_its_recipe(&mut sim);
+        // A receita a dizer-se cópia da cópia — só um ficheiro corrompido faz isto.
+        sim.world_mut()
+            .entity_mut(recipe)
+            .insert(InstanceOf { master: 43 });
+        let chain = write_through_targets(&mut sim, copy);
+        assert_eq!(chain, vec![copy, recipe], "a cadeia repetiu uma entidade");
+    }
 }
 
 #[cfg(test)]

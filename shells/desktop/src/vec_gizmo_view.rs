@@ -167,7 +167,7 @@ fn fold_layout_pose(
 /// vetorial ([`view`]) e o container do envelope ([`container_view`]) chamam esta função, então as
 /// duas caixas concordam por construção (quad center = pivot + R·(anchor ⊙ scale)).
 #[must_use]
-fn gizmo_view_from(
+pub(crate) fn gizmo_view_from(
     anchor: [f32; 2],
     half_intrinsic: [f32; 2],
     wt: ph2d_ecs::Transform,

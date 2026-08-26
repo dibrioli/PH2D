@@ -415,7 +415,7 @@ fn reverting_a_whole_instance_answers_the_three_cases() {
     // (b) é instância e não tem excepção.
     assert_eq!(
         super::revert_all_overrides(&mut sim, &mut echo, roots[0]),
-        Some(0)
+        Some(super::Reverted::default())
     );
     // (c) tem uma, e volta a ouvir a receita.
     let mine = piece(&sim, roots[0], "Arm");
@@ -423,7 +423,10 @@ fn reverting_a_whole_instance_answers_the_three_cases() {
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         super::revert_all_overrides(&mut sim, &mut echo, roots[0]),
-        Some(1)
+        Some(super::Reverted {
+            count: 1,
+            poses_kept: 0
+        })
     );
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(tint(&sim, mine), tint(&sim, piece(&sim, master, "Arm")));
@@ -464,7 +467,10 @@ fn reverting_from_the_piece_the_artist_touched_works() {
     // O gesto: botão direito no BRAÇO.
     assert_eq!(
         super::revert_all_overrides(&mut sim, &mut echo, arm),
-        Some(1),
+        Some(super::Reverted {
+            count: 1,
+            poses_kept: 0
+        }),
         "clicar na peca tem de devolver a excepcao DELA"
     );
     sync_instances(&mut sim, &r, &bridge, &mut echo);
@@ -482,7 +488,10 @@ fn reverting_from_the_piece_the_artist_touched_works() {
     // E na RAIZ continua a devolver tudo o que resta.
     assert_eq!(
         super::revert_all_overrides(&mut sim, &mut echo, roots[0]),
-        Some(1)
+        Some(super::Reverted {
+            count: 1,
+            poses_kept: 0
+        })
     );
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(tint(&sim, hub), tint(&sim, piece(&sim, master, "Hub")));

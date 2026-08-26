@@ -265,6 +265,8 @@ mod wet_grid_look_probe;
 /// formulário que não mexe em nada na tela.
 pub(crate) mod anchor_gizmo;
 mod anchor_overlay;
+/// O anel de um objeto VAZIO selecionado — ver o módulo.
+mod empty_object_overlay;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — snapshot e commit.
 mod inspector_anchor;
 mod inspector_anim;
@@ -306,7 +308,7 @@ mod present;
 pub(crate) mod sprite_anim_tick;
 pub(crate) use sprite_anim_tick::start_autoplay_animations;
 /// **Os nove quads do 9-slice** — irmão do `sim_extract`, que está no tecto de LOC.
-mod sheet_grid_overlay;
+pub(crate) mod sheet_grid_overlay;
 mod sim_extract;
 mod sim_extract_sheet;
 mod sim_extract_slice;
@@ -7425,6 +7427,21 @@ impl crate::App {
                     // Reborrow por `paint_ctx`, como o rótulo do overlay de física — o
                     // `text_system` já está emprestado desde o começo do frame.
                     paint_ctx.text,
+                );
+
+                // ⭐ **O ANEL do objeto vazio** (Enio, 2026-08-26) — um objeto sem geometria não
+                // emite pixel nenhum, e sem marca o artista não sabe onde ele está. A pergunta
+                // *«está vazio?»* é a MESMA que dimensiona a caixa do gizmo (`group_gizmo_view`).
+                empty_object_overlay::draw_empty_object_mark(
+                    sim,
+                    vec_scene,
+                    flip,
+                    hero.gizmo.selection,
+                    hero.project.pixels_per_meter,
+                    hero.theme,
+                    camera,
+                    surface.size(),
+                    vector_scene,
                 );
 
                 // Tween v2 — a correção de pares: os dois desenhos-chave sobrepostos + as

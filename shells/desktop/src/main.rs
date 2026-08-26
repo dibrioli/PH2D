@@ -231,6 +231,7 @@ mod gizmo_anchor_smoke;
 mod global_palette_input;
 mod gradient_smoke;
 mod grid_smoke;
+mod group_gizmo_view;
 mod guide_gesture;
 mod guide_smoke;
 /// A cena de smoke das Color Harmonies (abre o picker com Triad) — `PH2D_HARMONY_SMOKE=1`.

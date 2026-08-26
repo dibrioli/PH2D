@@ -389,11 +389,30 @@ pub(crate) fn revert_override(
 ///
 /// ⚠️ *Devolver o rig inteiro porque o artista pediu um braço seria apagar trabalho que ele não
 /// mandou apagar* — e o Ctrl+Z existe, mas um verbo que faz mais do que diz não se desculpa com ele.
+///
+/// # ⛔⛔ Ele NÃO devolve a POSE — decisão do Enio (2026-08-26)
+///
+/// > *«Revert to master modifica a posição global do objeto e isso não é uma boa idéia. Melhor o
+/// > objeto ficar onde está.»*
+///
+/// Medido antes de decidir: arrastar uma peça de uma instância captura um override de `Transform`,
+/// e o revert punha-a de volta na pose da receita — a peça **teletransportava-se** ao clicar num
+/// item de menu que fala de *conteúdo*. ⚠️ **A pose de uma peça continua a ser um override** (senão
+/// o passe seguinte reescrevia por cima do arrasto do artista, que é pior); o que muda é que este
+/// verbo **não lhe toca**.
+///
+/// ⚠️ **É a mesma lei que a raiz já tinha** ([`ROOT_IS_ITS_OWN`]) descida um nível pelo report:
+/// *onde uma coisa está é do artista que a largou lá*. A receita continua a poder mandar — quando o
+/// MESTRE mexe a peça dele, o empate resolve-se a favor dele e a instância segue.
+///
+/// ⇒ o resultado tem **dois** números: o que foi devolvido e a pose que ficou. *Um `0` de «não
+/// havia nada» e um `0` de «só havia a posição, e ela fica» são respostas diferentes ao artista.*
 pub(crate) fn revert_all_overrides(
     sim: &mut SimWorld,
     echo: &mut MasterEcho,
     clicked: Entity,
-) -> Option<usize> {
+) -> Option<Reverted> {
+    let pose = ph2d_ecs::scene::stable_type_id(TRANSFORM);
     let (root, scope) = instance_root_of(sim, clicked)?;
     let keys: Vec<ph2d_ecs::OverrideKey> = sim
         .world()
@@ -406,13 +425,26 @@ pub(crate) fn revert_all_overrides(
                 .collect()
         })
         .unwrap_or_default();
-    let mut n = 0;
+    let mut out = Reverted::default();
     for key in keys {
+        if key.type_id == pose {
+            out.poses_kept += 1;
+            continue;
+        }
         if revert_override(sim, echo, root, key) {
-            n += 1;
+            out.count += 1;
         }
     }
-    Some(n)
+    Some(out)
+}
+
+/// **O que o *Revert* fez** — e o que ele deliberadamente não fez.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Reverted {
+    /// Excepções devolvidas à receita.
+    pub(crate) count: usize,
+    /// Poses que ficaram como estavam — ver o doc de [`revert_all_overrides`].
+    pub(crate) poses_kept: usize,
 }
 
 /// **A raiz da instância a que esta entidade pertence, e o escopo do gesto.**
@@ -469,13 +501,29 @@ pub(crate) fn drain_revert_to_master(
             ));
             false
         }
-        Some(0) => {
+        // ⚠️ **Quatro respostas, e a pose é a razão de serem quatro**: dizer *«nada estava
+        // sobrescrito»* a quem acabou de mover a peça seria mentir sobre o que o app sabe.
+        Some(r) if r.count == 0 && r.poses_kept == 0 => {
             toasts.push(Toast::info("Nothing overridden here"));
             false
         }
-        Some(n) => {
+        Some(r) if r.count == 0 => {
+            toasts.push(Toast::info(
+                "Only the position differs — it stays where you put it",
+            ));
+            false
+        }
+        Some(r) if r.poses_kept > 0 => {
             toasts.push(Toast::success(format!(
-                "Reverted {n} override(s) to master"
+                "Reverted {} change(s) — position kept",
+                r.count
+            )));
+            true
+        }
+        Some(r) => {
+            toasts.push(Toast::success(format!(
+                "Reverted {} override(s) to master",
+                r.count
             )));
             true
         }

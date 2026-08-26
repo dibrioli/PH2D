@@ -496,7 +496,22 @@ pub(super) fn publish(
                     pivot_tool_active,
                 );
             }
-            return None; // grupo/outro: sem gizmo próprio
+            // ⭐ **O GRUPO e o VAZIO** (Enio, 2026-08-26) — até aqui isto era `None`, e um
+            // objeto sem gizmo não é agarrável por gesto nenhum: o objeto que o botão `Add` da
+            // Hierarquia acabou de criar era o único do app que o artista não podia pegar. A caixa
+            // é a união dos filhos VISÍVEIS (ou o marcador do vazio), e a lei mora em
+            // `group_gizmo_view`, que é onde ela tem gate.
+            return crate::group_gizmo_view::view(
+                sim,
+                vec_scene,
+                flip,
+                sim_entity,
+                camera,
+                window_size,
+                last_pointer,
+                pivot_tool_active,
+                gizmo_ppm,
+            );
         }
         let sprite = sim.world().get::<Sprite>(sim_entity)?;
         let mut q = present

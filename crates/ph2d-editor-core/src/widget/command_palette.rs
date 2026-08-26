@@ -34,6 +34,13 @@ use layout::arrange;
 mod cascade;
 pub use cascade::cascade_id;
 
+/// **Quanto o conteúdo mede e o que dele SE VÊ** — a geometria do cartão, a régua da roda e o
+/// traço indicador. Irmão pelo teto de 500 LOC, e o corte é por responsabilidade: aqui fica o que
+/// se desenha, lá o que cabe.
+mod scroll;
+pub use scroll::max_scroll;
+use scroll::{Metrics, metrics, paint_scroll_hint};
+
 /// **A BANDA do cabeçalho** — título, busca, contagem, a caixa *Show all* e o X. A 4ª
 /// responsabilidade, e o irmão que a F3 (ADR-0166) obrigou a existir: a caixa levaria este ficheiro
 /// para lá dos 500 LOC dos primitivos, e *ficar no mesmo sítio não é encolher*.
@@ -222,6 +229,9 @@ struct CardLayout {
 /// Paint the palette over the whole `viewport` (a no-op decision is the chrome handler's; by the time we
 /// are called the palette is open). Registers hit rects for the scrim (first, so it loses), the card
 /// (next), and the close-X + every item pill (last, so they win inside the card).
+///
+/// ⚠️ `scroll` é quanto a lista está rolada, em px — preso ao [`max_scroll`] **aqui dentro**, para
+/// que um valor velho no store (o conteúdo encolheu com a busca) não mostre um cartão vazio.
 #[allow(clippy::too_many_arguments)]
 pub fn paint(
     scene: &mut VectorScene,
@@ -232,6 +242,7 @@ pub fn paint(
     query: &str,
     viewport: Rect,
     motion: &crate::motion::UiMotion,
+    scroll: f32,
 ) {
     // ── The live search text filters the model (empty = show everything). Filtering keeps only the
     //    matching items and drops emptied sub-clusters / categories; `Enter` adds the same top match. ──
@@ -244,30 +255,20 @@ pub fn paint(
     };
     let no_match = model.groups.is_empty();
 
-    // ── Card geometry independent of content height: width (centred) + the content box. ──
-    let card_w = CARD_MAX_W
-        .min(viewport.w - EDGE_MARGIN * 2.0)
-        .max(MIN_COL_W);
-    let card_x = viewport.x + (viewport.w - card_w) * 0.5;
-    let pad = Spacing::Md.px();
-    let content_x = card_x + pad;
-    let content_w = card_w - pad * 2.0;
-    let font = TypeToken::Md.px();
-
-    // ── Measure the category-card arrangement (card-local y from 0), then size the card to it so there
-    //    is no dead space below the last row — capped at CARD_MAX_H_FRAC of the viewport. ──
-    let (placed, content_h) = arrange(ts, model, content_x, content_w);
-    // With no matches the arrangement is empty (height 0); reserve a row for the "No matches" message so
-    // the card doesn't collapse to just the header.
-    let content_h = if no_match {
-        TypeToken::Md.px() + Spacing::Lg.px()
-    } else {
-        content_h
-    };
-    let card_h = (pad * 2.0 + HEADER_H + Spacing::Sm.px() + content_h)
-        .min(viewport.h * CARD_MAX_H_FRAC)
-        .min(viewport.h - EDGE_MARGIN * 2.0);
-    let card_y = viewport.y + (viewport.h - card_h) * 0.5;
+    // ⭐ **A geometria vem da PORTA** — a mesma que a [`max_scroll`] usa. Duas contas para «que
+    //    altura tem este cartão» seriam duas respostas, e a que decide se há rolagem seria a que
+    //    envelhece: o artista via metade da lista e a roda não fazia nada.
+    let Metrics {
+        card,
+        content_x,
+        content_w,
+        content_h,
+        view_h,
+        pad,
+        font,
+        placed,
+    } = metrics(ts, model, viewport, no_match);
+    let (card_x, card_y, card_w, card_h) = (card.x, card.y, card.w, card.h);
 
     // ── Scrim: dim the whole app with the modal-backdrop token (heavy alpha). ──
     fill_rounded_rect(scene, viewport, 0.0, resolve(ColorToken::BgScrim, theme));
@@ -304,6 +305,22 @@ pub fn paint(
             resolve(ColorToken::Text2, theme),
         );
     } else {
+        // ⭐ **O CORPO É RECORTADO no CLIQUE e na PINTURA** (F3 / ADR-0166) — e são duas coisas
+        //    diferentes: o `push_clip` do `HitIndex` decide quem RESPONDE; quem recorta pixels é a
+        //    cena. Sem os dois, o conteúdo rolado desenha por cima do cabeçalho e por fora do
+        //    cartão — que foi o report do Enio no 1.º smoke (a lista saía pela base do ecrã).
+        //
+        // ⚠️ **O `scroll` é preso AQUI**, e não onde a roda o escreve: a busca encolhe o conteúdo,
+        //    e um valor velho mostraria um cartão vazio sem nada que explicasse como voltar.
+        let scroll = crate::math::safe_clamp(scroll, 0.0, (content_h - view_h).max(0.0));
+        let body = Rect::new(content_x, content_y, content_w, view_h);
+        hit_index.push_clip(body);
+        scene.push_clip(&ph2d_vector::Rect::new(
+            f64::from(body.x),
+            f64::from(body.y),
+            f64::from(body.x + body.w),
+            f64::from(body.y + body.h),
+        ));
         // ⚠️ A CASCATA: o cartão `i` desenha-se subido por `cascade_rise(t)` e o hit regista na
         //    posição ASSENTE. É a mesma lei do `hover_lift` — o alvo que o dedo procura não pode
         //    estar noutro sítio do que o alvo que o olho vê —, e aqui ela morde mais forte, porque
@@ -311,7 +328,7 @@ pub fn paint(
         let travels = motion.travels();
         for (i, (cl, ox, oy, w)) in placed.iter().enumerate() {
             let t = motion.get(cascade_id(i)).unwrap_or(1.0);
-            let settled_y = content_y + *oy;
+            let settled_y = content_y + *oy - scroll;
             paint_card(
                 scene,
                 ts,
@@ -324,6 +341,9 @@ pub fn paint(
                 crate::motion::cascade_rise(t, travels),
             );
         }
+        scene.pop_layer();
+        hit_index.pop_clip();
+        paint_scroll_hint(scene, theme, body, content_h, view_h, scroll);
     }
 
     // Close-X last (wins its rect inside the card).

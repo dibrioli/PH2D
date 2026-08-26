@@ -230,6 +230,11 @@ pub(crate) fn name_of_pick(id: NodeId) -> Option<&'static str> {
 #[path = "component_palette_tests.rs"]
 mod tests;
 
+/// ⭐ A SONDA da paleta — ver [`crate::component_palette_measure`].
+#[cfg(test)]
+#[path = "component_palette_measure.rs"]
+mod measure;
+
 /// ⭐ O censo de alcance nos dois sentidos — ver [`crate::component_reach_tests`].
 #[cfg(test)]
 #[path = "component_reach_tests.rs"]

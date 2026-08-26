@@ -105,6 +105,7 @@ fn hit_rect_with_cascade(t: f32) -> crate::zones::Rect {
         "",
         crate::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
         &motion,
+        0.0,
     );
     hit.rect_for(hash_node_id("Grid"))
         .expect("o pill Grid regista")
@@ -151,6 +152,7 @@ fn the_entrance_actually_moves_the_drawing() {
             "",
             crate::zones::Rect::new(0.0, 0.0, 1600.0, 900.0),
             &motion,
+            0.0,
         );
         scene.inner().encoding().path_data.clone()
     }
@@ -187,6 +189,7 @@ fn the_band_toggle_registers_its_hit_only_when_the_model_has_one() {
             "",
             Rect::new(0.0, 0.0, 1600.0, 900.0),
             &motion,
+            0.0,
         );
         hits.rect_for(CMD_PALETTE_SHOW_ALL).is_some()
     }
@@ -224,5 +227,196 @@ fn the_band_toggle_survives_the_search_filter() {
     assert_eq!(
         f.toggle, m.toggle,
         "o filtro comeu a caixa da banda: escrever na busca apagaria o controlo"
+    );
+}
+
+// ── A ROLAGEM e a ARRUMAÇÃO (F3 / ADR-0166, report do Enio de 25/08) ──────────────────────────
+
+use crate::interaction::HitIndex;
+use crate::zones::Rect as ZRect;
+use ph2d_text::TextSystem;
+use ph2d_vector::VectorScene;
+
+/// Um modelo com `n` categorias de `k` itens — alto o suficiente para transbordar.
+fn tall(n: usize, k: usize) -> PaletteModel {
+    PaletteModel {
+        title: "Add Component".into(),
+        toggle: None,
+        groups: (0..n)
+            .map(|i| PaletteGroup {
+                title: format!("Cat {i}"),
+                color: ColorToken::NodeCatSource,
+                subs: vec![PaletteSub {
+                    title: None,
+                    items: (0..k)
+                        .map(|j| item_owned(format!("Item {i}-{j}")))
+                        .collect(),
+                }],
+            })
+            .collect(),
+    }
+}
+
+fn item_owned(label: String) -> PaletteItem {
+    let id = hash_node_id(Box::leak(label.clone().into_boxed_str()));
+    PaletteItem { label, id }
+}
+
+const VP: ZRect = ZRect {
+    x: 0.0,
+    y: 0.0,
+    w: 1187.0,
+    h: 953.0,
+};
+
+/// Pinta com `scroll` e devolve os rects registados.
+fn painted(m: &PaletteModel, scroll: f32) -> Vec<(ph2d_a11y::NodeId, ZRect)> {
+    let mut scene = VectorScene::new();
+    let mut ts = TextSystem::new();
+    let mut hits = HitIndex::new();
+    let motion = crate::motion::UiMotion::default();
+    paint(
+        &mut scene,
+        &mut ts,
+        ph2d_tokens::Theme::default(),
+        &mut hits,
+        m,
+        "",
+        VP,
+        &motion,
+        scroll,
+    );
+    hits.iter_registrations().collect()
+}
+
+/// ⭐ **NADA se regista fora do cartão** (F3) — o report do Enio: *«veja que componentes estão
+/// inacessíveis fora da janela»*.
+///
+/// ⚠️ **É o `HitIndex::push_clip` que o garante**, e a cena tem o par dela (`push_clip` do
+/// `VectorScene`): são DUAS coisas — um decide quem RESPONDE, o outro recorta PIXELS. Antes desta
+/// wave o conteúdo desenhava e registava para fora do cartão, e o que saía do ecrã era
+/// inalcançável por gesto nenhum.
+///
+/// (Mutação: tirar o `push_clip` do hit-index ⇒ os itens de baixo voltam a registar fora do cartão.)
+#[test]
+fn nothing_registers_outside_the_card() {
+    let m = tall(24, 15);
+    let rects = painted(&m, 0.0);
+    let card = rects
+        .iter()
+        .find(|(n, _)| *n == CMD_PALETTE_CARD)
+        .map(|(_, r)| *r)
+        .expect("o cartao regista-se");
+    let ids: std::collections::BTreeSet<_> = m
+        .groups
+        .iter()
+        .flat_map(|g| &g.subs)
+        .flat_map(|s| &s.items)
+        .map(|i| i.id)
+        .collect();
+    let escaped: Vec<_> = rects
+        .iter()
+        .filter(|(n, _)| ids.contains(n))
+        .filter(|(_, r)| r.y + r.h > card.y + card.h + 0.5 || r.y < card.y - 0.5)
+        .collect();
+    assert!(
+        escaped.is_empty(),
+        "{} items registaram-se FORA do cartao (o cartao vai de {:.0} a {:.0}); \
+         o primeiro esta' em y={:.0}",
+        escaped.len(),
+        card.y,
+        card.y + card.h,
+        escaped[0].1.y
+    );
+}
+
+/// ⭐ **E o que não cabe é ALCANÇÁVEL rolando** — a outra metade, e a que o report pedia.
+///
+/// Sem ela o gate acima ficaria verde sobre uma paleta que simplesmente **esconde** o excedente,
+/// que é o defeito com outra cara: *o que existe e não se alcança lê-se como ausência*.
+#[test]
+fn everything_is_reachable_by_scrolling() {
+    // ⚠️ **A fixture cresceu de `tall(10, 12)` para cá**, e o motivo é a lição: o masonry fez a
+    // antiga CABER, e uma fixture sem o fenómeno teria deixado este gate verde sobre nada.
+    let m = tall(24, 15);
+    let mut ts = TextSystem::new();
+    let max = max_scroll(&mut ts, &m, "", VP);
+    assert!(
+        max > 0.0,
+        "a fixture TEM de transbordar, senao nao mede nada"
+    );
+
+    let mut seen = std::collections::BTreeSet::new();
+    // Duas paradas bastam para esta altura; o passo é meia janela, como uma roda faz.
+    for k in 0..=4u8 {
+        let s = max * f32::from(k) / 4.0;
+        for (id, _) in painted(&m, s) {
+            seen.insert(id);
+        }
+    }
+    let missing: Vec<_> = m
+        .groups
+        .iter()
+        .flat_map(|g| &g.subs)
+        .flat_map(|s| &s.items)
+        .filter(|i| !seen.contains(&i.id))
+        .map(|i| i.label.clone())
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "{} items continuam inalcancaveis mesmo rolando ate' ao fim: {:?}",
+        missing.len(),
+        &missing[..missing.len().min(5)]
+    );
+}
+
+/// ⚠️ **A metade de AUSÊNCIA: quando tudo cabe, não há rolagem nenhuma.**
+///
+/// Um `max_scroll` positivo sobre conteúdo que cabe daria um traço indicador sobre nada e uma roda
+/// que move um cartão inteiro sem motivo.
+#[test]
+fn a_short_palette_does_not_scroll() {
+    let mut ts = TextSystem::new();
+    assert_eq!(max_scroll(&mut ts, &model(), "", VP), 0.0);
+}
+
+/// ⭐ **As colunas são EQUILIBRADAS, não posicionais** (F3).
+///
+/// ⚠️ **A lei anterior era «as pequenas à esquerda, a grande à direita»** e não olhava para altura
+/// nenhuma: na foto do Enio uma coluna transbordava o ecrã enquanto o canto direito ficava vazio
+/// por baixo de uma categoria baixa e larga. Medido, o masonry corta o excedente de **345 px para
+/// 217** no caso dele.
+///
+/// A lei aqui é a forma do defeito: **nenhum vão fica VAZIO enquanto outro empilha dois ou mais**.
+#[test]
+fn no_slot_sits_empty_while_another_stacks() {
+    let mut ts = TextSystem::new();
+    let m = tall(8, 6);
+    let (placed, _) = arrange(&mut ts, &m, 0.0, 1124.0);
+    // Os cartões estreitos (largura de uma unidade) contam por vão; os largos ocupam dois e não
+    // deixam vão vazio por construção.
+    let unit = placed
+        .iter()
+        .map(|(_, _, _, w)| *w)
+        .fold(f32::INFINITY, f32::min);
+    let mut per_slot = std::collections::BTreeMap::<i32, usize>::new();
+    for (_, ox, _, w) in &placed {
+        #[allow(clippy::cast_possible_truncation)]
+        let slot = (ox / (unit + COL_GAP)).round() as i32;
+        let span = (w / unit).round().max(1.0) as i32;
+        for c in slot..slot + span {
+            *per_slot.entry(c).or_default() += 1;
+        }
+    }
+    let used = per_slot.len();
+    assert_eq!(
+        used, 4,
+        "o arranjo tem de usar as QUATRO unidades: {per_slot:?}"
+    );
+    let min = per_slot.values().copied().min().unwrap_or(0);
+    let max = per_slot.values().copied().max().unwrap_or(0);
+    assert!(
+        min > 0 && max - min <= 1,
+        "vaos desequilibrados {per_slot:?} — um vao vazio ao lado de uma pilha e' a foto do report"
     );
 }

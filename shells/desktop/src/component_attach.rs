@@ -227,6 +227,33 @@ fn attach_one(
     Ok(())
 }
 
+/// ⭐ **A roda sobre a paleta aberta é DELA** (F3 / ADR-0166) — devolve `true` quando consumiu.
+///
+/// ⚠️ **Consome enquanto ela estiver ABERTA, e não «quando o cursor está sobre o cartão»**: ao
+/// contrário da janela do Input Map, esta é um modal de **tela cheia com scrim** — não há «por
+/// fora dela». Uma roda que atravessasse o scrim daria zoom no canvas escurecido por baixo, que é
+/// o gesto errado com a mão no sítio certo.
+///
+/// ⚠️ **O sinal é INVERTIDO** (`-dy`), como no Input Map: a roda para cima sobe a lista, isto é
+/// DIMINUI o deslocamento.
+pub(crate) fn palette_wheel(
+    hero: &mut HeroScreen,
+    text_system: &mut ph2d_text::TextSystem,
+    viewport: ph2d_editor::zones::Rect,
+    dy: f32,
+) -> bool {
+    if !hero.store.command_palette_open() {
+        return false;
+    }
+    let max = ph2d_editor::screens::hero::chrome::command_palette_max_scroll(
+        text_system,
+        &hero.store,
+        viewport,
+    );
+    hero.store.scroll_command_palette(-dy, max);
+    true
+}
+
 /// ⭐ A SEQUÊNCIA — ver [`crate::component_attach_tests`].
 #[cfg(test)]
 #[path = "component_attach_tests.rs"]

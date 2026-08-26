@@ -43,7 +43,23 @@ pub fn paint_command_palette(
         store.command_palette_query(),
         viewport,
         motion,
+        store.command_palette_scroll(),
     );
+}
+
+/// ⭐ **Até onde a roda pode levar a paleta aberta** — `0` quando ela está fechada ou tudo cabe.
+///
+/// ⚠️ Existe aqui, e não na shell, porque a shell não deve conhecer o `PaletteModel`: ela sabe
+/// **que houve roda**, e o chrome responde *quanto*. É o mesmo corte do `input_map_window_size`.
+#[must_use]
+pub fn command_palette_max_scroll(
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    viewport: Rect,
+) -> f32 {
+    store.command_palette_model().map_or(0.0, |model| {
+        command_palette::max_scroll(text_system, model, store.command_palette_query(), viewport)
+    })
 }
 
 /// Dispatch the command palette's widget events (wired into `chrome::dispatch_all`). Only acts while the

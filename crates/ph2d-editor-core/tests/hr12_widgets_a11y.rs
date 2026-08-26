@@ -34,6 +34,14 @@ use std::path::{Path, PathBuf};
 //    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    // ⚠️ **A metade de ROLAGEM da paleta** — geometria (quanto cabe, até onde a roda vai) mais UM
+    // traço indicador que **não é um controlo**: ele não se arrasta, e a decisão é explícita (um
+    // alvo de arrasto ali competiria com as pílulas do cartão pelo mesmo `x`, e a roda já resolve).
+    // Tudo o que é interativo na paleta é pintado e anunciado pelo pai.
+    (
+        "command_palette/scroll.rs",
+        "geometry + a non-interactive scroll hint; every interactive item is painted and announced by the parent",
+    ),
     // A tinta de FUNDO de um botão plano, misturada no eixo do hover. Aritmética de COR pura — não
     // pinta, não regista, não conhece um `NodeId`. Quem anuncia é o pintor que a chama, e cada um
     // deles já constrói o próprio nó (é precisamente por pintarem à mão que eles precisam dela).

@@ -3099,7 +3099,14 @@ impl App {
         // M14.4b.bis: wheel over the canvas zooms the camera. Wheel
         // over a hero panel keeps the existing panel-scroll behavior
         // (forward to hero).
-        // ⭐ **A roda sobre a janela do Input Map é dela** — e vem ANTES de tudo, pelo motivo do
+        // ⭐ **A roda pertence À PALETA enquanto ela estiver aberta** (F3 / ADR-0166), e vem antes
+        // de tudo — inclusive do Input Map: ela é um modal de TELA CHEIA com scrim, então não há
+        // «por fora dela». Sem esta linha a lista transbordava o ecrã e o que sobrava era
+        // inalcançável, com a roda a dar zoom no canvas por baixo do scrim (report do Enio, 25/08).
+        if self.command_palette_wheel(dy) {
+            return;
+        }
+        // ⭐ **A roda sobre a janela do Input Map é dela** — e vem ANTES do resto, pelo motivo do
         // arrasto: a roda que atravessasse o cartão daria zoom no canvas por baixo dele.
         if self.input_map_wheel(dy) {
             return;

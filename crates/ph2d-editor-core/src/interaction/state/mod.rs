@@ -381,6 +381,12 @@ pub struct WidgetStore {
     /// abriu a paleta é que sabe, e é ele que reconstrói o modelo. É a mesma lei do `command_pick`:
     /// o editor-core nunca aprende o que um item quer dizer.
     pub(super) command_palette_toggled: bool,
+    /// ⭐ **Quanto a lista da paleta está rolada, em px** (F3 / ADR-0166).
+    ///
+    /// ⚠️ **Zerado ao ABRIR e ao FECHAR** — uma paleta nova nunca herda a rolagem da anterior, pela
+    /// mesma razão que ela não herda a busca. E o **teto** não vive aqui: quem sabe até onde ir é
+    /// quem MEDE o conteúdo (`command_palette::max_scroll`), porque a altura depende de medir texto.
+    pub(super) command_palette_scroll: f32,
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.

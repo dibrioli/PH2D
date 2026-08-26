@@ -333,6 +333,7 @@ impl WidgetStore {
         self.command_palette = Some(model);
         self.command_pick = None;
         self.command_palette_query.clear();
+        self.command_palette_scroll = 0.0;
     }
 
     /// Close the command palette (the close-X, a click on the dimmed scrim, or Esc). Leaves any pending
@@ -340,6 +341,22 @@ impl WidgetStore {
     pub fn close_command_palette(&mut self) {
         self.command_palette = None;
         self.command_palette_query.clear();
+        self.command_palette_scroll = 0.0;
+    }
+
+    /// Quanto a lista da paleta está rolada, em px.
+    #[must_use]
+    pub fn command_palette_scroll(&self) -> f32 {
+        self.command_palette_scroll
+    }
+
+    /// **Rola a lista da paleta**, presa entre o topo e o fim do conteúdo.
+    ///
+    /// ⚠️ **O `max` vem do CHAMADOR** — o `WidgetStore` não mede texto, e a altura do conteúdo
+    /// depende disso. Ele sai do `command_palette::max_scroll`, que é a mesma porta que o pintor
+    /// usa para saber o que cabe.
+    pub fn scroll_command_palette(&mut self, dy: f32, max: f32) {
+        self.command_palette_scroll = (self.command_palette_scroll + dy).clamp(0.0, max.max(0.0));
     }
 
     /// ⭐ **Substitui o modelo da paleta MANTENDO a busca** (ADR-0166 / F3).

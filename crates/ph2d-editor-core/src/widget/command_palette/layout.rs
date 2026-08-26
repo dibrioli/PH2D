@@ -136,39 +136,46 @@ pub(super) fn arrange(
     }
 
     let mut placed: Vec<(CardLayout, f32, f32, f32)> = Vec::new();
-    if content_w >= MIN_COL_W * MIN_COLS_FOR_GRID && !big.is_empty() {
-        // 4 units wide: [narrow][narrow][wide = 2 units]. Small cards fill the two narrow columns;
-        // the first big card takes the wide slot on the right.
+    // ⚠️ **A grade deixou de exigir uma categoria GRANDE** (F3 / ADR-0166), e a condição antiga
+    //    (`&& !big.is_empty()`) não tinha razão escrita: com ela, um modelo de dez categorias
+    //    médias caía na coluna ÚNICA de largura total — uma parede de itens muito mais alta que a
+    //    grade, e transbordando por muito mais. O que a largura permite, a largura decide; o
+    //    tamanho de uma categoria decide só quantos vãos ela ocupa.
+    if content_w >= MIN_COL_W * MIN_COLS_FOR_GRID {
+        // ⭐ **MASONRY sobre as quatro unidades** — cada categoria cai no vão mais CURTO, larga
+        //    ocupa dois (F3 / ADR-0166).
+        //
+        // ⚠️ **A lei anterior era POSICIONAL** — *«as pequenas nas duas colunas da esquerda, a
+        //    primeira grande no vão largo da direita»* — e ela não olhava para altura nenhuma. No
+        //    catálogo de componentes com *Show all* (72 items) isso dava uma coluna a transbordar o
+        //    ecrã enquanto o canto direito ficava **vazio** por baixo de uma categoria baixa e
+        //    larga: foi a foto do Enio de 25/08.
+        //
+        // ⚠️ **O `shortest_slot` já existia, com o parâmetro `span` e tudo** — ele era usado só
+        //    para os sub-clusters DENTRO de um cartão, e o arranjo de topo, um nível acima,
+        //    ignorava-o. *A peça que falta pode já estar construída.*
+        //
+        // ⚠️ **A ordem de visita é a de EXIBIÇÃO, e as largas vão primeiro**: uma larga precisa de
+        //    dois vãos adjacentes, e semeá-la depois de as estreitas encherem a grade obriga-a a
+        //    um par desnivelado. É o idioma de todo empacotador — o item grande primeiro.
         let unit_w = (content_w - COL_GAP * 3.0) / 4.0; // LITERAL-PX-OK: CONTAGENS da grade de 4 unidades (3 vãos)
-        let narrow_w = unit_w;
-        let wide_x = content_x + 2.0 * (unit_w + COL_GAP);
-        let wide_w = 2.0 * unit_w + COL_GAP;
-
-        let mut col_bottom = [0.0_f32, 0.0];
-        for g in &small {
-            let c = usize::from(col_bottom[1] < col_bottom[0]);
-            let cx = content_x + c as f32 * (narrow_w + COL_GAP);
-            let cl = layout_card(ts, g, narrow_w);
+        let slot_x = |c: usize| content_x + c as f32 * (unit_w + COL_GAP);
+        let span_w = |span: usize| unit_w * span as f32 + COL_GAP * (span as f32 - 1.0);
+        let mut bottom = [0.0_f32; 4];
+        for (g, span) in big
+            .iter()
+            .map(|g| (*g, 2usize))
+            .chain(small.iter().map(|g| (*g, 1usize)))
+        {
+            let c = shortest_slot(&bottom, span);
+            let top = bottom[c..c + span].iter().copied().fold(0.0_f32, f32::max);
+            let w = span_w(span);
+            let cl = layout_card(ts, g, w);
             let h = cl.height;
-            placed.push((cl, cx, col_bottom[c], narrow_w));
-            col_bottom[c] += h + SECT_GAP;
-        }
-
-        let mut col_c_bottom = 0.0_f32;
-        if let Some(g) = big.first() {
-            let cl = layout_card(ts, g, wide_w);
-            let h = cl.height;
-            placed.push((cl, wide_x, 0.0, wide_w));
-            col_c_bottom = h + SECT_GAP;
-        }
-
-        // Any remaining big categories are full-width cards below the top region.
-        let mut y = col_bottom[0].max(col_bottom[1]).max(col_c_bottom);
-        for g in big.iter().skip(1) {
-            let cl = layout_card(ts, g, content_w);
-            let h = cl.height;
-            placed.push((cl, content_x, y, content_w));
-            y += h + SECT_GAP;
+            placed.push((cl, slot_x(c), top, w));
+            for b in &mut bottom[c..c + span] {
+                *b = top + h + SECT_GAP;
+            }
         }
     } else {
         // Fallback (narrow window / no big category): one stacked column of full-width cards.

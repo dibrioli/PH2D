@@ -336,8 +336,12 @@ pub(crate) fn sync_scene_and_birth(
     // ⚠️ **A escala vem do ENQUADRAMENTO e vai para a POSE**, como na escultura: o perfil é
     // construído nas unidades em que foi **desenhado**, e um clique desfaz a pose sem tocar na
     // geometria.
-    if let Some((prim, extent, path)) = crate::field3d_smoke::take_pending_profile() {
-        let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
+    // ⚠️ **Uma FILA, e o parente é calculado UMA vez** (W74): dentro do laço a selecção não muda,
+    // e recalculá-lo por peça seria convidar a que a 2.ª nascesse noutro sítio se algum dia ele
+    // passar a olhar para o que acabou de nascer.
+    let pending = crate::field3d_smoke::take_pending_profile();
+    let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
+    for (prim, extent, path) in pending {
         if let Ok(e) = ph2d_field_ecs::add_leaf(world, parent, prim, cam.target) {
             let s = crate::field3d_import::framing_scale(extent, cam.half_extent);
             let _ = ph2d_field_ecs::set_param(world, e, ph2d_field::Param::Scale, s);

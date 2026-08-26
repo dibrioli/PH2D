@@ -283,17 +283,23 @@ thread_local! {
 /// ⚠️ **E o id do contorno viaja com eles** (W55): é ele que vira o `FieldProfileSource`, e é o que
 /// faz a peça continuar a seguir o desenho em vez de ser uma fotografia dele. Ele **não** podia ser
 /// redescoberto do lado de lá — a ponte com a cena recebe o mundo e não a cena vetorial.
-pub(crate) fn take_pending_profile() -> Option<(ph2d_field::Primitive, f32, u64)> {
-    PENDING_PROFILE.with(|c| c.borrow_mut().take())
+/// ⚠️ **É uma FILA, e não um slot** (W74) — ver [`ask_spawn_profile`].
+pub(crate) fn take_pending_profile() -> Vec<(ph2d_field::Primitive, f32, u64)> {
+    PENDING_PROFILE.with(|c| std::mem::take(&mut *c.borrow_mut()))
 }
 
+/// ⭐⭐⭐ **Ela EMPILHA** (W74) — e antes escrevia por cima.
+///
+/// ⛔ **O defeito que isto fecha era mudo:** com duas formas escolhidas, o botão cozia as duas e a
+/// segunda **apagava** a primeira neste slot; o artista via uma peça e nenhuma palavra sobre a
+/// outra. *Um slot com um escritor é um slot; com dois, é uma perda silenciosa.*
 pub(crate) fn ask_spawn_profile(prim: ph2d_field::Primitive, extent: f32, path: u64) {
-    PENDING_PROFILE.with(|c| *c.borrow_mut() = Some((prim, extent, path)));
+    PENDING_PROFILE.with(|c| c.borrow_mut().push((prim, extent, path)));
 }
 
 thread_local! {
-    static PENDING_PROFILE: std::cell::RefCell<Option<(ph2d_field::Primitive, f32, u64)>> =
-        const { std::cell::RefCell::new(None) };
+    static PENDING_PROFILE: std::cell::RefCell<Vec<(ph2d_field::Primitive, f32, u64)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
 }
 
 /// ⭐ **O pedido de trazer a escultura DA CENA** (W39) — tirado uma vez, como os irmãos.

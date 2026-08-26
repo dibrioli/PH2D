@@ -5751,12 +5751,17 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Reaproveitar o avaliador na **2.ª passagem** (anti-serrilhado) | construído 2×, medido `0,97×`–`1,01×`, **revertido** | §71.4 |
 | ⏸️ Ladrilhar em `(u, v)` contra o **paralelogramo** em vez da AABB | o único eixo que não multiplica a montagem | §58 |
 | ⏸️ Um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) | pede decisão do Enio | §64 |
-| ⏸️ Vários `VecPath` **separados** numa peça só · religar uma escultura que mudou de sítio | pede UI | §54, §40 |
+| ✅ Vários `VecPath` separados | ⭐ era um defeito MUDO, curado: uma peça por forma, todas ligadas | §75 |
+| ⏸️ Religar uma escultura que mudou de sítio | pede UI | §40 |
 | ⏸️ O `Mirror` não se consegue demonstrar | adiado pelo Enio | §19 |
 | ⏸️ A composição de dois `Exact` encadeados e o gradiente de uma **escultura** | por medir | §59 |
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐ **W74 (§75): com duas formas escolhidas, a segunda desaparecia em silêncio.** Duas perdas
+  em série (a função cozia só a primeira; a caixa de correio era um slot que a segunda apagava).
+  ⭐ Uma peça **por forma**, cada uma ligada ao seu desenho — e não uma peça com todas, porque o
+  vínculo vivo aponta para **um** desenho e o componente viaja no arquivo.
 - ⭐⭐ **W73 (§74): «ao parar ficou mais lento para alisar» — o assentar vira uma ESCADA.** O
   traçado assente nunca mudou; o que mudou foi **onde o alisamento vive**. Dois degraus: primeiro o
   **mesmo tamanho** com o contorno inteiro e o anti-serrilhado (`131 ms`), depois o cheio (`504`) ⇒
@@ -6529,3 +6534,45 @@ que aumenta são indistinguíveis, porque os dois pedem o mesmo `(câmera, taman
 
 **Provas de mutação — 3/3 mataram:** saltar o degrau que alisa · o traçado de movimento sair fino ·
 o degrau do meio continuar grosso.
+
+## §75 — W74: com duas formas escolhidas, a segunda desaparecia em silêncio (26/08)
+
+O item *«vários `VecPath` separados numa peça só»* estava na lista de aberto como uma **feature que
+falta**. Ao olhar para o código, ele era outra coisa: **um defeito mudo, em série**.
+
+### §75.1 — ⛔ Duas perdas silenciosas, uma atrás da outra
+
+1. `from_selection` cozia `closed.first()` e **ignorava o resto** sem uma palavra;
+2. e mesmo que cozesse todas, a caixa de correio (`PENDING_PROFILE`) era um **slot** `Option<_>` —
+   a segunda escrita **apagava** a primeira.
+
+⇒ o artista escolhia duas formas, carregava em `+ Extrude`, e via **uma** peça e nenhuma explicação.
+⚠️ *Um slot com um escritor é um slot; com dois, é uma perda silenciosa* — e aqui havia duas em
+série, o que faz a segunda ser invisível mesmo depois de a primeira ser curada.
+
+### §75.2 — ⭐ Uma peça por FORMA, e não uma peça com todas
+
+A nota pedia *«uma peça só»*. ⛔ **A medição escolheu o contrário, e a razão é o VÍNCULO VIVO:** o
+`FieldProfileSource` aponta para **um** desenho (W55), então uma peça de `N` contornos ou perdia o
+vínculo de `N−1` deles ou obrigava o componente — que **viaja no arquivo** — a mudar de forma, com
+migração de `PROJECT_SCHEMA` atrás.
+
+⭐ Com uma peça por forma, **todas** continuam a seguir o desenho delas, e juntá-las numa só é a
+**booleana que o módulo já tem**. *A composição já exprimia «uma peça»; o que ela não exprimia era
+«o resto existe».* (A lei do §5.0 do `CLAUDE.md`: *antes de construir um item de lista aberta, meça
+se a composição já o exprime* — aqui ela exprimia, e o que faltava era outra coisa.)
+
+### §75.3 — E o que fica de fora é DITO
+
+A mensagem passa a **contar**: `Extruded 2 shapes (824 edges)`. ⚠️ **O singular fica com o texto de
+sempre** — ele é o caso normal, e trocá-lo por *«1 shape»* tornaria a frase de toda a gente mais
+fria para servir a excepção. E o que o documento recusa entra na frase (`. One was skipped: …`), em
+vez de sumir: ⭐ **a peça boa nasce na mesma** — uma recusa que abortasse o lote faria um contorno
+mal desenhado apagar o trabalho dos outros.
+
+**Provas de mutação — 3/3 mataram:** só a primeira forma vira peça · a caixa de correio volta a ser
+um slot · a recusa deixa de ser dita.
+
+⚠️ **O gate tem três metades**, e a do meio é a que apanha o laço mal escrito: que nascem `N`, que
+**cada uma aponta para um desenho diferente**, e que a mensagem conta. Duas peças a apontar para o
+mesmo contorno passariam nas outras duas.

@@ -305,3 +305,82 @@ fn the_resolution_row_is_offered_exactly_where_the_link_is() {
         "e um nó sem vínculo não pode oferecer um número que não tem onde cair"
     );
 }
+
+/// ⭐⭐⭐ **TODA forma escolhida vira peça, e cada uma fica ligada ao SEU desenho** (W74).
+///
+/// ⛔ **O defeito era duplo e mudo:** a função cozia só `closed.first()`, e a caixa de correio era um
+/// **slot** — mesmo que ela cozesse as duas, a segunda apagaria a primeira. Um artista com dois
+/// contornos escolhidos via **uma** peça e nenhuma palavra sobre a outra.
+///
+/// ⚠️ **As três metades são o gate:** que nascem `N`, que cada uma aponta para um desenho
+/// **diferente**, e que a mensagem **conta**. Sem a segunda, duas peças a apontar para o mesmo
+/// contorno passariam — e é justamente o que um laço mal escrito produz.
+#[test]
+fn every_selected_shape_becomes_its_own_linked_piece() {
+    let _ = ph2d_panel_model3d::drain_intents();
+    let mut scene = VecScene::default();
+    let a = scene.push_path(square(1.0));
+    let mut far = square(0.6);
+    for v in &mut far.verts {
+        v.anchor[0] += 3.0;
+        v.in_handle[0] += 3.0;
+        v.out_handle[0] += 3.0;
+    }
+    let b = scene.push_path(far);
+
+    let msg = crate::field3d_profile::from_selection(&scene, &[a, b], ProfileShape::Extrude);
+    assert!(
+        msg.starts_with("Extruded 2 shapes"),
+        "a mensagem tem de CONTAR o que nasceu: {msg}"
+    );
+
+    let mut sim = SimWorld::new();
+    crate::field3d_scene::sync_scene_and_birth(&mut sim, Some(&seed()), &[], 0.0, &scene);
+    let world = sim.world_mut();
+    let mut q = world.query::<&FieldProfileSource>();
+    let mut linked: Vec<u64> = q.iter(world).map(|s| s.path).collect();
+    linked.sort_unstable();
+    let mut want = vec![a, b];
+    want.sort_unstable();
+    assert_eq!(
+        linked, want,
+        "cada peça segue o SEU desenho — duas a apontar para o mesmo é um laço mal escrito"
+    );
+}
+
+/// ⭐⭐ **E o que o documento recusa é DITO, não deitado fora** (W74).
+///
+/// ⚠️ A metade que importa é que a peça boa **nasce na mesma**: uma recusa que abortasse o lote
+/// faria um contorno mal desenhado apagar o trabalho dos outros.
+#[test]
+fn a_refused_shape_is_named_and_the_good_one_still_lands() {
+    let _ = ph2d_panel_model3d::drain_intents();
+    let mut scene = VecScene::default();
+    let good = scene.push_path(square(1.0));
+    // Um «contorno» de dois pontos: fechado, e sem área nenhuma para ser perfil.
+    let sliver = VecPath {
+        verts: [[0.0, 0.0], [1.0, 0.0]]
+            .into_iter()
+            .map(VecVertex::corner)
+            .collect(),
+        closed: true,
+        ..VecPath::default()
+    };
+    let bad = scene.push_path(sliver);
+
+    let msg = crate::field3d_profile::from_selection(&scene, &[good, bad], ProfileShape::Extrude);
+    assert!(
+        msg.starts_with("Extruded the shape") && msg.contains("skipped"),
+        "a boa nasce e a recusada é nomeada: {msg}"
+    );
+
+    let mut sim = SimWorld::new();
+    crate::field3d_scene::sync_scene_and_birth(&mut sim, Some(&seed()), &[], 0.0, &scene);
+    let e = the_profile_node(&mut sim);
+    let world = sim.world_mut();
+    assert_eq!(
+        world.entity(e).get::<FieldProfileSource>().map(|s| s.path),
+        Some(good),
+        "a peça que nasceu é a do contorno válido"
+    );
+}

@@ -1222,3 +1222,26 @@ célula cheia** — e um desalinhamento de uma célula por travessia é **exacta
 salta ao atravessar), que hoje não existe — e depois a restrição que a leva a zero na
 quantização. *A régua primeiro: sem ela, qualquer cura é um palpite, e esta linha já pagou
 quatro vezes por isso hoje.*
+
+### §23.10 — ⭐⭐ O experimento que parte a cadeia ao meio: o espiral vem do MAPA
+
+[`fixture_extract`](../../../crates/ph2d-quadextract/examples/fixture_extract.rs) extrai um
+**mapa de referência** (`docs/3D/cleanroom/fixtures/`, verificado a `3,55e-15`) sobre a
+**nossa** malha, e compara-se com a nossa cadeia inteira na mesma peça:
+
+| `sculpt_hooked` | loops | **fechados** | voltas p50 · p90 |
+|---|---|---|---|
+| mapa de **referência** | `32` | **`0`** | `0,1×` · `4,0×` |
+| **nosso** mapa | `35` | **`8`** | `0,8×` · `2,5×` |
+
+⛔ **Ele NÃO isola o mapa como se esperava, e dizer o contrário seria ler o resultado que se
+queria:** a fixtura é um mapa **verificado**, não um **bom layout** — ela existe para provar a
+correcção da extracção e não tem razão nenhuma para ter bons anéis. *(De facto o nosso mapa
+sai melhor nela.)*
+
+⭐ **Mas ela prova uma coisa:** trocar **apenas** o mapa muda a estrutura dos anéis de `0` para
+`8` fechados na mesma peça. ⇒ **a extracção não impõe o espiral; o mapa é que o traz.** A
+morada estreita-se para o **G3/G5**, que era a previsão — agora com prova.
+
+⚠️ **O que continua por fazer é a régua da §23.9** — quantas células a linha salta ao
+atravessar cada costura. *Este experimento diz em que crate ela tem de viver; não a substitui.*

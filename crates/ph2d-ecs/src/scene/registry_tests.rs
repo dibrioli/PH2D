@@ -147,11 +147,10 @@ fn register_ecs_components_populates_registry() {
     // + 3 do CORTE DA SPRITE (SpriteGrid + SpriteRegion + SpriteCornerTint, ADR-0164 F1
     //   passo 6 / ADR-0166, 2026-08-25) — os tres campos que SAIRAM do `Sprite` v4 para
     //   poderem estar AUSENTES, que e' o que os tira do Inspector ate' o artista os pedir.
-    // + 1 MAQUINA DE ESTADOS do Morph (VecMorphMachine, `line/Vector`, 2026-08-26).
-    //   ⚠️ Degrau escrito na INTEGRACAO: aquela linha subiu o numero e nao o registou aqui,
-    //   e um contador sem escada nao e' auditavel — o proximo a mexer nele tem de poder
-    //   somar os degraus e chegar ao total sem confiar no literal.
-    assert_eq!(reg.len(), 74);
+    // + 1 do MESTRE (MasterRoot, ADR-0164 F4.1, 2026-08-25) -- a raiz de uma receita
+    //   da biblioteca. ⚠️ O `MasterPiece` NAO entra: ele e' DERIVADO (`assign_master_pieces`),
+    //   e um valor derivado no arquivo envenena o undo.
+    assert_eq!(reg.len(), 75);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

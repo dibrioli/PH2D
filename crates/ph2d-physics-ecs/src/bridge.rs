@@ -78,15 +78,44 @@ use crate::settings::PhysicsSettings;
 
 use crate::components::{BodyKind, Collider, RigidBody};
 
+/// ⭐ **O FILTRO que torna um mestre INERTE** — a condição (a) da [refutação 1], e a razão de ele
+/// aparecer nas **SEIS** consultas cacheadas desta ponte.
+///
+/// Um mestre é a receita que a biblioteca guarda, e ele vive no **mesmo `World`** que a cena
+/// (ADR-0164). Sem este filtro, uma peça de mestre com `RigidBody` **é simulada**:
+///
+/// - o `readback` carimba o `Transform` dela por TIQUE, e um sync por change-tick leria isso como
+///   *«o mestre mudou»* e propagaria a **pose simulada** a todas as instâncias;
+/// - pausado, o `settle` vê `Transform != pose do corpo` e **teleporta, zerando a velocidade** —
+///   todas as instâncias a saltar para a pose do mestre, a cada quadro parado;
+/// - e o que se desenha passaria a depender de o sync correr antes ou depois do `readback`.
+///
+/// ⚠️ **SEIS, e não «a dos corpos»:** uma peça de mestre que escapasse pela `PartQuery` entraria no
+/// solver como collider de um corpo ancestral; pela `JointQuery`, um joint do mestre prenderia
+/// corpos reais. *Um filtro numa consulta só é um filtro que não existe.*
+///
+/// ⚠️ **E a refutação nomeava CINCO** — ela cita a faixa `bridge.rs:84-127`, e a `WheelQuery` da
+/// roldana nasceu noutro ficheiro depois disso (`bridge/rope.rs`). *Uma lista escrita num doc não é
+/// o censo; o censo é o código.* A omissão era a pior possível: uma roldana é alcançada pelo NOME.
+///
+/// ⚠️ **A marca é DERIVADA** (`ph2d_ecs::assign_master_pieces`) e tem de estar em dia **antes** do
+/// `dispatch` — quem a corre é a shell, no mesmo sítio em que corre os outros assigners.
+///
+/// [refutação 1]: ../../../docs/Components/pesquisa/instancias_2026-08-21/refutacao_1_sync_determinismo.md
+type NotAMaster = bevy_ecs::query::Without<ph2d_ecs::MasterPiece>;
+
 /// The query the bridge iterates each frame. Cached (built once) because
 /// `World::query` allocates a fresh `QueryState` per call — the cached
 /// state is the zero-alloc idiom (HR-3), mirroring `TransformPropagationState`.
-type BodyQuery = QueryState<(
-    Entity,
-    &'static RigidBody,
-    &'static Collider,
-    &'static Transform,
-)>;
+type BodyQuery = QueryState<
+    (
+        Entity,
+        &'static RigidBody,
+        &'static Collider,
+        &'static Transform,
+    ),
+    NotAMaster,
+>;
 
 /// A joint waiting to be handed to the solver: which entity authored it, what
 /// it is, the two body handles, and the two body ENTITIES. The entities travel
@@ -114,17 +143,17 @@ type PendingJoint = (
 /// `BodyQuery` já a pegou.
 type PartQuery = QueryState<
     (Entity, &'static Collider, &'static Transform),
-    bevy_ecs::query::Without<RigidBody>,
+    (bevy_ecs::query::Without<RigidBody>, NotAMaster),
 >;
 
 /// A query das SUPERFÍCIES (`W-Surface`) — quem carrega uma, seja corpo ou
 /// peça. Cacheada pelo mesmo motivo zero-alloc das irmãs.
-type SurfaceQuery = QueryState<(Entity, &'static crate::WalkSurface)>;
-type NoClingQuery = QueryState<(Entity, &'static crate::NoWallCling)>;
+type SurfaceQuery = QueryState<(Entity, &'static crate::WalkSurface), NotAMaster>;
+type NoClingQuery = QueryState<(Entity, &'static crate::NoWallCling), NotAMaster>;
 
 /// The joint query, cached for the same zero-alloc reason as [`BodyQuery`].
 /// The `Transform` is the anchor — see `bridge::joints` for the policy.
-type JointQuery = QueryState<(Entity, &'static PhysicsJoint, &'static Transform)>;
+type JointQuery = QueryState<(Entity, &'static PhysicsJoint, &'static Transform), NotAMaster>;
 
 /// A live rapier body owned by the bridge, keyed by its ECS entity.
 #[derive(Copy, Clone)]

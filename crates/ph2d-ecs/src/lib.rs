@@ -49,6 +49,9 @@ pub mod blend;
 pub mod emissive;
 pub mod flip_object_ref;
 pub mod masking;
+/// ⭐ **O MESTRE de um componente de objeto** (ADR-0164 / F4) — e o que o torna INERTE para a
+/// ponte de física. A refutação 1 mediu o preço de não o excluir: *a receita não cai*.
+pub mod master;
 pub mod name;
 /// **Named Anchors** (ADR-0072) — socket · slice · região 9-slice, num tipo só.
 pub mod named_anchor;
@@ -95,6 +98,7 @@ pub use blend::BlendMode;
 pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
 pub use flip_object_ref::FlipObjectRef;
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
+pub use master::{MasterPiece, MasterRoot, assign_master_pieces, is_master_piece, master_root_of};
 pub use name::{Name, stable_name_id};
 pub use named_anchor::{
     ANCHOR_NAME_MAX_BYTES, ANCHORS_MAX, AnchorData, AnchorKind, AnchorNameError, DICT_MAX_DEPTH,

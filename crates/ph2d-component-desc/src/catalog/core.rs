@@ -126,6 +126,17 @@ pub const DESCS: &[D] = &[
     // ausência está certa: um objeto sem nome não é um objeto com nome vazio. Ele chega com
     // o gesto que cria o objeto e é **base** — a paleta oferecê-lo seria oferecer algo que
     // toda entidade já tem.
+    // ⭐ **A raiz de um MESTRE** (ADR-0164 / F4.1) — a receita que a biblioteca guarda.
+    //
+    // ⚠️ **`Intrinsic`, e não `Authored`:** ela chega pelo GESTO *«criar componente»*, que faz
+    // muito mais do que pôr um marcador (leva a subárvore para a biblioteca e deixa uma instância
+    // no lugar). Oferecê-la na paleta daria ao artista um caminho que põe a marca **sem** o resto —
+    // uma biblioteca com uma receita que ninguém instanciou, e uma subárvore que deixou de cair
+    // sem nada na tela a explicar porquê.
+    //
+    // ⛔ O `MasterPiece` **não tem entrada aqui**, e a ausência é a decisão: ele não é registado
+    // (é derivado), e o censo de dois lados proíbe um descritor que nomeie um tipo fora do registo.
+    D::intrinsic("ph2d::ecs::MasterRoot", "Master", C::Instancing, &[]),
     D::intrinsic("ph2d::ecs::Name", "Name", C::Identity, NAME),
     D::authored(
         "ph2d::ecs::OnScreenEnabler",

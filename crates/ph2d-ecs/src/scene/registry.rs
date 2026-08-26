@@ -336,6 +336,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::SortingGroup>("ph2d::ecs::SortingGroup");
     reg.register_default::<crate::ShowBehindParent>("ph2d::ecs::ShowBehindParent");
     reg.register_default::<crate::TopLevel>("ph2d::ecs::TopLevel");
+    // ⭐ **A raiz de um MESTRE** (ADR-0164 / F4) — autoria, logo viaja no arquivo.
+    // ⚠️ O `MasterPiece` NÃO entra aqui, e a ausência é a decisão: ele é DERIVADO
+    // (`assign_master_pieces`), e um valor derivado no arquivo envenena o undo.
+    reg.register_default::<crate::MasterRoot>("ph2d::ecs::MasterRoot");
     reg.register_default::<crate::ClipChildren>("ph2d::ecs::ClipChildren");
     reg.register_default::<crate::MaskInteraction>("ph2d::ecs::MaskInteraction");
     reg.register_default::<crate::Mask2D>("ph2d::ecs::Mask2D");

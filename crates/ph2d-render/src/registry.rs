@@ -52,8 +52,9 @@ mod tests {
         // +1 `AnchorMount` (o consumidor de uma ancora, ADR-0072 §2.6, 2026-08-22): ECS 66 ⇒ 67.
         // +1 `AnchorVisibility` (quando as ancoras se desenham, 2026-08-23): ECS 67 ⇒ 68.
         // +2 da §11 Animation (`SpriteAnimations` + `SpriteAnimator`): ECS 69 ⇒ aqui 70.
-        // +3 do corte da Sprite (`SpriteGrid`/`SpriteRegion`/`SpriteCornerTint`): ECS 74 ⇒ aqui 75.
-        assert_eq!(reg.len(), 75);
+        // +3 do corte da Sprite (`SpriteGrid`/`SpriteRegion`/`SpriteCornerTint`): ECS 73 ⇒ aqui 74.
+        // + 1 do MESTRE (MasterRoot, ADR-0164 F4.1, 2026-08-25) — ver a nota do `ph2d-ecs`.
+        assert_eq!(reg.len(), 76);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

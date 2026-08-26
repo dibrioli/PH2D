@@ -59,8 +59,9 @@ mod tests {
         // acima pediam depois de este contador ficar 4 atras e depois 2 atras na mesma linha.
         // +1 `AnchorVisibility` (quando as ancoras se desenham, 2026-08-23): ECS 67 ⇒ 68.
         // +2 da §11 Animation (`SpriteAnimations` + `SpriteAnimator`): ECS 69 ⇒ aqui 70.
-        // +3 do corte da Sprite (`SpriteGrid`/`SpriteRegion`/`SpriteCornerTint`): ECS 74 ⇒ aqui 75.
-        assert_eq!(reg.len(), 75);
+        // +3 do corte da Sprite (`SpriteGrid`/`SpriteRegion`/`SpriteCornerTint`): ECS 73 ⇒ aqui 74.
+        // + 1 do MESTRE (MasterRoot, ADR-0164 F4.1, 2026-08-25) — ver a nota do `ph2d-ecs`.
+        assert_eq!(reg.len(), 76);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

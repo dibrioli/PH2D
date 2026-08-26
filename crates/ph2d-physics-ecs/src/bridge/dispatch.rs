@@ -36,20 +36,24 @@ impl PhysicsBridge {
     /// local anchors from where those bodies stand, so it cannot be built before
     /// them (`bridge::joints`).
     pub(super) fn prepare(&mut self, sim: &mut SimWorld) {
+        // ⚠️ **`query_filtered` em todas menos a da roldana** (ADR-0164 / F4): o
+        // `Without<MasterPiece>` que torna um mestre INERTE mora no TIPO das cinco consultas
+        // cacheadas — ver `NotAMaster` no `bridge.rs`. Uma delas construída com `query()` cru
+        // não compila, e é assim que se quer: o filtro não é opcional numa delas.
         if self.query.is_none() {
-            self.query = Some(sim.world_mut().query());
+            self.query = Some(sim.world_mut().query_filtered());
         }
         if self.joint_query.is_none() {
-            self.joint_query = Some(sim.world_mut().query());
+            self.joint_query = Some(sim.world_mut().query_filtered());
         }
         if self.wheel_query.is_none() {
-            self.wheel_query = Some(sim.world_mut().query());
+            self.wheel_query = Some(sim.world_mut().query_filtered());
         }
         if self.no_cling_query.is_none() {
-            self.no_cling_query = Some(sim.world_mut().query());
+            self.no_cling_query = Some(sim.world_mut().query_filtered());
         }
         if self.surface_query.is_none() {
-            self.surface_query = Some(sim.world_mut().query());
+            self.surface_query = Some(sim.world_mut().query_filtered());
         }
         if self.part_query.is_none() {
             // `query_filtered`, não `query`: o `Without<RigidBody>` É a definição

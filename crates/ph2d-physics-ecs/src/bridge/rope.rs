@@ -21,7 +21,16 @@ use ph2d_ecs::{SimWorld, Transform};
 ///
 /// Query própria, separada da dos joints, porque uma roldana é uma ENTIDADE e a
 /// corda a alcança pelo NOME.
-pub(super) type WheelQuery = QueryState<(Entity, &'static crate::PulleyWheel, &'static Transform)>;
+///
+/// ⚠️ **A SEXTA consulta a excluir um mestre, e a refutação 1 só nomeava cinco** (ADR-0164 / F4).
+/// Ela lista `bridge.rs:84-127` — uma FAIXA DE LINHAS —, e a roldana nasceu noutro ficheiro depois
+/// disso. *Uma lista escrita num doc não é o censo; o censo é o código*, e aqui a omissão era a
+/// pior possível: uma roldana é alcançada pelo **NOME**, então uma dentro da biblioteca não só
+/// entraria no sistema vivo como **disputaria a resolução** com a da cena.
+pub(super) type WheelQuery = QueryState<
+    (Entity, &'static crate::PulleyWheel, &'static Transform),
+    bevy_ecs::query::Without<ph2d_ecs::MasterPiece>,
+>;
 
 /// Uma roldana colhida do mundo, com a chave por que ela é ordenada.
 ///
@@ -61,6 +70,17 @@ pub(super) struct RopeWheelRow {
 }
 
 impl PhysicsBridge {
+    /// ⚠️ **Só para gates:** as entidades de roldana que a colheita de facto reclamou.
+    ///
+    /// A vizinha [`super::PhysicsBridge::rope_wheels`] responde *«que rodas esta corda usa»* a
+    /// partir da arena do solver; esta responde *«esta roda foi COLHIDA?»*, que é a pergunta do
+    /// filtro de mestre — e a única cuja resposta não depende de existir uma corda viva.
+    #[must_use]
+    #[doc(hidden)]
+    pub fn harvested_wheels(&self) -> Vec<Entity> {
+        self.rope_wheels.iter().map(|r| r.entity).collect()
+    }
+
     /// **Colher as roldanas do mundo** para a lista que o reconcile consome.
     ///
     /// Um passe próprio, antes do laço dos joints, porque uma roldana é uma

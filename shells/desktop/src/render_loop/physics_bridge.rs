@@ -47,6 +47,17 @@ pub(crate) fn dispatch(
     tape: &mut InputTape,
     drive: &mut crate::preview_drive::PreviewDrive,
 ) {
+    // ⭐ **A marca de MESTRE tem de estar em dia ANTES da ponte** (ADR-0164 / F4.1).
+    //
+    // As SEIS consultas cacheadas da ponte filtram por `Without<MasterPiece>`, e a marca é
+    // **derivada** da hierarquia, não autorada. Um mestre criado — ou uma peça arrastada para
+    // dentro dele — neste quadro só fica inerte depois deste passe; correr a ponte antes dele
+    // simularia a receita por um quadro, e um quadro de gravidade numa biblioteca é autoria
+    // destruída.
+    //
+    // ⚠️ **Aqui, e não num sítio «de arrumação»:** este é o ÚNICO ponto por onde o produto entra na
+    // ponte, e o invariante vale para quem a usa. Idempotente — correr todo o quadro é no-op.
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
     let target = physics_tick(playhead, fixed_dt);
     let players = hand_input_to_players(bridge, sim, input);
     // ⚠️ **Gravar SÓ andando para a frente** (W7). Um scrub para trás pede um

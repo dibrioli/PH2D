@@ -330,3 +330,156 @@ fn measure_chamfer_overshoot() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O GRADIENTE DE UMA ESCULTURA** (W77) — a segunda cerca do passo da marcha que ninguém
+/// tinha medido.
+///
+/// O `ph2d_field_eval::inflation_depth` classifica uma escultura como **um nível inflante** (passo
+/// `1/√2`) e o doc dele diz, à letra, que ela *«continua sem medição própria: o campo dela é
+/// interpolado de uma grelha, e ninguém mediu o gradiente da interpolação»*. ⚠️ **A W75 acabou de
+/// mostrar o que uma cerca por medir custa** — arredondamentos encadeados compunham, e a marcha
+/// atravessava a peça.
+///
+/// # A razão de suspeitar, e ela é aritmética
+///
+/// A interpolação trilinear de uma função `1`-Lipschitz tem cada **componente** do gradiente ≤ `1`
+/// (cada uma é um quociente de diferenças) — mas a **norma** de três componentes ≤ `1` pode chegar
+/// a **`√3 ≈ 1,732`**, que é maior que o `√2` que o passo supõe.
+///
+/// ```text
+/// cargo test -p ph2d-field-mesh --profile ci-test -- --exact \
+///     tests::the_table_of_the_gradient_of_a_sculpture --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_the_gradient_of_a_sculpture() {
+    let bound = f64::from(std::f32::consts::SQRT_2);
+    // ⚠️ **Três formas, e as duas de quina são o ponto**: uma esfera é lisa em todo o lado, e a
+    // interpolação trilinear só pode steepen onde o campo tem **vinco** — a aresta côncava de um
+    // cubo, e a ponta de um octaedro. *Um valor não é uma família* (a lição que a `Difference Exact`
+    // da W56f pagou).
+    println!("forma | res | células por raio | ‖∇f‖ máx | p99,9 | contra √2");
+    for (name, mesh) in [
+        ("esfera", ph2d_mesh::shapes::uv_sphere(64, 128, 0.5)),
+        ("cubo", ph2d_mesh::shapes::cube(0.8)),
+        ("octaedro", ph2d_mesh::shapes::octahedron(0.9)),
+    ] {
+        for res in [32u32, 64, 128] {
+            let f = SampledField::from_mesh(&mesh, res).expect("a forma é um campo");
+            let e = 0.9f32;
+            let steps = 60usize;
+            let eps = f64::from(f.cell()) * 0.25;
+            let mut all: Vec<f64> = Vec::with_capacity(steps * steps * steps);
+            for i in 0..steps {
+                for j in 0..steps {
+                    for k in 0..steps {
+                        let p = |t: usize| -e + 2.0 * e * (t as f32 + 0.5) / steps as f32;
+                        let (x, y, z) = (p(i), p(j), p(k));
+                        let d =
+                            |a: [f32; 3], b: [f32; 3]| f64::from(f.at(a) - f.at(b)) / (2.0 * eps);
+                        let h = eps as f32;
+                        let g = [
+                            d([x + h, y, z], [x - h, y, z]),
+                            d([x, y + h, z], [x, y - h, z]),
+                            d([x, y, z + h], [x, y, z - h]),
+                        ];
+                        let n = (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]).sqrt();
+                        if n.is_finite() {
+                            all.push(n);
+                        }
+                    }
+                }
+            }
+            all.sort_by(f64::total_cmp);
+            let max = all.last().copied().unwrap_or(0.0);
+            let p999 = all[all.len() * 999 / 1000];
+            println!(
+                "{name:>8} | {res:3} | {:16.1} | {max:8.4} | {p999:5.4} | {:.2}x {}",
+                0.5 / f64::from(f.cell()),
+                max / bound,
+                if max > bound * 1.02 { "⛔ FURA" } else { "ok" }
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O campo de uma escultura não sobe mais depressa do que o passo da marcha supõe** (W77).
+///
+/// O `ph2d_field_eval::inflation_depth` conta uma escultura como **um nível** (passo `1/√2`), e o doc
+/// dele dizia que ninguém tinha medido o gradiente da interpolação. ⛔ **Isso era falso, e o irmão
+/// deste gate provava-o:** [`the_sampled_field_marches_like_a_distance`] media `‖∇f‖` desde sempre —
+/// **numa esfera, numa banda de três células fora da casca**, contra um alvo com folga de `0,2`.
+///
+/// ⚠️ **O que este acrescenta são as três coisas que faltavam**: formas com **vinco** (é onde a
+/// interpolação trilinear pode subir mais depressa que a distância — e é onde o pior número está), a
+/// **caixa inteira** em vez de uma banda, e a barra que de facto importa (o `√2` da marcha, e não um
+/// alvo com tolerância). *Um gate estreito não é uma cerca: é uma amostra dela.*
+///
+/// # A tabela que fecha a pergunta (`the_table_of_the_gradient_of_a_sculpture`)
+///
+/// | forma | `‖∇f‖` máx | contra `√2` |
+/// |---|---:|---:|
+/// | esfera | `1,0016` | `0,71×` |
+/// | **cubo** | **`1,0852`** | `0,77×` |
+/// | octaedro | `0,9029` | `0,64×` |
+///
+/// ⭐ **O cubo é o pior, e tinha de ser**: a interpolação trilinear só pode subir mais depressa que a
+/// distância onde o campo tem **vinco**, e uma esfera não tem nenhum.
+///
+/// # ⚠️ O que este gate NÃO é
+///
+/// Ele é um **corpus**, não uma prova. O limite *demonstrável* de uma interpolação trilinear é
+/// `√3 ≈ 1,732` (cada componente do gradiente é um quociente de diferenças ≤ `1`, e três delas
+/// somam em quadratura) — **acima** do `√2` que o passo supõe. As medições ficam em `1,09` porque
+/// saturar as três componentes ao mesmo tempo exigiria que a superfície fosse perpendicular aos três
+/// eixos **no mesmo ponto**, e uma distância com sinal não faz isso. *A folga é de 30 %, e a
+/// diferença entre a barra medida e a demonstrável fica escrita em vez de esquecida.*
+///
+/// ⇒ o que este gate defende é o **voxelizador**: se um dia ele deixar de produzir um campo quase
+/// distância (uma banda estreita com plateau, um chanfro mais agressivo), isto fica vermelho **antes**
+/// de a peça furar.
+#[test]
+fn a_sculptures_field_never_out_climbs_the_march_step() {
+    let bound = f64::from(std::f32::consts::SQRT_2);
+    for (name, mesh) in [
+        ("esfera", ph2d_mesh::shapes::uv_sphere(32, 64, 0.5)),
+        ("cubo", ph2d_mesh::shapes::cube(0.8)),
+        ("octaedro", ph2d_mesh::shapes::octahedron(0.9)),
+    ] {
+        let f = SampledField::from_mesh(&mesh, 64).expect("a forma é um campo");
+        let eps = f64::from(f.cell()) * 0.25;
+        let h = eps as f32;
+        let (e, steps) = (0.9f32, 24usize);
+        let mut worst = 0.0f64;
+        for i in 0..steps {
+            for j in 0..steps {
+                for k in 0..steps {
+                    let p = |t: usize| -e + 2.0 * e * (t as f32 + 0.5) / steps as f32;
+                    let (x, y, z) = (p(i), p(j), p(k));
+                    let d = |a: [f32; 3], b: [f32; 3]| f64::from(f.at(a) - f.at(b)) / (2.0 * eps);
+                    let g = [
+                        d([x + h, y, z], [x - h, y, z]),
+                        d([x, y + h, z], [x, y - h, z]),
+                        d([x, y, z + h], [x, y, z - h]),
+                    ];
+                    let n = (g[0] * g[0] + g[1] * g[1] + g[2] * g[2]).sqrt();
+                    if n.is_finite() {
+                        worst = worst.max(n);
+                    }
+                }
+            }
+        }
+        assert!(
+            worst <= bound,
+            "{name}: ‖∇f‖ chega a {worst:.4}, e o passo da marcha de uma escultura (1/√2) supõe no \
+             máximo √2 = {bound:.4} — acima disso o raio anda mais do que a distância até à \
+             superfície e atravessa-a"
+        );
+        // ⛔ **E o balde tem de estar cheio**: um campo que devolvesse a mesma constante em todo o
+        // lado passaria na desigualdade acima sem medir coisa nenhuma.
+        assert!(
+            worst > 0.5,
+            "{name}: ‖∇f‖ máximo de {worst:.4} — este campo não tem superfície nenhuma na varredura"
+        );
+    }
+}

@@ -5755,10 +5755,15 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ Religar uma escultura que mudou de sítio | ⭐ `Relink Sculpture…`, com a chave nova escrita no nó | §77 |
 | ⏸️ O `Mirror` não se consegue demonstrar | adiado pelo Enio | §19 |
 | ✅ A composição de dois `Exact` encadeados | ⛔ **medida: eles COMPÕEM** — a cerca estava errada e a marcha furava | §76 |
-| ⏸️ O gradiente de uma **escultura** (campo interpolado de grelha) | conta um nível, sem medição própria | §76.3 |
+| ✅ O gradiente de uma **escultura** | medido: máx `1,0852` (cubo), `30 %` de folga para o `√2` | §78 |
+| ⏸️ A barra **demonstrável** da interpolação trilinear é `√3`, e ship-se o `√2` medido | dívida nomeada | §78.3 |
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐ **W77 (§78): a segunda cerca do passo — e a nota mentia sobre si mesma.** Ela dizia «ninguém
+  mediu» e havia um gate a medir: **numa esfera, numa banda**. A generalização (formas com **vinco**,
+  a caixa inteira, a barra da marcha) dá `1,0852` no pior caso — `30 %` de folga para o `√2`.
+  ⚠️ E a barra **demonstrável** é `√3`: a dívida fica escrita.
 - ⭐ **W76 (§77): a escultura que perdeu o arquivo pode ser RELIGADA** — o aviso da W23 era um beco
   (a única cura era pôr o arquivo de volta no caminho exacto). O verbo aparece **só a quem perdeu**,
   a chave **nova** é escrita no nó (senão a peça abre hoje e falha amanhã), e a **pose fica**.
@@ -6722,3 +6727,50 @@ que dependem de **quem está escolhido** — *que verbos este objecto oferece?* 
 ⚠️ **E o armazenamento dos selos ganhou uma PORTA de escrita** (`publish_badges`): o produtor ficou
 no irmão e o estado mudou de casa, e um `thread_local` visível de fora seria a fronteira a não dizer
 nada. *Quem escreve chama uma função; o estado não sai de casa.*
+
+## §78 — W77: a segunda cerca do passo — e a nota dizia «ninguém mediu» com um gate a medir (26/08)
+
+Depois da W75, o `inflation_depth` tinha uma segunda afirmação por confirmar: *«uma escultura conta
+como um nível e continua sem medição própria — o campo dela é interpolado de uma grelha, e ninguém
+mediu o gradiente da interpolação»*.
+
+### §78.1 — ⛔ A nota estava errada sobre si mesma
+
+**Um gate media desde sempre:** `the_sampled_field_marches_like_a_distance` mede `‖∇f‖` de um campo
+amostrado — **numa esfera, numa banda de três células fora da casca**, contra um alvo com folga de
+`0,2`. ⚠️ *Uma nota que diz «não medido» quando existe um gate estreito é pior que nenhuma: ela manda
+medir de novo e esconde o que já se sabe.* **É a quinta nota deste módulo a envelhecer contra o
+código** (as outras quatro estão auditadas no §13.0).
+
+### §78.2 — O que faltava era a GENERALIZAÇÃO
+
+| forma | `res` | `‖∇f‖` máx | contra `√2` |
+|---|---:|---:|---:|
+| esfera | 128 | `1,0000` | `0,71×` |
+| **cubo** | 128 | **`1,0852`** | `0,77×` |
+| octaedro | 128 | `0,8778` | `0,62×` |
+
+⭐ **O cubo é o pior, e tinha de ser:** a interpolação trilinear só pode subir mais depressa que a
+distância onde o campo tem **vinco**, e uma esfera não tem nenhum. O gate irmão media exactamente a
+forma que não podia falhar.
+
+⇒ o gate novo (`a_sculptures_field_never_out_climbs_the_march_step`) acrescenta as três coisas que
+faltavam: **formas com vinco**, a **caixa inteira** em vez de uma banda, e a barra que de facto
+importa — o `√2` da marcha, e não um alvo com tolerância.
+
+### §78.3 — ⚠️ E a barra DEMONSTRÁVEL é `√3`, não `√2`
+
+Cada componente do gradiente de uma interpolação trilinear é um quociente de diferenças ≤ `1`, e três
+delas somam em quadratura ⇒ **`√3 ≈ 1,732`**, que está **acima** do `√2` que o nível concede. As
+medições ficam em `1,09` porque saturar as três ao mesmo tempo exigiria a superfície perpendicular
+aos três eixos **no mesmo ponto**, e uma distância com sinal não faz isso.
+
+⚠️ **A folga medida é de `30 %` e a diferença para a barra demonstrável fica ESCRITA** — é o
+contrário da W75, onde a barra provável era mais apertada que o corpus e por isso ship. *Quando a
+prova é mais frouxa que a medição, o que se ship é a medição, e a distância entre as duas é uma
+dívida nomeada, não um esquecimento.*
+
+**Prova de mutação:** um campo `2×` mais inclinado **longe** da superfície (que o oráculo de perto
+não vê) fica vermelho aqui — e ⚠️ **a primeira mutação que tentei foi apanhada por outros dois
+gates**, o que teria feito este parecer útil sem o ser. *Um gate só se prova com a mutação que só
+ele mata.*

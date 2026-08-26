@@ -510,9 +510,22 @@ pub fn safe_march_step(doc: &FieldDoc) -> f32 {
 /// tem de ser: *um teto de segurança prova-se, não se ajusta a um corpus*. Apertá-lo até à medição
 /// seria transformar «as peças que eu testei» em «as peças que existem».
 ///
-/// ⚠️ **Uma escultura conta como um nível** e continua sem medição própria: o campo dela é
-/// interpolado de uma grelha, e ninguém mediu o gradiente da interpolação. Ela era classificada como
-/// inflante antes desta wave e continua a sê-lo.
+/// ⚠️ **Uma escultura conta como um nível, e isso agora está MEDIDO** (W77): o campo dela é
+/// interpolado de uma grelha, e o pior `‖∇f‖` sobre a caixa inteira é **`1,0852`** (um cubo — a
+/// forma com vinco; uma esfera dá `1,0016` e um octaedro `0,9029`). O `√2` que este nível concede
+/// tem portanto **30 % de folga**. Gate: `ph2d_field_mesh::tests::a_sculptures_field_never_out_climbs_the_march_step`.
+///
+/// ⛔ **E a nota que aqui estava — «ninguém mediu» — era falsa:** um gate irmão
+/// (`the_sampled_field_marches_like_a_distance`) media desde sempre, **numa esfera e numa banda de
+/// três células**. *Uma nota que diz «não medido» quando existe um gate estreito é pior que
+/// nenhuma: ela manda medir de novo e esconde o que já se sabe.* O que faltava era a
+/// **generalização** — formas com vinco, e a caixa inteira.
+///
+/// ⚠️ **O limite DEMONSTRÁVEL de uma interpolação trilinear é `√3 ≈ 1,732`**, acima do `√2` que este
+/// nível concede: cada componente do gradiente é um quociente de diferenças ≤ `1`, e três somam em
+/// quadratura. As medições ficam em `1,09` porque saturar as três ao mesmo tempo exigiria a
+/// superfície perpendicular aos três eixos **no mesmo ponto**, e uma distância com sinal não faz
+/// isso. *A diferença entre a barra medida e a demonstrável fica escrita em vez de esquecida.*
 #[must_use]
 pub fn inflation_depth(doc: &FieldDoc) -> u32 {
     // A arena tem os filhos ANTES dos pais, então uma passagem para a frente basta.

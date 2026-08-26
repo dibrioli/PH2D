@@ -5745,7 +5745,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 |---|---|---|
 | ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
 | ⛔ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | **tecto MEDIDO de `20 %`** — a montagem deixou de ser a maioria | §72.1 |
-| ⏳ **A MARCHA** — os outros `80 %` do quadro | o alvo que a medição escolheu | §72.1 |
+| ⏳ **A MARCHA** — os outros `80 %` do quadro; `8,7` amostras/pixel, custo **por aresta tocada** | ⛔ sobre-relaxação está fora (a contagem de passos já é mínima) | §73 |
+| ⏸️ Baixar as arestas do contorno a mexer (`PREVIEW_MAX_EDGES`) | preço medido na tabela; muda a FORMA, decisão de quem vê | §73.1 |
 | ⛔ Reaproveitar o avaliador na **2.ª passagem** (anti-serrilhado) | construído 2×, medido `0,97×`–`1,01×`, **revertido** | §71.4 |
 | ⏸️ Ladrilhar em `(u, v)` contra o **paralelogramo** em vez da AABB | o único eixo que não multiplica a montagem | §58 |
 | ⏸️ Um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) | pede decisão do Enio | §64 |
@@ -5755,6 +5756,10 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐ **W72 (§73): o quadro de movimento também não paga o anti-serrilhado** — `35,7 → 26,7 ms`
+  (`1,34×`), e o corte muda a **borda de um pixel** em vez da forma. ⭐ E a marcha foi medida antes:
+  `8,7` amostras por pixel ⇒ **a sobre-relaxação não tem de onde tirar**; o custo é *por aresta
+  tocada*.
 - ⭐ **W71 (§72): a montagem é `20 %` do quadro — medida, não dividida** (o produto passou a contar
   o tempo dela). ⛔ Isso **fecha** as duas direcções que a W70 tinha nomeado e manda o alvo para a
   **marcha**. ⭐ E o `SLABS` foi de `2` para **`4`**: ele fora escolhido quando montar custava o
@@ -6414,3 +6419,58 @@ exactamente o que a fórmula da região prevê — ela mede `lado + profundidade
 máquina estava a `load 16` por causa da própria varredura, e ⭐ **a fixtura dele é uma esfera — que
 não tem perfil, logo nem sequer entra no caminho especializado que esta wave tocou**. *Antes de
 olhar para o commit, corra-o sozinho.*
+
+## §73 — W72: o quadro de movimento também não paga o anti-serrilhado (26/08)
+
+A §72.1 mandou o alvo para a **marcha** (`80 %` do quadro). Antes de a atacar, a forma dela:
+
+| | medido |
+|---|---|
+| amostras de campo por pixel | **`8,7`** |
+| custo por amostra, 168 arestas | `147,5 ns` |
+| custo por amostra, 672 arestas | `558,0 ns` |
+
+⭐⭐ **A marcha já está apertada** — `8,7` passos por pixel não deixam nada para a *sobre-relaxação*
+da **Enhanced Sphere Tracing** ir buscar (ela ataca a **contagem de passos**, e a contagem já é
+quase o mínimo de uma esfera-marcha com normal). ⇒ **o custo é por ARESTA TOCADA**: quadruplicar o
+contorno multiplica a amostra por `3,8×`. E isso confirma, por outro caminho, o que a W56 já tinha
+medido — `0,95 ns` por ponto por aresta, oito faixas de SIMD com JIT, *quase óptima por aresta; o
+que se ganha é tocar menos arestas*.
+
+### §73.1 — Os dois botões, medidos lado a lado
+
+`measure_the_two_knobs_of_the_moving_frame`, `640×360`, mediana de 3 rondas × 5, `load < 5`:
+
+| arestas | 48 | 64 | 96 | 128 | 168 |
+|---|---:|---:|---:|---:|---:|
+| **com** anti-serrilhado | `14,6` | `17,5` | `22,3` | `28,8` | `35,7` |
+| **sem** | `10,9` | `12,5` | `17,1` | `20,6` | `26,7` |
+| o que ele custa | `1,33×` | `1,40×` | `1,30×` | `1,40×` | `1,34×` |
+
+⭐ O quadro é **linear nas arestas** e o anti-serrilhado é um factor **constante** — dois botões
+independentes, e a tabela dá o preço de cada um.
+
+### §73.2 — ⭐ Liga-se o segundo, e não o primeiro
+
+**O anti-serrilhado sai enquanto a mão mexe** (`field3d_preview::wants_antialias`) — `35,7 → 26,7 ms`
+no caso do preview, **`1,34×`**, sem uma linha de geometria mudar.
+
+⚠️ **Ele é o melhor dos dois para se cortar a mexer, e a razão é o que cada um estraga:** tirar
+arestas muda a **FORMA** (uma curva fica facetada), tirar o anti-serrilhado muda a **borda de um
+pixel** — numa imagem que está a mover-se e que volta inteira mal a mão pare. ⏸️ O botão das arestas
+fica com o preço na tabela acima, para quem vir a peça a mexer decidir.
+
+⚠️ **A pergunta é o TAMANHO, não «a mão está a mexer»** — o laço já responde a isso: um traçado do
+tamanho **cheio** *é* o refinamento que corre depois de a cena assentar. Uma segunda fonte para o
+mesmo facto divergiria no caso da peça barata, cujo preview já pede o cheio **enquanto** a mão mexe
+— e ali a resposta certa é *«ligado»*, que é o que a pergunta pelo tamanho dá de graça.
+
+⚠️ **A costura não é alcançável de um teste** (ela vive dentro do `spawn` do traçador, que precisa de
+uma janela): o que a defende é o **compilador** — o `antialias` entrou na assinatura da
+`trace_cancellable`, então nenhum chamador pode deixar de responder à pergunta. A lei em si tem gate
+(`the_moving_frame_does_not_pay_for_the_antialias`) e **duas** provas de mutação (nunca ligado ·
+sempre ligado).
+
+⛔ **E o que isto NÃO é:** a segunda passagem continua a correr no quadro assente, que é o que fica
+na tela. *Cortar nos dois seria trocar a razão de existir do módulo — a quina afiada — por
+milissegundos.*

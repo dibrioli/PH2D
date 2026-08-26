@@ -5,6 +5,18 @@
 
 use crate::{MAX_STEPS, Orbit, Sharpness, T_MAX, slab};
 
+/// ⭐⭐⭐ **Quantas AMOSTRAS de campo a marcha pediu** (W71) — o denominador de *«quantos passos
+/// custa um raio»*.
+///
+/// ⚠️ **Ele existe porque a marcha passou a ser `80 %` do quadro** (§72.1) e ninguém sabia a forma
+/// desse custo: um raio que dá 8 passos e um que dá 40 pedem curas opostas — o primeiro é caro
+/// **por amostra** (a fita), o segundo é caro **em passos** (a lei da marcha).
+///
+/// ⚠️ Ela conta **amostras de esfera-marcha**, não as da normal (essas são seis por acerto e saem
+/// noutro sítio).
+#[doc(hidden)]
+pub static STEP_SAMPLES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// **Tudo o que uma marcha precisa de saber, e que não muda entre lotes.**
 ///
 /// Os quatro viajam sempre juntos — a árvore compilada, a câmera, a base dela e as tolerâncias do
@@ -172,6 +184,7 @@ pub(crate) fn march_slabs(
                 ys.push(oy[i] + dir[i][1] * t[i]);
                 zs.push(oz[i] + dir[i][2] * t[i]);
             }
+            STEP_SAMPLES.fetch_add(cur.len() as u64, std::sync::atomic::Ordering::Relaxed);
             let Ok(out) = eval.eval(&xs, &ys, &zs) else {
                 break;
             };

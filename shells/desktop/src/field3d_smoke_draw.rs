@@ -139,6 +139,10 @@ pub(crate) fn draw(
             // Ver [`crate::field3d_preview::coarse_doc`].
             let doc = crate::field3d_preview::coarse_doc(&doc, (tw, th), full_size)
                 .unwrap_or_else(|| doc.clone());
+            // ⭐⭐⭐ **E não paga o anti-serrilhado enquanto mexe** (W71) — `1,30×`–`1,40×` do
+            // quadro, e é o corte que muda a BORDA em vez da FORMA. Ver
+            // [`crate::field3d_preview::wants_antialias`].
+            let antialias = crate::field3d_preview::wants_antialias((tw, th), full_size);
             let (tx, rx) = channel::<Ready>();
             let cam = smoke.cam;
             let matcap = Arc::clone(&smoke.matcap);
@@ -150,8 +154,9 @@ pub(crate) fn draw(
             std::thread::spawn(move || {
                 let t0 = std::time::Instant::now();
                 // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.
-                let Some(g) = ph2d_field_render::trace_cancellable(&doc, &reg, &cam, tw, th, &flag)
-                else {
+                let Some(g) = ph2d_field_render::trace_cancellable(
+                    &doc, &reg, &cam, tw, th, &flag, antialias,
+                ) else {
                     return;
                 };
                 let rgba = shade(

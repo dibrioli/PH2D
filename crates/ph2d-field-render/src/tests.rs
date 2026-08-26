@@ -983,7 +983,7 @@ fn an_abandoned_march_returns_nothing_and_returns_fast() {
 
     let cancel = AtomicBool::new(true);
     let t1 = std::time::Instant::now();
-    let out = trace_cancellable(&doc, &Registry::new(), &cam, w, h, &cancel);
+    let out = trace_cancellable(&doc, &Registry::new(), &cam, w, h, &cancel, true);
     let cut_ms = t1.elapsed().as_secs_f64() * 1000.0;
 
     assert!(out.is_none(), "uma marcha abandonada não devolve imagem");
@@ -994,8 +994,16 @@ fn an_abandoned_march_returns_nothing_and_returns_fast() {
     );
 
     // ⚠️ E o CONTROLE: sem a bandeira, a mesma função devolve a mesma imagem de sempre.
-    let ok = trace_cancellable(&doc, &Registry::new(), &cam, w, h, &AtomicBool::new(false))
-        .expect("sem cancelamento, ela traça");
+    let ok = trace_cancellable(
+        &doc,
+        &Registry::new(),
+        &cam,
+        w,
+        h,
+        &AtomicBool::new(false),
+        true,
+    )
+    .expect("sem cancelamento, ela traça");
     assert_eq!(
         ok.hits(),
         whole.hits(),
@@ -3245,5 +3253,137 @@ fn measure_where_the_frame_goes_and_how_many_slabs_it_wants() {
                 cols[0], cols[1], cols[2], cols[3]
             );
         }
+    }
+}
+
+/// ⭐⭐⭐ **QUE FORMA TEM A MARCHA** (W71) — a sonda que escolhe a wave seguinte.
+///
+/// A §72.1 mediu que a marcha é `80 %` do quadro. **Um raio que dá 8 passos e um que dá 40 pedem
+/// curas opostas:** o primeiro é caro *por amostra* (a fita avalia devagar) e o segundo é caro *em
+/// passos* (a lei da marcha aproxima-se devagar da superfície — e aí a saída publicada é a
+/// **sobre-relaxação** da *Enhanced Sphere Tracing*).
+///
+/// ⚠️ Ela imprime também **quanto custa uma amostra**, que é a divisão que separa as duas leituras.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_the_shape_of_the_march --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_shape_of_the_march() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    println!("arestas | quadro | montagem | amostras | por pixel | ns/amostra | pixels de peça");
+    for n in [168usize, 672] {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+        let doc = FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão");
+        let (w, h) = (640u32, 360u32);
+        let _ = crate::trace_with(&doc, &reg, &cam, w, h, false, true);
+        crate::SPECIALISE_NS.store(0, Ordering::Relaxed);
+        crate::STEP_SAMPLES.store(0, Ordering::Relaxed);
+        let t = std::time::Instant::now();
+        let g = crate::trace_with(&doc, &reg, &cam, w, h, false, true);
+        let ms = t.elapsed().as_secs_f64() * 1000.0;
+        let asm = crate::SPECIALISE_NS.load(Ordering::Relaxed) as f64 / 1.0e6;
+        let samples = crate::STEP_SAMPLES.load(Ordering::Relaxed) as f64;
+        let pixels = f64::from(w) * f64::from(h);
+        println!(
+            "{n:7} | {ms:6.1} | {asm:8.1} | {samples:8.0} | {:9.1} | {:10.1} | {:14}",
+            samples / pixels,
+            (ms - asm) * 1.0e6 / samples,
+            g.hits()
+        );
+    }
+}
+
+/// ⭐⭐⭐ **OS DOIS BOTÕES DO QUADRO DE MOVIMENTO** (W71) — e os dois são a mesma lei que a W69 já
+/// ship: *grosso a mexer, nítido ao assentar*.
+///
+/// A §72.1 mediu que a marcha é `80 %` do quadro, e a `measure_the_shape_of_the_march` mediu a
+/// forma dela: **`8,7` amostras por pixel** (a marcha já está apertada — sobre-relaxação não tem de
+/// onde tirar) e **`147,5 ns` por amostra a 168 arestas contra `558,0` a 672**. ⇒ *o custo é por
+/// ARESTA TOCADA*, e os dois botões que existem são:
+///
+/// 1. **quantas arestas o contorno tem enquanto a mão mexe** (`PREVIEW_MAX_EDGES`, W69);
+/// 2. **o anti-serrilhado**, que re-marcha a silhueta quatro vezes.
+///
+/// ⚠️ **Nenhum dos dois é gratuito, e é por isso que a tabela traz as duas colunas** — quem decide
+/// o que se perde ao mexer é quem vê, não esta sonda.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_the_two_knobs_of_the_moving_frame --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_two_knobs_of_the_moving_frame() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let piece = |n: usize| -> FieldDoc {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+        FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão")
+    };
+    println!("arestas | com anti-serrilhado | sem | o que o AA custa");
+    for n in [48usize, 64, 96, 128, 168] {
+        let doc = piece(n);
+        let mut on = Vec::new();
+        let mut off = Vec::new();
+        for _ in 0..3 {
+            for (aa, out) in [(true, &mut on), (false, &mut off)] {
+                let _ = crate::trace_with(&doc, &reg, &cam, 640, 360, true, aa);
+                let runs: Vec<f64> = (0..5)
+                    .map(|_| {
+                        let t = std::time::Instant::now();
+                        let _ = crate::trace_with(&doc, &reg, &cam, 640, 360, true, aa);
+                        t.elapsed().as_secs_f64() * 1000.0
+                    })
+                    .collect();
+                out.push(med(runs));
+            }
+        }
+        let (a, b) = (med(on), med(off));
+        println!("{n:7} | {a:19.1} | {b:5.1} | {:16.2}x", a / b);
     }
 }

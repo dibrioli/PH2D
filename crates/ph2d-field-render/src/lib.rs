@@ -94,6 +94,7 @@ use march::{Scene, march};
 use tiles::{SLABS, TILE, tiled_trace};
 
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Screen};
+pub use march::STEP_SAMPLES;
 #[doc(hidden)]
 pub use shade::Matcap;
 pub use shade::shade;
@@ -185,6 +186,20 @@ pub fn trace(
 /// ⚠️ **Quem cancela decide, e a decisão não é daqui**: esta função não sabe o que vale a pena
 /// abandonar. Ver `field3d_preview::cancels_the_inflight` — cancelar tudo faria a imagem **nunca
 /// chegar** durante um arrasto contínuo.
+///
+/// ⭐⭐⭐ **`antialias` é o segundo botão do quadro de MOVIMENTO** (W71) — a mesma lei que a W69 já
+/// ship: *grosso a mexer, nítido ao assentar*. A segunda passagem re-marcha a silhueta **quatro
+/// vezes**, e isso custa **`1,30×`–`1,40×` do quadro**, medido a `640×360` em cinco densidades de
+/// contorno (`measure_the_two_knobs_of_the_moving_frame`):
+///
+/// | arestas | 48 | 64 | 96 | 128 | 168 |
+/// |---|---:|---:|---:|---:|---:|
+/// | com | `14,6` | `17,5` | `22,3` | `28,8` | `35,7` |
+/// | sem | `10,9` | `12,5` | `17,1` | `20,6` | `26,7` |
+///
+/// ⚠️ **Quem escolhe é o chamador, e ele já sabe a resposta**: o mesmo sítio que decide engrossar o
+/// contorno sabe se a mão está a mexer. *Uma bandeira nova aqui não acrescenta uma decisão — ela
+/// alcança a que já existe.*
 #[must_use]
 pub fn trace_cancellable(
     doc: &FieldDoc,
@@ -193,8 +208,9 @@ pub fn trace_cancellable(
     width: u32,
     height: u32,
     cancel: &std::sync::atomic::AtomicBool,
+    antialias: bool,
 ) -> Option<Gbuffer> {
-    let g = trace_inner(doc, reg, cam, width, height, true, true, Some(cancel));
+    let g = trace_inner(doc, reg, cam, width, height, true, antialias, Some(cancel));
     (!cancel.load(std::sync::atomic::Ordering::Relaxed)).then_some(g)
 }
 

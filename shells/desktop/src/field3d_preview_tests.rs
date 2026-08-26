@@ -409,3 +409,25 @@ fn the_contour_only_coarsens_while_the_hand_is_moving() {
         "uma peça sem contorno não tem o que engrossar, e não pode pagar uma cópia por isso"
     );
 }
+
+/// ⭐⭐⭐ **O quadro de MOVIMENTO não paga o anti-serrilhado, e o assente paga** (W71).
+///
+/// ⚠️ **As duas metades são o gate.** Só a primeira e a lei seria *«nunca há anti-serrilhado»* — o
+/// artista veria a peça serrilhada para sempre, que é o oposto do que a segunda passagem existe
+/// para dar. Só a segunda e ela não corta nada.
+#[test]
+fn the_moving_frame_does_not_pay_for_the_antialias() {
+    let full = (1920u32, 1080u32);
+    assert!(
+        wants_antialias(full, full),
+        "o quadro assente é o que FICA na tela — é ele que tem de vir liso"
+    );
+    assert!(
+        !wants_antialias((640, 360), full),
+        "o quadro de movimento não paga a segunda passagem (1,30x-1,40x do quadro)"
+    );
+    // ⚠️ **E a peça barata:** quando o laço já pede o tamanho cheio *enquanto* a mão mexe, a
+    // resposta certa é **ligado** — a pergunta é o tamanho, não o gesto, e é por isso que ela não
+    // tem uma segunda fonte.
+    assert!(wants_antialias((800, 600), (800, 600)));
+}

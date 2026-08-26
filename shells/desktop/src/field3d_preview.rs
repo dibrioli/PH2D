@@ -170,6 +170,34 @@ pub(crate) fn cancels_the_inflight(
         && (asked.0 < full.0 || asked.1 < full.1)
 }
 
+/// ⭐⭐⭐ **O quadro de MOVIMENTO não paga o anti-serrilhado** (W71) — a mesma lei que engrossa o
+/// contorno, aplicada à segunda passagem.
+///
+/// # O número
+///
+/// A segunda passagem re-marcha a silhueta **quatro vezes** e custa **`1,30×`–`1,40×` do quadro**,
+/// medido a `640×360` em cinco densidades de contorno
+/// (`ph2d_field_render::tests::measure_the_two_knobs_of_the_moving_frame`):
+///
+/// | arestas | 48 | 64 | 96 | 128 | 168 |
+/// |---|---:|---:|---:|---:|---:|
+/// | com | `14,6` | `17,5` | `22,3` | `28,8` | `35,7` |
+/// | sem | `10,9` | `12,5` | `17,1` | `20,6` | `26,7` |
+///
+/// ⭐ E ele é o **melhor** dos dois botões para se cortar a mexer: tirar arestas muda a **forma** da
+/// peça (uma curva fica facetada), tirar o anti-serrilhado muda só a **borda de um pixel** — numa
+/// imagem que está a mover-se, e que volta inteira mal a mão pare.
+///
+/// # ⚠️ Porque a pergunta é o TAMANHO e não «a mão está a mexer»
+///
+/// O laço já responde a isso: um traçado do tamanho cheio **é** o refinamento que corre depois de a
+/// cena assentar (ver [`next_trace`]). Perguntar outra coisa seria uma segunda fonte para o mesmo
+/// facto — e as duas divergiriam no caso em que a peça é barata e o preview já pede o tamanho
+/// cheio **enquanto** a mão mexe, onde a resposta certa é justamente *«ligado»*.
+pub(crate) fn wants_antialias(asked: (u32, u32), full: (u32, u32)) -> bool {
+    asked == full
+}
+
 #[cfg(test)]
 #[path = "field3d_preview_tests.rs"]
 mod tests;

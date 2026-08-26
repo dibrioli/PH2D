@@ -1194,3 +1194,31 @@ perfeitos e espiralar*, que é exactamente o que o artista viu quando chamou o r
 ⭐⭐ **E a direcção CONVERGE pela terceira vez** com o §19.4 e o §23.4: campo e substrato
 ilibados por varredura, e agora a holonomia do mapa. *Três perguntas independentes, a mesma
 fase.*
+
+### §23.8 — ⛔⛔⛔ E NÃO é grade grossa: a DENSIDADE foi varrida e o espiral PIORA
+
+A hipótese barata — *«o oráculo tem mais quads, por isso sobram bandas que não topam
+singularidade»* — foi testada na `sphere_uv_96x144`:
+
+| escala | quads | loops | **fechados** | voltas p50 |
+|---|---|---|---|---|
+| `1,0` | `2 152` | `12` | ⛔ **`0`** | `2,8×` |
+| `0,7` | `4 431` | `12` | ⛔ **`0`** | ⛔ **`4,2×`** |
+
+⭐⭐⭐ **Com `4 431` quads — mais que os `3 352` do oráculo — continuam a ser exactamente os
+mesmos `12` loops, zero fechados, e o espiral fica PIOR.** ⇒ *a estrutura é que está errada; a
+densidade só a amplia.*
+
+### §23.9 — A família a que este defeito pertence já tem nome nesta linha
+
+O `CLAUDE.md` §5 regista, de 24/08: ⭐⭐ *«Duas grandezas estavam a ser lidas como uma: o G5
+torna a costura **INTEIRA** (`shift_frac_max = 0`, e há gate) e **não** a torna **FECHADA**»*.
+
+⇒ **Uma costura pode ser perfeitamente inteira e ainda assim desalinhar as linhas por uma
+célula cheia** — e um desalinhamento de uma célula por travessia é **exactamente** um espiral.
+⚠️ *Um teste de integralidade é cego a isso por construção:* `1,0` é tão inteiro como `0,0`.
+
+⇒ A obra é uma **régua de ALINHAMENTO da grade através da costura** (quantas células a linha
+salta ao atravessar), que hoje não existe — e depois a restrição que a leva a zero na
+quantização. *A régua primeiro: sem ela, qualquer cura é um palpite, e esta linha já pagou
+quatro vezes por isso hoje.*

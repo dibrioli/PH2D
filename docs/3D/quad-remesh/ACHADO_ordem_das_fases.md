@@ -885,3 +885,60 @@ campo nem a densidade do substrato recuperam o relevo (CLAUDE.md — *duas boas 
 falhar refutam a FAMÍLIA, não as duas*). O suspeito que sobra é a **quantização/layout**, que
 é quem decide onde as linhas de grade de facto caem — e é a única fase entre um campo
 comprovadamente alinhado e uma saída que não segue o relevo.
+
+## §20 — ⭐⭐⭐ O RESGATE PELA FACE GÉMEA: o comentário nomeava a avaria e ninguém a curava
+
+O ramo «sem parceira» da travessia tinha, desde 2026-08-25, um comentário que **nomeia
+exactamente** a avaria:
+
+> *"um nó de aresta nasce **uma vez por aresta**, no lado canónico, e fica registado com a
+> FACE desse lado. Um traço que chegue ao mesmo ponto pela face **do outro lado** procura
+> `(face, ponto, direcção)` com a *sua* face — e não acha nada. **O nó existe; a chave é que
+> é de outra pessoa.**"*
+
+⇒ A cura é perguntar **à outra pessoa**: transportar o ponto pela transição daquele lado
+(`topo.xf[face][k]`) e procurar a chave na face gémea (`topo.twin[face][k]`), com a **mesma**
+troca de direcção que o laço faz quando o sinal da área inverte.
+
+### §20.1 — O resultado
+
+| peça | antes | **depois** |
+|---|---|---|
+| `sculpt_t001` — bordo · `χ` | `4` · `1` | ⭐⭐ **`0` · `2`** (casca FECHADA) |
+| órfãs | `2` | `1` |
+| as outras **13** peças | — | ⭐ **byte-idênticas** |
+
+⭐⭐⭐ **Uma única invocação fecha a peça.** O resgate corre em **1 das 14** peças, uma vez.
+
+### §20.2 — ⛔ O que ele NÃO cura, medido
+
+Na `sculpt_t003` as **4** órfãs também estão sobre uma aresta e o resgate salva **`0`**.
+A coluna irmã explica: só **`1`** delas tem *nó lá*. ⇒ há **duas** avarias com o mesmo
+sintoma, e esta cura só serve a primeira:
+
+| avaria | sintoma | cura |
+|---|---|---|
+| o nó existe, a chave é da face gémea | `on_edge` **e** `node_exists` | ⭐ **esta** |
+| ⛔ não há nó nenhum naquele ponto | `on_edge` e **não** `node_exists` | por construir |
+
+### §20.3 — ⛔⛔ E o contador MENTIU antes de eu o ler direito
+
+A primeira leitura dizia **`RESGATADAS: 0`** enquanto a peça fechava — uma contradição que
+só se resolveu com uma sonda. ⚠️ **O argumento novo tinha entrado uma posição cedo demais na
+lista do `println!`**, e o valor real (`1`) foi impresso na coluna do lado — que dizia
+*«num triângulo de 1»* onde antes dizia *«de 1,112»*.
+
+⭐ **Compilou**, porque o número de argumentos batia e o `Display` dos inteiros **ignora a
+precisão `{:.3}`** em silêncio. *Uma coluna lida no slot errado lê-se ao contrário, e o
+compilador não a vê.*
+
+### §20.4 — Os gates
+
+`on_edge_side` passou a receber **os três cantos** em vez do `Topo` inteiro, para ser
+gateável. Quatro gates sobre a **convenção do lado** (`k` = a aresta do canto `k` para o
+`k+1`, que é a que indexa `twin` e `xf`), com **duas provas de mutação**: rodar os índices
+mata três deles; fazer o interior contar como lado `0` mata o quarto.
+
+⚠️ **Nenhuma fixtura deste repositório alcança o resgate** — as duas de referência não têm
+órfã nenhuma, e há asserção a pinar essa **inércia**. *O caso real vive fora da árvore, e
+dizê-lo é mais barato que descobri-lo depois.*

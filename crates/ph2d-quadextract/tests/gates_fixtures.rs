@@ -226,6 +226,21 @@ fn nenhum_traco_foge_nem_fica_orfao() {
         let (_, r) = extract(&m.as_map(), None).unwrap();
         assert_eq!(r.runaway, 0, "{name}: {} tracos fugidos", r.runaway);
         assert_eq!(r.orphan, 0, "{name}: {} saidas orfas", r.orphan);
+        // ⭐⭐⭐ **E O RESGATE PELA FACE GÉMEA NÃO CORRE AQUI — dizê-lo é a metade honesta.**
+        //
+        // ⛔⛔ Ele foi construído em 2026-08-26 e **nenhuma fixtura deste repositório o
+        // alcança**: estas duas não têm órfã nenhuma, e o resgate só existe dentro do ramo
+        // «sem parceira». *Medido, não suposto* — a linha acima é a prova.
+        //
+        // ⚠️ O caso REAL vive fora da árvore (`sculpt_t001` do corpus): lá ele dispara **uma
+        // vez** e leva a peça de `4` arestas de bordo a **`0`**, com `χ` de `1` a **`2`**.
+        // ⇒ Esta asserção pina a **INÉRCIA**: se um dia ela ficar vermelha, ou apareceu uma
+        // órfã nova nestas peças, ou o resgate passou a correr onde não devia.
+        assert_eq!(
+            r.orphan_rescued_across_edge, 0,
+            "{name}: o resgate correu {} vezes numa peca sem orfas",
+            r.orphan_rescued_across_edge
+        );
         assert_eq!(
             r.pending_boundary, 0,
             "{name}: uma peca FECHADA nao pode ter saida a morrer no bordo"

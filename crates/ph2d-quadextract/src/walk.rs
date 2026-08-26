@@ -68,6 +68,12 @@ pub(crate) struct WalkStats {
     /// com a face desse lado. *Quem chega pela outra face procura com a chave dele e não
     /// acha — o nó existe, a chave é que é de outra pessoa.*
     pub orphan_no_partner_on_edge: usize,
+    /// ⭐⭐⭐ **Quantas órfãs o RESGATE salvou** — o nó existia na face gémea.
+    ///
+    /// ⚠️ **Zero aqui não é bom nem mau sozinho:** ele só quer dizer que nenhuma órfã caiu
+    /// numa aresta nesta peça. *A régua é este número contra
+    /// [`WalkStats::orphan_no_partner_on_edge`], que é quantas ficaram por salvar.*
+    pub orphan_rescued_across_edge: usize,
     /// ⭐ **O DIÂMETRO do triângulo em que a órfã morreu**, em células — a régua com que
     /// a linha de baixo se lê.
     ///
@@ -278,6 +284,36 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
                     #[allow(clippy::cast_possible_truncation)]
                     let node_here =
                         (0..4u8).any(|d| ports.by_key.contains_key(&(face as u32, t[0], t[1], d)));
+                    // ⭐⭐⭐ **O RESGATE: a chave é de OUTRA PESSOA, então pergunta-se a ela.**
+                    //
+                    // ⛔⛔ O comentário abaixo nomeia a avaria desde 2026-08-25 e ninguém a
+                    // curou: um nó de aresta nasce **uma vez**, no lado canónico, e fica
+                    // registado com a face desse lado. ⇒ **procura-se a mesma chave na face
+                    // GÉMEA**, transportada pela transição daquele lado.
+                    //
+                    // ⚠️ **A troca de direcção quando o sinal da área inverte é a MESMA do
+                    // laço** — sem ela o resgate procura a cardinal errada numa dobra, que é
+                    // exactamente onde estas órfãs vivem.
+                    //
+                    // Medido 2026-08-26: na `sculpt_t003` as **4** órfãs «sem parceira» são
+                    // **`4` sobre uma aresta**, e na `t001` são `2` de `2`.
+                    if let Some(k) = on_edge_side(topo.uv[face], t)
+                        && let Some((g, _)) = topo.twin[face][k]
+                    {
+                        let x = topo.xf[face][k];
+                        let t2 = x.apply(t);
+                        let mut d2 = x.dir(dir);
+                        let (before, after) = (face_sign(topo, face), face_sign(topo, g as usize));
+                        if before != 0 && after != 0 && before != after {
+                            d2 = opposite(d2);
+                        }
+                        if let Some(&j) = ports.by_key.get(&(g, t2[0], t2[1], opposite(d2)))
+                            && j != id
+                        {
+                            st.orphan_rescued_across_edge += 1;
+                            return Outcome::Linked(j, acc.then(x));
+                        }
+                    }
                     // ⭐⭐⭐ **ESTÁ O ALVO SOBRE UMA ARESTA do triângulo?**
                     //
                     // ⚠️ **A hipótese que isto testa:** um nó de aresta nasce **uma vez
@@ -286,11 +322,14 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
                     // ponto pela face **do outro lado** procura `(face, ponto, direcção)`
                     // com a *sua* face — e não acha nada. *O nó existe; a chave é que é
                     // de outra pessoa.*
-                    let [a, b, c] = topo.uv[face];
-                    let on_edge = crate::exact::orient(a, b, t) == 0
-                        || crate::exact::orient(b, c, t) == 0
-                        || crate::exact::orient(c, a, t) == 0;
-                    Outcome::Orphan(false, face, node_here, on_edge, 0.0, 0.0)
+                    Outcome::Orphan(
+                        false,
+                        face,
+                        node_here,
+                        on_edge_side(topo.uv[face], t).is_some(),
+                        0.0,
+                        0.0,
+                    )
                 }
             };
         }
@@ -343,6 +382,24 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
 }
 
 /// O sinal da área da imagem de uma face.
+/// ⭐ **Sobre QUAL lado do triângulo o ponto cai** — `None` se está no interior.
+///
+/// ⚠️ O índice do lado é o do laço da travessia (`uv[k] → uv[(k+1) % 3]`), e é ele que
+/// indexa [`Topo::twin`] e [`Topo::xf`]. *Uma convenção de lado escrita duas vezes é duas
+/// convenções.*
+fn on_edge_side(tri: [P; 3], t: P) -> Option<usize> {
+    let [a, b, c] = tri;
+    if crate::exact::orient(a, b, t) == 0 {
+        Some(0)
+    } else if crate::exact::orient(b, c, t) == 0 {
+        Some(1)
+    } else if crate::exact::orient(c, a, t) == 0 {
+        Some(2)
+    } else {
+        None
+    }
+}
+
 pub(crate) fn face_sign(topo: &Topo, f: usize) -> i8 {
     let [a, b, c] = topo.uv[f];
     orient(a, b, c)
@@ -396,4 +453,56 @@ fn on_segment(o: P, t: P, q: P) -> bool {
         && q[0] <= o[0].max(t[0])
         && q[1] >= o[1].min(t[1])
         && q[1] <= o[1].max(t[1])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::on_edge_side;
+
+    /// ⭐⭐⭐ **A CONVENÇÃO DO LADO — `k` é a aresta do canto `k` para o `k+1`.**
+    ///
+    /// ⛔⛔ **É ela que indexa [`Topo::twin`] e [`Topo::xf`]**, e um índice trocado manda o
+    /// resgate perguntar à face errada. ⚠️ *Uma convenção de lado escrita duas vezes é duas
+    /// convenções, e nenhum tipo as separa: as três são `usize`.*
+    #[test]
+    fn the_side_index_is_the_corner_it_starts_from() {
+        let tri = [[0, 0], [6, 0], [0, 6]];
+        // O ponto médio de cada lado tem de dar o índice desse lado.
+        assert_eq!(on_edge_side(tri, [3, 0]), Some(0), "lado 0 = canto 0 -> 1");
+        assert_eq!(on_edge_side(tri, [3, 3]), Some(1), "lado 1 = canto 1 -> 2");
+        assert_eq!(on_edge_side(tri, [0, 3]), Some(2), "lado 2 = canto 2 -> 0");
+    }
+
+    /// ⭐⭐ **O interior não é aresta nenhuma** — e sem esta metade a lei aceitaria tudo.
+    #[test]
+    fn a_point_inside_is_on_no_side() {
+        let tri = [[0, 0], [6, 0], [0, 6]];
+        assert_eq!(on_edge_side(tri, [1, 1]), None);
+        assert_eq!(on_edge_side(tri, [2, 2]), None);
+    }
+
+    /// ⭐⭐⭐ **UM CANTO pertence a DOIS lados, e a resposta é o de índice MENOR.**
+    ///
+    /// ⚠️ Não é uma preferência: é o que torna a escolha **determinista**. *Um empate
+    /// resolvido de outra maneira em cada chamada faria o resgate perguntar a uma face
+    /// diferente a cada corrida* — e o hash da grade é contrato (HR-5).
+    #[test]
+    fn a_corner_belongs_to_the_lower_side() {
+        let tri = [[0, 0], [6, 0], [0, 6]];
+        assert_eq!(on_edge_side(tri, [0, 0]), Some(0), "canto 0: lados 0 e 2");
+        assert_eq!(on_edge_side(tri, [6, 0]), Some(0), "canto 1: lados 0 e 1");
+        assert_eq!(on_edge_side(tri, [0, 6]), Some(1), "canto 2: lados 1 e 2");
+    }
+
+    /// ⭐⭐ **Um ponto sobre o PROLONGAMENTO de um lado também é colinear** — e a função
+    /// diz que sim, de propósito.
+    ///
+    /// ⚠️ **Ela é um predicado de COLINEARIDADE, não de pertença ao segmento**, e quem a
+    /// chama já sabe que o ponto está *dentro* do triângulo ([`contains`] correu antes).
+    /// *Dizer isto aqui é mais barato que alguém a reutilizar noutro sítio e descobrir.*
+    #[test]
+    fn the_predicate_is_collinearity_not_membership() {
+        let tri = [[0, 0], [6, 0], [0, 6]];
+        assert_eq!(on_edge_side(tri, [99, 0]), Some(0));
+    }
 }

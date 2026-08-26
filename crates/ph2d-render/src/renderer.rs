@@ -91,6 +91,16 @@ pub struct SpriteRenderer {
     /// group — scenes with no clip never pay for it (zero-regression).
     /// Re-created when the target size changes.
     clip_stencil: Option<ClipStencil>,
+    /// **O sub-retângulo que o último `draw_scratch` REALMENTE aplicou** — não o que lhe
+    /// pediram. Os dois divergem quando o quadro tem clip/máscara
+    /// (`scene_viewport.filter(|_| !has_clip && !has_mask)`), e a divergência é decidida por
+    /// CONTEÚDO do quadro, então nenhum chamador a pode prever.
+    ///
+    /// ⚠️ Existe porque uma sonda de 2026-08-25 imprimiu o valor **pedido** e concluiu que o
+    /// passe o honrava — sobre um defeito visível. *Uma sonda que lê o argumento em vez do
+    /// efeito responde por quem a escreveu, não pelo produto.* Só diagnóstico: nada no
+    /// desenho o lê.
+    applied_subrect: Option<[f32; 4]>,
 }
 
 /// The `Stencil8` texture + its view + the size it was allocated for.
@@ -181,7 +191,16 @@ impl SpriteRenderer {
             runs: Vec::with_capacity(16),
             // Allocated lazily on the first clipped frame.
             clip_stencil: None,
+            applied_subrect: None,
         }
+    }
+
+    /// O sub-retângulo que o ÚLTIMO desenho aplicou de facto (ver
+    /// [`Self::applied_subrect`] no campo). `None` = janela cheia — que é o certo fora do
+    /// split **e** o sintoma quando um clip/máscara o derruba dentro dele.
+    #[must_use]
+    pub fn applied_subrect(&self) -> Option<[f32; 4]> {
+        self.applied_subrect
     }
 
     /// Read access to the individual-texture store. Hosts call

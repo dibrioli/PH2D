@@ -2,22 +2,36 @@
 //! *«no modo motion a imagem de referência sofre um drift no pan com o mouse»*, refinado
 //! para *«acontece para Object e Chip, não para Star»*.
 //!
-//! ## Por que uma sonda e não um terceiro palpite
+//! ## ⚠️ A 1.ª versão desta sonda imprimia ZEROS sobre o defeito, e a auditoria disse porquê
 //!
-//! Duas hipóteses foram **refutadas por medição** antes desta:
+//! Ela comparava a rota das SPRITES com a rota do VELLO. Essas duas são a **mesma
+//! expressão**, termo a termo:
 //!
-//! 1. *«as duas rotas projectam com janelas diferentes»* — MEDIDO e falso: para o mesmo
-//!    ponto de mundo, `view_proj_for_subrect(w,h)` (a rota das SPRITES, com o `set_viewport`)
-//!    e `world_to_screen_affine(WindowSize{w,h})` (a rota VECTORIAL) caem **no mesmo pixel**,
-//!    a `0,000` em nove pares centro×ponto.
-//! 2. *«o quadro tem clip ou máscara e o passe de sprites cai para a janela cheia»* —
-//!    o ramo existe (`renderer_draw`, `scene_viewport.filter(|_| !has_clip && !has_mask)`),
-//!    mas um papel de clip/máscara só nasce de um `Mask2D`/`MaskInteraction`/`ClipChildren`
-//!    numa entidade, e a cena `=9` e o documento de arranque não têm nenhum.
+//! ```text
+//! sprites:  x = W/2 + (X − cx)·Hs/hw        (orthographic_rh + set_viewport)
+//! vello:    x = W/2 + (X − cx)·Hs/hw        (world_to_screen_affine)
+//! ```
 //!
-//! ⚠️ *Um terceiro palpite custaria outra viagem ao Enio.* Esta sonda imprime, **numa linha
-//! por quadro de pan**, as três respostas à MESMA pergunta — *onde cai a origem do mundo?* —
-//! e o que cada rota usou para a responder. Uma corrida dela nomeia o mecanismo.
+//! — o `orthographic_rh` divide pelo half-extent, que traz o `w` do sub-retângulo, e ele
+//! **cancela** contra o `w` da conversão NDC→pixel. ⇒ `Δpx` e `Δtrunc` só podem ser
+//! diferentes de zero se as duas rotas receberem **dimensões diferentes**, que foi o Bug #9
+//! (`422,4` contra `422`) e está curado. Depois disso são **identidades algébricas**: nenhuma
+//! máquina, nenhum `t` e nenhum centro de câmera as faz imprimir outra coisa.
+//!
+//! *Uma sonda que só pode imprimir zero não é uma sonda.* A aritmética das rotas passou a ser
+//! defendida por um GATE (`flip_pass_camera_tests.rs`, três portas × dois centros de câmera),
+//! que é onde ela pertence. O que fica aqui é só o que um teste **não pode** ver:
+//!
+//! 1. **O sub-retângulo APLICADO contra o PEDIDO.** O passe de sprites larga o
+//!    sub-retângulo em silêncio quando o quadro tem clip ou máscara
+//!    (`scene_viewport.filter(|_| !has_clip && !has_mask)`) — decidido por CONTEÚDO do
+//!    quadro, portanto imprevisível para quem chama. A 1.ª sonda imprimia o valor **pedido**
+//!    e concluía que o passe o honrava. Agora ela lê o **efeito**
+//!    (`SpriteRenderer::applied_subrect`), e grita `⚠️ CAIU` quando os dois divergem.
+//! 2. **O MUNDO de uma amostra de cada rota** — se a posição de uma instância andar durante
+//!    o arrasto, o defeito está no cozimento, a montante de toda projeção.
+//! 3. **A câmera das duas rotas.** Hoje é identidade (o mesmo `&Camera2d`, o mesmo quadro);
+//!    fica como sentinela para o dia em que alguém mover a montagem da cena Vello.
 //!
 //! ⚠️ **Ela não altera nada**: só lê e imprime, e só com a env var.
 
@@ -30,8 +44,7 @@ pub(crate) fn on() -> bool {
     *ON.get_or_init(|| std::env::var("PH2D_PAN_DIAG").is_ok_and(|v| v != "0"))
 }
 
-/// Onde a origem do mundo cai pela rota das SPRITES (a projecção que o
-/// `renderer_draw` envia, mais o `set_viewport` que a mapeia em pixels).
+/// Onde a origem do mundo cai pela rota das SPRITES, pelo sub-retângulo **aplicado**.
 fn sprite_px(cam: &Camera2d, w: f32, h: f32) -> (f64, f64) {
     let m = cam.view_proj_for_subrect(w, h).to_cols_array_2d();
     // Coluna-maior; a origem do mundo é `(0, 0)`, então sobra a translação.
@@ -52,16 +65,21 @@ fn vector_px(cam: &Camera2d, w: f32, h: f32) -> (f64, f64) {
     (c[4], c[5])
 }
 
+/// Onde a MESMA origem cai pela rota do FLIP — a TERCEIRA, a que ninguém tinha contado e a
+/// que de facto quebrava (ela projetava a janela CHEIA sob o split, `1/t ≈ 1,82×`).
+fn flip_px(cam: &Camera2d, window: WindowSize, sub: Option<[f32; 4]>) -> (f64, f64) {
+    let c = crate::render_loop::flip_pass::camera::camera_scene(cam, window, sub);
+    let m = c.world_to_clip;
+    (
+        (f64::from(m[3][0]) * 0.5 + 0.5) * f64::from(c.viewport[0]),
+        (0.5 - f64::from(m[3][1]) * 0.5) * f64::from(c.viewport[1]),
+    )
+}
+
 /// **O CENTRO DA CÂMERA COM QUE A CENA VELLO FOI CONSTRUÍDA**, guardado no instante em que
-/// o `cam_affine` é montado.
-///
-/// ⚠️ **Esta é a metade que a 1.ª versão da sonda não tinha, e ela cobre a hipótese mais
-/// forte:** a cena do Vello é construída na CPU com o mundo→tela **já aplicado**, enquanto
-/// as sprites viajam em coordenadas de MUNDO e recebem a câmera num *uniform* escrito
-/// noutro ponto do quadro. Se os dois pontos virem câmeras diferentes — uma delas de um
-/// quadro atrás —, o vector acompanha o cursor e as sprites ficam **um quadro para trás**:
-/// invisível parado, e um drift enquanto se arrasta. *Uma sonda que lê a MESMA câmera para
-/// as duas rotas não pode ver isto, por construção.*
+/// o `cam_affine` é montado. Sentinela: hoje as duas rotas leem o mesmo `&Camera2d` no mesmo
+/// quadro, então `Δcam ≡ 0` por construção — o valor está aqui para o dia em que uma delas
+/// passar a montar-se noutro ponto do quadro.
 static VELLO_CENTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 /// Chamado onde o `cam_affine` do Vello é montado.
@@ -83,12 +101,8 @@ fn vello_center() -> [f32; 2] {
 
 /// **A POSIÇÃO DE MUNDO de uma amostra de cada rota**, guardada no quadro.
 ///
-/// ⚠️ **É a pergunta que sobrou depois de a 1.ª corrida ilibar a projecção.** A sonda
-/// mediu `Δcam = 0` e `Δpx = 0` em todos os quadros de um arrasto: as duas rotas usam a
-/// MESMA câmera no MESMO instante e põem a origem do mundo no MESMO pixel. ⇒ o que deriva
-/// não é onde a câmera está — é **o que cada peça diz que a posição dela é**. Se o `P` de
-/// uma instância de sprite mudar enquanto se arrasta e o de uma vectorial não, o defeito
-/// está a MONTANTE do desenho, no que alimenta o cozimento.
+/// Se o `P` de uma instância de sprite mudar enquanto se arrasta e o de uma vectorial não, o
+/// defeito está a MONTANTE do desenho, no que alimenta o cozimento.
 /// `(mundo da 1.ª sprite, mundo do 1.º vector, quantas sprites, quantos vectores)`.
 type Sample = ([f32; 2], [f32; 2], usize, usize);
 static SAMPLE: std::sync::Mutex<Option<Sample>> = std::sync::Mutex::new(None);
@@ -105,46 +119,37 @@ pub(crate) fn note_instances(sprites: &[ph2d_render::RenderInstance], vectors: &
     }
 }
 
-/// Uma linha por quadro, com as TRÊS respostas e o que cada uma usou.
-///
-/// ⚠️ **O `Δ` é o que decide**: se ele for `0` e a imagem ainda derivar, o defeito não está
-/// na projecção — está no que cada passe DESENHA (a instância, o ladrilho, o compositor), e
-/// a sonda tê-lo-á excluído. Se ele crescer ao arrastar, o defeito é a projecção e a linha
-/// diz qual das duas janelas está errada.
+/// Uma linha por quadro. ⚠️ **Chamada DEPOIS do passe de sprites**, senão o `aplicado` seria
+/// o do quadro anterior — e uma sonda um quadro atrasada sobre um defeito de um quadro é
+/// exatamente o erro que ela existe para não repetir.
 pub(crate) fn frame(
     cam: &Camera2d,
     window: WindowSize,
-    scene: WindowSize,
     motion_active: bool,
-    viewport: Option<[f32; 4]>,
-    split_is_split: bool,
+    pedido: Option<[f32; 4]>,
+    aplicado: Option<[f32; 4]>,
 ) {
     if !on() {
         return;
     }
     let (w, h) = (window.width as f32, window.height as f32);
-    let (sw, sh) = (scene.width as f32, scene.height as f32);
-    // ⚠️⚠️ **O viewport REAL, não a minha suposição dele.** A 1.ª versão desta sonda
-    // calculava a rota das sprites a partir da MESMA janela truncada que a rota vectorial
-    // usa — e por isso mediu `Δpx = 0` sobre um defeito de `0,4 px` de altura de viewport.
-    // *Uma sonda que alimenta as duas rotas com o mesmo número não pode ver as duas
-    // discordarem.* Agora ela recebe o `[x, y, w, h]` que o `set_viewport` de facto leva.
-    let (rw, rh) = viewport.map_or((sw, sh), |r| (r[2], r[3]));
+    // A rota das sprites, pelo que o passe APLICOU (não pelo que lhe pediram).
+    let (rw, rh) = aplicado.map_or((w, h), |r| (r[2], r[3]));
     let sp = sprite_px(cam, rw, rh);
-    // E o mesmo ponto pela janela TRUNCADA — a diferença entre os dois é o defeito.
-    let sp_trunc = sprite_px(cam, sw, sh);
-    let ve = vector_px(cam, sw, sh);
-    // O que o pan aplica hoje, e o que ele aplicaria com a janela cheia.
-    let per_px_scene = cam.height_world / sh.max(1.0);
-    let per_px_window = cam.height_world / h.max(1.0);
-    let per_px_viewport = cam.height_world / rh.max(1.0);
-    // ⚠️ **A CÂMERA DAS DUAS ROTAS, lado a lado.** Um `Δcam` diferente de zero enquanto se
-    // arrasta É o defeito: as sprites estariam a ser desenhadas com a câmera de outro
-    // instante que o vector.
+    let ve = vector_px(cam, rw, rh);
+    let fl = flip_px(cam, window, aplicado);
+    let caiu = if pedido.is_some() && aplicado.is_none() {
+        " ⚠️ CAIU (clip/mascara derrubou o sub-retangulo)"
+    } else {
+        ""
+    };
+    let fmt = |r: Option<[f32; 4]>| {
+        r.map_or_else(
+            || "janela-cheia".to_string(),
+            |v| format!("{:.0},{:.0} {:.0}x{:.0}", v[0], v[1], v[2], v[3]),
+        )
+    };
     let vc = vello_center();
-    let dcam = (cam.center[0] - vc[0], cam.center[1] - vc[1]);
-    // ⚠️ **O MUNDO de uma amostra de cada rota.** Se estes números andarem enquanto se
-    // arrasta, o defeito está no COZIMENTO e não no desenho — e a linha di-lo-á.
     let (sw_pos, vw_pos, ns, nv) =
         SAMPLE
             .lock()
@@ -152,28 +157,28 @@ pub(crate) fn frame(
             .and_then(|g| *g)
             .unwrap_or(([f32::NAN; 2], [f32::NAN; 2], 0, 0));
     eprintln!(
-        "[pan.diag] centro sprite ({:.4}, {:.4}) vello ({:.4}, {:.4}) Δcam ({:.4}, {:.4}) \
-         | altura {:.3} | janela {w:.0}x{h:.0} cena {sw:.0}x{sh:.0} \
-         | motion={motion_active} split={split_is_split} \
-         | origem: sprite ({:.2}, {:.2}) vector ({:.2}, {:.2}) Δpx ({:.3}, {:.3}) \
-         | viewport {rw:.1}x{rh:.1} (trunc {sw:.0}x{sh:.0}) Δtrunc ({:.3}, {:.3}) \
-         | mundo/px viewport {per_px_viewport:.6} cena {per_px_scene:.6} janela {per_px_window:.6} \
+        "[pan.diag] centro ({:.4}, {:.4}) altura {:.3} | janela {w:.0}x{h:.0} motion={motion_active} \
+         | subrect pedido [{}] aplicado [{}]{caiu} \
+         | origem: sprite ({:.2}, {:.2}) vector ({:.2}, {:.2}) flip ({:.2}, {:.2}) \
+         | Δvector ({:.3}, {:.3}) Δflip ({:.3}, {:.3}) Δcam ({:.4}, {:.4}) \
          | MUNDO sprite[0] ({:.4}, {:.4}) de {ns} · vector[0] ({:.4}, {:.4}) de {nv}",
         cam.center[0],
         cam.center[1],
-        vc[0],
-        vc[1],
-        dcam.0,
-        dcam.1,
         cam.height_world,
+        fmt(pedido),
+        fmt(aplicado),
         sp.0,
         sp.1,
         ve.0,
         ve.1,
+        fl.0,
+        fl.1,
         sp.0 - ve.0,
         sp.1 - ve.1,
-        sp.0 - sp_trunc.0,
-        sp.1 - sp_trunc.1,
+        sp.0 - fl.0,
+        sp.1 - fl.1,
+        cam.center[0] - vc[0],
+        cam.center[1] - vc[1],
         sw_pos[0],
         sw_pos[1],
         vw_pos[0],

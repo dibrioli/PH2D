@@ -962,3 +962,101 @@ sprites a partir da mesma janela **truncada** que a rota vectorial usa, em vez d
 `[x, y, w, h]` que o `set_viewport` de facto leva. *Uma sonda que alimenta as duas rotas
 com o mesmo número não pode vê-las discordar* — ela mediu a minha suposição, não o produto.
 Corrigida: ela recebe o rectângulo real e imprime o `Δtrunc` ao lado.
+
+---
+
+## Bug #10 — havia uma TERCEIRA rota raster, e era ela: o passe do Flip nunca recebeu o sub-retângulo da cena
+
+**Report (Enio, 2026-08-25/26):** *«no modo motion a imagem de referência sofre um drift no
+pan com o mouse»*; refinado para *«o drift acontece para Object e Chip, não para Star»*; e,
+depois da cura do [Bug #9](#bug-9), **«nenhuma melhoria»** + *«auditoria com agentes»*.
+
+**Cena:** `PH2D_MOTION_OBJ_SMOKE=9`. No meio da tela ficam os TRÊS objectos que a cena
+carimba — a arte de quatro cores (**Object**, um Flip), o quadrado laranja (**Chip**, uma
+sprite de átlas) e a **Star** (um `VecPath` vectorial). São eles a *«imagem de referência»*.
+
+### O mecanismo
+
+Sob o split da tool Motion a cena vive num sub-retângulo do alvo
+(`CenterSplit::scene_viewport` = `[0, 0, W, floor(H·t)]`, `t = 0,55`). **Três** rotas desenham
+lá dentro, e até 2026-08-26 só duas sabiam disso:
+
+| rota | quem | projeta com | px por unidade de mundo |
+|---|---|---|---|
+| sprites/instâncias | `Chip`, as cópias carimbadas | `uniform_for_subrect(w,h)` + `set_viewport` | `Hs/hw` |
+| Vello | `Star` | `world_to_screen_affine(scene_camera_window)` | `Hs/hw` |
+| **Flip** | **`Object`** | ⛔ `camera.view_proj(window)` — **a janela CHEIA** | **`H/hw`** |
+
+⇒ o passe do Flip desenhava a `H/floor(H·t) = 1/t ≈ **1,82×**` a escala das outras duas.
+
+⚠️ **E isso não é um offset, é um MULTIPLICADOR do arrasto.** O pan converte o deslocamento
+do rato em mundo pela altura **da cena** (`field_gizmo::pan_scene_camera`), então a arte do
+Flip anda `1,82×` o que o cursor anda: parada, é um desalinhamento fixo; a arrastar, é uma
+abertura que **cresce com a distância percorrida e sem tecto**, e só fecha ao voltar. Era
+isto — *«escorrega sempre para o mesmo lado quando se arrasta muito para o mesmo lado»*.
+
+### A cura
+
+`flip_pass::render` passa a receber o mesmo `scene_viewport` que o passe de sprites, e
+`flip_pass_camera::camera_scene` projeta pelo sub-retângulo e **remapeia o NDC** para a
+região que ele ocupa no alvo (`ndc' = a·ndc + b`, afim em `x`/`y`).
+
+⛔ **A cura NÃO é um `set_viewport`, e é deliberado:** este passe compõe em alvos intermédios
+do tamanho do alvo final e termina num blit de alvo INTEIRO — recortar obrigaria a
+redimensionar a cadeia toda. A rota do Vello já resolve o mesmo problema sem recorte nenhum
+(projeta com as dims da cena num alvo cheio e o conteúdo cai no canto); é essa que se copia.
+O remapeamento **preserva a escala em pixel** — o que encolhe é o NDC, porque o alvo é maior
+que a cena. Sem split (`None`) devolve a câmera que shipava **ao bit**.
+
+⚠️ O `px_per_world` (a espessura do traço) passa a ser o **da cena**; o `viewport` do uniform
+continua a ser o **do alvo**, porque o shader converte `in.clip`, que é coordenada de
+fragmento do alvo cheio (`flip.wgsl:581`).
+
+### ⚠️ A lei: era o QUARTO consumidor da mesma lei, e os três anteriores já tinham sido curados
+
+O passe de sprites (M0.T13), o chrome/grade (`field_gizmo`) e as formas vectoriais
+(2026-07-25, com o report *«objetos afastados do path, com drift em relação ao canvas»*) já
+tinham recebido esta cura, cada um depois de um report próprio. *Uma lei que se cura no sítio
+que reportou, e não numa porta, volta pelo consumidor seguinte* — e o seguinte era o único que
+não tinha o parâmetro na assinatura, ou seja, o único que **não podia** estar certo por acaso.
+
+### O gate — o instrumento que faltava
+
+[`flip_pass_camera_tests.rs`](../../shells/desktop/src/render_loop/flip_pass_camera_tests.rs):
+**as TRÊS portas × DOIS centros de câmera.** Ele exige que as três ponham o mesmo ponto de
+mundo no mesmo pixel *e* que se **desloquem o mesmo** quando a câmera pana — que é o que
+*drift* significa e o que nenhum quadro sozinho pode responder. Mais dois controles (sem
+split é a câmera antiga ao bit; um sub-retângulo que é a janela inteira é inerte) e a escala
+do traço. **5 gates, 1 mutação, 3 reprovam.**
+
+### ⚠️ O que este bug ensinou sobre a SONDA — ela só podia imprimir ZERO
+
+A sonda do Bug #8/#9 comparava a rota das sprites com a do Vello. Elas são a **mesma
+expressão**: o `orthographic_rh` divide pelo half-extent, que traz o `w` do sub-retângulo, e
+esse `w` **cancela** contra o da conversão NDC→pixel. ⇒ depois de as duas passarem a receber
+o mesmo inteiro (a cura do Bug #9), `Δpx` e `Δtrunc` são **identidades algébricas** — nenhuma
+máquina, nenhum `t`, nenhum centro de câmera as faz imprimir outra coisa. O mesmo vale para
+`Δcam`: as duas leem o mesmo `&Camera2d` do mesmo quadro.
+
+⇒ *Uma sonda que compara duas fórmulas SUAS mede a álgebra dela, não o produto.* Pergunte
+sempre **que número a resposta contrária imprimiria**: aqui, para todos os cinco mecanismos
+candidatos, a resposta era **zero**.
+
+A aritmética mudou-se para o gate acima (que é onde ela pertence) e a sonda ficou só com o
+que um teste **não pode** ver: o sub-retângulo **APLICADO** contra o pedido (o passe larga-o
+em silêncio quando o quadro tem clip/máscara — decisão por CONTEÚDO, imprevisível para quem
+chama; `SpriteRenderer::applied_subrect` é o efeito, não o argumento) e o mundo de uma
+amostra de cada rota.
+
+### Fica NOMEADO e não curado (latente, medido pela auditoria)
+
+- **A2** — `renderer_draw.rs`, `scene_viewport.filter(|_| !has_clip && !has_mask)`: um
+  `Mask2D`/`MaskInteraction`/`ClipChildren` em qualquer entidade do quadro derruba o
+  sub-retângulo do passe raster inteiro, e o Vello não tem condição equivalente ⇒ o mesmo
+  `1/t`. Não alcançável na cena `=9` (nenhuma delas nasce lá); a sonda agora **grita** se
+  acontecer.
+- **A3** — o raster arma o sub-retângulo por `motion_active` e o Vello por `center_split`:
+  **dois predicados para o mesmo facto**. Coincidem hoje por convenção (o split é posto e
+  limpo na aresta da ferramenta), não por construção.
+- **A4** — o passe 3D (`sculpt3d`) escreve no mesmo `game_rt` com a janela cheia. Inerte sem
+  cena armada.

@@ -142,6 +142,10 @@ pub(crate) fn render(
     game_rt: &GameRt,
     camera: &Camera2d,
     window: WindowSize,
+    // O sub-retângulo da CENA (`CenterSplit::scene_viewport`), o MESMO que o passe de sprites
+    // recebe em `present.rs` — sem ele este passe projetava a janela cheia e a arte escorregava
+    // sob o pan (ver [`camera::camera_scene`]). `None` fora do split = byte-idêntico.
+    scene_viewport: Option<[f32; 4]>,
     gpu: &GpuContext,
 ) {
     // O preview é atribuído à camada ativa (dobrado na fatia dela). `unfolded` só
@@ -153,8 +157,10 @@ pub(crate) fn render(
     if layers.is_empty() && unfolded.is_none() {
         return;
     }
+    // ⚠️ As dims do ALVO (os intermédios e o blit final são de alvo inteiro); a CÂMERA é que
+    // passa pelo sub-retângulo da cena.
     let (w, h) = (window.width.max(1), window.height.max(1));
-    let cam = camera_raw(camera, window);
+    let cam = camera_scene(camera, window, scene_viewport);
 
     // O MOTOR do traço ([doc 12](../../../../docs/Flip/12_novo_motor_pesquisa.md)) — o percurso é o
     // DEFAULT, e `PH2D_FLIP_NEW_ENGINE=0` é a escape. **O shell é o único interruptor**: a crate não
@@ -575,7 +581,13 @@ fn layer_key(object_id: u64, layer_id: u32) -> u64 {
 // de espessura, e a tile assada sairia diferente do Flip desenhado direto.
 #[path = "flip_pass_camera.rs"]
 pub(crate) mod camera;
-use camera::{camera_raw, fold_model, parallax_model};
+use camera::{camera_scene, fold_model, parallax_model};
+// O passe deixou de chamar a versão SEM sub-retângulo (ela sobrevive dentro do
+// `camera_scene`, no ramo `None`), mas dois módulos de teste filhos ainda a endereçam por
+// `super::camera_raw` — e o `motion_flip_bake` chama-a pelo caminho do módulo, de propósito:
+// a câmera de assadura é FIXA e não conhece split nenhum.
+#[cfg(test)]
+use camera::camera_raw;
 
 #[cfg(test)]
 #[path = "flip_pass_tests.rs"]

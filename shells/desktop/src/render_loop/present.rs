@@ -175,26 +175,6 @@ impl crate::App {
                 } else {
                     &sprite_extra
                 };
-                // ⚠️ **A SONDA DO DRIFT** (`PH2D_PAN_DIAG=1`, report do Enio de 2026-08-25).
-                // Aqui é o único sítio que vê as TRÊS entradas ao mesmo tempo: a câmera, a
-                // janela e o sub-retângulo que este passe vai de facto usar.
-                crate::pan_diag::frame(
-                    camera,
-                    window_size,
-                    crate::field_gizmo::scene_camera_window(
-                        hero_screen
-                            .as_ref()
-                            .map_or(ph2d_editor::screens::layout::CenterSplit::None, |hs| {
-                                hs.view.center_split
-                            }),
-                        window_size,
-                    ),
-                    motion_active,
-                    scene_viewport,
-                    hero_screen
-                        .as_ref()
-                        .is_some_and(|hs| hs.view.center_split.is_split()),
-                );
                 renderer.render_with_streams(
                     game_rt.view(),
                     present,
@@ -204,6 +184,17 @@ impl crate::App {
                     extra,
                     motion_gpu,
                     scene_viewport,
+                );
+                // ⚠️ **A SONDA DO DRIFT** (`PH2D_PAN_DIAG=1`, report do Enio de 2026-08-25) —
+                // DEPOIS do passe, de propósito: o que ela tem de imprimir é o sub-retângulo
+                // que ele APLICOU, e esse só existe depois de ele decidir (o `.filter` do
+                // clip/máscara é por conteúdo do quadro).
+                crate::pan_diag::frame(
+                    camera,
+                    window_size,
+                    motion_active,
+                    scene_viewport,
+                    renderer.applied_subrect(),
                 );
                 // Pass 1b: Flip (ADR-0114 W1) composto por-camada (blend/opacity via
                 //   compositor 22-modos) no `game_rt`, amostrado pelo playhead,
@@ -241,6 +232,10 @@ impl crate::App {
                     game_rt,
                     camera,
                     window_size,
+                    // A MESMA porta que o passe de sprites acima: sob o split da Motion este
+                    // passe projetava a janela cheia e a arte do Flip andava `1/t` do que o
+                    // cursor andava (report do Enio, 2026-08-25).
+                    scene_viewport,
                     surface.gpu(),
                 );
                 // Pass 1d: a malha 3D (ADR-0150 W1/M2) — MESMO alvo `game_rt`,

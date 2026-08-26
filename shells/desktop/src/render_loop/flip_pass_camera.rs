@@ -90,3 +90,55 @@ pub(crate) fn camera_raw(camera: &Camera2d, window: WindowSize) -> CameraRaw {
         px_per_world,
     )
 }
+
+/// **A câmera do passe de Flip sob o SPLIT da tool Motion** — o QUARTO consumidor da mesma
+/// lei, e o único que ficou de fora das três curas anteriores.
+///
+/// Sob o split a cena vive num sub-retângulo do alvo (`CenterSplit::scene_viewport`), e quem
+/// projeta a JANELA CHEIA ali dentro fica com outra escala px/mundo — a `t = 0,55` isso é
+/// `1/t ≈ 1,82×`. Como o pan converte o arrasto em mundo pela altura DA CENA
+/// ([`crate::field_gizmo::pan_scene_camera`]), o erro não é um offset: ele **multiplica a
+/// distância arrastada**, então a arte do Flip escorrega em relação a tudo o resto. Foi o
+/// report do Enio de 2026-08-25 (*"a imagem de referência sofre um drift no pan"*).
+///
+/// ⚠️ **A cura NÃO é um `set_viewport`**, e é de propósito: este passe compõe em alvos
+/// intermédios do tamanho do alvo final e termina num blit de alvo INTEIRO — recortar aqui
+/// obrigaria a redimensionar a cadeia toda. A rota do Vello já resolve isto sem recorte
+/// nenhum (projeta com as dims DA CENA num alvo cheio, e o conteúdo cai no canto), e é essa
+/// que se copia: projeta-se pelo sub-retângulo e **remapeia-se o NDC** para a região que ele
+/// ocupa no alvo. O remapeamento é afim em `x`/`y` (`ndc' = a·ndc + b`) e **preserva a escala
+/// em PIXEL** — o que encolhe é o NDC, porque o alvo é maior que a cena.
+///
+/// ⚠️ O `viewport` do uniform continua a ser o do ALVO: o shader converte `in.clip` (que é
+/// coordenada de fragmento do alvo cheio) por ele (`flip.wgsl:581`). Já o `px_per_world` passa
+/// a ser o DA CENA — é ele que dá a espessura do traço, que tem de acompanhar a mesma escala
+/// da geometria.
+///
+/// `None` (sem split) devolve [`camera_raw`] **ao bit** — o caminho comum não muda.
+pub(crate) fn camera_scene(
+    camera: &Camera2d,
+    window: WindowSize,
+    scene_viewport: Option<[f32; 4]>,
+) -> CameraRaw {
+    let Some([x0, y0, sw, sh]) = scene_viewport else {
+        return camera_raw(camera, window);
+    };
+    let (tw, th) = (window.width.max(1) as f32, window.height.max(1) as f32);
+    let (sw, sh) = (sw.max(1.0), sh.max(1.0));
+    let m = camera.view_proj_for_subrect(sw, sh).to_cols_array_2d();
+    // A região que o sub-retângulo ocupa em NDC do alvo. Escrita com `x0`/`y0` embora hoje
+    // sejam sempre 0: um sub-retângulo ancorado noutro canto sairia silenciosamente errado.
+    let (ax, ay) = (sw / tw, sh / th);
+    let bx = (2.0 * x0 + sw) / tw - 1.0;
+    let by = 1.0 - (2.0 * y0 + sh) / th;
+    let mut r = m;
+    for (col, src) in r.iter_mut().zip(m.iter()) {
+        col[0] = ax * src[0] + bx * src[3];
+        col[1] = ay * src[1] + by * src[3];
+    }
+    CameraRaw::new(r, [tw, th], sh / camera.height_world.max(f32::EPSILON))
+}
+
+#[cfg(test)]
+#[path = "flip_pass_camera_tests.rs"]
+mod tests;

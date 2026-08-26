@@ -46,3 +46,46 @@ e acha zero.
 
 *Irmã de `feedback_paint_and_dispatch_must_read_the_same_source` (a mesma doença com a
 mesma cura, quando o que diverge é a FONTE em vez da PROJECÇÃO).*
+
+---
+
+## ⭐⭐⭐ Adenda 2026-08-26 — o QUARTO consumidor, e o único que não podia estar certo por acaso
+
+A mesma doença voltou pela quinta vez, e desta vez **não era um gizmo novo a copiar um
+irmão**: era um passe que já existia e **nunca teve o parâmetro na assinatura**.
+
+Sob o split da tool Motion, três rotas desenham na cena. Duas recebiam o sub-retângulo (o
+passe de sprites, por `uniform_for_subrect` + `set_viewport`; o Vello, por
+`scene_camera_window`). A terceira — **o passe do Flip** — recebia `window_size` cru e
+projetava a **janela CHEIA**: `H/floor(H·t) = 1/t ≈ 1,82×`.
+
+⚠️ **E o sintoma não é um desalinhamento, é um MULTIPLICADOR do arrasto.** O pan converte o
+deslocamento do rato em mundo pela altura **da cena**; quem projeta pela janela anda `1,82×`
+o que o cursor anda. ⇒ parado, offset fixo; a arrastar, uma abertura que **cresce com a
+distância percorrida e sem tecto**. O report do dono do produto foi *«a imagem de referência
+sofre um drift no pan»*, e a assinatura *«sempre para o mesmo lado quando se arrasta muito
+para o mesmo lado»* é exatamente a de uma diferença de ESCALA, nunca a de um offset.
+
+**Why:** as três curas anteriores (o passe de sprites, o chrome/grade, as formas vectoriais
+em 2026-07-25) foram cada uma feita **no sítio que reportou**. *Uma lei curada no sítio do
+report volta pelo consumidor seguinte* — e o seguinte era o único a quem ninguém tinha dado
+sequer a possibilidade de acertar.
+
+**How to apply:**
+1. ⭐⭐ **Enumere os CONSUMIDORES antes de curar o que reportou.** `grep` pelas duas formas —
+   quem recebe o sub-retângulo e quem recebe a janela crua — e trate a lista inteira. Aqui,
+   dois greps (`scene_viewport|scene_camera_window` contra `view_proj(|world_to_screen_affine(`)
+   puseram as três rotas lado a lado em **uma** chamada.
+2. ⭐⭐⭐ **A régua é o DESLOCAMENTO entre dois centros de câmera, não a posição num.** Um gate
+   que compara posições absolutas num único quadro não distingue *drift* de *offset*, e é
+   drift que o artista vê. O gate novo mede as três portas × dois centros e exige que os
+   **deltas** coincidam.
+3. ⚠️ **Nem toda cura desta família é um `set_viewport`.** Quando o passe compõe em alvos
+   intermédios e termina num blit de alvo inteiro, recortar obrigaria a redimensionar a cadeia
+   toda; a saída é projetar pelo sub-retângulo e **remapear o NDC** para a região que ele ocupa
+   (`ndc' = a·ndc + b`) — que é o que a rota do Vello já fazia sem recorte nenhum. *Copie a
+   rota que já está certa, não o mecanismo que se usou noutro passe.*
+4. ⛔ **A grandeza derivada tem de seguir junto.** A espessura do traço (`px_per_world`) passa
+   a ser a da CENA; o `viewport` do uniform continua a ser o do ALVO, porque o shader converte
+   coordenada de fragmento do alvo cheio. Mudar uma e esquecer a outra é o mesmo defeito noutra
+   unidade.

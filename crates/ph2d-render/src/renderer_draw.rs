@@ -183,6 +183,9 @@ impl SpriteRenderer {
         // single-pass path; a clip/mask frame renders full-window (mixing the
         // subrect projection with the full-target clip pass would mis-project).
         let subrect = scene_viewport.filter(|_| !has_clip && !has_mask);
+        // Diagnóstico (`SpriteRenderer::applied_subrect`): o EFEITO, não o argumento — é a
+        // única testemunha de que este `.filter` não disparou.
+        self.applied_subrect = subrect;
         let camera_uniform = match subrect {
             Some([_, _, w, h]) => camera.uniform_for_subrect(w, h),
             None => camera.uniform(window),

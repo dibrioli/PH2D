@@ -82,6 +82,28 @@ exprimir dos dois lados.**
    `0,291`.* ⚠️ **A assinatura:** *se forçar a grandeza a mudar não muda o resultado, ela
    não é o resultado* — pregar as translações arredondadas deixou o ângulo em `2,9°`.
 
+8. ⭐⭐⭐ **E o caso terminal: se a sonda compara duas fórmulas SUAS, ela mede a álgebra
+   dela, não o produto.** Medido no drift de pan (2026-08-26). A sonda punha lado a lado a
+   rota das sprites (`view_proj_for_subrect` + a conversão NDC→pixel escrita à mão) e a rota
+   vectorial (`world_to_screen_affine`) e imprimia `Δpx = 0,000` **sobre um defeito visível**,
+   em todos os quadros de todo arrasto. ⛔ Porque as duas são a **mesma expressão**: o
+   `orthographic_rh` divide pelo half-extent, que traz o `w` do sub-retângulo, e esse `w`
+   **cancela** contra o `w` da conversão. ⇒ `Δpx` só podia ser diferente de zero se as duas
+   recebessem **dimensões diferentes** — que foi o defeito anterior, e uma vez curado a coluna
+   virou uma **identidade algébrica**: nenhuma máquina, nenhum parâmetro, nenhum centro de
+   câmera a faz imprimir outra coisa. *A sonda tinha-se tornado um impressor de zeros, e o
+   zero lia-se como «ilibado».*
+   - ⚠️ **A pergunta do título respondia-se com «zero» para os CINCO mecanismos candidatos** —
+     incluindo o verdadeiro, que era uma **terceira** rota que a sonda nem recebia como
+     argumento. *Enumere as rotas antes de comparar duas.*
+   - ⭐⭐ **O corte que fica:** a aritmética pertence a um **gate** (é fechada, determinística e
+     barata); a sonda de runtime só deve carregar o que um teste **não pode** ver — aqui, o
+     valor que o passe **APLICOU** contra o que lhe **pediram** (ele larga o sub-retângulo em
+     silêncio quando o quadro tem clip/máscara, decisão por *conteúdo do quadro*). *Uma sonda
+     que imprime o argumento responde por quem a escreveu; só o efeito responde pelo produto.*
+   - ⛔ **O teste barato antes de escrever a sonda:** substitua as duas fórmulas por álgebra e
+     veja se a diferença se simplifica a `0`. Se simplificar, a sonda está pronta e é inútil.
+
 ⇒ ⭐ **As três faces da mesma lei:** a régua tem de conseguir exprimir a resposta
 (**alcance**), sobre amostras que a contenham (**extensão**), e não pode depender do que
 não importa (**invariância**).

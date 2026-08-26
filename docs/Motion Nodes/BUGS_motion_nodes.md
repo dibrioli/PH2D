@@ -825,3 +825,68 @@ em gates `#[ignore]` que o CI nunca corre. ⇒ `the_gpu_kernel_mirrors_the_three
 **Gates:** `the_summed_sea_does_not_repeat_itself` (com o controlo da senoide) ·
 `the_gpu_kernel_mirrors_the_three_spectrum_constants`. **3 mutações, 3 mortas** — e repor a
 razão inteira mata **duas** de uma vez, porque deixa o Rust e a GPU a discordar.
+
+---
+
+## Bug #8 — o pan arrastava a cena `t` vezes menos que o rato, e a REGRA que o proibia estava escrita há um mês
+
+**Report do Enio, 2026-08-25:** *«no modo motion a imagem de referência sofre um drift no pan
+com o mouse»*.
+
+### A causa-raiz, em uma conta
+
+Sob o split da tool Motion a cena renderiza num sub-retângulo, e a
+[`CenterSplit::scene_viewport`] **muda a PROJEÇÃO** — não é um recorte:
+`view_proj_for_subrect(w, h)` ≡ `view_proj(WindowSize{w, h})`. Logo um pixel de tela vale
+
+```
+height_world / (h · t)      metros
+```
+
+e o `pan_screen_delta` recebia a JANELA CHEIA, movendo
+
+```
+height_world / h            metros por pixel
+```
+
+⇒ **a cena andava `t` vezes o que o cursor andava.** A `t = 0,6`, arrastar 100 px movia o
+mundo 60 e a imagem ficava para trás do rato — e quanto mais alto o painel do grafo, pior.
+
+### Por que nenhum gate viu
+
+⚠️ **Porque a regra existia e o pan não estava no caminho dela.** O doc-comment do
+`scene_window_wh` diz, desde 2026-07-25, *«todo mapeamento mundo↔tela do chrome da cena TEM
+de usar isto»*, e a `CenterSplit::scene_viewport` explica a aritmética inteira. A grade do
+mundo, o gizmo de field e o arrasto dele foram postos nessa porta naquela wave; **o pan e o
+arrasto do gizmo de OBJETO não**, e continuaram a derivar da janela.
+
+*É a terceira vez que esta família morde, e as três vezes a regra já estava escrita: o que
+falta a uma regra não é redacção, é estar no caminho de quem executa.*
+
+### A cura
+
+Uma porta por consumidor, e as duas com a identidade fora do split:
+
+- `field_gizmo::pan_scene_camera` — o pan. `pan_screen_delta` passa a ter **um único
+  chamador** em toda a shell (censo no gate).
+- `field_gizmo::scene_window_of` — o atalho que dá a janela da cena a partir do `gfx`, para o
+  arrasto do gizmo de objeto (4 sítios). ⚠️ Dois deles seguram o `hero` emprestado e montam a
+  janela a partir dele + `gfx.surface` (campo **disjunto**) — pedir o `gfx` inteiro ali
+  colidiria com o empréstimo.
+
+⚠️ **Fora do split as duas são a JANELA, bit a bit** (`CenterSplit::None` devolve `(w, h)`),
+então toda ferramenta que não divide o centro é byte-idêntica.
+
+**Gate:** `a_drag_pixel_moves_the_world_by_what_a_scene_pixel_is_worth` — a régua é a
+IGUALDADE de duas contas que já existiam, não um número escolhido, e ela tem **três**
+metades: sem split (o controlo, senão a cura não se distingue de «o pan parou»), com split
+horizontal (o defeito), e com split **vertical** (que divide a LARGURA, então o pan em `x`
+não muda — a metade que impede a cura de virar *«divide sempre por `t`»*). **1 mutação, morta.**
+
+### O que fica MEDIDO e não curado
+
+⚠️ **A shell tem 112 mapeamentos câmara↔tela** (40 no `input_dispatch`, 34 no `render_loop`,
+15 no Flip, e o resto espalhado). Os desta wave são os **alcançáveis sob o split**; todos os
+outros pertencem a ferramentas que não dividem o centro e estão certos **por circunstância,
+não por construção** — o dia em que outra tool dividir o centro, eles ficam errados de uma
+vez. A fronteira é essa, e está escrita aqui em vez de descoberta outra vez.

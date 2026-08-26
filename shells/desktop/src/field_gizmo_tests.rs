@@ -408,3 +408,70 @@ fn a_radial_field_drag_scales_the_radius() {
     );
     set_graph_selection(vec![]); // higiene
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// **O PAN SOBRE A CENA** (report do Enio, 2026-08-25: *«no modo motion a imagem de
+// referência sofre um drift no pan com o mouse»*).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// ⭐⭐⭐ **UM PIXEL DE ARRASTO MOVE O MUNDO O QUE UM PIXEL DE TELA VALE — sob o split
+/// também.**
+///
+/// ⚠️ **A régua é a IGUALDADE de duas contas que já existiam, não um número escolhido:** o
+/// mundo-por-pixel que a CENA de facto usa é `height_world / scene_h` (o
+/// `CenterSplit::scene_viewport` muda a PROJEÇÃO, não recorta —
+/// `view_proj_for_subrect(w,h)` ≡ `view_proj(WindowSize{w,h})`), e é esse que o pan tem de
+/// aplicar. Com a janela cheia ele movia `height_world / h`, que sob um split de `t` é `t`
+/// vezes menos: a `t = 0,6`, arrastar 100 px movia o mundo 60 e a imagem ficava para trás
+/// do rato.
+///
+/// ⚠️ **O controle é a metade de cima**: sem split as duas contas coincidem, então um gate
+/// que só medisse o caso dividido não distinguiria a cura de «o pan parou de funcionar».
+#[test]
+fn a_drag_pixel_moves_the_world_by_what_a_scene_pixel_is_worth() {
+    use ph2d_editor::screens::layout::CenterSplit;
+    use ph2d_host::WindowSize;
+    use ph2d_render::Camera2d;
+
+    const H: u32 = 800;
+    const DRAG: f32 = 100.0;
+    let win = WindowSize::new(1200, H);
+
+    let moved = |split: CenterSplit| -> f32 {
+        let mut cam = Camera2d::new([0.0, 0.0], 10.0);
+        super::pan_scene_camera(&mut cam, split, win, DRAG, 0.0);
+        cam.center[0]
+    };
+
+    // CONTROLE — sem split, a conta é a de sempre: `DRAG · height_world / h`.
+    let full = moved(CenterSplit::None);
+    let expect_full = DRAG * 10.0 / H as f32;
+    assert!(
+        (full.abs() - expect_full).abs() < 1e-4,
+        "sem split o pan tem de ser byte-idêntico ao de sempre: {full} vs {expect_full}"
+    );
+
+    // ⭐ COM split: a cena mede `h·t`, e um pixel vale MAIS mundo — o pan tem de andar MAIS.
+    let t = 0.6_f32;
+    let split = moved(CenterSplit::Horizontal { t });
+    let expect_split = DRAG * 10.0 / (H as f32 * t);
+    assert!(
+        (split.abs() - expect_split).abs() < 1e-4,
+        "sob o split o pan tem de usar o mundo-por-pixel da CENA: {split} vs {expect_split}"
+    );
+    assert!(
+        split.abs() > full.abs() * 1.5,
+        "o pan dividido tem de andar MAIS que o cheio — se andar igual, ele voltou a \
+         derivar da janela e a imagem fica para tras do rato"
+    );
+
+    // E o split VERTICAL divide a largura, não a altura: a conta em `y`... é a mesma
+    // altura, então o pan vertical NÃO muda. ⚠️ É a metade que impede a cura de virar
+    // «divide sempre por `t`».
+    let mut cam = Camera2d::new([0.0, 0.0], 10.0);
+    super::pan_scene_camera(&mut cam, CenterSplit::Vertical { t }, win, DRAG, 0.0);
+    assert!(
+        (cam.center[0].abs() - expect_full).abs() < 1e-4,
+        "um split VERTICAL nao mexe na altura — o mundo-por-pixel e' o de sempre"
+    );
+}

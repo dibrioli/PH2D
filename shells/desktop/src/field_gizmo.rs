@@ -71,6 +71,49 @@ pub(crate) fn scene_camera_window(center_split: CenterSplit, window: WindowSize)
     WindowSize::new(w as u32, h as u32)
 }
 
+/// **O PAN da câmera, com o mundo-por-pixel da CENA** — a porta que faltava (report do
+/// Enio, 2026-08-25: *«no modo motion a imagem de referência sofre um drift no pan com o
+/// mouse»*).
+///
+/// ⚠️ **É a MESMA doença que o [`scene_camera_window`] cura, no terceiro consumidor.** O
+/// doc do [`scene_window_wh`] já dizia *«todo mapeamento mundo↔tela do chrome da cena TEM
+/// de usar isto»*, e o `CenterSplit::scene_viewport` já dizia que a projeção **muda** sob o
+/// split (`view_proj_for_subrect(w,h)` ≡ `view_proj(WindowSize{w,h})`, não é um mero
+/// recorte). A grade e o gizmo foram postos nessa porta em 2026-07-25; **o pan não**, e
+/// continuou a derivar o mundo-por-pixel da JANELA CHEIA.
+///
+/// A conta do defeito: sob um split de fração `t`, um pixel de tela vale
+/// `height_world / (h·t)` metros, e o pan movia `height_world / h`. ⇒ **a cena andava `t`
+/// vezes o que o cursor andava** — a `t = 0,6`, arrastar 100 px movia o mundo 60, e a
+/// imagem ficava para trás do rato. Fora do split, `t` não existe e a conta é a de sempre,
+/// bit a bit.
+///
+/// *A regra estava escrita há um mês; o que faltava era o pan estar no caminho dela.*
+pub(crate) fn pan_scene_camera(
+    camera: &mut ph2d_render::Camera2d,
+    center_split: CenterSplit,
+    window: WindowSize,
+    dx_px: f32,
+    dy_px: f32,
+) {
+    let (w, h) = scene_window_wh(center_split, window);
+    camera.pan_screen_delta(dx_px, dy_px, w, h);
+}
+
+/// **A JANELA DA CENA deste quadro** — o atalho que põe um consumidor na porta sem ele ter
+/// de ir buscar o `center_split` à mão.
+///
+/// ⚠️ **Fora do split ela É a janela**, bit a bit (`CenterSplit::None` devolve `(w, h)`), o
+/// que torna a troca de `gfx.surface.size()` por esta chamada uma identidade em toda
+/// ferramenta que não divide o centro — e a cura em Motion, que é a única que divide.
+pub(crate) fn scene_window_of(gfx: &crate::AppGfx) -> WindowSize {
+    let split = gfx
+        .hero_screen
+        .as_ref()
+        .map_or(CenterSplit::None, |h| h.view.center_split);
+    scene_camera_window(split, gfx.surface.size())
+}
+
 /// Como a caixa do gizmo mapeia para os params de TAMANHO de um field — a única parte da
 /// spec que varia por FORMA. `Rect` (a box) tem duas extensões cheias independentes;
 /// `Disk` (o radial sweep) tem um `radius` (meia-extensão, isotrópico) e a caixa do gizmo

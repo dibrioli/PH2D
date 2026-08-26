@@ -3041,8 +3041,19 @@ impl App {
             let dx = self.last_pointer.0 - anchor.0;
             let dy = self.last_pointer.1 - anchor.1;
             let size = gfx.surface.size();
-            gfx.camera
-                .pan_screen_delta(dx, dy, size.width as f32, size.height as f32);
+            // ⚠️ **O mundo-por-pixel é o da CENA, não o da JANELA** (report do Enio,
+            // 2026-08-25: *«no modo motion a imagem de referência sofre um drift no pan
+            // com o mouse»*). Sob o split da tool Motion a cena renderiza num
+            // sub-retângulo e a projeção dela MUDA — `pan_screen_delta` com a janela
+            // cheia movia o mundo `t` vezes o que o cursor andava, e a imagem ficava
+            // para trás do rato. Ver `field_gizmo::pan_scene_camera`.
+            let split = gfx
+                .hero_screen
+                .as_ref()
+                .map_or(ph2d_editor::screens::layout::CenterSplit::None, |h| {
+                    h.view.center_split
+                });
+            crate::field_gizmo::pan_scene_camera(&mut gfx.camera, split, size, dx, dy);
             self.pan_anchor = Some(self.last_pointer);
             let _ = prev; // silence unused warning when feature shifts
         }

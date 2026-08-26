@@ -131,7 +131,12 @@ impl App {
             // the only record of it (`atan2` cannot see past one turn). Skipping
             // this and assigning `cursor_screen` directly is exactly the bug —
             // rotation would silently jump 2π at the branch cut.
-            let size = gfx.surface.size();
+            // ⚠️ A janela da CENA, não a da janela (report do Enio, 2026-08-25). Aqui ela
+            // é montada a partir do `hero` que já está emprestado — `gfx.surface` é campo
+            // DISJUNTO, então lê-se sem conflito; pedir `scene_window_of(gfx)` re-pediria
+            // o `gfx` inteiro e colidiria com esse empréstimo.
+            let size =
+                crate::field_gizmo::scene_camera_window(hero.view.center_split, gfx.surface.size());
             let cam = ph2d_editor::GizmoCamera {
                 center: gfx.camera.center,
                 height_world: gfx.camera.height_world,
@@ -160,7 +165,7 @@ impl App {
                 // sprite's quad stays world-fixed (compensating anchor).
                 // CTRL snaps to the quad center / corners / edge mids +
                 // the content-bbox center (`content_center`).
-                let window_size = gfx.surface.size();
+                let window_size = crate::field_gizmo::scene_window_of(gfx);
                 let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
                 let raw_world = gfx.camera.screen_to_world(drag.cursor_screen, window_size);
                 let target = if ctrl {
@@ -217,7 +222,10 @@ impl App {
                     s.anchor = new_anchor;
                 }
             } else {
-                let window_size = gfx.surface.size();
+                let window_size = crate::field_gizmo::scene_camera_window(
+                    hero.view.center_split,
+                    gfx.surface.size(),
+                );
                 let cam = ph2d_editor::GizmoCamera {
                     center: gfx.camera.center,
                     height_world: gfx.camera.height_world,
@@ -653,7 +661,7 @@ impl App {
                     // O cursor é lido em MUNDO porque a régua que decide o slot está em mundo (o
                     // passe publica-a lá); converter de novo seria a segunda resposta a *"onde
                     // está o dedo?"*.
-                    let window_size = gfx.surface.size();
+                    let window_size = crate::field_gizmo::scene_window_of(gfx);
                     let cursor = gfx.camera.screen_to_world(drag.cursor_screen, window_size);
                     crate::layout_reorder::drop_at(&mut gfx.sim, &self.layout_live, entity, cursor);
                 } else {

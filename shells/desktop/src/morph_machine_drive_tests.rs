@@ -295,3 +295,123 @@ fn a_held_key_fires_once_and_never_pins_the_machine() {
          volta"
     );
 }
+
+/// ⭐⭐⭐ **O BOTÃO ▶ ANDA MESMO COM O MODO ACABADO DE LIGAR** — o report do Enio de 2026-08-26.
+///
+/// > *"na animação de States, o morph não consegue segurar os estados atribuidos no momento do
+/// > Rec. Lembrando que para animações de states eventos atribuidos para Morph states não devem
+/// > ser necessários, pois os estados morph são mudados com play"*
+///
+/// ⛔ **O mecanismo:** o mapa de máquinas é **propriedade do `tick`**, e o `tick` **esvazia-o** em
+/// todo quadro fora do modo. O verbo Play corre DEPOIS do `tick` no mesmo quadro ⇒ com a
+/// pré-visualização desligada ele encontrava o mapa **vazio**, ligava o modo e **não viajava**. A
+/// forma só mudava ao segundo clique, e o Rec seguinte fotografava a forma ERRADA.
+///
+/// ⚠️ **A fixtura não dá tecla nenhuma** (`world(&[])`), e isso é metade do gate: o pedido do Enio
+/// é que o Play baste — um harness com teclas atribuídas passaria por outra porta.
+///
+/// **Mutação que deve sangrar:** trocar o `entry(..).or_insert_with(..)` do `play` por um
+/// `get_mut(..)?` — que é exactamente o código que o report descreve.
+#[test]
+fn the_play_button_travels_on_the_very_frame_the_mode_turns_on() {
+    let mut b = world(&[]);
+    let mut machines = MorphMachines::new();
+    let mut drive = PreviewDrive::default();
+    let quiet = ActionState::new();
+
+    // O quadro FORA do modo: é ele que esvazia o mapa, e é dele que o artista vem.
+    tick(
+        &mut machines,
+        &mut b.sim,
+        &b.map,
+        &ph2d_input::Input::new(&b.input, &quiet),
+        false,
+        1.0 / 60.0,
+        &mut drive,
+    );
+    assert!(
+        machines.is_empty(),
+        "a fixtura nao reproduziu o estado de que o report parte: o mapa tinha de estar vazio"
+    );
+
+    assert!(
+        super::play(&mut machines, &b.sim, &b.map, b.host, 1),
+        "o Play nao viajou -- e' o report do Enio: o botao so' liga o modo"
+    );
+    for _ in 0..60 {
+        tick(
+            &mut machines,
+            &mut b.sim,
+            &b.map,
+            &ph2d_input::Input::new(&b.input, &quiet),
+            true,
+            1.0 / 60.0,
+            &mut drive,
+        );
+    }
+    assert_eq!(
+        b.showing(),
+        b.shapes[1],
+        "a cena nao chegou a' forma que o Play pediu"
+    );
+}
+
+/// ⭐⭐⭐ **UMA MÁQUINA QUE NASCE CONCORDA COM O QUE A CENA MOSTRA.**
+///
+/// ⛔ **A segunda metade do mesmo report.** Sair do modo **não** repõe a forma no mundo (o ledger
+/// larga a condução e a `settle` promove o vivo a documento — é a lei do *«desfaz a corrida»*), mas
+/// a máquina seguinte nascia em `graph.start()`. ⇒ com a cena a mostrar a forma B e a máquina a
+/// julgar-se em A, o Play para **A** era recusado (*«chegar onde já se está não é chegar»*) e o
+/// Play para **B** não fazia nada — o artista gravava sempre a mesma forma.
+///
+/// ⚠️ *Uma máquina que dirige o mundo tem de ser SEMEADA por ele.*
+///
+/// **Mutação que deve sangrar:** semear com `MorphMachine::new(&graph)` em vez de
+/// `seeded(&graph, ..)`.
+#[test]
+fn a_machine_born_after_the_mode_reopens_agrees_with_the_canvas() {
+    let mut b = world(&[]);
+    let mut machines = MorphMachines::new();
+    let mut drive = PreviewDrive::default();
+    let quiet = ActionState::new();
+    let run = |m: &mut MorphMachines, s: &mut SimWorld, d: &mut PreviewDrive, on: bool| {
+        tick(
+            m,
+            s,
+            &b.map,
+            &ph2d_input::Input::new(&b.input, &quiet),
+            on,
+            1.0 / 60.0,
+            d,
+        );
+    };
+
+    run(&mut machines, &mut b.sim, &mut drive, false);
+    assert!(super::play(&mut machines, &b.sim, &b.map, b.host, 1));
+    for _ in 0..60 {
+        run(&mut machines, &mut b.sim, &mut drive, true);
+    }
+    assert_eq!(b.showing(), b.shapes[1], "a fixtura nao chegou a' 2a forma");
+
+    // O artista desliga a pre'-visualizacao. A cena FICA na forma B (a `settle` promove o vivo).
+    run(&mut machines, &mut b.sim, &mut drive, false);
+    assert_eq!(
+        b.showing(),
+        b.shapes[1],
+        "sair do modo mexeu na forma -- a premissa deste gate mudou, releia a `settle`"
+    );
+
+    // E agora o Play para a forma de PARTIDA tem de andar.
+    assert!(
+        super::play(&mut machines, &b.sim, &b.map, b.host, 0),
+        "o Play para a 1a forma foi recusado: a maquina nasceu a julgar-se la'"
+    );
+    for _ in 0..60 {
+        run(&mut machines, &mut b.sim, &mut drive, true);
+    }
+    assert_eq!(
+        b.showing(),
+        b.shapes[0],
+        "a cena nao voltou a' 1a forma pelo botao"
+    );
+}

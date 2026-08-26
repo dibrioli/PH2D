@@ -32,11 +32,18 @@
 //! **só** o `t`, e sem o `MorphPair` uma transição durante a reprodução entraria no undo como se o
 //! artista tivesse re-ligado as fontes à mão.
 //!
-//! # ⚠️ E parar o relógio DEVOLVE a forma autorada
+//! # ⚠️⚠️ E parar o relógio NÃO devolve a forma autorada — a nota anterior estava ERRADA
 //!
-//! Isso não custa código: é o que o ledger faz por construção — a captura repõe o autorado, e ao
-//! largar as máquinas a cena volta ao que o artista desenhou. *Sair restaura o MUNDO, nunca «vá
-//! para o estado inicial»* — que moveria o desenho dele.
+//! Ela dizia *"ao largar as máquinas a cena volta ao que o artista desenhou"*. **Não volta**, e a
+//! lei que manda é a da [`crate::preview_drive::PreviewDrive::settle`]: o ledger repõe o autorado
+//! **dentro da fotografia** enquanto o motor conduz, e no primeiro quadro em que ele **para** a
+//! entrada morre ⇒ a captura seguinte vê o vivo, difere do baseline e regista **UM** passo. É o
+//! *«desfaz a corrida»*, e aqui ele significa: *sair do modo COMPROMETE a forma em que se ficou*.
+//!
+//! ⚠️ **Isso é o comportamento certo** (o artista carrega em ▶, sai, e o objecto ficou onde ele o
+//! pôs — desfazível num Ctrl+Z) **e tem uma consequência que custou o report de 2026-08-26**: a
+//! máquina seguinte nasce **depois** de o componente já estar noutra forma. Por isso ela é
+//! **semeada pelo mundo** ([`open`]) e não por `graph.start()`.
 
 use std::collections::BTreeMap;
 
@@ -76,9 +83,10 @@ pub(crate) fn tick(
     drive: &mut PreviewDrive,
 ) -> usize {
     if !active {
-        // ⭐ **Largar é a restauração.** Não há «voltar ao estado inicial» aqui: o que o artista vê
-        // ao parar é o que ele DESENHOU, e quem o repõe é o ledger — pela mesma porta que já repõe
-        // a pose do solver e o relógio da §11.
+        // ⭐ **Largar COMPROMETE.** Não há «voltar ao estado inicial» aqui — e também não há volta
+        // ao autorado: a `settle` promove o vivo a documento no quadro seguinte, e a forma em que o
+        // artista ficou vira **um** passo de undo. É por isso que a máquina seguinte é semeada pelo
+        // MUNDO (`open`) e não pela primeira forma da lista.
         machines.clear();
         return 0;
     }
@@ -107,9 +115,7 @@ pub(crate) fn tick(
     let mut ran = 0;
     for (bits, graph) in hosts {
         let e = Entity::from_bits(bits);
-        let m = machines
-            .entry(bits)
-            .or_insert_with(|| MorphMachine::new(&graph));
+        let m = open(machines, sim, e, &graph);
         // ⚠️ **Só o que ACABOU de ser carregado dispara.** Com `pressed` uma tecla segurada
         // re-disparava a cada quadro e a máquina saltaria a cadeia inteira num piscar de olhos.
         for a in m.live_actions(&graph) {
@@ -192,6 +198,57 @@ pub(crate) fn apply_ui_steps(
         n += 1;
     }
     n
+}
+
+/// ⭐⭐⭐ **O BOTÃO ▶ DE UMA FORMA** — a porta do verbo de mundo (plano 32 W11d).
+///
+/// Enio, 2026-08-26: *"na animação de States, o morph não consegue segurar os estados atribuidos no
+/// momento do Rec. (…) para animações de states eventos atribuidos para Morph states não devem ser
+/// necessários, pois os estados morph são mudados com play"*.
+///
+/// # ⛔ Por que ela EXISTE, em vez de duas linhas no braço do despacho
+///
+/// O mapa de máquinas é **propriedade do [`tick`]**, e o `tick` **esvazia-o** em todo quadro fora do
+/// modo. O verbo corre DEPOIS do `tick` no mesmo quadro ⇒ escrito como um `get_mut`, ele encontrava
+/// o mapa **vazio** vindo de fora da pré-visualização, ligava o modo e **não viajava**: a forma só
+/// mudava ao segundo clique, e o **Rec** seguinte fotografava a forma errada.
+///
+/// ⇒ ela **abre a máquina** pela mesma porta que o `tick` (`open`), e é isso que a torna igual em
+/// qualquer dos dois quadros.
+///
+/// ⚠️ **Ela não olha para tecla nenhuma**, e é o pedido do Enio palavra por palavra: `travel` é a
+/// porta *sem condição*, então um conjunto sem uma única acção atribuída é integralmente
+/// conduzível — que é o que uma animação de **States** precisa.
+///
+/// ⚠️ **Ela não liga o modo**, de propósito: quem o liga é o despacho, e pôr o interruptor aqui
+/// dentro daria duas respostas a *"quem decide o modo"*.
+pub(crate) fn play(
+    machines: &mut MorphMachines,
+    sim: &SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
+    host: Entity,
+    row: usize,
+) -> bool {
+    let graph = crate::morph_set::graph_of(sim, map, host);
+    open(machines, sim, host, &graph).travel(&graph, row)
+}
+
+/// **A máquina deste hospedeiro, criando-a se preciso** — a porta única das duas metades.
+///
+/// ⚠️ **A semente é o que a CENA MOSTRA** (`VecMorph::sources[1]`), e não `graph.start()`: a
+/// máquina morre ao sair do modo e o componente **fica**, então uma máquina nova que se julgasse na
+/// primeira forma discordaria do desenho — e a regra *«chegar onde já se está não é chegar»*
+/// recusaria justamente o voo que o artista pediu. Ver [`MorphMachine::seeded`].
+fn open<'a>(
+    machines: &'a mut MorphMachines,
+    sim: &SimWorld,
+    host: Entity,
+    graph: &ph2d_morph_machine::MorphGraph,
+) -> &'a mut MorphMachine {
+    let showing = sim.world().get::<VecMorph>(host).map(|m| m.sources[1]);
+    machines
+        .entry(host.to_bits())
+        .or_insert_with(|| MorphMachine::seeded(graph, showing))
 }
 
 #[cfg(test)]

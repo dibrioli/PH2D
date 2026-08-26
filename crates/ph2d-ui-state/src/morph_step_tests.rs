@@ -54,9 +54,20 @@ fn the_ends_publish_nothing() {
 ///
 /// ⚠️ *Não animar* e *animar de x para x* são coisas diferentes: a segunda custaria um casamento
 /// por quadro para não mover nada. É a lei que o `is_same_as` já escreve para a pose inteira.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate era VÁCUA** (2026-08-26): ela passava duas poses **idênticas**,
+/// que o `Transition::new` descarta antes de chegar a um `Step` — o balde ficava vazio e o
+/// `is_empty()` lia como *«a lei funciona»*. *Um zero de «não medido» e um de «correcto» são o mesmo
+/// byte.* As duas pontas têm de diferir **noutra coisa**, para que o objecto ENTRE na transição e a
+/// afirmação seja sobre o filtro do `morph_steps`.
+///
+/// **Mutação que deve sangrar:** o `morph_steps` largar o `from.morph_shape != to.morph_shape`.
 #[test]
 fn the_same_shape_on_both_sides_is_not_a_step() {
-    let tr = Transition::new(&[pose(Some(WIDE))], &[pose(Some(WIDE))]);
+    let mut moved = pose(Some(WIDE));
+    moved.translation = [40.0, 0.0];
+    let tr = Transition::new(&[pose(Some(WIDE))], &[moved]);
+    assert_eq!(tr.len(), 1, "a fixtura tem de por o objecto EM movimento");
     assert!(tr.morph_steps(0.5).is_empty());
 }
 
@@ -91,28 +102,62 @@ fn a_side_without_a_shape_never_becomes_a_step() {
     );
 }
 
-/// ⭐ **A pose interpolada SEGURA na forma de PARTIDA até chegar** — a lei do `bool_op`.
+/// ⭐⭐⭐ **UM CAMPO, UM ESCRITOR POR INSTANTE** — a pose e o passo **complementam-se**, nunca se
+/// sobrepõem.
 ///
-/// ⚠️ Não há meio caminho entre duas formas *nesta lista*: um `VecPathId` interpolado entre dois
-/// ids seria o id de uma **terceira** forma, ou de nenhuma. Quem desenha o meio é o motor do Morph,
-/// pelo passo acima.
+/// ⛔⛔ **A 1.ª redacção desta lei estava errada, e o gate afirmava-a** (W11c): ele exigia que a
+/// pose SEGURASSE `from` no meio, copiando o `bool_op`. Os dois recados **não são simétricos no
+/// consumidor** — o verbo booleano chega ao mundo por um componente que a pose escreve e o
+/// cozimento lê; a forma do conjunto chega por um `VecMorph` que o motor escreve **pelo ledger**.
+/// Com os dois a falar no mesmo quadro, o `install` escrevia `[from, from]` e o ledger lia esse
+/// valor como se fosse o **autorado**, perdendo o de verdade.
 ///
-/// **Mutação que deve sangrar:** `at` interpolar o campo, ou saltar para o destino a meio.
+/// ⇒ **nas pontas fala a pose** (é ali que o desenho é exactamente uma das duas formas, e é a pose
+/// que o Show e a chegada instalam); **no meio fala o passo**, e só ele.
+///
+/// ⚠️ **O caso `from == to` é o controle da assimetria:** aí não há passo nenhum a publicar, então
+/// a pose tem de continuar a falar — senão um objecto cuja forma não muda ficaria sem quem a
+/// segurasse durante uma transição que move só a posição.
+///
+/// **Mutação que deve sangrar:** a pose voltar a segurar `from` no meio (o defeito), interpolar o
+/// campo, saltar para o destino a meio, ou calar-se também quando as duas pontas são iguais.
 #[test]
-fn the_pose_holds_the_start_shape_until_it_arrives() {
+fn the_pose_and_the_step_never_speak_at_the_same_instant() {
     let tr = Transition::new(&[pose(Some(WIDE))], &[pose(Some(TALL))]);
-    for t in [0.0, 0.25, 0.5, 0.99] {
+    assert_eq!(
+        tr.at(0.0)[0].morph_shape,
+        Some(WIDE),
+        "na partida e' a pose"
+    );
+    assert_eq!(tr.at(1.0)[0].morph_shape, Some(TALL), "na chegada tambem");
+    for t in [0.01, 0.25, 0.5, 0.99] {
         assert_eq!(
             tr.at(t)[0].morph_shape,
-            Some(WIDE),
-            "a meio ({t}) a pose tem de SEGURAR a forma de partida"
+            None,
+            "a meio ({t}) a pose tem de se CALAR -- quem fala e' o passo"
+        );
+        assert_eq!(
+            tr.morph_steps(t).len(),
+            1,
+            "e no MESMO instante o passo tem de falar ({t})"
         );
     }
-    assert_eq!(
-        tr.at(1.0)[0].morph_shape,
-        Some(TALL),
-        "e so' na chegada ela e' a de destino"
-    );
+    // O CONTROLE: sem troca de forma nao ha' passo, entao a pose fala o tempo todo.
+    //
+    // ⚠️ As duas pontas **tem de diferir noutra coisa** (aqui a posicao): poses identicas nao
+    // entram na transicao de todo (`Transition::new`, `is_same_as`), e um controle vazio nao
+    // afirmaria nada.
+    let mut moved = pose(Some(WIDE));
+    moved.translation = [40.0, 0.0];
+    let same = Transition::new(&[pose(Some(WIDE))], &[moved]);
+    for t in [0.0, 0.5, 1.0] {
+        assert!(same.morph_steps(t).is_empty(), "nao ha' troca a publicar");
+        assert_eq!(
+            same.at(t)[0].morph_shape,
+            Some(WIDE),
+            "sem passo, a pose tem de segurar a forma ({t})"
+        );
+    }
 }
 
 /// ⭐⭐⭐ **A MÁQUINA VIVA PUBLICA OS PASSOS enquanto anda** — a costura que faltava.

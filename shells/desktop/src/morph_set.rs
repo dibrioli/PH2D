@@ -133,10 +133,7 @@ pub(crate) fn graph_of(sim: &SimWorld, map: &VecEntityMap, host: Entity) -> Morp
                 return None;
             }
             // A forma é o `VecPathId` que o mapa conhece — a mesma porta que todo o resto usa.
-            let id = map
-                .iter()
-                .find(|&(_, &b)| b == child.to_bits())
-                .map(|(&k, _)| k)?;
+            let id = path_of(map, child)?;
             Some(MorphState::with_key(id, &machine.key_of(id)))
         })
         .collect();
@@ -387,11 +384,48 @@ pub(crate) fn dissolve(sim: &mut SimWorld, map: &VecEntityMap, host: Entity) -> 
         disconnect(sim, map, id);
     }
     // O path do próprio conjunto — o chamador apaga-o da cena, e o `sync` leva a entidade junto.
-    let host_path = map
-        .iter()
-        .find(|&(_, &b)| b == host.to_bits())
-        .map(|(&k, _)| k)?;
-    Some(host_path)
+    path_of(map, host)
+}
+
+/// ⭐⭐ **O ⊘ DE UMA LINHA, inteiro** — a porta que o despacho chama (plano 32 W11d).
+///
+/// Ela compõe as **duas** metades que o gesto significa, e existe por isso: escritas como duas
+/// linhas no braço do `match` do laço de render, elas **não são alcançáveis de um teste** — e a
+/// segunda foi esquecida durante uma wave inteira.
+///
+/// 1. a forma sai do conjunto ([`disconnect`]) e recupera a pose de mundo;
+/// 2. ⛔ **e leva as poses dela** ([`crate::vec_ui_state_edit::forget_object_in_all_states`]): um
+///    estado grava a sub-árvore com a pose **LOCAL** de cada filho, então a pose antiga faria o
+///    `install` do próximo Show atirar a forma solta para a origem do conjunto.
+///
+/// Devolve `true` se a linha existia.
+pub(crate) fn disconnect_row(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    states: &mut ph2d_ui_state::StateSets,
+    host: Entity,
+    row: usize,
+) -> bool {
+    let Some(&shape) = graph_of(sim, map, host).shapes().get(row) else {
+        return false;
+    };
+    disconnect(sim, map, shape);
+    if let Some(h) = path_of(map, host) {
+        crate::vec_ui_state_edit::forget_object_in_all_states(states, h, shape);
+    }
+    true
+}
+
+/// **O `VecPathId` desta entidade** — a busca inversa do [`VecEntityMap`].
+///
+/// ⚠️ **Uma porta, e não a terceira cópia:** este `find` estava escrito à mão em dois sítios deste
+/// arquivo e o despacho precisava do terceiro. *Uma lei escrita em dois sítios ainda não é uma lei —
+/// só uma PORTA é* (a lição do `stroke_uniform`, no mesmo módulo).
+#[must_use]
+pub(crate) fn path_of(map: &VecEntityMap, e: Entity) -> Option<VecPathId> {
+    map.iter()
+        .find(|&(_, &b)| b == e.to_bits())
+        .map(|(&k, _)| k)
 }
 
 #[cfg(test)]

@@ -330,12 +330,26 @@ impl Transition {
                         //
                         // ⭐ Quem desenha o meio é o motor do Morph, e não este lerp: ele recebe
                         // as duas pontas por [`Transition::morph_steps`] e interpola a GEOMETRIA
-                        // das duas. Segurar aqui não é um degrau — é a metade honesta de uma
-                        // resposta cuja outra metade mora onde o morph de facto acontece.
+                        // das duas.
+                        //
+                        // ⛔⛔ **E é por isso que no MEIO ela se CALA, ao contrário do `bool_op`
+                        // acima.** Os dois recados não são simétricos no consumidor: o verbo
+                        // booleano chega ao mundo por um componente que a pose escreve **e** o
+                        // cozimento lê; a forma do conjunto chega por um `VecMorph` que o motor
+                        // escreve **pelo ledger**. Com a pose a segurar `from` no meio, os dois
+                        // escreviam o MESMO campo em todo quadro — e o ledger lia o valor da pose
+                        // como se fosse o **autorado**, perdendo o de verdade.
+                        //
+                        // ⇒ a fronteira é exactamente a de [`Self::morph_steps`]: nas **pontas**
+                        // fala a pose (é ali que o desenho é uma das duas formas, e é a pose que o
+                        // Show e a chegada instalam); no **meio** fala o passo, e só ele.
+                        // *Um campo, um escritor por instante.*
                         morph_shape: if tc >= 1.0 {
                             to.morph_shape
-                        } else {
+                        } else if tc <= 0.0 || from.morph_shape == to.morph_shape {
                             from.morph_shape
+                        } else {
+                            None
                         },
                     };
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`

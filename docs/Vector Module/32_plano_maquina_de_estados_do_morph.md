@@ -800,3 +800,87 @@ do `select_many` da W9. **Três vezes na mesma linha**: escrevo a guarda certa e
 | a pose grava a forma de **onde a máquina veio** (`sources[0]`) | `a_ui_pose_records_which_shape_the_set_is_showing` |
 | a máquina nunca publica passo nenhum | `a_running_machine_publishes_the_morph_steps` |
 | o `install` prende um morph autorado à mão | `a_hand_authored_morph_records_no_shape` |
+
+---
+
+## §10 — ⭐⭐⭐ W11d: a AUDITORIA do report de 2026-08-26 (o ▶ não segurava a forma no Rec)
+
+> Enio, 2026-08-26: *"na animação de States, o morph não consegue segurar os estados atribuidos no
+> momento do Rec. Auditoria Completa. Lembrando que para animações de states eventos atribuidos para
+> Morph states não devem ser necessários, pois os estados morph são mudados com play"*
+
+A auditoria seguiu o caminho inteiro — `▶ Play` → mundo → `capture` → `Transition` → `install` /
+`apply_ui_steps` → `recook` — e achou **cinco defeitos, duas afirmações falsas e dois gates que não afirmavam nada**.
+Os dois primeiros defeitos, compostos, **são** o report.
+
+### §10.1 — O que estava errado
+
+| # | Defeito | Mecanismo | Cura |
+|---|---|---|---|
+| **A** | ⛔⛔ **o `▶ Play` NUNCA viajava vindo de fora do modo** | o mapa `morph_machines` é **propriedade do `tick`**, e o `tick` **esvazia-o** em todo quadro com a pré-visualização desligada. O braço do `Play` corre **depois** do `tick` no mesmo quadro ⇒ o `get_mut` encontrava o mapa **vazio**, ligava o modo e voltava. A forma só mudava ao **segundo** clique | `morph_machine_drive::play`, uma porta que **abre** a máquina (`open`) em vez de a procurar |
+| **B** | ⛔⛔ **uma máquina nova discordava do canvas** | ela nascia em `graph.start()`. Mas sair do modo **não** repõe a forma (§10.2), então a cena já estava noutra ⇒ o `travel` para a forma que o artista queria era **recusado** pela regra *«chegar onde já se está não é chegar»* — sobre um «onde» que só a máquina acreditava | `MorphMachine::seeded(graph, showing)`, semeada por `VecMorph::sources[1]` |
+| **C** | ⚠️ **dois escritores no MESMO campo por quadro** | numa transição, o `install` da pose escrevia `[from, from]` **e** o `apply_ui_steps` escrevia `[from, to], t`. Pior: o `write_driven` lia o valor do `install` como o **autorado** (`PreviewDrive::driven`, o ramo da *outra mão*) e perdia o de verdade | `Transition::at` publica `morph_shape: None` **exactamente** onde o `morph_steps` publica um passo. *Um campo, um escritor por instante* |
+| **E** | ⚠️ **o ⊘ Desconectar deixava as poses da forma na tabela** | um estado grava a **sub-árvore** com a pose **LOCAL** de cada filho. O ⊘ tira a forma do conjunto e devolve-lhe o mundo, mas a pose antiga ficava — e o `install` do Show seguinte **reescreve-lhe o `Transform`**: a forma solta **salta para a origem do conjunto**. ⚠️ Família pré-existente (reparentar faz o mesmo), mas aqui a um clique | `morph_set::disconnect_row`, uma porta com as **duas** metades — e a 2.ª é `forget_object_in_all_states` |
+| **D** | ⚠️ **a pose de um conjunto gravava geometria DERIVADA** | o `morph_live::recook` reescreve a forma do conjunto em **todo** quadro. O `install` escrevia-a para o `recook` a apagar no mesmo quadro, e o `Transition::new` pagava um `Plan::new` (**13 079×** um passo) para animar um canal que ninguém lê | `capture` não grava `geometry` quando o objecto tem `VecMorphMachine` — **a tinta fica** (o `recook` não escreve `fill`/`stroke`) |
+
+### §10.2 — ⛔ Duas afirmações que estavam ERRADAS, e a segunda mentia ao Enio
+
+1. O doc-módulo do `morph_machine_drive` dizia *"ao largar as máquinas a cena volta ao que o artista
+   desenhou"*. **Não volta.** A lei que manda é a da `PreviewDrive::settle`: o ledger repõe o
+   autorado **dentro da fotografia** enquanto o motor conduz, e no primeiro quadro em que ele **para**
+   a entrada morre ⇒ a captura seguinte vê o vivo e regista **UM** passo. É o *«desfaz a corrida»*, e
+   aqui significa: **sair do modo COMPROMETE a forma em que se ficou.**
+   ⭐ O comportamento é o certo (o objecto fica onde o artista o pôs, desfazível num Ctrl+Z) — o que
+   estava errado era a nota. E é a nota que fazia o defeito **B** parecer impossível.
+2. O passo **9** do smoke repetia a mesma falsidade ao Enio (*"a forma volta a ser a primeira"*), e o
+   passo **13** afirmava que o `▶` viaja com o modo desligado — que é **exactamente** o defeito **A**.
+   *Um smoke que descreve o que devia acontecer, e não o que acontece, aprova o defeito.*
+
+### §10.3 — ⛔ E um gate meu era VÁCUO
+
+`the_same_shape_on_both_sides_is_not_a_step` passava duas poses **idênticas**, que o
+`Transition::new` descarta antes de existir um `Step` — o balde ficava vazio e o `is_empty()` lia
+como *«a lei funciona»*. *Um zero de «não medido» e um de «correcto» são o mesmo byte.*
+Hoje as pontas diferem na posição e o gate afirma `tr.len() == 1` antes de medir.
+
+### §10.4 — Sobre *"eventos não devem ser necessários"*
+
+Conferido, e era verdade em toda parte **menos** no `▶`: o `graph_of` deriva um estado por filho
+independentemente de tecla, o `travel` é a porta **sem condição**, e nem o `capture`, nem o
+`install`, nem o `morph_steps` olham para uma acção. O único sítio que lia teclas era o `live_actions`
+do `tick`. ⇒ com o defeito **A** curado, um conjunto **sem uma única tecla atribuída** é
+integralmente conduzível — que é o que uma animação de *States* precisa. As duas fixturas novas
+não atribuem tecla nenhuma, de propósito.
+
+### §10.5 — Os gates e as mutações
+
+| Gate | Onde |
+|---|---|
+| `the_play_button_travels_on_the_very_frame_the_mode_turns_on` | `morph_machine_drive_tests.rs` |
+| `a_machine_born_after_the_mode_reopens_agrees_with_the_canvas` | `morph_machine_drive_tests.rs` |
+| `the_pose_and_the_step_never_speak_at_the_same_instant` | `ph2d-ui-state/morph_step_tests.rs` |
+| `play_records_and_the_ui_transition_morphs_the_set` | `morph_set_ui_state_tests.rs` — **o quadro inteiro** |
+| `a_set_pose_carries_no_geometry_and_costs_no_plan` | `morph_set_ui_state_tests.rs` |
+| `disconnecting_a_shape_takes_it_out_of_the_recorded_states` | `morph_set_ui_state_tests.rs` |
+
+⚠️ **O quarto é o que importa metodologicamente.** Os três gates da W11c mediam `capture` e
+`install` — as duas metades **certas** — e o defeito vivia na **composição**, no braço do despacho.
+*Um gate de unidade é cego à fiação da shell*, e esta linha já tinha pago a mesma lição na W4 (doze
+gates verdes sobre uma secção que ninguém pintava).
+
+**Seis mutações, todas sangram**, cada uma no gate que a nomeia:
+
+| Mutação | Sangra em |
+|---|---|
+| o `play` volta ao `get_mut` | os **três** gates de composição |
+| o `open` semeia com `MorphMachine::new` | `a_machine_born_after_the_mode_reopens_agrees_with_the_canvas` |
+| a pose volta a segurar `from` no meio | `the_pose_and_the_step_never_speak_at_the_same_instant` |
+| o `capture` grava a geometria derivada | `a_set_pose_carries_no_geometry_and_costs_no_plan` |
+| o `disconnect_row` não esquece as poses | `disconnecting_a_shape_takes_it_out_of_the_recorded_states` |
+| o `forget_object_in_all_states` varre a lista toda | idem (o controle das outras três poses) |
+
+⚠️ **E a 1.ª redacção do gate do ⊘ chamava as duas metades À MÃO** — provava que elas funcionam, e
+**não** que o botão as chama, que é o defeito. Foi o que forçou a porta `disconnect_row`: *duas
+linhas num braço de `match` do laço de render não são alcançáveis de um teste*, e foi assim que a 2.ª
+metade ficou por escrever uma wave inteira. Quarta ocorrência do padrão nesta linha
+(`project-memory/feedback_i_write_the_right_guard_and_do_not_gate_it.md`).

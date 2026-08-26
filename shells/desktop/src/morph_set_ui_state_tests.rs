@@ -132,3 +132,236 @@ fn installing_a_pose_puts_the_set_exactly_on_its_shape() {
         "`None` e' «nao me pronuncio» -- escrever por causa dele poria uma pose antiga a mandar"
     );
 }
+
+/// ⭐⭐⭐ **O QUADRO INTEIRO: ▶ Play, Rec, e a transição de States MORFA** — o report do Enio de
+/// 2026-08-26, reproduzido pela composição que o produto corre.
+///
+/// > *"na animação de States, o morph não consegue segurar os estados atribuidos no momento do Rec.
+/// > Lembrando que para animações de states eventos atribuidos para Morph states não devem ser
+/// > necessários, pois os estados morph são mudados com play"*
+///
+/// ⛔⛔ **Nenhum dos três gates acima podia ver este defeito**, e a razão é a lição desta linha:
+/// eles medem `capture` e `install` — as duas metades **certas** — e o defeito vivia na
+/// **COMPOSIÇÃO**, no braço do despacho que abre a máquina. *Um gate de unidade é cego à fiação da
+/// shell.*
+///
+/// ⚠️ **A fixtura não atribui uma única tecla**, e é metade do gate: o pedido é que o ▶ baste.
+///
+/// **Mutação que deve sangrar:** qualquer uma das três — o `play` voltar ao `get_mut`, o `open`
+/// semear com `MorphMachine::new`, ou o `apply_ui_steps` não escrever.
+#[test]
+fn play_records_and_the_ui_transition_morphs_the_set() {
+    let (mut sim, mut scene, mut map, ids) = world(3);
+    let mut pending = create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let host_id = scene.paths().last().unwrap().id;
+    let host = Entity::from_bits(map[&host_id]);
+
+    let mut machines = crate::morph_machine_drive::MorphMachines::new();
+    let mut drive = crate::preview_drive::PreviewDrive::default();
+    let input = ph2d_input::InputMap::new();
+    let quiet = ph2d_input::ActionState::new();
+    let morph_frame = |m: &mut _, s: &mut SimWorld, d: &mut _, on: bool| {
+        crate::morph_machine_drive::tick(
+            m,
+            s,
+            &map,
+            &ph2d_input::Input::new(&input, &quiet),
+            on,
+            1.0 / 60.0,
+            d,
+        );
+    };
+
+    // (1) O papel Default: a cena está na 1ª forma, e é isso que se grava.
+    let rest = crate::vec_ui_state_edit::capture(&sim, &scene, &map, host_id);
+    assert_eq!(rest.morph_shape, Some(ids[0]));
+
+    // (2) ▶ Play na 3ª linha, vindo de FORA do modo — que é de onde o artista vem.
+    morph_frame(&mut machines, &mut sim, &mut drive, false);
+    assert!(crate::morph_machine_drive::play(
+        &mut machines,
+        &sim,
+        &map,
+        host,
+        2
+    ));
+    for _ in 0..60 {
+        morph_frame(&mut machines, &mut sim, &mut drive, true);
+    }
+
+    // (3) Rec no papel Hover: ele tem de fotografar a forma NOVA.
+    let hover = crate::vec_ui_state_edit::capture(&sim, &scene, &map, host_id);
+    assert_eq!(
+        hover.morph_shape,
+        Some(ids[2]),
+        "⛔ o Rec fotografou a MESMA forma do Default -- e' o report do Enio"
+    );
+
+    // (4) Fora do modo, a transição Default -> Hover tem de morfar de verdade.
+    morph_frame(&mut machines, &mut sim, &mut drive, false);
+    let mut states = ph2d_ui_state::StateSets::default();
+    for (role, p) in [
+        (ph2d_ui_state::StateRole::Default, &rest),
+        (ph2d_ui_state::StateRole::Hover, &hover),
+    ] {
+        let mut st = ph2d_ui_state::UiState::new(role);
+        st.objects = vec![p.clone()];
+        states.set(host_id, st);
+    }
+    let mut ui = crate::render_loop::ui_state_bridge::UiMachines::new();
+    let mut cooked = crate::render_loop::ui_state_bridge::Cooked::default();
+    crate::render_loop::ui_state_bridge::request(
+        &mut ui,
+        &states,
+        host_id,
+        ph2d_ui_state::StateRole::Hover,
+    );
+    crate::render_loop::ui_state_bridge::dispatch(
+        &mut ui,
+        &mut states,
+        &mut sim,
+        &mut scene,
+        &map,
+        0.05,
+        &mut cooked,
+    );
+    assert_eq!(
+        cooked.morph_steps.len(),
+        1,
+        "a transicao nao publicou passo"
+    );
+    crate::morph_machine_drive::apply_ui_steps(&mut sim, &map, &cooked.morph_steps, &mut drive);
+    let m = sim.world().get::<VecMorph>(host).unwrap();
+    assert_eq!(
+        m.sources,
+        [ids[0], ids[2]],
+        "o mundo nao ficou entre as DUAS formas gravadas"
+    );
+    assert!(
+        m.t > 0.0 && m.t < 1.0,
+        "a meio da transicao o t tem de estar entre as pontas: {}",
+        m.t
+    );
+}
+
+/// ⛔⛔ **A POSE DE UM CONJUNTO NÃO CARREGA GEOMETRIA** — ela é DERIVADA.
+///
+/// A forma de um conjunto de Morph States é reescrita por `morph_live::recook` em todo quadro, a
+/// partir do par e do `t`. Gravá-la na pose não guarda trabalho do artista nenhum e custa duas
+/// coisas: o `install` escreve-a para o `recook` a apagar **no mesmo quadro**, e a `Transition`
+/// **casa duas geometrias** para animar um canal que ninguém lê — `Plan::new` custa **13 079×** um
+/// passo, e é por isso que o `plans_built` existe.
+///
+/// ⚠️ **A TINTA fica**, e a assimetria é o gate: o `recook` escreve os vértices e **não** o
+/// `fill`/`stroke`, então a cor do conjunto é autorada e anima como a de qualquer forma.
+///
+/// **Mutação que deve sangrar:** largar a guarda `!derived_geometry` no `capture`.
+#[test]
+fn a_set_pose_carries_no_geometry_and_costs_no_plan() {
+    let (mut sim, mut scene, mut map, ids) = world(3);
+    let mut pending = create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let host_id = scene.paths().last().unwrap().id;
+    let host = Entity::from_bits(map[&host_id]);
+
+    // O CONTROLE vem primeiro: uma forma NORMAL grava a geometria dela.
+    let leaf = crate::vec_ui_state_edit::capture(&sim, &scene, &map, ids[0]);
+    assert!(
+        leaf.geometry.is_some(),
+        "uma forma normal tem de gravar a geometria -- a fixtura perdeu a premissa"
+    );
+
+    let a = crate::vec_ui_state_edit::capture(&sim, &scene, &map, host_id);
+    assert!(
+        a.geometry.is_none(),
+        "a pose do conjunto gravou geometria DERIVADA"
+    );
+    // Cozer o conjunto noutra forma NÃO pode fazer a pose passar a carregá-la.
+    if let Some(mut m) = sim.world_mut().get_mut::<VecMorph>(host) {
+        m.sources = [ids[0], ids[2]];
+        m.t = 1.0;
+    }
+    let xf = crate::vec_transform::build(&sim, &map);
+    crate::morph_live::recook(
+        &mut sim,
+        &mut scene,
+        &map,
+        &xf,
+        &mut crate::morph_live::MorphPlans::default(),
+    );
+    let b = crate::vec_ui_state_edit::capture(&sim, &scene, &map, host_id);
+    assert!(
+        b.geometry.is_none(),
+        "e nem depois de o recook a reescrever"
+    );
+    assert_eq!(
+        ph2d_ui_state::Transition::new(&[a], &[b]).plans_built(),
+        0,
+        "a transicao casou duas geometrias que o recook apaga no mesmo quadro"
+    );
+}
+
+/// ⛔⛔ **DESCONECTAR UMA FORMA TIRA-A DOS ESTADOS GRAVADOS** — senão ela é puxada de volta.
+///
+/// ⚠️ **O mecanismo:** um estado grava a **sub-árvore** (`members`), então as formas-membro entram
+/// com a pose **LOCAL** que têm dentro do conjunto (o `align` põe-nas todas no mesmo ponto). O ⊘
+/// tira a forma do conjunto e devolve-lhe o `Transform` de mundo — mas a pose antiga continua na
+/// tabela, e o `install` do próximo Show/hover **reescreve-lhe o `Transform`**: a forma solta
+/// **salta para a origem do conjunto**, no meio de uma animação que já não é sobre ela.
+///
+/// ⚠️ **A família é PRÉ-EXISTENTE** (reparentar um filho para fora de um widget faz o mesmo), mas
+/// aqui ela está a **um clique** de distância, num botão da mesma secção. É o mesmo argumento do
+/// `retain_hosts`, um nível abaixo: *uma forma que sai leva as poses dela*.
+///
+/// ⛔ **O Dissolve não precisa disto** — ele apaga o path do conjunto, e o `dispatch` já deixa cair
+/// a tabela inteira do hospedeiro (`retain_hosts`). Só o ⊘ de UMA forma vazava.
+///
+/// **Mutação que deve sangrar:** o `disconnect_row` não chamar `forget_object_in_all_states`.
+#[test]
+fn disconnecting_a_shape_takes_it_out_of_the_recorded_states() {
+    let (mut sim, mut scene, mut map, ids) = world(3);
+    let mut pending = create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let host_id = scene.paths().last().unwrap().id;
+
+    let mut states = ph2d_ui_state::StateSets::default();
+    let mut st = ph2d_ui_state::UiState::new(ph2d_ui_state::StateRole::Default);
+    st.objects = crate::vec_ui_state_edit::members(&sim, &scene, &map, host_id)
+        .into_iter()
+        .map(|id| crate::vec_ui_state_edit::capture(&sim, &scene, &map, id))
+        .collect();
+    states.set(host_id, st);
+    assert!(
+        states
+            .role(host_id, ph2d_ui_state::StateRole::Default)
+            .is_some_and(|s| s.objects.iter().any(|p| p.id == ids[1])),
+        "a fixtura tem de gravar a forma-membro -- senao nao ha' o que vazar"
+    );
+
+    // ⚠️ **Pela porta do PRODUTO** (`disconnect_row`), e nao chamando as duas metades a' mao: um
+    // gate que as chamasse provaria que elas funcionam, nao que o ⊘ as chama -- que e' o defeito.
+    let host = Entity::from_bits(map[&host_id]);
+    assert!(crate::morph_set::disconnect_row(
+        &mut sim,
+        &map,
+        &mut states,
+        host,
+        1
+    ));
+    assert!(
+        !states
+            .role(host_id, ph2d_ui_state::StateRole::Default)
+            .is_some_and(|s| s.objects.iter().any(|p| p.id == ids[1])),
+        "⛔ a forma solta ficou na tabela -- o proximo Show puxa-a para a origem do conjunto"
+    );
+    // O CONTROLE: as OUTRAS ficam, e o hospedeiro tambem.
+    let left = states
+        .role(host_id, ph2d_ui_state::StateRole::Default)
+        .map(|s| s.objects.len())
+        .unwrap_or(0);
+    assert_eq!(left, 3, "so' a desconectada podia sair (host + 2 formas)");
+}

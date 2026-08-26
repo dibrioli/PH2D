@@ -190,8 +190,9 @@ fn announce(app: &crate::App) {
          moviam as formas ao mesmo tempo.)"
     );
     eprintln!(
-        "  9. **Esc** (ou o botao **Preview** outra vez) para sair. A forma volta a ser a primeira, \
-         e o **Ctrl+Z** NAO tem nenhum passo das transicoes para desfazer."
+        "  9. **Esc** (ou o botao **Preview** outra vez) para sair. A forma FICA na que voce' \
+         deixou -- sair COMPROMETE --, e um **Ctrl+Z** so' desfaz isso: UM passo para a sessao \
+         inteira de transicoes, nunca um por troca."
     );
     eprintln!(
         " 10. Com o Preview DESLIGADO, carregue em **{jump}** outra vez. A forma nao pode mexer-se \
@@ -207,8 +208,10 @@ fn announce(app: &crate::App) {
          da Tall). Nada pode mexer-se -- chegar onde ja' se esta' nao e' chegar."
     );
     eprintln!(
-        " 13. **O BOTAO ▶ de cada linha**: carregue no da **Thin**. A forma viaja ate' la' -- e se \
-         o Preview estivesse desligado, ele LIGA-SE sozinho (a maquina so' anda dentro do modo)."
+        " 13. **O BOTAO ▶ de cada linha, com o Preview DESLIGADO** (desligue-o antes): carregue no \
+         da **Thin**. Ele liga o modo **e** a forma viaja, ao PRIMEIRO clique. (!) Se precisar de \
+         carregar duas vezes, PARE -- era esse o defeito de 26/08. Depois carregue no ▶ da **Wide**: \
+         ela tem de voltar, mesmo tendo sido a forma inicial."
     );
     eprintln!(
         " 14. **ARRASTE uma forma NOVA para dentro do «Morph States 3» na Hierarquia.** Ela passa \
@@ -221,7 +224,9 @@ fn announce(app: &crate::App) {
     );
     eprintln!(
         " 15. **O botao ⊘ de uma linha** (Desconectar): a forma sai do conjunto e volta a \
-         aparecer no canvas, solta. (!) Se ela sumir em vez de aparecer, PARE."
+         aparecer no canvas, solta. (!) Se ela sumir em vez de aparecer, PARE. (!) Depois volte ao \
+         passo 19 e passe o rato: a forma que voce' soltou nao pode SALTAR para o meio do \
+         conjunto -- ela ja' nao faz parte da animacao."
     );
     eprintln!(
         " 16. **Undo Morph States**, no fim da seccao: desfaz tudo. As tres formas voltam soltas e \
@@ -233,8 +238,9 @@ fn announce(app: &crate::App) {
          no papel **Default**."
     );
     eprintln!(
-        " 18. Agora use o **Play** de uma das linhas para por o conjunto NOUTRA forma, e carregue \
-         em **Rec** no papel **Hover**. Os dois papeis passam a guardar formas DIFERENTES."
+        " 18. Agora use o **▶** de outra linha para por o conjunto NOUTRA forma, e carregue em \
+         **Rec** no papel **Hover**. Os dois papeis passam a guardar formas DIFERENTES. (!) Nao \
+         precisa de atribuir tecla nenhuma para isto -- se precisar, PARE."
     );
     eprintln!(
         " 19. Na seccao States, ligue o **Preview** (o das poses, nao o do Morph) e passe o rato \

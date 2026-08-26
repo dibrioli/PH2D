@@ -8663,22 +8663,38 @@ impl crate::App {
                     && let Some(host) =
                         crate::vec_morph_edit::morph_of_selection(sim, &self.vec_entities, &sel)
                 {
-                    let shapes = crate::morph_set::graph_of(sim, &self.vec_entities, host).shapes();
+                    // ⚠️ **Cada braço deriva o que precisa DENTRO da porta dele** — a lista de
+                    // formas era derivada aqui e passada aos três, e era ela que convidava a
+                    // escrever a lógica de cada verbo neste `match` (onde nenhum gate a alcança).
                     match cmd {
                         // ⭐ **PLAY: liga a pré-visualização se estiver desligada.** A máquina só
                         // anda dentro do modo (é ele que tem o relógio), e um Play que não tocasse
                         // nada seria um botão morto com nome de verbo.
                         crate::vec_morph_edit::MorphCmd::Play { row } => {
                             self.morph_preview = true;
-                            if let Some(m) = self.morph_machines.get_mut(&host.to_bits()) {
-                                let g = crate::morph_set::graph_of(sim, &self.vec_entities, host);
-                                m.travel(&g, row);
-                            }
+                            // ⚠️ **Pela porta**, e não por um `get_mut` aqui: este braço corre
+                            // DEPOIS do `tick`, que esvazia o mapa fora do modo — o `get_mut`
+                            // encontrava-o vazio e o botão só ligava a pré-visualização (report do
+                            // Enio, 2026-08-26). A porta abre a máquina semeada pelo mundo.
+                            crate::morph_machine_drive::play(
+                                &mut self.morph_machines,
+                                sim,
+                                &self.vec_entities,
+                                host,
+                                row,
+                            );
                         }
+                        // ⚠️ **Pela porta**, e não pelas duas metades aqui: a segunda — a forma
+                        // solta LEVAR as poses dela — não é alcançável de um teste escrita neste
+                        // braço, e foi assim que ela ficou por escrever uma wave inteira.
                         crate::vec_morph_edit::MorphCmd::Disconnect { row } => {
-                            if let Some(&shape) = shapes.get(row) {
-                                crate::morph_set::disconnect(sim, &self.vec_entities, shape);
-                            }
+                            crate::morph_set::disconnect_row(
+                                sim,
+                                &self.vec_entities,
+                                ui_states,
+                                host,
+                                row,
+                            );
                         }
                         crate::vec_morph_edit::MorphCmd::Dissolve => {
                             if let Some(path) =

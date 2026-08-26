@@ -138,6 +138,10 @@ pub(crate) fn capture(
     id: VecPathId,
 ) -> ObjectPose {
     let mut pose = ObjectPose::new(id);
+    // ⭐ **A forma deste objecto é DERIVADA?** Um conjunto de Morph States não tem geometria
+    // autorada: o `morph_live::recook` reescreve-a em todo quadro a partir do par e do `t`. Ver o
+    // bloco da `geometry` no fim.
+    let mut derived_geometry = false;
     if let Some(e) = entity_of(map, id) {
         if let Some(t) = sim.world().get::<Transform>(e) {
             pose.translation = [f64::from(t.translation.x), f64::from(t.translation.y)];
@@ -176,11 +180,14 @@ pub(crate) fn capture(
         // à mão (dois operandos, `t` keyado pela timeline) não é um conjunto de estados, e dizer
         // que ele *está* numa forma faria o `install` prendê-lo lá — matando o `t` que a timeline
         // conduz.
-        pose.morph_shape = sim
-            .world()
-            .get::<ph2d_ecs::VecMorphMachine>(e)
-            .and(sim.world().get::<ph2d_ecs::VecMorph>(e))
-            .map(|m| m.sources[1]);
+        derived_geometry = sim.world().get::<ph2d_ecs::VecMorphMachine>(e).is_some();
+        pose.morph_shape = derived_geometry
+            .then(|| {
+                sim.world()
+                    .get::<ph2d_ecs::VecMorph>(e)
+                    .map(|m| m.sources[1])
+            })
+            .flatten();
     }
     // **E A OPERAÇÃO DO GRUPO acima dela** — o outro canal, e o que faz a receita inteira mudar
     // entre dois estados (as quatro de conjunto **e** as quatro receitas, que não têm decomposição
@@ -205,10 +212,21 @@ pub(crate) fn capture(
         //
         // ⚠️ **E a tinta sai daqui.** Ela é campo de primeira classe da pose; deixá-la também
         // dentro da geometria daria dois lugares para o mesmo fato dentro do mesmo arquivo.
-        let mut g = p.clone();
-        g.fill = None;
-        g.stroke = None;
-        pose.geometry = Some(g);
+        // ⛔⛔ **MENOS quando ela é DERIVADA** (plano 32 W11d). A forma de um conjunto de Morph
+        // States é reescrita por `morph_live::recook` em TODO quadro a partir do par e do `t` —
+        // gravá-la aqui não guarda trabalho do artista nenhum e custa duas coisas: o `install`
+        // escreve-a para o `recook` a apagar no mesmo quadro, e a `Transition` **casa duas
+        // geometrias** para animar um canal que ninguém lê (`ph2d_vec_blend::Plan::new` custa
+        // 13 079× um passo, e o gate `plans_built` existe por isso).
+        //
+        // ⚠️ **A TINTA fica**, e a assimetria é o ponto: o `recook` escreve os vértices e **não** o
+        // `fill`/`stroke`, então a cor do conjunto é autorada e anima como a de qualquer forma.
+        if !derived_geometry {
+            let mut g = p.clone();
+            g.fill = None;
+            g.stroke = None;
+            pose.geometry = Some(g);
+        }
     }
     pose
 }
@@ -391,6 +409,45 @@ pub(crate) fn apply(
 /// seja um GRUPO puro nunca teve o problema (o `members` não o inclui — ele não tem forma), e é
 /// por isso que o defeito só aparece depois de o artista gravar um estado que move a própria
 /// forma-hospedeiro.
+/// ⛔⛔ **UMA FORMA QUE SAI DA SUB-ÁRVORE LEVA AS POSES DELA** (plano 32 W11d).
+///
+/// Um estado grava a **sub-árvore** ([`members`]), com a pose **LOCAL** de cada filho. Quando o
+/// artista tira um filho de lá — o ⊘ *Desconectar* de um conjunto de Morph States é o gesto que o
+/// faz num clique —, a pose antiga fica na tabela e o `install` do próximo Show **reescreve-lhe o
+/// `Transform`**: a forma solta **salta para a origem do hospedeiro**, no meio de uma animação que
+/// já não é sobre ela.
+///
+/// ⚠️ É o mesmo argumento do `retain_hosts` da [`crate::render_loop::ui_state_bridge`], um nível
+/// abaixo — ali *"uma forma apagada leva os estados dela"*, aqui *"uma forma que sai leva as poses
+/// dela"*.
+///
+/// ⛔ **O Dissolve não passa por aqui**, e não precisa: ele apaga o path do conjunto, e o
+/// `retain_hosts` deixa cair a tabela inteira do hospedeiro no mesmo quadro.
+///
+/// Devolve `true` se alguma pose saiu.
+pub(crate) fn forget_object_in_all_states(
+    states: &mut StateSets,
+    host: VecPathId,
+    id: VecPathId,
+) -> bool {
+    let mut dropped = false;
+    for role in StateRole::ALL {
+        let Some(mut st) = states.role(host, role).cloned() else {
+            continue;
+        };
+        let before = st.objects.len();
+        st.objects.retain(|p| p.id != id);
+        // ⚠️ **A escrita é POR ESTADO e condicional**, a mesma lei da irmã abaixo: re-escrever um
+        // estado que não continha a forma é inócuo hoje e é a forma exacta de um defeito no dia em
+        // que o `set` ganhar um efeito colateral.
+        if st.objects.len() != before {
+            states.set(host, st);
+            dropped = true;
+        }
+    }
+    dropped
+}
+
 pub(crate) fn shift_host_in_all_states(
     states: &mut StateSets,
     host: VecPathId,

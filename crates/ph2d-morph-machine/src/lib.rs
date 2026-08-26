@@ -302,10 +302,31 @@ impl MorphMachine {
     /// Uma máquina parada na forma inicial de `graph`.
     #[must_use]
     pub fn new(graph: &MorphGraph) -> Self {
-        // ⚠️ **`unwrap_or_default` e não um pânico:** uma lista vazia é uma máquina INERTE (o
-        // `reached_by` não acha nada e o `travel` recusa), e recusar aqui obrigaria todo chamador a
-        // tratar um caso que o produto não consegue produzir — o `morph_set` nunca cria menos de 2.
-        let start = graph.start().unwrap_or_default();
+        Self::seeded(graph, None)
+    }
+
+    /// ⭐⭐⭐ **Uma máquina SEMEADA pela forma que a cena já mostra** (plano 32 W11d).
+    ///
+    /// ⚠️ **Uma máquina que dirige o mundo tem de ser semeada por ele.** Esta não é serializada —
+    /// ela morre sempre que a pré-visualização se desliga — mas o `VecMorph` que ela escreveu
+    /// **fica** (o ledger larga a condução e a `settle` promove o vivo a documento). Nascer em
+    /// `graph.start()` com a cena noutra forma punha as duas em desacordo, e o sintoma era o botão
+    /// ▶ **recusado** pela regra *«chegar onde já se está não é chegar»* — sobre um «onde» que só a
+    /// máquina acreditava.
+    ///
+    /// ⛔ **Uma semente FORA do grafo cai no início**, e não é tolerância: a forma pode ter sido
+    /// desconectada do conjunto entre uma pré-visualização e a seguinte, e uma máquina parada numa
+    /// forma que já não é estado nenhum não teria de onde sair.
+    ///
+    /// ⚠️ **`unwrap_or_default` e não um pânico:** uma lista vazia é uma máquina INERTE (o
+    /// `reached_by` não acha nada e o `travel` recusa), e recusar aqui obrigaria todo chamador a
+    /// tratar um caso que o produto não consegue produzir — o `morph_set` nunca cria menos de 2.
+    #[must_use]
+    pub fn seeded(graph: &MorphGraph, showing: Option<ShapeId>) -> Self {
+        let start = showing
+            .filter(|s| graph.states.iter().any(|st| st.shape == *s))
+            .or_else(|| graph.start())
+            .unwrap_or_default();
         Self {
             current: start,
             pair: (start, start),

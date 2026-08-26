@@ -263,7 +263,17 @@ fn main() {
     let raw = mesh.clone();
 
     // ── ⛔⛔ FASE ZERO. Sem ela a mesma cadeia dá `10-12°`, e o defeito e' a entrada.
-    let f1 = ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
+    // ⭐⭐⭐ **A DENSIDADE DA FASE ZERO, varrível** — `PH2D_ALPHA`.
+    //
+    // ⛔ Ela é uma **constante** e o produto nunca a move, qualquer que seja a densidade que
+    // o artista peça. ⚠️ *Se o relevo já morre aqui, nenhum peso de alinhamento a jusante o
+    // pode recuperar* — e é isso que esta env existe para responder, com a régua
+    // `follows_relief` do lado.
+    let alpha = std::env::var("PH2D_ALPHA")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .unwrap_or(ph2d_remesh_iso::ALPHA);
+    let f1 = ph2d_remesh_iso::remesh_isotropic(&mut mesh, alpha);
     println!(
         "  ⭐⭐⭐ MANIFOLD na porta: {} arestas mas ⇒ {} · {} vertices partidos, {} copias",
         f1.manifold.bad_edges_before,
@@ -337,7 +347,19 @@ fn main() {
             cr.conflicts
         );
     }
-    let (field, _) = ph2d_crossfield::solve_miq(&dual);
+    // ⭐⭐⭐ **O PESO DO ALINHAMENTO AO RELEVO, varrível.**
+    //
+    // ⛔ Ele shipa a `0,03` desde 2026-08-22, e o número foi escolhido pelo **campo do
+    // oráculo** — não pela régua `follows_relief`, que só entrou neste instrumento em
+    // 2026-08-26. ⚠️ *Um número escolhido por uma régua tem de ser reconferido quando outra
+    // régua chega.* `PH2D_ALIGN_WEIGHT` varre-o.
+    let (field, _) = match std::env::var("PH2D_ALIGN_WEIGHT")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+    {
+        Some(w) => ph2d_crossfield::solve_miq_aligned(&dual, ph2d_crossfield::Rounding::default(), w),
+        None => ph2d_crossfield::solve_miq(&dual),
+    };
     let singular: Vec<u32> = ph2d_crossfield::vertex_index(&mesh, &dual, &field)
         .into_iter()
         .enumerate()

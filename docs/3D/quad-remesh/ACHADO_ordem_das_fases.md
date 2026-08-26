@@ -802,3 +802,86 @@ O caminho da extracção **constrói o próprio campo cruzado** (`Dual::build(&w
 ⚠️ *Dois caminhos que constroem o mesmo objecto precisam da mesma lei escrita duas vezes, ou
 de uma porta só — e a porta ainda não existe.* Fica **nomeado** como dívida: hoje há dois
 sítios a montar um `Dual` para o mesmo botão, e nada os obriga a concordar.
+
+## §19 — ⭐⭐⭐ A 2.ª QUEIXA MEDIDA COM CONTROLO: a grade «não olhou» para o relevo dele
+
+### §19.1 — ⛔⛔ E a minha régua de fidelidade era TAUTOLÓGICA
+
+O §18 celebrou *«a saída assenta na escultura: `0,000 %` nas 14 peças»*. ⛔ **Isso é a
+definição da operação:** desde o acabamento (§18.3) cada vértice é **pousado** na referência,
+logo `saída → referência` dá zero por construção.
+
+⚠️ **O aviso já estava escrito, com o número**, no doc do [`ph2d_quadfill::detail_lost`]: em
+2026-08-21 uma régua desta família mediu `0,0000` na malha **destruída** contra `0,0015` na
+boa — *a destruída pontuava melhor*. A coluna fica (ela ainda separa *«a saída vive sobre o
+F1»* de *«vive sobre a escultura»*), mas passa a chamar-se **SOBRE-O-QUE** e a dizer-se
+tautológica.
+
+⭐ As réguas a sério **já existiam nesta árvore** e nenhum instrumento as chamava:
+[`detail_lost`] (`referência → saída`) e [`follows_relief`].
+
+### §19.2 — ⭐⭐ A régua do relevo, com o CONTROLO que a valida
+
+`follows_relief` devolve o desvio 4-RoSy entre cada aresta da saída e a direcção principal de
+curvatura, **ponderado pela anisotropia**, com **`22,5°` = «não olhou»**.
+
+| peça | confiança | sem feição | com feição |
+|---|---|---|---|
+| `sphere_uv_96x144` (**controlo**) | **`0,00`** | `23,4°` | `23,4°` |
+| `sculpt_wrinkled` | `0,07` | `12,2°` | `12,2°` (não dispara) |
+| `sculpt_ridged` | `0,10` | `17,2°` | ⭐ **`13,7°`** |
+| `sculpt_hooked` | `0,13` | `19,0°` | ⭐ **`14,5°`** |
+| ⛔ **`sculpt_t003`** (dele) | **`0,56`** | **`21,7°`** | `20,7°` |
+| ⛔ **`sculpt_t002`** (dele) | **`0,54`** | **`21,9°`** | `20,4°` |
+
+⭐⭐⭐ **O controlo valida o nulo:** uma esfera lisa não tem direcção preferida (confiança
+`0,00`) e lê `23,4°`, o valor de «não olhou». ⇒ E as peças do artista lêem **`21,7°`/`21,9°`
+com confiança `0,54`–`0,56`**: *há muita direcção na peça dele, e a grade não segue quase
+nenhuma.* **É a 2.ª queixa dele, com controlo.**
+
+⚠️ **Os regimes de confiança são diferentes** (`0,56` contra `0,07`–`0,13`) e os números não
+se comparam de frente. O que se compara é cada peça **contra o seu próprio nulo**.
+
+⚠️ E o detector de feição **quase não dispara** nas esculturas dele: ganha `3,5°`–`4,5°` nas
+peças do corpus e só `1,0°`–`1,5°` nas dele.
+
+### §19.3 — ⛔⛔⛔ O PESO DO ALINHAMENTO NÃO É A ALAVANCA — varrido e recusado
+
+O `ALIGN_WEIGHT` shipa a `0,03` desde 2026-08-22, e o número foi escolhido pelo **campo do
+oráculo** — ⚠️ *não* por esta régua, que só chegou hoje. Varrido na `sculpt_t003`:
+
+| peso | relevo | ⛔ **bordo (furos)** | enviesamento p50 · `>60°` |
+|---|---|---|---|
+| `0,0` | `22,1°` | `10` | `7,9°` · `3` |
+| ⭐ **`0,03`** (shipa) | `21,7°` | ⭐ **`6`** | ⭐ **`6,6°` · `1`** |
+| `0,10` | `20,8°` | ⛔ `24` | `8,3°` · `2` |
+| `0,30` | `20,4°` | ⛔ `18` | `7,2°` · `3` |
+| `1,00` | `20,4°` | ⛔ **`64`** | `7,8°` · `3` |
+
+⭐⭐⭐ **A SATURAÇÃO é o achado:** de `0,30` para `1,00` o relevo **não se move** (`20,4°` nos
+dois) e os furos **triplicam**. ⇒ *o campo já está tão alinhado quanto este peso o consegue
+pôr, e o relevo continua em «não olhou».* O `0,03` que shipa é o melhor ponto **das duas**
+outras colunas ao mesmo tempo.
+
+⇒ **A perda do relevo não está no peso do campo.**
+
+### §19.4 — ⛔⛔ E a FASE ZERO também não é a alavanca
+
+O `ALPHA` é uma constante (`0,02`) e o produto **nunca o move**, qualquer que seja a densidade
+pedida. Se o relevo morresse ali, nada a jusante o recuperaria. Varrido na `sculpt_t003`:
+
+| `ALPHA` | faces do F1 | relevo | ⛔ bordo · não-manif. | enviesamento p50 · `>60°` |
+|---|---|---|---|---|
+| ⭐ **`0,020`** (shipa) | `4 850` | `21,7°` | ⭐ **`6` · `0`** | ⭐ **`6,6°` · `1`** |
+| `0,014` | `9 988` | `21,0°` | ⛔ `10` · `2` | ⛔ `9,0°` · `9` |
+| `0,010` | `19 504` | `20,1°` | ⛔ **`58`** · `0` | `7,7°` · `2` |
+
+⇒ **`4×` a densidade da fase zero compra `1,6°` de relevo** — que continua em «não olhou» —
+**e paga com `10×` os furos** (`6 → 58`). O caminho é monótono nas duas colunas: cada grau de
+relevo custa mais buracos que o anterior.
+
+⭐⭐⭐ **Duas hipóteses varridas e as duas recusadas ⇒ a família está fechada:** nem o peso do
+campo nem a densidade do substrato recuperam o relevo (CLAUDE.md — *duas boas hipóteses a
+falhar refutam a FAMÍLIA, não as duas*). O suspeito que sobra é a **quantização/layout**, que
+é quem decide onde as linhas de grade de facto caem — e é a única fase entre um campo
+comprovadamente alinhado e uma saída que não segue o relevo.

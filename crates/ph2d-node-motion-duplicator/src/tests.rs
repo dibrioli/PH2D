@@ -1,6 +1,7 @@
 //! Unit tests for `motion.duplicator`, split from `lib.rs` (`#[path]` sibling).
 //! `super` is the crate root.
 
+use super::transfer::Transfer;
 use super::*;
 use ph2d_nodegraph::cook::{Cook, OpResolver};
 use ph2d_nodegraph::graph::{Edge, Graph};
@@ -27,7 +28,7 @@ fn the_duplicator_stamps_each_shape_at_each_point() {
     // RED) and sits at its point's position.
     let s = shapes(&[7.0, 3.0]);
     let p = points(&[[10.0, 0.0], [20.0, 0.0], [30.0, 0.0]]);
-    let out = duplicate(&s, &p, 3, Pick::Off, 0, 0.0);
+    let out = duplicate(&s, &p, 3, Pick::Off, 0, 0.0, Transfer::ShapeWins);
     assert_eq!(out.count(), 6);
     let Column::Scalar(ids) = out.get("texture_id").unwrap() else {
         panic!("texture_id")
@@ -60,7 +61,7 @@ fn p_and_rot_sum_both_inputs() {
     let p = Stream::new(2)
         .with("P", Column::Vec2(vec![[0.0, 5.0], [0.0, 9.0]]))
         .with("rot", Column::Scalar(vec![1.0, 2.0]));
-    let out = duplicate(&s, &p, 2, Pick::Off, 0, 0.0);
+    let out = duplicate(&s, &p, 2, Pick::Off, 0, 0.0, Transfer::ShapeWins);
     let Column::Vec2(pp) = out.get("P").unwrap() else {
         panic!("P")
     };
@@ -82,6 +83,7 @@ fn no_rot_column_when_neither_input_has_one() {
         Pick::Off,
         0,
         0.0,
+        Transfer::ShapeWins,
     );
     assert!(out.get("rot").is_none());
 }
@@ -97,6 +99,7 @@ fn index_and_count_are_continuous_across_the_product() {
         Pick::Off,
         0,
         0.0,
+        Transfer::ShapeWins,
     );
     let Column::Scalar(idx) = out.get("Index").unwrap() else {
         panic!("Index")
@@ -112,7 +115,15 @@ fn index_and_count_are_continuous_across_the_product() {
 fn no_points_passes_the_shapes_through() {
     // A duplicator with nowhere to stamp is a passthrough of its shapes.
     let s = shapes(&[7.0, 3.0]);
-    let out = duplicate(&s, &Stream::new(0), 0, Pick::Off, 0, 0.0);
+    let out = duplicate(
+        &s,
+        &Stream::new(0),
+        0,
+        Pick::Off,
+        0,
+        0.0,
+        Transfer::ShapeWins,
+    );
     assert_eq!(out.count(), 2);
     let Column::Scalar(ids) = out.get("texture_id").unwrap() else {
         panic!("texture_id")
@@ -237,7 +248,7 @@ fn measure_duplicate_is_flat_in_n() {
     for &n in &[16usize, 256, 4096, 65536] {
         let pts = points(&vec![[0.0, 0.0]; n]);
         // Warm, then take the median of a few runs (shared machine, doc 28 §5.49).
-        let _ = duplicate(&shape, &pts, n, Pick::Off, 0, 0.0);
+        let _ = duplicate(&shape, &pts, n, Pick::Off, 0, 0.0, Transfer::ShapeWins);
         let mut best = f64::INFINITY;
         for _ in 0..5 {
             let t = Instant::now();
@@ -248,6 +259,7 @@ fn measure_duplicate_is_flat_in_n() {
                 Pick::Off,
                 0,
                 0.0,
+                Transfer::ShapeWins,
             ));
             best = best.min(t.elapsed().as_secs_f64());
             assert_eq!(out.count(), n);
@@ -283,13 +295,13 @@ fn points_sized(ps: &[[f32; 2]], sizes: &[f32]) -> Stream {
 fn a_point_scale_of_zero_leaves_the_stamp_exactly_as_it_shipped() {
     let s = shapes(&[5.0]);
     let p = points_sized(&[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], &[0.5, 1.0, 2.0]);
-    let off = duplicate(&s, &p, 3, Pick::Off, 0, 0.0);
+    let off = duplicate(&s, &p, 3, Pick::Off, 0, 0.0, Transfer::ShapeWins);
     assert!(
         off.get("size").is_none(),
         "sem escala pedida, o carimbo não pode inventar uma coluna `size`"
     );
     // O CONTROLE de que a fixture contém o fenômeno: com o peso a 1 ela aparece.
-    let on = duplicate(&s, &p, 3, Pick::Off, 0, 1.0);
+    let on = duplicate(&s, &p, 3, Pick::Off, 0, 1.0, Transfer::ShapeWins);
     assert!(
         on.get("size").is_some(),
         "com o peso a 1 a escala do ponto TEM de chegar ao carimbo"
@@ -304,7 +316,8 @@ fn a_point_scale_of_zero_leaves_the_stamp_exactly_as_it_shipped() {
 fn the_points_scale_reaches_the_stamp_and_the_weight_interpolates() {
     let s = shapes(&[5.0]);
     let p = points_sized(&[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], &[0.5, 1.0, 3.0]);
-    let read = |t: f32| match duplicate(&s, &p, 3, Pick::Off, 0, t).get("size") {
+    let read = |t: f32| match duplicate(&s, &p, 3, Pick::Off, 0, t, Transfer::ShapeWins).get("size")
+    {
         Some(Column::Vec2(v)) => v.iter().map(|q| q[0]).collect::<Vec<_>>(),
         _ => Vec::new(),
     };
@@ -330,7 +343,7 @@ fn the_shape_scale_and_the_point_scale_multiply() {
     let mut s = shapes(&[5.0]);
     s.set("size", Column::Vec2(vec![[2.0, 2.0]]));
     let p = points_sized(&[[0.0, 0.0], [1.0, 0.0]], &[0.5, 3.0]);
-    let out = duplicate(&s, &p, 2, Pick::Off, 0, 1.0);
+    let out = duplicate(&s, &p, 2, Pick::Off, 0, 1.0, Transfer::ShapeWins);
     let Some(Column::Vec2(v)) = out.get("size") else {
         panic!("size")
     };
@@ -348,7 +361,7 @@ fn points_without_a_size_column_leave_the_stamp_alone() {
     let mut s = shapes(&[5.0]);
     s.set("size", Column::Vec2(vec![[2.0, 2.0]]));
     let p = points(&[[0.0, 0.0], [1.0, 0.0]]);
-    let out = duplicate(&s, &p, 2, Pick::Off, 0, 1.0);
+    let out = duplicate(&s, &p, 2, Pick::Off, 0, 1.0, Transfer::ShapeWins);
     let Some(Column::Vec2(v)) = out.get("size") else {
         panic!("size")
     };

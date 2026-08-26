@@ -405,6 +405,7 @@ pub(crate) fn build_level(
         Some("95") => conferencia::forces_family(doc, registry),
         Some("96") => conferencia::value_family(doc, registry),
         Some("97") => conferencia::base_family(doc, registry),
+        Some("98") => conferencia::stamp_family(doc, registry),
         _ => Vec::new(),
     }
 }

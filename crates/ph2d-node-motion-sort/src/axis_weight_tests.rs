@@ -31,13 +31,13 @@ fn an_axis_angle_of_zero_is_the_bare_x_and_y() {
 #[test]
 fn ninety_degrees_turns_the_x_key_into_the_y_key() {
     let p = cross();
-    let turned = permutation(&keys(&p, KEY_X, O, 0, 90.0, &[]), false, 0);
-    let plain_y = permutation(&keys(&p, KEY_Y, O, 0, 0.0, &[]), false, 0);
+    let turned = permutation(&keys(&p, KEY_X, O, 0, 90.0, &[]), &[], false, 0);
+    let plain_y = permutation(&keys(&p, KEY_Y, O, 0, 0.0, &[]), &[], false, 0);
     assert_eq!(turned, plain_y, "X girado 90° é o Y");
 
     // E o CONTROLE de que a fixture separa: uma DIAGONAL não é nenhum dos dois.
-    let diag = permutation(&keys(&p, KEY_X, O, 0, 45.0, &[]), false, 0);
-    let plain_x = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), false, 0);
+    let diag = permutation(&keys(&p, KEY_X, O, 0, 45.0, &[]), &[], false, 0);
+    let plain_x = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), &[], false, 0);
     assert_ne!(diag, plain_x, "a diagonal tem de diferir do X");
     assert_ne!(diag, plain_y, "e do Y — senão a cena não mostra nada novo");
 }
@@ -60,11 +60,11 @@ fn the_weight_key_sorts_by_the_field() {
     let p = cross();
     // Um peso que INVERTE a ordem de chegada.
     let w = vec![9.0, 5.0, 1.0, 7.0];
-    let perm = permutation(&keys(&p, KEY_WEIGHT, O, 0, 0.0, &w), false, 0);
+    let perm = permutation(&keys(&p, KEY_WEIGHT, O, 0, 0.0, &w), &[], false, 0);
     assert_eq!(perm, vec![2, 1, 3, 0], "a ordem é a dos pesos crescentes");
 
     // Um peso de UM valor vale para todos (broadcast) ⇒ empate ⇒ a ordem estável.
-    let one = permutation(&keys(&p, KEY_WEIGHT, O, 0, 0.0, &[4.0]), false, 0);
+    let one = permutation(&keys(&p, KEY_WEIGHT, O, 0, 0.0, &[4.0]), &[], false, 0);
     assert_eq!(
         one,
         vec![0, 1, 2, 3],
@@ -80,7 +80,7 @@ fn the_weight_key_sorts_by_the_field() {
 #[test]
 fn an_unwired_weight_is_the_identity_and_a_wired_one_is_ignored_elsewhere() {
     let p = cross();
-    let empty = permutation(&keys(&p, KEY_WEIGHT, O, 0, 0.0, &[]), false, 0);
+    let empty = permutation(&keys(&p, KEY_WEIGHT, O, 0, 0.0, &[]), &[], false, 0);
     assert_eq!(
         empty,
         vec![0, 1, 2, 3],

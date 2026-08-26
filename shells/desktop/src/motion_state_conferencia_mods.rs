@@ -150,6 +150,11 @@ pub(crate) mod conferencia_demos_forces;
 #[path = "motion_state_conferencia_demos_value.rs"]
 pub(crate) mod conferencia_demos_value;
 
+/// A cena do VOCABULARIO DO CARIMBO (`=98`) — a cor autorada no arranjo que sumia no
+/// carimbo, e a ordenacao DENTRO de grupos (folha 08).
+#[path = "motion_state_conferencia_demos_stamp.rs"]
+pub(crate) mod conferencia_demos_stamp;
+
 /// A cena da BASE DO RUIDO (`=97`) — tres ruidos e tres formas de celula (folha 06).
 #[path = "motion_state_conferencia_demos_base.rs"]
 pub(crate) mod conferencia_demos_base;

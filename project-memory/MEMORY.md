@@ -38,6 +38,7 @@
 - [Restrição num passe só = ponto de partida](feedback_a_constraint_imposed_in_one_phase_and_not_the_next_is_a_starting_point.md)
 - [Meça a ESTRUTURA do defeito antes de desenhar a cura](feedback_measure_the_defects_structure_before_designing_its_cure.md) · [«a fase X cria Y» pede entrada LIMPA](feedback_a_stage_accused_of_creating_a_defect_needs_a_clean_input_control.md)
 - [Mecanismo certo, cura errada](feedback_a_correct_mechanism_can_prescribe_the_wrong_cure.md) · [preço errado 4×](feedback_a_note_can_name_the_right_mechanism_and_miss_the_price_by_4x.md) · [cerca declarada escolhe a cura](feedback_a_declared_fence_chooses_the_shape_of_its_own_cure.md)
+- [«Knob ausente» pode esconder um DEFEITO; e sonda com param no default mede o param desligado](feedback_a_missing_knob_cell_can_hide_a_defect_measure_before_pricing.md)
 - [Recusa medida responde UMA pergunta](feedback_a_measured_refusal_answers_one_question_recheck_it_when_yours_is_another.md) · [cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) · [revert: leia o motivo](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md)
 - [match não guarda a lista de um laço](feedback_an_exhaustive_match_does_not_guard_the_list_a_loop_iterates.md) · [nome de param carrega contrato](feedback_a_house_param_name_carries_a_contract_pick_another_word.md) · [convenção vs inércia](feedback_convention_vs_inertia.md)
 

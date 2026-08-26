@@ -225,28 +225,31 @@ fn the_toggle_is_reachable_in_the_panel() {
 fn the_shift_rotates_the_order_and_never_loses_a_piece() {
     let p = vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0], [4.0, 0.0]];
     let keys = keys(&p, KEY_X, [0.0, 0.0], 0, 0.0, &[]);
-    let base = permutation(&keys, false, 0);
+    let base = permutation(&keys, &[], false, 0);
     assert_eq!(base, vec![0, 1, 2, 3, 4], "shift 0 e' a ordem de sempre");
     assert_eq!(
-        permutation(&keys, false, 1),
+        permutation(&keys, &[], false, 1),
         vec![1, 2, 3, 4, 0],
         "roda uma"
     );
     assert_eq!(
-        permutation(&keys, false, 5),
+        permutation(&keys, &[], false, 5),
         base,
         "uma volta inteira e' identidade"
     );
     // ⚠️ Para trás: o `%` de Rust devolveria negativo e isto entraria em pânico.
     assert_eq!(
-        permutation(&keys, false, -1),
+        permutation(&keys, &[], false, -1),
         vec![4, 0, 1, 2, 3],
         "roda ao contrario"
     );
-    assert_eq!(permutation(&keys, false, -7), permutation(&keys, false, 3));
+    assert_eq!(
+        permutation(&keys, &[], false, -7),
+        permutation(&keys, &[], false, 3)
+    );
     // E em TODO shift ela continua a ser uma permutação de `0..n`.
     for shift in -12i64..12 {
-        let mut seen = permutation(&keys, false, shift);
+        let mut seen = permutation(&keys, &[], false, shift);
         seen.sort_unstable();
         assert_eq!(seen, vec![0, 1, 2, 3, 4], "shift {shift} perdeu ou repetiu");
     }
@@ -256,6 +259,6 @@ fn the_shift_rotates_the_order_and_never_loses_a_piece() {
 /// um `n` de zero seria uma divisão por zero no `rem_euclid`.
 #[test]
 fn an_empty_list_does_not_panic_on_a_shift() {
-    assert!(permutation(&[], false, 7).is_empty());
-    assert!(permutation(&[], true, -7).is_empty());
+    assert!(permutation(&[], &[], false, 7).is_empty());
+    assert!(permutation(&[], &[], true, -7).is_empty());
 }

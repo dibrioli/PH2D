@@ -16,9 +16,14 @@
 //! carries the placement** — its `P` is ADDED to the shape's `P`, and its `rot`
 //! to the shape's `rot`. So a `source.object` emitting one sprite tile at the
 //! origin, crossed with a grid of `N` points, is that sprite stamped `N` times,
-//! one per grid cell. Point columns other than `P`/`rot` are the placement's
-//! business, not the appearance's, so they do not override the shape (a
-//! per-point tint would be a future extension — the shape is the template).
+//! one per grid cell.
+//!
+//! ⚠️ **A cerca *"a per-point tint would be a future extension"* CAIU em 2026-08-26, e
+//! caiu porque era um DEFEITO por baixo de uma decisão** (doc 89 folha 08): as colunas do
+//! ponto não «deixavam de sobrepor a forma» — elas **desapareciam**, mesmo quando a forma
+//! não tinha nada com aquele nome. Uma rampa de cor autorada sobre o arranjo, que é o gesto
+//! mais comum que há, saía sem `tint` nenhum. O param [`transfer::Transfer`] dá a lei, e o
+//! default **`Shape Wins`** é o mundo de sempre, byte a byte.
 //!
 //! `Index`/`Count` are renumbered **continuous across everything stamped** so a
 //! downstream index-driven effect (a colour ramp, a stagger) flows over the whole
@@ -103,6 +108,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "point_scale",
             default: 0.0,
         },
+        // **A TRANSFERÊNCIA** (doc 89 folha 08). `0` = a forma vence e a coluna do ponto
+        // é deitada fora, que é o que sempre aconteceu — e o que fazia uma rampa de cor
+        // autorada nos pontos DESAPARECER. Ver [`transfer::Transfer`].
+        ParamSpec {
+            name: transfer::TRANSFER,
+            default: 0.0,
+        },
     ],
     // Changes the element count (shapes → shapes·points), which is structural,
     // not a per-element `ph2d-expr` map an `eval_column` could lower; and no
@@ -139,9 +151,13 @@ const SIZE_IDENTITY: f32 = 1.0;
 /// afinação que a referência oferece.
 ///
 /// ⚠️ **A CERCA que existia cobre a COR, não a escala.** O doc-comment deste nó
-/// declara *"a per-point tint would be a future extension — the shape is the
+/// declarava *"a per-point tint would be a future extension — the shape is the
 /// template"*; a célula reconferiu-a e ela é sobre `tint`. Para a escala não há
 /// cerca, há três referências a dizer o contrário.
+///
+/// ⚠️ **E a cerca da COR caiu depois** (2026-08-26, [`transfer::Transfer`]) — mas o `size`
+/// **não** entrou naquela lei: ele tem esta porta, medida e decidida, e uma grandeza com
+/// duas portas é como as duas divergem. O `transfer` salta-o pelo nome.
 const POINT_SCALE: &str = "point_scale";
 
 /// **Which shape lands on a point** (doc 89 folha 08 — the P0).
@@ -348,6 +364,7 @@ fn duplicate(
     mode: Pick,
     seed: u32,
     point_scale: f32,
+    transfer: transfer::Transfer,
 ) -> Stream {
     // No points: the duplicator has nowhere to stamp → pass the shapes through
     // (the reference's `points`-less behaviour). Cloning is refcount, not copy.
@@ -398,6 +415,19 @@ fn duplicate(
         }
         out.set(name.clone(), spread(col, &pairs));
     }
+    // ⚠️ **E as colunas dos PONTOS** — sem esta chamada, toda coluna que só o ponto tem
+    // desaparecia sem aviso (doc 89 folha 08; medido em 2026-08-26 com uma rampa de cor).
+    // Inerte no default, e por isso o caminho de sempre é byte a byte.
+    transfer::point_columns_into(
+        &mut out,
+        shape,
+        points,
+        &pairs,
+        transfer,
+        // Os nomes com lei própria: `P`/`rot` somam os dois lados, `Index`/`Count`
+        // renumeram a lista junta, e o `size` tem a porta dele (`point_scale`).
+        &[P, ROT, INDEX, COUNT, SIZE],
+    );
     apply_point_scale(&mut out, shape, points, &pairs, point_scale);
     out
 }
@@ -471,7 +501,15 @@ impl NodeOp for MotionDuplicator {
             points.count(),
             RECOMMENDED_MAX_ELEMENTS,
         );
-        let out = duplicate(shape, points, np, mode, seed, ctx.param(POINT_SCALE));
+        let out = duplicate(
+            shape,
+            points,
+            np,
+            mode,
+            seed,
+            ctx.param(POINT_SCALE),
+            transfer::Transfer::of(ctx.param(transfer::TRANSFER)),
+        );
         ctx.emit(out);
     }
 }
@@ -528,6 +566,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    // ⚠️ **Também NÃO é gateado pelo `pick`**, pelo mesmo motivo do `point_scale`: a
+    // transferência compõe-se com o carimbo nos três modos.
+    ParamUiHint {
+        param: transfer::TRANSFER,
+        label: "Transfer",
+        min: 0.0,
+        max: 3.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Shape Wins", "Point Wins", "Add", "Multiply"],
+        },
+    },
 ];
 
 /// The seed belongs to the mode that reads it. In Off/Cycle the assignment is
@@ -537,6 +587,9 @@ static PARAM_GATES: &[ParamGate] = &[ParamGate {
     when: "pick",
     values: &[2],
 }];
+
+#[path = "transfer.rs"]
+pub mod transfer;
 
 #[cfg(test)]
 #[path = "tests.rs"]

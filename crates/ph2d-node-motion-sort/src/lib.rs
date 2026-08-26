@@ -127,6 +127,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "weight",
             ty: VALUE,
         },
+        // **O GRUPO** (doc 89 folha 08, linha 34: *"ordena DENTRO de grupos"* — Blender
+        // *Sort Elements*). Apendada pelo mesmo motivo da `weight`: um grafo salvo resolve
+        // as portas por ÍNDICE, e uma porta no meio renumeraria as ligações de todos eles.
+        // Desligada ⇒ um grupo só ⇒ a permutação de sempre, ao bit. Ver [`permutation`].
+        PortSpec {
+            name: "group",
+            ty: VALUE,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -240,15 +248,39 @@ fn keys(
 /// (o artista arrasta para a esquerda), e o `%` de Rust devolve negativo.
 ///
 /// `shift = 0` ⇒ a permutação de sempre, literalmente (`rotate_left(0)` é um no-op).
-fn permutation(k: &[f32], descending: bool, shift: i64) -> Vec<usize> {
+fn permutation(k: &[f32], groups: &[f32], descending: bool, shift: i64) -> Vec<usize> {
+    // O grupo de um elemento: a coluna quando ela existe, e **zero** quando não —
+    // *«desligada ⇒ um grupo só»*, que é a linha do default da célula.
+    let g = |i: usize| -> f32 {
+        match groups.len() {
+            0 => 0.0,
+            1 => groups[0],
+            _ => groups.get(i).copied().unwrap_or(0.0),
+        }
+    };
     let mut perm: Vec<usize> = (0..k.len()).collect();
-    perm.sort_by(|&a, &b| k[a].total_cmp(&k[b]));
-    if descending {
-        perm.reverse();
-    }
-    if !perm.is_empty() {
-        let n = perm.len() as i64;
-        perm.rotate_left(shift.rem_euclid(n) as usize);
+    // ⚠️ **A chave primária é o GRUPO, a secundária é a chave de sempre** — e o
+    // `sort_by` é estável, então empates nas duas mantêm a ordem de chegada, tal como
+    // antes desta porta existir.
+    perm.sort_by(|&a, &b| g(a).total_cmp(&g(b)).then(k[a].total_cmp(&k[b])));
+    // ⚠️ **O `descending` e o `shift` valem DENTRO de cada grupo, nunca sobre a lista
+    // toda.** A alternativa — inverter/rodar o todo — moveria elementos entre grupos, o
+    // que é a negação de *"ordena dentro de grupos"*; e num grupo só as duas leituras
+    // colapsam, que é o que mantém o caminho de sempre byte a byte.
+    let mut start = 0usize;
+    while start < perm.len() {
+        let gv = g(perm[start]);
+        let mut end = start + 1;
+        while end < perm.len() && g(perm[end]).total_cmp(&gv) == core::cmp::Ordering::Equal {
+            end += 1;
+        }
+        let run = &mut perm[start..end];
+        if descending {
+            run.reverse();
+        }
+        let n = run.len() as i64;
+        run.rotate_left(shift.rem_euclid(n) as usize);
+        start = end;
     }
     perm
 }
@@ -301,6 +333,13 @@ impl NodeOp for MotionSort {
         } else {
             Vec::new()
         };
+        // ⚠️ Lido ANTES do input 0 e clonado, pela mesma razão do peso: dois `ctx.input`
+        // emprestados não coexistem. Ao contrário do peso, **não** é gateado por modo — o
+        // grupo é ortogonal à chave (ordena-se DENTRO dele, seja qual for a chave).
+        let groups: Vec<f32> = match ctx.input(2).get(VALUE_COL) {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => Vec::new(),
+        };
         let input = ctx.input(0);
         let n = input.count();
         let p: Vec<[f32; 2]> = match input.get("P") {
@@ -309,6 +348,7 @@ impl NodeOp for MotionSort {
         };
         let perm = permutation(
             &keys(&p, key, center, seed, axis, &weight),
+            &groups,
             descending,
             ctx.param("shift").round() as i64,
         );
@@ -458,7 +498,7 @@ mod tests {
     #[test]
     fn radial_sort_orders_by_distance() {
         let p = vec![[3.0, 0.0], [0.0, 1.0], [-2.0, 0.0], [0.5, 0.5]];
-        let perm = permutation(&keys(&p, KEY_RADIAL, O, 0, 0.0, &[]), false, 0);
+        let perm = permutation(&keys(&p, KEY_RADIAL, O, 0, 0.0, &[]), &[], false, 0);
         let sorted: Vec<[f32; 2]> = perm.iter().map(|&i| p[i]).collect();
         for w in sorted.windows(2) {
             assert!(r2(w[0]) <= r2(w[1]), "radii non-decreasing: {sorted:?}");
@@ -472,9 +512,9 @@ mod tests {
     #[test]
     fn x_sort_and_descending() {
         let p = vec![[2.0, 0.0], [-1.0, 0.0], [0.5, 0.0]];
-        let asc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), false, 0);
+        let asc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), &[], false, 0);
         assert_eq!(asc, vec![1, 2, 0], "ascending by x");
-        let desc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), true, 0);
+        let desc = permutation(&keys(&p, KEY_X, O, 0, 0.0, &[]), &[], true, 0);
         assert_eq!(desc, vec![0, 2, 1], "descending reverses");
     }
 
@@ -483,8 +523,8 @@ mod tests {
     #[test]
     fn random_is_a_deterministic_shuffle() {
         let p: Vec<[f32; 2]> = (0..20).map(|i| [i as f32, 0.0]).collect();
-        let a = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), false, 0);
-        let b = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), false, 0);
+        let a = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), &[], false, 0);
+        let b = permutation(&keys(&p, KEY_RANDOM, O, 42, 0.0, &[]), &[], false, 0);
         assert_eq!(a, b, "deterministic");
         assert_ne!(a, (0..20).collect::<Vec<_>>(), "actually shuffled");
         let mut sorted = a.clone();
@@ -602,3 +642,7 @@ mod axis_weight_tests;
 #[cfg(test)]
 #[path = "reindex_tests.rs"]
 mod reindex_tests;
+
+#[cfg(test)]
+#[path = "group_tests.rs"]
+mod group_tests;

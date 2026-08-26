@@ -4555,3 +4555,56 @@ fn the_depth_counts_chained_rounds_and_not_loose_nodes() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O ESPELHO DEMONSTRA-SE — a nota dizia que não** (W78).
+///
+/// A lista de aberto do módulo carrega, desde a W17, *«o Mirror não se consegue demonstrar: ele
+/// dobra em torno do centro do objecto, e o que falta é um alvo descentrado ou um pivô autorado»*.
+///
+/// ⚠️ **Um alvo descentrado É exprimível hoje**, e por duas portas: o modificador entra em **qualquer
+/// nó menos uma escultura** (`field3d_scene_panel::mods_for`), e um nó de **operação** tem filhos com
+/// pose própria. ⇒ pôr o `Mirror` na operação dobra os filhos em torno do centro **dela**, e uma
+/// caixa fora do eixo aparece **dos dois lados**.
+///
+/// *Este gate é a demonstração, e existe porque a nota afirmava a ausência sem a medir.*
+#[test]
+fn a_mirror_on_an_operation_folds_an_off_centre_child() {
+    let off = 0.35f32;
+    let child = leaf(
+        Primitive::Box {
+            half: [0.12, 0.12, 0.12],
+            round: 0.0,
+        },
+        Xform::at(off, 0.0, 0.0),
+    );
+    let plain = FieldDoc::new(
+        vec![
+            child.clone(),
+            combine(Op::Union(Blend::Sharp), vec![NodeId(0)]),
+        ],
+        NodeId(1),
+    )
+    .expect("a peça");
+    let mut top = combine(Op::Union(Blend::Sharp), vec![NodeId(0)]);
+    top.mods.push(ph2d_field::Unary::Mirror);
+    let mirrored = FieldDoc::new(vec![child, top], NodeId(1)).expect("a peça espelhada");
+
+    let here = [f64::from(off), 0.0, 0.0];
+    let there = [f64::from(-off), 0.0, 0.0];
+    let f = |d: &FieldDoc, p: [f64; 3]| Field::new(d).at(p[0], p[1], p[2]);
+
+    assert!(f(&plain, here) < 0.0, "a caixa está onde foi posta");
+    assert!(
+        f(&plain, there) > 0.0,
+        "e sem espelho não há nada do outro lado — senão o gate media a peça errada"
+    );
+    assert!(
+        f(&mirrored, there) < 0.0,
+        "⛔ com o espelho na OPERAÇÃO, o outro lado tem de ficar sólido — é a demonstração que a \
+         nota dizia não existir"
+    );
+    assert!(
+        (f(&mirrored, there) - f(&plain, here)).abs() < 1.0e-6,
+        "e os dois lados têm o MESMO campo: o espelho é uma dobra, não uma cópia aproximada"
+    );
+}

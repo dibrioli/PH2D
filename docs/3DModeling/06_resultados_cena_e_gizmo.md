@@ -5749,17 +5749,21 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⏸️ Baixar as arestas do contorno a mexer (`PREVIEW_MAX_EDGES`) | preço medido na tabela; muda a FORMA, decisão de quem vê | §73.1 |
 | ⏸️ O 2.º degrau do assentar custa `504 ms` numa peça densa | a escada tirou-o do caminho; o número fica | §74.2 |
 | ⛔ Reaproveitar o avaliador na **2.ª passagem** (anti-serrilhado) | construído 2×, medido `0,97×`–`1,01×`, **revertido** | §71.4 |
-| ⏸️ Ladrilhar em `(u, v)` contra o **paralelogramo** em vez da AABB | o único eixo que não multiplica a montagem | §58 |
-| ⏸️ Um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) | pede decisão do Enio | §64 |
+| ✅ Ladrilhar em `(u, v)` contra o paralelogramo | ⭐ **já feito na W59** (o casco); apertar mais está fora do vale | §79.1 |
+| ⏸️ Um laço que **SUBTRAI** | ✔ mecanismo medido e as 4 saídas com preço; decisão do Enio | §79.3 |
 | ✅ Vários `VecPath` separados | ⭐ era um defeito MUDO, curado: uma peça por forma, todas ligadas | §75 |
 | ✅ Religar uma escultura que mudou de sítio | ⭐ `Relink Sculpture…`, com a chave nova escrita no nó | §77 |
-| ⏸️ O `Mirror` não se consegue demonstrar | adiado pelo Enio | §19 |
+| ✅ O `Mirror` «não se consegue demonstrar» | ⭐ **demonstra-se** — o modificador na OPERAÇÃO dobra um filho fora do eixo | §79.2 |
 | ✅ A composição de dois `Exact` encadeados | ⛔ **medida: eles COMPÕEM** — a cerca estava errada e a marcha furava | §76 |
 | ✅ O gradiente de uma **escultura** | medido: máx `1,0852` (cubo), `30 %` de folga para o `√2` | §78 |
 | ⏸️ A barra **demonstrável** da interpolação trilinear é `√3`, e ship-se o `√2` medido | dívida nomeada | §78.3 |
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐ **W78 (§79): a auditoria da lista viva — DUAS entradas eram trabalho já feito.** Ladrilhar em
+  `(u, v)` estava feito desde a W59 (o casco), e o **`Mirror`** — que o Enio adiou porque *«não se
+  consegue demonstrar»* — **demonstra-se**: o modificador vai na **operação** e dobra um filho fora
+  do eixo. ⚠️ Sexta nota velha desta sessão.
 - ⭐ **W77 (§78): a segunda cerca do passo — e a nota mentia sobre si mesma.** Ela dizia «ninguém
   mediu» e havia um gate a medir: **numa esfera, numa banda**. A generalização (formas com **vinco**,
   a caixa inteira, a barra da marcha) dá `1,0852` no pior caso — `30 %` de folga para o `√2`.
@@ -6774,3 +6778,60 @@ dívida nomeada, não um esquecimento.*
 não vê) fica vermelho aqui — e ⚠️ **a primeira mutação que tentei foi apanhada por outros dois
 gates**, o que teria feito este parecer útil sem o ser. *Um gate só se prova com a mutação que só
 ele mata.*
+
+## §79 — W78: a auditoria da lista viva — duas entradas eram trabalho JÁ FEITO (26/08)
+
+O §13.0 manda auditar a lista antes de pegar um item dela, e esta sessão deu-lhe razão **seis
+vezes**. Esta wave audita as entradas que sobravam, **contra o código**.
+
+### §79.1 — ✅ *Ladrilhar em `(u, v)` contra o paralelogramo* — **feito na W59**
+
+A entrada pedia apertar a região do perfil trocando a caixa pelo paralelogramo projectado. ⭐ É
+exactamente o que o `hull_uv` faz desde a W59 (§65): a região de um `Extrude` é o **casco dos oito
+cantos do tubo** projectados em `(u, v)`, e mediu-se `1,21×` menos arestas. ⛔ O `Revolve` fica de
+fora **por construção** — o `u` dele é `√(x² + z²)` e a região ali é um rectângulo.
+
+⚠️ E apertar mais **não é livre**: a varredura da W71 (§72.2) mediu que a granularidade das regiões
+já está no vale — regiões mais finas pagam mais montagem do que poupam em avaliação.
+
+### §79.2 — ✅ *O `Mirror` não se consegue demonstrar* — **demonstra-se, e é uma linha**
+
+A entrada vem da W17 e o Enio **adiou o item por causa dela**: *«ele dobra em torno do centro do
+objecto, e o que falta é um alvo descentrado ou um pivô de espelho autorado»*.
+
+⭐ **Um alvo descentrado é exprimível hoje**, e por duas portas que já existem: o modificador entra em
+**qualquer nó menos uma escultura** (`mods_for`), e um nó de **operação** tem filhos com pose própria.
+⇒ pôr o `Mirror` na **operação** dobra os filhos em torno do centro dela, e uma caixa fora do eixo
+aparece dos dois lados.
+
+Gate: `ph2d_field_eval::tests::a_mirror_on_an_operation_folds_an_off_centre_child` — e ele afirma as
+duas metades (sem espelho o outro lado está **vazio**; com espelho tem o **mesmo campo**, não uma
+cópia aproximada).
+
+⚠️ *A nota afirmava uma ausência sem a medir, e custou o adiamento de uma feature que estava pronta.*
+
+### §79.3 — ⏸️ *O laço que SUBTRAI* — a entrada está CERTA, e agora com o mecanismo
+
+Medido no `field3d_input`: `additive = shift || super || control` — **os três modificadores são um
+vocabulário só**, e de propósito (é o mesmo do canvas 2D; *um terceiro vocabulário no mesmo app é
+onde a mão aprende errado*). ⇒ não há tecla livre para *subtrair*, e as saídas são quatro:
+
+| saída | preço |
+|---|---|
+| `Alt`+arrasto | ⛔ o KDE rouba o `Alt` (registado no `CLAUDE.md` §5, módulo Timeline) |
+| arrasto com o botão direito | ⛔ é o Orbit — o gesto principal da janela |
+| um modificador **durante** o arrasto | ⚠️ muda o verbo a meio de um gesto já começado |
+| um **chip de modo** no painel (*Add / Subtract*) | ⚠️ peso de UI para um gesto raro, mas **descobrível** e sem colisão |
+
+*A decisão é de produto e continua a ser do Enio — o que esta wave acrescenta é que ela deixou de
+precisar de investigação.*
+
+### §79.4 — O resto da lista, conferido
+
+| entrada | veredito |
+|---|---|
+| ⏳ a **marcha** é `80 %` do quadro | ✔ medido hoje (§72.1, §73) |
+| ⏸️ `PREVIEW_MAX_EDGES` | ✔ preço na tabela do §73.1; decisão de quem vê |
+| ⏸️ o 2.º degrau do assentar (`504 ms`) | ✔ medido hoje (§74.2) |
+| ⏸️ `√3` demonstrável contra o `√2` medido | ✔ escrito hoje (§78.3) |
+| ⛔ os dois `panic` do `ph2d-gridmap` | ✔ dono é a `line/quadextract` |

@@ -636,15 +636,25 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   resto desapareceu, contra uma propriedade do nó; e a **exportação diz ONDE a peça está**, só quando
   a **origem está fora da caixa dela** — o limiar é derivado, e uma peça centrada continua calada.
   ⭐⭐⭐ **AS DUAS DECISÕES DO ENIO FORAM EXECUTADAS (26/08), e deram respostas OPOSTAS** (doc §58):
-  ✅ **o teto de `Resolution` sobe 16 → 64** — a régua que faltava é um contorno de curvatura
+  ✅ **o teto de `Resolution` sobe 16 → 32** — a régua que faltava é um contorno de curvatura
   **VARIÁVEL** (elipse `4:1`, ponta `16×` mais curva que o lado), e a lei `θ ≈ √(8·tol/R)` confirma-se
   em quatro pontos: **dobrar o nível divide o salto de normal por `√2`**, logo *cada duplicação deixa
-  desenhar um canto duas vezes mais apertado* (`~5,5:1` no 16 → **`~22:1`** no 64). ⚠️ **Não há
-  joelho** — cada degrau custa `×√2` e compra `×2` —, então o número é o **relógio**: o `128` é o
-  último que cabe na regra de meio segundo (`483 ms`) e o `64` fica a `303 ms`, com a folga a ser uma
-  **premissa declarada** (uma cena tem mais de uma peça). ⛔ *A 1.ª medição atravessou a própria trava
-  (o `clamp` da `tolerance_ratio_for`) e leu «o achatamento saturou» — a cura foi partir a lei em
-  duas, com o `span_of` público e o teto contornado de propósito* ·
+  desenhar um canto duas vezes mais apertado* (`~5,5:1` no 16 → **`~11:1`** no 32). ⛔ *A 1.ª medição
+  atravessou a própria trava (o `clamp` da `tolerance_ratio_for`) e leu «o achatamento saturou» — a
+  cura foi partir a lei em duas, com o `span_of` público e o teto contornado de propósito* ·
+  ⛔⛔⛔ **E o report seguinte do Enio (*«queda de fps e lentidão com resoluções altas»*) achou um
+  defeito PRÉ-EXISTENTE muito maior:** o traçado paga **`0,22 ms por aresta`, constante e CEGO AOS
+  PIXELS** — com 4× menos pixels o custo cai `1,3×`, que é a assinatura de **MONTAR**, não de
+  marchar. ⛔ Mesmo na resolução de **omissão** (168 arestas) o piso é **`39 ms`** contra um orçamento
+  de `16,7`: *a pré-visualização nunca alcançou o alvo dela numa peça de perfil* — a lei dela foi
+  calibrada com **cilindros**, que não têm contorno cozido. ⚠️ **A 1.ª nota do teto media o relógio
+  ERRADO** (o quadro **assente**, pago uma vez, em vez do de **movimento**, pago a cada quadro) —
+  e é por isso que o `64` passou. ⚠️ **Quatro hipóteses refutadas por medição**: o recozimento
+  (`23 µs`) · o preview mais grosso (tem **piso**, e volta a **subir** depois de `D≈6`) · o teto
+  sozinho · a montagem **base** (`Hybrid::new`, `4–23 ms`) — **ilibada** ⇒ ⏸️ **o suspeito que fica é
+  a ESPECIALIZAÇÃO POR LADRILHO**, uma compilação por ladrilho × fatia em **cada** traçado, enquanto
+  o documento não muda entre dois quadros de uma órbita. Sonda:
+  `ph2d_field_eval::tests::measure_building_the_tape_against_marching_it` ·
   ⛔⛔ **RECUSA MEDIDA: os níveis de exportação NÃO podem mandar na densidade dos quads.** A escada
   foi **implementada inteira** e medida pelo produto: `Draft` 4 717 ms ✅ · `Fine` **49 691 ms** com
   **42 arestas de bordo** ⛔ · `Max` **1 648 579 ms (27 min 29 s)** com **316 bordo e 6 não-manifold**

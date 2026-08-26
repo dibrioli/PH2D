@@ -88,6 +88,112 @@ fn radius_band(pos: &[[f32; 3]], who: &[u32]) -> String {
     )
 }
 
+/// ⭐⭐⭐ **A RÉGUA DE FIDELIDADE — quanto a saída se afasta da ESCULTURA.**
+///
+/// ⛔⛔ Ela existe por causa da terceira queixa do artista (2026-08-25): *«quanto mais densa
+/// a malha gerada, maiores as irregularidades da superfície que deveria ser lisa»*. ⚠️ **Nenhuma
+/// régua desta cadeia a media** — todas falam da FORMA dos quads (aspecto, enviesamento, área),
+/// e nenhuma da **distância entre a peça que sai e a peça que ele fez**.
+///
+/// ⚠️ **Duas colunas, e a segunda é a que a luz mostra.** O desvio de POSIÇÃO diz se a peça
+/// mudou de sítio; o desvio de NORMAL diz se ela ficou **facetada** — e é a normal que o
+/// sombreado revela. *Uma peça pode estar a `0,1 %` de distância e parecer um diamante.*
+///
+/// ⭐ **E a coluna que decide a hipótese é o F1**: a saída é medida contra a peça crua **e**
+/// contra a remalhada. Se o erro contra a crua não descer quando a grade fica mais fina,
+/// mas o erro contra a remalhada descer, então o tecto é o **substrato** — o F1 corre a uma
+/// densidade FIXA (`ALPHA × diagonal`) qualquer que seja a densidade pedida.
+fn fidelity(raw: &ph2d_mesh::Mesh, f1: &ph2d_mesh::Mesh, out: &ph2d_mesh::Mesh) {
+    let b = raw.bounds();
+    let diag = {
+        let d = [
+            b.max[0] - b.min[0],
+            b.max[1] - b.min[1],
+            b.max[2] - b.min[2],
+        ];
+        d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
+    };
+    let seed = diag * 0.05;
+    let dev = |against: &ph2d_mesh::Mesh| {
+        let mut v: Vec<f32> = out
+            .positions()
+            .iter()
+            .map(|&p| {
+                let q = ph2d_remesh_iso::project_onto(against, p, seed);
+                let d = [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
+                d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt() / diag
+            })
+            .collect();
+        v.sort_by(f32::total_cmp);
+        (
+            v.get(v.len() / 2).copied().unwrap_or(0.0) * 100.0,
+            v.get(v.len() * 95 / 100).copied().unwrap_or(0.0) * 100.0,
+            v.last().copied().unwrap_or(0.0) * 100.0,
+        )
+    };
+    let (r50, r95, rmax) = dev(raw);
+    let (f50, f95, fmax) = dev(f1);
+
+    println!(
+        "  ⭐⭐⭐ FIDELIDADE (% da diagonal): contra a ESCULTURA p50 {r50:.3} p95 {r95:.3} max {rmax:.3} | contra o F1 p50 {f50:.3} p95 {f95:.3} max {fmax:.3}"
+    );
+
+    // ⭐⭐⭐ **A RUGOSIDADE DAS TRÊS MALHAS, lado a lado** — e as duas primeiras são o controlo.
+    //
+    // ⛔⛔ **Sozinha, a rugosidade da saída não acusa ninguém.** Uma escultura rugosa dá uma
+    // saída rugosa, e isso é a cadeia a **fazer o seu trabalho**. A pergunta é se a rugosidade
+    // que sai é a que **entra** — ⇒ mede-se a crua, a remalhada e a saída, com a contagem de
+    // faces ao lado, porque ⚠️ **a dobra entre vizinhas encolhe com a densidade**: comparar
+    // 40 000 triângulos com 2 000 quads sem essa coluna é comparar duas réguas diferentes.
+    for (rotulo, m) in [("crua ", raw), ("F1   ", f1), ("saida", out)] {
+        let (p50, p95, pmax, over) = roughness(m);
+        println!(
+            "  ⭐⭐ RUGOSIDADE {rotulo}: p50 {p50:.1}° p95 {p95:.1}° max {pmax:.1}° · {over} arestas acima de 30° · {} faces",
+            m.face_count()
+        );
+    }
+}
+
+/// A **dobra entre faces vizinhas**, em graus — `(p50, p95, max, quantas acima de 30°)`.
+///
+/// ⚠️ É esta grandeza que o sombreado mostra: uma peça pode estar a `0,1 %` de distância da
+/// original e parecer um diamante. ⛔ E ela **depende da densidade** — só se compara entre
+/// malhas de contagem parecida, ou com a contagem escrita ao lado.
+fn roughness(m: &ph2d_mesh::Mesh) -> (f32, f32, f32, usize) {
+    let n = m.face_normals();
+    let mut owner: std::collections::BTreeMap<(u32, u32), Vec<usize>> =
+        std::collections::BTreeMap::new();
+    for (fi, f) in m.faces().iter().enumerate() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            owner
+                .entry(if a < b { (a, b) } else { (b, a) })
+                .or_default()
+                .push(fi);
+        }
+    }
+    let mut kink: Vec<f32> = owner
+        .values()
+        .filter(|w| w.len() == 2)
+        .map(|w| {
+            let (a, b) = (n[w[0]], n[w[1]]);
+            a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
+                .clamp(-1.0, 1.0)
+                .acos()
+                .to_degrees()
+        })
+        .collect();
+    kink.sort_by(f32::total_cmp);
+    let at = |q: usize| kink.get(kink.len() * q / 100).copied().unwrap_or(0.0);
+    (
+        at(50),
+        at(95),
+        kink.last().copied().unwrap_or(0.0),
+        kink.iter().filter(|k| **k > 30.0).count(),
+    )
+}
+
 fn main() {
     let mut args = std::env::args().skip(1);
     let piece = args.next().unwrap_or_else(|| String::from("esfera"));
@@ -125,6 +231,14 @@ fn main() {
         "{piece}: {} faces cruas, aspecto p50 {a50:.2} p99 {a99:.2}",
         mesh.face_count()
     );
+    // ⭐⭐⭐ **A ESCULTURA COMO ELE A FEZ** — guardada para a régua de FIDELIDADE.
+    //
+    // ⛔ A queixa dele de 2026-08-25 — *«quanto mais densa a malha gerada, maiores as
+    // irregularidades da superfície que deveria ser lisa»* — não é sobre a forma dos quads,
+    // e **nenhuma régua desta cadeia a media**. Ela é sobre a distância entre a saída e a
+    // peça que ele esculpiu, e ⚠️ o denominador tem de ser a peça CRUA, nunca a remalhada:
+    // medir contra o F1 responde *«o extractor seguiu o F1?»*, que é outra pergunta.
+    let raw = mesh.clone();
 
     // ── ⛔⛔ FASE ZERO. Sem ela a mesma cadeia dá `10-12°`, e o defeito e' a entrada.
     let f1 = ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
@@ -466,6 +580,64 @@ fn main() {
     };
     match ph2d_quadextract::extract(&cm, None) {
         Ok((out, e)) => {
+            // ⭐⭐⭐ **A EXPERIÊNCIA: e se a saída fosse POUSADA na escultura?**
+            //
+            // ⛔⛔ Medido 2026-08-26: a fidelidade contra o F1 é **`0,000`** — a saída vive
+            // **sobre** a malha remalhada — e a fidelidade contra a ESCULTURA fica cravada em
+            // `0,10 %` de p95 num intervalo de **16×** de densidade. ⇒ *pedir uma malha mais
+            // fina não a aproxima nem um pouco da peça que o artista fez*, e o número de
+            // vincos acima de 30° **sobe** (`93 → 143`), porque a grade fina resolve cada
+            // faceta do F1. É a 3.ª queixa dele, com mecanismo.
+            //
+            // ⚠️ **É uma medição, não um produto** — `PH2D_SNAP_TO_SCULPT=1`. Mover vértices
+            // pode dobrar quads, e por isso as réguas de FORMA saem para os dois.
+            let out = if std::env::var("PH2D_SNAP_TO_SCULPT").as_deref() == Ok("1") {
+                let b = raw.bounds();
+                let d = [
+                    b.max[0] - b.min[0],
+                    b.max[1] - b.min[1],
+                    b.max[2] - b.min[2],
+                ];
+                let seed =
+                    d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt() * 0.05;
+                let normals = out.normals().to_vec();
+                let moved: Vec<[f32; 3]> = out
+                    .positions()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &p)| {
+                        // ⚠️ `project_facing` e não `project_onto`: numa ponta fina o pé mais
+                        // próximo pode estar do OUTRO lado da peça, e a face entre os dois
+                        // vira uma lasca. A direcção é a normal do vértice da saída.
+                        ph2d_remesh_iso::project_facing(&raw, p, seed, Some(normals[i]))
+                    })
+                    .collect();
+                ph2d_mesh::Mesh::from_parts(moved, out.faces().to_vec()).unwrap_or(out)
+            } else {
+                out
+            };
+
+            // ⭐⭐⭐ **E SE A SAÍDA LEVASSE O ACABAMENTO QUE O IRMÃO DELA LEVA?**
+            //
+            // ⛔⛔ Medido 2026-08-26: a cadeia do `fill` corre `SMOOTHING_ROUNDS = 6` passos
+            // de Laplaciano tangencial com reprojeção **desde sempre**, e a cadeia da
+            // EXTRACÇÃO entrega a malha **crua**. *Dois caminhos para o mesmo produto, e só um
+            // com acabamento.*
+            //
+            // ⚠️ **A lei é a da casa, não uma minha.** A 1.ª versão desta experiência usava o
+            // Laplaciano INTEIRO e reprojecção COM direcção — e a segunda é uma recusa
+            // **medida** do `finish.rs` (com direcção, as dobras foram de `1` para `10` e a
+            // aresta máxima de `2,58×` para `5,85×`). *Uma experiência que reescreve a lei em
+            // vez de a chamar mede outra coisa.*
+            let out = {
+                let rounds: usize = std::env::var("PH2D_OUT_RELAX")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(0);
+                let mut m = out;
+                ph2d_quadfill::smooth(&mut m, &raw, rounds);
+                m
+            };
             let shape = ph2d_quadfill::quad_shape(&out);
             println!(
                 "  EXTRACCAO: residuo de translacao p50 {:.3e} max {:.3e} · ⭐ {} \
@@ -583,6 +755,7 @@ fn main() {
             println!(
                 "     (a barra do oraculo: enviesamento p50 4,8-7,1 | aspecto p50 1,08-1,22 | >60: 0-4)"
             );
+            fidelity(&raw, &mesh, &out);
         }
         Err(err) => println!("  EXTRACCAO recusada: {err}"),
     }

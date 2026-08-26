@@ -142,7 +142,7 @@ mod tests {
 
     /// ⭐ **E o roteiro de sempre continua a ser o que se le sem a env var.**
     #[test]
-    fn sem_a_env_var_o_roteiro_e_o_NOVO() {
+    fn sem_a_env_var_o_roteiro_e_o_novo() {
         assert!(
             crate::sculpt3d::history::retopo_extract::extract_from(None),
             "⭐ desde 2026-08-25 o caminho novo e' o de omissao: sem a env var, a \

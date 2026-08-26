@@ -71,4 +71,5 @@ pub use quality::{detail_lost, folded_against, folded_by_neighbours, follows_rel
 pub use relax::SQUARE_ROUNDS;
 pub use report::{FillError, FillReport, Provenance};
 pub use shape::{QuadShape, quad_shape, skew_by_fan, skew_by_provenance};
+pub use finish::smooth;
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};

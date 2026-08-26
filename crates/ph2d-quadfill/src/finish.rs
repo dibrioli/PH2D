@@ -12,6 +12,22 @@ use ph2d_mesh::{Face, Mesh};
 
 use crate::report::{FillReport, Provenance};
 
+/// ⭐⭐⭐ **O ACABAMENTO, para quem NÃO passou pelo [`crate::fill`]** — `rounds` passos de
+/// Laplaciano tangencial com reprojeção.
+///
+/// ⛔⛔ **Ele existe porque a cadeia da EXTRACÇÃO não o tinha.** Medido 2026-08-26: o caminho
+/// do `ph2d_quadextract` monta a malha e entrega-a **crua**, enquanto o irmão dela — o
+/// `fill` — corre [`crate::SMOOTHING_ROUNDS`] passos disto desde sempre. *Dois caminhos para
+/// o mesmo produto, e só um com acabamento.*
+///
+/// ⚠️ **`surface` é a malha ORIGINAL, nunca a remalhada** — a mesma lei que o doc do
+/// [`crate::fill`] escreve com o defeito de 2026-08-21 ao lado.
+pub fn smooth(mesh: &mut Mesh, surface: &Mesh, rounds: usize) {
+    for _ in 0..rounds {
+        smooth_once(mesh, surface);
+    }
+}
+
 /// Um passo de Laplaciano tangencial, seguido de reprojeção.
 pub(crate) fn smooth_once(mesh: &mut Mesh, reference: &Mesh) {
     let n = mesh.vert_count();

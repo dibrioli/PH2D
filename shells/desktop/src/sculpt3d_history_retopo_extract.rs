@@ -90,6 +90,18 @@ impl Sculpt3dScene {
 
         // ── F2 + F3 + G1 + G2.
         let mut dual = ph2d_crossfield::Dual::build(&work);
+
+        // ⭐⭐⭐ **O BORDO É UMA LINHA DE FEIÇÃO** — a mesma lei do caminho irmão
+        // (`retopo_global.rs`), e a tabela vive lá. ⚠️ **Este caminho constrói o PRÓPRIO
+        // campo**, então herdar a lei do irmão não é automático: em 2026-08-26 ela foi
+        // ligada no `retopo_global` e este ficheiro ficou sem ela por meia hora. *Dois
+        // caminhos que constroem o mesmo objecto precisam da mesma lei escrita duas vezes,
+        // ou de uma porta só — e a porta ainda não existe.*
+        // ⚠️ Inerte em peça fechada por construção; `PH2D_BOUNDARY_FEATURE=0` desliga.
+        if std::env::var("PH2D_BOUNDARY_FEATURE").as_deref() != Ok("0") {
+            let (edges, _loops) = ph2d_mesh::boundary_feature_edges(&work);
+            dual.constrain(&work, &edges);
+        }
         // ⭐⭐ **AS LINHAS DE FEIÇÃO** — obra B da `SPEC_restricoes_por_eliminacao.md` §3, o
         // 1.º dos três consumidores (o campo). ⛔ **Nasce DESLIGADA**, e a medição é a razão:
         // na peça do artista ela leva as arestas de bordo — que é o que um buraco é — de
@@ -139,10 +151,40 @@ impl Sculpt3dScene {
             tris: &tris,
             uv: &uv,
         };
-        let (out, e) = ph2d_quadextract::extract(&cm, None).map_err(RemeshRefusal::Extract)?;
+        let (mut out, e) = ph2d_quadextract::extract(&cm, None).map_err(RemeshRefusal::Extract)?;
         if out.faces().is_empty() {
             return Err(RemeshRefusal::TooCoarseToResolve);
         }
+
+        // ⭐⭐⭐ **O ACABAMENTO — e este caminho não o tinha.**
+        //
+        // ⛔⛔ O irmão dele, o `ph2d_quadfill::fill`, corre [`ph2d_quadfill::SMOOTHING_ROUNDS`]
+        // passos de Laplaciano tangencial com reprojeção **desde sempre**; a extracção
+        // entregava a malha **crua**. *Dois caminhos para o mesmo botão, e só um com
+        // acabamento.*
+        //
+        // ⚠️ **A superfície é a `reference` — a escultura — e nunca a `work`.** É a mesma lei
+        // que o doc do `fill` escreve com o defeito de 2026-08-21 ao lado: reprojectar sobre a
+        // remalhada somaria os dois erros.
+        //
+        // Medido 2026-08-26 na `sculpt_t003` do artista, na densidade fina:
+        //
+        // | régua | cru | **com acabamento** |
+        // |---|---|---|
+        // | distância à ESCULTURA p95 | `0,106 %` | ⭐ **`0,000 %`** |
+        // | enviesamento p99 · `>60°` | `39,3°` · `18` | ⭐ **`29,1°` · `1`** |
+        // | aspecto p99 · `>4×` | `2,05` · `7` | ⭐ **`1,63` · `0`** |
+        //
+        // ⚠️ **Ele NÃO alisa a superfície, e isso é o achado:** a rugosidade fica onde estava
+        // (`14,2° ⇒ 14,3°`) porque a reprojecção repõe os vértices na peça. *A aspereza que o
+        // artista vê é a da escultura dele — a grade fina RESOLVE-A, a cadeia não a inventa.*
+        // ⭐ **O preço, medido:** `425 ms` sobre `7 750` quads numa cadeia de `7,0 s` —
+        // **6 %**, na densidade mais fina medida (melhor de 3, `6 979` contra `7 404 ms`).
+        // ⚠️ `PH2D_EXTRACT_FINISH=0` desliga, para bissecar.
+        if std::env::var("PH2D_EXTRACT_FINISH").as_deref() != Ok("0") {
+            ph2d_quadfill::smooth(&mut out, &reference, ph2d_quadfill::SMOOTHING_ROUNDS);
+        }
+        let out = out;
 
         let shape = ph2d_quadfill::quad_shape(&out);
         let (edge_median, edge_max) = edges(&out);
@@ -305,6 +347,41 @@ mod tests {
                 "PH2D_RETOPO_EXTRACT={value:?} tinha de dar {want}"
             );
         }
+    }
+
+    /// ⭐⭐⭐ **O CAMINHO DA EXTRACÇÃO TEM ACABAMENTO — e ele pousa na ESCULTURA.**
+    ///
+    /// ⛔⛔ **As duas metades são precisas, e a segunda defende o defeito que já custou o
+    /// produto inteiro.** Em 2026-08-21 a porta do shell passou ao `fill` a malha original
+    /// onde ele esperava a **indexada**, e os quatro números do relatório saíram
+    /// **bit-a-bit iguais** aos da corrida correta — o dano era só geométrico. Aqui a
+    /// direcção é a oposta e o erro seria o mesmo: alisar contra a `work` (a remalhada)
+    /// somaria os dois erros e apagaria o relevo que o F1 já arredondou.
+    ///
+    /// ⚠️ **O gate LÊ O FONTE** pela mesma razão que o irmão dele abaixo: um alisamento que
+    /// desapareça, ou que troque de superfície, compila e passa a suíte inteira.
+    #[test]
+    fn a_extraccao_alisa_contra_a_escultura_e_nao_contra_a_remalhada() {
+        let src = include_str!("sculpt3d_history_retopo_extract.rs");
+        // ⚠️ **O token vem partido de propósito:** este gate lê o ficheiro em que ele
+        // próprio vive, e um literal inteiro contar-se-ia a si mesmo. *Um gate que se conta
+        // nunca mede o produto.*
+        let call = concat!("ph2d_quadfill::", "smooth(");
+        let n = src.matches(call).count();
+        assert_eq!(
+            n, 1,
+            "o caminho da extraccao chama o alisamento {n} vezes; tem de ser UMA -- ver o \
+             doc do `ph2d_quadfill::fill` e o defeito de 2026-08-21"
+        );
+        let full = concat!(
+            "ph2d_quadfill::",
+            "smooth(&mut out, &reference, ph2d_quadfill::SMOOTHING_ROUNDS)"
+        );
+        assert!(
+            src.contains(full),
+            "⛔⛔ o alisamento tem de pousar na `reference` (a ESCULTURA) e nao na `work` \
+             (a remalhada), e usar o mesmo SMOOTHING_ROUNDS do caminho irmao"
+        );
     }
 
     /// ⭐⭐ **E A BIFURCAÇÃO É UMA SÓ** — o que faz o «byte-idêntico» ser

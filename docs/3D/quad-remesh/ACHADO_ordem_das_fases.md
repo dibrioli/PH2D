@@ -714,3 +714,91 @@ tem o que medir.*
 ⚠️ **A barra do gate saiu de `1 %` para `0,1 %`**, porque a primeira era **cem vezes mais
 frouxa que o que o código entrega** (`0,000 %` na fixtura, exacto nas duas peças reais).
 *Uma barra escolhida à mão mede a folga de quem a escolheu.*
+
+## §18 — ⭐⭐⭐ A 3.ª QUEIXA MEDIDA: a aspereza é DELE — e a extracção não tinha ACABAMENTO
+
+A terceira queixa do artista (2026-08-25) era *«quanto mais densa a malha gerada, maiores as
+irregularidades da superfície que deveria ser lisa»*. ⛔⛔ **Nenhuma régua desta cadeia a
+media** — todas falam da FORMA dos quads (aspecto, enviesamento, área), e nenhuma da
+**distância entre a peça que sai e a peça que ele fez**.
+
+### §18.1 — As duas réguas novas
+
+`chain_info` passa a imprimir:
+
+- **FIDELIDADE** — a distância de cada vértice da saída à **escultura crua** e ao **F1**, em
+  % da diagonal. ⚠️ *Contra a crua, nunca só contra a remalhada: medir contra o F1 responde
+  «o extractor seguiu o F1?», que é outra pergunta.*
+- **RUGOSIDADE** — a **dobra entre faces vizinhas**, nas três malhas (crua, F1, saída) com a
+  contagem de faces ao lado. ⚠️ *É a normal que o sombreado mostra: uma peça pode estar a
+  `0,1 %` de distância e parecer um diamante.* ⛔ E ela **depende da densidade** — sem a
+  coluna das faces, comparar 44 000 triângulos com 2 000 quads é comparar duas réguas.
+
+### §18.2 — ⭐⭐ A queixa é REAL, e o controlo diz de quem é
+
+| p95 da dobra | escultura crua | depois do F1 | saída |
+|---|---|---|---|
+| `sculpt_t003` (dele) | **`10,9°`** · `411` arestas >30° | `18,6°` · `146` | `24,4°` · `118` |
+| `sculpt_eared` (sintética) | **`1,9°`** · `145` | `3,7°` · `52` | `6,4°` · `15` |
+
+⭐ A escultura dele chega **5,7× mais rugosa**, e a contagem de arestas ásperas **CAI** ao
+longo da cadeia nas duas (`411 → 118`, `145 → 15`). ⇒ **a cadeia alisa; ela não enruga.**
+
+E a varredura de densidade na peça dele confirma a segunda metade:
+
+| quads | fidelidade p95 | rugosidade p50 | **arestas >30°** |
+|---|---|---|---|
+| `475` | `0,101` | `10,6°` | `93` |
+| `1 942` | `0,106` | `5,4°` | `118` |
+| `7 750` | `0,106` | `2,9°` | ⛔ **`143`** |
+
+⭐⭐⭐ **A fidelidade não melhora com a densidade** — fica cravada em `0,10 %` num intervalo
+de **16×** — e o número de **vincos visíveis SOBE**. ⚠️ E a hipótese óbvia (*«é o F1 a
+facetar»*) foi **REFUTADA por interruptor**: pousar a saída exactamente sobre a escultura
+leva a fidelidade a `0,000` e **não** baixa a rugosidade (`118 → 134` vincos). ⇒ *a aspereza
+que ele vê é a da escultura dele; a grade fina RESOLVE-A.*
+
+### §18.3 — ⭐⭐⭐ E a medição achou um buraco de PROCESSO: só um dos dois caminhos tinha acabamento
+
+O caminho do `ph2d_quadfill::fill` corre **`SMOOTHING_ROUNDS = 6`** passos de Laplaciano
+tangencial com reprojeção **desde sempre**. O caminho da **extracção** — o que o Enio smokou
+a 24/08 e chamou *«o melhor resultado conseguido até agora»* — chamava
+`ph2d_quadextract::extract(&cm, None)` e entregava a malha **crua**.
+*Dois caminhos para o mesmo botão, e só um com acabamento.*
+
+⚠️ **A 1.ª versão desta experiência escreveu a lei de novo em vez de a chamar** — Laplaciano
+INTEIRO e reprojecção COM direcção — e a segunda metade é uma **recusa medida** do
+`finish.rs`: com direcção, as dobras foram de `1` para `10` e a aresta máxima de `2,58×` para
+`5,85×`. *Uma experiência que reescreve a lei mede outra coisa.*
+
+**Medido nas 14 peças** (`chain_info`, `PH2D_OUT_RELAX=0` contra `6`):
+
+| régua | resultado |
+|---|---|
+| distância à ESCULTURA p95 | ⭐ **`0,000 %` nas 14** (era `0,033`–`1,500`) |
+| aspecto `>4×` | ⭐ **melhora ou empata em 13/14** — zero em 12 delas |
+| enviesamento p99 | ⭐ **melhora em 12/14** |
+| enviesamento `>60°` | ⭐ **melhora ou empata em 13/14** |
+
+⛔ **As três regressões, nomeadas:** `sculpt_t003` sobe de `1` para `4` faces com `>4×` (o
+p99 do aspecto **desce**, `1,97 → 1,65` — são três faces isoladas) · `sculpt_punctured` sobe
+o enviesamento p99 de `29,6°` para `31,8°` (e o `>60°` desce de `1` para `0`) ·
+`torus_64x32`, que já é patológico (10 arestas não-manifold, 133 faces `>4×`), sobe `79,0°`
+para `80,6°` — e o `>4×` dele **desce** de `133` para `100`.
+
+⚠️ **O acabamento NÃO alisa a superfície, e isso é o achado:** a rugosidade fica onde estava
+(`14,2° ⇒ 14,3°`), porque a reprojecção repõe os vértices na peça. *Ele endireita a GRADE, não
+a FORMA.*
+
+⭐ **O preço, medido:** `425 ms` sobre `7 750` quads numa cadeia de `7,0 s` — **6 %**, na
+densidade mais fina medida (melhor de 3: `6 979` contra `7 404 ms`).
+
+### §18.4 — ⛔⛔ E o mesmo ficheiro tinha um SEGUNDO buraco, achado por acidente
+
+O caminho da extracção **constrói o próprio campo cruzado** (`Dual::build(&work)`). Quando o
+§16 ligou a restrição de bordo, ela foi escrita em `retopo_global.rs` — e este ficheiro ficou
+**sem ela por meia hora**, com o smoke a dizer que estava tudo bem.
+
+⚠️ *Dois caminhos que constroem o mesmo objecto precisam da mesma lei escrita duas vezes, ou
+de uma porta só — e a porta ainda não existe.* Fica **nomeado** como dívida: hoje há dois
+sítios a montar um `Dual` para o mesmo botão, e nada os obriga a concordar.

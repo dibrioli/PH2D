@@ -19,9 +19,22 @@ nada que explique a diferença»*, e recomendava **esperar a F1 fechar**. Ela fe
 | custo de um passo de undo | `O(mundo)` | ✅ `O(edição)` — medido |
 | Inspector de um objeto novo | **doze seções de zeros** | ✅ **duas** (Transform + Name) |
 
-⛔ **Uma pendência ficou, e ela é do SHIP, não da integração:** o `physics_ecs_c9` está **por
-re-capturar** — o `deterministic_hash` muda de valor com o snapshot v2. É o item mais provável de
-reprovar a matriz 3-OS.
+✅ **E a pendência que este handoff anunciava era um FANTASMA — medida e apagada em 25/08.** Ele
+dizia: *«o `physics_ecs_c9` está por re-capturar; é o item mais provável de reprovar a matriz
+3-OS»*. **Não há o que recapturar:** os três gates C9 do `spike.yml` não têm baseline gravado em
+lado nenhum — cada SO corre o binário, imprime o hash como artefacto, e o job
+`determinism-compare` faz `sort -u | wc -l`, reprovando só se os três **discordarem entre si**.
+Mudar o VALOR do hash é inofensivo.
+
+⚠️ *O facto estava certo (o hash muda de valor) e a consequência não* — e um bloqueador fantasma
+custa a mesma atenção que um real. Registado em
+[`project-memory`](../../../project-memory/feedback_the_c9_hashes_are_compared_across_oses_not_against_a_stored_baseline.md).
+
+⚠️ **O integrador tem de apagar a mesma frase do `CLAUDE.md` §5** (linha «Componentes / instâncias»,
+que a repete) — o §5 edita-se na integração, não daqui.
+
+⚠️ O risco REAL continua e só o CI o mede: que alguma mudança tenha introduzido **divergência entre
+SOs**. Nada nesta linha o toca (`BTreeMap` em todo o lado, ordem por `StableId`).
 
 ---
 
@@ -177,7 +190,7 @@ uma categoria «grande» sem razão escrita — sem ela, tudo caía numa **colun
 
 ## §7 O que fica ABERTO (F4–F8 do plano, e uma pendência de ship)
 
-- ⛔ **`physics_ecs_c9` por re-capturar** — vide §0.
+- ✅ **`physics_ecs_c9` NÃO está por re-capturar** — o bloqueador era um fantasma; vide §0.
 - **F4** (núcleo de instância) em diante, no [plano vivo](../05_plano_de_implementacao.md).
 - ⏳ A §4 Sprite Sheet (§3.4) — se alguém quiser gateá-la, o Flip X/Y tem de sair de lá primeiro.
 - ⏳ **12 categorias de componente mapeiam em 7 tokens `NodeCat*`**, logo pares de categorias

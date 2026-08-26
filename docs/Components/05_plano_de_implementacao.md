@@ -306,8 +306,15 @@ prova de mutação (duplicar blob ⇒ vermelho).
 
 **Testes:** determinismo — `state_hash` idêntico em duas capturas do mesmo estado e através de
 restore; mutação: remover o remap de `StableId` na cópia de blobs ⇒ gate de unicidade mata.
-⚠️ O `deterministic_hash` do c9 muda de valor com o snapshot v2 — re-capturar o golden é parte da
-fase, com a matriz 3-OS verde no fechamento.
+⚠️ **«Re-capturar o golden» era um FANTASMA, medido em 2026-08-25.** O `deterministic_hash` do c9
+de facto muda de valor com o snapshot v2 — e isso **não reprova nada**: os três gates C9 do
+`spike.yml` **não têm baseline gravado**; cada SO imprime o hash como artefacto e o
+`determinism-compare` reprova só se os três **discordarem entre si**. *Um aviso pode estar certo
+sobre o mecanismo e errado sobre o que ele causa*
+([memória](../../project-memory/feedback_the_c9_hashes_are_compared_across_oses_not_against_a_stored_baseline.md)).
+⇒ O que a F4 deve ao c9 continua a ser **a LANE nova** (mestre + instância): hoje ele não tem
+instância nenhuma, então a cláusula *«o hash 3-OS não viola»* é verdadeira **por vacuidade do
+gate**, e é isso que a lane fecha.
 
 ---
 

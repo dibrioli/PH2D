@@ -8039,7 +8039,11 @@ impl crate::App {
                 sim,
                 &self.vec_entities,
                 &ph2d_input::Input::new(&hero.input_map, &self.input_actions),
-                self.morph_preview,
+                // ⛔⛔ **O sistema de States tem PRECEDÊNCIA** (W11e, 2.º report do Enio): ordenar
+                // os dois motores dentro do quadro não bastava, porque a transição só fala no
+                // MEIO — no repouso e na chegada quem escrevia era a máquina de teclas, parada
+                // onde o ▶ a deixou. Ver `morph_machine_drive::drives`.
+                crate::morph_machine_drive::drives(self.morph_preview, self.ui_state_live),
                 self.fixed_step.fixed_dt(),
                 &mut self.preview_drive,
             );

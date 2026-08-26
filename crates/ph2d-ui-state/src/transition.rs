@@ -332,24 +332,35 @@ impl Transition {
                         // as duas pontas por [`Transition::morph_steps`] e interpola a GEOMETRIA
                         // das duas.
                         //
-                        // ⛔⛔ **E é por isso que no MEIO ela se CALA, ao contrário do `bool_op`
-                        // acima.** Os dois recados não são simétricos no consumidor: o verbo
-                        // booleano chega ao mundo por um componente que a pose escreve **e** o
-                        // cozimento lê; a forma do conjunto chega por um `VecMorph` que o motor
-                        // escreve **pelo ledger**. Com a pose a segurar `from` no meio, os dois
-                        // escreviam o MESMO campo em todo quadro — e o ledger lia o valor da pose
-                        // como se fosse o **autorado**, perdendo o de verdade.
+                        // ⛔⛔ **E ela SEGURA `from` no meio — calá-la ali foi tentado na W11d e
+                        // REVERTIDO na W11e.** A ideia era que o `install` da pose e o
+                        // `apply_ui_steps` não escrevessem o mesmo campo no mesmo quadro. Duas
+                        // coisas estavam erradas nela:
                         //
-                        // ⇒ a fronteira é exactamente a de [`Self::morph_steps`]: nas **pontas**
-                        // fala a pose (é ali que o desenho é uma das duas formas, e é a pose que o
-                        // Show e a chegada instalam); no **meio** fala o passo, e só ele.
-                        // *Um campo, um escritor por instante.*
+                        // 1. **`None` já tem dono como significado** — *«esta pose não se
+                        //    pronuncia»*, o caso de uma pose gravada antes de o objecto ser um
+                        //    conjunto. Um segundo sentido (*«estou a meio»*) põe dois factos no
+                        //    mesmo valor.
+                        // 2. **A escrita dupla não é um defeito, é uma CAMADA:** a pose escreve a
+                        //    forma de BASE e o passo refina-a com o `t`. Calada a base, o mundo
+                        //    fica com o valor do quadro ANTERIOR sempre que o passo não fala — e
+                        //    ele não fala nas pontas nem quando uma delas é `None`, que é
+                        //    exactamente o estado em que uma INTERRUPÇÃO deixa a máquina
+                        //    (`Machine::go_to` faz `Transition::new(&self.live, ..)`).
+                        //
+                        // ⛔ E o custo de a base escrever é **inócuo, medido**: o `install` põe
+                        // `[from, from]`, o `apply_ui_steps` sobrepõe-se no mesmo quadro, e o
+                        // ledger não é lido porque `ui_state_live` **suprime a fotografia**
+                        // enquanto uma transição corre.
+                        //
+                        // ⛔ A consequência é **nomeada em vez de descoberta**: interromper um voo
+                        // a meio faz a forma saltar para a de partida em vez de desmorfar — o par
+                        // vivo `(A, B, t)` não cabe numa pose, que carrega **uma** forma. Curá-lo
+                        // é modelo novo, não um ajuste aqui.
                         morph_shape: if tc >= 1.0 {
                             to.morph_shape
-                        } else if tc <= 0.0 || from.morph_shape == to.morph_shape {
-                            from.morph_shape
                         } else {
-                            None
+                            from.morph_shape
                         },
                     };
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`

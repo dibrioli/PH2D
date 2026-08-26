@@ -244,7 +244,9 @@ fn announce(app: &crate::App) {
     );
     eprintln!(
         " 19. Na seccao States, ligue o **Preview** (o das poses, nao o do Morph) e passe o rato \
-         por cima da forma: ela **MORFA** de uma para a outra, animada, e volta ao sair."
+         por cima da forma: ela **MORFA** de uma para a outra, animada, e volta ao sair. (!) Nao \
+         precisa de desligar o Preview do Morph antes -- enquanto os States mandam, a maquina de \
+         teclas LARGA. Se a forma piscar (tall-wide-tall) ou nao segurar a do Default, PARE."
     );
     eprintln!(
         "     (!) Se ela SALTAR em vez de morfar, PARE. (!) Se nao mexer, PARE -- e' a \

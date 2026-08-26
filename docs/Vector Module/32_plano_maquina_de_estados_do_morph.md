@@ -884,3 +884,75 @@ gates verdes sobre uma secção que ninguém pintava).
 linhas num braço de `match` do laço de render não são alcançáveis de um teste*, e foi assim que a 2.ª
 metade ficou por escrever uma wave inteira. Quarta ocorrência do padrão nesta linha
 (`project-memory/feedback_i_write_the_right_guard_and_do_not_gate_it.md`).
+
+---
+
+## §11 — ⭐⭐⭐ W11e: o 2.º report (26/08) — **dois motores, e a ordem por quadro não bastava**
+
+> Enio, 2026-08-26: *"em states Default gravei Morph States em wide, em hover gravei Morph states em
+> tall. Ao ligar o preview Default não segurou wide e está em tall. No hover há uma transição
+> tall - wide - tall. Ao sair de hover o mesmo acontece: tall - wide - tall."*
+
+### §11.1 — O mecanismo, e por que a W11c já o tinha «resolvido»
+
+A W11c pôs o `apply_ui_steps` **depois** do `tick` no quadro, e escreveu que *"se as duas coisas
+escrevem o mesmo objecto, quem manda é a transição de UI"*. Isso é verdade **só nos instantes em que
+a transição fala** — e o `morph_steps` **cala-se nas pontas**, de propósito (§9). Logo:
+
+| O que o Enio viu | Quem escreveu |
+|---|---|
+| *"Default não segurou wide e está em tall"* | o `ui_preview::enter` **instala** o `Default` (wide); o `tick` do quadro seguinte repõe **tall**, onde o ▶ deixou a máquina |
+| *"no hover: tall - wide - tall"* | o hover morfa `wide -> tall` correctamente — mas o quadro **anterior** mostrava tall, então vê-se um salto para wide antes do morfo |
+| *"ao sair de hover: tall - wide - tall"* | a saída morfa `tall -> wide`, **chega**, o `apply_ui_steps` cala-se, e o `tick` repõe **tall** |
+
+⚠️ **Os três são o mesmo facto**: nos instantes de repouso e de chegada, quem escrevia o `VecMorph`
+era a máquina de teclas.
+
+### §11.2 — A lei
+
+⇒ **o sistema de States tem PRECEDÊNCIA, e a máquina de teclas LARGA enquanto ele age**
+(`morph_machine_drive::drives(morph_preview, ui_state_live)`). O `ui_state_live` é verdade com o modo
+de pré-visualização ligado **ou** com alguma transição no ar — as duas situações em que a forma é
+função do estado de UI, não da tecla.
+
+⭐ **Largar (e não «não escrever») é o que faz a volta ser suave:** o `!active` do `tick` **apaga** as
+máquinas, e a seguinte nasce **semeada pelo mundo** — ou seja onde os States a deixaram. *A cura da
+W11d (`open`/`seeded`) é o que torna esta possível*; sem ela, sair da pré-visualização daria um salto.
+
+⚠️ **Uma função, e não um `&&` no braço do despacho** — quinta vez nesta linha que uma lei escrita
+dentro do laço de render fica fora do alcance de todo gate.
+
+### §11.3 — ⛔⛔ E a W11d foi REVERTIDA num ponto: a pose **não** se cala a meio do voo
+
+A W11d fez `Transition::at` devolver `morph_shape: None` no meio, para o `install` e o
+`apply_ui_steps` não escreverem o mesmo campo. **Duas coisas estavam erradas nisso:**
+
+1. **`None` já tem dono como significado** — *«esta pose não se pronuncia»* (a pose gravada antes de
+   o objecto ser um conjunto). Um segundo sentido (*«estou a meio»*) põe dois factos no mesmo valor.
+2. **A escrita dupla não é um defeito, é uma CAMADA:** a pose escreve a forma de **base** e o passo
+   **refina-a** com o `t`. Calada a base, o mundo fica com o valor do quadro ANTERIOR sempre que o
+   passo não fala — e ele não fala nas pontas, nem quando uma delas é `None`, que é exactamente o
+   estado em que uma **interrupção** deixa a máquina (`Machine::go_to` faz
+   `Transition::new(&self.live, ..)` — *a pose viva é o `from` da próxima transição*).
+
+⛔ E o custo que a W11d queria evitar é **inócuo, medido**: o ledger não é lido durante uma transição
+porque o `ui_state_live` **suprime a fotografia**.
+
+⚠️ **Consequência NOMEADA (não curada):** interromper um voo a meio faz a forma **saltar** para a de
+partida em vez de desmorfar — o par vivo `(A, B, t)` não cabe numa pose, que carrega **uma** forma.
+Curá-lo é modelo novo, não um ajuste no `at`.
+
+### §11.4 — Gates e mutações
+
+| Gate | Onde |
+|---|---|
+| `the_key_machine_lets_go_while_the_ui_states_act` | `morph_set_ui_state_tests.rs` — **o report, reproduzido** |
+| `the_pose_names_a_shape_at_every_instant_of_a_flight` | `ph2d-ui-state/morph_step_tests.rs` |
+| `the_arrow_click_reaches_the_world` (censo da costura) | passa a exigir o `drives` na chamada do `tick` |
+
+**Duas mutações, ambas sangram:** o `drives` devolver `morph_preview` (ignorando o `ui_state_live`),
+e o `at` voltar a calar-se no meio.
+
+⚠️ **O censo da costura apanhou a mudança sozinho** — ele exigia a agulha antiga na chamada do
+`tick`, e ficou vermelho no momento em que a fiação mudou. *É o único gate desta linha que olha para
+a shell, e foi o único que reagiu.*

@@ -312,9 +312,13 @@ fn the_arrow_click_reaches_the_world() {
             "self.morph_preview = !self.morph_preview",
             "LIGAR e DESLIGAR o modo",
         ),
+        // ⭐⭐⭐ **E o modo passa pelo `drives`** (W11e): ele é o MODO **menos** o que o sistema de
+        // States está a fazer. ⛔ Sem o segundo termo, a máquina de teclas repõe a forma dela por
+        // cima do `Default` no repouso e na chegada — é o 2.º report do Enio (*"Default não
+        // segurou wide e está em tall"*).
         (
-            "self.morph_preview,\n                self.fixed_step.fixed_dt(),",
-            "DIRIGIR a maquina pelo MODO, e nao pelo playhead",
+            "crate::morph_machine_drive::drives(self.morph_preview, self.ui_state_live),\n                self.fixed_step.fixed_dt(),",
+            "DIRIGIR a maquina pelo MODO, e nao pelo playhead -- e LARGAR enquanto os States agem",
         ),
     ] {
         assert!(

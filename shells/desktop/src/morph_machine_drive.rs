@@ -233,6 +233,42 @@ pub(crate) fn play(
     open(machines, sim, host, &graph).travel(&graph, row)
 }
 
+/// ⭐⭐⭐ **QUEM MANDA NA FORMA QUANDO OS DOIS MOTORES ESTÃO LIGADOS** (plano 32 W11e).
+///
+/// Enio, 2026-08-26, 2.º report: *"Ao ligar o preview Default não segurou wide e está em tall. No
+/// hover há uma transição tall - wide - tall. Ao sair de hover o mesmo acontece."*
+///
+/// # ⛔⛔ O mecanismo: dois motores a escrever o MESMO `VecMorph`, e a ordem por quadro não bastava
+///
+/// A W11c ordenou-os **dentro** do quadro (a transição de UI corre depois do [`tick`], logo ganha).
+/// Mas ela só ganha nos instantes em que **fala** — e o `morph_steps` cala-se nas pontas, de
+/// propósito. Em todo instante de REPOUSO, e no quadro da CHEGADA, quem escrevia era a máquina de
+/// teclas, parada na forma onde o `▶ Play` a deixou. Daí o retrato exacto do report:
+///
+/// - o `ui_preview::enter` instala o `Default` (**wide**) e o `tick` do quadro seguinte repõe
+///   **tall** ⇒ *"Default não segurou wide"*;
+/// - o hover morfa `wide -> tall`, mas o quadro anterior mostrava tall ⇒ *"tall - wide - tall"*;
+/// - a saída morfa `tall -> wide`, chega, o `apply_ui_steps` cala-se e o `tick` repõe **tall** ⇒
+///   *"ao sair de hover o mesmo acontece"*.
+///
+/// # A lei
+///
+/// ⇒ **o sistema de States tem precedência, e a máquina de teclas LARGA enquanto ele age.**
+/// `ui_state_live` é verdade com o modo de pré-visualização ligado **ou** com alguma transição no
+/// ar — as duas situações em que a forma é função do estado de UI, não da tecla.
+///
+/// ⭐ **Largar é a resposta certa, e não «não escrever»:** o `!active` do [`tick`] **apaga** as
+/// máquinas, e a seguinte nasce **semeada pelo mundo** ([`open`]) — ou seja no sítio onde os States
+/// a deixaram. É por isso que sair da pré-visualização não dá salto nenhum. *A cura da W11d é o que
+/// torna esta possível.*
+///
+/// ⚠️ **Uma função e não um `&&` no braço do despacho**: é a quinta vez nesta linha que uma lei
+/// escrita dentro do laço de render fica fora do alcance de todo gate.
+#[must_use]
+pub(crate) fn drives(morph_preview: bool, ui_state_live: bool) -> bool {
+    morph_preview && !ui_state_live
+}
+
 /// **A máquina deste hospedeiro, criando-a se preciso** — a porta única das duas metades.
 ///
 /// ⚠️ **A semente é o que a CENA MOSTRA** (`VecMorph::sources[1]`), e não `graph.start()`: a

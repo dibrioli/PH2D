@@ -102,62 +102,71 @@ fn a_side_without_a_shape_never_becomes_a_step() {
     );
 }
 
-/// ⭐⭐⭐ **UM CAMPO, UM ESCRITOR POR INSTANTE** — a pose e o passo **complementam-se**, nunca se
-/// sobrepõem.
+/// ⭐⭐⭐ **A POSE É O ESCRITOR DE BASE: ela nomeia uma forma em TODO instante.**
 ///
-/// ⛔⛔ **A 1.ª redacção desta lei estava errada, e o gate afirmava-a** (W11c): ele exigia que a
-/// pose SEGURASSE `from` no meio, copiando o `bool_op`. Os dois recados **não são simétricos no
-/// consumidor** — o verbo booleano chega ao mundo por um componente que a pose escreve e o
-/// cozimento lê; a forma do conjunto chega por um `VecMorph` que o motor escreve **pelo ledger**.
-/// Com os dois a falar no mesmo quadro, o `install` escrevia `[from, from]` e o ledger lia esse
-/// valor como se fosse o **autorado**, perdendo o de verdade.
+/// ⛔⛔ **Este gate substitui um meu que afirmava o CONTRÁRIO** (W11d, revertido na W11e). Ele
+/// exigia que a pose se CALASSE (`None`) no meio de um voo, para o `install` e o `apply_ui_steps`
+/// não escreverem o mesmo campo no mesmo quadro. Duas coisas estavam erradas nisso:
 ///
-/// ⇒ **nas pontas fala a pose** (é ali que o desenho é exactamente uma das duas formas, e é a pose
-/// que o Show e a chegada instalam); **no meio fala o passo**, e só ele.
+/// 1. **`None` já tem dono como significado** — *«esta pose não se pronuncia»*, o caso de uma pose
+///    gravada antes de o objecto ser um conjunto ([`a_side_without_a_shape_never_becomes_a_step`]).
+///    Dar-lhe um segundo sentido (*«estou a meio»*) põe dois factos no mesmo valor.
+/// 2. **A escrita dupla não é um defeito, é uma CAMADA:** o `install` da pose escreve a forma de
+///    base e o `apply_ui_steps` refina-a com o `t`. Calar a base deixa o mundo com o valor do
+///    quadro ANTERIOR sempre que o passo não fala — e ele não fala nas pontas, nem quando uma das
+///    pontas é `None`, que é exactamente o estado em que uma **interrupção** deixa a máquina.
 ///
-/// ⚠️ **O caso `from == to` é o controle da assimetria:** aí não há passo nenhum a publicar, então
-/// a pose tem de continuar a falar — senão um objecto cuja forma não muda ficaria sem quem a
-/// segurasse durante uma transição que move só a posição.
+/// ⚠️ *Uma pose interpolada não é só o que se desenha agora: ela é o `from` da próxima transição*
+/// (`Machine::go_to` faz `Transition::new(&self.live, ..)`). Um canal que se cala nela apaga-se do
+/// futuro.
 ///
-/// **Mutação que deve sangrar:** a pose voltar a segurar `from` no meio (o defeito), interpolar o
-/// campo, saltar para o destino a meio, ou calar-se também quando as duas pontas são iguais.
+/// ⚠️ A forma é DISCRETA e segura em `from` até chegar — a lei do `bool_op`, e a mesma razão: um
+/// `VecPathId` interpolado entre dois ids seria o de uma **terceira** forma, ou de nenhuma. ⛔ A
+/// consequência é **nomeada em vez de descoberta**: interromper um voo a meio faz a forma saltar
+/// para a de partida em vez de desmorfar, porque o par vivo `(A, B, t)` não cabe numa pose — que
+/// carrega **uma** forma. Curá-lo é modelo novo, não um ajuste aqui.
+///
+/// **Mutação que deve sangrar:** a pose devolver `None` a meio do voo (o defeito), interpolar o
+/// campo, ou saltar para o destino antes da chegada.
 #[test]
-fn the_pose_and_the_step_never_speak_at_the_same_instant() {
-    let tr = Transition::new(&[pose(Some(WIDE))], &[pose(Some(TALL))]);
+fn the_pose_names_a_shape_at_every_instant_of_a_flight() {
+    let mut rest = UiState::new(StateRole::Default);
+    rest.objects = vec![pose(Some(WIDE))];
+    let mut hover = UiState::new(StateRole::Hover);
+    hover.objects = vec![pose(Some(TALL))];
+    let mut m = Machine::new(vec![rest, hover]).expect("dois estados");
+    let linear = Easing::new(EasingFamily::Linear, EasingMode::InOut);
+
+    m.go_to(1, 1.0, linear);
+    for _ in 0..9 {
+        m.advance(0.1);
+        assert!(
+            m.pose()[0].morph_shape.is_some(),
+            "a pose calou-se a meio do voo -- o `install` fica sem forma de base para escrever"
+        );
+    }
     assert_eq!(
-        tr.at(0.0)[0].morph_shape,
+        m.pose()[0].morph_shape,
         Some(WIDE),
-        "na partida e' a pose"
+        "e a forma que ela nomeia e' a de PARTIDA (discreta), nunca uma terceira"
     );
-    assert_eq!(tr.at(1.0)[0].morph_shape, Some(TALL), "na chegada tambem");
-    for t in [0.01, 0.25, 0.5, 0.99] {
-        assert_eq!(
-            tr.at(t)[0].morph_shape,
-            None,
-            "a meio ({t}) a pose tem de se CALAR -- quem fala e' o passo"
-        );
-        assert_eq!(
-            tr.morph_steps(t).len(),
-            1,
-            "e no MESMO instante o passo tem de falar ({t})"
-        );
-    }
-    // O CONTROLE: sem troca de forma nao ha' passo, entao a pose fala o tempo todo.
-    //
-    // ⚠️ As duas pontas **tem de diferir noutra coisa** (aqui a posicao): poses identicas nao
-    // entram na transicao de todo (`Transition::new`, `is_same_as`), e um controle vazio nao
-    // afirmaria nada.
-    let mut moved = pose(Some(WIDE));
-    moved.translation = [40.0, 0.0];
-    let same = Transition::new(&[pose(Some(WIDE))], &[moved]);
-    for t in [0.0, 0.5, 1.0] {
-        assert!(same.morph_steps(t).is_empty(), "nao ha' troca a publicar");
-        assert_eq!(
-            same.at(t)[0].morph_shape,
-            Some(WIDE),
-            "sem passo, a pose tem de segurar a forma ({t})"
-        );
-    }
+    m.advance(1.0);
+    assert_eq!(
+        m.pose()[0].morph_shape,
+        Some(TALL),
+        "so' na chegada ela passa a nomear o destino"
+    );
+
+    // ⭐ E a INTERRUPÇÃO: a transição de volta nasce da pose viva, que tem de nomear uma forma —
+    // senão `Transition::new` recebe um `None` e o `install` fica mudo o voo inteiro.
+    m.go_to(1, 1.0, linear);
+    m.advance(0.4);
+    m.go_to(0, 1.0, linear);
+    m.advance(0.3);
+    assert!(
+        m.pose()[0].morph_shape.is_some(),
+        "⛔ a transicao de volta nasceu de uma pose MUDA: o mundo fica com o valor do quadro anterior"
+    );
 }
 
 /// ⭐⭐⭐ **A MÁQUINA VIVA PUBLICA OS PASSOS enquanto anda** — a costura que faltava.

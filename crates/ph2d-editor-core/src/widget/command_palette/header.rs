@@ -73,7 +73,12 @@ pub(super) fn paint_header(
         title_w,
         resolve(ColorToken::Text1, theme),
     );
-    let count_str = format!("{} nodes", model.item_count());
+    // ⚠️ **«items», e não «nodes».** O widget serve TRÊS paletas desde a F3 (nós do Motion,
+    // comandos do `Ctrl+K`, componentes do `+`), e o substantivo estava colado à primeira — a
+    // paleta de componentes lia *"43 nodes"* sobre uma lista onde não há nó nenhum. Um substantivo
+    // genérico é a resposta certa para um widget genérico; um campo novo no modelo seria pedir a
+    // três consumidores que declarassem o óbvio.
+    let count_str = format!("{} items", model.item_count());
     let count_w = ts.prefix_width(&count_str, TypeToken::Sm.px());
     let close_x = card_x + card_w - CLOSE_W - pad;
     let count_x = close_x - count_w - Spacing::Sm.px();

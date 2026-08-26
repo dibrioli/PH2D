@@ -110,7 +110,7 @@ pub struct PaletteModel {
 }
 
 impl PaletteModel {
-    /// Total item count (for the header's "N nodes" readout).
+    /// Total item count (for the header's "N items" readout).
     #[must_use]
     pub fn item_count(&self) -> usize {
         self.groups

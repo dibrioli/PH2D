@@ -188,8 +188,19 @@ fn main() {
     let (cut, cr) = ph2d_gridmap::cut_along_patches(&mesh, &layout);
     let (combed, comb) = ph2d_gridmap::comb_patches(&mesh, &layout, &cut);
     println!(
-        "  F2+F3+G1+G2: {} patches ({} discos), {} costuras ({} com salto)",
-        cr.patches, cr.discs, comb.seams, comb.jumps
+        "  F2+F3+G1+G2: {} patches ({} discos), {} costuras ({} com salto, ⛔ {} SEM salto \
+         = nao acopladas) · ⛔ NAO-DISCOS: {} anel {} partido, {} abertos aqui, \
+         ⛔⛔ {} POR ABRIR (a fase seguinte NAO os parametriza) · ⭐ {} PARTIDOS separados",
+        cr.patches,
+        cr.discs,
+        comb.seams,
+        comb.jumps,
+        comb.seams.saturating_sub(comb.jumps),
+        cr.not_discs[0],
+        cr.not_discs[1],
+        cr.opened,
+        cr.unopened,
+        cr.split_patches
     );
 
     let t = std::time::Instant::now();
@@ -367,10 +378,12 @@ fn main() {
             let shape = ph2d_quadfill::quad_shape(&out);
             println!(
                 "  EXTRACCAO: residuo de translacao p50 {:.3e} max {:.3e} · ⭐ {} \
-                 FRACCIONARIAS | {} nos ({} vertice, {} aresta, {} face) | {} dobras",
+                 FRACCIONARIAS (desencontro de comprimento {:.3e} · rotacao {:.3e}) | {} nos ({} vertice, {} aresta, {} face) | {} dobras",
                 e.shift_residual_p50,
                 e.shift_residual,
                 e.shift_fractional,
+                e.seam_length_gap,
+                e.rot_residual,
                 e.vertex_nodes + e.edge_nodes + e.face_nodes,
                 e.vertex_nodes,
                 e.edge_nodes,

@@ -112,6 +112,103 @@ pub struct CutReport {
     /// ⛔ Patches que ficaram sem ser discos **mesmo depois** de abertos. `> 0` é um
     /// resultado vermelho e a fase seguinte não os pode parametrizar.
     pub unopened: usize,
+    /// ⭐⭐⭐ **Quantos patches EXTRA nasceram de partir um patch desligado** — ver
+    /// [`split_disconnected`]. `0` é o caso normal.
+    pub split_patches: usize,
+}
+
+/// ⛔⛔⛔ **FALSE — partir os patches desligados foi construído, MEDIDO e REJEITADO como
+/// CURA**, e a razão é que ele **não move o alvo**.
+///
+/// | | sem | com |
+/// |---|---|---|
+/// | patches por abrir | `2` | ⭐ **`1`** |
+/// | patches partidos separados | `0` | `1` |
+/// | ⛔ **transições FRACCIONÁRIAS** | **`8`** | ⛔ **`8`** |
+/// | arestas de bordo | `10` | `14` |
+/// | `χ` | `1` | `0` |
+///
+/// ⭐ **Ele CURA o que diz curar** (um dos dois patches desligados passa a dois patches
+/// ligados) **e as oito transições fraccionárias ficam exactamente onde estavam** ⇒ a
+/// desconexão **não é a causa delas**, e era essa a hipótese.
+///
+/// ⚠️ **E o bordo `10` ⇒ `14` não se pode ler como «pior»:** a mesma cadeia, com `8k`,
+/// `16k`, `32k` e `64k` rondas do contínuo, dá `14`, `14`, `10` e `12` — *o resultado
+/// entregue é caótico face a uma perturbação pequena, e partir um patch é uma dessas.*
+/// **Uma diferença do tamanho da banda de caos não é uma medição**, nem para bem nem para
+/// mal. ⛔ *A tentação aqui é ler `10 ⇒ 14` como regressão e `14 ⇒ 10` como cura; as duas
+/// leituras seriam do mesmo ruído.*
+///
+/// ⇒ Fica **desligado** e com o contador vivo: um patch com duas componentes é um sistema
+/// de Poisson com **dois espaços nulos** e continua a ser errado — o que a medição diz é
+/// que não é *este* o defeito que produz os furos, e ligar o produto a uma mudança que não
+/// se consegue mostrar melhor é mudar o produto por fé.
+const SPLIT_DISCONNECTED: bool = false;
+
+/// ⭐⭐⭐ **PARTE cada patch nas COMPONENTES LIGADAS dele** — ver o bloco que a chama.
+///
+/// Duas faces do mesmo patch estão ligadas se partilham uma aresta que **não** é de arco:
+/// é essa a definição do interior de um patch. Devolve os patches refinados e o
+/// `face -> patch` correspondente, que substitui o do layout dali para a frente.
+///
+/// ⚠️ **Um patch já ligado sai INTACTO, na mesma posição** — é isso que faz a peça sem o
+/// defeito ser byte-idêntica, e há gate.
+fn split_disconnected(
+    mesh: &Mesh,
+    faces_of: Vec<Vec<u32>>,
+    seam_edges: &BTreeSet<(u32, u32)>,
+    rep: &mut CutReport,
+) -> (Vec<Vec<u32>>, Vec<u32>) {
+    let mut out: Vec<Vec<u32>> = Vec::with_capacity(faces_of.len());
+    let mut face_patch: Vec<u32> = vec![u32::MAX; mesh.faces().len()];
+    for faces in faces_of {
+        let mut uf = Find::new(faces.len());
+        let mut owner: BTreeMap<(u32, u32), u32> = BTreeMap::new();
+        for (i, &f) in faces.iter().enumerate() {
+            let v = mesh.faces()[f as usize].verts();
+            for k in 0..v.len() {
+                let e = key(v[k], v[(k + 1) % v.len()]);
+                if seam_edges.contains(&e) {
+                    continue;
+                }
+                #[allow(clippy::cast_possible_truncation)]
+                let i = i as u32;
+                match owner.get(&e) {
+                    Some(&j) => uf.join(i, j),
+                    None => {
+                        owner.insert(e, i);
+                    }
+                }
+            }
+        }
+        // As componentes, na ordem em que a primeira face de cada uma aparece — assim um
+        // patch já ligado devolve exactamente a mesma lista.
+        let mut first: BTreeMap<u32, usize> = BTreeMap::new();
+        let mut comps: Vec<Vec<u32>> = Vec::new();
+        for (i, &f) in faces.iter().enumerate() {
+            #[allow(clippy::cast_possible_truncation)]
+            let r = uf.root(i as u32);
+            let c = *first.entry(r).or_insert_with(|| {
+                comps.push(Vec::new());
+                comps.len() - 1
+            });
+            comps[c].push(f);
+        }
+        if comps.len() > 1 {
+            rep.split_patches += comps.len() - 1;
+        }
+        for c in comps {
+            #[allow(clippy::cast_possible_truncation)]
+            let pid = out.len() as u32;
+            for &f in &c {
+                if let Some(slot) = face_patch.get_mut(f as usize) {
+                    *slot = pid;
+                }
+            }
+            out.push(c);
+        }
+    }
+    (out, face_patch)
 }
 
 /// União-busca com compressão de caminho — o suficiente para juntar cantos.
@@ -348,6 +445,41 @@ pub fn cut_along_patches(mesh: &Mesh, layout: &PatchLayout) -> (CutMesh, CutRepo
         }
     }
 
+    // ⭐⭐⭐ **UM PATCH PARTIDO EM DOIS VIRA DOIS PATCHES.**
+    //
+    // ⛔⛔ **A causa medida (2026-08-25, peça do artista):** o traçado entregava `2` patches
+    // com `χ ≥ 2` — *partidos*, não anéis — e o laço de abertura logo abaixo **não os
+    // alcança**: ele liga duas voltas de bordo, e entre duas componentes que não se tocam
+    // não há caminho nenhum. Ficavam contados em [`CutReport::unopened`], cujo próprio doc
+    // já dizia *«resultado vermelho, a fase seguinte não os parametriza»* — e **nenhum
+    // instrumento imprimia esse contador**.
+    //
+    // ⭐⭐ **O mecanismo, por extenso:** a fase seguinte resolve uma Poisson por patch, e um
+    // patch desligado é um sistema com **dois espaços nulos** — cada metade flutua por sua
+    // conta. Medido: a mesma aresta ficava com imagens de comprimentos a diferir **906 %**,
+    // o que nenhuma rotação concilia ⇒ a transição entre as duas cartas saía fraccionária
+    // (8 arestas), o extractor arredondava-a para células inteiras, e o traçado da isolinha
+    // ia parar duas células ao lado ⇒ órfã ⇒ **furo**.
+    //
+    // ⚠️ **Separá-las não cria costura nenhuma:** elas não partilham aresta, é isso que
+    // «desligadas» quer dizer. *A cura é dar-lhes cartas separadas, que é o que elas já
+    // são.*
+    let (faces_of, face_patch) = if SPLIT_DISCONNECTED {
+        split_disconnected(mesh, faces_of, &seam_edges, &mut rep)
+    } else {
+        let mut fp = vec![u32::MAX; mesh.faces().len()];
+        for (p, faces) in faces_of.iter().enumerate() {
+            for &f in faces {
+                if let (Some(slot), Ok(p)) = (fp.get_mut(f as usize), u32::try_from(p)) {
+                    *slot = p;
+                }
+            }
+        }
+        (faces_of, fp)
+    };
+    let patches = faces_of.len();
+    rep.patches = patches;
+
     // ── Quem está de que lado de cada aresta de arco: `(aresta) -> [(patch, face)]`.
     let mut across: BTreeMap<(u32, u32), Vec<(u32, u32)>> = BTreeMap::new();
 
@@ -467,7 +599,7 @@ pub fn cut_along_patches(mesh: &Mesh, layout: &PatchLayout) -> (CutMesh, CutRepo
         for (&(a, b), sites) in &owners_of {
             if seam_edges.contains(&(a, b)) {
                 for &f in sites {
-                    if layout.face_patch.get(f as usize).copied() == Some(pid) {
+                    if face_patch.get(f as usize).copied() == Some(pid) {
                         across.entry((a, b)).or_default().push((pid, f));
                     }
                 }

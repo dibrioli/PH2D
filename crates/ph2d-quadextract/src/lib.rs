@@ -147,6 +147,8 @@ pub struct ExtractReport {
     pub shift_residual_p50: f64,
     /// ⭐⭐⭐ Quantas transições ficaram fraccionárias — a contagem, não o extremo.
     pub shift_fractional: usize,
+    /// ⭐⭐⭐ O pior desencontro relativo de comprimento nas transições fraccionárias.
+    pub seam_length_gap: f64,
     /// ⛔ Transições que não se deixaram reler **exactamente** dos valores saneados.
     pub inexact_transitions: usize,
     // ── saneamento
@@ -302,6 +304,7 @@ pub fn extract(
         shift_residual: ing.shift_residual,
         shift_residual_p50: ing.shift_residual_p50,
         shift_fractional: ing.shift_fractional,
+        seam_length_gap: ing.seam_length_gap,
         inexact_transitions: san.inexact_transitions,
         pinned_fixed: san.pinned_fixed,
         pinned_integer: san.pinned_integer,

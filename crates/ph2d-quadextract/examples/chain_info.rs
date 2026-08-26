@@ -209,7 +209,14 @@ fn main() {
     let base_opts = ph2d_gridmap::RoundOptions::default();
     let opts = ph2d_gridmap::RoundOptions {
         pin_singularities: pin,
-        pin_lone_singularities: std::env::var("PH2D_PIN_LONE").as_deref() == Ok("1"),
+        // ⛔⛔ **O interruptor só pode DESLIGAR, e a 1.ª redacção lia-o ao contrário:**
+        // ela punha `false` sempre que a env não estivesse posta, o que **sobrepunha o
+        // default do produto** e fazia este instrumento medir o comportamento antigo com
+        // ar de estar a medir o novo. ⚠️ *Um instrumento que não herda o default do
+        // produto não mede o produto* — e o sintoma foi ler `14 bordo` no dia em que o
+        // default já dava `10`.
+        pin_lone_singularities: std::env::var("PH2D_PIN_LONE").as_deref() != Ok("0")
+            && base_opts.pin_lone_singularities,
         welded_rounds: num("PH2D_G3_ROUNDS", base_opts.welded_rounds),
         sweeps: num("PH2D_G3_SWEEPS", base_opts.sweeps),
         ..base_opts
